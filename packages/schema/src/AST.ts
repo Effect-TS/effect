@@ -196,9 +196,6 @@ export const BatchingAnnotationId = Symbol.for("@effect/schema/annotation/Batchi
 /** @internal */
 export const SurrogateAnnotationId = Symbol.for("@effect/schema/annotation/Surrogate")
 
-/** @internal */
-export const JSONIdentifierAnnotationId = Symbol.for("@effect/schema/annotation/JSONIdentifier")
-
 /**
  * Used by:
  *
@@ -312,6 +309,8 @@ export const getBatchingAnnotation = getAnnotation<BatchingAnnotation>(BatchingA
 
 /** @internal */
 export const getSurrogateSchemaAnnotation = getAnnotation<SurrogateAnnotation>(SurrogateAnnotationId)
+
+const JSONIdentifierAnnotationId = Symbol.for("@effect/schema/annotation/JSONIdentifier")
 
 /** @internal */
 export const getJSONIdentifierAnnotation = getAnnotation<IdentifierAnnotation>(JSONIdentifierAnnotationId)
@@ -1034,6 +1033,12 @@ export class Element {
       isOptional: this.isOptional
     }
   }
+  /**
+   * @since 1.0.0
+   */
+  toString() {
+    return String(this.type) + (this.isOptional ? "?" : "")
+  }
 }
 
 /**
@@ -1086,7 +1091,7 @@ export class TupleType implements Annotated {
 }
 
 const formatTuple = (ast: TupleType): string => {
-  const formattedElements = ast.elements.map((element) => String(element.type) + (element.isOptional ? "?" : ""))
+  const formattedElements = ast.elements.map(String)
     .join(", ")
   return ReadonlyArray.matchLeft(ast.rest, {
     onEmpty: () => `readonly [${formattedElements}]`,
@@ -1708,8 +1713,10 @@ export const annotations = (ast: AST, annotations: Annotations): AST => {
  */
 export const keyof = (ast: AST): AST => Union.make(_keyof(ast))
 
-/** @internal */
-export const getTemplateLiteralRegex = (ast: TemplateLiteral): RegExp => {
+/**
+ * @since 1.0.0
+ */
+export const getTemplateLiteralRegExp = (ast: TemplateLiteral): RegExp => {
   let pattern = `^${ast.head}`
   for (const span of ast.spans) {
     if (isStringKeyword(span.type)) {
@@ -1793,7 +1800,7 @@ export const getPropertyKeyIndexedAccess = (ast: AST, name: PropertyKey): Proper
             const parameterBase = getParameterBase(is.parameter)
             switch (parameterBase._tag) {
               case "TemplateLiteral": {
-                const regex = getTemplateLiteralRegex(parameterBase)
+                const regex = getTemplateLiteralRegExp(parameterBase)
                 if (regex.test(name)) {
                   return new PropertySignature(name, is.type, false, false)
                 }
@@ -1992,28 +1999,40 @@ export const required = (ast: AST): AST => {
 export const mutable = (ast: AST): AST => {
   switch (ast._tag) {
     case "TupleType":
-      return new TupleType(ast.elements, ast.rest, false, ast.annotations)
-    case "TypeLiteral":
-      return new TypeLiteral(
-        ast.propertySignatures.map((ps) =>
-          new PropertySignature(ps.name, ps.type, ps.isOptional, false, ps.annotations)
-        ),
-        ast.indexSignatures.map((is) => new IndexSignature(is.parameter, is.type, false)),
-        ast.annotations
+      return ast.isReadonly === false ? ast : new TupleType(ast.elements, ast.rest, false, ast.annotations)
+    case "TypeLiteral": {
+      const propertySignatures = changeMap(
+        ast.propertySignatures,
+        (ps) =>
+          ps.isReadonly === false ? ps : new PropertySignature(ps.name, ps.type, ps.isOptional, false, ps.annotations)
       )
-    case "Union":
-      return Union.make(ast.types.map(mutable), ast.annotations)
+      const indexSignatures = changeMap(
+        ast.indexSignatures,
+        (is) => is.isReadonly === false ? is : new IndexSignature(is.parameter, is.type, false)
+      )
+      return propertySignatures === ast.propertySignatures && indexSignatures === ast.indexSignatures ?
+        ast :
+        new TypeLiteral(propertySignatures, indexSignatures, ast.annotations)
+    }
+
+    case "Union": {
+      const types = changeMap(ast.types, mutable)
+      return types === ast.types ? ast : Union.make(types, ast.annotations)
+    }
+
     case "Suspend":
       return new Suspend(() => mutable(ast.f()), ast.annotations)
-    case "Refinement":
-      return new Refinement(mutable(ast.from), ast.filter, ast.annotations)
-    case "Transformation":
-      return new Transformation(
-        mutable(ast.from),
-        mutable(ast.to),
-        ast.transformation,
-        ast.annotations
-      )
+    case "Refinement": {
+      const from = mutable(ast.from)
+      return from === ast.from ? ast : new Refinement(from, ast.filter, ast.annotations)
+    }
+    case "Transformation": {
+      const from = mutable(ast.from)
+      const to = mutable(ast.to)
+      return from === ast.from && to === ast.to ?
+        ast :
+        new Transformation(from, to, ast.transformation, ast.annotations)
+    }
   }
   return ast
 }
@@ -2106,12 +2125,11 @@ export const typeAST = (ast: AST): AST => {
 export const getJSONIdentifier = (annotated: Annotated) =>
   Option.orElse(getJSONIdentifierAnnotation(annotated), () => getIdentifierAnnotation(annotated))
 
-const createJSONIdentifierAnnotation = (annotated: Annotated): Annotations | undefined => {
-  return Option.match(getJSONIdentifier(annotated), {
+const createJSONIdentifierAnnotation = (annotated: Annotated): Annotations | undefined =>
+  Option.match(getJSONIdentifier(annotated), {
     onNone: () => undefined,
     onSome: (identifier) => ({ [JSONIdentifierAnnotationId]: identifier })
   })
-}
 
 function changeMap<A>(
   as: ReadonlyArray.NonEmptyReadonlyArray<A>,
@@ -2153,9 +2171,11 @@ export const encodedAST = (ast: AST): AST => {
         new TupleType(elements, rest, ast.isReadonly, createJSONIdentifierAnnotation(ast))
     }
     case "TypeLiteral": {
-      const propertySignatures = changeMap(ast.propertySignatures, (p) => {
-        const type = encodedAST(p.type)
-        return type === p.type ? p : new PropertySignature(p.name, type, p.isOptional, p.isReadonly)
+      const propertySignatures = changeMap(ast.propertySignatures, (ps) => {
+        const type = encodedAST(ps.type)
+        return type === ps.type
+          ? ps
+          : new PropertySignature(ps.name, type, ps.isOptional, ps.isReadonly)
       })
       const indexSignatures = changeMap(ast.indexSignatures, (is) => {
         const type = encodedAST(is.type)

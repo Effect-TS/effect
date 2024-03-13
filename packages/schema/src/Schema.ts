@@ -68,6 +68,11 @@ export type Simplify<T> = { readonly [K in keyof T]: T[K] } & {}
 
 /**
  * @since 1.0.0
+ */
+export type SimplifyMutable<T> = { -readonly [K in keyof T]: T[K] } & {}
+
+/**
+ * @since 1.0.0
  * @category symbol
  */
 export const TypeId: unique symbol = _schema.TypeId
@@ -84,10 +89,11 @@ export type TypeId = typeof TypeId
  */
 export interface Schema<in out A, in out I = A, out R = never> extends Schema.Variance<A, I, R>, Pipeable {
   readonly ast: AST.AST
-  annotations(annotations: Annotations<A>): Schema<A, I, R>
+  annotations(annotations: Annotations.Schema<A>): Schema<A, I, R>
 }
 
 /**
+ * @category annotations
  * @since 1.0.0
  */
 export declare namespace Annotable {
@@ -103,10 +109,11 @@ export declare namespace Annotable {
 }
 
 /**
+ * @category annotations
  * @since 1.0.0
  */
 export interface Annotable<Self extends Schema<A, I, R>, A, I = A, R = never> extends Schema<A, I, R> {
-  annotations(annotations: Annotations<A>): Self
+  annotations(annotations: Annotations.Schema<A>): Self
 }
 
 /**
@@ -470,7 +477,7 @@ class $literal<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralV
   constructor(readonly literals: Literals, ast: AST.AST = $literal.ast(literals)) {
     super(ast)
   }
-  annotations(annotations: Annotations<Literals[number]>) {
+  annotations(annotations: Annotations.Schema<Literals[number]>) {
     return new $literal(this.literals, _schema.annotations(this.ast, annotations))
   }
 }
@@ -629,7 +636,7 @@ const declareConstructor = <
       >
     }
   ) => (input: unknown, options: ParseOptions, ast: AST.Declaration) => Effect.Effect<I, ParseResult.ParseIssue, never>,
-  annotations?: Annotations<A, TypeParameters>
+  annotations?: Annotations.Schema<A, TypeParameters>
 ): Schema<A, I, Schema.Context<TypeParameters[number]>> =>
   make(
     new AST.Declaration(
@@ -642,7 +649,7 @@ const declareConstructor = <
 
 const declarePrimitive = <A>(
   is: (input: unknown) => input is A,
-  annotations?: Annotations<A>
+  annotations?: Annotations.Schema<A>
 ): Schema<A> => {
   const decodeUnknown = () => (input: unknown, _: ParseOptions, ast: AST.Declaration) =>
     is(input) ? ParseResult.succeed(input) : ParseResult.fail(new ParseResult.Type(ast, input))
@@ -660,7 +667,7 @@ const declarePrimitive = <A>(
 export const declare: {
   <A>(
     is: (input: unknown) => input is A,
-    annotations?: Annotations<A>
+    annotations?: Annotations.Schema<A>
   ): Schema<A>
   <const P extends ReadonlyArray<Schema.Any>, I, A>(
     typeParameters: P,
@@ -678,7 +685,7 @@ export const declare: {
       options: ParseOptions,
       ast: AST.Declaration
     ) => Effect.Effect<I, ParseResult.ParseIssue, never>,
-    annotations?: Annotations<A, { readonly [K in keyof P]: Schema.Type<P[K]> }>
+    annotations?: Annotations.Schema<A, { readonly [K in keyof P]: Schema.Type<P[K]> }>
   ): Schema<A, I, Schema.Context<P[number]>>
 } = function() {
   if (Array.isArray(arguments[0])) {
@@ -705,7 +712,7 @@ export const BrandTypeId = Symbol.for("@effect/schema/TypeId/Brand")
  */
 export const fromBrand = <C extends Brand.Brand<string | symbol>>(
   constructor: Brand.Brand.Constructor<C>,
-  annotations?: FilterAnnotations<Brand.Brand.Unbranded<C>>
+  annotations?: Annotations.Filter<Brand.Brand.Unbranded<C>>
 ) =>
 <R, I, A extends Brand.Brand.Unbranded<C>>(self: Schema<A, I, R>): Schema<A & C, I, R> =>
   make(
@@ -739,7 +746,7 @@ export interface instanceOf<A> extends Annotable<instanceOf<A>, A> {}
  */
 export const instanceOf = <A extends abstract new(...args: any) => any>(
   constructor: A,
-  annotations?: Annotations<InstanceType<A>>
+  annotations?: Annotations.Schema<InstanceType<A>>
 ): instanceOf<InstanceType<A>> =>
   declare(
     (u): u is InstanceType<A> => u instanceof constructor,
@@ -907,14 +914,14 @@ export const object: $object = make(AST.objectKeyword)
  * @since 1.0.0
  */
 export interface union<Members extends ReadonlyArray<Schema.Any>> extends
-  Annotable<
-    union<Members>,
+  Schema<
     Schema.Type<Members[number]>,
     Schema.Encoded<Members[number]>,
     Schema.Context<Members[number]>
   >
 {
   readonly members: Readonly<Members>
+  annotations(annotations: Annotations.Schema<Schema.Type<Members[number]>>): union<Members>
 }
 
 class $union<Members extends ReadonlyArray<Schema.Any>>
@@ -927,7 +934,7 @@ class $union<Members extends ReadonlyArray<Schema.Any>>
   constructor(readonly members: Members, ast: AST.AST = $union.ast(members)) {
     super(ast)
   }
-  annotations(annotations: Annotations<Schema.Type<Members[number]>>) {
+  annotations(annotations: Annotations.Schema<Schema.Type<Members[number]>>) {
     return new $union(this.members, _schema.annotations(this.ast, annotations))
   }
 }
@@ -957,7 +964,7 @@ export function union<Members extends ReadonlyArray<Schema.Any>>(
  * @since 1.0.0
  */
 export interface nullable<S extends Schema.Any> extends union<[S, $null]> {
-  annotations(annotations: Annotations<Schema.Type<S> | null>): nullable<S>
+  annotations(annotations: Annotations.Schema<Schema.Type<S> | null>): nullable<S>
 }
 
 /**
@@ -971,7 +978,7 @@ export const nullable = <S extends Schema.Any>(self: S): nullable<S> => union(se
  * @since 1.0.0
  */
 export interface orUndefined<S extends Schema.Any> extends union<[S, $undefined]> {
-  annotations(annotations: Annotations<Schema.Type<S> | undefined>): orUndefined<S>
+  annotations(annotations: Annotations.Schema<Schema.Type<S> | undefined>): orUndefined<S>
 }
 
 /**
@@ -985,7 +992,7 @@ export const orUndefined = <S extends Schema.Any>(self: S): orUndefined<S> => un
  * @since 1.0.0
  */
 export interface nullish<S extends Schema.Any> extends union<[S, $null, $undefined]> {
-  annotations(annotations: Annotations<Schema.Type<S> | null | undefined>): nullish<S>
+  annotations(annotations: Annotations.Schema<Schema.Type<S> | null | undefined>): nullish<S>
 }
 
 /**
@@ -1018,6 +1025,9 @@ export const optionalElement = <E extends Schema.Any>(self: E): OptionalElement<
 class $OptionalElement<E extends Schema.Any> implements OptionalElement<E> {
   readonly [TypeId]!: Schema.Variance<Schema.Type<E>, Schema.Encoded<E>, Schema.Context<E>>[TypeId]
   constructor(readonly optionalElement: E) {}
+  toString() {
+    return `${this.optionalElement.ast}?`
+  }
 }
 
 /**
@@ -1085,8 +1095,7 @@ export interface tupleType<
   Elements extends TupleType.Elements,
   Rest extends ReadonlyArray<Schema.Any>
 > extends
-  Annotable<
-    tupleType<Elements, Rest>,
+  Schema<
     TupleType.Type<Elements, Rest>,
     TupleType.Encoded<Elements, Rest>,
     Schema.Context<Elements[number]> | Schema.Context<Rest[number]>
@@ -1094,6 +1103,7 @@ export interface tupleType<
 {
   readonly elements: Readonly<Elements>
   readonly rest: Readonly<Rest>
+  annotations(annotations: Annotations.Schema<TupleType.Type<Elements, Rest>>): tupleType<Elements, Rest>
 }
 
 class $tupleType<
@@ -1127,7 +1137,7 @@ class $tupleType<
     super(ast)
   }
   annotations(
-    annotations: Annotations<TupleType.Type<Elements, Rest>>
+    annotations: Annotations.Schema<TupleType.Type<Elements, Rest>>
   ): tupleType<Elements, Rest> {
     return new $tupleType(this.elements, this.rest, _schema.annotations(this.ast, annotations))
   }
@@ -1138,16 +1148,7 @@ class $tupleType<
  * @since 1.0.0
  */
 export interface tuple<Elements extends TupleType.Elements> extends tupleType<Elements, []> {
-  annotations(annotations: Annotations<TupleType.Type<Elements, []>>): tuple<Elements>
-}
-
-class $tuple<Elements extends TupleType.Elements> extends $tupleType<Elements, []> implements tuple<Elements> {
-  constructor(readonly elements: Elements, ast?: AST.AST) {
-    super(elements, [], ast)
-  }
-  annotations(annotations: Annotations<TupleType.Type<Elements, []>>) {
-    return new $tuple(this.elements, _schema.annotations(this.ast, annotations))
-  }
+  annotations(annotations: Annotations.Schema<TupleType.Type<Elements, []>>): tuple<Elements>
 }
 
 /**
@@ -1162,7 +1163,7 @@ export function tuple<Elements extends TupleType.Elements>(...elements: Elements
 export function tuple(...args: ReadonlyArray<any>): any {
   return Array.isArray(args[0])
     ? new $tupleType(args[0], args.slice(1))
-    : new $tuple(args)
+    : new $tupleType(args, [])
 }
 
 /**
@@ -1171,14 +1172,14 @@ export function tuple(...args: ReadonlyArray<any>): any {
  */
 export interface array<Value extends Schema.Any> extends tupleType<[], [Value]> {
   readonly value: Value
-  annotations(annotations: Annotations<TupleType.Type<[], [Value]>>): array<Value>
+  annotations(annotations: Annotations.Schema<TupleType.Type<[], [Value]>>): array<Value>
 }
 
 class $array<Value extends Schema.Any> extends $tupleType<[], [Value]> implements array<Value> {
   constructor(readonly value: Value, ast?: AST.AST) {
     super([], [value], ast)
   }
-  annotations(annotations: Annotations<TupleType.Type<[], [Value]>>) {
+  annotations(annotations: Annotations.Schema<TupleType.Type<[], [Value]>>) {
     return new $array(this.value, _schema.annotations(this.ast, annotations))
   }
 }
@@ -1205,14 +1206,14 @@ export function array<Value extends Schema.Any, RestElements extends ReadonlyArr
  */
 export interface nonEmptyArray<Value extends Schema.Any> extends tupleType<[Value], [Value]> {
   readonly value: Value
-  annotations(annotations: Annotations<TupleType.Type<[Value], [Value]>>): nonEmptyArray<Value>
+  annotations(annotations: Annotations.Schema<TupleType.Type<[Value], [Value]>>): nonEmptyArray<Value>
 }
 
 class $nonEmptyArray<Value extends Schema.Any> extends $tupleType<[Value], [Value]> implements nonEmptyArray<Value> {
   constructor(readonly value: Value, ast?: AST.AST) {
     super([value], [value], ast)
   }
-  annotations(annotations: Annotations<TupleType.Type<[Value], [Value]>>) {
+  annotations(annotations: Annotations.Schema<TupleType.Type<[Value], [Value]>>) {
     return new $nonEmptyArray(this.value, _schema.annotations(this.ast, annotations))
   }
 }
@@ -1250,7 +1251,14 @@ export declare namespace PropertySignature {
   export type AST =
     | PropertySignatureDeclaration
     | PropertySignatureTransformation
+
+  /**
+   * @since 1.0.0
+   */
+  export interface Annotations<A> extends Annotations.Doc<A> {}
 }
+
+const formatToken = (isOptional: boolean): string => isOptional ? "\"?:\"" : "\":\""
 
 /**
  * @category PropertySignature
@@ -1262,10 +1270,56 @@ export class PropertySignatureDeclaration {
    */
   readonly _tag = "PropertySignatureDeclaration"
   constructor(
-    readonly ast: AST.AST,
+    readonly type: AST.AST,
     readonly isOptional: boolean,
-    readonly annotations?: AST.Annotations | undefined
+    readonly isReadonly: boolean,
+    readonly annotations: AST.Annotations
   ) {}
+  /**
+   * @since 1.0.0
+   */
+  toString() {
+    const token = formatToken(this.isOptional)
+    const type = String(this.type)
+    return `PropertySignature<${token}, ${type}, never, ${token}, ${type}>`
+  }
+}
+
+/**
+ * @category PropertySignature
+ * @since 1.0.0
+ */
+export class FromPropertySignature implements AST.Annotated {
+  constructor(
+    readonly type: AST.AST,
+    readonly isOptional: boolean,
+    readonly isReadonly: boolean,
+    readonly annotations: AST.Annotations,
+    readonly fromKey?: PropertyKey | undefined
+  ) {}
+}
+
+/**
+ * @category PropertySignature
+ * @since 1.0.0
+ */
+export class ToPropertySignature implements AST.Annotated {
+  constructor(
+    readonly type: AST.AST,
+    readonly isOptional: boolean,
+    readonly isReadonly: boolean,
+    readonly annotations: AST.Annotations
+  ) {}
+}
+
+const formatPropertyKey = (p: PropertyKey | undefined): string => {
+  if (p === undefined) {
+    return "never"
+  }
+  if (Predicate.isString(p)) {
+    return JSON.stringify(p)
+  }
+  return String(p)
 }
 
 /**
@@ -1278,12 +1332,19 @@ export class PropertySignatureTransformation {
    */
   readonly _tag = "PropertySignatureTransformation"
   constructor(
-    readonly fromKey: PropertyKey | undefined,
-    readonly from: PropertySignatureDeclaration,
-    readonly to: PropertySignatureDeclaration,
+    readonly from: FromPropertySignature,
+    readonly to: ToPropertySignature,
     readonly decode: AST.PropertySignatureTransformation["decode"],
     readonly encode: AST.PropertySignatureTransformation["encode"]
   ) {}
+  /**
+   * @since 1.0.0
+   */
+  toString() {
+    return `PropertySignature<${formatToken(this.to.isOptional)}, ${this.to.type}, ${
+      formatPropertyKey(this.from.fromKey)
+    }, ${formatToken(this.from.isOptional)}, ${this.from.type}>`
+  }
 }
 
 /**
@@ -1300,19 +1361,33 @@ export type PropertySignatureTypeId = typeof PropertySignatureTypeId
 
 const _propertySignatureAnnotations = (
   ast: PropertySignature.AST,
-  annotations?: AST.Annotations
+  annotations: AST.Annotations
 ): PropertySignature.AST => {
   switch (ast._tag) {
-    case "PropertySignatureDeclaration":
-      return new PropertySignatureDeclaration(ast.ast, ast.isOptional, { ...ast.annotations, ...annotations })
-    case "PropertySignatureTransformation":
+    case "PropertySignatureDeclaration": {
+      return new PropertySignatureDeclaration(
+        ast.type,
+        ast.isOptional,
+        ast.isReadonly,
+        { ...ast.annotations, ...annotations }
+      )
+    }
+    case "PropertySignatureTransformation": {
       return new PropertySignatureTransformation(
-        ast.fromKey,
-        ast.from,
-        new PropertySignatureDeclaration(ast.to.ast, ast.to.isOptional, { ...ast.to.annotations, ...annotations }),
+        new FromPropertySignature(
+          ast.from.type,
+          ast.from.isOptional,
+          ast.from.isReadonly,
+          ast.from.annotations
+        ),
+        new ToPropertySignature(ast.to.type, ast.to.isOptional, ast.to.isReadonly, {
+          ...ast.to.annotations,
+          ...annotations
+        }),
         ast.decode,
         ast.encode
       )
+    }
   }
 }
 
@@ -1335,11 +1410,12 @@ export interface PropertySignature<
   readonly ast: PropertySignature.AST
 
   annotations(
-    annotations: PropertySignatureAnnotations<Type>
+    annotations: PropertySignature.Annotations<Type>
   ): PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, R>
 }
 
-class $PropertySignature<
+/** @internal */
+export class $PropertySignature<
   TypeToken extends PropertySignature.Token,
   Type,
   Key extends PropertyKey,
@@ -1362,9 +1438,13 @@ class $PropertySignature<
   }
 
   annotations(
-    annotations: PropertySignatureAnnotations<Type>
+    annotations: PropertySignature.Annotations<Type>
   ): PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, R> {
     return new $PropertySignature(_propertySignatureAnnotations(this.ast, _schema.toASTAnnotations(annotations)))
+  }
+
+  toString() {
+    return String(this.ast)
   }
 }
 
@@ -1375,68 +1455,7 @@ class $PropertySignature<
 export const propertySignature = <A, I, R>(
   self: Schema<A, I, R>
 ): PropertySignature<PropertySignature.GetToken<false>, A, never, PropertySignature.GetToken<false>, I, R> =>
-  new $PropertySignature(new PropertySignatureDeclaration(self.ast, false))
-
-/**
- * @category PropertySignature
- * @since 1.0.0
- */
-export const propertySignatureAnnotations = <A>(
-  annotations: PropertySignatureAnnotations<A>
-) =>
-<I, R>(
-  self: Schema<A, I, R>
-): PropertySignature<PropertySignature.GetToken<false>, A, never, PropertySignature.GetToken<false>, I, R> =>
-  new $PropertySignature(new PropertySignatureDeclaration(self.ast, false, _schema.toASTAnnotations(annotations)))
-
-/**
- * @category PropertySignature
- * @since 1.0.0
- */
-export const propertySignatureTransformation = <
-  FA,
-  FI,
-  FR,
-  FromIsOptional extends boolean,
-  TA,
-  TI,
-  TR,
-  ToIsOptional extends boolean,
-  const Key extends PropertyKey = never
->(
-  from: {
-    readonly schema: Schema<FA, FI, FR>
-    readonly isOptional: FromIsOptional
-    readonly annotations?: Annotations<FA> | undefined
-    readonly key?: Key | undefined
-  },
-  to: {
-    readonly schema: Schema<TA, TI, TR>
-    readonly isOptional: ToIsOptional
-  },
-  decode: (o: Option.Option<FA>) => Option.Option<TI>,
-  encode: (o: Option.Option<TI>) => Option.Option<FA>
-): PropertySignature<
-  PropertySignature.GetToken<ToIsOptional>,
-  TA,
-  Key,
-  PropertySignature.GetToken<FromIsOptional>,
-  FI,
-  FR | TR
-> =>
-  new $PropertySignature(
-    new PropertySignatureTransformation(
-      from.key,
-      new PropertySignatureDeclaration(
-        from.schema.ast,
-        from.isOptional,
-        _schema.toASTAnnotations(from.annotations)
-      ),
-      new PropertySignatureDeclaration(to.schema.ast, to.isOptional),
-      decode,
-      encode
-    )
-  )
+  new $PropertySignature(new PropertySignatureDeclaration(self.ast, false, true, {}))
 
 /**
  * @category PropertySignature
@@ -1479,9 +1498,14 @@ export const fromKey: {
     case "PropertySignatureDeclaration": {
       return new $PropertySignature(
         new PropertySignatureTransformation(
-          key,
-          ast,
-          new PropertySignatureDeclaration(AST.typeAST(ast.ast), ast.isOptional),
+          new FromPropertySignature(
+            ast.type,
+            ast.isOptional,
+            ast.isReadonly,
+            ast.annotations,
+            key
+          ),
+          new ToPropertySignature(AST.typeAST(ast.type), ast.isOptional, ast.isReadonly, {}),
           identity,
           identity
         )
@@ -1490,8 +1514,13 @@ export const fromKey: {
     case "PropertySignatureTransformation":
       return new $PropertySignature(
         new PropertySignatureTransformation(
-          key,
-          ast.from,
+          new FromPropertySignature(
+            ast.from.type,
+            ast.from.isOptional,
+            ast.from.isReadonly,
+            ast.from.annotations,
+            key
+          ),
           ast.to,
           ast.decode,
           ast.encode
@@ -1515,9 +1544,8 @@ export const optionalToRequired = <FA, FI, FR, TA, TI, TR>(
 ): PropertySignature<":", TA, never, "?:", FI, FR | TR> =>
   new $PropertySignature(
     new PropertySignatureTransformation(
-      undefined,
-      new PropertySignatureDeclaration(from.ast, true),
-      new PropertySignatureDeclaration(to.ast, false),
+      new FromPropertySignature(from.ast, true, true, {}, undefined),
+      new ToPropertySignature(to.ast, false, true, {}),
       (o) => Option.some(decode(o)),
       Option.flatMap(encode)
     )
@@ -1542,9 +1570,8 @@ export const optionalToOptional = <FA, FI, FR, TA, TI, TR>(
 ): PropertySignature<"?:", TA, never, "?:", FI, FR | TR> =>
   new $PropertySignature(
     new PropertySignatureTransformation(
-      undefined,
-      new PropertySignatureDeclaration(from.ast, true),
-      new PropertySignatureDeclaration(to.ast, true),
+      new FromPropertySignature(from.ast, true, true, {}, undefined),
+      new ToPropertySignature(to.ast, true, true, {}),
       decode,
       encode
     )
@@ -1689,7 +1716,7 @@ export const optional: {
           identity
         )
       } else {
-        return new $PropertySignature(new PropertySignatureDeclaration(schema.ast, true))
+        return new $PropertySignature(new PropertySignatureDeclaration(schema.ast, true, true, {}))
       }
     }
   } else {
@@ -1734,7 +1761,9 @@ export const optional: {
           identity
         )
       } else {
-        return new $PropertySignature(new PropertySignatureDeclaration(orUndefined(schema).ast, true))
+        return new $PropertySignature(
+          new PropertySignatureDeclaration(orUndefined(schema).ast, true, true, {})
+        )
       }
     }
   }
@@ -1774,16 +1803,16 @@ export declare namespace Struct {
   /**
    * @since 1.0.0
    */
-  export type Type<F extends Fields, OptionalKeys extends PropertyKey = TypeTokenKeys<F>> =
-    & { readonly [K in Exclude<keyof F, OptionalKeys>]: Schema.Type<F[K]> }
-    & { readonly [K in OptionalKeys]?: Schema.Type<F[K]> }
+  export type Type<F extends Fields> =
+    & { readonly [K in Exclude<keyof F, TypeTokenKeys<F>>]: Schema.Type<F[K]> }
+    & { readonly [K in TypeTokenKeys<F>]?: Schema.Type<F[K]> }
 
   /**
    * @since 1.0.0
    */
-  export type Encoded<F extends Fields, OptionalKeys extends PropertyKey = EncodedTokenKeys<F>> =
-    & { readonly [K in Exclude<keyof F, OptionalKeys> as Key<F, K>]: Schema.Encoded<F[K]> }
-    & { readonly [K in OptionalKeys as Key<F, K>]?: Schema.Encoded<F[K]> }
+  export type Encoded<F extends Fields> =
+    & { readonly [K in Exclude<keyof F, EncodedTokenKeys<F>> as Key<F, K>]: Schema.Encoded<F[K]> }
+    & { readonly [K in EncodedTokenKeys<F> as Key<F, K>]?: Schema.Encoded<F[K]> }
 
   /**
    * @since 1.0.0
@@ -1871,8 +1900,7 @@ export interface typeLiteral<
   Fields extends Struct.Fields,
   Records extends IndexSignature.Records
 > extends
-  Annotable<
-    typeLiteral<Fields, Records>,
+  Schema<
     Simplify<TypeLiteral.Type<Fields, Records>>,
     Simplify<TypeLiteral.Encoded<Fields, Records>>,
     | Struct.Context<Fields>
@@ -1881,6 +1909,9 @@ export interface typeLiteral<
 {
   readonly fields: Simplify<Fields>
   readonly records: Simplify<Records>
+  annotations(
+    annotations: Annotations.Schema<Simplify<TypeLiteral.Type<Fields, Records>>>
+  ): typeLiteral<Fields, Records>
 }
 
 const isPropertySignature = (u: unknown): u is PropertySignature.Any =>
@@ -1912,21 +1943,23 @@ class $typeLiteral<
           const ast: PropertySignature.AST = field.ast
           switch (ast._tag) {
             case "PropertySignatureDeclaration": {
-              const type = ast.ast
+              const type = ast.type
               const isOptional = ast.isOptional
               const toAnnotations = ast.annotations
               from.push(new AST.PropertySignature(key, type, isOptional, true))
               to.push(new AST.PropertySignature(key, AST.typeAST(type), isOptional, true, toAnnotations))
-              pss.push(new AST.PropertySignature(key, type, isOptional, true, toAnnotations))
+              pss.push(
+                new AST.PropertySignature(key, type, isOptional, true, toAnnotations)
+              )
               break
             }
             case "PropertySignatureTransformation": {
-              const fromKey = ast.fromKey ?? key
+              const fromKey = ast.from.fromKey ?? key
               from.push(
-                new AST.PropertySignature(fromKey, ast.from.ast, ast.from.isOptional, true, ast.from.annotations)
+                new AST.PropertySignature(fromKey, ast.from.type, ast.from.isOptional, true, ast.from.annotations)
               )
               to.push(
-                new AST.PropertySignature(key, ast.to.ast, ast.to.isOptional, true, ast.to.annotations)
+                new AST.PropertySignature(key, ast.to.type, ast.to.isOptional, true, ast.to.annotations)
               )
               transformations.push(new AST.PropertySignatureTransformation(fromKey, key, ast.decode, ast.encode))
               break
@@ -1977,7 +2010,7 @@ class $typeLiteral<
     super(ast)
   }
   annotations(
-    annotations: Annotations<Simplify<TypeLiteral.Type<Fields, Records>>>
+    annotations: Annotations.Schema<Simplify<TypeLiteral.Type<Fields, Records>>>
   ): typeLiteral<Fields, Records> {
     return new $typeLiteral(this.fields, this.records, _schema.annotations(this.ast, annotations))
   }
@@ -1988,7 +2021,7 @@ class $typeLiteral<
  * @since 1.0.0
  */
 export interface struct<Fields extends Struct.Fields> extends typeLiteral<Fields, []> {
-  annotations(annotations: Annotations<Simplify<Struct.Type<Fields>>>): struct<Fields>
+  annotations(annotations: Annotations.Schema<Simplify<Struct.Type<Fields>>>): struct<Fields>
 }
 
 /**
@@ -2014,7 +2047,9 @@ export function struct<Fields extends Struct.Fields, const Records extends Index
 export interface record<K extends Schema.All, V extends Schema.All> extends typeLiteral<{}, [{ key: K; value: V }]> {
   readonly key: K
   readonly value: V
-  annotations(annotations: Annotations<Simplify<TypeLiteral.Type<{}, [{ key: K; value: V }]>>>): record<K, V>
+  annotations(
+    annotations: Annotations.Schema<Simplify<TypeLiteral.Type<{}, [{ key: K; value: V }]>>>
+  ): record<K, V>
 }
 
 class $record<K extends Schema.All, V extends Schema.All> extends $typeLiteral<
@@ -2024,7 +2059,7 @@ class $record<K extends Schema.All, V extends Schema.All> extends $typeLiteral<
   constructor(readonly key: K, readonly value: V, ast?: AST.AST) {
     super({}, [{ key, value }], ast)
   }
-  annotations(annotations: Annotations<Simplify<TypeLiteral.Type<{}, [{ key: K; value: V }]>>>) {
+  annotations(annotations: Annotations.Schema<Simplify<TypeLiteral.Type<{}, [{ key: K; value: V }]>>>) {
     return new $record(this.key, this.value, _schema.annotations(this.ast, annotations))
   }
 }
@@ -2097,9 +2132,8 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
 }
 
 /**
- * Given a schema `Schema<A, I, R>` and a key `K`, this function extracts a specific field from the `A` type, producing a new schema that represents a transformation from the `I` type to `A[K]`.
- *
- * If the option `{ transformation: false }` is provided, the returned schema `Schema<A[K], I[K], R>` only represents the value of the field without any transformation.
+ * Given a schema `Schema<A, I, R>` and a key `key: K`, this function extracts a specific field from the `A` type,
+ * producing a new schema that represents a transformation from the `{ readonly [key]: I[K] }` type to `A[K]`.
  *
  * @example
  * import * as S from "@effect/schema/Schema"
@@ -2114,24 +2148,12 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
  *   column2: S.number
  * })
  *
- * // const pullOutColumn1: S.Schema<number, {
+ * // const pullOutColumn: S.Schema<number, {
  * //     readonly column1: string;
- * //     readonly column2: number;
  * // }, never>
- * const pullOutColumn1 = mytable.pipe(S.pluck("column1"))
+ * const pullOutColumn = mytable.pipe(S.pluck("column1"))
  *
- * console.log(S.decode(S.array(pullOutColumn1))([{ column1: "1", column2: 100 }, { column1: "2", column2: 300 }]))
- * // Output: { _id: 'Either', _tag: 'Right', right: [ 1, 2 ] }
- *
- * // ---------------------------------------------
- * // use case: pull out a single field from a
- * // struct (no transformation)
- * // ---------------------------------------------
- *
- * // const pullOutColumn1Value: S.Schema<number, string, never>
- * const pullOutColumn1Value = mytable.pipe(S.pluck("column1", { transformation: false }))
- *
- * console.log(S.decode(S.array(pullOutColumn1Value))(["1", "2"]))
+ * console.log(S.decodeUnknownEither(S.array(pullOutColumn))([{ column1: "1", column2: 100 }, { column1: "2", column2: 300 }]))
  * // Output: { _id: 'Either', _tag: 'Right', right: [ 1, 2 ] }
  *
  * @category struct transformations
@@ -2139,42 +2161,33 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
  */
 export const pluck: {
   <A, K extends keyof A>(
-    key: K,
-    options: { readonly transformation: false }
-  ): <I extends { [P in K]?: any }, R>(schema: Schema<A, I, R>) => Schema<A[K], I[K], R>
-  <A, K extends keyof A>(key: K): <I, R>(schema: Schema<A, I, R>) => Schema<A[K], I, R>
+    key: K
+  ): <I extends { [P in K]?: any }, R>(schema: Schema<A, I, R>) => Schema<A[K], { readonly [P in K]: I[P] }, R>
   <A, I extends { [P in K]?: any }, R, K extends keyof A>(
     schema: Schema<A, I, R>,
-    key: K,
-    options: { readonly transformation: false }
-  ): Schema<A[K], I[K], R>
-  <A, I, R, K extends keyof A>(schema: Schema<A, I, R>, key: K): Schema<A[K], I, R>
+    key: K
+  ): Schema<A[K], { readonly [P in K]: I[P] }, R>
 } = dual(
-  (args) => isSchema(args[0]),
-  <A, I, R, K extends keyof A>(
+  2,
+  <A, I extends { [P in K]?: any }, R, K extends keyof A>(
     schema: Schema<A, I, R>,
-    key: K,
-    options?: { readonly transformation: false }
-  ): Schema<A[K], I, R> => {
-    if (options && options.transformation == false) {
-      const ps = AST.getPropertyKeyIndexedAccess(schema.ast, key)
-      return make(ps.isOptional ? AST.orUndefined(ps.type) : ps.type)
-    } else {
-      const ps = AST.getPropertyKeyIndexedAccess(typeSchema(schema).ast, key)
-      const value = make<A[K], A[K], R>(ps.isOptional ? AST.orUndefined(ps.type) : ps.type)
-      return transform(
-        schema,
-        value,
-        (a) => a[key],
-        (ak) => ps.isOptional && ak === undefined ? {} : { [key]: ak } as any
-      )
-    }
+    key: K
+  ): Schema<A[K], { readonly [P in K]: I[P] }, R> => {
+    const ps = AST.getPropertyKeyIndexedAccess(typeSchema(schema).ast, key)
+    const value = make<A[K], A[K], R>(ps.isOptional ? AST.orUndefined(ps.type) : ps.type)
+    return transform(
+      schema.pipe(pick(key)),
+      value,
+      (a) => a[key],
+      (ak) => ps.isOptional && ak === undefined ? {} : { [key]: ak } as any
+    )
   }
 )
 
 const makeBrandSchema = <S extends Schema.AnyNoContext, B extends string | symbol>(
   self: AST.AST,
-  annotations: Annotations<Schema.Type<S> & Brand.Brand<B>>
+  annotations: Annotations.Schema<Schema.Type<S> & Brand.Brand<B>>,
+  brand: string | symbol
 ): brand<S, B> => {
   const ast = AST.annotations(self, _schema.toASTAnnotations(annotations))
   const _validateEither = validateEither(make(ast))
@@ -2191,9 +2204,10 @@ const makeBrandSchema = <S extends Schema.AnyNoContext, B extends string | symbo
   refined.pipe = function() {
     return pipeArguments(this, arguments)
   }
-  refined.annotations = (annotations: Annotations<Schema.Type<S> & Brand.Brand<B>>) => {
-    return makeBrandSchema(ast, annotations)
+  refined.annotations = (annotations: Annotations.Schema<Schema.Type<S> & Brand.Brand<B>>) => {
+    return makeBrandSchema(ast, annotations, brand)
   }
+  refined.toString = () => `${ast} & Brand<${formatPropertyKey(brand)}>`
   return refined
 }
 
@@ -2228,7 +2242,7 @@ export interface brand<S extends Schema.AnyNoContext, B extends string | symbol>
  */
 export const brand = <S extends Schema.AnyNoContext, B extends string | symbol>(
   brand: B,
-  annotations?: Annotations<Schema.Type<S> & Brand.Brand<B>>
+  annotations?: Annotations.Schema<Schema.Type<S> & Brand.Brand<B>>
 ) =>
 (self: S): brand<S, B> => {
   const brandAnnotation: AST.BrandAnnotation = Option.match(AST.getBrandAnnotation(self.ast), {
@@ -2238,7 +2252,7 @@ export const brand = <S extends Schema.AnyNoContext, B extends string | symbol>(
   return makeBrandSchema(self.ast, {
     ...annotations,
     [AST.BrandAnnotationId]: brandAnnotation
-  })
+  }, brand)
 }
 
 /**
@@ -2267,6 +2281,19 @@ export const required = <A, I, R>(
 ): Schema<{ [K in keyof A]-?: A[K] }, { [K in keyof I]-?: I[K] }, R> => make(AST.required(self.ast))
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface mutable<S extends Schema.Any> extends
+  Annotable<
+    mutable<S>,
+    SimplifyMutable<Schema.Type<S>>,
+    SimplifyMutable<Schema.Encoded<S>>,
+    Schema.Context<S>
+  >
+{}
+
+/**
  * Creates a new schema with shallow mutability applied to its properties.
  *
  * @param schema - The original schema to make properties mutable (shallowly).
@@ -2274,12 +2301,7 @@ export const required = <A, I, R>(
  * @category combinators
  * @since 1.0.0
  */
-export const mutable = <A, I, R>(
-  schema: Schema<A, I, R>
-): Schema<{ -readonly [P in keyof A]: A[P] }, { -readonly [P in keyof I]: I[P] }, R> => {
-  const ast = AST.mutable(schema.ast)
-  return ast === schema.ast ? schema as any : make(ast)
-}
+export const mutable = <S extends Schema.Any>(schema: S): mutable<S> => make(AST.mutable(schema.ast))
 
 const getExtendErrorMessage = (x: AST.AST, y: AST.AST, path: ReadonlyArray<string>) =>
   `cannot extend \`${x}\` with \`${y}\` (path [${path?.join(", ")}])`
@@ -2412,13 +2434,18 @@ export const compose: {
 )
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface suspend<A, I, R> extends Schema<A, I, R> {
+  annotations(annotations: Annotations.Schema<A>): suspend<A, I, R>
+}
+
+/**
  * @category combinators
  * @since 1.0.0
  */
-export const suspend = <A, I, R>(
-  f: () => Schema<A, I, R>,
-  annotations?: Annotations<A>
-): Schema<A, I, R> => make(new AST.Suspend(() => f().ast, _schema.toASTAnnotations(annotations)))
+export const suspend = <A, I, R>(f: () => Schema<A, I, R>): suspend<A, I, R> => make(new AST.Suspend(() => f().ast))
 
 /**
  * @category combinators
@@ -2426,19 +2453,19 @@ export const suspend = <A, I, R>(
  */
 export function filter<A>(
   f: (a: A, options: ParseOptions, self: AST.Refinement) => Option.Option<ParseResult.ParseIssue>,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R>
 export function filter<C extends A, B extends A, A = C>(
   refinement: Predicate.Refinement<A, B>,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ): <I, R>(self: Schema<C, I, R>) => Schema<C & B, I, R>
 export function filter<A>(
   predicate: Predicate.Predicate<NoInfer<A>>,
-  annotations?: FilterAnnotations<NoInfer<A>>
+  annotations?: Annotations.Filter<NoInfer<A>>
 ): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R>
 export function filter<A>(
   predicate: Predicate.Predicate<A> | AST.Refinement["filter"],
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> {
   return (self) =>
     make(
@@ -2481,7 +2508,7 @@ class $transformOrFail<From extends Schema.Any, To extends Schema.Any, R>
   constructor(readonly from: From, readonly to: To, ast: AST.AST) {
     super(ast)
   }
-  annotations(annotations: Annotations<Schema.Type<To>>) {
+  annotations(annotations: Annotations.Schema<Schema.Type<To>>) {
     return new $transformOrFail(this.from, this.to, _schema.annotations(this.ast, annotations))
   }
 }
@@ -2575,7 +2602,7 @@ export const transformOrFail: {
  * @since 1.0.0
  */
 export interface transform<From extends Schema.Any, To extends Schema.Any> extends transformOrFail<From, To, never> {
-  annotations(annotations: Annotations<Schema.Type<To>>): transform<From, To>
+  annotations(annotations: Annotations.Schema<Schema.Type<To>>): transform<From, To>
 }
 
 /**
@@ -2709,7 +2736,7 @@ export const attachPropertySignature: {
   <K extends PropertyKey, V extends AST.LiteralValue | symbol, A extends object>(
     key: K,
     value: V,
-    annotations?: Annotations<Simplify<A & { readonly [k in K]: V }>>
+    annotations?: Annotations.Schema<Simplify<A & { readonly [k in K]: V }>>
   ): <I, R>(
     schema: Schema<A, I, R>
   ) => Schema<Simplify<A & { readonly [k in K]: V }>, I, R>
@@ -2717,7 +2744,7 @@ export const attachPropertySignature: {
     schema: Schema<A, I, R>,
     key: K,
     value: V,
-    annotations?: Annotations<Simplify<A & { readonly [k in K]: V }>>
+    annotations?: Annotations.Schema<Simplify<A & { readonly [k in K]: V }>>
   ): Schema<Simplify<A & { readonly [k in K]: V }>, I, R>
 } = dual(
   (args) => isSchema(args[0]),
@@ -2725,7 +2752,7 @@ export const attachPropertySignature: {
     schema: Schema<A, I, R>,
     key: K,
     value: V,
-    annotations?: Annotations<Simplify<A & { readonly [k in K]: V }>>
+    annotations?: Annotations.Schema<Simplify<A & { readonly [k in K]: V }>>
   ): Schema<Simplify<A & { readonly [k in K]: V }>, I, R> => {
     const attached = extend(
       typeSchema(schema),
@@ -2751,54 +2778,59 @@ export const attachPropertySignature: {
 )
 
 /**
+ * @category annotations
  * @since 1.0.0
  */
-export interface PropertySignatureAnnotations<A> extends AST.Annotations {
-  readonly title?: AST.TitleAnnotation
-  readonly description?: AST.DescriptionAnnotation
-  readonly examples?: AST.ExamplesAnnotation<A>
-  readonly default?: AST.DefaultAnnotation<A>
-  readonly documentation?: AST.DocumentationAnnotation
-}
+export declare namespace Annotations {
+  /**
+   * @category annotations
+   * @since 1.0.0
+   */
+  export interface Doc<A> extends AST.Annotations {
+    readonly title?: AST.TitleAnnotation
+    readonly description?: AST.DescriptionAnnotation
+    readonly documentation?: AST.DocumentationAnnotation
+    readonly examples?: AST.ExamplesAnnotation<A>
+    readonly default?: AST.DefaultAnnotation<A>
+  }
 
-/**
- * @since 1.0.0
- */
-export interface Annotations<A, TypeParameters extends ReadonlyArray<any> = readonly []>
-  extends PropertySignatureAnnotations<A>
-{
-  readonly identifier?: AST.IdentifierAnnotation
-  readonly message?: AST.MessageAnnotation
-  readonly typeId?: AST.TypeAnnotation | { id: AST.TypeAnnotation; annotation: unknown }
-  readonly jsonSchema?: AST.JSONSchemaAnnotation
-  readonly arbitrary?: (
-    ...arbitraries: { readonly [K in keyof TypeParameters]: Arbitrary<TypeParameters[K]> }
-  ) => Arbitrary<A>
-  readonly pretty?: (
-    ...pretties: { readonly [K in keyof TypeParameters]: Pretty.Pretty<TypeParameters[K]> }
-  ) => Pretty.Pretty<A>
-  readonly equivalence?: (
-    ...equivalences: { readonly [K in keyof TypeParameters]: Equivalence.Equivalence<TypeParameters[K]> }
-  ) => Equivalence.Equivalence<A>
-  readonly concurrency?: AST.ConcurrencyAnnotation
-  readonly batching?: AST.BatchingAnnotation
-}
+  /**
+   * @since 1.0.0
+   */
+  export interface Schema<A, TypeParameters extends ReadonlyArray<any> = readonly []> extends Doc<A> {
+    readonly identifier?: AST.IdentifierAnnotation
+    readonly message?: AST.MessageAnnotation
+    readonly typeId?: AST.TypeAnnotation | { id: AST.TypeAnnotation; annotation: unknown }
+    readonly jsonSchema?: AST.JSONSchemaAnnotation
+    readonly arbitrary?: (
+      ...arbitraries: { readonly [K in keyof TypeParameters]: Arbitrary<TypeParameters[K]> }
+    ) => Arbitrary<A>
+    readonly pretty?: (
+      ...pretties: { readonly [K in keyof TypeParameters]: Pretty.Pretty<TypeParameters[K]> }
+    ) => Pretty.Pretty<A>
+    readonly equivalence?: (
+      ...equivalences: { readonly [K in keyof TypeParameters]: Equivalence.Equivalence<TypeParameters[K]> }
+    ) => Equivalence.Equivalence<A>
+    readonly concurrency?: AST.ConcurrencyAnnotation
+    readonly batching?: AST.BatchingAnnotation
+  }
 
-/**
- * @since 1.0.0
- */
-export interface FilterAnnotations<A> extends Annotations<A, readonly [A]> {}
+  /**
+   * @since 1.0.0
+   */
+  export interface Filter<A> extends Schema<A, readonly [A]> {}
+}
 
 /**
  * @category annotations
  * @since 1.0.0
  */
 export const annotations: {
-  <S extends Annotable.Any>(annotations: Annotations<Schema.Type<S>>): (self: S) => Annotable.Self<S>
-  <S extends Annotable.Any>(self: S, annotations: Annotations<Schema.Type<S>>): Annotable.Self<S>
+  <S extends Annotable.Any>(annotations: Annotations.Schema<Schema.Type<S>>): (self: S) => Annotable.Self<S>
+  <S extends Annotable.Any>(self: S, annotations: Annotations.Schema<Schema.Type<S>>): Annotable.Self<S>
 } = dual(
   2,
-  <A, I, R>(self: Schema<A, I, R>, annotations: Annotations<A>): Schema<A, I, R> => self.annotations(annotations)
+  <A, I, R>(self: Schema<A, I, R>, annotations: Annotations.Schema<A>): Schema<A, I, R> => self.annotations(annotations)
 )
 
 /**
@@ -2958,7 +2990,7 @@ export const TrimmedTypeId = Symbol.for("@effect/schema/TypeId/Trimmed")
  * @since 1.0.0
  */
 export const trimmed =
-  <A extends string>(annotations?: FilterAnnotations<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
+  <A extends string>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
     self.pipe(
       filter((a): a is A => a === a.trim(), {
         typeId: TrimmedTypeId,
@@ -2985,7 +3017,7 @@ export type MaxLengthTypeId = typeof MaxLengthTypeId
  */
 export const maxLength = <A extends string>(
   maxLength: number,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -3018,7 +3050,7 @@ export type MinLengthTypeId = typeof MinLengthTypeId
  */
 export const minLength = <A extends string>(
   minLength: number,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -3045,7 +3077,7 @@ export const PatternTypeId = Symbol.for("@effect/schema/TypeId/Pattern")
  */
 export const pattern = <A extends string>(
   regex: RegExp,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> => {
   const pattern = regex.source
@@ -3079,7 +3111,7 @@ export const StartsWithTypeId = Symbol.for("@effect/schema/TypeId/StartsWith")
  */
 export const startsWith = <A extends string>(
   startsWith: string,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -3106,7 +3138,7 @@ export const EndsWithTypeId = Symbol.for("@effect/schema/TypeId/EndsWith")
  */
 export const endsWith = <A extends string>(
   endsWith: string,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -3133,7 +3165,7 @@ export const IncludesTypeId = Symbol.for("@effect/schema/TypeId/Includes")
  */
 export const includes = <A extends string>(
   searchString: string,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -3161,7 +3193,7 @@ export const LowercasedTypeId = Symbol.for("@effect/schema/TypeId/Lowercased")
  * @since 1.0.0
  */
 export const lowercased =
-  <A extends string>(annotations?: FilterAnnotations<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
+  <A extends string>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
     self.pipe(
       filter((a): a is A => a === a.toLowerCase(), {
         typeId: LowercasedTypeId,
@@ -3191,7 +3223,7 @@ export const UppercasedTypeId = Symbol.for("@effect/schema/TypeId/Uppercased")
  * @since 1.0.0
  */
 export const uppercased =
-  <A extends string>(annotations?: FilterAnnotations<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
+  <A extends string>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
     self.pipe(
       filter((a): a is A => a === a.toUpperCase(), {
         typeId: UppercasedTypeId,
@@ -3226,7 +3258,7 @@ export type LengthTypeId = typeof LengthTypeId
  */
 export const length = <A extends string>(
   length: number,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -3251,7 +3283,7 @@ export const Char = string.pipe(length(1, { identifier: "Char" }))
  * @since 1.0.0
  */
 export const nonEmpty = <A extends string>(
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> =>
   minLength(1, {
     description: "a non empty string",
@@ -3469,7 +3501,7 @@ export const FiniteTypeId = Symbol.for("@effect/schema/TypeId/Finite")
  * @since 1.0.0
  */
 export const finite =
-  <A extends number>(annotations?: FilterAnnotations<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
+  <A extends number>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
     self.pipe(
       filter((a): a is A => Number.isFinite(a), {
         typeId: FiniteTypeId,
@@ -3498,7 +3530,7 @@ export type GreaterThanTypeId = typeof GreaterThanTypeId
  */
 export const greaterThan = <A extends number>(
   min: number,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -3530,7 +3562,7 @@ export type GreaterThanOrEqualToTypeId = typeof GreaterThanOrEqualToTypeId
  */
 export const greaterThanOrEqualTo = <A extends number>(
   min: number,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -3554,7 +3586,7 @@ export const MultipleOfTypeId = Symbol.for("@effect/schema/TypeId/MultipleOf")
  */
 export const multipleOf = <A extends number>(
   divisor: number,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -3583,7 +3615,7 @@ export type IntTypeId = typeof IntTypeId
  * @since 1.0.0
  */
 export const int =
-  <A extends number>(annotations?: FilterAnnotations<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
+  <A extends number>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
     self.pipe(
       filter((a): a is A => Number.isSafeInteger(a), {
         typeId: IntTypeId,
@@ -3613,7 +3645,7 @@ export type LessThanTypeId = typeof LessThanTypeId
  * @since 1.0.0
  */
 export const lessThan =
-  <A extends number>(max: number, annotations?: FilterAnnotations<A>) =>
+  <A extends number>(max: number, annotations?: Annotations.Filter<A>) =>
   <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
     self.pipe(
       filter((a): a is A => a < max, {
@@ -3644,7 +3676,7 @@ export type LessThanOrEqualToTypeId = typeof LessThanOrEqualToTypeId
  */
 export const lessThanOrEqualTo = <A extends number>(
   max: number,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -3677,7 +3709,7 @@ export type BetweenTypeId = typeof BetweenTypeId
 export const between = <A extends number>(
   min: number,
   max: number,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -3700,7 +3732,7 @@ export const NonNaNTypeId = Symbol.for("@effect/schema/TypeId/NonNaN")
  * @since 1.0.0
  */
 export const nonNaN =
-  <A extends number>(annotations?: FilterAnnotations<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
+  <A extends number>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
     self.pipe(
       filter((a): a is A => !Number.isNaN(a), {
         typeId: NonNaNTypeId,
@@ -3714,7 +3746,7 @@ export const nonNaN =
  * @since 1.0.0
  */
 export const positive = <A extends number>(
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => greaterThan(0, annotations)
 
 /**
@@ -3722,7 +3754,7 @@ export const positive = <A extends number>(
  * @since 1.0.0
  */
 export const negative = <A extends number>(
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => lessThan(0, annotations)
 
 /**
@@ -3730,7 +3762,7 @@ export const negative = <A extends number>(
  * @since 1.0.0
  */
 export const nonPositive = <A extends number>(
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => lessThanOrEqualTo(0, annotations)
 
 /**
@@ -3738,7 +3770,7 @@ export const nonPositive = <A extends number>(
  * @since 1.0.0
  */
 export const nonNegative = <A extends number>(
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => greaterThanOrEqualTo(0, annotations)
 
 /**
@@ -3919,7 +3951,7 @@ export type GreaterThanBigintTypeId = typeof GreaterThanBigintTypeId
  */
 export const greaterThanBigint = <A extends bigint>(
   min: bigint,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -3948,7 +3980,7 @@ export type GreaterThanOrEqualToBigintTypeId = typeof GreaterThanOrEqualToBigint
  */
 export const greaterThanOrEqualToBigint = <A extends bigint>(
   min: bigint,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -3979,7 +4011,7 @@ export type LessThanBigintTypeId = typeof LessThanBigintTypeId
  */
 export const lessThanBigint = <A extends bigint>(
   max: bigint,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -4008,7 +4040,7 @@ export type LessThanOrEqualToBigintTypeId = typeof LessThanOrEqualToBigintTypeId
  */
 export const lessThanOrEqualToBigint = <A extends bigint>(
   max: bigint,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -4038,7 +4070,7 @@ export type BetweenBigintTypeId = typeof BetweenBigintTypeId
 export const betweenBigint = <A extends bigint>(
   min: bigint,
   max: bigint,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -4054,7 +4086,7 @@ export const betweenBigint = <A extends bigint>(
  * @since 1.0.0
  */
 export const positiveBigint = <A extends bigint>(
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => greaterThanBigint(0n, annotations)
 
 /**
@@ -4062,7 +4094,7 @@ export const positiveBigint = <A extends bigint>(
  * @since 1.0.0
  */
 export const negativeBigint = <A extends bigint>(
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => lessThanBigint(0n, annotations)
 
 /**
@@ -4070,7 +4102,7 @@ export const negativeBigint = <A extends bigint>(
  * @since 1.0.0
  */
 export const nonNegativeBigint = <A extends bigint>(
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => greaterThanOrEqualToBigint(0n, annotations)
 
 /**
@@ -4078,7 +4110,7 @@ export const nonNegativeBigint = <A extends bigint>(
  * @since 1.0.0
  */
 export const nonPositiveBigint = <A extends bigint>(
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => lessThanOrEqualToBigint(0n, annotations)
 
 /**
@@ -4393,7 +4425,7 @@ export const LessThanDurationTypeId = Symbol.for("@effect/schema/TypeId/LessThan
  */
 export const lessThanDuration = <A extends _duration.Duration>(
   max: _duration.DurationInput,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -4418,7 +4450,7 @@ export const LessThanOrEqualToDurationTypeId = Symbol.for(
  */
 export const lessThanOrEqualToDuration = <A extends _duration.Duration>(
   max: _duration.DurationInput,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -4441,7 +4473,7 @@ export const GreaterThanDurationTypeId = Symbol.for("@effect/schema/TypeId/Great
  */
 export const greaterThanDuration = <A extends _duration.Duration>(
   min: _duration.DurationInput,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -4466,7 +4498,7 @@ export const GreaterThanOrEqualToDurationTypeId = Symbol.for(
  */
 export const greaterThanOrEqualToDuration = <A extends _duration.Duration>(
   min: _duration.DurationInput,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -4490,7 +4522,7 @@ export const BetweenDurationTypeId = Symbol.for("@effect/schema/TypeId/BetweenDu
 export const betweenDuration = <A extends _duration.Duration>(
   minimum: _duration.DurationInput,
   maximum: _duration.DurationInput,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -4602,7 +4634,7 @@ export type MinItemsTypeId = typeof MinItemsTypeId
  */
 export const minItems = <A>(
   n: number,
-  annotations?: FilterAnnotations<ReadonlyArray<A>>
+  annotations?: Annotations.Filter<ReadonlyArray<A>>
 ) =>
 <I, R>(self: Schema<ReadonlyArray<A>, I, R>): Schema<ReadonlyArray<A>, I, R> =>
   self.pipe(
@@ -4632,7 +4664,7 @@ export type MaxItemsTypeId = typeof MaxItemsTypeId
  */
 export const maxItems = <A>(
   n: number,
-  annotations?: FilterAnnotations<ReadonlyArray<A>>
+  annotations?: Annotations.Filter<ReadonlyArray<A>>
 ) =>
 <I, R>(self: Schema<ReadonlyArray<A>, I, R>): Schema<ReadonlyArray<A>, I, R> =>
   self.pipe(
@@ -4662,7 +4694,7 @@ export type ItemsCountTypeId = typeof ItemsCountTypeId
  */
 export const itemsCount = <A>(
   n: number,
-  annotations?: FilterAnnotations<ReadonlyArray<A>>
+  annotations?: Annotations.Filter<ReadonlyArray<A>>
 ) =>
 <I, R>(self: Schema<ReadonlyArray<A>, I, R>): Schema<ReadonlyArray<A>, I, R> =>
   self.pipe(
@@ -4704,7 +4736,7 @@ export const head = <A, I, R>(self: Schema<ReadonlyArray<A>, I, R>): Schema<Opti
  * @category ReadonlyArray transformations
  * @since 1.0.0
  */
-export const headOr: {
+export const headOrElse: {
   <A>(fallback?: LazyArg<A>): <I, R>(self: Schema<ReadonlyArray<A>, I, R>) => Schema<A, I, R>
   <A, I, R>(self: Schema<ReadonlyArray<A>, I, R>, fallback?: LazyArg<A>): Schema<A, I, R>
 } = dual(
@@ -4736,7 +4768,7 @@ export const ValidDateTypeId = Symbol.for("@effect/schema/TypeId/ValidDate")
  * @since 1.0.0
  */
 export const validDate =
-  (annotations?: FilterAnnotations<Date>) => <I, R>(self: Schema<Date, I, R>): Schema<Date, I, R> =>
+  (annotations?: Annotations.Filter<Date>) => <I, R>(self: Schema<Date, I, R>): Schema<Date, I, R> =>
     self.pipe(
       filter((a) => !Number.isNaN(a.getTime()), {
         typeId: ValidDateTypeId,
@@ -5456,7 +5488,7 @@ export const GreaterThanBigDecimalTypeId = Symbol.for("@effect/schema/TypeId/Gre
  */
 export const greaterThanBigDecimal = <A extends _bigDecimal.BigDecimal>(
   min: _bigDecimal.BigDecimal,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -5481,7 +5513,7 @@ export const GreaterThanOrEqualToBigDecimalTypeId = Symbol.for(
  */
 export const greaterThanOrEqualToBigDecimal = <A extends _bigDecimal.BigDecimal>(
   min: _bigDecimal.BigDecimal,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -5504,7 +5536,7 @@ export const LessThanBigDecimalTypeId = Symbol.for("@effect/schema/TypeId/LessTh
  */
 export const lessThanBigDecimal = <A extends _bigDecimal.BigDecimal>(
   max: _bigDecimal.BigDecimal,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -5529,7 +5561,7 @@ export const LessThanOrEqualToBigDecimalTypeId = Symbol.for(
  */
 export const lessThanOrEqualToBigDecimal = <A extends _bigDecimal.BigDecimal>(
   max: _bigDecimal.BigDecimal,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -5553,7 +5585,7 @@ export const PositiveBigDecimalTypeId = Symbol.for(
  * @since 1.0.0
  */
 export const positiveBigDecimal = <A extends _bigDecimal.BigDecimal>(
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -5588,7 +5620,7 @@ export const NonNegativeBigDecimalTypeId = Symbol.for(
  * @since 1.0.0
  */
 export const nonNegativeBigDecimal = <A extends _bigDecimal.BigDecimal>(
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -5623,7 +5655,7 @@ export const NegativeBigDecimalTypeId = Symbol.for(
  * @since 1.0.0
  */
 export const negativeBigDecimal = <A extends _bigDecimal.BigDecimal>(
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -5658,7 +5690,7 @@ export const NonPositiveBigDecimalTypeId = Symbol.for(
  * @since 1.0.0
  */
 export const nonPositiveBigDecimal = <A extends _bigDecimal.BigDecimal>(
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -5693,7 +5725,7 @@ export const BetweenBigDecimalTypeId = Symbol.for("@effect/schema/TypeId/Between
 export const betweenBigDecimal = <A extends _bigDecimal.BigDecimal>(
   minimum: _bigDecimal.BigDecimal,
   maximum: _bigDecimal.BigDecimal,
-  annotations?: FilterAnnotations<A>
+  annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
@@ -5892,7 +5924,7 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
 
   readonly extend: <Extended = never>(identifier: string) => <newFields extends Struct.Fields>(
     fields: newFields,
-    annotations?: Annotations<Extended>
+    annotations?: Annotations.Schema<Extended>
   ) => [Extended] extends [never] ? MissingSelfGeneric<"Base.extend">
     : Class<
       Extended,
@@ -5971,7 +6003,7 @@ const TAG = "_tag"
 export const Class = <Self = never>(identifier: string) =>
 <Fields extends Struct.Fields>(
   fields: Fields,
-  annotations?: Annotations<Self>
+  annotations?: Annotations.Schema<Self>
 ): [Self] extends [never] ? MissingSelfGeneric<"Class">
   : Class<
     Self,
@@ -5992,7 +6024,7 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
 <Tag extends string, Fields extends Struct.Fields>(
   tag: Tag,
   fields: Fields,
-  annotations?: Annotations<Self>
+  annotations?: Annotations.Schema<Self>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
   : Class<
     Self,
@@ -6023,7 +6055,7 @@ export const TaggedError = <Self = never>(identifier?: string) =>
 <Tag extends string, Fields extends Struct.Fields>(
   tag: Tag,
   fields: Fields,
-  annotations?: Annotations<Self>
+  annotations?: Annotations.Schema<Self>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedError", `"Tag", `>
   : Class<
     Self,
@@ -6081,7 +6113,7 @@ export const TaggedRequest =
     Failure: Schema<EA, EI, ER>,
     Success: Schema<AA, AI, AR>,
     fields: Fields,
-    annotations?: Annotations<Self>
+    annotations?: Annotations.Schema<Self>
   ): [Self] extends [never] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
     : Class<
       Self,
@@ -6140,7 +6172,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
   Base: new(...args: ReadonlyArray<any>) => any
   fromSchema?: Schema.Any | undefined
   tag?: { [TAG]: AST.LiteralValue } | undefined
-  annotations?: Annotations<any> | undefined
+  annotations?: Annotations.Schema<any> | undefined
 }): any => {
   const classSymbol = Symbol.for(`@effect/schema/${kind}/${identifier}`)
   const schema = fromSchema ?? struct(fields)
@@ -6174,7 +6206,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
       return pipeArguments(this, arguments)
     }
 
-    static annotations(annotations: Annotations<any>) {
+    static annotations(annotations: Annotations.Schema<any>) {
       return make(this.ast).annotations(annotations)
     }
 
@@ -6221,10 +6253,8 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
       return transformation.ast
     }
 
-    static struct = schema
-
     static extend<Extended>(identifier: string) {
-      return (newFields: Struct.Fields, annotations?: Annotations<Extended>) => {
+      return (newFields: Struct.Fields, annotations?: Annotations.Schema<Extended>) => {
         const extendedFields = extendFields(fields, newFields)
         return makeClass({
           kind,
@@ -6238,7 +6268,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
     }
 
     static transformOrFail<Transformed>(identifier: string) {
-      return (newFields: Struct.Fields, decode: any, encode: any, annotations?: Annotations<Transformed>) => {
+      return (newFields: Struct.Fields, decode: any, encode: any, annotations?: Annotations.Schema<Transformed>) => {
         const transformedFields: Struct.Fields = extendFields(fields, newFields)
         return makeClass({
           kind,
@@ -6258,7 +6288,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
     }
 
     static transformOrFailFrom<Transformed>(identifier: string) {
-      return (newFields: Struct.Fields, decode: any, encode: any, annotations?: Annotations<Transformed>) => {
+      return (newFields: Struct.Fields, decode: any, encode: any, annotations?: Annotations.Schema<Transformed>) => {
         const transformedFields: Struct.Fields = extendFields(fields, newFields)
         return makeClass({
           kind,

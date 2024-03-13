@@ -5,7 +5,6 @@ import * as Option from "effect/Option"
 import type * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as AST from "../AST.js"
 
-/** @internal */
 export type ParseIssue =
   | Declaration
   | Refinement
@@ -16,13 +15,11 @@ export type ParseIssue =
   | Type
   | Forbidden
 
-/** @internal */
 export class Declaration {
   readonly _tag = "Declaration"
   constructor(readonly ast: AST.Declaration, readonly actual: unknown, readonly error: ParseIssue) {}
 }
 
-/** @internal */
 export class Refinement {
   readonly _tag = "Refinement"
   constructor(
@@ -33,7 +30,6 @@ export class Refinement {
   ) {}
 }
 
-/** @internal */
 export class Tuple {
   readonly _tag = "TupleType"
   constructor(
@@ -43,13 +39,11 @@ export class Tuple {
   ) {}
 }
 
-/** @internal */
 export class Index {
   readonly _tag = "Index"
   constructor(readonly index: number, readonly error: ParseIssue | Missing | Unexpected) {}
 }
 
-/** @internal */
 export class TypeLiteral {
   readonly _tag = "TypeLiteral"
   constructor(
@@ -59,19 +53,16 @@ export class TypeLiteral {
   ) {}
 }
 
-/** @internal */
 export class Key {
   readonly _tag = "Key"
   constructor(readonly key: PropertyKey, readonly error: ParseIssue | Missing | Unexpected) {}
 }
 
-/** @internal */
 export class Unexpected {
   readonly _tag = "Unexpected"
   constructor(readonly ast: AST.AST) {}
 }
 
-/** @internal */
 export class Transformation {
   readonly _tag = "Transformation"
   constructor(
@@ -82,7 +73,6 @@ export class Transformation {
   ) {}
 }
 
-/** @internal */
 export class Type {
   readonly _tag = "Type"
   readonly message: Option.Option<string>
@@ -91,7 +81,6 @@ export class Type {
   }
 }
 
-/** @internal */
 export class Forbidden {
   readonly _tag = "Forbidden"
   readonly message: Option.Option<string>
@@ -100,21 +89,17 @@ export class Forbidden {
   }
 }
 
-/** @internal */
 export class Missing {
   readonly _tag = "Missing"
 }
 
-/** @internal */
 export const missing: Missing = new Missing()
 
-/** @internal */
 export class Member {
   readonly _tag = "Member"
   constructor(readonly ast: AST.AST, readonly error: ParseIssue) {}
 }
 
-/** @internal */
 export class Union {
   readonly _tag = "Union"
   constructor(
@@ -124,7 +109,6 @@ export class Union {
   ) {}
 }
 
-/** @internal */
 export const flatMap: {
   <A, B, E1, R1>(
     f: (a: A) => Effect.Effect<B, E1, R1>
@@ -147,7 +131,6 @@ export const flatMap: {
   return Effect.flatMap(self, f)
 })
 
-/** @internal */
 export const map: {
   <A, B>(f: (a: A) => B): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<B, E, R>
   <A, E, R, B>(self: Effect.Effect<A, E, R>, f: (a: A) => B): Effect.Effect<B, E, R>
@@ -162,7 +145,6 @@ export const map: {
   return Effect.map(self, f)
 })
 
-/** @internal */
 export const mapError: {
   <E, E2>(f: (e: E) => E2): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E2, R>
   <A, E, R, E2>(self: Effect.Effect<A, E, R>, f: (e: E) => E2): Effect.Effect<A, E2, R>
@@ -177,7 +159,6 @@ export const mapError: {
   return Effect.mapError(self, f)
 })
 
-/** @internal */
 export const eitherOrUndefined = <A, E, R>(
   self: Effect.Effect<A, E, R>
 ): Either.Either<A, E> | undefined => {

@@ -14,14 +14,26 @@ const isBrandConstructor = (u: unknown): u is Brand.Brand.Constructor<any> =>
 
 describe("Schema > brand", () => {
   describe("annotations", () => {
+    it("using .annotations() twice", () => {
+      const schema = S.number.pipe(S.brand("A"))
+      const annotatedSchema = schema.annotations({
+        description: "description"
+      }).annotations({ title: "title" })
+      expect(annotatedSchema.ast.annotations).toEqual({
+        [AST.BrandAnnotationId]: ["A"],
+        [AST.TitleAnnotationId]: "title",
+        [AST.DescriptionAnnotationId]: "description"
+      })
+    })
+
     it("using .annotations() on a BrandSchema should return a BrandSchema", () => {
       const schema = S.number.pipe(
         S.int(),
         S.brand("A")
       )
       const annotatedSchema = schema.annotations({
-        [AST.DescriptionAnnotationId]: "an A brand"
-      })
+        description: "description"
+      }).annotations({ title: "title" })
       expect(isBrandConstructor(annotatedSchema)).toBe(true)
     })
 

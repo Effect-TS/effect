@@ -1,5 +1,214 @@
 # @effect/schema
 
+## 0.64.1
+
+### Patch Changes
+
+- [#2305](https://github.com/Effect-TS/effect/pull/2305) [`d10f876`](https://github.com/Effect-TS/effect/commit/d10f876cd98da275bc5dc5750a91a7fc95e97541) Thanks [@gcanti](https://github.com/gcanti)! - chore: improves the display of `Struct.Type` and `Struct.Encoded` when the parameter is generic
+
+- [#2304](https://github.com/Effect-TS/effect/pull/2304) [`743ae6d`](https://github.com/Effect-TS/effect/commit/743ae6d12b249f0b35b31b65b2f7ec91d83ee387) Thanks [@gcanti](https://github.com/gcanti)! - chore: remove static `struct` from `makeClass` internal constructor
+
+- [#2308](https://github.com/Effect-TS/effect/pull/2308) [`a75bc48`](https://github.com/Effect-TS/effect/commit/a75bc48e0e3278d0f70665fedecc5ae7ec447e24) Thanks [@sukovanej](https://github.com/sukovanej)! - Expose missing types from the `ParseResult` module.
+
+- Updated dependencies [[`bce21c5`](https://github.com/Effect-TS/effect/commit/bce21c5ded2177114666ba229bd5029fa000dee3), [`c7d3036`](https://github.com/Effect-TS/effect/commit/c7d303630b7f0825cb2e584557c5767a67214d9f)]:
+  - effect@2.4.5
+
+## 0.64.0
+
+### Minor Changes
+
+- [#2172](https://github.com/Effect-TS/effect/pull/2172) [`5d47ee0`](https://github.com/Effect-TS/effect/commit/5d47ee0855e492532085b6092879b1b952d84949) Thanks [@gcanti](https://github.com/gcanti)! - # Breaking Changes
+
+  - The `Format` module has been removed
+
+  ## `AST` module
+
+  - `Tuple` has been refactored to `TupleType`, and its `_tag` has consequently been renamed. The type of its `rest` property has changed from `Option.Option<ReadonlyArray.NonEmptyReadonlyArray<AST>>` to `ReadonlyArray<AST>`.
+  - `Transform` has been refactored to `Transformation`, and its `_tag` property has consequently been renamed. Its property `transformation` has now the type `TransformationKind = FinalTransformation | ComposeTransformation | TypeLiteralTransformation`.
+  - `createRecord` has been removed
+  - `AST.to` has been renamed to `AST.typeAST`
+  - `AST.from` has been renamed to `AST.encodedAST`
+  - `ExamplesAnnotation` and `DefaultAnnotation` now accept a type parameter
+  - `format` has been removed:
+    Before
+
+    ```ts
+    AST.format(ast, verbose?)
+    ```
+
+    Now
+
+    ```ts
+    ast.toString(verbose?)
+    ```
+
+  - `setAnnotation` has been removed (use `annotations` instead)
+  - `mergeAnnotations` has been renamed to `annotations`
+  - move `defaultParseOption` from `Parser.ts` to `AST.ts`
+
+  ## `ParseResult` module
+
+  - The `ParseResult` module now uses classes and custom constructors have been removed:
+    Before
+
+    ```ts
+    import * as ParseResult from "@effect/schema/ParseResult";
+
+    ParseResult.type(ast, actual);
+    ```
+
+    Now
+
+    ```ts
+    import * as ParseResult from "@effect/schema/ParseResult";
+
+    new ParseResult.Type(ast, actual);
+    ```
+
+  - `Transform` has been refactored to `Transformation`, and its `kind` property now accepts `"Encoded"`, `"Transformation"`, or `"Type"` as values
+
+  ## `Schema` module
+
+  - `uniqueSymbol` has been renamed to `uniqueSymbolFromSelf`
+  - `Schema.Schema.To` has been renamed to `Schema.Schema.Type`, and `Schema.to` to `Schema.typeSchema`
+  - `Schema.Schema.From` has been renamed to `Schema.Schema.Encoded`, and `Schema.from` to `Schema.encodedSchema`
+  - The type parameters of `TaggedRequest` have been swapped
+  - The signature of `PropertySignature` has been changed from `PropertySignature<From, FromOptional, To, ToOptional>` to `PropertySignature<ToToken extends Token, To, Key extends PropertyKey, FromToken extends Token, From, R>`
+  - Class APIs
+    - Class APIs now expose `fields` and require an identifier
+      ```diff
+      -class A extends S.Class<A>()({ a: S.string }) {}
+      +class A extends S.Class<A>("A")({ a: S.string }) {}
+      ```
+  - `element` and `rest` have been removed in favor of `array` and `tuple`:
+
+    Before
+
+    ```ts
+    import * as S from "@effect/schema/Schema";
+
+    const schema1 = S.tuple().pipe(S.rest(S.number), S.element(S.boolean));
+
+    const schema2 = S.tuple(S.string).pipe(
+      S.rest(S.number),
+      S.element(S.boolean),
+    );
+    ```
+
+    Now
+
+    ```ts
+    import * as S from "@effect/schema/Schema";
+
+    const schema1 = S.array(S.number, S.boolean);
+
+    const schema2 = S.tuple([S.string], S.number, S.boolean);
+    ```
+
+  - `optionalElement` has been refactored:
+
+    Before
+
+    ```ts
+    import * as S from "@effect/schema/Schema";
+
+    const schema = S.tuple(S.string).pipe(S.optionalElement(S.number));
+    ```
+
+    Now
+
+    ```ts
+    import * as S from "@effect/schema/Schema";
+
+    const schema = S.tuple(S.string, S.optionalElement(S.number));
+    ```
+
+  - use `TreeFormatter` in `BrandSchema`s
+  - Schema annotations interfaces have been refactored into a namespace `Annotations`
+  - the `annotations` option of the `optional` constructor has been replaced by the `annotations` method
+    Before
+
+    ```ts
+    S.optional(S.string, {
+      exact: true,
+      annotations: { description: "description" },
+    });
+    ```
+
+    Now
+
+    ```ts
+    S.optional(S.string, { exact: true }).annotations({
+      description: "description",
+    });
+    ```
+
+  - Updated the `pluck` function to return `Schema<A[K], { readonly [key]: I[K] }>` instead of `Schema<A[K], I>`. Removed the `{ transformation: false }` option in favor of selecting the specific field from the `fields` exposed by a struct.
+  - Removed `propertySignatureAnnotations`, use `propertySignature(schema).annotations()`.
+  - Updated the function name `headOr` to `headOrElse` to align with the standard naming convention.
+
+  ## `Serializable` module
+
+  - The type parameters of `SerializableWithResult` and `WithResult` have been swapped
+
+### Patch Changes
+
+- [#2172](https://github.com/Effect-TS/effect/pull/2172) [`5d47ee0`](https://github.com/Effect-TS/effect/commit/5d47ee0855e492532085b6092879b1b952d84949) Thanks [@gcanti](https://github.com/gcanti)! - ## `AST` module
+
+  - expose the `getTemplateLiteralRegExp` API
+
+  ## `Schema` module
+
+  - enhance the `struct` API to allow records:
+    ```ts
+    const schema1 = S.struct(
+      { a: S.number },
+      { key: S.string, value: S.number },
+    );
+    // or
+    const schema2 = S.struct({ a: S.number }, S.record(S.string, S.number));
+    ```
+  - enhance the `extend` API to allow nested (non-overlapping) fields:
+    ```ts
+    const A = S.struct({ a: S.struct({ b: S.string }) });
+    const B = S.struct({ a: S.struct({ c: S.number }) });
+    const schema = S.extend(A, B);
+    /*
+    same as:
+    const schema = S.struct({
+      a: S.struct({
+        b: S.string,
+        c: S.number
+      })
+    })
+    */
+    ```
+  - add `Annotable` interface
+  - add `asSchema`
+  - add add `Schema.Any`, `Schema.All`, `Schema.AnyNoContext` helpers
+  - refactor `annotations` API to be a method within the `Schema` interface
+  - add support for `AST.keyof`, `AST.getPropertySignatures`, `Parser.getSearchTree` to Classes
+  - fix `BrandAnnotation` type and add `getBrandAnnotation`
+  - add `annotations?` parameter to Class constructors:
+
+    ```ts
+    import * as AST from "@effect/schema/AST";
+    import * as S from "@effect/schema/Schema";
+
+    class A extends S.Class<A>()(
+      {
+        a: S.string,
+      },
+      { description: "some description..." }, // <= annotations
+    ) {}
+
+    console.log(AST.getDescriptionAnnotation((A.ast as AST.Transform).to));
+    // => { _id: 'Option', _tag: 'Some', value: 'some description...' }
+    ```
+
+- Updated dependencies [[`5d47ee0`](https://github.com/Effect-TS/effect/commit/5d47ee0855e492532085b6092879b1b952d84949), [`817a04c`](https://github.com/Effect-TS/effect/commit/817a04cb2df0f4140984dc97eb3e1bb14a6c4a38), [`d90a99d`](https://github.com/Effect-TS/effect/commit/d90a99d03d074adc7cd2533f15419138264da5a2), [`dd05faa`](https://github.com/Effect-TS/effect/commit/dd05faa621555ef3585ecd914ac13ecd89b710f4), [`dd05faa`](https://github.com/Effect-TS/effect/commit/dd05faa621555ef3585ecd914ac13ecd89b710f4), [`802674b`](https://github.com/Effect-TS/effect/commit/802674b379b7559ad3ff09b33388891445a9e48b)]:
+  - effect@2.4.4
+
 ## 0.63.4
 
 ### Patch Changes

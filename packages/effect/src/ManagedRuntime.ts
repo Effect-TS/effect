@@ -63,7 +63,9 @@ export interface ManagedRuntime<in R, out ER> extends Pipeable {
    * This method is effectful and should only be used at the edges of your
    * program.
    */
-  readonly runPromise: <A, E>(effect: Effect.Effect<A, E, R>) => Promise<A>
+  readonly runPromise: <A, E>(effect: Effect.Effect<A, E, R>, options?: {
+    readonly signal?: AbortSignal | undefined
+  }) => Promise<A>
 
   /**
    * Runs the `Effect`, returning a JavaScript `Promise` that will be resolved
@@ -72,7 +74,9 @@ export interface ManagedRuntime<in R, out ER> extends Pipeable {
    * This method is effectful and should only be used at the edges of your
    * program.
    */
-  readonly runPromiseExit: <A, E>(effect: Effect.Effect<A, E, R>) => Promise<Exit.Exit<A, ER | E>>
+  readonly runPromiseExit: <A, E>(effect: Effect.Effect<A, E, R>, options?: {
+    readonly signal?: AbortSignal | undefined
+  }) => Promise<Exit.Exit<A, ER | E>>
 
   /**
    * Dispose of the resources associated with the runtime.

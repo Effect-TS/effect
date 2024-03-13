@@ -256,31 +256,51 @@ export const unsafeRunSyncExit =
   }
 
 /** @internal */
-export const unsafeRunPromise =
-  <R>(runtime: Runtime.Runtime<R>) => <A, E>(effect: Effect.Effect<A, E, R>): Promise<A> =>
-    unsafeRunPromiseExit(runtime)(effect).then((result) => {
-      switch (result._tag) {
-        case OpCodes.OP_SUCCESS: {
-          return result.effect_instruction_i0
-        }
-        case OpCodes.OP_FAILURE: {
-          throw fiberFailure(result.effect_instruction_i0)
-        }
+export const unsafeRunPromise = <R>(runtime: Runtime.Runtime<R>) =>
+<A, E>(
+  effect: Effect.Effect<A, E, R>,
+  options?: {
+    readonly signal?: AbortSignal | undefined
+  } | undefined
+): Promise<A> =>
+  unsafeRunPromiseExit(runtime)(effect, options).then((result) => {
+    switch (result._tag) {
+      case OpCodes.OP_SUCCESS: {
+        return result.effect_instruction_i0
       }
-    })
+      case OpCodes.OP_FAILURE: {
+        throw fiberFailure(result.effect_instruction_i0)
+      }
+    }
+  })
 
 /** @internal */
-export const unsafeRunPromiseExit =
-  <R>(runtime: Runtime.Runtime<R>) => <A, E>(effect: Effect.Effect<A, E, R>): Promise<Exit.Exit<A, E>> =>
-    new Promise((resolve) => {
-      const op = fastPath(effect)
-      if (op) {
-        resolve(op)
-      }
-      unsafeFork(runtime)(effect).addObserver((exit) => {
-        resolve(exit)
-      })
+export const unsafeRunPromiseExit = <R>(runtime: Runtime.Runtime<R>) =>
+<A, E>(
+  effect: Effect.Effect<A, E, R>,
+  options?: {
+    readonly signal?: AbortSignal | undefined
+  } | undefined
+): Promise<Exit.Exit<A, E>> =>
+  new Promise((resolve) => {
+    const op = fastPath(effect)
+    if (op) {
+      resolve(op)
+    }
+    const fiber = unsafeFork(runtime)(effect)
+    fiber.addObserver((exit) => {
+      resolve(exit)
     })
+    if (options?.signal !== undefined) {
+      if (options.signal.aborted) {
+        fiber.unsafeInterruptAsFork(fiber.id())
+      } else {
+        options.signal.addEventListener("abort", () => {
+          fiber.unsafeInterruptAsFork(fiber.id())
+        })
+      }
+    }
+  })
 
 /** @internal */
 export class RuntimeImpl<in R> implements Runtime.Runtime<R> {

@@ -7,47 +7,90 @@ import { describe, expect, it } from "vitest"
 
 describe("Schema > PropertySignature", () => {
   describe("annotations", () => {
-    it("propertySignature().annotations()", () => {
+    it("propertySignature(S.string)", () => {
       const schema = S.struct({
-        a: S.propertySignature(S.string).annotations({
-          title: "title",
-          [Symbol.for("custom-annotation")]: "custom-annotation-value"
-        })
+        a: S.propertySignature(S.string).annotations({ description: "a description" }).annotations({ title: "a title" })
       })
-      const ast: any = schema.ast
+      const ast = schema.ast as AST.TypeLiteral
       expect(ast.propertySignatures[0].annotations).toEqual({
-        [AST.TitleAnnotationId]: "title",
-        [Symbol.for("custom-annotation")]: "custom-annotation-value"
+        [AST.DescriptionAnnotationId]: "a description",
+        [AST.TitleAnnotationId]: "a title"
       })
     })
 
-    it("optional().annotations()", () => {
+    it("propertySignature(S.NumberFromString)", () => {
       const schema = S.struct({
-        a: S.optional(S.string).annotations({
-          title: "title",
-          [Symbol.for("custom-annotation")]: "custom-annotation-value"
+        a: S.propertySignature(S.NumberFromString).annotations({ description: "a description" }).annotations({
+          title: "a title"
         })
       })
-      const ast: any = schema.ast
+      const ast = schema.ast as AST.TypeLiteral
       expect(ast.propertySignatures[0].annotations).toEqual({
-        [AST.TitleAnnotationId]: "title",
-        [Symbol.for("custom-annotation")]: "custom-annotation-value"
+        [AST.DescriptionAnnotationId]: "a description",
+        [AST.TitleAnnotationId]: "a title"
+      })
+    })
+
+    it("optional(S.string)", () => {
+      const schema = S.struct({
+        a: S.optional(S.string).annotations({ description: "a description" }).annotations({ title: "a title" })
+      })
+      const ast = schema.ast as AST.TypeLiteral
+      expect(ast.propertySignatures[0].annotations).toEqual({
+        [AST.DescriptionAnnotationId]: "a description",
+        [AST.TitleAnnotationId]: "a title"
+      })
+    })
+
+    it("optional(S.NumberFromString)", () => {
+      const schema = S.struct({
+        a: S.optional(S.NumberFromString).annotations({ description: "a description" }).annotations({
+          title: "a title"
+        })
+      })
+      const ast = schema.ast as AST.TypeLiteral
+      expect(ast.propertySignatures[0].annotations).toEqual({
+        [AST.DescriptionAnnotationId]: "a description",
+        [AST.TitleAnnotationId]: "a title"
+      })
+    })
+
+    it("optional(S.string, { default })", () => {
+      const schema = S.struct({
+        a: S.optional(S.string, { default: () => "" }).annotations({ description: "a description" }).annotations({
+          title: "a title"
+        })
+      })
+      const ast = schema.ast as AST.Transformation
+      const to = ast.to as AST.TypeLiteral
+      expect(to.propertySignatures[0].annotations).toEqual({
+        [AST.DescriptionAnnotationId]: "a description",
+        [AST.TitleAnnotationId]: "a title"
+      })
+    })
+
+    it("optional(S.NumberFromString, { default })", () => {
+      const schema = S.struct({
+        a: S.optional(S.NumberFromString, { default: () => 0 }).annotations({ description: "a description" })
+          .annotations({ title: "a title" })
+      })
+      const ast = schema.ast as AST.Transformation
+      const to = ast.to as AST.TypeLiteral
+      expect(to.propertySignatures[0].annotations).toEqual({
+        [AST.DescriptionAnnotationId]: "a description",
+        [AST.TitleAnnotationId]: "a title"
       })
     })
   })
 
   it("add a default to an optional field", async () => {
-    const ps = S.propertySignatureTransformation(
-      {
-        schema: S.NumberFromString,
-        isOptional: true
-      },
-      {
-        schema: S.number,
-        isOptional: false
-      },
-      Option.orElse(() => Option.some(0)),
-      identity
+    const ps: S.PropertySignature<":", number, never, "?:", string, never> = new S.$PropertySignature(
+      new S.PropertySignatureTransformation(
+        new S.FromPropertySignature(S.NumberFromString.ast, true, true, {}, undefined),
+        new S.ToPropertySignature(S.number.ast, false, true, {}),
+        Option.orElse(() => Option.some(0)),
+        identity
+      )
     )
     const transform = S.struct({ a: ps })
     const schema = S.asSchema(transform)
@@ -70,17 +113,13 @@ describe("Schema > PropertySignature", () => {
   })
 
   it("add a bidirectional default to an optional field", async () => {
-    const ps = S.propertySignatureTransformation(
-      {
-        schema: S.NumberFromString,
-        isOptional: true
-      },
-      {
-        schema: S.number,
-        isOptional: false
-      },
-      Option.orElse(() => Option.some(0)),
-      (o) => Option.flatMap(o, Option.liftPredicate((v) => v !== 0))
+    const ps: S.PropertySignature<":", number, never, "?:", string, never> = new S.$PropertySignature(
+      new S.PropertySignatureTransformation(
+        new S.FromPropertySignature(S.NumberFromString.ast, true, true, {}, undefined),
+        new S.ToPropertySignature(S.number.ast, false, true, {}),
+        Option.orElse(() => Option.some(0)),
+        (o) => Option.flatMap(o, Option.liftPredicate((v) => v !== 0))
+      )
     )
     const transform = S.struct({ a: ps })
     const schema = S.asSchema(transform)
@@ -103,17 +142,13 @@ describe("Schema > PropertySignature", () => {
   })
 
   it("empty string as optional", async () => {
-    const ps = S.propertySignatureTransformation(
-      {
-        schema: S.string,
-        isOptional: false
-      },
-      {
-        schema: S.string,
-        isOptional: true
-      },
-      Option.flatMap(Option.liftPredicate((v) => v !== "")),
-      identity
+    const ps: S.PropertySignature<"?:", string, never, ":", string, never> = new S.$PropertySignature(
+      new S.PropertySignatureTransformation(
+        new S.FromPropertySignature(S.string.ast, false, true, {}, undefined),
+        new S.ToPropertySignature(S.string.ast, true, true, {}),
+        Option.flatMap(Option.liftPredicate((v) => v !== "")),
+        identity
+      )
     )
     const transform = S.struct({ a: ps })
     const schema = S.asSchema(transform)
@@ -124,17 +159,13 @@ describe("Schema > PropertySignature", () => {
   })
 
   it("reversed default", async () => {
-    const ps = S.propertySignatureTransformation(
-      {
-        schema: S.number,
-        isOptional: false
-      },
-      {
-        schema: S.number,
-        isOptional: true
-      },
-      identity,
-      Option.orElse(() => Option.some(0))
+    const ps: S.PropertySignature<"?:", number, never, ":", number, never> = new S.$PropertySignature(
+      new S.PropertySignatureTransformation(
+        new S.FromPropertySignature(S.number.ast, false, true, {}, undefined),
+        new S.ToPropertySignature(S.number.ast, true, true, {}),
+        identity,
+        Option.orElse(() => Option.some(0))
+      )
     )
     const transform = S.struct({ a: ps })
     const schema = S.asSchema(transform)

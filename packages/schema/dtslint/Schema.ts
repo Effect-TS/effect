@@ -1182,27 +1182,48 @@ S.number.pipe(S.fromBrand(Eur))
 // ---------------------------------------------
 
 // $ExpectType Schema<string, string, never>
+S.asSchema(S.mutable(S.string))
+
+// mutable<$string>
 S.mutable(S.string)
 
 // $ExpectType Schema<{ a: number; }, { a: number; }, never>
+S.asSchema(S.mutable(S.struct({ a: S.number })))
+
+// $ExpectType mutable<struct<{ a: $number; }>>
 S.mutable(S.struct({ a: S.number }))
 
 // $ExpectType Schema<{ [x: string]: number; }, { [x: string]: number; }, never>
+S.asSchema(S.mutable(S.record(S.string, S.number)))
+
+// $ExpectType mutable<record<$string, $number>>
 S.mutable(S.record(S.string, S.number))
 
 // $ExpectType Schema<string[], string[], never>
+S.asSchema(S.mutable(S.array(S.string)))
+
+// $ExpectType mutable<array<$string>>
 S.mutable(S.array(S.string))
 
 // $ExpectType Schema<string[] | { a: number; }, string[] | { a: number; }, never>
+S.asSchema(S.mutable(S.union(S.struct({ a: S.number }), S.array(S.string))))
+
+// $ExpectType mutable<union<[struct<{ a: $number; }>, array<$string>]>>
 S.mutable(S.union(S.struct({ a: S.number }), S.array(S.string)))
 
-// $ExpectType Schema<string[], string[], never>
+// $ExpectType mutable<Schema<readonly string[], readonly string[], never>>
 S.mutable(S.array(S.string).pipe(S.maxItems(2)))
 
 // $ExpectType Schema<string[], string[], never>
+S.asSchema(S.mutable(S.suspend(() => S.array(S.string))))
+
+// $ExpectType mutable<suspend<readonly string[], readonly string[], never>>
 S.mutable(S.suspend(() => S.array(S.string)))
 
 // $ExpectType Schema<string[], string[], never>
+S.asSchema(S.mutable(S.transform(S.array(S.string), S.array(S.string), identity, identity)))
+
+// $ExpectType mutable<transform<array<$string>, array<$string>>>
 S.mutable(S.transform(S.array(S.string), S.array(S.string), identity, identity))
 
 // ---------------------------------------------
@@ -1386,7 +1407,7 @@ S.asSchema(S.SecretFromSelf)
 S.SecretFromSelf
 
 // ---------------------------------------------
-// propertySignatureDeclaration
+// propertySignature
 // ---------------------------------------------
 
 // $ExpectType PropertySignature<":", string, never, ":", string, never>
@@ -1403,10 +1424,10 @@ S.optional(S.string).annotations({ description: "description" })
 // pluck
 // ---------------------------------------------
 
-// $ExpectType Schema<string, { readonly a: string; readonly b: number; }, never>
+// $ExpectType Schema<string, { readonly a: string; }, never>
 S.pluck(S.struct({ a: S.string, b: S.number }), "a")
 
-// $ExpectType Schema<string, { readonly a: string; readonly b: number; }, never>
+// $ExpectType Schema<string, { readonly a: string; }, never>
 pipe(S.struct({ a: S.string, b: S.number }), S.pluck("a"))
 
 // ---------------------------------------------
@@ -1417,11 +1438,11 @@ pipe(S.struct({ a: S.string, b: S.number }), S.pluck("a"))
 S.head(S.array(S.number))
 
 // ---------------------------------------------
-// headOr
+// headOrElse
 // ---------------------------------------------
 
 // $ExpectType Schema<number, readonly number[], never>
-S.headOr(S.array(S.number))
+S.headOrElse(S.array(S.number))
 
 // ---------------------------------------------
 // Class
@@ -1546,6 +1567,12 @@ hole<ConstructorParameters<typeof VoidTaggedClass>>()
 // Struct.Type
 // ---------------------------------------------
 
+export const StructTypeTest1 = <S extends S.Schema.Any>(
+  input: S.Struct.Type<{ s: S }>
+) => {
+  input // $ExpectType Type<{ s: S; }>
+}
+
 // $ExpectType {}
 hole<Simplify<S.Struct.Type<{}>>>()
 
@@ -1611,6 +1638,12 @@ hole<
 // ---------------------------------------------
 // Struct.Encoded
 // ---------------------------------------------
+
+export const StructEncodedTest1 = <S extends S.Schema.Any>(
+  input: S.Struct.Encoded<{ s: S }>
+) => {
+  input // $ExpectType Encoded<{ s: S; }>
+}
 
 // $ExpectType {}
 hole<Simplify<S.Struct.Encoded<{}>>>()

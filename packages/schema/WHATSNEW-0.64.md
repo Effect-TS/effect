@@ -540,9 +540,7 @@ const Person: S.struct<{
 */
 const Person = S.struct({
   name: S.string,
-  age: S.propertySignature(S.NumberFromString, {
-    annotations: { identifier: "Age" },
-  }),
+  age: S.propertySignature(S.NumberFromString).annotations({ title: "Age" }),
 });
 ```
 
