@@ -1,5 +1,18 @@
 # @effect/schema
 
+## 0.64.1
+
+### Patch Changes
+
+- [#2305](https://github.com/Effect-TS/effect/pull/2305) [`d10f876`](https://github.com/Effect-TS/effect/commit/d10f876cd98da275bc5dc5750a91a7fc95e97541) Thanks [@gcanti](https://github.com/gcanti)! - chore: improves the display of `Struct.Type` and `Struct.Encoded` when the parameter is generic
+
+- [#2304](https://github.com/Effect-TS/effect/pull/2304) [`743ae6d`](https://github.com/Effect-TS/effect/commit/743ae6d12b249f0b35b31b65b2f7ec91d83ee387) Thanks [@gcanti](https://github.com/gcanti)! - chore: remove static `struct` from `makeClass` internal constructor
+
+- [#2308](https://github.com/Effect-TS/effect/pull/2308) [`a75bc48`](https://github.com/Effect-TS/effect/commit/a75bc48e0e3278d0f70665fedecc5ae7ec447e24) Thanks [@sukovanej](https://github.com/sukovanej)! - Expose missing types from the `ParseResult` module.
+
+- Updated dependencies [[`bce21c5`](https://github.com/Effect-TS/effect/commit/bce21c5ded2177114666ba229bd5029fa000dee3), [`c7d3036`](https://github.com/Effect-TS/effect/commit/c7d303630b7f0825cb2e584557c5767a67214d9f)]:
+  - effect@2.4.5
+
 ## 0.64.0
 
 ### Minor Changes
