@@ -6216,8 +6216,6 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
       return transformation.ast
     }
 
-    static struct = schema
-
     static extend<Extended>(identifier: string) {
       return (newFields: Struct.Fields, annotations?: Annotations.Schema<Extended>) => {
         const extendedFields = extendFields(fields, newFields)
