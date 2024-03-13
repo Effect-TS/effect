@@ -42,6 +42,9 @@ export type ParseIssue =
  */
 
 export class Declaration {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "Declaration"
   constructor(readonly ast: AST.Declaration, readonly actual: unknown, readonly error: ParseIssue) {}
 }
@@ -53,6 +56,9 @@ export class Declaration {
  * @since 1.0.0
  */
 export class Refinement {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "Refinement"
   constructor(
     readonly ast: AST.Refinement<AST.AST>,
@@ -69,6 +75,9 @@ export class Refinement {
  * @since 1.0.0
  */
 export class Tuple {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "TupleType"
   constructor(
     readonly ast: AST.TupleType,
@@ -84,6 +93,9 @@ export class Tuple {
  * @since 1.0.0
  */
 export class Index {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "Index"
   constructor(readonly index: number, readonly error: ParseIssue | Missing | Unexpected) {}
 }
@@ -95,6 +107,9 @@ export class Index {
  * @since 1.0.0
  */
 export class TypeLiteral {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "TypeLiteral"
   constructor(
     readonly ast: AST.TypeLiteral,
@@ -110,6 +125,9 @@ export class TypeLiteral {
  * @since 1.0.0
  */
 export class Key {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "Key"
   constructor(readonly key: PropertyKey, readonly error: ParseIssue | Missing | Unexpected) {}
 }
@@ -121,6 +139,9 @@ export class Key {
  * @since 1.0.0
  */
 export class Unexpected {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "Unexpected"
   constructor(readonly ast: AST.AST) {}
 }
@@ -132,6 +153,9 @@ export class Unexpected {
  * @since 1.0.0
  */
 export class Transformation {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "Transformation"
   constructor(
     readonly ast: AST.Transformation,
@@ -149,7 +173,13 @@ export class Transformation {
  * @since 1.0.0
  */
 export class Type {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "Type"
+  /**
+   * @since 1.0.0
+   */
   readonly message: Option.Option<string>
   constructor(readonly ast: AST.AST, readonly actual: unknown, message?: string) {
     this.message = Option.fromNullable(message)
@@ -163,7 +193,13 @@ export class Type {
  * @since 1.0.0
  */
 export class Forbidden {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "Forbidden"
+  /**
+   * @since 1.0.0
+   */
   readonly message: Option.Option<string>
   constructor(readonly ast: AST.AST, readonly actual: unknown, message?: string) {
     this.message = Option.fromNullable(message)
@@ -177,6 +213,9 @@ export class Forbidden {
  * @since 1.0.0
  */
 export class Missing {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "Missing"
 }
 
@@ -193,6 +232,9 @@ export const missing: Missing = new Missing()
  * @since 1.0.0
  */
 export class Member {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "Member"
   constructor(readonly ast: AST.AST, readonly error: ParseIssue) {}
 }
@@ -204,6 +246,9 @@ export class Member {
  * @since 1.0.0
  */
 export class Union {
+  /**
+   * @since 1.0.0
+   */
   readonly _tag = "Union"
   constructor(
     readonly ast: AST.Union,
