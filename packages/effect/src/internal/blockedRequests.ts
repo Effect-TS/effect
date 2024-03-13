@@ -1,3 +1,4 @@
+import * as Chunk from "../Chunk.js"
 import type * as Deferred from "../Deferred.js"
 import * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
@@ -251,9 +252,9 @@ const step = (
         break
       }
       case "Single": {
-        parallel = parallelCollectionCombine(
+        parallel = parallelCollectionAdd(
           parallel,
-          parallelCollectionMake(current.dataSource, current.blockedRequest)
+          current
         )
         if (List.isNil(stack)) {
           return [parallel, sequential]
@@ -360,7 +361,7 @@ class ParallelImpl implements ParallelCollection {
   constructor(
     readonly map: HashMap.HashMap<
       RequestResolver.RequestResolver<unknown, unknown>,
-      Array<Request.Entry<unknown>>
+      Chunk.Chunk<Request.Entry<unknown>>
     >
   ) {}
 }
@@ -372,7 +373,22 @@ export const parallelCollectionEmpty = (): ParallelCollection => new ParallelImp
 export const parallelCollectionMake = <A>(
   dataSource: RequestResolver.RequestResolver<A>,
   blockedRequest: Request.Entry<A>
-): ParallelCollection => new ParallelImpl(HashMap.make([dataSource, Array.of(blockedRequest)]) as any)
+): ParallelCollection => new ParallelImpl(HashMap.make([dataSource, Chunk.of(blockedRequest)]) as any)
+
+/** @internal */
+export const parallelCollectionAdd = (
+  self: ParallelCollection,
+  blockedRequest: RequestBlock.Single
+): ParallelCollection =>
+  new ParallelImpl(HashMap.modifyAt(
+    self.map,
+    blockedRequest.dataSource,
+    (_) =>
+      Option.orElseSome(
+        Option.map(_, Chunk.append(blockedRequest.blockedRequest)),
+        () => Chunk.of(blockedRequest.blockedRequest)
+      )
+  ))
 
 /** @internal */
 export const parallelCollectionCombine = (
@@ -385,7 +401,7 @@ export const parallelCollectionCombine = (
       key,
       Option.match(HashMap.get(map, key), {
         onNone: () => value,
-        onSome: (other) => [...value, ...other]
+        onSome: (other) => Chunk.appendAll(value, other)
       })
     )))
 
@@ -400,7 +416,7 @@ export const parallelCollectionKeys = (
 /** @internal */
 export const parallelCollectionToSequentialCollection = (
   self: ParallelCollection
-): SequentialCollection => sequentialCollectionMake(HashMap.map(self.map, (x) => Array.of(x)) as any)
+): SequentialCollection => sequentialCollectionMake(HashMap.map(self.map, (x) => Chunk.of(x)) as any)
 
 // TODO
 // /** @internal */
@@ -423,7 +439,7 @@ class SequentialImpl implements SequentialCollection {
   constructor(
     readonly map: HashMap.HashMap<
       RequestResolver.RequestResolver<unknown, unknown>,
-      Array<Array<Request.Entry<unknown>>>
+      Chunk.Chunk<Chunk.Chunk<Request.Entry<unknown>>>
     >
   ) {}
 }
@@ -432,7 +448,7 @@ class SequentialImpl implements SequentialCollection {
 export const sequentialCollectionMake = <A, R>(
   map: HashMap.HashMap<
     RequestResolver.RequestResolver<A, R>,
-    Array<Array<Request.Entry<A>>>
+    Chunk.Chunk<Chunk.Chunk<Request.Entry<A>>>
   >
 ): SequentialCollection => new SequentialImpl(map as any)
 
@@ -446,8 +462,8 @@ export const sequentialCollectionCombine = (
       map,
       key,
       Option.match(HashMap.get(map, key), {
-        onNone: () => [],
-        onSome: (a) => [...a, ...value]
+        onNone: () => Chunk.empty(),
+        onSome: (a) => Chunk.appendAll(a, value)
       })
     )))
 
@@ -462,7 +478,7 @@ export const sequentialCollectionKeys = (
 /** @internal */
 export const sequentialCollectionToChunk = (
   self: SequentialCollection
-): Array<[RequestResolver.RequestResolver<unknown>, Array<Array<Request.Entry<unknown>>>]> =>
+): Array<[RequestResolver.RequestResolver<unknown>, Chunk.Chunk<Chunk.Chunk<Request.Entry<unknown>>>]> =>
   Array.from(self.map) as any
 
 /** @internal */
@@ -472,7 +488,7 @@ export type RequestBlockParallelTypeId = typeof RequestBlockParallelTypeId
 export interface ParallelCollection extends ParallelCollection.Variance {
   readonly map: HashMap.HashMap<
     RequestResolver.RequestResolver<unknown, unknown>,
-    Array<Request.Entry<unknown>>
+    Chunk.Chunk<Request.Entry<unknown>>
   >
 }
 
@@ -491,7 +507,7 @@ export type SequentialCollectionTypeId = typeof SequentialCollectionTypeId
 export interface SequentialCollection extends SequentialCollection.Variance {
   readonly map: HashMap.HashMap<
     RequestResolver.RequestResolver<unknown, unknown>,
-    Array<Array<Request.Entry<unknown>>>
+    Chunk.Chunk<Chunk.Chunk<Request.Entry<unknown>>>
   >
 }
 
