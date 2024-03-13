@@ -1403,10 +1403,10 @@ S.optional(S.string).annotations({ description: "description" })
 // pluck
 // ---------------------------------------------
 
-// $ExpectType Schema<string, { readonly a: string; readonly b: number; }, never>
+// $ExpectType Schema<string, { readonly a: string; }, never>
 S.pluck(S.struct({ a: S.string, b: S.number }), "a")
 
-// $ExpectType Schema<string, { readonly a: string; readonly b: number; }, never>
+// $ExpectType Schema<string, { readonly a: string; }, never>
 pipe(S.struct({ a: S.string, b: S.number }), S.pluck("a"))
 
 // ---------------------------------------------
