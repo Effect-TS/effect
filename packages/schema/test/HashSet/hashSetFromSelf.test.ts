@@ -1,4 +1,4 @@
-import * as P from "@effect/schema/Parser"
+import * as P from "@effect/schema/ParseResult"
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"

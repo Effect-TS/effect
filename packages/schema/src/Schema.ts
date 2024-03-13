@@ -43,7 +43,6 @@ import * as _hooks from "./internal/hooks.js"
 import * as _schema from "./internal/schema.js"
 import * as _serializable from "./internal/serializable.js"
 import * as _util from "./internal/util.js"
-import * as Parser from "./Parser.js"
 import * as ParseResult from "./ParseResult.js"
 import * as Pretty from "./Pretty.js"
 import type * as Serializable from "./Serializable.js"
@@ -267,7 +266,7 @@ export {
    * @since 1.0.0
    */
   validateSync
-} from "./Parser.js"
+} from "./ParseResult.js"
 /* c8 ignore end */
 
 /**
@@ -278,7 +277,7 @@ export const encodeUnknown = <A, I, R>(
   schema: Schema<A, I, R>,
   options?: ParseOptions
 ) => {
-  const encodeUnknown = Parser.encodeUnknown(schema, options)
+  const encodeUnknown = ParseResult.encodeUnknown(schema, options)
   return (u: unknown, overrideOptions?: ParseOptions): Effect.Effect<I, ParseResult.ParseError, R> =>
     ParseResult.mapError(encodeUnknown(u, overrideOptions), ParseResult.parseError)
 }
@@ -291,7 +290,7 @@ export const encodeUnknownEither = <A, I>(
   schema: Schema<A, I, never>,
   options?: ParseOptions
 ) => {
-  const encodeUnknownEither = Parser.encodeUnknownEither(schema, options)
+  const encodeUnknownEither = ParseResult.encodeUnknownEither(schema, options)
   return (u: unknown, overrideOptions?: ParseOptions): Either.Either<I, ParseResult.ParseError> =>
     Either.mapLeft(encodeUnknownEither(u, overrideOptions), ParseResult.parseError)
 }
@@ -408,7 +407,7 @@ export const validate = <A, I, R>(
   schema: Schema<A, I, R>,
   options?: ParseOptions
 ) => {
-  const validate = Parser.validate(schema, options)
+  const validate = ParseResult.validate(schema, options)
   return (u: unknown, overrideOptions?: ParseOptions): Effect.Effect<A, ParseResult.ParseError, R> =>
     ParseResult.mapError(validate(u, overrideOptions), ParseResult.parseError)
 }
@@ -421,7 +420,7 @@ export const validateEither = <A, I, R>(
   schema: Schema<A, I, R>,
   options?: ParseOptions
 ) => {
-  const validateEither = Parser.validateEither(schema, options)
+  const validateEither = ParseResult.validateEither(schema, options)
   return (u: unknown, overrideOptions?: ParseOptions): Either.Either<A, ParseResult.ParseError> =>
     Either.mapLeft(validateEither(u, overrideOptions), ParseResult.parseError)
 }
@@ -6176,7 +6175,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
 }): any => {
   const classSymbol = Symbol.for(`@effect/schema/${kind}/${identifier}`)
   const schema = fromSchema ?? struct(fields)
-  const validate = Parser.validateSync(schema)
+  const validate = ParseResult.validateSync(schema)
 
   return class extends Base {
     constructor(
@@ -6214,9 +6213,9 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
 
     static get ast() {
       const toSchema = typeSchema(schema)
-      const guard = Parser.is(toSchema)
+      const guard = ParseResult.is(toSchema)
       const fallbackInstanceOf = (u: unknown) => Predicate.hasProperty(u, classSymbol) && guard(u)
-      const encode = Parser.encodeUnknown(toSchema)
+      const encode = ParseResult.encodeUnknown(toSchema)
       const pretty = Pretty.make(toSchema)
       const arb = arbitrary.make(toSchema)
       const equivalence = _equivalence.make(toSchema)

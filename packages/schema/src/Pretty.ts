@@ -7,7 +7,7 @@ import * as AST from "./AST.js"
 import * as _hooks from "./internal/hooks.js"
 import * as _schema from "./internal/schema.js"
 import * as _util from "./internal/util.js"
-import * as Parser from "./Parser.js"
+import * as ParseResult from "./ParseResult.js"
 import type * as Schema from "./Schema.js"
 
 /**
@@ -184,7 +184,7 @@ export const match: AST.Match<Pretty<any>> = {
     if (Option.isSome(hook)) {
       return hook.value()
     }
-    const types = ast.types.map((ast) => [Parser.is(_schema.make(ast)), go(ast)] as const)
+    const types = ast.types.map((ast) => [ParseResult.is(_schema.make(ast)), go(ast)] as const)
     return (a) => {
       const index = types.findIndex(([is]) => is(a))
       return types[index][1](a)
