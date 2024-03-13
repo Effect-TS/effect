@@ -2106,6 +2106,98 @@ export const serviceWithEffect = <T extends Context.Tag<any, any>>(tag: T) =>
   mapEffect(service(tag), f)
 
 /** @internal */
+export const splitLines = <Err, Done>(): Channel.Channel<
+  Chunk.Chunk<string>,
+  Chunk.Chunk<string>,
+  Err,
+  Err,
+  Done,
+  Done,
+  never
+> =>
+  core.suspend(() => {
+    let stringBuilder = ""
+    let midCRLF = false
+    const splitLinesChunk = (chunk: Chunk.Chunk<string>): Chunk.Chunk<string> => {
+      const chunkBuilder: Array<string> = []
+      Chunk.map(chunk, (str) => {
+        if (str.length !== 0) {
+          let from = 0
+          let indexOfCR = str.indexOf("\r")
+          let indexOfLF = str.indexOf("\n")
+          if (midCRLF) {
+            if (indexOfLF === 0) {
+              chunkBuilder.push(stringBuilder)
+              stringBuilder = ""
+              from = 1
+              indexOfLF = str.indexOf("\n", from)
+            } else {
+              stringBuilder = stringBuilder + "\r"
+            }
+            midCRLF = false
+          }
+          while (indexOfCR !== -1 || indexOfLF !== -1) {
+            if (indexOfCR === -1 || (indexOfLF !== -1 && indexOfLF < indexOfCR)) {
+              if (stringBuilder.length === 0) {
+                chunkBuilder.push(str.substring(from, indexOfLF))
+              } else {
+                chunkBuilder.push(stringBuilder + str.substring(from, indexOfLF))
+                stringBuilder = ""
+              }
+              from = indexOfLF + 1
+              indexOfLF = str.indexOf("\n", from)
+            } else {
+              if (str.length === indexOfCR + 1) {
+                midCRLF = true
+                indexOfCR = -1
+              } else {
+                if (indexOfLF === indexOfCR + 1) {
+                  if (stringBuilder.length === 0) {
+                    chunkBuilder.push(str.substring(from, indexOfCR))
+                  } else {
+                    stringBuilder = stringBuilder + str.substring(from, indexOfCR)
+                    chunkBuilder.push(stringBuilder)
+                    stringBuilder = ""
+                  }
+                  from = indexOfCR + 2
+                  indexOfCR = str.indexOf("\r", from)
+                  indexOfLF = str.indexOf("\n", from)
+                } else {
+                  indexOfCR = str.indexOf("\r", indexOfCR + 1)
+                }
+              }
+            }
+          }
+          if (midCRLF) {
+            stringBuilder = stringBuilder + str.substring(from, str.length - 1)
+          } else {
+            stringBuilder = stringBuilder + str.substring(from, str.length)
+          }
+        }
+      })
+      return Chunk.unsafeFromArray(chunkBuilder)
+    }
+    const loop: Channel.Channel<Chunk.Chunk<string>, Chunk.Chunk<string>, Err, Err, Done, Done, never> = core
+      .readWithCause({
+        onInput: (input: Chunk.Chunk<string>) => {
+          const out = splitLinesChunk(input)
+          return Chunk.isEmpty(out)
+            ? loop
+            : core.flatMap(core.write(out), () => loop)
+        },
+        onFailure: (cause) =>
+          stringBuilder.length === 0
+            ? core.failCause(cause)
+            : core.flatMap(core.write(Chunk.of(stringBuilder)), () => core.failCause(cause)),
+        onDone: (done) =>
+          stringBuilder.length === 0
+            ? core.succeed(done)
+            : core.flatMap(core.write(Chunk.of(stringBuilder)), () => core.succeed(done))
+      })
+    return loop
+  })
+
+/** @internal */
 export const toPubSub = <Done, Err, Elem>(
   pubsub: PubSub.PubSub<Either.Either<Elem, Exit.Exit<Done, Err>>>
 ): Channel.Channel<never, Elem, never, Err, unknown, Done> => toQueue(pubsub)

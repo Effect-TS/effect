@@ -1952,6 +1952,23 @@ export const scoped: <A, E, R>(
 ) => Channel<A, unknown, E, unknown, unknown, unknown, Exclude<R, Scope.Scope>> = channel.scoped
 
 /**
+ * Splits strings on newlines. Handles both Windows newlines (`\r\n`) and UNIX
+ * newlines (`\n`).
+ *
+ * @since 2.0.0
+ * @category combinators
+ */
+export const splitLines: <Err, Done>() => Channel<
+  Chunk.Chunk<string>,
+  Chunk.Chunk<string>,
+  Err,
+  Err,
+  Done,
+  Done,
+  never
+> = channel.splitLines
+
+/**
  * Constructs a channel that succeeds immediately with the specified value.
  *
  * @since 2.0.0

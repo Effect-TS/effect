@@ -13,7 +13,7 @@ import * as Queue from "effect/Queue"
 import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
-import * as MsgPack from "../MsgPack.js"
+import * as Ndjson from "../Ndjson.js"
 import * as Domain from "./Domain.js"
 
 /**
@@ -106,7 +106,7 @@ export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket>
   yield* _(
     Stream.fromQueue(requests),
     Stream.pipeThroughChannel(
-      MsgPack.duplexSchema(Socket.toChannel(socket), {
+      Ndjson.duplexSchema(Socket.toChannel(socket), {
         inputSchema: Domain.Request,
         outputSchema: Domain.Response
       })
