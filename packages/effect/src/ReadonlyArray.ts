@@ -1006,7 +1006,7 @@ export const unzip: <S extends Iterable<readonly [any, any]> | NonEmptyReadonlyA
 export const intersperse: {
   <B>(
     middle: B
-  ): <S extends ReadonlyArray<any> | Iterable<any>>(self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
+  ): <S extends ReadonlyArray<any> | Iterable<any>>(self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
   <A, B>(self: NonEmptyReadonlyArray<A>, middle: B): NonEmptyArray<A | B>
   <A, B>(self: Iterable<A>, middle: B): Array<A | B>
 } = dual(2, <A, B>(self: Iterable<A>, middle: B): Array<A | B> => {
