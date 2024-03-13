@@ -4699,7 +4699,7 @@ export const head = <A, I, R>(self: Schema<ReadonlyArray<A>, I, R>): Schema<Opti
  * @category ReadonlyArray transformations
  * @since 1.0.0
  */
-export const headOr: {
+export const headOrElse: {
   <A>(fallback?: LazyArg<A>): <I, R>(self: Schema<ReadonlyArray<A>, I, R>) => Schema<A, I, R>
   <A, I, R>(self: Schema<ReadonlyArray<A>, I, R>, fallback?: LazyArg<A>): Schema<A, I, R>
 } = dual(

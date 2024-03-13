@@ -1438,11 +1438,11 @@ pipe(S.struct({ a: S.string, b: S.number }), S.pluck("a"))
 S.head(S.array(S.number))
 
 // ---------------------------------------------
-// headOr
+// headOrElse
 // ---------------------------------------------
 
 // $ExpectType Schema<number, readonly number[], never>
-S.headOr(S.array(S.number))
+S.headOrElse(S.array(S.number))
 
 // ---------------------------------------------
 // Class
