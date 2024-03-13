@@ -1768,16 +1768,16 @@ export declare namespace Struct {
   /**
    * @since 1.0.0
    */
-  export type Type<F extends Fields, OptionalKeys extends PropertyKey = TypeTokenKeys<F>> =
-    & { readonly [K in Exclude<keyof F, OptionalKeys>]: Schema.Type<F[K]> }
-    & { readonly [K in OptionalKeys]?: Schema.Type<F[K]> }
+  export type Type<F extends Fields> =
+    & { readonly [K in Exclude<keyof F, TypeTokenKeys<F>>]: Schema.Type<F[K]> }
+    & { readonly [K in TypeTokenKeys<F>]?: Schema.Type<F[K]> }
 
   /**
    * @since 1.0.0
    */
-  export type Encoded<F extends Fields, OptionalKeys extends PropertyKey = EncodedTokenKeys<F>> =
-    & { readonly [K in Exclude<keyof F, OptionalKeys> as Key<F, K>]: Schema.Encoded<F[K]> }
-    & { readonly [K in OptionalKeys as Key<F, K>]?: Schema.Encoded<F[K]> }
+  export type Encoded<F extends Fields> =
+    & { readonly [K in Exclude<keyof F, EncodedTokenKeys<F>> as Key<F, K>]: Schema.Encoded<F[K]> }
+    & { readonly [K in EncodedTokenKeys<F> as Key<F, K>]?: Schema.Encoded<F[K]> }
 
   /**
    * @since 1.0.0
