@@ -1,5 +1,16 @@
 # effect
 
+## 2.4.6
+
+### Patch Changes
+
+- [#2290](https://github.com/Effect-TS/effect/pull/2290) [`4f35a7e`](https://github.com/Effect-TS/effect/commit/4f35a7e7c4eba598924aff24d1158b9056bb24be) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Remove function renaming from internals, introduce new cutpoint strategy
+
+- [#2311](https://github.com/Effect-TS/effect/pull/2311) [`9971186`](https://github.com/Effect-TS/effect/commit/99711862722188fbb5ed3ee75126ad5edf13f72f) Thanks [@tim-smart](https://github.com/tim-smart)! - add Channel.splitLines api
+
+  It splits strings on newlines. Handles both Windows newlines (`\r\n`) and UNIX
+  newlines (`\n`).
+
 ## 2.4.5
 
 ### Patch Changes

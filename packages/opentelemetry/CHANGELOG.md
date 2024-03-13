@@ -1,5 +1,12 @@
 # @effect/opentelemetry
 
+## 0.31.16
+
+### Patch Changes
+
+- Updated dependencies [[`4f35a7e`](https://github.com/Effect-TS/effect/commit/4f35a7e7c4eba598924aff24d1158b9056bb24be), [`9971186`](https://github.com/Effect-TS/effect/commit/99711862722188fbb5ed3ee75126ad5edf13f72f)]:
+  - effect@2.4.6
+
 ## 0.31.15
 
 ### Patch Changes
