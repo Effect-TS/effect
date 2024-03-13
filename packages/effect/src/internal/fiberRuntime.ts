@@ -234,13 +234,15 @@ const runBlockedRequests = (self: RequestBlock.RequestBlock) =>
         _RequestBlock.sequentialCollectionToChunk(requestsByRequestResolver),
         ([dataSource, sequential]) => {
           const map = new Map<Request<any, any>, Entry<any>>()
+          const arr: Array<Array<Entry<any>>> = []
           for (const block of sequential) {
+            arr.push(Chunk.toReadonlyArray(block) as any)
             for (const entry of block) {
               map.set(entry.request as Request<any, any>, entry)
             }
           }
           return core.fiberRefLocally(
-            invokeWithInterrupt(dataSource.runAll(sequential), sequential.flat()),
+            invokeWithInterrupt(dataSource.runAll(arr), arr.flat()),
             currentRequestMap,
             map
           )
