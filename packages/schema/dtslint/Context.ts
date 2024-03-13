@@ -223,6 +223,9 @@ S.required(S.partial(S.struct({ a: aContext, b: bContext }), { exact: true }))
 // ---------------------------------------------
 
 // $ExpectType Schema<{ a: string; b: number; }, { a: string; b: number; }, "aContext" | "bContext">
+S.asSchema(S.mutable(S.struct({ a: aContext, b: bContext })))
+
+// $ExpectType mutable<struct<{ a: aContext; b: bContext; }>>
 S.mutable(S.struct({ a: aContext, b: bContext }))
 
 // ---------------------------------------------

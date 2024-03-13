@@ -68,6 +68,11 @@ export type Simplify<T> = { readonly [K in keyof T]: T[K] } & {}
 
 /**
  * @since 1.0.0
+ */
+export type SimplifyMutable<T> = { -readonly [K in keyof T]: T[K] } & {}
+
+/**
+ * @since 1.0.0
  * @category symbol
  */
 export const TypeId: unique symbol = _schema.TypeId
@@ -2239,6 +2244,19 @@ export const required = <A, I, R>(
 ): Schema<{ [K in keyof A]-?: A[K] }, { [K in keyof I]-?: I[K] }, R> => make(AST.required(self.ast))
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface mutable<S extends Schema.Any> extends
+  Annotable<
+    mutable<S>,
+    SimplifyMutable<Schema.Type<S>>,
+    SimplifyMutable<Schema.Encoded<S>>,
+    Schema.Context<S>
+  >
+{}
+
+/**
  * Creates a new schema with shallow mutability applied to its properties.
  *
  * @param schema - The original schema to make properties mutable (shallowly).
@@ -2246,12 +2264,7 @@ export const required = <A, I, R>(
  * @category combinators
  * @since 1.0.0
  */
-export const mutable = <A, I, R>(
-  schema: Schema<A, I, R>
-): Schema<{ -readonly [P in keyof A]: A[P] }, { -readonly [P in keyof I]: I[P] }, R> => {
-  const ast = AST.mutable(schema.ast)
-  return ast === schema.ast ? schema as any : make(ast)
-}
+export const mutable = <S extends Schema.Any>(schema: S): mutable<S> => make(AST.mutable(schema.ast))
 
 const getExtendErrorMessage = (x: AST.AST, y: AST.AST, path: ReadonlyArray<string>) =>
   `cannot extend \`${x}\` with \`${y}\` (path [${path?.join(", ")}])`
