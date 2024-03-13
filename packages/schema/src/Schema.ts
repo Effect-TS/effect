@@ -33,21 +33,21 @@ import * as _secret from "effect/Secret"
 import * as SortedSet from "effect/SortedSet"
 import * as S from "effect/String"
 import type { Covariant, Invariant, NoInfer, UnionToIntersection } from "effect/Types"
-import type { Arbitrary } from "./Arbitrary.js"
-import * as arbitrary from "./Arbitrary.js"
 import type { ParseOptions } from "./AST.js"
 import * as AST from "./AST.js"
+import type { Arbitrary } from "./Arbitrary.js"
+import * as arbitrary from "./Arbitrary.js"
 import * as _equivalence from "./Equivalence.js"
+import * as ParseResult from "./ParseResult.js"
+import * as Parser from "./Parser.js"
+import * as Pretty from "./Pretty.js"
+import type * as Serializable from "./Serializable.js"
+import * as TreeFormatter from "./TreeFormatter.js"
 import * as _filters from "./internal/filters.js"
 import * as _hooks from "./internal/hooks.js"
 import * as _schema from "./internal/schema.js"
 import * as _serializable from "./internal/serializable.js"
 import * as _util from "./internal/util.js"
-import * as Parser from "./Parser.js"
-import * as ParseResult from "./ParseResult.js"
-import * as Pretty from "./Pretty.js"
-import type * as Serializable from "./Serializable.js"
-import * as TreeFormatter from "./TreeFormatter.js"
 
 /**
  * Required to fix a bug in TypeScript@5.0, dtslint fails with:
@@ -1584,83 +1584,173 @@ export const optionalToOptional = <FA, FI, FR, TA, TI, TR>(
 export const optional: {
   <A, I, R>(
     schema: Schema<A, I, R>,
-    options: {
+    options?: {
       readonly exact: true
       readonly default: () => A
       readonly nullable: true
     }
   ): PropertySignature<":", A, never, "?:", I | null, R>
+  
+    <A>(
+    options?: {
+      readonly exact: true
+      readonly default: () => A
+      readonly nullable: true
+    }
+  ): <I, R>(schema: Schema<A, I, R>) => PropertySignature<":", A, never, "?:", I | null, R>
+
+
   <A, I, R>(
     schema: Schema<A, I, R>,
-    options: {
+    options?: {
       readonly exact: true
       readonly default: () => A
     }
   ): PropertySignature<":", A, never, "?:", I, R>
+  
+    <A>(
+    options?: {
+      readonly exact: true
+      readonly default: () => A
+    }
+  ): <I, R>(schema: Schema<A, I, R>,) => PropertySignature<":", A, never, "?:", I, R>
+
+  
   <A, I, R>(
     schema: Schema<A, I, R>,
-    options: {
+    options?: {
       readonly exact: true
       readonly nullable: true
       readonly as: "Option"
     }
   ): PropertySignature<":", Option.Option<A>, never, "?:", I | null, R>
+  
+  (
+    options?: {
+      readonly exact: true
+      readonly nullable: true
+      readonly as: "Option"
+    }
+  ): <A, I, R>(schema: Schema<A, I, R>) => PropertySignature<":", Option.Option<A>, never, "?:", I | null, R>
+
+  
   <A, I, R>(
     schema: Schema<A, I, R>,
-    options: {
+    options?: {
       readonly exact: true
       readonly as: "Option"
     }
   ): PropertySignature<":", Option.Option<A>, never, "?:", I, R>
+  
+  (
+    options?: {
+      readonly exact: true
+      readonly as: "Option"
+    }
+  ): <A, I, R>(schema: Schema<A, I, R>,) => PropertySignature<":", Option.Option<A>, never, "?:", I, R>
+
   <A, I, R>(
     schema: Schema<A, I, R>,
-    options: {
+    options?: {
       readonly exact: true
       readonly nullable: true
     }
   ): PropertySignature<"?:", A, never, "?:", I | null, R>
+  
+  (
+    options?: {
+      readonly exact: true
+      readonly nullable: true
+    }
+  ): <A, I, R>(schema: Schema<A, I, R>) => PropertySignature<"?:", A, never, "?:", I | null, R>
+
+
   <A, I, R>(
     schema: Schema<A, I, R>,
-    options: {
+    options?: {
       readonly exact: true
     }
   ): PropertySignature<"?:", A, never, "?:", I, R>
+  
+  (
+    options?: {
+      readonly exact: true
+    }
+  ): <A, I, R>(schema: Schema<A, I, R>,) => PropertySignature<"?:", A, never, "?:", I, R>
+
+
   <A, I, R>(
     schema: Schema<A, I, R>,
-    options: {
+    options?: {
       readonly default: () => A
       readonly nullable: true
     }
   ): PropertySignature<":", A, never, "?:", I | null | undefined, R>
+
+  <A>(
+    options?: {
+      readonly default: () => A
+      readonly nullable: true
+    }
+  ): <I, R>(schema: Schema<A, I, R>) => PropertySignature<":", A, never, "?:", I | null | undefined, R>
+
+
   <A, I, R>(
     schema: Schema<A, I, R>,
-    options: {
+    options?: {
       readonly nullable: true
       readonly as: "Option"
     }
   ): PropertySignature<":", Option.Option<A>, never, "?:", I | null | undefined, R>
+  
+  (
+    options?: {
+      readonly nullable: true
+      readonly as: "Option"
+    }
+  ): <A, I, R>(schema: Schema<A, I, R>) => PropertySignature<":", Option.Option<A>, never, "?:", I | null | undefined, R>
+  
   <A, I, R>(
     schema: Schema<A, I, R>,
-    options: {
+    options?: {
       readonly as: "Option"
     }
   ): PropertySignature<":", Option.Option<A>, never, "?:", I | undefined, R>
+  
+  (
+    options?: {
+      readonly as: "Option"
+    }
+  ): <A, I, R>(schema: Schema<A, I, R>) => PropertySignature<":", Option.Option<A>, never, "?:", I | undefined, R>
+
   <A, I, R>(
     schema: Schema<A, I, R>,
-    options: {
+    options?: {
       readonly default: () => A
     }
   ): PropertySignature<":", A, never, "?:", I | undefined, R>
+  
+  <A>(
+    options?: {
+      readonly default: () => A
+    }
+  ): <I, R>(schema: Schema<A, I, R>) => PropertySignature<":", A, never, "?:", I | undefined, R>
+
+
   <A, I, R>(
     schema: Schema<A, I, R>,
-    options: {
+    options?: {
       readonly nullable: true
     }
   ): PropertySignature<"?:", A | undefined, never, "?:", I | null | undefined, R>
-  <A, I, R>(
-    schema: Schema<A, I, R>
-  ): PropertySignature<"?:", A | undefined, never, "?:", I | undefined, R>
-} = <A, I, R>(
+  
+  (
+    options?: {
+      readonly nullable: true
+    }
+  ): <A, I, R>(schema: Schema<A, I, R>) => PropertySignature<"?:", A | undefined, never, "?:", I | null | undefined, R>
+  
+} = dual((args) => isSchema(args[0]), <A, I, R>(
   schema: Schema<A, I, R>,
   options?: {
     readonly exact?: true
