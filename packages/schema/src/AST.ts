@@ -1993,28 +1993,40 @@ export const required = (ast: AST): AST => {
 export const mutable = (ast: AST): AST => {
   switch (ast._tag) {
     case "TupleType":
-      return new TupleType(ast.elements, ast.rest, false, ast.annotations)
-    case "TypeLiteral":
-      return new TypeLiteral(
-        ast.propertySignatures.map((ps) =>
-          new PropertySignature(ps.name, ps.type, ps.isOptional, false, ps.annotations)
-        ),
-        ast.indexSignatures.map((is) => new IndexSignature(is.parameter, is.type, false)),
-        ast.annotations
+      return ast.isReadonly === false ? ast : new TupleType(ast.elements, ast.rest, false, ast.annotations)
+    case "TypeLiteral": {
+      const propertySignatures = changeMap(
+        ast.propertySignatures,
+        (ps) =>
+          ps.isReadonly === false ? ps : new PropertySignature(ps.name, ps.type, ps.isOptional, false, ps.annotations)
       )
-    case "Union":
-      return Union.make(ast.types.map(mutable), ast.annotations)
+      const indexSignatures = changeMap(
+        ast.indexSignatures,
+        (is) => is.isReadonly === false ? is : new IndexSignature(is.parameter, is.type, false)
+      )
+      return propertySignatures === ast.propertySignatures && indexSignatures === ast.indexSignatures ?
+        ast :
+        new TypeLiteral(propertySignatures, indexSignatures, ast.annotations)
+    }
+
+    case "Union": {
+      const types = changeMap(ast.types, mutable)
+      return types === ast.types ? ast : Union.make(types, ast.annotations)
+    }
+
     case "Suspend":
       return new Suspend(() => mutable(ast.f()), ast.annotations)
-    case "Refinement":
-      return new Refinement(mutable(ast.from), ast.filter, ast.annotations)
-    case "Transformation":
-      return new Transformation(
-        mutable(ast.from),
-        mutable(ast.to),
-        ast.transformation,
-        ast.annotations
-      )
+    case "Refinement": {
+      const from = mutable(ast.from)
+      return from === ast.from ? ast : new Refinement(from, ast.filter, ast.annotations)
+    }
+    case "Transformation": {
+      const from = mutable(ast.from)
+      const to = mutable(ast.to)
+      return from === ast.from && to === ast.to ?
+        ast :
+        new Transformation(from, to, ast.transformation, ast.annotations)
+    }
   }
   return ast
 }

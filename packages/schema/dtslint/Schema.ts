@@ -1182,27 +1182,48 @@ S.number.pipe(S.fromBrand(Eur))
 // ---------------------------------------------
 
 // $ExpectType Schema<string, string, never>
+S.asSchema(S.mutable(S.string))
+
+// mutable<$string>
 S.mutable(S.string)
 
 // $ExpectType Schema<{ a: number; }, { a: number; }, never>
+S.asSchema(S.mutable(S.struct({ a: S.number })))
+
+// $ExpectType mutable<struct<{ a: $number; }>>
 S.mutable(S.struct({ a: S.number }))
 
 // $ExpectType Schema<{ [x: string]: number; }, { [x: string]: number; }, never>
+S.asSchema(S.mutable(S.record(S.string, S.number)))
+
+// $ExpectType mutable<record<$string, $number>>
 S.mutable(S.record(S.string, S.number))
 
 // $ExpectType Schema<string[], string[], never>
+S.asSchema(S.mutable(S.array(S.string)))
+
+// $ExpectType mutable<array<$string>>
 S.mutable(S.array(S.string))
 
 // $ExpectType Schema<string[] | { a: number; }, string[] | { a: number; }, never>
+S.asSchema(S.mutable(S.union(S.struct({ a: S.number }), S.array(S.string))))
+
+// $ExpectType mutable<union<[struct<{ a: $number; }>, array<$string>]>>
 S.mutable(S.union(S.struct({ a: S.number }), S.array(S.string)))
 
-// $ExpectType Schema<string[], string[], never>
+// $ExpectType mutable<Schema<readonly string[], readonly string[], never>>
 S.mutable(S.array(S.string).pipe(S.maxItems(2)))
 
 // $ExpectType Schema<string[], string[], never>
+S.asSchema(S.mutable(S.suspend(() => S.array(S.string))))
+
+// $ExpectType mutable<suspend<readonly string[], readonly string[], never>>
 S.mutable(S.suspend(() => S.array(S.string)))
 
 // $ExpectType Schema<string[], string[], never>
+S.asSchema(S.mutable(S.transform(S.array(S.string), S.array(S.string), identity, identity)))
+
+// $ExpectType mutable<transform<array<$string>, array<$string>>>
 S.mutable(S.transform(S.array(S.string), S.array(S.string), identity, identity))
 
 // ---------------------------------------------
