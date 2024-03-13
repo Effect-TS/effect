@@ -1,5 +1,13 @@
 # effect
 
+## 2.4.5
+
+### Patch Changes
+
+- [#2300](https://github.com/Effect-TS/effect/pull/2300) [`bce21c5`](https://github.com/Effect-TS/effect/commit/bce21c5ded2177114666ba229bd5029fa000dee3) Thanks [@gcanti](https://github.com/gcanti)! - ReadonlyArray: fix `intersperse` signature
+
+- [#2303](https://github.com/Effect-TS/effect/pull/2303) [`c7d3036`](https://github.com/Effect-TS/effect/commit/c7d303630b7f0825cb2e584557c5767a67214d9f) Thanks [@gcanti](https://github.com/gcanti)! - ReadonlyArray: fix `sort` signature, closes #2301
+
 ## 2.4.4
 
 ### Patch Changes
