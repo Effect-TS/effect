@@ -88,10 +88,12 @@ export const make = <R, ER>(
         internalRuntime.unsafeRunSyncEffect(provide(self, effect)) :
         internalRuntime.unsafeRunSync(self.cachedRuntime)(effect)
     },
-    runPromiseExit<A, E>(effect: Effect.Effect<A, E, R>): Promise<Exit<A, E | ER>> {
+    runPromiseExit<A, E>(effect: Effect.Effect<A, E, R>, options?: {
+      readonly signal?: AbortSignal | undefined
+    }): Promise<Exit<A, E | ER>> {
       return self.cachedRuntime === undefined ?
-        internalRuntime.unsafeRunPromiseExitEffect(provide(self, effect)) :
-        internalRuntime.unsafeRunPromiseExit(self.cachedRuntime)(effect)
+        internalRuntime.unsafeRunPromiseExitEffect(provide(self, effect), options) :
+        internalRuntime.unsafeRunPromiseExit(self.cachedRuntime)(effect, options)
     },
     runCallback<A, E>(
       effect: Effect.Effect<A, E, R>,
@@ -101,10 +103,12 @@ export const make = <R, ER>(
         internalRuntime.unsafeRunCallback(internalRuntime.defaultRuntime)(provide(self, effect), options) :
         internalRuntime.unsafeRunCallback(self.cachedRuntime)(effect, options)
     },
-    runPromise<A, E>(effect: Effect.Effect<A, E, R>): Promise<A> {
+    runPromise<A, E>(effect: Effect.Effect<A, E, R>, options?: {
+      readonly signal?: AbortSignal | undefined
+    }): Promise<A> {
       return self.cachedRuntime === undefined ?
-        internalRuntime.unsafeRunPromiseEffect(provide(self, effect)) :
-        internalRuntime.unsafeRunPromise(self.cachedRuntime)(effect)
+        internalRuntime.unsafeRunPromiseEffect(provide(self, effect), options) :
+        internalRuntime.unsafeRunPromise(self.cachedRuntime)(effect, options)
     }
   }
   return self
