@@ -1,4 +1,4 @@
-import { Effect, FiberRef, Layer, Runtime } from "effect"
+import { Effect, Exit, FiberRef, Layer, Runtime } from "effect"
 import { assert, describe } from "vitest"
 import * as it from "./utils/extend.js"
 
@@ -27,4 +27,17 @@ describe("Runtime", () => {
       result = Runtime.runSync(Runtime.deleteFiberRef(runtime, ref))(FiberRef.get(ref))
       assert.deepStrictEqual(result, { value: 0 })
     }))
+
+  it.it("runPromiseExit/signal", async () => {
+    const aborted = AbortSignal.abort()
+    assert(Exit.isInterrupted(await Runtime.runPromiseExit(Runtime.defaultRuntime)(Effect.never, { signal: aborted })))
+
+    const controller = new AbortController()
+    setTimeout(() => controller.abort(), 10)
+    assert(
+      Exit.isInterrupted(
+        await Runtime.runPromiseExit(Runtime.defaultRuntime)(Effect.never, { signal: controller.signal })
+      )
+    )
+  })
 })

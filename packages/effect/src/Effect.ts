@@ -4672,7 +4672,10 @@ export const runCallback: <A, E>(
  * @since 2.0.0
  * @category execution
  */
-export const runPromise: <A, E>(effect: Effect<A, E>) => Promise<A> = _runtime.unsafeRunPromiseEffect
+export const runPromise: <A, E>(
+  effect: Effect<A, E, never>,
+  options?: { readonly signal?: AbortSignal } | undefined
+) => Promise<A> = _runtime.unsafeRunPromiseEffect
 
 /**
  * Runs an `Effect` workflow, returning a `Promise` which resolves with the
@@ -4681,8 +4684,10 @@ export const runPromise: <A, E>(effect: Effect<A, E>) => Promise<A> = _runtime.u
  * @since 2.0.0
  * @category execution
  */
-export const runPromiseExit: <A, E>(effect: Effect<A, E>) => Promise<Exit.Exit<A, E>> =
-  _runtime.unsafeRunPromiseExitEffect
+export const runPromiseExit: <A, E>(
+  effect: Effect<A, E, never>,
+  options?: { readonly signal?: AbortSignal } | undefined
+) => Promise<Exit.Exit<A, E>> = _runtime.unsafeRunPromiseExitEffect
 
 /**
  * @since 2.0.0

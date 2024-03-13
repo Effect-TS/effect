@@ -134,7 +134,9 @@ export const runCallback: <R>(
  * @since 2.0.0
  * @category execution
  */
-export const runPromise: <R>(runtime: Runtime<R>) => <A, E>(effect: Effect.Effect<A, E, R>) => Promise<A> =
+export const runPromise: <R>(
+  runtime: Runtime<R>
+) => <A, E>(effect: Effect.Effect<A, E, R>, options?: { readonly signal?: AbortSignal } | undefined) => Promise<A> =
   internal.unsafeRunPromise
 
 /**
@@ -149,7 +151,10 @@ export const runPromise: <R>(runtime: Runtime<R>) => <A, E>(effect: Effect.Effec
  */
 export const runPromiseExit: <R>(
   runtime: Runtime<R>
-) => <A, E>(effect: Effect.Effect<A, E, R>) => Promise<Exit.Exit<A, E>> = internal.unsafeRunPromiseExit
+) => <A, E>(
+  effect: Effect.Effect<A, E, R>,
+  options?: { readonly signal?: AbortSignal } | undefined
+) => Promise<Exit.Exit<A, E>> = internal.unsafeRunPromiseExit
 
 /**
  * @since 2.0.0
