@@ -412,6 +412,12 @@ describe("Arbitrary > Arbitrary", () => {
       const schema = S.string.pipe(S.pattern(regexp))
       expectValidArbitrary(schema)
     })
+
+    // issue #2312
+    it.skip("nonEmpty + pattern", () => {
+      const schema = S.string.pipe(S.nonEmpty(), S.pattern(/^[-]*$/))
+      expectValidArbitrary(schema)
+    })
   })
 
   describe("number filters", () => {
