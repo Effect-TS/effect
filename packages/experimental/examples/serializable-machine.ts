@@ -3,19 +3,37 @@ import { runMain } from "@effect/platform-node/NodeRuntime"
 import { Schema } from "@effect/schema"
 import { Effect, List, Schedule } from "effect"
 
-class SendError extends Schema.TaggedError<SendError>()("SendError", {
-  email: Schema.string,
-  reason: Schema.string
-}) {}
+class SendError extends Schema.TaggedError<SendError>()(
+  "SendError",
+  {
+    email: Schema.string,
+    reason: Schema.string
+  }
+) {}
 
-class SendEmail extends Schema.TaggedRequest<SendEmail>()("SendEmail", SendError, Schema.void, {
-  email: Schema.string,
-  message: Schema.string
-}) {}
+class SendEmail extends Schema.TaggedRequest<SendEmail>()(
+  "SendEmail",
+  SendError,
+  Schema.void,
+  {
+    email: Schema.string,
+    message: Schema.string
+  }
+) {}
 
-class ProcessEmail extends Schema.TaggedRequest<ProcessEmail>()("ProcessEmail", Schema.never, Schema.void, {}) {}
+class ProcessEmail extends Schema.TaggedRequest<ProcessEmail>()(
+  "ProcessEmail",
+  Schema.never,
+  Schema.void,
+  {}
+) {}
 
-class Shutdown extends Schema.TaggedRequest<Shutdown>()("Shutdown", Schema.never, Schema.void, {}) {}
+class Shutdown extends Schema.TaggedRequest<Shutdown>()(
+  "Shutdown",
+  Schema.never,
+  Schema.void,
+  {}
+) {}
 
 const mailer = Machine.makeSerializable({
   state: Schema.list(SendEmail)
