@@ -29,7 +29,7 @@ const mailer = Machine.makeSerializable({
     }
 
     return Machine.serializable.make(state).pipe(
-      Machine.serializable.addPrivate(ProcessEmail, "ProcessEmail", ({ state }) =>
+      Machine.serializable.addPrivate(ProcessEmail, ({ state }) =>
         Effect.gen(function*(_) {
           if (List.isNil(state)) {
             return [void 0, state]
@@ -38,11 +38,11 @@ const mailer = Machine.makeSerializable({
           yield* _(Effect.log(`Sending email to ${req.email}`), Effect.delay(500))
           return [void 0, state.tail]
         })),
-      Machine.serializable.add(SendEmail, "SendEmail", (ctx) =>
+      Machine.serializable.add(SendEmail, (ctx) =>
         ctx.send(new ProcessEmail()).pipe(
           Effect.as([void 0, List.append(ctx.state, ctx.request)])
         )),
-      Machine.serializable.add(Shutdown, "Shutdown", () =>
+      Machine.serializable.add(Shutdown, () =>
         Effect.log("Shutting down").pipe(
           Effect.zipRight(Effect.interrupt)
         ))
