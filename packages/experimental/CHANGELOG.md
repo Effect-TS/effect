@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.12.2
+
+### Patch Changes
+
+- [#2316](https://github.com/Effect-TS/effect/pull/2316) [`7b64c66`](https://github.com/Effect-TS/effect/commit/7b64c662ed7ba6e88146a9cba5b3f46c7213f921) Thanks [@tim-smart](https://github.com/tim-smart)! - support Infinity in DevTools metrics schema
+
 ## 0.12.1
 
 ### Patch Changes
