@@ -6,7 +6,6 @@ import * as Channel from "effect/Channel"
 import type * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Fiber from "effect/Fiber"
 import * as FiberSet from "effect/FiberSet"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -81,7 +80,7 @@ export const fromNetSocket = (
           FiberSet.runtime(fiberSet)<R>(),
           Effect.provideService(NetSocket, conn)
         )
-        const writeFiber = yield* _(
+        yield* _(
           Queue.take(sendQueue),
           Effect.tap((chunk) =>
             Effect.async<void, Socket.SocketError, never>((resume) => {
@@ -97,8 +96,8 @@ export const fromNetSocket = (
             })
           ),
           Effect.forever,
-          Effect.fork,
-          Effect.withUnhandledErrorLogLevel(Option.none())
+          Effect.withUnhandledErrorLogLevel(Option.none()),
+          FiberSet.run(fiberSet)
         )
         conn.on("data", (chunk) => {
           run(handler(chunk))
@@ -122,10 +121,12 @@ export const fromNetSocket = (
               )
             })
           }),
-          Effect.raceFirst(Fiber.join(writeFiber)),
           Effect.raceFirst(FiberSet.join(fiberSet))
         )
-      }).pipe(Effect.scoped)
+      }).pipe(
+        Effect.scoped,
+        Effect.interruptible
+      )
 
     const write = (chunk: Uint8Array | Socket.CloseEvent) => Queue.offer(sendQueue, chunk)
     const writer = Effect.acquireRelease(
