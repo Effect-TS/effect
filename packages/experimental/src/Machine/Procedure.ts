@@ -231,18 +231,26 @@ export const make = <Requests extends TaggedRequest.Any, State>() =>
  * @since 1.0.0
  * @category constructors
  */
-export const makeSerializable =
-  <Requests extends TaggedRequest.Any, State>() =>
-  <Req extends Schema.TaggedRequest.Any, IS, R, RS>(
-    schema: Schema.Schema<Req, IS, RS>,
-    handler: Handler<Req, State, Requests, R>
-  ): SerializableProcedure<Req, State, R | Serializable.SerializableWithResult.Context<Req>> => ({
-    [TypeId]: TypeId,
-    [SerializableTypeId]: SerializableTypeId,
-    schema: schema as any,
-    handler,
-    tag: (schema as any as Schema.struct<{ _tag: Schema.literal<["tag"]> }>).fields._tag.literals[0],
-    pipe() {
-      return pipeArguments(this, arguments)
-    }
-  })
+export const makeSerializable = <
+  Requests extends TaggedRequest.Any,
+  State
+>() =>
+<
+  Req extends Schema.TaggedRequest.Any,
+  Fields extends { readonly _tag: Schema.literal<[Req["_tag"]]> },
+  IS,
+  R,
+  RS
+>(
+  schema: Schema.Schema<Req, IS, RS> & { readonly fields: Fields },
+  handler: Handler<Req, State, Requests, R>
+): SerializableProcedure<Req, State, R | Serializable.SerializableWithResult.Context<Req>> => ({
+  [TypeId]: TypeId,
+  [SerializableTypeId]: SerializableTypeId,
+  schema: schema as any,
+  handler,
+  tag: schema.fields._tag.literals[0],
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+})
