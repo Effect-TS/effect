@@ -2138,13 +2138,14 @@ function changeMap<A>(
 function changeMap<A>(as: ReadonlyArray<A>, f: (a: A) => A): ReadonlyArray<A>
 function changeMap<A>(as: ReadonlyArray<A>, f: (a: A) => A): ReadonlyArray<A> {
   let changed = false
-  const out: Array<A> = []
-  for (const a of as) {
+  const out: Array<A> = new Array(as.length)
+  for (let i = 0; i < as.length; i++) {
+    const a = as[i]
     const fa = f(a)
     if (fa !== a) {
       changed = true
     }
-    out.push(f(a))
+    out[i] = fa
   }
   return changed ? out : as
 }
