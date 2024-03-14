@@ -244,6 +244,13 @@ export const Gauge = metric(
   })
 )
 
+const numberOrInfinity = Schema.transform(
+  Schema.union(Schema.number, Schema.null),
+  Schema.number,
+  (i) => i === null ? Number.POSITIVE_INFINITY : i,
+  (i) => Number.isFinite(i) ? i : null
+)
+
 /**
  * @since 1.0.0
  * @category schemas
@@ -251,7 +258,10 @@ export const Gauge = metric(
 export const Histogram = metric(
   "Histogram",
   Schema.struct({
-    buckets: Schema.array(Schema.tuple(Schema.number, Schema.number)),
+    buckets: Schema.array(Schema.tuple(
+      numberOrInfinity,
+      Schema.number
+    )),
     count: Schema.number,
     min: Schema.number,
     max: Schema.number,
