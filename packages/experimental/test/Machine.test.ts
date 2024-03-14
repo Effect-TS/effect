@@ -52,24 +52,23 @@ const counterSerializable = Machine.makeSerializable(
     Machine.serializable.make(previous ?? input, {
       identifier: `Counter(${input})`
     }).pipe(
-      Machine.serializable.add(Increment, "Increment", ({ state }) =>
+      Machine.serializable.add(Increment, ({ state }) =>
         Effect.sync(() => {
           const count = state + 1
           return [count, count]
         })),
-      Machine.serializable.add(Decrement, "Decrement", ({ state }) =>
+      Machine.serializable.add(Decrement, ({ state }) =>
         Effect.sync(() => {
           const count = state - 1
           return [count, count]
         })),
-      Machine.serializable.add(IncrementBy, "IncrementBy", ({ request, state }) =>
+      Machine.serializable.add(IncrementBy, ({ request, state }) =>
         Effect.sync(() => {
           const count = state + request.number
           return [count, count]
         })),
       Machine.serializable.add(
         FailBackground,
-        "FailBackground",
         ({ forkWith, state }) => forkWith(Effect.fail("error"), state)
       )
     )
@@ -150,11 +149,6 @@ const deferReply = Machine.make(
     )
   )
 )
-
-// const counterSerialized = Machine.toSerializable(counter, {
-//   state: Schema.NumberFromString,
-//   input: Schema.number
-// })
 
 describe("Machine", () => {
   test("counter", () =>

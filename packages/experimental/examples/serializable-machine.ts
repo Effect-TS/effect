@@ -3,19 +3,37 @@ import { runMain } from "@effect/platform-node/NodeRuntime"
 import { Schema } from "@effect/schema"
 import { Effect, List, Schedule } from "effect"
 
-class SendError extends Schema.TaggedError<SendError>()("SendError", {
-  email: Schema.string,
-  reason: Schema.string
-}) {}
+class SendError extends Schema.TaggedError<SendError>()(
+  "SendError",
+  {
+    email: Schema.string,
+    reason: Schema.string
+  }
+) {}
 
-class SendEmail extends Schema.TaggedRequest<SendEmail>()("SendEmail", SendError, Schema.void, {
-  email: Schema.string,
-  message: Schema.string
-}) {}
+class SendEmail extends Schema.TaggedRequest<SendEmail>()(
+  "SendEmail",
+  SendError,
+  Schema.void,
+  {
+    email: Schema.string,
+    message: Schema.string
+  }
+) {}
 
-class ProcessEmail extends Schema.TaggedRequest<ProcessEmail>()("ProcessEmail", Schema.never, Schema.void, {}) {}
+class ProcessEmail extends Schema.TaggedRequest<ProcessEmail>()(
+  "ProcessEmail",
+  Schema.never,
+  Schema.void,
+  {}
+) {}
 
-class Shutdown extends Schema.TaggedRequest<Shutdown>()("Shutdown", Schema.never, Schema.void, {}) {}
+class Shutdown extends Schema.TaggedRequest<Shutdown>()(
+  "Shutdown",
+  Schema.never,
+  Schema.void,
+  {}
+) {}
 
 const mailer = Machine.makeSerializable({
   state: Schema.list(SendEmail)
@@ -29,7 +47,7 @@ const mailer = Machine.makeSerializable({
     }
 
     return Machine.serializable.make(state).pipe(
-      Machine.serializable.addPrivate(ProcessEmail, "ProcessEmail", ({ state }) =>
+      Machine.serializable.addPrivate(ProcessEmail, ({ state }) =>
         Effect.gen(function*(_) {
           if (List.isNil(state)) {
             return [void 0, state]
@@ -38,11 +56,11 @@ const mailer = Machine.makeSerializable({
           yield* _(Effect.log(`Sending email to ${req.email}`), Effect.delay(500))
           return [void 0, state.tail]
         })),
-      Machine.serializable.add(SendEmail, "SendEmail", (ctx) =>
+      Machine.serializable.add(SendEmail, (ctx) =>
         ctx.send(new ProcessEmail()).pipe(
           Effect.as([void 0, List.append(ctx.state, ctx.request)])
         )),
-      Machine.serializable.add(Shutdown, "Shutdown", () =>
+      Machine.serializable.add(Shutdown, () =>
         Effect.log("Shutting down").pipe(
           Effect.zipRight(Effect.interrupt)
         ))

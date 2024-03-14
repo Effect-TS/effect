@@ -7,14 +7,26 @@ class SendError extends Data.TaggedError("SendError")<{
   readonly reason: string
 }> {}
 
-class SendEmail extends Request.TaggedClass("SendEmail")<void, SendError, {
-  readonly email: string
-  readonly message: string
-}> {}
+class SendEmail extends Request.TaggedClass("SendEmail")<
+  void,
+  SendError,
+  {
+    readonly email: string
+    readonly message: string
+  }
+> {}
 
-class ProcessEmail extends Request.TaggedClass("ProcessEmail")<void, never, {}> {}
+class ProcessEmail extends Request.TaggedClass("ProcessEmail")<
+  void,
+  never,
+  {}
+> {}
 
-class Shutdown extends Request.TaggedClass("Shutdown")<void, never, {}> {}
+class Shutdown extends Request.TaggedClass("Shutdown")<
+  void,
+  never,
+  {}
+> {}
 
 const mailer = Machine.makeWith<List.List<SendEmail>>()((_, previous) =>
   Effect.gen(function*(_) {
