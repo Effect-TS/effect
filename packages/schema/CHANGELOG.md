@@ -29,139 +29,141 @@
 
 ### Minor Changes
 
-- [#2172](https://github.com/Effect-TS/effect/pull/2172) [`5d47ee0`](https://github.com/Effect-TS/effect/commit/5d47ee0855e492532085b6092879b1b952d84949) Thanks [@gcanti](https://github.com/gcanti)! - # Breaking Changes
+- [#2172](https://github.com/Effect-TS/effect/pull/2172) [`5d47ee0`](https://github.com/Effect-TS/effect/commit/5d47ee0855e492532085b6092879b1b952d84949) Thanks [@gcanti](https://github.com/gcanti)! -
 
-  - The `Format` module has been removed
+# Breaking Changes
 
-  ## `AST` module
+- The `Format` module has been removed
 
-  - `Tuple` has been refactored to `TupleType`, and its `_tag` has consequently been renamed. The type of its `rest` property has changed from `Option.Option<ReadonlyArray.NonEmptyReadonlyArray<AST>>` to `ReadonlyArray<AST>`.
-  - `Transform` has been refactored to `Transformation`, and its `_tag` property has consequently been renamed. Its property `transformation` has now the type `TransformationKind = FinalTransformation | ComposeTransformation | TypeLiteralTransformation`.
-  - `createRecord` has been removed
-  - `AST.to` has been renamed to `AST.typeAST`
-  - `AST.from` has been renamed to `AST.encodedAST`
-  - `ExamplesAnnotation` and `DefaultAnnotation` now accept a type parameter
-  - `format` has been removed:
-    Before
+## `AST` module
 
-    ```ts
-    AST.format(ast, verbose?)
+- `Tuple` has been refactored to `TupleType`, and its `_tag` has consequently been renamed. The type of its `rest` property has changed from `Option.Option<ReadonlyArray.NonEmptyReadonlyArray<AST>>` to `ReadonlyArray<AST>`.
+- `Transform` has been refactored to `Transformation`, and its `_tag` property has consequently been renamed. Its property `transformation` has now the type `TransformationKind = FinalTransformation | ComposeTransformation | TypeLiteralTransformation`.
+- `createRecord` has been removed
+- `AST.to` has been renamed to `AST.typeAST`
+- `AST.from` has been renamed to `AST.encodedAST`
+- `ExamplesAnnotation` and `DefaultAnnotation` now accept a type parameter
+- `format` has been removed:
+  Before
+
+  ```ts
+  AST.format(ast, verbose?)
+  ```
+
+  Now
+
+  ```ts
+  ast.toString(verbose?)
+  ```
+
+- `setAnnotation` has been removed (use `annotations` instead)
+- `mergeAnnotations` has been renamed to `annotations`
+- move `defaultParseOption` from `Parser.ts` to `AST.ts`
+
+## `ParseResult` module
+
+- The `ParseResult` module now uses classes and custom constructors have been removed:
+  Before
+
+  ```ts
+  import * as ParseResult from "@effect/schema/ParseResult";
+
+  ParseResult.type(ast, actual);
+  ```
+
+  Now
+
+  ```ts
+  import * as ParseResult from "@effect/schema/ParseResult";
+
+  new ParseResult.Type(ast, actual);
+  ```
+
+- `Transform` has been refactored to `Transformation`, and its `kind` property now accepts `"Encoded"`, `"Transformation"`, or `"Type"` as values
+
+## `Schema` module
+
+- `uniqueSymbol` has been renamed to `uniqueSymbolFromSelf`
+- `Schema.Schema.To` has been renamed to `Schema.Schema.Type`, and `Schema.to` to `Schema.typeSchema`
+- `Schema.Schema.From` has been renamed to `Schema.Schema.Encoded`, and `Schema.from` to `Schema.encodedSchema`
+- The type parameters of `TaggedRequest` have been swapped
+- The signature of `PropertySignature` has been changed from `PropertySignature<From, FromOptional, To, ToOptional>` to `PropertySignature<ToToken extends Token, To, Key extends PropertyKey, FromToken extends Token, From, R>`
+- Class APIs
+  - Class APIs now expose `fields` and require an identifier
+    ```diff
+    -class A extends S.Class<A>()({ a: S.string }) {}
+    +class A extends S.Class<A>("A")({ a: S.string }) {}
     ```
+- `element` and `rest` have been removed in favor of `tuple`:
 
-    Now
+  Before
 
-    ```ts
-    ast.toString(verbose?)
-    ```
+  ```ts
+  import * as S from "@effect/schema/Schema";
 
-  - `setAnnotation` has been removed (use `annotations` instead)
-  - `mergeAnnotations` has been renamed to `annotations`
-  - move `defaultParseOption` from `Parser.ts` to `AST.ts`
+  const schema1 = S.tuple().pipe(S.rest(S.number), S.element(S.boolean));
 
-  ## `ParseResult` module
+  const schema2 = S.tuple(S.string).pipe(
+    S.rest(S.number),
+    S.element(S.boolean)
+  );
+  ```
 
-  - The `ParseResult` module now uses classes and custom constructors have been removed:
-    Before
+  Now
 
-    ```ts
-    import * as ParseResult from "@effect/schema/ParseResult";
+  ```ts
+  import * as S from "@effect/schema/Schema";
 
-    ParseResult.type(ast, actual);
-    ```
+  const schema1 = S.tuple([], S.number, S.boolean);
 
-    Now
+  const schema2 = S.tuple([S.string], S.number, S.boolean);
+  ```
 
-    ```ts
-    import * as ParseResult from "@effect/schema/ParseResult";
+- `optionalElement` has been refactored:
 
-    new ParseResult.Type(ast, actual);
-    ```
+  Before
 
-  - `Transform` has been refactored to `Transformation`, and its `kind` property now accepts `"Encoded"`, `"Transformation"`, or `"Type"` as values
+  ```ts
+  import * as S from "@effect/schema/Schema";
 
-  ## `Schema` module
+  const schema = S.tuple(S.string).pipe(S.optionalElement(S.number));
+  ```
 
-  - `uniqueSymbol` has been renamed to `uniqueSymbolFromSelf`
-  - `Schema.Schema.To` has been renamed to `Schema.Schema.Type`, and `Schema.to` to `Schema.typeSchema`
-  - `Schema.Schema.From` has been renamed to `Schema.Schema.Encoded`, and `Schema.from` to `Schema.encodedSchema`
-  - The type parameters of `TaggedRequest` have been swapped
-  - The signature of `PropertySignature` has been changed from `PropertySignature<From, FromOptional, To, ToOptional>` to `PropertySignature<ToToken extends Token, To, Key extends PropertyKey, FromToken extends Token, From, R>`
-  - Class APIs
-    - Class APIs now expose `fields` and require an identifier
-      ```diff
-      -class A extends S.Class<A>()({ a: S.string }) {}
-      +class A extends S.Class<A>("A")({ a: S.string }) {}
-      ```
-  - `element` and `rest` have been removed in favor of `array` and `tuple`:
+  Now
 
-    Before
+  ```ts
+  import * as S from "@effect/schema/Schema";
 
-    ```ts
-    import * as S from "@effect/schema/Schema";
+  const schema = S.tuple(S.string, S.optionalElement(S.number));
+  ```
 
-    const schema1 = S.tuple().pipe(S.rest(S.number), S.element(S.boolean));
+- use `TreeFormatter` in `BrandSchema`s
+- Schema annotations interfaces have been refactored into a namespace `Annotations`
+- the `annotations` option of the `optional` constructor has been replaced by the `annotations` method
+  Before
 
-    const schema2 = S.tuple(S.string).pipe(
-      S.rest(S.number),
-      S.element(S.boolean),
-    );
-    ```
+  ```ts
+  S.optional(S.string, {
+    exact: true,
+    annotations: { description: "description" },
+  });
+  ```
 
-    Now
+  Now
 
-    ```ts
-    import * as S from "@effect/schema/Schema";
+  ```ts
+  S.optional(S.string, { exact: true }).annotations({
+    description: "description",
+  });
+  ```
 
-    const schema1 = S.array(S.number, S.boolean);
+- Updated the `pluck` function to return `Schema<A[K], { readonly [key]: I[K] }>` instead of `Schema<A[K], I>`. Removed the `{ transformation: false }` option in favor of selecting the specific field from the `fields` exposed by a struct.
+- Removed `propertySignatureAnnotations`, use `propertySignature(schema).annotations()`.
+- Updated the function name `headOr` to `headOrElse` to align with the standard naming convention.
 
-    const schema2 = S.tuple([S.string], S.number, S.boolean);
-    ```
+## `Serializable` module
 
-  - `optionalElement` has been refactored:
-
-    Before
-
-    ```ts
-    import * as S from "@effect/schema/Schema";
-
-    const schema = S.tuple(S.string).pipe(S.optionalElement(S.number));
-    ```
-
-    Now
-
-    ```ts
-    import * as S from "@effect/schema/Schema";
-
-    const schema = S.tuple(S.string, S.optionalElement(S.number));
-    ```
-
-  - use `TreeFormatter` in `BrandSchema`s
-  - Schema annotations interfaces have been refactored into a namespace `Annotations`
-  - the `annotations` option of the `optional` constructor has been replaced by the `annotations` method
-    Before
-
-    ```ts
-    S.optional(S.string, {
-      exact: true,
-      annotations: { description: "description" },
-    });
-    ```
-
-    Now
-
-    ```ts
-    S.optional(S.string, { exact: true }).annotations({
-      description: "description",
-    });
-    ```
-
-  - Updated the `pluck` function to return `Schema<A[K], { readonly [key]: I[K] }>` instead of `Schema<A[K], I>`. Removed the `{ transformation: false }` option in favor of selecting the specific field from the `fields` exposed by a struct.
-  - Removed `propertySignatureAnnotations`, use `propertySignature(schema).annotations()`.
-  - Updated the function name `headOr` to `headOrElse` to align with the standard naming convention.
-
-  ## `Serializable` module
-
-  - The type parameters of `SerializableWithResult` and `WithResult` have been swapped
+- The type parameters of `SerializableWithResult` and `WithResult` have been swapped
 
 ### Patch Changes
 
@@ -175,7 +177,7 @@
     ```ts
     const schema1 = S.struct(
       { a: S.number },
-      { key: S.string, value: S.number },
+      { key: S.string, value: S.number }
     );
     // or
     const schema2 = S.struct({ a: S.number }, S.record(S.string, S.number));
@@ -211,7 +213,7 @@
       {
         a: S.string,
       },
-      { description: "some description..." }, // <= annotations
+      { description: "some description..." } // <= annotations
     ) {}
 
     console.log(AST.getDescriptionAnnotation((A.ast as AST.Transform).to));
@@ -493,7 +495,7 @@
     S.decode(S.array(pullOutColumn1))([
       { column1: "1", column2: 100 },
       { column1: "2", column2: 300 },
-    ]),
+    ])
   );
   // Output: { _id: 'Either', _tag: 'Right', right: [ 1, 2 ] }
 
@@ -504,7 +506,7 @@
 
   // const pullOutColumn1Value: S.Schema<number, string, never>
   const pullOutColumn1Value = mytable.pipe(
-    S.pluck("column1", { transformation: false }),
+    S.pluck("column1", { transformation: false })
   );
 
   console.log(S.decode(S.array(pullOutColumn1Value))(["1", "2"]));
@@ -584,7 +586,7 @@
   >() {}
 
   const program = Effect.flatMap(Service, ({ number }) => number).pipe(
-    Effect.flatMap((_) => Effect.log(`number: ${_}`)),
+    Effect.flatMap((_) => Effect.log(`number: ${_}`))
   );
   ```
 
@@ -786,7 +788,7 @@
 
   const myschema = S.struct({
     a: S.optional(S.string).pipe(
-      S.propertySignatureAnnotations({ description: "my description..." }),
+      S.propertySignatureAnnotations({ description: "my description..." })
     ),
   });
   ```

@@ -211,7 +211,7 @@ describe("Arbitrary > Arbitrary", () => {
   })
 
   it("tuple. r + e", () => {
-    const schema = S.array(S.string, S.number)
+    const schema = S.tuple([], S.string, S.number)
     expectValidArbitrary(schema)
   })
 

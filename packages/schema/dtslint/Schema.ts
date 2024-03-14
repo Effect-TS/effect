@@ -428,12 +428,6 @@ S.tuple(S.string, S.number).rest
 // tuple overloading / array overloading
 // ---------------------------------------------
 
-// $ExpectType Schema<readonly [...string[], number], readonly [...string[], number], never>
-S.asSchema(S.array(S.string, S.number))
-
-// $ExpectType tupleType<readonly [], [$string, $number]>
-S.array(S.string, S.number)
-
 // $ExpectType Schema<readonly [string, ...number[], boolean], readonly [string, ...number[], boolean], never>
 S.asSchema(S.tuple([S.string], S.number, S.boolean))
 
@@ -475,6 +469,9 @@ S.asSchema(S.array(S.number))
 // $ExpectType array<$number>
 S.array(S.number)
 
+// $ExpectType array<$number>
+S.number.pipe(S.array)
+
 // $ExpectType Schema<readonly number[], readonly string[], never>
 S.asSchema(S.array(S.NumberFromString))
 
@@ -499,6 +496,9 @@ S.asSchema(S.nonEmptyArray(S.number))
 
 // $ExpectType nonEmptyArray<$number>
 S.nonEmptyArray(S.number)
+
+// $ExpectType nonEmptyArray<$number>
+S.number.pipe(S.nonEmptyArray)
 
 // $ExpectType Schema<readonly [number, ...number[]], readonly [string, ...string[]], never>
 S.asSchema(S.nonEmptyArray(S.NumberFromString))
