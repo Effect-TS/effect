@@ -495,20 +495,6 @@ const opaque = S.tuple(
 const nonOpaque = S.asSchema(opaque);
 ```
 
-## Enhanced `array` Constructor
-
-The `array` constructor has been improved and now optionally accepts rest elements:
-
-```ts
-import * as S from "@effect/schema/Schema";
-
-// const opaque: S.tupleType<readonly [], [S.$string, S.$number]>
-const opaque = S.array(S.string, S.number);
-
-// const nonOpaque: S.Schema<readonly [...string[], number], readonly [...string[], number], never>
-const nonOpaque = S.asSchema(opaque);
-```
-
 # Property Signatures
 
 The definition of property signatures has been completely redesigned to allow for any type of transformation. Recall that a `PropertySignature` generally represents a transformation from a "From" field:

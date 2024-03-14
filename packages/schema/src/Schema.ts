@@ -1187,17 +1187,7 @@ class $array<Value extends Schema.Any> extends $tupleType<[], [Value]> implement
  * @category combinators
  * @since 1.0.0
  */
-export function array<Value extends Schema.Any, RestElements extends ReadonlyArray.NonEmptyReadonlyArray<Schema.Any>>(
-  value: Value,
-  ...restElements: RestElements
-): tupleType<readonly [], [Value, ...RestElements]>
-export function array<Value extends Schema.Any>(value: Value): array<Value>
-export function array<Value extends Schema.Any, RestElements extends ReadonlyArray<Schema.Any>>(
-  value: Value,
-  ...elements: RestElements
-): any {
-  return elements.length > 0 ? new $tupleType([], [value, ...elements]) : new $array(value)
-}
+export const array = <Value extends Schema.Any>(value: Value): array<Value> => new $array(value)
 
 /**
  * @category api interface

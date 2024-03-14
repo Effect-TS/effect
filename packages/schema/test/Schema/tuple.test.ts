@@ -265,7 +265,7 @@ describe("Schema > tuple", () => {
     })
 
     it("rest / element", async () => {
-      const schema = S.array(S.string, S.number)
+      const schema = S.tuple([], S.string, S.number)
       await Util.expectDecodeUnknownSuccess(schema, [1])
       await Util.expectDecodeUnknownSuccess(schema, ["a", 1])
       await Util.expectDecodeUnknownSuccess(schema, ["a", "b", 1])
@@ -457,7 +457,7 @@ describe("Schema > tuple", () => {
     })
 
     it("rest / element", async () => {
-      const schema = S.array(S.string, Util.NumberFromChar)
+      const schema = S.tuple([], S.string, Util.NumberFromChar)
       await Util.expectEncodeSuccess(schema, [1], ["1"])
       await Util.expectEncodeSuccess(schema, ["a", 1], ["a", "1"])
       await Util.expectEncodeSuccess(schema, ["a", "b", 1], ["a", "b", "1"])
