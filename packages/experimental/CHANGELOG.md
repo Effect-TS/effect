@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.13.0
+
+### Minor Changes
+
+- [#2323](https://github.com/Effect-TS/effect/pull/2323) [`d6d3f4e`](https://github.com/Effect-TS/effect/commit/d6d3f4ea4c81031876c4e58a016225cc2f5a81ea) Thanks [@tim-smart](https://github.com/tim-smart)! - remove tag argument for Machine serializable procedures
+
 ## 0.12.3
 
 ### Patch Changes
