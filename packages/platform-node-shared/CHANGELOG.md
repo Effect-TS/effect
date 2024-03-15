@@ -1,5 +1,27 @@
 # @effect/platform-node-shared
 
+## 0.3.8
+
+### Patch Changes
+
+- [#2334](https://github.com/Effect-TS/effect/pull/2334) [`69d27bb`](https://github.com/Effect-TS/effect/commit/69d27bb633884b6b50f9c3d9e95c29f09b4860b5) Thanks [@tim-smart](https://github.com/tim-smart)! - add .watch method to /platform FileSystem
+
+  It can be used to listen for file system events. Example:
+
+  ```ts
+  import { FileSystem } from "@effect/platform";
+  import { NodeFileSystem, NodeRuntime } from "@effect/platform-node";
+  import { Console, Effect, Stream } from "effect";
+
+  Effect.gen(function* (_) {
+    const fs = yield* _(FileSystem.FileSystem);
+    yield* _(fs.watch("./"), Stream.runForEach(Console.log));
+  }).pipe(Effect.provide(NodeFileSystem.layer), NodeRuntime.runMain);
+  ```
+
+- Updated dependencies [[`69d27bb`](https://github.com/Effect-TS/effect/commit/69d27bb633884b6b50f9c3d9e95c29f09b4860b5)]:
+  - @effect/platform@0.48.8
+
 ## 0.3.7
 
 ### Patch Changes
