@@ -9,8 +9,10 @@ import * as Deferred from "./Deferred.js"
 import * as Exit from "./Exit.js"
 import * as Fiber from "./Fiber.js"
 import * as FiberId from "./FiberId.js"
+import * as FiberRef from "./FiberRef.js"
 import { dual } from "./Function.js"
 import * as Inspectable from "./Inspectable.js"
+import type { FiberRuntime } from "./internal/fiberRuntime.js"
 import * as MutableHashMap from "./MutableHashMap.js"
 import * as Option from "./Option.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
@@ -173,6 +175,8 @@ export const unsafeSet: {
     }
     previous.value.unsafeInterruptAsFork(interruptAs ?? FiberId.none)
   }
+
+  ;(fiber as FiberRuntime<unknown, unknown>).setFiberRef(FiberRef.unhandledErrorLogLevel, Option.none())
   MutableHashMap.set(self.backing, key, fiber)
   fiber.addObserver((exit) => {
     const current = MutableHashMap.get(self.backing, key)

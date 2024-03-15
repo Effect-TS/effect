@@ -7,8 +7,11 @@ import * as Cause from "./Cause.js"
 import * as Deferred from "./Deferred.js"
 import * as Exit from "./Exit.js"
 import * as Fiber from "./Fiber.js"
+import * as FiberRef from "./FiberRef.js"
 import { dual } from "./Function.js"
 import * as Inspectable from "./Inspectable.js"
+import type { FiberRuntime } from "./internal/fiberRuntime.js"
+import * as Option from "./Option.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import * as Predicate from "./Predicate.js"
 import * as Runtime from "./Runtime.js"
@@ -146,6 +149,7 @@ export const unsafeAdd: {
   if (self.backing.has(fiber)) {
     return
   }
+  ;(fiber as FiberRuntime<unknown, unknown>).setFiberRef(FiberRef.unhandledErrorLogLevel, Option.none())
   self.backing.add(fiber)
   fiber.addObserver((exit) => {
     self.backing.delete(fiber)
