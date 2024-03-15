@@ -5770,14 +5770,7 @@ export const clampBigDecimal =
  */
 export const negateBigDecimal = <R, I, A extends _bigDecimal.BigDecimal>(
   self: Schema<A, I, R>
-): Schema<A, I, R> =>
-  transform(
-    self,
-    typeSchema(self),
-    (self) => _bigDecimal.negate(self),
-    (self) => _bigDecimal.negate(self),
-    { strict: false }
-  )
+): Schema<A, I, R> => transform(self, typeSchema(self), _bigDecimal.negate, _bigDecimal.negate, { strict: false })
 
 const chunkArbitrary = <A>(item: Arbitrary<A>): Arbitrary<Chunk.Chunk<A>> => (fc) =>
   fc.array(item(fc)).map(Chunk.fromIterable)
