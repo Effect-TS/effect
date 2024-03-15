@@ -315,6 +315,7 @@ export const fromWebSocket = (
           FiberSet.runtime(fiberSet)<R>(),
           Effect.provideService(WebSocket, ws)
         )
+        let open = false
 
         ws.onmessage = (event) => {
           run(
@@ -327,6 +328,20 @@ export const fromWebSocket = (
             )
           )
         }
+        ws.onclose = (event) => {
+          run(
+            Effect.fail(
+              new SocketCloseError({
+                reason: "Close",
+                code: event.code,
+                closeReason: event.reason
+              })
+            )
+          )
+        }
+        ws.onerror = (error) => {
+          run(Effect.fail(new SocketGenericError({ reason: open ? "Read" : "Open", error: (error as any).message })))
+        }
 
         if (ws.readyState !== IsoWebSocket.OPEN) {
           yield* _(
@@ -334,16 +349,16 @@ export const fromWebSocket = (
               ws.onopen = () => {
                 resume(Effect.unit)
               }
-              ws.onerror = (error_) => {
-                resume(Effect.fail(new SocketGenericError({ reason: "Open", error: (error_ as any).message })))
-              }
             }),
             Effect.timeoutFail({
               duration: options?.openTimeout ?? 10000,
               onTimeout: () => new SocketGenericError({ reason: "OpenTimeout", error: "timeout waiting for \"open\"" })
-            })
+            }),
+            Effect.raceFirst(FiberSet.join(fiberSet))
           )
         }
+
+        open = true
 
         yield* _(
           Queue.take(sendQueue),
@@ -368,23 +383,7 @@ export const fromWebSocket = (
         )
 
         yield* _(
-          Effect.async<void, SocketError, never>((resume) => {
-            ws.onclose = (event) => {
-              resume(
-                Effect.fail(
-                  new SocketCloseError({
-                    reason: "Close",
-                    code: event.code,
-                    closeReason: event.reason
-                  })
-                )
-              )
-            }
-            ws.onerror = (error) => {
-              resume(Effect.fail(new SocketGenericError({ reason: "Read", error: (error as any).message })))
-            }
-          }),
-          Effect.raceFirst(FiberSet.join(fiberSet)),
+          FiberSet.join(fiberSet),
           Effect.catchIf(
             SocketCloseError.isClean((_) => !closeCodeIsError(_)),
             (_) => Effect.unit
