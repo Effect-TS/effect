@@ -4,7 +4,7 @@ import { describe, it } from "vitest"
 
 describe("number > negate", () => {
   it("decoding", async () => {
-    const schema = S.number.pipe(S.negate)
+    const schema = S.Negate
     await Util.expectDecodeUnknownSuccess(schema, 3, -3)
     await Util.expectDecodeUnknownSuccess(schema, 0, -0)
     await Util.expectDecodeUnknownSuccess(schema, 1, -1)

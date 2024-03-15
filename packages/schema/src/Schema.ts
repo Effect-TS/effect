@@ -3779,21 +3779,24 @@ export const clamp =
     )
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface Negate extends Annotable<Negate, number> {}
+
+/**
  * Negates a `Number`.
  *
  * @category number transformations
  * @since 1.0.0
  */
-export const negate = <A extends number, I, R>(
-  self: Schema<A, I, R>
-): Schema<A, I, R> =>
-  transform(
-    self,
-    typeSchema(self),
-    (self) => N.negate(self),
-    (self) => N.negate(self),
-    { strict: false }
-  )
+export const Negate: Negate = transform(
+  number,
+  number,
+  N.negate,
+  N.negate,
+  { strict: false }
+)
 
 /**
  * @category api interface
