@@ -4,6 +4,7 @@
 
 import * as _bigDecimal from "effect/BigDecimal"
 import * as _bigInt from "effect/BigInt"
+import * as _boolean from "effect/Boolean"
 import * as Brand from "effect/Brand"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
@@ -3895,12 +3896,7 @@ export interface Not extends Annotable<Not, boolean> {}
  * @category boolean transformations
  * @since 1.0.0
  */
-export const Not: Not = transform(
-  boolean,
-  boolean,
-  (self) => !self,
-  (self) => !self
-)
+export const Not: Not = transform(boolean, boolean, _boolean.not, _boolean.not)
 
 /**
  * @category api interface
