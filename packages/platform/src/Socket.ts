@@ -8,7 +8,6 @@ import * as Context from "effect/Context"
 import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
 import * as FiberSet from "effect/FiberSet"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -202,7 +201,8 @@ export const toChannel = <IE>(
         Effect.zipRight(Effect.failCause(Cause.empty)),
         Effect.exit,
         Effect.tap((exit) => Queue.offer(exitQueue, exit)),
-        Effect.fork
+        Effect.fork,
+        Effect.interruptible
       )
 
       const loop: Channel.Channel<Chunk.Chunk<Uint8Array>, unknown, SocketError | IE, unknown, void, unknown> = Channel
@@ -345,7 +345,7 @@ export const fromWebSocket = (
           )
         }
 
-        const writeFiber = yield* _(
+        yield* _(
           Queue.take(sendQueue),
           Effect.tap((chunk) =>
             isCloseEvent(chunk) ?
@@ -363,8 +363,8 @@ export const fromWebSocket = (
               })
           ),
           Effect.forever,
-          Effect.fork,
-          Effect.withUnhandledErrorLogLevel(Option.none())
+          Effect.withUnhandledErrorLogLevel(Option.none()),
+          FiberSet.run(fiberSet)
         )
 
         yield* _(
@@ -385,13 +385,15 @@ export const fromWebSocket = (
             }
           }),
           Effect.raceFirst(FiberSet.join(fiberSet)),
-          Effect.raceFirst(Fiber.join(writeFiber)),
           Effect.catchIf(
             SocketCloseError.isClean((_) => !closeCodeIsError(_)),
             (_) => Effect.unit
           )
         )
-      }).pipe(Effect.scoped)
+      }).pipe(
+        Effect.scoped,
+        Effect.interruptible
+      )
 
     const write = (chunk: Uint8Array | CloseEvent) => Queue.offer(sendQueue, chunk)
     const writer = Effect.succeed(write)
