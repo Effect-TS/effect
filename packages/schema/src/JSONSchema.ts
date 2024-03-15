@@ -207,7 +207,18 @@ export type JsonSchema7Root = JsonSchema7 & {
  * @category encoding
  * @since 1.0.0
  */
-export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root => goRoot(schema.ast)
+export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root => {
+  const $defs = {}
+  const jsonSchema = goWithIdentifier(schema.ast, $defs)
+  const out: JsonSchema7Root = {
+    $schema,
+    ...jsonSchema
+  }
+  if (!ReadonlyRecord.isEmptyRecord($defs)) {
+    out.$defs = $defs
+  }
+  return out
+}
 
 const anyJsonSchema: JsonSchema7 = { $id: "/schemas/any" }
 
@@ -230,20 +241,6 @@ const empty = (): JsonSchema7 => ({
 })
 
 const $schema = "http://json-schema.org/draft-07/schema#"
-
-/** @internal */
-export const goRoot = (ast: AST.AST): JsonSchema7Root => {
-  const $defs = {}
-  const jsonSchema = goWithIdentifier(ast, $defs)
-  const out: JsonSchema7Root = {
-    $schema,
-    ...jsonSchema
-  }
-  if (!ReadonlyRecord.isEmptyRecord($defs)) {
-    out.$defs = $defs
-  }
-  return out
-}
 
 const goWithIdentifier = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
   const identifier = AST.getJSONIdentifier(ast)
@@ -269,9 +266,19 @@ const getMetaData = (annotated: AST.Annotated) =>
   })
 
 const goWithMetaData = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
+  const meta = getMetaData(ast)
+  const hook = AST.getJSONSchemaAnnotation(ast)
+  if (Option.isSome(hook)) {
+    const handler = hook.value as JsonSchema7
+    switch (ast._tag) {
+      case "Refinement":
+        return { ...goWithIdentifier(ast.from, $defs), ...meta, ...handler }
+    }
+    return { ...meta, ...handler }
+  }
   return {
     ...go(ast, $defs),
-    ...getMetaData(ast)
+    ...meta
   }
 }
 
@@ -283,21 +290,19 @@ const pruneUndefinedKeyword = (ps: AST.PropertySignature): AST.AST => {
   return type
 }
 
+const getMissingAnnotationErrorMessage = (name: string): string =>
+  `cannot build a JSON Schema for ${name} without a JSON Schema annotation`
+
+const getUnsupportedIndexSignatureParameterErrorMessage = (parameter: AST.AST): string =>
+  `Unsupported index signature parameter (${parameter})`
+
 /** @internal */
 export const DEFINITION_PREFIX = "#/$defs/"
 
 const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
-  const hook = AST.getJSONSchemaAnnotation(ast)
-  if (Option.isSome(hook)) {
-    switch (ast._tag) {
-      case "Refinement":
-        return { ...goWithIdentifier(ast.from, $defs), ...hook.value }
-    }
-    return hook.value as any
-  }
   switch (ast._tag) {
     case "Declaration": {
-      throw new Error("cannot build a JSON Schema for a declaration without a JSON Schema annotation")
+      throw new Error(getMissingAnnotationErrorMessage("a declaration"))
     }
     case "Literal": {
       const literal = ast.literal
@@ -310,16 +315,16 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
       } else if (Predicate.isBoolean(literal)) {
         return { const: literal }
       }
-      throw new Error("cannot build a JSON Schema for a bigint literal without a JSON Schema annotation")
+      throw new Error(getMissingAnnotationErrorMessage("a bigint literal"))
     }
     case "UniqueSymbol":
-      throw new Error("cannot build a JSON Schema for a unique symbol without a JSON Schema annotation")
+      throw new Error(getMissingAnnotationErrorMessage("a unique symbol"))
     case "UndefinedKeyword":
-      throw new Error("cannot build a JSON Schema for `undefined` without a JSON Schema annotation")
+      throw new Error(getMissingAnnotationErrorMessage("`undefined`"))
     case "VoidKeyword":
-      throw new Error("cannot build a JSON Schema for `void` without a JSON Schema annotation")
+      throw new Error(getMissingAnnotationErrorMessage("`void`"))
     case "NeverKeyword":
-      throw new Error("cannot build a JSON Schema for `never` without a JSON Schema annotation")
+      throw new Error(getMissingAnnotationErrorMessage("`never`"))
     case "UnknownKeyword":
       return { ...unknownJsonSchema }
     case "AnyKeyword":
@@ -333,9 +338,9 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
     case "BooleanKeyword":
       return { type: "boolean" }
     case "BigIntKeyword":
-      throw new Error("cannot build a JSON Schema for `bigint` without a JSON Schema annotation")
+      throw new Error(getMissingAnnotationErrorMessage("`bigint`"))
     case "SymbolKeyword":
-      throw new Error("cannot build a JSON Schema for `symbol` without a JSON Schema annotation")
+      throw new Error(getMissingAnnotationErrorMessage("`symbol`"))
     case "TupleType": {
       const elements = ast.elements.map((e) => goWithIdentifier(e.type, $defs))
       const rest = ast.rest.map((ast) => goWithIdentifier(ast, $defs))
@@ -413,10 +418,10 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
               }
               break
             }
-            throw new Error(`Unsupported index signature parameter (${parameter})`)
+            throw new Error(getUnsupportedIndexSignatureParameterErrorMessage(parameter))
           }
           case "SymbolKeyword":
-            throw new Error(`Unsupported index signature parameter (${parameter})`)
+            throw new Error(getUnsupportedIndexSignatureParameterErrorMessage(parameter))
         }
       }
       const propertySignatures = ast.propertySignatures.map((ps) => {
