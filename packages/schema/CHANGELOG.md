@@ -1,5 +1,16 @@
 # @effect/schema
 
+## 0.64.5
+
+### Patch Changes
+
+- [#2332](https://github.com/Effect-TS/effect/pull/2332) [`d0f56c6`](https://github.com/Effect-TS/effect/commit/d0f56c68e604b1cf8dd4e761a3f3cf3631b3cec1) Thanks [@gcanti](https://github.com/gcanti)! - add missing `Date` api interfaces:
+
+  - `DateFromSelf`
+  - `ValidDateFromSelf`
+  - `DateFromString`
+  - `$Date`
+
 ## 0.64.4
 
 ### Patch Changes
@@ -118,7 +129,7 @@
 
   const schema2 = S.tuple(S.string).pipe(
     S.rest(S.number),
-    S.element(S.boolean)
+    S.element(S.boolean),
   );
   ```
 
@@ -190,7 +201,7 @@
     ```ts
     const schema1 = S.struct(
       { a: S.number },
-      { key: S.string, value: S.number }
+      { key: S.string, value: S.number },
     );
     // or
     const schema2 = S.struct({ a: S.number }, S.record(S.string, S.number));
@@ -226,7 +237,7 @@
       {
         a: S.string,
       },
-      { description: "some description..." } // <= annotations
+      { description: "some description..." }, // <= annotations
     ) {}
     ```
 
@@ -505,7 +516,7 @@
     S.decode(S.array(pullOutColumn1))([
       { column1: "1", column2: 100 },
       { column1: "2", column2: 300 },
-    ])
+    ]),
   );
   // Output: { _id: 'Either', _tag: 'Right', right: [ 1, 2 ] }
 
@@ -516,7 +527,7 @@
 
   // const pullOutColumn1Value: S.Schema<number, string, never>
   const pullOutColumn1Value = mytable.pipe(
-    S.pluck("column1", { transformation: false })
+    S.pluck("column1", { transformation: false }),
   );
 
   console.log(S.decode(S.array(pullOutColumn1Value))(["1", "2"]));
@@ -596,7 +607,7 @@
   >() {}
 
   const program = Effect.flatMap(Service, ({ number }) => number).pipe(
-    Effect.flatMap((_) => Effect.log(`number: ${_}`))
+    Effect.flatMap((_) => Effect.log(`number: ${_}`)),
   );
   ```
 
@@ -798,7 +809,7 @@
 
   const myschema = S.struct({
     a: S.optional(S.string).pipe(
-      S.propertySignatureAnnotations({ description: "my description..." })
+      S.propertySignatureAnnotations({ description: "my description..." }),
     ),
   });
   ```
