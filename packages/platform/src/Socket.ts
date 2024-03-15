@@ -343,7 +343,7 @@ export const fromWebSocket = (
         ws.onerror = (error) => {
           Deferred.unsafeDone(
             fiberSet.deferred,
-            Effect.fail(new SocketGenericError({ reason: open ? "Read" : "Open", error: (error as any).message }))
+            Effect.fail(new SocketGenericError({ reason: open ? "Read" : "Open", error }))
           )
         }
 
@@ -378,7 +378,7 @@ export const fromWebSocket = (
               }) :
               Effect.try({
                 try: () => ws.send(chunk),
-                catch: (error) => new SocketGenericError({ reason: "Write", error: (error as any).message })
+                catch: (error) => new SocketGenericError({ reason: "Write", error })
               })
           ),
           Effect.forever,
