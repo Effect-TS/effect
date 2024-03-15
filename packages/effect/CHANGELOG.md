@@ -1,5 +1,11 @@
 # effect
 
+## 2.4.7
+
+### Patch Changes
+
+- [#2328](https://github.com/Effect-TS/effect/pull/2328) [`eb93283`](https://github.com/Effect-TS/effect/commit/eb93283985913d7b04ca750e36ac8513e7b6cef6) Thanks [@tim-smart](https://github.com/tim-smart)! - set unhandled log level to none for fibers in FiberSet/Map
+
 ## 2.4.6
 
 ### Patch Changes
