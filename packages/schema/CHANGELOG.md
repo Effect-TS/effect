@@ -118,7 +118,7 @@
 
   const schema2 = S.tuple(S.string).pipe(
     S.rest(S.number),
-    S.element(S.boolean),
+    S.element(S.boolean)
   );
   ```
 
@@ -190,7 +190,7 @@
     ```ts
     const schema1 = S.struct(
       { a: S.number },
-      { key: S.string, value: S.number },
+      { key: S.string, value: S.number }
     );
     // or
     const schema2 = S.struct({ a: S.number }, S.record(S.string, S.number));
@@ -222,15 +222,12 @@
     import * as AST from "@effect/schema/AST";
     import * as S from "@effect/schema/Schema";
 
-    class A extends S.Class<A>()(
+    class A extends S.Class<A>("A")(
       {
         a: S.string,
       },
-      { description: "some description..." }, // <= annotations
+      { description: "some description..." } // <= annotations
     ) {}
-
-    console.log(AST.getDescriptionAnnotation((A.ast as AST.Transform).to));
-    // => { _id: 'Option', _tag: 'Some', value: 'some description...' }
     ```
 
 - Updated dependencies [[`5d47ee0`](https://github.com/Effect-TS/effect/commit/5d47ee0855e492532085b6092879b1b952d84949), [`817a04c`](https://github.com/Effect-TS/effect/commit/817a04cb2df0f4140984dc97eb3e1bb14a6c4a38), [`d90a99d`](https://github.com/Effect-TS/effect/commit/d90a99d03d074adc7cd2533f15419138264da5a2), [`dd05faa`](https://github.com/Effect-TS/effect/commit/dd05faa621555ef3585ecd914ac13ecd89b710f4), [`dd05faa`](https://github.com/Effect-TS/effect/commit/dd05faa621555ef3585ecd914ac13ecd89b710f4), [`802674b`](https://github.com/Effect-TS/effect/commit/802674b379b7559ad3ff09b33388891445a9e48b)]:
@@ -508,7 +505,7 @@
     S.decode(S.array(pullOutColumn1))([
       { column1: "1", column2: 100 },
       { column1: "2", column2: 300 },
-    ]),
+    ])
   );
   // Output: { _id: 'Either', _tag: 'Right', right: [ 1, 2 ] }
 
@@ -519,7 +516,7 @@
 
   // const pullOutColumn1Value: S.Schema<number, string, never>
   const pullOutColumn1Value = mytable.pipe(
-    S.pluck("column1", { transformation: false }),
+    S.pluck("column1", { transformation: false })
   );
 
   console.log(S.decode(S.array(pullOutColumn1Value))(["1", "2"]));
@@ -599,7 +596,7 @@
   >() {}
 
   const program = Effect.flatMap(Service, ({ number }) => number).pipe(
-    Effect.flatMap((_) => Effect.log(`number: ${_}`)),
+    Effect.flatMap((_) => Effect.log(`number: ${_}`))
   );
   ```
 
@@ -801,7 +798,7 @@
 
   const myschema = S.struct({
     a: S.optional(S.string).pipe(
-      S.propertySignatureAnnotations({ description: "my description..." }),
+      S.propertySignatureAnnotations({ description: "my description..." })
     ),
   });
   ```
