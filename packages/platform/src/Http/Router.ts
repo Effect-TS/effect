@@ -36,7 +36,11 @@ export interface Router<R, E> extends App.Default<Exclude<R, RouteContext>, E | 
   readonly [TypeId]: TypeId
   readonly routes: Chunk.Chunk<Route<R, E>>
   readonly mounts: Chunk.Chunk<
-    readonly [prefix: string, httpApp: App.Default<R, E>, options?: { readonly includePrefix?: boolean } | undefined]
+    readonly [
+      prefix: string,
+      httpApp: App.Default<R, E>,
+      options?: { readonly includePrefix?: boolean | undefined } | undefined
+    ]
   >
 }
 

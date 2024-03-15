@@ -49,8 +49,8 @@ class RawImpl implements Body.Raw {
 
 /** @internal */
 export const raw = (body: unknown, options?: {
-  readonly contentType?: string
-  readonly contentLength?: number
+  readonly contentType?: string | undefined
+  readonly contentLength?: number | undefined
 }): Body.Raw => new RawImpl(body, options?.contentType, options?.contentLength)
 
 class Uint8ArrayImpl implements Body.Uint8Array {

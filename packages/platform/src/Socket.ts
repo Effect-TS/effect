@@ -131,7 +131,7 @@ export class SocketGenericError extends RefailError(SocketErrorTypeId, "SocketEr
 export class SocketCloseError extends TypeIdError(SocketErrorTypeId, "SocketError")<{
   readonly reason: "Close"
   readonly code: number
-  readonly closeReason?: string
+  readonly closeReason?: string | undefined
 }> {
   /**
    * @since 1.0.0

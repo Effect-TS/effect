@@ -3,6 +3,7 @@
  */
 import * as Brand from "effect/Brand"
 import type { Tag } from "effect/Context"
+import * as Data from "effect/Data"
 import type * as Effect from "effect/Effect"
 import type { Option } from "effect/Option"
 import type { Scope } from "effect/Scope"
@@ -229,6 +230,10 @@ export interface FileSystem {
     atime: Date | number,
     mtime: Date | number
   ) => Effect.Effect<void, PlatformError>
+  /**
+   * Watch a directory for changes
+   */
+  readonly watch: (path: string) => Stream<WatchEvent, PlatformError>
   /**
    * Write data to a file at `path`.
    */
@@ -528,3 +533,66 @@ export const FileDescriptor = Brand.nominal<File.Descriptor>()
  * @category model
  */
 export type SeekMode = "start" | "current"
+
+/**
+ * @since 1.0.0
+ * @category model
+ */
+export type WatchEvent = WatchEvent.Create | WatchEvent.Update | WatchEvent.Remove
+
+/**
+ * @since 1.0.0
+ * @category model
+ */
+export declare namespace WatchEvent {
+  /**
+   * @since 1.0.0
+   * @category model
+   */
+  export interface Create {
+    readonly _tag: "Create"
+    readonly path: string
+  }
+
+  /**
+   * @since 1.0.0
+   * @category model
+   */
+  export interface Update {
+    readonly _tag: "Update"
+    readonly path: string
+  }
+
+  /**
+   * @since 1.0.0
+   * @category model
+   */
+  export interface Remove {
+    readonly _tag: "Remove"
+    readonly path: string
+  }
+}
+
+/**
+ * @since 1.0.0
+ * @category constructor
+ */
+export const WatchEventCreate: Data.Case.Constructor<WatchEvent.Create, "_tag"> = Data.tagged<WatchEvent.Create>(
+  "Create"
+)
+
+/**
+ * @since 1.0.0
+ * @category constructor
+ */
+export const WatchEventUpdate: Data.Case.Constructor<WatchEvent.Update, "_tag"> = Data.tagged<WatchEvent.Update>(
+  "Update"
+)
+
+/**
+ * @since 1.0.0
+ * @category constructor
+ */
+export const WatchEventRemove: Data.Case.Constructor<WatchEvent.Remove, "_tag"> = Data.tagged<WatchEvent.Remove>(
+  "Remove"
+)

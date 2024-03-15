@@ -88,7 +88,9 @@ export const schemaBodyUrlParamsEffect = <R, I extends Readonly<Record<string, s
  * @since 1.0.0
  * @category schema
  */
-export const schemaHeaders = <R, I extends Readonly<Record<string, string>>, A>(schema: Schema.Schema<A, I, R>) => {
+export const schemaHeaders = <R, I extends Readonly<Record<string, string | undefined>>, A>(
+  schema: Schema.Schema<A, I, R>
+) => {
   const parse = Schema.decodeUnknown(schema)
   return <E>(self: IncomingMessage<E>): Effect.Effect<A, ParseResult.ParseError, R> => parse(self.headers)
 }
