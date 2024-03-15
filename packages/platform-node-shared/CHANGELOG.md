@@ -1,5 +1,14 @@
 # @effect/platform-node-shared
 
+## 0.3.5
+
+### Patch Changes
+
+- [#2325](https://github.com/Effect-TS/effect/pull/2325) [`e006e4a`](https://github.com/Effect-TS/effect/commit/e006e4a538c97bae6ca1efa74802159e8a688fcb) Thanks [@tim-smart](https://github.com/tim-smart)! - ensure Socket fibers are interruptible
+
+- Updated dependencies [[`e006e4a`](https://github.com/Effect-TS/effect/commit/e006e4a538c97bae6ca1efa74802159e8a688fcb)]:
+  - @effect/platform@0.48.5
+
 ## 0.3.4
 
 ### Patch Changes
