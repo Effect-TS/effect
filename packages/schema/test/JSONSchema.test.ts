@@ -1809,6 +1809,17 @@ describe("JSONSchema", () => {
         "type": "custom JSON Schema"
       })
     })
+
+    it("refinement of a transformation", () => {
+      const schema = S.Date.pipe(S.jsonSchema({ type: "string", format: "date-time" }))
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "a valid Date",
+        "format": "date-time",
+        "type": "string"
+      })
+    })
   })
 })
 

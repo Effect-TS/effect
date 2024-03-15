@@ -208,11 +208,16 @@ export type JsonSchema7Root = JsonSchema7 & {
  * @since 1.0.0
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root => {
-  const $defs = {}
+  const $defs: Record<string, any> = {}
   const jsonSchema = go(schema.ast, $defs)
   const out: JsonSchema7Root = {
     $schema,
     ...jsonSchema
+  }
+  for (const id in $defs) {
+    if ($defs[id]["$ref"] === get$ref(id)) {
+      delete $defs[id]
+    }
   }
   if (!ReadonlyRecord.isEmptyRecord($defs)) {
     out.$defs = $defs
@@ -258,8 +263,11 @@ const pruneUndefinedKeyword = (ps: AST.PropertySignature): AST.AST => {
   return type
 }
 
-const getMissingAnnotationErrorMessage = (name: string): string =>
-  `cannot build a JSON Schema for ${name} without a JSON Schema annotation`
+const getMissingAnnotationError = (name: string) => {
+  const out = new Error(`cannot build a JSON Schema for ${name} without a JSON Schema annotation`)
+  out.name = "MissingAnnotation"
+  return out
+}
 
 const getUnsupportedIndexSignatureParameterErrorMessage = (parameter: AST.AST): string =>
   `Unsupported index signature parameter (${parameter})`
@@ -267,13 +275,22 @@ const getUnsupportedIndexSignatureParameterErrorMessage = (parameter: AST.AST): 
 /** @internal */
 export const DEFINITION_PREFIX = "#/$defs/"
 
+const get$ref = (id: string): string => `${DEFINITION_PREFIX}${id}`
+
 const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>, handleIdentifier: boolean = true): JsonSchema7 => {
   const hook = AST.getJSONSchemaAnnotation(ast)
   if (Option.isSome(hook)) {
     const handler = hook.value as JsonSchema7
     switch (ast._tag) {
       case "Refinement":
-        return { ...go(ast.from, $defs, true), ...getMeta(ast), ...handler }
+        try {
+          return { ...go(ast.from, $defs), ...getMeta(ast), ...handler }
+        } catch (e) {
+          if (e instanceof Error && e.name === "MissingAnnotation") {
+            return { ...getMeta(ast), ...handler }
+          }
+          throw e
+        }
     }
     return handler
   }
@@ -281,7 +298,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>, handleIdentifier: 
     const identifier = AST.getJSONIdentifier(ast)
     if (Option.isSome(identifier)) {
       const id = identifier.value
-      const out = { $ref: `${DEFINITION_PREFIX}${id}` }
+      const out = { $ref: get$ref(id) }
       if (!ReadonlyRecord.has($defs, id)) {
         $defs[id] = out
         $defs[id] = go(ast, $defs, false)
@@ -290,9 +307,8 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>, handleIdentifier: 
     }
   }
   switch (ast._tag) {
-    case "Declaration": {
-      throw new Error(getMissingAnnotationErrorMessage("a declaration"))
-    }
+    case "Declaration":
+      throw getMissingAnnotationError("a declaration")
     case "Literal": {
       const literal = ast.literal
       if (literal === null) {
@@ -304,16 +320,16 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>, handleIdentifier: 
       } else if (Predicate.isBoolean(literal)) {
         return { const: literal, ...getMeta(ast) }
       }
-      throw new Error(getMissingAnnotationErrorMessage("a bigint literal"))
+      throw getMissingAnnotationError("a bigint literal")
     }
     case "UniqueSymbol":
-      throw new Error(getMissingAnnotationErrorMessage("a unique symbol"))
+      throw getMissingAnnotationError("a unique symbol")
     case "UndefinedKeyword":
-      throw new Error(getMissingAnnotationErrorMessage("`undefined`"))
+      throw getMissingAnnotationError("`undefined`")
     case "VoidKeyword":
-      throw new Error(getMissingAnnotationErrorMessage("`void`"))
+      throw getMissingAnnotationError("`void`")
     case "NeverKeyword":
-      throw new Error(getMissingAnnotationErrorMessage("`never`"))
+      throw getMissingAnnotationError("`never`")
     case "UnknownKeyword":
       return { ...unknownJsonSchema, ...getMeta(ast) }
     case "AnyKeyword":
@@ -327,9 +343,9 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>, handleIdentifier: 
     case "BooleanKeyword":
       return { type: "boolean", ...getMeta(ast) }
     case "BigIntKeyword":
-      throw new Error(getMissingAnnotationErrorMessage("`bigint`"))
+      throw getMissingAnnotationError("`bigint`")
     case "SymbolKeyword":
-      throw new Error(getMissingAnnotationErrorMessage("`symbol`"))
+      throw getMissingAnnotationError("`symbol`")
     case "TupleType": {
       const elements = ast.elements.map((e) => go(e.type, $defs))
       const rest = ast.rest.map((ast) => go(ast, $defs))
