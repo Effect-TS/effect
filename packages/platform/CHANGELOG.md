@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.48.7
+
+### Patch Changes
+
+- [#2330](https://github.com/Effect-TS/effect/pull/2330) [`f908948`](https://github.com/Effect-TS/effect/commit/f908948fd05771a670c0b746e2dd9caa9408ef83) Thanks [@tim-smart](https://github.com/tim-smart)! - use Deferred.unsafeDone for websocket onclose + onerror
+
 ## 0.48.6
 
 ### Patch Changes
