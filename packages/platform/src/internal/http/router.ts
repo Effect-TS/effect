@@ -65,7 +65,11 @@ class RouterImpl<R, E> extends Effectable.StructuralClass<
   constructor(
     readonly routes: Chunk.Chunk<Router.Route<R, E>>,
     readonly mounts: Chunk.Chunk<
-      readonly [prefix: string, httpApp: App.Default<R, E>, options?: { readonly includePrefix?: boolean } | undefined]
+      readonly [
+        prefix: string,
+        httpApp: App.Default<R, E>,
+        options?: { readonly includePrefix?: boolean | undefined } | undefined
+      ]
     >
   ) {
     super()
@@ -273,8 +277,8 @@ export const mountApp = dual<
     path: `/${string}`,
     that: App.Default<R1, E1>,
     options?: {
-      readonly includePrefix?: boolean
-    }
+      readonly includePrefix?: boolean | undefined
+    } | undefined
   ) => <R, E>(
     self: Router.Router<R, E>
   ) => Router.Router<R | Router.Router.ExcludeProvided<R1>, E | E1>,
@@ -283,8 +287,8 @@ export const mountApp = dual<
     path: `/${string}`,
     that: App.Default<R1, E1>,
     options?: {
-      readonly includePrefix?: boolean
-    }
+      readonly includePrefix?: boolean | undefined
+    } | undefined
   ) => Router.Router<R | Router.Router.ExcludeProvided<R1>, E | E1>
 >(
   (args) => Predicate.hasProperty(args[0], TypeId),
@@ -293,8 +297,8 @@ export const mountApp = dual<
     path: `/${string}`,
     that: App.Default<R1, E1>,
     options?: {
-      readonly includePrefix?: boolean
-    }
+      readonly includePrefix?: boolean | undefined
+    } | undefined
   ): Router.Router<R | Router.Router.ExcludeProvided<R1>, E | E1> =>
     new RouterImpl<any, any>(self.routes, Chunk.append(self.mounts, [removeTrailingSlash(path), that, options])) as any
 )

@@ -13,18 +13,22 @@ import * as FileSystem from "../FileSystem.js"
 export const toFile = dual<
   (
     path: string,
-    options?: FileSystem.OpenFileOptions & {
-      readonly batchWindow?: DurationInput
-    }
+    options?:
+      | FileSystem.OpenFileOptions & {
+        readonly batchWindow?: DurationInput | undefined
+      }
+      | undefined
   ) => <Message>(
     self: Logger.Logger<Message, string>
   ) => Effect.Effect<Logger.Logger<Message, void>, PlatformError, Scope.Scope | FileSystem.FileSystem>,
   <Message>(
     self: Logger.Logger<Message, string>,
     path: string,
-    options?: FileSystem.OpenFileOptions & {
-      readonly batchWindow?: DurationInput
-    }
+    options?:
+      | FileSystem.OpenFileOptions & {
+        readonly batchWindow?: DurationInput | undefined
+      }
+      | undefined
   ) => Effect.Effect<Logger.Logger<Message, void>, PlatformError, Scope.Scope | FileSystem.FileSystem>
 >(
   (args) => Logger.isLogger(args[0]),
