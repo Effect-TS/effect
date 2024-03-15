@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-added Boolean.fromUnknown
+added Predicate.isTruthy

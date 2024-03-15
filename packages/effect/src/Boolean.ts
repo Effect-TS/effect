@@ -12,23 +12,6 @@ import * as order from "./Order.js"
 import * as predicate from "./Predicate.js"
 
 /**
- * Tests if a value is `truthy` or `falsy`.
- *
- * @param input - The value to test.
- *
- * @example
- * import { fromUnknown } from 'effect/Boolean'
- *
- * assert.deepStrictEqual(fromUnknown(1), true)
- * assert.deepStrictEqual(fromUnknown(0), false)
- * assert.deepStrictEqual(fromUnknown(""), false)
- *
- * @category constructors
- * @since 2.0.0
- */
-export const fromUnknown = (input: unknown) => !!input
-
-/**
  * Tests if a value is a `boolean`.
  *
  * @param input - The value to test.

@@ -4,17 +4,6 @@ import { pipe } from "effect/Function"
 import { assert, describe, expect, it } from "vitest"
 
 describe("Boolean", () => {
-  it("fromUnknown", () => {
-    expect(Boolean.fromUnknown(true)).toEqual(true)
-    expect(Boolean.fromUnknown(false)).toEqual(false)
-    expect(Boolean.fromUnknown("a")).toEqual(true)
-    expect(Boolean.fromUnknown("")).toEqual(false)
-    expect(Boolean.fromUnknown(1)).toEqual(true)
-    expect(Boolean.fromUnknown(0)).toEqual(false)
-    expect(Boolean.fromUnknown(1n)).toEqual(true)
-    expect(Boolean.fromUnknown(0n)).toEqual(false)
-  })
-
   it("isBoolean", () => {
     expect(Boolean.isBoolean(true)).toEqual(true)
     expect(Boolean.isBoolean(false)).toEqual(true)
