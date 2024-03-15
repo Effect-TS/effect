@@ -32,7 +32,7 @@ import * as Request from "effect/Request"
 import * as _secret from "effect/Secret"
 import * as SortedSet from "effect/SortedSet"
 import * as S from "effect/String"
-import type { Covariant, Invariant, NoInfer, UnionToIntersection } from "effect/Types"
+import type * as Types from "effect/Types"
 import type { Arbitrary } from "./Arbitrary.js"
 import * as arbitrary from "./Arbitrary.js"
 import type { ParseOptions } from "./AST.js"
@@ -143,9 +143,9 @@ export declare namespace Schema {
    */
   export interface Variance<A, I, R> {
     readonly [TypeId]: {
-      readonly _A: Invariant<A>
-      readonly _I: Invariant<I>
-      readonly _R: Covariant<R>
+      readonly _A: Types.Invariant<A>
+      readonly _I: Types.Invariant<I>
+      readonly _R: Types.Covariant<R>
     }
   }
 
@@ -1833,7 +1833,7 @@ export declare namespace IndexSignature {
    */
   export type Type<
     Records extends IndexSignature.Records
-  > = UnionToIntersection<
+  > = Types.UnionToIntersection<
     {
       [K in keyof Records]: {
         readonly [P in Schema.Type<Records[K]["key"]>]: Schema.Type<Records[K]["value"]>
@@ -1846,7 +1846,7 @@ export declare namespace IndexSignature {
    */
   export type Encoded<
     Records extends IndexSignature.Records
-  > = UnionToIntersection<
+  > = Types.UnionToIntersection<
     {
       [K in keyof Records]: {
         readonly [P in Schema.Encoded<Records[K]["key"]>]: Schema.Encoded<Records[K]["value"]>
@@ -2449,8 +2449,8 @@ export function filter<C extends A, B extends A, A = C>(
   annotations?: Annotations.Filter<A>
 ): <I, R>(self: Schema<C, I, R>) => Schema<C & B, I, R>
 export function filter<A>(
-  predicate: Predicate.Predicate<NoInfer<A>>,
-  annotations?: Annotations.Filter<NoInfer<A>>
+  predicate: Predicate.Predicate<Types.NoInfer<A>>,
+  annotations?: Annotations.Filter<Types.NoInfer<A>>
 ): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R>
 export function filter<A>(
   predicate: Predicate.Predicate<A> | AST.Refinement["filter"],
@@ -6042,10 +6042,10 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
   : Class<
     Self,
     { readonly [TAG]: literal<[Tag]> } & Fields,
-    Simplify<{ readonly [TAG]: Tag } & Struct.Type<Fields>>,
-    Simplify<{ readonly [TAG]: Tag } & Struct.Encoded<Fields>>,
+    Types.Simplify<{ readonly [TAG]: Tag } & Struct.Type<Fields>>,
+    Types.Simplify<{ readonly [TAG]: Tag } & Struct.Encoded<Fields>>,
     Struct.Context<Fields>,
-    Simplify<Struct.Type<Fields>>,
+    Types.Simplify<Struct.Type<Fields>>,
     {},
     {}
   > =>
@@ -6073,10 +6073,10 @@ export const TaggedError = <Self = never>(identifier?: string) =>
   : Class<
     Self,
     { readonly [TAG]: literal<[Tag]> } & Fields,
-    Simplify<{ readonly [TAG]: Tag } & Struct.Type<Fields>>,
-    Simplify<{ readonly [TAG]: Tag } & Struct.Encoded<Fields>>,
+    Types.Simplify<{ readonly [TAG]: Tag } & Struct.Type<Fields>>,
+    Types.Simplify<{ readonly [TAG]: Tag } & Struct.Encoded<Fields>>,
     Struct.Context<Fields>,
-    Simplify<Struct.Type<Fields>>,
+    Types.Simplify<Struct.Type<Fields>>,
     {},
     Cause.YieldableError
   > =>
@@ -6131,10 +6131,10 @@ export const TaggedRequest =
     : Class<
       Self,
       { readonly [TAG]: literal<[Tag]> } & Fields,
-      Simplify<{ readonly [TAG]: Tag } & Struct.Type<Fields>>,
-      Simplify<{ readonly [TAG]: Tag } & Struct.Encoded<Fields>>,
+      Types.Simplify<{ readonly [TAG]: Tag } & Struct.Type<Fields>>,
+      Types.Simplify<{ readonly [TAG]: Tag } & Struct.Encoded<Fields>>,
       Struct.Context<Fields>,
-      Simplify<Struct.Type<Fields>>,
+      Types.Simplify<Struct.Type<Fields>>,
       TaggedRequest<
         Tag,
         Self,
