@@ -5,12 +5,12 @@ import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
 import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FiberSet from "effect/FiberSet"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
@@ -329,7 +329,8 @@ export const fromWebSocket = (
           )
         }
         ws.onclose = (event) => {
-          run(
+          Deferred.unsafeDone(
+            fiberSet.deferred,
             Effect.fail(
               new SocketCloseError({
                 reason: "Close",
@@ -340,7 +341,10 @@ export const fromWebSocket = (
           )
         }
         ws.onerror = (error) => {
-          run(Effect.fail(new SocketGenericError({ reason: open ? "Read" : "Open", error: (error as any).message })))
+          Deferred.unsafeDone(
+            fiberSet.deferred,
+            Effect.fail(new SocketGenericError({ reason: open ? "Read" : "Open", error: (error as any).message }))
+          )
         }
 
         if (ws.readyState !== IsoWebSocket.OPEN) {
@@ -378,7 +382,6 @@ export const fromWebSocket = (
               })
           ),
           Effect.forever,
-          Effect.withUnhandledErrorLogLevel(Option.none()),
           FiberSet.run(fiberSet)
         )
 
