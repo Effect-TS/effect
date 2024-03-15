@@ -4767,12 +4767,18 @@ export const validDate =
     )
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface DateFromSelf extends Annotable<DateFromSelf, Date> {}
+
+/**
  * Represents a schema for handling potentially **invalid** `Date` instances (e.g., `new Date("Invalid Date")` is not rejected).
  *
  * @category Date constructors
  * @since 1.0.0
  */
-export const DateFromSelf: Schema<Date> = declare(
+export const DateFromSelf: DateFromSelf = declare(
   Predicate.isDate,
   {
     identifier: "DateFromSelf",
@@ -4784,12 +4790,18 @@ export const DateFromSelf: Schema<Date> = declare(
 )
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface ValidDateFromSelf extends Annotable<ValidDateFromSelf, Date> {}
+
+/**
  * Represents a schema for handling only **valid** dates. For example, `new Date("Invalid Date")` is rejected, even though it is an instance of `Date`.
  *
  * @category Date constructors
  * @since 1.0.0
  */
-export const ValidDateFromSelf: Schema<Date> = DateFromSelf.pipe(
+export const ValidDateFromSelf: ValidDateFromSelf = DateFromSelf.pipe(
   validDate({
     identifier: "ValidDateFromSelf",
     description: "a valid Date instance"
@@ -4797,19 +4809,31 @@ export const ValidDateFromSelf: Schema<Date> = DateFromSelf.pipe(
 )
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface DateFromString extends Annotable<DateFromString, Date, string> {}
+
+/**
  * Represents a schema that converts a `string` into a (potentially invalid) `Date` (e.g., `new Date("Invalid Date")` is not rejected).
  *
  * @category Date transformations
  * @since 1.0.0
  */
-export const DateFromString: Schema<Date, string> = transform(
+export const DateFromString: DateFromString = transform(
   string,
   DateFromSelf,
   (s) => new Date(s),
   (n) => n.toISOString()
 ).annotations({ identifier: "DateFromString" })
 
-const _Date: Schema<Date, string> = DateFromString.pipe(
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface $Date extends Annotable<$Date, Date, string> {}
+
+const _Date: $Date = DateFromString.pipe(
   validDate({ identifier: "Date" })
 )
 
