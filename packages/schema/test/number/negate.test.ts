@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("number > clamp", () => {
+describe("number > negate", () => {
   it("decoding", async () => {
     const schema = S.number.pipe(S.negate)
     await Util.expectDecodeUnknownSuccess(schema, 3, -3)
