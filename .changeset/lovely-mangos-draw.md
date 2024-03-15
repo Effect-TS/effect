@@ -4,4 +4,4 @@
 
 JSONSchema:
 
-- allow overriding metadata through annotations
+- clean up output when overriding through annotations

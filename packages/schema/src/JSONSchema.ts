@@ -209,7 +209,7 @@ export type JsonSchema7Root = JsonSchema7 & {
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root => {
   const $defs = {}
-  const jsonSchema = goWithIdentifier(schema.ast, $defs)
+  const jsonSchema = go(schema.ast, $defs)
   const out: JsonSchema7Root = {
     $schema,
     ...jsonSchema
@@ -242,45 +242,13 @@ const empty = (): JsonSchema7 => ({
 
 const $schema = "http://json-schema.org/draft-07/schema#"
 
-const goWithIdentifier = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
-  const identifier = AST.getJSONIdentifier(ast)
-  return Option.match(identifier, {
-    onNone: () => goWithMetaData(ast, $defs),
-    onSome: (id) => {
-      const out = { $ref: `${DEFINITION_PREFIX}${id}` }
-      if (!ReadonlyRecord.has($defs, id)) {
-        $defs[id] = out
-        $defs[id] = goWithMetaData(ast, $defs)
-      }
-      return out
-    }
-  })
-}
-
-const getMetaData = (annotated: AST.Annotated) =>
+const getMeta = (annotated: AST.Annotated) =>
   ReadonlyRecord.getSomes({
     description: AST.getDescriptionAnnotation(annotated),
     title: AST.getTitleAnnotation(annotated),
     examples: AST.getExamplesAnnotation(annotated),
     default: AST.getDefaultAnnotation(annotated)
   })
-
-const goWithMetaData = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
-  const meta = getMetaData(ast)
-  const hook = AST.getJSONSchemaAnnotation(ast)
-  if (Option.isSome(hook)) {
-    const handler = hook.value as JsonSchema7
-    switch (ast._tag) {
-      case "Refinement":
-        return { ...goWithIdentifier(ast.from, $defs), ...meta, ...handler }
-    }
-    return { ...meta, ...handler }
-  }
-  return {
-    ...go(ast, $defs),
-    ...meta
-  }
-}
 
 const pruneUndefinedKeyword = (ps: AST.PropertySignature): AST.AST => {
   const type = ps.type
@@ -299,7 +267,28 @@ const getUnsupportedIndexSignatureParameterErrorMessage = (parameter: AST.AST): 
 /** @internal */
 export const DEFINITION_PREFIX = "#/$defs/"
 
-const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
+const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>, handleIdentifier: boolean = true): JsonSchema7 => {
+  const hook = AST.getJSONSchemaAnnotation(ast)
+  if (Option.isSome(hook)) {
+    const handler = hook.value as JsonSchema7
+    switch (ast._tag) {
+      case "Refinement":
+        return { ...go(ast.from, $defs, true), ...getMeta(ast), ...handler }
+    }
+    return handler
+  }
+  if (handleIdentifier) {
+    const identifier = AST.getJSONIdentifier(ast)
+    if (Option.isSome(identifier)) {
+      const id = identifier.value
+      const out = { $ref: `${DEFINITION_PREFIX}${id}` }
+      if (!ReadonlyRecord.has($defs, id)) {
+        $defs[id] = out
+        $defs[id] = go(ast, $defs, false)
+      }
+      return out
+    }
+  }
   switch (ast._tag) {
     case "Declaration": {
       throw new Error(getMissingAnnotationErrorMessage("a declaration"))
@@ -307,13 +296,13 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
     case "Literal": {
       const literal = ast.literal
       if (literal === null) {
-        return { const: null }
+        return { const: null, ...getMeta(ast) }
       } else if (Predicate.isString(literal)) {
-        return { const: literal }
+        return { const: literal, ...getMeta(ast) }
       } else if (Predicate.isNumber(literal)) {
-        return { const: literal }
+        return { const: literal, ...getMeta(ast) }
       } else if (Predicate.isBoolean(literal)) {
-        return { const: literal }
+        return { const: literal, ...getMeta(ast) }
       }
       throw new Error(getMissingAnnotationErrorMessage("a bigint literal"))
     }
@@ -326,24 +315,24 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
     case "NeverKeyword":
       throw new Error(getMissingAnnotationErrorMessage("`never`"))
     case "UnknownKeyword":
-      return { ...unknownJsonSchema }
+      return { ...unknownJsonSchema, ...getMeta(ast) }
     case "AnyKeyword":
-      return { ...anyJsonSchema }
+      return { ...anyJsonSchema, ...getMeta(ast) }
     case "ObjectKeyword":
-      return { ...objectJsonSchema }
+      return { ...objectJsonSchema, ...getMeta(ast) }
     case "StringKeyword":
-      return { type: "string" }
+      return { type: "string", ...getMeta(ast) }
     case "NumberKeyword":
-      return { type: "number" }
+      return { type: "number", ...getMeta(ast) }
     case "BooleanKeyword":
-      return { type: "boolean" }
+      return { type: "boolean", ...getMeta(ast) }
     case "BigIntKeyword":
       throw new Error(getMissingAnnotationErrorMessage("`bigint`"))
     case "SymbolKeyword":
       throw new Error(getMissingAnnotationErrorMessage("`symbol`"))
     case "TupleType": {
-      const elements = ast.elements.map((e) => goWithIdentifier(e.type, $defs))
-      const rest = ast.rest.map((ast) => goWithIdentifier(ast, $defs))
+      const elements = ast.elements.map((e) => go(e.type, $defs))
+      const rest = ast.rest.map((ast) => go(ast, $defs))
       const output: JsonSchema7Array = { type: "array" }
       // ---------------------------------------------
       // handle elements
@@ -380,11 +369,11 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
         }
       }
 
-      return output
+      return { ...output, ...getMeta(ast) }
     }
     case "TypeLiteral": {
       if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
-        return empty()
+        return { ...empty(), ...getMeta(ast) }
       }
       let additionalProperties: JsonSchema7 | undefined = undefined
       let patternProperties: Record<string, JsonSchema7> | undefined = undefined
@@ -392,12 +381,12 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
         const parameter = is.parameter
         switch (parameter._tag) {
           case "StringKeyword": {
-            additionalProperties = goWithIdentifier(is.type, $defs)
+            additionalProperties = go(is.type, $defs)
             break
           }
           case "TemplateLiteral": {
             patternProperties = {
-              [AST.getTemplateLiteralRegExp(parameter).source]: goWithIdentifier(
+              [AST.getTemplateLiteralRegExp(parameter).source]: go(
                 is.type,
                 $defs
               )
@@ -411,7 +400,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
               Predicate.isString(hook.value.pattern)
             ) {
               patternProperties = {
-                [hook.value.pattern]: goWithIdentifier(
+                [hook.value.pattern]: go(
                   is.type,
                   $defs
                 )
@@ -425,7 +414,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
         }
       }
       const propertySignatures = ast.propertySignatures.map((ps) => {
-        return { ...goWithIdentifier(pruneUndefinedKeyword(ps), $defs), ...getMetaData(ps) }
+        return { ...go(pruneUndefinedKeyword(ps), $defs), ...getMeta(ps) }
       })
       const output: JsonSchema7Object = {
         type: "object",
@@ -460,13 +449,13 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
         output.patternProperties = patternProperties
       }
 
-      return output
+      return { ...output, ...getMeta(ast) }
     }
     case "Union": {
       const enums: Array<AST.LiteralValue> = []
       const anyOf: Array<JsonSchema7> = []
       for (const type of ast.types) {
-        const schema = goWithIdentifier(type, $defs)
+        const schema = go(type, $defs)
         if ("const" in schema) {
           if (Object.keys(schema).length > 1) {
             anyOf.push(schema)
@@ -479,9 +468,9 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
       }
       if (anyOf.length === 0) {
         if (enums.length === 1) {
-          return { const: enums[0] }
+          return { const: enums[0], ...getMeta(ast) }
         } else {
-          return { enum: enums }
+          return { enum: enums, ...getMeta(ast) }
         }
       } else {
         if (enums.length === 1) {
@@ -489,13 +478,14 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
         } else if (enums.length > 1) {
           anyOf.push({ enum: enums })
         }
-        return { anyOf }
+        return { anyOf, ...getMeta(ast) }
       }
     }
     case "Enums": {
       return {
         $comment: "/schemas/enums",
-        oneOf: ast.enums.map((e) => ({ title: e[0], const: e[1] }))
+        oneOf: ast.enums.map((e) => ({ title: e[0], const: e[1] })),
+        ...getMeta(ast)
       }
     }
     case "Refinement": {
@@ -506,7 +496,8 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
       return {
         type: "string",
         description: "a template literal",
-        pattern: regex.source
+        pattern: regex.source,
+        ...getMeta(ast)
       }
     }
     case "Suspend": {
@@ -516,9 +507,9 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>): JsonSchema7 => {
           "Generating a JSON Schema for suspended schemas requires an identifier annotation"
         )
       }
-      return goWithIdentifier(ast.f(), $defs)
+      return go(ast.f(), $defs)
     }
     case "Transformation":
-      return goWithIdentifier(ast.to, $defs)
+      return go(ast.to, $defs)
   }
 }
