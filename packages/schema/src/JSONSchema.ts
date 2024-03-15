@@ -214,6 +214,7 @@ export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root =
     $schema,
     ...jsonSchema
   }
+  // clean up self-referencing entries
   for (const id in $defs) {
     if ($defs[id]["$ref"] === get$ref(id)) {
       delete $defs[id]

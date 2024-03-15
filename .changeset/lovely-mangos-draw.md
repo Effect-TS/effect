@@ -2,6 +2,4 @@
 "@effect/schema": patch
 ---
 
-JSONSchema:
-
-- clean up output when overriding through annotations
+JSONSchema: allow overrides through annotations, closes #1823
