@@ -150,6 +150,17 @@ describe("Predicate", () => {
     deepStrictEqual(predicate(1), true)
   })
 
+  it("isTruthy", () => {
+    expect(_.isTruthy(true)).toEqual(true)
+    expect(_.isTruthy(false)).toEqual(false)
+    expect(_.isTruthy("a")).toEqual(true)
+    expect(_.isTruthy("")).toEqual(false)
+    expect(_.isTruthy(1)).toEqual(true)
+    expect(_.isTruthy(0)).toEqual(false)
+    expect(_.isTruthy(1n)).toEqual(true)
+    expect(_.isTruthy(0n)).toEqual(false)
+  })
+
   it("isFunction", () => {
     assert.deepStrictEqual(_.isFunction(_.isFunction), true)
     assert.deepStrictEqual(_.isFunction("function"), false)

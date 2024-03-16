@@ -54,6 +54,23 @@ export const mapInput: {
 } = dual(2, <A, B>(self: Predicate<A>, f: (b: B) => A): Predicate<B> => (b) => self(f(b)))
 
 /**
+ * Tests if a value is `truthy`.
+ *
+ * @param input - The value to test.
+ *
+ * @example
+ * import { isTruthy } from 'effect/Predicate'
+ *
+ * assert.deepStrictEqual(isTruthy(1), true)
+ * assert.deepStrictEqual(isTruthy(0), false)
+ * assert.deepStrictEqual(isTruthy(""), false)
+ *
+ * @category guards
+ * @since 2.0.0
+ */
+export const isTruthy = (input: unknown) => !!input
+
+/**
  * Tests if a value is a `Set`.
  *
  * @param input - The value to test.
