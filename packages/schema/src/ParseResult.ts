@@ -1512,7 +1512,7 @@ export const getLiterals = (
 ): ReadonlyArray<[PropertyKey, AST.Literal]> => {
   switch (ast._tag) {
     case "Declaration": {
-      const annotation = AST.getSurrogateSchemaAnnotation(ast)
+      const annotation = AST.getSurrogateAnnotation(ast)
       if (Option.isSome(annotation)) {
         return getLiterals(annotation.value, isDecoding)
       }
