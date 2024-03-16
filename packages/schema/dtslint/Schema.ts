@@ -1060,7 +1060,7 @@ pipe(S.struct({ radius: S.NumberFromString }), S.attachPropertySignature("kind",
 // filter
 // ---------------------------------------------
 
-const predicateFilter1 = (u: unknown) => typeof u === "string"
+const predicateFilter1 = (u: unknown): boolean => typeof u === "string"
 const FromFilter = S.union(S.string, S.number)
 
 // $ExpectType Schema<string | number, string | number, never>
