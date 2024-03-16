@@ -308,7 +308,7 @@ export const getConcurrencyAnnotation = getAnnotation<ConcurrencyAnnotation>(Con
 export const getBatchingAnnotation = getAnnotation<BatchingAnnotation>(BatchingAnnotationId)
 
 /** @internal */
-export const getSurrogateSchemaAnnotation = getAnnotation<SurrogateAnnotation>(SurrogateAnnotationId)
+export const getSurrogateAnnotation = getAnnotation<SurrogateAnnotation>(SurrogateAnnotationId)
 
 const JSONIdentifierAnnotationId = Symbol.for("@effect/schema/annotation/JSONIdentifier")
 
@@ -1736,7 +1736,7 @@ export const getTemplateLiteralRegExp = (ast: TemplateLiteral): RegExp => {
 export const getPropertySignatures = (ast: AST): Array<PropertySignature> => {
   switch (ast._tag) {
     case "Declaration": {
-      const annotation = getSurrogateSchemaAnnotation(ast)
+      const annotation = getSurrogateAnnotation(ast)
       if (Option.isSome(annotation)) {
         return getPropertySignatures(annotation.value)
       }
@@ -1784,7 +1784,7 @@ export const getNumberIndexedAccess = (ast: AST): AST => {
 export const getPropertyKeyIndexedAccess = (ast: AST, name: PropertyKey): PropertySignature => {
   switch (ast._tag) {
     case "Declaration": {
-      const annotation = getSurrogateSchemaAnnotation(ast)
+      const annotation = getSurrogateAnnotation(ast)
       if (Option.isSome(annotation)) {
         return getPropertyKeyIndexedAccess(annotation.value, name)
       }
@@ -1837,7 +1837,7 @@ export const getPropertyKeyIndexedAccess = (ast: AST, name: PropertyKey): Proper
 const getPropertyKeys = (ast: AST): Array<PropertyKey> => {
   switch (ast._tag) {
     case "Declaration": {
-      const annotation = getSurrogateSchemaAnnotation(ast)
+      const annotation = getSurrogateAnnotation(ast)
       if (Option.isSome(annotation)) {
         return getPropertyKeys(annotation.value)
       }
@@ -1852,6 +1852,8 @@ const getPropertyKeys = (ast: AST): Array<PropertyKey> => {
         (out: Array<PropertyKey>, ast) => ReadonlyArray.intersection(out, getPropertyKeys(ast)),
         getPropertyKeys(ast.types[0])
       )
+    case "Transformation":
+      return getPropertyKeys(ast.to)
   }
   return []
 }
@@ -1899,15 +1901,44 @@ export const record = (key: AST, value: AST): {
  *
  * @since 1.0.0
  */
-export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral =>
-  new TypeLiteral(keys.map((key) => getPropertyKeyIndexedAccess(ast, key)), [])
+export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral | Transformation => {
+  if (isTransform(ast)) {
+    switch (ast.transformation._tag) {
+      case "ComposeTransformation":
+        return new Transformation(
+          pick(ast.from, keys),
+          pick(ast.to, keys),
+          composeTransformation
+        )
+      case "TypeLiteralTransformation": {
+        const propertySignatureTransformations = ast.transformation.propertySignatureTransformations
+          .filter((t) => (keys as ReadonlyArray<PropertyKey>).includes(t.to))
+        return new Transformation(
+          pick(ast.from, keys),
+          pick(ast.to, keys),
+          ReadonlyArray.isNonEmptyReadonlyArray(propertySignatureTransformations)
+            ? new TypeLiteralTransformation(propertySignatureTransformations)
+            : composeTransformation
+        )
+      }
+      case "FinalTransformation": {
+        const annotation = getSurrogateAnnotation(ast)
+        if (Option.isSome(annotation)) {
+          return pick(annotation.value, keys)
+        }
+        throw new Error("cannot handle this kind of transformation")
+      }
+    }
+  }
+  return new TypeLiteral(keys.map((key) => getPropertyKeyIndexedAccess(ast, key)), [])
+}
 
 /**
  * Equivalent at runtime to the built-in TypeScript utility type `Omit`.
  *
  * @since 1.0.0
  */
-export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral =>
+export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral | Transformation =>
   pick(ast, getPropertyKeys(ast).filter((name) => !keys.includes(name)))
 
 /** @internal */
@@ -2282,7 +2313,7 @@ export const getWeight = (ast: AST): Weight => {
         [4, y, z]
     }
     case "Declaration": {
-      const annotation = getSurrogateSchemaAnnotation(ast)
+      const annotation = getSurrogateAnnotation(ast)
       if (Option.isSome(annotation)) {
         const [_, y, z] = getWeight(annotation.value)
         return [6, y, z]
@@ -2485,7 +2516,7 @@ const intersection = ReadonlyArray.intersectionWith(equals)
 const _keyof = (ast: AST): Array<AST> => {
   switch (ast._tag) {
     case "Declaration": {
-      const annotation = getSurrogateSchemaAnnotation(ast)
+      const annotation = getSurrogateAnnotation(ast)
       if (Option.isSome(annotation)) {
         return _keyof(annotation.value)
       }

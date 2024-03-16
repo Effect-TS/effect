@@ -2068,28 +2068,7 @@ export const record = <K extends Schema.All, V extends Schema.All>(key: K, value
 export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
 <R, I extends { [K in keyof A]?: any }>(
   self: Schema<A, I, R>
-): Schema<Simplify<Pick<A, Keys[number]>>, Simplify<Pick<I, Keys[number]>>, R> => {
-  const ast = self.ast
-  if (AST.isTransform(ast)) {
-    if (AST.isTypeLiteralTransformation(ast.transformation)) {
-      const propertySignatureTransformations = ast.transformation.propertySignatureTransformations
-        .filter((t) => (keys as ReadonlyArray<PropertyKey>).includes(t.to))
-      if (ReadonlyArray.isNonEmptyReadonlyArray(propertySignatureTransformations)) {
-        return make(
-          new AST.Transformation(
-            AST.pick(ast.from, keys),
-            AST.pick(ast.to, keys),
-            new AST.TypeLiteralTransformation(propertySignatureTransformations)
-          )
-        )
-      } else {
-        return make(AST.pick(ast.from, keys))
-      }
-    }
-    throw new Error(`pick: cannot handle this kind of transformation`)
-  }
-  return make(AST.pick(ast, keys))
-}
+): Schema<Simplify<Pick<A, Keys[number]>>, Simplify<Pick<I, Keys[number]>>, R> => make(AST.pick(self.ast, keys))
 
 /**
  * @category struct transformations
@@ -2098,28 +2077,7 @@ export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
 export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
 <R, I extends { [K in keyof A]?: any }>(
   self: Schema<A, I, R>
-): Schema<Simplify<Omit<A, Keys[number]>>, Simplify<Omit<I, Keys[number]>>, R> => {
-  const ast = self.ast
-  if (AST.isTransform(ast)) {
-    if (AST.isTypeLiteralTransformation(ast.transformation)) {
-      const propertySignatureTransformations = ast.transformation.propertySignatureTransformations
-        .filter((t) => !(keys as ReadonlyArray<PropertyKey>).includes(t.to))
-      if (ReadonlyArray.isNonEmptyReadonlyArray(propertySignatureTransformations)) {
-        return make(
-          new AST.Transformation(
-            AST.omit(ast.from, keys),
-            AST.omit(ast.to, keys),
-            new AST.TypeLiteralTransformation(propertySignatureTransformations)
-          )
-        )
-      } else {
-        return make(AST.omit(ast.from, keys))
-      }
-    }
-    throw new Error(`omit: cannot handle this kind of transformation`)
-  }
-  return make(AST.omit(ast, keys))
-}
+): Schema<Simplify<Omit<A, Keys[number]>>, Simplify<Omit<I, Keys[number]>>, R> => make(AST.omit(self.ast, keys))
 
 /**
  * Given a schema `Schema<A, I, R>` and a key `key: K`, this function extracts a specific field from the `A` type,
@@ -6251,7 +6209,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
         declaration,
         (input) => new this(input, true),
         identity
-      )
+      ).annotations({ [AST.SurrogateAnnotationId]: schema.ast })
       return transformation.ast
     }
 

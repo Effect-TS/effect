@@ -149,9 +149,15 @@ describe("Schema > pick", () => {
     await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: "b" })
   })
 
-  it("Class", () => {
-    class A extends S.Class<A>("A")({ a: S.string, b: S.number }) {}
+  it("typeSchema(Class)", () => {
+    class A extends S.Class<A>("A")({ a: S.string, b: S.NumberFromString }) {}
     const schema = A.pipe(S.typeSchema, S.pick("b"))
     expect(schema.ast).toStrictEqual(S.struct({ b: S.number }).ast)
+  })
+
+  it("Class", () => {
+    class A extends S.Class<A>("A")({ a: S.string, b: S.NumberFromString }) {}
+    const schema = A.pipe(S.pick("b"))
+    expect(schema.ast).toStrictEqual(S.struct({ b: S.NumberFromString }).ast)
   })
 })
