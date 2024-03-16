@@ -952,7 +952,8 @@ export const if_ = dual<
   (self: boolean | Effect.Effect<unknown, unknown, unknown>, { onFalse, onTrue }: {
     readonly onTrue: Effect.Effect<unknown, unknown, unknown>
     readonly onFalse: Effect.Effect<unknown, unknown, unknown>
-  }) => typeof self === "boolean" ? (self ? onTrue : onFalse) : flatMap(self, (b) => (b ? onTrue : onFalse))
+    // eslint-disable-next-line no-extra-boolean-cast
+  }) => isEffect(self) ? flatMap(self, (b) => (b ? onTrue : onFalse)) : Boolean(self) ? onTrue : onFalse
 )
 
 /* @internal */
