@@ -45,6 +45,24 @@ class NumberTag extends Effect.Tag("NumberTag")<NumberTag, number>() {
 }
 
 describe("Effect", () => {
+  describe("and Then", () => {
+    it.effect("effect tag", () =>
+      Effect.gen(function*($) {
+        const [n, s, z] = yield* $(Effect.all([
+          Effect.andThen(Effect.unit, DemoTag.getNumbers),
+          Effect.andThen(Effect.succeed("a"), DemoTag.strings),
+          Effect.andThen(Effect.succeed("a"), DemoTag.fn)
+        ]))
+        expect(n).toEqual([0, 1])
+        expect(s).toEqual(["a", "b"])
+        expect(z).toEqual(["a"])
+      }).pipe(Effect.provideService(DemoTag, {
+        getNumbers: () => [0, 1],
+        strings: ["a", "b"],
+        fn: (...args) => Array.from(args),
+        fnGen: (s) => [s]
+      })))
+  })
   it.effect("effect tag", () =>
     Effect.gen(function*($) {
       const [n, s, z] = yield* $(Effect.all([
