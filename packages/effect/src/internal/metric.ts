@@ -54,10 +54,7 @@ export const make: Metric.MetricApply = function<Type, In, Out>(
 ): Metric.Metric<Type, In, Out> {
   const metric: Metric.Metric<Type, In, Out> = Object.assign(
     <A extends In, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-      core.tap(
-        effect,
-        (a) => core.sync(() => unsafeUpdate(a, []))
-      ),
+      core.tap(effect, (a) => update(metric, a)),
     {
       [MetricTypeId]: metricVariance,
       keyType,
@@ -345,14 +342,8 @@ export const trackAll = dual<
   ) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
 >(2, (self, input) => (effect) =>
   core.matchCauseEffect(effect, {
-    onFailure: (cause) => {
-      self.unsafeUpdate(input, [])
-      return core.failCause(cause)
-    },
-    onSuccess: (value) => {
-      self.unsafeUpdate(input, [])
-      return core.succeed(value)
-    }
+    onFailure: (cause) => core.zipRight(update(self, input), core.failCause(cause)),
+    onSuccess: (value) => core.zipRight(update(self, input), core.succeed(value))
   }))
 
 /* @internal */
@@ -378,14 +369,8 @@ export const trackDefectWith = dual<
     f: (defect: unknown) => In
   ) => Effect.Effect<A, E, R>
 >(3, (self, metric, f) => {
-  const updater = (defect: unknown): void => metric.unsafeUpdate(f(defect), [])
-  return _effect.tapDefect(self, (cause) =>
-    core.sync(() =>
-      pipe(
-        Cause.defects(cause),
-        ReadonlyArray.forEach(updater)
-      )
-    ))
+  const updater = (defect: unknown) => update(metric, f(defect))
+  return _effect.tapDefect(self, (cause) => core.forEachSequentialDiscard(Cause.defects(cause), updater))
 })
 
 /* @internal */
@@ -413,11 +398,10 @@ export const trackDurationWith = dual<
 >(3, (self, metric, f) =>
   Clock.clockWith((clock) => {
     const startTime = clock.unsafeCurrentTimeNanos()
-    return core.map(self, (a) => {
+    return core.tap(self, (_) => {
       const endTime = clock.unsafeCurrentTimeNanos()
       const duration = Duration.nanos(endTime - startTime)
-      metric.unsafeUpdate(f(duration), [])
-      return a
+      return update(metric, f(duration))
     })
   }))
 
