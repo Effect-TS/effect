@@ -5896,6 +5896,8 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
 
   readonly fields: Simplify<Fields>
 
+  readonly identifier: string
+
   readonly extend: <Extended = never>(identifier: string) => <newFields extends Struct.Fields>(
     fields: newFields,
     annotations?: Annotations.Schema<Extended>
@@ -6185,6 +6187,8 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
     }
 
     static fields = fields
+
+    static identifier = identifier
 
     static get ast() {
       const toSchema = typeSchema(schema)

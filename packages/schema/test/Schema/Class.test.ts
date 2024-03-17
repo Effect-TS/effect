@@ -80,9 +80,11 @@ class PersonWithNick extends PersonWithAge.extend<PersonWithNick>("PersonWithNic
   nick: S.string
 }) {}
 
+const Thing = S.optional(S.struct({ id: S.number }), { exact: true, as: "Option" })
+
 class PersonWithTransform extends Person.transformOrFail<PersonWithTransform>("PersonWithTransform")(
   {
-    thing: S.optional(S.struct({ id: S.number }), { exact: true, as: "Option" })
+    thing: Thing
   },
   (input, _, ast) =>
     input.id === 2 ?
@@ -99,7 +101,7 @@ class PersonWithTransform extends Person.transformOrFail<PersonWithTransform>("P
 
 class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWithTransformFrom>("PersonWithTransformFrom")(
   {
-    thing: S.optional(S.struct({ id: S.number }), { exact: true, as: "Option" })
+    thing: Thing
   },
   (input, _, ast) =>
     input.id === 2 ?
@@ -121,9 +123,14 @@ describe("Schema > Class APIs", () => {
       expect(S.isSchema(A)).toEqual(true)
     })
 
-    it("should export the fields", () => {
+    it("should expose the fields", () => {
       class A extends S.Class<A>("A")({ a: S.string }) {}
       expect(A.fields).toEqual({ a: S.string })
+    })
+
+    it("should expose the identifier", () => {
+      class A extends S.Class<A>("A")({ a: S.string }) {}
+      expect(A.identifier).toEqual("A")
     })
 
     it("should add an identifier annotation", () => {
@@ -325,6 +332,18 @@ describe("Schema > Class APIs", () => {
       expect({ ...new TA({ a: "a" }) }).toStrictEqual({ _tag: "TA", a: "a" })
     })
 
+    it("should expose the fields", () => {
+      class TA extends S.TaggedClass<TA>()("TA", { a: S.string }) {}
+      expect(TA.fields).toEqual({ _tag: S.literal("TA"), a: S.string })
+    })
+
+    it("should expose the identifier", () => {
+      class TA extends S.TaggedClass<TA>()("TA", { a: S.string }) {}
+      expect(TA.identifier).toEqual("TA")
+      class TB extends S.TaggedClass<TB>("id")("TB", { a: S.string }) {}
+      expect(TB.identifier).toEqual("id")
+    })
+
     it("constructor parameters should not overwrite the tag", async () => {
       class A extends S.TaggedClass<A>()("A", {
         a: S.string
@@ -433,6 +452,11 @@ describe("Schema > Class APIs", () => {
       name: "John",
       age: 30
     })
+    expect(PersonWithAge.fields).toStrictEqual({
+      ...Person.fields,
+      age: S.number
+    })
+    expect(PersonWithAge.identifier).toStrictEqual("PersonWithAge")
     expect(person.name).toEqual("John")
     expect(person.age).toEqual(30)
     expect(person.isAdult).toEqual(true)
@@ -493,6 +517,11 @@ describe("Schema > Class APIs", () => {
       id: 1,
       name: "John"
     })
+    expect(PersonWithTransform.fields).toStrictEqual({
+      ...Person.fields,
+      thing: Thing
+    })
+    expect(PersonWithTransform.identifier).toStrictEqual("PersonWithTransform")
     expect(person.id).toEqual(1)
     expect(person.name).toEqual("John")
     expect(O.isSome(person.thing) && person.thing.value.id === 123).toEqual(true)
@@ -534,6 +563,11 @@ describe("Schema > Class APIs", () => {
       id: 1,
       name: "John"
     })
+    expect(PersonWithTransformFrom.fields).toStrictEqual({
+      ...Person.fields,
+      thing: Thing
+    })
+    expect(PersonWithTransformFrom.identifier).toStrictEqual("PersonWithTransformFrom")
     expect(person.id).toEqual(1)
     expect(person.name).toEqual("John")
     expect(O.isSome(person.thing) && person.thing.value.id === 123).toEqual(true)
@@ -612,100 +646,123 @@ describe("Schema > Class APIs", () => {
     expect(err.id).toEqual(1)
   })
 
-  it("TaggedRequest", () => {
-    class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", S.string, S.number, {
-      id: S.number
-    }) {}
+  describe("TaggedRequest", () => {
+    it("should expose the fields", () => {
+      class TRA extends S.TaggedRequest<TRA>()("TRA", S.string, S.number, {
+        id: S.number
+      }) {}
+      expect(TRA.fields).toStrictEqual({
+        _tag: S.literal("TRA"),
+        id: S.number
+      })
+    })
 
-    let req = new MyRequest({ id: 1 })
+    it("should expose the identifier", () => {
+      class TRA extends S.TaggedRequest<TRA>()("TRA", S.string, S.number, {
+        id: S.number
+      }) {}
+      expect(TRA.identifier).toEqual("TRA")
+      class TRB extends S.TaggedRequest<TRB>("id")("TRB", S.string, S.number, {
+        id: S.number
+      }) {}
+      expect(TRB.identifier).toEqual("id")
+    })
 
-    expect(String(req)).toEqual(`MyRequest({ "_tag": "MyRequest", "id": 1 })`)
-    expect(req._tag).toEqual("MyRequest")
-    expect(req.id).toEqual(1)
-    expect(Request.isRequest(req)).toEqual(true)
+    it("baseline", () => {
+      class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", S.string, S.number, {
+        id: S.number
+      }) {}
 
-    req = S.decodeSync(MyRequest)({ _tag: "MyRequest", id: 1 })
-    expect(req._tag).toEqual("MyRequest")
-    expect(req.id).toEqual(1)
-    expect(Request.isRequest(req)).toEqual(true)
-  })
+      let req = new MyRequest({ id: 1 })
 
-  it("TaggedRequest extends SerializableWithExit", () => {
-    class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", S.string, S.NumberFromString, {
-      id: S.number
-    }) {}
+      expect(String(req)).toEqual(`MyRequest({ "_tag": "MyRequest", "id": 1 })`)
+      expect(req._tag).toEqual("MyRequest")
+      expect(req.id).toEqual(1)
+      expect(Request.isRequest(req)).toEqual(true)
 
-    const req = new MyRequest({ id: 1 })
-    assert.deepStrictEqual(
-      Serializable.serialize(req).pipe(Effect.runSync),
-      { _tag: "MyRequest", id: 1 }
-    )
-    assert(Equal.equals(
-      Serializable.deserialize(req, { _tag: "MyRequest", id: 1 }).pipe(Effect.runSync),
-      req
-    ))
-    assert.deepStrictEqual(
-      Serializable.serializeExit(req, Exit.fail("fail")).pipe(Effect.runSync),
-      { _tag: "Failure", cause: { _tag: "Fail", error: "fail" } }
-    )
-    assert.deepStrictEqual(
-      Serializable.deserializeExit(req, { _tag: "Failure", cause: { _tag: "Fail", error: "fail" } })
-        .pipe(Effect.runSync),
-      Exit.fail("fail")
-    )
-    assert.deepStrictEqual(
-      Serializable.serializeExit(req, Exit.succeed(123)).pipe(Effect.runSync),
-      { _tag: "Success", value: "123" }
-    )
-    assert.deepStrictEqual(
-      Serializable.deserializeExit(req, { _tag: "Success", value: "123" }).pipe(Effect.runSync),
-      Exit.succeed(123)
-    )
-  })
+      req = S.decodeSync(MyRequest)({ _tag: "MyRequest", id: 1 })
+      expect(req._tag).toEqual("MyRequest")
+      expect(req.id).toEqual(1)
+      expect(Request.isRequest(req)).toEqual(true)
+    })
 
-  it("TaggedRequest context", () => {
-    class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", NameString, S.number, {
-      id: IdNumber
-    }) {}
+    it("TaggedRequest extends SerializableWithExit", () => {
+      class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", S.string, S.NumberFromString, {
+        id: S.number
+      }) {}
 
-    let req = new MyRequest({ id: 1 }, true)
-    expect(String(req)).toEqual(`MyRequest({ "_tag": "MyRequest", "id": 1 })`)
+      const req = new MyRequest({ id: 1 })
+      assert.deepStrictEqual(
+        Serializable.serialize(req).pipe(Effect.runSync),
+        { _tag: "MyRequest", id: 1 }
+      )
+      assert(Equal.equals(
+        Serializable.deserialize(req, { _tag: "MyRequest", id: 1 }).pipe(Effect.runSync),
+        req
+      ))
+      assert.deepStrictEqual(
+        Serializable.serializeExit(req, Exit.fail("fail")).pipe(Effect.runSync),
+        { _tag: "Failure", cause: { _tag: "Fail", error: "fail" } }
+      )
+      assert.deepStrictEqual(
+        Serializable.deserializeExit(req, { _tag: "Failure", cause: { _tag: "Fail", error: "fail" } })
+          .pipe(Effect.runSync),
+        Exit.fail("fail")
+      )
+      assert.deepStrictEqual(
+        Serializable.serializeExit(req, Exit.succeed(123)).pipe(Effect.runSync),
+        { _tag: "Success", value: "123" }
+      )
+      assert.deepStrictEqual(
+        Serializable.deserializeExit(req, { _tag: "Success", value: "123" }).pipe(Effect.runSync),
+        Exit.succeed(123)
+      )
+    })
 
-    req = S.decode(MyRequest)({ _tag: "MyRequest", id: 1 }).pipe(
-      Effect.provideService(Id, 1),
-      Effect.runSync
-    )
-    expect(String(req)).toEqual(`MyRequest({ "_tag": "MyRequest", "id": 1 })`)
+    it("TaggedRequest context", () => {
+      class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", NameString, S.number, {
+        id: IdNumber
+      }) {}
 
-    assert.deepStrictEqual(
-      Serializable.serialize(req).pipe(
+      let req = new MyRequest({ id: 1 }, true)
+      expect(String(req)).toEqual(`MyRequest({ "_tag": "MyRequest", "id": 1 })`)
+
+      req = S.decode(MyRequest)({ _tag: "MyRequest", id: 1 }).pipe(
         Effect.provideService(Id, 1),
         Effect.runSync
-      ),
-      { _tag: "MyRequest", id: 1 }
-    )
-    assert.deepStrictEqual(
-      Serializable.deserialize(req, { _tag: "MyRequest", id: 1 }).pipe(
-        Effect.provideService(Id, 1),
-        Effect.runSync
-      ),
-      req
-    )
-    assert.deepStrictEqual(
-      Serializable.serializeExit(req, Exit.fail("fail")).pipe(
-        Effect.provideService(Name, "fail"),
-        Effect.runSync
-      ),
-      { _tag: "Failure", cause: { _tag: "Fail", error: "fail" } }
-    )
-    assert.deepStrictEqual(
-      Serializable.deserializeExit(req, { _tag: "Failure", cause: { _tag: "Fail", error: "fail" } })
-        .pipe(
+      )
+      expect(String(req)).toEqual(`MyRequest({ "_tag": "MyRequest", "id": 1 })`)
+
+      assert.deepStrictEqual(
+        Serializable.serialize(req).pipe(
+          Effect.provideService(Id, 1),
+          Effect.runSync
+        ),
+        { _tag: "MyRequest", id: 1 }
+      )
+      assert.deepStrictEqual(
+        Serializable.deserialize(req, { _tag: "MyRequest", id: 1 }).pipe(
+          Effect.provideService(Id, 1),
+          Effect.runSync
+        ),
+        req
+      )
+      assert.deepStrictEqual(
+        Serializable.serializeExit(req, Exit.fail("fail")).pipe(
           Effect.provideService(Name, "fail"),
           Effect.runSync
         ),
-      Exit.fail("fail")
-    )
+        { _tag: "Failure", cause: { _tag: "Fail", error: "fail" } }
+      )
+      assert.deepStrictEqual(
+        Serializable.deserializeExit(req, { _tag: "Failure", cause: { _tag: "Fail", error: "fail" } })
+          .pipe(
+            Effect.provideService(Name, "fail"),
+            Effect.runSync
+          ),
+        Exit.fail("fail")
+      )
+    })
   })
 
   describe("encode", () => {
