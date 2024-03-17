@@ -11,7 +11,7 @@ describe("Schema > compose", async () => {
   })
 
   it("force decoding: (A U B) compose (B -> C)", async () => {
-    const schema1 = S.compose(S.union(S.null, S.string), S.NumberFromString, { strict: false })
+    const schema1 = S.compose(S.union(S.string, S.null), S.NumberFromString, { strict: false })
     await Util.expectDecodeUnknownSuccess(schema1, "1", 1)
     await Util.expectDecodeUnknownFailure(
       schema1,
@@ -31,7 +31,7 @@ describe("Schema > compose", async () => {
       └─ Encoded side transformation failure
          └─ Expected a string, actual null`
     )
-    const schema2 = S.union(S.null, S.string).pipe(
+    const schema2 = S.union(S.string, S.null).pipe(
       S.compose(S.NumberFromString, { strict: false })
     )
     await Util.expectDecodeUnknownSuccess(schema2, "1", 1)
@@ -56,7 +56,7 @@ describe("Schema > compose", async () => {
   })
 
   it("force encoding: (A -> B) compose (C U B)", async () => {
-    const schema1 = S.compose(S.NumberFromString, S.union(S.null, S.number), { strict: false })
+    const schema1 = S.compose(S.NumberFromString, S.union(S.number, S.null), { strict: false })
     await Util.expectEncodeSuccess(schema1, 1, "1")
     await Util.expectEncodeFailure(
       schema1,
@@ -68,7 +68,7 @@ describe("Schema > compose", async () => {
          └─ Expected a number, actual null`
     )
     const schema2 = S.NumberFromString.pipe(
-      S.compose(S.union(S.null, S.number), { strict: false })
+      S.compose(S.union(S.number, S.null), { strict: false })
     )
     await Util.expectEncodeSuccess(schema2, 1, "1")
     await Util.expectEncodeFailure(

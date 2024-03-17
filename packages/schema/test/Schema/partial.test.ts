@@ -147,7 +147,7 @@ describe("Schema > partial", () => {
     })
 
     it("union", async () => {
-      const schema = S.partial(S.union(S.string, S.array(S.number)), { exact: true })
+      const schema = S.partial(S.union(S.array(S.number), S.string), { exact: true })
       await Util.expectDecodeUnknownSuccess(schema, "a")
       await Util.expectDecodeUnknownSuccess(schema, [])
       await Util.expectDecodeUnknownSuccess(schema, [1])
@@ -178,7 +178,7 @@ describe("Schema > partial", () => {
         S.suspend( // intended outer suspend
           () =>
             S.struct({
-              a: S.union(S.null, schema)
+              a: S.union(schema, S.null)
             })
         ),
         { exact: true }

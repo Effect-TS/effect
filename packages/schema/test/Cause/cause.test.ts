@@ -78,7 +78,7 @@ describe("Cause > cause", () => {
       `(CauseEncoded<NumberFromString> <-> Cause<number>)
 └─ Encoded side transformation failure
    └─ CauseEncoded<NumberFromString>
-      └─ { _tag: "Parallel" | "Sequential" | "Die" | "Fail" | "Interrupt" | "Empty" }
+      └─ { _tag: "Empty" | "Fail" | "Die" | "Interrupt" | "Sequential" | "Parallel" }
          └─ ["_tag"]
             └─ is missing`
     )

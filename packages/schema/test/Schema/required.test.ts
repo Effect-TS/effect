@@ -162,7 +162,7 @@ describe("Schema > required", () => {
     const schema: S.Schema<A> = S.required(S.suspend( // intended outer suspend
       () =>
         S.struct({
-          a: S.optional(S.union(S.null, schema), { exact: true })
+          a: S.optional(S.union(schema, S.null), { exact: true })
         })
     ))
     await Util.expectDecodeUnknownSuccess(schema, { a: null })
