@@ -2160,14 +2160,28 @@ const makeBrandSchema = <S extends Schema.AnyNoContext, B extends string | symbo
 }
 
 /**
+ * @category branding
+ * @since 1.0.0
+ */
+export interface BrandSchema<A extends Brand.Brand<any>, I>
+  extends Annotable<BrandSchema<A, I>, A, I>, Brand.Brand.Constructor<A>
+{}
+
+/**
  * @category api interface
  * @since 1.0.0
  */
 export interface brand<S extends Schema.AnyNoContext, B extends string | symbol>
-  extends
-    Annotable<brand<S, B>, Schema.Type<S> & Brand.Brand<B>, Schema.Encoded<S>>,
-    Brand.Brand.Constructor<Schema.Type<S> & Brand.Brand<B>>
-{}
+  extends BrandSchema<Schema.Type<S> & Brand.Brand<B>, Schema.Encoded<S>>
+{
+  annotations(annotations: Annotations.Schema<Schema.Type<S> & Brand.Brand<B>>): brand<S, B>
+}
+
+/**
+ * @category branding
+ * @since 1.0.0
+ */
+export const asBrandSchema = <A extends Brand.Brand<any>, I>(schema: BrandSchema<A, I>): BrandSchema<A, I> => schema
 
 /**
  * Returns a nominal branded schema by applying a brand to a given schema.
@@ -2185,7 +2199,7 @@ export interface brand<S extends Schema.AnyNoContext, B extends string | symbol>
  * const Int = Schema.number.pipe(Schema.int(), Schema.brand("Int"))
  * type Int = Schema.Schema.Type<typeof Int> // number & Brand<"Int">
  *
- * @category combinators
+ * @category branding
  * @since 1.0.0
  */
 export const brand = <S extends Schema.AnyNoContext, B extends string | symbol>(

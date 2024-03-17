@@ -813,11 +813,23 @@ pipe(
 // $ExpectType Schema<number & Brand<"Int">, number, never>
 S.asSchema(pipe(S.number, S.int(), S.brand("Int")))
 
+// $ExpectType Schema<number & Brand<"Int">, number, never>
+S.asSchema(pipe(S.number, S.int(), S.brand("Int"))).annotations({})
+
+// $ExpectType BrandSchema<number & Brand<"Int">, number>
+S.asBrandSchema(pipe(S.number, S.int(), S.brand("Int")))
+
+// $ExpectType BrandSchema<number & Brand<"Int">, number>
+S.asBrandSchema(pipe(S.number, S.int(), S.brand("Int"))).annotations({})
+
 // $ExpectType brand<Schema<number, number, never>, "Int">
 pipe(S.number, S.int(), S.brand("Int"))
 
 // $ExpectType Schema<number & Brand<"Int">, string, never>
 S.asSchema(pipe(S.NumberFromString, S.int(), S.brand("Int")))
+
+// $ExpectType BrandSchema<number & Brand<"Int">, string>
+S.asBrandSchema(pipe(S.NumberFromString, S.int(), S.brand("Int")))
 
 // $ExpectType brand<Schema<number, string, never>, "Int">
 pipe(S.NumberFromString, S.int(), S.brand("Int"))
