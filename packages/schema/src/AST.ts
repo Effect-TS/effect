@@ -2136,7 +2136,7 @@ export const typeAST = (ast: AST): AST => {
     }
     case "Union": {
       const types = changeMap(ast.types, typeAST)
-      return types === ast.types ? ast : Union.make(ast.types.map(typeAST), ast.annotations)
+      return types === ast.types ? ast : Union.make(types, ast.annotations)
     }
     case "Suspend":
       return new Suspend(() => typeAST(ast.f()), ast.annotations)
@@ -2219,7 +2219,7 @@ export const encodedAST = (ast: AST): AST => {
     }
     case "Union": {
       const types = changeMap(ast.types, encodedAST)
-      return types === ast.types ? ast : Union.make(ast.types.map(encodedAST), createJSONIdentifierAnnotation(ast))
+      return types === ast.types ? ast : Union.make(types, createJSONIdentifierAnnotation(ast))
     }
     case "Suspend":
       return new Suspend(() => encodedAST(ast.f()), createJSONIdentifierAnnotation(ast))
