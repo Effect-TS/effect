@@ -662,7 +662,7 @@ export const boot = <
             [_, state] as const
         ))
 
-      const context: Procedure.Procedure.ContextProto<Machine.Public<M>, Machine.State<M>> = {
+      const contextProto: Procedure.Procedure.ContextProto<Machine.Public<M>, Machine.State<M>> = {
         sendAwait: send,
         send: sendIgnore,
         unsafeSend: sendIgnore as any,
@@ -680,7 +680,7 @@ export const boot = <
           SerializableProcedureList<Machine.State<M>, Machine.Public<M>, Machine.Private<M>, never>,
           Machine.InitError<M>
         >,
-        Effect.provideService(MachineContext, context)
+        Effect.provideService(MachineContext, contextProto)
       )
       const procedureMap: Record<
         string,
@@ -720,14 +720,13 @@ export const boot = <
             if (procedure === undefined) {
               return Deferred.die(deferred, `Unknown request ${request._tag}`)
             }
+            const context = Object.create(contextProto)
+            context.state = currentState
+            context.request = request
+            context.deferred = deferred
 
             let handler = Effect.matchCauseEffect(
-              procedure.handler({
-                __proto__: context,
-                state: currentState,
-                request,
-                deferred
-              } as any),
+              procedure.handler(context),
               {
                 onFailure: (e) => {
                   if (Cause.isFailure(e)) {
@@ -765,7 +764,7 @@ export const boot = <
           })
         ),
         Effect.forever,
-        Effect.provideService(MachineContext, context)
+        Effect.provideService(MachineContext, contextProto)
       )
 
       yield* _(

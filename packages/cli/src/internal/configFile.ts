@@ -78,10 +78,9 @@ export const ConfigErrorTypeId: ConfigFile.ConfigErrorTypeId = Symbol.for(
   "@effect/cli/ConfigFile/ConfigFileError"
 ) as ConfigFile.ConfigErrorTypeId
 
-const ConfigFileErrorProto = {
-  __proto__: Cause.YieldableError.prototype,
+const ConfigFileErrorProto = Object.assign(Object.create(Cause.YieldableError.prototype), {
   [ConfigErrorTypeId]: ConfigErrorTypeId
-}
+})
 
 /** @internal */
 export const ConfigFileError = (message: string): ConfigFile.ConfigFileError => {

@@ -51,13 +51,7 @@ const makeProto = <State, Public extends Procedure.TaggedRequest.Any, Private ex
     readonly private: ReadonlyArray<Procedure.Procedure<Private, State, R>>
     readonly identifier: string
   }
-): ProcedureList<State, Public, Private, R> => ({
-  __proto__: Proto,
-  initialState: options.initialState,
-  public: options.public,
-  private: options.private,
-  identifier: options.identifier
-} as any)
+): ProcedureList<State, Public, Private, R> => Object.assign(Object.create(Proto), options)
 
 /**
  * @since 1.0.0
