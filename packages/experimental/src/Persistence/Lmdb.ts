@@ -47,7 +47,11 @@ export const make = (options: Lmdb.RootDatabaseOptionsWithPath) =>
               Effect.tryPromise({
                 try: () => store.remove(key),
                 catch: (error) => new Persistence.PersistenceBackingError({ method: "remove", error })
-              })
+              }),
+            clear: Effect.tryPromise({
+              try: () => store.clearAsync(),
+              catch: (error) => new Persistence.PersistenceBackingError({ method: "clear", error })
+            })
           })
         })
     })
