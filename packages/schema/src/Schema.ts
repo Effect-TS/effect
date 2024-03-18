@@ -1571,85 +1571,80 @@ export const optionalToOptional = <FA, FI, FR, TA, TI, TR>(
  * @since 1.0.0
  */
 export const optional: {
-  <A, I, R>(
-    schema: Schema<A, I, R>,
-    options: {
-      readonly exact: true
+  <
+    A,
+    const Options extends {
+      readonly exact?: true
+      readonly nullable?: true
+    } | {
       readonly default: () => A
-      readonly nullable: true
-    }
-  ): PropertySignature<":", A, never, "?:", I | null, R>
-  <A, I, R>(
-    schema: Schema<A, I, R>,
-    options: {
-      readonly exact: true
+      readonly exact?: true
+      readonly nullable?: true
+    } | {
+      readonly as: "Option"
+      readonly exact?: true
+      readonly nullable?: true
+    } | undefined
+  >(
+    options?: Options
+  ): <I, R>(schema: Schema<A, I, R>) => [undefined] extends [Options] ? PropertySignature<
+      "?:",
+      A | undefined,
+      never,
+      "?:",
+      I | undefined,
+      R
+    > :
+    PropertySignature<
+      Types.Has<Options, "as" | "default"> extends true ? ":" : "?:",
+      | (Types.Has<Options, "as"> extends true ? Option.Option<A> : A)
+      | (Types.Has<Options, "as" | "default" | "exact"> extends true ? never : undefined),
+      never,
+      "?:",
+      | I
+      | (Types.Has<Options, "nullable"> extends true ? null : never)
+      | (Types.Has<Options, "exact"> extends true ? never : undefined),
+      R
+    >
+  <
+    A,
+    I,
+    R,
+    const Options extends {
+      readonly exact?: true
+      readonly nullable?: true
+    } | {
       readonly default: () => A
-    }
-  ): PropertySignature<":", A, never, "?:", I, R>
-  <A, I, R>(
-    schema: Schema<A, I, R>,
-    options: {
-      readonly exact: true
-      readonly nullable: true
+      readonly exact?: true
+      readonly nullable?: true
+    } | {
       readonly as: "Option"
-    }
-  ): PropertySignature<":", Option.Option<A>, never, "?:", I | null, R>
-  <A, I, R>(
+      readonly exact?: true
+      readonly nullable?: true
+    } | undefined
+  >(
     schema: Schema<A, I, R>,
-    options: {
-      readonly exact: true
-      readonly as: "Option"
-    }
-  ): PropertySignature<":", Option.Option<A>, never, "?:", I, R>
-  <A, I, R>(
-    schema: Schema<A, I, R>,
-    options: {
-      readonly exact: true
-      readonly nullable: true
-    }
-  ): PropertySignature<"?:", A, never, "?:", I | null, R>
-  <A, I, R>(
-    schema: Schema<A, I, R>,
-    options: {
-      readonly exact: true
-    }
-  ): PropertySignature<"?:", A, never, "?:", I, R>
-  <A, I, R>(
-    schema: Schema<A, I, R>,
-    options: {
-      readonly default: () => A
-      readonly nullable: true
-    }
-  ): PropertySignature<":", A, never, "?:", I | null | undefined, R>
-  <A, I, R>(
-    schema: Schema<A, I, R>,
-    options: {
-      readonly nullable: true
-      readonly as: "Option"
-    }
-  ): PropertySignature<":", Option.Option<A>, never, "?:", I | null | undefined, R>
-  <A, I, R>(
-    schema: Schema<A, I, R>,
-    options: {
-      readonly as: "Option"
-    }
-  ): PropertySignature<":", Option.Option<A>, never, "?:", I | undefined, R>
-  <A, I, R>(
-    schema: Schema<A, I, R>,
-    options: {
-      readonly default: () => A
-    }
-  ): PropertySignature<":", A, never, "?:", I | undefined, R>
-  <A, I, R>(
-    schema: Schema<A, I, R>,
-    options: {
-      readonly nullable: true
-    }
-  ): PropertySignature<"?:", A | undefined, never, "?:", I | null | undefined, R>
-  <A, I, R>(
-    schema: Schema<A, I, R>
-  ): PropertySignature<"?:", A | undefined, never, "?:", I | undefined, R>
-} = <A, I, R>(
+    options?: Options
+  ): [undefined] extends [Options] ? PropertySignature<
+      "?:",
+      A | undefined,
+      never,
+      "?:",
+      I | undefined,
+      R
+    > :
+    PropertySignature<
+      Types.Has<Options, "as" | "default"> extends true ? ":" : "?:",
+      | (Types.Has<Options, "as"> extends true ? Option.Option<A> : A)
+      | (Types.Has<Options, "as" | "default" | "exact"> extends true ? never : undefined),
+      never,
+      "?:",
+      | I
+      | (Types.Has<Options, "nullable"> extends true ? null : never)
+      | (Types.Has<Options, "exact"> extends true ? never : undefined),
+      R
+    >
+} = dual((args) => isSchema(args[0]), <A, I, R>(
   schema: Schema<A, I, R>,
   options?: {
     readonly exact?: true
@@ -1756,7 +1751,7 @@ export const optional: {
       }
     }
   }
-}
+})
 
 /**
  * @since 1.0.0
