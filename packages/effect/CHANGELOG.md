@@ -1,5 +1,33 @@
 # effect
 
+## 2.4.8
+
+### Patch Changes
+
+- [#2354](https://github.com/Effect-TS/effect/pull/2354) [`bb0b69e`](https://github.com/Effect-TS/effect/commit/bb0b69e519698c7c76aa68217de423c78ad16566) Thanks [@tim-smart](https://github.com/tim-smart)! - add overload to Effect.filterOrFail that fails with NoSuchElementException
+
+  This allows you to perform a filterOrFail without providing a fallback failure
+  function.
+
+  Example:
+
+  ```ts
+  import { Effect } from "effect";
+
+  // fails with NoSuchElementException
+  Effect.succeed(1).pipe(Effect.filterOrFail((n) => n === 0));
+  ```
+
+- [#2336](https://github.com/Effect-TS/effect/pull/2336) [`6b20bad`](https://github.com/Effect-TS/effect/commit/6b20badebb3a7ca4d38857753e8ecaa09d02ccfb) Thanks [@jessekelly881](https://github.com/jessekelly881)! - added Predicate.isTruthy
+
+- [#2351](https://github.com/Effect-TS/effect/pull/2351) [`4e64e9b`](https://github.com/Effect-TS/effect/commit/4e64e9b9876de6bfcbabe39e18a91a08e5f3fbb0) Thanks [@tim-smart](https://github.com/tim-smart)! - fix metrics not using labels from fiber ref
+
+- [#2266](https://github.com/Effect-TS/effect/pull/2266) [`3851a02`](https://github.com/Effect-TS/effect/commit/3851a022c481006aec1db36651e4b4fd727aa742) Thanks [@patroza](https://github.com/patroza)! - fix Effect.Tag generated proxy functions to work with andThen/tap, or others that do function/isEffect checks
+
+- [#2353](https://github.com/Effect-TS/effect/pull/2353) [`5f5fcd9`](https://github.com/Effect-TS/effect/commit/5f5fcd969ae30ed6fe61d566a571498d9e895e16) Thanks [@tim-smart](https://github.com/tim-smart)! - Types: add `Has` helper
+
+- [#2299](https://github.com/Effect-TS/effect/pull/2299) [`814e5b8`](https://github.com/Effect-TS/effect/commit/814e5b828f68210b9e8f336fd6ac688646835dd9) Thanks [@alex-dixon](https://github.com/alex-dixon)! - Prevent Effect.if from crashing when first argument is not an Effect
+
 ## 2.4.7
 
 ### Patch Changes
