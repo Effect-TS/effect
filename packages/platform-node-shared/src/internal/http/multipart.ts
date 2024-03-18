@@ -1,6 +1,7 @@
 import * as Multipart from "@effect/platform/Http/Multipart"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
+import * as Inspectable from "effect/Inspectable"
 import * as Stream from "effect/Stream"
 import type { MultipartError, PartInfo } from "multipasta"
 import { decodeField } from "multipasta"
@@ -38,14 +39,21 @@ export const persisted = (
   Multipart.toPersisted(stream(source, headers), (path, file) =>
     Effect.tryPromise({
       try: (signal) => NodeStreamP.pipeline((file as FileImpl).file, NFS.createWriteStream(path), { signal }),
-      catch: (error) => Multipart.MultipartError("InternalError", error)
+      catch: (error) => new Multipart.MultipartError({ reason: "InternalError", error })
     }))
 
 const convertPart = (part: MP.Part): Multipart.Part =>
   part._tag === "Field" ? new FieldImpl(part.info, part.value) : new FileImpl(part)
 
-class FieldImpl implements Multipart.Field {
+abstract class PartBase extends Inspectable.Class {
   readonly [Multipart.TypeId]: Multipart.TypeId
+  constructor() {
+    super()
+    this[Multipart.TypeId] = Multipart.TypeId
+  }
+}
+
+class FieldImpl extends PartBase implements Multipart.Field {
   readonly _tag = "Field"
   readonly key: string
   readonly contentType: string
@@ -55,27 +63,49 @@ class FieldImpl implements Multipart.Field {
     info: PartInfo,
     value: Uint8Array
   ) {
-    this[Multipart.TypeId] = Multipart.TypeId
+    super()
     this.key = info.name
     this.contentType = info.contentType
     this.value = decodeField(info, value)
   }
+
+  toJSON(): unknown {
+    return {
+      _id: "@effect/platform/Http/Multipart/Part",
+      _tag: "Field",
+      key: this.key,
+      value: this.value,
+      contentType: this.contentType
+    }
+  }
 }
 
-class FileImpl implements Multipart.File {
+class FileImpl extends PartBase implements Multipart.File {
   readonly _tag = "File"
-  readonly [Multipart.TypeId]: Multipart.TypeId
   readonly key: string
   readonly name: string
   readonly contentType: string
   readonly content: Stream.Stream<Uint8Array, Multipart.MultipartError>
 
   constructor(readonly file: MP.FileStream) {
-    this[Multipart.TypeId] = Multipart.TypeId
+    super()
     this.key = file.info.name
     this.name = file.filename ?? file.info.name
     this.contentType = file.info.contentType
-    this.content = NodeStream.fromReadable(() => file, (error) => Multipart.MultipartError("InternalError", error))
+    this.content = NodeStream.fromReadable(
+      () => file,
+      (error) => new Multipart.MultipartError({ reason: "InternalError", error })
+    )
+  }
+
+  toJSON(): unknown {
+    return {
+      _id: "@effect/platform/Http/Multipart/Part",
+      _tag: "File",
+      key: this.key,
+      name: this.name,
+      contentType: this.contentType
+    }
   }
 }
 
@@ -87,21 +117,21 @@ function convertError(error: MultipartError): Multipart.MultipartError {
     case "ReachedLimit": {
       switch (error.limit) {
         case "MaxParts": {
-          return Multipart.MultipartError("TooManyParts", error)
+          return new Multipart.MultipartError({ reason: "TooManyParts", error })
         }
         case "MaxFieldSize": {
-          return Multipart.MultipartError("FieldTooLarge", error)
+          return new Multipart.MultipartError({ reason: "FieldTooLarge", error })
         }
         case "MaxPartSize": {
-          return Multipart.MultipartError("FileTooLarge", error)
+          return new Multipart.MultipartError({ reason: "FileTooLarge", error })
         }
         case "MaxTotalSize": {
-          return Multipart.MultipartError("BodyTooLarge", error)
+          return new Multipart.MultipartError({ reason: "BodyTooLarge", error })
         }
       }
     }
     default: {
-      return Multipart.MultipartError("Parse", error)
+      return new Multipart.MultipartError({ reason: "Parse", error })
     }
   }
 }

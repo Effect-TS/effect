@@ -3,6 +3,7 @@
  */
 import type { Effect } from "effect/Effect"
 import type { HashMap } from "effect/HashMap"
+import type { Inspectable } from "effect/Inspectable"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
@@ -37,8 +38,9 @@ export declare namespace Command {
    * @since 1.0.0
    * @category models
    */
-  export interface Proto {
+  export interface Proto extends Pipeable, Inspectable {
     readonly [CommandTypeId]: CommandTypeId
+    readonly _tag: string
   }
   /**
    * Configures the pipe that is established between the parent and child
@@ -80,7 +82,7 @@ export type CommandOutput = "inherit" | "pipe" | Sink<Uint8Array, Uint8Array>
  * @since 1.0.0
  * @category models
  */
-export interface StandardCommand extends Command.Proto, Pipeable {
+export interface StandardCommand extends Command.Proto {
   readonly _tag: "StandardCommand"
   readonly command: string
   readonly args: ReadonlyArray<string>
@@ -98,7 +100,7 @@ export interface StandardCommand extends Command.Proto, Pipeable {
  * @since 1.0.0
  * @category models
  */
-export interface PipedCommand extends Command.Proto, Pipeable {
+export interface PipedCommand extends Command.Proto {
   readonly _tag: "PipedCommand"
   readonly left: Command
   readonly right: Command

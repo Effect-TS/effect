@@ -3,6 +3,7 @@
  */
 import type * as Schema from "@effect/schema/Schema"
 import type * as Effect from "effect/Effect"
+import type { Inspectable } from "effect/Inspectable"
 import type * as Stream from "effect/Stream"
 import type * as PlatformError from "../Error.js"
 import type * as FileSystem from "../FileSystem.js"
@@ -29,7 +30,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface ServerResponse extends Effect.Effect<ServerResponse> {
+export interface ServerResponse extends Effect.Effect<ServerResponse>, Inspectable {
   readonly [TypeId]: TypeId
   readonly status: number
   readonly statusText?: string | undefined

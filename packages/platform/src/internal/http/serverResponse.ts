@@ -2,6 +2,7 @@ import type * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
+import * as Inspectable from "effect/Inspectable"
 import * as Stream from "effect/Stream"
 import type * as PlatformError from "../../Error.js"
 import type * as FileSystem from "../../FileSystem.js"
@@ -47,13 +48,21 @@ class ServerResponseImpl extends Effectable.StructuralClass<ServerResponse.Serve
     return Effect.succeed(this)
   }
 
+  [Inspectable.NodeInspectSymbol]() {
+    return this.toJSON()
+  }
+
+  toString(): string {
+    return Inspectable.format(this)
+  }
+
   toJSON() {
     return {
-      _id: "ServerResponse",
+      _id: "@effect/platform/Http/ServerResponse",
       status: this.status,
       statusText: this.statusText,
       headers: this.headers,
-      body: this.body
+      body: this.body.toJSON()
     }
   }
 }

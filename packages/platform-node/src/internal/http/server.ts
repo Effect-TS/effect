@@ -337,13 +337,11 @@ class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implemen
   }
 
   toJSON(): unknown {
-    return {
-      _tag: "ServerRequest",
+    return IncomingMessage.inspect(this, {
+      _id: "@effect/platform/Http/ServerRequest",
       method: this.method,
-      url: this.url,
-      originalUrl: this.originalUrl,
-      headers: this.headers
-    }
+      url: this.originalUrl
+    })
   }
 }
 

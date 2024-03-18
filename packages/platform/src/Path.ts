@@ -10,9 +10,22 @@ import * as internal from "./internal/path.js"
 
 /**
  * @since 1.0.0
+ * @category type ids
+ */
+export const TypeId: unique symbol = internal.TypeId
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export type TypeId = typeof TypeId
+
+/**
+ * @since 1.0.0
  * @category model
  */
 export interface Path {
+  readonly [TypeId]: TypeId
   readonly sep: string
   readonly basename: (path: string, suffix?: string) => string
   readonly dirname: (path: string) => string

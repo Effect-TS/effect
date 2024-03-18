@@ -3,6 +3,7 @@
  */
 import type * as Schema from "@effect/schema/Schema"
 import type * as Effect from "effect/Effect"
+import type { Inspectable } from "effect/Inspectable"
 import type { Pipeable } from "effect/Pipeable"
 import type * as Stream from "effect/Stream"
 import type * as PlatformError from "../Error.js"
@@ -29,7 +30,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface ClientRequest extends Pipeable {
+export interface ClientRequest extends Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   readonly method: Method
   readonly url: string

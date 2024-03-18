@@ -4,6 +4,7 @@
 import type * as Brand from "effect/Brand"
 import type { Tag } from "effect/Context"
 import type { Effect } from "effect/Effect"
+import type { Inspectable } from "effect/Inspectable"
 import type { Scope } from "effect/Scope"
 import type { Sink } from "effect/Sink"
 import type { Stream } from "effect/Stream"
@@ -13,9 +14,23 @@ import * as internal from "./internal/commandExecutor.js"
 
 /**
  * @since 1.0.0
+ * @category type ids
+ */
+export const TypeId: unique symbol = internal.TypeId
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export type TypeId = typeof TypeId
+
+/**
+ * @since 1.0.0
  * @category models
  */
 export interface CommandExecutor {
+  readonly [TypeId]: TypeId
+
   /**
    * Returns the exit code of the command after the process has completed
    * execution.
@@ -70,7 +85,7 @@ export type ProcessTypeId = typeof ProcessTypeId
  * @since 1.0.0
  * @category models
  */
-export interface Process {
+export interface Process extends Inspectable {
   readonly [ProcessTypeId]: ProcessTypeId
   /**
    * The process identifier.

@@ -1,6 +1,7 @@
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
+import * as Inspectable from "effect/Inspectable"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as App from "../../Http/App.js"
 import type * as Multiplex from "../../Http/Multiplex.js"
@@ -48,6 +49,18 @@ class MultiplexImpl<R, E>
 
   commit() {
     return this.execute
+  }
+
+  [Inspectable.NodeInspectSymbol]() {
+    return Inspectable.toJSON(this)
+  }
+  toString(): string {
+    return Inspectable.format(this)
+  }
+  toJSON(): unknown {
+    return {
+      _id: "@effect/platform/Http/Multiplex"
+    }
   }
 }
 

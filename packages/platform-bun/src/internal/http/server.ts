@@ -23,6 +23,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FiberSet from "effect/FiberSet"
 import { pipe } from "effect/Function"
+import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Runtime from "effect/Runtime"
@@ -216,7 +217,7 @@ function wsDefaultRun(this: WebSocketContext, _: Uint8Array) {
   this.buffer.push(_)
 }
 
-class ServerRequestImpl implements ServerRequest.ServerRequest {
+class ServerRequestImpl extends Inspectable.Class implements ServerRequest.ServerRequest {
   readonly [ServerRequest.TypeId]: ServerRequest.TypeId
   readonly [IncomingMessage.TypeId]: IncomingMessage.TypeId
   constructor(
@@ -228,8 +229,16 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
     public headersOverride?: Headers.Headers,
     private remoteAddressOverride?: string
   ) {
+    super()
     this[ServerRequest.TypeId] = ServerRequest.TypeId
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
+  }
+  toJSON(): unknown {
+    return IncomingMessage.inspect(this, {
+      _id: "@effect/platform/Http/ServerRequest",
+      method: this.method,
+      url: this.originalUrl
+    })
   }
   modify(
     options: {

@@ -74,7 +74,11 @@ export const RefailError = <const TypeId extends symbol, const Tag extends strin
       }
     }
     get message() {
-      return String(Predicate.hasProperty(this.error, "message") ? this.error.message : this.error)
+      return Predicate.hasProperty(this.error, "message")
+        ? this.error.message as string
+        : Predicate.hasProperty(this.error, "toJSON") && typeof this.error.toJSON === "function"
+        ? JSON.stringify(this.error.toJSON())
+        : String(this.error)
     }
   }
   ;(Base.prototype as any)[typeId] = typeId

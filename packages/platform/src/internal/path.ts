@@ -4,15 +4,19 @@ import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import PathB from "path-browserify"
 import { BadArgument } from "../Error.js"
-import type { Path as _Path } from "../Path.js"
+import type * as Api from "../Path.js"
 
 /** @internal */
-export const Path = GenericTag<_Path>("@effect/platform/Path")
+export const TypeId: Api.TypeId = Symbol.for("@effect/platform/Path") as Api.TypeId
+
+/** @internal */
+export const Path = GenericTag<Api.Path>("@effect/platform/Path")
 
 /** @internal */
 export const layer = Layer.succeed(
   Path,
   Path.of({
+    [TypeId]: TypeId,
     ...PathB,
     fromFileUrl,
     toFileUrl,

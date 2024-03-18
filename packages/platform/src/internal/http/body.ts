@@ -2,6 +2,7 @@ import * as Schema from "@effect/schema/Schema"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
+import * as Inspectable from "effect/Inspectable"
 import * as Stream_ from "effect/Stream"
 import type * as PlatformError from "../../Error.js"
 import * as FileSystem from "../../FileSystem.js"
@@ -24,26 +25,51 @@ const bodyError = Data.tagged<Body.BodyError>("BodyError")
 export const BodyError = (reason: Body.BodyErrorReason): Body.BodyError =>
   bodyError({ [ErrorTypeId]: ErrorTypeId, reason })
 
-class EmptyImpl implements Body.Empty {
+abstract class BodyBase implements Body.Body.Proto {
   readonly [TypeId]: Body.TypeId
-  readonly _tag = "Empty"
+  abstract readonly _tag: string
   constructor() {
     this[TypeId] = TypeId
+  }
+  abstract toJSON(): unknown
+  [Inspectable.NodeInspectSymbol](): unknown {
+    return this.toJSON()
+  }
+  toString(): string {
+    return Inspectable.format(this)
+  }
+}
+
+class EmptyImpl extends BodyBase implements Body.Empty {
+  readonly _tag = "Empty"
+  toJSON(): unknown {
+    return {
+      _id: "@effect/platform/Http/Body",
+      _tag: "Empty"
+    }
   }
 }
 
 /** @internal */
 export const empty: Body.Empty = new EmptyImpl()
 
-class RawImpl implements Body.Raw {
-  readonly [TypeId]: Body.TypeId
+class RawImpl extends BodyBase implements Body.Raw {
   readonly _tag = "Raw"
   constructor(
     readonly body: unknown,
     readonly contentType?: string | undefined,
     readonly contentLength?: number | undefined
   ) {
-    this[TypeId] = TypeId
+    super()
+  }
+  toJSON(): unknown {
+    return {
+      _id: "@effect/platform/Http/Body",
+      _tag: "Raw",
+      body: this.body,
+      contentType: this.contentType,
+      contentLength: this.contentLength
+    }
   }
 }
 
@@ -53,17 +79,26 @@ export const raw = (body: unknown, options?: {
   readonly contentLength?: number | undefined
 }): Body.Raw => new RawImpl(body, options?.contentType, options?.contentLength)
 
-class Uint8ArrayImpl implements Body.Uint8Array {
-  readonly [TypeId]: Body.TypeId
+class Uint8ArrayImpl extends BodyBase implements Body.Uint8Array {
   readonly _tag = "Uint8Array"
   constructor(
     readonly body: Uint8Array,
     readonly contentType: string
   ) {
-    this[TypeId] = TypeId
+    super()
   }
   get contentLength(): number {
     return this.body.length
+  }
+  toJSON(): unknown {
+    const toString = this.contentType.startsWith("text/") || this.contentType.endsWith("json")
+    return {
+      _id: "@effect/platform/Http/Body",
+      _tag: "Uint8Array",
+      body: toString ? new TextDecoder().decode(this.body) : `Uint8Array(${this.body.length})`,
+      contentType: this.contentType,
+      contentLength: this.contentLength
+    }
   }
 }
 
@@ -137,28 +172,41 @@ export const fileInfo = (
 export const fileWeb = (file: Body.Body.FileLike): Body.Stream =>
   stream(Stream_.fromReadableStream(() => file.stream() as ReadableStream<Uint8Array>, identity), file.type, file.size)
 
-class FormDataImpl implements Body.FormData {
-  readonly [TypeId]: Body.TypeId
+class FormDataImpl extends BodyBase implements Body.FormData {
   readonly _tag = "FormData"
   constructor(
     readonly formData: FormData
   ) {
-    this[TypeId] = TypeId
+    super()
+  }
+  toJSON(): unknown {
+    return {
+      _id: "@effect/platform/Http/Body",
+      _tag: "FormData",
+      formData: this.formData
+    }
   }
 }
 
 /** @internal */
 export const formData = (body: FormData): Body.FormData => new FormDataImpl(body)
 
-class StreamImpl implements Body.Stream {
-  readonly [TypeId]: Body.TypeId
+class StreamImpl extends BodyBase implements Body.Stream {
   readonly _tag = "Stream"
   constructor(
     readonly stream: Stream_.Stream<Uint8Array, unknown>,
     readonly contentType: string,
     readonly contentLength?: number | undefined
   ) {
-    this[TypeId] = TypeId
+    super()
+  }
+  toJSON(): unknown {
+    return {
+      _id: "@effect/platform/Http/Body",
+      _tag: "Stream",
+      contentType: this.contentType,
+      contentLength: this.contentLength
+    }
   }
 }
 

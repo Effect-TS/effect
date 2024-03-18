@@ -45,3 +45,31 @@ export const toJSON = (x: unknown): unknown => {
  * @since 2.0.0
  */
 export const format = (x: unknown): string => JSON.stringify(x, null, 2)
+
+/**
+ * @since 2.0.0
+ */
+export const BaseProto: Inspectable = {
+  toJSON() {
+    return toJSON(this)
+  },
+  [NodeInspectSymbol]() {
+    return this.toJSON()
+  },
+  toString() {
+    return format(this.toJSON())
+  }
+}
+
+/**
+ * @since 2.0.0
+ */
+export abstract class Class {
+  abstract toJSON(): unknown
+  [NodeInspectSymbol]() {
+    return this.toJSON()
+  }
+  toString() {
+    return format(this.toJSON())
+  }
+}

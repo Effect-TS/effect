@@ -9,6 +9,7 @@ import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import type { LazyArg } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
+import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
@@ -110,13 +111,14 @@ const sendBody = (
 const encoder = new TextEncoder()
 
 /** @internal */
-export class IncomingMessageImpl<E> implements IncomingMessage.IncomingMessage<E> {
+export abstract class IncomingMessageImpl<E> extends Inspectable.Class implements IncomingMessage.IncomingMessage<E> {
   readonly [IncomingMessage.TypeId]: IncomingMessage.TypeId
 
   constructor(
     readonly source: XMLHttpRequest,
     readonly onError: (error: unknown) => E
   ) {
+    super()
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
   }
 
@@ -249,10 +251,24 @@ class ClientResponseImpl extends IncomingMessageImpl<Error.ResponseError> implem
   }
 
   toJSON(): unknown {
+    let body: unknown
+    try {
+      body = Effect.runSync(this.json)
+    } catch (_) {
+      //
+    }
+    try {
+      body = body ?? Effect.runSync(this.text)
+    } catch (_) {
+      //
+    }
     return {
-      _tag: "ClientResponse",
+      _id: "@effect/platform/Http/ClientResponse",
+      request: this.request.toJSON(),
       status: this.status,
-      headers: this.headers
+      headers: this.headers,
+      remoteAddress: this.remoteAddress.toJSON(),
+      body
     }
   }
 }

@@ -5,6 +5,7 @@ import * as FileSystem from "@effect/platform/FileSystem"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import { constUndefined, pipe } from "effect/Function"
+import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
@@ -37,6 +38,17 @@ const toPlatformError = (
 
 type ExitCode = readonly [code: number | null, signal: NodeJS.Signals | null]
 type ExitCodeDeferred = Deferred.Deferred<ExitCode>
+
+const ProcessProto = {
+  [CommandExecutor.ProcessTypeId]: CommandExecutor.ProcessTypeId,
+  ...Inspectable.BaseProto,
+  toJSON(this: CommandExecutor.Process) {
+    return {
+      _id: "@effect/platform/CommandExecutor/Process",
+      pid: this.pid
+    }
+  }
+}
 
 const runCommand =
   (fileSystem: FileSystem.FileSystem) =>
@@ -146,8 +158,7 @@ const runCommand =
             if (typeof command.stdout !== "string") {
               stdout = Stream.transduce(stdout, command.stdout)
             }
-            return {
-              [CommandExecutor.ProcessTypeId]: CommandExecutor.ProcessTypeId,
+            return Object.assign(Object.create(ProcessProto), {
               pid,
               exitCode,
               isRunning,
@@ -155,7 +166,7 @@ const runCommand =
               stdin,
               stderr,
               stdout
-            }
+            })
           }),
           Effect.tap((process) =>
             Option.match(command.stdin, {

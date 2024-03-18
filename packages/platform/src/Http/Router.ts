@@ -7,6 +7,7 @@ import type * as Cause from "effect/Cause"
 import type * as Chunk from "effect/Chunk"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
+import type { Inspectable } from "effect/Inspectable"
 import type * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
 import * as internal from "../internal/http/router.js"
@@ -32,7 +33,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface Router<R, E> extends App.Default<Exclude<R, RouteContext>, E | Error.RouteNotFound> {
+export interface Router<R, E> extends App.Default<Exclude<R, RouteContext>, E | Error.RouteNotFound>, Inspectable {
   readonly [TypeId]: TypeId
   readonly routes: Chunk.Chunk<Route<R, E>>
   readonly mounts: Chunk.Chunk<
@@ -76,7 +77,7 @@ export type PathInput = `/${string}` | "*"
  * @since 1.0.0
  * @category models
  */
-export interface Route<R, E> {
+export interface Route<R, E> extends Inspectable {
   readonly [RouteTypeId]: RouteTypeId
   readonly method: Method.Method | "*"
   readonly path: PathInput
