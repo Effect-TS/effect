@@ -4,7 +4,7 @@
 
 add overload to Effect.filterOrFail that fails with NoSuchElementException
 
-This allows you to perform a filterOrFail without provide a fallback failure
+This allows you to perform a filterOrFail without providing a fallback failure
 function.
 
 Example:
