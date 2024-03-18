@@ -189,4 +189,22 @@ describe("Effect", () => {
       assert.deepStrictEqual(goodCase, Either.right(0))
       assert.deepStrictEqual(badCase, Either.left(Either.left("predicate failed, got 1!")))
     }))
+  it.effect("filterOrFail - without orFailWith", () =>
+    Effect.gen(function*($) {
+      const goodCase = yield* $(
+        Effect.succeed(0),
+        Effect.filterOrFail((n) => n === 0)
+      )
+      const goodCaseDataFirst = yield* $(
+        Effect.filterOrFail(Effect.succeed(0), (n) => n === 0)
+      )
+      const badCase = yield* $(
+        Effect.succeed(1),
+        Effect.filterOrFail((n) => n === 0),
+        Effect.flip
+      )
+      assert.deepStrictEqual(goodCase, 0)
+      assert.deepStrictEqual(goodCaseDataFirst, 0)
+      assert.deepStrictEqual(badCase, new Cause.NoSuchElementException())
+    }))
 })

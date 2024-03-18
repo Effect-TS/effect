@@ -604,6 +604,12 @@ export const filterOrFail: {
     predicate: Predicate.Predicate<NoInfer<A>>,
     orFailWith: (a: NoInfer<A>) => E2
   ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E2 | E, R>
+  <A, B extends A>(
+    refinement: Predicate.Refinement<NoInfer<A>, B>
+  ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<B, Cause.NoSuchElementException | E, R>
+  <A>(
+    predicate: Predicate.Predicate<NoInfer<A>>
+  ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, Cause.NoSuchElementException | E, R>
   <A, E, R, B extends A, E2>(
     self: Effect.Effect<A, E, R>,
     refinement: Predicate.Refinement<A, B>,
@@ -614,11 +620,25 @@ export const filterOrFail: {
     predicate: Predicate.Predicate<A>,
     orFailWith: (a: A) => E2
   ): Effect.Effect<A, E | E2, R>
-} = dual(3, <A, E, R, E2>(
+  <A, E, R, B extends A>(
+    self: Effect.Effect<A, E, R>,
+    refinement: Predicate.Refinement<A, B>
+  ): Effect.Effect<B, E | Cause.NoSuchElementException, R>
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
+    predicate: Predicate.Predicate<A>
+  ): Effect.Effect<A, E | Cause.NoSuchElementException, R>
+} = dual((args) => core.isEffect(args[0]), <A, E, R, E2>(
   self: Effect.Effect<A, E, R>,
   predicate: Predicate.Predicate<A>,
-  orFailWith: (a: A) => E2
-): Effect.Effect<A, E | E2, R> => filterOrElse(self, predicate, (a) => core.failSync(() => orFailWith(a))))
+  orFailWith?: (a: A) => E2
+): Effect.Effect<A, E | E2 | Cause.NoSuchElementException, R> =>
+  filterOrElse(
+    self,
+    predicate,
+    (a): Effect.Effect<never, E2 | Cause.NoSuchElementException, never> =>
+      orFailWith === undefined ? core.fail(new core.NoSuchElementException()) : core.failSync(() => orFailWith(a))
+  ))
 
 /* @internal */
 export const findFirst: {
