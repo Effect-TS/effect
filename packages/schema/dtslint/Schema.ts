@@ -640,7 +640,11 @@ S.struct({
   c: S.optional(S.NumberFromString, { exact: true, default: () => 0 })
 })
 
+// $ExpectType struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b", never>; }>
 S.struct({ a: S.optional(S.literal("a", "b"), { default: () => "a", exact: true }) })
+
+// $ExpectType struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b", never>; }>
+S.struct({ a: S.literal("a", "b").pipe(S.optional({ default: () => "a", exact: true })) })
 
 // ---------------------------------------------
 // optional { default: () => A }
@@ -679,6 +683,9 @@ S.struct({ a: S.optional(S.NumberFromString, { exact: true, nullable: true, defa
 
 // $ExpectType struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b" | null | undefined, never>; }>
 S.struct({ a: S.optional(S.literal("a", "b"), { default: () => "a", nullable: true }) })
+
+// $ExpectType struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b" | null | undefined, never>; }>
+S.struct({ a: S.literal("a", "b").pipe(S.optional({ default: () => "a", nullable: true })) })
 
 // ---------------------------------------------
 // optional { exact: true, as: "Option" }
