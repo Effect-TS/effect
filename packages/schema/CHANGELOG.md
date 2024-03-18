@@ -1,5 +1,50 @@
 # @effect/schema
 
+## 0.64.6
+
+### Patch Changes
+
+- [#2347](https://github.com/Effect-TS/effect/pull/2347) [`595140a`](https://github.com/Effect-TS/effect/commit/595140a13bda09bf22c669196440868e8a274599) Thanks [@gcanti](https://github.com/gcanti)! - add back `BrandSchema` and introduce `asBrandSchema` utility
+
+- [#2353](https://github.com/Effect-TS/effect/pull/2353) [`5f5fcd9`](https://github.com/Effect-TS/effect/commit/5f5fcd969ae30ed6fe61d566a571498d9e895e16) Thanks [@tim-smart](https://github.com/tim-smart)! - make `optional` dual:
+
+  ```ts
+  import * as S from "@effect/schema/Schema";
+
+  const schema = S.struct({
+    a: S.string.pipe(S.optional()),
+  });
+
+  // same as:
+  const schema2 = S.struct({
+    a: S.optional(S.string),
+  });
+  ```
+
+- [#2356](https://github.com/Effect-TS/effect/pull/2356) [`7a45ad0`](https://github.com/Effect-TS/effect/commit/7a45ad0a5f715d64a69b28a8ee3573e5f86909c3) Thanks [@gcanti](https://github.com/gcanti)! - make `partial` dual:
+
+  ```ts
+  import * as S from "@effect/schema/Schema";
+
+  const schema = S.struct({ a: S.string }).pipe(S.partial());
+
+  // same as:
+  const schema2 = S.partial(S.struct({ a: S.string }));
+  ```
+
+- [#2339](https://github.com/Effect-TS/effect/pull/2339) [`5c3b1cc`](https://github.com/Effect-TS/effect/commit/5c3b1ccba182d0f636a973729f9c6bfb12539dc8) Thanks [@gcanti](https://github.com/gcanti)! - use `Simplify` from `effect/Types` in `TaggedClass`, `TaggedError` and `TaggedRequest` to avoid errors in `Schema.d.ts`, closes #1841
+
+- [#2343](https://github.com/Effect-TS/effect/pull/2343) [`6f7dfc9`](https://github.com/Effect-TS/effect/commit/6f7dfc9637bd641beb93b14e027dcfcb5d2c8feb) Thanks [@gcanti](https://github.com/gcanti)! - improve pick/omit and add support for Class
+
+- [#2337](https://github.com/Effect-TS/effect/pull/2337) [`88b8583`](https://github.com/Effect-TS/effect/commit/88b85838e03d4f33036f9d16c9c00a487fa99bd8) Thanks [@gcanti](https://github.com/gcanti)! - JSONSchema: allow overrides through annotations, closes #1823
+
+- [#2348](https://github.com/Effect-TS/effect/pull/2348) [`cb20824`](https://github.com/Effect-TS/effect/commit/cb20824416cbf251188395d0aad3622e3a5d7ff2) Thanks [@gcanti](https://github.com/gcanti)! - feedback: expose Class API `identifier`s
+
+- [#2350](https://github.com/Effect-TS/effect/pull/2350) [`a45a525`](https://github.com/Effect-TS/effect/commit/a45a525e7ccf07704dff1666f1e390282b5bac91) Thanks [@gcanti](https://github.com/gcanti)! - refactor unions: remove sorting, flattening, and unification
+
+- Updated dependencies [[`bb0b69e`](https://github.com/Effect-TS/effect/commit/bb0b69e519698c7c76aa68217de423c78ad16566), [`6b20bad`](https://github.com/Effect-TS/effect/commit/6b20badebb3a7ca4d38857753e8ecaa09d02ccfb), [`4e64e9b`](https://github.com/Effect-TS/effect/commit/4e64e9b9876de6bfcbabe39e18a91a08e5f3fbb0), [`3851a02`](https://github.com/Effect-TS/effect/commit/3851a022c481006aec1db36651e4b4fd727aa742), [`5f5fcd9`](https://github.com/Effect-TS/effect/commit/5f5fcd969ae30ed6fe61d566a571498d9e895e16), [`814e5b8`](https://github.com/Effect-TS/effect/commit/814e5b828f68210b9e8f336fd6ac688646835dd9)]:
+  - effect@2.4.8
+
 ## 0.64.5
 
 ### Patch Changes
