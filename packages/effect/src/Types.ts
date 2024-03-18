@@ -83,6 +83,22 @@ export type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <
   : false
 
 /**
+ * Determines if a record contains any of the given keys.
+ *
+ * @example
+ * import * as Types from "effect/Types"
+ *
+ * type Res1 = Types.Has<{ a: number }, "a" | "b"> // true
+ * type Res2 = Types.Has<{ c: number }, "a" | "b"> // false
+ *
+ * @since 2.0.0
+ * @category models
+ */
+export type Has<A, Key extends string> = (Key extends infer K ? K extends keyof A ? true : never : never) extends never
+  ? false
+  : true
+
+/**
  * Merges two object where the keys of the left object take precedence in the case of a conflict.
  *
  * @example

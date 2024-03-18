@@ -1571,193 +1571,148 @@ export const optionalToOptional = <FA, FI, FR, TA, TI, TR>(
  * @category PropertySignature
  * @since 1.0.0
  */
-export const optional: {
-  <A, I, R>(
-    schema: Schema<A, I, R>,
-    options: {
-      readonly exact: true
-      readonly default: () => A
-      readonly nullable: true
-    }
-  ): PropertySignature<":", A, never, "?:", I | null, R>
-  <A, I, R>(
-    schema: Schema<A, I, R>,
-    options: {
-      readonly exact: true
-      readonly default: () => A
-    }
-  ): PropertySignature<":", A, never, "?:", I, R>
-  <A, I, R>(
-    schema: Schema<A, I, R>,
-    options: {
-      readonly exact: true
-      readonly nullable: true
-      readonly as: "Option"
-    }
-  ): PropertySignature<":", Option.Option<A>, never, "?:", I | null, R>
-  <A, I, R>(
-    schema: Schema<A, I, R>,
-    options: {
-      readonly exact: true
-      readonly as: "Option"
-    }
-  ): PropertySignature<":", Option.Option<A>, never, "?:", I, R>
-  <A, I, R>(
-    schema: Schema<A, I, R>,
-    options: {
-      readonly exact: true
-      readonly nullable: true
-    }
-  ): PropertySignature<"?:", A, never, "?:", I | null, R>
-  <A, I, R>(
-    schema: Schema<A, I, R>,
-    options: {
-      readonly exact: true
-    }
-  ): PropertySignature<"?:", A, never, "?:", I, R>
-  <A, I, R>(
-    schema: Schema<A, I, R>,
-    options: {
-      readonly default: () => A
-      readonly nullable: true
-    }
-  ): PropertySignature<":", A, never, "?:", I | null | undefined, R>
-  <A, I, R>(
-    schema: Schema<A, I, R>,
-    options: {
-      readonly nullable: true
-      readonly as: "Option"
-    }
-  ): PropertySignature<":", Option.Option<A>, never, "?:", I | null | undefined, R>
-  <A, I, R>(
-    schema: Schema<A, I, R>,
-    options: {
-      readonly as: "Option"
-    }
-  ): PropertySignature<":", Option.Option<A>, never, "?:", I | undefined, R>
-  <A, I, R>(
-    schema: Schema<A, I, R>,
-    options: {
-      readonly default: () => A
-    }
-  ): PropertySignature<":", A, never, "?:", I | undefined, R>
-  <A, I, R>(
-    schema: Schema<A, I, R>,
-    options: {
-      readonly nullable: true
-    }
-  ): PropertySignature<"?:", A | undefined, never, "?:", I | null | undefined, R>
-  <A, I, R>(
-    schema: Schema<A, I, R>
-  ): PropertySignature<"?:", A | undefined, never, "?:", I | undefined, R>
-} = <A, I, R>(
-  schema: Schema<A, I, R>,
-  options?: {
+export const optional: <
+  A,
+  I,
+  R,
+  const Options extends {
     readonly exact?: true
     readonly default?: () => A
     readonly nullable?: true
+  } | {
     readonly as?: "Option"
-  }
-): PropertySignature<any, any, never, any, any, any> => {
-  const isExact = options?.exact
-  const defaultValue = options?.default
-  const isNullable = options?.nullable
-  const asOption = options?.as == "Option"
+    readonly exact?: true
+    readonly nullable?: true
+  } | undefined
+>(
+  schema: Schema<A, I, R>,
+  options?: Options
+) => [undefined] extends [Options] ? PropertySignature<
+    "?:",
+    A | undefined,
+    never,
+    "?:",
+    I | undefined,
+    R
+  > :
+  PropertySignature<
+    Types.Has<Options, "as" | "default"> extends true ? ":" : "?:",
+    | (Types.Has<Options, "as"> extends true ? Option.Option<A> : A)
+    | (Types.Has<Options, "as" | "default" | "exact"> extends true ? never : undefined),
+    never,
+    "?:",
+    | I
+    | (Types.Has<Options, "exact"> extends true ? never : undefined)
+    | (Types.Has<Options, "nullable"> extends true ? null : never),
+    R
+  > = <A, I, R>(
+    schema: Schema<A, I, R>,
+    options?: {
+      readonly exact?: true
+      readonly default?: () => A
+      readonly nullable?: true
+      readonly as?: "Option"
+    }
+  ): PropertySignature<any, any, never, any, any, any> => {
+    const isExact = options?.exact
+    const defaultValue = options?.default
+    const isNullable = options?.nullable
+    const asOption = options?.as == "Option"
 
-  if (isExact) {
-    if (defaultValue) {
-      if (isNullable) {
-        return optionalToRequired(
-          nullable(schema),
-          typeSchema(schema),
-          Option.match({ onNone: defaultValue, onSome: (a) => a === null ? defaultValue() : a }),
-          Option.some
-        )
+    if (isExact) {
+      if (defaultValue) {
+        if (isNullable) {
+          return optionalToRequired(
+            nullable(schema),
+            typeSchema(schema),
+            Option.match({ onNone: defaultValue, onSome: (a) => a === null ? defaultValue() : a }),
+            Option.some
+          )
+        } else {
+          return optionalToRequired(
+            schema,
+            typeSchema(schema),
+            Option.match({ onNone: defaultValue, onSome: identity }),
+            Option.some
+          )
+        }
+      } else if (asOption) {
+        if (isNullable) {
+          return optionalToRequired(
+            nullable(schema),
+            optionFromSelf(typeSchema(schema)),
+            Option.filter(Predicate.isNotNull),
+            identity
+          )
+        } else {
+          return optionalToRequired(
+            schema,
+            optionFromSelf(typeSchema(schema)),
+            identity,
+            identity
+          )
+        }
       } else {
-        return optionalToRequired(
-          schema,
-          typeSchema(schema),
-          Option.match({ onNone: defaultValue, onSome: identity }),
-          Option.some
-        )
-      }
-    } else if (asOption) {
-      if (isNullable) {
-        return optionalToRequired(
-          nullable(schema),
-          optionFromSelf(typeSchema(schema)),
-          Option.filter(Predicate.isNotNull),
-          identity
-        )
-      } else {
-        return optionalToRequired(
-          schema,
-          optionFromSelf(typeSchema(schema)),
-          identity,
-          identity
-        )
-      }
-    } else {
-      if (isNullable) {
-        return optionalToOptional(
-          nullable(schema),
-          typeSchema(schema),
-          Option.filter(Predicate.isNotNull),
-          identity
-        )
-      } else {
-        return new $PropertySignature(new PropertySignatureDeclaration(schema.ast, true, true, {}))
-      }
-    }
-  } else {
-    if (defaultValue) {
-      if (isNullable) {
-        return optionalToRequired(
-          nullish(schema),
-          typeSchema(schema),
-          Option.match({ onNone: defaultValue, onSome: (a) => (a == null ? defaultValue() : a) }),
-          Option.some
-        )
-      } else {
-        return optionalToRequired(
-          orUndefined(schema),
-          typeSchema(schema),
-          Option.match({ onNone: defaultValue, onSome: (a) => (a === undefined ? defaultValue() : a) }),
-          Option.some
-        )
-      }
-    } else if (asOption) {
-      if (isNullable) {
-        return optionalToRequired(
-          nullish(schema),
-          optionFromSelf(typeSchema(schema)),
-          Option.filter<A | null | undefined, A>((a): a is A => a != null),
-          identity
-        )
-      } else {
-        return optionalToRequired(
-          orUndefined(schema),
-          optionFromSelf(typeSchema(schema)),
-          Option.filter(Predicate.isNotUndefined),
-          identity
-        )
+        if (isNullable) {
+          return optionalToOptional(
+            nullable(schema),
+            typeSchema(schema),
+            Option.filter(Predicate.isNotNull),
+            identity
+          )
+        } else {
+          return new $PropertySignature(new PropertySignatureDeclaration(schema.ast, true, true, {}))
+        }
       }
     } else {
-      if (isNullable) {
-        return optionalToOptional(
-          nullish(schema),
-          orUndefined(typeSchema(schema)),
-          Option.filter(Predicate.isNotNull),
-          identity
-        )
+      if (defaultValue) {
+        if (isNullable) {
+          return optionalToRequired(
+            nullish(schema),
+            typeSchema(schema),
+            Option.match({ onNone: defaultValue, onSome: (a) => (a == null ? defaultValue() : a) }),
+            Option.some
+          )
+        } else {
+          return optionalToRequired(
+            orUndefined(schema),
+            typeSchema(schema),
+            Option.match({ onNone: defaultValue, onSome: (a) => (a === undefined ? defaultValue() : a) }),
+            Option.some
+          )
+        }
+      } else if (asOption) {
+        if (isNullable) {
+          return optionalToRequired(
+            nullish(schema),
+            optionFromSelf(typeSchema(schema)),
+            Option.filter<A | null | undefined, A>((a): a is A => a != null),
+            identity
+          )
+        } else {
+          return optionalToRequired(
+            orUndefined(schema),
+            optionFromSelf(typeSchema(schema)),
+            Option.filter(Predicate.isNotUndefined),
+            identity
+          )
+        }
       } else {
-        return new $PropertySignature(
-          new PropertySignatureDeclaration(orUndefined(schema).ast, true, true, {})
-        )
+        if (isNullable) {
+          return optionalToOptional(
+            nullish(schema),
+            orUndefined(typeSchema(schema)),
+            Option.filter(Predicate.isNotNull),
+            identity
+          )
+        } else {
+          return new $PropertySignature(
+            new PropertySignatureDeclaration(orUndefined(schema).ast, true, true, {})
+          )
+        }
       }
     }
   }
-}
 
 /**
  * @since 1.0.0

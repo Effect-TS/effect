@@ -640,7 +640,6 @@ S.struct({
   c: S.optional(S.NumberFromString, { exact: true, default: () => 0 })
 })
 
-// @ts-expect-error
 S.struct({ a: S.optional(S.literal("a", "b"), { default: () => "a", exact: true }) })
 
 // ---------------------------------------------
@@ -659,7 +658,7 @@ S.asSchema(S.struct({ a: S.string, b: S.number, c: S.optional(S.NumberFromString
 // $ExpectType struct<{ a: $string; b: $number; c: PropertySignature<":", number, never, "?:", string | undefined, never>; }>
 S.struct({ a: S.string, b: S.number, c: S.optional(S.NumberFromString, { default: () => 0 }) })
 
-// @ts-expect-error
+// $ExpectType struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b" | undefined, never>; }>
 S.struct({ a: S.optional(S.literal("a", "b"), { default: () => "a" }) })
 
 // ---------------------------------------------
@@ -678,7 +677,7 @@ S.asSchema(S.struct({ a: S.optional(S.NumberFromString, { exact: true, nullable:
 // $ExpectType struct<{ a: PropertySignature<":", number, never, "?:", string | null, never>; }>
 S.struct({ a: S.optional(S.NumberFromString, { exact: true, nullable: true, default: () => 0 }) })
 
-// @ts-expect-error
+// $ExpectType struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b" | null | undefined, never>; }>
 S.struct({ a: S.optional(S.literal("a", "b"), { default: () => "a", nullable: true }) })
 
 // ---------------------------------------------
