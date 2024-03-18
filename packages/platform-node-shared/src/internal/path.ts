@@ -1,5 +1,5 @@
 import { BadArgument } from "@effect/platform/Error"
-import { Path } from "@effect/platform/Path"
+import { Path, TypeId } from "@effect/platform/Path"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as NodePath from "node:path"
@@ -31,6 +31,7 @@ const toFileUrl = (path: string): Effect.Effect<URL, BadArgument> =>
 export const layerPosix = Layer.succeed(
   Path,
   Path.of({
+    [TypeId]: TypeId,
     ...NodePath.posix,
     fromFileUrl,
     toFileUrl
@@ -41,6 +42,7 @@ export const layerPosix = Layer.succeed(
 export const layerWin32 = Layer.succeed(
   Path,
   Path.of({
+    [TypeId]: TypeId,
     ...NodePath.win32,
     fromFileUrl,
     toFileUrl
@@ -51,6 +53,7 @@ export const layerWin32 = Layer.succeed(
 export const layer = Layer.succeed(
   Path,
   Path.of({
+    [TypeId]: TypeId,
     ...NodePath,
     fromFileUrl,
     toFileUrl

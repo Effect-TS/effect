@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type * as Effect from "effect/Effect"
+import type { Inspectable } from "effect/Inspectable"
 import * as internal from "../internal/http/multiplex.js"
 import type * as App from "./App.js"
 import type * as Error from "./ServerError.js"
@@ -23,7 +24,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface Multiplex<R, E> extends App.Default<R, E | Error.RouteNotFound> {
+export interface Multiplex<R, E> extends App.Default<R, E | Error.RouteNotFound>, Inspectable {
   readonly [TypeId]: TypeId
   readonly apps: ReadonlyArray<
     readonly [

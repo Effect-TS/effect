@@ -7,6 +7,7 @@ import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import { dual, flow } from "effect/Function"
 import * as Global from "effect/GlobalValue"
+import type { Inspectable } from "effect/Inspectable"
 import * as Option from "effect/Option"
 import type * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
@@ -31,7 +32,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface IncomingMessage<E> {
+export interface IncomingMessage<E> extends Inspectable {
   readonly [TypeId]: TypeId
   readonly headers: Headers.Headers
   readonly remoteAddress: Option.Option<string>
@@ -190,3 +191,33 @@ export const withMaxBodySize = dual<
   (size: Option.Option<FileSystem.SizeInput>) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
   <R, E, A>(effect: Effect.Effect<A, E, R>, size: Option.Option<FileSystem.SizeInput>) => Effect.Effect<A, E, R>
 >(2, (effect, size) => Effect.locally(effect, maxBodySize, Option.map(size, FileSystem.Size)))
+
+/**
+ * @since 1.0.0
+ */
+export const inspect = <E>(self: IncomingMessage<E>, that: object): object => {
+  const contentType = self.headers["content-type"] ?? ""
+  let body: unknown
+  if (contentType.includes("application/json")) {
+    try {
+      body = Effect.runSync(self.json)
+    } catch (_) {
+      //
+    }
+  } else if (contentType.includes("text/") || contentType.includes("urlencoded")) {
+    try {
+      body = Effect.runSync(self.text)
+    } catch (_) {
+      //
+    }
+  }
+  const obj: any = {
+    ...that,
+    headers: self.headers,
+    remoteAddress: self.remoteAddress.toJSON()
+  }
+  if (body !== undefined) {
+    obj.body = body
+  }
+  return obj
+}

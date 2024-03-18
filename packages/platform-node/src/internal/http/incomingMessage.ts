@@ -3,13 +3,14 @@ import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
 import * as UrlParams from "@effect/platform/Http/UrlParams"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
+import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
 import type * as Stream from "effect/Stream"
 import type * as Http from "node:http"
 import * as NodeStream from "../../NodeStream.js"
 
 /** @internal */
-export class IncomingMessageImpl<E> implements IncomingMessage.IncomingMessage<E> {
+export abstract class IncomingMessageImpl<E> extends Inspectable.Class implements IncomingMessage.IncomingMessage<E> {
   readonly [IncomingMessage.TypeId]: IncomingMessage.TypeId
 
   constructor(
@@ -17,6 +18,7 @@ export class IncomingMessageImpl<E> implements IncomingMessage.IncomingMessage<E
     readonly onError: (error: unknown) => E,
     readonly remoteAddressOverride?: string
   ) {
+    super()
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
   }
 

@@ -1,6 +1,7 @@
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
+import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import * as Error from "../../Http/ClientError.js"
@@ -19,7 +20,7 @@ export const fromWeb = (
   source: globalThis.Response
 ): ClientResponse.ClientResponse => new ClientResponseImpl(request, source)
 
-class ClientResponseImpl implements ClientResponse.ClientResponse {
+class ClientResponseImpl extends Inspectable.Class implements ClientResponse.ClientResponse {
   readonly [IncomingMessage.TypeId]: IncomingMessage.TypeId
   readonly [TypeId]: ClientResponse.TypeId
 
@@ -27,8 +28,17 @@ class ClientResponseImpl implements ClientResponse.ClientResponse {
     private readonly request: ClientRequest.ClientRequest,
     private readonly source: globalThis.Response
   ) {
+    super()
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
     this[TypeId] = TypeId
+  }
+
+  toJSON(): unknown {
+    return IncomingMessage.inspect(this, {
+      _id: "@effect/platform/Http/ClientResponse",
+      request: this.request.toJSON(),
+      status: this.status
+    })
   }
 
   get status(): number {

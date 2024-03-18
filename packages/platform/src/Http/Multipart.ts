@@ -3,10 +3,12 @@
  */
 import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
+import type { YieldableError } from "effect/Cause"
 import type * as Channel from "effect/Channel"
 import type * as Chunk from "effect/Chunk"
 import type * as Effect from "effect/Effect"
 import type * as FiberRef from "effect/FiberRef"
+import type { Inspectable } from "effect/Inspectable"
 import type * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
@@ -47,7 +49,7 @@ export declare namespace Part {
    * @since 1.0.0
    * @category models
    */
-  export interface Proto {
+  export interface Proto extends Inspectable {
     readonly [TypeId]: TypeId
     readonly _tag: string
   }
@@ -130,7 +132,7 @@ export type ErrorTypeId = typeof ErrorTypeId
  * @since 1.0.0
  * @category errors
  */
-export interface MultipartError {
+export interface MultipartError extends YieldableError {
   readonly [ErrorTypeId]: ErrorTypeId
   readonly _tag: "MultipartError"
   readonly reason: "FileTooLarge" | "FieldTooLarge" | "BodyTooLarge" | "TooManyParts" | "InternalError" | "Parse"
@@ -141,9 +143,11 @@ export interface MultipartError {
  * @since 1.0.0
  * @category errors
  */
-export const MultipartError: (
-  reason: MultipartError["reason"],
-  error: unknown
+export const MultipartError: new(
+  options: {
+    readonly reason: MultipartError["reason"]
+    readonly error: unknown
+  }
 ) => MultipartError = internal.MultipartError
 
 /**

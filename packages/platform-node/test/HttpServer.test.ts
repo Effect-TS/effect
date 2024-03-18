@@ -194,7 +194,7 @@ describe("HttpServer", () => {
         Effect.scoped
       )
       expect(response.status).toEqual(413)
-    }).pipe(Effect.scoped, runPromise))
+    }).pipe(Effect.scoped, Effect.tapErrorCause(Effect.log), runPromise))
 
   it("mount", () =>
     Effect.gen(function*(_) {

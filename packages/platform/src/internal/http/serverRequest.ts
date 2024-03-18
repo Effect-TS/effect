@@ -3,6 +3,7 @@ import type * as Schema from "@effect/schema/Schema"
 import * as Channel from "effect/Channel"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
@@ -115,7 +116,7 @@ export const schemaBodyFormJson = <A, I, R>(schema: Schema.Schema<A, I, R>) => {
 export const fromWeb = (request: globalThis.Request): ServerRequest.ServerRequest =>
   new ServerRequestImpl(request, request.url)
 
-class ServerRequestImpl implements ServerRequest.ServerRequest {
+class ServerRequestImpl extends Inspectable.Class implements ServerRequest.ServerRequest {
   readonly [TypeId]: ServerRequest.TypeId
   readonly [IncomingMessage.TypeId]: IncomingMessage.TypeId
   constructor(
@@ -124,8 +125,16 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
     public headersOverride?: Headers.Headers,
     private remoteAddressOverride?: string
   ) {
+    super()
     this[TypeId] = TypeId
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
+  }
+  toJSON(): unknown {
+    return IncomingMessage.inspect(this, {
+      _id: "@effect/platform/Http/ServerRequest",
+      method: this.method,
+      url: this.originalUrl
+    })
   }
   modify(
     options: {
@@ -239,7 +248,7 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
 
   get multipartStream(): Stream.Stream<Multipart.Part, Multipart.MultipartError> {
     return Stream.pipeThroughChannel(
-      Stream.mapError(this.stream, (error) => Multipart.MultipartError("InternalError", error)),
+      Stream.mapError(this.stream, (error) => new Multipart.MultipartError({ reason: "InternalError", error })),
       Multipart.makeChannel(this.headers)
     )
   }

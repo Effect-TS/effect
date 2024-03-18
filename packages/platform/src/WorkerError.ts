@@ -78,7 +78,8 @@ export class WorkerError extends Schema.TaggedError<WorkerError>()("WorkerError"
    * @since 1.0.0
    */
   get message() {
-    return `${this.reason}: ${String(this.error)}`
+    const message = this.error instanceof Error ? this.error.message : String(this.error)
+    return `${this.reason}: ${message}`
   }
 }
 

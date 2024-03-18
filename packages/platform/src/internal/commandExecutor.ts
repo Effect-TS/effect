@@ -8,6 +8,9 @@ import * as Stream from "effect/Stream"
 import type * as _CommandExecutor from "../CommandExecutor.js"
 
 /** @internal */
+export const TypeId: _CommandExecutor.TypeId = Symbol.for("@effect/platform/CommandExecutor") as _CommandExecutor.TypeId
+
+/** @internal */
 export const ProcessTypeId: _CommandExecutor.ProcessTypeId = Symbol.for(
   "@effect/platform/Process"
 ) as _CommandExecutor.ProcessTypeId
@@ -32,6 +35,7 @@ export const makeExecutor = (start: _CommandExecutor.CommandExecutor["start"]): 
     )
   }
   return {
+    [TypeId]: TypeId,
     start,
     exitCode: (command) => Effect.scoped(Effect.flatMap(start(command), (process) => process.exitCode)),
     stream,

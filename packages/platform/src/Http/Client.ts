@@ -5,6 +5,7 @@ import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
+import type { Inspectable } from "effect/Inspectable"
 import type * as Layer from "effect/Layer"
 import type { Pipeable } from "effect/Pipeable"
 import type * as Predicate from "effect/Predicate"
@@ -31,7 +32,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface Client<R, E, A> extends Pipeable {
+export interface Client<R, E, A> extends Pipeable, Inspectable {
   (request: ClientRequest.ClientRequest): Effect.Effect<A, E, R>
   readonly [TypeId]: TypeId
   readonly preprocess: Client.Preprocess<R, E>

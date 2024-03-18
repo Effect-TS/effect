@@ -179,7 +179,7 @@ function sliceRequestUrl(request: ServerRequest.ServerRequest, prefix: string) {
   return request.modify({ url: request.url.length <= prefexLen ? "/" : request.url.slice(prefexLen) })
 }
 
-class RouteImpl<R, E> implements Router.Route<R, E> {
+class RouteImpl<R, E> extends Inspectable.Class implements Router.Route<R, E> {
   readonly [RouteTypeId]: Router.RouteTypeId
   constructor(
     readonly method: Method.Method | "*",
@@ -187,7 +187,16 @@ class RouteImpl<R, E> implements Router.Route<R, E> {
     readonly handler: Router.Route.Handler<R, E>,
     readonly prefix = Option.none<string>()
   ) {
+    super()
     this[RouteTypeId] = RouteTypeId
+  }
+  toJSON(): unknown {
+    return {
+      _id: "@effect/platform/Http/Router/Route",
+      method: this.method,
+      path: this.path,
+      prefix: this.prefix.toJSON()
+    }
   }
 }
 

@@ -4,6 +4,7 @@
 import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Effect from "effect/Effect"
+import type { Inspectable } from "effect/Inspectable"
 import * as Predicate from "effect/Predicate"
 import type * as Stream_ from "effect/Stream"
 import type * as PlatformError from "../Error.js"
@@ -43,7 +44,7 @@ export declare namespace Body {
    * @since 1.0.0
    * @category models
    */
-  export interface Proto {
+  export interface Proto extends Inspectable {
     readonly [TypeId]: TypeId
     readonly _tag: string
     readonly contentType?: string | undefined

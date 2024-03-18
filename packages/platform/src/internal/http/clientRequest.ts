@@ -1,6 +1,7 @@
 import type * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
+import * as Inspectable from "effect/Inspectable"
 import { pipeArguments } from "effect/Pipeable"
 import type * as Stream from "effect/Stream"
 import type * as PlatformError from "../../Error.js"
@@ -15,7 +16,7 @@ import * as internalBody from "./body.js"
 /** @internal */
 export const TypeId: ClientRequest.TypeId = Symbol.for("@effect/platform/Http/ClientRequest") as ClientRequest.TypeId
 
-class ClientRequestImpl implements ClientRequest.ClientRequest {
+class ClientRequestImpl extends Inspectable.Class implements ClientRequest.ClientRequest {
   readonly [TypeId]: ClientRequest.TypeId
   constructor(
     readonly method: Method,
@@ -24,10 +25,21 @@ class ClientRequestImpl implements ClientRequest.ClientRequest {
     readonly headers: Headers.Headers,
     readonly body: Body.Body
   ) {
+    super()
     this[TypeId] = TypeId
   }
   pipe() {
     return pipeArguments(this, arguments)
+  }
+  toJSON(): unknown {
+    return {
+      _id: "@effect/platform/Http/ClientRequest",
+      method: this.method,
+      url: this.url,
+      urlParams: this.urlParams,
+      headers: this.headers,
+      body: this.body.toJSON()
+    }
   }
 }
 
