@@ -79,6 +79,7 @@ export interface BackingPersistenceStore {
   readonly getMany: (key: Array<string>) => Effect.Effect<Array<Option.Option<unknown>>, PersistenceError>
   readonly set: (key: string, value: unknown) => Effect.Effect<void, PersistenceError>
   readonly remove: (key: string) => Effect.Effect<void, PersistenceError>
+  readonly clear: Effect.Effect<void, PersistenceError>
 }
 
 /**
@@ -130,6 +131,7 @@ export interface ResultPersistenceStore {
   readonly remove: <R, IE, E, IA, A>(
     key: ResultPersistence.Key<R, IE, E, IA, A>
   ) => Effect.Effect<void, PersistenceError>
+  readonly clear: Effect.Effect<void, PersistenceError>
 }
 
 /**
@@ -224,7 +226,8 @@ export const layerResult = Layer.effect(
               encode("set", key, value).pipe(
                 Effect.flatMap((_) => storage.set(makeKey(key), _))
               ),
-            remove: (key) => storage.remove(makeKey(key))
+            remove: (key) => storage.remove(makeKey(key)),
+            clear: storage.clear
           })
         })
     })
@@ -246,7 +249,8 @@ export const layerMemory: Layer.Layer<BackingPersistence> = Layer.succeed(
           get: (key) => Effect.sync(() => Option.fromNullable(map.get(key))),
           getMany: (keys) => Effect.sync(() => keys.map((key) => Option.fromNullable(map.get(key)))),
           set: (key, value) => Effect.sync(() => map.set(key, value)),
-          remove: (key) => Effect.sync(() => map.delete(key))
+          remove: (key) => Effect.sync(() => map.delete(key)),
+          clear: Effect.sync(() => map.clear())
         })
       })
   })
@@ -301,7 +305,8 @@ export const layerKeyValueStore: Layer.Layer<BackingPersistence, never, KeyValue
               Effect.mapError(
                 store.remove(key),
                 (error) => new PersistenceBackingError({ method: "remove", error })
-              )
+              ),
+            clear: Effect.mapError(store.clear, (error) => new PersistenceBackingError({ method: "clear", error }))
           })
         })
     })
