@@ -929,7 +929,7 @@ class $union<Members extends ReadonlyArray<Schema.Any>>
   implements union<Members>
 {
   static ast = <Members extends ReadonlyArray<Schema.Any>>(members: Members): AST.AST => {
-    return AST.Union.make(members.map((m) => m.ast))
+    return AST.Union.members(members.map((m) => m.ast))
   }
   constructor(readonly members: Members, ast: AST.AST = $union.ast(members)) {
     super(ast)
@@ -1005,8 +1005,7 @@ export const nullish = <S extends Schema.Any>(self: S): nullish<S> => union(self
  * @category combinators
  * @since 1.0.0
  */
-export const keyof = <A, I, R>(self: Schema<A, I, R>): Schema<keyof A> =>
-  make<keyof A>(AST.keyof(self.ast)).annotations({ description: `keyof<${format(self)}>` })
+export const keyof = <A, I, R>(self: Schema<A, I, R>): Schema<keyof A> => make<keyof A>(AST.keyof(self.ast))
 
 /**
  * @since 1.0.0
@@ -6329,9 +6328,9 @@ const FiberIdRuntimeEncoded = struct({
 }).annotations({ identifier: "FiberIdRuntimeEncoded" })
 
 const FiberIdEncoded: Schema<FiberIdEncoded> = union(
-  FiberIdCompositeEncoded,
   FiberIdNoneEncoded,
-  FiberIdRuntimeEncoded
+  FiberIdRuntimeEncoded,
+  FiberIdCompositeEncoded
 ).annotations({ identifier: "FiberIdEncoded" })
 
 const fiberIdFromArbitrary = arbitrary.make(FiberIdEncoded)
@@ -6370,12 +6369,12 @@ export const FiberIdFromSelf: FiberIdFromSelf = declare(
 
 const fiberIdDecode = (input: FiberIdEncoded): _fiberId.FiberId => {
   switch (input._tag) {
-    case "Composite":
-      return _fiberId.composite(fiberIdDecode(input.left), fiberIdDecode(input.right))
     case "None":
       return _fiberId.none
     case "Runtime":
       return _fiberId.runtime(input.id, input.startTimeMillis)
+    case "Composite":
+      return _fiberId.composite(fiberIdDecode(input.left), fiberIdDecode(input.right))
   }
 }
 
@@ -6417,10 +6416,6 @@ export const FiberId: FiberId = transform(
  */
 export type CauseEncoded<E> =
   | {
-    readonly _tag: "Die"
-    readonly defect: unknown
-  }
-  | {
     readonly _tag: "Empty"
   }
   | {
@@ -6428,16 +6423,20 @@ export type CauseEncoded<E> =
     readonly error: E
   }
   | {
+    readonly _tag: "Die"
+    readonly defect: unknown
+  }
+  | {
     readonly _tag: "Interrupt"
     readonly fiberId: FiberIdEncoded
   }
   | {
-    readonly _tag: "Parallel"
+    readonly _tag: "Sequential"
     readonly left: CauseEncoded<E>
     readonly right: CauseEncoded<E>
   }
   | {
-    readonly _tag: "Sequential"
+    readonly _tag: "Parallel"
     readonly left: CauseEncoded<E>
     readonly right: CauseEncoded<E>
   }
@@ -6483,12 +6482,12 @@ const causeEncoded = <E, EI, R1, R2>(
 ): Schema<CauseEncoded<E>, CauseEncoded<EI>, R1 | R2> => {
   const recur = suspend(() => out)
   const out: Schema<CauseEncoded<E>, CauseEncoded<EI>, R1 | R2> = union(
-    causeDieEncoded(defect),
     CauseEmptyEncoded,
     causeFailEncoded(error),
+    causeDieEncoded(defect),
     CauseInterruptEncoded,
-    causeParallelEncoded(recur),
-    causeSequentialEncoded(recur)
+    causeSequentialEncoded(recur),
+    causeParallelEncoded(recur)
   ).annotations({ description: `CauseEncoded<${format(error)}>` })
   return out
 }
@@ -6506,12 +6505,12 @@ const causePretty = <E>(error: Pretty.Pretty<E>): Pretty.Pretty<Cause.Cause<E>> 
     switch (cause._tag) {
       case "Empty":
         return "Cause.empty"
+      case "Fail":
+        return `Cause.fail(${error(cause.error)})`
       case "Die":
         return `Cause.die(${Cause.pretty(cause)})`
       case "Interrupt":
         return `Cause.interrupt(${fiberIdPretty(cause.fiberId)})`
-      case "Fail":
-        return `Cause.fail(${error(cause.error)})`
       case "Sequential":
         return `Cause.sequential(${f(cause.left)}, ${f(cause.right)})`
       case "Parallel":
@@ -6564,18 +6563,18 @@ export const causeFromSelf = <E extends Schema.Any, DR = never>({ defect = unkno
 
 function causeDecode<E>(cause: CauseEncoded<E>): Cause.Cause<E> {
   switch (cause._tag) {
-    case "Die":
-      return Cause.die(cause.defect)
     case "Empty":
       return Cause.empty
-    case "Interrupt":
-      return Cause.interrupt(fiberIdDecode(cause.fiberId))
     case "Fail":
       return Cause.fail(cause.error)
-    case "Parallel":
-      return Cause.parallel(causeDecode(cause.left), causeDecode(cause.right))
+    case "Die":
+      return Cause.die(cause.defect)
+    case "Interrupt":
+      return Cause.interrupt(fiberIdDecode(cause.fiberId))
     case "Sequential":
       return Cause.sequential(causeDecode(cause.left), causeDecode(cause.right))
+    case "Parallel":
+      return Cause.parallel(causeDecode(cause.left), causeDecode(cause.right))
   }
 }
 
@@ -6583,12 +6582,12 @@ function causeEncode<E>(cause: Cause.Cause<E>): CauseEncoded<E> {
   switch (cause._tag) {
     case "Empty":
       return { _tag: "Empty" }
+    case "Fail":
+      return { _tag: "Fail", error: cause.error }
     case "Die":
       return { _tag: "Die", defect: cause.defect }
     case "Interrupt":
       return { _tag: "Interrupt", fiberId: cause.fiberId }
-    case "Fail":
-      return { _tag: "Fail", error: cause.error }
     case "Sequential":
       return {
         _tag: "Sequential",

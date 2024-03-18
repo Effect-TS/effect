@@ -9,10 +9,8 @@ describe("Schema > format", () => {
   })
 
   it("union", () => {
-    const schema = S.union(S.string, S.string.pipe(S.minLength(2)))
-    expect(format(schema)).toEqual(
-      "a string at least 2 character(s) long | string"
-    )
+    const schema = S.union(S.string, S.number)
+    expect(format(schema)).toEqual("string | number")
   })
 
   it("suspend", () => {

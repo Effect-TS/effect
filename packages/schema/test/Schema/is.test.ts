@@ -371,39 +371,6 @@ describe("Schema > is", () => {
     expect(is({ a: "a" })).toEqual(false)
   })
 
-  it("record(keyof struct({ a, b } & Record<string, string>), number)", () => {
-    const schema = S.record(
-      S.keyof(S.struct({ a: S.string, b: S.string }, S.record(S.string, S.string))),
-      S.number
-    )
-    const is = P.is(schema)
-    expect(is({ a: 1, b: 2 })).toEqual(true)
-    expect(is({})).toEqual(true)
-    expect(is({ a: 1 })).toEqual(true)
-    expect(is({ b: 2 })).toEqual(true)
-
-    expect(is({ a: "a" })).toEqual(false)
-  })
-
-  it("record(keyof struct({ a, b } & Record<symbol, string>), number)", () => {
-    const schema = S.record(
-      S.keyof(
-        S.struct({ a: S.string, b: S.string }, S.record(S.symbolFromSelf, S.string))
-      ),
-      S.number
-    )
-    const is = P.is(schema)
-    expect(is({ a: 1, b: 2 })).toEqual(true)
-    const c = Symbol.for("@effect/schema/test/c")
-    expect(is({ a: 1, b: 2, [c]: 3 })).toEqual(true)
-
-    expect(is({})).toEqual(false)
-    expect(is({ a: 1 })).toEqual(false)
-    expect(is({ b: 2 })).toEqual(false)
-    expect(is({ a: "a" })).toEqual(false)
-    expect(is({ a: 1, b: 2, [c]: "c" })).toEqual(false)
-  })
-
   it("record(Symbol('a') | Symbol('b'), number)", () => {
     const a = Symbol.for("@effect/schema/test/a")
     const b = Symbol.for("@effect/schema/test/b")

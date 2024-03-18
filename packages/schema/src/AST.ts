@@ -1311,6 +1311,40 @@ const formatTypeLiteral = (ast: TypeLiteral): string => {
  */
 export const isTypeLiteral: (ast: AST) => ast is TypeLiteral = createASTGuard("TypeLiteral")
 
+/**
+ * @since 1.0.0
+ */
+export type Members<A> = readonly [A, A, ...Array<A>]
+
+const removeNevers = (candidates: ReadonlyArray<AST>): Array<AST> => candidates.filter((ast) => !(ast === neverKeyword))
+
+const sortCandidates = ReadonlyArray.sort(
+  Order.mapInput(Number.Order, (ast: AST) => {
+    switch (ast._tag) {
+      case "AnyKeyword":
+        return 0
+      case "UnknownKeyword":
+        return 1
+      case "ObjectKeyword":
+        return 2
+      case "StringKeyword":
+      case "NumberKeyword":
+      case "BooleanKeyword":
+      case "BigIntKeyword":
+      case "SymbolKeyword":
+        return 3
+    }
+    return 4
+  })
+)
+
+const literalMap = {
+  string: "StringKeyword",
+  number: "NumberKeyword",
+  boolean: "BooleanKeyword",
+  bigint: "BigIntKeyword"
+} as const
+
 const flatten = (candidates: ReadonlyArray<AST>): Array<AST> =>
   ReadonlyArray.flatMap(candidates, (ast: AST) => {
     switch (ast._tag) {
@@ -1321,29 +1355,89 @@ const flatten = (candidates: ReadonlyArray<AST>): Array<AST> =>
     }
   })
 
-/**
- * @since 1.0.0
- */
-export type Members<A> = readonly [A, A, ...Array<A>]
-
-const prettyUnion = (ss: ReadonlyArray<string>): string => Array.from(new Set(ss)).join(" | ")
-
-const getDefaultUnionDescription = (candidates: ReadonlyArray<AST>): string | undefined => {
-  const nested: Array<string> = []
-  let other = false
-  for (const c of candidates) {
-    if (isUnion(c)) {
-      const expected = getExpected(c, false)
-      if (Option.isSome(expected)) {
-        nested.push(expected.value)
-        continue
+/** @internal */
+export const unify = (candidates: ReadonlyArray<AST>): Array<AST> => {
+  const cs = sortCandidates(candidates)
+  const out: Array<AST> = []
+  const uniques: { [K in AST["_tag"] | "{}"]?: AST } = {}
+  const literals: Array<LiteralValue | symbol> = []
+  for (const ast of cs) {
+    switch (ast._tag) {
+      case "NeverKeyword":
+        break
+      case "AnyKeyword":
+        return [anyKeyword]
+      case "UnknownKeyword":
+        return [unknownKeyword]
+      // uniques
+      case "ObjectKeyword":
+      case "UndefinedKeyword":
+      case "VoidKeyword":
+      case "StringKeyword":
+      case "NumberKeyword":
+      case "BooleanKeyword":
+      case "BigIntKeyword":
+      case "SymbolKeyword": {
+        if (!uniques[ast._tag]) {
+          uniques[ast._tag] = ast
+          out.push(ast)
+        }
+        break
       }
+      case "Literal": {
+        const type = typeof ast.literal
+        switch (type) {
+          case "string":
+          case "number":
+          case "bigint":
+          case "boolean": {
+            const _tag = literalMap[type]
+            if (!uniques[_tag] && !literals.includes(ast.literal)) {
+              literals.push(ast.literal)
+              out.push(ast)
+            }
+            break
+          }
+          // null
+          case "object": {
+            if (!literals.includes(ast.literal)) {
+              literals.push(ast.literal)
+              out.push(ast)
+            }
+            break
+          }
+        }
+        break
+      }
+      case "UniqueSymbol": {
+        if (!uniques["SymbolKeyword"] && !literals.includes(ast.symbol)) {
+          literals.push(ast.symbol)
+          out.push(ast)
+        }
+        break
+      }
+      case "TupleType": {
+        if (!uniques["ObjectKeyword"]) {
+          out.push(ast)
+        }
+        break
+      }
+      case "TypeLiteral": {
+        if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
+          if (!uniques["{}"]) {
+            uniques["{}"] = ast
+            out.push(ast)
+          }
+        } else if (!uniques["ObjectKeyword"]) {
+          out.push(ast)
+        }
+        break
+      }
+      default:
+        out.push(ast)
     }
-    other = true
   }
-  if (nested.length > 0) {
-    return prettyUnion(nested.concat(other ? ["..."] : []))
-  }
+  return out
 }
 
 /**
@@ -1351,22 +1445,30 @@ const getDefaultUnionDescription = (candidates: ReadonlyArray<AST>): string | un
  * @since 1.0.0
  */
 export class Union implements Annotated {
-  static make = (
-    candidates: ReadonlyArray<AST>,
-    annotations?: Annotations
-  ): AST => {
-    const types = unify(flatten(candidates))
-    if (isMembers(types)) {
-      const defaultDescription = getDefaultUnionDescription(candidates)
-      if (defaultDescription) {
-        annotations = { [DescriptionAnnotationId]: defaultDescription, ...annotations }
+  static make = (candidates: ReadonlyArray<AST>, annotations?: Annotations): AST => {
+    const types = []
+    const memo = new Set<AST>()
+    for (let i = 0; i < candidates.length; i++) {
+      const ast = candidates[i]
+      if (ast === neverKeyword || memo.has(ast)) {
+        continue
       }
-      return new Union(sortUnionMembers(types), annotations)
+      memo.add(ast)
+      types.push(ast)
     }
-    if (ReadonlyArray.isNonEmptyReadonlyArray(types)) {
-      return types[0]
-    }
-    return neverKeyword
+    return Union.union(types, annotations)
+  }
+  /** @internal */
+  static members = (candidates: ReadonlyArray<AST>, annotations?: Annotations): AST => {
+    return Union.union(removeNevers(candidates), annotations)
+  }
+  /** @internal */
+  static unify = (candidates: ReadonlyArray<AST>, annotations?: Annotations): AST => {
+    return Union.union(unify(flatten(candidates)), annotations)
+  }
+  /** @internal */
+  static union = (types: ReadonlyArray<AST>, annotations?: Annotations): AST => {
+    return isMembers(types) ? new Union(types, annotations) : types.length === 1 ? types[0] : neverKeyword
   }
   /**
    * @since 1.0.0
@@ -1379,7 +1481,7 @@ export class Union implements Annotated {
   toString(verbose: boolean = false) {
     return Option.getOrElse(
       getExpected(this, verbose),
-      () => prettyUnion(this.types.map(String))
+      () => this.types.map(String).join(" | ")
     )
   }
   /**
@@ -1711,7 +1813,7 @@ export const annotations = (ast: AST, annotations: Annotations): AST => {
  *
  * @since 1.0.0
  */
-export const keyof = (ast: AST): AST => Union.make(_keyof(ast))
+export const keyof = (ast: AST): AST => Union.unify(_keyof(ast))
 
 /**
  * @since 1.0.0
@@ -1755,7 +1857,7 @@ export const getNumberIndexedAccess = (ast: AST): AST => {
   switch (ast._tag) {
     case "TupleType": {
       let hasOptional = false
-      const out: Array<AST> = []
+      let out: Array<AST> = []
       for (const e of ast.elements) {
         if (e.isOptional) {
           hasOptional = true
@@ -1765,9 +1867,7 @@ export const getNumberIndexedAccess = (ast: AST): AST => {
       if (hasOptional) {
         out.push(undefinedKeyword)
       }
-      for (const e of ast.rest) {
-        out.push(e)
-      }
+      out = out.concat(ast.rest)
       return Union.make(out)
     }
     case "Refinement":
@@ -1995,8 +2095,8 @@ export const required = (ast: AST): AST => {
         ReadonlyArray.match(ast.rest, {
           onEmpty: () => ast.rest,
           onNonEmpty: (rest) => {
-            const union = Union.make([...rest])
-            return ReadonlyArray.map(rest, () => union)
+            const union = Union.make(rest)
+            return rest.map(() => union)
           }
         }),
         ast.isReadonly
@@ -2045,12 +2145,10 @@ export const mutable = (ast: AST): AST => {
         ast :
         new TypeLiteral(propertySignatures, indexSignatures, ast.annotations)
     }
-
     case "Union": {
       const types = changeMap(ast.types, mutable)
       return types === ast.types ? ast : Union.make(types, ast.annotations)
     }
-
     case "Suspend":
       return new Suspend(() => mutable(ast.f()), ast.annotations)
     case "Refinement": {
@@ -2338,122 +2436,6 @@ export const getWeight = (ast: AST): Weight => {
     default:
       return emptyWeight
   }
-}
-
-const sortUnionMembers: (self: Members<AST>) => Members<AST> = ReadonlyArray.sort(
-  Order.reverse(Order.mapInput(WeightOrder, getWeight))
-) as any
-
-const sortCandidates = ReadonlyArray.sort(
-  Order.mapInput(Number.Order, (ast: AST) => {
-    switch (ast._tag) {
-      case "AnyKeyword":
-        return 0
-      case "UnknownKeyword":
-        return 1
-      case "ObjectKeyword":
-        return 2
-      case "StringKeyword":
-      case "NumberKeyword":
-      case "BooleanKeyword":
-      case "BigIntKeyword":
-      case "SymbolKeyword":
-        return 3
-    }
-    return 4
-  })
-)
-
-const literalMap = {
-  string: "StringKeyword",
-  number: "NumberKeyword",
-  boolean: "BooleanKeyword",
-  bigint: "BigIntKeyword"
-} as const
-
-/** @internal */
-export const unify = (candidates: ReadonlyArray<AST>): Array<AST> => {
-  const cs = sortCandidates(candidates)
-  const out: Array<AST> = []
-  const uniques: { [K in AST["_tag"] | "{}"]?: AST } = {}
-  const literals: Array<LiteralValue | symbol> = []
-  for (const ast of cs) {
-    switch (ast._tag) {
-      case "NeverKeyword":
-        break
-      case "AnyKeyword":
-        return [anyKeyword]
-      case "UnknownKeyword":
-        return [unknownKeyword]
-      // uniques
-      case "ObjectKeyword":
-      case "UndefinedKeyword":
-      case "VoidKeyword":
-      case "StringKeyword":
-      case "NumberKeyword":
-      case "BooleanKeyword":
-      case "BigIntKeyword":
-      case "SymbolKeyword": {
-        if (!uniques[ast._tag]) {
-          uniques[ast._tag] = ast
-          out.push(ast)
-        }
-        break
-      }
-      case "Literal": {
-        const type = typeof ast.literal
-        switch (type) {
-          case "string":
-          case "number":
-          case "bigint":
-          case "boolean": {
-            const _tag = literalMap[type]
-            if (!uniques[_tag] && !literals.includes(ast.literal)) {
-              literals.push(ast.literal)
-              out.push(ast)
-            }
-            break
-          }
-          // null
-          case "object": {
-            if (!literals.includes(ast.literal)) {
-              literals.push(ast.literal)
-              out.push(ast)
-            }
-            break
-          }
-        }
-        break
-      }
-      case "UniqueSymbol": {
-        if (!uniques["SymbolKeyword"] && !literals.includes(ast.symbol)) {
-          literals.push(ast.symbol)
-          out.push(ast)
-        }
-        break
-      }
-      case "TupleType": {
-        if (!uniques["ObjectKeyword"]) {
-          out.push(ast)
-        }
-        break
-      }
-      case "TypeLiteral": {
-        if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
-          if (!uniques["{}"]) {
-            uniques["{}"] = ast
-            out.push(ast)
-          }
-        } else if (!uniques["ObjectKeyword"]) {
-          out.push(ast)
-        }
-        break
-      }
-      default:
-        out.push(ast)
-    }
-  }
-  return out
 }
 
 /** @internal */

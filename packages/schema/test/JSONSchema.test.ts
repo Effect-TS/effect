@@ -295,14 +295,14 @@ describe("JSONSchema", () => {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "anyOf": [
           {
-            "type": "number",
-            "description": "a number",
-            "title": "number"
-          },
-          {
             "type": "string",
             "description": "a string",
             "title": "string"
+          },
+          {
+            "type": "number",
+            "description": "a number",
+            "title": "number"
           }
         ]
       })
@@ -325,12 +325,12 @@ describe("JSONSchema", () => {
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
         "anyOf": [
+          { "enum": [1, true] },
           {
             "type": "string",
             "description": "a string",
             "title": "string"
-          },
-          { "enum": [1, true] }
+          }
         ]
       })
       propertyType(schema)
@@ -346,12 +346,12 @@ describe("JSONSchema", () => {
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
         "anyOf": [
+          { "const": true, "description": "description" },
           {
             "type": "string",
             "description": "a string",
             "title": "string"
           },
-          { "const": true, "description": "description" },
           { "const": 1 }
         ]
       })
@@ -368,13 +368,13 @@ describe("JSONSchema", () => {
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
         "anyOf": [
+          { "enum": [1, 2] },
+          { "const": true, "description": "description" },
           {
             "type": "string",
             "description": "a string",
             "title": "string"
-          },
-          { "const": true, "description": "description" },
-          { "enum": [1, 2] }
+          }
         ]
       })
       propertyType(schema)
@@ -1325,12 +1325,12 @@ describe("JSONSchema", () => {
               "value": {
                 "anyOf": [
                   {
-                    "$ref": "#/$defs/Operation"
-                  },
-                  {
                     "type": "number",
                     "description": "a number",
                     "title": "number"
+                  },
+                  {
+                    "$ref": "#/$defs/Operation"
                   }
                 ]
               }
