@@ -2216,17 +2216,27 @@ export const brand = <S extends Schema.AnyNoContext, B extends string | symbol>(
  * @since 1.0.0
  */
 export const partial: {
-  <A, I, R>(
-    self: Schema<A, I, R>,
-    options: { readonly exact: true }
-  ): Schema<{ [K in keyof A]?: A[K] }, { [K in keyof I]?: I[K] }, R>
-  <A, I, R>(
+  <const Options extends { readonly exact: true } | undefined>(
+    options?: Options
+  ): <A, I, R>(
     self: Schema<A, I, R>
-  ): Schema<{ [K in keyof A]?: A[K] | undefined }, Simplify<{ [K in keyof I]?: I[K] | undefined }>, R>
-} = <A, I, R>(
+  ) => Schema<
+    { [K in keyof A]?: A[K] | ([undefined] extends [Options] ? undefined : never) },
+    { [K in keyof I]?: I[K] | ([undefined] extends [Options] ? undefined : never) },
+    R
+  >
+  <A, I, R, const Options extends { readonly exact: true } | undefined>(
+    self: Schema<A, I, R>,
+    options?: Options
+  ): Schema<
+    { [K in keyof A]?: A[K] | ([undefined] extends [Options] ? undefined : never) },
+    { [K in keyof I]?: I[K] | ([undefined] extends [Options] ? undefined : never) },
+    R
+  >
+} = dual((args) => isSchema(args[0]), <A, I, R>(
   self: Schema<A, I, R>,
   options?: { readonly exact: true }
-): Schema<Partial<A>, Partial<I>, R> => make(AST.partial(self.ast, options))
+): Schema<Partial<A>, Partial<I>, R> => make(AST.partial(self.ast, options)))
 
 /**
  * @category combinators

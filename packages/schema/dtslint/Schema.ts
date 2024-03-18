@@ -908,6 +908,12 @@ S.partial(S.struct({ a: S.string, b: S.number }))
 // $ExpectType Schema<{ readonly a?: string | undefined; readonly b?: number | undefined; }, { readonly a?: string | undefined; readonly b?: string | undefined; }, never>
 S.partial(S.struct({ a: S.string, b: S.NumberFromString }))
 
+// $ExpectType Schema<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b?: number; }, never>
+S.struct({ a: S.string, b: S.number }).pipe(S.partial({ exact: true }))
+
+// $ExpectType Schema<{ readonly a?: string | undefined; readonly b?: number | undefined; }, { readonly a?: string | undefined; readonly b?: number | undefined; }, never>
+S.struct({ a: S.string, b: S.number }).pipe(S.partial())
+
 // ---------------------------------------------
 // Required
 // ---------------------------------------------
