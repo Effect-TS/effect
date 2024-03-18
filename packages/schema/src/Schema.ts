@@ -1576,10 +1576,13 @@ export const optional: {
     A,
     const Options extends {
       readonly exact?: true
-      readonly default?: () => A
       readonly nullable?: true
     } | {
-      readonly as?: "Option"
+      readonly default: () => A
+      readonly exact?: true
+      readonly nullable?: true
+    } | {
+      readonly as: "Option"
       readonly exact?: true
       readonly nullable?: true
     } | undefined
@@ -1600,8 +1603,8 @@ export const optional: {
       never,
       "?:",
       | I
-      | (Types.Has<Options, "exact"> extends true ? never : undefined)
-      | (Types.Has<Options, "nullable"> extends true ? null : never),
+      | (Types.Has<Options, "nullable"> extends true ? null : never)
+      | (Types.Has<Options, "exact"> extends true ? never : undefined),
       R
     >
   <
@@ -1610,10 +1613,13 @@ export const optional: {
     R,
     const Options extends {
       readonly exact?: true
-      readonly default?: () => A
       readonly nullable?: true
     } | {
-      readonly as?: "Option"
+      readonly default: () => A
+      readonly exact?: true
+      readonly nullable?: true
+    } | {
+      readonly as: "Option"
       readonly exact?: true
       readonly nullable?: true
     } | undefined
@@ -1635,8 +1641,8 @@ export const optional: {
       never,
       "?:",
       | I
-      | (Types.Has<Options, "exact"> extends true ? never : undefined)
-      | (Types.Has<Options, "nullable"> extends true ? null : never),
+      | (Types.Has<Options, "nullable"> extends true ? null : never)
+      | (Types.Has<Options, "exact"> extends true ? never : undefined),
       R
     >
 } = dual((args) => isSchema(args[0]), <A, I, R>(
