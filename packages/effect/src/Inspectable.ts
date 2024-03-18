@@ -65,10 +65,19 @@ export const BaseProto: Inspectable = {
  * @since 2.0.0
  */
 export abstract class Class {
+  /**
+   * @since 2.0.0
+   */
   abstract toJSON(): unknown
+  /**
+   * @since 2.0.0
+   */
   [NodeInspectSymbol]() {
     return this.toJSON()
   }
+  /**
+   * @since 2.0.0
+   */
   toString() {
     return format(this.toJSON())
   }
