@@ -3458,12 +3458,21 @@ export const filterOrFail: {
     predicate: Predicate<NoInfer<A>>,
     orFailWith: (a: NoInfer<A>) => E2
   ): <E, R>(self: Effect<A, E, R>) => Effect<A, E2 | E, R>
+  <A, B extends A>(
+    refinement: Refinement<NoInfer<A>, B>
+  ): <E, R>(self: Effect<A, E, R>) => Effect<B, Cause.NoSuchElementException | E, R>
+  <A>(predicate: Predicate<NoInfer<A>>): <E, R>(self: Effect<A, E, R>) => Effect<A, Cause.NoSuchElementException | E, R>
   <A, E, R, B extends A, E2>(
     self: Effect<A, E, R>,
     refinement: Refinement<A, B>,
     orFailWith: (a: A) => E2
   ): Effect<B, E | E2, R>
   <A, E, R, E2>(self: Effect<A, E, R>, predicate: Predicate<A>, orFailWith: (a: A) => E2): Effect<A, E | E2, R>
+  <A, E, R, B extends A>(
+    self: Effect<A, E, R>,
+    refinement: Refinement<A, B>
+  ): Effect<B, E | Cause.NoSuchElementException, R>
+  <A, E, R>(self: Effect<A, E, R>, predicate: Predicate<A>): Effect<A, E | Cause.NoSuchElementException, R>
 } = effect.filterOrFail
 
 /**
