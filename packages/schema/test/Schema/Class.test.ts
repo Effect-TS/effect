@@ -655,7 +655,7 @@ describe("Schema > Class APIs", () => {
       }
     }
 
-    let err = new MyError({ id: 1 })
+    const err = new MyError({ id: 1 })
 
     expect(String(err)).include(`MyError: bad id: 1`)
     expect(String(err)).toContain("Class.test.ts:")
@@ -673,7 +673,7 @@ describe("Schema > Class APIs", () => {
       }
     }
 
-    let err = new MyError({ id: 1 })
+    const err = new MyError({ id: 1 })
     const encoded = S.encodeSync(MyError)(err)
     const decoded = S.decodeSync(MyError)(encoded)
 
