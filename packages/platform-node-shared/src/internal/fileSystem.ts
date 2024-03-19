@@ -1,6 +1,7 @@
 import { effectify } from "@effect/platform/Effectify"
 import * as Error from "@effect/platform/Error"
 import * as FileSystem from "@effect/platform/FileSystem"
+import type * as ParcelWatcher from "@parcel/watcher"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
@@ -528,13 +529,12 @@ const utimes = (() => {
 
 // == watch
 
-const watchParcel = (path: string) =>
+const watchParcel = (Watcher: typeof ParcelWatcher, path: string) =>
   Stream.asyncScoped<FileSystem.WatchEvent, Error.PlatformError>((emit) =>
     Effect.acquireRelease(
       Effect.tryPromise({
-        try: async () => {
-          const Watcher = await import("@parcel/watcher")
-          return Watcher.subscribe(path, (error, events) => {
+        try: () =>
+          Watcher.subscribe(path, (error, events) => {
             if (error) {
               emit.fail(Error.SystemError({
                 reason: "Unknown",
@@ -558,8 +558,7 @@ const watchParcel = (path: string) =>
                 }
               })))
             }
-          })
-        },
+          }),
         catch: (error) =>
           Error.SystemError({
             reason: "Unknown",
@@ -613,7 +612,14 @@ const watchNode = (path: string) =>
 
 const watch = (path: string) =>
   stat(path).pipe(
-    Effect.map((stat) => stat.type === "Directory" ? watchParcel(path) : watchNode(path)),
+    Effect.flatMap((stat) =>
+      stat.type === "Directory" ?
+        Effect.matchCause(Effect.promise(() => import("@parcel/watcher")), {
+          onSuccess: (Watcher) => watchParcel(Watcher, path),
+          onFailure: (_) => watchNode(path)
+        }) :
+        Effect.succeed(watchNode(path))
+    ),
     Stream.unwrap
   )
 
