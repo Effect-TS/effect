@@ -231,7 +231,7 @@ export interface FileSystem {
     mtime: Date | number
   ) => Effect.Effect<void, PlatformError>
   /**
-   * Watch a directory for changes
+   * Watch a directory or file for changes
    */
   readonly watch: (path: string) => Stream<WatchEvent, PlatformError>
   /**
