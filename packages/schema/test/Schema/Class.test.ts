@@ -632,7 +632,7 @@ describe("Schema > Class APIs", () => {
 
     let err = new MyError({ id: 1 })
 
-    expect(String(err)).toEqual(`MyError({ "_tag": "MyError", "id": 1 })`)
+    expect(String(err)).include(`MyError({ "_tag": "MyError", "id": 1, "stack": "MyError:`)
     expect(err.stack).toContain("Class.test.ts:")
     expect(err._tag).toEqual("MyError")
     expect(err.id).toEqual(1)
@@ -644,6 +644,44 @@ describe("Schema > Class APIs", () => {
     err = S.decodeUnknownSync(MyError)({ _tag: "MyError", id: 1 })
     expect(err._tag).toEqual("MyError")
     expect(err.id).toEqual(1)
+  })
+
+  it("TaggedError/message", () => {
+    class MyError extends S.TaggedError<MyError>()("MyError", {
+      id: S.number
+    }) {
+      get message() {
+        return `bad id: ${this.id}`
+      }
+    }
+
+    let err = new MyError({ id: 1 })
+
+    expect(String(err)).include(`MyError: bad id: 1`)
+    expect(String(err)).toContain("Class.test.ts:")
+    expect(err.stack).toContain("Class.test.ts:")
+    expect(err._tag).toEqual("MyError")
+    expect(err.id).toEqual(1)
+  })
+
+  it("TaggedError/stack is preserved", () => {
+    class MyError extends S.TaggedError<MyError>()("MyError", {
+      id: S.number
+    }) {
+      get message() {
+        return `bad id: ${this.id}`
+      }
+    }
+
+    let err = new MyError({ id: 1 })
+    const encoded = S.encodeSync(MyError)(err)
+    const decoded = S.decodeSync(MyError)(encoded)
+
+    expect(String(decoded)).include(`MyError: bad id: 1`)
+    expect(String(decoded)).toContain("Class.test.ts:")
+    expect(decoded.stack).toContain("Class.test.ts:")
+    expect(decoded._tag).toEqual("MyError")
+    expect(decoded.id).toEqual(1)
   })
 
   describe("TaggedRequest", () => {
