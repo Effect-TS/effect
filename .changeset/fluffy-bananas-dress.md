@@ -2,4 +2,4 @@
 "@effect/schema": patch
 ---
 
-preserve Schema.TaggedError .stack & .name properties
+preserve defect information in Cause.Die
