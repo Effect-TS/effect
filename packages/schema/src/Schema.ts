@@ -96,12 +96,21 @@ export declare namespace Annotable {
   /**
    * @since 1.0.0
    */
-  export type Self<S extends Any> = ReturnType<S["annotations"]>
+  export type Self<S extends All> = ReturnType<S["annotations"]>
 
   /**
    * @since 1.0.0
    */
-  export type Any = Annotable<any, any, any, unknown> | Annotable<any, never>
+  export type Any = Annotable<any, any, any, unknown>
+
+  /**
+   * @since 1.0.0
+   */
+  export type All =
+    | Any
+    | Annotable<any, any, never, unknown>
+    | Annotable<any, never, any, unknown>
+    | Annotable<any, never, never, unknown>
 }
 
 /**
@@ -188,7 +197,11 @@ export declare namespace Schema {
    *
    * @since 1.0.0
    */
-  export type All = Any | $never
+  export type All =
+    | Any
+    | Schema<any, never, unknown>
+    | Schema<never, any, unknown>
+    | Schema<never, never, unknown>
 }
 
 /**
@@ -1230,8 +1243,15 @@ export declare namespace PropertySignature {
   /**
    * @since 1.0.0
    */
-  export type Any<Key extends PropertyKey = PropertyKey> =
-    | PropertySignature<Token, any, Key, Token, any, unknown>
+  export type Any<Key extends PropertyKey = PropertyKey> = PropertySignature<Token, any, Key, Token, any, unknown>
+
+  /**
+   * @since 1.0.0
+   */
+  export type All<Key extends PropertyKey = PropertyKey> =
+    | Any<Key>
+    | PropertySignature<Token, never, Key, Token, any, unknown>
+    | PropertySignature<Token, any, Key, Token, never, unknown>
     | PropertySignature<Token, never, Key, Token, never, unknown>
 
   /**
@@ -1763,16 +1783,18 @@ export declare namespace Struct {
   export type Fields = {
     readonly [x: PropertyKey]:
       | Schema.All
-      | PropertySignature.Any
+      | PropertySignature.All
   }
 
   type Key<F extends Fields, K extends keyof F> = [K] extends [never] ? never :
-    F[K] extends PropertySignature.Any<infer Key> ? [Key] extends [never] ? K : Key :
+    F[K] extends PropertySignature.All<infer Key> ? [Key] extends [never] ? K : Key :
     K
 
   type EncodedTokenKeys<Fields extends Struct.Fields> = {
     [K in keyof Fields]: Fields[K] extends
       | PropertySignature<PropertySignature.Token, any, PropertyKey, "?:", any, unknown>
+      | PropertySignature<PropertySignature.Token, any, PropertyKey, "?:", never, unknown>
+      | PropertySignature<PropertySignature.Token, never, PropertyKey, "?:", any, unknown>
       | PropertySignature<PropertySignature.Token, never, PropertyKey, "?:", never, unknown> ? K
       : never
   }[keyof Fields]
@@ -1780,6 +1802,8 @@ export declare namespace Struct {
   type TypeTokenKeys<Fields extends Struct.Fields> = {
     [K in keyof Fields]: Fields[K] extends
       | PropertySignature<"?:", any, PropertyKey, PropertySignature.Token, any, unknown>
+      | PropertySignature<"?:", any, PropertyKey, PropertySignature.Token, never, unknown>
+      | PropertySignature<"?:", never, PropertyKey, PropertySignature.Token, any, unknown>
       | PropertySignature<"?:", never, PropertyKey, PropertySignature.Token, never, unknown> ? K
       : never
   }[keyof Fields]
@@ -1898,7 +1922,7 @@ export interface typeLiteral<
   ): typeLiteral<Fields, Records>
 }
 
-const isPropertySignature = (u: unknown): u is PropertySignature.Any =>
+const isPropertySignature = (u: unknown): u is PropertySignature.All =>
   Predicate.hasProperty(u, PropertySignatureTypeId)
 
 class $typeLiteral<
@@ -2798,8 +2822,8 @@ export declare namespace Annotations {
  * @since 1.0.0
  */
 export const annotations: {
-  <S extends Annotable.Any>(annotations: Annotations.Schema<Schema.Type<S>>): (self: S) => Annotable.Self<S>
-  <S extends Annotable.Any>(self: S, annotations: Annotations.Schema<Schema.Type<S>>): Annotable.Self<S>
+  <S extends Annotable.All>(annotations: Annotations.Schema<Schema.Type<S>>): (self: S) => Annotable.Self<S>
+  <S extends Annotable.All>(self: S, annotations: Annotations.Schema<Schema.Type<S>>): Annotable.Self<S>
 } = dual(
   2,
   <A, I, R>(self: Schema<A, I, R>, annotations: Annotations.Schema<A>): Schema<A, I, R> => self.annotations(annotations)
@@ -2809,7 +2833,7 @@ export const annotations: {
  * @category annotations
  * @since 1.0.0
  */
-export const message = (message: AST.MessageAnnotation) => <S extends Annotable.Any>(self: S): Annotable.Self<S> =>
+export const message = (message: AST.MessageAnnotation) => <S extends Annotable.All>(self: S): Annotable.Self<S> =>
   self.annotations({ [AST.MessageAnnotationId]: message })
 
 /**
@@ -2817,14 +2841,14 @@ export const message = (message: AST.MessageAnnotation) => <S extends Annotable.
  * @since 1.0.0
  */
 export const identifier =
-  (identifier: AST.IdentifierAnnotation) => <S extends Annotable.Any>(self: S): Annotable.Self<S> =>
+  (identifier: AST.IdentifierAnnotation) => <S extends Annotable.All>(self: S): Annotable.Self<S> =>
     self.annotations({ [AST.IdentifierAnnotationId]: identifier })
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const title = (title: AST.TitleAnnotation) => <S extends Annotable.Any>(self: S): Annotable.Self<S> =>
+export const title = (title: AST.TitleAnnotation) => <S extends Annotable.All>(self: S): Annotable.Self<S> =>
   self.annotations({ [AST.TitleAnnotationId]: title })
 
 /**
@@ -2832,7 +2856,7 @@ export const title = (title: AST.TitleAnnotation) => <S extends Annotable.Any>(s
  * @since 1.0.0
  */
 export const description =
-  (description: AST.DescriptionAnnotation) => <S extends Annotable.Any>(self: S): Annotable.Self<S> =>
+  (description: AST.DescriptionAnnotation) => <S extends Annotable.All>(self: S): Annotable.Self<S> =>
     self.annotations({ [AST.DescriptionAnnotationId]: description })
 
 /**
@@ -2840,10 +2864,10 @@ export const description =
  * @since 1.0.0
  */
 export const examples =
-  <S extends Annotable.Any>(examples: AST.ExamplesAnnotation<Schema.Type<S>>) => (self: S): Annotable.Self<S> =>
+  <S extends Annotable.All>(examples: AST.ExamplesAnnotation<Schema.Type<S>>) => (self: S): Annotable.Self<S> =>
     self.annotations({ [AST.ExamplesAnnotationId]: examples })
 
-const _default = <S extends Annotable.Any>(value: Schema.Type<S>) => (self: S): Annotable.Self<S> =>
+const _default = <S extends Annotable.All>(value: Schema.Type<S>) => (self: S): Annotable.Self<S> =>
   self.annotations({ [AST.DefaultAnnotationId]: value })
 
 export {
@@ -2859,7 +2883,7 @@ export {
  * @since 1.0.0
  */
 export const documentation =
-  (documentation: AST.DocumentationAnnotation) => <S extends Annotable.Any>(self: S): Annotable.Self<S> =>
+  (documentation: AST.DocumentationAnnotation) => <S extends Annotable.All>(self: S): Annotable.Self<S> =>
     self.annotations({ [AST.DocumentationAnnotationId]: documentation })
 
 /**
@@ -2871,7 +2895,7 @@ export const documentation =
  * @since 1.0.0
  */
 export const jsonSchema =
-  (jsonSchema: AST.JSONSchemaAnnotation) => <S extends Annotable.Any>(self: S): Annotable.Self<S> =>
+  (jsonSchema: AST.JSONSchemaAnnotation) => <S extends Annotable.All>(self: S): Annotable.Self<S> =>
     self.annotations({ [AST.JSONSchemaAnnotationId]: jsonSchema })
 
 /**
@@ -2879,7 +2903,7 @@ export const jsonSchema =
  * @since 1.0.0
  */
 export const equivalence =
-  <S extends Annotable.Any>(equivalence: Equivalence.Equivalence<Schema.Type<S>>) => (self: S): Annotable.Self<S> =>
+  <S extends Annotable.All>(equivalence: Equivalence.Equivalence<Schema.Type<S>>) => (self: S): Annotable.Self<S> =>
     self.annotations({ [_hooks.EquivalenceHookId]: () => equivalence })
 
 /**
@@ -2887,14 +2911,14 @@ export const equivalence =
  * @since 1.0.0
  */
 export const concurrency =
-  (concurrency: AST.ConcurrencyAnnotation) => <S extends Annotable.Any>(self: S): Annotable.Self<S> =>
+  (concurrency: AST.ConcurrencyAnnotation) => <S extends Annotable.All>(self: S): Annotable.Self<S> =>
     self.annotations({ [AST.ConcurrencyAnnotationId]: concurrency })
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const batching = (batching: AST.BatchingAnnotation) => <S extends Annotable.Any>(self: S): Annotable.Self<S> =>
+export const batching = (batching: AST.BatchingAnnotation) => <S extends Annotable.All>(self: S): Annotable.Self<S> =>
   self.annotations({ [AST.BatchingAnnotationId]: batching })
 
 type Rename<A, M> = {
