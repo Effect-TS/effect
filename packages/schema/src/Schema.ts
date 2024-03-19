@@ -6084,11 +6084,11 @@ export const TaggedError = <Self = never>(identifier?: string) =>
     tag: { _tag: tag },
     annotations,
     toStringOverride(self) {
-      if (typeof self.message !== "string" || self.message.length === 0) {
+      if (!(Predicate.isString(self.message) && self.message.length > 0)) {
         return Pretty.make(self.constructor as any)(self)
       }
       let message = `${self._tag}: ${self.message}`
-      if ("stack" in self) {
+      if (Predicate.isString(self.stack)) {
         message = `${message}\n${self.stack.split("\n").slice(1).join("\n")}`
       }
       return message
@@ -6656,7 +6656,12 @@ export const causeDefectUnknown: $unknown = transform(
   unknown,
   (u) => {
     if (Predicate.isObject(u) && "message" in u && typeof u.message === "string") {
-      return Object.assign(new Error(u.message, { cause: u }), u)
+      const err = new Error(u.message, { cause: u })
+      if ("name" in u && typeof u.name === "string") {
+        err.name = u.name
+      }
+      err.stack = "stack" in u && typeof u.stack === "string" ? u.stack : ""
+      return err
     }
     return String(u)
   },
@@ -6664,8 +6669,7 @@ export const causeDefectUnknown: $unknown = transform(
     if (defect instanceof Error) {
       return {
         name: defect.name,
-        message: defect.message,
-        stack: defect.stack
+        message: defect.message
       }
     }
     return String(defect)
