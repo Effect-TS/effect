@@ -1,5 +1,14 @@
 # @effect/platform-node-shared
 
+## 0.3.11
+
+### Patch Changes
+
+- [#2360](https://github.com/Effect-TS/effect/pull/2360) [`0f6c7b4`](https://github.com/Effect-TS/effect/commit/0f6c7b426eb3432f60e3a17f8cd92ceac91597bf) Thanks [@tim-smart](https://github.com/tim-smart)! - add support for watching single files
+
+- Updated dependencies [[`0f6c7b4`](https://github.com/Effect-TS/effect/commit/0f6c7b426eb3432f60e3a17f8cd92ceac91597bf)]:
+  - @effect/platform@0.48.11
+
 ## 0.3.10
 
 ### Patch Changes
