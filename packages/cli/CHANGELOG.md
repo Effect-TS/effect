@@ -1,5 +1,13 @@
 # @effect/cli
 
+## 0.35.14
+
+### Patch Changes
+
+- Updated dependencies [[`e0af20e`](https://github.com/Effect-TS/effect/commit/e0af20ec5f6d0b19d66c5ebf610969d55bfc6c22)]:
+  - @effect/schema@0.64.8
+  - @effect/platform@0.48.12
+
 ## 0.35.13
 
 ### Patch Changes
