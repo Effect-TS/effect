@@ -528,7 +528,7 @@ const utimes = (() => {
 
 // == watch
 
-const watchStream = (path: string) =>
+const watchParcel = (path: string) =>
   Stream.asyncScoped<FileSystem.WatchEvent, Error.PlatformError>((emit) =>
     Effect.acquireRelease(
       Effect.tryPromise({
@@ -573,17 +573,47 @@ const watchStream = (path: string) =>
     )
   )
 
+const watchNode = (path: string) =>
+  Stream.asyncScoped<FileSystem.WatchEvent, Error.PlatformError>((emit) =>
+    Effect.acquireRelease(
+      Effect.sync(() => {
+        const watcher = NFS.watch(path, {}, (event, path) => {
+          if (!path) return
+          switch (event) {
+            case "rename": {
+              emit.fromEffect(Effect.match(stat(path), {
+                onSuccess: (_) => FileSystem.WatchEventCreate({ path }),
+                onFailure: (_) => FileSystem.WatchEventRemove({ path })
+              }))
+              return
+            }
+            case "change": {
+              emit.single(FileSystem.WatchEventUpdate({ path }))
+              return
+            }
+          }
+        })
+        watcher.on("error", (error) => {
+          emit.fail(Error.SystemError({
+            module: "FileSystem",
+            reason: "Unknown",
+            method: "watch",
+            pathOrDescriptor: path,
+            message: error.message
+          }))
+        })
+        watcher.on("close", () => {
+          emit.end()
+        })
+        return watcher
+      }),
+      (watcher) => Effect.sync(() => watcher.close())
+    )
+  )
+
 const watch = (path: string) =>
   stat(path).pipe(
-    Effect.flatMap((stat) =>
-      stat.type === "Directory" ? Effect.succeed(watchStream(path)) : Effect.fail(Error.SystemError({
-        reason: "BadResource",
-        module: "FileSystem",
-        method: "watch",
-        pathOrDescriptor: path,
-        message: "Path is not a directory"
-      }))
-    ),
+    Effect.map((stat) => stat.type === "Directory" ? watchParcel(path) : watchNode(path)),
     Stream.unwrap
   )
 
