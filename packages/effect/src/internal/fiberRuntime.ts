@@ -1521,6 +1521,19 @@ export const acquireRelease: {
   ))
 
 /* @internal */
+export const acquireRelease2: {
+  <A, E, R, X, R2>(
+    args: {
+      acquire: Effect.Effect<A, E, R>
+      release: (a: NoInfer<A>, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<X, never, R2>
+    }
+  ): Effect.Effect<A, E, R2 | R | Scope.Scope>
+} = ({ acquire, release }) =>
+  core.uninterruptible(
+    core.tap(acquire, (a) => addFinalizer((exit) => release(a, exit)))
+  )
+
+/* @internal */
 export const acquireReleaseInterruptible: {
   <X, R2>(
     release: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<X, never, R2>
@@ -3084,12 +3097,34 @@ export const fiberRefLocallyScoped = dual<
   <A>(self: FiberRef.FiberRef<A>, value: A) => Effect.Effect<void, never, Scope.Scope>
 >(2, (self, value) =>
   core.asUnit(
-    acquireRelease(
-      core.flatMap(
-        core.fiberRefGet(self),
-        (oldValue) => core.as(core.fiberRefSet(self, value), oldValue)
-      ),
-      (oldValue) => core.fiberRefSet(self, oldValue)
+    acquireRelease2(
+      {
+        // TODO(Mateusz): this infers to Effect.Effect<unknown, never, never> instead of Effect.Effect<A, never, never>
+        // fiberRefLocallyScoped2 is added as a working example
+        acquire: core.flatMap(
+          core.fiberRefGet(self),
+          (oldValue) => core.as(core.fiberRefSet(self, value), oldValue)
+        ),
+        release: (oldValue) => core.fiberRefSet(self, oldValue)
+      }
+    )
+  ))
+
+/* @internal */
+export const fiberRefLocallyScoped2 = dual<
+  <A>(value: A) => (self: FiberRef.FiberRef<A>) => Effect.Effect<void, never, Scope.Scope>,
+  <A>(self: FiberRef.FiberRef<A>, value: A) => Effect.Effect<void, never, Scope.Scope>
+>(2, (self, value) =>
+  core.asUnit(
+    acquireRelease2(
+      {
+        acquire: (() =>
+          core.flatMap(
+            core.fiberRefGet(self),
+            (oldValue) => core.as(core.fiberRefSet(self, value), oldValue)
+          ))(),
+        release: (oldValue) => core.fiberRefSet(self, oldValue)
+      }
     )
   ))
 
