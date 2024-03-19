@@ -1,5 +1,15 @@
 # @effect/platform-browser
 
+## 0.31.10
+
+### Patch Changes
+
+- [#2357](https://github.com/Effect-TS/effect/pull/2357) [`71fd528`](https://github.com/Effect-TS/effect/commit/71fd5287500f9ce155a7d9f0df6ee3e0ac3aeb99) Thanks [@tim-smart](https://github.com/tim-smart)! - make more data types in /platform implement Inspectable
+
+- Updated dependencies [[`71fd528`](https://github.com/Effect-TS/effect/commit/71fd5287500f9ce155a7d9f0df6ee3e0ac3aeb99)]:
+  - @effect/platform@0.48.10
+  - effect@2.4.9
+
 ## 0.31.9
 
 ### Patch Changes

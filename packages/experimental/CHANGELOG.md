@@ -1,5 +1,17 @@
 # @effect/experimental
 
+## 0.13.6
+
+### Patch Changes
+
+- [#2355](https://github.com/Effect-TS/effect/pull/2355) [`151b785`](https://github.com/Effect-TS/effect/commit/151b7850fa60b066c2bc62602a0ea510ae76c1fa) Thanks [@jrmdayn](https://github.com/jrmdayn)! - Add clear api to remove all items of a result persistence
+
+- Updated dependencies [[`71fd528`](https://github.com/Effect-TS/effect/commit/71fd5287500f9ce155a7d9f0df6ee3e0ac3aeb99)]:
+  - @effect/platform-node@0.45.12
+  - @effect/platform@0.48.10
+  - effect@2.4.9
+  - @effect/schema@0.64.7
+
 ## 0.13.5
 
 ### Patch Changes
