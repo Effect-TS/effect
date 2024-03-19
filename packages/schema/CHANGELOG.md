@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.64.8
+
+### Patch Changes
+
+- [#2363](https://github.com/Effect-TS/effect/pull/2363) [`e0af20e`](https://github.com/Effect-TS/effect/commit/e0af20ec5f6d0b19d66c5ebf610969d55bfc6c22) Thanks [@gcanti](https://github.com/gcanti)! - make defensive copies of exports
+
 ## 0.64.7
 
 ### Patch Changes
