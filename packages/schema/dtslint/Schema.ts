@@ -6,6 +6,11 @@ import * as N from "effect/Number"
 import * as Str from "effect/String"
 import type { Simplify } from "effect/Types"
 
+declare const anyNever: S.Schema<any, never>
+declare const neverAny: S.Schema<never, any>
+declare const anyNeverPropertySignature: S.PropertySignature<"?:", any, never, "?:", never, never>
+declare const neverAnyPropertySignature: S.PropertySignature<"?:", never, never, "?:", any, never>
+
 class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
 
 // ---------------------------------------------
@@ -563,6 +568,18 @@ S.struct({ a: S.number }, { key: S.string, value: S.number }).records
 
 // $ExpectType readonly [{ readonly key: $string; readonly value: $number; }, { readonly key: $symbol; readonly value: $number; }]
 S.struct({ a: S.number }, { key: S.string, value: S.number }, { key: S.symbol, value: S.number }).records
+
+// $ExpectType Schema<{ readonly a: any; }, { readonly a: never; }, never>
+S.asSchema(S.struct({ a: anyNever }))
+
+// $ExpectType Schema<{ readonly a: never; }, { readonly a: any; }, never>
+S.asSchema(S.struct({ a: neverAny }))
+
+// $ExpectType Schema<{ readonly a?: any; }, { readonly a?: never; }, never>
+S.asSchema(S.struct({ a: anyNeverPropertySignature }))
+
+// $ExpectType Schema<{ readonly a?: never; }, { readonly a?: any; }, never>
+S.asSchema(S.struct({ a: neverAnyPropertySignature }))
 
 // ---------------------------------------------
 // optional { exact: true }
