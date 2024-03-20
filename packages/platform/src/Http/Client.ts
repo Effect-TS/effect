@@ -32,7 +32,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface Client<A, E, R> extends Pipeable, Inspectable {
+export interface Client<A = ClientResponse.ClientResponse, E = never, R = never> extends Pipeable, Inspectable {
   (request: ClientRequest.ClientRequest): Effect.Effect<A, E, R>
   readonly [TypeId]: TypeId
   readonly preprocess: Client.Preprocess<E, R>
@@ -55,7 +55,7 @@ export declare namespace Client {
    * @since 1.0.0
    * @category models
    */
-  export type Execute<A, E, R> = (
+  export type Execute<A, E = never, R = never> = (
     request: Effect.Effect<ClientRequest.ClientRequest, E, R>
   ) => Effect.Effect<A, E, R>
 
@@ -63,7 +63,7 @@ export declare namespace Client {
    * @since 1.0.0
    * @category models
    */
-  export type WithResponse<E, R> = Client<ClientResponse.ClientResponse, E, R>
+  export type WithResponse<E = never, R = never> = Client<ClientResponse.ClientResponse, E, R>
 
   /**
    * @since 1.0.0

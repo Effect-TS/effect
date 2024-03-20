@@ -78,7 +78,7 @@ export const make = (
           middleware
             ? middleware(App.withDefaultMiddleware(respond(httpApp)))
             : App.withDefaultMiddleware(respond(httpApp))
-        ) as App.Default<never, unknown>
+        ) as App.Default<unknown>
 
         return pipe(
           Effect.runtime<never>(),
@@ -110,7 +110,7 @@ export const make = (
           Effect.asUnit
         )
       }
-    })
+    });
   })
 
 const makeResponse = (request: ServerRequest.ServerRequest, response: ServerResponse.ServerResponse): Response => {
