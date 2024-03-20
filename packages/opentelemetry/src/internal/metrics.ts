@@ -4,6 +4,7 @@ import type * as Resources from "@opentelemetry/resources"
 import type {
   CollectionResult,
   DataPoint,
+  Histogram,
   MetricCollectOptions,
   MetricData,
   MetricDescriptor,
@@ -26,13 +27,27 @@ const sdkName = "@effect/opentelemetry/Metrics"
 
 /** @internal */
 export class MetricProducerImpl implements MetricProducer {
-  constructor(readonly resource: Resources.Resource) {
+  constructor(readonly resource: Resources.Resource) {}
+
+  startTimes = new Map<string, HrTime>()
+
+  startTimeFor(name: string, hrTime: HrTime) {
+    if (this.startTimes.has(name)) {
+      return this.startTimes.get(name)!
+    }
+    this.startTimes.set(name, hrTime)
+    return hrTime
   }
 
   collect(_options?: MetricCollectOptions): Promise<CollectionResult> {
     const snapshot = Metric.unsafeSnapshot()
     const hrTimeNow = currentHrTime()
     const metricData: Array<MetricData> = []
+    const metricDataByName = new Map<string, MetricData>()
+    const addMetricData = (data: MetricData) => {
+      metricData.push(data)
+      metricDataByName.set(data.descriptor.name, data)
+    }
 
     for (let i = 0, len = snapshot.length; i < len; i++) {
       const { metricKey, metricState } = snapshot[i]
@@ -41,32 +56,43 @@ export class MetricProducerImpl implements MetricProducer {
         return acc
       })
       const descriptor = descriptorFromKey(metricKey, attributes)
+      const startTime = this.startTimeFor(descriptor.name, hrTimeNow)
 
       if (MetricState.isCounterState(metricState)) {
-        metricData.push({
-          dataPointType: DataPointType.SUM,
-          descriptor,
-          isMonotonic: descriptor.type === InstrumentType.COUNTER,
-          aggregationTemporality: AggregationTemporality.CUMULATIVE,
-          dataPoints: [{
-            startTime: hrTimeNow,
-            endTime: hrTimeNow,
-            attributes,
-            value: Number(metricState.count)
-          }]
-        })
+        const dataPoint: DataPoint<number> = {
+          startTime,
+          endTime: hrTimeNow,
+          attributes,
+          value: Number(metricState.count)
+        }
+        if (metricDataByName.has(descriptor.name)) {
+          metricDataByName.get(descriptor.name)!.dataPoints.push(dataPoint as any)
+        } else {
+          addMetricData({
+            dataPointType: DataPointType.SUM,
+            descriptor,
+            isMonotonic: descriptor.type === InstrumentType.COUNTER,
+            aggregationTemporality: AggregationTemporality.CUMULATIVE,
+            dataPoints: [dataPoint]
+          })
+        }
       } else if (MetricState.isGaugeState(metricState)) {
-        metricData.push({
-          dataPointType: DataPointType.GAUGE,
-          descriptor,
-          aggregationTemporality: AggregationTemporality.CUMULATIVE,
-          dataPoints: [{
-            startTime: hrTimeNow,
-            endTime: hrTimeNow,
-            attributes,
-            value: Number(metricState.value)
-          }]
-        })
+        const dataPoint: DataPoint<number> = {
+          startTime,
+          endTime: hrTimeNow,
+          attributes,
+          value: Number(metricState.value)
+        }
+        if (metricDataByName.has(descriptor.name)) {
+          metricDataByName.get(descriptor.name)!.dataPoints.push(dataPoint as any)
+        } else {
+          addMetricData({
+            dataPointType: DataPointType.GAUGE,
+            descriptor,
+            aggregationTemporality: AggregationTemporality.CUMULATIVE,
+            dataPoints: [dataPoint]
+          })
+        }
       } else if (MetricState.isHistogramState(metricState)) {
         const size = metricState.buckets.length
         const buckets = {
@@ -83,29 +109,34 @@ export class MetricProducerImpl implements MetricProducer {
           prev = value
           i++
         }
+        const dataPoint: DataPoint<Histogram> = {
+          startTime,
+          endTime: hrTimeNow,
+          attributes,
+          value: {
+            buckets,
+            count: metricState.count,
+            min: metricState.min,
+            max: metricState.max,
+            sum: metricState.sum
+          }
+        }
 
-        metricData.push({
-          dataPointType: DataPointType.HISTOGRAM,
-          descriptor,
-          aggregationTemporality: AggregationTemporality.CUMULATIVE,
-          dataPoints: [{
-            startTime: hrTimeNow,
-            endTime: hrTimeNow,
-            attributes,
-            value: {
-              buckets,
-              count: metricState.count,
-              min: metricState.min,
-              max: metricState.max,
-              sum: metricState.sum
-            }
-          }]
-        })
+        if (metricDataByName.has(descriptor.name)) {
+          metricDataByName.get(descriptor.name)!.dataPoints.push(dataPoint as any)
+        } else {
+          addMetricData({
+            dataPointType: DataPointType.HISTOGRAM,
+            descriptor,
+            aggregationTemporality: AggregationTemporality.CUMULATIVE,
+            dataPoints: [dataPoint]
+          })
+        }
       } else if (MetricState.isFrequencyState(metricState)) {
         const dataPoints: Array<DataPoint<number>> = []
         for (const [freqKey, value] of metricState.occurrences) {
           dataPoints.push({
-            startTime: hrTimeNow,
+            startTime,
             endTime: hrTimeNow,
             attributes: {
               ...attributes,
@@ -114,76 +145,90 @@ export class MetricProducerImpl implements MetricProducer {
             value
           })
         }
-        metricData.push({
-          dataPointType: DataPointType.SUM,
-          descriptor: descriptorFromKey(metricKey, attributes),
-          aggregationTemporality: AggregationTemporality.CUMULATIVE,
-          isMonotonic: true,
-          dataPoints
-        })
+        if (metricDataByName.has(descriptor.name)) {
+          // eslint-disable-next-line no-restricted-syntax
+          metricDataByName.get(descriptor.name)!.dataPoints.push(...dataPoints as any)
+        } else {
+          addMetricData({
+            dataPointType: DataPointType.SUM,
+            descriptor: descriptorFromKey(metricKey, attributes),
+            aggregationTemporality: AggregationTemporality.CUMULATIVE,
+            isMonotonic: true,
+            dataPoints
+          })
+        }
       } else if (MetricState.isSummaryState(metricState)) {
         const dataPoints: Array<DataPoint<number>> = [{
-          startTime: hrTimeNow,
+          startTime,
           endTime: hrTimeNow,
           attributes: { ...attributes, quantile: "min" },
           value: metricState.min
         }]
         for (const [quantile, value] of metricState.quantiles) {
           dataPoints.push({
-            startTime: hrTimeNow,
+            startTime,
             endTime: hrTimeNow,
             attributes: { ...attributes, quantile: quantile.toString() },
             value: value._tag === "Some" ? value.value : 0
           })
         }
         dataPoints.push({
-          startTime: hrTimeNow,
+          startTime,
           endTime: hrTimeNow,
           attributes: { ...attributes, quantile: "max" },
           value: metricState.max
         })
+        const countDataPoint: DataPoint<number> = {
+          startTime,
+          endTime: hrTimeNow,
+          attributes,
+          value: metricState.count
+        }
+        const sumDataPoint: DataPoint<number> = {
+          startTime,
+          endTime: hrTimeNow,
+          attributes,
+          value: metricState.sum
+        }
 
-        metricData.push({
-          dataPointType: DataPointType.SUM,
-          descriptor: descriptorFromKey(metricKey, attributes, "quantiles"),
-          aggregationTemporality: AggregationTemporality.CUMULATIVE,
-          isMonotonic: false,
-          dataPoints
-        })
-        metricData.push({
-          dataPointType: DataPointType.SUM,
-          descriptor: {
-            ...descriptorMeta(metricKey, "count"),
-            unit: "1",
-            type: InstrumentType.COUNTER,
-            valueType: ValueType.INT
-          },
-          aggregationTemporality: AggregationTemporality.CUMULATIVE,
-          isMonotonic: true,
-          dataPoints: [{
-            startTime: hrTimeNow,
-            endTime: hrTimeNow,
-            attributes,
-            value: metricState.count
-          }]
-        })
-        metricData.push({
-          dataPointType: DataPointType.SUM,
-          descriptor: {
-            ...descriptorMeta(metricKey, "sum"),
-            unit: "1",
-            type: InstrumentType.COUNTER,
-            valueType: ValueType.DOUBLE
-          },
-          aggregationTemporality: AggregationTemporality.CUMULATIVE,
-          isMonotonic: true,
-          dataPoints: [{
-            startTime: hrTimeNow,
-            endTime: hrTimeNow,
-            attributes,
-            value: metricState.sum
-          }]
-        })
+        if (metricDataByName.has(`${descriptor.name}_quantiles`)) {
+          // eslint-disable-next-line no-restricted-syntax
+          metricDataByName.get(`${descriptor.name}_quantiles`)!.dataPoints.push(...dataPoints as any)
+          metricDataByName.get(`${descriptor.name}_count`)!.dataPoints.push(countDataPoint as any)
+          metricDataByName.get(`${descriptor.name}_sum`)!.dataPoints.push(sumDataPoint as any)
+        } else {
+          addMetricData({
+            dataPointType: DataPointType.SUM,
+            descriptor: descriptorFromKey(metricKey, attributes, "quantiles"),
+            aggregationTemporality: AggregationTemporality.CUMULATIVE,
+            isMonotonic: false,
+            dataPoints
+          })
+          addMetricData({
+            dataPointType: DataPointType.SUM,
+            descriptor: {
+              ...descriptorMeta(metricKey, "count"),
+              unit: "1",
+              type: InstrumentType.COUNTER,
+              valueType: ValueType.INT
+            },
+            aggregationTemporality: AggregationTemporality.CUMULATIVE,
+            isMonotonic: true,
+            dataPoints: [countDataPoint]
+          })
+          addMetricData({
+            dataPointType: DataPointType.SUM,
+            descriptor: {
+              ...descriptorMeta(metricKey, "sum"),
+              unit: "1",
+              type: InstrumentType.COUNTER,
+              valueType: ValueType.DOUBLE
+            },
+            aggregationTemporality: AggregationTemporality.CUMULATIVE,
+            isMonotonic: true,
+            dataPoints: [sumDataPoint]
+          })
+        }
       }
     }
 
