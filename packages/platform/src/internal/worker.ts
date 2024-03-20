@@ -64,7 +64,7 @@ export const makeManager = Effect.gen(function*(_) {
   let idCounter = 0
   return WorkerManager.of({
     [WorkerManagerTypeId]: WorkerManagerTypeId,
-    spawn<I, E, O>({
+    spawn<I, O, E>({
       encode,
       initialMessage,
       permits = 1,
@@ -296,14 +296,14 @@ export const makeManager = Effect.gen(function*(_) {
 export const layerManager = Layer.effect(WorkerManager, makeManager)
 
 /** @internal */
-export const makePool = <I, E, O>(
+export const makePool = <I, O, E>(
   options: Worker.WorkerPool.Options<I>
 ) =>
   Effect.gen(function*(_) {
     const manager = yield* _(WorkerManager)
-    const workers = new Set<Worker.Worker<I, E, O>>()
+    const workers = new Set<Worker.Worker<I, O, E>>()
     const acquire = pipe(
-      manager.spawn<I, E, O>(options),
+      manager.spawn<I, O, E>(options),
       Effect.tap((worker) => Effect.sync(() => workers.add(worker))),
       Effect.tap((worker) => Effect.addFinalizer(() => Effect.sync(() => workers.delete(worker)))),
       options.onCreate ? Effect.tap(options.onCreate) : identity
@@ -321,7 +321,7 @@ export const makePool = <I, E, O>(
           size: options.size
         })
     )
-    const pool: Worker.WorkerPool<I, E, O> = {
+    const pool: Worker.WorkerPool<I, O, E> = {
       backing,
       broadcast: (message: I) =>
         Effect.forEach(workers, (worker) => worker.executeEffect(message), {
@@ -346,8 +346,8 @@ export const makePool = <I, E, O>(
   })
 
 /** @internal */
-export const makePoolLayer = <Tag, I, E, O>(
-  tag: Context.Tag<Tag, Worker.WorkerPool<I, E, O>>,
+export const makePoolLayer = <Tag, I, O, E>(
+  tag: Context.Tag<Tag, Worker.WorkerPool<I, O, E>>,
   options: Worker.WorkerPool.Options<I>
 ) => Layer.scoped(tag, makePool(options))
 
