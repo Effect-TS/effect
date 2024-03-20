@@ -38,15 +38,15 @@ export const make: (
  */
 export const makeHandler: {
   <R, E>(
-    httpApp: App.Default<R, E>
+    httpApp: App.Default<E, R>
   ): Effect.Effect<
     (nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse<Http.IncomingMessage>) => void,
     never,
     Exclude<R, Scope.Scope | ServerRequest.ServerRequest>
   >
   <R, E, App extends App.Default<any, any>>(
-    httpApp: App.Default<R, E>,
-    middleware: Middleware.Middleware.Applied<R, E, App>
+    httpApp: App.Default<E, R>,
+    middleware: Middleware.Middleware.Applied<App, E, R>
   ): Effect.Effect<
     (nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse<Http.IncomingMessage>) => void,
     never,
