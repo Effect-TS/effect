@@ -72,7 +72,7 @@ export const PlatformWorker: Context.Tag<PlatformWorker, PlatformWorker> = inter
  * @since 1.0.0
  * @category models
  */
-export interface Worker<I, E, O> {
+export interface Worker<I, O, E = never> {
   readonly id: number
   readonly execute: (message: I) => Stream.Stream<O, E | WorkerError>
   readonly executeEffect: (message: I) => Effect.Effect<O, E | WorkerError>
@@ -141,8 +141,8 @@ export declare namespace Worker {
  * @since 1.0.0
  * @category models
  */
-export interface WorkerPool<I, E, O> {
-  readonly backing: Pool.Pool<Worker<I, E, O>, WorkerError>
+export interface WorkerPool<I, O, E = never> {
+  readonly backing: Pool.Pool<Worker<I, O, E>, WorkerError>
   readonly broadcast: (message: I) => Effect.Effect<void, E | WorkerError>
   readonly execute: (message: I) => Stream.Stream<O, E | WorkerError>
   readonly executeEffect: (message: I) => Effect.Effect<O, E | WorkerError>
@@ -198,9 +198,9 @@ export type WorkerManagerTypeId = typeof WorkerManagerTypeId
  */
 export interface WorkerManager {
   readonly [WorkerManagerTypeId]: WorkerManagerTypeId
-  readonly spawn: <I, E, O>(
+  readonly spawn: <I, O, E>(
     options: Worker.Options<I>
-  ) => Effect.Effect<Worker<I, E, O>, WorkerError, Scope.Scope | Spawner>
+  ) => Effect.Effect<Worker<I, O, E>, WorkerError, Scope.Scope | Spawner>
 }
 
 /**
@@ -225,16 +225,16 @@ export const layerManager: Layer.Layer<WorkerManager, never, PlatformWorker> = i
  * @since 1.0.0
  * @category constructors
  */
-export const makePool: <I, E, O>(
+export const makePool: <I, O, E>(
   options: WorkerPool.Options<I>
-) => Effect.Effect<WorkerPool<I, E, O>, never, WorkerManager | Spawner | Scope.Scope> = internal.makePool
+) => Effect.Effect<WorkerPool<I, O, E>, never, WorkerManager | Spawner | Scope.Scope> = internal.makePool
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const makePoolLayer: <Tag, I, E, O>(
-  tag: Context.Tag<Tag, WorkerPool<I, E, O>>,
+export const makePoolLayer: <Tag, I, O, E>(
+  tag: Context.Tag<Tag, WorkerPool<I, O, E>>,
   options: WorkerPool.Options<I>
 ) => Layer.Layer<Tag, never, WorkerManager | Spawner> = internal.makePoolLayer
 
