@@ -1,6 +1,6 @@
 {
   "name": "@effect/schema",
-  "version": "0.64.9",
+  "version": "0.64.10",
   "type": "module",
   "license": "MIT",
   "description": "Modeling the schema of data structures as first-class values",
