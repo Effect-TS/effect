@@ -35,8 +35,8 @@ export const effect = (() => {
     name: string,
     self: Effect.Effect<A, E, TestServices.TestServices> | (() => Effect.Effect<A, E, TestServices.TestServices>),
     timeout: number | V.TestOptions = 5_000
-  ) => {
-    return it(
+  ) =>
+    it(
       name,
       () =>
         pipe(
@@ -46,14 +46,13 @@ export const effect = (() => {
         ),
       timeout
     )
-  }
   return Object.assign(f, {
     skip: <E, A>(
       name: string,
       self: Effect.Effect<A, E, TestServices.TestServices> | (() => Effect.Effect<A, E, TestServices.TestServices>),
       timeout = 5_000
-    ) => {
-      return it.skip(
+    ) =>
+      it.skip(
         name,
         () =>
           pipe(
@@ -62,14 +61,13 @@ export const effect = (() => {
             Effect.runPromise
           ),
         timeout
-      )
-    },
+      ),
     only: <E, A>(
       name: string,
       self: Effect.Effect<A, E, TestServices.TestServices> | (() => Effect.Effect<A, E, TestServices.TestServices>),
       timeout = 5_000
-    ) => {
-      return it.only(
+    ) =>
+      it.only(
         name,
         () =>
           pipe(
@@ -79,7 +77,6 @@ export const effect = (() => {
           ),
         timeout
       )
-    }
   })
 })()
 
