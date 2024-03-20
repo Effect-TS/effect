@@ -68,7 +68,7 @@
     "prettier": "^3.2.5",
     "rimraf": "^5.0.5",
     "tsx": "^4.7.1",
-    "typescript": "^5.3.3",
+    "typescript": "npm:@typescript-deploys/pr-build@5.4.0-pr-54183-19",
     "vite": "^5.1.4",
     "vitest": "^1.3.1"
   },
