@@ -1,4 +1,4 @@
-import * as it from "@effect/vitest"
+import * as it from "effect-test/utils/extend"
 import { unfoldEffect } from "effect-test/utils/unfoldEffect"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"

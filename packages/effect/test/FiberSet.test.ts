@@ -1,5 +1,5 @@
-import * as it from "@effect/vitest"
 import { Effect, ReadonlyArray, Ref } from "effect"
+import * as it from "effect-test/utils/extend"
 import * as FiberSet from "effect/FiberSet"
 import { assert, describe } from "vitest"
 

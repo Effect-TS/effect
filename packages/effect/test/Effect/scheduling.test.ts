@@ -1,4 +1,4 @@
-import * as it from "@effect/vitest"
+import * as it from "effect-test/utils/extend"
 import * as Clock from "effect/Clock"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"

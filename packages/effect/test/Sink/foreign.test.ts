@@ -1,4 +1,4 @@
-import * as it from "@effect/vitest"
+import * as it from "effect-test/utils/extend"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"

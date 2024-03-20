@@ -1,6 +1,6 @@
-import * as it from "@effect/vitest"
 import * as ObservableResource from "effect-test/utils/cache/ObservableResource"
 import * as WatchableLookup from "effect-test/utils/cache/WatchableLookup"
+import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"

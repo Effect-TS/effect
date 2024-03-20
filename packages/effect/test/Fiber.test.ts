@@ -1,4 +1,4 @@
-import * as it from "@effect/vitest"
+import * as it from "effect-test/utils/extend"
 import { withLatch } from "effect-test/utils/latch"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"

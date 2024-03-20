@@ -1,5 +1,5 @@
-import * as it from "@effect/vitest"
 import { causesArb } from "effect-test/utils/cause"
+import * as it from "effect-test/utils/extend"
 import { assertType, satisfies } from "effect-test/utils/types"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"

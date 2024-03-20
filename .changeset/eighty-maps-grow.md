@@ -2,4 +2,4 @@
 "@effect/vitest": minor
 ---
 
-initial release
+expose effect vitest helpers
