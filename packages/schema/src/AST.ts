@@ -1819,15 +1819,21 @@ export const keyof = (ast: AST): AST => Union.unify(_keyof(ast))
  * @since 1.0.0
  */
 export const getTemplateLiteralRegExp = (ast: TemplateLiteral): RegExp => {
-  let pattern = `^${ast.head}`
+  const reRegExpChar = /[\\^$.*+?()[\]{}|]/g
+  const reHasRegExpChar = RegExp(reRegExpChar.source)
+  let pattern = `^${reHasRegExpChar.test(ast.head) ? ast.head.replace(reRegExpChar, "\\$&") : ast.head}`
+
   for (const span of ast.spans) {
     if (isStringKeyword(span.type)) {
       pattern += ".*"
     } else if (isNumberKeyword(span.type)) {
       pattern += "[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?"
     }
-    pattern += span.literal
+    pattern += span.literal && reHasRegExpChar.test(span.literal)
+      ? span.literal.replace(reRegExpChar, "\\$&")
+      : span.literal
   }
+
   pattern += "$"
   return new RegExp(pattern)
 }
