@@ -25,7 +25,7 @@ export const isServer = (u: unknown): u is Server.Server => typeof u === "object
 export const make = (
   options: {
     readonly serve: (
-      httpApp: App.Default<never, unknown>,
+      httpApp: App.Default<unknown>,
       middleware?: Middleware.Middleware
     ) => Effect.Effect<void, never, Scope.Scope>
     readonly address: Server.Address
@@ -36,10 +36,10 @@ export const make = (
 export const serve = dual<
   {
     (): <R, E>(
-      httpApp: App.Default<R, E>
+      httpApp: App.Default<E, R>
     ) => Layer.Layer<never, never, Server.Server | Exclude<R, ServerRequest.ServerRequest | Scope.Scope>>
-    <R, E, App extends App.Default<any, any>>(middleware: Middleware.Middleware.Applied<R, E, App>): (
-      httpApp: App.Default<R, E>
+    <R, E, App extends App.Default<any, any>>(middleware: Middleware.Middleware.Applied<App, E, R>): (
+      httpApp: App.Default<E, R>
     ) => Layer.Layer<
       never,
       never,
@@ -48,11 +48,11 @@ export const serve = dual<
   },
   {
     <R, E>(
-      httpApp: App.Default<R, E>
+      httpApp: App.Default<E, R>
     ): Layer.Layer<never, never, Server.Server | Exclude<R, ServerRequest.ServerRequest | Scope.Scope>>
     <R, E, App extends App.Default<any, any>>(
-      httpApp: App.Default<R, E>,
-      middleware: Middleware.Middleware.Applied<R, E, App>
+      httpApp: App.Default<E, R>,
+      middleware: Middleware.Middleware.Applied<App, E, R>
     ): Layer.Layer<
       never,
       never,
@@ -62,8 +62,8 @@ export const serve = dual<
 >(
   (args) => Effect.isEffect(args[0]),
   <R, E, App extends App.Default<any, any>>(
-    httpApp: App.Default<R, E>,
-    middleware?: Middleware.Middleware.Applied<R, E, App>
+    httpApp: App.Default<E, R>,
+    middleware?: Middleware.Middleware.Applied<App, E, R>
   ): Layer.Layer<
     never,
     never,
@@ -81,14 +81,14 @@ export const serve = dual<
 export const serveEffect = dual<
   {
     (): <R, E>(
-      httpApp: App.Default<R, E>
+      httpApp: App.Default<E, R>
     ) => Effect.Effect<
       void,
       never,
       Server.Server | Scope.Scope | Exclude<R, ServerRequest.ServerRequest>
     >
-    <R, E, App extends App.Default<any, any>>(middleware: Middleware.Middleware.Applied<R, E, App>): (
-      httpApp: App.Default<R, E>
+    <R, E, App extends App.Default<any, any>>(middleware: Middleware.Middleware.Applied<App, E, R>): (
+      httpApp: App.Default<E, R>
     ) => Effect.Effect<
       void,
       never,
@@ -97,11 +97,11 @@ export const serveEffect = dual<
   },
   {
     <R, E>(
-      httpApp: App.Default<R, E>
+      httpApp: App.Default<E, R>
     ): Effect.Effect<void, never, Server.Server | Scope.Scope | Exclude<R, ServerRequest.ServerRequest>>
     <R, E, App extends App.Default<any, any>>(
-      httpApp: App.Default<R, E>,
-      middleware: Middleware.Middleware.Applied<R, E, App>
+      httpApp: App.Default<E, R>,
+      middleware: Middleware.Middleware.Applied<App, E, R>
     ): Effect.Effect<
       void,
       never,
@@ -111,8 +111,8 @@ export const serveEffect = dual<
 >(
   (args) => Effect.isEffect(args[0]),
   (<R, E, App extends App.Default<any, any>>(
-    httpApp: App.Default<R, E>,
-    middleware: Middleware.Middleware.Applied<R, E, App>
+    httpApp: App.Default<E, R>,
+    middleware: Middleware.Middleware.Applied<App, E, R>
   ): Effect.Effect<
     void,
     never,
