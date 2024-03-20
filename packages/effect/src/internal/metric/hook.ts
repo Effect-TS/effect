@@ -79,10 +79,8 @@ export const counter = <A extends (number | bigint)>(
 
 /** @internal */
 export const frequency = (_key: MetricKey.MetricKey.Frequency): MetricHook.MetricHook.Frequency => {
-  let count = 0
   const values = new Map<string, number>()
   const update = (word: string) => {
-    count = count + 1
     const slotCount = values.get(word) ?? 0
     values.set(word, slotCount + 1)
   }
