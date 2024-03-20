@@ -132,7 +132,15 @@ export const counter: {
  * @since 2.0.0
  * @category constructors
  */
-export const frequency: (name: string, description?: string) => MetricKey.Frequency = internal.frequency
+export const frequency: (
+  name: string,
+  options?:
+    | {
+      readonly description?: string | undefined
+      readonly preregisteredWords?: ReadonlyArray<string> | undefined
+    }
+    | undefined
+) => MetricKey.Frequency = internal.frequency
 
 /**
  * Creates a metric key for a gauge, with the specified name.
