@@ -78,7 +78,7 @@ export const make = (
           middleware
             ? middleware(App.withDefaultMiddleware(respond(httpApp)))
             : App.withDefaultMiddleware(respond(httpApp))
-        ) as App.Default<never, unknown>
+        ) as App.Default<unknown>
 
         return pipe(
           Effect.runtime<never>(),

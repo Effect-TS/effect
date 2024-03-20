@@ -16,8 +16,8 @@ import * as Stream from "effect/Stream"
  * @category conversions
  */
 export const toHttpApp = <R extends Router.Router<any, any>>(self: R): App.Default<
-  Router.Router.Context<R>,
-  ServerError.RequestError
+  ServerError.RequestError,
+  Router.Router.Context<R>
 > => {
   const handler = Router.toHandler(self)
   return Effect.map(
@@ -43,8 +43,8 @@ export const toHttpApp = <R extends Router.Router<any, any>>(self: R): App.Defau
  * @category conversions
  */
 export const toHttpAppEffect = <R extends Router.Router<any, any>>(self: R): App.Default<
-  Router.Router.Context<R>,
-  ServerError.RequestError | ParseError
+  ServerError.RequestError | ParseError,
+  Router.Router.Context<R>
 > => {
   const handler = Router.toHandlerEffect(self)
   return ServerRequest.ServerRequest.pipe(
