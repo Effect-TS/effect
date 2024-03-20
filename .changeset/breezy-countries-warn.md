@@ -2,7 +2,7 @@
 "effect": minor
 ---
 
-add preregisteredWords options to frequency metric key type
+add preregisteredWords option to frequency metric key type
 
 You can use this to register a list of words to pre-populate the value of the
 metric.
