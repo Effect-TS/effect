@@ -213,7 +213,12 @@ export const counter: {
  * @since 2.0.0
  * @category constructors
  */
-export const frequency: (name: string, description?: string) => Metric.Frequency<string> = internal.frequency
+export const frequency: (
+  name: string,
+  options?:
+    | { readonly description?: string | undefined; readonly preregisteredWords?: ReadonlyArray<string> | undefined }
+    | undefined
+) => Metric.Frequency<string> = internal.frequency
 
 /**
  * Returns a new metric that is powered by this one, but which accepts updates
