@@ -1,5 +1,14 @@
 # @effect/platform-node-shared
 
+## 0.3.13
+
+### Patch Changes
+
+- [#2368](https://github.com/Effect-TS/effect/pull/2368) [`1879f62`](https://github.com/Effect-TS/effect/commit/1879f629d0c4815dbb5955779247cd3f3da5cd85) Thanks [@tim-smart](https://github.com/tim-smart)! - fallback to node fs.watch if @parcel/watcher fails to import
+
+- Updated dependencies []:
+  - @effect/platform@0.48.13
+
 ## 0.3.12
 
 ### Patch Changes

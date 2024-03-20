@@ -1,5 +1,13 @@
 # @effect/schema
 
+## 0.64.9
+
+### Patch Changes
+
+- [#2370](https://github.com/Effect-TS/effect/pull/2370) [`dc7e497`](https://github.com/Effect-TS/effect/commit/dc7e49720df416870a7483f48adc40aeb23fe32d) Thanks [@leonitousconforti](https://github.com/leonitousconforti)! - Template literal regex escape special characters
+
+- [#2366](https://github.com/Effect-TS/effect/pull/2366) [`ffaf7c3`](https://github.com/Effect-TS/effect/commit/ffaf7c36514f88496cdd2fdfdf0bc7ba5a2e5cd4) Thanks [@gcanti](https://github.com/gcanti)! - Improve `All` types to encompass additional `any` / `never` combinations.
+
 ## 0.64.8
 
 ### Patch Changes
