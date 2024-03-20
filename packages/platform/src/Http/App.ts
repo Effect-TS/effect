@@ -22,26 +22,28 @@ import * as ServerResponse from "./ServerResponse.js"
  * @since 1.0.0
  * @category models
  */
-export interface HttpApp<R, E, A> extends Effect.Effect<A, E, R | ServerRequest.ServerRequest> {}
+export interface HttpApp<A = ServerResponse.ServerResponse, E = never, R = never>
+  extends Effect.Effect<A, E, R | ServerRequest.ServerRequest>
+{}
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type Default<R, E> = HttpApp<R, E, ServerResponse.ServerResponse>
+export type Default<E = never, R = never> = HttpApp<ServerResponse.ServerResponse, E, R>
 
 /**
  * @since 1.0.0
  * @category combinators
  */
-export const toHandled = <R, E, _, RH>(
-  self: Default<R, E>,
+export const toHandled = <E, R, _, RH>(
+  self: Default<E, R>,
   handleResponse: (
     request: ServerRequest.ServerRequest,
     exit: Exit.Exit<ServerResponse.ServerResponse, E | ServerError.ResponseError>
   ) => Effect.Effect<_, never, RH>,
   middleware?: Middleware | undefined
-): Default<Exclude<R | RH, Scope.Scope>, E | ServerError.ResponseError> => {
+): Default<E | ServerError.ResponseError, Exclude<R | RH, Scope.Scope>> => {
   const withTracer = internalMiddleware.tracer(self)
   const responded = Effect.withFiberRuntime<
     ServerResponse.ServerResponse,
@@ -110,8 +112,8 @@ export const appendPreResponseHandler: (handler: PreResponseHandler) => Effect.E
  * @category fiber refs
  */
 export const withPreResponseHandler = dual<
-  (handler: PreResponseHandler) => <R, E, A>(self: HttpApp<R, E, A>) => HttpApp<R, E, A>,
-  <R, E, A>(self: HttpApp<R, E, A>, handler: PreResponseHandler) => HttpApp<R, E, A>
+  (handler: PreResponseHandler) => <R, E, A>(self: HttpApp<A, E, R>) => HttpApp<A, E, R>,
+  <R, E, A>(self: HttpApp<A, E, R>, handler: PreResponseHandler) => HttpApp<A, E, R>
 >(2, (self, handler) =>
   Effect.locallyWith(
     self,
@@ -131,23 +133,25 @@ export const withPreResponseHandler = dual<
  */
 export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
   const run = Runtime.runFork(runtime)
-  return <E>(self: Default<R | Scope.Scope, E>) => {
+  const resolveSymbol = Symbol()
+  const rejectSymbol = Symbol()
+  return <E>(self: Default<E, R | Scope.Scope>) => {
     const handled = Effect.scoped(toHandled(self, (request, exit) => {
       const webRequest = request.source as Request
       if (Exit.isSuccess(exit)) {
-        ;(request as any)._resolve(ServerResponse.toWeb(exit.value, request.method === "HEAD"))
+        ;(request as any)[resolveSymbol](ServerResponse.toWeb(exit.value, request.method === "HEAD"))
       } else if (Cause.isInterruptedOnly(exit.cause)) {
-        ;(request as any)._resolve(new Response(null, { status: webRequest.signal.aborted ? 499 : 503 }))
+        ;(request as any)[resolveSymbol](new Response(null, { status: webRequest.signal.aborted ? 499 : 503 }))
       } else {
-        ;(request as any)._reject(Cause.pretty(exit.cause))
+        ;(request as any)[rejectSymbol](Cause.pretty(exit.cause))
       }
       return Effect.unit
     }))
     return (request: Request): Promise<Response> =>
       new Promise((resolve, reject) => {
         const req = ServerRequest.fromWeb(request)
-        ;(req as any)._resolve = resolve
-        ;(req as any)._reject = reject
+        ;(req as any)[resolveSymbol] = resolve
+        ;(req as any)[rejectSymbol] = reject
         const fiber = run(
           Effect.provideService(handled, ServerRequest.ServerRequest, req)
         )
@@ -162,7 +166,7 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
  * @since 1.0.0
  * @category conversions
  */
-export const toWebHandler: <E>(self: Default<Scope.Scope, E>) => (request: Request) => Promise<Response> =
+export const toWebHandler: <E>(self: Default<E, Scope.Scope>) => (request: Request) => Promise<Response> =
   toWebHandlerRuntime(Runtime.defaultRuntime)
 
 /**
@@ -170,7 +174,7 @@ export const toWebHandler: <E>(self: Default<Scope.Scope, E>) => (request: Reque
  * @category conversions
  */
 export const toWebHandlerLayer = <R, E, RE>(
-  self: Default<R | Scope.Scope, E>,
+  self: Default<E, R | Scope.Scope>,
   layer: Layer.Layer<R, RE>
 ): {
   readonly close: () => Promise<void>

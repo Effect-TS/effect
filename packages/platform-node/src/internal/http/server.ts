@@ -114,20 +114,20 @@ export const make = (
 
 /** @internal */
 export const makeHandler: {
-  <R, E>(httpApp: App.Default<R, E>): Effect.Effect<
+  <R, E>(httpApp: App.Default<E, R>): Effect.Effect<
     (nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) => void,
     never,
     Exclude<R, ServerRequest.ServerRequest | Scope.Scope>
   >
   <R, E, App extends App.Default<any, any>>(
-    httpApp: App.Default<R, E>,
-    middleware: Middleware.Middleware.Applied<R, E, App>
+    httpApp: App.Default<E, R>,
+    middleware: Middleware.Middleware.Applied<App, E, R>
   ): Effect.Effect<
     (nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) => void,
     never,
     Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>
   >
-} = <R, E>(httpApp: App.Default<R, E>, middleware?: Middleware.Middleware) => {
+} = <E, R>(httpApp: App.Default<E, R>, middleware?: Middleware.Middleware) => {
   const handledApp = App.toHandled(httpApp, (request, exit) => {
     if (exit._tag === "Success") {
       return Effect.catchAllCause(
@@ -164,7 +164,7 @@ export const makeHandler: {
 /** @internal */
 export const makeUpgradeHandler = <R, E>(
   lazyWss: Effect.Effect<WS.WebSocketServer>,
-  httpApp: App.Default<R, E>,
+  httpApp: App.Default<E, R>,
   middleware?: Middleware.Middleware
 ) => {
   const handledApp = App.toHandled(httpApp, (request, exit) => {

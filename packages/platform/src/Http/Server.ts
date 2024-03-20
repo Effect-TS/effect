@@ -29,14 +29,14 @@ export type TypeId = typeof TypeId
 export interface Server {
   readonly [TypeId]: TypeId
   readonly serve: {
-    <R, E>(httpApp: App.Default<R, E>): Effect.Effect<
+    <R, E>(httpApp: App.Default<E, R>): Effect.Effect<
       void,
       never,
       Exclude<R, ServerRequest.ServerRequest> | Scope.Scope
     >
     <R, E, App extends App.Default<any, any>>(
-      httpApp: App.Default<R, E>,
-      middleware: Middleware.Middleware.Applied<R, E, App>
+      httpApp: App.Default<E, R>,
+      middleware: Middleware.Middleware.Applied<App, E, R>
     ): Effect.Effect<
       void,
       never,
@@ -92,7 +92,7 @@ export const Server: Context.Tag<Server, Server> = internal.serverTag
 export const make: (
   options: {
     readonly serve: (
-      httpApp: App.Default<never, unknown>,
+      httpApp: App.Default<unknown>,
       middleware?: Middleware.Middleware
     ) => Effect.Effect<void, never, Scope.Scope>
     readonly address: Address
@@ -105,23 +105,23 @@ export const make: (
  */
 export const serve: {
   (): <R, E>(
-    httpApp: App.Default<R, E>
+    httpApp: App.Default<E, R>
   ) => Layer.Layer<never, never, Server | Exclude<R, ServerRequest.ServerRequest | Scope.Scope>>
   <R, E, App extends App.Default<any, any>>(
-    middleware: Middleware.Middleware.Applied<R, E, App>
+    middleware: Middleware.Middleware.Applied<App, E, R>
   ): (
-    httpApp: App.Default<R, E>
+    httpApp: App.Default<E, R>
   ) => Layer.Layer<
     never,
     never,
     Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>
   >
   <R, E>(
-    httpApp: App.Default<R, E>
+    httpApp: App.Default<E, R>
   ): Layer.Layer<never, never, Server | Exclude<R, ServerRequest.ServerRequest | Scope.Scope>>
   <R, E, App extends App.Default<any, any>>(
-    httpApp: App.Default<R, E>,
-    middleware: Middleware.Middleware.Applied<R, E, App>
+    httpApp: App.Default<E, R>,
+    middleware: Middleware.Middleware.Applied<App, E, R>
   ): Layer.Layer<never, never, Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>>
 } = internal.serve
 
@@ -131,23 +131,23 @@ export const serve: {
  */
 export const serveEffect: {
   (): <R, E>(
-    httpApp: App.Default<R, E>
+    httpApp: App.Default<E, R>
   ) => Effect.Effect<void, never, Scope.Scope | Server | Exclude<R, ServerRequest.ServerRequest>>
   <R, E, App extends App.Default<any, any>>(
-    middleware: Middleware.Middleware.Applied<R, E, App>
+    middleware: Middleware.Middleware.Applied<App, E, R>
   ): (
-    httpApp: App.Default<R, E>
+    httpApp: App.Default<E, R>
   ) => Effect.Effect<
     void,
     never,
     Scope.Scope | Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest>
   >
   <R, E>(
-    httpApp: App.Default<R, E>
+    httpApp: App.Default<E, R>
   ): Effect.Effect<void, never, Scope.Scope | Server | Exclude<R, ServerRequest.ServerRequest>>
   <R, E, App extends App.Default<any, any>>(
-    httpApp: App.Default<R, E>,
-    middleware: Middleware.Middleware.Applied<R, E, App>
+    httpApp: App.Default<E, R>,
+    middleware: Middleware.Middleware.Applied<App, E, R>
   ): Effect.Effect<void, never, Scope.Scope | Server | Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest>>
 } = internal.serveEffect
 
