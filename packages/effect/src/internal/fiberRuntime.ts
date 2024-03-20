@@ -71,13 +71,13 @@ import * as tracer from "./tracer.js"
 import * as version from "./version.js"
 
 /** @internal */
-export const fiberStarted = metric.counter("effect_fiber_started")
+export const fiberStarted = metric.counter("effect_fiber_started", { incremental: true })
 /** @internal */
 export const fiberActive = metric.counter("effect_fiber_active")
 /** @internal */
-export const fiberSuccesses = metric.counter("effect_fiber_successes")
+export const fiberSuccesses = metric.counter("effect_fiber_successes", { incremental: true })
 /** @internal */
-export const fiberFailures = metric.counter("effect_fiber_failures")
+export const fiberFailures = metric.counter("effect_fiber_failures", { incremental: true })
 /** @internal */
 export const fiberLifetimes = metric.tagged(
   metric.histogram(
