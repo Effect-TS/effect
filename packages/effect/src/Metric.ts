@@ -208,7 +208,9 @@ export const counter: {
  * @example
  * import * as Metric from "effect/Metric"
  *
- * const errorFrequency = Metric.frequency("error_frequency", "Counts the occurrences of errors.");
+ * const errorFrequency = Metric.frequency("error_frequency", {
+ *    description: "Counts the occurrences of errors."
+ * });
  *
  * @since 2.0.0
  * @category constructors
