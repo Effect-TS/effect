@@ -1,5 +1,5 @@
 import * as internal from "@effect/opentelemetry/internal/metrics"
-import * as it from "@effect/opentelemetry/test/utils/extend"
+import * as it from "@effect/vitest"
 import { ValueType } from "@opentelemetry/api"
 import { Resource } from "@opentelemetry/resources"
 import * as Effect from "effect/Effect"
@@ -21,6 +21,8 @@ describe("Metrics", () => {
       const gauge = Metric.gauge("rps")
 
       yield* _(Metric.set(gauge, 10), Effect.tagMetrics("key", "value"), Effect.tagMetrics("unit", "requests"))
+      yield* _(Metric.set(gauge, 10), Effect.tagMetrics("key", "value"))
+      yield* _(Metric.set(gauge, 20), Effect.tagMetrics("key", "value"))
 
       const results = yield* _(Effect.promise(() => producer.collect()))
       const object = JSON.parse(JSON.stringify(results))
@@ -49,6 +51,14 @@ describe("Metrics", () => {
               "key": "value"
             },
             "value": 10
+          },
+          {
+            "startTime": metric.dataPoints[0].startTime,
+            "endTime": metric.dataPoints[0].endTime,
+            "attributes": {
+              "key": "value"
+            },
+            "value": 20
           }
         ]
       })
@@ -65,6 +75,8 @@ describe("Metrics", () => {
       const gauge = Metric.gauge("rps-bigint", { bigint: true })
 
       yield* _(Metric.set(gauge, 10n), Effect.tagMetrics("key", "value"), Effect.tagMetrics("unit", "requests"))
+      yield* _(Metric.set(gauge, 10n), Effect.tagMetrics("key", "value"))
+      yield* _(Metric.set(gauge, 20n), Effect.tagMetrics("key", "value"))
 
       const results = yield* _(Effect.promise(() => producer.collect()))
       const object = JSON.parse(JSON.stringify(results))
@@ -93,6 +105,14 @@ describe("Metrics", () => {
               "key": "value"
             },
             "value": 10
+          },
+          {
+            "startTime": metric.dataPoints[0].startTime,
+            "endTime": metric.dataPoints[0].endTime,
+            "attributes": {
+              "key": "value"
+            },
+            "value": 20
           }
         ]
       })
@@ -109,6 +129,8 @@ describe("Metrics", () => {
       const counter = Metric.counter("counter", { description: "Example" })
 
       yield* _(Metric.increment(counter), Effect.tagMetrics("key", "value"), Effect.tagMetrics("unit", "requests"))
+      yield* _(Metric.increment(counter), Effect.tagMetrics("key", "value"))
+      yield* _(Metric.increment(counter), Effect.tagMetrics("key", "value"))
 
       const results = yield* _(Effect.promise(() => producer.collect()))
       const object = JSON.parse(JSON.stringify(results))
@@ -138,6 +160,14 @@ describe("Metrics", () => {
               "key": "value"
             },
             "value": 1
+          },
+          {
+            "startTime": metric.dataPoints[0].startTime,
+            "endTime": metric.dataPoints[0].endTime,
+            "attributes": {
+              "key": "value"
+            },
+            "value": 2
           }
         ]
       })
@@ -157,6 +187,8 @@ describe("Metrics", () => {
       })
 
       yield* _(Metric.increment(counter), Effect.tagMetrics("key", "value"), Effect.tagMetrics("unit", "requests"))
+      yield* _(Metric.increment(counter), Effect.tagMetrics("key", "value"))
+      yield* _(Metric.increment(counter), Effect.tagMetrics("key", "value"))
 
       const results = yield* _(Effect.promise(() => producer.collect()))
       const object = JSON.parse(JSON.stringify(results))
@@ -186,6 +218,14 @@ describe("Metrics", () => {
               "key": "value"
             },
             "value": 1
+          },
+          {
+            "startTime": metric.dataPoints[0].startTime,
+            "endTime": metric.dataPoints[0].endTime,
+            "attributes": {
+              "key": "value"
+            },
+            "value": 2
           }
         ]
       })
@@ -206,6 +246,8 @@ describe("Metrics", () => {
       })
 
       yield* _(Metric.increment(counter), Effect.tagMetrics("key", "value"), Effect.tagMetrics("unit", "requests"))
+      yield* _(Metric.increment(counter), Effect.tagMetrics("key", "value"))
+      yield* _(Metric.increment(counter), Effect.tagMetrics("key", "value"))
 
       const results = yield* _(Effect.promise(() => producer.collect()))
       const object = JSON.parse(JSON.stringify(results))
@@ -235,6 +277,14 @@ describe("Metrics", () => {
               "key": "value"
             },
             "value": 1
+          },
+          {
+            "startTime": metric.dataPoints[0].startTime,
+            "endTime": metric.dataPoints[0].endTime,
+            "attributes": {
+              "key": "value"
+            },
+            "value": 2
           }
         ]
       })
