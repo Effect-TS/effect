@@ -1,4 +1,4 @@
-import * as it from "effect-test/utils/extend"
+import * as it from "@effect/vitest"
 import { withLatch, withLatchAwait } from "effect-test/utils/latch"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"

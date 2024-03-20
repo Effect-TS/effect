@@ -1,4 +1,4 @@
-import * as it from "effect-test/utils/extend"
+import * as it from "@effect/vitest"
 import * as Context from "effect/Context"
 import { millis, seconds } from "effect/Duration"
 import * as Effect from "effect/Effect"

@@ -1,4 +1,4 @@
-import * as it from "effect-test/utils/extend"
+import * as it from "@effect/vitest"
 import * as Channel from "effect/Channel"
 import * as ChildExecutorDecision from "effect/ChildExecutorDecision"
 import * as Chunk from "effect/Chunk"

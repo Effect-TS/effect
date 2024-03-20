@@ -1,4 +1,4 @@
-import * as it from "effect-test/utils/extend"
+import * as it from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as STM from "effect/STM"

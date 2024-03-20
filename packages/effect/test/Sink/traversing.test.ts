@@ -1,4 +1,4 @@
-import * as it from "effect-test/utils/extend"
+import * as it from "@effect/vitest"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"

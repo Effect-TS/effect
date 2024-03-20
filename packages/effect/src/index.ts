@@ -918,3 +918,6 @@ export * as UpstreamPullStrategy from "./UpstreamPullStrategy.js"
  * @since 2.0.0
  */
 export * as Utils from "./Utils.js"
+
+
+export * as Vitest from "./Vitest.js"

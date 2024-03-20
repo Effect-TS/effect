@@ -1,3 +1,6 @@
+/**
+ * @since 1.0.0
+ */
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
@@ -10,14 +13,23 @@ import type * as TestServices from "effect/TestServices"
 import type { TestAPI } from "vitest"
 import * as V from "vitest"
 
+/**
+ * @since 1.0.0
+ */
 export type API = TestAPI<{}>
 
+/**
+ * @since 1.0.0
+ */
 export const it: API = V.it
 
 const TestEnv = TestEnvironment.TestContext.pipe(
   Layer.provide(Logger.remove(Logger.defaultLogger))
 )
 
+/**
+ * @since 1.0.0
+ */
 export const effect = (() => {
   const f = <E, A>(
     name: string,
@@ -71,12 +83,15 @@ export const effect = (() => {
   })
 })()
 
+/**
+ * @since 1.0.0
+ */
 export const live = <E, A>(
   name: string,
   self: Effect.Effect<A, E> | (() => Effect.Effect<A, E>),
   timeout = 5_000
-) => {
-  return it(
+) =>
+  it(
     name,
     () =>
       pipe(
@@ -85,13 +100,15 @@ export const live = <E, A>(
       ),
     timeout
   )
-}
 
+/**
+ * @since 1.0.0
+ */
 export const flakyTest = <A, E, R>(
   self: Effect.Effect<A, E, R>,
   timeout: Duration.Duration = Duration.seconds(30)
-) => {
-  return pipe(
+) =>
+  pipe(
     Effect.catchAllDefect(self, Effect.fail),
     Effect.retry(
       pipe(
@@ -102,16 +119,18 @@ export const flakyTest = <A, E, R>(
     ),
     Effect.orDie
   )
-}
 
+/**
+ * @since 1.0.0
+ */
 export const scoped = <E, A>(
   name: string,
   self:
     | Effect.Effect<A, E, Scope.Scope | TestServices.TestServices>
     | (() => Effect.Effect<A, E, Scope.Scope | TestServices.TestServices>),
   timeout = 5_000
-) => {
-  return it(
+) =>
+  it(
     name,
     () =>
       pipe(
@@ -122,21 +141,24 @@ export const scoped = <E, A>(
       ),
     timeout
   )
-}
 
+/**
+ * @since 1.0.0
+ */
 export const scopedLive = <E, A>(
   name: string,
-  self: () => Effect.Effect<A, E, Scope.Scope>,
+  self:
+    | Effect.Effect<A, E, Scope.Scope>
+    | (() => Effect.Effect<A, E, Scope.Scope>),
   timeout = 5_000
-) => {
-  return it(
+) =>
+  it(
     name,
     () =>
       pipe(
-        Effect.suspend(self),
+        Effect.isEffect(self) ? self : Effect.suspend(self),
         Effect.scoped,
         Effect.runPromise
       ),
     timeout
   )
-}

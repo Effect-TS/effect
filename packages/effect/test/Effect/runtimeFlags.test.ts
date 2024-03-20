@@ -1,4 +1,4 @@
-import * as it from "effect-test/utils/extend"
+import * as it from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Flags from "effect/RuntimeFlags"
 import * as Patch from "effect/RuntimeFlagsPatch"

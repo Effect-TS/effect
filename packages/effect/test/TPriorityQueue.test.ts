@@ -1,5 +1,5 @@
+import * as it from "@effect/vitest"
 import { equivalentElements } from "effect-test/utils/equals"
-import * as it from "effect-test/utils/extend"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as number from "effect/Number"

@@ -1,4 +1,4 @@
-import * as it from "effect-test/utils/extend"
+import * as it from "@effect/vitest"
 import { withLatch } from "effect-test/utils/latch"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
