@@ -35,7 +35,8 @@ const config: UserConfig = {
       ...alias("rpc"),
       ...alias("rpc-http"),
       ...alias("schema"),
-      ...alias("typeclass")
+      ...alias("typeclass"),
+      ...alias("vitest")
     }
   }
 }
