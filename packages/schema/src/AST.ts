@@ -1815,19 +1815,31 @@ export const annotations = (ast: AST, annotations: Annotations): AST => {
  */
 export const keyof = (ast: AST): AST => Union.unify(_keyof(ast))
 
+const specialCharsRegex = /[.*+?^${}()|[\]\\]/g
+
+const escapeSpecialChars = (s: string): string =>
+  specialCharsRegex.test(s) ?
+    s.replace(specialCharsRegex, "\\$&") // $& means the whole matched string
+    : s
+
+const STRING_KEYWORD_PATTERN = ".*"
+const NUMBER_KEYWORD_PATTERN = "[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?"
+
 /**
  * @since 1.0.0
  */
 export const getTemplateLiteralRegExp = (ast: TemplateLiteral): RegExp => {
-  let pattern = `^${ast.head}`
+  let pattern = `^${escapeSpecialChars(ast.head)}`
+
   for (const span of ast.spans) {
     if (isStringKeyword(span.type)) {
-      pattern += ".*"
+      pattern += STRING_KEYWORD_PATTERN
     } else if (isNumberKeyword(span.type)) {
-      pattern += "[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?"
+      pattern += NUMBER_KEYWORD_PATTERN
     }
-    pattern += span.literal
+    pattern += escapeSpecialChars(span.literal)
   }
+
   pattern += "$"
   return new RegExp(pattern)
 }

@@ -86,6 +86,13 @@ describe("Schema > templateLiteral", () => {
       await Util.expectDecodeUnknownFailure(schema, "a  b", `Expected "a b", actual "a  b"`)
     })
 
+    it("[${string}]", async () => {
+      const schema = S.templateLiteral(S.literal("["), S.string, S.literal("]"))
+      await Util.expectDecodeUnknownSuccess(schema, "[a]", "[a]")
+
+      await Util.expectDecodeUnknownFailure(schema, "a", "Expected `[${string}]`, actual \"a\"")
+    })
+
     it("a${string}", async () => {
       const schema = S.templateLiteral(S.literal("a"), S.string)
       await Util.expectDecodeUnknownSuccess(schema, "a", "a")
