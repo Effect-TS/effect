@@ -83,8 +83,11 @@ export const counter: {
   )
 
 /** @internal */
-export const frequency = (name: string, description?: string): MetricKey.MetricKey.Frequency =>
-  new MetricKeyImpl(name, metricKeyType.frequency, Option.fromNullable(description))
+export const frequency = (name: string, options?: {
+  readonly description?: string | undefined
+  readonly preregisteredWords?: ReadonlyArray<string> | undefined
+}): MetricKey.MetricKey.Frequency =>
+  new MetricKeyImpl(name, metricKeyType.frequency(options), Option.fromNullable(options?.description))
 
 /** @internal */
 export const gauge: {
