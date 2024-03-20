@@ -110,7 +110,7 @@ export const make = (
           Effect.asUnit
         )
       }
-    });
+    })
   })
 
 const makeResponse = (request: ServerRequest.ServerRequest, response: ServerResponse.ServerResponse): Response => {
