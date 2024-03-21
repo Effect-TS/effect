@@ -50,7 +50,6 @@ const wadlerLeijenSafe = <A>(
           return docStream.empty
         }
         case "Cons": {
-          console.dir(self, { depth: 4, colors: true })
           switch (self.document._tag) {
             case "Fail": {
               return docStream.failed
