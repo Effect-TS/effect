@@ -140,12 +140,10 @@ describe("Cause > cause", () => {
 
     let failWithStack = S.encodeSync(schema)(Cause.die(new Error("fail")))
     assert(failWithStack._tag === "Die")
-    assert(
-      typeof failWithStack.defect === "object" && failWithStack.defect !== null && "message" in failWithStack.defect &&
-        "name" in failWithStack.defect
-    )
-    assert.strictEqual(failWithStack.defect.name, "Error")
-    assert.strictEqual(failWithStack.defect.message, "fail")
+    assert.deepStrictEqual(failWithStack.defect, {
+      name: "Error",
+      message: "fail"
+    })
 
     failWithStack = S.encodeSync(schemaUnknown)(Cause.die(new Error("fail")))
     assert(failWithStack._tag === "Die")
