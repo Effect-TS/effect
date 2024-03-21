@@ -1,5 +1,4 @@
 import * as Doc from "@effect/printer/Doc"
-import * as Render from "@effect/printer/Render"
 import { pipe } from "effect/Function"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 
@@ -22,4 +21,7 @@ const prettyDeclaration = (name: string, types: ReadonlyArray<string>): Doc.Doc<
 
 const doc: Doc.Doc<never> = prettyDeclaration("example", ["Int", "Bool", "Char", "IO ()"])
 
-console.log(Render.pretty(doc, { lineWidth: 20 }))
+console.log(Doc.render(doc, {
+  style: "pretty",
+  options: { lineWidth: 20 }
+}))

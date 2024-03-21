@@ -91,7 +91,6 @@ export const wadlerLeijen: {
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
  *
@@ -108,7 +107,7 @@ export const wadlerLeijen: {
  * )
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   String.stripMargin(
  *     `|lorem
  *      |    ipsum
@@ -118,7 +117,7 @@ export const wadlerLeijen: {
  * )
  *
  * assert.strictEqual(
- *   Render.compact(doc),
+ *   Doc.render(doc, { style: "compact" }),
  *   String.stripMargin(
  *     `|lorem
  *      |ipsum
@@ -162,7 +161,6 @@ export const pretty: {
  * import type * as DocStream from "@effect/printer/DocStream"
  * import * as Layout from "@effect/printer/Layout"
  * import * as PageWidth from "@effect/printer/PageWidth"
- * import * as Render from "@effect/printer/Render"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
  *
@@ -193,7 +191,7 @@ export const pretty: {
  * ) =>
  *   (
  *     layoutAlgorithm: (options: Layout.Layout.Options) => (doc: Doc.Doc<A>) => DocStream.DocStream<A>
- *   ): string => pipe(Doc.vsep([hr, doc, hr]), layoutAlgorithm(layoutOptions), Render.render)
+ *   ): string => pipe(Doc.vsep([hr, doc, hr]), layoutAlgorithm(layoutOptions), Doc.renderStream)
  *
  * // If rendered using `Layout.pretty`, with a page width of `26` characters per line,
  * // all the calls to `fun` will fit into the first line. However, this exceeds the

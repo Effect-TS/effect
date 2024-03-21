@@ -473,7 +473,6 @@ export const string: (str: string) => Doc<never> = internal.string
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import * as String from "effect/String"
  *
  * const doc = Doc.vsep([
@@ -488,7 +487,7 @@ export const string: (str: string) => Doc<never> = internal.string
  *                   |world`
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   String.stripMargin(expected)
  * )
  *
@@ -515,7 +514,6 @@ export const fail: Doc<never> = internal.fail
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import * as String from "effect/String"
  *
  * const doc: Doc.Doc<never> = Doc.hcat([
@@ -525,14 +523,14 @@ export const fail: Doc<never> = internal.fail
  * ])
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   String.stripMargin(
  *     `|lorem ipsum
  *      |dolor sit amet`
  *   )
  * )
  * assert.strictEqual(
- *   Render.prettyDefault(Doc.group(doc)),
+ *   Doc.render(Doc.group(doc), { style: "pretty" }),
  *   "lorem ipsum dolor sit amet"
  * )
  *
@@ -547,7 +545,6 @@ export const line: Doc<never> = internal.line
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import * as String from "effect/String"
  *
  * const doc: Doc.Doc<never> = Doc.hcat([
@@ -557,14 +554,14 @@ export const line: Doc<never> = internal.line
  * ])
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   String.stripMargin(
  *     `|lorem ipsum
  *      |dolor sit amet`
  *   )
  * )
  * assert.strictEqual(
- *   Render.prettyDefault(Doc.group(doc)),
+ *   Doc.render(Doc.group(doc), { style: "pretty" }),
  *   "lorem ipsumdolor sit amet"
  * )
  *
@@ -579,7 +576,6 @@ export const lineBreak: Doc<never> = internal.lineBreak
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import * as String from "effect/String"
  *
  * const doc: Doc.Doc<never> = Doc.hcat([
@@ -590,14 +586,20 @@ export const lineBreak: Doc<never> = internal.lineBreak
  *
  * // Here we have enough space to put everything onto one line
  * assert.strictEqual(
- *   Render.pretty(doc, { lineWidth: 80 }),
+ *   Doc.render(doc, {
+ *     style: "pretty",
+ *     options: { lineWidth: 80 }
+ *   }),
  *   "lorem ipsum dolor sit amet"
  * )
  *
  * // If the page width is narrowed to `10`, the layout algorithm will
  * // introduce a line break
  * assert.strictEqual(
- *   Render.pretty(Doc.group(doc), { lineWidth: 10 }),
+ *   Doc.render(Doc.group(doc), {
+ *     style: "pretty",
+ *     options: { lineWidth: 10 }
+ *   }),
  *   String.stripMargin(
  *     `|lorem ipsum
  *      |dolor sit amet`
@@ -616,7 +618,6 @@ export const softLine: Doc<never> = internal.softLine
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import * as String from "effect/String"
  *
  * const doc: Doc.Doc<never> = Doc.hcat([
@@ -627,14 +628,20 @@ export const softLine: Doc<never> = internal.softLine
  *
  * // With enough space, we get direct concatenation of documents:
  * assert.strictEqual(
- *   Render.pretty(doc, { lineWidth: 80 }),
+ *   Doc.render(doc, {
+ *     style: "pretty",
+ *     options: { lineWidth: 80 }
+ *   }),
  *   "ThisTextIsWayTooLong"
  * )
  *
  * // If the page width is narrowed to `10`, the layout algorithm will
  * // introduce a line break
  * assert.strictEqual(
- *   Render.pretty(Doc.group(doc), { lineWidth: 10 }),
+ *   Doc.render(Doc.group(doc), {
+ *     style: "pretty",
+ *     options: { lineWidth: 10 }
+ *   }),
  *   String.stripMargin(
  *     `|ThisText
  *      |IsWayTooLong`
@@ -652,7 +659,6 @@ export const softLineBreak: Doc<never> = internal.softLineBreak
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import * as String from "effect/String"
  *
  * const doc: Doc.Doc<never> = Doc.hcat([
@@ -663,7 +669,10 @@ export const softLineBreak: Doc<never> = internal.softLineBreak
  *
  * // Even with enough space, a line break is introduced
  * assert.strictEqual(
- *   Render.pretty(doc, { lineWidth: 1000 }),
+ *   Doc.render(doc, {
+ *     style: "pretty",
+ *     options: { lineWidth: 1000 }
+ *   }),
  *   String.stripMargin(
  *     `|lorem ipsum
  *      |dolor sit amet`
@@ -850,7 +859,6 @@ export const cat: {
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import * as String from "effect/String"
  *
  * const doc: Doc.Doc<never> = Doc.hsep([
@@ -859,14 +867,17 @@ export const cat: {
  * ])
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   "Docs: loremipsumdolor"
  * )
  *
  * // If the document exceeds the width of the page, the documents are rendered
  * // one above another
  * assert.strictEqual(
- *   Render.pretty(doc, { lineWidth: 10 }),
+ *   Doc.render(doc, {
+ *     style: "pretty",
+ *     options: { lineWidth: 10 }
+ *   }),
  *   String.stripMargin(
  *     `|Docs: lorem
  *      |ipsum
@@ -885,7 +896,6 @@ export const cats: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.cats
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
  *
@@ -895,7 +905,7 @@ export const cats: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.cats
  * )
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   String.stripMargin(
  *     `|a
  *      |b`
@@ -916,7 +926,6 @@ export const catWithLine: {
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
  *
@@ -926,7 +935,7 @@ export const catWithLine: {
  * )
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   String.stripMargin(
  *     `|a
  *      |b`
@@ -934,7 +943,7 @@ export const catWithLine: {
  * )
  *
  * assert.strictEqual(
- *   Render.prettyDefault(Doc.group(doc)),
+ *   Doc.render(Doc.group(doc), { style: "pretty" }),
  *   "ab"
  * )
  *
@@ -952,7 +961,6 @@ export const catWithLineBreak: {
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
  *
@@ -962,12 +970,15 @@ export const catWithLineBreak: {
  * )
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   "a b"
  * )
  *
  * assert.strictEqual(
- *   Render.pretty(doc, { lineWidth: 1 }),
+ *   Doc.render(doc, {
+ *     style: "pretty",
+ *     options: { lineWidth: 1 }
+ *   }),
  *   String.stripMargin(
  *     `|a
  *      |b`
@@ -988,7 +999,6 @@ export const catWithSoftLine: {
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
  *
@@ -998,12 +1008,15 @@ export const catWithSoftLine: {
  * )
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   "ab"
  * )
  *
  * assert.strictEqual(
- *   Render.pretty(doc, { lineWidth: 1 }),
+ *   Doc.render(doc, {
+ *     style: "pretty",
+ *     options: { lineWidth: 1 }
+ *   }),
  *   String.stripMargin(
  *     `|a
  *      |b`
@@ -1024,7 +1037,6 @@ export const catWithSoftLineBreak: {
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import { pipe } from "effect/Function"
  *
  * const doc: Doc.Doc<never> = pipe(
@@ -1033,7 +1045,7 @@ export const catWithSoftLineBreak: {
  * )
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   "a b"
  * )
  *
@@ -1051,7 +1063,6 @@ export const catWithSpace: {
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import { pipe } from "effect/Function"
  *
  * const doc: Doc.Doc<never> = pipe(
@@ -1060,7 +1071,7 @@ export const catWithSpace: {
  * )
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   "a b"
  * )
  *
@@ -1081,13 +1092,12 @@ export const concatWith: {
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import * as String from "effect/String"
  *
  * const doc: Doc.Doc<never> = Doc.vcat(Doc.words("lorem ipsum dolor"))
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   String.stripMargin(
  *     `|lorem
  *      |ipsum
@@ -1106,13 +1116,12 @@ export const vcat: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.vcat
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import * as String from "effect/String"
  *
  * const doc: Doc.Doc<never> = Doc.hcat(Doc.words("lorem ipsum dolor"))
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   "loremipsumdolor"
  * )
  *
@@ -1148,19 +1157,24 @@ export const fillCat: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.fillCat
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  *
  * const doc: Doc.Doc<never> = Doc.hsep(Doc.words("lorem ipsum dolor sit amet"))
  *
  * assert.strictEqual(
- *   Render.pretty(doc, { lineWidth: 80 }),
+ *   Doc.render(doc, {
+ *     style: "pretty",
+ *     options: { lineWidth: 80 }
+ *   }),
  *   "lorem ipsum dolor sit amet"
  * )
  *
  * // The `hsep` combinator will not introduce line breaks on its own, even when
  * // the page is too narrow
  * assert.strictEqual(
- *   Render.pretty(doc, { lineWidth: 5 }),
+ *   Doc.render(doc, {
+ *     style: "pretty",
+ *     options: { lineWidth: 5 }
+ *   }),
  *   "lorem ipsum dolor sit amet"
  * )
  *
@@ -1180,7 +1194,6 @@ export const hsep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.hsep
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import * as String from "effect/String"
  *
  * const unaligned = Doc.hsep([
@@ -1189,7 +1202,7 @@ export const hsep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.hsep
  * ])
  *
  * assert.strictEqual(
- *   Render.prettyDefault(unaligned),
+ *   Doc.render(unaligned, { style: "pretty" }),
  *   String.stripMargin(
  *     `|prefix text
  *      |to
@@ -1206,7 +1219,7 @@ export const hsep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.hsep
  * ])
  *
  * assert.strictEqual(
- *   Render.prettyDefault(aligned),
+ *   Doc.render(aligned, { style: "pretty" }),
  *   String.stripMargin(
  *     `|prefix text
  *      |       to
@@ -1243,7 +1256,6 @@ export const fillSep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.fillSep
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import * as String from "effect/String"
  *
  * const doc: Doc.Doc<never> = Doc.hsep([
@@ -1252,13 +1264,16 @@ export const fillSep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.fillSep
  * ])
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   "prefix text to lay out"
  * )
  *
  * // If the page width is too narrow, documents are separated by newlines
  * assert.strictEqual(
- *   Render.pretty(doc, { lineWidth: 20 }),
+ *   Doc.render(doc, {
+ *     style: "pretty",
+ *     options: { lineWidth: 20 }
+ *   }),
  *   String.stripMargin(
  *     `|prefix text
  *      |to
@@ -1288,7 +1303,6 @@ export const seps: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.seps
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
  *
@@ -1318,13 +1332,25 @@ export const seps: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.seps
  *
  * // If it fits, then the content is put onto a single line with the `{;}` style
  * assert.strictEqual(
- *   pipe(prettyDo(statements), Render.pretty({ lineWidth: 80 })),
+ *   pipe(
+ *     prettyDo(statements),
+ *     Doc.render({
+ *       style: "pretty",
+ *       options: { lineWidth: 80 }
+ *     })
+ *   ),
  *   "do { name:_ <- getArgs; let greet = \"Hello, \" <> name; putStrLn greet }"
  * )
  *
  * // When there is not enough space, the content is broken up onto multiple lines
  * assert.strictEqual(
- *   pipe(prettyDo(statements), Render.pretty({ lineWidth: 10 })),
+ *   pipe(
+ *     prettyDo(statements),
+ *     Doc.render({
+ *       style: "pretty",
+ *       options: { lineWidth: 10 }
+ *     })
+ *   ),
  *   String.stripMargin(
  *     `|do name:_ <- getArgs
  *      |   let greet = "Hello, " <> name
@@ -1371,7 +1397,6 @@ export const group: <A>(self: Doc<A>) => Doc<A> = internal.group
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import * as String from "effect/String"
  *
  * // Example 1:
@@ -1380,7 +1405,7 @@ export const group: <A>(self: Doc<A>) => Doc<A> = internal.group
  * )
  *
  * assert.strictEqual(
- *   Render.prettyDefault(example1),
+ *   Doc.render(example1, { style: "pretty" }),
  *   "Columns are 0-based"
  * )
  *
@@ -1393,7 +1418,7 @@ export const group: <A>(self: Doc<A>) => Doc<A> = internal.group
  * const example2 = Doc.vsep([0, 4, 8].map((n) => Doc.indent(n)(doc)))
  *
  * assert.strictEqual(
- *   Render.prettyDefault(example2),
+ *   Doc.render(example2, { style: "pretty" }),
  *   String.stripMargin(
  *     `|prefix | <- column 7
  *      |    prefix | <- column 11
@@ -1412,7 +1437,6 @@ export const column: <A>(react: (position: number) => Doc<A>) => Doc<A> = intern
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import * as String from "effect/String"
  *
  * const doc = Doc.hsep([
@@ -1423,7 +1447,7 @@ export const column: <A>(react: (position: number) => Doc<A>) => Doc<A> = intern
  * const example = Doc.vsep([0, 4, 8].map((n) => Doc.indent(n)(doc)))
  *
  * assert.strictEqual(
- *   Render.prettyDefault(example),
+ *   Doc.render(example, { style: "pretty" }),
  *   String.stripMargin(
  *     `|prefix [Nested: 0]
  *      |    prefix [Nested: 4]
@@ -1442,7 +1466,6 @@ export const nesting: <A>(react: (level: number) => Doc<A>) => Doc<A> = internal
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
  *
@@ -1462,7 +1485,7 @@ export const nesting: <A>(react: (level: number) => Doc<A>) => Doc<A> = internal
  * const doc = Doc.align(Doc.vsep(docs.map(annotate)))
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   String.stripMargin(
  *     `|[---] <- width: 5
  *      |[------] <- width: 8
@@ -1485,7 +1508,6 @@ export const width: {
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import * as String from "effect/String"
  *
  * const doc = Doc.hsep([
@@ -1508,7 +1530,10 @@ export const width: {
  * const example = Doc.vsep([0, 4, 8].map((n) => Doc.indent(n)(doc)))
  *
  * assert.strictEqual(
- *   Render.pretty(example, { lineWidth: 32 }),
+ *   Doc.render(example, {
+ *     style: "pretty",
+ *     options: { lineWidth: 32 }
+ *   }),
  *   String.stripMargin(
  *     `|prefix [Width: 32, Ribbon Fraction: 1]
  *      |    prefix [Width: 32, Ribbon Fraction: 1]
@@ -1541,7 +1566,6 @@ export const pageWidth: <A>(react: (pageWidth: PageWidth) => Doc<A>) => Doc<A> =
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
  *
@@ -1552,7 +1576,7 @@ export const pageWidth: <A>(react: (pageWidth: PageWidth) => Doc<A>) => Doc<A> =
  * ])
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   String.stripMargin(
  *     `|lorem
  *      |    ipsum
@@ -1576,7 +1600,6 @@ export const nest: {
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import * as String from "effect/String"
  *
  * // As an example, the documents below will be placed one above the other
@@ -1590,7 +1613,7 @@ export const nest: {
  * ])
  *
  * assert.strictEqual(
- *   Render.prettyDefault(unaligned),
+ *   Doc.render(unaligned, { style: "pretty" }),
  *   String.stripMargin(
  *     `|lorem ipsum
  *      |dolor`
@@ -1604,7 +1627,7 @@ export const nest: {
  * ])
  *
  * assert.strictEqual(
- *   Render.prettyDefault(aligned),
+ *   Doc.render(aligned, { style: "pretty" }),
  *   String.stripMargin(
  *     `|lorem ipsum
  *      |      dolor`
@@ -1627,7 +1650,6 @@ export const align: <A>(self: Doc<A>) => Doc<A> = internal.align
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
  *
@@ -1637,7 +1659,10 @@ export const align: <A>(self: Doc<A>) => Doc<A> = internal.align
  * ])
  *
  * assert.strictEqual(
- *   Render.pretty(doc, { lineWidth: 24 }),
+ *   Doc.render(doc, {
+ *     style: "pretty",
+ *     options: { lineWidth: 24 }
+ *   }),
  *   String.stripMargin(
  *     `|prefix Indenting these
  *      |           words with
@@ -1659,7 +1684,6 @@ export const hang: {
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
  *
@@ -1669,7 +1693,10 @@ export const hang: {
  * ])
  *
  * assert.strictEqual(
- *   Render.pretty(doc, { lineWidth: 24 }),
+ *   Doc.render(doc, {
+ *     style: "pretty",
+ *     options: { lineWidth: 24 }
+ *   }),
  *   String.stripMargin(
  *     `|prefix    The indent
  *      |          function
@@ -1697,7 +1724,6 @@ export const indent: {
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
  *
@@ -1715,13 +1741,16 @@ export const indent: {
  *
  * // The documents are laid out horizontally if the document fits the page
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   "list [1,20,300,4000]"
  * )
  *
  * // Otherwise they are laid out vertically, with separators put in the front
  * assert.strictEqual(
- *   Render.pretty(doc, { lineWidth: 10 }),
+ *   Doc.render(doc, {
+ *     style: "pretty",
+ *     options: { lineWidth: 10 }
+ *   }),
  *   String.stripMargin(
  *     `|list [1
  *      |     ,20
@@ -1748,7 +1777,6 @@ export const encloseSep: {
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  *
  * const doc = Doc.list(
  *   ["1", "20", "300", "4000"].map(
@@ -1757,7 +1785,7 @@ export const encloseSep: {
  * )
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   "[1, 20, 300, 4000]"
  * )
  *
@@ -1772,7 +1800,6 @@ export const list: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.list
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  *
  * const doc = Doc.tupled(
  *   ["1", "20", "300", "4000"].map(
@@ -1781,7 +1808,7 @@ export const list: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.list
  * )
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   "(1, 20, 300, 4000)"
  * )
  *
@@ -1802,7 +1829,6 @@ export const tupled: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.tupled
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
  *
@@ -1827,7 +1853,7 @@ export const tupled: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.tupled
  * ])
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   String.stripMargin(
  *     `|let empty :: Doc
  *      |    nest  :: Int -> Doc -> Doc
@@ -1851,7 +1877,6 @@ export const fill: {
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
  *
@@ -1876,7 +1901,7 @@ export const fill: {
  * ])
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   String.stripMargin(
  *     `|let empty :: Doc
  *      |    nest  :: Int -> Doc -> Doc
@@ -2111,7 +2136,6 @@ export const Invariant: invariant.Invariant<Doc.TypeLambda> = internal.Invariant
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import { pipe } from "effect/Function"
  *
  * const doc = pipe(
@@ -2120,7 +2144,7 @@ export const Invariant: invariant.Invariant<Doc.TypeLambda> = internal.Invariant
  * )
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   "A-Z"
  * )
  *
@@ -2186,12 +2210,11 @@ export const curlyBraced: <A>(self: Doc<A>) => Doc<A> = internal.curlyBraced
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  *
  * const doc = Doc.squareBracketed(Doc.doubleQuoted(Doc.spaces(5)))
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   "[\"     \"]"
  * )
  *
@@ -2212,12 +2235,11 @@ export const textSpaces: (n: number) => string = internal.textSpaces
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  *
  * const doc = Doc.tupled(Doc.words("lorem ipsum dolor"))
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   "(lorem, ipsum, dolor)"
  * )
  *
@@ -2234,7 +2256,6 @@ export const words: (s: string, char?: string) => ReadonlyArray<Doc<never>> = in
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import * as String from "effect/String"
  *
  * const doc = Doc.reflow(
@@ -2243,7 +2264,10 @@ export const words: (s: string, char?: string) => ReadonlyArray<Doc<never>> = in
  * )
  *
  * assert.strictEqual(
- *   Render.pretty(doc, { lineWidth: 32 }),
+ *   Doc.render(doc, {
+ *     style: "pretty",
+ *     options: { lineWidth: 32 }
+ *   }),
  *   String.stripMargin(
  *     `|Lorem ipsum dolor sit amet,
  *      |consectetur adipisicing elit,
@@ -2266,7 +2290,6 @@ export const reflow: (s: string, char?: string) => Doc<never> = internal.reflow
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
  *
@@ -2276,14 +2299,14 @@ export const reflow: (s: string, char?: string) => Doc<never> = internal.reflow
  * )
  *
  * assert.strictEqual(
- *   Render.prettyDefault(Doc.hsep(docs)),
+ *   Doc.render(Doc.hsep(docs), { style: "pretty" }),
  *   "lorem, ipsum, dolor, sit, amet"
  * )
  *
  * // The separators are put at the end of the entries, which can be better
  * // visualzied if the documents are rendered vertically
  * assert.strictEqual(
- *   Render.prettyDefault(Doc.vsep(docs)),
+ *   Doc.render(Doc.vsep(docs), { style: "pretty" }),
  *   String.stripMargin(
  *     `|lorem,
  *      |ipsum,
