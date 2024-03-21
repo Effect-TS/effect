@@ -6004,8 +6004,6 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
     >
 }
 
-const TAG = "_tag"
-
 /**
  * @category classes
  * @since 1.0.0
@@ -6038,9 +6036,9 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
   : Class<
     Self,
-    { readonly [TAG]: literal<[Tag]> } & Fields,
-    Types.Simplify<{ readonly [TAG]: Tag } & Struct.Type<Fields>>,
-    Types.Simplify<{ readonly [TAG]: Tag } & Struct.Encoded<Fields>>,
+    { readonly _tag: literal<[Tag]> } & Fields,
+    Types.Simplify<{ readonly _tag: Tag } & Struct.Type<Fields>>,
+    Types.Simplify<{ readonly _tag: Tag } & Struct.Encoded<Fields>>,
     Struct.Context<Fields>,
     Types.Simplify<Struct.Type<Fields>>,
     {},
@@ -6050,9 +6048,9 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
   return makeClass({
     kind: "TaggedClass",
     identifier: identifier ?? tag,
-    fields: extendFields({ [TAG]: literal(tag) }, fields),
+    fields: extendFields({ _tag: literal(tag) }, fields),
     Base: Data.Class,
-    tag: { [TAG]: tag },
+    tag: { _tag: tag },
     annotations
   })
 }
@@ -6069,9 +6067,9 @@ export const TaggedError = <Self = never>(identifier?: string) =>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedError", `"Tag", `>
   : Class<
     Self,
-    { readonly [TAG]: literal<[Tag]> } & Fields,
-    Types.Simplify<{ readonly [TAG]: Tag } & Struct.Type<Fields>>,
-    Types.Simplify<{ readonly [TAG]: Tag } & Struct.Encoded<Fields>>,
+    { readonly _tag: literal<[Tag]> } & Fields,
+    Types.Simplify<{ readonly _tag: Tag } & Struct.Type<Fields>>,
+    Types.Simplify<{ readonly _tag: Tag } & Struct.Encoded<Fields>>,
     Struct.Context<Fields>,
     Types.Simplify<Struct.Type<Fields>>,
     {},
@@ -6081,9 +6079,9 @@ export const TaggedError = <Self = never>(identifier?: string) =>
   return makeClass({
     kind: "TaggedError",
     identifier: identifier ?? tag,
-    fields: extendFields({ [TAG]: literal(tag) }, fields),
+    fields: extendFields({ _tag: literal(tag) }, fields),
     Base: Data.Error,
-    tag: { [TAG]: tag },
+    tag: { _tag: tag },
     annotations
   })
 }
@@ -6095,7 +6093,7 @@ export const TaggedError = <Self = never>(identifier?: string) =>
 export interface TaggedRequest<Tag extends string, S, SI, SR, A, AI, E, EI, RR>
   extends Request.Request<A, E>, Serializable.SerializableWithResult<S, SI, SR, A, AI, E, EI, RR>
 {
-  readonly [TAG]: Tag
+  readonly _tag: Tag
 }
 
 /**
@@ -6127,15 +6125,15 @@ export const TaggedRequest =
   ): [Self] extends [never] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
     : Class<
       Self,
-      { readonly [TAG]: literal<[Tag]> } & Fields,
-      Types.Simplify<{ readonly [TAG]: Tag } & Struct.Type<Fields>>,
-      Types.Simplify<{ readonly [TAG]: Tag } & Struct.Encoded<Fields>>,
+      { readonly _tag: literal<[Tag]> } & Fields,
+      Types.Simplify<{ readonly _tag: Tag } & Struct.Type<Fields>>,
+      Types.Simplify<{ readonly _tag: Tag } & Struct.Encoded<Fields>>,
       Struct.Context<Fields>,
       Types.Simplify<Struct.Type<Fields>>,
       TaggedRequest<
         Tag,
         Self,
-        { readonly [TAG]: Tag } & Struct.Encoded<Fields>,
+        { readonly _tag: Tag } & Struct.Encoded<Fields>,
         Struct.Context<Fields>,
         AA,
         AI,
@@ -6146,7 +6144,7 @@ export const TaggedRequest =
       {}
     > =>
   {
-    class SerializableRequest extends Request.Class<any, any, { readonly [TAG]: string }> {
+    class SerializableRequest extends Request.Class<any, any, { readonly _tag: string }> {
       get [_serializable.symbol]() {
         return this.constructor
       }
@@ -6157,9 +6155,9 @@ export const TaggedRequest =
     return makeClass({
       kind: "TaggedRequest",
       identifier: identifier ?? tag,
-      fields: extendFields({ [TAG]: literal(tag) }, fields),
+      fields: extendFields({ _tag: literal(tag) }, fields),
       Base: SerializableRequest,
-      tag: { [TAG]: tag },
+      tag: { _tag: tag },
       annotations
     })
   }
@@ -6181,7 +6179,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
   fields: Struct.Fields
   Base: new(...args: ReadonlyArray<any>) => any
   fromSchema?: Schema.Any | undefined
-  tag?: { [TAG]: AST.LiteralValue } | undefined
+  tag?: { _tag: AST.LiteralValue } | undefined
   annotations?: Annotations.Schema<any> | undefined
 }): any => {
   const classSymbol = Symbol.for(`@effect/schema/${kind}/${identifier}`)
