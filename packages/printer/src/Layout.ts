@@ -3,7 +3,6 @@
  */
 
 import type { Option } from "effect/Option"
-import type { Predicate } from "effect/Predicate"
 import type { Doc } from "./Doc.js"
 import type { DocStream } from "./DocStream.js"
 import * as internal from "./internal/layout.js"
@@ -46,11 +45,14 @@ export declare namespace Layout {
    * @since 1.0.0
    * @category model
    */
-  export type FittingPredicate<A> = (
-    lineIndent: number,
-    currentColumn: number,
-    initialIndentY: Option<number>
-  ) => Predicate<DocStream<A>>
+  export interface FittingPredicate<A> {
+    (
+      stream: DocStream<A>,
+      lineIndent: number,
+      currentColumn: number,
+      initialIndentY: Option<number>
+    ): boolean
+  }
 }
 
 /**

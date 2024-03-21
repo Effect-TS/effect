@@ -118,8 +118,7 @@ const wadlerLeijenSafe = <A>(
           }
         }
         case "UndoAnnotation": {
-          const pipeline = self.pipeline
-          const stream = yield* _(best(pipeline, nestingLevel, currentColumn))
+          const stream = yield* _(best(self.pipeline, nestingLevel, currentColumn))
           return docStream.popAnnotation(stream)
         }
       }
@@ -148,7 +147,7 @@ const selectNicer = <A>(
   currentColumn: number,
   x: DocStream.DocStream<A>,
   y: DocStream.DocStream<A>
-): DocStream.DocStream<A> => fits(lineIndent, currentColumn, initialIndentation(y))(x) ? x : y
+): DocStream.DocStream<A> => fits(x, lineIndent, currentColumn, initialIndentation(y)) ? x : y
 
 // -----------------------------------------------------------------------------
 // compact
@@ -231,7 +230,7 @@ export const pretty = dual<
   if (width._tag === "AvailablePerLine") {
     return wadlerLeijen(
       self,
-      (lineIndent, currentColumn) => (stream) => {
+      (stream, lineIndent, currentColumn) => {
         const remainingWidth = pageWidth.remainingWidth(
           width.lineWidth,
           width.ribbonFraction,
@@ -304,8 +303,12 @@ export const smart = dual<
 })
 
 const fitsSmart = (lineWidth: number, ribbonFraction: number) => {
-  return (lineIndent: number, currentColumn: number, initialIndentY: Option.Option<number>) =>
-  <A>(stream: DocStream.DocStream<A>): boolean => {
+  return <A>(
+    stream: DocStream.DocStream<A>,
+    lineIndent: number,
+    currentColumn: number,
+    initialIndentY: Option.Option<number>
+  ): boolean => {
     const availableWidth = pageWidth.remainingWidth(
       lineWidth,
       ribbonFraction,
@@ -388,7 +391,7 @@ const fitsSmartLoop = <A>(
 export const unbounded = <A>(self: Doc.Doc<A>): DocStream.DocStream<A> =>
   wadlerLeijen(
     self,
-    () => (stream) => !failsOnFirstLine(stream),
+    (stream) => !failsOnFirstLine(stream),
     { pageWidth: pageWidth.unbounded }
   )
 
