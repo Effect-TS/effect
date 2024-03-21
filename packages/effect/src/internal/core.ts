@@ -1373,6 +1373,17 @@ export const withRuntimeFlags = dual<
 })
 
 /** @internal */
+export const withTracerEnabled = dual<
+  (enabled: boolean) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(effect: Effect.Effect<A, E, R>, enabled: boolean) => Effect.Effect<A, E, R>
+>(2, (effect, enabled) =>
+  fiberRefLocally(
+    effect,
+    currentTracerEnabled,
+    enabled
+  ))
+
+/** @internal */
 export const withTracerTiming = dual<
   (enabled: boolean) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
   <A, E, R>(effect: Effect.Effect<A, E, R>, enabled: boolean) => Effect.Effect<A, E, R>
@@ -2013,6 +2024,12 @@ export const currentInterruptedCause: FiberRef.FiberRef<Cause.Cause<never>> = gl
       fork: () => internalCause.empty,
       join: (parent, _) => parent
     })
+)
+
+/** @internal */
+export const currentTracerEnabled: FiberRef.FiberRef<boolean> = globalValue(
+  Symbol.for("effect/FiberRef/currentTracerEnabled"),
+  () => fiberRefUnsafeMake(true)
 )
 
 /** @internal */
@@ -3073,3 +3090,25 @@ export const currentSpanFromFiber = <A, E>(fiber: Fiber.RuntimeFiber<A, E>): Opt
     | undefined
   return span !== undefined && span._tag === "Span" ? Option.some(span) : Option.none()
 }
+
+/** @internal */
+export const noopSpan: Tracer.Span = globalValue("effect/Tracer/noopSpan", () => ({
+  _tag: "Span",
+  spanId: "noop",
+  traceId: "noop",
+  name: "noop",
+  sampled: false,
+  parent: Option.none(),
+  context: Context.empty(),
+  status: {
+    _tag: "Ended",
+    startTime: BigInt(0),
+    endTime: BigInt(0),
+    exit: exitUnit
+  },
+  attributes: new Map(),
+  links: [],
+  attribute() {},
+  event() {},
+  end() {}
+}))

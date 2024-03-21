@@ -59,7 +59,7 @@ export class NativeSpan implements Tracer.Span {
     this.spanId = `span${randomString(16)}`
   }
 
-  end = (endTime: bigint, exit: Exit.Exit<unknown, unknown>): void => {
+  end(endTime: bigint, exit: Exit.Exit<unknown, unknown>): void {
     this.status = {
       _tag: "Ended",
       endTime,
@@ -68,11 +68,11 @@ export class NativeSpan implements Tracer.Span {
     }
   }
 
-  attribute = (key: string, value: unknown): void => {
+  attribute(key: string, value: unknown): void {
     this.attributes.set(key, value)
   }
 
-  event = (name: string, startTime: bigint, attributes?: Record<string, unknown>): void => {
+  event(name: string, startTime: bigint, attributes?: Record<string, unknown>): void {
     this.events.push([name, startTime, attributes ?? {}])
   }
 }
