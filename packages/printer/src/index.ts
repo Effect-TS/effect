@@ -47,8 +47,3 @@ export * as Optimize from "./Optimize.js"
  * @since 1.0.0
  */
 export * as PageWidth from "./PageWidth.js"
-
-/**
- * @since 1.0.0
- */
-export * as Render from "./Render.js"
