@@ -1,6 +1,5 @@
 import * as Doc from "@effect/printer/Doc"
 import * as Optimize from "@effect/printer/Optimize"
-import * as Render from "@effect/printer/Render"
 import { arbDoc } from "@effect/printer/test/utils/DocArbitrary"
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
@@ -27,8 +26,8 @@ describe("Optimize", () => {
   it("should render fused and unfused documents identically", () => {
     fc.assert(
       fc.property(arbDoc, arbFusionDepth, (doc, depth) => {
-        const fused: string = Render.prettyDefault(Optimize.optimize(doc, depth))
-        const unfused: string = Render.prettyDefault(doc)
+        const fused: string = Doc.render(Optimize.optimize(doc, depth), { style: "pretty" })
+        const unfused: string = Doc.render(doc, { style: "pretty" })
         return fused === unfused
       })
     )

@@ -24,9 +24,11 @@ import type { Semigroup } from "@effect/typeclass/Semigroup"
 import type { Equal } from "effect/Equal"
 import type { TypeLambda } from "effect/HKT"
 import type { Pipeable } from "effect/Pipeable"
+import type { DocStream } from "./DocStream.js"
 import type { Flatten } from "./Flatten.js"
 import * as internal from "./internal/doc.js"
-import type { PageWidth } from "./PageWidth.js"
+import * as InternalRender from "./internal/render.js"
+import type { AvailablePerLine, PageWidth } from "./PageWidth.js"
 
 // -----------------------------------------------------------------------------
 // Models
@@ -84,6 +86,37 @@ export declare namespace Doc {
    * @since 1.0.0
    */
   export type TypeLambda = DocTypeLambda
+
+  /**
+   * @since 1.0.0
+   * @category model
+   */
+  export type RenderConfig = Compact | Pretty | Smart
+  /**
+   * @since 1.0.0
+   * @category model
+   */
+  export interface Compact {
+    readonly style: "compact"
+  }
+
+  /**
+   * @since 1.0.0
+   * @category model
+   */
+  export interface Pretty {
+    readonly style: "pretty"
+    readonly options?: Partial<Omit<AvailablePerLine, "_tag">>
+  }
+
+  /**
+   * @since 1.0.0
+   * @category model
+   */
+  export interface Smart {
+    readonly style: "smart"
+    readonly options?: Partial<Omit<AvailablePerLine, "_tag">>
+  }
 }
 
 /**
@@ -2009,6 +2042,27 @@ export const match: {
     }
   ): R
 } = internal.match
+
+// -----------------------------------------------------------------------------
+// Instances
+// -----------------------------------------------------------------------------
+
+/**
+ * @since 1.0.0
+ * @category rendering
+ */
+export const render: {
+  (config: Doc.RenderConfig): <A>(self: Doc<A>) => string
+  <A>(self: Doc<A>, config: Doc.RenderConfig): string
+} = InternalRender.render
+
+/**
+ * @since 1.0.0
+ * @category rendering
+ */
+export const renderStream: <A>(
+  self: DocStream<A>
+) => string = InternalRender.renderStream
 
 // -----------------------------------------------------------------------------
 // Instances

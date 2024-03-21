@@ -1,5 +1,5 @@
 import * as Doc from "@effect/printer/Doc"
-import * as Render from "@effect/printer/Render"
+import * as PageWidth from "@effect/printer/PageWidth"
 import * as String from "effect/String"
 import { describe, expect, it } from "vitest"
 
@@ -19,65 +19,73 @@ const doc = Doc.vsep([hr, funs(Doc.align(Doc.list(Doc.words("abcdef ghijklm"))))
 
 describe.concurrent("Render", () => {
   it("pretty", () => {
-    expect(Render.pretty(doc, { lineWidth: 14 })).toBe(String.stripMargin(
-      `||------------------------|
-       |fun(fun(fun(
-       |          fun(
-       |            fun(
-       |              [ abcdef
-       |              , ghijklm ])))))
-       ||------------------------|`
-    ))
+    expect(Doc.render(doc, { style: "pretty", options: { lineWidth: 14 } })).toBe(
+      String.stripMargin(
+        `||------------------------|
+         |fun(fun(fun(
+         |          fun(
+         |            fun(
+         |              [ abcdef
+         |              , ghijklm ])))))
+         ||------------------------|`
+      )
+    )
   })
 
-  it("prettyDefault", () => {
-    expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+  it("pretty", () => {
+    expect(Doc.render(doc, { style: "pretty" })).toBe(String.stripMargin(
       `||------------------------|
        |fun(fun(fun(fun(fun([abcdef, ghijklm])))))
        ||------------------------|`
     ))
   })
 
-  it("prettyUnbounded", () => {
-    expect(Render.prettyUnbounded(doc)).toBe(String.stripMargin(
-      `||------------------------|
-       |fun(fun(fun(fun(fun([abcdef, ghijklm])))))
-       ||------------------------|`
-    ))
+  it("pretty - unbounded", () => {
+    expect(Doc.render(doc, { style: "pretty", options: PageWidth.unbounded })).toBe(
+      String.stripMargin(
+        `||------------------------|
+         |fun(fun(fun(fun(fun([abcdef, ghijklm])))))
+         ||------------------------|`
+      )
+    )
   })
 
   it("smart", () => {
-    expect(Render.smart(doc, { lineWidth: 14 })).toBe(String.stripMargin(
-      `||------------------------|
-       |fun(
-       |  fun(
-       |    fun(
-       |      fun(
-       |        fun(
-       |          [ abcdef
-       |          , ghijklm ])))))
-       ||------------------------|`
-    ))
-  })
-
-  it("smartDefault", () => {
-    expect(Render.smartDefault(doc)).toBe(String.stripMargin(
+    expect(Doc.render(doc, { style: "smart" })).toBe(String.stripMargin(
       `||------------------------|
        |fun(fun(fun(fun(fun([abcdef, ghijklm])))))
        ||------------------------|`
     ))
   })
 
-  it("renderSmartUnbounded", () => {
-    expect(Render.smartUnbounded(doc)).toBe(String.stripMargin(
-      `||------------------------|
-       |fun(fun(fun(fun(fun([abcdef, ghijklm])))))
-       ||------------------------|`
-    ))
+  it("smart - limited line width", () => {
+    expect(Doc.render(doc, { style: "smart", options: { lineWidth: 14 } })).toBe(
+      String.stripMargin(
+        `||------------------------|
+         |fun(
+         |  fun(
+         |    fun(
+         |      fun(
+         |        fun(
+         |          [ abcdef
+         |          , ghijklm ])))))
+         ||------------------------|`
+      )
+    )
+  })
+
+  it("smart - unbounded", () => {
+    expect(Doc.render(doc, { style: "smart", options: PageWidth.unbounded })).toBe(
+      String.stripMargin(
+        `||------------------------|
+         |fun(fun(fun(fun(fun([abcdef, ghijklm])))))
+         ||------------------------|`
+      )
+    )
   })
 
   it("compact", () => {
-    expect(Render.compact(doc)).toBe(String.stripMargin(
+    expect(Doc.render(doc, { style: "compact" })).toBe(String.stripMargin(
       `||------------------------|
        |fun(
        |fun(

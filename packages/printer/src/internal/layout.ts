@@ -33,111 +33,99 @@ export const wadlerLeijen = dual<
   ) => DocStream.DocStream<A>
 >(
   3,
-  (self, fits, options) => Effect.runSync(wadlerLeijenSafe(0, 0, pipeline.cons(0, self, pipeline.nil), fits, options))
+  (self, fits, options) => Effect.runSync(wadlerLeijenSafe(pipeline.cons(0, self, pipeline.nil), 0, 0, fits, options))
 )
 
 const wadlerLeijenSafe = <A>(
-  nl: number,
-  cc: number,
-  x: pipeline.LayoutPipeline<A>,
+  self: pipeline.LayoutPipeline<A>,
+  nestingLevel: number,
+  currentColumn: number,
   fits: Layout.Layout.FittingPredicate<A>,
   options: Layout.Layout.Options
 ): Effect.Effect<DocStream.DocStream<A>> => {
-  switch (x._tag) {
-    case "Nil": {
-      return Effect.succeed(docStream.empty)
-    }
-    case "Cons": {
-      switch (x.document._tag) {
-        case "Fail": {
-          return Effect.succeed(docStream.failed)
+  const best = (self: pipeline.LayoutPipeline<A>, nl: number, cc: number): Effect.Effect<DocStream.DocStream<A>> =>
+    Effect.gen(function*(_) {
+      switch (self._tag) {
+        case "Nil": {
+          return docStream.empty
         }
-        case "Empty": {
-          return Effect.suspend(() => wadlerLeijenSafe(nl, cc, x.pipeline, fits, options))
+        case "Cons": {
+          console.dir(self, { depth: 4, colors: true })
+          switch (self.document._tag) {
+            case "Fail": {
+              return docStream.failed
+            }
+            case "Empty": {
+              return yield* _(best(self.pipeline, nl, cc))
+            }
+            case "Char": {
+              const stream = yield* _(best(self.pipeline, nl, cc + 1))
+              return docStream.char(stream, self.document.char)
+            }
+            case "Text": {
+              const length = self.document.text.length
+              const stream = yield* _(best(self.pipeline, nl, cc + length))
+              return docStream.text(stream, self.document.text)
+            }
+            case "Line": {
+              const stream = yield* _(best(self.pipeline, self.indent, self.indent))
+              // Do not produce indentation if there is no subsequent text on
+              // the same line (prevents trailing whitespace)
+              const nextIndent = docStream.isEmptyStream(stream) || docStream.isLineStream(stream) ? 0 : self.indent
+              return docStream.line(stream, nextIndent)
+            }
+            case "FlatAlt": {
+              const next = pipeline.cons(self.indent, self.document.left, self.pipeline)
+              return yield* _(best(next, nl, cc))
+            }
+            case "Cat": {
+              const inner = pipeline.cons(self.indent, self.document.right, self.pipeline)
+              const outer = pipeline.cons(self.indent, self.document.left, inner)
+              return yield* _(best(outer, nl, cc))
+            }
+            case "Nest": {
+              const indent = self.indent + self.document.indent
+              const next = pipeline.cons(indent, self.document.doc, self.pipeline)
+              return yield* _(best(next, nl, cc))
+            }
+            case "Union": {
+              const leftPipeline = pipeline.cons(self.indent, self.document.left, self.pipeline)
+              const rightPipeline = pipeline.cons(self.indent, self.document.right, self.pipeline)
+              const left = yield* _(best(leftPipeline, nl, cc))
+              const right = yield* _(best(rightPipeline, nl, cc))
+              return selectNicer(fits, nl, cc, left, right)
+            }
+            case "Column": {
+              const doc = self.document.react(cc)
+              const next = pipeline.cons(self.indent, doc, self.pipeline)
+              return yield* _(best(next, nl, cc))
+            }
+            case "WithPageWidth": {
+              const doc = self.document.react(options.pageWidth)
+              const next = pipeline.cons(self.indent, doc, self.pipeline)
+              return yield* _(best(next, nl, cc))
+            }
+            case "Nesting": {
+              const doc = self.document.react(self.indent)
+              const next = pipeline.cons(self.indent, doc, self.pipeline)
+              return yield* _(best(next, nl, cc))
+            }
+            case "Annotated": {
+              const undo = pipeline.undoAnnotation(self.pipeline)
+              const next = pipeline.cons(self.indent, self.document.doc, undo)
+              const stream = yield* _(best(next, nl, cc))
+              return docStream.pushAnnotation(stream, self.document.annotation)
+            }
+          }
         }
-        case "Char": {
-          const char = x.document.char
-          return Effect.map(
-            Effect.suspend(() => wadlerLeijenSafe(nl, cc + 1, x.pipeline, fits, options)),
-            docStream.char(char)
-          )
-        }
-        case "Text": {
-          const text = x.document.text
-          return Effect.map(
-            Effect.suspend(() => wadlerLeijenSafe(nl, cc + text.length, x.pipeline, fits, options)),
-            docStream.text(text)
-          )
-        }
-        case "Line": {
-          return Effect.map(
-            Effect.suspend(() => wadlerLeijenSafe(x.indent, x.indent, x.pipeline, fits, options)),
-            (stream) =>
-              docStream.line(
-                stream,
-                docStream.isEmptyStream(stream) || docStream.isLineStream(stream) ? 0 : x.indent
-              )
-          )
-        }
-        case "FlatAlt": {
-          const layoutPipeline = pipeline.cons(x.indent, x.document.left, x.pipeline)
-          return Effect.suspend(() => wadlerLeijenSafe(nl, cc, layoutPipeline, fits, options))
-        }
-        case "Cat": {
-          const inner = pipeline.cons(x.indent, x.document.right, x.pipeline)
-          const outer = pipeline.cons(x.indent, x.document.left, inner)
-          return Effect.suspend(() => wadlerLeijenSafe(nl, cc, outer, fits, options))
-        }
-        case "Nest": {
-          const indent = x.indent + x.document.indent
-          const layoutPipeline = pipeline.cons(indent, x.document.doc, x.pipeline)
-          return Effect.suspend(() => wadlerLeijenSafe(nl, cc, layoutPipeline, fits, options))
-        }
-        case "Union": {
-          const leftPipeline = pipeline.cons(x.indent, x.document.left, x.pipeline)
-          const rightPipeline = pipeline.cons(x.indent, x.document.right, x.pipeline)
-          return Effect.zipWith(
-            Effect.suspend(() => wadlerLeijenSafe(nl, cc, leftPipeline, fits, options)),
-            wadlerLeijenSafe(nl, cc, rightPipeline, fits, options),
-            (left, right) => selectNicer(fits, nl, cc, left, right)
-          )
-        }
-        case "Column": {
-          const layoutPipeline = pipeline.cons(x.indent, x.document.react(cc), x.pipeline)
-          return Effect.suspend(() => wadlerLeijenSafe(nl, cc, layoutPipeline, fits, options))
-        }
-        case "WithPageWidth": {
-          const layoutPipeline = pipeline.cons(
-            x.indent,
-            x.document.react(options.pageWidth),
-            x.pipeline
-          )
-          return Effect.suspend(() => wadlerLeijenSafe(nl, cc, layoutPipeline, fits, options))
-        }
-        case "Nesting": {
-          const layoutPipeline = pipeline.cons(x.indent, x.document.react(x.indent), x.pipeline)
-          return Effect.suspend(() => wadlerLeijenSafe(nl, cc, layoutPipeline, fits, options))
-        }
-        case "Annotated": {
-          const annotation = x.document.annotation
-          const layoutPipeline = pipeline.cons(
-            x.indent,
-            x.document.doc,
-            pipeline.undoAnnotation(x.pipeline)
-          )
-          return Effect.map(
-            Effect.suspend(() => wadlerLeijenSafe(nl, cc, layoutPipeline, fits, options)),
-            (stream) => docStream.pushAnnotation(annotation)(stream)
-          )
+        case "UndoAnnotation": {
+          const pipeline = self.pipeline
+          const stream = yield* _(best(pipeline, nestingLevel, currentColumn))
+          return docStream.popAnnotation(stream)
         }
       }
-    }
-    case "UndoAnnotation":
-      return Effect.map(
-        Effect.suspend(() => wadlerLeijenSafe(nl, cc, x.pipeline, fits, options)),
-        docStream.popAnnotation
-      )
-  }
+    })
+  return best(self, nestingLevel, currentColumn)
 }
 
 const initialIndentation = <A>(self: DocStream.DocStream<A>): Option.Option<number> => {
