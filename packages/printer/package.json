@@ -3,7 +3,7 @@
   "version": "0.31.18",
   "type": "module",
   "license": "MIT",
-  "description": "Unified interfaces for common platform-specific services",
+  "description": "An easy to use, extensible pretty-printer for rendering documents",
   "homepage": "https://effect.website",
   "repository": {
     "type": "git",

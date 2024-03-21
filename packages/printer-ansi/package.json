@@ -3,7 +3,7 @@
   "version": "0.32.18",
   "type": "module",
   "license": "MIT",
-  "description": "Unified interfaces for common platform-specific services",
+  "description": "An easy to use, extensible pretty-printer for rendering documents for the terminal",
   "homepage": "https://effect.website",
   "repository": {
     "type": "git",
@@ -16,12 +16,16 @@
   "tags": [
     "typescript",
     "algebraic-data-types",
-    "functional-programming"
+    "functional-programming",
+    "pretty-printing",
+    "terminal"
   ],
   "keywords": [
     "typescript",
     "algebraic-data-types",
-    "functional-programming"
+    "functional-programming",
+    "pretty-printing",
+    "terminal"
   ],
   "publishConfig": {
     "access": "public",
