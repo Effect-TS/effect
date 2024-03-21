@@ -342,9 +342,9 @@ export const concatWith = dual<
     f: (left: Doc.Doc<A>, right: Doc.Doc<A>) => Doc.Doc<A>
   ) => Doc.Doc<A>
 >(2, (docs, f) =>
-  ReadonlyArray.matchLeft(ReadonlyArray.fromIterable(docs), {
+  ReadonlyArray.matchRight(ReadonlyArray.fromIterable(docs), {
     onEmpty: () => empty,
-    onNonEmpty: (head, tail) => ReadonlyArray.reduce(tail, head, (acc, curr) => f(acc, curr))
+    onNonEmpty: (init, last) => ReadonlyArray.reduceRight(init, last, (curr, acc) => f(acc, curr))
   }))
 
 /** @internal */
@@ -860,7 +860,19 @@ export const spaces = (n: number): Doc.Doc<never> => {
 }
 
 /** @internal */
-export const words = (s: string, char = " "): ReadonlyArray<Doc.Doc<never>> => s.split(char).map(string)
+export const words = (str: string, splitChar = " "): ReadonlyArray<Doc.Doc<never>> =>
+  str.split(splitChar).map((word) => {
+    if (word === "") {
+      return empty
+    }
+    if (word === "\n") {
+      return hardLine
+    }
+    if (word.length === 1) {
+      return char(word)
+    }
+    return text(word)
+  })
 
 /** @internal */
 export const reflow = (s: string, char = " "): Doc.Doc<never> => fillSep(words(s, char))

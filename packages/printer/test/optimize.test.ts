@@ -14,10 +14,10 @@ describe("Optimize", () => {
     const unfused = Doc.hcat([Doc.char("a"), Doc.char("b"), Doc.char("c"), Doc.char("d")])
     const fused = Optimize.optimize(unfused, Optimize.Deep)
     // Unfused document will have individual documents for each character
-    expect(unfused).toHaveProperty("left.left.left.char", "a")
-    expect(unfused).toHaveProperty("left.left.right.char", "b")
-    expect(unfused).toHaveProperty("left.right.char", "c")
-    expect(unfused).toHaveProperty("right.char", "d")
+    expect(unfused).toHaveProperty("left.char", "a")
+    expect(unfused).toHaveProperty("right.left.char", "b")
+    expect(unfused).toHaveProperty("right.right.left.char", "c")
+    expect(unfused).toHaveProperty("right.right.right.char", "d")
     // Fused document will have be a single text document combining each
     // individual char document together
     expect(fused).toHaveProperty("text", "abcd")
