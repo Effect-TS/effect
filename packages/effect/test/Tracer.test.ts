@@ -258,4 +258,21 @@ describe("Tracer", () => {
         assert.strictEqual(onEndCalled, true)
       }))
   })
+
+  it.effect("withTracerEnabled", () =>
+    Effect.gen(function*($) {
+      const span = yield* $(
+        Effect.currentSpan,
+        Effect.withSpan("A"),
+        Effect.withTracerEnabled(false)
+      )
+      const spanB = yield* $(
+        Effect.currentSpan,
+        Effect.withSpan("B"),
+        Effect.withTracerEnabled(true)
+      )
+
+      assert.deepEqual(span.name, "noop")
+      assert.deepEqual(spanB.name, "B")
+    }))
 })

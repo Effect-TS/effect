@@ -3505,10 +3505,12 @@ export const makeSpanScoped = (
   acquireRelease(
     internalEffect.makeSpan(name, options),
     (span, exit) =>
-      core.flatMap(
-        internalEffect.currentTimeNanosTracing,
-        (endTime) => core.sync(() => span.end(endTime, exit))
-      )
+      span.status._tag === "Ended" ?
+        core.unit :
+        core.flatMap(
+          internalEffect.currentTimeNanosTracing,
+          (endTime) => core.sync(() => span.end(endTime, exit))
+        )
   )
 
 /* @internal */

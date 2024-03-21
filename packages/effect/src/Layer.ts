@@ -983,6 +983,15 @@ export const setTracer: (tracer: Tracer.Tracer) => Layer<never> = circularLayer.
  * @since 2.0.0
  * @category tracing
  */
+export const setTracerEnabled: (enabled: boolean) => Layer<never> = (enabled: boolean) =>
+  scopedDiscard(
+    fiberRuntime.fiberRefLocallyScoped(core.currentTracerEnabled, enabled)
+  )
+
+/**
+ * @since 2.0.0
+ * @category tracing
+ */
 export const setTracerTiming: (enabled: boolean) => Layer<never> = (enabled: boolean) =>
   scopedDiscard(
     fiberRuntime.fiberRefLocallyScoped(core.currentTracerTimingEnabled, enabled)
