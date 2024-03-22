@@ -68,7 +68,7 @@
   "devDependencies": {
     "@types/ws": "^8.5.10",
     "ioredis": "^5.3.2",
-    "lmdb": "^2.9.2",
+    "lmdb": "^3.0.0",
     "vitest-websocket-mock": "^0.3.0",
     "ws": "^8.16.0"
   },

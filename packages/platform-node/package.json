@@ -54,7 +54,7 @@
     "@effect/platform": "workspace:^",
     "@effect/schema": "workspace:^",
     "@types/mime": "^3.0.4",
-    "@types/node": "^20.11.19",
+    "@types/node": "^20.11.30",
     "@types/ws": "^8.5.10",
     "effect": "workspace:^"
   },
