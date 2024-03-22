@@ -19,7 +19,6 @@ import type { Predicate, Refinement } from "./Predicate.js"
 import { isBoolean } from "./Predicate.js"
 import * as ReadonlyRecord from "./ReadonlyRecord.js"
 import * as Tuple from "./Tuple.js"
-import type { NoInfer } from "./Types.js"
 
 /**
  * @category type lambdas
