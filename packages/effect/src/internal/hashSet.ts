@@ -7,7 +7,6 @@ import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import { pipeArguments } from "../Pipeable.js"
 import type { Predicate, Refinement } from "../Predicate.js"
 import { hasProperty } from "../Predicate.js"
-import type { NoInfer } from "../Types.js"
 import * as HM from "./hashMap.js"
 
 const HashSetSymbolKey = "effect/HashSet"
