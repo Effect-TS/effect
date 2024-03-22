@@ -33,7 +33,6 @@ import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 import { hasProperty, type Predicate, type Refinement } from "./Predicate.js"
 import * as ReadonlyArray from "./ReadonlyArray.js"
-import type { NoInfer } from "./Types.js"
 
 /**
  * Represents an immutable linked list of elements of type `A`.

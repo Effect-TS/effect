@@ -14,7 +14,7 @@ import { pipeArguments } from "./Pipeable.js"
 import type { Predicate } from "./Predicate.js"
 import { hasProperty } from "./Predicate.js"
 import * as RBT from "./RedBlackTree.js"
-import type { Invariant, NoInfer } from "./Types.js"
+import type { Invariant } from "./Types.js"
 
 const TypeId: unique symbol = Symbol.for("effect/SortedSet")
 
