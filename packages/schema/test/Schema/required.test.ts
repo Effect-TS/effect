@@ -32,105 +32,107 @@ describe("Schema > required", () => {
     )
   })
 
-  it("tuple/ e?", async () => {
-    // type A = [string?]
-    // type B = Required<A>
-    const schema = S.required(S.tuple(S.optionalElement(S.NumberFromString)))
+  describe("tuple", () => {
+    it("e?", async () => {
+      // type A = readonly [string?]
+      // type B = Required<A>
 
-    await Util.expectDecodeUnknownSuccess(schema, ["1"], [1])
-    await Util.expectDecodeUnknownFailure(
-      schema,
-      [],
-      `readonly [NumberFromString]
+      const A = S.tuple(S.optionalElement(S.NumberFromString))
+      const B = S.required(A)
+
+      await Util.expectDecodeUnknownSuccess(B, ["1"], [1])
+      await Util.expectDecodeUnknownFailure(
+        B,
+        [],
+        `readonly [NumberFromString]
 └─ [0]
    └─ is missing`
-    )
-  })
+      )
+    })
 
-  it("tuple/ e e?", async () => {
-    const schema = S.required(S.tuple(S.NumberFromString, S.optionalElement(S.string)))
+    it("e e?", async () => {
+      // type A = readonly [number, string?]
+      // type B = Required<A>
 
-    await Util.expectDecodeUnknownSuccess(schema, ["0", ""], [0, ""])
-    await Util.expectDecodeUnknownFailure(
-      schema,
-      ["0"],
-      `readonly [NumberFromString, string]
+      const A = S.tuple(S.NumberFromString, S.optionalElement(S.string))
+      const B = S.required(A)
+
+      await Util.expectDecodeUnknownSuccess(B, ["0", ""], [0, ""])
+      await Util.expectDecodeUnknownFailure(
+        B,
+        ["0"],
+        `readonly [NumberFromString, string]
 └─ [1]
    └─ is missing`
-    )
-  })
+      )
+    })
 
-  it("tuple/ e r e", async () => {
-    // type A = readonly [string, ...Array<number>, boolean]
-    // type B = Required<A> // [string, ...(number | boolean)[], number | boolean]
+    it("e r e", async () => {
+      // type A = readonly [string, ...Array<number>, boolean]
+      // type B = Required<A> // readonly [string, ...number[], boolean]
 
-    const schema = S.required(S.tuple([S.string], S.number, S.boolean))
+      const A = S.tuple([S.string], S.number, S.boolean)
+      const B = S.required(A)
 
-    await Util.expectDecodeUnknownSuccess(schema, ["", 0], ["", 0])
-    await Util.expectDecodeUnknownSuccess(schema, ["", true], ["", true])
-    await Util.expectDecodeUnknownSuccess(schema, ["", true, 0], ["", true, 0])
-    await Util.expectDecodeUnknownSuccess(schema, ["", 0, true], ["", 0, true])
+      await Util.expectDecodeUnknownSuccess(B, ["", true], ["", true])
+      await Util.expectDecodeUnknownSuccess(B, ["", 0, true])
+      await Util.expectDecodeUnknownSuccess(B, ["", 0, 1, true])
 
-    await Util.expectDecodeUnknownFailure(
-      schema,
-      [],
-      `readonly [string, ...(number | boolean)[], number | boolean]
+      await Util.expectDecodeUnknownFailure(
+        B,
+        [],
+        `readonly [string, ...number[], boolean]
 └─ [0]
    └─ is missing`
-    )
-    await Util.expectDecodeUnknownFailure(
-      schema,
-      [""],
-      `readonly [string, ...(number | boolean)[], number | boolean]
+      )
+      await Util.expectDecodeUnknownFailure(
+        B,
+        [""],
+        `readonly [string, ...number[], boolean]
 └─ [1]
    └─ is missing`
-    )
-  })
+      )
+    })
 
-  it("tuple/ e r 2e", async () => {
-    // type A = readonly [string, ...Array<number>, boolean, boolean]
-    // type B = Required<A> // [string, ...(number | boolean)[], number | boolean, number | boolean]
+    it("e r e e", async () => {
+      // type A = readonly [string, ...Array<number>, boolean, boolean]
+      // type B = Required<A> // readonly [string, ...number[], boolean, boolean]
 
-    const schema = S.required(
-      S.tuple([S.string], S.number, S.boolean, S.boolean)
-    )
+      const A = S.tuple([S.string], S.number, S.boolean, S.boolean)
+      const B = S.required(A)
 
-    await Util.expectDecodeUnknownSuccess(schema, ["", 0, true])
-    await Util.expectDecodeUnknownSuccess(schema, ["", 0, true, false])
-    await Util.expectDecodeUnknownSuccess(schema, ["", 0, 1, 2, 3, true, false])
+      await Util.expectDecodeUnknownSuccess(B, ["", 0, true, false])
+      await Util.expectDecodeUnknownSuccess(B, ["", 0, 1, 2, 3, true, false])
 
-    await Util.expectDecodeUnknownFailure(
-      schema,
-      [],
-      `readonly [string, ...(number | boolean)[], number | boolean, number | boolean]
+      await Util.expectDecodeUnknownFailure(
+        B,
+        [],
+        `readonly [string, ...number[], boolean, boolean]
 └─ [0]
    └─ is missing`
-    )
-    await Util.expectDecodeUnknownFailure(
-      schema,
-      [""],
-      `readonly [string, ...(number | boolean)[], number | boolean, number | boolean]
+      )
+      await Util.expectDecodeUnknownFailure(
+        B,
+        [""],
+        `readonly [string, ...number[], boolean, boolean]
 └─ [1]
    └─ is missing`
-    )
-    await Util.expectDecodeUnknownFailure(
-      schema,
-      ["", true],
-      `readonly [string, ...(number | boolean)[], number | boolean, number | boolean]
+      )
+      await Util.expectDecodeUnknownFailure(
+        B,
+        ["", true],
+        `readonly [string, ...number[], boolean, boolean]
 └─ [2]
    └─ is missing`
-    )
-    await Util.expectDecodeUnknownFailure(
-      schema,
-      ["", 0, "a"],
-      `readonly [string, ...(number | boolean)[], number | boolean, number | boolean]
-└─ [2]
-   └─ number | boolean
-      ├─ Union member
-      │  └─ Expected a number, actual "a"
-      └─ Union member
-         └─ Expected a boolean, actual "a"`
-    )
+      )
+      await Util.expectDecodeUnknownFailure(
+        B,
+        ["", 0, true],
+        `readonly [string, ...number[], boolean, boolean]
+└─ [1]
+   └─ Expected a boolean, actual 0`
+      )
+    })
   })
 
   it("union", async () => {
