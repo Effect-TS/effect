@@ -5,7 +5,7 @@
  *
  * @since 2.0.0
  */
-import * as equivalence from "./Equivalence.js"
+import * as Number_ from "./Equivalence.js"
 import { dual } from "./Function.js"
 import * as option from "./internal/option.js"
 import type { Option } from "./Option.js"
@@ -165,7 +165,7 @@ export const decrement = (n: number): number => n - 1
  * @category instances
  * @since 2.0.0
  */
-export const Equivalence: equivalence.Equivalence<number> = equivalence.number
+export const Equivalence: Number_.Equivalence<number> = Number_.number
 
 /**
  * @category instances
@@ -492,4 +492,20 @@ export const parse = (s: string): Option<number> => {
   return Number.isNaN(n)
     ? option.none
     : option.some(n)
+}
+
+export const fromString = (s: string): Option<number> => {
+  const n = Number(s)
+  return s === ""
+    ? option.none
+    : Number.isNaN(n)
+    ? option.none
+    : option.some(n)
+}
+
+export const fromBigInt = (b: bigint): Option<number> => {
+  if (b > BigInt(Number.MAX_SAFE_INTEGER) || b < BigInt(Number.MIN_SAFE_INTEGER)) {
+    return option.none
+  }
+  return option.some(Number(b))
 }
