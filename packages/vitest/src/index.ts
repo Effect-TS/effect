@@ -33,22 +33,27 @@ const TestEnv = TestEnvironment.TestContext.pipe(
 export const effect = (() => {
   const f = <E, A>(
     name: string,
-    self: Effect.Effect<A, E, TestServices.TestServices> | ((ctx: V.TaskContext<V.Test<{}>> & V.TestContext) => Effect.Effect<A, E, TestServices.TestServices>),
+    self:
+      | Effect.Effect<A, E, TestServices.TestServices>
+      | ((ctx: V.TaskContext<V.Test<{}>> & V.TestContext) => Effect.Effect<A, E, TestServices.TestServices>),
     timeout: number | V.TestOptions = 5_000
   ) =>
     it(
       name,
-      (ctx) => pipe(
-        Effect.isEffect(self) ? self: self(ctx),
-        Effect.provide(TestEnv),
-        Effect.runPromise
-      ),
+      (ctx) =>
+        pipe(
+          Effect.isEffect(self) ? self : self(ctx),
+          Effect.provide(TestEnv),
+          Effect.runPromise
+        ),
       timeout
     )
   return Object.assign(f, {
     skip: <E, A>(
       name: string,
-      self: Effect.Effect<A, E, TestServices.TestServices> | ((ctx: V.TaskContext<V.Test<{}>> & V.TestContext) => Effect.Effect<A, E, TestServices.TestServices>),
+      self:
+        | Effect.Effect<A, E, TestServices.TestServices>
+        | ((ctx: V.TaskContext<V.Test<{}>> & V.TestContext) => Effect.Effect<A, E, TestServices.TestServices>),
       timeout = 5_000
     ) =>
       it.skip(
@@ -123,7 +128,9 @@ export const scoped = <E, A>(
   name: string,
   self:
     | Effect.Effect<A, E, Scope.Scope | TestServices.TestServices>
-    | ((ctx: V.TaskContext<V.Test<{}>> & V.TestContext) => Effect.Effect<A, E, Scope.Scope | TestServices.TestServices>),
+    | ((
+      ctx: V.TaskContext<V.Test<{}>> & V.TestContext
+    ) => Effect.Effect<A, E, Scope.Scope | TestServices.TestServices>),
   timeout = 5_000
 ) =>
   it(
