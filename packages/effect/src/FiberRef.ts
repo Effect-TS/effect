@@ -377,6 +377,12 @@ export const currentMetricLabels: FiberRef<ReadonlyArray<MetricLabel.MetricLabel
  * @since 2.0.0
  * @category fiberRefs
  */
+export const currentTracerEnabled: FiberRef<boolean> = core.currentTracerEnabled
+
+/**
+ * @since 2.0.0
+ * @category fiberRefs
+ */
 export const currentTracerTimingEnabled: FiberRef<boolean> = core.currentTracerTimingEnabled
 
 /**

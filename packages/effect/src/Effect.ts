@@ -5062,6 +5062,25 @@ export const withTracerScoped: (value: Tracer.Tracer) => Effect<void, never, Sco
   fiberRuntime.withTracerScoped
 
 /**
+ * Disable the tracer for the given Effect.
+ *
+ * @since 2.0.0
+ * @category tracing
+ * @example
+ * import { Effect } from "effect"
+ *
+ * Effect.succeed(42).pipe(
+ *   Effect.withSpan("my-span"),
+ *   // the span will not be registered with the tracer
+ *   Effect.withTracerEnabled(false)
+ * )
+ */
+export const withTracerEnabled: {
+  (enabled: boolean): <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R>
+  <A, E, R>(effect: Effect<A, E, R>, enabled: boolean): Effect<A, E, R>
+} = core.withTracerEnabled
+
+/**
  * @since 2.0.0
  * @category tracing
  */

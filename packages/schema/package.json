@@ -1,6 +1,6 @@
 {
   "name": "@effect/schema",
-  "version": "0.64.9",
+  "version": "0.64.11",
   "type": "module",
   "license": "MIT",
   "description": "Modeling the schema of data structures as first-class values",
@@ -51,7 +51,7 @@
   "devDependencies": {
     "ajv": "^8.12.0",
     "effect": "workspace:^",
-    "fast-check": "^3.15.1",
+    "fast-check": "^3.16.0",
     "tinybench": "^2.6.0",
     "zod": "^3.22.4"
   }

@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform-node",
   "type": "module",
-  "version": "0.45.15",
+  "version": "0.45.17",
   "license": "MIT",
   "description": "Unified interfaces for common platform-specific services",
   "homepage": "https://effect.website",
@@ -54,7 +54,7 @@
     "@effect/platform": "workspace:^",
     "@effect/schema": "workspace:^",
     "@types/mime": "^3.0.4",
-    "@types/node": "^20.11.19",
+    "@types/node": "^20.11.30",
     "@types/ws": "^8.5.10",
     "effect": "workspace:^"
   },

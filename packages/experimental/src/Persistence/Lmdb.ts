@@ -5,8 +5,10 @@ import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Lmdb from "lmdb"
 import * as Persistence from "../Persistence.js"
+import * as TimeToLive from "../TimeToLive.js"
 
 /**
  * @since 1.0.0
@@ -23,34 +25,47 @@ export const make = (options: Lmdb.RootDatabaseOptionsWithPath) =>
       [Persistence.BackingPersistenceTypeId]: Persistence.BackingPersistenceTypeId,
       make: (storeId) =>
         Effect.gen(function*(_) {
+          const clock = yield* _(Effect.clock)
           const store = yield* _(Effect.acquireRelease(
             Effect.sync(() => lmdb.openDB({ name: storeId })),
             (store) => Effect.promise(() => store.close())
           ))
+          const valueToOption = (key: string, _: any) => {
+            if (!Array.isArray(_)) return Option.none()
+            const [value, expires] = _ as [unknown, number | null]
+            if (expires !== null && expires <= clock.unsafeCurrentTimeMillis()) {
+              store.remove(key)
+              return Option.none()
+            }
+            return Option.some(value)
+          }
           return identity<Persistence.BackingPersistenceStore>({
             get: (key) =>
               Effect.try({
-                try: () => Option.fromNullable(store.get(key)),
-                catch: (error) => new Persistence.PersistenceBackingError({ method: "get", error })
+                try: () => valueToOption(key, store.get(key)),
+                catch: (error) => Persistence.PersistenceBackingError.make("get", error)
               }),
             getMany: (keys) =>
+              Effect.map(
+                Effect.tryPromise({
+                  try: () => store.getMany(keys),
+                  catch: (error) => Persistence.PersistenceBackingError.make("getMany", error)
+                }),
+                ReadonlyArray.map((value, i) => valueToOption(keys[i], value))
+              ),
+            set: (key, value, ttl) =>
               Effect.tryPromise({
-                try: () => store.getMany(keys).then((_) => _.map(Option.fromNullable)),
-                catch: (error) => new Persistence.PersistenceBackingError({ method: "getMany", error })
-              }),
-            set: (key, value) =>
-              Effect.tryPromise({
-                try: () => store.put(key, value),
-                catch: (error) => new Persistence.PersistenceBackingError({ method: "set", error })
+                try: () => store.put(key, [value, TimeToLive.unsafeToExpires(clock, ttl)]),
+                catch: (error) => Persistence.PersistenceBackingError.make("set", error)
               }),
             remove: (key) =>
               Effect.tryPromise({
                 try: () => store.remove(key),
-                catch: (error) => new Persistence.PersistenceBackingError({ method: "remove", error })
+                catch: (error) => Persistence.PersistenceBackingError.make("remove", error)
               }),
             clear: Effect.tryPromise({
               try: () => store.clearAsync(),
-              catch: (error) => new Persistence.PersistenceBackingError({ method: "clear", error })
+              catch: (error) => Persistence.PersistenceBackingError.make("clear", error)
             })
           })
         })

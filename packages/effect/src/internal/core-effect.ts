@@ -2051,6 +2051,11 @@ export const makeSpan = (
 ): Effect.Effect<Tracer.Span> =>
   core.flatMap(fiberRefs, (fiberRefs) =>
     core.sync(() => {
+      const enabled = FiberRefs.getOrDefault(fiberRefs, core.currentTracerEnabled)
+      if (enabled === false) {
+        return core.noopSpan(name)
+      }
+
       const context = FiberRefs.getOrDefault(fiberRefs, core.currentContext)
       const services = FiberRefs.getOrDefault(fiberRefs, defaultServices.currentServices)
 
@@ -2131,10 +2136,12 @@ export const useSpan: {
     makeSpan(name, options),
     evaluate,
     (span, exit) =>
-      core.flatMap(
-        currentTimeNanosTracing,
-        (endTime) => core.sync(() => span.end(endTime, exit))
-      )
+      span.status._tag === "Ended" ?
+        core.unit :
+        core.flatMap(
+          currentTimeNanosTracing,
+          (endTime) => core.sync(() => span.end(endTime, exit))
+        )
   )
 }
 

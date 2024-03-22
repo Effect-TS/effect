@@ -187,6 +187,12 @@ export const isDuration = (u: unknown): u is Duration => hasProperty(u, TypeId)
 
 /**
  * @since 2.0.0
+ * @category guards
+ */
+export const isFinite = (self: Duration): boolean => self.value._tag !== "Infinity"
+
+/**
+ * @since 2.0.0
  * @category constructors
  */
 export const zero: Duration = make(0)

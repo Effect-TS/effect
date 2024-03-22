@@ -2104,13 +2104,7 @@ export const required = (ast: AST): AST => {
     case "TupleType":
       return new TupleType(
         ast.elements.map((e) => new Element(e.type, false)),
-        ReadonlyArray.match(ast.rest, {
-          onEmpty: () => ast.rest,
-          onNonEmpty: (rest) => {
-            const union = Union.make(rest)
-            return rest.map(() => union)
-          }
-        }),
+        ast.rest,
         ast.isReadonly
       )
     case "TypeLiteral":

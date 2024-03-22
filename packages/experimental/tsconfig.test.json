@@ -5,7 +5,8 @@
     { "path": "tsconfig.src.json" },
     { "path": "../effect" },
     { "path": "../schema" },
-    { "path": "../platform-node" }
+    { "path": "../platform-node" },
+    { "path": "../vitest" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/test.tsbuildinfo",

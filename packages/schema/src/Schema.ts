@@ -6004,8 +6004,6 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
     >
 }
 
-const TAG = "_tag"
-
 /**
  * @category classes
  * @since 1.0.0
@@ -6038,24 +6036,22 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
   : Class<
     Self,
-    { readonly [TAG]: literal<[Tag]> } & Fields,
-    Types.Simplify<{ readonly [TAG]: Tag } & Struct.Type<Fields>>,
-    Types.Simplify<{ readonly [TAG]: Tag } & Struct.Encoded<Fields>>,
+    { readonly _tag: literal<[Tag]> } & Fields,
+    Types.Simplify<{ readonly _tag: Tag } & Struct.Type<Fields>>,
+    Types.Simplify<{ readonly _tag: Tag } & Struct.Encoded<Fields>>,
     Struct.Context<Fields>,
     Types.Simplify<Struct.Type<Fields>>,
     {},
     {}
   > =>
-{
-  return makeClass({
+  makeClass({
     kind: "TaggedClass",
     identifier: identifier ?? tag,
-    fields: extendFields({ [TAG]: literal(tag) }, fields),
+    fields: extendFields({ _tag: literal(tag) }, fields),
     Base: Data.Class,
-    tag: { [TAG]: tag },
+    tag: { _tag: tag },
     annotations
   })
-}
 
 /**
  * @category classes
@@ -6069,22 +6065,34 @@ export const TaggedError = <Self = never>(identifier?: string) =>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedError", `"Tag", `>
   : Class<
     Self,
-    { readonly [TAG]: literal<[Tag]> } & Fields,
-    Types.Simplify<{ readonly [TAG]: Tag } & Struct.Type<Fields>>,
-    Types.Simplify<{ readonly [TAG]: Tag } & Struct.Encoded<Fields>>,
+    { readonly _tag: literal<[Tag]> } & Fields,
+    Types.Simplify<{ readonly _tag: Tag } & Struct.Type<Fields>>,
+    Types.Simplify<{ readonly _tag: Tag } & Struct.Encoded<Fields>>,
     Struct.Context<Fields>,
     Types.Simplify<Struct.Type<Fields>>,
     {},
     Cause.YieldableError
   > =>
 {
+  class Base extends Data.Error {}
+  ;(Base.prototype as any).name = tag
   return makeClass({
     kind: "TaggedError",
     identifier: identifier ?? tag,
-    fields: extendFields({ [TAG]: literal(tag) }, fields),
-    Base: Data.Error,
-    tag: { [TAG]: tag },
-    annotations
+    fields: extendFields({ _tag: literal(tag) }, fields),
+    Base,
+    tag: { _tag: tag },
+    annotations,
+    toStringOverride(self) {
+      if (!(Predicate.isString(self.message) && self.message.length > 0)) {
+        return Pretty.make(self.constructor as any)(self)
+      }
+      let message = `${self._tag}: ${self.message}`
+      if (Predicate.isString(self.stack)) {
+        message = `${message}\n${self.stack.split("\n").slice(1).join("\n")}`
+      }
+      return message
+    }
   })
 }
 
@@ -6095,7 +6103,7 @@ export const TaggedError = <Self = never>(identifier?: string) =>
 export interface TaggedRequest<Tag extends string, S, SI, SR, A, AI, E, EI, RR>
   extends Request.Request<A, E>, Serializable.SerializableWithResult<S, SI, SR, A, AI, E, EI, RR>
 {
-  readonly [TAG]: Tag
+  readonly _tag: Tag
 }
 
 /**
@@ -6127,15 +6135,15 @@ export const TaggedRequest =
   ): [Self] extends [never] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
     : Class<
       Self,
-      { readonly [TAG]: literal<[Tag]> } & Fields,
-      Types.Simplify<{ readonly [TAG]: Tag } & Struct.Type<Fields>>,
-      Types.Simplify<{ readonly [TAG]: Tag } & Struct.Encoded<Fields>>,
+      { readonly _tag: literal<[Tag]> } & Fields,
+      Types.Simplify<{ readonly _tag: Tag } & Struct.Type<Fields>>,
+      Types.Simplify<{ readonly _tag: Tag } & Struct.Encoded<Fields>>,
       Struct.Context<Fields>,
       Types.Simplify<Struct.Type<Fields>>,
       TaggedRequest<
         Tag,
         Self,
-        { readonly [TAG]: Tag } & Struct.Encoded<Fields>,
+        { readonly _tag: Tag } & Struct.Encoded<Fields>,
         Struct.Context<Fields>,
         AA,
         AI,
@@ -6146,7 +6154,7 @@ export const TaggedRequest =
       {}
     > =>
   {
-    class SerializableRequest extends Request.Class<any, any, { readonly [TAG]: string }> {
+    class SerializableRequest extends Request.Class<any, any, { readonly _tag: string }> {
       get [_serializable.symbol]() {
         return this.constructor
       }
@@ -6157,9 +6165,9 @@ export const TaggedRequest =
     return makeClass({
       kind: "TaggedRequest",
       identifier: identifier ?? tag,
-      fields: extendFields({ [TAG]: literal(tag) }, fields),
+      fields: extendFields({ _tag: literal(tag) }, fields),
       Base: SerializableRequest,
-      tag: { [TAG]: tag },
+      tag: { _tag: tag },
       annotations
     })
   }
@@ -6175,14 +6183,15 @@ const extendFields = (a: Struct.Fields, b: Struct.Fields): Struct.Fields => {
   return out
 }
 
-const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, tag }: {
+const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, tag, toStringOverride }: {
   kind: string
   identifier: string
   fields: Struct.Fields
   Base: new(...args: ReadonlyArray<any>) => any
   fromSchema?: Schema.Any | undefined
-  tag?: { [TAG]: AST.LiteralValue } | undefined
+  tag?: { _tag: AST.LiteralValue } | undefined
   annotations?: Annotations.Schema<any> | undefined
+  toStringOverride?: ((self: any) => string) | undefined
 }): any => {
   const classSymbol = Symbol.for(`@effect/schema/${kind}/${identifier}`)
   const schema = fromSchema ?? struct(fields)
@@ -6209,7 +6218,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
     }
 
     toString() {
-      return Pretty.make(this.constructor as any)(this)
+      return toStringOverride !== undefined ? toStringOverride(this) : Pretty.make(this.constructor as any)(this)
     }
 
     static pipe() {
@@ -6638,13 +6647,30 @@ function causeEncode<E>(cause: Cause.Cause<E>): CauseEncoded<E> {
   }
 }
 
-const causeDefectPretty: Schema<unknown> = transform(
+/**
+ * @category Cause transformations
+ * @since 1.0.0
+ */
+export const causeDefectUnknown: $unknown = transform(
   unknown,
   unknown,
-  identity,
+  (u) => {
+    if (Predicate.isObject(u) && "message" in u && typeof u.message === "string") {
+      const err = new Error(u.message, { cause: u })
+      if ("name" in u && typeof u.name === "string") {
+        err.name = u.name
+      }
+      err.stack = "stack" in u && typeof u.stack === "string" ? u.stack : ""
+      return err
+    }
+    return String(u)
+  },
   (defect) => {
-    if (Predicate.isObject(defect)) {
-      return Cause.pretty(Cause.die(defect))
+    if (defect instanceof Error) {
+      return {
+        name: defect.name,
+        message: defect.message
+      }
     }
     return String(defect)
   }
@@ -6667,7 +6693,7 @@ export interface cause<E extends Schema.All, DR> extends
  * @category Cause transformations
  * @since 1.0.0
  */
-export const cause = <E extends Schema.All, DR = never>({ defect = causeDefectPretty, error }: {
+export const cause = <E extends Schema.All, DR = never>({ defect = causeDefectUnknown, error }: {
   readonly error: E
   readonly defect?: Schema<unknown, unknown, DR> | undefined
 }): cause<E, DR> => {
@@ -6819,7 +6845,7 @@ export interface exit<A extends Schema.All, E extends Schema.All, DR> extends
  * @since 1.0.0
  */
 export const exit = <A extends Schema.All, E extends Schema.All, DR = never>(
-  { defect = causeDefectPretty, failure, success }: {
+  { defect = causeDefectUnknown, failure, success }: {
     readonly failure: E
     readonly success: A
     readonly defect?: Schema<unknown, unknown, DR> | undefined

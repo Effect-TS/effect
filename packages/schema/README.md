@@ -2399,7 +2399,18 @@ const fields = schema.fields; // { readonly a: S.$number; }
 const records = schema.records; // [S.record<S.$string, S.$number>]
 ```
 
-### Property Signatures
+### Mutable Properties
+
+By default, when you use `S.struct`, it generates a type with properties that are marked as readonly. The `mutable` combinator is a useful function for creating a new schema with properties made mutable in a **shallow** manner:
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+// Schema<{ a: string; b: number; }>
+S.mutable(S.struct({ a: S.string, b: S.number }));
+```
+
+## Property Signatures
 
 A `PropertySignature` generally represents a transformation from a "From" field:
 
@@ -2500,18 +2511,7 @@ console.log(S.decodeUnknownSync(Person)({ name: "name", AGE: "18" }));
 // Output: { name: 'name', age: 18 }
 ```
 
-### Mutable Properties
-
-By default, when you use `S.struct`, it generates a type with properties that are marked as readonly. The `mutable` combinator is a useful function for creating a new schema with properties made mutable in a **shallow** manner:
-
-```ts
-import * as S from "@effect/schema/Schema";
-
-// Schema<{ a: string; b: number; }>
-S.mutable(S.struct({ a: S.string, b: S.number }));
-```
-
-### Optional fields
+### Optional Fields
 
 **Cheatsheet**
 
@@ -2564,7 +2564,7 @@ S.mutable(S.struct({ a: S.string, b: S.number }));
   - `<missing value>` -> `<missing value>`
   - `a` -> `i`
 
-### Default values
+### Default Values
 
 | Combinator | From                                                                   | To                                                                                |
 | ---------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
@@ -2609,7 +2609,7 @@ S.mutable(S.struct({ a: S.string, b: S.number }));
 - encoding
   - `a` -> `i`
 
-### Optional fields as `Option`s
+### Optional Fields as `Option`s
 
 | Combinator | From                                                               | To                                                                                        |
 | ---------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
@@ -2657,6 +2657,127 @@ S.mutable(S.struct({ a: S.string, b: S.number }));
 - encoding
   - `Option.none()` -> `<missing value>`
   - `Option.some(a)` -> `i`
+
+### Optional Fields Primitives
+
+The `optional` API is based on two primitives: `optionalToOptional` and `optionalToRequired`. These primitives are incredibly useful for defining property signatures with more precision.
+
+#### optionalToOptional
+
+The `optionalToOptional` API is used to manage the transformation from an optional field to another optional field. With this, we can control both the output type and the presence or absence of the field.
+
+For example a common use case is to equate a specific value in the source field with the absence of value in the destination field.
+
+Here's the signature of the `optionalToOptional` API:
+
+```ts
+export const optionalToOptional = <FA, FI, FR, TA, TI, TR>(
+  from: Schema<FA, FI, FR>,
+  to: Schema<TA, TI, TR>,
+  decode: (o: Option.Option<FA>) => Option.Option<TI>,
+  encode: (o: Option.Option<TI>) => Option.Option<FA>
+): PropertySignature<"?:", TA, never, "?:", FI, FR | TR>
+```
+
+As you can see, we can transform the type by specifying a schema for `to`, which can be different from the schema of `from`. Additionally, we can control the presence or absence of the field using `decode` and `encode`, with the following meanings:
+
+- `decode`:
+  - `none` as an argument means the value is missing in the input
+  - `none` as a return value means the value will be missing in the output
+- `encode`:
+  - `none` as an argument means the value is missing in the input
+  - `none` as a return value means the value will be missing in the output
+
+**Example**
+
+Suppose we have an optional field of type `string`, and we want to exclude empty strings from the output. In other words, if the input contains an empty string, we want the field to be absent in the output.
+
+```ts
+import * as S from "@effect/schema/Schema";
+import { identity } from "effect/Function";
+import * as Option from "effect/Option";
+
+const schema = S.struct({
+  a: S.optionalToOptional(
+    S.string,
+    S.string,
+    (input) => {
+      if (Option.isNone(input)) {
+        // If the field is absent in the input, returning `Option.none()` will make it absent in the output too
+        return Option.none();
+      }
+      const value = input.value;
+      if (value === "") {
+        // If the field is present in the input but is an empty string, returning `Option.none()` will make it absent in the output
+        return Option.none();
+      }
+      // If the field is present in the input and is not an empty string, returning `Option.some` will make it present in the output
+      return Option.some(value);
+    },
+    // Here in the encoding part, we can decide to handle things in the same way as in the decoding phase
+    // or handle them differently. For example, we can leave everything unchanged and use the identity function
+    identity
+  ),
+});
+
+const decode = S.decodeUnknownSync(schema);
+
+console.log(decode({})); // Output: {}
+console.log(decode({ a: "" })); // Output: {}
+console.log(decode({ a: "a non-empty string" })); // Output: { a: 'a non-empty string' }
+
+const encode = S.encodeSync(schema);
+
+console.log(encode({})); // Output: {}
+console.log(encode({ a: "" })); // Output: { a: '' }
+console.log(encode({ a: "foo" })); // Output: { a: 'foo' }
+```
+
+#### optionalToRequired
+
+The `optionalToRequired` API allows us to transform an optional field into a required one, applying custom logic if the field is absent in the input.
+
+```ts
+export const optionalToRequired = <FA, FI, FR, TA, TI, TR>(
+  from: Schema<FA, FI, FR>,
+  to: Schema<TA, TI, TR>,
+  decode: (o: Option.Option<FA>) => TI,
+  encode: (ti: TI) => Option.Option<FA>
+): PropertySignature<":", TA, never, "?:", FI, FR | TR>
+```
+
+For instance, a common use case is to assign a default value to the field in the output if it's missing in the input. Let's see an example:
+
+```ts
+import * as S from "@effect/schema/Schema";
+import * as Option from "effect/Option";
+
+const schema = S.struct({
+  a: S.optionalToRequired(
+    S.string,
+    S.string,
+    (input) => {
+      if (Option.isNone(input)) {
+        // If the field is absent in the input, we can return the default value for the field in the output
+        return "default value";
+      }
+      // If the field is present in the input, return its value as it is in the output
+      return input.value;
+    },
+    // During encoding, we can choose to handle things differently, or simply return the same value present in the input for the output
+    (a) => Option.some(a)
+  ),
+});
+
+const decode = S.decodeUnknownSync(schema);
+
+console.log(decode({})); // Output: { a: 'default value' }
+console.log(decode({ a: "foo" })); // Output: { a: 'foo' }
+
+const encode = S.encodeSync(schema);
+
+console.log(encode({ a: "foo" })); // Output: { a: 'foo' }
+```
 
 ### Renaming Properties
 

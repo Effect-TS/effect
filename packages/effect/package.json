@@ -1,6 +1,6 @@
 {
   "name": "effect",
-  "version": "2.4.9",
+  "version": "2.4.11",
   "type": "module",
   "license": "MIT",
   "description": "The missing standard library for TypeScript, for writing production-grade software.",
@@ -43,8 +43,8 @@
   },
   "devDependencies": {
     "@types/jscodeshift": "^0.11.11",
-    "@types/node": "^20.11.19",
+    "@types/node": "^20.11.30",
     "ast-types": "^0.14.2",
-    "jscodeshift": "^0.15.1"
+    "jscodeshift": "^0.15.2"
   }
 }
