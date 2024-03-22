@@ -18,7 +18,6 @@ import type * as Schedule from "../Schedule.js"
 import * as ScheduleDecision from "../ScheduleDecision.js"
 import * as Interval from "../ScheduleInterval.js"
 import * as Intervals from "../ScheduleIntervals.js"
-import type * as Types from "../Types.js"
 import * as internalCause from "./cause.js"
 import * as effect from "./core-effect.js"
 import * as core from "./core.js"
@@ -1903,7 +1902,7 @@ export const retry_combined: {
     self: Effect.Effect<A, E, R>
   ) => Effect.Retry.Return<R, E, A, O>
   <B, E, R1>(
-    policy: Schedule.Schedule<B, Types.NoInfer<E>, R1>
+    policy: Schedule.Schedule<B, NoInfer<E>, R1>
   ): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R1 | R>
   <A, E, R, O extends Effect.Retry.Options<E>>(
     self: Effect.Effect<A, E, R>,
@@ -1949,13 +1948,13 @@ export const retry_combined: {
 /** @internal */
 export const retryOrElse_Effect = dual<
   <A1, E, R1, A2, E2, R2>(
-    policy: Schedule.Schedule<A1, Types.NoInfer<E>, R1>,
-    orElse: (e: Types.NoInfer<E>, out: A1) => Effect.Effect<A2, E2, R2>
+    policy: Schedule.Schedule<A1, NoInfer<E>, R1>,
+    orElse: (e: NoInfer<E>, out: A1) => Effect.Effect<A2, E2, R2>
   ) => <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A | A2, E | E2, R | R1 | R2>,
   <A, E, R, A1, R1, A2, E2, R2>(
     self: Effect.Effect<A, E, R>,
-    policy: Schedule.Schedule<A1, Types.NoInfer<E>, R1>,
-    orElse: (e: Types.NoInfer<E>, out: A1) => Effect.Effect<A2, E2, R2>
+    policy: Schedule.Schedule<A1, NoInfer<E>, R1>,
+    orElse: (e: NoInfer<E>, out: A1) => Effect.Effect<A2, E2, R2>
   ) => Effect.Effect<A | A2, E | E2, R | R1 | R2>
 >(3, (self, policy, orElse) =>
   core.flatMap(

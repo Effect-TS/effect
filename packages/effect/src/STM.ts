@@ -14,7 +14,7 @@ import * as stm from "./internal/stm/stm.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
-import type { Covariant, MergeRecord, NoInfer } from "./Types.js"
+import type { Covariant, MergeRecord } from "./Types.js"
 import type * as Unify from "./Unify.js"
 
 /**
