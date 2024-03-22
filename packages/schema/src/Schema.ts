@@ -49,17 +49,6 @@ import type * as Serializable from "./Serializable.js"
 import * as TreeFormatter from "./TreeFormatter.js"
 
 /**
- * Required to fix a bug in TypeScript@5.0, dtslint fails with:
- * TypeScript@5.0 expected type to be:
- *   { readonly [x: string]: number; }
- * got:
- *   { [x: string]: number; }
- *
- * @since 1.0.0
- */
-export type Simplify<T> = { readonly [K in keyof T]: T[K] } & {}
-
-/**
  * @since 1.0.0
  */
 export type SimplifyMutable<A> = {
@@ -2023,8 +2012,8 @@ export interface TypeLiteral<
   Records extends IndexSignature.Records
 > extends
   Schema<
-    Simplify<TypeLiteral.Type<Fields, Records>>,
-    Simplify<TypeLiteral.Encoded<Fields, Records>>,
+    Types.Simplify<TypeLiteral.Type<Fields, Records>>,
+    Types.Simplify<TypeLiteral.Encoded<Fields, Records>>,
     | Struct.Context<Fields>
     | IndexSignature.Context<Records>
   >
@@ -2032,7 +2021,7 @@ export interface TypeLiteral<
   readonly fields: { readonly [K in keyof Fields]: Fields[K] }
   readonly records: Readonly<Records>
   annotations(
-    annotations: Annotations.Schema<Simplify<TypeLiteral.Type<Fields, Records>>>
+    annotations: Annotations.Schema<Types.Simplify<TypeLiteral.Type<Fields, Records>>>
   ): TypeLiteral<Fields, Records>
 }
 
@@ -2043,8 +2032,8 @@ class TypeLiteralImpl<
   Fields extends Struct.Fields,
   const Records extends IndexSignature.Records
 > extends SchemaImpl<
-  Simplify<TypeLiteral.Type<Fields, Records>>,
-  Simplify<TypeLiteral.Encoded<Fields, Records>>,
+  Types.Simplify<TypeLiteral.Type<Fields, Records>>,
+  Types.Simplify<TypeLiteral.Encoded<Fields, Records>>,
   | Struct.Context<Fields>
   | IndexSignature.Context<Records>
 > implements TypeLiteral<Fields, Records> {
@@ -2136,7 +2125,7 @@ class TypeLiteralImpl<
     this.records = [...records] as Records
   }
   annotations(
-    annotations: Annotations.Schema<Simplify<TypeLiteral.Type<Fields, Records>>>
+    annotations: Annotations.Schema<Types.Simplify<TypeLiteral.Type<Fields, Records>>>
   ): TypeLiteral<Fields, Records> {
     return new TypeLiteralImpl(this.fields, this.records, AST.annotations(this.ast, toASTAnnotations(annotations)))
   }
@@ -2147,7 +2136,7 @@ class TypeLiteralImpl<
  * @since 1.0.0
  */
 export interface Struct<Fields extends Struct.Fields> extends TypeLiteral<Fields, []> {
-  annotations(annotations: Annotations.Schema<Simplify<Struct.Type<Fields>>>): Struct<Fields>
+  annotations(annotations: Annotations.Schema<Types.Simplify<Struct.Type<Fields>>>): Struct<Fields>
 }
 
 /**
@@ -2174,7 +2163,7 @@ export interface $Record<K extends Schema.All, V extends Schema.All> extends Typ
   readonly key: K
   readonly value: V
   annotations(
-    annotations: Annotations.Schema<Simplify<TypeLiteral.Type<{}, [{ key: K; value: V }]>>>
+    annotations: Annotations.Schema<Types.Simplify<TypeLiteral.Type<{}, [{ key: K; value: V }]>>>
   ): $Record<K, V>
 }
 
@@ -2185,7 +2174,7 @@ class $RecordImpl<K extends Schema.All, V extends Schema.All> extends TypeLitera
   constructor(readonly key: K, readonly value: V, ast?: AST.AST) {
     super({}, [{ key, value }], ast)
   }
-  annotations(annotations: Annotations.Schema<Simplify<TypeLiteral.Type<{}, [{ key: K; value: V }]>>>) {
+  annotations(annotations: Annotations.Schema<Types.Simplify<TypeLiteral.Type<{}, [{ key: K; value: V }]>>>) {
     return new $RecordImpl(this.key, this.value, AST.annotations(this.ast, toASTAnnotations(annotations)))
   }
 }
