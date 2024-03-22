@@ -2053,7 +2053,7 @@ export const makeSpan = (
     core.sync(() => {
       const enabled = FiberRefs.getOrDefault(fiberRefs, core.currentTracerEnabled)
       if (enabled === false) {
-        return core.noopSpan
+        return core.noopSpan(name)
       }
 
       const context = FiberRefs.getOrDefault(fiberRefs, core.currentContext)

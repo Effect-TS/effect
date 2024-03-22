@@ -3091,8 +3091,7 @@ export const currentSpanFromFiber = <A, E>(fiber: Fiber.RuntimeFiber<A, E>): Opt
   return span !== undefined && span._tag === "Span" ? Option.some(span) : Option.none()
 }
 
-/** @internal */
-export const noopSpan: Tracer.Span = globalValue("effect/Tracer/noopSpan", () => ({
+const NoopSpanProto: Tracer.Span = {
   _tag: "Span",
   spanId: "noop",
   traceId: "noop",
@@ -3111,4 +3110,11 @@ export const noopSpan: Tracer.Span = globalValue("effect/Tracer/noopSpan", () =>
   attribute() {},
   event() {},
   end() {}
-}))
+}
+
+/** @internal */
+export const noopSpan = (name: string): Tracer.Span => {
+  const span = Object.create(NoopSpanProto)
+  span.name = name
+  return span
+}
