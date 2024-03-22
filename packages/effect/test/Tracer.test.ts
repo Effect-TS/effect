@@ -272,7 +272,8 @@ describe("Tracer", () => {
         Effect.withTracerEnabled(true)
       )
 
-      assert.deepEqual(span.name, "noop")
+      assert.deepEqual(span.name, "A")
+      assert.deepEqual(span.spanId, "noop")
       assert.deepEqual(spanB.name, "B")
     }))
 })
