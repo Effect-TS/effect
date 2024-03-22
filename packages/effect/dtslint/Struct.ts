@@ -122,7 +122,7 @@ pipe(symbolStruct, S.pick(asym, bsym))
 // $ExpectType { [asym]?: number; [bsym]?: number; }
 pipe(symbolNumberRecord, S.pick(asym, bsym))
 
-// $ExpectType { 1: string; 2: number; }
+// $ExpectType { 2: number; 1: string; }
 pipe(numberStruct, S.pick(1, 2))
 
 // @ts-expect-error
@@ -134,7 +134,7 @@ S.pick(4)(numberStruct)
 // $ExpectType { [x: number]: unknown; }
 S.pick(4 as number)(numberStruct)
 
-// $ExpectType { 1?: number; 2?: number; }
+// $ExpectType { 2?: number; 1?: number; }
 pipe(numberNumberRecord, S.pick(1, 2))
 
 // $ExpectType { ab?: number; aa?: number; }
