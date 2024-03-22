@@ -646,6 +646,24 @@ describe("Schema > Class APIs", () => {
     expect(err.id).toEqual(1)
   })
 
+  it("TaggedError/message", () => {
+    class MyError extends S.TaggedError<MyError>()("MyError", {
+      id: S.number
+    }) {
+      get message() {
+        return `bad id: ${this.id}`
+      }
+    }
+
+    const err = new MyError({ id: 1 })
+
+    expect(String(err)).include(`MyError: bad id: 1`)
+    expect(String(err)).toContain("Class.test.ts:")
+    expect(err.stack).toContain("Class.test.ts:")
+    expect(err._tag).toEqual("MyError")
+    expect(err.id).toEqual(1)
+  })
+
   describe("TaggedRequest", () => {
     it("should expose the fields", () => {
       class TRA extends S.TaggedRequest<TRA>()("TRA", S.string, S.number, {

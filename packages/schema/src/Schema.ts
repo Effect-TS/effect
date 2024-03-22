@@ -6044,8 +6044,7 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
     {},
     {}
   > =>
-{
-  return makeClass({
+  makeClass({
     kind: "TaggedClass",
     identifier: identifier ?? tag,
     fields: extendFields({ _tag: literal(tag) }, fields),
@@ -6053,7 +6052,6 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
     tag: { _tag: tag },
     annotations
   })
-}
 
 /**
  * @category classes
@@ -6076,13 +6074,25 @@ export const TaggedError = <Self = never>(identifier?: string) =>
     Cause.YieldableError
   > =>
 {
+  class Base extends Data.Error {}
+  ;(Base.prototype as any).name = tag
   return makeClass({
     kind: "TaggedError",
     identifier: identifier ?? tag,
     fields: extendFields({ _tag: literal(tag) }, fields),
-    Base: Data.Error,
+    Base,
     tag: { _tag: tag },
-    annotations
+    annotations,
+    toStringOverride(self) {
+      if (!(Predicate.isString(self.message) && self.message.length > 0)) {
+        return Pretty.make(self.constructor as any)(self)
+      }
+      let message = `${self._tag}: ${self.message}`
+      if (Predicate.isString(self.stack)) {
+        message = `${message}\n${self.stack.split("\n").slice(1).join("\n")}`
+      }
+      return message
+    }
   })
 }
 
@@ -6173,7 +6183,7 @@ const extendFields = (a: Struct.Fields, b: Struct.Fields): Struct.Fields => {
   return out
 }
 
-const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, tag }: {
+const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, tag, toStringOverride }: {
   kind: string
   identifier: string
   fields: Struct.Fields
@@ -6181,6 +6191,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
   fromSchema?: Schema.Any | undefined
   tag?: { _tag: AST.LiteralValue } | undefined
   annotations?: Annotations.Schema<any> | undefined
+  toStringOverride?: ((self: any) => string) | undefined
 }): any => {
   const classSymbol = Symbol.for(`@effect/schema/${kind}/${identifier}`)
   const schema = fromSchema ?? struct(fields)
@@ -6207,7 +6218,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
     }
 
     toString() {
-      return Pretty.make(this.constructor as any)(this)
+      return toStringOverride !== undefined ? toStringOverride(this) : Pretty.make(this.constructor as any)(this)
     }
 
     static pipe() {
@@ -6636,13 +6647,30 @@ function causeEncode<E>(cause: Cause.Cause<E>): CauseEncoded<E> {
   }
 }
 
-const causeDefectPretty: Schema<unknown> = transform(
+/**
+ * @category Cause transformations
+ * @since 1.0.0
+ */
+export const causeDefectUnknown: $unknown = transform(
   unknown,
   unknown,
-  identity,
+  (u) => {
+    if (Predicate.isObject(u) && "message" in u && typeof u.message === "string") {
+      const err = new Error(u.message, { cause: u })
+      if ("name" in u && typeof u.name === "string") {
+        err.name = u.name
+      }
+      err.stack = "stack" in u && typeof u.stack === "string" ? u.stack : ""
+      return err
+    }
+    return String(u)
+  },
   (defect) => {
-    if (Predicate.isObject(defect)) {
-      return Cause.pretty(Cause.die(defect))
+    if (defect instanceof Error) {
+      return {
+        name: defect.name,
+        message: defect.message
+      }
     }
     return String(defect)
   }
@@ -6665,7 +6693,7 @@ export interface cause<E extends Schema.All, DR> extends
  * @category Cause transformations
  * @since 1.0.0
  */
-export const cause = <E extends Schema.All, DR = never>({ defect = causeDefectPretty, error }: {
+export const cause = <E extends Schema.All, DR = never>({ defect = causeDefectUnknown, error }: {
   readonly error: E
   readonly defect?: Schema<unknown, unknown, DR> | undefined
 }): cause<E, DR> => {
@@ -6817,7 +6845,7 @@ export interface exit<A extends Schema.All, E extends Schema.All, DR> extends
  * @since 1.0.0
  */
 export const exit = <A extends Schema.All, E extends Schema.All, DR = never>(
-  { defect = causeDefectPretty, failure, success }: {
+  { defect = causeDefectUnknown, failure, success }: {
     readonly failure: E
     readonly success: A
     readonly defect?: Schema<unknown, unknown, DR> | undefined

@@ -44,7 +44,7 @@ describe("Cause > cause", () => {
         _tag: "Die",
         defect: { stack: "fail", message: "error" }
       },
-      Cause.die({ stack: "fail", message: "error" })
+      Cause.die(new Error("error"))
     )
     await Util.expectDecodeUnknownSuccess(
       schema,
@@ -140,12 +140,13 @@ describe("Cause > cause", () => {
 
     let failWithStack = S.encodeSync(schema)(Cause.die(new Error("fail")))
     assert(failWithStack._tag === "Die")
-    assert.include(failWithStack.defect, "Error: fail")
-    assert.include(failWithStack.defect, "cause.test.ts")
+    assert.deepStrictEqual(failWithStack.defect, {
+      name: "Error",
+      message: "fail"
+    })
 
     failWithStack = S.encodeSync(schemaUnknown)(Cause.die(new Error("fail")))
     assert(failWithStack._tag === "Die")
-    assert.strictEqual((failWithStack.defect as any).message, "fail")
-    assert.include((failWithStack.defect as any).stack, "cause.test.ts")
+    assert.strictEqual((failWithStack.defect as Error).message, "fail")
   })
 })
