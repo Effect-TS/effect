@@ -64,6 +64,9 @@ export class PersistenceBackingError extends RefailError(ErrorTypeId, "Persisten
   readonly reason: "BackingError"
   readonly method: string
 }> {
+  /**
+   * @since 1.0.0
+   */
   static make(method: string, error: unknown) {
     return new PersistenceBackingError({ reason: "BackingError", method, error })
   }
