@@ -3,6 +3,7 @@ import * as Etag from "@effect/platform-node-shared/Http/Etag"
 import * as MultipartNode from "@effect/platform-node-shared/Http/Multipart"
 import type * as FileSystem from "@effect/platform/FileSystem"
 import * as App from "@effect/platform/Http/App"
+import * as Cookies from "@effect/platform/Http/Cookies"
 import * as Headers from "@effect/platform/Http/Headers"
 import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
 import type { Method } from "@effect/platform/Http/Method"
@@ -26,6 +27,7 @@ import { pipe } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import type { ReadonlyRecord } from "effect/ReadonlyRecord"
 import * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
@@ -115,17 +117,21 @@ export const make = (
 
 const makeResponse = (request: ServerRequest.ServerRequest, response: ServerResponse.ServerResponse): Response => {
   const fields: {
-    headers?: Headers.Headers
+    headers: globalThis.Headers
     status?: number
     statusText?: string
-  } = {}
+  } = {
+    headers: new globalThis.Headers(response.headers),
+    status: response.status
+  }
 
-  if (response.headers !== undefined) {
-    fields.headers = response.headers
+  if (!Cookies.isEmpty(response.cookies)) {
+    const toSet = Cookies.toSetCookieHeaders(response.cookies)
+    for (const header of toSet) {
+      fields.headers.append("set-cookie", header)
+    }
   }
-  if (response.status !== undefined) {
-    fields.status = response.status
-  }
+
   if (response.statusText !== undefined) {
     fields.statusText = response.statusText
   }
@@ -269,6 +275,14 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.Serve
   get headers(): Headers.Headers {
     this.headersOverride ??= Headers.fromInput(this.source.headers)
     return this.headersOverride
+  }
+
+  private cachedCookies: ReadonlyRecord<string, string> | undefined
+  get cookies() {
+    if (this.cachedCookies) {
+      return this.cachedCookies
+    }
+    return this.cachedCookies = Cookies.parseHeader(this.headers.cookie ?? "")
   }
 
   get stream(): Stream.Stream<Uint8Array, Error.RequestError> {

@@ -7,6 +7,7 @@ import * as Stream from "effect/Stream"
 import type * as PlatformError from "../../Error.js"
 import type * as FileSystem from "../../FileSystem.js"
 import type * as Body from "../../Http/Body.js"
+import * as Cookies from "../../Http/Cookies.js"
 import * as Headers from "../../Http/Headers.js"
 import * as Platform from "../../Http/Platform.js"
 import type * as ServerResponse from "../../Http/ServerResponse.js"
@@ -26,6 +27,7 @@ class ServerResponseImpl extends Effectable.StructuralClass<ServerResponse.Serve
     readonly status: number,
     readonly statusText: string | undefined,
     headers: Headers.Headers,
+    readonly cookies: Cookies.Cookies,
     readonly body: Body.Body
   ) {
     super()
@@ -77,6 +79,7 @@ export const empty = (options?: ServerResponse.Options.WithContent): ServerRespo
     options?.status ?? 204,
     options?.statusText,
     options?.headers ?? Headers.empty,
+    options?.cookies ?? Cookies.empty,
     internalBody.empty
   )
 
@@ -89,6 +92,7 @@ export const uint8Array = (
     options?.status ?? 200,
     options?.statusText,
     options?.headers ?? Headers.empty,
+    options?.cookies ?? Cookies.empty,
     internalBody.uint8Array(body, getContentType(options))
   )
 
@@ -98,6 +102,7 @@ export const text = (body: string, options?: ServerResponse.Options.WithContentT
     options?.status ?? 200,
     options?.statusText,
     options?.headers ?? Headers.empty,
+    options?.cookies ?? Cookies.empty,
     internalBody.text(body, getContentType(options))
   )
 
@@ -157,6 +162,7 @@ export const json = (
       options?.status ?? 200,
       options?.statusText,
       options?.headers ?? Headers.empty,
+      options?.cookies ?? Cookies.empty,
       body
     ))
 
@@ -169,6 +175,7 @@ export const unsafeJson = (
     options?.status ?? 200,
     options?.statusText,
     options?.headers ?? Headers.empty,
+    options?.cookies ?? Cookies.empty,
     internalBody.unsafeJson(body)
   )
 
@@ -186,6 +193,7 @@ export const schemaJson = <A, I, R>(
         options?.status ?? 200,
         options?.statusText,
         options?.headers ?? Headers.empty,
+        options?.cookies ?? Cookies.empty,
         body
       ))
 }
@@ -219,6 +227,7 @@ export const urlParams = (
     options?.status ?? 200,
     options?.statusText,
     options?.headers ?? Headers.empty,
+    options?.cookies ?? Cookies.empty,
     internalBody.text(UrlParams.toString(UrlParams.fromInput(body)), "application/x-www-form-urlencoded")
   )
 
@@ -228,6 +237,7 @@ export const raw = (body: unknown, options?: ServerResponse.Options): ServerResp
     options?.status ?? 200,
     options?.statusText,
     options?.headers ?? Headers.empty,
+    options?.cookies ?? Cookies.empty,
     internalBody.raw(body)
   )
 
@@ -240,6 +250,7 @@ export const formData = (
     options?.status ?? 200,
     options?.statusText,
     options?.headers ?? Headers.empty,
+    options?.cookies ?? Cookies.empty,
     internalBody.formData(body)
   )
 
@@ -252,6 +263,7 @@ export const stream = (
     options?.status ?? 200,
     options?.statusText,
     options?.headers ?? Headers.empty,
+    options?.cookies ?? Cookies.empty,
     internalBody.stream(body, getContentType(options), options?.contentLength)
   )
 
@@ -275,8 +287,137 @@ export const setHeader = dual<
     self.status,
     self.statusText,
     Headers.set(self.headers, key, value),
+    self.cookies,
     self.body
   ))
+
+/** @internal */
+export const replaceCookies = dual<
+  (cookies: Cookies.Cookies) => (self: ServerResponse.ServerResponse) => ServerResponse.ServerResponse,
+  (self: ServerResponse.ServerResponse, cookies: Cookies.Cookies) => ServerResponse.ServerResponse
+>(2, (self, cookies) =>
+  new ServerResponseImpl(
+    self.status,
+    self.statusText,
+    self.headers,
+    cookies,
+    self.body
+  ))
+
+/** @internal */
+export const setCookie = dual<
+  (
+    name: string,
+    value: string,
+    options?: Cookies.Cookie["options"]
+  ) => (self: ServerResponse.ServerResponse) => Effect.Effect<ServerResponse.ServerResponse, Cookies.CookiesError>,
+  (
+    self: ServerResponse.ServerResponse,
+    name: string,
+    value: string,
+    options?: Cookies.Cookie["options"]
+  ) => Effect.Effect<ServerResponse.ServerResponse, Cookies.CookiesError>
+>(
+  (args) => Cookies.isCookies(args[0]),
+  (self, name, value, options) =>
+    Effect.map(Cookies.add(self.cookies, name, value, options), (cookies) =>
+      new ServerResponseImpl(
+        self.status,
+        self.statusText,
+        self.headers,
+        cookies,
+        self.body
+      ))
+)
+
+/** @internal */
+export const unsafeSetCookie = dual<
+  (
+    name: string,
+    value: string,
+    options?: Cookies.Cookie["options"]
+  ) => (self: ServerResponse.ServerResponse) => ServerResponse.ServerResponse,
+  (
+    self: ServerResponse.ServerResponse,
+    name: string,
+    value: string,
+    options?: Cookies.Cookie["options"]
+  ) => ServerResponse.ServerResponse
+>(
+  (args) => Cookies.isCookies(args[0]),
+  (self, name, value, options) =>
+    new ServerResponseImpl(
+      self.status,
+      self.statusText,
+      self.headers,
+      Cookies.unsafeAdd(self.cookies, name, value, options),
+      self.body
+    )
+)
+
+/** @internal */
+export const setCookies = dual<
+  (
+    cookies: Iterable<readonly [name: string, value: string, options?: Cookies.Cookie["options"]]>
+  ) => (self: ServerResponse.ServerResponse) => Effect.Effect<ServerResponse.ServerResponse, Cookies.CookiesError>,
+  (
+    self: ServerResponse.ServerResponse,
+    cookies: Iterable<readonly [name: string, value: string, options?: Cookies.Cookie["options"]]>
+  ) => Effect.Effect<ServerResponse.ServerResponse, Cookies.CookiesError>
+>(
+  2,
+  (self, cookies) =>
+    Effect.map(Cookies.addAll(self.cookies, cookies), (cookies) =>
+      new ServerResponseImpl(
+        self.status,
+        self.statusText,
+        self.headers,
+        cookies,
+        self.body
+      ))
+)
+
+/** @internal */
+export const unsafeSetCookies = dual<
+  (
+    cookies: Iterable<readonly [name: string, value: string, options?: Cookies.Cookie["options"]]>
+  ) => (self: ServerResponse.ServerResponse) => ServerResponse.ServerResponse,
+  (
+    self: ServerResponse.ServerResponse,
+    cookies: Iterable<readonly [name: string, value: string, options?: Cookies.Cookie["options"]]>
+  ) => ServerResponse.ServerResponse
+>(
+  2,
+  (self, cookies) =>
+    new ServerResponseImpl(
+      self.status,
+      self.statusText,
+      self.headers,
+      Cookies.unsafeAddAll(self.cookies, cookies),
+      self.body
+    )
+)
+
+/** @internal */
+export const removeCookie = dual<
+  (
+    name: string
+  ) => (self: ServerResponse.ServerResponse) => ServerResponse.ServerResponse,
+  (
+    self: ServerResponse.ServerResponse,
+    name: string
+  ) => ServerResponse.ServerResponse
+>(
+  2,
+  (self, name) =>
+    new ServerResponseImpl(
+      self.status,
+      self.statusText,
+      self.headers,
+      Cookies.remove(self.cookies, name),
+      self.body
+    )
+)
 
 /** @internal */
 export const setHeaders = dual<
@@ -287,6 +428,7 @@ export const setHeaders = dual<
     self.status,
     self.statusText,
     Headers.setAll(self.headers, input),
+    self.cookies,
     self.body
   ))
 
@@ -299,6 +441,7 @@ export const setStatus = dual<
     status,
     statusText,
     self.headers,
+    self.cookies,
     self.body
   ))
 
@@ -315,6 +458,7 @@ export const setBody = dual<
     self.status,
     self.statusText,
     headers,
+    self.cookies,
     body
   )
 })

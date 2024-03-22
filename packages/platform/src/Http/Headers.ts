@@ -34,7 +34,7 @@ export const isHeaders = (u: unknown): u is Headers => Predicate.hasProperty(u, 
  */
 export interface Headers {
   readonly [HeadersTypeId]: HeadersTypeId
-  readonly [key: string]: string | ReadonlyArray<string>
+  readonly [key: string]: string
 }
 
 /**
@@ -86,7 +86,12 @@ export const fromInput: (input?: Input) => Headers = (input) => {
     )) as Headers
   }
   return ReadonlyRecord.fromEntries(
-    Object.entries(input).map(([k, v]) => [k.toLowerCase(), v])
+    Object.entries(input).map(([k, v]) =>
+      [
+        k.toLowerCase(),
+        Array.isArray(v) ? v.join(", ") : v
+      ] as const
+    )
   ) as Headers
 }
 

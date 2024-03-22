@@ -578,4 +578,22 @@ describe("HttpServer", () => {
       const stream = yield* _(HttpC.request.get("/stream"), client, HttpC.response.text)
       expect(stream).toEqual("<html><body />123hello</html>")
     }).pipe(Effect.scoped, runPromise))
+
+  it("setCookie", () =>
+    Effect.gen(function*(_) {
+      yield* _(
+        Http.router.empty,
+        Http.router.get(
+          "/home",
+          Http.response.empty().pipe(
+            Http.response.unsafeSetCookie("test", "value"),
+            Http.response.unsafeSetCookie("test2", "value2", { httpOnly: true })
+          )
+        ),
+        Http.server.serveEffect()
+      )
+      const client = yield* _(makeClient)
+      const res = yield* _(HttpC.request.get("/home"), client, Effect.scoped)
+      assert.strictEqual(res.headers["set-cookie"], "test=value, test2=value2; HttpOnly")
+    }).pipe(Effect.scoped, runPromise))
 })

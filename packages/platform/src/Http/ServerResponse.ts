@@ -10,6 +10,7 @@ import type * as FileSystem from "../FileSystem.js"
 import * as internal from "../internal/http/serverResponse.js"
 import type * as Template from "../Template.js"
 import type * as Body from "./Body.js"
+import type { Cookie, Cookies, CookiesError } from "./Cookies.js"
 import type * as Headers from "./Headers.js"
 import type * as Platform from "./Platform.js"
 import type * as UrlParams from "./UrlParams.js"
@@ -35,6 +36,7 @@ export interface ServerResponse extends Effect.Effect<ServerResponse>, Inspectab
   readonly status: number
   readonly statusText?: string | undefined
   readonly headers: Headers.Headers
+  readonly cookies: Cookies
   readonly body: Body.Body
 }
 
@@ -46,6 +48,7 @@ export interface Options {
   readonly status?: number | undefined
   readonly statusText?: string | undefined
   readonly headers?: Headers.Headers | undefined
+  readonly cookies?: Cookies | undefined
   readonly contentType?: string | undefined
   readonly contentLength?: number | undefined
 }
@@ -194,6 +197,120 @@ export const setHeaders: {
   (input: Headers.Input): (self: ServerResponse) => ServerResponse
   (self: ServerResponse, input: Headers.Input): ServerResponse
 } = internal.setHeaders
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const removeCookie: {
+  (name: string): (self: ServerResponse) => ServerResponse
+  (self: ServerResponse, name: string): ServerResponse
+} = internal.removeCookie
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const replaceCookies: {
+  (cookies: Cookies): (self: ServerResponse) => ServerResponse
+  (self: ServerResponse, cookies: Cookies): ServerResponse
+} = internal.replaceCookies
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const setCookie: {
+  (
+    name: string,
+    value: string,
+    options?: Cookie["options"]
+  ): (
+    self: ServerResponse
+  ) => Effect.Effect<
+    ServerResponse,
+    CookiesError
+  >
+  (
+    self: ServerResponse,
+    name: string,
+    value: string,
+    options?: Cookie["options"]
+  ): Effect.Effect<
+    ServerResponse,
+    CookiesError
+  >
+} = internal.setCookie
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const unsafeSetCookie: {
+  (
+    name: string,
+    value: string,
+    options?: Cookie["options"]
+  ): (self: ServerResponse) => ServerResponse
+  (
+    self: ServerResponse,
+    name: string,
+    value: string,
+    options?: Cookie["options"]
+  ): ServerResponse
+} = internal.unsafeSetCookie
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const setCookies: {
+  (
+    cookies: Iterable<
+      readonly [
+        name: string,
+        value: string,
+        options?: Cookie["options"]
+      ]
+    >
+  ): (self: ServerResponse) => Effect.Effect<ServerResponse, CookiesError, never>
+  (
+    self: ServerResponse,
+    cookies: Iterable<
+      readonly [
+        name: string,
+        value: string,
+        options?: Cookie["options"]
+      ]
+    >
+  ): Effect.Effect<ServerResponse, CookiesError, never>
+} = internal.setCookies
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const unsafeSetCookies: {
+  (
+    cookies: Iterable<
+      readonly [
+        name: string,
+        value: string,
+        options?: Cookie["options"]
+      ]
+    >
+  ): (self: ServerResponse) => ServerResponse
+  (
+    self: ServerResponse,
+    cookies: Iterable<
+      readonly [
+        name: string,
+        value: string,
+        options?: Cookie["options"]
+      ]
+    >
+  ): ServerResponse
+} = internal.unsafeSetCookies
 
 /**
  * @since 1.0.0

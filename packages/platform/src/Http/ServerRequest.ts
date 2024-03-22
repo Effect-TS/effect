@@ -7,6 +7,7 @@ import type { Channel } from "effect/Channel"
 import type { Chunk } from "effect/Chunk"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
+import type { ReadonlyRecord } from "effect/ReadonlyRecord"
 import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import type * as FileSystem from "../FileSystem.js"
@@ -49,6 +50,7 @@ export interface ServerRequest extends IncomingMessage.IncomingMessage<Error.Req
   readonly url: string
   readonly originalUrl: string
   readonly method: Method
+  readonly cookies: ReadonlyRecord<string, string>
 
   readonly multipart: Effect.Effect<
     Multipart.Persisted,

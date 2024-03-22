@@ -5,9 +5,11 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
+import type { ReadonlyRecord } from "effect/ReadonlyRecord"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import type * as FileSystem from "../../FileSystem.js"
+import * as Cookies from "../../Http/Cookies.js"
 import * as Headers from "../../Http/Headers.js"
 import * as IncomingMessage from "../../Http/IncomingMessage.js"
 import type { Method } from "../../Http/Method.js"
@@ -162,6 +164,14 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.Serve
   get headers(): Headers.Headers {
     this.headersOverride ??= Headers.fromInput(this.source.headers)
     return this.headersOverride
+  }
+
+  private cachedCookies: ReadonlyRecord<string, string> | undefined
+  get cookies() {
+    if (this.cachedCookies) {
+      return this.cachedCookies
+    }
+    return this.cachedCookies = Cookies.parseHeader(this.headers.cookie ?? "")
   }
 
   get stream(): Stream.Stream<Uint8Array, Error.RequestError> {

@@ -2,9 +2,11 @@
  * @since 1.0.0
  */
 import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
+import * as Either from "effect/Either"
+import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
+import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import { TypeIdError } from "../Error.js"
 
@@ -19,6 +21,12 @@ export const TypeId = Symbol.for("@effect/platform/Http/Cookies")
  * @category type ids
  */
 export type TypeId = typeof TypeId
+
+/**
+ * @since 1.0.0
+ * @category refinements
+ */
+export const isCookies = (u: unknown): u is Cookies => Predicate.hasProperty(u, TypeId)
 
 /**
  * @since 1.0.0
@@ -113,6 +121,20 @@ export const fromIterable = (cookies: Iterable<Cookie>): Cookies => {
   return self
 }
 
+/**
+ * An empty Cookies object
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const empty: Cookies = fromIterable([])
+
+/**
+ * @since 1.0.0
+ * @category refinements
+ */
+export const isEmpty = (self: Cookies): boolean => self.cookies.length === 0
+
 // eslint-disable-next-line no-control-regex
 const fieldContentRegExp = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/
 
@@ -138,37 +160,205 @@ const CookieProto = {
 export function makeCookie(
   name: string,
   value: string,
-  options?: Cookie["options"]
-): Effect.Effect<Cookie, CookiesError> {
-  if (!fieldContentRegExp.test(self.name)) {
-    return Effect.fail(new CookiesError({ reason: "InvalidName" }))
+  options?: Cookie["options"] | undefined
+): Either.Either<Cookie, CookiesError> {
+  if (!fieldContentRegExp.test(name)) {
+    return Either.left(new CookiesError({ reason: "InvalidName" }))
   }
   const encodedValue = encodeURIComponent(value)
   if (encodedValue && !fieldContentRegExp.test(encodedValue)) {
-    return Effect.fail(new CookiesError({ reason: "InvalidValue" }))
+    return Either.left(new CookiesError({ reason: "InvalidValue" }))
   }
 
   if (options !== undefined) {
     if (options.domain !== undefined && !fieldContentRegExp.test(options.domain)) {
-      return Effect.fail(new CookiesError({ reason: "InvalidDomain" }))
+      return Either.left(new CookiesError({ reason: "InvalidDomain" }))
     }
 
     if (options.path !== undefined && !fieldContentRegExp.test(options.path)) {
-      return Effect.fail(new CookiesError({ reason: "InvalidPath" }))
+      return Either.left(new CookiesError({ reason: "InvalidPath" }))
     }
 
     if (options.maxAge !== undefined && !Duration.isFinite(Duration.decode(options.maxAge))) {
-      return Effect.fail(new CookiesError({ reason: "InfinityMaxAge" }))
+      return Either.left(new CookiesError({ reason: "InfinityMaxAge" }))
     }
   }
 
-  return Effect.succeed(Object.assign(Object.create(CookieProto), {
+  return Either.right(Object.assign(Object.create(CookieProto), {
     name,
     value,
     valueEncoded: encodedValue,
     options
   }))
 }
+
+/**
+ * Create a new cookie, throwing an error if invalid
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const unsafeMakeCookie = (
+  name: string,
+  value: string,
+  options?: Cookie["options"] | undefined
+): Cookie => Either.getOrThrow(makeCookie(name, value, options))
+
+/**
+ * Add a cookie to a Cookies object
+ *
+ * @since 1.0.0
+ * @category combinators
+ */
+export const append: {
+  (cookie: Cookie): (self: Cookies) => Cookies
+  (
+    self: Cookies,
+    cookie: Cookie
+  ): Cookies
+} = dual(
+  2,
+  (self: Cookies, cookie: Cookie) => fromIterable([...self.cookies, cookie])
+)
+
+/**
+ * Add multiple cookies to a Cookies object
+ *
+ * @since 1.0.0
+ * @category combinators
+ */
+export const appendAll: {
+  (cookies: Iterable<Cookie>): (self: Cookies) => Cookies
+  (
+    self: Cookies,
+    cookies: Iterable<Cookie>
+  ): Cookies
+} = dual(2, (self: Cookies, cookies: Iterable<Cookie>) =>
+  fromIterable(
+    ReadonlyArray.appendAll(self.cookies, cookies)
+  ))
+
+/**
+ * Remove a cookie by name
+ *
+ * @since 1.0.0
+ * @category combinators
+ */
+export const remove: {
+  (name: string): (self: Cookies) => Cookies
+  (
+    self: Cookies,
+    name: string
+  ): Cookies
+} = dual(2, (self: Cookies, cookie: Cookie) =>
+  fromIterable(
+    self.cookies.filter((c) => c.name !== cookie.name)
+  ))
+
+/**
+ * Add a cookie to a Cookies object
+ *
+ * @since 1.0.0
+ * @category combinators
+ */
+export const add: {
+  (
+    name: string,
+    value: string,
+    options?: Cookie["options"]
+  ): (self: Cookies) => Either.Either<Cookies, CookiesError>
+  (
+    self: Cookies,
+    name: string,
+    value: string,
+    options?: Cookie["options"]
+  ): Either.Either<Cookies, CookiesError>
+} = dual(
+  (args) => isCookies(args[0]),
+  (self: Cookies, name: string, value: string, options?: Cookie["options"]) =>
+    Either.map(
+      makeCookie(name, value, options),
+      (cookie) => fromIterable([...self.cookies, cookie])
+    )
+)
+
+/**
+ * Add a cookie to a Cookies object
+ *
+ * @since 1.0.0
+ * @category combinators
+ */
+export const unsafeAdd: {
+  (
+    name: string,
+    value: string,
+    options?: Cookie["options"]
+  ): (self: Cookies) => Cookies
+  (
+    self: Cookies,
+    name: string,
+    value: string,
+    options?: Cookie["options"]
+  ): Cookies
+} = dual(
+  (args) => isCookies(args[0]),
+  (self: Cookies, name: string, value: string, options?: Cookie["options"]) =>
+    append(self, unsafeMakeCookie(name, value, options))
+)
+
+/**
+ * Add multiple cookies to a Cookies object
+ *
+ * @since 1.0.0
+ * @category combinators
+ */
+export const addAll: {
+  (
+    cookies: Iterable<readonly [name: string, value: string, options?: Cookie["options"]]>
+  ): (self: Cookies) => Either.Either<Cookies, CookiesError>
+  (
+    self: Cookies,
+    cookies: Iterable<readonly [name: string, value: string, options?: Cookie["options"]]>
+  ): Either.Either<Cookies, CookiesError>
+} = dual(
+  2,
+  (
+    self: Cookies,
+    cookies: Iterable<readonly [name: string, value: string, options?: Cookie["options"]]>
+  ): Either.Either<Cookies, CookiesError> => {
+    const toAdd: Array<Cookie> = []
+    for (const [name, value, options] of cookies) {
+      const either = makeCookie(name, value, options)
+      if (Either.isLeft(either)) {
+        return either as Either.Left<CookiesError, never>
+      }
+      toAdd.push(either.right)
+    }
+    return Either.right(appendAll(self, toAdd))
+  }
+)
+
+/**
+ * Add multiple cookies to a Cookies object, throwing an error if invalid
+ *
+ * @since 1.0.0
+ * @category combinators
+ */
+export const unsafeAddAll: {
+  (
+    cookies: Iterable<readonly [name: string, value: string, options?: Cookie["options"]]>
+  ): (self: Cookies) => Cookies
+  (
+    self: Cookies,
+    cookies: Iterable<readonly [name: string, value: string, options?: Cookie["options"]]>
+  ): Cookies
+} = dual(
+  2,
+  (
+    self: Cookies,
+    cookies: Iterable<readonly [name: string, value: string, options?: Cookie["options"]]>
+  ): Cookies => Either.getOrThrow(addAll(self, cookies))
+)
 
 /**
  * Serialize a cookie into a string
@@ -254,8 +444,7 @@ export function serializeCookie(self: Cookie): string {
  * @since 1.0.0
  * @category encoding
  */
-export const toSetCookieHeader = (self: Cookies): string =>
-  self.cookies.map((cookie) => `${cookie.name}=${cookie.valueEncoded}`).join("; ")
+export const toSetCookieHeaders = (self: Cookies): Array<string> => self.cookies.map(serializeCookie)
 
 /**
  * Serialize a Cookies object into a Cookie header

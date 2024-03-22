@@ -2,6 +2,7 @@ import * as Etag from "@effect/platform-node-shared/Http/Etag"
 import * as MultipartNode from "@effect/platform-node-shared/Http/Multipart"
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as App from "@effect/platform/Http/App"
+import * as Cookies from "@effect/platform/Http/Cookies"
 import type * as Headers from "@effect/platform/Http/Headers"
 import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
 import type { Method } from "@effect/platform/Http/Method"
@@ -19,6 +20,7 @@ import * as Effect from "effect/Effect"
 import { type LazyArg } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import type { ReadonlyRecord } from "effect/ReadonlyRecord"
 import * as Runtime from "effect/Runtime"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
@@ -263,6 +265,14 @@ class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implemen
     this[ServerRequest.TypeId] = ServerRequest.TypeId
   }
 
+  private cachedCookies: ReadonlyRecord<string, string> | undefined
+  get cookies() {
+    if (this.cachedCookies) {
+      return this.cachedCookies
+    }
+    return this.cachedCookies = Cookies.parseHeader(this.headers.cookie ?? "")
+  }
+
   get resolvedResponse(): Http.ServerResponse {
     return typeof this.response === "function" ? this.response() : this.response
   }
@@ -383,20 +393,32 @@ const handleResponse = (request: ServerRequest.ServerRequest, response: ServerRe
     const nodeResponse = (request as ServerRequestImpl).resolvedResponse
     if (nodeResponse.writableEnded) {
       return Effect.unit
-    } else if (request.method === "HEAD") {
-      nodeResponse.writeHead(response.status, response.headers)
+    }
+
+    let headers: Record<string, string | Array<string>> = response.headers
+    if (!Cookies.isEmpty(response.cookies)) {
+      headers = { ...headers }
+      const toSet = Cookies.toSetCookieHeaders(response.cookies)
+      if (headers["set-cookie"] !== undefined) {
+        toSet.push(headers["set-cookie"] as string)
+      }
+      headers["set-cookie"] = toSet
+    }
+
+    if (request.method === "HEAD") {
+      nodeResponse.writeHead(response.status, headers)
       nodeResponse.end()
       return Effect.unit
     }
     const body = response.body
     switch (body._tag) {
       case "Empty": {
-        nodeResponse.writeHead(response.status, response.headers)
+        nodeResponse.writeHead(response.status, headers)
         nodeResponse.end()
         return Effect.unit
       }
       case "Raw": {
-        nodeResponse.writeHead(response.status, response.headers)
+        nodeResponse.writeHead(response.status, headers)
         if (
           typeof body.body === "object" && body.body !== null && "pipe" in body.body &&
           typeof body.body.pipe === "function"
@@ -416,18 +438,17 @@ const handleResponse = (request: ServerRequest.ServerRequest, response: ServerRe
         return Effect.unit
       }
       case "Uint8Array": {
-        nodeResponse.writeHead(response.status, response.headers)
+        nodeResponse.writeHead(response.status, headers)
         nodeResponse.end(body.body)
         return Effect.unit
       }
       case "FormData": {
         return Effect.async<void, Error.ResponseError>((resume) => {
           const r = new Response(body.formData)
-          const headers = {
-            ...response.headers,
+          nodeResponse.writeHead(response.status, {
+            ...headers,
             ...Object.fromEntries(r.headers)
-          }
-          nodeResponse.writeHead(response.status, headers)
+          })
           Readable.fromWeb(r.body as any)
             .pipe(nodeResponse)
             .on("error", (error) => {
@@ -446,7 +467,7 @@ const handleResponse = (request: ServerRequest.ServerRequest, response: ServerRe
         })
       }
       case "Stream": {
-        nodeResponse.writeHead(response.status, response.headers)
+        nodeResponse.writeHead(response.status, headers)
         return Stream.run(
           Stream.mapError(
             body.stream,
