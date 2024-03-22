@@ -1059,13 +1059,19 @@ S.asSchema(S.extend(S.struct({ a: S.string }), S.union(S.struct({ b: S.number })
 // $ExpectType extend<struct<{ a: $string; }>, union<[struct<{ b: $number; }>, struct<{ c: $boolean; }>]>>
 S.extend(S.struct({ a: S.string }), S.union(S.struct({ b: S.number }), S.struct({ c: S.boolean })))
 
-// TODO: rises an error in TypeScript@5.0
-// // $ExpectType Schema<{ readonly [x: string]: string; readonly a: string; readonly b: string; readonly c: string; }, { readonly [x: string]: string; readonly a: string; readonly b: string; readonly c: string; }, never>
-// pipe(
-//   S.struct({ a: S.string, b: S.string }),
-//   S.extend(S.struct({ c: S.string })),
-//   S.extend(S.record(S.string, S.string))
-// )
+// $ExpectType Schema<{ readonly [x: string]: string; readonly a: string; readonly b: string; readonly c: string; }, { readonly [x: string]: string; readonly a: string; readonly b: string; readonly c: string; }, never>
+S.asSchema(pipe(
+  S.struct({ a: S.string, b: S.string }),
+  S.extend(S.struct({ c: S.string })),
+  S.extend(S.record(S.string, S.string))
+))
+
+// $ExpectType extend<extend<struct<{ a: $string; b: $string; }>, struct<{ c: $string; }>>, record<$string, $string>>
+pipe(
+  S.struct({ a: S.string, b: S.string }),
+  S.extend(S.struct({ c: S.string })),
+  S.extend(S.record(S.string, S.string))
+)
 
 // ---------------------------------------------
 // suspend
@@ -1346,9 +1352,8 @@ S.asSchema(S.extend(S.mutable(S.struct({ a: S.string })), S.struct({ b: S.number
 // $ExpectType Schema<{ [x: string]: string; a: string; }, { [x: string]: string; a: string; }, never>
 S.asSchema(S.extend(S.mutable(S.struct({ a: S.string })), S.mutable(S.record(S.string, S.string))))
 
-// TODO: rises an error in TypeScript@5.0
-// // $ExpectType Schema<{ readonly [x: string]: string; a: string; }, { readonly [x: string]: string; a: string; }, never>
-// S.asSchema(S.extend(S.mutable(S.struct({ a: S.string })), S.record(S.string, S.string)))
+// $ExpectType Schema<{ readonly [x: string]: string; a: string; }, { readonly [x: string]: string; a: string; }, never>
+S.asSchema(S.extend(S.mutable(S.struct({ a: S.string })), S.record(S.string, S.string)))
 
 // ---------------------------------------------
 // transform
