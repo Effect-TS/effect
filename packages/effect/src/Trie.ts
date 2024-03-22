@@ -20,7 +20,7 @@ import type { Inspectable } from "./Inspectable.js"
 import * as TR from "./internal/trie.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
-import type { Covariant, NoInfer } from "./Types.js"
+import type { Covariant } from "./Types.js"
 
 const TypeId: unique symbol = TR.TrieTypeId as TypeId
 

@@ -12,7 +12,7 @@ import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import { isFunction } from "./Predicate.js"
-import type { Covariant, MergeRecord, NoInfer, NotFunction } from "./Types.js"
+import type { Covariant, MergeRecord, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
 import * as Gen from "./Utils.js"
 
