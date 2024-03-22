@@ -36,7 +36,7 @@ import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import type * as Sink from "./Sink.js"
 import type * as Stream from "./Stream.js"
-import type { Covariant, NoInfer } from "./Types.js"
+import type { Covariant } from "./Types.js"
 
 /**
  * @since 2.0.0
