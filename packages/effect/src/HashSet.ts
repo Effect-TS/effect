@@ -7,7 +7,6 @@ import type { Inspectable } from "./Inspectable.js"
 import * as HS from "./internal/hashSet.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
-import type { NoInfer } from "./Types.js"
 
 const TypeId: unique symbol = HS.HashSetTypeId as TypeId
 

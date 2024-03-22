@@ -171,14 +171,6 @@ export type Mutable<T> = {
 }
 
 /**
- * Avoid inference on a specific parameter
- *
- * @since 2.0.0
- * @category models
- */
-export type NoInfer<A> = [A][A extends any ? 0 : never]
-
-/**
  * Invariant helper.
  *
  * @since 2.0.0

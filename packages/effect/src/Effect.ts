@@ -55,7 +55,7 @@ import * as Scheduler from "./Scheduler.js"
 import type * as Scope from "./Scope.js"
 import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
-import type { Concurrency, Covariant, MergeRecord, NoInfer, NotFunction } from "./Types.js"
+import type { Concurrency, Covariant, MergeRecord, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
 
 // -------------------------------------------------------------------------------------

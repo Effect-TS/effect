@@ -7,7 +7,6 @@ import type * as Ordering from "../Ordering.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import type * as TR from "../Trie.js"
-import type { NoInfer } from "../Types.js"
 
 const TrieSymbolKey = "effect/Trie"
 
