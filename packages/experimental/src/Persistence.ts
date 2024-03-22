@@ -44,6 +44,9 @@ export class PersistenceParseError extends TypeIdError(ErrorTypeId, "Persistence
   readonly method: string
   readonly error: ParseResult.ParseError["error"]
 }> {
+  /**
+   * @since 1.0.0
+   */
   static make(method: string, error: ParseResult.ParseError["error"]) {
     return new PersistenceParseError({ reason: "ParseError", method, error })
   }
