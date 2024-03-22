@@ -7,7 +7,7 @@ import type { Predicate } from "./Predicate.js"
 import type * as Queue from "./Queue.js"
 import type * as Stream from "./Stream.js"
 import type * as Take from "./Take.js"
-import type { Covariant, NoInfer } from "./Types.js"
+import type { Covariant } from "./Types.js"
 
 /**
  * @since 2.0.0
