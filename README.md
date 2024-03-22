@@ -4,7 +4,7 @@ Welcome to Effect, a powerful TypeScript framework that provides a fully-fledged
 
 # Requirements
 
-- TypeScript 5.0 or newer
+- TypeScript 5.4 or newer
 - The `strict` flag enabled in your `tsconfig.json` file
 
 ```
