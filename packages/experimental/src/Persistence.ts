@@ -1,35 +1,53 @@
 /**
  * @since 1.0.0
  */
+import { RefailError, TypeIdError } from "@effect/platform/Error"
 import * as KeyValueStore from "@effect/platform/KeyValueStore"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Serializable from "@effect/schema/Serializable"
 import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import * as Context from "effect/Context"
-import * as Data from "effect/Data"
+import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import * as Predicate from "effect/Predicate"
 import * as PrimaryKey from "effect/PrimaryKey"
 import type * as Scope from "effect/Scope"
+import * as TimeToLive from "./TimeToLive.js"
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export const ErrorTypeId = Symbol.for("@effect/experimental/PersistenceError")
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export type ErrorTypeId = typeof ErrorTypeId
 
 /**
  * @since 1.0.0
  * @category errors
  */
-export type PersistenceError = PersistenceSchemaError | PersistenceBackingError
+export type PersistenceError = PersistenceParseError | PersistenceBackingError
 
 /**
  * @since 1.0.0
  * @category errors
  */
-export class PersistenceSchemaError extends Data.TaggedError("PersistenceSchemaError")<{
+export class PersistenceParseError extends TypeIdError(ErrorTypeId, "PersistenceError")<{
+  readonly reason: "ParseError"
   readonly method: string
   readonly error: ParseResult.ParseError["error"]
 }> {
+  static make(method: string, error: ParseResult.ParseError["error"]) {
+    return new PersistenceParseError({ reason: "ParseError", method, error })
+  }
+
   get message() {
     return TreeFormatter.formatIssue(this.error)
   }
@@ -39,13 +57,16 @@ export class PersistenceSchemaError extends Data.TaggedError("PersistenceSchemaE
  * @since 1.0.0
  * @category errors
  */
-export class PersistenceBackingError extends Data.TaggedError("PersistenceBackingError")<{
+export class PersistenceBackingError extends RefailError(ErrorTypeId, "PersistenceError")<{
+  readonly reason: "BackingError"
   readonly method: string
-  readonly error: unknown
 }> {
+  static make(method: string, error: unknown) {
+    return new PersistenceBackingError({ reason: "BackingError", method, error })
+  }
+
   get message() {
-    const errorString = String(Predicate.hasProperty(this.error, "message") ? this.error.message : this.error)
-    return `${this.method}: ${errorString}`
+    return `${this.method}: ${super.message}`
   }
 }
 
@@ -77,7 +98,11 @@ export interface BackingPersistence {
 export interface BackingPersistenceStore {
   readonly get: (key: string) => Effect.Effect<Option.Option<unknown>, PersistenceError>
   readonly getMany: (key: Array<string>) => Effect.Effect<Array<Option.Option<unknown>>, PersistenceError>
-  readonly set: (key: string, value: unknown) => Effect.Effect<void, PersistenceError>
+  readonly set: (
+    key: string,
+    value: unknown,
+    ttl: Option.Option<Duration.Duration>
+  ) => Effect.Effect<void, PersistenceError>
   readonly remove: (key: string) => Effect.Effect<void, PersistenceError>
   readonly clear: Effect.Effect<void, PersistenceError>
 }
@@ -183,7 +208,7 @@ export const layerResult = Layer.effect(
           ) =>
             Effect.mapError(
               Serializable.deserializeExit(key, value),
-              (_) => new PersistenceSchemaError({ method, error: _.error })
+              (_) => PersistenceParseError.make(method, _.error)
             )
           const encode = <R, IE, E, IA, A>(
             method: string,
@@ -192,7 +217,7 @@ export const layerResult = Layer.effect(
           ) =>
             Effect.mapError(
               Serializable.serializeExit(key, value),
-              (_) => new PersistenceSchemaError({ method, error: _.error })
+              (_) => PersistenceParseError.make(method, _.error)
             )
           const makeKey = <R, IE, E, IA, A>(
             key: ResultPersistence.Key<R, IE, E, IA, A>
@@ -224,7 +249,7 @@ export const layerResult = Layer.effect(
               ),
             set: (key, value) =>
               encode("set", key, value).pipe(
-                Effect.flatMap((_) => storage.set(makeKey(key), _))
+                Effect.flatMap((_) => storage.set(makeKey(key), _, TimeToLive.getFinite(key, value)))
               ),
             remove: (key) => storage.remove(makeKey(key)),
             clear: storage.clear
@@ -238,22 +263,43 @@ export const layerResult = Layer.effect(
  * @since 1.0.0
  * @category layers
  */
-export const layerMemory: Layer.Layer<BackingPersistence> = Layer.succeed(
+export const layerMemory: Layer.Layer<BackingPersistence> = Layer.sync(
   BackingPersistence,
-  BackingPersistence.of({
-    [BackingPersistenceTypeId]: BackingPersistenceTypeId,
-    make: (_storeId) =>
-      Effect.sync(() => {
-        const map = new Map<string, unknown>()
-        return identity<BackingPersistenceStore>({
-          get: (key) => Effect.sync(() => Option.fromNullable(map.get(key))),
-          getMany: (keys) => Effect.sync(() => keys.map((key) => Option.fromNullable(map.get(key)))),
-          set: (key, value) => Effect.sync(() => map.set(key, value)),
-          remove: (key) => Effect.sync(() => map.delete(key)),
-          clear: Effect.sync(() => map.clear())
+  () => {
+    const stores = new Map<string, Map<string, readonly [unknown, expires: number | null]>>()
+    const getStore = (storeId: string) => {
+      let store = stores.get(storeId)
+      if (store === undefined) {
+        store = new Map<string, readonly [unknown, expires: number | null]>()
+        stores.set(storeId, store)
+      }
+      return store
+    }
+    return BackingPersistence.of({
+      [BackingPersistenceTypeId]: BackingPersistenceTypeId,
+      make: (storeId) =>
+        Effect.map(Effect.clock, (clock) => {
+          const map = getStore(storeId)
+          const unsafeGet = (key: string): Option.Option<unknown> => {
+            const value = map.get(key)
+            if (value === undefined) {
+              return Option.none()
+            } else if (value[1] !== null && value[1] <= clock.unsafeCurrentTimeMillis()) {
+              map.delete(key)
+              return Option.none()
+            }
+            return Option.some(value[0])
+          }
+          return identity<BackingPersistenceStore>({
+            get: (key) => Effect.sync(() => unsafeGet(key)),
+            getMany: (keys) => Effect.sync(() => keys.map(unsafeGet)),
+            set: (key, value, ttl) => Effect.sync(() => map.set(key, [value, TimeToLive.unsafeToExpires(clock, ttl)])),
+            remove: (key) => Effect.sync(() => map.delete(key)),
+            clear: Effect.sync(() => map.clear())
+          })
         })
-      })
-  })
+    })
+  }
 )
 
 /**
@@ -267,46 +313,54 @@ export const layerKeyValueStore: Layer.Layer<BackingPersistence, never, KeyValue
     return BackingPersistence.of({
       [BackingPersistenceTypeId]: BackingPersistenceTypeId,
       make: (storeId) =>
-        Effect.sync(() => {
+        Effect.map(Effect.clock, (clock) => {
           const store = KeyValueStore.prefix(backing, storeId)
           const get = (method: string, key: string) =>
             Effect.flatMap(
               Effect.mapError(
                 store.get(key),
-                (error) => new PersistenceBackingError({ method, error })
+                (error) => PersistenceBackingError.make(method, error)
               ),
               Option.match({
                 onNone: () => Effect.succeedNone,
                 onSome: (s) =>
-                  Effect.asSome(
+                  Effect.flatMap(
                     Effect.try({
                       try: () => JSON.parse(s),
-                      catch: (error) => new PersistenceBackingError({ method, error })
-                    })
+                      catch: (error) => PersistenceBackingError.make(method, error)
+                    }),
+                    (_) => {
+                      if (!Array.isArray(_)) return Effect.succeedNone
+                      const [value, expires] = _ as [unknown, number | null]
+                      if (expires !== null && expires <= clock.unsafeCurrentTimeMillis()) {
+                        return Effect.as(Effect.ignore(store.remove(key)), Option.none())
+                      }
+                      return Effect.succeed(Option.some(value))
+                    }
                   )
               })
             )
           return identity<BackingPersistenceStore>({
             get: (key) => get("get", key),
             getMany: (keys) => Effect.forEach(keys, (key) => get("getMany", key)),
-            set: (key, value) =>
+            set: (key, value, ttl) =>
               Effect.flatMap(
                 Effect.try({
-                  try: () => JSON.stringify(value),
-                  catch: (error) => new PersistenceBackingError({ method: "set", error })
+                  try: () => JSON.stringify([value, TimeToLive.unsafeToExpires(clock, ttl)]),
+                  catch: (error) => PersistenceBackingError.make("set", error)
                 }),
                 (u) =>
                   Effect.mapError(
                     store.set(key, u),
-                    (error) => new PersistenceBackingError({ method: "set", error })
+                    (error) => PersistenceBackingError.make("set", error)
                   )
               ),
             remove: (key) =>
               Effect.mapError(
                 store.remove(key),
-                (error) => new PersistenceBackingError({ method: "remove", error })
+                (error) => PersistenceBackingError.make("remove", error)
               ),
-            clear: Effect.mapError(store.clear, (error) => new PersistenceBackingError({ method: "clear", error }))
+            clear: Effect.mapError(store.clear, (error) => PersistenceBackingError.make("clear", error))
           })
         })
     })
