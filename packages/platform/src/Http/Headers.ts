@@ -34,7 +34,7 @@ export const isHeaders = (u: unknown): u is Headers => Predicate.hasProperty(u, 
  */
 export interface Headers {
   readonly [HeadersTypeId]: HeadersTypeId
-  readonly [key: string]: string
+  readonly [key: string]: string | ReadonlyArray<string>
 }
 
 /**
@@ -50,18 +50,21 @@ export const schemaFromSelf: Schema.Schema<Headers> = Schema.declare(isHeaders, 
  * @since 1.0.0
  * @category schemas
  */
-export const schema: Schema.Schema<Headers, ReadonlyRecord.ReadonlyRecord<string, string>> = Schema.transform(
-  Schema.record(Schema.string, Schema.string),
-  schemaFromSelf,
-  (record) => fromInput(record),
-  identity
-)
+export const schema: Schema.Schema<Headers, ReadonlyRecord.ReadonlyRecord<string, string | ReadonlyArray<string>>> =
+  Schema.transform(
+    Schema.record(Schema.string, Schema.union(Schema.string, Schema.array(Schema.string))),
+    schemaFromSelf,
+    (record) => fromInput(record),
+    identity
+  )
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type Input = ReadonlyRecord.ReadonlyRecord<string, string> | Iterable<readonly [string, string]>
+export type Input =
+  | ReadonlyRecord.ReadonlyRecord<string, string | ReadonlyArray<string>>
+  | Iterable<readonly [string, string]>
 
 /**
  * @since 1.0.0
