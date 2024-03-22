@@ -1,5 +1,38 @@
 # @effect/experimental
 
+## 0.14.0
+
+### Minor Changes
+
+- [#2383](https://github.com/Effect-TS/effect/pull/2383) [`317b5b8`](https://github.com/Effect-TS/effect/commit/317b5b8e8c8c2207469b3ebfcf72bf3a9f7cbc60) Thanks [@tim-smart](https://github.com/tim-smart)! - add TimeToLive support to Persistence module
+
+### Patch Changes
+
+- [#2384](https://github.com/Effect-TS/effect/pull/2384) [`2f488c4`](https://github.com/Effect-TS/effect/commit/2f488c436de52576562803c57ebc132ef40ccdd8) Thanks [@tim-smart](https://github.com/tim-smart)! - update dependencies
+
+- [#2383](https://github.com/Effect-TS/effect/pull/2383) [`317b5b8`](https://github.com/Effect-TS/effect/commit/317b5b8e8c8c2207469b3ebfcf72bf3a9f7cbc60) Thanks [@tim-smart](https://github.com/tim-smart)! - add TimeToLive module to @effect/experimental
+
+  A trait for attaching expiry information to objects.
+
+  ```ts
+  import * as TimeToLive from "@effect/experimental";
+  import { Duration, Exit } from "effect";
+
+  class User {
+    [TimeToLive.symbol](exit: Exit.Exit<unknown, unknown>) {
+      return Exit.isSuccess(exit) ? Duration.seconds(60) : Duration.zero;
+    }
+  }
+  ```
+
+- [#2383](https://github.com/Effect-TS/effect/pull/2383) [`317b5b8`](https://github.com/Effect-TS/effect/commit/317b5b8e8c8c2207469b3ebfcf72bf3a9f7cbc60) Thanks [@tim-smart](https://github.com/tim-smart)! - add Redis Persistence module
+
+- Updated dependencies [[`2f488c4`](https://github.com/Effect-TS/effect/commit/2f488c436de52576562803c57ebc132ef40ccdd8), [`37ca592`](https://github.com/Effect-TS/effect/commit/37ca592a4101ad90adbf8c8b3f727faf3110cae5), [`317b5b8`](https://github.com/Effect-TS/effect/commit/317b5b8e8c8c2207469b3ebfcf72bf3a9f7cbc60)]:
+  - @effect/platform-node@0.45.17
+  - effect@2.4.11
+  - @effect/schema@0.64.11
+  - @effect/platform@0.48.15
+
 ## 0.13.10
 
 ### Patch Changes
