@@ -33,16 +33,14 @@ const TestEnv = TestEnvironment.TestContext.pipe(
 export const effect = (() => {
   const f = <E, A>(
     name: string,
-    self:
-      | Effect.Effect<A, E, TestServices.TestServices>
-      | ((ctx: V.TaskContext<V.Test<{}>> & V.TestContext) => Effect.Effect<A, E, TestServices.TestServices>),
+    self: (ctx: V.TaskContext<V.Test<{}>> & V.TestContext) => Effect.Effect<A, E, TestServices.TestServices>,
     timeout: number | V.TestOptions = 5_000
   ) =>
     it(
       name,
       (ctx) =>
         pipe(
-          Effect.isEffect(self) ? self : self(ctx),
+          self(ctx),
           Effect.provide(TestEnv),
           Effect.runPromise
         ),
@@ -51,16 +49,14 @@ export const effect = (() => {
   return Object.assign(f, {
     skip: <E, A>(
       name: string,
-      self:
-        | Effect.Effect<A, E, TestServices.TestServices>
-        | ((ctx: V.TaskContext<V.Test<{}>> & V.TestContext) => Effect.Effect<A, E, TestServices.TestServices>),
+      self:(ctx: V.TaskContext<V.Test<{}>> & V.TestContext) => Effect.Effect<A, E, TestServices.TestServices>,
       timeout = 5_000
     ) =>
       it.skip(
         name,
         (ctx) =>
           pipe(
-            Effect.isEffect(self) ? self : self(ctx),
+            self(ctx),
             Effect.provide(TestEnv),
             Effect.runPromise
           ),
@@ -68,14 +64,14 @@ export const effect = (() => {
       ),
     only: <E, A>(
       name: string,
-      self: Effect.Effect<A, E, TestServices.TestServices> | (() => Effect.Effect<A, E, TestServices.TestServices>),
+      self: (ctx: V.TaskContext<V.Test<{}>> & V.TestContext) => Effect.Effect<A, E, TestServices.TestServices>,
       timeout = 5_000
     ) =>
       it.only(
         name,
-        () =>
+        (ctx) =>
           pipe(
-            Effect.isEffect(self) ? self : Effect.suspend(self),
+            self(ctx),
             Effect.provide(TestEnv),
             Effect.runPromise
           ),
@@ -89,14 +85,14 @@ export const effect = (() => {
  */
 export const live = <E, A>(
   name: string,
-  self: Effect.Effect<A, E> | ((ctx: V.TaskContext<V.Test<{}>> & V.TestContext) => Effect.Effect<A, E>),
+  self: (ctx: V.TaskContext<V.Test<{}>> & V.TestContext) => Effect.Effect<A, E>,
   timeout = 5_000
 ) =>
   it(
     name,
     (ctx) =>
       pipe(
-        Effect.isEffect(self) ? self : self(ctx),
+        self(ctx),
         Effect.runPromise
       ),
     timeout
@@ -126,18 +122,16 @@ export const flakyTest = <A, E, R>(
  */
 export const scoped = <E, A>(
   name: string,
-  self:
-    | Effect.Effect<A, E, Scope.Scope | TestServices.TestServices>
-    | ((
+  self:(
       ctx: V.TaskContext<V.Test<{}>> & V.TestContext
-    ) => Effect.Effect<A, E, Scope.Scope | TestServices.TestServices>),
+    ) => Effect.Effect<A, E, Scope.Scope | TestServices.TestServices>,
   timeout = 5_000
 ) =>
   it(
     name,
     (ctx) =>
       pipe(
-        Effect.isEffect(self) ? self : self(ctx),
+        self(ctx),
         Effect.scoped,
         Effect.provide(TestEnv),
         Effect.runPromise
@@ -150,16 +144,14 @@ export const scoped = <E, A>(
  */
 export const scopedLive = <E, A>(
   name: string,
-  self:
-    | Effect.Effect<A, E, Scope.Scope>
-    | ((ctx: V.TaskContext<V.Test<{}>> & V.TestContext) => Effect.Effect<A, E, Scope.Scope>),
+  self: (ctx: V.TaskContext<V.Test<{}>> & V.TestContext) => Effect.Effect<A, E, Scope.Scope>,
   timeout = 5_000
 ) =>
   it(
     name,
     (ctx) =>
       pipe(
-        Effect.isEffect(self) ? self : self(ctx),
+        self(ctx),
         Effect.scoped,
         Effect.runPromise
       ),
