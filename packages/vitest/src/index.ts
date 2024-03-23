@@ -163,4 +163,7 @@ export const it: API & typeof methods = Object.assign(
   methods
 )
 
+/**
+ * @since 1.0.0
+ */
 export * from "vitest"
