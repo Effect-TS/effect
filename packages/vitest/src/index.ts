@@ -18,11 +18,6 @@ import * as V from "vitest"
  */
 export type API = TestAPI<{}>
 
-/**
- * @since 1.0.0
- */
-export const it: API = V.it
-
 const TestEnv = TestEnvironment.TestContext.pipe(
   Layer.provide(Logger.remove(Logger.defaultLogger))
 )
@@ -33,14 +28,14 @@ const TestEnv = TestEnvironment.TestContext.pipe(
 export const effect = (() => {
   const f = <E, A>(
     name: string,
-    self: Effect.Effect<A, E, TestServices.TestServices> | (() => Effect.Effect<A, E, TestServices.TestServices>),
+    self: (ctx: V.TaskContext<V.Test<{}>> & V.TestContext) => Effect.Effect<A, E, TestServices.TestServices>,
     timeout: number | V.TestOptions = 5_000
   ) =>
     it(
       name,
-      () =>
+      (c) =>
         pipe(
-          Effect.isEffect(self) ? self : Effect.suspend(self),
+          Effect.suspend(() => self(c)),
           Effect.provide(TestEnv),
           Effect.runPromise
         ),
@@ -49,14 +44,14 @@ export const effect = (() => {
   return Object.assign(f, {
     skip: <E, A>(
       name: string,
-      self: Effect.Effect<A, E, TestServices.TestServices> | (() => Effect.Effect<A, E, TestServices.TestServices>),
+      self: (ctx: V.TaskContext<V.Test<{}>> & V.TestContext) => Effect.Effect<A, E, TestServices.TestServices>,
       timeout = 5_000
     ) =>
       it.skip(
         name,
-        () =>
+        (c) =>
           pipe(
-            Effect.isEffect(self) ? self : Effect.suspend(self),
+            Effect.suspend(() => self(c)),
             Effect.provide(TestEnv),
             Effect.runPromise
           ),
@@ -64,14 +59,14 @@ export const effect = (() => {
       ),
     only: <E, A>(
       name: string,
-      self: Effect.Effect<A, E, TestServices.TestServices> | (() => Effect.Effect<A, E, TestServices.TestServices>),
+      self: (ctx: V.TaskContext<V.Test<{}>> & V.TestContext) => Effect.Effect<A, E, TestServices.TestServices>,
       timeout = 5_000
     ) =>
       it.only(
         name,
-        () =>
+        (c) =>
           pipe(
-            Effect.isEffect(self) ? self : Effect.suspend(self),
+            Effect.suspend(() => self(c)),
             Effect.provide(TestEnv),
             Effect.runPromise
           ),
@@ -85,14 +80,14 @@ export const effect = (() => {
  */
 export const live = <E, A>(
   name: string,
-  self: Effect.Effect<A, E> | (() => Effect.Effect<A, E>),
+  self: (ctx: V.TaskContext<V.Test<{}>> & V.TestContext) => Effect.Effect<A, E>,
   timeout = 5_000
 ) =>
   it(
     name,
-    () =>
+    (c) =>
       pipe(
-        Effect.isEffect(self) ? self : Effect.suspend(self),
+        Effect.suspend(() => self(c)),
         Effect.runPromise
       ),
     timeout
@@ -122,16 +117,16 @@ export const flakyTest = <A, E, R>(
  */
 export const scoped = <E, A>(
   name: string,
-  self:
-    | Effect.Effect<A, E, Scope.Scope | TestServices.TestServices>
-    | (() => Effect.Effect<A, E, Scope.Scope | TestServices.TestServices>),
+  self: (
+    ctx: V.TaskContext<V.Test<{}>> & V.TestContext
+  ) => Effect.Effect<A, E, Scope.Scope | TestServices.TestServices>,
   timeout = 5_000
 ) =>
   it(
     name,
-    () =>
+    (c) =>
       pipe(
-        Effect.isEffect(self) ? self : Effect.suspend(self),
+        Effect.suspend(() => self(c)),
         Effect.scoped,
         Effect.provide(TestEnv),
         Effect.runPromise
@@ -144,18 +139,31 @@ export const scoped = <E, A>(
  */
 export const scopedLive = <E, A>(
   name: string,
-  self:
-    | Effect.Effect<A, E, Scope.Scope>
-    | (() => Effect.Effect<A, E, Scope.Scope>),
+  self: (ctx: V.TaskContext<V.Test<{}>> & V.TestContext) => Effect.Effect<A, E, Scope.Scope>,
   timeout = 5_000
 ) =>
   it(
     name,
-    () =>
+    (c) =>
       pipe(
-        Effect.isEffect(self) ? self : Effect.suspend(self),
+        Effect.suspend(() => self(c)),
         Effect.scoped,
         Effect.runPromise
       ),
     timeout
   )
+
+const methods = { effect, live, flakyTest, scoped, scopedLive } as const
+
+/**
+ * @since 1.0.0
+ */
+export const it: API & typeof methods = Object.assign(
+  V.it,
+  methods
+)
+
+/**
+ * @since 1.0.0
+ */
+export * from "vitest"
