@@ -9,6 +9,7 @@ import type * as Stream from "effect/Stream"
 import * as internal from "../internal/http/clientResponse.js"
 import type * as Error from "./ClientError.js"
 import type * as ClientRequest from "./ClientRequest.js"
+import type * as Cookies from "./Cookies.js"
 import type * as IncomingMessage from "./IncomingMessage.js"
 import type * as UrlParams from "./UrlParams.js"
 
@@ -64,6 +65,7 @@ export type TypeId = typeof TypeId
 export interface ClientResponse extends IncomingMessage.IncomingMessage<Error.ResponseError> {
   readonly [TypeId]: TypeId
   readonly status: number
+  readonly cookies: Cookies.Cookies
   readonly formData: Effect.Effect<FormData, Error.ResponseError>
 }
 

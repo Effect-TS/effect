@@ -3,6 +3,7 @@
  */
 import * as app from "./Http/App.js"
 import * as body from "./Http/Body.js"
+import * as cookies from "./Http/Cookies.js"
 import * as etag from "./Http/Etag.js"
 import * as headers from "./Http/Headers.js"
 import * as middleware from "./Http/Middleware.js"
@@ -31,6 +32,13 @@ export {
    * - Module: `@effect/platform/Http/Body`
    */
   body,
+  /**
+   * @since 1.0.0
+   *
+   * - Docs: [Http/Cookies](https://effect-ts.github.io/effect/platform/Http/Cookies.ts.html)
+   * - Module: `@effect/platform/Http/Cookies`
+   */
+  cookies,
   /**
    * @since 1.0.0
    *

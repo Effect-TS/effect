@@ -7,6 +7,7 @@ import * as Stream from "effect/Stream"
 import * as Error from "../../Http/ClientError.js"
 import type * as ClientRequest from "../../Http/ClientRequest.js"
 import type * as ClientResponse from "../../Http/ClientResponse.js"
+import * as Cookies from "../../Http/Cookies.js"
 import * as Headers from "../../Http/Headers.js"
 import * as IncomingMessage from "../../Http/IncomingMessage.js"
 import * as UrlParams from "../../Http/UrlParams.js"
@@ -47,6 +48,14 @@ class ClientResponseImpl extends Inspectable.Class implements ClientResponse.Cli
 
   get headers(): Headers.Headers {
     return Headers.fromInput(this.source.headers)
+  }
+
+  cachedCookies?: Cookies.Cookies
+  get cookies(): Cookies.Cookies {
+    if (this.cachedCookies) {
+      return this.cachedCookies
+    }
+    return this.cachedCookies = Cookies.fromSetCookie(this.source.headers.getSetCookie())
   }
 
   get remoteAddress(): Option.Option<string> {

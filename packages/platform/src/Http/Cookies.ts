@@ -5,9 +5,11 @@ import * as Duration from "effect/Duration"
 import * as Either from "effect/Either"
 import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
+import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
+import type * as Types from "effect/Types"
 import { TypeIdError } from "../Error.js"
 
 /**
@@ -119,6 +121,155 @@ export const fromIterable = (cookies: Iterable<Cookie>): Cookies => {
   const self = Object.create(Proto)
   self.cookies = ReadonlyArray.fromIterable(cookies)
   return self
+}
+
+/**
+ * Create a Cookies object from a set of Set-Cookie headers
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const fromSetCookie = (headers: Iterable<string>): Cookies => {
+  const cookies: Array<Cookie> = []
+  for (const header of headers) {
+    const cookie = parseSetCookie(header.trim())
+    if (Option.isSome(cookie)) {
+      cookies.push(cookie.value)
+    }
+  }
+
+  return fromIterable(cookies)
+}
+
+function parseSetCookie(header: string): Option.Option<Cookie> {
+  const parts = header.split(";").map((_) => _.trim()).filter((_) => _ !== "")
+  if (parts.length === 0) {
+    return Option.none()
+  }
+
+  const firstEqual = parts[0].indexOf("=")
+  if (firstEqual === -1) {
+    return Option.none()
+  }
+  const name = parts[0].slice(0, firstEqual)
+  if (!fieldContentRegExp.test(name)) {
+    return Option.none()
+  }
+
+  const valueEncoded = parts[0].slice(firstEqual + 1)
+  const value = tryDecodeURIComponent(valueEncoded)
+
+  if (parts.length === 1) {
+    return Option.some(Object.assign(Object.create(CookieProto), {
+      name,
+      value,
+      valueEncoded
+    }))
+  }
+
+  const options: Types.Mutable<Cookie["options"]> = {}
+
+  for (let i = 1; i < parts.length; i++) {
+    const part = parts[i]
+    const equalIndex = part.indexOf("=")
+    const key = equalIndex === -1 ? part : part.slice(0, equalIndex).trim()
+    const value = equalIndex === -1 ? undefined : part.slice(equalIndex + 1).trim()
+
+    switch (key.toLowerCase()) {
+      case "domain": {
+        if (value === undefined) {
+          break
+        }
+        const domain = value.trim().replace(/^\./, "")
+        if (domain) {
+          options.domain = domain
+        }
+        break
+      }
+      case "expires": {
+        if (value === undefined) {
+          break
+        }
+        const date = new Date(value)
+        if (!isNaN(date.getTime())) {
+          options.expires = date
+        }
+        break
+      }
+      case "max-age": {
+        if (value === undefined) {
+          break
+        }
+        const maxAge = parseInt(value, 10)
+        if (!isNaN(maxAge)) {
+          options.maxAge = Duration.seconds(maxAge)
+        }
+        break
+      }
+      case "path": {
+        if (value === undefined) {
+          break
+        }
+        if (value[0] === "/") {
+          options.path = value
+        }
+        break
+      }
+      case "priority": {
+        if (value === undefined) {
+          break
+        }
+        switch (value.toLowerCase()) {
+          case "low":
+            options.priority = "low"
+            break
+          case "medium":
+            options.priority = "medium"
+            break
+          case "high":
+            options.priority = "high"
+            break
+        }
+        break
+      }
+      case "httponly": {
+        options.httpOnly = true
+        break
+      }
+      case "secure": {
+        options.secure = true
+        break
+      }
+      case "partitioned": {
+        options.partitioned = true
+        break
+      }
+      case "samesite": {
+        if (value === undefined) {
+          break
+        }
+        switch (value.toLowerCase()) {
+          case "lax":
+            options.sameSite = "lax"
+            break
+          case "strict":
+            options.sameSite = "strict"
+            break
+          case "none":
+            options.sameSite = "none"
+            break
+        }
+        break
+      }
+    }
+  }
+
+  return Option.some(Object.assign(Object.create(CookieProto), {
+    name,
+    value,
+    valueEncoded,
+    options: Object.keys(options).length > 0 ? options : undefined
+  }))
 }
 
 /**
@@ -237,6 +388,23 @@ export const appendAll: {
   fromIterable(
     ReadonlyArray.appendAll(self.cookies, cookies)
   ))
+
+/**
+ * Combine two Cookies objects, removing duplicates from the first
+ *
+ * @since 1.0.0
+ * @category combinators
+ */
+export const merge: {
+  (that: Cookies): (self: Cookies) => Cookies
+  (
+    self: Cookies,
+    that: Cookies
+  ): Cookies
+} = dual(2, (self: Cookies, that: Cookies) => {
+  const cookies = self.cookies.filter((c) => !that.cookies.some((c2) => c2.name === c.name))
+  return fromIterable([...cookies, ...that.cookies])
+})
 
 /**
  * Remove a cookie by name

@@ -3,6 +3,7 @@ import * as Client from "@effect/platform/Http/Client"
 import * as Error from "@effect/platform/Http/ClientError"
 import type * as ClientRequest from "@effect/platform/Http/ClientRequest"
 import * as ClientResponse from "@effect/platform/Http/ClientResponse"
+import * as Cookies from "@effect/platform/Http/Cookies"
 import * as UrlParams from "@effect/platform/Http/UrlParams"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -215,6 +216,18 @@ class ClientResponseImpl extends IncomingMessageImpl<Error.ResponseError> implem
 
   get status() {
     return this.source.statusCode!
+  }
+
+  cachedCookies?: Cookies.Cookies
+  get cookies(): Cookies.Cookies {
+    if (this.cachedCookies !== undefined) {
+      return this.cachedCookies
+    }
+    const header = this.source.headers["set-cookie"]
+    if (Array.isArray(header)) {
+      return this.cachedCookies = Cookies.fromSetCookie(header)
+    }
+    return this.cachedCookies = Cookies.empty
   }
 
   get formData(): Effect.Effect<FormData, Error.ResponseError> {
