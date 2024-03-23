@@ -2335,7 +2335,11 @@ const intersectUnionMembers = (
   AST.Union.make(
     xs.flatMap((x) => {
       return ys.map((y) => {
-        if (AST.isTypeLiteral(x)) {
+        if (AST.isUnion(x)) {
+          return intersectUnionMembers(x.types, [y], path)
+        } else if (AST.isUnion(y)) {
+          return intersectUnionMembers([x], y.types, path)
+        } else if (AST.isTypeLiteral(x)) {
           if (AST.isTypeLiteral(y)) {
             return intersectTypeLiterals(x, y, path)
           } else if (
