@@ -39,8 +39,7 @@ describe("RequestResolver", () => {
       storeId: "memory" | "kvs" | "lmdb",
       layer: Layer.Layer<Persistence.ResultPersistence, unknown>
     ) =>
-      it.effect(
-        storeId,
+      it.effect(storeId, () =>
         Effect.gen(function*(_) {
           let count = 0
           const baseResolver = RequestResolver.makeBatched((reqs: Array<MyRequest | TTLRequest>) => {
@@ -68,10 +67,13 @@ describe("RequestResolver", () => {
 
           // ttl
           let results = yield* _(
-            Effect.forEach(ReadonlyArray.range(-1, 3), (id) =>
-              Effect.exit(Effect.request(new TTLRequest({ id }), persisted)), {
-              batching: true
-            })
+            Effect.forEach(
+              ReadonlyArray.range(-1, 3),
+              (id) => Effect.exit(Effect.request(new TTLRequest({ id }), persisted)),
+              {
+                batching: true
+              }
+            )
           )
           assert.strictEqual(count, 10)
           assert.strictEqual(results.length, 5)
@@ -79,10 +81,13 @@ describe("RequestResolver", () => {
           assert(Exit.isSuccess(results[1]))
 
           results = yield* _(
-            Effect.forEach(ReadonlyArray.range(-1, 3), (id) =>
-              Effect.exit(Effect.request(new TTLRequest({ id }), persisted)), {
-              batching: true
-            })
+            Effect.forEach(
+              ReadonlyArray.range(-1, 3),
+              (id) => Effect.exit(Effect.request(new TTLRequest({ id }), persisted)),
+              {
+                batching: true
+              }
+            )
           )
           assert.strictEqual(count, 10)
           assert.strictEqual(results.length, 5)
@@ -90,10 +95,13 @@ describe("RequestResolver", () => {
           yield* _(TestClock.adjust(1))
 
           results = yield* _(
-            Effect.forEach(ReadonlyArray.range(-1, 3), (id) =>
-              Effect.exit(Effect.request(new TTLRequest({ id }), persisted)), {
-              batching: true
-            })
+            Effect.forEach(
+              ReadonlyArray.range(-1, 3),
+              (id) => Effect.exit(Effect.request(new TTLRequest({ id }), persisted)),
+              {
+                batching: true
+              }
+            )
           )
           assert.strictEqual(count, 11)
           assert.strictEqual(results.length, 5)
@@ -101,10 +109,13 @@ describe("RequestResolver", () => {
           yield* _(TestClock.adjust(5000))
 
           results = yield* _(
-            Effect.forEach(ReadonlyArray.range(-1, 3), (id) =>
-              Effect.exit(Effect.request(new TTLRequest({ id }), persisted)), {
-              batching: true
-            })
+            Effect.forEach(
+              ReadonlyArray.range(-1, 3),
+              (id) => Effect.exit(Effect.request(new TTLRequest({ id }), persisted)),
+              {
+                batching: true
+              }
+            )
           )
           assert.strictEqual(count, 16)
           assert.strictEqual(results.length, 5)
@@ -115,15 +126,13 @@ describe("RequestResolver", () => {
           yield* _(store.clear)
 
           users = yield* _(
-            Effect.forEach(ReadonlyArray.range(1, 5), (id) =>
-              Effect.request(new MyRequest({ id }), persisted), {
+            Effect.forEach(ReadonlyArray.range(1, 5), (id) => Effect.request(new MyRequest({ id }), persisted), {
               batching: true
             })
           )
           assert.strictEqual(count, 21)
           assert.strictEqual(users.length, 5)
-        }).pipe(Effect.scoped, Effect.provide(layer))
-      )
+        }).pipe(Effect.scoped, Effect.provide(layer)))
 
     testsuite("memory", Persistence.layerResultMemory)
     testsuite("kvs", Persistence.layerResultKeyValueStore.pipe(Layer.provide(KeyValueStore.layerMemory)))
