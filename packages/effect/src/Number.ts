@@ -494,14 +494,59 @@ export const parse = (s: string): Option<number> => {
     : option.some(n)
 }
 
+/**
+ * Takes a string and returns an `Option` of `number`.
+ *
+ * If the string is empty or cannot be converted to a number due to invalid characters,
+ * it returns `option.none`. Otherwise, it attempts to convert the string to a number
+ * and returns `option.some(number)`.
+ *
+ * @param s - The string to be converted to a `number`.
+ * @returns An `Option` type that is either `some(number)` if the string can be converted
+ *          to a valid number, or `none` if the string is empty or contains invalid characters
+ *          for number conversion.
+ *
+ * @example
+ * import { fromString } from 'effect/Number'
+ *
+ * assert.deepStrictEqual(fromString("42"), option.some(42))
+ * assert.deepStrictEqual(fromString(""), option.none)
+ * assert.deepStrictEqual(fromString("not a number"), option.none)
+ *
+ * @category conversions
+ * @since 2.4.12
+ */
+
 export const fromString = (s: string): Option<number> => {
   const n = Number(s)
-  return s === ""
+  return s.trim() === ""
     ? option.none
     : Number.isNaN(n)
     ? option.none
     : option.some(n)
 }
+
+/**
+ * Takes a `bigint` and returns an `Option` of `number`.
+ *
+ * If the `bigint` is outside the safe integer range for JavaScript (`Number.MAX_SAFE_INTEGER`
+ * and `Number.MIN_SAFE_INTEGER`), it returns `option.none`. Otherwise, it converts the `bigint`
+ * to a number and returns `option.some(number)`.
+ *
+ * @param b - The `bigint` to be converted to a `number`.
+ * @returns An `Option` type that is either `some(number)` if the `bigint` is within the safe
+ *          integer range and can be converted, or `none` if it is out of the safe range.
+ *
+ * @example
+ * import { fromBigInt } from 'effect/Number'
+ *
+ * assert.deepStrictEqual(fromBigInt(BigInt(42)), option.some(42))
+ * assert.deepStrictEqual(fromBigInt(BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1)), option.none)
+ * assert.deepStrictEqual(fromBigInt(BigInt(Number.MIN_SAFE_INTEGER) - BigInt(1)), option.none)
+ *
+ * @category conversions
+ * @since 2.4.12
+ */
 
 export const fromBigInt = (b: bigint): Option<number> => {
   if (b > BigInt(Number.MAX_SAFE_INTEGER) || b < BigInt(Number.MIN_SAFE_INTEGER)) {

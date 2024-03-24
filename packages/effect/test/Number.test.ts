@@ -138,13 +138,15 @@ describe("Number", () => {
 
   it("fromString", () => {
     assert.deepStrictEqual(Number_.fromString("NaN"), Option.none())
-    assert.deepStrictEqual(Number_.parse("Infinity"), Option.some(Infinity))
-    assert.deepStrictEqual(Number_.parse("-Infinity"), Option.some(-Infinity))
-    assert.deepStrictEqual(Number_.parse("42"), Option.some(42))
-    assert.deepStrictEqual(Number_.parse(" 42 \n\r\t"), Option.some(42))
+    assert.deepStrictEqual(Number_.fromString("Infinity"), Option.some(Infinity))
+    assert.deepStrictEqual(Number_.fromString("-Infinity"), Option.some(-Infinity))
+    assert.deepStrictEqual(Number_.fromString("42"), Option.some(42))
+    assert.deepStrictEqual(Number_.fromString(" 42 \n\r\t"), Option.some(42))
     assert.deepStrictEqual(Number_.fromString("3.14"), Option.some(3.14))
+    assert.deepStrictEqual(Number_.fromString("1e3"), Option.some(1000))
+    assert.deepStrictEqual(Number_.fromString("1e-3"), Option.some(0.001))
     assert.deepStrictEqual(Number_.fromString(""), Option.none())
-    assert.deepStrictEqual(Number_.parse("a"), Option.none())
+    assert.deepStrictEqual(Number_.fromString("a"), Option.none())
   })
 
   it("fromBigInt", () => {
