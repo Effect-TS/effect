@@ -1,10 +1,11 @@
 import * as Http from "@effect/platform/HttpClient"
 import * as Schema from "@effect/schema/Schema"
+import { Ref } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
-import { describe, expect, it } from "vitest"
+import { assert, describe, expect, it } from "vitest"
 
 const Todo = Schema.struct({
   userId: Schema.number,
@@ -50,6 +51,29 @@ describe("HttpClient", () => {
         Effect.scoped
       )
       expect(response).toContain("Google")
+    }).pipe(Effect.runPromise))
+
+  it("google withCookiesRef", () =>
+    Effect.gen(function*(_) {
+      const ref = yield* _(Ref.make(Http.cookies.empty))
+      const client = Http.client.withCookiesRef(Http.client.fetchOk(), ref)
+      yield* _(
+        Http.request.get("https://www.google.com/"),
+        client,
+        Effect.scoped
+      )
+      const cookieHeader = yield* _(Ref.get(ref), Effect.map(Http.cookies.toCookieHeader))
+      yield* _(
+        Http.request.get("https://www.google.com/"),
+        client.pipe(
+          Http.client.tapRequest((req) =>
+            Effect.sync(() => {
+              assert.strictEqual(req.headers.cookie, cookieHeader)
+            })
+          )
+        ),
+        Effect.scoped
+      )
     }).pipe(Effect.runPromise))
 
   it("google stream", () =>

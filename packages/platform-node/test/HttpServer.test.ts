@@ -5,7 +5,7 @@ import type { ServerResponse } from "@effect/platform/Http/ServerResponse"
 import * as HttpC from "@effect/platform/HttpClient"
 import * as Http from "@effect/platform/HttpServer"
 import * as Schema from "@effect/schema/Schema"
-import { Deferred, Fiber, Stream } from "effect"
+import { Deferred, Duration, Fiber, Stream } from "effect"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -577,5 +577,48 @@ describe("HttpServer", () => {
       expect(about).toEqual("<html><body /></html>")
       const stream = yield* _(HttpC.request.get("/stream"), client, HttpC.response.text)
       expect(stream).toEqual("<html><body />123hello</html>")
+    }).pipe(Effect.scoped, runPromise))
+
+  it("setCookie", () =>
+    Effect.gen(function*(_) {
+      yield* _(
+        Http.router.empty,
+        Http.router.get(
+          "/home",
+          Http.response.empty().pipe(
+            Http.response.unsafeSetCookie("test", "value"),
+            Http.response.unsafeSetCookie("test2", "value2", {
+              httpOnly: true,
+              secure: true,
+              sameSite: "lax",
+              partitioned: true,
+              path: "/",
+              domain: "example.com",
+              expires: new Date(2022, 1, 1, 0, 0, 0, 0),
+              maxAge: "5 minutes"
+            })
+          )
+        ),
+        Http.server.serveEffect()
+      )
+      const client = yield* _(makeClient)
+      const res = yield* _(HttpC.request.get("/home"), client, Effect.scoped)
+      assert.deepStrictEqual(
+        res.cookies.cookies[0].toJSON(),
+        Http.cookies.unsafeMakeCookie("test", "value").toJSON()
+      )
+      assert.deepStrictEqual(
+        res.cookies.cookies[1].toJSON(),
+        Http.cookies.unsafeMakeCookie("test2", "value2", {
+          httpOnly: true,
+          secure: true,
+          sameSite: "lax",
+          partitioned: true,
+          path: "/",
+          domain: "example.com",
+          expires: new Date(2022, 1, 1, 0, 0, 0, 0),
+          maxAge: Duration.minutes(5)
+        }).toJSON()
+      )
     }).pipe(Effect.scoped, runPromise))
 })

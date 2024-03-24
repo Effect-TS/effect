@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { Cookies } from "@effect/platform/Http/Cookies"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Context from "effect/Context"
@@ -9,6 +10,7 @@ import type { Inspectable } from "effect/Inspectable"
 import type * as Layer from "effect/Layer"
 import type { Pipeable } from "effect/Pipeable"
 import type * as Predicate from "effect/Predicate"
+import type { Ref } from "effect/Ref"
 import type * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
 import * as internal from "../internal/http/client.js"
@@ -418,3 +420,12 @@ export const tapRequest: {
     f: (a: ClientRequest.ClientRequest) => Effect.Effect<_, E2, R2>
   ): Client<R | R2, E | E2, A>
 } = internal.tapRequest
+
+/**
+ * @since 1.0.0
+ * @category cookies
+ */
+export const withCookiesRef: {
+  (ref: Ref<Cookies>): <R, E>(self: Client.WithResponse<R, E>) => Client.WithResponse<R, E>
+  <R, E>(self: Client.WithResponse<R, E>, ref: Ref<Cookies>): Client.WithResponse<R, E>
+} = internal.withCookiesRef

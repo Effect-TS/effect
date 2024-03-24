@@ -50,18 +50,21 @@ export const schemaFromSelf: Schema.Schema<Headers> = Schema.declare(isHeaders, 
  * @since 1.0.0
  * @category schemas
  */
-export const schema: Schema.Schema<Headers, ReadonlyRecord.ReadonlyRecord<string, string>> = Schema.transform(
-  Schema.record(Schema.string, Schema.string),
-  schemaFromSelf,
-  (record) => fromInput(record),
-  identity
-)
+export const schema: Schema.Schema<Headers, ReadonlyRecord.ReadonlyRecord<string, string | ReadonlyArray<string>>> =
+  Schema.transform(
+    Schema.record(Schema.string, Schema.union(Schema.string, Schema.array(Schema.string))),
+    schemaFromSelf,
+    (record) => fromInput(record),
+    identity
+  )
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type Input = ReadonlyRecord.ReadonlyRecord<string, string> | Iterable<readonly [string, string]>
+export type Input =
+  | ReadonlyRecord.ReadonlyRecord<string, string | ReadonlyArray<string>>
+  | Iterable<readonly [string, string]>
 
 /**
  * @since 1.0.0
@@ -83,7 +86,12 @@ export const fromInput: (input?: Input) => Headers = (input) => {
     )) as Headers
   }
   return ReadonlyRecord.fromEntries(
-    Object.entries(input).map(([k, v]) => [k.toLowerCase(), v])
+    Object.entries(input).map(([k, v]) =>
+      [
+        k.toLowerCase(),
+        Array.isArray(v) ? v.join(", ") : v
+      ] as const
+    )
   ) as Headers
 }
 

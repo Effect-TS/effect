@@ -42,7 +42,7 @@
   },
   "dependencies": {
     "@parcel/watcher": "^2.4.1",
-    "multipasta": "^0.1.21"
+    "multipasta": "^0.2.0"
   },
   "peerDependencies": {
     "@effect/platform": "workspace:^",

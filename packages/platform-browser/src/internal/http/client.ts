@@ -2,6 +2,7 @@ import * as Client from "@effect/platform/Http/Client"
 import * as Error from "@effect/platform/Http/ClientError"
 import type * as ClientRequest from "@effect/platform/Http/ClientRequest"
 import * as ClientResponse from "@effect/platform/Http/ClientResponse"
+import * as Cookies from "@effect/platform/Http/Cookies"
 import * as Headers from "@effect/platform/Http/Headers"
 import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
 import * as UrlParams from "@effect/platform/Http/UrlParams"
@@ -46,11 +47,14 @@ export const makeXMLHttpRequest = Client.makeDefault((request) =>
         Object.entries(request.headers).forEach(([k, v]) => {
           xhr.setRequestHeader(k, v)
         })
-        return sendBody(xhr, request).pipe(
-          Effect.zipLeft(Effect.async<void, Error.RequestError>((resume) => {
+        return Effect.zipRight(
+          sendBody(xhr, request),
+          Effect.async<ClientResponseImpl, Error.RequestError>((resume) => {
+            let sent = false
             const onChange = () => {
-              if (xhr.readyState >= 2) {
-                resume(Effect.unit)
+              if (!sent && xhr.readyState >= 2) {
+                sent = true
+                resume(Effect.succeed(new ClientResponseImpl(request, xhr)))
               }
             }
             xhr.onreadystatechange = onChange
@@ -64,8 +68,7 @@ export const makeXMLHttpRequest = Client.makeDefault((request) =>
               ))
             }
             onChange()
-          })),
-          Effect.as(new ClientResponseImpl(request, xhr))
+          })
         )
       })
     )
@@ -120,21 +123,38 @@ export abstract class IncomingMessageImpl<E> extends Inspectable.Class implement
   ) {
     super()
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
+    this._rawHeaderString = source.getAllResponseHeaders()
   }
 
-  _headers: Headers.Headers | undefined
+  private _rawHeaderString: string
+  private _rawHeaders: Record<string, string | Array<string>> | undefined
+  private _headers: Headers.Headers | undefined
   get headers() {
     if (this._headers) {
       return this._headers
     }
-    const headers = this.source.getAllResponseHeaders()
-    if (headers === "") {
-      return Headers.empty
+    if (this._rawHeaderString === "") {
+      return this._headers = Headers.empty
     }
     const parser = HeaderParser.make()
-    const result = parser(encoder.encode(headers + "\r\n"), 0)
+    const result = parser(encoder.encode(this._rawHeaderString + "\r\n"), 0)
+    this._rawHeaders = result._tag === "Headers" ? result.headers : undefined
     const parsed = result._tag === "Headers" ? Headers.fromInput(result.headers) : Headers.empty
     return this._headers = parsed
+  }
+
+  cachedCookies: Cookies.Cookies | undefined
+  get cookies() {
+    if (this.cachedCookies) {
+      return this.cachedCookies
+    }
+    this.headers
+    if (this._rawHeaders === undefined) {
+      return Cookies.empty
+    } else if (this._rawHeaders["set-cookie"] === undefined) {
+      return this.cachedCookies = Cookies.empty
+    }
+    return this.cachedCookies = Cookies.fromSetCookie(this._rawHeaders["set-cookie"])
   }
 
   get remoteAddress() {
