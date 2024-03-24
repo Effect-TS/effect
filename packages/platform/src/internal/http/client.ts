@@ -1,3 +1,4 @@
+import type { ParseOptions } from "@effect/schema/AST"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
@@ -5,7 +6,7 @@ import * as Effect from "effect/Effect"
 import { dual, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import { pipeArguments } from "effect/Pipeable"
-import type * as Predicate from "effect/Predicate"
+import * as Predicate from "effect/Predicate"
 import * as Ref from "effect/Ref"
 import type * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
@@ -36,6 +37,8 @@ const clientProto = {
     return pipeArguments(this, arguments)
   }
 }
+
+const isClient = (u: unknown): u is Client.Client<unknown, unknown, unknown> => Predicate.hasProperty(u, TypeId)
 
 /** @internal */
 export const make = <R, E, A, R2, E2>(
@@ -549,7 +552,8 @@ export const retry: {
 /** @internal */
 export const schemaFunction = dual<
   <SA, SI, SR>(
-    schema: Schema.Schema<SA, SI, SR>
+    schema: Schema.Schema<SA, SI, SR>,
+    options?: ParseOptions | undefined
   ) => <R, E, A>(
     self: Client.Client<R, E, A>
   ) => (
@@ -559,14 +563,15 @@ export const schemaFunction = dual<
   ) => Effect.Effect<A, E | ParseResult.ParseError | Error.RequestError, SR | R>,
   <R, E, A, SA, SI, SR>(
     self: Client.Client<R, E, A>,
-    schema: Schema.Schema<SA, SI, SR>
+    schema: Schema.Schema<SA, SI, SR>,
+    options?: ParseOptions | undefined
   ) => (
     request: ClientRequest.ClientRequest
   ) => (
     a: SA
   ) => Effect.Effect<A, E | ParseResult.ParseError | Error.RequestError, SR | R>
->(2, (self, schema) => {
-  const encode = Schema.encode(schema)
+>((args) => isClient(args[0]), (self, schema, options) => {
+  const encode = Schema.encode(schema, options)
   return (request) => (a) =>
     Effect.flatMap(
       Effect.tryMap(encode(a), {

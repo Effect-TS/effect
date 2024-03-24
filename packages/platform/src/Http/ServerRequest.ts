@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { ParseOptions } from "@effect/schema/AST"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
 import type { Channel } from "effect/Channel"
@@ -110,8 +111,18 @@ export const upgradeChannel: <IE = never>() => Channel<
  * @since 1.0.0
  * @category schema
  */
+export const schemaCookies: <R, I extends Readonly<Record<string, string>>, A>(
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
+) => Effect.Effect<A, ParseResult.ParseError, ServerRequest | R> = internal.schemaCookies
+
+/**
+ * @since 1.0.0
+ * @category schema
+ */
 export const schemaHeaders: <R, I extends Readonly<Record<string, string>>, A>(
-  schema: Schema.Schema<A, I, R>
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
 ) => Effect.Effect<A, ParseResult.ParseError, ServerRequest | R> = internal.schemaHeaders
 
 /**
@@ -119,7 +130,8 @@ export const schemaHeaders: <R, I extends Readonly<Record<string, string>>, A>(
  * @category schema
  */
 export const schemaBodyJson: <A, I, R>(
-  schema: Schema.Schema<A, I, R>
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
 ) => Effect.Effect<A, Error.RequestError | ParseResult.ParseError, ServerRequest | R> = internal.schemaBodyJson
 
 /**
@@ -127,7 +139,8 @@ export const schemaBodyJson: <A, I, R>(
  * @category schema
  */
 export const schemaBodyForm: <R, I extends Partial<Multipart.Persisted>, A>(
-  schema: Schema.Schema<A, I, R>
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
 ) => Effect.Effect<
   A,
   Multipart.MultipartError | ParseResult.ParseError | Error.RequestError,
@@ -139,15 +152,17 @@ export const schemaBodyForm: <R, I extends Partial<Multipart.Persisted>, A>(
  * @category schema
  */
 export const schemaBodyUrlParams: <R, I extends Readonly<Record<string, string>>, A>(
-  schema: Schema.Schema<A, I, R>
-) => Effect.Effect<A, Error.RequestError | ParseResult.ParseError, ServerRequest | R> = internal.schemaBodyUrlParams
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
+) => Effect.Effect<A, ParseResult.ParseError | Error.RequestError, R | ServerRequest> = internal.schemaBodyUrlParams
 
 /**
  * @since 1.0.0
  * @category schema
  */
 export const schemaBodyMultipart: <R, I extends Partial<Multipart.Persisted>, A>(
-  schema: Schema.Schema<A, I, R>
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
 ) => Effect.Effect<
   A,
   Multipart.MultipartError | ParseResult.ParseError,
@@ -159,7 +174,8 @@ export const schemaBodyMultipart: <R, I extends Partial<Multipart.Persisted>, A>
  * @category schema
  */
 export const schemaBodyFormJson: <A, I, R>(
-  schema: Schema.Schema<A, I, R>
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
 ) => (
   field: string
 ) => Effect.Effect<

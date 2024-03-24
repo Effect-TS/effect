@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { ParseOptions } from "@effect/schema/AST"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
@@ -217,7 +218,7 @@ const baseUrl = (): string | undefined => {
  * @since 1.0.0
  * @category schema
  */
-export const schemaJson = <A, I, R>(schema: Schema.Schema<A, I, R>): {
+export const schemaJson = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions | undefined): {
   (
     field: string
   ): (self: UrlParams) => Effect.Effect<A, ParseResult.ParseError, R>
@@ -226,7 +227,7 @@ export const schemaJson = <A, I, R>(schema: Schema.Schema<A, I, R>): {
     field: string
   ): Effect.Effect<A, ParseResult.ParseError, R>
 } => {
-  const parse = Schema.decodeUnknown(Schema.parseJson(schema))
+  const parse = Schema.decodeUnknown(Schema.parseJson(schema), options)
   return dual<
     (field: string) => (self: UrlParams) => Effect.Effect<A, ParseResult.ParseError, R>,
     (self: UrlParams, field: string) => Effect.Effect<A, ParseResult.ParseError, R>

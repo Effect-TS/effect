@@ -1,3 +1,4 @@
+import type { ParseOptions } from "@effect/schema/AST"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Cause from "effect/Cause"
@@ -108,14 +109,15 @@ export const filesSchema: Schema.Schema<ReadonlyArray<Multipart.PersistedFile>> 
 
 /** @internal */
 export const schemaPersisted = <R, I extends Partial<Multipart.Persisted>, A>(
-  schema: Schema.Schema<A, I, R>
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
 ) => {
-  const parse = Schema.decodeUnknown(schema)
+  const parse = Schema.decodeUnknown(schema, options)
   return (persisted: Multipart.Persisted) => parse(persisted)
 }
 
 /** @internal */
-export const schemaJson = <A, I, R>(schema: Schema.Schema<A, I, R>): {
+export const schemaJson = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions | undefined): {
   (
     field: string
   ): (persisted: Multipart.Persisted) => Effect.Effect<A, ParseResult.ParseError, R>
@@ -140,7 +142,8 @@ export const schemaJson = <A, I, R>(schema: Schema.Schema<A, I, R>): {
       Schema.decodeUnknown(
         Schema.struct({
           [field]: fromJson
-        })
+        }),
+        options
       )(persisted),
       (_) => _[field]
     ))

@@ -1,3 +1,4 @@
+import type { ParseOptions } from "@effect/schema/AST"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
@@ -160,8 +161,8 @@ export const schemaJson = <
     readonly body?: unknown | undefined
   },
   A
->(schema: Schema.Schema<A, I, R>) => {
-  const parse = Schema.decodeUnknown(schema)
+>(schema: Schema.Schema<A, I, R>, options?: ParseOptions | undefined) => {
+  const parse = Schema.decodeUnknown(schema, options)
   return (self: ClientResponse.ClientResponse): Effect.Effect<A, Error.ResponseError | ParseResult.ParseError, R> =>
     Effect.flatMap(
       self.json,
@@ -182,8 +183,8 @@ export const schemaNoBody = <
     readonly headers?: Readonly<Record<string, string>> | undefined
   },
   A
->(schema: Schema.Schema<A, I, R>) => {
-  const parse = Schema.decodeUnknown(schema)
+>(schema: Schema.Schema<A, I, R>, options?: ParseOptions | undefined) => {
+  const parse = Schema.decodeUnknown(schema, options)
   return (self: ClientResponse.ClientResponse): Effect.Effect<A, ParseResult.ParseError, R> =>
     parse({
       status: self.status,
@@ -224,8 +225,8 @@ export const schemaJsonEffect = <
     readonly body?: unknown | undefined
   },
   A
->(schema: Schema.Schema<A, I, R>) => {
-  const decode = schemaJson(schema)
+>(schema: Schema.Schema<A, I, R>, options?: ParseOptions | undefined) => {
+  const decode = schemaJson(schema, options)
   return <E, R2>(effect: Effect.Effect<ClientResponse.ClientResponse, E, R2>) =>
     Effect.scoped(Effect.flatMap(effect, decode))
 }
@@ -238,8 +239,8 @@ export const schemaNoBodyEffect = <
     readonly headers?: Readonly<Record<string, string>> | undefined
   },
   A
->(schema: Schema.Schema<A, I, R>) => {
-  const decode = schemaNoBody(schema)
+>(schema: Schema.Schema<A, I, R>, options?: ParseOptions | undefined) => {
+  const decode = schemaNoBody(schema, options)
   return <E, R2>(effect: Effect.Effect<ClientResponse.ClientResponse, E, R2>) =>
     Effect.scoped(Effect.flatMap(effect, decode))
 }

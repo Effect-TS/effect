@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { ParseOptions } from "@effect/schema/AST"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
 import type { YieldableError } from "effect/Cause"
@@ -221,7 +222,8 @@ export const filesSchema: Schema.Schema<ReadonlyArray<PersistedFile>> = internal
  * @category schema
  */
 export const schemaJson: <A, I, R>(
-  schema: Schema.Schema<A, I, R>
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
 ) => {
   (field: string): (persisted: Persisted) => Effect.Effect<A, ParseResult.ParseError, R>
   (persisted: Persisted, field: string): Effect.Effect<A, ParseResult.ParseError, R>
@@ -232,7 +234,8 @@ export const schemaJson: <A, I, R>(
  * @category schema
  */
 export const schemaPersisted: <R, I extends Partial<Persisted>, A>(
-  schema: Schema.Schema<A, I, R>
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
 ) => (persisted: Persisted) => Effect.Effect<A, ParseResult.ParseError, R> = internal.schemaPersisted
 
 /**
