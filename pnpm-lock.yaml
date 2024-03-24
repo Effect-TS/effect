@@ -279,8 +279,8 @@ importers:
         specifier: ^5.0.0
         version: 5.0.0(ws@8.16.0)
       multipasta:
-        specifier: ^0.1.21
-        version: 0.1.21
+        specifier: ^0.2.0
+        version: 0.2.0
       path-browserify:
         specifier: ^1.0.1
         version: 1.0.1
@@ -299,8 +299,8 @@ importers:
   packages/platform-browser:
     dependencies:
       multipasta:
-        specifier: ^0.1.21
-        version: 0.1.21
+        specifier: ^0.2.0
+        version: 0.2.0
     devDependencies:
       '@effect/platform':
         specifier: workspace:^
@@ -377,8 +377,8 @@ importers:
         specifier: ^2.4.1
         version: 2.4.1
       multipasta:
-        specifier: ^0.1.21
-        version: 0.1.21
+        specifier: ^0.2.0
+        version: 0.2.0
     devDependencies:
       '@effect/platform':
         specifier: workspace:^
@@ -5914,8 +5914,8 @@ packages:
     optionalDependencies:
       msgpackr-extract: 3.0.2
 
-  /multipasta@0.1.21:
-    resolution: {integrity: sha512-HpF9156uifsQu1L8KKW1EqXIt3DacHJTzQ+JSm6IShkcyyf+krOWzfOgT3OLHzesM40hbs6/QW5CJWSEdDPQag==}
+  /multipasta@0.2.0:
+    resolution: {integrity: sha512-MNAym1D9GTpY0/CKYJFDmaJ3TfhblfsQyyipCCSsgasMZCAyR2fCNDJhR7lACfJ0YMwQSDi5RHeIdJcsze6WMg==}
     dev: false
 
   /nanoid@3.3.7:

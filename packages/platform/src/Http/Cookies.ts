@@ -129,9 +129,10 @@ export const fromIterable = (cookies: Iterable<Cookie>): Cookies => {
  * @since 1.0.0
  * @category constructors
  */
-export const fromSetCookie = (headers: Iterable<string>): Cookies => {
+export const fromSetCookie = (headers: Iterable<string> | string): Cookies => {
+  const arrayHeaders = typeof headers === "string" ? [headers] : headers
   const cookies: Array<Cookie> = []
-  for (const header of headers) {
+  for (const header of arrayHeaders) {
     const cookie = parseSetCookie(header.trim())
     if (Option.isSome(cookie)) {
       cookies.push(cookie.value)
@@ -607,14 +608,6 @@ export function serializeCookie(self: Cookie): string {
 }
 
 /**
- * Serialize a Cookies object into Headers object containing one or more Set-Cookie headers
- *
- * @since 1.0.0
- * @category encoding
- */
-export const toSetCookieHeaders = (self: Cookies): Array<string> => self.cookies.map(serializeCookie)
-
-/**
  * Serialize a Cookies object into a Cookie header
  *
  * @since 1.0.0
@@ -622,6 +615,29 @@ export const toSetCookieHeaders = (self: Cookies): Array<string> => self.cookies
  */
 export const toCookieHeader = (self: Cookies): string =>
   self.cookies.map((cookie) => `${cookie.name}=${cookie.valueEncoded}`).join("; ")
+
+/**
+ * To record
+ *
+ * @since 1.0.0
+ * @category encoding
+ */
+export const toRecord = (self: Cookies): Record<string, string> => {
+  const record: Record<string, string> = {}
+  for (let index = 0; index < self.cookies.length; index++) {
+    const cookie = self.cookies[index]
+    record[cookie.name] = cookie.value
+  }
+  return record
+}
+
+/**
+ * Serialize a Cookies object into Headers object containing one or more Set-Cookie headers
+ *
+ * @since 1.0.0
+ * @category encoding
+ */
+export const toSetCookieHeaders = (self: Cookies): Array<string> => self.cookies.map(serializeCookie)
 
 /**
  * Parse a cookie header into a record of key-value pairs

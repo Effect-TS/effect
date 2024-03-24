@@ -41,7 +41,7 @@
   "dependencies": {
     "find-my-way-ts": "^0.1.1",
     "isomorphic-ws": "^5.0.0",
-    "multipasta": "^0.1.21",
+    "multipasta": "^0.2.0",
     "path-browserify": "^1.0.1"
   },
   "peerDependencies": {

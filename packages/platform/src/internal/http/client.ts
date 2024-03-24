@@ -6,6 +6,7 @@ import { dual, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import { pipeArguments } from "effect/Pipeable"
 import type * as Predicate from "effect/Predicate"
+import * as Ref from "effect/Ref"
 import type * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
@@ -14,6 +15,7 @@ import type * as Client from "../../Http/Client.js"
 import * as Error from "../../Http/ClientError.js"
 import type * as ClientRequest from "../../Http/ClientRequest.js"
 import type * as ClientResponse from "../../Http/ClientResponse.js"
+import * as Cookies from "../../Http/Cookies.js"
 import * as Method from "../../Http/Method.js"
 import * as UrlParams from "../../Http/UrlParams.js"
 import * as internalBody from "./body.js"
@@ -609,3 +611,36 @@ export const tapRequest = dual<
     f: (a: ClientRequest.ClientRequest) => Effect.Effect<_, E2, R2>
   ) => Client.Client<R | R2, E | E2, A>
 >(2, (self, f) => make(self.execute as any, (request) => Effect.tap(self.preprocess(request), f)))
+
+/** @internal */
+export const withCookiesRef = dual<
+  (
+    ref: Ref.Ref<Cookies.Cookies>
+  ) => <R, E>(self: Client.Client.WithResponse<R, E>) => Client.Client.WithResponse<R, E>,
+  <R, E>(
+    self: Client.Client.WithResponse<R, E>,
+    ref: Ref.Ref<Cookies.Cookies>
+  ) => Client.Client.WithResponse<R, E>
+>(
+  2,
+  <R, E>(
+    self: Client.Client.WithResponse<R, E>,
+    ref: Ref.Ref<Cookies.Cookies>
+  ): Client.Client.WithResponse<R, E> =>
+    make(
+      (request: Effect.Effect<ClientRequest.ClientRequest, E, R>) =>
+        Effect.tap(
+          self.execute(request),
+          (response) => Ref.update(ref, (cookies) => Cookies.merge(cookies, response.cookies))
+        ),
+      (request) =>
+        Effect.flatMap(self.preprocess(request), (request) =>
+          Effect.map(
+            Ref.get(ref),
+            (cookies) =>
+              Cookies.isEmpty(cookies)
+                ? request
+                : internalRequest.setHeader(request, "cookie", Cookies.toCookieHeader(cookies))
+          ))
+    )
+)

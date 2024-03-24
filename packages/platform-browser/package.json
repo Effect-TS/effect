@@ -58,6 +58,6 @@
     }
   },
   "dependencies": {
-    "multipasta": "^0.1.21"
+    "multipasta": "^0.2.0"
   }
 }

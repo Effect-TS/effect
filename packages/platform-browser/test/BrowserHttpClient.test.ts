@@ -1,11 +1,11 @@
 import { HttpClient } from "@effect/platform"
 import { BrowserHttpClient } from "@effect/platform-browser"
+import { assert, describe, it } from "@effect/vitest"
 import { Chunk, Effect, Stream } from "effect"
 import * as MXHR from "mock-xmlhttprequest"
-import { assert, describe, test } from "vitest"
 
 describe("BrowserHttpClient", () => {
-  test("json", () =>
+  it.effect("json", () =>
     Effect.gen(function*(_) {
       const server = MXHR.newServer({
         get: ["http://localhost:8080/my/url", {
@@ -21,9 +21,9 @@ describe("BrowserHttpClient", () => {
         Effect.locally(BrowserHttpClient.currentXMLHttpRequest, server.xhrFactory)
       )
       assert.deepStrictEqual(body, { message: "Success!" })
-    }).pipe(Effect.runPromise))
+    }))
 
-  test("stream", () =>
+  it.effect("stream", () =>
     Effect.gen(function*(_) {
       const server = MXHR.newServer({
         get: ["http://localhost:8080/my/url", {
@@ -45,5 +45,25 @@ describe("BrowserHttpClient", () => {
         Effect.locally(BrowserHttpClient.currentXMLHttpRequest, server.xhrFactory)
       )
       assert.deepStrictEqual(Chunk.unsafeHead(body), "{ \"message\": \"Success!\" }")
-    }).pipe(Effect.runPromise))
+    }))
+
+  it.effect("cookies", () =>
+    Effect.gen(function*(_) {
+      const server = MXHR.newServer({
+        get: ["http://localhost:8080/my/url", {
+          headers: { "Content-Type": "application/json", "Set-Cookie": "foo=bar; HttpOnly; Secure" },
+          body: "{ \"message\": \"Success!\" }"
+        }]
+      })
+      const cookies = yield* _(
+        HttpClient.request.get("http://localhost:8080/my/url"),
+        BrowserHttpClient.xmlHttpRequest,
+        Effect.map((res) => res.cookies),
+        Effect.scoped,
+        Effect.locally(BrowserHttpClient.currentXMLHttpRequest, server.xhrFactory)
+      )
+      assert.deepStrictEqual(HttpClient.cookies.toRecord(cookies), {
+        foo: "bar"
+      })
+    }))
 })
