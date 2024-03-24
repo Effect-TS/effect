@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { ParseOptions } from "@effect/schema/AST"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Effect from "effect/Effect"
@@ -88,7 +89,8 @@ export const schemaJson: <
   },
   A
 >(
-  schema: Schema.Schema<A, I, R>
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
 ) => (self: ClientResponse) => Effect.Effect<A, Error.ResponseError | ParseResult.ParseError, R> = internal.schemaJson
 
 /**
@@ -102,8 +104,10 @@ export const schemaNoBody: <
     readonly headers?: Readonly<Record<string, string>> | undefined
   },
   A
->(schema: Schema.Schema<A, I, R>) => (self: ClientResponse) => Effect.Effect<A, ParseResult.ParseError, R> =
-  internal.schemaNoBody
+>(
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
+) => (self: ClientResponse) => Effect.Effect<A, ParseResult.ParseError, R> = internal.schemaNoBody
 
 /**
  * @since 1.0.0
@@ -166,12 +170,13 @@ export const schemaJsonEffect: <
   },
   A
 >(
-  schema: Schema.Schema<A, I, R>
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
 ) => <E, R2>(
   effect: Effect.Effect<ClientResponse, E, R2>
 ) => Effect.Effect<
   A,
-  Error.ResponseError | E | ParseResult.ParseError,
+  E | Error.ResponseError | ParseResult.ParseError,
   Exclude<R, Scope.Scope> | Exclude<R2, Scope.Scope>
 > = internal.schemaJsonEffect
 
@@ -181,10 +186,14 @@ export const schemaJsonEffect: <
  */
 export const schemaNoBodyEffect: <
   R,
-  I extends { readonly status?: number | undefined; readonly headers?: Readonly<Record<string, string>> | undefined },
+  I extends {
+    readonly status?: number | undefined
+    readonly headers?: Readonly<Record<string, string>> | undefined
+  },
   A
 >(
-  schema: Schema.Schema<A, I, R>
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
 ) => <E, R2>(
   effect: Effect.Effect<ClientResponse, E, R2>
 ) => Effect.Effect<A, E | ParseResult.ParseError, Exclude<R, Scope.Scope> | Exclude<R2, Scope.Scope>> =

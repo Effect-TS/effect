@@ -1,3 +1,4 @@
+import type { ParseOptions } from "@effect/schema/AST"
 import * as Schema from "@effect/schema/Schema"
 import type * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
@@ -37,22 +38,95 @@ export const params = Effect.map(RouteContext, (_) => _.params)
 export const searchParams = Effect.map(RouteContext, (_) => _.searchParams)
 
 /** @internal */
-export const schemaParams = <R, I extends Readonly<Record<string, string>>, A>(schema: Schema.Schema<A, I, R>) => {
-  const parse = Schema.decodeUnknown(schema)
+export const schemaJson = <
+  R,
+  I extends {
+    readonly method?: Method.Method
+    readonly url?: string
+    readonly cookies?: Readonly<Record<string, string>>
+    readonly headers?: Readonly<Record<string, string>>
+    readonly pathParams?: Readonly<Record<string, string>>
+    readonly searchParams?: Readonly<Record<string, string>>
+    readonly body?: any
+  },
+  A
+>(
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
+) => {
+  const parse = Schema.decodeUnknown(schema, options)
+  return Effect.flatMap(
+    ServerRequest.ServerRequest,
+    (request) =>
+      Effect.flatMap(Effect.zip(request.json, RouteContext), ([body, context]) =>
+        parse({
+          method: request.method,
+          url: request.url,
+          headers: request.headers,
+          cookies: request.cookies,
+          pathParams: context.params,
+          searchParams: context.searchParams,
+          body
+        }))
+  )
+}
+
+/** @internal */
+export const schemaNoBody = <
+  R,
+  I extends {
+    readonly method?: Method.Method
+    readonly url?: string
+    readonly cookies?: Readonly<Record<string, string>>
+    readonly headers?: Readonly<Record<string, string>>
+    readonly pathParams?: Readonly<Record<string, string>>
+    readonly searchParams?: Readonly<Record<string, string>>
+  },
+  A
+>(
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
+) => {
+  const parse = Schema.decodeUnknown(schema, options)
+  return Effect.flatMap(
+    ServerRequest.ServerRequest,
+    (request) =>
+      Effect.flatMap(RouteContext, (context) =>
+        parse({
+          method: request.method,
+          url: request.url,
+          headers: request.headers,
+          cookies: request.cookies,
+          pathParams: context.params,
+          searchParams: context.searchParams
+        }))
+  )
+}
+
+/** @internal */
+export const schemaParams = <R, I extends Readonly<Record<string, string>>, A>(
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
+) => {
+  const parse = Schema.decodeUnknown(schema, options)
   return Effect.flatMap(RouteContext, (_) => parse({ ..._.searchParams, ..._.params }))
 }
 
 /** @internal */
-export const schemaPathParams = <R, I extends Readonly<Record<string, string>>, A>(schema: Schema.Schema<A, I, R>) => {
-  const parse = Schema.decodeUnknown(schema)
+export const schemaPathParams = <R, I extends Readonly<Record<string, string>>, A>(
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
+) => {
+  const parse = Schema.decodeUnknown(schema, options)
   return Effect.flatMap(RouteContext, (_) => parse(_.params))
 }
 
 /** @internal */
 export const schemaSearchParams = <R, I extends Readonly<Record<string, string>>, A>(
-  schema: Schema.Schema<A, I, R>
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
 ) => {
-  const parse = Schema.decodeUnknown(schema)
+  const parse = Schema.decodeUnknown(schema, options)
   return Effect.flatMap(RouteContext, (_) => parse(_.searchParams))
 }
 

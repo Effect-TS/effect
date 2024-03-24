@@ -1,3 +1,4 @@
+import type { ParseOptions } from "@effect/schema/AST"
 import * as Schema from "@effect/schema/Schema"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
@@ -127,8 +128,8 @@ export const urlParams = (urlParams: UrlParams.UrlParams): Body.Uint8Array =>
   text(UrlParams.toString(urlParams), "application/x-www-form-urlencoded")
 
 /** @internal */
-export const jsonSchema = <A, I, R>(schema: Schema.Schema<A, I, R>) => {
-  const encode = Schema.encode(schema)
+export const jsonSchema = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions) => {
+  const encode = Schema.encode(schema, options)
   return (body: A): Effect.Effect<Body.Uint8Array, Body.BodyError, R> =>
     Effect.flatMap(
       Effect.mapError(encode(body), (error) => BodyError({ _tag: "SchemaError", error })),

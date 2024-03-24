@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { ParseOptions } from "@effect/schema/AST"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
@@ -47,8 +48,8 @@ export interface IncomingMessage<E> extends Inspectable {
  * @since 1.0.0
  * @category schema
  */
-export const schemaBodyJson = <A, I, R>(schema: Schema.Schema<A, I, R>) => {
-  const parse = Schema.decodeUnknown(schema)
+export const schemaBodyJson = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions | undefined) => {
+  const parse = Schema.decodeUnknown(schema, options)
   return <E>(self: IncomingMessage<E>): Effect.Effect<A, E | ParseResult.ParseError, R> =>
     Effect.flatMap(self.json, parse)
 }
@@ -57,8 +58,8 @@ export const schemaBodyJson = <A, I, R>(schema: Schema.Schema<A, I, R>) => {
  * @since 1.0.0
  * @category schema
  */
-export const schemaBodyJsonEffect = <A, I, R>(schema: Schema.Schema<A, I, R>) => {
-  const decode = schemaBodyJson(schema)
+export const schemaBodyJsonEffect = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions | undefined) => {
+  const decode = schemaBodyJson(schema, options)
   return <E, E2, R2>(effect: Effect.Effect<IncomingMessage<E>, E2, R2>) => Effect.scoped(Effect.flatMap(effect, decode))
 }
 
@@ -67,9 +68,10 @@ export const schemaBodyJsonEffect = <A, I, R>(schema: Schema.Schema<A, I, R>) =>
  * @category schema
  */
 export const schemaBodyUrlParams = <R, I extends Readonly<Record<string, string>>, A>(
-  schema: Schema.Schema<A, I, R>
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
 ) => {
-  const parse = Schema.decodeUnknown(schema)
+  const parse = Schema.decodeUnknown(schema, options)
   return <E>(self: IncomingMessage<E>): Effect.Effect<A, E | ParseResult.ParseError, R> =>
     Effect.flatMap(self.urlParamsBody, (_) => parse(Object.fromEntries(_)))
 }
@@ -79,9 +81,10 @@ export const schemaBodyUrlParams = <R, I extends Readonly<Record<string, string>
  * @category schema
  */
 export const schemaBodyUrlParamsEffect = <R, I extends Readonly<Record<string, string>>, A>(
-  schema: Schema.Schema<A, I, R>
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
 ) => {
-  const decode = schemaBodyUrlParams(schema)
+  const decode = schemaBodyUrlParams(schema, options)
   return <E, E2, R2>(effect: Effect.Effect<IncomingMessage<E>, E2, R2>) => Effect.scoped(Effect.flatMap(effect, decode))
 }
 
@@ -90,9 +93,10 @@ export const schemaBodyUrlParamsEffect = <R, I extends Readonly<Record<string, s
  * @category schema
  */
 export const schemaHeaders = <R, I extends Readonly<Record<string, string | undefined>>, A>(
-  schema: Schema.Schema<A, I, R>
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
 ) => {
-  const parse = Schema.decodeUnknown(schema)
+  const parse = Schema.decodeUnknown(schema, options)
   return <E>(self: IncomingMessage<E>): Effect.Effect<A, ParseResult.ParseError, R> => parse(self.headers)
 }
 
@@ -101,9 +105,10 @@ export const schemaHeaders = <R, I extends Readonly<Record<string, string | unde
  * @category schema
  */
 export const schemaHeadersEffect = <R, I extends Readonly<Record<string, string>>, A>(
-  schema: Schema.Schema<A, I, R>
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
 ) => {
-  const decode = schemaHeaders(schema)
+  const decode = schemaHeaders(schema, options)
   return <E, E2, R2>(effect: Effect.Effect<IncomingMessage<E>, E2, R2>) => Effect.scoped(Effect.flatMap(effect, decode))
 }
 

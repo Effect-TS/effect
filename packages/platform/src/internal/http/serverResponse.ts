@@ -1,3 +1,4 @@
+import type { ParseOptions } from "@effect/schema/AST"
 import type * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
@@ -74,7 +75,7 @@ export const isServerResponse = (u: unknown): u is ServerResponse.ServerResponse
   typeof u === "object" && u !== null && TypeId in u
 
 /** @internal */
-export const empty = (options?: ServerResponse.Options.WithContent): ServerResponse.ServerResponse =>
+export const empty = (options?: ServerResponse.Options.WithContent | undefined): ServerResponse.ServerResponse =>
   new ServerResponseImpl(
     options?.status ?? 204,
     options?.statusText,
@@ -155,7 +156,7 @@ export const htmlStream = <A extends ReadonlyArray<Template.InterpolatedWithStre
 /** @internal */
 export const json = (
   body: unknown,
-  options?: ServerResponse.Options.WithContent
+  options?: ServerResponse.Options.WithContent | undefined
 ): Effect.Effect<ServerResponse.ServerResponse, Body.BodyError> =>
   Effect.map(internalBody.json(body), (body) =>
     new ServerResponseImpl(
@@ -169,7 +170,7 @@ export const json = (
 /** @internal */
 export const unsafeJson = (
   body: unknown,
-  options?: ServerResponse.Options.WithContent
+  options?: ServerResponse.Options.WithContent | undefined
 ): ServerResponse.ServerResponse =>
   new ServerResponseImpl(
     options?.status ?? 200,
@@ -181,12 +182,13 @@ export const unsafeJson = (
 
 /** @internal */
 export const schemaJson = <A, I, R>(
-  schema: Schema.Schema<A, I, R>
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
 ) => {
-  const encode = internalBody.jsonSchema(schema)
+  const encode = internalBody.jsonSchema(schema, options)
   return (
     body: A,
-    options?: ServerResponse.Options.WithContent
+    options?: ServerResponse.Options.WithContent | undefined
   ): Effect.Effect<ServerResponse.ServerResponse, Body.BodyError, R> =>
     Effect.map(encode(body), (body) =>
       new ServerResponseImpl(
@@ -201,7 +203,7 @@ export const schemaJson = <A, I, R>(
 /** @internal */
 export const file = (
   path: string,
-  options?: ServerResponse.Options & FileSystem.StreamOptions
+  options?: (ServerResponse.Options & FileSystem.StreamOptions) | undefined
 ): Effect.Effect<ServerResponse.ServerResponse, PlatformError.PlatformError, Platform.Platform> =>
   Effect.flatMap(
     Platform.Platform,
@@ -211,7 +213,7 @@ export const file = (
 /** @internal */
 export const fileWeb = (
   file: Body.Body.FileLike,
-  options?: ServerResponse.Options.WithContent & FileSystem.StreamOptions
+  options?: (ServerResponse.Options.WithContent & FileSystem.StreamOptions) | undefined
 ): Effect.Effect<ServerResponse.ServerResponse, never, Platform.Platform> =>
   Effect.flatMap(
     Platform.Platform,
@@ -221,7 +223,7 @@ export const fileWeb = (
 /** @internal */
 export const urlParams = (
   body: UrlParams.Input,
-  options?: ServerResponse.Options.WithContent
+  options?: ServerResponse.Options.WithContent | undefined
 ): ServerResponse.ServerResponse =>
   new ServerResponseImpl(
     options?.status ?? 200,
@@ -232,7 +234,7 @@ export const urlParams = (
   )
 
 /** @internal */
-export const raw = (body: unknown, options?: ServerResponse.Options): ServerResponse.ServerResponse =>
+export const raw = (body: unknown, options?: ServerResponse.Options | undefined): ServerResponse.ServerResponse =>
   new ServerResponseImpl(
     options?.status ?? 200,
     options?.statusText,
@@ -244,7 +246,7 @@ export const raw = (body: unknown, options?: ServerResponse.Options): ServerResp
 /** @internal */
 export const formData = (
   body: FormData,
-  options?: ServerResponse.Options.WithContent
+  options?: ServerResponse.Options.WithContent | undefined
 ): ServerResponse.ServerResponse =>
   new ServerResponseImpl(
     options?.status ?? 200,
@@ -257,7 +259,7 @@ export const formData = (
 /** @internal */
 export const stream = (
   body: Stream.Stream<Uint8Array, unknown>,
-  options?: ServerResponse.Options
+  options?: ServerResponse.Options | undefined
 ): ServerResponse.ServerResponse =>
   new ServerResponseImpl(
     options?.status ?? 200,
@@ -268,7 +270,7 @@ export const stream = (
   )
 
 /** @internal */
-export const getContentType = (options?: ServerResponse.Options): string | undefined => {
+export const getContentType = (options?: ServerResponse.Options | undefined): string | undefined => {
   if (options?.contentType) {
     return options.contentType
   } else if (options?.headers) {

@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { ParseOptions } from "@effect/schema/AST"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Effect from "effect/Effect"
 import type { Inspectable } from "effect/Inspectable"
@@ -302,7 +303,8 @@ export const unsafeJsonBody: {
  * @category combinators
  */
 export const schemaBody: <A, I, R>(
-  schema: Schema.Schema<A, I, R>
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
 ) => {
   (body: A): (self: ClientRequest) => Effect.Effect<ClientRequest, Body.BodyError, R>
   (self: ClientRequest, body: A): Effect.Effect<ClientRequest, Body.BodyError, R>

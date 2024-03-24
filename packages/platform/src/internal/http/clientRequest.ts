@@ -1,3 +1,4 @@
+import type { ParseOptions } from "@effect/schema/AST"
 import type * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
@@ -373,11 +374,11 @@ export const fileWebBody = dual<
 >(2, (self, file) => setBody(self, internalBody.fileWeb(file)))
 
 /** @internal */
-export const schemaBody = <A, I, R>(schema: Schema.Schema<A, I, R>): {
+export const schemaBody = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions | undefined): {
   (body: A): (self: ClientRequest.ClientRequest) => Effect.Effect<ClientRequest.ClientRequest, Body.BodyError, R>
   (self: ClientRequest.ClientRequest, body: A): Effect.Effect<ClientRequest.ClientRequest, Body.BodyError, R>
 } => {
-  const encode = internalBody.jsonSchema(schema)
+  const encode = internalBody.jsonSchema(schema, options)
   return dual<
     (
       body: A

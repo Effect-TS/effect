@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type { Cookies } from "@effect/platform/Http/Cookies"
+import type { ParseOptions } from "@effect/schema/AST"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Context from "effect/Context"
@@ -384,7 +385,8 @@ export const scoped: <R, E, A>(self: Client<R, E, A>) => Client<Exclude<R, Scope
  */
 export const schemaFunction: {
   <SA, SI, SR>(
-    schema: Schema.Schema<SA, SI, SR>
+    schema: Schema.Schema<SA, SI, SR>,
+    options?: ParseOptions | undefined
   ): <R, E, A>(
     self: Client<R, E, A>
   ) => (
@@ -392,7 +394,8 @@ export const schemaFunction: {
   ) => (a: SA) => Effect.Effect<A, E | ParseResult.ParseError | Error.RequestError, SR | R>
   <R, E, A, SA, SI, SR>(
     self: Client<R, E, A>,
-    schema: Schema.Schema<SA, SI, SR>
+    schema: Schema.Schema<SA, SI, SR>,
+    options?: ParseOptions | undefined
   ): (
     request: ClientRequest.ClientRequest
   ) => (a: SA) => Effect.Effect<A, ParseResult.ParseError | Error.RequestError | E, R | SR>
