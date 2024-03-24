@@ -5,7 +5,7 @@
  *
  * @since 2.0.0
  */
-import * as Number_ from "./Equivalence.js"
+import * as equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
 import * as option from "./internal/option.js"
 import type { Option } from "./Option.js"
@@ -165,7 +165,7 @@ export const decrement = (n: number): number => n - 1
  * @category instances
  * @since 2.0.0
  */
-export const Equivalence: Number_.Equivalence<number> = Number_.number
+export const Equivalence: equivalence.Equivalence<number> = equivalence.number
 
 /**
  * @category instances
@@ -400,7 +400,7 @@ export const sumAll = (collection: Iterable<number>): number => {
  * @param collection - The collection of `number`s to multiply.
  *
  * @example
- * import { multiplyAll } from 'effect/Number'
+ * import { multiplyAll } from "effect/Number"
  *
  * assert.deepStrictEqual(multiplyAll([2, 3, 4]), 24)
  *
@@ -498,16 +498,13 @@ export const parse = (s: string): Option<number> => {
  * Takes a string and returns an `Option` of `number`.
  *
  * If the string is empty or invalid characters,
- * it returns `option.none`. Otherwise, it attempts to convert the string to a number
- * and returns `option.some(number)`.
+ * it returns `Option.none`. Otherwise, it attempts to convert the string to a number
+ * and returns `Option.some(number)`.
  *
  * @param s - The string to be converted to a `number`.
- * @returns An `Option` type that is either `some(number)` if the string can be converted
- *          to a valid number, or `none` if the string is empty or contains invalid characters
- *          for number conversion.
  *
  * @example
- * import { fromString } from 'effect/Number'
+ * import { fromString } from "effect/Number"
  *
  * assert.deepStrictEqual(fromString("42"), option.some(42))
  * assert.deepStrictEqual(fromString(""), option.none)
@@ -516,7 +513,6 @@ export const parse = (s: string): Option<number> => {
  * @category conversions
  * @since 2.4.12
  */
-
 export const fromString = (s: string): Option<number> => {
   const n = Number(s)
   return s.trim() === ""
@@ -530,15 +526,13 @@ export const fromString = (s: string): Option<number> => {
  * Takes a `bigint` and returns an `Option` of `number`.
  *
  * If the `bigint` is outside the safe integer range for JavaScript (`Number.MAX_SAFE_INTEGER`
- * and `Number.MIN_SAFE_INTEGER`), it returns `option.none`. Otherwise, it converts the `bigint`
- * to a number and returns `option.some(number)`.
+ * and `Number.MIN_SAFE_INTEGER`), it returns `Option.none`. Otherwise, it converts the `bigint`
+ * to a number and returns `Option.some(number)`.
  *
  * @param b - The `bigint` to be converted to a `number`.
- * @returns An `Option` type that is either `some(number)` if the `bigint` is within the safe
- *          integer range and can be converted, or `none` if it is out of the safe range.
  *
  * @example
- * import { fromBigInt } from 'effect/Number'
+ * import { fromBigInt } from "effect/Number"
  *
  * assert.deepStrictEqual(fromBigInt(BigInt(42)), option.some(42))
  * assert.deepStrictEqual(fromBigInt(BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1)), option.none)
@@ -547,7 +541,6 @@ export const fromString = (s: string): Option<number> => {
  * @category conversions
  * @since 2.4.12
  */
-
 export const fromBigInt = (b: bigint): Option<number> => {
   if (b > BigInt(Number.MAX_SAFE_INTEGER) || b < BigInt(Number.MIN_SAFE_INTEGER)) {
     return option.none
