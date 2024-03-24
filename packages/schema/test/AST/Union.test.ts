@@ -3,7 +3,12 @@ import * as S from "@effect/schema/Schema"
 import { describe, expect, it } from "vitest"
 
 describe("AST.Union", () => {
-  it("should remove never from members", () => {
+  it("flatten should un-nest union members", () => {
+    const asts = AST.flatten([S.union(S.literal("a", "b"), S.literal("c", "d")).ast])
+    expect(asts.length).toBe(4)
+  })
+
+  it("make should remove never from members", () => {
     expect(AST.Union.make([AST.neverKeyword, AST.neverKeyword])).toEqual(
       AST.neverKeyword
     )
@@ -34,7 +39,7 @@ describe("AST.Union", () => {
     expect(String(schema)).toStrictEqual("<suspended schema>")
   })
 
-  it("description for nested unions", () => {
+  it("descriptions of nested unions should be preserved", () => {
     const u = S.union(S.string, S.number)
     const nested1 = u.annotations({ identifier: "nested1" })
     const nested2 = u.annotations({ identifier: "nested2" })

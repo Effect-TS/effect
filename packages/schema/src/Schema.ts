@@ -2325,49 +2325,55 @@ const intersectTypeLiterals = (x: AST.AST, y: AST.AST, path: ReadonlyArray<strin
 }
 
 const extendAST = (x: AST.AST, y: AST.AST, path: ReadonlyArray<string>): AST.AST =>
-  intersectUnionMembers(AST.isUnion(x) ? x.types : [x], AST.isUnion(y) ? y.types : [y], path)
+  AST.Union.make(intersectUnionMembers([x], [y], path))
 
 const intersectUnionMembers = (
   xs: ReadonlyArray<AST.AST>,
   ys: ReadonlyArray<AST.AST>,
   path: ReadonlyArray<string>
-): AST.AST =>
-  AST.Union.make(
-    xs.flatMap((x) => {
-      return ys.map((y) => {
-        if (AST.isUnion(x)) {
-          return intersectUnionMembers(x.types, [y], path)
-        } else if (AST.isUnion(y)) {
-          return intersectUnionMembers([x], y.types, path)
-        } else if (AST.isTypeLiteral(x)) {
-          if (AST.isTypeLiteral(y)) {
-            return intersectTypeLiterals(x, y, path)
-          } else if (
-            AST.isTransform(y) && AST.isTypeLiteralTransformation(y.transformation)
-          ) {
-            return new AST.Transformation(
+): Array<AST.AST> =>
+  ReadonlyArray.flatMap(xs, (x) =>
+    ReadonlyArray.flatMap(ys, (y) => {
+      if (AST.isUnion(x)) {
+        return intersectUnionMembers(x.types, AST.isUnion(y) ? y.types : [y], path)
+      } else if (AST.isUnion(y)) {
+        return intersectUnionMembers([x], y.types, path)
+      }
+
+      if (AST.isTypeLiteral(x)) {
+        if (AST.isTypeLiteral(y)) {
+          return [intersectTypeLiterals(x, y, path)]
+        } else if (
+          AST.isTransform(y) && AST.isTypeLiteralTransformation(y.transformation)
+        ) {
+          return [
+            new AST.Transformation(
               intersectTypeLiterals(x, y.from, path),
               intersectTypeLiterals(AST.typeAST(x), y.to, path),
               new AST.TypeLiteralTransformation(
                 y.transformation.propertySignatureTransformations
               )
             )
-          }
-        } else if (
-          AST.isTransform(x) && AST.isTypeLiteralTransformation(x.transformation)
-        ) {
-          if (AST.isTypeLiteral(y)) {
-            return new AST.Transformation(
+          ]
+        }
+      } else if (
+        AST.isTransform(x) && AST.isTypeLiteralTransformation(x.transformation)
+      ) {
+        if (AST.isTypeLiteral(y)) {
+          return [
+            new AST.Transformation(
               intersectTypeLiterals(x.from, y, path),
               intersectTypeLiterals(x.to, AST.typeAST(y), path),
               new AST.TypeLiteralTransformation(
                 x.transformation.propertySignatureTransformations
               )
             )
-          } else if (
-            AST.isTransform(y) && AST.isTypeLiteralTransformation(y.transformation)
-          ) {
-            return new AST.Transformation(
+          ]
+        } else if (
+          AST.isTransform(y) && AST.isTypeLiteralTransformation(y.transformation)
+        ) {
+          return [
+            new AST.Transformation(
               intersectTypeLiterals(x.from, y.from, path),
               intersectTypeLiterals(x.to, y.to, path),
               new AST.TypeLiteralTransformation(
@@ -2376,12 +2382,11 @@ const intersectUnionMembers = (
                 )
               )
             )
-          }
+          ]
         }
-        throw new Error(getExtendErrorMessage(x, y, path))
-      })
-    })
-  )
+      }
+      throw new Error(getExtendErrorMessage(x, y, path))
+    }))
 
 /**
  * @category api interface

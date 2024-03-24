@@ -1345,15 +1345,9 @@ const literalMap = {
   bigint: "BigIntKeyword"
 } as const
 
-const flatten = (candidates: ReadonlyArray<AST>): Array<AST> =>
-  ReadonlyArray.flatMap(candidates, (ast: AST) => {
-    switch (ast._tag) {
-      case "Union":
-        return ast.types
-      default:
-        return [ast]
-    }
-  })
+/** @internal */
+export const flatten = (candidates: ReadonlyArray<AST>): Array<AST> =>
+  ReadonlyArray.flatMap(candidates, (ast) => isUnion(ast) ? flatten(ast.types) : [ast])
 
 /** @internal */
 export const unify = (candidates: ReadonlyArray<AST>): Array<AST> => {
