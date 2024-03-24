@@ -563,7 +563,7 @@ export const multiplyAll = (collection: Iterable<bigint>): bigint => {
  * assert.deepStrictEqual(fromBigInt(BigInt(Number.MIN_SAFE_INTEGER) - BigInt(1)), option.none)
  *
  * @category conversions
- * @since 2.4.12
+ * @since 2.0.0
  */
 export const toNumber = (b: bigint): Option.Option<number> => {
   if (b > BigInt(Number.MAX_SAFE_INTEGER) || b < BigInt(Number.MIN_SAFE_INTEGER)) {
