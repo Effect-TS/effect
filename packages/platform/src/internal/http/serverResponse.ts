@@ -356,6 +356,24 @@ export const unsafeSetCookie = dual<
 )
 
 /** @internal */
+export const updateCookies = dual<
+  (
+    f: (cookies: Cookies.Cookies) => Cookies.Cookies
+  ) => (self: ServerResponse.ServerResponse) => ServerResponse.ServerResponse,
+  (
+    self: ServerResponse.ServerResponse,
+    f: (cookies: Cookies.Cookies) => Cookies.Cookies
+  ) => ServerResponse.ServerResponse
+>(2, (self, f) =>
+  new ServerResponseImpl(
+    self.status,
+    self.statusText,
+    self.headers,
+    f(self.cookies),
+    self.body
+  ))
+
+/** @internal */
 export const setCookies = dual<
   (
     cookies: Iterable<readonly [name: string, value: string, options?: Cookies.Cookie["options"]]>

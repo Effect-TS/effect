@@ -264,6 +264,15 @@ export const unsafeSetCookie: {
  * @since 1.0.0
  * @category combinators
  */
+export const updateCookies: {
+  (f: (cookies: Cookies) => Cookies): (self: ServerResponse) => ServerResponse
+  (self: ServerResponse, f: (cookies: Cookies) => Cookies): ServerResponse
+} = internal.updateCookies
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
 export const setCookies: {
   (
     cookies: Iterable<

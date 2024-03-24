@@ -404,7 +404,9 @@ export const merge: {
   ): Cookies
 } = dual(2, (self: Cookies, that: Cookies) => {
   const cookies = self.cookies.filter((c) => !that.cookies.some((c2) => c2.name === c.name))
-  return fromIterable([...cookies, ...that.cookies])
+  // eslint-disable-next-line no-restricted-syntax
+  cookies.push(...that.cookies)
+  return fromIterable(cookies)
 })
 
 /**
