@@ -572,7 +572,7 @@ export const toNumber = (b: bigint): Option.Option<number> => {
  * @example
  * import { fromString } from 'effect/BigInt'
  *
- * assert.deepStrictEqual(fromString("1234"), Option.some(BigInt(1234)))
+ * assert.deepStrictEqual(fromString("42"), Option.some(BigInt(42)))
  * assert.deepStrictEqual(fromString(" "), Option.none())
  * assert.deepStrictEqual(fromString("a"), Option.none())
  *
