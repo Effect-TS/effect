@@ -1,5 +1,54 @@
 # @effect/platform-bun
 
+## 0.32.29
+
+### Patch Changes
+
+- [#2387](https://github.com/Effect-TS/effect/pull/2387) [`75a8d16`](https://github.com/Effect-TS/effect/commit/75a8d16247cc14860cdd7fd948ef542c50c2d55e) Thanks [@tim-smart](https://github.com/tim-smart)! - add Cookies module to /platform http
+
+  To add cookies to a http response:
+
+  ```ts
+  import * as Http from "@effect/platform/HttpServer";
+
+  Http.response.empty().pipe(
+    Http.response.setCookies([
+      ["name", "value"],
+      ["foo", "bar", { httpOnly: true }],
+    ]),
+  );
+  ```
+
+  You can also use cookies with the http client:
+
+  ```ts
+  import * as Http from "@effect/platform/HttpClient";
+  import { Effect, Ref } from "effect";
+
+  Effect.gen(function* (_) {
+    const ref = yield* _(Ref.make(Http.cookies.empty));
+    const defaultClient = yield* _(Http.client.Client);
+    const clientWithCookies = defaultClient.pipe(
+      Http.client.withCookiesRef(ref),
+      Http.client.filterStatusOk,
+    );
+
+    // cookies will be stored in the ref and sent in any subsequent requests
+    yield* _(
+      Http.request.get("https://www.google.com/"),
+      clientWithCookies,
+      Effect.scoped,
+    );
+  });
+  ```
+
+- [#2385](https://github.com/Effect-TS/effect/pull/2385) [`3307729`](https://github.com/Effect-TS/effect/commit/3307729de162a033fa9caa8e14c111013dcf0d87) Thanks [@tim-smart](https://github.com/tim-smart)! - update typescript to 5.4
+
+- Updated dependencies [[`75a8d16`](https://github.com/Effect-TS/effect/commit/75a8d16247cc14860cdd7fd948ef542c50c2d55e), [`3307729`](https://github.com/Effect-TS/effect/commit/3307729de162a033fa9caa8e14c111013dcf0d87)]:
+  - @effect/platform-node-shared@0.3.16
+  - @effect/platform@0.48.16
+  - effect@2.4.12
+
 ## 0.32.28
 
 ### Patch Changes

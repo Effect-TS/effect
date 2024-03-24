@@ -1,5 +1,38 @@
 # @effect/schema
 
+## 0.64.12
+
+### Patch Changes
+
+- [#2359](https://github.com/Effect-TS/effect/pull/2359) [`9392de6`](https://github.com/Effect-TS/effect/commit/9392de6baa6861662abc2bd3171897145f5ea073) Thanks [@tim-smart](https://github.com/tim-smart)! - preserve defect information in Cause.Die
+
+- [#2385](https://github.com/Effect-TS/effect/pull/2385) [`3307729`](https://github.com/Effect-TS/effect/commit/3307729de162a033fa9caa8e14c111013dcf0d87) Thanks [@tim-smart](https://github.com/tim-smart)! - align runtime tuple behaviour to ts 5.4:
+
+  from
+
+  ```ts
+  // ts 5.3
+  type A = readonly [string, ...number[], boolean];
+  type B = Required<A>; // readonly [string, ...(number | boolean)[], number | boolean]
+  ```
+
+  to
+
+  ```ts
+  // ts 5.4
+  type A = readonly [string, ...number[], boolean];
+  type B = Required<A>; // readonly [string, ...number[], boolean]
+  ```
+
+- [#2359](https://github.com/Effect-TS/effect/pull/2359) [`9392de6`](https://github.com/Effect-TS/effect/commit/9392de6baa6861662abc2bd3171897145f5ea073) Thanks [@tim-smart](https://github.com/tim-smart)! - use provided message in Schema.TaggedError .toString
+
+- [#2385](https://github.com/Effect-TS/effect/pull/2385) [`3307729`](https://github.com/Effect-TS/effect/commit/3307729de162a033fa9caa8e14c111013dcf0d87) Thanks [@tim-smart](https://github.com/tim-smart)! - update typescript to 5.4
+
+- [#2396](https://github.com/Effect-TS/effect/pull/2396) [`d17a427`](https://github.com/Effect-TS/effect/commit/d17a427c4427972fb55c45a058780716dc408631) Thanks [@sukovanej](https://github.com/sukovanej)! - Fix extend with nested union.
+
+- Updated dependencies [[`3307729`](https://github.com/Effect-TS/effect/commit/3307729de162a033fa9caa8e14c111013dcf0d87)]:
+  - effect@2.4.12
+
 ## 0.64.11
 
 ### Patch Changes

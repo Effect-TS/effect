@@ -1,5 +1,53 @@
 # @effect/platform
 
+## 0.48.16
+
+### Patch Changes
+
+- [#2387](https://github.com/Effect-TS/effect/pull/2387) [`75a8d16`](https://github.com/Effect-TS/effect/commit/75a8d16247cc14860cdd7fd948ef542c50c2d55e) Thanks [@tim-smart](https://github.com/tim-smart)! - add Cookies module to /platform http
+
+  To add cookies to a http response:
+
+  ```ts
+  import * as Http from "@effect/platform/HttpServer";
+
+  Http.response.empty().pipe(
+    Http.response.setCookies([
+      ["name", "value"],
+      ["foo", "bar", { httpOnly: true }],
+    ]),
+  );
+  ```
+
+  You can also use cookies with the http client:
+
+  ```ts
+  import * as Http from "@effect/platform/HttpClient";
+  import { Effect, Ref } from "effect";
+
+  Effect.gen(function* (_) {
+    const ref = yield* _(Ref.make(Http.cookies.empty));
+    const defaultClient = yield* _(Http.client.Client);
+    const clientWithCookies = defaultClient.pipe(
+      Http.client.withCookiesRef(ref),
+      Http.client.filterStatusOk,
+    );
+
+    // cookies will be stored in the ref and sent in any subsequent requests
+    yield* _(
+      Http.request.get("https://www.google.com/"),
+      clientWithCookies,
+      Effect.scoped,
+    );
+  });
+  ```
+
+- [#2385](https://github.com/Effect-TS/effect/pull/2385) [`3307729`](https://github.com/Effect-TS/effect/commit/3307729de162a033fa9caa8e14c111013dcf0d87) Thanks [@tim-smart](https://github.com/tim-smart)! - update typescript to 5.4
+
+- Updated dependencies [[`9392de6`](https://github.com/Effect-TS/effect/commit/9392de6baa6861662abc2bd3171897145f5ea073), [`3307729`](https://github.com/Effect-TS/effect/commit/3307729de162a033fa9caa8e14c111013dcf0d87), [`9392de6`](https://github.com/Effect-TS/effect/commit/9392de6baa6861662abc2bd3171897145f5ea073), [`3307729`](https://github.com/Effect-TS/effect/commit/3307729de162a033fa9caa8e14c111013dcf0d87), [`d17a427`](https://github.com/Effect-TS/effect/commit/d17a427c4427972fb55c45a058780716dc408631)]:
+  - @effect/schema@0.64.12
+  - effect@2.4.12
+
 ## 0.48.15
 
 ### Patch Changes

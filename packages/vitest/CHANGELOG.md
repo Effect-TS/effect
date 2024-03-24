@@ -1,5 +1,20 @@
 # @effect/vitest
 
+## 0.2.0
+
+### Minor Changes
+
+- [#2394](https://github.com/Effect-TS/effect/pull/2394) [`b6ee13b`](https://github.com/Effect-TS/effect/commit/b6ee13b9473a43039528c5c9ac0f2316d961bee0) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Fix helper signatures removing support for passing effects as discriminating between effects and functions is not safe
+
+  Re-export vitest with patched "it"
+
+### Patch Changes
+
+- [#2385](https://github.com/Effect-TS/effect/pull/2385) [`3307729`](https://github.com/Effect-TS/effect/commit/3307729de162a033fa9caa8e14c111013dcf0d87) Thanks [@tim-smart](https://github.com/tim-smart)! - update typescript to 5.4
+
+- Updated dependencies [[`3307729`](https://github.com/Effect-TS/effect/commit/3307729de162a033fa9caa8e14c111013dcf0d87)]:
+  - effect@2.4.12
+
 ## 0.1.1
 
 ### Patch Changes
