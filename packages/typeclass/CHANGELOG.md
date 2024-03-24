@@ -1,5 +1,14 @@
 # @effect/typeclass
 
+## 0.23.12
+
+### Patch Changes
+
+- [#2385](https://github.com/Effect-TS/effect/pull/2385) [`3307729`](https://github.com/Effect-TS/effect/commit/3307729de162a033fa9caa8e14c111013dcf0d87) Thanks [@tim-smart](https://github.com/tim-smart)! - update typescript to 5.4
+
+- Updated dependencies [[`3307729`](https://github.com/Effect-TS/effect/commit/3307729de162a033fa9caa8e14c111013dcf0d87)]:
+  - effect@2.4.12
+
 ## 0.23.11
 
 ### Patch Changes
