@@ -142,8 +142,13 @@ describe("BigInt", () => {
   })
 
   it("toNumber", () => {
-    assert.deepStrictEqual(BigInt_.toNumber(1n), Option.some(1))
-    assert.deepStrictEqual(BigInt_.toNumber(BigInt(Number.MAX_SAFE_INTEGER) + 1n), Option.none())
+    assert.deepStrictEqual(BigInt_.toNumber(BigInt(Number.MAX_SAFE_INTEGER)), Option.some(Number.MAX_SAFE_INTEGER))
+    assert.deepStrictEqual(BigInt_.toNumber(BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1)), Option.none())
+    assert.deepStrictEqual(BigInt_.toNumber(BigInt(Number.MIN_SAFE_INTEGER)), Option.some(Number.MIN_SAFE_INTEGER))
+    assert.deepStrictEqual(BigInt_.toNumber(BigInt(Number.MIN_SAFE_INTEGER) - BigInt(1)), Option.none())
+    assert.deepStrictEqual(BigInt_.toNumber(BigInt(0)), Option.some(0))
+    assert.deepStrictEqual(BigInt_.toNumber(BigInt(42)), Option.some(42))
+    assert.deepStrictEqual(BigInt_.toNumber(BigInt(-42)), Option.some(-42))
   })
 
   it("fromString", () => {

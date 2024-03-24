@@ -547,10 +547,23 @@ export const multiplyAll = (collection: Iterable<bigint>): bigint => {
 }
 
 /**
- * Convers a bigint into a number
+ * Takes a `bigint` and returns an `Option` of `number`.
  *
- * @since 2.0.0
+ * If the `bigint` is outside the safe integer range for JavaScript (`Number.MAX_SAFE_INTEGER`
+ * and `Number.MIN_SAFE_INTEGER`), it returns `Option.none`. Otherwise, it converts the `bigint`
+ * to a number and returns `Option.some(number)`.
+ *
+ * @param b - The `bigint` to be converted to a `number`.
+ *
+ * @example
+ * import { fromBigInt } from "effect/Number"
+ *
+ * assert.deepStrictEqual(fromBigInt(BigInt(42)), option.some(42))
+ * assert.deepStrictEqual(fromBigInt(BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1)), option.none)
+ * assert.deepStrictEqual(fromBigInt(BigInt(Number.MIN_SAFE_INTEGER) - BigInt(1)), option.none)
+ *
  * @category conversions
+ * @since 2.4.12
  */
 export const toNumber = (b: bigint): Option.Option<number> => {
   if (b > BigInt(Number.MAX_SAFE_INTEGER) || b < BigInt(Number.MIN_SAFE_INTEGER)) {

@@ -148,14 +148,4 @@ describe("Number", () => {
     assert.deepStrictEqual(Number_.fromString(""), Option.none())
     assert.deepStrictEqual(Number_.fromString("a"), Option.none())
   })
-
-  it("fromBigInt", () => {
-    assert.deepStrictEqual(Number_.fromBigInt(BigInt(Number.MAX_SAFE_INTEGER)), Option.some(Number.MAX_SAFE_INTEGER))
-    assert.deepStrictEqual(Number_.fromBigInt(BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1)), Option.none())
-    assert.deepStrictEqual(Number_.fromBigInt(BigInt(Number.MIN_SAFE_INTEGER)), Option.some(Number.MIN_SAFE_INTEGER))
-    assert.deepStrictEqual(Number_.fromBigInt(BigInt(Number.MIN_SAFE_INTEGER) - BigInt(1)), Option.none())
-    assert.deepStrictEqual(Number_.fromBigInt(BigInt(0)), Option.some(0))
-    assert.deepStrictEqual(Number_.fromBigInt(BigInt(42)), Option.some(42))
-    assert.deepStrictEqual(Number_.fromBigInt(BigInt(-42)), Option.some(-42))
-  })
 })
