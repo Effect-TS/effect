@@ -115,6 +115,26 @@ describe("Schema > extend", () => {
       expect(is({ a: "b" })).toBe(false)
     })
 
+    it(`union extend on nested union`, () => {
+      const schema = S.union(
+        S.union(
+          S.struct({ a: S.literal("a") }),
+          S.struct({ a: S.literal("b") })
+        ),
+        S.struct({ b: S.literal("b") })
+      ).pipe(
+        S.extend(S.struct({ c: S.boolean }))
+      )
+      const is = S.is(schema)
+
+      expect(is({ a: "a", c: false })).toBe(true)
+      expect(is({ b: "b", c: false })).toBe(true)
+      expect(is({ a: "b", c: false })).toBe(true)
+
+      expect(is({ a: "a" })).toBe(false)
+      expect(is({ a: "b" })).toBe(false)
+    })
+
     it(`union extend union`, () => {
       const schema = S.union(
         S.struct({ a: S.literal("a") }),
