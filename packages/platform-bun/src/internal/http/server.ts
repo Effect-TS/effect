@@ -126,8 +126,7 @@ const makeResponse = (request: ServerRequest.ServerRequest, response: ServerResp
   }
 
   if (!Cookies.isEmpty(response.cookies)) {
-    const toSet = Cookies.toSetCookieHeaders(response.cookies)
-    for (const header of toSet) {
+    for (const header of Cookies.toSetCookieHeaders(response.cookies)) {
       fields.headers.append("set-cookie", header)
     }
   }
