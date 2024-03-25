@@ -3436,11 +3436,11 @@ export const ensuring: {
 export const invokeWithInterrupt: <A, E, R>(
   self: Effect.Effect<A, E, R>,
   entries: ReadonlyArray<Entry<unknown>>,
-  onInterrupt: () => void
+  onInterrupt?: () => void
 ) => Effect.Effect<void, E, R> = <A, E, R>(
   self: Effect.Effect<A, E, R>,
   entries: ReadonlyArray<Entry<unknown>>,
-  onInterrupt: () => void
+  onInterrupt?: () => void
 ) =>
   core.fiberIdWith((id) =>
     core.flatMap(
@@ -3452,7 +3452,7 @@ export const invokeWithInterrupt: <A, E, R>(
             const checkDone = () => {
               if (counts.every((count) => count === 0)) {
                 cleanup.forEach((f) => f())
-                onInterrupt()
+                onInterrupt?.()
                 cb(core.interruptFiber(processing))
               }
             }
@@ -3505,7 +3505,7 @@ export const interruptWhenPossible = dual<
     (map) =>
       core.suspend(() => {
         const entries = RA.fromIterable(all).flatMap((_) => map.has(_) ? [map.get(_)!] : [])
-        return invokeWithInterrupt(self, entries, () => {})
+        return invokeWithInterrupt(self, entries)
       })
   ))
 
