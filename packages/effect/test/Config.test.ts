@@ -2,6 +2,7 @@ import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
 import * as ConfigError from "effect/ConfigError"
 import * as ConfigProvider from "effect/ConfigProvider"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
@@ -192,6 +193,26 @@ describe("Config", () => {
         config,
         [["LOG_LEVEL", "-"]],
         ConfigError.InvalidData(["LOG_LEVEL"], "Expected a log level but received -")
+      )
+    })
+  })
+
+  describe("duration", () => {
+    it("name = undefined", () => {
+      const config = Config.duration()
+      assertSuccess(config, [["", "10 seconds"]], Duration.decode("10 seconds"))
+
+      assertFailure(config, [["", "-"]], ConfigError.InvalidData([], "Expected a duration but received -"))
+    })
+
+    it("name != undefined", () => {
+      const config = Config.duration("DURATION")
+      assertSuccess(config, [["DURATION", "10 seconds"]], Duration.decode("10 seconds"))
+
+      assertFailure(
+        config,
+        [["DURATION", "-"]],
+        ConfigError.InvalidData(["DURATION"], "Expected a duration but received -")
       )
     })
   })

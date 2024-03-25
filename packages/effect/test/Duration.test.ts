@@ -44,6 +44,40 @@ describe("Duration", () => {
     expect(() => Duration.decode("1.5 secs" as any)).toThrowError(new Error("Invalid duration input"))
   })
 
+  it("decodeUnknown", () => {
+    const millis100 = Duration.millis(100)
+    expect(Duration.decodeUnknown(millis100)).toEqual(Option.some(millis100))
+
+    expect(Duration.decodeUnknown(100)).toEqual(Option.some(millis100))
+
+    expect(Duration.decodeUnknown(10n)).toEqual(Option.some(Duration.nanos(10n)))
+
+    expect(Duration.decodeUnknown("1 nano")).toEqual(Option.some(Duration.nanos(1n)))
+    expect(Duration.decodeUnknown("10 nanos")).toEqual(Option.some(Duration.nanos(10n)))
+    expect(Duration.decodeUnknown("1 micro")).toEqual(Option.some(Duration.micros(1n)))
+    expect(Duration.decodeUnknown("10 micros")).toEqual(Option.some(Duration.micros(10n)))
+    expect(Duration.decodeUnknown("1 milli")).toEqual(Option.some(Duration.millis(1)))
+    expect(Duration.decodeUnknown("10 millis")).toEqual(Option.some(Duration.millis(10)))
+    expect(Duration.decodeUnknown("1 second")).toEqual(Option.some(Duration.seconds(1)))
+    expect(Duration.decodeUnknown("10 seconds")).toEqual(Option.some(Duration.seconds(10)))
+    expect(Duration.decodeUnknown("1 minute")).toEqual(Option.some(Duration.minutes(1)))
+    expect(Duration.decodeUnknown("10 minutes")).toEqual(Option.some(Duration.minutes(10)))
+    expect(Duration.decodeUnknown("1 hour")).toEqual(Option.some(Duration.hours(1)))
+    expect(Duration.decodeUnknown("10 hours")).toEqual(Option.some(Duration.hours(10)))
+    expect(Duration.decodeUnknown("1 day")).toEqual(Option.some(Duration.days(1)))
+    expect(Duration.decodeUnknown("10 days")).toEqual(Option.some(Duration.days(10)))
+    expect(Duration.decodeUnknown("1 week")).toEqual(Option.some(Duration.weeks(1)))
+    expect(Duration.decodeUnknown("10 weeks")).toEqual(Option.some(Duration.weeks(10)))
+
+    expect(Duration.decodeUnknown("1.5 seconds")).toEqual(Option.some(Duration.seconds(1.5)))
+    expect(Duration.decodeUnknown("-1.5 seconds")).toEqual(Option.some(Duration.zero))
+
+    expect(Duration.decodeUnknown([500, 123456789])).toEqual(Option.some(Duration.nanos(500123456789n)))
+    expect(Duration.decodeUnknown([-500, 123456789])).toEqual(Option.some(Duration.zero))
+
+    expect(Duration.decodeUnknown("1.5 secs")).toEqual(Option.none())
+  })
+
   it("Order", () => {
     deepStrictEqual(Duration.Order(Duration.millis(1), Duration.millis(2)), -1)
     deepStrictEqual(Duration.Order(Duration.millis(2), Duration.millis(1)), 1)

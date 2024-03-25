@@ -1,6 +1,7 @@
 import * as Chunk from "../Chunk.js"
 import type * as Config from "../Config.js"
 import * as ConfigError from "../ConfigError.js"
+import * as Duration from "../Duration.js"
 import * as Either from "../Either.js"
 import type { LazyArg } from "../Function.js"
 import { constTrue, dual, pipe } from "../Function.js"
@@ -284,6 +285,15 @@ export const logLevel = (name?: string): Config.Config<LogLevel.LogLevel> => {
     return level === undefined
       ? Either.left(configError.InvalidData([], `Expected a log level but received ${value}`))
       : Either.right(level)
+  })
+  return name === undefined ? config : nested(config, name)
+}
+
+/** @internal */
+export const duration = (name?: string): Config.Config<Duration.Duration> => {
+  const config = mapOrFail(string(), (value) => {
+    const duration = Duration.decodeUnknown(value)
+    return Either.fromOption(duration, () => configError.InvalidData([], `Expected a duration but received ${value}`))
   })
   return name === undefined ? config : nested(config, name)
 }

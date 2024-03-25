@@ -131,6 +131,57 @@ export const decode = (input: DurationInput): Duration => {
   throw new Error("Invalid duration input")
 }
 
+/**
+ * @since 2.5.0
+ */
+export const decodeUnknown = (input: unknown): Option.Option<Duration> => {
+  if (isDuration(input)) {
+    return Option.some(input)
+  } else if (isNumber(input)) {
+    return Option.some(millis(input))
+  } else if (isBigInt(input)) {
+    return Option.some(nanos(input))
+  } else if (Array.isArray(input)) {
+    if (input.length === 2 && isNumber(input[0]) && isNumber(input[1])) {
+      return Option.some(nanos(BigInt(input[0]) * bigint1e9 + BigInt(input[1])))
+    }
+  } else if (typeof input === "string") {
+    DURATION_REGEX.lastIndex = 0 // Reset the lastIndex before each use
+    const match = DURATION_REGEX.exec(input)
+    if (match) {
+      const [_, valueStr, unit] = match
+      const value = Number(valueStr)
+      switch (unit) {
+        case "nano":
+        case "nanos":
+          return Option.some(nanos(BigInt(valueStr)))
+        case "micro":
+        case "micros":
+          return Option.some(micros(BigInt(valueStr)))
+        case "milli":
+        case "millis":
+          return Option.some(millis(value))
+        case "second":
+        case "seconds":
+          return Option.some(seconds(value))
+        case "minute":
+        case "minutes":
+          return Option.some(minutes(value))
+        case "hour":
+        case "hours":
+          return Option.some(hours(value))
+        case "day":
+        case "days":
+          return Option.some(days(value))
+        case "week":
+        case "weeks":
+          return Option.some(weeks(value))
+      }
+    }
+  }
+  return Option.none()
+}
+
 const zeroValue: DurationValue = { _tag: "Millis", millis: 0 }
 const infinityValue: DurationValue = { _tag: "Infinity" }
 
