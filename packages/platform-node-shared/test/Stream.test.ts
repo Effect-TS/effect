@@ -1,5 +1,5 @@
 import * as NodeStream from "@effect/platform-node-shared/NodeStream"
-import { Channel, Chunk, Stream } from "effect"
+import { Channel, Chunk, ReadonlyArray, Stream } from "effect"
 import * as Effect from "effect/Effect"
 import { Duplex, Readable, Transform } from "stream"
 import { assert, describe, it } from "vitest"
@@ -149,5 +149,20 @@ describe("Stream", () => {
         Stream.runCollect
       )
       assert.deepEqual(Chunk.toReadonlyArray(items), [text])
+    }).pipe(Effect.runPromise))
+
+  it("toReadable roundtrip", () =>
+    Effect.gen(function*(_) {
+      const stream = Stream.range(0, 10000).pipe(
+        Stream.map((n) => String(n))
+      )
+      const readable = yield* _(NodeStream.toReadable(stream))
+      const outStream = NodeStream.fromReadable<"error", Uint8Array>(() => readable, () => "error")
+      const items = yield* _(
+        outStream,
+        Stream.decodeText(),
+        Stream.runCollect
+      )
+      assert.strictEqual(Chunk.join(items, ""), ReadonlyArray.range(0, 10000).join(""))
     }).pipe(Effect.runPromise))
 })

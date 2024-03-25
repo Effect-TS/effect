@@ -63,7 +63,7 @@ export const schema: Schema.Schema<Headers, ReadonlyRecord.ReadonlyRecord<string
  * @category models
  */
 export type Input =
-  | ReadonlyRecord.ReadonlyRecord<string, string | ReadonlyArray<string>>
+  | ReadonlyRecord.ReadonlyRecord<string, string | ReadonlyArray<string> | undefined>
   | Iterable<readonly [string, string]>
 
 /**

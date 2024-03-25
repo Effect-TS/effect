@@ -4,6 +4,7 @@ import * as Error from "@effect/platform/Http/ClientError"
 import type * as ClientRequest from "@effect/platform/Http/ClientRequest"
 import * as ClientResponse from "@effect/platform/Http/ClientResponse"
 import * as Cookies from "@effect/platform/Http/Cookies"
+import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
 import * as UrlParams from "@effect/platform/Http/UrlParams"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -255,16 +256,12 @@ class ClientResponseImpl extends IncomingMessageImpl<Error.ResponseError> implem
     })
   }
 
-  toString(): string {
-    return `ClientResponse(${this.status})`
-  }
-
   toJSON(): unknown {
-    return {
-      _tag: "ClientResponse",
-      status: this.status,
-      headers: this.headers
-    }
+    return IncomingMessage.inspect(this, {
+      _id: "@effect/platform/Http/ClientResponse",
+      request: this.request.toJSON(),
+      status: this.status
+    })
   }
 }
 

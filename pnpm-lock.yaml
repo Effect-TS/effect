@@ -347,6 +347,9 @@ importers:
       mime:
         specifier: ^3.0.0
         version: 3.0.0
+      undici:
+        specifier: ^6.10.1
+        version: 6.10.1
       ws:
         specifier: ^8.16.0
         version: 8.16.0
@@ -7511,6 +7514,11 @@ packages:
   /undici-types@5.26.5:
     resolution: {integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==}
     dev: true
+
+  /undici@6.10.1:
+    resolution: {integrity: sha512-kSzmWrOx3XBKTgPm4Tal8Hyl3yf+hzlA00SAf4goxv8LZYafKmS6gJD/7Fe5HH/DMNiFTRXvkwhLo7mUn5fuQQ==}
+    engines: {node: '>=18.0'}
+    dev: false
 
   /unist-util-stringify-position@2.0.3:
     resolution: {integrity: sha512-3faScn5I+hy9VleOq/qNbAd6pAx7iH5jYBMS9I1HgQVijz/4mv5Bvw5iw1sC/90CODiKo81G/ps8AJrISn687g==}

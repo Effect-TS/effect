@@ -6,7 +6,8 @@
     { "path": "../platform" },
     { "path": "../platform-node-shared" },
     { "path": "../effect" },
-    { "path": "../schema" }
+    { "path": "../schema" },
+    { "path": "../vitest" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/test.tsbuildinfo",

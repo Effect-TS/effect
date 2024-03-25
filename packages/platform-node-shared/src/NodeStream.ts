@@ -90,6 +90,19 @@ export const pipeThroughSimple: {
  * @since 1.0.0
  * @category conversions
  */
+export const toReadable: <E, R>(stream: Stream<string | Uint8Array, E, R>) => Effect<Readable, never, R> =
+  internal.toReadable
+
+/**
+ * @since 1.0.0
+ * @category conversions
+ */
+export const toReadableNever: <E>(stream: Stream<string | Uint8Array, E, never>) => Readable = internal.toReadableNever
+
+/**
+ * @since 1.0.0
+ * @category conversions
+ */
 export const toString: <E>(
   readable: LazyArg<Readable | NodeJS.ReadableStream>,
   options: {
