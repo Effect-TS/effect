@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import type { Option } from "effect/Option"
+import type { LazyArg } from "effect/Function"
 import type { Doc } from "./Doc.js"
 import type { DocStream } from "./DocStream.js"
 import * as internal from "./internal/layout.js"
@@ -50,7 +50,7 @@ export declare namespace Layout {
       stream: DocStream<A>,
       indentation: number,
       currentColumn: number,
-      initialIndentY: Option<number>
+      comparator: LazyArg<DocStream<A>>
     ): boolean
   }
 }

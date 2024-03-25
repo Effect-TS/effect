@@ -1,4 +1,5 @@
 import * as Effect from "effect/Effect"
+import type { LazyArg } from "effect/Function"
 import { dual } from "effect/Function"
 import * as List from "effect/List"
 import * as Option from "effect/Option"
@@ -97,8 +98,8 @@ const wadlerLeijenSafe = <A>(
             case "Union": {
               const leftPipeline = InternalPipeline.cons(self.indent, self.document.left, self.pipeline)
               const rightPipeline = InternalPipeline.cons(self.indent, self.document.right, self.pipeline)
-              const left = yield* _(best(leftPipeline, nl, cc))
-              const right = yield* _(best(rightPipeline, nl, cc))
+              const left = best(leftPipeline, nl, cc)
+              const right = best(rightPipeline, nl, cc)
               return selectNicer(fits, nl, cc, left, right)
             }
             case "Column": {
@@ -133,27 +134,24 @@ const wadlerLeijenSafe = <A>(
   return best(self, nestingLevel, currentColumn)
 }
 
-const initialIndentation = <A>(self: DocStream.DocStream<A>): Option.Option<number> => {
-  if (self._tag === "LineStream") {
-    return Option.some(self.indentation)
-  }
-  let stream: DocStream.DocStream<A> = self
-  while (
-    stream._tag === "PushAnnotationStream" ||
-    stream._tag === "PopAnnotationStream"
-  ) {
-    stream = stream.stream
-  }
-  return Option.none()
-}
-
 const selectNicer = <A>(
   fits: Layout.Layout.FittingPredicate<A>,
   lineIndent: number,
   currentColumn: number,
-  x: DocStream.DocStream<A>,
-  y: DocStream.DocStream<A>
-): DocStream.DocStream<A> => fits(x, lineIndent, currentColumn, initialIndentation(y)) ? x : y
+  left: Effect.Effect<DocStream.DocStream<A>>,
+  right: Effect.Effect<DocStream.DocStream<A>>
+): DocStream.DocStream<A> => {
+  const leftStream = Effect.runSync(left)
+  let rightStream: DocStream.DocStream<A> | undefined = undefined
+  return fits(
+      leftStream,
+      lineIndent,
+      currentColumn,
+      () => rightStream ?? (rightStream = Effect.runSync(right), rightStream)
+    ) ?
+    leftStream :
+    rightStream ?? Effect.runSync(right)
+}
 
 // -----------------------------------------------------------------------------
 // compact
@@ -304,48 +302,39 @@ export const smart = dual<
   return unbounded(self)
 })
 
-const fitsSmart = (lineWidth: number, ribbonFraction: number) => {
+const fitsSmart = (pageWidth: number, ribbonFraction: number) => {
   return <A>(
     stream: DocStream.DocStream<A>,
-    lineIndent: number,
+    indentation: number,
     currentColumn: number,
-    initialIndentY: Option.Option<number>
+    comparator: LazyArg<DocStream.DocStream<A>>
   ): boolean => {
     const availableWidth = InternalPageWidth.remainingWidth(
-      lineWidth,
+      pageWidth,
       ribbonFraction,
-      lineIndent,
+      indentation,
       currentColumn
     )
-    let minNestingLevel: number
-    switch (initialIndentY._tag) {
-      // If `y` is `None`, then it is definitely not a hanging layout,
-      // so we will need to check `x` with the same minNestingLevel
-      // that any subsequent lines with the same indentation use
-      case "None": {
-        minNestingLevel = currentColumn
-        break
-      }
-      // If `y` is some, then `y` could be a (less wide) hanging layout,
-      // so we need to check `x` a bit more thoroughly to make sure we
-      // do not miss a potentially better fitting `y`
-      case "Some": {
-        minNestingLevel = Math.min(initialIndentY.value, currentColumn)
-        break
-      }
-    }
-    return fitsSmartLoop(stream, availableWidth, minNestingLevel, lineWidth)
+    return fitsSmartLoop(
+      stream,
+      comparator,
+      pageWidth,
+      currentColumn,
+      availableWidth
+    )
   }
 }
 
 const fitsSmartLoop = <A>(
   self: DocStream.DocStream<A>,
-  width: number,
-  minNestingLevel: number,
-  lineWidth: number
+  comparator: LazyArg<DocStream.DocStream<A>>,
+  pageWidth: number,
+  currentColumn: number,
+  availableWidth: number
 ): boolean => {
+  let minNestingLevel: number | undefined
   let stream = self
-  let w = width
+  let w = availableWidth
   while (w >= 0) {
     switch (stream._tag) {
       case "FailedStream": {
@@ -365,10 +354,20 @@ const fitsSmartLoop = <A>(
         break
       }
       case "LineStream": {
-        if (minNestingLevel >= stream.indentation) {
-          return true
+        if (!minNestingLevel) {
+          minNestingLevel = Option.match(getInitialIndentation(comparator()), {
+            // Definitely not a hanging layout. Return the same `minNestingLevel` that
+            // subsequent lines with the same indentation use
+            onNone: () => currentColumn,
+            // Could be a (less wide) hanging layout, so take the minimum of the indent
+            // and the current column
+            onSome: (value) => Math.min(value, currentColumn)
+          })
         }
-        w = lineWidth - stream.indentation
+        if (minNestingLevel < stream.indentation) {
+          return false
+        }
+        w = pageWidth - stream.indentation
         stream = stream.stream
         break
       }
@@ -383,6 +382,21 @@ const fitsSmartLoop = <A>(
     }
   }
   return false
+}
+
+const getInitialIndentation = <A>(self: DocStream.DocStream<A>): Option.Option<number> => {
+  let stream: DocStream.DocStream<A> = self
+  while (
+    stream._tag === "LineStream" ||
+    stream._tag === "PushAnnotationStream" ||
+    stream._tag === "PopAnnotationStream"
+  ) {
+    if (stream._tag === "LineStream") {
+      return Option.some(stream.indentation)
+    }
+    stream = stream.stream
+  }
+  return Option.none()
 }
 
 // -----------------------------------------------------------------------------
