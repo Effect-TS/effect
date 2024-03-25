@@ -556,12 +556,12 @@ export const multiplyAll = (collection: Iterable<bigint>): bigint => {
  * @param b - The `bigint` to be converted to a `number`.
  *
  * @example
- * import { fromBigInt } from "effect/Number"
+ * import { toNumber } from "effect/BigInt"
  * import { Option } from "effect"
  *
- * assert.deepStrictEqual(fromBigInt(BigInt(42)), Option.some(42))
- * assert.deepStrictEqual(fromBigInt(BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1)), Option.none())
- * assert.deepStrictEqual(fromBigInt(BigInt(Number.MIN_SAFE_INTEGER) - BigInt(1)), Option.none())
+ * assert.deepStrictEqual(toNumber(BigInt(42)), Option.some(42))
+ * assert.deepStrictEqual(toNumber(BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1)), Option.none())
+ * assert.deepStrictEqual(toNumber(BigInt(Number.MIN_SAFE_INTEGER) - BigInt(1)), Option.none())
  *
  * @category conversions
  * @since 2.0.0
