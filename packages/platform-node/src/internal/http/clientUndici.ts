@@ -70,7 +70,10 @@ export const make = (dispatcher: Undici.Dispatcher): Client.Client.Default =>
               headers: request.headers,
               origin: url.origin,
               path: url.pathname + url.search,
-              body
+              body,
+              // leave timeouts to Effect.timeout etc
+              headersTimeout: 60 * 60 * 1000,
+              bodyTimeout: 0
             }),
           catch: (error) =>
             new Error.RequestError({
