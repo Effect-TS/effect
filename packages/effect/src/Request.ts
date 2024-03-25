@@ -11,6 +11,7 @@ import type { FiberId } from "./FiberId.js"
 import * as _RequestBlock from "./internal/blockedRequests.js"
 import * as cache from "./internal/cache.js"
 import * as core from "./internal/core.js"
+import * as fiberRuntime from "./internal/fiberRuntime.js"
 import * as internal from "./internal/request.js"
 import type * as Option from "./Option.js"
 import type * as Types from "./Types.js"
@@ -174,6 +175,17 @@ export const complete: {
   <A extends Request<any, any>>(result: Request.Result<A>): (self: A) => Effect.Effect<void>
   <A extends Request<any, any>>(self: A, result: Request.Result<A>): Effect.Effect<void>
 } = internal.complete
+
+/**
+ * Interrupts the child effect when requests are no longer needed
+ *
+ * @since 2.0.0
+ * @category request completion
+ */
+export const interruptWhenPossible: {
+  (all: Iterable<Request<any, any>>): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<void, E, R>
+  <A, E, R>(self: Effect.Effect<A, E, R>, all: Iterable<Request<any, any>>): Effect.Effect<void, E, R>
+} = fiberRuntime.interruptWhenPossible
 
 /**
  * Complete a `Request` with the specified effectful computation, failing the

@@ -71,40 +71,42 @@ export const fromRequest = <
                       )
                     }
                     orNew.left.listeners.increment()
-                    return core.blocked(
-                      BlockedRequests.empty,
-                      core.uninterruptibleMask((restore) =>
-                        core.flatMap(
-                          core.exit(restore(core.deferredAwait(orNew.left.handle))),
-                          () => {
-                            orNew.left.listeners.decrement()
-                            return core.deferredAwait(orNew.left.handle)
-                          }
-                        )
+                    return core.uninterruptibleMask((restore) =>
+                      core.flatMap(
+                        core.exit(core.blocked(
+                          BlockedRequests.empty,
+                          restore(core.deferredAwait(orNew.left.handle))
+                        )),
+                        (exit) => {
+                          orNew.left.listeners.decrement()
+                          return exit
+                        }
                       )
                     )
                   }
                   case "Right": {
                     orNew.right.listeners.increment()
-                    return core.blocked(
-                      BlockedRequests.single(
-                        ds as RequestResolver.RequestResolver<A>,
-                        BlockedRequests.makeEntry({
-                          request: proxy,
-                          result: orNew.right.handle,
-                          listeners: orNew.right.listeners,
-                          ownerId: id,
-                          state: { completed: false }
-                        })
-                      ),
-                      core.uninterruptibleMask((restore) =>
-                        core.flatMap(
-                          core.exit(restore(core.deferredAwait(orNew.right.handle))),
-                          () => {
-                            orNew.right.listeners.decrement()
-                            return core.deferredAwait(orNew.right.handle)
-                          }
-                        )
+                    return core.uninterruptibleMask((restore) =>
+                      core.flatMap(
+                        core.exit(
+                          core.blocked(
+                            BlockedRequests.single(
+                              ds as RequestResolver.RequestResolver<A>,
+                              BlockedRequests.makeEntry({
+                                request: proxy,
+                                result: orNew.right.handle,
+                                listeners: orNew.right.listeners,
+                                ownerId: id,
+                                state: { completed: false }
+                              })
+                            ),
+                            restore(core.deferredAwait(orNew.right.handle))
+                          )
+                        ),
+                        () => {
+                          orNew.right.listeners.decrement()
+                          return core.deferredAwait(orNew.right.handle)
+                        }
                       )
                     )
                   }
@@ -117,22 +119,22 @@ export const fromRequest = <
           return core.flatMap(
             core.deferredMake<Request.Request.Success<A>, Request.Request.Error<A>>(),
             (ref) =>
-              core.blocked(
-                BlockedRequests.single(
-                  ds as RequestResolver.RequestResolver<A>,
-                  BlockedRequests.makeEntry({
-                    request: proxy,
-                    result: ref,
-                    listeners,
-                    ownerId: id,
-                    state: { completed: false }
-                  })
+              ensuring(
+                core.blocked(
+                  BlockedRequests.single(
+                    ds as RequestResolver.RequestResolver<A>,
+                    BlockedRequests.makeEntry({
+                      request: proxy,
+                      result: ref,
+                      listeners,
+                      ownerId: id,
+                      state: { completed: false }
+                    })
+                  ),
+                  core.deferredAwait(ref)
                 ),
-                ensuring(
-                  core.deferredAwait(ref),
-                  core.sync(() =>
-                    listeners.decrement()
-                  )
+                core.sync(() =>
+                  listeners.decrement()
                 )
               )
           )
