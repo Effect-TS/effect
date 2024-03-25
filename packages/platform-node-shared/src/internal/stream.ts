@@ -1,6 +1,6 @@
 import { type PlatformError, SystemError } from "@effect/platform/Error"
 import type { SizeInput } from "@effect/platform/FileSystem"
-import type * as Cause from "effect/Cause"
+import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
@@ -9,9 +9,12 @@ import * as Exit from "effect/Exit"
 import type { LazyArg } from "effect/Function"
 import { dual } from "effect/Function"
 import * as Queue from "effect/Queue"
+import * as Runtime from "effect/Runtime"
+import * as Scope from "effect/Scope"
 import type * as AsyncInput from "effect/SingleProducerAsyncInput"
 import * as Stream from "effect/Stream"
-import type { Duplex, Readable, Writable } from "node:stream"
+import type { Duplex, Writable } from "node:stream"
+import { Readable } from "node:stream"
 import type { FromReadableOptions, FromWritableOptions } from "../NodeStream.js"
 
 /** @internal */
@@ -323,3 +326,72 @@ const readChunkChannel = <A>(
     }
     return Channel.write(Chunk.unsafeFromArray(arr))
   })
+
+class StreamAdapter<E, R> extends Readable {
+  private readonly scope: Scope.CloseableScope
+  private readonly pull: (
+    cb: (err: Error | null, data: ReadonlyArray<Uint8Array | string> | null) => void
+  ) => void
+
+  constructor(
+    private readonly runtime: Runtime.Runtime<R>,
+    private readonly stream: Stream.Stream<Uint8Array | string, E, R>
+  ) {
+    super({})
+    this.scope = Effect.runSync(Scope.make())
+    const pull = Stream.toPull(this.stream).pipe(
+      Scope.extend(this.scope),
+      Runtime.runSync(this.runtime),
+      Effect.map(Chunk.toReadonlyArray),
+      Effect.catchAll((error) => error._tag === "None" ? Effect.succeed(null) : Effect.fail(error.value))
+    )
+    const runFork = Runtime.runFork(this.runtime)
+    this.pull = function(done) {
+      runFork(pull).addObserver((exit) => {
+        done(
+          exit._tag === "Failure" ? new Error("failure in StreamAdapter", { cause: Cause.squash(exit.cause) }) : null,
+          exit._tag === "Success" ? exit.value : null
+        )
+      })
+    }
+  }
+
+  _read(_size: number): void {
+    this.pull((error, data) => {
+      if (error !== null) {
+        this._destroy(error, () => {})
+      } else if (data === null) {
+        this.push(null)
+      } else {
+        for (let i = 0; i < data.length; i++) {
+          const chunk = data[i]
+          if (typeof chunk === "string") {
+            this.push(chunk, "utf8")
+          } else {
+            this.push(chunk)
+          }
+        }
+      }
+    })
+  }
+
+  _destroy(_error: Error | null, callback: (error?: Error | null | undefined) => void): void {
+    Runtime.runFork(this.runtime)(Scope.close(this.scope, Exit.unit)).addObserver((exit) => {
+      callback(exit._tag === "Failure" ? Cause.squash(exit.cause) as any : null)
+    })
+  }
+}
+
+/** @internal */
+export const toReadable = <E, R>(
+  stream: Stream.Stream<Uint8Array | string, E, R>
+): Effect.Effect<Readable, never, R> =>
+  Effect.map(
+    Effect.runtime<R>(),
+    (runtime) => new StreamAdapter(runtime, stream)
+  )
+
+/** @internal */
+export const toReadableNever = <E>(
+  stream: Stream.Stream<Uint8Array | string, E>
+): Readable => new StreamAdapter(Runtime.defaultRuntime, stream)
