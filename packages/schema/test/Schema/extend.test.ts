@@ -1,3 +1,4 @@
+import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
@@ -115,7 +116,7 @@ describe("Schema > extend", () => {
       expect(is({ a: "b" })).toBe(false)
     })
 
-    it(`union extend on nested union`, () => {
+    it(`nested union extends struct`, () => {
       const schema = S.union(
         S.union(
           S.struct({ a: S.literal("a") }),
@@ -125,6 +126,11 @@ describe("Schema > extend", () => {
       ).pipe(
         S.extend(S.struct({ c: S.boolean }))
       )
+      expect(AST.isUnion(schema.ast)).toBe(true)
+      const ast = schema.ast as AST.Union
+      expect(ast.types.length).toBe(3)
+      expect(ast.types.every(AST.isTypeLiteral)).toBe(true)
+
       const is = S.is(schema)
 
       expect(is({ a: "a", c: false })).toBe(true)
