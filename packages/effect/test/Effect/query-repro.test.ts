@@ -7,6 +7,7 @@ import {
   Exit,
   FiberId,
   Layer,
+  ManagedRuntime,
   Option,
   RateLimiter,
   ReadonlyArray,
@@ -15,6 +16,7 @@ import {
   Schedule
 } from "effect"
 import { inspect } from "util"
+import { it } from "vitest"
 
 const logRequest = (name: string) => <A, E, R>(eff: Effect.Effect<A, E, R>) =>
   Effect
@@ -163,3 +165,34 @@ export const getItems = Effect
       batching: true
     }
   )
+
+const rt = ManagedRuntime.make(Svc.Live)
+
+it(
+  "help",
+  () =>
+    rt.runPromise(
+      Effect
+        .gen(function*($) {
+          let abort = new AbortController()
+
+          rt.runPromise(getItems, { signal: abort.signal }).catch(console.error)
+
+          yield* $(Effect.sleep("1 seconds"))
+          abort.abort()
+
+          abort = new AbortController()
+          rt.runPromise(getItems, { signal: abort.signal }).catch(console.error)
+
+          yield* $(Effect.sleep("2 seconds"))
+          abort.abort()
+
+          yield* $(Effect.sleep("30 seconds"))
+
+          yield* $(
+            Effect.promise(() => rt.runPromise(getItems, { signal: abort.signal }))
+          )
+        })
+    ),
+  { timeout: 60_000 }
+)
