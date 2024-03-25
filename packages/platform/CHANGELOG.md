@@ -1,5 +1,15 @@
 # @effect/platform
 
+## 0.48.18
+
+### Patch Changes
+
+- [#2410](https://github.com/Effect-TS/effect/pull/2410) [`26435ec`](https://github.com/Effect-TS/effect/commit/26435ecfa06569dc18d1801ccf38213a43b7c334) Thanks [@tim-smart](https://github.com/tim-smart)! - add undici http client to @effect/platform-node
+
+- Updated dependencies [[`a76e5e1`](https://github.com/Effect-TS/effect/commit/a76e5e131a35c88a72771fb745df08f60fbc0e18), [`6180c0c`](https://github.com/Effect-TS/effect/commit/6180c0cc51dee785cfce72220a52c9fc3b9bf9aa)]:
+  - @effect/schema@0.64.14
+  - effect@2.4.14
+
 ## 0.48.17
 
 ### Patch Changes

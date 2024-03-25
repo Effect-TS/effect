@@ -1,5 +1,12 @@
 # @effect/typeclass
 
+## 0.23.14
+
+### Patch Changes
+
+- Updated dependencies [[`6180c0c`](https://github.com/Effect-TS/effect/commit/6180c0cc51dee785cfce72220a52c9fc3b9bf9aa)]:
+  - effect@2.4.14
+
 ## 0.23.13
 
 ### Patch Changes

@@ -1,5 +1,14 @@
 # @effect/schema
 
+## 0.64.14
+
+### Patch Changes
+
+- [#2398](https://github.com/Effect-TS/effect/pull/2398) [`a76e5e1`](https://github.com/Effect-TS/effect/commit/a76e5e131a35c88a72771fb745df08f60fbc0e18) Thanks [@gcanti](https://github.com/gcanti)! - extend: un-nest sub-unions
+
+- Updated dependencies [[`6180c0c`](https://github.com/Effect-TS/effect/commit/6180c0cc51dee785cfce72220a52c9fc3b9bf9aa)]:
+  - effect@2.4.14
+
 ## 0.64.13
 
 ### Patch Changes
