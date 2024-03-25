@@ -2147,7 +2147,17 @@ export const forEachConcurrentDiscard = <A, X, E, R>(
             restore(internalFiber.join(processingFiber)),
             () => {
               onInterruptSignal()
-              return internalFiber._await(processingFiber)
+              const all = [processingFiber] as Array<FiberRuntime<any, any>>
+              residual.map((blocked) => {
+                const fiber = runFiber(blocked)
+                parent._scheduler.scheduleTask(() => {
+                  fiber.unsafeInterruptAsFork(parent.id())
+                }, 0)
+                return fiber
+              }).forEach((additional) => {
+                all.push(additional as unknown as FiberRuntime<any, any>)
+              })
+              return core.exit(fiberJoinAll(all))
             }
           )),
           () => core.forEachSequential(joinOrder, (f) => f.inheritAll)
