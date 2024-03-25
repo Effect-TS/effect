@@ -8,7 +8,6 @@ import type * as Request from "../Request.js"
 import type * as RequestResolver from "../RequestResolver.js"
 import * as BlockedRequests from "./blockedRequests.js"
 import { unsafeMakeWith } from "./cache.js"
-import { isInterruptedOnly } from "./cause.js"
 import * as core from "./core.js"
 import { ensuring } from "./fiberRuntime.js"
 import { Listeners } from "./request.js"
@@ -75,19 +74,13 @@ export const fromRequest = <
                     return core.blocked(
                       BlockedRequests.empty,
                       core.uninterruptibleMask((restore) =>
-                        core.flatMap(core.exit(restore(core.deferredAwait(orNew.left.handle))), (exit) => {
-                          if (exit._tag === "Failure" && isInterruptedOnly(exit.cause)) {
+                        core.flatMap(
+                          core.exit(restore(core.deferredAwait(orNew.left.handle))),
+                          () => {
                             orNew.left.listeners.decrement()
-                            return core.flatMap(
-                              cache.invalidateWhen(proxy, (entry) => entry.handle === orNew.left.handle),
-                              () => cached
-                            )
+                            return core.deferredAwait(orNew.left.handle)
                           }
-                          return ensuring(
-                            exit,
-                            core.sync(() => orNew.left.listeners.decrement())
-                          )
-                        })
+                        )
                       )
                     )
                   }
