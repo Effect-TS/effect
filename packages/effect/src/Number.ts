@@ -400,7 +400,7 @@ export const sumAll = (collection: Iterable<number>): number => {
  * @param collection - The collection of `number`s to multiply.
  *
  * @example
- * import { multiplyAll } from 'effect/Number'
+ * import { multiplyAll } from "effect/Number"
  *
  * assert.deepStrictEqual(multiplyAll([2, 3, 4]), 24)
  *

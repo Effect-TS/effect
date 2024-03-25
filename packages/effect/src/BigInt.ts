@@ -547,14 +547,89 @@ export const multiplyAll = (collection: Iterable<bigint>): bigint => {
 }
 
 /**
- * Convers a bigint into a number
+ * Takes a `bigint` and returns an `Option` of `number`.
  *
- * @since 2.0.0
+ * If the `bigint` is outside the safe integer range for JavaScript (`Number.MAX_SAFE_INTEGER`
+ * and `Number.MIN_SAFE_INTEGER`), it returns `Option.none()`. Otherwise, it converts the `bigint`
+ * to a number and returns `Option.some(number)`.
+ *
+ * @param b - The `bigint` to be converted to a `number`.
+ *
+ * @example
+ * import { toNumber } from "effect/BigInt"
+ * import { Option } from "effect"
+ *
+ * assert.deepStrictEqual(toNumber(BigInt(42)), Option.some(42))
+ * assert.deepStrictEqual(toNumber(BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1)), Option.none())
+ * assert.deepStrictEqual(toNumber(BigInt(Number.MIN_SAFE_INTEGER) - BigInt(1)), Option.none())
+ *
  * @category conversions
+ * @since 2.0.0
  */
 export const toNumber = (b: bigint): Option.Option<number> => {
   if (b > BigInt(Number.MAX_SAFE_INTEGER) || b < BigInt(Number.MIN_SAFE_INTEGER)) {
     return Option.none()
   }
   return Option.some(Number(b))
+}
+
+/**
+ * Takes a string and returns an `Option` of `bigint`.
+ *
+ * If the string is empty or contains characters that cannot be converted into a `bigint`,
+ * it returns `Option.none()`, otherwise, it returns `Option.some(bigint)`.
+ *
+ * @param s - The string to be converted to a `bigint`.
+ *
+ * @example
+ * import { fromString } from "effect/BigInt"
+ * import { Option } from "effect"
+ *
+ * assert.deepStrictEqual(fromString("42"), Option.some(BigInt(42)))
+ * assert.deepStrictEqual(fromString(" "), Option.none())
+ * assert.deepStrictEqual(fromString("a"), Option.none())
+ *
+ * @category conversions
+ * @since 2.4.12
+ */
+export const fromString = (s: string): Option.Option<bigint> => {
+  try {
+    return s.trim() === ""
+      ? Option.none()
+      : Option.some(BigInt(s))
+  } catch (_) {
+    return Option.none()
+  }
+}
+
+/**
+ * Takes a number and returns an `Option` of `bigint`.
+ *
+ * If the number is outside the safe integer range for JavaScript (`Number.MAX_SAFE_INTEGER`
+ * and `Number.MIN_SAFE_INTEGER`), it returns `Option.none()`. Otherwise, it attempts to
+ * convert the number to a `bigint` and returns `Option.some(bigint)`.
+ *
+ * @param n - The number to be converted to a `bigint`.
+ *
+ * @example
+ * import { fromNumber } from "effect/BigInt"
+ * import { Option } from "effect"
+ *
+ * assert.deepStrictEqual(fromNumber(42), Option.some(BigInt(42)))
+ * assert.deepStrictEqual(fromNumber(Number.MAX_SAFE_INTEGER + 1), Option.none())
+ * assert.deepStrictEqual(fromNumber(Number.MIN_SAFE_INTEGER - 1), Option.none())
+ *
+ * @category conversions
+ * @since 2.4.12
+ */
+export const fromNumber = (n: number): Option.Option<bigint> => {
+  if (n > Number.MAX_SAFE_INTEGER || n < Number.MIN_SAFE_INTEGER) {
+    return Option.none()
+  }
+
+  try {
+    return Option.some(BigInt(n))
+  } catch (_) {
+    return Option.none()
+  }
 }
