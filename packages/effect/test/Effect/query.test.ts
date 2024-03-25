@@ -247,6 +247,9 @@ describe("Effect", () => {
           if (exit._tag === "Failure") {
             expect(Cause.isInterruptedOnly(exit.cause)).toEqual(true)
           }
+          const cache = yield* $(FiberRef.get(FiberRef.currentRequestCache))
+          const values = yield* $(cache.values)
+          expect(values[0].handle.state.current._tag).toEqual("Done")
           expect(yield* $(Counter)).toEqual({ count: 0 })
           expect(yield* $(FiberRef.get(interrupts))).toEqual({ interrupts: 1 })
         })
