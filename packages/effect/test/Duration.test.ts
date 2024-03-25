@@ -141,6 +141,17 @@ describe("Duration", () => {
     expect(Duration.sum("30 seconds", "30 seconds")).toEqual(Duration.minutes(1))
   })
 
+  it("subtract", () => {
+    expect(Duration.subtract(Duration.seconds(30), Duration.seconds(10))).toEqual(Duration.seconds(20))
+    expect(Duration.subtract(Duration.seconds(30), Duration.seconds(30))).toEqual(Duration.zero)
+    expect(Duration.subtract(Duration.nanos(30n), Duration.nanos(10n))).toEqual(Duration.nanos(20n))
+    expect(Duration.subtract(Duration.nanos(30n), Duration.nanos(30n))).toEqual(Duration.zero)
+    expect(Duration.subtract(Duration.seconds(Infinity), Duration.seconds(30))).toEqual(Duration.seconds(Infinity))
+    expect(Duration.subtract(Duration.seconds(30), Duration.seconds(Infinity))).toEqual(Duration.zero)
+
+    expect(Duration.subtract("30 seconds", "10 seconds")).toEqual(Duration.seconds(20))
+  })
+
   it("greaterThan", () => {
     assert.isTrue(pipe(Duration.seconds(30), Duration.greaterThan(Duration.seconds(20))))
     assert.isFalse(pipe(Duration.seconds(30), Duration.greaterThan(Duration.seconds(30))))

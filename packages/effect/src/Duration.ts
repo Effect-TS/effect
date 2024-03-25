@@ -15,7 +15,11 @@ import { hasProperty, isBigInt, isNumber } from "./Predicate.js"
 
 const TypeId: unique symbol = Symbol.for("effect/Duration")
 
+const bigint0 = BigInt(0)
+const bigint24 = BigInt(24)
+const bigint60 = BigInt(60)
 const bigint1e3 = BigInt(1_000)
+const bigint1e6 = BigInt(1_000_000)
 const bigint1e9 = BigInt(1_000_000_000)
 
 /**
@@ -162,7 +166,7 @@ const DurationProto: Omit<Duration, "value"> = {
 const make = (input: number | bigint): Duration => {
   const duration = Object.create(DurationProto)
   if (isNumber(input)) {
-    if (isNaN(input) || input < 0) {
+    if (isNaN(input) || input <= 0) {
       duration.value = zeroValue
     } else if (!Number.isFinite(input)) {
       duration.value = infinityValue
@@ -171,7 +175,7 @@ const make = (input: number | bigint): Duration => {
     } else {
       duration.value = { _tag: "Millis", millis: input }
     }
-  } else if (input < BigInt(0)) {
+  } else if (input <= bigint0) {
     duration.value = zeroValue
   } else {
     duration.value = { _tag: "Nanos", nanos: input }
@@ -526,6 +530,22 @@ export const times: {
  * @since 2.0.0
  * @category math
  */
+export const subtract: {
+  (that: DurationInput): (self: DurationInput) => Duration
+  (self: DurationInput, that: DurationInput): Duration
+} = dual(
+  2,
+  (self: DurationInput, that: DurationInput): Duration =>
+    matchWith(self, that, {
+      onMillis: (self, that) => make(self - that),
+      onNanos: (self, that) => make(self - that)
+    })
+)
+
+/**
+ * @since 2.0.0
+ * @category math
+ */
 export const sum: {
   (that: DurationInput): (self: DurationInput) => Duration
   (self: DurationInput, that: DurationInput): Duration
@@ -631,32 +651,32 @@ export const format = (self: DurationInput): string => {
 
   const nanos = unsafeToNanos(duration)
 
-  if (nanos % 1000000n) {
-    parts.push(`${nanos % 1000000n}ns`)
+  if (nanos % bigint1e6) {
+    parts.push(`${nanos % bigint1e6}ns`)
   }
 
-  const ms = nanos / 1000000n
-  if (ms % 1000n !== 0n) {
-    parts.push(`${ms % 1000n}ms`)
+  const ms = nanos / bigint1e6
+  if (ms % bigint1e3 !== bigint0) {
+    parts.push(`${ms % bigint1e3}ms`)
   }
 
-  const sec = ms / 1000n
-  if (sec % 60n !== 0n) {
-    parts.push(`${sec % 60n}s`)
+  const sec = ms / bigint1e3
+  if (sec % bigint60 !== bigint0) {
+    parts.push(`${sec % bigint60}s`)
   }
 
-  const min = sec / 60n
-  if (min % 60n !== 0n) {
-    parts.push(`${min % 60n}m`)
+  const min = sec / bigint60
+  if (min % bigint60 !== bigint0) {
+    parts.push(`${min % bigint60}m`)
   }
 
-  const hr = min / 60n
-  if (hr % 24n !== 0n) {
-    parts.push(`${hr % 24n}h`)
+  const hr = min / bigint60
+  if (hr % bigint24 !== bigint0) {
+    parts.push(`${hr % bigint24}h`)
   }
 
-  const days = hr / 24n
-  if (days !== 0n) {
+  const days = hr / bigint24
+  if (days !== bigint0) {
     parts.push(`${days}d`)
   }
 
