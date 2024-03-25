@@ -604,20 +604,19 @@ describe("HttpServer", () => {
       const client = yield* _(makeClient)
       const res = yield* _(HttpC.request.get("/home"), client, Effect.scoped)
       assert.deepStrictEqual(
-        res.cookies.cookies[0].toJSON(),
-        Http.cookies.unsafeMakeCookie("test", "value").toJSON()
-      )
-      assert.deepStrictEqual(
-        res.cookies.cookies[1].toJSON(),
-        Http.cookies.unsafeMakeCookie("test2", "value2", {
-          httpOnly: true,
-          secure: true,
-          sameSite: "lax",
-          partitioned: true,
-          path: "/",
-          domain: "example.com",
-          expires: new Date(2022, 1, 1, 0, 0, 0, 0),
-          maxAge: Duration.minutes(5)
+        res.cookies.toJSON(),
+        Http.cookies.fromReadonlyRecord({
+          test: Http.cookies.unsafeMakeCookie("test", "value"),
+          test2: Http.cookies.unsafeMakeCookie("test2", "value2", {
+            httpOnly: true,
+            secure: true,
+            sameSite: "lax",
+            partitioned: true,
+            path: "/",
+            domain: "example.com",
+            expires: new Date(2022, 1, 1, 0, 0, 0, 0),
+            maxAge: Duration.minutes(5)
+          })
         }).toJSON()
       )
     }).pipe(Effect.scoped, runPromise))

@@ -8,7 +8,7 @@ import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
-import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as ReadonlyRecord from "effect/ReadonlyRecord"
 import type * as Types from "effect/Types"
 import { TypeIdError } from "../Error.js"
 
@@ -36,7 +36,7 @@ export const isCookies = (u: unknown): u is Cookies => Predicate.hasProperty(u, 
  */
 export interface Cookies extends Pipeable, Inspectable.Inspectable {
   readonly [TypeId]: TypeId
-  readonly cookies: ReadonlyArray<Cookie>
+  readonly cookies: ReadonlyRecord.ReadonlyRecord<string, Cookie>
 }
 
 /**
@@ -103,7 +103,7 @@ const Proto: Omit<Cookies, "cookies"> = {
   toJSON(this: Cookies) {
     return {
       _id: "@effect/platform/Http/Cookies",
-      cookies: this.cookies.map((cookie) => cookie.toJSON())
+      cookies: ReadonlyRecord.map(this.cookies, (cookie) => cookie.toJSON())
     }
   },
   pipe() {
@@ -117,10 +117,24 @@ const Proto: Omit<Cookies, "cookies"> = {
  * @since 1.0.0
  * @category constructors
  */
-export const fromIterable = (cookies: Iterable<Cookie>): Cookies => {
+export const fromReadonlyRecord = (cookies: ReadonlyRecord.ReadonlyRecord<string, Cookie>): Cookies => {
   const self = Object.create(Proto)
-  self.cookies = ReadonlyArray.fromIterable(cookies)
+  self.cookies = cookies
   return self
+}
+
+/**
+ * Create a Cookies object from an Iterable
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const fromIterable = (cookies: Iterable<Cookie>): Cookies => {
+  const record: Record<string, Cookie> = {}
+  for (const cookie of cookies) {
+    record[cookie.name] = cookie
+  }
+  return fromReadonlyRecord(record)
 }
 
 /**
@@ -285,7 +299,7 @@ export const empty: Cookies = fromIterable([])
  * @since 1.0.0
  * @category refinements
  */
-export const isEmpty = (self: Cookies): boolean => self.cookies.length === 0
+export const isEmpty = (self: Cookies): boolean => ReadonlyRecord.isEmptyRecord(self.cookies)
 
 // eslint-disable-next-line no-control-regex
 const fieldContentRegExp = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/
@@ -362,7 +376,7 @@ export const unsafeMakeCookie = (
  * @since 1.0.0
  * @category combinators
  */
-export const append: {
+export const setCookie: {
   (cookie: Cookie): (self: Cookies) => Cookies
   (
     self: Cookies,
@@ -370,7 +384,12 @@ export const append: {
   ): Cookies
 } = dual(
   2,
-  (self: Cookies, cookie: Cookie) => fromIterable([...self.cookies, cookie])
+  (self: Cookies, cookie: Cookie) =>
+    fromReadonlyRecord(ReadonlyRecord.set(
+      self.cookies,
+      cookie.name,
+      cookie
+    ))
 )
 
 /**
@@ -379,16 +398,19 @@ export const append: {
  * @since 1.0.0
  * @category combinators
  */
-export const appendAll: {
+export const setAllCookie: {
   (cookies: Iterable<Cookie>): (self: Cookies) => Cookies
   (
     self: Cookies,
     cookies: Iterable<Cookie>
   ): Cookies
-} = dual(2, (self: Cookies, cookies: Iterable<Cookie>) =>
-  fromIterable(
-    ReadonlyArray.appendAll(self.cookies, cookies)
-  ))
+} = dual(2, (self: Cookies, cookies: Iterable<Cookie>) => {
+  const record = { ...self.cookies }
+  for (const cookie of cookies) {
+    record[cookie.name] = cookie
+  }
+  return fromReadonlyRecord(record)
+})
 
 /**
  * Combine two Cookies objects, removing duplicates from the first
@@ -402,12 +424,11 @@ export const merge: {
     self: Cookies,
     that: Cookies
   ): Cookies
-} = dual(2, (self: Cookies, that: Cookies) => {
-  const cookies = self.cookies.filter((c) => !that.cookies.some((c2) => c2.name === c.name))
-  // eslint-disable-next-line no-restricted-syntax
-  cookies.push(...that.cookies)
-  return fromIterable(cookies)
-})
+} = dual(2, (self: Cookies, that: Cookies) =>
+  fromReadonlyRecord({
+    ...self.cookies,
+    ...that.cookies
+  }))
 
 /**
  * Remove a cookie by name
@@ -421,10 +442,7 @@ export const remove: {
     self: Cookies,
     name: string
   ): Cookies
-} = dual(2, (self: Cookies, cookie: Cookie) =>
-  fromIterable(
-    self.cookies.filter((c) => c.name !== cookie.name)
-  ))
+} = dual(2, (self: Cookies, name: string) => fromReadonlyRecord(ReadonlyRecord.remove(self.cookies, name)))
 
 /**
  * Add a cookie to a Cookies object
@@ -432,7 +450,7 @@ export const remove: {
  * @since 1.0.0
  * @category combinators
  */
-export const add: {
+export const set: {
   (
     name: string,
     value: string,
@@ -449,7 +467,7 @@ export const add: {
   (self: Cookies, name: string, value: string, options?: Cookie["options"]) =>
     Either.map(
       makeCookie(name, value, options),
-      (cookie) => fromIterable([...self.cookies, cookie])
+      (cookie) => fromReadonlyRecord(ReadonlyRecord.set(self.cookies, name, cookie))
     )
 )
 
@@ -459,7 +477,7 @@ export const add: {
  * @since 1.0.0
  * @category combinators
  */
-export const unsafeAdd: {
+export const unsafeSet: {
   (
     name: string,
     value: string,
@@ -474,7 +492,11 @@ export const unsafeAdd: {
 } = dual(
   (args) => isCookies(args[0]),
   (self: Cookies, name: string, value: string, options?: Cookie["options"]) =>
-    append(self, unsafeMakeCookie(name, value, options))
+    fromReadonlyRecord(ReadonlyRecord.set(
+      self.cookies,
+      name,
+      unsafeMakeCookie(name, value, options)
+    ))
 )
 
 /**
@@ -483,7 +505,7 @@ export const unsafeAdd: {
  * @since 1.0.0
  * @category combinators
  */
-export const addAll: {
+export const setAll: {
   (
     cookies: Iterable<readonly [name: string, value: string, options?: Cookie["options"]]>
   ): (self: Cookies) => Either.Either<Cookies, CookiesError>
@@ -497,15 +519,15 @@ export const addAll: {
     self: Cookies,
     cookies: Iterable<readonly [name: string, value: string, options?: Cookie["options"]]>
   ): Either.Either<Cookies, CookiesError> => {
-    const toAdd: Array<Cookie> = []
+    const record: Record<string, Cookie> = { ...self.cookies }
     for (const [name, value, options] of cookies) {
       const either = makeCookie(name, value, options)
       if (Either.isLeft(either)) {
         return either as Either.Left<CookiesError, never>
       }
-      toAdd.push(either.right)
+      record[name] = either.right
     }
-    return Either.right(appendAll(self, toAdd))
+    return Either.right(fromReadonlyRecord(record))
   }
 )
 
@@ -515,7 +537,7 @@ export const addAll: {
  * @since 1.0.0
  * @category combinators
  */
-export const unsafeAddAll: {
+export const unsafeSetAll: {
   (
     cookies: Iterable<readonly [name: string, value: string, options?: Cookie["options"]]>
   ): (self: Cookies) => Cookies
@@ -528,7 +550,7 @@ export const unsafeAddAll: {
   (
     self: Cookies,
     cookies: Iterable<readonly [name: string, value: string, options?: Cookie["options"]]>
-  ): Cookies => Either.getOrThrow(addAll(self, cookies))
+  ): Cookies => Either.getOrThrow(setAll(self, cookies))
 )
 
 /**
@@ -616,7 +638,7 @@ export function serializeCookie(self: Cookie): string {
  * @category encoding
  */
 export const toCookieHeader = (self: Cookies): string =>
-  self.cookies.map((cookie) => `${cookie.name}=${cookie.valueEncoded}`).join("; ")
+  Object.values(self.cookies).map((cookie) => `${cookie.name}=${cookie.valueEncoded}`).join("; ")
 
 /**
  * To record
@@ -626,8 +648,9 @@ export const toCookieHeader = (self: Cookies): string =>
  */
 export const toRecord = (self: Cookies): Record<string, string> => {
   const record: Record<string, string> = {}
-  for (let index = 0; index < self.cookies.length; index++) {
-    const cookie = self.cookies[index]
+  const cookies = Object.values(self.cookies)
+  for (let index = 0; index < cookies.length; index++) {
+    const cookie = cookies[index]
     record[cookie.name] = cookie.value
   }
   return record
@@ -639,7 +662,7 @@ export const toRecord = (self: Cookies): Record<string, string> => {
  * @since 1.0.0
  * @category encoding
  */
-export const toSetCookieHeaders = (self: Cookies): Array<string> => self.cookies.map(serializeCookie)
+export const toSetCookieHeaders = (self: Cookies): Array<string> => Object.values(self.cookies).map(serializeCookie)
 
 /**
  * Parse a cookie header into a record of key-value pairs

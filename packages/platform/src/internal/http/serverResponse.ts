@@ -65,6 +65,7 @@ class ServerResponseImpl extends Effectable.StructuralClass<ServerResponse.Serve
       status: this.status,
       statusText: this.statusText,
       headers: this.headers,
+      cookies: this.cookies.toJSON(),
       body: this.body.toJSON()
     }
   }
@@ -322,7 +323,7 @@ export const setCookie = dual<
 >(
   (args) => Cookies.isCookies(args[0]),
   (self, name, value, options) =>
-    Effect.map(Cookies.add(self.cookies, name, value, options), (cookies) =>
+    Effect.map(Cookies.set(self.cookies, name, value, options), (cookies) =>
       new ServerResponseImpl(
         self.status,
         self.statusText,
@@ -352,7 +353,7 @@ export const unsafeSetCookie = dual<
       self.status,
       self.statusText,
       self.headers,
-      Cookies.unsafeAdd(self.cookies, name, value, options),
+      Cookies.unsafeSet(self.cookies, name, value, options),
       self.body
     )
 )
@@ -387,7 +388,7 @@ export const setCookies = dual<
 >(
   2,
   (self, cookies) =>
-    Effect.map(Cookies.addAll(self.cookies, cookies), (cookies) =>
+    Effect.map(Cookies.setAll(self.cookies, cookies), (cookies) =>
       new ServerResponseImpl(
         self.status,
         self.statusText,
@@ -413,7 +414,7 @@ export const unsafeSetCookies = dual<
       self.status,
       self.statusText,
       self.headers,
-      Cookies.unsafeAddAll(self.cookies, cookies),
+      Cookies.unsafeSetAll(self.cookies, cookies),
       self.body
     )
 )
@@ -485,11 +486,18 @@ export const setBody = dual<
 
 /** @internal */
 export const toWeb = (response: ServerResponse.ServerResponse, withoutBody = false): Response => {
+  const headers = new globalThis.Headers(response.headers)
+  if (!Cookies.isEmpty(response.cookies)) {
+    const toAdd = Cookies.toSetCookieHeaders(response.cookies)
+    for (const header of toAdd) {
+      headers.append("set-cookie", header)
+    }
+  }
   if (withoutBody) {
     return new Response(undefined, {
       status: response.status,
       statusText: response.statusText as string,
-      headers: response.headers
+      headers
     })
   }
   const body = response.body
@@ -498,7 +506,7 @@ export const toWeb = (response: ServerResponse.ServerResponse, withoutBody = fal
       return new Response(undefined, {
         status: response.status,
         statusText: response.statusText as string,
-        headers: response.headers
+        headers
       })
     }
     case "Uint8Array":
@@ -506,21 +514,21 @@ export const toWeb = (response: ServerResponse.ServerResponse, withoutBody = fal
       return new Response(body.body as any, {
         status: response.status,
         statusText: response.statusText,
-        headers: response.headers
+        headers
       })
     }
     case "FormData": {
       return new Response(body.formData as any, {
         status: response.status,
         statusText: response.statusText,
-        headers: response.headers
+        headers
       })
     }
     case "Stream": {
       return new Response(Stream.toReadableStream(body.stream), {
         status: response.status,
         statusText: response.statusText,
-        headers: response.headers
+        headers
       })
     }
   }
