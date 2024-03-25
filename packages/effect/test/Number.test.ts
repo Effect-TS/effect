@@ -135,17 +135,4 @@ describe("Number", () => {
     assert.deepStrictEqual(Number.parse("42"), Option.some(42))
     assert.deepStrictEqual(Number.parse("a"), Option.none())
   })
-
-  it("fromString", () => {
-    assert.deepStrictEqual(Number.fromString("NaN"), Option.none())
-    assert.deepStrictEqual(Number.fromString("Infinity"), Option.some(Infinity))
-    assert.deepStrictEqual(Number.fromString("-Infinity"), Option.some(-Infinity))
-    assert.deepStrictEqual(Number.fromString("42"), Option.some(42))
-    assert.deepStrictEqual(Number.fromString(" 42 \n\r\t"), Option.some(42))
-    assert.deepStrictEqual(Number.fromString("3.14"), Option.some(3.14))
-    assert.deepStrictEqual(Number.fromString("1e3"), Option.some(1000))
-    assert.deepStrictEqual(Number.fromString("1e-3"), Option.some(0.001))
-    assert.deepStrictEqual(Number.fromString(""), Option.none())
-    assert.deepStrictEqual(Number.fromString("a"), Option.none())
-  })
 })

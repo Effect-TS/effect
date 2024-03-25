@@ -493,32 +493,3 @@ export const parse = (s: string): Option<number> => {
     ? option.none
     : option.some(n)
 }
-
-/**
- * Takes a string and returns an `Option` of `number`.
- *
- * If the string is empty or invalid characters,
- * it returns `Option.none()`. Otherwise, it attempts to convert the string to a number
- * and returns `Option.some(number)`.
- *
- * @param s - The string to be converted to a `number`.
- *
- * @example
- * import { fromString } from "effect/Number"
- * import { Option } from "effect"
- *
- * assert.deepStrictEqual(fromString("42"), Option.some(42))
- * assert.deepStrictEqual(fromString(""), Option.none())
- * assert.deepStrictEqual(fromString("not a number"), Option.none())
- *
- * @category conversions
- * @since 2.4.12
- */
-export const fromString = (s: string): Option<number> => {
-  const n = Number(s)
-  return s.trim() === ""
-    ? option.none
-    : Number.isNaN(n)
-    ? option.none
-    : option.some(n)
-}
