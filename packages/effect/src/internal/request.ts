@@ -147,6 +147,7 @@ export const succeed = dual<
 export class Listeners {
   count = 0
   observers: Set<(count: number) => void> = new Set()
+  interrupted = false
   addObserver(f: (count: number) => void): void {
     this.observers.add(f)
   }

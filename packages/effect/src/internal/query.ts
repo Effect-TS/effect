@@ -65,6 +65,12 @@ export const fromRequest = <
               core.flatMap(cache.getEither(proxy), (orNew) => {
                 switch (orNew._tag) {
                   case "Left": {
+                    if (orNew.left.listeners.interrupted) {
+                      return core.flatMap(
+                        cache.invalidateWhen(proxy, (entry) => entry.handle === orNew.left.handle),
+                        () => cached
+                      )
+                    }
                     orNew.left.listeners.increment()
                     return core.blocked(
                       BlockedRequests.empty,

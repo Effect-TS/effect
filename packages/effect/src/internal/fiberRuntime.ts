@@ -3433,6 +3433,9 @@ export const invokeWithInterrupt: <A, E, R>(
             const checkDone = () => {
               if (counts.every((count) => count === 0)) {
                 cleanup.forEach((f) => f())
+                entries.forEach((p) => {
+                  p.listeners.interrupted = true
+                })
                 cb(core.interruptFiber(processing))
               }
             }
@@ -3469,25 +3472,6 @@ export const invokeWithInterrupt: <A, E, R>(
         })
     )
   )
-
-/** @internal */
-export const interruptWhenPossible = dual<
-  (all: Iterable<Request<any, any>>) => <A, E, R>(
-    self: Effect.Effect<A, E, R>
-  ) => Effect.Effect<void, E, R>,
-  <A, E, R>(
-    self: Effect.Effect<A, E, R>,
-    all: Iterable<Request<any, any>>
-  ) => Effect.Effect<void, E, R>
->(2, (self, all) =>
-  core.fiberRefGetWith(
-    currentRequestMap,
-    (map) =>
-      core.suspend(() => {
-        const entries = RA.fromIterable(all).flatMap((_) => map.has(_) ? [map.get(_)!] : [])
-        return invokeWithInterrupt(self, entries)
-      })
-  ))
 
 // circular Tracer
 
