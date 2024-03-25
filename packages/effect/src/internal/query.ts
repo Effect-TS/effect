@@ -61,29 +61,28 @@ export const fromRequest = <
         const proxy = new Proxy(request, {})
         return core.fiberRefGetWith(currentCacheEnabled, (cacheEnabled) => {
           if (cacheEnabled) {
-            return core.fiberRefGetWith(currentCache, (cache) =>
+            const cached: Effect.Effect<any, any> = core.fiberRefGetWith(currentCache, (cache) =>
               core.flatMap(cache.getEither(proxy), (orNew) => {
                 switch (orNew._tag) {
                   case "Left": {
                     orNew.left.listeners.increment()
                     return core.blocked(
                       BlockedRequests.empty,
-                      core.flatMap(core.exit(core.deferredAwait(orNew.left.handle)), (exit) => {
-                        if (exit._tag === "Failure" && isInterruptedOnly(exit.cause)) {
-                          orNew.left.listeners.decrement()
-                          return core.flatMap(
-                            cache.invalidateWhen(
-                              proxy,
-                              (entry) => entry.handle === orNew.left.handle
-                            ),
-                            () => fromRequest(proxy, ds)
+                      core.uninterruptibleMask((restore) =>
+                        core.flatMap(core.exit(restore(core.deferredAwait(orNew.left.handle))), (exit) => {
+                          if (exit._tag === "Failure" && isInterruptedOnly(exit.cause)) {
+                            orNew.left.listeners.decrement()
+                            return core.flatMap(
+                              cache.invalidateWhen(proxy, (entry) => entry.handle === orNew.left.handle),
+                              () => cached
+                            )
+                          }
+                          return ensuring(
+                            exit,
+                            core.sync(() => orNew.left.listeners.decrement())
                           )
-                        }
-                        return ensuring(
-                          core.deferredAwait(orNew.left.handle),
-                          core.sync(() => orNew.left.listeners.decrement())
-                        )
-                      })
+                        })
+                      )
                     )
                   }
                   case "Right": {
@@ -112,6 +111,7 @@ export const fromRequest = <
                   }
                 }
               }))
+            return cached
           }
           const listeners = new Listeners()
           listeners.increment()
@@ -131,7 +131,9 @@ export const fromRequest = <
                 ),
                 ensuring(
                   core.deferredAwait(ref),
-                  core.sync(() => listeners.decrement())
+                  core.sync(() =>
+                    listeners.decrement()
+                  )
                 )
               )
           )
