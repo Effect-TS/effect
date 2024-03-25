@@ -498,7 +498,7 @@ export const parse = (s: string): Option<number> => {
  * Takes a string and returns an `Option` of `number`.
  *
  * If the string is empty or invalid characters,
- * it returns `Option.none`. Otherwise, it attempts to convert the string to a number
+ * it returns `Option.none()`. Otherwise, it attempts to convert the string to a number
  * and returns `Option.some(number)`.
  *
  * @param s - The string to be converted to a `number`.
