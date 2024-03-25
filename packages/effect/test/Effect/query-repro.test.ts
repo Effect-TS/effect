@@ -5,6 +5,7 @@ import {
   Duration,
   Effect,
   Exit,
+  Fiber,
   FiberId,
   Layer,
   ManagedRuntime,
@@ -82,7 +83,7 @@ const make = Effect.gen(function*($) {
     Request.makeCache({ capacity: 500, timeToLive: "8 hours" }).pipe(
       Effect.tap((c) =>
         logCacheStats(c, "intraday2").pipe(
-          Effect.schedule(Schedule.spaced("20 seconds")),
+          Effect.schedule(Schedule.spaced("15 seconds")),
           Effect.interruptible,
           Effect.forkScoped
         )
@@ -174,24 +175,20 @@ it(
     rt.runPromise(
       Effect
         .gen(function*($) {
-          let abort = new AbortController()
-
-          rt.runPromise(getItems, { signal: abort.signal }).catch(console.error)
+          const r1 = yield* $(Effect.fork(getItems))
 
           yield* $(Effect.sleep("1 seconds"))
-          abort.abort()
+          yield* $(Fiber.interrupt(r1))
 
-          abort = new AbortController()
-          rt.runPromise(getItems, { signal: abort.signal }).catch(console.error)
+          const r2 = yield* $(Effect.fork(getItems))
 
           yield* $(Effect.sleep("2 seconds"))
-          abort.abort()
+          yield* $(Fiber.interrupt(r2))
 
           yield* $(Effect.sleep("30 seconds"))
+          // during this sleep we will get cache dump with many listeners and non finished requests.
 
-          yield* $(
-            Effect.promise(() => rt.runPromise(getItems, { signal: abort.signal }))
-          )
+          yield* $(getItems)
         })
     ),
   { timeout: 60_000 }
