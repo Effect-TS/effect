@@ -241,8 +241,12 @@ const runBlockedRequests = (self: RequestBlock.RequestBlock) =>
               map.set(entry.request as Request<any, any>, entry)
             }
           }
+          const flat = arr.flat()
           return core.fiberRefLocally(
-            invokeWithInterrupt(dataSource.runAll(arr), arr.flat()),
+            invokeWithInterrupt(dataSource.runAll(arr), flat, () =>
+              flat.forEach((entry) => {
+                entry.listeners.interrupted = true
+              })),
             currentRequestMap,
             map
           )
@@ -2143,7 +2147,17 @@ export const forEachConcurrentDiscard = <A, X, E, R>(
             restore(internalFiber.join(processingFiber)),
             () => {
               onInterruptSignal()
-              return internalFiber._await(processingFiber)
+              const all = [processingFiber] as Array<FiberRuntime<any, any>>
+              residual.map((blocked) => {
+                const fiber = runFiber(blocked)
+                parent._scheduler.scheduleTask(() => {
+                  fiber.unsafeInterruptAsFork(parent.id())
+                }, 0)
+                return fiber
+              }).forEach((additional) => {
+                all.push(additional as unknown as FiberRuntime<any, any>)
+              })
+              return core.exit(fiberJoinAll(all))
             }
           )),
           () => core.forEachSequential(joinOrder, (f) => f.inheritAll)
@@ -3421,8 +3435,13 @@ export const ensuring: {
 /** @internal */
 export const invokeWithInterrupt: <A, E, R>(
   self: Effect.Effect<A, E, R>,
-  entries: ReadonlyArray<Entry<unknown>>
-) => Effect.Effect<void, E, R> = <A, E, R>(self: Effect.Effect<A, E, R>, entries: ReadonlyArray<Entry<unknown>>) =>
+  entries: ReadonlyArray<Entry<unknown>>,
+  onInterrupt?: () => void
+) => Effect.Effect<void, E, R> = <A, E, R>(
+  self: Effect.Effect<A, E, R>,
+  entries: ReadonlyArray<Entry<unknown>>,
+  onInterrupt?: () => void
+) =>
   core.fiberIdWith((id) =>
     core.flatMap(
       core.flatMap(
@@ -3433,6 +3452,7 @@ export const invokeWithInterrupt: <A, E, R>(
             const checkDone = () => {
               if (counts.every((count) => count === 0)) {
                 cleanup.forEach((f) => f())
+                onInterrupt?.()
                 cb(core.interruptFiber(processing))
               }
             }

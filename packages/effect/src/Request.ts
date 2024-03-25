@@ -245,6 +245,7 @@ export const succeed: {
 export interface Listeners {
   readonly count: number
   readonly observers: Set<(count: number) => void>
+  interrupted: boolean
   addObserver(f: (count: number) => void): void
   removeObserver(f: (count: number) => void): void
   increment(): void
@@ -309,7 +310,7 @@ export interface Entry<out R> extends Entry.Variance<R> {
   readonly listeners: Listeners
   readonly ownerId: FiberId
   readonly state: {
-    completed: boolean // TODO: mutable by design?
+    completed: boolean
   }
 }
 
