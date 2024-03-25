@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-add Number.fromString, Number.fromBigInt, BigInt.FromString, BigInt.fromNumber
+add BigInt.fromString and BigInt.fromNumber

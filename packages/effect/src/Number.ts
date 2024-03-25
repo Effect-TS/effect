@@ -505,10 +505,11 @@ export const parse = (s: string): Option<number> => {
  *
  * @example
  * import { fromString } from "effect/Number"
+ * import { Option } from "effect"
  *
- * assert.deepStrictEqual(fromString("42"), option.some(42))
- * assert.deepStrictEqual(fromString(""), option.none)
- * assert.deepStrictEqual(fromString("not a number"), option.none)
+ * assert.deepStrictEqual(fromString("42"), Option.some(42))
+ * assert.deepStrictEqual(fromString(""), Option.none())
+ * assert.deepStrictEqual(fromString("not a number"), Option.none())
  *
  * @category conversions
  * @since 2.4.12

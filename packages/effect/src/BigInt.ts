@@ -557,10 +557,11 @@ export const multiplyAll = (collection: Iterable<bigint>): bigint => {
  *
  * @example
  * import { fromBigInt } from "effect/Number"
+ * import { Option } from "effect"
  *
- * assert.deepStrictEqual(fromBigInt(BigInt(42)), option.some(42))
- * assert.deepStrictEqual(fromBigInt(BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1)), option.none)
- * assert.deepStrictEqual(fromBigInt(BigInt(Number.MIN_SAFE_INTEGER) - BigInt(1)), option.none)
+ * assert.deepStrictEqual(fromBigInt(BigInt(42)), Option.some(42))
+ * assert.deepStrictEqual(fromBigInt(BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1)), Option.none())
+ * assert.deepStrictEqual(fromBigInt(BigInt(Number.MIN_SAFE_INTEGER) - BigInt(1)), Option.none())
  *
  * @category conversions
  * @since 2.0.0
@@ -582,6 +583,7 @@ export const toNumber = (b: bigint): Option.Option<number> => {
  *
  * @example
  * import { fromString } from "effect/BigInt"
+ * import { Option } from "effect"
  *
  * assert.deepStrictEqual(fromString("42"), Option.some(BigInt(42)))
  * assert.deepStrictEqual(fromString(" "), Option.none())
@@ -611,6 +613,7 @@ export const fromString = (s: string): Option.Option<bigint> => {
  *
  * @example
  * import { fromNumber } from "effect/BigInt"
+ * import { Option } from "effect"
  *
  * assert.deepStrictEqual(fromNumber(42), Option.some(BigInt(42)))
  * assert.deepStrictEqual(fromNumber(Number.MAX_SAFE_INTEGER + 1), Option.none())
