@@ -102,9 +102,9 @@ export const fromRequest = <
                       core.uninterruptibleMask((restore) =>
                         core.flatMap(
                           core.exit(restore(core.deferredAwait(orNew.right.handle))),
-                          (exit) => {
+                          () => {
                             orNew.right.listeners.decrement()
-                            return exit
+                            return core.deferredAwait(orNew.right.handle)
                           }
                         )
                       )
