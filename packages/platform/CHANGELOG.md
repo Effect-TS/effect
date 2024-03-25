@@ -1,5 +1,21 @@
 # @effect/platform
 
+## 0.48.17
+
+### Patch Changes
+
+- [#2400](https://github.com/Effect-TS/effect/pull/2400) [`47a8f1b`](https://github.com/Effect-TS/effect/commit/47a8f1b644d8294692d92cacd3c8c7543edbfabe) Thanks [@tim-smart](https://github.com/tim-smart)! - expose Schema ParseOptions in /platform schema apis
+
+- [#2403](https://github.com/Effect-TS/effect/pull/2403) [`8c9abe2`](https://github.com/Effect-TS/effect/commit/8c9abe2b35c46d8891d4b2c14ff9eb46302a14f3) Thanks [@tim-smart](https://github.com/tim-smart)! - use ReadonlyRecord for storing cookies
+
+- [#2403](https://github.com/Effect-TS/effect/pull/2403) [`8c9abe2`](https://github.com/Effect-TS/effect/commit/8c9abe2b35c46d8891d4b2c14ff9eb46302a14f3) Thanks [@tim-smart](https://github.com/tim-smart)! - add set-cookie headers in Http.response.toWeb
+
+- [#2400](https://github.com/Effect-TS/effect/pull/2400) [`47a8f1b`](https://github.com/Effect-TS/effect/commit/47a8f1b644d8294692d92cacd3c8c7543edbfabe) Thanks [@tim-smart](https://github.com/tim-smart)! - add .schemaJson / .schemaNoBody to http router apis
+
+- Updated dependencies [[`3336287`](https://github.com/Effect-TS/effect/commit/3336287ff55a25e56d759b83847bfaa21c40f499), [`54b7c00`](https://github.com/Effect-TS/effect/commit/54b7c0077fa784ad2646b812d6a44641f672edcd), [`3336287`](https://github.com/Effect-TS/effect/commit/3336287ff55a25e56d759b83847bfaa21c40f499)]:
+  - effect@2.4.13
+  - @effect/schema@0.64.13
+
 ## 0.48.16
 
 ### Patch Changes

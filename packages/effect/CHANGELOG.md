@@ -1,5 +1,15 @@
 # effect
 
+## 2.4.13
+
+### Patch Changes
+
+- [#2402](https://github.com/Effect-TS/effect/pull/2402) [`3336287`](https://github.com/Effect-TS/effect/commit/3336287ff55a25e56d759b83847bfaa21c40f499) Thanks [@tim-smart](https://github.com/tim-smart)! - add Duration.subtract api
+
+- [#2399](https://github.com/Effect-TS/effect/pull/2399) [`54b7c00`](https://github.com/Effect-TS/effect/commit/54b7c0077fa784ad2646b812d6a44641f672edcd) Thanks [@coleea](https://github.com/coleea)! - add BigInt.fromString and BigInt.fromNumber
+
+- [#2402](https://github.com/Effect-TS/effect/pull/2402) [`3336287`](https://github.com/Effect-TS/effect/commit/3336287ff55a25e56d759b83847bfaa21c40f499) Thanks [@tim-smart](https://github.com/tim-smart)! - remove use of bigint literals in Duration
+
 ## 2.4.12
 
 ### Patch Changes
