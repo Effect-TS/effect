@@ -589,13 +589,13 @@ const flattenSafe = <A>(self: Doc.Doc<A>): Effect.Effect<Doc.Doc<A>> =>
         return yield* _(flattenSafe(self.left))
       }
       case "Column": {
-        return column((position) => Effect.runSync(flattenSafe(self.react(position))))
+        return column((position) => flatten(self.react(position)))
       }
       case "WithPageWidth": {
-        return pageWidth((pageWidth) => Effect.runSync(flattenSafe(self.react(pageWidth))))
+        return pageWidth((pageWidth) => flatten(self.react(pageWidth)))
       }
       case "Nesting": {
-        return nesting((level) => Effect.runSync(flattenSafe(self.react(level))))
+        return nesting((level) => flatten(self.react(level)))
       }
       case "Annotated": {
         const doc = yield* _(flattenSafe(self.doc))

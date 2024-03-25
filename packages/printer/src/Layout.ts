@@ -48,7 +48,7 @@ export declare namespace Layout {
   export interface FittingPredicate<A> {
     (
       stream: DocStream<A>,
-      lineIndent: number,
+      indentation: number,
       currentColumn: number,
       initialIndentY: Option<number>
     ): boolean

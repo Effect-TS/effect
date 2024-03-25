@@ -3,18 +3,18 @@ import { dual } from "effect/Function"
 import * as List from "effect/List"
 import * as Option from "effect/Option"
 import type * as Doc from "../Doc.js"
-import * as DocStream from "../DocStream.js"
+import type * as DocStream from "../DocStream.js"
 import type * as Layout from "../Layout.js"
 import type * as PageWidth from "../PageWidth.js"
-import * as docStream from "./docStream.js"
-import * as pipeline from "./layoutPipeline.js"
-import * as pageWidth from "./pageWidth.js"
+import * as InternalDocStream from "./docStream.js"
+import * as InternalPipeline from "./layoutPipeline.js"
+import * as InternalPageWidth from "./pageWidth.js"
 
 /** @internal */
 export const options = (pageWidth: PageWidth.PageWidth): Layout.Layout.Options => ({ pageWidth })
 
 /** @internal */
-export const defaultOptions: Layout.Layout.Options = options(pageWidth.defaultPageWidth)
+export const defaultOptions: Layout.Layout.Options = options(InternalPageWidth.defaultPageWidth)
 
 // -----------------------------------------------------------------------------
 // wadlerLeijen
@@ -33,93 +33,100 @@ export const wadlerLeijen = dual<
   ) => DocStream.DocStream<A>
 >(
   3,
-  (self, fits, options) => Effect.runSync(wadlerLeijenSafe(pipeline.cons(0, self, pipeline.nil), 0, 0, fits, options))
+  (self, fits, options) =>
+    Effect.runSync(wadlerLeijenSafe(InternalPipeline.cons(0, self, InternalPipeline.nil), 0, 0, fits, options))
 )
 
 const wadlerLeijenSafe = <A>(
-  self: pipeline.LayoutPipeline<A>,
+  self: InternalPipeline.LayoutPipeline<A>,
   nestingLevel: number,
   currentColumn: number,
   fits: Layout.Layout.FittingPredicate<A>,
   options: Layout.Layout.Options
 ): Effect.Effect<DocStream.DocStream<A>> => {
-  const best = (self: pipeline.LayoutPipeline<A>, nl: number, cc: number): Effect.Effect<DocStream.DocStream<A>> =>
+  const best = (
+    self: InternalPipeline.LayoutPipeline<A>,
+    nl: number,
+    cc: number
+  ): Effect.Effect<DocStream.DocStream<A>> =>
     Effect.gen(function*(_) {
       switch (self._tag) {
         case "Nil": {
-          return docStream.empty
+          return InternalDocStream.empty
         }
         case "Cons": {
           switch (self.document._tag) {
             case "Fail": {
-              return docStream.failed
+              return InternalDocStream.failed
             }
             case "Empty": {
               return yield* _(best(self.pipeline, nl, cc))
             }
             case "Char": {
               const stream = yield* _(best(self.pipeline, nl, cc + 1))
-              return docStream.char(stream, self.document.char)
+              return InternalDocStream.char(stream, self.document.char)
             }
             case "Text": {
               const length = self.document.text.length
               const stream = yield* _(best(self.pipeline, nl, cc + length))
-              return docStream.text(stream, self.document.text)
+              return InternalDocStream.text(stream, self.document.text)
             }
             case "Line": {
               const stream = yield* _(best(self.pipeline, self.indent, self.indent))
               // Do not produce indentation if there is no subsequent text on
               // the same line (prevents trailing whitespace)
-              const nextIndent = docStream.isEmptyStream(stream) || docStream.isLineStream(stream) ? 0 : self.indent
-              return docStream.line(stream, nextIndent)
+              const nextIndent = InternalDocStream.isEmptyStream(stream) || InternalDocStream.isLineStream(stream)
+                ? 0
+                : self.indent
+              return InternalDocStream.line(stream, nextIndent)
             }
             case "FlatAlt": {
-              const next = pipeline.cons(self.indent, self.document.left, self.pipeline)
+              const next = InternalPipeline.cons(self.indent, self.document.left, self.pipeline)
               return yield* _(best(next, nl, cc))
             }
             case "Cat": {
-              const inner = pipeline.cons(self.indent, self.document.right, self.pipeline)
-              const outer = pipeline.cons(self.indent, self.document.left, inner)
+              const inner = InternalPipeline.cons(self.indent, self.document.right, self.pipeline)
+              const outer = InternalPipeline.cons(self.indent, self.document.left, inner)
               return yield* _(best(outer, nl, cc))
             }
             case "Nest": {
               const indent = self.indent + self.document.indent
-              const next = pipeline.cons(indent, self.document.doc, self.pipeline)
+              const next = InternalPipeline.cons(indent, self.document.doc, self.pipeline)
               return yield* _(best(next, nl, cc))
             }
             case "Union": {
-              const leftPipeline = pipeline.cons(self.indent, self.document.left, self.pipeline)
-              const rightPipeline = pipeline.cons(self.indent, self.document.right, self.pipeline)
+              const leftPipeline = InternalPipeline.cons(self.indent, self.document.left, self.pipeline)
+              const rightPipeline = InternalPipeline.cons(self.indent, self.document.right, self.pipeline)
               const left = yield* _(best(leftPipeline, nl, cc))
               const right = yield* _(best(rightPipeline, nl, cc))
               return selectNicer(fits, nl, cc, left, right)
             }
             case "Column": {
               const doc = self.document.react(cc)
-              const next = pipeline.cons(self.indent, doc, self.pipeline)
+              const next = InternalPipeline.cons(self.indent, doc, self.pipeline)
               return yield* _(best(next, nl, cc))
             }
             case "WithPageWidth": {
               const doc = self.document.react(options.pageWidth)
-              const next = pipeline.cons(self.indent, doc, self.pipeline)
+              const next = InternalPipeline.cons(self.indent, doc, self.pipeline)
               return yield* _(best(next, nl, cc))
             }
             case "Nesting": {
               const doc = self.document.react(self.indent)
-              const next = pipeline.cons(self.indent, doc, self.pipeline)
+              const next = InternalPipeline.cons(self.indent, doc, self.pipeline)
               return yield* _(best(next, nl, cc))
             }
             case "Annotated": {
-              const undo = pipeline.undoAnnotation(self.pipeline)
-              const next = pipeline.cons(self.indent, self.document.doc, undo)
+              const undo = InternalPipeline.undoAnnotation(self.pipeline)
+              const next = InternalPipeline.cons(self.indent, self.document.doc, undo)
               const stream = yield* _(best(next, nl, cc))
-              return docStream.pushAnnotation(stream, self.document.annotation)
+              return InternalDocStream.pushAnnotation(stream, self.document.annotation)
             }
           }
         }
         case "UndoAnnotation": {
           const stream = yield* _(best(self.pipeline, nestingLevel, currentColumn))
-          return docStream.popAnnotation(stream)
+          return InternalDocStream.popAnnotation(stream)
         }
       }
     })
@@ -127,15 +134,14 @@ const wadlerLeijenSafe = <A>(
 }
 
 const initialIndentation = <A>(self: DocStream.DocStream<A>): Option.Option<number> => {
-  let stream = self
+  if (self._tag === "LineStream") {
+    return Option.some(self.indentation)
+  }
+  let stream: DocStream.DocStream<A> = self
   while (
-    stream._tag === "LineStream" ||
     stream._tag === "PushAnnotationStream" ||
     stream._tag === "PopAnnotationStream"
   ) {
-    if (stream._tag === "LineStream") {
-      return Option.some(stream.indentation)
-    }
     stream = stream.stream
   }
   return Option.none()
@@ -159,63 +165,59 @@ export const compact = <A>(self: Doc.Doc<A>): DocStream.DocStream<A> => Effect.r
 const compactSafe = <A>(
   docs: List.List<Doc.Doc<A>>,
   i: number
-): Effect.Effect<DocStream.DocStream<A>> => {
-  if (List.isNil(docs)) {
-    return Effect.succeed(DocStream.empty)
-  }
-  const head = docs.head
-  const tail = docs.tail
-  switch (head._tag) {
-    case "Fail": {
-      return Effect.succeed(DocStream.failed)
+): Effect.Effect<DocStream.DocStream<A>> =>
+  Effect.gen(function*(_) {
+    if (List.isNil(docs)) {
+      return InternalDocStream.empty
     }
-    case "Empty": {
-      return Effect.suspend(() => compactSafe(tail, i))
+    const head = docs.head
+    const tail = docs.tail
+    switch (head._tag) {
+      case "Fail": {
+        return InternalDocStream.failed
+      }
+      case "Empty": {
+        return yield* _(compactSafe(tail, i))
+      }
+      case "Char": {
+        const stream = yield* _(compactSafe(tail, i + 1))
+        return InternalDocStream.char(stream, head.char)
+      }
+      case "Text": {
+        const stream = yield* _(compactSafe(tail, i + head.text.length))
+        return InternalDocStream.text(stream, head.text)
+      }
+      case "Line": {
+        const stream = yield* _(compactSafe(tail, 0))
+        return InternalDocStream.line(stream, 0)
+      }
+      case "FlatAlt": {
+        return yield* _(compactSafe(List.cons(head.left, tail), i))
+      }
+      case "Cat": {
+        const list = List.cons(head.left, List.cons(head.right, tail))
+        return yield* _(compactSafe(list, i))
+      }
+      case "Nest": {
+        return yield* _(compactSafe(List.cons(head.doc, tail), i))
+      }
+      case "Union": {
+        return yield* _(compactSafe(List.cons(head.right, tail), i))
+      }
+      case "Column": {
+        return yield* _(compactSafe(List.cons(head.react(i), tail), i))
+      }
+      case "WithPageWidth": {
+        return yield* _(compactSafe(List.cons(head.react(InternalPageWidth.unbounded), tail), i))
+      }
+      case "Nesting": {
+        return yield* _(compactSafe(List.cons(head.react(0), tail), i))
+      }
+      case "Annotated": {
+        return yield* _(compactSafe(List.cons(head.doc, tail), i))
+      }
     }
-    case "Char": {
-      return Effect.map(
-        Effect.suspend(() => compactSafe(tail, i + 1)),
-        DocStream.char(head.char)
-      )
-    }
-    case "Text": {
-      return Effect.map(
-        Effect.suspend(() => compactSafe(tail, i + head.text.length)),
-        DocStream.text(head.text)
-      )
-    }
-    case "Line": {
-      return Effect.map(
-        Effect.suspend(() => compactSafe(tail, 0)),
-        DocStream.line(0)
-      )
-    }
-    case "FlatAlt": {
-      return Effect.suspend(() => compactSafe(List.cons(head.left, tail), i))
-    }
-    case "Cat": {
-      return Effect.suspend(() => compactSafe(List.cons(head.left, List.cons(head.right, tail)), i))
-    }
-    case "Nest": {
-      return Effect.suspend(() => compactSafe(List.cons(head.doc, tail), i))
-    }
-    case "Union": {
-      return Effect.suspend(() => compactSafe(List.cons(head.right, tail), i))
-    }
-    case "Column": {
-      return Effect.suspend(() => compactSafe(List.cons(head.react(i), tail), i))
-    }
-    case "WithPageWidth": {
-      return Effect.suspend(() => compactSafe(List.cons(head.react(pageWidth.unbounded), tail), i))
-    }
-    case "Nesting": {
-      return Effect.suspend(() => compactSafe(List.cons(head.react(0), tail), i))
-    }
-    case "Annotated": {
-      return Effect.suspend(() => compactSafe(List.cons(head.doc, tail), i))
-    }
-  }
-}
+  })
 
 // -----------------------------------------------------------------------------
 // pretty
@@ -230,11 +232,11 @@ export const pretty = dual<
   if (width._tag === "AvailablePerLine") {
     return wadlerLeijen(
       self,
-      (stream, lineIndent, currentColumn) => {
-        const remainingWidth = pageWidth.remainingWidth(
+      (stream, indentation, currentColumn) => {
+        const remainingWidth = InternalPageWidth.remainingWidth(
           width.lineWidth,
           width.ribbonFraction,
-          lineIndent,
+          indentation,
           currentColumn
         )
         return fitsPretty(stream, remainingWidth)
@@ -309,7 +311,7 @@ const fitsSmart = (lineWidth: number, ribbonFraction: number) => {
     currentColumn: number,
     initialIndentY: Option.Option<number>
   ): boolean => {
-    const availableWidth = pageWidth.remainingWidth(
+    const availableWidth = InternalPageWidth.remainingWidth(
       lineWidth,
       ribbonFraction,
       lineIndent,
@@ -392,7 +394,7 @@ export const unbounded = <A>(self: Doc.Doc<A>): DocStream.DocStream<A> =>
   wadlerLeijen(
     self,
     (stream) => !failsOnFirstLine(stream),
-    { pageWidth: pageWidth.unbounded }
+    { pageWidth: InternalPageWidth.unbounded }
   )
 
 const failsOnFirstLine = <A>(self: DocStream.DocStream<A>): boolean => {
