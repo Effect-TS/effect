@@ -30,13 +30,13 @@ import { Terminal } from "@effect/platform";
 import { NodeRuntime, NodeTerminal } from "@effect/platform-node";
 import { Effect } from "effect";
 
-// const program: Effect.Effect<void, PlatformError, Terminal.Terminal>
-const program = Effect.gen(function* (_) {
+// const displayMessage: Effect.Effect<void, PlatformError, Terminal.Terminal>
+const displayMessage = Effect.gen(function* (_) {
   const terminal = yield* _(Terminal.Terminal);
   yield* _(terminal.display("a message\n"));
 });
 
-NodeRuntime.runMain(program.pipe(Effect.provide(NodeTerminal.layer)));
+NodeRuntime.runMain(displayMessage.pipe(Effect.provide(NodeTerminal.layer)));
 // Output: "a message"
 ```
 
@@ -47,14 +47,14 @@ import { Terminal } from "@effect/platform";
 import { NodeRuntime, NodeTerminal } from "@effect/platform-node";
 import { Console, Effect } from "effect";
 
-// const program: Effect.Effect<void, Terminal.QuitException, Terminal.Terminal>
-const program = Effect.gen(function* (_) {
+// const readLine: Effect.Effect<void, Terminal.QuitException, Terminal.Terminal>
+const readLine = Effect.gen(function* (_) {
   const terminal = yield* _(Terminal.Terminal);
   const input = yield* _(terminal.readLine);
   yield* _(Console.log(`input: ${input}`));
 });
 
-NodeRuntime.runMain(program.pipe(Effect.provide(NodeTerminal.layer)));
+NodeRuntime.runMain(readLine.pipe(Effect.provide(NodeTerminal.layer)));
 // Input: "hello"
 // Output: "input: hello"
 ```
@@ -128,7 +128,14 @@ const loop = (
 > =>
   Effect.gen(function* (_) {
     const guess = yield* _(answer);
-    return yield* _(check(secret, guess, end, loop(secret)));
+    return yield* _(
+      check(
+        secret,
+        guess,
+        end,
+        Effect.suspend(() => loop(secret))
+      )
+    );
   });
 
 export const game = Effect.gen(function* (_) {
@@ -240,8 +247,8 @@ import { FileSystem } from "@effect/platform";
 import { NodeFileSystem, NodeRuntime } from "@effect/platform-node";
 import { Effect } from "effect";
 
-// const program: Effect.Effect<void, PlatformError, FileSystem.FileSystem>
-const program = Effect.gen(function* (_) {
+// const readFileString: Effect.Effect<void, PlatformError, FileSystem.FileSystem>
+const readFileString = Effect.gen(function* (_) {
   const fs = yield* _(FileSystem.FileSystem);
 
   // Reading the content of the same file where this code is written
@@ -249,5 +256,300 @@ const program = Effect.gen(function* (_) {
   console.log(content);
 });
 
-NodeRuntime.runMain(program.pipe(Effect.provide(NodeFileSystem.layer)));
+NodeRuntime.runMain(readFileString.pipe(Effect.provide(NodeFileSystem.layer)));
+```
+
+# HTTP Client
+
+## Retrieving Data (GET)
+
+In this section, we'll explore how to retrieve data using the `HttpClient` module from `@effect/platform`.
+
+```ts
+import { NodeRuntime } from "@effect/platform-node";
+import * as Http from "@effect/platform/HttpClient";
+import { Console, Effect } from "effect";
+
+const getPostAsJson = Http.request
+  .get("https://jsonplaceholder.typicode.com/posts/1")
+  .pipe(Http.client.fetch(), Http.response.json);
+
+NodeRuntime.runMain(
+  getPostAsJson.pipe(Effect.andThen((post) => Console.log(typeof post, post)))
+);
+/*
+Output:
+object {
+  userId: 1,
+  id: 1,
+  title: 'sunt aut facere repellat provident occaecati excepturi optio reprehenderit',
+  body: 'quia et suscipit\n' +
+    'suscipit recusandae consequuntur expedita et cum\n' +
+    'reprehenderit molestiae ut ut quas totam\n' +
+    'nostrum rerum est autem sunt rem eveniet architecto'
+}
+*/
+```
+
+If you want a response in a different format other than JSON, you can utilize other APIs provided by `Http.response`.
+
+In the following example, we fetch the post as text:
+
+```ts
+import { NodeRuntime } from "@effect/platform-node";
+import * as Http from "@effect/platform/HttpClient";
+import { Console, Effect } from "effect";
+
+const getPostAsText = Http.request
+  .get("https://jsonplaceholder.typicode.com/posts/1")
+  .pipe(Http.client.fetch(), Http.response.text);
+
+NodeRuntime.runMain(
+  getPostAsText.pipe(Effect.andThen((post) => Console.log(typeof post, post)))
+);
+/*
+Output:
+string {
+  userId: 1,
+  id: 1,
+  title: 'sunt aut facere repellat provident occaecati excepturi optio reprehenderit',
+  body: 'quia et suscipit\n' +
+    'suscipit recusandae consequuntur expedita et cum\n' +
+    'reprehenderit molestiae ut ut quas totam\n' +
+    'nostrum rerum est autem sunt rem eveniet architecto'
+}
+*/
+```
+
+Here are some APIs you can use to convert the response:
+
+| **API**                       | **Description**                       |
+| ----------------------------- | ------------------------------------- |
+| `Http.response.arrayBuffer`   | Convert to `ArrayBuffer`              |
+| `Http.response.formData`      | Convert to `FormData`                 |
+| `Http.response.json`          | Convert to JSON                       |
+| `Http.response.stream`        | Convert to a `Stream` of `Uint8Array` |
+| `Http.response.text`          | Convert to text                       |
+| `Http.response.urlParamsBody` | Convert to `Http.urlParams.UrlParams` |
+
+### Setting Headers
+
+When making HTTP requests, sometimes you need to include additional information in the request headers. You can set headers using the `setHeader` function for a single header or `setHeaders` for multiple headers simultaneously.
+
+```ts
+import * as Http from "@effect/platform/HttpClient";
+
+const getPost = Http.request
+  .get("https://jsonplaceholder.typicode.com/posts/1")
+  .pipe(
+    // Setting a single header
+    Http.request.setHeader("Content-type", "application/json; charset=UTF-8"),
+    // Setting multiple headers
+    Http.request.setHeaders({
+      "Content-type": "application/json; charset=UTF-8",
+      Foo: "Bar",
+    }),
+    Http.client.fetch()
+  );
+```
+
+### Decoding Data with Schemas
+
+A common use case when fetching data is to validate the received format. For this purpose, the `HttpClient` module is integrated with `@effect/schema`.
+
+```ts
+import { NodeRuntime } from "@effect/platform-node";
+import * as Http from "@effect/platform/HttpClient";
+import { Schema } from "@effect/schema";
+import { Console, Effect } from "effect";
+
+const Post = Schema.struct({
+  id: Schema.number,
+  title: Schema.string,
+});
+
+/*
+const getPostAndValidate: Effect.Effect<{
+    readonly id: number;
+    readonly title: string;
+}, Http.error.HttpClientError | ParseError, never>
+*/
+const getPostAndValidate = Http.request
+  .get("https://jsonplaceholder.typicode.com/posts/1")
+  .pipe(
+    Http.client.fetch(),
+    Effect.andThen(Http.response.schemaBodyJson(Post)),
+    Effect.scoped
+  );
+
+NodeRuntime.runMain(getPostAndValidate.pipe(Effect.andThen(Console.log)));
+/*
+Output:
+{
+  id: 1,
+  title: 'sunt aut facere repellat provident occaecati excepturi optio reprehenderit'
+}
+*/
+```
+
+In this example, we define a schema for a post object with properties `id` and `title`. Then, we fetch the data and validate it against this schema using `Http.response.schemaBodyJson`. Finally, we log the validated post object.
+
+Note that we use `Effect.scoped` after consuming the response. This ensures that any resources associated with the HTTP request are properly cleaned up once we're done processing the response.
+
+### Filtering And Error Handling
+
+It's important to note that `Http.client.fetch` doesn't consider non-`200` status codes as errors by default. This design choice allows for flexibility in handling different response scenarios. For instance, you might have a schema union where the status code serves as the discriminator, enabling you to define a schema that encompasses all possible response cases.
+
+You can use `Http.client.filterStatusOk`, or `Http.client.fetchOk` to ensure only `2xx` responses are treated as successes.
+
+In this example, we attempt to fetch a non-existent page and don't receive any error:
+
+```ts
+import { NodeRuntime } from "@effect/platform-node";
+import * as Http from "@effect/platform/HttpClient";
+import { Console, Effect } from "effect";
+
+const getText = Http.request
+  .get("https://jsonplaceholder.typicode.com/non-existing-page")
+  .pipe(Http.client.fetch(), Http.response.text);
+
+NodeRuntime.runMain(getText.pipe(Effect.andThen(Console.log)));
+/*
+Output:
+{}
+*/
+```
+
+However, if we use `Http.client.filterStatusOk`, an error is logged:
+
+```ts
+import { NodeRuntime } from "@effect/platform-node";
+import * as Http from "@effect/platform/HttpClient";
+import { Console, Effect } from "effect";
+
+const getText = Http.request
+  .get("https://jsonplaceholder.typicode.com/non-existing-page")
+  .pipe(Http.client.filterStatusOk(Http.client.fetch()), Http.response.text);
+
+NodeRuntime.runMain(getText.pipe(Effect.andThen(Console.log)));
+/*
+Output:
+timestamp=2024-03-25T10:21:16.972Z level=ERROR fiber=#0 cause="ResponseError: StatusCode error (404 GET https://jsonplaceholder.typicode.com/non-existing-page): non 2xx status code
+*/
+```
+
+Note that you can use `Http.client.fetchOk` as a shortcut for `Http.client.filterStatusOk(Http.client.fetch())`:
+
+```ts
+const getText = Http.request
+  .get("https://jsonplaceholder.typicode.com/non-existing-page")
+  .pipe(Http.client.fetchOk(), Http.response.text);
+```
+
+You can also create your own status-based filters. In fact, `Http.client.filterStatusOk` is just a shortcut for the following filter:
+
+```ts
+const getText = Http.request
+  .get("https://jsonplaceholder.typicode.com/non-existing-page")
+  .pipe(
+    Http.client.filterStatus(
+      Http.client.fetch(),
+      (status) => status >= 200 && status < 300
+    ),
+    Http.response.text
+  );
+```
+
+## POST
+
+To make a POST request, you can use the `Http.request.post` function provided by the `HttpClient` module. Here's an example of how to create and send a POST request:
+
+```ts
+import { NodeRuntime } from "@effect/platform-node";
+import * as Http from "@effect/platform/HttpClient";
+import { Console, Effect } from "effect";
+
+const addPost = Http.request
+  .post("https://jsonplaceholder.typicode.com/posts")
+  .pipe(
+    Http.request.jsonBody({
+      title: "foo",
+      body: "bar",
+      userId: 1,
+    }),
+    Effect.andThen(Http.client.fetch()),
+    Http.response.json
+  );
+
+NodeRuntime.runMain(addPost.pipe(Effect.andThen(Console.log)));
+/*
+Output:
+{ title: 'foo', body: 'bar', userId: 1, id: 101 }
+*/
+```
+
+If you need to send data in a format other than JSON, such as plain text, you can use different APIs provided by `Http.request`.
+
+In the following example, we send the data as text:
+
+```ts
+import { NodeRuntime } from "@effect/platform-node";
+import * as Http from "@effect/platform/HttpClient";
+import { Console, Effect } from "effect";
+
+const addPost = Http.request
+  .post("https://jsonplaceholder.typicode.com/posts")
+  .pipe(
+    Http.request.textBody(
+      JSON.stringify({
+        title: "foo",
+        body: "bar",
+        userId: 1,
+      }),
+      "application/json; charset=UTF-8"
+    ),
+    Http.client.fetch(),
+    Http.response.json
+  );
+
+NodeRuntime.runMain(Effect.andThen(addPost, Console.log));
+/*
+Output:
+{ title: 'foo', body: 'bar', userId: 1, id: 101 }
+*/
+```
+
+### Decoding Data with Schemas
+
+A common use case when fetching data is to validate the received format. For this purpose, the `HttpClient` module is integrated with `@effect/schema`.
+
+```ts
+import { NodeRuntime } from "@effect/platform-node";
+import * as Http from "@effect/platform/HttpClient";
+import { Schema } from "@effect/schema";
+import { Console, Effect } from "effect";
+
+const Post = Schema.struct({
+  id: Schema.number,
+  title: Schema.string,
+});
+
+const addPost = Http.request
+  .post("https://jsonplaceholder.typicode.com/posts")
+  .pipe(
+    Http.request.jsonBody({
+      title: "foo",
+      body: "bar",
+      userId: 1,
+    }),
+    Effect.andThen(Http.client.fetch()),
+    Effect.andThen(Http.response.schemaBodyJson(Post)),
+    Effect.scoped
+  );
+
+NodeRuntime.runMain(addPost.pipe(Effect.andThen(Console.log)));
+/*
+Output:
+{ id: 101, title: 'foo' }
+*/
 ```
