@@ -145,9 +145,10 @@ class CustomImpl<T extends string, A, B, C> implements Statement.Custom<T, A, B,
 }
 
 /** @internal */
-export const custom =
-  <C extends Statement.Custom<any, any, any, any>>(kind: C["kind"]) =>
-  (i0: C["i0"], i1: C["i1"], i2: C["i2"]): Statement.Fragment => new FragmentImpl([new CustomImpl(kind, i0, i1, i2)])
+export const custom = <C extends Statement.Custom<any, any, any, any>>(
+  kind: C["kind"]
+) =>
+(i0: C["i0"], i1: C["i1"], i2: C["i2"]): Statement.Fragment => new FragmentImpl([new CustomImpl(kind, i0, i1, i2)])
 
 const isHelper = (u: unknown): u is Statement.Helper =>
   u instanceof ArrayHelperImpl ||
@@ -194,12 +195,12 @@ export const make = (
   )
 
 /** @internal */
-export function statement(
+export const statement = (
   acquirer: Connection.Connection.Acquirer,
   compiler: Statement.Compiler,
   strings: TemplateStringsArray,
   ...args: Array<Statement.Argument>
-): Statement.Statement<Connection.Row> {
+): Statement.Statement<Connection.Row> => {
   const segments: Array<Statement.Segment> = strings[0].length > 0 ? [new LiteralImpl(strings[0])] : []
 
   for (let i = 0; i < args.length; i++) {
@@ -251,7 +252,8 @@ function convertLiteralOrFragment(clause: string | Statement.Fragment): Array<St
 
 /** @internal */
 export function join(literal: string, addParens = true, fallback = "") {
-  const literalSegment = new LiteralImpl(literal)
+  const literalStatement = new LiteralImpl(literal)
+
   return (clauses: ReadonlyArray<string | Statement.Fragment>): Statement.Fragment => {
     if (clauses.length === 0) {
       return unsafeFragment(fallback)
@@ -268,7 +270,7 @@ export function join(literal: string, addParens = true, fallback = "") {
     segments.push.apply(segments, convertLiteralOrFragment(clauses[0]))
 
     for (let i = 1; i < clauses.length; i++) {
-      segments.push(literalSegment)
+      segments.push(literalStatement)
       segments.push.apply(segments, convertLiteralOrFragment(clauses[i]))
     }
 
@@ -391,7 +393,9 @@ class CompilerImpl implements Statement.Compiler {
                 generatePlaceholder(placeholder, keys.length),
                 segment.value.length
               ),
-              segment.value.map((record) => keys.map((key) => extractPrimitive(record[key], this.onCustom)))
+              segment.value.map((record) =>
+                keys.map((key) => extractPrimitive(record[key], this.onCustom, placeholder))
+              )
             )
             sql += s
             binds.push.apply(binds, b as any)
@@ -413,7 +417,8 @@ class CompilerImpl implements Statement.Compiler {
                 binds.push(
                   extractPrimitive(
                     segment.value[i]?.[keys[j]] ?? null,
-                    this.onCustom
+                    this.onCustom,
+                    placeholder
                   )
                 )
               }
@@ -430,7 +435,13 @@ class CompilerImpl implements Statement.Compiler {
           if (this.onRecordUpdateSingle) {
             const [s, b] = this.onRecordUpdateSingle(
               keys.map(this.onIdentifier),
-              keys.map((key) => extractPrimitive(segment.value[key], this.onCustom))
+              keys.map((key) =>
+                extractPrimitive(
+                  segment.value[key],
+                  this.onCustom,
+                  placeholder
+                )
+              )
             )
             sql += s
             binds.push.apply(binds, b as any)
@@ -443,7 +454,11 @@ class CompilerImpl implements Statement.Compiler {
                 sql += `, ${column} = ${placeholder()}`
               }
               binds.push(
-                extractPrimitive(segment.value[keys[i]], this.onCustom)
+                extractPrimitive(
+                  segment.value[keys[i]],
+                  this.onCustom,
+                  placeholder
+                )
               )
             }
           }
@@ -459,7 +474,9 @@ class CompilerImpl implements Statement.Compiler {
             ),
             segment.alias,
             generateColumns(keys, this.onIdentifier),
-            segment.value.map((record) => keys.map((key) => extractPrimitive(record?.[key], this.onCustom)))
+            segment.value.map((record) =>
+              keys.map((key) => extractPrimitive(record?.[key], this.onCustom, placeholder))
+            )
           )
           sql += s
           binds.push.apply(binds, b as any)
@@ -593,17 +610,18 @@ export const primitiveKind = (value: Statement.Primitive): Statement.PrimitiveKi
   return "string"
 }
 
-function extractPrimitive(
+const extractPrimitive = (
   value: Statement.Primitive | Statement.Fragment,
   onCustom: (
     type: Statement.Custom<string, unknown, unknown>,
     placeholder: () => string
-  ) => readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>]
-): Statement.Primitive {
+  ) => readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>],
+  placeholder: () => string
+): Statement.Primitive => {
   if (isFragment(value)) {
     const head = value.segments[0]
     if (head._tag === "Custom") {
-      const compiled = onCustom(head, () => "")
+      const compiled = onCustom(head, placeholder)
       return compiled[1][0] ?? null
     } else if (head._tag === "Parameter") {
       return head.value

@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "type": "module",
   "license": "MIT",
-  "description": "Functional programming in TypeScript",
+  "description": "A SQL toolkit for Effect",
   "homepage": "https://effect.website",
   "repository": {
     "type": "git",
@@ -16,12 +16,16 @@
   "tags": [
     "typescript",
     "algebraic-data-types",
-    "functional-programming"
+    "functional-programming",
+    "sql",
+    "database"
   ],
   "keywords": [
     "typescript",
     "algebraic-data-types",
-    "functional-programming"
+    "functional-programming",
+    "sql",
+    "database"
   ],
   "publishConfig": {
     "access": "public",

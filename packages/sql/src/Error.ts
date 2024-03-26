@@ -7,19 +7,15 @@ import * as Predicate from "effect/Predicate"
 
 /**
  * @since 1.0.0
- * @category symbols
  */
-export const SqlErrorTypeId: unique symbol = Symbol.for("@effect/sql/Error")
-
+export const SqlErrorTypeId = Symbol.for("@effect/sql/Error")
 /**
  * @since 1.0.0
- * @category symbols
  */
 export type SqlErrorTypeId = typeof SqlErrorTypeId
 
 /**
  * @since 1.0.0
- * @category errors
  */
 export class SqlError extends Data.TaggedError("SqlError")<{
   readonly message: string
@@ -51,7 +47,6 @@ export class SqlError extends Data.TaggedError("SqlError")<{
 
 /**
  * @since 1.0.0
- * @category errors
  */
 export class ResultLengthMismatch extends Data.TaggedError("ResultLengthMismatch")<{
   readonly expected: number
@@ -65,7 +60,6 @@ export class ResultLengthMismatch extends Data.TaggedError("ResultLengthMismatch
 
 /**
  * @since 1.0.0
- * @category errors
  */
 export class SchemaError extends Data.TaggedError("SchemaError")<{
   readonly type: "request" | "result"

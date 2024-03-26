@@ -3,7 +3,6 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FiberRef from "effect/FiberRef"
-import * as MutableMap from "effect/MutableHashMap"
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as request from "effect/Request"
@@ -20,7 +19,7 @@ export const TransactionConn = Context.GenericTag<
 >("@effect/sql/services/TransactionConn")
 
 /** @internal */
-export const make = ({
+export function make({
   acquirer,
   beginTransaction = "BEGIN",
   commit = "COMMIT",
@@ -29,7 +28,7 @@ export const make = ({
   rollbackSavepoint = (_) => `ROLLBACK TO SAVEPOINT ${_}`,
   savepoint = (_) => `SAVEPOINT ${_}`,
   transactionAcquirer
-}: Client.Client.MakeOptions): Client.Client => {
+}: Client.Client.MakeOptions): Client.Client {
   const getConnection = Effect.flatMap(
     Effect.serviceOption(TransactionConn),
     Option.match({
@@ -37,7 +36,6 @@ export const make = ({
       onSome: ([conn]) => Effect.succeed(conn)
     })
   )
-
   const withTransaction = <R, E, A>(
     effect: Effect.Effect<A, E, R>
   ): Effect.Effect<A, E | Error.SqlError, R> =>
@@ -81,7 +79,10 @@ export const make = ({
     return (
       _: IA
     ): Effect.Effect<ReadonlyArray<A>, Error.SchemaError | E, IR | AR | R> =>
-      encodeRequest(_).pipe(Effect.flatMap(run), Effect.flatMap(decodeResult))
+      encodeRequest(_).pipe(
+        Effect.flatMap(run),
+        Effect.flatMap(decodeResult)
+      )
   }
 
   const schemaVoid = <IR, II, IA, R, E>(
@@ -192,12 +193,10 @@ export const make = ({
           )
         )
     )
-
     const makeExecute = makeExecuteRequest(Request)
     const execute = makeExecute(Resolver as any)
     const populateCache = makePopulateCache(Request)
     const invalidateCache = makeInvalidateCache(Request)
-
     return {
       Request,
       Resolver,
@@ -226,12 +225,10 @@ export const make = ({
         Effect.flatMap(decodeResult)
       )
     )
-
     const makeExecute = makeExecuteRequest(Request)
     const execute = makeExecute(Resolver)
     const populateCache = makePopulateCache(Request)
     const invalidateCache = makeInvalidateCache(Request)
-
     return {
       Request,
       Resolver,
@@ -274,12 +271,10 @@ export const make = ({
           )
         )
     )
-
     const makeExecute = makeExecuteRequest(Request)
     const execute = makeExecute(Resolver)
     const populateCache = makePopulateCache(Request)
     const invalidateCache = makeInvalidateCache(Request)
-
     return {
       Request,
       Resolver,
@@ -312,7 +307,11 @@ export const make = ({
           Effect.flatMap(options.run),
           Effect.filterOrFail(
             (results) => results.length === requests.length,
-            ({ length }) => new Error.ResultLengthMismatch({ expected: requests.length, actual: length })
+            ({ length }) =>
+              new Error.ResultLengthMismatch({
+                actual: length,
+                expected: requests.length
+              })
           ),
           Effect.flatMap((results) =>
             Effect.forEach(results, (result, i) =>
@@ -328,13 +327,10 @@ export const make = ({
           )
         )
     )
-
     const makeExecute = makeExecuteRequest(Request)
     const execute = makeExecute(Resolver)
-
     const populateCache = makePopulateCache(Request)
     const invalidateCache = makeInvalidateCache(Request)
-
     return {
       Request,
       Resolver,
@@ -362,76 +358,50 @@ export const make = ({
       Schema.array(options.request),
       "request"
     )
-    const decodeResult = SqlSchema.decodeUnknown(options.result, "result")
+    const decodeResults = SqlSchema.decodeUnknown(
+      Schema.array(options.result),
+      "result"
+    )
     const Resolver = RequestResolver.makeBatched(
       (requests: Array<Client.Request<T, IA, E, ReadonlyArray<A>>>) =>
-        Effect.all({
-          results: Effect.flatMap(
-            encodeRequests(requests.map((_) => _.i0)),
-            options.run
-          ),
-          requestsMap: Effect.sync(() =>
-            requests.reduce(
-              (acc, request) =>
-                MutableMap.set(acc, options.requestId(request.i0), [
-                  request,
-                  []
-                ]),
-              MutableMap.empty<
-                K,
-                readonly [Client.Request<T, IA, E, ReadonlyArray<A>>, Array<A>]
-              >()
-            )
-          )
-        }).pipe(
-          Effect.tap(({ requestsMap, results }) =>
-            Effect.forEach(
-              results,
-              (result) => {
-                const id = options.resultId(result as any)
-                const req = MutableMap.get(requestsMap, id)
-
-                if (Option.isNone(req)) {
-                  return Effect.unit
+        encodeRequests(requests.map((_) => _.i0)).pipe(
+          Effect.flatMap(options.run),
+          Effect.flatMap((results) => {
+            const resultsMap = new Map<K, Array<A>>()
+            return Effect.map(decodeResults(results), (decoded) => {
+              decoded.forEach((result, i) => {
+                const id = options.resultId(results[i] as AI)
+                if (resultsMap.has(id)) {
+                  resultsMap.get(id)!.push(result)
+                } else {
+                  resultsMap.set(id, [result])
                 }
-
-                return decodeResult(result).pipe(
-                  Effect.tap((result) =>
-                    Effect.sync(() => {
-                      req.value[1].push(result)
-                    })
-                  ),
-                  Effect.catchAll((error) =>
-                    Effect.zipRight(
-                      Effect.sync(() => MutableMap.remove(requestsMap, id)),
-                      request.fail(req.value[0], error)
-                    )
-                  )
-                )
-              },
-              { concurrency: "unbounded", discard: true }
-            )
-          ),
-          Effect.tap(({ requestsMap }) =>
+              })
+              return resultsMap
+            })
+          }),
+          Effect.tap((results) =>
             Effect.forEach(
-              requestsMap,
-              ([, [req, results]]) => request.succeed(req, results),
+              requests,
+              (req) => {
+                const id = options.requestId(req.i0)
+                const result = results.get(id)
+                return request.succeed(req, result ?? [])
+              },
               { discard: true }
             )
           ),
-          Effect.catchAll((error) =>
-            Effect.forEach(requests, (req) => request.fail(req, error as any), {
+          Effect.catchAllCause((error) =>
+            Effect.forEach(requests, (req) => request.failCause(req, error), {
               discard: true
             })
           )
         )
     )
-
     const makeExecute = makeExecuteRequest(Request)
     const execute = makeExecute(Resolver)
     const populateCache = makePopulateCache(Request)
     const invalidateCache = makeInvalidateCache(Request)
-
     return {
       Request,
       Resolver,
@@ -455,62 +425,49 @@ export const make = ({
   ): Client.Resolver<T, R | IR | AR, IA, Option.Option<A>, E> => {
     const Request = request.tagged<Client.Request<T, IA, E, Option.Option<A>>>(tag)
     const encodeRequests = SqlSchema.encode(Schema.array(options.id), "request")
-    const decodeResult = SqlSchema.decodeUnknown(options.result, "result")
+    const decodeResults = SqlSchema.decodeUnknown(
+      Schema.array(options.result),
+      "result"
+    )
     const Resolver = RequestResolver.makeBatched(
       (requests: Array<Client.Request<T, IA, E, Option.Option<A>>>) =>
-        Effect.all({
-          results: Effect.flatMap(
-            encodeRequests(requests.map((_) => _.i0)),
-            options.run
-          ),
-          requestsMap: Effect.sync(() =>
-            requests.reduce(
-              (acc, request) => acc.set(request.i0, request),
-              new Map<IA, Client.Request<T, IA, E, Option.Option<A>>>()
-            )
-          )
-        }).pipe(
-          Effect.tap(({ requestsMap, results }) =>
+        encodeRequests(requests.map((_) => _.i0)).pipe(
+          Effect.flatMap(options.run),
+          Effect.flatMap((results) => {
+            const resultsMap = new Map<IA, A>()
+            return Effect.map(decodeResults(results), (decoded) => {
+              decoded.forEach((result, i) => {
+                const id = options.resultId(results[i])
+                resultsMap.set(id, result)
+              })
+              return resultsMap
+            })
+          }),
+          Effect.tap((results) =>
             Effect.forEach(
-              results,
-              (result) => {
-                const id = options.resultId(result)
-                const req = requestsMap.get(id)
-
-                if (!req) {
-                  return Effect.unit
-                }
-
-                requestsMap.delete(id)
-
-                return decodeResult(result).pipe(
-                  Effect.flatMap((result) => request.succeed(req, Option.some(result))),
-                  Effect.catchAll((error) => request.fail(req, error as any))
+              requests,
+              (req) => {
+                const id = req.i0
+                const result = results.get(id)
+                return request.succeed(
+                  req,
+                  result !== undefined ? Option.some(result) : Option.none()
                 )
               },
-              { concurrency: "unbounded", discard: true }
-            )
-          ),
-          Effect.tap(({ requestsMap }) =>
-            Effect.forEach(
-              requestsMap.values(),
-              (req) => request.succeed(req, Option.none()),
               { discard: true }
             )
           ),
-          Effect.catchAll((error) =>
-            Effect.forEach(requests, (req) => request.fail(req, error as any), {
+          Effect.catchAllCause((error) =>
+            Effect.forEach(requests, (req) => request.failCause(req, error), {
               discard: true
             })
           )
         )
     )
-
     const makeExecute = makeExecuteRequest(Request)
     const execute = makeExecute(Resolver)
     const populateCache = makePopulateCache(Request)
     const invalidateCache = makeInvalidateCache(Request)
-
     return {
       Request,
       Resolver,
