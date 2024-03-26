@@ -1,13 +1,15 @@
 import type { ParseOptions } from "@effect/schema/AST"
 import type * as Schema from "@effect/schema/Schema"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
-import { pipeArguments } from "effect/Pipeable"
 import type * as Stream from "effect/Stream"
 import type * as PlatformError from "../../Error.js"
 import type * as FileSystem from "../../FileSystem.js"
 import type * as Body from "../../Http/Body.js"
+import type { Client } from "../../Http/Client.js"
 import type * as ClientRequest from "../../Http/ClientRequest.js"
 import * as Headers from "../../Http/Headers.js"
 import type { Method } from "../../Http/Method.js"
@@ -17,22 +19,17 @@ import * as internalBody from "./body.js"
 /** @internal */
 export const TypeId: ClientRequest.TypeId = Symbol.for("@effect/platform/Http/ClientRequest") as ClientRequest.TypeId
 
-class ClientRequestImpl extends Inspectable.Class implements ClientRequest.ClientRequest {
-  readonly [TypeId]: ClientRequest.TypeId
-  constructor(
-    readonly method: Method,
-    readonly url: string,
-    readonly urlParams: UrlParams.UrlParams,
-    readonly headers: Headers.Headers,
-    readonly body: Body.Body
-  ) {
-    super()
-    this[TypeId] = TypeId
-  }
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-  toJSON(): unknown {
+/** @internal */
+export const clientTag = Context.GenericTag<Client.Default>("@effect/platform/Http/Client")
+
+const Proto = {
+  [TypeId]: TypeId,
+  ...Effectable.CommitPrototype,
+  ...Inspectable.BaseProto,
+  commit(this: ClientRequest.ClientRequest) {
+    return Effect.flatMap(clientTag, (client) => client(this))
+  },
+  toJSON(this: ClientRequest.ClientRequest): unknown {
     return {
       _id: "@effect/platform/Http/ClientRequest",
       method: this.method,
@@ -44,12 +41,28 @@ class ClientRequestImpl extends Inspectable.Class implements ClientRequest.Clien
   }
 }
 
+function makeInternal(
+  method: Method,
+  url: string,
+  urlParams: UrlParams.UrlParams,
+  headers: Headers.Headers,
+  body: Body.Body
+): ClientRequest.ClientRequest {
+  const self = Object.create(Proto)
+  self.method = method
+  self.url = url
+  self.urlParams = urlParams
+  self.headers = headers
+  self.body = body
+  return self
+}
+
 /** @internal */
 export const isClientRequest = (u: unknown): u is ClientRequest.ClientRequest =>
   typeof u === "object" && u !== null && TypeId in u
 
 /** @internal */
-export const empty: ClientRequest.ClientRequest = new ClientRequestImpl(
+export const empty: ClientRequest.ClientRequest = makeInternal(
   "GET",
   "",
   UrlParams.empty,
@@ -127,7 +140,7 @@ export const setHeader = dual<
   (key: string, value: string) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
   (self: ClientRequest.ClientRequest, key: string, value: string) => ClientRequest.ClientRequest
 >(3, (self, key, value) =>
-  new ClientRequestImpl(
+  makeInternal(
     self.method,
     self.url,
     self.urlParams,
@@ -140,7 +153,7 @@ export const setHeaders = dual<
   (input: Headers.Input) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
   (self: ClientRequest.ClientRequest, input: Headers.Input) => ClientRequest.ClientRequest
 >(2, (self, input) =>
-  new ClientRequestImpl(
+  makeInternal(
     self.method,
     self.url,
     self.urlParams,
@@ -174,7 +187,7 @@ export const setMethod = dual<
   (method: Method) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
   (self: ClientRequest.ClientRequest, method: Method) => ClientRequest.ClientRequest
 >(2, (self, method) =>
-  new ClientRequestImpl(
+  makeInternal(
     method,
     self.url,
     self.urlParams,
@@ -187,7 +200,7 @@ export const setUrl = dual<
   (url: string | URL) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
   (self: ClientRequest.ClientRequest, url: string) => ClientRequest.ClientRequest
 >(2, (self, url) =>
-  new ClientRequestImpl(
+  makeInternal(
     self.method,
     url.toString(),
     self.urlParams,
@@ -200,7 +213,7 @@ export const appendUrl = dual<
   (path: string) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
   (self: ClientRequest.ClientRequest, path: string) => ClientRequest.ClientRequest
 >(2, (self, url) =>
-  new ClientRequestImpl(
+  makeInternal(
     self.method,
     self.url + url,
     self.urlParams,
@@ -213,7 +226,7 @@ export const prependUrl = dual<
   (path: string | URL) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
   (self: ClientRequest.ClientRequest, path: string) => ClientRequest.ClientRequest
 >(2, (self, url) =>
-  new ClientRequestImpl(
+  makeInternal(
     self.method,
     url.toString() + self.url,
     self.urlParams,
@@ -226,7 +239,7 @@ export const updateUrl = dual<
   (f: (url: string) => string) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
   (self: ClientRequest.ClientRequest, f: (url: string) => string) => ClientRequest.ClientRequest
 >(2, (self, f) =>
-  new ClientRequestImpl(
+  makeInternal(
     self.method,
     f(self.url),
     self.urlParams,
@@ -239,7 +252,7 @@ export const appendUrlParam = dual<
   (key: string, value: string) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
   (self: ClientRequest.ClientRequest, key: string, value: string) => ClientRequest.ClientRequest
 >(3, (self, key, value) =>
-  new ClientRequestImpl(
+  makeInternal(
     self.method,
     self.url,
     UrlParams.append(self.urlParams, key, value),
@@ -252,7 +265,7 @@ export const appendUrlParams = dual<
   (input: UrlParams.Input) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
   (self: ClientRequest.ClientRequest, input: UrlParams.Input) => ClientRequest.ClientRequest
 >(2, (self, input) =>
-  new ClientRequestImpl(
+  makeInternal(
     self.method,
     self.url,
     UrlParams.appendAll(self.urlParams, input),
@@ -265,7 +278,7 @@ export const setUrlParam = dual<
   (key: string, value: string) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
   (self: ClientRequest.ClientRequest, key: string, value: string) => ClientRequest.ClientRequest
 >(3, (self, key, value) =>
-  new ClientRequestImpl(
+  makeInternal(
     self.method,
     self.url,
     UrlParams.set(self.urlParams, key, value),
@@ -278,7 +291,7 @@ export const setUrlParams = dual<
   (input: UrlParams.Input) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
   (self: ClientRequest.ClientRequest, input: UrlParams.Input) => ClientRequest.ClientRequest
 >(2, (self, input) =>
-  new ClientRequestImpl(
+  makeInternal(
     self.method,
     self.url,
     UrlParams.setAll(self.urlParams, input),
@@ -305,7 +318,7 @@ export const setBody = dual<
       headers = Headers.set(headers, "content-length", contentLength.toString())
     }
   }
-  return new ClientRequestImpl(
+  return makeInternal(
     self.method,
     self.url,
     self.urlParams,

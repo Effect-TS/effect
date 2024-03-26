@@ -52,9 +52,6 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
         const response = yield* _(
           Http.request.get("https://www.google.com/"),
           client,
-          Effect.tap((res) => {
-            console.log(res.cookies)
-          }),
           Effect.flatMap((_) => _.text),
           Effect.scoped
         )
@@ -119,6 +116,15 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
           Effect.catchTag("TimeoutException", () => Effect.succeedNone)
         )
         expect(response._tag).toEqual("None")
+      }).pipe(Effect.provide(layer)))
+
+    it.effect("close early", () =>
+      Effect.gen(function*(_) {
+        const response = yield* _(
+          Http.request.get("https://www.google.com/"),
+          Effect.scoped
+        )
+        expect(response.status).toBe(200)
       }).pipe(Effect.provide(layer)))
   })
 })
