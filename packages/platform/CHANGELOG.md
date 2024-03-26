@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.48.19
+
+### Patch Changes
+
+- [#2411](https://github.com/Effect-TS/effect/pull/2411) [`fb7285e`](https://github.com/Effect-TS/effect/commit/fb7285e8d6a70527df7137a6a3efdd03ae61cb8b) Thanks [@tim-smart](https://github.com/tim-smart)! - fix broken imports in /platform
+
 ## 0.48.18
 
 ### Patch Changes
