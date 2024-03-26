@@ -17,7 +17,7 @@ import * as Tuple from "./Tuple.js"
 import type { NoInfer } from "./Types.js"
 
 /**
- * Builds a `NonEmptyArray` from an non-empty collection of elements.
+ * Builds a `Iterable` from an non-empty collection of elements.
  *
  * @category constructors
  * @since 2.0.0
@@ -89,7 +89,7 @@ export const replicate: {
 } = dual(2, <A>(a: A, n: number): Iterable<A> => makeBy(n, () => a))
 
 /**
- * Takes a record and returns an array of tuples containing its keys and values.
+ * Takes a record and returns an Iterable of tuples containing its keys and values.
  *
  * @param self - The record to transform.
  *
@@ -232,7 +232,7 @@ export const size = <A>(self: Iterable<A>): number => {
 }
 
 /**
- * Get the first element of a `ReadonlyArray`, or `None` if the `ReadonlyArray` is empty.
+ * Get the first element of a `Iterable`, or `None` if the `Iterable` is empty.
  *
  * @category getters
  * @since 2.0.0
@@ -491,7 +491,7 @@ export const containsWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
 const _equivalence = Equal.equivalence()
 
 /**
- * Returns a function that checks if a `ReadonlyArray` contains a given value using the default `Equivalence`.
+ * Returns a function that checks if a `Iterable` contains a given value using the default `Equivalence`.
  *
  * @category elements
  * @since 2.0.0
@@ -885,10 +885,11 @@ export const flatMapNullable: {
  * @since 2.0.0
  */
 export const some: {
-  <A>(self: ReadonlyArray<A>, predicate: (a: A, i: number) => boolean): boolean
+  <A>(predicate: (a: A, i: number) => boolean): (self: Iterable<A>) => boolean
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): boolean
 } = dual(
   2,
-  <A>(self: ReadonlyArray<A>, predicate: (a: A, i: number) => boolean): boolean => {
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): boolean => {
     let i = 0
     for (const a of self) {
       if (predicate(a, i++)) {
@@ -977,7 +978,7 @@ export const dedupeAdjacentWith: {
 export const dedupeAdjacent: <A>(self: Iterable<A>) => Iterable<A> = dedupeAdjacentWith(Equal.equivalence())
 
 /**
- * Zips this chunk crosswise with the specified chunk using the specified combiner.
+ * Zips this Iterable crosswise with the specified Iterable using the specified combiner.
  *
  * @since 2.0.0
  * @category elements
@@ -992,7 +993,7 @@ export const cartesianWith: {
 )
 
 /**
- * Zips this chunk crosswise with the specified Iterable.
+ * Zips this Iterable crosswise with the specified Iterable.
  *
  * @since 2.0.0
  * @category elements
