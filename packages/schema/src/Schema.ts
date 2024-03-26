@@ -4146,16 +4146,7 @@ export interface $bigint extends Annotable<$bigint, bigint, string> {}
 export const bigint: $bigint = transformOrFail(
   string,
   bigintFromSelf,
-  (s, _, ast) => {
-    if (s.trim() === "") {
-      return ParseResult.fail(new ParseResult.Type(ast, s))
-    }
-
-    return ParseResult.try({
-      try: () => BigInt(s),
-      catch: () => new ParseResult.Type(ast, s)
-    })
-  },
+  (s, _, ast) => ParseResult.fromOption(_bigInt.fromString(s), () => new ParseResult.Type(ast, s)),
   (n) => ParseResult.succeed(String(n))
 ).annotations({ identifier: "bigint" })
 
@@ -4241,10 +4232,10 @@ export const BigintFromNumber: BigintFromNumber = transformOrFail(
   number,
   bigintFromSelf,
   (n, _, ast) =>
-    ParseResult.try({
-      try: () => BigInt(n),
-      catch: () => new ParseResult.Type(ast, n)
-    }),
+    ParseResult.fromOption(
+      _bigInt.fromNumber(n),
+      () => new ParseResult.Type(ast, n)
+    ),
   (b, _, ast) => ParseResult.fromOption(_bigInt.toNumber(b), () => new ParseResult.Type(ast, b))
 ).annotations({ identifier: "BigintFromNumber" })
 
