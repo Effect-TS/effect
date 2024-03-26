@@ -19,11 +19,6 @@ import type * as NodeClient from "../../NodeHttpClient.js"
 import * as NodeStream from "../../NodeStream.js"
 
 /** @internal */
-export const DispatcherTypeId: NodeClient.DispatcherTypeId = Symbol.for(
-  "@effect/platform-node/Http/UndiciClient/Dispatcher"
-) as NodeClient.DispatcherTypeId
-
-/** @internal */
 export const Dispatcher = Context.GenericTag<NodeClient.Dispatcher, Undici.Dispatcher>(
   "@effect/platform-node/Http/NodeClient/Dispatcher"
 )

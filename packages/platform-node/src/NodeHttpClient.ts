@@ -81,18 +81,6 @@ export const layerWithoutAgent: Layer.Layer<Client.Client.Default, never, HttpAg
  * @since 1.0.0
  * @category undici
  */
-export const DispatcherTypeId: unique symbol = internalUndici.DispatcherTypeId
-
-/**
- * @since 1.0.0
- * @category undici
- */
-export type DispatcherTypeId = typeof DispatcherTypeId
-
-/**
- * @since 1.0.0
- * @category undici
- */
 export interface Dispatcher {
   readonly _: unique symbol
 }
