@@ -7,7 +7,7 @@ import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Serializable from "@effect/schema/Serializable"
 import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import * as Context from "effect/Context"
-import type * as Duration from "effect/Duration"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
 import { identity } from "effect/Function"
@@ -253,10 +253,15 @@ export const layerResult = Layer.effect(
                   })
                 })
               ),
-            set: (key, value) =>
-              encode("set", key, value).pipe(
-                Effect.flatMap((_) => storage.set(makeKey(key), _, TimeToLive.getFinite(key, value)))
-              ),
+            set: (key, value) => {
+              const ttl = TimeToLive.getFinite(key, value)
+              if (Option.isSome(ttl) && Duration.equals(ttl.value, Duration.zero)) {
+                return Effect.unit
+              }
+              return encode("set", key, value).pipe(
+                Effect.flatMap((encoded) => storage.set(makeKey(key), encoded, ttl))
+              )
+            },
             remove: (key) => storage.remove(makeKey(key)),
             clear: storage.clear
           })
