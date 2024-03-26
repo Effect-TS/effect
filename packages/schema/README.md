@@ -3353,7 +3353,7 @@ This is useful when you want to relax the type constraints imposed by the `decod
 
 ## transformOrFail
 
-The `transformOrFail` combinator works in a similar way, but allows the transformation function to return an `Effect<R3, ParseError, A`, which can either be a success or a failure.
+The `transformOrFail` combinator works in a similar way, but allows the transformation function to return an `Effect<A, ParseError, R3`, which can either be a success or a failure.
 
 ```ts
 import * as ParseResult from "@effect/schema/ParseResult";
