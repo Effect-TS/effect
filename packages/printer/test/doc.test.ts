@@ -1,5 +1,4 @@
 import * as Doc from "@effect/printer/Doc"
-import * as Render from "@effect/printer/Render"
 import * as String from "effect/String"
 import { assert, describe, expect, it } from "vitest"
 
@@ -7,7 +6,7 @@ describe.concurrent("Doc", () => {
   describe.concurrent("constructors", () => {
     it("empty", () => {
       const doc = Doc.vsep([Doc.text("hello"), Doc.parenthesized(Doc.empty), Doc.text("world")])
-      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+      expect(Doc.render(doc, { style: "pretty" })).toBe(String.stripMargin(
         `|hello
          |()
          |world`
@@ -16,17 +15,17 @@ describe.concurrent("Doc", () => {
 
     it("char", () => {
       const doc = Doc.char("a")
-      expect(Render.prettyDefault(doc)).toBe("a")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("a")
     })
 
     it("text", () => {
       const doc = Doc.text("foo")
-      expect(Render.prettyDefault(doc)).toBe("foo")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("foo")
     })
 
     it("string", () => {
       const doc = Doc.string("foo\nbar")
-      expect(Render.prettyDefault(doc)).toBe("foobar")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("foobar")
     })
 
     it("flatAlt", () => {
@@ -47,26 +46,29 @@ describe.concurrent("Doc", () => {
       ]
 
       assert.strictEqual(
-        Render.prettyDefault(prettyDo(statements)),
+        Doc.render(prettyDo(statements), { style: "pretty" }),
         "do { name:_ <- getArgs; let greet = \"Hello, \" <> name\"; putStrLn greet }"
       )
 
-      expect(Render.pretty(prettyDo(statements), { lineWidth: 10 })).toBe(String.stripMargin(
+      expect(Doc.render(prettyDo(statements), {
+        style: "pretty",
+        options: { lineWidth: 10 }
+      })).toBe(String.stripMargin(
         `|do name:_ <- getArgs
-           |   let greet = "Hello, " <> name"
-           |   putStrLn greet`
+         |   let greet = "Hello, " <> name"
+         |   putStrLn greet`
       ))
     })
 
     it("union", () => {
       const doc = Doc.union(Doc.string("A long string of words"), Doc.char("b"))
-      expect(Render.prettyDefault(doc)).toBe("A long string of words")
-      expect(Render.pretty(doc, { lineWidth: 1 })).toBe("b")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("A long string of words")
+      expect(Doc.render(doc, { style: "pretty", options: { lineWidth: 1 } })).toBe("b")
     })
 
     it("cat", () => {
       const doc = Doc.cat(Doc.char("a"), Doc.char("b"))
-      expect(Render.prettyDefault(doc)).toBe("ab")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("ab")
     })
 
     it("line", () => {
@@ -75,11 +77,11 @@ describe.concurrent("Doc", () => {
         Doc.line,
         Doc.text("dolor sit amet")
       ])
-      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+      expect(Doc.render(doc, { style: "pretty" })).toBe(String.stripMargin(
         `|lorem ipsum
          |dolor sit amet`
       ))
-      expect(Render.prettyDefault(Doc.group(doc))).toBe("lorem ipsum dolor sit amet")
+      expect(Doc.render(Doc.group(doc), { style: "pretty" })).toBe("lorem ipsum dolor sit amet")
     })
 
     it("lineBreak", () => {
@@ -88,11 +90,11 @@ describe.concurrent("Doc", () => {
         Doc.lineBreak,
         Doc.text("dolor sit amet")
       ])
-      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+      expect(Doc.render(doc, { style: "pretty" })).toBe(String.stripMargin(
         `|lorem ipsum
          |dolor sit amet`
       ))
-      expect(Render.prettyDefault(Doc.group(doc))).toBe("lorem ipsumdolor sit amet")
+      expect(Doc.render(Doc.group(doc), { style: "pretty" })).toBe("lorem ipsumdolor sit amet")
     })
 
     it("softLine", () => {
@@ -101,8 +103,8 @@ describe.concurrent("Doc", () => {
         Doc.softLine,
         Doc.text("dolor sit amet")
       ])
-      expect(Render.prettyDefault(doc)).toBe("lorem ipsum dolor sit amet")
-      expect(Render.pretty(doc, { lineWidth: 10 })).toBe(String.stripMargin(
+      expect(Doc.render(doc, { style: "pretty" })).toBe("lorem ipsum dolor sit amet")
+      expect(Doc.render(doc, { style: "pretty", options: { lineWidth: 10 } })).toBe(String.stripMargin(
         `|lorem ipsum
          |dolor sit amet`
       ))
@@ -114,8 +116,8 @@ describe.concurrent("Doc", () => {
         Doc.softLineBreak,
         Doc.text("IsWayTooLong")
       ])
-      expect(Render.prettyDefault(doc)).toBe("ThisTextIsWayTooLong")
-      expect(Render.pretty(doc, { lineWidth: 10 })).toBe(String.stripMargin(
+      expect(Doc.render(doc, { style: "pretty" })).toBe("ThisTextIsWayTooLong")
+      expect(Doc.render(doc, { style: "pretty", options: { lineWidth: 10 } })).toBe(String.stripMargin(
         `|ThisText
          |IsWayTooLong`
       ))
@@ -127,10 +129,12 @@ describe.concurrent("Doc", () => {
         Doc.hardLine,
         Doc.text("dolor sit amet")
       ])
-      expect(Render.pretty(doc, { lineWidth: 1000 })).toBe(String.stripMargin(
-        `|lorem ipsum
-         |dolor sit amet`
-      ))
+      expect(Doc.render(doc, { style: "pretty", options: { lineWidth: 1000 } })).toBe(
+        String.stripMargin(
+          `|lorem ipsum
+           |dolor sit amet`
+        )
+      )
     })
 
     it("nest", () => {
@@ -139,7 +143,7 @@ describe.concurrent("Doc", () => {
         Doc.text("sit"),
         Doc.text("amet")
       ])
-      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+      expect(Doc.render(doc, { style: "pretty" })).toBe(String.stripMargin(
         `|lorem
          |    ipsum
          |    dolor
@@ -154,7 +158,7 @@ describe.concurrent("Doc", () => {
         Doc.column((l) => Doc.text(`| <- column ${l}`))
       ])
       const doc = Doc.vsep([0, 4, 8].map((n) => Doc.indent(prefix, n)))
-      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+      expect(Doc.render(doc, { style: "pretty" })).toBe(String.stripMargin(
         `|prefix | <- column 7
          |    prefix | <- column 11
          |        prefix | <- column 15`
@@ -167,7 +171,7 @@ describe.concurrent("Doc", () => {
         Doc.nesting((l) => Doc.squareBracketed(Doc.text(`Nested: ${l}`)))
       ])
       const doc = Doc.vsep([0, 4, 8].map((n) => Doc.indent(prefix, n)))
-      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+      expect(Doc.render(doc, { style: "pretty" })).toBe(String.stripMargin(
         `|prefix [Nested: 0]
          |    prefix [Nested: 4]
          |        prefix [Nested: 8]`
@@ -193,11 +197,13 @@ describe.concurrent("Doc", () => {
         })
       ])
       const doc = Doc.vsep([0, 4, 8].map((n) => Doc.indent(prefix, n)))
-      expect(Render.pretty(doc, { lineWidth: 32 })).toBe(String.stripMargin(
-        `|prefix [Width: 32, Ribbon Fraction: 1]
-         |    prefix [Width: 32, Ribbon Fraction: 1]
-         |        prefix [Width: 32, Ribbon Fraction: 1]`
-      ))
+      expect(Doc.render(doc, { style: "pretty", options: { lineWidth: 32 } })).toBe(
+        String.stripMargin(
+          `|prefix [Width: 32, Ribbon Fraction: 1]
+           |    prefix [Width: 32, Ribbon Fraction: 1]
+           |        prefix [Width: 32, Ribbon Fraction: 1]`
+        )
+      )
     })
   })
 
@@ -271,35 +277,35 @@ describe.concurrent("Doc", () => {
   describe.concurrent("concatenation combinators", () => {
     it("concatWith", () => {
       const doc = Doc.concatWith([Doc.char("a"), Doc.char("b")], Doc.catWithSpace)
-      expect(Render.prettyDefault(doc)).toBe("a b")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("a b")
     })
 
     it("catWithSpace", () => {
       const doc = Doc.catWithSpace(Doc.char("a"), Doc.char("b"))
-      expect(Render.prettyDefault(doc)).toBe("a b")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("a b")
     })
 
     it("catWithLine", () => {
       const doc = Doc.catWithLine(Doc.char("a"), Doc.char("b"))
-      expect(Render.prettyDefault(doc)).toBe("a\nb")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("a\nb")
     })
 
     it("catWithLineBreak", () => {
       const doc = Doc.catWithLineBreak(Doc.char("a"), Doc.char("b"))
-      expect(Render.prettyDefault(doc)).toBe("a\nb")
-      expect(Render.prettyDefault(Doc.group(doc))).toBe("ab")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("a\nb")
+      expect(Doc.render(Doc.group(doc), { style: "pretty" })).toBe("ab")
     })
 
     it("catWithSoftLine", () => {
       const doc = Doc.catWithSoftLine(Doc.char("a"), Doc.char("b"))
-      expect(Render.prettyDefault(doc)).toBe("a b")
-      expect(Render.pretty(doc, { lineWidth: 1 })).toBe("a\nb")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("a b")
+      expect(Doc.render(doc, { style: "pretty", options: { lineWidth: 1 } })).toBe("a\nb")
     })
 
     it("catWithSoftLineBreak", () => {
       const doc = Doc.catWithSoftLineBreak(Doc.char("a"), Doc.char("b"))
-      expect(Render.prettyDefault(doc)).toBe("ab")
-      expect(Render.pretty(doc, { lineWidth: 1 })).toBe("a\nb")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("ab")
+      expect(Doc.render(doc, { style: "pretty", options: { lineWidth: 1 } })).toBe("a\nb")
     })
   })
 
@@ -309,21 +315,21 @@ describe.concurrent("Doc", () => {
         const doc = Doc.group(Doc.flatAlt(Doc.text("even wider"), Doc.text("too wide")))
         // If the `right` document does not fit the page, the algorithm falls
         // back to an even wider layout
-        expect(Render.pretty(doc, { lineWidth: 7 })).toBe("even wider")
+        expect(Doc.render(doc, { style: "pretty", options: { lineWidth: 7 } })).toBe("even wider")
       })
 
       it("should flatten the right document", () => {
         const doc = Doc.group(
           Doc.flatAlt(Doc.char("x"), Doc.hcat([Doc.char("y"), Doc.line, Doc.char("y")]))
         )
-        expect(Render.prettyDefault(doc)).toBe("y y")
+        expect(Doc.render(doc, { style: "pretty" })).toBe("y y")
       })
 
       it("should never render an unflattenable `right` document", () => {
         const doc = Doc.group(
           Doc.flatAlt(Doc.char("x"), Doc.hcat([Doc.char("y"), Doc.hardLine, Doc.char("y")]))
         )
-        expect(Render.prettyDefault(doc)).toBe("x")
+        expect(Doc.render(doc, { style: "pretty" })).toBe("x")
       })
     })
   })
@@ -331,13 +337,15 @@ describe.concurrent("Doc", () => {
   describe.concurrent("sep combinators", () => {
     it("hsep", () => {
       const doc = Doc.hsep(Doc.words("lorem ipsum dolor sit amet"))
-      expect(Render.prettyDefault(doc)).toBe("lorem ipsum dolor sit amet")
-      expect(Render.pretty(doc, { lineWidth: 5 })).toBe("lorem ipsum dolor sit amet")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("lorem ipsum dolor sit amet")
+      expect(Doc.render(doc, { style: "pretty", options: { lineWidth: 5 } })).toBe(
+        "lorem ipsum dolor sit amet"
+      )
     })
 
     it("vsep", () => {
       const doc = Doc.hsep([Doc.text("prefix"), Doc.vsep(Doc.words("text to lay out"))])
-      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+      expect(Doc.render(doc, { style: "pretty" })).toBe(String.stripMargin(
         `|prefix text
          |to
          |lay
@@ -347,37 +355,40 @@ describe.concurrent("Doc", () => {
 
     it("fillSep", () => {
       const doc = Doc.fillSep(Doc.words("lorem ipsum dolor sit amet"))
-      expect(Render.prettyDefault(doc)).toBe("lorem ipsum dolor sit amet")
-      expect(Render.pretty(doc, { lineWidth: 10 })).toBe(String.stripMargin(
-        `|lorem
-         |ipsum
-         |dolor sit
-         |amet`
-      ))
+      expect(Doc.render(doc, { style: "pretty" })).toBe("lorem ipsum dolor sit amet")
+      expect(Doc.render(doc, { style: "pretty", options: { lineWidth: 10 } })).toBe(
+        String.stripMargin(
+          `|lorem
+           |ipsum
+           |dolor sit
+           |amet`
+        )
+      )
     })
 
     it("sep", () => {
       const doc = Doc.hsep([Doc.text("prefix"), Doc.seps(Doc.words("text to lay out"))])
-      expect(Render.prettyDefault(doc)).toBe("prefix text to lay out")
-      expect(Render.pretty(doc, { lineWidth: 20 })).toBe(String.stripMargin(
-        `|prefix text
-         |to
-         |lay
-         |out`
-      ))
+      expect(Doc.render(doc, { style: "pretty" })).toBe("prefix text to lay out")
+      expect(Doc.render(doc, { style: "pretty", options: { lineWidth: 20 } })).toBe(
+        String.stripMargin(
+          `|prefix text
+           |to
+           |lay
+           |out`
+        )
+      )
     })
   })
 
   describe.concurrent("cat combinators", () => {
     it("hcat", () => {
       const doc = Doc.hcat(Doc.words("lorem ipsum dolor sit amet"))
-      expect(Render.prettyDefault(doc)).toBe("loremipsumdolorsitamet")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("loremipsumdolorsitamet")
     })
 
     it("vcat", () => {
       const doc = Doc.vcat(Doc.words("lorem ipsum dolor sit amet"))
-
-      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+      expect(Doc.render(doc, { style: "pretty" })).toBe(String.stripMargin(
         `|lorem
          |ipsum
          |dolor
@@ -388,22 +399,26 @@ describe.concurrent("Doc", () => {
 
     it("fillCat", () => {
       const doc = Doc.fillCat(Doc.words("lorem ipsum dolor sit amet"))
-      expect(Render.prettyDefault(doc)).toBe("loremipsumdolorsitamet")
-      expect(Render.pretty(doc, { lineWidth: 10 })).toBe(String.stripMargin(
-        `|loremipsum
-         |dolorsit
-         |amet`
-      ))
+      expect(Doc.render(doc, { style: "pretty" })).toBe("loremipsumdolorsitamet")
+      expect(Doc.render(doc, { style: "pretty", options: { lineWidth: 10 } })).toBe(
+        String.stripMargin(
+          `|loremipsum
+           |dolorsit
+           |amet`
+        )
+      )
     })
 
     it("cats", () => {
       const doc = Doc.hsep([Doc.text("Docs:"), Doc.cats(Doc.words("lorem ipsum dolor"))])
-      expect(Render.prettyDefault(doc)).toBe("Docs: loremipsumdolor")
-      expect(Render.pretty(doc, { lineWidth: 10 })).toBe(String.stripMargin(
-        `|Docs: lorem
-         |ipsum
-         |dolor`
-      ))
+      expect(Doc.render(doc, { style: "pretty" })).toBe("Docs: loremipsumdolor")
+      expect(Doc.render(doc, { style: "pretty", options: { lineWidth: 10 } })).toBe(
+        String.stripMargin(
+          `|Docs: lorem
+           |ipsum
+           |dolor`
+        )
+      )
     })
   })
 
@@ -425,7 +440,7 @@ describe.concurrent("Doc", () => {
         Doc.align(Doc.vcat(signatures.map(prettySignature)))
       ])
 
-      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+      expect(Doc.render(doc, { style: "pretty" })).toBe(String.stripMargin(
         `|let empty :: Doc
          |    nest  :: Int -> Doc -> Doc
          |    fillSep :: [Doc] -> Doc`
@@ -449,7 +464,7 @@ describe.concurrent("Doc", () => {
         Doc.align(Doc.vcat(signatures.map(prettySignature)))
       ])
 
-      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+      expect(Doc.render(doc, { style: "pretty" })).toBe(String.stripMargin(
         `|let empty :: Doc
          |    nest  :: Int -> Doc -> Doc
          |    fillSep
@@ -465,7 +480,7 @@ describe.concurrent("Doc", () => {
         Doc.align(Doc.vsep([Doc.text("ipsum"), Doc.text("dolor")]))
       ])
 
-      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+      expect(Doc.render(doc, { style: "pretty" })).toBe(String.stripMargin(
         `|lorem ipsum
          |      dolor`
       ))
@@ -477,7 +492,7 @@ describe.concurrent("Doc", () => {
         Doc.hang(Doc.reflow("Indenting these words with hang"), 4)
       ])
 
-      expect(Render.pretty(doc, { lineWidth: 24 })).toBe(String.stripMargin(
+      expect(Doc.render(doc, { style: "pretty", options: { lineWidth: 24 } })).toBe(String.stripMargin(
         `|prefix Indenting these
          |           words with
          |           hang`
@@ -490,12 +505,14 @@ describe.concurrent("Doc", () => {
         Doc.indent(Doc.reflow("The indent function indents these words!"), 4)
       ])
 
-      expect(Render.pretty(doc, { lineWidth: 24 })).toBe(String.stripMargin(
-        `|prefix    The indent
-         |          function
-         |          indents these
-         |          words!`
-      ))
+      expect(Doc.render(doc, { style: "pretty", options: { lineWidth: 24 } })).toBe(
+        String.stripMargin(
+          `|prefix    The indent
+           |          function
+           |          indents these
+           |          words!`
+        )
+      )
     })
 
     it("encloseSep", () => {
@@ -509,27 +526,29 @@ describe.concurrent("Doc", () => {
         ))
       ])
 
-      expect(Render.prettyDefault(doc)).toBe("list [1,20,300,4000]")
-      expect(Render.pretty(doc, { lineWidth: 10 })).toBe(String.stripMargin(
-        `|list [1
-         |     ,20
-         |     ,300
-         |     ,4000]`
-      ))
+      expect(Doc.render(doc, { style: "pretty" })).toBe("list [1,20,300,4000]")
+      expect(Doc.render(doc, { style: "pretty", options: { lineWidth: 10 } })).toBe(
+        String.stripMargin(
+          `|list [1
+           |     ,20
+           |     ,300
+           |     ,4000]`
+        )
+      )
     })
 
     it("list", () => {
       const doc = Doc.list(
         ["1", "20", "300", "4000"].map((n) => n.length === 1 ? Doc.char(n) : Doc.text(n))
       )
-      expect(Render.prettyDefault(doc)).toBe("[1, 20, 300, 4000]")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("[1, 20, 300, 4000]")
     })
 
     it("tupled", () => {
       const doc = Doc.tupled(
         ["1", "20", "300", "4000"].map((n) => n.length === 1 ? Doc.char(n) : Doc.text(n))
       )
-      expect(Render.prettyDefault(doc)).toBe("(1, 20, 300, 4000)")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("(1, 20, 300, 4000)")
     })
   })
 
@@ -547,7 +566,7 @@ describe.concurrent("Doc", () => {
 
       const doc = Doc.align(Doc.vsep(docs.map(annotate)))
 
-      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+      expect(Doc.render(doc, { style: "pretty" })).toBe(String.stripMargin(
         `|[---] <- width: 5
          |[------] <- width: 8
          |[   ---] <- width: 8
@@ -560,10 +579,10 @@ describe.concurrent("Doc", () => {
   describe.concurrent("utility combinators", () => {
     it("punctuate", () => {
       const docs = Doc.punctuate(Doc.words("lorem ipsum dolor sit amet"), Doc.comma)
-      expect(Render.prettyDefault(Doc.hsep(docs))).toBe("lorem, ipsum, dolor, sit, amet")
+      expect(Doc.render(Doc.hsep(docs), { style: "pretty" })).toBe("lorem, ipsum, dolor, sit, amet")
       // The separators are put at the end of the entries, which can be better
       // visualzied if the documents are rendered vertically
-      expect(Render.prettyDefault(Doc.vsep(docs))).toBe(String.stripMargin(
+      expect(Doc.render(Doc.vsep(docs), { style: "pretty" })).toBe(String.stripMargin(
         `|lorem,
          |ipsum,
          |dolor,
@@ -578,55 +597,57 @@ describe.concurrent("Doc", () => {
         (left, right) => Doc.surround(Doc.slash, left, right)
       )
 
-      expect(Render.prettyDefault(doc)).toBe("@effect/printer/Doc")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("@effect/printer/Doc")
     })
 
     it("parenthesized", () => {
       const doc = Doc.parenthesized(Doc.char("a"))
-      expect(Render.prettyDefault(doc)).toBe("(a)")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("(a)")
     })
 
     it("angleBracketed", () => {
       const doc = Doc.angleBracketed(Doc.char("a"))
-      expect(Render.prettyDefault(doc)).toBe("<a>")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("<a>")
     })
 
     it("squareBracketed", () => {
       const doc = Doc.squareBracketed(Doc.char("a"))
-      expect(Render.prettyDefault(doc)).toBe("[a]")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("[a]")
     })
 
     it("curlyBraced", () => {
       const doc = Doc.curlyBraced(Doc.char("a"))
-      expect(Render.prettyDefault(doc)).toBe("{a}")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("{a}")
     })
 
     it("singleQuoted", () => {
       const doc = Doc.singleQuoted(Doc.char("a"))
-      expect(Render.prettyDefault(doc)).toBe("'a'")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("'a'")
     })
 
     it("doubleQuoted", () => {
       const doc = Doc.doubleQuoted(Doc.char("a"))
-      expect(Render.prettyDefault(doc)).toBe("\"a\"")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("\"a\"")
     })
 
     it("spaces", () => {
       const doc = Doc.squareBracketed(Doc.doubleQuoted(Doc.spaces(5)))
-      expect(Render.prettyDefault(doc)).toBe("[\"     \"]")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("[\"     \"]")
     })
 
     it("words", () => {
       const doc = Doc.tupled(Doc.words("lorem ipsum dolor"))
-      expect(Render.prettyDefault(doc)).toBe("(lorem, ipsum, dolor)")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("(lorem, ipsum, dolor)")
     })
 
     it("reflow", () => {
       const doc = Doc.reflow("Lorem ipsum dolor sit amet, consectetur adipisicing elit")
-      expect(Render.pretty(doc, { lineWidth: 32 })).toBe(String.stripMargin(
-        `|Lorem ipsum dolor sit amet,
-         |consectetur adipisicing elit`
-      ))
+      expect(Doc.render(doc, { style: "pretty", options: { lineWidth: 32 } })).toBe(
+        String.stripMargin(
+          `|Lorem ipsum dolor sit amet,
+           |consectetur adipisicing elit`
+        )
+      )
     })
 
     it("textSpaces", () => {
@@ -639,7 +660,7 @@ describe.concurrent("Doc", () => {
       const S = Doc.getSemigroup<never>()
       const doc = S.combine(Doc.text("hello"), Doc.text("world"))
 
-      expect(Render.prettyDefault(doc)).toBe("helloworld")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("helloworld")
     })
 
     it("Monoid", () => {
@@ -648,7 +669,7 @@ describe.concurrent("Doc", () => {
         M.combine(Doc.text("hello"), Doc.parenthesized(M.empty)),
         Doc.text("world")
       )
-      expect(Render.prettyDefault(doc)).toBe("hello()world")
+      expect(Doc.render(doc, { style: "pretty" })).toBe("hello()world")
     })
   })
 })

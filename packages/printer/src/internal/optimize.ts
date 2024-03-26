@@ -2,7 +2,7 @@ import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import type * as Doc from "../Doc.js"
 import type * as Optimize from "../Optimize.js"
-import * as _doc from "./doc.js"
+import * as InternalDoc from "./doc.js"
 
 /** @internal */
 export const optimize = dual<
@@ -14,147 +14,128 @@ const optimizeSafe = <A>(
   self: Doc.Doc<A>,
   depth: Optimize.Optimize.Depth
 ): Effect.Effect<Doc.Doc<A>> => {
-  switch (self._tag) {
-    case "FlatAlt": {
-      return Effect.zipWith(
-        Effect.suspend(() => optimizeSafe(self.left, depth)),
-        Effect.suspend(() => optimizeSafe(self.right, depth)),
-        (left, right) => _doc.flatAlt(left, right)
-      )
-    }
-    case "Cat": {
-      // Empty documents
-      if (_doc.isEmpty(self.left)) {
-        return Effect.suspend(() => optimizeSafe(self.right, depth))
+  const optimize = (self: Doc.Doc<A>): Effect.Effect<Doc.Doc<A>> =>
+    Effect.gen(function*(_) {
+      switch (self._tag) {
+        case "Fail":
+        case "Empty":
+        case "Char":
+        case "Text":
+        case "Line": {
+          return self
+        }
+        case "FlatAlt": {
+          const left = yield* _(optimize(self.left))
+          const right = yield* _(optimize(self.right))
+          return InternalDoc.flatAlt(left, right)
+        }
+        case "Cat": {
+          // Empty Documents
+          if (InternalDoc.isEmpty(self.left)) {
+            return yield* _(optimize(self.right))
+          }
+          if (InternalDoc.isEmpty(self.right)) {
+            return yield* _(optimize(self.left))
+          }
+          // Text Documents
+          if (InternalDoc.isChar(self.left) && InternalDoc.isChar(self.right)) {
+            return InternalDoc.text(self.left.char + self.right.char)
+          }
+          if (InternalDoc.isText(self.left) && InternalDoc.isChar(self.right)) {
+            return InternalDoc.text(self.left.text + self.right.char)
+          }
+          if (InternalDoc.isChar(self.left) && InternalDoc.isText(self.right)) {
+            return InternalDoc.text(self.left.char + self.right.text)
+          }
+          if (InternalDoc.isText(self.left) && InternalDoc.isText(self.right)) {
+            return InternalDoc.text(self.left.text + self.right.text)
+          }
+          // Nested Text Documents
+          if (
+            (
+              InternalDoc.isChar(self.left) &&
+              InternalDoc.isCat(self.right) &&
+              InternalDoc.isChar(self.right.left)
+            ) ||
+            (
+              InternalDoc.isChar(self.left) &&
+              InternalDoc.isCat(self.right) &&
+              InternalDoc.isText(self.right.left)
+            ) ||
+            (
+              InternalDoc.isText(self.left) &&
+              InternalDoc.isCat(self.right) &&
+              InternalDoc.isChar(self.right.left)
+            ) ||
+            (
+              InternalDoc.isText(self.left) &&
+              InternalDoc.isCat(self.right) &&
+              InternalDoc.isText(self.right.left)
+            )
+          ) {
+            const inner = yield* _(optimize(InternalDoc.cat(self.left, self.right.left)))
+            return yield* _(optimize(InternalDoc.cat(inner, self.right.right)))
+          }
+          // Nested Documents
+          if (
+            (
+              InternalDoc.isCat(self.left) &&
+              InternalDoc.isChar(self.left.right)
+            ) ||
+            (
+              InternalDoc.isCat(self.left) &&
+              InternalDoc.isText(self.left.right)
+            )
+          ) {
+            const inner = yield* _(optimize(InternalDoc.cat(self.left.right, self.right)))
+            return yield* _(optimize(InternalDoc.cat(self.left.left, inner)))
+          }
+          // Otherwise
+          const left = yield* _(optimize(self.left))
+          const right = yield* _(optimize(self.right))
+          return InternalDoc.cat(left, right)
+        }
+        case "Nest": {
+          if (self.indent === 0) {
+            return yield* _(optimize(self.doc))
+          }
+          if (
+            InternalDoc.isEmpty(self.doc) ||
+            InternalDoc.isChar(self.doc) ||
+            InternalDoc.isText(self.doc)
+          ) {
+            return self.doc
+          }
+          if (InternalDoc.isNest(self.doc)) {
+            const indent = self.indent + self.doc.indent
+            return yield* _(optimize(InternalDoc.nest(self.doc.doc, indent)))
+          }
+          return InternalDoc.nest(yield* _(optimize(self.doc)), self.indent)
+        }
+        case "Union": {
+          const left = yield* _(optimize(self.left))
+          const right = yield* _(optimize(self.right))
+          return InternalDoc.union(left, right)
+        }
+        case "Column": {
+          return depth._tag === "Shallow"
+            ? self
+            : InternalDoc.column((position) => Effect.runSync(optimizeSafe(self.react(position), depth)))
+        }
+        case "WithPageWidth": {
+          return depth._tag === "Shallow"
+            ? self
+            : InternalDoc.pageWidth((pageWidth) => Effect.runSync(optimizeSafe(self.react(pageWidth), depth)))
+        }
+        case "Nesting": {
+          return depth._tag === "Shallow"
+            ? self
+            : InternalDoc.nesting((level) => Effect.runSync(optimizeSafe(self.react(level), depth)))
+        }
+        case "Annotated": {
+          return InternalDoc.annotate(yield* _(optimize(self.doc)), self.annotation)
+        }
       }
-      if (_doc.isEmpty(self.right)) {
-        return Effect.suspend(() => optimizeSafe(self.left, depth))
-      }
-      // String documents
-      if (_doc.isChar(self.left) && _doc.isChar(self.right)) {
-        return Effect.succeed(_doc.text(self.left.char + self.right.char))
-      }
-      if (_doc.isText(self.left) && _doc.isChar(self.right)) {
-        return Effect.succeed(_doc.text(self.left.text + self.right.char))
-      }
-      if (_doc.isChar(self.left) && _doc.isText(self.right)) {
-        return Effect.succeed(_doc.text(self.left.char + self.right.text))
-      }
-      if (_doc.isText(self.left) && _doc.isText(self.right)) {
-        return Effect.succeed(_doc.text(self.left.text + self.right.text))
-      }
-      // Nested strings
-      if (_doc.isChar(self.left) && _doc.isCat(self.right) && _doc.isChar(self.right.left)) {
-        const left = self.right.left
-        const right = self.right.right
-        return Effect.flatMap(
-          Effect.suspend(() => optimizeSafe(_doc.cat(self.left, left), depth)),
-          (inner) => optimizeSafe(_doc.cat(right, inner), depth)
-        )
-      }
-      if (_doc.isText(self.left) && _doc.isCat(self.right) && _doc.isChar(self.right.left)) {
-        const left = self.right.left
-        const right = self.right.right
-        return Effect.flatMap(
-          Effect.suspend(() => optimizeSafe(_doc.cat(self.left, left), depth)),
-          (inner) => optimizeSafe(_doc.cat(inner, right), depth)
-        )
-      }
-      if (_doc.isChar(self.left) && _doc.isCat(self.right) && _doc.isText(self.right.left)) {
-        const left = self.right.left
-        const right = self.right.right
-        return Effect.flatMap(
-          Effect.suspend(() => optimizeSafe(_doc.cat(self.left, left), depth)),
-          (inner) => optimizeSafe(_doc.cat(inner, right), depth)
-        )
-      }
-      if (_doc.isText(self.left) && _doc.isCat(self.right) && _doc.isText(self.right.left)) {
-        const left = self.right.left
-        const right = self.right.right
-        return Effect.flatMap(
-          Effect.suspend(() => optimizeSafe(_doc.cat(self.left, left), depth)),
-          (inner) => optimizeSafe(_doc.cat(inner, right), depth)
-        )
-      }
-      if (_doc.isCat(self.left) && _doc.isChar(self.left.right)) {
-        const left = self.left.left
-        const right = self.left.right
-        return Effect.flatMap(
-          Effect.suspend(() => optimizeSafe(_doc.cat(right, self.right), depth)),
-          (inner) => optimizeSafe(_doc.cat(left, inner), depth)
-        )
-      }
-      if (_doc.isCat(self.left) && _doc.isText(self.left.right)) {
-        const left = self.left.left
-        const right = self.left.right
-        return Effect.flatMap(
-          Effect.suspend(() => optimizeSafe(_doc.cat(right, self.right), depth)),
-          (inner) => optimizeSafe(_doc.cat(left, inner), depth)
-        )
-      }
-      return Effect.zipWith(
-        Effect.suspend(() => optimizeSafe(self.left, depth)),
-        Effect.suspend(() => optimizeSafe(self.right, depth)),
-        (left, right) => _doc.cat(left, right)
-      )
-    }
-    case "Nest": {
-      if (_doc.isEmpty(self.doc)) {
-        return Effect.succeed(self.doc)
-      }
-      if (_doc.isChar(self.doc)) {
-        return Effect.succeed(self.doc)
-      }
-      if (_doc.isText(self.doc)) {
-        return Effect.succeed(self.doc)
-      }
-      if (_doc.isNest(self.doc)) {
-        const doc = self.doc
-        return Effect.suspend(() => optimizeSafe(_doc.nest(doc.doc, self.indent + doc.indent), depth))
-      }
-      if (self.indent === 0) {
-        return Effect.suspend(() => optimizeSafe(self.doc, depth))
-      }
-      return Effect.map(
-        Effect.suspend(() => optimizeSafe(self.doc, depth)),
-        (doc) => _doc.nest(doc, self.indent)
-      )
-    }
-    case "Union": {
-      return Effect.zipWith(
-        Effect.suspend(() => optimizeSafe(self.left, depth)),
-        Effect.suspend(() => optimizeSafe(self.right, depth)),
-        (left, right) => _doc.union(left, right)
-      )
-    }
-    case "Column": {
-      return depth._tag === "Shallow"
-        ? Effect.succeed(_doc.column(self.react))
-        : Effect.succeed(_doc.column(
-          (position) => Effect.runSync(optimizeSafe(self.react(position), depth))
-        ))
-    }
-    case "WithPageWidth": {
-      return depth._tag === "Shallow"
-        ? Effect.succeed(_doc.pageWidth(self.react))
-        : Effect.succeed(_doc.pageWidth(
-          (pageWidth) => Effect.runSync(optimizeSafe(self.react(pageWidth), depth))
-        ))
-    }
-    case "Nesting": {
-      return depth._tag === "Shallow"
-        ? Effect.succeed(_doc.nesting(self.react))
-        : Effect.succeed(_doc.nesting(
-          (level) => Effect.runSync(optimizeSafe(self.react(level), depth))
-        ))
-    }
-    case "Annotated": {
-      return Effect.map(
-        Effect.suspend(() => optimizeSafe(self.doc, depth)),
-        (doc) => _doc.annotate(doc, self.annotation)
-      )
-    }
-    default:
-      return Effect.succeed(self)
-  }
+    })
+  return optimize(self)
 }

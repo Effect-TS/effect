@@ -2,8 +2,7 @@
  * @since 1.0.0
  */
 
-import type { Option } from "effect/Option"
-import type { Predicate } from "effect/Predicate"
+import type { LazyArg } from "effect/Function"
 import type { Doc } from "./Doc.js"
 import type { DocStream } from "./DocStream.js"
 import * as internal from "./internal/layout.js"
@@ -46,11 +45,14 @@ export declare namespace Layout {
    * @since 1.0.0
    * @category model
    */
-  export type FittingPredicate<A> = (
-    lineIndent: number,
-    currentColumn: number,
-    initialIndentY: Option<number>
-  ) => Predicate<DocStream<A>>
+  export interface FittingPredicate<A> {
+    (
+      stream: DocStream<A>,
+      indentation: number,
+      currentColumn: number,
+      comparator: LazyArg<DocStream<A>>
+    ): boolean
+  }
 }
 
 /**
@@ -91,7 +93,6 @@ export const wadlerLeijen: {
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
- * import * as Render from "@effect/printer/Render"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
  *
@@ -108,7 +109,7 @@ export const wadlerLeijen: {
  * )
  *
  * assert.strictEqual(
- *   Render.prettyDefault(doc),
+ *   Doc.render(doc, { style: "pretty" }),
  *   String.stripMargin(
  *     `|lorem
  *      |    ipsum
@@ -118,7 +119,7 @@ export const wadlerLeijen: {
  * )
  *
  * assert.strictEqual(
- *   Render.compact(doc),
+ *   Doc.render(doc, { style: "compact" }),
  *   String.stripMargin(
  *     `|lorem
  *      |ipsum
@@ -162,7 +163,6 @@ export const pretty: {
  * import type * as DocStream from "@effect/printer/DocStream"
  * import * as Layout from "@effect/printer/Layout"
  * import * as PageWidth from "@effect/printer/PageWidth"
- * import * as Render from "@effect/printer/Render"
  * import { pipe } from "effect/Function"
  * import * as String from "effect/String"
  *
@@ -193,7 +193,7 @@ export const pretty: {
  * ) =>
  *   (
  *     layoutAlgorithm: (options: Layout.Layout.Options) => (doc: Doc.Doc<A>) => DocStream.DocStream<A>
- *   ): string => pipe(Doc.vsep([hr, doc, hr]), layoutAlgorithm(layoutOptions), Render.render)
+ *   ): string => pipe(Doc.vsep([hr, doc, hr]), layoutAlgorithm(layoutOptions), Doc.renderStream)
  *
  * // If rendered using `Layout.pretty`, with a page width of `26` characters per line,
  * // all the calls to `fun` will fit into the first line. However, this exceeds the

@@ -11,7 +11,7 @@ import * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as Doc from "../Doc.js"
 import type * as Flatten from "../Flatten.js"
 import type * as PageWidth from "../PageWidth.js"
-import * as _flatten from "./flatten.js"
+import * as InternalFlatten from "./flatten.js"
 
 const DocSymbolKey = "@effect/printer/Doc"
 
@@ -231,16 +231,16 @@ export const hardLine: Doc.Doc<never> = (() => {
 })()
 
 /** @internal */
-export const line: Doc.Doc<never> = flatAlt(char(" "))(hardLine)
+export const line: Doc.Doc<never> = flatAlt(hardLine, char(" "))
 
 /** @internal */
-export const lineBreak: Doc.Doc<never> = flatAlt(empty)(hardLine)
+export const lineBreak: Doc.Doc<never> = flatAlt(hardLine, empty)
 
 /** @internal */
-export const softLine: Doc.Doc<never> = union(hardLine)(char(" "))
+export const softLine: Doc.Doc<never> = union(char(" "), hardLine)
 
 /** @internal */
-export const softLineBreak: Doc.Doc<never> = union(hardLine)(empty)
+export const softLineBreak: Doc.Doc<never> = union(empty, hardLine)
 
 /** @internal */
 export const backslash: Doc.Doc<never> = char("\\")
@@ -341,15 +341,11 @@ export const concatWith = dual<
     docs: Iterable<Doc.Doc<A>>,
     f: (left: Doc.Doc<A>, right: Doc.Doc<A>) => Doc.Doc<A>
   ) => Doc.Doc<A>
->(2, (docs, f) => {
-  const documents = ReadonlyArray.fromIterable(docs)
-  if (ReadonlyArray.isNonEmptyReadonlyArray(documents)) {
-    const head = documents[0]
-    const tail = documents.slice(1)
-    return tail.reduce((acc, curr) => f(acc, curr), head)
-  }
-  return empty
-})
+>(2, (docs, f) =>
+  ReadonlyArray.matchRight(ReadonlyArray.fromIterable(docs), {
+    onEmpty: () => empty,
+    onNonEmpty: (init, last) => ReadonlyArray.reduceRight(init, last, (curr, acc) => f(acc, curr))
+  }))
 
 /** @internal */
 export const vcat = <A>(docs: Iterable<Doc.Doc<A>>): Doc.Doc<A> =>
@@ -403,7 +399,7 @@ export const group = <A>(self: Doc.Doc<A>): Doc.Doc<A> => {
     }
     default: {
       const flattened = changesUponFlattening(self)
-      return flattened._tag === "Flattened" ? union(flattened.value, self) : self
+      return InternalFlatten.isFlattened(flattened) ? union(flattened.value, self) : self
     }
   }
 }
@@ -559,119 +555,127 @@ export const fillBreak = dual<
 /** @internal */
 export const flatten = <A>(self: Doc.Doc<A>): Doc.Doc<A> => Effect.runSync(flattenSafe(self))
 
-const flattenSafe = <A>(self: Doc.Doc<A>): Effect.Effect<Doc.Doc<A>> => {
-  switch (self._tag) {
-    case "Line":
-      return Effect.succeed(fail)
-    case "Cat":
-      return Effect.zipWith(
-        Effect.suspend(() => flattenSafe(self.left)),
-        Effect.suspend(() => flattenSafe(self.right)),
-        (left, right) => cat(left, right)
-      )
-    case "FlatAlt":
-      return Effect.suspend(() => flattenSafe(self.right))
-    case "Union":
-      return Effect.suspend(() => flattenSafe(self.left))
-    case "Nest":
-      return Effect.map(
-        Effect.suspend(() => flattenSafe(self.doc)),
-        nest(self.indent)
-      )
-    case "Column":
-      return Effect.succeed(
-        column((position) => Effect.runSync(flattenSafe(self.react(position))))
-      )
-    case "WithPageWidth":
-      return Effect.succeed(
-        pageWidth((pageWidth) => Effect.runSync(flattenSafe(self.react(pageWidth))))
-      )
-    case "Nesting":
-      return Effect.succeed(
-        nesting((level) => Effect.runSync(flattenSafe(self.react(level))))
-      )
-    case "Annotated":
-      return Effect.map(
-        Effect.suspend(() => flattenSafe(self.doc)),
-        annotate(self.annotation)
-      )
-    default:
-      return Effect.succeed(self)
-  }
-}
+const flattenSafe = <A>(self: Doc.Doc<A>): Effect.Effect<Doc.Doc<A>> =>
+  Effect.gen(function*(_) {
+    switch (self._tag) {
+      case "Fail": {
+        return self
+      }
+      case "Empty": {
+        return self
+      }
+      case "Char": {
+        return self
+      }
+      case "Text": {
+        return self
+      }
+      case "Line": {
+        return fail
+      }
+      case "FlatAlt": {
+        return yield* _(flattenSafe(self.right))
+      }
+      case "Cat": {
+        const left = yield* _(flattenSafe(self.left))
+        const right = yield* _(flattenSafe(self.right))
+        return cat(left, right)
+      }
+      case "Nest": {
+        const doc = yield* _(flattenSafe(self.doc))
+        return nest(doc, self.indent)
+      }
+      case "Union": {
+        return yield* _(flattenSafe(self.left))
+      }
+      case "Column": {
+        return column((position) => flatten(self.react(position)))
+      }
+      case "WithPageWidth": {
+        return pageWidth((pageWidth) => flatten(self.react(pageWidth)))
+      }
+      case "Nesting": {
+        return nesting((level) => flatten(self.react(level)))
+      }
+      case "Annotated": {
+        const doc = yield* _(flattenSafe(self.doc))
+        return annotate(doc, self.annotation)
+      }
+    }
+  })
 
 /** @internal */
 export const changesUponFlattening = <A>(self: Doc.Doc<A>): Flatten.Flatten<Doc.Doc<A>> =>
   Effect.runSync(changesUponFlatteningSafe(self))
 
-const changesUponFlatteningSafe = <A>(
-  self: Doc.Doc<A>
-): Effect.Effect<Flatten.Flatten<Doc.Doc<A>>> => {
-  switch (self._tag) {
-    case "Fail": {
-      return Effect.succeed(_flatten.neverFlat)
-    }
-    case "Line": {
-      return Effect.succeed(_flatten.neverFlat)
-    }
-    case "FlatAlt": {
-      return Effect.succeed(_flatten.flattened(flatten(self.right)))
-    }
-    case "Cat": {
-      return Effect.zipWith(
-        Effect.suspend(() => changesUponFlatteningSafe(self.left)),
-        Effect.suspend(() => changesUponFlatteningSafe(self.right)),
-        (left, right) => {
-          if (_flatten.isNeverFlat(left) || _flatten.isNeverFlat(right)) {
-            return _flatten.neverFlat
-          }
-          if (_flatten.isFlattened(left) && _flatten.isFlattened(right)) {
-            return _flatten.flattened(cat(left.value, right.value))
-          }
-          if (_flatten.isFlattened(left) && _flatten.isAlreadyFlat(right)) {
-            return _flatten.flattened(cat(left.value, self.right))
-          }
-          if (_flatten.isAlreadyFlat(left) && _flatten.isFlattened(right)) {
-            return _flatten.flattened(cat(self.left, right.value))
-          }
-          if (_flatten.isAlreadyFlat(left) && _flatten.isAlreadyFlat(right)) {
-            return _flatten.alreadyFlat
-          }
-          throw new Error("bug, it seems we didn't manage a branch")
+const changesUponFlatteningSafe = <A>(self: Doc.Doc<A>): Effect.Effect<Flatten.Flatten<Doc.Doc<A>>> =>
+  Effect.gen(function*(_) {
+    switch (self._tag) {
+      case "Fail":
+      case "Line": {
+        return InternalFlatten.neverFlat
+      }
+      case "Empty":
+      case "Char":
+      case "Text": {
+        return InternalFlatten.alreadyFlat
+      }
+      case "FlatAlt": {
+        const doc = yield* _(flattenSafe(self.right))
+        return InternalFlatten.flattened(doc)
+      }
+      case "Cat": {
+        const left = yield* _(changesUponFlatteningSafe(self.left))
+        const right = yield* _(changesUponFlatteningSafe(self.right))
+        if (InternalFlatten.isNeverFlat(left) || InternalFlatten.isNeverFlat(right)) {
+          return InternalFlatten.neverFlat
         }
-      )
+        if (InternalFlatten.isFlattened(left) && InternalFlatten.isFlattened(right)) {
+          return InternalFlatten.flattened(cat(left.value, right.value))
+        }
+        if (InternalFlatten.isFlattened(left) && InternalFlatten.isAlreadyFlat(right)) {
+          return InternalFlatten.flattened(cat(left.value, self.right))
+        }
+        if (InternalFlatten.isAlreadyFlat(left) && InternalFlatten.isFlattened(right)) {
+          return InternalFlatten.flattened(cat(self.left, right.value))
+        }
+        if (InternalFlatten.isAlreadyFlat(left) && InternalFlatten.isAlreadyFlat(right)) {
+          return InternalFlatten.alreadyFlat
+        }
+        throw new Error(
+          "[BUG]: Doc.changesUponFlattening - unable to flatten a Cat document " +
+            "- please open an issue at https://github.com/IMax153/contentlayer/issues/new"
+        )
+      }
+      case "Nest": {
+        return yield* _(
+          changesUponFlatteningSafe(self.doc),
+          Effect.map(InternalFlatten.map((doc) => nest(doc, self.indent)))
+        )
+      }
+      case "Union": {
+        return InternalFlatten.flattened(self.left)
+      }
+      case "Column": {
+        const doc = column((position) => Effect.runSync(flattenSafe(self.react(position))))
+        return InternalFlatten.flattened(doc)
+      }
+      case "WithPageWidth": {
+        const doc = pageWidth((pageWidth) => Effect.runSync(flattenSafe(self.react(pageWidth))))
+        return InternalFlatten.flattened(doc)
+      }
+      case "Nesting": {
+        const doc = nesting((level) => Effect.runSync(flattenSafe(self.react(level))))
+        return InternalFlatten.flattened(doc)
+      }
+      case "Annotated": {
+        return yield* _(
+          changesUponFlatteningSafe(self.doc),
+          Effect.map(InternalFlatten.map((doc) => annotate(doc, self.annotation)))
+        )
+      }
     }
-    case "Nest": {
-      return Effect.map(
-        Effect.suspend(() => changesUponFlatteningSafe(self.doc)),
-        _flatten.map(nest(self.indent))
-      )
-    }
-    case "Union": {
-      return Effect.succeed(_flatten.flattened(self.left))
-    }
-    case "Column": {
-      return Effect.succeed(_flatten.flattened(column((position) => flatten(self.react(position)))))
-    }
-    case "WithPageWidth": {
-      return Effect.succeed(
-        _flatten.flattened(pageWidth((pageWidth) => flatten(self.react(pageWidth))))
-      )
-    }
-    case "Nesting": {
-      return Effect.succeed(_flatten.flattened(nesting((level) => flatten(self.react(level)))))
-    }
-    case "Annotated": {
-      return Effect.map(
-        Effect.suspend(() => changesUponFlatteningSafe(self.doc)),
-        _flatten.map(annotate(self.annotation))
-      )
-    }
-    default: {
-      return Effect.succeed(_flatten.alreadyFlat)
-    }
-  }
-}
+  })
 
 // -----------------------------------------------------------------------------
 // Annotations
@@ -856,7 +860,19 @@ export const spaces = (n: number): Doc.Doc<never> => {
 }
 
 /** @internal */
-export const words = (s: string, char = " "): ReadonlyArray<Doc.Doc<never>> => s.split(char).map(string)
+export const words = (str: string, splitChar = " "): ReadonlyArray<Doc.Doc<never>> =>
+  str.split(splitChar).map((word) => {
+    if (word === "") {
+      return empty
+    }
+    if (word === "\n") {
+      return hardLine
+    }
+    if (word.length === 1) {
+      return char(word)
+    }
+    return text(word)
+  })
 
 /** @internal */
 export const reflow = (s: string, char = " "): Doc.Doc<never> => fillSep(words(s, char))

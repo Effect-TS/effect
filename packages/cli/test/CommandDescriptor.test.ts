@@ -11,7 +11,6 @@ import * as WordCount from "@effect/cli/test/utils/wc"
 import * as ValidationError from "@effect/cli/ValidationError"
 import * as NodeContext from "@effect/platform-node/NodeContext"
 import * as Doc from "@effect/printer/Doc"
-import * as Render from "@effect/printer/Render"
 import { Effect, Option, ReadonlyArray, String } from "effect"
 import { describe, expect, it } from "vitest"
 
@@ -297,8 +296,9 @@ describe("Command", () => {
       const parent = Descriptor.make("parent").pipe(
         Descriptor.withSubcommands([["child1", child1]])
       )
-      const result = Render.prettyDefault(
-        Doc.unAnnotate(HelpDoc.toAnsiDoc(Descriptor.getHelp(parent, config)))
+      const result = Doc.render(
+        Doc.unAnnotate(HelpDoc.toAnsiDoc(Descriptor.getHelp(parent, config))),
+        { style: "pretty" }
       )
       expect(result).toBe(String.stripMargin(
         `|COMMANDS

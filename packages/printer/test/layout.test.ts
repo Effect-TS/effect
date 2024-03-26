@@ -1,7 +1,6 @@
 import * as Doc from "@effect/printer/Doc"
 import * as Layout from "@effect/printer/Layout"
 import * as PageWidth from "@effect/printer/PageWidth"
-import * as Render from "@effect/printer/Render"
 import * as String from "effect/String"
 import { describe, expect, it } from "vitest"
 
@@ -29,7 +28,7 @@ const layoutOptions = Layout.options(pageWidth)
 
 describe.concurrent("Layout", () => {
   it("unbounded", () => {
-    expect(Render.render(Layout.unbounded(doc))).toBe(String.stripMargin(
+    expect(Doc.renderStream(Layout.unbounded(doc))).toBe(String.stripMargin(
       `||------------------------|
        |fun(fun(fun(fun(fun([abcdef, ghijklm])))))
        ||------------------------|`
@@ -37,7 +36,7 @@ describe.concurrent("Layout", () => {
   })
 
   it("pretty", () => {
-    expect(Render.render(Layout.pretty(doc, layoutOptions))).toBe(String.stripMargin(
+    expect(Doc.renderStream(Layout.pretty(doc, layoutOptions))).toBe(String.stripMargin(
       `||------------------------|
        |fun(fun(fun(fun(fun(
        |                  [ abcdef
@@ -47,7 +46,7 @@ describe.concurrent("Layout", () => {
   })
 
   it("smart", () => {
-    expect(Render.render(Layout.smart(doc, layoutOptions))).toBe(String.stripMargin(
+    expect(Doc.renderStream(Layout.smart(doc, layoutOptions))).toBe(String.stripMargin(
       `||------------------------|
        |fun(
        |  fun(
@@ -61,7 +60,7 @@ describe.concurrent("Layout", () => {
   })
 
   it("compact", () => {
-    expect(Render.render(Layout.compact(doc))).toBe(String.stripMargin(
+    expect(Doc.renderStream(Layout.compact(doc))).toBe(String.stripMargin(
       `||------------------------|
        |fun(
        |fun(

@@ -95,16 +95,16 @@ export const defaultPageWidth: PageWidth.PageWidth = availablePerLine(80, 1)
 
 /** @internal */
 export const remainingWidth = (
-  lineLength: number,
+  pageWidth: number,
   ribbonFraction: number,
-  lineIndent: number,
+  indentation: number,
   currentColumn: number
 ) => {
-  const columnsLeftInLine = lineLength - currentColumn
+  const columnsLeftInLine = pageWidth - currentColumn
   const ribbonWidth = Math.max(
     0,
-    Math.min(lineLength, Math.floor(lineLength * ribbonFraction))
+    Math.min(pageWidth, Math.floor(pageWidth * ribbonFraction))
   )
-  const columnsLeftInRibbon = lineIndent + ribbonWidth - currentColumn
+  const columnsLeftInRibbon = indentation + ribbonWidth - currentColumn
   return Math.min(columnsLeftInLine, columnsLeftInRibbon)
 }

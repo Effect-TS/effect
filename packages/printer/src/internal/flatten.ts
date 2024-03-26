@@ -47,7 +47,7 @@ const proto = {
 
 /** @internal */
 export const isFlatten = (u: unknown): u is Flatten.Flatten<unknown> =>
-  typeof u === "object" && u != null && "_id" in u && FlattenTypeId in u
+  typeof u === "object" && u != null && FlattenTypeId in u
 
 /** @internal */
 export const isFlattened = <A>(self: Flatten.Flatten<A>): self is Flatten.Flattened<A> => self._tag === "Flattened"
@@ -57,7 +57,7 @@ export const isAlreadyFlat = <A>(self: Flatten.Flatten<A>): self is Flatten.Alre
   self._tag === "AlreadyFlat"
 
 /** @internal */
-export const isNeverFlat = <A>(a: Flatten.Flatten<A>): a is Flatten.NeverFlat<A> => a._tag === "NeverFlat"
+export const isNeverFlat = <A>(self: Flatten.Flatten<A>): self is Flatten.NeverFlat<A> => self._tag === "NeverFlat"
 
 // -----------------------------------------------------------------------------
 // Constructors
@@ -94,7 +94,16 @@ export const neverFlat: Flatten.Flatten<never> = (() => {
 export const map = dual<
   <A, B>(f: (a: A) => B) => (self: Flatten.Flatten<A>) => Flatten.Flatten<B>,
   <A, B>(self: Flatten.Flatten<A>, f: (a: A) => B) => Flatten.Flatten<B>
->(2, <A, B>(self: Flatten.Flatten<A>, f: (a: A) => B) =>
-  self._tag === "Flattened"
-    ? flattened(f(self.value))
-    : self as unknown as Flatten.Flatten<B>)
+>(2, <A, B>(self: Flatten.Flatten<A>, f: (a: A) => B) => {
+  switch (self._tag) {
+    case "Flattened": {
+      return flattened(f(self.value))
+    }
+    case "AlreadyFlat": {
+      return alreadyFlat
+    }
+    case "NeverFlat": {
+      return neverFlat
+    }
+  }
+})
