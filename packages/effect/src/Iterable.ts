@@ -17,19 +17,11 @@ import * as Tuple from "./Tuple.js"
 import type { NoInfer } from "./Types.js"
 
 /**
- * Builds a `Iterable` from an non-empty collection of elements.
+ * Return a `Iterable` with element `i` initialized with `f(i)`.
  *
- * @category constructors
- * @since 2.0.0
- */
-export const make = <Elements extends ReadonlyArray<any>>(
-  ...elements: Elements
-): Iterable<Elements[number]> => elements
-
-/**
- * Return a `Iterable` of length `n` with element `i` initialized with `f(i)`.
+ * If the `length` is not specified, the `Iterable` will be infinite.
  *
- * **Note**. `n` is normalized to an integer >= 1.
+ * **Note**. `length` is normalized to an integer >= 1.
  *
  * @example
  * import { makeBy } from 'effect/Iterable'
@@ -39,8 +31,10 @@ export const make = <Elements extends ReadonlyArray<any>>(
  * @category constructors
  * @since 2.0.0
  */
-export const makeBy = <A>(n: number, f: (i: number) => A): Iterable<A> => {
-  const max = Math.max(1, Math.floor(n))
+export const makeBy = <A>(f: (i: number) => A, options?: {
+  readonly length?: number
+}): Iterable<A> => {
+  const max = options?.length !== undefined ? Math.max(1, Math.floor(options.length)) : Infinity
   return {
     [Symbol.iterator]() {
       let i = 0
@@ -59,6 +53,8 @@ export const makeBy = <A>(n: number, f: (i: number) => A): Iterable<A> => {
 /**
  * Return a `Iterable` containing a range of integers, including both endpoints.
  *
+ * If `end` is omitted, the range will not have an upper bound.
+ *
  * @example
  * import { range } from 'effect/Iterable'
  *
@@ -67,8 +63,14 @@ export const makeBy = <A>(n: number, f: (i: number) => A): Iterable<A> => {
  * @category constructors
  * @since 2.0.0
  */
-export const range = (start: number, end: number): Iterable<number> =>
-  start <= end ? makeBy(end - start + 1, (i) => start + i) : [start]
+export const range = (start: number, end?: number): Iterable<number> => {
+  if (end === undefined) {
+    return makeBy((i) => start + i)
+  }
+  return makeBy((i) => start + i, {
+    length: start <= end ? end - start + 1 : 1
+  })
+}
 
 /**
  * Return a `Iterable` containing a value repeated the specified number of times.
@@ -86,7 +88,7 @@ export const range = (start: number, end: number): Iterable<number> =>
 export const replicate: {
   (n: number): <A>(a: A) => Iterable<A>
   <A>(a: A, n: number): Iterable<A>
-} = dual(2, <A>(a: A, n: number): Iterable<A> => makeBy(n, () => a))
+} = dual(2, <A>(a: A, n: number): Iterable<A> => makeBy(() => a, { length: n }))
 
 /**
  * Takes a record and returns an Iterable of tuples containing its keys and values.

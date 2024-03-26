@@ -364,9 +364,9 @@ describe("Iterable", () => {
       deepStrictEqual(chunks[0], input)
     }
     // n = length
-    assertSingleChunk(Iter.make(1, 2), 2)
+    assertSingleChunk([1, 2], 2)
     // n out of bounds
-    assertSingleChunk(Iter.make(1, 2), 3)
+    assertSingleChunk([1, 2], 3)
   })
 
   it("flatten", () => {
@@ -401,8 +401,16 @@ describe("Iterable", () => {
   })
 
   it("makeBy", () => {
-    deepStrictEqual(toArray(Iter.makeBy(5, (n) => n * 2)), [0, 2, 4, 6, 8])
-    deepStrictEqual(toArray(Iter.makeBy(2.2, (n) => n * 2)), [0, 2])
+    deepStrictEqual(
+      pipe(
+        Iter.makeBy((n) => n * 2),
+        Iter.take(5),
+        toArray
+      ),
+      [0, 2, 4, 6, 8]
+    )
+    deepStrictEqual(toArray(Iter.makeBy((n) => n * 2, { length: 5 })), [0, 2, 4, 6, 8])
+    deepStrictEqual(toArray(Iter.makeBy((n) => n * 2, { length: 2.2 })), [0, 2])
   })
 
   it("replicate", () => {
