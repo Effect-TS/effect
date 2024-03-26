@@ -2028,7 +2028,7 @@ export const forEachConcurrentDiscard = <A, X, E, R>(
           }
           return exits
         }
-        const runFiber = <A, E, R>(eff: Effect.Effect<A, E, R>) => {
+        const runFiber = <A, E, R>(eff: Effect.Effect<A, E, R>, interruptImmediately = false) => {
           const runnable = core.uninterruptible(graft(eff))
           const fiber = unsafeForkUnstarted(
             runnable,
@@ -2037,6 +2037,9 @@ export const forEachConcurrentDiscard = <A, X, E, R>(
             fiberScope.globalScope
           )
           parent._scheduler.scheduleTask(() => {
+            if (interruptImmediately) {
+              fiber.unsafeInterruptAsFork(parent.id())
+            }
             fiber.resume(runnable)
           }, 0)
           return fiber
@@ -2142,26 +2145,44 @@ export const forEachConcurrentDiscard = <A, X, E, R>(
             }
           })
         )
-        return core.asUnit(core.tap(
-          core.flatten(core.onInterrupt(
-            restore(internalFiber.join(processingFiber)),
-            () => {
-              onInterruptSignal()
-              const all = [processingFiber] as Array<FiberRuntime<any, any>>
-              residual.map((blocked) => {
-                const fiber = runFiber(blocked)
-                parent._scheduler.scheduleTask(() => {
-                  fiber.unsafeInterruptAsFork(parent.id())
-                }, 0)
-                return fiber
-              }).forEach((additional) => {
-                all.push(additional as unknown as FiberRuntime<any, any>)
-              })
-              return core.exit(fiberJoinAll(all))
-            }
-          )),
-          () => core.forEachSequential(joinOrder, (f) => f.inheritAll)
-        ))
+        return core.asUnit(
+          core.onExit(
+            core.flatten(restore(internalFiber.join(processingFiber))),
+            core.exitMatch({
+              onFailure: () => {
+                onInterruptSignal()
+                const target = residual.length + 1
+                const concurrency = Math.min(typeof n === "number" ? n : residual.length, residual.length)
+                const toPop = Array.from(residual)
+                return core.async<any, any>((cb) => {
+                  const exits: Array<Exit.Exit<any, any>> = []
+                  let count = 0
+                  let index = 0
+                  const check = (index: number, hitNext: boolean) => (exit: Exit.Exit<any, any>) => {
+                    exits[index] = exit
+                    count++
+                    if (count === target) {
+                      cb(Option.getOrThrow(core.exitCollectAll(exits, { parallel: true })))
+                    }
+                    if (toPop.length > 0 && hitNext) {
+                      next()
+                    }
+                  }
+                  const next = () => {
+                    runFiber(toPop.pop()!, true).addObserver(check(index, true))
+                    index++
+                  }
+                  processingFiber.addObserver(check(index, false))
+                  index++
+                  for (let i = 0; i < concurrency; i++) {
+                    next()
+                  }
+                }) as any
+              },
+              onSuccess: () => core.forEachSequential(joinOrder, (f) => f.inheritAll)
+            })
+          )
+        )
       })
     )
   )
