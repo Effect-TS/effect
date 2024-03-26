@@ -3009,6 +3009,35 @@ const Category: S.Schema<Category> = S.struct({
 });
 ```
 
+> [!NOTE]
+> It is necessary to define the `Category` type and add an explicit type annotation (`const Category: S.Schema<Category>`) because otherwise TypeScript would struggle to infer types correctly. Without this annotation, you might encounter the error message: "'Category' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.ts(7022)"
+
+### A Helpful Pattern to Simplify Schema Definition
+
+As you've observed, it's necessary to define an interface for the `Type` of the schema to enable recursive schema definition, which can complicate things and be quite tedious. One pattern to mitigate this is to separate the field responsible for recursion from all other fields.
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+// Define the fields common to the Category schema
+const fields = {
+  name: S.string,
+  // ...possibly other fields
+};
+
+// Define an interface for the Category schema, extending the Type of the defined fields
+interface Category extends S.Struct.Type<typeof fields> {
+  readonly subcategories: ReadonlyArray<Category>; // Define a field for subcategories
+}
+
+const Category: S.Schema<Category> = S.struct({
+  ...fields, // Include the common fields
+  subcategories: S.array(S.suspend(() => Category)), // Define subcategories using recursion
+});
+```
+
+### Mutually Recursive Schemas
+
 Here's an example of two mutually recursive schemas, `Expression` and `Operation`, that represent a simple arithmetic expression tree.
 
 ```ts
@@ -3039,6 +3068,60 @@ const Operation: S.Schema<Operation> = S.struct({
   operator: S.literal("+", "-"),
   left: Expression,
   right: Expression,
+});
+```
+
+### Recursive Types with Different Encoded and Type
+
+Defining a recursive schema where the `Encoded` type differs from the `Type` type adds another layer of complexity. In such cases, we need to define two interfaces: one for the `Type` type, as seen previously, and another for the `Encoded` type.
+
+Let's consider an example: suppose we want to add an `id` field to the `Category` schema, where the schema for `id` is `NumberFromString`. It's important to note that `NumberFromString` is a schema that transforms a string into a number, so the `Type` and `Encoded` types of `NumberFromString` differ, being `number` and `string` respectively. When we add this field to the `Category` schema, TypeScript throws an error:
+
+```typescript
+import * as S from "@effect/schema/Schema";
+
+const fields = {
+  id: S.NumberFromString,
+  name: S.string,
+};
+
+interface Category extends S.Struct.Type<typeof fields> {
+  readonly subcategories: ReadonlyArray<Category>;
+}
+
+/*
+TypeScript error:
+Type 'Category' is not assignable to type '{ readonly id: string; readonly name: string; readonly subcategories: readonly Category[]; }'.
+  Types of property 'id' are incompatible.
+    Type 'number' is not assignable to type 'string'.ts(2322)
+*/
+const Category: S.Schema<Category> = S.struct({
+  ...fields,
+  subcategories: S.array(S.suspend(() => Category)),
+});
+```
+
+This error occurs because the explicit annotation `const Category: S.Schema<Category>` is no longer sufficient and needs to be adjusted by explicitly adding the `Encoded` type:
+
+```typescript
+import * as S from "@effect/schema/Schema";
+
+const fields = {
+  id: S.NumberFromString,
+  name: S.string,
+};
+
+interface Category extends S.Struct.Type<typeof fields> {
+  readonly subcategories: ReadonlyArray<Category>;
+}
+
+interface CategoryEncoded extends S.Struct.Encoded<typeof fields> {
+  readonly subcategories: ReadonlyArray<CategoryEncoded>;
+}
+
+const Category: S.Schema<Category, CategoryEncoded> = S.struct({
+  ...fields,
+  subcategories: S.array(S.suspend(() => Category)),
 });
 ```
 

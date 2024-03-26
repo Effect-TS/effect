@@ -40,7 +40,6 @@ export type ParseIssue =
  * @category model
  * @since 1.0.0
  */
-
 export class Declaration {
   /**
    * @since 1.0.0
