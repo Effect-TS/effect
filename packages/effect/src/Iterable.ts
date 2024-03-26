@@ -788,7 +788,7 @@ export const filterMapWhile: {
  * import { some, none } from "effect/Option"
  *
  * assert.deepStrictEqual(
- *   getSomes([some(1), none(), some(2)]),
+ *   Array.from(getSomes([some(1), none(), some(2)])),
  *   [1, 2]
  * )
  *
@@ -805,7 +805,7 @@ export const getSomes: <A>(self: Iterable<Option<A>>) => Iterable<A> = filterMap
  * import { right, left } from "effect/Either"
  *
  * assert.deepStrictEqual(
- *   getLefts([right(1), left("err"), right(2)]),
+ *   Array.from(getLefts([right(1), left("err"), right(2)])),
  *   ["err"]
  * )
  *
@@ -822,7 +822,7 @@ export const getLefts = <R, L>(self: Iterable<Either<R, L>>): Iterable<L> => fil
  * import { right, left } from "effect/Either"
  *
  * assert.deepStrictEqual(
- *   getRights([right(1), left("err"), right(2)]),
+ *   Array.from(getRights([right(1), left("err"), right(2)])),
  *   [1, 2]
  * )
  *
