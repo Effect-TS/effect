@@ -1,5 +1,29 @@
 # @effect/platform-node
 
+## 0.45.22
+
+### Patch Changes
+
+- [#2413](https://github.com/Effect-TS/effect/pull/2413) [`4789083`](https://github.com/Effect-TS/effect/commit/4789083283bdaec456982d614ebc4a496ea0e7f7) Thanks [@tim-smart](https://github.com/tim-smart)! - make /platform ClientRequest implement Effect
+
+  ClientRequest now implements `Effect<ClientResponse, HttpClientError, Client.Default | Scope>`
+
+  This makes it easier to quickly create a request and execute it in a single line.
+
+  ```ts
+  import * as Http from "@effect/platform/HttpClient";
+
+  Http.request
+    .get("https://jsonplaceholder.typicode.com/todos/1")
+    .pipe(Http.response.json);
+  ```
+
+- [#2413](https://github.com/Effect-TS/effect/pull/2413) [`4789083`](https://github.com/Effect-TS/effect/commit/4789083283bdaec456982d614ebc4a496ea0e7f7) Thanks [@tim-smart](https://github.com/tim-smart)! - prevent unhandled errors in undici http client
+
+- Updated dependencies [[`4789083`](https://github.com/Effect-TS/effect/commit/4789083283bdaec456982d614ebc4a496ea0e7f7), [`4789083`](https://github.com/Effect-TS/effect/commit/4789083283bdaec456982d614ebc4a496ea0e7f7)]:
+  - @effect/platform@0.48.20
+  - @effect/platform-node-shared@0.3.20
+
 ## 0.45.21
 
 ### Patch Changes
