@@ -800,24 +800,24 @@ fc.Arbitrary<{
     readonly age: number;
 }>
 */
-const PersonArbitraryTo = Arbitrary.make(Person)(fc);
+const PersonArbitraryType = Arbitrary.make(Person)(fc);
 
-console.log(fc.sample(PersonArbitraryTo, 2));
+console.log(fc.sample(PersonArbitraryType, 2));
 /*
 Output:
 [ { name: 'iP=!', age: -6 }, { name: '', age: 14 } ]
 */
 
 /*
-Arbitrary for the "From" type:
+Arbitrary for the "Encoded" type:
 fc.Arbitrary<{
     readonly name: string;
     readonly age: string;
 }>
 */
-const PersonArbitraryFrom = Arbitrary.make(S.from(Person))(fc);
+const PersonArbitraryEncoded = Arbitrary.make(S.encodedSchema(Person))(fc);
 
-console.log(fc.sample(PersonArbitraryFrom, 2));
+console.log(fc.sample(PersonArbitraryEncoded, 2));
 /*
 Output:
 [ { name: '{F', age: '$"{|' }, { name: 'nB}@BK', age: '^V+|W!Z' } ]
