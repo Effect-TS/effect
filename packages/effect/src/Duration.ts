@@ -11,7 +11,7 @@ import * as Option from "./Option.js"
 import * as order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
-import { hasProperty, isBigInt, isNumber } from "./Predicate.js"
+import { hasProperty, isBigInt, isNumber, isString } from "./Predicate.js"
 
 const TypeId: unique symbol = Symbol.for("effect/Duration")
 
@@ -94,7 +94,7 @@ export const decode = (input: DurationInput): Duration => {
     if (input.length === 2 && isNumber(input[0]) && isNumber(input[1])) {
       return nanos(BigInt(input[0]) * bigint1e9 + BigInt(input[1]))
     }
-  } else {
+  } else if (isString(input)) {
     DURATION_REGEX.lastIndex = 0 // Reset the lastIndex before each use
     const match = DURATION_REGEX.exec(input)
     if (match) {
@@ -130,6 +130,11 @@ export const decode = (input: DurationInput): Duration => {
   }
   throw new Error("Invalid duration input")
 }
+
+/**
+ * @since 2.5.0
+ */
+export const decodeUnknown: (u: unknown) => Option.Option<Duration> = Option.liftThrowable(decode) as any
 
 const zeroValue: DurationValue = { _tag: "Millis", millis: 0 }
 const infinityValue: DurationValue = { _tag: "Infinity" }

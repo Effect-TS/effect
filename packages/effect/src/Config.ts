@@ -3,6 +3,7 @@
  */
 import type * as Chunk from "./Chunk.js"
 import type * as ConfigError from "./ConfigError.js"
+import type * as Duration from "./Duration.js"
 import type * as Effect from "./Effect.js"
 import type * as Either from "./Either.js"
 import type { LazyArg } from "./Function.js"
@@ -179,6 +180,14 @@ export const literal: <Literals extends ReadonlyArray<LiteralValue>>(...literals
  * @category constructors
  */
 export const logLevel: (name?: string) => Config<LogLevel.LogLevel> = internal.logLevel
+
+/**
+ * Constructs a config for a duration value.
+ *
+ * @since 2.5.0
+ * @category constructors
+ */
+export const duration: (name?: string) => Config<Duration.Duration> = internal.duration
 
 /**
  * This function returns `true` if the specified value is an `Config` value,
