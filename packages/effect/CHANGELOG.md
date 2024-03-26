@@ -1,5 +1,11 @@
 # effect
 
+## 2.4.14
+
+### Patch Changes
+
+- [#2404](https://github.com/Effect-TS/effect/pull/2404) [`6180c0c`](https://github.com/Effect-TS/effect/commit/6180c0cc51dee785cfce72220a52c9fc3b9bf9aa) Thanks [@patroza](https://github.com/patroza)! - fix interruption of parked Requests
+
 ## 2.4.13
 
 ### Patch Changes

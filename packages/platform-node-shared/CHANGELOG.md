@@ -1,5 +1,27 @@
 # @effect/platform-node-shared
 
+## 0.3.18
+
+### Patch Changes
+
+- [#2410](https://github.com/Effect-TS/effect/pull/2410) [`26435ec`](https://github.com/Effect-TS/effect/commit/26435ecfa06569dc18d1801ccf38213a43b7c334) Thanks [@tim-smart](https://github.com/tim-smart)! - add undici http client to @effect/platform-node
+
+- [#2410](https://github.com/Effect-TS/effect/pull/2410) [`26435ec`](https://github.com/Effect-TS/effect/commit/26435ecfa06569dc18d1801ccf38213a43b7c334) Thanks [@tim-smart](https://github.com/tim-smart)! - add NodeStream.toReadable
+
+  With this api you can convert an Effect Stream into a node.js Readable stream.
+
+  ```ts
+  import { Stream } from "effect";
+  import * as NodeStream from "@effect/platform-node/NodeStream";
+
+  // Effect<Readable>
+  NodeStream.toReadable(Stream.make("a", "b", "c"));
+  ```
+
+- Updated dependencies [[`26435ec`](https://github.com/Effect-TS/effect/commit/26435ecfa06569dc18d1801ccf38213a43b7c334), [`6180c0c`](https://github.com/Effect-TS/effect/commit/6180c0cc51dee785cfce72220a52c9fc3b9bf9aa)]:
+  - @effect/platform@0.48.18
+  - effect@2.4.14
+
 ## 0.3.17
 
 ### Patch Changes
