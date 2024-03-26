@@ -73,7 +73,8 @@ export const make = (dispatcher: Undici.Dispatcher): Client.Client.Default =>
               body,
               // leave timeouts to Effect.timeout etc
               headersTimeout: 60 * 60 * 1000,
-              bodyTimeout: 0
+              bodyTimeout: 0,
+              throwOnError: false
             }),
           catch: (error) =>
             new Error.RequestError({
@@ -105,6 +106,8 @@ function convertBody(body: Body.Body): Effect.Effect<Exclude<Undici.Dispatcher.D
   }
 }
 
+function noopErrorHandler(_: any) {}
+
 class ClientResponseImpl extends Inspectable.Class implements ClientResponse.ClientResponse {
   readonly [IncomingMessage.TypeId]: IncomingMessage.TypeId
   readonly [ClientResponse.TypeId]: ClientResponse.TypeId
@@ -116,6 +119,7 @@ class ClientResponseImpl extends Inspectable.Class implements ClientResponse.Cli
     super()
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
     this[ClientResponse.TypeId] = ClientResponse.TypeId
+    source.body.on("error", noopErrorHandler)
   }
 
   get status() {
