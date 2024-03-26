@@ -42,6 +42,8 @@ describe("Duration", () => {
     expect(Duration.decode([-500, 123456789])).toEqual(Duration.zero)
 
     expect(() => Duration.decode("1.5 secs" as any)).toThrowError(new Error("Invalid duration input"))
+    expect(() => Duration.decode(true as any)).toThrowError(new Error("Invalid duration input"))
+    expect(() => Duration.decode({} as any)).toThrowError(new Error("Invalid duration input"))
   })
 
   it("decodeUnknown", () => {
@@ -76,6 +78,8 @@ describe("Duration", () => {
     expect(Duration.decodeUnknown([-500, 123456789])).toEqual(Option.some(Duration.zero))
 
     expect(Duration.decodeUnknown("1.5 secs")).toEqual(Option.none())
+    expect(Duration.decodeUnknown(true)).toEqual(Option.none())
+    expect(Duration.decodeUnknown({})).toEqual(Option.none())
   })
 
   it("Order", () => {
