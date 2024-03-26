@@ -26,7 +26,7 @@ import type { NoInfer } from "./Types.js"
  * @example
  * import { makeBy } from 'effect/Iterable'
  *
- * assert.deepStrictEqual(Array.from(makeBy(5, n => n * 2)), [0, 2, 4, 6, 8])
+ * assert.deepStrictEqual(Array.from(makeBy(n => n * 2, { length: 5 })), [0, 2, 4, 6, 8])
  *
  * @category constructors
  * @since 2.0.0
