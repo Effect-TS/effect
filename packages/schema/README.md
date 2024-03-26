@@ -431,7 +431,7 @@ if (Either.isLeft(result2)) {
 }
 ```
 
-The `parse` function returns an `Either<ParseError, A>`, where `ParseError` is defined as follows:
+The `decode` function returns an `Either<A, ParseError>`, where `ParseError` is defined as follows:
 
 ```ts
 interface ParseError {
@@ -440,7 +440,7 @@ interface ParseError {
 }
 ```
 
-Here, `ParseIssue` represents an error that might occur during the parsing process. It is wrapped in a tagged error to make it easier to catch errors using `Effect.catchTag`. The result `Either<ParseError, A>` contains the inferred data type described by the schema. A successful parse yields a `Right` value with the parsed data `A`, while a failed parse results in a `Left` value containing a `ParseError`.
+Here, `ParseIssue` represents an error that might occur during the parsing process. It is wrapped in a tagged error to make it easier to catch errors using `Effect.catchTag`. The result `Either<A, ParseError>` contains the inferred data type described by the schema. A successful parse yields a `Right` value with the parsed data `A`, while a failed parse results in a `Left` value containing a `ParseError`.
 
 ### Handling Async Transformations
 
