@@ -3,6 +3,36 @@ import * as Equal from "effect/Equal"
 import { describe, expect, it } from "vitest"
 
 describe("Data", () => {
+  it("proxy", () => {
+    const x = Data.proxy({ a: 0, b: 1 })
+    const y = Data.proxy({ a: 0, b: 1 })
+
+    expect(Equal.equals(x, y)).toBe(true)
+  })
+
+  it("proxy deep", () => {
+    const x = Data.proxy({
+      a: 0,
+      b: 1,
+      c: { a: 0, b: 7 }
+    }, { deep: true })
+
+    const y = Data.proxy({
+      a: 0,
+      b: 1,
+      c: { a: 0, b: 7 }
+    }, { deep: true })
+
+    const z = Data.proxy({
+      a: 0,
+      b: 1,
+      c: { a: 0, b: 7 }
+    }, { deep: false })
+
+    expect(Equal.equals(x, y)).toBe(true)
+    expect(Equal.equals(x, z)).toBe(false)
+  })
+
   it("struct", () => {
     const x = Data.struct({ a: 0, b: 1, c: 2 })
     const y = Data.struct({ a: 0, b: 1, c: 2 })
