@@ -4910,9 +4910,7 @@ const decode = S.decodeUnknownSync(NormalizeUrlString);
 console.log(decode("https://www.effect.website")); // "https://www.effect.website/"
 ```
 
-# Technical overview
-
-## Understanding Schemas
+# Technical overview: Understanding Schemas
 
 A schema is a description of a data structure that can be used to generate various artifacts from a single declaration.
 
@@ -4973,7 +4971,7 @@ const pair = <A, I, R>(
 ): S.Schema<readonly [A, A], readonly [I, I], R> => S.tuple(schema, schema);
 ```
 
-## Annotations
+# Annotations
 
 One of the fundamental requirements in the design of `@effect/schema` is that it is extensible and customizable. Customizations are achieved through "annotations". Each node contained in the AST of `@effect/schema/AST` contains an `annotations: Record<symbol, unknown>` field that can be used to attach additional information to the schema.
 You can manage these annotations using the `annotations` method.
@@ -5071,9 +5069,9 @@ console.log(isDeprecated(S.string)); // false
 console.log(isDeprecated(schema)); // true
 ```
 
-## Error messages
+# Error messages
 
-### Default Error Messages
+## Default Error Messages
 
 When a parsing, decoding, or encoding process encounters a failure, a default error message is automatically generated for you. Let's explore some examples:
 
@@ -5178,7 +5176,18 @@ Error: Person
 
 In the first example, the error message indicates a "from" side refinement failure in the "Name" property, specifying that a string was expected but received null. In the second example, a predicate refinement failure is reported, indicating that a non-empty string was expected for "Name," but an empty string was provided.
 
-### Refinements overrides
+## Custom Error Messages
+
+### General Guidelines for Messages
+
+The general logic followed to determine the messages is as follows:
+
+1. If no custom messages are set, the default message related to the innermost schema where the operation (i.e., decoding or encoding) failed is used.
+2. If at least one custom message is set, then the one corresponding to the **first** failed schema is used, starting from the innermost schema to the outermost.
+
+In practice, either only default messages are used or only custom messages are used. This is to address the scenario where a user wants to define a single cumulative custom message describing the properties that a valid value must have and does not want to see default messages. Therefore, in the presence of even a single custom message, if different messages are desired for even the innermost schemas, custom messages must also be set for those.
+
+### Refinements
 
 You have the option to customize error messages for refinements using the `message` annotation:
 
