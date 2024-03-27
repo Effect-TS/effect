@@ -192,7 +192,7 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
           const shouldSkipDefaultMessage = error._tag === "Type" && error.ast === e.ast
           return shouldSkipDefaultMessage
             ? go(error)
-            : Effect.map(go(e.error), (tree) => make(String(e.ast), [tree]))
+            : Effect.map(go(error), (tree) => make(String(e.ast), [tree]))
         },
         onSuccess: (message) => Effect.succeed(make(message))
       })

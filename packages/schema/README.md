@@ -2991,7 +2991,7 @@ class Test {
 S.instanceOf(Test);
 ```
 
-## Recursive types
+## Recursive Schemas
 
 The `suspend` combinator is useful when you need to define a `Schema` that depends on itself, like in the case of recursive data structures. In this example, the `Category` schema depends on itself because it has a field `subcategories` that is an array of `Category` objects.
 
@@ -3008,6 +3008,34 @@ const Category: S.Schema<Category> = S.struct({
   subcategories: S.array(S.suspend(() => Category)),
 });
 ```
+
+> [!NOTE]
+> It is necessary to define the `Category` type and add an explicit type annotation (`const Category: S.Schema<Category>`) because otherwise TypeScript would struggle to infer types correctly. Without this annotation, you might encounter the error message: "'Category' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.ts(7022)"
+
+### A Helpful Pattern to Simplify Schema Definition
+
+As we've observed, it's necessary to define an interface for the `Type` of the schema to enable recursive schema definition, which can complicate things and be quite tedious. One pattern to mitigate this is to **separate the field responsible for recursion** from all other fields.
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+const fields = {
+  name: S.string,
+  // ...possibly other fields
+};
+
+// Define an interface for the Category schema, extending the Type of the defined fields
+interface Category extends S.Struct.Type<typeof fields> {
+  readonly subcategories: ReadonlyArray<Category>; // Define `subcategories` using recursion
+}
+
+const Category: S.Schema<Category> = S.struct({
+  ...fields, // Include the fields
+  subcategories: S.array(S.suspend(() => Category)), // Define `subcategories` using recursion
+});
+```
+
+### Mutually Recursive Schemas
 
 Here's an example of two mutually recursive schemas, `Expression` and `Operation`, that represent a simple arithmetic expression tree.
 
@@ -3039,6 +3067,60 @@ const Operation: S.Schema<Operation> = S.struct({
   operator: S.literal("+", "-"),
   left: Expression,
   right: Expression,
+});
+```
+
+### Recursive Types with Different Encoded and Type
+
+Defining a recursive schema where the `Encoded` type differs from the `Type` type adds another layer of complexity. In such cases, we need to define two interfaces: one for the `Type` type, as seen previously, and another for the `Encoded` type.
+
+Let's consider an example: suppose we want to add an `id` field to the `Category` schema, where the schema for `id` is `NumberFromString`. It's important to note that `NumberFromString` is a schema that transforms a string into a number, so the `Type` and `Encoded` types of `NumberFromString` differ, being `number` and `string` respectively. When we add this field to the `Category` schema, TypeScript raises an error:
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+const fields = {
+  id: S.NumberFromString,
+  name: S.string,
+};
+
+interface Category extends S.Struct.Type<typeof fields> {
+  readonly subcategories: ReadonlyArray<Category>;
+}
+
+/*
+TypeScript error:
+Type 'Category' is not assignable to type '{ readonly id: string; readonly name: string; readonly subcategories: readonly Category[]; }'.
+  Types of property 'id' are incompatible.
+    Type 'number' is not assignable to type 'string'.ts(2322)
+*/
+const Category: S.Schema<Category> = S.struct({
+  ...fields,
+  subcategories: S.array(S.suspend(() => Category)),
+});
+```
+
+This error occurs because the explicit annotation `const Category: S.Schema<Category>` is no longer sufficient and needs to be adjusted by explicitly adding the `Encoded` type:
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+const fields = {
+  id: S.NumberFromString,
+  name: S.string,
+};
+
+interface Category extends S.Struct.Type<typeof fields> {
+  readonly subcategories: ReadonlyArray<Category>;
+}
+
+interface CategoryEncoded extends S.Struct.Encoded<typeof fields> {
+  readonly subcategories: ReadonlyArray<CategoryEncoded>;
+}
+
+const Category: S.Schema<Category, CategoryEncoded> = S.struct({
+  ...fields,
+  subcategories: S.array(S.suspend(() => Category)),
 });
 ```
 
@@ -3128,7 +3210,7 @@ console.log(john.upperName); // "JOHN"
 
 ## Accessing Related Schemas
 
-The class constructor itself is a Schema, and can be assigned/provided anywhere a Schema is expected. There is also a `.struct` property, which can be used when the class prototype is not required.
+The class constructor itself is a Schema, and can be assigned/provided anywhere a Schema is expected. There is also a `.fields` property, which can be used when the class prototype is not required.
 
 ```ts
 import * as S from "@effect/schema/Schema";
@@ -3147,6 +3229,110 @@ console.log(S.isSchema(Person)); // true
 }
 */
 Person.fields;
+```
+
+## Recursive Schemas
+
+The `suspend` combinator is useful when you need to define a `Schema` that depends on itself, like in the case of recursive data structures. In this example, the `Category` schema depends on itself because it has a field `subcategories` that is an array of `Category` objects.
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+class Category extends S.Class<Category>("Category")({
+  name: S.string,
+  subcategories: S.array(S.suspend((): S.Schema<Category> => Category)),
+}) {}
+```
+
+> [!NOTE]
+> It is necessary to add an explicit type annotation (`S.suspend((): S.Schema<Category> => Category`) because otherwise TypeScript would struggle to infer types correctly. Without this annotation, you might encounter the error message: "Type 'typeof Category' is missing the following properties from type 'Schema<unknown, unknown, unknown>': ast, annotations, [TypeId], pipets(2739)"
+
+### Mutually Recursive Schemas
+
+Here's an example of two mutually recursive schemas, `Expression` and `Operation`, that represent a simple arithmetic expression tree.
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+class Expression extends S.Class<Expression>("Expression")({
+  type: S.literal("expression"),
+  value: S.union(
+    S.number,
+    S.suspend((): S.Schema<Operation> => Operation)
+  ),
+}) {}
+
+class Operation extends S.Class<Operation>("Operation")({
+  type: S.literal("operation"),
+  operator: S.literal("+", "-"),
+  left: Expression,
+  right: Expression,
+}) {}
+```
+
+### Recursive Types with Different Encoded and Type
+
+Defining a recursive schema where the `Encoded` type differs from the `Type` type adds another layer of complexity. In such cases, we need to define an interface for the `Encoded` type.
+
+Let's consider an example: suppose we want to add an `id` field to the `Category` schema, where the schema for `id` is `NumberFromString`. It's important to note that `NumberFromString` is a schema that transforms a string into a number, so the `Type` and `Encoded` types of `NumberFromString` differ, being `number` and `string` respectively. When we add this field to the `Category` schema, TypeScript raises an error:
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+/*
+TypeScript error:
+Type 'Category' is not assignable to type '{ readonly id: string; readonly name: string; readonly subcategories: readonly Category[]; }'.
+  Types of property 'id' are incompatible.
+    Type 'number' is not assignable to type 'string'.ts(2322)
+*/
+class Category extends S.Class<Category>("Category")({
+  id: S.NumberFromString,
+  name: S.string,
+  subcategories: S.array(S.suspend((): S.Schema<Category> => Category)),
+}) {}
+```
+
+This error occurs because the explicit annotation `S.suspend((): S.Schema<Category> => Category` is no longer sufficient and needs to be adjusted by explicitly adding the `Encoded` type:
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+interface CategoryEncoded {
+  readonly id: string;
+  readonly name: string;
+  readonly subcategories: ReadonlyArray<CategoryEncoded>;
+}
+
+class Category extends S.Class<Category>("Category")({
+  id: S.NumberFromString,
+  name: S.string,
+  subcategories: S.array(
+    S.suspend((): S.Schema<Category, CategoryEncoded> => Category)
+  ),
+}) {}
+```
+
+As we've observed, it's necessary to define an interface for the `Encoded` of the schema to enable recursive schema definition, which can complicate things and be quite tedious. One pattern to mitigate this is to **separate the field responsible for recursion** from all other fields.
+
+```ts
+import * as S from "@effect/schema/Schema";
+
+const fields = {
+  id: S.NumberFromString,
+  name: S.string,
+  // ...possibly other fields
+};
+
+interface CategoryEncoded extends S.Struct.Encoded<typeof fields> {
+  readonly subcategories: ReadonlyArray<CategoryEncoded>; // Define `subcategories` using recursion
+}
+
+class Category extends S.Class<Category>("Category")({
+  ...fields, // Include the fields
+  subcategories: S.array(
+    S.suspend((): S.Schema<Category, CategoryEncoded> => Category)
+  ), // Define `subcategories` using recursion
+}) {}
 ```
 
 ## Tagged Class variants
