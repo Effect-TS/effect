@@ -12,6 +12,7 @@ import type { LazyArg } from "./Function.js"
 import { dual, identity } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 import * as readonlyArray from "./internal/readonlyArray.js"
+import * as EffectIterable from "./Iterable.js"
 import type { Option } from "./Option.js"
 import * as O from "./Option.js"
 import * as Order from "./Order.js"
@@ -713,26 +714,7 @@ export const findFirst: {
   <A, B>(self: Iterable<A>, f: (a: A, i: number) => Option<B>): Option<B>
   <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): Option<B>
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Option<A>
-} = dual(
-  2,
-  <A>(self: Iterable<A>, f: ((a: A, i: number) => boolean) | ((a: A, i: number) => Option<A>)): Option<A> => {
-    let i = 0
-    for (const a of self) {
-      const o = f(a, i)
-      if (isBoolean(o)) {
-        if (o) {
-          return O.some(a)
-        }
-      } else {
-        if (O.isSome(o)) {
-          return o
-        }
-      }
-      i++
-    }
-    return O.none()
-  }
-)
+} = EffectIterable.findFirst
 
 /**
  * Find the last element for which a predicate holds.
