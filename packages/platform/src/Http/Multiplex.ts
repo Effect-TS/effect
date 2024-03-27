@@ -24,12 +24,12 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface Multiplex<R, E> extends App.Default<R, E | Error.RouteNotFound>, Inspectable {
+export interface Multiplex<E = never, R = never> extends App.Default<E | Error.RouteNotFound, R>, Inspectable {
   readonly [TypeId]: TypeId
   readonly apps: ReadonlyArray<
     readonly [
       predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<boolean, E, R>,
-      app: App.Default<R, E>
+      app: App.Default<E, R>
     ]
   >
 }
@@ -38,7 +38,7 @@ export interface Multiplex<R, E> extends App.Default<R, E | Error.RouteNotFound>
  * @since 1.0.0
  * @category constructors
  */
-export const empty: Multiplex<never, never> = internal.empty
+export const empty: Multiplex<never> = internal.empty
 
 /**
  * @since 1.0.0
@@ -46,9 +46,9 @@ export const empty: Multiplex<never, never> = internal.empty
  */
 export const make: <R, E>(
   apps: Iterable<
-    readonly [predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<boolean, E, R>, app: App.Default<R, E>]
+    readonly [predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<boolean, E, R>, app: App.Default<E, R>]
   >
-) => Multiplex<R, E> = internal.make
+) => Multiplex<E, R> = internal.make
 
 /**
  * @since 1.0.0
@@ -57,13 +57,13 @@ export const make: <R, E>(
 export const add: {
   <R2, E2, R3, E3>(
     predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<boolean, E2, R2>,
-    app: App.Default<R3, E3>
-  ): <R, E>(self: Multiplex<R, E>) => Multiplex<R2 | R3 | R, E2 | E3 | E>
+    app: App.Default<E3, R3>
+  ): <R, E>(self: Multiplex<E, R>) => Multiplex<E2 | E3 | E, R2 | R3 | R>
   <R, E, R2, E2, R3, E3>(
-    self: Multiplex<R, E>,
+    self: Multiplex<E, R>,
     predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<boolean, E2, R2>,
-    app: App.Default<R3, E3>
-  ): Multiplex<R | R2 | R3, E | E2 | E3>
+    app: App.Default<E3, R3>
+  ): Multiplex<E | E2 | E3, R | R2 | R3>
 } = internal.add
 
 /**
@@ -74,14 +74,14 @@ export const headerExact: {
   <R2, E2>(
     header: string,
     value: string,
-    app: App.Default<R2, E2>
-  ): <R, E>(self: Multiplex<R, E>) => Multiplex<R2 | R, E2 | E>
+    app: App.Default<E2, R2>
+  ): <R, E>(self: Multiplex<E, R>) => Multiplex<E2 | E, R2 | R>
   <R, E, R2, E2>(
-    self: Multiplex<R, E>,
+    self: Multiplex<E, R>,
     header: string,
     value: string,
-    app: App.Default<R2, E2>
-  ): Multiplex<R | R2, E | E2>
+    app: App.Default<E2, R2>
+  ): Multiplex<E | E2, R | R2>
 } = internal.headerExact
 
 /**
@@ -92,14 +92,14 @@ export const headerRegex: {
   <R2, E2>(
     header: string,
     regex: RegExp,
-    app: App.Default<R2, E2>
-  ): <R, E>(self: Multiplex<R, E>) => Multiplex<R2 | R, E2 | E>
+    app: App.Default<E2, R2>
+  ): <R, E>(self: Multiplex<E, R>) => Multiplex<E2 | E, R2 | R>
   <R, E, R2, E2>(
-    self: Multiplex<R, E>,
+    self: Multiplex<E, R>,
     header: string,
     regex: RegExp,
-    app: App.Default<R2, E2>
-  ): Multiplex<R | R2, E | E2>
+    app: App.Default<E2, R2>
+  ): Multiplex<E | E2, R | R2>
 } = internal.headerRegex
 
 /**
@@ -110,14 +110,14 @@ export const headerStartsWith: {
   <R2, E2>(
     header: string,
     prefix: string,
-    app: App.Default<R2, E2>
-  ): <R, E>(self: Multiplex<R, E>) => Multiplex<R2 | R, E2 | E>
+    app: App.Default<E2, R2>
+  ): <R, E>(self: Multiplex<E, R>) => Multiplex<E2 | E, R2 | R>
   <R, E, R2, E2>(
-    self: Multiplex<R, E>,
+    self: Multiplex<E, R>,
     header: string,
     prefix: string,
-    app: App.Default<R2, E2>
-  ): Multiplex<R | R2, E | E2>
+    app: App.Default<E2, R2>
+  ): Multiplex<E | E2, R | R2>
 } = internal.headerStartsWith
 
 /**
@@ -128,14 +128,14 @@ export const headerEndsWith: {
   <R2, E2>(
     header: string,
     suffix: string,
-    app: App.Default<R2, E2>
-  ): <R, E>(self: Multiplex<R, E>) => Multiplex<R2 | R, E2 | E>
+    app: App.Default<E2, R2>
+  ): <R, E>(self: Multiplex<E, R>) => Multiplex<E2 | E, R2 | R>
   <R, E, R2, E2>(
-    self: Multiplex<R, E>,
+    self: Multiplex<E, R>,
     header: string,
     suffix: string,
-    app: App.Default<R2, E2>
-  ): Multiplex<R | R2, E | E2>
+    app: App.Default<E2, R2>
+  ): Multiplex<E | E2, R | R2>
 } = internal.headerEndsWith
 
 /**
@@ -143,8 +143,8 @@ export const headerEndsWith: {
  * @category combinators
  */
 export const hostExact: {
-  <R2, E2>(host: string, app: App.Default<R2, E2>): <R, E>(self: Multiplex<R, E>) => Multiplex<R2 | R, E2 | E>
-  <R, E, R2, E2>(self: Multiplex<R, E>, host: string, app: App.Default<R2, E2>): Multiplex<R | R2, E | E2>
+  <R2, E2>(host: string, app: App.Default<E2, R2>): <R, E>(self: Multiplex<E, R>) => Multiplex<E2 | E, R2 | R>
+  <R, E, R2, E2>(self: Multiplex<E, R>, host: string, app: App.Default<E2, R2>): Multiplex<E | E2, R | R2>
 } = internal.hostExact
 
 /**
@@ -152,8 +152,8 @@ export const hostExact: {
  * @category combinators
  */
 export const hostRegex: {
-  <R2, E2>(regex: RegExp, app: App.Default<R2, E2>): <R, E>(self: Multiplex<R, E>) => Multiplex<R2 | R, E2 | E>
-  <R, E, R2, E2>(self: Multiplex<R, E>, regex: RegExp, app: App.Default<R2, E2>): Multiplex<R | R2, E | E2>
+  <R2, E2>(regex: RegExp, app: App.Default<E2, R2>): <R, E>(self: Multiplex<E, R>) => Multiplex<E2 | E, R2 | R>
+  <R, E, R2, E2>(self: Multiplex<E, R>, regex: RegExp, app: App.Default<E2, R2>): Multiplex<E | E2, R | R2>
 } = internal.hostRegex
 
 /**
@@ -161,8 +161,8 @@ export const hostRegex: {
  * @category combinators
  */
 export const hostStartsWith: {
-  <R2, E2>(prefix: string, app: App.Default<R2, E2>): <R, E>(self: Multiplex<R, E>) => Multiplex<R2 | R, E2 | E>
-  <R, E, R2, E2>(self: Multiplex<R, E>, prefix: string, app: App.Default<R2, E2>): Multiplex<R | R2, E | E2>
+  <R2, E2>(prefix: string, app: App.Default<E2, R2>): <R, E>(self: Multiplex<E, R>) => Multiplex<E2 | E, R2 | R>
+  <R, E, R2, E2>(self: Multiplex<E, R>, prefix: string, app: App.Default<E2, R2>): Multiplex<E | E2, R | R2>
 } = internal.hostStartsWith
 
 /**
@@ -170,6 +170,6 @@ export const hostStartsWith: {
  * @category combinators
  */
 export const hostEndsWith: {
-  <R2, E2>(suffix: string, app: App.Default<R2, E2>): <R, E>(self: Multiplex<R, E>) => Multiplex<R2 | R, E2 | E>
-  <R, E, R2, E2>(self: Multiplex<R, E>, suffix: string, app: App.Default<R2, E2>): Multiplex<R | R2, E | E2>
+  <R2, E2>(suffix: string, app: App.Default<E2, R2>): <R, E>(self: Multiplex<E, R>) => Multiplex<E2 | E, R2 | R>
+  <R, E, R2, E2>(self: Multiplex<E, R>, suffix: string, app: App.Default<E2, R2>): Multiplex<E | E2, R | R2>
 } = internal.hostEndsWith

@@ -27,7 +27,9 @@ export type ScopedCacheTypeId = typeof ScopedCacheTypeId
  * @since 2.0.0
  * @category models
  */
-export interface ScopedCache<in Key, out Error, out Value> extends ScopedCache.Variance<Key, Error, Value>, Pipeable {
+export interface ScopedCache<in Key, out Value, out Error = never>
+  extends ScopedCache.Variance<Key, Value, Error>, Pipeable
+{
   /**
    * Retrieves the value associated with the specified key if it exists.
    * Otherwise returns `Option.none`.
@@ -98,7 +100,7 @@ export declare namespace ScopedCache {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<in Key, out Error, out Value> {
+  export interface Variance<in Key, out Value, out Error> {
     readonly [ScopedCacheTypeId]: {
       _Key: Types.Contravariant<Key>
       _Error: Types.Covariant<Error>
@@ -114,13 +116,13 @@ export declare namespace ScopedCache {
  * @since 2.0.0
  * @category constructors
  */
-export const make: <Key, Environment, Error, Value>(
+export const make: <Key, Value, Error = never, Environment = never>(
   options: {
-    readonly lookup: Lookup<Key, Environment, Error, Value>
+    readonly lookup: Lookup<Key, Value, Error, Environment>
     readonly capacity: number
     readonly timeToLive: Duration.DurationInput
   }
-) => Effect.Effect<ScopedCache<Key, Error, Value>, never, Scope.Scope | Environment> = internal.make
+) => Effect.Effect<ScopedCache<Key, Value, Error>, never, Scope.Scope | Environment> = internal.make
 
 /**
  * Constructs a new cache with the specified capacity, time to live, and
@@ -130,13 +132,13 @@ export const make: <Key, Environment, Error, Value>(
  * @since 2.0.0
  * @category constructors
  */
-export const makeWith: <Key, Environment, Error, Value>(
+export const makeWith: <Key, Value, Error = never, Environment = never>(
   options: {
     readonly capacity: number
-    readonly lookup: Lookup<Key, Environment, Error, Value>
+    readonly lookup: Lookup<Key, Value, Error, Environment>
     readonly timeToLive: (exit: Exit.Exit<Value, Error>) => Duration.DurationInput
   }
-) => Effect.Effect<ScopedCache<Key, Error, Value>, never, Scope.Scope | Environment> = internal.makeWith
+) => Effect.Effect<ScopedCache<Key, Value, Error>, never, Scope.Scope | Environment> = internal.makeWith
 
 /**
  * Similar to `Cache.Lookup`, but executes the lookup function within a `Scope`.
@@ -144,6 +146,6 @@ export const makeWith: <Key, Environment, Error, Value>(
  * @since 2.0.0
  * @category models
  */
-export type Lookup<Key, Environment, Error, Value> = (
+export type Lookup<Key, Value, Error = never, Environment = never> = (
   key: Key
 ) => Effect.Effect<Value, Error, Environment | Scope.Scope>

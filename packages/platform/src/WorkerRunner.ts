@@ -74,7 +74,7 @@ export declare namespace Runner {
    * @since 1.0.0
    * @category models
    */
-  export interface Options<I, E, O> {
+  export interface Options<I, O, E> {
     readonly decode?: (
       message: unknown
     ) => Effect.Effect<I, WorkerError>
@@ -96,7 +96,7 @@ export declare namespace Runner {
  */
 export const make: <I, R, E, O>(
   process: (request: I) => Stream.Stream<O, E, R> | Effect.Effect<O, E, R>,
-  options?: Runner.Options<I, E, O> | undefined
+  options?: Runner.Options<I, O, E> | undefined
 ) => Effect.Effect<void, WorkerError, Scope.Scope | R | PlatformRunner> = internal.make
 
 /**
@@ -105,7 +105,7 @@ export const make: <I, R, E, O>(
  */
 export const layer: <I, R, E, O>(
   process: (request: I) => Stream.Stream<O, E, R> | Effect.Effect<O, E, R>,
-  options?: Runner.Options<I, E, O> | undefined
+  options?: Runner.Options<I, O, E> | undefined
 ) => Layer.Layer<never, WorkerError, R | PlatformRunner> = internal.layer
 
 /**

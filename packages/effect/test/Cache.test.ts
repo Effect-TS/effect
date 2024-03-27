@@ -10,7 +10,7 @@ describe("Cache", () => {
       const cache = yield* _(Cache.make({
         capacity: 100,
         timeToLive: "1 seconds",
-        lookup: (n: number) => Effect.succeed(n)
+        lookup: (n: number): Effect.Effect<number, 2> => Effect.succeed(n)
       }))
       yield* _(cache.get(42))
       yield* _(TestClock.adjust("2 seconds"))

@@ -13,7 +13,6 @@ import { hasProperty, isFunction } from "../Predicate.js"
 import type { Predicate, Refinement } from "../Predicate.js"
 import * as ReadonlyArray from "../ReadonlyArray.js"
 import type { ParentSpan, Span } from "../Tracer.js"
-import type { NoInfer } from "../Types.js"
 import * as OpCodes from "./opCodes/cause.js"
 
 // -----------------------------------------------------------------------------

@@ -32,7 +32,7 @@ export const PlatformRunner = Context.GenericTag<WorkerRunner.PlatformRunner>(
 /** @internal */
 export const make = <I, R, E, O>(
   process: (request: I) => Stream.Stream<O, E, R> | Effect.Effect<O, E, R>,
-  options?: WorkerRunner.Runner.Options<I, E, O>
+  options?: WorkerRunner.Runner.Options<I, O, E>
 ) =>
   Effect.gen(function*(_) {
     const scope = yield* _(Scope.fork(yield* _(Effect.scope), ExecutionStrategy.parallel))
@@ -170,7 +170,7 @@ export const make = <I, R, E, O>(
 /** @internal */
 export const layer = <I, R, E, O>(
   process: (request: I) => Stream.Stream<O, E, R> | Effect.Effect<O, E, R>,
-  options?: WorkerRunner.Runner.Options<I, E, O>
+  options?: WorkerRunner.Runner.Options<I, O, E>
 ): Layer.Layer<never, WorkerError, WorkerRunner.PlatformRunner | R> => Layer.scopedDiscard(make(process, options))
 
 /** @internal */

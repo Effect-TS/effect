@@ -302,7 +302,7 @@ describe("ScopedCache", () => {
   it.effect("get - sequential use of a failing scoped effect should cache the error and immediately call the resource finalizer", () =>
     Effect.gen(function*($) {
       const watchableLookup = yield* $(
-        WatchableLookup.makeEffect<void, Cause.RuntimeException, never>(() =>
+        WatchableLookup.makeEffect<void, never, Cause.RuntimeException>(() =>
           Effect.fail(new Cause.RuntimeException("fail"))
         )
       )
@@ -355,7 +355,7 @@ describe("ScopedCache", () => {
   it.effect("get - concurrent use on a failing scoped effect should cache the error and immediately call the resource finalizer", () =>
     Effect.gen(function*($) {
       const watchableLookup = yield* $(
-        WatchableLookup.makeEffect<void, Cause.RuntimeException, never>(() =>
+        WatchableLookup.makeEffect<void, never, Cause.RuntimeException>(() =>
           Effect.fail(new Cause.RuntimeException("fail"))
         )
       )

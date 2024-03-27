@@ -113,6 +113,7 @@ export declare namespace MetricKeyType {
    */
   export type Frequency = MetricKeyType<string, MetricState.MetricState.Frequency> & {
     readonly [FrequencyKeyTypeTypeId]: FrequencyKeyTypeTypeId
+    readonly preregisteredWords: ReadonlyArray<string>
   }
 
   /**
@@ -193,7 +194,11 @@ export const counter: <A extends number | bigint>() => MetricKeyType.Counter<A> 
  * @since 2.0.0
  * @category constructors
  */
-export const frequency: MetricKeyType.Frequency = internal.frequency
+export const frequency: (
+  options?: {
+    readonly preregisteredWords?: ReadonlyArray<string> | undefined
+  } | undefined
+) => MetricKeyType.Frequency = internal.frequency
 
 /**
  * @since 2.0.0

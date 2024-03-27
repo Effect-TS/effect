@@ -13,7 +13,7 @@ import type * as ServerRequest from "./ServerRequest.js"
  * @category models
  */
 export interface Middleware {
-  <R, E>(self: App.Default<R, E>): App.Default<any, any>
+  <R, E>(self: App.Default<E, R>): App.Default<any, any>
 }
 
 /**
@@ -23,8 +23,8 @@ export declare namespace Middleware {
   /**
    * @since 1.0.0
    */
-  export interface Applied<R, E, A extends App.Default<any, any>> {
-    (self: App.Default<R, E>): A
+  export interface Applied<A extends App.Default<any, any>, E, R> {
+    (self: App.Default<E, R>): A
   }
 }
 
@@ -38,7 +38,7 @@ export const make: <M extends Middleware>(middleware: M) => M = internal.make
  * @since 1.0.0
  * @category constructors
  */
-export const logger: <R, E>(httpApp: App.Default<R, E>) => App.Default<R, E> = internal.logger
+export const logger: <R, E>(httpApp: App.Default<E, R>) => App.Default<E, R> = internal.logger
 
 /**
  * @since 1.0.0
@@ -78,4 +78,4 @@ export const withTracerDisabledWhen: {
  * @since 1.0.0
  * @category constructors
  */
-export const xForwardedHeaders: <R, E>(httpApp: App.Default<R, E>) => App.Default<R, E> = internal.xForwardedHeaders
+export const xForwardedHeaders: <R, E>(httpApp: App.Default<E, R>) => App.Default<E, R> = internal.xForwardedHeaders

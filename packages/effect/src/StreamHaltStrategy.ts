@@ -102,10 +102,22 @@ export const isBoth: (self: HaltStrategy) => self is Both = internal.isBoth
 export const isEither: (self: HaltStrategy) => self is Either = internal.isEither
 
 /**
+ * Folds over the specified `HaltStrategy` using the provided case functions.
+ *
  * @since 2.0.0
  * @category folding
  */
 export const match: {
-  <Z>(onLeft: () => Z, onRight: () => Z, onBoth: () => Z, onEither: () => Z): (self: HaltStrategy) => Z
-  <Z>(self: HaltStrategy, onLeft: () => Z, onRight: () => Z, onBoth: () => Z, onEither: () => Z): Z
+  <Z>(options: {
+    readonly onLeft: () => Z
+    readonly onRight: () => Z
+    readonly onBoth: () => Z
+    readonly onEither: () => Z
+  }): (self: HaltStrategy) => Z
+  <Z>(self: HaltStrategy, options: {
+    readonly onLeft: () => Z
+    readonly onRight: () => Z
+    readonly onBoth: () => Z
+    readonly onEither: () => Z
+  }): Z
 } = internal.match

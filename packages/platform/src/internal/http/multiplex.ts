@@ -12,9 +12,9 @@ import type * as ServerResponse from "../../Http/ServerResponse.js"
 /** @internal */
 export const TypeId: Multiplex.TypeId = Symbol.for("@effect/platform/Http/Multiplex") as Multiplex.TypeId
 
-class MultiplexImpl<R, E>
+class MultiplexImpl<E = never, R = never>
   extends Effectable.Class<ServerResponse.ServerResponse, E | Error.RouteNotFound, R | ServerRequest.ServerRequest>
-  implements Multiplex.Multiplex<R, E>
+  implements Multiplex.Multiplex<E, R>
 {
   readonly [TypeId]: Multiplex.TypeId
 
@@ -22,14 +22,14 @@ class MultiplexImpl<R, E>
     readonly apps: ReadonlyArray<
       readonly [
         predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<boolean, E, R>,
-        app: App.Default<R, E>
+        app: App.Default<E, R>
       ]
     >
   ) {
     super()
     this[TypeId] = TypeId
 
-    let execute: (request: ServerRequest.ServerRequest) => App.Default<R, E | Error.RouteNotFound> = (request) =>
+    let execute: (request: ServerRequest.ServerRequest) => App.Default<E | Error.RouteNotFound, R> = (request) =>
       Effect.fail(new Error.RouteNotFound({ request }))
 
     for (let i = apps.length - 1; i >= 0; i--) {
@@ -45,7 +45,7 @@ class MultiplexImpl<R, E>
     this.execute = Effect.flatMap(ServerRequest.ServerRequest, execute)
   }
 
-  execute: App.Default<R, E | Error.RouteNotFound>
+  execute: App.Default<E | Error.RouteNotFound, R>
 
   commit() {
     return this.execute
@@ -65,26 +65,26 @@ class MultiplexImpl<R, E>
 }
 
 /** @internal */
-export const empty: Multiplex.Multiplex<never, never> = new MultiplexImpl([])
+export const empty: Multiplex.Multiplex<never> = new MultiplexImpl([])
 
 /** @internal */
 export const make = <R, E>(
   apps: Iterable<
-    readonly [predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<boolean, E, R>, app: App.Default<R, E>]
+    readonly [predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<boolean, E, R>, app: App.Default<E, R>]
   >
-): Multiplex.Multiplex<R, E> => new MultiplexImpl(ReadonlyArray.fromIterable(apps))
+): Multiplex.Multiplex<E, R> => new MultiplexImpl(ReadonlyArray.fromIterable(apps))
 
 /** @internal */
 export const add = dual<
   <R2, E2, R3, E3>(
     predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<boolean, E2, R2>,
-    app: App.Default<R3, E3>
-  ) => <R, E>(self: Multiplex.Multiplex<R, E>) => Multiplex.Multiplex<R | R2 | R3, E | E2 | E3>,
+    app: App.Default<E3, R3>
+  ) => <R, E>(self: Multiplex.Multiplex<E, R>) => Multiplex.Multiplex<E | E2 | E3, R | R2 | R3>,
   <R, E, R2, E2, R3, E3>(
-    self: Multiplex.Multiplex<R, E>,
+    self: Multiplex.Multiplex<E, R>,
     predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<boolean, E2, R2>,
-    app: App.Default<R3, E3>
-  ) => Multiplex.Multiplex<R | R2 | R3, E | E2 | E3>
+    app: App.Default<E3, R3>
+  ) => Multiplex.Multiplex<E | E2 | E3, R | R2 | R3>
 >(
   3,
   (self, predicate, app) =>
@@ -99,14 +99,14 @@ export const headerExact = dual<
   <R2, E2>(
     header: string,
     value: string,
-    app: App.Default<R2, E2>
-  ) => <R, E>(self: Multiplex.Multiplex<R, E>) => Multiplex.Multiplex<R | R2, E | E2>,
+    app: App.Default<E2, R2>
+  ) => <R, E>(self: Multiplex.Multiplex<E, R>) => Multiplex.Multiplex<E | E2, R | R2>,
   <R, E, R2, E2>(
-    self: Multiplex.Multiplex<R, E>,
+    self: Multiplex.Multiplex<E, R>,
     header: string,
     value: string,
-    app: App.Default<R2, E2>
-  ) => Multiplex.Multiplex<R | R2, E | E2>
+    app: App.Default<E2, R2>
+  ) => Multiplex.Multiplex<E | E2, R | R2>
 >(
   4,
   (self, header, value, app) =>
@@ -121,14 +121,14 @@ export const headerRegex = dual<
   <R2, E2>(
     header: string,
     regex: RegExp,
-    app: App.Default<R2, E2>
-  ) => <R, E>(self: Multiplex.Multiplex<R, E>) => Multiplex.Multiplex<R | R2, E | E2>,
+    app: App.Default<E2, R2>
+  ) => <R, E>(self: Multiplex.Multiplex<E, R>) => Multiplex.Multiplex<E | E2, R | R2>,
   <R, E, R2, E2>(
-    self: Multiplex.Multiplex<R, E>,
+    self: Multiplex.Multiplex<E, R>,
     header: string,
     regex: RegExp,
-    app: App.Default<R2, E2>
-  ) => Multiplex.Multiplex<R | R2, E | E2>
+    app: App.Default<E2, R2>
+  ) => Multiplex.Multiplex<E | E2, R | R2>
 >(
   4,
   (self, header, regex, app) =>
@@ -143,14 +143,14 @@ export const headerStartsWith = dual<
   <R2, E2>(
     header: string,
     prefix: string,
-    app: App.Default<R2, E2>
-  ) => <R, E>(self: Multiplex.Multiplex<R, E>) => Multiplex.Multiplex<R | R2, E | E2>,
+    app: App.Default<E2, R2>
+  ) => <R, E>(self: Multiplex.Multiplex<E, R>) => Multiplex.Multiplex<E | E2, R | R2>,
   <R, E, R2, E2>(
-    self: Multiplex.Multiplex<R, E>,
+    self: Multiplex.Multiplex<E, R>,
     header: string,
     prefix: string,
-    app: App.Default<R2, E2>
-  ) => Multiplex.Multiplex<R | R2, E | E2>
+    app: App.Default<E2, R2>
+  ) => Multiplex.Multiplex<E | E2, R | R2>
 >(
   4,
   (self, header, prefix, app) =>
@@ -165,14 +165,14 @@ export const headerEndsWith = dual<
   <R2, E2>(
     header: string,
     suffix: string,
-    app: App.Default<R2, E2>
-  ) => <R, E>(self: Multiplex.Multiplex<R, E>) => Multiplex.Multiplex<R | R2, E | E2>,
+    app: App.Default<E2, R2>
+  ) => <R, E>(self: Multiplex.Multiplex<E, R>) => Multiplex.Multiplex<E | E2, R | R2>,
   <R, E, R2, E2>(
-    self: Multiplex.Multiplex<R, E>,
+    self: Multiplex.Multiplex<E, R>,
     header: string,
     suffix: string,
-    app: App.Default<R2, E2>
-  ) => Multiplex.Multiplex<R | R2, E | E2>
+    app: App.Default<E2, R2>
+  ) => Multiplex.Multiplex<E | E2, R | R2>
 >(
   4,
   (self, header, suffix, app) =>
@@ -186,50 +186,50 @@ export const headerEndsWith = dual<
 export const hostRegex = dual<
   <R2, E2>(
     regex: RegExp,
-    app: App.Default<R2, E2>
-  ) => <R, E>(self: Multiplex.Multiplex<R, E>) => Multiplex.Multiplex<R | R2, E | E2>,
+    app: App.Default<E2, R2>
+  ) => <R, E>(self: Multiplex.Multiplex<E, R>) => Multiplex.Multiplex<E | E2, R | R2>,
   <R, E, R2, E2>(
-    self: Multiplex.Multiplex<R, E>,
+    self: Multiplex.Multiplex<E, R>,
     regex: RegExp,
-    app: App.Default<R2, E2>
-  ) => Multiplex.Multiplex<R | R2, E | E2>
+    app: App.Default<E2, R2>
+  ) => Multiplex.Multiplex<E | E2, R | R2>
 >(3, (self, regex, app) => headerRegex(self, "host", regex, app))
 
 /** @internal */
 export const hostStartsWith = dual<
   <R2, E2>(
     prefix: string,
-    app: App.Default<R2, E2>
-  ) => <R, E>(self: Multiplex.Multiplex<R, E>) => Multiplex.Multiplex<R | R2, E | E2>,
+    app: App.Default<E2, R2>
+  ) => <R, E>(self: Multiplex.Multiplex<E, R>) => Multiplex.Multiplex<E | E2, R | R2>,
   <R, E, R2, E2>(
-    self: Multiplex.Multiplex<R, E>,
+    self: Multiplex.Multiplex<E, R>,
     prefix: string,
-    app: App.Default<R2, E2>
-  ) => Multiplex.Multiplex<R | R2, E | E2>
+    app: App.Default<E2, R2>
+  ) => Multiplex.Multiplex<E | E2, R | R2>
 >(3, (self, prefix, app) => headerStartsWith(self, "host", prefix, app))
 
 /** @internal */
 export const hostEndsWith = dual<
   <R2, E2>(
     suffix: string,
-    app: App.Default<R2, E2>
-  ) => <R, E>(self: Multiplex.Multiplex<R, E>) => Multiplex.Multiplex<R | R2, E | E2>,
+    app: App.Default<E2, R2>
+  ) => <R, E>(self: Multiplex.Multiplex<E, R>) => Multiplex.Multiplex<E | E2, R | R2>,
   <R, E, R2, E2>(
-    self: Multiplex.Multiplex<R, E>,
+    self: Multiplex.Multiplex<E, R>,
     suffix: string,
-    app: App.Default<R2, E2>
-  ) => Multiplex.Multiplex<R | R2, E | E2>
+    app: App.Default<E2, R2>
+  ) => Multiplex.Multiplex<E | E2, R | R2>
 >(3, (self, suffix, app) => headerEndsWith(self, "host", suffix, app))
 
 /** @internal */
 export const hostExact = dual<
   <R2, E2>(
     host: string,
-    app: App.Default<R2, E2>
-  ) => <R, E>(self: Multiplex.Multiplex<R, E>) => Multiplex.Multiplex<R | R2, E | E2>,
+    app: App.Default<E2, R2>
+  ) => <R, E>(self: Multiplex.Multiplex<E, R>) => Multiplex.Multiplex<E | E2, R | R2>,
   <R, E, R2, E2>(
-    self: Multiplex.Multiplex<R, E>,
+    self: Multiplex.Multiplex<E, R>,
     host: string,
-    app: App.Default<R2, E2>
-  ) => Multiplex.Multiplex<R | R2, E | E2>
+    app: App.Default<E2, R2>
+  ) => Multiplex.Multiplex<E | E2, R | R2>
 >(3, (self, host, app) => headerExact(self, "host", host, app))

@@ -86,7 +86,8 @@ const FrequencyKeyTypeHash = Hash.string(FrequencyKeyTypeSymbolKey)
 /** @internal */
 class FrequencyKeyType implements MetricKeyType.MetricKeyType.Frequency {
   readonly [MetricKeyTypeTypeId] = metricKeyTypeVariance
-  readonly [FrequencyKeyTypeTypeId]: MetricKeyType.FrequencyKeyTypeTypeId = FrequencyKeyTypeTypeId;
+  readonly [FrequencyKeyTypeTypeId]: MetricKeyType.FrequencyKeyTypeTypeId = FrequencyKeyTypeTypeId
+  constructor(readonly preregisteredWords: ReadonlyArray<string>) {}
   [Hash.symbol](): number {
     return FrequencyKeyTypeHash
   }
@@ -192,7 +193,9 @@ export const counter: <A extends number | bigint>(options?: {
  * @since 2.0.0
  * @category constructors
  */
-export const frequency: MetricKeyType.MetricKeyType.Frequency = new FrequencyKeyType()
+export const frequency = (options?: {
+  readonly preregisteredWords?: ReadonlyArray<string> | undefined
+}): MetricKeyType.MetricKeyType.Frequency => new FrequencyKeyType(options?.preregisteredWords ?? [])
 
 /**
  * @since 2.0.0

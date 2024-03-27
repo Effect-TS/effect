@@ -183,12 +183,12 @@ export const map: {
 export const batched: {
   <Output, R>(
     window: DurationInput,
-    f: (messages: Array<Types.NoInfer<Output>>) => Effect<void, never, R>
+    f: (messages: Array<NoInfer<Output>>) => Effect<void, never, R>
   ): <Message>(self: Logger<Message, Output>) => Effect<Logger<Message, void>, never, R | Scope>
   <Message, Output, R>(
     self: Logger<Message, Output>,
     window: DurationInput,
-    f: (messages: Array<Types.NoInfer<Output>>) => Effect<void, never, R>
+    f: (messages: Array<NoInfer<Output>>) => Effect<void, never, R>
   ): Effect<Logger<Message, void>, never, Scope | R>
 } = fiberRuntime.batchedLogger
 

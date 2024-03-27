@@ -29,13 +29,13 @@ import * as fiberRuntime from "./fiberRuntime.js"
  *
  * @internal
  */
-export type MapValue<Key, Error, Value> =
-  | Complete<Key, Error, Value>
-  | Pending<Key, Error, Value>
-  | Refreshing<Key, Error, Value>
+export type MapValue<Key, Value, Error> =
+  | Complete<Key, Value, Error>
+  | Pending<Key, Value, Error>
+  | Refreshing<Key, Value, Error>
 
 /** @internal */
-export interface Complete<out Key, out Error, out Value> {
+export interface Complete<out Key, out Value, out Error> {
   readonly _tag: "Complete"
   readonly key: MapKey<Key>
   readonly exit: Exit.Exit<Value, Error>
@@ -44,26 +44,26 @@ export interface Complete<out Key, out Error, out Value> {
 }
 
 /** @internal */
-export interface Pending<out Key, in out Error, in out Value> {
+export interface Pending<out Key, in out Value, in out Error> {
   readonly _tag: "Pending"
   readonly key: MapKey<Key>
   readonly deferred: Deferred.Deferred<Value, Error>
 }
 
 /** @internal */
-export interface Refreshing<out Key, in out Error, in out Value> {
+export interface Refreshing<out Key, in out Value, in out Error> {
   readonly _tag: "Refreshing"
   readonly deferred: Deferred.Deferred<Value, Error>
-  readonly complete: Complete<Key, Error, Value>
+  readonly complete: Complete<Key, Value, Error>
 }
 
 /** @internal */
-export const complete = <Key, Error, Value>(
+export const complete = <Key, Value, Error>(
   key: MapKey<Key>,
   exit: Exit.Exit<Value, Error>,
   entryStats: Cache.EntryStats,
   timeToLiveMillis: number
-): MapValue<Key, Error, Value> =>
+): MapValue<Key, Value, Error> =>
   Data.struct({
     _tag: "Complete" as const,
     key,
@@ -73,10 +73,10 @@ export const complete = <Key, Error, Value>(
   })
 
 /** @internal */
-export const pending = <Key, Error, Value>(
+export const pending = <Key, Value, Error>(
   key: MapKey<Key>,
   deferred: Deferred.Deferred<Value, Error>
-): MapValue<Key, Error, Value> =>
+): MapValue<Key, Value, Error> =>
   Data.struct({
     _tag: "Pending" as const,
     key,
@@ -84,10 +84,10 @@ export const pending = <Key, Error, Value>(
   })
 
 /** @internal */
-export const refreshing = <Key, Error, Value>(
+export const refreshing = <Key, Value, Error>(
   deferred: Deferred.Deferred<Value, Error>,
-  complete: Complete<Key, Error, Value>
-): MapValue<Key, Error, Value> =>
+  complete: Complete<Key, Value, Error>
+): MapValue<Key, Value, Error> =>
   Data.struct({
     _tag: "Refreshing" as const,
     deferred,
@@ -216,8 +216,8 @@ export const makeKeySet = <K>(): KeySet<K> => new KeySetImpl<K>()
  *
  * @internal
  */
-export interface CacheState<in out Key, in out Error, in out Value> {
-  map: MutableHashMap.MutableHashMap<Key, MapValue<Key, Error, Value>> // mutable by design
+export interface CacheState<in out Key, in out Value, in out Error> {
+  map: MutableHashMap.MutableHashMap<Key, MapValue<Key, Value, Error>> // mutable by design
   keys: KeySet<Key> // mutable by design
   accesses: MutableQueue.MutableQueue<MapKey<Key>> // mutable by design
   updating: MutableRef.MutableRef<boolean> // mutable by design
@@ -230,14 +230,14 @@ export interface CacheState<in out Key, in out Error, in out Value> {
  *
  * @internal
  */
-export const makeCacheState = <Key, Error, Value>(
-  map: MutableHashMap.MutableHashMap<Key, MapValue<Key, Error, Value>>,
+export const makeCacheState = <Key, Value, Error>(
+  map: MutableHashMap.MutableHashMap<Key, MapValue<Key, Value, Error>>,
   keys: KeySet<Key>,
   accesses: MutableQueue.MutableQueue<MapKey<Key>>,
   updating: MutableRef.MutableRef<boolean>,
   hits: number,
   misses: number
-): CacheState<Key, Error, Value> => ({
+): CacheState<Key, Value, Error> => ({
   map,
   keys,
   accesses,
@@ -251,7 +251,7 @@ export const makeCacheState = <Key, Error, Value>(
  *
  * @internal
  */
-export const initialCacheState = <Key, Error, Value>(): CacheState<Key, Error, Value> =>
+export const initialCacheState = <Key, Value, Error>(): CacheState<Key, Value, Error> =>
   makeCacheState(
     MutableHashMap.empty(),
     makeKeySet(),
@@ -292,14 +292,14 @@ export const makeEntryStats = (loadedMillis: number): Cache.EntryStats => ({
   loadedMillis
 })
 
-class CacheImpl<in out Key, in out Error, in out Value> implements Cache.Cache<Key, Error, Value> {
+class CacheImpl<in out Key, in out Value, in out Error> implements Cache.Cache<Key, Value, Error> {
   readonly [CacheTypeId] = cacheVariance
-  readonly cacheState: CacheState<Key, Error, Value>
+  readonly cacheState: CacheState<Key, Value, Error>
   constructor(
     readonly capacity: number,
     readonly context: Context.Context<any>,
     readonly fiberId: FiberId.FiberId,
-    readonly lookup: Cache.Lookup<Key, any, Error, Value>,
+    readonly lookup: Cache.Lookup<Key, Value, Error, any>,
     readonly timeToLive: (exit: Exit.Exit<Value, Error>) => Duration.DurationInput
   ) {
     this.cacheState = initialCacheState()
@@ -460,7 +460,7 @@ class CacheImpl<in out Key, in out Error, in out Value> implements Cache.Cache<K
                 effect.when(() => {
                   const current = Option.getOrUndefined(MutableHashMap.get(this.cacheState.map, k))
                   if (Equal.equals(current, value)) {
-                    const mapValue = refreshing(deferred, value as Complete<Key, Error, Value>)
+                    const mapValue = refreshing(deferred, value as Complete<Key, Value, Error>)
                     MutableHashMap.set(this.cacheState.map, k, mapValue)
                     return true
                   }
@@ -496,7 +496,7 @@ class CacheImpl<in out Key, in out Error, in out Value> implements Cache.Cache<K
         MutableHashMap.set(
           this.cacheState.map,
           k,
-          mapValue as Complete<Key, Error, Value>
+          mapValue as Complete<Key, Value, Error>
         )
       })
     )
@@ -545,7 +545,7 @@ class CacheImpl<in out Key, in out Error, in out Value> implements Cache.Cache<K
   }
 
   resolveMapValue(
-    value: MapValue<Key, Error, Value>,
+    value: MapValue<Key, Value, Error>,
     ignorePending = false
   ): Effect.Effect<Option.Option<Value>, Error> {
     return effect.clockWith((clock) => {
@@ -665,13 +665,13 @@ class CacheImpl<in out Key, in out Error, in out Value> implements Cache.Cache<K
 }
 
 /** @internal */
-export const make = <Key, Environment, Error, Value>(
+export const make = <Key, Value, Error = never, Environment = never>(
   options: {
     readonly capacity: number
     readonly timeToLive: Duration.DurationInput
-    readonly lookup: Cache.Lookup<Key, Environment, Error, Value>
+    readonly lookup: Cache.Lookup<Key, Value, Error, Environment>
   }
-): Effect.Effect<Cache.Cache<Key, Error, Value>, never, Environment> => {
+): Effect.Effect<Cache.Cache<Key, Value, Error>, never, Environment> => {
   const timeToLive = Duration.decode(options.timeToLive)
   return makeWith({
     capacity: options.capacity,
@@ -681,13 +681,13 @@ export const make = <Key, Environment, Error, Value>(
 }
 
 /** @internal */
-export const makeWith = <Key, Environment, Error, Value>(
+export const makeWith = <Key, Value, Error = never, Environment = never>(
   options: {
     readonly capacity: number
-    readonly lookup: Cache.Lookup<Key, Environment, Error, Value>
+    readonly lookup: Cache.Lookup<Key, Value, Error, Environment>
     readonly timeToLive: (exit: Exit.Exit<Value, Error>) => Duration.DurationInput
   }
-): Effect.Effect<Cache.Cache<Key, Error, Value>, never, Environment> =>
+): Effect.Effect<Cache.Cache<Key, Value, Error>, never, Environment> =>
   core.map(
     fiberRuntime.all([core.context<Environment>(), core.fiberId]),
     ([context, fiberId]) =>
@@ -701,12 +701,12 @@ export const makeWith = <Key, Environment, Error, Value>(
   )
 
 /** @internal */
-export const unsafeMakeWith = <Key, Error, Value>(
+export const unsafeMakeWith = <Key, Value, Error = never>(
   capacity: number,
-  lookup: Cache.Lookup<Key, never, Error, Value>,
+  lookup: Cache.Lookup<Key, Value, Error>,
   timeToLive: (exit: Exit.Exit<Value, Error>) => Duration.DurationInput
-): Cache.Cache<Key, Error, Value> =>
-  new CacheImpl<Key, Error, Value>(
+): Cache.Cache<Key, Value, Error> =>
+  new CacheImpl<Key, Value, Error>(
     capacity,
     Context.empty() as Context.Context<any>,
     none,

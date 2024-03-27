@@ -29,7 +29,7 @@ import type * as Emit from "./StreamEmit.js"
 import type * as HaltStrategy from "./StreamHaltStrategy.js"
 import type * as Take from "./Take.js"
 import type * as Tracer from "./Tracer.js"
-import type { Covariant, MergeRecord, NoInfer } from "./Types.js"
+import type { Covariant, MergeRecord } from "./Types.js"
 import type * as Unify from "./Unify.js"
 
 /**

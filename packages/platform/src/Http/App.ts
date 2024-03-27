@@ -20,21 +20,23 @@ import * as ServerResponse from "./ServerResponse.js"
  * @since 1.0.0
  * @category models
  */
-export interface HttpApp<R, E, A> extends Effect.Effect<A, E, R | ServerRequest.ServerRequest> {}
+export interface HttpApp<A = ServerResponse.ServerResponse, E = never, R = never>
+  extends Effect.Effect<A, E, R | ServerRequest.ServerRequest>
+{}
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type Default<R, E> = HttpApp<R, E, ServerResponse.ServerResponse>
+export type Default<E = never, R = never> = HttpApp<ServerResponse.ServerResponse, E, R>
 
 /**
  * @since 1.0.0
  * @category combinators
  */
 export const withDefaultMiddleware = <R, E>(
-  self: Default<R, E>
-): Default<R, E> => internalMiddleware.tracer(self)
+  self: Default<E, R>
+): Default<E, R> => internalMiddleware.tracer(self)
 
 /**
  * @since 1.0.0
@@ -94,8 +96,8 @@ export const appendPreResponseHandler: (handler: PreResponseHandler) => Effect.E
  * @category fiber refs
  */
 export const withPreResponseHandler = dual<
-  (handler: PreResponseHandler) => <R, E, A>(self: HttpApp<R, E, A>) => HttpApp<R, E, A>,
-  <R, E, A>(self: HttpApp<R, E, A>, handler: PreResponseHandler) => HttpApp<R, E, A>
+  (handler: PreResponseHandler) => <R, E, A>(self: HttpApp<A, E, R>) => HttpApp<A, E, R>,
+  <R, E, A>(self: HttpApp<A, E, R>, handler: PreResponseHandler) => HttpApp<A, E, R>
 >(2, (self, handler) =>
   Effect.locallyWith(
     self,
@@ -109,7 +111,7 @@ export const withPreResponseHandler = dual<
  */
 export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
   const run = Runtime.runFork(runtime)
-  return <E>(self: Default<R | Scope.Scope, E>) => {
+  return <E>(self: Default<E, R | Scope.Scope>) => {
     self = withDefaultMiddleware(self)
     return (request: Request): Promise<Response> =>
       new Promise((resolve, reject) => {
@@ -138,7 +140,7 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
  * @since 1.0.0
  * @category conversions
  */
-export const toWebHandler: <E>(self: Default<Scope.Scope, E>) => (request: Request) => Promise<Response> =
+export const toWebHandler: <E>(self: Default<E, Scope.Scope>) => (request: Request) => Promise<Response> =
   toWebHandlerRuntime(Runtime.defaultRuntime)
 
 /**
@@ -146,7 +148,7 @@ export const toWebHandler: <E>(self: Default<Scope.Scope, E>) => (request: Reque
  * @category conversions
  */
 export const toWebHandlerLayer = <R, E, RE>(
-  self: Default<R | Scope.Scope, E>,
+  self: Default<E, R | Scope.Scope>,
   layer: Layer.Layer<R, RE>
 ): {
   readonly close: () => Promise<void>

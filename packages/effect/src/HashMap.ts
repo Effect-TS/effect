@@ -9,7 +9,6 @@ import * as HM from "./internal/hashMap.js"
 import * as _keySet from "./internal/hashMap/keySet.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
-import type { NoInfer } from "./Types.js"
 
 const TypeId: unique symbol = HM.HashMapTypeId as TypeId
 

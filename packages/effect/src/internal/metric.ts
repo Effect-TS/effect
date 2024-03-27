@@ -98,8 +98,10 @@ export const counter: {
 } = (name, options) => fromMetricKey(metricKey.counter(name, options as any)) as any
 
 /** @internal */
-export const frequency = (name: string, description?: string): Metric.Metric.Frequency<string> =>
-  fromMetricKey(metricKey.frequency(name, description))
+export const frequency = (name: string, options?: {
+  readonly description?: string | undefined
+  readonly preregisteredWords?: ReadonlyArray<string> | undefined
+}): Metric.Metric.Frequency<string> => fromMetricKey(metricKey.frequency(name, options))
 
 /** @internal */
 export const withConstantInput = dual<
