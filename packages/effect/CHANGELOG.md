@@ -1,5 +1,23 @@
 # effect
 
+## 2.4.15
+
+### Patch Changes
+
+- [#2407](https://github.com/Effect-TS/effect/pull/2407) [`d7688c0`](https://github.com/Effect-TS/effect/commit/d7688c0c72717fe7876c871567f6946dabfc0546) Thanks [@thewilkybarkid](https://github.com/thewilkybarkid)! - Add Config.duration
+
+  This can be used to parse Duration's from environment variables:
+
+  ```ts
+  import { Config, Effect } from "effect"
+
+  Config.duration("CACHE_TTL").pipe(
+    Effect.andThen((duration) => ...)
+  )
+  ```
+
+- [#2416](https://github.com/Effect-TS/effect/pull/2416) [`b3a4fac`](https://github.com/Effect-TS/effect/commit/b3a4face2acaca422f0b0530436e8f13129f3b3a) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Collect exits on forEach interrupt of residual requests
+
 ## 2.4.14
 
 ### Patch Changes
