@@ -84,10 +84,10 @@ describe("Schema > PropertySignature", () => {
   })
 
   it("add a default to an optional field", async () => {
-    const ps: S.PropertySignature<":", number, never, "?:", string, never> = new S.$PropertySignature(
+    const ps: S.PropertySignature<":", number, never, "?:", string, false, never> = new S.$PropertySignature(
       new S.PropertySignatureTransformation(
         new S.FromPropertySignature(S.NumberFromString.ast, true, true, {}, undefined),
-        new S.ToPropertySignature(S.number.ast, false, true, {}),
+        new S.ToPropertySignature(S.number.ast, false, true, {}, undefined),
         Option.orElse(() => Option.some(0)),
         identity
       )
@@ -113,10 +113,10 @@ describe("Schema > PropertySignature", () => {
   })
 
   it("add a bidirectional default to an optional field", async () => {
-    const ps: S.PropertySignature<":", number, never, "?:", string, never> = new S.$PropertySignature(
+    const ps: S.PropertySignature<":", number, never, "?:", string, false, never> = new S.$PropertySignature(
       new S.PropertySignatureTransformation(
         new S.FromPropertySignature(S.NumberFromString.ast, true, true, {}, undefined),
-        new S.ToPropertySignature(S.number.ast, false, true, {}),
+        new S.ToPropertySignature(S.number.ast, false, true, {}, undefined),
         Option.orElse(() => Option.some(0)),
         (o) => Option.flatMap(o, Option.liftPredicate((v) => v !== 0))
       )
@@ -142,10 +142,10 @@ describe("Schema > PropertySignature", () => {
   })
 
   it("empty string as optional", async () => {
-    const ps: S.PropertySignature<"?:", string, never, ":", string, never> = new S.$PropertySignature(
+    const ps: S.PropertySignature<"?:", string, never, ":", string, false, never> = new S.$PropertySignature(
       new S.PropertySignatureTransformation(
         new S.FromPropertySignature(S.string.ast, false, true, {}, undefined),
-        new S.ToPropertySignature(S.string.ast, true, true, {}),
+        new S.ToPropertySignature(S.string.ast, true, true, {}, undefined),
         Option.flatMap(Option.liftPredicate((v) => v !== "")),
         identity
       )
@@ -159,10 +159,10 @@ describe("Schema > PropertySignature", () => {
   })
 
   it("reversed default", async () => {
-    const ps: S.PropertySignature<"?:", number, never, ":", number, never> = new S.$PropertySignature(
+    const ps: S.PropertySignature<"?:", number, never, ":", number, false, never> = new S.$PropertySignature(
       new S.PropertySignatureTransformation(
         new S.FromPropertySignature(S.number.ast, false, true, {}, undefined),
-        new S.ToPropertySignature(S.number.ast, true, true, {}),
+        new S.ToPropertySignature(S.number.ast, true, true, {}, undefined),
         identity,
         Option.orElse(() => Option.some(0))
       )

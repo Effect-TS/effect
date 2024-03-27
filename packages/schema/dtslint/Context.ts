@@ -156,21 +156,21 @@ S.nonEmptyArray(aContext)
 // propertySignatureDeclaration
 // ---------------------------------------------
 
-// $ExpectType PropertySignature<":", string, never, ":", string, "aContext">
+// $ExpectType PropertySignature<":", string, never, ":", string, false, "aContext">
 S.propertySignature(aContext)
 
 // ---------------------------------------------
 // optionalToRequired
 // ---------------------------------------------
 
-// $ExpectType PropertySignature<":", string, never, "?:", string, "aContext">
+// $ExpectType PropertySignature<":", string, never, "?:", string, false, "aContext">
 S.optionalToRequired(aContext, S.string, Option.getOrElse(() => ""), Option.some)
 
 // ---------------------------------------------
 // optional
 // ---------------------------------------------
 
-// $ExpectType PropertySignature<"?:", string | undefined, never, "?:", string | undefined, "aContext">
+// $ExpectType PropertySignature<"?:", string | undefined, never, "?:", string | undefined, false, "aContext">
 S.optional(aContext)
 
 // ---------------------------------------------
