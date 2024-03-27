@@ -1594,14 +1594,18 @@ export const optional: {
   <
     A,
     const Options extends {
+      readonly default?: never
+      readonly as?: never
       readonly exact?: true
       readonly nullable?: true
     } | {
       readonly default: () => A
+      readonly as?: never
       readonly exact?: true
       readonly nullable?: true
     } | {
       readonly as: "Option"
+      readonly default?: never
       readonly exact?: true
       readonly nullable?: true
     } | undefined
@@ -1631,14 +1635,18 @@ export const optional: {
     I,
     R,
     const Options extends {
+      readonly default?: never
+      readonly as?: never
       readonly exact?: true
       readonly nullable?: true
     } | {
       readonly default: () => A
+      readonly as?: never
       readonly exact?: true
       readonly nullable?: true
     } | {
       readonly as: "Option"
+      readonly default?: never
       readonly exact?: true
       readonly nullable?: true
     } | undefined
