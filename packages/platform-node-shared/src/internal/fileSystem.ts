@@ -147,7 +147,7 @@ const removeFactory = (method: string) => {
   return (path: string, options?: FileSystem.RemoveOptions) =>
     nodeRm(
       path,
-      { recursive: options?.recursive ?? false }
+      { recursive: options?.recursive ?? false, force: options?.force ?? false }
     )
 }
 const remove = removeFactory("remove")

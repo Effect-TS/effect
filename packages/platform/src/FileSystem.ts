@@ -163,9 +163,6 @@ export interface FileSystem {
   ) => Effect.Effect<string, PlatformError>
   /**
    * Remove a file or directory.
-   *
-   * By setting the `recursive` option to `true`, you can recursively remove
-   * nested directories.
    */
   readonly remove: (
     path: string,
@@ -388,7 +385,14 @@ export interface ReadDirectoryOptions {
  * @category options
  */
 export interface RemoveOptions {
+  /**
+   * When `true`, you can recursively remove nested directories.
+   */
   readonly recursive?: boolean
+  /**
+   * When `true`, exceptions will be ignored if `path` does not exist.
+   */
+  readonly force?: boolean
 }
 
 /**
