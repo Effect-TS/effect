@@ -1,5 +1,17 @@
 # @effect/experimental
 
+## 0.14.6
+
+### Patch Changes
+
+- [#2421](https://github.com/Effect-TS/effect/pull/2421) [`c34eb3e`](https://github.com/Effect-TS/effect/commit/c34eb3ecae1bc858bd17207b5c82935acc7a95d9) Thanks [@tim-smart](https://github.com/tim-smart)! - don't persist items with a TimeToLive of zero
+
+- Updated dependencies [[`d7688c0`](https://github.com/Effect-TS/effect/commit/d7688c0c72717fe7876c871567f6946dabfc0546), [`b3a4fac`](https://github.com/Effect-TS/effect/commit/b3a4face2acaca422f0b0530436e8f13129f3b3a), [`5ded019`](https://github.com/Effect-TS/effect/commit/5ded019970169e3c1f2a375d0876b95fb1ff67f5)]:
+  - effect@2.4.15
+  - @effect/schema@0.64.15
+  - @effect/platform@0.48.21
+  - @effect/platform-node@0.45.23
+
 ## 0.14.5
 
 ### Patch Changes

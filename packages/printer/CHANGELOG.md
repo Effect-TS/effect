@@ -1,5 +1,44 @@
 # @effect/printer
 
+## 0.32.0
+
+### Minor Changes
+
+- [#2378](https://github.com/Effect-TS/effect/pull/2378) [`0dd62a7`](https://github.com/Effect-TS/effect/commit/0dd62a701934b44c4c78e2d7878afdccfe414c39) Thanks [@IMax153](https://github.com/IMax153)! - Removes the `Render` module and consolidates `Doc` rendering methods
+
+  This PR removes the `Render` module and consolidates all document rendering methods into a single method.
+
+  Before:
+
+  ```ts
+  import * as Doc from "@effect/printer/Doc";
+  import * as Render from "@effect/printer/Render";
+
+  const doc = Doc.cat(Doc.text("Hello, "), Doc.text("World!"));
+
+  console.log(Render.prettyDefault(doc));
+  ```
+
+  After:
+
+  ```ts
+  import * as Doc from "@effect/printer/Doc";
+
+  const doc = Doc.cat(Doc.text("Hello, "), Doc.text("World!"));
+
+  console.log(Doc.render(doc, { style: "pretty" }));
+  ```
+
+### Patch Changes
+
+- [#2378](https://github.com/Effect-TS/effect/pull/2378) [`0dd62a7`](https://github.com/Effect-TS/effect/commit/0dd62a701934b44c4c78e2d7878afdccfe414c39) Thanks [@IMax153](https://github.com/IMax153)! - Fix performance issue with pretty rendering of documents created with `Doc.reflow`
+
+- [#2378](https://github.com/Effect-TS/effect/pull/2378) [`0dd62a7`](https://github.com/Effect-TS/effect/commit/0dd62a701934b44c4c78e2d7878afdccfe414c39) Thanks [@IMax153](https://github.com/IMax153)! - Fix description in package.json
+
+- Updated dependencies [[`d7688c0`](https://github.com/Effect-TS/effect/commit/d7688c0c72717fe7876c871567f6946dabfc0546), [`b3a4fac`](https://github.com/Effect-TS/effect/commit/b3a4face2acaca422f0b0530436e8f13129f3b3a)]:
+  - effect@2.4.15
+  - @effect/typeclass@0.23.15
+
 ## 0.31.23
 
 ### Patch Changes
