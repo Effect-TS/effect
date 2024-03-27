@@ -146,8 +146,7 @@ export const setUnderlined = (underlined: boolean): SGR => ({
 // Destructors
 // -----------------------------------------------------------------------------
 
-/** @internal */
-export const toCode = (self: SGR): number => {
+const toCodeNum = (self: SGR): number => {
   switch (self._tag) {
     case "Reset": {
       return 0
@@ -178,9 +177,6 @@ export const toCode = (self: SGR): number => {
 }
 
 /** @internal */
-export const toEscapeSequence = (sgrs: Iterable<SGR>): string => csi("m", sgrs)
-
-const csi = (controlFunction: string, sgrs: Iterable<SGR>): string => {
-  const params = Array.from(sgrs).map((sgr) => `${toCode(sgr)}`).join(";")
-  return `\u001b[${params}${controlFunction}`
+export const toCode = (sgrs: Iterable<SGR>): string => {
+  return Array.from(sgrs).map(toCodeNum).join(";").concat("m")
 }
