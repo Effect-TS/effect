@@ -3806,6 +3806,26 @@ export const clamp =
  * @category api interface
  * @since 1.0.0
  */
+export interface Negate extends Annotable<Negate, number> {}
+
+/**
+ * Negates a `Number`.
+ *
+ * @category number transformations
+ * @since 1.0.0
+ */
+export const Negate: Negate = transform(
+  number,
+  number,
+  N.negate,
+  N.negate,
+  { strict: false }
+)
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
 export interface NumberFromString extends Annotable<NumberFromString, number, string> {}
 
 /**

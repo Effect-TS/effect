@@ -162,6 +162,21 @@ export const increment = (n: number): number => n + 1
 export const decrement = (n: number): number => n - 1
 
 /**
+ * Negates a number.
+ *
+ * @param n - A `number` to be negated.
+ *
+ * @example
+ * import { negate } from 'effect/Number'
+ *
+ * assert.deepStrictEqual(negate(1), -1)
+ *
+ * @category math
+ * @since 2.0.0
+ */
+export const negate = (n: number): number => n * -1
+
+/**
  * @category instances
  * @since 2.0.0
  */

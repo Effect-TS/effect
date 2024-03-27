@@ -36,6 +36,10 @@ describe("Number", () => {
     deepStrictEqual(Number.decrement(2), 1)
   })
 
+  it("negate", () => {
+    deepStrictEqual(Number.negate(2), -2)
+  })
+
   it("Equivalence", () => {
     expect(Number.Equivalence(1, 1)).toBe(true)
     expect(Number.Equivalence(1, 2)).toBe(false)
