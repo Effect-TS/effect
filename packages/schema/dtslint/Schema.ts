@@ -613,6 +613,15 @@ S.struct({ a: S.string.pipe(S.optional({ exact: true })) })
 // optional()
 // ---------------------------------------------
 
+// @ts-expect-error
+S.optional(S.string, { as: "Option", default: () => "" })
+
+// @ts-expect-error
+S.optional(S.string, { as: null })
+
+// @ts-expect-error
+S.optional(S.string, { default: null })
+
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: boolean | undefined; }, { readonly a: string; readonly b: number; readonly c?: boolean | undefined; }, never>
 S.asSchema(S.struct({ a: S.string, b: S.number, c: S.optional(S.boolean) }))
 
@@ -673,10 +682,10 @@ S.struct({
 S.struct({ a: S.optional(S.literal("a", "b"), { default: () => "a", exact: true }) })
 
 // $ExpectType Schema<{ readonly a: "a" | "b"; }, { readonly a?: "a" | "b"; }, never>
-S.asSchema(S.struct({ a: S.literal("a", "b").pipe(S.optional({ default: () => "a", exact: true })) }))
+S.asSchema(S.struct({ a: S.literal("a", "b").pipe(S.optional({ default: () => "a" as const, exact: true })) }))
 
 // $ExpectType struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b", never>; }>
-S.struct({ a: S.literal("a", "b").pipe(S.optional({ default: () => "a", exact: true })) })
+S.struct({ a: S.literal("a", "b").pipe(S.optional({ default: () => "a" as const, exact: true })) })
 
 // ---------------------------------------------
 // optional { default: () => A }
@@ -723,10 +732,10 @@ S.struct({ a: S.optional(S.NumberFromString, { exact: true, nullable: true, defa
 S.struct({ a: S.optional(S.literal("a", "b"), { default: () => "a", nullable: true }) })
 
 // $ExpectType Schema<{ readonly a: "a" | "b"; }, { readonly a?: "a" | "b" | null | undefined; }, never>
-S.asSchema(S.struct({ a: S.literal("a", "b").pipe(S.optional({ default: () => "a", nullable: true })) }))
+S.asSchema(S.struct({ a: S.literal("a", "b").pipe(S.optional({ default: () => "a" as const, nullable: true })) }))
 
 // $ExpectType struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b" | null | undefined, never>; }>
-S.struct({ a: S.literal("a", "b").pipe(S.optional({ default: () => "a", nullable: true })) })
+S.struct({ a: S.literal("a", "b").pipe(S.optional({ default: () => "a" as const, nullable: true })) })
 
 // ---------------------------------------------
 // optional { exact: true, as: "Option" }
