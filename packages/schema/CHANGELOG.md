@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.64.16
+
+### Patch Changes
+
+- [#2428](https://github.com/Effect-TS/effect/pull/2428) [`a31917a`](https://github.com/Effect-TS/effect/commit/a31917aa4b05b1189b7a8e0bedb60bb3d49262ad) Thanks [@gcanti](https://github.com/gcanti)! - export `null` from the AST module
+
 ## 0.64.15
 
 ### Patch Changes
