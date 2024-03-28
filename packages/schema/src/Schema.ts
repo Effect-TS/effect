@@ -792,7 +792,7 @@ const $void: $void = make(AST.voidKeyword)
  */
 export interface $null extends Annotable<$null, null> {}
 
-const $null: $null = make(AST._null)
+const $null: $null = make(AST.null)
 
 export {
   /**
