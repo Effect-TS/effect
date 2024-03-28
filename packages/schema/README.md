@@ -5432,6 +5432,19 @@ const result = S.decodeUnknownEither(Name)("").pipe(
 console.log(result); // => { _id: 'Either', _tag: 'Left', left: 'should be non empty' }
 ```
 
+# Comparison
+
+## Zod
+
+Feature-wise, `schema` can do practically everything that `zod` can do.
+
+The main differences are:
+
+1.  `schema` transformations are bidirectional, so it not only decodes like `zod` but also encodes.
+2.  `schema` is integrated with `Effect` and inherits some benefits from it (such as dependency tracking in transformations).
+3.  `schema` is highly customizable through annotations, allowing users to attach meta-information.
+4.  `schema` uses a functional programming style with combinators and transformations (while `zod` provides a chainable API).
+
 # Documentation
 
 - [API Reference](https://effect-ts.github.io/effect/docs/schema)
