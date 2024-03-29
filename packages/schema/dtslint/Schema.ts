@@ -1389,8 +1389,7 @@ S.string.pipe(S.transform(S.number, (s) => s.length, (n) => n))
 const transformOrFail1 = S.string.pipe(
   S.transformOrFail(
     S.number,
-    (s) => ParseResult.succeed(s.length),
-    (n) => ParseResult.succeed(String(n))
+    { decode: (s) => ParseResult.succeed(s.length), encode: (n) => ParseResult.succeed(String(n)) }
   )
 )
 
@@ -1410,9 +1409,7 @@ S.asSchema(transformOrFail1)
 S.asSchema(S.string.pipe(
   S.transformOrFail(
     S.number,
-    (s) => ParseResult.succeed(s),
-    (n) => ParseResult.succeed(String(n)),
-    { strict: false }
+    { strict: false, decode: (s) => ParseResult.succeed(s), encode: (n) => ParseResult.succeed(String(n)) }
   )
 ))
 
@@ -1420,9 +1417,7 @@ S.asSchema(S.string.pipe(
 S.string.pipe(
   S.transformOrFail(
     S.number,
-    (s) => ParseResult.succeed(s),
-    (n) => ParseResult.succeed(String(n)),
-    { strict: false }
+    { strict: false, decode: (s) => ParseResult.succeed(s), encode: (n) => ParseResult.succeed(String(n)) }
   )
 )
 

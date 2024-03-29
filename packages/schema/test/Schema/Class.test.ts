@@ -26,14 +26,16 @@ const NameString = S.string.pipe(
   S.nonEmpty(),
   S.transformOrFail(
     S.string,
-    (_, _opts, ast) =>
-      Name.pipe(
-        Effect.filterOrFail(
-          (name) => _ === name,
-          () => new ParseResult.Type(ast, _, "Does not match Name")
-        )
-      ),
-    (_) => ParseResult.succeed(_)
+    {
+      decode: (_, _opts, ast) =>
+        Name.pipe(
+          Effect.filterOrFail(
+            (name) => _ === name,
+            () => new ParseResult.Type(ast, _, "Does not match Name")
+          )
+        ),
+      encode: (_) => ParseResult.succeed(_)
+    }
   )
 )
 
@@ -41,13 +43,15 @@ const Id = Context.GenericTag<"Id", number>("Name")
 const IdNumber = S.number.pipe(
   S.transformOrFail(
     S.number,
-    (_, _opts, ast) =>
-      Effect.filterOrFail(
-        Id,
-        (id) => _ === id,
-        () => new ParseResult.Type(ast, _, "Does not match Id")
-      ),
-    (_) => ParseResult.succeed(_)
+    {
+      decode: (_, _opts, ast) =>
+        Effect.filterOrFail(
+          Id,
+          (id) => _ === id,
+          () => new ParseResult.Type(ast, _, "Does not match Id")
+        ),
+      encode: (_) => ParseResult.succeed(_)
+    }
   )
 )
 

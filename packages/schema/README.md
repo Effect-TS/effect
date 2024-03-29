@@ -458,16 +458,14 @@ const Person = S.struct({
   age: S.number,
 });
 
-const asyncSchema = S.transformOrFail(
-  PersonId,
-  Person,
+const asyncSchema = S.transformOrFail(PersonId, Person, {
   // Simulate an async transformation
-  (id) =>
+  decode: (id) =>
     Effect.succeed({ id, name: "name", age: 18 }).pipe(
       Effect.delay("10 millis")
     ),
-  (person) => Effect.succeed(person.id).pipe(Effect.delay("10 millis"))
-);
+  encode: (person) => Effect.succeed(person.id).pipe(Effect.delay("10 millis")),
+});
 
 const syncParsePersonId = S.decodeUnknownEither(asyncSchema);
 
@@ -3546,20 +3544,60 @@ In the example above, we defined a schema for the `string` type and a schema for
 If you need to be less restrictive in your `decode` and `encode` functions, you can make use of the `{ strict: false }` option:
 
 ```ts
-declare const transform: <B, A, R1, D, C, R2>(
-  from: Schema<B, A, R1>,
-  to: Schema<D, C, R2>,
-  decode: (b: B) => unknown, // Less strict constraint
-  encode: (c: C) => unknown, // Less strict constraint
-  options: { strict: false }
-) => Schema<D, A, R1 | R2>;
+<To extends Schema.Any, From extends Schema.Any>(
+  from: From,
+  to: To,
+  options: {
+    readonly decode: (fromA: Schema.Type<From>) => Schema.Encoded<To>
+    readonly encode: (toI: Schema.Encoded<To>) => Schema.Type<From>
+    readonly strict?: true
+  } | {
+    readonly decode: (fromA: Schema.Type<From>) => unknown // Less strict constraint
+    readonly encode: (toI: Schema.Encoded<To>) => unknown // Less strict constraint
+    readonly strict: false
+  }
+): transform<From, To>
 ```
 
 This is useful when you want to relax the type constraints imposed by the `decode` and `encode` functions, making them more permissive.
 
 ## transformOrFail
 
-The `transformOrFail` combinator works in a similar way, but allows the transformation function to return an `Effect<A, ParseError, R3`, which can either be a success or a failure.
+The `transformOrFail` combinator works in a similar way, but allows the transformation function to return an `Effect<A, ParseError, R`, which can either be a success or a failure.
+
+```ts
+<To extends Schema.Any, From extends Schema.Any, RD, RE>(
+  from: From,
+  to: To,
+  options: {
+    readonly decode: (
+      fromA: Schema.Type<From>,
+      options: ParseOptions,
+      ast: AST.Transformation
+    ) => Effect.Effect<Schema.Encoded<To>, ParseResult.ParseIssue, RD>
+    readonly encode: (
+      toI: Schema.Encoded<To>,
+      options: ParseOptions,
+      ast: AST.Transformation
+    ) => Effect.Effect<Schema.Type<From>, ParseResult.ParseIssue, RE>
+    readonly strict?: true
+  } | {
+    readonly decode: (
+      fromA: Schema.Type<From>,
+      options: ParseOptions,
+      ast: AST.Transformation
+    ) => Effect.Effect<unknown, ParseResult.ParseIssue, RD>
+    readonly encode: (
+      toI: Schema.Encoded<To>,
+      options: ParseOptions,
+      ast: AST.Transformation
+    ) => Effect.Effect<unknown, ParseResult.ParseIssue, RE>
+    readonly strict: false
+  }
+): transformOrFail<From, To, RD | RE>
+```
+
+Example
 
 ```ts
 import * as ParseResult from "@effect/schema/ParseResult";
@@ -3568,17 +3606,19 @@ import * as S from "@effect/schema/Schema";
 export const transformedSchema: S.Schema<boolean, string> = S.transformOrFail(
   S.string,
   S.boolean,
-  // define a function that converts a string into a boolean
-  (s) =>
-    s === "true"
-      ? ParseResult.succeed(true)
-      : s === "false"
-        ? ParseResult.succeed(false)
-        : ParseResult.fail(
-            new ParseResult.Type(S.literal("true", "false").ast, s)
-          ),
-  // define a function that converts a boolean into a string
-  (b) => ParseResult.succeed(String(b))
+  {
+    // define a function that converts a string into a boolean
+    decode: (s) =>
+      s === "true"
+        ? ParseResult.succeed(true)
+        : s === "false"
+          ? ParseResult.succeed(false)
+          : ParseResult.fail(
+              new ParseResult.Type(S.literal("true", "false").ast, s)
+            ),
+    // define a function that converts a boolean into a string
+    encode: (b) => ParseResult.succeed(String(b)),
+  }
 );
 ```
 
@@ -3604,16 +3644,14 @@ const api = (url: string): Effect.Effect<unknown, Error> =>
 
 const PeopleId = S.string.pipe(S.brand("PeopleId"));
 
-const PeopleIdFromString = S.transformOrFail(
-  S.string,
-  PeopleId,
-  (s, _, ast) =>
+const PeopleIdFromString = S.transformOrFail(S.string, PeopleId, {
+  decode: (s, _, ast) =>
     Effect.mapBoth(api(`https://swapi.dev/api/people/${s}`), {
       onFailure: (e) => new ParseResult.Type(ast, s, e.message),
       onSuccess: () => s,
     }),
-  ParseResult.succeed
-);
+  encode: ParseResult.succeed,
+});
 
 const decode = (id: string) =>
   Effect.mapError(S.decodeUnknown(PeopleIdFromString)(id), (e) =>
@@ -3671,16 +3709,14 @@ const api = (url: string): Effect.Effect<unknown, Error, "Fetch"> =>
 
 const PeopleId = S.string.pipe(S.brand("PeopleId"));
 
-const PeopleIdFromString = S.transformOrFail(
-  S.string,
-  PeopleId,
-  (s, _, ast) =>
+const PeopleIdFromString = S.transformOrFail(S.string, PeopleId, {
+  decode: (s, _, ast) =>
     Effect.mapBoth(api(`https://swapi.dev/api/people/${s}`), {
       onFailure: (e) => new ParseResult.Type(ast, s, e.message),
       onSuccess: () => s,
     }),
-  ParseResult.succeed
-);
+  encode: ParseResult.succeed,
+});
 
 const decode = (id: string) =>
   Effect.mapError(S.decodeUnknown(PeopleIdFromString)(id), (e) =>
@@ -4896,38 +4932,40 @@ console.log(decode("https://www.effect.website")); // https://www.effect.website
 In case you prefer to normalize URLs you can combine `transformOrFail` with `URL`:
 
 ```ts
-import * as ParseResult from "@effect/schema/ParseResult";
-import * as S from "@effect/schema/Schema";
+import * as ParseResult from "@effect/schema/ParseResult"
+import * as S from "@effect/schema/Schema"
 
 const NormalizedUrlString: S.Schema<string> = S.string.pipe(
   S.filter((value) => {
     try {
-      return new URL(value).toString() === value;
+      return new URL(value).toString() === value
     } catch (_) {
-      return false;
+      return false
     }
   })
-);
+)
 
 const NormalizeUrlString: S.Schema<string> = S.transformOrFail(
   S.string,
   NormalizedUrlString,
-  (value, _, ast) =>
-    ParseResult.try({
-      try: () => new URL(value).toString(),
-      catch: (err) =>
-        new ParseResult.Type(
-          ast,
-          value,
-          err instanceof Error ? err.message : undefined
-        ),
-    }),
-  ParseResult.succeed
-);
+  {
+    decode: (value, _, ast) =>
+      ParseResult.try({
+        try: () => new URL(value).toString(),
+        catch: (err) =>
+          new ParseResult.Type(
+            ast,
+            value,
+            err instanceof Error ? err.message : undefined
+          )
+      }),
+    encode: ParseResult.succeed
+  }
+)
 
-const decode = S.decodeUnknownSync(NormalizeUrlString);
+const decode = S.decodeUnknownSync(NormalizeUrlString)
 
-console.log(decode("https://www.effect.website")); // "https://www.effect.website/"
+console.log(decode("https://www.effect.website")) // "https://www.effect.website/"
 ```
 
 # Technical overview: Understanding Schemas
@@ -5294,28 +5332,30 @@ Error: Person
 When a transformation encounters an error, the default error message provides information on whether the failure happened in the "from" part, the "to" part, or within the transformation process itself:
 
 ```ts
-import * as ParseResult from "@effect/schema/ParseResult";
-import * as S from "@effect/schema/Schema";
+import * as ParseResult from "@effect/schema/ParseResult"
+import * as S from "@effect/schema/Schema"
 
 const IntFromString = S.transformOrFail(
   S.string,
   S.Int,
-  (s, _, ast) => {
-    const n = Number(s);
-    return Number.isNaN(n)
-      ? ParseResult.fail(new ParseResult.Type(ast, s))
-      : ParseResult.succeed(n);
-  },
-  (n) => ParseResult.succeed(String(n))
-).annotations({ identifier: "IntFromString" });
+  {
+    decode: (s, _, ast) => {
+      const n = Number(s)
+      return Number.isNaN(n)
+        ? ParseResult.fail(new ParseResult.Type(ast, s))
+        : ParseResult.succeed(n)
+    },
+    encode: (n) => ParseResult.succeed(String(n))
+  }
+).annotations({ identifier: "IntFromString" })
 
 const schema = S.struct({
   name: S.NonEmpty,
-  age: IntFromString,
-}).annotations({ identifier: "Person" });
+  age: IntFromString
+}).annotations({ identifier: "Person" })
 
 // "from" failure
-S.decodeUnknownSync(schema)({ name: "John", age: null });
+S.decodeUnknownSync(schema)({ name: "John", age: null })
 /*
 throws:
 Error: Person
@@ -5326,7 +5366,7 @@ Error: Person
 */
 
 // "to" failure
-S.decodeUnknownSync(schema)({ name: "John", age: "1.2" });
+S.decodeUnknownSync(schema)({ name: "John", age: "1.2" })
 /*
 throws:
 Error: Person
@@ -5339,7 +5379,7 @@ Error: Person
 */
 
 // "transformation" failure
-S.decodeUnknownSync(schema)({ name: "John", age: "a" });
+S.decodeUnknownSync(schema)({ name: "John", age: "a" })
 /*
 throws:
 Error: Person
@@ -5355,31 +5395,33 @@ Error: Person
 You have the option to customize error messages for transformations using the `message` annotation:
 
 ```ts
-import * as ParseResult from "@effect/schema/ParseResult";
-import * as S from "@effect/schema/Schema";
+import * as ParseResult from "@effect/schema/ParseResult"
+import * as S from "@effect/schema/Schema"
 
 const IntFromString = S.transformOrFail(
   S.string.annotations({ message: () => "please enter a string" }),
   S.Int.annotations({ message: () => "please enter an integer" }),
-  (s, _, ast) => {
-    const n = Number(s);
-    return Number.isNaN(n)
-      ? ParseResult.fail(new ParseResult.Type(ast, s))
-      : ParseResult.succeed(n);
-  },
-  (n) => ParseResult.succeed(String(n))
+  {
+    decode: (s, _, ast) => {
+      const n = Number(s)
+      return Number.isNaN(n)
+        ? ParseResult.fail(new ParseResult.Type(ast, s))
+        : ParseResult.succeed(n)
+    },
+    encode: (n) => ParseResult.succeed(String(n))
+  }
 ).annotations({
   identifier: "IntFromString",
-  message: () => "please enter a parseable string",
-});
+  message: () => "please enter a parseable string"
+})
 
 const schema = S.struct({
   name: S.NonEmpty,
-  age: IntFromString,
-}).annotations({ identifier: "Person" });
+  age: IntFromString
+}).annotations({ identifier: "Person" })
 
 // "from" failure
-S.decodeUnknownSync(schema)({ name: "John", age: null });
+S.decodeUnknownSync(schema)({ name: "John", age: null })
 /*
 throws:
 Error: Person
@@ -5388,7 +5430,7 @@ Error: Person
 */
 
 // "to" failure
-S.decodeUnknownSync(schema)({ name: "John", age: "1.2" });
+S.decodeUnknownSync(schema)({ name: "John", age: "1.2" })
 /*
 throws:
 Error: Person
@@ -5397,7 +5439,7 @@ Error: Person
 */
 
 // "transformation" failure
-S.decodeUnknownSync(schema)({ name: "John", age: "a" });
+S.decodeUnknownSync(schema)({ name: "John", age: "a" })
 /*
 throws:
 Error: Person

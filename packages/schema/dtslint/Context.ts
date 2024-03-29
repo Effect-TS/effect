@@ -274,10 +274,12 @@ aContext.pipe(S.filter(() => false))
 // ---------------------------------------------
 
 // $ExpectType Schema<number, string, "aContext" | "bContext">
-S.asSchema(S.transformOrFail(aContext, bContext, () => ParseResult.succeed(1), () => ParseResult.succeed("")))
+S.asSchema(
+  S.transformOrFail(aContext, bContext, { decode: () => ParseResult.succeed(1), encode: () => ParseResult.succeed("") })
+)
 
 // $ExpectType transformOrFail<aContext, bContext, never>
-S.transformOrFail(aContext, bContext, () => ParseResult.succeed(1), () => ParseResult.succeed(""))
+S.transformOrFail(aContext, bContext, { decode: () => ParseResult.succeed(1), encode: () => ParseResult.succeed("") })
 
 // ---------------------------------------------
 // transform

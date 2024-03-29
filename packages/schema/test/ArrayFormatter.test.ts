@@ -45,8 +45,10 @@ describe("ArrayFormatter", () => {
       const schema = S.string.pipe(
         S.transformOrFail(
           S.string,
-          (s, _, ast) => ParseResult.fail(new ParseResult.Type(ast, s, "my custom message")),
-          ParseResult.succeed
+          {
+            decode: (s, _, ast) => ParseResult.fail(new ParseResult.Type(ast, s, "my custom message")),
+            encode: ParseResult.succeed
+          }
         )
       )
       expectIssues(schema, "", [{
@@ -358,13 +360,15 @@ describe("ArrayFormatter", () => {
         const schema = S.transformOrFail(
           S.string.annotations({ message: () => "please enter a string" }),
           S.Int.annotations({ message: () => "please enter an integer" }),
-          (s, _, ast) => {
-            const n = Number(s)
-            return Number.isNaN(n)
-              ? ParseResult.fail(new ParseResult.Type(ast, s))
-              : ParseResult.succeed(n)
-          },
-          (n) => ParseResult.succeed(String(n))
+          {
+            decode: (s, _, ast) => {
+              const n = Number(s)
+              return Number.isNaN(n)
+                ? ParseResult.fail(new ParseResult.Type(ast, s))
+                : ParseResult.succeed(n)
+            },
+            encode: (n) => ParseResult.succeed(String(n))
+          }
         ).annotations({
           identifier: "IntFromString",
           message: () => "please enter a decodeUnknownable string"

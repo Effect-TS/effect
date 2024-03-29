@@ -294,6 +294,5 @@ const Name = Context.GenericTag<"Name", string>("Name")
 export const DependencyString = S.transformOrFail(
   S.string,
   S.string,
-  (s) => Effect.andThen(Name, s),
-  (s) => Effect.andThen(Name, s)
+  { decode: (s) => Effect.andThen(Name, s), encode: (s) => Effect.andThen(Name, s) }
 ).annotations({ identifier: "DependencyString" })

@@ -2553,77 +2553,84 @@ class $transformOrFail<From extends Schema.Any, To extends Schema.Any, R>
 export const transformOrFail: {
   <To extends Schema.Any, From extends Schema.Any, RD, RE>(
     to: To,
-    decode: (
-      fromA: Schema.Type<From>,
-      options: ParseOptions,
-      ast: AST.Transformation
-    ) => Effect.Effect<Schema.Encoded<To>, ParseResult.ParseIssue, RD>,
-    encode: (
-      toI: Schema.Encoded<To>,
-      options: ParseOptions,
-      ast: AST.Transformation
-    ) => Effect.Effect<Schema.Type<From>, ParseResult.ParseIssue, RE>
+    options: {
+      readonly decode: (
+        fromA: Schema.Type<From>,
+        options: ParseOptions,
+        ast: AST.Transformation
+      ) => Effect.Effect<Schema.Encoded<To>, ParseResult.ParseIssue, RD>
+      readonly encode: (
+        toI: Schema.Encoded<To>,
+        options: ParseOptions,
+        ast: AST.Transformation
+      ) => Effect.Effect<Schema.Type<From>, ParseResult.ParseIssue, RE>
+      readonly strict?: true
+    } | {
+      readonly decode: (
+        fromA: Schema.Type<From>,
+        options: ParseOptions,
+        ast: AST.Transformation
+      ) => Effect.Effect<unknown, ParseResult.ParseIssue, RD>
+      readonly encode: (
+        toI: Schema.Encoded<To>,
+        options: ParseOptions,
+        ast: AST.Transformation
+      ) => Effect.Effect<unknown, ParseResult.ParseIssue, RE>
+      readonly strict: false
+    }
   ): (from: From) => transformOrFail<From, To, RD | RE>
-  <To extends Schema.Any, From extends Schema.Any, RD, RE>(
-    to: To,
-    decode: (
-      fromA: Schema.Type<From>,
-      options: ParseOptions,
-      ast: AST.Transformation
-    ) => Effect.Effect<unknown, ParseResult.ParseIssue, RD>,
-    encode: (
-      toI: Schema.Encoded<To>,
-      options: ParseOptions,
-      ast: AST.Transformation
-    ) => Effect.Effect<unknown, ParseResult.ParseIssue, RE>,
-    options: { strict: false }
-  ): (from: From) => transformOrFail<From, To, RD | RE>
-  <To extends Schema.Any, From extends Schema.Any, RD, R4>(
-    from: From,
-    to: To,
-    decode: (
-      fromA: Schema.Type<From>,
-      options: ParseOptions,
-      ast: AST.Transformation
-    ) => Effect.Effect<Schema.Encoded<To>, ParseResult.ParseIssue, RD>,
-    encode: (
-      toI: Schema.Encoded<To>,
-      options: ParseOptions,
-      ast: AST.Transformation
-    ) => Effect.Effect<Schema.Type<From>, ParseResult.ParseIssue, R4>
-  ): transformOrFail<From, To, RD | R4>
   <To extends Schema.Any, From extends Schema.Any, RD, RE>(
     from: From,
     to: To,
-    decode: (
-      fromA: Schema.Type<From>,
-      options: ParseOptions,
-      ast: AST.Transformation
-    ) => Effect.Effect<unknown, ParseResult.ParseIssue, RD>,
-    encode: (
-      toI: Schema.Encoded<To>,
-      options: ParseOptions,
-      ast: AST.Transformation
-    ) => Effect.Effect<unknown, ParseResult.ParseIssue, RE>,
-    options: { strict: false }
+    options: {
+      readonly decode: (
+        fromA: Schema.Type<From>,
+        options: ParseOptions,
+        ast: AST.Transformation
+      ) => Effect.Effect<Schema.Encoded<To>, ParseResult.ParseIssue, RD>
+      readonly encode: (
+        toI: Schema.Encoded<To>,
+        options: ParseOptions,
+        ast: AST.Transformation
+      ) => Effect.Effect<Schema.Type<From>, ParseResult.ParseIssue, RE>
+      readonly strict?: true
+    } | {
+      readonly decode: (
+        fromA: Schema.Type<From>,
+        options: ParseOptions,
+        ast: AST.Transformation
+      ) => Effect.Effect<unknown, ParseResult.ParseIssue, RD>
+      readonly encode: (
+        toI: Schema.Encoded<To>,
+        options: ParseOptions,
+        ast: AST.Transformation
+      ) => Effect.Effect<unknown, ParseResult.ParseIssue, RE>
+      readonly strict: false
+    }
   ): transformOrFail<From, To, RD | RE>
-} = dual((args) => isSchema(args[0]) && isSchema(args[1]), <FromA, FromI, FromR, ToA, ToI, ToR, R3, R4>(
+} = dual((args) => isSchema(args[0]) && isSchema(args[1]), <FromA, FromI, FromR, ToA, ToI, ToR, RD, RE>(
   from: Schema<FromA, FromI, FromR>,
   to: Schema<ToA, ToI, ToR>,
-  decode: (
-    fromA: FromA,
-    options: ParseOptions,
-    ast: AST.Transformation
-  ) => Effect.Effect<ToI, ParseResult.ParseIssue, R3>,
-  encode: (toI: ToI, options: ParseOptions, ast: AST.Transformation) => Effect.Effect<FromA, ParseResult.ParseIssue, R4>
-): Schema<ToA, FromI, FromR | ToR | R3 | R4> =>
+  options: {
+    readonly decode: (
+      fromA: FromA,
+      options: ParseOptions,
+      ast: AST.Transformation
+    ) => Effect.Effect<ToI, ParseResult.ParseIssue, RD>
+    readonly encode: (
+      toI: ToI,
+      options: ParseOptions,
+      ast: AST.Transformation
+    ) => Effect.Effect<FromA, ParseResult.ParseIssue, RE>
+  }
+): Schema<ToA, FromI, FromR | ToR | RD | RE> =>
   new $transformOrFail(
     from,
     to,
     new AST.Transformation(
       from.ast,
       to.ast,
-      new AST.FinalTransformation(decode, encode)
+      new AST.FinalTransformation(options.decode, options.encode)
     )
   ))
 
@@ -2681,8 +2688,10 @@ export const transform: {
     transformOrFail(
       from,
       to,
-      (fromA) => ParseResult.succeed(options.decode(fromA)),
-      (toI) => ParseResult.succeed(options.encode(toI))
+      {
+        decode: (fromA) => ParseResult.succeed(options.decode(fromA)),
+        encode: (toI) => ParseResult.succeed(options.encode(toI))
+      }
     )
 )
 
@@ -3446,16 +3455,18 @@ export const parseJson: {
   return transformOrFail(
     JsonString,
     unknown,
-    (s, _, ast) =>
-      ParseResult.try({
-        try: () => JSON.parse(s, options?.reviver),
-        catch: (e: any) => new ParseResult.Type(ast, s, e.message)
-      }),
-    (u, _, ast) =>
-      ParseResult.try({
-        try: () => JSON.stringify(u, options?.replacer, options?.space),
-        catch: (e: any) => new ParseResult.Type(ast, u, e.message)
-      })
+    {
+      decode: (s, _, ast) =>
+        ParseResult.try({
+          try: () => JSON.parse(s, options?.reviver),
+          catch: (e: any) => new ParseResult.Type(ast, s, e.message)
+        }),
+      encode: (u, _, ast) =>
+        ParseResult.try({
+          try: () => JSON.stringify(u, options?.replacer, options?.space),
+          catch: (e: any) => new ParseResult.Type(ast, u, e.message)
+        })
+    }
   )
 }
 
@@ -3840,8 +3851,10 @@ export interface NumberFromString extends Annotable<NumberFromString, number, st
 export const NumberFromString: NumberFromString = transformOrFail(
   string,
   number,
-  (s, _, ast) => ParseResult.fromOption(N.parse(s), () => new ParseResult.Type(ast, s)),
-  (n) => ParseResult.succeed(String(n))
+  {
+    decode: (s, _, ast) => ParseResult.fromOption(N.parse(s), () => new ParseResult.Type(ast, s)),
+    encode: (n) => ParseResult.succeed(String(n))
+  }
 ).annotations({ identifier: "NumberFromString" })
 
 /**
@@ -4169,8 +4182,10 @@ export interface $bigint extends Annotable<$bigint, bigint, string> {}
 export const bigint: $bigint = transformOrFail(
   string,
   bigintFromSelf,
-  (s, _, ast) => ParseResult.fromOption(_bigInt.fromString(s), () => new ParseResult.Type(ast, s)),
-  (n) => ParseResult.succeed(String(n))
+  {
+    decode: (s, _, ast) => ParseResult.fromOption(_bigInt.fromString(s), () => new ParseResult.Type(ast, s)),
+    encode: (n) => ParseResult.succeed(String(n))
+  }
 ).annotations({ identifier: "bigint" })
 
 /**
@@ -4254,12 +4269,14 @@ export interface BigintFromNumber extends Annotable<BigintFromNumber, bigint, nu
 export const BigintFromNumber: BigintFromNumber = transformOrFail(
   number,
   bigintFromSelf,
-  (n, _, ast) =>
-    ParseResult.fromOption(
-      _bigInt.fromNumber(n),
-      () => new ParseResult.Type(ast, n)
-    ),
-  (b, _, ast) => ParseResult.fromOption(_bigInt.toNumber(b), () => new ParseResult.Type(ast, b))
+  {
+    decode: (n, _, ast) =>
+      ParseResult.fromOption(
+        _bigInt.fromNumber(n),
+        () => new ParseResult.Type(ast, n)
+      ),
+    encode: (b, _, ast) => ParseResult.fromOption(_bigInt.toNumber(b), () => new ParseResult.Type(ast, b))
+  }
 ).annotations({ identifier: "BigintFromNumber" })
 
 /**
@@ -4346,12 +4363,14 @@ export interface DurationFromNanos extends Annotable<DurationFromNanos, _duratio
 export const DurationFromNanos: DurationFromNanos = transformOrFail(
   bigintFromSelf,
   DurationFromSelf,
-  (nanos) => ParseResult.succeed(_duration.nanos(nanos)),
-  (duration, _, ast) =>
-    Option.match(_duration.toNanos(duration), {
-      onNone: () => ParseResult.fail(new ParseResult.Type(ast, duration)),
-      onSome: (val) => ParseResult.succeed(val)
-    })
+  {
+    decode: (nanos) => ParseResult.succeed(_duration.nanos(nanos)),
+    encode: (duration, _, ast) =>
+      Option.match(_duration.toNanos(duration), {
+        onNone: () => ParseResult.fail(new ParseResult.Type(ast, duration)),
+        onSome: (val) => ParseResult.succeed(val)
+      })
+  }
 ).annotations({ identifier: "DurationFromNanos" })
 
 /**
@@ -4587,13 +4606,15 @@ const makeEncodingTransformation = (
   transformOrFail(
     string,
     Uint8ArrayFromSelf,
-    (s, _, ast) =>
-      Either.mapLeft(
-        decode(s),
-        (decodeException) => new ParseResult.Type(ast, s, decodeException.message)
-      ),
-    (u) => ParseResult.succeed(encode(u)),
-    { strict: false }
+    {
+      strict: false,
+      decode: (s, _, ast) =>
+        Either.mapLeft(
+          decode(s),
+          (decodeException) => new ParseResult.Type(ast, s, decodeException.message)
+        ),
+      encode: (u) => ParseResult.succeed(encode(u))
+    }
   ).annotations({ identifier: id })
 
 /**
@@ -4754,13 +4775,15 @@ export const headOrElse: {
     transformOrFail(
       self,
       getNumberIndexedAccess(typeSchema(self)),
-      (as, _, ast) =>
-        as.length > 0
-          ? ParseResult.succeed(as[0])
-          : fallback
-          ? ParseResult.succeed(fallback())
-          : ParseResult.fail(new ParseResult.Type(ast, as)),
-      (a) => ParseResult.succeed(ReadonlyArray.of(a))
+      {
+        decode: (as, _, ast) =>
+          as.length > 0
+            ? ParseResult.succeed(as[0])
+            : fallback
+            ? ParseResult.succeed(fallback())
+            : ParseResult.fail(new ParseResult.Type(ast, as)),
+        encode: (a) => ParseResult.succeed(ReadonlyArray.of(a))
+      }
     )
 )
 
@@ -5591,12 +5614,14 @@ export interface BigDecimal extends Annotable<BigDecimal, _bigDecimal.BigDecimal
 export const BigDecimal: BigDecimal = transformOrFail(
   string,
   BigDecimalFromSelf,
-  (num, _, ast) =>
-    _bigDecimal.fromString(num).pipe(Option.match({
-      onNone: () => ParseResult.fail(new ParseResult.Type(ast, num)),
-      onSome: (val) => ParseResult.succeed(_bigDecimal.normalize(val))
-    })),
-  (val) => ParseResult.succeed(_bigDecimal.format(_bigDecimal.normalize(val)))
+  {
+    decode: (num, _, ast) =>
+      _bigDecimal.fromString(num).pipe(Option.match({
+        onNone: () => ParseResult.fail(new ParseResult.Type(ast, num)),
+        onSome: (val) => ParseResult.succeed(_bigDecimal.normalize(val))
+      })),
+    encode: (val) => ParseResult.succeed(_bigDecimal.format(_bigDecimal.normalize(val)))
+  }
 ).annotations({ identifier: "BigDecimal" })
 
 /**
@@ -5615,8 +5640,10 @@ export interface BigDecimalFromNumber extends Annotable<BigDecimalFromNumber, _b
 export const BigDecimalFromNumber: BigDecimalFromNumber = transformOrFail(
   number,
   BigDecimalFromSelf,
-  (num) => ParseResult.succeed(_bigDecimal.fromNumber(num)),
-  (val) => ParseResult.succeed(_bigDecimal.unsafeToNumber(val))
+  {
+    decode: (num) => ParseResult.succeed(_bigDecimal.fromNumber(num)),
+    encode: (val) => ParseResult.succeed(_bigDecimal.unsafeToNumber(val))
+  }
 ).annotations({ identifier: "BigDecimalFromNumber" })
 
 /**
@@ -6420,8 +6447,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
           fromSchema: transformOrFail(
             schema,
             typeSchema(struct(transformedFields)),
-            decode,
-            encode
+            { decode, encode }
           ),
           fields: transformedFields,
           Base: this,
@@ -6440,8 +6466,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
           fromSchema: transformOrFail(
             encodedSchema(schema),
             struct(transformedFields),
-            decode,
-            encode
+            { decode, encode }
           ),
           fields: transformedFields,
           Base: this,

@@ -8,4 +8,4 @@ AST
 
 Schema
 
-- consolidate `transform` parameters into an `options` object
+- consolidate `transform` and `transformOrFail` parameters into an `options` object, #2434
