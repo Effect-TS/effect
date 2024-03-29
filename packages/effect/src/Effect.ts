@@ -476,15 +476,15 @@ export declare namespace All {
  * @since 2.0.0
  * @category collecting & elements
  */
-export const allSuccesses: <A, E, R>(
-  elements: Iterable<Effect<A, E, R>>,
+export const allSuccesses: <X extends Effect<any, any, any>>(
+  elements: Iterable<X>,
   options?:
     | {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
     | undefined
-) => Effect<Array<A>, never, R> = fiberRuntime.allSuccesses
+) => Effect<Array<Effect.Success<X>>, never, Effect.Context<X>> = fiberRuntime.allSuccesses
 
 /**
  * Drops all elements until the effectful predicate returns true.
