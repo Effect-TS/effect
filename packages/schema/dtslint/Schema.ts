@@ -1685,7 +1685,7 @@ hole<ConstructorParameters<typeof VoidTaggedClass>>()
 export const StructTypeTest1 = <S extends S.Schema.Any>(
   input: S.Struct.Type<{ s: S }>
 ) => {
-  input // $ExpectType UnionToIntersection<S extends PropertySignature<"?:", any, PropertyKey, Token, any, unknown> | PropertySignature<"?:", any, PropertyKey, Token, never, unknown> | PropertySignature<"?:", never, PropertyKey, Token, any, unknown> | PropertySignature<"?:", never, PropertyKey, Token, never, unknown> ? { readonly s?: Type<S>; } : { readonly s: Type<S>; }>
+  input // $ExpectType Type<{ s: S }>
 }
 
 // $ExpectType {}

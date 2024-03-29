@@ -1799,40 +1799,29 @@ export declare namespace Struct {
     K
 
   type EncodedTokenKeys<Fields extends Struct.Fields> = {
-    [K in keyof Fields]: Fields[K] extends
-      | PropertySignature<PropertySignature.Token, any, PropertyKey, "?:", any, unknown>
-      | PropertySignature<PropertySignature.Token, any, PropertyKey, "?:", never, unknown>
-      | PropertySignature<PropertySignature.Token, never, PropertyKey, "?:", any, unknown>
-      | PropertySignature<PropertySignature.Token, never, PropertyKey, "?:", never, unknown> ? K
+    [K in keyof Fields]: Fields[K] extends OptionalPropertySignature ? K
       : never
   }[keyof Fields]
 
   type TypeTokenKeys<Fields extends Struct.Fields> = {
-    [K in keyof Fields]: Fields[K] extends
-      | PropertySignature<"?:", any, PropertyKey, PropertySignature.Token, any, unknown>
-      | PropertySignature<"?:", any, PropertyKey, PropertySignature.Token, never, unknown>
-      | PropertySignature<"?:", never, PropertyKey, PropertySignature.Token, any, unknown>
-      | PropertySignature<"?:", never, PropertyKey, PropertySignature.Token, never, unknown> ? K
-      : never
+    [K in keyof Fields]: Fields[K] extends OptionalPropertySignature ? K : never
   }[keyof Fields]
+
+  type OptionalPropertySignature =
+    | PropertySignature<"?:", any, PropertyKey, PropertySignature.Token, any, unknown>
+    | PropertySignature<"?:", any, PropertyKey, PropertySignature.Token, never, unknown>
+    | PropertySignature<"?:", never, PropertyKey, PropertySignature.Token, any, unknown>
+    | PropertySignature<"?:", never, PropertyKey, PropertySignature.Token, never, unknown>
 
   /**
    * @since 1.0.0
    */
   export type Type<F extends Fields> = Types.UnionToIntersection<
     {
-      [k in keyof F]: F[k] extends
-        | PropertySignature<"?:", any, PropertyKey, PropertySignature.Token, any, unknown>
-        | PropertySignature<"?:", any, PropertyKey, PropertySignature.Token, never, unknown>
-        | PropertySignature<"?:", never, PropertyKey, PropertySignature.Token, any, unknown>
-        | PropertySignature<"?:", never, PropertyKey, PropertySignature.Token, never, unknown> ? {
-          readonly [h in k]?: Schema.Type<F[h]>
-        }
-        : {
-          readonly [h in k]: Schema.Type<F[h]>
-        }
+      [K in keyof F]: F[K] extends OptionalPropertySignature ? { readonly [H in K]?: Schema.Type<F[H]> } :
+        { readonly [h in K]: Schema.Type<F[h]> }
     }[keyof F]
-  >
+  > extends infer Q ? Q : never
 
   /**
    * @since 1.0.0
