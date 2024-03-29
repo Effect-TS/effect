@@ -1819,16 +1819,30 @@ export declare namespace Struct {
   /**
    * @since 1.0.0
    */
-  export type Type<F extends Fields> =
-    & { readonly [K in Exclude<keyof F, TypeTokenKeys<F>>]: Schema.Type<F[K]> }
-    & { readonly [K in TypeTokenKeys<F>]?: Schema.Type<F[K]> }
+  export type Type<F extends Fields> = Types.UnionToIntersection<
+    {
+      [k in keyof F]: F[k] extends PropertySignature<"?:", any, any, any, any, any> ? {
+          readonly [h in k]?: Schema.Type<F[h]>
+        }
+        : {
+          readonly [h in k]: Schema.Type<F[h]>
+        }
+    }[keyof F]
+  >
 
   /**
    * @since 1.0.0
    */
-  export type Encoded<F extends Fields> =
-    & { readonly [K in Exclude<keyof F, EncodedTokenKeys<F>> as Key<F, K>]: Schema.Encoded<F[K]> }
-    & { readonly [K in EncodedTokenKeys<F> as Key<F, K>]?: Schema.Encoded<F[K]> }
+  export type Encoded<F extends Fields> = Types.UnionToIntersection<
+    {
+      [k in keyof F]: F[k] extends PropertySignature<any, any, any, "?:", any, any> ? {
+          readonly [h in k]?: Schema.Encoded<F[h]>
+        }
+        : {
+          readonly [h in k]: Schema.Encoded<F[h]>
+        }
+    }[keyof F]
+  >
 
   /**
    * @since 1.0.0
