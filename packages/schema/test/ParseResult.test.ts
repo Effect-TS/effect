@@ -271,8 +271,7 @@ describe("ParseIssue.actual", () => {
             _tag: S.transform(
               S.literal("a"),
               S.literal("b"),
-              () => "b" as const,
-              () => "a" as const
+              { decode: () => "b" as const, encode: () => "a" as const }
             )
           })
             .ast,

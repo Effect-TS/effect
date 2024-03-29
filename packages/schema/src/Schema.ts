@@ -2173,8 +2173,10 @@ export const pluck: {
     return transform(
       schema.pipe(pick(key)),
       value,
-      (a: any) => a[key],
-      (ak) => ps.isOptional && ak === undefined ? {} : { [key]: ak } as any
+      {
+        decode: (a: any) => a[key],
+        encode: (ak) => ps.isOptional && ak === undefined ? {} : { [key]: ak } as any
+      }
     )
   }
 )
@@ -2643,37 +2645,45 @@ export interface transform<From extends Schema.Any, To extends Schema.Any> exten
 export const transform: {
   <To extends Schema.Any, From extends Schema.Any>(
     to: To,
-    decode: (fromA: Schema.Type<From>) => Schema.Encoded<To>,
-    encode: (toI: Schema.Encoded<To>) => Schema.Type<From>
-  ): (from: From) => transform<From, To>
-  <To extends Schema.Any, From extends Schema.Any>(
-    to: To,
-    decode: (fromA: Schema.Type<From>) => unknown,
-    encode: (toI: Schema.Encoded<To>) => unknown,
-    options: { strict: false }
+    options: {
+      readonly decode: (fromA: Schema.Type<From>) => Schema.Encoded<To>
+      readonly encode: (toI: Schema.Encoded<To>) => Schema.Type<From>
+      readonly strict?: true
+    } | {
+      readonly decode: (fromA: Schema.Type<From>) => unknown
+      readonly encode: (toI: Schema.Encoded<To>) => unknown
+      readonly strict: false
+    }
   ): (from: From) => transform<From, To>
   <To extends Schema.Any, From extends Schema.Any>(
     from: From,
     to: To,
-    decode: (fromA: Schema.Type<From>) => Schema.Encoded<To>,
-    encode: (toI: Schema.Encoded<To>) => Schema.Type<From>
-  ): transform<From, To>
-  <To extends Schema.Any, From extends Schema.Any>(
-    from: From,
-    to: To,
-    decode: (fromA: Schema.Type<From>) => unknown,
-    encode: (toI: Schema.Encoded<To>) => unknown,
-    options: { strict: false }
+    options: {
+      readonly decode: (fromA: Schema.Type<From>) => Schema.Encoded<To>
+      readonly encode: (toI: Schema.Encoded<To>) => Schema.Type<From>
+      readonly strict?: true
+    } | {
+      readonly decode: (fromA: Schema.Type<From>) => unknown
+      readonly encode: (toI: Schema.Encoded<To>) => unknown
+      readonly strict: false
+    }
   ): transform<From, To>
 } = dual(
   (args) => isSchema(args[0]) && isSchema(args[1]),
   <FromA, FromI, FromR, ToA, ToI, ToR>(
     from: Schema<FromA, FromI, FromR>,
     to: Schema<ToA, ToI, ToR>,
-    decode: (fromA: FromA) => ToI,
-    encode: (toI: ToI) => FromA
+    options: {
+      readonly decode: (fromA: FromA) => ToI
+      readonly encode: (toI: ToI) => FromA
+    }
   ): Schema<ToA, FromI, FromR | ToR> =>
-    transformOrFail(from, to, (fromA) => ParseResult.succeed(decode(fromA)), (toI) => ParseResult.succeed(encode(toI)))
+    transformOrFail(
+      from,
+      to,
+      (fromA) => ParseResult.succeed(options.decode(fromA)),
+      (toI) => ParseResult.succeed(options.encode(toI))
+    )
 )
 
 /**
@@ -2698,7 +2708,7 @@ export interface transformLiteral<Type, Encoded> extends Annotable<transformLite
 export const transformLiteral = <Encoded extends AST.LiteralValue, Type extends AST.LiteralValue>(
   from: Encoded,
   to: Type
-): transformLiteral<Type, Encoded> => transform(literal(from), literal(to), () => to, () => from)
+): transformLiteral<Type, Encoded> => transform(literal(from), literal(to), { decode: () => to, encode: () => from })
 
 /**
  * Creates a new `Schema` which maps between corresponding literal values.
@@ -3333,8 +3343,7 @@ export interface Lowercase extends Annotable<Lowercase, string> {}
 export const Lowercase: Lowercase = transform(
   string,
   Lowercased,
-  (s) => s.toLowerCase(),
-  identity
+  { decode: (s) => s.toLowerCase(), encode: identity }
 ).annotations({ identifier: "Lowercase" })
 
 /**
@@ -3352,8 +3361,7 @@ export interface Uppercase extends Annotable<Uppercase, string> {}
 export const Uppercase: Uppercase = transform(
   string,
   Uppercased,
-  (s) => s.toUpperCase(),
-  identity
+  { decode: (s) => s.toUpperCase(), encode: identity }
 ).annotations({ identifier: "Uppercase" })
 
 /**
@@ -3379,8 +3387,7 @@ export interface Trim extends Annotable<Trim, string> {}
 export const Trim: Trim = transform(
   string,
   Trimmed,
-  (s) => s.trim(),
-  identity
+  { decode: (s) => s.trim(), encode: identity }
 ).annotations({ identifier: "Trim" })
 
 /**
@@ -3393,8 +3400,7 @@ export const split = (separator: string): Schema<ReadonlyArray<string>, string> 
   transform(
     string,
     array(string),
-    S.split(separator),
-    ReadonlyArray.join(separator)
+    { decode: S.split(separator), encode: ReadonlyArray.join(separator) }
   )
 
 /**
@@ -3812,9 +3818,7 @@ export const clamp =
     transform(
       self,
       self.pipe(typeSchema, between(minimum, maximum)),
-      (self) => N.clamp(self, { minimum, maximum }),
-      identity,
-      { strict: false }
+      { strict: false, decode: (self) => N.clamp(self, { minimum, maximum }), encode: identity }
     )
 
 /**
@@ -3934,7 +3938,7 @@ export interface Not extends Annotable<Not, boolean> {}
  * @category boolean transformations
  * @since 1.0.0
  */
-export const Not: Not = transform(boolean, boolean, _boolean.not, _boolean.not)
+export const Not: Not = transform(boolean, boolean, { decode: _boolean.not, encode: _boolean.not })
 
 /**
  * @category api interface
@@ -3951,9 +3955,7 @@ export interface $symbol extends Annotable<$symbol, symbol, string> {}
 export const symbol: $symbol = transform(
   string,
   symbolFromSelf,
-  (s) => Symbol.for(s),
-  (sym) => sym.description,
-  { strict: false }
+  { strict: false, decode: (s) => Symbol.for(s), encode: (sym) => sym.description }
 ).annotations({ identifier: "symbol" })
 
 /**
@@ -4147,9 +4149,7 @@ export const clampBigint =
     transform(
       self,
       self.pipe(typeSchema, betweenBigint(minimum, maximum)),
-      (self) => _bigInt.clamp(self, { minimum, maximum }),
-      identity,
-      { strict: false }
+      { strict: false, decode: (self) => _bigInt.clamp(self, { minimum, maximum }), encode: identity }
     )
 
 /**
@@ -4296,9 +4296,7 @@ export interface Secret extends Annotable<Secret, _secret.Secret, string> {}
 export const Secret: Secret = transform(
   string,
   SecretFromSelf,
-  (str) => _secret.fromString(str),
-  (secret) => _secret.value(secret),
-  { strict: false }
+  { strict: false, decode: (str) => _secret.fromString(str), encode: (secret) => _secret.value(secret) }
 ).annotations({ identifier: "Secret" })
 
 /**
@@ -4372,8 +4370,7 @@ export interface DurationFromMillis extends Annotable<DurationFromMillis, _durat
 export const DurationFromMillis: DurationFromMillis = transform(
   number,
   DurationFromSelf,
-  (ms) => _duration.millis(ms),
-  (n) => _duration.toMillis(n)
+  { decode: (ms) => _duration.millis(ms), encode: (n) => _duration.toMillis(n) }
 ).annotations({ identifier: "DurationFromMillis" })
 
 const hrTime: Schema<readonly [seconds: number, nanos: number]> = tuple(
@@ -4406,8 +4403,10 @@ export interface Duration extends Annotable<Duration, _duration.Duration, readon
 export const Duration: Duration = transform(
   hrTime,
   DurationFromSelf,
-  ([seconds, nanos]) => _duration.nanos(BigInt(seconds) * BigInt(1e9) + BigInt(nanos)),
-  (duration) => _duration.toHrTime(duration)
+  {
+    decode: ([seconds, nanos]) => _duration.nanos(BigInt(seconds) * BigInt(1e9) + BigInt(nanos)),
+    encode: (duration) => _duration.toHrTime(duration)
+  }
 ).annotations({ identifier: "Duration" })
 
 /**
@@ -4422,9 +4421,7 @@ export const clampDuration =
     transform(
       self,
       self.pipe(typeSchema, betweenDuration(minimum, maximum)),
-      (self) => _duration.clamp(self, { minimum, maximum }),
-      identity,
-      { strict: false }
+      { strict: false, decode: (self) => _duration.clamp(self, { minimum, maximum }), encode: identity }
     )
 
 /**
@@ -4569,8 +4566,7 @@ const _Uint8Array: Schema<Uint8Array, ReadonlyArray<number>> = transform(
     })
   )).annotations({ description: "an array of 8-bit unsigned integers" }),
   Uint8ArrayFromSelf,
-  (a) => Uint8Array.from(a),
-  (arr) => Array.from(arr)
+  { decode: (numbers) => Uint8Array.from(numbers), encode: (uint8Array) => Array.from(uint8Array) }
 ).annotations({ identifier: "Uint8Array" })
 
 export {
@@ -4738,8 +4734,7 @@ export const head = <A, I, R>(self: Schema<ReadonlyArray<A>, I, R>): Schema<Opti
   transform(
     self,
     optionFromSelf(getNumberIndexedAccess(typeSchema(self))),
-    ReadonlyArray.head,
-    Option.match({ onNone: () => [], onSome: ReadonlyArray.of })
+    { decode: ReadonlyArray.head, encode: Option.match({ onNone: () => [], onSome: ReadonlyArray.of }) }
   )
 
 /**
@@ -4848,8 +4843,7 @@ export interface DateFromString extends Annotable<DateFromString, Date, string> 
 export const DateFromString: DateFromString = transform(
   string,
   DateFromSelf,
-  (s) => new Date(s),
-  (n) => n.toISOString()
+  { decode: (s) => new Date(s), encode: (n) => n.toISOString() }
 ).annotations({ identifier: "DateFromString" })
 
 /**
@@ -4989,11 +4983,13 @@ export const option = <Value extends Schema.Any>(value: Value): option<Value> =>
   return transform(
     optionEncoded(_value),
     optionFromSelf(typeSchema(_value)),
-    optionDecode,
-    Option.match({
-      onNone: () => makeNoneEncoded,
-      onSome: makeSomeEncoded
-    })
+    {
+      decode: optionDecode,
+      encode: Option.match({
+        onNone: () => makeNoneEncoded,
+        onSome: makeSomeEncoded
+      })
+    }
   )
 }
 
@@ -5018,7 +5014,10 @@ export const optionFromNullable = <Value extends Schema.Any>(
   value: Value
 ): optionFromNullable<Value> => {
   const _value = asSchema(value)
-  return transform(nullable(_value), optionFromSelf(typeSchema(_value)), Option.fromNullable, Option.getOrNull)
+  return transform(nullable(_value), optionFromSelf(typeSchema(_value)), {
+    decode: Option.fromNullable,
+    encode: Option.getOrNull
+  })
 }
 
 /**
@@ -5046,8 +5045,7 @@ export const optionFromNullish = <Value extends Schema.Any>(
   return transform(
     nullish(_value),
     optionFromSelf(typeSchema(_value)),
-    Option.fromNullable,
-    onNoneEncoding === null ? Option.getOrNull : Option.getOrUndefined
+    { decode: Option.fromNullable, encode: onNoneEncoding === null ? Option.getOrNull : Option.getOrUndefined }
   )
 }
 
@@ -5072,7 +5070,10 @@ export const optionFromOrUndefined = <Value extends Schema.Any>(
   value: Value
 ): optionFromOrUndefined<Value> => {
   const _value = asSchema(value)
-  return transform(orUndefined(_value), optionFromSelf(typeSchema(_value)), Option.fromNullable, Option.getOrUndefined)
+  return transform(orUndefined(_value), optionFromSelf(typeSchema(_value)), {
+    decode: Option.fromNullable,
+    encode: Option.getOrUndefined
+  })
 }
 
 /**
@@ -5220,8 +5221,7 @@ export const either = <R extends Schema.Any, L extends Schema.Any>({ left, right
   return transform(
     eitherEncoded(_right, _left),
     eitherFromSelf({ left: typeSchema(_left), right: typeSchema(_right) }),
-    eitherDecode,
-    Either.match({ onLeft: makeLeftEncoded, onRight: makeRightEncoded })
+    { decode: eitherDecode, encode: Either.match({ onLeft: makeLeftEncoded, onRight: makeRightEncoded }) }
   )
 }
 
@@ -5256,13 +5256,15 @@ export const eitherFromUnion = <R extends Schema.Any, L extends Schema.Any>({ le
   const _left = asSchema(left)
   const toright = typeSchema(_right)
   const toleft = typeSchema(_left)
-  const fromRight = transform(_right, rightEncoded(toright), makeRightEncoded, (r) => r.right)
-  const fromLeft = transform(_left, leftEncoded(toleft), makeLeftEncoded, (l) => l.left)
+  const fromRight = transform(_right, rightEncoded(toright), { decode: makeRightEncoded, encode: (r) => r.right })
+  const fromLeft = transform(_left, leftEncoded(toleft), { decode: makeLeftEncoded, encode: (l) => l.left })
   return transform(
     union(fromRight, fromLeft),
     eitherFromSelf({ left: toleft, right: toright }),
-    (from) => from._tag === "Left" ? Either.left(from.left) : Either.right(from.right),
-    Either.match({ onLeft: makeLeftEncoded, onRight: makeRightEncoded })
+    {
+      decode: (from) => from._tag === "Left" ? Either.left(from.left) : Either.right(from.right),
+      encode: Either.match({ onLeft: makeLeftEncoded, onRight: makeRightEncoded })
+    }
   )
 }
 
@@ -5388,8 +5390,7 @@ export const readonlyMap = <K extends Schema.Any, V extends Schema.Any>({ key, v
   return transform(
     array(tuple(_key, _value)),
     readonlyMapFromSelf({ key: typeSchema(_key), value: typeSchema(_value) }),
-    (as) => new Map(as),
-    (map) => Array.from(map.entries())
+    { decode: (as) => new Map(as), encode: (map) => Array.from(map.entries()) }
   )
 }
 
@@ -5520,8 +5521,7 @@ export const readonlySet = <Value extends Schema.Any>(value: Value): readonlySet
   return transform(
     array(_value),
     readonlySetFromSelf(typeSchema(_value)),
-    (as) => new Set(as),
-    (set) => Array.from(set)
+    { decode: (as) => new Set(as), encode: (set) => Array.from(set) }
   )
 }
 
@@ -5891,9 +5891,7 @@ export const clampBigDecimal =
     transform(
       self,
       self.pipe(typeSchema, betweenBigDecimal(minimum, maximum)),
-      (self) => _bigDecimal.clamp(self, { minimum, maximum }),
-      identity,
-      { strict: false }
+      { strict: false, decode: (self) => _bigDecimal.clamp(self, { minimum, maximum }), encode: identity }
     )
 
 /**
@@ -5904,7 +5902,8 @@ export const clampBigDecimal =
  */
 export const negateBigDecimal = <R, I, A extends _bigDecimal.BigDecimal>(
   self: Schema<A, I, R>
-): Schema<A, I, R> => transform(self, typeSchema(self), _bigDecimal.negate, _bigDecimal.negate, { strict: false })
+): Schema<A, I, R> =>
+  transform(self, typeSchema(self), { strict: false, decode: _bigDecimal.negate, encode: _bigDecimal.negate })
 
 const chunkArbitrary = <A>(item: Arbitrary<A>): Arbitrary<Chunk.Chunk<A>> => (fc) =>
   fc.array(item(fc)).map(Chunk.fromIterable)
@@ -5975,8 +5974,7 @@ export const chunk = <Value extends Schema.Any>(value: Value): chunk<Value> => {
   return transform(
     array(_value),
     chunkFromSelf(typeSchema(_value)),
-    (as) => as.length === 0 ? Chunk.empty() : Chunk.fromIterable(as),
-    Chunk.toReadonlyArray
+    { decode: (as) => as.length === 0 ? Chunk.empty() : Chunk.fromIterable(as), encode: Chunk.toReadonlyArray }
   )
 }
 
@@ -6038,9 +6036,7 @@ export const data = <
   transform(
     item,
     dataFromSelf(typeSchema(item)),
-    toData,
-    (a) => Array.isArray(a) ? Array.from(a) : Object.assign({}, a),
-    { strict: false }
+    { strict: false, decode: toData, encode: (a) => Array.isArray(a) ? Array.from(a) : Object.assign({}, a) }
   )
 
 type MissingSelfGeneric<Usage extends string, Params extends string = ""> =
@@ -6396,8 +6392,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
       const transformation = transform(
         schema,
         declaration,
-        (input) => new this(input, true),
-        identity
+        { decode: (input) => new this(input, true), encode: identity }
       ).annotations({ [AST.SurrogateAnnotationId]: schema.ast })
       return transformation.ast
     }
@@ -6578,8 +6573,7 @@ export interface FiberId extends Annotable<FiberId, _fiberId.FiberId, FiberIdEnc
 export const FiberId: FiberId = transform(
   FiberIdEncoded,
   FiberIdFromSelf,
-  fiberIdDecode,
-  fiberIdEncode
+  { decode: fiberIdDecode, encode: fiberIdEncode }
 ).annotations({ identifier: "FiberId" })
 
 /**
@@ -6782,25 +6776,27 @@ function causeEncode<E>(cause: Cause.Cause<E>): CauseEncoded<E> {
 export const causeDefectUnknown: $unknown = transform(
   unknown,
   unknown,
-  (u) => {
-    if (Predicate.isObject(u) && "message" in u && typeof u.message === "string") {
-      const err = new Error(u.message, { cause: u })
-      if ("name" in u && typeof u.name === "string") {
-        err.name = u.name
+  {
+    decode: (u) => {
+      if (Predicate.isObject(u) && "message" in u && typeof u.message === "string") {
+        const err = new Error(u.message, { cause: u })
+        if ("name" in u && typeof u.name === "string") {
+          err.name = u.name
+        }
+        err.stack = "stack" in u && typeof u.stack === "string" ? u.stack : ""
+        return err
       }
-      err.stack = "stack" in u && typeof u.stack === "string" ? u.stack : ""
-      return err
-    }
-    return String(u)
-  },
-  (defect) => {
-    if (defect instanceof Error) {
-      return {
-        name: defect.name,
-        message: defect.message
+      return String(u)
+    },
+    encode: (defect) => {
+      if (defect instanceof Error) {
+        return {
+          name: defect.name,
+          message: defect.message
+        }
       }
+      return String(defect)
     }
-    return String(defect)
   }
 )
 
@@ -6829,8 +6825,7 @@ export const cause = <E extends Schema.All, DR = never>({ defect = causeDefectUn
   return transform(
     causeEncoded(_error, defect),
     causeFromSelf({ error: typeSchema(_error), defect: typeSchema(defect) }),
-    causeDecode,
-    causeEncode
+    { decode: causeDecode, encode: causeEncode }
   )
 }
 
@@ -6984,11 +6979,13 @@ export const exit = <A extends Schema.All, E extends Schema.All, DR = never>(
   return transform(
     exitEncoded(_success, _failure, defect),
     exitFromSelf({ failure: typeSchema(_failure), success: typeSchema(_success), defect: typeSchema(defect) }),
-    exitDecode,
-    (exit) =>
-      exit._tag === "Failure"
-        ? { _tag: "Failure", cause: exit.cause } as const
-        : { _tag: "Success", value: exit.value } as const
+    {
+      decode: exitDecode,
+      encode: (exit) =>
+        exit._tag === "Failure"
+          ? { _tag: "Failure", cause: exit.cause } as const
+          : { _tag: "Success", value: exit.value } as const
+    }
   )
 }
 
@@ -7071,8 +7068,7 @@ export const hashSet = <Value extends Schema.Any>(value: Value): hashSet<Value> 
   return transform(
     array(_value),
     hashSetFromSelf(typeSchema(_value)),
-    (as) => HashSet.fromIterable(as),
-    (set) => Array.from(set)
+    { decode: (as) => HashSet.fromIterable(as), encode: (set) => Array.from(set) }
   )
 }
 
@@ -7171,8 +7167,7 @@ export const hashMap = <K extends Schema.Any, V extends Schema.Any>({ key, value
   return transform(
     array(tuple(_key, _value)),
     hashMapFromSelf({ key: typeSchema(_key), value: typeSchema(_value) }),
-    (as) => HashMap.fromIterable(as),
-    (map) => Array.from(map)
+    { decode: (as) => HashMap.fromIterable(as), encode: (map) => Array.from(map) }
   )
 }
 
@@ -7255,8 +7250,7 @@ export const list = <Value extends Schema.Any>(value: Value): list<Value> => {
   return transform(
     array(_value),
     listFromSelf(typeSchema(_value)),
-    (as) => List.fromIterable(as),
-    (set) => Array.from(set)
+    { decode: (as) => List.fromIterable(as), encode: (set) => Array.from(set) }
   )
 }
 
@@ -7337,8 +7331,7 @@ export const sortedSet = <Value extends Schema.Any>(
   return transform(
     array(_value),
     sortedSetFromSelf<typeof to>(to, ordA, ordA),
-    (as) => SortedSet.fromIterable(as, ordA),
-    (set) => Array.from(SortedSet.values(set))
+    { decode: (as) => SortedSet.fromIterable(as, ordA), encode: (set) => Array.from(SortedSet.values(set)) }
   )
 }
 

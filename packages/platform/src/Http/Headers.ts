@@ -54,8 +54,7 @@ export const schema: Schema.Schema<Headers, ReadonlyRecord.ReadonlyRecord<string
   Schema.transform(
     Schema.record(Schema.string, Schema.union(Schema.string, Schema.array(Schema.string))),
     schemaFromSelf,
-    (record) => fromInput(record),
-    identity
+    { decode: (record) => fromInput(record), encode: identity }
   )
 
 /**

@@ -28,12 +28,14 @@ export const isWorkerError = (u: unknown): u is WorkerError => Predicate.hasProp
 const causeDefectPretty: Schema.Schema<unknown> = Schema.transform(
   Schema.unknown,
   Schema.unknown,
-  identity,
-  (defect) => {
-    if (Predicate.isObject(defect)) {
-      return Cause.pretty(Cause.die(defect))
+  {
+    decode: identity,
+    encode: (defect) => {
+      if (Predicate.isObject(defect)) {
+        return Cause.pretty(Cause.die(defect))
+      }
+      return String(defect)
     }
-    return String(defect)
   }
 )
 

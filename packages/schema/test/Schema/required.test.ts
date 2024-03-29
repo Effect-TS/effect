@@ -204,7 +204,7 @@ describe("Schema > required", () => {
   })
 
   it("transformations should throw", async () => {
-    expect(() => S.required(S.transform(S.string, S.string, identity, identity))).toThrow(
+    expect(() => S.required(S.transform(S.string, S.string, { decode: identity, encode: identity }))).toThrow(
       new Error("`required` cannot handle transformations")
     )
   })

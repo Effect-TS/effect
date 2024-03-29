@@ -284,10 +284,10 @@ S.transformOrFail(aContext, bContext, () => ParseResult.succeed(1), () => ParseR
 // ---------------------------------------------
 
 // $ExpectType Schema<number, string, "aContext" | "bContext">
-S.asSchema(S.transform(aContext, bContext, () => 1, () => ""))
+S.asSchema(S.transform(aContext, bContext, { decode: () => 1, encode: () => "" }))
 
 // $ExpectType transform<aContext, bContext>
-S.transform(aContext, bContext, () => 1, () => "")
+S.transform(aContext, bContext, { decode: () => 1, encode: () => "" })
 
 // ---------------------------------------------
 // attachPropertySignature

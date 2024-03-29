@@ -31,6 +31,6 @@ describe("AST > mutable", () => {
   })
 
   it("transformation", () => {
-    expectSameReference(S.transform(S.array(S.string), S.array(S.string), identity, identity))
+    expectSameReference(S.transform(S.array(S.string), S.array(S.string), { decode: identity, encode: identity }))
   })
 })

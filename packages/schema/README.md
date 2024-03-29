@@ -2031,15 +2031,19 @@ const DiscriminatedShape = S.union(
   Circle.pipe(
     S.transform(
       S.struct({ ...Circle.fields, kind: S.literal("circle") }), // Add a "kind" property with the literal value "circle" to Circle
-      (circle) => ({ ...circle, kind: "circle" as const }), // Add the discriminant property to Circle
-      ({ kind: _kind, ...rest }) => rest // Remove the discriminant property
+      {
+        decode: (circle) => ({ ...circle, kind: "circle" as const }), // Add the discriminant property to Circle
+        encode: ({ kind: _kind, ...rest }) => rest, // Remove the discriminant property
+      }
     )
   ),
   Square.pipe(
     S.transform(
       S.struct({ ...Square.fields, kind: S.literal("square") }), // Add a "kind" property with the literal value "square" to Square
-      (square) => ({ ...square, kind: "square" as const }), // Add the discriminant property to Square
-      ({ kind: _kind, ...rest }) => rest // Remove the discriminant property
+      {
+        decode: (square) => ({ ...square, kind: "square" as const }), // Add the discriminant property to Square
+        encode: ({ kind: _kind, ...rest }) => rest, // Remove the discriminant property
+      }
     )
   )
 );
@@ -3497,12 +3501,19 @@ To perform these kinds of transformations, the `@effect/schema` library provides
 ## transform
 
 ```ts
-declare const transform: <B, A, R1, D, C, R2>(
-  from: Schema<B, A, R1>,
-  to: Schema<D, C, R2>,
-  decode: (b: B) => C,
-  encode: (c: C) => B
-) => Schema<D, A, R1 | R2>;
+declare const transform: <To extends Schema.Any, From extends Schema.Any>(
+    from: From,
+    to: To,
+    options: {
+      readonly decode: (fromA: Schema.Type<From>) => Schema.Encoded<To>
+      readonly encode: (toI: Schema.Encoded<To>) => Schema.Type<From>
+      readonly strict?: true
+    } | {
+      readonly decode: (fromA: Schema.Type<From>) => unknown
+      readonly encode: (toI: Schema.Encoded<To>) => unknown
+      readonly strict: false
+    }
+  ): transform<From, To>
 ```
 
 ```mermaid
@@ -3520,14 +3531,12 @@ import * as S from "@effect/schema/Schema";
 
 // use the transform combinator to convert the string schema into the tuple schema
 export const transformedSchema: S.Schema<readonly [string], string> =
-  S.transform(
-    S.string,
-    S.tuple(S.string),
+  S.transform(S.string, S.tuple(S.string), {
     // define a function that converts a string into a tuple with one element of type string
-    (s) => [s] as const,
+    decode: (s) => [s] as const,
     // define a function that converts a tuple with one element of type string into a string
-    ([s]) => s
-  );
+    encode: ([s]) => s,
+  });
 ```
 
 In the example above, we defined a schema for the `string` type and a schema for the tuple type `[string]`. We also defined the functions `decode` and `encode` that convert a `string` into a tuple and a tuple into a `string`, respectively. Then, we used the `transform` combinator to convert the string schema into a schema for the tuple type `[string]`. The resulting schema can be used to parse values of type `string` into values of type `[string]`.

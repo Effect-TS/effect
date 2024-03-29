@@ -171,15 +171,13 @@ export const identityTransform = <A>(schema: S.Schema<A>): S.Schema<A> => schema
 export const X2 = S.transform(
   S.string,
   S.string,
-  (s) => s + s,
-  (s) => s.substring(0, s.length / 2)
+  { decode: (s) => s + s, encode: (s) => s.substring(0, s.length / 2) }
 )
 
 export const X3 = S.transform(
   S.string,
   S.string,
-  (s) => s + s + s,
-  (s) => s.substring(0, s.length / 3)
+  { decode: (s) => s + s + s, encode: (s) => s.substring(0, s.length / 3) }
 )
 
 const doProperty = true
