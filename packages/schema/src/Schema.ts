@@ -1820,8 +1820,15 @@ export declare namespace Struct {
    * @since 1.0.0
    */
   export type Type<F extends Fields> =
-    & { readonly [K in Exclude<keyof F, TypeTokenKeys<F>>]: Schema.Type<F[K]> }
-    & { readonly [K in TypeTokenKeys<F>]?: Schema.Type<F[K]> }
+    & { readonly [K in keyof F as K extends TypeTokenKeys<F> ? never : K]: Schema.Type<F[K]> }
+    & { readonly [K in keyof F as K extends TypeTokenKeys<F> ? K : never]?: Schema.Type<F[K]> }
+
+  /**
+   * @since 1.0.0
+   */
+  export type Type2<F extends Fields> =
+    & { readonly [K in keyof F as K extends TypeTokenKeys<F> ? never : K]: Schema.Type<F[K]> }
+    & { readonly [K in keyof F as K extends TypeTokenKeys<F> ? K : never]?: Schema.Type<F[K]> }
 
   /**
    * @since 1.0.0
@@ -2032,6 +2039,7 @@ class $typeLiteral<
   annotations(
     annotations: Annotations.Schema<Simplify<TypeLiteral.Type<Fields, Records>>>
   ): typeLiteral<Fields, Records> {
+    // @ts-expect-error
     return new $typeLiteral(this.fields, this.records, _schema.annotations(this.ast, annotations))
   }
 }
