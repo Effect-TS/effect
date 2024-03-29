@@ -949,7 +949,7 @@ S.required(
   S.struct({ a: S.optional(S.string, { exact: true }), b: S.optional(S.number, { exact: true }) })
 )
 
-// $ExpectType Schema<{ readonly b: number; readonly a: string; readonly c: number; }, { readonly b: string; readonly a: string; readonly c: string; }, never>
+// $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: number; }, { readonly b: string; readonly a: string; readonly c: string; }, never>
 S.required(
   S.struct({
     a: S.optional(S.string, { exact: true }),
@@ -1685,7 +1685,7 @@ hole<ConstructorParameters<typeof VoidTaggedClass>>()
 export const StructTypeTest1 = <S extends S.Schema.Any>(
   input: S.Struct.Type<{ s: S }>
 ) => {
-  input // $ExpectType Type<{ s: S; }>
+  input // $ExpectType UnionToIntersection<S extends PropertySignature<"?:", any, PropertyKey, Token, any, unknown> | PropertySignature<"?:", any, PropertyKey, Token, never, unknown> | PropertySignature<"?:", never, PropertyKey, Token, any, unknown> | PropertySignature<"?:", never, PropertyKey, Token, never, unknown> ? { readonly s?: Type<S>; } : { readonly s: Type<S>; }>
 }
 
 // $ExpectType {}

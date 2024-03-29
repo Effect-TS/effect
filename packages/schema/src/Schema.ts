@@ -1837,20 +1837,9 @@ export declare namespace Struct {
   /**
    * @since 1.0.0
    */
-  export type Encoded<F extends Fields> = Types.UnionToIntersection<
-    {
-      [k in keyof F]: F[k] extends
-        | PropertySignature<PropertySignature.Token, any, PropertyKey, "?:", any, unknown>
-        | PropertySignature<PropertySignature.Token, any, PropertyKey, "?:", never, unknown>
-        | PropertySignature<PropertySignature.Token, never, PropertyKey, "?:", any, unknown>
-        | PropertySignature<PropertySignature.Token, never, PropertyKey, "?:", never, unknown> ? {
-          readonly [h in k]?: Schema.Encoded<F[h]>
-        }
-        : {
-          readonly [h in k]: Schema.Encoded<F[h]>
-        }
-    }[keyof F]
-  >
+  export type Encoded<F extends Fields> =
+    & { readonly [K in Exclude<keyof F, EncodedTokenKeys<F>> as Key<F, K>]: Schema.Encoded<F[K]> }
+    & { readonly [K in EncodedTokenKeys<F> as Key<F, K>]?: Schema.Encoded<F[K]> }
 
   /**
    * @since 1.0.0
