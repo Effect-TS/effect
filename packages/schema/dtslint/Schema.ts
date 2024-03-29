@@ -1685,7 +1685,7 @@ hole<ConstructorParameters<typeof VoidTaggedClass>>()
 export const StructTypeTest1 = <S extends S.Schema.Any>(
   input: S.Struct.Type<{ s: S }>
 ) => {
-  input // $ExpectType Type<{ s: S }>
+  input // $ExpectType Type<{ s: S; }>
 }
 
 // $ExpectType {}
