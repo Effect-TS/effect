@@ -23,8 +23,8 @@ describe("AST > guards", () => {
   })
 
   it("isTransform", () => {
-    expect(AST.isTransform(S.Trim.ast)).toEqual(true)
-    expect(AST.isTransform(S.number.ast)).toEqual(false)
+    expect(AST.isTransformation(S.Trim.ast)).toEqual(true)
+    expect(AST.isTransformation(S.number.ast)).toEqual(false)
   })
 
   it("isUndefinedKeyword", () => {

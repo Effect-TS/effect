@@ -1665,7 +1665,7 @@ export class Transformation implements Annotated {
  * @category guards
  * @since 1.0.0
  */
-export const isTransform: (ast: AST) => ast is Transformation = createASTGuard("Transformation")
+export const isTransformation: (ast: AST) => ast is Transformation = createASTGuard("Transformation")
 
 /**
  * @category model
@@ -2015,7 +2015,7 @@ export const record = (key: AST, value: AST): {
  * @since 1.0.0
  */
 export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral | Transformation => {
-  if (isTransform(ast)) {
+  if (isTransformation(ast)) {
     switch (ast.transformation._tag) {
       case "ComposeTransformation":
         return new Transformation(

@@ -2367,7 +2367,7 @@ const intersectUnionMembers = (
         if (AST.isTypeLiteral(y)) {
           return [intersectTypeLiterals(x, y, path)]
         } else if (
-          AST.isTransform(y) && AST.isTypeLiteralTransformation(y.transformation)
+          AST.isTransformation(y) && AST.isTypeLiteralTransformation(y.transformation)
         ) {
           return [
             new AST.Transformation(
@@ -2380,7 +2380,7 @@ const intersectUnionMembers = (
           ]
         }
       } else if (
-        AST.isTransform(x) && AST.isTypeLiteralTransformation(x.transformation)
+        AST.isTransformation(x) && AST.isTypeLiteralTransformation(x.transformation)
       ) {
         if (AST.isTypeLiteral(y)) {
           return [
@@ -2393,7 +2393,7 @@ const intersectUnionMembers = (
             )
           ]
         } else if (
-          AST.isTransform(y) && AST.isTypeLiteralTransformation(y.transformation)
+          AST.isTransformation(y) && AST.isTypeLiteralTransformation(y.transformation)
         ) {
           return [
             new AST.Transformation(
