@@ -1708,7 +1708,7 @@ export const optional: {
         return optionalToRequired(
           nullable(schema),
           optionFromSelf(typeSchema(schema)),
-          Option.filter(Predicate.isNotNull),
+          Option.filter(Predicate.isNotNull<A | null>),
           identity
         )
       } else {
@@ -1724,7 +1724,7 @@ export const optional: {
         return optionalToOptional(
           nullable(schema),
           typeSchema(schema),
-          Option.filter(Predicate.isNotNull),
+          Option.filter(Predicate.isNotNull<A | null>),
           identity
         )
       } else {
@@ -1760,7 +1760,7 @@ export const optional: {
         return optionalToRequired(
           orUndefined(schema),
           optionFromSelf(typeSchema(schema)),
-          Option.filter(Predicate.isNotUndefined),
+          Option.filter(Predicate.isNotUndefined<A | undefined>),
           identity
         )
       }
@@ -1769,7 +1769,7 @@ export const optional: {
         return optionalToOptional(
           nullish(schema),
           orUndefined(typeSchema(schema)),
-          Option.filter(Predicate.isNotNull),
+          Option.filter(Predicate.isNotNull<A | null | undefined>),
           identity
         )
       } else {
