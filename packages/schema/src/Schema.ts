@@ -1799,7 +1799,11 @@ export declare namespace Struct {
     K
 
   type EncodedTokenKeys<Fields extends Struct.Fields> = {
-    [K in keyof Fields]: Fields[K] extends OptionalPropertySignature ? K
+    [K in keyof Fields]: Fields[K] extends
+      | PropertySignature<PropertySignature.Token, any, PropertyKey, "?:", any, unknown>
+      | PropertySignature<PropertySignature.Token, any, PropertyKey, "?:", never, unknown>
+      | PropertySignature<PropertySignature.Token, never, PropertyKey, "?:", any, unknown>
+      | PropertySignature<PropertySignature.Token, never, PropertyKey, "?:", never, unknown> ? K
       : never
   }[keyof Fields]
 
