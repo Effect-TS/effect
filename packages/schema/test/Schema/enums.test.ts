@@ -1,8 +1,18 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
-describe("Schema/enums", () => {
+describe("Schema > enums", () => {
+  it("enums should be exposed", () => {
+    enum Fruits {
+      Apple,
+      Banana
+    }
+    const schema = S.enums(Fruits).annotations({ identifier: "Fruits" })
+    expect(schema.enums.Apple).toBe(0)
+    expect(schema.enums.Banana).toBe(1)
+  })
+
   describe("Numeric enums", () => {
     enum Fruits {
       Apple,

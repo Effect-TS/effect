@@ -540,20 +540,31 @@ export const uniqueSymbolFromSelf = <S extends symbol>(symbol: S): Schema<S> => 
  * @category api interface
  * @since 1.0.0
  */
-export interface enums<A extends { [x: string]: string | number }> extends Annotable<enums<A>, A[keyof A]> {}
+export interface enums<A extends { [x: string]: string | number }> extends Annotable<enums<A>, A[keyof A]> {
+  readonly enums: A
+}
+
+class $enums<A extends { [x: string]: string | number }> extends _schema.Schema<A[keyof A]> implements enums<A> {
+  static ast = <A extends { [x: string]: string | number }>(enums: A): AST.AST => {
+    return new AST.Enums(
+      Object.keys(enums).filter(
+        (key) => typeof enums[enums[key]] !== "number"
+      ).map((key) => [key, enums[key]])
+    )
+  }
+  constructor(readonly enums: A, ast: AST.AST = $enums.ast(enums)) {
+    super(ast)
+  }
+  annotations(annotations: Annotations.Schema<A[keyof A]>) {
+    return new $enums(this.enums, _schema.annotations(this.ast, annotations))
+  }
+}
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const enums = <A extends { [x: string]: string | number }>(enums: A): enums<A> =>
-  make(
-    new AST.Enums(
-      Object.keys(enums).filter(
-        (key) => typeof enums[enums[key]] !== "number"
-      ).map((key) => [key, enums[key]])
-    )
-  )
+export const enums = <A extends { [x: string]: string | number }>(enums: A): enums<A> => new $enums(enums)
 
 type Join<T> = T extends [infer Head, ...infer Tail]
   ? `${Head & (string | number | bigint | boolean | null | undefined)}${Tail extends [] ? ""

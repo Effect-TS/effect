@@ -362,6 +362,15 @@ S.asSchema(S.enums(Fruits))
 // $ExpectType enums<typeof Fruits>
 S.enums(Fruits)
 
+// $ExpectType typeof Fruits
+S.enums(Fruits).enums
+
+// $ExpectType Fruits.Apple
+S.enums(Fruits).enums.Apple
+
+// $ExpectType Fruits.Banana
+S.enums(Fruits).enums.Banana
+
 // ---------------------------------------------
 // nullable
 // ---------------------------------------------

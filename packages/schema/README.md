@@ -1886,6 +1886,17 @@ enum Fruits {
 S.enums(Fruits);
 ```
 
+### Accessing Enum Members
+
+Enums are exposed under an `enums` property of the schema:
+
+```ts
+// Access the enum members
+S.enums(Fruits).enums; // Returns all enum members
+S.enums(Fruits).enums.Apple; // Access the Apple member
+S.enums(Fruits).enums.Banana; // Access the Banana member
+```
+
 ## Nullables
 
 ```ts
