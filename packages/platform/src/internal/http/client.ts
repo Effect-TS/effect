@@ -77,14 +77,13 @@ export const make = <R, E, A, R2, E2>(
   return client as any
 }
 
-const addB3Header = (req: ClientRequest.ClientRequest, span: Tracer.Span) =>
-  internalRequest.setHeader(
-    req,
-    "b3",
-    `${span.traceId}-${span.spanId}-${span.sampled ? "1" : "0"}${
+const addTraceHeaders = (req: ClientRequest.ClientRequest, span: Tracer.Span) =>
+  internalRequest.setHeaders(req, {
+    b3: `${span.traceId}-${span.spanId}-${span.sampled ? "1" : "0"}${
       span.parent._tag === "Some" ? `-${span.parent.value.spanId}` : ""
-    }`
-  )
+    }`,
+    traceparent: `00-${span.traceId}-${span.spanId}-${span.sampled ? "01" : "00"}`
+  })
 
 /** @internal */
 export const makeDefault = (
@@ -109,7 +108,7 @@ export const makeDefault = (
                 "http.url": request.url
               }
             },
-            (span) => Effect.withParentSpan(f(addB3Header(request, span), fiber), span)
+            (span) => Effect.withParentSpan(f(addTraceHeaders(request, span), fiber), span)
           )
         })),
     Effect.succeed as Client.Client.Preprocess<never, never>
