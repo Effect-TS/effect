@@ -81,7 +81,8 @@ export class Tuple {
   constructor(
     readonly ast: AST.TupleType,
     readonly actual: unknown,
-    readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Index>
+    readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Index>,
+    readonly output: ReadonlyArray<unknown> = []
   ) {}
 }
 
@@ -113,7 +114,8 @@ export class TypeLiteral {
   constructor(
     readonly ast: AST.TypeLiteral,
     readonly actual: unknown,
-    readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Key>
+    readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Key>,
+    readonly output: { readonly [x: string]: unknown } = {}
   ) {}
 }
 
@@ -989,7 +991,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   es.push([stepKey++, e])
                   continue
                 } else {
-                  return Either.left(new Tuple(ast, input, [e]))
+                  return Either.left(new Tuple(ast, input, [e], sortByIndex(output)))
                 }
               }
               output.push([stepKey++, eu.right])
@@ -1008,7 +1010,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                       es.push([nk, e])
                       return Effect.unit
                     } else {
-                      return Either.left(new Tuple(ast, input, [e]))
+                      return Either.left(new Tuple(ast, input, [e], sortByIndex(output)))
                     }
                   }
                   output.push([nk, t.right])
@@ -1033,7 +1035,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   es.push([stepKey++, e])
                   continue
                 } else {
-                  return Either.left(new Tuple(ast, input, [e]))
+                  return Either.left(new Tuple(ast, input, [e], sortByIndex(output)))
                 }
               } else {
                 output.push([stepKey++, eu.right])
@@ -1053,7 +1055,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                         es.push([nk, e])
                         return Effect.unit
                       } else {
-                        return Either.left(new Tuple(ast, input, [e]))
+                        return Either.left(new Tuple(ast, input, [e], sortByIndex(output)))
                       }
                     } else {
                       output.push([nk, t.right])
@@ -1081,7 +1083,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                     es.push([stepKey++, e])
                     continue
                   } else {
-                    return Either.left(new Tuple(ast, input, [e]))
+                    return Either.left(new Tuple(ast, input, [e], sortByIndex(output)))
                   }
                 }
                 output.push([stepKey++, eu.right])
@@ -1101,7 +1103,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                           es.push([nk, e])
                           return Effect.unit
                         } else {
-                          return Either.left(new Tuple(ast, input, [e]))
+                          return Either.left(new Tuple(ast, input, [e], sortByIndex(output)))
                         }
                       }
                       output.push([nk, t.right])
@@ -1114,11 +1116,11 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         }
 
         // ---------------------------------------------
-        // compute output
+        // compute result
         // ---------------------------------------------
         const computeResult = ({ es, output }: State) =>
           ReadonlyArray.isNonEmptyArray(es) ?
-            Either.left(new Tuple(ast, input, sortByIndex(es))) :
+            Either.left(new Tuple(ast, input, sortByIndex(es), sortByIndex(output))) :
             Either.right(sortByIndex(output))
         if (queue && queue.length > 0) {
           const cqueue = queue
@@ -1190,7 +1192,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   es.push([stepKey++, e])
                   continue
                 } else {
-                  return Either.left(new TypeLiteral(ast, input, [e]))
+                  return Either.left(new TypeLiteral(ast, input, [e], output))
                 }
               } else {
                 // preserve key
@@ -1225,7 +1227,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                 es.push([stepKey++, e])
                 continue
               } else {
-                return Either.left(new TypeLiteral(ast, input, [e]))
+                return Either.left(new TypeLiteral(ast, input, [e], output))
               }
             }
           }
@@ -1239,7 +1241,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                 es.push([stepKey++, e])
                 continue
               } else {
-                return Either.left(new TypeLiteral(ast, input, [e]))
+                return Either.left(new TypeLiteral(ast, input, [e], output))
               }
             }
             output[name] = eu.right
@@ -1258,7 +1260,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                       es.push([nk, e])
                       return Effect.unit
                     } else {
-                      return Either.left(new TypeLiteral(ast, input, [e]))
+                      return Either.left(new TypeLiteral(ast, input, [e], output))
                     }
                   }
                   output[index] = t.right
@@ -1294,7 +1296,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                     es.push([stepKey++, e])
                     continue
                   } else {
-                    return Either.left(new TypeLiteral(ast, input, [e]))
+                    return Either.left(new TypeLiteral(ast, input, [e], output))
                   }
                 } else {
                   if (!Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
@@ -1318,7 +1320,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                             es.push([nk, e])
                             return Effect.unit
                           } else {
-                            return Either.left(new TypeLiteral(ast, input, [e]))
+                            return Either.left(new TypeLiteral(ast, input, [e], output))
                           }
                         } else {
                           if (!Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
@@ -1334,11 +1336,11 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           }
         }
         // ---------------------------------------------
-        // compute output
+        // compute result
         // ---------------------------------------------
         const computeResult = ({ es, output }: State) =>
           ReadonlyArray.isNonEmptyArray(es) ?
-            Either.left(new TypeLiteral(ast, input, sortByIndex(es))) :
+            Either.left(new TypeLiteral(ast, input, sortByIndex(es), output)) :
             Either.right(output)
         if (queue && queue.length > 0) {
           const cqueue = queue
@@ -1466,7 +1468,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         }
 
         // ---------------------------------------------
-        // compute output
+        // compute result
         // ---------------------------------------------
         const computeResult = (es: State["es"]) =>
           ReadonlyArray.isNonEmptyArray(es) ?
