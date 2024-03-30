@@ -958,7 +958,7 @@ S.required(
   S.struct({ a: S.optional(S.string, { exact: true }), b: S.optional(S.number, { exact: true }) })
 )
 
-// $ExpectType Schema<{ readonly b: number; readonly a: string; readonly c: number; }, { readonly b: string; readonly a: string; readonly c: string; }, never>
+// $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: number; }, { readonly b: string; readonly a: string; readonly c: string; }, never>
 S.required(
   S.struct({
     a: S.optional(S.string, { exact: true }),

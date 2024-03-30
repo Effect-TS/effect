@@ -1819,20 +1819,24 @@ export declare namespace Struct {
   }[keyof Fields]
 
   type TypeTokenKeys<Fields extends Struct.Fields> = {
-    [K in keyof Fields]: Fields[K] extends
-      | PropertySignature<"?:", any, PropertyKey, PropertySignature.Token, any, unknown>
-      | PropertySignature<"?:", any, PropertyKey, PropertySignature.Token, never, unknown>
-      | PropertySignature<"?:", never, PropertyKey, PropertySignature.Token, any, unknown>
-      | PropertySignature<"?:", never, PropertyKey, PropertySignature.Token, never, unknown> ? K
-      : never
+    [K in keyof Fields]: Fields[K] extends OptionalPropertySignature ? K : never
   }[keyof Fields]
+
+  type OptionalPropertySignature =
+    | PropertySignature<"?:", any, PropertyKey, PropertySignature.Token, any, unknown>
+    | PropertySignature<"?:", any, PropertyKey, PropertySignature.Token, never, unknown>
+    | PropertySignature<"?:", never, PropertyKey, PropertySignature.Token, any, unknown>
+    | PropertySignature<"?:", never, PropertyKey, PropertySignature.Token, never, unknown>
 
   /**
    * @since 1.0.0
    */
-  export type Type<F extends Fields> =
-    & { readonly [K in Exclude<keyof F, TypeTokenKeys<F>>]: Schema.Type<F[K]> }
-    & { readonly [K in TypeTokenKeys<F>]?: Schema.Type<F[K]> }
+  export type Type<F extends Fields> = Types.UnionToIntersection<
+    {
+      [K in keyof F]: F[K] extends OptionalPropertySignature ? { readonly [H in K]?: Schema.Type<F[H]> } :
+        { readonly [h in K]: Schema.Type<F[h]> }
+    }[keyof F]
+  > extends infer Q ? Q : never
 
   /**
    * @since 1.0.0
