@@ -7,6 +7,7 @@ import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
+import type * as FiberRef from "effect/FiberRef"
 import type { Inspectable } from "effect/Inspectable"
 import type * as Layer from "effect/Layer"
 import type { Pipeable } from "effect/Pipeable"
@@ -432,3 +433,24 @@ export const withCookiesRef: {
   (ref: Ref<Cookies>): <R, E>(self: Client.WithResponse<R, E>) => Client.WithResponse<R, E>
   <R, E>(self: Client.WithResponse<R, E>, ref: Ref<Cookies>): Client.WithResponse<R, E>
 } = internal.withCookiesRef
+
+/**
+ * @since 2.0.0
+ * @category fiber refs
+ */
+export const currentTracerDisabledWhen: FiberRef.FiberRef<Predicate.Predicate<ClientRequest.ClientRequest>> =
+  internal.currentTracerDisabledWhen
+
+/**
+ * @since 2.0.0
+ * @category fiber refs
+ */
+export const withTracerDisabledWhen: {
+  (
+    predicate: Predicate.Predicate<ClientRequest.ClientRequest>
+  ): <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <R, E, A>(
+    effect: Effect.Effect<A, E, R>,
+    predicate: Predicate.Predicate<ClientRequest.ClientRequest>
+  ): Effect.Effect<A, E, R>
+} = internal.withTracerDisabledWhen

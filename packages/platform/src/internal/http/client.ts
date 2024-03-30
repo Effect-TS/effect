@@ -3,7 +3,9 @@ import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import { dual, pipe } from "effect/Function"
+import * as FiberRef from "effect/FiberRef"
+import { constFalse, dual, identity, pipe } from "effect/Function"
+import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
@@ -30,6 +32,23 @@ export const TypeId: Client.TypeId = Symbol.for(
 
 /** @internal */
 export const tag = Context.GenericTag<Client.Client.Default>("@effect/platform/Http/Client")
+
+/** @internal */
+export const currentTracerDisabledWhen = globalValue(
+  Symbol.for("@effect/platform/Http/Client/tracerDisabledWhen"),
+  () => FiberRef.unsafeMake<Predicate.Predicate<ClientRequest.ClientRequest>>(constFalse)
+)
+
+/** @internal */
+export const withTracerDisabledWhen = dual<
+  (
+    predicate: Predicate.Predicate<ClientRequest.ClientRequest>
+  ) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <R, E, A>(
+    effect: Effect.Effect<A, E, R>,
+    predicate: Predicate.Predicate<ClientRequest.ClientRequest>
+  ) => Effect.Effect<A, E, R>
+>(2, (self, pred) => Effect.locally(self, currentTracerDisabledWhen, pred))
 
 const clientProto = {
   [TypeId]: TypeId,
@@ -85,13 +104,16 @@ export const Fetch = Context.GenericTag<Client.Fetch, typeof globalThis.fetch>(
 export const fetch = (options?: RequestInit): Client.Client.Default =>
   makeDefault((request) =>
     Effect.flatMap(
-      UrlParams.makeUrl(request.url, request.urlParams, (_) =>
-        new Error.RequestError({
-          request,
-          reason: "InvalidUrl",
-          error: _
-        })),
-      (url) =>
+      Effect.zip(
+        UrlParams.makeUrl(request.url, request.urlParams, (_) =>
+          new Error.RequestError({
+            request,
+            reason: "InvalidUrl",
+            error: _
+          })),
+        FiberRef.get(currentTracerDisabledWhen)
+      ),
+      ([url, disabledWhen]) =>
         Effect.flatMap(Effect.serviceOption(Fetch), (fetch_) => {
           const fetch = fetch_._tag === "Some" ? fetch_.value : globalThis.fetch
           const headers = new Headers(request.headers)
@@ -118,7 +140,13 @@ export const fetch = (options?: RequestInit): Client.Client.Default =>
                       reason: "Transport",
                       error: _
                     })
-                })
+                }).pipe(
+                  disabledWhen(request as any) ?
+                    identity :
+                    Effect.withSpan(`http ${request.method}`, {
+                      attributes: { "http.method": request.method, "http.url": request.url }
+                    })
+                )
               ),
               Effect.map((_) => internalResponse.fromWeb(request, _))
             )
