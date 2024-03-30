@@ -89,7 +89,7 @@ export const tracer = make((httpApp) => {
     Effect.zip(ServerRequest.ServerRequest, FiberRef.get(currentTracerDisabledWhen)),
     ([request, disabledWhen]) =>
       Effect.flatMap(
-        request.headers["x-b3-traceid"] || request.headers["b3"] ?
+        request.headers["x-b3-traceid"] || request.headers["b3"] || request.headers["traceparent"] ?
           Effect.orElseSucceed(IncomingMessage.schemaExternalSpan(request), () => undefined) :
           Effect.succeed(undefined),
         (parent) =>
