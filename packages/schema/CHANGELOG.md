@@ -1,5 +1,34 @@
 # @effect/schema
 
+## 0.64.16
+
+### Patch Changes
+
+- [#2428](https://github.com/Effect-TS/effect/pull/2428) [`a31917a`](https://github.com/Effect-TS/effect/commit/a31917aa4b05b1189b7a8e0bedb60bb3d49262ad) Thanks [@gcanti](https://github.com/gcanti)! - export `null` from the AST module
+
+- [#2436](https://github.com/Effect-TS/effect/pull/2436) [`4cd2bed`](https://github.com/Effect-TS/effect/commit/4cd2bedf978f864bddd289d1c524c8e868bf587b) Thanks [@patroza](https://github.com/patroza)! - fix: Schema JSDOC and editor click-follow for fields on struct and class
+
+- [#2442](https://github.com/Effect-TS/effect/pull/2442) [`6cc6267`](https://github.com/Effect-TS/effect/commit/6cc6267026d9bfb1a9882cddf534787327e86ec1) Thanks [@gcanti](https://github.com/gcanti)! - Enums are now exposed under an `enums` property of the schema, closes #2441:
+
+  ```ts
+  enum Fruits {
+    Apple,
+    Banana,
+  }
+
+  // $ExpectType enums<typeof Fruits>
+  S.enums(Fruits);
+
+  // $ExpectType typeof Fruits
+  S.enums(Fruits).enums;
+
+  // $ExpectType Fruits.Apple
+  S.enums(Fruits).enums.Apple;
+
+  // $ExpectType Fruits.Banana
+  S.enums(Fruits).enums.Banana;
+  ```
+
 ## 0.64.15
 
 ### Patch Changes
