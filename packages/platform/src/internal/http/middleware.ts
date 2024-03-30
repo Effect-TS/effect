@@ -9,6 +9,7 @@ import * as IncomingMessage from "../../Http/IncomingMessage.js"
 import type * as Middleware from "../../Http/Middleware.js"
 import * as ServerError from "../../Http/ServerError.js"
 import * as ServerRequest from "../../Http/ServerRequest.js"
+import * as TraceContext from "../../Http/TraceContext/TraceContext.js"
 
 /** @internal */
 export const make = <M extends Middleware.Middleware>(middleware: M): M => middleware
@@ -89,7 +90,8 @@ export const tracer = make((httpApp) => {
     Effect.zip(ServerRequest.ServerRequest, FiberRef.get(currentTracerDisabledWhen)),
     ([request, disabledWhen]) =>
       Effect.flatMap(
-        request.headers["x-b3-traceid"] || request.headers["b3"] || request.headers["traceparent"] ?
+        request.headers[TraceContext.xb3.header] || request.headers[TraceContext.b3.header] ||
+          request.headers[TraceContext.w3c.header] ?
           Effect.orElseSucceed(IncomingMessage.schemaExternalSpan(request), () => undefined) :
           Effect.succeed(undefined),
         (parent) =>

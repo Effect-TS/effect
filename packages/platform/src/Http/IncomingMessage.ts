@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import type { ParseOptions } from "@effect/schema/AST"
-import * as ParseResult from "@effect/schema/ParseResult"
+import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
@@ -15,6 +15,7 @@ import * as Tracer from "effect/Tracer"
 import type { ExternalSpan } from "effect/Tracer"
 import * as FileSystem from "../FileSystem.js"
 import type * as Headers from "./Headers.js"
+import * as TraceContext from "./TraceContext/TraceContext.js"
 import type * as UrlParams from "./UrlParams.js"
 
 /**
@@ -112,60 +113,6 @@ export const schemaHeadersEffect = <R, I extends Readonly<Record<string, string>
   return <E, E2, R2>(effect: Effect.Effect<IncomingMessage<E>, E2, R2>) => Effect.scoped(Effect.flatMap(effect, decode))
 }
 
-const SpanSchema = Schema.struct({
-  traceId: Schema.string,
-  spanId: Schema.string,
-  parentSpanId: Schema.union(Schema.string, Schema.undefined),
-  sampled: Schema.boolean
-})
-
-const W3CTC_FLAG_SAMPLED = 0b00000001
-
-const W3CTraceParent = Schema.union(
-  Schema.transform(
-    Schema.NonEmpty,
-    Schema.struct({
-      version: Schema.string.pipe(Schema.length(2), Schema.compose(Schema.literal("00"), { strict: false })),
-      versionFormat: Schema.transform(
-        Schema.split("-").pipe(
-          Schema.compose(
-            Schema.tuple(
-              Schema.string,
-              Schema.string,
-              Schema.string.pipe(Schema.length(2), Schema.compose(Schema.NumberFromHex))
-            ),
-            { strict: false }
-          )
-        ),
-        Schema.struct({
-          traceId: Schema.string,
-          parentId: Schema.string,
-          traceFlags: Schema.struct({
-            sampled: Schema.boolean
-          })
-        }),
-        ([traceId, parentId, traceFlags]) => ({
-          traceId,
-          parentId,
-          traceFlags: {
-            sampled: (traceFlags & W3CTC_FLAG_SAMPLED) === W3CTC_FLAG_SAMPLED
-          }
-        }),
-        (_) => [_.traceId, _.parentId, _.traceFlags.sampled ? W3CTC_FLAG_SAMPLED : 0] as const
-      )
-    }),
-    (_) => {
-      const [version, versionFormat] = _.split(/-(.+)/s)
-
-      return {
-        version,
-        versionFormat
-      }
-    },
-    (_) => `${_.version}-${_.versionFormat}`
-  )
-)
-
 /**
  * @since 1.0.0
  * @category schema
@@ -174,77 +121,9 @@ export const schemaExternalSpan: <E>(
   self: IncomingMessage<E>
 ) => Effect.Effect<Tracer.ExternalSpan, ParseResult.ParseError> = flow(
   schemaHeaders(Schema.union(
-    Schema.transformOrFail(
-      Schema.struct({
-        b3: Schema.NonEmpty
-      }),
-      SpanSchema,
-      (input, _, ast) => {
-        const parts = input.b3.split("-")
-        if (parts.length >= 2) {
-          return ParseResult.succeed(
-            {
-              traceId: parts[0],
-              spanId: parts[1],
-              sampled: parts[2] ? parts[2] === "1" : true,
-              parentSpanId: parts[3]
-            } as const
-          )
-        }
-        return ParseResult.fail(new ParseResult.Type(ast, input))
-      },
-      (_) => ParseResult.succeed({ b3: "" } as const)
-    ),
-    Schema.transform(
-      Schema.struct({
-        "x-b3-traceid": Schema.NonEmpty,
-        "x-b3-spanid": Schema.NonEmpty,
-        "x-b3-parentspanid": Schema.optional(Schema.NonEmpty),
-        "x-b3-sampled": Schema.optional(Schema.NonEmpty, { default: () => "1" })
-      }),
-      SpanSchema,
-      (_) => ({
-        traceId: _["x-b3-traceid"],
-        spanId: _["x-b3-spanid"],
-        parentSpanId: _["x-b3-parentspanid"],
-        sampled: _["x-b3-sampled"] === "1"
-      } as const),
-      (_) => ({
-        "x-b3-traceid": _.traceId,
-        "x-b3-spanid": _.spanId,
-        "x-b3-parentspanid": _.parentSpanId,
-        "x-b3-sampled": _.sampled ? "1" : "0"
-      } as const)
-    ),
-    Schema.transform(
-      Schema.struct({
-        traceparent: W3CTraceParent
-      }),
-      SpanSchema,
-      ({ traceparent }) => {
-        switch (traceparent.version) {
-          case "00":
-            return {
-              traceId: traceparent.versionFormat.traceId,
-              spanId: traceparent.versionFormat.parentId,
-              parentSpanId: undefined,
-              sampled: traceparent.versionFormat.traceFlags.sampled
-            }
-        }
-      },
-      (_) => ({
-        traceparent: {
-          version: "00",
-          versionFormat: {
-            traceId: _.traceId,
-            parentId: _.spanId,
-            traceFlags: {
-              sampled: _.sampled
-            }
-          }
-        } as const
-      })
-    )
+    TraceContext.b3.schema,
+    TraceContext.xb3.schema,
+    TraceContext.w3c.schema
   )),
   Effect.map((_): ExternalSpan =>
     Tracer.externalSpan({
