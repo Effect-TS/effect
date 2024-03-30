@@ -779,7 +779,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
     if (exit._tag === "Failure") {
       const level = this.getFiberRef(core.currentUnhandledErrorLogLevel)
       if (!internalCause.isInterruptedOnly(exit.cause) && level._tag === "Some") {
-        this.log("Fiber terminated with a unhandled error", exit.cause, level)
+        this.log("Fiber terminated with an unhandled error", exit.cause, level)
       }
     }
   }
