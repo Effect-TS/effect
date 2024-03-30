@@ -451,3 +451,27 @@ export const TaggedError = <Tag extends string>(tag: Tag): new<A extends Record<
   ;(Base.prototype as any).name = tag
   return Base as any
 }
+
+export const addDefaults: <Args, Defaults extends { [K in keyof Args]?: () => Args[K] }, Out extends object>(
+  newable: new(args: Args) => Out,
+  defaults: Defaults
+) => new(
+  args: Omit<Args, keyof Defaults> & { [K in keyof Args as K extends keyof Defaults ? K : never]?: Args[K] }
+) => Out = (
+  newable,
+  defaults
+) => {
+  return class extends (newable as any) {
+    constructor(args: any) {
+      super({
+        ...args,
+        ...Object.entries(defaults).reduce((acc, [cur, v]) => {
+          if (!(cur in args)) {
+            acc[cur] = (v as any)()
+          }
+          return acc
+        }, {} as Record<string, any>)
+      })
+    }
+  } as any
+}
