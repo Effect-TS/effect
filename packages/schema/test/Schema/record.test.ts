@@ -1,7 +1,8 @@
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
-import { describe, expect, it } from "vitest"
+import * as Either from "effect/Either"
+import { assert, describe, expect, it } from "vitest"
 
 describe("Schema > record", () => {
   it("annotations()", () => {
@@ -16,6 +17,32 @@ describe("Schema > record", () => {
     const schema = S.record(S.string, S.number)
     expect(schema.key).toStrictEqual(S.string)
     expect(schema.value).toStrictEqual(S.number)
+  })
+
+  it("should compute the partial result", () => {
+    const schema = S.record(S.string, S.number)
+    const all = S.decodeUnknownEither(schema)({ a: 1, b: "b", c: 2, d: "d" }, { errors: "all" })
+    if (Either.isLeft(all)) {
+      const issue = all.left.error
+      if (issue._tag === "TypeLiteral") {
+        expect(issue.output).toStrictEqual({ a: 1, c: 2 })
+      } else {
+        assert.fail("expected a TypeLiteral")
+      }
+    } else {
+      assert.fail("expected a Left")
+    }
+    const first = S.decodeUnknownEither(schema)({ a: 1, b: "b", c: 2, d: "d" }, { errors: "first" })
+    if (Either.isLeft(first)) {
+      const issue = first.left.error
+      if (issue._tag === "TypeLiteral") {
+        expect(issue.output).toStrictEqual({ a: 1 })
+      } else {
+        assert.fail("expected a TypeLiteral")
+      }
+    } else {
+      assert.fail("expected a Left")
+    }
   })
 
   describe("decoding", () => {
