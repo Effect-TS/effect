@@ -3325,16 +3325,12 @@ export const option: <A, E, R>(self: Effect<A, E, R>) => Effect<Option.Option<A>
 
 const if_: {
   <A1, E1, R1, A2, E2, R2>(
-    options: { readonly onTrue: Effect<A1, E1, R1>; readonly onFalse: Effect<A2, E2, R2> }
+    options: { readonly onTrue: LazyArg<Effect<A1, E1, R1>>; readonly onFalse: LazyArg<Effect<A2, E2, R2>> }
   ): <E = never, R = never>(self: boolean | Effect<boolean, E, R>) => Effect<A1 | A2, E1 | E2 | E, R1 | R2 | R>
-  <A1, E1, R1, A2, E2, R2>(
-    self: boolean,
-    options: { readonly onTrue: Effect<A1, E1, R1>; readonly onFalse: Effect<A2, E2, R2> }
-  ): Effect<A1 | A2, E1 | E2, R1 | R2>
-  <E, R, A1, E1, R1, A2, E2, R2>(
-    self: Effect<boolean, E, R>,
-    options: { readonly onTrue: Effect<A1, E1, R1>; readonly onFalse: Effect<A2, E2, R2> }
-  ): Effect<A1 | A2, E | E1 | E2, R | R1 | R2>
+  <A1, E1, R1, A2, E2, R2, E = never, R = never>(
+    self: boolean | Effect<boolean, E, R>,
+    options: { readonly onTrue: LazyArg<Effect<A1, E1, R1>>; readonly onFalse: LazyArg<Effect<A2, E2, R2>> }
+  ): Effect<A1 | A2, E1 | E2 | E, R1 | R2 | R>
 } = core.if_
 
 export {
