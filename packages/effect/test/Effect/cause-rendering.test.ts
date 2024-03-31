@@ -30,8 +30,8 @@ describe("Effect", () => {
       const effect = Effect.withSpan("spanB")(
         Effect.withSpan("spanA")(
           Effect.if(Effect.sync(() => Math.random() > 1), {
-            onTrue: Effect.fail(new E2()),
-            onFalse: Effect.fail(err)
+            onTrue: () => Effect.fail(new E2()),
+            onFalse: () => Effect.fail(err)
           })
         )
       ).pipe(Effect.catchTag("E2", (e) => Effect.die(e)))
@@ -55,8 +55,8 @@ describe("Effect", () => {
       const effect = Effect.withSpan("spanB")(
         Effect.withSpan("spanA")(
           Effect.if(Effect.sync(() => Math.random() > 1), {
-            onTrue: Effect.fail(new E2()),
-            onFalse: Effect.fail(new E1())
+            onTrue: () => Effect.fail(new E2()),
+            onFalse: () => Effect.fail(new E1())
           })
         )
       ).pipe(Effect.catchAll((e) => Effect.fail(e)))
@@ -76,8 +76,8 @@ describe("Effect", () => {
       const effect = Effect.withSpan("spanB")(
         Effect.withSpan("spanA")(
           Effect.if(Effect.sync(() => Math.random() > 1), {
-            onTrue: Effect.fail(new E2()),
-            onFalse: Effect.fail(new E1())
+            onTrue: () => Effect.fail(new E2()),
+            onFalse: () => Effect.fail(new E1())
           })
         )
       ).pipe(Effect.catchTags({ E2: (e) => Effect.die(e) }))

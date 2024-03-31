@@ -926,35 +926,33 @@ export const forEachSequentialDiscard: {
 export const if_ = dual<
   <A1, E1, R1, A2, E2, R2>(
     options: {
-      readonly onTrue: Effect.Effect<A1, E1, R1>
-      readonly onFalse: Effect.Effect<A2, E2, R2>
+      readonly onTrue: LazyArg<Effect.Effect<A1, E1, R1>>
+      readonly onFalse: LazyArg<Effect.Effect<A2, E2, R2>>
     }
   ) => <E = never, R = never>(
     self: Effect.Effect<boolean, E, R> | boolean
   ) => Effect.Effect<A1 | A2, E | E1 | E2, R | R1 | R2>,
-  {
-    <A1, E1, R1, A2, E2, R2>(
-      self: boolean,
-      options: {
-        readonly onTrue: Effect.Effect<A1, E1, R1>
-        readonly onFalse: Effect.Effect<A2, E2, R2>
-      }
-    ): Effect.Effect<A1 | A2, E1 | E2, R1 | R2>
-    <E, R, A1, E1, R1, A2, E2, R2>(
-      self: Effect.Effect<boolean, E, R>,
-      options: {
-        readonly onTrue: Effect.Effect<A1, E1, R1>
-        readonly onFalse: Effect.Effect<A2, E2, R2>
-      }
-    ): Effect.Effect<A1 | A2, E1 | E2 | E, R1 | R2 | R>
-  }
+  <A1, E1, R1, A2, E2, R2, E = never, R = never>(
+    self: Effect.Effect<boolean, E, R> | boolean,
+    options: {
+      readonly onTrue: LazyArg<Effect.Effect<A1, E1, R1>>
+      readonly onFalse: LazyArg<Effect.Effect<A2, E2, R2>>
+    }
+  ) => Effect.Effect<A1 | A2, E1 | E2 | E, R1 | R2 | R>
 >(
   (args) => typeof args[0] === "boolean" || isEffect(args[0]),
-  (self: boolean | Effect.Effect<unknown, unknown, unknown>, { onFalse, onTrue }: {
-    readonly onTrue: Effect.Effect<unknown, unknown, unknown>
-    readonly onFalse: Effect.Effect<unknown, unknown, unknown>
-    // eslint-disable-next-line no-extra-boolean-cast
-  }) => isEffect(self) ? flatMap(self, (b) => (b ? onTrue : onFalse)) : Boolean(self) ? onTrue : onFalse
+  <A1, E1, R1, A2, E2, R2, E = never, R = never>(
+    self: Effect.Effect<boolean, E, R> | boolean,
+    options: {
+      readonly onTrue: LazyArg<Effect.Effect<A1, E1, R1>>
+      readonly onFalse: LazyArg<Effect.Effect<A2, E2, R2>>
+    }
+  ): Effect.Effect<A1 | A2, E1 | E2 | E, R1 | R2 | R> =>
+    isEffect(self)
+      ? flatMap(self, (b): Effect.Effect<A1 | A2, E1 | E2, R1 | R2> => (b ? options.onTrue() : options.onFalse()))
+      : self
+      ? options.onTrue()
+      : options.onFalse()
 )
 
 /* @internal */
