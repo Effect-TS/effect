@@ -2,4 +2,4 @@
 "@effect/schema": patch
 ---
 
-added Schema.Truthy
+added Schema.BooleanFromUnknown
