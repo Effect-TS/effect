@@ -2,8 +2,8 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Truthy", () => {
-  const schema = S.Truthy
+describe("BooleanFromUnknown", () => {
+  const schema = S.BooleanFromUnknown
   it("decoding", async () => {
     await Util.expectDecodeUnknownSuccess(schema, true, true)
     await Util.expectDecodeUnknownSuccess(schema, 1, true)

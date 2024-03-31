@@ -7246,20 +7246,20 @@ const schemaFromArbitrary = <A>(value: Arbitrary<A>): Schema<A> =>
  * @category api interface
  * @since 1.0.0
  */
-export interface Truthy extends Annotable<Truthy, boolean, unknown> {}
+export interface BooleanFromUnknown extends Annotable<BooleanFromUnknown, boolean, unknown> {}
 
 
 /**
- * Convers an arbitrary value to a `boolean` by testing whether it is "truthy". 
+ * Convers an arbitrary value to a `boolean` by testing whether it is "BooleanFromUnknown". 
  * Uses `!!val` to convert the value to a `boolean`.
  *
  * @see https://developer.mozilla.org/docs/Glossary/Truthy
  * @category boolean constructors
  * @since 1.0.0
  */
-export const Truthy: Truthy = transform(
+export const BooleanFromUnknown: BooleanFromUnknown = transform(
   unknown,
   boolean,
   Predicate.isTruthy,
   identity
-).annotations({ identifier: "Truthy" })
+).annotations({ identifier: "BooleanFromUnknown" })
