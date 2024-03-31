@@ -1597,7 +1597,7 @@ export const exists: {
         core.matchEffect(
           forEach(
             elements,
-            (a, i) => core.if_(f(a, i), { onTrue: core.fail(_existsParFound), onFalse: core.unit }),
+            (a, i) => core.if_(f(a, i), { onTrue: () => core.fail(_existsParFound), onFalse: () => core.unit }),
             options
           ),
           {

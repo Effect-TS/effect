@@ -71,8 +71,8 @@ describe("Effect", () => {
       const result = yield* $(
         true,
         Effect.if({
-          onTrue: Effect.succeed(true),
-          onFalse: Effect.succeed(false)
+          onTrue: () => Effect.succeed(true),
+          onFalse: () => Effect.succeed(false)
         })
       )
       assert.isTrue(result)
@@ -82,8 +82,8 @@ describe("Effect", () => {
       const result = yield* $(
         Effect.succeed(false),
         Effect.if({
-          onFalse: Effect.succeed(true),
-          onTrue: Effect.succeed(false)
+          onFalse: () => Effect.succeed(true),
+          onTrue: () => Effect.succeed(false)
         })
       )
       assert.isTrue(result)
