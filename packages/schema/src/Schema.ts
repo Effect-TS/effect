@@ -7250,7 +7250,7 @@ export interface BooleanFromUnknown extends Annotable<BooleanFromUnknown, boolea
 
 
 /**
- * Convers an arbitrary value to a `boolean` by testing whether it is "BooleanFromUnknown". 
+ * Convers an arbitrary value to a `boolean` by testing whether it is truthy. 
  * Uses `!!val` to convert the value to a `boolean`.
  *
  * @see https://developer.mozilla.org/docs/Glossary/Truthy
