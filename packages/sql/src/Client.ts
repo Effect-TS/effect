@@ -330,7 +330,12 @@ export const defaultTransforms: (
 /**
  * @since 1.0.0
  */
-export const TransactionConnection: Tag<
-  readonly [conn: Connection, counter: number],
-  readonly [conn: Connection, counter: number]
-> = internal.TransactionConn
+export interface TransactionConnection {
+  readonly _: unique symbol
+}
+
+/**
+ * @since 1.0.0
+ */
+export const TransactionConnection: Tag<TransactionConnection, readonly [conn: Connection, counter: number]> =
+  internal.TransactionConn

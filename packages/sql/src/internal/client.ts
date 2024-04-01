@@ -7,6 +7,7 @@ import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"
+import * as Scope from "effect/Scope"
 import type * as Client from "../Client.js"
 import type * as Connection from "../Connection.js"
 import * as Error from "../Error.js"
@@ -15,8 +16,9 @@ import * as Statement from "../Statement.js"
 
 /** @internal */
 export const TransactionConn = Context.GenericTag<
+  Client.TransactionConnection,
   readonly [conn: Connection.Connection, counter: number]
->("@effect/sql/services/TransactionConn")
+>("@effect/sql/services/TransactionConnection")
 
 /** @internal */
 export function make({
@@ -36,34 +38,39 @@ export function make({
       onSome: ([conn]) => Effect.succeed(conn)
     })
   )
+
   const withTransaction = <R, E, A>(
     effect: Effect.Effect<A, E, R>
   ): Effect.Effect<A, E | Error.SqlError, R> =>
-    Effect.scoped(
-      Effect.acquireUseRelease(
-        Effect.serviceOption(TransactionConn).pipe(
-          Effect.flatMap(
-            Option.match({
-              onNone: () => Effect.map(transactionAcquirer, (conn) => [conn, 0] as const),
-              onSome: ([conn, count]) => Effect.succeed([conn, count + 1] as const)
-            })
+    Effect.flatMap(
+      Scope.make(),
+      (scope) =>
+        Effect.acquireUseRelease(
+          Effect.serviceOption(TransactionConn).pipe(
+            Effect.flatMap(
+              Option.match({
+                onNone: () => Effect.map(Scope.extend(scope)(transactionAcquirer), (conn) => [conn, 0] as const),
+                onSome: ([conn, count]) => Effect.succeed([conn, count + 1] as const)
+              })
+            ),
+            Effect.tap(([conn, id]) =>
+              id > 0
+                ? conn.executeRaw(savepoint(`effect_sql_${id}`))
+                : conn.executeRaw(beginTransaction)
+            )
           ),
-          Effect.tap(([conn, id]) =>
-            id > 0
-              ? conn.executeRaw(savepoint(`effect_sql_${id}`))
-              : conn.executeRaw(beginTransaction)
-          )
-        ),
-        ([conn, id]) => Effect.provideService(effect, TransactionConn, [conn, id]),
-        ([conn, id], exit) =>
-          Exit.isSuccess(exit)
-            ? id > 0
-              ? Effect.unit
-              : Effect.orDie(conn.executeRaw(commit))
-            : id > 0
-            ? Effect.orDie(conn.executeRaw(rollbackSavepoint(`effect_sql_${id}`)))
-            : Effect.orDie(conn.executeRaw(rollback))
-      )
+          ([conn, id]) => Effect.provideService(effect, TransactionConn, [conn, id]),
+          ([conn, id], exit) =>
+            Exit.isSuccess(exit)
+              ? id > 0
+                ? Effect.unit
+                : Effect.orDie(conn.executeRaw(commit))
+              : id > 0
+              ? Effect.orDie(conn.executeRaw(rollbackSavepoint(`effect_sql_${id}`)))
+              : Effect.orDie(conn.executeRaw(rollback))
+        ).pipe(
+          Effect.ensuring(Scope.close(scope, Exit.unit))
+        )
     )
 
   const schema = <IR, II, IA, AR, AI, A, R, E>(
