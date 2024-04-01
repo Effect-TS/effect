@@ -9,6 +9,7 @@ import { Deferred, Duration, Fiber, Stream } from "effect"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as Tracer from "effect/Tracer"
 import { createServer } from "http"
 import * as Buffer from "node:buffer"
 import { assert, describe, expect, it } from "vitest"
@@ -481,7 +482,18 @@ describe("HttpServer", () => {
       const body = yield* _(
         client(HttpC.request.get("/")),
         HttpC.response.json,
-        Effect.withParentSpan(requestSpan),
+        Effect.withTracer(Tracer.make({
+          span(name, parent) {
+            assert.strictEqual(name, "http.client GET")
+            assert(parent._tag === "Some" && parent.value._tag === "Span")
+            assert.strictEqual(parent.value.name, "request parent")
+            return requestSpan
+          },
+          context(f, _fiber) {
+            return f()
+          }
+        })),
+        Effect.withSpan("request parent"),
         Effect.repeatN(2)
       )
       expect((body as any).parent.value.spanId).toEqual(requestSpan.spanId)

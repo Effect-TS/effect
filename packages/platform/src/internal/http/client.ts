@@ -3,7 +3,10 @@ import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import { dual, pipe } from "effect/Function"
+import type * as Fiber from "effect/Fiber"
+import * as FiberRef from "effect/FiberRef"
+import { constFalse, dual, pipe } from "effect/Function"
+import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
@@ -11,6 +14,7 @@ import * as Ref from "effect/Ref"
 import type * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
+import type * as Tracer from "effect/Tracer"
 import type * as Body from "../../Http/Body.js"
 import type * as Client from "../../Http/Client.js"
 import * as Error from "../../Http/ClientError.js"
@@ -30,6 +34,23 @@ export const TypeId: Client.TypeId = Symbol.for(
 
 /** @internal */
 export const tag = Context.GenericTag<Client.Client.Default>("@effect/platform/Http/Client")
+
+/** @internal */
+export const currentTracerDisabledWhen = globalValue(
+  Symbol.for("@effect/platform/Http/Client/tracerDisabledWhen"),
+  () => FiberRef.unsafeMake<Predicate.Predicate<ClientRequest.ClientRequest>>(constFalse)
+)
+
+/** @internal */
+export const withTracerDisabledWhen = dual<
+  (
+    predicate: Predicate.Predicate<ClientRequest.ClientRequest>
+  ) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <R, E, A>(
+    effect: Effect.Effect<A, E, R>,
+    predicate: Predicate.Predicate<ClientRequest.ClientRequest>
+  ) => Effect.Effect<A, E, R>
+>(2, (self, pred) => Effect.locally(self, currentTracerDisabledWhen, pred))
 
 const clientProto = {
   [TypeId]: TypeId,
@@ -56,25 +77,43 @@ export const make = <R, E, A, R2, E2>(
   return client as any
 }
 
-const addB3Headers = (req: ClientRequest.ClientRequest) =>
-  Effect.match(Effect.currentSpan, {
-    onFailure: () => req,
-    onSuccess: (span) =>
-      internalRequest.setHeader(
-        req,
-        "b3",
-        `${span.traceId}-${span.spanId}-${span.sampled ? "1" : "0"}${
-          span.parent._tag === "Some" ? `-${span.parent.value.spanId}` : ""
-        }`
-      )
-  })
+const addB3Header = (req: ClientRequest.ClientRequest, span: Tracer.Span) =>
+  internalRequest.setHeader(
+    req,
+    "b3",
+    `${span.traceId}-${span.spanId}-${span.sampled ? "1" : "0"}${
+      span.parent._tag === "Some" ? `-${span.parent.value.spanId}` : ""
+    }`
+  )
 
 /** @internal */
 export const makeDefault = (
   f: (
-    request: ClientRequest.ClientRequest
+    request: ClientRequest.ClientRequest,
+    fiber: Fiber.RuntimeFiber<ClientResponse.ClientResponse, Error.HttpClientError>
   ) => Effect.Effect<ClientResponse.ClientResponse, Error.HttpClientError, Scope.Scope>
-): Client.Client.Default => make(Effect.flatMap(f), addB3Headers)
+): Client.Client.Default =>
+  make(
+    (effect) =>
+      Effect.flatMap(effect, (request) =>
+        Effect.withFiberRuntime((fiber) => {
+          const tracerDisabled = fiber.getFiberRef(currentTracerDisabledWhen)(request)
+          if (tracerDisabled) {
+            return f(request, fiber)
+          }
+          return Effect.useSpan(
+            `http.client ${request.method}`,
+            {
+              attributes: {
+                "http.method": request.method,
+                "http.url": request.url
+              }
+            },
+            (span) => Effect.withParentSpan(f(addB3Header(request, span), fiber), span)
+          )
+        })),
+    Effect.succeed as Client.Client.Preprocess<never, never>
+  )
 
 /** @internal */
 export const Fetch = Context.GenericTag<Client.Fetch, typeof globalThis.fetch>(
@@ -83,52 +122,52 @@ export const Fetch = Context.GenericTag<Client.Fetch, typeof globalThis.fetch>(
 
 /** @internal */
 export const fetch = (options?: RequestInit): Client.Client.Default =>
-  makeDefault((request) =>
-    Effect.flatMap(
+  makeDefault((request, fiber) => {
+    const context = fiber.getFiberRef(FiberRef.currentContext)
+    const fetch: typeof globalThis.fetch = context.unsafeMap.get(Fetch.key) ?? globalThis.fetch
+    return Effect.flatMap(
       UrlParams.makeUrl(request.url, request.urlParams, (_) =>
         new Error.RequestError({
           request,
           reason: "InvalidUrl",
           error: _
         })),
-      (url) =>
-        Effect.flatMap(Effect.serviceOption(Fetch), (fetch_) => {
-          const fetch = fetch_._tag === "Some" ? fetch_.value : globalThis.fetch
-          const headers = new Headers(request.headers)
-          const send = (body: BodyInit | undefined) =>
-            pipe(
-              Effect.acquireRelease(
-                Effect.sync(() => new AbortController()),
-                (controller) => Effect.sync(() => controller.abort())
-              ),
-              Effect.flatMap((controller) =>
-                Effect.tryPromise({
-                  try: () =>
-                    fetch(url, {
-                      ...options,
-                      method: request.method,
-                      headers,
-                      body,
-                      duplex: request.body._tag === "Stream" ? "half" : undefined,
-                      signal: controller.signal
-                    } as any),
-                  catch: (_) =>
-                    new Error.RequestError({
-                      request,
-                      reason: "Transport",
-                      error: _
-                    })
-                })
-              ),
-              Effect.map((_) => internalResponse.fromWeb(request, _))
-            )
-          if (Method.hasBody(request.method)) {
-            return send(convertBody(request.body))
-          }
-          return send(undefined)
-        })
+      (url) => {
+        const headers = new Headers(request.headers)
+        const send = (body: BodyInit | undefined) =>
+          pipe(
+            Effect.acquireRelease(
+              Effect.sync(() => new AbortController()),
+              (controller) => Effect.sync(() => controller.abort())
+            ),
+            Effect.flatMap((controller) =>
+              Effect.tryPromise({
+                try: () =>
+                  fetch(url, {
+                    ...options,
+                    method: request.method,
+                    headers,
+                    body,
+                    duplex: request.body._tag === "Stream" ? "half" : undefined,
+                    signal: controller.signal
+                  } as any),
+                catch: (_) =>
+                  new Error.RequestError({
+                    request,
+                    reason: "Transport",
+                    error: _
+                  })
+              })
+            ),
+            Effect.map((_) => internalResponse.fromWeb(request, _))
+          )
+        if (Method.hasBody(request.method)) {
+          return send(convertBody(request.body))
+        }
+        return send(undefined)
+      }
     )
-  )
+  })
 
 const convertBody = (body: Body.Body): BodyInit | undefined => {
   switch (body._tag) {
