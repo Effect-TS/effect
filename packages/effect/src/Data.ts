@@ -452,6 +452,10 @@ export const TaggedError = <Tag extends string>(tag: Tag): new<A extends Record<
   return Base as any
 }
 
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
 export const addDefaults: <Args, Defaults extends { [K in keyof Args]?: () => Args[K] }, Out extends object>(
   newable: new(args: Args) => Out,
   defaults: Defaults
