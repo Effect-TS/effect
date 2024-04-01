@@ -7,6 +7,7 @@ import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
+import type { RuntimeFiber } from "effect/Fiber"
 import type * as FiberRef from "effect/FiberRef"
 import type { Inspectable } from "effect/Inspectable"
 import type * as Layer from "effect/Layer"
@@ -251,7 +252,8 @@ export const make: <R, E, A, R2, E2>(
  */
 export const makeDefault: (
   f: (
-    request: ClientRequest.ClientRequest
+    request: ClientRequest.ClientRequest,
+    fiber: RuntimeFiber<ClientResponse.ClientResponse, Error.HttpClientError>
   ) => Effect.Effect<ClientResponse.ClientResponse, Error.HttpClientError, Scope.Scope>
 ) => Client.Default = internal.makeDefault
 
