@@ -8,7 +8,7 @@ import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
 import * as UrlParams from "@effect/platform/Http/UrlParams"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
-import type { LazyArg } from "effect/Function"
+import { type LazyArg } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
@@ -23,27 +23,40 @@ export const currentXMLHttpRequest = globalValue(
 )
 
 /** @internal */
-export const makeXMLHttpRequest = Client.makeDefault((request) =>
+export const currentXHRResponseType = globalValue(
+  "@effect/platform-browser/BrowserHttpClient/currentXHRResponseType",
+  () => FiberRef.unsafeMake<"text" | "arraybuffer">("text")
+)
+
+/** @internal */
+export const withXHRArrayBuffer = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+  Effect.locally(
+    effect,
+    currentXHRResponseType,
+    "arraybuffer"
+  )
+
+/** @internal */
+export const makeXMLHttpRequest = Client.makeDefault((request, fiber) =>
   UrlParams.makeUrl(request.url, request.urlParams, (_) =>
     new Error.RequestError({
       request,
       reason: "InvalidUrl",
       error: _
     })).pipe(
-      Effect.zip(
-        Effect.flatMap(FiberRef.get(currentXMLHttpRequest), (makeXhr) =>
-          Effect.acquireRelease(
-            Effect.sync(() => makeXhr()),
-            (xhr) =>
-              Effect.sync(() => {
-                xhr.abort()
-                xhr.onreadystatechange = null
-              })
-          ))
-      ),
-      Effect.flatMap(([url, xhr]) => {
+      Effect.bindTo("url"),
+      Effect.bind("xhr", () =>
+        Effect.acquireRelease(
+          Effect.sync(fiber.getFiberRef(currentXMLHttpRequest)),
+          (xhr) =>
+            Effect.sync(() => {
+              xhr.abort()
+              xhr.onreadystatechange = null
+            })
+        )),
+      Effect.flatMap(({ url, xhr }) => {
         xhr.open(request.method, url.toString(), true)
-        xhr.responseType = "text"
+        xhr.responseType = fiber.getFiberRef(currentXHRResponseType)
         Object.entries(request.headers).forEach(([k, v]) => {
           xhr.setRequestHeader(k, v)
         })
@@ -234,9 +247,44 @@ export abstract class IncomingMessageImpl<E> extends Inspectable.Class implement
     })
   }
 
+  _arrayBufferEffect: Effect.Effect<ArrayBuffer, E> | undefined
   get arrayBuffer(): Effect.Effect<ArrayBuffer, E> {
-    return this.text.pipe(
-      Effect.map((_) => encoder.encode(_).buffer)
+    if (this.source.responseType !== "arraybuffer") {
+      return Effect.fail(this.onError(new globalThis.Error("xhr.responseType is not arraybuffer")))
+    }
+
+    if (this._arrayBufferEffect) {
+      return this._arrayBufferEffect
+    }
+    return this._arrayBufferEffect = Effect.async<ArrayBuffer, E>((resume) => {
+      if (this.source.readyState === 4) {
+        resume(Effect.succeed(this.source.response))
+        return
+      }
+
+      const onReadyStateChange = () => {
+        if (this.source.readyState === 4) {
+          resume(Effect.succeed(this.source.response))
+        }
+      }
+      const onError = () => {
+        resume(Effect.fail(this.onError(this.source.statusText)))
+      }
+      this.source.addEventListener("readystatechange", onReadyStateChange)
+      this.source.addEventListener("error", onError)
+      return Effect.sync(() => {
+        this.source.removeEventListener("readystatechange", onReadyStateChange)
+        this.source.removeEventListener("error", onError)
+      })
+    }).pipe(
+      Effect.map((response) => {
+        if (typeof response === "string") {
+          return encoder.encode(response).buffer
+        }
+        return response
+      }),
+      Effect.cached,
+      Effect.runSync
     )
   }
 }

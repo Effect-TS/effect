@@ -66,4 +66,22 @@ describe("BrowserHttpClient", () => {
         foo: "bar"
       })
     }))
+
+  it.effect("arrayBuffer", () =>
+    Effect.gen(function*(_) {
+      const server = MXHR.newServer({
+        get: ["http://localhost:8080/my/url", {
+          headers: { "Content-Type": "application/json" },
+          body: "{ \"message\": \"Success!\" }"
+        }]
+      })
+      const body = yield* _(
+        HttpClient.request.get("http://localhost:8080/my/url"),
+        BrowserHttpClient.xmlHttpRequest,
+        HttpClient.response.arrayBuffer,
+        BrowserHttpClient.withXHRArrayBuffer,
+        Effect.locally(BrowserHttpClient.currentXMLHttpRequest, server.xhrFactory)
+      )
+      assert.strictEqual(new TextDecoder().decode(body), "{ \"message\": \"Success!\" }")
+    }))
 })
