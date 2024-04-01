@@ -7241,16 +7241,15 @@ const schemaFromArbitrary = <A>(value: Arbitrary<A>): Schema<A> =>
   suspend<A, A, never>(() => any).annotations({
     [_hooks.ArbitraryHookId]: () => value
   })
-  
+
 /**
  * @category api interface
  * @since 1.0.0
  */
 export interface BooleanFromUnknown extends Annotable<BooleanFromUnknown, boolean, unknown> {}
 
-
 /**
- * Convers an arbitrary value to a `boolean` by testing whether it is truthy. 
+ * Convers an arbitrary value to a `boolean` by testing whether it is truthy.
  * Uses `!!val` to convert the value to a `boolean`.
  *
  * @see https://developer.mozilla.org/docs/Glossary/Truthy
