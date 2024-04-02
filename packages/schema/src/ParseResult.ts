@@ -269,7 +269,7 @@ export class ParseError extends TaggedError("ParseError")<{ readonly error: Pars
    * @since 1.0.0
    */
   toString() {
-    return TreeFormatter.formatIssue(this.error)
+    return TreeFormatter.formatIssueSync(this.error)
   }
   /**
    * @since 1.0.0
@@ -495,7 +495,7 @@ const getEither = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions
 const getSync = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
   const parser = getEither(ast, isDecoding, options)
   return (input: unknown, overrideOptions?: AST.ParseOptions) =>
-    Either.getOrThrowWith(parser(input, overrideOptions), (e) => new Error(TreeFormatter.formatIssue(e)))
+    Either.getOrThrowWith(parser(input, overrideOptions), (e) => new Error(TreeFormatter.formatIssueSync(e)))
 }
 
 const getOption = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
@@ -728,7 +728,7 @@ export const asserts = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: AST.P
       isExact: true
     }) as any
     if (Either.isLeft(result)) {
-      throw new Error(TreeFormatter.formatIssue(result.left))
+      throw new Error(TreeFormatter.formatIssueSync(result.left))
     }
   }
 }

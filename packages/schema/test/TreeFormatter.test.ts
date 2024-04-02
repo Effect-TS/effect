@@ -637,7 +637,7 @@ describe("TreeFormatter", () => {
     const result = S.decodeUnknownEither(Name)("")
 
     // no service
-    expect(Either.mapLeft(result, (error) => Effect.runSync(_.formatErrorEffect(error))))
+    expect(Either.mapLeft(result, (error) => Effect.runSync(_.formatError(error))))
       .toStrictEqual(Either.left("Invalid string"))
 
     // it locale
@@ -646,7 +646,7 @@ describe("TreeFormatter", () => {
         result,
         (error) =>
           Effect.runSync(
-            _.formatErrorEffect(error).pipe(Effect.provideService(Translator, {
+            _.formatError(error).pipe(Effect.provideService(Translator, {
               locale: "it",
               translations
             }))
@@ -660,7 +660,7 @@ describe("TreeFormatter", () => {
         result,
         (error) =>
           Effect.runSync(
-            _.formatErrorEffect(error).pipe(Effect.provideService(Translator, {
+            _.formatError(error).pipe(Effect.provideService(Translator, {
               locale: "en",
               translations
             }))

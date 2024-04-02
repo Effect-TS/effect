@@ -72,7 +72,7 @@ describe("Schema > filter", () => {
       S.filter((s): s is string => s.length === 1, {
         message: (issue) => {
           if (issue._tag === "Refinement" && issue.kind === "From") {
-            return TreeFormatter.formatIssue(issue.error)
+            return TreeFormatter.formatIssueSync(issue.error)
           }
           return `invalid ${issue.actual}`
         }

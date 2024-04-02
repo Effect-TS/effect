@@ -26,27 +26,26 @@ const make = <A>(value: A, forest: Forest<A> = []): Tree<A> => ({
  * @category formatting
  * @since 1.0.0
  */
-export const formatIssueEffect = (issue: ParseResult.ParseIssue): Effect.Effect<string> =>
+export const formatIssue = (issue: ParseResult.ParseIssue): Effect.Effect<string> =>
   Effect.map(go(issue), (tree) => drawTree(tree))
 
 /**
  * @category formatting
  * @since 1.0.0
  */
-export const formatIssue = (issue: ParseResult.ParseIssue): string => Effect.runSync(formatIssueEffect(issue))
+export const formatIssueSync = (issue: ParseResult.ParseIssue): string => Effect.runSync(formatIssue(issue))
 
 /**
  * @category formatting
  * @since 1.0.0
  */
-export const formatErrorEffect = (error: ParseResult.ParseError): Effect.Effect<string> =>
-  formatIssueEffect(error.error)
+export const formatError = (error: ParseResult.ParseError): Effect.Effect<string> => formatIssue(error.error)
 
 /**
  * @category formatting
  * @since 1.0.0
  */
-export const formatError = (error: ParseResult.ParseError): string => formatIssue(error.error)
+export const formatErrorSync = (error: ParseResult.ParseError): string => formatIssueSync(error.error)
 
 const drawTree = (tree: Tree<string>): string => tree.value + draw("\n", tree.forest)
 

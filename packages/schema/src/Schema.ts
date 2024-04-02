@@ -2191,7 +2191,7 @@ const makeBrandSchema = <S extends Schema.AnyNoContext, B extends string | symbo
 
   const refined: any = Brand.refined((unbranded) =>
     Either.match(_validateEither(unbranded), {
-      onLeft: (e) => Option.some(Brand.error(TreeFormatter.formatError(e), e)),
+      onLeft: (e) => Option.some(Brand.error(TreeFormatter.formatErrorSync(e), e)),
       onRight: () => Option.none()
     })
   )

@@ -4,7 +4,7 @@ import * as AST from "@effect/schema/AST"
 import { getFinalTransformation } from "@effect/schema/ParseResult"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
-import { formatError } from "@effect/schema/TreeFormatter"
+import { formatErrorSync } from "@effect/schema/TreeFormatter"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -251,7 +251,7 @@ export const expectEffectFailure = async <A>(
   effect: Effect.Effect<A, ParseResult.ParseError>,
   message: string
 ) => {
-  expect(await Effect.runPromise(Effect.either(Effect.mapError(effect, formatError)))).toStrictEqual(
+  expect(await Effect.runPromise(Effect.either(Effect.mapError(effect, formatErrorSync)))).toStrictEqual(
     Either.left(message)
   )
 }
@@ -263,7 +263,7 @@ export const expectEffectSuccess = async <E, A>(effect: Effect.Effect<A, E>, a: 
 }
 
 export const expectEitherLeft = <A>(e: Either.Either<A, ParseResult.ParseError>, message: string) => {
-  expect(Either.mapLeft(e, formatError)).toStrictEqual(Either.left(message))
+  expect(Either.mapLeft(e, formatErrorSync)).toStrictEqual(Either.left(message))
 }
 
 export const expectEitherRight = <E, A>(e: Either.Either<A, E>, a: A) => {

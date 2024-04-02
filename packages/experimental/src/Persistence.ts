@@ -52,7 +52,7 @@ export class PersistenceParseError extends TypeIdError(ErrorTypeId, "Persistence
   }
 
   get message() {
-    return TreeFormatter.formatIssue(this.error)
+    return TreeFormatter.formatIssueSync(this.error)
   }
 }
 
