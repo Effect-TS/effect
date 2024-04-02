@@ -1,5 +1,11 @@
 # effect
 
+## 2.4.16
+
+### Patch Changes
+
+- [#2445](https://github.com/Effect-TS/effect/pull/2445) [`5170ce7`](https://github.com/Effect-TS/effect/commit/5170ce708c606283e8a30d273950f1a21c7eddc2) Thanks [@vecerek](https://github.com/vecerek)! - generate proper trace ids in default effect Tracer
+
 ## 2.4.15
 
 ### Patch Changes

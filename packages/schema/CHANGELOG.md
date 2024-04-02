@@ -1,5 +1,55 @@
 # @effect/schema
 
+## 0.64.17
+
+### Patch Changes
+
+- [#2446](https://github.com/Effect-TS/effect/pull/2446) [`62a7f23`](https://github.com/Effect-TS/effect/commit/62a7f23937c0dfaca67a7b2f055b85cfde25ed11) Thanks [@gcanti](https://github.com/gcanti)! - ParseResult: Add `output` field to `TupleType` and `TypeLiteral`. While the operation may not be entirely successful, it still provides some useful output or information.
+
+  Examples (Tuple)
+
+  ```ts
+  import * as S from "@effect/schema/Schema";
+  import * as Either from "effect/Either";
+
+  const schema = S.array(S.number);
+  const result = S.decodeUnknownEither(schema)([1, "a", 2, "b"], {
+    errors: "all",
+  });
+  if (Either.isLeft(result)) {
+    const issue = result.left.error;
+    if (issue._tag === "TupleType") {
+      console.log(issue.output); // [1, 2]
+    }
+  }
+  ```
+
+  Examples (TypeLiteral)
+
+  ```ts
+  import * as S from "@effect/schema/Schema";
+  import * as Either from "effect/Either";
+
+  const schema = S.record(S.string, S.number);
+  const result = S.decodeUnknownEither(schema)(
+    { a: 1, b: "b", c: 2, d: "d" },
+    { errors: "all" },
+  );
+  if (Either.isLeft(result)) {
+    const issue = result.left.error;
+    if (issue._tag === "TypeLiteral") {
+      console.log(issue.output); // { a: 1, c: 2 }
+    }
+  }
+  ```
+
+- [#2453](https://github.com/Effect-TS/effect/pull/2453) [`7cc2b41`](https://github.com/Effect-TS/effect/commit/7cc2b41d6c551fdca2590b06681c5ad9832aba46) Thanks [@jessekelly881](https://github.com/jessekelly881)! - added Schema.BooleanFromUnknown
+
+- [#2456](https://github.com/Effect-TS/effect/pull/2456) [`8b46fde`](https://github.com/Effect-TS/effect/commit/8b46fdebf2c075a74cd2cd29dfb69531d20fc154) Thanks [@gcanti](https://github.com/gcanti)! - add `set`, `setFromSelf`, `map`, `mapFromSelf`
+
+- Updated dependencies [[`5170ce7`](https://github.com/Effect-TS/effect/commit/5170ce708c606283e8a30d273950f1a21c7eddc2)]:
+  - effect@2.4.16
+
 ## 0.64.16
 
 ### Patch Changes
