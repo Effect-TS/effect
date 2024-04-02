@@ -14,7 +14,6 @@ import * as Ref from "effect/Ref"
 import type * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import type * as Tracer from "effect/Tracer"
 import type * as Body from "../../Http/Body.js"
 import type * as Client from "../../Http/Client.js"
 import * as Error from "../../Http/ClientError.js"
@@ -22,6 +21,7 @@ import type * as ClientRequest from "../../Http/ClientRequest.js"
 import type * as ClientResponse from "../../Http/ClientResponse.js"
 import * as Cookies from "../../Http/Cookies.js"
 import * as Method from "../../Http/Method.js"
+import * as TraceContext from "../../Http/TraceContext.js"
 import * as UrlParams from "../../Http/UrlParams.js"
 import * as internalBody from "./body.js"
 import * as internalRequest from "./clientRequest.js"
@@ -77,15 +77,6 @@ export const make = <R, E, A, R2, E2>(
   return client as any
 }
 
-const addB3Header = (req: ClientRequest.ClientRequest, span: Tracer.Span) =>
-  internalRequest.setHeader(
-    req,
-    "b3",
-    `${span.traceId}-${span.spanId}-${span.sampled ? "1" : "0"}${
-      span.parent._tag === "Some" ? `-${span.parent.value.spanId}` : ""
-    }`
-  )
-
 /** @internal */
 export const makeDefault = (
   f: (
@@ -109,7 +100,11 @@ export const makeDefault = (
                 "http.url": request.url
               }
             },
-            (span) => Effect.withParentSpan(f(addB3Header(request, span), fiber), span)
+            (span) =>
+              Effect.withParentSpan(
+                f(internalRequest.setHeaders(request, TraceContext.toHeaders(span)), fiber),
+                span
+              )
           )
         })),
     Effect.succeed as Client.Client.Preprocess<never, never>

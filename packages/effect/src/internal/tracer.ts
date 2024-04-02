@@ -21,8 +21,8 @@ export const tracerTag = Context.GenericTag<Tracer.Tracer>("effect/Tracer")
 /** @internal */
 export const spanTag = Context.GenericTag<Tracer.ParentSpan>("effect/ParentSpan")
 
-const randomString = (function() {
-  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+const randomHexString = (function() {
+  const characters = "abcdef0123456789"
   const charactersLength = characters.length
   return function(length: number) {
     let result = ""
@@ -56,7 +56,8 @@ export class NativeSpan implements Tracer.Span {
       startTime
     }
     this.attributes = new Map()
-    this.spanId = `span${randomString(16)}`
+    this.traceId = parent._tag === "Some" ? parent.value.traceId : randomHexString(32)
+    this.spanId = randomHexString(16)
   }
 
   end(endTime: bigint, exit: Exit.Exit<unknown, unknown>): void {

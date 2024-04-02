@@ -2,17 +2,15 @@
  * @since 1.0.0
  */
 import type { ParseOptions } from "@effect/schema/AST"
-import * as ParseResult from "@effect/schema/ParseResult"
+import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
-import { dual, flow } from "effect/Function"
+import { dual } from "effect/Function"
 import * as Global from "effect/GlobalValue"
 import type { Inspectable } from "effect/Inspectable"
 import * as Option from "effect/Option"
 import type * as Stream from "effect/Stream"
-import * as Tracer from "effect/Tracer"
-import type { ExternalSpan } from "effect/Tracer"
 import * as FileSystem from "../FileSystem.js"
 import type * as Headers from "./Headers.js"
 import type * as UrlParams from "./UrlParams.js"
@@ -111,73 +109,6 @@ export const schemaHeadersEffect = <R, I extends Readonly<Record<string, string>
   const decode = schemaHeaders(schema, options)
   return <E, E2, R2>(effect: Effect.Effect<IncomingMessage<E>, E2, R2>) => Effect.scoped(Effect.flatMap(effect, decode))
 }
-
-const SpanSchema = Schema.struct({
-  traceId: Schema.string,
-  spanId: Schema.string,
-  parentSpanId: Schema.union(Schema.string, Schema.undefined),
-  sampled: Schema.boolean
-})
-
-/**
- * @since 1.0.0
- * @category schema
- */
-export const schemaExternalSpan: <E>(
-  self: IncomingMessage<E>
-) => Effect.Effect<Tracer.ExternalSpan, ParseResult.ParseError> = flow(
-  schemaHeaders(Schema.union(
-    Schema.transformOrFail(
-      Schema.struct({
-        b3: Schema.NonEmpty
-      }),
-      SpanSchema,
-      (input, _, ast) => {
-        const parts = input.b3.split("-")
-        if (parts.length >= 2) {
-          return ParseResult.succeed(
-            {
-              traceId: parts[0],
-              spanId: parts[1],
-              sampled: parts[2] ? parts[2] === "1" : true,
-              parentSpanId: parts[3]
-            } as const
-          )
-        }
-        return ParseResult.fail(new ParseResult.Type(ast, input))
-      },
-      (_) => ParseResult.succeed({ b3: "" } as const)
-    ),
-    Schema.transform(
-      Schema.struct({
-        "x-b3-traceid": Schema.NonEmpty,
-        "x-b3-spanid": Schema.NonEmpty,
-        "x-b3-parentspanid": Schema.optional(Schema.NonEmpty),
-        "x-b3-sampled": Schema.optional(Schema.NonEmpty, { default: () => "1" })
-      }),
-      SpanSchema,
-      (_) => ({
-        traceId: _["x-b3-traceid"],
-        spanId: _["x-b3-spanid"],
-        parentSpanId: _["x-b3-parentspanid"],
-        sampled: _["x-b3-sampled"] === "1"
-      } as const),
-      (_) => ({
-        "x-b3-traceid": _.traceId,
-        "x-b3-spanid": _.spanId,
-        "x-b3-parentspanid": _.parentSpanId,
-        "x-b3-sampled": _.sampled ? "1" : "0"
-      } as const)
-    )
-  )),
-  Effect.map((_): ExternalSpan =>
-    Tracer.externalSpan({
-      traceId: _.traceId,
-      spanId: _.spanId,
-      sampled: _.sampled
-    })
-  )
-)
 
 /**
  * @since 1.0.0
