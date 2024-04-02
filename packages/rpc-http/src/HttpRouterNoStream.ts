@@ -14,8 +14,8 @@ import * as Effect from "effect/Effect"
  * @category conversions
  */
 export const toHttpApp = <R extends Router.Router<any, any>>(self: R): App.Default<
-  Router.Router.Context<R>,
-  ServerError.RequestError | ParseError
+  ServerError.RequestError | ParseError,
+  Router.Router.Context<R>
 > => {
   const handler = Router.toHandlerEffect(self)
   return ServerRequest.ServerRequest.pipe(
