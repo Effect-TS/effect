@@ -8,7 +8,7 @@ import * as FiberId from "../FiberId.js"
 import type * as FiberRef from "../FiberRef.js"
 import * as FiberRefs from "../FiberRefs.js"
 import { dual, pipe } from "../Function.js"
-import { format, NodeInspectSymbol } from "../Inspectable.js"
+import * as Inspectable from "../Inspectable.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import * as Predicate from "../Predicate.js"
@@ -131,38 +131,22 @@ export const unsafeRunSync = <R>(runtime: Runtime.Runtime<R>) => <A, E>(effect: 
   }
 }
 
+class AsyncFiberExceptionImpl<A, E = never> extends Error implements Runtime.AsyncFiberException<A, E> {
+  readonly _tag = "AsyncFiberException"
+  constructor(readonly fiber: Fiber.RuntimeFiber<A, E>) {
+    super(
+      `Fiber #${fiber.id().id} cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
+    )
+    this.name = this._tag
+    this.stack = this.message
+  }
+}
+
 const asyncFiberException = <A, E>(fiber: Fiber.RuntimeFiber<A, E>): Runtime.AsyncFiberException<A, E> => {
   const limit = Error.stackTraceLimit
   Error.stackTraceLimit = 0
-  const error = (new Error()) as any
+  const error = new AsyncFiberExceptionImpl(fiber)
   Error.stackTraceLimit = limit
-  const message =
-    `Fiber #${fiber.id().id} cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
-  const _tag = "AsyncFiberException"
-  Object.defineProperties(error, {
-    _tag: {
-      value: _tag
-    },
-    fiber: {
-      value: fiber
-    },
-    message: {
-      value: message
-    },
-    name: {
-      value: _tag
-    },
-    toString: {
-      get() {
-        return () => message
-      }
-    },
-    [NodeInspectSymbol]: {
-      get() {
-        return () => message
-      }
-    }
-  })
   return error
 }
 
@@ -177,37 +161,46 @@ export const FiberFailureCauseId: Runtime.FiberFailureCauseId = Symbol.for(
   "effect/Runtime/FiberFailure/Cause"
 ) as any
 
-type Mutable<A> = {
-  -readonly [k in keyof A]: A[k]
+class FiberFailureImpl extends Error implements Runtime.FiberFailure {
+  readonly [FiberFailureId]: Runtime.FiberFailureId
+  readonly [FiberFailureCauseId]: Cause.Cause<unknown>
+  constructor(cause: Cause.Cause<unknown>) {
+    super()
+
+    this[FiberFailureId] = FiberFailureId
+    this[FiberFailureCauseId] = cause
+
+    const prettyErrors = InternalCause.prettyErrors(cause)
+    if (prettyErrors.length > 0) {
+      const head = prettyErrors[0]
+      this.name = head.message.split(":")[0]
+      this.message = head.message.substring(this.name.length + 2)
+      this.stack = InternalCause.pretty(cause)
+    }
+
+    this.name = `(FiberFailure) ${this.name}`
+  }
+
+  toJSON(): unknown {
+    return {
+      _id: "FiberFailure",
+      cause: this[FiberFailureCauseId].toJSON()
+    }
+  }
+  toString(): string {
+    return "(FiberFailure) " + InternalCause.pretty(this[FiberFailureCauseId])
+  }
+  [Inspectable.NodeInspectSymbol](): unknown {
+    return this.toString()
+  }
 }
 
 /** @internal */
 export const fiberFailure = <E>(cause: Cause.Cause<E>): Runtime.FiberFailure => {
   const limit = Error.stackTraceLimit
   Error.stackTraceLimit = 0
-  const error = (new Error()) as Mutable<Runtime.FiberFailure>
+  const error = new FiberFailureImpl(cause)
   Error.stackTraceLimit = limit
-  const prettyErrors = InternalCause.prettyErrors(cause)
-  if (prettyErrors.length > 0) {
-    const head = prettyErrors[0]
-    error.name = head.message.split(":")[0]
-    error.message = head.message.substring(error.name.length + 2)
-    error.stack = InternalCause.pretty(cause)
-  }
-  error[FiberFailureId] = FiberFailureId
-  error[FiberFailureCauseId] = cause
-  error.toJSON = () => {
-    return {
-      _id: "FiberFailure",
-      cause: cause.toJSON()
-    }
-  }
-  error.toString = () => {
-    return format(error.toJSON())
-  }
-  error[NodeInspectSymbol] = () => {
-    return error.toJSON()
-  }
   return error
 }
 
