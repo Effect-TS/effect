@@ -19,7 +19,7 @@ export const make = (options: Omit<Tracer.Tracer, Tracer.TracerTypeId>): Tracer.
 export const tracerTag = Context.GenericTag<Tracer.Tracer>("effect/Tracer")
 
 /** @internal */
-export const spanTag = Context.GenericTag<Tracer.ParentSpan>("effect/ParentSpan")
+export const spanTag = Context.GenericTag<Tracer.ParentSpan, Tracer.AnySpan>("effect/ParentSpan")
 
 const randomHexString = (function() {
   const characters = "abcdef0123456789"
@@ -46,7 +46,7 @@ export class NativeSpan implements Tracer.Span {
 
   constructor(
     readonly name: string,
-    readonly parent: Option.Option<Tracer.ParentSpan>,
+    readonly parent: Option.Option<Tracer.AnySpan>,
     readonly context: Context.Context<never>,
     readonly links: ReadonlyArray<Tracer.SpanLink>,
     readonly startTime: bigint

@@ -5109,7 +5109,7 @@ export const currentSpan: Effect<Tracer.Span, Cause.NoSuchElementException> = ef
  * @since 2.0.0
  * @category tracing
  */
-export const currentParentSpan: Effect<Tracer.ParentSpan, Cause.NoSuchElementException> = effect.currentParentSpan
+export const currentParentSpan: Effect<Tracer.AnySpan, Cause.NoSuchElementException> = effect.currentParentSpan
 
 /**
  * @since 2.0.0
@@ -5131,12 +5131,12 @@ export const spanLinks: Effect<Chunk.Chunk<Tracer.SpanLink>> = effect.spanLinks
  */
 export const linkSpans: {
   (
-    span: Tracer.ParentSpan,
+    span: Tracer.AnySpan,
     attributes?: Record<string, unknown>
   ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
   <A, E, R>(
     self: Effect<A, E, R>,
-    span: Tracer.ParentSpan,
+    span: Tracer.AnySpan,
     attributes?: Record<string, unknown>
   ): Effect<A, E, R>
 } = effect.linkSpans
@@ -5152,7 +5152,7 @@ export const makeSpan: (
   options?: {
     readonly attributes?: Record<string, unknown> | undefined
     readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.ParentSpan | undefined
+    readonly parent?: Tracer.AnySpan | undefined
     readonly root?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
   }
@@ -5173,7 +5173,7 @@ export const makeSpanScoped: (
   options?: {
     readonly attributes?: Record<string, unknown> | undefined
     readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.ParentSpan | undefined
+    readonly parent?: Tracer.AnySpan | undefined
     readonly root?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
   }
@@ -5196,7 +5196,7 @@ export const useSpan: {
     options: {
       readonly attributes?: Record<string, unknown> | undefined
       readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-      readonly parent?: Tracer.ParentSpan | undefined
+      readonly parent?: Tracer.AnySpan | undefined
       readonly root?: boolean | undefined
       readonly context?: Context.Context<never> | undefined
     },
@@ -5216,7 +5216,7 @@ export const withSpan: {
     options?: {
       readonly attributes?: Record<string, unknown> | undefined
       readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-      readonly parent?: Tracer.ParentSpan | undefined
+      readonly parent?: Tracer.AnySpan | undefined
       readonly root?: boolean | undefined
       readonly context?: Context.Context<never> | undefined
     } | undefined
@@ -5227,7 +5227,7 @@ export const withSpan: {
     options?: {
       readonly attributes?: Record<string, unknown> | undefined
       readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-      readonly parent?: Tracer.ParentSpan | undefined
+      readonly parent?: Tracer.AnySpan | undefined
       readonly root?: boolean | undefined
       readonly context?: Context.Context<never> | undefined
     } | undefined
@@ -5248,7 +5248,7 @@ export const withSpanScoped: {
     options?: {
       readonly attributes?: Record<string, unknown> | undefined
       readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-      readonly parent?: Tracer.ParentSpan | undefined
+      readonly parent?: Tracer.AnySpan | undefined
       readonly root?: boolean | undefined
       readonly context?: Context.Context<never> | undefined
     }
@@ -5259,7 +5259,7 @@ export const withSpanScoped: {
     options?: {
       readonly attributes?: Record<string, unknown> | undefined
       readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-      readonly parent?: Tracer.ParentSpan | undefined
+      readonly parent?: Tracer.AnySpan | undefined
       readonly root?: boolean | undefined
       readonly context?: Context.Context<never> | undefined
     }
@@ -5273,8 +5273,8 @@ export const withSpanScoped: {
  * @category tracing
  */
 export const withParentSpan: {
-  (span: Tracer.ParentSpan): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, Exclude<R, Tracer.ParentSpan>>
-  <A, E, R>(self: Effect<A, E, R>, span: Tracer.ParentSpan): Effect<A, E, Exclude<R, Tracer.ParentSpan>>
+  (span: Tracer.AnySpan): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, Exclude<R, Tracer.ParentSpan>>
+  <A, E, R>(self: Effect<A, E, R>, span: Tracer.AnySpan): Effect<A, E, Exclude<R, Tracer.ParentSpan>>
 } = effect.withParentSpan
 
 // -------------------------------------------------------------------------------------
