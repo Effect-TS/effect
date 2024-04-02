@@ -167,11 +167,21 @@ export const stringLogger: Logger.Logger<unknown, string> = makeLogger<unknown, 
     ]
 
     let output = outputArray.join(" ")
-    const stringMessage = serializeUnknown(message)
 
-    if (stringMessage.length > 0) {
-      output = output + " message="
-      output = appendQuoted(stringMessage, output)
+    if (Array.isArray(message)) {
+      for (let i = 0; i < message.length; i++) {
+        const stringMessage = serializeUnknown(message[i])
+        if (stringMessage.length > 0) {
+          output = output + " message="
+          output = appendQuoted(stringMessage, output)
+        }
+      }
+    } else {
+      const stringMessage = serializeUnknown(message)
+      if (stringMessage.length > 0) {
+        output = output + " message="
+        output = appendQuoted(stringMessage, output)
+      }
     }
 
     if (cause != null && cause._tag !== "Empty") {
@@ -242,11 +252,21 @@ export const logfmtLogger = makeLogger<unknown, string>(
     ]
 
     let output = outputArray.join(" ")
-    const stringMessage = serializeUnknown(message)
 
-    if (stringMessage.length > 0) {
-      output = output + " message="
-      output = appendQuotedLogfmt(stringMessage, output)
+    if (Array.isArray(message)) {
+      for (let i = 0; i < message.length; i++) {
+        const stringMessage = serializeUnknown(message[i])
+        if (stringMessage.length > 0) {
+          output = output + " message="
+          output = appendQuotedLogfmt(stringMessage, output)
+        }
+      }
+    } else {
+      const stringMessage = serializeUnknown(message)
+      if (stringMessage.length > 0) {
+        output = output + " message="
+        output = appendQuotedLogfmt(stringMessage, output)
+      }
     }
 
     if (cause != null && cause._tag !== "Empty") {

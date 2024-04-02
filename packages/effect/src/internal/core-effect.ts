@@ -883,20 +883,32 @@ export const iterate: {
     return core.succeed(initial)
   })
 
-const logWithLevel = (level?: LogLevel.LogLevel) =>
-<A>(
-  messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
+/** @internal */
+export const logWithLevel = (level?: LogLevel.LogLevel) =>
+(
+  ...message: ReadonlyArray<any>
 ): Effect.Effect<void> => {
   const levelOption = Option.fromNullable(level)
-  let message: unknown
-  let cause: Cause.Cause<unknown>
-  if (internalCause.isCause(messageOrCause)) {
-    cause = messageOrCause
-    message = (supplementary as unknown) ?? ""
-  } else {
-    message = messageOrCause
-    cause = (supplementary as Cause.Cause<unknown>) ?? internalCause.empty
+  let cause: Cause.Cause<unknown> | undefined = undefined
+  for (let i = 0, len = message.length; i < len; i++) {
+    const msg = message[i]
+    if (internalCause.isCause(msg)) {
+      if (cause !== undefined) {
+        cause = internalCause.sequential(cause, msg)
+      } else {
+        cause = msg
+      }
+      message = [...message.slice(0, i), ...message.slice(i + 1)]
+      i--
+    }
+  }
+  if (message.length === 0) {
+    message = "" as any
+  } else if (message.length === 1) {
+    message = message[0]
+  }
+  if (cause === undefined) {
+    cause = internalCause.empty
   }
   return core.withFiberRuntime((fiberState) => {
     fiberState.log(message, cause, levelOption)
@@ -905,46 +917,37 @@ const logWithLevel = (level?: LogLevel.LogLevel) =>
 }
 
 /** @internal */
-export const log: <A>(
-  messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
-) => Effect.Effect<void> = logWithLevel()
+export const log: (...message: ReadonlyArray<any>) => Effect.Effect<void, never, never> = logWithLevel()
 
 /** @internal */
-export const logTrace: <A>(
-  messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
-) => Effect.Effect<void> = logWithLevel(LogLevel.Trace)
+export const logTrace: (...message: ReadonlyArray<any>) => Effect.Effect<void, never, never> = logWithLevel(
+  LogLevel.Trace
+)
 
 /** @internal */
-export const logDebug: <A>(
-  messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
-) => Effect.Effect<void> = logWithLevel(LogLevel.Debug)
+export const logDebug: (...message: ReadonlyArray<any>) => Effect.Effect<void, never, never> = logWithLevel(
+  LogLevel.Debug
+)
 
 /** @internal */
-export const logInfo: <A>(
-  messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
-) => Effect.Effect<void> = logWithLevel(LogLevel.Info)
+export const logInfo: (...message: ReadonlyArray<any>) => Effect.Effect<void, never, never> = logWithLevel(
+  LogLevel.Info
+)
 
 /** @internal */
-export const logWarning: <A>(
-  messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
-) => Effect.Effect<void> = logWithLevel(LogLevel.Warning)
+export const logWarning: (...message: ReadonlyArray<any>) => Effect.Effect<void, never, never> = logWithLevel(
+  LogLevel.Warning
+)
 
 /** @internal */
-export const logError: <A>(
-  messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
-) => Effect.Effect<void> = logWithLevel(LogLevel.Error)
+export const logError: (...message: ReadonlyArray<any>) => Effect.Effect<void, never, never> = logWithLevel(
+  LogLevel.Error
+)
 
 /** @internal */
-export const logFatal: <A>(
-  messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
-) => Effect.Effect<void> = logWithLevel(LogLevel.Fatal)
+export const logFatal: (...message: ReadonlyArray<any>) => Effect.Effect<void, never, never> = logWithLevel(
+  LogLevel.Fatal
+)
 
 /* @internal */
 export const withLogSpan = dual<

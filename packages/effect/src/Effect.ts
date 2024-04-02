@@ -4319,10 +4319,18 @@ export const matchEffect: {
  * @since 2.0.0
  * @category logging
  */
-export const log: <A>(
-  messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
-) => Effect<void> = effect.log
+export const log: (...message: ReadonlyArray<any>) => Effect<void, never, never> = effect.log
+
+/**
+ * Logs the specified message or cause at the specified log level.
+ *
+ * @since 2.0.0
+ * @category logging
+ */
+export const logWithLevel = (
+  level: LogLevel,
+  ...message: ReadonlyArray<any>
+): Effect<void> => effect.logWithLevel(level)(...message)
 
 /**
  * Logs the specified message or cause at the Trace log level.
@@ -4330,10 +4338,7 @@ export const log: <A>(
  * @since 2.0.0
  * @category logging
  */
-export const logTrace: <A>(
-  messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
-) => Effect<void> = effect.logTrace
+export const logTrace: (...message: ReadonlyArray<any>) => Effect<void, never, never> = effect.logTrace
 
 /**
  * Logs the specified message or cause at the Debug log level.
@@ -4341,10 +4346,7 @@ export const logTrace: <A>(
  * @since 2.0.0
  * @category logging
  */
-export const logDebug: <A>(
-  messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
-) => Effect<void> = effect.logDebug
+export const logDebug: (...message: ReadonlyArray<any>) => Effect<void, never, never> = effect.logDebug
 
 /**
  * Logs the specified message or cause at the Info log level.
@@ -4352,10 +4354,7 @@ export const logDebug: <A>(
  * @since 2.0.0
  * @category logging
  */
-export const logInfo: <A>(
-  messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
-) => Effect<void> = effect.logInfo
+export const logInfo: (...message: ReadonlyArray<any>) => Effect<void, never, never> = effect.logInfo
 
 /**
  * Logs the specified message or cause at the Warning log level.
@@ -4363,10 +4362,7 @@ export const logInfo: <A>(
  * @since 2.0.0
  * @category logging
  */
-export const logWarning: <A>(
-  messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
-) => Effect<void> = effect.logWarning
+export const logWarning: (...message: ReadonlyArray<any>) => Effect<void, never, never> = effect.logWarning
 
 /**
  * Logs the specified message or cause at the Error log level.
@@ -4374,10 +4370,7 @@ export const logWarning: <A>(
  * @since 2.0.0
  * @category logging
  */
-export const logError: <A>(
-  messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
-) => Effect<void> = effect.logError
+export const logError: (...message: ReadonlyArray<any>) => Effect<void, never, never> = effect.logError
 
 /**
  * Logs the specified message or cause at the Fatal log level.
@@ -4385,10 +4378,7 @@ export const logError: <A>(
  * @since 2.0.0
  * @category logging
  */
-export const logFatal: <A>(
-  messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
-) => Effect<void> = effect.logFatal
+export const logFatal: (...message: ReadonlyArray<any>) => Effect<void, never, never> = effect.logFatal
 
 /**
  * Adjusts the label for the current logging span.
