@@ -53,7 +53,9 @@ describe("stringLogger", () => {
     })
 
     expect(result).toEqual(
-      `timestamp=${date.toJSON()} level=INFO fiber= message="My message" imma_span__=7ms just_a_key=just_a_value good_key="I am a good value" good_bool=true I_am_bad_key_name="{\\"coolValue\\":\\"cool value\\"}" good_number=123`
+      `timestamp=${date.toJSON()} level=INFO fiber= message="My message" imma_span__=7ms just_a_key=just_a_value good_key="I am a good value" good_bool=true I_am_bad_key_name="{
+  \\"coolValue\\": \\"cool value\\"
+}" good_number=123`
     )
   })
 
@@ -81,7 +83,11 @@ describe("stringLogger", () => {
 
     expect(result).toEqual(
       `timestamp=${date.toJSON()} level=INFO fiber= message="My
-message" imma_span__=7ms I_am_also_a_bad_key_name="{\\"return\\":\\"cool\\nvalue\\"}" good_key="{\\"returnWithSpace\\":\\"cool\\nvalue or not\\"}" good_key2="I am a good value
+message" imma_span__=7ms I_am_also_a_bad_key_name="{
+  \\"return\\": \\"cool\\nvalue\\"
+}" good_key="{
+  \\"returnWithSpace\\": \\"cool\\nvalue or not\\"
+}" good_key2="I am a good value
 with line breaks" good_key3="I_have=a"`
     )
   })

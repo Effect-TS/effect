@@ -86,9 +86,9 @@ export abstract class Class {
 /**
  * @since 2.0.0
  */
-export const toStringUnknown = (u: unknown): string => {
+export const toStringUnknown = (u: unknown, whitespace: number | string | undefined = 2): string => {
   try {
-    return typeof u === "object" ? stringifyCircular(u, 2) : String(u)
+    return typeof u === "object" ? stringifyCircular(u, whitespace) : String(u)
   } catch (_) {
     return String(u)
   }
@@ -97,7 +97,7 @@ export const toStringUnknown = (u: unknown): string => {
 /**
  * @since 2.0.0
  */
-export const stringifyCircular = (obj: unknown, space?: number | string | undefined): string => {
+export const stringifyCircular = (obj: unknown, whitespace?: number | string | undefined): string => {
   let cache: Array<unknown> = []
   const retVal = JSON.stringify(
     obj,
@@ -107,7 +107,7 @@ export const stringifyCircular = (obj: unknown, space?: number | string | undefi
           ? undefined // circular reference
           : cache.push(value) && value
         : value,
-    space
+    whitespace
   )
   ;(cache as any) = undefined
   return retVal

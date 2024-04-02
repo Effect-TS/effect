@@ -235,7 +235,7 @@ export const logfmtLogger = makeLogger<unknown, string>(
     ]
 
     let output = outputArray.join(" ")
-    const stringMessage = Inspectable.toStringUnknown(message)
+    const stringMessage = Inspectable.toStringUnknown(message, 0)
 
     if (stringMessage.length > 0) {
       output = output + " message="
@@ -273,7 +273,7 @@ export const logfmtLogger = makeLogger<unknown, string>(
         }
         output = output + filterKeyName(key)
         output = output + "="
-        output = appendQuotedLogfmt(Inspectable.toStringUnknown(value), output)
+        output = appendQuotedLogfmt(Inspectable.toStringUnknown(value, 0), output)
       }
     }
 
