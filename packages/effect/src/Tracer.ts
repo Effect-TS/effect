@@ -26,7 +26,7 @@ export interface Tracer {
   readonly [TracerTypeId]: TracerTypeId
   span(
     name: string,
-    parent: Option.Option<ParentSpan>,
+    parent: Option.Option<AnySpan>,
     context: Context.Context<never>,
     links: ReadonlyArray<SpanLink>,
     startTime: bigint
@@ -52,13 +52,21 @@ export type SpanStatus = {
  * @since 2.0.0
  * @category models
  */
-export type ParentSpan = Span | ExternalSpan
+export type AnySpan = Span | ExternalSpan
 
 /**
  * @since 2.0.0
  * @category tags
  */
-export const ParentSpan: Context.Tag<ParentSpan, ParentSpan> = internal.spanTag
+export interface ParentSpan {
+  readonly _: unique symbol
+}
+
+/**
+ * @since 2.0.0
+ * @category tags
+ */
+export const ParentSpan: Context.Tag<ParentSpan, AnySpan> = internal.spanTag
 
 /**
  * @since 2.0.0
@@ -81,7 +89,7 @@ export interface Span {
   readonly name: string
   readonly spanId: string
   readonly traceId: string
-  readonly parent: Option.Option<ParentSpan>
+  readonly parent: Option.Option<AnySpan>
   readonly context: Context.Context<never>
   readonly status: SpanStatus
   readonly attributes: ReadonlyMap<string, unknown>
@@ -98,7 +106,7 @@ export interface Span {
  */
 export interface SpanLink {
   readonly _tag: "SpanLink"
-  readonly span: ParentSpan
+  readonly span: AnySpan
   readonly attributes: Readonly<Record<string, unknown>>
 }
 

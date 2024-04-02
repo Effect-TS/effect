@@ -185,7 +185,7 @@ export const setConfigProvider = (configProvider: ConfigProvider.ConfigProvider)
   layer.scopedDiscard(fiberRuntime.withConfigProviderScoped(configProvider))
 
 /** @internal */
-export const parentSpan = (span: Tracer.ParentSpan): Layer.Layer<Tracer.ParentSpan> =>
+export const parentSpan = (span: Tracer.AnySpan): Layer.Layer<Tracer.ParentSpan> =>
   layer.succeedContext(Context.make(tracer.spanTag, span))
 
 /** @internal */
@@ -194,7 +194,7 @@ export const span = (
   options?: {
     readonly attributes?: Record<string, unknown> | undefined
     readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.ParentSpan | undefined
+    readonly parent?: Tracer.AnySpan | undefined
     readonly root?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
     readonly onEnd?:
