@@ -391,16 +391,11 @@ const makeTempFileScoped = (() => {
 
 // == readDirectory
 
-const readDirectory = (() => {
-  const nodeReadDirectory = effectify(
-    NFS.readdir,
-    handleErrnoException("FileSystem", "readDirectory"),
-    handleBadArgument("readDirectory")
-  )
-
-  return (path: string, options?: FileSystem.ReadDirectoryOptions) =>
-    nodeReadDirectory(path, options) as Effect.Effect<ReadonlyArray<string>, Error.PlatformError>
-})()
+const readDirectory = (path: string, options?: FileSystem.ReadDirectoryOptions) =>
+  Effect.tryPromise({
+    try: () => NFS.promises.readdir(path, options),
+    catch: (err) => handleErrnoException("FileSystem", "readDirectory")(err as any, [path])
+  })
 
 // == readFile
 
