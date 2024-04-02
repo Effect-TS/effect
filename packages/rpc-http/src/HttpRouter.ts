@@ -42,7 +42,7 @@ export const toHttpApp = <R extends Router.Router<any, any>>(self: R): App.Defau
  * @since 1.0.0
  * @category conversions
  */
-export const toHttpAppEffect = <R extends Router.Router<any, any>>(self: R): App.Default<
+export const toHttpAppNonStreaming = <R extends Router.Router<any, any>>(self: R): App.Default<
   Router.Router.Context<R>,
   ServerError.RequestError | ParseError
 > => {

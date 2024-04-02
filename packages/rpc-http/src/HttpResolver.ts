@@ -44,13 +44,13 @@ export const make = <R extends Router.Router<any, any>>(
  * @category constructors
  * @since 1.0.0
  */
-export const makeEffect = <R extends Router.Router<any, any>>(
+export const makeNonStreaming = <R extends Router.Router<any, any>>(
   client: Client.Client.Default
 ): RequestResolver.RequestResolver<
   Rpc.Request<Router.Router.Request<R>>,
   Serializable.SerializableWithResult.Context<Router.Router.Request<R>>
 > =>
-  Resolver.makeEffect((requests) =>
+  Resolver.makeNonStreaming((requests) =>
     client(ClientRequest.post("", {
       body: Body.unsafeJson(requests)
     })).pipe(
@@ -65,13 +65,12 @@ export const makeEffect = <R extends Router.Router<any, any>>(
  */
 export const makeClient = <R extends Router.Router<any, any>>(
   baseUrl: string
-): Serializable.SerializableWithResult.Context<Router.Router.Request<R>> extends never ?
-  "HttpResolver.makeClient: request context is not `never`"
-  : Resolver.Client<
+): Serializable.SerializableWithResult.Context<Router.Router.Request<R>> extends never ? Resolver.Client<
     RequestResolver.RequestResolver<
       Rpc.Request<Router.Router.Request<R>>
     >
-  > =>
+  > :
+  "HttpResolver.makeClient: request context is not `never`" =>
   Resolver.toClient(make<R>(
     Client.fetchOk().pipe(
       Client.mapRequest(ClientRequest.prependUrl(baseUrl)),
@@ -87,16 +86,15 @@ export const makeClient = <R extends Router.Router<any, any>>(
  * @category constructors
  * @since 1.0.0
  */
-export const makeClientEffect = <R extends Router.Router<any, any>>(
+export const makeClientNonStreaming = <R extends Router.Router<any, any>>(
   baseUrl: string
-): Serializable.SerializableWithResult.Context<Router.Router.Request<R>> extends never ?
-  "HttpResolver.makeClientEffect: request context is not `never`"
-  : Resolver.Client<
+): Serializable.SerializableWithResult.Context<Router.Router.Request<R>> extends never ? Resolver.Client<
     RequestResolver.RequestResolver<
       Rpc.Request<Router.Router.Request<R>>
     >
-  > =>
-  Resolver.toClient(makeEffect<R>(
+  >
+  : "HttpResolver.makeClientEffect: request context is not `never`" =>
+  Resolver.toClient(makeNonStreaming<R>(
     Client.fetchOk().pipe(
       Client.mapRequest(ClientRequest.prependUrl(baseUrl)),
       Client.retry(

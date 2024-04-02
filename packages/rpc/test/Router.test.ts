@@ -144,8 +144,8 @@ const handlerEffectArray = (u: ReadonlyArray<unknown>) =>
     Effect.map(ReadonlyArray.filter((_): _ is S.ExitEncoded<any, any> => Array.isArray(_) === false))
   )
 const resolver = Resolver.make(handler)<typeof router>()
-const resolverEffect = Resolver.makeEffect(handlerEffect)<typeof router>()
-const resolverWithHeaders = Resolver.annotateHeadersEffect(
+const resolverEffect = Resolver.makeNonStreaming(handlerEffect)<typeof router>()
+const resolverWithHeaders = Resolver.annotateHeadersNonStreaming(
   resolver,
   Effect.succeed({
     BAZ: "qux"

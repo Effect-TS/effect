@@ -109,7 +109,7 @@ export const make = <HR, E>(
  * @since 1.0.0
  * @category constructors
  */
-export const makeEffect = <HR, E>(
+export const makeNonStreaming = <HR, E>(
   handler: (u: ReadonlyArray<unknown>) => Effect.Effect<unknown, E, HR>
 ) =>
 <R extends Router.Router<any, any>>(): RequestResolver.RequestResolver<
