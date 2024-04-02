@@ -3,4 +3,4 @@
 "@effect/rpc": minor
 ---
 
-rename non-streaming rpc apis
+move non-streaming rpc apis to seperate module
