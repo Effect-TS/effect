@@ -5,6 +5,7 @@ import * as Body from "@effect/platform/Http/Body"
 import * as Client from "@effect/platform/Http/Client"
 import * as ClientRequest from "@effect/platform/Http/ClientRequest"
 import * as Resolver from "@effect/rpc/Resolver"
+import * as ResolverNoStream from "@effect/rpc/ResolverNoStream"
 import type * as Router from "@effect/rpc/Router"
 import type * as Rpc from "@effect/rpc/Rpc"
 import type * as Serializable from "@effect/schema/Serializable"
@@ -22,7 +23,7 @@ export const make = <R extends Router.Router<any, any>>(
   Rpc.Request<Router.Router.Request<R>>,
   Serializable.SerializableWithResult.Context<Router.Router.Request<R>>
 > =>
-  Resolver.makeNonStreaming((requests) =>
+  ResolverNoStream.make((requests) =>
     client(ClientRequest.post("", {
       body: Body.unsafeJson(requests)
     })).pipe(

@@ -44,25 +44,6 @@ export const make = <R extends Router.Router<any, any>>(
  * @category constructors
  * @since 1.0.0
  */
-export const makeNonStreaming = <R extends Router.Router<any, any>>(
-  client: Client.Client.Default
-): RequestResolver.RequestResolver<
-  Rpc.Request<Router.Router.Request<R>>,
-  Serializable.SerializableWithResult.Context<Router.Router.Request<R>>
-> =>
-  Resolver.makeNonStreaming((requests) =>
-    client(ClientRequest.post("", {
-      body: Body.unsafeJson(requests)
-    })).pipe(
-      Effect.flatMap((_) => _.json),
-      Effect.scoped
-    )
-  )<R>()
-
-/**
- * @category constructors
- * @since 1.0.0
- */
 export const makeClient = <R extends Router.Router<any, any>>(
   baseUrl: string
 ): Serializable.SerializableWithResult.Context<Router.Router.Request<R>> extends never ? Resolver.Client<
@@ -72,29 +53,6 @@ export const makeClient = <R extends Router.Router<any, any>>(
   > :
   "HttpResolver.makeClient: request context is not `never`" =>
   Resolver.toClient(make<R>(
-    Client.fetchOk().pipe(
-      Client.mapRequest(ClientRequest.prependUrl(baseUrl)),
-      Client.retry(
-        Schedule.exponential(50).pipe(
-          Schedule.intersect(Schedule.recurs(5))
-        )
-      )
-    )
-  ) as any) as any
-
-/**
- * @category constructors
- * @since 1.0.0
- */
-export const makeClientNonStreaming = <R extends Router.Router<any, any>>(
-  baseUrl: string
-): Serializable.SerializableWithResult.Context<Router.Router.Request<R>> extends never ? Resolver.Client<
-    RequestResolver.RequestResolver<
-      Rpc.Request<Router.Router.Request<R>>
-    >
-  >
-  : "HttpResolver.makeClientEffect: request context is not `never`" =>
-  Resolver.toClient(makeNonStreaming<R>(
     Client.fetchOk().pipe(
       Client.mapRequest(ClientRequest.prependUrl(baseUrl)),
       Client.retry(
