@@ -91,6 +91,26 @@ message" imma_span__=7ms I_am_also_a_bad_key_name="{
 with line breaks" good_key3="I_have=a"`
     )
   })
+
+  it("multiple messages", () => {
+    const date = new Date()
+    vi.setSystemTime(date)
+
+    const result = Logger.stringLogger.log({
+      fiberId: FiberId.none,
+      logLevel: logLevelInfo,
+      message: ["a", "b", "c"],
+      cause: Cause.empty,
+      context: FiberRefs.unsafeMake(new Map()),
+      spans: List.empty(),
+      annotations: HashMap.empty(),
+      date
+    })
+
+    expect(result).toEqual(
+      `timestamp=${date.toJSON()} level=INFO fiber= message=a message=b message=c`
+    )
+  })
 })
 
 describe("logfmtLogger", () => {
@@ -310,6 +330,26 @@ describe("logfmtLogger", () => {
         ]
       ])
     }).pipe(Effect.scoped, Effect.runPromise))
+
+  it("multiple messages", () => {
+    const date = new Date()
+    vi.setSystemTime(date)
+
+    const result = Logger.logfmtLogger.log({
+      fiberId: FiberId.none,
+      logLevel: logLevelInfo,
+      message: ["a", "b", "c"],
+      cause: Cause.empty,
+      context: FiberRefs.unsafeMake(new Map()),
+      spans: List.empty(),
+      annotations: HashMap.empty(),
+      date
+    })
+
+    expect(result).toEqual(
+      `timestamp=${date.toJSON()} level=INFO fiber= message=a message=b message=c`
+    )
+  })
 })
 
 describe("jsonLogger", () => {

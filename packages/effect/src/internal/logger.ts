@@ -168,11 +168,21 @@ export const stringLogger: Logger.Logger<unknown, string> = makeLogger<unknown, 
     ]
 
     let output = outputArray.join(" ")
-    const stringMessage = Inspectable.toStringUnknown(message)
 
-    if (stringMessage.length > 0) {
-      output = output + " message="
-      output = appendQuoted(stringMessage, output)
+    if (Array.isArray(message)) {
+      for (let i = 0; i < message.length; i++) {
+        const stringMessage = Inspectable.toStringUnknown(message[i])
+        if (stringMessage.length > 0) {
+          output = output + " message="
+          output = appendQuoted(stringMessage, output)
+        }
+      }
+    } else {
+      const stringMessage = Inspectable.toStringUnknown(message)
+      if (stringMessage.length > 0) {
+        output = output + " message="
+        output = appendQuoted(stringMessage, output)
+      }
     }
 
     if (cause != null && cause._tag !== "Empty") {
@@ -235,11 +245,21 @@ export const logfmtLogger = makeLogger<unknown, string>(
     ]
 
     let output = outputArray.join(" ")
-    const stringMessage = Inspectable.toStringUnknown(message, 0)
 
-    if (stringMessage.length > 0) {
-      output = output + " message="
-      output = appendQuotedLogfmt(stringMessage, output)
+    if (Array.isArray(message)) {
+      for (let i = 0; i < message.length; i++) {
+        const stringMessage = Inspectable.toStringUnknown(message[i], 0)
+        if (stringMessage.length > 0) {
+          output = output + " message="
+          output = appendQuotedLogfmt(stringMessage, output)
+        }
+      }
+    } else {
+      const stringMessage = Inspectable.toStringUnknown(message, 0)
+      if (stringMessage.length > 0) {
+        output = output + " message="
+        output = appendQuotedLogfmt(stringMessage, output)
+      }
     }
 
     if (cause != null && cause._tag !== "Empty") {
