@@ -896,7 +896,7 @@ export const setConfigProvider: (configProvider: ConfigProvider) => Layer<never>
  * @since 2.0.0
  * @category tracing
  */
-export const parentSpan: (span: Tracer.ParentSpan) => Layer<Tracer.ParentSpan> = circularLayer.parentSpan
+export const parentSpan: (span: Tracer.AnySpan) => Layer<Tracer.ParentSpan> = circularLayer.parentSpan
 
 /**
  * @since 2.0.0
@@ -962,7 +962,7 @@ export const span: (
   options?: {
     readonly attributes?: Record<string, unknown> | undefined
     readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.ParentSpan | undefined
+    readonly parent?: Tracer.AnySpan | undefined
     readonly root?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
     readonly onEnd?:
@@ -1018,7 +1018,7 @@ export const withSpan: {
     options?: {
       readonly attributes?: Record<string, unknown> | undefined
       readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-      readonly parent?: Tracer.ParentSpan | undefined
+      readonly parent?: Tracer.AnySpan | undefined
       readonly root?: boolean | undefined
       readonly context?: Context.Context<never> | undefined
       readonly onEnd?:
@@ -1032,7 +1032,7 @@ export const withSpan: {
     options?: {
       readonly attributes?: Record<string, unknown> | undefined
       readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-      readonly parent?: Tracer.ParentSpan | undefined
+      readonly parent?: Tracer.AnySpan | undefined
       readonly root?: boolean | undefined
       readonly context?: Context.Context<never> | undefined
       readonly onEnd?:
@@ -1047,8 +1047,8 @@ export const withSpan: {
  * @category tracing
  */
 export const withParentSpan: {
-  (span: Tracer.ParentSpan): <A, E, R>(self: Layer<A, E, R>) => Layer<A, E, Exclude<R, Tracer.ParentSpan>>
-  <A, E, R>(self: Layer<A, E, R>, span: Tracer.ParentSpan): Layer<A, E, Exclude<R, Tracer.ParentSpan>>
+  (span: Tracer.AnySpan): <A, E, R>(self: Layer<A, E, R>) => Layer<A, E, Exclude<R, Tracer.ParentSpan>>
+  <A, E, R>(self: Layer<A, E, R>, span: Tracer.AnySpan): Layer<A, E, Exclude<R, Tracer.ParentSpan>>
 } = internal.withParentSpan
 
 // -----------------------------------------------------------------------------
