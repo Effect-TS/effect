@@ -492,7 +492,7 @@ export const boot = <
       readonly [
         Procedure.TaggedRequest.Any,
         Deferred.Deferred<any, any>,
-        Tracer.ParentSpan | undefined,
+        Tracer.AnySpan | undefined,
         addSpans: boolean
       ]
     >())
@@ -520,7 +520,7 @@ export const boot = <
         const context = FiberRefs.getOrDefault(fiberRefs, FiberRef.currentContext)
 
         const deferred = Deferred.unsafeMake<Request.Success<R>, Request.Error<R>>(fiber.id())
-        const span: Tracer.ParentSpan | undefined = context.unsafeMap.get(Tracer.ParentSpan.key)
+        const span: Tracer.AnySpan | undefined = context.unsafeMap.get(Tracer.ParentSpan.key)
         const addSpans = FiberRefs.getOrDefault(fiberRefs, currentTracingEnabled)
 
         return [request, deferred, span, addSpans] as const

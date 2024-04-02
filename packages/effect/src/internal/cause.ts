@@ -12,7 +12,7 @@ import { pipeArguments } from "../Pipeable.js"
 import { hasProperty, isFunction } from "../Predicate.js"
 import type { Predicate, Refinement } from "../Predicate.js"
 import * as ReadonlyArray from "../ReadonlyArray.js"
-import type { ParentSpan, Span } from "../Tracer.js"
+import type { AnySpan, Span } from "../Tracer.js"
 import { getBugErrorMessage } from "./errors.js"
 import * as OpCodes from "./opCodes/cause.js"
 
@@ -990,7 +990,7 @@ export const pretty = <E>(cause: Cause.Cause<E>): string => {
       message += `\r\n${filterStack(e.stack)}`
     }
     if (e.span) {
-      let current: Span | ParentSpan | undefined = e.span
+      let current: Span | AnySpan | undefined = e.span
       let i = 0
       while (current && current._tag === "Span" && i < 10) {
         message += `\r\n    at ${current.name}`
