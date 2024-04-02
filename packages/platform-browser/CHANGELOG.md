@@ -1,5 +1,15 @@
 # @effect/platform-browser
 
+## 0.31.23
+
+### Patch Changes
+
+- [#2454](https://github.com/Effect-TS/effect/pull/2454) [`63a1df2`](https://github.com/Effect-TS/effect/commit/63a1df2e4de3766f48f15676fbd0360ab9c27816) Thanks [@tim-smart](https://github.com/tim-smart)! - add support for binary data with XHR client
+
+- Updated dependencies [[`5170ce7`](https://github.com/Effect-TS/effect/commit/5170ce708c606283e8a30d273950f1a21c7eddc2), [`63a1df2`](https://github.com/Effect-TS/effect/commit/63a1df2e4de3766f48f15676fbd0360ab9c27816), [`5170ce7`](https://github.com/Effect-TS/effect/commit/5170ce708c606283e8a30d273950f1a21c7eddc2), [`74a5dae`](https://github.com/Effect-TS/effect/commit/74a5daed0e65b32a36e026bfcf66d02269cb967a)]:
+  - @effect/platform@0.48.23
+  - effect@2.4.16
+
 ## 0.31.22
 
 ### Patch Changes

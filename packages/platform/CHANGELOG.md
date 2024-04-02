@@ -1,5 +1,19 @@
 # @effect/platform
 
+## 0.48.23
+
+### Patch Changes
+
+- [#2445](https://github.com/Effect-TS/effect/pull/2445) [`5170ce7`](https://github.com/Effect-TS/effect/commit/5170ce708c606283e8a30d273950f1a21c7eddc2) Thanks [@vecerek](https://github.com/vecerek)! - Add support for W3C Trace Context propagation
+
+- [#2454](https://github.com/Effect-TS/effect/pull/2454) [`63a1df2`](https://github.com/Effect-TS/effect/commit/63a1df2e4de3766f48f15676fbd0360ab9c27816) Thanks [@tim-smart](https://github.com/tim-smart)! - add support for binary data with XHR client
+
+- [#2450](https://github.com/Effect-TS/effect/pull/2450) [`74a5dae`](https://github.com/Effect-TS/effect/commit/74a5daed0e65b32a36e026bfcf66d02269cb967a) Thanks [@vecerek](https://github.com/vecerek)! - Platform: auto-instrument HTTP client
+
+- Updated dependencies [[`5170ce7`](https://github.com/Effect-TS/effect/commit/5170ce708c606283e8a30d273950f1a21c7eddc2), [`62a7f23`](https://github.com/Effect-TS/effect/commit/62a7f23937c0dfaca67a7b2f055b85cfde25ed11), [`7cc2b41`](https://github.com/Effect-TS/effect/commit/7cc2b41d6c551fdca2590b06681c5ad9832aba46), [`8b46fde`](https://github.com/Effect-TS/effect/commit/8b46fdebf2c075a74cd2cd29dfb69531d20fc154)]:
+  - effect@2.4.16
+  - @effect/schema@0.64.17
+
 ## 0.48.22
 
 ### Patch Changes

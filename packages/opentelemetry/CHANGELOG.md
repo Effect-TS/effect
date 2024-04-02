@@ -1,5 +1,14 @@
 # @effect/opentelemetry
 
+## 0.31.26
+
+### Patch Changes
+
+- [#2433](https://github.com/Effect-TS/effect/pull/2433) [`ee10a50`](https://github.com/Effect-TS/effect/commit/ee10a50da859abf7154636d6d3e59511f0e0f590) Thanks [@vecerek](https://github.com/vecerek)! - Exports an empty NodeSDK layer suitable for incremental adoption and unit testing purposes
+
+- Updated dependencies [[`5170ce7`](https://github.com/Effect-TS/effect/commit/5170ce708c606283e8a30d273950f1a21c7eddc2)]:
+  - effect@2.4.16
+
 ## 0.31.25
 
 ### Patch Changes
