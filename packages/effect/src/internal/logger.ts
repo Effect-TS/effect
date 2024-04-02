@@ -1,6 +1,7 @@
 import type { LazyArg } from "../Function.js"
 import { constVoid, dual, pipe } from "../Function.js"
 import * as HashMap from "../HashMap.js"
+import * as Inspectable from "../Inspectable.js"
 import * as List from "../List.js"
 import type * as Logger from "../Logger.js"
 import type * as LogLevel from "../LogLevel.js"
@@ -167,7 +168,7 @@ export const stringLogger: Logger.Logger<unknown, string> = makeLogger<unknown, 
     ]
 
     let output = outputArray.join(" ")
-    const stringMessage = serializeUnknown(message)
+    const stringMessage = Inspectable.toStringUnknown(message)
 
     if (stringMessage.length > 0) {
       output = output + " message="
@@ -205,21 +206,13 @@ export const stringLogger: Logger.Logger<unknown, string> = makeLogger<unknown, 
         }
         output = output + filterKeyName(key)
         output = output + "="
-        output = appendQuoted(serializeUnknown(value), output)
+        output = appendQuoted(Inspectable.toStringUnknown(value), output)
       }
     }
 
     return output
   }
 )
-
-export const serializeUnknown = (u: unknown): string => {
-  try {
-    return typeof u === "object" ? jsonStringifyCircular(u) : String(u)
-  } catch (_) {
-    return String(u)
-  }
-}
 
 /** @internal */
 const escapeDoubleQuotes = (str: string) => `"${str.replace(/\\([\s\S])|(")/g, "\\$1$2")}"`
@@ -242,7 +235,7 @@ export const logfmtLogger = makeLogger<unknown, string>(
     ]
 
     let output = outputArray.join(" ")
-    const stringMessage = serializeUnknown(message)
+    const stringMessage = Inspectable.toStringUnknown(message)
 
     if (stringMessage.length > 0) {
       output = output + " message="
@@ -280,7 +273,7 @@ export const logfmtLogger = makeLogger<unknown, string>(
         }
         output = output + filterKeyName(key)
         output = output + "="
-        output = appendQuotedLogfmt(serializeUnknown(value), output)
+        output = appendQuotedLogfmt(Inspectable.toStringUnknown(value), output)
       }
     }
 
@@ -340,23 +333,8 @@ export const structuredMessage = (u: unknown): unknown => {
   }
 }
 
-const jsonStringifyCircular = (obj: unknown) => {
-  let cache: Array<unknown> = []
-  const retVal = JSON.stringify(
-    obj,
-    (_key, value) =>
-      typeof value === "object" && value !== null
-        ? cache.includes(value)
-          ? undefined // circular reference
-          : cache.push(value) && value
-        : value
-  )
-  ;(cache as any) = undefined
-  return retVal
-}
-
 /** @internal */
-export const jsonLogger = map(structuredLogger, jsonStringifyCircular)
+export const jsonLogger = map(structuredLogger, Inspectable.stringifyCircular)
 
 /** @internal */
 const filterKeyName = (key: string) => key.replace(/[\s="]/g, "_")

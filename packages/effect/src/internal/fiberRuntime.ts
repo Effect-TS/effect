@@ -22,6 +22,7 @@ import { dual, identity, pipe } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
 import * as HashMap from "../HashMap.js"
 import * as HashSet from "../HashSet.js"
+import * as Inspectable from "../Inspectable.js"
 import type { Logger } from "../Logger.js"
 import * as LogLevel from "../LogLevel.js"
 import type * as MetricLabel from "../MetricLabel.js"
@@ -125,7 +126,9 @@ const runtimeFiberVariance = {
 
 const absurd = (_: never): never => {
   throw new Error(
-    `BUG: FiberRuntime - ${JSON.stringify(_)} - please report an issue at https://github.com/Effect-TS/effect/issues`
+    `BUG: FiberRuntime - ${
+      Inspectable.toStringUnknown(_)
+    } - please report an issue at https://github.com/Effect-TS/effect/issues`
   )
 }
 
@@ -1419,7 +1422,7 @@ export const tracerLogger = globalValue(
         return
       }
 
-      const attributes = Object.fromEntries(HashMap.map(annotations, (value) => internalLogger.serializeUnknown(value)))
+      const attributes = Object.fromEntries(HashMap.map(annotations, Inspectable.toStringUnknown))
       attributes["effect.fiberId"] = FiberId.threadName(fiberId)
       attributes["effect.logLevel"] = logLevel.label
 

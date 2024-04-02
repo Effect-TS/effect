@@ -82,3 +82,33 @@ export abstract class Class {
     return format(this.toJSON())
   }
 }
+
+/**
+ * @since 2.0.0
+ */
+export const toStringUnknown = (u: unknown): string => {
+  try {
+    return typeof u === "object" ? stringifyCircular(u, 2) : String(u)
+  } catch (_) {
+    return String(u)
+  }
+}
+
+/**
+ * @since 2.0.0
+ */
+export const stringifyCircular = (obj: unknown, space?: number | string | undefined): string => {
+  let cache: Array<unknown> = []
+  const retVal = JSON.stringify(
+    obj,
+    (_key, value) =>
+      typeof value === "object" && value !== null
+        ? cache.includes(value)
+          ? undefined // circular reference
+          : cache.push(value) && value
+        : value,
+    space
+  )
+  ;(cache as any) = undefined
+  return retVal
+}
