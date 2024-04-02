@@ -1117,7 +1117,7 @@ export const withSpan = dual<
   (name: string, options?: {
     readonly attributes?: Record<string, unknown> | undefined
     readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.ParentSpan | undefined
+    readonly parent?: Tracer.AnySpan | undefined
     readonly root?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
     readonly onEnd?:
@@ -1127,7 +1127,7 @@ export const withSpan = dual<
   <A, E, R>(self: Layer.Layer<A, E, R>, name: string, options?: {
     readonly attributes?: Record<string, unknown> | undefined
     readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.ParentSpan | undefined
+    readonly parent?: Tracer.AnySpan | undefined
     readonly root?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
     readonly onEnd?:
@@ -1150,9 +1150,9 @@ export const withSpan = dual<
 /** @internal */
 export const withParentSpan = dual<
   (
-    span: Tracer.ParentSpan
+    span: Tracer.AnySpan
   ) => <A, E, R>(self: Layer.Layer<A, E, R>) => Layer.Layer<A, E, Exclude<R, Tracer.ParentSpan>>,
-  <A, E, R>(self: Layer.Layer<A, E, R>, span: Tracer.ParentSpan) => Layer.Layer<A, E, Exclude<R, Tracer.ParentSpan>>
+  <A, E, R>(self: Layer.Layer<A, E, R>, span: Tracer.AnySpan) => Layer.Layer<A, E, Exclude<R, Tracer.ParentSpan>>
 >(2, (self, span) => provide(self, succeedContext(Context.make(tracer.spanTag, span))))
 
 // circular with Effect

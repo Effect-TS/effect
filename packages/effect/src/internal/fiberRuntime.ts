@@ -3556,7 +3556,7 @@ export const makeSpanScoped = (
   options?: {
     readonly attributes?: Record<string, unknown> | undefined
     readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.ParentSpan | undefined
+    readonly parent?: Tracer.AnySpan | undefined
     readonly root?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
   }
@@ -3581,14 +3581,14 @@ export const withSpanScoped = dual<
   (name: string, options?: {
     readonly attributes?: Record<string, unknown> | undefined
     readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.ParentSpan | undefined
+    readonly parent?: Tracer.AnySpan | undefined
     readonly root?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
   }) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan> | Scope.Scope>,
   <A, E, R>(self: Effect.Effect<A, E, R>, name: string, options?: {
     readonly attributes?: Record<string, unknown> | undefined
     readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.ParentSpan | undefined
+    readonly parent?: Tracer.AnySpan | undefined
     readonly root?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
   }) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan> | Scope.Scope>
