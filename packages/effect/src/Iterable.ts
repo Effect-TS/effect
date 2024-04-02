@@ -14,7 +14,6 @@ import { isBoolean } from "./Predicate.js"
 import type { NonEmptyArray } from "./ReadonlyArray.js"
 import type * as ReadonlyRecord from "./ReadonlyRecord.js"
 import * as Tuple from "./Tuple.js"
-import type { NoInfer } from "./Types.js"
 
 /**
  * Return a `Iterable` with element `i` initialized with `f(i)`.
@@ -123,7 +122,7 @@ export const fromRecord = <K extends string, A>(self: Readonly<Record<K, A>>): I
 export const prepend: {
   <B>(head: B): <A>(self: Iterable<A>) => Iterable<A | B>
   <A, B>(self: Iterable<A>, head: B): Iterable<A | B>
-} = dual(2, <A, B>(self: Iterable<A>, head: B): Iterable<A | B> => flatten<A | B>([[head], self]))
+} = dual(2, <A, B>(self: Iterable<A>, head: B): Iterable<A | B> => prependAll(self, [head]))
 
 /**
  * Prepends the specified prefix iterable to the beginning of the specified iterable.
@@ -144,7 +143,7 @@ export const prependAll: {
   <A, B>(self: Iterable<A>, that: Iterable<B>): Iterable<A | B>
 } = dual(
   2,
-  <A, B>(self: Iterable<A>, that: Iterable<B>): Iterable<A | B> => flatten<A | B>([that, self])
+  <A, B>(self: Iterable<A>, that: Iterable<B>): Iterable<A | B> => appendAll(that, self)
 )
 
 /**
@@ -156,7 +155,7 @@ export const prependAll: {
 export const append: {
   <B>(last: B): <A>(self: Iterable<A>) => Iterable<A | B>
   <A, B>(self: Iterable<A>, last: B): Iterable<A | B>
-} = dual(2, <A, B>(self: Iterable<A>, last: B): Iterable<A | B> => flatten<A | B>([self, [last]]))
+} = dual(2, <A, B>(self: Iterable<A>, last: B): Iterable<A | B> => appendAll(self, [last]))
 
 /**
  * Concatenates two iterables, combining their elements.
@@ -169,7 +168,27 @@ export const appendAll: {
   <A, B>(self: Iterable<A>, that: Iterable<B>): Iterable<A | B>
 } = dual(
   2,
-  <A, B>(self: Iterable<A>, that: Iterable<B>): Iterable<A | B> => flatten<A | B>([self, that])
+  <A, B>(self: Iterable<A>, that: Iterable<B>): Iterable<A | B> => ({
+    [Symbol.iterator]() {
+      const iterA = self[Symbol.iterator]()
+      let doneA = false
+      let iterB: Iterator<B>
+      return {
+        next() {
+          if (!doneA) {
+            const r = iterA.next()
+            if (r.done) {
+              doneA = true
+              iterB = that[Symbol.iterator]()
+              return iterB.next()
+            }
+            return r
+          }
+          return iterB.next()
+        }
+      }
+    }
+  })
 )
 
 /**
@@ -936,6 +955,25 @@ export const forEach: {
   for (const a of self) {
     f(a, i++)
   }
+})
+
+/**
+ * @category folding
+ * @since 2.0.0
+ */
+export const reduce: {
+  <B, A>(b: B, f: (b: B, a: A, i: number) => B): (self: Iterable<A>) => B
+  <A, B>(self: Iterable<A>, b: B, f: (b: B, a: A, i: number) => B): B
+} = dual(3, <A, B>(self: Iterable<A>, b: B, f: (b: B, a: A, i: number) => B): B => {
+  if (Array.isArray(self)) {
+    return self.reduce(f, b)
+  }
+  let i = 0
+  let result = b
+  for (const n of self) {
+    result = f(result, n, i++)
+  }
+  return result
 })
 
 /**
