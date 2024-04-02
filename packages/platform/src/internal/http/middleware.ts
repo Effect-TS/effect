@@ -1,15 +1,16 @@
 import * as Cause from "effect/Cause"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import { constFalse, dual } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
+import * as Option from "effect/Option"
 import type * as Predicate from "effect/Predicate"
 import * as Headers from "../../Http/Headers.js"
-import * as IncomingMessage from "../../Http/IncomingMessage.js"
 import type * as Middleware from "../../Http/Middleware.js"
 import * as ServerError from "../../Http/ServerError.js"
 import * as ServerRequest from "../../Http/ServerRequest.js"
-import * as TraceContext from "../../Http/TraceContext/TraceContext.js"
+import * as TraceContext from "../../Http/TraceContext.js"
 
 /** @internal */
 export const make = <M extends Middleware.Middleware>(middleware: M): M => middleware
@@ -47,37 +48,33 @@ export const withTracerDisabledWhen = dual<
 /** @internal */
 export const logger = make((httpApp) => {
   let counter = 0
-  return Effect.flatMap(
-    ServerRequest.ServerRequest,
-    (request) =>
-      Effect.withLogSpan(
-        Effect.onExit(httpApp, (exit) =>
-          Effect.flatMap(
-            FiberRef.get(loggerDisabled),
-            (disabled) => {
-              if (disabled) {
-                return Effect.unit
-              }
-              return exit._tag === "Failure" ?
-                Effect.annotateLogs(Effect.log(exit.cause), {
-                  "http.method": request.method,
-                  "http.url": request.url,
-                  "http.status": Cause.isInterruptedOnly(exit.cause)
-                    ? ServerError.isClientAbortCause(exit.cause)
-                      ? 499
-                      : 503
-                    : 500
-                }) :
-                Effect.annotateLogs(Effect.log("Sent HTTP response"), {
-                  "http.method": request.method,
-                  "http.url": request.url,
-                  "http.status": exit.value.status
-                })
-            }
-          )),
-        `http.span.${++counter}`
-      )
-  )
+  return Effect.withFiberRuntime((fiber) => {
+    const context = fiber.getFiberRef(FiberRef.currentContext)
+    const request = Context.unsafeGet(context, ServerRequest.ServerRequest)
+    return Effect.withLogSpan(
+      Effect.onExit(httpApp, (exit) => {
+        if (fiber.getFiberRef(loggerDisabled)) {
+          return Effect.unit
+        }
+        return exit._tag === "Failure" ?
+          Effect.annotateLogs(Effect.log(exit.cause), {
+            "http.method": request.method,
+            "http.url": request.url,
+            "http.status": Cause.isInterruptedOnly(exit.cause)
+              ? ServerError.isClientAbortCause(exit.cause)
+                ? 499
+                : 503
+              : 500
+          }) :
+          Effect.annotateLogs(Effect.log("Sent HTTP response"), {
+            "http.method": request.method,
+            "http.url": request.url,
+            "http.status": exit.value.status
+          })
+      }),
+      `http.span.${++counter}`
+    )
+  })
 })
 
 /** @internal */
@@ -86,24 +83,22 @@ export const tracer = make((httpApp) => {
     httpApp,
     (response) => Effect.annotateCurrentSpan("http.status", response.status)
   )
-  return Effect.flatMap(
-    Effect.zip(ServerRequest.ServerRequest, FiberRef.get(currentTracerDisabledWhen)),
-    ([request, disabledWhen]) =>
-      Effect.flatMap(
-        request.headers[TraceContext.xb3.header] || request.headers[TraceContext.b3.header] ||
-          request.headers[TraceContext.w3c.header] ?
-          Effect.orElseSucceed(IncomingMessage.schemaExternalSpan(request), () => undefined) :
-          Effect.succeed(undefined),
-        (parent) =>
-          disabledWhen(request) ?
-            httpApp :
-            Effect.withSpan(
-              appWithStatus,
-              `http ${request.method}`,
-              { attributes: { "http.method": request.method, "http.url": request.url }, parent }
-            )
-      )
-  )
+  return Effect.withFiberRuntime((fiber) => {
+    const context = fiber.getFiberRef(FiberRef.currentContext)
+    const request = Context.unsafeGet(context, ServerRequest.ServerRequest)
+    const disabled = fiber.getFiberRef(currentTracerDisabledWhen)(request)
+    if (disabled) {
+      return httpApp
+    }
+    return Effect.withSpan(
+      appWithStatus,
+      `http.server ${request.method}`,
+      {
+        attributes: { "http.method": request.method, "http.url": request.url },
+        parent: Option.getOrUndefined(TraceContext.fromHeaders(request.headers))
+      }
+    )
+  })
 })
 
 /** @internal */

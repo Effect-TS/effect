@@ -6,16 +6,13 @@ import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
-import { dual, flow } from "effect/Function"
+import { dual } from "effect/Function"
 import * as Global from "effect/GlobalValue"
 import type { Inspectable } from "effect/Inspectable"
 import * as Option from "effect/Option"
 import type * as Stream from "effect/Stream"
-import * as Tracer from "effect/Tracer"
-import type { ExternalSpan } from "effect/Tracer"
 import * as FileSystem from "../FileSystem.js"
 import type * as Headers from "./Headers.js"
-import * as TraceContext from "./TraceContext/TraceContext.js"
 import type * as UrlParams from "./UrlParams.js"
 
 /**
@@ -112,27 +109,6 @@ export const schemaHeadersEffect = <R, I extends Readonly<Record<string, string>
   const decode = schemaHeaders(schema, options)
   return <E, E2, R2>(effect: Effect.Effect<IncomingMessage<E>, E2, R2>) => Effect.scoped(Effect.flatMap(effect, decode))
 }
-
-/**
- * @since 1.0.0
- * @category schema
- */
-export const schemaExternalSpan: <E>(
-  self: IncomingMessage<E>
-) => Effect.Effect<Tracer.ExternalSpan, ParseResult.ParseError> = flow(
-  schemaHeaders(Schema.union(
-    TraceContext.b3.schema,
-    TraceContext.xb3.schema,
-    TraceContext.w3c.schema
-  )),
-  Effect.map((_): ExternalSpan =>
-    Tracer.externalSpan({
-      traceId: _.traceId,
-      spanId: _.spanId,
-      sampled: _.sampled
-    })
-  )
-)
 
 /**
  * @since 1.0.0
