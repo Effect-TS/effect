@@ -52,3 +52,12 @@ export const layer = (config: {
     new Resources.Resource(attributes)
   )
 }
+
+/**
+ * @since 2.0.0
+ * @category layer
+ */
+export const layerEmpty = Layer.succeed(
+  Resource,
+  Resources.Resource.empty()
+)

@@ -86,3 +86,9 @@ export const layer: {
       }
     )
   )
+
+/**
+ * @since 2.0.0
+ * @category layer
+ */
+export const layerEmpty: Layer.Layer<Resource.Resource> = Resource.layerEmpty
