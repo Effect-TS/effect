@@ -3817,14 +3817,6 @@ export const clamp =
       { strict: false }
     )
 
-const NumberFromStringRadix = (radix: number) =>
-  transformOrFail(
-    string,
-    number,
-    (s, _, ast) => ParseResult.fromOption(N.parse(s, radix), () => new ParseResult.Type(ast, s)),
-    (n) => ParseResult.succeed(n.toString(radix))
-  )
-
 /**
  * @category api interface
  * @since 1.0.0
@@ -3841,27 +3833,12 @@ export interface NumberFromString extends Annotable<NumberFromString, number, st
  * @category number constructors
  * @since 1.0.0
  */
-export const NumberFromString: NumberFromString = NumberFromStringRadix(10).annotations({
-  identifier: "NumberFromString"
-})
-
-/**
- * @category api interface
- * @since 2.0.0
- */
-export interface NumberFromHex extends Annotable<NumberFromHex, number, string> {}
-
-/**
- * This schema transforms a `string` representing a hexadecimal numbe rinto a `number` by parsing the string using the `Number` function.
- *
- * It returns an error if the value can't be converted (for example when non-hexadecimal characters are provided).
- *
- * The following special string values are supported: "NaN", "Infinity", "-Infinity".
- *
- * @category number constructors
- * @since 2.0.0
- */
-export const NumberFromHex: NumberFromHex = NumberFromStringRadix(16).annotations({ identifier: "NumberFromHex" })
+export const NumberFromString: NumberFromString = transformOrFail(
+  string,
+  number,
+  (s, _, ast) => ParseResult.fromOption(N.parse(s), () => new ParseResult.Type(ast, s)),
+  (n) => ParseResult.succeed(String(n))
+).annotations({ identifier: "NumberFromString" })
 
 /**
  * @category number constructors
