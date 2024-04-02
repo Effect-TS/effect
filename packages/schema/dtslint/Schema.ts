@@ -1950,6 +1950,16 @@ S.asSchema(S.readonlyMapFromSelf({ key: S.NumberFromString, value: S.string }))
 S.readonlyMapFromSelf({ key: S.NumberFromString, value: S.string })
 
 // ---------------------------------------------
+// mapFromSelf
+// ---------------------------------------------
+
+// $ExpectType Schema<Map<number, string>, ReadonlyMap<string, string>, never>
+S.asSchema(S.mapFromSelf({ key: S.NumberFromString, value: S.string }))
+
+// $ExpectType mapFromSelf<NumberFromString, $string>
+S.mapFromSelf({ key: S.NumberFromString, value: S.string })
+
+// ---------------------------------------------
 // readonlyMap
 // ---------------------------------------------
 
@@ -1958,6 +1968,16 @@ S.asSchema(S.readonlyMap({ key: S.NumberFromString, value: S.string }))
 
 // $ExpectType readonlyMap<NumberFromString, $string>
 S.readonlyMap({ key: S.NumberFromString, value: S.string })
+
+// ---------------------------------------------
+// map
+// ---------------------------------------------
+
+// $ExpectType Schema<Map<number, string>, readonly (readonly [string, string])[], never>
+S.asSchema(S.map({ key: S.NumberFromString, value: S.string }))
+
+// $ExpectType map<NumberFromString, $string>
+S.map({ key: S.NumberFromString, value: S.string })
 
 // ---------------------------------------------
 // hashMapFromSelf
@@ -1990,6 +2010,16 @@ S.asSchema(S.readonlySetFromSelf(S.NumberFromString))
 S.readonlySetFromSelf(S.NumberFromString)
 
 // ---------------------------------------------
+// setFromSelf
+// ---------------------------------------------
+
+// $ExpectType Schema<Set<number>, ReadonlySet<string>, never>
+S.asSchema(S.setFromSelf(S.NumberFromString))
+
+// $ExpectType setFromSelf<NumberFromString>
+S.setFromSelf(S.NumberFromString)
+
+// ---------------------------------------------
 // readonlySet
 // ---------------------------------------------
 
@@ -1998,6 +2028,16 @@ S.asSchema(S.readonlySet(S.NumberFromString))
 
 // $ExpectType readonlySet<NumberFromString>
 S.readonlySet(S.NumberFromString)
+
+// ---------------------------------------------
+// set
+// ---------------------------------------------
+
+// $ExpectType Schema<Set<number>, readonly string[], never>
+S.asSchema(S.set(S.NumberFromString))
+
+// $ExpectType set<NumberFromString>
+S.set(S.NumberFromString)
 
 // ---------------------------------------------
 // hashSetFromSelf

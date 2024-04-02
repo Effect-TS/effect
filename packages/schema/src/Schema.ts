@@ -5266,10 +5266,10 @@ export const eitherFromUnion = <R extends Schema.Any, L extends Schema.Any>({ le
   )
 }
 
-const readonlyMapArbitrary = <K, V>(
+const mapArbitrary = <K, V>(
   key: Arbitrary<K>,
   value: Arbitrary<V>
-): Arbitrary<ReadonlyMap<K, V>> =>
+): Arbitrary<Map<K, V>> =>
 (fc) => fc.array(fc.tuple(key(fc), value(fc))).map((as) => new Map(as))
 
 const readonlyMapPretty = <K, V>(
@@ -5314,26 +5314,53 @@ export interface readonlyMapFromSelf<K extends Schema.Any, V extends Schema.Any>
   >
 {}
 
+const _mapFromSelf = <K extends Schema.Any, V extends Schema.Any>(
+  key: K,
+  value: V,
+  description: string
+): readonlyMapFromSelf<K, V> =>
+  declare(
+    [key, value],
+    (key, value) => readonlyMapParse(ParseResult.decodeUnknown(array(tuple(key, value)))),
+    (key, value) => readonlyMapParse(ParseResult.encodeUnknown(array(tuple(key, value)))),
+    {
+      description,
+      pretty: readonlyMapPretty,
+      arbitrary: mapArbitrary,
+      equivalence: readonlyMapEquivalence
+    }
+  )
+
 /**
- * @category ReadonlyMap transformations
+ * @category ReadonlyMap
  * @since 1.0.0
  */
 export const readonlyMapFromSelf = <K extends Schema.Any, V extends Schema.Any>({ key, value }: {
   readonly key: K
   readonly value: V
-}): readonlyMapFromSelf<K, V> => {
-  return declare(
-    [key, value],
-    (key, value) => readonlyMapParse(ParseResult.decodeUnknown(array(tuple(key, value)))),
-    (key, value) => readonlyMapParse(ParseResult.encodeUnknown(array(tuple(key, value)))),
-    {
-      description: `ReadonlyMap<${format(key)}, ${format(value)}>`,
-      pretty: readonlyMapPretty,
-      arbitrary: readonlyMapArbitrary,
-      equivalence: readonlyMapEquivalence
-    }
-  )
-}
+}): readonlyMapFromSelf<K, V> => _mapFromSelf(key, value, `ReadonlyMap<${format(key)}, ${format(value)}>`)
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface mapFromSelf<K extends Schema.Any, V extends Schema.Any> extends
+  Annotable<
+    mapFromSelf<K, V>,
+    Map<Schema.Type<K>, Schema.Type<V>>,
+    ReadonlyMap<Schema.Encoded<K>, Schema.Encoded<V>>,
+    Schema.Context<K> | Schema.Context<V>
+  >
+{}
+
+/**
+ * @category Map
+ * @since 1.0.0
+ */
+export const mapFromSelf = <K extends Schema.Any, V extends Schema.Any>({ key, value }: {
+  readonly key: K
+  readonly value: V
+}): mapFromSelf<K, V> => _mapFromSelf(key, value, `Map<${format(key)}, ${format(value)}>`) as any
 
 /**
  * @category api interface
@@ -5366,7 +5393,38 @@ export const readonlyMap = <K extends Schema.Any, V extends Schema.Any>({ key, v
   )
 }
 
-const readonlySetArbitrary = <A>(item: Arbitrary<A>): Arbitrary<ReadonlySet<A>> => (fc) =>
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface map<K extends Schema.Any, V extends Schema.Any> extends
+  Annotable<
+    map<K, V>,
+    Map<Schema.Type<K>, Schema.Type<V>>,
+    ReadonlyArray<readonly [Schema.Encoded<K>, Schema.Encoded<V>]>,
+    Schema.Context<K> | Schema.Context<V>
+  >
+{}
+
+/**
+ * @category Map transformations
+ * @since 1.0.0
+ */
+export const map = <K extends Schema.Any, V extends Schema.Any>({ key, value }: {
+  readonly key: K
+  readonly value: V
+}): map<K, V> => {
+  const _key = asSchema(key)
+  const _value = asSchema(value)
+  return transform(
+    array(tuple(_key, _value)),
+    mapFromSelf({ key: typeSchema(_key), value: typeSchema(_value) }),
+    (as) => new Map(as),
+    (map) => Array.from(map.entries())
+  )
+}
+
+const setArbitrary = <A>(item: Arbitrary<A>): Arbitrary<ReadonlySet<A>> => (fc) =>
   fc.array(item(fc)).map((as) => new Set(as))
 
 const readonlySetPretty = <A>(item: Pretty.Pretty<A>): Pretty.Pretty<ReadonlySet<A>> => (set) =>
@@ -5400,25 +5458,45 @@ export interface readonlySetFromSelf<Value extends Schema.Any> extends
   >
 {}
 
-/**
- * @category ReadonlySet transformations
- * @since 1.0.0
- */
-export const readonlySetFromSelf = <Value extends Schema.Any>(
-  value: Value
-): readonlySetFromSelf<Value> => {
-  return declare(
+const _setFromSelf = <Value extends Schema.Any>(value: Value, description: string): readonlySetFromSelf<Value> =>
+  declare(
     [value],
     (item) => readonlySetParse(ParseResult.decodeUnknown(array(item))),
     (item) => readonlySetParse(ParseResult.encodeUnknown(array(item))),
     {
-      description: `ReadonlySet<${format(value)}>`,
+      description,
       pretty: readonlySetPretty,
-      arbitrary: readonlySetArbitrary,
+      arbitrary: setArbitrary,
       equivalence: readonlySetEquivalence
     }
   )
-}
+
+/**
+ * @category ReadonlySet
+ * @since 1.0.0
+ */
+export const readonlySetFromSelf = <Value extends Schema.Any>(value: Value): readonlySetFromSelf<Value> =>
+  _setFromSelf(value, `ReadonlySet<${format(value)}>`)
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface setFromSelf<Value extends Schema.Any> extends
+  Annotable<
+    setFromSelf<Value>,
+    Set<Schema.Type<Value>>,
+    ReadonlySet<Schema.Encoded<Value>>,
+    Schema.Context<Value>
+  >
+{}
+
+/**
+ * @category Set
+ * @since 1.0.0
+ */
+export const setFromSelf = <Value extends Schema.Any>(value: Value): setFromSelf<Value> =>
+  _setFromSelf(value, `Set<${format(value)}>`) as any
 
 /**
  * @category api interface
@@ -5442,6 +5520,33 @@ export const readonlySet = <Value extends Schema.Any>(value: Value): readonlySet
   return transform(
     array(_value),
     readonlySetFromSelf(typeSchema(_value)),
+    (as) => new Set(as),
+    (set) => Array.from(set)
+  )
+}
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface set<Value extends Schema.Any> extends
+  Annotable<
+    set<Value>,
+    Set<Schema.Type<Value>>,
+    ReadonlyArray<Schema.Encoded<Value>>,
+    Schema.Context<Value>
+  >
+{}
+
+/**
+ * @category Set transformations
+ * @since 1.0.0
+ */
+export const set = <Value extends Schema.Any>(value: Value): set<Value> => {
+  const _value = asSchema(value)
+  return transform(
+    array(_value),
+    setFromSelf(typeSchema(_value)),
     (as) => new Set(as),
     (set) => Array.from(set)
   )
