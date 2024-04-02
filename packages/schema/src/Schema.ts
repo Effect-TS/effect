@@ -5443,8 +5443,7 @@ export const map = <K extends Schema.Any, V extends Schema.Any>({ key, value }: 
   return transform(
     array(tuple(_key, _value)),
     mapFromSelf({ key: typeSchema(_key), value: typeSchema(_value) }),
-    (as) => new Map(as),
-    (map) => Array.from(map.entries())
+    { decode: (as) => new Map(as), encode: (map) => Array.from(map.entries()) }
   )
 }
 
@@ -5570,8 +5569,7 @@ export const set = <Value extends Schema.Any>(value: Value): set<Value> => {
   return transform(
     array(_value),
     setFromSelf(typeSchema(_value)),
-    (as) => new Set(as),
-    (set) => Array.from(set)
+    { decode: (as) => new Set(as), encode: (set) => Array.from(set) }
   )
 }
 
@@ -7382,6 +7380,5 @@ export interface BooleanFromUnknown extends Annotable<BooleanFromUnknown, boolea
 export const BooleanFromUnknown: BooleanFromUnknown = transform(
   unknown,
   boolean,
-  Predicate.isTruthy,
-  identity
+  { decode: Predicate.isTruthy, encode: identity }
 ).annotations({ identifier: "BooleanFromUnknown" })
