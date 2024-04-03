@@ -976,14 +976,14 @@ Effect.retry(string, {
 // retryOrElse
 // -------------------------------------------------------------------------------------
 
-// $ExpectType Effect<string | number, "err-1", "dep-1">
+// $ExpectType Effect<string | number, never, "dep-1">
 Effect.retryOrElse(string, Schedule.forever, (_e: string) => Effect.succeed(0))
 
 Effect.retryOrElse(string, Schedule.forever, (
   _e // $ExpectType "err-1"
 ) => Effect.succeed(0))
 
-// $ExpectType Effect<string | number, "err-1", "dep-1">
+// $ExpectType Effect<string | number, never, "dep-1">
 string.pipe(Effect.retryOrElse(Schedule.forever, (_e: string) => Effect.succeed(0)))
 
 string.pipe(Effect.retryOrElse(Schedule.forever, (
