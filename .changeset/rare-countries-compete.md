@@ -2,7 +2,18 @@
 "effect": patch
 ---
 
-Support Heterogeneous Effects in Effect.allSuccesses
+Support Heterogeneous Effects in Effect Iterable apis
+
+Including:
+
+- `Effect.allSuccesses`
+- `Effect.firstSuccessOf`
+- `Effect.mergeAll`
+- `Effect.reduceEffect`
+- `Effect.raceAll`
+- `Effect.forkAll`
+
+For example:
 
 ```ts
 import { Effect } from "effect";
