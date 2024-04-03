@@ -1701,6 +1701,7 @@ S.string.pipe(S.maxLength(5)); // Specifies maximum length of a string
 S.string.pipe(S.minLength(5)); // Specifies minimum length of a string
 S.NonEmpty; // Equivalent to ensuring the string has a minimum length of 1
 S.string.pipe(S.length(5)); // Specifies exact length of a string
+S.string.pipe(S.length({ min: 2, max: 4 })); // Specifies a range for the length of a string
 S.string.pipe(S.pattern(regex)); // Matches a string against a regular expression pattern
 S.string.pipe(S.startsWith(string)); // Ensures a string starts with a specific substring
 S.string.pipe(S.endsWith(string)); // Ensures a string ends with a specific substring

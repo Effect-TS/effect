@@ -3285,18 +3285,31 @@ export type LengthTypeId = typeof LengthTypeId
  * @since 1.0.0
  */
 export const length = <A extends string>(
-  length: number,
+  length: number | { readonly min: number; readonly max: number },
   annotations?: Annotations.Filter<A>
 ) =>
-<I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
-  self.pipe(
-    filter((a): a is A => a.length === length, {
+<I, R>(self: Schema<A, I, R>): Schema<A, I, R> => {
+  const minLength = Predicate.isObject(length) ? Math.max(0, Math.floor(length.min)) : Math.max(0, Math.floor(length))
+  const maxLength = Predicate.isObject(length) ? Math.max(minLength, Math.floor(length.max)) : minLength
+  if (minLength !== maxLength) {
+    return self.pipe(
+      filter((a): a is A => a.length >= minLength && a.length <= maxLength, {
+        typeId: LengthTypeId,
+        description: `a string at least ${minLength} character(s) and at most ${maxLength} character(s) long`,
+        jsonSchema: { minLength, maxLength },
+        ...annotations
+      })
+    )
+  }
+  return self.pipe(
+    filter((a): a is A => a.length === minLength, {
       typeId: LengthTypeId,
-      description: length === 1 ? `a single character` : `a string ${length} character(s) long`,
-      jsonSchema: { minLength: length, maxLength: length },
+      description: minLength === 1 ? `a single character` : `a string ${minLength} character(s) long`,
+      jsonSchema: { minLength, maxLength: minLength },
       ...annotations
     })
   )
+}
 
 /**
  * A schema representing a single character.

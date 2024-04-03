@@ -966,6 +966,34 @@ describe("JSONSchema", () => {
       propertyType(schema)
     })
 
+    it("length: number", () => {
+      const schema = S.string.pipe(S.length(1))
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string",
+        "title": "string",
+        "description": "a single character",
+        "maxLength": 1,
+        "minLength": 1
+      })
+      propertyType(schema)
+    })
+
+    it("length: { min, max }", () => {
+      const schema = S.string.pipe(S.length({ min: 2, max: 4 }))
+      const jsonSchema = JSONSchema.make(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string",
+        "title": "string",
+        "description": "a string at least 2 character(s) and at most 4 character(s) long",
+        "maxLength": 4,
+        "minLength": 2
+      })
+      propertyType(schema)
+    })
+
     it("greaterThan", () => {
       const schema = JsonNumber.pipe(S.greaterThan(1))
       const jsonSchema = JSONSchema.make(schema)

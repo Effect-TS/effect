@@ -392,8 +392,13 @@ describe("Arbitrary > Arbitrary", () => {
       expectValidArbitrary(schema)
     })
 
-    it("length", () => {
+    it("length: number", () => {
       const schema = S.string.pipe(S.length(10))
+      expectValidArbitrary(schema)
+    })
+
+    it("length: { min, max }", () => {
+      const schema = S.string.pipe(S.length({ min: 2, max: 5 }))
       expectValidArbitrary(schema)
     })
 
