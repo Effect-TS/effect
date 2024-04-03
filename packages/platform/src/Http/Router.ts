@@ -155,20 +155,22 @@ export const searchParams: Effect.Effect<
  */
 export const schemaJson: <
   R,
-  I extends {
-    readonly method?: Method.Method | undefined
-    readonly url?: string | undefined
-    readonly cookies?: Readonly<Record<string, string>> | undefined
-    readonly headers?: Readonly<Record<string, string>> | undefined
-    readonly pathParams?: Readonly<Record<string, string>> | undefined
-    readonly searchParams?: Readonly<Record<string, string>> | undefined
-    readonly body?: any
-  },
+  I extends Partial<
+    {
+      readonly method: Method.Method
+      readonly url: string
+      readonly cookies: Readonly<Record<string, string>>
+      readonly headers: Readonly<Record<string, string>>
+      readonly pathParams: Readonly<Record<string, string>>
+      readonly searchParams: Readonly<Record<string, string>>
+      readonly body: any
+    }
+  >,
   A
 >(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
-) => Effect.Effect<A, ParseResult.ParseError | Error.RequestError, RouteContext | R | ServerRequest.ServerRequest> =
+) => Effect.Effect<A, Error.RequestError | ParseResult.ParseError, RouteContext | R | ServerRequest.ServerRequest> =
   internal.schemaJson
 
 /**
@@ -177,20 +179,19 @@ export const schemaJson: <
  */
 export const schemaNoBody: <
   R,
-  I extends {
-    readonly method?: Method.Method | undefined
-    readonly url?: string | undefined
-    readonly cookies?: Readonly<Record<string, string>> | undefined
-    readonly headers?: Readonly<Record<string, string>> | undefined
-    readonly pathParams?: Readonly<Record<string, string>> | undefined
-    readonly searchParams?: Readonly<Record<string, string>> | undefined
-  },
+  I extends Partial<{
+    readonly method: Method.Method
+    readonly url: string
+    readonly cookies: Readonly<Record<string, string>>
+    readonly headers: Readonly<Record<string, string>>
+    readonly pathParams: Readonly<Record<string, string>>
+    readonly searchParams: Readonly<Record<string, string>>
+  }>,
   A
 >(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
-) => Effect.Effect<A, ParseResult.ParseError | Error.RequestError, RouteContext | R | ServerRequest.ServerRequest> =
-  internal.schemaNoBody
+) => Effect.Effect<A, ParseResult.ParseError, R | RouteContext | ServerRequest.ServerRequest> = internal.schemaNoBody
 
 /**
  * @since 1.0.0
