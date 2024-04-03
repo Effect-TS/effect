@@ -8,7 +8,7 @@ export const runMain: RunMain = (
   effect,
   options
 ) => {
-  const _effect = Effect.provide(effect, Logger.structured);
+  const _effect = Effect.provide(effect, Logger.structured)
 
   const fiber = Effect.runFork(
     options?.disableErrorReporting === true ?
