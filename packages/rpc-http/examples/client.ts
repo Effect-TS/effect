@@ -7,7 +7,7 @@ import { GetUser, GetUserIds } from "./schema.js"
 
 // Create the client
 const client = HttpResolver.make<UserRouter>(
-  Http.client.fetchOk().pipe(
+  Http.client.fetchOk.pipe(
     Http.client.mapRequest(Http.request.prependUrl("http://localhost:3000/rpc"))
   )
 ).pipe(Resolver.toClient)
