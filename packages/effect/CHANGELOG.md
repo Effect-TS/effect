@@ -1,5 +1,80 @@
 # effect
 
+## 2.4.17
+
+### Patch Changes
+
+- [#2461](https://github.com/Effect-TS/effect/pull/2461) [`8fdfda6`](https://github.com/Effect-TS/effect/commit/8fdfda6618be848c01b399d13bc05a9a3adfb613) Thanks [@tim-smart](https://github.com/tim-smart)! - add Inspectable.toStringUnknown/stringifyCircular
+
+- [#2462](https://github.com/Effect-TS/effect/pull/2462) [`607b2e7`](https://github.com/Effect-TS/effect/commit/607b2e7a7fd9318c57acf4e50ec61747eea74ad7) Thanks [@tim-smart](https://github.com/tim-smart)! - remove handled errors from Effect.retryOrElse
+
+- [#2461](https://github.com/Effect-TS/effect/pull/2461) [`8fdfda6`](https://github.com/Effect-TS/effect/commit/8fdfda6618be848c01b399d13bc05a9a3adfb613) Thanks [@tim-smart](https://github.com/tim-smart)! - improve formatting of Runtime failures
+
+- [#2415](https://github.com/Effect-TS/effect/pull/2415) [`8206caf`](https://github.com/Effect-TS/effect/commit/8206caf7c2d22c68be4313318b61cfdacf6222b6) Thanks [@tim-smart](https://github.com/tim-smart)! - add Iterable module
+
+  This module shares many apis compared to "effect/ReadonlyArray", but is fully lazy.
+
+  ```ts
+  import { Iterable, pipe } from "effect";
+
+  // Only 5 items will be generated & transformed
+  pipe(
+    Iterable.range(1, 100),
+    Iterable.map((i) => `item ${i}`),
+    Iterable.take(5),
+  );
+  ```
+
+- [#2438](https://github.com/Effect-TS/effect/pull/2438) [`7ddd654`](https://github.com/Effect-TS/effect/commit/7ddd65415b65ccb654ad04f4dbefe39402f15117) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Support Heterogeneous Effects in Effect Iterable apis
+
+  Including:
+
+  - `Effect.allSuccesses`
+  - `Effect.firstSuccessOf`
+  - `Effect.mergeAll`
+  - `Effect.reduceEffect`
+  - `Effect.raceAll`
+  - `Effect.forkAll`
+
+  For example:
+
+  ```ts
+  import { Effect } from "effect";
+
+  class Foo extends Effect.Tag("Foo")<Foo, 3>() {}
+  class Bar extends Effect.Tag("Bar")<Bar, 4>() {}
+
+  // const program: Effect.Effect<(1 | 2 | 3 | 4)[], never, Foo | Bar>
+  export const program = Effect.allSuccesses([
+    Effect.succeed(1 as const),
+    Effect.succeed(2 as const),
+    Foo,
+    Bar,
+  ]);
+  ```
+
+  The above is now possible while before it was expecting all Effects to conform to the same type
+
+- [#2438](https://github.com/Effect-TS/effect/pull/2438) [`7ddd654`](https://github.com/Effect-TS/effect/commit/7ddd65415b65ccb654ad04f4dbefe39402f15117) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - add Effect.filterMap api
+
+  Which allows you to filter and map an Iterable of Effects in one step.
+
+  ```ts
+  import { Effect, Option } from "effect";
+
+  // resolves with `["even: 2"]
+  Effect.filterMap(
+    [Effect.succeed(1), Effect.succeed(2), Effect.succeed(3)],
+    (i) => (i % 2 === 0 ? Option.some(`even: ${i}`) : Option.none()),
+  );
+  ```
+
+- [#2461](https://github.com/Effect-TS/effect/pull/2461) [`8fdfda6`](https://github.com/Effect-TS/effect/commit/8fdfda6618be848c01b399d13bc05a9a3adfb613) Thanks [@tim-smart](https://github.com/tim-smart)! - use Inspectable.toStringUnknown for absurd runtime errors
+
+- [#2460](https://github.com/Effect-TS/effect/pull/2460) [`f456ba2`](https://github.com/Effect-TS/effect/commit/f456ba273bae21a6dcf8c966c50c97b5f0897d9f) Thanks [@tim-smart](https://github.com/tim-smart)! - use const type parameter for Config.withDefault
+
+  Which ensures that the fallback value type is not widened for literals.
+
 ## 2.4.16
 
 ### Patch Changes
