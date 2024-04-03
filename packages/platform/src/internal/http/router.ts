@@ -40,15 +40,15 @@ export const searchParams = Effect.map(RouteContext, (_) => _.searchParams)
 /** @internal */
 export const schemaJson = <
   R,
-  I extends {
-    readonly method?: Method.Method
-    readonly url?: string
-    readonly cookies?: Readonly<Record<string, string>>
-    readonly headers?: Readonly<Record<string, string>>
-    readonly pathParams?: Readonly<Record<string, string>>
-    readonly searchParams?: Readonly<Record<string, string>>
-    readonly body?: any
-  },
+  I extends Partial<{
+    readonly method: Method.Method
+    readonly url: string
+    readonly cookies: Readonly<Record<string, string>>
+    readonly headers: Readonly<Record<string, string>>
+    readonly pathParams: Readonly<Record<string, string>>
+    readonly searchParams: Readonly<Record<string, string>>
+    readonly body: any
+  }>,
   A
 >(
   schema: Schema.Schema<A, I, R>,
@@ -74,14 +74,14 @@ export const schemaJson = <
 /** @internal */
 export const schemaNoBody = <
   R,
-  I extends {
-    readonly method?: Method.Method
-    readonly url?: string
-    readonly cookies?: Readonly<Record<string, string>>
-    readonly headers?: Readonly<Record<string, string>>
-    readonly pathParams?: Readonly<Record<string, string>>
-    readonly searchParams?: Readonly<Record<string, string>>
-  },
+  I extends Partial<{
+    readonly method: Method.Method
+    readonly url: string
+    readonly cookies: Readonly<Record<string, string>>
+    readonly headers: Readonly<Record<string, string>>
+    readonly pathParams: Readonly<Record<string, string>>
+    readonly searchParams: Readonly<Record<string, string>>
+  }>,
   A
 >(
   schema: Schema.Schema<A, I, R>,
