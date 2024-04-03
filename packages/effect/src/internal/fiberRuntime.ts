@@ -1831,13 +1831,13 @@ export const allWith = <
 ): Effect.All.Return<Arg, O> => all(arg, options)
 
 /* @internal */
-export const allSuccesses = <A, E, R>(
-  elements: Iterable<Effect.Effect<A, E, R>>,
+export const allSuccesses = <Eff extends Effect.Effect<any, any, any>>(
+  elements: Iterable<Eff>,
   options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
   }
-): Effect.Effect<Array<A>, never, R> =>
+): Effect.Effect<Array<Effect.Effect.Success<Eff>>, never, Effect.Effect.Context<Eff>> =>
   core.map(
     all(RA.fromIterable(elements).map(core.exit), options),
     RA.filterMap((exit) => core.exitIsSuccess(exit) ? Option.some(exit.effect_instruction_i0) : Option.none())
@@ -2302,14 +2302,23 @@ const forkWithScopeOverride = <A, E, R>(
 
 /* @internal */
 export const mergeAll = dual<
-  <Z, A>(zero: Z, f: (z: Z, a: A, i: number) => Z, options?: {
-    readonly concurrency?: Concurrency | undefined
-    readonly batching?: boolean | "inherit" | undefined
-  }) => <E, R>(elements: Iterable<Effect.Effect<A, E, R>>) => Effect.Effect<Z, E, R>,
-  <A, E, R, Z>(elements: Iterable<Effect.Effect<A, E, R>>, zero: Z, f: (z: Z, a: A, i: number) => Z, options?: {
-    readonly concurrency?: Concurrency | undefined
-    readonly batching?: boolean | "inherit" | undefined
-  }) => Effect.Effect<Z, E, R>
+  <Z, Eff extends Effect.Effect<any, any, any>>(
+    zero: Z,
+    f: (z: Z, a: Effect.Effect.Success<Eff>, i: number) => Z,
+    options?: {
+      readonly concurrency?: Concurrency | undefined
+      readonly batching?: boolean | "inherit" | undefined
+    }
+  ) => (elements: Iterable<Eff>) => Effect.Effect<Z, Effect.Effect.Error<Eff>, Effect.Effect.Context<Eff>>,
+  <Eff extends Effect.Effect<any, any, any>, Z>(
+    elements: Iterable<Eff>,
+    zero: Z,
+    f: (z: Z, a: Effect.Effect.Success<Eff>, i: number) => Z,
+    options?: {
+      readonly concurrency?: Concurrency | undefined
+      readonly batching?: boolean | "inherit" | undefined
+    }
+  ) => Effect.Effect<Z, Effect.Effect.Error<Eff>, Effect.Effect.Context<Eff>>
 >(
   (args) => Predicate.isFunction(args[2]),
   <A, E, R, Z>(elements: Iterable<Effect.Effect<A, E, R>>, zero: Z, f: (z: Z, a: A, i: number) => Z, options?: {
@@ -2419,7 +2428,13 @@ export const validateAll = dual<
 )
 
 /* @internal */
-export const raceAll = <A, E, R>(all: Iterable<Effect.Effect<A, E, R>>): Effect.Effect<A, E, R> => {
+export const raceAll: <Eff extends Effect.Effect<any, any, any>>(
+  all: Iterable<Eff>
+) => Effect.Effect<Effect.Effect.Success<Eff>, Effect.Effect.Error<Eff>, Effect.Effect.Context<Eff>> = <
+  A,
+  E,
+  R
+>(all: Iterable<Effect.Effect<A, E, R>>): Effect.Effect<A, E, R> => {
   const list = Chunk.fromIterable(all)
   if (!Chunk.isNonEmpty(list)) {
     return core.dieSync(() => new core.IllegalArgumentException(`Received an empty collection of effects`))
@@ -2528,27 +2543,27 @@ const raceAllArbiter = <E, E1, A, A1>(
 
 /* @internal */
 export const reduceEffect = dual<
-  <A, E, R>(
-    zero: Effect.Effect<A, E, R>,
-    f: (acc: NoInfer<A>, a: NoInfer<A>, i: number) => A,
+  <Z, E, R, Eff extends Effect.Effect<any, any, any>>(
+    zero: Effect.Effect<Z, E, R>,
+    f: (acc: NoInfer<Z>, a: Effect.Effect.Success<Eff>, i: number) => Z,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
-  ) => (elements: Iterable<Effect.Effect<A, E, R>>) => Effect.Effect<A, E, R>,
-  <A, E, R>(
-    elements: Iterable<Effect.Effect<A, E, R>>,
-    zero: Effect.Effect<A, E, R>,
-    f: (acc: NoInfer<A>, a: NoInfer<A>, i: number) => A,
+  ) => (elements: Iterable<Eff>) => Effect.Effect<Z, E | Effect.Effect.Error<Eff>, R | Effect.Effect.Context<Eff>>,
+  <Eff extends Effect.Effect<any, any, any>, Z, E, R>(
+    elements: Iterable<Eff>,
+    zero: Effect.Effect<Z, E, R>,
+    f: (acc: NoInfer<Z>, a: Effect.Effect.Success<Eff>, i: number) => Z,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
-  ) => Effect.Effect<A, E, R>
->((args) => Predicate.isIterable(args[0]), <A, E, R>(
+  ) => Effect.Effect<Z, E | Effect.Effect.Error<Eff>, R | Effect.Effect.Context<Eff>>
+>((args) => Predicate.isIterable(args[0]), <A, E, R, Z>(
   elements: Iterable<Effect.Effect<A, E, R>>,
-  zero: Effect.Effect<A, E, R>,
-  f: (acc: NoInfer<A>, a: NoInfer<A>, i: number) => A,
+  zero: Effect.Effect<Z, E, R>,
+  f: (acc: NoInfer<Z>, a: NoInfer<A>, i: number) => Z,
   options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
@@ -2562,14 +2577,14 @@ export const reduceEffect = dual<
         pipe(
           mergeAll(
             [zero, ...elements],
-            Option.none() as Option.Option<A>,
+            Option.none<Z>(),
             (acc, elem, i) => {
               switch (acc._tag) {
                 case "None": {
-                  return Option.some(elem)
+                  return Option.some(elem as Z)
                 }
                 case "Some": {
-                  return Option.some(f(acc.value, elem, i))
+                  return Option.some(f(acc.value, elem as A, i))
                 }
               }
             },
