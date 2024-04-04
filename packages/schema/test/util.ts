@@ -280,8 +280,10 @@ export const expectSome = <A>(o: Option.Option<A>, a: A) => {
 
 export const AsyncDeclaration = S.declare(
   [],
-  () => (u) => Effect.andThen(Effect.sleep("10 millis"), Effect.succeed(u)),
-  () => (u) => Effect.andThen(Effect.sleep("10 millis"), Effect.succeed(u)),
+  {
+    decode: () => (u) => Effect.andThen(Effect.sleep("10 millis"), Effect.succeed(u)),
+    encode: () => (u) => Effect.andThen(Effect.sleep("10 millis"), Effect.succeed(u))
+  },
   {
     identifier: "AsyncDeclaration"
   }

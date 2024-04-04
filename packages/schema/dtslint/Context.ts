@@ -27,8 +27,7 @@ S.declare((u): u is string => typeof u === "string")
 // $ExpectType Schema<string, number, "aContext" | "bContext">
 S.declare(
   [aContext, bContext],
-  (_a, _b) => () => ParseResult.succeed("a"),
-  (_a, _b) => () => ParseResult.succeed(1),
+  { decode: (_a, _b) => () => ParseResult.succeed("a"), encode: (_a, _b) => () => ParseResult.succeed(1) },
   {
     arbitrary: (
       _a, // $ExpectType Arbitrary<string>
@@ -50,46 +49,55 @@ S.declare(
   }
 )
 
+// @ts-expect-error
 S.declare(
   [aContext, bContext],
-  // @ts-expect-error
-  (_a, _b) => () => Taga.pipe(Effect.flatMap(ParseResult.succeed)),
-  (_a, _b) => () => ParseResult.succeed(1)
+  {
+    decode: (_a, _b) => () => Taga.pipe(Effect.flatMap(ParseResult.succeed)),
+    encode: (_a, _b) => () => ParseResult.succeed(1)
+  }
+)
+
+// @ts-expect-error
+S.declare(
+  [aContext, bContext],
+  {
+    decode: (_a, _b) => () => ParseResult.succeed("a"),
+    encode: (_a, _b) => () => Tagb.pipe(Effect.flatMap(ParseResult.succeed))
+  }
 )
 
 S.declare(
-  [aContext, bContext],
-  (_a, _b) => () => ParseResult.succeed("a"),
   // @ts-expect-error
-  (_a, _b) => () => Tagb.pipe(Effect.flatMap(ParseResult.succeed))
+  [aContext, bContext],
+  {
+    decode: (_a, _b) => () => Taga.pipe(Effect.flatMap(ParseResult.succeed)),
+    encode: (_a, _b) => () => Tagb.pipe(Effect.flatMap(ParseResult.succeed))
+  }
 )
 
-S.declare(
-  [aContext, bContext],
-  // @ts-expect-error
-  (_a, _b) => () => Taga.pipe(Effect.flatMap(ParseResult.succeed)),
-  (_a, _b) => () => Tagb.pipe(Effect.flatMap(ParseResult.succeed))
-)
-
+// @ts-expect-error
 S.declare(
   [],
-  // @ts-expect-error
-  () => () => Tag1.pipe(Effect.flatMap(ParseResult.succeed)),
-  () => () => ParseResult.succeed(1)
+  { decode: () => () => Tag1.pipe(Effect.flatMap(ParseResult.succeed)), encode: () => () => ParseResult.succeed(1) }
 )
 
+// @ts-expect-error
 S.declare(
   [aContext, bContext],
-  // @ts-expect-error
-  (_a, _b) => () => Tag1.pipe(Effect.flatMap(ParseResult.succeed)),
-  (_a, _b) => () => ParseResult.succeed(1)
+  {
+    decode: (_a, _b) => () => Tag1.pipe(Effect.flatMap(ParseResult.succeed)),
+    encode: (_a, _b) => () => ParseResult.succeed(1)
+  }
 )
 
+// @ts-expect-error
 S.declare(
   [aContext, bContext],
-  (_a, _b) => () => ParseResult.succeed("a"),
-  // @ts-expect-error
-  (_a, _b) => () => Tag2.pipe(Effect.flatMap(ParseResult.succeed))
+  {
+    decode: (_a, _b) => () => ParseResult.succeed("a"),
+    encode: (_a, _b) => () => Tag2.pipe(Effect.flatMap(ParseResult.succeed))
+  }
 )
 
 // ---------------------------------------------
