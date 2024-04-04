@@ -6406,8 +6406,12 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
           ...annotations
         }
       )
+      let from = schema
+      if (Option.isNone(AST.getTitleAnnotation(from.ast))) {
+        from = schema.annotations({ title: `${identifier} (Encoded side)` })
+      }
       const transformation = transform(
-        schema,
+        from,
         declaration,
         (input) => new this(input, true),
         identity

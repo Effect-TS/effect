@@ -215,9 +215,9 @@ describe("Schema > Class APIs", () => {
       await Util.expectDecodeUnknownFailure(
         A,
         { a: "" },
-        `({ a: NonEmpty } <-> A)
+        `(A (Encoded side) <-> A)
 └─ Encoded side transformation failure
-   └─ { a: NonEmpty }
+   └─ A (Encoded side)
       └─ ["a"]
          └─ NonEmpty
             └─ Predicate refinement failure
@@ -232,9 +232,9 @@ describe("Schema > Class APIs", () => {
       await Util.expectEncodeFailure(
         A,
         new A({ a: "" }, true),
-        `({ a: NonEmpty } <-> A)
+        `(A (Encoded side) <-> A)
 └─ Encoded side transformation failure
-   └─ { a: NonEmpty }
+   └─ A (Encoded side)
       └─ ["a"]
          └─ NonEmpty
             └─ Predicate refinement failure
@@ -381,18 +381,18 @@ describe("Schema > Class APIs", () => {
       await Util.expectDecodeUnknownFailure(
         TA,
         { a: "a" },
-        `({ _tag: "TA"; a: NonEmpty } <-> TA)
+        `(TA (Encoded side) <-> TA)
 └─ Encoded side transformation failure
-   └─ { _tag: "TA"; a: NonEmpty }
+   └─ TA (Encoded side)
       └─ ["_tag"]
          └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         TA,
         { _tag: "TA", a: "" },
-        `({ _tag: "TA"; a: NonEmpty } <-> TA)
+        `(TA (Encoded side) <-> TA)
 └─ Encoded side transformation failure
-   └─ { _tag: "TA"; a: NonEmpty }
+   └─ TA (Encoded side)
       └─ ["a"]
          └─ NonEmpty
             └─ Predicate refinement failure
@@ -407,9 +407,9 @@ describe("Schema > Class APIs", () => {
       await Util.expectEncodeFailure(
         TA,
         new TA({ a: "" }, true),
-        `({ _tag: "TA"; a: NonEmpty } <-> TA)
+        `(TA (Encoded side) <-> TA)
 └─ Encoded side transformation failure
-   └─ { _tag: "TA"; a: NonEmpty }
+   └─ TA (Encoded side)
       └─ ["a"]
          └─ NonEmpty
             └─ Predicate refinement failure
@@ -478,9 +478,9 @@ describe("Schema > Class APIs", () => {
   it("extends error", () => {
     expect(() => S.decodeUnknownSync(PersonWithAge)({ id: 1, name: "John" })).toThrow(
       new Error(
-        `({ id: number; age: number; name: a non empty string } <-> PersonWithAge)
+        `(PersonWithAge (Encoded side) <-> PersonWithAge)
 └─ Encoded side transformation failure
-   └─ { id: number; age: number; name: a non empty string }
+   └─ PersonWithAge (Encoded side)
       └─ ["age"]
          └─ is missing`
       )
@@ -534,20 +534,20 @@ describe("Schema > Class APIs", () => {
         id: 2,
         name: "John"
       },
-      `(({ id: number; name: a non empty string } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> }) <-> PersonWithTransform)
+      `(PersonWithTransform (Encoded side) <-> PersonWithTransform)
 └─ Encoded side transformation failure
-   └─ ({ id: number; name: a non empty string } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> })
+   └─ PersonWithTransform (Encoded side)
       └─ Transformation process failure
-         └─ Expected ({ id: number; name: a non empty string } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> }), actual {"id":2,"name":"John"}`
+         └─ Expected PersonWithTransform (Encoded side), actual {"id":2,"name":"John"}`
     )
     await Util.expectEncodeFailure(
       PersonWithTransform,
       new PersonWithTransform({ id: 2, name: "John", thing: O.some({ id: 1 }) }),
-      `(({ id: number; name: a non empty string } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> }) <-> PersonWithTransform)
+      `(PersonWithTransform (Encoded side) <-> PersonWithTransform)
 └─ Encoded side transformation failure
-   └─ ({ id: number; name: a non empty string } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> })
+   └─ PersonWithTransform (Encoded side)
       └─ Transformation process failure
-         └─ Expected ({ id: number; name: a non empty string } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> }), actual {"id":2,"name":"John","thing":{
+         └─ Expected PersonWithTransform (Encoded side), actual {"id":2,"name":"John","thing":{
   "_id": "Option",
   "_tag": "Some",
   "value": {
@@ -580,20 +580,20 @@ describe("Schema > Class APIs", () => {
         id: 2,
         name: "John"
       },
-      `(({ id: number; name: string } <-> ({ id: number; name: a non empty string; thing?: { id: number } } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> })) <-> PersonWithTransformFrom)
+      `(PersonWithTransformFrom (Encoded side) <-> PersonWithTransformFrom)
 └─ Encoded side transformation failure
-   └─ ({ id: number; name: string } <-> ({ id: number; name: a non empty string; thing?: { id: number } } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> }))
+   └─ PersonWithTransformFrom (Encoded side)
       └─ Transformation process failure
-         └─ Expected ({ id: number; name: string } <-> ({ id: number; name: a non empty string; thing?: { id: number } } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> })), actual {"id":2,"name":"John"}`
+         └─ Expected PersonWithTransformFrom (Encoded side), actual {"id":2,"name":"John"}`
     )
     await Util.expectEncodeFailure(
       PersonWithTransformFrom,
       new PersonWithTransformFrom({ id: 2, name: "John", thing: O.some({ id: 1 }) }),
-      `(({ id: number; name: string } <-> ({ id: number; name: a non empty string; thing?: { id: number } } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> })) <-> PersonWithTransformFrom)
+      `(PersonWithTransformFrom (Encoded side) <-> PersonWithTransformFrom)
 └─ Encoded side transformation failure
-   └─ ({ id: number; name: string } <-> ({ id: number; name: a non empty string; thing?: { id: number } } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> }))
+   └─ PersonWithTransformFrom (Encoded side)
       └─ Transformation process failure
-         └─ Expected ({ id: number; name: string } <-> ({ id: number; name: a non empty string; thing?: { id: number } } <-> { id: number; name: a non empty string; thing: Option<{ id: number }> })), actual {"id":2,"name":"John","thing":{"id":1}}`
+         └─ Expected PersonWithTransformFrom (Encoded side), actual {"id":2,"name":"John","thing":{"id":1}}`
     )
   })
 
@@ -608,9 +608,9 @@ describe("Schema > Class APIs", () => {
 
     expect(() => S.decodeUnknownSync(TaggedPersonWithAge)({ id: 1, name: "John", age: 30 })).toThrow(
       new Error(
-        `({ _tag: "TaggedPerson"; id: number; age: number; name: a non empty string } <-> TaggedPersonWithAge)
+        `(TaggedPersonWithAge (Encoded side) <-> TaggedPersonWithAge)
 └─ Encoded side transformation failure
-   └─ { _tag: "TaggedPerson"; id: number; age: number; name: a non empty string }
+   └─ TaggedPersonWithAge (Encoded side)
       └─ ["_tag"]
          └─ is missing`
       )

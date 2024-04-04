@@ -1539,7 +1539,8 @@ describe("JSONSchema", () => {
             "title": "string"
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "title": "A (Encoded side)"
       })
     })
   })
