@@ -99,7 +99,7 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
         const response = yield* _(
           Http.request.head("https://jsonplaceholder.typicode.com/todos"),
           client,
-          Http.response.schemaJsonEffect(Schema.struct({ status: Schema.literal(200) }))
+          Http.response.schemaJsonScoped(Schema.struct({ status: Schema.literal(200) }))
         )
         expect(response).toEqual({ status: 200 })
       }).pipe(Effect.provide(layer)))

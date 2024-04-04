@@ -11,7 +11,9 @@ class Todo extends Schema.Class<Todo>("Todo")({
   id: Schema.number,
   title: Schema.string,
   completed: Schema.boolean
-}) {}
+}) {
+  static decodeResponse = Http.response.schemaBodyJsonScoped(Todo)
+}
 
 const TodoWithoutId = Schema.struct(Todo.fields).pipe(Schema.omit("id"))
 type TodoWithoutId = Schema.Schema.Type<typeof TodoWithoutId>
@@ -29,7 +31,6 @@ const makeTodoService = Effect.gen(function*(_) {
     Http.client.filterStatusOk,
     Http.client.mapRequest(Http.request.prependUrl("https://jsonplaceholder.typicode.com"))
   )
-  const decodeTodo = Http.response.schemaBodyJsonEffect(Todo)
 
   const addTodoWithoutIdBody = Http.request.schemaBody(TodoWithoutId)
   const create = (todo: TodoWithoutId) =>
@@ -38,7 +39,7 @@ const makeTodoService = Effect.gen(function*(_) {
       todo
     ).pipe(
       Effect.flatMap(clientWithBaseUrl),
-      decodeTodo
+      Todo.decodeResponse
     )
 
   return TodoService.of({ create })

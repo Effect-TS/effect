@@ -27,7 +27,6 @@ const makeTodoService = Effect.gen(function*(_) {
     Http.client.filterStatusOk,
     Http.client.mapRequest(Http.request.prependUrl("https://jsonplaceholder.typicode.com"))
   )
-  const decodeTodo = Http.response.schemaBodyJsonEffect(Todo)
 
   const addTodoWithoutIdBody = Http.request.schemaBody(TodoWithoutId)
   const create = (todo: TodoWithoutId) =>
@@ -36,7 +35,7 @@ const makeTodoService = Effect.gen(function*(_) {
       todo
     ).pipe(
       Effect.flatMap(clientWithBaseUrl),
-      decodeTodo
+      Http.response.schemaBodyJsonScoped(Todo)
     )
 
   return TodoService.of({ create })
