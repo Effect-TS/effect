@@ -53,7 +53,7 @@ export const makeClient = <R extends Router.Router<any, any>>(
   > :
   "HttpResolver.makeClient: request context is not `never`" =>
   Resolver.toClient(make<R>(
-    Client.fetchOk().pipe(
+    Client.fetchOk.pipe(
       Client.mapRequest(ClientRequest.prependUrl(baseUrl)),
       Client.retry(
         Schedule.exponential(50).pipe(
