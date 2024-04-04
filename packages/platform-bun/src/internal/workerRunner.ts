@@ -16,13 +16,13 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
         return yield* _(Effect.die("not in a worker"))
       }
       const port = self
-      const queue = yield* _(Queue.unbounded<I>())
+      const queue = yield* _(Queue.unbounded<readonly [portId: number, message: I]>())
       yield* _(
         Effect.async<never, WorkerError>((resume) => {
           function onMessage(event: MessageEvent) {
             const message = (event as MessageEvent).data as Runner.BackingRunner.Message<I>
             if (message[0] === 0) {
-              queue.unsafeOffer(message[1])
+              queue.unsafeOffer([0, message[1]])
             } else {
               Effect.runFork(shutdown)
             }
@@ -46,7 +46,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
         Effect.interruptible,
         Effect.forkScoped
       )
-      const send = (message: O, transfer?: ReadonlyArray<unknown>) =>
+      const send = (_portId: number, message: O, transfer?: ReadonlyArray<unknown>) =>
         Effect.sync(() =>
           port.postMessage([1, message], {
             transfer: transfer as any

@@ -17,8 +17,9 @@ import type { WorkerError } from "./WorkerError.js"
  * @category models
  */
 export interface BackingRunner<I, O> {
-  readonly queue: Queue.Dequeue<I>
+  readonly queue: Queue.Dequeue<readonly [portId: number, message: I]>
   readonly send: (
+    portId: number,
     message: O,
     transfers?: ReadonlyArray<unknown>
   ) => Effect.Effect<void>
