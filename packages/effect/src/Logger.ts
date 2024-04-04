@@ -193,6 +193,18 @@ export const batched: {
 } = fiberRuntime.batchedLogger
 
 /**
+ * @since 2.0.0
+ * @category console
+ */
+export const withConsoleLog: <M, O>(self: Logger<M, O>) => Logger<M, void> = fiberRuntime.loggerWithConsoleLog
+
+/**
+ * @since 2.0.0
+ * @category console
+ */
+export const withConsoleError: <M, O>(self: Logger<M, O>) => Logger<M, void> = fiberRuntime.loggerWithConsoleError
+
+/**
  * A logger that does nothing in response to logging events.
  *
  * @since 2.0.0
