@@ -6115,16 +6115,18 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
     R3
   >(
     fields: newFields,
-    decode: (
-      input: A,
-      options: ParseOptions,
-      ast: AST.Transformation
-    ) => Effect.Effect<Types.Simplify<A & Struct.Type<newFields>>, ParseResult.ParseIssue, R2>,
-    encode: (
-      input: Types.Simplify<A & Struct.Type<newFields>>,
-      options: ParseOptions,
-      ast: AST.Transformation
-    ) => Effect.Effect<A, ParseResult.ParseIssue, R3>
+    options: {
+      readonly decode: (
+        input: A,
+        options: ParseOptions,
+        ast: AST.Transformation
+      ) => Effect.Effect<Types.Simplify<A & Struct.Type<newFields>>, ParseResult.ParseIssue, R2>
+      readonly encode: (
+        input: Types.Simplify<A & Struct.Type<newFields>>,
+        options: ParseOptions,
+        ast: AST.Transformation
+      ) => Effect.Effect<A, ParseResult.ParseIssue, R3>
+    }
   ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transform">
     : Class<
       Transformed,
@@ -6143,16 +6145,18 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
     R3
   >(
     fields: newFields,
-    decode: (
-      input: I,
-      options: ParseOptions,
-      ast: AST.Transformation
-    ) => Effect.Effect<Types.Simplify<I & Struct.Encoded<newFields>>, ParseResult.ParseIssue, R2>,
-    encode: (
-      input: Types.Simplify<I & Struct.Encoded<newFields>>,
-      options: ParseOptions,
-      ast: AST.Transformation
-    ) => Effect.Effect<I, ParseResult.ParseIssue, R3>
+    options: {
+      readonly decode: (
+        input: I,
+        options: ParseOptions,
+        ast: AST.Transformation
+      ) => Effect.Effect<Types.Simplify<I & Struct.Encoded<newFields>>, ParseResult.ParseIssue, R2>
+      readonly encode: (
+        input: Types.Simplify<I & Struct.Encoded<newFields>>,
+        options: ParseOptions,
+        ast: AST.Transformation
+      ) => Effect.Effect<I, ParseResult.ParseIssue, R3>
+    }
   ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transformFrom">
     : Class<
       Transformed,
@@ -6454,7 +6458,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
     }
 
     static transformOrFail<Transformed>(identifier: string) {
-      return (newFields: Struct.Fields, decode: any, encode: any, annotations?: Annotations.Schema<Transformed>) => {
+      return (newFields: Struct.Fields, options: any, annotations?: Annotations.Schema<Transformed>) => {
         const transformedFields: Struct.Fields = extendFields(fields, newFields)
         return makeClass({
           kind,
@@ -6462,7 +6466,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
           fromSchema: transformOrFail(
             schema,
             typeSchema(struct(transformedFields)),
-            { decode, encode }
+            options
           ),
           fields: transformedFields,
           Base: this,
@@ -6473,7 +6477,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
     }
 
     static transformOrFailFrom<Transformed>(identifier: string) {
-      return (newFields: Struct.Fields, decode: any, encode: any, annotations?: Annotations.Schema<Transformed>) => {
+      return (newFields: Struct.Fields, options: any, annotations?: Annotations.Schema<Transformed>) => {
         const transformedFields: Struct.Fields = extendFields(fields, newFields)
         return makeClass({
           kind,
@@ -6481,7 +6485,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
           fromSchema: transformOrFail(
             encodedSchema(schema),
             struct(transformedFields),
-            { decode, encode }
+            options
           ),
           fields: transformedFields,
           Base: this,

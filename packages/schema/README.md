@@ -3428,13 +3428,16 @@ export class PersonWithTransform extends Person.transformOrFail<PersonWithTransf
   {
     age: S.optional(S.number, { exact: true, as: "Option" }),
   },
-  (input) =>
-    Effect.mapBoth(getAge(input.id), {
-      onFailure: (e) => new ParseResult.Type(S.string.ast, input.id, e.message),
-      // must return { age: Option<number> }
-      onSuccess: (age) => ({ ...input, age: Option.some(age) }),
-    }),
-  ParseResult.succeed
+  {
+    decode: (input) =>
+      Effect.mapBoth(getAge(input.id), {
+        onFailure: (e) =>
+          new ParseResult.Type(S.string.ast, input.id, e.message),
+        // must return { age: Option<number> }
+        onSuccess: (age) => ({ ...input, age: Option.some(age) }),
+      }),
+    encode: ParseResult.succeed,
+  }
 ) {}
 
 S.decodeUnknownPromise(PersonWithTransform)({ id: 1, name: "name" }).then(
@@ -3455,13 +3458,15 @@ export class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWi
   {
     age: S.optional(S.number, { exact: true, as: "Option" }),
   },
-  (input) =>
-    Effect.mapBoth(getAge(input.id), {
-      onFailure: (e) => new ParseResult.Type(S.string.ast, input, e.message),
-      // must return { age?: number }
-      onSuccess: (age) => (age > 18 ? { ...input, age } : { ...input }),
-    }),
-  ParseResult.succeed
+  {
+    decode: (input) =>
+      Effect.mapBoth(getAge(input.id), {
+        onFailure: (e) => new ParseResult.Type(S.string.ast, input, e.message),
+        // must return { age?: number }
+        onSuccess: (age) => (age > 18 ? { ...input, age } : { ...input }),
+      }),
+    encode: ParseResult.succeed,
+  }
 ) {}
 
 S.decodeUnknownPromise(PersonWithTransformFrom)({ id: 1, name: "name" }).then(
@@ -3477,15 +3482,15 @@ PersonWithTransformFrom {
 */
 ```
 
-The decision of which API to use, either `transform` or `transformFrom`, depends on when you wish to execute the transformation:
+The decision of which API to use, either `transformOrFail` or `transformOrFailFrom`, depends on when you wish to execute the transformation:
 
-1. Using `transform`:
+1. Using `transformOrFail`:
 
    - The transformation occurs at the end of the process.
    - It expects you to provide a value of type `{ age: Option<number> }`.
    - After processing the initial input, the new transformation comes into play, and you need to ensure the final output adheres to the specified structure.
 
-2. Using `transformFrom`:
+2. Using `transformOrFailFrom`:
    - The new transformation starts as soon as the initial input is handled.
    - You should provide a value `{ age?: number }`.
    - Based on this fresh input, the subsequent transformation `{ age: S.optionalToOption(S.number, { exact: true }) }` is executed.
@@ -4933,18 +4938,18 @@ console.log(decode("https://www.effect.website")); // https://www.effect.website
 In case you prefer to normalize URLs you can combine `transformOrFail` with `URL`:
 
 ```ts
-import * as ParseResult from "@effect/schema/ParseResult"
-import * as S from "@effect/schema/Schema"
+import * as ParseResult from "@effect/schema/ParseResult";
+import * as S from "@effect/schema/Schema";
 
 const NormalizedUrlString: S.Schema<string> = S.string.pipe(
   S.filter((value) => {
     try {
-      return new URL(value).toString() === value
+      return new URL(value).toString() === value;
     } catch (_) {
-      return false
+      return false;
     }
   })
-)
+);
 
 const NormalizeUrlString: S.Schema<string> = S.transformOrFail(
   S.string,
@@ -4958,15 +4963,15 @@ const NormalizeUrlString: S.Schema<string> = S.transformOrFail(
             ast,
             value,
             err instanceof Error ? err.message : undefined
-          )
+          ),
       }),
-    encode: ParseResult.succeed
+    encode: ParseResult.succeed,
   }
-)
+);
 
-const decode = S.decodeUnknownSync(NormalizeUrlString)
+const decode = S.decodeUnknownSync(NormalizeUrlString);
 
-console.log(decode("https://www.effect.website")) // "https://www.effect.website/"
+console.log(decode("https://www.effect.website")); // "https://www.effect.website/"
 ```
 
 # Technical overview: Understanding Schemas
@@ -5333,30 +5338,26 @@ Error: Person
 When a transformation encounters an error, the default error message provides information on whether the failure happened in the "from" part, the "to" part, or within the transformation process itself:
 
 ```ts
-import * as ParseResult from "@effect/schema/ParseResult"
-import * as S from "@effect/schema/Schema"
+import * as ParseResult from "@effect/schema/ParseResult";
+import * as S from "@effect/schema/Schema";
 
-const IntFromString = S.transformOrFail(
-  S.string,
-  S.Int,
-  {
-    decode: (s, _, ast) => {
-      const n = Number(s)
-      return Number.isNaN(n)
-        ? ParseResult.fail(new ParseResult.Type(ast, s))
-        : ParseResult.succeed(n)
-    },
-    encode: (n) => ParseResult.succeed(String(n))
-  }
-).annotations({ identifier: "IntFromString" })
+const IntFromString = S.transformOrFail(S.string, S.Int, {
+  decode: (s, _, ast) => {
+    const n = Number(s);
+    return Number.isNaN(n)
+      ? ParseResult.fail(new ParseResult.Type(ast, s))
+      : ParseResult.succeed(n);
+  },
+  encode: (n) => ParseResult.succeed(String(n)),
+}).annotations({ identifier: "IntFromString" });
 
 const schema = S.struct({
   name: S.NonEmpty,
-  age: IntFromString
-}).annotations({ identifier: "Person" })
+  age: IntFromString,
+}).annotations({ identifier: "Person" });
 
 // "from" failure
-S.decodeUnknownSync(schema)({ name: "John", age: null })
+S.decodeUnknownSync(schema)({ name: "John", age: null });
 /*
 throws:
 Error: Person
@@ -5367,7 +5368,7 @@ Error: Person
 */
 
 // "to" failure
-S.decodeUnknownSync(schema)({ name: "John", age: "1.2" })
+S.decodeUnknownSync(schema)({ name: "John", age: "1.2" });
 /*
 throws:
 Error: Person
@@ -5380,7 +5381,7 @@ Error: Person
 */
 
 // "transformation" failure
-S.decodeUnknownSync(schema)({ name: "John", age: "a" })
+S.decodeUnknownSync(schema)({ name: "John", age: "a" });
 /*
 throws:
 Error: Person
@@ -5396,33 +5397,33 @@ Error: Person
 You have the option to customize error messages for transformations using the `message` annotation:
 
 ```ts
-import * as ParseResult from "@effect/schema/ParseResult"
-import * as S from "@effect/schema/Schema"
+import * as ParseResult from "@effect/schema/ParseResult";
+import * as S from "@effect/schema/Schema";
 
 const IntFromString = S.transformOrFail(
   S.string.annotations({ message: () => "please enter a string" }),
   S.Int.annotations({ message: () => "please enter an integer" }),
   {
     decode: (s, _, ast) => {
-      const n = Number(s)
+      const n = Number(s);
       return Number.isNaN(n)
         ? ParseResult.fail(new ParseResult.Type(ast, s))
-        : ParseResult.succeed(n)
+        : ParseResult.succeed(n);
     },
-    encode: (n) => ParseResult.succeed(String(n))
+    encode: (n) => ParseResult.succeed(String(n)),
   }
 ).annotations({
   identifier: "IntFromString",
-  message: () => "please enter a parseable string"
-})
+  message: () => "please enter a parseable string",
+});
 
 const schema = S.struct({
   name: S.NonEmpty,
-  age: IntFromString
-}).annotations({ identifier: "Person" })
+  age: IntFromString,
+}).annotations({ identifier: "Person" });
 
 // "from" failure
-S.decodeUnknownSync(schema)({ name: "John", age: null })
+S.decodeUnknownSync(schema)({ name: "John", age: null });
 /*
 throws:
 Error: Person
@@ -5431,7 +5432,7 @@ Error: Person
 */
 
 // "to" failure
-S.decodeUnknownSync(schema)({ name: "John", age: "1.2" })
+S.decodeUnknownSync(schema)({ name: "John", age: "1.2" });
 /*
 throws:
 Error: Person
@@ -5440,7 +5441,7 @@ Error: Person
 */
 
 // "transformation" failure
-S.decodeUnknownSync(schema)({ name: "John", age: "a" })
+S.decodeUnknownSync(schema)({ name: "John", age: "a" });
 /*
 throws:
 Error: Person

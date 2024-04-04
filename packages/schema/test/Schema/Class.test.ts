@@ -90,34 +90,38 @@ class PersonWithTransform extends Person.transformOrFail<PersonWithTransform>("P
   {
     thing: Thing
   },
-  (input, _, ast) =>
-    input.id === 2 ?
-      ParseResult.fail(new ParseResult.Type(ast, input)) :
-      ParseResult.succeed({
-        ...input,
-        thing: O.some({ id: 123 })
-      }),
-  (input, _, ast) =>
-    input.id === 2 ?
-      ParseResult.fail(new ParseResult.Type(ast, input)) :
-      ParseResult.succeed(input)
+  {
+    decode: (input, _, ast) =>
+      input.id === 2 ?
+        ParseResult.fail(new ParseResult.Type(ast, input)) :
+        ParseResult.succeed({
+          ...input,
+          thing: O.some({ id: 123 })
+        }),
+    encode: (input, _, ast) =>
+      input.id === 2 ?
+        ParseResult.fail(new ParseResult.Type(ast, input)) :
+        ParseResult.succeed(input)
+  }
 ) {}
 
 class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWithTransformFrom>("PersonWithTransformFrom")(
   {
     thing: Thing
   },
-  (input, _, ast) =>
-    input.id === 2 ?
-      ParseResult.fail(new ParseResult.Type(ast, input)) :
-      ParseResult.succeed({
-        ...input,
-        thing: { id: 123 }
-      }),
-  (input, _, ast) =>
-    input.id === 2 ?
-      ParseResult.fail(new ParseResult.Type(ast, input)) :
-      ParseResult.succeed(input)
+  {
+    decode: (input, _, ast) =>
+      input.id === 2 ?
+        ParseResult.fail(new ParseResult.Type(ast, input)) :
+        ParseResult.succeed({
+          ...input,
+          thing: { id: 123 }
+        }),
+    encode: (input, _, ast) =>
+      input.id === 2 ?
+        ParseResult.fail(new ParseResult.Type(ast, input)) :
+        ParseResult.succeed(input)
+  }
 ) {}
 
 describe("Schema > Class APIs", () => {
