@@ -6406,8 +6406,12 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
           ...annotations
         }
       )
+      const from = Option.match(AST.getTitleAnnotation(schema.ast), {
+        onNone: () => schema.annotations({ title: `${identifier} (Encoded side)` }),
+        onSome: () => schema
+      })
       const transformation = transform(
-        schema,
+        from,
         declaration,
         (input) => new this(input, true),
         identity
