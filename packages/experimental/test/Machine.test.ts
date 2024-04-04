@@ -157,7 +157,7 @@ describe("Machine", () => {
 
       const booted = yield* _(Machine.boot(counter, 0))
       yield* _(Effect.sleep(10))
-      assert.strictEqual(yield* _(booted.state), 0)
+      assert.strictEqual(yield* _(booted.get), 0)
       assert.strictEqual(yield* _(booted.send(new Increment())), 1)
       assert.strictEqual(yield* _(booted.send(new Increment())), 2)
       assert.strictEqual(yield* _(booted.send(new IncrementBy({ number: 2 }))), 4)
@@ -171,7 +171,7 @@ describe("Machine", () => {
   test("init context", () =>
     Effect.gen(function*(_) {
       const booted = yield* _(Machine.boot(withContext, 20))
-      assert.strictEqual(yield* _(booted.state), 20)
+      assert.strictEqual(yield* _(booted.get), 20)
       assert.strictEqual(yield* _(booted.send(new Multiply())), 40)
     }).pipe(
       Effect.scoped,
@@ -182,16 +182,16 @@ describe("Machine", () => {
   test("forkWithState", () =>
     Effect.gen(function*(_) {
       const booted = yield* _(Machine.boot(delayedCounter, 2))
-      assert.strictEqual(yield* _(booted.state), 2)
+      assert.strictEqual(yield* _(booted.get), 2)
       assert.deepStrictEqual(
         // @ts-expect-error
         yield* _(booted.send(new IncrementBy({ number: 2 })), Effect.exit),
         Exit.die("Request IncrementBy marked as internal")
       )
       assert.strictEqual(yield* _(booted.send(new DelayedIncrementBy({ number: 2, delay: 10 }))), undefined)
-      assert.strictEqual(yield* _(booted.state), 2)
+      assert.strictEqual(yield* _(booted.get), 2)
       yield* _(Effect.sleep(10))
-      assert.strictEqual(yield* _(booted.state), 4)
+      assert.strictEqual(yield* _(booted.get), 4)
     }).pipe(Effect.scoped, Effect.runPromise))
 
   test("changes", () =>
@@ -238,7 +238,7 @@ describe("SerializableMachine", () => {
     Effect.gen(function*(_) {
       const actor = yield* _(Machine.boot(counterSerializable, 10))
 
-      assert.strictEqual(yield* _(actor.state), 10)
+      assert.strictEqual(yield* _(actor.get), 10)
       assert.strictEqual(yield* _(actor.send(new Increment())), 11)
       assert.strictEqual(yield* _(actor.send(new Increment())), 12)
       assert.deepStrictEqual(yield* _(actor.sendUnknown({ _tag: "Decrement" })), {
@@ -249,6 +249,6 @@ describe("SerializableMachine", () => {
       assert.deepStrictEqual(snapshot, [10, "11"])
 
       const restored = yield* _(Machine.restore(counterSerializable, snapshot))
-      assert.strictEqual(yield* _(restored.state), 11)
+      assert.strictEqual(yield* _(restored.get), 11)
     }).pipe(Effect.scoped, Effect.runPromise))
 })
