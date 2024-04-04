@@ -743,6 +743,11 @@ export * as Struct from "./Struct.js"
 /**
  * @since 2.0.0
  */
+export * as Subscribable from "./Subscribable.js"
+
+/**
+ * @since 2.0.0
+ */
 export * as SubscriptionRef from "./SubscriptionRef.js"
 
 /**

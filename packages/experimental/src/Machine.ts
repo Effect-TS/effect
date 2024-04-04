@@ -17,7 +17,8 @@ import { dual, identity, pipe } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as MutableHashMap from "effect/MutableHashMap"
 import * as Option from "effect/Option"
-import { type Pipeable, pipeArguments } from "effect/Pipeable"
+import type { Pipeable } from "effect/Pipeable"
+import { pipeArguments } from "effect/Pipeable"
 import * as PubSub from "effect/PubSub"
 import * as Queue from "effect/Queue"
 import * as ReadonlyArray from "effect/ReadonlyArray"
@@ -25,6 +26,7 @@ import type { Request } from "effect/Request"
 import type * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
+import * as Subscribable from "effect/Subscribable"
 import * as Tracer from "effect/Tracer"
 import * as Procedure from "./Machine/Procedure.js"
 import type { ProcedureList } from "./Machine/ProcedureList.js"
@@ -287,7 +289,7 @@ export declare namespace Machine {
  * @since 1.0.0
  * @category models
  */
-export interface Actor<M extends Machine.Any> {
+export interface Actor<M extends Machine.Any> extends Subscribable.Subscribable<Machine.State<M>> {
   readonly [ActorTypeId]: ActorTypeId
   readonly machine: M
   readonly input: Machine.Input<M>
@@ -295,9 +297,15 @@ export interface Actor<M extends Machine.Any> {
     Request.Success<Req>,
     Request.Error<Req>
   >
-  readonly state: Effect.Effect<Machine.State<M>>
-  readonly changes: Stream.Stream<Machine.State<M>>
   readonly join: Effect.Effect<never, Machine.InitError<M> | MachineDefect>
+}
+
+const ActorProto = {
+  [ActorTypeId]: ActorTypeId,
+  [Subscribable.TypeId]: Subscribable.TypeId,
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
 }
 
 /**
@@ -810,11 +818,10 @@ export const boot = <
 
     yield* _(Deferred.await(latch))
 
-    return identity<SerializableActor<M>>({
-      [ActorTypeId]: ActorTypeId,
+    return identity<SerializableActor<M>>(Object.assign(Object.create(ActorProto), {
       machine: self,
       input: input!,
-      state: Effect.sync(() => currentState),
+      get: Effect.sync(() => currentState),
       changes: Stream.concat(
         Stream.sync(() => currentState),
         Stream.fromPubSub(pubsub)
@@ -822,7 +829,7 @@ export const boot = <
       send: sendExternal,
       sendUnknown,
       join: Fiber.join(fiber)
-    }) as any
+    })) as any
   })
 
 /**
@@ -852,7 +859,7 @@ export const snapshot = <
 ): Effect.Effect<[input: unknown, state: unknown], ParseResult.ParseError, SR> =>
   Effect.zip(
     Schema.encode(self.machine.schemaInput)(self.input),
-    Effect.flatMap(self.state, Schema.encode(self.machine.schemaState))
+    Effect.flatMap(self.get, Schema.encode(self.machine.schemaState))
   )
 
 /**
