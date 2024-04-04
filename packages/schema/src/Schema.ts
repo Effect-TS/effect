@@ -1570,15 +1570,17 @@ export const fromKey: {
 export const optionalToRequired = <FA, FI, FR, TA, TI, TR>(
   from: Schema<FA, FI, FR>,
   to: Schema<TA, TI, TR>,
-  decode: (o: Option.Option<FA>) => TI,
-  encode: (ti: TI) => Option.Option<FA>
+  options: {
+    readonly decode: (o: Option.Option<FA>) => TI
+    readonly encode: (ti: TI) => Option.Option<FA>
+  }
 ): PropertySignature<":", TA, never, "?:", FI, FR | TR> =>
   new $PropertySignature(
     new PropertySignatureTransformation(
       new FromPropertySignature(from.ast, true, true, {}, undefined),
       new ToPropertySignature(to.ast, false, true, {}),
-      (o) => Option.some(decode(o)),
-      Option.flatMap(encode)
+      (o) => Option.some(options.decode(o)),
+      Option.flatMap(options.encode)
     )
   )
 
@@ -1714,15 +1716,16 @@ export const optional: {
         return optionalToRequired(
           nullable(schema),
           typeSchema(schema),
-          Option.match({ onNone: defaultValue, onSome: (a) => a === null ? defaultValue() : a }),
-          Option.some
+          {
+            decode: Option.match({ onNone: defaultValue, onSome: (a) => a === null ? defaultValue() : a }),
+            encode: Option.some
+          }
         )
       } else {
         return optionalToRequired(
           schema,
           typeSchema(schema),
-          Option.match({ onNone: defaultValue, onSome: identity }),
-          Option.some
+          { decode: Option.match({ onNone: defaultValue, onSome: identity }), encode: Option.some }
         )
       }
     } else if (asOption) {
@@ -1730,15 +1733,13 @@ export const optional: {
         return optionalToRequired(
           nullable(schema),
           optionFromSelf(typeSchema(schema)),
-          Option.filter(Predicate.isNotNull<A | null>),
-          identity
+          { decode: Option.filter(Predicate.isNotNull<A | null>), encode: identity }
         )
       } else {
         return optionalToRequired(
           schema,
           optionFromSelf(typeSchema(schema)),
-          identity,
-          identity
+          { decode: identity, encode: identity }
         )
       }
     } else {
@@ -1759,15 +1760,19 @@ export const optional: {
         return optionalToRequired(
           nullish(schema),
           typeSchema(schema),
-          Option.match({ onNone: defaultValue, onSome: (a) => (a == null ? defaultValue() : a) }),
-          Option.some
+          {
+            decode: Option.match({ onNone: defaultValue, onSome: (a) => (a == null ? defaultValue() : a) }),
+            encode: Option.some
+          }
         )
       } else {
         return optionalToRequired(
           orUndefined(schema),
           typeSchema(schema),
-          Option.match({ onNone: defaultValue, onSome: (a) => (a === undefined ? defaultValue() : a) }),
-          Option.some
+          {
+            decode: Option.match({ onNone: defaultValue, onSome: (a) => (a === undefined ? defaultValue() : a) }),
+            encode: Option.some
+          }
         )
       }
     } else if (asOption) {
@@ -1775,15 +1780,13 @@ export const optional: {
         return optionalToRequired(
           nullish(schema),
           optionFromSelf(typeSchema(schema)),
-          Option.filter<A | null | undefined, A>((a): a is A => a != null),
-          identity
+          { decode: Option.filter<A | null | undefined, A>((a): a is A => a != null), encode: identity }
         )
       } else {
         return optionalToRequired(
           orUndefined(schema),
           optionFromSelf(typeSchema(schema)),
-          Option.filter(Predicate.isNotUndefined<A | undefined>),
-          identity
+          { decode: Option.filter(Predicate.isNotUndefined<A | undefined>), encode: identity }
         )
       }
     } else {
