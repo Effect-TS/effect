@@ -52,6 +52,23 @@ export const withTracerDisabledWhen = dual<
   ) => Effect.Effect<A, E, R>
 >(2, (self, pred) => Effect.locally(self, currentTracerDisabledWhen, pred))
 
+/** @internal */
+export const currentFetchOptions = globalValue(
+  Symbol.for("@effect/platform/Http/Client/currentFetchOptions"),
+  () => FiberRef.unsafeMake<RequestInit>({})
+)
+
+/** @internal */
+export const withFetchOptions = dual<
+  (
+    options: RequestInit
+  ) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <R, E, A>(
+    effect: Effect.Effect<A, E, R>,
+    options: RequestInit
+  ) => Effect.Effect<A, E, R>
+>(2, (self, options) => Effect.locally(self, currentFetchOptions, options))
+
 const clientProto = {
   [TypeId]: TypeId,
   pipe() {
@@ -116,53 +133,53 @@ export const Fetch = Context.GenericTag<Client.Fetch, typeof globalThis.fetch>(
 )
 
 /** @internal */
-export const fetch = (options?: RequestInit): Client.Client.Default =>
-  makeDefault((request, fiber) => {
-    const context = fiber.getFiberRef(FiberRef.currentContext)
-    const fetch: typeof globalThis.fetch = context.unsafeMap.get(Fetch.key) ?? globalThis.fetch
-    return Effect.flatMap(
-      UrlParams.makeUrl(request.url, request.urlParams, (_) =>
-        new Error.RequestError({
-          request,
-          reason: "InvalidUrl",
-          error: _
-        })),
-      (url) => {
-        const headers = new Headers(request.headers)
-        const send = (body: BodyInit | undefined) =>
-          pipe(
-            Effect.acquireRelease(
-              Effect.sync(() => new AbortController()),
-              (controller) => Effect.sync(() => controller.abort())
-            ),
-            Effect.flatMap((controller) =>
-              Effect.tryPromise({
-                try: () =>
-                  fetch(url, {
-                    ...options,
-                    method: request.method,
-                    headers,
-                    body,
-                    duplex: request.body._tag === "Stream" ? "half" : undefined,
-                    signal: controller.signal
-                  } as any),
-                catch: (_) =>
-                  new Error.RequestError({
-                    request,
-                    reason: "Transport",
-                    error: _
-                  })
-              })
-            ),
-            Effect.map((_) => internalResponse.fromWeb(request, _))
-          )
-        if (Method.hasBody(request.method)) {
-          return send(convertBody(request.body))
-        }
-        return send(undefined)
+export const fetch: Client.Client.Default = makeDefault((request, fiber) => {
+  const context = fiber.getFiberRef(FiberRef.currentContext)
+  const fetch: typeof globalThis.fetch = context.unsafeMap.get(Fetch.key) ?? globalThis.fetch
+  const options = fiber.getFiberRef(currentFetchOptions)
+  return Effect.flatMap(
+    UrlParams.makeUrl(request.url, request.urlParams, (_) =>
+      new Error.RequestError({
+        request,
+        reason: "InvalidUrl",
+        error: _
+      })),
+    (url) => {
+      const headers = new Headers(request.headers)
+      const send = (body: BodyInit | undefined) =>
+        pipe(
+          Effect.acquireRelease(
+            Effect.sync(() => new AbortController()),
+            (controller) => Effect.sync(() => controller.abort())
+          ),
+          Effect.flatMap((controller) =>
+            Effect.tryPromise({
+              try: () =>
+                fetch(url, {
+                  ...options,
+                  method: request.method,
+                  headers,
+                  body,
+                  duplex: request.body._tag === "Stream" ? "half" : undefined,
+                  signal: controller.signal
+                } as any),
+              catch: (_) =>
+                new Error.RequestError({
+                  request,
+                  reason: "Transport",
+                  error: _
+                })
+            })
+          ),
+          Effect.map((_) => internalResponse.fromWeb(request, _))
+        )
+      if (Method.hasBody(request.method)) {
+        return send(convertBody(request.body))
       }
-    )
-  })
+      return send(undefined)
+    }
+  )
+})
 
 const convertBody = (body: Body.Body): BodyInit | undefined => {
   switch (body._tag) {
@@ -178,12 +195,6 @@ const convertBody = (body: Body.Body): BodyInit | undefined => {
       return Stream.toReadableStream(body.stream)
   }
 }
-
-/** @internal */
-export const fetchOk = (options?: RequestInit): Client.Client.Default => filterStatusOk(fetch(options))
-
-/** @internal */
-export const layer = Layer.succeed(tag, fetch())
 
 /** @internal */
 export const transform = dual<
@@ -205,6 +216,44 @@ export const transform = dual<
     Effect.flatMap((request) => f(self.execute(Effect.succeed(request)), request)),
     self.preprocess
   ))
+
+/** @internal */
+export const filterStatus = dual<
+  (
+    f: (status: number) => boolean
+  ) => <E, R>(
+    self: Client.Client.WithResponse<E, R>
+  ) => Client.Client.WithResponse<E | Error.ResponseError, R>,
+  <E, R>(
+    self: Client.Client.WithResponse<E, R>,
+    f: (status: number) => boolean
+  ) => Client.Client.WithResponse<E | Error.ResponseError, R>
+>(2, (self, f) =>
+  transform(self, (effect, request) =>
+    Effect.filterOrFail(
+      effect,
+      (response) => f(response.status),
+      (response) =>
+        new Error.ResponseError({
+          request,
+          response,
+          reason: "StatusCode",
+          error: "non 2xx status code"
+        })
+    )))
+
+/** @internal */
+export const filterStatusOk: <E, R>(
+  self: Client.Client.WithResponse<E, R>
+) => Client.Client.WithResponse<E | Error.ResponseError, R> = filterStatus(
+  (status) => status >= 200 && status < 300
+)
+
+/** @internal */
+export const fetchOk: Client.Client.Default = filterStatusOk(fetch)
+
+/** @internal */
+export const layer = Layer.succeed(tag, fetch)
 
 /** @internal */
 export const transformResponse = dual<
@@ -439,38 +488,6 @@ export const filterOrFail = dual<
     orFailWith: (a: A) => E2
   ) => Client.Client<A, E2 | E, R>
 >(3, (self, f, orFailWith) => transformResponse(self, Effect.filterOrFail(f, orFailWith)))
-
-/** @internal */
-export const filterStatus = dual<
-  (
-    f: (status: number) => boolean
-  ) => <E, R>(
-    self: Client.Client.WithResponse<E, R>
-  ) => Client.Client.WithResponse<E | Error.ResponseError, R>,
-  <E, R>(
-    self: Client.Client.WithResponse<E, R>,
-    f: (status: number) => boolean
-  ) => Client.Client.WithResponse<E | Error.ResponseError, R>
->(2, (self, f) =>
-  transform(self, (effect, request) =>
-    Effect.filterOrFail(
-      effect,
-      (response) => f(response.status),
-      (response) =>
-        new Error.ResponseError({
-          request,
-          response,
-          reason: "StatusCode",
-          error: "non 2xx status code"
-        })
-    )))
-
-/** @internal */
-export const filterStatusOk: <E, R>(
-  self: Client.Client.WithResponse<E, R>
-) => Client.Client.WithResponse<E | Error.ResponseError, R> = filterStatus(
-  (status) => status >= 200 && status < 300
-)
 
 /** @internal */
 export const map = dual<

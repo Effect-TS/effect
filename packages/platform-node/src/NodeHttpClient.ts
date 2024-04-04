@@ -4,6 +4,7 @@
 import type * as Client from "@effect/platform/Http/Client"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
+import type * as FiberRef from "effect/FiberRef"
 import type * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
 import type * as Http from "node:http"
@@ -108,6 +109,24 @@ export const dispatcherLayer: Layer.Layer<Dispatcher> = internalUndici.dispatche
  * @category undici
  */
 export const dispatcherLayerGlobal: Layer.Layer<Dispatcher> = internalUndici.dispatcherLayerGlobal
+
+/**
+ * @since 1.0.0
+ * @category undici
+ */
+export const currentUndiciOptions: FiberRef.FiberRef<Partial<Undici.Dispatcher.RequestOptions>> =
+  internalUndici.currentUndiciOptions
+
+/**
+ * @since 1.0.0
+ * @category undici
+ */
+export const withUndiciOptions: {
+  (
+    options: Partial<Undici.Dispatcher.RequestOptions>
+  ): <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <R, E, A>(effect: Effect.Effect<A, E, R>, options: Partial<Undici.Dispatcher.RequestOptions>): Effect.Effect<A, E, R>
+} = internalUndici.withUndiciOptions
 
 /**
  * @since 1.0.0

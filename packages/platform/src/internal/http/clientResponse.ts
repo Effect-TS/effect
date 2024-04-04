@@ -217,7 +217,7 @@ export const stream = <E, R>(effect: Effect.Effect<ClientResponse.ClientResponse
   Stream.unwrapScoped(Effect.map(effect, (_) => _.stream))
 
 /** @internal */
-export const schemaJsonEffect = <
+export const schemaJsonScoped = <
   R,
   I extends {
     readonly status?: number | undefined
@@ -232,7 +232,7 @@ export const schemaJsonEffect = <
 }
 
 /** @internal */
-export const schemaNoBodyEffect = <
+export const schemaNoBodyScoped = <
   R,
   I extends {
     readonly status?: number | undefined
