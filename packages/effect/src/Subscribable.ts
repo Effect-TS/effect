@@ -46,10 +46,10 @@ const Proto: Omit<Subscribable<any>, "get" | "changes"> = {
  * @since 2.0.0
  * @category constructors
  */
-export const make = <A, E, R, B, E2, R2>(options: {
+export const make = <A, E, R>(options: {
   readonly get: Effect.Effect<A, E, R>
-  readonly changes: Stream.Stream<B, E2, R2>
-}): Subscribable<A | B, E | E2, R | R2> => Object.assign(Object.create(Proto), options)
+  readonly changes: Stream.Stream<A, E, R>
+}): Subscribable<A, E, R> => Object.assign(Object.create(Proto), options)
 
 /**
  * @since 2.0.0
