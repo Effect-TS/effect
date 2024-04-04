@@ -1598,15 +1598,17 @@ export const optionalToRequired = <FA, FI, FR, TA, TI, TR>(
 export const optionalToOptional = <FA, FI, FR, TA, TI, TR>(
   from: Schema<FA, FI, FR>,
   to: Schema<TA, TI, TR>,
-  decode: (o: Option.Option<FA>) => Option.Option<TI>,
-  encode: (o: Option.Option<TI>) => Option.Option<FA>
+  options: {
+    readonly decode: (o: Option.Option<FA>) => Option.Option<TI>
+    readonly encode: (o: Option.Option<TI>) => Option.Option<FA>
+  }
 ): PropertySignature<"?:", TA, never, "?:", FI, FR | TR> =>
   new $PropertySignature(
     new PropertySignatureTransformation(
       new FromPropertySignature(from.ast, true, true, {}, undefined),
       new ToPropertySignature(to.ast, true, true, {}),
-      decode,
-      encode
+      options.decode,
+      options.encode
     )
   )
 
@@ -1747,8 +1749,7 @@ export const optional: {
         return optionalToOptional(
           nullable(schema),
           typeSchema(schema),
-          Option.filter(Predicate.isNotNull<A | null>),
-          identity
+          { decode: Option.filter(Predicate.isNotNull<A | null>), encode: identity }
         )
       } else {
         return new $PropertySignature(new PropertySignatureDeclaration(schema.ast, true, true, {}))
@@ -1794,8 +1795,7 @@ export const optional: {
         return optionalToOptional(
           nullish(schema),
           orUndefined(typeSchema(schema)),
-          Option.filter(Predicate.isNotNull<A | null | undefined>),
-          identity
+          { decode: Option.filter(Predicate.isNotNull<A | null | undefined>), encode: identity }
         )
       } else {
         return new $PropertySignature(

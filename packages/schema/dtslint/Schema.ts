@@ -1954,7 +1954,7 @@ S.asSchema(S.mapFromSelf({ key: S.NumberFromString, value: S.string }))
 // $ExpectType mapFromSelf<NumberFromString, $string>
 S.mapFromSelf({ key: S.NumberFromString, value: S.string })
 
-// ---------------------------------------------
+// ---------------- -----------------------------
 // readonlyMap
 // ---------------------------------------------
 
