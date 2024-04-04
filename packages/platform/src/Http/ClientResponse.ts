@@ -24,7 +24,7 @@ export {
    * @since 1.0.0
    * @category schema
    */
-  schemaBodyJsonEffect,
+  schemaBodyJsonScoped,
   /**
    * @since 1.0.0
    * @category schema
@@ -34,7 +34,7 @@ export {
    * @since 1.0.0
    * @category schema
    */
-  schemaBodyUrlParamsEffect,
+  schemaBodyUrlParamsScoped,
   /**
    * @since 1.0.0
    * @category schema
@@ -44,7 +44,7 @@ export {
    * @since 1.0.0
    * @category schema
    */
-  schemaHeadersEffect
+  schemaHeadersScoped
 } from "./IncomingMessage.js"
 
 /**
@@ -161,7 +161,7 @@ export const urlParamsBody: <E, R>(
  * @since 1.0.0
  * @category schema
  */
-export const schemaJsonEffect: <
+export const schemaJsonScoped: <
   R,
   I extends {
     readonly status?: number | undefined
@@ -178,13 +178,13 @@ export const schemaJsonEffect: <
   A,
   E | Error.ResponseError | ParseResult.ParseError,
   Exclude<R, Scope.Scope> | Exclude<R2, Scope.Scope>
-> = internal.schemaJsonEffect
+> = internal.schemaJsonScoped
 
 /**
  * @since 1.0.0
  * @category schema
  */
-export const schemaNoBodyEffect: <
+export const schemaNoBodyScoped: <
   R,
   I extends {
     readonly status?: number | undefined
@@ -197,4 +197,4 @@ export const schemaNoBodyEffect: <
 ) => <E, R2>(
   effect: Effect.Effect<ClientResponse, E, R2>
 ) => Effect.Effect<A, E | ParseResult.ParseError, Exclude<R, Scope.Scope> | Exclude<R2, Scope.Scope>> =
-  internal.schemaNoBodyEffect
+  internal.schemaNoBodyScoped

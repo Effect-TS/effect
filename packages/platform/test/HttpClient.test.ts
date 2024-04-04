@@ -46,7 +46,7 @@ describe("HttpClient", () => {
     Effect.gen(function*(_) {
       const response = yield* _(
         Http.request.get("https://www.google.com/"),
-        Http.client.fetchOk(),
+        Http.client.fetchOk,
         Effect.flatMap((_) => _.text),
         Effect.scoped
       )
@@ -56,7 +56,7 @@ describe("HttpClient", () => {
   it("google withCookiesRef", () =>
     Effect.gen(function*(_) {
       const ref = yield* _(Ref.make(Http.cookies.empty))
-      const client = Http.client.withCookiesRef(Http.client.fetchOk(), ref)
+      const client = Http.client.withCookiesRef(Http.client.fetchOk, ref)
       yield* _(
         Http.request.get("https://www.google.com/"),
         client,
@@ -80,7 +80,7 @@ describe("HttpClient", () => {
     Effect.gen(function*(_) {
       const response = yield* _(
         Http.request.get(new URL("https://www.google.com/")),
-        Http.client.fetchOk(),
+        Http.client.fetchOk,
         Effect.map((_) => _.stream),
         Stream.unwrapScoped,
         Stream.runFold("", (a, b) => a + new TextDecoder().decode(b))

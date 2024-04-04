@@ -323,7 +323,7 @@ import { Console, Effect } from "effect";
 
 const getPostAsJson = Http.request
   .get("https://jsonplaceholder.typicode.com/posts/1")
-  .pipe(Http.client.fetch(), Http.response.json);
+  .pipe(Http.client.fetch, Http.response.json);
 
 NodeRuntime.runMain(
   getPostAsJson.pipe(Effect.andThen((post) => Console.log(typeof post, post)))
@@ -353,7 +353,7 @@ import { Console, Effect } from "effect";
 
 const getPostAsText = Http.request
   .get("https://jsonplaceholder.typicode.com/posts/1")
-  .pipe(Http.client.fetch(), Http.response.text);
+  .pipe(Http.client.fetch, Http.response.text);
 
 NodeRuntime.runMain(
   getPostAsText.pipe(Effect.andThen((post) => Console.log(typeof post, post)))
@@ -400,7 +400,7 @@ const getPost = Http.request
       "Content-type": "application/json; charset=UTF-8",
       Foo: "Bar",
     }),
-    Http.client.fetch()
+    Http.client.fetch
   );
 ```
 
@@ -428,7 +428,7 @@ const getPostAndValidate: Effect.Effect<{
 const getPostAndValidate = Http.request
   .get("https://jsonplaceholder.typicode.com/posts/1")
   .pipe(
-    Http.client.fetch(),
+    Http.client.fetch,
     Effect.andThen(Http.response.schemaBodyJson(Post)),
     Effect.scoped
   );
@@ -462,7 +462,7 @@ import { Console, Effect } from "effect";
 
 const getText = Http.request
   .get("https://jsonplaceholder.typicode.com/non-existing-page")
-  .pipe(Http.client.fetch(), Http.response.text);
+  .pipe(Http.client.fetch, Http.response.text);
 
 NodeRuntime.runMain(getText.pipe(Effect.andThen(Console.log)));
 /*
@@ -480,7 +480,7 @@ import { Console, Effect } from "effect";
 
 const getText = Http.request
   .get("https://jsonplaceholder.typicode.com/non-existing-page")
-  .pipe(Http.client.filterStatusOk(Http.client.fetch()), Http.response.text);
+  .pipe(Http.client.filterStatusOk(Http.client.fetch), Http.response.text);
 
 NodeRuntime.runMain(getText.pipe(Effect.andThen(Console.log)));
 /*
@@ -489,12 +489,12 @@ timestamp=2024-03-25T10:21:16.972Z level=ERROR fiber=#0 cause="ResponseError: St
 */
 ```
 
-Note that you can use `Http.client.fetchOk` as a shortcut for `Http.client.filterStatusOk(Http.client.fetch())`:
+Note that you can use `Http.client.fetchOk` as a shortcut for `Http.client.filterStatusOk(Http.client.fetch)`:
 
 ```ts
 const getText = Http.request
   .get("https://jsonplaceholder.typicode.com/non-existing-page")
-  .pipe(Http.client.fetchOk(), Http.response.text);
+  .pipe(Http.client.fetchOk, Http.response.text);
 ```
 
 You can also create your own status-based filters. In fact, `Http.client.filterStatusOk` is just a shortcut for the following filter:
@@ -504,7 +504,7 @@ const getText = Http.request
   .get("https://jsonplaceholder.typicode.com/non-existing-page")
   .pipe(
     Http.client.filterStatus(
-      Http.client.fetch(),
+      Http.client.fetch,
       (status) => status >= 200 && status < 300
     ),
     Http.response.text
@@ -528,7 +528,7 @@ const addPost = Http.request
       body: "bar",
       userId: 1,
     }),
-    Effect.andThen(Http.client.fetch()),
+    Effect.andThen(Http.client.fetch),
     Http.response.json
   );
 
@@ -559,7 +559,7 @@ const addPost = Http.request
       }),
       "application/json; charset=UTF-8"
     ),
-    Http.client.fetch(),
+    Http.client.fetch,
     Http.response.json
   );
 
@@ -593,7 +593,7 @@ const addPost = Http.request
       body: "bar",
       userId: 1,
     }),
-    Effect.andThen(Http.client.fetch()),
+    Effect.andThen(Http.client.fetch),
     Effect.andThen(Http.response.schemaBodyJson(Post)),
     Effect.scoped
   );
