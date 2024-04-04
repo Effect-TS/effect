@@ -107,13 +107,13 @@ export const layer: Layer.Layer<Client.Default> = internal.layer
  * @since 1.0.0
  * @category constructors
  */
-export const fetch: (options?: RequestInit) => Client.Default = internal.fetch
+export const fetch: Client.Default = internal.fetch
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const fetchOk: (options?: RequestInit) => Client.Default = internal.fetchOk
+export const fetchOk: Client.Default = internal.fetchOk
 
 /**
  * @since 1.0.0
@@ -437,14 +437,14 @@ export const withCookiesRef: {
 } = internal.withCookiesRef
 
 /**
- * @since 2.0.0
+ * @since 1.0.0
  * @category fiber refs
  */
 export const currentTracerDisabledWhen: FiberRef.FiberRef<Predicate.Predicate<ClientRequest.ClientRequest>> =
   internal.currentTracerDisabledWhen
 
 /**
- * @since 2.0.0
+ * @since 1.0.0
  * @category fiber refs
  */
 export const withTracerDisabledWhen: {
@@ -456,3 +456,18 @@ export const withTracerDisabledWhen: {
     predicate: Predicate.Predicate<ClientRequest.ClientRequest>
   ): Effect.Effect<A, E, R>
 } = internal.withTracerDisabledWhen
+
+/**
+ * @since 1.0.0
+ * @category fiber refs
+ */
+export const currentFetchOptions: FiberRef.FiberRef<RequestInit> = internal.currentFetchOptions
+
+/**
+ * @since 1.0.0
+ * @category fiber refs
+ */
+export const withFetchOptions: {
+  (options: RequestInit): <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <R, E, A>(effect: Effect.Effect<A, E, R>, options: RequestInit): Effect.Effect<A, E, R>
+} = internal.withFetchOptions

@@ -9,6 +9,9 @@ import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
 import * as UrlParams from "@effect/platform/Http/UrlParams"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as FiberRef from "effect/FiberRef"
+import { dual } from "effect/Function"
+import { globalValue } from "effect/GlobalValue"
 import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -20,7 +23,7 @@ import * as NodeStream from "../../NodeStream.js"
 
 /** @internal */
 export const Dispatcher = Context.GenericTag<NodeClient.Dispatcher, Undici.Dispatcher>(
-  "@effect/platform-node/Http/NodeClient/Dispatcher"
+  "@effect/platform-node/NodeHttpClient/Dispatcher"
 )
 
 /** @internal */
@@ -44,8 +47,25 @@ const makeAbortSignal = Effect.map(
 )
 
 /** @internal */
+export const currentUndiciOptions = globalValue(
+  Symbol.for("@effect/platform-node/NodeHttpClient/currentUndici"),
+  () => FiberRef.unsafeMake<Partial<Undici.Dispatcher.RequestOptions>>({})
+)
+
+/** @internal */
+export const withUndiciOptions = dual<
+  (
+    options: Partial<Undici.Dispatcher.RequestOptions>
+  ) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <R, E, A>(
+    effect: Effect.Effect<A, E, R>,
+    options: Partial<Undici.Dispatcher.RequestOptions>
+  ) => Effect.Effect<A, E, R>
+>(2, (self, options) => Effect.locally(self, currentUndiciOptions, options))
+
+/** @internal */
 export const make = (dispatcher: Undici.Dispatcher): Client.Client.Default =>
-  Client.makeDefault((request) =>
+  Client.makeDefault((request, fiber) =>
     Effect.Do.pipe(
       Effect.bind("url", () =>
         UrlParams.makeUrl(request.url, request.urlParams, (_) =>
@@ -60,6 +80,7 @@ export const make = (dispatcher: Undici.Dispatcher): Client.Client.Default =>
         Effect.tryPromise({
           try: () =>
             dispatcher.request({
+              ...(fiber.getFiberRef(currentUndiciOptions)),
               signal,
               method: request.method,
               headers: request.headers,
