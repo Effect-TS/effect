@@ -15,7 +15,7 @@ import * as Predicate from "effect/Predicate"
 import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
 import type * as AsyncProducer from "effect/SingleProducerAsyncInput"
-import IsoWebSocket from "isomorphic-ws"
+import { WebSocket as IsoWS } from "isows"
 import { RefailError, TypeIdError } from "./Error.js"
 
 /**
@@ -279,13 +279,12 @@ export const makeWebSocket = (url: string | Effect.Effect<string>, options?: {
 }): Effect.Effect<Socket> =>
   fromWebSocket(
     Effect.acquireRelease(
-      Effect.map(
-        typeof url === "string" ? Effect.succeed(url) : url,
-        (url) => {
-          const WS = "WebSocket" in globalThis ? globalThis.WebSocket : IsoWebSocket
-          return new WS(url) as globalThis.WebSocket
+      Effect.map(typeof url === "string" ? Effect.succeed(url) : url, (url) => {
+        if ("WebSocket" in globalThis) {
+          return new globalThis.WebSocket(url)
         }
-      ),
+        return new IsoWS(url)
+      }),
       (ws) => Effect.sync(() => ws.close())
     ),
     options
@@ -347,7 +346,7 @@ export const fromWebSocket = (
           )
         }
 
-        if (ws.readyState !== IsoWebSocket.OPEN) {
+        if (ws.readyState !== 1) {
           yield* _(
             Effect.async<void, SocketError, never>((resume) => {
               ws.onopen = () => {
