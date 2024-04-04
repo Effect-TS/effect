@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "find-my-way-ts": "^0.1.1",
-    "isomorphic-ws": "^5.0.0",
+    "isows": "^1.0.4",
     "multipasta": "^0.2.0",
     "path-browserify": "^1.0.1"
   },

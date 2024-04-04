@@ -202,9 +202,6 @@ importers:
       effect:
         specifier: workspace:^
         version: link:../effect/dist
-      isomorphic-ws:
-        specifier: ^5.0.0
-        version: 5.0.0(ws@8.16.0)
       msgpackr:
         specifier: ^1.10.1
         version: 1.10.1
@@ -275,9 +272,9 @@ importers:
       find-my-way-ts:
         specifier: ^0.1.1
         version: 0.1.1
-      isomorphic-ws:
-        specifier: ^5.0.0
-        version: 5.0.0(ws@8.16.0)
+      isows:
+        specifier: ^1.0.4
+        version: 1.0.4(ws@8.16.0)
       multipasta:
         specifier: ^0.2.0
         version: 0.2.0
@@ -5182,8 +5179,8 @@ packages:
     engines: {node: '>=0.10.0'}
     dev: true
 
-  /isomorphic-ws@5.0.0(ws@8.16.0):
-    resolution: {integrity: sha512-muId7Zzn9ywDsyXgTIafTry2sV3nySZeUDe6YedVd1Hvuuep5AsIlqK+XefWpYTyJG5e503F2xIuT2lcU6rCSw==}
+  /isows@1.0.4(ws@8.16.0):
+    resolution: {integrity: sha512-hEzjY+x9u9hPmBom9IIAqdJCwNLax+xrPb51vEPpERoFlIxgmZcHzsT5jKG06nvInKOBGvReAVz80Umed5CczQ==}
     peerDependencies:
       ws: '*'
     dependencies:
