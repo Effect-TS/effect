@@ -476,15 +476,15 @@ export declare namespace All {
  * @since 2.0.0
  * @category collecting & elements
  */
-export const allSuccesses: <A, E, R>(
-  elements: Iterable<Effect<A, E, R>>,
+export const allSuccesses: <X extends Effect<any, any, any>>(
+  elements: Iterable<X>,
   options?:
     | {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
     | undefined
-) => Effect<Array<A>, never, R> = fiberRuntime.allSuccesses
+) => Effect<Array<Effect.Success<X>>, never, Effect.Context<X>> = fiberRuntime.allSuccesses
 
 /**
  * Drops all elements until the effectful predicate returns true.
@@ -580,6 +580,22 @@ export const filter: {
 } = fiberRuntime.filter
 
 /**
+ * Performs a filter and map in a single step.
+ *
+ * @since 2.0.0
+ * @category collecting & elements
+ */
+export const filterMap: {
+  <Eff extends Effect<any, any, any>, B>(
+    pf: (a: Effect.Success<Eff>) => Option.Option<B>
+  ): (elements: Iterable<Eff>) => Effect<Array<B>, Effect.Error<Eff>, Effect.Context<Eff>>
+  <Eff extends Effect<any, any, any>, B>(
+    elements: Iterable<Eff>,
+    pf: (a: Effect.Success<Eff>) => Option.Option<B>
+  ): Effect<Array<B>, Effect.Error<Eff>, Effect.Context<Eff>>
+} = effect.filterMap
+
+/**
  * Returns the first element that satisfies the effectful predicate.
  *
  * @since 2.0.0
@@ -614,7 +630,9 @@ export const findFirst: {
  * @since 2.0.0
  * @category collecting & elements
  */
-export const firstSuccessOf: <A, E, R>(effects: Iterable<Effect<A, E, R>>) => Effect<A, E, R> = effect.firstSuccessOf
+export const firstSuccessOf: <Eff extends Effect<any, any, any>>(
+  effects: Iterable<Eff>
+) => Effect<Effect.Success<Eff>, Effect.Error<Eff>, Effect.Context<Eff>> = effect.firstSuccessOf
 
 /**
  * @since 2.0.0
@@ -675,21 +693,21 @@ export const head: <A, E, R>(self: Effect<Iterable<A>, E, R>) => Effect<A, Cause
  * @category collecting & elements
  */
 export const mergeAll: {
-  <Z, A>(
+  <Z, Eff extends Effect<any, any, any>>(
     zero: Z,
-    f: (z: Z, a: A, i: number) => Z,
+    f: (z: Z, a: Effect.Success<Eff>, i: number) => Z,
     options?:
       | { readonly concurrency?: Concurrency | undefined; readonly batching?: boolean | "inherit" | undefined }
       | undefined
-  ): <E, R>(elements: Iterable<Effect<A, E, R>>) => Effect<Z, E, R>
-  <A, E, R, Z>(
-    elements: Iterable<Effect<A, E, R>>,
+  ): (elements: Iterable<Eff>) => Effect<Z, Effect.Error<Eff>, Effect.Context<Eff>>
+  <Eff extends Effect<any, any, any>, Z>(
+    elements: Iterable<Eff>,
     zero: Z,
-    f: (z: Z, a: A, i: number) => Z,
+    f: (z: Z, a: Effect.Success<Eff>, i: number) => Z,
     options?:
       | { readonly concurrency?: Concurrency | undefined; readonly batching?: boolean | "inherit" | undefined }
       | undefined
-  ): Effect<Z, E, R>
+  ): Effect<Z, Effect.Error<Eff>, Effect.Context<Eff>>
 } = fiberRuntime.mergeAll
 
 /**
@@ -734,23 +752,21 @@ export const reduce: {
  * @category collecting & elements
  */
 export const reduceEffect: {
-  <A, E, R>(
-    zero: Effect<A, E, R>,
-    f: (acc: NoInfer<A>, a: NoInfer<A>, i: number) => A,
-    options?: {
-      readonly concurrency?: Concurrency | undefined
-      readonly batching?: boolean | "inherit" | undefined
-    }
-  ): (elements: Iterable<Effect<A, E, R>>) => Effect<A, E, R>
-  <A, E, R>(
-    elements: Iterable<Effect<A, E, R>>,
-    zero: Effect<A, E, R>,
-    f: (acc: NoInfer<A>, a: NoInfer<A>, i: number) => A,
-    options?: {
-      readonly concurrency?: Concurrency | undefined
-      readonly batching?: boolean | "inherit" | undefined
-    }
-  ): Effect<A, E, R>
+  <Z, E, R, Eff extends Effect<any, any, any>>(
+    zero: Effect<Z, E, R>,
+    f: (acc: NoInfer<Z>, a: Effect.Success<Eff>, i: number) => Z,
+    options?:
+      | { readonly concurrency?: Concurrency | undefined; readonly batching?: boolean | "inherit" | undefined }
+      | undefined
+  ): (elements: Iterable<Eff>) => Effect<Z, E | Effect.Error<Eff>, R | Effect.Context<Eff>>
+  <Eff extends Effect<any, any, any>, Z, E, R>(
+    elements: Iterable<Eff>,
+    zero: Effect<Z, E, R>,
+    f: (acc: NoInfer<Z>, a: Effect.Success<Eff>, i: number) => Z,
+    options?:
+      | { readonly concurrency?: Concurrency | undefined; readonly batching?: boolean | "inherit" | undefined }
+      | undefined
+  ): Effect<Z, E | Effect.Error<Eff>, R | Effect.Context<Eff>>
 } = fiberRuntime.reduceEffect
 
 /**
@@ -1822,12 +1838,12 @@ export const retryOrElse: {
   <A1, E, R1, A2, E2, R2>(
     policy: Schedule.Schedule<A1, NoInfer<E>, R1>,
     orElse: (e: NoInfer<E>, out: A1) => Effect<A2, E2, R2>
-  ): <A, R>(self: Effect<A, E, R>) => Effect<A2 | A, E | E2, R1 | R2 | R>
+  ): <A, R>(self: Effect<A, E, R>) => Effect<A2 | A, E2, R1 | R2 | R>
   <A, E, R, A1, R1, A2, E2, R2>(
     self: Effect<A, E, R>,
     policy: Schedule.Schedule<A1, NoInfer<E>, R1>,
     orElse: (e: NoInfer<E>, out: A1) => Effect<A2, E2, R2>
-  ): Effect<A | A2, E | E2, R | R1 | R2>
+  ): Effect<A | A2, E2, R | R1 | R2>
 } = _schedule.retryOrElse_Effect
 
 const try_: {
@@ -2617,22 +2633,21 @@ export const forkDaemon: <A, E, R>(self: Effect<A, E, R>) => Effect<Fiber.Runtim
  */
 export const forkAll: {
   (
-    options?: {
-      readonly discard?: false | undefined
-    }
-  ): <A, E, R>(effects: Iterable<Effect<A, E, R>>) => Effect<Fiber.Fiber<Array<A>, E>, never, R>
-  (options: {
-    readonly discard: true
-  }): <A, E, R>(effects: Iterable<Effect<A, E, R>>) => Effect<void, never, R>
-  <A, E, R>(
-    effects: Iterable<Effect<A, E, R>>,
-    options?: {
-      readonly discard?: false | undefined
-    }
-  ): Effect<Fiber.Fiber<Array<A>, E>, never, R>
-  <A, E, R>(effects: Iterable<Effect<A, E, R>>, options: {
-    readonly discard: true
-  }): Effect<void, never, R>
+    options?: { readonly discard?: false | undefined } | undefined
+  ): <Eff extends Effect<any, any, any>>(
+    effects: Iterable<Eff>
+  ) => Effect<Fiber.Fiber<Array<Effect.Success<Eff>>, Effect.Error<Eff>>, never, Effect.Context<Eff>>
+  (
+    options: { readonly discard: true }
+  ): <Eff extends Effect<any, any, any>>(effects: Iterable<Eff>) => Effect<void, never, Effect.Context<Eff>>
+  <Eff extends Effect<any, any, any>>(
+    effects: Iterable<Eff>,
+    options?: { readonly discard?: false | undefined } | undefined
+  ): Effect<Fiber.Fiber<Array<Effect.Success<Eff>>, Effect.Error<Eff>>, never, Effect.Context<Eff>>
+  <Eff extends Effect<any, any, any>>(
+    effects: Iterable<Eff>,
+    options: { readonly discard: true }
+  ): Effect<void, never, Effect.Context<Eff>>
 } = circular.forkAll
 
 /**
@@ -3644,7 +3659,9 @@ export const flatten: <A, E1, R1, E, R>(self: Effect<Effect<A, E1, R1>, E, R>) =
  * @since 2.0.0
  * @category sequencing
  */
-export const raceAll: <A, E, R>(effects: Iterable<Effect<A, E, R>>) => Effect<A, E, R> = fiberRuntime.raceAll
+export const raceAll: <Eff extends Effect<any, any, any>>(
+  all: Iterable<Eff>
+) => Effect<Effect.Success<Eff>, Effect.Error<Eff>, Effect.Context<Eff>> = fiberRuntime.raceAll
 
 /**
  * Returns an effect that races this effect with the specified effect,

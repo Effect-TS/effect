@@ -1,4 +1,5 @@
 import * as Resolver from "@effect/rpc/Resolver"
+import * as ResolverNoStream from "@effect/rpc/ResolverNoStream"
 import * as Router from "@effect/rpc/Router"
 import * as Rpc from "@effect/rpc/Rpc"
 import { Schema } from "@effect/schema"
@@ -144,7 +145,7 @@ const handlerEffectArray = (u: ReadonlyArray<unknown>) =>
     Effect.map(ReadonlyArray.filter((_): _ is S.ExitEncoded<any, any> => Array.isArray(_) === false))
   )
 const resolver = Resolver.make(handler)<typeof router>()
-const resolverEffect = Resolver.makeEffect(handlerEffect)<typeof router>()
+const resolverEffect = ResolverNoStream.make(handlerEffect)<typeof router>()
 const resolverWithHeaders = Resolver.annotateHeadersEffect(
   resolver,
   Effect.succeed({

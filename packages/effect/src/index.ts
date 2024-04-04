@@ -331,6 +331,13 @@ export * as HashSet from "./HashSet.js"
 export * as Inspectable from "./Inspectable.js"
 
 /**
+ * This module provides utility functions for working with Iterables in TypeScript.
+ *
+ * @since 2.0.0
+ */
+export * as Iterable from "./Iterable.js"
+
+/**
  * @since 2.0.0
  */
 export * as KeyedPool from "./KeyedPool.js"

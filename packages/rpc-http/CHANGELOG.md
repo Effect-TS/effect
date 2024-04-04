@@ -1,5 +1,21 @@
 # @effect/rpc-http
 
+## 0.27.0
+
+### Minor Changes
+
+- [#2455](https://github.com/Effect-TS/effect/pull/2455) [`e066ae2`](https://github.com/Effect-TS/effect/commit/e066ae2df3c6efb6fff4c4f49deb3b7d9a14e6c9) Thanks [@tim-smart](https://github.com/tim-smart)! - move non-streaming rpc apis to seperate module
+
+### Patch Changes
+
+- [#2455](https://github.com/Effect-TS/effect/pull/2455) [`e066ae2`](https://github.com/Effect-TS/effect/commit/e066ae2df3c6efb6fff4c4f49deb3b7d9a14e6c9) Thanks [@tim-smart](https://github.com/tim-smart)! - fix return type of HttpResolver.makeClient
+
+- Updated dependencies [[`e066ae2`](https://github.com/Effect-TS/effect/commit/e066ae2df3c6efb6fff4c4f49deb3b7d9a14e6c9), [`9c6a500`](https://github.com/Effect-TS/effect/commit/9c6a5001b467b6255c68a922f4b6e8d692b63d01), [`8fdfda6`](https://github.com/Effect-TS/effect/commit/8fdfda6618be848c01b399d13bc05a9a3adfb613), [`607b2e7`](https://github.com/Effect-TS/effect/commit/607b2e7a7fd9318c57acf4e50ec61747eea74ad7), [`8fdfda6`](https://github.com/Effect-TS/effect/commit/8fdfda6618be848c01b399d13bc05a9a3adfb613), [`35ad0ba`](https://github.com/Effect-TS/effect/commit/35ad0ba9f3ba27c60453620e514b980f819f92af), [`8206caf`](https://github.com/Effect-TS/effect/commit/8206caf7c2d22c68be4313318b61cfdacf6222b6), [`7ddd654`](https://github.com/Effect-TS/effect/commit/7ddd65415b65ccb654ad04f4dbefe39402f15117), [`7ddd654`](https://github.com/Effect-TS/effect/commit/7ddd65415b65ccb654ad04f4dbefe39402f15117), [`8fdfda6`](https://github.com/Effect-TS/effect/commit/8fdfda6618be848c01b399d13bc05a9a3adfb613), [`f456ba2`](https://github.com/Effect-TS/effect/commit/f456ba273bae21a6dcf8c966c50c97b5f0897d9f)]:
+  - @effect/rpc@0.29.0
+  - @effect/platform@0.48.24
+  - effect@2.4.17
+  - @effect/schema@0.64.18
+
 ## 0.26.44
 
 ### Patch Changes

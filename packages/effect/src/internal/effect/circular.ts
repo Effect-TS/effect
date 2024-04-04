@@ -239,19 +239,31 @@ export const forkAll: {
     options?: {
       readonly discard?: false | undefined
     }
-  ): <A, E, R>(effects: Iterable<Effect.Effect<A, E, R>>) => Effect.Effect<Fiber.Fiber<Array<A>, E>, never, R>
+  ): <Eff extends Effect.Effect<any, any, any>>(
+    effects: Iterable<Eff>
+  ) => Effect.Effect<
+    Fiber.Fiber<Array<Effect.Effect.Success<Eff>>, Effect.Effect.Error<Eff>>,
+    never,
+    Effect.Effect.Context<Eff>
+  >
   (options: {
     readonly discard: true
-  }): <A, E, R>(effects: Iterable<Effect.Effect<A, E, R>>) => Effect.Effect<void, never, R>
-  <A, E, R>(
-    effects: Iterable<Effect.Effect<A, E, R>>,
+  }): <Eff extends Effect.Effect<any, any, any>>(
+    effects: Iterable<Eff>
+  ) => Effect.Effect<void, never, Effect.Effect.Context<Eff>>
+  <Eff extends Effect.Effect<any, any, any>>(
+    effects: Iterable<Eff>,
     options?: {
       readonly discard?: false | undefined
     }
-  ): Effect.Effect<Fiber.Fiber<Array<A>, E>, never, R>
-  <A, E, R>(effects: Iterable<Effect.Effect<A, E, R>>, options: {
+  ): Effect.Effect<
+    Fiber.Fiber<Array<Effect.Effect.Success<Eff>>, Effect.Effect.Error<Eff>>,
+    never,
+    Effect.Effect.Context<Eff>
+  >
+  <Eff extends Effect.Effect<any, any, any>>(effects: Iterable<Eff>, options: {
     readonly discard: true
-  }): Effect.Effect<void, never, R>
+  }): Effect.Effect<void, never, Effect.Effect.Context<Eff>>
 } = dual((args) => Predicate.isIterable(args[0]), <A, E, R>(effects: Iterable<Effect.Effect<A, E, R>>, options: {
   readonly discard: true
 }): Effect.Effect<void, never, R> =>

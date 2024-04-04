@@ -500,13 +500,13 @@ export const eventually = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect
 
 /* @internal */
 export const filterMap = dual<
-  <A, B>(
-    pf: (a: A) => Option.Option<B>
-  ) => <E, R>(elements: Iterable<Effect.Effect<A, E, R>>) => Effect.Effect<Array<B>, E, R>,
-  <A, E, R, B>(
-    elements: Iterable<Effect.Effect<A, E, R>>,
-    pf: (a: A) => Option.Option<B>
-  ) => Effect.Effect<Array<B>, E, R>
+  <Eff extends Effect.Effect<any, any, any>, B>(
+    pf: (a: Effect.Effect.Success<Eff>) => Option.Option<B>
+  ) => (elements: Iterable<Eff>) => Effect.Effect<Array<B>, Effect.Effect.Error<Eff>, Effect.Effect.Context<Eff>>,
+  <Eff extends Effect.Effect<any, any, any>, B>(
+    elements: Iterable<Eff>,
+    pf: (a: Effect.Effect.Success<Eff>) => Option.Option<B>
+  ) => Effect.Effect<Array<B>, Effect.Effect.Error<Eff>, Effect.Effect.Context<Eff>>
 >(2, (elements, pf) =>
   core.map(
     core.forEachSequential(elements, identity),
@@ -683,7 +683,9 @@ const findLoop = <A, E, R>(
   })
 
 /* @internal */
-export const firstSuccessOf = <A, E, R>(effects: Iterable<Effect.Effect<A, E, R>>): Effect.Effect<A, E, R> =>
+export const firstSuccessOf = <Eff extends Effect.Effect<any, any, any>>(
+  effects: Iterable<Eff>
+): Effect.Effect<Effect.Effect.Success<Eff>, Effect.Effect.Error<Eff>, Effect.Effect.Context<Eff>> =>
   core.suspend(() => {
     const list = Chunk.fromIterable(effects)
     if (!Chunk.isNonEmpty(list)) {
@@ -691,7 +693,7 @@ export const firstSuccessOf = <A, E, R>(effects: Iterable<Effect.Effect<A, E, R>
     }
     return pipe(
       Chunk.tailNonEmpty(list),
-      ReadonlyArray.reduce(Chunk.headNonEmpty(list), (left, right) => core.orElse(left, () => right))
+      ReadonlyArray.reduce(Chunk.headNonEmpty(list), (left, right) => core.orElse(left, () => right) as Eff)
     )
   })
 

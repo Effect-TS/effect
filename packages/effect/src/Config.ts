@@ -437,8 +437,8 @@ export const validate: {
  * @category utils
  */
 export const withDefault: {
-  <A2>(def: A2): <A>(self: Config<A>) => Config<A2 | A>
-  <A, A2>(self: Config<A>, def: A2): Config<A | A2>
+  <const A2>(def: A2): <A>(self: Config<A>) => Config<A2 | A>
+  <A, const A2>(self: Config<A>, def: A2): Config<A | A2>
 } = internal.withDefault
 
 /**

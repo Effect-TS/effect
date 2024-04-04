@@ -1699,6 +1699,7 @@ S.string.pipe(S.maxLength(5)); // Specifies maximum length of a string
 S.string.pipe(S.minLength(5)); // Specifies minimum length of a string
 S.NonEmpty; // Equivalent to ensuring the string has a minimum length of 1
 S.string.pipe(S.length(5)); // Specifies exact length of a string
+S.string.pipe(S.length({ min: 2, max: 4 })); // Specifies a range for the length of a string
 S.string.pipe(S.pattern(regex)); // Matches a string against a regular expression pattern
 S.string.pipe(S.startsWith(string)); // Ensures a string starts with a specific substring
 S.string.pipe(S.endsWith(string)); // Ensures a string ends with a specific substring
@@ -5493,6 +5494,19 @@ const result = S.decodeUnknownEither(Name)("").pipe(
 
 console.log(result); // => { _id: 'Either', _tag: 'Left', left: 'should be non empty' }
 ```
+
+# Comparison
+
+## Zod
+
+Feature-wise, `schema` can do practically everything that `zod` can do.
+
+The main differences are:
+
+1.  `schema` transformations are bidirectional, so it not only decodes like `zod` but also encodes.
+2.  `schema` is integrated with `Effect` and inherits some benefits from it (such as dependency tracking in transformations).
+3.  `schema` is highly customizable through annotations, allowing users to attach meta-information.
+4.  `schema` uses a functional programming style with combinators and transformations (while `zod` provides a chainable API).
 
 # Documentation
 

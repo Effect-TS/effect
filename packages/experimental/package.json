@@ -1,6 +1,6 @@
 {
   "name": "@effect/experimental",
-  "version": "0.14.8",
+  "version": "0.14.9",
   "type": "module",
   "license": "MIT",
   "description": "Functional programming in TypeScript",
@@ -39,7 +39,6 @@
     "coverage": "vitest --coverage"
   },
   "dependencies": {
-    "isomorphic-ws": "^5.0.0",
     "msgpackr": "^1.10.1"
   },
   "peerDependencies": {
