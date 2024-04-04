@@ -9,7 +9,7 @@ import * as Logger from "effect/Logger"
 const useStructuredLogger = Effect.locallyWith(FiberRef.currentLoggers, (loggers) => {
   if (HashSet.has(loggers, Logger.defaultLogger)) {
     const set = HashSet.remove(loggers, Logger.defaultLogger)
-    return HashSet.add(set, Logger.structuredLogger)
+    return HashSet.add(set, Logger.withConsoleLog(Logger.structuredLogger))
   }
 
   return loggers
