@@ -14,6 +14,10 @@ Schema
 - consolidate `optionalToRequired` parameters into an `options` object
 - consolidate `optionalToOptional` parameters into an `options` object
 
+ParseResult
+
+- rename `Tuple` to `TupleType`
+
 TreeFormatter
 
 - rename `formatIssue` to `formatIssueSync`
