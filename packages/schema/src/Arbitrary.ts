@@ -7,10 +7,8 @@ import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as FastCheck from "fast-check"
 import * as AST from "./AST.js"
-import * as _filters from "./internal/filters.js"
-import * as _hooks from "./internal/hooks.js"
-import * as _schema from "./internal/schema.js"
-import * as _util from "./internal/util.js"
+import * as filters_ from "./internal/filters.js"
+import * as util_ from "./internal/util.js"
 import type * as Schema from "./Schema.js"
 
 /**
@@ -25,7 +23,7 @@ export interface Arbitrary<A> {
  * @category hooks
  * @since 1.0.0
  */
-export const ArbitraryHookId: unique symbol = _hooks.ArbitraryHookId
+export const ArbitraryHookId: unique symbol = Symbol.for("@effect/schema/ArbitraryHookId")
 
 /**
  * @category hooks
@@ -281,7 +279,7 @@ const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
       return (fc) => from(fc).filter((a) => Option.isNone(ast.filter(a, AST.defaultParseOption, ast)))
     }
     case "Suspend": {
-      const get = _util.memoizeThunk(() => go(ast.f(), { ...options, isSuspend: true }))
+      const get = util_.memoizeThunk(() => go(ast.f(), { ...options, isSuspend: true }))
       return (fc) => fc.constant(null).chain(() => get()(fc))
     }
     case "Transformation":
@@ -401,36 +399,36 @@ export const getConstraints = (ast: AST.Refinement): Constraints | undefined => 
   const jsonSchema: any = ast.annotations[AST.JSONSchemaAnnotationId]
   switch (TypeAnnotationId) {
     // int
-    case _filters.IntTypeId:
+    case filters_.IntTypeId:
       return new IntegerConstraints({})
     // number
-    case _filters.GreaterThanTypeId:
-    case _filters.GreaterThanOrEqualToTypeId:
-    case _filters.LessThanTypeId:
-    case _filters.LessThanOrEqualToTypeId:
-    case _filters.BetweenTypeId:
+    case filters_.GreaterThanTypeId:
+    case filters_.GreaterThanOrEqualToTypeId:
+    case filters_.LessThanTypeId:
+    case filters_.LessThanOrEqualToTypeId:
+    case filters_.BetweenTypeId:
       return new NumberConstraints({
         min: jsonSchema.exclusiveMinimum ?? jsonSchema.minimum,
         max: jsonSchema.exclusiveMaximum ?? jsonSchema.maximum
       })
     // bigint
-    case _filters.GreaterThanBigintTypeId:
-    case _filters.GreaterThanOrEqualToBigintTypeId:
-    case _filters.LessThanBigintTypeId:
-    case _filters.LessThanOrEqualToBigintTypeId:
-    case _filters.BetweenBigintTypeId: {
+    case filters_.GreaterThanBigintTypeId:
+    case filters_.GreaterThanOrEqualToBigintTypeId:
+    case filters_.LessThanBigintTypeId:
+    case filters_.LessThanOrEqualToBigintTypeId:
+    case filters_.BetweenBigintTypeId: {
       const constraints: any = ast.annotations[TypeAnnotationId]
       return new BigIntConstraints(constraints)
     }
     // string
-    case _filters.MinLengthTypeId:
-    case _filters.MaxLengthTypeId:
-    case _filters.LengthTypeId:
+    case filters_.MinLengthTypeId:
+    case filters_.MaxLengthTypeId:
+    case filters_.LengthTypeId:
       return new StringConstraints(jsonSchema)
     // array
-    case _filters.MinItemsTypeId:
-    case _filters.MaxItemsTypeId:
-    case _filters.ItemsCountTypeId:
+    case filters_.MinItemsTypeId:
+    case filters_.MaxItemsTypeId:
+    case filters_.ItemsCountTypeId:
       return new ArrayConstraints({
         minLength: jsonSchema.minItems,
         maxLength: jsonSchema.maxItems

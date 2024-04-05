@@ -6,7 +6,6 @@ import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyRecord from "effect/ReadonlyRecord"
 import * as AST from "./AST.js"
-import * as _hooks from "./internal/hooks.js"
 import type * as Schema from "./Schema.js"
 
 /**

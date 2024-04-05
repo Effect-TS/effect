@@ -8,9 +8,7 @@ import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
-import * as _hooks from "./internal/hooks.js"
-import * as _schema from "./internal/schema.js"
-import * as _util from "./internal/util.js"
+import * as util_ from "./internal/util.js"
 import * as ParseResult from "./ParseResult.js"
 import type * as Schema from "./Schema.js"
 
@@ -18,7 +16,7 @@ import type * as Schema from "./Schema.js"
  * @category hooks
  * @since 1.0.0
  */
-export const EquivalenceHookId: unique symbol = _hooks.EquivalenceHookId
+export const EquivalenceHookId: unique symbol = Symbol.for("@effect/schema/EquivalenceHookId")
 
 /**
  * @category hooks
@@ -82,7 +80,7 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
     case "Refinement":
       return go(ast.from)
     case "Suspend": {
-      const get = _util.memoizeThunk(() => go(ast.f()))
+      const get = util_.memoizeThunk(() => go(ast.f()))
       return (a, b) => get()(a, b)
     }
     case "TupleType": {
@@ -186,7 +184,7 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
     }
     case "Union": {
       const searchTree = ParseResult.getSearchTree(ast.types, true)
-      const ownKeys = _util.ownKeys(searchTree.keys)
+      const ownKeys = util_.ownKeys(searchTree.keys)
       const len = ownKeys.length
       return Equivalence.make((a, b) => {
         let candidates: Array<AST.AST> = []
@@ -205,7 +203,7 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
         if (searchTree.otherwise.length > 0) {
           candidates = candidates.concat(searchTree.otherwise)
         }
-        const tuples = candidates.map((ast) => [go(ast), ParseResult.is(_schema.make(ast))] as const)
+        const tuples = candidates.map((ast) => [go(ast), ParseResult.is({ ast } as any)] as const)
         for (let i = 0; i < tuples.length; i++) {
           const [equivalence, is] = tuples[i]
           if (is(a) && is(b)) {

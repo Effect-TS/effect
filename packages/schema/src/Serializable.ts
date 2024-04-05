@@ -7,7 +7,7 @@ import type * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
 import { dual } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
-import * as _serializable from "./internal/serializable.js"
+import * as serializable_ from "./internal/serializable.js"
 import type * as ParseResult from "./ParseResult.js"
 import * as Schema from "./Schema.js"
 
@@ -15,7 +15,7 @@ import * as Schema from "./Schema.js"
  * @since 1.0.0
  * @category symbol
  */
-export const symbol: unique symbol = _serializable.symbol as any
+export const symbol: unique symbol = serializable_.symbol as any
 
 /**
  * @since 1.0.0
@@ -46,7 +46,7 @@ export const selfSchema = <A, I, R>(self: Serializable<A, I, R>): Schema.Schema<
  * @since 1.0.0
  * @category symbol
  */
-export const symbolResult: unique symbol = _serializable.symbolResult as any
+export const symbolResult: unique symbol = serializable_.symbolResult as any
 
 /**
  * @since 1.0.0
