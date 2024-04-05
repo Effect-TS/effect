@@ -62,13 +62,12 @@ export const fromFileTree = (options?: {
 
       return ConfigProvider.fromFlat(
         ConfigProvider.makeFlat({
-          load: (pathSegments, config) => {
-            return Effect.catchIf(
+          load: (pathSegments, config) =>
+            Effect.catchIf(
               readConfig(resolveFilePath(pathSegments), config),
               isPlatformError,
               handlePlatformError(pathSegments)
-            )
-          },
+            ),
           enumerateChildren: (pathSegments) =>
             Effect.forEach(resolveEnumerableDirs(pathSegments), (dir) => fs.readDirectory(dir)).pipe(
               Effect.map((files) => HashSet.fromIterable(files.flat())),
