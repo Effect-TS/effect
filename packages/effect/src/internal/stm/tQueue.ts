@@ -110,7 +110,7 @@ class TQueueImpl<in out A> implements TQueue.TQueue<A> {
 
   shutdown: STM.STM<void> = core.withSTMRuntime((runtime) => {
     tRef.unsafeSet(this.ref, void 0, runtime.journal)
-    return stm.unit
+    return stm.void
   })
 
   isShutdown: STM.STM<boolean> = core.effect<never, boolean>((journal) => {
@@ -120,7 +120,7 @@ class TQueueImpl<in out A> implements TQueue.TQueue<A> {
 
   awaitShutdown: STM.STM<void> = core.flatMap(
     this.isShutdown,
-    (isShutdown) => isShutdown ? stm.unit : core.retry
+    (isShutdown) => isShutdown ? stm.void : core.retry
   )
 
   offer(value: A): STM.STM<boolean> {

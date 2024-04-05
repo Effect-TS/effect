@@ -1466,11 +1466,14 @@ export const suspend: <A, E, R>(effect: LazyArg<Effect<A, E, R>>) => Effect<A, E
  */
 export const sync: <A>(evaluate: LazyArg<A>) => Effect<A> = core.sync
 
-/**
- * @since 2.0.0
- * @category constructors
- */
-export const unit: Effect<void> = core.unit
+const _void: Effect<void> = core.void
+export {
+  /**
+   * @since 2.0.0
+   * @category constructors
+   */
+  _void as void
+}
 
 /**
  * @since 2.0.0
@@ -2103,7 +2106,7 @@ export const asSomeError: <A, E, R>(self: Effect<A, E, R>) => Effect<A, Option.O
  * @since 2.0.0
  * @category mapping
  */
-export const asUnit: <A, E, R>(self: Effect<A, E, R>) => Effect<void, E, R> = core.asUnit
+export const asVoid: <A, E, R>(self: Effect<A, E, R>) => Effect<void, E, R> = core.asVoid
 
 /**
  * Returns an effect that swaps the error/success cases. This allows you to

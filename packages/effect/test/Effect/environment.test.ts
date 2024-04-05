@@ -49,7 +49,7 @@ describe("Effect", () => {
     it.effect("effect tag", () =>
       Effect.gen(function*($) {
         const [n, s, z] = yield* $(Effect.all([
-          Effect.andThen(Effect.unit, DemoTag.getNumbers),
+          Effect.andThen(Effect.void, DemoTag.getNumbers),
           Effect.andThen(Effect.succeed("a"), DemoTag.strings),
           Effect.andThen(Effect.succeed("a"), DemoTag.fn)
         ]))

@@ -98,7 +98,7 @@ describe("Stream", () => {
         Stream.make(1, 2, 3),
         Stream.tapBoth({
           onSuccess: (n) => pipe(Effect.fail("error"), Effect.when(() => n === 3)),
-          onFailure: () => Effect.unit
+          onFailure: () => Effect.void
         }),
         Stream.either,
         Stream.runCollect

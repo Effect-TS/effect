@@ -181,7 +181,7 @@ export const toChannel = <IE>(
       const exitQueue = yield* _(Queue.unbounded<Exit.Exit<Chunk.Chunk<Uint8Array>, SocketError | IE>>())
 
       const input: AsyncProducer.AsyncInputProducer<IE, Chunk.Chunk<Uint8Array | string | CloseEvent>, unknown> = {
-        awaitRead: () => Effect.unit,
+        awaitRead: () => Effect.void,
         emit(chunk) {
           return Effect.catchAllCause(
             Effect.forEach(chunk, write, { discard: true }),
@@ -190,12 +190,12 @@ export const toChannel = <IE>(
         },
         error(error) {
           return Effect.zipRight(
-            Scope.close(writeScope, Exit.unit),
+            Scope.close(writeScope, Exit.void),
             Queue.offer(exitQueue, Exit.failCause(error))
           )
         },
         done() {
-          return Scope.close(writeScope, Exit.unit)
+          return Scope.close(writeScope, Exit.void)
         }
       }
 
@@ -212,7 +212,7 @@ export const toChannel = <IE>(
         .flatMap(
           Queue.take(exitQueue),
           Exit.match({
-            onFailure: (cause) => Cause.isEmptyType(cause) ? Channel.unit : Channel.failCause(cause),
+            onFailure: (cause) => Cause.isEmptyType(cause) ? Channel.void : Channel.failCause(cause),
             onSuccess: (chunk) => Channel.zipRight(Channel.write(chunk), loop)
           })
         )
@@ -350,7 +350,7 @@ export const fromWebSocket = (
           yield* _(
             Effect.async<void, SocketError, never>((resume) => {
               ws.onopen = () => {
-                resume(Effect.unit)
+                resume(Effect.void)
               }
             }),
             Effect.timeoutFail({
@@ -388,7 +388,7 @@ export const fromWebSocket = (
           FiberSet.join(fiberSet),
           Effect.catchIf(
             SocketCloseError.isClean((_) => !closeCodeIsError(_)),
-            (_) => Effect.unit
+            (_) => Effect.void
           )
         )
       }).pipe(

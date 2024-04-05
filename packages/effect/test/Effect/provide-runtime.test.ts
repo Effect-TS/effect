@@ -33,7 +33,7 @@ describe("Effect", () => {
     return Effect.gen(function*(_) {
       const rt = yield* _(Layer.succeedContext(Context.empty()), Layer.toRuntime)
       const pre = yield* _(Effect.context<never>())
-      yield* _(Effect.provide(Effect.unit, rt))
+      yield* _(Effect.provide(Effect.void, rt))
       const post = yield* _(Effect.context<never>())
       assert.isTrue(Equal.equals(pre, post))
     }).pipe(
@@ -69,7 +69,7 @@ describe("Effect", () => {
       ]
     ))
 
-    await Effect.runPromise(Scope.close(scope, Exit.unit))
+    await Effect.runPromise(Scope.close(scope, Exit.void))
 
     assert.deepStrictEqual(all[0].a, 2)
     assert.deepStrictEqual(all[0].b, { value: 1 })

@@ -17,7 +17,7 @@ import { assert, describe } from "vitest"
 
 const initial = "initial"
 const update = "update"
-const fibers = Array.from({ length: 10000 }, () => Fiber.unit)
+const fibers = Array.from({ length: 10000 }, () => Fiber.void)
 
 describe("Fiber", () => {
   it.effect("should track blockingOn in await", () =>
@@ -109,7 +109,7 @@ describe("Fiber", () => {
       const fiber = yield* $(withLatch((release) =>
         Effect.fork(
           Effect.acquireUseRelease(
-            Effect.asUnit(release),
+            Effect.asVoid(release),
             () => Effect.never,
             () => Ref.set(ref, true)
           )
@@ -142,7 +142,7 @@ describe("Fiber", () => {
         if (n === 100) {
           return pipe(Queue.shutdown(queue), Effect.zipRight(Effect.fail("fail")))
         }
-        return pipe(Queue.offer(queue, n), Effect.asUnit)
+        return pipe(Queue.offer(queue, n), Effect.asVoid)
       }
       const queue = yield* $(Queue.unbounded<number>())
       yield* $(Queue.offerAll(queue, Array.from(Array(100), (_, i) => i + 1)))
@@ -219,7 +219,7 @@ describe("Fiber", () => {
     }), 10000)
   it.effect("all - stack safety", () =>
     Effect.gen(function*($) {
-      const result = yield* $(Fiber.join(Fiber.all(fibers)), Effect.asUnit)
+      const result = yield* $(Fiber.join(Fiber.all(fibers)), Effect.asVoid)
       assert.isUndefined(result)
     }), 10000)
 })

@@ -71,7 +71,7 @@ export const make = <R, ER>(
     disposeEffect: core.suspend(() => {
       ;(self as any).runtime = core.die("ManagedRuntime disposed")
       self.cachedRuntime = undefined
-      return Scope.close(self.scope, core.exitUnit)
+      return Scope.close(self.scope, core.exitVoid)
     }),
     runFork<A, E>(effect: Effect.Effect<A, E, R>, options?: Runtime.RunForkOptions): Fiber.RuntimeFiber<A, E | ER> {
       return self.cachedRuntime === undefined ?

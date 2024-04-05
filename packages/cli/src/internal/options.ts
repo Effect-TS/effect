@@ -1158,7 +1158,7 @@ const parseInternal = (
 > => {
   switch (self._tag) {
     case "Empty": {
-      return Effect.unit
+      return Effect.void
     }
     case "Single": {
       const singleNames = ReadonlyArray.filterMap(getNames(self), (name) => HashMap.get(args, name))

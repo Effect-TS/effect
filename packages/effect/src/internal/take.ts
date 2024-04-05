@@ -196,4 +196,4 @@ export const tap = dual<
 >(2, <A, E, X, E2, R>(
   self: Take.Take<A, E>,
   f: (chunk: Chunk.Chunk<A>) => Effect.Effect<X, E2, R>
-): Effect.Effect<void, E2 | E, R> => pipe(self.exit, Exit.forEachEffect(f), Effect.asUnit))
+): Effect.Effect<void, E2 | E, R> => pipe(self.exit, Exit.forEachEffect(f), Effect.asVoid))

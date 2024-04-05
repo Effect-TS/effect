@@ -69,7 +69,7 @@ export const as = <F extends TypeLambda>(F: Covariant<F>): {
  * @category mapping
  * @since 1.0.0
  */
-export const asUnit = <F extends TypeLambda>(
+export const asVoid = <F extends TypeLambda>(
   F: Covariant<F>
 ): <R, O, E, _>(self: Kind<F, R, O, E, _>) => Kind<F, R, O, E, void> => as(F)<void>(undefined)
 

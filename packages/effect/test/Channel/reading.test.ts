@@ -21,8 +21,8 @@ export const mapper = <A, B>(
         Channel.write(f(a)),
         () => mapper(f)
       ),
-    onFailure: () => Channel.unit,
-    onDone: () => Channel.unit
+    onFailure: () => Channel.void,
+    onDone: () => Channel.void
   })
 }
 
@@ -32,11 +32,11 @@ export const refWriter = <A>(
   return Channel.readWith({
     onInput: (a: A) =>
       Channel.flatMap(
-        Channel.fromEffect(Effect.asUnit(Ref.update(ref, ReadonlyArray.prepend(a)))),
+        Channel.fromEffect(Effect.asVoid(Ref.update(ref, ReadonlyArray.prepend(a)))),
         () => refWriter(ref)
       ),
-    onFailure: () => Channel.unit,
-    onDone: () => Channel.unit
+    onFailure: () => Channel.void,
+    onDone: () => Channel.void
   })
 }
 
@@ -53,7 +53,7 @@ export const refReader = <A>(
       })
     ),
     Channel.flatMap(Option.match({
-      onNone: () => Channel.unit,
+      onNone: () => Channel.void,
       onSome: (i) => Channel.flatMap(Channel.write(i), () => refReader(ref))
     }))
   )
@@ -112,8 +112,8 @@ describe("Channel", () => {
                   Channel.zipRight(Channel.write(input)),
                   Channel.flatMap(inner)
                 ),
-              onFailure: () => Channel.unit,
-              onDone: () => Channel.unit
+              onFailure: () => Channel.void,
+              onDone: () => Channel.void
             })
           return pipe(
             inner(),
@@ -126,7 +126,7 @@ describe("Channel", () => {
       const channel = pipe(
         Channel.writeAll(1, 2),
         Channel.pipeTo(mapper(f)),
-        Channel.pipeTo(pipe(mapper(g), Channel.concatMap((ns) => Channel.writeAll(...ns)), Channel.asUnit)),
+        Channel.pipeTo(pipe(mapper(g), Channel.concatMap((ns) => Channel.writeAll(...ns)), Channel.asVoid)),
         Channel.pipeTo(innerChannel)
       )
       const [chunk, list] = yield* $(Channel.runCollect(channel))
@@ -205,12 +205,12 @@ describe("Channel", () => {
       const read = pipe(
         Channel.read<number>(),
         Channel.mapEffect((i) => event(`Read ${i}`)),
-        Channel.asUnit
+        Channel.asVoid
       )
       const right = pipe(
         read,
         Channel.zipRight(read),
-        Channel.catchAll(() => Channel.unit)
+        Channel.catchAll(() => Channel.void)
       )
       const channel = pipe(left, Channel.pipeTo(right))
       const result = yield* $(Channel.runDrain(channel), Effect.zipRight(Ref.get(ref)))
@@ -236,8 +236,8 @@ describe("Channel", () => {
         refWriter(destination),
         Channel.mergeWith({
           other: refWriter(destination),
-          onSelfDone: () => MergeDecision.AwaitConst(Effect.unit),
-          onOtherDone: () => MergeDecision.AwaitConst(Effect.unit)
+          onSelfDone: () => MergeDecision.AwaitConst(Effect.void),
+          onOtherDone: () => MergeDecision.AwaitConst(Effect.void)
         })
       )
       const [missing, surplus] = yield* $(
@@ -274,8 +274,8 @@ describe("Channel", () => {
         Channel.pipeTo(refWriter(destination)),
         Channel.mergeWith({
           other: pipe(mapper(f), Channel.pipeTo(refWriter(destination))),
-          onSelfDone: () => MergeDecision.AwaitConst(Effect.unit),
-          onOtherDone: () => MergeDecision.AwaitConst(Effect.unit)
+          onSelfDone: () => MergeDecision.AwaitConst(Effect.void),
+          onOtherDone: () => MergeDecision.AwaitConst(Effect.void)
         })
       )
       const [missing, surplus] = yield* $(

@@ -203,7 +203,7 @@ class MemoMapImpl implements Layer.MemoMap {
             acquire as Effect.Effect<readonly [FiberRefsPatch.FiberRefsPatch, Context.Context<ROut>], E>,
             core.flatMap(([patch, b]) => pipe(effect.patchFiberRefs(patch), core.as(b))),
             core.onExit(core.exitMatch({
-              onFailure: () => core.unit,
+              onFailure: () => core.void,
               onSuccess: () => core.scopeAddFinalizerExit(scope, release)
             }))
           )
@@ -216,7 +216,7 @@ class MemoMapImpl implements Layer.MemoMap {
               core.deferredMake<readonly [FiberRefsPatch.FiberRefsPatch, Context.Context<ROut>], E>(),
               core.flatMap((deferred) =>
                 pipe(
-                  ref.make<Scope.Scope.Finalizer>(() => core.unit),
+                  ref.make<Scope.Scope.Finalizer>(() => core.void),
                   core.map((finalizerRef) => {
                     const resource = core.uninterruptibleMask((restore) =>
                       pipe(
@@ -245,7 +245,7 @@ class MemoMapImpl implements Layer.MemoMap {
                                         core.whenEffect(
                                           ref.modify(observers, (n) => [n === 1, n - 1] as const)
                                         ),
-                                        core.asUnit
+                                        core.asVoid
                                       )),
                                     core.zipRight(ref.update(observers, (n) => n + 1)),
                                     core.zipRight(
@@ -270,7 +270,7 @@ class MemoMapImpl implements Layer.MemoMap {
                       pipe(
                         core.deferredAwait(deferred),
                         core.onExit(core.exitMatchEffect({
-                          onFailure: () => core.unit,
+                          onFailure: () => core.void,
                           onSuccess: () => ref.update(observers, (n) => n + 1)
                         }))
                       ),
@@ -1197,7 +1197,7 @@ const provideSomeRuntime = dual<
         core.withFiberRuntime((fiber) => {
           fiber.setFiberRefs(FiberRefsPatch.patch(fiber.id(), fiber.getFiberRefs())(rollbackRefs))
           fiber._runtimeFlags = runtimeFlags.patch(rollbackFlags)(fiber._runtimeFlags)
-          return core.unit
+          return core.void
         })
       )
     })

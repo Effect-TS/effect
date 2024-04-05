@@ -885,7 +885,7 @@ class SubscriptionImpl<in out A> implements Queue.Dequeue<A> {
             this.strategy.unsafeOnPubSubEmptySpace(this.pubsub, this.subscribers)
           })),
           core.whenEffect(core.deferredSucceed(this.shutdownHook, void 0)),
-          core.asUnit
+          core.asVoid
         )
       })
     )
@@ -1053,7 +1053,7 @@ class PubSubImpl<in out A> implements PubSub.PubSub<A> {
         this.scope.close(core.exitInterrupt(state.id())),
         core.zipRight(this.strategy.shutdown),
         core.whenEffect(core.deferredSucceed(this.shutdownHook, void 0)),
-        core.asUnit
+        core.asVoid
       )
     }))
   }
@@ -1298,8 +1298,8 @@ class BackPressureStrategy<in out A> implements PubSubStrategy<A> {
             publishers,
             ([_, deferred, last]) =>
               last ?
-                pipe(core.deferredInterruptWith(deferred, fiberId), core.asUnit) :
-                core.unit,
+                pipe(core.deferredInterruptWith(deferred, fiberId), core.asVoid) :
+                core.void,
             false,
             false
           )
@@ -1408,7 +1408,7 @@ class BackPressureStrategy<in out A> implements PubSubStrategy<A> {
  */
 export class DroppingStrategy<in out A> implements PubSubStrategy<A> {
   get shutdown(): Effect.Effect<void> {
-    return core.unit
+    return core.void
   }
 
   handleSurplus(
@@ -1452,7 +1452,7 @@ export class DroppingStrategy<in out A> implements PubSubStrategy<A> {
  */
 export class SlidingStrategy<in out A> implements PubSubStrategy<A> {
   get shutdown(): Effect.Effect<void> {
-    return core.unit
+    return core.void
   }
 
   handleSurplus(

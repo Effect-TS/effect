@@ -60,7 +60,7 @@ export const make = (
             ws.data.closeDeferred,
             Socket.defaultCloseCodeIsError(code)
               ? Exit.fail(new Socket.SocketCloseError({ reason: "Close", code, closeReason }))
-              : Exit.unit
+              : Exit.void
           )
         }
       }
@@ -108,7 +108,7 @@ export const make = (
           ),
           Effect.interruptible,
           Effect.forkScoped,
-          Effect.asUnit
+          Effect.asVoid
         )
       }
     })
