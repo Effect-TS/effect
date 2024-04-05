@@ -259,7 +259,7 @@ const descriptorFromKey = (
   suffix?: string
 ): MetricDescriptor => ({
   ...descriptorMeta(metricKey, suffix),
-  unit: tags.void ?? tags.time_unit ?? "1",
+  unit: tags.unit ?? tags.time_unit ?? "1",
   type: instrumentTypeFromKey(metricKey),
   valueType: "bigint" in metricKey.keyType && metricKey.keyType.bigint === true ? ValueType.INT : ValueType.DOUBLE
 })
