@@ -21,6 +21,12 @@ export type PlatformErrorTypeId = typeof PlatformErrorTypeId
 
 /**
  * @since 1.0.0
+ * @category refinements
+ */
+export const isPlatformError = (u: unknown): u is PlatformError => Predicate.hasProperty(u, PlatformErrorTypeId)
+
+/**
+ * @since 1.0.0
  * @category error
  */
 export type PlatformError = BadArgument | SystemError

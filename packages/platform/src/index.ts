@@ -46,6 +46,11 @@ export * as Path from "./Path.js"
 /**
  * @since 1.0.0
  */
+export * as PlatformConfigProvider from "./PlatformConfigProvider.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as PlatformLogger from "./PlatformLogger.js"
 
 /**
