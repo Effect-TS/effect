@@ -63,13 +63,8 @@ export const fromFileTree = (options?: {
       return ConfigProvider.fromFlat(
         ConfigProvider.makeFlat({
           load: (pathSegments, config) => {
-            const filePath = resolveFilePath(pathSegments)
-
             return Effect.catchIf(
-              Effect.flatMap(
-                fs.exists(filePath),
-                (exists) => exists ? readConfig(filePath, config) : Effect.fail(pathNotFoundError(pathSegments))
-              ),
+              readConfig(resolveFilePath(pathSegments), config),
               isPlatformError,
               handlePlatformError(pathSegments)
             )
