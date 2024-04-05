@@ -565,7 +565,7 @@ const dropLoop = <In>(
       )
     },
     onFailure: core.fail,
-    onDone: () => core.unit
+    onDone: () => core.void
   })
 
 /** @internal */
@@ -600,7 +600,7 @@ const dropUntilEffectReader = <In, R, E>(
         channel.unwrap
       ),
     onFailure: core.fail,
-    onDone: () => core.unit
+    onDone: () => core.void
   })
 
 /** @internal */
@@ -649,7 +649,7 @@ const dropWhileEffectReader = <In, R, E>(
         channel.unwrap
       ),
     onFailure: core.fail,
-    onDone: () => core.unit
+    onDone: () => core.void
   })
 
 /** @internal */
@@ -1346,7 +1346,7 @@ export const forEach = <In, X, E, R>(f: (input: In) => Effect.Effect<X, E, R>): 
     onInput: (input: Chunk.Chunk<In>) =>
       pipe(core.fromEffect(Effect.forEach(input, (v) => f(v), { discard: true })), core.flatMap(() => process)),
     onFailure: core.failCause,
-    onDone: () => core.unit
+    onDone: () => core.void
   })
   return new SinkImpl(process)
 }
@@ -1358,7 +1358,7 @@ export const forEachChunk = <In, X, E, R>(
   const process: Channel.Channel<never, Chunk.Chunk<In>, E, E, void, unknown, R> = core.readWithCause({
     onInput: (input: Chunk.Chunk<In>) => pipe(core.fromEffect(f(input)), core.flatMap(() => process)),
     onFailure: core.failCause,
-    onDone: () => core.unit
+    onDone: () => core.void
   })
   return new SinkImpl(process)
 }
@@ -1370,7 +1370,7 @@ export const forEachWhile = <In, E, R>(
   const process: Channel.Channel<Chunk.Chunk<In>, Chunk.Chunk<In>, E, E, void, unknown, R> = core.readWithCause({
     onInput: (input: Chunk.Chunk<In>) => forEachWhileReader(f, input, 0, input.length, process),
     onFailure: core.failCause,
-    onDone: () => core.unit
+    onDone: () => core.void
   })
   return new SinkImpl(process)
 }
@@ -1405,10 +1405,10 @@ export const forEachChunkWhile = <In, E, R>(
     onInput: (input: Chunk.Chunk<In>) =>
       pipe(
         core.fromEffect(f(input)),
-        core.flatMap((cont) => cont ? reader : core.unit)
+        core.flatMap((cont) => cont ? reader : core.void)
       ),
     onFailure: core.fail,
-    onDone: () => core.unit
+    onDone: () => core.void
   })
   return new SinkImpl(reader)
 }

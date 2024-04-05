@@ -24,7 +24,7 @@ describe("Effect", () => {
     Effect.gen(function*($) {
       const array = Array.from({ length: 10000 }, (_, i) => i)
       const result = yield* $(array.reduce(
-        (acc, _) => pipe(Effect.orDie(acc), Effect.either, Effect.asUnit),
+        (acc, _) => pipe(Effect.orDie(acc), Effect.either, Effect.asVoid),
         Effect.orDie(Effect.try(constVoid))
       ))
       assert.isUndefined(result)

@@ -69,7 +69,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
             port.removeEventListener("error", onError as any)
           })
         }).pipe(
-          Effect.tapErrorCause((cause) => Cause.isInterruptedOnly(cause) ? Effect.unit : Effect.logDebug(cause)),
+          Effect.tapErrorCause((cause) => Cause.isInterruptedOnly(cause) ? Effect.void : Effect.logDebug(cause)),
           Effect.retry(Schedule.forever),
           Effect.annotateLogs({
             package: "@effect/platform-browser",

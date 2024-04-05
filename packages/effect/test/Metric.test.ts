@@ -34,7 +34,7 @@ describe("Metric", () => {
         const id = nextName()
         const counter = Metric.counter(id).pipe(Metric.taggedWithLabels(labels), Metric.withConstantInput(1))
         const result = yield* $(
-          counter(Effect.unit).pipe(Effect.zipRight(counter(Effect.unit)), Effect.zipRight(Metric.value(counter)))
+          counter(Effect.void).pipe(Effect.zipRight(counter(Effect.void)), Effect.zipRight(Metric.value(counter)))
         )
         assert.deepStrictEqual(result, MetricState.counter(2))
       }))
@@ -128,7 +128,7 @@ describe("Metric", () => {
         const name = nextName()
         const result = yield* $(
           pipe(
-            Effect.unit,
+            Effect.void,
             Effect.withMetric(
               Metric.counter(name).pipe(
                 Metric.taggedWithLabels(labels),
@@ -137,7 +137,7 @@ describe("Metric", () => {
             ),
             Effect.zipRight(
               pipe(
-                Effect.unit,
+                Effect.void,
                 Effect.withMetric(pipe(
                   Metric.counter(name),
                   Metric.taggedWithLabels(labels),
@@ -206,7 +206,7 @@ describe("Metric", () => {
         const counter = pipe(Metric.counter(name), Metric.withConstantInput(1))
         const result = yield* $(
           pipe(
-            Effect.unit,
+            Effect.void,
             Effect.withMetric(counter),
             Effect.zipRight(pipe(Effect.fail("error"), Effect.withMetric(counter), Effect.ignore)),
             Effect.zipRight(Metric.value(counter))

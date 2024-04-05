@@ -47,7 +47,7 @@ export const make = Effect.gen(function*(_) {
 
   const inputText: MockTerminal["inputText"] = (text: string) => {
     const inputs = ReadonlyArray.map(text.split(""), (key) => toUserInput(key))
-    return Queue.offerAll(queue, inputs).pipe(Effect.asUnit)
+    return Queue.offerAll(queue, inputs).pipe(Effect.asVoid)
   }
 
   const inputKey: MockTerminal["inputKey"] = (
@@ -55,7 +55,7 @@ export const make = Effect.gen(function*(_) {
     modifiers?: Partial<MockTerminal.Modifiers>
   ) => {
     const input = toUserInput(key, modifiers)
-    return Queue.offer(queue, input).pipe(Effect.asUnit)
+    return Queue.offer(queue, input).pipe(Effect.asVoid)
   }
 
   const display: MockTerminal["display"] = (input) => Console.log(input)

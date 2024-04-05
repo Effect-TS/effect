@@ -264,7 +264,7 @@ class RouteImpl<E = never, R = never> extends Inspectable.Class implements Route
   constructor(
     readonly method: Method.Method | "*",
     readonly path: Router.PathInput,
-    readonly handler: Router.Route.Handler<R, E>,
+    readonly handler: Router.Route.Handler<E, R>,
     readonly prefix = Option.none<string>(),
     readonly uninterruptible = false
   ) {
@@ -304,10 +304,10 @@ export const fromIterable = <R extends Router.Route<any, any>>(
 > => new RouterImpl(Chunk.fromIterable(routes), Chunk.empty()) as any
 
 /** @internal */
-export const makeRoute = <R, E>(
+export const makeRoute = <E, R>(
   method: Method.Method,
   path: Router.PathInput,
-  handler: Router.Route.Handler<R, E>,
+  handler: Router.Route.Handler<E, R>,
   prefix: Option.Option<string> = Option.none(),
   uninterruptible = false
 ): Router.Route<E, Router.Router.ExcludeProvided<R>> =>
@@ -478,12 +478,12 @@ export const options = route("OPTIONS")
 
 /** @internal */
 export const use = dual<
-  <R, E, R1, E1>(
-    f: (self: Router.Route.Handler<R, E>) => App.Default<E1, R1>
+  <E, R, R1, E1>(
+    f: (self: Router.Route.Handler<E, R>) => App.Default<E1, R1>
   ) => (self: Router.Router<E, R>) => Router.Router<E1, Router.Router.ExcludeProvided<R1>>,
-  <R, E, R1, E1>(
+  <E, R, R1, E1>(
     self: Router.Router<E, R>,
-    f: (self: Router.Route.Handler<R, E>) => App.Default<E1, R1>
+    f: (self: Router.Route.Handler<E, R>) => App.Default<E1, R1>
   ) => Router.Router<E1, Router.Router.ExcludeProvided<R1>>
 >(2, (self, f) =>
   new RouterImpl<any, any>(
@@ -499,38 +499,38 @@ export const use = dual<
 
 /** @internal */
 export const catchAll = dual<
-  <E, R2, E2>(
-    f: (e: E) => Router.Route.Handler<R2, E2>
+  <E, E2, R2>(
+    f: (e: E) => Router.Route.Handler<E2, R2>
   ) => <R>(self: Router.Router<E, R>) => Router.Router<E2, R | Router.Router.ExcludeProvided<R2>>,
-  <R, E, R2, E2>(
+  <R, E, E2, R2>(
     self: Router.Router<E, R>,
-    f: (e: E) => Router.Route.Handler<R2, E2>
+    f: (e: E) => Router.Route.Handler<E2, R2>
   ) => Router.Router<E2, R | Router.Router.ExcludeProvided<R2>>
 >(2, (self, f) => use(self, Effect.catchAll(f)))
 
 /** @internal */
 export const catchAllCause = dual<
-  <E, R2, E2>(
-    f: (e: Cause.Cause<E>) => Router.Route.Handler<R2, E2>
+  <E, E2, R2>(
+    f: (e: Cause.Cause<E>) => Router.Route.Handler<E2, R2>
   ) => <R>(self: Router.Router<E, R>) => Router.Router<E2, R | Router.Router.ExcludeProvided<R2>>,
-  <R, E, R2, E2>(
+  <R, E, E2, R2>(
     self: Router.Router<E, R>,
-    f: (e: Cause.Cause<E>) => Router.Route.Handler<R2, E2>
+    f: (e: Cause.Cause<E>) => Router.Route.Handler<E2, R2>
   ) => Router.Router<E2, R | Router.Router.ExcludeProvided<R2>>
 >(2, (self, f) => use(self, Effect.catchAllCause(f)))
 
 /** @internal */
 export const catchTag = dual<
-  <K extends (E extends { _tag: string } ? E["_tag"] : never), E, R1, E1>(
+  <K extends (E extends { _tag: string } ? E["_tag"] : never), E, E1, R1>(
     k: K,
-    f: (e: Extract<E, { _tag: K }>) => Router.Route.Handler<R1, E1>
+    f: (e: Extract<E, { _tag: K }>) => Router.Route.Handler<E1, R1>
   ) => <R>(
     self: Router.Router<E, R>
   ) => Router.Router<Exclude<E, { _tag: K }> | E1, R | Router.Router.ExcludeProvided<R1>>,
-  <R, E, K extends (E extends { _tag: string } ? E["_tag"] : never), R1, E1>(
+  <R, E, K extends (E extends { _tag: string } ? E["_tag"] : never), E1, R1>(
     self: Router.Router<E, R>,
     k: K,
-    f: (e: Extract<E, { _tag: K }>) => Router.Route.Handler<R1, E1>
+    f: (e: Extract<E, { _tag: K }>) => Router.Route.Handler<E1, R1>
   ) => Router.Router<Exclude<E, { _tag: K }> | E1, R | Router.Router.ExcludeProvided<R1>>
 >(3, (self, k, f) => use(self, Effect.catchTag(k, f)))
 

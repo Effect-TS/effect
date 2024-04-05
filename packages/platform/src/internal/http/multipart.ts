@@ -214,7 +214,7 @@ const makeFromQueue = <IE>(
     let partsFinished = false
 
     const input: AsyncInput.AsyncInputProducer<IE, Chunk.Chunk<Uint8Array>, unknown> = {
-      awaitRead: () => Effect.unit,
+      awaitRead: () => Effect.void,
       emit(element) {
         return Queue.offer(queue, element)
       },
@@ -238,7 +238,7 @@ const makeFromQueue = <IE>(
         const take: Channel.Channel<Chunk.Chunk<Uint8Array>, unknown, never, unknown, void, unknown> = Channel
           .suspend(() => {
             if (chunks.length === 0) {
-              return finished ? Channel.unit : Channel.zipRight(pump, take)
+              return finished ? Channel.void : Channel.zipRight(pump, take)
             }
             const chunk = Chunk.unsafeFromArray(chunks)
             chunks = []
@@ -282,7 +282,7 @@ const makeFromQueue = <IE>(
       pump,
       Channel.suspend(() => {
         if (partsBuffer.length === 0) {
-          return Channel.unit
+          return Channel.void
         }
         const parts = Chunk.unsafeFromArray(partsBuffer)
         partsBuffer = []
@@ -301,7 +301,7 @@ const makeFromQueue = <IE>(
       if (error._tag === "Some") {
         return Channel.failCause(error.value)
       } else if (partsFinished) {
-        return Channel.unit
+        return Channel.void
       }
       return Channel.zipRight(takeParts, partsChannel)
     })

@@ -1008,13 +1008,13 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                     const e = new Index(index, t.left)
                     if (allErrors) {
                       es.push([nk, e])
-                      return Effect.unit
+                      return Effect.void
                     } else {
                       return Either.left(new TupleType(ast, input, [e], sortByIndex(output)))
                     }
                   }
                   output.push([nk, t.right])
-                  return Effect.unit
+                  return Effect.void
                 })
               )
             }
@@ -1053,13 +1053,13 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                       const e = new Index(index, t.left)
                       if (allErrors) {
                         es.push([nk, e])
-                        return Effect.unit
+                        return Effect.void
                       } else {
                         return Either.left(new TupleType(ast, input, [e], sortByIndex(output)))
                       }
                     } else {
                       output.push([nk, t.right])
-                      return Effect.unit
+                      return Effect.void
                     }
                   })
               )
@@ -1101,13 +1101,13 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                         const e = new Index(index, t.left)
                         if (allErrors) {
                           es.push([nk, e])
-                          return Effect.unit
+                          return Effect.void
                         } else {
                           return Either.left(new TupleType(ast, input, [e], sortByIndex(output)))
                         }
                       }
                       output.push([nk, t.right])
-                      return Effect.unit
+                      return Effect.void
                     })
                 )
               }
@@ -1258,13 +1258,13 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                     const e = new Key(index, hasKey ? t.left : missing)
                     if (allErrors) {
                       es.push([nk, e])
-                      return Effect.unit
+                      return Effect.void
                     } else {
                       return Either.left(new TypeLiteral(ast, input, [e], output))
                     }
                   }
                   output[index] = t.right
-                  return Effect.unit
+                  return Effect.void
                 })
             )
           }
@@ -1318,7 +1318,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                           const e = new Key(index, tv.left)
                           if (allErrors) {
                             es.push([nk, e])
-                            return Effect.unit
+                            return Effect.void
                           } else {
                             return Either.left(new TypeLiteral(ast, input, [e], output))
                           }
@@ -1326,7 +1326,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                           if (!Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
                             output[key] = tv.right
                           }
-                          return Effect.unit
+                          return Effect.void
                         }
                       }
                     )
@@ -1451,7 +1451,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
               (state) =>
                 Effect.suspend(() => {
                   if ("finalResult" in state) {
-                    return Effect.unit
+                    return Effect.void
                   } else {
                     return Effect.flatMap(Effect.either(pr), (t) => {
                       if (Either.isRight(t)) {
@@ -1459,7 +1459,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                       } else {
                         state.es.push([nk, new Member(candidate, t.left)])
                       }
-                      return Effect.unit
+                      return Effect.void
                     })
                   }
                 })

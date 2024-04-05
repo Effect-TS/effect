@@ -15,7 +15,7 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
         pipe(
           Effect.async<void>((resume) => {
             worker.once("exit", () => {
-              resume(Effect.unit)
+              resume(Effect.void)
             })
             worker.postMessage([1])
           }),

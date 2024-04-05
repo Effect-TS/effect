@@ -176,7 +176,7 @@ describe("FiberRef", () => {
   it.scoped("fork function is applied on fork - 1", () =>
     Effect.gen(function*($) {
       const fiberRef = yield* $(FiberRef.make(0, { fork: increment }))
-      const child = yield* $(Effect.fork(Effect.unit))
+      const child = yield* $(Effect.fork(Effect.void))
       yield* $(Fiber.join(child))
       const result = yield* $(FiberRef.get(fiberRef))
       assert.strictEqual(result, 1)
@@ -184,7 +184,7 @@ describe("FiberRef", () => {
   it.scoped("fork function is applied on fork - 2", () =>
     Effect.gen(function*($) {
       const fiberRef = yield* $(FiberRef.make(0, { fork: increment }))
-      const child = yield* $(Effect.unit, Effect.fork, Effect.flatMap(Fiber.join), Effect.fork)
+      const child = yield* $(Effect.void, Effect.fork, Effect.flatMap(Fiber.join), Effect.fork)
       yield* $(Fiber.join(child))
       const result = yield* $(FiberRef.get(fiberRef))
       assert.strictEqual(result, 2)
@@ -228,7 +228,7 @@ describe("FiberRef", () => {
       yield* $(
         success,
         Effect.zip(failure1.pipe(Effect.zip(failure2, { concurrent: true })), { concurrent: true }),
-        Effect.orElse(() => Effect.unit)
+        Effect.orElse(() => Effect.void)
       )
       const result = yield* $(FiberRef.get(fiberRef))
       assert.isTrue(result.includes(initial))
@@ -312,7 +312,7 @@ describe("FiberRef", () => {
       const latch = yield* $(Deferred.make<void>())
       const winner1 = FiberRef.set(fiberRef, update1).pipe(
         Effect.zipRight(Deferred.succeed(latch, void 0)),
-        Effect.asUnit
+        Effect.asVoid
       )
       const losers1 = Deferred.await(latch).pipe(
         Effect.zipRight(FiberRef.set(fiberRef, update2)),
@@ -332,7 +332,7 @@ describe("FiberRef", () => {
     Effect.gen(function*($) {
       const fiberRef = yield* $(FiberRef.make(initial))
       const loser = FiberRef.set(fiberRef, update).pipe(Effect.zipRight(Effect.fail("darn")))
-      yield* $(Effect.raceAll([loser, ...Array.from({ length: 63 }, () => loser)]), Effect.orElse(() => Effect.unit))
+      yield* $(Effect.raceAll([loser, ...Array.from({ length: 63 }, () => loser)]), Effect.orElse(() => Effect.void))
       const result = yield* $(FiberRef.get(fiberRef))
       assert.strictEqual(result, initial)
     }))

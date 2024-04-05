@@ -45,18 +45,18 @@ describe("Effect", () => {
   it.live("timeout repetition of uninterruptible effect", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        pipe(Effect.unit, Effect.uninterruptible, Effect.forever, Effect.timeout(Duration.millis(10)), Effect.option)
+        pipe(Effect.void, Effect.uninterruptible, Effect.forever, Effect.timeout(Duration.millis(10)), Effect.option)
       )
       assert.deepStrictEqual(result, Option.none())
     }))
   it.effect("timeout in uninterruptible region", () =>
     Effect.gen(function*($) {
-      const result = yield* $(Effect.unit, Effect.timeout(Duration.seconds(20)), Effect.uninterruptible)
+      const result = yield* $(Effect.void, Effect.timeout(Duration.seconds(20)), Effect.uninterruptible)
       assert.deepStrictEqual(result, void 0)
     }))
   it.effect("timeout - disconnect - returns with the produced value if the effect completes before the timeout elapses", () =>
     Effect.gen(function*($) {
-      const result = yield* $(Effect.unit, Effect.disconnect, Effect.timeout(Duration.millis(100)))
+      const result = yield* $(Effect.void, Effect.disconnect, Effect.timeout(Duration.millis(100)))
       assert.deepStrictEqual(result, void 0)
     }))
   it.effect("timeout - disconnect - returns `NoSuchElementException` otherwise", () =>

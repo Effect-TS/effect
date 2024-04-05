@@ -64,7 +64,7 @@ class TPubSubImpl<in out A> implements TPubSub.TPubSub<A> {
 
   awaitShutdown: STM.STM<void> = core.flatMap(
     this.isShutdown,
-    (isShutdown) => isShutdown ? stm.unit : core.retry
+    (isShutdown) => isShutdown ? stm.void : core.retry
   )
 
   capacity(): number {
@@ -195,7 +195,7 @@ class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
 
   awaitShutdown: STM.STM<void> = core.flatMap(
     this.isShutdown,
-    (isShutdown) => isShutdown ? stm.unit : core.retry
+    (isShutdown) => isShutdown ? stm.void : core.retry
   )
 
   capacity(): number {

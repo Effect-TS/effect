@@ -38,7 +38,7 @@ export const make = <I, R, E, O>(
     const scope = yield* _(Scope.fork(yield* _(Effect.scope), ExecutionStrategy.parallel))
     const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
     const shutdown = Effect.zipRight(
-      Scope.close(scope, Exit.unit),
+      Scope.close(scope, Exit.void),
       Fiber.interruptFork(fiber)
     )
     const platform = yield* _(PlatformRunner)
@@ -64,7 +64,7 @@ export const make = <I, R, E, O>(
         const id = req[0]
         if (req[1] === 1) {
           const fiber = fiberMap.get(id)
-          if (!fiber) return Effect.unit
+          if (!fiber) return Effect.void
           return Fiber.interrupt(fiber)
         }
 

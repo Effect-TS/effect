@@ -294,7 +294,7 @@ export const fromEffect = <A>(effect: Effect.Effect<A>): Supervisor.Supervisor<A
 }
 
 /** @internal */
-export const none = globalValue("effect/Supervisor/none", () => fromEffect(core.unit))
+export const none = globalValue("effect/Supervisor/none", () => fromEffect(core.void))
 
 /** @internal */
 export const fibersIn = (

@@ -85,7 +85,7 @@ describe("Schedule", () => {
             }
             // The 10th retry will succeed, which is only possible if the schedule was reset
             if (retries == 10) {
-              return Effect.unit
+              return Effect.void
             }
             return Effect.fail("Boom")
           })

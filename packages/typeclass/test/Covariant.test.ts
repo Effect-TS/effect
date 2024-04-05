@@ -34,10 +34,10 @@ describe.concurrent("Covariant", () => {
     U.deepStrictEqual(pipe(O.some(1), as(2)), O.some(2))
   })
 
-  it("asUnit", () => {
-    const asUnit = _.asUnit(OptionInstances.Covariant)
-    U.deepStrictEqual(pipe(O.none(), asUnit), O.none())
-    U.deepStrictEqual(pipe(O.some(1), asUnit), O.some(undefined))
+  it("asVoid", () => {
+    const asVoid = _.asVoid(OptionInstances.Covariant)
+    U.deepStrictEqual(pipe(O.none(), asVoid), O.none())
+    U.deepStrictEqual(pipe(O.some(1), asVoid), O.some(undefined))
   })
 
   it("let", () => {

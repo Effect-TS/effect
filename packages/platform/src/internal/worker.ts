@@ -112,7 +112,7 @@ export const makeManager = Effect.gen(function*(_) {
               Queue.take(backing.queue),
               Effect.flatMap((msg) => {
                 if (msg[0] === 0) {
-                  return Deferred.complete(readyLatch, Effect.unit)
+                  return Deferred.complete(readyLatch, Effect.void)
                 }
                 return handleMessage(msg[1])
               }),
@@ -153,7 +153,7 @@ export const makeManager = Effect.gen(function*(_) {
         const handleMessage = (response: Worker.Worker.Response<E, O>) =>
           Effect.suspend(() => {
             const queue = requestMap.get(response[0])
-            if (!queue) return Effect.unit
+            if (!queue) return Effect.void
 
             switch (response[1]) {
               // data
@@ -210,7 +210,7 @@ export const makeManager = Effect.gen(function*(_) {
           exit: Exit.Exit<unknown, unknown>
         ) => {
           const release = Effect.zipRight(
-            Deferred.complete(deferred, Effect.unit),
+            Deferred.complete(deferred, Effect.void),
             Effect.sync(() => requestMap.delete(id))
           )
           return Exit.isFailure(exit) ?
@@ -229,7 +229,7 @@ export const makeManager = Effect.gen(function*(_) {
                 .flatMap(
                   Queue.take(queue),
                   Exit.match({
-                    onFailure: (cause) => Cause.isEmpty(cause) ? Channel.unit : Channel.failCause(cause),
+                    onFailure: (cause) => Cause.isEmpty(cause) ? Channel.void : Channel.failCause(cause),
                     onSuccess: (value) => Channel.flatMap(Channel.write(Chunk.unsafeFromArray(value)), () => loop)
                   })
                 )
@@ -251,7 +251,7 @@ export const makeManager = Effect.gen(function*(_) {
             pipe(
               Effect.suspend(() => {
                 const result = requestMap.get(id)
-                if (!result) return Effect.unit
+                if (!result) return Effect.void
                 const transferables = transfers(request)
                 const spanTuple = Option.getOrUndefined(
                   Option.map(span, (span) => [span.traceId, span.spanId, span.sampled] as const)
