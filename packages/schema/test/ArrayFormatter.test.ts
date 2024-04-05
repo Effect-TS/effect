@@ -1,4 +1,4 @@
-import * as _ from "@effect/schema/ArrayFormatter"
+import * as ArrayFormatter from "@effect/schema/ArrayFormatter"
 import type { ParseOptions } from "@effect/schema/AST"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
@@ -9,9 +9,11 @@ import { describe, expect, it } from "vitest"
 
 const options: ParseOptions = { errors: "all", onExcessProperty: "error" }
 
-const expectIssues = <A, I>(schema: S.Schema<A, I>, input: unknown, issues: Array<_.Issue>) => {
+const expectIssues = <A, I>(schema: S.Schema<A, I>, input: unknown, issues: Array<ArrayFormatter.Issue>) => {
   const result = S.decodeUnknownEither(schema)(input, options).pipe(
-    Either.mapLeft((e) => _.formatIssue(e.error).map((issue) => ({ ...issue, message: String(issue.message) })))
+    Either.mapLeft((e) =>
+      ArrayFormatter.formatIssue(e.error).map((issue) => ({ ...issue, message: String(issue.message) }))
+    )
   )
   expect(result).toStrictEqual(Either.left(issues))
 }

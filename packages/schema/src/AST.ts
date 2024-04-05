@@ -12,7 +12,7 @@ import * as Order from "effect/Order"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import type { Concurrency } from "effect/Types"
-import * as _util from "./internal/util.js"
+import * as util_ from "./internal/util.js"
 import type { ParseIssue } from "./ParseResult.js"
 
 /**
@@ -381,7 +381,7 @@ export class Literal implements Annotated {
    * @since 1.0.0
    */
   toString(verbose: boolean = false) {
-    return Option.getOrElse(getExpected(this, verbose), () => _util.formatUnknown(this.literal))
+    return Option.getOrElse(getExpected(this, verbose), () => util_.formatUnknown(this.literal))
   }
   /**
    * @since 1.0.0
@@ -427,7 +427,7 @@ export class UniqueSymbol implements Annotated {
    * @since 1.0.0
    */
   toString(verbose: boolean = false) {
-    return Option.getOrElse(getExpected(this, verbose), () => _util.formatUnknown(this.symbol))
+    return Option.getOrElse(getExpected(this, verbose), () => util_.formatUnknown(this.symbol))
   }
   /**
    * @since 1.0.0
@@ -1212,7 +1212,7 @@ export class IndexSignature {
 
 /** @internal */
 export const getDuplicatePropertySignatureErrorMessage = (name: PropertyKey): string =>
-  `Duplicate property signature ${_util.formatUnknown(name)}`
+  `Duplicate property signature ${util_.formatUnknown(name)}`
 
 const getDuplicateIndexSignatureErrorMessage = (name: string): string =>
   `Duplicate index signature for type \`${name}\``
@@ -1524,7 +1524,7 @@ export class Suspend implements Annotated {
    */
   readonly _tag = "Suspend"
   constructor(readonly f: () => AST, readonly annotations: Annotations = {}) {
-    this.f = _util.memoizeThunk(f)
+    this.f = util_.memoizeThunk(f)
   }
   /**
    * @since 1.0.0
@@ -1753,7 +1753,7 @@ export class PropertySignatureTransformation {
 }
 
 const getDuplicatePropertySignatureTransformationErrorMessage = (name: PropertyKey): string =>
-  `Duplicate property signature transformation ${_util.formatUnknown(name)}`
+  `Duplicate property signature transformation ${util_.formatUnknown(name)}`
 
 /**
  * @category model
@@ -1992,7 +1992,7 @@ export const record = (key: AST, value: AST): {
         if (Predicate.isString(key.literal) || Predicate.isNumber(key.literal)) {
           propertySignatures.push(new PropertySignature(key.literal, value, false, true))
         } else {
-          throw new Error(`createRecord: unsupported literal (${_util.formatUnknown(key.literal)})`)
+          throw new Error(`createRecord: unsupported literal (${util_.formatUnknown(key.literal)})`)
         }
         break
       case "UniqueSymbol":
@@ -2536,7 +2536,7 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
   switch (ast._tag) {
     case "TypeLiteral": {
       const propertySignatureTransformations: Array<PropertySignatureTransformation> = []
-      for (const key of _util.ownKeys(mapping)) {
+      for (const key of util_.ownKeys(mapping)) {
         const name = mapping[key]
         if (name !== undefined) {
           propertySignatureTransformations.push(

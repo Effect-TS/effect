@@ -7,7 +7,7 @@ import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as AST from "./AST.js"
-import * as _util from "./internal/util.js"
+import * as util_ from "./internal/util.js"
 import type * as ParseResult from "./ParseResult.js"
 
 interface Forest<A> extends ReadonlyArray<Tree<A>> {}
@@ -117,7 +117,7 @@ export const getMessage: (
 export const formatTypeMessage = (e: ParseResult.Type): Effect.Effect<string> =>
   getMessage(e).pipe(
     Effect.orElse(() => e.message),
-    Effect.catchAll(() => Effect.succeed(`Expected ${e.ast.toString(true)}, actual ${_util.formatUnknown(e.actual)}`))
+    Effect.catchAll(() => Effect.succeed(`Expected ${e.ast.toString(true)}, actual ${util_.formatUnknown(e.actual)}`))
   )
 
 /** @internal */
@@ -167,7 +167,7 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
         onFailure: () =>
           Effect.map(
             Effect.forEach(e.errors, (key) =>
-              Effect.map(go(key.error), (tree) => make(`[${_util.formatUnknown(key.key)}]`, [tree]))),
+              Effect.map(go(key.error), (tree) => make(`[${util_.formatUnknown(key.key)}]`, [tree]))),
             (forest) =>
               make(String(e.ast), forest)
           ),

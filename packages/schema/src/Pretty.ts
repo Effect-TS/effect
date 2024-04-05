@@ -4,9 +4,7 @@
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
-import * as _hooks from "./internal/hooks.js"
-import * as _schema from "./internal/schema.js"
-import * as _util from "./internal/util.js"
+import * as util_ from "./internal/util.js"
 import * as ParseResult from "./ParseResult.js"
 import type * as Schema from "./Schema.js"
 
@@ -22,7 +20,7 @@ export interface Pretty<To> {
  * @category hooks
  * @since 1.0.0
  */
-export const PrettyHookId: unique symbol = _hooks.PrettyHookId
+export const PrettyHookId: unique symbol = Symbol.for("@effect/schema/PrettyHookId")
 
 /**
  * @category hooks
@@ -58,7 +56,7 @@ const toString = getMatcher((a) => String(a))
 
 const stringify = getMatcher((a) => JSON.stringify(a))
 
-const formatUnknown = getMatcher(_util.formatUnknown)
+const formatUnknown = getMatcher(util_.formatUnknown)
 
 /**
  * @since 1.0.0
@@ -166,7 +164,7 @@ export const match: AST.Match<Pretty<any>> = {
       if (indexSignatureTypes.length > 0) {
         for (let i = 0; i < indexSignatureTypes.length; i++) {
           const type = indexSignatureTypes[i]
-          const keys = _util.getKeysForIndexSignature(input, ast.indexSignatures[i].parameter)
+          const keys = util_.getKeysForIndexSignature(input, ast.indexSignatures[i].parameter)
           for (const key of keys) {
             if (Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
               continue
@@ -184,7 +182,7 @@ export const match: AST.Match<Pretty<any>> = {
     if (Option.isSome(hook)) {
       return hook.value()
     }
-    const types = ast.types.map((ast) => [ParseResult.is(_schema.make(ast)), go(ast)] as const)
+    const types = ast.types.map((ast) => [ParseResult.is({ ast } as any), go(ast)] as const)
     return (a) => {
       const index = types.findIndex(([is]) => is(a))
       return types[index][1](a)
@@ -193,7 +191,7 @@ export const match: AST.Match<Pretty<any>> = {
   "Suspend": (ast, go) => {
     return Option.match(getHook(ast), {
       onNone: () => {
-        const get = _util.memoizeThunk(() => go(ast.f()))
+        const get = util_.memoizeThunk(() => go(ast.f()))
         return (a) => get()(a)
       },
       onSome: (handler) => handler()
