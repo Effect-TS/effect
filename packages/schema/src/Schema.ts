@@ -539,7 +539,7 @@ export interface literal<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AS
   readonly literals: Readonly<Literals>
 }
 
-class $literal<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>
+class literalImpl<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>
   extends SchemaImpl<Literals[number]>
   implements literal<Literals>
 {
@@ -551,12 +551,12 @@ class $literal<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralV
       : new AST.Literal(literals[0])
   }
   readonly literals: Literals
-  constructor(literals: Literals, ast: AST.AST = $literal.ast(literals)) {
+  constructor(literals: Literals, ast: AST.AST = literalImpl.ast(literals)) {
     super(ast)
     this.literals = [...literals]
   }
   annotations(annotations: Annotations.Schema<Literals[number]>) {
-    return new $literal(this.literals, AST.annotations(this.ast, toASTAnnotations(annotations)))
+    return new literalImpl(this.literals, AST.annotations(this.ast, toASTAnnotations(annotations)))
   }
 }
 
@@ -574,7 +574,7 @@ export function literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
 export function literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
   ...literals: Literals
 ): Schema<Literals[number]> | $never {
-  return ReadonlyArray.isNonEmptyReadonlyArray(literals) ? new $literal(literals) : never
+  return ReadonlyArray.isNonEmptyReadonlyArray(literals) ? new literalImpl(literals) : never
 }
 
 /**
@@ -611,7 +611,7 @@ export interface enums<A extends { [x: string]: string | number }> extends Annot
   readonly enums: A
 }
 
-class $enums<A extends { [x: string]: string | number }> extends SchemaImpl<A[keyof A]> implements enums<A> {
+class enumsImpl<A extends { [x: string]: string | number }> extends SchemaImpl<A[keyof A]> implements enums<A> {
   static ast = <A extends { [x: string]: string | number }>(enums: A): AST.AST => {
     return new AST.Enums(
       Object.keys(enums).filter(
@@ -619,11 +619,11 @@ class $enums<A extends { [x: string]: string | number }> extends SchemaImpl<A[ke
       ).map((key) => [key, enums[key]])
     )
   }
-  constructor(readonly enums: A, ast: AST.AST = $enums.ast(enums)) {
+  constructor(readonly enums: A, ast: AST.AST = enumsImpl.ast(enums)) {
     super(ast)
   }
   annotations(annotations: Annotations.Schema<A[keyof A]>) {
-    return new $enums(this.enums, AST.annotations(this.ast, toASTAnnotations(annotations)))
+    return new enumsImpl(this.enums, AST.annotations(this.ast, toASTAnnotations(annotations)))
   }
 }
 
@@ -631,7 +631,7 @@ class $enums<A extends { [x: string]: string | number }> extends SchemaImpl<A[ke
  * @category constructors
  * @since 1.0.0
  */
-export const enums = <A extends { [x: string]: string | number }>(enums: A): enums<A> => new $enums(enums)
+export const enums = <A extends { [x: string]: string | number }>(enums: A): enums<A> => new enumsImpl(enums)
 
 type Join<T> = T extends [infer Head, ...infer Tail]
   ? `${Head & (string | number | bigint | boolean | null | undefined)}${Tail extends [] ? ""
@@ -1013,7 +1013,7 @@ export interface union<Members extends ReadonlyArray<Schema.Any>> extends
   annotations(annotations: Annotations.Schema<Schema.Type<Members[number]>>): union<Members>
 }
 
-class $union<Members extends ReadonlyArray<Schema.Any>>
+class unionImpl<Members extends ReadonlyArray<Schema.Any>>
   extends SchemaImpl<Schema.Type<Members[number]>, Schema.Encoded<Members[number]>, Schema.Context<Members[number]>>
   implements union<Members>
 {
@@ -1021,12 +1021,12 @@ class $union<Members extends ReadonlyArray<Schema.Any>>
     return AST.Union.members(members.map((m) => m.ast))
   }
   readonly members: Readonly<Members>
-  constructor(members: Members, ast: AST.AST = $union.ast(members)) {
+  constructor(members: Members, ast: AST.AST = unionImpl.ast(members)) {
     super(ast)
     this.members = [...members] as any as Members
   }
   annotations(annotations: Annotations.Schema<Schema.Type<Members[number]>>) {
-    return new $union(this.members, AST.annotations(this.ast, toASTAnnotations(annotations)))
+    return new unionImpl(this.members, AST.annotations(this.ast, toASTAnnotations(annotations)))
   }
 }
 
@@ -1044,7 +1044,7 @@ export function union<Members extends ReadonlyArray<Schema.Any>>(
   ...members: Members
 ): Schema<Schema.Type<Members[number]>, Schema.Encoded<Members[number]>, Schema.Context<Members[number]>> | $never {
   return AST.isMembers(members)
-    ? new $union(members)
+    ? new unionImpl(members)
     : ReadonlyArray.isNonEmptyReadonlyArray(members)
     ? members[0] as any
     : never
@@ -1110,9 +1110,9 @@ export interface OptionalElement<E extends Schema.Any>
 /**
  * @since 1.0.0
  */
-export const optionalElement = <E extends Schema.Any>(self: E): OptionalElement<E> => new $OptionalElement(self)
+export const optionalElement = <E extends Schema.Any>(self: E): OptionalElement<E> => new optionalElementImpl(self)
 
-class $OptionalElement<E extends Schema.Any> implements OptionalElement<E> {
+class optionalElementImpl<E extends Schema.Any> implements OptionalElement<E> {
   readonly [TypeId]!: Schema.Variance<Schema.Type<E>, Schema.Encoded<E>, Schema.Context<E>>[TypeId]
   constructor(readonly optionalElement: E) {}
   toString() {
@@ -1196,7 +1196,7 @@ export interface tupleType<
   annotations(annotations: Annotations.Schema<TupleType.Type<Elements, Rest>>): tupleType<Elements, Rest>
 }
 
-class $tupleType<
+class tupleTypeImpl<
   Elements extends TupleType.Elements,
   Rest extends ReadonlyArray<Schema.Any>
 > extends SchemaImpl<
@@ -1222,14 +1222,14 @@ class $tupleType<
   constructor(
     readonly elements: Elements,
     readonly rest: Rest,
-    ast: AST.AST = $tupleType.ast(elements, rest)
+    ast: AST.AST = tupleTypeImpl.ast(elements, rest)
   ) {
     super(ast)
   }
   annotations(
     annotations: Annotations.Schema<TupleType.Type<Elements, Rest>>
   ): tupleType<Elements, Rest> {
-    return new $tupleType(this.elements, this.rest, AST.annotations(this.ast, toASTAnnotations(annotations)))
+    return new tupleTypeImpl(this.elements, this.rest, AST.annotations(this.ast, toASTAnnotations(annotations)))
   }
 }
 
@@ -1252,8 +1252,8 @@ export function tuple<
 export function tuple<Elements extends TupleType.Elements>(...elements: Elements): tuple<Elements>
 export function tuple(...args: ReadonlyArray<any>): any {
   return Array.isArray(args[0])
-    ? new $tupleType(args[0], args.slice(1))
-    : new $tupleType(args, [])
+    ? new tupleTypeImpl(args[0], args.slice(1))
+    : new tupleTypeImpl(args, [])
 }
 
 /**
@@ -1265,12 +1265,12 @@ export interface array<Value extends Schema.Any> extends tupleType<[], [Value]> 
   annotations(annotations: Annotations.Schema<TupleType.Type<[], [Value]>>): array<Value>
 }
 
-class $array<Value extends Schema.Any> extends $tupleType<[], [Value]> implements array<Value> {
+class arrayImpl<Value extends Schema.Any> extends tupleTypeImpl<[], [Value]> implements array<Value> {
   constructor(readonly value: Value, ast?: AST.AST) {
     super([], [value], ast)
   }
   annotations(annotations: Annotations.Schema<TupleType.Type<[], [Value]>>) {
-    return new $array(this.value, AST.annotations(this.ast, toASTAnnotations(annotations)))
+    return new arrayImpl(this.value, AST.annotations(this.ast, toASTAnnotations(annotations)))
   }
 }
 
@@ -1278,7 +1278,7 @@ class $array<Value extends Schema.Any> extends $tupleType<[], [Value]> implement
  * @category combinators
  * @since 1.0.0
  */
-export const array = <Value extends Schema.Any>(value: Value): array<Value> => new $array(value)
+export const array = <Value extends Schema.Any>(value: Value): array<Value> => new arrayImpl(value)
 
 /**
  * @category api interface
@@ -1289,12 +1289,14 @@ export interface nonEmptyArray<Value extends Schema.Any> extends tupleType<[Valu
   annotations(annotations: Annotations.Schema<TupleType.Type<[Value], [Value]>>): nonEmptyArray<Value>
 }
 
-class $nonEmptyArray<Value extends Schema.Any> extends $tupleType<[Value], [Value]> implements nonEmptyArray<Value> {
+class nonEmptyArrayImpl<Value extends Schema.Any> extends tupleTypeImpl<[Value], [Value]>
+  implements nonEmptyArray<Value>
+{
   constructor(readonly value: Value, ast?: AST.AST) {
     super([value], [value], ast)
   }
   annotations(annotations: Annotations.Schema<TupleType.Type<[Value], [Value]>>) {
-    return new $nonEmptyArray(this.value, AST.annotations(this.ast, toASTAnnotations(annotations)))
+    return new nonEmptyArrayImpl(this.value, AST.annotations(this.ast, toASTAnnotations(annotations)))
   }
 }
 
@@ -1302,7 +1304,8 @@ class $nonEmptyArray<Value extends Schema.Any> extends $tupleType<[Value], [Valu
  * @category combinators
  * @since 1.0.0
  */
-export const nonEmptyArray = <Value extends Schema.Any>(value: Value): nonEmptyArray<Value> => new $nonEmptyArray(value)
+export const nonEmptyArray = <Value extends Schema.Any>(value: Value): nonEmptyArray<Value> =>
+  new nonEmptyArrayImpl(value)
 
 /**
  * @since 1.0.0
@@ -1502,7 +1505,7 @@ export interface PropertySignature<
 }
 
 /** @internal */
-export class $PropertySignature<
+export class PropertySignatureImpl<
   TypeToken extends PropertySignature.Token,
   Type,
   Key extends PropertyKey,
@@ -1527,7 +1530,7 @@ export class $PropertySignature<
   annotations(
     annotations: PropertySignature.Annotations<Type>
   ): PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, R> {
-    return new $PropertySignature(_propertySignatureAnnotations(this.ast, toASTAnnotations(annotations)))
+    return new PropertySignatureImpl(_propertySignatureAnnotations(this.ast, toASTAnnotations(annotations)))
   }
 
   toString() {
@@ -1542,7 +1545,7 @@ export class $PropertySignature<
 export const propertySignature = <A, I, R>(
   self: Schema<A, I, R>
 ): PropertySignature<PropertySignature.GetToken<false>, A, never, PropertySignature.GetToken<false>, I, R> =>
-  new $PropertySignature(new PropertySignatureDeclaration(self.ast, false, true, {}))
+  new PropertySignatureImpl(new PropertySignatureDeclaration(self.ast, false, true, {}))
 
 /**
  * @category PropertySignature
@@ -1583,7 +1586,7 @@ export const fromKey: {
   const ast = self.ast
   switch (ast._tag) {
     case "PropertySignatureDeclaration": {
-      return new $PropertySignature(
+      return new PropertySignatureImpl(
         new PropertySignatureTransformation(
           new FromPropertySignature(
             ast.type,
@@ -1599,7 +1602,7 @@ export const fromKey: {
       )
     }
     case "PropertySignatureTransformation":
-      return new $PropertySignature(
+      return new PropertySignatureImpl(
         new PropertySignatureTransformation(
           new FromPropertySignature(
             ast.from.type,
@@ -1629,7 +1632,7 @@ export const optionalToRequired = <FA, FI, FR, TA, TI, TR>(
   decode: (o: Option.Option<FA>) => TI,
   encode: (ti: TI) => Option.Option<FA>
 ): PropertySignature<":", TA, never, "?:", FI, FR | TR> =>
-  new $PropertySignature(
+  new PropertySignatureImpl(
     new PropertySignatureTransformation(
       new FromPropertySignature(from.ast, true, true, {}, undefined),
       new ToPropertySignature(to.ast, false, true, {}),
@@ -1655,7 +1658,7 @@ export const optionalToOptional = <FA, FI, FR, TA, TI, TR>(
   decode: (o: Option.Option<FA>) => Option.Option<TI>,
   encode: (o: Option.Option<TI>) => Option.Option<FA>
 ): PropertySignature<"?:", TA, never, "?:", FI, FR | TR> =>
-  new $PropertySignature(
+  new PropertySignatureImpl(
     new PropertySignatureTransformation(
       new FromPropertySignature(from.ast, true, true, {}, undefined),
       new ToPropertySignature(to.ast, true, true, {}),
@@ -1806,7 +1809,7 @@ export const optional: {
           identity
         )
       } else {
-        return new $PropertySignature(new PropertySignatureDeclaration(schema.ast, true, true, {}))
+        return new PropertySignatureImpl(new PropertySignatureDeclaration(schema.ast, true, true, {}))
       }
     }
   } else {
@@ -1851,7 +1854,7 @@ export const optional: {
           identity
         )
       } else {
-        return new $PropertySignature(
+        return new PropertySignatureImpl(
           new PropertySignatureDeclaration(orUndefined(schema).ast, true, true, {})
         )
       }
@@ -2015,7 +2018,7 @@ export interface typeLiteral<
 const isPropertySignature = (u: unknown): u is PropertySignature.All =>
   Predicate.hasProperty(u, PropertySignatureTypeId)
 
-class $typeLiteral<
+class typeLiteralImpl<
   Fields extends Struct.Fields,
   const Records extends IndexSignature.Records
 > extends SchemaImpl<
@@ -2105,7 +2108,7 @@ class $typeLiteral<
   constructor(
     fields: Fields,
     records: Records,
-    ast: AST.AST = $typeLiteral.ast(fields, records)
+    ast: AST.AST = typeLiteralImpl.ast(fields, records)
   ) {
     super(ast)
     this.fields = { ...fields }
@@ -2114,7 +2117,7 @@ class $typeLiteral<
   annotations(
     annotations: Annotations.Schema<Simplify<TypeLiteral.Type<Fields, Records>>>
   ): typeLiteral<Fields, Records> {
-    return new $typeLiteral(this.fields, this.records, AST.annotations(this.ast, toASTAnnotations(annotations)))
+    return new typeLiteralImpl(this.fields, this.records, AST.annotations(this.ast, toASTAnnotations(annotations)))
   }
 }
 
@@ -2139,7 +2142,7 @@ export function struct<Fields extends Struct.Fields, const Records extends Index
   fields: Fields,
   ...records: Records
 ): typeLiteral<Fields, Records> {
-  return new $typeLiteral(fields, records)
+  return new typeLiteralImpl(fields, records)
 }
 
 /**
@@ -2154,7 +2157,7 @@ export interface record<K extends Schema.All, V extends Schema.All> extends type
   ): record<K, V>
 }
 
-class $record<K extends Schema.All, V extends Schema.All> extends $typeLiteral<
+class recordImpl<K extends Schema.All, V extends Schema.All> extends typeLiteralImpl<
   {},
   [{ key: K; value: V }]
 > implements record<K, V> {
@@ -2162,7 +2165,7 @@ class $record<K extends Schema.All, V extends Schema.All> extends $typeLiteral<
     super({}, [{ key, value }], ast)
   }
   annotations(annotations: Annotations.Schema<Simplify<TypeLiteral.Type<{}, [{ key: K; value: V }]>>>) {
-    return new $record(this.key, this.value, AST.annotations(this.ast, toASTAnnotations(annotations)))
+    return new recordImpl(this.key, this.value, AST.annotations(this.ast, toASTAnnotations(annotations)))
   }
 }
 
@@ -2171,7 +2174,7 @@ class $record<K extends Schema.All, V extends Schema.All> extends $typeLiteral<
  * @since 1.0.0
  */
 export const record = <K extends Schema.All, V extends Schema.All>(key: K, value: V): record<K, V> =>
-  new $record(key, value)
+  new recordImpl(key, value)
 
 /**
  * @category struct transformations
@@ -2596,7 +2599,7 @@ export interface transformOrFail<From extends Schema.Any, To extends Schema.Any,
   readonly to: To
 }
 
-class $transformOrFail<From extends Schema.Any, To extends Schema.Any, R>
+class transformOrFailImpl<From extends Schema.Any, To extends Schema.Any, R>
   extends SchemaImpl<Schema.Type<To>, Schema.Encoded<From>, Schema.Context<From> | Schema.Context<To> | R>
   implements transformOrFail<From, To, R>
 {
@@ -2604,7 +2607,7 @@ class $transformOrFail<From extends Schema.Any, To extends Schema.Any, R>
     super(ast)
   }
   annotations(annotations: Annotations.Schema<Schema.Type<To>>) {
-    return new $transformOrFail(this.from, this.to, AST.annotations(this.ast, toASTAnnotations(annotations)))
+    return new transformOrFailImpl(this.from, this.to, AST.annotations(this.ast, toASTAnnotations(annotations)))
   }
 }
 
@@ -2682,7 +2685,7 @@ export const transformOrFail: {
   ) => Effect.Effect<ToI, ParseResult.ParseIssue, R3>,
   encode: (toI: ToI, options: ParseOptions, ast: AST.Transformation) => Effect.Effect<FromA, ParseResult.ParseIssue, R4>
 ): Schema<ToA, FromI, FromR | ToR | R3 | R4> =>
-  new $transformOrFail(
+  new transformOrFailImpl(
     from,
     to,
     new AST.Transformation(
