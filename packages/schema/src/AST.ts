@@ -197,6 +197,18 @@ export const BatchingAnnotationId = Symbol.for("@effect/schema/annotation/Batchi
 export const SurrogateAnnotationId = Symbol.for("@effect/schema/annotation/Surrogate")
 
 /**
+ * @category annotations
+ * @since 1.0.0
+ */
+export type ParseIssueTitleAnnotation = (issue: ParseIssue) => string | undefined
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const ParseIssueTitleAnnotationId = Symbol.for("@effect/schema/annotation/ParseIssueTitle")
+
+/**
  * Used by:
  *
  * - AST.keyof
@@ -306,6 +318,12 @@ export const getConcurrencyAnnotation = getAnnotation<ConcurrencyAnnotation>(Con
  * @since 1.0.0
  */
 export const getBatchingAnnotation = getAnnotation<BatchingAnnotation>(BatchingAnnotationId)
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const getParseIssueTitleAnnotation = getAnnotation<ParseIssueTitleAnnotation>(ParseIssueTitleAnnotationId)
 
 /** @internal */
 export const getSurrogateAnnotation = getAnnotation<SurrogateAnnotation>(SurrogateAnnotationId)
