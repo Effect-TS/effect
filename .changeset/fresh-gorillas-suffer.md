@@ -22,7 +22,7 @@ import { PlatformConfigProvider } from "@effect/platform";
 import { NodeContext } from "@effect/platform-node";
 import { Config, Effect, Layer } from "effect";
 
-const ConfigProviderLive = PlatformConfigProvider.layerFileTreeSet({
+const ConfigProviderLive = PlatformConfigProvider.layerFileTree({
   rootDirectory: `/config`,
 }).pipe(Layer.provide(NodeContext.layer));
 

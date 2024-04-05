@@ -110,7 +110,7 @@ export const layerFileTreeAdd = (options?: {
  * @since 1.0.0
  * @category layers
  */
-export const layerFileTreeReplace = (options?: {
+export const layerFileTree = (options?: {
   readonly rootDirectory?: string
 }): Layer.Layer<never, never, Path.Path | FileSystem.FileSystem> =>
   fromFileTree(options).pipe(

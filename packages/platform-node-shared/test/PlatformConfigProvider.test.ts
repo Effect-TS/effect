@@ -4,7 +4,7 @@ import * as PlatformConfigProvider from "@effect/platform/PlatformConfigProvider
 import { assert, describe, it } from "@effect/vitest"
 import { Config, ConfigProvider, Effect, Layer, Secret } from "effect"
 
-const SetLive = PlatformConfigProvider.layerFileTreeReplace({
+const SetLive = PlatformConfigProvider.layerFileTree({
   rootDirectory: `${__dirname}/fixtures/config`
 }).pipe(
   Layer.provide(NodePath.layer),
