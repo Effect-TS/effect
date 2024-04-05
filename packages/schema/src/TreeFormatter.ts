@@ -113,88 +113,92 @@ export const getMessage: (
 ) => Effect.Effect<string, Cause.NoSuchElementException> = (issue: ParseResult.ParseIssue) =>
   Effect.catchAll(getPrevMessage(issue), () => getCurrentMessage(issue))
 
+const getParseIssueTitleAnnotation = (issue: ParseResult.ParseIssue): Option.Option<string> =>
+  Option.filterMap(
+    AST.getParseIssueTitleAnnotation(issue.ast),
+    (annotation) => Option.fromNullable(annotation(issue))
+  )
+
 /** @internal */
 export const formatTypeMessage = (e: ParseResult.Type): Effect.Effect<string> =>
   getMessage(e).pipe(
+    Effect.orElse(() => getParseIssueTitleAnnotation(e)),
     Effect.orElse(() => e.message),
     Effect.catchAll(() => Effect.succeed(`Expected ${e.ast.toString(true)}, actual ${util_.formatUnknown(e.actual)}`))
   )
 
+const getParseIssueTitle = (issue: ParseResult.ParseIssue): string =>
+  Option.getOrElse(getParseIssueTitleAnnotation(issue), () => String(issue.ast))
+
 /** @internal */
 export const formatForbiddenMessage = (e: ParseResult.Forbidden): string =>
   Option.getOrElse(e.message, () => "is forbidden")
+
+const getTree = (issue: ParseResult.ParseIssue, onFailure: () => Effect.Effect<Tree<string>>) =>
+  Effect.matchEffect(getMessage(issue), {
+    onFailure,
+    onSuccess: (message) => Effect.succeed(make(message))
+  })
 
 const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpected): Effect.Effect<Tree<string>> => {
   switch (e._tag) {
     case "Type":
       return Effect.map(formatTypeMessage(e), make)
     case "Forbidden":
-      return Effect.succeed(make(String(e.ast), [make(formatForbiddenMessage(e))]))
+      return Effect.succeed(make(getParseIssueTitle(e), [make(formatForbiddenMessage(e))]))
     case "Unexpected":
       return Effect.succeed(make(`is unexpected, expected ${e.ast.toString(true)}`))
     case "Missing":
       return Effect.succeed(make("is missing"))
     case "Union":
-      return Effect.matchEffect(getMessage(e), {
-        onFailure: () =>
-          Effect.map(
-            Effect.forEach(e.errors, (e) => {
-              switch (e._tag) {
-                case "Member":
-                  return Effect.map(go(e.error), (tree) => make(`Union member`, [tree]))
-                default:
-                  return go(e)
-              }
-            }),
-            (forest) => make(String(e.ast), forest)
-          ),
-        onSuccess: (message) => Effect.succeed(make(message))
-      })
+      return getTree(e, () =>
+        Effect.map(
+          Effect.forEach(e.errors, (e) => {
+            switch (e._tag) {
+              case "Member":
+                return Effect.map(go(e.error), (tree) => make(`Union member`, [tree]))
+              default:
+                return go(e)
+            }
+          }),
+          (forest) => make(getParseIssueTitle(e), forest)
+        ))
     case "TupleType":
-      return Effect.matchEffect(getMessage(e), {
-        onFailure: () =>
-          Effect.map(
-            Effect.forEach(
-              e.errors,
-              (index) => Effect.map(go(index.error), (tree) => make(`[${index.index}]`, [tree]))
-            ),
-            (forest) => make(String(e.ast), forest)
+      return getTree(e, () =>
+        Effect.map(
+          Effect.forEach(
+            e.errors,
+            (index) => Effect.map(go(index.error), (tree) => make(`[${index.index}]`, [tree]))
           ),
-        onSuccess: (message) => Effect.succeed(make(message))
-      })
+          (forest) => make(getParseIssueTitle(e), forest)
+        ))
     case "TypeLiteral":
-      return Effect.matchEffect(getMessage(e), {
-        onFailure: () =>
-          Effect.map(
-            Effect.forEach(e.errors, (key) =>
-              Effect.map(go(key.error), (tree) => make(`[${util_.formatUnknown(key.key)}]`, [tree]))),
-            (forest) =>
-              make(String(e.ast), forest)
-          ),
-        onSuccess: (message) => Effect.succeed(make(message))
-      })
+      return getTree(e, () =>
+        Effect.map(
+          Effect.forEach(e.errors, (key) =>
+            Effect.map(go(key.error), (tree) => make(`[${util_.formatUnknown(key.key)}]`, [tree]))),
+          (forest) =>
+            make(getParseIssueTitle(e), forest)
+        ))
     case "Transformation":
-      return Effect.matchEffect(getMessage(e), {
-        onFailure: () =>
-          Effect.map(go(e.error), (tree) => make(String(e.ast), [make(formatTransformationKind(e.kind), [tree])])),
-        onSuccess: (message) => Effect.succeed(make(message))
-      })
+      return getTree(e, () =>
+        Effect.map(
+          go(e.error),
+          (tree) => make(getParseIssueTitle(e), [make(formatTransformationKind(e.kind), [tree])])
+        ))
     case "Refinement":
-      return Effect.matchEffect(getMessage(e), {
-        onFailure: () =>
-          Effect.map(go(e.error), (tree) => make(String(e.ast), [make(formatRefinementKind(e.kind), [tree])])),
-        onSuccess: (message) => Effect.succeed(make(message))
-      })
+      return getTree(
+        e,
+        () =>
+          Effect.map(go(e.error), (tree) => make(getParseIssueTitle(e), [make(formatRefinementKind(e.kind), [tree])]))
+      )
     case "Declaration":
-      return Effect.matchEffect(getMessage(e), {
-        onFailure: () => {
-          const error = e.error
-          const shouldSkipDefaultMessage = error._tag === "Type" && error.ast === e.ast
-          return shouldSkipDefaultMessage
-            ? go(error)
-            : Effect.map(go(error), (tree) => make(String(e.ast), [tree]))
-        },
-        onSuccess: (message) => Effect.succeed(make(message))
+      return getTree(e, () => {
+        const error = e.error
+        const shouldSkipDefaultMessage = error._tag === "Type" && error.ast === e.ast
+        return shouldSkipDefaultMessage
+          ? go(error)
+          : Effect.map(go(error), (tree) => make(getParseIssueTitle(e), [tree]))
       })
   }
 }

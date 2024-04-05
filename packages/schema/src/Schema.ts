@@ -137,6 +137,7 @@ const toASTAnnotations = (
   move("equivalence", equivalence_.EquivalenceHookId)
   move("concurrency", AST.ConcurrencyAnnotationId)
   move("batching", AST.BatchingAnnotationId)
+  move("parseIssueTitle", AST.ParseIssueTitleAnnotationId)
 
   return out
 }
@@ -2911,6 +2912,7 @@ export declare namespace Annotations {
     ) => Equivalence.Equivalence<A>
     readonly concurrency?: AST.ConcurrencyAnnotation
     readonly batching?: AST.BatchingAnnotation
+    readonly parseIssueTitle?: AST.ParseIssueTitleAnnotation
   }
 
   /**
@@ -3022,6 +3024,14 @@ export const concurrency =
  */
 export const batching = (batching: AST.BatchingAnnotation) => <S extends Annotable.All>(self: S): Annotable.Self<S> =>
   self.annotations({ [AST.BatchingAnnotationId]: batching })
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const parseIssueTitle =
+  (f: AST.ParseIssueTitleAnnotation) => <S extends Annotable.All>(self: S): Annotable.Self<S> =>
+    self.annotations({ [AST.ParseIssueTitleAnnotationId]: f })
 
 type Rename<A, M> = {
   [
