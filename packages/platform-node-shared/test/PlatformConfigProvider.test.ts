@@ -37,13 +37,13 @@ describe("PlatformConfigProvider", () => {
 
   it.effect("layerFileTreeAdd", () =>
     Effect.gen(function*(_) {
-      assert.strictEqual(Secret.value(yield* _(Config.secret("secret"))), "keepitsafe")
+      assert.strictEqual(Secret.value(yield* _(Config.secret("secret"))), "shh")
       assert.strictEqual(yield* _(Config.integer("integer")), 123)
       assert.strictEqual(yield* _(Config.string("fallback")), "value")
     }).pipe(
       Effect.provide(AddLive),
       Effect.withConfigProvider(ConfigProvider.fromJson({
-        secret: "fail",
+        secret: "shh",
         fallback: "value"
       }))
     ))

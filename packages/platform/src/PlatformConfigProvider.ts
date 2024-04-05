@@ -80,7 +80,7 @@ export const fromFileTree = (options?: {
   )
 
 /**
- * Add the file tree ConfigProvider to the environment, falling back to the default ConfigProvider.
+ * Add the file tree ConfigProvider to the environment, as a fallback to the current ConfigProvider.
  *
  * @since 1.0.0
  * @category layers
@@ -92,14 +92,14 @@ export const layerFileTreeAdd = (options?: {
     Effect.map((provider) =>
       Layer.fiberRefLocallyScopedWith(DefaultServices.currentServices, (services) => {
         const current = Context.get(services, ConfigProvider.ConfigProvider)
-        return Context.add(services, ConfigProvider.ConfigProvider, ConfigProvider.orElse(provider, () => current))
+        return Context.add(services, ConfigProvider.ConfigProvider, ConfigProvider.orElse(current, () => provider))
       })
     ),
     Layer.unwrapEffect
   )
 
 /**
- * Add the file tree ConfigProvider to the environment, replacing the default ConfigProvider.
+ * Add the file tree ConfigProvider to the environment, replacing the current ConfigProvider.
  *
  * @since 1.0.0
  * @category layers
