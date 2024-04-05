@@ -14,7 +14,7 @@ import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import type { Concurrency, Mutable } from "effect/Types"
 import * as AST from "./AST.js"
-import * as _util from "./internal/util.js"
+import * as util_ from "./internal/util.js"
 import type * as Schema from "./Schema.js"
 import * as TreeFormatter from "./TreeFormatter.js"
 
@@ -1159,7 +1159,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
       )
       const expectedAST = AST.Union.make(
         ast.indexSignatures.map((is): AST.AST => is.parameter).concat(
-          _util.ownKeys(expectedKeys).map((key) =>
+          util_.ownKeys(expectedKeys).map((key) =>
             Predicate.isSymbol(key) ? new AST.UniqueSymbol(key) : new AST.Literal(key)
           )
         )
@@ -1182,7 +1182,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         const onExcessPropertyPreserve = options?.onExcessProperty === "preserve"
         const output: any = {}
         if (onExcessPropertyError || onExcessPropertyPreserve) {
-          for (const key of _util.ownKeys(input)) {
+          for (const key of util_.ownKeys(input)) {
             const eu = eitherOrUndefined(expected(key, options))!
             if (Either.isLeft(eu)) {
               // key is unexpected
@@ -1277,7 +1277,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           const indexSignature = indexSignatures[i]
           const parameter = indexSignature[0]
           const type = indexSignature[1]
-          const keys = _util.getKeysForIndexSignature(input, indexSignature[2])
+          const keys = util_.getKeysForIndexSignature(input, indexSignature[2])
           for (const key of keys) {
             // ---------------------------------------------
             // handle keys
@@ -1360,7 +1360,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
     }
     case "Union": {
       const searchTree = getSearchTree(ast.types, isDecoding)
-      const ownKeys = _util.ownKeys(searchTree.keys)
+      const ownKeys = util_.ownKeys(searchTree.keys)
       const len = ownKeys.length
       const map = new Map<any, Parser>()
       for (let i = 0; i < ast.types.length; i++) {
@@ -1497,7 +1497,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
       }
     }
     case "Suspend": {
-      const get = _util.memoizeThunk(() => goMemo(AST.annotations(ast.f(), ast.annotations), isDecoding))
+      const get = util_.memoizeThunk(() => goMemo(AST.annotations(ast.f(), ast.annotations), isDecoding))
       return (a, options) => get()(a, options)
     }
   }

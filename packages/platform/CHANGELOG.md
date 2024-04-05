@@ -1,5 +1,49 @@
 # @effect/platform
 
+## 0.48.26
+
+### Patch Changes
+
+- [#2477](https://github.com/Effect-TS/effect/pull/2477) [`365a486`](https://github.com/Effect-TS/effect/commit/365a4865de5e47ce09f4cfd51fc0f67438f82a57) Thanks [@tim-smart](https://github.com/tim-smart)! - add PlatformConfigProvider module
+
+  It contains a file tree provider, that can be used to read config values from a file tree.
+
+  For example, if you have a file tree like this:
+
+  ```
+  config/
+    secret
+    nested/
+      value
+  ```
+
+  You could do the following:
+
+  ```ts
+  import { PlatformConfigProvider } from "@effect/platform";
+  import { NodeContext } from "@effect/platform-node";
+  import { Config, Effect, Layer } from "effect";
+
+  const ConfigProviderLive = PlatformConfigProvider.layerFileTree({
+    rootDirectory: `/config`,
+  }).pipe(Layer.provide(NodeContext.layer));
+
+  Effect.gen(function* (_) {
+    const secret = yield* _(Config.secret("secret"));
+    const value = yield* _(Config.string("value"), Config.nested("nested"));
+  }).pipe(Effect.provide(ConfigProviderLive));
+  ```
+
+## 0.48.25
+
+### Patch Changes
+
+- [#2469](https://github.com/Effect-TS/effect/pull/2469) [`d209171`](https://github.com/Effect-TS/effect/commit/d2091714a786820ebae4bef04a9d67d25dd08e88) Thanks [@tim-smart](https://github.com/tim-smart)! - replace isomorphic-ws with isows
+
+- Updated dependencies [[`dadc690`](https://github.com/Effect-TS/effect/commit/dadc6906121c512bc32be22b52adbd1ada834594), [`58f66fe`](https://github.com/Effect-TS/effect/commit/58f66fecd4e646c6c8f10995df9faab17022eb8f), [`3cad21d`](https://github.com/Effect-TS/effect/commit/3cad21daa5d2332d33692498c87b7ffff979e304)]:
+  - effect@2.4.18
+  - @effect/schema@0.64.19
+
 ## 0.48.24
 
 ### Patch Changes

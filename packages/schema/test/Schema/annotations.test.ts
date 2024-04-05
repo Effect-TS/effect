@@ -1,4 +1,5 @@
 import * as AST from "@effect/schema/AST"
+import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
@@ -77,6 +78,38 @@ describe("Schema > .annotations()", () => {
     expect(schema.ast.annotations).toEqual({
       [AST.BatchingAnnotationId]: "inherit"
     })
+  })
+
+  it("parseIssueTitle", async () => {
+    const getOrderId = ({ actual }: ParseResult.ParseIssue) => {
+      if (S.is(S.struct({ id: S.number }))(actual)) {
+        return `Order with ID ${actual.id}`
+      }
+    }
+
+    const Order = S.struct({
+      id: S.number,
+      name: S.string,
+      totalPrice: S.number
+    }).annotations({
+      identifier: "Order",
+      parseIssueTitle: getOrderId
+    })
+
+    await Util.expectDecodeUnknownFailure(
+      Order,
+      {},
+      `Order
+└─ ["id"]
+   └─ is missing`
+    )
+    await Util.expectDecodeUnknownFailure(
+      Order,
+      { id: 1 },
+      `Order with ID 1
+└─ ["name"]
+   └─ is missing`
+    )
   })
 
   it("message as annotation options", async () => {

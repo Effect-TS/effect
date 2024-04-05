@@ -1355,50 +1355,41 @@ export const currentMinimumLogLevel: FiberRef.FiberRef<LogLevel.LogLevel> = glob
 )
 
 /** @internal */
-export const getConsole = (refs: FiberRefs.FiberRefs) => {
-  const defaultServicesValue = FiberRefs.getOrDefault(refs, defaultServices.currentServices)
-  const cnsl = Context.get(defaultServicesValue, consoleTag)
-  return cnsl.unsafe
-}
+export const loggerWithConsoleLog = <M, O>(self: Logger<M, O>): Logger<M, void> =>
+  internalLogger.makeLogger((opts) => {
+    const services = FiberRefs.getOrDefault(opts.context, defaultServices.currentServices)
+    Context.get(services, consoleTag).unsafe.log(self.log(opts))
+  })
+
+/** @internal */
+export const loggerWithConsoleError = <M, O>(self: Logger<M, O>): Logger<M, void> =>
+  internalLogger.makeLogger((opts) => {
+    const services = FiberRefs.getOrDefault(opts.context, defaultServices.currentServices)
+    Context.get(services, consoleTag).unsafe.error(self.log(opts))
+  })
 
 /** @internal */
 export const defaultLogger: Logger<unknown, void> = globalValue(
   Symbol.for("effect/Logger/defaultLogger"),
-  () =>
-    internalLogger.makeLogger((options) => {
-      const formatted = internalLogger.stringLogger.log(options)
-      getConsole(options.context).log(formatted)
-    })
+  () => loggerWithConsoleLog(internalLogger.stringLogger)
 )
 
 /** @internal */
 export const jsonLogger: Logger<unknown, void> = globalValue(
   Symbol.for("effect/Logger/jsonLogger"),
-  () =>
-    internalLogger.makeLogger((options) => {
-      const formatted = internalLogger.jsonLogger.log(options)
-      getConsole(options.context).log(formatted)
-    })
+  () => loggerWithConsoleLog(internalLogger.jsonLogger)
 )
 
 /** @internal */
 export const logFmtLogger: Logger<unknown, void> = globalValue(
   Symbol.for("effect/Logger/logFmtLogger"),
-  () =>
-    internalLogger.makeLogger((options) => {
-      const formatted = internalLogger.logfmtLogger.log(options)
-      getConsole(options.context).log(formatted)
-    })
+  () => loggerWithConsoleLog(internalLogger.logfmtLogger)
 )
 
 /** @internal */
 export const structuredLogger: Logger<unknown, void> = globalValue(
   Symbol.for("effect/Logger/structuredLogger"),
-  () =>
-    internalLogger.makeLogger((options) => {
-      const formatted = internalLogger.structuredLogger.log(options)
-      getConsole(options.context).log(formatted)
-    })
+  () => loggerWithConsoleLog(internalLogger.structuredLogger)
 )
 
 /** @internal */

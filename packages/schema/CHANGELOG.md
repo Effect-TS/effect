@@ -1,5 +1,78 @@
 # @effect/schema
 
+## 0.64.19
+
+### Patch Changes
+
+- [#2471](https://github.com/Effect-TS/effect/pull/2471) [`58f66fe`](https://github.com/Effect-TS/effect/commit/58f66fecd4e646c6c8f10995df9faab17022eb8f) Thanks [@gcanti](https://github.com/gcanti)! - Class API: Added default `title` annotation to the encoded side.
+
+  Before:
+
+  ```ts
+  import * as S from "@effect/schema/Schema";
+
+  class MySchema extends S.Class<MySchema>("MySchema")({
+    a: S.string,
+    b: S.number,
+  }) {}
+
+  S.decodeUnknownSync(MySchema)({}, { errors: "all" });
+  /*
+  Error: ({ a: string; b: number } <-> MySchema)
+  └─ Encoded side transformation failure
+     └─ { a: string; b: number }
+        ├─ ["a"]
+        │  └─ is missing
+        └─ ["b"]
+           └─ is missing
+  */
+  ```
+
+  After:
+
+  ```ts
+  import * as S from "@effect/schema/Schema";
+
+  class MySchema extends S.Class<MySchema>("MySchema")({
+    a: S.string,
+    b: S.number,
+  }) {}
+
+  S.decodeUnknownSync(MySchema)({}, { errors: "all" });
+  /*
+  Error: (MySchema (Encoded side) <-> MySchema)
+  └─ Encoded side transformation failure
+     └─ MySchema (Encoded side)
+        ├─ ["a"]
+        │  └─ is missing
+        └─ ["b"]
+           └─ is missing
+  */
+  ```
+
+- [#2465](https://github.com/Effect-TS/effect/pull/2465) [`3cad21d`](https://github.com/Effect-TS/effect/commit/3cad21daa5d2332d33692498c87b7ffff979e304) Thanks [@gcanti](https://github.com/gcanti)! - `length` now allows expressing a range
+
+  Example
+
+  ```ts
+  import * as S from "@effect/schema/Schema";
+
+  const schema = S.string.pipe(
+    S.length({ min: 2, max: 4 }, { identifier: "MyRange" }),
+  );
+
+  S.decodeUnknownSync(schema)("");
+  /*
+  throws:
+  Error: MyRange
+  └─ Predicate refinement failure
+     └─ Expected MyRange (a string at least 2 character(s) and at most 4 character(s) long), actual ""
+  */
+  ```
+
+- Updated dependencies [[`dadc690`](https://github.com/Effect-TS/effect/commit/dadc6906121c512bc32be22b52adbd1ada834594)]:
+  - effect@2.4.18
+
 ## 0.64.18
 
 ### Patch Changes

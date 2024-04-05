@@ -1,5 +1,20 @@
 # effect
 
+## 2.4.18
+
+### Patch Changes
+
+- [#2473](https://github.com/Effect-TS/effect/pull/2473) [`dadc690`](https://github.com/Effect-TS/effect/commit/dadc6906121c512bc32be22b52adbd1ada834594) Thanks [@tim-smart](https://github.com/tim-smart)! - add Logger.withConsoleLog/withConsoleError apis
+
+  These apis send a Logger's output to console.log/console.error respectively.
+
+  ```ts
+  import { Logger } from "effect";
+
+  // send output to stderr
+  const stderrLogger = Logger.withConsoleError(Logger.stringLogger);
+  ```
+
 ## 2.4.17
 
 ### Patch Changes

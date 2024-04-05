@@ -1,5 +1,22 @@
 # @effect/platform-browser
 
+## 0.31.26
+
+### Patch Changes
+
+- Updated dependencies [[`365a486`](https://github.com/Effect-TS/effect/commit/365a4865de5e47ce09f4cfd51fc0f67438f82a57)]:
+  - @effect/platform@0.48.26
+
+## 0.31.25
+
+### Patch Changes
+
+- [#2466](https://github.com/Effect-TS/effect/pull/2466) [`8941328`](https://github.com/Effect-TS/effect/commit/89413286d34d9a9d6d5c2a97b9bbab2d82167994) Thanks [@jessekelly881](https://github.com/jessekelly881)! - made Logger.structuredLogger the default for Browser.runMain
+
+- Updated dependencies [[`dadc690`](https://github.com/Effect-TS/effect/commit/dadc6906121c512bc32be22b52adbd1ada834594), [`d209171`](https://github.com/Effect-TS/effect/commit/d2091714a786820ebae4bef04a9d67d25dd08e88)]:
+  - effect@2.4.18
+  - @effect/platform@0.48.25
+
 ## 0.31.24
 
 ### Patch Changes
