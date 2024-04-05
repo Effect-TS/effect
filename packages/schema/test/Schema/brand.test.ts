@@ -7,7 +7,6 @@ import * as Either from "effect/Either"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import { assert, describe, expect, it } from "vitest"
-import * as _schema from "../../src/internal/schema.js"
 
 const isBrandConstructor = (u: unknown): u is Brand.Brand.Constructor<any> =>
   Predicate.hasProperty(u, Brand.RefinedConstructorsTypeId)

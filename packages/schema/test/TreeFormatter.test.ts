@@ -1,7 +1,7 @@
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
-import * as _ from "@effect/schema/TreeFormatter"
+import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -635,7 +635,7 @@ describe("TreeFormatter", () => {
     const result = S.decodeUnknownEither(Name)("")
 
     // no service
-    expect(Either.mapLeft(result, (error) => Effect.runSync(_.formatErrorEffect(error))))
+    expect(Either.mapLeft(result, (error) => Effect.runSync(TreeFormatter.formatErrorEffect(error))))
       .toStrictEqual(Either.left("Invalid string"))
 
     // it locale
@@ -644,7 +644,7 @@ describe("TreeFormatter", () => {
         result,
         (error) =>
           Effect.runSync(
-            _.formatErrorEffect(error).pipe(Effect.provideService(Translator, {
+            TreeFormatter.formatErrorEffect(error).pipe(Effect.provideService(Translator, {
               locale: "it",
               translations
             }))
@@ -658,7 +658,7 @@ describe("TreeFormatter", () => {
         result,
         (error) =>
           Effect.runSync(
-            _.formatErrorEffect(error).pipe(Effect.provideService(Translator, {
+            TreeFormatter.formatErrorEffect(error).pipe(Effect.provideService(Translator, {
               locale: "en",
               translations
             }))
