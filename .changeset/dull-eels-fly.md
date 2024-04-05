@@ -4,11 +4,11 @@
 
 add Logger.withConsoleLog/withConsoleError apis
 
-These apis transform send a Logger's output to console.log/console.error respectively.
+These apis send a Logger's output to console.log/console.error respectively.
 
 ```ts
 import { Logger } from "effect";
 
-// send output to stdout
+// send output to stderr
 const stderrLogger = Logger.withConsoleError(Logger.stringLogger);
 ```
