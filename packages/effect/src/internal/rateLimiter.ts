@@ -38,7 +38,7 @@ const tokenBucket = (limit: number, window: DurationInput): Effect.Effect<
     const refill: Effect.Effect<void> = Effect.sleep(millisPerToken).pipe(
       Effect.zipRight(latch.releaseAll),
       Effect.zipRight(semaphore.release(1)),
-      Effect.flatMap((free) => free === limit ? Effect.unit : refill)
+      Effect.flatMap((free) => free === limit ? Effect.void : refill)
     )
     yield* _(
       latch.take(1),

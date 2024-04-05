@@ -32,13 +32,13 @@ describe("Layer", () => {
           Deferred.succeed(deferred, void 0).pipe(
             Effect.map((bool) => Context.make(BoolTag, bool))
           ),
-          () => Effect.unit
+          () => Effect.void
         )
       )
       const env = layer1.pipe(Layer.merge(layer2), Layer.build)
       const fiber = yield* $(Effect.scoped(env), Effect.forkDaemon)
       yield* $(Deferred.await(deferred))
-      const result = yield* $(Fiber.interrupt(fiber), Effect.asUnit)
+      const result = yield* $(Fiber.interrupt(fiber), Effect.asVoid)
       assert.isUndefined(result)
     }))
   it.effect("preserves identity of acquired resources", () =>
@@ -54,7 +54,7 @@ describe("Layer", () => {
               Effect.flatMap((chunk) => Ref.set(testRef, chunk))
             )
         ).pipe(
-          Effect.tap(() => Effect.unit)
+          Effect.tap(() => Effect.void)
         )
       )
       yield* $(
@@ -182,7 +182,7 @@ describe("Layer", () => {
           Layer.provide(Layer.merge(layer2, layer3))
         )
       )
-      const result = yield* $(Effect.unit, Effect.provide(layer), Effect.exit)
+      const result = yield* $(Effect.void, Effect.provide(layer), Effect.exit)
       assert.isTrue(Exit.isFailure(result))
     }))
   it.effect("fresh with merge", () =>
@@ -674,9 +674,9 @@ describe("Layer", () => {
 
         yield* $(Layer.buildWithMemoMap(layer1, memoMap, scope1))
         yield* $(Layer.buildWithMemoMap(layer2, memoMap, scope2))
-        yield* $(Scope.close(scope2, Exit.unit))
+        yield* $(Scope.close(scope2, Exit.void))
         yield* $(Layer.buildWithMemoMap(layer2, memoMap, scope1))
-        yield* $(Scope.close(scope1, Exit.unit))
+        yield* $(Scope.close(scope1, Exit.void))
 
         const result = yield* $(Ref.get(ref))
         assert.deepStrictEqual(Array.from(result), [acquire1, acquire2, release2, acquire2, release2, release1])
@@ -695,8 +695,8 @@ describe("Layer", () => {
 
         yield* $(Layer.buildWithMemoMap(layer1, memoMap, scope1))
         yield* $(Layer.buildWithMemoMap(layer2, memoMap, scope2))
-        yield* $(Scope.close(scope1, Exit.unit))
-        yield* $(Scope.close(scope2, Exit.unit))
+        yield* $(Scope.close(scope1, Exit.void))
+        yield* $(Scope.close(scope2, Exit.void))
 
         const result = yield* $(Ref.get(ref))
         assert.deepStrictEqual(Array.from(result), [acquire1, acquire2, release2, release1])

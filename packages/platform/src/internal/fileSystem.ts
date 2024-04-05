@@ -99,7 +99,7 @@ const stream = (file: File, {
     totalBytesRead: bigint
   ): Channel.Channel<Chunk.Chunk<Uint8Array>, unknown, Error.PlatformError, unknown, void, unknown> {
     if (bytesToRead !== undefined && bytesToRead <= totalBytesRead) {
-      return Channel.unit
+      return Channel.void
     }
 
     const toRead = bytesToRead !== undefined && (bytesToRead - totalBytesRead) < chunkSize
@@ -109,7 +109,7 @@ const stream = (file: File, {
     return Channel.flatMap(
       file.readAlloc(toRead),
       Option.match({
-        onNone: () => Channel.unit,
+        onNone: () => Channel.void,
         onSome: (buf) =>
           Channel.flatMap(
             Channel.write(Chunk.of(buf)),

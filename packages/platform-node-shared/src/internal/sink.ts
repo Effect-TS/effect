@@ -33,7 +33,7 @@ export const fromWritableChannel = <IE, OE, A>(
           writable,
           (cause) => Deferred.failCause(deferred, cause),
           options,
-          Deferred.complete(deferred, Effect.unit)
+          Deferred.complete(deferred, Effect.void)
         )
       )
   )

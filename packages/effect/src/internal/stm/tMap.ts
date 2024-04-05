@@ -187,7 +187,7 @@ export const forEach = dual<
   reduceSTM(
     self,
     void 0 as void,
-    (_, value, key) => stm.asUnit(f(key, value))
+    (_, value, key) => stm.asVoid(f(key, value))
   ))
 
 /** @internal */
@@ -501,7 +501,7 @@ export const setIfAbsent = dual<
     get(self, key),
     Option.match({
       onNone: () => set(self, key, value),
-      onSome: () => stm.unit
+      onSome: () => stm.void
     })
   ))
 

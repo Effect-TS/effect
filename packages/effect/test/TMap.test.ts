@@ -491,10 +491,10 @@ describe("TMap", () => {
             STM.commit,
             Effect.fork,
             Effect.zipRight(TMap.toChunk(map)),
-            Effect.asUnit
+            Effect.asVoid
           ), { discard: true }),
         Effect.exit
       ))
-      assert.deepStrictEqual(result, Exit.unit)
+      assert.deepStrictEqual(result, Exit.void)
     }))
 })

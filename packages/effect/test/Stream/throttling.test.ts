@@ -335,7 +335,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))
       const fiber = yield* $(
-        Stream.fromEffect(Effect.unit),
+        Stream.fromEffect(Effect.void),
         Stream.concat(Stream.fromEffect(pipe(
           Effect.never,
           Effect.onInterrupt(() => Ref.set(ref, true))

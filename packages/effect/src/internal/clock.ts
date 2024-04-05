@@ -85,8 +85,8 @@ class ClockImpl implements Clock.Clock {
 
   sleep(duration: Duration.Duration): Effect.Effect<void> {
     return core.async<void>((resume) => {
-      const canceler = globalClockScheduler.unsafeSchedule(() => resume(core.unit), duration)
-      return core.asUnit(core.sync(canceler))
+      const canceler = globalClockScheduler.unsafeSchedule(() => resume(core.void), duration)
+      return core.asVoid(core.sync(canceler))
     })
   }
 }

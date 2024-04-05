@@ -981,8 +981,11 @@ export const sync = <OutDone>(
   return op
 }
 
-/** @internal */
-export const unit: Channel.Channel<never> = succeedNow(void 0)
+const void_: Channel.Channel<never> = succeedNow(void 0)
+export {
+  /** @internal */
+  void_ as void
+}
 
 /** @internal */
 export const write = <OutElem>(

@@ -34,7 +34,7 @@ export const make = <Key, Value>(
   concreteLookup: (key: Key) => Value
 ): Effect.Effect<WatchableLookup<Key, Value>> => makeEffect((key) => Effect.succeed(concreteLookup(key)))
 
-export const makeUnit = (): Effect.Effect<WatchableLookup<void, void>> => make<void, void>((_: void) => void 0)
+export const makeVoid = (): Effect.Effect<WatchableLookup<void, void>> => make<void, void>((_: void) => void 0)
 
 export const makeEffect = <Key, Value, Error = never>(
   concreteLookup: (key: Key) => Effect.Effect<Value, Error>

@@ -44,7 +44,7 @@ export const acquireUseRelease = <Acquired, OutErr, Env, OutElem1, InElem, InErr
     core.fromEffect(
       Ref.make<
         (exit: Exit.Exit<OutDone, OutErr>) => Effect.Effect<any, never, Env>
-      >(() => Effect.unit)
+      >(() => Effect.void)
     ),
     (ref) =>
       pipe(
@@ -78,7 +78,7 @@ export const as = dual<
 ): Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone2, InDone, Env> => map(self, () => value))
 
 /** @internal */
-export const asUnit = <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>(
+export const asVoid = <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>(
   self: Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>
 ): Channel.Channel<OutElem, InElem, OutErr, InErr, void, InDone, Env> => map(self, constVoid)
 
@@ -931,8 +931,8 @@ export const mapOutEffectPar = dual<
                 onLeft: (outDone) => {
                   const lock = withPermits(n)
                   return Effect.zipRight(
-                    Effect.interruptible(lock(Effect.unit)),
-                    Effect.asUnit(Queue.offer(
+                    Effect.interruptible(lock(Effect.void)),
+                    Effect.asVoid(Queue.offer(
                       queue,
                       Effect.succeed(Either.left(outDone))
                     ))
@@ -942,7 +942,7 @@ export const mapOutEffectPar = dual<
                   Effect.gen(function*($) {
                     const deferred = yield* $(Deferred.make<OutElem1, OutErr1>())
                     const latch = yield* $(Deferred.make<void>())
-                    yield* $(Effect.asUnit(Queue.offer(
+                    yield* $(Effect.asVoid(Queue.offer(
                       queue,
                       Effect.map(Deferred.await(deferred), Either.right)
                     )))
@@ -1189,7 +1189,7 @@ export const mergeAllWith = (
               pipe(
                 Queue.offer(queue, Effect.failCause(cause)),
                 Effect.zipRight(Deferred.succeed(errorSignal, void 0)),
-                Effect.asUnit
+                Effect.asVoid
               )
           )
         )
@@ -1204,7 +1204,7 @@ export const mergeAllWith = (
             onLeft: (outDone) =>
               Effect.raceWith(
                 Effect.interruptible(Deferred.await(errorSignal)),
-                Effect.interruptible(withPermits(concurrencyN)(Effect.unit)),
+                Effect.interruptible(withPermits(concurrencyN)(Effect.void)),
                 {
                   onSelfDone: (_, permitAcquisition) => Effect.as(Fiber.interrupt(permitAcquisition), false),
                   onOtherDone: (_, failureAwait) =>
@@ -2211,7 +2211,7 @@ export const toPull = <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>(
       Effect.sync(() => new executor.ChannelExecutor(self, void 0, identity)),
       (exec, exit) => {
         const finalize = exec.close(exit)
-        return finalize === undefined ? Effect.unit : finalize
+        return finalize === undefined ? Effect.void : finalize
       }
     ),
     (exec) => Effect.suspend(() => interpretToPull(exec.run() as ChannelState.ChannelState<OutErr, Env>, exec))
@@ -2363,7 +2363,7 @@ const writeChunkWriter = <OutElem>(
   chunk: Chunk.Chunk<OutElem>
 ): Channel.Channel<OutElem> => {
   return idx === len
-    ? core.unit
+    ? core.void
     : pipe(
       core.write(pipe(chunk, Chunk.unsafeGet(idx))),
       core.flatMap(() => writeChunkWriter(idx + 1, len, chunk))

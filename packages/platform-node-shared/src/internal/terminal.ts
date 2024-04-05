@@ -102,7 +102,7 @@ export const make = (
                 message: (err as Error).message ?? String(err)
               })))
             }
-            resume(Effect.unit)
+            resume(Effect.void)
           })
         })
       )

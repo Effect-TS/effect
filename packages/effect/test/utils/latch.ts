@@ -9,7 +9,7 @@ export const withLatch = <A, E, R>(
   return pipe(
     Deferred.make<void>(),
     Effect.flatMap((latch) =>
-      pipe(f(pipe(Deferred.succeed(latch, void 0), Effect.asUnit)), Effect.zipLeft(Deferred.await(latch)))
+      pipe(f(pipe(Deferred.succeed(latch, void 0), Effect.asVoid)), Effect.zipLeft(Deferred.await(latch)))
     )
   )
 }
@@ -22,7 +22,7 @@ export const withLatchAwait = <A, E, R>(
     const latch = yield* $(Deferred.make<void>())
     const result = yield* $(
       f(
-        pipe(Deferred.succeed(latch, void 0), Effect.asUnit),
+        pipe(Deferred.succeed(latch, void 0), Effect.asVoid),
         Effect.uninterruptibleMask((restore) =>
           pipe(Ref.set(ref, false), Effect.zipRight(restore(Deferred.await(latch))))
         )

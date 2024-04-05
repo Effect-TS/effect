@@ -183,5 +183,8 @@ export const retry: TExit<never> = {
   }
 }
 
-/** @internal */
-export const unit = (): TExit<void> => succeed(undefined)
+const void_: TExit<void> = succeed(undefined)
+export {
+  /** @internal */
+  void_ as void
+}

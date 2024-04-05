@@ -629,12 +629,15 @@ export const as: {
  * @category mapping
  * @since 2.0.0
  */
-export const asUnit: <_>(self: Option<_>) => Option<void> = as(undefined)
+export const asVoid: <_>(self: Option<_>) => Option<void> = as(undefined)
 
-/**
- * @since 2.0.0
- */
-export const unit: Option<void> = some(undefined)
+const void_: Option<void> = some(undefined)
+export {
+  /**
+   * @since 2.0.0
+   */
+  void_ as void
+}
 
 /**
  * Applies a function to the value of an `Option` and flattens the result, if the input is `Some`.

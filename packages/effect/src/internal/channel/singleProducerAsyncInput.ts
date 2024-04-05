@@ -100,7 +100,7 @@ class SingleProducerAsyncInputImpl<in out Err, in out Elem, in out Done>
       Ref.modify(this.ref, (state) =>
         state._tag === OP_STATE_EMPTY ?
           [Deferred.await(state.notifyProducer), state as State<Err, Elem, Done>] :
-          [Effect.unit, state])
+          [Effect.void, state])
     )
   }
 

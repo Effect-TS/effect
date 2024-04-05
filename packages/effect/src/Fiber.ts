@@ -602,13 +602,16 @@ export const status: <A, E>(self: RuntimeFiber<A, E>) => Effect.Effect<FiberStat
  */
 export const succeed: <A>(value: A) => Fiber<A> = internal.succeed
 
-/**
- * A fiber that has already succeeded with unit.
- *
- * @since 2.0.0
- * @category constructors
- */
-export const unit: Fiber<void> = internal.unit
+const void_: Fiber<void> = internal.void
+export {
+  /**
+   * A fiber that has already succeeded with unit.
+   *
+   * @since 2.0.0
+   * @category constructors
+   */
+  void_ as void
+}
 
 /**
  * Zips this fiber and the specified fiber together, producing a tuple of

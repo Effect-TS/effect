@@ -483,7 +483,7 @@ const validatePathExistence = (
   if (shouldPathExist === "yes" && !pathExists) {
     return Effect.fail(`Path '${path}' must exist`)
   }
-  return Effect.unit
+  return Effect.void
 }
 
 const validatePathType = (
@@ -499,7 +499,7 @@ const validatePathType = (
       )
       return Effect.fail(`Expected path '${path}' to be a regular file`).pipe(
         Effect.unlessEffect(checkIsFile),
-        Effect.asUnit
+        Effect.asVoid
       )
     }
     case "directory": {
@@ -509,11 +509,11 @@ const validatePathType = (
       )
       return Effect.fail(`Expected path '${path}' to be a directory`).pipe(
         Effect.unlessEffect(checkIsDirectory),
-        Effect.asUnit
+        Effect.asVoid
       )
     }
     case "either": {
-      return Effect.unit
+      return Effect.void
     }
   }
 }

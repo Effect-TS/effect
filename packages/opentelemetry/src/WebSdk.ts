@@ -74,10 +74,10 @@ export const layer: {
         const ResourceLive = Resource.layer(config.resource)
         const TracerLive = config.spanProcessor ?
           Tracer.layer.pipe(Layer.provide(layerTracerProvider(config.spanProcessor, config.tracerConfig)))
-          : Layer.effectDiscard(Effect.unit)
+          : Layer.effectDiscard(Effect.void)
         const MetricsLive = config.metricReader
           ? Metrics.layer(() => config.metricReader!)
-          : Layer.effectDiscard(Effect.unit)
+          : Layer.effectDiscard(Effect.void)
         return Layer.merge(TracerLive, MetricsLive).pipe(
           Layer.provideMerge(ResourceLive)
         )

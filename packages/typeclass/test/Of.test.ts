@@ -14,6 +14,6 @@ describe.concurrent("Of", () => {
   })
 
   it("unit", () => {
-    U.deepStrictEqual(_.unit(OptionInstances.Pointed)(), O.some(undefined))
+    U.deepStrictEqual(_.void(OptionInstances.Pointed)(), O.some(undefined))
   })
 })
