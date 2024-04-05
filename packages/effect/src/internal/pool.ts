@@ -75,13 +75,13 @@ interface Strategy<S, R, E, A> {
  */
 class NoneStrategy implements Strategy<unknown, never, never, never> {
   initial(): Effect.Effect<void> {
-    return core.unit
+    return core.void
   }
   track(): Effect.Effect<void> {
-    return core.unit
+    return core.void
   }
   run(): Effect.Effect<void> {
-    return core.unit
+    return core.void
   }
 }
 
@@ -100,7 +100,7 @@ class TimeToLiveStrategy implements Strategy<readonly [Clock.Clock, Ref.Ref<numb
         )))
   }
   track(state: readonly [Clock.Clock, Ref.Ref<number>]): Effect.Effect<void> {
-    return core.asUnit(core.flatMap(
+    return core.asVoid(core.flatMap(
       state[0].currentTimeMillis,
       (now) => ref.set(state[1], now)
     ))
@@ -222,7 +222,7 @@ class PoolImpl<in out A, in out E> implements Pool.Pool<A, E> {
             if (state.size <= this.min) {
               return [allocateUinterruptible(this), { ...state, free: state.free + 1 }] as const
             }
-            return [core.unit, { ...state, size: state.size - 1 }] as const
+            return [core.void, { ...state, size: state.size - 1 }] as const
           })),
         onSuccess: (item) =>
           core.flatMap(ref.get(this.invalidated), (set) => {
@@ -303,7 +303,7 @@ const finalizeInvalid = <A, E>(
         if (state.size <= self.min) {
           return [allocateUinterruptible(self), { ...state, free: state.free + 1 }] as const
         }
-        return [core.unit, { ...state, size: state.size - 1 }] as const
+        return [core.void, { ...state, size: state.size - 1 }] as const
       }))
     )
   )
@@ -317,7 +317,7 @@ const getAndShutdown = <A, E>(self: PoolImpl<A, E>): Effect.Effect<void> =>
     if (state.free > 0) {
       return [
         core.matchCauseEffect(queue.take(self.items), {
-          onFailure: () => core.unit,
+          onFailure: () => core.void,
           onSuccess: (attempted) =>
             pipe(
               forEach(attempted, (a) => ref.update(self.invalidated, HashSet.remove(a))),
@@ -330,7 +330,7 @@ const getAndShutdown = <A, E>(self: PoolImpl<A, E>): Effect.Effect<void> =>
       ] as const
     }
     if (state.size > 0) {
-      return [core.unit, state] as const
+      return [core.void, state] as const
     }
     return [queue.shutdown(self.items), { ...state, size: state.size - 1 }] as const
   }))
@@ -348,7 +348,7 @@ const initialize = <A, E>(self: PoolImpl<A, E>): Effect.Effect<void> =>
             { size: state.size + 1, free: state.free + 1 }
           ] as const
         }
-        return [core.unit, state] as const
+        return [core.void, state] as const
       }))
     ),
     self.min,
@@ -376,7 +376,7 @@ const shrink = <A, E>(self: PoolImpl<A, E>): Effect.Effect<void> =>
           { ...state, free: state.free - 1 }
         ] as const
       }
-      return [core.unit, state] as const
+      return [core.void, state] as const
     }))
   )
 
@@ -393,7 +393,7 @@ const forEach = <E, A, E2, R>(
   f: (a: A) => Effect.Effect<unknown, E2, R>
 ): Effect.Effect<unknown, E2, R> =>
   core.exitMatch(self.result, {
-    onFailure: () => core.unit,
+    onFailure: () => core.void,
     onSuccess: f
   })
 

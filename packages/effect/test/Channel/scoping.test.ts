@@ -56,9 +56,9 @@ describe("Channel", () => {
   it.effect("finalizer failure is propagated", () =>
     Effect.gen(function*($) {
       const exit = yield* $(
-        Channel.unit,
+        Channel.void,
         Channel.ensuring(Effect.die("ok")),
-        Channel.ensuring(Effect.unit),
+        Channel.ensuring(Effect.void),
         Channel.runDrain,
         Effect.sandbox,
         Effect.either

@@ -153,7 +153,7 @@ export const cacheRequest = <A extends Request.Request<any, any>>(
         core.flatMap(cache.getEither(request), (orNew) => {
           switch (orNew._tag) {
             case "Left": {
-              return core.unit
+              return core.void
             }
             case "Right": {
               return core.deferredComplete(orNew.right.handle, result)
@@ -161,7 +161,7 @@ export const cacheRequest = <A extends Request.Request<any, any>>(
           }
         }))
     }
-    return core.unit
+    return core.void
   })
 }
 

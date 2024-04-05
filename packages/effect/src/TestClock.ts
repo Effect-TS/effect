@@ -209,7 +209,7 @@ export class TestClockImpl implements TestClock {
         core.flatMap((shouldAwait) =>
           shouldAwait ?
             pipe(this.warningStart(), core.zipRight(core.deferredAwait(deferred))) :
-            pipe(core.deferredSucceed(deferred, void 0), core.asUnit)
+            pipe(core.deferredSucceed(deferred, void 0), core.asVoid)
         )
       ))
   }
@@ -250,7 +250,7 @@ export class TestClockImpl implements TestClock {
   }
   /**
    * Captures a "snapshot" of the identifier and status of all fibers in this
-   * test other than the current fiber. Fails with the `Unit` value if any of
+   * test other than the current fiber. Fails with the `void` value if any of
    * these fibers are not done or suspended. Note that because we cannot
    * synchronize on the status of multiple fibers at the same time this
    * snapshot may not be fully consistent.
@@ -409,7 +409,7 @@ export class TestClockImpl implements TestClock {
         core.flatMap((option) => {
           switch (option._tag) {
             case "None": {
-              return core.unit
+              return core.void
             }
             case "Some": {
               const [end, deferred] = option.value

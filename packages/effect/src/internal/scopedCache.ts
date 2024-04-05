@@ -160,11 +160,11 @@ export const releaseOwner = <Key, Value, Error = never>(
   self: Complete<Key, Value, Error>
 ): Effect.Effect<void> =>
   Exit.matchEffect(self.exit, {
-    onFailure: () => core.unit,
+    onFailure: () => core.void,
     onSuccess: ([, finalizer]) =>
       core.flatMap(
         core.sync(() => MutableRef.decrementAndGet(self.ownerCount)),
-        (numOwner) => effect.when(finalizer(Exit.unit), () => numOwner === 0)
+        (numOwner) => effect.when(finalizer(Exit.void), () => numOwner === 0)
       )
   })
 
@@ -315,14 +315,14 @@ class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value
             return releaseOwner(mapValue)
           }
           case "Pending": {
-            return core.unit
+            return core.void
           }
           case "Refreshing": {
             return releaseOwner(mapValue.complete)
           }
         }
       }
-      return core.unit
+      return core.void
     })
   }
 
@@ -383,7 +383,7 @@ class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value
             }
           }
         }
-        return core.flatMap(finalScoped, (s) => fiberRuntime.scopedEffect(core.asUnit(s)))
+        return core.flatMap(finalScoped, (s) => fiberRuntime.scopedEffect(core.asVoid(s)))
       })
     )
   }
@@ -560,14 +560,14 @@ class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value
 
   cleanMapValue(mapValue: MapValue<Key, Value, Error> | undefined): Effect.Effect<void> {
     if (mapValue === undefined) {
-      return core.unit
+      return core.void
     }
     switch (mapValue._tag) {
       case "Complete": {
         return releaseOwner(mapValue)
       }
       case "Pending": {
-        return core.unit
+        return core.void
       }
       case "Refreshing": {
         return releaseOwner(mapValue.complete)

@@ -173,7 +173,7 @@ describe("Option", () => {
   })
 
   it("unit", () => {
-    Util.deepStrictEqual(_.unit, _.some(undefined))
+    Util.deepStrictEqual(_.void, _.some(undefined))
   })
 
   it("product", () => {

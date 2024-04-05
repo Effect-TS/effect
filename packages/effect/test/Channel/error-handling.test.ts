@@ -28,7 +28,7 @@ describe("Channel", () => {
     Effect.gen(function*($) {
       const deferred = yield* $(Deferred.make<void>())
       const finished = yield* $(Deferred.make<void>())
-      const ref = yield* $(Ref.make<Exit.Exit<void>>(Exit.unit))
+      const ref = yield* $(Ref.make<Exit.Exit<void>>(Exit.void))
       const effect = pipe(
         Deferred.succeed(deferred, void 0),
         Effect.zipRight(Effect.never)

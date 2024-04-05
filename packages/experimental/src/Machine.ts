@@ -584,7 +584,7 @@ export const boot = <
         currentState = newState
         return PubSub.publish(pubsub, newState)
       }
-      return Effect.unit
+      return Effect.void
     }
 
     const run = Effect.gen(function*(_) {
@@ -592,7 +592,7 @@ export const boot = <
       const fiberMap = yield* _(FiberMap.make<string, any, MachineDefect>())
 
       const fork = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-        Effect.asUnit(FiberSet.run(fiberSet, MachineDefect.wrap(effect)))
+        Effect.asVoid(FiberSet.run(fiberSet, MachineDefect.wrap(effect)))
       const forkWith: {
         (state: Machine.State<M>): <A, E, R>(
           effect: Effect.Effect<A, E, R>
@@ -611,7 +611,7 @@ export const boot = <
         (id: string): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<void, never, R>
         <A, E, R>(effect: Effect.Effect<A, E, R>, id: string): Effect.Effect<void, never, R>
       } = dual(2, <A, E, R>(effect: Effect.Effect<A, E, R>, id: string): Effect.Effect<void, never, R> =>
-        Effect.asUnit(
+        Effect.asVoid(
           FiberMap.run(fiberMap, id, MachineDefect.wrap(effect))
         ))
       const forkReplaceWith: {
@@ -637,7 +637,7 @@ export const boot = <
       } = dual(2, <A, E, R>(effect: Effect.Effect<A, E, R>, id: string): Effect.Effect<void, never, R> =>
         Effect.suspend(() => {
           if (MutableHashMap.has(fiberMap.backing, id)) {
-            return Effect.unit
+            return Effect.void
           }
           return forkReplace(effect, id)
         }))
@@ -713,7 +713,7 @@ export const boot = <
         Effect.flatMap(([request, deferred, span, addSpan]) =>
           Effect.flatMap(Deferred.isDone(deferred), (done) => {
             if (done) {
-              return Effect.unit
+              return Effect.void
             }
 
             const procedure = procedureMap[request._tag]
@@ -784,7 +784,7 @@ export const boot = <
           FiberRef.getWith(
             FiberRef.unhandledErrorLogLevel,
             Option.match({
-              onNone: () => Effect.unit,
+              onNone: () => Effect.void,
               onSome: (level) =>
                 Effect.log(`Unhandled Machine (${runState.identifier}) failure`, cause).pipe(
                   Effect.locally(FiberRef.currentLogLevel, level)

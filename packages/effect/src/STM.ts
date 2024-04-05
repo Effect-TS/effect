@@ -295,7 +295,7 @@ export const asSomeError: <A, E, R>(self: STM<A, E, R>) => STM<A, Option.Option<
  * @since 2.0.0
  * @category mapping
  */
-export const asUnit: <A, E, R>(self: STM<A, E, R>) => STM<void, E, R> = stm.asUnit
+export const asVoid: <A, E, R>(self: STM<A, E, R>) => STM<void, E, R> = stm.asVoid
 
 /**
  * Creates an `STM` value from a partial (but pure) function.
@@ -1860,13 +1860,16 @@ export const unlessSTM: {
  */
 export const unsome: <A, E, R>(self: STM<A, Option.Option<E>, R>) => STM<Option.Option<A>, E, R> = stm.unsome
 
-/**
- * Returns an `STM` effect that succeeds with `Unit`.
- *
- * @since 2.0.0
- * @category constructors
- */
-export const unit: STM<void> = stm.unit
+const void_: STM<void> = stm.void
+export {
+  /**
+   * Returns an `STM` effect that succeeds with `void`.
+   *
+   * @since 2.0.0
+   * @category constructors
+   */
+  void_ as void
+}
 
 /**
  * Feeds elements of type `A` to `f` and accumulates all errors in error

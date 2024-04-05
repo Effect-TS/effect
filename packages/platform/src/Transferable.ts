@@ -69,7 +69,7 @@ export const addAll = (tranferables: Iterable<globalThis.Transferable>): Effect.
   Effect.flatMap(
     Effect.serviceOption(Collector),
     Option.match({
-      onNone: () => Effect.unit,
+      onNone: () => Effect.void,
       onSome: (_) => _.addAll(tranferables)
     })
   )

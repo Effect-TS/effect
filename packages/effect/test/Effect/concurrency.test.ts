@@ -54,7 +54,7 @@ describe("Effect", () => {
           Effect.acquireUseRelease(
             Deferred.succeed(acquire, void 0),
             () => Effect.never,
-            () => Effect.asUnit(Deferred.succeed(release, 42))
+            () => Effect.asVoid(Deferred.succeed(release, 42))
           )
         ),
         Effect.fork
@@ -150,7 +150,7 @@ describe("Effect", () => {
                 Effect.zipRight(Fiber.interrupt(fiber)),
                 Effect.zipRight(Ref.update(ref, (n) => n + 1))
               ),
-            Effect.unit
+            Effect.void
           )
         )
       )
@@ -181,7 +181,7 @@ describe("Effect", () => {
     Effect.gen(function*($) {
       const latch = yield* $(Deferred.make<boolean>())
       const fiber = yield* $(
-        Effect.unit,
+        Effect.void,
         Effect.race(Effect.zip(Deferred.succeed(latch, true), Effect.sleep("45 seconds"))),
         Effect.uninterruptible,
         Effect.fork

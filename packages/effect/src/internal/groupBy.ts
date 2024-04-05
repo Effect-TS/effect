@@ -442,7 +442,7 @@ export const groupByKey = dual<
                             Queue.offer(innerQueue, take.chunk(values)),
                             Effect.catchSomeCause((cause) =>
                               Cause.isInterruptedOnly(cause) ?
-                                Option.some(Effect.unit) :
+                                Option.some(Effect.void) :
                                 Option.none()
                             )
                           )
@@ -455,7 +455,7 @@ export const groupByKey = dual<
                   Queue.offer(innerQueue, take.chunk(values)),
                   (cause) =>
                     Cause.isInterruptedOnly(cause) ?
-                      Option.some(Effect.unit) :
+                      Option.some(Effect.void) :
                       Option.none()
                 )
               }, { discard: true })
@@ -472,7 +472,7 @@ export const groupByKey = dual<
                     Queue.offer(innerQueue, take.end),
                     Effect.catchSomeCause((cause) =>
                       Cause.isInterruptedOnly(cause) ?
-                        Option.some(Effect.unit) :
+                        Option.some(Effect.void) :
                         Option.none()
                     )
                   ), { discard: true }),

@@ -155,7 +155,7 @@ export const toWebHandlerLayer = <R, E, RE>(
   readonly handler: (request: Request) => Promise<Response>
 } => {
   const scope = Effect.runSync(Scope.make())
-  const close = () => Effect.runPromise(Scope.close(scope, Exit.unit))
+  const close = () => Effect.runPromise(Scope.close(scope, Exit.void))
   const build = Effect.map(Layer.toRuntime(layer), (_) => toWebHandlerRuntime(_)(self))
   const runner = Effect.runPromise(Scope.extend(build, scope))
   const handler = (request: Request): Promise<Response> => runner.then((handler) => handler(request))

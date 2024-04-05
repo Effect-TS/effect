@@ -27,14 +27,14 @@ const deepErrorEffect = (n: number): Effect.Effect<void, Cause.UnknownException>
       throw ExampleError
     })
   }
-  return pipe(Effect.unit, Effect.zipRight(deepErrorEffect(n - 1)))
+  return pipe(Effect.void, Effect.zipRight(deepErrorEffect(n - 1)))
 }
 
 const deepErrorFail = (n: number): Effect.Effect<never, Error> => {
   if (n === 0) {
     return Effect.fail(ExampleError)
   }
-  return pipe(Effect.unit, Effect.zipRight(deepErrorFail(n - 1)))
+  return pipe(Effect.void, Effect.zipRight(deepErrorFail(n - 1)))
 }
 
 describe("Effect", () => {
@@ -351,10 +351,10 @@ describe("Effect", () => {
       const fiberId = FiberId.make(0, 123)
       const bothCause = Cause.parallel(Cause.interrupt(fiberId), Cause.die(error))
       const thenCause = Cause.sequential(Cause.interrupt(fiberId), Cause.die(error))
-      const plain = yield* $(Effect.die(error), Effect.orElse(() => Effect.unit), Effect.exit)
-      const both = yield* $(Effect.failCause(bothCause), Effect.orElse(() => Effect.unit), Effect.exit)
-      const then = yield* $(Effect.failCause(thenCause), Effect.orElse(() => Effect.unit), Effect.exit)
-      const fail = yield* $(Effect.fail(error), Effect.orElse(() => Effect.unit), Effect.exit)
+      const plain = yield* $(Effect.die(error), Effect.orElse(() => Effect.void), Effect.exit)
+      const both = yield* $(Effect.failCause(bothCause), Effect.orElse(() => Effect.void), Effect.exit)
+      const then = yield* $(Effect.failCause(thenCause), Effect.orElse(() => Effect.void), Effect.exit)
+      const fail = yield* $(Effect.fail(error), Effect.orElse(() => Effect.void), Effect.exit)
       assert.deepStrictEqual(plain, Exit.die(error))
       assert.deepStrictEqual(both, Exit.die(error))
       assert.deepStrictEqual(then, Exit.die(error))

@@ -246,7 +246,7 @@ export const as = dual<
 >(2, (self, out) => map(self, () => out))
 
 /** @internal */
-export const asUnit = <Out, In, R>(
+export const asVoid = <Out, In, R>(
   self: Schedule.Schedule<Out, In, R>
 ): Schedule.Schedule<void, In, R> => map(self, constVoid)
 
@@ -2059,7 +2059,7 @@ export const elapsed: Schedule.Schedule<Duration.Duration> = makeWithState(
 export const forever: Schedule.Schedule<number> = unfold(0, (n) => n + 1)
 
 /** @internal */
-export const once: Schedule.Schedule<void> = asUnit(recurs(1))
+export const once: Schedule.Schedule<void> = asVoid(recurs(1))
 
 /** @internal */
-export const stop: Schedule.Schedule<void> = asUnit(recurs(0))
+export const stop: Schedule.Schedule<void> = asVoid(recurs(0))

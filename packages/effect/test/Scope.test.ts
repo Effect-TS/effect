@@ -68,7 +68,7 @@ describe("Scope", () => {
         Effect.addFinalizer(() => Deferred.succeed(deferred, void 0)),
         Effect.zipRight(Effect.addFinalizer(() => Deferred.await(deferred)), { concurrent: true }),
         Effect.scoped,
-        Effect.asUnit
+        Effect.asVoid
       )
       assert.isUndefined(result)
     }))
