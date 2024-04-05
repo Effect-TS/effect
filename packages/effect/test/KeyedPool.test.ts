@@ -22,7 +22,7 @@ describe("KeyedPool", () => {
         pool.pipe(
           KeyedPool.get("key1"),
           Effect.repeatN(3),
-          Effect.asUnit
+          Effect.asVoid
         )
       )
       const fiber = yield* $(Effect.fork(

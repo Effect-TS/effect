@@ -27,7 +27,7 @@ export const runMain: RunMain = (
       _effect :
       Effect.tapErrorCause(_effect, (cause) => {
         if (Cause.isInterruptedOnly(cause)) {
-          return Effect.unit
+          return Effect.void
         }
         return Effect.logError(cause)
       })

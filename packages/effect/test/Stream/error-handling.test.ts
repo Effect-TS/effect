@@ -140,10 +140,10 @@ describe("Stream", () => {
 
   it.effect("catchAllCause - propagates the right Exit value to the failing stream (ZIO #3609)", () =>
     Effect.gen(function*($) {
-      const ref = yield* $(Ref.make<Exit.Exit<unknown, unknown>>(Exit.unit))
+      const ref = yield* $(Ref.make<Exit.Exit<unknown, unknown>>(Exit.void))
       yield* $(
         Stream.acquireRelease(
-          Effect.unit,
+          Effect.void,
           (_, exit) => Ref.set(ref, exit)
         ),
         Stream.flatMap(() => Stream.fail("boom")),

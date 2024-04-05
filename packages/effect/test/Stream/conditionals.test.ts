@@ -153,7 +153,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const error = new Cause.RuntimeException("boom")
       const result = yield* $(
-        Effect.unit,
+        Effect.void,
         Stream.whenCaseEffect((): Option.Option<Stream.Stream<void>> => {
           throw error
         }),

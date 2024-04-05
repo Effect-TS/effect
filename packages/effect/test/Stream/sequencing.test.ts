@@ -215,10 +215,10 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))
       const inner = pipe(
-        Stream.acquireRelease(Effect.unit, (_, exit) =>
+        Stream.acquireRelease(Effect.void, (_, exit) =>
           Exit.match(exit, {
             onFailure: () => Ref.set(ref, true),
-            onSuccess: () => Effect.unit
+            onSuccess: () => Effect.void
           })),
         Stream.flatMap(() => Stream.fail("Ouch"))
       )
@@ -263,7 +263,7 @@ describe("Stream", () => {
             Effect.flatMap((pull) =>
               pipe(
                 pull,
-                Effect.zipRight(Scope.close(scope, Exit.unit)),
+                Effect.zipRight(Scope.close(scope, Exit.void)),
                 Effect.zipRight(Ref.get(ref))
               )
             )
@@ -463,7 +463,7 @@ describe("Stream", () => {
         Stream.flatMap((n) => {
           if (n > 3) {
             return pipe(
-              Stream.acquireRelease(Effect.unit, () => Ref.set(ref, true)),
+              Stream.acquireRelease(Effect.void, () => Ref.set(ref, true)),
               Stream.flatMap(() => Stream.empty)
             )
           }
@@ -488,7 +488,7 @@ describe("Stream", () => {
           if (n > 8) {
             return pipe(
               Stream.acquireRelease(
-                Effect.unit,
+                Effect.void,
                 () => Ref.update(ref, (n) => n + 1)
               ),
               Stream.flatMap(() => Stream.empty)

@@ -44,7 +44,7 @@ export const makeBatched = <A extends Request.Request<any, any>, R>(
               .filter((_) => !_.state.completed)
               .map((_) => _.request)
           ) :
-          core.unit)
+          core.void)
   )
 
 /** @internal */

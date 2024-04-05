@@ -88,7 +88,7 @@ const runCommand =
         return pipe(
           // Validate that the directory is accessible
           Option.match(command.cwd, {
-            onNone: () => Effect.unit,
+            onNone: () => Effect.void,
             onSome: (dir) => fileSystem.access(dir)
           }),
           Effect.zipRight(
@@ -96,11 +96,11 @@ const runCommand =
               spawn,
               ([handle, exitCode]) =>
                 Effect.flatMap(Deferred.isDone(exitCode), (done) =>
-                  done ? Effect.unit : Effect.suspend(() => {
+                  done ? Effect.void : Effect.suspend(() => {
                     if (handle.kill("SIGTERM")) {
                       return Deferred.await(exitCode)
                     }
-                    return Effect.unit
+                    return Effect.void
                   }))
             )
           ),
@@ -138,7 +138,7 @@ const runCommand =
             const kill: CommandExecutor.Process["kill"] = (signal = "SIGTERM") =>
               Effect.suspend(() =>
                 handle.kill(signal)
-                  ? Effect.asUnit(Deferred.await(exitCodeDeferred))
+                  ? Effect.asVoid(Deferred.await(exitCodeDeferred))
                   : Effect.fail(toPlatformError("kill", new globalThis.Error("Failed to kill process"), command))
               )
 
@@ -170,7 +170,7 @@ const runCommand =
           }),
           Effect.tap((process) =>
             Option.match(command.stdin, {
-              onNone: () => Effect.unit,
+              onNone: () => Effect.void,
               onSome: (stdin) => Effect.forkDaemon(Stream.run(stdin, process.stdin))
             })
           )

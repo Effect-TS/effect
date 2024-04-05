@@ -91,10 +91,10 @@ export const fromNetSocket = (
               if (Socket.isCloseEvent(chunk)) {
                 conn.destroy(chunk.code > 1000 ? new Error(`closed with code ${chunk.code}`) : undefined)
               } else if (chunk === EOF) {
-                conn.end(() => resume(Effect.unit))
+                conn.end(() => resume(Effect.void))
               } else {
                 conn.write(chunk, (error) => {
-                  resume(error ? Effect.fail(new Socket.SocketGenericError({ reason: "Write", error })) : Effect.unit)
+                  resume(error ? Effect.fail(new Socket.SocketGenericError({ reason: "Write", error })) : Effect.void)
                 })
               }
             })
@@ -109,7 +109,7 @@ export const fromNetSocket = (
         yield* _(
           Effect.async<void, Socket.SocketError, never>((resume) => {
             conn.on("end", () => {
-              resume(Effect.unit)
+              resume(Effect.void)
             })
             conn.on("error", (error) => {
               resume(Effect.fail(new Socket.SocketGenericError({ reason: "Read", error })))

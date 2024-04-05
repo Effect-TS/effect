@@ -188,7 +188,7 @@ const waitForFinish = (nodeRequest: Http.ClientRequest, request: ClientRequest.C
 
     function onFinish() {
       nodeRequest.off("error", onError)
-      resume(Effect.unit)
+      resume(Effect.void)
     }
     nodeRequest.once("finish", onFinish)
 

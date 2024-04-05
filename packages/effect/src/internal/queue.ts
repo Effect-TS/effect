@@ -125,7 +125,7 @@ class QueueImpl<in out A> implements Queue.Queue<A> {
           ),
           core.zipRight(this.strategy.shutdown),
           core.whenEffect(core.deferredSucceed(this.shutdownHook, void 0)),
-          core.asUnit
+          core.asVoid
         )
       })
     )
@@ -548,9 +548,9 @@ class BackPressureStrategy<in out A> implements Queue.Strategy<A> {
                 isLastItem ?
                   pipe(
                     core.deferredInterruptWith(deferred, fiberId),
-                    core.asUnit
+                    core.asVoid
                   ) :
-                  core.unit,
+                  core.void,
               false,
               false
             )
@@ -630,7 +630,7 @@ class DroppingStrategy<in out A> implements Queue.Strategy<A> {
   }
 
   get shutdown(): Effect.Effect<void> {
-    return core.unit
+    return core.void
   }
 
   onCompleteTakersWithEmptyQueue(): void {
@@ -662,7 +662,7 @@ class SlidingStrategy<in out A> implements Queue.Strategy<A> {
   }
 
   get shutdown(): Effect.Effect<void> {
-    return core.unit
+    return core.void
   }
 
   onCompleteTakersWithEmptyQueue(): void {

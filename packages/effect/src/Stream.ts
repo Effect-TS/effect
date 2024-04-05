@@ -3707,7 +3707,7 @@ export const throttleEffect: {
 } = internal.throttleEffect
 
 /**
- * A stream that emits Unit values spaced by the specified duration.
+ * A stream that emits void values spaced by the specified duration.
  *
  * @since 2.0.0
  * @category constructors
@@ -3915,13 +3915,16 @@ export const unfoldEffect: <S, A, E, R>(
   f: (s: S) => Effect.Effect<Option.Option<readonly [A, S]>, E, R>
 ) => Stream<A, E, R> = internal.unfoldEffect
 
-/**
- * A stream that contains a single `Unit` value.
- *
- * @since 2.0.0
- * @category constructors
- */
-export const unit: Stream<void> = internal.unit
+const void_: Stream<void> = internal.void
+export {
+  /**
+   * A stream that contains a single `void` value.
+   *
+   * @since 2.0.0
+   * @category constructors
+   */
+  void_ as void
+}
 
 /**
  * Creates a stream produced from an `Effect`.

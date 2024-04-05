@@ -236,9 +236,9 @@ export const as: {
  * @since 2.0.0
  * @category mapping
  */
-export const asUnit: <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>(
+export const asVoid: <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>(
   self: Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>
-) => Channel<OutElem, InElem, OutErr, InErr, void, InDone, Env> = channel.asUnit
+) => Channel<OutElem, InElem, OutErr, InErr, void, InDone, Env> = channel.asVoid
 
 /**
  * Creates a channel backed by a buffer. When the buffer is empty, the channel
@@ -2049,11 +2049,14 @@ export const toStream: <OutElem, OutErr, OutDone, Env>(
   self: Channel<Chunk.Chunk<OutElem>, unknown, OutErr, unknown, OutDone, unknown, Env>
 ) => Stream.Stream<OutElem, OutErr, Env> = stream.channelToStream
 
-/**
- * @since 2.0.0
- * @category constructors
- */
-export const unit: Channel<never> = core.unit
+const void_: Channel<never> = core.void
+export {
+  /**
+   * @since 2.0.0
+   * @category constructors
+   */
+  void_ as void
+}
 
 /**
  * Makes a channel from an effect that returns a channel in case of success.

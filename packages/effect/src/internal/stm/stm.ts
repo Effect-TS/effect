@@ -98,7 +98,7 @@ export const asSomeError = <A, E, R>(self: STM.STM<A, E, R>): STM.STM<A, Option.
   pipe(self, mapError(Option.some))
 
 /** @internal */
-export const asUnit = <A, E, R>(self: STM.STM<A, E, R>): STM.STM<void, E, R> => pipe(self, core.map(constVoid))
+export const asVoid = <A, E, R>(self: STM.STM<A, E, R>): STM.STM<void, E, R> => pipe(self, core.map(constVoid))
 
 /** @internal */
 export const attempt = <A>(evaluate: LazyArg<A>): STM.STM<A, unknown> =>
@@ -273,7 +273,7 @@ export const catchTags: {
   }))
 
 /** @internal */
-export const check = (predicate: LazyArg<boolean>): STM.STM<void> => suspend(() => predicate() ? unit : core.retry)
+export const check = (predicate: LazyArg<boolean>): STM.STM<void> => suspend(() => predicate() ? void_ : core.retry)
 
 /** @internal */
 export const collect = dual<
@@ -573,7 +573,7 @@ export const forEach = dual<
           const loop: STM.STM<void, E, R> = suspend(() => {
             const next = iterator.next()
             if (next.done) {
-              return unit
+              return void_
             }
             return pipe(f(next.value), core.flatMap(() => loop))
           })
@@ -713,7 +713,7 @@ export const if_ = dual<
 
 /** @internal */
 export const ignore = <A, E, R>(self: STM.STM<A, E, R>): STM.STM<void, never, R> =>
-  match(self, { onFailure: () => unit, onSuccess: () => unit })
+  match(self, { onFailure: () => void_, onSuccess: () => void_ })
 
 /** @internal */
 export const isFailure = <A, E, R>(self: STM.STM<A, E, R>): STM.STM<boolean, never, R> =>
@@ -806,7 +806,7 @@ const loopDiscardLoop = <Z, R, E, X>(
       core.flatMap(() => loopDiscardLoop(inc(initial), cont, inc, body))
     )
   }
-  return unit
+  return void_
 }
 
 /** @internal */
@@ -872,7 +872,7 @@ export const none = <A, E, R>(self: STM.STM<Option.Option<A>, E, R>): STM.STM<vo
   core.matchSTM(self, {
     onFailure: (e) => core.fail(Option.some(e)),
     onSuccess: Option.match({
-      onNone: () => unit,
+      onNone: () => void_,
       onSome: () => core.fail(Option.none())
     })
   })
@@ -1370,7 +1370,11 @@ export const try_: {
 }
 
 /** @internal */
-export const unit: STM.STM<void> = core.succeed(void 0)
+const void_: STM.STM<void> = core.succeed(void 0)
+export {
+  /** @internal */
+  void_ as void
+}
 
 /** @internal */
 export const unless = dual<

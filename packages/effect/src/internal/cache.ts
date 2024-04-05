@@ -443,7 +443,7 @@ class CacheImpl<in out Key, in out Value, in out Error> implements Cache.Cache<K
           }
         }
         if (value === undefined) {
-          return core.asUnit(this.lookupValueOf(key, deferred))
+          return core.asVoid(this.lookupValueOf(key, deferred))
         } else {
           switch (value._tag) {
             case "Complete": {
@@ -452,7 +452,7 @@ class CacheImpl<in out Key, in out Value, in out Error> implements Cache.Cache<K
                 if (Equal.equals(found, value)) {
                   MutableHashMap.remove(this.cacheState.map, k)
                 }
-                return core.asUnit(this.get(key))
+                return core.asVoid(this.get(key))
               }
               // Only trigger the lookup if we're still the current value, `completedResult`
               return pipe(
@@ -466,7 +466,7 @@ class CacheImpl<in out Key, in out Value, in out Error> implements Cache.Cache<K
                   }
                   return false
                 }),
-                core.asUnit
+                core.asVoid
               )
             }
             case "Pending": {

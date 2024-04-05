@@ -52,7 +52,7 @@ describe("Stream", () => {
       const ref = yield* $(Ref.make(false))
       const stream = pipe(
         Stream.make(1),
-        Stream.concat(Stream.acquireRelease(Ref.set(ref, true), () => Effect.unit)),
+        Stream.concat(Stream.acquireRelease(Ref.set(ref, true), () => Effect.void)),
         Stream.take(0)
       )
       yield* $(Stream.runDrain(stream))
@@ -64,7 +64,7 @@ describe("Stream", () => {
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(false))
       yield* $(
-        Stream.acquireRelease(Effect.unit, () => Ref.set(ref, true)),
+        Stream.acquireRelease(Effect.void, () => Ref.set(ref, true)),
         Stream.flatMap(() => Stream.fromEffect(Effect.dieMessage("boom"))),
         Stream.runDrain,
         Effect.exit
@@ -100,7 +100,7 @@ describe("Stream", () => {
   it.effect("acquireRelease - propagates errors", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Stream.acquireRelease(Effect.unit, () => Effect.dieMessage("die")),
+        Stream.acquireRelease(Effect.void, () => Effect.dieMessage("die")),
         Stream.runCollect,
         Effect.exit
       )

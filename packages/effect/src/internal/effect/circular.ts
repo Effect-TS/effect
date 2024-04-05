@@ -289,8 +289,8 @@ export const forkIn = dual<
             child.addFinalizer(() =>
               core.fiberIdWith((fiberId) =>
                 Equal.equals(fiberId, fiber.id()) ?
-                  core.unit :
-                  core.asUnit(core.interruptFiber(fiber))
+                  core.void :
+                  core.asVoid(core.interruptFiber(fiber))
               )
             )
           )

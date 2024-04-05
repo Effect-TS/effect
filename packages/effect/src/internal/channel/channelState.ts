@@ -127,7 +127,7 @@ export const isRead = <E, R>(self: ChannelState<E, R>): self is Read => (self as
 
 /** @internal */
 export const effect = <E, R>(self: ChannelState<E, R>): Effect.Effect<void, E, R> =>
-  isFromEffect(self) ? self.effect as Effect.Effect<void, E, R> : Effect.unit
+  isFromEffect(self) ? self.effect as Effect.Effect<void, E, R> : Effect.void
 
 /** @internal */
 export const effectOrUndefinedIgnored = <E, R>(self: ChannelState<E, R>): Effect.Effect<void, E, R> | undefined =>

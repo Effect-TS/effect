@@ -343,7 +343,7 @@ export const allowInterrupt: Effect.Effect<void> = descriptorWith(
   (descriptor) =>
     HashSet.size(descriptor.interruptors) > 0
       ? core.interrupt
-      : core.unit
+      : core.void
 )
 
 /* @internal */
@@ -842,7 +842,7 @@ export const ignore = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<voi
 export const ignoreLogged = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<void, never, R> =>
   core.matchCauseEffect(self, {
     onFailure: (cause) => logDebug(cause, "An error was silently ignored because it is not anticipated to be useful"),
-    onSuccess: () => core.unit
+    onSuccess: () => core.void
   })
 
 /* @internal */
@@ -916,7 +916,7 @@ export const logWithLevel = (level?: LogLevel.LogLevel) =>
   }
   return core.withFiberRuntime((fiberState) => {
     fiberState.log(message, cause, levelOption)
-    return core.unit
+    return core.void
   })
 }
 
@@ -1050,7 +1050,7 @@ const loopDiscard = <S, X, E, R>(
         body(initial),
         () => loopDiscard(inc(initial), cont, inc, body)
       )
-      : core.unit
+      : core.void
   )
 
 /* @internal */
@@ -1146,7 +1146,7 @@ export const none = <A, E, R>(
   core.flatMap(self, (option) => {
     switch (option._tag) {
       case "None":
-        return core.unit
+        return core.void
       case "Some":
         return core.fail(new core.NoSuchElementException())
     }
@@ -1158,7 +1158,7 @@ export const once = <A, E, R>(
 ): Effect.Effect<Effect.Effect<void, E, R>> =>
   core.map(
     Ref.make(true),
-    (ref) => core.asUnit(core.whenEffect(self, Ref.getAndSet(ref, false)))
+    (ref) => core.asVoid(core.whenEffect(self, Ref.getAndSet(ref, false)))
   )
 
 /* @internal */
@@ -1596,7 +1596,7 @@ export const tapErrorTag = dual<
     if (Predicate.isTagged(e, k)) {
       return f(e as any)
     }
-    return core.unit as any
+    return core.void as any
   }))
 
 /* @internal */
@@ -1779,7 +1779,7 @@ export const updateFiberRefs = (
 ): Effect.Effect<void> =>
   core.withFiberRuntime((state) => {
     state.setFiberRefs(f(state.id(), state.getFiberRefs()))
-    return core.unit
+    return core.void
   })
 
 /* @internal */
@@ -2048,7 +2048,7 @@ export const unsafeMakeSpan = <XA, XE>(
   options?: {
     readonly attributes?: Record<string, unknown> | undefined
     readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.ParentSpan | undefined
+    readonly parent?: Tracer.AnySpan | undefined
     readonly root?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
   }

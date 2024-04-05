@@ -53,8 +53,8 @@ describe("FiberSet", () => {
   it.scoped("join", () =>
     Effect.gen(function*(_) {
       const set = yield* _(FiberSet.make())
-      FiberSet.unsafeAdd(set, Effect.runFork(Effect.unit))
-      FiberSet.unsafeAdd(set, Effect.runFork(Effect.unit))
+      FiberSet.unsafeAdd(set, Effect.runFork(Effect.void))
+      FiberSet.unsafeAdd(set, Effect.runFork(Effect.void))
       FiberSet.unsafeAdd(set, Effect.runFork(Effect.fail("fail")))
       const result = yield* _(FiberSet.join(set), Effect.flip)
       assert.strictEqual(result, "fail")

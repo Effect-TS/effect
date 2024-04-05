@@ -162,7 +162,7 @@ export class ChannelExecutor<
                               Effect.flatMap(Fiber.interrupt(fiber), () =>
                                 Effect.suspend(() => {
                                   const effect = this.restorePipe(exit, inputExecutor)
-                                  return effect !== undefined ? effect : Effect.unit
+                                  return effect !== undefined ? effect : Effect.void
                                 }))
                             )
                           )
@@ -188,7 +188,7 @@ export class ChannelExecutor<
                     (effect) =>
                       Effect.sync(() => {
                         const prevLastClose = this._closeLastSubstream === undefined
-                          ? Effect.unit
+                          ? Effect.void
                           : this._closeLastSubstream
                         this._closeLastSubstream = pipe(prevLastClose, Effect.zipRight(effect))
                       })
@@ -217,7 +217,7 @@ export class ChannelExecutor<
                   this._emitted = this._currentChannel.out
                   this._currentChannel = (this._activeSubexecutor !== undefined ?
                     undefined :
-                    core.unit) as core.Primitive | undefined
+                    core.void) as core.Primitive | undefined
                   result = ChannelState.Emit()
                   break
                 }
@@ -252,13 +252,13 @@ export class ChannelExecutor<
                         const state = this.doneHalt(cause)
                         return state !== undefined && ChannelState.isFromEffect(state) ?
                           state.effect :
-                          Effect.unit
+                          Effect.void
                       },
                       onSuccess: (value) => {
                         const state = this.doneSucceed(value)
                         return state !== undefined && ChannelState.isFromEffect(state) ?
                           state.effect :
-                          Effect.unit
+                          Effect.void
                       }
                     })
                   ) as ChannelState.ChannelState<unknown, Env> | undefined
@@ -279,7 +279,7 @@ export class ChannelExecutor<
 
                   this.addFinalizer((exit) => {
                     const effect = this.restorePipe(exit, previousInput)
-                    return effect !== undefined ? effect : Effect.unit
+                    return effect !== undefined ? effect : Effect.void
                   })
 
                   this._currentChannel = this._currentChannel.right() as core.Primitive
@@ -382,7 +382,7 @@ export class ChannelExecutor<
       }
       next = this._doneStack.pop() as Continuation.Primitive | undefined
     }
-    const effect = (finalizers.length === 0 ? Effect.unit : runFinalizers(finalizers, exit)) as Effect.Effect<
+    const effect = (finalizers.length === 0 ? Effect.void : runFinalizers(finalizers, exit)) as Effect.Effect<
       unknown,
       never,
       Env
@@ -414,7 +414,7 @@ export class ChannelExecutor<
       const effect = currInput.close(exit)
       return effect
     }
-    return Effect.unit
+    return Effect.void
   }
 
   close(exit: Exit.Exit<unknown, unknown>): Effect.Effect<unknown, never, Env> | undefined {
@@ -608,7 +608,7 @@ export class ChannelExecutor<
     })
     this._activeSubexecutor = undefined
     return state === undefined ?
-      Effect.unit :
+      Effect.void :
       ChannelState.effect(state)
   }
 
@@ -622,7 +622,7 @@ export class ChannelExecutor<
         Effect.forEach((closeFunc) =>
           pipe(
             Effect.sync(() => closeFunc(subexecutorDone)),
-            Effect.flatMap((closeEffect) => closeEffect !== undefined ? closeEffect : Effect.unit)
+            Effect.flatMap((closeEffect) => closeEffect !== undefined ? closeEffect : Effect.void)
           ), { discard: true })
       )
     )
@@ -802,7 +802,7 @@ export class ChannelExecutor<
     return ChannelState.Read(
       subexecutor.upstreamExecutor,
       (effect) => {
-        const closeLastSubstream = this._closeLastSubstream === undefined ? Effect.unit : this._closeLastSubstream
+        const closeLastSubstream = this._closeLastSubstream === undefined ? Effect.void : this._closeLastSubstream
         this._closeLastSubstream = undefined
         return pipe(
           this._executeCloseLastSubstream(closeLastSubstream),
@@ -999,7 +999,7 @@ export class ChannelExecutor<
 }
 
 const ifNotNull = <Env>(effect: Effect.Effect<unknown, never, Env> | undefined): Effect.Effect<unknown, never, Env> =>
-  effect !== undefined ? effect : Effect.unit
+  effect !== undefined ? effect : Effect.void
 
 const runFinalizers = <Env>(
   finalizers: Array<ErasedFinalizer<Env>>,
@@ -1007,7 +1007,7 @@ const runFinalizers = <Env>(
 ): Effect.Effect<unknown, never, Env> => {
   return pipe(
     Effect.forEach(finalizers, (fin) => Effect.exit(fin(exit))),
-    Effect.map((exits) => pipe(Exit.all(exits), Option.getOrElse(() => Exit.unit))),
+    Effect.map((exits) => pipe(Exit.all(exits), Option.getOrElse(() => Exit.void))),
     Effect.flatMap((exit) => Effect.suspend(() => exit as Exit.Exit<unknown>))
   )
 }
@@ -1075,7 +1075,7 @@ export const readUpstream = <A, E2, R, E>(
           Effect.catchAllCause((cause) =>
             Effect.suspend(() => {
               const doneEffect = current.onDone(Exit.failCause(cause)) as Effect.Effect<void>
-              return doneEffect === undefined ? Effect.unit : doneEffect
+              return doneEffect === undefined ? Effect.void : doneEffect
             })
           ),
           Effect.matchCauseEffect({ onFailure, onSuccess: () => read() })
@@ -1120,7 +1120,7 @@ export const runScoped = <Env, InErr, InDone, OutErr, OutDone>(
       (exec, exit) => {
         const finalize = exec.close(exit)
         if (finalize === undefined) {
-          return Effect.unit
+          return Effect.void
         }
         return Effect.tapErrorCause(
           finalize,
