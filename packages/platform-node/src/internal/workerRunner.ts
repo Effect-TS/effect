@@ -32,7 +32,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
             resume(new WorkerError({ reason: "unknown", error }))
           })
         }),
-        Effect.tapErrorCause((cause) => Cause.isInterruptedOnly(cause) ? Effect.unit : Effect.logDebug(cause)),
+        Effect.tapErrorCause((cause) => Cause.isInterruptedOnly(cause) ? Effect.void : Effect.logDebug(cause)),
         Effect.retry(Schedule.forever),
         Effect.annotateLogs({
           package: "@effect/platform-node",

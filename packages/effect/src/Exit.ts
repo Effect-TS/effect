@@ -127,7 +127,7 @@ export const as: {
  * @since 2.0.0
  * @category mapping
  */
-export const asUnit: <A, E>(self: Exit<A, E>) => Exit<void, E> = core.exitAsUnit
+export const asVoid: <A, E>(self: Exit<A, E>) => Exit<void, E> = core.exitAsVoid
 
 /**
  * Returns a `Some<Cause<E>>` if the specified exit is a `Failure`, `None`
@@ -357,13 +357,16 @@ export const matchEffect: {
  */
 export const succeed: <A>(value: A) => Exit<A> = core.exitSucceed
 
-/**
- * Represents an `Exit` which succeeds with `undefined`.
- *
- * @since 2.0.0
- * @category constructors
- */
-export const unit: Exit<void> = core.exitUnit
+const void_: Exit<void> = core.exitVoid
+export {
+  /**
+   * Represents an `Exit` which succeeds with `undefined`.
+   *
+   * @since 2.0.0
+   * @category constructors
+   */
+  void_ as void
+}
 
 /**
  * Sequentially zips the this result with the specified result or else returns

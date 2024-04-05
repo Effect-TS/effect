@@ -393,7 +393,7 @@ describe("Effect", () => {
     Effect.gen(function*($) {
       const result = yield* $(
         [],
-        Effect.forEach(() => Effect.unit, {
+        Effect.forEach(() => Effect.void, {
           concurrency: "unbounded",
           discard: true
         })
@@ -446,7 +446,7 @@ describe("Effect", () => {
     }))
   it.effect("mergeAll - return error if it exists in list", () =>
     Effect.gen(function*($) {
-      const effects: ReadonlyArray<Effect.Effect<void, number>> = [Effect.unit, Effect.fail(1)]
+      const effects: ReadonlyArray<Effect.Effect<void, number>> = [Effect.void, Effect.fail(1)]
       const result = yield* $(effects, Effect.mergeAll(void 0 as void, constVoid), Effect.exit)
       assert.deepStrictEqual(result, Exit.fail(1))
     }))
@@ -476,7 +476,7 @@ describe("Effect", () => {
     }))
   it.effect("mergeAll/concurrency - return error if it exists in list", () =>
     Effect.gen(function*($) {
-      const effects: ReadonlyArray<Effect.Effect<void, number>> = [Effect.unit, Effect.fail(1)]
+      const effects: ReadonlyArray<Effect.Effect<void, number>> = [Effect.void, Effect.fail(1)]
       const result = yield* $(
         effects,
         Effect.mergeAll(void 0 as void, constVoid, {
@@ -654,7 +654,7 @@ describe("Effect", () => {
     Effect.gen(function*($) {
       const result = yield* $(
         pipe(
-          [Effect.unit, Effect.unit],
+          [Effect.void, Effect.void],
           Effect.reduceEffect(Effect.fail(1), constVoid, {
             concurrency: "unbounded"
           }),
@@ -665,11 +665,11 @@ describe("Effect", () => {
     }))
   it.effect("reduceEffect/concurrency - return error if it exists in list", () =>
     Effect.gen(function*($) {
-      const effects: ReadonlyArray<Effect.Effect<void, number>> = [Effect.unit, Effect.fail(1)]
+      const effects: ReadonlyArray<Effect.Effect<void, number>> = [Effect.void, Effect.fail(1)]
       const result = yield* $(
         pipe(
           effects,
-          Effect.reduceEffect(Effect.unit as Effect.Effect<void, number>, constVoid, {
+          Effect.reduceEffect(Effect.void as Effect.Effect<void, number>, constVoid, {
             concurrency: "unbounded"
           }),
           Effect.exit

@@ -52,7 +52,7 @@ describe("Stream", () => {
       const result = yield* $(
         Stream.async<number>((emit) => {
           emit.end()
-          return Effect.unit
+          return Effect.void
         }),
         Stream.runCollect
       )
@@ -65,7 +65,7 @@ describe("Stream", () => {
       const result = yield* $(
         Stream.async<number, Cause.RuntimeException>((emit) => {
           emit.fromEffect(Effect.fail(error))
-          return Effect.unit
+          return Effect.void
         }),
         Stream.runCollect,
         Effect.exit
@@ -109,7 +109,7 @@ describe("Stream", () => {
             )
           )
         )
-        return Effect.unit
+        return Effect.void
       }, 5)
       const sink = pipe(Sink.take<number>(1), Sink.zipRight(Sink.never))
       const fiber = yield* $(stream, Stream.run(sink), Effect.fork)
@@ -130,7 +130,7 @@ describe("Stream", () => {
           })
           return pipe(
             Deferred.succeed(latch, void 0),
-            Effect.zipRight(Effect.unit)
+            Effect.zipRight(Effect.void)
           )
         }),
         Stream.take(array.length),
@@ -148,7 +148,7 @@ describe("Stream", () => {
       const result = yield* $(
         Stream.asyncEffect<number, Cause.RuntimeException>((emit) => {
           emit.fromEffect(Effect.fail(error))
-          return Effect.unit
+          return Effect.void
         }),
         Stream.runCollect,
         Effect.exit
@@ -174,7 +174,7 @@ describe("Stream", () => {
       const result = yield* $(
         Stream.asyncEffect<number>((emit) => {
           emit(Effect.fail(Option.none()))
-          return Effect.unit
+          return Effect.void
         }),
         Stream.runCollect
       )
@@ -204,7 +204,7 @@ describe("Stream", () => {
             )
           )
         )
-        return Effect.unit
+        return Effect.void
       }, 5)
       const sink = pipe(Sink.take<number>(1), Sink.zipRight(Sink.never))
       const fiber = yield* $(stream, Stream.run(sink), Effect.fork)
@@ -323,7 +323,7 @@ describe("Stream", () => {
           })
           return pipe(
             Deferred.succeed(latch, void 0),
-            Effect.asUnit
+            Effect.asVoid
           )
         }),
         Stream.take(array.length),
@@ -340,7 +340,7 @@ describe("Stream", () => {
       const result = yield* $(
         Stream.asyncScoped<number>((cb) => {
           cb(Effect.fail(Option.none()))
-          return Effect.unit
+          return Effect.void
         }),
         Stream.runCollect
       )
@@ -353,7 +353,7 @@ describe("Stream", () => {
       const result = yield* $(
         Stream.asyncScoped<number, Cause.RuntimeException>((cb) => {
           cb(Effect.fail(Option.some(error)))
-          return Effect.unit
+          return Effect.void
         }),
         Stream.runCollect,
         Effect.exit
@@ -397,7 +397,7 @@ describe("Stream", () => {
             )
           )
         )
-        return Effect.unit
+        return Effect.void
       }, 5)
       const sink = pipe(Sink.take<number>(1), Sink.zipRight(Sink.never))
       const fiber = yield* $(stream, Stream.run(sink), Effect.fork)

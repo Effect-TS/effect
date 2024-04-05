@@ -256,7 +256,7 @@ export const layerResult = Layer.effect(
             set: (key, value) => {
               const ttl = TimeToLive.getFinite(key, value)
               if (Option.isSome(ttl) && Duration.equals(ttl.value, Duration.zero)) {
-                return Effect.unit
+                return Effect.void
               }
               return encode("set", key, value).pipe(
                 Effect.flatMap((encoded) => storage.set(makeKey(key), encoded, ttl))

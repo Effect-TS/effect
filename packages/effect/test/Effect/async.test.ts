@@ -105,7 +105,7 @@ describe("Effect", () => {
             Deferred.await(step),
             Effect.zipRight(Effect.sync(() => resume(Ref.update(unexpectedPlace, Chunk.prepend(1)))))
           ))
-          return Effect.unit
+          return Effect.void
         }),
         Effect.flatMap(() =>
           Effect.async<void, never, never>(() => {

@@ -51,7 +51,7 @@ export const make = (
             if (error) {
               resume(Effect.die(error))
             } else {
-              resume(Effect.unit)
+              resume(Effect.void)
             }
           })
         })
@@ -62,7 +62,7 @@ export const make = (
         resume(Effect.fail(new Error.ServeError({ error })))
       })
       server.listen(options, () => {
-        resume(Effect.unit)
+        resume(Effect.void)
       })
     }))
 
@@ -73,7 +73,7 @@ export const make = (
         Effect.sync(() => new WS.WebSocketServer({ noServer: true })),
         (wss) =>
           Effect.async<void>((resume) => {
-            wss.close(() => resume(Effect.unit))
+            wss.close(() => resume(Effect.void))
           })
       ),
       Scope.extend(scope),
@@ -380,7 +380,7 @@ const handleResponse = (request: ServerRequest.ServerRequest, response: ServerRe
   Effect.suspend((): Effect.Effect<void, Error.ResponseError> => {
     const nodeResponse = (request as ServerRequestImpl).resolvedResponse
     if (nodeResponse.writableEnded) {
-      return Effect.unit
+      return Effect.void
     }
 
     let headers: Record<string, string | Array<string>> = response.headers
@@ -396,14 +396,14 @@ const handleResponse = (request: ServerRequest.ServerRequest, response: ServerRe
     if (request.method === "HEAD") {
       nodeResponse.writeHead(response.status, headers)
       nodeResponse.end()
-      return Effect.unit
+      return Effect.void
     }
     const body = response.body
     switch (body._tag) {
       case "Empty": {
         nodeResponse.writeHead(response.status, headers)
         nodeResponse.end()
-        return Effect.unit
+        return Effect.void
       }
       case "Raw": {
         nodeResponse.writeHead(response.status, headers)
@@ -423,12 +423,12 @@ const handleResponse = (request: ServerRequest.ServerRequest, response: ServerRe
           })
         }
         nodeResponse.end(body.body)
-        return Effect.unit
+        return Effect.void
       }
       case "Uint8Array": {
         nodeResponse.writeHead(response.status, headers)
         nodeResponse.end(body.body)
-        return Effect.unit
+        return Effect.void
       }
       case "FormData": {
         return Effect.async<void, Error.ResponseError>((resume) => {
@@ -450,7 +450,7 @@ const handleResponse = (request: ServerRequest.ServerRequest, response: ServerRe
               ))
             })
             .once("finish", () => {
-              resume(Effect.unit)
+              resume(Effect.void)
             })
         })
       }

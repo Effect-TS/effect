@@ -117,7 +117,7 @@ export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket>
           return requests.offer(metricsSnapshot())
         }
         case "Pong": {
-          return Effect.unit
+          return Effect.void
         }
       }
     }),

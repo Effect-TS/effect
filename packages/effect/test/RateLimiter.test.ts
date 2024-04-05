@@ -146,11 +146,11 @@ describe("RateLimiter", () => {
         const deferred = yield* _(Deferred.make<void>())
 
         // Use up all of the available tokens
-        yield* _(Effect.forEach(ReadonlyArray.range(1, 10), () => limit(Effect.unit)))
+        yield* _(Effect.forEach(ReadonlyArray.range(1, 10), () => limit(Effect.void)))
 
         // Make an additional request when there are no tokens available
         yield* _(
-          limit(Effect.unit),
+          limit(Effect.void),
           Effect.zipRight(Deferred.succeed(deferred, void 0)),
           Effect.fork
         )
@@ -295,7 +295,7 @@ const RateLimiterTestSuite = (algorithm: "fixed-window" | "token-bucket") => {
         interval: "1 seconds",
         algorithm
       }))
-      yield* _(limit(Effect.unit))
+      yield* _(limit(Effect.void))
       const fiber = yield* _(Effect.fork(limit(Ref.set(count, 1))))
       const interruption = yield* _(Effect.fork(Fiber.interrupt(fiber)))
       yield* _(Fiber.join(interruption))
@@ -331,8 +331,8 @@ const RateLimiterTestSuite = (algorithm: "fixed-window" | "token-bucket") => {
         interval: "1 seconds",
         algorithm
       }))
-      yield* _(limit(Effect.unit))
-      const fiber1 = yield* _(Effect.fork(limit(Effect.unit)))
+      yield* _(limit(Effect.void))
+      const fiber1 = yield* _(Effect.fork(limit(Effect.void)))
       yield* _(TestClock.adjust("1 seconds"))
       yield* _(Fiber.interrupt(fiber1))
       const fiber2 = yield* _(Effect.fork(limit(Clock.currentTimeMillis)))
@@ -361,11 +361,11 @@ const RateLimiterTestSuite = (algorithm: "fixed-window" | "token-bucket") => {
       )
       yield* _(Deferred.await(latch))
       const fibers = yield* _(
-        Effect.fork(limit(Effect.unit)),
+        Effect.fork(limit(Effect.void)),
         Effect.replicateEffect(1000)
       )
       yield* _(Fiber.interruptAll(fibers))
-      const fiber = yield* _(Effect.fork(limit(Effect.unit)))
+      const fiber = yield* _(Effect.fork(limit(Effect.void)))
       yield* _(TestClock.adjust("1 seconds"))
       yield* _(Fiber.join(fiber))
     }), 10_000)
@@ -378,10 +378,10 @@ const RateLimiterTestSuite = (algorithm: "fixed-window" | "token-bucket") => {
         algorithm
       }))
 
-      yield* _(limit(Effect.unit))
-      const fiber = yield* _(limit(Effect.unit), RateLimiter.withCost(10), Effect.fork)
+      yield* _(limit(Effect.void))
+      const fiber = yield* _(limit(Effect.void), RateLimiter.withCost(10), Effect.fork)
       yield* _(Effect.yieldNow())
       yield* _(Fiber.interrupt(fiber))
-      yield* _(limit(Effect.unit), RateLimiter.withCost(9))
+      yield* _(limit(Effect.void), RateLimiter.withCost(9))
     }))
 }

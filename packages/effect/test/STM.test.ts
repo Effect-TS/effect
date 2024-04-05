@@ -37,7 +37,7 @@ class UnpureBarrier {
     return Effect.async((cb) => {
       const check = () => {
         if (this.#isOpen) {
-          cb(Effect.unit)
+          cb(Effect.void)
         } else {
           setTimeout(() => {
             check()
@@ -135,7 +135,7 @@ const permutation = (ref1: TRef.TRef<number>, ref2: TRef.TRef<number>): STM.STM<
         ref1,
         TRef.set(b),
         STM.tap(() => pipe(ref2, TRef.set(a))),
-        STM.asUnit
+        STM.asVoid
       )
     )
   )
@@ -534,7 +534,7 @@ describe("STM", () => {
   it.effect("mergeAll - return error if it exists in list", () =>
     Effect.gen(function*($) {
       const transaction = pipe(
-        [STM.unit, STM.fail(1)] as Array<STM.STM<void, number>>,
+        [STM.void, STM.fail(1)] as Array<STM.STM<void, number>>,
         STM.mergeAll(void 0 as void, constVoid)
       )
       const result = yield* $(Effect.exit(STM.commit(transaction)))

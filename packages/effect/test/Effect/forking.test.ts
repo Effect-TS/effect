@@ -50,7 +50,7 @@ describe("Effect", () => {
       const deferred = yield* $(Deferred.make<void>())
       yield* $(
         Effect.fail<void>(void 0),
-        Effect.forkWithErrorHandler((e) => pipe(Deferred.succeed(deferred, e), Effect.asUnit))
+        Effect.forkWithErrorHandler((e) => pipe(Deferred.succeed(deferred, e), Effect.asVoid))
       )
       const result = yield* $(Deferred.await(deferred))
       assert.isUndefined(result)

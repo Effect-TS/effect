@@ -54,8 +54,8 @@ describe("Effect", () => {
           pipe(
             Effect.acquireUseRelease(
               pipe(Deferred.succeed(deferred, void 0), Effect.zipLeft(Deferred.await(awaiter))),
-              () => Effect.unit,
-              () => Effect.unit
+              () => Effect.void,
+              () => Effect.void
             ),
             Effect.forkDaemon
           )
@@ -84,9 +84,9 @@ describe("Effect", () => {
       const fiber = yield* $(
         Effect.fork(
           Effect.acquireUseRelease(
-            Effect.unit,
+            Effect.void,
             () => Effect.never,
-            () => Effect.unit
+            () => Effect.void
           )
         )
       )
@@ -100,9 +100,9 @@ describe("Effect", () => {
       const fiber = yield* $(
         Effect.fork(
           Effect.acquireUseRelease(
-            Effect.unit,
+            Effect.void,
             () => pipe(Deferred.succeed(deferred1, void 0), Effect.zipRight(Effect.never)),
-            () => pipe(Deferred.succeed(deferred2, void 0), Effect.zipRight(Effect.unit))
+            () => pipe(Deferred.succeed(deferred2, void 0), Effect.zipRight(Effect.void))
           )
         )
       )
@@ -127,7 +127,7 @@ describe("Effect", () => {
         pipe(
           Effect.acquireUseRelease(
             pipe(Deferred.succeed(deferred1, void 0), Effect.zipRight(Deferred.await(deferred2))),
-            () => Effect.unit,
+            () => Effect.void,
             () => Deferred.await(deferred3)
           ),
           Effect.disconnect,
@@ -143,9 +143,9 @@ describe("Effect", () => {
     Effect.gen(function*($) {
       const fiber = yield* $(
         Effect.acquireUseRelease(
-          Effect.unit,
+          Effect.void,
           () => Effect.never,
-          () => Effect.unit
+          () => Effect.void
         ),
         Effect.disconnect,
         Effect.fork
@@ -160,9 +160,9 @@ describe("Effect", () => {
       const fiber = yield* $(
         pipe(
           Effect.acquireUseRelease(
-            Effect.unit,
+            Effect.void,
             () => pipe(Deferred.succeed(deferred1, void 0), Effect.zipRight(Effect.never)),
-            () => pipe(Deferred.succeed(deferred2, void 0), Effect.zipRight(Effect.unit))
+            () => pipe(Deferred.succeed(deferred2, void 0), Effect.zipRight(Effect.void))
           ),
           Effect.disconnect,
           Effect.fork
@@ -240,7 +240,7 @@ describe("Effect", () => {
                   Effect.onExit((exit) => Ref.update(exits, Chunk.prepend(exit)))
                 )
               ),
-              Effect.asUnit
+              Effect.asVoid
             )),
             Effect.exit,
             Effect.flatMap((exit) => Ref.update(exits, Chunk.prepend(exit)))
@@ -283,7 +283,7 @@ describe("Effect", () => {
           release,
           Effect.zipRight(Effect.never),
           Effect.ensuring(pipe(
-            Effect.unit,
+            Effect.void,
             Effect.zipRight(Effect.fail("uh oh")),
             Effect.catchAll(() => Ref.set(recovered, true))
           )),
@@ -399,7 +399,7 @@ describe("Effect", () => {
           }),
           Effect.exit,
           Effect.zipRight(release),
-          Effect.zipRight(pipe(Effect.unit, Effect.forever)),
+          Effect.zipRight(pipe(Effect.void, Effect.forever)),
           Effect.ensuring(Ref.set(ref, true)),
           Effect.fork
         )
@@ -473,7 +473,7 @@ describe("Effect", () => {
                     Effect.zipRight(Effect.sleep(Duration.millis(10))),
                     Effect.zipRight(Ref.set(ref, true))
                   ),
-                () => Effect.unit
+                () => Effect.void
               ),
               Effect.uninterruptible,
               Effect.fork
@@ -499,9 +499,9 @@ describe("Effect", () => {
               Deferred.await(latch2),
               Effect.zipRight(Effect.sleep(Duration.millis(10))),
               Effect.zipRight(Ref.set(ref, true)),
-              Effect.asUnit
+              Effect.asVoid
             ),
-          () => Effect.unit
+          () => Effect.void
         ),
         Effect.uninterruptible,
         Effect.fork
@@ -519,7 +519,7 @@ describe("Effect", () => {
         pipe(
           release,
           Effect.zipRight(Effect.sleep(Duration.millis(10))),
-          Effect.zipRight(pipe(Ref.set(ref, true), Effect.asUnit)),
+          Effect.zipRight(pipe(Ref.set(ref, true), Effect.asVoid)),
           Effect.uninterruptible,
           Effect.fork
         )
@@ -553,7 +553,7 @@ describe("Effect", () => {
           pipe(ref, MutableRef.set(MutableRef.get(ref) - 1))
         })
       })
-      yield* $(Effect.unit, Effect.race(effect))
+      yield* $(Effect.void, Effect.race(effect))
       const result = MutableRef.get(ref)
       assert.strictEqual(result, 0)
     }))

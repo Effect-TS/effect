@@ -218,7 +218,7 @@ export const as: {
  * @since 2.0.0
  * @category constructors
  */
-export const asUnit: <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<void, In, R> = internal.asUnit
+export const asVoid: <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<void, In, R> = internal.asVoid
 
 /**
  * Returns a new schedule that has both the inputs and outputs of this and the

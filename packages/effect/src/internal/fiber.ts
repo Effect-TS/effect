@@ -81,9 +81,9 @@ export const done = <A, E>(exit: Exit.Exit<A, E>): Fiber.Fiber<A, E> => ({
   id: () => FiberId.none,
   await: core.succeed(exit),
   children: core.succeed([]),
-  inheritAll: core.unit,
+  inheritAll: core.void,
   poll: core.succeed(Option.some(exit)),
-  interruptAsFork: () => core.unit
+  interruptAsFork: () => core.void
 })
 
 /** @internal */
@@ -254,7 +254,7 @@ export const orElse = dual<
     pipe(
       core.interruptAsFiber(self, id),
       core.zipRight(pipe(that, core.interruptAsFiber(id))),
-      core.asUnit
+      core.asVoid
     )
 }))
 
@@ -334,8 +334,11 @@ export const status = <A, E>(self: Fiber.RuntimeFiber<A, E>): Effect.Effect<Fibe
 /** @internal */
 export const succeed = <A>(value: A): Fiber.Fiber<A> => done(Exit.succeed(value))
 
-/** @internal */
-export const unit: Fiber.Fiber<void> = succeed(void 0)
+const void_: Fiber.Fiber<void> = succeed(void 0)
+export {
+  /** @internal */
+  void_ as void
+}
 
 /** @internal */
 export const currentFiberURI = "effect/FiberCurrent"

@@ -49,7 +49,7 @@ describe("ScopedCache", () => {
               pipe(
                 Effect.forEach(
                   ReadonlyArray.map(ReadonlyArray.range(1, capacity), (n) => (n / 2) | 0),
-                  (n) => Effect.scoped(Effect.zipRight(cache.get(n), Effect.unit)),
+                  (n) => Effect.scoped(Effect.zipRight(cache.get(n), Effect.void)),
                   { concurrency: "unbounded", discard: true }
                 ),
                 Effect.flatMap(() => cache.cacheStats)
@@ -70,7 +70,7 @@ describe("ScopedCache", () => {
       const observablesResources = yield* $(
         Effect.forEach(
           ReadonlyArray.range(0, capacity - 1),
-          () => ObservableResource.makeUnit()
+          () => ObservableResource.makeVoid()
         )
       )
       const scopedCache = ScopedCache.make({
@@ -82,7 +82,7 @@ describe("ScopedCache", () => {
         const cache = yield* $(scopedCache)
         yield* $(Effect.forEach(
           ReadonlyArray.range(0, capacity - 1),
-          (n) => Effect.scoped(Effect.zipRight(cache.get(n), Effect.unit)),
+          (n) => Effect.scoped(Effect.zipRight(cache.get(n), Effect.void)),
           { concurrency: "unbounded", discard: true }
         ))
         yield* $(cache.invalidate(42))
@@ -105,7 +105,7 @@ describe("ScopedCache", () => {
 
   it.effect("invalidate - should not invalidate anything before effect is evaluated", () =>
     Effect.gen(function*($) {
-      const observablesResource = yield* $(ObservableResource.makeUnit())
+      const observablesResource = yield* $(ObservableResource.makeVoid())
       const scopedCache = ScopedCache.make({
         capacity: 4,
         timeToLive: Duration.infinity,
@@ -113,11 +113,11 @@ describe("ScopedCache", () => {
       })
       yield* $(Effect.scoped(Effect.gen(function*($) {
         const cache = yield* $(scopedCache)
-        yield* $(Effect.scoped(Effect.zipRight(cache.get(void 0), Effect.unit)))
+        yield* $(Effect.scoped(Effect.zipRight(cache.get(void 0), Effect.void)))
         const invalidateEffect = cache.invalidate(void 0)
         const cacheContainsKey42BeforeInvalidate = yield* $(cache.contains(void 0))
         yield* $(observablesResource.assertAcquiredOnceAndNotCleaned())
-        yield* $(Effect.scoped(Effect.zipRight(cache.get(void 0), Effect.unit)))
+        yield* $(Effect.scoped(Effect.zipRight(cache.get(void 0), Effect.void)))
         yield* $(invalidateEffect)
         const cacheContainsKey42AfterInvalidate = yield* $(cache.contains(void 0))
         yield* $(observablesResource.assertAcquiredOnceAndCleaned())
@@ -132,7 +132,7 @@ describe("ScopedCache", () => {
       const observablesResources = yield* $(
         Effect.forEach(
           ReadonlyArray.range(0, capacity - 1),
-          () => ObservableResource.makeUnit()
+          () => ObservableResource.makeVoid()
         )
       )
       const scopedCache = ScopedCache.make({
@@ -144,7 +144,7 @@ describe("ScopedCache", () => {
         const cache = yield* $(scopedCache)
         yield* $(Effect.forEach(
           ReadonlyArray.range(0, capacity - 1),
-          (n) => Effect.scoped(Effect.zipRight(cache.get(n), Effect.unit)),
+          (n) => Effect.scoped(Effect.zipRight(cache.get(n), Effect.void)),
           { concurrency: "unbounded", discard: true }
         ))
         yield* $(cache.invalidateAll)
@@ -170,7 +170,7 @@ describe("ScopedCache", () => {
 
   it.effect("get - should not put anything in the cache before the scoped effect returned by get is used", () =>
     Effect.gen(function*($) {
-      const observablesResource = yield* $(ObservableResource.makeUnit())
+      const observablesResource = yield* $(ObservableResource.makeVoid())
       const scopedCache = ScopedCache.make({
         capacity: 1,
         timeToLive: Duration.seconds(60),
@@ -261,7 +261,7 @@ describe("ScopedCache", () => {
 
   it.effect("get - sequential use of the scoped effect returned by a single call to get should create only one resource", () =>
     Effect.gen(function*($) {
-      const subResource = yield* $(ObservableResource.makeUnit())
+      const subResource = yield* $(ObservableResource.makeVoid())
       const scopedCache = ScopedCache.make({
         capacity: 1,
         timeToLive: Duration.seconds(60),
@@ -282,7 +282,7 @@ describe("ScopedCache", () => {
 
   it.effect("get - sequential use should create only one resource", () =>
     Effect.gen(function*($) {
-      const subResource = yield* $(ObservableResource.makeUnit())
+      const subResource = yield* $(ObservableResource.makeVoid())
       const scopedCache = ScopedCache.make({
         capacity: 1,
         timeToLive: Duration.seconds(60),
@@ -325,7 +325,7 @@ describe("ScopedCache", () => {
 
   it.effect("get - concurrent use of the scoped effect returned by a single call to get should create only one resource", () =>
     Effect.gen(function*($) {
-      const subResource = yield* $(ObservableResource.makeUnit())
+      const subResource = yield* $(ObservableResource.makeVoid())
       const scopedCache = ScopedCache.make({
         capacity: 1,
         timeToLive: Duration.seconds(60),
@@ -345,8 +345,8 @@ describe("ScopedCache", () => {
         yield* $(subResource.assertAcquiredOnceAndNotCleaned())
         yield* $(acquire1)
         yield* $(subResource.assertAcquiredOnceAndNotCleaned())
-        yield* $(release2(Exit.unit))
-        yield* $(release1(Exit.unit))
+        yield* $(release2(Exit.void))
+        yield* $(release1(Exit.void))
         yield* $(subResource.assertAcquiredOnceAndNotCleaned())
       })))
       yield* $(subResource.assertAcquiredOnceAndCleaned())
@@ -381,7 +381,7 @@ describe("ScopedCache", () => {
 
   it.effect("get - when two scoped effects returned by two calls to get live longer than the cache, the resource should be cleaned only when it is not in use anymore", () =>
     Effect.gen(function*($) {
-      const subResource = yield* $(ObservableResource.makeUnit())
+      const subResource = yield* $(ObservableResource.makeVoid())
       const scopedCache = ScopedCache.make({
         capacity: 1,
         timeToLive: Duration.seconds(60),
@@ -404,15 +404,15 @@ describe("ScopedCache", () => {
         return [release1, release2] as const
       })))
       yield* $(subResource.assertAcquiredOnceAndNotCleaned())
-      yield* $(release1(Exit.unit))
+      yield* $(release1(Exit.void))
       yield* $(subResource.assertAcquiredOnceAndNotCleaned())
-      yield* $(release2(Exit.unit))
+      yield* $(release2(Exit.void))
       yield* $(subResource.assertAcquiredOnceAndCleaned())
     }))
 
   it.effect("get - when two scoped effects obtained by a single scoped effect returned by a single call to get live longer than the cache, the resource should be cleaned only when it is not in use anymore", () =>
     Effect.gen(function*($) {
-      const subResource = yield* $(ObservableResource.makeUnit())
+      const subResource = yield* $(ObservableResource.makeVoid())
       const scopedCache = ScopedCache.make({
         capacity: 1,
         timeToLive: Duration.seconds(60),
@@ -430,9 +430,9 @@ describe("ScopedCache", () => {
         return [release1, release2] as const
       })))
       yield* $(subResource.assertAcquiredOnceAndNotCleaned())
-      yield* $(release1(Exit.unit))
+      yield* $(release1(Exit.void))
       yield* $(subResource.assertAcquiredOnceAndNotCleaned())
-      yield* $(release2(Exit.unit))
+      yield* $(release2(Exit.void))
       yield* $(subResource.assertAcquiredOnceAndCleaned())
     }))
 
@@ -454,7 +454,7 @@ describe("ScopedCache", () => {
           yield* $(
             Effect.forEach(
               ReadonlyArray.range(0, numCreatedKey - 1),
-              (key) => Effect.scoped(Effect.asUnit(cache.get(key))),
+              (key) => Effect.scoped(Effect.asVoid(cache.get(key))),
               { discard: true }
             )
           )
@@ -482,7 +482,7 @@ describe("ScopedCache", () => {
 
   it.effect("get - the scoped effect returned by get should recall lookup function if resource is too old and release the previous resource", () =>
     Effect.gen(function*($) {
-      const watchableLookup = yield* $(WatchableLookup.makeUnit())
+      const watchableLookup = yield* $(WatchableLookup.makeVoid())
       yield* $(Effect.scoped(Effect.gen(function*($) {
         const cache = yield* $(ScopedCache.make({
           capacity: 10,
@@ -490,15 +490,15 @@ describe("ScopedCache", () => {
           lookup: (key: void) => watchableLookup(key)
         }))
         const scoped = cache.get(void 0)
-        yield* $(Effect.scoped(Effect.asUnit(scoped)))
+        yield* $(Effect.scoped(Effect.asVoid(scoped)))
         yield* $(TestClock.adjust(Duration.seconds(5)))
-        yield* $(Effect.scoped(Effect.asUnit(scoped)))
+        yield* $(Effect.scoped(Effect.asVoid(scoped)))
         yield* $(watchableLookup.assertCalledTimes(void 0, (n) => expect(n).toBe(1)))
         yield* $(TestClock.adjust(Duration.seconds(4)))
-        yield* $(Effect.scoped(Effect.asUnit(scoped)))
+        yield* $(Effect.scoped(Effect.asVoid(scoped)))
         yield* $(watchableLookup.assertCalledTimes(void 0, (n) => expect(n).toBe(1)))
         yield* $(TestClock.adjust(Duration.seconds(2)))
-        yield* $(Effect.scoped(Effect.asUnit(scoped)))
+        yield* $(Effect.scoped(Effect.asVoid(scoped)))
         yield* $(watchableLookup.assertCalledTimes(void 0, (n) => expect(n).toBe(2)))
         yield* $(watchableLookup.assertFirstNCreatedResourcesCleaned(void 0, 1))
       })))
@@ -506,14 +506,14 @@ describe("ScopedCache", () => {
 
   it.effect("get - should recall lookup function if resource is too old and release old resource when using the scoped effect multiple times", () =>
     Effect.gen(function*($) {
-      const watchableLookup = yield* $(WatchableLookup.makeUnit())
+      const watchableLookup = yield* $(WatchableLookup.makeVoid())
       yield* $(Effect.scoped(Effect.gen(function*($) {
         const cache = yield* $(ScopedCache.make({
           capacity: 10,
           timeToLive: Duration.seconds(10),
           lookup: (key: void) => watchableLookup(key)
         }))
-        const scoped = Effect.scoped(Effect.asUnit(cache.get(void 0)))
+        const scoped = Effect.scoped(Effect.asVoid(cache.get(void 0)))
         yield* $(scoped)
         yield* $(TestClock.adjust(Duration.seconds(5)))
         yield* $(scoped)
@@ -530,7 +530,7 @@ describe("ScopedCache", () => {
 
   it.effect("get - when resource is expired but still used it should wait until resource is not cleaned anymore to clean immediately", () =>
     Effect.gen(function*($) {
-      const watchableLookup = yield* $(WatchableLookup.makeUnit())
+      const watchableLookup = yield* $(WatchableLookup.makeVoid())
       yield* $(Effect.scoped(Effect.gen(function*($) {
         const cache = yield* $(ScopedCache.make({
           capacity: 10,
@@ -545,11 +545,11 @@ describe("ScopedCache", () => {
         const release: Scope.Scope.Finalizer = (exit) => Scope.close(scope, exit)
         yield* $(acquire)
         yield* $(TestClock.adjust(Duration.seconds(11)))
-        yield* $(Effect.scoped(Effect.asUnit(cache.get(void 0))))
+        yield* $(Effect.scoped(Effect.asVoid(cache.get(void 0))))
         yield* $(watchableLookup.assertCalledTimes(void 0, (n) => expect(n).toBe(2)))
         const firstCreatedResource = yield* $(watchableLookup.firstCreatedResource(void 0))
         yield* $(firstCreatedResource.assertAcquiredOnceAndNotCleaned())
-        yield* $(release(Exit.unit))
+        yield* $(release(Exit.void))
         yield* $(firstCreatedResource.assertAcquiredOnceAndCleaned())
       })))
     }))
@@ -633,7 +633,7 @@ describe("ScopedCache", () => {
 
   it.effect("refresh - should clean old resource when making a new one", () =>
     Effect.gen(function*($) {
-      const watchableLookup = yield* $(WatchableLookup.makeUnit())
+      const watchableLookup = yield* $(WatchableLookup.makeVoid())
       const scopedCache = ScopedCache.make({
         capacity: 1,
         timeToLive: Duration.infinity,
@@ -696,7 +696,7 @@ describe("ScopedCache", () => {
       const scopedCache = ScopedCache.make({
         capacity,
         timeToLive: Duration.infinity,
-        lookup: (_: number) => Effect.unit
+        lookup: (_: number) => Effect.void
       })
       yield* $(Effect.scoped(Effect.gen(function*($) {
         const cache = yield* $(scopedCache)
@@ -752,14 +752,14 @@ describe("ScopedCache", () => {
 
   it.effect("refresh - should not clean the resource if it's not yet expired until the new resource is ready", () =>
     Effect.gen(function*($) {
-      const watchableLookup = yield* $(WatchableLookup.makeUnit())
+      const watchableLookup = yield* $(WatchableLookup.makeVoid())
       yield* $(Effect.scoped(Effect.gen(function*($) {
         const cache = yield* $(ScopedCache.make({
           capacity: 10,
           timeToLive: Duration.seconds(10),
           lookup: watchableLookup
         }))
-        yield* $(Effect.scoped(Effect.asUnit(cache.get(void 0))))
+        yield* $(Effect.scoped(Effect.asVoid(cache.get(void 0))))
         yield* $(TestClock.adjust(Duration.seconds(9)))
         yield* $(watchableLookup.lock())
         const refreshFiber = yield* $(Effect.fork(cache.refresh(void 0)))
@@ -783,14 +783,14 @@ describe("ScopedCache", () => {
 
   it.effect("refresh - should clean the resource if it's expired and not in used", () =>
     Effect.gen(function*($) {
-      const watchableLookup = yield* $(WatchableLookup.makeUnit())
+      const watchableLookup = yield* $(WatchableLookup.makeVoid())
       yield* $(Effect.scoped(Effect.gen(function*($) {
         const cache = yield* $(ScopedCache.make({
           capacity: 10,
           timeToLive: Duration.seconds(10),
           lookup: watchableLookup
         }))
-        yield* $(Effect.scoped(Effect.asUnit(cache.get(void 0))))
+        yield* $(Effect.scoped(Effect.asVoid(cache.get(void 0))))
         yield* $(TestClock.adjust(Duration.seconds(11)))
         yield* $(watchableLookup.lock())
         const refreshFiber = yield* $(Effect.fork(cache.refresh(void 0)))
@@ -812,7 +812,7 @@ describe("ScopedCache", () => {
 
   it.effect("refresh - should wait to clean expired resource until it's not in use anymore", () =>
     Effect.gen(function*($) {
-      const watchableLookup = yield* $(WatchableLookup.makeUnit())
+      const watchableLookup = yield* $(WatchableLookup.makeVoid())
       yield* $(Effect.scoped(Effect.gen(function*($) {
         const cache = yield* $(ScopedCache.make({
           capacity: 10,
@@ -831,7 +831,7 @@ describe("ScopedCache", () => {
         yield* $(watchableLookup.assertCalledTimes(void 0, (n) => expect(n).toBe(2)))
         const firstCreatedResource = yield* $(watchableLookup.firstCreatedResource(void 0))
         yield* $(firstCreatedResource.assertAcquiredOnceAndNotCleaned())
-        yield* $(release(Exit.unit))
+        yield* $(release(Exit.void))
         yield* $(firstCreatedResource.assertAcquiredOnceAndCleaned())
       })))
     }))
@@ -841,7 +841,7 @@ describe("ScopedCache", () => {
         ScopedCache.make({
           capacity: 10,
           timeToLive: Duration.seconds(10),
-          lookup: () => Effect.unit
+          lookup: () => Effect.void
         }),
         Effect.scoped
       )

@@ -40,7 +40,7 @@ class ObservableResourceImpl<E, V> implements ObservableResource<E, V> {
   }
 }
 
-export const makeUnit = (): Effect.Effect<ObservableResource<never, void>> => make(void 0)
+export const makeVoid = (): Effect.Effect<ObservableResource<never, void>> => make(void 0)
 
 export const make = <V>(value: V): Effect.Effect<ObservableResource<never, V>> => makeEffect(Effect.succeed(value))
 

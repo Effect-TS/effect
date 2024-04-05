@@ -219,7 +219,7 @@ describe("Stream", () => {
       const ref = yield* $(Ref.make(0))
       const schedule = Schedule.spaced(Duration.seconds(1))
       const fiber = yield* $(
-        Stream.repeatEffectWithSchedule(Effect.unit, schedule),
+        Stream.repeatEffectWithSchedule(Effect.void, schedule),
         Stream.tap(() => Ref.update(ref, (n) => n + 1)),
         Stream.runDrain,
         Effect.fork

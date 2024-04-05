@@ -36,7 +36,7 @@ describe("Channel", () => {
             pipe(
               channel,
               Channel.concatMap(() => Channel.write(n)),
-              Channel.asUnit
+              Channel.asVoid
             )
         ),
         Channel.runCollect

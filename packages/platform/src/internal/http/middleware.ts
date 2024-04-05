@@ -54,7 +54,7 @@ export const logger = make((httpApp) => {
     return Effect.withLogSpan(
       Effect.onExit(httpApp, (exit) => {
         if (fiber.getFiberRef(loggerDisabled)) {
-          return Effect.unit
+          return Effect.void
         }
         return exit._tag === "Failure" ?
           Effect.annotateLogs(Effect.log(exit.cause), {

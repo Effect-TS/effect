@@ -252,7 +252,7 @@ const handleBuiltInOption = <R, E, A>(
             )
             return shouldRunCommand
               ? Console.log().pipe(Effect.zipRight(run(self, finalArgs, execute)))
-              : Effect.unit
+              : Effect.void
           }))
         ),
         Effect.catchAll((e) => {

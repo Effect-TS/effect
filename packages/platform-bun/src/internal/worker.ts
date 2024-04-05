@@ -14,7 +14,7 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
       yield* _(Effect.addFinalizer(() =>
         pipe(
           Effect.async<void>((resume, signal) => {
-            port.addEventListener("close", () => resume(Effect.unit), { once: true, signal })
+            port.addEventListener("close", () => resume(Effect.void), { once: true, signal })
             port.postMessage([1])
           }),
           // TODO: make configurable

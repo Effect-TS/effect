@@ -27,7 +27,7 @@ const scopedRefVariance = {
 
 /** @internal  */
 const close = <A>(self: ScopedRef.ScopedRef<A>): Effect.Effect<void> =>
-  core.flatMap(ref.get(self.ref), (tuple) => tuple[0].close(core.exitUnit))
+  core.flatMap(ref.get(self.ref), (tuple) => tuple[0].close(core.exitVoid))
 
 /** @internal */
 export const fromAcquire = <A, E, R>(
@@ -83,14 +83,14 @@ export const set = dual<
   core.flatten(
     synchronized.modifyEffect(self.ref, ([oldScope, value]) =>
       core.uninterruptible(
-        core.scopeClose(oldScope, core.exitUnit).pipe(
+        core.scopeClose(oldScope, core.exitVoid).pipe(
           core.zipRight(fiberRuntime.scopeMake()),
           core.flatMap((newScope) =>
             core.exit(fiberRuntime.scopeExtend(acquire, newScope)).pipe(
               core.flatMap((exit) =>
                 core.exitMatch(exit, {
                   onFailure: (cause) =>
-                    core.scopeClose(newScope, core.exitUnit).pipe(
+                    core.scopeClose(newScope, core.exitVoid).pipe(
                       core.as(
                         [
                           core.failCause(cause) as Effect.Effect<void, E>,
@@ -101,7 +101,7 @@ export const set = dual<
                   onSuccess: (value) =>
                     core.succeed(
                       [
-                        core.unit as Effect.Effect<void, E>,
+                        core.void as Effect.Effect<void, E>,
                         [newScope, value] as const
                       ] as const
                     )

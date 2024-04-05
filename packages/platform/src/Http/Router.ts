@@ -84,7 +84,7 @@ export interface Route<E = never, R = never> extends Inspectable {
   readonly [RouteTypeId]: RouteTypeId
   readonly method: Method.Method | "*"
   readonly path: PathInput
-  readonly handler: Route.Handler<R, E>
+  readonly handler: Route.Handler<E, R>
   readonly prefix: Option.Option<string>
   readonly uninterruptible: boolean
 }
@@ -96,7 +96,7 @@ export declare namespace Route {
   /**
    * @since 1.0.0
    */
-  export type Handler<R, E> = Effect.Effect<
+  export type Handler<E, R> = Effect.Effect<
     ServerResponse.ServerResponse,
     E,
     R | RouteContext | ServerRequest.ServerRequest
@@ -242,10 +242,10 @@ export const fromIterable: <R extends Route<any, any>>(
  * @since 1.0.0
  * @category constructors
  */
-export const makeRoute: <R, E>(
+export const makeRoute: <E, R>(
   method: Method.Method,
   path: PathInput,
-  handler: Route.Handler<R, E>,
+  handler: Route.Handler<E, R>,
   prefix?: Option.Option<string>,
   uninterruptible?: boolean
 ) => Route<E, Exclude<R, RouteContext | ServerRequest.ServerRequest | Scope.Scope>> = internal.makeRoute
@@ -497,12 +497,12 @@ export const options: {
  * @category combinators
  */
 export const use: {
-  <R, E, R1, E1>(
-    f: (self: Route.Handler<R, E>) => App.Default<E1, R1>
+  <E, R, R1, E1>(
+    f: (self: Route.Handler<E, R>) => App.Default<E1, R1>
   ): (self: Router<E, R>) => Router<E1, Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>>
-  <R, E, R1, E1>(
+  <E, R, R1, E1>(
     self: Router<E, R>,
-    f: (self: Route.Handler<R, E>) => App.Default<E1, R1>
+    f: (self: Route.Handler<E, R>) => App.Default<E1, R1>
   ): Router<E1, Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>>
 } = internal.use
 
@@ -511,12 +511,12 @@ export const use: {
  * @category combinators
  */
 export const catchAll: {
-  <E, R2, E2>(
-    f: (e: E) => Route.Handler<R2, E2>
+  <E, E2, R2>(
+    f: (e: E) => Route.Handler<E2, R2>
   ): <R>(self: Router<E, R>) => Router<E2, R | Exclude<R2, RouteContext | ServerRequest.ServerRequest | Scope.Scope>>
-  <R, E, R2, E2>(
+  <R, E, E2, R2>(
     self: Router<E, R>,
-    f: (e: E) => Route.Handler<R2, E2>
+    f: (e: E) => Route.Handler<E2, R2>
   ): Router<E2, R | Exclude<R2, RouteContext | ServerRequest.ServerRequest | Scope.Scope>>
 } = internal.catchAll
 
@@ -525,12 +525,12 @@ export const catchAll: {
  * @category combinators
  */
 export const catchAllCause: {
-  <E, R2, E2>(
-    f: (e: Cause.Cause<E>) => Route.Handler<R2, E2>
+  <E, E2, R2>(
+    f: (e: Cause.Cause<E>) => Route.Handler<E2, R2>
   ): <R>(self: Router<E, R>) => Router<E2, R | Exclude<R2, RouteContext | ServerRequest.ServerRequest | Scope.Scope>>
-  <R, E, R2, E2>(
+  <R, E, E2, R2>(
     self: Router<E, R>,
-    f: (e: Cause.Cause<E>) => Route.Handler<R2, E2>
+    f: (e: Cause.Cause<E>) => Route.Handler<E2, R2>
   ): Router<E2, R | Exclude<R2, RouteContext | ServerRequest.ServerRequest | Scope.Scope>>
 } = internal.catchAllCause
 
@@ -539,16 +539,16 @@ export const catchAllCause: {
  * @category combinators
  */
 export const catchTag: {
-  <K extends E extends { _tag: string } ? E["_tag"] : never, E, R1, E1>(
+  <K extends E extends { _tag: string } ? E["_tag"] : never, E, E1, R1>(
     k: K,
-    f: (e: Extract<E, { _tag: K }>) => Route.Handler<R1, E1>
+    f: (e: Extract<E, { _tag: K }>) => Route.Handler<E1, R1>
   ): <R>(
     self: Router<E, R>
   ) => Router<E1 | Exclude<E, { _tag: K }>, R | Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>>
-  <R, E, K extends E extends { _tag: string } ? E["_tag"] : never, R1, E1>(
+  <R, E, K extends E extends { _tag: string } ? E["_tag"] : never, E1, R1>(
     self: Router<E, R>,
     k: K,
-    f: (e: Extract<E, { _tag: K }>) => Route.Handler<R1, E1>
+    f: (e: Extract<E, { _tag: K }>) => Route.Handler<E1, R1>
   ): Router<E1 | Exclude<E, { _tag: K }>, R | Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>>
 } = internal.catchTag
 

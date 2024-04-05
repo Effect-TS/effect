@@ -139,5 +139,5 @@ export const reloadFork = <T extends Context.Tag<any, any>>(
       reloadable.reload,
       effect.ignoreLogged,
       fiberRuntime.forkDaemon,
-      core.asUnit
+      core.asVoid
     ))

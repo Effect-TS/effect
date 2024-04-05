@@ -66,7 +66,7 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
           core.scopeAddFinalizer(
             closeableScope,
             core.fiberIdWith((id) =>
-              equals(id, fiberRuntime.id()) ? core.unit : core.interruptAsFiber(fiberRuntime, id)
+              equals(id, fiberRuntime.id()) ? core.void : core.interruptAsFiber(fiberRuntime, id)
             )
           ),
           core.onExit(self, (exit) => _scope.close(closeableScope, exit))
@@ -483,12 +483,12 @@ export const asyncEffect = <A, E, R, R3, E2, R2>(
                     onFailure: (cause) => core.deferredFailCause(deferred, cause),
                     onSuccess: (cleanup_) => {
                       cleanup = cleanup_
-                      return core.unit
+                      return core.void
                     }
                   }
                 )
               )),
-              restore(core.onInterrupt(core.deferredAwait(deferred), () => cleanup ?? core.unit))
+              restore(core.onInterrupt(core.deferredAwait(deferred), () => cleanup ?? core.void))
             )
           ))
     )

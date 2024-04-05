@@ -139,7 +139,7 @@ describe("Channel", () => {
         onOtherDone: (_rightDone) =>
           MergeDecision.Done(pipe(
             Ref.get(interrupted),
-            Effect.flatMap((isInterrupted) => isInterrupted ? Effect.unit : Effect.fail(void 0))
+            Effect.flatMap((isInterrupted) => isInterrupted ? Effect.void : Effect.fail(void 0))
           ))
       })
       const result = yield* $(Effect.exit(Channel.runDrain(merged)))

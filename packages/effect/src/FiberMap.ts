@@ -280,7 +280,7 @@ export const remove: {
   Effect.suspend(() => {
     const fiber = MutableHashMap.get(self.backing, key)
     if (fiber._tag === "None") {
-      return Effect.unit
+      return Effect.void
     }
     MutableHashMap.remove(self.backing, key)
     return Fiber.interrupt(fiber.value)

@@ -430,7 +430,7 @@ export const as: {
 )
 
 /* @internal */
-export const asUnit = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<void, E, R> => as(self, void 0)
+export const asVoid = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<void, E, R> => as(self, void 0)
 
 /* @internal */
 export const custom: {
@@ -515,7 +515,7 @@ export const async = <A, E = never, R = never>(
         if (controllerRef) {
           controllerRef.abort()
         }
-        return cancelerRef ?? unit
+        return cancelerRef ?? void_
       }) :
       effect
   })
@@ -1063,7 +1063,7 @@ export const onError: {
   self: Effect.Effect<A, E, R>,
   cleanup: (cause: Cause.Cause<E>) => Effect.Effect<X, never, R2>
 ): Effect.Effect<A, E, R2 | R> =>
-  onExit(self, (exit) => exitIsSuccess(exit) ? unit : cleanup(exit.effect_instruction_i0)))
+  onExit(self, (exit) => exitIsSuccess(exit) ? void_ : cleanup(exit.effect_instruction_i0)))
 
 /* @internal */
 export const onExit: {
@@ -1112,9 +1112,9 @@ export const onInterrupt: {
     exitMatch({
       onFailure: (cause) =>
         internalCause.isInterruptedOnly(cause)
-          ? asUnit(cleanup(internalCause.interruptors(cause)))
-          : unit,
-      onSuccess: () => unit
+          ? asVoid(cleanup(internalCause.interruptors(cause)))
+          : void_,
+      onSuccess: () => void_
     })
   ))
 
@@ -1300,8 +1300,11 @@ export const uninterruptibleMask = <A, E, R>(
     return effect
   })
 
-/* @internal */
-export const unit: Effect.Effect<void> = succeed(void 0)
+const void_: Effect.Effect<void> = succeed(void 0)
+export {
+  /* @internal */
+  void_ as void
+}
 
 /* @internal */
 export const updateRuntimeFlags = (patch: RuntimeFlagsPatch.RuntimeFlagsPatch): Effect.Effect<void> => {
@@ -1666,7 +1669,7 @@ export const fiberRefSet = dual<
 export const fiberRefDelete = <A>(self: FiberRef.FiberRef<A>): Effect.Effect<void> =>
   withFiberRuntime((state) => {
     state.unsafeDeleteFiberRef(self)
-    return unit
+    return void_
   })
 
 /* @internal */
@@ -2065,7 +2068,7 @@ export const CloseableScopeTypeId: Scope.CloseableScopeTypeId = Symbol.for(
 export const scopeAddFinalizer = (
   self: Scope.Scope,
   finalizer: Effect.Effect<unknown>
-): Effect.Effect<void> => self.addFinalizer(() => asUnit(finalizer))
+): Effect.Effect<void> => self.addFinalizer(() => asVoid(finalizer))
 
 /* @internal */
 export const scopeAddFinalizerExit = (
@@ -2308,7 +2311,7 @@ export const exitAs = dual<
 })
 
 /** @internal */
-export const exitAsUnit = <A, E>(self: Exit.Exit<A, E>): Exit.Exit<void, E> => exitAs(self, void 0)
+export const exitAsVoid = <A, E>(self: Exit.Exit<A, E>): Exit.Exit<void, E> => exitAs(self, void 0)
 
 /** @internal */
 export const exitCauseOption = <A, E>(self: Exit.Exit<A, E>): Option.Option<Cause.Cause<E>> => {
@@ -2576,7 +2579,7 @@ export const exitSucceed = <A>(value: A): Exit.Exit<A> => {
 }
 
 /** @internal */
-export const exitUnit: Exit.Exit<void> = exitSucceed(void 0)
+export const exitVoid: Exit.Exit<void> = exitSucceed(void 0)
 
 /** @internal */
 export const exitZip = dual<
@@ -2964,7 +2967,7 @@ const NoopSpanProto: Tracer.Span = {
     _tag: "Ended",
     startTime: BigInt(0),
     endTime: BigInt(0),
-    exit: exitUnit
+    exit: exitVoid
   },
   attributes: new Map(),
   links: [],

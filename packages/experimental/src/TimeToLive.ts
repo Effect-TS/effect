@@ -31,7 +31,7 @@ export interface TimeToLive<A = unknown, E = unknown> {
  * @since 1.0.0
  * @category accessors
  */
-export const get = <A, E>(u: unknown, exit: Exit.Exit<A, E> = Exit.unit as any): Duration.Duration =>
+export const get = <A, E>(u: unknown, exit: Exit.Exit<A, E> = Exit.void as any): Duration.Duration =>
   isTimeToLive(u) ? Duration.decode(u[symbol](exit)) : Duration.infinity
 
 /**
@@ -40,7 +40,7 @@ export const get = <A, E>(u: unknown, exit: Exit.Exit<A, E> = Exit.unit as any):
  */
 export const getFinite = <A, E>(
   u: unknown,
-  exit: Exit.Exit<A, E> = Exit.unit as any
+  exit: Exit.Exit<A, E> = Exit.void as any
 ): Option.Option<Duration.Duration> => {
   const value = get(u, exit)
   return Duration.isFinite(value) ? Option.some(value) : Option.none()

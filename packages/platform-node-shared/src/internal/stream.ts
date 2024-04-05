@@ -224,21 +224,21 @@ export const writeInput = <IE, A>(
   writable: Writable | NodeJS.WritableStream,
   onFailure: (cause: Cause.Cause<IE>) => Effect.Effect<void>,
   { encoding, endOnDone = true }: FromWritableOptions = {},
-  onDone = Effect.unit
+  onDone = Effect.void
 ): AsyncInput.AsyncInputProducer<IE, Chunk.Chunk<A>, unknown> => {
   const write = writeEffect(writable, encoding)
   const close = endOnDone
     ? Effect.async<void>((resume) => {
       if ("closed" in writable && writable.closed) {
-        resume(Effect.unit)
+        resume(Effect.void)
       } else {
-        writable.once("finish", () => resume(Effect.unit))
+        writable.once("finish", () => resume(Effect.void))
         writable.end()
       }
     })
-    : Effect.unit
+    : Effect.void
   return {
-    awaitRead: () => Effect.unit,
+    awaitRead: () => Effect.void,
     emit: write,
     error: (cause) => Effect.zipRight(close, onFailure(cause)),
     done: (_) => Effect.zipRight(close, onDone)
@@ -252,7 +252,7 @@ export const writeEffect = <A>(
 ) =>
 (chunk: Chunk.Chunk<A>) =>
   chunk.length === 0 ?
-    Effect.unit :
+    Effect.void :
     Effect.async<void>((resume) => {
       const iterator = chunk[Symbol.iterator]()
       let next = iterator.next()
@@ -261,7 +261,7 @@ export const writeEffect = <A>(
         next = iterator.next()
         const success = writable.write(item.value, encoding as any)
         if (next.done) {
-          resume(Effect.unit)
+          resume(Effect.void)
         } else if (success) {
           loop()
         } else {
@@ -287,7 +287,7 @@ const readableOffer = <E>(
       queue.unsafeOffer(Either.left(Exit.fail(onError(err))))
     })
     readable.on("end", () => {
-      queue.unsafeOffer(Either.left(Exit.unit))
+      queue.unsafeOffer(Either.left(Exit.void))
     })
     if (readable.readable) {
       queue.unsafeOffer(Either.right(void 0))
@@ -305,7 +305,7 @@ const readableTake = <E, A>(
     Either.match({
       onLeft: Exit.match({
         onFailure: Channel.failCause,
-        onSuccess: (_) => Channel.unit
+        onSuccess: (_) => Channel.void
       }),
       onRight: (_) => Channel.flatMap(read, () => loop)
     })
@@ -376,7 +376,7 @@ class StreamAdapter<E, R> extends Readable {
   }
 
   _destroy(_error: Error | null, callback: (error?: Error | null | undefined) => void): void {
-    Runtime.runFork(this.runtime)(Scope.close(this.scope, Exit.unit)).addObserver((exit) => {
+    Runtime.runFork(this.runtime)(Scope.close(this.scope, Exit.void)).addObserver((exit) => {
       callback(exit._tag === "Failure" ? Cause.squash(exit.cause) as any : null)
     })
   }
