@@ -3,6 +3,7 @@ import { dual } from "../Function.js"
 import * as MutableRef from "../MutableRef.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
+import * as Readable from "../Readable.js"
 import type * as Ref from "../Ref.js"
 import * as core from "./core.js"
 
@@ -17,7 +18,12 @@ export const refVariance = {
 
 class RefImpl<in out A> implements Ref.Ref<A> {
   readonly [RefTypeId] = refVariance
-  constructor(readonly ref: MutableRef.MutableRef<A>) {}
+  readonly [Readable.TypeId]: Readable.TypeId
+  constructor(readonly ref: MutableRef.MutableRef<A>) {
+    this[Readable.TypeId] = Readable.TypeId
+    this.get = core.sync(() => MutableRef.get(this.ref))
+  }
+  readonly get: Effect.Effect<A>
   modify<B>(f: (a: A) => readonly [B, A]): Effect.Effect<B> {
     return core.sync(() => {
       const current = MutableRef.get(this.ref)
@@ -40,7 +46,7 @@ export const unsafeMake = <A>(value: A): Ref.Ref<A> => new RefImpl(MutableRef.ma
 export const make = <A>(value: A): Effect.Effect<Ref.Ref<A>> => core.sync(() => unsafeMake(value))
 
 /** @internal */
-export const get = <A>(self: Ref.Ref<A>) => self.modify((a) => [a, a])
+export const get = <A>(self: Ref.Ref<A>) => self.get
 
 /** @internal */
 export const set = dual<

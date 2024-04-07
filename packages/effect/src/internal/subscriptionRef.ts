@@ -2,6 +2,7 @@ import * as Effect from "../Effect.js"
 import { dual, pipe } from "../Function.js"
 import { pipeArguments } from "../Pipeable.js"
 import * as PubSub from "../PubSub.js"
+import * as Readable from "../Readable.js"
 import * as Ref from "../Ref.js"
 import type { Stream } from "../Stream.js"
 import * as Subscribable from "../Subscribable.js"
@@ -26,6 +27,7 @@ const subscriptionRefVariance = {
 
 /** @internal */
 class SubscriptionRefImpl<in out A> implements SubscriptionRef.SubscriptionRef<A> {
+  readonly [Readable.TypeId]: Readable.TypeId
   readonly [Subscribable.TypeId]: Subscribable.TypeId
   readonly [Ref.RefTypeId] = _ref.refVariance
   readonly [Synchronized.SynchronizedRefTypeId] = _circular.synchronizedVariance
@@ -35,14 +37,14 @@ class SubscriptionRefImpl<in out A> implements SubscriptionRef.SubscriptionRef<A
     readonly pubsub: PubSub.PubSub<A>,
     readonly semaphore: Effect.Semaphore
   ) {
+    this[Readable.TypeId] = Readable.TypeId
     this[Subscribable.TypeId] = Subscribable.TypeId
+    this.get = Ref.get(this.ref)
   }
   pipe() {
     return pipeArguments(this, arguments)
   }
-  get get(): Effect.Effect<A> {
-    return Ref.get(this.ref)
-  }
+  readonly get: Effect.Effect<A>
   get changes(): Stream<A> {
     return pipe(
       Ref.get(this.ref),

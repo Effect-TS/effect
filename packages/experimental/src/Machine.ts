@@ -21,6 +21,7 @@ import type { Pipeable } from "effect/Pipeable"
 import { pipeArguments } from "effect/Pipeable"
 import * as PubSub from "effect/PubSub"
 import * as Queue from "effect/Queue"
+import * as Readable from "effect/Readable"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import type { Request } from "effect/Request"
 import type * as Schedule from "effect/Schedule"
@@ -302,6 +303,7 @@ export interface Actor<M extends Machine.Any> extends Subscribable.Subscribable<
 
 const ActorProto = {
   [ActorTypeId]: ActorTypeId,
+  [Readable.TypeId]: Readable.TypeId,
   [Subscribable.TypeId]: Subscribable.TypeId,
   pipe() {
     return pipeArguments(this, arguments)

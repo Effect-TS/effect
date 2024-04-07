@@ -4,7 +4,7 @@
 import type * as Effect from "./Effect.js"
 import * as internal from "./internal/ref.js"
 import type * as Option from "./Option.js"
-import type { Pipeable } from "./Pipeable.js"
+import type { Readable } from "./Readable.js"
 import type * as Types from "./Types.js"
 
 /**
@@ -23,7 +23,7 @@ export type RefTypeId = typeof RefTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Ref<in out A> extends Ref.Variance<A>, Pipeable {
+export interface Ref<in out A> extends Ref.Variance<A>, Readable<A> {
   modify<B>(f: (a: A) => readonly [B, A]): Effect.Effect<B>
 }
 

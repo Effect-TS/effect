@@ -3,8 +3,9 @@
  */
 import * as Effect from "./Effect.js"
 import { dual } from "./Function.js"
-import { type Pipeable, pipeArguments } from "./Pipeable.js"
+import { pipeArguments } from "./Pipeable.js"
 import { hasProperty } from "./Predicate.js"
+import * as Readable from "./Readable.js"
 import * as Stream from "./Stream.js"
 
 /**
@@ -23,7 +24,7 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @category models
  */
-export interface Subscribable<A, E = never, R = never> extends Pipeable {
+export interface Subscribable<A, E = never, R = never> extends Readable.Readable<A, E, R> {
   readonly [TypeId]: TypeId
   readonly get: Effect.Effect<A, E, R>
   readonly changes: Stream.Stream<A, E, R>
@@ -36,6 +37,7 @@ export interface Subscribable<A, E = never, R = never> extends Pipeable {
 export const isSubscribable = (u: unknown): u is Subscribable<unknown, unknown, unknown> => hasProperty(u, TypeId)
 
 const Proto: Omit<Subscribable<any>, "get" | "changes"> = {
+  [Readable.TypeId]: Readable.TypeId,
   [TypeId]: TypeId,
   pipe() {
     return pipeArguments(this, arguments)
