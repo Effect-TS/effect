@@ -26,7 +26,6 @@ export type TypeId = typeof TypeId
  */
 export interface Subscribable<A, E = never, R = never> extends Readable.Readable<A, E, R> {
   readonly [TypeId]: TypeId
-  readonly get: Effect.Effect<A, E, R>
   readonly changes: Stream.Stream<A, E, R>
 }
 
