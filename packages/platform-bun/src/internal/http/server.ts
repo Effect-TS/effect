@@ -45,7 +45,6 @@ export const make = (
         return new Response("not found", { status: 404 })
       }
     ]
-    const encoder = new TextEncoder()
     const server = Bun.serve<WebSocketContext>({
       ...options,
       fetch: handlerStack[0],
@@ -54,7 +53,7 @@ export const make = (
           Deferred.unsafeDone(ws.data.deferred, Exit.succeed(ws))
         },
         message(ws, message) {
-          ws.data.run(typeof message === "string" ? encoder.encode(message) : message)
+          ws.data.run(message)
         },
         close(ws, code, closeReason) {
           Deferred.unsafeDone(
@@ -214,11 +213,11 @@ export const layerConfig = (
 interface WebSocketContext {
   readonly deferred: Deferred.Deferred<ServerWebSocket<WebSocketContext>>
   readonly closeDeferred: Deferred.Deferred<void, Socket.SocketError>
-  readonly buffer: Array<Uint8Array>
-  run: (_: Uint8Array) => void
+  readonly buffer: Array<Uint8Array | string>
+  run: (_: Uint8Array | string) => void
 }
 
-function wsDefaultRun(this: WebSocketContext, _: Uint8Array) {
+function wsDefaultRun(this: WebSocketContext, _: Uint8Array | string) {
   this.buffer.push(_)
 }
 
@@ -417,21 +416,23 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.Serve
             return
           }
           resume(Effect.map(Deferred.await(deferred), (ws) => {
-            const write = (chunk: Uint8Array | Socket.CloseEvent) =>
+            const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
               Effect.sync(() =>
-                Socket.isCloseEvent(chunk)
+                typeof chunk === "string"
+                  ? ws.sendText(chunk)
+                  : Socket.isCloseEvent(chunk)
                   ? ws.close(chunk.code, chunk.reason)
                   : ws.sendBinary(chunk)
               )
             const writer = Effect.succeed(write)
-            const run = <R, E, _>(
-              handler: (_: Uint8Array) => Effect.Effect<_, E, R>
+            const runRaw = <R, E, _>(
+              handler: (_: Uint8Array | string) => Effect.Effect<_, E, R>
             ): Effect.Effect<void, Socket.SocketError | E, R> =>
               FiberSet.make<any, E>().pipe(
                 Effect.flatMap((set) =>
                   FiberSet.runtime(set)<R>().pipe(
                     Effect.flatMap((run) => {
-                      ws.data.run = function(data: Uint8Array) {
+                      ws.data.run = function(data: Uint8Array | string) {
                         run(handler(data))
                       }
                       ws.data.buffer.forEach((data) => run(handler(data)))
@@ -446,9 +447,14 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.Serve
                 semaphore.withPermits(1)
               )
 
+            const encoder = new TextEncoder()
+            const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R>) =>
+              runRaw((data) => typeof data === "string" ? handler(encoder.encode(data)) : handler(data))
+
             return Socket.Socket.of({
               [Socket.TypeId]: Socket.TypeId,
               run,
+              runRaw,
               writer
             })
           }))
