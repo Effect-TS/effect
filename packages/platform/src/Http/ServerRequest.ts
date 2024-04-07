@@ -99,7 +99,7 @@ export const upgrade: Effect.Effect<Socket.Socket, Error.RequestError, ServerReq
  */
 export const upgradeChannel: <IE = never>() => Channel<
   Chunk<Uint8Array>,
-  Chunk<Uint8Array | Socket.CloseEvent>,
+  Chunk<Uint8Array | string | Socket.CloseEvent>,
   Error.RequestError | IE | Socket.SocketError,
   IE,
   void,

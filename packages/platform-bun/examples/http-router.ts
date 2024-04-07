@@ -29,7 +29,6 @@ const HttpLive = Http.router.empty.pipe(
     "/ws",
     Stream.fromSchedule(Schedule.spaced(1000)).pipe(
       Stream.map(JSON.stringify),
-      Stream.encodeText,
       Stream.pipeThroughChannel(Http.request.upgradeChannel()),
       Stream.decodeText(),
       Stream.runForEach((_) => Effect.log(_)),
