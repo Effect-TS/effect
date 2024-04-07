@@ -47,6 +47,9 @@ export interface Socket {
   readonly run: <R, E, _>(
     handler: (_: Uint8Array) => Effect.Effect<_, E, R>
   ) => Effect.Effect<void, SocketError | E, R>
+  readonly runRaw: <R, E, _>(
+    handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>
+  ) => Effect.Effect<void, SocketError | E, R>
   readonly writer: Effect.Effect<(chunk: Uint8Array | string | CloseEvent) => Effect.Effect<void>, never, Scope.Scope>
 }
 
@@ -305,10 +308,9 @@ export const fromWebSocket = (
     const closeCodeIsError = options?.closeCodeIsError ?? defaultCloseCodeIsError
     const sendQueue = yield* _(Queue.unbounded<Uint8Array | string | CloseEvent>())
 
-    const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R>) =>
+    const runRaw = <R, E, _>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>) =>
       Effect.gen(function*(_) {
         const ws = yield* _(acquire)
-        const encoder = new TextEncoder()
         const fiberSet = yield* _(FiberSet.make<any, E | SocketError>())
         const run = yield* _(
           FiberSet.runtime(fiberSet)<R>(),
@@ -317,15 +319,13 @@ export const fromWebSocket = (
         let open = false
 
         ws.onmessage = (event) => {
-          run(
-            handler(
-              event.data instanceof Uint8Array
-                ? event.data
-                : typeof event.data === "string"
-                ? encoder.encode(event.data)
-                : new Uint8Array(event.data)
-            )
-          )
+          run(handler(
+            typeof event.data === "string"
+              ? event.data
+              : event.data instanceof Uint8Array
+              ? event.data
+              : new Uint8Array(event.data)
+          ))
         }
         ws.onclose = (event) => {
           Deferred.unsafeDone(
@@ -396,12 +396,21 @@ export const fromWebSocket = (
         Effect.interruptible
       )
 
+    const encoder = new TextEncoder()
+    const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R>) =>
+      runRaw((data) =>
+        typeof data === "string"
+          ? handler(encoder.encode(data))
+          : handler(data)
+      )
+
     const write = (chunk: Uint8Array | string | CloseEvent) => Queue.offer(sendQueue, chunk)
     const writer = Effect.succeed(write)
 
     return Socket.of({
       [TypeId]: TypeId,
       run,
+      runRaw,
       writer
     })
   })

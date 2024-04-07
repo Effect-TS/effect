@@ -141,6 +141,7 @@ export const fromNetSocket = (
     return Socket.Socket.of({
       [Socket.TypeId]: Socket.TypeId,
       run,
+      runRaw: run,
       writer
     })
   })
