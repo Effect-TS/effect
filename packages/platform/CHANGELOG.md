@@ -1,5 +1,18 @@
 # @effect/platform
 
+## 0.48.27
+
+### Patch Changes
+
+- [#2479](https://github.com/Effect-TS/effect/pull/2479) [`c6dd3c6`](https://github.com/Effect-TS/effect/commit/c6dd3c6909cafe05adc8450c5a499260e17e60d3) Thanks [@tim-smart](https://github.com/tim-smart)! - Make the file tree provider the fallback in PlatformConfigProvider.layerFileTreeAdd
+
+- [#2486](https://github.com/Effect-TS/effect/pull/2486) [`672f137`](https://github.com/Effect-TS/effect/commit/672f13747ddf6dac3ba304fd4511b1df44ab566d) Thanks [@tim-smart](https://github.com/tim-smart)! - accept string as a valid Socket input
+
+- [#2486](https://github.com/Effect-TS/effect/pull/2486) [`672f137`](https://github.com/Effect-TS/effect/commit/672f13747ddf6dac3ba304fd4511b1df44ab566d) Thanks [@tim-smart](https://github.com/tim-smart)! - add Socket.runRaw to handle strings directly
+
+- Updated dependencies [[`42b3651`](https://github.com/Effect-TS/effect/commit/42b36519f356bae9258a1ea1d416e2902b973e85)]:
+  - @effect/schema@0.64.20
+
 ## 0.48.26
 
 ### Patch Changes
