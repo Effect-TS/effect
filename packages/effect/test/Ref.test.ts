@@ -1,3 +1,4 @@
+import { Readable } from "effect"
 import * as it from "effect-test/utils/extend"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
@@ -30,6 +31,13 @@ const isChanged = (self: State): boolean => self._tag === "Changed"
 const isClosed = (self: State): boolean => self._tag === "Closed"
 
 describe("Ref", () => {
+  it.effect("implements Readable", () =>
+    Effect.gen(function*(_) {
+      const ref = yield* _(Ref.make(123))
+      assert.isTrue(Readable.isReadable(ref))
+      assert.strictEqual(yield* _(ref.get), 123)
+    }))
+
   it.effect("get", () =>
     Effect.gen(function*($) {
       const result = yield* $(Ref.make(current), Effect.flatMap(Ref.get))

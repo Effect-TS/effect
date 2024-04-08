@@ -571,6 +571,11 @@ export * as Random from "./Random.js"
 export * as RateLimiter from "./RateLimiter.js"
 
 /**
+ * @since 2.0.0
+ */
+export * as Readable from "./Readable.js"
+
+/**
  * This module provides utility functions for working with arrays in TypeScript.
  *
  * @since 2.0.0
@@ -739,6 +744,11 @@ export * as String from "./String.js"
  * @since 2.0.0
  */
 export * as Struct from "./Struct.js"
+
+/**
+ * @since 2.0.0
+ */
+export * as Subscribable from "./Subscribable.js"
 
 /**
  * @since 2.0.0
