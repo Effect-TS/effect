@@ -154,7 +154,7 @@ export const makeNetChannel = <IE = never>(
   options: Net.NetConnectOpts
 ): Channel.Channel<
   Chunk.Chunk<Uint8Array>,
-  Chunk.Chunk<Uint8Array | Socket.CloseEvent>,
+  Chunk.Chunk<Uint8Array | string | Socket.CloseEvent>,
   Socket.SocketError | IE,
   IE,
   void,
