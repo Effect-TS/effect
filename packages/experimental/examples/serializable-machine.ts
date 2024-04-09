@@ -36,7 +36,7 @@ class Shutdown extends Schema.TaggedRequest<Shutdown>()(
 ) {}
 
 const mailer = Machine.makeSerializable({
-  state: Schema.list(SendEmail)
+  state: Schema.List(SendEmail)
 }, (_, previous) =>
   Effect.gen(function*(_) {
     const ctx = yield* _(Machine.MachineContext)
