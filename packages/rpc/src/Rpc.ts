@@ -277,12 +277,12 @@ export interface RequestFrom<A> {
 export const RequestSchema = <A, I, R>(
   schema: Schema.Schema<A, I, R>
 ): Schema.Schema<RequestFrom<A>, RequestFrom<I>, R> =>
-  Schema.struct({
+  Schema.Struct({
     request: schema,
     traceId: Schema.String,
     spanId: Schema.String,
-    sampled: Schema.boolean,
-    headers: Schema.record(Schema.String, Schema.String)
+    sampled: Schema.Boolean,
+    headers: Schema.Record(Schema.String, Schema.String)
   })
 
 /**

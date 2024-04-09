@@ -58,7 +58,7 @@ export class WorkerError extends Schema.TaggedError<WorkerError>()("WorkerError"
   static readonly Cause: Schema.Schema<
     Cause.Cause<WorkerError>,
     Schema.CauseEncoded<WorkerErrorFrom>
-  > = Schema.cause({ defect: causeDefectPretty, error: this })
+  > = Schema.Cause({ Defect: causeDefectPretty, Error: this })
 
   /**
    * @since 1.0.0

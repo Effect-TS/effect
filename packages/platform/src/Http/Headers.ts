@@ -52,7 +52,7 @@ export const schemaFromSelf: Schema.Schema<Headers> = Schema.Declare(isHeaders, 
  */
 export const schema: Schema.Schema<Headers, ReadonlyRecord.ReadonlyRecord<string, string | ReadonlyArray<string>>> =
   Schema.transform(
-    Schema.record(Schema.String, Schema.union(Schema.String, Schema.array(Schema.String))),
+    Schema.Record(Schema.String, Schema.Union(Schema.String, Schema.Array(Schema.String))),
     schemaFromSelf,
     { decode: (record) => fromInput(record), encode: identity }
   )

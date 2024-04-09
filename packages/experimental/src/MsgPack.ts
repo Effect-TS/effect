@@ -70,7 +70,7 @@ export const packSchema = <A, I, R>(
   Done,
   R
 > => {
-  const encode = Schema.encode(Schema.chunkFromSelf(schema))
+  const encode = Schema.encode(Schema.ChunkFromSelf(schema))
   const loop: Channel.Channel<Chunk.Chunk<I>, Chunk.Chunk<A>, IE | ParseError, IE, Done, Done, R> = Channel
     .readWithCause({
       onInput: (input: Chunk.Chunk<A>) =>
@@ -156,7 +156,7 @@ export const unpackSchema = <A, I, R>(
   Done,
   R
 > => {
-  const parse = Schema.decodeUnknown(Schema.chunkFromSelf(schema))
+  const parse = Schema.decodeUnknown(Schema.ChunkFromSelf(schema))
   return Channel.mapOutEffect(unpack<IE, Done>(), parse)
 }
 
