@@ -61,7 +61,7 @@ class SpanName extends S.TaggedRequest<SpanName>()("SpanName", S.Never, S.String
 class GetName extends S.TaggedRequest<GetName>()("GetName", S.Never, S.String, {}) {}
 
 class EchoHeaders
-  extends S.TaggedRequest<EchoHeaders>()("EchoHeaders", S.Never, S.record(S.String, S.union(S.String, S.undefined)), {})
+  extends S.TaggedRequest<EchoHeaders>()("EchoHeaders", S.Never, S.Record(S.String, S.Union(S.String, S.Undefined)), {})
 {}
 
 class Counts extends Rpc.StreamRequest<Counts>()(
@@ -104,7 +104,7 @@ const router = Router.make(
       Stream.tap((_) => Effect.sleep(10))
     )),
   Rpc.effect(EchoHeaders, () =>
-    Rpc.schemaHeaders(S.struct({
+    Rpc.schemaHeaders(S.Struct({
       foo: Schema.String,
       baz: Schema.optional(Schema.String)
     })).pipe(Effect.orDie)),

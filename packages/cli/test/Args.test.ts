@@ -161,8 +161,8 @@ describe("Args", () => {
       const filePath = path.join(__dirname, "fixtures/config.json")
       const content = yield* _(fs.readFileString(filePath), Effect.map(JSON.parse))
       const args = Args.fileSchema(
-        Schema.struct({
-          foo: Schema.boolean,
+        Schema.Struct({
+          foo: Schema.Boolean,
           bar: Schema.Literal("baz")
         }),
         { name: "files" }

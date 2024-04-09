@@ -604,8 +604,8 @@ describe("Options", () => {
         process(
           Options.fileSchema(
             "config",
-            Schema.struct({
-              foo: Schema.boolean,
+            Schema.Struct({
+              foo: Schema.Boolean,
               bar: Schema.Literal("baz")
             })
           ),
@@ -627,8 +627,8 @@ describe("Options", () => {
         process(
           Options.fileSchema(
             "config",
-            Schema.struct({
-              foo: Schema.boolean,
+            Schema.Struct({
+              foo: Schema.Boolean,
               bar: Schema.Literal("baz")
             })
           ),
@@ -650,8 +650,8 @@ describe("Options", () => {
         process(
           Options.fileSchema(
             "config",
-            Schema.struct({
-              foo: Schema.boolean,
+            Schema.Struct({
+              foo: Schema.Boolean,
               bar: Schema.Literal("baz")
             })
           ),
@@ -673,8 +673,8 @@ describe("Options", () => {
         process(
           Options.fileSchema(
             "config",
-            Schema.struct({
-              foo: Schema.boolean,
+            Schema.Struct({
+              foo: Schema.Boolean,
               bar: Schema.Literal("baz")
             })
           ),

@@ -30,11 +30,11 @@ export class InitialMessage
 export class GetSpan extends Schema.TaggedRequest<GetSpan>()(
   "GetSpan",
   Schema.Never,
-  Schema.struct({
+  Schema.Struct({
     name: Schema.String,
     traceId: Schema.String,
     spanId: Schema.String,
-    parent: Schema.option(Schema.struct({
+    parent: Schema.Option(Schema.Struct({
       traceId: Schema.String,
       spanId: Schema.String
     }))
@@ -42,5 +42,5 @@ export class GetSpan extends Schema.TaggedRequest<GetSpan>()(
   {}
 ) {}
 
-export const WorkerMessage = Schema.union(GetUserById, GetPersonById, InitialMessage, GetSpan)
+export const WorkerMessage = Schema.Union(GetUserById, GetPersonById, InitialMessage, GetSpan)
 export type WorkerMessage = Schema.Schema.Type<typeof WorkerMessage>

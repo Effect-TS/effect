@@ -7,13 +7,13 @@ import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
 import { assert, describe, expect, it } from "vitest"
 
-const Todo = Schema.struct({
+const Todo = Schema.Struct({
   userId: Schema.Number,
   id: Schema.Number,
   title: Schema.String,
-  completed: Schema.boolean
+  completed: Schema.Boolean
 })
-const OkTodo = Schema.struct({
+const OkTodo = Schema.Struct({
   status: Schema.Literal(200),
   body: Todo
 })
