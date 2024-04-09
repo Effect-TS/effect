@@ -55,7 +55,11 @@ export const makeNet = (
       (conn) =>
         Effect.sync(() => {
           if (conn.closed === false) {
-            conn.destroySoon()
+            if ("destroySoon" in conn) {
+              conn.destroySoon()
+            } else {
+              ;(conn as Net.Socket).destroy()
+            }
           }
           conn.removeAllListeners()
         })
@@ -70,7 +74,7 @@ export const fromNetSocket = (
   open: Effect.Effect<Net.Socket, Socket.SocketError, Scope.Scope>
 ): Effect.Effect<Socket.Socket> =>
   Effect.gen(function*(_) {
-    const sendQueue = yield* _(Queue.unbounded<Uint8Array | Socket.CloseEvent | typeof EOF>())
+    const sendQueue = yield* _(Queue.unbounded<Uint8Array | string | Socket.CloseEvent | typeof EOF>())
 
     const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R>) =>
       Effect.gen(function*(_) {
@@ -128,7 +132,7 @@ export const fromNetSocket = (
         Effect.interruptible
       )
 
-    const write = (chunk: Uint8Array | Socket.CloseEvent) => Queue.offer(sendQueue, chunk)
+    const write = (chunk: Uint8Array | string | Socket.CloseEvent) => Queue.offer(sendQueue, chunk)
     const writer = Effect.acquireRelease(
       Effect.succeed(write),
       () => Queue.offer(sendQueue, EOF)
@@ -137,6 +141,7 @@ export const fromNetSocket = (
     return Socket.Socket.of({
       [Socket.TypeId]: Socket.TypeId,
       run,
+      runRaw: run,
       writer
     })
   })
@@ -149,7 +154,7 @@ export const makeNetChannel = <IE = never>(
   options: Net.NetConnectOpts
 ): Channel.Channel<
   Chunk.Chunk<Uint8Array>,
-  Chunk.Chunk<Uint8Array | Socket.CloseEvent>,
+  Chunk.Chunk<Uint8Array | string | Socket.CloseEvent>,
   Socket.SocketError | IE,
   IE,
   void,

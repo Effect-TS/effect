@@ -204,6 +204,57 @@ NodeRuntime.runMain(
 );
 ```
 
+## Obtaining Information About the Running Process
+
+Here, we'll explore how to retrieve information about a running process.
+
+```ts
+import { Command, CommandExecutor } from "@effect/platform";
+import {
+  NodeCommandExecutor,
+  NodeFileSystem,
+  NodeRuntime,
+} from "@effect/platform-node";
+import { Effect, Stream, String } from "effect";
+
+const runString = <E, R>(
+  stream: Stream.Stream<Uint8Array, E, R>
+): Effect.Effect<string, E, R> =>
+  stream.pipe(Stream.decodeText(), Stream.runFold(String.empty, String.concat));
+
+const program = Effect.gen(function* (_) {
+  const executor = yield* _(CommandExecutor.CommandExecutor);
+
+  const command = Command.make("ls");
+
+  const [exitCode, stdout, stderr] = yield* _(
+    // Start running the command and return a handle to the running process.
+    executor.start(command),
+    Effect.flatMap((process) =>
+      Effect.all(
+        [
+          // Waits for the process to exit and returns the ExitCode of the command that was run.
+          process.exitCode,
+          // The standard output stream of the process.
+          runString(process.stdout),
+          // The standard error stream of the process.
+          runString(process.stderr),
+        ],
+        { concurrency: 3 }
+      )
+    )
+  );
+  console.log({ exitCode, stdout, stderr });
+});
+
+NodeRuntime.runMain(
+  Effect.scoped(program).pipe(
+    Effect.provide(NodeCommandExecutor.layer),
+    Effect.provide(NodeFileSystem.layer)
+  )
+);
+```
+
 # FileSystem
 
 The `@effect/platform/FileSystem` module provides a single `FileSystem` tag, which acts as the gateway for interacting with the filesystem.
