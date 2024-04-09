@@ -204,8 +204,7 @@ export const toHandler = <R extends Router<any, any>>(router: R, options?: {
         Schema.transform(
           rpc.schema,
           Schema.typeSchema(Schema.tuple(rpc.schema, Schema.any)),
-          (request) => [request, rpc] as const,
-          ([request]) => request
+          { decode: (request) => [request, rpc] as const, encode: ([request]) => request }
         )
       )
     )
@@ -302,8 +301,7 @@ export const toHandlerEffect = <R extends Router<any, any>>(router: R, options?:
         Schema.transform(
           rpc.schema,
           Schema.typeSchema(Schema.tuple(rpc.schema, Schema.any)),
-          (request) => [request, rpc] as const,
-          ([request]) => request
+          { decode: (request) => [request, rpc] as const, encode: ([request]) => request }
         )
       )
     )
@@ -370,8 +368,7 @@ export const toHandlerRaw = <R extends Router<any, any>>(router: R) => {
     Schema.transform(
       Schema.typeSchema(rpc.schema),
       Schema.typeSchema(Schema.tuple(rpc.schema, Schema.any)),
-      (request) => [request, rpc] as const,
-      ([request]) => request
+      { decode: (request) => [request, rpc] as const, encode: ([request]) => request }
     )
   ))
   const parse = Schema.decode(schema)

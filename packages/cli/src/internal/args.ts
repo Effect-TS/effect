@@ -434,7 +434,7 @@ export const withSchema = dual<
   return mapEffect(self, (_) =>
     Effect.mapError(
       decode(_ as any),
-      (error) => InternalHelpDoc.p(TreeFormatter.formatIssue(error.error))
+      (error) => InternalHelpDoc.p(TreeFormatter.formatIssueSync(error.error))
     ))
 })
 

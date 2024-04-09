@@ -27,7 +27,7 @@ import * as TreeFormatter from "./TreeFormatter.js"
 export type ParseIssue =
   | Declaration
   | Refinement
-  | Tuple
+  | TupleType
   | TypeLiteral
   | Union
   | Transformation
@@ -73,7 +73,7 @@ export class Refinement {
  * @category model
  * @since 1.0.0
  */
-export class Tuple {
+export class TupleType {
   /**
    * @since 1.0.0
    */
@@ -269,7 +269,7 @@ export class ParseError extends TaggedError("ParseError")<{ readonly error: Pars
    * @since 1.0.0
    */
   toString() {
-    return TreeFormatter.formatIssue(this.error)
+    return TreeFormatter.formatIssueSync(this.error)
   }
   /**
    * @since 1.0.0
@@ -495,7 +495,7 @@ const getEither = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions
 const getSync = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
   const parser = getEither(ast, isDecoding, options)
   return (input: unknown, overrideOptions?: AST.ParseOptions) =>
-    Either.getOrThrowWith(parser(input, overrideOptions), (e) => new Error(TreeFormatter.formatIssue(e)))
+    Either.getOrThrowWith(parser(input, overrideOptions), (e) => new Error(TreeFormatter.formatIssueSync(e)))
 }
 
 const getOption = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
@@ -728,7 +728,7 @@ export const asserts = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: AST.P
       isExact: true
     }) as any
     if (Either.isLeft(result)) {
-      throw new Error(TreeFormatter.formatIssue(result.left))
+      throw new Error(TreeFormatter.formatIssueSync(result.left))
     }
   }
 }
@@ -941,7 +941,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
             es.push([stepKey++, e])
             continue
           } else {
-            return Either.left(new Tuple(ast, input, [e]))
+            return Either.left(new TupleType(ast, input, [e]))
           }
         }
 
@@ -955,7 +955,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
               es.push([stepKey++, e])
               continue
             } else {
-              return Either.left(new Tuple(ast, input, [e]))
+              return Either.left(new TupleType(ast, input, [e]))
             }
           }
         }
@@ -991,7 +991,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   es.push([stepKey++, e])
                   continue
                 } else {
-                  return Either.left(new Tuple(ast, input, [e], sortByIndex(output)))
+                  return Either.left(new TupleType(ast, input, [e], sortByIndex(output)))
                 }
               }
               output.push([stepKey++, eu.right])
@@ -1010,7 +1010,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                       es.push([nk, e])
                       return Effect.unit
                     } else {
-                      return Either.left(new Tuple(ast, input, [e], sortByIndex(output)))
+                      return Either.left(new TupleType(ast, input, [e], sortByIndex(output)))
                     }
                   }
                   output.push([nk, t.right])
@@ -1035,7 +1035,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   es.push([stepKey++, e])
                   continue
                 } else {
-                  return Either.left(new Tuple(ast, input, [e], sortByIndex(output)))
+                  return Either.left(new TupleType(ast, input, [e], sortByIndex(output)))
                 }
               } else {
                 output.push([stepKey++, eu.right])
@@ -1055,7 +1055,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                         es.push([nk, e])
                         return Effect.unit
                       } else {
-                        return Either.left(new Tuple(ast, input, [e], sortByIndex(output)))
+                        return Either.left(new TupleType(ast, input, [e], sortByIndex(output)))
                       }
                     } else {
                       output.push([nk, t.right])
@@ -1083,7 +1083,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                     es.push([stepKey++, e])
                     continue
                   } else {
-                    return Either.left(new Tuple(ast, input, [e], sortByIndex(output)))
+                    return Either.left(new TupleType(ast, input, [e], sortByIndex(output)))
                   }
                 }
                 output.push([stepKey++, eu.right])
@@ -1103,7 +1103,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                           es.push([nk, e])
                           return Effect.unit
                         } else {
-                          return Either.left(new Tuple(ast, input, [e], sortByIndex(output)))
+                          return Either.left(new TupleType(ast, input, [e], sortByIndex(output)))
                         }
                       }
                       output.push([nk, t.right])
@@ -1120,7 +1120,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         const computeResult = ({ es, output }: State) =>
           ReadonlyArray.isNonEmptyArray(es) ?
-            Either.left(new Tuple(ast, input, sortByIndex(es), sortByIndex(output))) :
+            Either.left(new TupleType(ast, input, sortByIndex(es), sortByIndex(output))) :
             Either.right(sortByIndex(output))
         if (queue && queue.length > 0) {
           const cqueue = queue

@@ -82,8 +82,10 @@ describe("Schema/attachPropertySignature", () => {
     const schema = S.transformOrFail(
       From,
       To,
-      (input) => ParseResult.mapError(S.decodeUnknown(To)(input), (e) => e.error),
-      ({ _isVisible, ...rest }) => ParseResult.succeed(rest)
+      {
+        decode: (input) => ParseResult.mapError(S.decodeUnknown(To)(input), (e) => e.error),
+        encode: ({ _isVisible, ...rest }) => ParseResult.succeed(rest)
+      }
     ).pipe(
       S.attachPropertySignature("_tag", "Circle")
     )

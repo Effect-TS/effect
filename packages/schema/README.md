@@ -458,16 +458,14 @@ const Person = S.struct({
   age: S.number,
 });
 
-const asyncSchema = S.transformOrFail(
-  PersonId,
-  Person,
+const asyncSchema = S.transformOrFail(PersonId, Person, {
   // Simulate an async transformation
-  (id) =>
+  decode: (id) =>
     Effect.succeed({ id, name: "name", age: 18 }).pipe(
       Effect.delay("10 millis")
     ),
-  (person) => Effect.succeed(person.id).pipe(Effect.delay("10 millis"))
-);
+  encode: (person) => Effect.succeed(person.id).pipe(Effect.delay("10 millis")),
+});
 
 const syncParsePersonId = S.decodeUnknownEither(asyncSchema);
 
@@ -2132,15 +2130,19 @@ const DiscriminatedShape = S.union(
   Circle.pipe(
     S.transform(
       S.struct({ ...Circle.fields, kind: S.literal("circle") }), // Add a "kind" property with the literal value "circle" to Circle
-      (circle) => ({ ...circle, kind: "circle" as const }), // Add the discriminant property to Circle
-      ({ kind: _kind, ...rest }) => rest // Remove the discriminant property
+      {
+        decode: (circle) => ({ ...circle, kind: "circle" as const }), // Add the discriminant property to Circle
+        encode: ({ kind: _kind, ...rest }) => rest, // Remove the discriminant property
+      }
     )
   ),
   Square.pipe(
     S.transform(
       S.struct({ ...Square.fields, kind: S.literal("square") }), // Add a "kind" property with the literal value "square" to Square
-      (square) => ({ ...square, kind: "square" as const }), // Add the discriminant property to Square
-      ({ kind: _kind, ...rest }) => rest // Remove the discriminant property
+      {
+        decode: (square) => ({ ...square, kind: "square" as const }), // Add the discriminant property to Square
+        encode: ({ kind: _kind, ...rest }) => rest, // Remove the discriminant property
+      }
     )
   )
 );
@@ -3526,13 +3528,16 @@ export class PersonWithTransform extends Person.transformOrFail<PersonWithTransf
   {
     age: S.optional(S.number, { exact: true, as: "Option" }),
   },
-  (input) =>
-    Effect.mapBoth(getAge(input.id), {
-      onFailure: (e) => new ParseResult.Type(S.string.ast, input.id, e.message),
-      // must return { age: Option<number> }
-      onSuccess: (age) => ({ ...input, age: Option.some(age) }),
-    }),
-  ParseResult.succeed
+  {
+    decode: (input) =>
+      Effect.mapBoth(getAge(input.id), {
+        onFailure: (e) =>
+          new ParseResult.Type(S.string.ast, input.id, e.message),
+        // must return { age: Option<number> }
+        onSuccess: (age) => ({ ...input, age: Option.some(age) }),
+      }),
+    encode: ParseResult.succeed,
+  }
 ) {}
 
 S.decodeUnknownPromise(PersonWithTransform)({ id: 1, name: "name" }).then(
@@ -3553,13 +3558,15 @@ export class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWi
   {
     age: S.optional(S.number, { exact: true, as: "Option" }),
   },
-  (input) =>
-    Effect.mapBoth(getAge(input.id), {
-      onFailure: (e) => new ParseResult.Type(S.string.ast, input, e.message),
-      // must return { age?: number }
-      onSuccess: (age) => (age > 18 ? { ...input, age } : { ...input }),
-    }),
-  ParseResult.succeed
+  {
+    decode: (input) =>
+      Effect.mapBoth(getAge(input.id), {
+        onFailure: (e) => new ParseResult.Type(S.string.ast, input, e.message),
+        // must return { age?: number }
+        onSuccess: (age) => (age > 18 ? { ...input, age } : { ...input }),
+      }),
+    encode: ParseResult.succeed,
+  }
 ) {}
 
 S.decodeUnknownPromise(PersonWithTransformFrom)({ id: 1, name: "name" }).then(
@@ -3575,15 +3582,15 @@ PersonWithTransformFrom {
 */
 ```
 
-The decision of which API to use, either `transform` or `transformFrom`, depends on when you wish to execute the transformation:
+The decision of which API to use, either `transformOrFail` or `transformOrFailFrom`, depends on when you wish to execute the transformation:
 
-1. Using `transform`:
+1. Using `transformOrFail`:
 
    - The transformation occurs at the end of the process.
    - It expects you to provide a value of type `{ age: Option<number> }`.
    - After processing the initial input, the new transformation comes into play, and you need to ensure the final output adheres to the specified structure.
 
-2. Using `transformFrom`:
+2. Using `transformOrFailFrom`:
    - The new transformation starts as soon as the initial input is handled.
    - You should provide a value `{ age?: number }`.
    - Based on this fresh input, the subsequent transformation `{ age: S.optionalToOption(S.number, { exact: true }) }` is executed.
@@ -3598,12 +3605,19 @@ To perform these kinds of transformations, the `@effect/schema` library provides
 ## transform
 
 ```ts
-declare const transform: <B, A, R1, D, C, R2>(
-  from: Schema<B, A, R1>,
-  to: Schema<D, C, R2>,
-  decode: (b: B) => C,
-  encode: (c: C) => B
-) => Schema<D, A, R1 | R2>;
+declare const transform: <To extends Schema.Any, From extends Schema.Any>(
+    from: From,
+    to: To,
+    options: {
+      readonly decode: (fromA: Schema.Type<From>) => Schema.Encoded<To>
+      readonly encode: (toI: Schema.Encoded<To>) => Schema.Type<From>
+      readonly strict?: true
+    } | {
+      readonly decode: (fromA: Schema.Type<From>) => unknown
+      readonly encode: (toI: Schema.Encoded<To>) => unknown
+      readonly strict: false
+    }
+  ): transform<From, To>
 ```
 
 ```mermaid
@@ -3621,14 +3635,12 @@ import * as S from "@effect/schema/Schema";
 
 // use the transform combinator to convert the string schema into the tuple schema
 export const transformedSchema: S.Schema<readonly [string], string> =
-  S.transform(
-    S.string,
-    S.tuple(S.string),
+  S.transform(S.string, S.tuple(S.string), {
     // define a function that converts a string into a tuple with one element of type string
-    (s) => [s] as const,
+    decode: (s) => [s] as const,
     // define a function that converts a tuple with one element of type string into a string
-    ([s]) => s
-  );
+    encode: ([s]) => s,
+  });
 ```
 
 In the example above, we defined a schema for the `string` type and a schema for the tuple type `[string]`. We also defined the functions `decode` and `encode` that convert a `string` into a tuple and a tuple into a `string`, respectively. Then, we used the `transform` combinator to convert the string schema into a schema for the tuple type `[string]`. The resulting schema can be used to parse values of type `string` into values of type `[string]`.
@@ -3638,20 +3650,60 @@ In the example above, we defined a schema for the `string` type and a schema for
 If you need to be less restrictive in your `decode` and `encode` functions, you can make use of the `{ strict: false }` option:
 
 ```ts
-declare const transform: <B, A, R1, D, C, R2>(
-  from: Schema<B, A, R1>,
-  to: Schema<D, C, R2>,
-  decode: (b: B) => unknown, // Less strict constraint
-  encode: (c: C) => unknown, // Less strict constraint
-  options: { strict: false }
-) => Schema<D, A, R1 | R2>;
+<To extends Schema.Any, From extends Schema.Any>(
+  from: From,
+  to: To,
+  options: {
+    readonly decode: (fromA: Schema.Type<From>) => Schema.Encoded<To>
+    readonly encode: (toI: Schema.Encoded<To>) => Schema.Type<From>
+    readonly strict?: true
+  } | {
+    readonly decode: (fromA: Schema.Type<From>) => unknown // Less strict constraint
+    readonly encode: (toI: Schema.Encoded<To>) => unknown // Less strict constraint
+    readonly strict: false
+  }
+): transform<From, To>
 ```
 
 This is useful when you want to relax the type constraints imposed by the `decode` and `encode` functions, making them more permissive.
 
 ## transformOrFail
 
-The `transformOrFail` combinator works in a similar way, but allows the transformation function to return an `Effect<A, ParseError, R3`, which can either be a success or a failure.
+The `transformOrFail` combinator works in a similar way, but allows the transformation function to return an `Effect<A, ParseError, R`, which can either be a success or a failure.
+
+```ts
+<To extends Schema.Any, From extends Schema.Any, RD, RE>(
+  from: From,
+  to: To,
+  options: {
+    readonly decode: (
+      fromA: Schema.Type<From>,
+      options: ParseOptions,
+      ast: AST.Transformation
+    ) => Effect.Effect<Schema.Encoded<To>, ParseResult.ParseIssue, RD>
+    readonly encode: (
+      toI: Schema.Encoded<To>,
+      options: ParseOptions,
+      ast: AST.Transformation
+    ) => Effect.Effect<Schema.Type<From>, ParseResult.ParseIssue, RE>
+    readonly strict?: true
+  } | {
+    readonly decode: (
+      fromA: Schema.Type<From>,
+      options: ParseOptions,
+      ast: AST.Transformation
+    ) => Effect.Effect<unknown, ParseResult.ParseIssue, RD>
+    readonly encode: (
+      toI: Schema.Encoded<To>,
+      options: ParseOptions,
+      ast: AST.Transformation
+    ) => Effect.Effect<unknown, ParseResult.ParseIssue, RE>
+    readonly strict: false
+  }
+): transformOrFail<From, To, RD | RE>
+```
+
+Example
 
 ```ts
 import * as ParseResult from "@effect/schema/ParseResult";
@@ -3660,17 +3712,19 @@ import * as S from "@effect/schema/Schema";
 export const transformedSchema: S.Schema<boolean, string> = S.transformOrFail(
   S.string,
   S.boolean,
-  // define a function that converts a string into a boolean
-  (s) =>
-    s === "true"
-      ? ParseResult.succeed(true)
-      : s === "false"
-        ? ParseResult.succeed(false)
-        : ParseResult.fail(
-            new ParseResult.Type(S.literal("true", "false").ast, s)
-          ),
-  // define a function that converts a boolean into a string
-  (b) => ParseResult.succeed(String(b))
+  {
+    // define a function that converts a string into a boolean
+    decode: (s) =>
+      s === "true"
+        ? ParseResult.succeed(true)
+        : s === "false"
+          ? ParseResult.succeed(false)
+          : ParseResult.fail(
+              new ParseResult.Type(S.literal("true", "false").ast, s)
+            ),
+    // define a function that converts a boolean into a string
+    encode: (b) => ParseResult.succeed(String(b)),
+  }
 );
 ```
 
@@ -3696,16 +3750,14 @@ const api = (url: string): Effect.Effect<unknown, Error> =>
 
 const PeopleId = S.string.pipe(S.brand("PeopleId"));
 
-const PeopleIdFromString = S.transformOrFail(
-  S.string,
-  PeopleId,
-  (s, _, ast) =>
+const PeopleIdFromString = S.transformOrFail(S.string, PeopleId, {
+  decode: (s, _, ast) =>
     Effect.mapBoth(api(`https://swapi.dev/api/people/${s}`), {
       onFailure: (e) => new ParseResult.Type(ast, s, e.message),
       onSuccess: () => s,
     }),
-  ParseResult.succeed
-);
+  encode: ParseResult.succeed,
+});
 
 const decode = (id: string) =>
   Effect.mapError(S.decodeUnknown(PeopleIdFromString)(id), (e) =>
@@ -3763,16 +3815,14 @@ const api = (url: string): Effect.Effect<unknown, Error, "Fetch"> =>
 
 const PeopleId = S.string.pipe(S.brand("PeopleId"));
 
-const PeopleIdFromString = S.transformOrFail(
-  S.string,
-  PeopleId,
-  (s, _, ast) =>
+const PeopleIdFromString = S.transformOrFail(S.string, PeopleId, {
+  decode: (s, _, ast) =>
     Effect.mapBoth(api(`https://swapi.dev/api/people/${s}`), {
       onFailure: (e) => new ParseResult.Type(ast, s, e.message),
       onSuccess: () => s,
     }),
-  ParseResult.succeed
-);
+  encode: ParseResult.succeed,
+});
 
 const decode = (id: string) =>
   Effect.mapError(S.decodeUnknown(PeopleIdFromString)(id), (e) =>
@@ -5004,17 +5054,19 @@ const NormalizedUrlString: S.Schema<string> = S.string.pipe(
 const NormalizeUrlString: S.Schema<string> = S.transformOrFail(
   S.string,
   NormalizedUrlString,
-  (value, _, ast) =>
-    ParseResult.try({
-      try: () => new URL(value).toString(),
-      catch: (err) =>
-        new ParseResult.Type(
-          ast,
-          value,
-          err instanceof Error ? err.message : undefined
-        ),
-    }),
-  ParseResult.succeed
+  {
+    decode: (value, _, ast) =>
+      ParseResult.try({
+        try: () => new URL(value).toString(),
+        catch: (err) =>
+          new ParseResult.Type(
+            ast,
+            value,
+            err instanceof Error ? err.message : undefined
+          ),
+      }),
+    encode: ParseResult.succeed,
+  }
 );
 
 const decode = S.decodeUnknownSync(NormalizeUrlString);
@@ -5389,17 +5441,15 @@ When a transformation encounters an error, the default error message provides in
 import * as ParseResult from "@effect/schema/ParseResult";
 import * as S from "@effect/schema/Schema";
 
-const IntFromString = S.transformOrFail(
-  S.string,
-  S.Int,
-  (s, _, ast) => {
+const IntFromString = S.transformOrFail(S.string, S.Int, {
+  decode: (s, _, ast) => {
     const n = Number(s);
     return Number.isNaN(n)
       ? ParseResult.fail(new ParseResult.Type(ast, s))
       : ParseResult.succeed(n);
   },
-  (n) => ParseResult.succeed(String(n))
-).annotations({ identifier: "IntFromString" });
+  encode: (n) => ParseResult.succeed(String(n)),
+}).annotations({ identifier: "IntFromString" });
 
 const schema = S.struct({
   name: S.NonEmpty,
@@ -5453,13 +5503,15 @@ import * as S from "@effect/schema/Schema";
 const IntFromString = S.transformOrFail(
   S.string.annotations({ message: () => "please enter a string" }),
   S.Int.annotations({ message: () => "please enter an integer" }),
-  (s, _, ast) => {
-    const n = Number(s);
-    return Number.isNaN(n)
-      ? ParseResult.fail(new ParseResult.Type(ast, s))
-      : ParseResult.succeed(n);
-  },
-  (n) => ParseResult.succeed(String(n))
+  {
+    decode: (s, _, ast) => {
+      const n = Number(s);
+      return Number.isNaN(n)
+        ? ParseResult.fail(new ParseResult.Type(ast, s))
+        : ParseResult.succeed(n);
+    },
+    encode: (n) => ParseResult.succeed(String(n)),
+  }
 ).annotations({
   identifier: "IntFromString",
   message: () => "please enter a parseable string",

@@ -478,13 +478,15 @@ describe("TreeFormatter", () => {
         const schema = S.transformOrFail(
           S.string.annotations({ message: () => "please enter a string" }),
           S.Int.annotations({ message: () => "please enter an integer" }),
-          (s, _, ast) => {
-            const n = Number(s)
-            return Number.isNaN(n)
-              ? ParseResult.fail(new ParseResult.Type(ast, s))
-              : ParseResult.succeed(n)
-          },
-          (n) => ParseResult.succeed(String(n))
+          {
+            decode: (s, _, ast) => {
+              const n = Number(s)
+              return Number.isNaN(n)
+                ? ParseResult.fail(new ParseResult.Type(ast, s))
+                : ParseResult.succeed(n)
+            },
+            encode: (n) => ParseResult.succeed(String(n))
+          }
         ).annotations({
           identifier: "IntFromString",
           message: () => "please enter a decodeUnknownable string"
@@ -635,7 +637,7 @@ describe("TreeFormatter", () => {
     const result = S.decodeUnknownEither(Name)("")
 
     // no service
-    expect(Either.mapLeft(result, (error) => Effect.runSync(TreeFormatter.formatErrorEffect(error))))
+    expect(Either.mapLeft(result, (error) => Effect.runSync(TreeFormatter.formatError(error))))
       .toStrictEqual(Either.left("Invalid string"))
 
     // it locale
@@ -644,7 +646,7 @@ describe("TreeFormatter", () => {
         result,
         (error) =>
           Effect.runSync(
-            TreeFormatter.formatErrorEffect(error).pipe(Effect.provideService(Translator, {
+            TreeFormatter.formatError(error).pipe(Effect.provideService(Translator, {
               locale: "it",
               translations
             }))
@@ -658,7 +660,7 @@ describe("TreeFormatter", () => {
         result,
         (error) =>
           Effect.runSync(
-            TreeFormatter.formatErrorEffect(error).pipe(Effect.provideService(Translator, {
+            TreeFormatter.formatError(error).pipe(Effect.provideService(Translator, {
               locale: "en",
               translations
             }))

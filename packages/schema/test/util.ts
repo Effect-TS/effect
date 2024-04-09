@@ -4,7 +4,7 @@ import * as AST from "@effect/schema/AST"
 import { getFinalTransformation } from "@effect/schema/ParseResult"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
-import { formatError } from "@effect/schema/TreeFormatter"
+import { formatErrorSync } from "@effect/schema/TreeFormatter"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -171,15 +171,13 @@ export const identityTransform = <A>(schema: S.Schema<A>): S.Schema<A> => schema
 export const X2 = S.transform(
   S.string,
   S.string,
-  (s) => s + s,
-  (s) => s.substring(0, s.length / 2)
+  { decode: (s) => s + s, encode: (s) => s.substring(0, s.length / 2) }
 )
 
 export const X3 = S.transform(
   S.string,
   S.string,
-  (s) => s + s + s,
-  (s) => s.substring(0, s.length / 3)
+  { decode: (s) => s + s + s, encode: (s) => s.substring(0, s.length / 3) }
 )
 
 const doProperty = true
@@ -253,7 +251,7 @@ export const expectEffectFailure = async <A>(
   effect: Effect.Effect<A, ParseResult.ParseError>,
   message: string
 ) => {
-  expect(await Effect.runPromise(Effect.either(Effect.mapError(effect, formatError)))).toStrictEqual(
+  expect(await Effect.runPromise(Effect.either(Effect.mapError(effect, formatErrorSync)))).toStrictEqual(
     Either.left(message)
   )
 }
@@ -265,7 +263,7 @@ export const expectEffectSuccess = async <E, A>(effect: Effect.Effect<A, E>, a: 
 }
 
 export const expectEitherLeft = <A>(e: Either.Either<A, ParseResult.ParseError>, message: string) => {
-  expect(Either.mapLeft(e, formatError)).toStrictEqual(Either.left(message))
+  expect(Either.mapLeft(e, formatErrorSync)).toStrictEqual(Either.left(message))
 }
 
 export const expectEitherRight = <E, A>(e: Either.Either<A, E>, a: A) => {
@@ -282,8 +280,10 @@ export const expectSome = <A>(o: Option.Option<A>, a: A) => {
 
 export const AsyncDeclaration = S.declare(
   [],
-  () => (u) => Effect.andThen(Effect.sleep("10 millis"), Effect.succeed(u)),
-  () => (u) => Effect.andThen(Effect.sleep("10 millis"), Effect.succeed(u)),
+  {
+    decode: () => (u) => Effect.andThen(Effect.sleep("10 millis"), Effect.succeed(u)),
+    encode: () => (u) => Effect.andThen(Effect.sleep("10 millis"), Effect.succeed(u))
+  },
   {
     identifier: "AsyncDeclaration"
   }
@@ -296,6 +296,5 @@ const Name = Context.GenericTag<"Name", string>("Name")
 export const DependencyString = S.transformOrFail(
   S.string,
   S.string,
-  (s) => Effect.andThen(Name, s),
-  (s) => Effect.andThen(Name, s)
+  { decode: (s) => Effect.andThen(Name, s), encode: (s) => Effect.andThen(Name, s) }
 ).annotations({ identifier: "DependencyString" })

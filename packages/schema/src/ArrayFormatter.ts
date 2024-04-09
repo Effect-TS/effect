@@ -21,26 +21,25 @@ export interface Issue {
  * @category formatting
  * @since 1.0.0
  */
-export const formatIssueEffect = (issue: ParseResult.ParseIssue): Effect.Effect<Array<Issue>> => go(issue)
+export const formatIssue = (issue: ParseResult.ParseIssue): Effect.Effect<Array<Issue>> => go(issue)
 
 /**
  * @category formatting
  * @since 1.0.0
  */
-export const formatIssue = (issue: ParseResult.ParseIssue): Array<Issue> => Effect.runSync(formatIssueEffect(issue))
+export const formatIssueSync = (issue: ParseResult.ParseIssue): Array<Issue> => Effect.runSync(formatIssue(issue))
 
 /**
  * @category formatting
  * @since 1.0.0
  */
-export const formatErrorEffect = (error: ParseResult.ParseError): Effect.Effect<Array<Issue>> =>
-  formatIssueEffect(error.error)
+export const formatError = (error: ParseResult.ParseError): Effect.Effect<Array<Issue>> => formatIssue(error.error)
 
 /**
  * @category formatting
  * @since 1.0.0
  */
-export const formatError = (error: ParseResult.ParseError): Array<Issue> => formatIssue(error.error)
+export const formatErrorSync = (error: ParseResult.ParseError): Array<Issue> => formatIssueSync(error.error)
 
 const getArray = (
   issue: ParseResult.ParseIssue,

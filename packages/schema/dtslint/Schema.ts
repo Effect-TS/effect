@@ -1332,10 +1332,10 @@ S.asSchema(S.mutable(S.suspend(() => S.array(S.string))))
 S.mutable(S.suspend(() => S.array(S.string)))
 
 // $ExpectType Schema<string[], string[], never>
-S.asSchema(S.mutable(S.transform(S.array(S.string), S.array(S.string), identity, identity)))
+S.asSchema(S.mutable(S.transform(S.array(S.string), S.array(S.string), { decode: identity, encode: identity })))
 
 // $ExpectType mutable<transform<array<$string>, array<$string>>>
-S.mutable(S.transform(S.array(S.string), S.array(S.string), identity, identity))
+S.mutable(S.transform(S.array(S.string), S.array(S.string), { decode: identity, encode: identity }))
 
 // $ExpectType Schema<{ a: string; b: number; }, { a: string; b: number; }, never>
 S.asSchema(S.extend(S.mutable(S.struct({ a: S.string })), S.mutable(S.struct({ b: S.number }))))
@@ -1355,7 +1355,7 @@ S.asSchema(S.extend(S.mutable(S.struct({ a: S.string })), S.mutable(S.record(S.s
 // ---------------------------------------------
 
 // $ExpectType transform<$string, $number>
-const transform1 = S.string.pipe(S.transform(S.number, (s) => s.length, (n) => String(n)))
+const transform1 = S.string.pipe(S.transform(S.number, { decode: (s) => s.length, encode: (n) => String(n) }))
 
 // $ExpectType $string
 transform1.from
@@ -1370,10 +1370,10 @@ transform1.annotations({})
 S.asSchema(transform1)
 
 // $ExpectType Schema<number, string, never>
-S.asSchema(S.string.pipe(S.transform(S.number, (s) => s, (n) => n, { strict: false })))
+S.asSchema(S.string.pipe(S.transform(S.number, { strict: false, decode: (s) => s, encode: (n) => n })))
 
 // $ExpectType transform<$string, $number>
-S.string.pipe(S.transform(S.number, (s) => s, (n) => n, { strict: false }))
+S.string.pipe(S.transform(S.number, { strict: false, decode: (s) => s, encode: (n) => n }))
 
 // @ts-expect-error
 S.string.pipe(S.transform(S.number, (s) => s, (n) => String(n)))
@@ -1389,8 +1389,7 @@ S.string.pipe(S.transform(S.number, (s) => s.length, (n) => n))
 const transformOrFail1 = S.string.pipe(
   S.transformOrFail(
     S.number,
-    (s) => ParseResult.succeed(s.length),
-    (n) => ParseResult.succeed(String(n))
+    { decode: (s) => ParseResult.succeed(s.length), encode: (n) => ParseResult.succeed(String(n)) }
   )
 )
 
@@ -1410,9 +1409,7 @@ S.asSchema(transformOrFail1)
 S.asSchema(S.string.pipe(
   S.transformOrFail(
     S.number,
-    (s) => ParseResult.succeed(s),
-    (n) => ParseResult.succeed(String(n)),
-    { strict: false }
+    { strict: false, decode: (s) => ParseResult.succeed(s), encode: (n) => ParseResult.succeed(String(n)) }
   )
 ))
 
@@ -1420,9 +1417,7 @@ S.asSchema(S.string.pipe(
 S.string.pipe(
   S.transformOrFail(
     S.number,
-    (s) => ParseResult.succeed(s),
-    (n) => ParseResult.succeed(String(n)),
-    { strict: false }
+    { strict: false, decode: (s) => ParseResult.succeed(s), encode: (n) => ParseResult.succeed(String(n)) }
   )
 )
 
@@ -1959,7 +1954,7 @@ S.asSchema(S.mapFromSelf({ key: S.NumberFromString, value: S.string }))
 // $ExpectType mapFromSelf<NumberFromString, $string>
 S.mapFromSelf({ key: S.NumberFromString, value: S.string })
 
-// ---------------------------------------------
+// ---------------- -----------------------------
 // readonlyMap
 // ---------------------------------------------
 

@@ -7,8 +7,7 @@ describe("Schema > typeSchema", () => {
     const schema = S.string.pipe(
       S.transform(
         S.tuple(S.NumberFromString, S.NumberFromString),
-        (s) => [s, s] as const,
-        ([s]) => s
+        { decode: (s) => [s, s] as const, encode: ([s]) => s }
       ),
       S.typeSchema
     )

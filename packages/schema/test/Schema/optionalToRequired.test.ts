@@ -8,8 +8,7 @@ describe("Schema > optionalToRequired", () => {
     const ps = S.optionalToRequired(
       S.NumberFromString,
       S.BigintFromNumber,
-      Option.getOrElse(() => 0),
-      Option.some
+      { decode: Option.getOrElse(() => 0), encode: Option.some }
     )
     const schema = S.struct({ a: ps })
     await Util.expectDecodeUnknownSuccess(schema, { a: "1" }, { a: 1n })

@@ -213,9 +213,10 @@ describe("Schema > partial", () => {
     })
 
     it("transformations should throw", async () => {
-      expect(() => S.partial(S.transform(S.string, S.string, identity, identity), { exact: true })).toThrow(
-        new Error("`partial` cannot handle transformations")
-      )
+      expect(() => S.partial(S.transform(S.string, S.string, { decode: identity, encode: identity }), { exact: true }))
+        .toThrow(
+          new Error("`partial` cannot handle transformations")
+        )
     })
   })
 })

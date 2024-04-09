@@ -27,8 +27,7 @@ S.declare((u): u is string => typeof u === "string")
 // $ExpectType Schema<string, number, "aContext" | "bContext">
 S.declare(
   [aContext, bContext],
-  (_a, _b) => () => ParseResult.succeed("a"),
-  (_a, _b) => () => ParseResult.succeed(1),
+  { decode: (_a, _b) => () => ParseResult.succeed("a"), encode: (_a, _b) => () => ParseResult.succeed(1) },
   {
     arbitrary: (
       _a, // $ExpectType Arbitrary<string>
@@ -50,46 +49,55 @@ S.declare(
   }
 )
 
+// @ts-expect-error
 S.declare(
   [aContext, bContext],
-  // @ts-expect-error
-  (_a, _b) => () => Taga.pipe(Effect.flatMap(ParseResult.succeed)),
-  (_a, _b) => () => ParseResult.succeed(1)
+  {
+    decode: (_a, _b) => () => Taga.pipe(Effect.flatMap(ParseResult.succeed)),
+    encode: (_a, _b) => () => ParseResult.succeed(1)
+  }
+)
+
+// @ts-expect-error
+S.declare(
+  [aContext, bContext],
+  {
+    decode: (_a, _b) => () => ParseResult.succeed("a"),
+    encode: (_a, _b) => () => Tagb.pipe(Effect.flatMap(ParseResult.succeed))
+  }
 )
 
 S.declare(
-  [aContext, bContext],
-  (_a, _b) => () => ParseResult.succeed("a"),
   // @ts-expect-error
-  (_a, _b) => () => Tagb.pipe(Effect.flatMap(ParseResult.succeed))
+  [aContext, bContext],
+  {
+    decode: (_a, _b) => () => Taga.pipe(Effect.flatMap(ParseResult.succeed)),
+    encode: (_a, _b) => () => Tagb.pipe(Effect.flatMap(ParseResult.succeed))
+  }
 )
 
-S.declare(
-  [aContext, bContext],
-  // @ts-expect-error
-  (_a, _b) => () => Taga.pipe(Effect.flatMap(ParseResult.succeed)),
-  (_a, _b) => () => Tagb.pipe(Effect.flatMap(ParseResult.succeed))
-)
-
+// @ts-expect-error
 S.declare(
   [],
-  // @ts-expect-error
-  () => () => Tag1.pipe(Effect.flatMap(ParseResult.succeed)),
-  () => () => ParseResult.succeed(1)
+  { decode: () => () => Tag1.pipe(Effect.flatMap(ParseResult.succeed)), encode: () => () => ParseResult.succeed(1) }
 )
 
+// @ts-expect-error
 S.declare(
   [aContext, bContext],
-  // @ts-expect-error
-  (_a, _b) => () => Tag1.pipe(Effect.flatMap(ParseResult.succeed)),
-  (_a, _b) => () => ParseResult.succeed(1)
+  {
+    decode: (_a, _b) => () => Tag1.pipe(Effect.flatMap(ParseResult.succeed)),
+    encode: (_a, _b) => () => ParseResult.succeed(1)
+  }
 )
 
+// @ts-expect-error
 S.declare(
   [aContext, bContext],
-  (_a, _b) => () => ParseResult.succeed("a"),
-  // @ts-expect-error
-  (_a, _b) => () => Tag2.pipe(Effect.flatMap(ParseResult.succeed))
+  {
+    decode: (_a, _b) => () => ParseResult.succeed("a"),
+    encode: (_a, _b) => () => Tag2.pipe(Effect.flatMap(ParseResult.succeed))
+  }
 )
 
 // ---------------------------------------------
@@ -164,7 +172,7 @@ S.propertySignature(aContext)
 // ---------------------------------------------
 
 // $ExpectType PropertySignature<":", string, never, "?:", string, "aContext">
-S.optionalToRequired(aContext, S.string, Option.getOrElse(() => ""), Option.some)
+S.optionalToRequired(aContext, S.string, { decode: Option.getOrElse(() => ""), encode: Option.some })
 
 // ---------------------------------------------
 // optional
@@ -274,20 +282,22 @@ aContext.pipe(S.filter(() => false))
 // ---------------------------------------------
 
 // $ExpectType Schema<number, string, "aContext" | "bContext">
-S.asSchema(S.transformOrFail(aContext, bContext, () => ParseResult.succeed(1), () => ParseResult.succeed("")))
+S.asSchema(
+  S.transformOrFail(aContext, bContext, { decode: () => ParseResult.succeed(1), encode: () => ParseResult.succeed("") })
+)
 
 // $ExpectType transformOrFail<aContext, bContext, never>
-S.transformOrFail(aContext, bContext, () => ParseResult.succeed(1), () => ParseResult.succeed(""))
+S.transformOrFail(aContext, bContext, { decode: () => ParseResult.succeed(1), encode: () => ParseResult.succeed("") })
 
 // ---------------------------------------------
 // transform
 // ---------------------------------------------
 
 // $ExpectType Schema<number, string, "aContext" | "bContext">
-S.asSchema(S.transform(aContext, bContext, () => 1, () => ""))
+S.asSchema(S.transform(aContext, bContext, { decode: () => 1, encode: () => "" }))
 
 // $ExpectType transform<aContext, bContext>
-S.transform(aContext, bContext, () => 1, () => "")
+S.transform(aContext, bContext, { decode: () => 1, encode: () => "" })
 
 // ---------------------------------------------
 // attachPropertySignature
@@ -385,8 +395,10 @@ export class MyClassWithTransform extends MyClass.transformOrFail<MyClassWithTra
   {
     b: bContext
   },
-  (i) => Tag1.pipe(Effect.flatMap((a) => ParseResult.succeed(i.a === a ? { ...i, b: 1 } : { ...i, b: 2 }))),
-  (a) => Tag2.pipe(Effect.flatMap((b) => ParseResult.succeed(a.b === b ? { a: "a1" } : { a: "a2" })))
+  {
+    decode: (i) => Tag1.pipe(Effect.flatMap((a) => ParseResult.succeed(i.a === a ? { ...i, b: 1 } : { ...i, b: 2 }))),
+    encode: (a) => Tag2.pipe(Effect.flatMap((b) => ParseResult.succeed(a.b === b ? { a: "a1" } : { a: "a2" })))
+  }
 ) {}
 
 // $ExpectType "aContext" | "bContext" | "Tag1" | "Tag2"
@@ -404,8 +416,10 @@ export class MyClassWithTransformFrom
     {
       b: bContext
     },
-    (i) => Tag1.pipe(Effect.flatMap((a) => ParseResult.succeed(i.a === a ? { ...i, b: 1 } : { ...i, b: 2 }))),
-    (a) => Tag2.pipe(Effect.flatMap((b) => ParseResult.succeed(a.b === b ? { a: "a1" } : { a: "a2" })))
+    {
+      decode: (i) => Tag1.pipe(Effect.flatMap((a) => ParseResult.succeed(i.a === a ? { ...i, b: 1 } : { ...i, b: 2 }))),
+      encode: (a) => Tag2.pipe(Effect.flatMap((b) => ParseResult.succeed(a.b === b ? { a: "a1" } : { a: "a2" })))
+    }
   )
 {}
 

@@ -226,8 +226,7 @@ describe("Schema > extend", () => {
       const BoolFromString = S.transform(
         S.string,
         S.boolean,
-        (x) => !!x,
-        (x) => "" + x
+        { decode: (x) => !!x, encode: (x) => "" + x }
       )
 
       it("optional, transformation", async () => {
