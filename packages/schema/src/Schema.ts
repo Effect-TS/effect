@@ -2228,9 +2228,9 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
  * // struct through a transformation
  * // ---------------------------------------------
  *
- * const mytable = S.struct({
+ * const mytable = S.Struct({
  *   column1: S.NumberFromString,
- *   column2: S.number
+ *   column2: S.Number
  * })
  *
  * // const pullOutColumn: S.Schema<number, {
@@ -2238,7 +2238,7 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
  * // }, never>
  * const pullOutColumn = mytable.pipe(S.pluck("column1"))
  *
- * console.log(S.decodeUnknownEither(S.array(pullOutColumn))([{ column1: "1", column2: 100 }, { column1: "2", column2: 300 }]))
+ * console.log(S.decodeUnknownEither(S.Array(pullOutColumn))([{ column1: "1", column2: 100 }, { column1: "2", column2: 300 }]))
  * // Output: { _id: 'Either', _tag: 'Right', right: [ 1, 2 ] }
  *
  * @category struct transformations
@@ -2335,7 +2335,7 @@ export const asBrandSchema = <A extends brand_.Brand<any>, I>(schema: BrandSchem
  * @example
  * import * as Schema from "@effect/schema/Schema"
  *
- * const Int = Schema.number.pipe(Schema.int(), Schema.brand("Int"))
+ * const Int = Schema.Number.pipe(Schema.int(), Schema.brand("Int"))
  * type Int = Schema.Schema.Type<typeof Int> // number & Brand<"Int">
  *
  * @category branding
@@ -2854,9 +2854,9 @@ export function transformLiterals<
  * import * as S from "@effect/schema/Schema"
  * import { pipe } from "effect/Function"
  *
- * const Circle = S.struct({ radius: S.number })
- * const Square = S.struct({ sideLength: S.number })
- * const Shape = S.union(
+ * const Circle = S.Struct({ radius: S.Number })
+ * const Square = S.Struct({ sideLength: S.Number })
+ * const Shape = S.Union(
  *   Circle.pipe(S.attachPropertySignature("kind", "circle")),
  *   Square.pipe(S.attachPropertySignature("kind", "square"))
  * )
@@ -3551,7 +3551,7 @@ const JsonString = $String.annotations({
  * import * as S from "@effect/schema/Schema"
  *
  * assert.deepStrictEqual(S.decodeUnknownSync(S.parseJson())(`{"a":"1"}`), { a: "1" })
- * assert.deepStrictEqual(S.decodeUnknownSync(S.parseJson(S.struct({ a: S.NumberFromString })))(`{"a":"1"}`), { a: 1 })
+ * assert.deepStrictEqual(S.decodeUnknownSync(S.parseJson(S.Struct({ a: S.NumberFromString })))(`{"a":"1"}`), { a: 1 })
  *
  * @category string transformations
  * @since 1.0.0
@@ -5390,7 +5390,7 @@ export interface EitherFromUnion<R extends Schema.Any, L extends Schema.Any> ext
  * import * as Schema from "@effect/schema/Schema"
  *
  * // Schema<string | number, Either<string, number>>
- * Schema.eitherFromUnion({ left: Schema.string, right: Schema.number })
+ * Schema.EitherFromUnion({ Left: Schema.String, Right: Schema.Number })
  *
  * @category Either transformations
  * @since 1.0.0
