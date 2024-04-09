@@ -8,9 +8,9 @@ import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
 
 const Todo = Schema.struct({
-  userId: Schema.number,
-  id: Schema.number,
-  title: Schema.string,
+  userId: Schema.Number,
+  id: Schema.Number,
+  title: Schema.String,
   completed: Schema.boolean
 })
 
@@ -99,7 +99,7 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
         const response = yield* _(
           Http.request.head("https://jsonplaceholder.typicode.com/todos"),
           client,
-          Http.response.schemaJsonEffect(Schema.struct({ status: Schema.literal(200) }))
+          Http.response.schemaJsonEffect(Schema.struct({ status: Schema.Literal(200) }))
         )
         expect(response).toEqual({ status: 200 })
       }).pipe(Effect.provide(layer)))

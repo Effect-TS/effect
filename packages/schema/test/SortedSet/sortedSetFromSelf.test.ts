@@ -10,11 +10,11 @@ import { SortedSet } from "../../../effect/src/index.js"
 
 describe("SortedSet > sortedSetFromSelf", () => {
   it("property tests", () => {
-    Util.roundtrip(Schema.sortedSetFromSelf(Schema.number, N.Order, N.Order))
+    Util.roundtrip(Schema.SortedSetFromSelf(Schema.Number, N.Order, N.Order))
   })
 
   it("decoding", async () => {
-    const schema = Schema.sortedSetFromSelf(Schema.NumberFromString, N.Order, S.Order)
+    const schema = Schema.SortedSetFromSelf(Schema.NumberFromString, N.Order, S.Order)
     await Util.expectDecodeUnknownSuccess(
       schema,
       SortedSet.fromIterable([], S.Order),
@@ -44,7 +44,7 @@ describe("SortedSet > sortedSetFromSelf", () => {
   })
 
   it("encoding", async () => {
-    const schema = Schema.sortedSetFromSelf(Schema.NumberFromString, N.Order, S.Order)
+    const schema = Schema.SortedSetFromSelf(Schema.NumberFromString, N.Order, S.Order)
     await Util.expectEncodeSuccess(
       schema,
       SortedSet.fromIterable([] as Array<number>, N.Order),
@@ -58,7 +58,7 @@ describe("SortedSet > sortedSetFromSelf", () => {
   })
 
   it("is", () => {
-    const schema = Schema.sortedSetFromSelf(Schema.string, S.Order, S.Order)
+    const schema = Schema.SortedSetFromSelf(Schema.String, S.Order, S.Order)
     const is = P.is(schema)
     expect(is(SortedSet.fromIterable([], S.Order))).toEqual(true)
     expect(is(SortedSet.fromIterable(["a", "b", "c"], S.Order))).toEqual(true)
@@ -69,7 +69,7 @@ describe("SortedSet > sortedSetFromSelf", () => {
   })
 
   it("pretty", () => {
-    const schema = Schema.sortedSetFromSelf(Schema.string, S.Order, S.Order)
+    const schema = Schema.SortedSetFromSelf(Schema.String, S.Order, S.Order)
     const pretty = Pretty.make(schema)
     expect(pretty(SortedSet.fromIterable([] as Array<string>, S.Order))).toEqual("new SortedSet([])")
     expect(pretty(SortedSet.fromIterable(["a", "b"], S.Order))).toEqual(
@@ -78,7 +78,7 @@ describe("SortedSet > sortedSetFromSelf", () => {
   })
 
   it("equivalence", () => {
-    const schema = Schema.sortedSetFromSelf(Schema.string, S.Order, S.Order)
+    const schema = Schema.SortedSetFromSelf(Schema.String, S.Order, S.Order)
     const eq = Equivalence.make(schema)
 
     const a = SortedSet.fromIterable([] as Array<string>, S.Order)

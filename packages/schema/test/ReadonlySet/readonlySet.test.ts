@@ -4,11 +4,11 @@ import { describe, it } from "vitest"
 
 describe("ReadonlySet > readonlySet", () => {
   it("property tests", () => {
-    Util.roundtrip(S.readonlySet(S.number))
+    Util.roundtrip(S.ReadonlySet(S.Number))
   })
 
   it("decoding", async () => {
-    const schema = S.readonlySet(S.number)
+    const schema = S.ReadonlySet(S.Number)
     await Util.expectDecodeUnknownSuccess(schema, [], new Set([]))
     await Util.expectDecodeUnknownSuccess(schema, [1, 2, 3], new Set([1, 2, 3]))
 
@@ -31,7 +31,7 @@ describe("ReadonlySet > readonlySet", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.readonlySet(S.number)
+    const schema = S.ReadonlySet(S.Number)
     await Util.expectEncodeSuccess(schema, new Set(), [])
     await Util.expectEncodeSuccess(schema, new Set([1, 2, 3]), [1, 2, 3])
   })

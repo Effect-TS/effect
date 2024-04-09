@@ -26,8 +26,8 @@ export type WorkerErrorTypeId = typeof WorkerErrorTypeId
 export const isWorkerError = (u: unknown): u is WorkerError => Predicate.hasProperty(u, WorkerErrorTypeId)
 
 const causeDefectPretty: Schema.Schema<unknown> = Schema.transform(
-  Schema.unknown,
-  Schema.unknown,
+  Schema.Unknown,
+  Schema.Unknown,
   {
     decode: identity,
     encode: (defect) => {
@@ -44,7 +44,7 @@ const causeDefectPretty: Schema.Schema<unknown> = Schema.transform(
  * @category errors
  */
 export class WorkerError extends Schema.TaggedError<WorkerError>()("WorkerError", {
-  reason: Schema.literal("spawn", "decode", "send", "unknown", "encode"),
+  reason: Schema.Literal("spawn", "decode", "send", "unknown", "encode"),
   error: causeDefectPretty
 }) {
   /**

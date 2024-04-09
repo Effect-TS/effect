@@ -5,11 +5,11 @@ import { describe, it } from "vitest"
 
 describe("HashMap > hashMap", () => {
   it("property tests", () => {
-    Util.roundtrip(S.hashMap({ key: S.number, value: S.string }))
+    Util.roundtrip(S.HashMap({ Key: S.Number, Value: S.String }))
   })
 
   it("decoding", async () => {
-    const schema = S.hashMap({ key: S.number, value: S.string })
+    const schema = S.HashMap({ Key: S.Number, Value: S.String })
     await Util.expectDecodeUnknownSuccess(schema, [], HashMap.fromIterable([]))
     await Util.expectDecodeUnknownSuccess(
       schema,
@@ -38,7 +38,7 @@ describe("HashMap > hashMap", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.hashMap({ key: S.number, value: S.string })
+    const schema = S.HashMap({ Key: S.Number, Value: S.String })
     await Util.expectEncodeSuccess(schema, HashMap.fromIterable([]), [])
     await Util.expectEncodeSuccess(schema, HashMap.fromIterable([[1, "a"], [2, "b"], [3, "c"]]), [[1, "a"], [
       2,

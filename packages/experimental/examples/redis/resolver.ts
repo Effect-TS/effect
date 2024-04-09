@@ -6,12 +6,12 @@ import { Schema } from "@effect/schema"
 import { Effect, Exit, PrimaryKey, ReadonlyArray, RequestResolver } from "effect"
 
 class User extends Schema.Class<User>("User")({
-  id: Schema.number,
-  name: Schema.string
+  id: Schema.Number,
+  name: Schema.String
 }) {}
 
-class GetUserById extends Schema.TaggedRequest<GetUserById>()("GetUserById", Schema.string, User, {
-  id: Schema.number
+class GetUserById extends Schema.TaggedRequest<GetUserById>()("GetUserById", Schema.String, User, {
+  id: Schema.Number
 }) {
   [PrimaryKey.symbol]() {
     return `GetUserById:${this.id}`

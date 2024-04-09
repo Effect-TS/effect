@@ -5,7 +5,7 @@ import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
 describe("string > includes", () => {
-  const schema = S.includes("a")(S.string)
+  const schema = S.includes("a")(S.String)
 
   it("property tests", () => {
     Util.roundtrip(schema)

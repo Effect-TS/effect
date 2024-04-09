@@ -22,14 +22,14 @@ describe("Pretty", () => {
   })
 
   it("should throw on declarations without annotations", () => {
-    const schema = S.declare(isUnknown)
+    const schema = S.Declare(isUnknown)
     expect(() => Pretty.make(schema)).toThrow(
       new Error("cannot build a Pretty for a declaration without annotations (<declaration schema>)")
     )
   })
 
   it("should throw on never", () => {
-    const schema = S.never
+    const schema = S.Never
     const pretty = Pretty.make(schema)
     expect(() => pretty("a" as any as never)).toThrow(
       new Error("cannot pretty print a `never` value")
@@ -43,34 +43,34 @@ describe("Pretty", () => {
     }
     const go = AST.getCompiler(match)
     const pretty = <A>(schema: S.Schema<A>) => (a: A): string => go(schema.ast)(a)
-    expect(pretty(S.boolean)(true)).toEqual(`True`)
-    const schema = S.tuple(S.string, S.boolean)
+    expect(pretty(S.Boolean)(true)).toEqual(`True`)
+    const schema = S.Tuple(S.String, S.Boolean)
     expect(pretty(schema)(["a", true])).toEqual(`["a", True]`)
   })
 
   describe("templateLiteral", () => {
     it("a${string}b", () => {
-      const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"))
+      const schema = S.TemplateLiteral(S.Literal("a"), S.String, S.Literal("b"))
       const pretty = Pretty.make(schema)
       expect(pretty("acb")).toEqual(`"acb"`)
     })
   })
 
   it("unknown", () => {
-    const schema = S.unknown
+    const schema = S.Unknown
     const pretty = Pretty.make(schema)
     expect(pretty("a")).toEqual(`"a"`)
     expect(pretty(1n)).toEqual(`1n`)
   })
 
   it("string", () => {
-    const schema = S.string
+    const schema = S.String
     const pretty = Pretty.make(schema)
     expect(pretty("a")).toEqual(`"a"`)
   })
 
   it("number", () => {
-    const schema = S.number
+    const schema = S.Number
     const pretty = Pretty.make(schema)
     expect(pretty(1)).toEqual("1")
     expect(pretty(NaN)).toEqual("NaN")
@@ -79,35 +79,35 @@ describe("Pretty", () => {
   })
 
   it("boolean", () => {
-    const schema = S.boolean
+    const schema = S.Boolean
     const pretty = Pretty.make(schema)
     expect(pretty(true)).toEqual("true")
   })
 
   it("bigint", () => {
-    const pretty = Pretty.make(S.bigintFromSelf)
+    const pretty = Pretty.make(S.BigIntFromSelf)
     expect(pretty(1n)).toEqual("1n")
   })
 
   it("symbol", () => {
-    const pretty = Pretty.make(S.symbolFromSelf)
+    const pretty = Pretty.make(S.SymbolFromSelf)
     expect(pretty(Symbol.for("effect/test/a"))).toEqual("Symbol(effect/test/a)")
   })
 
   it("void", () => {
-    const pretty = Pretty.make(S.void)
+    const pretty = Pretty.make(S.Void)
     expect(pretty(undefined)).toEqual("void(0)")
   })
 
   describe("literal", () => {
     it("null", () => {
-      const schema = S.literal(null)
+      const schema = S.Literal(null)
       const pretty = Pretty.make(schema)
       expect(pretty(null)).toEqual("null")
     })
 
     it("bigint", () => {
-      const schema = S.literal(1n)
+      const schema = S.Literal(1n)
       const pretty = Pretty.make(schema)
       expect(pretty(1n)).toEqual("1n")
     })
@@ -115,7 +115,7 @@ describe("Pretty", () => {
 
   it("uniqueSymbolFromSelf", () => {
     const a = Symbol.for("@effect/schema/test/a")
-    const schema = S.uniqueSymbolFromSelf(a)
+    const schema = S.UniqueSymbolFromSelf(a)
     const pretty = Pretty.make(schema)
     expect(pretty(a)).toEqual("Symbol(@effect/schema/test/a)")
   })
@@ -126,7 +126,7 @@ describe("Pretty", () => {
         Apple,
         Banana
       }
-      const schema = S.enums(Fruits)
+      const schema = S.Enums(Fruits)
       const pretty = Pretty.make(schema)
       expect(pretty(Fruits.Apple)).toEqual(`0`)
       expect(pretty(Fruits.Banana)).toEqual(`1`)
@@ -138,7 +138,7 @@ describe("Pretty", () => {
         Banana = "banana",
         Cantaloupe = 0
       }
-      const schema = S.enums(Fruits)
+      const schema = S.Enums(Fruits)
       const pretty = Pretty.make(schema)
       expect(pretty(Fruits.Apple)).toEqual(`"apple"`)
       expect(pretty(Fruits.Banana)).toEqual(`"banana"`)
@@ -151,7 +151,7 @@ describe("Pretty", () => {
         Banana: "banana",
         Cantaloupe: 3
       } as const
-      const schema = S.enums(Fruits)
+      const schema = S.Enums(Fruits)
       const pretty = Pretty.make(schema)
       expect(pretty(Fruits.Apple)).toEqual(`"apple"`)
       expect(pretty(Fruits.Banana)).toEqual(`"banana"`)
@@ -161,7 +161,7 @@ describe("Pretty", () => {
 
   describe("struct", () => {
     it("empty", () => {
-      const schema = S.struct({})
+      const schema = S.Struct({})
       const pretty = Pretty.make(schema)
       expect(pretty({})).toEqual(
         "{}"
@@ -169,7 +169,7 @@ describe("Pretty", () => {
     })
 
     it("required fields", () => {
-      const schema = S.struct({ a: S.string, b: S.number })
+      const schema = S.Struct({ a: S.String, b: S.Number })
       const pretty = Pretty.make(schema)
       expect(pretty({ a: "a", b: 1 })).toEqual(
         `{ "a": "a", "b": 1 }`
@@ -177,20 +177,20 @@ describe("Pretty", () => {
     })
 
     it("should not output optional property signatures", () => {
-      const schema = S.struct({ a: S.optional(S.number, { exact: true }) })
+      const schema = S.Struct({ a: S.optional(S.Number, { exact: true }) })
       const pretty = Pretty.make(schema)
       expect(pretty({})).toEqual("{}")
       expect(pretty({ a: 1 })).toEqual(`{ "a": 1 }`)
     })
 
     it("should escape keys", () => {
-      const schema = S.struct({ "-": S.number })
+      const schema = S.Struct({ "-": S.Number })
       const pretty = Pretty.make(schema)
       expect(pretty({ "-": 1 })).toEqual(`{ "-": 1 }`)
     })
 
     it("required property signature", () => {
-      const schema = S.struct({ a: S.number })
+      const schema = S.Struct({ a: S.Number })
       const pretty = Pretty.make(schema)
       expect(pretty({ a: 1 })).toEqual(`{ "a": 1 }`)
       const x = { a: 1, b: "b" }
@@ -198,7 +198,7 @@ describe("Pretty", () => {
     })
 
     it("required property signature with undefined", () => {
-      const schema = S.struct({ a: S.union(S.number, S.undefined) })
+      const schema = S.Struct({ a: S.Union(S.Number, S.Undefined) })
       const pretty = Pretty.make(schema)
       expect(pretty({ a: 1 })).toEqual(`{ "a": 1 }`)
       expect(pretty({ a: undefined })).toEqual(`{ "a": undefined }`)
@@ -207,7 +207,7 @@ describe("Pretty", () => {
     })
 
     it("optional property signature", () => {
-      const schema = S.struct({ a: S.optional(S.number, { exact: true }) })
+      const schema = S.Struct({ a: S.optional(S.Number, { exact: true }) })
       const pretty = Pretty.make(schema)
       expect(pretty({})).toEqual(`{}`)
       expect(pretty({ a: 1 })).toEqual(`{ "a": 1 }`)
@@ -216,7 +216,7 @@ describe("Pretty", () => {
     })
 
     it("optional property signature with undefined", () => {
-      const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined), { exact: true }) })
+      const schema = S.Struct({ a: S.optional(S.Union(S.Number, S.Undefined), { exact: true }) })
       const pretty = Pretty.make(schema)
       expect(pretty({})).toEqual(`{}`)
       expect(pretty({ a: 1 })).toEqual(`{ "a": 1 }`)
@@ -226,7 +226,7 @@ describe("Pretty", () => {
     })
 
     it("extend: struct + record", () => {
-      const schema = S.struct({ a: S.string }, S.record(S.string, S.union(S.string, S.number)))
+      const schema = S.Struct({ a: S.String }, S.Record(S.String, S.Union(S.String, S.Number)))
       const pretty = Pretty.make(schema)
       expect(pretty({ a: "a" })).toEqual(`{ "a": "a" }`)
       expect(pretty({ a: "a", b: "b", c: 1 })).toEqual(`{ "a": "a", "b": "b", "c": 1 }`)
@@ -235,7 +235,7 @@ describe("Pretty", () => {
 
   describe("record", () => {
     it("record(string, string)", () => {
-      const schema = S.record(S.string, S.string)
+      const schema = S.Record(S.String, S.String)
       const pretty = Pretty.make(schema)
       expect(pretty({ a: "a", b: "b" })).toEqual(
         `{ "a": "a", "b": "b" }`
@@ -244,7 +244,7 @@ describe("Pretty", () => {
 
     it("record(symbol, string)", () => {
       const a = Symbol.for("@effect/schema/test/a")
-      const schema = S.record(S.symbolFromSelf, S.string)
+      const schema = S.Record(S.SymbolFromSelf, S.String)
       const pretty = Pretty.make(schema)
       expect(pretty({ [a]: "a" })).toEqual(
         `{ Symbol(@effect/schema/test/a): "a" }`
@@ -254,7 +254,7 @@ describe("Pretty", () => {
 
   describe("tuple", () => {
     it("required element", () => {
-      const schema = S.tuple(S.number)
+      const schema = S.Tuple(S.Number)
       const pretty = Pretty.make(schema)
       expect(pretty([1])).toEqual(`[1]`)
       const x = [1, "b"] as any
@@ -262,7 +262,7 @@ describe("Pretty", () => {
     })
 
     it("required element with undefined", () => {
-      const schema = S.tuple(S.union(S.number, S.undefined))
+      const schema = S.Tuple(S.Union(S.Number, S.Undefined))
       const pretty = Pretty.make(schema)
       expect(pretty([1])).toEqual(`[1]`)
       expect(pretty([undefined])).toEqual(`[undefined]`)
@@ -271,7 +271,7 @@ describe("Pretty", () => {
     })
 
     it("optional element", () => {
-      const schema = S.tuple(S.optionalElement(S.number))
+      const schema = S.Tuple(S.OptionalElement(S.Number))
       const pretty = Pretty.make(schema)
       expect(pretty([])).toEqual(`[]`)
       expect(pretty([1])).toEqual(`[1]`)
@@ -280,7 +280,7 @@ describe("Pretty", () => {
     })
 
     it("optional element with undefined", () => {
-      const schema = S.tuple(S.optionalElement(S.union(S.number, S.undefined)))
+      const schema = S.Tuple(S.OptionalElement(S.Union(S.Number, S.Undefined)))
       const pretty = Pretty.make(schema)
       expect(pretty([])).toEqual(`[]`)
       expect(pretty([1])).toEqual(`[1]`)
@@ -290,19 +290,19 @@ describe("Pretty", () => {
     })
 
     it("baseline", () => {
-      const schema = S.tuple(S.string, S.number)
+      const schema = S.Tuple(S.String, S.Number)
       const pretty = Pretty.make(schema)
       expect(pretty(["a", 1])).toEqual(`["a", 1]`)
     })
 
     it("empty tuple", () => {
-      const schema = S.tuple()
+      const schema = S.Tuple()
       const pretty = Pretty.make(schema)
       expect(pretty([])).toEqual(`[]`)
     })
 
     it("optional elements", () => {
-      const schema = S.tuple(S.optionalElement(S.string), S.optionalElement(S.number))
+      const schema = S.Tuple(S.OptionalElement(S.String), S.OptionalElement(S.Number))
       const pretty = Pretty.make(schema)
       expect(pretty([])).toEqual(`[]`)
       expect(pretty(["a"])).toEqual(`["a"]`)
@@ -310,14 +310,14 @@ describe("Pretty", () => {
     })
 
     it("array", () => {
-      const schema = S.array(S.string)
+      const schema = S.Array(S.String)
       const pretty = Pretty.make(schema)
       expect(pretty([])).toEqual(`[]`)
       expect(pretty(["a"])).toEqual(`["a"]`)
     })
 
     it("post rest element", () => {
-      const schema = S.tuple([], S.number, S.boolean)
+      const schema = S.Tuple([], S.Number, S.Boolean)
       const pretty = Pretty.make(schema)
       expect(pretty([true])).toEqual(`[true]`)
       expect(pretty([1, true])).toEqual(`[1, true]`)
@@ -326,7 +326,7 @@ describe("Pretty", () => {
     })
 
     it("post rest elements", () => {
-      const schema = S.tuple([], S.number, S.boolean, S.union(S.string, S.undefined))
+      const schema = S.Tuple([], S.Number, S.Boolean, S.Union(S.String, S.Undefined))
       const pretty = Pretty.make(schema)
       expect(pretty([true, "c"])).toEqual(`[true, "c"]`)
       expect(pretty([1, true, "c"])).toEqual(`[1, true, "c"]`)
@@ -336,14 +336,14 @@ describe("Pretty", () => {
     })
 
     it("post rest elements when rest is unknown", () => {
-      const schema = S.tuple([], S.unknown, S.boolean)
+      const schema = S.Tuple([], S.Unknown, S.Boolean)
       const pretty = Pretty.make(schema)
       expect(pretty([1, "a", 2, "b", true])).toEqual(`[1, "a", 2, "b", true]`)
       expect(pretty([true])).toEqual(`[true]`)
     })
 
     it("all", () => {
-      const schema = S.tuple([S.string], S.number, S.boolean)
+      const schema = S.Tuple([S.String], S.Number, S.Boolean)
       const pretty = Pretty.make(schema)
       expect(pretty(["a", true])).toEqual(`["a", true]`)
       expect(pretty(["a", 1, true])).toEqual(`["a", 1, true]`)
@@ -351,21 +351,21 @@ describe("Pretty", () => {
     })
 
     it("nonEmptyArray", () => {
-      const schema = S.nonEmptyArray(S.number)
+      const schema = S.NonEmptyArray(S.Number)
       const pretty = Pretty.make(schema)
       expect(pretty([1])).toEqual(`[1]`)
       expect(pretty([1, 2])).toEqual(`[1, 2]`)
     })
 
     it("ReadonlyArray<unknown>", () => {
-      const schema = S.array(S.unknown)
+      const schema = S.Array(S.Unknown)
       const pretty = Pretty.make(schema)
       expect(pretty([])).toEqual(`[]`)
       expect(pretty(["a", 1, true])).toEqual(`["a", 1, true]`)
     })
 
     it("ReadonlyArray<any>", () => {
-      const schema = S.array(S.any)
+      const schema = S.Array(S.Any)
       const pretty = Pretty.make(schema)
       expect(pretty([])).toEqual(`[]`)
       expect(pretty(["a", 1, true])).toEqual(`["a", 1, true]`)
@@ -374,7 +374,7 @@ describe("Pretty", () => {
 
   describe("union", () => {
     it("primitives", () => {
-      const schema = S.union(S.string, S.number)
+      const schema = S.Union(S.String, S.Number)
       const pretty = Pretty.make(schema)
       expect(pretty("a")).toEqual(
         `"a"`
@@ -385,9 +385,9 @@ describe("Pretty", () => {
     })
 
     it("discriminated", () => {
-      const schema = S.union(
-        S.struct({ tag: S.literal("a"), a: S.string }),
-        S.struct({ tag: S.literal("b"), b: S.number })
+      const schema = S.Union(
+        S.Struct({ tag: S.Literal("a"), a: S.String }),
+        S.Struct({ tag: S.Literal("b"), b: S.Number })
       )
       const pretty = Pretty.make(schema)
       expect(pretty({ tag: "a", a: "-" })).toEqual(
@@ -404,9 +404,9 @@ describe("Pretty", () => {
       readonly a: string
       readonly as: ReadonlyArray<A>
     }
-    const A: S.Schema<A> = S.struct({
-      a: S.string,
-      as: S.array(S.suspend(() => A))
+    const A: S.Schema<A> = S.Struct({
+      a: S.String,
+      as: S.Array(S.Suspend(() => A))
     })
     const pretty = Pretty.make(A)
     expect(pretty({ a: "a", as: [] })).toEqual(
@@ -427,59 +427,59 @@ describe("Pretty", () => {
     }
 
     it("void", () => {
-      expectHook(S.void)
+      expectHook(S.Void)
     })
 
     it("never", () => {
-      expectHook(S.never)
+      expectHook(S.Never)
     })
 
     it("literal", () => {
-      expectHook(S.literal("a"))
+      expectHook(S.Literal("a"))
     })
 
     it("symbol", () => {
-      expectHook(S.symbol)
+      expectHook(S.Symbol)
     })
 
     it("uniqueSymbolFromSelf", () => {
-      expectHook(S.uniqueSymbolFromSelf(Symbol.for("effect/schema/test/a")))
+      expectHook(S.UniqueSymbolFromSelf(Symbol.for("effect/schema/test/a")))
     })
 
     it("templateLiteral", () => {
-      expectHook(S.templateLiteral(S.literal("a"), S.string, S.literal("b")))
+      expectHook(S.TemplateLiteral(S.Literal("a"), S.String, S.Literal("b")))
     })
 
     it("undefined", () => {
-      expectHook(S.undefined)
+      expectHook(S.Undefined)
     })
 
     it("unknown", () => {
-      expectHook(S.unknown)
+      expectHook(S.Unknown)
     })
 
     it("any", () => {
-      expectHook(S.any)
+      expectHook(S.Any)
     })
 
     it("object", () => {
-      expectHook(S.object)
+      expectHook(S.Object)
     })
 
     it("string", () => {
-      expectHook(S.string)
+      expectHook(S.String)
     })
 
     it("number", () => {
-      expectHook(S.number)
+      expectHook(S.Number)
     })
 
     it("bigintFromSelf", () => {
-      expectHook(S.bigintFromSelf)
+      expectHook(S.BigIntFromSelf)
     })
 
     it("boolean", () => {
-      expectHook(S.boolean)
+      expectHook(S.Boolean)
     })
 
     it("enums", () => {
@@ -487,19 +487,19 @@ describe("Pretty", () => {
         Apple,
         Banana
       }
-      expectHook(S.enums(Fruits))
+      expectHook(S.Enums(Fruits))
     })
 
     it("tuple", () => {
-      expectHook(S.tuple(S.string, S.number))
+      expectHook(S.Tuple(S.String, S.Number))
     })
 
     it("struct", () => {
-      expectHook(S.struct({ a: S.string, b: S.number }))
+      expectHook(S.Struct({ a: S.String, b: S.Number }))
     })
 
     it("union", () => {
-      expectHook(S.union(S.string, S.number))
+      expectHook(S.Union(S.String, S.Number))
     })
 
     it("suspend", () => {
@@ -507,9 +507,9 @@ describe("Pretty", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: S.Schema<A> = S.struct({
-        a: S.string,
-        as: S.array(S.suspend(() => schema))
+      const schema: S.Schema<A> = S.Struct({
+        a: S.String,
+        as: S.Array(S.Suspend(() => schema))
       })
       expectHook(schema)
     })

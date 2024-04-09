@@ -6,18 +6,18 @@ import { describe, expect, it } from "vitest"
 
 describe("string > maxLength", () => {
   it("property tests", () => {
-    Util.roundtrip(S.maxLength(0)(S.string))
+    Util.roundtrip(S.maxLength(0)(S.String))
   })
 
   it("is", () => {
-    const is = P.is(S.maxLength(1)(S.string))
+    const is = P.is(S.maxLength(1)(S.String))
     expect(is("")).toEqual(true)
     expect(is("a")).toEqual(true)
     expect(is("aa")).toEqual(false)
   })
 
   it("decoding", async () => {
-    const schema = S.maxLength(1)(S.string)
+    const schema = S.maxLength(1)(S.String)
     await Util.expectDecodeUnknownSuccess(schema, "")
     await Util.expectDecodeUnknownSuccess(schema, "a")
     await Util.expectDecodeUnknownFailure(
@@ -30,7 +30,7 @@ describe("string > maxLength", () => {
   })
 
   it("pretty", () => {
-    const pretty = Pretty.make(S.maxLength(0)(S.string))
+    const pretty = Pretty.make(S.maxLength(0)(S.String))
     expect(pretty("a")).toEqual(`"a"`)
   })
 })

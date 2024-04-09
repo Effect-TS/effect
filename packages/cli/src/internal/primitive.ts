@@ -130,13 +130,13 @@ export const isTextType = (self: Instruction): self is Text => self._tag === "Te
 // =============================================================================
 
 /** @internal */
-export const trueValues = Schema.literal("true", "1", "y", "yes", "on")
+export const trueValues = Schema.Literal("true", "1", "y", "yes", "on")
 
 /** @internal */
 export const isTrueValue = Schema.is(trueValues)
 
 /** @internal */
-export const falseValues = Schema.literal("false", "0", "n", "no", "off")
+export const falseValues = Schema.Literal("false", "0", "n", "no", "off")
 
 /** @internal */
 export const isFalseValue = Schema.is(falseValues)
@@ -445,12 +445,12 @@ const validateInternal = (
       })
     }
     case "Secret": {
-      return attempt(value, getTypeNameInternal(self), Schema.decodeUnknown(Schema.string)).pipe(
+      return attempt(value, getTypeNameInternal(self), Schema.decodeUnknown(Schema.String)).pipe(
         Effect.map((value) => EffectSecret.fromString(value))
       )
     }
     case "Text": {
-      return attempt(value, getTypeNameInternal(self), Schema.decodeUnknown(Schema.string))
+      return attempt(value, getTypeNameInternal(self), Schema.decodeUnknown(Schema.String))
     }
   }
 }

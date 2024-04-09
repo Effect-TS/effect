@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest"
 
 describe("Schema > filter", () => {
   it("annotation options", () => {
-    const schema = S.string.pipe(
+    const schema = S.String.pipe(
       S.filter((s): s is string => s.length === 1, {
         typeId: Symbol.for("Char"),
         description: "description",
@@ -36,13 +36,13 @@ describe("Schema > filter", () => {
   })
 
   it("Option overloading", async () => {
-    const schema = S.struct({ a: S.string, b: S.string }).pipe(
+    const schema = S.Struct({ a: S.String, b: S.String }).pipe(
       S.filter((o) =>
         o.b === o.a
           ? Option.none()
           : Option.some(
             new ParseResult.Type(
-              S.literal(o.a).ast,
+              S.Literal(o.a).ast,
               o.b,
               `b should be equal to a's value ("${o.a}")`
             )
@@ -61,14 +61,14 @@ describe("Schema > filter", () => {
   })
 
   it("custom message", async () => {
-    const schema = S.string.pipe(S.filter((s): s is string => s.length === 1, {
+    const schema = S.String.pipe(S.filter((s): s is string => s.length === 1, {
       message: (issue) => `invalid ${issue.actual}`
     }))
     await Util.expectDecodeUnknownFailure(schema, null, `invalid null`)
   })
 
   it("inner custom message", async () => {
-    const schema = S.string.pipe(
+    const schema = S.String.pipe(
       S.filter((s): s is string => s.length === 1, {
         message: (issue) => {
           if (issue._tag === "Refinement" && issue.kind === "From") {

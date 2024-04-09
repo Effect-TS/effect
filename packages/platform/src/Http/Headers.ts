@@ -41,7 +41,7 @@ export interface Headers {
  * @since 1.0.0
  * @category schemas
  */
-export const schemaFromSelf: Schema.Schema<Headers> = Schema.declare(isHeaders, {
+export const schemaFromSelf: Schema.Schema<Headers> = Schema.Declare(isHeaders, {
   identifier: "Headers",
   equivalence: () => ReadonlyRecord.getEquivalence(String.Equivalence)
 })
@@ -52,7 +52,7 @@ export const schemaFromSelf: Schema.Schema<Headers> = Schema.declare(isHeaders, 
  */
 export const schema: Schema.Schema<Headers, ReadonlyRecord.ReadonlyRecord<string, string | ReadonlyArray<string>>> =
   Schema.transform(
-    Schema.record(Schema.string, Schema.union(Schema.string, Schema.array(Schema.string))),
+    Schema.record(Schema.String, Schema.union(Schema.String, Schema.array(Schema.String))),
     schemaFromSelf,
     { decode: (record) => fromInput(record), encode: identity }
   )

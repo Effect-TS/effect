@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 describe("string > length", () => {
   describe("decoding", () => {
     it("length: 1", async () => {
-      const schema = S.string.pipe(S.length(1, { identifier: "Char" }))
+      const schema = S.String.pipe(S.length(1, { identifier: "Char" }))
       await Util.expectDecodeUnknownSuccess(schema, "a")
 
       await Util.expectDecodeUnknownFailure(
@@ -25,7 +25,7 @@ describe("string > length", () => {
     })
 
     it("length > 1", async () => {
-      const schema = S.string.pipe(S.length(2, { identifier: "Char2" }))
+      const schema = S.String.pipe(S.length(2, { identifier: "Char2" }))
       await Util.expectDecodeUnknownSuccess(schema, "aa")
 
       await Util.expectDecodeUnknownFailure(
@@ -38,7 +38,7 @@ describe("string > length", () => {
     })
 
     it("length : { min > max }", async () => {
-      const schema = S.string.pipe(S.length({ min: 2, max: 4 }, { identifier: "Char(2-4)" }))
+      const schema = S.String.pipe(S.length({ min: 2, max: 4 }, { identifier: "Char(2-4)" }))
       await Util.expectDecodeUnknownSuccess(schema, "aa")
       await Util.expectDecodeUnknownSuccess(schema, "aaa")
       await Util.expectDecodeUnknownSuccess(schema, "aaaa")
@@ -60,7 +60,7 @@ describe("string > length", () => {
     })
 
     it("length : { min = max }", async () => {
-      const schema = S.string.pipe(S.length({ min: 2, max: 2 }, { identifier: "Char2" }))
+      const schema = S.String.pipe(S.length({ min: 2, max: 2 }, { identifier: "Char2" }))
       await Util.expectDecodeUnknownSuccess(schema, "aa")
 
       await Util.expectDecodeUnknownFailure(
@@ -73,7 +73,7 @@ describe("string > length", () => {
     })
 
     it("length : { min < max }", async () => {
-      const schema = S.string.pipe(S.length({ min: 2, max: 1 }, { identifier: "Char2" }))
+      const schema = S.String.pipe(S.length({ min: 2, max: 1 }, { identifier: "Char2" }))
       await Util.expectDecodeUnknownSuccess(schema, "aa")
 
       await Util.expectDecodeUnknownFailure(

@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest"
 
 describe("Schema > .annotations()", () => {
   it("annotations", () => {
-    const schema = S.string.annotations({
+    const schema = S.String.annotations({
       [AST.TitleAnnotationId]: "MyString",
       [AST.DescriptionAnnotationId]: "a string"
     })
@@ -19,7 +19,7 @@ describe("Schema > .annotations()", () => {
   })
 
   it("title", () => {
-    const schema = S.string.annotations({ title: "MyString" })
+    const schema = S.String.annotations({ title: "MyString" })
     expect(schema.ast.annotations).toEqual({
       [AST.TitleAnnotationId]: "MyString",
       [AST.DescriptionAnnotationId]: "a string"
@@ -28,7 +28,7 @@ describe("Schema > .annotations()", () => {
   })
 
   it("description", () => {
-    const schema = S.string.annotations({ description: "description" })
+    const schema = S.String.annotations({ description: "description" })
     expect(schema.ast.annotations).toEqual({
       [AST.DescriptionAnnotationId]: "description",
       [AST.TitleAnnotationId]: "string"
@@ -37,7 +37,7 @@ describe("Schema > .annotations()", () => {
   })
 
   it("examples", () => {
-    const schema = S.string.annotations({ examples: ["example"] })
+    const schema = S.String.annotations({ examples: ["example"] })
     expect(schema.ast.annotations).toEqual({
       [AST.ExamplesAnnotationId]: ["example"],
       [AST.TitleAnnotationId]: "string",
@@ -47,7 +47,7 @@ describe("Schema > .annotations()", () => {
   })
 
   it("default", () => {
-    const schema = S.string.annotations({ default: "a" })
+    const schema = S.String.annotations({ default: "a" })
     expect(schema.ast.annotations).toEqual({
       [AST.DefaultAnnotationId]: "a",
       [AST.TitleAnnotationId]: "string",
@@ -57,7 +57,7 @@ describe("Schema > .annotations()", () => {
   })
 
   it("documentation", () => {
-    const schema = S.string.annotations({ documentation: "documentation" })
+    const schema = S.String.annotations({ documentation: "documentation" })
     expect(schema.ast.annotations).toEqual({
       [AST.DocumentationAnnotationId]: "documentation",
       [AST.TitleAnnotationId]: "string",
@@ -67,14 +67,14 @@ describe("Schema > .annotations()", () => {
   })
 
   it("concurrency", () => {
-    const schema = S.struct({ a: S.string }).annotations({ concurrency: 1 })
+    const schema = S.Struct({ a: S.String }).annotations({ concurrency: 1 })
     expect(schema.ast.annotations).toEqual({
       [AST.ConcurrencyAnnotationId]: 1
     })
   })
 
   it("batching", () => {
-    const schema = S.struct({ a: S.string }).annotations({ batching: "inherit" })
+    const schema = S.Struct({ a: S.String }).annotations({ batching: "inherit" })
     expect(schema.ast.annotations).toEqual({
       [AST.BatchingAnnotationId]: "inherit"
     })
@@ -82,15 +82,15 @@ describe("Schema > .annotations()", () => {
 
   it("parseIssueTitle", async () => {
     const getOrderId = ({ actual }: ParseResult.ParseIssue) => {
-      if (S.is(S.struct({ id: S.number }))(actual)) {
+      if (S.is(S.Struct({ id: S.Number }))(actual)) {
         return `Order with ID ${actual.id}`
       }
     }
 
-    const Order = S.struct({
-      id: S.number,
-      name: S.string,
-      totalPrice: S.number
+    const Order = S.Struct({
+      id: S.Number,
+      name: S.String,
+      totalPrice: S.Number
     }).annotations({
       identifier: "Order",
       parseIssueTitle: getOrderId
@@ -115,7 +115,7 @@ describe("Schema > .annotations()", () => {
   it("message as annotation options", async () => {
     const schema =
       // initial schema, a string
-      S.string
+      S.String
         // add an error message for non-string values
         .annotations({ message: () => "not a string" }).pipe(
           // add a constraint to the schema, only non-empty strings are valid
@@ -136,7 +136,7 @@ describe("Schema > .annotations()", () => {
       constructor(readonly a: string) {}
     }
     const prettyA = (): Pretty.Pretty<A> => (instance) => `new A("${instance.a}")`
-    const AFromSelf = S.instanceOf(A, {
+    const AFromSelf = S.InstanceOf(A, {
       pretty: prettyA
     })
     expect(Pretty.make(AFromSelf)(new A("value"))).toEqual(`new A("value")`)

@@ -4,20 +4,20 @@ import { Schema } from "@effect/schema"
 import { Cause, Chunk, Context, Deferred, Effect, Exit, Layer, Stream } from "effect"
 import { assert, describe, test } from "vitest"
 
-class Increment extends Schema.TaggedRequest<Increment>()("Increment", Schema.never, Schema.number, {}) {}
-class Decrement extends Schema.TaggedRequest<Decrement>()("Decrement", Schema.never, Schema.number, {}) {}
-class IncrementBy extends Schema.TaggedRequest<IncrementBy>()("IncrementBy", Schema.never, Schema.number, {
-  number: Schema.number
+class Increment extends Schema.TaggedRequest<Increment>()("Increment", Schema.Never, Schema.Number, {}) {}
+class Decrement extends Schema.TaggedRequest<Decrement>()("Decrement", Schema.Never, Schema.Number, {}) {}
+class IncrementBy extends Schema.TaggedRequest<IncrementBy>()("IncrementBy", Schema.Never, Schema.Number, {
+  number: Schema.Number
 }) {}
 class DelayedIncrementBy
-  extends Schema.TaggedRequest<DelayedIncrementBy>()("DelayedIncrementBy", Schema.never, Schema.void, {
+  extends Schema.TaggedRequest<DelayedIncrementBy>()("DelayedIncrementBy", Schema.Never, Schema.Void, {
     delay: Schema.Positive,
-    number: Schema.number
+    number: Schema.Number
   })
 {}
-class Multiply extends Schema.TaggedRequest<Multiply>()("Multiply", Schema.never, Schema.number, {}) {}
+class Multiply extends Schema.TaggedRequest<Multiply>()("Multiply", Schema.Never, Schema.Number, {}) {}
 
-class FailBackground extends Schema.TaggedRequest<FailBackground>()("FailBackground", Schema.never, Schema.void, {}) {}
+class FailBackground extends Schema.TaggedRequest<FailBackground>()("FailBackground", Schema.Never, Schema.Void, {}) {}
 
 const counter = Machine.makeWith<number, number>()(
   (input, previous) =>
@@ -47,7 +47,7 @@ const counter = Machine.makeWith<number, number>()(
 )
 
 const counterSerializable = Machine.makeSerializable(
-  { state: Schema.NumberFromString, input: Schema.number },
+  { state: Schema.NumberFromString, input: Schema.Number },
   (input, previous) =>
     Machine.serializable.make(previous ?? input, {
       identifier: `Counter(${input})`

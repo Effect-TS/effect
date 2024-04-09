@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
 describe("Schema/never", () => {
-  const schema = S.never
+  const schema = S.Never
   it("decoding", async () => {
     await Util.expectDecodeUnknownFailure(schema, 1, "Expected never, actual 1")
   })

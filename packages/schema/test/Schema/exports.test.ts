@@ -23,11 +23,11 @@ describe("Schema/exports", () => {
     expect(S.validateOption).exist
     expect(S.validateEither).exist
 
-    expect(S.GreaterThanBigintTypeId).exist
-    expect(S.GreaterThanOrEqualToBigintTypeId).exist
-    expect(S.LessThanBigintTypeId).exist
-    expect(S.LessThanOrEqualToBigintTypeId).exist
-    expect(S.BetweenBigintTypeId).exist
+    expect(S.GreaterThanBigIntTypeId).exist
+    expect(S.GreaterThanOrEqualToBigIntTypeId).exist
+    expect(S.LessThanBigIntTypeId).exist
+    expect(S.LessThanOrEqualToBigIntTypeId).exist
+    expect(S.BetweenBigIntTypeId).exist
     expect(S.BrandTypeId).exist
     expect(S.FiniteTypeId).exist
     expect(S.GreaterThanTypeId).exist

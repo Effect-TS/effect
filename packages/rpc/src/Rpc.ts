@@ -279,10 +279,10 @@ export const RequestSchema = <A, I, R>(
 ): Schema.Schema<RequestFrom<A>, RequestFrom<I>, R> =>
   Schema.struct({
     request: schema,
-    traceId: Schema.string,
-    spanId: Schema.string,
+    traceId: Schema.String,
+    spanId: Schema.String,
     sampled: Schema.boolean,
-    headers: Schema.record(Schema.string, Schema.string)
+    headers: Schema.record(Schema.String, Schema.String)
   })
 
 /**

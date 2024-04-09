@@ -111,8 +111,8 @@ describe("KeyValueStore / prefix", () => {
 })
 
 class User extends Schema.Class<User>("User")({
-  name: Schema.string,
-  age: Schema.number
+  name: Schema.String,
+  age: Schema.Number
 }) {}
 const UserStore = KeyValueStore.layerSchema(User, "UserStore")
 const runUserStore = <E, A>(effect: Effect.Effect<A, E, KeyValueStore.SchemaStore<never, User>>) =>

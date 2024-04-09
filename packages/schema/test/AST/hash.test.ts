@@ -13,7 +13,7 @@ const expectHash = <A, I, R>(schema: S.Schema<A, I, R>, n: number) => {
 
 describe("AST > .toString()", () => {
   it("string", () => {
-    const schema = S.string
+    const schema = S.String
     expectToString(
       schema,
       `{
@@ -27,13 +27,13 @@ describe("AST > .toString()", () => {
   })
 
   it("string with annotations", () => {
-    const schema1 = S.string.pipe(S.identifier("I"), S.title("T"))
-    const schema2 = S.string.pipe(S.title("T"), S.identifier("I"))
+    const schema1 = S.String.pipe(S.identifier("I"), S.title("T"))
+    const schema2 = S.String.pipe(S.title("T"), S.identifier("I"))
     expect(S.hash(schema1)).toStrictEqual(S.hash(schema2))
   })
 
   it("refinement", () => {
-    const schema = S.string.pipe(S.filter((s) => s.length > 0))
+    const schema = S.String.pipe(S.filter((s) => s.length > 0))
     expectToString(
       schema,
       `{
@@ -51,8 +51,8 @@ describe("AST > .toString()", () => {
   })
 
   it("struct", () => {
-    const schema = S.struct({
-      a: S.string
+    const schema = S.Struct({
+      a: S.String
     })
     expectToString(
       schema,
@@ -82,8 +82,8 @@ describe("AST > .toString()", () => {
   describe("suspend", () => {
     it("outer", () => {
       type A = readonly [number, A | null]
-      const schema: S.Schema<A> = S.suspend( // intended outer suspend
-        () => S.tuple(S.number, S.union(schema, S.literal(null)))
+      const schema: S.Schema<A> = S.Suspend( // intended outer suspend
+        () => S.Tuple(S.Number, S.Union(schema, S.Literal(null)))
       )
       expectToString(
         schema,
@@ -132,9 +132,9 @@ describe("AST > .toString()", () => {
 
   it("inner/outer", () => {
     type A = readonly [number, A | null]
-    const schema: S.Schema<A> = S.tuple(
-      S.number,
-      S.union(S.suspend(() => schema), S.literal(null))
+    const schema: S.Schema<A> = S.Tuple(
+      S.Number,
+      S.Union(S.Suspend(() => schema), S.Literal(null))
     )
 
     expectToString(
@@ -215,11 +215,11 @@ describe("AST > .toString()", () => {
 
   it("inner/inner", () => {
     type A = readonly [number, A | null]
-    const schema: S.Schema<A> = S.tuple(
-      S.number,
-      S.union(
-        S.suspend(() => schema),
-        S.literal(null)
+    const schema: S.Schema<A> = S.Tuple(
+      S.Number,
+      S.Union(
+        S.Suspend(() => schema),
+        S.Literal(null)
       )
     )
 
@@ -302,18 +302,18 @@ describe("AST > .toString()", () => {
 
 describe("AST > hash", () => {
   it("string", () => {
-    const schema = S.string
+    const schema = S.String
     expectHash(schema, -806008681)
   })
 
   it("refinement", () => {
-    const schema = S.string.pipe(S.filter((s) => s.length > 0))
+    const schema = S.String.pipe(S.filter((s) => s.length > 0))
     expectHash(schema, 809682243)
   })
 
   it("struct", () => {
-    const schema = S.struct({
-      a: S.string
+    const schema = S.Struct({
+      a: S.String
     })
     expectHash(schema, 799162257)
   })
@@ -321,17 +321,17 @@ describe("AST > hash", () => {
   describe("suspend", () => {
     it("outer", () => {
       type A = readonly [number, A | null]
-      const schema: S.Schema<A> = S.suspend( // intended outer suspend
-        () => S.tuple(S.number, S.union(schema, S.literal(null)))
+      const schema: S.Schema<A> = S.Suspend( // intended outer suspend
+        () => S.Tuple(S.Number, S.Union(schema, S.Literal(null)))
       )
       expectHash(schema, -887784700)
     })
 
     it("inner/outer", () => {
       type A = readonly [number, A | null]
-      const schema: S.Schema<A> = S.tuple(
-        S.number,
-        S.union(S.suspend(() => schema), S.literal(null))
+      const schema: S.Schema<A> = S.Tuple(
+        S.Number,
+        S.Union(S.Suspend(() => schema), S.Literal(null))
       )
 
       expectHash(schema, 757654673)
@@ -339,11 +339,11 @@ describe("AST > hash", () => {
 
     it("inner/inner", () => {
       type A = readonly [number, A | null]
-      const schema: S.Schema<A> = S.tuple(
-        S.number,
-        S.union(
-          S.suspend(() => schema),
-          S.literal(null)
+      const schema: S.Schema<A> = S.Tuple(
+        S.Number,
+        S.Union(
+          S.Suspend(() => schema),
+          S.Literal(null)
         )
       )
 

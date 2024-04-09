@@ -5,62 +5,62 @@ import { describe, expect, it } from "vitest"
 describe("AST > encodedAST", () => {
   describe(`should return the same reference if the AST doesn't represent a transformation`, () => {
     it("declaration (true)", () => {
-      const schema = S.optionFromSelf(S.string)
+      const schema = S.OptionFromSelf(S.String)
       expect(AST.encodedAST(schema.ast) === schema.ast).toBe(true)
     })
 
     it("declaration (false)", () => {
-      const schema = S.optionFromSelf(S.NumberFromString)
+      const schema = S.OptionFromSelf(S.NumberFromString)
       expect(AST.encodedAST(schema.ast) === schema.ast).toBe(false)
     })
 
     it("tuple (true)", () => {
-      const schema = S.tuple(S.string, S.number)
+      const schema = S.Tuple(S.String, S.Number)
       expect(AST.encodedAST(schema.ast) === schema.ast).toBe(true)
     })
 
     it("tuple (false)", () => {
-      const schema = S.tuple(S.string, S.NumberFromString)
+      const schema = S.Tuple(S.String, S.NumberFromString)
       expect(AST.encodedAST(schema.ast) === schema.ast).toBe(false)
     })
 
     it("array (true)", () => {
-      const schema = S.array(S.number)
+      const schema = S.Array(S.Number)
       expect(AST.encodedAST(schema.ast) === schema.ast).toBe(true)
     })
 
     it("array (false)", () => {
-      const schema = S.array(S.NumberFromString)
+      const schema = S.Array(S.NumberFromString)
       expect(AST.encodedAST(schema.ast) === schema.ast).toBe(false)
     })
 
     it("union (true)", () => {
-      const schema = S.union(S.string, S.number)
+      const schema = S.Union(S.String, S.Number)
       expect(AST.encodedAST(schema.ast) === schema.ast).toBe(true)
     })
 
     it("union (false)", () => {
-      const schema = S.union(S.string, S.NumberFromString)
+      const schema = S.Union(S.String, S.NumberFromString)
       expect(AST.encodedAST(schema.ast) === schema.ast).toBe(false)
     })
 
     it("struct (true)", () => {
-      const schema = S.struct({ a: S.string, b: S.number })
+      const schema = S.Struct({ a: S.String, b: S.Number })
       expect(AST.encodedAST(schema.ast) === schema.ast).toBe(true)
     })
 
     it("struct (false)", () => {
-      const schema = S.struct({ a: S.string, b: S.NumberFromString })
+      const schema = S.Struct({ a: S.String, b: S.NumberFromString })
       expect(AST.encodedAST(schema.ast) === schema.ast).toBe(false)
     })
 
     it("record (true)", () => {
-      const schema = S.record(S.string, S.number)
+      const schema = S.Record(S.String, S.Number)
       expect(AST.encodedAST(schema.ast) === schema.ast).toBe(true)
     })
 
     it("record (false)", () => {
-      const schema = S.record(S.string, S.NumberFromString)
+      const schema = S.Record(S.String, S.NumberFromString)
       expect(AST.encodedAST(schema.ast) === schema.ast).toBe(false)
     })
   })

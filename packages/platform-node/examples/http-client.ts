@@ -7,9 +7,9 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 
 class Todo extends Schema.Class<Todo>("Todo")({
-  userId: Schema.number,
-  id: Schema.number,
-  title: Schema.string,
+  userId: Schema.Number,
+  id: Schema.Number,
+  title: Schema.String,
   completed: Schema.boolean
 }) {}
 

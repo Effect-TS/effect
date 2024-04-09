@@ -7,8 +7,8 @@ describe("AST > partial", () => {
     it("struct", () => {
       // type A = { readonly a: string }
       // type B = Partial<A>
-      const schema = S.partial(S.struct({ a: S.string }))
-      const expected = S.struct({ a: S.optional(S.string) })
+      const schema = S.partial(S.Struct({ a: S.String }))
+      const expected = S.Struct({ a: S.optional(S.String) })
       expect(schema.ast).toStrictEqual(expected.ast)
     })
 
@@ -68,8 +68,8 @@ describe("AST > partial", () => {
     it("struct", () => {
       // type A = { readonly a: string }
       // type B = Partial<A>
-      const schema = S.partial(S.struct({ a: S.string }), { exact: true })
-      const expected = S.struct({ a: S.optional(S.string, { exact: true }) })
+      const schema = S.partial(S.Struct({ a: S.String }), { exact: true })
+      const expected = S.Struct({ a: S.optional(S.String, { exact: true }) })
       expect(schema.ast).toStrictEqual(expected.ast)
     })
 

@@ -6,18 +6,18 @@ import { describe, expect, it } from "vitest"
 
 describe("number > lessThan", () => {
   it("property tests", () => {
-    Util.roundtrip(S.lessThan(0)(S.number))
+    Util.roundtrip(S.lessThan(0)(S.Number))
   })
 
   it("is", () => {
-    const is = P.is(S.lessThan(0)(S.number))
+    const is = P.is(S.lessThan(0)(S.Number))
     expect(is(0)).toEqual(false)
     expect(is(1)).toEqual(false)
     expect(is(-1)).toEqual(true)
   })
 
   it("decoding", async () => {
-    const schema = S.lessThan(0)(S.number)
+    const schema = S.lessThan(0)(S.Number)
     await Util.expectDecodeUnknownSuccess(schema, -1)
     await Util.expectDecodeUnknownFailure(
       schema,
@@ -36,7 +36,7 @@ describe("number > lessThan", () => {
   })
 
   it("pretty", () => {
-    const pretty = Pretty.make(S.lessThan(0)(S.number))
+    const pretty = Pretty.make(S.lessThan(0)(S.Number))
     expect(pretty(1)).toEqual("1")
   })
 })

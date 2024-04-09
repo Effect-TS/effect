@@ -10,20 +10,20 @@ import { Effect, Exit, Layer, PrimaryKey, ReadonlyArray, Request, RequestResolve
 import { assert, describe } from "vitest"
 
 class User extends Schema.Class<User>("User")({
-  id: Schema.number,
-  name: Schema.string
+  id: Schema.Number,
+  name: Schema.String
 }) {}
 
-class MyRequest extends Schema.TaggedRequest<MyRequest>()("MyRequest", Schema.string, User, {
-  id: Schema.number
+class MyRequest extends Schema.TaggedRequest<MyRequest>()("MyRequest", Schema.String, User, {
+  id: Schema.Number
 }) {
   [PrimaryKey.symbol]() {
     return `MyRequest:${this.id}`
   }
 }
 
-class TTLRequest extends Schema.TaggedRequest<TTLRequest>()("TTLRequest", Schema.string, User, {
-  id: Schema.number
+class TTLRequest extends Schema.TaggedRequest<TTLRequest>()("TTLRequest", Schema.String, User, {
+  id: Schema.Number
 }) {
   [PrimaryKey.symbol]() {
     return `TTLRequest:${this.id}`

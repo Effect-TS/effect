@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
 describe("number > between", () => {
-  const schema = S.number.pipe(S.between(-1, 1)).annotations({
+  const schema = S.Number.pipe(S.between(-1, 1)).annotations({
     title: "[-1, -1] interval"
   })
   it("decoding", async () => {

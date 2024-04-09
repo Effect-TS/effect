@@ -4,7 +4,7 @@ import { describe, it } from "vitest"
 
 describe("bigint/clampBigint", () => {
   it("decoding", async () => {
-    const schema = S.bigintFromSelf.pipe(S.clampBigint(-1n, 1n))
+    const schema = S.BigIntFromSelf.pipe(S.clampBigInt(-1n, 1n))
 
     await Util.expectDecodeUnknownSuccess(schema, 3n, 1n)
     await Util.expectDecodeUnknownSuccess(schema, 0n, 0n)

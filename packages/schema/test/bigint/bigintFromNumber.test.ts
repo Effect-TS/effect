@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
 describe("bigint > BigintFromNumber", () => {
-  const schema = S.BigintFromNumber
+  const schema = S.BigIntFromNumber
 
   it("property tests", () => {
     Util.roundtrip(schema)

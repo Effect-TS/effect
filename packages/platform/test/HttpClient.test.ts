@@ -8,13 +8,13 @@ import * as Stream from "effect/Stream"
 import { assert, describe, expect, it } from "vitest"
 
 const Todo = Schema.struct({
-  userId: Schema.number,
-  id: Schema.number,
-  title: Schema.string,
+  userId: Schema.Number,
+  id: Schema.Number,
+  title: Schema.String,
   completed: Schema.boolean
 })
 const OkTodo = Schema.struct({
-  status: Schema.literal(200),
+  status: Schema.Literal(200),
   body: Todo
 })
 

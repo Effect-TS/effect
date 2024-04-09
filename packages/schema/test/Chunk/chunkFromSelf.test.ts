@@ -7,11 +7,11 @@ import { describe, expect, it } from "vitest"
 
 describe("Chunk > chunkFromSelf", () => {
   it("property tests", () => {
-    Util.roundtrip(S.chunkFromSelf(S.number))
+    Util.roundtrip(S.ChunkFromSelf(S.Number))
   })
 
   it("decoding", async () => {
-    const schema = S.chunkFromSelf(S.NumberFromString)
+    const schema = S.ChunkFromSelf(S.NumberFromString)
     await Util.expectDecodeUnknownSuccess(schema, C.empty(), C.empty())
     await Util.expectDecodeUnknownSuccess(
       schema,
@@ -37,7 +37,7 @@ describe("Chunk > chunkFromSelf", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.chunkFromSelf(S.NumberFromString)
+    const schema = S.ChunkFromSelf(S.NumberFromString)
     await Util.expectEncodeSuccess(schema, C.empty(), C.empty())
     await Util.expectEncodeSuccess(
       schema,
@@ -47,7 +47,7 @@ describe("Chunk > chunkFromSelf", () => {
   })
 
   it("is", () => {
-    const schema = S.chunkFromSelf(S.string)
+    const schema = S.ChunkFromSelf(S.String)
     const is = P.is(schema)
     expect(is(C.empty())).toEqual(true)
     expect(is(C.fromIterable(["a", "b", "c"]))).toEqual(true)
@@ -57,7 +57,7 @@ describe("Chunk > chunkFromSelf", () => {
   })
 
   it("pretty", () => {
-    const schema = S.chunkFromSelf(S.string)
+    const schema = S.ChunkFromSelf(S.String)
     const pretty = Pretty.make(schema)
     expect(pretty(C.empty())).toEqual("Chunk()")
     expect(pretty(C.fromIterable(["a", "b"]))).toEqual(

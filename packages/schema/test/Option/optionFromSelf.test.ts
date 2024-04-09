@@ -7,11 +7,11 @@ import { describe, expect, it } from "vitest"
 
 describe("Option > optionFromSelf", () => {
   it("property tests", () => {
-    Util.roundtrip(S.optionFromSelf(S.NumberFromString))
+    Util.roundtrip(S.OptionFromSelf(S.NumberFromString))
   })
 
   it("is", () => {
-    const schema = S.optionFromSelf(S.number)
+    const schema = S.OptionFromSelf(S.Number)
     const is = P.is(schema)
     expect(is(O.none())).toEqual(true)
     expect(is(O.some(1))).toEqual(true)
@@ -23,7 +23,7 @@ describe("Option > optionFromSelf", () => {
   })
 
   it("decoding", async () => {
-    const schema = S.optionFromSelf(S.NumberFromString)
+    const schema = S.OptionFromSelf(S.NumberFromString)
     await Util.expectDecodeUnknownSuccess(schema, O.none(), O.none())
     await Util.expectDecodeUnknownSuccess(schema, O.some("1"), O.some(1))
 
@@ -35,7 +35,7 @@ describe("Option > optionFromSelf", () => {
   })
 
   it("pretty", () => {
-    const schema = S.optionFromSelf(S.number)
+    const schema = S.OptionFromSelf(S.Number)
     const pretty = Pretty.make(schema)
     expect(pretty(O.none())).toEqual("none()")
     expect(pretty(O.some(1))).toEqual("some(1)")

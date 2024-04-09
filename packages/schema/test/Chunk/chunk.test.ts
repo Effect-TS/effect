@@ -5,11 +5,11 @@ import { describe, it } from "vitest"
 
 describe("Chunk > chunk", () => {
   it("property tests", () => {
-    Util.roundtrip(S.chunk(S.number))
+    Util.roundtrip(S.Chunk(S.Number))
   })
 
   it("decoding", async () => {
-    const schema = S.chunk(S.number)
+    const schema = S.Chunk(S.Number)
     await Util.expectDecodeUnknownSuccess(schema, [], C.empty())
     await Util.expectDecodeUnknownSuccess(schema, [1, 2, 3], C.fromIterable([1, 2, 3]))
 
@@ -32,7 +32,7 @@ describe("Chunk > chunk", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.chunk(S.number)
+    const schema = S.Chunk(S.Number)
     await Util.expectEncodeSuccess(schema, C.empty(), [])
     await Util.expectEncodeSuccess(schema, C.fromIterable([1, 2, 3]), [1, 2, 3])
   })

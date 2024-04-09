@@ -5,11 +5,11 @@ import { describe, expect, it } from "vitest"
 
 describe("Option > optionFromNullable", () => {
   it("property tests", () => {
-    Util.roundtrip(S.optionFromNullable(S.number))
+    Util.roundtrip(S.OptionFromNullable(S.Number))
   })
 
   it("decoding", async () => {
-    const schema = S.optionFromNullable(S.NumberFromString)
+    const schema = S.OptionFromNullable(S.NumberFromString)
     await Util.expectDecodeUnknownSuccess(schema, null, O.none())
     await Util.expectDecodeUnknownSuccess(schema, "1", O.some(1))
 
@@ -45,7 +45,7 @@ describe("Option > optionFromNullable", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.optionFromNullable(S.NumberFromString)
+    const schema = S.OptionFromNullable(S.NumberFromString)
     await Util.expectEncodeSuccess(schema, O.none(), null)
     await Util.expectEncodeSuccess(schema, O.some(1), "1")
   })

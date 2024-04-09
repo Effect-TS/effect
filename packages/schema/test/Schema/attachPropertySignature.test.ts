@@ -5,9 +5,9 @@ import { describe, it } from "vitest"
 
 describe("Schema/attachPropertySignature", () => {
   it("string keys literal values", async () => {
-    const Circle = S.struct({ radius: S.number })
-    const Square = S.struct({ sideLength: S.number })
-    const schema = S.union(
+    const Circle = S.Struct({ radius: S.Number })
+    const Square = S.Struct({ sideLength: S.Number })
+    const schema = S.Union(
       Circle.pipe(S.attachPropertySignature("kind", "circle")),
       Square.pipe(S.attachPropertySignature("kind", "square"))
     )
@@ -19,10 +19,10 @@ describe("Schema/attachPropertySignature", () => {
   })
 
   it("symbol keys literal values", async () => {
-    const Circle = S.struct({ radius: S.number })
-    const Square = S.struct({ sideLength: S.number })
+    const Circle = S.Struct({ radius: S.Number })
+    const Square = S.Struct({ sideLength: S.Number })
     const kind = Symbol.for("@effect/schema/test/kind")
-    const schema = S.union(
+    const schema = S.Union(
       Circle.pipe(S.attachPropertySignature(kind, "circle")),
       Square.pipe(S.attachPropertySignature(kind, "square"))
     )
@@ -34,12 +34,12 @@ describe("Schema/attachPropertySignature", () => {
   })
 
   it("string keys unique symbols", async () => {
-    const Circle = S.struct({ radius: S.number })
-    const Square = S.struct({ sideLength: S.number })
+    const Circle = S.Struct({ radius: S.Number })
+    const Square = S.Struct({ sideLength: S.Number })
     const kind = Symbol.for("@effect/schema/test/kind")
     const circle = Symbol.for("@effect/schema/test/circle")
     const square = Symbol.for("@effect/schema/test/square")
-    const schema = S.union(
+    const schema = S.Union(
       Circle.pipe(S.attachPropertySignature(kind, circle)),
       Square.pipe(S.attachPropertySignature(kind, square))
     )
@@ -51,11 +51,11 @@ describe("Schema/attachPropertySignature", () => {
   })
 
   it("symbol keys unique symbols", async () => {
-    const Circle = S.struct({ radius: S.number })
-    const Square = S.struct({ sideLength: S.number })
+    const Circle = S.Struct({ radius: S.Number })
+    const Square = S.Struct({ sideLength: S.Number })
     const circle = Symbol.for("@effect/schema/test/circle")
     const square = Symbol.for("@effect/schema/test/square")
-    const schema = S.union(
+    const schema = S.Union(
       Circle.pipe(S.attachPropertySignature("kind", circle)),
       Square.pipe(S.attachPropertySignature("kind", square))
     )
@@ -67,17 +67,17 @@ describe("Schema/attachPropertySignature", () => {
   })
 
   it("should be compatible with extend", async () => {
-    const schema = S.struct({ a: S.string }).pipe(
+    const schema = S.Struct({ a: S.String }).pipe(
       S.attachPropertySignature("_tag", "b"),
-      S.extend(S.struct({ c: S.number }))
+      S.extend(S.Struct({ c: S.Number }))
     )
     await Util.expectDecodeUnknownSuccess(schema, { a: "a", c: 1 }, { a: "a", c: 1, _tag: "b" as const })
     await Util.expectEncodeSuccess(schema, { a: "a", c: 1, _tag: "b" as const }, { a: "a", c: 1 })
   })
 
   it("with a transformation", async () => {
-    const From = S.struct({ radius: S.number, _isVisible: S.optional(S.boolean, { exact: true }) })
-    const To = S.struct({ radius: S.number, _isVisible: S.boolean })
+    const From = S.Struct({ radius: S.Number, _isVisible: S.optional(S.Boolean, { exact: true }) })
+    const To = S.Struct({ radius: S.Number, _isVisible: S.Boolean })
 
     const schema = S.transformOrFail(
       From,
@@ -105,8 +105,8 @@ describe("Schema/attachPropertySignature", () => {
   })
 
   it("annotations", async () => {
-    const schema1 = S.struct({
-      a: S.string
+    const schema1 = S.Struct({
+      a: S.String
     }).pipe(
       S.attachPropertySignature("_tag", "a", { identifier: "AttachedProperty" })
     )
@@ -118,8 +118,8 @@ describe("Schema/attachPropertySignature", () => {
    └─ Expected AttachedProperty, actual null`
     )
     const schema2 = S.attachPropertySignature(
-      S.struct({
-        a: S.string
+      S.Struct({
+        a: S.String
       }),
       "_tag",
       "a",
@@ -135,8 +135,8 @@ describe("Schema/attachPropertySignature", () => {
   })
 
   it("decoding error message", async () => {
-    const schema = S.struct({
-      a: S.string
+    const schema = S.Struct({
+      a: S.String
     }).pipe(
       S.attachPropertySignature("_tag", "a")
     ).annotations({ identifier: "AttachedProperty" })

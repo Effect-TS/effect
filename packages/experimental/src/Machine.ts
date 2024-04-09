@@ -138,7 +138,7 @@ export type ActorTypeId = typeof ActorTypeId
  * @category errors
  */
 export class MachineDefect extends Schema.TaggedError<MachineDefect>()("MachineDefect", {
-  cause: Schema.cause({ error: Schema.never })
+  cause: Schema.cause({ error: Schema.Never })
 }) {
   /**
    * @since 1.0.0

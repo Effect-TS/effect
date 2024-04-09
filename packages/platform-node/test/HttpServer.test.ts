@@ -36,8 +36,8 @@ const runPromise = <E, A>(
 ) => Effect.runPromise(Effect.provide(effect, EnvLive))
 
 const Todo = Schema.struct({
-  id: Schema.number,
-  title: Schema.string
+  id: Schema.Number,
+  title: Schema.String
 })
 const IdParams = Schema.struct({
   id: Schema.NumberFromString
@@ -116,7 +116,7 @@ describe("HttpServer", () => {
           Effect.gen(function*(_) {
             const files = yield* _(Http.request.schemaBodyForm(Schema.struct({
               file: Http.multipart.filesSchema,
-              test: Schema.string
+              test: Schema.String
             })))
             expect(files).toHaveProperty("file")
             expect(files).toHaveProperty("test")
@@ -326,7 +326,7 @@ describe("HttpServer", () => {
           Effect.flatMap(
             Http.request.schemaBodyUrlParams(Schema.struct({
               id: Schema.NumberFromString,
-              title: Schema.string
+              title: Schema.String
             })),
             ({ id, title }) => todoResponse({ id, title })
           )
@@ -352,7 +352,7 @@ describe("HttpServer", () => {
           Effect.flatMap(
             Http.request.schemaBodyUrlParams(Schema.struct({
               id: Schema.NumberFromString,
-              title: Schema.string
+              title: Schema.String
             })),
             ({ id, title }) => todoResponse({ id, title })
           )
@@ -378,7 +378,7 @@ describe("HttpServer", () => {
           Effect.gen(function*(_) {
             const result = yield* _(
               Http.request.schemaBodyFormJson(Schema.struct({
-                test: Schema.string
+                test: Schema.String
               }))("json")
             )
             expect(result.test).toEqual("content")
@@ -407,7 +407,7 @@ describe("HttpServer", () => {
           Effect.gen(function*(_) {
             const result = yield* _(
               Http.request.schemaBodyFormJson(Schema.struct({
-                test: Schema.string
+                test: Schema.String
               }))("json")
             )
             expect(result.test).toEqual("content")
@@ -440,7 +440,7 @@ describe("HttpServer", () => {
           Effect.gen(function*(_) {
             const result = yield* _(
               Http.request.schemaBodyFormJson(Schema.struct({
-                test: Schema.string
+                test: Schema.String
               }))("json")
             )
             expect(result.test).toEqual("content")

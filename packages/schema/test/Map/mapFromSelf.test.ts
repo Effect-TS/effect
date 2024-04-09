@@ -3,6 +3,6 @@ import { describe, expect, it } from "vitest"
 
 describe("Map > mapFromSelf", () => {
   it("description", () => {
-    expect(String(S.mapFromSelf({ key: S.string, value: S.number }))).toStrictEqual("Map<string, number>")
+    expect(String(S.MapFromSelf({ Key: S.String, Value: S.Number }))).toStrictEqual("Map<string, number>")
   })
 })

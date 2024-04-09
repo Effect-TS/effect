@@ -6,11 +6,11 @@ import { describe, expect, it } from "vitest"
 
 describe("ReadonlyMap > readonlyMapFromSelf", () => {
   it("property tests", () => {
-    Util.roundtrip(S.readonlyMapFromSelf({ key: S.number, value: S.string }))
+    Util.roundtrip(S.ReadonlyMapFromSelf({ Key: S.Number, Value: S.String }))
   })
 
   it("decoding", async () => {
-    const schema = S.readonlyMapFromSelf({ key: S.NumberFromString, value: S.string })
+    const schema = S.ReadonlyMapFromSelf({ Key: S.NumberFromString, Value: S.String })
     await Util.expectDecodeUnknownSuccess(schema, new Map(), new Map())
     await Util.expectDecodeUnknownSuccess(
       schema,
@@ -38,7 +38,7 @@ describe("ReadonlyMap > readonlyMapFromSelf", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.readonlyMapFromSelf({ key: S.NumberFromString, value: S.string })
+    const schema = S.ReadonlyMapFromSelf({ Key: S.NumberFromString, Value: S.String })
     await Util.expectEncodeSuccess(schema, new Map(), new Map())
     await Util.expectEncodeSuccess(
       schema,
@@ -48,7 +48,7 @@ describe("ReadonlyMap > readonlyMapFromSelf", () => {
   })
 
   it("is", () => {
-    const schema = S.readonlyMapFromSelf({ key: S.number, value: S.string })
+    const schema = S.ReadonlyMapFromSelf({ Key: S.Number, Value: S.String })
     const is = P.is(schema)
     expect(is(new Map())).toEqual(true)
     expect(is(new Map([[1, "a"], [2, "b"], [3, "c"]]))).toEqual(true)
@@ -63,7 +63,7 @@ describe("ReadonlyMap > readonlyMapFromSelf", () => {
   })
 
   it("pretty", () => {
-    const schema = S.readonlyMapFromSelf({ key: S.number, value: S.string })
+    const schema = S.ReadonlyMapFromSelf({ Key: S.Number, Value: S.String })
     const pretty = Pretty.make(schema)
     expect(pretty(new Map())).toEqual("new Map([])")
     expect(pretty(new Map([[1, "a"], [2, "b"]]))).toEqual(

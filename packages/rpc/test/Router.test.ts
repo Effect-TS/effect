@@ -18,63 +18,63 @@ interface Name {
 const Name = Context.GenericTag<Name, string>("Name")
 
 class SomeError extends S.TaggedError<SomeError>()("SomeError", {
-  message: S.string
+  message: S.String
 }) {}
 
 class Post extends S.Class<Post>("Post")({
-  id: S.number,
-  body: S.string
+  id: S.Number,
+  body: S.String
 }) {}
 
-class CreatePost extends S.TaggedRequest<CreatePost>()("CreatePost", S.never, Post, {
-  body: S.string
+class CreatePost extends S.TaggedRequest<CreatePost>()("CreatePost", S.Never, Post, {
+  body: S.String
 }) {}
 
 const posts = Router.make(
   Rpc.effect(CreatePost, ({ body }) => Effect.succeed(new Post({ id: 1, body })))
 )
 
-class Greet extends S.TaggedRequest<Greet>()("Greet", S.never, S.string, {
-  name: S.string
+class Greet extends S.TaggedRequest<Greet>()("Greet", S.Never, S.String, {
+  name: S.String
 }) {}
 
-class Fail extends S.TaggedRequest<Fail>()("Fail", SomeError, S.void, {
-  name: S.string
+class Fail extends S.TaggedRequest<Fail>()("Fail", SomeError, S.Void, {
+  name: S.String
 }) {}
 
-class FailNoInput extends S.TaggedRequest<FailNoInput>()("FailNoInput", SomeError, S.void, {}) {}
+class FailNoInput extends S.TaggedRequest<FailNoInput>()("FailNoInput", SomeError, S.Void, {}) {}
 
-class EncodeInput extends S.TaggedRequest<EncodeInput>()("EncodeInput", S.never, S.Date, {
+class EncodeInput extends S.TaggedRequest<EncodeInput>()("EncodeInput", S.Never, S.Date, {
   date: S.Date
 }) {}
 
 class EncodeDate extends S.TaggedRequest<EncodeDate>()("EncodeDate", SomeError, S.Date, {
-  date: S.string
+  date: S.String
 }) {}
 
-class Refined extends S.TaggedRequest<Refined>()("Refined", S.never, S.number, {
-  number: pipe(S.number, S.int(), S.greaterThan(10))
+class Refined extends S.TaggedRequest<Refined>()("Refined", S.Never, S.Number, {
+  number: pipe(S.Number, S.int(), S.greaterThan(10))
 }) {}
 
-class SpanName extends S.TaggedRequest<SpanName>()("SpanName", S.never, S.string, {}) {}
+class SpanName extends S.TaggedRequest<SpanName>()("SpanName", S.Never, S.String, {}) {}
 
-class GetName extends S.TaggedRequest<GetName>()("GetName", S.never, S.string, {}) {}
+class GetName extends S.TaggedRequest<GetName>()("GetName", S.Never, S.String, {}) {}
 
 class EchoHeaders
-  extends S.TaggedRequest<EchoHeaders>()("EchoHeaders", S.never, S.record(S.string, S.union(S.string, S.undefined)), {})
+  extends S.TaggedRequest<EchoHeaders>()("EchoHeaders", S.Never, S.record(S.String, S.union(S.String, S.undefined)), {})
 {}
 
 class Counts extends Rpc.StreamRequest<Counts>()(
   "Counts",
-  S.never,
-  S.number,
+  S.Never,
+  S.Number,
   {}
 ) {}
 
 class FailStream extends Rpc.StreamRequest<FailStream>()(
   "FailStream",
   SomeError,
-  S.number,
+  S.Number,
   {}
 ) {}
 
@@ -105,8 +105,8 @@ const router = Router.make(
     )),
   Rpc.effect(EchoHeaders, () =>
     Rpc.schemaHeaders(S.struct({
-      foo: Schema.string,
-      baz: Schema.optional(Schema.string)
+      foo: Schema.String,
+      baz: Schema.optional(Schema.String)
     })).pipe(Effect.orDie)),
   Rpc.stream(FailStream, () =>
     Stream.range(0, 10).pipe(

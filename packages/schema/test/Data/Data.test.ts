@@ -5,12 +5,12 @@ import { describe, it } from "vitest"
 
 describe("Data > data", () => {
   it("property tests", () => {
-    Util.roundtrip(S.data(S.struct({ a: S.string, b: S.number })))
-    Util.roundtrip(S.data(S.array(S.number)))
+    Util.roundtrip(S.Data(S.Struct({ a: S.String, b: S.Number })))
+    Util.roundtrip(S.Data(S.Array(S.Number)))
   })
 
   it("decoding", async () => {
-    const schema = S.data(S.struct({ a: S.string, b: S.number }))
+    const schema = S.Data(S.Struct({ a: S.String, b: S.Number }))
     await Util.expectDecodeUnknownSuccess(
       schema,
       { a: "ok", b: 0 },
@@ -28,7 +28,7 @@ describe("Data > data", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.data(S.struct({ a: S.string, b: S.number }))
+    const schema = S.Data(S.Struct({ a: S.String, b: S.Number }))
     await Util.expectEncodeSuccess(schema, Data.struct({ a: "ok", b: 0 }), { a: "ok", b: 0 })
   })
 })

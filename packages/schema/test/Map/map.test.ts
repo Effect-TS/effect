@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 
 describe("Map > map", () => {
   it("description", () => {
-    expect(String(S.map({ key: S.string, value: S.number }))).toStrictEqual(
+    expect(String(S.Map({ Key: S.String, Value: S.Number }))).toStrictEqual(
       "(ReadonlyArray<readonly [string, number]> <-> Map<string, number>)"
     )
   })

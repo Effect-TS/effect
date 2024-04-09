@@ -4,9 +4,9 @@ import { describe, expect, it } from "vitest"
 
 describe("Schema > typeSchema", () => {
   it("transformation", () => {
-    const schema = S.string.pipe(
+    const schema = S.String.pipe(
       S.transform(
-        S.tuple(S.NumberFromString, S.NumberFromString),
+        S.Tuple(S.NumberFromString, S.NumberFromString),
         { decode: (s) => [s, s] as const, encode: ([s]) => s }
       ),
       S.typeSchema
@@ -33,10 +33,10 @@ describe("Schema > typeSchema", () => {
     interface A {
       prop: A | number
     }
-    const schema: S.Schema<A, I> = S.suspend( // intended outer suspend
+    const schema: S.Schema<A, I> = S.Suspend( // intended outer suspend
       () =>
-        S.struct({
-          prop: S.union(S.NumberFromString, schema)
+        S.Struct({
+          prop: S.Union(S.NumberFromString, schema)
         })
     )
     const to = S.typeSchema(schema)

@@ -5,11 +5,11 @@ import { describe, expect, it } from "vitest"
 
 describe("Either > eitherFromUnion", () => {
   it("property tests", () => {
-    Util.roundtrip(S.eitherFromUnion({ left: S.string, right: S.number }))
+    Util.roundtrip(S.EitherFromUnion({ Left: S.String, Right: S.Number }))
   })
 
   it("decoding success", async () => {
-    const schema = S.eitherFromUnion({ left: S.DateFromString, right: S.NumberFromString })
+    const schema = S.EitherFromUnion({ Left: S.DateFromString, Right: S.NumberFromString })
     await Util.expectDecodeUnknownSuccess(schema, "1970-01-01T00:00:00.000Z", E.left(new Date(0)))
     await Util.expectDecodeUnknownSuccess(schema, "1", E.right(1))
 
@@ -18,7 +18,7 @@ describe("Either > eitherFromUnion", () => {
   })
 
   it("decoding error (Encoded side transformation failure)", async () => {
-    const schema = S.eitherFromUnion({ left: S.number, right: S.string })
+    const schema = S.EitherFromUnion({ Left: S.Number, Right: S.String })
     await Util.expectDecodeUnknownFailure(
       schema,
       undefined,
@@ -37,7 +37,7 @@ describe("Either > eitherFromUnion", () => {
   })
 
   it("decoding error (Transformation process failure)", async () => {
-    const schema = S.eitherFromUnion({ left: S.number, right: S.compose(S.boolean, S.string, { strict: false }) })
+    const schema = S.EitherFromUnion({ Left: S.Number, Right: S.compose(S.Boolean, S.String, { strict: false }) })
     await Util.expectDecodeUnknownFailure(
       schema,
       true,
@@ -58,20 +58,20 @@ describe("Either > eitherFromUnion", () => {
   })
 
   it("decoding prefer right", async () => {
-    const schema = S.eitherFromUnion({ left: S.NumberFromString, right: S.NumberFromString })
+    const schema = S.EitherFromUnion({ Left: S.NumberFromString, Right: S.NumberFromString })
     await Util.expectDecodeUnknownSuccess(schema, "1", E.right(1))
   })
 
   it("encoding success", async () => {
-    const schema = S.eitherFromUnion({ left: S.DateFromString, right: S.NumberFromString })
+    const schema = S.EitherFromUnion({ Left: S.DateFromString, Right: S.NumberFromString })
     await Util.expectEncodeSuccess(schema, E.left(new Date(0)), "1970-01-01T00:00:00.000Z")
     await Util.expectEncodeSuccess(schema, E.right(1), "1")
   })
 
   it("encoding error", async () => {
-    const schema = S.eitherFromUnion({
-      left: S.compose(S.DateFromString, S.unknown, { strict: false }),
-      right: S.compose(S.NumberFromString, S.unknown, { strict: false })
+    const schema = S.EitherFromUnion({
+      Left: S.compose(S.DateFromString, S.Unknown, { strict: false }),
+      Right: S.compose(S.NumberFromString, S.Unknown, { strict: false })
     })
     await Util.expectEncodeFailure(
       schema,
@@ -106,9 +106,9 @@ describe("Either > eitherFromUnion", () => {
   })
 
   it("encoding don't overlap", async () => {
-    const schema = S.eitherFromUnion({
-      left: S.compose(S.DateFromString, S.unknown, { strict: false }),
-      right: S.compose(S.NumberFromString, S.unknown, { strict: false })
+    const schema = S.EitherFromUnion({
+      Left: S.compose(S.DateFromString, S.Unknown, { strict: false }),
+      Right: S.compose(S.NumberFromString, S.Unknown, { strict: false })
     })
     await Util.expectEncodeFailure(
       schema,

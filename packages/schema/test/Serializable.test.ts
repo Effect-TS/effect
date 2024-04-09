@@ -4,12 +4,12 @@ import { Effect, Exit } from "effect"
 import { assert, describe, test } from "vitest"
 
 class Person extends S.Class<Person>("Person")({
-  id: S.number,
-  name: S.string.pipe(S.nonEmpty())
+  id: S.Number,
+  name: S.String.pipe(S.nonEmpty())
 }) {}
 
 class GetPersonById extends S.Class<GetPersonById>("GetPersonById")({
-  id: S.number
+  id: S.Number
 }) {
   get [Serializable.symbol]() {
     return GetPersonById
@@ -17,7 +17,7 @@ class GetPersonById extends S.Class<GetPersonById>("GetPersonById")({
   get [Serializable.symbolResult]() {
     return {
       Success: Person,
-      Failure: S.string
+      Failure: S.String
     } as const
   }
 }

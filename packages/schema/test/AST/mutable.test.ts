@@ -11,26 +11,26 @@ const expectSameReference = (schema: S.Schema.Any) => {
 
 describe("AST > mutable", () => {
   it("tuple", () => {
-    expectSameReference(S.tuple(S.string, S.number))
+    expectSameReference(S.Tuple(S.String, S.Number))
   })
 
   it("struct", () => {
-    expectSameReference(S.struct({ a: S.string, b: S.number }))
+    expectSameReference(S.Struct({ a: S.String, b: S.Number }))
   })
 
   it("union", () => {
-    expectSameReference(S.union(S.string, S.number))
+    expectSameReference(S.Union(S.String, S.Number))
   })
 
   it("suspend", () => {
-    expectSameReference(S.suspend(() => S.struct({ a: S.string, b: S.number })))
+    expectSameReference(S.Suspend(() => S.Struct({ a: S.String, b: S.Number })))
   })
 
   it("refinement", () => {
-    expectSameReference(S.array(S.string).pipe(S.maxItems(2)))
+    expectSameReference(S.Array(S.String).pipe(S.maxItems(2)))
   })
 
   it("transformation", () => {
-    expectSameReference(S.transform(S.array(S.string), S.array(S.string), { decode: identity, encode: identity }))
+    expectSameReference(S.transform(S.Array(S.String), S.Array(S.String), { decode: identity, encode: identity }))
   })
 })

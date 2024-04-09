@@ -14,7 +14,7 @@ const isBrandConstructor = (u: unknown): u is Brand.Brand.Constructor<any> =>
 describe("Schema > brand", () => {
   describe("annotations", () => {
     it("using .annotations() twice", () => {
-      const schema = S.number.pipe(S.brand("A"))
+      const schema = S.Number.pipe(S.brand("A"))
       const annotatedSchema = schema.annotations({
         description: "description"
       }).annotations({ title: "title" })
@@ -26,7 +26,7 @@ describe("Schema > brand", () => {
     })
 
     it("using .annotations() on a BrandSchema should return a BrandSchema", () => {
-      const schema = S.number.pipe(
+      const schema = S.Number.pipe(
         S.int(),
         S.brand("A")
       )
@@ -38,7 +38,7 @@ describe("Schema > brand", () => {
 
     it("brand as string (1 brand)", () => {
       // const Branded: S.BrandSchema<number & Brand<"A">, number, never>
-      const schema = S.number.pipe(
+      const schema = S.Number.pipe(
         S.int(),
         S.brand("A", {
           description: "an A brand"
@@ -56,7 +56,7 @@ describe("Schema > brand", () => {
 
     it("brand as string (2 brands)", () => {
       // const Branded: S.Schema<number, number & Brand<"A"> & Brand<"B">>
-      const schema = S.number.pipe(
+      const schema = S.Number.pipe(
         S.int(),
         S.brand("A"),
         S.brand("B", {
@@ -77,7 +77,7 @@ describe("Schema > brand", () => {
       const A = Symbol.for("A")
       const B = Symbol.for("B")
       // const Branded: S.Schema<number, number & Brand<unique symbol> & Brand<unique symbol>>
-      const schema = S.number.pipe(
+      const schema = S.Number.pipe(
         S.int(),
         S.brand(A),
         S.brand(B, {

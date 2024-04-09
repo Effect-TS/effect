@@ -7,7 +7,7 @@ describe("Schema > validateOption", () => {
     Util.expectNone(S.validateOption(Util.AsyncDeclaration)("a"))
   })
 
-  const schema = S.struct({ a: Util.NumberFromChar })
+  const schema = S.Struct({ a: Util.NumberFromChar })
 
   it("should return None on invalid values", () => {
     Util.expectSome(S.validateOption(schema)({ a: 1 }), { a: 1 })

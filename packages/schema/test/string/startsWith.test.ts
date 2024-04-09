@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 
 describe("string > startsWith", () => {
   it("is", () => {
-    const schema = S.string.pipe(S.startsWith("a"))
+    const schema = S.String.pipe(S.startsWith("a"))
     const is = P.is(schema)
     expect(is("a")).toEqual(true)
     expect(is("ab")).toEqual(true)
@@ -15,7 +15,7 @@ describe("string > startsWith", () => {
   })
 
   it("decoding", async () => {
-    const schema = S.string.pipe(S.startsWith("a"))
+    const schema = S.String.pipe(S.startsWith("a"))
     await Util.expectDecodeUnknownSuccess(schema, "a")
     await Util.expectDecodeUnknownSuccess(schema, "ab")
 

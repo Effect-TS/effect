@@ -413,9 +413,9 @@ export const getConstraints = (ast: AST.Refinement): Constraints | undefined => 
       })
     // bigint
     case filters_.GreaterThanBigintTypeId:
-    case filters_.GreaterThanOrEqualToBigintTypeId:
-    case filters_.LessThanBigintTypeId:
-    case filters_.LessThanOrEqualToBigintTypeId:
+    case filters_.GreaterThanOrEqualToBigIntTypeId:
+    case filters_.LessThanBigIntTypeId:
+    case filters_.LessThanOrEqualToBigIntTypeId:
     case filters_.BetweenBigintTypeId: {
       const constraints: any = ast.annotations[TypeAnnotationId]
       return new BigIntConstraints(constraints)

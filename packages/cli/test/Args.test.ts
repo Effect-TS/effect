@@ -163,7 +163,7 @@ describe("Args", () => {
       const args = Args.fileSchema(
         Schema.struct({
           foo: Schema.boolean,
-          bar: Schema.literal("baz")
+          bar: Schema.Literal("baz")
         }),
         { name: "files" }
       ).pipe(Args.repeated)

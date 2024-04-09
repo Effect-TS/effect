@@ -186,8 +186,8 @@ const channelFromQueue = <A>(queue: Queue.Queue<A | typeof EOF>) => {
 }
 
 const emptyExit = Schema.encodeSync(Schema.exit({
-  failure: Schema.never,
-  success: Schema.never
+  failure: Schema.Never,
+  success: Schema.Never
 }))(Exit.failCause(Cause.empty))
 
 /**
@@ -203,7 +203,7 @@ export const toHandler = <R extends Router<any, any>>(router: R, options?: {
       ...[...router.rpcs].map((rpc) =>
         Schema.transform(
           rpc.schema,
-          Schema.typeSchema(Schema.tuple(rpc.schema, Schema.any)),
+          Schema.typeSchema(Schema.tuple(rpc.schema, Schema.Any)),
           { decode: (request) => [request, rpc] as const, encode: ([request]) => request }
         )
       )
@@ -300,7 +300,7 @@ export const toHandlerEffect = <R extends Router<any, any>>(router: R, options?:
       ...[...router.rpcs].map((rpc) =>
         Schema.transform(
           rpc.schema,
-          Schema.typeSchema(Schema.tuple(rpc.schema, Schema.any)),
+          Schema.typeSchema(Schema.tuple(rpc.schema, Schema.Any)),
           { decode: (request) => [request, rpc] as const, encode: ([request]) => request }
         )
       )
@@ -367,7 +367,7 @@ export const toHandlerRaw = <R extends Router<any, any>>(router: R) => {
   > = Schema.union(...[...router.rpcs].map((rpc) =>
     Schema.transform(
       Schema.typeSchema(rpc.schema),
-      Schema.typeSchema(Schema.tuple(rpc.schema, Schema.any)),
+      Schema.typeSchema(Schema.tuple(rpc.schema, Schema.Any)),
       { decode: (request) => [request, rpc] as const, encode: ([request]) => request }
     )
   ))

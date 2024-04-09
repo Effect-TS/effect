@@ -37,7 +37,7 @@ export const fromInput = (input: Input): UrlParams => {
  * @category schemas
  */
 export const schema: Schema.Schema<UrlParams, ReadonlyArray<readonly [string, string]>> = Schema.array(
-  Schema.tuple(Schema.string, Schema.string)
+  Schema.tuple(Schema.String, Schema.String)
 ).pipe(
   Schema.identifier("UrlParams")
 )

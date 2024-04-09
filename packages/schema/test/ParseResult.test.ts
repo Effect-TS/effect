@@ -6,11 +6,11 @@ import { inspect } from "node:util"
 import { describe, expect, it } from "vitest"
 
 describe("ParseResult", () => {
-  const typeParseError1 = P.parseError(new P.Type(S.string.ast, null))
-  const typeParseError2 = P.parseError(new P.Type(S.number.ast, null))
+  const typeParseError1 = P.parseError(new P.Type(S.String.ast, null))
+  const typeParseError2 = P.parseError(new P.Type(S.Number.ast, null))
 
   it("toString()", () => {
-    const schema = S.struct({ a: S.string })
+    const schema = S.Struct({ a: S.String })
     expect(S.decodeUnknownEither(schema)({}).pipe(Either.mapLeft((e) => e.toString()))).toStrictEqual(
       Either.left(`{ a: string }
 └─ ["a"]
@@ -19,7 +19,7 @@ describe("ParseResult", () => {
   })
 
   it("toJSON()", () => {
-    const schema = S.struct({ a: S.string })
+    const schema = S.Struct({ a: S.String })
     expect(S.decodeUnknownEither(schema)({}).pipe(Either.mapLeft((e) => (e as any).toJSON())))
       .toStrictEqual(
         Either.left({
@@ -32,7 +32,7 @@ describe("ParseResult", () => {
   })
 
   it("[NodeInspectSymbol]", () => {
-    const schema = S.struct({ a: S.string })
+    const schema = S.Struct({ a: S.String })
     expect(S.decodeUnknownEither(schema)({}).pipe(Either.mapLeft((e) => inspect(e))))
       .toStrictEqual(
         Either.left(inspect({
@@ -46,7 +46,7 @@ describe("ParseResult", () => {
 
   it("Error.stack", () => {
     expect(
-      P.parseError(new P.Type(S.string.ast, 1)).stack?.startsWith(
+      P.parseError(new P.Type(S.String.ast, 1)).stack?.startsWith(
         `ParseError: Expected a string, actual 1`
       )
     )
@@ -158,7 +158,7 @@ describe("ParseIssue.actual", () => {
   it("transform decode", () => {
     const result = S.decodeEither(S.transformOrFail(
       S.NumberFromString,
-      S.boolean,
+      S.Boolean,
       { decode: (n, _, ast) => P.fail(new P.Type(ast, n)), encode: (b, _, ast) => P.fail(new P.Type(ast, b)) }
     ))("1")
     if (Either.isRight(result)) throw new Error("Expected failure")
@@ -168,7 +168,7 @@ describe("ParseIssue.actual", () => {
 
   it("transform encode", () => {
     const result = S.encodeEither(S.transformOrFail(
-      S.boolean,
+      S.Boolean,
       S.NumberFromString,
       { decode: (n, _, ast) => P.fail(new P.Type(ast, n)), encode: (b, _, ast) => P.fail(new P.Type(ast, b)) }
     ))(1)
@@ -178,25 +178,25 @@ describe("ParseIssue.actual", () => {
   })
 
   it("compose decode", () => {
-    const result = S.decodeEither(S.compose(S.NumberFromString, S.negative()(S.number)))("1")
+    const result = S.decodeEither(S.compose(S.NumberFromString, S.negative()(S.Number)))("1")
     if (Either.isRight(result)) throw new Error("Expected failure")
     expect(result.left.error.actual).toEqual("1")
     expect((result.left.error as P.Transformation).error.actual).toEqual(1)
   })
 
   it("compose encode", () => {
-    const result = S.encodeEither(S.compose(S.length(5)(S.string), S.NumberFromString))(1)
+    const result = S.encodeEither(S.compose(S.length(5)(S.String), S.NumberFromString))(1)
     if (Either.isRight(result)) throw new Error("Expected failure")
     expect(result.left.error.actual).toEqual(1)
     expect((result.left.error as P.Transformation).error.actual).toEqual("1")
   })
 
   it("decode", () => {
-    expect(Either.isEither(P.decode(S.string)("a")))
+    expect(Either.isEither(P.decode(S.String)("a")))
   })
 
   it("encode", () => {
-    expect(Either.isEither(P.encode(S.string)("a")))
+    expect(Either.isEither(P.encode(S.String)("a")))
   })
 
   it("mergeParseOptions", () => {
@@ -216,7 +216,7 @@ describe("ParseIssue.actual", () => {
   })
 
   it("asserts", () => {
-    const schema = S.string
+    const schema = S.String
     expect(P.asserts(schema)("a")).toEqual(undefined)
     expect(() => P.asserts(schema)(1)).toThrow(
       new Error(`Expected a string, actual 1`)
@@ -225,18 +225,18 @@ describe("ParseIssue.actual", () => {
 
   describe("getLiterals", () => {
     it("StringKeyword", () => {
-      expect(P.getLiterals(S.string.ast, true)).toEqual([])
+      expect(P.getLiterals(S.String.ast, true)).toEqual([])
     })
 
     it("TypeLiteral", () => {
-      expect(P.getLiterals(S.struct({ _tag: S.literal("a") }).ast, true))
+      expect(P.getLiterals(S.Struct({ _tag: S.Literal("a") }).ast, true))
         .toEqual([["_tag", new AST.Literal("a")]])
     })
 
     it("Refinement", () => {
       expect(
         P.getLiterals(
-          S.struct({ _tag: S.literal("a") }).pipe(
+          S.Struct({ _tag: S.Literal("a") }).pipe(
             S.filter(() => true)
           ).ast,
           true
@@ -247,7 +247,7 @@ describe("ParseIssue.actual", () => {
     it("Transform (decode)", () => {
       expect(
         P.getLiterals(
-          S.struct({ radius: S.number }).pipe(S.attachPropertySignature("kind", "circle")).ast,
+          S.Struct({ radius: S.Number }).pipe(S.attachPropertySignature("kind", "circle")).ast,
           true
         )
       ).toEqual([])
@@ -256,7 +256,7 @@ describe("ParseIssue.actual", () => {
     it("Transform (encode)", () => {
       expect(
         P.getLiterals(
-          S.struct({ radius: S.number }).pipe(S.attachPropertySignature("kind", "circle")).ast,
+          S.Struct({ radius: S.Number }).pipe(S.attachPropertySignature("kind", "circle")).ast,
           false
         )
       ).toEqual([["kind", new AST.Literal("circle")]])
@@ -265,10 +265,10 @@ describe("ParseIssue.actual", () => {
     it("property Transform (encode)", () => {
       expect(
         P.getLiterals(
-          S.struct({
+          S.Struct({
             _tag: S.transform(
-              S.literal("a"),
-              S.literal("b"),
+              S.Literal("a"),
+              S.Literal("b"),
               { decode: () => "b" as const, encode: () => "a" as const }
             )
           })
@@ -279,27 +279,27 @@ describe("ParseIssue.actual", () => {
     })
 
     it("Class (decode)", () => {
-      class A extends S.Class<A>("A")({ _tag: S.literal("a") }) {}
+      class A extends S.Class<A>("A")({ _tag: S.Literal("a") }) {}
       expect(P.getLiterals(A.ast, true)).toEqual([["_tag", new AST.Literal("a")]])
     })
 
     it("Class (encode)", () => {
-      class A extends S.Class<A>("A")({ _tag: S.literal("a") }) {}
+      class A extends S.Class<A>("A")({ _tag: S.Literal("a") }) {}
       expect(P.getLiterals(A.ast, false)).toEqual([["_tag", new AST.Literal("a")]])
     })
   })
 
   describe("getSearchTree", () => {
     it("primitive + primitive", () => {
-      expect(P.getSearchTree([S.string.ast, S.number.ast], true)).toEqual({
+      expect(P.getSearchTree([S.String.ast, S.Number.ast], true)).toEqual({
         keys: {},
-        otherwise: [S.string.ast, S.number.ast]
+        otherwise: [S.String.ast, S.Number.ast]
       })
     })
 
     it("struct + primitive", () => {
-      const a = S.struct({ _tag: S.literal("a") })
-      expect(P.getSearchTree([a.ast, S.number.ast], true)).toEqual(
+      const a = S.Struct({ _tag: S.Literal("a") })
+      expect(P.getSearchTree([a.ast, S.Number.ast], true)).toEqual(
         {
           keys: {
             _tag: {
@@ -309,14 +309,14 @@ describe("ParseIssue.actual", () => {
               literals: [new AST.Literal("a")]
             }
           },
-          otherwise: [S.number.ast]
+          otherwise: [S.Number.ast]
         }
       )
     })
 
     it("struct + struct (same tag key)", () => {
-      const a = S.struct({ _tag: S.literal("a") })
-      const b = S.struct({ _tag: S.literal("b") })
+      const a = S.Struct({ _tag: S.Literal("a") })
+      const b = S.Struct({ _tag: S.Literal("b") })
       expect(P.getSearchTree([a.ast, b.ast], true)).toEqual({
         keys: {
           _tag: {
@@ -332,8 +332,8 @@ describe("ParseIssue.actual", () => {
     })
 
     it("struct + struct (different tag key)", () => {
-      const A = S.struct({ a: S.literal("A"), c: S.string })
-      const B = S.struct({ b: S.literal("B"), d: S.number })
+      const A = S.Struct({ a: S.Literal("A"), c: S.String })
+      const B = S.Struct({ b: S.Literal("B"), d: S.Number })
       expect(
         P.getSearchTree([A.ast, B.ast], true)
       ).toEqual({
@@ -356,9 +356,9 @@ describe("ParseIssue.actual", () => {
     })
 
     it("should handle multiple tags", () => {
-      const a = S.struct({ category: S.literal("catA"), tag: S.literal("a") })
-      const b = S.struct({ category: S.literal("catA"), tag: S.literal("b") })
-      const c = S.struct({ category: S.literal("catA"), tag: S.literal("c") })
+      const a = S.Struct({ category: S.Literal("catA"), tag: S.Literal("a") })
+      const b = S.Struct({ category: S.Literal("catA"), tag: S.Literal("b") })
+      const c = S.Struct({ category: S.Literal("catA"), tag: S.Literal("c") })
       expect(
         P.getSearchTree([
           a.ast,
@@ -386,26 +386,26 @@ describe("ParseIssue.actual", () => {
     })
 
     it("big union", () => {
-      const schema = S.union(
-        S.struct({ type: S.literal("a"), value: S.string }),
-        S.struct({ type: S.literal("b"), value: S.string }),
-        S.struct({ type: S.literal("c"), value: S.string }),
-        S.struct({ type: S.string, value: S.string }),
-        S.struct({ type: S.literal(null), value: S.string }),
-        S.struct({ type: S.undefined, value: S.string }),
-        S.struct({ type: S.literal("d", "e"), value: S.string }),
-        S.struct({ type: S.struct({ nested: S.string }), value: S.string }),
-        S.struct({ type: S.array(S.number), value: S.string })
+      const schema = S.Union(
+        S.Struct({ type: S.Literal("a"), value: S.String }),
+        S.Struct({ type: S.Literal("b"), value: S.String }),
+        S.Struct({ type: S.Literal("c"), value: S.String }),
+        S.Struct({ type: S.String, value: S.String }),
+        S.Struct({ type: S.Literal(null), value: S.String }),
+        S.Struct({ type: S.Undefined, value: S.String }),
+        S.Struct({ type: S.Literal("d", "e"), value: S.String }),
+        S.Struct({ type: S.Struct({ nested: S.String }), value: S.String }),
+        S.Struct({ type: S.Array(S.Number), value: S.String })
       )
       const types = (schema.ast as AST.Union).types
       expect(P.getSearchTree(types, true)).toEqual({
         keys: {
           type: {
             buckets: {
-              a: [S.struct({ type: S.literal("a"), value: S.string }).ast],
-              b: [S.struct({ type: S.literal("b"), value: S.string }).ast],
-              c: [S.struct({ type: S.literal("c"), value: S.string }).ast],
-              null: [S.struct({ type: S.literal(null), value: S.string }).ast]
+              a: [S.Struct({ type: S.Literal("a"), value: S.String }).ast],
+              b: [S.Struct({ type: S.Literal("b"), value: S.String }).ast],
+              c: [S.Struct({ type: S.Literal("c"), value: S.String }).ast],
+              null: [S.Struct({ type: S.Literal(null), value: S.String }).ast]
             },
             literals: [
               new AST.Literal("a"),
@@ -416,23 +416,23 @@ describe("ParseIssue.actual", () => {
           }
         },
         otherwise: [
-          S.struct({ type: S.string, value: S.string }).ast,
-          S.struct({ type: S.undefined, value: S.string }).ast,
-          S.struct({ type: S.literal("d", "e"), value: S.string }).ast,
-          S.struct({ type: S.struct({ nested: S.string }), value: S.string }).ast,
-          S.struct({ type: S.array(S.number), value: S.string }).ast
+          S.Struct({ type: S.String, value: S.String }).ast,
+          S.Struct({ type: S.Undefined, value: S.String }).ast,
+          S.Struct({ type: S.Literal("d", "e"), value: S.String }).ast,
+          S.Struct({ type: S.Struct({ nested: S.String }), value: S.String }).ast,
+          S.Struct({ type: S.Array(S.Number), value: S.String }).ast
         ]
       })
     })
 
     it("nested unions", () => {
-      const a = S.struct({ _tag: S.literal("a") })
-      const b = S.struct({ _tag: S.literal("b") })
-      const A = S.struct({ a: S.literal("A"), c: S.string })
-      const B = S.struct({ b: S.literal("B"), d: S.number })
-      const ab = S.union(a, b)
-      const AB = S.union(A, B)
-      const schema = S.union(ab, AB)
+      const a = S.Struct({ _tag: S.Literal("a") })
+      const b = S.Struct({ _tag: S.Literal("b") })
+      const A = S.Struct({ a: S.Literal("A"), c: S.String })
+      const B = S.Struct({ b: S.Literal("B"), d: S.Number })
+      const ab = S.Union(a, b)
+      const AB = S.Union(A, B)
+      const schema = S.Union(ab, AB)
       const types = (schema.ast as AST.Union).types
       expect(P.getSearchTree(types, true)).toEqual({
         keys: {},
