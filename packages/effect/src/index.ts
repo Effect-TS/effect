@@ -600,6 +600,13 @@ export * as RedBlackTree from "./RedBlackTree.js"
 export * as Ref from "./Ref.js"
 
 /**
+ * This module provides utility functions for working with RegExp in TypeScript.
+ *
+ * @since 2.0.0
+ */
+export * as RegExp from "./RegExp.js"
+
+/**
  * @since 2.0.0
  */
 export * as Reloadable from "./Reloadable.js"
