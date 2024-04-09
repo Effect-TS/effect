@@ -88,5 +88,5 @@ export const unwrap = <A, E, R, E1, R1>(
   effect: Effect<Readable<A, E, R>, E1, R1>
 ): Readable<A, E | E1, R | R1> =>
   make(
-    core.flatMap(effect, ({ get }) => get)
+    core.flatMap(effect, (s) => s.get)
   )
