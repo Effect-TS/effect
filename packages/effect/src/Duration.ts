@@ -516,6 +516,29 @@ export const clamp: {
 )
 
 /**
+ * @since 2.4.19
+ * @category math
+ */
+export const divide: {
+  (by: number): (self: DurationInput) => Duration
+  (self: DurationInput, by: number): Duration
+} = dual(
+  2,
+  (self: DurationInput, by: number): Duration =>
+    match(self, {
+      onMillis: (millis) => make(millis / by),
+      onNanos: (nanos) => {
+        if (isNaN(by) || by < 0 || Object.is(by, -0)) {
+          return make(0)
+        } else if (Object.is(by, 0) || !Number.isFinite(by)) {
+          return make(Infinity)
+        }
+        return make(nanos / BigInt(by))
+      }
+    })
+)
+
+/**
  * @since 2.0.0
  * @category math
  */

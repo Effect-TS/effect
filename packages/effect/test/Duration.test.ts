@@ -162,6 +162,27 @@ describe("Duration", () => {
     }))
   })
 
+  it("divide", () => {
+    expect(Duration.divide(Duration.minutes(1), 2)).toEqual(Duration.seconds(30))
+    expect(Duration.divide(Duration.seconds(1), 3)).toEqual(Duration.nanos(333333333n))
+    expect(Duration.divide(Duration.nanos(2n), 2)).toEqual(Duration.nanos(1n))
+    expect(Duration.divide(Duration.nanos(1n), 3)).toEqual(Duration.zero)
+    expect(Duration.divide(Duration.infinity, 2)).toEqual(Duration.infinity)
+    expect(Duration.divide(Duration.zero, 2)).toEqual(Duration.zero)
+    expect(Duration.divide(Duration.minutes(1), 0)).toEqual(Duration.infinity)
+    expect(Duration.divide(Duration.minutes(1), -0)).toEqual(Duration.zero)
+    expect(Duration.divide(Duration.nanos(1n), 0)).toEqual(Duration.infinity)
+    expect(Duration.divide(Duration.nanos(1n), -0)).toEqual(Duration.zero)
+    expect(Duration.divide(Duration.minutes(1), 0.5)).toEqual(Duration.minutes(2))
+    expect(Duration.divide(Duration.minutes(1), 1.5)).toEqual(Duration.seconds(40))
+    expect(Duration.divide(Duration.minutes(1), NaN)).toEqual(Duration.zero)
+    expect(() => Duration.divide(Duration.nanos(1n), 0.5)).toThrow()
+    expect(() => Duration.divide(Duration.nanos(1n), 1.5)).toThrow()
+    expect(Duration.divide(Duration.nanos(1n), NaN)).toEqual(Duration.zero)
+
+    expect(Duration.divide("1 minute", 2)).toEqual(Duration.seconds(30))
+  })
+
   it("times", () => {
     expect(Duration.times(Duration.seconds(1), 60)).toEqual(Duration.minutes(1))
     expect(Duration.times(Duration.nanos(2n), 10)).toEqual(Duration.nanos(20n))
