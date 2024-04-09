@@ -20,6 +20,28 @@ describe("Exit > exit", () => {
       { _tag: "Success", value: 123 },
       Exit.succeed(123)
     )
+    await Util.expectDecodeUnknownFailure(
+      schema,
+      { _tag: "Success", value: null },
+      `(ExitEncoded<number, string> <-> Exit<number, string>)
+└─ Encoded side transformation failure
+   └─ ExitEncoded<number, string>
+      └─ Union member
+         └─ SuccessEncoded<number>
+            └─ ["value"]
+               └─ Expected a number, actual null`
+    )
+    await Util.expectDecodeUnknownFailure(
+      schema,
+      { _tag: "Failure", cause: null },
+      `(ExitEncoded<number, string> <-> Exit<number, string>)
+└─ Encoded side transformation failure
+   └─ ExitEncoded<number, string>
+      └─ Union member
+         └─ FailureEncoded<string>
+            └─ ["cause"]
+               └─ Expected CauseEncoded<string>, actual null`
+    )
   })
 
   it("encoding", async () => {
