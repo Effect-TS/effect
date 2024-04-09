@@ -27,7 +27,7 @@ describe("PlatformConfigProvider", () => {
       assert.strictEqual(yield* _(Config.string("nested/config")), "hello")
       assert.strictEqual(yield* _(Config.string("config"), Config.nested("nested")), "hello")
       const error = yield* _(Config.string("fallback"), Effect.flip)
-      assert.strictEqual(error._tag, "MissingData")
+      assert.strictEqual(error._op, "MissingData")
     }).pipe(
       Effect.provide(SetLive),
       Effect.withConfigProvider(ConfigProvider.fromJson({
