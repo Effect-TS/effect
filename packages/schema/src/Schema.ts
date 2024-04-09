@@ -6034,17 +6034,6 @@ export const clampBigDecimal =
       { strict: false, decode: (self) => bigDecimal_.clamp(self, { minimum, maximum }), encode: identity }
     )
 
-/**
- * Negates a `BigDecimal`.
- *
- * @category BigDecimal transformations
- * @since 1.0.0
- */
-export const negateBigDecimal = <R, I, A extends bigDecimal_.BigDecimal>(
-  self: Schema<A, I, R>
-): Schema<A, I, R> =>
-  transform(self, typeSchema(self), { strict: false, decode: bigDecimal_.negate, encode: bigDecimal_.negate })
-
 const chunkArbitrary = <A>(item: Arbitrary<A>): Arbitrary<Chunk.Chunk<A>> => (fc) =>
   fc.array(item(fc)).map(Chunk.fromIterable)
 
