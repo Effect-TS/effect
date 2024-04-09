@@ -3,6 +3,7 @@
  */
 import type * as Effect from "effect/Effect"
 import type * as FiberRef from "effect/FiberRef"
+import type * as Layer from "effect/Layer"
 import type * as Predicate from "effect/Predicate"
 import * as internal from "../internal/http/middleware.js"
 import type * as App from "./App.js"
@@ -67,12 +68,35 @@ export const currentTracerDisabledWhen: FiberRef.FiberRef<Predicate.Predicate<Se
 export const withTracerDisabledWhen: {
   (
     predicate: Predicate.Predicate<ServerRequest.ServerRequest>
+  ): <R, E, A>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>
+  <R, E, A>(
+    layer: Layer.Layer<A, E, R>,
+    predicate: Predicate.Predicate<ServerRequest.ServerRequest>
+  ): Layer.Layer<A, E, R>
+} = internal.withTracerDisabledWhen
+
+/**
+ * @since 1.0.0
+ * @category fiber refs
+ */
+export const withTracerDisabledWhenEffect: {
+  (
+    predicate: Predicate.Predicate<ServerRequest.ServerRequest>
   ): <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
   <R, E, A>(
     effect: Effect.Effect<A, E, R>,
     predicate: Predicate.Predicate<ServerRequest.ServerRequest>
   ): Effect.Effect<A, E, R>
-} = internal.withTracerDisabledWhen
+} = internal.withTracerDisabledWhenEffect
+
+/**
+ * @since 1.0.0
+ * @category fiber refs
+ */
+export const withTracerDisabledForUrls: {
+  (urls: ReadonlyArray<string>): <R, E, A>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>
+  <R, E, A>(layer: Layer.Layer<A, E, R>, urls: ReadonlyArray<string>): Layer.Layer<A, E, R>
+} = internal.withTracerDisabledForUrls
 
 /**
  * @since 1.0.0
