@@ -10,10 +10,10 @@ class Todo extends Schema.Class<Todo>("Todo")({
   userId: Schema.Number,
   id: Schema.Number,
   title: Schema.String,
-  completed: Schema.boolean
+  completed: Schema.Boolean
 }) {}
 
-const TodoWithoutId = Schema.struct(Todo.fields).pipe(Schema.omit("id"))
+const TodoWithoutId = Schema.Struct(Todo.fields).pipe(Schema.omit("id"))
 type TodoWithoutId = Schema.Schema.Type<typeof TodoWithoutId>
 
 interface TodoService {
