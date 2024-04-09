@@ -6993,7 +6993,7 @@ const exitFailureEncoded = <E, EI, ER, DR>(
   struct({
     _tag: literal("Failure"),
     cause: causeEncoded(error, defect)
-  })
+  }).annotations({ description: `FailureEncoded<${format(error)}>` })
 
 const exitSuccessEncoded = <A, I, R>(
   value: Schema<A, I, R>
@@ -7001,7 +7001,7 @@ const exitSuccessEncoded = <A, I, R>(
   struct({
     _tag: literal("Success"),
     value
-  })
+  }).annotations({ description: `SuccessEncoded<${format(value)}>` })
 
 const exitEncoded = <A, I, R, E, EI, ER, DR>(
   value: Schema<A, I, R>,
@@ -7011,7 +7011,9 @@ const exitEncoded = <A, I, R, E, EI, ER, DR>(
   union(
     exitFailureEncoded(error, defect),
     exitSuccessEncoded(value)
-  )
+  ).annotations({
+    description: `ExitEncoded<${format(value)}, ${format(error)}>`
+  })
 
 const exitDecode = <A, E>(input: ExitEncoded<A, E>): Exit.Exit<A, E> => {
   switch (input._tag) {
@@ -7090,7 +7092,7 @@ export const exitFromSelf = <A extends Schema.Any, E extends Schema.Any, DR = ne
         )
     },
     {
-      description: `Exit<${format(failure)}, ${format(success)}>`,
+      description: `Exit<${format(success)}, ${format(failure)}>`,
       pretty: exitPretty,
       arbitrary: exitArbitrary
     }
