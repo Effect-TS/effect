@@ -4,6 +4,7 @@ import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import { constFalse, dual } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Predicate from "effect/Predicate"
 import * as Headers from "../../Http/Headers.js"
@@ -38,12 +39,34 @@ export const currentTracerDisabledWhen = globalValue(
 export const withTracerDisabledWhen = dual<
   (
     predicate: Predicate.Predicate<ServerRequest.ServerRequest>
+  ) => <R, E, A>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>,
+  <R, E, A>(
+    layer: Layer.Layer<A, E, R>,
+    predicate: Predicate.Predicate<ServerRequest.ServerRequest>
+  ) => Layer.Layer<A, E, R>
+>(2, (self, pred) => Layer.locally(self, currentTracerDisabledWhen, pred))
+
+/** @internal */
+export const withTracerDisabledWhenEffect = dual<
+  (
+    predicate: Predicate.Predicate<ServerRequest.ServerRequest>
   ) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
   <R, E, A>(
     effect: Effect.Effect<A, E, R>,
     predicate: Predicate.Predicate<ServerRequest.ServerRequest>
   ) => Effect.Effect<A, E, R>
 >(2, (self, pred) => Effect.locally(self, currentTracerDisabledWhen, pred))
+
+/** @internal */
+export const withTracerDisabledForUrls = dual<
+  (
+    urls: ReadonlyArray<string>
+  ) => <R, E, A>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>,
+  <R, E, A>(
+    layer: Layer.Layer<A, E, R>,
+    urls: ReadonlyArray<string>
+  ) => Layer.Layer<A, E, R>
+>(2, (self, urls) => Layer.locally(self, currentTracerDisabledWhen, (req) => urls.includes(req.url)))
 
 /** @internal */
 export const logger = make((httpApp) => {
