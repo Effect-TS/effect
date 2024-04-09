@@ -22,7 +22,7 @@ describe("Either > eitherFromUnion", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       undefined,
-      `((string <-> RightEncoded<string>) | (number <-> LeftEncoded<number>) <-> Either<number, string>)
+      `((string <-> RightEncoded<string>) | (number <-> LeftEncoded<number>) <-> Either<string, number>)
 └─ Encoded side transformation failure
    └─ (string <-> RightEncoded<string>) | (number <-> LeftEncoded<number>)
       ├─ Union member
@@ -41,7 +41,7 @@ describe("Either > eitherFromUnion", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       true,
-      `(((boolean <-> string) <-> RightEncoded<string>) | (number <-> LeftEncoded<number>) <-> Either<number, string>)
+      `(((boolean <-> string) <-> RightEncoded<string>) | (number <-> LeftEncoded<number>) <-> Either<string, number>)
 └─ Encoded side transformation failure
    └─ ((boolean <-> string) <-> RightEncoded<string>) | (number <-> LeftEncoded<number>)
       ├─ Union member

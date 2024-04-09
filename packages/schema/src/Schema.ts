@@ -5312,7 +5312,7 @@ export const eitherFromSelf = <R extends Schema.Any, L extends Schema.Any>({ lef
       encode: (right, left) => eitherParse(ParseResult.encodeUnknown(right), ParseResult.encodeUnknown(left))
     },
     {
-      description: `Either<${format(left)}, ${format(right)}>`,
+      description: `Either<${format(right)}, ${format(left)}>`,
       pretty: eitherPretty,
       arbitrary: eitherArbitrary,
       equivalence: (right, left) => Either.getEquivalence(left, right)
