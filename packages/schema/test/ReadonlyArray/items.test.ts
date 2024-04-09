@@ -8,14 +8,14 @@ describe("ReadonlyArray > items", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       [],
-      `an array of exactly 2 items
+      `an array of exactly 2 item(s)
 └─ Predicate refinement failure
    └─ Expected an array of exactly 2 item(s), actual []`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       [1],
-      `an array of exactly 2 items
+      `an array of exactly 2 item(s)
 └─ Predicate refinement failure
    └─ Expected an array of exactly 2 item(s), actual [1]`
     )
@@ -23,7 +23,7 @@ describe("ReadonlyArray > items", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       [1, 2, 3],
-      `an array of exactly 2 items
+      `an array of exactly 2 item(s)
 └─ Predicate refinement failure
    └─ Expected an array of exactly 2 item(s), actual [1,2,3]`
     )
