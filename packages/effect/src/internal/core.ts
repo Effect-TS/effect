@@ -2877,10 +2877,8 @@ export const deferredAwait = <A, E>(self: Deferred.Deferred<A, E>): Effect.Effec
         return resume(state.effect)
       }
       case DeferredOpCodes.OP_STATE_PENDING: {
-        pipe(
-          self.state,
-          MutableRef.set(deferred.pending([resume, ...state.joiners]))
-        )
+        // we can push here as the internal state is mutable
+        state.joiners.push(resume)
         return deferredInterruptJoiner(self, resume)
       }
     }
@@ -2908,8 +2906,8 @@ export const deferredCompleteWith = dual<
         return false
       }
       case DeferredOpCodes.OP_STATE_PENDING: {
-        pipe(self.state, MutableRef.set(deferred.done(effect)))
-        for (let i = 0; i < state.joiners.length; i++) {
+        MutableRef.set(self.state, deferred.done(effect))
+        for (let i = 0, len = state.joiners.length; i < len; i++) {
           state.joiners[i](effect)
         }
         return true
@@ -3005,8 +3003,8 @@ export const deferredSync = dual<
 export const deferredUnsafeDone = <A, E>(self: Deferred.Deferred<A, E>, effect: Effect.Effect<A, E>): void => {
   const state = MutableRef.get(self.state)
   if (state._tag === DeferredOpCodes.OP_STATE_PENDING) {
-    pipe(self.state, MutableRef.set(deferred.done(effect)))
-    for (let i = state.joiners.length - 1; i >= 0; i--) {
+    MutableRef.set(self.state, deferred.done(effect))
+    for (let i = 0, len = state.joiners.length; i < len; i++) {
       state.joiners[i](effect)
     }
   }
@@ -3019,10 +3017,11 @@ const deferredInterruptJoiner = <A, E>(
   sync(() => {
     const state = MutableRef.get(self.state)
     if (state._tag === DeferredOpCodes.OP_STATE_PENDING) {
-      pipe(
-        self.state,
-        MutableRef.set(deferred.pending(state.joiners.filter((j) => j !== joiner)))
-      )
+      const index = state.joiners.indexOf(joiner)
+      if (index >= 0) {
+        // we can splice here as the internal state is mutable
+        state.joiners.splice(index, 1)
+      }
     }
   })
 
