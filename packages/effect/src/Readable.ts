@@ -85,6 +85,8 @@ export const mapEffect: {
  * @category constructors
  */
 export const unwrap = <A, E, R, E1, R1>(
-  effect: Effect<Readable<A, E, R>, E1, R1>): Readable<A, E | E1, R | R1> => make(
-    core.flatMap(effect, ({ get }) => get),
+  effect: Effect<Readable<A, E, R>, E1, R1>
+): Readable<A, E | E1, R | R1> =>
+  make(
+    core.flatMap(effect, ({ get }) => get)
   )
