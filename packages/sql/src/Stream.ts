@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
@@ -14,6 +15,8 @@ import * as Stream from "effect/Stream"
 export const asyncPauseResume = <R, E, A>(
   register: (emit: {
     readonly single: (item: A) => void
+    readonly chunk: (chunk: Chunk.Chunk<A>) => void
+    readonly array: (chunk: ReadonlyArray<A>) => void
     readonly fail: (error: E) => void
     readonly end: () => void
   }) => {
@@ -22,19 +25,14 @@ export const asyncPauseResume = <R, E, A>(
     readonly onResume: Effect.Effect<void>
   },
   bufferSize = 16
-): Stream.Stream<A, E, R> =>
-  Effect.all([
-    Effect.acquireRelease(Queue.bounded<A>(bufferSize), Queue.shutdown),
+): Stream.Stream<A, E, R> => {
+  const EOF = Symbol()
+  return Effect.all([
+    Effect.acquireRelease(Queue.bounded<Chunk.Chunk<A> | typeof EOF>(bufferSize), Queue.shutdown),
     Deferred.make<never, Option.Option<E>>(),
     Effect.runtime<never>()
   ]).pipe(
     Effect.flatMap(([queue, deferred, runtime]) => {
-      const takeOnEmpty = Effect.raceFirst(
-        Deferred.await(deferred),
-        Queue.takeBetween(queue, 1, bufferSize)
-      )
-      const take = Queue.takeBetween(queue, 1, bufferSize)
-
       return Effect.async<never, Option.Option<E>, R>((cb) => {
         const runFork = Runtime.runFork(runtime)
 
@@ -45,27 +43,31 @@ export const asyncPauseResume = <R, E, A>(
           readonly onResume: Effect.Effect<void>
         }
 
-        const offer = (row: A) =>
+        const offer = (chunk: Chunk.Chunk<A>) =>
           Queue.isFull(queue).pipe(
             Effect.tap((full) => (full ? effects.onPause : Effect.unit)),
-            Effect.zipRight(Queue.offer(queue, row)),
+            Effect.zipRight(Queue.offer(queue, chunk)),
             Effect.zipRight(effects.onResume)
           )
 
         effects = register({
-          single: (item) => runFork(offer(item)),
+          single: (item) => runFork(offer(Chunk.of(item))),
+          chunk: (chunk) => runFork(offer(chunk)),
+          array: (chunk) => runFork(offer(Chunk.unsafeFromArray(chunk))),
           fail: (error) => cb(Effect.fail(Option.some(error))),
           end: () => cb(Effect.fail(Option.none()))
         })
 
         return effects.onInterrupt
       }).pipe(
+        Effect.ensuring(Queue.offer(queue, EOF)),
         Effect.intoDeferred(deferred),
         Effect.forkScoped,
         Effect.as(
           Stream.repeatEffectChunkOption(
-            Queue.isEmpty(queue).pipe(
-              Effect.flatMap((empty) => (empty ? takeOnEmpty : take))
+            Effect.flatMap(
+              Queue.take(queue),
+              (chunk) => chunk === EOF ? Deferred.await(deferred) : Effect.succeed(chunk)
             )
           )
         )
@@ -73,3 +75,4 @@ export const asyncPauseResume = <R, E, A>(
     }),
     Stream.unwrapScoped
   )
+}

@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type { ParseIssue } from "@effect/schema/ParseResult"
 import * as Data from "effect/Data"
 import * as Predicate from "effect/Predicate"
 
@@ -51,19 +50,6 @@ export class SqlError extends Data.TaggedError("SqlError")<{
 export class ResultLengthMismatch extends Data.TaggedError("ResultLengthMismatch")<{
   readonly expected: number
   readonly actual: number
-}> {
-  /**
-   * @since 1.0.0
-   */
-  readonly [SqlErrorTypeId] = SqlErrorTypeId
-}
-
-/**
- * @since 1.0.0
- */
-export class SchemaError extends Data.TaggedError("SchemaError")<{
-  readonly type: "request" | "result"
-  readonly error: ParseIssue
 }> {
   /**
    * @since 1.0.0

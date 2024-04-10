@@ -498,35 +498,37 @@ class CompilerImpl implements Statement.Compiler {
 
 /** @internal */
 export const makeCompiler = <C extends Statement.Custom<any, any, any, any> = any>(
-  parameterPlaceholder: (index: number) => string,
-  onIdentifier: (value: string) => string,
-  onRecordUpdate: (
-    placeholders: string,
-    alias: string,
-    columns: string,
-    values: ReadonlyArray<ReadonlyArray<Statement.Primitive>>
-  ) => readonly [sql: string, params: ReadonlyArray<Statement.Primitive>],
-  onCustom: (
-    type: C,
-    placeholder: () => string
-  ) => readonly [sql: string, params: ReadonlyArray<Statement.Primitive>],
-  onInsert?: (
-    columns: ReadonlyArray<string>,
-    placeholders: string,
-    values: ReadonlyArray<ReadonlyArray<Statement.Primitive>>
-  ) => readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>],
-  onRecordUpdateSingle?: (
-    columns: ReadonlyArray<string>,
-    values: ReadonlyArray<Statement.Primitive>
-  ) => readonly [sql: string, params: ReadonlyArray<Statement.Primitive>]
+  options: {
+    readonly placeholder: (index: number) => string
+    readonly onIdentifier: (value: string) => string
+    readonly onRecordUpdate: (
+      placeholders: string,
+      alias: string,
+      columns: string,
+      values: ReadonlyArray<ReadonlyArray<Statement.Primitive>>
+    ) => readonly [sql: string, params: ReadonlyArray<Statement.Primitive>]
+    readonly onCustom: (
+      type: C,
+      placeholder: () => string
+    ) => readonly [sql: string, params: ReadonlyArray<Statement.Primitive>]
+    readonly onInsert?: (
+      columns: ReadonlyArray<string>,
+      placeholders: string,
+      values: ReadonlyArray<ReadonlyArray<Statement.Primitive>>
+    ) => readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>]
+    readonly onRecordUpdateSingle?: (
+      columns: ReadonlyArray<string>,
+      values: ReadonlyArray<Statement.Primitive>
+    ) => readonly [sql: string, params: ReadonlyArray<Statement.Primitive>]
+  }
 ): Statement.Compiler =>
   new CompilerImpl(
-    parameterPlaceholder,
-    onIdentifier,
-    onRecordUpdate,
-    onCustom as any,
-    onInsert,
-    onRecordUpdateSingle
+    options.placeholder,
+    options.onIdentifier,
+    options.onRecordUpdate,
+    options.onCustom as any,
+    options.onInsert,
+    options.onRecordUpdateSingle
   )
 
 const placeholders = (evaluate: () => string, count: number): string => {

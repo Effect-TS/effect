@@ -304,7 +304,7 @@ export const join: (
 ) => (clauses: ReadonlyArray<string | Fragment>) => Fragment = internal.join
 
 /**
- * @category model
+ * @category compiler
  * @since 1.0.0
  */
 export interface Compiler {
@@ -318,27 +318,26 @@ export interface Compiler {
  * @since 1.0.0
  */
 export const makeCompiler: <C extends Custom<any, any, any, any> = any>(
-  parameterPlaceholder: (index: number) => string,
-  onIdentifier: (value: string) => string,
-  onRecordUpdate: (
-    placeholders: string,
-    alias: string,
-    columns: string,
-    values: ReadonlyArray<ReadonlyArray<Primitive>>
-  ) => readonly [sql: string, params: ReadonlyArray<Primitive>],
-  onCustom: (
-    type: C,
-    placeholder: () => string
-  ) => readonly [sql: string, params: ReadonlyArray<Primitive>],
-  onInsert?: (
-    columns: ReadonlyArray<string>,
-    placeholders: string,
-    values: ReadonlyArray<ReadonlyArray<Primitive>>
-  ) => readonly [sql: string, binds: ReadonlyArray<Primitive>],
-  onRecordUpdateSingle?: (
-    columns: ReadonlyArray<string>,
-    values: ReadonlyArray<Primitive>
-  ) => readonly [sql: string, params: ReadonlyArray<Primitive>]
+  options: {
+    readonly placeholder: (index: number) => string
+    readonly onIdentifier: (value: string) => string
+    readonly onRecordUpdate: (
+      placeholders: string,
+      alias: string,
+      columns: string,
+      values: ReadonlyArray<ReadonlyArray<Primitive>>
+    ) => readonly [sql: string, params: ReadonlyArray<Primitive>]
+    readonly onCustom: (type: C, placeholder: () => string) => readonly [sql: string, params: ReadonlyArray<Primitive>]
+    readonly onInsert?: (
+      columns: ReadonlyArray<string>,
+      placeholders: string,
+      values: ReadonlyArray<ReadonlyArray<Primitive>>
+    ) => readonly [sql: string, binds: ReadonlyArray<Primitive>]
+    readonly onRecordUpdateSingle?: (
+      columns: ReadonlyArray<string>,
+      values: ReadonlyArray<Primitive>
+    ) => readonly [sql: string, params: ReadonlyArray<Primitive>]
+  }
 ) => Compiler = internal.makeCompiler
 
 /**

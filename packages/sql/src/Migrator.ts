@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import { FileSystem } from "@effect/platform/FileSystem"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
@@ -14,8 +15,8 @@ import type { SqlError } from "./Error.js"
  * @category model
  * @since 1.0.0
  */
-export interface MigratorOptions {
-  readonly loader: Loader
+export interface MigratorOptions<R = never> {
+  readonly loader: Loader<R>
   readonly schemaDirectory?: string
   readonly table?: string
 }
@@ -24,9 +25,10 @@ export interface MigratorOptions {
  * @category model
  * @since 1.0.0
  */
-export type Loader = Effect.Effect<
+export type Loader<R = never> = Effect.Effect<
   ReadonlyArray<ResolvedMigration>,
-  MigrationError
+  MigrationError,
+  R
 >
 
 /**
@@ -68,7 +70,7 @@ export class MigrationError extends Data.TaggedError("MigrationError")<{
  * @category constructor
  * @since 1.0.0
  */
-export const make = <R extends Client>({
+export const make = <R extends Client, R2 = never>({
   dumpSchema,
   ensureTable,
   getClient,
@@ -87,10 +89,10 @@ export const make = <R extends Client>({
   loader,
   schemaDirectory,
   table = "effect_sql_migrations"
-}: MigratorOptions): Effect.Effect<
+}: MigratorOptions<R2>): Effect.Effect<
   ReadonlyArray<readonly [id: number, name: string]>,
   MigrationError | SqlError,
-  R
+  R | R2
 > =>
   Effect.gen(function*(_) {
     const sql = yield* _(getClient)
@@ -99,23 +101,16 @@ export const make = <R extends Client>({
     const insertMigrations = (
       rows: ReadonlyArray<[id: number, name: string]>
     ) =>
-      sql`
-        INSERT INTO ${sql(table)}
-        ${
+      sql`INSERT INTO ${sql(table)} ${
         sql.insert(
           rows.map(([migration_id, name]) => ({ migration_id, name }))
         )
-      }
-      `
+      }`.withoutTransform
 
     const latestMigration = Effect.map(
-      sql<{ migration_id: number; name: string; created_at: Date }>`
-          SELECT migration_id, name, created_at FROM ${
-        sql(
-          table
-        )
-      } ORDER BY migration_id DESC LIMIT 1
-        `.withoutTransform,
+      sql<{ migration_id: number; name: string; created_at: Date }>`SELECT migration_id, name, created_at FROM ${
+        sql(table)
+      } ORDER BY migration_id DESC LIMIT 1`.withoutTransform,
       (_) =>
         Option.map(
           Option.fromNullable(_[0] as any),
@@ -276,6 +271,7 @@ const migrationOrder = Order.make<ResolvedMigration>(([a], [b]) => Order.number(
 
 /**
  * @since 1.0.0
+ * @category loaders
  */
 export const fromGlob = (
   migrations: Record<string, () => Promise<any>>
@@ -296,6 +292,7 @@ export const fromGlob = (
 
 /**
  * @since 1.0.0
+ * @category loaders
  */
 export const fromBabelGlob = (migrations: Record<string, any>): Loader =>
   pipe(
@@ -310,4 +307,38 @@ export const fromBabelGlob = (migrations: Record<string, any>): Loader =>
     ),
     ReadonlyArray.sort(migrationOrder),
     Effect.succeed
+  )
+
+/**
+ * @since 1.0.0
+ * @category loaders
+ */
+export const fromFileSystem = (directory: string): Loader<FileSystem> =>
+  FileSystem.pipe(
+    Effect.flatMap((FS) => FS.readDirectory(directory)),
+    Effect.mapError((error) => new MigrationError({ reason: "failed", message: error.message })),
+    Effect.map((files): ReadonlyArray<ResolvedMigration> =>
+      files
+        .map((file) => Option.fromNullable(file.match(/^(?:.*\/)?(\d+)_([^.]+)\.(js|ts)$/)))
+        .flatMap(
+          Option.match({
+            onNone: () => [],
+            onSome: ([basename, id, name]): ReadonlyArray<ResolvedMigration> =>
+              [
+                [
+                  Number(id),
+                  name,
+                  Effect.promise(
+                    () =>
+                      import(
+                        /* @vite-ignore */
+                        `${directory}/${basename}`
+                      )
+                  )
+                ]
+              ] as const
+          })
+        )
+        .sort(([a], [b]) => a - b)
+    )
   )
