@@ -529,9 +529,9 @@ export const divide: {
       onMillis: (millis) => make(millis / by),
       onNanos: (nanos) => {
         if (isNaN(by) || by < 0 || Object.is(by, -0)) {
-          return make(0)
+          return zero
         } else if (Object.is(by, 0) || !Number.isFinite(by)) {
-          return make(Infinity)
+          return infinity
         }
         return make(nanos / BigInt(by))
       }
