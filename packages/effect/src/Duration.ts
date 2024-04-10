@@ -520,6 +520,36 @@ export const clamp: {
  * @category math
  */
 export const divide: {
+  (by: number): (self: DurationInput) => Option.Option<Duration>
+  (self: DurationInput, by: number): Option.Option<Duration>
+} = dual(
+  2,
+  (self: DurationInput, by: number): Option.Option<Duration> =>
+    match(self, {
+      onMillis: (millis) => {
+        if (by === 0 || isNaN(by) || !Number.isFinite(by)) {
+          return Option.none()
+        }
+        return Option.some(make(millis / by))
+      },
+      onNanos: (nanos) => {
+        if (isNaN(by) || by <= 0 || !Number.isFinite(by)) {
+          return Option.none()
+        }
+        try {
+          return Option.some(make(nanos / BigInt(by)))
+        } catch (e) {
+          return Option.none()
+        }
+      }
+    })
+)
+
+/**
+ * @since 2.4.19
+ * @category math
+ */
+export const unsafeDivide: {
   (by: number): (self: DurationInput) => Duration
   (self: DurationInput, by: number): Duration
 } = dual(
