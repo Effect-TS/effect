@@ -31,29 +31,29 @@ export const BetweenTypeId: Schema.BetweenTypeId = Symbol.for(
 ) as Schema.BetweenTypeId
 
 /** @internal */
-export const GreaterThanBigintTypeId: Schema.GreaterThanBigintTypeId = Symbol.for(
-  "@effect/schema/TypeId/GreaterThanBigint"
-) as Schema.GreaterThanBigintTypeId
+export const GreaterThanBigIntTypeId: Schema.GreaterThanBigIntTypeId = Symbol.for(
+  "@effect/schema/TypeId/GreaterThanBigInt"
+) as Schema.GreaterThanBigIntTypeId
 
 /** @internal */
-export const GreaterThanOrEqualToBigintTypeId: Schema.GreaterThanOrEqualToBigintTypeId = Symbol.for(
-  "@effect/schema/TypeId/GreaterThanOrEqualToBigint"
-) as Schema.GreaterThanOrEqualToBigintTypeId
+export const GreaterThanOrEqualToBigIntTypeId: Schema.GreaterThanOrEqualToBigIntTypeId = Symbol.for(
+  "@effect/schema/TypeId/GreaterThanOrEqualToBigInt"
+) as Schema.GreaterThanOrEqualToBigIntTypeId
 
 /** @internal */
-export const LessThanBigintTypeId: Schema.LessThanBigintTypeId = Symbol.for(
-  "@effect/schema/TypeId/LessThanBigint"
-) as Schema.LessThanBigintTypeId
+export const LessThanBigIntTypeId: Schema.LessThanBigIntTypeId = Symbol.for(
+  "@effect/schema/TypeId/LessThanBigInt"
+) as Schema.LessThanBigIntTypeId
 
 /** @internal */
-export const LessThanOrEqualToBigintTypeId: Schema.LessThanOrEqualToBigintTypeId = Symbol.for(
-  "@effect/schema/TypeId/LessThanOrEqualToBigint"
-) as Schema.LessThanOrEqualToBigintTypeId
+export const LessThanOrEqualToBigIntTypeId: Schema.LessThanOrEqualToBigIntTypeId = Symbol.for(
+  "@effect/schema/TypeId/LessThanOrEqualToBigInt"
+) as Schema.LessThanOrEqualToBigIntTypeId
 
 /** @internal */
-export const BetweenBigintTypeId: Schema.BetweenBigintTypeId = Symbol.for(
-  "@effect/schema/TypeId/BetweenBigint"
-) as Schema.BetweenBigintTypeId
+export const BetweenBigIntTypeId: Schema.BetweenBigIntTypeId = Symbol.for(
+  "@effect/schema/TypeId/BetweenBigInt"
+) as Schema.BetweenBigIntTypeId
 
 /** @internal */
 export const MinLengthTypeId: Schema.MinLengthTypeId = Symbol.for(

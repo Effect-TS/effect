@@ -2,8 +2,8 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("bigint > greaterThanOrEqualToBigint", () => {
-  const schema = S.bigintFromSelf.pipe(S.greaterThanOrEqualToBigint(0n))
+describe("bigint > greaterThanOrEqualToBigInt", () => {
+  const schema = S.bigintFromSelf.pipe(S.greaterThanOrEqualToBigInt(0n))
   it("decoding", async () => {
     await Util.expectDecodeUnknownFailure(
       schema,

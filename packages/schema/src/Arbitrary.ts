@@ -412,11 +412,11 @@ export const getConstraints = (ast: AST.Refinement): Constraints | undefined => 
         max: jsonSchema.exclusiveMaximum ?? jsonSchema.maximum
       })
     // bigint
-    case filters_.GreaterThanBigintTypeId:
-    case filters_.GreaterThanOrEqualToBigintTypeId:
-    case filters_.LessThanBigintTypeId:
-    case filters_.LessThanOrEqualToBigintTypeId:
-    case filters_.BetweenBigintTypeId: {
+    case filters_.GreaterThanBigIntTypeId:
+    case filters_.GreaterThanOrEqualToBigIntTypeId:
+    case filters_.LessThanBigIntTypeId:
+    case filters_.LessThanOrEqualToBigIntTypeId:
+    case filters_.BetweenBigIntTypeId: {
       const constraints: any = ast.annotations[TypeAnnotationId]
       return new BigIntConstraints(constraints)
     }

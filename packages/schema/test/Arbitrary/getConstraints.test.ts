@@ -46,65 +46,65 @@ describe("Arbitrary > getConstraints", () => {
   })
 
   describe("bigint", () => {
-    it("GreaterThanBigintTypeId", () => {
+    it("GreaterThanBigIntTypeId", () => {
       expectConstraints(
-        S.bigintFromSelf.pipe(S.greaterThanBigint(BigInt(0))),
+        S.bigintFromSelf.pipe(S.greaterThanBigInt(BigInt(0))),
         new A.BigIntConstraints({ min: BigInt(0) })
       )
     })
 
-    it("GreaterThanOrEqualToBigintTypeId", () => {
+    it("GreaterThanOrEqualToBigIntTypeId", () => {
       expectConstraints(
-        S.bigintFromSelf.pipe(S.greaterThanOrEqualToBigint(BigInt(0))),
+        S.bigintFromSelf.pipe(S.greaterThanOrEqualToBigInt(BigInt(0))),
         new A.BigIntConstraints({ min: BigInt(0) })
       )
     })
 
-    it("LessThanBigintTypeId", () => {
+    it("LessThanBigIntTypeId", () => {
       expectConstraints(
-        S.bigintFromSelf.pipe(S.lessThanBigint(BigInt(0))),
+        S.bigintFromSelf.pipe(S.lessThanBigInt(BigInt(0))),
         new A.BigIntConstraints({ max: BigInt(0) })
       )
     })
 
-    it("LessThanOrEqualToBigintTypeId", () => {
+    it("LessThanOrEqualToBigIntTypeId", () => {
       expectConstraints(
-        S.bigintFromSelf.pipe(S.lessThanOrEqualToBigint(BigInt(0))),
+        S.bigintFromSelf.pipe(S.lessThanOrEqualToBigInt(BigInt(0))),
         new A.BigIntConstraints({ max: BigInt(0) })
       )
     })
 
-    it("PositiveBigintTypeId", () => {
+    it("PositiveBigIntTypeId", () => {
       expectConstraints(
-        S.bigintFromSelf.pipe(S.positiveBigint()),
+        S.bigintFromSelf.pipe(S.positiveBigInt()),
         new A.BigIntConstraints({ min: BigInt(0) })
       )
     })
 
-    it("NonNegativeBigintTypeId", () => {
+    it("NonNegativeBigIntTypeId", () => {
       expectConstraints(
-        S.bigintFromSelf.pipe(S.nonNegativeBigint()),
+        S.bigintFromSelf.pipe(S.nonNegativeBigInt()),
         new A.BigIntConstraints({ min: BigInt(0) })
       )
     })
 
-    it("NegativeBigintTypeId", () => {
+    it("NegativeBigIntTypeId", () => {
       expectConstraints(
-        S.bigintFromSelf.pipe(S.negativeBigint()),
+        S.bigintFromSelf.pipe(S.negativeBigInt()),
         new A.BigIntConstraints({ max: BigInt(0) })
       )
     })
 
-    it("NonPositiveBigintTypeId", () => {
+    it("NonPositiveBigIntTypeId", () => {
       expectConstraints(
-        S.bigintFromSelf.pipe(S.nonPositiveBigint()),
+        S.bigintFromSelf.pipe(S.nonPositiveBigInt()),
         new A.BigIntConstraints({ max: BigInt(0) })
       )
     })
 
-    it("BetweenBigintTypeId", () => {
+    it("BetweenBigIntTypeId", () => {
       expectConstraints(
-        S.bigintFromSelf.pipe(S.betweenBigint(BigInt(0), BigInt(10))),
+        S.bigintFromSelf.pipe(S.betweenBigInt(BigInt(0), BigInt(10))),
         new A.BigIntConstraints({ min: BigInt(0), max: BigInt(10) })
       )
     })

@@ -484,27 +484,27 @@ describe("Arbitrary > Arbitrary", () => {
 
   describe("bigint filters", () => {
     it("lessThanOrEqualTo", () => {
-      const schema = S.bigint.pipe(S.lessThanOrEqualToBigint(BigInt(1)))
+      const schema = S.bigint.pipe(S.lessThanOrEqualToBigInt(BigInt(1)))
       expectValidArbitrary(schema)
     })
 
     it("greaterThanOrEqualTo", () => {
-      const schema = S.bigint.pipe(S.greaterThanOrEqualToBigint(BigInt(1)))
+      const schema = S.bigint.pipe(S.greaterThanOrEqualToBigInt(BigInt(1)))
       expectValidArbitrary(schema)
     })
 
     it("lessThan", () => {
-      const schema = S.bigint.pipe(S.lessThanBigint(BigInt(1)))
+      const schema = S.bigint.pipe(S.lessThanBigInt(BigInt(1)))
       expectValidArbitrary(schema)
     })
 
     it("greaterThan", () => {
-      const schema = S.bigint.pipe(S.greaterThanBigint(BigInt(1)))
+      const schema = S.bigint.pipe(S.greaterThanBigInt(BigInt(1)))
       expectValidArbitrary(schema)
     })
 
     it("between", () => {
-      const schema = S.bigint.pipe(S.betweenBigint(BigInt(1), BigInt(10)))
+      const schema = S.bigint.pipe(S.betweenBigInt(BigInt(1), BigInt(10)))
       expectValidArbitrary(schema)
     })
   })

@@ -4082,26 +4082,26 @@ export const symbol: $symbol = transform(
  * @category type id
  * @since 1.0.0
  */
-export const GreaterThanBigintTypeId: unique symbol = filters_.GreaterThanBigintTypeId
+export const GreaterThanBigIntTypeId: unique symbol = filters_.GreaterThanBigIntTypeId
 
 /**
  * @category type id
  * @since 1.0.0
  */
-export type GreaterThanBigintTypeId = typeof GreaterThanBigintTypeId
+export type GreaterThanBigIntTypeId = typeof GreaterThanBigIntTypeId
 
 /**
  * @category bigint filters
  * @since 1.0.0
  */
-export const greaterThanBigint = <A extends bigint>(
+export const greaterThanBigInt = <A extends bigint>(
   min: bigint,
   annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => a > min, {
-      typeId: { id: GreaterThanBigintTypeId, annotation: { min } },
+      typeId: { id: GreaterThanBigIntTypeId, annotation: { min } },
       description: min === 0n ? "a positive bigint" : `a bigint greater than ${min}n`,
       ...annotations
     })
@@ -4111,26 +4111,26 @@ export const greaterThanBigint = <A extends bigint>(
  * @category type id
  * @since 1.0.0
  */
-export const GreaterThanOrEqualToBigintTypeId: unique symbol = filters_.GreaterThanOrEqualToBigintTypeId
+export const GreaterThanOrEqualToBigIntTypeId: unique symbol = filters_.GreaterThanOrEqualToBigIntTypeId
 
 /**
  * @category type id
  * @since 1.0.0
  */
-export type GreaterThanOrEqualToBigintTypeId = typeof GreaterThanOrEqualToBigintTypeId
+export type GreaterThanOrEqualToBigIntTypeId = typeof GreaterThanOrEqualToBigIntTypeId
 
 /**
  * @category bigint filters
  * @since 1.0.0
  */
-export const greaterThanOrEqualToBigint = <A extends bigint>(
+export const greaterThanOrEqualToBigInt = <A extends bigint>(
   min: bigint,
   annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => a >= min, {
-      typeId: { id: GreaterThanOrEqualToBigintTypeId, annotation: { min } },
+      typeId: { id: GreaterThanOrEqualToBigIntTypeId, annotation: { min } },
       description: min === 0n
         ? "a non-negative bigint"
         : `a bigint greater than or equal to ${min}n`,
@@ -4142,26 +4142,26 @@ export const greaterThanOrEqualToBigint = <A extends bigint>(
  * @category type id
  * @since 1.0.0
  */
-export const LessThanBigintTypeId: unique symbol = filters_.LessThanBigintTypeId
+export const LessThanBigIntTypeId: unique symbol = filters_.LessThanBigIntTypeId
 
 /**
  * @category type id
  * @since 1.0.0
  */
-export type LessThanBigintTypeId = typeof LessThanBigintTypeId
+export type LessThanBigIntTypeId = typeof LessThanBigIntTypeId
 
 /**
  * @category bigint filters
  * @since 1.0.0
  */
-export const lessThanBigint = <A extends bigint>(
+export const lessThanBigInt = <A extends bigint>(
   max: bigint,
   annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => a < max, {
-      typeId: { id: LessThanBigintTypeId, annotation: { max } },
+      typeId: { id: LessThanBigIntTypeId, annotation: { max } },
       description: max === 0n ? "a negative bigint" : `a bigint less than ${max}n`,
       ...annotations
     })
@@ -4171,26 +4171,26 @@ export const lessThanBigint = <A extends bigint>(
  * @category type id
  * @since 1.0.0
  */
-export const LessThanOrEqualToBigintTypeId: unique symbol = filters_.LessThanOrEqualToBigintTypeId
+export const LessThanOrEqualToBigIntTypeId: unique symbol = filters_.LessThanOrEqualToBigIntTypeId
 
 /**
  * @category type id
  * @since 1.0.0
  */
-export type LessThanOrEqualToBigintTypeId = typeof LessThanOrEqualToBigintTypeId
+export type LessThanOrEqualToBigIntTypeId = typeof LessThanOrEqualToBigIntTypeId
 
 /**
  * @category bigint filters
  * @since 1.0.0
  */
-export const lessThanOrEqualToBigint = <A extends bigint>(
+export const lessThanOrEqualToBigInt = <A extends bigint>(
   max: bigint,
   annotations?: Annotations.Filter<A>
 ) =>
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => a <= max, {
-      typeId: { id: LessThanOrEqualToBigintTypeId, annotation: { max } },
+      typeId: { id: LessThanOrEqualToBigIntTypeId, annotation: { max } },
       description: max === 0n ? "a non-positive bigint" : `a bigint less than or equal to ${max}n`,
       ...annotations
     })
@@ -4200,19 +4200,19 @@ export const lessThanOrEqualToBigint = <A extends bigint>(
  * @category type id
  * @since 1.0.0
  */
-export const BetweenBigintTypeId: unique symbol = filters_.BetweenBigintTypeId
+export const BetweenBigIntTypeId: unique symbol = filters_.BetweenBigIntTypeId
 
 /**
  * @category type id
  * @since 1.0.0
  */
-export type BetweenBigintTypeId = typeof BetweenBigintTypeId
+export type BetweenBigIntTypeId = typeof BetweenBigIntTypeId
 
 /**
  * @category bigint filters
  * @since 1.0.0
  */
-export const betweenBigint = <A extends bigint>(
+export const betweenBigInt = <A extends bigint>(
   min: bigint,
   max: bigint,
   annotations?: Annotations.Filter<A>
@@ -4220,7 +4220,7 @@ export const betweenBigint = <A extends bigint>(
 <I, R>(self: Schema<A, I, R>): Schema<A, I, R> =>
   self.pipe(
     filter((a): a is A => a >= min && a <= max, {
-      typeId: { id: BetweenBigintTypeId, annotation: { max, min } },
+      typeId: { id: BetweenBigIntTypeId, annotation: { max, min } },
       description: `a bigint between ${min}n and ${max}n`,
       ...annotations
     })
@@ -4230,33 +4230,33 @@ export const betweenBigint = <A extends bigint>(
  * @category bigint filters
  * @since 1.0.0
  */
-export const positiveBigint = <A extends bigint>(
+export const positiveBigInt = <A extends bigint>(
   annotations?: Annotations.Filter<A>
-): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => greaterThanBigint(0n, annotations)
+): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => greaterThanBigInt(0n, annotations)
 
 /**
  * @category bigint filters
  * @since 1.0.0
  */
-export const negativeBigint = <A extends bigint>(
+export const negativeBigInt = <A extends bigint>(
   annotations?: Annotations.Filter<A>
-): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => lessThanBigint(0n, annotations)
+): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => lessThanBigInt(0n, annotations)
 
 /**
  * @category bigint filters
  * @since 1.0.0
  */
-export const nonNegativeBigint = <A extends bigint>(
+export const nonNegativeBigInt = <A extends bigint>(
   annotations?: Annotations.Filter<A>
-): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => greaterThanOrEqualToBigint(0n, annotations)
+): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => greaterThanOrEqualToBigInt(0n, annotations)
 
 /**
  * @category bigint filters
  * @since 1.0.0
  */
-export const nonPositiveBigint = <A extends bigint>(
+export const nonPositiveBigInt = <A extends bigint>(
   annotations?: Annotations.Filter<A>
-): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => lessThanOrEqualToBigint(0n, annotations)
+): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R> => lessThanOrEqualToBigInt(0n, annotations)
 
 /**
  * Clamps a bigint between a minimum and a maximum value.
@@ -4264,11 +4264,11 @@ export const nonPositiveBigint = <A extends bigint>(
  * @category bigint transformations
  * @since 1.0.0
  */
-export const clampBigint =
+export const clampBigInt =
   (minimum: bigint, maximum: bigint) => <R, I, A extends bigint>(self: Schema<A, I, R>): Schema<A, I, R> =>
     transform(
       self,
-      self.pipe(typeSchema, betweenBigint(minimum, maximum)),
+      self.pipe(typeSchema, betweenBigInt(minimum, maximum)),
       { strict: false, decode: (self) => bigInt_.clamp(self, { minimum, maximum }), encode: identity }
     )
 
@@ -4299,71 +4299,71 @@ export const bigint: $bigint = transformOrFail(
  * @category bigint constructors
  * @since 1.0.0
  */
-export const PositiveBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
-  positiveBigint({ identifier: "PositiveBigintFromSelf", title: "PositiveBigintFromSelf" })
+export const PositiveBigIntFromSelf: Schema<bigint> = bigintFromSelf.pipe(
+  positiveBigInt({ identifier: "PositiveBigIntFromSelf", title: "PositiveBigIntFromSelf" })
 )
 
 /**
  * @category bigint constructors
  * @since 1.0.0
  */
-export const PositiveBigint: Schema<bigint, string> = bigint.pipe(
-  positiveBigint({ identifier: "PositiveBigint", title: "PositiveBigint" })
+export const PositiveBigInt: Schema<bigint, string> = bigint.pipe(
+  positiveBigInt({ identifier: "PositiveBigInt", title: "PositiveBigInt" })
 )
 
 /**
  * @category bigint constructors
  * @since 1.0.0
  */
-export const NegativeBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
-  negativeBigint({ identifier: "NegativeBigintFromSelf", title: "NegativeBigintFromSelf" })
+export const NegativeBigIntFromSelf: Schema<bigint> = bigintFromSelf.pipe(
+  negativeBigInt({ identifier: "NegativeBigIntFromSelf", title: "NegativeBigIntFromSelf" })
 )
 
 /**
  * @category bigint constructors
  * @since 1.0.0
  */
-export const NegativeBigint: Schema<bigint, string> = bigint.pipe(
-  negativeBigint({ identifier: "NegativeBigint", title: "NegativeBigint" })
+export const NegativeBigInt: Schema<bigint, string> = bigint.pipe(
+  negativeBigInt({ identifier: "NegativeBigInt", title: "NegativeBigInt" })
 )
 
 /**
  * @category bigint constructors
  * @since 1.0.0
  */
-export const NonPositiveBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
-  nonPositiveBigint({ identifier: "NonPositiveBigintFromSelf", title: "NonPositiveBigintFromSelf" })
+export const NonPositiveBigIntFromSelf: Schema<bigint> = bigintFromSelf.pipe(
+  nonPositiveBigInt({ identifier: "NonPositiveBigIntFromSelf", title: "NonPositiveBigIntFromSelf" })
 )
 
 /**
  * @category bigint constructors
  * @since 1.0.0
  */
-export const NonPositiveBigint: Schema<bigint, string> = bigint.pipe(
-  nonPositiveBigint({ identifier: "NonPositiveBigint", title: "NonPositiveBigint" })
+export const NonPositiveBigInt: Schema<bigint, string> = bigint.pipe(
+  nonPositiveBigInt({ identifier: "NonPositiveBigInt", title: "NonPositiveBigInt" })
 )
 
 /**
  * @category bigint constructors
  * @since 1.0.0
  */
-export const NonNegativeBigintFromSelf: Schema<bigint> = bigintFromSelf.pipe(
-  nonNegativeBigint({ identifier: "NonNegativeBigintFromSelf", title: "NonNegativeBigintFromSelf" })
+export const NonNegativeBigIntFromSelf: Schema<bigint> = bigintFromSelf.pipe(
+  nonNegativeBigInt({ identifier: "NonNegativeBigIntFromSelf", title: "NonNegativeBigIntFromSelf" })
 )
 
 /**
  * @category bigint constructors
  * @since 1.0.0
  */
-export const NonNegativeBigint: Schema<bigint, string> = bigint.pipe(
-  nonNegativeBigint({ identifier: "NonNegativeBigint", title: "NonNegativeBigint" })
+export const NonNegativeBigInt: Schema<bigint, string> = bigint.pipe(
+  nonNegativeBigInt({ identifier: "NonNegativeBigInt", title: "NonNegativeBigInt" })
 )
 
 /**
  * @category api interface
  * @since 1.0.0
  */
-export interface BigintFromNumber extends Annotable<BigintFromNumber, bigint, number> {}
+export interface BigIntFromNumber extends Annotable<BigIntFromNumber, bigint, number> {}
 
 /**
  * This schema transforms a `number` into a `bigint` by parsing the number using the `BigInt` function.
@@ -4373,7 +4373,7 @@ export interface BigintFromNumber extends Annotable<BigintFromNumber, bigint, nu
  * @category bigint transformations
  * @since 1.0.0
  */
-export const BigintFromNumber: BigintFromNumber = transformOrFail(
+export const BigIntFromNumber: BigIntFromNumber = transformOrFail(
   number,
   bigintFromSelf,
   {
@@ -4384,7 +4384,7 @@ export const BigintFromNumber: BigintFromNumber = transformOrFail(
       ),
     encode: (b, _, ast) => ParseResult.fromOption(bigInt_.toNumber(b), () => new ParseResult.Type(ast, b))
   }
-).annotations({ identifier: "BigintFromNumber" })
+).annotations({ identifier: "BigIntFromNumber" })
 
 /**
  * @category api interface

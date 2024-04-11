@@ -1835,21 +1835,21 @@ S.number.pipe(S.nonPositive()); // Specifies a non-positive number (<= 0)
 S.number.pipe(S.multipleOf(5)); // Specifies a number that is evenly divisible by 5
 ```
 
-### Bigint Filters
+### BigInt Filters
 
 ```ts
 import * as S from "@effect/schema/Schema";
 
-S.bigint.pipe(S.greaterThanBigint(5n)); // Specifies a bigint greater than 5
-S.bigint.pipe(S.greaterThanOrEqualToBigint(5n)); // Specifies a bigint greater than or equal to 5
-S.bigint.pipe(S.lessThanBigint(5n)); // Specifies a bigint less than 5
-S.bigint.pipe(S.lessThanOrEqualToBigint(5n)); // Specifies a bigint less than or equal to 5
-S.bigint.pipe(S.betweenBigint(-2n, 2n)); // Specifies a bigint between -2 and 2, inclusive
+S.bigint.pipe(S.greaterThanBigInt(5n)); // Specifies a bigint greater than 5
+S.bigint.pipe(S.greaterThanOrEqualToBigInt(5n)); // Specifies a bigint greater than or equal to 5
+S.bigint.pipe(S.lessThanBigInt(5n)); // Specifies a bigint less than 5
+S.bigint.pipe(S.lessThanOrEqualToBigInt(5n)); // Specifies a bigint less than or equal to 5
+S.bigint.pipe(S.betweenBigInt(-2n, 2n)); // Specifies a bigint between -2 and 2, inclusive
 
-S.bigint.pipe(S.positiveBigint()); // Specifies a positive bigint (> 0n)
-S.bigint.pipe(S.nonNegativeBigint()); // Specifies a non-negative bigint (>= 0n)
-S.bigint.pipe(S.negativeBigint()); // Specifies a negative bigint (< 0n)
-S.bigint.pipe(S.nonPositiveBigint()); // Specifies a non-positive bigint (<= 0n)
+S.bigint.pipe(S.positiveBigInt()); // Specifies a positive bigint (> 0n)
+S.bigint.pipe(S.nonNegativeBigInt()); // Specifies a non-negative bigint (>= 0n)
+S.bigint.pipe(S.negativeBigInt()); // Specifies a negative bigint (< 0n)
+S.bigint.pipe(S.nonPositiveBigInt()); // Specifies a non-positive bigint (<= 0n)
 ```
 
 ### BigDecimal Filters
@@ -4033,7 +4033,7 @@ const decode = S.decodeUnknownSync(schema);
 console.log(decode("a")); // Symbol(a)
 ```
 
-## Bigint transformations
+## BigInt transformations
 
 ### bigint
 
@@ -4064,7 +4064,7 @@ decode("Infinity"); // throws
 decode("-Infinity"); // throws
 ```
 
-### BigintFromNumber
+### BigIntFromNumber
 
 Transforms a `number` into a `bigint` by parsing the number using `BigInt`.
 
@@ -4072,7 +4072,7 @@ Transforms a `number` into a `bigint` by parsing the number using `BigInt`.
 import * as S from "@effect/schema/Schema";
 
 // Schema<bigint, number>
-const schema = S.BigintFromNumber;
+const schema = S.BigIntFromNumber;
 const decode = S.decodeUnknownSync(schema);
 const encode = S.encodeSync(schema);
 
@@ -4086,9 +4086,9 @@ console.log(encode(-1n)); // -1
 decode(1.5);
 /*
 throws:
-Error: BigintFromNumber
+Error: BigIntFromNumber
 └─ Transformation process failure
-   └─ Expected BigintFromNumber, actual 1.5
+   └─ Expected BigIntFromNumber, actual 1.5
 */
 decode(NaN); // throws
 decode(Infinity); // throws
@@ -4105,7 +4105,7 @@ Clamps a `bigint` between a minimum and a maximum value.
 import * as S from "@effect/schema/Schema";
 
 // Schema<bigint>
-const schema = S.bigintFromSelf.pipe(S.clampBigint(-1n, 1n)); // clamps the input to -1n <= x <= 1n
+const schema = S.bigintFromSelf.pipe(S.clampBigInt(-1n, 1n)); // clamps the input to -1n <= x <= 1n
 
 const decode = S.decodeUnknownSync(schema);
 

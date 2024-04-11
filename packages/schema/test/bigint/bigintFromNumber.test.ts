@@ -2,8 +2,8 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("bigint > BigintFromNumber", () => {
-  const schema = S.BigintFromNumber
+describe("bigint > BigIntFromNumber", () => {
+  const schema = S.BigIntFromNumber
 
   it("property tests", () => {
     Util.roundtrip(schema)
@@ -17,30 +17,30 @@ describe("bigint > BigintFromNumber", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       1.2,
-      `BigintFromNumber
+      `BigIntFromNumber
 └─ Transformation process failure
-   └─ Expected BigintFromNumber, actual 1.2`
+   └─ Expected BigIntFromNumber, actual 1.2`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       NaN,
-      `BigintFromNumber
+      `BigIntFromNumber
 └─ Transformation process failure
-   └─ Expected BigintFromNumber, actual NaN`
+   └─ Expected BigIntFromNumber, actual NaN`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       Infinity,
-      `BigintFromNumber
+      `BigIntFromNumber
 └─ Transformation process failure
-   └─ Expected BigintFromNumber, actual Infinity`
+   └─ Expected BigIntFromNumber, actual Infinity`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       -Infinity,
-      `BigintFromNumber
+      `BigIntFromNumber
 └─ Transformation process failure
-   └─ Expected BigintFromNumber, actual -Infinity`
+   └─ Expected BigIntFromNumber, actual -Infinity`
     )
   })
 
@@ -50,16 +50,16 @@ describe("bigint > BigintFromNumber", () => {
     await Util.expectEncodeFailure(
       schema,
       BigInt(Number.MAX_SAFE_INTEGER) + 1n,
-      `BigintFromNumber
+      `BigIntFromNumber
 └─ Transformation process failure
-   └─ Expected BigintFromNumber, actual 9007199254740992n`
+   └─ Expected BigIntFromNumber, actual 9007199254740992n`
     )
     await Util.expectEncodeFailure(
       schema,
       BigInt(Number.MIN_SAFE_INTEGER) - 1n,
-      `BigintFromNumber
+      `BigIntFromNumber
 └─ Transformation process failure
-   └─ Expected BigintFromNumber, actual -9007199254740992n`
+   └─ Expected BigIntFromNumber, actual -9007199254740992n`
     )
   })
 })

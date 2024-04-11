@@ -2,8 +2,8 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("bigint > betweenBigint", () => {
-  const schema = S.bigintFromSelf.pipe(S.betweenBigint(-1n, 1n)).annotations({
+describe("bigint > betweenBigInt", () => {
+  const schema = S.bigintFromSelf.pipe(S.betweenBigInt(-1n, 1n)).annotations({
     title: "[-1n, -1n] interval"
   })
 
