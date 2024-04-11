@@ -1,8 +1,9 @@
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import * as FiberRef from "effect/FiberRef"
-import { identity } from "effect/Function"
+import { dual, identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import type { Scope } from "effect/Scope"
@@ -33,13 +34,33 @@ export const isCustom = <A extends Statement.Custom<any, any, any, any>>(
 (u: unknown): u is A => u instanceof CustomImpl && u.kind === kind
 
 /** @internal */
-export const currentTranformer = globalValue(
-  "@effect/sql/Statement/currentStatementModifier",
+export const currentTransformer = globalValue(
+  "@effect/sql/Statement/currentTransformer",
   () =>
     FiberRef.unsafeMake(
       Option.none<(self: Statement.Statement<unknown>, span: Tracer.Span) => Statement.Statement<unknown>>()
     )
 )
+
+/** @internal */
+export const withTransformer = dual<
+  (
+    f: (self: Statement.Statement<unknown>, span: Tracer.Span) => Statement.Statement<unknown>
+  ) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(
+    effect: Effect.Effect<A, E, R>,
+    f: (self: Statement.Statement<unknown>, span: Tracer.Span) => Statement.Statement<unknown>
+  ) => Effect.Effect<A, E, R>
+>(2, (effect, f) => Effect.locally(effect, currentTransformer, Option.some(f)))
+
+/** @internal */
+export const withTransformerDisabled = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  Effect.locally(effect, currentTransformer, Option.none())
+
+/** @internal */
+export const setTransformer = (
+  f: (self: Statement.Statement<unknown>, span: Tracer.Span) => Statement.Statement<unknown>
+) => Layer.locallyScoped(currentTransformer, Option.some(f))
 
 /** @internal */
 export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Error.SqlError>
@@ -63,7 +84,7 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
       (span) =>
         Effect.withParentSpan(
           Effect.withFiberRuntime((fiber) => {
-            const modifier = fiber.getFiberRef(currentTranformer)
+            const modifier = fiber.getFiberRef(currentTransformer)
             const statement = modifier._tag === "Some" ? modifier.value(this, span) : this
             const sql = statement.compile()[0]
             span.attribute("sql.method", "executeWithoutTransform")
@@ -79,17 +100,14 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
     return Stream.unwrapScoped(Effect.flatMap(
       Effect.makeSpanScoped("sql.execute"),
       (span) =>
-        Effect.withParentSpan(
-          Effect.withFiberRuntime<Stream.Stream<A, Error.SqlError>, Error.SqlError, Scope>((fiber) => {
-            const modifier = fiber.getFiberRef(currentTranformer)
-            const statement = modifier._tag === "Some" ? modifier.value(this, span) : this
-            const sql = statement.compile()[0]
-            span.attribute("sql.method", "executeStream")
-            span.attribute("sql.query", sql)
-            return Effect.map(this.acquirer, (_) => _.executeStream<any>(this))
-          }),
-          span
-        )
+        Effect.withFiberRuntime<Stream.Stream<A, Error.SqlError>, Error.SqlError, Scope>((fiber) => {
+          const modifier = fiber.getFiberRef(currentTransformer)
+          const statement = modifier._tag === "Some" ? modifier.value(this, span) : this
+          const sql = statement.compile()[0]
+          span.attribute("sql.method", "executeStream")
+          span.attribute("sql.query", sql)
+          return Effect.map(this.acquirer, (_) => _.executeStream<any>(statement))
+        })
     ))
   }
 
@@ -102,7 +120,7 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
       (span) =>
         Effect.withParentSpan(
           Effect.withFiberRuntime((fiber) => {
-            const modifier = fiber.getFiberRef(currentTranformer)
+            const modifier = fiber.getFiberRef(currentTransformer)
             const statement = modifier._tag === "Some" ? modifier.value(this, span) : this
             const sql = statement.compile()[0]
             span.attribute("sql.method", "executeValues")
@@ -127,7 +145,7 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
       (span) =>
         Effect.withParentSpan(
           Effect.withFiberRuntime((fiber) => {
-            const modifier = fiber.getFiberRef(currentTranformer)
+            const modifier = fiber.getFiberRef(currentTransformer)
             const statement = modifier._tag === "Some" ? modifier.value(this, span) : this
             const sql = statement.compile()[0]
             span.attribute("sql.method", "execute")

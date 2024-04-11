@@ -3,6 +3,7 @@
  */
 import type { Effect } from "effect/Effect"
 import type * as FiberRef from "effect/FiberRef"
+import type * as Layer from "effect/Layer"
 import type * as Option from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type * as Stream from "effect/Stream"
@@ -47,12 +48,41 @@ export interface Statement<A> extends Fragment, Effect<ReadonlyArray<A>, SqlErro
 }
 
 /**
- * @category fiber refs
+ * @category transformer
  * @since 1.0.0
  */
 export const currentTransformer: FiberRef.FiberRef<
   Option.Option<(self: Statement<unknown>, span: Tracer.Span) => Statement<unknown>>
-> = internal.currentTranformer
+> = internal.currentTransformer
+
+/**
+ * @category transformer
+ * @since 1.0.0
+ */
+export const withTransformer: {
+  (
+    f: (self: Statement<unknown>, span: Tracer.Span) => Statement<unknown>
+  ): <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R>
+  <A, E, R>(
+    effect: Effect<A, E, R>,
+    f: (self: Statement<unknown>, span: Tracer.Span) => Statement<unknown>
+  ): Effect<A, E, R>
+} = internal.withTransformer
+
+/**
+ * @category transformer
+ * @since 1.0.0
+ */
+export const withTransformerDisabled: <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R> =
+  internal.withTransformerDisabled
+
+/**
+ * @category transformer
+ * @since 1.0.0
+ */
+export const setTransformer: (
+  f: (self: Statement<unknown>, span: Tracer.Span) => Statement<unknown>
+) => Layer.Layer<never, never, never> = internal.setTransformer
 
 /**
  * @category guard
