@@ -19,6 +19,7 @@
     { "path": "packages/schema" },
     { "path": "packages/sql" },
     { "path": "packages/sql-pg" },
+    { "path": "packages/sql-mysql2" },
     { "path": "packages/typeclass" },
     { "path": "packages/vitest" }
   ]

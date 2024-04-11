@@ -37,6 +37,7 @@ const config: UserConfig = {
       ...alias("schema"),
       ...alias("sql"),
       ...alias("sql-pg"),
+      ...alias("sql-mysql2"),
       ...alias("typeclass"),
       ...alias("vitest")
     }

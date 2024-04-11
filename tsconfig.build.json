@@ -18,6 +18,7 @@
     { "path": "packages/schema/tsconfig.build.json" },
     { "path": "packages/sql/tsconfig.build.json" },
     { "path": "packages/sql-pg/tsconfig.build.json" },
+    { "path": "packages/sql-mysql2/tsconfig.build.json" },
     { "path": "packages/typeclass/tsconfig.build.json" },
     { "path": "packages/vitest/tsconfig.build.json" }
   ]

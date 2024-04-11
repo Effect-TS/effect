@@ -12,7 +12,7 @@ import * as Stream from "effect/Stream"
 /**
  * @since 1.0.0
  */
-export const asyncPauseResume = <R, E, A>(
+export const asyncPauseResume = <A, E = never, R = never>(
   register: (emit: {
     readonly single: (item: A) => void
     readonly chunk: (chunk: Chunk.Chunk<A>) => void
@@ -24,7 +24,7 @@ export const asyncPauseResume = <R, E, A>(
     readonly onPause: Effect.Effect<void>
     readonly onResume: Effect.Effect<void>
   },
-  bufferSize = 16
+  bufferSize = 4
 ): Stream.Stream<A, E, R> => {
   const EOF = Symbol()
   return Effect.all([
