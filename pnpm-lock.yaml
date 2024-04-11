@@ -492,7 +492,7 @@ importers:
   packages/sql-mysql2:
     dependencies:
       mysql2:
-        specifier: ^3.9.4
+        specifier: ^3
         version: 3.9.4
     devDependencies:
       '@effect/platform':
