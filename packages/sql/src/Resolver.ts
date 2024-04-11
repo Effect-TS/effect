@@ -21,7 +21,8 @@ import * as internalClient from "./internal/client.js"
  * @since 1.0.0
  * @category requests
  */
-export interface SqlRequest<A, E> extends Request.Request<A, E | ParseError> {
+export interface SqlRequest<T extends string, A, E> extends Request.Request<A, E | ParseError> {
+  readonly _tag: T
   readonly spanLink?: Tracer.SpanLink | undefined
   readonly input: unknown
 }
@@ -29,33 +30,33 @@ export interface SqlRequest<A, E> extends Request.Request<A, E | ParseError> {
 const SqlRequestProto = {
   ...Request.Class.prototype,
   [Equal.symbol](
-    this: SqlRequest<unknown, unknown>,
-    that: SqlRequest<unknown, unknown>
+    this: SqlRequest<string, unknown, unknown>,
+    that: SqlRequest<string, unknown, unknown>
   ): boolean {
-    return Equal.equals(this.input, that.input)
+    return this._tag === that._tag && Equal.equals(this.input, that.input)
   },
-  [Hash.symbol](this: SqlRequest<unknown, unknown>): number {
-    return Hash.hash(this.input)
+  [Hash.symbol](this: SqlRequest<string, unknown, unknown>): number {
+    return Hash.cached(this, Hash.combine(Hash.hash(this.input))(Hash.string(this._tag)))
   }
 }
 
-const makeRequest = <I, A, E>(
+const makeRequest = <T extends string, I, A, E>(
+  tag: T,
   input: I,
-  span?: Tracer.ParentSpan | undefined
-): SqlRequest<A, E> => {
-  const self = Object.create(SqlRequestProto) as Types.Mutable<SqlRequest<A, E>>
-  self.spanLink = span
-    ? {
-      _tag: "SpanLink",
-      span,
-      attributes: {}
-    }
-    : undefined
+  span: Tracer.Span
+): SqlRequest<T, A, E> => {
+  const self = Object.create(SqlRequestProto) as Types.Mutable<SqlRequest<T, A, E>>
+  self._tag = tag
+  self.spanLink = {
+    _tag: "SpanLink",
+    span,
+    attributes: {}
+  }
   self.input = input
   return self
 }
 
-const partitionRequests = <A, E>(requests: ReadonlyArray<SqlRequest<A, E>>) => {
+const partitionRequests = <T extends string, A, E>(requests: ReadonlyArray<SqlRequest<T, A, E>>) => {
   const inputs: Array<unknown> = new Array(requests.length)
   const spanLinks: Array<Tracer.SpanLink> = []
 
@@ -70,10 +71,10 @@ const partitionRequests = <A, E>(requests: ReadonlyArray<SqlRequest<A, E>>) => {
   return [inputs, spanLinks] as const
 }
 
-const partitionRequestsById = <I>() => <A, E>(requests: ReadonlyArray<SqlRequest<A, E>>) => {
+const partitionRequestsById = <I>() => <T extends string, A, E>(requests: ReadonlyArray<SqlRequest<T, A, E>>) => {
   const inputs: Array<unknown> = new Array(requests.length)
   const spanLinks: Array<Tracer.SpanLink> = []
-  const byIdMap = new Map<I, SqlRequest<A, E>>()
+  const byIdMap = new Map<I, SqlRequest<T, A, E>>()
 
   for (let i = 0, len = requests.length; i < len; i++) {
     const request = requests[i]
@@ -91,74 +92,95 @@ const partitionRequestsById = <I>() => <A, E>(requests: ReadonlyArray<SqlRequest
  * @since 1.0.0
  * @category resolvers
  */
-export interface SqlResolver<I, A, E, R> extends RequestResolver.RequestResolver<SqlRequest<A, E>> {
+export interface SqlResolver<T extends string, I, A, E, R>
+  extends RequestResolver.RequestResolver<SqlRequest<T, A, E>>
+{
   readonly execute: (input: I) => Effect.Effect<A, E | ParseError, R>
+  readonly makeExecute: (
+    resolver: RequestResolver.RequestResolver<SqlRequest<T, A, E>>
+  ) => (input: I) => Effect.Effect<A, E | ParseError, R>
   readonly cachePopulate: (
     id: I,
     result: A
   ) => Effect.Effect<void, ParseError, R>
   readonly cacheInvalidate: (id: I) => Effect.Effect<void, ParseError, R>
-  readonly request: (input: I) => Effect.Effect<SqlRequest<A, E>, ParseError, R>
+  readonly request: (input: I) => Effect.Effect<SqlRequest<T, A, E>, ParseError, R>
 }
 
-const makeResolver = <A, E, I, II, RI, R>(
-  self: RequestResolver.RequestResolver<SqlRequest<A, E>>,
+const makeResolver = <T extends string, A, E, I, II, RI, R>(
+  self: RequestResolver.RequestResolver<SqlRequest<T, A, E>>,
+  tag: T,
   Request: Schema.Schema<I, II, RI>,
-  context?: Context.Context<R> | undefined
-): SqlResolver<I, A, E, RI> => {
-  const encode = Schema.encode(Request)
-  return Object.assign(self, {
-    request(input: I) {
-      return Effect.withFiberRuntime<SqlRequest<A, E>, ParseError, RI>(
-        (fiber) => {
-          const span = fiber
-            .getFiberRef(FiberRef.currentContext)
-            .unsafeMap.get(Tracer.ParentSpan.key)
-          return Effect.map(encode(input), (input) => makeRequest(input, span))
-        }
-      )
-    },
-    cachePopulate(input: I, value: A) {
-      return Effect.flatMap(
-        encode(input),
-        (input) => Effect.cacheRequestResult(makeRequest(input), Exit.succeed(value))
-      )
-    },
-    cacheInvalidate(input: I) {
-      return Effect.withFiberRuntime<void, ParseError, RI>((fiber) => {
-        const cache = fiber.getFiberRef(FiberRef.currentRequestCache)
-        return Effect.flatMap(encode(input), (input) => cache.invalidate(makeRequest(input)))
-      })
-    },
-    execute(input: I) {
-      return Effect.withFiberRuntime<A, E | ParseError, RI>((fiber) => {
-        const currentContext = fiber.getFiberRef(FiberRef.currentContext)
-        const span = currentContext.unsafeMap.get(Tracer.ParentSpan.key)
-        const connection = currentContext.unsafeMap.get(
-          internalClient.TransactionConnection.key
+  withContext?: boolean
+): Effect.Effect<SqlResolver<T, I, A, E, RI>, never, R> => {
+  function make(context: Context.Context<R> | undefined) {
+    const encode = Schema.encode(Request)
+    function makeExecute(self: RequestResolver.RequestResolver<SqlRequest<T, A, E>>) {
+      return function(input: I) {
+        return Effect.useSpan(
+          `sql.Resolver.execute ${tag}`,
+          (span) =>
+            Effect.withFiberRuntime<A, E | ParseError, RI>((fiber) => {
+              span.attribute("request.input", input)
+              const currentContext = fiber.getFiberRef(FiberRef.currentContext)
+              const connection = currentContext.unsafeMap.get(
+                internalClient.TransactionConnection.key
+              )
+              let toProvide: Context.Context<R> | undefined = context
+              if (connection !== undefined) {
+                if (toProvide === undefined) {
+                  toProvide = Context.make(
+                    internalClient.TransactionConnection,
+                    connection
+                  ) as Context.Context<R>
+                } else {
+                  toProvide = Context.add(
+                    toProvide,
+                    internalClient.TransactionConnection,
+                    connection
+                  )
+                }
+              }
+              const resolver = toProvide === undefined
+                ? self
+                : RequestResolver.provideContext(self, toProvide)
+              return Effect.flatMap(
+                encode(input),
+                (input) => Effect.request(makeRequest<T, II, A, E>(tag, input, span), resolver)
+              )
+            })
         )
-        let toProvide: Context.Context<R> | undefined = context
-        if (connection !== undefined) {
-          if (toProvide === undefined) {
-            toProvide = Context.make(
-              internalClient.TransactionConnection,
-              connection
-            ) as any
-          } else {
-            toProvide = Context.add(
-              toProvide,
-              internalClient.TransactionConnection,
-              connection
-            )
-          }
-        }
-        const resolver = toProvide === undefined
-          ? self
-          : RequestResolver.provideContext(self, toProvide)
-        return Effect.flatMap(encode(input), (input) => Effect.request(makeRequest<II, A, E>(input, span), resolver))
-      })
+      }
     }
-  })
+    return Object.assign(self, {
+      request(input: I) {
+        return Effect.withFiberRuntime<SqlRequest<T, A, E>, ParseError, RI>(
+          (fiber) => {
+            const span = fiber
+              .getFiberRef(FiberRef.currentContext)
+              .unsafeMap.get(Tracer.ParentSpan.key)
+            return Effect.map(encode(input), (input) => makeRequest(tag, input, span))
+          }
+        )
+      },
+      cachePopulate(input: I, value: A) {
+        return Effect.flatMap(
+          encode(input),
+          (input) => Effect.cacheRequestResult(makeRequest(tag, input, null as any), Exit.succeed(value))
+        )
+      },
+      cacheInvalidate(input: I) {
+        return Effect.withFiberRuntime<void, ParseError, RI>((fiber) => {
+          const cache = fiber.getFiberRef(FiberRef.currentRequestCache)
+          return Effect.flatMap(encode(input), (input) => cache.invalidate(makeRequest(tag, input, null as any)))
+        })
+      },
+      makeExecute,
+      execute: makeExecute(self)
+    })
+  }
+
+  return withContext === true ? Effect.map(Effect.context<R>(), make) : Effect.succeed(make(undefined))
 }
 
 /**
@@ -172,7 +194,8 @@ const makeResolver = <A, E, I, II, RI, R>(
  * @since 1.0.0
  * @category resolvers
  */
-export const ordered = <I, II, RI, A, IA, E, RA = never, R = never>(
+export const ordered = <T extends string, I, II, RI, A, IA, E, RA = never, R = never>(
+  tag: T,
   options:
     | {
       readonly Request: Schema.Schema<I, II, RI>
@@ -191,13 +214,13 @@ export const ordered = <I, II, RI, A, IA, E, RA = never, R = never>(
       readonly withContext: true
     }
 ): Effect.Effect<
-  SqlResolver<I, A, E | ResultLengthMismatch, RI>,
+  SqlResolver<T, I, A, E | ResultLengthMismatch, RI>,
   never,
   RA | R
 > => {
   const decodeResults = Schema.decodeUnknown(Schema.array(options.Result))
   const resolver = RequestResolver.makeBatched(
-    (requests: Array<SqlRequest<A, E | ResultLengthMismatch>>) => {
+    (requests: Array<SqlRequest<T, A, E | ResultLengthMismatch>>) => {
       const [inputs, spanLinks] = partitionRequests(requests)
       return options.execute(inputs as any).pipe(
         Effect.filterOrFail(
@@ -221,19 +244,14 @@ export const ordered = <I, II, RI, A, IA, E, RA = never, R = never>(
             { discard: true }
           )
         ),
-        Effect.withSpan("sql.Resolver.ordered", { links: spanLinks })
+        Effect.withSpan(`sql.Resolver.batch ${tag}`, {
+          links: spanLinks,
+          attributes: { "request.count": inputs.length }
+        })
       ) as Effect.Effect<void>
     }
-  )
-  return Effect.context<RA | R>().pipe(
-    Effect.map((context) =>
-      makeResolver(
-        resolver,
-        options.Request,
-        options.withContext ? context : undefined
-      )
-    )
-  )
+  ).identified(`@effect/sql/Resolver.ordered/${tag}`)
+  return makeResolver(resolver, tag, options.Request, options.withContext)
 }
 
 /**
@@ -244,7 +262,8 @@ export const ordered = <I, II, RI, A, IA, E, RA = never, R = never>(
  * @since 1.0.0
  * @category resolvers
  */
-export const grouped = <I, II, K, RI, A, IA, E, RA = never, R = never>(
+export const grouped = <T extends string, I, II, K, RI, A, IA, E, RA = never, R = never>(
+  tag: T,
   options:
     | {
       readonly Request: Schema.Schema<I, II, RI>
@@ -266,10 +285,10 @@ export const grouped = <I, II, K, RI, A, IA, E, RA = never, R = never>(
       ) => Effect.Effect<ReadonlyArray<unknown>, E, R>
       readonly withContext: true
     }
-): Effect.Effect<SqlResolver<I, Array<A>, E, RI>, never, RA | R> => {
+): Effect.Effect<SqlResolver<T, I, Array<A>, E, RI>, never, RA | R> => {
   const decodeResults = Schema.decodeUnknown(Schema.array(options.Result))
   const resolver = RequestResolver.makeBatched(
-    (requests: Array<SqlRequest<Array<A>, E>>) => {
+    (requests: Array<SqlRequest<T, Array<A>, E>>) => {
       const [inputs, spanLinks] = partitionRequests(requests)
       const resultMap = new Map<K, Array<A>>()
       return options.execute(inputs as any).pipe(
@@ -302,19 +321,14 @@ export const grouped = <I, II, K, RI, A, IA, E, RA = never, R = never>(
             { discard: true }
           )
         ),
-        Effect.withSpan("sql.Resolver.grouped", { links: spanLinks })
+        Effect.withSpan(`sql.Resolver.batch ${tag}`, {
+          links: spanLinks,
+          attributes: { "request.count": inputs.length }
+        })
       ) as Effect.Effect<void>
     }
-  )
-  return Effect.context<RA | R>().pipe(
-    Effect.map((context) =>
-      makeResolver(
-        resolver,
-        options.Request,
-        options.withContext ? context : undefined
-      )
-    )
-  )
+  ).identified(`@effect/sql/Resolver.grouped/${tag}`)
+  return makeResolver(resolver, tag, options.Request, options.withContext)
 }
 
 /**
@@ -323,7 +337,8 @@ export const grouped = <I, II, K, RI, A, IA, E, RA = never, R = never>(
  * @since 1.0.0
  * @category resolvers
  */
-export const findById = <I, II, RI, A, IA, E, RA = never, R = never>(
+export const findById = <T extends string, I, II, RI, A, IA, E, RA = never, R = never>(
+  tag: T,
   options:
     | {
       readonly Id: Schema.Schema<I, II, RI>
@@ -343,10 +358,10 @@ export const findById = <I, II, RI, A, IA, E, RA = never, R = never>(
       ) => Effect.Effect<ReadonlyArray<unknown>, E, R>
       readonly withContext: true
     }
-): Effect.Effect<SqlResolver<I, Option.Option<A>, E, RI>, never, RA | R> => {
+): Effect.Effect<SqlResolver<T, I, Option.Option<A>, E, RI>, never, RA | R> => {
   const decodeResults = Schema.decodeUnknown(Schema.array(options.Result))
   const resolver = RequestResolver.makeBatched(
-    (requests: Array<SqlRequest<Option.Option<A>, E>>) => {
+    (requests: Array<SqlRequest<T, Option.Option<A>, E>>) => {
       const [inputs, spanLinks, idMap] = partitionRequestsById<II>()(requests)
       return options.execute(inputs as any).pipe(
         Effect.flatMap(decodeResults),
@@ -382,21 +397,17 @@ export const findById = <I, II, RI, A, IA, E, RA = never, R = never>(
             { discard: true }
           )
         ),
-        Effect.withSpan("sql.Resolver.findById", { links: spanLinks })
+        Effect.withSpan(`sql.Resolver.batch ${tag}`, {
+          links: spanLinks,
+          attributes: { "request.count": inputs.length }
+        })
       ) as Effect.Effect<void>
     }
-  )
-  return Effect.context<RA | R>().pipe(
-    Effect.map((context) =>
-      makeResolver(
-        resolver,
-        options.Id,
-        options.withContext ? context : undefined
-      )
-    )
-  )
+  ).identified(`@effect/sql/Resolver.findById/${tag}`)
+  return makeResolver(resolver, tag, options.Id, options.withContext)
 }
-const void_ = <I, II, RI, E, R = never>(
+const void_ = <T extends string, I, II, RI, E, R = never>(
+  tag: T,
   options:
     | {
       readonly Request: Schema.Schema<I, II, RI>
@@ -412,9 +423,9 @@ const void_ = <I, II, RI, E, R = never>(
       ) => Effect.Effect<ReadonlyArray<unknown>, E, R>
       readonly withContext: true
     }
-): Effect.Effect<SqlResolver<I, void, E, RI>, never, R> => {
+): Effect.Effect<SqlResolver<T, I, void, E, RI>, never, R> => {
   const resolver = RequestResolver.makeBatched(
-    (requests: Array<SqlRequest<void, E>>) => {
+    (requests: Array<SqlRequest<T, void, E>>) => {
       const [inputs, spanLinks] = partitionRequests(requests)
       return options.execute(inputs as any).pipe(
         Effect.andThen(
@@ -431,19 +442,14 @@ const void_ = <I, II, RI, E, R = never>(
             { discard: true }
           )
         ),
-        Effect.withSpan("sql.Resolver.void", { links: spanLinks })
+        Effect.withSpan(`sql.Resolver.batch ${tag}`, {
+          links: spanLinks,
+          attributes: { "request.count": inputs.length }
+        })
       ) as Effect.Effect<void>
     }
-  )
-  return Effect.context<R>().pipe(
-    Effect.map((context) =>
-      makeResolver(
-        resolver,
-        options.Request,
-        options.withContext ? context : undefined
-      )
-    )
-  )
+  ).identified(`@effect/sql/Resolver.void/${tag}`)
+  return makeResolver(resolver, tag, options.Request, options.withContext)
 }
 
 export {

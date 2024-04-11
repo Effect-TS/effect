@@ -1,7 +1,7 @@
+import * as DevTools from "@effect/experimental/DevTools"
 import * as Schema from "@effect/schema/Schema"
 import * as Pg from "@effect/sql-pg"
-import * as Config from "effect/Config"
-import * as Effect from "effect/Effect"
+import { Config, Effect, Layer } from "effect"
 import { pipe } from "effect/Function"
 
 class Person extends Schema.Class<Person>("Person")({
@@ -19,7 +19,7 @@ const program = Effect.gen(function*(_) {
   const sql = yield* _(Pg.client.PgClient)
 
   const Insert = yield* _(
-    Pg.resolver.ordered({
+    Pg.resolver.ordered("InsertPerson", {
       Request: InsertPersonSchema,
       Result: Person,
       execute: (requests) => sql`INSERT INTO people ${sql.insert(requests)} RETURNING people.*`
@@ -27,7 +27,7 @@ const program = Effect.gen(function*(_) {
   )
 
   const GetById = yield* _(
-    Pg.resolver.findById({
+    Pg.resolver.findById("GetPersonById", {
       Id: Schema.number,
       Result: Person,
       ResultId: (result) => result.id,
@@ -36,7 +36,7 @@ const program = Effect.gen(function*(_) {
   )
 
   const GetByName = yield* _(
-    Pg.resolver.grouped({
+    Pg.resolver.grouped("GetPersonByName", {
       Request: Schema.string,
       RequestGroupKey: (_) => _,
       Result: Person,
@@ -83,7 +83,9 @@ const PgLive = Pg.client.layer({
 
 pipe(
   program,
-  Effect.provide(PgLive),
+  Effect.provide(PgLive.pipe(
+    Layer.provide(DevTools.layer())
+  )),
   Effect.tapErrorCause(Effect.logError),
   Effect.runFork
 )
