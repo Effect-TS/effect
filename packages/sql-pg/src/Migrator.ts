@@ -1,3 +1,6 @@
+/**
+ * @since 1.0.0
+ */
 import * as Command from "@effect/platform/Command"
 import type { CommandExecutor } from "@effect/platform/CommandExecutor"
 import { FileSystem } from "@effect/platform/FileSystem"
@@ -9,6 +12,9 @@ import * as Layer from "effect/Layer"
 import * as Secret from "effect/Secret"
 import * as Client from "./Client.js"
 
+/**
+ * @since 1.0.0
+ */
 export * from "@effect/sql/Migrator"
 
 /**
