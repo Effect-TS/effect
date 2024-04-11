@@ -143,22 +143,22 @@ export const make = (
       }
 
       execute(statement: Statement.Statement<unknown>) {
-        const [sql, params] = compiler.compile(statement)
+        const [sql, params] = statement.compile()
         return this.runTransform(this.pg.unsafe(sql, params as any))
       }
       executeWithoutTransform(statement: Statement.Statement<unknown>) {
-        const [sql, params] = compiler.compile(statement)
+        const [sql, params] = statement.compile()
         return this.run(this.pg.unsafe(sql, params as any))
       }
       executeValues(statement: Statement.Statement<unknown>) {
-        const [sql, params] = compiler.compile(statement)
+        const [sql, params] = statement.compile()
         return this.run(this.pg.unsafe(sql, params as any).values())
       }
       executeRaw(sql: string, params?: ReadonlyArray<Primitive>) {
         return this.runTransform(this.pg.unsafe(sql, params as any))
       }
       executeStream(statement: Statement.Statement<unknown>) {
-        const [sql, params] = compiler.compile(statement)
+        const [sql, params] = statement.compile()
         return pipe(
           Effect.sync(
             () =>

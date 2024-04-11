@@ -2,8 +2,11 @@
  * @since 1.0.0
  */
 import type { Effect } from "effect/Effect"
+import type * as FiberRef from "effect/FiberRef"
+import type * as Option from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type * as Stream from "effect/Stream"
+import type * as Tracer from "effect/Tracer"
 import type { Connection, Row } from "./Connection.js"
 import type { SqlError } from "./Error.js"
 import * as internal from "./internal/statement.js"
@@ -42,6 +45,14 @@ export interface Statement<A> extends Fragment, Effect<ReadonlyArray<A>, SqlErro
     params: ReadonlyArray<Primitive>
   ]
 }
+
+/**
+ * @category fiber refs
+ * @since 1.0.0
+ */
+export const currentTransformer: FiberRef.FiberRef<
+  Option.Option<(self: Statement<unknown>, span: Tracer.Span) => Statement<unknown>>
+> = internal.currentTranformer
 
 /**
  * @category guard

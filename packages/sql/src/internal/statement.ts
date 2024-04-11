@@ -1,8 +1,13 @@
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
+import * as FiberRef from "effect/FiberRef"
 import { identity } from "effect/Function"
+import { globalValue } from "effect/GlobalValue"
+import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
+import type { Scope } from "effect/Scope"
 import * as Stream from "effect/Stream"
+import type * as Tracer from "effect/Tracer"
 import type * as Connection from "../Connection.js"
 import type * as Error from "../Error.js"
 import type * as Statement from "../Statement.js"
@@ -28,6 +33,15 @@ export const isCustom = <A extends Statement.Custom<any, any, any, any>>(
 (u: unknown): u is A => u instanceof CustomImpl && u.kind === kind
 
 /** @internal */
+export const currentTranformer = globalValue(
+  "@effect/sql/Statement/currentStatementModifier",
+  () =>
+    FiberRef.unsafeMake(
+      Option.none<(self: Statement.Statement<unknown>, span: Tracer.Span) => Statement.Statement<unknown>>()
+    )
+)
+
+/** @internal */
 export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Error.SqlError>
   implements Statement.Statement<A>
 {
@@ -44,38 +58,90 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
   }
 
   get withoutTransform(): Effect.Effect<ReadonlyArray<A>, Error.SqlError> {
-    return Effect.scoped(
-      Effect.flatMap(this.acquirer, (_) => _.executeWithoutTransform<any>(this))
+    return Effect.useSpan(
+      "sql.execute",
+      (span) =>
+        Effect.withParentSpan(
+          Effect.withFiberRuntime((fiber) => {
+            const modifier = fiber.getFiberRef(currentTranformer)
+            const statement = modifier._tag === "Some" ? modifier.value(this, span) : this
+            const sql = statement.compile()[0]
+            span.attribute("sql.method", "executeWithoutTransform")
+            span.attribute("sql.query", sql)
+            return Effect.scoped(Effect.flatMap(this.acquirer, (_) => _.executeWithoutTransform<any>(statement)))
+          }),
+          span
+        )
     )
   }
 
   get stream(): Stream.Stream<A, Error.SqlError> {
-    return Stream.unwrapScoped(
-      Effect.map(this.acquirer, (_) => _.executeStream<any>(this))
-    )
+    return Stream.unwrapScoped(Effect.flatMap(
+      Effect.makeSpanScoped("sql.execute"),
+      (span) =>
+        Effect.withParentSpan(
+          Effect.withFiberRuntime<Stream.Stream<A, Error.SqlError>, Error.SqlError, Scope>((fiber) => {
+            const modifier = fiber.getFiberRef(currentTranformer)
+            const statement = modifier._tag === "Some" ? modifier.value(this, span) : this
+            const sql = statement.compile()[0]
+            span.attribute("sql.method", "executeStream")
+            span.attribute("sql.query", sql)
+            return Effect.map(this.acquirer, (_) => _.executeStream<any>(this))
+          }),
+          span
+        )
+    ))
   }
 
   get values(): Effect.Effect<
     ReadonlyArray<ReadonlyArray<Statement.Primitive>>,
     Error.SqlError
   > {
-    return Effect.scoped(
-      Effect.flatMap(this.acquirer, (_) => _.executeValues<any>(this))
+    return Effect.useSpan(
+      "sql.execute",
+      (span) =>
+        Effect.withParentSpan(
+          Effect.withFiberRuntime((fiber) => {
+            const modifier = fiber.getFiberRef(currentTranformer)
+            const statement = modifier._tag === "Some" ? modifier.value(this, span) : this
+            const sql = statement.compile()[0]
+            span.attribute("sql.method", "executeValues")
+            span.attribute("sql.query", sql)
+            return Effect.scoped(Effect.flatMap(this.acquirer, (_) => _.executeValues<any>(statement)))
+          }),
+          span
+        )
     )
   }
 
+  private _compiled: readonly [string, ReadonlyArray<Statement.Primitive>] | undefined = undefined
   compile() {
-    return this.compiler.compile(this)
+    if (this._compiled) {
+      return this._compiled
+    }
+    return this._compiled = this.compiler.compile(this)
   }
   commit(): Effect.Effect<ReadonlyArray<A>, Error.SqlError> {
-    return Effect.scoped(
-      Effect.flatMap(this.acquirer, (_) => _.execute(this as any) as any)
+    return Effect.useSpan(
+      "sql.execute",
+      (span) =>
+        Effect.withParentSpan(
+          Effect.withFiberRuntime((fiber) => {
+            const modifier = fiber.getFiberRef(currentTranformer)
+            const statement = modifier._tag === "Some" ? modifier.value(this, span) : this
+            const sql = statement.compile()[0]
+            span.attribute("sql.method", "execute")
+            span.attribute("sql.query", sql)
+            return Effect.scoped(Effect.flatMap(this.acquirer, (_) => _.execute<any>(statement)))
+          }),
+          span
+        )
     )
   }
   toJSON() {
     const [sql, params] = this.compile()
     return {
-      _id: "Statement",
+      _id: "@effect/sql/Statement",
       segments: this.segments,
       sql,
       params

@@ -102,22 +102,22 @@ export const make = (
       }
 
       execute(statement: Statement.Statement<unknown>) {
-        const [sql, params] = compiler.compile(statement)
+        const [sql, params] = statement.compile()
         return this.run(sql, params)
       }
       executeWithoutTransform(statement: Statement.Statement<unknown>) {
-        const [sql, params] = compiler.compile(statement)
+        const [sql, params] = statement.compile()
         return this.run(sql, params, false)
       }
       executeValues(statement: Statement.Statement<unknown>) {
-        const [sql, params] = compiler.compile(statement)
+        const [sql, params] = statement.compile()
         return this.run(sql, params, true, true)
       }
       executeRaw(sql: string, params?: ReadonlyArray<Statement.Primitive>) {
         return this.run(sql, params, true, false, "query")
       }
       executeStream(statement: Statement.Statement<unknown>) {
-        const [sql, params] = compiler.compile(statement)
+        const [sql, params] = statement.compile()
 
         const stream = "connection" in this.conn
           ? queryStream(this.conn as any, sql, params)
