@@ -30,19 +30,15 @@ export const run: (
 > = Migrator.make({
   getClient: Client.MysqlClient,
   ensureTable(sql, table) {
-    return sql`
-      CREATE TABLE IF NOT EXISTS ${sql(table)} (
-        migration_id INTEGER UNSIGNED NOT NULL,
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        name VARCHAR(255) NOT NULL,
-        PRIMARY KEY (migration_id)
-      )
-    `
+    return sql`CREATE TABLE IF NOT EXISTS ${sql(table)} (
+      migration_id INTEGER UNSIGNED NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      name VARCHAR(255) NOT NULL,
+      PRIMARY KEY (migration_id)
+    )`
   },
   lockTable(sql, table) {
-    return sql`
-      LOCK TABLE ${sql(table)} IN ACCESS EXCLUSIVE MODE
-    `
+    return sql`LOCK TABLE ${sql(table)} IN ACCESS EXCLUSIVE MODE`
   },
   dumpSchema(sql, path, table) {
     const mysqlDump = (args: Array<string>) =>
@@ -83,13 +79,13 @@ export const run: (
       ([schema, migrations]) => schema + "\n\n" + migrations
     )
 
-    const dumpFile = (path: string) =>
+    const dumpFile = (file: string) =>
       Effect.gen(function*(_) {
         const fs = yield* _(FileSystem)
-        const path_ = yield* _(Path)
+        const path = yield* _(Path)
         const dump = yield* _(dumpAll)
-        yield* _(fs.makeDirectory(path_.dirname(path), { recursive: true }))
-        yield* _(fs.writeFileString(path, dump))
+        yield* _(fs.makeDirectory(path.dirname(file), { recursive: true }))
+        yield* _(fs.writeFileString(file, dump))
       }).pipe(
         Effect.mapError((error) => new Migrator.MigrationError({ reason: "failed", message: error.message }))
       )
