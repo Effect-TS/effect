@@ -53,7 +53,7 @@ export const run: (
         const dump = yield* _(
           Command.make("pg_dump", ...args, "--no-owner", "--no-privileges"),
           Command.env({
-            PATH: process.env.PATH,
+            PATH: (globalThis as any).process?.env.PATH,
             PGHOST: sql.config.host,
             PGPORT: sql.config.port?.toString(),
             PGUSER: sql.config.username,
