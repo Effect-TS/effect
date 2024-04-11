@@ -36,6 +36,7 @@ const config: UserConfig = {
       ...alias("rpc-http"),
       ...alias("schema"),
       ...alias("sql"),
+      ...alias("sql-pg"),
       ...alias("typeclass"),
       ...alias("vitest")
     }

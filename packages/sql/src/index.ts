@@ -21,6 +21,11 @@ export * as Migrator from "./Migrator.js"
 /**
  * @since 1.0.0
  */
+export * as Resolver from "./Resolver.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Schema from "./Schema.js"
 
 /**

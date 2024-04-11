@@ -70,7 +70,7 @@ export class MigrationError extends Data.TaggedError("MigrationError")<{
  * @category constructor
  * @since 1.0.0
  */
-export const make = <R extends Client, R2 = never>({
+export const make = <R extends Client, RD, RE, RL, R2 = never>({
   dumpSchema,
   ensureTable,
   getClient,
@@ -81,9 +81,9 @@ export const make = <R extends Client, R2 = never>({
     sql: R,
     path: string,
     migrationsTable: string
-  ) => Effect.Effect<void, MigrationError>
-  ensureTable: (sql: R, table: string) => Effect.Effect<void, SqlError>
-  lockTable?: (sql: R, table: string) => Effect.Effect<void, SqlError>
+  ) => Effect.Effect<void, MigrationError, RD>
+  ensureTable: (sql: R, table: string) => Effect.Effect<void, SqlError, RE>
+  lockTable?: (sql: R, table: string) => Effect.Effect<void, SqlError, RL>
 }) =>
 ({
   loader,
@@ -92,7 +92,7 @@ export const make = <R extends Client, R2 = never>({
 }: MigratorOptions<R2>): Effect.Effect<
   ReadonlyArray<readonly [id: number, name: string]>,
   MigrationError | SqlError,
-  R | R2
+  R | RD | RE | RL | R2
 > =>
   Effect.gen(function*(_) {
     const sql = yield* _(getClient)

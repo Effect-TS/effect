@@ -1,13 +1,14 @@
 /**
  * @since 1.0.0
  */
-import * as Data from "effect/Data"
+import { RefailError, TypeIdError } from "@effect/platform/Error"
 import * as Predicate from "effect/Predicate"
 
 /**
  * @since 1.0.0
  */
 export const SqlErrorTypeId = Symbol.for("@effect/sql/Error")
+
 /**
  * @since 1.0.0
  */
@@ -16,43 +17,28 @@ export type SqlErrorTypeId = typeof SqlErrorTypeId
 /**
  * @since 1.0.0
  */
-export class SqlError extends Data.TaggedError("SqlError")<{
-  readonly message: string
-  readonly code?: string
-  readonly error: unknown
-}> {
-  /**
-   * @since 1.0.0
-   */
-  readonly [SqlErrorTypeId] = SqlErrorTypeId
-  constructor(params: {
-    readonly message: string
-    readonly code?: string
-    readonly error: unknown
-  }) {
-    const props = { message: params.message, error: params.error }
-    if (
-      typeof params.error === "object" &&
-      Predicate.isNotNullable(params.error) &&
-      "code" in params.error &&
-      typeof params.error.code === "string"
-    ) {
-      super(Object.assign(props, { code: params.error.code }))
-    } else {
-      super(props)
+export class SqlError extends RefailError(SqlErrorTypeId, "SqlError")<{}> {
+  get code() {
+    if (Predicate.hasProperty(this.error, "code")) {
+      return this.error.code
     }
+    return undefined
+  }
+
+  get message() {
+    const code = this.code
+    return code ? `${code}: ${super.message}` : super.message
   }
 }
 
 /**
  * @since 1.0.0
  */
-export class ResultLengthMismatch extends Data.TaggedError("ResultLengthMismatch")<{
+export class ResultLengthMismatch extends TypeIdError(SqlErrorTypeId, "ResultLengthMismatch")<{
   readonly expected: number
   readonly actual: number
 }> {
-  /**
-   * @since 1.0.0
-   */
-  readonly [SqlErrorTypeId] = SqlErrorTypeId
+  get message() {
+    return `Expected ${this.expected} results but got ${this.actual}`
+  }
 }

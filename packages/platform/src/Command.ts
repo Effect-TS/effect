@@ -122,8 +122,8 @@ export const isCommand: (u: unknown) => u is Command = internal.isCommand
  * @category combinators
  */
 export const env: {
-  (environment: Record<string, string>): (self: Command) => Command
-  (self: Command, environment: Record<string, string>): Command
+  (environment: Record<string, string | undefined>): (self: Command) => Command
+  (self: Command, environment: Record<string, string | undefined>): Command
 } = internal.env
 
 /**
