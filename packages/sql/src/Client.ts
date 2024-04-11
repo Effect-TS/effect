@@ -120,4 +120,4 @@ export interface TransactionConnection {
  * @since 1.0.0
  */
 export const TransactionConnection: Tag<TransactionConnection, readonly [conn: Connection, depth: number]> =
-  internal.TransactionConn
+  internal.TransactionConnection

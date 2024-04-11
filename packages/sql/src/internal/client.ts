@@ -10,7 +10,7 @@ import type * as Error from "../Error.js"
 import * as Statement from "../Statement.js"
 
 /** @internal */
-export const TransactionConn = Context.GenericTag<
+export const TransactionConnection = Context.GenericTag<
   Client.TransactionConnection,
   readonly [conn: Connection.Connection, counter: number]
 >("@effect/sql/Client/TransactionConnection")
@@ -27,7 +27,7 @@ export function make({
   transactionAcquirer
 }: Client.Client.MakeOptions): Client.Client {
   const getConnection = Effect.flatMap(
-    Effect.serviceOption(TransactionConn),
+    Effect.serviceOption(TransactionConnection),
     Option.match({
       onNone: () => acquirer,
       onSome: ([conn]) => Effect.succeed(conn)
@@ -47,7 +47,7 @@ export function make({
   ): Effect.Effect<A, E | Error.SqlError, R> =>
     Effect.acquireUseRelease(
       pipe(
-        Effect.serviceOption(TransactionConn),
+        Effect.serviceOption(TransactionConnection),
         Effect.flatMap(
           Option.match({
             onNone: () => makeRootTx,
@@ -60,7 +60,7 @@ export function make({
             : conn.executeRaw(beginTransaction)
         )
       ),
-      ([, conn, id]) => Effect.provideService(effect, TransactionConn, [conn, id]),
+      ([, conn, id]) => Effect.provideService(effect, TransactionConnection, [conn, id]),
       ([scope, conn, id], exit) => {
         const effect = Exit.isSuccess(exit)
           ? id > 0
