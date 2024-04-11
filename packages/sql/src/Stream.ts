@@ -24,11 +24,11 @@ export const asyncPauseResume = <A, E = never, R = never>(
     readonly onPause: Effect.Effect<void>
     readonly onResume: Effect.Effect<void>
   },
-  bufferSize = 4
+  bufferSize = 2
 ): Stream.Stream<A, E, R> => {
   const EOF = Symbol()
   return Effect.all([
-    Effect.acquireRelease(Queue.bounded<Chunk.Chunk<A> | typeof EOF>(bufferSize), Queue.shutdown),
+    Queue.bounded<Chunk.Chunk<A> | typeof EOF>(bufferSize),
     Deferred.make<never, Option.Option<E>>(),
     Effect.runtime<never>()
   ]).pipe(

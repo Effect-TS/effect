@@ -84,8 +84,8 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
       (span) =>
         Effect.withParentSpan(
           Effect.withFiberRuntime((fiber) => {
-            const modifier = fiber.getFiberRef(currentTransformer)
-            const statement = modifier._tag === "Some" ? modifier.value(this, span) : this
+            const transform = fiber.getFiberRef(currentTransformer)
+            const statement = transform._tag === "Some" ? transform.value(this, span) : this
             const sql = statement.compile()[0]
             span.attribute("sql.method", "executeWithoutTransform")
             span.attribute("sql.query", sql)
@@ -101,8 +101,8 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
       Effect.makeSpanScoped("sql.execute"),
       (span) =>
         Effect.withFiberRuntime<Stream.Stream<A, Error.SqlError>, Error.SqlError, Scope>((fiber) => {
-          const modifier = fiber.getFiberRef(currentTransformer)
-          const statement = modifier._tag === "Some" ? modifier.value(this, span) : this
+          const transform = fiber.getFiberRef(currentTransformer)
+          const statement = transform._tag === "Some" ? transform.value(this, span) : this
           const sql = statement.compile()[0]
           span.attribute("sql.method", "executeStream")
           span.attribute("sql.query", sql)
@@ -120,8 +120,8 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
       (span) =>
         Effect.withParentSpan(
           Effect.withFiberRuntime((fiber) => {
-            const modifier = fiber.getFiberRef(currentTransformer)
-            const statement = modifier._tag === "Some" ? modifier.value(this, span) : this
+            const transform = fiber.getFiberRef(currentTransformer)
+            const statement = transform._tag === "Some" ? transform.value(this, span) : this
             const sql = statement.compile()[0]
             span.attribute("sql.method", "executeValues")
             span.attribute("sql.query", sql)
@@ -145,8 +145,8 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
       (span) =>
         Effect.withParentSpan(
           Effect.withFiberRuntime((fiber) => {
-            const modifier = fiber.getFiberRef(currentTransformer)
-            const statement = modifier._tag === "Some" ? modifier.value(this, span) : this
+            const transform = fiber.getFiberRef(currentTransformer)
+            const statement = transform._tag === "Some" ? transform.value(this, span) : this
             const sql = statement.compile()[0]
             span.attribute("sql.method", "execute")
             span.attribute("sql.query", sql)

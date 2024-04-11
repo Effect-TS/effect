@@ -12,7 +12,6 @@ import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import type { Scope } from "effect/Scope"
 import * as Secret from "effect/Secret"
@@ -119,13 +118,7 @@ export const make = (
       executeStream(statement: Statement.Statement<unknown>) {
         const [sql, params] = statement.compile()
 
-        const stream = "connection" in this.conn
-          ? queryStream(this.conn as any, sql, params)
-          : pipe(
-            acquireConn,
-            Effect.map((conn) => queryStream(conn, sql, params)),
-            Stream.unwrapScoped
-          )
+        const stream = queryStream(this.conn as any, sql, params)
 
         return options.transformResultNames
           ? Stream.mapChunks(stream, (_) =>
@@ -217,20 +210,20 @@ function queryStream(
   params?: ReadonlyArray<any>
 ) {
   return asyncPauseResume<any, SqlError>((emit) => {
-    const query = conn.connection
-      .query(sql, params)
-      .stream()
+    const query = conn.query(sql, params).stream()
     let buffer: Array<any> = []
-    let timeout: number | undefined
+    let taskPending = false
     query.on("error", (error: unknown) => emit.fail(new SqlError({ error })))
     query.on("data", (row: any) => {
       buffer.push(row)
-      if (timeout === undefined) {
-        timeout = setTimeout(() => {
-          emit.array(buffer)
+      if (!taskPending) {
+        taskPending = true
+        queueMicrotask(() => {
+          const items = buffer
           buffer = []
-          timeout = undefined
-        }, 0)
+          emit.array(items)
+          taskPending = false
+        })
       }
     })
     query.on("end", () => emit.end())
