@@ -84,7 +84,9 @@ Renaming
 - rename `mapFromSelf` to `MapFromSelf`
   - rename `key`, `value` arguments to `Key`, `Value`
 - rename `readonlyMap` to `ReadonlyMap`
+  - rename `key`, `value` arguments to `Key`, `Value`
 - rename `map` to `Map`
+  - rename `key`, `value` arguments to `Key`, `Value`
 - rename `readonlySetFromSelf` to `ReadonlySetFromSelf`
 - rename `setFromSelf` to `SetFromSelf`
 - rename `readonlySet` to `ReadonlySet`
