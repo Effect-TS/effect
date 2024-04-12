@@ -21,6 +21,11 @@ export * as Equivalence from "./Equivalence.js"
 /**
  * @since 1.0.0
  */
+export * as FastCheck from "./FastCheck.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as JSONSchema from "./JSONSchema.js"
 
 /**
