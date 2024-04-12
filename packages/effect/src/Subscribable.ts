@@ -6,8 +6,8 @@ import { dual } from "./Function.js"
 import { pipeArguments } from "./Pipeable.js"
 import { hasProperty } from "./Predicate.js"
 import * as Readable from "./Readable.js"
-import * as Stream from "./Stream.js"
 import * as Ref from "./Ref.js"
+import * as Stream from "./Stream.js"
 
 /**
  * @since 2.0.0
@@ -104,19 +104,19 @@ export const unwrap = <A, E, R, E1, R1>(
  * @since 2.0.0
  */
 export const fromStream = <A, E, R>(
-	stream: Stream.Stream<A, E, R>,
-	defaultValue: A
+  stream: Stream.Stream<A, E, R>,
+  defaultValue: A
 ) =>
-	unwrap(
-		Effect.gen(function* (_) {
-			const ref = yield* _(Ref.make(defaultValue));
-      
-      yield* _(Stream.runForEach(stream, a => Ref.set(ref, a)).pipe(Stream.runDrain, Effect.forkScoped));
+  unwrap(
+    Effect.gen(function*(_) {
+      const ref = yield* _(Ref.make(defaultValue))
+
+      yield* _(Stream.runForEach(stream, (a) => Ref.set(ref, a)).pipe(Stream.runDrain, Effect.forkScoped))
       yield* _(Effect.yieldNow())
-      
-			return make({
-				get: Ref.get(ref),
-				changes: stream
-			});
-		})
-	);
+
+      return make({
+        get: Ref.get(ref),
+        changes: stream
+      })
+    })
+  )
