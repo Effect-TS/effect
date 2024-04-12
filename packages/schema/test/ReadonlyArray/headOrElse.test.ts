@@ -52,7 +52,7 @@ describe("ReadonlyArray > headOrElse", () => {
       S.Array(
         S.Struct({
           id: S.String,
-          data: S.parseJson()
+          data: S.ParseJson()
         })
       )
     )

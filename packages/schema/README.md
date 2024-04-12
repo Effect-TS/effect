@@ -3914,15 +3914,15 @@ console.log(decode(" ABc ")) // " abc "
 
 **Note**. If you were looking for a combinator to check if a string is lowercased, check out the `lowercased` combinator.
 
-### parseJson
+### ParseJson
 
-The `parseJson` constructor offers a method to convert JSON strings into the `unknown` type using the underlying functionality of `JSON.parse`. It also employs `JSON.stringify` for encoding.
+The `ParseJson` constructor offers a method to convert JSON strings into the `unknown` type using the underlying functionality of `JSON.parse`. It also employs `JSON.stringify` for encoding.
 
 ```ts
 import * as S from "@effect/schema/Schema"
 
 // Schema<unknown, string>
-const schema = S.parseJson()
+const schema = S.ParseJson()
 const decode = S.decodeUnknownSync(schema)
 
 // Parse valid JSON strings
@@ -3939,16 +3939,16 @@ Error: (JsonString <-> unknown)
 */
 ```
 
-Additionally, you can refine the parsing result by providing a schema to the `parseJson` constructor:
+Additionally, you can refine the parsing result by providing a schema to the `ParseJson` constructor:
 
 ```ts
 import * as S from "@effect/schema/Schema"
 
 // Schema<{ readonly a: number; }, string>
-const schema = S.parseJson(S.Struct({ a: S.Number }))
+const schema = S.ParseJson(S.Struct({ a: S.Number }))
 ```
 
-In this example, we've used `parseJson` with a struct schema to ensure that the parsed result has a specific structure, including an object with a numeric property "a". This helps in handling JSON data with predefined shapes.
+In this example, we've used `ParseJson` with a struct schema to ensure that the parsed result has a specific structure, including an object with a numeric property "a". This helps in handling JSON data with predefined shapes.
 
 ## Number Transformations
 

@@ -131,3 +131,4 @@ Renaming
 - rename `transformLiterals` to `TransformLiterals`
 - rename `attachPropertySignature` to `AttachPropertySignature`
 - rename `compose` to `Compose`
+- rename `parseJson` to `ParseJson`

@@ -6,7 +6,7 @@ import { describe, it } from "vitest"
 describe("Schema > parseJson", () => {
   describe("parseJson()", () => {
     it("decoding", async () => {
-      const schema = S.parseJson()
+      const schema = S.ParseJson()
       await Util.expectDecodeUnknownSuccess(schema, "{}", {})
       await Util.expectDecodeUnknownSuccess(schema, `{"a":"b"}`, { "a": "b" })
 
@@ -46,7 +46,7 @@ describe("Schema > parseJson", () => {
     })
 
     it("encoding", async () => {
-      const schema = S.parseJson()
+      const schema = S.ParseJson()
       await Util.expectEncodeSuccess(schema, "a", `"a"`)
       await Util.expectEncodeSuccess(schema, { a: "b" }, `{"a":"b"}`)
 
@@ -70,7 +70,7 @@ describe("Schema > parseJson", () => {
 
   describe("parseJson(schema)", () => {
     it("decoding", async () => {
-      const schema = S.parseJson(S.Struct({ a: S.Number }))
+      const schema = S.ParseJson(S.Struct({ a: S.Number }))
       await Util.expectDecodeUnknownSuccess(schema, `{"a":1}`, { a: 1 })
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -99,13 +99,13 @@ describe("Schema > parseJson", () => {
     })
 
     it("encoding", async () => {
-      const schema = S.parseJson(S.Struct({ a: S.Number }))
+      const schema = S.ParseJson(S.Struct({ a: S.Number }))
       await Util.expectEncodeSuccess(schema, { a: 1 }, `{"a":1}`)
     })
 
     describe("roundtrip", () => {
       it("Exit", async () => {
-        const schema = S.parseJson(S.Exit({ Failure: S.Never, Success: S.Void }))
+        const schema = S.ParseJson(S.Exit({ Failure: S.Never, Success: S.Void }))
         const encoding = S.encodeSync(schema)(Exit.unit)
         await Util.expectDecodeUnknownSuccess(schema, encoding, Exit.unit)
       })
@@ -114,14 +114,14 @@ describe("Schema > parseJson", () => {
 
   describe("parseJson(schema, options)", () => {
     it("reviver", async () => {
-      const schema = S.parseJson(S.Struct({ a: S.Number, b: S.String }), {
+      const schema = S.ParseJson(S.Struct({ a: S.Number, b: S.String }), {
         reviver: (key, value) => key === "a" ? value + 1 : value
       })
       await Util.expectDecodeUnknownSuccess(schema, `{"a":1,"b":"b"}`, { a: 2, b: "b" })
     })
 
     it("replacer", async () => {
-      const schema = S.parseJson(S.Struct({ a: S.Number, b: S.String }), { replacer: ["b"] })
+      const schema = S.ParseJson(S.Struct({ a: S.Number, b: S.String }), { replacer: ["b"] })
       await Util.expectEncodeSuccess(
         schema,
         { a: 1, b: "b" },
@@ -130,7 +130,7 @@ describe("Schema > parseJson", () => {
     })
 
     it("space", async () => {
-      const schema = S.parseJson(S.Struct({ a: S.Number }), { space: 2 })
+      const schema = S.ParseJson(S.Struct({ a: S.Number }), { space: 2 })
       await Util.expectEncodeSuccess(
         schema,
         { a: 1 },
