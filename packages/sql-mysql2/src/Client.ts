@@ -100,26 +100,20 @@ export const make = (
         })
       }
 
-      execute(statement: Statement.Statement<unknown>) {
-        const [sql, params] = statement.compile()
+      execute(sql: string, params: ReadonlyArray<Statement.Primitive>) {
         return this.run(sql, params)
       }
-      executeWithoutTransform(statement: Statement.Statement<unknown>) {
-        const [sql, params] = statement.compile()
+      executeWithoutTransform(sql: string, params: ReadonlyArray<Statement.Primitive>) {
         return this.run(sql, params, false)
       }
-      executeValues(statement: Statement.Statement<unknown>) {
-        const [sql, params] = statement.compile()
+      executeValues(sql: string, params: ReadonlyArray<Statement.Primitive>) {
         return this.run(sql, params, true, true)
       }
       executeRaw(sql: string, params?: ReadonlyArray<Statement.Primitive>) {
         return this.run(sql, params, true, false, "query")
       }
-      executeStream(statement: Statement.Statement<unknown>) {
-        const [sql, params] = statement.compile()
-
+      executeStream(sql: string, params: ReadonlyArray<Statement.Primitive>) {
         const stream = queryStream(this.conn as any, sql, params)
-
         return options.transformResultNames
           ? Stream.mapChunks(stream, (_) =>
             Chunk.unsafeFromArray(

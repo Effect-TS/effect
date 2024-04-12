@@ -6,33 +6,37 @@ import type { Effect } from "effect/Effect"
 import type { Scope } from "effect/Scope"
 import type { Stream } from "effect/Stream"
 import type { SqlError } from "./Error.js"
-import type { Primitive, Statement } from "./Statement.js"
+import type { Primitive } from "./Statement.js"
 
 /**
  * @category model
  * @since 1.0.0
  */
 export interface Connection {
-  readonly execute: <A extends object = Row>(
-    statement: Statement<A>
-  ) => Effect<ReadonlyArray<A>, SqlError>
+  readonly execute: (
+    sql: string,
+    params: ReadonlyArray<Primitive>
+  ) => Effect<ReadonlyArray<any>, SqlError>
 
-  readonly executeStream: <A extends object = Row>(
-    statement: Statement<A>
-  ) => Stream<A, SqlError>
+  readonly executeStream: (
+    sql: string,
+    params: ReadonlyArray<Primitive>
+  ) => Stream<any, SqlError>
 
-  readonly executeWithoutTransform: <A extends object = Row>(
-    statement: Statement<A>
-  ) => Effect<ReadonlyArray<A>, SqlError>
+  readonly executeWithoutTransform: (
+    sql: string,
+    params: ReadonlyArray<Primitive>
+  ) => Effect<ReadonlyArray<any>, SqlError>
 
-  readonly executeValues: <A extends object = Row>(
-    statement: Statement<A>
+  readonly executeValues: (
+    sql: string,
+    params: ReadonlyArray<Primitive>
   ) => Effect<ReadonlyArray<ReadonlyArray<Primitive>>, SqlError>
 
-  readonly executeRaw: <A extends object = Row>(
+  readonly executeRaw: (
     sql: string,
     params?: ReadonlyArray<Primitive> | undefined
-  ) => Effect<ReadonlyArray<A>, SqlError>
+  ) => Effect<ReadonlyArray<any>, SqlError>
 }
 
 /**

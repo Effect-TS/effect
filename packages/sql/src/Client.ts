@@ -7,7 +7,7 @@ import type { Scope } from "effect/Scope"
 import type { Connection } from "./Connection.js"
 import type { SqlError } from "./Error.js"
 import * as internal from "./internal/client.js"
-import type { Compiler, Constructor, Fragment, Primitive, Statement } from "./Statement.js"
+import type { Compiler, Constructor } from "./Statement.js"
 
 /**
  * @category model
@@ -18,40 +18,6 @@ export interface Client extends Constructor {
    * Copy of the client for safeql etc.
    */
   readonly safe: this
-
-  /**
-   * Create unsafe SQL query
-   */
-  readonly unsafe: <A extends object>(
-    sql: string,
-    params?: ReadonlyArray<Primitive> | undefined
-  ) => Statement<A>
-
-  /**
-   * Create an `AND` chain for a where clause
-   */
-  readonly and: (clauses: ReadonlyArray<string | Fragment>) => Fragment
-
-  /**
-   * Create an `OR` chain for a where clause
-   */
-  readonly or: (clauses: ReadonlyArray<string | Fragment>) => Fragment
-
-  /**
-   * Create comma seperated values, with an optional prefix
-   *
-   * Useful for `ORDER BY` and `GROUP BY` clauses
-   */
-  readonly csv: {
-    (values: ReadonlyArray<string | Fragment>): Fragment
-    (prefix: string, values: ReadonlyArray<string | Fragment>): Fragment
-  }
-
-  readonly join: (
-    literal: string,
-    addParens?: boolean,
-    fallback?: string
-  ) => (clauses: ReadonlyArray<string | Fragment>) => Fragment
 
   readonly reserve: Effect<Connection, SqlError, Scope>
 

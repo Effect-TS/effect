@@ -6,12 +6,12 @@ import type { Connection } from "@effect/sql/Connection"
 import { SqlError } from "@effect/sql/Error"
 import type { Custom, Fragment, Primitive } from "@effect/sql/Statement"
 import * as Statement from "@effect/sql/Statement"
+import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import type { Scope } from "effect/Scope"
 import * as Secret from "effect/Secret"
@@ -142,35 +142,29 @@ export const make = (
           : this.run(query)
       }
 
-      execute(statement: Statement.Statement<unknown>) {
-        const [sql, params] = statement.compile()
+      execute(sql: string, params: ReadonlyArray<Primitive>) {
         return this.runTransform(this.pg.unsafe(sql, params as any))
       }
-      executeWithoutTransform(statement: Statement.Statement<unknown>) {
-        const [sql, params] = statement.compile()
+      executeWithoutTransform(sql: string, params: ReadonlyArray<Primitive>) {
         return this.run(this.pg.unsafe(sql, params as any))
       }
-      executeValues(statement: Statement.Statement<unknown>) {
-        const [sql, params] = statement.compile()
+      executeValues(sql: string, params: ReadonlyArray<Primitive>) {
         return this.run(this.pg.unsafe(sql, params as any).values())
       }
       executeRaw(sql: string, params?: ReadonlyArray<Primitive>) {
         return this.runTransform(this.pg.unsafe(sql, params as any))
       }
-      executeStream(statement: Statement.Statement<unknown>) {
-        const [sql, params] = statement.compile()
-        return pipe(
-          Effect.sync(
-            () =>
-              this.pg.unsafe(sql, params as any).cursor(16) as AsyncIterable<
-                Array<any>
-              >
+      executeStream(sql: string, params: ReadonlyArray<Primitive>) {
+        return Stream.mapChunks(
+          Stream.fromAsyncIterable(
+            this.pg.unsafe(sql, params as any).cursor(16) as AsyncIterable<
+              Array<any>
+            >,
+            (error) => new SqlError({ error })
           ),
-          Effect.map((_) => Stream.fromAsyncIterable(_, (error) => new SqlError({ error }))),
-          Stream.unwrap,
-          Stream.flatMap((_) =>
-            Stream.fromIterable(
-              options.transformResultNames ? transformRows(_) : _
+          Chunk.flatMap((rows) =>
+            Chunk.unsafeFromArray(
+              options.transformResultNames ? transformRows(rows) : rows
             )
           )
         )

@@ -8,7 +8,6 @@ import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import type { Scope } from "effect/Scope"
 import * as Stream from "effect/Stream"
-import type * as Tracer from "effect/Tracer"
 import type * as Connection from "../Connection.js"
 import type * as Error from "../Error.js"
 import type * as Statement from "../Statement.js"
@@ -38,18 +37,18 @@ export const currentTransformer = globalValue(
   "@effect/sql/Statement/currentTransformer",
   () =>
     FiberRef.unsafeMake(
-      Option.none<(self: Statement.Statement<unknown>, span: Tracer.Span) => Statement.Statement<unknown>>()
+      Option.none<Statement.Statement.Transformer>()
     )
 )
 
 /** @internal */
 export const withTransformer = dual<
   (
-    f: (self: Statement.Statement<unknown>, span: Tracer.Span) => Statement.Statement<unknown>
+    f: Statement.Statement.Transformer
   ) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
   <A, E, R>(
     effect: Effect.Effect<A, E, R>,
-    f: (self: Statement.Statement<unknown>, span: Tracer.Span) => Statement.Statement<unknown>
+    f: Statement.Statement.Transformer
   ) => Effect.Effect<A, E, R>
 >(2, (effect, f) => Effect.locally(effect, currentTransformer, Option.some(f)))
 
@@ -59,7 +58,7 @@ export const withTransformerDisabled = <A, E, R>(effect: Effect.Effect<A, E, R>)
 
 /** @internal */
 export const setTransformer = (
-  f: (self: Statement.Statement<unknown>, span: Tracer.Span) => Statement.Statement<unknown>
+  f: Statement.Statement.Transformer
 ) => Layer.locallyScoped(currentTransformer, Option.some(f))
 
 /** @internal */
@@ -82,17 +81,16 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
     return Effect.useSpan(
       "sql.execute",
       (span) =>
-        Effect.withParentSpan(
-          Effect.withFiberRuntime((fiber) => {
-            const transform = fiber.getFiberRef(currentTransformer)
-            const statement = transform._tag === "Some" ? transform.value(this, span) : this
-            const sql = statement.compile()[0]
-            span.attribute("sql.method", "executeWithoutTransform")
-            span.attribute("sql.query", sql)
-            return Effect.scoped(Effect.flatMap(this.acquirer, (_) => _.executeWithoutTransform<any>(statement)))
-          }),
-          span
-        )
+        Effect.withFiberRuntime((fiber) => {
+          const transform = fiber.getFiberRef(currentTransformer)
+          const statement = transform._tag === "Some"
+            ? transform.value(this, make(this.acquirer, this.compiler), fiber.getFiberRefs(), span)
+            : this
+          const [sql, params] = statement.compile()
+          span.attribute("sql.method", "executeWithoutTransform")
+          span.attribute("sql.query", sql)
+          return Effect.scoped(Effect.flatMap(this.acquirer, (_) => _.executeWithoutTransform(sql, params)))
+        })
     )
   }
 
@@ -102,11 +100,13 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
       (span) =>
         Effect.withFiberRuntime<Stream.Stream<A, Error.SqlError>, Error.SqlError, Scope>((fiber) => {
           const transform = fiber.getFiberRef(currentTransformer)
-          const statement = transform._tag === "Some" ? transform.value(this, span) : this
-          const sql = statement.compile()[0]
+          const statement = transform._tag === "Some"
+            ? transform.value(this, make(this.acquirer, this.compiler), fiber.getFiberRefs(), span)
+            : this
+          const [sql, params] = statement.compile()
           span.attribute("sql.method", "executeStream")
           span.attribute("sql.query", sql)
-          return Effect.map(this.acquirer, (_) => _.executeStream<any>(statement))
+          return Effect.map(this.acquirer, (_) => _.executeStream(sql, params))
         })
     ))
   }
@@ -118,17 +118,16 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
     return Effect.useSpan(
       "sql.execute",
       (span) =>
-        Effect.withParentSpan(
-          Effect.withFiberRuntime((fiber) => {
-            const transform = fiber.getFiberRef(currentTransformer)
-            const statement = transform._tag === "Some" ? transform.value(this, span) : this
-            const sql = statement.compile()[0]
-            span.attribute("sql.method", "executeValues")
-            span.attribute("sql.query", sql)
-            return Effect.scoped(Effect.flatMap(this.acquirer, (_) => _.executeValues<any>(statement)))
-          }),
-          span
-        )
+        Effect.withFiberRuntime((fiber) => {
+          const transform = fiber.getFiberRef(currentTransformer)
+          const statement = transform._tag === "Some"
+            ? transform.value(this, make(this.acquirer, this.compiler), fiber.getFiberRefs(), span)
+            : this
+          const [sql, params] = statement.compile()
+          span.attribute("sql.method", "executeValues")
+          span.attribute("sql.query", sql)
+          return Effect.scoped(Effect.flatMap(this.acquirer, (_) => _.executeValues(sql, params)))
+        })
     )
   }
 
@@ -143,17 +142,16 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
     return Effect.useSpan(
       "sql.execute",
       (span) =>
-        Effect.withParentSpan(
-          Effect.withFiberRuntime((fiber) => {
-            const transform = fiber.getFiberRef(currentTransformer)
-            const statement = transform._tag === "Some" ? transform.value(this, span) : this
-            const sql = statement.compile()[0]
-            span.attribute("sql.method", "execute")
-            span.attribute("sql.query", sql)
-            return Effect.scoped(Effect.flatMap(this.acquirer, (_) => _.execute<any>(statement)))
-          }),
-          span
-        )
+        Effect.withFiberRuntime((fiber) => {
+          const transform = fiber.getFiberRef(currentTransformer)
+          const statement = transform._tag === "Some"
+            ? transform.value(this, make(this.acquirer, this.compiler), fiber.getFiberRefs(), span)
+            : this
+          const [sql, params] = statement.compile()
+          span.attribute("sql.method", "execute")
+          span.attribute("sql.query", sql)
+          return Effect.scoped(Effect.flatMap(this.acquirer, (_) => _.execute(sql, params)))
+        })
     )
   }
   toJSON() {
@@ -241,12 +239,20 @@ const isHelper = (u: unknown): u is Statement.Helper =>
   u instanceof RecordUpdateHelperSingleImpl ||
   u instanceof IdentifierImpl
 
+const constructorCache = globalValue(
+  "@effect/sql/Statement/constructorCache",
+  () => new WeakMap<Connection.Connection.Acquirer, Statement.Constructor>()
+)
+
 /** @internal */
 export const make = (
   acquirer: Connection.Connection.Acquirer,
   compiler: Statement.Compiler
-): Statement.Constructor =>
-  Object.assign(
+): Statement.Constructor => {
+  if (constructorCache.has(acquirer)) {
+    return constructorCache.get(acquirer)!
+  }
+  const self = Object.assign(
     function sql(strings: unknown, ...args: Array<any>): any {
       if (Array.isArray(strings) && "raw" in strings) {
         return statement(
@@ -264,6 +270,19 @@ export const make = (
       throw "absurd"
     },
     {
+      unsafe<A extends object = Connection.Row>(
+        sql: string,
+        params?: ReadonlyArray<Statement.Primitive>
+      ) {
+        return new StatementPrimitive<A>(
+          [new LiteralImpl(sql, params)],
+          acquirer,
+          compiler
+        )
+      },
+      literal(sql: string) {
+        return new FragmentImpl([new LiteralImpl(sql)])
+      },
       insert(value: any) {
         return new RecordInsertHelperImpl(
           Array.isArray(value) ? value : [value]
@@ -274,9 +293,18 @@ export const make = (
       },
       updateValues(value: any, alias: any) {
         return new RecordUpdateHelperImpl(value, alias)
-      }
+      },
+      and,
+      or,
+      csv,
+      join
     }
   )
+
+  constructorCache.set(acquirer, self)
+
+  return self
+}
 
 /** @internal */
 export const statement = (
@@ -307,19 +335,6 @@ export const statement = (
 
   return new StatementPrimitive<Connection.Row>(segments, acquirer, compiler)
 }
-
-/** @internal */
-export const unsafe =
-  (acquirer: Connection.Connection.Acquirer, compiler: Statement.Compiler) =>
-  <A extends object = Connection.Row>(
-    sql: string,
-    params?: ReadonlyArray<Statement.Primitive>
-  ): Statement.Statement<A> =>
-    new StatementPrimitive<A>(
-      [new LiteralImpl(sql, params)],
-      acquirer,
-      compiler
-    )
 
 /** @internal */
 export const unsafeFragment = (

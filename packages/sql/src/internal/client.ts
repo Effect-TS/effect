@@ -77,11 +77,6 @@ export function make({
     Statement.make(getConnection, compiler),
     {
       safe: undefined as any,
-      unsafe: Statement.unsafe(getConnection, compiler),
-      and: Statement.and,
-      or: Statement.or,
-      join: Statement.join,
-      csv: Statement.csv,
       withTransaction,
       reserve: transactionAcquirer
     }

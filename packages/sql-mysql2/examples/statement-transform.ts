@@ -1,0 +1,45 @@
+import * as DevTools from "@effect/experimental/DevTools"
+import * as Sql from "@effect/sql-mysql2"
+import { Config, Effect, FiberRef, FiberRefs, Layer, Option, Secret } from "effect"
+
+const currentResourceName = FiberRef.unsafeMake("")
+
+const SqlTracingLive = Sql.statement.setTransformer((prev, sql, refs, span) => {
+  const [query, params] = prev.compile()
+  return sql.unsafe(
+    `/* ${
+      JSON.stringify({
+        trace_id: span.traceId,
+        span_id: span.spanId,
+        resource_name: Option.getOrUndefined(FiberRefs.get(refs, currentResourceName))
+      })
+    } */ ${query}`,
+    params
+  )
+})
+
+const EnvLive = Sql.client.layer({
+  database: Config.succeed("effect_dev"),
+  username: Config.succeed("effect"),
+  password: Config.succeed(Secret.fromString("password")),
+  transformQueryNames: Config.succeed(Sql.transform.camelToSnake),
+  transformResultNames: Config.succeed(Sql.transform.snakeToCamel)
+}).pipe(
+  Layer.provide(SqlTracingLive),
+  Layer.provide(DevTools.layer())
+)
+
+const program = Effect.gen(function*(_) {
+  const sql = yield* _(Sql.client.MysqlClient)
+  yield* _(
+    sql`SELECT * FROM people`,
+    Effect.replicateEffect(50),
+    Effect.locally(currentResourceName, "GET /people")
+  )
+})
+
+program.pipe(
+  Effect.provide(EnvLive),
+  Effect.tapErrorCause(Effect.logError),
+  Effect.runFork
+)

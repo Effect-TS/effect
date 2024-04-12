@@ -3,6 +3,7 @@
  */
 import type { Effect } from "effect/Effect"
 import type * as FiberRef from "effect/FiberRef"
+import type * as FiberRefs from "effect/FiberRefs"
 import type * as Layer from "effect/Layer"
 import type * as Option from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
@@ -48,12 +49,27 @@ export interface Statement<A> extends Fragment, Effect<ReadonlyArray<A>, SqlErro
 }
 
 /**
+ * @category model
+ * @since 1.0.0
+ */
+export declare namespace Statement {
+  /**
+   * @category model
+   * @since 1.0.0
+   */
+  export type Transformer = (
+    self: Statement<unknown>,
+    sql: Constructor,
+    context: FiberRefs.FiberRefs,
+    span: Tracer.Span
+  ) => Statement<unknown>
+}
+
+/**
  * @category transformer
  * @since 1.0.0
  */
-export const currentTransformer: FiberRef.FiberRef<
-  Option.Option<(self: Statement<unknown>, span: Tracer.Span) => Statement<unknown>>
-> = internal.currentTransformer
+export const currentTransformer: FiberRef.FiberRef<Option.Option<Statement.Transformer>> = internal.currentTransformer
 
 /**
  * @category transformer
@@ -61,11 +77,11 @@ export const currentTransformer: FiberRef.FiberRef<
  */
 export const withTransformer: {
   (
-    f: (self: Statement<unknown>, span: Tracer.Span) => Statement<unknown>
+    f: Statement.Transformer
   ): <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R>
   <A, E, R>(
     effect: Effect<A, E, R>,
-    f: (self: Statement<unknown>, span: Tracer.Span) => Statement<unknown>
+    f: Statement.Transformer
   ): Effect<A, E, R>
 } = internal.withTransformer
 
@@ -80,9 +96,7 @@ export const withTransformerDisabled: <A, E, R>(effect: Effect<A, E, R>) => Effe
  * @category transformer
  * @since 1.0.0
  */
-export const setTransformer: (
-  f: (self: Statement<unknown>, span: Tracer.Span) => Statement<unknown>
-) => Layer.Layer<never, never, never> = internal.setTransformer
+export const setTransformer: (f: Statement.Transformer) => Layer.Layer<never, never, never> = internal.setTransformer
 
 /**
  * @category guard
@@ -265,6 +279,16 @@ export interface Constructor {
     value: ReadonlyArray<Primitive | Record<string, Primitive | Fragment>>
   ): ArrayHelper
 
+  /**
+   * Create unsafe SQL query
+   */
+  readonly unsafe: <A extends object>(
+    sql: string,
+    params?: ReadonlyArray<Primitive> | undefined
+  ) => Statement<A>
+
+  readonly literal: (sql: string) => Fragment
+
   readonly insert: {
     (
       value: ReadonlyArray<Record<string, Primitive | Fragment>>
@@ -281,6 +305,32 @@ export interface Constructor {
     value: ReadonlyArray<Record<string, Primitive | Fragment>>,
     alias: string
   ) => RecordUpdateHelper
+
+  /**
+   * Create an `AND` chain for a where clause
+   */
+  readonly and: (clauses: ReadonlyArray<string | Fragment>) => Fragment
+
+  /**
+   * Create an `OR` chain for a where clause
+   */
+  readonly or: (clauses: ReadonlyArray<string | Fragment>) => Fragment
+
+  /**
+   * Create comma seperated values, with an optional prefix
+   *
+   * Useful for `ORDER BY` and `GROUP BY` clauses
+   */
+  readonly csv: {
+    (values: ReadonlyArray<string | Fragment>): Fragment
+    (prefix: string, values: ReadonlyArray<string | Fragment>): Fragment
+  }
+
+  readonly join: (
+    literal: string,
+    addParens?: boolean,
+    fallback?: string
+  ) => (clauses: ReadonlyArray<string | Fragment>) => Fragment
 }
 
 /**
@@ -291,18 +341,6 @@ export const make: (
   acquirer: Connection.Acquirer,
   compiler: Compiler
 ) => Constructor = internal.make
-
-/**
- * @category constructor
- * @since 1.0.0
- */
-export const unsafe: (
-  acquirer: Connection.Acquirer,
-  compiler: Compiler
-) => <A extends object = Row>(
-  sql: string,
-  params?: ReadonlyArray<Primitive> | undefined
-) => Statement<A> = internal.unsafe
 
 /**
  * @category constructor
