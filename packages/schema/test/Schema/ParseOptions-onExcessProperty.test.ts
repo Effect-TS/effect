@@ -105,7 +105,7 @@ describe("Schema > `onExcessProperty` option", () => {
     })
 
     it("tuples", async () => {
-      const a = S.Tuple(S.Number, S.OptionalElement(S.String))
+      const a = S.Tuple(S.Number, S.optionalElement(S.String))
       const b = S.Tuple(S.Number)
       const schema = S.Union(a, b)
       await Util.expectDecodeUnknownFailure(

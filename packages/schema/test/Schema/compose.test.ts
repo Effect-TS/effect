@@ -4,9 +4,9 @@ import { describe, it } from "vitest"
 
 describe("Schema > compose", async () => {
   it("B = C", async () => {
-    const schema1 = S.compose(S.split(","), S.Array(S.NumberFromString))
+    const schema1 = S.compose(S.Split(","), S.Array(S.NumberFromString))
     await Util.expectDecodeUnknownSuccess(schema1, "1,2,3", [1, 2, 3])
-    const schema2 = S.split(",").pipe(S.compose(S.Array(S.NumberFromString)))
+    const schema2 = S.Split(",").pipe(S.compose(S.Array(S.NumberFromString)))
     await Util.expectDecodeUnknownSuccess(schema2, "1,2,3", [1, 2, 3])
   })
 

@@ -9,7 +9,7 @@ describe("Schema > typeSchema", () => {
         S.Tuple(S.NumberFromString, S.NumberFromString),
         { decode: (s) => [s, s] as const, encode: ([s]) => s }
       ),
-      S.typeSchema
+      S.TypeSchema
     )
     expect(S.decodeUnknownSync(schema)([1, 2])).toEqual([1, 2])
   })
@@ -18,7 +18,7 @@ describe("Schema > typeSchema", () => {
     const schema = S.NumberFromString.pipe(
       S.greaterThanOrEqualTo(1),
       S.lessThanOrEqualTo(2),
-      S.typeSchema
+      S.TypeSchema
     )
     expect(S.is(schema)(0)).toEqual(false)
     expect(S.is(schema)(1)).toEqual(true)
@@ -39,13 +39,13 @@ describe("Schema > typeSchema", () => {
           prop: S.Union(S.NumberFromString, schema)
         })
     )
-    const to = S.typeSchema(schema)
+    const to = S.TypeSchema(schema)
     await Util.expectDecodeUnknownSuccess(to, { prop: 1 })
     await Util.expectDecodeUnknownSuccess(to, { prop: { prop: 1 } })
   })
 
   it("decoding", async () => {
-    const schema = S.typeSchema(S.NumberFromString)
+    const schema = S.TypeSchema(S.NumberFromString)
     await Util.expectDecodeUnknownSuccess(schema, 1)
     await Util.expectDecodeUnknownFailure(schema, null, "Expected a number, actual null")
     await Util.expectDecodeUnknownFailure(schema, "a", `Expected a number, actual "a"`)

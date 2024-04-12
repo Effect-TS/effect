@@ -162,7 +162,7 @@ describe("Schema > is", () => {
   })
 
   it("tuple. optional element", () => {
-    const schema = S.Tuple(S.OptionalElement(S.Number))
+    const schema = S.Tuple(S.optionalElement(S.Number))
     const is = P.is(schema)
     expect(is([])).toEqual(true)
     expect(is([1])).toEqual(true)
@@ -174,7 +174,7 @@ describe("Schema > is", () => {
   })
 
   it("tuple. optional element with undefined", () => {
-    const schema = S.Tuple(S.OptionalElement(S.Union(S.Number, S.Undefined)))
+    const schema = S.Tuple(S.optionalElement(S.Union(S.Number, S.Undefined)))
     const is = P.is(schema)
     expect(is([])).toEqual(true)
     expect(is([1])).toEqual(true)
@@ -186,7 +186,7 @@ describe("Schema > is", () => {
   })
 
   it("tuple. e + e?", () => {
-    const schema = S.Tuple(S.String, S.OptionalElement(S.Number))
+    const schema = S.Tuple(S.String, S.optionalElement(S.Number))
     const is = P.is(schema)
     expect(is(["a"])).toEqual(true)
     expect(is(["a", 1])).toEqual(true)
@@ -206,7 +206,7 @@ describe("Schema > is", () => {
   })
 
   it("tuple. e? + r", () => {
-    const schema = S.Tuple([S.OptionalElement(S.String)], S.Number)
+    const schema = S.Tuple([S.optionalElement(S.String)], S.Number)
     const is = P.is(schema)
     expect(is([])).toEqual(true)
     expect(is(["a"])).toEqual(true)
@@ -361,7 +361,7 @@ describe("Schema > is", () => {
   })
 
   it("record(keyof struct({ a, b }), number)", () => {
-    const schema = S.Record(S.Keyof(S.Struct({ a: S.String, b: S.String })), S.Number)
+    const schema = S.Record(S.KeyOf(S.Struct({ a: S.String, b: S.String })), S.Number)
     const is = P.is(schema)
     expect(is({ a: 1, b: 2 })).toEqual(true)
 

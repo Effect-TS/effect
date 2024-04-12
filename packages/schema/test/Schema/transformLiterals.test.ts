@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 describe("Schema > transformLiteral", () => {
   describe("Struct", () => {
     it("simple", async () => {
-      const schema = S.transformLiteral(0, "a")
+      const schema = S.TransformLiteral(0, "a")
 
       await Util.expectDecodeUnknownSuccess(schema, 0, "a")
       await Util.expectEncodeSuccess(schema, "a", 0)
@@ -16,7 +16,7 @@ describe("Schema > transformLiteral", () => {
 describe("Schema > transformLiterals", () => {
   describe("Struct", () => {
     it("simple", async () => {
-      const schema = S.transformLiterals(
+      const schema = S.TransformLiterals(
         [0, "a"],
         [1, "b"],
         [2, "c"]
@@ -27,7 +27,7 @@ describe("Schema > transformLiterals", () => {
     })
 
     it("mixed types", async () => {
-      const schema = S.transformLiterals(
+      const schema = S.TransformLiterals(
         [0, BigInt(0)],
         ["a", true],
         [null, false]

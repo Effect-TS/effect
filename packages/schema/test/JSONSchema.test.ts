@@ -439,7 +439,7 @@ describe("JSONSchema", () => {
 
   describe("tuple", () => {
     it("e?", () => {
-      const schema = S.Tuple(S.OptionalElement(JsonNumber))
+      const schema = S.Tuple(S.optionalElement(JsonNumber))
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toStrictEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -463,7 +463,7 @@ describe("JSONSchema", () => {
     })
 
     it("e + e?", () => {
-      const schema = S.Tuple(S.String, S.OptionalElement(JsonNumber))
+      const schema = S.Tuple(S.String, S.optionalElement(JsonNumber))
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toStrictEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -493,7 +493,7 @@ describe("JSONSchema", () => {
     })
 
     it("e? + r", () => {
-      const schema = S.Tuple([S.OptionalElement(S.String)], JsonNumber)
+      const schema = S.Tuple([S.optionalElement(S.String)], JsonNumber)
       const jsonSchema = JSONSchema.make(schema)
       expect(jsonSchema).toStrictEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -769,7 +769,7 @@ describe("JSONSchema", () => {
 
     it("should raise an error if the property signature is not marked as optional and contains a union that includes `UndefinedKeyword`", () => {
       const schema = S.Struct({
-        a: S.OrUndefined(S.String)
+        a: S.UndefinedOr(S.String)
       })
       expect(() => JSONSchema.make(schema)).toThrow(
         new Error("cannot build a JSON Schema for `undefined` without a JSON Schema annotation")
@@ -1404,7 +1404,7 @@ describe("JSONSchema", () => {
         name: S.String,
         categories: S.Array(S.Suspend(() => schema).annotations({ identifier: "Category" }))
       })
-      const jsonSchema = JSONSchema.make(S.encodedSchema(schema))
+      const jsonSchema = JSONSchema.make(S.EncodedSchema(schema))
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -1525,7 +1525,7 @@ describe("JSONSchema", () => {
   describe("Class", () => {
     it("should support S.encodedSchema(Class)", () => {
       class A extends S.Class<A>("A")({ a: S.String }) {}
-      const jsonSchema = JSONSchema.make(S.encodedSchema(A))
+      const jsonSchema = JSONSchema.make(S.EncodedSchema(A))
       expect(jsonSchema).toEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",

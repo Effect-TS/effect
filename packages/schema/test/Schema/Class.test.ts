@@ -297,7 +297,7 @@ describe("Schema > Class APIs", () => {
     })
 
     it("S.typeSchema(Class)", async () => {
-      const PersonFromSelf = S.typeSchema(Person)
+      const PersonFromSelf = S.TypeSchema(Person)
       await Util.expectDecodeUnknownSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
       await Util.expectDecodeUnknownFailure(
         PersonFromSelf,
@@ -307,7 +307,7 @@ describe("Schema > Class APIs", () => {
     })
 
     it("is", () => {
-      const is = S.is(S.typeSchema(Person))
+      const is = S.is(S.TypeSchema(Person))
       expect(is(new Person({ id: 1, name: "name" }))).toEqual(true)
       expect(is({ id: 1, name: "name" })).toEqual(false)
     })
@@ -324,7 +324,7 @@ describe("Schema > Class APIs", () => {
       )
       expect(person.name).toEqual("John")
 
-      const PersonFromSelf = S.typeSchema(Person)
+      const PersonFromSelf = S.TypeSchema(Person)
       await Util.expectDecodeUnknownSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
       await Util.expectDecodeUnknownFailure(
         PersonFromSelf,
@@ -842,7 +842,7 @@ describe("Schema > Class APIs", () => {
         class A extends S.Class<A>("A")({
           n: S.NumberFromString
         }) {}
-        const schema = S.typeSchema(A)
+        const schema = S.TypeSchema(A)
         await Util.expectEncodeSuccess(schema, new A({ n: 1 }), new A({ n: 1 }))
         await Util.expectEncodeSuccess(schema, { n: 1 }, new A({ n: 1 }))
       })
@@ -851,7 +851,7 @@ describe("Schema > Class APIs", () => {
         class A extends S.Class<A>("A")({
           n: S.NumberFromString
         }) {}
-        const schema = S.typeSchema(A)
+        const schema = S.TypeSchema(A)
         await Util.expectEncodeFailure(
           schema,
           null as any,

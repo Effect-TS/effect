@@ -6,7 +6,7 @@ describe("Schema > omit", () => {
   it("struct", async () => {
     const a = Symbol.for("@effect/schema/test/a")
     const schema = S.Struct({ [a]: S.String, b: S.NumberFromString, c: S.Boolean }).pipe(
-      S.omit("c")
+      S.Omit("c")
     )
     await Util.expectDecodeUnknownSuccess(schema, { [a]: "a", b: "1" }, { [a]: "a", b: 1 })
 
@@ -38,7 +38,7 @@ describe("Schema > omit", () => {
       c: S.Boolean
     })
       .pipe(
-        S.omit("c")
+        S.Omit("c")
       )
     await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
     await Util.expectDecodeUnknownSuccess(schema, { b: "1" }, { b: 1 })
@@ -69,7 +69,7 @@ describe("Schema > omit", () => {
           as: S.Array(A)
         })
     )
-    const schema = A.pipe(S.omit("a"))
+    const schema = A.pipe(S.Omit("a"))
     await Util.expectDecodeUnknownSuccess(schema, { as: [] })
     await Util.expectDecodeUnknownSuccess(schema, { as: [{ a: "a", as: [] }] })
 
@@ -92,7 +92,7 @@ describe("Schema > omit", () => {
       b: S.NumberFromString,
       c: S.Boolean
     }).pipe(
-      S.omit("c")
+      S.Omit("c")
     )
     await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
     await Util.expectDecodeUnknownSuccess(schema, { b: "1" }, { a: "", b: 1 })
@@ -100,13 +100,13 @@ describe("Schema > omit", () => {
 
   it("typeSchema(Class)", () => {
     class A extends S.Class<A>("A")({ a: S.String, b: S.NumberFromString }) {}
-    const schema = A.pipe(S.typeSchema, S.omit("a"))
+    const schema = A.pipe(S.TypeSchema, S.Omit("a"))
     expect(schema.ast).toStrictEqual(S.Struct({ b: S.Number }).ast)
   })
 
   it("Class", () => {
     class A extends S.Class<A>("A")({ a: S.String, b: S.NumberFromString }) {}
-    const schema = A.pipe(S.omit("a"))
+    const schema = A.pipe(S.Omit("a"))
     expect(schema.ast).toStrictEqual(S.Struct({ b: S.NumberFromString }).ast)
   })
 })

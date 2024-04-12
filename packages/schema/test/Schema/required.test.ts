@@ -5,11 +5,11 @@ import { describe, expect, it } from "vitest"
 
 describe("Schema > required", () => {
   it("string", () => {
-    expect(S.required(S.String).ast).toEqual(S.String.ast)
+    expect(S.Required(S.String).ast).toEqual(S.String.ast)
   })
 
   it("struct", async () => {
-    const schema = S.required(S.Struct({
+    const schema = S.Required(S.Struct({
       a: S.optional(S.NumberFromString.pipe(S.greaterThan(0)), { exact: true })
     }))
 
@@ -37,8 +37,8 @@ describe("Schema > required", () => {
       // type A = readonly [string?]
       // type B = Required<A>
 
-      const A = S.Tuple(S.OptionalElement(S.NumberFromString))
-      const B = S.required(A)
+      const A = S.Tuple(S.optionalElement(S.NumberFromString))
+      const B = S.Required(A)
 
       await Util.expectDecodeUnknownSuccess(B, ["1"], [1])
       await Util.expectDecodeUnknownFailure(
@@ -54,8 +54,8 @@ describe("Schema > required", () => {
       // type A = readonly [number, string?]
       // type B = Required<A>
 
-      const A = S.Tuple(S.NumberFromString, S.OptionalElement(S.String))
-      const B = S.required(A)
+      const A = S.Tuple(S.NumberFromString, S.optionalElement(S.String))
+      const B = S.Required(A)
 
       await Util.expectDecodeUnknownSuccess(B, ["0", ""], [0, ""])
       await Util.expectDecodeUnknownFailure(
@@ -72,7 +72,7 @@ describe("Schema > required", () => {
       // type B = Required<A> // readonly [string, ...number[], boolean]
 
       const A = S.Tuple([S.String], S.Number, S.Boolean)
-      const B = S.required(A)
+      const B = S.Required(A)
 
       await Util.expectDecodeUnknownSuccess(B, ["", true], ["", true])
       await Util.expectDecodeUnknownSuccess(B, ["", 0, true])
@@ -99,7 +99,7 @@ describe("Schema > required", () => {
       // type B = Required<A> // readonly [string, ...number[], boolean, boolean]
 
       const A = S.Tuple([S.String], S.Number, S.Boolean, S.Boolean)
-      const B = S.required(A)
+      const B = S.Required(A)
 
       await Util.expectDecodeUnknownSuccess(B, ["", 0, true, false])
       await Util.expectDecodeUnknownSuccess(B, ["", 0, 1, 2, 3, true, false])
@@ -136,7 +136,7 @@ describe("Schema > required", () => {
   })
 
   it("union", async () => {
-    const schema = S.required(S.Union(
+    const schema = S.Required(S.Union(
       S.Struct({ a: S.optional(S.String, { exact: true }) }),
       S.Struct({ b: S.optional(S.Number, { exact: true }) })
     ))
@@ -161,7 +161,7 @@ describe("Schema > required", () => {
     interface A {
       readonly a: null | A
     }
-    const schema: S.Schema<A> = S.required(S.Suspend( // intended outer suspend
+    const schema: S.Schema<A> = S.Required(S.Suspend( // intended outer suspend
       () =>
         S.Struct({
           a: S.optional(S.Union(schema, S.Null), { exact: true })
@@ -192,19 +192,19 @@ describe("Schema > required", () => {
   })
 
   it("declarations should throw", async () => {
-    expect(() => S.required(S.OptionFromSelf(S.String))).toThrow(
+    expect(() => S.Required(S.OptionFromSelf(S.String))).toThrow(
       new Error("Required: cannot handle declarations")
     )
   })
 
   it("refinements should throw", async () => {
-    expect(() => S.required(S.String.pipe(S.minLength(2)))).toThrow(
+    expect(() => S.Required(S.String.pipe(S.minLength(2)))).toThrow(
       new Error("Required: cannot handle refinements")
     )
   })
 
   it("transformations should throw", async () => {
-    expect(() => S.required(S.transform(S.String, S.String, { decode: identity, encode: identity }))).toThrow(
+    expect(() => S.Required(S.transform(S.String, S.String, { decode: identity, encode: identity }))).toThrow(
       new Error("Required: cannot handle transformations")
     )
   })

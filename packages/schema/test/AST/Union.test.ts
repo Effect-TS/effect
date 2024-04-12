@@ -28,7 +28,7 @@ describe("AST.Union", () => {
     interface A {
       readonly a?: null | A | undefined
     }
-    const schema: S.Schema<A> = S.partial(
+    const schema: S.Schema<A> = S.Partial(
       S.Suspend(
         () =>
           S.Struct({

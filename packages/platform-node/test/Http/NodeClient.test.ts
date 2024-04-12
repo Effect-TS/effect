@@ -24,7 +24,7 @@ const makeJsonPlaceholder = Effect.gen(function*(_) {
   )
   const createTodo = Http.client.schemaFunction(
     todoClient,
-    Todo.pipe(Schema.omit("id"))
+    Todo.pipe(Schema.Omit("id"))
   )(Http.request.post("/todos"))
   return {
     client,

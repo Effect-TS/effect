@@ -5,7 +5,7 @@ describe("Schema > toString", () => {
   it("Schema", () => {
     expect(String(S.String)).toStrictEqual("string")
     expect(String(S.Union(S.String, S.Number))).toStrictEqual("string | number")
-    expect(String(S.Tuple(S.String, S.OptionalElement(S.Number)))).toStrictEqual("readonly [string, number?]")
+    expect(String(S.Tuple(S.String, S.optionalElement(S.Number)))).toStrictEqual("readonly [string, number?]")
   })
 
   it("BrandedSchema", () => {
@@ -13,7 +13,7 @@ describe("Schema > toString", () => {
   })
 
   it("OptionalElement", () => {
-    expect(String(S.OptionalElement(S.String))).toStrictEqual("string?")
+    expect(String(S.optionalElement(S.String))).toStrictEqual("string?")
   })
 
   it("PropertySignature", () => {

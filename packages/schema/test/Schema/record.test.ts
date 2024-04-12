@@ -166,7 +166,7 @@ describe("Schema > record", () => {
     })
 
     it("record(keyof struct({ a, b }), number)", async () => {
-      const schema = S.Record(S.Keyof(S.Struct({ a: S.String, b: S.String })), S.Number)
+      const schema = S.Record(S.KeyOf(S.Struct({ a: S.String, b: S.String })), S.Number)
       await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: 2 })
 
       await Util.expectDecodeUnknownFailure(

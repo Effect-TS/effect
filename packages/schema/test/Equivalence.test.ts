@@ -83,7 +83,7 @@ describe("Equivalence", () => {
 
   it("E.make(S.encodedSchema(schema))", () => {
     const schema = S.NumberFromString
-    const equivalence = E.make(S.encodedSchema(schema))
+    const equivalence = E.make(S.EncodedSchema(schema))
 
     expect(equivalence("a", "a")).toBe(true)
 
@@ -366,7 +366,7 @@ describe("Equivalence", () => {
 
     describe("optional element support", () => {
       it("e?", () => {
-        const schema = S.Tuple(S.OptionalElement(string))
+        const schema = S.Tuple(S.optionalElement(string))
         const equivalence = E.make(schema)
 
         expect(equivalence([], [])).toBe(true)
@@ -380,7 +380,7 @@ describe("Equivalence", () => {
       })
 
       it("e? + e?", () => {
-        const schema = S.Tuple(S.OptionalElement(string), S.OptionalElement(number))
+        const schema = S.Tuple(S.optionalElement(string), S.optionalElement(number))
         const equivalence = E.make(schema)
 
         expect(equivalence([], [])).toBe(true)
@@ -398,7 +398,7 @@ describe("Equivalence", () => {
       })
 
       it("e + e?", () => {
-        const schema = S.Tuple(string, S.OptionalElement(number))
+        const schema = S.Tuple(string, S.optionalElement(number))
         const equivalence = E.make(schema)
 
         expect(equivalence(["a"], ["a"])).toBe(true)
@@ -412,7 +412,7 @@ describe("Equivalence", () => {
       })
 
       it("e? + r", () => {
-        const schema = S.Tuple([S.OptionalElement(S.String)], S.Number)
+        const schema = S.Tuple([S.optionalElement(S.String)], S.Number)
         const equivalence = E.make(schema)
 
         expect(equivalence([], [])).toBe(true)

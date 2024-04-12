@@ -6,7 +6,7 @@ describe("Schema > pick", () => {
   it("struct", async () => {
     const a = Symbol.for("@effect/schema/test/a")
     const schema = S.Struct({ [a]: S.String, b: S.NumberFromString, c: S.Boolean }).pipe(
-      S.pick(a, "b")
+      S.Pick(a, "b")
     )
     await Util.expectDecodeUnknownSuccess(schema, { [a]: "a", b: "1" }, { [a]: "a", b: 1 })
 
@@ -38,7 +38,7 @@ describe("Schema > pick", () => {
       c: S.Boolean
     })
       .pipe(
-        S.pick("a", "b")
+        S.Pick("a", "b")
       )
     await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
     await Util.expectDecodeUnknownSuccess(schema, { b: "1" }, { b: 1 })
@@ -69,7 +69,7 @@ describe("Schema > pick", () => {
           as: S.Array(A)
         })
     )
-    const schema = A.pipe(S.pick("as"))
+    const schema = A.pipe(S.Pick("as"))
     await Util.expectDecodeUnknownSuccess(schema, { as: [] })
     await Util.expectDecodeUnknownSuccess(schema, { as: [{ a: "a", as: [] }] })
 
@@ -92,14 +92,14 @@ describe("Schema > pick", () => {
       b: S.NumberFromString,
       c: S.Boolean
     }).pipe(
-      S.pick("a", "b")
+      S.Pick("a", "b")
     )
     await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
     await Util.expectDecodeUnknownSuccess(schema, { b: "1" }, { a: "", b: 1 })
   })
 
   it("record(string, number)", async () => {
-    const schema = S.Record(S.String, S.Number).pipe(S.pick("a", "b"))
+    const schema = S.Record(S.String, S.Number).pipe(S.Pick("a", "b"))
     await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: 2 })
     await Util.expectDecodeUnknownFailure(
       schema,
@@ -120,7 +120,7 @@ describe("Schema > pick", () => {
   it("record(symbol, number)", async () => {
     const a = Symbol.for("@effect/schema/test/a")
     const b = Symbol.for("@effect/schema/test/b")
-    const schema = S.Record(S.SymbolFromSelf, S.Number).pipe(S.pick(a, b))
+    const schema = S.Record(S.SymbolFromSelf, S.Number).pipe(S.Pick(a, b))
     await Util.expectDecodeUnknownSuccess(schema, { [a]: 1, [b]: 2 })
     await Util.expectDecodeUnknownFailure(
       schema,
@@ -144,20 +144,20 @@ describe("Schema > pick", () => {
       S.Record(S.String, S.String),
       S.Record(S.TemplateLiteral(S.Literal("a"), S.String), S.Number)
     ).pipe(
-      S.pick("a", "b")
+      S.Pick("a", "b")
     )
     await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: "b" })
   })
 
   it("typeSchema(Class)", () => {
     class A extends S.Class<A>("A")({ a: S.String, b: S.NumberFromString }) {}
-    const schema = A.pipe(S.typeSchema, S.pick("b"))
+    const schema = A.pipe(S.TypeSchema, S.Pick("b"))
     expect(schema.ast).toStrictEqual(S.Struct({ b: S.Number }).ast)
   })
 
   it("Class", () => {
     class A extends S.Class<A>("A")({ a: S.String, b: S.NumberFromString }) {}
-    const schema = A.pipe(S.pick("b"))
+    const schema = A.pipe(S.Pick("b"))
     expect(schema.ast).toStrictEqual(S.Struct({ b: S.NumberFromString }).ast)
   })
 })

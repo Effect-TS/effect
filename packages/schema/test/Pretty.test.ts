@@ -17,7 +17,7 @@ describe("Pretty", () => {
 
   it("make(S.encodedSchema(schema))", () => {
     const schema = S.NumberFromString
-    const pretty = Pretty.make(S.encodedSchema(schema))
+    const pretty = Pretty.make(S.EncodedSchema(schema))
     expect(pretty("a")).toEqual(`"a"`)
   })
 
@@ -271,7 +271,7 @@ describe("Pretty", () => {
     })
 
     it("optional element", () => {
-      const schema = S.Tuple(S.OptionalElement(S.Number))
+      const schema = S.Tuple(S.optionalElement(S.Number))
       const pretty = Pretty.make(schema)
       expect(pretty([])).toEqual(`[]`)
       expect(pretty([1])).toEqual(`[1]`)
@@ -280,7 +280,7 @@ describe("Pretty", () => {
     })
 
     it("optional element with undefined", () => {
-      const schema = S.Tuple(S.OptionalElement(S.Union(S.Number, S.Undefined)))
+      const schema = S.Tuple(S.optionalElement(S.Union(S.Number, S.Undefined)))
       const pretty = Pretty.make(schema)
       expect(pretty([])).toEqual(`[]`)
       expect(pretty([1])).toEqual(`[1]`)
@@ -302,7 +302,7 @@ describe("Pretty", () => {
     })
 
     it("optional elements", () => {
-      const schema = S.Tuple(S.OptionalElement(S.String), S.OptionalElement(S.Number))
+      const schema = S.Tuple(S.optionalElement(S.String), S.optionalElement(S.Number))
       const pretty = Pretty.make(schema)
       expect(pretty([])).toEqual(`[]`)
       expect(pretty(["a"])).toEqual(`["a"]`)

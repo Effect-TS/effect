@@ -135,10 +135,10 @@ S.Tuple([aContext], bContext)
 // ---------------------------------------------
 
 // $ExpectType Schema<readonly [string, number?], readonly [string, number?], "aContext" | "bContext">
-S.asSchema(S.Tuple(aContext, S.OptionalElement(bContext)))
+S.asSchema(S.Tuple(aContext, S.optionalElement(bContext)))
 
 // $ExpectType Tuple<[aContext, OptionalElement<bContext>]>
-S.Tuple(aContext, S.OptionalElement(bContext))
+S.Tuple(aContext, S.optionalElement(bContext))
 
 // ---------------------------------------------
 // Array
@@ -192,18 +192,18 @@ S.asSchema(S.Struct({ a: aContext, b: bContext }))
 S.Struct({ a: aContext, b: bContext })
 
 // ---------------------------------------------
-// pick
+// Pick
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; }, { readonly a: string; }, "aContext" | "bContext">
-S.Struct({ a: aContext, b: bContext }).pipe(S.pick("a"))
+S.Struct({ a: aContext, b: bContext }).pipe(S.Pick("a"))
 
 // ---------------------------------------------
-// omit
+// Omit
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; }, { readonly a: string; }, "aContext" | "bContext">
-S.Struct({ a: aContext, b: bContext }).pipe(S.omit("b"))
+S.Struct({ a: aContext, b: bContext }).pipe(S.Omit("b"))
 
 // ---------------------------------------------
 // brand
@@ -213,28 +213,28 @@ S.Struct({ a: aContext, b: bContext }).pipe(S.omit("b"))
 aContext.pipe(S.brand("a"))
 
 // ---------------------------------------------
-// partial
+// Partial
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b?: number; }, "aContext" | "bContext">
-S.partial(S.Struct({ a: aContext, b: bContext }), { exact: true })
+S.Partial(S.Struct({ a: aContext, b: bContext }), { exact: true })
 
 // ---------------------------------------------
-// required
+// Required
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }, "aContext" | "bContext">
-S.required(S.partial(S.Struct({ a: aContext, b: bContext }), { exact: true }))
+S.Required(S.Partial(S.Struct({ a: aContext, b: bContext }), { exact: true }))
 
 // ---------------------------------------------
-// mutable
+// Mutable
 // ---------------------------------------------
 
 // $ExpectType Schema<{ a: string; b: number; }, { a: string; b: number; }, "aContext" | "bContext">
-S.asSchema(S.mutable(S.Struct({ a: aContext, b: bContext })))
+S.asSchema(S.Mutable(S.Struct({ a: aContext, b: bContext })))
 
-// $ExpectType mutable<Struct<{ a: aContext; b: bContext; }>>
-S.mutable(S.Struct({ a: aContext, b: bContext }))
+// $ExpectType Mutable<Struct<{ a: aContext; b: bContext; }>>
+S.Mutable(S.Struct({ a: aContext, b: bContext }))
 
 // ---------------------------------------------
 // record

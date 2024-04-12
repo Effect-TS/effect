@@ -6,14 +6,14 @@ import { describe, expect, it } from "vitest"
 describe("Schema > keyof", () => {
   it("should unify string literals with string", () => {
     const schema = S.Struct({ a: S.String }, S.Record(S.String, S.String))
-    const keyof = S.Keyof(schema)
+    const keyof = S.KeyOf(schema)
     expect(keyof.ast).toEqual(S.String.ast)
   })
 
   it("should unify symbol literals with symbol", () => {
     const a = Symbol.for("@effect/schema/test/a")
     const schema = S.Struct({ [a]: S.String }, S.Record(S.SymbolFromSelf, S.String))
-    const keyof = S.Keyof(schema)
+    const keyof = S.KeyOf(schema)
     expect(keyof.ast).toEqual(S.SymbolFromSelf.ast)
   })
 
@@ -24,7 +24,7 @@ describe("Schema > keyof", () => {
         b: S.Number
       })
       // type K = keyof S.Schema.Type<typeof schema> // "a" | "b"
-      const keyOf = S.Keyof(schema)
+      const keyOf = S.KeyOf(schema)
       const is = P.is(keyOf)
       expect(is("a")).toEqual(true)
       expect(is("b")).toEqual(true)
@@ -38,7 +38,7 @@ describe("Schema > keyof", () => {
         [a]: S.String,
         [b]: S.Number
       })
-      const keyOf = S.Keyof(schema)
+      const keyOf = S.KeyOf(schema)
       const is = P.is(keyOf)
       expect(is(a)).toEqual(true)
       expect(is(b)).toEqual(true)
@@ -112,7 +112,7 @@ describe("Schema > keyof", () => {
   })
 
   it("should throw on unsupported schemas", () => {
-    expect(() => S.Keyof(S.Option(S.String))).toThrow(
+    expect(() => S.KeyOf(S.Option(S.String))).toThrow(
       new Error("KeyOf: unsupported schema (Option<string>)")
     )
   })
