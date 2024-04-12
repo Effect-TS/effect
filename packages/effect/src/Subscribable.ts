@@ -108,7 +108,7 @@ export const fromStream = <A, E, R>(
   stream: Stream.Stream<A, E, R>,
   defaultValue: A
 ) =>
-  unwrap(
+  
     Effect.gen(function*(_) {
       const ref = yield* _(Ref.make(defaultValue))
 
@@ -122,4 +122,3 @@ export const fromStream = <A, E, R>(
         changes: stream
       })
     })
-  )
