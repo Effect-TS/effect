@@ -39,6 +39,7 @@ import * as arbitrary_ from "./Arbitrary.js"
 import type { ParseOptions } from "./AST.js"
 import * as AST from "./AST.js"
 import * as equivalence_ from "./Equivalence.js"
+import * as errors_ from "./internal/errors.js"
 import * as filters_ from "./internal/filters.js"
 import * as serializable_ from "./internal/serializable.js"
 import * as util_ from "./internal/util.js"
@@ -698,7 +699,7 @@ const getTemplateLiterals = (
     case "Union":
       return ReadonlyArray.flatMap(ast.types, getTemplateLiterals)
     default:
-      throw new Error(`templateLiteral: unsupported template literal span (${ast})`)
+      throw new Error(`unsupported template literal span (${ast})`)
   }
 }
 
@@ -2415,7 +2416,7 @@ export interface mutable<S extends Schema.Any> extends
 export const mutable = <S extends Schema.Any>(schema: S): mutable<S> => make(AST.mutable(schema.ast))
 
 const getExtendErrorMessage = (x: AST.AST, y: AST.AST, path: ReadonlyArray<string>) =>
-  `cannot extend \`${x}\` with \`${y}\` (path [${path?.join(", ")}])`
+  errors_.getAPIErrorMessage("Extend", `cannot extend \`${x}\` with \`${y}\` (path [${path?.join(", ")}])`)
 
 const intersectTypeLiterals = (x: AST.AST, y: AST.AST, path: ReadonlyArray<string>): AST.TypeLiteral => {
   if (AST.isTypeLiteral(x) && AST.isTypeLiteral(y)) {
@@ -6458,7 +6459,7 @@ const extendFields = (a: Struct.Fields, b: Struct.Fields): Struct.Fields => {
   const out = { ...a }
   for (const name of util_.ownKeys(b)) {
     if (name in a) {
-      throw new Error(AST.getDuplicatePropertySignatureErrorMessage(name))
+      throw new Error(errors_.getDuplicatePropertySignatureErrorMessage(name))
     }
     out[name] = b[name]
   }

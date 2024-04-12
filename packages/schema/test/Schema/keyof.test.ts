@@ -113,7 +113,7 @@ describe("Schema > keyof", () => {
 
   it("should throw on unsupported schemas", () => {
     expect(() => S.Keyof(S.Option(S.String))).toThrow(
-      new Error("keyof: unsupported schema (Option<string>)")
+      new Error("KeyOf: unsupported schema (Option<string>)")
     )
   })
 })

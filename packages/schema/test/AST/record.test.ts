@@ -10,13 +10,13 @@ describe("AST > record", () => {
 
   it("should throw on unsupported keys", () => {
     expect(() => AST.record(AST.undefinedKeyword, AST.numberKeyword)).toThrow(
-      new Error("createRecord: unsupported key schema (undefined)")
+      new Error("Record: unsupported key schema (undefined)")
     )
   })
 
   it("should throw on unsupported literals", () => {
     expect(() => AST.record(new AST.Literal(true), AST.numberKeyword)).toThrow(
-      new Error("createRecord: unsupported literal (true)")
+      new Error("Record: unsupported literal (true)")
     )
   })
 })

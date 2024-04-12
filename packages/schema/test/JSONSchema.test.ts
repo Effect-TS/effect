@@ -743,7 +743,7 @@ describe("JSONSchema", () => {
     it("should raise an error if there is a property named with a symbol", () => {
       const a = Symbol.for("@effect/schema/test/a")
       expect(() => JSONSchema.make(S.Struct({ [a]: S.String }))).toThrow(
-        new Error("Cannot encode Symbol(@effect/schema/test/a) key to JSON Schema")
+        new Error("cannot encode Symbol(@effect/schema/test/a) key to JSON Schema")
       )
     })
 

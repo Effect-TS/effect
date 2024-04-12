@@ -12,6 +12,7 @@ import * as Order from "effect/Order"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import type { Concurrency } from "effect/Types"
+import * as errors_ from "./internal/errors.js"
 import * as util_ from "./internal/util.js"
 import type { ParseIssue } from "./ParseResult.js"
 
@@ -1092,7 +1093,7 @@ export class TupleType implements Annotated {
       }
     }
     if (hasIllegalRequiredElement || (hasOptionalElement && rest.length > 1)) {
-      throw new Error("A required element cannot follow an optional element. ts(1257)")
+      throw new Error(errors_.getRequiredElementFollowinAnOptionalElementErrorMessage)
     }
   }
   /**
@@ -1211,9 +1212,7 @@ export class IndexSignature {
     if (isParameter(parameter)) {
       this.parameter = parameter
     } else {
-      throw new Error(
-        "An index signature parameter type must be `string`, `symbol`, a template literal type or a refinement of the previous types"
-      )
+      throw new Error(errors_.getIndexSignatureParameterErrorMessage)
     }
   }
   /**
@@ -1227,13 +1226,6 @@ export class IndexSignature {
     }
   }
 }
-
-/** @internal */
-export const getDuplicatePropertySignatureErrorMessage = (name: PropertyKey): string =>
-  `Duplicate property signature ${util_.formatUnknown(name)}`
-
-const getDuplicateIndexSignatureErrorMessage = (name: string): string =>
-  `Duplicate index signature for type \`${name}\``
 
 /**
  * @category model
@@ -1262,7 +1254,7 @@ export class TypeLiteral implements Annotated {
     for (let i = 0; i < propertySignatures.length; i++) {
       const name = propertySignatures[i].name
       if (Object.prototype.hasOwnProperty.call(keys, name)) {
-        throw new Error(getDuplicatePropertySignatureErrorMessage(name))
+        throw new Error(errors_.getDuplicatePropertySignatureErrorMessage(name))
       }
       keys[name] = null
     }
@@ -1275,12 +1267,12 @@ export class TypeLiteral implements Annotated {
       const parameter = getParameterBase(indexSignatures[i].parameter)
       if (isStringKeyword(parameter)) {
         if (parameters.string) {
-          throw new Error(getDuplicateIndexSignatureErrorMessage("string"))
+          throw new Error(errors_.getDuplicateIndexSignatureErrorMessage("string"))
         }
         parameters.string = true
       } else if (isSymbolKeyword(parameter)) {
         if (parameters.symbol) {
-          throw new Error(getDuplicateIndexSignatureErrorMessage("symbol"))
+          throw new Error(errors_.getDuplicateIndexSignatureErrorMessage("symbol"))
         }
         parameters.symbol = true
       }
@@ -1770,9 +1762,6 @@ export class PropertySignatureTransformation {
   ) {}
 }
 
-const getDuplicatePropertySignatureTransformationErrorMessage = (name: PropertyKey): string =>
-  `Duplicate property signature transformation ${util_.formatUnknown(name)}`
-
 /**
  * @category model
  * @since 1.0.0
@@ -1793,12 +1782,12 @@ export class TypeLiteralTransformation {
     for (const pst of propertySignatureTransformations) {
       const from = pst.from
       if (fromKeys[from]) {
-        throw new Error(getDuplicatePropertySignatureTransformationErrorMessage(from))
+        throw new Error(errors_.getDuplicatePropertySignatureTransformationErrorMessage(from))
       }
       fromKeys[from] = true
       const to = pst.to
       if (toKeys[to]) {
-        throw new Error(getDuplicatePropertySignatureTransformationErrorMessage(to))
+        throw new Error(errors_.getDuplicatePropertySignatureTransformationErrorMessage(to))
       }
       toKeys[to] = true
     }
@@ -1908,7 +1897,7 @@ export const getNumberIndexedAccess = (ast: AST): AST => {
     case "Suspend":
       return getNumberIndexedAccess(ast.f())
   }
-  throw new Error(`getNumberIndexedAccess: unsupported schema (${ast})`)
+  throw new Error(errors_.getAPIErrorMessage("NumberIndexedAccess", `unsupported schema (${ast})`))
 }
 
 /** @internal */
@@ -2010,7 +1999,9 @@ export const record = (key: AST, value: AST): {
         if (Predicate.isString(key.literal) || Predicate.isNumber(key.literal)) {
           propertySignatures.push(new PropertySignature(key.literal, value, false, true))
         } else {
-          throw new Error(`createRecord: unsupported literal (${util_.formatUnknown(key.literal)})`)
+          throw new Error(
+            errors_.getAPIErrorMessage("Record", `unsupported literal (${util_.formatUnknown(key.literal)})`)
+          )
         }
         break
       case "UniqueSymbol":
@@ -2020,7 +2011,7 @@ export const record = (key: AST, value: AST): {
         key.types.forEach(go)
         break
       default:
-        throw new Error(`createRecord: unsupported key schema (${key})`)
+        throw new Error(errors_.getAPIErrorMessage("Record", `unsupported key schema (${key})`))
     }
   }
   go(key)
@@ -2057,7 +2048,7 @@ export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral | 
         if (Option.isSome(annotation)) {
           return pick(annotation.value, keys)
         }
-        throw new Error("cannot handle this kind of transformation")
+        throw new Error(errors_.getAPIErrorMessage("Pick", "cannot handle this kind of transformation"))
       }
     }
   }
@@ -2104,11 +2095,11 @@ export const partial = (ast: AST, options?: { readonly exact: true }): AST => {
     case "Suspend":
       return new Suspend(() => partial(ast.f(), options))
     case "Declaration":
-      throw new Error("`partial` cannot handle declarations")
+      throw new Error(errors_.getAPIErrorMessage("Partial", "cannot handle declarations"))
     case "Refinement":
-      throw new Error("`partial` cannot handle refinements")
+      throw new Error(errors_.getAPIErrorMessage("Partial", "cannot handle refinements"))
     case "Transformation":
-      throw new Error("`partial` cannot handle transformations")
+      throw new Error(errors_.getAPIErrorMessage("Partial", "cannot handle transformations"))
   }
   return ast
 }
@@ -2136,11 +2127,11 @@ export const required = (ast: AST): AST => {
     case "Suspend":
       return new Suspend(() => required(ast.f()))
     case "Declaration":
-      throw new Error("`required` cannot handle declarations")
+      throw new Error(errors_.getAPIErrorMessage("Required", "cannot handle declarations"))
     case "Refinement":
-      throw new Error("`required` cannot handle refinements")
+      throw new Error(errors_.getAPIErrorMessage("Required", "cannot handle refinements"))
     case "Transformation":
-      throw new Error("`required` cannot handle transformations")
+      throw new Error(errors_.getAPIErrorMessage("Required", "cannot handle transformations"))
   }
   return ast
 }
@@ -2543,7 +2534,7 @@ const _keyof = (ast: AST): Array<AST> => {
     case "Transformation":
       return _keyof(ast.to)
   }
-  throw new Error(`keyof: unsupported schema (${ast})`)
+  throw new Error(errors_.getAPIErrorMessage("KeyOf", `unsupported schema (${ast})`))
 }
 
 /** @internal */

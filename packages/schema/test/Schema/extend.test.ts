@@ -301,7 +301,7 @@ describe("Schema > extend", () => {
 
   it("errors", () => {
     expect(() => S.String.pipe(S.extend(S.Number))).toThrow(
-      new Error("cannot extend `string` with `number` (path [])")
+      new Error("Extend: cannot extend `string` with `number` (path [])")
     )
     expect(() =>
       S.Record(S.String, S.Number).pipe(
@@ -322,7 +322,7 @@ describe("Schema > extend", () => {
       S.Struct({ a: S.Literal("a") }).pipe(
         S.extend(S.Struct({ a: S.String }))
       )
-    ).toThrow(new Error("cannot extend `\"a\"` with `string` (path [\"a\"])"))
+    ).toThrow(new Error("Extend: cannot extend `\"a\"` with `string` (path [\"a\"])"))
     expect(() =>
       S.Struct({ a: S.Literal("a") }).pipe(
         S.extend(
@@ -332,8 +332,8 @@ describe("Schema > extend", () => {
           )
         )
       )
-    ).toThrow(new Error("cannot extend `\"a\"` with `string` (path [\"a\"])"))
+    ).toThrow(new Error("Extend: cannot extend `\"a\"` with `string` (path [\"a\"])"))
     expect(() => S.extend(S.Struct({ a: S.Struct({ b: S.String }) }), S.Struct({ a: S.Struct({ b: S.Number }) })))
-      .toThrow(new Error("cannot extend `string` with `number` (path [\"a\", \"b\"])"))
+      .toThrow(new Error("Extend: cannot extend `string` with `number` (path [\"a\", \"b\"])"))
   })
 })

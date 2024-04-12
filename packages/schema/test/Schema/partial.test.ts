@@ -202,20 +202,20 @@ describe("Schema > partial", () => {
 
     it("declarations should throw", async () => {
       expect(() => S.partial(S.OptionFromSelf(S.String), { exact: true })).toThrow(
-        new Error("`partial` cannot handle declarations")
+        new Error("Partial: cannot handle declarations")
       )
     })
 
     it("refinements should throw", async () => {
       expect(() => S.partial(S.String.pipe(S.minLength(2)), { exact: true })).toThrow(
-        new Error("`partial` cannot handle refinements")
+        new Error("Partial: cannot handle refinements")
       )
     })
 
     it("transformations should throw", async () => {
       expect(() => S.partial(S.transform(S.String, S.String, { decode: identity, encode: identity }), { exact: true }))
         .toThrow(
-          new Error("`partial` cannot handle transformations")
+          new Error("Partial: cannot handle transformations")
         )
     })
   })

@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 describe("Schema > templateLiteral", () => {
   it("should throw on unsupported template literal spans", () => {
     expect(() => S.TemplateLiteral(S.Boolean)).toThrow(
-      new Error("templateLiteral: unsupported template literal span (boolean)")
+      new Error("unsupported template literal span (boolean)")
     )
   })
 
