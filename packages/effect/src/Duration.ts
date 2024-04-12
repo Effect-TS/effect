@@ -128,7 +128,7 @@ export const decode = (input: DurationInput): Duration => {
       }
     }
   }
-  throw new Error("Invalid duration input")
+  throw new Error("Invalid DurationInput")
 }
 
 /**
