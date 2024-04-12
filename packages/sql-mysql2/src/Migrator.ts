@@ -21,12 +21,12 @@ export * from "@effect/sql/Migrator"
  * @category constructor
  * @since 1.0.0
  */
-export const run: (
-  options: Migrator.MigratorOptions
+export const run: <R>(
+  options: Migrator.MigratorOptions<R>
 ) => Effect.Effect<
   ReadonlyArray<readonly [id: number, name: string]>,
   SqlError | Migrator.MigrationError,
-  Client.MysqlClient | FileSystem | Path | CommandExecutor
+  Client.MysqlClient | R | FileSystem | Path | CommandExecutor
 > = Migrator.make({
   getClient: Client.MysqlClient,
   ensureTable(sql, table) {
@@ -98,7 +98,10 @@ export const run: (
  * @category layers
  * @since 1.0.0
  */
-export const layer = (
-  options: Migrator.MigratorOptions
-): Layer.Layer<never, SqlError | Migrator.MigrationError, Client.MysqlClient | FileSystem | Path | CommandExecutor> =>
-  Layer.effectDiscard(run(options))
+export const layer = <R>(
+  options: Migrator.MigratorOptions<R>
+): Layer.Layer<
+  never,
+  SqlError | Migrator.MigrationError,
+  Client.MysqlClient | FileSystem | Path | CommandExecutor | R
+> => Layer.effectDiscard(run(options))

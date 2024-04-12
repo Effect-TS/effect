@@ -19,7 +19,7 @@ import * as Stream from "effect/Stream"
 import * as Mysql from "mysql2"
 
 /**
- * @category model
+ * @category models
  * @since 1.0.0
  */
 export interface MysqlClient extends Client.Client {
@@ -27,13 +27,13 @@ export interface MysqlClient extends Client.Client {
 }
 
 /**
- * @category tag
+ * @category tags
  * @since 1.0.0
  */
 export const MysqlClient = Context.GenericTag<MysqlClient>("sqlfx/mysql2/MysqlClient")
 
 /**
- * @category constructor
+ * @category models
  * @since 1.0.0
  */
 export interface MysqlClientConfig {
@@ -60,7 +60,7 @@ export interface MysqlClientConfig {
 const escape = Statement.defaultEscape("`")
 
 /**
- * @category constructor
+ * @category constructors
  * @since 1.0.0
  */
 export const make = (
@@ -187,7 +187,7 @@ export const layer: (
 ) => Layer.scoped(MysqlClient, Effect.flatMap(Config.unwrap(config), make))
 
 /**
- * @category constructor
+ * @category compiler
  * @since 1.0.0
  */
 export const makeCompiler = (transform?: (_: string) => string) =>

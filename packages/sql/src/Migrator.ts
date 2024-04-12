@@ -110,7 +110,7 @@ export const make = <R extends Client, RD, RE, RL, R2 = never>({
     const latestMigration = Effect.map(
       sql<{ migration_id: number; name: string; created_at: Date }>`SELECT migration_id, name, created_at FROM ${
         sql(table)
-      } ORDER BY migration_id DESC LIMIT 1`.withoutTransform,
+      } ORDER BY migration_id DESC`.withoutTransform,
       (_) =>
         Option.map(
           Option.fromNullable(_[0] as any),

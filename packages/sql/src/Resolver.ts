@@ -124,19 +124,19 @@ const makeResolver = <T extends string, A, E, I, II, RI, R>(
               span.attribute("request.input", input)
               const currentContext = fiber.getFiberRef(FiberRef.currentContext)
               const connection = currentContext.unsafeMap.get(
-                internalClient.TransactionConnection.key
+                internalClient.default.key
               )
               let toProvide: Context.Context<R> | undefined = context
               if (connection !== undefined) {
                 if (toProvide === undefined) {
                   toProvide = Context.make(
-                    internalClient.TransactionConnection,
+                    internalClient.default,
                     connection
                   ) as Context.Context<R>
                 } else {
                   toProvide = Context.add(
                     toProvide,
-                    internalClient.TransactionConnection,
+                    internalClient.default,
                     connection
                   )
                 }

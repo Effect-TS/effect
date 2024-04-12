@@ -10,10 +10,24 @@ import * as internal from "./internal/client.js"
 import type { Compiler, Constructor } from "./Statement.js"
 
 /**
- * @category model
+ * @category type ids
+ * @since 1.0.0
+ */
+export const TypeId: unique symbol = internal.TypeId
+
+/**
+ * @category type ids
+ * @since 1.0.0
+ */
+export type TypeId = typeof TypeId
+
+/**
+ * @category models
  * @since 1.0.0
  */
 export interface Client extends Constructor {
+  readonly [TypeId]: TypeId
+
   /**
    * Copy of the client for safeql etc.
    */
@@ -30,6 +44,7 @@ export interface Client extends Constructor {
 }
 
 /**
+ * @category models
  * @since 1.0.0
  */
 export namespace Client {
@@ -50,7 +65,7 @@ export namespace Client {
 }
 
 /**
- * @category constructor
+ * @category constructors
  * @since 1.0.0
  */
 export const make: ({

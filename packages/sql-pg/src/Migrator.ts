@@ -21,12 +21,12 @@ export * from "@effect/sql/Migrator"
  * @category constructor
  * @since 1.0.0
  */
-export const run: (
-  options: Migrator.MigratorOptions
+export const run: <R>(
+  options: Migrator.MigratorOptions<R>
 ) => Effect.Effect<
   ReadonlyArray<readonly [id: number, name: string]>,
   SqlError | Migrator.MigrationError,
-  Client.PgClient | FileSystem | Path | CommandExecutor
+  Client.PgClient | FileSystem | Path | CommandExecutor | R
 > = Migrator.make({
   getClient: Client.PgClient,
   ensureTable(sql, table) {

@@ -10,6 +10,9 @@ import type * as Error from "../Error.js"
 import * as Statement from "../Statement.js"
 
 /** @internal */
+export const TypeId: Client.TypeId = Symbol.for("@effect/sql/Client") as Client.TypeId
+
+/** @internal */
 export const TransactionConnection = Context.GenericTag<
   Client.TransactionConnection,
   readonly [conn: Connection.Connection, counter: number]
@@ -76,6 +79,7 @@ export function make({
   const client: Client.Client = Object.assign(
     Statement.make(getConnection, compiler),
     {
+      [TypeId as Client.TypeId]: TypeId as Client.TypeId,
       safe: undefined as any,
       withTransaction,
       reserve: transactionAcquirer
