@@ -52,6 +52,13 @@ describe("Effect", () => {
       )
       assert.deepStrictEqual(result, Either.left("10"))
     }))
+  it.effect("mapAccum", () =>
+    Effect.gen(function*($) {
+      const result = yield* $(
+        Effect.mapAccum([1, 2], "", (prev, cur) => Effect.succeed([prev + cur, cur.toString()]))
+      )
+      assert.deepStrictEqual(result, ["12", ["1", "2"]])
+    }))
   it.effect("tryMap - returns an effect whose success is mapped by the specified side effecting function", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.succeed("123"), Effect.tryMap({ try: parseInt, catch: identity }))

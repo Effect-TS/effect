@@ -1074,8 +1074,9 @@ export const mapAccum: {
     let i = 0
     while (!(next = iterator.next()).done) {
       const index = i++
+      const value = next.value
       result = core.flatMap(result, (state) =>
-        core.map(f(state, next.value, index), ([z, b]) => {
+        core.map(f(state, value, index), ([z, b]) => {
           builder.push(b)
           return z
         }))
