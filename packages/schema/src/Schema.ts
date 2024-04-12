@@ -34,7 +34,7 @@ import * as secret_ from "effect/Secret"
 import * as SortedSet from "effect/SortedSet"
 import * as S from "effect/String"
 import type * as Types from "effect/Types"
-import type { Arbitrary } from "./Arbitrary.js"
+import type { LazyArbitrary } from "./Arbitrary.js"
 import * as arbitrary_ from "./Arbitrary.js"
 import type { ParseOptions } from "./AST.js"
 import * as AST from "./AST.js"
@@ -2935,8 +2935,8 @@ export declare namespace Annotations {
     readonly typeId?: AST.TypeAnnotation | { id: AST.TypeAnnotation; annotation: unknown }
     readonly jsonSchema?: AST.JSONSchemaAnnotation
     readonly arbitrary?: (
-      ...arbitraries: { readonly [K in keyof TypeParameters]: Arbitrary<TypeParameters[K]> }
-    ) => Arbitrary<A>
+      ...arbitraries: { readonly [K in keyof TypeParameters]: LazyArbitrary<TypeParameters[K]> }
+    ) => LazyArbitrary<A>
     readonly pretty?: (
       ...pretties: { readonly [K in keyof TypeParameters]: pretty_.Pretty<TypeParameters[K]> }
     ) => pretty_.Pretty<A>
@@ -3607,7 +3607,7 @@ export const UUID: $string = string.pipe(
     identifier: "UUID",
     title: "UUID",
     description: "a Universally Unique Identifier",
-    arbitrary: (): Arbitrary<string> => (fc) => fc.uuid()
+    arbitrary: (): LazyArbitrary<string> => (fc) => fc.uuid()
   })
 )
 
@@ -3634,7 +3634,7 @@ export const ULID: $string = string.pipe(
     identifier: "ULID",
     title: "ULID",
     description: "a Universally Unique Lexicographically Sortable Identifier",
-    arbitrary: (): Arbitrary<string> => (fc) => fc.ulid()
+    arbitrary: (): LazyArbitrary<string> => (fc) => fc.ulid()
   })
 )
 
@@ -4401,7 +4401,7 @@ export const SecretFromSelf: SecretFromSelf = declare(
   {
     identifier: "SecretFromSelf",
     pretty: (): pretty_.Pretty<secret_.Secret> => (secret) => String(secret),
-    arbitrary: (): Arbitrary<secret_.Secret> => (fc) => fc.string().map((_) => secret_.fromString(_))
+    arbitrary: (): LazyArbitrary<secret_.Secret> => (fc) => fc.string().map((_) => secret_.fromString(_))
   }
 )
 
@@ -4438,7 +4438,7 @@ export const DurationFromSelf: DurationFromSelf = declare(
   {
     identifier: "DurationFromSelf",
     pretty: (): pretty_.Pretty<duration_.Duration> => String,
-    arbitrary: (): Arbitrary<duration_.Duration> => (fc) =>
+    arbitrary: (): LazyArbitrary<duration_.Duration> => (fc) =>
       fc.oneof(
         fc.constant(duration_.infinity),
         fc.bigUint().map((_) => duration_.nanos(_)),
@@ -4679,7 +4679,7 @@ export const Uint8ArrayFromSelf: Schema<Uint8Array> = declare(
   {
     identifier: "Uint8ArrayFromSelf",
     pretty: (): pretty_.Pretty<Uint8Array> => (u8arr) => `new Uint8Array(${JSON.stringify(Array.from(u8arr))})`,
-    arbitrary: (): Arbitrary<Uint8Array> => (fc) => fc.uint8Array(),
+    arbitrary: (): LazyArbitrary<Uint8Array> => (fc) => fc.uint8Array(),
     equivalence: (): Equivalence.Equivalence<Uint8Array> => ReadonlyArray.getEquivalence(Equal.equals) as any
   }
 )
@@ -4934,7 +4934,7 @@ export const DateFromSelf: DateFromSelf = declare(
     identifier: "DateFromSelf",
     description: "a potentially invalid Date instance",
     pretty: (): pretty_.Pretty<Date> => (date) => `new Date(${JSON.stringify(date)})`,
-    arbitrary: (): Arbitrary<Date> => (fc) => fc.date({ noInvalidDate: false }),
+    arbitrary: (): LazyArbitrary<Date> => (fc) => fc.date({ noInvalidDate: false }),
     equivalence: () => Equivalence.Date
   }
 )
@@ -5030,8 +5030,8 @@ const optionEncoded = <A, I, R>(value: Schema<A, I, R>) =>
 const optionDecode = <A>(input: OptionEncoded<A>): Option.Option<A> =>
   input._tag === "None" ? Option.none() : Option.some(input.value)
 
-const optionArbitrary = <A>(value: Arbitrary<A>): Arbitrary<Option.Option<A>> => {
-  const arb = arbitrary_.make(optionEncoded(schemaFromArbitrary(value)))
+const optionArbitrary = <A>(value: LazyArbitrary<A>): LazyArbitrary<Option.Option<A>> => {
+  const arb = arbitrary_.makeLazy(optionEncoded(schemaFromArbitrary(value)))
   return (fc) => arb(fc).map(optionDecode)
 }
 
@@ -5256,10 +5256,10 @@ const eitherDecode = <R, L>(input: EitherEncoded<R, L>): Either.Either<R, L> =>
   input._tag === "Left" ? Either.left(input.left) : Either.right(input.right)
 
 const eitherArbitrary = <R, L>(
-  right: Arbitrary<R>,
-  left: Arbitrary<L>
-): Arbitrary<Either.Either<R, L>> => {
-  const arb = arbitrary_.make(eitherEncoded(schemaFromArbitrary(right), schemaFromArbitrary(left)))
+  right: LazyArbitrary<R>,
+  left: LazyArbitrary<L>
+): LazyArbitrary<Either.Either<R, L>> => {
+  const arb = arbitrary_.makeLazy(eitherEncoded(schemaFromArbitrary(right), schemaFromArbitrary(left)))
   return (fc) => arb(fc).map(eitherDecode)
 }
 
@@ -5403,9 +5403,9 @@ export const eitherFromUnion = <R extends Schema.Any, L extends Schema.Any>({ le
 }
 
 const mapArbitrary = <K, V>(
-  key: Arbitrary<K>,
-  value: Arbitrary<V>
-): Arbitrary<Map<K, V>> =>
+  key: LazyArbitrary<K>,
+  value: LazyArbitrary<V>
+): LazyArbitrary<Map<K, V>> =>
 (fc) => fc.array(fc.tuple(key(fc), value(fc))).map((as) => new Map(as))
 
 const readonlyMapPretty = <K, V>(
@@ -5560,7 +5560,7 @@ export const map = <K extends Schema.Any, V extends Schema.Any>({ key, value }: 
   )
 }
 
-const setArbitrary = <A>(item: Arbitrary<A>): Arbitrary<ReadonlySet<A>> => (fc) =>
+const setArbitrary = <A>(item: LazyArbitrary<A>): LazyArbitrary<ReadonlySet<A>> => (fc) =>
   fc.array(item(fc)).map((as) => new Set(as))
 
 const readonlySetPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<ReadonlySet<A>> => (set) =>
@@ -5691,7 +5691,7 @@ export const set = <Value extends Schema.Any>(value: Value): set<Value> => {
 const bigDecimalPretty = (): pretty_.Pretty<bigDecimal_.BigDecimal> => (val) =>
   `BigDecimal(${bigDecimal_.format(bigDecimal_.normalize(val))})`
 
-const bigDecimalArbitrary = (): Arbitrary<bigDecimal_.BigDecimal> => (fc) =>
+const bigDecimalArbitrary = (): LazyArbitrary<bigDecimal_.BigDecimal> => (fc) =>
   fc.tuple(fc.bigInt(), fc.integer()).map(([value, scale]) => bigDecimal_.make(value, scale))
 
 /**
@@ -6034,7 +6034,7 @@ export const clampBigDecimal =
       { strict: false, decode: (self) => bigDecimal_.clamp(self, { minimum, maximum }), encode: identity }
     )
 
-const chunkArbitrary = <A>(item: Arbitrary<A>): Arbitrary<Chunk.Chunk<A>> => (fc) =>
+const chunkArbitrary = <A>(item: LazyArbitrary<A>): LazyArbitrary<Chunk.Chunk<A>> => (fc) =>
   fc.array(item(fc)).map(Chunk.fromIterable)
 
 const chunkPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<Chunk.Chunk<A>> => (c) =>
@@ -6113,8 +6113,8 @@ const toData = <A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(a:
   Array.isArray(a) ? Data.array(a) : Data.struct(a)
 
 const dataArbitrary = <A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(
-  item: Arbitrary<A>
-): Arbitrary<A> =>
+  item: LazyArbitrary<A>
+): LazyArbitrary<A> =>
 (fc) => item(fc).map(toData)
 
 const dataPretty = <A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(
@@ -6500,7 +6500,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
       const fallbackInstanceOf = (u: unknown) => Predicate.hasProperty(u, classSymbol) && guard(u)
       const encode = ParseResult.encodeUnknown(toSchema)
       const pretty = pretty_.make(toSchema)
-      const arb = arbitrary_.make(toSchema)
+      const arb = arbitrary_.makeLazy(toSchema)
       const equivalence = equivalence_.make(toSchema)
       const declaration: Schema.Any = declare(
         [],
@@ -6641,9 +6641,9 @@ const FiberIdEncoded: Schema<FiberIdEncoded> = union(
   FiberIdCompositeEncoded
 ).annotations({ identifier: "FiberIdEncoded" })
 
-const fiberIdFromArbitrary = arbitrary_.make(FiberIdEncoded)
+const fiberIdFromArbitrary = arbitrary_.makeLazy(FiberIdEncoded)
 
-const fiberIdArbitrary: Arbitrary<fiberId_.FiberId> = (fc) => fiberIdFromArbitrary(fc).map(fiberIdDecode)
+const fiberIdArbitrary: LazyArbitrary<fiberId_.FiberId> = (fc) => fiberIdFromArbitrary(fc).map(fiberIdDecode)
 
 const fiberIdPretty: pretty_.Pretty<fiberId_.FiberId> = (fiberId) => {
   switch (fiberId._tag) {
@@ -6800,10 +6800,10 @@ const causeEncoded = <E, EI, R1, R2>(
 }
 
 const causeArbitrary = <E>(
-  error: Arbitrary<E>,
-  defect: Arbitrary<unknown>
-): Arbitrary<Cause.Cause<E>> => {
-  const arb = arbitrary_.make(causeEncoded(schemaFromArbitrary(error), schemaFromArbitrary(defect)))
+  error: LazyArbitrary<E>,
+  defect: LazyArbitrary<unknown>
+): LazyArbitrary<Cause.Cause<E>> => {
+  const arb = arbitrary_.makeLazy(causeEncoded(schemaFromArbitrary(error), schemaFromArbitrary(defect)))
   return (fc) => arb(fc).map(causeDecode)
 }
 
@@ -7025,11 +7025,11 @@ const exitDecode = <A, E>(input: ExitEncoded<A, E>): Exit.Exit<A, E> => {
 }
 
 const exitArbitrary = <A, E>(
-  value: Arbitrary<A>,
-  error: Arbitrary<E>,
-  defect: Arbitrary<unknown>
-): Arbitrary<Exit.Exit<A, E>> => {
-  const arb = arbitrary_.make(
+  value: LazyArbitrary<A>,
+  error: LazyArbitrary<E>,
+  defect: LazyArbitrary<unknown>
+): LazyArbitrary<Exit.Exit<A, E>> => {
+  const arb = arbitrary_.makeLazy(
     exitEncoded(schemaFromArbitrary(value), schemaFromArbitrary(error), schemaFromArbitrary(defect))
   )
   return (fc) => arb(fc).map(exitDecode)
@@ -7137,7 +7137,7 @@ export const exit = <A extends Schema.All, E extends Schema.All, DR = never>(
   )
 }
 
-const hashSetArbitrary = <A>(item: Arbitrary<A>): Arbitrary<HashSet.HashSet<A>> => (fc) =>
+const hashSetArbitrary = <A>(item: LazyArbitrary<A>): LazyArbitrary<HashSet.HashSet<A>> => (fc) =>
   fc.array(item(fc)).map((as) => HashSet.fromIterable(as))
 
 const hashSetPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<HashSet.HashSet<A>> => (set) =>
@@ -7223,9 +7223,9 @@ export const hashSet = <Value extends Schema.Any>(value: Value): hashSet<Value> 
 }
 
 const hashMapArbitrary = <K, V>(
-  key: Arbitrary<K>,
-  value: Arbitrary<V>
-): Arbitrary<HashMap.HashMap<K, V>> =>
+  key: LazyArbitrary<K>,
+  value: LazyArbitrary<V>
+): LazyArbitrary<HashMap.HashMap<K, V>> =>
 (fc) => fc.array(fc.tuple(key(fc), value(fc))).map((as) => HashMap.fromIterable(as))
 
 const hashMapPretty = <K, V>(
@@ -7323,7 +7323,7 @@ export const hashMap = <K extends Schema.Any, V extends Schema.Any>({ key, value
   )
 }
 
-const listArbitrary = <A>(item: Arbitrary<A>): Arbitrary<List.List<A>> => (fc) =>
+const listArbitrary = <A>(item: LazyArbitrary<A>): LazyArbitrary<List.List<A>> => (fc) =>
   fc.array(item(fc)).map((as) => List.fromIterable(as))
 
 const listPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<List.List<A>> => (set) =>
@@ -7408,8 +7408,9 @@ export const list = <Value extends Schema.Any>(value: Value): list<Value> => {
   )
 }
 
-const sortedSetArbitrary = <A>(item: Arbitrary<A>, ord: Order.Order<A>): Arbitrary<SortedSet.SortedSet<A>> => (fc) =>
-  fc.array(item(fc)).map((as) => SortedSet.fromIterable(as, ord))
+const sortedSetArbitrary =
+  <A>(item: LazyArbitrary<A>, ord: Order.Order<A>): LazyArbitrary<SortedSet.SortedSet<A>> => (fc) =>
+    fc.array(item(fc)).map((as) => SortedSet.fromIterable(as, ord))
 
 const sortedSetPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<SortedSet.SortedSet<A>> => (set) =>
   `new SortedSet([${Array.from(SortedSet.values(set)).map((a) => item(a)).join(", ")}])`
@@ -7491,7 +7492,7 @@ export const sortedSet = <Value extends Schema.Any>(
   )
 }
 
-const schemaFromArbitrary = <A>(value: Arbitrary<A>): Schema<A> =>
+const schemaFromArbitrary = <A>(value: LazyArbitrary<A>): Schema<A> =>
   suspend<A, A, never>(() => any).annotations({
     [arbitrary_.ArbitraryHookId]: () => value
   })

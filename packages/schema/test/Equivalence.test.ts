@@ -19,7 +19,7 @@ export const propertyType = <A, I>(
   schema: S.Schema<A, I>,
   params?: fc.Parameters<[A, ...Array<A>]>
 ) => {
-  const arb = A.make(schema)(fc)
+  const arb = A.makeLazy(schema)(fc)
   // console.log(fc.sample(arb, 10))
   const equivalence = E.make(schema)
 

@@ -6,7 +6,7 @@ import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
-import type * as FastCheck from "./FastCheck.js"
+import * as FastCheck from "./FastCheck.js"
 import * as filters_ from "./internal/filters.js"
 import * as util_ from "./internal/util.js"
 import type * as Schema from "./Schema.js"
@@ -15,7 +15,7 @@ import type * as Schema from "./Schema.js"
  * @category model
  * @since 1.0.0
  */
-export interface Arbitrary<A> {
+export interface LazyArbitrary<A> {
   (fc: typeof FastCheck): FastCheck.Arbitrary<A>
 }
 
@@ -36,8 +36,16 @@ export type ArbitraryHookId = typeof ArbitraryHookId
  * @since 1.0.0
  */
 export const arbitrary =
-  <A>(handler: (...args: ReadonlyArray<Arbitrary<any>>) => Arbitrary<A>) =>
+  <A>(handler: (...args: ReadonlyArray<LazyArbitrary<any>>) => LazyArbitrary<A>) =>
   <I, R>(self: Schema.Schema<A, I, R>): Schema.Schema<A, I, R> => self.annotations({ [ArbitraryHookId]: handler })
+
+/**
+ * Returns a LazyArbitrary for the `A` type of the provided schema.
+ *
+ * @category arbitrary
+ * @since 1.0.0
+ */
+export const makeLazy = <A, I, R>(schema: Schema.Schema<A, I, R>): LazyArbitrary<A> => go(schema.ast, {})
 
 /**
  * Returns a fast-check Arbitrary for the `A` type of the provided schema.
@@ -45,7 +53,7 @@ export const arbitrary =
  * @category arbitrary
  * @since 1.0.0
  */
-export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): Arbitrary<A> => go(schema.ast, {})
+export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): FastCheck.Arbitrary<A> => makeLazy(schema)(FastCheck)
 
 const depthSize = 1
 
@@ -71,7 +79,7 @@ const record = <K extends PropertyKey, V>(
 }
 
 const getHook = AST.getAnnotation<
-  (...args: ReadonlyArray<Arbitrary<any>>) => Arbitrary<any>
+  (...args: ReadonlyArray<LazyArbitrary<any>>) => LazyArbitrary<any>
 >(ArbitraryHookId)
 
 type Options = {
@@ -84,7 +92,7 @@ const getRefinementFromArbitrary = (ast: AST.Refinement, options: Options) => {
   return go(ast.from, constraints ? { ...options, constraints } : options)
 }
 
-const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
+const go = (ast: AST.AST, options: Options): LazyArbitrary<any> => {
   const hook = getHook(ast)
   if (Option.isSome(hook)) {
     switch (ast._tag) {
@@ -169,7 +177,7 @@ const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
       }
     }
     case "TupleType": {
-      const elements: Array<Arbitrary<any>> = []
+      const elements: Array<LazyArbitrary<any>> = []
       let hasOptionals = false
       for (const element of ast.elements) {
         elements.push(go(element.type, options))
