@@ -11,6 +11,7 @@ import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as regexp from "effect/RegExp"
 import type { Concurrency } from "effect/Types"
 import * as util_ from "./internal/util.js"
 import type { ParseIssue } from "./ParseResult.js"
@@ -1834,13 +1835,6 @@ export const annotations = (ast: AST, annotations: Annotations): AST => {
  */
 export const keyof = (ast: AST): AST => Union.unify(_keyof(ast))
 
-const specialCharsRegex = /[.*+?^${}()|[\]\\]/g
-
-const escapeSpecialChars = (s: string): string =>
-  specialCharsRegex.test(s) ?
-    s.replace(specialCharsRegex, "\\$&") // $& means the whole matched string
-    : s
-
 const STRING_KEYWORD_PATTERN = ".*"
 const NUMBER_KEYWORD_PATTERN = "[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?"
 
@@ -1848,7 +1842,7 @@ const NUMBER_KEYWORD_PATTERN = "[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?"
  * @since 1.0.0
  */
 export const getTemplateLiteralRegExp = (ast: TemplateLiteral): RegExp => {
-  let pattern = `^${escapeSpecialChars(ast.head)}`
+  let pattern = `^${regexp.escape(ast.head)}`
 
   for (const span of ast.spans) {
     if (isStringKeyword(span.type)) {
@@ -1856,7 +1850,7 @@ export const getTemplateLiteralRegExp = (ast: TemplateLiteral): RegExp => {
     } else if (isNumberKeyword(span.type)) {
       pattern += NUMBER_KEYWORD_PATTERN
     }
-    pattern += escapeSpecialChars(span.literal)
+    pattern += regexp.escape(span.literal)
   }
 
   pattern += "$"
