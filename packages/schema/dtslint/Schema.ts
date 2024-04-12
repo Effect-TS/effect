@@ -1158,14 +1158,14 @@ const FooterLocaleIDs = S.Literal("footer_title", "footer_sendoff")
 S.TemplateLiteral(S.Union(EmailLocaleIDs, FooterLocaleIDs), S.Literal("_id"))
 
 // ---------------------------------------------
-// attachPropertySignature
+// AttachPropertySignature
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly radius: number; readonly kind: "circle"; }, { readonly radius: number; }, never>
-pipe(S.Struct({ radius: S.Number }), S.attachPropertySignature("kind", "circle"))
+pipe(S.Struct({ radius: S.Number }), S.AttachPropertySignature("kind", "circle"))
 
 // $ExpectType Schema<{ readonly radius: number; readonly kind: "circle"; }, { readonly radius: string; }, never>
-pipe(S.Struct({ radius: S.NumberFromString }), S.attachPropertySignature("kind", "circle"))
+pipe(S.Struct({ radius: S.NumberFromString }), S.AttachPropertySignature("kind", "circle"))
 
 // ---------------------------------------------
 // filter
@@ -1235,48 +1235,48 @@ pipe(
 )
 
 // ---------------------------------------------
-// compose
+// Compose
 // ---------------------------------------------
 
 // A -> B -> C
 
 // $ExpectType Schema<readonly number[], string, never>
-S.compose(S.Split(","), S.Array(S.NumberFromString))
+S.Compose(S.Split(","), S.Array(S.NumberFromString))
 
 // $ExpectType Schema<readonly number[], string, never>
-S.Split(",").pipe(S.compose(S.Array(S.NumberFromString)))
+S.Split(",").pipe(S.Compose(S.Array(S.NumberFromString)))
 
 // decoding (strict: false)
 
 // $ExpectType Schema<number, string | null, never>
-S.compose(S.Union(S.Null, S.String), S.NumberFromString, { strict: false })
+S.Compose(S.Union(S.Null, S.String), S.NumberFromString, { strict: false })
 
 // $ExpectType Schema<number, string | null, never>
-S.Union(S.Null, S.String).pipe(S.compose(S.NumberFromString, { strict: false }))
+S.Union(S.Null, S.String).pipe(S.Compose(S.NumberFromString, { strict: false }))
 
 // decoding (strict: true)
 
 // @ts-expect-error
-S.compose(S.Union(S.Null, S.String), S.NumberFromString)
+S.Compose(S.Union(S.Null, S.String), S.NumberFromString)
 
 // @ts-expect-error
-S.Union(S.Null, S.String).pipe(S.compose(S.NumberFromString))
+S.Union(S.Null, S.String).pipe(S.Compose(S.NumberFromString))
 
 // encoding (strict: false)
 
 // $ExpectType Schema<number | null, string, never>
-S.compose(S.NumberFromString, S.Union(S.Null, S.Number), { strict: false })
+S.Compose(S.NumberFromString, S.Union(S.Null, S.Number), { strict: false })
 
 // $ExpectType Schema<number | null, string, never>
-S.NumberFromString.pipe(S.compose(S.Union(S.Null, S.Number), { strict: false }))
+S.NumberFromString.pipe(S.Compose(S.Union(S.Null, S.Number), { strict: false }))
 
 // encoding (strict: true)
 
 // @ts-expect-error
-S.compose(S.NumberFromString, S.Union(S.Null, S.Number))
+S.Compose(S.NumberFromString, S.Union(S.Null, S.Number))
 
 // @ts-expect-error
-S.NumberFromString.pipe(S.compose(S.Union(S.Null, S.Number)))
+S.NumberFromString.pipe(S.Compose(S.Union(S.Null, S.Number)))
 
 // ---------------------------------------------
 // FromBrand

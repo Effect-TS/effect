@@ -178,14 +178,14 @@ describe("ParseIssue.actual", () => {
   })
 
   it("compose decode", () => {
-    const result = S.decodeEither(S.compose(S.NumberFromString, S.negative()(S.Number)))("1")
+    const result = S.decodeEither(S.Compose(S.NumberFromString, S.negative()(S.Number)))("1")
     if (Either.isRight(result)) throw new Error("Expected failure")
     expect(result.left.error.actual).toEqual("1")
     expect((result.left.error as P.Transformation).error.actual).toEqual(1)
   })
 
   it("compose encode", () => {
-    const result = S.encodeEither(S.compose(S.length(5)(S.String), S.NumberFromString))(1)
+    const result = S.encodeEither(S.Compose(S.length(5)(S.String), S.NumberFromString))(1)
     if (Either.isRight(result)) throw new Error("Expected failure")
     expect(result.left.error.actual).toEqual(1)
     expect((result.left.error as P.Transformation).error.actual).toEqual("1")
@@ -247,7 +247,7 @@ describe("ParseIssue.actual", () => {
     it("Transform (decode)", () => {
       expect(
         P.getLiterals(
-          S.Struct({ radius: S.Number }).pipe(S.attachPropertySignature("kind", "circle")).ast,
+          S.Struct({ radius: S.Number }).pipe(S.AttachPropertySignature("kind", "circle")).ast,
           true
         )
       ).toEqual([])
@@ -256,7 +256,7 @@ describe("ParseIssue.actual", () => {
     it("Transform (encode)", () => {
       expect(
         P.getLiterals(
-          S.Struct({ radius: S.Number }).pipe(S.attachPropertySignature("kind", "circle")).ast,
+          S.Struct({ radius: S.Number }).pipe(S.AttachPropertySignature("kind", "circle")).ast,
           false
         )
       ).toEqual([["kind", new AST.Literal("circle")]])

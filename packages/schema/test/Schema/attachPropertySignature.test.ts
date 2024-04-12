@@ -8,8 +8,8 @@ describe("Schema/attachPropertySignature", () => {
     const Circle = S.Struct({ radius: S.Number })
     const Square = S.Struct({ sideLength: S.Number })
     const schema = S.Union(
-      Circle.pipe(S.attachPropertySignature("kind", "circle")),
-      Square.pipe(S.attachPropertySignature("kind", "square"))
+      Circle.pipe(S.AttachPropertySignature("kind", "circle")),
+      Square.pipe(S.AttachPropertySignature("kind", "square"))
     )
 
     await Util.expectDecodeUnknownSuccess(schema, { radius: 10 }, { kind: "circle", radius: 10 })
@@ -23,8 +23,8 @@ describe("Schema/attachPropertySignature", () => {
     const Square = S.Struct({ sideLength: S.Number })
     const kind = Symbol.for("@effect/schema/test/kind")
     const schema = S.Union(
-      Circle.pipe(S.attachPropertySignature(kind, "circle")),
-      Square.pipe(S.attachPropertySignature(kind, "square"))
+      Circle.pipe(S.AttachPropertySignature(kind, "circle")),
+      Square.pipe(S.AttachPropertySignature(kind, "square"))
     )
 
     await Util.expectDecodeUnknownSuccess(schema, { radius: 10 }, { [kind]: "circle", radius: 10 })
@@ -40,8 +40,8 @@ describe("Schema/attachPropertySignature", () => {
     const circle = Symbol.for("@effect/schema/test/circle")
     const square = Symbol.for("@effect/schema/test/square")
     const schema = S.Union(
-      Circle.pipe(S.attachPropertySignature(kind, circle)),
-      Square.pipe(S.attachPropertySignature(kind, square))
+      Circle.pipe(S.AttachPropertySignature(kind, circle)),
+      Square.pipe(S.AttachPropertySignature(kind, square))
     )
 
     await Util.expectDecodeUnknownSuccess(schema, { radius: 10 }, { [kind]: circle, radius: 10 })
@@ -56,8 +56,8 @@ describe("Schema/attachPropertySignature", () => {
     const circle = Symbol.for("@effect/schema/test/circle")
     const square = Symbol.for("@effect/schema/test/square")
     const schema = S.Union(
-      Circle.pipe(S.attachPropertySignature("kind", circle)),
-      Square.pipe(S.attachPropertySignature("kind", square))
+      Circle.pipe(S.AttachPropertySignature("kind", circle)),
+      Square.pipe(S.AttachPropertySignature("kind", square))
     )
 
     await Util.expectDecodeUnknownSuccess(schema, { radius: 10 }, { kind: circle, radius: 10 })
@@ -68,7 +68,7 @@ describe("Schema/attachPropertySignature", () => {
 
   it("should be compatible with extend", async () => {
     const schema = S.Struct({ a: S.String }).pipe(
-      S.attachPropertySignature("_tag", "b"),
+      S.AttachPropertySignature("_tag", "b"),
       S.extend(S.Struct({ c: S.Number }))
     )
     await Util.expectDecodeUnknownSuccess(schema, { a: "a", c: 1 }, { a: "a", c: 1, _tag: "b" as const })
@@ -87,7 +87,7 @@ describe("Schema/attachPropertySignature", () => {
         encode: ({ _isVisible, ...rest }) => ParseResult.succeed(rest)
       }
     ).pipe(
-      S.attachPropertySignature("_tag", "Circle")
+      S.AttachPropertySignature("_tag", "Circle")
     )
 
     await Util.expectDecodeUnknownSuccess(schema, { radius: 10, _isVisible: true }, {
@@ -108,7 +108,7 @@ describe("Schema/attachPropertySignature", () => {
     const schema1 = S.Struct({
       a: S.String
     }).pipe(
-      S.attachPropertySignature("_tag", "a", { identifier: "AttachedProperty" })
+      S.AttachPropertySignature("_tag", "a", { identifier: "AttachedProperty" })
     )
     await Util.expectEncodeFailure(
       schema1,
@@ -117,7 +117,7 @@ describe("Schema/attachPropertySignature", () => {
 └─ Type side transformation failure
    └─ Expected AttachedProperty, actual null`
     )
-    const schema2 = S.attachPropertySignature(
+    const schema2 = S.AttachPropertySignature(
       S.Struct({
         a: S.String
       }),
@@ -138,7 +138,7 @@ describe("Schema/attachPropertySignature", () => {
     const schema = S.Struct({
       a: S.String
     }).pipe(
-      S.attachPropertySignature("_tag", "a")
+      S.AttachPropertySignature("_tag", "a")
     ).annotations({ identifier: "AttachedProperty" })
     await Util.expectDecodeUnknownFailure(
       schema,

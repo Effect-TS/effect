@@ -421,7 +421,7 @@ const validateInternal = (
       return attempt(value, getTypeNameInternal(self), Schema.decodeUnknown(Schema.NumberFromString))
     }
     case "Integer": {
-      const intFromString = Schema.compose(Schema.NumberFromString, Schema.Int)
+      const intFromString = Schema.Compose(Schema.NumberFromString, Schema.Int)
       return attempt(value, getTypeNameInternal(self), Schema.decodeUnknown(intFromString))
     }
     case "Path": {

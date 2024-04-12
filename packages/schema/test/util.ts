@@ -166,7 +166,7 @@ export const printAST = <A, I, R>(schema: S.Schema<A, I, R>) => {
   console.log("%o", schema.ast)
 }
 
-export const identityTransform = <A>(schema: S.Schema<A>): S.Schema<A> => schema.pipe(S.compose(schema))
+export const identityTransform = <A>(schema: S.Schema<A>): S.Schema<A> => schema.pipe(S.Compose(schema))
 
 export const X2 = S.transform(
   S.String,
@@ -221,7 +221,7 @@ export const sample = <A, I>(schema: S.Schema<A, I>, n: number) => {
   console.log(JSON.stringify(fc.sample(arb, n), null, 2))
 }
 
-export const NumberFromChar = S.Char.pipe(S.compose(S.NumberFromString)).annotations({
+export const NumberFromChar = S.Char.pipe(S.Compose(S.NumberFromString)).annotations({
   identifier: "NumberFromChar"
 })
 

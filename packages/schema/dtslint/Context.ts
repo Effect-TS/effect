@@ -257,11 +257,11 @@ S.asSchema(S.Struct({ a: aContext, b: bContext }).pipe(S.extend(S.Struct({ c: cC
 S.Struct({ a: aContext, b: bContext }).pipe(S.extend(S.Struct({ c: cContext })))
 
 // ---------------------------------------------
-// compose
+// Compose
 // ---------------------------------------------
 
 // $ExpectType Schema<number, string, "aContext" | "bContext">
-aContext.pipe(S.compose(bContext, { strict: false }))
+aContext.pipe(S.Compose(bContext, { strict: false }))
 
 // ---------------------------------------------
 // Suspend
@@ -304,7 +304,7 @@ S.transform(aContext, bContext, { decode: () => 1, encode: () => "" })
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; readonly _tag: "A"; }, { readonly a: string; }, "aContext">
-S.Struct({ a: aContext }).pipe(S.attachPropertySignature("_tag", "A"))
+S.Struct({ a: aContext }).pipe(S.AttachPropertySignature("_tag", "A"))
 
 // ---------------------------------------------
 // annotations (method)

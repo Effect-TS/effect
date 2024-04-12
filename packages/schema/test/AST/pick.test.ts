@@ -11,12 +11,12 @@ describe("AST > pick", () => {
 
   describe("transformation", () => {
     it("ComposeTransformation", async () => {
-      const schema = S.compose(
+      const schema = S.Compose(
         S.Struct({ a: S.NumberFromString, b: S.Number }),
         S.Struct({ a: S.Number, b: S.Number })
       )
       const ast = schema.pipe(S.Pick("a")).ast
-      expect(ast).toStrictEqual(S.compose(S.Struct({ a: S.NumberFromString }), S.Struct({ a: S.Number })).ast)
+      expect(ast).toStrictEqual(S.Compose(S.Struct({ a: S.NumberFromString }), S.Struct({ a: S.Number })).ast)
     })
 
     it("TypeLiteralTransformation", async () => {

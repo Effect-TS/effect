@@ -2540,7 +2540,7 @@ export const extend: {
  * @category combinators
  * @since 1.0.0
  */
-export const compose: {
+export const Compose: {
   <C, B, R2>(to: Schema<C, B, R2>): <A, R1>(from: Schema<B, A, R1>, options?: { strict: true }) => Schema<C, A, R1 | R2>
   <D, C, R2>(
     to: Schema<D, C, R2>,
@@ -2858,8 +2858,8 @@ export function TransformLiterals<
  * const Circle = S.Struct({ radius: S.Number })
  * const Square = S.Struct({ sideLength: S.Number })
  * const Shape = S.Union(
- *   Circle.pipe(S.attachPropertySignature("kind", "circle")),
- *   Square.pipe(S.attachPropertySignature("kind", "square"))
+ *   Circle.pipe(S.AttachPropertySignature("kind", "circle")),
+ *   Square.pipe(S.AttachPropertySignature("kind", "square"))
  * )
  *
  * assert.deepStrictEqual(S.decodeSync(Shape)({ radius: 10 }), {
@@ -2870,7 +2870,7 @@ export function TransformLiterals<
  * @category combinators
  * @since 1.0.0
  */
-export const attachPropertySignature: {
+export const AttachPropertySignature: {
   <K extends PropertyKey, V extends AST.LiteralValue | symbol, A extends object>(
     key: K,
     value: V,
@@ -3562,7 +3562,7 @@ export const parseJson: {
   (options?: ParseJsonOptions): Schema<unknown, string>
 } = <A, I, R>(schema?: Schema<A, I, R> | ParseJsonOptions, o?: ParseJsonOptions) => {
   if (isSchema(schema)) {
-    return compose(parseJson(o), schema as any) as any
+    return Compose(parseJson(o), schema as any) as any
   }
   const options: ParseJsonOptions | undefined = schema as any
   return transformOrFail(

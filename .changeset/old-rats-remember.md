@@ -129,3 +129,5 @@ Renaming
 - rename `split` to `Split`
 - rename `transformLiteral` to `TransformLiteral`
 - rename `transformLiterals` to `TransformLiterals`
+- rename `attachPropertySignature` to `AttachPropertySignature`
+- rename `compose` to `Compose`
