@@ -112,7 +112,7 @@ export const fromStream = <A, E, R>(
     const ref = yield* _(Ref.make(defaultValue))
 
     yield* _(
-      Stream.runForEachChunk(stream, (a) => Ref.set(ref, Chunk.unsafeLast(a))).pipe(Stream.runDrain, Effect.forkScoped)
+      Stream.runForEachChunk(stream, (a) => Ref.set(ref, Chunk.unsafeLast(a))).pipe(Effect.forkScoped)
     )
 
     return make({
