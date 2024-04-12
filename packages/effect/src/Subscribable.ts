@@ -108,17 +108,16 @@ export const fromStream = <A, E, R>(
   stream: Stream.Stream<A, E, R>,
   defaultValue: A
 ) =>
-  
-    Effect.gen(function*(_) {
-      const ref = yield* _(Ref.make(defaultValue))
+  Effect.gen(function*(_) {
+    const ref = yield* _(Ref.make(defaultValue))
 
-      yield* _(
-        Stream.runForEachChunk(stream, (a) => Ref.set(ref, Chunk.unsafeLast(a))).pipe(Stream.runDrain, Effect.forkScoped)
-      )
-      yield* _(Effect.yieldNow())
+    yield* _(
+      Stream.runForEachChunk(stream, (a) => Ref.set(ref, Chunk.unsafeLast(a))).pipe(Stream.runDrain, Effect.forkScoped)
+    )
+    yield* _(Effect.yieldNow())
 
-      return make({
-        get: Ref.get(ref),
-        changes: stream
-      })
+    return make({
+      get: Ref.get(ref),
+      changes: stream
     })
+  })
