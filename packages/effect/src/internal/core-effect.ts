@@ -27,9 +27,11 @@ import type * as runtimeFlagsPatch from "../RuntimeFlagsPatch.js"
 import * as Tracer from "../Tracer.js"
 import type { MergeRecord, NoInfer } from "../Types.js"
 import * as internalCause from "./cause.js"
+import { clockTag } from "./clock.js"
 import * as core from "./core.js"
 import * as defaultServices from "./defaultServices.js"
 import * as fiberRefsPatch from "./fiberRefs/patch.js"
+import type { FiberRuntime } from "./fiberRuntime.js"
 import * as metricLabel from "./metric/label.js"
 import * as runtimeFlags from "./runtimeFlags.js"
 import * as SingleShotGen from "./singleShotGen.js"
@@ -2006,13 +2008,6 @@ export const currentSpan: Effect.Effect<Tracer.Span, Cause.NoSuchElementExceptio
   }
 )
 
-const bigint0 = BigInt(0)
-/** @internal */
-export const currentTimeNanosTracing = core.fiberRefGetWith(
-  core.currentTracerTimingEnabled,
-  (enabled) => enabled ? Clock.currentTimeNanos : core.succeed(bigint0)
-)
-
 /* @internal */
 export const linkSpans = dual<
   (
@@ -2040,6 +2035,69 @@ export const linkSpans = dual<
     )
 )
 
+const bigint0 = BigInt(0)
+
+/** @internal */
+export const unsafeMakeSpan = <XA, XE>(
+  fiber: FiberRuntime<XA, XE>,
+  name: string,
+  options?: {
+    readonly attributes?: Record<string, unknown> | undefined
+    readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
+    readonly parent?: Tracer.ParentSpan | undefined
+    readonly root?: boolean | undefined
+    readonly context?: Context.Context<never> | undefined
+  }
+) => {
+  const enabled = fiber.getFiberRef(core.currentTracerEnabled)
+  if (enabled === false) {
+    return core.noopSpan(name)
+  }
+
+  const context = fiber.getFiberRef(core.currentContext)
+  const services = fiber.getFiberRef(defaultServices.currentServices)
+
+  const tracer = Context.get(services, internalTracer.tracerTag)
+  const clock = Context.get(services, Clock.Clock)
+  const timingEnabled = fiber.getFiberRef(core.currentTracerTimingEnabled)
+
+  const fiberRefs = fiber.getFiberRefs()
+  const annotationsFromEnv = FiberRefs.get(fiberRefs, core.currentTracerSpanAnnotations)
+  const linksFromEnv = FiberRefs.get(fiberRefs, core.currentTracerSpanLinks)
+
+  const parent = options?.parent
+    ? Option.some(options.parent)
+    : options?.root
+    ? Option.none()
+    : Context.getOption(context, internalTracer.spanTag)
+
+  const links = linksFromEnv._tag === "Some" ?
+    options?.links !== undefined ?
+      [
+        ...Chunk.toReadonlyArray(linksFromEnv.value),
+        ...(options?.links ?? [])
+      ] :
+      Chunk.toReadonlyArray(linksFromEnv.value) :
+    options?.links ?? ReadonlyArray.empty()
+
+  const span = tracer.span(
+    name,
+    parent,
+    options?.context ?? Context.empty(),
+    links,
+    timingEnabled ? clock.unsafeCurrentTimeNanos() : bigint0
+  )
+
+  if (annotationsFromEnv._tag === "Some") {
+    HashMap.forEach(annotationsFromEnv.value, (value, key) => span.attribute(key, value))
+  }
+  if (options?.attributes !== undefined) {
+    Object.entries(options.attributes).forEach(([k, v]) => span.attribute(k, v))
+  }
+
+  return span
+}
+
 /** @internal */
 export const makeSpan = (
   name: string,
@@ -2050,55 +2108,7 @@ export const makeSpan = (
     readonly root?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
   }
-): Effect.Effect<Tracer.Span> =>
-  core.flatMap(fiberRefs, (fiberRefs) =>
-    core.sync(() => {
-      const enabled = FiberRefs.getOrDefault(fiberRefs, core.currentTracerEnabled)
-      if (enabled === false) {
-        return core.noopSpan(name)
-      }
-
-      const context = FiberRefs.getOrDefault(fiberRefs, core.currentContext)
-      const services = FiberRefs.getOrDefault(fiberRefs, defaultServices.currentServices)
-
-      const tracer = Context.get(services, internalTracer.tracerTag)
-      const clock = Context.get(services, Clock.Clock)
-      const timingEnabled = FiberRefs.getOrDefault(fiberRefs, core.currentTracerTimingEnabled)
-      const annotationsFromEnv = FiberRefs.get(fiberRefs, core.currentTracerSpanAnnotations)
-      const linksFromEnv = FiberRefs.get(fiberRefs, core.currentTracerSpanLinks)
-
-      const parent = options?.parent
-        ? Option.some(options.parent)
-        : options?.root
-        ? Option.none()
-        : Context.getOption(context, internalTracer.spanTag)
-
-      const links = linksFromEnv._tag === "Some" ?
-        options?.links !== undefined ?
-          [
-            ...Chunk.toReadonlyArray(linksFromEnv.value),
-            ...(options?.links ?? [])
-          ] :
-          Chunk.toReadonlyArray(linksFromEnv.value) :
-        options?.links ?? ReadonlyArray.empty()
-
-      const span = tracer.span(
-        name,
-        parent,
-        options?.context ?? Context.empty(),
-        links,
-        timingEnabled ? clock.unsafeCurrentTimeNanos() : bigint0
-      )
-
-      if (annotationsFromEnv._tag === "Some") {
-        HashMap.forEach(annotationsFromEnv.value, (value, key) => span.attribute(key, value))
-      }
-      if (options?.attributes) {
-        Object.entries(options.attributes).forEach(([k, v]) => span.attribute(k, v))
-      }
-
-      return span
-    }))
+): Effect.Effect<Tracer.Span> => core.withFiberRuntime((fiber) => core.succeed(unsafeMakeSpan(fiber, name, options)))
 
 /* @internal */
 export const spanAnnotations: Effect.Effect<HashMap.HashMap<string, unknown>> = core
@@ -2134,17 +2144,18 @@ export const useSpan: {
   } | undefined = args.length === 1 ? undefined : args[0]
   const evaluate: (span: Tracer.Span) => Effect.Effect<A, E, R> = args[args.length - 1]
 
-  return core.acquireUseRelease(
-    makeSpan(name, options),
-    evaluate,
-    (span, exit) =>
-      span.status._tag === "Ended" ?
-        core.unit :
-        core.flatMap(
-          currentTimeNanosTracing,
-          (endTime) => core.sync(() => span.end(endTime, exit))
-        )
-  )
+  return core.withFiberRuntime<A, E, R>((fiber) => {
+    const span = unsafeMakeSpan(fiber, name, options)
+    const timingEnabled = fiber.getFiberRef(core.currentTracerTimingEnabled)
+    const clock = Context.get(fiber.getFiberRef(defaultServices.currentServices), clockTag)
+    return core.onExit(evaluate(span), (exit) =>
+      core.sync(() => {
+        if (span.status._tag === "Ended") {
+          return
+        }
+        span.end(timingEnabled ? clock.unsafeCurrentTimeNanos() : bigint0, exit)
+      }))
+  })
 }
 
 /** @internal */

@@ -3578,15 +3578,23 @@ export const makeSpanScoped = (
     readonly context?: Context.Context<never> | undefined
   }
 ): Effect.Effect<Tracer.Span, never, Scope.Scope> =>
-  acquireRelease(
-    internalEffect.makeSpan(name, options),
-    (span, exit) =>
-      span.status._tag === "Ended" ?
-        core.unit :
-        core.flatMap(
-          internalEffect.currentTimeNanosTracing,
-          (endTime) => core.sync(() => span.end(endTime, exit))
-        )
+  core.uninterruptible(
+    core.withFiberRuntime((fiber) => {
+      const scope = Context.unsafeGet(fiber.getFiberRef(core.currentContext), scopeTag)
+      const span = internalEffect.unsafeMakeSpan(fiber, name, options)
+      const timingEnabled = fiber.getFiberRef(core.currentTracerTimingEnabled)
+      const clock_ = Context.get(fiber.getFiberRef(defaultServices.currentServices), clock.clockTag)
+      return core.as(
+        core.scopeAddFinalizerExit(scope, (exit) =>
+          core.sync(() => {
+            if (span.status._tag === "Ended") {
+              return
+            }
+            span.end(timingEnabled ? clock_.unsafeCurrentTimeNanos() : BigInt(0), exit)
+          })),
+        span
+      )
+    })
   )
 
 /* @internal */
