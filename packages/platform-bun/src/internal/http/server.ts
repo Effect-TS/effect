@@ -28,7 +28,6 @@ import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type { ReadonlyRecord } from "effect/ReadonlyRecord"
-import * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import { Readable } from "node:stream"
@@ -82,10 +81,9 @@ export const make = (
         ) as App.Default<never, unknown>
 
         return pipe(
-          Effect.runtime<never>(),
-          Effect.flatMap((runtime) =>
+          FiberSet.makeRuntime<never>(),
+          Effect.flatMap((runFork) =>
             Effect.async<never>((_) => {
-              const runFork = Runtime.runFork(runtime)
               function handler(request: Request, server: BunServer) {
                 return new Promise<Response>((resolve, reject) => {
                   const fiber = runFork(Effect.provideService(
