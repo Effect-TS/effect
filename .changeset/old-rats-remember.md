@@ -2,11 +2,29 @@
 "@effect/schema": minor
 ---
 
-AST
+## `AST` module
 
 - rename `isTransform` to `isTransformation`
 
-Schema
+## `ParseResult` module
+
+- rename `Tuple` to `TupleType`
+
+## `TreeFormatter` module
+
+- rename `formatIssue` to `formatIssueSync` (This change was made to maintain consistency in API naming across all decoding and encoding APIs.)
+- rename `formatIssueEffect` to `formatIssue`
+- rename `formatError` to `formatErrorSync`
+- rename `formatErrorEffect` to `formatError`
+
+## `ArrayFormatter` module
+
+- rename `formatIssue` to `formatIssueSync`
+- rename `formatIssueEffect` to `formatIssue`
+- rename `formatError` to `formatErrorSync`
+- rename `formatErrorEffect` to `formatError`
+
+## `Schema` module
 
 - consolidate `transform` and `transformOrFail` parameters into an `options` object, #2434
 - consolidate `Class.transformOrFail` and `Class.transformOrFailFrom` parameters into an `options` object
@@ -15,25 +33,14 @@ Schema
 - consolidate `optionalToOptional` parameters into an `options` object
 - Removed `negateBigDecimal` function (This cleanup was prompted by the realization that numerous functions can be derived from transformations such as negation, Math.abs, increment, etc. However, including all of them in the library is not feasible. Therefore, `negateBigDecimal` was removed)
 
-ParseResult
+### Renaming
 
-- rename `Tuple` to `TupleType`
+We have carried out a general renaming to make the API names more consistent. These are the rules we followed for the renaming:
 
-TreeFormatter
-
-- rename `formatIssue` to `formatIssueSync` (This change was made to maintain consistency in API naming across all decoding and encoding APIs.)
-- rename `formatIssueEffect` to `formatIssue`
-- rename `formatError` to `formatErrorSync`
-- rename `formatErrorEffect` to `formatError`
-
-ArrayFormatter
-
-- rename `formatIssue` to `formatIssueSync`
-- rename `formatIssueEffect` to `formatIssue`
-- rename `formatError` to `formatErrorSync`
-- rename `formatErrorEffect` to `formatError`
-
-Renaming
+- **built-in schemas**: PascalCase (`String`, `Number`, `BigInt`, `NumberFromString`, ...)
+- **schema constructors**: PascalCase (`TypeSchema`, `EncodedSchema`, `Partial`, `Omit`, `Struct`, `Tuple`, ...)
+- **schema modifiers**: CamelCase (`filter`, `annotations`, `message`, `asSchema`, ...)
+- **other constructors**: CamelCase (`optionalElement`, `optional`, `optionalToRequired`, `propertySignature`, `fromKey`, ...)
 
 - rename `literal` to `Literal`
 - rename `uniqueSymbolFromSelf` to `UniqueSymbolFromSelf`
