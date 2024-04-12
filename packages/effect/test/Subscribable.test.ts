@@ -8,17 +8,16 @@ import * as Subscribable from "effect/Subscribable"
 import { describe } from "vitest"
 
 describe("Subscribable", () => {
-  it.scoped("fromStream/empty", (ctx) =>
+  it.effect("fromStream/empty", (ctx) =>
     Effect.gen(function*(_) {
       const s = yield* _(Subscribable.fromStream(Stream.empty, 0))
       const res = yield* _(s.get)
       ctx.expect(res).toEqual(0)
     }))
 
-  it.scoped("fromStream/iterable", (ctx) =>
+  it.effect("fromStream/iterable", (ctx) =>
     Effect.gen(function*(_) {
       const s = yield* _(Subscribable.fromStream(Stream.fromIterable([1, 2, 3]), 1))
-      yield* _(Stream.runDrain(s.changes))
       const res = yield* _(s.get)
       ctx.expect(res).toEqual(3)
     }))

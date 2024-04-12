@@ -4,6 +4,7 @@
 import * as Chunk from "./Chunk.js"
 import * as Effect from "./Effect.js"
 import { dual } from "./Function.js"
+import * as Option from "./Option.js"
 import { pipeArguments } from "./Pipeable.js"
 import { hasProperty } from "./Predicate.js"
 import * as Readable from "./Readable.js"
@@ -112,7 +113,11 @@ export const fromStream = <A, E, R>(
     const ref = yield* _(Ref.make(defaultValue))
 
     yield* _(
-      Stream.runForEachChunk(stream, (a) => Ref.set(ref, Chunk.unsafeLast(a))).pipe(Effect.forkScoped)
+      Stream.runForEachChunk(stream, (a) =>
+        Chunk.last(a).pipe(Option.match({ 
+          onNone: () => Effect.unit, 
+          onSome: (val) => Ref.set(ref, val) 
+        })))
     )
 
     return make({
