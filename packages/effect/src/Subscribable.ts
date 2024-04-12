@@ -1,6 +1,7 @@
 /**
  * @since 2.0.0
  */
+import * as Chunk from "./Chunk.js"
 import * as Effect from "./Effect.js"
 import { dual } from "./Function.js"
 import { pipeArguments } from "./Pipeable.js"
@@ -111,7 +112,9 @@ export const fromStream = <A, E, R>(
     Effect.gen(function*(_) {
       const ref = yield* _(Ref.make(defaultValue))
 
-      yield* _(Stream.runForEach(stream, (a) => Ref.set(ref, a)).pipe(Stream.runDrain, Effect.forkScoped))
+      yield* _(
+        Stream.runForEachChunk(stream, (a) => Ref.set(ref, Chunk.unsafeLast(a))).pipe(Stream.runDrain, Effect.forkScoped)
+      )
       yield* _(Effect.yieldNow())
 
       return make({
