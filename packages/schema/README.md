@@ -883,24 +883,22 @@ assertsPerson({ name: "Alice", age: 30 })
 The `make` function provided by the `@effect/schema/Arbitrary` module represents a way of generating random values that conform to a given `Schema`. This can be useful for testing purposes, as it allows you to generate random test data that is guaranteed to be valid according to the `Schema`.
 
 ```ts
-import * as Arbitrary from "@effect/schema/Arbitrary"
-import * as S from "@effect/schema/Schema"
-import * as fc from "fast-check"
+import { Arbitrary, FastCheck, Schema } from "@effect/schema"
 
-const Person = S.Struct({
-  name: S.String,
-  age: S.String.pipe(S.Compose(S.NumberFromString), S.int())
+const Person = Schema.Struct({
+  name: Schema.String,
+  age: Schema.String.pipe(Schema.Compose(Schema.NumberFromString), Schema.int())
 })
 
 /*
-fc.Arbitrary<{
+FastCheck.Arbitrary<{
     readonly name: string;
     readonly age: number;
 }>
 */
-const PersonArbitraryType = Arbitrary.make(Person)(fc)
+const PersonArbitraryType = Arbitrary.make(Person)(FastCheck)
 
-console.log(fc.sample(PersonArbitraryType, 2))
+console.log(FastCheck.sample(PersonArbitraryType, 2))
 /*
 Output:
 [ { name: 'iP=!', age: -6 }, { name: '', age: 14 } ]
@@ -908,14 +906,16 @@ Output:
 
 /*
 Arbitrary for the "Encoded" type:
-fc.Arbitrary<{
+FastCheck.Arbitrary<{
     readonly name: string;
     readonly age: string;
 }>
 */
-const PersonArbitraryEncoded = Arbitrary.make(S.encodedSchema(Person))(fc)
+const PersonArbitraryEncoded = Arbitrary.make(Schema.EncodedSchema(Person))(
+  FastCheck
+)
 
-console.log(fc.sample(PersonArbitraryEncoded, 2))
+console.log(FastCheck.sample(PersonArbitraryEncoded, 2))
 /*
 Output:
 [ { name: '{F', age: '$"{|' }, { name: 'nB}@BK', age: '^V+|W!Z' } ]
@@ -927,17 +927,15 @@ Output:
 You can customize the output by using the `arbitrary` annotation:
 
 ```ts
-import * as Arbitrary from "@effect/schema/Arbitrary"
-import * as S from "@effect/schema/Schema"
-import * as fc from "fast-check"
+import { Arbitrary, FastCheck, Schema } from "@effect/schema"
 
-const schema = S.Number.annotations({
+const schema = Schema.Number.annotations({
   arbitrary: () => (fc) => fc.nat()
 })
 
-const arb = Arbitrary.make(schema)(fc)
+const arb = Arbitrary.make(schema)(FastCheck)
 
-console.log(fc.sample(arb, 2))
+console.log(FastCheck.sample(arb, 2))
 // Output: [ 1139348969, 749305462 ]
 ```
 
@@ -947,63 +945,22 @@ console.log(fc.sample(arb, 2))
 **Example**
 
 ```ts
-import * as Arbitrary from "@effect/schema/Arbitrary"
-import * as S from "@effect/schema/Schema"
-import * as fc from "fast-check"
+import { Arbitrary, FastCheck, Schema } from "@effect/schema"
 
-const bad = S.Number.pipe(S.positive()).annotations({
+const bad = Schema.Number.pipe(Schema.positive()).annotations({
   arbitrary: () => (fc) => fc.integer()
 })
 
-console.log(fc.sample(Arbitrary.make(bad)(fc), 2))
+console.log(FastCheck.sample(Arbitrary.make(bad)(FastCheck), 2))
 // Example Output: [ -1600163302, -6 ]
 
-const good = S.Number.annotations({
+const good = Schema.Number.annotations({
   arbitrary: () => (fc) => fc.integer()
-}).pipe(S.positive())
+}).pipe(Schema.positive())
 
-console.log(fc.sample(Arbitrary.make(good)(fc), 2))
+console.log(FastCheck.sample(Arbitrary.make(good)(FastCheck), 2))
 // Example Output: [ 7, 1518247613 ]
 ```
-
-### Troubleshooting: Dealing with `"type": "module"` in `package.json`
-
-If you have set the `"type"` field in your `package.json` to `"module"`, you might encounter the following error:
-
-```ts
-import * as S from "@effect/schema/Schema"
-import * as Arbitrary from "@effect/schema/Arbitrary"
-import * as fc from "fast-check"
-
-const arb = Arbitrary.make(S.String)(fc)
-/*
-...more lines...
-  Types have separate declarations of a private property 'internalRng'.
-*/
-```
-
-To address this issue, you can apply a patch, for example using `pnpm patch`, to the `fast-check` package in the `node_modules` directory:
-
-```diff
-diff --git a/CHANGELOG.md b/CHANGELOG.md
-deleted file mode 100644
-index 41d6274a9d4bb2d9924fb82f77e502f232fd12f5..0000000000000000000000000000000000000000
-diff --git a/package.json b/package.json
-index e871dfde5f8877b1b7de9bd3d9a6e3e4f7f59843..819035d70e22d246c615bda25183db9b5e124287 100644
---- a/package.json
-+++ b/package.json
-@@ -12,7 +12,7 @@
-         "default": "./lib/fast-check.js"
-       },
-       "import": {
--        "types": "./lib/esm/types/fast-check.d.ts",
-+        "types": "./lib/types/fast-check.d.ts",
-         "default": "./lib/esm/fast-check.js"
-       }
-     }
-```
-
-This patch helps resolve the issue caused by the declaration of a private property 'internalRng' having separate declarations in the types when using `"type": "module"` in `package.json`.
 
 ## Pretty print
 
@@ -4922,12 +4879,11 @@ Error: ReadonlySet<NumberFromString>
 When you define a new data type, some compilers like `Arbitrary` or `Pretty` may not know how to handle the newly defined data. For instance:
 
 ```ts
-import * as Arbitrary from "@effect/schema/Arbitrary"
-import * as S from "@effect/schema/Schema"
+import { Arbitrary, Schema } from "@effect/schema"
 
 const isFile = (input: unknown): input is File => input instanceof File
 
-const FileFromSelf = S.Declare(isFile, {
+const FileFromSelf = Schema.Declare(isFile, {
   identifier: "FileFromSelf"
 })
 
@@ -4942,14 +4898,11 @@ Error: cannot build an Arbitrary for a declaration without annotations (FileFrom
 In such cases, you need to provide annotations to ensure proper functionality:
 
 ```ts
-import * as Arbitrary from "@effect/schema/Arbitrary"
-import * as Pretty from "@effect/schema/Pretty"
-import * as S from "@effect/schema/Schema"
-import * as fc from "fast-check"
+import { Arbitrary, FastCheck, Pretty, Schema } from "@effect/schema"
 
 const isFile = (input: unknown): input is File => input instanceof File
 
-const FileFromSelf = S.Declare(isFile, {
+const FileFromSelf = Schema.Declare(isFile, {
   identifier: "FileFromSelf",
   // Provide an arbitrary function to generate random File instances
   arbitrary: () => (fc) =>
@@ -4964,7 +4917,7 @@ const FileFromSelf = S.Declare(isFile, {
 const arb = Arbitrary.make(FileFromSelf)
 
 // Generate sample files using the Arbitrary instance
-const files = fc.sample(arb(fc), 2)
+const files = FastCheck.sample(arb(FastCheck), 2)
 console.log(files)
 /*
 Output:
