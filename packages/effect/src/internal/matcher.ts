@@ -508,7 +508,7 @@ export const orElseAbsurd = <I, R, RA, A, Pr>(
   self: Matcher<I, R, RA, A, Pr>
 ): [Pr] extends [never] ? (input: I) => Unify<A> : Unify<A> =>
   orElse(() => {
-    throw new Error("absurd")
+    throw new Error("effect/Match/orElseAbsurd: absurd")
   })(self)
 
 /** @internal */
@@ -565,6 +565,8 @@ export const option: <I, F, R, A, Pr>(
       })
   }) as any
 
+const getExhaustiveAbsurdErrorMessage = "effect/Match/exhaustive: absurd"
+
 /** @internal */
 export const exhaustive: <I, F, A, Pr>(
   self: Matcher<I, F, never, A, Pr>
@@ -578,7 +580,7 @@ export const exhaustive: <I, F, A, Pr>(
       return toEither.right
     }
 
-    throw new Error("@effect/match: exhaustive absurd")
+    throw new Error(getExhaustiveAbsurdErrorMessage)
   }
 
   return (u: I): A => {
@@ -589,6 +591,6 @@ export const exhaustive: <I, F, A, Pr>(
       return result.right as any
     }
 
-    throw new Error("@effect/match: exhaustive absurd")
+    throw new Error(getExhaustiveAbsurdErrorMessage)
   }
 }) as any

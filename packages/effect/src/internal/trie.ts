@@ -420,7 +420,7 @@ export const unsafeGet = dual<
 >(2, (self, key) => {
   const element = get(self, key)
   if (Option.isNone(element)) {
-    throw new Error("Error: Expected trie to contain key")
+    throw new Error("Expected trie to contain key")
   }
   return element.value
 })

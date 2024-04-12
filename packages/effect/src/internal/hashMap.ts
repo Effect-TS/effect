@@ -270,7 +270,7 @@ export const unsafeGet = Dual.dual<
 >(2, (self, key) => {
   const element = getHash(self, key, Hash.hash(key))
   if (Option.isNone(element)) {
-    throw new Error("Error: Expected map to contain key")
+    throw new Error("Expected map to contain key")
   }
   return element.value
 })

@@ -924,6 +924,8 @@ export const take: {
  */
 export const toChunk = <A>(self: List<A>): Chunk.Chunk<A> => Chunk.fromIterable(self)
 
+const getExpectedListToBeNonEmptyErrorMessage = "Expected List to be non-empty"
+
 /**
  * Unsafely returns the first element of the specified `List`.
  *
@@ -932,7 +934,7 @@ export const toChunk = <A>(self: List<A>): Chunk.Chunk<A> => Chunk.fromIterable(
  */
 export const unsafeHead = <A>(self: List<A>): A => {
   if (isNil(self)) {
-    throw new Error("Expected List to be non-empty")
+    throw new Error(getExpectedListToBeNonEmptyErrorMessage)
   }
   return self.head
 }
@@ -945,7 +947,7 @@ export const unsafeHead = <A>(self: List<A>): A => {
  */
 export const unsafeLast = <A>(self: List<A>): A => {
   if (isNil(self)) {
-    throw new Error("Expected List to be non-empty")
+    throw new Error(getExpectedListToBeNonEmptyErrorMessage)
   }
   let these = self
   let scout = self.tail
@@ -964,7 +966,7 @@ export const unsafeLast = <A>(self: List<A>): A => {
  */
 export const unsafeTail = <A>(self: List<A>): List<A> => {
   if (isNil(self)) {
-    throw new Error("Expected List to be non-empty")
+    throw new Error(getExpectedListToBeNonEmptyErrorMessage)
   }
   return self.tail
 }

@@ -41,9 +41,9 @@ describe("Duration", () => {
     expect(Duration.decode([500, 123456789])).toEqual(Duration.nanos(500123456789n))
     expect(Duration.decode([-500, 123456789])).toEqual(Duration.zero)
 
-    expect(() => Duration.decode("1.5 secs" as any)).toThrowError(new Error("Invalid duration input"))
-    expect(() => Duration.decode(true as any)).toThrowError(new Error("Invalid duration input"))
-    expect(() => Duration.decode({} as any)).toThrowError(new Error("Invalid duration input"))
+    expect(() => Duration.decode("1.5 secs" as any)).toThrowError(new Error("Invalid DurationInput"))
+    expect(() => Duration.decode(true as any)).toThrowError(new Error("Invalid DurationInput"))
+    expect(() => Duration.decode({} as any)).toThrowError(new Error("Invalid DurationInput"))
   })
 
   it("decodeUnknown", () => {

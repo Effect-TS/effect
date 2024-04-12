@@ -41,6 +41,7 @@ import * as internalCause from "./cause.js"
 import * as deferred from "./deferred.js"
 import * as internalDiffer from "./differ.js"
 import { effectVariance, StructuralCommitPrototype } from "./effectable.js"
+import { getBugErrorMessage } from "./errors.js"
 import type * as FiberRuntime from "./fiberRuntime.js"
 import type * as fiberScope from "./fiberScope.js"
 import * as DeferredOpCodes from "./opCodes/deferred.js"
@@ -469,7 +470,7 @@ export const custom: {
       break
     }
     default: {
-      throw new Error("Bug, you're not supposed to end up here")
+      throw new Error(getBugErrorMessage("you're not supposed to end up here"))
     }
   }
   return wrapper
