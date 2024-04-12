@@ -128,7 +128,7 @@ export const decode = (input: DurationInput): Duration => {
       }
     }
   }
-  throw new Error("Invalid duration input")
+  throw new Error("Invalid DurationInput")
 }
 
 /**
@@ -512,6 +512,59 @@ export const clamp: {
     _clamp(decode(self), {
       minimum: decode(options.minimum),
       maximum: decode(options.maximum)
+    })
+)
+
+/**
+ * @since 2.4.19
+ * @category math
+ */
+export const divide: {
+  (by: number): (self: DurationInput) => Option.Option<Duration>
+  (self: DurationInput, by: number): Option.Option<Duration>
+} = dual(
+  2,
+  (self: DurationInput, by: number): Option.Option<Duration> =>
+    match(self, {
+      onMillis: (millis) => {
+        if (by === 0 || isNaN(by) || !Number.isFinite(by)) {
+          return Option.none()
+        }
+        return Option.some(make(millis / by))
+      },
+      onNanos: (nanos) => {
+        if (isNaN(by) || by <= 0 || !Number.isFinite(by)) {
+          return Option.none()
+        }
+        try {
+          return Option.some(make(nanos / BigInt(by)))
+        } catch (e) {
+          return Option.none()
+        }
+      }
+    })
+)
+
+/**
+ * @since 2.4.19
+ * @category math
+ */
+export const unsafeDivide: {
+  (by: number): (self: DurationInput) => Duration
+  (self: DurationInput, by: number): Duration
+} = dual(
+  2,
+  (self: DurationInput, by: number): Duration =>
+    match(self, {
+      onMillis: (millis) => make(millis / by),
+      onNanos: (nanos) => {
+        if (isNaN(by) || by < 0 || Object.is(by, -0)) {
+          return zero
+        } else if (Object.is(by, 0) || !Number.isFinite(by)) {
+          return infinity
+        }
+        return make(nanos / BigInt(by))
+      }
     })
 )
 

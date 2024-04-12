@@ -14,6 +14,7 @@ import type { Predicate, Refinement } from "../Predicate.js"
 import * as ReadonlyArray from "../ReadonlyArray.js"
 import type { ParentSpan, Span } from "../Tracer.js"
 import type { NoInfer } from "../Types.js"
+import { getBugErrorMessage } from "./errors.js"
 import * as OpCodes from "./opCodes/cause.js"
 
 // -----------------------------------------------------------------------------
@@ -604,7 +605,7 @@ const flattenCauseLoop = (
     causes = sequential
     flattened = updated
   }
-  throw new Error("BUG: Cause.flattenCauseLoop - please report an issue at https://github.com/Effect-TS/effect/issues")
+  throw new Error(getBugErrorMessage("Cause.flattenCauseLoop"))
 }
 
 // -----------------------------------------------------------------------------
@@ -740,7 +741,7 @@ const evaluateCause = (
       }
     }
   }
-  throw new Error("BUG: Cause.evaluateCauseLoop - please report an issue at https://github.com/Effect-TS/effect/issues")
+  throw new Error(getBugErrorMessage("Cause.evaluateCauseLoop"))
 }
 
 // -----------------------------------------------------------------------------

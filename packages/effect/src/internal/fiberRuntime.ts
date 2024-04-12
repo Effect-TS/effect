@@ -2668,7 +2668,7 @@ export const scopeWith = <A, E, R>(
 
 /* @internal */
 export const scopedEffect = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, Exclude<R, Scope.Scope>> =>
-  core.flatMap(scopeMake(), (scope) => scopeUse(scope)(effect))
+  core.flatMap(scopeMake(), (scope) => scopeUse(effect, scope))
 
 /* @internal */
 export const sequentialFinalizers = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
@@ -2988,61 +2988,6 @@ export const withRuntimeFlagsScoped = (
   )
 }
 
-// circular with ReleaseMap
-
-/* @internal */
-export const releaseMapReleaseAll = (
-  strategy: ExecutionStrategy.ExecutionStrategy,
-  exit: Exit.Exit<unknown, unknown>
-) =>
-(self: core.ReleaseMap): Effect.Effect<void> =>
-  core.suspend(() => {
-    switch (self.state._tag) {
-      case "Exited": {
-        return core.unit
-      }
-      case "Running": {
-        const finalizersMap = self.state.finalizers
-        const update = self.state.update
-        const finalizers = Array.from(finalizersMap.keys()).sort((a, b) => b - a).map((key) => finalizersMap.get(key)!)
-        self.state = { _tag: "Exited", nextKey: self.state.nextKey, exit, update }
-        return executionStrategy.isSequential(strategy) ?
-          pipe(
-            finalizers,
-            core.forEachSequential((fin) => core.exit(update(fin)(exit))),
-            core.flatMap((results) =>
-              pipe(
-                core.exitCollectAll(results),
-                Option.map(core.exitAsUnit),
-                Option.getOrElse(() => core.exitUnit)
-              )
-            )
-          ) :
-          executionStrategy.isParallel(strategy) ?
-          pipe(
-            forEachParUnbounded(finalizers, (fin) => core.exit(update(fin)(exit)), false),
-            core.flatMap((results) =>
-              pipe(
-                core.exitCollectAll(results, { parallel: true }),
-                Option.map(core.exitAsUnit),
-                Option.getOrElse(() => core.exitUnit)
-              )
-            )
-          ) :
-          pipe(
-            forEachParN(finalizers, strategy.parallelism, (fin) => core.exit(update(fin)(exit)), false),
-            core.flatMap((results) =>
-              pipe(
-                core.exitCollectAll(results, { parallel: true }),
-                Option.map(core.exitAsUnit),
-                Option.getOrElse(() => core.exitUnit)
-              )
-            )
-          )
-      }
-    }
-  })
-
 // circular with Scope
 
 /** @internal */
@@ -3051,33 +2996,114 @@ export const scopeTag = Context.GenericTag<Scope.Scope>("effect/Scope")
 /* @internal */
 export const scope: Effect.Effect<Scope.Scope, never, Scope.Scope> = scopeTag
 
-/* @internal */
-export const scopeMake = (
-  strategy: ExecutionStrategy.ExecutionStrategy = executionStrategy.sequential
-): Effect.Effect<Scope.Scope.Closeable> =>
-  core.map(core.releaseMapMake, (rm): Scope.Scope.Closeable => ({
-    [core.ScopeTypeId]: core.ScopeTypeId,
-    [core.CloseableScopeTypeId]: core.CloseableScopeTypeId,
-    strategy,
-    pipe() {
-      return pipeArguments(this, arguments)
-    },
-    fork: (strategy) =>
-      core.uninterruptible(
+interface ScopeImpl extends Scope.CloseableScope {
+  state: {
+    readonly _tag: "Open"
+    readonly finalizers: Set<Scope.Scope.Finalizer>
+  } | {
+    readonly _tag: "Closed"
+    readonly exit: Exit.Exit<unknown, unknown>
+  }
+}
+
+const scopeUnsafeAddFinalizer = (scope: ScopeImpl, fin: Scope.Scope.Finalizer): void => {
+  if (scope.state._tag === "Open") {
+    scope.state.finalizers.add(fin)
+  }
+}
+
+const ScopeImplProto: Omit<ScopeImpl, "strategy" | "state"> = {
+  [core.ScopeTypeId]: core.ScopeTypeId,
+  [core.CloseableScopeTypeId]: core.CloseableScopeTypeId,
+  pipe() {
+    return pipeArguments(this, arguments)
+  },
+  fork(this: ScopeImpl, strategy) {
+    return core.sync(() => {
+      const newScope = scopeUnsafeMake(strategy)
+      if (this.state._tag === "Closed") {
+        newScope.state = this.state
+        return newScope
+      }
+      const fin = (exit: Exit.Exit<unknown, unknown>) => newScope.close(exit)
+      this.state.finalizers.add(fin)
+      scopeUnsafeAddFinalizer(newScope, (_) =>
+        core.sync(() => {
+          if (this.state._tag === "Open") {
+            this.state.finalizers.delete(fin)
+          }
+        }))
+      return newScope
+    })
+  },
+  close(this: ScopeImpl, exit) {
+    return core.suspend(() => {
+      if (this.state._tag === "Closed") {
+        return core.unit
+      }
+      const finalizers = Array.from(this.state.finalizers.values()).reverse()
+      this.state = { _tag: "Closed", exit }
+      if (finalizers.length === 0) {
+        return core.unit
+      }
+      return executionStrategy.isSequential(this.strategy) ?
         pipe(
-          scopeMake(strategy),
-          core.flatMap((scope) =>
+          core.forEachSequential(finalizers, (fin) => core.exit(fin(exit))),
+          core.flatMap((results) =>
             pipe(
-              core.releaseMapAdd(rm, (exit) => core.scopeClose(scope, exit)),
-              core.tap((fin) => core.scopeAddFinalizerExit(scope, fin)),
-              core.as(scope)
+              core.exitCollectAll(results),
+              Option.map(core.exitAsUnit),
+              Option.getOrElse(() => core.exitUnit)
+            )
+          )
+        ) :
+        executionStrategy.isParallel(this.strategy) ?
+        pipe(
+          forEachParUnbounded(finalizers, (fin) => core.exit(fin(exit)), false),
+          core.flatMap((results) =>
+            pipe(
+              core.exitCollectAll(results, { parallel: true }),
+              Option.map(core.exitAsUnit),
+              Option.getOrElse(() => core.exitUnit)
+            )
+          )
+        ) :
+        pipe(
+          forEachParN(finalizers, this.strategy.parallelism, (fin) => core.exit(fin(exit)), false),
+          core.flatMap((results) =>
+            pipe(
+              core.exitCollectAll(results, { parallel: true }),
+              Option.map(core.exitAsUnit),
+              Option.getOrElse(() => core.exitUnit)
             )
           )
         )
-      ),
-    close: (exit) => core.asUnit(releaseMapReleaseAll(strategy, exit)(rm)),
-    addFinalizer: (fin) => core.asUnit(core.releaseMapAdd(fin)(rm))
-  }))
+    })
+  },
+  addFinalizer(this: ScopeImpl, fin) {
+    return core.suspend(() => {
+      if (this.state._tag === "Closed") {
+        return fin(this.state.exit)
+      }
+      this.state.finalizers.add(fin)
+      return core.unit
+    })
+  }
+}
+
+const scopeUnsafeMake = (
+  strategy: ExecutionStrategy.ExecutionStrategy = executionStrategy.sequential
+): ScopeImpl => {
+  const scope = Object.create(ScopeImplProto)
+  scope.strategy = strategy
+  scope.state = { _tag: "Open", finalizers: new Set() }
+  return scope
+}
+
+/* @internal */
+export const scopeMake = (
+  strategy: ExecutionStrategy.ExecutionStrategy = executionStrategy.sequential
+): Effect.Effect<Scope.Scope.Closeable> => core.sync(() => scopeUnsafeMake(strategy))
 
 /* @internal */
 export const scopeExtend = dual<
@@ -3552,15 +3578,23 @@ export const makeSpanScoped = (
     readonly context?: Context.Context<never> | undefined
   }
 ): Effect.Effect<Tracer.Span, never, Scope.Scope> =>
-  acquireRelease(
-    internalEffect.makeSpan(name, options),
-    (span, exit) =>
-      span.status._tag === "Ended" ?
-        core.unit :
-        core.flatMap(
-          internalEffect.currentTimeNanosTracing,
-          (endTime) => core.sync(() => span.end(endTime, exit))
-        )
+  core.uninterruptible(
+    core.withFiberRuntime((fiber) => {
+      const scope = Context.unsafeGet(fiber.getFiberRef(core.currentContext), scopeTag)
+      const span = internalEffect.unsafeMakeSpan(fiber, name, options)
+      const timingEnabled = fiber.getFiberRef(core.currentTracerTimingEnabled)
+      const clock_ = Context.get(fiber.getFiberRef(defaultServices.currentServices), clock.clockTag)
+      return core.as(
+        core.scopeAddFinalizerExit(scope, (exit) =>
+          core.sync(() => {
+            if (span.status._tag === "Ended") {
+              return
+            }
+            span.end(timingEnabled ? clock_.unsafeCurrentTimeNanos() : BigInt(0), exit)
+          })),
+        span
+      )
+    })
   )
 
 /* @internal */

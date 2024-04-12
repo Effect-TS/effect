@@ -41,6 +41,7 @@ import * as internalCause from "./cause.js"
 import * as deferred from "./deferred.js"
 import * as internalDiffer from "./differ.js"
 import { effectVariance, StructuralCommitPrototype } from "./effectable.js"
+import { getBugErrorMessage } from "./errors.js"
 import type * as FiberRuntime from "./fiberRuntime.js"
 import type * as fiberScope from "./fiberScope.js"
 import * as DeferredOpCodes from "./opCodes/deferred.js"
@@ -469,7 +470,7 @@ export const custom: {
       break
     }
     default: {
-      throw new Error("Bug, you're not supposed to end up here")
+      throw new Error(getBugErrorMessage("you're not supposed to end up here"))
     }
   }
   return wrapper
@@ -2087,143 +2088,6 @@ export const scopeFork = (
 ): Effect.Effect<Scope.Scope.Closeable> => self.fork(strategy)
 
 // -----------------------------------------------------------------------------
-// ReleaseMap
-// -----------------------------------------------------------------------------
-
-/** @internal */
-export type ReleaseMapState = {
-  _tag: "Exited"
-  nextKey: number
-  exit: Exit.Exit<unknown, unknown>
-  update: (finalizer: Scope.Scope.Finalizer) => Scope.Scope.Finalizer
-} | {
-  _tag: "Running"
-  nextKey: number
-  finalizers: Map<number, Scope.Scope.Finalizer>
-  update: (finalizer: Scope.Scope.Finalizer) => Scope.Scope.Finalizer
-}
-
-/** @internal */
-export interface ReleaseMap {
-  state: ReleaseMapState // mutable by design
-}
-
-/* @internal */
-export const releaseMapAdd = dual<
-  (finalizer: Scope.Scope.Finalizer) => (self: ReleaseMap) => Effect.Effect<Scope.Scope.Finalizer>,
-  (self: ReleaseMap, finalizer: Scope.Scope.Finalizer) => Effect.Effect<Scope.Scope.Finalizer>
->(2, (self, finalizer) =>
-  map(
-    releaseMapAddIfOpen(self, finalizer),
-    Option.match({
-      onNone: (): Scope.Scope.Finalizer => () => unit,
-      onSome: (key): Scope.Scope.Finalizer => (exit) => releaseMapRelease(key, exit)(self)
-    })
-  ))
-
-/* @internal */
-export const releaseMapRelease = dual<
-  (key: number, exit: Exit.Exit<unknown, unknown>) => (self: ReleaseMap) => Effect.Effect<void>,
-  (self: ReleaseMap, key: number, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>
->(3, (self, key, exit) =>
-  suspend(() => {
-    switch (self.state._tag) {
-      case "Exited": {
-        return unit
-      }
-      case "Running": {
-        const finalizer = self.state.finalizers.get(key)
-        self.state.finalizers.delete(key)
-        if (finalizer != null) {
-          return self.state.update(finalizer)(exit)
-        }
-        return unit
-      }
-    }
-  }))
-
-/* @internal */
-export const releaseMapAddIfOpen = dual<
-  (finalizer: Scope.Scope.Finalizer) => (self: ReleaseMap) => Effect.Effect<Option.Option<number>>,
-  (self: ReleaseMap, finalizer: Scope.Scope.Finalizer) => Effect.Effect<Option.Option<number>>
->(2, (self, finalizer) =>
-  suspend(() => {
-    switch (self.state._tag) {
-      case "Exited": {
-        self.state.nextKey += 1
-        return as(finalizer(self.state.exit), Option.none())
-      }
-      case "Running": {
-        const key = self.state.nextKey
-        self.state.finalizers.set(key, finalizer)
-        self.state.nextKey += 1
-        return succeed(Option.some(key))
-      }
-    }
-  }))
-
-/* @internal */
-export const releaseMapGet = dual<
-  (key: number) => (self: ReleaseMap) => Effect.Effect<Option.Option<Scope.Scope.Finalizer>>,
-  (self: ReleaseMap, key: number) => Effect.Effect<Option.Option<Scope.Scope.Finalizer>>
->(
-  2,
-  (self, key) =>
-    sync((): Option.Option<Scope.Scope.Finalizer> =>
-      self.state._tag === "Running" ? Option.fromNullable(self.state.finalizers.get(key)) : Option.none()
-    )
-)
-
-/* @internal */
-export const releaseMapReplace = dual<
-  (
-    key: number,
-    finalizer: Scope.Scope.Finalizer
-  ) => (self: ReleaseMap) => Effect.Effect<Option.Option<Scope.Scope.Finalizer>>,
-  (
-    self: ReleaseMap,
-    key: number,
-    finalizer: Scope.Scope.Finalizer
-  ) => Effect.Effect<Option.Option<Scope.Scope.Finalizer>>
->(3, (self, key, finalizer) =>
-  suspend(() => {
-    switch (self.state._tag) {
-      case "Exited": {
-        return as(finalizer(self.state.exit), Option.none())
-      }
-      case "Running": {
-        const fin = Option.fromNullable(self.state.finalizers.get(key))
-        self.state.finalizers.set(key, finalizer)
-        return succeed(fin)
-      }
-    }
-  }))
-
-/* @internal */
-export const releaseMapRemove = dual<
-  (key: number) => (self: ReleaseMap) => Effect.Effect<Option.Option<Scope.Scope.Finalizer>>,
-  (self: ReleaseMap, key: number) => Effect.Effect<Option.Option<Scope.Scope.Finalizer>>
->(2, (self, key) =>
-  sync(() => {
-    if (self.state._tag === "Exited") {
-      return Option.none()
-    }
-    const fin = Option.fromNullable(self.state.finalizers.get(key))
-    self.state.finalizers.delete(key)
-    return fin
-  }))
-
-/* @internal */
-export const releaseMapMake: Effect.Effect<ReleaseMap> = sync((): ReleaseMap => ({
-  state: {
-    _tag: "Running",
-    nextKey: 0,
-    finalizers: new Map(),
-    update: identity
-  }
-}))
-
-// -----------------------------------------------------------------------------
 // Cause
 // -----------------------------------------------------------------------------
 
@@ -2877,10 +2741,8 @@ export const deferredAwait = <A, E>(self: Deferred.Deferred<A, E>): Effect.Effec
         return resume(state.effect)
       }
       case DeferredOpCodes.OP_STATE_PENDING: {
-        pipe(
-          self.state,
-          MutableRef.set(deferred.pending([resume, ...state.joiners]))
-        )
+        // we can push here as the internal state is mutable
+        state.joiners.push(resume)
         return deferredInterruptJoiner(self, resume)
       }
     }
@@ -2908,8 +2770,8 @@ export const deferredCompleteWith = dual<
         return false
       }
       case DeferredOpCodes.OP_STATE_PENDING: {
-        pipe(self.state, MutableRef.set(deferred.done(effect)))
-        for (let i = 0; i < state.joiners.length; i++) {
+        MutableRef.set(self.state, deferred.done(effect))
+        for (let i = 0, len = state.joiners.length; i < len; i++) {
           state.joiners[i](effect)
         }
         return true
@@ -3005,8 +2867,8 @@ export const deferredSync = dual<
 export const deferredUnsafeDone = <A, E>(self: Deferred.Deferred<A, E>, effect: Effect.Effect<A, E>): void => {
   const state = MutableRef.get(self.state)
   if (state._tag === DeferredOpCodes.OP_STATE_PENDING) {
-    pipe(self.state, MutableRef.set(deferred.done(effect)))
-    for (let i = state.joiners.length - 1; i >= 0; i--) {
+    MutableRef.set(self.state, deferred.done(effect))
+    for (let i = 0, len = state.joiners.length; i < len; i++) {
       state.joiners[i](effect)
     }
   }
@@ -3019,10 +2881,11 @@ const deferredInterruptJoiner = <A, E>(
   sync(() => {
     const state = MutableRef.get(self.state)
     if (state._tag === DeferredOpCodes.OP_STATE_PENDING) {
-      pipe(
-        self.state,
-        MutableRef.set(deferred.pending(state.joiners.filter((j) => j !== joiner)))
-      )
+      const index = state.joiners.indexOf(joiner)
+      if (index >= 0) {
+        // we can splice here as the internal state is mutable
+        state.joiners.splice(index, 1)
+      }
     }
   })
 

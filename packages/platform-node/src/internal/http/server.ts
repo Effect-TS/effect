@@ -17,11 +17,11 @@ import * as Socket from "@effect/platform/Socket"
 import * as Cause from "effect/Cause"
 import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
+import * as FiberSet from "effect/FiberSet"
 import { type LazyArg } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type { ReadonlyRecord } from "effect/ReadonlyRecord"
-import * as Runtime from "effect/Runtime"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Http from "node:http"
@@ -133,8 +133,7 @@ export const makeHandler: {
       ? middleware(App.withDefaultMiddleware(respond(httpApp)))
       : App.withDefaultMiddleware(respond(httpApp))
   )
-  return Effect.map(Effect.runtime<R>(), (runtime) => {
-    const runFork = Runtime.runFork(runtime)
+  return Effect.map(FiberSet.makeRuntime<R>(), (runFork) => {
     return function handler(
       nodeRequest: Http.IncomingMessage,
       nodeResponse: Http.ServerResponse
@@ -170,8 +169,7 @@ export const makeUpgradeHandler = <R, E>(
       ? middleware(App.withDefaultMiddleware(respond(httpApp)))
       : App.withDefaultMiddleware(respond(httpApp))
   )
-  return Effect.map(Effect.runtime<R>(), (runtime) => {
-    const runFork = Runtime.runFork(runtime)
+  return Effect.map(FiberSet.makeRuntime<R>(), (runFork) => {
     return function handler(
       nodeRequest: Http.IncomingMessage,
       socket: Duplex,

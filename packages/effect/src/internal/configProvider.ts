@@ -13,6 +13,7 @@ import * as number from "../Number.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import * as ReadonlyArray from "../ReadonlyArray.js"
+import * as regexp from "../RegExp.js"
 import type * as _config from "./config.js"
 import * as configError from "./configError.js"
 import * as pathPatch from "./configProvider/pathPatch.js"
@@ -595,7 +596,7 @@ export const within = dual<
 })
 
 const splitPathString = (text: string, delim: string): ReadonlyArray<string> => {
-  const split = text.split(new RegExp(`\\s*${escapeRegex(delim)}\\s*`))
+  const split = text.split(new RegExp(`\\s*${regexp.escape(delim)}\\s*`))
   return split
 }
 
@@ -625,8 +626,6 @@ const parsePrimitive = <A>(
 const transpose = <A>(array: ReadonlyArray<ReadonlyArray<A>>): ReadonlyArray<ReadonlyArray<A>> => {
   return Object.keys(array[0]).map((column) => array.map((row) => row[column as any]))
 }
-
-const escapeRegex = (string: string): string => string.replace(/[/\-\\^$*+?.()|[\]{}]/g, "\\$&")
 
 const indicesFrom = (quotedIndices: HashSet.HashSet<string>): Effect.Effect<ReadonlyArray<number>> =>
   pipe(

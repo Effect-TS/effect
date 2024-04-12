@@ -85,3 +85,15 @@ export const mapEffect: {
     get: Effect.flatMap(self.get, f),
     changes: Stream.mapEffect(self.changes, f)
   }))
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
+export const unwrap = <A, E, R, E1, R1>(
+  effect: Effect.Effect<Subscribable<A, E, R>, E1, R1>
+): Subscribable<A, E | E1, R | R1> =>
+  make({
+    get: Effect.flatMap(effect, (s) => s.get),
+    changes: Stream.unwrap(Effect.map(effect, (s) => s.changes))
+  })

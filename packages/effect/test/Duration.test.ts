@@ -41,9 +41,9 @@ describe("Duration", () => {
     expect(Duration.decode([500, 123456789])).toEqual(Duration.nanos(500123456789n))
     expect(Duration.decode([-500, 123456789])).toEqual(Duration.zero)
 
-    expect(() => Duration.decode("1.5 secs" as any)).toThrowError(new Error("Invalid duration input"))
-    expect(() => Duration.decode(true as any)).toThrowError(new Error("Invalid duration input"))
-    expect(() => Duration.decode({} as any)).toThrowError(new Error("Invalid duration input"))
+    expect(() => Duration.decode("1.5 secs" as any)).toThrowError(new Error("Invalid DurationInput"))
+    expect(() => Duration.decode(true as any)).toThrowError(new Error("Invalid DurationInput"))
+    expect(() => Duration.decode({} as any)).toThrowError(new Error("Invalid DurationInput"))
   })
 
   it("decodeUnknown", () => {
@@ -160,6 +160,48 @@ describe("Duration", () => {
       minimum: "59 seconds",
       maximum: "61 seconds"
     }))
+  })
+
+  it("divide", () => {
+    expect(Duration.divide(Duration.minutes(1), 2)).toEqual(Option.some(Duration.seconds(30)))
+    expect(Duration.divide(Duration.seconds(1), 3)).toEqual(Option.some(Duration.nanos(333333333n)))
+    expect(Duration.divide(Duration.nanos(2n), 2)).toEqual(Option.some(Duration.nanos(1n)))
+    expect(Duration.divide(Duration.nanos(1n), 3)).toEqual(Option.some(Duration.zero))
+    expect(Duration.divide(Duration.infinity, 2)).toEqual(Option.some(Duration.infinity))
+    expect(Duration.divide(Duration.zero, 2)).toEqual(Option.some(Duration.zero))
+    expect(Duration.divide(Duration.minutes(1), 0)).toEqual(Option.none())
+    expect(Duration.divide(Duration.minutes(1), -0)).toEqual(Option.none())
+    expect(Duration.divide(Duration.nanos(1n), 0)).toEqual(Option.none())
+    expect(Duration.divide(Duration.nanos(1n), -0)).toEqual(Option.none())
+    expect(Duration.divide(Duration.minutes(1), 0.5)).toEqual(Option.some(Duration.minutes(2)))
+    expect(Duration.divide(Duration.minutes(1), 1.5)).toEqual(Option.some(Duration.seconds(40)))
+    expect(Duration.divide(Duration.minutes(1), NaN)).toEqual(Option.none())
+    expect(Duration.divide(Duration.nanos(1n), 0.5)).toEqual(Option.none())
+    expect(Duration.divide(Duration.nanos(1n), 1.5)).toEqual(Option.none())
+    expect(Duration.divide(Duration.nanos(1n), NaN)).toEqual(Option.none())
+
+    expect(Duration.divide("1 minute", 2)).toEqual(Option.some(Duration.seconds(30)))
+  })
+
+  it("unsafeDivide", () => {
+    expect(Duration.unsafeDivide(Duration.minutes(1), 2)).toEqual(Duration.seconds(30))
+    expect(Duration.unsafeDivide(Duration.seconds(1), 3)).toEqual(Duration.nanos(333333333n))
+    expect(Duration.unsafeDivide(Duration.nanos(2n), 2)).toEqual(Duration.nanos(1n))
+    expect(Duration.unsafeDivide(Duration.nanos(1n), 3)).toEqual(Duration.zero)
+    expect(Duration.unsafeDivide(Duration.infinity, 2)).toEqual(Duration.infinity)
+    expect(Duration.unsafeDivide(Duration.zero, 2)).toEqual(Duration.zero)
+    expect(Duration.unsafeDivide(Duration.minutes(1), 0)).toEqual(Duration.infinity)
+    expect(Duration.unsafeDivide(Duration.minutes(1), -0)).toEqual(Duration.zero)
+    expect(Duration.unsafeDivide(Duration.nanos(1n), 0)).toEqual(Duration.infinity)
+    expect(Duration.unsafeDivide(Duration.nanos(1n), -0)).toEqual(Duration.zero)
+    expect(Duration.unsafeDivide(Duration.minutes(1), 0.5)).toEqual(Duration.minutes(2))
+    expect(Duration.unsafeDivide(Duration.minutes(1), 1.5)).toEqual(Duration.seconds(40))
+    expect(Duration.unsafeDivide(Duration.minutes(1), NaN)).toEqual(Duration.zero)
+    expect(() => Duration.unsafeDivide(Duration.nanos(1n), 0.5)).toThrow()
+    expect(() => Duration.unsafeDivide(Duration.nanos(1n), 1.5)).toThrow()
+    expect(Duration.unsafeDivide(Duration.nanos(1n), NaN)).toEqual(Duration.zero)
+
+    expect(Duration.unsafeDivide("1 minute", 2)).toEqual(Duration.seconds(30))
   })
 
   it("times", () => {

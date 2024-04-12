@@ -79,3 +79,14 @@ export const mapEffect: {
   self: Readable<A, E, R>,
   f: (a: NoInfer<A>) => Effect<B, E2, R2>
 ): Readable<B, E | E2, R | R2> => make(core.flatMap(self.get, f)))
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
+export const unwrap = <A, E, R, E1, R1>(
+  effect: Effect<Readable<A, E, R>, E1, R1>
+): Readable<A, E | E1, R | R1> =>
+  make(
+    core.flatMap(effect, (s) => s.get)
+  )

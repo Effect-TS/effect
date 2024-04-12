@@ -3,6 +3,7 @@ import { dual, pipe } from "../../Function.js"
 import * as Option from "../../Option.js"
 import * as Interval from "../../ScheduleInterval.js"
 import type * as Intervals from "../../ScheduleIntervals.js"
+import { getBugErrorMessage } from "../errors.js"
 
 /** @internal */
 const IntervalsSymbolKey = "effect/ScheduleIntervals"
@@ -109,7 +110,7 @@ const unionLoop = (
         that = Chunk.tailNonEmpty(that)
       }
     } else {
-      throw new Error("BUG: Intervals.unionLoop - please report an issue at https://github.com/Effect-TS/effect/issues")
+      throw new Error(getBugErrorMessage("Intervals.unionLoop"))
     }
   }
   return make(pipe(acc, Chunk.prepend(interval), Chunk.reverse))
