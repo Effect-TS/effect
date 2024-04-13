@@ -37,8 +37,3 @@ export * as Statement from "./Statement.js"
  * @since 1.0.0
  */
 export * as Stream from "./Stream.js"
-
-/**
- * @since 1.0.0
- */
-export * as Transform from "./Transform.js"

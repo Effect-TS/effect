@@ -33,7 +33,7 @@ export interface PgClient extends Client.Client {
  * @category tag
  * @since 1.0.0
  */
-export const PgClient: Context.Tag<PgClient, PgClient> = Context.GenericTag<PgClient>("sqlfx/pg/PgClient")
+export const PgClient: Context.Tag<PgClient, PgClient> = Context.GenericTag<PgClient>("@effect/sql-pg/PgClient")
 
 /**
  * @category constructor

@@ -39,6 +39,7 @@ const config: UserConfig = {
       ...alias("sql-mssql"),
       ...alias("sql-mysql2"),
       ...alias("sql-pg"),
+      ...alias("sql-sqlite-node"),
       ...alias("typeclass"),
       ...alias("vitest")
     }

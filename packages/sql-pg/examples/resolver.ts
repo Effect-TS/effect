@@ -1,8 +1,7 @@
 import * as DevTools from "@effect/experimental/DevTools"
 import * as Schema from "@effect/schema/Schema"
 import * as Pg from "@effect/sql-pg"
-import { Config, Effect, Layer } from "effect"
-import { pipe } from "effect/Function"
+import { Config, Effect, Layer, String } from "effect"
 
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.number,
@@ -10,8 +9,7 @@ class Person extends Schema.Class<Person>("Person")({
   createdAt: Schema.DateFromSelf
 }) {}
 
-const InsertPersonSchema = pipe(
-  Schema.struct(Person.fields),
+const InsertPersonSchema = Schema.struct(Person.fields).pipe(
   Schema.omit("id", "createdAt")
 )
 
@@ -77,12 +75,11 @@ const program = Effect.gen(function*(_) {
 
 const PgLive = Pg.client.layer({
   database: Config.succeed("effect_pg_dev"),
-  transformQueryNames: Config.succeed(Pg.transform.camelToSnake),
-  transformResultNames: Config.succeed(Pg.transform.snakeToCamel)
+  transformQueryNames: Config.succeed(String.camelToSnake),
+  transformResultNames: Config.succeed(String.snakeToCamel)
 })
 
-pipe(
-  program,
+program.pipe(
   Effect.provide(PgLive.pipe(
     Layer.provide(DevTools.layer())
   )),

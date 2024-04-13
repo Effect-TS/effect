@@ -99,6 +99,11 @@
       "@effect/sql-pg": ["./packages/sql-pg/src/index.js"],
       "@effect/sql-pg/*": ["./packages/sql-pg/src/*.js"],
       "@effect/sql-pg/test/*": ["./packages/sql-pg/test/*.js"],
+      "@effect/sql-sqlite-node": ["./packages/sql-sqlite-node/src/index.js"],
+      "@effect/sql-sqlite-node/*": ["./packages/sql-sqlite-node/src/*.js"],
+      "@effect/sql-sqlite-node/test/*": [
+        "./packages/sql-sqlite-node/test/*.js"
+      ],
       "@effect/typeclass": ["./packages/typeclass/src/index.js"],
       "@effect/typeclass/*": ["./packages/typeclass/src/*.js"],
       "@effect/typeclass/test/*": ["./packages/typeclass/test/*.js"],

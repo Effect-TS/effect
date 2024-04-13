@@ -177,7 +177,7 @@ export const make = (
   })
 
 /**
- * @category constructor
+ * @category layers
  * @since 1.0.0
  */
 export const layer: (
