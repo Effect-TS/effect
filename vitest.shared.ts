@@ -21,6 +21,7 @@ const config: UserConfig = {
     sequence: {
       concurrent: true
     },
+    include: ["test/**/*.test.ts"],
     alias: {
       // TODO: Should we use `effect/test` instead of `effect-test`?
       "effect-test": path.join(__dirname, "packages/effect/test"),
