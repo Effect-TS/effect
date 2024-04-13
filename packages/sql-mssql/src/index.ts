@@ -41,3 +41,10 @@ export * as schema from "@effect/sql/Schema"
  * @since 1.0.0
  */
 export * as statement from "@effect/sql/Statement"
+
+export {
+  /**
+   * @since 1.0.0
+   */
+  TYPES as types
+} from "tedious"

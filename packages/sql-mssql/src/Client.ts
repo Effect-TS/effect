@@ -24,17 +24,6 @@ import type { ParameterOptions } from "tedious/lib/request.js"
 import type { Parameter } from "./Parameter.js"
 import type * as Procedure from "./Procedure.js"
 
-const TYPES = Tedious.TYPES
-
-export {
-  /**
-   * Parameter types
-   *
-   * @since 1.0.0
-   */
-  TYPES
-}
-
 /**
  * @category models
  * @since 1.0.0

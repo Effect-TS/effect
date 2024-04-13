@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url"
 
 const peopleProcedure = pipe(
   Sql.procedure.make("people_proc"),
-  Sql.procedure.param<string>()("name", Sql.client.TYPES.VarChar),
+  Sql.procedure.param<string>()("name", Sql.types.VarChar),
   Sql.procedure.withRows<{ readonly id: number; readonly name: string }>(),
   Sql.procedure.compile
 )
