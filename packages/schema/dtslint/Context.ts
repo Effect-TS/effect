@@ -30,8 +30,8 @@ S.declare(
   { decode: (_a, _b) => () => ParseResult.succeed("a"), encode: (_a, _b) => () => ParseResult.succeed(1) },
   {
     arbitrary: (
-      _a, // $ExpectType Arbitrary<string>
-      _b // $ExpectType Arbitrary<number>
+      _a, // $ExpectType LazyArbitrary<string>
+      _b // $ExpectType LazyArbitrary<number>
     ) =>
     (fc) => fc.string(),
     pretty: (

@@ -1218,7 +1218,7 @@ pipe(
     ) => true,
     {
       arbitrary: (
-        _from // $ExpectType Arbitrary<string>
+        _from // $ExpectType LazyArbitrary<string>
       ) =>
       (fc) => fc.string(),
       pretty: (
