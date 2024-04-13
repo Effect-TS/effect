@@ -540,6 +540,22 @@ importers:
         version: link:../effect/dist
     publishDirectory: dist
 
+  packages/sql-sqlite-bun:
+    devDependencies:
+      '@effect/platform':
+        specifier: workspace:^
+        version: link:../platform/dist
+      '@effect/sql':
+        specifier: workspace:^
+        version: link:../sql/dist
+      bun-types:
+        specifier: 1.0.33
+        version: 1.0.33
+      effect:
+        specifier: workspace:^
+        version: link:../effect/dist
+    publishDirectory: dist
+
   packages/sql-sqlite-node:
     dependencies:
       better-sqlite3:
@@ -555,6 +571,23 @@ importers:
       '@types/better-sqlite3':
         specifier: ^7.6.9
         version: 7.6.9
+      effect:
+        specifier: workspace:^
+        version: link:../effect/dist
+    publishDirectory: dist
+
+  packages/sql-sqlite-wasm:
+    dependencies:
+      '@sqlite.org/sqlite-wasm':
+        specifier: 3.45.2-build1
+        version: 3.45.2-build1
+    devDependencies:
+      '@effect/platform':
+        specifier: workspace:^
+        version: link:../platform/dist
+      '@effect/sql':
+        specifier: workspace:^
+        version: link:../sql/dist
       effect:
         specifier: workspace:^
         version: link:../effect/dist
@@ -2695,6 +2728,11 @@ packages:
   /@sinclair/typebox@0.27.8:
     resolution: {integrity: sha512-+Fj43pSMwJs4KRrH/938Uf+uAELIgVBmQzg/q1YG10djyfA3TnrU8N8XzqCh/okZdszqBQTZf96idMfE5lnwTA==}
     dev: true
+
+  /@sqlite.org/sqlite-wasm@3.45.2-build1:
+    resolution: {integrity: sha512-TeQf8rNFQna8pg95IshtpXkhdMq1iNAXllCoNrhEn18660Hbal9yxKAYv+ZfC1kjfdEXMK6V0XanfX5OT5FyMw==}
+    hasBin: true
+    dev: false
 
   /@types/better-sqlite3@7.6.9:
     resolution: {integrity: sha512-FvktcujPDj9XKMJQWFcl2vVl7OdRIqsSRX9b0acWwTmwLK9CF2eqo/FRcmMLNpugKoX/avA6pb7TorDLmpgTnQ==}

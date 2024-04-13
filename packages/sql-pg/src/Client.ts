@@ -20,7 +20,7 @@ import type { PendingQuery, PendingValuesQuery } from "postgres"
 import postgres from "postgres"
 
 /**
- * @category model
+ * @category models
  * @since 1.0.0
  */
 export interface PgClient extends Client.Client {
@@ -30,13 +30,13 @@ export interface PgClient extends Client.Client {
 }
 
 /**
- * @category tag
+ * @category tags
  * @since 1.0.0
  */
 export const PgClient: Context.Tag<PgClient, PgClient> = Context.GenericTag<PgClient>("@effect/sql-pg/PgClient")
 
 /**
- * @category constructor
+ * @category constructors
  * @since 1.0.0
  */
 export interface PgClientConfig {
@@ -69,7 +69,7 @@ const escape = Statement.defaultEscape("\"")
 type PartialWithUndefined<T> = { [K in keyof T]?: T[K] | undefined }
 
 /**
- * @category constructor
+ * @category constructors
  * @since 1.0.0
  */
 export const make = (
@@ -119,7 +119,7 @@ export const make = (
       ? postgres(Secret.value(options.url), opts as any)
       : postgres(opts as any)
 
-    yield* _(Effect.addFinalizer(() => Effect.sync(() => client.end())))
+    yield* _(Effect.addFinalizer(() => Effect.promise(() => client.end())))
 
     class ConnectionImpl implements Connection {
       constructor(
@@ -129,9 +129,10 @@ export const make = (
 
       private run(query: PendingQuery<any> | PendingValuesQuery<any>) {
         return Effect.async<ReadonlyArray<any>, SqlError>((resume) => {
-          query
-            .then((_) => resume(Effect.succeed(_)))
-            .catch((error) => resume(new SqlError({ error })))
+          query.then(
+            (_) => resume(Effect.succeed(_)),
+            (error) => resume(new SqlError({ error }))
+          )
           return Effect.sync(() => query.cancel())
         })
       }

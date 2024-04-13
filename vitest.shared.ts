@@ -11,6 +11,9 @@ const config: UserConfig = {
   esbuild: {
     target: "es2020"
   },
+  optimizeDeps: {
+    exclude: ["bun:sqlite"]
+  },
   test: {
     fakeTimers: {
       toFake: undefined
@@ -39,7 +42,9 @@ const config: UserConfig = {
       ...alias("sql-mssql"),
       ...alias("sql-mysql2"),
       ...alias("sql-pg"),
+      ...alias("sql-sqlite-bun"),
       ...alias("sql-sqlite-node"),
+      ...alias("sql-sqlite-wasm"),
       ...alias("typeclass"),
       ...alias("vitest")
     }

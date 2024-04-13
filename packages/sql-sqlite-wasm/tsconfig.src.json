@@ -1,6 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src", "../sql-sqlite-wasm/src/sqlite-wasm.d.ts"],
+  "include": ["src"],
   "references": [{ "path": "../effect" }, { "path": "../sql" }],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/src.tsbuildinfo",
