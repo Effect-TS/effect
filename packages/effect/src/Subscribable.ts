@@ -114,10 +114,11 @@ export const fromStream = <A, E, R>(
 
     yield* _(
       Stream.runForEachChunk(stream, (a) =>
-        Chunk.last(a).pipe(Option.match({ 
-          onNone: () => Effect.unit, 
-          onSome: (val) => Ref.set(ref, val) 
-        })))
+        Chunk.last(a).pipe(Option.match({
+          onNone: () => Effect.unit,
+          onSome: (val) => Ref.set(ref, val)
+        }))),
+      Effect.forkScoped
     )
 
     return make({
