@@ -1,7 +1,7 @@
 import * as DevTools from "@effect/experimental/DevTools"
 import { NodeFileSystem } from "@effect/platform-node"
 import * as Sql from "@effect/sql-mssql"
-import { Config, Effect, Layer, Logger, LogLevel, Secret } from "effect"
+import { Config, Effect, Layer, Logger, LogLevel, Secret, String } from "effect"
 import { pipe } from "effect/Function"
 import { fileURLToPath } from "node:url"
 
@@ -89,8 +89,8 @@ const SqlLive = Sql.migrator.layer({
       server: Config.succeed("localhost"),
       username: Config.succeed("sa"),
       password: Config.succeed(Secret.fromString("Sq1Fx_password")),
-      transformQueryNames: Config.succeed(Sql.transform.camelToSnake),
-      transformResultNames: Config.succeed(Sql.transform.snakeToCamel)
+      transformQueryNames: Config.succeed(String.camelToSnake),
+      transformResultNames: Config.succeed(String.snakeToCamel)
     })
   ),
   Layer.provide(NodeFileSystem.layer),

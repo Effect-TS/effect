@@ -624,6 +624,49 @@ export const stripMarginWith: {
  */
 export const stripMargin = (self: string): string => stripMarginWith(self, "|")
 
+/**
+ * @since 2.0.0
+ */
+export const snakeToCamel = (self: string): string => {
+  let str = self[0]
+  for (let i = 1; i < self.length; i++) {
+    str += self[i] === "_" ? self[++i].toUpperCase() : self[i]
+  }
+  return str
+}
+
+/**
+ * @since 2.0.0
+ */
+export const snakeToPascal = (self: string): string => {
+  let str = self[0].toUpperCase()
+  for (let i = 1; i < self.length; i++) {
+    str += self[i] === "_" ? self[++i].toUpperCase() : self[i]
+  }
+  return str
+}
+
+/**
+ * @since 2.0.0
+ */
+export const snakeToKebab = (self: string): string => self.replace(/_/g, "-")
+
+/**
+ * @since 2.0.0
+ */
+export const camelToSnake = (self: string): string => self.replace(/([A-Z])/g, "_$1").toLowerCase()
+
+/**
+ * @since 2.0.0
+ */
+export const pascalToSnake = (self: string): string =>
+  (self.slice(0, 1) + self.slice(1).replace(/([A-Z])/g, "_$1")).toLowerCase()
+
+/**
+ * @since 2.0.0
+ */
+export const kebabToSnake = (self: string): string => self.replace(/-/g, "_")
+
 class LinesIterator implements IterableIterator<string> {
   private index: number
   private readonly length: number
