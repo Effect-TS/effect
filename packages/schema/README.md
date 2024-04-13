@@ -896,7 +896,7 @@ FastCheck.Arbitrary<{
     readonly age: number;
 }>
 */
-const PersonArbitraryType = Arbitrary.make(Person)(FastCheck)
+const PersonArbitraryType = Arbitrary.make(Person)
 
 console.log(FastCheck.sample(PersonArbitraryType, 2))
 /*
@@ -911,9 +911,7 @@ FastCheck.Arbitrary<{
     readonly age: string;
 }>
 */
-const PersonArbitraryEncoded = Arbitrary.make(Schema.EncodedSchema(Person))(
-  FastCheck
-)
+const PersonArbitraryEncoded = Arbitrary.make(Schema.EncodedSchema(Person))
 
 console.log(FastCheck.sample(PersonArbitraryEncoded, 2))
 /*
@@ -933,7 +931,7 @@ const schema = Schema.Number.annotations({
   arbitrary: () => (fc) => fc.nat()
 })
 
-const arb = Arbitrary.make(schema)(FastCheck)
+const arb = Arbitrary.make(schema)
 
 console.log(FastCheck.sample(arb, 2))
 // Output: [ 1139348969, 749305462 ]
@@ -951,14 +949,14 @@ const bad = Schema.Number.pipe(Schema.positive()).annotations({
   arbitrary: () => (fc) => fc.integer()
 })
 
-console.log(FastCheck.sample(Arbitrary.make(bad)(FastCheck), 2))
+console.log(FastCheck.sample(Arbitrary.make(bad), 2))
 // Example Output: [ -1600163302, -6 ]
 
 const good = Schema.Number.annotations({
   arbitrary: () => (fc) => fc.integer()
 }).pipe(Schema.positive())
 
-console.log(FastCheck.sample(Arbitrary.make(good)(FastCheck), 2))
+console.log(FastCheck.sample(Arbitrary.make(good), 2))
 // Example Output: [ 7, 1518247613 ]
 ```
 
@@ -4917,7 +4915,7 @@ const FileFromSelf = Schema.Declare(isFile, {
 const arb = Arbitrary.make(FileFromSelf)
 
 // Generate sample files using the Arbitrary instance
-const files = FastCheck.sample(arb(FastCheck), 2)
+const files = FastCheck.sample(arb, 2)
 console.log(files)
 /*
 Output:
