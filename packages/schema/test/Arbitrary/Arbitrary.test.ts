@@ -12,7 +12,7 @@ describe("Arbitrary > Arbitrary", () => {
 
   it("should throw on declarations without annotations", () => {
     const schema = S.Declare(isUnknown)
-    expect(() => Arbitrary.make(schema)).toThrow(
+    expect(() => Arbitrary.makeLazy(schema)).toThrow(
       new Error("cannot build an Arbitrary for a declaration without annotations (<declaration schema>)")
     )
   })
@@ -71,7 +71,7 @@ describe("Arbitrary > Arbitrary", () => {
   })
 
   it("never", () => {
-    expect(() => Arbitrary.make(S.Never)(fc)).toThrow(
+    expect(() => Arbitrary.makeLazy(S.Never)(fc)).toThrow(
       new Error("cannot build an Arbitrary for `never`")
     )
   })
@@ -131,7 +131,7 @@ describe("Arbitrary > Arbitrary", () => {
   it("empty enums should throw", () => {
     enum Fruits {}
     const schema = S.Enums(Fruits)
-    expect(() => Arbitrary.make(schema)(fc)).toThrow(
+    expect(() => Arbitrary.makeLazy(schema)(fc)).toThrow(
       new Error("cannot build an Arbitrary for an empty enum")
     )
   })
@@ -512,7 +512,7 @@ describe("Arbitrary > Arbitrary", () => {
   describe("should handle annotations", () => {
     const expectHook = <A, I>(source: S.Schema<A, I>) => {
       const schema = source.pipe(Arbitrary.arbitrary(() => (fc) => fc.constant("custom arbitrary") as any))
-      const arb = Arbitrary.make(schema)(fc)
+      const arb = Arbitrary.makeLazy(schema)(fc)
       expect(fc.sample(arb, 1)[0]).toEqual("custom arbitrary")
     }
 

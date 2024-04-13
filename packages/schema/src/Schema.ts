@@ -34,7 +34,7 @@ import * as secret_ from "effect/Secret"
 import * as sortedSet_ from "effect/SortedSet"
 import * as string_ from "effect/String"
 import type * as Types from "effect/Types"
-import type { Arbitrary } from "./Arbitrary.js"
+import type { LazyArbitrary } from "./Arbitrary.js"
 import * as arbitrary_ from "./Arbitrary.js"
 import type { ParseOptions } from "./AST.js"
 import * as AST from "./AST.js"
@@ -2201,8 +2201,8 @@ export const Record = <K extends Schema.All, V extends Schema.All>(key: K, value
  * @category struct transformations
  * @since 1.0.0
  */
-export const Pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
-<R, I extends { [K in keyof A]?: any }>(
+export const Pick = <A, I, Keys extends ReadonlyArray<keyof A & keyof I>>(...keys: Keys) =>
+<R>(
   self: Schema<A, I, R>
 ): Schema<Types.Simplify<Pick<A, Keys[number]>>, Types.Simplify<Pick<I, Keys[number]>>, R> =>
   make(AST.pick(self.ast, keys))
@@ -2211,8 +2211,8 @@ export const Pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
  * @category struct transformations
  * @since 1.0.0
  */
-export const Omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
-<R, I extends { [K in keyof A]?: any }>(
+export const Omit = <A, I, Keys extends ReadonlyArray<keyof A & keyof I>>(...keys: Keys) =>
+<R>(
   self: Schema<A, I, R>
 ): Schema<Types.Simplify<Omit<A, Keys[number]>>, Types.Simplify<Omit<I, Keys[number]>>, R> =>
   make(AST.omit(self.ast, keys))
@@ -2246,20 +2246,20 @@ export const Omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
  * @since 1.0.0
  */
 export const Pluck: {
-  <A, K extends keyof A>(
+  <A, I, K extends keyof A & keyof I>(
     key: K
-  ): <I extends { [P in K]?: any }, R>(schema: Schema<A, I, R>) => Schema<A[K], { readonly [P in K]: I[P] }, R>
-  <A, I extends { [P in K]?: any }, R, K extends keyof A>(
+  ): <R>(schema: Schema<A, I, R>) => Schema<A[K], { readonly [P in K]: I[P] }, R>
+  <A, I, R, K extends keyof A & keyof I>(
     schema: Schema<A, I, R>,
     key: K
   ): Schema<A[K], { readonly [P in K]: I[P] }, R>
 } = dual(
   2,
-  <A, I extends { [P in K]?: any }, R, K extends keyof A>(
+  <A, I, R, K extends keyof A & keyof I>(
     schema: Schema<A, I, R>,
     key: K
   ): Schema<A[K], Types.Simplify<Pick<I, K>>, R> => {
-    const ps = AST.getPropertyKeyIndexedAccess(TypeSchema(schema).ast, key)
+    const ps = AST.getPropertyKeyIndexedAccess(AST.typeAST(schema.ast), key)
     const value = make<A[K], A[K], R>(ps.isOptional ? AST.orUndefined(ps.type) : ps.type)
     return transform(
       schema.pipe(Pick(key)),
@@ -2951,8 +2951,8 @@ export declare namespace Annotations {
     readonly typeId?: AST.TypeAnnotation | { id: AST.TypeAnnotation; annotation: unknown }
     readonly jsonSchema?: AST.JSONSchemaAnnotation
     readonly arbitrary?: (
-      ...arbitraries: { readonly [K in keyof TypeParameters]: Arbitrary<TypeParameters[K]> }
-    ) => Arbitrary<A>
+      ...arbitraries: { readonly [K in keyof TypeParameters]: LazyArbitrary<TypeParameters[K]> }
+    ) => LazyArbitrary<A>
     readonly pretty?: (
       ...pretties: { readonly [K in keyof TypeParameters]: pretty_.Pretty<TypeParameters[K]> }
     ) => pretty_.Pretty<A>
@@ -3623,7 +3623,7 @@ export const UUID: $String = $String.pipe(
     identifier: "UUID",
     title: "UUID",
     description: "a Universally Unique Identifier",
-    arbitrary: (): Arbitrary<string> => (fc) => fc.uuid()
+    arbitrary: (): LazyArbitrary<string> => (fc) => fc.uuid()
   })
 )
 
@@ -3650,7 +3650,7 @@ export const ULID: $String = $String.pipe(
     identifier: "ULID",
     title: "ULID",
     description: "a Universally Unique Lexicographically Sortable Identifier",
-    arbitrary: (): Arbitrary<string> => (fc) => fc.ulid()
+    arbitrary: (): LazyArbitrary<string> => (fc) => fc.ulid()
   })
 )
 
@@ -4425,7 +4425,7 @@ export const SecretFromSelf: SecretFromSelf = Declare(
   {
     identifier: "SecretFromSelf",
     pretty: (): pretty_.Pretty<secret_.Secret> => (secret) => String(secret),
-    arbitrary: (): Arbitrary<secret_.Secret> => (fc) => fc.string().map((_) => secret_.fromString(_))
+    arbitrary: (): LazyArbitrary<secret_.Secret> => (fc) => fc.string().map((_) => secret_.fromString(_))
   }
 )
 
@@ -4462,7 +4462,7 @@ export const DurationFromSelf: DurationFromSelf = Declare(
   {
     identifier: "DurationFromSelf",
     pretty: (): pretty_.Pretty<duration_.Duration> => String,
-    arbitrary: (): Arbitrary<duration_.Duration> => (fc) =>
+    arbitrary: (): LazyArbitrary<duration_.Duration> => (fc) =>
       fc.oneof(
         fc.constant(duration_.infinity),
         fc.bigUint().map((_) => duration_.nanos(_)),
@@ -4703,7 +4703,7 @@ export const Uint8ArrayFromSelf: Schema<Uint8Array> = Declare(
   {
     identifier: "Uint8ArrayFromSelf",
     pretty: (): pretty_.Pretty<Uint8Array> => (u8arr) => `new Uint8Array(${JSON.stringify(Array.from(u8arr))})`,
-    arbitrary: (): Arbitrary<Uint8Array> => (fc) => fc.uint8Array(),
+    arbitrary: (): LazyArbitrary<Uint8Array> => (fc) => fc.uint8Array(),
     equivalence: (): Equivalence.Equivalence<Uint8Array> => ReadonlyArray.getEquivalence(Equal.equals) as any
   }
 )
@@ -4958,7 +4958,7 @@ export const DateFromSelf: DateFromSelf = Declare(
     identifier: "DateFromSelf",
     description: "a potentially invalid Date instance",
     pretty: (): pretty_.Pretty<Date> => (date) => `new Date(${JSON.stringify(date)})`,
-    arbitrary: (): Arbitrary<Date> => (fc) => fc.date({ noInvalidDate: false }),
+    arbitrary: (): LazyArbitrary<Date> => (fc) => fc.date({ noInvalidDate: false }),
     equivalence: () => Equivalence.Date
   }
 )
@@ -5054,8 +5054,8 @@ const optionEncoded = <A, I, R>(value: Schema<A, I, R>) =>
 const optionDecode = <A>(input: OptionEncoded<A>): option_.Option<A> =>
   input._tag === "None" ? option_.none() : option_.some(input.value)
 
-const optionArbitrary = <A>(value: Arbitrary<A>): Arbitrary<option_.Option<A>> => {
-  const arb = arbitrary_.make(optionEncoded(schemaFromArbitrary(value)))
+const optionArbitrary = <A>(value: LazyArbitrary<A>): LazyArbitrary<option_.Option<A>> => {
+  const arb = arbitrary_.makeLazy(optionEncoded(schemaFromArbitrary(value)))
   return (fc) => arb(fc).map(optionDecode)
 }
 
@@ -5280,10 +5280,10 @@ const eitherDecode = <R, L>(input: EitherEncoded<R, L>): either_.Either<R, L> =>
   input._tag === "Left" ? either_.left(input.left) : either_.right(input.right)
 
 const eitherArbitrary = <R, L>(
-  right: Arbitrary<R>,
-  left: Arbitrary<L>
-): Arbitrary<either_.Either<R, L>> => {
-  const arb = arbitrary_.make(eitherEncoded(schemaFromArbitrary(right), schemaFromArbitrary(left)))
+  right: LazyArbitrary<R>,
+  left: LazyArbitrary<L>
+): LazyArbitrary<either_.Either<R, L>> => {
+  const arb = arbitrary_.makeLazy(eitherEncoded(schemaFromArbitrary(right), schemaFromArbitrary(left)))
   return (fc) => arb(fc).map(eitherDecode)
 }
 
@@ -5427,9 +5427,9 @@ export const EitherFromUnion = <R extends Schema.Any, L extends Schema.Any>({ Le
 }
 
 const mapArbitrary = <K, V>(
-  key: Arbitrary<K>,
-  value: Arbitrary<V>
-): Arbitrary<Map<K, V>> =>
+  key: LazyArbitrary<K>,
+  value: LazyArbitrary<V>
+): LazyArbitrary<Map<K, V>> =>
 (fc) => fc.array(fc.tuple(key(fc), value(fc))).map((as) => new Map(as))
 
 const readonlyMapPretty = <K, V>(
@@ -5588,7 +5588,7 @@ export {
   map as Map
 }
 
-const setArbitrary = <A>(item: Arbitrary<A>): Arbitrary<ReadonlySet<A>> => (fc) =>
+const setArbitrary = <A>(item: LazyArbitrary<A>): LazyArbitrary<ReadonlySet<A>> => (fc) =>
   fc.array(item(fc)).map((as) => new Set(as))
 
 const readonlySetPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<ReadonlySet<A>> => (set) =>
@@ -5723,7 +5723,7 @@ export {
 const bigDecimalPretty = (): pretty_.Pretty<bigDecimal_.BigDecimal> => (val) =>
   `BigDecimal(${bigDecimal_.format(bigDecimal_.normalize(val))})`
 
-const bigDecimalArbitrary = (): Arbitrary<bigDecimal_.BigDecimal> => (fc) =>
+const bigDecimalArbitrary = (): LazyArbitrary<bigDecimal_.BigDecimal> => (fc) =>
   fc.tuple(fc.bigInt(), fc.integer()).map(([value, scale]) => bigDecimal_.make(value, scale))
 
 /**
@@ -6066,7 +6066,7 @@ export const clampBigDecimal =
       { strict: false, decode: (self) => bigDecimal_.clamp(self, { minimum, maximum }), encode: identity }
     )
 
-const chunkArbitrary = <A>(item: Arbitrary<A>): Arbitrary<chunk_.Chunk<A>> => (fc) =>
+const chunkArbitrary = <A>(item: LazyArbitrary<A>): LazyArbitrary<chunk_.Chunk<A>> => (fc) =>
   fc.array(item(fc)).map(chunk_.fromIterable)
 
 const chunkPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<chunk_.Chunk<A>> => (c) =>
@@ -6145,8 +6145,8 @@ const toData = <A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(a:
   Array.isArray(a) ? data_.array(a) : data_.struct(a)
 
 const dataArbitrary = <A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(
-  item: Arbitrary<A>
-): Arbitrary<A> =>
+  item: LazyArbitrary<A>
+): LazyArbitrary<A> =>
 (fc) => item(fc).map(toData)
 
 const dataPretty = <A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(
@@ -6532,7 +6532,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
       const fallbackInstanceOf = (u: unknown) => Predicate.hasProperty(u, classSymbol) && guard(u)
       const encode = ParseResult.encodeUnknown(toSchema)
       const pretty = pretty_.make(toSchema)
-      const arb = arbitrary_.make(toSchema)
+      const arb = arbitrary_.makeLazy(toSchema)
       const equivalence = equivalence_.make(toSchema)
       const declaration: Schema.Any = Declare(
         [],
@@ -6673,9 +6673,9 @@ const FiberIdEncoded: Schema<FiberIdEncoded> = Union(
   FiberIdCompositeEncoded
 ).annotations({ identifier: "FiberIdEncoded" })
 
-const fiberIdFromArbitrary = arbitrary_.make(FiberIdEncoded)
+const fiberIdFromArbitrary = arbitrary_.makeLazy(FiberIdEncoded)
 
-const fiberIdArbitrary: Arbitrary<fiberId_.FiberId> = (fc) => fiberIdFromArbitrary(fc).map(fiberIdDecode)
+const fiberIdArbitrary: LazyArbitrary<fiberId_.FiberId> = (fc) => fiberIdFromArbitrary(fc).map(fiberIdDecode)
 
 const fiberIdPretty: pretty_.Pretty<fiberId_.FiberId> = (fiberId) => {
   switch (fiberId._tag) {
@@ -6832,10 +6832,10 @@ const causeEncoded = <E, EI, R1, R2>(
 }
 
 const causeArbitrary = <E>(
-  error: Arbitrary<E>,
-  defect: Arbitrary<unknown>
-): Arbitrary<cause_.Cause<E>> => {
-  const arb = arbitrary_.make(causeEncoded(schemaFromArbitrary(error), schemaFromArbitrary(defect)))
+  error: LazyArbitrary<E>,
+  defect: LazyArbitrary<unknown>
+): LazyArbitrary<cause_.Cause<E>> => {
+  const arb = arbitrary_.makeLazy(causeEncoded(schemaFromArbitrary(error), schemaFromArbitrary(defect)))
   return (fc) => arb(fc).map(causeDecode)
 }
 
@@ -7057,11 +7057,11 @@ const exitDecode = <A, E>(input: ExitEncoded<A, E>): exit_.Exit<A, E> => {
 }
 
 const exitArbitrary = <A, E>(
-  value: Arbitrary<A>,
-  error: Arbitrary<E>,
-  defect: Arbitrary<unknown>
-): Arbitrary<exit_.Exit<A, E>> => {
-  const arb = arbitrary_.make(
+  value: LazyArbitrary<A>,
+  error: LazyArbitrary<E>,
+  defect: LazyArbitrary<unknown>
+): LazyArbitrary<exit_.Exit<A, E>> => {
+  const arb = arbitrary_.makeLazy(
     exitEncoded(schemaFromArbitrary(value), schemaFromArbitrary(error), schemaFromArbitrary(defect))
   )
   return (fc) => arb(fc).map(exitDecode)
@@ -7169,7 +7169,7 @@ export const Exit = <A extends Schema.All, E extends Schema.All, DR = never>(
   )
 }
 
-const hashSetArbitrary = <A>(item: Arbitrary<A>): Arbitrary<hashSet_.HashSet<A>> => (fc) =>
+const hashSetArbitrary = <A>(item: LazyArbitrary<A>): LazyArbitrary<hashSet_.HashSet<A>> => (fc) =>
   fc.array(item(fc)).map((as) => hashSet_.fromIterable(as))
 
 const hashSetPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<hashSet_.HashSet<A>> => (set) =>
@@ -7255,9 +7255,9 @@ export const HashSet = <Value extends Schema.Any>(value: Value): HashSet<Value> 
 }
 
 const hashMapArbitrary = <K, V>(
-  key: Arbitrary<K>,
-  value: Arbitrary<V>
-): Arbitrary<hashMap_.HashMap<K, V>> =>
+  key: LazyArbitrary<K>,
+  value: LazyArbitrary<V>
+): LazyArbitrary<hashMap_.HashMap<K, V>> =>
 (fc) => fc.array(fc.tuple(key(fc), value(fc))).map((as) => hashMap_.fromIterable(as))
 
 const hashMapPretty = <K, V>(
@@ -7355,7 +7355,7 @@ export const HashMap = <K extends Schema.Any, V extends Schema.Any>({ Key, Value
   )
 }
 
-const listArbitrary = <A>(item: Arbitrary<A>): Arbitrary<list_.List<A>> => (fc) =>
+const listArbitrary = <A>(item: LazyArbitrary<A>): LazyArbitrary<list_.List<A>> => (fc) =>
   fc.array(item(fc)).map((as) => list_.fromIterable(as))
 
 const listPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<list_.List<A>> => (set) =>
@@ -7440,8 +7440,9 @@ export const List = <Value extends Schema.Any>(value: Value): List<Value> => {
   )
 }
 
-const sortedSetArbitrary = <A>(item: Arbitrary<A>, ord: Order.Order<A>): Arbitrary<sortedSet_.SortedSet<A>> => (fc) =>
-  fc.array(item(fc)).map((as) => sortedSet_.fromIterable(as, ord))
+const sortedSetArbitrary =
+  <A>(item: LazyArbitrary<A>, ord: Order.Order<A>): LazyArbitrary<sortedSet_.SortedSet<A>> => (fc) =>
+    fc.array(item(fc)).map((as) => sortedSet_.fromIterable(as, ord))
 
 const sortedSetPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<sortedSet_.SortedSet<A>> => (set) =>
   `new SortedSet([${Array.from(sortedSet_.values(set)).map((a) => item(a)).join(", ")}])`
@@ -7523,7 +7524,7 @@ export const SortedSet = <Value extends Schema.Any>(
   )
 }
 
-const schemaFromArbitrary = <A>(value: Arbitrary<A>): Schema<A> =>
+const schemaFromArbitrary = <A>(value: LazyArbitrary<A>): Schema<A> =>
   Suspend<A, A, never>(() => Any).annotations({
     [arbitrary_.ArbitraryHookId]: () => value
   })

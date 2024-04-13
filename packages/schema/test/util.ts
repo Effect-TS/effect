@@ -84,7 +84,7 @@ export const roundtrip = <A, I>(schema: S.Schema<A, I, never>, params?: Paramete
   if (!doRoundtrip) {
     return
   }
-  const arb = A.make(schema)
+  const arb = A.makeLazy(schema)
   const is = S.is(schema)
   const encode = S.encode(schema)
   const decode = S.decode(schema)
@@ -186,7 +186,7 @@ export const expectValidArbitrary = <A, I>(schema: S.Schema<A, I, never>, params
   if (!doProperty) {
     return
   }
-  const arb = A.make(schema)(fc)
+  const arb = A.makeLazy(schema)(fc)
   const is = S.is(schema)
   fc.assert(fc.property(arb, (a) => is(a)), params)
 }
@@ -216,7 +216,7 @@ export const expectPromiseFailure = async <A>(promise: Promise<A>, message: stri
 }
 
 export const sample = <A, I>(schema: S.Schema<A, I>, n: number) => {
-  const arbitrary = A.make(schema)
+  const arbitrary = A.makeLazy(schema)
   const arb = arbitrary(fc)
   console.log(JSON.stringify(fc.sample(arb, n), null, 2))
 }

@@ -109,4 +109,20 @@ describe("Schema > omit", () => {
     const schema = A.pipe(S.Omit("a"))
     expect(schema.ast).toStrictEqual(S.Struct({ b: S.NumberFromString }).ast)
   })
+
+  it("struct with key rename", async () => {
+    const schema = S.struct({
+      a: S.string,
+      b: S.propertySignature(S.number).pipe(S.fromKey("c"))
+    }).pipe(S.omit("a"))
+    await Util.expectDecodeUnknownSuccess(schema, { c: 1 }, { b: 1 })
+  })
+
+  it("rename", async () => {
+    const schema = S.struct({
+      a: S.string,
+      c: S.number
+    }).pipe(S.rename({ c: "b" }), S.omit("a"))
+    await Util.expectDecodeUnknownSuccess(schema, { c: 1 }, { b: 1 })
+  })
 })

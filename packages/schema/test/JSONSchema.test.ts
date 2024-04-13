@@ -29,7 +29,7 @@ const propertyType = <A, I>(schema: S.Schema<A, I>, options?: {
   if (!doProperty) {
     return
   }
-  const arbitrary = A.make(schema)
+  const arbitrary = A.makeLazy(schema)
   const is = S.is(schema)
   const jsonSchema = JSONSchema.make(schema)
   // console.log(JSON.stringify(jsonSchema, null, 2))
