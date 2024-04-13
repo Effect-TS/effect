@@ -2195,8 +2195,8 @@ export const record = <K extends Schema.All, V extends Schema.All>(key: K, value
  * @category struct transformations
  * @since 1.0.0
  */
-export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
-<R, I extends { [K in keyof A]?: any }>(
+export const pick = <A, I, Keys extends ReadonlyArray<keyof A & keyof I>>(...keys: Keys) =>
+<R>(
   self: Schema<A, I, R>
 ): Schema<Types.Simplify<Pick<A, Keys[number]>>, Types.Simplify<Pick<I, Keys[number]>>, R> =>
   make(AST.pick(self.ast, keys))
@@ -2205,8 +2205,8 @@ export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
  * @category struct transformations
  * @since 1.0.0
  */
-export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
-<R, I extends { [K in keyof A]?: any }>(
+export const omit = <A, I, Keys extends ReadonlyArray<keyof A & keyof I>>(...keys: Keys) =>
+<R>(
   self: Schema<A, I, R>
 ): Schema<Types.Simplify<Omit<A, Keys[number]>>, Types.Simplify<Omit<I, Keys[number]>>, R> =>
   make(AST.omit(self.ast, keys))
@@ -2240,20 +2240,20 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
  * @since 1.0.0
  */
 export const pluck: {
-  <A, K extends keyof A>(
+  <A, I, K extends keyof A & keyof I>(
     key: K
-  ): <I extends { [P in K]?: any }, R>(schema: Schema<A, I, R>) => Schema<A[K], { readonly [P in K]: I[P] }, R>
-  <A, I extends { [P in K]?: any }, R, K extends keyof A>(
+  ): <R>(schema: Schema<A, I, R>) => Schema<A[K], { readonly [P in K]: I[P] }, R>
+  <A, I, R, K extends keyof A & keyof I>(
     schema: Schema<A, I, R>,
     key: K
   ): Schema<A[K], { readonly [P in K]: I[P] }, R>
 } = dual(
   2,
-  <A, I extends { [P in K]?: any }, R, K extends keyof A>(
+  <A, I, R, K extends keyof A & keyof I>(
     schema: Schema<A, I, R>,
     key: K
   ): Schema<A[K], Types.Simplify<Pick<I, K>>, R> => {
-    const ps = AST.getPropertyKeyIndexedAccess(typeSchema(schema).ast, key)
+    const ps = AST.getPropertyKeyIndexedAccess(AST.typeAST(schema.ast), key)
     const value = make<A[K], A[K], R>(ps.isOptional ? AST.orUndefined(ps.type) : ps.type)
     return transform(
       schema.pipe(pick(key)),
