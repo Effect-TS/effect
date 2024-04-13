@@ -107,4 +107,14 @@ describe("Schema > pluck", () => {
     await Util.expectEncodeSuccess(schema, undefined, {})
     await Util.expectEncodeSuccess(schema, "a", { a: "a" })
   })
+
+  // it("struct with renamed key", async () => {
+  //   const origin = S.struct({ a: S.propertySignature(S.string).pipe(S.fromKey("b")) })
+  //   // The `pluck` typing explicitly depends on `I`, resulting in:
+  //   // Property 'b' is missing in type '{ a?: any; }' but required in type '{ readonly b: string; }'
+  //   // It isn't clear if the `pluck` typings should be fixed, or the test
+  //   const schema = S.pluck(origin, "a")
+  //   await Util.expectEncodeSuccess(schema, "a", { "b": "a" })
+  //   await Util.expectDecodeUnknownSuccess(schema, { b: "a" }, "a")
+  // })
 })

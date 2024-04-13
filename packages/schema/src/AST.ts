@@ -2038,9 +2038,25 @@ export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral | 
       case "TypeLiteralTransformation": {
         const propertySignatureTransformations = ast.transformation.propertySignatureTransformations
           .filter((t) => (keys as ReadonlyArray<PropertyKey>).includes(t.to))
+
+        const pstToKeys = propertySignatureTransformations.map(pst => pst.to)
+        const pstFromKeys = propertySignatureTransformations.map(pst => pst.from)
+
+        const toKeys = ReadonlyArray.union(
+            pstToKeys,
+            ReadonlyArray.difference(keys, pstFromKeys),
+          )
+        
+        const fromKeys = ReadonlyArray.union(
+          pstFromKeys,
+          ReadonlyArray.difference(keys, pstToKeys),
+        )
+        
         return new Transformation(
-          pick(ast.from, keys),
-          pick(ast.to, keys),
+          // pick(ast.from, keys),
+          // pick(ast.to, keys),
+          pick(ast.from, fromKeys),
+          pick(ast.to, toKeys),
           ReadonlyArray.isNonEmptyReadonlyArray(propertySignatureTransformations)
             ? new TypeLiteralTransformation(propertySignatureTransformations)
             : composeTransformation

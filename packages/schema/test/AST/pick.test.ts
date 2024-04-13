@@ -22,6 +22,15 @@ describe("AST > pick", () => {
       expect(ast.from).toStrictEqual(S.struct({ a: S.optional(S.NumberFromString) }).ast)
       expect(ast.to).toStrictEqual(S.struct({ a: S.number }).ast)
       expect(ast.transformation).toStrictEqual((schema.ast as AST.Transformation).transformation)
+
+      const schema2 = S.struct({
+        a: S.propertySignature(S.number).pipe(S.fromKey('c')),
+        b: S.number,
+      })
+      const ast2 = schema2.pipe(S.pick("a")).ast as AST.Transformation
+      expect(ast2.from).toStrictEqual(S.struct({ c: S.number }).ast)
+      expect(ast2.to).toStrictEqual(S.struct({ a: S.number }).ast)
+      expect(ast2.transformation).toStrictEqual((schema2.ast as AST.Transformation).transformation)
     })
 
     it("with SurrogateAnnotation", async () => {

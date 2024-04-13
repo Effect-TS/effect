@@ -90,12 +90,13 @@ describe("Schema > omit", () => {
     const schema = S.struct({
       a: S.optional(S.string, { exact: true, default: () => "" }),
       b: S.NumberFromString,
-      c: S.boolean
+      c: S.boolean,
+      d: S.propertySignature(S.string).pipe(S.fromKey('e'))
     }).pipe(
       S.omit("c")
     )
-    await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
-    await Util.expectDecodeUnknownSuccess(schema, { b: "1" }, { a: "", b: 1 })
+    await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: "1", e: "e" }, { a: "a", b: 1, d: "e" })
+    await Util.expectDecodeUnknownSuccess(schema, { b: "1", e: "e" }, { a: "", b: 1, d: "e" })
   })
 
   it("typeSchema(Class)", () => {
