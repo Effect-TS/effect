@@ -44,6 +44,7 @@ const config: UserConfig = {
       ...alias("sql-pg"),
       ...alias("sql-sqlite-bun"),
       ...alias("sql-sqlite-node"),
+      ...alias("sql-sqlite-react-native"),
       ...alias("sql-sqlite-wasm"),
       ...alias("typeclass"),
       ...alias("vitest")

@@ -107,6 +107,15 @@
       "@effect/sql-sqlite-node/test/*": [
         "./packages/sql-sqlite-node/test/*.js"
       ],
+      "@effect/sql-sqlite-react-native": [
+        "./packages/sql-sqlite-react-native/src/index.js"
+      ],
+      "@effect/sql-sqlite-react-native/*": [
+        "./packages/sql-sqlite-react-native/src/*.js"
+      ],
+      "@effect/sql-sqlite-react-native/test/*": [
+        "./packages/sql-sqlite-react-native/test/*.js"
+      ],
       "@effect/sql-sqlite-wasm": ["./packages/sql-sqlite-wasm/src/index.js"],
       "@effect/sql-sqlite-wasm/*": ["./packages/sql-sqlite-wasm/src/*.js"],
       "@effect/sql-sqlite-wasm/test/*": [

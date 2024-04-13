@@ -22,6 +22,7 @@
     { "path": "packages/sql-pg/tsconfig.build.json" },
     { "path": "packages/sql-sqlite-bun/tsconfig.build.json" },
     { "path": "packages/sql-sqlite-node/tsconfig.build.json" },
+    { "path": "packages/sql-sqlite-react-native/tsconfig.build.json" },
     { "path": "packages/sql-sqlite-wasm/tsconfig.build.json" },
     { "path": "packages/typeclass/tsconfig.build.json" },
     { "path": "packages/vitest/tsconfig.build.json" }
