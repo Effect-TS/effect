@@ -111,18 +111,18 @@ describe("Schema > omit", () => {
   })
 
   it("struct with key rename", async () => {
-    const schema = S.struct({
-      a: S.string,
-      b: S.propertySignature(S.number).pipe(S.fromKey("c"))
-    }).pipe(S.omit("a"))
+    const schema = S.Struct({
+      a: S.String,
+      b: S.propertySignature(S.Number).pipe(S.fromKey("c"))
+    }).pipe(S.Omit("a"))
     await Util.expectDecodeUnknownSuccess(schema, { c: 1 }, { b: 1 })
   })
 
   it("rename", async () => {
-    const schema = S.struct({
-      a: S.string,
-      c: S.number
-    }).pipe(S.rename({ c: "b" }), S.omit("a"))
+    const schema = S.Struct({
+      a: S.String,
+      c: S.Number
+    }).pipe(S.rename({ c: "b" }), S.Omit("a"))
     await Util.expectDecodeUnknownSuccess(schema, { c: 1 }, { b: 1 })
   })
 })

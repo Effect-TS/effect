@@ -835,7 +835,7 @@ S.Struct({ a: S.String.pipe(S.optional({ exact: true, nullable: true, as: "Optio
 // ---------------------------------------------
 
 // @ts-expect-error
-pipe(S.struct({ a: S.propertySignature(S.number).pipe(S.fromKey("c")) }), S.pick("a"))
+pipe(S.Struct({ a: S.propertySignature(S.Number).pipe(S.fromKey("c")) }), S.Pick("a"))
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }, never>
 pipe(S.Struct({ a: S.String, b: S.Number, c: S.Boolean }), S.Pick("a", "b"))
@@ -874,7 +874,7 @@ pipe(
 // ---------------------------------------------
 
 // @ts-expect-error
-pipe(S.struct({ a: S.propertySignature(S.number).pipe(S.fromKey("c")) }), S.omit("a"))
+pipe(S.Struct({ a: S.propertySignature(S.Number).pipe(S.fromKey("c")) }), S.Omit("a"))
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }, never>
 pipe(S.Struct({ a: S.String, b: S.Number, c: S.Boolean }), S.Omit("c"))
@@ -1550,7 +1550,7 @@ S.optional(S.String).annotations({ description: "description" })
 // ---------------------------------------------
 
 // @ts-expect-error
-S.pluck(S.struct({ a: S.propertySignature(S.number).pipe(S.fromKey("c")) }), "a")
+S.Pluck(S.Struct({ a: S.propertySignature(S.Number).pipe(S.fromKey("c")) }), "a")
 
 // $ExpectType Schema<string, { readonly a: string; }, never>
 S.Pluck(S.Struct({ a: S.String, b: S.Number }), "a")
