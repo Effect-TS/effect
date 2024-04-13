@@ -18,7 +18,7 @@ describe("AST > getCardinality", () => {
       S.UniqueSymbolFromSelf(Symbol.for("a")).ast,
       S.Undefined.ast,
       S.Void.ast,
-      S.Literal("a").ast,
+      S.literal("a").ast,
       S.Never.ast
     ].map(
       AST.getCardinality
@@ -29,7 +29,7 @@ describe("AST > getCardinality", () => {
       S.UniqueSymbolFromSelf(Symbol.for("a")).ast,
       S.Undefined.ast,
       S.Void.ast,
-      S.Literal("a").ast,
+      S.literal("a").ast,
       S.Boolean.ast,
       S.SymbolFromSelf.ast,
       S.BigIntFromSelf.ast,

@@ -276,12 +276,12 @@ export declare namespace Schema {
 /**
  * @since 1.0.0
  */
-export const EncodedSchema = <A, I, R>(schema: Schema<A, I, R>): Schema<I> => make(AST.encodedAST(schema.ast))
+export const encodedSchema = <A, I, R>(schema: Schema<A, I, R>): Schema<I> => make(AST.encodedAST(schema.ast))
 
 /**
  * @since 1.0.0
  */
-export const TypeSchema = <A, I, R>(schema: Schema<A, I, R>): Schema<A> => make(AST.typeAST(schema.ast))
+export const typeSchema = <A, I, R>(schema: Schema<A, I, R>): Schema<A> => make(AST.typeAST(schema.ast))
 
 /* c8 ignore start */
 export {
@@ -535,15 +535,15 @@ export const make = <A, I = A, R = never>(ast: AST.AST): Schema<A, I, R> => new 
  * @category api interface
  * @since 1.0.0
  */
-export interface Literal<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>
-  extends Annotable<Literal<Literals>, Literals[number]>
+export interface literal<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>
+  extends Annotable<literal<Literals>, Literals[number]>
 {
   readonly literals: Readonly<Literals>
 }
 
-class LiteralImpl<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>
+class literalImpl<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>
   extends SchemaImpl<Literals[number]>
-  implements Literal<Literals>
+  implements literal<Literals>
 {
   static ast = <Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>(
     literals: Literals
@@ -553,12 +553,12 @@ class LiteralImpl<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.Liter
       : new AST.Literal(literals[0])
   }
   readonly literals: Literals
-  constructor(literals: Literals, ast: AST.AST = LiteralImpl.ast(literals)) {
+  constructor(literals: Literals, ast: AST.AST = literalImpl.ast(literals)) {
     super(ast)
     this.literals = [...literals]
   }
   annotations(annotations: Annotations.Schema<Literals[number]>) {
-    return new LiteralImpl(this.literals, AST.annotations(this.ast, toASTAnnotations(annotations)))
+    return new literalImpl(this.literals, AST.annotations(this.ast, toASTAnnotations(annotations)))
   }
 }
 
@@ -566,17 +566,17 @@ class LiteralImpl<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.Liter
  * @category constructors
  * @since 1.0.0
  */
-export function Literal<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>(
+export function literal<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>(
   ...literals: Literals
-): Literal<Literals>
-export function Literal(): Never
-export function Literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
+): literal<Literals>
+export function literal(): Never
+export function literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
   ...literals: Literals
 ): Schema<Literals[number]>
-export function Literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
+export function literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
   ...literals: Literals
 ): Schema<Literals[number]> | Never {
-  return ReadonlyArray.isNonEmptyReadonlyArray(literals) ? new LiteralImpl(literals) : Never
+  return ReadonlyArray.isNonEmptyReadonlyArray(literals) ? new literalImpl(literals) : Never
 }
 
 /**
@@ -586,7 +586,7 @@ export function Literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
  * import * as S from "@effect/schema/Schema"
  * import { Either } from "effect"
  *
- * const schema = S.Literal("a", "b", "c").pipe(S.PickLiteral("a", "b"))
+ * const schema = S.literal("a", "b", "c").pipe(S.pickLiteral("a", "b"))
  *
  * assert.deepStrictEqual(S.decodeSync(schema)("a"), "a")
  * assert.deepStrictEqual(S.decodeSync(schema)("b"), "b")
@@ -595,9 +595,9 @@ export function Literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
  * @category constructors
  * @since 1.0.0
  */
-export const PickLiteral =
+export const pickLiteral =
   <A extends AST.LiteralValue, L extends ReadonlyArray.NonEmptyReadonlyArray<A>>(...literals: L) =>
-  <I, R>(_schema: Schema<A, I, R>): Literal<[...L]> => Literal(...literals)
+  <I, R>(_schema: Schema<A, I, R>): literal<[...L]> => literal(...literals)
 
 /**
  * @category constructors
@@ -609,11 +609,11 @@ export const UniqueSymbolFromSelf = <S extends symbol>(symbol: S): Schema<S> => 
  * @category api interface
  * @since 1.0.0
  */
-export interface Enums<A extends { [x: string]: string | number }> extends Annotable<Enums<A>, A[keyof A]> {
+export interface enums<A extends { [x: string]: string | number }> extends Annotable<enums<A>, A[keyof A]> {
   readonly enums: A
 }
 
-class EnumsImpl<A extends { [x: string]: string | number }> extends SchemaImpl<A[keyof A]> implements Enums<A> {
+class enumsImpl<A extends { [x: string]: string | number }> extends SchemaImpl<A[keyof A]> implements enums<A> {
   static ast = <A extends { [x: string]: string | number }>(enums: A): AST.AST => {
     return new AST.Enums(
       Object.keys(enums).filter(
@@ -621,11 +621,11 @@ class EnumsImpl<A extends { [x: string]: string | number }> extends SchemaImpl<A
       ).map((key) => [key, enums[key]])
     )
   }
-  constructor(readonly enums: A, ast: AST.AST = EnumsImpl.ast(enums)) {
+  constructor(readonly enums: A, ast: AST.AST = enumsImpl.ast(enums)) {
     super(ast)
   }
   annotations(annotations: Annotations.Schema<A[keyof A]>) {
-    return new EnumsImpl(this.enums, AST.annotations(this.ast, toASTAnnotations(annotations)))
+    return new enumsImpl(this.enums, AST.annotations(this.ast, toASTAnnotations(annotations)))
   }
 }
 
@@ -633,7 +633,7 @@ class EnumsImpl<A extends { [x: string]: string | number }> extends SchemaImpl<A
  * @category constructors
  * @since 1.0.0
  */
-export const Enums = <A extends { [x: string]: string | number }>(enums: A): Enums<A> => new EnumsImpl(enums)
+export const enums = <A extends { [x: string]: string | number }>(enums: A): enums<A> => new enumsImpl(enums)
 
 type Join<T> = T extends [infer Head, ...infer Tail]
   ? `${Head & (string | number | bigint | boolean | null | undefined)}${Tail extends [] ? ""
@@ -644,7 +644,7 @@ type Join<T> = T extends [infer Head, ...infer Tail]
  * @category constructors
  * @since 1.0.0
  */
-export const TemplateLiteral = <T extends [Schema.AnyNoContext, ...Array<Schema.AnyNoContext>]>(
+export const templateLiteral = <T extends [Schema.AnyNoContext, ...Array<Schema.AnyNoContext>]>(
   ...[head, ...tail]: T
 ): Schema<Join<{ [K in keyof T]: Schema.Type<T[K]> }>> => {
   let types: ReadonlyArray<AST.TemplateLiteral | AST.Literal> = getTemplateLiterals(head.ast)
@@ -765,7 +765,7 @@ const declarePrimitive = <A>(
  * @category constructors
  * @since 1.0.0
  */
-export const Declare: {
+export const declare: {
   <A>(
     is: (input: unknown) => input is A,
     annotations?: Annotations.Schema<A>
@@ -812,7 +812,7 @@ export const BrandTypeId = Symbol.for("@effect/schema/TypeId/Brand")
  * @category constructors
  * @since 1.0.0
  */
-export const FromBrand = <C extends brand_.Brand<string | symbol>>(
+export const fromBrand = <C extends brand_.Brand<string | symbol>>(
   constructor: brand_.Brand.Constructor<C>,
   annotations?: Annotations.Filter<brand_.Brand.Unbranded<C>>
 ) =>
@@ -840,17 +840,17 @@ export const InstanceOfTypeId = Symbol.for("@effect/schema/TypeId/InstanceOf")
  * @category api interface
  * @since 1.0.0
  */
-export interface InstanceOf<A> extends Annotable<InstanceOf<A>, A> {}
+export interface instanceOf<A> extends Annotable<instanceOf<A>, A> {}
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const InstanceOf = <A extends abstract new(...args: any) => any>(
+export const instanceOf = <A extends abstract new(...args: any) => any>(
   constructor: A,
   annotations?: Annotations.Schema<InstanceType<A>>
-): InstanceOf<InstanceType<A>> =>
-  Declare(
+): instanceOf<InstanceType<A>> =>
+  declare(
     (u): u is InstanceType<A> => u instanceof constructor,
     {
       title: constructor.name,
@@ -1110,7 +1110,7 @@ export const NullishOr = <S extends Schema.Any>(self: S): NullishOr<S> => Union(
  * @category combinators
  * @since 1.0.0
  */
-export const KeyOf = <A, I, R>(self: Schema<A, I, R>): Schema<keyof A> => make<keyof A>(AST.keyof(self.ast))
+export const keyof = <A, I, R>(self: Schema<A, I, R>): Schema<keyof A> => make<keyof A>(AST.keyof(self.ast))
 
 /**
  * @since 1.0.0
@@ -1794,7 +1794,7 @@ export const optional: {
       if (isNullable) {
         return optionalToRequired(
           NullOr(schema),
-          TypeSchema(schema),
+          typeSchema(schema),
           {
             decode: option_.match({ onNone: defaultValue, onSome: (a) => a === null ? defaultValue() : a }),
             encode: option_.some
@@ -1803,7 +1803,7 @@ export const optional: {
       } else {
         return optionalToRequired(
           schema,
-          TypeSchema(schema),
+          typeSchema(schema),
           { decode: option_.match({ onNone: defaultValue, onSome: identity }), encode: option_.some }
         )
       }
@@ -1811,13 +1811,13 @@ export const optional: {
       if (isNullable) {
         return optionalToRequired(
           NullOr(schema),
-          OptionFromSelf(TypeSchema(schema)),
+          OptionFromSelf(typeSchema(schema)),
           { decode: option_.filter(Predicate.isNotNull<A | null>), encode: identity }
         )
       } else {
         return optionalToRequired(
           schema,
-          OptionFromSelf(TypeSchema(schema)),
+          OptionFromSelf(typeSchema(schema)),
           { decode: identity, encode: identity }
         )
       }
@@ -1825,7 +1825,7 @@ export const optional: {
       if (isNullable) {
         return optionalToOptional(
           NullOr(schema),
-          TypeSchema(schema),
+          typeSchema(schema),
           { decode: option_.filter(Predicate.isNotNull<A | null>), encode: identity }
         )
       } else {
@@ -1837,7 +1837,7 @@ export const optional: {
       if (isNullable) {
         return optionalToRequired(
           NullishOr(schema),
-          TypeSchema(schema),
+          typeSchema(schema),
           {
             decode: option_.match({ onNone: defaultValue, onSome: (a) => (a == null ? defaultValue() : a) }),
             encode: option_.some
@@ -1846,7 +1846,7 @@ export const optional: {
       } else {
         return optionalToRequired(
           UndefinedOr(schema),
-          TypeSchema(schema),
+          typeSchema(schema),
           {
             decode: option_.match({ onNone: defaultValue, onSome: (a) => (a === undefined ? defaultValue() : a) }),
             encode: option_.some
@@ -1857,13 +1857,13 @@ export const optional: {
       if (isNullable) {
         return optionalToRequired(
           NullishOr(schema),
-          OptionFromSelf(TypeSchema(schema)),
+          OptionFromSelf(typeSchema(schema)),
           { decode: option_.filter<A | null | undefined, A>((a): a is A => a != null), encode: identity }
         )
       } else {
         return optionalToRequired(
           UndefinedOr(schema),
-          OptionFromSelf(TypeSchema(schema)),
+          OptionFromSelf(typeSchema(schema)),
           { decode: option_.filter(Predicate.isNotUndefined<A | undefined>), encode: identity }
         )
       }
@@ -1871,7 +1871,7 @@ export const optional: {
       if (isNullable) {
         return optionalToOptional(
           NullishOr(schema),
-          UndefinedOr(TypeSchema(schema)),
+          UndefinedOr(typeSchema(schema)),
           { decode: option_.filter(Predicate.isNotNull<A | null | undefined>), encode: identity }
         )
       } else {
@@ -2201,7 +2201,7 @@ export const Record = <K extends Schema.All, V extends Schema.All>(key: K, value
  * @category struct transformations
  * @since 1.0.0
  */
-export const Pick = <A, I, Keys extends ReadonlyArray<keyof A & keyof I>>(...keys: Keys) =>
+export const pick = <A, I, Keys extends ReadonlyArray<keyof A & keyof I>>(...keys: Keys) =>
 <R>(
   self: Schema<A, I, R>
 ): Schema<Types.Simplify<Pick<A, Keys[number]>>, Types.Simplify<Pick<I, Keys[number]>>, R> =>
@@ -2211,7 +2211,7 @@ export const Pick = <A, I, Keys extends ReadonlyArray<keyof A & keyof I>>(...key
  * @category struct transformations
  * @since 1.0.0
  */
-export const Omit = <A, I, Keys extends ReadonlyArray<keyof A & keyof I>>(...keys: Keys) =>
+export const omit = <A, I, Keys extends ReadonlyArray<keyof A & keyof I>>(...keys: Keys) =>
 <R>(
   self: Schema<A, I, R>
 ): Schema<Types.Simplify<Omit<A, Keys[number]>>, Types.Simplify<Omit<I, Keys[number]>>, R> =>
@@ -2237,7 +2237,7 @@ export const Omit = <A, I, Keys extends ReadonlyArray<keyof A & keyof I>>(...key
  * // const pullOutColumn: S.Schema<number, {
  * //     readonly column1: string;
  * // }, never>
- * const pullOutColumn = mytable.pipe(S.Pluck("column1"))
+ * const pullOutColumn = mytable.pipe(S.pluck("column1"))
  *
  * console.log(S.decodeUnknownEither(S.Array(pullOutColumn))([{ column1: "1", column2: 100 }, { column1: "2", column2: 300 }]))
  * // Output: { _id: 'Either', _tag: 'Right', right: [ 1, 2 ] }
@@ -2245,7 +2245,7 @@ export const Omit = <A, I, Keys extends ReadonlyArray<keyof A & keyof I>>(...key
  * @category struct transformations
  * @since 1.0.0
  */
-export const Pluck: {
+export const pluck: {
   <A, I, K extends keyof A & keyof I>(
     key: K
   ): <R>(schema: Schema<A, I, R>) => Schema<A[K], { readonly [P in K]: I[P] }, R>
@@ -2262,7 +2262,7 @@ export const Pluck: {
     const ps = AST.getPropertyKeyIndexedAccess(AST.typeAST(schema.ast), key)
     const value = make<A[K], A[K], R>(ps.isOptional ? AST.orUndefined(ps.type) : ps.type)
     return transform(
-      schema.pipe(Pick(key)),
+      schema.pipe(pick(key)),
       value,
       {
         decode: (a: any) => a[key],
@@ -2361,7 +2361,7 @@ export const brand = <S extends Schema.AnyNoContext, B extends string | symbol>(
  * @category combinators
  * @since 1.0.0
  */
-export const Partial: {
+export const partial: {
   <const Options extends { readonly exact: true } | undefined>(
     options?: Options
   ): <A, I, R>(
@@ -2388,7 +2388,7 @@ export const Partial: {
  * @category combinators
  * @since 1.0.0
  */
-export const Required = <A, I, R>(
+export const required = <A, I, R>(
   self: Schema<A, I, R>
 ): Schema<{ [K in keyof A]-?: A[K] }, { [K in keyof I]-?: I[K] }, R> => make(AST.required(self.ast))
 
@@ -2396,9 +2396,9 @@ export const Required = <A, I, R>(
  * @category api interface
  * @since 1.0.0
  */
-export interface Mutable<S extends Schema.Any> extends
+export interface mutable<S extends Schema.Any> extends
   Annotable<
-    Mutable<S>,
+    mutable<S>,
     SimplifyMutable<Schema.Type<S>>,
     SimplifyMutable<Schema.Encoded<S>>,
     Schema.Context<S>
@@ -2413,7 +2413,7 @@ export interface Mutable<S extends Schema.Any> extends
  * @category combinators
  * @since 1.0.0
  */
-export const Mutable = <S extends Schema.Any>(schema: S): Mutable<S> => make(AST.mutable(schema.ast))
+export const mutable = <S extends Schema.Any>(schema: S): mutable<S> => make(AST.mutable(schema.ast))
 
 const getExtendErrorMessage = (x: AST.AST, y: AST.AST, path: ReadonlyArray<string>) =>
   errors_.getAPIErrorMessage("Extend", `cannot extend \`${x}\` with \`${y}\` (path [${path?.join(", ")}])`)
@@ -2540,7 +2540,7 @@ export const extend: {
  * @category combinators
  * @since 1.0.0
  */
-export const Compose: {
+export const compose: {
   <C, B, R2>(
     to: Schema<C, B, R2>
   ): <A, R1>(from: Schema<B, A, R1>, options?: { readonly strict: true }) => Schema<C, A, R1 | R2>
@@ -2568,15 +2568,15 @@ export const Compose: {
  * @category api interface
  * @since 1.0.0
  */
-export interface Suspend<A, I, R> extends Schema<A, I, R> {
-  annotations(annotations: Annotations.Schema<A>): Suspend<A, I, R>
+export interface suspend<A, I, R> extends Schema<A, I, R> {
+  annotations(annotations: Annotations.Schema<A>): suspend<A, I, R>
 }
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const Suspend = <A, I, R>(f: () => Schema<A, I, R>): Suspend<A, I, R> => make(new AST.Suspend(() => f().ast))
+export const suspend = <A, I, R>(f: () => Schema<A, I, R>): suspend<A, I, R> => make(new AST.Suspend(() => f().ast))
 
 /**
  * @category combinators
@@ -2800,7 +2800,7 @@ export const transform: {
  * @category api interface
  * @since 1.0.0
  */
-export interface TransformLiteral<Type, Encoded> extends Annotable<TransformLiteral<Type, Encoded>, Type, Encoded> {}
+export interface transformLiteral<Type, Encoded> extends Annotable<transformLiteral<Type, Encoded>, Type, Encoded> {}
 
 /**
  * Creates a new `Schema` which transforms literal values.
@@ -2808,17 +2808,17 @@ export interface TransformLiteral<Type, Encoded> extends Annotable<TransformLite
  * @example
  * import * as S from "@effect/schema/Schema"
  *
- * const schema = S.TransformLiteral(0, "a")
+ * const schema = S.transformLiteral(0, "a")
  *
  * assert.deepStrictEqual(S.decodeSync(schema)(0), "a")
  *
  * @category constructors
  * @since 1.0.0
  */
-export const TransformLiteral = <Encoded extends AST.LiteralValue, Type extends AST.LiteralValue>(
+export const transformLiteral = <Encoded extends AST.LiteralValue, Type extends AST.LiteralValue>(
   from: Encoded,
   to: Type
-): TransformLiteral<Type, Encoded> => transform(Literal(from), Literal(to), { decode: () => to, encode: () => from })
+): transformLiteral<Type, Encoded> => transform(literal(from), literal(to), { decode: () => to, encode: () => from })
 
 /**
  * Creates a new `Schema` which maps between corresponding literal values.
@@ -2826,7 +2826,7 @@ export const TransformLiteral = <Encoded extends AST.LiteralValue, Type extends 
  * @example
  * import * as S from "@effect/schema/Schema"
  *
- * const Animal = S.TransformLiterals(
+ * const Animal = S.transformLiterals(
  *   [0, "cat"],
  *   [1, "dog"],
  *   [2, "cow"]
@@ -2837,19 +2837,19 @@ export const TransformLiteral = <Encoded extends AST.LiteralValue, Type extends 
  * @category constructors
  * @since 1.0.0
  */
-export function TransformLiterals<const A extends AST.Members<readonly [from: AST.LiteralValue, to: AST.LiteralValue]>>(
+export function transformLiterals<const A extends AST.Members<readonly [from: AST.LiteralValue, to: AST.LiteralValue]>>(
   ...pairs: A
-): Union<{ -readonly [I in keyof A]: TransformLiteral<A[I][1], A[I][0]> }>
-export function TransformLiterals<Encoded extends AST.LiteralValue, Type extends AST.LiteralValue>(
+): Union<{ -readonly [I in keyof A]: transformLiteral<A[I][1], A[I][0]> }>
+export function transformLiterals<Encoded extends AST.LiteralValue, Type extends AST.LiteralValue>(
   pairs: [Encoded, Type]
-): TransformLiteral<Type, Encoded>
-export function TransformLiterals<
+): transformLiteral<Type, Encoded>
+export function transformLiterals<
   const A extends ReadonlyArray<readonly [from: AST.LiteralValue, to: AST.LiteralValue]>
 >(...pairs: A): Schema<A[number][1], A[number][0]>
-export function TransformLiterals<
+export function transformLiterals<
   const A extends ReadonlyArray<readonly [from: AST.LiteralValue, to: AST.LiteralValue]>
 >(...pairs: A): Schema<A[number][1], A[number][0]> {
-  return Union(...pairs.map(([from, to]) => TransformLiteral(from, to)))
+  return Union(...pairs.map(([from, to]) => transformLiteral(from, to)))
 }
 
 /**
@@ -2868,8 +2868,8 @@ export function TransformLiterals<
  * const Circle = S.Struct({ radius: S.Number })
  * const Square = S.Struct({ sideLength: S.Number })
  * const Shape = S.Union(
- *   Circle.pipe(S.AttachPropertySignature("kind", "circle")),
- *   Square.pipe(S.AttachPropertySignature("kind", "square"))
+ *   Circle.pipe(S.attachPropertySignature("kind", "circle")),
+ *   Square.pipe(S.attachPropertySignature("kind", "square"))
  * )
  *
  * assert.deepStrictEqual(S.decodeSync(Shape)({ radius: 10 }), {
@@ -2880,7 +2880,7 @@ export function TransformLiterals<
  * @category combinators
  * @since 1.0.0
  */
-export const AttachPropertySignature: {
+export const attachPropertySignature: {
   <K extends PropertyKey, V extends AST.LiteralValue | symbol, A extends object>(
     key: K,
     value: V,
@@ -2903,8 +2903,8 @@ export const AttachPropertySignature: {
     annotations?: Annotations.Schema<Types.Simplify<A & { readonly [k in K]: V }>>
   ): Schema<Types.Simplify<A & { readonly [k in K]: V }>, I, R> => {
     const attached = extend(
-      TypeSchema(schema),
-      Struct({ [key]: Predicate.isSymbol(value) ? UniqueSymbolFromSelf(value) : Literal(value) })
+      typeSchema(schema),
+      Struct({ [key]: Predicate.isSymbol(value) ? UniqueSymbolFromSelf(value) : literal(value) })
     ).ast
     return make(
       new AST.Transformation(
@@ -3528,7 +3528,7 @@ export const Trim: Trim = transform(
  * @category string transformations
  * @since 1.0.0
  */
-export const Split = (separator: string): Schema<ReadonlyArray<string>, string> =>
+export const split = (separator: string): Schema<ReadonlyArray<string>, string> =>
   transform(
     $String,
     $Array($String),
@@ -3561,18 +3561,18 @@ const JsonString = $String.annotations({
  * @example
  * import * as S from "@effect/schema/Schema"
  *
- * assert.deepStrictEqual(S.decodeUnknownSync(S.ParseJson())(`{"a":"1"}`), { a: "1" })
- * assert.deepStrictEqual(S.decodeUnknownSync(S.ParseJson(S.Struct({ a: S.NumberFromString })))(`{"a":"1"}`), { a: 1 })
+ * assert.deepStrictEqual(S.decodeUnknownSync(S.parseJson())(`{"a":"1"}`), { a: "1" })
+ * assert.deepStrictEqual(S.decodeUnknownSync(S.parseJson(S.Struct({ a: S.NumberFromString })))(`{"a":"1"}`), { a: 1 })
  *
  * @category string transformations
  * @since 1.0.0
  */
-export const ParseJson: {
+export const parseJson: {
   <A, I, R>(schema: Schema<A, I, R>, options?: ParseJsonOptions): Schema<A, string, R>
   (options?: ParseJsonOptions): Schema<unknown, string>
 } = <A, I, R>(schema?: Schema<A, I, R> | ParseJsonOptions, o?: ParseJsonOptions) => {
   if (isSchema(schema)) {
-    return Compose(ParseJson(o), schema as any) as any
+    return compose(parseJson(o), schema as any) as any
   }
   const options: ParseJsonOptions | undefined = schema as any
   return transformOrFail(
@@ -3951,7 +3951,7 @@ export const clamp =
   (minimum: number, maximum: number) => <R, I, A extends number>(self: Schema<A, I, R>): Schema<A, I, R> =>
     transform(
       self,
-      self.pipe(TypeSchema, between(minimum, maximum)),
+      self.pipe(typeSchema, between(minimum, maximum)),
       { strict: false, decode: (self) => number_.clamp(self, { minimum, maximum }), encode: identity }
     )
 
@@ -4288,7 +4288,7 @@ export const clampBigInt =
   (minimum: bigint, maximum: bigint) => <R, I, A extends bigint>(self: Schema<A, I, R>): Schema<A, I, R> =>
     transform(
       self,
-      self.pipe(TypeSchema, betweenBigInt(minimum, maximum)),
+      self.pipe(typeSchema, betweenBigInt(minimum, maximum)),
       { strict: false, decode: (self) => bigInt_.clamp(self, { minimum, maximum }), encode: identity }
     )
 
@@ -4420,7 +4420,7 @@ export interface SecretFromSelf extends Annotable<SecretFromSelf, secret_.Secret
  * @category Secret constructors
  * @since 1.0.0
  */
-export const SecretFromSelf: SecretFromSelf = Declare(
+export const SecretFromSelf: SecretFromSelf = declare(
   secret_.isSecret,
   {
     identifier: "SecretFromSelf",
@@ -4457,7 +4457,7 @@ export interface DurationFromSelf extends Annotable<DurationFromSelf, duration_.
  * @category Duration constructors
  * @since 1.0.0
  */
-export const DurationFromSelf: DurationFromSelf = Declare(
+export const DurationFromSelf: DurationFromSelf = declare(
   duration_.isDuration,
   {
     identifier: "DurationFromSelf",
@@ -4570,7 +4570,7 @@ export const clampDuration =
   <R, I, A extends duration_.Duration>(self: Schema<A, I, R>): Schema<A, I, R> =>
     transform(
       self,
-      self.pipe(TypeSchema, betweenDuration(minimum, maximum)),
+      self.pipe(typeSchema, betweenDuration(minimum, maximum)),
       { strict: false, decode: (self) => duration_.clamp(self, { minimum, maximum }), encode: identity }
     )
 
@@ -4698,7 +4698,7 @@ export const betweenDuration = <A extends duration_.Duration>(
  * @category Uint8Array constructors
  * @since 1.0.0
  */
-export const Uint8ArrayFromSelf: Schema<Uint8Array> = Declare(
+export const Uint8ArrayFromSelf: Schema<Uint8Array> = declare(
   Predicate.isUint8Array,
   {
     identifier: "Uint8ArrayFromSelf",
@@ -4872,7 +4872,7 @@ export const itemsCount = <A>(
  * @category ReadonlyArray transformations
  * @since 1.0.0
  */
-export const NumberIndexedAccess = <A extends ReadonlyArray<any>, I extends ReadonlyArray<any>, R>(
+export const getNumberIndexedAccess = <A extends ReadonlyArray<any>, I extends ReadonlyArray<any>, R>(
   self: Schema<A, I, R>
 ): Schema<A[number], I[number], R> => make(AST.getNumberIndexedAccess(self.ast))
 
@@ -4882,10 +4882,10 @@ export const NumberIndexedAccess = <A extends ReadonlyArray<any>, I extends Read
  * @category ReadonlyArray transformations
  * @since 1.0.0
  */
-export const Head = <A, I, R>(self: Schema<ReadonlyArray<A>, I, R>): Schema<option_.Option<A>, I, R> =>
+export const head = <A, I, R>(self: Schema<ReadonlyArray<A>, I, R>): Schema<option_.Option<A>, I, R> =>
   transform(
     self,
-    OptionFromSelf(NumberIndexedAccess(TypeSchema(self))),
+    OptionFromSelf(getNumberIndexedAccess(typeSchema(self))),
     { decode: ReadonlyArray.head, encode: option_.match({ onNone: () => [], onSome: ReadonlyArray.of }) }
   )
 
@@ -4897,7 +4897,7 @@ export const Head = <A, I, R>(self: Schema<ReadonlyArray<A>, I, R>): Schema<opti
  * @category ReadonlyArray transformations
  * @since 1.0.0
  */
-export const HeadOrElse: {
+export const headOrElse: {
   <A>(fallback?: LazyArg<A>): <I, R>(self: Schema<ReadonlyArray<A>, I, R>) => Schema<A, I, R>
   <A, I, R>(self: Schema<ReadonlyArray<A>, I, R>, fallback?: LazyArg<A>): Schema<A, I, R>
 } = dual(
@@ -4905,7 +4905,7 @@ export const HeadOrElse: {
   <A, I, R>(self: Schema<ReadonlyArray<A>, I, R>, fallback?: LazyArg<A>): Schema<A, I, R> =>
     transformOrFail(
       self,
-      NumberIndexedAccess(TypeSchema(self)),
+      getNumberIndexedAccess(typeSchema(self)),
       {
         decode: (as, _, ast) =>
           as.length > 0
@@ -4952,7 +4952,7 @@ export interface DateFromSelf extends Annotable<DateFromSelf, Date> {}
  * @category Date constructors
  * @since 1.0.0
  */
-export const DateFromSelf: DateFromSelf = Declare(
+export const DateFromSelf: DateFromSelf = declare(
   Predicate.isDate,
   {
     identifier: "DateFromSelf",
@@ -5034,12 +5034,12 @@ export type OptionEncoded<I> =
   }
 
 const OptionNoneEncoded = Struct({
-  _tag: Literal("None")
+  _tag: literal("None")
 }).annotations({ description: "NoneEncoded" })
 
 const optionSomeEncoded = <A, I, R>(value: Schema<A, I, R>) =>
   Struct({
-    _tag: Literal("Some"),
+    _tag: literal("Some"),
     value
   }).annotations({ description: `SomeEncoded<${format(value)}>` })
 
@@ -5094,7 +5094,7 @@ export interface OptionFromSelf<Value extends Schema.Any> extends
 export const OptionFromSelf = <Value extends Schema.Any>(
   value: Value
 ): OptionFromSelf<Value> => {
-  return Declare(
+  return declare(
     [value],
     {
       decode: (value) => optionParse(ParseResult.decodeUnknown(value)),
@@ -5138,7 +5138,7 @@ export const Option = <Value extends Schema.Any>(value: Value): Option<Value> =>
   const value_ = asSchema(value)
   return transform(
     optionEncoded(value_),
-    OptionFromSelf(TypeSchema(value_)),
+    OptionFromSelf(typeSchema(value_)),
     {
       decode: optionDecode,
       encode: option_.match({
@@ -5170,7 +5170,7 @@ export const OptionFromNullOr = <Value extends Schema.Any>(
   value: Value
 ): OptionFromNullOr<Value> => {
   const value_ = asSchema(value)
-  return transform(NullOr(value_), OptionFromSelf(TypeSchema(value_)), {
+  return transform(NullOr(value_), OptionFromSelf(typeSchema(value_)), {
     decode: option_.fromNullable,
     encode: option_.getOrNull
   })
@@ -5200,7 +5200,7 @@ export const OptionFromNullishOr = <Value extends Schema.Any>(
   const value_ = asSchema(value)
   return transform(
     NullishOr(value_),
-    OptionFromSelf(TypeSchema(value_)),
+    OptionFromSelf(typeSchema(value_)),
     { decode: option_.fromNullable, encode: onNoneEncoding === null ? option_.getOrNull : option_.getOrUndefined }
   )
 }
@@ -5226,7 +5226,7 @@ export const OptionFromUndefinedOr = <Value extends Schema.Any>(
   value: Value
 ): OptionFromUndefinedOr<Value> => {
   const value_ = asSchema(value)
-  return transform(UndefinedOr(value_), OptionFromSelf(TypeSchema(value_)), {
+  return transform(UndefinedOr(value_), OptionFromSelf(typeSchema(value_)), {
     decode: option_.fromNullable,
     encode: option_.getOrUndefined
   })
@@ -5258,13 +5258,13 @@ export type EitherEncoded<IR, IL> = RightEncoded<IR> | LeftEncoded<IL>
 
 const rightEncoded = <RA, RI, RR>(right: Schema<RA, RI, RR>): Schema<RightEncoded<RA>, RightEncoded<RI>, RR> =>
   Struct({
-    _tag: Literal("Right"),
+    _tag: literal("Right"),
     right
   }).annotations({ description: `RightEncoded<${format(right)}>` })
 
 const leftEncoded = <LA, LI, LR>(left: Schema<LA, LI, LR>): Schema<LeftEncoded<LA>, LeftEncoded<LI>, LR> =>
   Struct({
-    _tag: Literal("Left"),
+    _tag: literal("Left"),
     left
   }).annotations({ description: `LeftEncoded<${format(left)}>` })
 
@@ -5329,7 +5329,7 @@ export const EitherFromSelf = <R extends Schema.Any, L extends Schema.Any>({ Lef
   readonly Left: L
   readonly Right: R
 }): EitherFromSelf<R, L> => {
-  return Declare(
+  return declare(
     [Right, Left],
     {
       decode: (Right, Left) => eitherParse(ParseResult.decodeUnknown(Right), ParseResult.decodeUnknown(Left)),
@@ -5378,7 +5378,7 @@ export const Either = <R extends Schema.Any, L extends Schema.Any>({ Left, Right
   const Left_ = asSchema(Left)
   return transform(
     eitherEncoded(Right_, Left_),
-    EitherFromSelf({ Left: TypeSchema(Left_), Right: TypeSchema(Right_) }),
+    EitherFromSelf({ Left: typeSchema(Left_), Right: typeSchema(Right_) }),
     { decode: eitherDecode, encode: either_.match({ onLeft: makeLeftEncoded, onRight: makeRightEncoded }) }
   )
 }
@@ -5412,8 +5412,8 @@ export const EitherFromUnion = <R extends Schema.Any, L extends Schema.Any>({ Le
 }): EitherFromUnion<R, L> => {
   const Right_ = asSchema(Right)
   const Left_ = asSchema(Left)
-  const toright = TypeSchema(Right_)
-  const toleft = TypeSchema(Left_)
+  const toright = typeSchema(Right_)
+  const toleft = typeSchema(Left_)
   const fromRight = transform(Right_, rightEncoded(toright), { decode: makeRightEncoded, encode: (r) => r.right })
   const fromLeft = transform(Left_, leftEncoded(toleft), { decode: makeLeftEncoded, encode: (l) => l.left })
   return transform(
@@ -5479,7 +5479,7 @@ const mapFromSelf_ = <K extends Schema.Any, V extends Schema.Any>(
   Value: V,
   description: string
 ): ReadonlyMapFromSelf<K, V> =>
-  Declare(
+  declare(
     [Key, Value],
     {
       decode: (Key, Value) => readonlyMapParse(ParseResult.decodeUnknown($Array(Tuple(Key, Value)))),
@@ -5549,7 +5549,7 @@ export const ReadonlyMap = <K extends Schema.Any, V extends Schema.Any>({ Key, V
   const Value_ = asSchema(Value)
   return transform(
     $Array(Tuple(Key_, Value_)),
-    ReadonlyMapFromSelf({ Key: TypeSchema(Key_), Value: TypeSchema(Value_) }),
+    ReadonlyMapFromSelf({ Key: typeSchema(Key_), Value: typeSchema(Value_) }),
     { decode: (as) => new Map(as), encode: (map) => Array.from(map.entries()) }
   )
 }
@@ -5575,7 +5575,7 @@ const map = <K extends Schema.Any, V extends Schema.Any>({ Key, Value }: {
   const Value_ = asSchema(Value)
   return transform(
     $Array(Tuple(Key_, Value_)),
-    MapFromSelf({ Key: TypeSchema(Key_), Value: TypeSchema(Value_) }),
+    MapFromSelf({ Key: typeSchema(Key_), Value: typeSchema(Value_) }),
     { decode: (as) => new Map(as), encode: (map) => Array.from(map.entries()) }
   )
 }
@@ -5623,7 +5623,7 @@ export interface ReadonlySetFromSelf<Value extends Schema.Any> extends
 {}
 
 const setFromSelf_ = <Value extends Schema.Any>(value: Value, description: string): ReadonlySetFromSelf<Value> =>
-  Declare(
+  declare(
     [value],
     {
       decode: (item) => readonlySetParse(ParseResult.decodeUnknown($Array(item))),
@@ -5685,7 +5685,7 @@ export const ReadonlySet = <Value extends Schema.Any>(value: Value): $ReadonlySe
   const value_ = asSchema(value)
   return transform(
     $Array(value_),
-    ReadonlySetFromSelf(TypeSchema(value_)),
+    ReadonlySetFromSelf(typeSchema(value_)),
     { decode: (as) => new Set(as), encode: (set) => Array.from(set) }
   )
 }
@@ -5707,7 +5707,7 @@ const set = <Value extends Schema.Any>(value: Value): $Set<Value> => {
   const value_ = asSchema(value)
   return transform(
     $Array(value_),
-    SetFromSelf(TypeSchema(value_)),
+    SetFromSelf(typeSchema(value_)),
     { decode: (as) => new Set(as), encode: (set) => Array.from(set) }
   )
 }
@@ -5736,7 +5736,7 @@ export interface BigDecimalFromSelf extends Annotable<BigDecimalFromSelf, bigDec
  * @category BigDecimal constructors
  * @since 1.0.0
  */
-export const BigDecimalFromSelf: BigDecimalFromSelf = Declare(
+export const BigDecimalFromSelf: BigDecimalFromSelf = declare(
   bigDecimal_.isBigDecimal,
   {
     identifier: "BigDecimalFromSelf",
@@ -6062,7 +6062,7 @@ export const clampBigDecimal =
   <R, I, A extends bigDecimal_.BigDecimal>(self: Schema<A, I, R>): Schema<A, I, R> =>
     transform(
       self,
-      self.pipe(TypeSchema, betweenBigDecimal(minimum, maximum)),
+      self.pipe(typeSchema, betweenBigDecimal(minimum, maximum)),
       { strict: false, decode: (self) => bigDecimal_.clamp(self, { minimum, maximum }), encode: identity }
     )
 
@@ -6100,7 +6100,7 @@ export interface ChunkFromSelf<Value extends Schema.Any> extends
  * @since 1.0.0
  */
 export const ChunkFromSelf = <Value extends Schema.Any>(value: Value): ChunkFromSelf<Value> => {
-  return Declare(
+  return declare(
     [value],
     {
       decode: (item) => chunkParse(ParseResult.decodeUnknown($Array(item))),
@@ -6136,7 +6136,7 @@ export const Chunk = <Value extends Schema.Any>(value: Value): Chunk<Value> => {
   const value_ = asSchema(value)
   return transform(
     $Array(value_),
-    ChunkFromSelf(TypeSchema(value_)),
+    ChunkFromSelf(typeSchema(value_)),
     { decode: (as) => as.length === 0 ? chunk_.empty() : chunk_.fromIterable(as), encode: chunk_.toReadonlyArray }
   )
 }
@@ -6173,7 +6173,7 @@ export const DataFromSelf = <
 >(
   item: Schema<A, I, R>
 ): Schema<A, I, R> => {
-  return Declare(
+  return declare(
     [item],
     {
       decode: (item) => dataParse(ParseResult.decodeUnknown(item)),
@@ -6200,7 +6200,7 @@ export const Data = <
 ): Schema<A, I, R> =>
   transform(
     item,
-    DataFromSelf(TypeSchema(item)),
+    DataFromSelf(typeSchema(item)),
     { strict: false, decode: toData, encode: (a) => Array.isArray(a) ? Array.from(a) : Object.assign({}, a) }
   )
 
@@ -6329,7 +6329,7 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
   : Class<
     Self,
-    { readonly _tag: Literal<[Tag]> } & Fields,
+    { readonly _tag: literal<[Tag]> } & Fields,
     Types.Simplify<{ readonly _tag: Tag } & Struct.Type<Fields>>,
     Types.Simplify<{ readonly _tag: Tag } & Struct.Encoded<Fields>>,
     Struct.Context<Fields>,
@@ -6340,7 +6340,7 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
   makeClass({
     kind: "TaggedClass",
     identifier: identifier ?? tag,
-    fields: extendFields({ _tag: Literal(tag) }, fields),
+    fields: extendFields({ _tag: literal(tag) }, fields),
     Base: data_.Class,
     tag: { _tag: tag },
     annotations
@@ -6358,7 +6358,7 @@ export const TaggedError = <Self = never>(identifier?: string) =>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedError", `"Tag", `>
   : Class<
     Self,
-    { readonly _tag: Literal<[Tag]> } & Fields,
+    { readonly _tag: literal<[Tag]> } & Fields,
     Types.Simplify<{ readonly _tag: Tag } & Struct.Type<Fields>>,
     Types.Simplify<{ readonly _tag: Tag } & Struct.Encoded<Fields>>,
     Struct.Context<Fields>,
@@ -6372,7 +6372,7 @@ export const TaggedError = <Self = never>(identifier?: string) =>
   return makeClass({
     kind: "TaggedError",
     identifier: identifier ?? tag,
-    fields: extendFields({ _tag: Literal(tag) }, fields),
+    fields: extendFields({ _tag: literal(tag) }, fields),
     Base,
     tag: { _tag: tag },
     annotations,
@@ -6428,7 +6428,7 @@ export const TaggedRequest =
   ): [Self] extends [never] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
     : Class<
       Self,
-      { readonly _tag: Literal<[Tag]> } & Fields,
+      { readonly _tag: literal<[Tag]> } & Fields,
       Types.Simplify<{ readonly _tag: Tag } & Struct.Type<Fields>>,
       Types.Simplify<{ readonly _tag: Tag } & Struct.Encoded<Fields>>,
       Struct.Context<Fields>,
@@ -6458,7 +6458,7 @@ export const TaggedRequest =
     return makeClass({
       kind: "TaggedRequest",
       identifier: identifier ?? tag,
-      fields: extendFields({ _tag: Literal(tag) }, fields),
+      fields: extendFields({ _tag: literal(tag) }, fields),
       Base: SerializableRequest,
       tag: { _tag: tag },
       annotations
@@ -6527,14 +6527,14 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
     static identifier = identifier
 
     static get ast() {
-      const toSchema = TypeSchema(schema)
+      const toSchema = typeSchema(schema)
       const guard = ParseResult.is(toSchema)
       const fallbackInstanceOf = (u: unknown) => Predicate.hasProperty(u, classSymbol) && guard(u)
       const encode = ParseResult.encodeUnknown(toSchema)
       const pretty = pretty_.make(toSchema)
       const arb = arbitrary_.makeLazy(toSchema)
       const equivalence = equivalence_.make(toSchema)
-      const declaration: Schema.Any = Declare(
+      const declaration: Schema.Any = declare(
         [],
         {
           decode: () => (input, _, ast) =>
@@ -6594,7 +6594,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
           identifier,
           fromSchema: transformOrFail(
             schema,
-            TypeSchema(Struct(transformedFields)),
+            typeSchema(Struct(transformedFields)),
             options
           ),
           fields: transformedFields,
@@ -6612,7 +6612,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
           kind,
           identifier,
           fromSchema: transformOrFail(
-            EncodedSchema(schema),
+            encodedSchema(schema),
             Struct(transformedFields),
             options
           ),
@@ -6646,17 +6646,17 @@ export type FiberIdEncoded =
   }
 
 const FiberIdCompositeEncoded = Struct({
-  _tag: Literal("Composite"),
-  left: Suspend(() => FiberIdEncoded),
-  right: Suspend(() => FiberIdEncoded)
+  _tag: literal("Composite"),
+  left: suspend(() => FiberIdEncoded),
+  right: suspend(() => FiberIdEncoded)
 }).annotations({ identifier: "FiberIdCompositeEncoded" })
 
 const FiberIdNoneEncoded = Struct({
-  _tag: Literal("None")
+  _tag: literal("None")
 }).annotations({ identifier: "FiberIdNoneEncoded" })
 
 const FiberIdRuntimeEncoded = Struct({
-  _tag: Literal("Runtime"),
+  _tag: literal("Runtime"),
   id: Int.pipe(nonNegative({
     title: "id",
     description: "id"
@@ -6698,7 +6698,7 @@ export interface FiberIdFromSelf extends Annotable<FiberIdFromSelf, fiberId_.Fib
  * @category FiberId constructors
  * @since 1.0.0
  */
-export const FiberIdFromSelf: FiberIdFromSelf = Declare(
+export const FiberIdFromSelf: FiberIdFromSelf = declare(
   fiberId_.isFiberId,
   {
     identifier: "FiberIdFromSelf",
@@ -6782,35 +6782,35 @@ export type CauseEncoded<E> =
 
 const causeDieEncoded = <R>(defect: Schema<unknown, unknown, R>) =>
   Struct({
-    _tag: Literal("Die"),
+    _tag: literal("Die"),
     defect
   })
 
 const CauseEmptyEncoded = Struct({
-  _tag: Literal("Empty")
+  _tag: literal("Empty")
 })
 
 const causeFailEncoded = <E, EI, R>(error: Schema<E, EI, R>) =>
   Struct({
-    _tag: Literal("Fail"),
+    _tag: literal("Fail"),
     error
   })
 
 const CauseInterruptEncoded = Struct({
-  _tag: Literal("Interrupt"),
+  _tag: literal("Interrupt"),
   fiberId: FiberIdEncoded
 })
 
 const causeParallelEncoded = <E, EI, R>(causeEncoded: Schema<CauseEncoded<E>, CauseEncoded<EI>, R>) =>
   Struct({
-    _tag: Literal("Parallel"),
+    _tag: literal("Parallel"),
     left: causeEncoded,
     right: causeEncoded
   })
 
 const causeSequentialEncoded = <E, EI, R>(causeEncoded: Schema<CauseEncoded<E>, CauseEncoded<EI>, R>) =>
   Struct({
-    _tag: Literal("Sequential"),
+    _tag: literal("Sequential"),
     left: causeEncoded,
     right: causeEncoded
   })
@@ -6819,7 +6819,7 @@ const causeEncoded = <E, EI, R1, R2>(
   error: Schema<E, EI, R1>,
   defect: Schema<unknown, unknown, R2>
 ): Schema<CauseEncoded<E>, CauseEncoded<EI>, R1 | R2> => {
-  const recur = Suspend(() => out)
+  const recur = suspend(() => out)
   const out: Schema<CauseEncoded<E>, CauseEncoded<EI>, R1 | R2> = Union(
     CauseEmptyEncoded,
     causeFailEncoded(error),
@@ -6888,7 +6888,7 @@ export const CauseFromSelf = <E extends Schema.Any, DR = never>({ Defect = Unkno
   readonly Error: E
   readonly Defect?: Schema<unknown, unknown, DR> | undefined
 }): CauseFromSelf<E, DR> => {
-  return Declare(
+  return declare(
     [Error, Defect],
     {
       decode: (Error, Defect) => causeParse(ParseResult.decodeUnknown(causeEncoded(Error, Defect))),
@@ -6999,7 +6999,7 @@ export const Cause = <E extends Schema.All, DR = never>({ Defect = CauseDefectUn
   const Error_ = asSchema(Error)
   return transform(
     causeEncoded(Error_, Defect),
-    CauseFromSelf({ Error: TypeSchema(Error_), Defect: TypeSchema(Defect) }),
+    CauseFromSelf({ Error: typeSchema(Error_), Defect: typeSchema(Defect) }),
     { decode: causeDecode, encode: causeEncode }
   )
 }
@@ -7023,7 +7023,7 @@ const exitFailureEncoded = <E, EI, ER, DR>(
   defect: Schema<unknown, unknown, DR>
 ) =>
   Struct({
-    _tag: Literal("Failure"),
+    _tag: literal("Failure"),
     cause: causeEncoded(error, defect)
   }).annotations({ description: `FailureEncoded<${format(error)}>` })
 
@@ -7031,7 +7031,7 @@ const exitSuccessEncoded = <A, I, R>(
   value: Schema<A, I, R>
 ) =>
   Struct({
-    _tag: Literal("Success"),
+    _tag: literal("Success"),
     value
   }).annotations({ description: `SuccessEncoded<${format(value)}>` })
 
@@ -7109,7 +7109,7 @@ export const ExitFromSelf = <A extends Schema.Any, E extends Schema.Any, DR = ne
     readonly Defect?: Schema<unknown, unknown, DR> | undefined
   }
 ): ExitFromSelf<A, E, DR> =>
-  Declare(
+  declare(
     [Success, Failure, Defect],
     {
       decode: (Success, Failure, Defect) =>
@@ -7158,7 +7158,7 @@ export const Exit = <A extends Schema.All, E extends Schema.All, DR = never>(
   const Failure_ = asSchema(Failure)
   return transform(
     exitEncoded(Success_, Failure_, Defect),
-    ExitFromSelf({ Failure: TypeSchema(Failure_), Success: TypeSchema(Success_), Defect: TypeSchema(Defect) }),
+    ExitFromSelf({ Failure: typeSchema(Failure_), Success: typeSchema(Success_), Defect: typeSchema(Defect) }),
     {
       decode: exitDecode,
       encode: (exit) =>
@@ -7213,7 +7213,7 @@ export interface HashSetFromSelf<Value extends Schema.Any> extends
 export const HashSetFromSelf = <Value extends Schema.Any>(
   value: Value
 ): HashSetFromSelf<Value> => {
-  return Declare(
+  return declare(
     [value],
     {
       decode: (item) => hashSetParse(ParseResult.decodeUnknown($Array(item))),
@@ -7249,7 +7249,7 @@ export const HashSet = <Value extends Schema.Any>(value: Value): HashSet<Value> 
   const value_ = asSchema(value)
   return transform(
     $Array(value_),
-    HashSetFromSelf(TypeSchema(value_)),
+    HashSetFromSelf(typeSchema(value_)),
     { decode: (as) => hashSet_.fromIterable(as), encode: (set) => Array.from(set) }
   )
 }
@@ -7310,7 +7310,7 @@ export const HashMapFromSelf = <K extends Schema.Any, V extends Schema.Any>({ Ke
   readonly Key: K
   readonly Value: V
 }): HashMapFromSelf<K, V> => {
-  return Declare(
+  return declare(
     [Key, Value],
     {
       decode: (Key, Value) => hashMapParse(ParseResult.decodeUnknown($Array(Tuple(Key, Value)))),
@@ -7350,7 +7350,7 @@ export const HashMap = <K extends Schema.Any, V extends Schema.Any>({ Key, Value
   const Value_ = asSchema(Value)
   return transform(
     $Array(Tuple(Key_, Value_)),
-    HashMapFromSelf({ Key: TypeSchema(Key_), Value: TypeSchema(Value_) }),
+    HashMapFromSelf({ Key: typeSchema(Key_), Value: typeSchema(Value_) }),
     { decode: (as) => hashMap_.fromIterable(as), encode: (map) => Array.from(map) }
   )
 }
@@ -7399,7 +7399,7 @@ export interface ListFromSelf<Value extends Schema.Any> extends
 export const ListFromSelf = <Value extends Schema.Any>(
   value: Value
 ): ListFromSelf<Value> => {
-  return Declare(
+  return declare(
     [value],
     {
       decode: (item) => listParse(ParseResult.decodeUnknown($Array(item))),
@@ -7435,7 +7435,7 @@ export const List = <Value extends Schema.Any>(value: Value): List<Value> => {
   const value_ = asSchema(value)
   return transform(
     $Array(value_),
-    ListFromSelf(TypeSchema(value_)),
+    ListFromSelf(typeSchema(value_)),
     { decode: (as) => list_.fromIterable(as), encode: (set) => Array.from(set) }
   )
 }
@@ -7479,7 +7479,7 @@ export const SortedSetFromSelf = <Value extends Schema.Any>(
   ordA: Order.Order<Schema.Type<Value>>,
   ordI: Order.Order<Schema.Encoded<Value>>
 ): SortedSetFromSelf<Value> => {
-  return Declare(
+  return declare(
     [value],
     {
       decode: (item) => sortedSetParse(ParseResult.decodeUnknown($Array(item)), ordA),
@@ -7516,7 +7516,7 @@ export const SortedSet = <Value extends Schema.Any>(
   ordA: Order.Order<Schema.Type<Value>>
 ): SortedSet<Value> => {
   const value_ = asSchema(value)
-  const to = TypeSchema(value_)
+  const to = typeSchema(value_)
   return transform(
     $Array(value_),
     SortedSetFromSelf<typeof to>(to, ordA, ordA),
@@ -7525,7 +7525,7 @@ export const SortedSet = <Value extends Schema.Any>(
 }
 
 const schemaFromArbitrary = <A>(value: LazyArbitrary<A>): Schema<A> =>
-  Suspend<A, A, never>(() => Any).annotations({
+  suspend<A, A, never>(() => Any).annotations({
     [arbitrary_.ArbitraryHookId]: () => value
   })
 

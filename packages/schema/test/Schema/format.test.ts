@@ -15,14 +15,14 @@ describe("Schema > format", () => {
 
   it("suspend", () => {
     type A = readonly [number, A | null]
-    const schema: S.Schema<A> = S.Suspend( // intended outer suspend
-      () => S.Tuple(S.Number, S.Union(schema, S.Literal(null)))
+    const schema: S.Schema<A> = S.suspend( // intended outer suspend
+      () => S.Tuple(S.Number, S.Union(schema, S.literal(null)))
     )
     expect(format(schema)).toEqual("<suspended schema>")
   })
 
   it("suspend before initialization", () => {
-    const schema = S.Suspend(() => string)
+    const schema = S.suspend(() => string)
     expect(format(schema)).toEqual("<suspended schema>")
     const string = S.String
   })

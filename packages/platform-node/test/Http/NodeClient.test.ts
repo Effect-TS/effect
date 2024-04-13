@@ -24,7 +24,7 @@ const makeJsonPlaceholder = Effect.gen(function*(_) {
   )
   const createTodo = Http.client.schemaFunction(
     todoClient,
-    Todo.pipe(Schema.Omit("id"))
+    Todo.pipe(Schema.omit("id"))
   )(Http.request.post("/todos"))
   return {
     client,
@@ -99,7 +99,7 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
         const response = yield* _(
           Http.request.head("https://jsonplaceholder.typicode.com/todos"),
           client,
-          Http.response.schemaJsonEffect(Schema.Struct({ status: Schema.Literal(200) }))
+          Http.response.schemaJsonEffect(Schema.Struct({ status: Schema.literal(200) }))
         )
         expect(response).toEqual({ status: 200 })
       }).pipe(Effect.provide(layer)))

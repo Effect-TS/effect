@@ -23,7 +23,7 @@ describe("AST > mutable", () => {
   })
 
   it("suspend", () => {
-    expectSameReference(S.Suspend(() => S.Struct({ a: S.String, b: S.Number })))
+    expectSameReference(S.suspend(() => S.Struct({ a: S.String, b: S.Number })))
   })
 
   it("refinement", () => {

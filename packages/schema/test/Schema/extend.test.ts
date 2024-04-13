@@ -87,8 +87,8 @@ describe("Schema > extend", () => {
     it(`struct extend union`, () => {
       const schema = S.Struct({ b: S.Boolean }).pipe(
         S.extend(S.Union(
-          S.Struct({ a: S.Literal("a") }),
-          S.Struct({ a: S.Literal("b") })
+          S.Struct({ a: S.literal("a") }),
+          S.Struct({ a: S.literal("b") })
         ))
       )
       const is = S.is(schema)
@@ -102,8 +102,8 @@ describe("Schema > extend", () => {
 
     it(`union extend struct`, () => {
       const schema = S.Union(
-        S.Struct({ a: S.Literal("a") }),
-        S.Struct({ b: S.Literal("b") })
+        S.Struct({ a: S.literal("a") }),
+        S.Struct({ b: S.literal("b") })
       ).pipe(
         S.extend(S.Struct({ c: S.Boolean }))
       )
@@ -119,10 +119,10 @@ describe("Schema > extend", () => {
     it(`nested union extends struct`, () => {
       const schema = S.Union(
         S.Union(
-          S.Struct({ a: S.Literal("a") }),
-          S.Struct({ a: S.Literal("b") })
+          S.Struct({ a: S.literal("a") }),
+          S.Struct({ a: S.literal("b") })
         ),
-        S.Struct({ b: S.Literal("b") })
+        S.Struct({ b: S.literal("b") })
       ).pipe(
         S.extend(S.Struct({ c: S.Boolean }))
       )
@@ -143,8 +143,8 @@ describe("Schema > extend", () => {
 
     it(`union extend union`, () => {
       const schema = S.Union(
-        S.Struct({ a: S.Literal("a") }),
-        S.Struct({ a: S.Literal("b") })
+        S.Struct({ a: S.literal("a") }),
+        S.Struct({ a: S.literal("b") })
       ).pipe(
         S.extend(
           S.Union(
@@ -206,9 +206,9 @@ describe("Schema > extend", () => {
     it("struct extend record(templateLiteral, string)", async () => {
       const schema = S.Struct({ a: S.String }).pipe(
         S.extend(S.Record(
-          S.TemplateLiteral(
+          S.templateLiteral(
             S.String,
-            S.Literal("-"),
+            S.literal("-"),
             S.Number
           ),
           S.String
@@ -319,12 +319,12 @@ describe("Schema > extend", () => {
       )
     ).toThrow(new Error("Duplicate index signature for type `string`"))
     expect(() =>
-      S.Struct({ a: S.Literal("a") }).pipe(
+      S.Struct({ a: S.literal("a") }).pipe(
         S.extend(S.Struct({ a: S.String }))
       )
     ).toThrow(new Error("Extend: cannot extend `\"a\"` with `string` (path [\"a\"])"))
     expect(() =>
-      S.Struct({ a: S.Literal("a") }).pipe(
+      S.Struct({ a: S.literal("a") }).pipe(
         S.extend(
           S.Union(
             S.Struct({ a: S.String }),

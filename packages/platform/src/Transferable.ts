@@ -91,7 +91,7 @@ export const schema: {
   f: (_: I) => Iterable<globalThis.Transferable>
 ) =>
   Schema.transformOrFail(
-    Schema.EncodedSchema(self),
+    Schema.encodedSchema(self),
     self,
     { decode: ParseResult.succeed, encode: (i) => Effect.as(addAll(f(i)), i) }
   ))

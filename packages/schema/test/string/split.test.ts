@@ -4,7 +4,7 @@ import { describe, it } from "vitest"
 
 describe("string/split", () => {
   it("split (data-last)", async () => {
-    const schema = S.Split(",")
+    const schema = S.split(",")
 
     Util.roundtrip(schema)
 

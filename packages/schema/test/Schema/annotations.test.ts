@@ -136,7 +136,7 @@ describe("Schema > .annotations()", () => {
       constructor(readonly a: string) {}
     }
     const prettyA = (): Pretty.Pretty<A> => (instance) => `new A("${instance.a}")`
-    const AFromSelf = S.InstanceOf(A, {
+    const AFromSelf = S.instanceOf(A, {
       pretty: prettyA
     })
     expect(Pretty.make(AFromSelf)(new A("value"))).toEqual(`new A("value")`)

@@ -5,11 +5,11 @@ import { describe, expect, it } from "vitest"
 
 describe("Schema > mutable", () => {
   it("string", () => {
-    expect(S.Mutable(S.String).ast).toEqual(S.String.ast)
+    expect(S.mutable(S.String).ast).toEqual(S.String.ast)
   })
 
   it("struct", () => {
-    const schema = S.Mutable(S.Struct({ a: S.Number }))
+    const schema = S.mutable(S.Struct({ a: S.Number }))
     expect(schema.ast).toEqual(
       new AST.TypeLiteral([
         new AST.PropertySignature("a", S.Number.ast, false, false)
@@ -18,21 +18,21 @@ describe("Schema > mutable", () => {
   })
 
   it("record", () => {
-    const schema = S.Mutable(S.Record(S.String, S.Number))
+    const schema = S.mutable(S.Record(S.String, S.Number))
     expect(schema.ast).toEqual(
       new AST.TypeLiteral([], [new AST.IndexSignature(S.String.ast, S.Number.ast, false)])
     )
   })
 
   it("array", () => {
-    const schema = S.Mutable(S.Array(S.String))
+    const schema = S.mutable(S.Array(S.String))
     expect(schema.ast).toEqual(
       new AST.TupleType([], [S.String.ast], false)
     )
   })
 
   it("union", () => {
-    const schema = S.Mutable(S.Union(S.Struct({ a: S.Number }), S.Array(S.String)))
+    const schema = S.mutable(S.Union(S.Struct({ a: S.Number }), S.Array(S.String)))
     expect(schema.ast).toEqual(
       AST.Union.make([
         new AST.TypeLiteral([
@@ -44,7 +44,7 @@ describe("Schema > mutable", () => {
   })
 
   it("refinement", () => {
-    const schema = S.Mutable(S.Array(S.String).pipe(S.maxItems(2)))
+    const schema = S.mutable(S.Array(S.String).pipe(S.maxItems(2)))
     if (AST.isRefinement(schema.ast)) {
       expect(schema.ast.from).toEqual(
         new AST.TupleType([], [S.String.ast], false)
@@ -53,7 +53,7 @@ describe("Schema > mutable", () => {
   })
 
   it("suspend", () => {
-    const schema = S.Mutable(S.Suspend( // intended outer suspend
+    const schema = S.mutable(S.suspend( // intended outer suspend
       () => S.Array(S.String)
     ))
     if (AST.isSuspend(schema.ast)) {
@@ -64,7 +64,7 @@ describe("Schema > mutable", () => {
   })
 
   it("transformation", () => {
-    const schema = S.Mutable(S.transform(S.Array(S.String), S.Array(S.String), { decode: identity, encode: identity }))
+    const schema = S.mutable(S.transform(S.Array(S.String), S.Array(S.String), { decode: identity, encode: identity }))
     if (AST.isTransformation(schema.ast)) {
       expect(schema.ast.from).toEqual(
         new AST.TupleType([], [S.String.ast], false)

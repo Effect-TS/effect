@@ -46,7 +46,7 @@ export const add: {
     Req extends Schema.TaggedRequest.Any,
     I,
     ReqR,
-    Fields extends { readonly _tag: Schema.Literal<[Req["_tag"]]> },
+    Fields extends { readonly _tag: Schema.literal<[Req["_tag"]]> },
     State,
     Public extends Schema.TaggedRequest.Any,
     Private extends Schema.TaggedRequest.Any,
@@ -70,7 +70,7 @@ export const add: {
     Req extends Schema.TaggedRequest.Any,
     I,
     ReqR,
-    Fields extends { readonly _tag: Schema.Literal<[Req["_tag"]]> },
+    Fields extends { readonly _tag: Schema.literal<[Req["_tag"]]> },
     R2
   >(
     self: SerializableProcedureList<State, Public, Private, R>,
@@ -87,7 +87,7 @@ export const add: {
     Req extends Schema.TaggedRequest.Any,
     I,
     ReqR,
-    Fields extends { readonly _tag: Schema.Literal<[Req["_tag"]]> },
+    Fields extends { readonly _tag: Schema.literal<[Req["_tag"]]> },
     R2
   >(
     self: SerializableProcedureList<State, Public, Private, R>,
@@ -110,7 +110,7 @@ export const addPrivate: {
     Req extends Schema.TaggedRequest.Any,
     I,
     ReqR,
-    Fields extends { readonly _tag: Schema.Literal<[Req["_tag"]]> },
+    Fields extends { readonly _tag: Schema.literal<[Req["_tag"]]> },
     State,
     Public extends Schema.TaggedRequest.Any,
     Private extends Schema.TaggedRequest.Any,
@@ -134,7 +134,7 @@ export const addPrivate: {
     Req extends Schema.TaggedRequest.Any,
     I,
     ReqR,
-    Fields extends { readonly _tag: Schema.Literal<[Req["_tag"]]> },
+    Fields extends { readonly _tag: Schema.literal<[Req["_tag"]]> },
     R2
   >(
     self: SerializableProcedureList<State, Public, Private, R>,
@@ -151,7 +151,7 @@ export const addPrivate: {
     Req extends Schema.TaggedRequest.Any,
     I,
     ReqR,
-    Fields extends { readonly _tag: Schema.Literal<[Req["_tag"]]> },
+    Fields extends { readonly _tag: Schema.literal<[Req["_tag"]]> },
     R2
   >(
     self: SerializableProcedureList<State, Public, Private, R>,

@@ -11,7 +11,7 @@ describe("Arbitrary > Arbitrary", () => {
   })
 
   it("should throw on declarations without annotations", () => {
-    const schema = S.Declare(isUnknown)
+    const schema = S.declare(isUnknown)
     expect(() => Arbitrary.makeLazy(schema)).toThrow(
       new Error("cannot build an Arbitrary for a declaration without annotations (<declaration schema>)")
     )
@@ -19,7 +19,7 @@ describe("Arbitrary > Arbitrary", () => {
 
   it("make(S.typeSchema(schema))", () => {
     const schema = S.NumberFromString
-    expectValidArbitrary(S.TypeSchema(schema))
+    expectValidArbitrary(S.typeSchema(schema))
   })
 
   it("make(S.encodedSchema(schema))", () => {
@@ -30,42 +30,42 @@ describe("Arbitrary > Arbitrary", () => {
       d: S.NumberFromString.pipe(S.positive()),
       e: S.OptionFromSelf(S.NumberFromString)
     })
-    expectValidArbitrary(S.EncodedSchema(schema))
+    expectValidArbitrary(S.encodedSchema(schema))
   })
 
   describe("templateLiteral", () => {
     it("a", () => {
-      const schema = S.TemplateLiteral(S.Literal("a"))
+      const schema = S.templateLiteral(S.literal("a"))
       expectValidArbitrary(schema)
     })
 
     it("a b", () => {
-      const schema = S.TemplateLiteral(S.Literal("a"), S.Literal(" "), S.Literal("b"))
+      const schema = S.templateLiteral(S.literal("a"), S.literal(" "), S.literal("b"))
       expectValidArbitrary(schema)
     })
 
     it("a${string}", () => {
-      const schema = S.TemplateLiteral(S.Literal("a"), S.String)
+      const schema = S.templateLiteral(S.literal("a"), S.String)
       expectValidArbitrary(schema)
     })
 
     it("a${number}", () => {
-      const schema = S.TemplateLiteral(S.Literal("a"), S.Number)
+      const schema = S.templateLiteral(S.literal("a"), S.Number)
       expectValidArbitrary(schema)
     })
 
     it("a", () => {
-      const schema = S.TemplateLiteral(S.Literal("a"))
+      const schema = S.templateLiteral(S.literal("a"))
       expectValidArbitrary(schema)
     })
 
     it("${string}", () => {
-      const schema = S.TemplateLiteral(S.String)
+      const schema = S.templateLiteral(S.String)
       expectValidArbitrary(schema)
     })
 
     it("a${string}b", () => {
-      const schema = S.TemplateLiteral(S.Literal("a"), S.String, S.Literal("b"))
+      const schema = S.templateLiteral(S.literal("a"), S.String, S.literal("b"))
       expectValidArbitrary(schema)
     })
   })
@@ -113,12 +113,12 @@ describe("Arbitrary > Arbitrary", () => {
   })
 
   it("literal 1 member", () => {
-    const schema = S.Literal(1)
+    const schema = S.literal(1)
     expectValidArbitrary(schema)
   })
 
   it("literal 2 members", () => {
-    const schema = S.Literal(1, "a")
+    const schema = S.literal(1, "a")
     expectValidArbitrary(schema)
   })
 
@@ -130,7 +130,7 @@ describe("Arbitrary > Arbitrary", () => {
 
   it("empty enums should throw", () => {
     enum Fruits {}
-    const schema = S.Enums(Fruits)
+    const schema = S.enums(Fruits)
     expect(() => Arbitrary.makeLazy(schema)(fc)).toThrow(
       new Error("cannot build an Arbitrary for an empty enum")
     )
@@ -141,7 +141,7 @@ describe("Arbitrary > Arbitrary", () => {
       Apple,
       Banana
     }
-    const schema = S.Enums(Fruits)
+    const schema = S.enums(Fruits)
     expectValidArbitrary(schema)
   })
 
@@ -151,7 +151,7 @@ describe("Arbitrary > Arbitrary", () => {
       Banana = "banana",
       Cantaloupe = 0
     }
-    const schema = S.Enums(Fruits)
+    const schema = S.enums(Fruits)
     expectValidArbitrary(schema)
   })
 
@@ -161,7 +161,7 @@ describe("Arbitrary > Arbitrary", () => {
       Banana: "banana",
       Cantaloupe: 3
     } as const
-    const schema = S.Enums(Fruits)
+    const schema = S.enums(Fruits)
     expectValidArbitrary(schema)
   })
 
@@ -239,7 +239,7 @@ describe("Arbitrary > Arbitrary", () => {
       const schema: S.Schema<A> = S.Struct({
         a: S.String,
         as: S.Array(
-          S.Suspend(() => schema).pipe(Arbitrary.arbitrary(() => () => arb))
+          S.suspend(() => schema).pipe(Arbitrary.arbitrary(() => () => arb))
         )
       })
       expectValidArbitrary(schema)
@@ -252,7 +252,7 @@ describe("Arbitrary > Arbitrary", () => {
       }
       const schema: S.Schema<A> = S.Struct({
         a: S.String,
-        as: S.Array(S.Suspend(() => schema))
+        as: S.Array(S.suspend(() => schema))
       })
       expectValidArbitrary(schema)
     })
@@ -266,17 +266,17 @@ describe("Arbitrary > Arbitrary", () => {
         readonly a: number | A
       }
       const schema: S.Schema<A, I> = S.Struct({
-        a: S.Union(NumberFromString, S.Suspend(() => schema))
+        a: S.Union(NumberFromString, S.suspend(() => schema))
       })
 
-      expectValidArbitrary(S.EncodedSchema(schema))
+      expectValidArbitrary(S.encodedSchema(schema))
     })
 
     it("tuple", () => {
       type A = readonly [number, A | null]
       const schema: S.Schema<A> = S.Tuple(
         S.Number,
-        S.Union(S.Literal(null), S.Suspend(() => schema))
+        S.Union(S.literal(null), S.suspend(() => schema))
       )
       expectValidArbitrary(schema)
     })
@@ -285,7 +285,7 @@ describe("Arbitrary > Arbitrary", () => {
       type A = {
         [_: string]: A
       }
-      const schema: S.Schema<A> = S.Record(S.String, S.Suspend(() => schema))
+      const schema: S.Schema<A> = S.Record(S.String, S.suspend(() => schema))
       expectValidArbitrary(schema)
     })
 
@@ -303,13 +303,13 @@ describe("Arbitrary > Arbitrary", () => {
       }
 
       const Expression: S.Schema<Expression> = S.Struct({
-        type: S.Literal("expression"),
-        value: S.Union(S.JsonNumber, S.Suspend(() => Operation))
+        type: S.literal("expression"),
+        value: S.Union(S.JsonNumber, S.suspend(() => Operation))
       })
 
       const Operation: S.Schema<Operation> = S.Struct({
-        type: S.Literal("operation"),
-        operator: S.Union(S.Literal("+"), S.Literal("-")),
+        type: S.literal("operation"),
+        operator: S.Union(S.literal("+"), S.literal("-")),
         left: Expression,
         right: Expression
       })
@@ -525,7 +525,7 @@ describe("Arbitrary > Arbitrary", () => {
     })
 
     it("literal", () => {
-      expectHook(S.Literal("a"))
+      expectHook(S.literal("a"))
     })
 
     it("symbol", () => {
@@ -537,7 +537,7 @@ describe("Arbitrary > Arbitrary", () => {
     })
 
     it("templateLiteral", () => {
-      expectHook(S.TemplateLiteral(S.Literal("a"), S.String, S.Literal("b")))
+      expectHook(S.templateLiteral(S.literal("a"), S.String, S.literal("b")))
     })
 
     it("undefined", () => {
@@ -577,7 +577,7 @@ describe("Arbitrary > Arbitrary", () => {
         Apple,
         Banana
       }
-      expectHook(S.Enums(Fruits))
+      expectHook(S.enums(Fruits))
     })
 
     it("tuple", () => {
@@ -599,7 +599,7 @@ describe("Arbitrary > Arbitrary", () => {
       }
       const schema: S.Schema<A> = S.Struct({
         a: S.String,
-        as: S.Array(S.Suspend(() => schema))
+        as: S.Array(S.suspend(() => schema))
       })
       expectHook(schema)
     })

@@ -251,9 +251,9 @@ describe("Schema > Class APIs", () => {
     })
 
     it("a custom _tag field should be allowed", () => {
-      class A extends S.Class<A>("A")({ _tag: S.Literal("a", "b") }) {}
+      class A extends S.Class<A>("A")({ _tag: S.literal("a", "b") }) {}
       expect(A.fields).toStrictEqual({
-        _tag: S.Literal("a", "b")
+        _tag: S.literal("a", "b")
       })
     })
 
@@ -288,7 +288,7 @@ describe("Schema > Class APIs", () => {
         c: S.Boolean
       }) {}
       expect(D.fields).toStrictEqual({
-        _tag: S.Literal("D"),
+        _tag: S.literal("D"),
         a: S.String,
         b: S.String,
         c: S.Boolean
@@ -297,7 +297,7 @@ describe("Schema > Class APIs", () => {
     })
 
     it("S.typeSchema(Class)", async () => {
-      const PersonFromSelf = S.TypeSchema(Person)
+      const PersonFromSelf = S.typeSchema(Person)
       await Util.expectDecodeUnknownSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
       await Util.expectDecodeUnknownFailure(
         PersonFromSelf,
@@ -307,7 +307,7 @@ describe("Schema > Class APIs", () => {
     })
 
     it("is", () => {
-      const is = S.is(S.TypeSchema(Person))
+      const is = S.is(S.typeSchema(Person))
       expect(is(new Person({ id: 1, name: "name" }))).toEqual(true)
       expect(is({ id: 1, name: "name" })).toEqual(false)
     })
@@ -324,7 +324,7 @@ describe("Schema > Class APIs", () => {
       )
       expect(person.name).toEqual("John")
 
-      const PersonFromSelf = S.TypeSchema(Person)
+      const PersonFromSelf = S.typeSchema(Person)
       await Util.expectDecodeUnknownSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
       await Util.expectDecodeUnknownFailure(
         PersonFromSelf,
@@ -342,7 +342,7 @@ describe("Schema > Class APIs", () => {
 
     it("should expose the fields", () => {
       class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
-      expect(TA.fields).toEqual({ _tag: S.Literal("TA"), a: S.String })
+      expect(TA.fields).toEqual({ _tag: S.literal("TA"), a: S.String })
     })
 
     it("should expose the identifier", () => {
@@ -370,7 +370,7 @@ describe("Schema > Class APIs", () => {
     it("a custom _tag field should be not allowed", () => {
       expect(() => {
         // @ts-expect-error
-        class _TA extends S.TaggedClass<_TA>()("TA", { _tag: S.Literal("X"), a: S.String }) {}
+        class _TA extends S.TaggedClass<_TA>()("TA", { _tag: S.literal("X"), a: S.String }) {}
         console.log(_TA)
       }).toThrow(new Error(`Duplicate property signature "_tag"`))
     })
@@ -378,7 +378,7 @@ describe("Schema > Class APIs", () => {
     it("should expose the fields", async () => {
       class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
       expect(TA.fields).toStrictEqual({
-        _tag: S.Literal("TA"),
+        _tag: S.literal("TA"),
         a: S.String
       })
     })
@@ -432,7 +432,7 @@ describe("Schema > Class APIs", () => {
         ...TA.fields
       }) {}
       expect(B.fields).toStrictEqual({
-        _tag: S.Literal("TA"),
+        _tag: S.literal("TA"),
         a: S.String,
         b: S.Number
       })
@@ -446,7 +446,7 @@ describe("Schema > Class APIs", () => {
         ...pipe(TA.fields, Struct.omit("_tag"))
       }) {}
       expect(TB.fields).toStrictEqual({
-        _tag: S.Literal("TB"),
+        _tag: S.literal("TB"),
         a: S.String,
         b: S.Number
       })
@@ -678,7 +678,7 @@ describe("Schema > Class APIs", () => {
         id: S.Number
       }) {}
       expect(TRA.fields).toStrictEqual({
-        _tag: S.Literal("TRA"),
+        _tag: S.literal("TRA"),
         id: S.Number
       })
     })
@@ -842,7 +842,7 @@ describe("Schema > Class APIs", () => {
         class A extends S.Class<A>("A")({
           n: S.NumberFromString
         }) {}
-        const schema = S.TypeSchema(A)
+        const schema = S.typeSchema(A)
         await Util.expectEncodeSuccess(schema, new A({ n: 1 }), new A({ n: 1 }))
         await Util.expectEncodeSuccess(schema, { n: 1 }, new A({ n: 1 }))
       })
@@ -851,7 +851,7 @@ describe("Schema > Class APIs", () => {
         class A extends S.Class<A>("A")({
           n: S.NumberFromString
         }) {}
-        const schema = S.TypeSchema(A)
+        const schema = S.typeSchema(A)
         await Util.expectEncodeFailure(
           schema,
           null as any,

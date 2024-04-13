@@ -12,7 +12,7 @@ describe("AST.Suspend", () => {
     }
     const schema: S.Schema<A> = S.Struct({
       a: S.String,
-      as: S.Array(S.Suspend(() => {
+      as: S.Array(S.suspend(() => {
         log++
         return schema
       }))
@@ -24,8 +24,8 @@ describe("AST.Suspend", () => {
 
   it("should memoize the AST", () => {
     type A = readonly [number, A | null]
-    const schema: S.Schema<A> = S.Suspend( // intended outer suspend
-      () => S.Tuple(S.Number, S.Union(schema, S.Literal(null)))
+    const schema: S.Schema<A> = S.suspend( // intended outer suspend
+      () => S.Tuple(S.Number, S.Union(schema, S.literal(null)))
     )
     const ast = schema.ast as AST.Suspend
     expect(ast.f() === ast.f()).toBe(true)

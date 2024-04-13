@@ -35,19 +35,7 @@
 
 ### Renaming
 
-We have carried out a general renaming to make the API names more consistent. These are the rules we followed for the renaming:
-
-- **built-in schemas**: PascalCase (`String`, `Number`, `BigInt`, `NumberFromString`, ...)
-- **schema constructors**: PascalCase (`TypeSchema`, `EncodedSchema`, `Partial`, `Omit`, `Struct`, `Tuple`, ...)
-- **schema modifiers**: CamelCase (`filter`, `annotations`, `message`, `asSchema`, ...)
-- **other constructors**: CamelCase (`optionalElement`, `optional`, `optionalToRequired`, `propertySignature`, `fromKey`, ...)
-
-- rename `literal` to `Literal`
 - rename `uniqueSymbolFromSelf` to `UniqueSymbolFromSelf`
-- rename `enums` to `Enums`
-- rename `templateLiteral` to `TemplateLiteral`
-- rename `declare` to `Declare`
-- rename `instanceOf` to `InstanceOf`
 - rename `undefined` to `Undefined`
 - rename `void` to `Void`
 - rename `null` to `Null`
@@ -57,23 +45,19 @@ We have carried out a general renaming to make the API names more consistent. Th
 - rename `string` to `String`
 - rename `number` to `Number`
 - rename `boolean` to `Boolean`
-- rename `bigintFromSelf` to `BigIntFromSelf`
+- rename `/bigint/ig` to `BigInt`
 - rename `symbolFromSelf` to `SymbolFromSelf`
 - rename `object` to `Object`
 - rename `union` to `Union`
 - rename `nullable` to `NullOr`
 - rename `orUndefined` to `UndefinedOr`
 - rename `nullish` to `NullishOr`
-- rename `keyof` to `KeyOf`
 - rename `tuple` to `Tuple`
 - rename `array` to `Array`
 - rename `nonEmptyArray` to `NonEmptyArray`
 - rename `struct` to `Struct`
 - rename `record` to `Record`
-- rename `suspend` to `Suspend`
 - rename `symbol` to `Symbol`
-- rename `bigint` to `BigInt`
-- rename `Bigint` to `BigInt`
 - rename `optionFromSelf` to `OptionFromSelf`
 - rename `option` to `Option`
 - rename `optionFromNullable` to `OptionFromNullOr`
@@ -120,22 +104,3 @@ We have carried out a general renaming to make the API names more consistent. Th
 - rename `list` to `List`
 - rename `sortedSetFromSelf` to `SortedSetFromSelf`
 - rename `sortedSet` to `SortedSet`
-- rename `getNumberIndexedAccess` to `NumberIndexedAccess`
-- rename `head` to `Head`
-- rename `headOrElse` to `HeadOrElse`
-- rename `pluck` to `Pluck`
-- rename `pick` to `Pick`
-- rename `omit` to `Omit`
-- rename `encodedSchema` to `EncodedSchema`
-- rename `typeSchema` to `TypeSchema`
-- rename `pickLiteral` to `PickLiteral`
-- rename `fromBrand` to `FromBrand`
-- rename `partial` to `Partial`
-- rename `required` to `Required`
-- rename `mutable` to `Mutable`
-- rename `split` to `Split`
-- rename `transformLiteral` to `TransformLiteral`
-- rename `transformLiterals` to `TransformLiterals`
-- rename `attachPropertySignature` to `AttachPropertySignature`
-- rename `compose` to `Compose`
-- rename `parseJson` to `ParseJson`

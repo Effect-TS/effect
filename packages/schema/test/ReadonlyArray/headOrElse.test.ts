@@ -4,7 +4,7 @@ import { describe, it } from "vitest"
 
 describe("ReadonlyArray > headOrElse", () => {
   it("decoding (without fallback)", async () => {
-    const schema = S.HeadOrElse(S.Array(S.NumberFromString))
+    const schema = S.headOrElse(S.Array(S.NumberFromString))
     await Util.expectDecodeUnknownSuccess(schema, ["1"], 1)
     await Util.expectDecodeUnknownFailure(
       schema,
@@ -27,7 +27,7 @@ describe("ReadonlyArray > headOrElse", () => {
   })
 
   it("decoding (with fallback)", async () => {
-    const schema = S.HeadOrElse(S.Array(S.NumberFromString), () => 0)
+    const schema = S.headOrElse(S.Array(S.NumberFromString), () => 0)
     await Util.expectDecodeUnknownSuccess(schema, ["1"], 1)
     await Util.expectDecodeUnknownSuccess(schema, [], 0)
     await Util.expectDecodeUnknownFailure(
@@ -42,17 +42,17 @@ describe("ReadonlyArray > headOrElse", () => {
                └─ Expected NumberFromString, actual "a"`
     )
 
-    const schema2 = S.Array(S.NumberFromString).pipe(S.HeadOrElse(() => 0))
+    const schema2 = S.Array(S.NumberFromString).pipe(S.headOrElse(() => 0))
     await Util.expectDecodeUnknownSuccess(schema2, ["1"], 1)
     await Util.expectDecodeUnknownSuccess(schema2, [], 0)
   })
 
   it("decoding (struct)", async () => {
-    const schema = S.HeadOrElse(
+    const schema = S.headOrElse(
       S.Array(
         S.Struct({
           id: S.String,
-          data: S.ParseJson()
+          data: S.parseJson()
         })
       )
     )
@@ -65,7 +65,7 @@ describe("ReadonlyArray > headOrElse", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.HeadOrElse(S.Array(S.Number))
+    const schema = S.headOrElse(S.Array(S.Number))
     await Util.expectEncodeSuccess(schema, 1, [1])
   })
 })

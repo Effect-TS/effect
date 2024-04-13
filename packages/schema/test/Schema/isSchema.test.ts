@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 describe("isSchema", () => {
   it("Schema", () => {
     expect(S.isSchema(S.String)).toBe(true)
-    expect(S.isSchema(S.ParseJson)).toBe(false)
+    expect(S.isSchema(S.parseJson)).toBe(false)
   })
 
   it("BrandSchema", () => {

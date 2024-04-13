@@ -14,7 +14,7 @@ const Todo = Schema.Struct({
   completed: Schema.Boolean
 })
 const OkTodo = Schema.Struct({
-  status: Schema.Literal(200),
+  status: Schema.literal(200),
   body: Todo
 })
 
@@ -28,7 +28,7 @@ const makeJsonPlaceholder = Effect.gen(function*(_) {
   )
   const createTodo = Http.client.schemaFunction(
     todoClient,
-    Todo.pipe(Schema.Omit("id"))
+    Todo.pipe(Schema.omit("id"))
   )(Http.request.post("/todos"))
   return {
     client,

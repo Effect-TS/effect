@@ -44,7 +44,7 @@ const causeDefectPretty: Schema.Schema<unknown> = Schema.transform(
  * @category errors
  */
 export class WorkerError extends Schema.TaggedError<WorkerError>()("WorkerError", {
-  reason: Schema.Literal("spawn", "decode", "send", "unknown", "encode"),
+  reason: Schema.literal("spawn", "decode", "send", "unknown", "encode"),
   error: causeDefectPretty
 }) {
   /**

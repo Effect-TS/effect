@@ -58,7 +58,7 @@ describe("Schema > is", () => {
   })
 
   it("literal 1 member", () => {
-    const schema = S.Literal(1)
+    const schema = S.literal(1)
     const is = P.is(schema)
     expect(is(1)).toEqual(true)
     expect(is("a")).toEqual(false)
@@ -66,7 +66,7 @@ describe("Schema > is", () => {
   })
 
   it("literal 2 members", () => {
-    const schema = S.Literal(1, "a")
+    const schema = S.literal(1, "a")
     const is = P.is(schema)
     expect(is(1)).toEqual(true)
     expect(is("a")).toEqual(true)
@@ -87,7 +87,7 @@ describe("Schema > is", () => {
       Apple,
       Banana
     }
-    const schema = S.Enums(Fruits)
+    const schema = S.enums(Fruits)
     const is = P.is(schema)
     expect(is(Fruits.Apple)).toEqual(true)
     expect(is(Fruits.Banana)).toEqual(true)
@@ -102,7 +102,7 @@ describe("Schema > is", () => {
       Banana = "banana",
       Cantaloupe = 0
     }
-    const schema = S.Enums(Fruits)
+    const schema = S.enums(Fruits)
     const is = P.is(schema)
     expect(is(Fruits.Apple)).toEqual(true)
     expect(is(Fruits.Cantaloupe)).toEqual(true)
@@ -118,7 +118,7 @@ describe("Schema > is", () => {
       Banana: "banana",
       Cantaloupe: 3
     } as const
-    const schema = S.Enums(Fruits)
+    const schema = S.enums(Fruits)
     const is = P.is(schema)
     expect(is("apple")).toEqual(true)
     expect(is("banana")).toEqual(true)
@@ -351,7 +351,7 @@ describe("Schema > is", () => {
   })
 
   it("record('a' | 'b', number)", () => {
-    const schema = S.Record(S.Union(S.Literal("a"), S.Literal("b")), S.Number)
+    const schema = S.Record(S.Union(S.literal("a"), S.literal("b")), S.Number)
     const is = P.is(schema)
     expect(is({ a: 1, b: 2 })).toEqual(true)
 
@@ -361,7 +361,7 @@ describe("Schema > is", () => {
   })
 
   it("record(keyof struct({ a, b }), number)", () => {
-    const schema = S.Record(S.KeyOf(S.Struct({ a: S.String, b: S.String })), S.Number)
+    const schema = S.Record(S.keyof(S.Struct({ a: S.String, b: S.String })), S.Number)
     const is = P.is(schema)
     expect(is({ a: 1, b: 2 })).toEqual(true)
 
@@ -384,7 +384,7 @@ describe("Schema > is", () => {
   })
 
   it("record(${string}-${string}, number)", () => {
-    const schema = S.Record(S.TemplateLiteral(S.String, S.Literal("-"), S.String), S.Number)
+    const schema = S.Record(S.templateLiteral(S.String, S.literal("-"), S.String), S.Number)
     const is = P.is(schema)
     expect(is({})).toEqual(true)
     expect(is({ "-": 1 })).toEqual(true)
@@ -416,7 +416,7 @@ describe("Schema > is", () => {
   it("record(${string}-${string}, number) & record(string, string | number)", () => {
     const schema = S.Struct(
       {},
-      S.Record(S.TemplateLiteral(S.String, S.Literal("-"), S.String), S.Number),
+      S.Record(S.templateLiteral(S.String, S.literal("-"), S.String), S.Number),
       S.Record(S.String, S.Union(S.String, S.Number))
     )
     const is = P.is(schema)
@@ -444,7 +444,7 @@ describe("Schema > is", () => {
       }
       const schema: S.Schema<Category> = S.Struct({
         name: S.String,
-        categories: S.Array(S.Suspend(() => schema))
+        categories: S.Array(S.suspend(() => schema))
       })
       const is = P.is(schema)
       expect(is({ name: "a", categories: [] })).toEqual(true)
@@ -471,11 +471,11 @@ describe("Schema > is", () => {
       }
       const schemaA: S.Schema<A> = S.Struct({
         a: S.String,
-        bs: S.Array(S.Suspend(() => schemaB))
+        bs: S.Array(S.suspend(() => schemaB))
       })
       const schemaB: S.Schema<B> = S.Struct({
         b: S.Number,
-        as: S.Array(S.Suspend(() => schemaA))
+        as: S.Array(S.suspend(() => schemaA))
       })
       const isA = P.is(schemaA)
       expect(isA({ a: "a1", bs: [] })).toEqual(true)

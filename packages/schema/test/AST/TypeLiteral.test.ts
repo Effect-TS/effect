@@ -13,7 +13,7 @@ describe("AST.TypeLiteral", () => {
 
   describe("should give precedence to property signatures / index signatures containing less inhabitants", () => {
     it("literal vs string", () => {
-      const schema = S.Struct({ a: S.String, b: S.Literal("b") })
+      const schema = S.Struct({ a: S.String, b: S.literal("b") })
       expect(schema.ast).toEqual({
         _tag: "TypeLiteral",
         propertySignatures: [
@@ -52,7 +52,7 @@ describe("AST.TypeLiteral", () => {
     })
 
     it("literal vs boolean", () => {
-      const schema = S.Struct({ a: S.Boolean, b: S.Literal(null) })
+      const schema = S.Struct({ a: S.Boolean, b: S.literal(null) })
       expect(schema.ast).toEqual({
         _tag: "TypeLiteral",
         propertySignatures: [

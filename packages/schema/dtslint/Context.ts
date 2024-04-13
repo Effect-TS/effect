@@ -22,10 +22,10 @@ const Tag2 = Context.GenericTag<"Tag2", number>("Tag2")
 // ---------------------------------------------
 
 // $ExpectType Schema<string, string, never>
-S.Declare((u): u is string => typeof u === "string")
+S.declare((u): u is string => typeof u === "string")
 
 // $ExpectType Schema<string, number, "aContext" | "bContext">
-S.Declare(
+S.declare(
   [aContext, bContext],
   { decode: (_a, _b) => () => ParseResult.succeed("a"), encode: (_a, _b) => () => ParseResult.succeed(1) },
   {
@@ -50,7 +50,7 @@ S.Declare(
 )
 
 // @ts-expect-error
-S.Declare(
+S.declare(
   [aContext, bContext],
   {
     decode: (_a, _b) => () => Taga.pipe(Effect.flatMap(ParseResult.succeed)),
@@ -59,7 +59,7 @@ S.Declare(
 )
 
 // @ts-expect-error
-S.Declare(
+S.declare(
   [aContext, bContext],
   {
     decode: (_a, _b) => () => ParseResult.succeed("a"),
@@ -67,7 +67,7 @@ S.Declare(
   }
 )
 
-S.Declare(
+S.declare(
   // @ts-expect-error
   [aContext, bContext],
   {
@@ -77,13 +77,13 @@ S.Declare(
 )
 
 // @ts-expect-error
-S.Declare(
+S.declare(
   [],
   { decode: () => () => Tag1.pipe(Effect.flatMap(ParseResult.succeed)), encode: () => () => ParseResult.succeed(1) }
 )
 
 // @ts-expect-error
-S.Declare(
+S.declare(
   [aContext, bContext],
   {
     decode: (_a, _b) => () => Tag1.pipe(Effect.flatMap(ParseResult.succeed)),
@@ -92,7 +92,7 @@ S.Declare(
 )
 
 // @ts-expect-error
-S.Declare(
+S.declare(
   [aContext, bContext],
   {
     decode: (_a, _b) => () => ParseResult.succeed("a"),
@@ -196,14 +196,14 @@ S.Struct({ a: aContext, b: bContext })
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; }, { readonly a: string; }, "aContext" | "bContext">
-S.Struct({ a: aContext, b: bContext }).pipe(S.Pick("a"))
+S.Struct({ a: aContext, b: bContext }).pipe(S.pick("a"))
 
 // ---------------------------------------------
 // Omit
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; }, { readonly a: string; }, "aContext" | "bContext">
-S.Struct({ a: aContext, b: bContext }).pipe(S.Omit("b"))
+S.Struct({ a: aContext, b: bContext }).pipe(S.omit("b"))
 
 // ---------------------------------------------
 // brand
@@ -217,27 +217,27 @@ aContext.pipe(S.brand("a"))
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b?: number; }, "aContext" | "bContext">
-S.Partial(S.Struct({ a: aContext, b: bContext }), { exact: true })
+S.partial(S.Struct({ a: aContext, b: bContext }), { exact: true })
 
 // ---------------------------------------------
 // Required
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }, "aContext" | "bContext">
-S.Required(S.Partial(S.Struct({ a: aContext, b: bContext }), { exact: true }))
+S.required(S.partial(S.Struct({ a: aContext, b: bContext }), { exact: true }))
 
 // ---------------------------------------------
-// Mutable
+// mutable
 // ---------------------------------------------
 
 // $ExpectType Schema<{ a: string; b: number; }, { a: string; b: number; }, "aContext" | "bContext">
-S.asSchema(S.Mutable(S.Struct({ a: aContext, b: bContext })))
+S.asSchema(S.mutable(S.Struct({ a: aContext, b: bContext })))
 
-// $ExpectType Mutable<Struct<{ a: aContext; b: bContext; }>>
-S.Mutable(S.Struct({ a: aContext, b: bContext }))
+// $ExpectType mutable<Struct<{ a: aContext; b: bContext; }>>
+S.mutable(S.Struct({ a: aContext, b: bContext }))
 
 // ---------------------------------------------
-// record
+// Record
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly [x: string]: number; }, { readonly [x: string]: number; }, "aContext" | "bContext">
@@ -257,18 +257,18 @@ S.asSchema(S.Struct({ a: aContext, b: bContext }).pipe(S.extend(S.Struct({ c: cC
 S.Struct({ a: aContext, b: bContext }).pipe(S.extend(S.Struct({ c: cContext })))
 
 // ---------------------------------------------
-// Compose
+// compose
 // ---------------------------------------------
 
 // $ExpectType Schema<number, string, "aContext" | "bContext">
-aContext.pipe(S.Compose(bContext, { strict: false }))
+aContext.pipe(S.compose(bContext, { strict: false }))
 
 // ---------------------------------------------
-// Suspend
+// suspend
 // ---------------------------------------------
 
-// $ExpectType Suspend<string, string, "aContext">
-S.Suspend(() => aContext)
+// $ExpectType suspend<string, string, "aContext">
+S.suspend(() => aContext)
 
 // ---------------------------------------------
 // filter
@@ -304,7 +304,7 @@ S.transform(aContext, bContext, { decode: () => 1, encode: () => "" })
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; readonly _tag: "A"; }, { readonly a: string; }, "aContext">
-S.Struct({ a: aContext }).pipe(S.AttachPropertySignature("_tag", "A"))
+S.Struct({ a: aContext }).pipe(S.attachPropertySignature("_tag", "A"))
 
 // ---------------------------------------------
 // annotations (method)
@@ -440,7 +440,7 @@ class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", bContext, cCon
 // $ExpectType "aContext"
 hole<S.Schema.Context<typeof MyRequest>>()
 
-// $ExpectType { readonly _tag: Literal<["MyRequest"]>; readonly a: aContext; }
+// $ExpectType { readonly _tag: literal<["MyRequest"]>; readonly a: aContext; }
 MyRequest.fields
 
 declare const myRequest: MyRequest

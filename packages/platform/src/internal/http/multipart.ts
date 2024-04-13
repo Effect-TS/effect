@@ -100,7 +100,7 @@ export const withFieldMimeTypes = dual<
   <R, E, A>(effect: Effect.Effect<A, E, R>, mimeTypes: ReadonlyArray<string>) => Effect.Effect<A, E, R>
 >(2, (effect, mimeTypes) => Effect.locally(effect, fieldMimeTypes, Chunk.fromIterable(mimeTypes)))
 
-const fileSchema: Schema.Schema<Multipart.PersistedFile> = Schema.Declare(isPersistedFile, {
+const fileSchema: Schema.Schema<Multipart.PersistedFile> = Schema.declare(isPersistedFile, {
   identifier: "PersistedFile"
 })
 
@@ -126,7 +126,7 @@ export const schemaJson = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: Pa
     field: string
   ): Effect.Effect<A, ParseResult.ParseError, R>
 } => {
-  const fromJson = Schema.ParseJson(schema)
+  const fromJson = Schema.parseJson(schema)
   return dual<
     (
       field: string

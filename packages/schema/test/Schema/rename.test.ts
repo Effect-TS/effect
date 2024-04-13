@@ -55,7 +55,7 @@ describe("Schema > rename", () => {
       readonly a: string
       readonly as: ReadonlyArray<A>
     }
-    const schema: S.Schema<A> = S.Suspend( // intended outer suspend
+    const schema: S.Schema<A> = S.suspend( // intended outer suspend
       () =>
         S.Struct({
           a: S.String,

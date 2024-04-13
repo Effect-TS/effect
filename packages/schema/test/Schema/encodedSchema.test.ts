@@ -11,25 +11,25 @@ describe("Schema > encodedSchema", () => {
       prop: A | number
     }
     const schema1: S.Schema<A, I> = S.Struct({
-      prop: S.Union(S.NumberFromString, S.Suspend(() => schema1))
+      prop: S.Union(S.NumberFromString, S.suspend(() => schema1))
     })
-    const from1 = S.EncodedSchema(schema1)
+    const from1 = S.encodedSchema(schema1)
     await Util.expectDecodeUnknownSuccess(from1, { prop: "a" })
     await Util.expectDecodeUnknownSuccess(from1, { prop: { prop: "a" } })
 
-    const schema2: S.Schema<A, I> = S.Suspend( // intended outer suspend
+    const schema2: S.Schema<A, I> = S.suspend( // intended outer suspend
       () =>
         S.Struct({
           prop: S.Union(S.NumberFromString, schema1)
         })
     )
-    const from2 = S.EncodedSchema(schema2)
+    const from2 = S.encodedSchema(schema2)
     await Util.expectDecodeUnknownSuccess(from2, { prop: "a" })
     await Util.expectDecodeUnknownSuccess(from2, { prop: { prop: "a" } })
   })
 
   it("decoding", async () => {
-    const schema = S.EncodedSchema(S.NumberFromString)
+    const schema = S.encodedSchema(S.NumberFromString)
     await Util.expectDecodeUnknownSuccess(schema, "a")
     await Util.expectDecodeUnknownFailure(schema, null, "Expected a string, actual null")
     await Util.expectDecodeUnknownFailure(schema, 1, "Expected a string, actual 1")

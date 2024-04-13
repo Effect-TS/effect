@@ -9,14 +9,14 @@ describe("AST > guards", () => {
   })
 
   it("isTemplateLiteral", () => {
-    expect(AST.isTemplateLiteral(S.TemplateLiteral(S.Literal("a"), S.String).ast)).toEqual(true)
+    expect(AST.isTemplateLiteral(S.templateLiteral(S.literal("a"), S.String).ast)).toEqual(true)
     expect(AST.isTemplateLiteral(S.Number.ast)).toEqual(false)
   })
 
   it("isSuspend", () => {
     type A = readonly [number, A | null]
-    const schema: S.Schema<A> = S.Suspend( // intended outer suspend
-      () => S.Tuple(S.Number, S.Union(schema, S.Literal(null)))
+    const schema: S.Schema<A> = S.suspend( // intended outer suspend
+      () => S.Tuple(S.Number, S.Union(schema, S.literal(null)))
     )
     expect(AST.isSuspend(schema.ast)).toEqual(true)
     expect(AST.isSuspend(S.Number.ast)).toEqual(false)
@@ -52,7 +52,7 @@ describe("AST > guards", () => {
       Apple,
       Banana
     }
-    expect(AST.isEnums(S.Enums(Fruits).ast)).toEqual(true)
+    expect(AST.isEnums(S.enums(Fruits).ast)).toEqual(true)
     expect(AST.isEnums(S.Unknown.ast)).toEqual(false)
   })
 
@@ -91,13 +91,13 @@ describe("AST > guards", () => {
   it("isParameter", () => {
     expect(AST.isParameter(AST.stringKeyword)).toEqual(true)
     expect(AST.isParameter(AST.symbolKeyword)).toEqual(true)
-    expect(AST.isParameter(S.TemplateLiteral(S.String, S.Literal("-"), S.String).ast))
+    expect(AST.isParameter(S.templateLiteral(S.String, S.literal("-"), S.String).ast))
       .toEqual(true)
     expect(AST.isParameter(S.String.pipe(S.minLength(2)).ast)).toEqual(true)
     expect(AST.isParameter(S.Number.pipe(S.int()).ast)).toEqual(false)
     expect(AST.isParameter(S.NumberFromString.ast)).toEqual(false)
     expect(AST.isParameter(S.NumberFromString.pipe(S.int()).ast))
-    expect(AST.isParameter(S.TemplateLiteral(S.Literal("a", "b"), S.Literal("c")).ast)).toEqual(
+    expect(AST.isParameter(S.templateLiteral(S.literal("a", "b"), S.literal("c")).ast)).toEqual(
       false
     )
   })

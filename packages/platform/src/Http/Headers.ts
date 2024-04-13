@@ -41,7 +41,7 @@ export interface Headers {
  * @since 1.0.0
  * @category schemas
  */
-export const schemaFromSelf: Schema.Schema<Headers> = Schema.Declare(isHeaders, {
+export const schemaFromSelf: Schema.Schema<Headers> = Schema.declare(isHeaders, {
   identifier: "Headers",
   equivalence: () => ReadonlyRecord.getEquivalence(String.Equivalence)
 })

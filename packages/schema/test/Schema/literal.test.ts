@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 
 describe("Schema > literal", () => {
   it("annotations()", () => {
-    const schema = S.Literal(1).annotations({ identifier: "X" }).annotations({ title: "Y" })
+    const schema = S.literal(1).annotations({ identifier: "X" }).annotations({ title: "Y" })
     expect(schema.ast.annotations).toStrictEqual({
       [AST.IdentifierAnnotationId]: "X",
       [AST.TitleAnnotationId]: "Y"
@@ -13,29 +13,29 @@ describe("Schema > literal", () => {
   })
 
   it("should expose the literals", () => {
-    const schema = S.Literal("a", "b")
+    const schema = S.literal("a", "b")
     expect(schema.literals).toStrictEqual(["a", "b"])
   })
 
   it("should return an unwrapped AST with exactly one literal", () => {
-    expect(S.Literal(1).ast).toEqual(new AST.Literal(1))
+    expect(S.literal(1).ast).toEqual(new AST.Literal(1))
   })
 
   it("should return a union with more than one literal", () => {
-    expect(S.Literal(1, 2).ast).toEqual(
+    expect(S.literal(1, 2).ast).toEqual(
       AST.Union.make([new AST.Literal(1), new AST.Literal(2)])
     )
   })
 
   it("should return the literal interface when using the .annotations() method", () => {
-    const schema = S.Literal("a", "b").annotations({ identifier: "literal test" })
+    const schema = S.literal("a", "b").annotations({ identifier: "literal test" })
     expect(schema.ast.annotations).toStrictEqual({ [AST.IdentifierAnnotationId]: "literal test" })
     expect(schema.literals).toStrictEqual(["a", "b"])
   })
 
   describe("decoding", () => {
     it("1 member", async () => {
-      const schema = S.Literal(1)
+      const schema = S.literal(1)
       await Util.expectDecodeUnknownSuccess(schema, 1)
 
       await Util.expectDecodeUnknownFailure(schema, "a", `Expected 1, actual "a"`)
@@ -43,7 +43,7 @@ describe("Schema > literal", () => {
     })
 
     it("2 members", async () => {
-      const schema = S.Literal(1, "a")
+      const schema = S.literal(1, "a")
       await Util.expectDecodeUnknownSuccess(schema, 1)
       await Util.expectDecodeUnknownSuccess(schema, "a")
 
@@ -60,7 +60,7 @@ describe("Schema > literal", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.Literal(null)
+    const schema = S.literal(null)
     await Util.expectEncodeSuccess(schema, null, null)
   })
 })

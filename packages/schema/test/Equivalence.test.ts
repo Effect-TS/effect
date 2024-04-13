@@ -83,7 +83,7 @@ describe("Equivalence", () => {
 
   it("E.make(S.encodedSchema(schema))", () => {
     const schema = S.NumberFromString
-    const equivalence = E.make(S.EncodedSchema(schema))
+    const equivalence = E.make(S.encodedSchema(schema))
 
     expect(equivalence("a", "a")).toBe(true)
 
@@ -120,7 +120,7 @@ describe("Equivalence", () => {
 
   describe("declaration", () => {
     it("should return Equal.equals when an annotation doesn't exist", () => {
-      const schema = S.Declare(isUnknown)
+      const schema = S.declare(isUnknown)
       const equivalence = E.make(schema)
       expect(equivalence).toStrictEqual(Equal.equals)
 
@@ -244,7 +244,7 @@ describe("Equivalence", () => {
     })
 
     it("instanceOf", () => {
-      const schema = S.InstanceOf(URL, {
+      const schema = S.instanceOf(URL, {
         equivalence: () => Equivalence.make((a, b) => a.href === b.href)
       })
       const equivalence = E.make(schema)
@@ -287,8 +287,8 @@ describe("Equivalence", () => {
 
     it("discriminated", () => {
       const schema = S.Union(
-        S.Struct({ tag: S.Literal("a"), a: string }),
-        S.Struct({ tag: S.Literal("b"), b: S.Number })
+        S.Struct({ tag: S.literal("a"), a: string }),
+        S.Struct({ tag: S.literal("b"), b: S.Number })
       )
       const equivalence = E.make(schema)
 
@@ -592,7 +592,7 @@ describe("Equivalence", () => {
       }
       const schema: S.Schema<A> = S.Struct({
         a: string,
-        as: S.Array(S.Suspend(() => schema))
+        as: S.Array(S.suspend(() => schema))
       })
 
       const equivalence = E.make(schema)
@@ -625,13 +625,13 @@ describe("Equivalence", () => {
       }
 
       const Expression: S.Schema<Expression> = S.Struct({
-        type: S.Literal("expression"),
-        value: S.Union(number, S.Suspend(() => Operation))
+        type: S.literal("expression"),
+        value: S.Union(number, S.suspend(() => Operation))
       })
 
       const Operation: S.Schema<Operation> = S.Struct({
-        type: S.Literal("operation"),
-        operator: S.Union(S.Literal("+"), S.Literal("-")),
+        type: S.literal("operation"),
+        operator: S.Union(S.literal("+"), S.literal("-")),
         left: Expression,
         right: Expression
       })
@@ -708,7 +708,7 @@ describe("Equivalence", () => {
     })
 
     it("literal", () => {
-      expectHook(S.Literal("a"))
+      expectHook(S.literal("a"))
     })
 
     it("symbol", () => {
@@ -720,7 +720,7 @@ describe("Equivalence", () => {
     })
 
     it("templateLiteral", () => {
-      expectHook(S.TemplateLiteral(S.Literal("a"), S.String, S.Literal("b")))
+      expectHook(S.templateLiteral(S.literal("a"), S.String, S.literal("b")))
     })
 
     it("undefined", () => {
@@ -760,7 +760,7 @@ describe("Equivalence", () => {
         Apple,
         Banana
       }
-      expectHook(S.Enums(Fruits))
+      expectHook(S.enums(Fruits))
     })
 
     it("tuple", () => {
@@ -782,7 +782,7 @@ describe("Equivalence", () => {
       }
       const schema: S.Schema<A> = S.Struct({
         a: S.String,
-        as: S.Array(S.Suspend(() => schema))
+        as: S.Array(S.suspend(() => schema))
       })
       expectHook(schema)
     })

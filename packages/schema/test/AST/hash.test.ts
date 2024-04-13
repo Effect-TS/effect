@@ -82,8 +82,8 @@ describe("AST > .toString()", () => {
   describe("suspend", () => {
     it("outer", () => {
       type A = readonly [number, A | null]
-      const schema: S.Schema<A> = S.Suspend( // intended outer suspend
-        () => S.Tuple(S.Number, S.Union(schema, S.Literal(null)))
+      const schema: S.Schema<A> = S.suspend( // intended outer suspend
+        () => S.Tuple(S.Number, S.Union(schema, S.literal(null)))
       )
       expectToString(
         schema,
@@ -134,7 +134,7 @@ describe("AST > .toString()", () => {
     type A = readonly [number, A | null]
     const schema: S.Schema<A> = S.Tuple(
       S.Number,
-      S.Union(S.Suspend(() => schema), S.Literal(null))
+      S.Union(S.suspend(() => schema), S.literal(null))
     )
 
     expectToString(
@@ -218,8 +218,8 @@ describe("AST > .toString()", () => {
     const schema: S.Schema<A> = S.Tuple(
       S.Number,
       S.Union(
-        S.Suspend(() => schema),
-        S.Literal(null)
+        S.suspend(() => schema),
+        S.literal(null)
       )
     )
 
@@ -321,8 +321,8 @@ describe("AST > hash", () => {
   describe("suspend", () => {
     it("outer", () => {
       type A = readonly [number, A | null]
-      const schema: S.Schema<A> = S.Suspend( // intended outer suspend
-        () => S.Tuple(S.Number, S.Union(schema, S.Literal(null)))
+      const schema: S.Schema<A> = S.suspend( // intended outer suspend
+        () => S.Tuple(S.Number, S.Union(schema, S.literal(null)))
       )
       expectHash(schema, -887784700)
     })
@@ -331,7 +331,7 @@ describe("AST > hash", () => {
       type A = readonly [number, A | null]
       const schema: S.Schema<A> = S.Tuple(
         S.Number,
-        S.Union(S.Suspend(() => schema), S.Literal(null))
+        S.Union(S.suspend(() => schema), S.literal(null))
       )
 
       expectHash(schema, 757654673)
@@ -342,8 +342,8 @@ describe("AST > hash", () => {
       const schema: S.Schema<A> = S.Tuple(
         S.Number,
         S.Union(
-          S.Suspend(() => schema),
-          S.Literal(null)
+          S.suspend(() => schema),
+          S.literal(null)
         )
       )
 

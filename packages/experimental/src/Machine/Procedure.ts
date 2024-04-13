@@ -237,7 +237,7 @@ export const makeSerializable = <
 >() =>
 <
   Req extends Schema.TaggedRequest.Any,
-  Fields extends { readonly _tag: Schema.Literal<[Req["_tag"]]> },
+  Fields extends { readonly _tag: Schema.literal<[Req["_tag"]]> },
   IS,
   R,
   RS

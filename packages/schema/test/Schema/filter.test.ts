@@ -42,7 +42,7 @@ describe("Schema > filter", () => {
           ? Option.none()
           : Option.some(
             new ParseResult.Type(
-              S.Literal(o.a).ast,
+              S.literal(o.a).ast,
               o.b,
               `b should be equal to a's value ("${o.a}")`
             )
