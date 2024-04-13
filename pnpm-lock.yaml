@@ -582,9 +582,6 @@ importers:
         specifier: 3.45.2-build1
         version: 3.45.2-build1
     devDependencies:
-      '@effect/platform':
-        specifier: workspace:^
-        version: link:../platform/dist
       '@effect/sql':
         specifier: workspace:^
         version: link:../sql/dist
