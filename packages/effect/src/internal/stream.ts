@@ -8045,3 +8045,33 @@ export const encodeText = <E, R>(self: Stream.Stream<string, E, R>): Stream.Stre
     const encoder = new TextEncoder()
     return map(self, (s) => encoder.encode(s))
   })
+
+/** @internal */
+export const fromEventListener = (
+  target: EventTarget,
+  type: string,
+  options?: boolean | Omit<AddEventListenerOptions, "signal">
+): Stream.Stream<Event> => {
+  return asyncScoped<Event>((emit) =>
+    Effect.gen(function*(_) {
+      const controller = new AbortController()
+
+      function cb(event: Event) {
+        emit(Effect.succeed(Chunk.of(event)))
+      }
+
+      const options_ = typeof options === "boolean"
+        ? { signal: controller.signal, capture: options }
+        : { ...options, signal: controller.signal }
+
+      yield* _(
+        Effect.sync(() => target.addEventListener(type, cb, options_)),
+        Effect.onInterrupt(() => Effect.sync(() => controller.abort()))
+      )
+
+      yield* _(
+        Effect.addFinalizer(() => Effect.sync(() => target.removeEventListener(type, cb, options_)))
+      )
+    })
+  )
+}
