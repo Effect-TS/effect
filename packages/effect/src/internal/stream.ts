@@ -8051,8 +8051,8 @@ export const fromEventListener = (
   target: EventTarget,
   type: string,
   options?: boolean | Omit<AddEventListenerOptions, "signal">
-): Stream.Stream<Event> => {
-  return asyncScoped<Event>((emit) =>
+): Stream.Stream<Event> =>
+  asyncScoped<Event>((emit) =>
     Effect.flatMap(
       Effect.makeAbortSignal,
       (signal) =>
@@ -8067,4 +8067,3 @@ export const fromEventListener = (
         )
     )
   )
-}
