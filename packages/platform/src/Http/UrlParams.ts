@@ -208,8 +208,8 @@ export const makeUrl = <E>(url: string, params: UrlParams, onError: (e: unknown)
   })
 
 export const baseUrl = (): string | undefined => {
-  // Need to both "in" and "undefined" for location to support Deno.
-  // As by default, Deno has "globalThis.location" defined but with value "undefined".
+  // Need to check both "in" and "undefined" for location to support Deno.
+  // As Deno has "globalThis.location" defined but with value "undefined" by default.
   // See https://docs.deno.com/runtime/manual/runtime/location_api
   if ("location" in globalThis && globalThis.location !== undefined) {
     return location.origin + location.pathname
