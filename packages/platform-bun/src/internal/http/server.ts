@@ -7,7 +7,6 @@ import * as Cookies from "@effect/platform/Http/Cookies"
 import * as Headers from "@effect/platform/Http/Headers"
 import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
 import type { Method } from "@effect/platform/Http/Method"
-import * as Middleware from "@effect/platform/Http/Middleware"
 import type * as Multipart from "@effect/platform/Http/Multipart"
 import * as Server from "@effect/platform/Http/Server"
 import * as Error from "@effect/platform/Http/ServerError"
@@ -74,11 +73,21 @@ export const make = (
     return Server.make({
       address: { _tag: "TcpAddress", port: server.port, hostname: server.hostname },
       serve(httpApp, middleware) {
-        const app = Effect.scoped(
-          middleware
-            ? middleware(App.withDefaultMiddleware(respond(httpApp)))
-            : App.withDefaultMiddleware(respond(httpApp))
-        ) as App.Default<never, unknown>
+        const app = App.toHandled(httpApp, (request, exit) =>
+          Effect.sync(() => {
+            const impl = request as ServerRequestImpl
+            if (exit._tag === "Success") {
+              impl.resolve(makeResponse(request, exit.value))
+            } else if (Cause.isInterruptedOnly(exit.cause)) {
+              impl.resolve(
+                new Response(undefined, {
+                  status: impl.source.signal.aborted ? 499 : 503
+                })
+              )
+            } else {
+              impl.reject(Cause.pretty(exit.cause))
+            }
+          }), middleware)
 
         return pipe(
           FiberSet.makeRuntime<never>(),
@@ -152,34 +161,6 @@ const makeResponse = (request: ServerRequest.ServerRequest, response: ServerResp
     }
   }
 }
-
-const respond = Middleware.make((httpApp) =>
-  Effect.flatMap(
-    ServerRequest.ServerRequest,
-    (request) =>
-      Effect.onExit(
-        Effect.flatMap(
-          httpApp,
-          (response) => Effect.flatMap(App.preResponseHandler, (f) => f(request, response))
-        ),
-        (exit) =>
-          Effect.sync(() => {
-            const impl = request as ServerRequestImpl
-            if (exit._tag === "Success") {
-              impl.resolve(makeResponse(request, exit.value))
-            } else if (Cause.isInterruptedOnly(exit.cause)) {
-              impl.resolve(
-                new Response(undefined, {
-                  status: impl.source.signal.aborted ? 499 : 503
-                })
-              )
-            } else {
-              impl.reject(Cause.pretty(exit.cause))
-            }
-          })
-      )
-  )
-)
 
 /** @internal */
 export const layerServer = (

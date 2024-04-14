@@ -78,18 +78,18 @@ export const logger = make((httpApp) => {
 })
 
 /** @internal */
-export const tracer = make((httpApp) => {
-  const appWithStatus = Effect.tap(
-    httpApp,
-    (response) => Effect.annotateCurrentSpan("http.status", response.status)
-  )
-  return Effect.withFiberRuntime((fiber) => {
+export const tracer = make((httpApp) =>
+  Effect.withFiberRuntime((fiber) => {
     const context = fiber.getFiberRef(FiberRef.currentContext)
     const request = Context.unsafeGet(context, ServerRequest.ServerRequest)
     const disabled = fiber.getFiberRef(currentTracerDisabledWhen)(request)
     if (disabled) {
       return httpApp
     }
+    const appWithStatus = Effect.tap(
+      httpApp,
+      (response) => Effect.annotateCurrentSpan("http.status", response.status)
+    )
     return Effect.withSpan(
       appWithStatus,
       `http.server ${request.method}`,
@@ -99,7 +99,7 @@ export const tracer = make((httpApp) => {
       }
     )
   })
-})
+)
 
 /** @internal */
 export const xForwardedHeaders = make((httpApp) =>

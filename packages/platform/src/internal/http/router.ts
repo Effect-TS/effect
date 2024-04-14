@@ -5,6 +5,7 @@ import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
+import * as FiberRef from "effect/FiberRef"
 import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
@@ -202,50 +203,48 @@ const toHttpApp = <R, E>(
       router.on(route.method, route.path, route)
     }
   })
-  return Effect.flatMap(
-    ServerRequest.ServerRequest,
-    (request): App.Default<R, E | Error.RouteNotFound> => {
-      if (mountsLen > 0) {
-        for (let i = 0; i < mountsLen; i++) {
-          const [path, context, options] = mounts[i]
-          if (request.url.startsWith(path)) {
-            return Effect.provideService(
-              Effect.provideService(
-                context.route.handler as App.Default<R, E>,
-                RouteContext,
-                context
-              ),
-              ServerRequest.ServerRequest,
-              options?.includePrefix ?
-                request :
-                sliceRequestUrl(request, path)
-            )
+  return Effect.withFiberRuntime<
+    ServerResponse.ServerResponse,
+    E | Error.RouteNotFound,
+    R | ServerRequest.ServerRequest
+  >((fiber) => {
+    let context = fiber.getFiberRef(FiberRef.currentContext)
+    const request = Context.unsafeGet(context, ServerRequest.ServerRequest)
+    if (mountsLen > 0) {
+      for (let i = 0; i < mountsLen; i++) {
+        const [path, routeContext, options] = mounts[i]
+        if (request.url.startsWith(path)) {
+          context = Context.add(context, RouteContext, routeContext)
+          if (options?.includePrefix !== true) {
+            context = Context.add(context, ServerRequest.ServerRequest, sliceRequestUrl(request, path))
           }
+          return Effect.locally(
+            routeContext.route.handler as App.Default<R, E>,
+            FiberRef.currentContext,
+            context
+          )
         }
       }
-
-      let result = router.find(request.method, request.url)
-      if (result === undefined && request.method === "HEAD") {
-        result = router.find("GET", request.url)
-      }
-      if (result === undefined) {
-        return Effect.fail(new Error.RouteNotFound({ request }))
-      }
-      const route = result.handler
-      if (route.prefix._tag === "Some") {
-        request = sliceRequestUrl(request, route.prefix.value)
-      }
-      return Effect.mapInputContext(
-        route.handler as Effect.Effect<ServerResponse.ServerResponse, E, Router.Router.ExcludeProvided<R>>,
-        (context) =>
-          Context.add(
-            Context.add(context, ServerRequest.ServerRequest, request),
-            RouteContext,
-            new RouteContextImpl(route, result!.params, result!.searchParams)
-          ) as Context.Context<R>
-      )
     }
-  )
+
+    let result = router.find(request.method, request.url)
+    if (result === undefined && request.method === "HEAD") {
+      result = router.find("GET", request.url)
+    }
+    if (result === undefined) {
+      return Effect.fail(new Error.RouteNotFound({ request }))
+    }
+    const route = result.handler
+    if (route.prefix._tag === "Some") {
+      context = Context.add(context, ServerRequest.ServerRequest, sliceRequestUrl(request, route.prefix.value))
+    }
+    context = Context.add(context, RouteContext, new RouteContextImpl(route, result.params, result.searchParams))
+    return Effect.locally(
+      route.handler as Effect.Effect<ServerResponse.ServerResponse, E, Router.Router.ExcludeProvided<R>>,
+      FiberRef.currentContext,
+      context
+    )
+  })
 }
 
 function sliceRequestUrl(request: ServerRequest.ServerRequest, prefix: string) {
@@ -600,3 +599,10 @@ export const provideServiceEffect = dual<
   >,
   E | E1
 > => use(self, Effect.provideServiceEffect(tag, effect)) as any)
+
+/* @internal */
+export const uninterruptible = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  Effect.uninterruptible(Effect.flatMap(
+    effect,
+    Effect.die
+  ))

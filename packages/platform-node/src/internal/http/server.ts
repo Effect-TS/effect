@@ -6,7 +6,7 @@ import * as Cookies from "@effect/platform/Http/Cookies"
 import type * as Headers from "@effect/platform/Http/Headers"
 import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
 import type { Method } from "@effect/platform/Http/Method"
-import * as Middleware from "@effect/platform/Http/Middleware"
+import type * as Middleware from "@effect/platform/Http/Middleware"
 import type * as Multipart from "@effect/platform/Http/Multipart"
 import * as Server from "@effect/platform/Http/Server"
 import * as Error from "@effect/platform/Http/ServerError"
@@ -128,13 +128,17 @@ export const makeHandler: {
     Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest | Scope.Scope>
   >
 } = <R, E>(httpApp: App.Default<R, E>, middleware?: Middleware.Middleware) => {
-  const handledApp = Effect.scoped(
-    middleware
-      ? middleware(App.withDefaultMiddleware(respond(httpApp)))
-      : App.withDefaultMiddleware(respond(httpApp))
-  )
-  return Effect.map(FiberSet.makeRuntime<R>(), (runFork) => {
-    return function handler(
+  const handledApp = App.toHandled(httpApp, (request, exit) => {
+    if (exit._tag === "Success") {
+      return Effect.catchAllCause(
+        handleResponse(request, exit.value),
+        (cause) => handleCause(request, cause)
+      )
+    }
+    return handleCause(request, exit.cause)
+  }, middleware)
+  return Effect.map(FiberSet.makeRuntime<R>(), (runFork) =>
+    function handler(
       nodeRequest: Http.IncomingMessage,
       nodeResponse: Http.ServerResponse
     ) {
@@ -151,11 +155,10 @@ export const makeHandler: {
             nodeResponse.writeHead(499)
           }
           nodeResponse.end()
-          runFork(fiber.interruptAsFork(Error.clientAbortFiberId))
+          fiber.unsafeInterruptAsFork(Error.clientAbortFiberId)
         }
       })
-    }
-  })
+    })
 }
 
 /** @internal */
@@ -164,13 +167,17 @@ export const makeUpgradeHandler = <R, E>(
   httpApp: App.Default<R, E>,
   middleware?: Middleware.Middleware
 ) => {
-  const handledApp = Effect.scoped(
-    middleware
-      ? middleware(App.withDefaultMiddleware(respond(httpApp)))
-      : App.withDefaultMiddleware(respond(httpApp))
-  )
-  return Effect.map(FiberSet.makeRuntime<R>(), (runFork) => {
-    return function handler(
+  const handledApp = App.toHandled(httpApp, (request, exit) => {
+    if (exit._tag === "Success") {
+      return Effect.catchAllCause(
+        handleResponse(request, exit.value),
+        (cause) => handleCause(request, cause)
+      )
+    }
+    return handleCause(request, exit.cause)
+  }, middleware)
+  return Effect.map(FiberSet.makeRuntime<R>(), (runFork) =>
+    function handler(
       nodeRequest: Http.IncomingMessage,
       socket: Duplex,
       head: Buffer
@@ -209,39 +216,22 @@ export const makeUpgradeHandler = <R, E>(
             res.writeHead(499)
           }
           res.end()
-          runFork(fiber.interruptAsFork(Error.clientAbortFiberId))
+          fiber.unsafeInterruptAsFork(Error.clientAbortFiberId)
         }
       })
-    }
-  })
+    })
 }
 
-const respond = Middleware.make((httpApp) =>
-  Effect.uninterruptibleMask((restore) =>
-    Effect.flatMap(ServerRequest.ServerRequest, (request) =>
-      Effect.tapErrorCause(
-        restore(
-          Effect.tap(
-            Effect.flatMap(
-              httpApp,
-              (response) => Effect.flatMap(App.preResponseHandler, (f) => f(request, response))
-            ),
-            (response) => handleResponse(request, response)
-          )
-        ),
-        (cause) =>
-          Effect.sync(() => {
-            const nodeResponse = (request as ServerRequestImpl).resolvedResponse
-            if (!nodeResponse.headersSent) {
-              nodeResponse.writeHead(Cause.isInterruptedOnly(cause) ? 503 : 500)
-            }
-            if (!nodeResponse.writableEnded) {
-              nodeResponse.end()
-            }
-          })
-      ))
-  )
-)
+const handleCause = <E>(request: ServerRequest.ServerRequest, cause: Cause.Cause<E>) =>
+  Effect.sync(() => {
+    const nodeResponse = (request as ServerRequestImpl).resolvedResponse
+    if (!nodeResponse.headersSent) {
+      nodeResponse.writeHead(Cause.isInterruptedOnly(cause) ? 503 : 500)
+    }
+    if (!nodeResponse.writableEnded) {
+      nodeResponse.end()
+    }
+  })
 
 class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implements ServerRequest.ServerRequest {
   readonly [ServerRequest.TypeId]: ServerRequest.TypeId
