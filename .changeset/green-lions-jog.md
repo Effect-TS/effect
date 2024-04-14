@@ -3,4 +3,4 @@
 "@effect/platform-browser": patch
 ---
 
-added Stream.fromEventListener, and BrowserStream.{fromWindowEventListener, fromDocumentEventListener} for constructing a stream from addEventListener
+added Stream.fromEventListener, and BrowserStream.{fromEventListenerWindow, fromEventListenerDocument} for constructing a stream from addEventListener

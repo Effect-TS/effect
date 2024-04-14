@@ -11,18 +11,18 @@ import * as internal from "./internal/stream.js"
  * @example
  *
  * import { BrowserStream } from "@effect/platform-browser";
- * BrowserStream.fromWindowEventListener("keypress") // Stream<KeyboardEvent>
+ * BrowserStream.fromEventListenerWindow("keypress") // Stream<KeyboardEvent>
  */
-export const fromWindowEventListener: <K extends keyof WindowEventMap>(
+export const fromEventListenerWindow: <K extends keyof WindowEventMap>(
   type: K,
   options?: boolean | Omit<AddEventListenerOptions, "signal">
-) => Stream.Stream<WindowEventMap[K]> = internal.fromWindowEventListener
+) => Stream.Stream<WindowEventMap[K]> = internal.fromEventListenerWindow
 
 /**
  * Creates a `Stream` from document.addEventListener.
  * @since 1.0.0
  */
-export const fromDocumentEventListener: <K extends keyof DocumentEventMap>(
+export const fromEventListenerDocument: <K extends keyof DocumentEventMap>(
   type: K,
   options?: boolean | Omit<AddEventListenerOptions, "signal">
-) => Stream.Stream<DocumentEventMap[K]> = internal.fromDocumentEventListener
+) => Stream.Stream<DocumentEventMap[K]> = internal.fromEventListenerDocument
