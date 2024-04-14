@@ -207,6 +207,12 @@ export const makeUrl = <E>(url: string, params: UrlParams, onError: (e: unknown)
     catch: onError
   })
 
+/**
+ * Get the base URL out of `globalThis.location`.
+ *
+ * @since 1.0.0
+ * @category utils
+ */
 export const baseUrl = (): string | undefined => {
   // Need to check both "in" and "undefined" for location to support Deno.
   // As Deno has "globalThis.location" defined but with value "undefined" by default.
