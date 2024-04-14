@@ -8059,7 +8059,7 @@ export const fromEventListener = (
         Effect.sync(() =>
           target.addEventListener(
             type,
-            (event) => emit(Effect.succeed(Chunk.of(event))),
+            (event) => emit.single(event),
             typeof options === "boolean"
               ? { signal, capture: options }
               : { ...options, signal }
