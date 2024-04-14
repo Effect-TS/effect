@@ -8053,8 +8053,19 @@ export const fromEventListener = (
   options?: boolean | Omit<AddEventListenerOptions, "signal">
 ): Stream.Stream<Event> =>
   _async<Event>((emit) => {
+    let batch: Array<Event> = []
+    let taskRunning = false
     function cb(e: Event) {
-      emit.single(e)
+      batch.push(e)
+      if (!taskRunning) {
+        taskRunning = true
+        queueMicrotask(() => {
+          const events = batch
+          batch = []
+          taskRunning = false
+          emit.chunk(Chunk.unsafeFromArray(events))
+        })
+      }
     }
     target.addEventListener(type, cb, options)
     return Effect.sync(() => target.removeEventListener(type, cb, options))
