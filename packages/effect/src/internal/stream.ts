@@ -8052,18 +8052,10 @@ export const fromEventListener = (
   type: string,
   options?: boolean | Omit<AddEventListenerOptions, "signal">
 ): Stream.Stream<Event> =>
-  asyncScoped<Event>((emit) =>
-    Effect.flatMap(
-      Effect.makeAbortSignal,
-      (signal) =>
-        Effect.sync(() =>
-          target.addEventListener(
-            type,
-            (event) => emit.single(event),
-            typeof options === "boolean"
-              ? { signal, capture: options }
-              : { ...options, signal }
-          )
-        )
-    )
-  )
+  _async<Event>((emit) => {
+    function cb(e: Event) {
+      emit.single(e)
+    }
+    target.addEventListener(type, cb, options)
+    return Effect.sync(() => target.removeEventListener(type, cb, options))
+  })

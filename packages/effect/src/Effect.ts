@@ -5403,14 +5403,3 @@ export const Tag: <const Id extends string>(id: Id) => <Self, Type>() =>
     })
     return done
   }
-
-/**
- * @since 2.0.0
- */
-export const makeAbortSignal: Effect<AbortSignal, never, Scope.Scope> = map(
-  acquireRelease(
-    sync(() => new AbortController()),
-    (controller) => sync(() => controller.abort())
-  ),
-  (_) => _.signal
-)
