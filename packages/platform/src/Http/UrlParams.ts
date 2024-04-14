@@ -210,8 +210,7 @@ export const makeUrl = <E>(url: string, params: UrlParams, onError: (e: unknown)
 /**
  * Get the base URL out of `globalThis.location`.
  *
- * @since 1.0.0
- * @category utils
+ * @internal
  */
 export const baseUrl = (): string | undefined => {
   // Need to check both "in" and "undefined" for location to support Deno.
