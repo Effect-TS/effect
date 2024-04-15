@@ -374,7 +374,7 @@ export const runtime: <A, E>(
  *   yield* _(FiberHandle.set(handle, Effect.runFork(Effect.fail("error"))));
  *
  *   // parent fiber will fail with "error"
- *   yield* _(FiberHandle.join(map));
+ *   yield* _(FiberHandle.join(handle));
  * });
  */
 export const join = <A, E>(self: FiberHandle<A, E>): Effect.Effect<never, E> =>
