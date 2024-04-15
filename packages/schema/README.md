@@ -24,7 +24,7 @@ The `Schema` type has three type parameters with the following meanings:
 
 - **Type**. Represents the type of value that a schema can succeed with during decoding.
 - **Encoded**. Represents the type of value that a schema can succeed with during encoding. By default, it's equal to `Type` if not explicitly provided.
-- **Context**. Similar to the [`Effect`](https://effect.website/docs/guides/essentials/the-effect-type) type, it represents the contextual data Required by the schema to execute both decoding and encoding. If this type parameter is `never` (default if not explicitly provided), it means the schema has no requirements.
+- **Context**. Similar to the [`Effect`](https://effect.website/docs/guides/essentials/the-effect-type) type, it represents the contextual data required by the schema to execute both decoding and encoding. If this type parameter is `never` (default if not explicitly provided), it means the schema has no requirements.
 
 **Examples**
 
@@ -1021,7 +1021,7 @@ Output:
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "Required": [
+  "required": [
     "name",
     "age"
   ],
@@ -1067,7 +1067,7 @@ Output:
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "Required": [
+  "required": [
     "name",
     "age"
   ],
@@ -1100,7 +1100,7 @@ This technique helps organize your JSON Schema by creating separate definitions 
 
 ### Recursive and Mutually Recursive Schemas
 
-Recursive and mutually recursive schemas are supported, but in these cases, identifier annotations are **Required**:
+Recursive and mutually recursive schemas are supported, but in these cases, identifier annotations are **required**:
 
 ```ts
 import * as JSONSchema from "@effect/schema/JSONSchema"
@@ -1127,7 +1127,7 @@ Output:
   "$defs": {
     "Category": {
       "type": "object",
-      "Required": [
+      "required": [
         "name",
         "categories"
       ],
@@ -1557,8 +1557,8 @@ const AnotherAge = Age.annotations({ identifier: "AnotherAge" })
 | `Record<A, B> & Record<C, D>`                | intersections of non-overlapping records | `S.extend(S.Record(A, B), S.Record(C, D))`                |
 | `type A = { readonly a: A \| null }`         | recursive types                          | `S.Struct({ a: S.Union(S.Null, S.suspend(() => self)) })` |
 | `keyof A`                                    |                                          | `S.keyof(A)`                                              |
-| `Partial<A>`                                 |                                          | `S.partial(A)`                                            |
-| `Required<A>`                                |                                          | `S.required(A)`                                           |
+| `partial<A>`                                 |                                          | `S.partial(A)`                                            |
+| `required<A>`                                |                                          | `S.required(A)`                                           |
 
 ## Primitives
 
@@ -1597,7 +1597,7 @@ S.Literal(2n) // BigInt literal
 S.Literal(true)
 ```
 
-We can also use `PickLiteral` with a literal schema to narrow down the possible values:
+We can also use `pickLiteral` with a literal schema to narrow down the possible values:
 
 ```ts
 import * as S from "@effect/schema/Schema"
@@ -1624,7 +1624,7 @@ const SweetAndCitrusFruit = S.Struct({
   fruitId: FruitId,
   category: FruitCategory.pipe(S.pickLiteral("sweet", "citrus"))
   /*
-    By using PickLiteral from the FruitCategory, we ensure that the values selected
+    By using pickLiteral from the FruitCategory, we ensure that the values selected
     are those defined in the category definition above.
     If we remove "sweet" from the FruitCategory definition, TypeScript will notify us.
     */
@@ -2167,9 +2167,9 @@ const members = schema.members // readonly [S.$String, S.$Number]
 
 ## Tuples
 
-### Required Elements
+### required Elements
 
-To define a tuple with Required elements, you simply specify the list of elements:
+To define a tuple with required elements, you simply specify the list of elements:
 
 ```ts
 import * as S from "@effect/schema/Schema"
@@ -2181,7 +2181,7 @@ const opaque = S.Tuple(S.String, S.Number)
 const nonOpaque = S.asSchema(opaque)
 ```
 
-### Append a Required element
+### Append a required element
 
 ```ts
 import * as S from "@effect/schema/Schema"
@@ -2209,12 +2209,12 @@ const nonOpaque = S.asSchema(opaque)
 
 ### Rest Element
 
-To define rest elements, follow the list of elements (Required or optional) with an element for the rest:
+To define rest elements, follow the list of elements (required or optional) with an element for the rest:
 
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// const opaque: S.TupleType<readonly [S.$String, S.OptionalElement<S.$Number>], [S.$boolean]>
+// const opaque: S.TupleType<readonly [S.$String, S.OptionalElement<S.$Number>], [S.$Boolean]>
 const opaque = S.Tuple([S.String, S.optionalElement(S.Number)], S.Boolean)
 
 // const nonOpaque: S.Schema<readonly [string, number?, ...boolean[]], readonly [string, number?, ...boolean[]], never>
@@ -2226,7 +2226,7 @@ Optionally, you can include other elements after the rest:
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// const opaque: S.TupleType<readonly [S.$String, S.OptionalElement<S.$Number>], [S.$boolean, S.$String]>
+// const opaque: S.TupleType<readonly [S.$String, S.OptionalElement<S.$Number>], [S.$Boolean, S.$String]>
 const opaque = S.Tuple(
   [S.String, S.optionalElement(S.Number)],
   S.Boolean,
@@ -2254,7 +2254,7 @@ const schema = S.Tuple(
 const tupleElements = schema.elements // readonly [S.$String, S.OptionalElement<S.$Number>]
 
 // Accesses the rest elements of the tuple
-const restElements = schema.rest // readonly [S.$boolean, S.$Number]
+const restElements = schema.rest // readonly [S.$Boolean, S.$Number]
 ```
 
 ## Arrays
@@ -2262,8 +2262,11 @@ const restElements = schema.rest // readonly [S.$boolean, S.$Number]
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// Schema<readonly number[]>
-S.Array(S.Number)
+// S.$Array<S.$Number>
+const opaque = S.Array(S.Number)
+
+// S.Schema<readonly number[]>
+const schema = S.asSchema(opaque)
 ```
 
 ### Exposed Values
@@ -2286,8 +2289,11 @@ By default, when you use `S.Array`, it generates a type marked as readonly. The 
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// Schema<number[]>
-S.mutable(S.Array(S.Number))
+// S.mutable<S.$Array<S.$Number>>
+const opaque = S.mutable(S.Array(S.Number))
+
+// S.Schema<number[]>
+const schema = S.asSchema(opaque)
 ```
 
 ### Non empty arrays
@@ -2295,8 +2301,11 @@ S.mutable(S.Array(S.Number))
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// Schema<readonly [number, ...number[]]>
-S.NonEmptyArray(S.Number)
+// S.NonEmptyArray<S.$Number>
+const opaque = S.NonEmptyArray(S.Number)
+
+// S.Schema<readonly [number, ...number[]]>
+const schema = S.asSchema(opaque)
 ```
 
 #### Exposed Values
@@ -2319,11 +2328,17 @@ const value = schema.value // S.$String
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// Schema<{ readonly [x: string]: string; }>
-S.Record(S.String, S.String)
+// S.$Record<S.$String, S.$Number>
+const opaque1 = S.Record(S.String, S.Number)
 
-// Schema<{ readonly a: string; readonly b: string; }>
-S.Record(S.Union(S.Literal("a"), S.Literal("b")), S.String)
+// S.Schema<{ readonly [x: string]: number; }>
+const schema1 = S.asSchema(opaque1)
+
+// S.$Record<S.Union<[S.Literal<["a"]>, S.Literal<["b"]>]>, S.$Number>
+const opaque2 = S.Record(S.Union(S.Literal("a"), S.Literal("b")), S.Number)
+
+// S.Schema<{ readonly a: number; readonly b: number; }>
+const schema2 = S.asSchema(opaque2)
 ```
 
 ### Keys refinements
@@ -2331,8 +2346,11 @@ S.Record(S.Union(S.Literal("a"), S.Literal("b")), S.String)
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// Schema<{ readonly [x: string]: string; }>
-S.Record(S.String.pipe(S.minLength(2)), S.String)
+// S.$Record<S.Schema<string, string, never>, S.$Number>
+const opaque = S.Record(S.String.pipe(S.minLength(2)), S.Number)
+
+// S.Schema<{ readonly [x: string]: number; }>
+const schema = S.asSchema(opaque)
 ```
 
 ### Symbol keys
@@ -2340,8 +2358,11 @@ S.Record(S.String.pipe(S.minLength(2)), S.String)
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// Schema<{ readonly [x: symbol]: string; }>
-S.Record(S.SymbolFromSelf, S.String)
+// S.$Record<S.SymbolFromSelf, S.$Number>
+const opaque = S.Record(S.SymbolFromSelf, S.Number)
+
+// S.Schema<{ readonly [x: symbol]: number; }>
+const schema = S.asSchema(opaque)
 ```
 
 ### Template literal keys
@@ -2349,8 +2370,11 @@ S.Record(S.SymbolFromSelf, S.String)
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// Schema<{ readonly [x: `a${string}`]: string; }>
-S.Record(S.TemplateLiteral(S.Literal("a"), S.String), S.String)
+// S.$Record<S.Schema<`a${string}`, `a${string}`, never>, S.$Number>
+const opaque = S.Record(S.TemplateLiteral(S.Literal("a"), S.String), S.Number)
+
+// S.Schema<{ readonly [x: `a${string}`]: number; }>
+const schema = S.asSchema(opaque)
 ```
 
 ### Mutable Records
@@ -2358,10 +2382,13 @@ S.Record(S.TemplateLiteral(S.Literal("a"), S.String), S.String)
 By default, when you use `S.Record`, it generates a type marked as readonly. The `mutable` combinator is a useful function for creating a new schema with a Mutable type in a **shallow** manner:
 
 ```ts
-import * as S from "@effect/schema/Schema";
+import * as S from "@effect/schema/Schema"
 
-// Schema<{ [x: string]: string; }>
-S.mutable(S.Record(S.String, S.String););
+// S.mutable<S.$Record<S.$String, S.$Number>>
+const opaque = S.mutable(S.Record(S.String, S.Number))
+
+// S.Schema<{ [x: string]: number; }>
+const schema = S.asSchema(opaque)
 ```
 
 ### Exposed Values
@@ -2385,8 +2412,11 @@ const value = schema.value // S.$Number
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// Schema<{ readonly a: string; readonly b: number; }>
-S.Struct({ a: S.String, b: S.Number })
+// const opaque: S.Struct<{ a: S.$String; b: S.$Number; }>
+const opaque = S.Struct({ a: S.String, b: S.Number })
+
+// S.Schema<{ readonly a: string; readonly b: number; }>
+const schema = S.asSchema(opaque)
 ```
 
 ### Index Signatures
@@ -2476,8 +2506,11 @@ By default, when you use `S.struct`, it generates a type with properties that ar
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// Schema<{ a: string; b: number; }>
-S.mutable(S.Struct({ a: S.String, b: S.Number }))
+// const opaque: S.mutable<S.Struct<{ a: S.$String; b: S.$Number; }>>
+const opaque = S.mutable(S.Struct({ a: S.String, b: S.Number }))
+
+// S.Schema<{ a: string; b: number; }>
+const schema = S.asSchema(opaque)
 ```
 
 ## Property Signatures
@@ -2522,10 +2555,10 @@ age: PropertySignature<ToToken, ToType, FromKey, FromToken, FromType, Context>
 ```
 
 - `age`: is the key of the "To" field
-- `ToToken`: either `"?:"` or `":"`, `"?:"` indicates that the "To" field is optional, `":"` indicates that the "To" field is Required
+- `ToToken`: either `"?:"` or `":"`, `"?:"` indicates that the "To" field is optional, `":"` indicates that the "To" field is required
 - `ToType`: the type of the "To" field
 - `FromKey` (optional, default = `never`): indicates the key from the field from which the transformation starts, by default it is equal to the key of the "To" field (i.e., `"age"` in this case)
-- `FormToken`: either `"?:"` or `":"`, `"?:"` indicates that the "From" field is optional, `":"` indicates that the "From" field is Required
+- `FormToken`: either `"?:"` or `":"`, `"?:"` indicates that the "From" field is optional, `":"` indicates that the "From" field is required
 - `FromType`: the type of the "From" field
 
 In our case, the type
@@ -2537,10 +2570,10 @@ PropertySignature<":", number, never, ":", string, never>
 indicates that there is the following transformation:
 
 - `age` is the key of the "To" field
-- `ToToken = ":"` indicates that the `age` field is Required
+- `ToToken = ":"` indicates that the `age` field is required
 - `ToType = number` indicates that the type of the `age` field is `number`
 - `FromKey = never` indicates that the decoding occurs from the same field named `age`
-- `FormToken = "."` indicates that the decoding occurs from a Required `age` field
+- `FormToken = "."` indicates that the decoding occurs from a required `age` field
 - `FromType = string` indicates that the decoding occurs from a `string` type `age` field
 
 Let's see an example of decoding:
@@ -2587,10 +2620,10 @@ console.log(S.decodeUnknownSync(Person)({ name: "name", AGE: "18" }))
 
 | Combinator | From                                                 | To                                                                                                      |
 | ---------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `Optional` | `Schema<A, I, R>`                                    | `PropertySignature<"?:", string \| undefined, never, "?:", string \| undefined, never>`                 |
-| `Optional` | `Schema<A, I, R>`, `{ nullable: true }`              | `PropertySignature<"?:", string \| null \| undefined, never, "?:", string \| null \| undefined, never>` |
-| `Optional` | `Schema<A, I, R>`, `{ exact: true }`                 | `PropertySignature<"?:", string, never, "?:", string, never>`                                           |
-| `Optional` | `Schema<A, I, R>`, `{ exact: true, nullable: true }` | `PropertySignature<"?:", string \| null, never, "?:", string \| null, never>`                           |
+| `optional` | `Schema<A, I, R>`                                    | `PropertySignature<"?:", string \| undefined, never, "?:", string \| undefined, never>`                 |
+| `optional` | `Schema<A, I, R>`, `{ nullable: true }`              | `PropertySignature<"?:", string \| null \| undefined, never, "?:", string \| null \| undefined, never>` |
+| `optional` | `Schema<A, I, R>`, `{ exact: true }`                 | `PropertySignature<"?:", string, never, "?:", string, never>`                                           |
+| `optional` | `Schema<A, I, R>`, `{ exact: true, nullable: true }` | `PropertySignature<"?:", string \| null, never, "?:", string \| null, never>`                           |
 
 #### optional(schema)
 
@@ -2638,10 +2671,10 @@ console.log(S.decodeUnknownSync(Person)({ name: "name", AGE: "18" }))
 
 | Combinator | From                                                                   | To                                                                                |
 | ---------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `Optional` | `Schema<A, I, R>`, `{ default: () => A }`                              | `PropertySignature<":", string, never, "?:", string \| undefined, never>`         |
-| `Optional` | `Schema<A, I, R>`, `{ exact: true, default: () => A }`                 | `PropertySignature<":", string, never, "?:", string, never>`                      |
-| `Optional` | `Schema<A, I, R>`, `{ nullable: true, default: () => A }`              | `PropertySignature<":", string, never, "?:", string \| null \| undefined, never>` |
-| `Optional` | `Schema<A, I, R>`, `{ exact: true, nullable: true, default: () => A }` | `PropertySignature<":", string, never, "?:", string \| null, never>`              |
+| `optional` | `Schema<A, I, R>`, `{ default: () => A }`                              | `PropertySignature<":", string, never, "?:", string \| undefined, never>`         |
+| `optional` | `Schema<A, I, R>`, `{ exact: true, default: () => A }`                 | `PropertySignature<":", string, never, "?:", string, never>`                      |
+| `optional` | `Schema<A, I, R>`, `{ nullable: true, default: () => A }`              | `PropertySignature<":", string, never, "?:", string \| null \| undefined, never>` |
+| `optional` | `Schema<A, I, R>`, `{ exact: true, nullable: true, default: () => A }` | `PropertySignature<":", string, never, "?:", string \| null, never>`              |
 
 #### optional(schema, { default: () => A })
 
@@ -2683,10 +2716,10 @@ console.log(S.decodeUnknownSync(Person)({ name: "name", AGE: "18" }))
 
 | Combinator | From                                                               | To                                                                                        |
 | ---------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
-| `Optional` | `Schema<A, I, R>`, `{ as: "Option" }`                              | `PropertySignature<":", Option<string>, never, "?:", string \| undefined, never>`         |
-| `Optional` | `Schema<A, I, R>`, `{ exact: true, as: "Option" }`                 | `PropertySignature<":", Option<string>, never, "?:", string, never>`                      |
-| `Optional` | `Schema<A, I, R>`, `{ nullable: true, as: "Option" }`              | `PropertySignature<":", Option<string>, never, "?:", string \| null \| undefined, never>` |
-| `Optional` | `Schema<A, I, R>`, `{ exact: true, nullable: true, as: "Option" }` | `PropertySignature<":", Option<string>, never, "?:", string \| null, never>`              |
+| `optional` | `Schema<A, I, R>`, `{ as: "Option" }`                              | `PropertySignature<":", Option<string>, never, "?:", string \| undefined, never>`         |
+| `optional` | `Schema<A, I, R>`, `{ exact: true, as: "Option" }`                 | `PropertySignature<":", Option<string>, never, "?:", string, never>`                      |
+| `optional` | `Schema<A, I, R>`, `{ nullable: true, as: "Option" }`              | `PropertySignature<":", Option<string>, never, "?:", string \| null \| undefined, never>` |
+| `optional` | `Schema<A, I, R>`, `{ exact: true, nullable: true, as: "Option" }` | `PropertySignature<":", Option<string>, never, "?:", string \| null, never>`              |
 
 #### optional(schema, { as: "Option" })
 
@@ -2730,22 +2763,24 @@ console.log(S.decodeUnknownSync(Person)({ name: "name", AGE: "18" }))
 
 ### Optional Fields Primitives
 
-The `Optional` API is based on two primitives: `OptionalToOptional` and `OptionalToRequired`. These primitives are incredibly useful for defining property signatures with more precision.
+The `optional` API is based on two primitives: `pptionalToOptional` and `optionalTorequired`. These primitives are incredibly useful for defining property signatures with more precision.
 
 #### optionalToOptional
 
-The `OptionalToOptional` API is used to manage the transformation from an optional field to another optional field. With this, we can control both the output type and the presence or absence of the field.
+The `pptionalToOptional` API is used to manage the transformation from an optional field to another optional field. With this, we can control both the output type and the presence or absence of the field.
 
 For example a common use case is to equate a specific value in the source field with the absence of value in the destination field.
 
-Here's the signature of the `OptionalToOptional` API:
+Here's the signature of the `pptionalToOptional` API:
 
 ```ts
 export const optionalToOptional = <FA, FI, FR, TA, TI, TR>(
   from: Schema<FA, FI, FR>,
   to: Schema<TA, TI, TR>,
-  decode: (o: Option.Option<FA>) => Option.Option<TI>,
-  encode: (o: Option.Option<TI>) => Option.Option<FA>
+  options: {
+    readonly decode: (o: Option.Option<FA>) => Option.Option<TI>,
+    readonly encode: (o: Option.Option<TI>) => Option.Option<FA>
+  }
 ): PropertySignature<"?:", TA, never, "?:", FI, FR | TR>
 ```
 
@@ -2768,10 +2803,8 @@ import { identity } from "effect/Function"
 import * as Option from "effect/Option"
 
 const schema = S.Struct({
-  a: S.optionalToOptional(
-    S.String,
-    S.String,
-    (input) => {
+  a: S.optionalToOptional(S.String, S.String, {
+    decode: (input) => {
       if (Option.isNone(input)) {
         // If the field is absent in the input, returning `Option.none()` will make it absent in the output too
         return Option.none()
@@ -2786,8 +2819,8 @@ const schema = S.Struct({
     },
     // Here in the encoding part, we can decide to handle things in the same way as in the decoding phase
     // or handle them differently. For example, we can leave everything unchanged and use the identity function
-    identity
-  )
+    encode: identity
+  })
 })
 
 const decode = S.decodeUnknownSync(schema)
@@ -2803,16 +2836,18 @@ console.log(encode({ a: "" })) // Output: { a: '' }
 console.log(encode({ a: "foo" })) // Output: { a: 'foo' }
 ```
 
-#### optionalToRequired
+#### optionalTorequired
 
-The `OptionalToRequired` API allows us to transform an optional field into a Required one, applying custom logic if the field is absent in the input.
+The `optionalTorequired` API allows us to transform an optional field into a required one, applying custom logic if the field is absent in the input.
 
 ```ts
-export const optionalToRequired = <FA, FI, FR, TA, TI, TR>(
+export const optionalTorequired = <FA, FI, FR, TA, TI, TR>(
   from: Schema<FA, FI, FR>,
   to: Schema<TA, TI, TR>,
-  decode: (o: Option.Option<FA>) => TI,
-  encode: (ti: TI) => Option.Option<FA>
+  options: {
+    readonly decode: (o: Option.Option<FA>) => TI,
+    readonly encode: (ti: TI) => Option.Option<FA>
+  }
 ): PropertySignature<":", TA, never, "?:", FI, FR | TR>
 ```
 
@@ -2823,10 +2858,8 @@ import * as S from "@effect/schema/Schema"
 import * as Option from "effect/Option"
 
 const schema = S.Struct({
-  a: S.optionalToRequired(
-    S.String,
-    S.String,
-    (input) => {
+  a: S.optionalTorequired(S.String, S.String, {
+    decode: (input) => {
       if (Option.isNone(input)) {
         // If the field is absent in the input, we can return the default value for the field in the output
         return "default value"
@@ -2835,8 +2868,8 @@ const schema = S.Struct({
       return input.value
     },
     // During encoding, we can choose to handle things differently, or simply return the same value present in the input for the output
-    (a) => Option.some(a)
-  )
+    encode: (a) => Option.some(a)
+  })
 })
 
 const decode = S.decodeUnknownSync(schema)
@@ -2865,7 +2898,7 @@ console.log(S.decodeUnknownSync(schema)({ c: "c", b: 1 }))
 
 ### Renaming Properties Of An Existing Schema
 
-To rename one or more properties, you can utilize the `Rename` API:
+To rename one or more properties, you can utilize the `rename` API:
 
 ```ts
 import * as S from "@effect/schema/Schema"
@@ -2874,7 +2907,7 @@ import * as S from "@effect/schema/Schema"
 const originalSchema = S.Struct({ c: S.String, b: S.Number })
 
 // Renaming the "a" property to "c"
-const renamedSchema = S.Rename(originalSchema, { c: "a" })
+const renamedSchema = S.rename(originalSchema, { c: "a" })
 
 console.log(S.decodeUnknownSync(renamedSchema)({ c: "c", b: 1 }))
 // Output: { a: "c", b: 1 }
@@ -2882,39 +2915,39 @@ console.log(S.decodeUnknownSync(renamedSchema)({ c: "c", b: 1 }))
 
 In the example above, we have an original schema with properties "a" and "b." Using the `rename` API, we create a new schema where we rename the "a" property to "c." The resulting schema, when used with `S.decodeUnknownSync`, transforms the input object by renaming the specified property.
 
-## Pick
+## pick
 
-The `Pick` operation is used to select specific properties from a schema.
+The `pick` operation is used to select specific properties from a schema.
 
 ```ts
 import * as S from "@effect/schema/Schema"
 
 // Schema<{ readonly a: string; }>
-S.Struct({ a: S.String, b: S.Number, c: S.Boolean }).pipe(S.Pick("a"))
+S.Struct({ a: S.String, b: S.Number, c: S.Boolean }).pipe(S.pick("a"))
 
 // Schema<{ readonly a: string; readonly c: boolean; }>
-S.Struct({ a: S.String, b: S.Number, c: S.Boolean }).pipe(S.Pick("a", "c"))
+S.Struct({ a: S.String, b: S.Number, c: S.Boolean }).pipe(S.pick("a", "c"))
 ```
 
-## Omit
+## omit
 
-The `Omit` operation is employed to exclude certain properties from a schema.
+The `omit` operation is employed to exclude certain properties from a schema.
 
 ```ts
 import * as S from "@effect/schema/Schema"
 
 // Schema<{ readonly b: number; readonly c: boolean; }>
-S.Struct({ a: S.String, b: S.Number, c: S.Boolean }).pipe(S.Omit("a"))
+S.Struct({ a: S.String, b: S.Number, c: S.Boolean }).pipe(S.omit("a"))
 
 // Schema<{ readonly b: number; }>
-S.Struct({ a: S.String, b: S.Number, c: S.Boolean }).pipe(S.Omit("a", "c"))
+S.Struct({ a: S.String, b: S.Number, c: S.Boolean }).pipe(S.omit("a", "c"))
 ```
 
-## Partial
+## partial
 
-The `Partial` operation makes all properties within a schema optional.
+The `partial` operation makes all properties within a schema optional.
 
-By default, the `Partial` operation adds a union with `undefined` to the types. If you wish to avoid this, you can opt-out by passing a `{ exact: true }` argument to the `Partial` operation.
+By default, the `partial` operation adds a union with `undefined` to the types. If you wish to avoid this, you can opt-out by passing a `{ exact: true }` argument to the `partial` operation.
 
 **Example**
 
@@ -2952,9 +2985,9 @@ Error: { a?: string }
 */
 ```
 
-## Required
+## required
 
-The `Required` operation ensures that all properties in a schema are mandatory.
+The `required` operation ensures that all properties in a schema are mandatory.
 
 ```ts
 import * as S from "@effect/schema/Schema"
@@ -3029,8 +3062,8 @@ If you need to be less restrictive when composing your schemas, i.e., when you h
 ```ts
 declare const compose: <A, B, R1, D, C, R2>(
   from: Schema<B, A, R1>,
-  to: Schema<D, C, R2>, // Less strict constraint
-  options: { strict: false }
+  to: Schema<D, C, R2>,
+  options: { readonly strict: false } // Less strict constraint
 ) => Schema<D, A, R1 | R2>
 ```
 
@@ -3280,7 +3313,7 @@ console.log(john.upperName) // "JOHN"
 
 ## Accessing Related Schemas
 
-The class constructor itself is a Schema, and can be assigned/provided anywhere a Schema is expected. There is also a `.fields` property, which can be used when the class prototype is not Required.
+The class constructor itself is a Schema, and can be assigned/provided anywhere a Schema is expected. There is also a `.fields` property, which can be used when the class prototype is not required.
 
 ```ts
 import * as S from "@effect/schema/Schema"
@@ -3850,7 +3883,7 @@ console.log(decode("a ")) // "a"
 console.log(decode(" a ")) // "a"
 ```
 
-**Note**. If you were looking for a combinator to check if a string is trimmed, check out the `trimmed` combinator.
+**Note**. If you were looking for a combinator to check if a string is trimmed, check out the `trimmed` filter.
 
 ### Lowercase
 
@@ -3859,9 +3892,7 @@ The `Lowercase` schema converts a string to lowercase.
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// S.Schema<string>
-const schema = S.Lowercase
-const decode = S.decodeUnknownSync(schema)
+const decode = S.decodeUnknownSync(S.Lowercase)
 
 console.log(decode("A")) // "a"
 console.log(decode(" AB")) // " ab"
@@ -3869,7 +3900,24 @@ console.log(decode("Ab ")) // "ab "
 console.log(decode(" ABc ")) // " abc "
 ```
 
-**Note**. If you were looking for a combinator to check if a string is lowercased, check out the `lowercased` combinator.
+**Note**. If you were looking for a combinator to check if a string is lowercased, check out the `Lowercased` schema or the `lowercased` filter.
+
+### Uppercase
+
+The `Uppercase` schema converts a string to uppercase.
+
+```ts
+import * as S from "@effect/schema/Schema"
+
+const decode = S.decodeUnknownSync(S.Uppercase)
+
+console.log(decode("a")) // "A"
+console.log(decode(" ab")) // " AB"
+console.log(decode("aB ")) // "AB "
+console.log(decode(" abC ")) // " ABC "
+```
+
+**Note**. If you were looking for a combinator to check if a string is uppercased, check out the `Uppercased` schema or the `uppercased` filter.
 
 ### parseJson
 
@@ -3984,8 +4032,7 @@ Transforms a `string` into a `symbol` by parsing the string using `Symbol.for`.
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// Schema<symbol, string>
-const schema = S.Symbol
+const schema = S.Symbol // Schema<symbol, string>
 const decode = S.decodeUnknownSync(schema)
 
 console.log(decode("a")) // Symbol(a)
@@ -4000,8 +4047,7 @@ Transforms a `string` into a `BigInt` by parsing the string using `BigInt`.
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// Schema<BigInt, string>
-const schema = S.BigInt
+const schema = S.BigInt // Schema<BigInt, string>
 const decode = S.decodeUnknownSync(schema)
 
 // success cases
@@ -4029,8 +4075,7 @@ Transforms a `number` into a `BigInt` by parsing the number using `BigInt`.
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// Schema<BigInt, number>
-const schema = S.BigIntFromNumber
+const schema = S.BigIntFromNumber // Schema<BigInt, number>
 const decode = S.decodeUnknownSync(schema)
 const encode = S.encodeSync(schema)
 
@@ -4062,7 +4107,6 @@ Clamps a `BigInt` between a minimum and a maximum value.
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// Schema<BigInt>
 const schema = S.BigIntFromSelf.pipe(S.clampBigInt(-1n, 1n)) // clamps the input to -1n <= x <= 1n
 
 const decode = S.decodeUnknownSync(schema)
@@ -4081,8 +4125,7 @@ Transforms a `string` into a **valid** `Date`, ensuring that invalid dates, such
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// Schema<Date, string>
-const schema = S.Date
+const schema = S.Date // Schema<Date, string>
 const decode = S.decodeUnknownSync(schema)
 
 console.log(decode("1970-01-01T00:00:00.000Z")) // 1970-01-01T00:00:00.000Z
@@ -4116,8 +4159,7 @@ Transforms a `string` into a `BigDecimal`.
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// Schema<BigDecimal, string>
-const schema = S.BigDecimal
+const schema = S.BigDecimal // Schema<BigDecimal, string>
 const decode = S.decodeUnknownSync(schema)
 
 console.log(decode(".124")) // { _id: 'BigDecimal', value: '124', scale: 3 }
@@ -4133,8 +4175,7 @@ Transforms a `number` into a `BigDecimal`.
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// Schema<BigDecimal, number>
-const schema = S.BigDecimalFromNumber
+const schema = S.BigDecimalFromNumber // Schema<BigDecimal, number>
 const decode = S.decodeUnknownSync(schema)
 
 console.log(decode(0.111)) // { _id: 'BigDecimal', value: '111', scale: 3 }
@@ -4148,7 +4189,6 @@ Clamps a `BigDecimal` between a minimum and a maximum value.
 import * as S from "@effect/schema/Schema"
 import * as BigDecimal from "effect/BigDecimal"
 
-// Schema<BigDecimal, string>
 const schema = S.BigDecimal.pipe(
   S.clampBigDecimal(BigDecimal.fromNumber(-1), BigDecimal.fromNumber(1))
 )
@@ -4169,9 +4209,7 @@ Converts an hrtime(i.e. `[seconds: number, nanos: number]`) into a `Duration`.
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// Schema<Duration, number>
-const schema = S.Duration
-
+const schema = S.Duration // Schema<Duration, number>
 const decode = S.decodeUnknownSync(schema)
 
 console.log(decode([0, 0])) // { _id: 'Duration', _tag: 'Nanos', hrtime: [ 0, 0 ] }
@@ -4185,9 +4223,7 @@ Converts a `number` into a `Duration` where the number represents the number of 
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// Schema<Duration, number>
-const schema = S.DurationFromMillis
-
+const schema = S.DurationFromMillis // Schema<Duration, number>
 const decode = S.decodeUnknownSync(schema)
 
 console.log(decode(0)) // { _id: 'Duration', _tag: 'Millis', millis: 0 }
@@ -4201,9 +4237,7 @@ Converts a `BigInt` into a `Duration` where the number represents the number of 
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// Schema<Duration, BigInt>
-const schema = S.DurationFromNanos
-
+const schema = S.DurationFromNanos // Schema<Duration, BigInt>
 const decode = S.decodeUnknownSync(schema)
 
 console.log(decode(0n)) // { _id: 'Duration', _tag: 'Nanos', hrtime: [ 0, 0 ] }
@@ -4218,7 +4252,6 @@ Clamps a `Duration` between a minimum and a maximum value.
 import * as S from "@effect/schema/Schema"
 import * as Duration from "effect/Duration"
 
-// Schema<Duration>
 const schema = S.DurationFromSelf.pipe(
   S.clampDuration("5 seconds", "10 seconds")
 )
@@ -4239,9 +4272,7 @@ Converts a `string` into a `Secret`.
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// Schema<Secret, string>
-const schema = S.Secret
-
+const schema = S.Secret // Schema<Secret, string>
 const decode = S.decodeUnknownSync(schema)
 
 console.log(decode("keep it secret, keep it safe")) // {}
@@ -4815,31 +4846,33 @@ export const MyReadonlySet = <A, I, R>(
   S.declare(
     // Store the schema for the elements
     [item],
-    // Decoding function
-    (item) => (input, parseOptions, ast) => {
-      if (input instanceof Set) {
-        // Decode the elements
-        const elements = ParseResult.decodeUnknown(S.Array(item))(
-          Array.from(input.values()),
-          parseOptions
-        )
-        // Return a Set containing the parsed elements
-        return ParseResult.map(elements, (as): ReadonlySet<A> => new Set(as))
+    {
+      // Decoding function
+      decode: (item) => (input, parseOptions, ast) => {
+        if (input instanceof Set) {
+          // Decode the elements
+          const elements = ParseResult.decodeUnknown(S.Array(item))(
+            Array.from(input.values()),
+            parseOptions
+          )
+          // Return a Set containing the parsed elements
+          return ParseResult.map(elements, (as): ReadonlySet<A> => new Set(as))
+        }
+        return ParseResult.fail(new ParseResult.Type(ast, input))
+      },
+      // Encoding function
+      encode: (item) => (input, parseOptions, ast) => {
+        if (input instanceof Set) {
+          // Encode the elements
+          const elements = ParseResult.encodeUnknown(S.Array(item))(
+            Array.from(input.values()),
+            parseOptions
+          )
+          // Return a Set containing the parsed elements
+          return ParseResult.map(elements, (is): ReadonlySet<I> => new Set(is))
+        }
+        return ParseResult.fail(new ParseResult.Type(ast, input))
       }
-      return ParseResult.fail(new ParseResult.Type(ast, input))
-    },
-    // Encoding function
-    (item) => (input, parseOptions, ast) => {
-      if (input instanceof Set) {
-        // Encode the elements
-        const elements = ParseResult.encodeUnknown(S.Array(item))(
-          Array.from(input.values()),
-          parseOptions
-        )
-        // Return a Set containing the parsed elements
-        return ParseResult.map(elements, (is): ReadonlySet<I> => new Set(is))
-      }
-      return ParseResult.fail(new ParseResult.Type(ast, input))
     },
     {
       description: `ReadonlySet<${S.format(item)}>`
@@ -4883,7 +4916,7 @@ import { Arbitrary, Schema } from "@effect/schema"
 
 const isFile = (input: unknown): input is File => input instanceof File
 
-const FileFromSelf = Schema.Declare(isFile, {
+const FileFromSelf = Schema.declare(isFile, {
   identifier: "FileFromSelf"
 })
 
@@ -4902,7 +4935,7 @@ import { Arbitrary, FastCheck, Pretty, Schema } from "@effect/schema"
 
 const isFile = (input: unknown): input is File => input instanceof File
 
-const FileFromSelf = Schema.Declare(isFile, {
+const FileFromSelf = Schema.declare(isFile, {
   identifier: "FileFromSelf",
   // Provide an arbitrary function to generate random File instances
   arbitrary: () => (fc) =>
@@ -4956,7 +4989,7 @@ Multiple environments like the Browser or Node provide a built-in `URL` class th
 ```ts
 import * as S from "@effect/schema/Schema"
 
-const UrlString: S.Schema<string> = S.String.pipe(
+const UrlString = S.String.pipe(
   S.filter((value) => {
     try {
       new URL(value)
@@ -4978,7 +5011,7 @@ In case you prefer to normalize URLs you can combine `transformOrFail` with `URL
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 
-const NormalizedUrlString: S.Schema<string> = S.String.pipe(
+const NormalizedUrlString = S.String.pipe(
   S.filter((value) => {
     try {
       return new URL(value).toString() === value
@@ -4988,23 +5021,19 @@ const NormalizedUrlString: S.Schema<string> = S.String.pipe(
   })
 )
 
-const NormalizeUrlString: S.Schema<string> = S.transformOrFail(
-  S.String,
-  NormalizedUrlString,
-  {
-    decode: (value, _, ast) =>
-      ParseResult.try({
-        try: () => new URL(value).toString(),
-        catch: (err) =>
-          new ParseResult.Type(
-            ast,
-            value,
-            err instanceof Error ? err.message : undefined
-          )
-      }),
-    encode: ParseResult.succeed
-  }
-)
+const NormalizeUrlString = S.transformOrFail(S.String, NormalizedUrlString, {
+  decode: (value, _, ast) =>
+    ParseResult.try({
+      try: () => new URL(value).toString(),
+      catch: (err) =>
+        new ParseResult.Type(
+          ast,
+          value,
+          err instanceof Error ? err.message : undefined
+        )
+    }),
+  encode: ParseResult.succeed
+})
 
 const decode = S.decodeUnknownSync(NormalizeUrlString)
 
@@ -5090,7 +5119,7 @@ const Password =
     .pipe(
       // add a constraint to the schema, only non-empty strings are valid
       // and add an error message for empty strings
-      S.nonEmpty({ message: () => "Required" }),
+      S.nonEmpty({ message: () => "required" }),
       // add a constraint to the schema, only strings with a length less or equal than 10 are valid
       // and add an error message for strings that are too long
       S.maxLength(10, { message: (s) => `${s} is too long` })
@@ -5298,7 +5327,7 @@ import * as S from "@effect/schema/Schema"
 const schema = S.Struct({
   name: S.NonEmpty.annotations({
     identifier: "Name",
-    message: () => "Name: a Required non empty string"
+    message: () => "Name: a required non empty string"
   }),
   age: S.Positive.pipe(
     S.int({ identifier: "Age", message: () => "Age: a positive integer" })
@@ -5310,7 +5339,7 @@ S.decodeUnknownSync(schema)({ name: null, age: 18 })
 throws:
 Error: Person
 └─ ["name"]
-   └─ Name: a Required non empty string
+   └─ Name: a required non empty string
 */
 
 S.decodeUnknownSync(schema)({ name: "", age: 18 })
@@ -5318,7 +5347,7 @@ S.decodeUnknownSync(schema)({ name: "", age: 18 })
 throws:
 Error: Person
 └─ ["name"]
-   └─ Name: a Required non empty string
+   └─ Name: a required non empty string
 */
 ```
 
@@ -5580,7 +5609,7 @@ We welcome contributions via pull requests! Here are some guidelines to help you
 
 1. Fork the repository and clone it to your local machine.
 2. Create a new branch for your changes: `git checkout -b my-new-feature`
-3. Ensure you have the Required dependencies installed by running: `pnpm install` (assuming pnpm version `8.x`).
+3. Ensure you have the required dependencies installed by running: `pnpm install` (assuming pnpm version `8.x`).
 4. Make your desired changes and, if applicable, include tests to validate your modifications.
 5. Run the following commands to ensure the integrity of your changes:
    - `pnpm check`: Verify that the code compiles.
