@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import * as Option from "effect/Option"
-import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as ReadonlyArray from "effect/Array"
 import * as AST from "./AST.js"
 import * as errors_ from "./internal/errors.js"
 import * as util_ from "./internal/util.js"

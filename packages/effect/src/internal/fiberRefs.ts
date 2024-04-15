@@ -7,7 +7,7 @@ import { dual, pipe } from "../Function.js"
 import * as HashSet from "../HashSet.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
-import * as Arr from "../ReadonlyArray.js"
+import * as Arr from "../Array.js"
 import * as core from "./core.js"
 
 /** @internal */

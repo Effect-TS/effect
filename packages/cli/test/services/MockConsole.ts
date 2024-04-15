@@ -1,7 +1,7 @@
 import * as Console from "effect/Console"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as ReadonlyArray from "effect/Array"
 import * as Ref from "effect/Ref"
 
 export interface MockConsole extends Console.Console {

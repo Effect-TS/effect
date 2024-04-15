@@ -4,7 +4,7 @@ import * as DocTree from "@effect/printer/DocTree"
 import * as Layout from "@effect/printer/Layout"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
-import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as ReadonlyArray from "effect/Array"
 import * as String from "effect/String"
 import { describe, expect, it } from "vitest"
 

@@ -7,7 +7,7 @@ import {
   Function,
   Option,
   RateLimiter,
-  ReadonlyArray,
+  Array as ReadonlyArray,
   Ref,
   TestClock
 } from "effect"

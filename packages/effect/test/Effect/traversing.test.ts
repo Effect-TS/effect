@@ -7,7 +7,7 @@ import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { constVoid, identity, pipe } from "effect/Function"
-import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as ReadonlyArray from "effect/Array"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
 

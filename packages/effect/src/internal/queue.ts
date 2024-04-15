@@ -8,7 +8,7 @@ import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import type * as Queue from "../Queue.js"
-import * as ReadonlyArray from "../ReadonlyArray.js"
+import * as ReadonlyArray from "../Array.js"
 import * as core from "./core.js"
 import * as fiberRuntime from "./fiberRuntime.js"
 

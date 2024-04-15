@@ -1,4 +1,4 @@
-import { Effect, Exit, ReadonlyArray, Ref, Scope } from "effect"
+import { Array, Effect, Exit, Ref, Scope } from "effect"
 import * as it from "effect-test/utils/extend"
 import * as FiberSet from "effect/FiberSet"
 import { assert, describe } from "vitest"
@@ -34,7 +34,7 @@ describe("FiberSet", () => {
         Effect.gen(function*(_) {
           const set = yield* _(FiberSet.make())
           const run = yield* _(FiberSet.runtime(set)<never>())
-          ReadonlyArray.range(1, 10).forEach(() =>
+          Array.range(1, 10).forEach(() =>
             run(
               Effect.onInterrupt(
                 Effect.never,

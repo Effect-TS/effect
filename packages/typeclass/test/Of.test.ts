@@ -1,7 +1,7 @@
 import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as _ from "@effect/typeclass/Of"
 import * as O from "effect/Option"
-import * as RA from "effect/ReadonlyArray"
+import * as RA from "effect/Array"
 import { describe, it } from "vitest"
 import * as U from "./util.js"
 

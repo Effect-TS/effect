@@ -3,7 +3,7 @@ import * as Either from "effect/Either"
 import { hole, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
-import * as ReadonlyRecord from "effect/ReadonlyRecord"
+import * as ReadonlyRecord from "effect/Record"
 
 declare const string$numbers: Record<string, number>
 declare const string$numbersOrStrings: Record<string, number | string>

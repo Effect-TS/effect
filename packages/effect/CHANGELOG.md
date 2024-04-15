@@ -98,7 +98,7 @@
 
 - [#2415](https://github.com/Effect-TS/effect/pull/2415) [`8206caf`](https://github.com/Effect-TS/effect/commit/8206caf7c2d22c68be4313318b61cfdacf6222b6) Thanks [@tim-smart](https://github.com/tim-smart)! - add Iterable module
 
-  This module shares many apis compared to "effect/ReadonlyArray", but is fully lazy.
+  This module shares many apis compared to "effect/Array", but is fully lazy.
 
   ```ts
   import { Iterable, pipe } from "effect";

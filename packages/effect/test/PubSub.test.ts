@@ -5,7 +5,7 @@ import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as PubSub from "effect/PubSub"
 import * as Queue from "effect/Queue"
-import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as ReadonlyArray from "effect/Array"
 import { assert, describe } from "vitest"
 
 describe("PubSub", () => {

@@ -11,7 +11,7 @@ import * as FiberStatus from "effect/FiberStatus"
 import { constVoid, pipe } from "effect/Function"
 import * as HashSet from "effect/HashSet"
 import * as Queue from "effect/Queue"
-import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as ReadonlyArray from "effect/Array"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
 

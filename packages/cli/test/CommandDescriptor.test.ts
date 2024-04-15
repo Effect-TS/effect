@@ -11,7 +11,7 @@ import * as WordCount from "@effect/cli/test/utils/wc"
 import * as ValidationError from "@effect/cli/ValidationError"
 import * as NodeContext from "@effect/platform-node/NodeContext"
 import * as Doc from "@effect/printer/Doc"
-import { Effect, Option, ReadonlyArray, String } from "effect"
+import { Effect, Option, Array as ReadonlyArray, String } from "effect"
 import { describe, expect, it } from "vitest"
 
 const runEffect = <E, A>(

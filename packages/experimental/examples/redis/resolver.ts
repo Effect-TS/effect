@@ -3,7 +3,7 @@ import { persisted } from "@effect/experimental/RequestResolver"
 import * as TimeToLive from "@effect/experimental/TimeToLive"
 import { runMain } from "@effect/platform-node/NodeRuntime"
 import { Schema } from "@effect/schema"
-import { Effect, Exit, PrimaryKey, ReadonlyArray, RequestResolver } from "effect"
+import { Effect, Exit, PrimaryKey, Array as ReadonlyArray, RequestResolver } from "effect"
 
 class User extends Schema.Class<User>("User")({
   id: Schema.Number,

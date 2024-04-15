@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import type { AnsiDoc } from "@effect/printer-ansi/AnsiDoc"
-import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
+import type { NonEmptyReadonlyArray } from "effect/Array"
 import type { Span } from "./HelpDoc/Span.js"
 import * as InternalHelpDoc from "./internal/helpDoc.js"
 

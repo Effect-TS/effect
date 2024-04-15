@@ -2,7 +2,7 @@ import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import * as Http from "@effect/platform/HttpServer"
 import { Router, Rpc } from "@effect/rpc"
 import { HttpRouter } from "@effect/rpc-http"
-import { Effect, Layer, ReadonlyArray, Stream } from "effect"
+import { Effect, Layer, Array as ReadonlyArray, Stream } from "effect"
 import { createServer } from "http"
 import { GetUser, GetUserIds, User, UserId } from "./schema.js"
 

@@ -8,7 +8,7 @@ import * as N from "effect/Number"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import type { Predicate } from "effect/Predicate"
-import * as RA from "effect/ReadonlyArray"
+import * as RA from "effect/Array"
 import * as fc from "fast-check"
 import { assert, describe, expect, it } from "vitest"
 

@@ -4,7 +4,7 @@ import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import * as HashSet from "effect/HashSet"
-import * as RA from "effect/ReadonlyArray"
+import * as RA from "effect/Array"
 import { assert, describe, it as it_ } from "vitest"
 
 function diffLaws<Value, Patch>(

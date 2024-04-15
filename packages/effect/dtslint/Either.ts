@@ -1,7 +1,7 @@
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Predicate from "effect/Predicate"
-import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as ReadonlyArray from "effect/Array"
 
 declare const string$string: Either.Either<string, string>
 declare const string$number: Either.Either<number, string>

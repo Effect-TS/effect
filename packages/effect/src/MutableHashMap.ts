@@ -8,7 +8,7 @@ import { format, type Inspectable, NodeInspectSymbol, toJSON } from "./Inspectab
 import * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
-import type { NonEmptyArray } from "./ReadonlyArray.js"
+import type { NonEmptyArray } from "./Array.js"
 
 const TypeId: unique symbol = Symbol.for("effect/MutableHashMap") as TypeId
 

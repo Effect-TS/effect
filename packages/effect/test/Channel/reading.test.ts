@@ -8,7 +8,7 @@ import * as HashSet from "effect/HashSet"
 import * as MergeDecision from "effect/MergeDecision"
 import * as Option from "effect/Option"
 import * as Random from "effect/Random"
-import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as ReadonlyArray from "effect/Array"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
 

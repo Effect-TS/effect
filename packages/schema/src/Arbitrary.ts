@@ -4,7 +4,7 @@
 
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
-import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as ReadonlyArray from "effect/Array"
 import * as AST from "./AST.js"
 import * as FastCheck from "./FastCheck.js"
 import * as errors_ from "./internal/errors.js"

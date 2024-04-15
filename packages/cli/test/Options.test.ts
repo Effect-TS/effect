@@ -13,7 +13,7 @@ import * as Either from "effect/Either"
 import { identity } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import * as Option from "effect/Option"
-import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as ReadonlyArray from "effect/Array"
 import { assert, describe, expect, it } from "vitest"
 
 const firstName = Options.text("firstName").pipe(Options.withAlias("f"))

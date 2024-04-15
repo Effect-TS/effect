@@ -1,6 +1,6 @@
 import * as Doc from "@effect/printer/Doc"
 import { pipe } from "effect/Function"
-import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as ReadonlyArray from "effect/Array"
 
 const prettyTypes = (types: ReadonlyArray<string>): Doc.Doc<never> => {
   const symbolDocuments = pipe(

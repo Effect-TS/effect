@@ -20,7 +20,7 @@ import type * as MetricKey from "effect/MetricKey"
 import * as MetricKeyType from "effect/MetricKeyType"
 import * as MetricState from "effect/MetricState"
 import * as Option from "effect/Option"
-import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as ReadonlyArray from "effect/Array"
 import * as Resource from "../Resource.js"
 
 const sdkName = "@effect/opentelemetry/Metrics"

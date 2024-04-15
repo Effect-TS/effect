@@ -17,7 +17,7 @@ import { pipeArguments } from "./Pipeable.js"
 import { hasProperty, type Predicate, type Refinement } from "./Predicate.js"
 import * as RA from "./ReadonlyArray.js"
 import type { NonEmptyReadonlyArray } from "./ReadonlyArray.js"
-import type { Covariant } from "./Types.js"
+import type { Covariant, NoInfer } from "./Types.js"
 
 const TypeId: unique symbol = Symbol.for("effect/Chunk") as TypeId
 

@@ -8,7 +8,7 @@ import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { flow, pipe } from "effect/Function"
-import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as ReadonlyArray from "effect/Array"
 import * as Stream from "effect/Stream"
 import { assert, describe, expect, it, test } from "vitest"
 

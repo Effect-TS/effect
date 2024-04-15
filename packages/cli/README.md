@@ -151,7 +151,7 @@ Let's continue with our `minigit` example and and create the `add` and `clone` s
 
 ```ts
 import { Args, Command, Options } from "@effect/cli"
-import { Console, Option, ReadonlyArray } from "effect"
+import { Console, Option, Array as ReadonlyArray } from "effect"
 
 // minigit [--version] [-h | --help] [-c <name>=<value>]
 const configs = Options.keyValueMap("c").pipe(Options.optional)
@@ -209,7 +209,7 @@ Our final CLI application is as follows:
 ```ts
 import { Args, Command, Options } from "@effect/cli"
 import { NodeContext, NodeRuntime } from "@effect/platform-node"
-import { Console, Effect, Option, ReadonlyArray } from "effect"
+import { Console, Effect, Option, Array as ReadonlyArray } from "effect"
 
 // minigit [--version] [-h | --help] [-c <name>=<value>]
 const configs = Options.keyValueMap("c").pipe(Options.optional)

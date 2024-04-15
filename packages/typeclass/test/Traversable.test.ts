@@ -1,5 +1,5 @@
 import * as OptionInstances from "@effect/typeclass/data/Option"
-import * as ReadonlyArrayInstances from "@effect/typeclass/data/ReadonlyArray"
+import * as ReadonlyArrayInstances from "@effect/typeclass/data/Array"
 import * as Traversable from "@effect/typeclass/Traversable"
 import { pipe } from "effect/Function"
 import * as O from "effect/Option"

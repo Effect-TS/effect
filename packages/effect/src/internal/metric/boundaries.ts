@@ -5,7 +5,7 @@ import * as Hash from "../../Hash.js"
 import type * as MetricBoundaries from "../../MetricBoundaries.js"
 import { pipeArguments } from "../../Pipeable.js"
 import { hasProperty } from "../../Predicate.js"
-import * as ReadonlyArray from "../../ReadonlyArray.js"
+import * as ReadonlyArray from "../../Array.js"
 
 /** @internal */
 const MetricBoundariesSymbolKey = "effect/MetricBoundaries"

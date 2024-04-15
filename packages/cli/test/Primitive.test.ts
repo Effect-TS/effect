@@ -2,7 +2,7 @@ import * as CliConfig from "@effect/cli/CliConfig"
 import * as Primitive from "@effect/cli/Primitive"
 import type { FileSystem } from "@effect/platform"
 import { NodeFileSystem } from "@effect/platform-node"
-import { Effect, Equal, Function, Option, ReadonlyArray } from "effect"
+import { Effect, Equal, Function, Option, Array as ReadonlyArray } from "effect"
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 

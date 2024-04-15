@@ -7,7 +7,7 @@ import type * as MetricState from "../../MetricState.js"
 import * as number from "../../Number.js"
 import * as Option from "../../Option.js"
 import { pipeArguments } from "../../Pipeable.js"
-import * as ReadonlyArray from "../../ReadonlyArray.js"
+import * as ReadonlyArray from "../../Array.js"
 import * as metricState from "./state.js"
 
 /** @internal */

@@ -7,7 +7,7 @@ import { NodeContext } from "@effect/platform-node"
 import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
-import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as ReadonlyArray from "effect/Array"
 import { describe, expect, it } from "vitest"
 
 const runEffect = <E, A>(

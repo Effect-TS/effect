@@ -1,7 +1,7 @@
 import type * as Differ from "../../Differ.js"
 import * as Equal from "../../Equal.js"
 import * as Dual from "../../Function.js"
-import * as ReadonlyArray from "../../ReadonlyArray.js"
+import * as ReadonlyArray from "../../Array.js"
 import * as Data from "../data.js"
 
 /** @internal */

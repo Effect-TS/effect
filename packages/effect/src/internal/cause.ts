@@ -11,8 +11,8 @@ import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty, isFunction } from "../Predicate.js"
 import type { Predicate, Refinement } from "../Predicate.js"
-import * as ReadonlyArray from "../ReadonlyArray.js"
 import type { AnySpan, Span } from "../Tracer.js"
+import * as Array_ from "../Array.js"
 import { getBugErrorMessage } from "./errors.js"
 import * as OpCodes from "./opCodes/cause.js"
 
@@ -584,7 +584,7 @@ const flattenCauseLoop = (
   while (1) {
     const [parallel, sequential] = pipe(
       causes,
-      ReadonlyArray.reduce(
+      Array_.reduce(
         [HashSet.empty<unknown>(), Chunk.empty<Cause.Cause<unknown>>()] as const,
         ([parallel, sequential], cause) => {
           const [par, seq] = evaluateCause(cause)

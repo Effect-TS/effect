@@ -1,7 +1,7 @@
 import * as U from "effect-test/util"
 import { pipe } from "effect/Function"
 import * as _ from "effect/Order"
-import { sort } from "effect/ReadonlyArray"
+import { sort } from "effect/Array"
 import { describe, it } from "vitest"
 
 describe("Order", () => {

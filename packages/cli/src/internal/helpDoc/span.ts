@@ -2,7 +2,7 @@ import * as Ansi from "@effect/printer-ansi/Ansi"
 import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Color from "@effect/printer-ansi/Color"
 import { dual } from "effect/Function"
-import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as ReadonlyArray from "effect/Array"
 import type * as Span from "../../HelpDoc/Span.js"
 
 /** @internal */

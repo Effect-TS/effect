@@ -1,5 +1,5 @@
 import * as OptionInstances from "@effect/typeclass/data/Option"
-import * as ReadonlyRecordInstances from "@effect/typeclass/data/ReadonlyRecord"
+import * as ReadonlyRecordInstances from "@effect/typeclass/data/Record"
 import * as Option from "effect/Option"
 import { describe, expect, it } from "vitest"
 

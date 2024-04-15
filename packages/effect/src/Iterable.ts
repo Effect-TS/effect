@@ -11,8 +11,8 @@ import { dual, identity } from "./Function.js"
 import type { Option } from "./Option.js"
 import * as O from "./Option.js"
 import { isBoolean } from "./Predicate.js"
-import type { NonEmptyArray } from "./ReadonlyArray.js"
-import type * as ReadonlyRecord from "./ReadonlyRecord.js"
+import type { NonEmptyArray } from "./Array.js"
+import type * as ReadonlyRecord from "./Record.js"
 import * as Tuple from "./Tuple.js"
 
 /**

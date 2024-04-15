@@ -8,7 +8,7 @@ import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
-import * as ReadonlyRecord from "effect/ReadonlyRecord"
+import * as ReadonlyRecord from "effect/Record"
 import type * as Types from "effect/Types"
 import { TypeIdError } from "../Error.js"
 
