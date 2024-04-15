@@ -1,5 +1,154 @@
 # @effect/schema
 
+## 0.65.0
+
+### Minor Changes
+
+- [#2505](https://github.com/Effect-TS/effect/pull/2505) [`0aee906`](https://github.com/Effect-TS/effect/commit/0aee906f034539344db6fbac08919de3e28eccde) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Re-export FastCheck to simplify usage and to resolve long term issues with ESM/CJS
+
+- [#2440](https://github.com/Effect-TS/effect/pull/2440) [`b3acf47`](https://github.com/Effect-TS/effect/commit/b3acf47f9c9dfae1c99377aa906097aaa2d47d44) Thanks [@gcanti](https://github.com/gcanti)! - ## `AST` module
+
+  - rename `isTransform` to `isTransformation`
+
+  ## `ParseResult` module
+
+  - rename `Tuple` to `TupleType`
+
+  ## `TreeFormatter` module
+
+  - rename `formatIssue` to `formatIssueSync` (This change was made to maintain consistency in API naming across all decoding and encoding APIs.)
+  - rename `formatIssueEffect` to `formatIssue`
+  - rename `formatError` to `formatErrorSync`
+  - rename `formatErrorEffect` to `formatError`
+
+  ## `ArrayFormatter` module
+
+  - rename `formatIssue` to `formatIssueSync`
+  - rename `formatIssueEffect` to `formatIssue`
+  - rename `formatError` to `formatErrorSync`
+  - rename `formatErrorEffect` to `formatError`
+
+  ## `Schema` module
+
+  - consolidate `transform` and `transformOrFail` parameters into an `options` object, #2434
+  - consolidate `Class.transformOrFail` and `Class.transformOrFailFrom` parameters into an `options` object
+  - consolidate `declare` parameters into an `options` object
+  - consolidate `optionalToRequired` parameters into an `options` object
+  - consolidate `optionalToOptional` parameters into an `options` object
+  - Removed `negateBigDecimal` function (This cleanup was prompted by the realization that numerous functions can be derived from transformations such as negation, Math.abs, increment, etc. However, including all of them in the library is not feasible. Therefore, `negateBigDecimal` was removed)
+
+  ### Renaming
+
+  - rename `uniqueSymbolFromSelf` to `UniqueSymbolFromSelf`
+  - rename `undefined` to `Undefined`
+  - rename `void` to `Void`
+  - rename `null` to `Null`
+  - rename `never` to `Never`
+  - rename `unknown` to `Unknown`
+  - rename `any` to `Any`
+  - rename `string` to `String`
+  - rename `number` to `Number`
+  - rename `boolean` to `Boolean`
+  - rename `/bigint/ig` to `BigInt`
+  - rename `symbolFromSelf` to `SymbolFromSelf`
+  - rename `object` to `Object`
+  - rename `union` to `Union`
+  - rename `nullable` to `NullOr`
+  - rename `orUndefined` to `UndefinedOr`
+  - rename `nullish` to `NullishOr`
+  - rename `tuple` to `Tuple`
+  - rename `array` to `Array`
+  - rename `nonEmptyArray` to `NonEmptyArray`
+  - rename `struct` to `Struct`
+  - rename `record` to `Record`
+  - rename `symbol` to `Symbol`
+  - rename `optionFromSelf` to `OptionFromSelf`
+  - rename `option` to `Option`
+  - rename `optionFromNullable` to `OptionFromNullOr`
+  - rename `optionFromNullish` to `OptionFromNullishOr`
+  - rename `optionFromOrUndefined` to `OptionFromUndefinedOr`
+  - rename `eitherFromSelf` to `EitherFromSelf`
+  - rename `either` to `Either`
+  - rename `eitherFromUnion` to `EitherFromUnion`
+  - rename `readonlyMapFromSelf` to `ReadonlyMapFromSelf`
+  - rename `mapFromSelf` to `MapFromSelf`
+  - rename `readonlyMap` to `ReadonlyMap`
+  - rename `map` to `Map`
+  - rename `readonlySetFromSelf` to `ReadonlySetFromSelf`
+  - rename `setFromSelf` to `SetFromSelf`
+  - rename `readonlySet` to `ReadonlySet`
+  - rename `set` to `Set`
+  - rename `chunkFromSelf` to `ChunkFromSelf`
+  - rename `chunk` to `Chunk`
+  - rename `dataFromSelf` to `DataFromSelf`
+  - rename `data` to `Data`
+  - rename `causeFromSelf` to `CauseFromSelf`
+  - rename `causeDefectUnknown` to `CauseDefectUnknown`
+  - rename `cause` to `Cause`
+  - rename `exitFromSelf` to `ExitFromSelf`
+  - rename `exit` to `Exit`
+  - rename `hashSetFromSelf` to `HashSetFromSelf`
+  - rename `hashSet` to `HashSet`
+  - rename `hashMapFromSelf` to `HashMapFromSelf`
+  - rename `hashMap` to `HashMap`
+  - rename `listFromSelf` to `ListFromSelf`
+  - rename `list` to `List`
+  - rename `sortedSetFromSelf` to `SortedSetFromSelf`
+  - rename `sortedSet` to `SortedSet`
+  - rename `literal` to `Literal`
+  - rename `enums` to `Enums`
+  - rename `templateLiteral` to `TemplateLiteral`
+
+- [#2511](https://github.com/Effect-TS/effect/pull/2511) [`0d3231a`](https://github.com/Effect-TS/effect/commit/0d3231a195202635ecc0bf6bbf6a08fc017d0d69) Thanks [@gcanti](https://github.com/gcanti)! - make `AST.pick` correctly handle key renames
+
+- [#2508](https://github.com/Effect-TS/effect/pull/2508) [`c22b019`](https://github.com/Effect-TS/effect/commit/c22b019e5eaf9d3a937a3d99cadbb8f8e9116a70) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Rename Arbitrary.Arbitrary to Arbitrary.LazyArbitrary, rename Arbitrary.make to Arbitrary.makeLazy and introduce Arbitrary.make
+
+  Before
+
+  ```ts
+  import { Arbitrary, Schema } from "@effect/schema";
+  import * as fc from "fast-check";
+
+  const Person = Schema.struct({
+    name: Schema.string,
+    age: Schema.string.pipe(
+      Schema.compose(Schema.NumberFromString),
+      Schema.int(),
+    ),
+  });
+
+  const arb = Arbitrary.make(Person)(fc);
+
+  console.log(fc.sample(arb, 2));
+  ```
+
+  Now
+
+  ```ts
+  import { Arbitrary, FastCheck, Schema } from "@effect/schema";
+
+  const Person = Schema.Struct({
+    name: Schema.String,
+    age: Schema.String.pipe(
+      Schema.compose(Schema.NumberFromString),
+      Schema.int(),
+    ),
+  });
+
+  const arb = Arbitrary.make(Person);
+
+  console.log(FastCheck.sample(arb, 2));
+  ```
+
+### Patch Changes
+
+- [#2496](https://github.com/Effect-TS/effect/pull/2496) [`4c37001`](https://github.com/Effect-TS/effect/commit/4c370013417e18c4f564818de1341a8fccb43b4c) Thanks [@gcanti](https://github.com/gcanti)! - fix `exitFromSelf` description
+
+- [#2495](https://github.com/Effect-TS/effect/pull/2495) [`8a69b4e`](https://github.com/Effect-TS/effect/commit/8a69b4ef6a3a06d2e21fe2e11a626038beefb4e1) Thanks [@gcanti](https://github.com/gcanti)! - fix `eitherFromSelf` description annotation
+
+- Updated dependencies [[`41c8102`](https://github.com/Effect-TS/effect/commit/41c810228b1a50e4b41f19e735d7c62fe8d36871), [`776ef2b`](https://github.com/Effect-TS/effect/commit/776ef2bb66db9aa9f68b7beab14f6986f9c1288b), [`217147e`](https://github.com/Effect-TS/effect/commit/217147ea67c5c42c96f024775c41e5b070f81e4c), [`90776ec`](https://github.com/Effect-TS/effect/commit/90776ec8e8671d835b65fc33ead1de6c864b81b9), [`8709856`](https://github.com/Effect-TS/effect/commit/870985694ae985c3cb9360ad8a25c60e6f785f55), [`232c353`](https://github.com/Effect-TS/effect/commit/232c353c2e6f743f38e57639ee30e324ffa9c2a9), [`0ca835c`](https://github.com/Effect-TS/effect/commit/0ca835cbac8e69072a93ace83b534219faba24e8), [`8709856`](https://github.com/Effect-TS/effect/commit/870985694ae985c3cb9360ad8a25c60e6f785f55), [`e983740`](https://github.com/Effect-TS/effect/commit/e9837401145605aff5bc2ec7e73004f397c5d2d1), [`e3e0924`](https://github.com/Effect-TS/effect/commit/e3e09247d46a35430fc60e4aa4032cc50814f212)]:
+  - effect@2.4.19
+
 ## 0.64.20
 
 ### Patch Changes
