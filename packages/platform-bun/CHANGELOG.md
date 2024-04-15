@@ -1,5 +1,15 @@
 # @effect/platform-bun
 
+## 0.32.42
+
+### Patch Changes
+
+- [#2517](https://github.com/Effect-TS/effect/pull/2517) [`b79cc59`](https://github.com/Effect-TS/effect/commit/b79cc59dbe64b9a0a7742dc9100a9d36c8e46b72) Thanks [@tim-smart](https://github.com/tim-smart)! - add uninterruptible option to http routes, for marking a route as uninterruptible
+
+- Updated dependencies [[`b79cc59`](https://github.com/Effect-TS/effect/commit/b79cc59dbe64b9a0a7742dc9100a9d36c8e46b72)]:
+  - @effect/platform@0.48.29
+  - @effect/platform-node-shared@0.3.29
+
 ## 0.32.41
 
 ### Patch Changes
