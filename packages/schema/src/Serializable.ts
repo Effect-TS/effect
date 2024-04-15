@@ -100,11 +100,11 @@ export const exitSchema = <A, I, E, EI, R>(
 ): Schema.Schema<Exit.Exit<A, E>, Schema.ExitEncoded<I, EI>, R> => {
   const proto = Object.getPrototypeOf(self)
   if (!(symbolResult in proto)) {
-    return Schema.Exit({ Failure: failureSchema(self), Success: successSchema(self) })
+    return Schema.Exit({ failure: failureSchema(self), success: successSchema(self) })
   }
   let schema = exitSchemaCache.get(proto)
   if (schema === undefined) {
-    schema = Schema.Exit({ Failure: failureSchema(self), Success: successSchema(self) })
+    schema = Schema.Exit({ failure: failureSchema(self), success: successSchema(self) })
     exitSchemaCache.set(proto, schema)
   }
   return schema

@@ -1918,90 +1918,90 @@ S.OptionFromNullishOr(S.NumberFromString, undefined)
 // ---------------------------------------------
 
 // $ExpectType Schema<Either<number, string>, Either<string, string>, never>
-S.asSchema(S.EitherFromSelf({ Right: S.NumberFromString, Left: S.String }))
+S.asSchema(S.EitherFromSelf({ right: S.NumberFromString, left: S.String }))
 
 // $ExpectType EitherFromSelf<NumberFromString, $String>
-S.EitherFromSelf({ Right: S.NumberFromString, Left: S.String })
+S.EitherFromSelf({ right: S.NumberFromString, left: S.String })
 
 // ---------------------------------------------
 // Either
 // ---------------------------------------------
 
 // $ExpectType Schema<Either<number, string>, EitherEncoded<string, string>, never>
-S.asSchema(S.Either({ Right: S.NumberFromString, Left: S.String }))
+S.asSchema(S.Either({ right: S.NumberFromString, left: S.String }))
 
 // $ExpectType Either<NumberFromString, $String>
-S.Either({ Right: S.NumberFromString, Left: S.String })
+S.Either({ right: S.NumberFromString, left: S.String })
 
 // ---------------------------------------------
 // EitherFromUnion
 // ---------------------------------------------
 
 // $ExpectType Schema<Either<number, boolean>, string | boolean, never>
-S.asSchema(S.EitherFromUnion({ Right: S.NumberFromString, Left: S.Boolean }))
+S.asSchema(S.EitherFromUnion({ right: S.NumberFromString, left: S.Boolean }))
 
 // $ExpectType EitherFromUnion<NumberFromString, $Boolean>
-S.EitherFromUnion({ Right: S.NumberFromString, Left: S.Boolean })
+S.EitherFromUnion({ right: S.NumberFromString, left: S.Boolean })
 
 // ---------------------------------------------
 // ReadonlyMapFromSelf
 // ---------------------------------------------
 
 // $ExpectType Schema<ReadonlyMap<number, string>, ReadonlyMap<string, string>, never>
-S.asSchema(S.ReadonlyMapFromSelf({ Key: S.NumberFromString, Value: S.String }))
+S.asSchema(S.ReadonlyMapFromSelf({ key: S.NumberFromString, value: S.String }))
 
 // $ExpectType ReadonlyMapFromSelf<NumberFromString, $String>
-S.ReadonlyMapFromSelf({ Key: S.NumberFromString, Value: S.String })
+S.ReadonlyMapFromSelf({ key: S.NumberFromString, value: S.String })
 
 // ---------------------------------------------
 // MapFromSelf
 // ---------------------------------------------
 
 // $ExpectType Schema<Map<number, string>, ReadonlyMap<string, string>, never>
-S.asSchema(S.MapFromSelf({ Key: S.NumberFromString, Value: S.String }))
+S.asSchema(S.MapFromSelf({ key: S.NumberFromString, value: S.String }))
 
 // $ExpectType MapFromSelf<NumberFromString, $String>
-S.MapFromSelf({ Key: S.NumberFromString, Value: S.String })
+S.MapFromSelf({ key: S.NumberFromString, value: S.String })
 
 // ---------------- -----------------------------
 // ReadonlyMap
 // ---------------------------------------------
 
 // $ExpectType Schema<ReadonlyMap<number, string>, readonly (readonly [string, string])[], never>
-S.asSchema(S.ReadonlyMap({ Key: S.NumberFromString, Value: S.String }))
+S.asSchema(S.ReadonlyMap({ key: S.NumberFromString, value: S.String }))
 
 // $ExpectType $ReadonlyMap<NumberFromString, $String>
-S.ReadonlyMap({ Key: S.NumberFromString, Value: S.String })
+S.ReadonlyMap({ key: S.NumberFromString, value: S.String })
 
 // ---------------------------------------------
 // Map
 // ---------------------------------------------
 
 // $ExpectType Schema<Map<number, string>, readonly (readonly [string, string])[], never>
-S.asSchema(S.Map({ Key: S.NumberFromString, Value: S.String }))
+S.asSchema(S.Map({ key: S.NumberFromString, value: S.String }))
 
 // $ExpectType $Map<NumberFromString, $String>
-S.Map({ Key: S.NumberFromString, Value: S.String })
+S.Map({ key: S.NumberFromString, value: S.String })
 
 // ---------------------------------------------
 // HashMapFromSelf
 // ---------------------------------------------
 
 // $ExpectType Schema<HashMap<number, string>, HashMap<string, string>, never>
-S.asSchema(S.HashMapFromSelf({ Key: S.NumberFromString, Value: S.String }))
+S.asSchema(S.HashMapFromSelf({ key: S.NumberFromString, value: S.String }))
 
 // $ExpectType HashMapFromSelf<NumberFromString, $String>
-S.HashMapFromSelf({ Key: S.NumberFromString, Value: S.String })
+S.HashMapFromSelf({ key: S.NumberFromString, value: S.String })
 
 // ---------------------------------------------
 // HashMap
 // ---------------------------------------------
 
 // $ExpectType Schema<HashMap<number, string>, readonly (readonly [string, string])[], never>
-S.asSchema(S.HashMap({ Key: S.NumberFromString, Value: S.String }))
+S.asSchema(S.HashMap({ key: S.NumberFromString, value: S.String }))
 
 // $ExpectType HashMap<NumberFromString, $String>
-S.HashMap({ Key: S.NumberFromString, Value: S.String })
+S.HashMap({ key: S.NumberFromString, value: S.String })
 
 // ---------------------------------------------
 // ReadonlySetFromSelf
@@ -2108,64 +2108,64 @@ S.List(S.NumberFromString)
 // ---------------------------------------------
 
 // $ExpectType Schema<Exit<number, string>, Exit<number, string>, never>
-S.asSchema(S.ExitFromSelf({ Success: S.Number, Failure: S.String }))
+S.asSchema(S.ExitFromSelf({ success: S.Number, failure: S.String }))
 
 // $ExpectType ExitFromSelf<$Number, $String, never>
-S.ExitFromSelf({ Success: S.Number, Failure: S.String })
+S.ExitFromSelf({ success: S.Number, failure: S.String })
 
 // $ExpectType Schema<Exit<number, string>, Exit<number, string>, "a">
-S.asSchema(S.ExitFromSelf({ Success: S.Number, Failure: S.String, Defect: hole<S.Schema<unknown, unknown, "a">>() }))
+S.asSchema(S.ExitFromSelf({ success: S.Number, failure: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() }))
 
 // $ExpectType ExitFromSelf<$Number, $String, "a">
-S.ExitFromSelf({ Success: S.Number, Failure: S.String, Defect: hole<S.Schema<unknown, unknown, "a">>() })
+S.ExitFromSelf({ success: S.Number, failure: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() })
 
 // ---------------------------------------------
 // Exit
 // ---------------------------------------------
 
 // $ExpectType Schema<Exit<number, string>, ExitEncoded<number, string>, never>
-S.asSchema(S.Exit({ Success: S.Number, Failure: S.String }))
+S.asSchema(S.Exit({ success: S.Number, failure: S.String }))
 
 // $ExpectType Exit<$Number, $String, never>
-S.Exit({ Success: S.Number, Failure: S.String })
+S.Exit({ success: S.Number, failure: S.String })
 
 // $ExpectType Schema<Exit<number, string>, ExitEncoded<number, string>, "a">
-S.asSchema(S.Exit({ Success: S.Number, Failure: S.String, Defect: hole<S.Schema<unknown, unknown, "a">>() }))
+S.asSchema(S.Exit({ success: S.Number, failure: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() }))
 
 // $ExpectType Exit<$Number, $String, "a">
-S.Exit({ Success: S.Number, Failure: S.String, Defect: hole<S.Schema<unknown, unknown, "a">>() })
+S.Exit({ success: S.Number, failure: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() })
 
 // ---------------------------------------------
 // CauseFromSelf
 // ---------------------------------------------
 
 // $ExpectType Schema<Cause<string>, Cause<string>, never>
-S.asSchema(S.CauseFromSelf({ Error: S.String }))
+S.asSchema(S.CauseFromSelf({ error: S.String }))
 
 // $ExpectType CauseFromSelf<$String, never>
-S.CauseFromSelf({ Error: S.String })
+S.CauseFromSelf({ error: S.String })
 
 // $ExpectType Schema<Cause<string>, Cause<string>, "a">
-S.asSchema(S.CauseFromSelf({ Error: S.String, Defect: hole<S.Schema<unknown, unknown, "a">>() }))
+S.asSchema(S.CauseFromSelf({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() }))
 
 // $ExpectType CauseFromSelf<$String, "a">
-S.CauseFromSelf({ Error: S.String, Defect: hole<S.Schema<unknown, unknown, "a">>() })
+S.CauseFromSelf({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() })
 
 // ---------------------------------------------
 // Cause
 // ---------------------------------------------
 
 // $ExpectType Schema<Cause<string>, CauseEncoded<string>, never>
-S.asSchema(S.Cause({ Error: S.String }))
+S.asSchema(S.Cause({ error: S.String }))
 
 // $ExpectType Cause<$String, never>
-S.Cause({ Error: S.String })
+S.Cause({ error: S.String })
 
 // $ExpectType Schema<Cause<string>, CauseEncoded<string>, "a">
-S.asSchema(S.Cause({ Error: S.String, Defect: hole<S.Schema<unknown, unknown, "a">>() }))
+S.asSchema(S.Cause({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() }))
 
 // $ExpectType Cause<$String, "a">
-S.Cause({ Error: S.String, Defect: hole<S.Schema<unknown, unknown, "a">>() })
+S.Cause({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() })
 
 // ---------------------------------------------
 // TypeLiteral

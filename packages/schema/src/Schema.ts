@@ -5325,18 +5325,18 @@ export interface EitherFromSelf<R extends Schema.Any, L extends Schema.Any> exte
  * @category Either transformations
  * @since 1.0.0
  */
-export const EitherFromSelf = <R extends Schema.Any, L extends Schema.Any>({ Left, Right }: {
-  readonly Left: L
-  readonly Right: R
+export const EitherFromSelf = <R extends Schema.Any, L extends Schema.Any>({ left, right }: {
+  readonly left: L
+  readonly right: R
 }): EitherFromSelf<R, L> => {
   return declare(
-    [Right, Left],
+    [right, left],
     {
-      decode: (Right, Left) => eitherParse(ParseResult.decodeUnknown(Right), ParseResult.decodeUnknown(Left)),
-      encode: (Right, Left) => eitherParse(ParseResult.encodeUnknown(Right), ParseResult.encodeUnknown(Left))
+      decode: (right, left) => eitherParse(ParseResult.decodeUnknown(right), ParseResult.decodeUnknown(left)),
+      encode: (right, left) => eitherParse(ParseResult.encodeUnknown(right), ParseResult.encodeUnknown(left))
     },
     {
-      description: `Either<${format(Right)}, ${format(Left)}>`,
+      description: `Either<${format(right)}, ${format(left)}>`,
       pretty: eitherPretty,
       arbitrary: eitherArbitrary,
       equivalence: (right, left) => either_.getEquivalence(left, right)
@@ -5370,15 +5370,15 @@ export interface Either<R extends Schema.Any, L extends Schema.Any> extends
  * @category Either transformations
  * @since 1.0.0
  */
-export const Either = <R extends Schema.Any, L extends Schema.Any>({ Left, Right }: {
-  readonly Left: L
-  readonly Right: R
+export const Either = <R extends Schema.Any, L extends Schema.Any>({ left, right }: {
+  readonly left: L
+  readonly right: R
 }): Either<R, L> => {
-  const Right_ = asSchema(Right)
-  const Left_ = asSchema(Left)
+  const right_ = asSchema(right)
+  const left_ = asSchema(left)
   return transform(
-    eitherEncoded(Right_, Left_),
-    EitherFromSelf({ Left: typeSchema(Left_), Right: typeSchema(Right_) }),
+    eitherEncoded(right_, left_),
+    EitherFromSelf({ left: typeSchema(left_), right: typeSchema(right_) }),
     { decode: eitherDecode, encode: either_.match({ onLeft: makeLeftEncoded, onRight: makeRightEncoded }) }
   )
 }
@@ -5401,24 +5401,24 @@ export interface EitherFromUnion<R extends Schema.Any, L extends Schema.Any> ext
  * import * as Schema from "@effect/schema/Schema"
  *
  * // Schema<string | number, Either<string, number>>
- * Schema.EitherFromUnion({ Left: Schema.String, Right: Schema.Number })
+ * Schema.EitherFromUnion({ left: Schema.String, right: Schema.Number })
  *
  * @category Either transformations
  * @since 1.0.0
  */
-export const EitherFromUnion = <R extends Schema.Any, L extends Schema.Any>({ Left, Right }: {
-  readonly Left: L
-  readonly Right: R
+export const EitherFromUnion = <R extends Schema.Any, L extends Schema.Any>({ left, right }: {
+  readonly left: L
+  readonly right: R
 }): EitherFromUnion<R, L> => {
-  const Right_ = asSchema(Right)
-  const Left_ = asSchema(Left)
-  const toright = typeSchema(Right_)
-  const toleft = typeSchema(Left_)
-  const fromRight = transform(Right_, rightEncoded(toright), { decode: makeRightEncoded, encode: (r) => r.right })
-  const fromLeft = transform(Left_, leftEncoded(toleft), { decode: makeLeftEncoded, encode: (l) => l.left })
+  const right_ = asSchema(right)
+  const left_ = asSchema(left)
+  const toright = typeSchema(right_)
+  const toleft = typeSchema(left_)
+  const fromRight = transform(right_, rightEncoded(toright), { decode: makeRightEncoded, encode: (r) => r.right })
+  const fromLeft = transform(left_, leftEncoded(toleft), { decode: makeLeftEncoded, encode: (l) => l.left })
   return transform(
     Union(fromRight, fromLeft),
-    EitherFromSelf({ Left: toleft, Right: toright }),
+    EitherFromSelf({ left: toleft, right: toright }),
     {
       decode: (from) => from._tag === "Left" ? either_.left(from.left) : either_.right(from.right),
       encode: either_.match({ onLeft: makeLeftEncoded, onRight: makeRightEncoded })
@@ -5475,12 +5475,12 @@ export interface ReadonlyMapFromSelf<K extends Schema.Any, V extends Schema.Any>
 {}
 
 const mapFromSelf_ = <K extends Schema.Any, V extends Schema.Any>(
-  Key: K,
-  Value: V,
+  key: K,
+  value: V,
   description: string
 ): ReadonlyMapFromSelf<K, V> =>
   declare(
-    [Key, Value],
+    [key, value],
     {
       decode: (Key, Value) => readonlyMapParse(ParseResult.decodeUnknown($Array(Tuple(Key, Value)))),
       encode: (Key, Value) => readonlyMapParse(ParseResult.encodeUnknown($Array(Tuple(Key, Value))))
@@ -5497,10 +5497,10 @@ const mapFromSelf_ = <K extends Schema.Any, V extends Schema.Any>(
  * @category ReadonlyMap
  * @since 1.0.0
  */
-export const ReadonlyMapFromSelf = <K extends Schema.Any, V extends Schema.Any>({ Key, Value }: {
-  readonly Key: K
-  readonly Value: V
-}): ReadonlyMapFromSelf<K, V> => mapFromSelf_(Key, Value, `ReadonlyMap<${format(Key)}, ${format(Value)}>`)
+export const ReadonlyMapFromSelf = <K extends Schema.Any, V extends Schema.Any>({ key, value }: {
+  readonly key: K
+  readonly value: V
+}): ReadonlyMapFromSelf<K, V> => mapFromSelf_(key, value, `ReadonlyMap<${format(key)}, ${format(value)}>`)
 
 /**
  * @category api interface
@@ -5519,10 +5519,10 @@ export interface MapFromSelf<K extends Schema.Any, V extends Schema.Any> extends
  * @category Map
  * @since 1.0.0
  */
-export const MapFromSelf = <K extends Schema.Any, V extends Schema.Any>({ Key, Value }: {
-  readonly Key: K
-  readonly Value: V
-}): MapFromSelf<K, V> => mapFromSelf_(Key, Value, `Map<${format(Key)}, ${format(Value)}>`) as any
+export const MapFromSelf = <K extends Schema.Any, V extends Schema.Any>({ key, value }: {
+  readonly key: K
+  readonly value: V
+}): MapFromSelf<K, V> => mapFromSelf_(key, value, `Map<${format(key)}, ${format(value)}>`) as any
 
 /**
  * @category api interface
@@ -5541,15 +5541,15 @@ export interface $ReadonlyMap<K extends Schema.Any, V extends Schema.Any> extend
  * @category ReadonlyMap transformations
  * @since 1.0.0
  */
-export const ReadonlyMap = <K extends Schema.Any, V extends Schema.Any>({ Key, Value }: {
-  readonly Key: K
-  readonly Value: V
+export const ReadonlyMap = <K extends Schema.Any, V extends Schema.Any>({ key, value }: {
+  readonly key: K
+  readonly value: V
 }): $ReadonlyMap<K, V> => {
-  const Key_ = asSchema(Key)
-  const Value_ = asSchema(Value)
+  const key_ = asSchema(key)
+  const value_ = asSchema(value)
   return transform(
-    $Array(Tuple(Key_, Value_)),
-    ReadonlyMapFromSelf({ Key: typeSchema(Key_), Value: typeSchema(Value_) }),
+    $Array(Tuple(key_, value_)),
+    ReadonlyMapFromSelf({ key: typeSchema(key_), value: typeSchema(value_) }),
     { decode: (as) => new Map(as), encode: (map) => Array.from(map.entries()) }
   )
 }
@@ -5567,15 +5567,15 @@ export interface $Map<K extends Schema.Any, V extends Schema.Any> extends
   >
 {}
 
-const map = <K extends Schema.Any, V extends Schema.Any>({ Key, Value }: {
-  readonly Key: K
-  readonly Value: V
+const map = <K extends Schema.Any, V extends Schema.Any>({ key, value }: {
+  readonly key: K
+  readonly value: V
 }): $Map<K, V> => {
-  const Key_ = asSchema(Key)
-  const Value_ = asSchema(Value)
+  const key_ = asSchema(key)
+  const value_ = asSchema(value)
   return transform(
-    $Array(Tuple(Key_, Value_)),
-    MapFromSelf({ Key: typeSchema(Key_), Value: typeSchema(Value_) }),
+    $Array(Tuple(key_, value_)),
+    MapFromSelf({ key: typeSchema(key_), value: typeSchema(value_) }),
     { decode: (as) => new Map(as), encode: (map) => Array.from(map.entries()) }
   )
 }
@@ -6884,18 +6884,18 @@ export interface CauseFromSelf<E extends Schema.Any, DR> extends
  * @category Cause transformations
  * @since 1.0.0
  */
-export const CauseFromSelf = <E extends Schema.Any, DR = never>({ Defect = Unknown, Error }: {
-  readonly Error: E
-  readonly Defect?: Schema<unknown, unknown, DR> | undefined
+export const CauseFromSelf = <E extends Schema.Any, DR = never>({ defect = Unknown, error }: {
+  readonly error: E
+  readonly defect?: Schema<unknown, unknown, DR> | undefined
 }): CauseFromSelf<E, DR> => {
   return declare(
-    [Error, Defect],
+    [error, defect],
     {
-      decode: (Error, Defect) => causeParse(ParseResult.decodeUnknown(causeEncoded(Error, Defect))),
-      encode: (Error, Defect) => causeParse(ParseResult.encodeUnknown(causeEncoded(Error, Defect)))
+      decode: (error, defect) => causeParse(ParseResult.decodeUnknown(causeEncoded(error, defect))),
+      encode: (error, defect) => causeParse(ParseResult.encodeUnknown(causeEncoded(error, defect)))
     },
     {
-      description: `Cause<${format(Error)}>`,
+      description: `Cause<${format(error)}>`,
       pretty: causePretty,
       arbitrary: causeArbitrary
     }
@@ -6992,14 +6992,14 @@ export interface Cause<E extends Schema.All, DR> extends
  * @category Cause transformations
  * @since 1.0.0
  */
-export const Cause = <E extends Schema.All, DR = never>({ Defect = CauseDefectUnknown, Error }: {
-  readonly Error: E
-  readonly Defect?: Schema<unknown, unknown, DR> | undefined
+export const Cause = <E extends Schema.All, DR = never>({ defect = CauseDefectUnknown, error }: {
+  readonly error: E
+  readonly defect?: Schema<unknown, unknown, DR> | undefined
 }): Cause<E, DR> => {
-  const Error_ = asSchema(Error)
+  const error_ = asSchema(error)
   return transform(
-    causeEncoded(Error_, Defect),
-    CauseFromSelf({ Error: typeSchema(Error_), Defect: typeSchema(Defect) }),
+    causeEncoded(error_, defect),
+    CauseFromSelf({ error: typeSchema(error_), defect: typeSchema(defect) }),
     { decode: causeDecode, encode: causeEncode }
   )
 }
@@ -7103,28 +7103,28 @@ export interface ExitFromSelf<A extends Schema.Any, E extends Schema.Any, DR> ex
  * @since 1.0.0
  */
 export const ExitFromSelf = <A extends Schema.Any, E extends Schema.Any, DR = never>(
-  { Defect = Unknown, Failure, Success }: {
-    readonly Failure: E
-    readonly Success: A
-    readonly Defect?: Schema<unknown, unknown, DR> | undefined
+  { defect = Unknown, failure, success }: {
+    readonly failure: E
+    readonly success: A
+    readonly defect?: Schema<unknown, unknown, DR> | undefined
   }
 ): ExitFromSelf<A, E, DR> =>
   declare(
-    [Success, Failure, Defect],
+    [success, failure, defect],
     {
-      decode: (Success, Failure, Defect) =>
+      decode: (success, failure, defect) =>
         exitParse(
-          ParseResult.decodeUnknown(Success),
-          ParseResult.decodeUnknown(CauseFromSelf({ Error: Failure, Defect }))
+          ParseResult.decodeUnknown(success),
+          ParseResult.decodeUnknown(CauseFromSelf({ error: failure, defect }))
         ),
-      encode: (Success, Failure, Defect) =>
+      encode: (success, failure, defect) =>
         exitParse(
-          ParseResult.encodeUnknown(Success),
-          ParseResult.encodeUnknown(CauseFromSelf({ Error: Failure, Defect }))
+          ParseResult.encodeUnknown(success),
+          ParseResult.encodeUnknown(CauseFromSelf({ error: failure, defect }))
         )
     },
     {
-      description: `Exit<${format(Success)}, ${format(Failure)}>`,
+      description: `Exit<${format(success)}, ${format(failure)}>`,
       pretty: exitPretty,
       arbitrary: exitArbitrary
     }
@@ -7148,17 +7148,17 @@ export interface Exit<A extends Schema.All, E extends Schema.All, DR> extends
  * @since 1.0.0
  */
 export const Exit = <A extends Schema.All, E extends Schema.All, DR = never>(
-  { Defect = CauseDefectUnknown, Failure, Success }: {
-    readonly Failure: E
-    readonly Success: A
-    readonly Defect?: Schema<unknown, unknown, DR> | undefined
+  { defect = CauseDefectUnknown, failure, success }: {
+    readonly failure: E
+    readonly success: A
+    readonly defect?: Schema<unknown, unknown, DR> | undefined
   }
 ): Exit<A, E, DR> => {
-  const Success_ = asSchema(Success)
-  const Failure_ = asSchema(Failure)
+  const success_ = asSchema(success)
+  const failure_ = asSchema(failure)
   return transform(
-    exitEncoded(Success_, Failure_, Defect),
-    ExitFromSelf({ Failure: typeSchema(Failure_), Success: typeSchema(Success_), Defect: typeSchema(Defect) }),
+    exitEncoded(success_, failure_, defect),
+    ExitFromSelf({ failure: typeSchema(failure_), success: typeSchema(success_), defect: typeSchema(defect) }),
     {
       decode: exitDecode,
       encode: (exit) =>
@@ -7306,18 +7306,18 @@ export interface HashMapFromSelf<K extends Schema.Any, V extends Schema.Any> ext
  * @category HashMap transformations
  * @since 1.0.0
  */
-export const HashMapFromSelf = <K extends Schema.Any, V extends Schema.Any>({ Key, Value }: {
-  readonly Key: K
-  readonly Value: V
+export const HashMapFromSelf = <K extends Schema.Any, V extends Schema.Any>({ key, value }: {
+  readonly key: K
+  readonly value: V
 }): HashMapFromSelf<K, V> => {
   return declare(
-    [Key, Value],
+    [key, value],
     {
-      decode: (Key, Value) => hashMapParse(ParseResult.decodeUnknown($Array(Tuple(Key, Value)))),
-      encode: (Key, Value) => hashMapParse(ParseResult.encodeUnknown($Array(Tuple(Key, Value))))
+      decode: (key, value) => hashMapParse(ParseResult.decodeUnknown($Array(Tuple(key, value)))),
+      encode: (key, value) => hashMapParse(ParseResult.encodeUnknown($Array(Tuple(key, value))))
     },
     {
-      description: `HashMap<${format(Key)}, ${format(Value)}>`,
+      description: `HashMap<${format(key)}, ${format(value)}>`,
       pretty: hashMapPretty,
       arbitrary: hashMapArbitrary,
       equivalence: hashMapEquivalence
@@ -7342,15 +7342,15 @@ export interface HashMap<K extends Schema.Any, V extends Schema.Any> extends
  * @category HashMap transformations
  * @since 1.0.0
  */
-export const HashMap = <K extends Schema.Any, V extends Schema.Any>({ Key, Value }: {
-  readonly Key: K
-  readonly Value: V
+export const HashMap = <K extends Schema.Any, V extends Schema.Any>({ key, value }: {
+  readonly key: K
+  readonly value: V
 }): HashMap<K, V> => {
-  const Key_ = asSchema(Key)
-  const Value_ = asSchema(Value)
+  const key_ = asSchema(key)
+  const value_ = asSchema(value)
   return transform(
-    $Array(Tuple(Key_, Value_)),
-    HashMapFromSelf({ Key: typeSchema(Key_), Value: typeSchema(Value_) }),
+    $Array(Tuple(key_, value_)),
+    HashMapFromSelf({ key: typeSchema(key_), value: typeSchema(value_) }),
     { decode: (as) => hashMap_.fromIterable(as), encode: (map) => Array.from(map) }
   )
 }
