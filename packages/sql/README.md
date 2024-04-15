@@ -8,7 +8,7 @@ A SQL toolkit for Effect.
 import { Config, Effect, Struct, pipe } from "effect";
 import * as Sql from "@effect/sql-pg";
 
-const SqlLive = Sql.makeLayer({
+const SqlLive = Sql.client.layer({
   database: Config.succeed("effect_pg_dev"),
 });
 
@@ -138,14 +138,14 @@ export const make = (limit: number) =>
 
 ```ts
 import * as Effect from "effect/Effect";
-import * as Pg from "@effect/sql/pg";
+import * as Sql from "@effect/sql-pg";
 
 type OrderBy = "id" | "created_at" | "updated_at";
 type SortOrder = "ASC" | "DESC";
 
 export const make = (orderBy: OrderBy, sortOrder: SortOrder) =>
   Effect.gen(function* (_) {
-    const sql = yield* _(Pg.tag);
+    const sql = yield* _(Sql.client.PgClient);
 
     const statement = sql`SELECT * FROM people ORDER BY ${sql(orderBy)} ${sql.unsafe(sortOrder)}`;
     // e.g. SELECT * FROM people ORDER BY `id` ASC
@@ -198,7 +198,7 @@ import * as Sql from "@effect/sql-pg";
 
 export const make = (names: string[], afterCursor: Date, beforeCursor: Date) =>
   Effect.gen(function* (_) {
-    const sql = yield* _(Pg.tag);
+    const sql = yield* _(Sql.client.PgClient);
 
     const statement = sql`SELECT * FROM people WHERE ${sql.or([
       sql`name IN ${sql.in(names)}`,
@@ -253,18 +253,17 @@ const SqlLive = Sql.client.layer({
   database: Config.succeed("example_database"),
 });
 
-const MigratorLive = Layer.provide(
-  Sql.migrator.layer({
+const MigratorLive = Sql.migrator
+  .layer({
     loader: Sql.migrator.fromFileSystem(
       fileURLToPath(new URL("migrations", import.meta.url))
     ),
     // Where to put the `_schema.sql` file
     schemaDirectory: "src/migrations",
-  }),
-  PgLive
-);
+  })
+  .pipe(Layer.provide(SqlLive));
 
-const EnvLive = Layer.mergeAll(PgLive, MigratorLive).pipe(
+const EnvLive = Layer.mergeAll(SqlLive, MigratorLive).pipe(
   Layer.provide(NodeContext.layer)
 );
 
