@@ -131,7 +131,7 @@ export const makeRuntime = <R, E = unknown, A = unknown>(): Effect.Effect<
 
 /**
  * Set the fiber in a FiberHandle. When the fiber completes, it will be removed from the FiberHandle.
- * If a fiber is already running, it will be interrupted.
+ * If a fiber is already running, it will be interrupted unless `options.onlyIfMissing` is set.
  *
  * @since 2.0.0
  * @categories combinators
@@ -184,7 +184,7 @@ export const unsafeSet: {
 
 /**
  * Set the fiber in the FiberHandle. When the fiber completes, it will be removed from the FiberHandle.
- * If a fiber already exists in the FiberHandle, it will be interrupted.
+ * If a fiber already exists in the FiberHandle, it will be interrupted unless `options.onlyIfMissing` is set.
  *
  * @since 2.0.0
  * @categories combinators
