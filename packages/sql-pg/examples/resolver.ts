@@ -29,7 +29,7 @@ const program = Effect.gen(function*(_) {
       Id: Schema.number,
       Result: Person,
       ResultId: (result) => result.id,
-      execute: (ids) => sql`SELECT * FROM people WHERE id IN ${sql(ids)}`
+      execute: (ids) => sql`SELECT * FROM people WHERE id IN ${sql.in(ids)}`
     })
   )
 
@@ -39,7 +39,7 @@ const program = Effect.gen(function*(_) {
       RequestGroupKey: (_) => _,
       Result: Person,
       ResultGroupKey: (_) => _.name,
-      execute: (ids) => sql`SELECT * FROM people WHERE name IN ${sql(ids)}`
+      execute: (ids) => sql`SELECT * FROM people WHERE name IN ${sql.in(ids)}`
     })
   )
 
