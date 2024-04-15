@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
 describe("bigint > NonPositiveBigintFromSelf", () => {
-  const schema = S.NonPositiveBigintFromSelf
+  const schema = S.NonPositiveBigIntFromSelf
 
   it("decoding", async () => {
     await Util.expectDecodeUnknownSuccess(schema, 0n)

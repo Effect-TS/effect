@@ -5,11 +5,11 @@ import { describe, expect, it } from "vitest"
 
 describe("Schema > required", () => {
   it("string", () => {
-    expect(S.required(S.string).ast).toEqual(S.string.ast)
+    expect(S.required(S.String).ast).toEqual(S.String.ast)
   })
 
   it("struct", async () => {
-    const schema = S.required(S.struct({
+    const schema = S.required(S.Struct({
       a: S.optional(S.NumberFromString.pipe(S.greaterThan(0)), { exact: true })
     }))
 
@@ -37,7 +37,7 @@ describe("Schema > required", () => {
       // type A = readonly [string?]
       // type B = Required<A>
 
-      const A = S.tuple(S.optionalElement(S.NumberFromString))
+      const A = S.Tuple(S.optionalElement(S.NumberFromString))
       const B = S.required(A)
 
       await Util.expectDecodeUnknownSuccess(B, ["1"], [1])
@@ -54,7 +54,7 @@ describe("Schema > required", () => {
       // type A = readonly [number, string?]
       // type B = Required<A>
 
-      const A = S.tuple(S.NumberFromString, S.optionalElement(S.string))
+      const A = S.Tuple(S.NumberFromString, S.optionalElement(S.String))
       const B = S.required(A)
 
       await Util.expectDecodeUnknownSuccess(B, ["0", ""], [0, ""])
@@ -71,7 +71,7 @@ describe("Schema > required", () => {
       // type A = readonly [string, ...Array<number>, boolean]
       // type B = Required<A> // readonly [string, ...number[], boolean]
 
-      const A = S.tuple([S.string], S.number, S.boolean)
+      const A = S.Tuple([S.String], S.Number, S.Boolean)
       const B = S.required(A)
 
       await Util.expectDecodeUnknownSuccess(B, ["", true], ["", true])
@@ -98,7 +98,7 @@ describe("Schema > required", () => {
       // type A = readonly [string, ...Array<number>, boolean, boolean]
       // type B = Required<A> // readonly [string, ...number[], boolean, boolean]
 
-      const A = S.tuple([S.string], S.number, S.boolean, S.boolean)
+      const A = S.Tuple([S.String], S.Number, S.Boolean, S.Boolean)
       const B = S.required(A)
 
       await Util.expectDecodeUnknownSuccess(B, ["", 0, true, false])
@@ -136,9 +136,9 @@ describe("Schema > required", () => {
   })
 
   it("union", async () => {
-    const schema = S.required(S.union(
-      S.struct({ a: S.optional(S.string, { exact: true }) }),
-      S.struct({ b: S.optional(S.number, { exact: true }) })
+    const schema = S.required(S.Union(
+      S.Struct({ a: S.optional(S.String, { exact: true }) }),
+      S.Struct({ b: S.optional(S.Number, { exact: true }) })
     ))
     await Util.expectDecodeUnknownSuccess(schema, { a: "a" })
     await Util.expectDecodeUnknownSuccess(schema, { b: 1 })
@@ -163,8 +163,8 @@ describe("Schema > required", () => {
     }
     const schema: S.Schema<A> = S.required(S.suspend( // intended outer suspend
       () =>
-        S.struct({
-          a: S.optional(S.union(schema, S.null), { exact: true })
+        S.Struct({
+          a: S.optional(S.Union(schema, S.Null), { exact: true })
         })
     ))
     await Util.expectDecodeUnknownSuccess(schema, { a: null })
@@ -192,20 +192,20 @@ describe("Schema > required", () => {
   })
 
   it("declarations should throw", async () => {
-    expect(() => S.required(S.optionFromSelf(S.string))).toThrow(
-      new Error("`required` cannot handle declarations")
+    expect(() => S.required(S.OptionFromSelf(S.String))).toThrow(
+      new Error("Required: cannot handle declarations")
     )
   })
 
   it("refinements should throw", async () => {
-    expect(() => S.required(S.string.pipe(S.minLength(2)))).toThrow(
-      new Error("`required` cannot handle refinements")
+    expect(() => S.required(S.String.pipe(S.minLength(2)))).toThrow(
+      new Error("Required: cannot handle refinements")
     )
   })
 
   it("transformations should throw", async () => {
-    expect(() => S.required(S.transform(S.string, S.string, { decode: identity, encode: identity }))).toThrow(
-      new Error("`required` cannot handle transformations")
+    expect(() => S.required(S.transform(S.String, S.String, { decode: identity, encode: identity }))).toThrow(
+      new Error("Required: cannot handle transformations")
     )
   })
 })

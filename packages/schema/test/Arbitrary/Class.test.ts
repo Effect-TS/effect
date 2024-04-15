@@ -5,35 +5,35 @@ import { describe, it } from "vitest"
 describe("class", () => {
   it("required property signature", () => {
     class Class extends S.Class<Class>("Class")({
-      a: S.number
+      a: S.Number
     }) {}
     expectValidArbitrary(Class)
   })
 
   it("required property signature with undefined", () => {
     class Class extends S.Class<Class>("Class")({
-      a: S.union(S.number, S.undefined)
+      a: S.Union(S.Number, S.Undefined)
     }) {}
     expectValidArbitrary(Class)
   })
 
   it("optional property signature", () => {
     class Class extends S.Class<Class>("Class")({
-      a: S.optional(S.number, { exact: true })
+      a: S.optional(S.Number, { exact: true })
     }) {}
     expectValidArbitrary(Class)
   })
 
   it("optional property signature with undefined", () => {
     class Class extends S.Class<Class>("Class")({
-      a: S.optional(S.union(S.number, S.undefined), { exact: true })
+      a: S.optional(S.Union(S.Number, S.Undefined), { exact: true })
     }) {}
     expectValidArbitrary(Class)
   })
 
   it("baseline", () => {
     class Class extends S.Class<Class>("Class")({
-      a: S.string,
+      a: S.String,
       b: S.NumberFromString
     }) {}
     expectValidArbitrary(Class)

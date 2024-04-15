@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest"
 describe("TreeFormatter", () => {
   describe("defaults", () => {
     it("forbidden", async () => {
-      const schema = Util.effectify(S.struct({ a: S.string }))
+      const schema = Util.effectify(S.Struct({ a: S.String }))
       expect(() => S.decodeUnknownSync(schema)({ a: "a" })).toThrow(
         new Error(
           `{ a: (string <-> string) }
@@ -23,7 +23,7 @@ describe("TreeFormatter", () => {
     })
 
     it("missing", async () => {
-      const schema = S.struct({ a: S.string })
+      const schema = S.Struct({ a: S.String })
       await Util.expectDecodeUnknownFailure(
         schema,
         {},
@@ -34,7 +34,7 @@ describe("TreeFormatter", () => {
     })
 
     it("excess property", async () => {
-      const schema = S.struct({ a: S.string })
+      const schema = S.Struct({ a: S.String })
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a", b: 1 },
@@ -47,7 +47,7 @@ describe("TreeFormatter", () => {
 
     describe("refinement", () => {
       it("1 refinement", async () => {
-        const schema = S.string.pipe(S.minLength(1))
+        const schema = S.String.pipe(S.minLength(1))
 
         await Util.expectDecodeUnknownFailure(
           schema,
@@ -74,7 +74,7 @@ describe("TreeFormatter", () => {
       })
 
       it("2 refinements", async () => {
-        const schema = S.string.pipe(S.minLength(1), S.maxLength(3))
+        const schema = S.String.pipe(S.minLength(1), S.maxLength(3))
 
         await Util.expectDecodeUnknownFailure(
           schema,
@@ -125,7 +125,7 @@ describe("TreeFormatter", () => {
       it("outer", async () => {
         type A = readonly [number, A | null]
         const schema: S.Schema<A> = S.suspend( // intended outer suspend
-          () => S.tuple(S.number, S.union(schema, S.literal(null)))
+          () => S.Tuple(S.Number, S.Union(schema, S.Literal(null)))
         )
 
         await Util.expectDecodeUnknownFailure(
@@ -148,9 +148,9 @@ describe("TreeFormatter", () => {
 
       it("inner", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
-          S.number,
-          S.union(S.suspend(() => schema), S.literal(null))
+        const schema: S.Schema<A> = S.Tuple(
+          S.Number,
+          S.Union(S.suspend(() => schema), S.Literal(null))
         )
 
         await Util.expectDecodeUnknownFailure(
@@ -175,9 +175,9 @@ describe("TreeFormatter", () => {
 
   describe("handle identifiers", () => {
     it("struct", async () => {
-      const schema = S.struct({
-        a: S.string.annotations({ identifier: "MyString1" }),
-        b: S.string.annotations({ identifier: "MyString2" })
+      const schema = S.Struct({
+        a: S.String.annotations({ identifier: "MyString1" }),
+        b: S.String.annotations({ identifier: "MyString2" })
       }).annotations({ identifier: "MySchema" })
 
       await Util.expectDecodeUnknownFailure(
@@ -196,7 +196,7 @@ describe("TreeFormatter", () => {
       it("outer", async () => {
         type A = readonly [number, A | null]
         const schema: S.Schema<A> = S.suspend( // intended outer suspend
-          () => S.tuple(S.number, S.union(schema, S.literal(null)))
+          () => S.Tuple(S.Number, S.Union(schema, S.Literal(null)))
         ).annotations({ identifier: "A" })
 
         await Util.expectDecodeUnknownFailure(
@@ -219,9 +219,9 @@ describe("TreeFormatter", () => {
 
       it("inner/outer", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
-          S.number,
-          S.union(S.suspend(() => schema), S.literal(null))
+        const schema: S.Schema<A> = S.Tuple(
+          S.Number,
+          S.Union(S.suspend(() => schema), S.Literal(null))
         ).annotations({ identifier: "A" })
 
         await Util.expectDecodeUnknownFailure(
@@ -244,9 +244,9 @@ describe("TreeFormatter", () => {
 
       it("inner/inner", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
-          S.number,
-          S.union(S.suspend(() => schema).annotations({ identifier: "A" }), S.literal(null))
+        const schema: S.Schema<A> = S.Tuple(
+          S.Number,
+          S.Union(S.suspend(() => schema).annotations({ identifier: "A" }), S.Literal(null))
         )
 
         await Util.expectDecodeUnknownFailure(
@@ -271,7 +271,7 @@ describe("TreeFormatter", () => {
 
   describe("messages", () => {
     it("declaration", async () => {
-      const schema = S.optionFromSelf(S.number).annotations({
+      const schema = S.OptionFromSelf(S.Number).annotations({
         message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
       })
 
@@ -283,7 +283,7 @@ describe("TreeFormatter", () => {
     })
 
     it("literal", async () => {
-      const schema = S.literal("a").annotations({
+      const schema = S.Literal("a").annotations({
         message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
       })
 
@@ -295,7 +295,7 @@ describe("TreeFormatter", () => {
     })
 
     it("uniqueSymbolFromSelf", async () => {
-      const schema = S.uniqueSymbolFromSelf(Symbol.for("@effect/schema/test/a")).annotations({
+      const schema = S.UniqueSymbolFromSelf(Symbol.for("@effect/schema/test/a")).annotations({
         message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
       })
 
@@ -307,7 +307,7 @@ describe("TreeFormatter", () => {
     })
 
     it("string", async () => {
-      const schema = S.string.annotations({
+      const schema = S.String.annotations({
         message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
       })
 
@@ -323,7 +323,7 @@ describe("TreeFormatter", () => {
         Apple,
         Banana
       }
-      const schema = S.enums(Fruits).annotations({
+      const schema = S.Enums(Fruits).annotations({
         message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
       })
 
@@ -335,7 +335,7 @@ describe("TreeFormatter", () => {
     })
 
     it("templateLiteral", async () => {
-      const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b")).annotations({
+      const schema = S.TemplateLiteral(S.Literal("a"), S.String, S.Literal("b")).annotations({
         message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
       })
 
@@ -348,7 +348,7 @@ describe("TreeFormatter", () => {
 
     describe("refinement", () => {
       it("top level message", async () => {
-        const schema = S.string.pipe(
+        const schema = S.String.pipe(
           S.minLength(1)
         ).annotations({ message: (issue) => `my custom message ${JSON.stringify(issue.actual)}` })
 
@@ -371,7 +371,7 @@ describe("TreeFormatter", () => {
       })
 
       it("inner messages", async () => {
-        const schema = S.string.pipe(
+        const schema = S.String.pipe(
           S.minLength(1, {
             message: (issue) => `minLength custom message ${JSON.stringify(issue.actual)}`
           }),
@@ -410,7 +410,7 @@ describe("TreeFormatter", () => {
     })
 
     it("tuple", async () => {
-      const schema = S.tuple(S.string, S.number).annotations({
+      const schema = S.Tuple(S.String, S.Number).annotations({
         message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
       })
 
@@ -427,9 +427,9 @@ describe("TreeFormatter", () => {
     })
 
     it("struct", async () => {
-      const schema = S.struct({
-        a: S.string,
-        b: S.string
+      const schema = S.Struct({
+        a: S.String,
+        b: S.String
       }).annotations({ message: (issue) => `my custom message ${JSON.stringify(issue.actual)}` })
 
       await Util.expectDecodeUnknownFailure(
@@ -445,7 +445,7 @@ describe("TreeFormatter", () => {
     })
 
     it("union", async () => {
-      const schema = S.union(S.string, S.number).annotations({
+      const schema = S.Union(S.String, S.Number).annotations({
         message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
       })
 
@@ -476,7 +476,7 @@ describe("TreeFormatter", () => {
 
       it("inner messages", async () => {
         const schema = S.transformOrFail(
-          S.string.annotations({ message: () => "please enter a string" }),
+          S.String.annotations({ message: () => "please enter a string" }),
           S.Int.annotations({ message: () => "please enter an integer" }),
           {
             decode: (s, _, ast) => {
@@ -514,7 +514,7 @@ describe("TreeFormatter", () => {
       it("outer", async () => {
         type A = readonly [number, A | null]
         const schema: S.Schema<A> = S.suspend( // intended outer suspend
-          () => S.tuple(S.number, S.union(schema, S.literal(null)))
+          () => S.Tuple(S.Number, S.Union(schema, S.Literal(null)))
         ).annotations({ message: (issue) => `my custom message ${JSON.stringify(issue.actual)}` })
 
         await Util.expectDecodeUnknownFailure(
@@ -531,9 +531,9 @@ describe("TreeFormatter", () => {
 
       it("inner/outer", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
-          S.number,
-          S.union(S.suspend(() => schema), S.literal(null))
+        const schema: S.Schema<A> = S.Tuple(
+          S.Number,
+          S.Union(S.suspend(() => schema), S.Literal(null))
         ).annotations({ message: (issue) => `my custom message ${JSON.stringify(issue.actual)}` })
 
         await Util.expectDecodeUnknownFailure(
@@ -550,13 +550,13 @@ describe("TreeFormatter", () => {
 
       it("inner/inner", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
-          S.number,
-          S.union(
+        const schema: S.Schema<A> = S.Tuple(
+          S.Number,
+          S.Union(
             S.suspend(() => schema).annotations({
               message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
             }),
-            S.literal(null)
+            S.Literal(null)
           )
         )
 
@@ -580,15 +580,15 @@ describe("TreeFormatter", () => {
 
       it("inner/inner/inner", async () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
-          S.number,
-          S.union(
+        const schema: S.Schema<A> = S.Tuple(
+          S.Number,
+          S.Union(
             S.suspend(() =>
               schema.annotations({
                 message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
               })
             ),
-            S.literal(null)
+            S.Literal(null)
           )
         )
 

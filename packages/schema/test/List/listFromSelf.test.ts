@@ -7,11 +7,11 @@ import { describe, expect, it } from "vitest"
 
 describe("List > listFromSelf", () => {
   it("property tests", () => {
-    Util.roundtrip(S.listFromSelf(S.number))
+    Util.roundtrip(S.ListFromSelf(S.Number))
   })
 
   it("decoding", async () => {
-    const schema = S.listFromSelf(S.NumberFromString)
+    const schema = S.ListFromSelf(S.NumberFromString)
     await Util.expectDecodeUnknownSuccess(schema, List.empty(), List.empty())
     await Util.expectDecodeUnknownSuccess(
       schema,
@@ -37,7 +37,7 @@ describe("List > listFromSelf", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.listFromSelf(S.NumberFromString)
+    const schema = S.ListFromSelf(S.NumberFromString)
     await Util.expectEncodeSuccess(schema, List.empty(), List.empty())
     await Util.expectEncodeSuccess(
       schema,
@@ -47,7 +47,7 @@ describe("List > listFromSelf", () => {
   })
 
   it("is", () => {
-    const schema = S.listFromSelf(S.string)
+    const schema = S.ListFromSelf(S.String)
     const is = P.is(schema)
     expect(is(List.empty())).toEqual(true)
     expect(is(List.fromIterable(["a", "b", "c"]))).toEqual(true)
@@ -57,7 +57,7 @@ describe("List > listFromSelf", () => {
   })
 
   it("pretty", () => {
-    const schema = S.listFromSelf(S.string)
+    const schema = S.ListFromSelf(S.String)
     const pretty = Pretty.make(schema)
     expect(pretty(List.empty())).toEqual("List()")
     expect(pretty(List.fromIterable(["a", "b"]))).toEqual(

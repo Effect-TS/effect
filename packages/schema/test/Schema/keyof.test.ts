@@ -5,23 +5,23 @@ import { describe, expect, it } from "vitest"
 
 describe("Schema > keyof", () => {
   it("should unify string literals with string", () => {
-    const schema = S.struct({ a: S.string }, S.record(S.string, S.string))
+    const schema = S.Struct({ a: S.String }, S.Record(S.String, S.String))
     const keyof = S.keyof(schema)
-    expect(keyof.ast).toEqual(S.string.ast)
+    expect(keyof.ast).toEqual(S.String.ast)
   })
 
   it("should unify symbol literals with symbol", () => {
     const a = Symbol.for("@effect/schema/test/a")
-    const schema = S.struct({ [a]: S.string }, S.record(S.symbolFromSelf, S.string))
+    const schema = S.Struct({ [a]: S.String }, S.Record(S.SymbolFromSelf, S.String))
     const keyof = S.keyof(schema)
-    expect(keyof.ast).toEqual(S.symbolFromSelf.ast)
+    expect(keyof.ast).toEqual(S.SymbolFromSelf.ast)
   })
 
   describe("struct", () => {
     it("string keys", () => {
-      const schema = S.struct({
-        a: S.string,
-        b: S.number
+      const schema = S.Struct({
+        a: S.String,
+        b: S.Number
       })
       // type K = keyof S.Schema.Type<typeof schema> // "a" | "b"
       const keyOf = S.keyof(schema)
@@ -34,9 +34,9 @@ describe("Schema > keyof", () => {
     it("symbol keys", () => {
       const a = Symbol.for("@effect/schema/test/a")
       const b = Symbol.for("@effect/schema/test/b")
-      const schema = S.struct({
-        [a]: S.string,
-        [b]: S.number
+      const schema = S.Struct({
+        [a]: S.String,
+        [b]: S.Number
       })
       const keyOf = S.keyof(schema)
       const is = P.is(keyOf)
@@ -49,21 +49,21 @@ describe("Schema > keyof", () => {
 
   describe("record", () => {
     it("string", () => {
-      const schema = S.record(S.string, S.number)
+      const schema = S.Record(S.String, S.Number)
       // type K = keyof S.Schema.Type<typeof schema> // string
-      expect(AST.keyof(schema.ast)).toEqual(S.string.ast)
+      expect(AST.keyof(schema.ast)).toEqual(S.String.ast)
     })
 
     it("symbol", () => {
-      const schema = S.record(S.symbolFromSelf, S.number)
+      const schema = S.Record(S.SymbolFromSelf, S.Number)
       // type K = keyof S.Schema.Type<typeof schema> // symbol
-      expect(AST.keyof(schema.ast)).toEqual(S.symbolFromSelf.ast)
+      expect(AST.keyof(schema.ast)).toEqual(S.SymbolFromSelf.ast)
     })
 
     it("template literal", () => {
-      const schema = S.record(S.templateLiteral(S.literal("a"), S.string), S.number)
+      const schema = S.Record(S.TemplateLiteral(S.Literal("a"), S.String), S.Number)
       // type K = keyof S.Schema.Type<typeof schema> // `a${string}`
-      expect(AST.keyof(schema.ast)).toEqual(S.templateLiteral(S.literal("a"), S.string).ast)
+      expect(AST.keyof(schema.ast)).toEqual(S.TemplateLiteral(S.Literal("a"), S.String).ast)
     })
   })
 
@@ -74,46 +74,46 @@ describe("Schema > keyof", () => {
     }
     const schema: S.Schema<Category> = S.suspend( // intended outer suspend
       () =>
-        S.struct({
-          name: S.string,
-          categories: S.array(schema)
+        S.Struct({
+          name: S.String,
+          categories: S.Array(schema)
         })
     )
-    expect(AST.keyof(schema.ast)).toEqual(S.literal("name", "categories").ast)
+    expect(AST.keyof(schema.ast)).toEqual(S.Literal("name", "categories").ast)
   })
 
   describe("union", () => {
     it("union of structs", () => {
-      const schema = S.union(S.struct({ a: S.string }), S.struct({ a: S.number }))
+      const schema = S.Union(S.Struct({ a: S.String }), S.Struct({ a: S.Number }))
       // type K = keyof S.Schema.Type<typeof schema> // "a"
-      expect(AST.keyof(schema.ast)).toEqual(S.literal("a").ast)
+      expect(AST.keyof(schema.ast)).toEqual(S.Literal("a").ast)
     })
 
     it("union of records", () => {
-      const schema = S.union(S.record(S.string, S.number), S.record(S.string, S.boolean))
+      const schema = S.Union(S.Record(S.String, S.Number), S.Record(S.String, S.Boolean))
       // type K = keyof S.Schema.Type<typeof schema> // string
-      expect(AST.keyof(schema.ast)).toEqual(S.string.ast)
+      expect(AST.keyof(schema.ast)).toEqual(S.String.ast)
     })
 
     it("union of structs and records", () => {
-      const schema = S.union(
-        S.struct({ a: S.string }, S.record(S.string, S.number)),
-        S.struct({ a: S.number }, S.record(S.string, S.boolean))
+      const schema = S.Union(
+        S.Struct({ a: S.String }, S.Record(S.String, S.Number)),
+        S.Struct({ a: S.Number }, S.Record(S.String, S.Boolean))
       )
       // type K = keyof S.Schema.Type<typeof schema> // string
-      expect(AST.keyof(schema.ast)).toEqual(S.string.ast)
+      expect(AST.keyof(schema.ast)).toEqual(S.String.ast)
     })
   })
 
   it("should support Class", () => {
-    class A extends S.Class<A>("A")({ a: S.string }) {}
+    class A extends S.Class<A>("A")({ a: S.String }) {}
     // type K = keyof S.Schema.Type<typeof A> // "a"
-    expect(AST.keyof(A.ast)).toEqual(S.literal("a").ast)
+    expect(AST.keyof(A.ast)).toEqual(S.Literal("a").ast)
   })
 
   it("should throw on unsupported schemas", () => {
-    expect(() => S.keyof(S.option(S.string))).toThrow(
-      new Error("keyof: unsupported schema (Option<string>)")
+    expect(() => S.keyof(S.Option(S.String))).toThrow(
+      new Error("KeyOf: unsupported schema (Option<string>)")
     )
   })
 })

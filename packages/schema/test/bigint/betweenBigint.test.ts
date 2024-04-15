@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
 describe("bigint > betweenBigint", () => {
-  const schema = S.bigintFromSelf.pipe(S.betweenBigint(-1n, 1n)).annotations({
+  const schema = S.BigIntFromSelf.pipe(S.betweenBigInt(-1n, 1n)).annotations({
     title: "[-1n, -1n] interval"
   })
 

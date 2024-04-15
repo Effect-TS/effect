@@ -9,9 +9,9 @@ describe("Schema > suspend", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: S.Schema<A> = S.struct({
-        a: S.string,
-        as: S.array(S.suspend(() => schema))
+      const schema: S.Schema<A> = S.Struct({
+        a: S.String,
+        as: S.Array(S.suspend(() => schema))
       })
 
       await Util.expectDecodeUnknownSuccess(schema, { a: "a1", as: [] })
@@ -57,14 +57,14 @@ describe("Schema > suspend", () => {
         readonly right: Expression
       }
 
-      const Expression: S.Schema<Expression> = S.struct({
-        type: S.literal("expression"),
-        value: S.union(S.number, S.suspend(() => Operation))
+      const Expression: S.Schema<Expression> = S.Struct({
+        type: S.Literal("expression"),
+        value: S.Union(S.Number, S.suspend(() => Operation))
       })
 
-      const Operation: S.Schema<Operation> = S.struct({
-        type: S.literal("operation"),
-        operator: S.union(S.literal("+"), S.literal("-")),
+      const Operation: S.Schema<Operation> = S.Struct({
+        type: S.Literal("operation"),
+        operator: S.Union(S.Literal("+"), S.Literal("-")),
         left: Expression,
         right: Expression
       })
@@ -107,9 +107,9 @@ describe("Schema > suspend", () => {
         readonly a: string
         readonly as: ReadonlyArray<FromA>
       }
-      const schema: S.Schema<A, FromA> = S.struct({
+      const schema: S.Schema<A, FromA> = S.Struct({
         a: Util.NumberFromChar,
-        as: S.array(S.suspend(() => schema))
+        as: S.Array(S.suspend(() => schema))
       })
       await Util.expectEncodeSuccess(schema, { a: 1, as: [] }, { a: "1", as: [] })
       await Util.expectEncodeSuccess(schema, { a: 1, as: [{ a: 2, as: [] }] }, {

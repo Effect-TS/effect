@@ -70,7 +70,7 @@ describe("Schema > parseJson", () => {
 
   describe("parseJson(schema)", () => {
     it("decoding", async () => {
-      const schema = S.parseJson(S.struct({ a: S.number }))
+      const schema = S.parseJson(S.Struct({ a: S.Number }))
       await Util.expectDecodeUnknownSuccess(schema, `{"a":1}`, { a: 1 })
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -99,13 +99,13 @@ describe("Schema > parseJson", () => {
     })
 
     it("encoding", async () => {
-      const schema = S.parseJson(S.struct({ a: S.number }))
+      const schema = S.parseJson(S.Struct({ a: S.Number }))
       await Util.expectEncodeSuccess(schema, { a: 1 }, `{"a":1}`)
     })
 
     describe("roundtrip", () => {
       it("Exit", async () => {
-        const schema = S.parseJson(S.exit({ failure: S.never, success: S.void }))
+        const schema = S.parseJson(S.Exit({ failure: S.Never, success: S.Void }))
         const encoding = S.encodeSync(schema)(Exit.unit)
         await Util.expectDecodeUnknownSuccess(schema, encoding, Exit.unit)
       })
@@ -114,14 +114,14 @@ describe("Schema > parseJson", () => {
 
   describe("parseJson(schema, options)", () => {
     it("reviver", async () => {
-      const schema = S.parseJson(S.struct({ a: S.number, b: S.string }), {
+      const schema = S.parseJson(S.Struct({ a: S.Number, b: S.String }), {
         reviver: (key, value) => key === "a" ? value + 1 : value
       })
       await Util.expectDecodeUnknownSuccess(schema, `{"a":1,"b":"b"}`, { a: 2, b: "b" })
     })
 
     it("replacer", async () => {
-      const schema = S.parseJson(S.struct({ a: S.number, b: S.string }), { replacer: ["b"] })
+      const schema = S.parseJson(S.Struct({ a: S.Number, b: S.String }), { replacer: ["b"] })
       await Util.expectEncodeSuccess(
         schema,
         { a: 1, b: "b" },
@@ -130,7 +130,7 @@ describe("Schema > parseJson", () => {
     })
 
     it("space", async () => {
-      const schema = S.parseJson(S.struct({ a: S.number }), { space: 2 })
+      const schema = S.parseJson(S.Struct({ a: S.Number }), { space: 2 })
       await Util.expectEncodeSuccess(
         schema,
         { a: 1 },

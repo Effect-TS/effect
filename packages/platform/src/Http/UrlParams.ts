@@ -36,8 +36,8 @@ export const fromInput = (input: Input): UrlParams => {
  * @since 1.0.0
  * @category schemas
  */
-export const schema: Schema.Schema<UrlParams, ReadonlyArray<readonly [string, string]>> = Schema.array(
-  Schema.tuple(Schema.string, Schema.string)
+export const schema: Schema.Schema<UrlParams, ReadonlyArray<readonly [string, string]>> = Schema.Array(
+  Schema.Tuple(Schema.String, Schema.String)
 ).pipe(
   Schema.identifier("UrlParams")
 )

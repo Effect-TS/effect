@@ -7,13 +7,13 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 
 class Todo extends Schema.Class<Todo>("Todo")({
-  userId: Schema.number,
-  id: Schema.number,
-  title: Schema.string,
-  completed: Schema.boolean
+  userId: Schema.Number,
+  id: Schema.Number,
+  title: Schema.String,
+  completed: Schema.Boolean
 }) {}
 
-const TodoWithoutId = Schema.struct(Todo.fields).pipe(Schema.omit("id"))
+const TodoWithoutId = Schema.Struct(Todo.fields).pipe(Schema.omit("id"))
 type TodoWithoutId = Schema.Schema.Type<typeof TodoWithoutId>
 
 interface TodoService {

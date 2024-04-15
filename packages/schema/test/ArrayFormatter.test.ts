@@ -21,7 +21,7 @@ const expectIssues = <A, I>(schema: S.Schema<A, I>, input: unknown, issues: Arra
 describe("ArrayFormatter", () => {
   describe("defaults", () => {
     it("declaration", () => {
-      const schema = S.optionFromSelf(S.number)
+      const schema = S.OptionFromSelf(S.Number)
       expectIssues(schema, null, [{
         _tag: "Type",
         path: [],
@@ -35,7 +35,7 @@ describe("ArrayFormatter", () => {
     })
 
     it("Type", () => {
-      const schema = S.string
+      const schema = S.String
       expectIssues(schema, null, [{
         _tag: "Type",
         path: [],
@@ -44,9 +44,9 @@ describe("ArrayFormatter", () => {
     })
 
     it("Type with custom message", () => {
-      const schema = S.string.pipe(
+      const schema = S.String.pipe(
         S.transformOrFail(
-          S.string,
+          S.String,
           {
             decode: (s, _, ast) => ParseResult.fail(new ParseResult.Type(ast, s, "my custom message")),
             encode: ParseResult.succeed
@@ -61,7 +61,7 @@ describe("ArrayFormatter", () => {
     })
 
     it("Key", () => {
-      const schema = S.struct({ a: S.string })
+      const schema = S.Struct({ a: S.String })
       expectIssues(schema, { a: null }, [{
         _tag: "Type",
         path: ["a"],
@@ -70,7 +70,7 @@ describe("ArrayFormatter", () => {
     })
 
     it("Index", () => {
-      const schema = S.tuple(S.string)
+      const schema = S.Tuple(S.String)
       expectIssues(schema, [null], [{
         _tag: "Type",
         path: [0],
@@ -79,7 +79,7 @@ describe("ArrayFormatter", () => {
     })
 
     it("Unexpected (struct)", () => {
-      const schema = S.struct({ a: S.string })
+      const schema = S.Struct({ a: S.String })
       expectIssues(schema, { a: "a", b: 1 }, [{
         _tag: "Unexpected",
         path: ["b"],
@@ -88,7 +88,7 @@ describe("ArrayFormatter", () => {
     })
 
     it("Unexpected (tuple)", () => {
-      const schema = S.tuple(S.string)
+      const schema = S.Tuple(S.String)
       expectIssues(schema, ["a", 1], [{
         _tag: "Unexpected",
         path: [1],
@@ -97,7 +97,7 @@ describe("ArrayFormatter", () => {
     })
 
     it("Missing (struct)", () => {
-      const schema = S.struct({ a: S.string })
+      const schema = S.Struct({ a: S.String })
       expectIssues(schema, {}, [{
         _tag: "Missing",
         path: ["a"],
@@ -106,7 +106,7 @@ describe("ArrayFormatter", () => {
     })
 
     it("Missing (tuple)", () => {
-      const schema = S.tuple(S.string)
+      const schema = S.Tuple(S.String)
       expectIssues(schema, [], [{
         _tag: "Missing",
         path: [0],
@@ -115,7 +115,7 @@ describe("ArrayFormatter", () => {
     })
 
     it("Member", () => {
-      const schema = S.union(S.string, S.number)
+      const schema = S.Union(S.String, S.Number)
       expectIssues(schema, null, [{
         _tag: "Type",
         path: [],
@@ -142,10 +142,10 @@ describe("ArrayFormatter", () => {
         S.minLength(2, { message: () => "We expect a name of at least 2 characters" }),
         S.maxLength(100, { message: () => "We expect a name with a maximum of 100 characters" })
       )
-      const schema = S.struct({
+      const schema = S.Struct({
         name: Name,
-        age: S.number,
-        tags: S.array(S.string)
+        age: S.Number,
+        tags: S.Array(S.String)
       })
       expectIssues(schema, { name: "", tags: ["b", null], a: 1 }, [
         {
@@ -174,7 +174,7 @@ describe("ArrayFormatter", () => {
 
   describe("messages", () => {
     it("declaration", () => {
-      const schema = S.optionFromSelf(S.number).annotations({
+      const schema = S.OptionFromSelf(S.Number).annotations({
         message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
       })
 
@@ -186,7 +186,7 @@ describe("ArrayFormatter", () => {
     })
 
     it("literal", () => {
-      const schema = S.literal("a").annotations({
+      const schema = S.Literal("a").annotations({
         message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
       })
 
@@ -198,7 +198,7 @@ describe("ArrayFormatter", () => {
     })
 
     it("uniqueSymbolFromSelf", () => {
-      const schema = S.uniqueSymbolFromSelf(Symbol.for("@effect/schema/test/a")).annotations({
+      const schema = S.UniqueSymbolFromSelf(Symbol.for("@effect/schema/test/a")).annotations({
         message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
       })
 
@@ -210,7 +210,7 @@ describe("ArrayFormatter", () => {
     })
 
     it("string", () => {
-      const schema = S.string.annotations({ message: (issue) => `my custom message ${JSON.stringify(issue.actual)}` })
+      const schema = S.String.annotations({ message: (issue) => `my custom message ${JSON.stringify(issue.actual)}` })
 
       expectIssues(schema, null, [{
         _tag: "Type",
@@ -224,7 +224,7 @@ describe("ArrayFormatter", () => {
         Apple,
         Banana
       }
-      const schema = S.enums(Fruits).annotations({
+      const schema = S.Enums(Fruits).annotations({
         message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
       })
 
@@ -236,7 +236,7 @@ describe("ArrayFormatter", () => {
     })
 
     it("templateLiteral", () => {
-      const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b")).annotations({
+      const schema = S.TemplateLiteral(S.Literal("a"), S.String, S.Literal("b")).annotations({
         message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
       })
 
@@ -249,7 +249,7 @@ describe("ArrayFormatter", () => {
 
     describe("refinement", () => {
       it("top level message", () => {
-        const schema = S.string.pipe(
+        const schema = S.String.pipe(
           S.minLength(1)
         ).annotations({ message: (issue) => `my custom message ${JSON.stringify(issue.actual)}` })
 
@@ -266,7 +266,7 @@ describe("ArrayFormatter", () => {
       })
 
       it("inner messages", () => {
-        const schema = S.string.pipe(
+        const schema = S.String.pipe(
           S.minLength(1, {
             message: (issue) => `minLength custom message ${JSON.stringify(issue.actual)}`
           }),
@@ -294,7 +294,7 @@ describe("ArrayFormatter", () => {
     })
 
     it("tuple", () => {
-      const schema = S.tuple(S.string, S.number).annotations({
+      const schema = S.Tuple(S.String, S.Number).annotations({
         message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
       })
 
@@ -311,9 +311,9 @@ describe("ArrayFormatter", () => {
     })
 
     it("struct", () => {
-      const schema = S.struct({
-        a: S.string,
-        b: S.string
+      const schema = S.Struct({
+        a: S.String,
+        b: S.String
       }).annotations({ message: (issue) => `my custom message ${JSON.stringify(issue.actual)}` })
 
       expectIssues(schema, null, [{
@@ -329,7 +329,7 @@ describe("ArrayFormatter", () => {
     })
 
     it("union", () => {
-      const schema = S.union(S.string, S.number).annotations({
+      const schema = S.Union(S.String, S.Number).annotations({
         message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
       })
 
@@ -360,7 +360,7 @@ describe("ArrayFormatter", () => {
 
       it("inner messages", () => {
         const schema = S.transformOrFail(
-          S.string.annotations({ message: () => "please enter a string" }),
+          S.String.annotations({ message: () => "please enter a string" }),
           S.Int.annotations({ message: () => "please enter an integer" }),
           {
             decode: (s, _, ast) => {
@@ -398,7 +398,7 @@ describe("ArrayFormatter", () => {
       it("outer", () => {
         type A = readonly [number, A | null]
         const schema: S.Schema<A> = S.suspend( // intended outer suspend
-          () => S.tuple(S.number, S.union(schema, S.literal(null)))
+          () => S.Tuple(S.Number, S.Union(schema, S.Literal(null)))
         ).annotations({ message: (issue) => `my custom message ${JSON.stringify(issue.actual)}` })
 
         expectIssues(schema, null, [{
@@ -415,9 +415,9 @@ describe("ArrayFormatter", () => {
 
       it("inner/outer", () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
-          S.number,
-          S.union(S.suspend(() => schema), S.literal(null))
+        const schema: S.Schema<A> = S.Tuple(
+          S.Number,
+          S.Union(S.suspend(() => schema), S.Literal(null))
         ).annotations({ message: (issue) => `my custom message ${JSON.stringify(issue.actual)}` })
 
         expectIssues(schema, null, [{
@@ -434,13 +434,13 @@ describe("ArrayFormatter", () => {
 
       it("inner/inner", () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
-          S.number,
-          S.union(
+        const schema: S.Schema<A> = S.Tuple(
+          S.Number,
+          S.Union(
             S.suspend(() => schema).annotations({
               message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
             }),
-            S.literal(null)
+            S.Literal(null)
           )
         )
 
@@ -462,15 +462,15 @@ describe("ArrayFormatter", () => {
 
       it("inner/inner/inner", () => {
         type A = readonly [number, A | null]
-        const schema: S.Schema<A> = S.tuple(
-          S.number,
-          S.union(
+        const schema: S.Schema<A> = S.Tuple(
+          S.Number,
+          S.Union(
             S.suspend(() =>
               schema.annotations({
                 message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
               })
             ),
-            S.literal(null)
+            S.Literal(null)
           )
         )
 

@@ -35,11 +35,11 @@ const runPromise = <E, A>(
   >
 ) => Effect.runPromise(Effect.provide(effect, EnvLive))
 
-const Todo = Schema.struct({
-  id: Schema.number,
-  title: Schema.string
+const Todo = Schema.Struct({
+  id: Schema.Number,
+  title: Schema.String
 })
-const IdParams = Schema.struct({
+const IdParams = Schema.Struct({
   id: Schema.NumberFromString
 })
 const todoResponse = Http.response.schemaJson(Todo)
@@ -114,9 +114,9 @@ describe("HttpServer", () => {
         Http.router.post(
           "/upload",
           Effect.gen(function*(_) {
-            const files = yield* _(Http.request.schemaBodyForm(Schema.struct({
+            const files = yield* _(Http.request.schemaBodyForm(Schema.Struct({
               file: Http.multipart.filesSchema,
-              test: Schema.string
+              test: Schema.String
             })))
             expect(files).toHaveProperty("file")
             expect(files).toHaveProperty("test")
@@ -324,9 +324,9 @@ describe("HttpServer", () => {
         Http.router.post(
           "/todos",
           Effect.flatMap(
-            Http.request.schemaBodyUrlParams(Schema.struct({
+            Http.request.schemaBodyUrlParams(Schema.Struct({
               id: Schema.NumberFromString,
-              title: Schema.string
+              title: Schema.String
             })),
             ({ id, title }) => todoResponse({ id, title })
           )
@@ -350,9 +350,9 @@ describe("HttpServer", () => {
         Http.router.get(
           "/todos",
           Effect.flatMap(
-            Http.request.schemaBodyUrlParams(Schema.struct({
+            Http.request.schemaBodyUrlParams(Schema.Struct({
               id: Schema.NumberFromString,
-              title: Schema.string
+              title: Schema.String
             })),
             ({ id, title }) => todoResponse({ id, title })
           )
@@ -377,8 +377,8 @@ describe("HttpServer", () => {
           "/upload",
           Effect.gen(function*(_) {
             const result = yield* _(
-              Http.request.schemaBodyFormJson(Schema.struct({
-                test: Schema.string
+              Http.request.schemaBodyFormJson(Schema.Struct({
+                test: Schema.String
               }))("json")
             )
             expect(result.test).toEqual("content")
@@ -406,8 +406,8 @@ describe("HttpServer", () => {
           "/upload",
           Effect.gen(function*(_) {
             const result = yield* _(
-              Http.request.schemaBodyFormJson(Schema.struct({
-                test: Schema.string
+              Http.request.schemaBodyFormJson(Schema.Struct({
+                test: Schema.String
               }))("json")
             )
             expect(result.test).toEqual("content")
@@ -439,8 +439,8 @@ describe("HttpServer", () => {
           "/upload",
           Effect.gen(function*(_) {
             const result = yield* _(
-              Http.request.schemaBodyFormJson(Schema.struct({
-                test: Schema.string
+              Http.request.schemaBodyFormJson(Schema.Struct({
+                test: Schema.String
               }))("json")
             )
             expect(result.test).toEqual("content")

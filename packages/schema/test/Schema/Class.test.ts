@@ -13,8 +13,8 @@ import * as Request from "effect/Request"
 import { assert, describe, expect, it } from "vitest"
 
 class Person extends S.Class<Person>("Person")({
-  id: S.number,
-  name: S.string.pipe(S.nonEmpty())
+  id: S.Number,
+  name: S.String.pipe(S.nonEmpty())
 }) {
   get upperName() {
     return this.name.toUpperCase()
@@ -22,10 +22,10 @@ class Person extends S.Class<Person>("Person")({
 }
 
 const Name = Context.GenericTag<"Name", string>("Name")
-const NameString = S.string.pipe(
+const NameString = S.String.pipe(
   S.nonEmpty(),
   S.transformOrFail(
-    S.string,
+    S.String,
     {
       decode: (_, _opts, ast) =>
         Name.pipe(
@@ -40,9 +40,9 @@ const NameString = S.string.pipe(
 )
 
 const Id = Context.GenericTag<"Id", number>("Name")
-const IdNumber = S.number.pipe(
+const IdNumber = S.Number.pipe(
   S.transformOrFail(
-    S.number,
+    S.Number,
     {
       decode: (_, _opts, ast) =>
         Effect.filterOrFail(
@@ -56,8 +56,8 @@ const IdNumber = S.number.pipe(
 )
 
 class TaggedPerson extends S.TaggedClass<TaggedPerson>()("TaggedPerson", {
-  id: S.number,
-  name: S.string.pipe(S.nonEmpty())
+  id: S.Number,
+  name: S.String.pipe(S.nonEmpty())
 }) {
   get upperName() {
     return this.name.toUpperCase()
@@ -65,7 +65,7 @@ class TaggedPerson extends S.TaggedClass<TaggedPerson>()("TaggedPerson", {
 }
 
 class TaggedPersonWithAge extends TaggedPerson.extend<TaggedPersonWithAge>("TaggedPersonWithAge")({
-  age: S.number
+  age: S.Number
 }) {
   get isAdult() {
     return this.age >= 18
@@ -73,7 +73,7 @@ class TaggedPersonWithAge extends TaggedPerson.extend<TaggedPersonWithAge>("Tagg
 }
 
 class PersonWithAge extends Person.extend<PersonWithAge>("PersonWithAge")({
-  age: S.number
+  age: S.Number
 }) {
   get isAdult() {
     return this.age >= 18
@@ -81,10 +81,10 @@ class PersonWithAge extends Person.extend<PersonWithAge>("PersonWithAge")({
 }
 
 class PersonWithNick extends PersonWithAge.extend<PersonWithNick>("PersonWithNick")({
-  nick: S.string
+  nick: S.String
 }) {}
 
-const Thing = S.optional(S.struct({ id: S.number }), { exact: true, as: "Option" })
+const Thing = S.optional(S.Struct({ id: S.Number }), { exact: true, as: "Option" })
 
 class PersonWithTransform extends Person.transformOrFail<PersonWithTransform>("PersonWithTransform")(
   {
@@ -127,27 +127,27 @@ class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWithTrans
 describe("Schema > Class APIs", () => {
   describe("Class", () => {
     it("should be a Schema", () => {
-      class A extends S.Class<A>("A")({ a: S.string }) {}
+      class A extends S.Class<A>("A")({ a: S.String }) {}
       expect(S.isSchema(A)).toEqual(true)
     })
 
     it("should expose the fields", () => {
-      class A extends S.Class<A>("A")({ a: S.string }) {}
-      expect(A.fields).toEqual({ a: S.string })
+      class A extends S.Class<A>("A")({ a: S.String }) {}
+      expect(A.fields).toEqual({ a: S.String })
     })
 
     it("should expose the identifier", () => {
-      class A extends S.Class<A>("A")({ a: S.string }) {}
+      class A extends S.Class<A>("A")({ a: S.String }) {}
       expect(A.identifier).toEqual("A")
     })
 
     it("should add an identifier annotation", () => {
-      class A extends S.Class<A>("MyName")({ a: S.string }) {}
+      class A extends S.Class<A>("MyName")({ a: S.String }) {}
       expect((A.ast as AST.Transformation).to.annotations[AST.IdentifierAnnotationId]).toEqual("MyName")
     })
 
     it("should be a constructor", () => {
-      class A extends S.Class<A>("A")({ a: S.string }) {}
+      class A extends S.Class<A>("A")({ a: S.String }) {}
       const instance = new A({ a: "a" })
       expect(instance.a).toStrictEqual("a")
       expect(instance instanceof A).toBe(true)
@@ -177,7 +177,7 @@ describe("Schema > Class APIs", () => {
     })
 
     it("should support methods", () => {
-      class A extends S.Class<A>("A")({ a: S.string }) {
+      class A extends S.Class<A>("A")({ a: S.String }) {
         method(b: string) {
           return `method: ${this.a} ${b}`
         }
@@ -186,7 +186,7 @@ describe("Schema > Class APIs", () => {
     })
 
     it("should support getters", () => {
-      class A extends S.Class<A>("A")({ a: S.string }) {
+      class A extends S.Class<A>("A")({ a: S.String }) {
         get getter() {
           return `getter: ${this.a}`
         }
@@ -196,13 +196,13 @@ describe("Schema > Class APIs", () => {
 
     it("should support annotations when declaring the Class", () => {
       class A extends S.Class<A>("A")({
-        a: S.string
+        a: S.String
       }, { title: "X" }) {}
       expect((A.ast as AST.Transformation).to.annotations[AST.TitleAnnotationId]).toEqual("X")
     })
 
     it("using S.annotations() on a Class should return a Schema", () => {
-      class A extends S.Class<A>("A")({ a: S.string }) {}
+      class A extends S.Class<A>("A")({ a: S.String }) {}
       const schema = A.pipe(S.annotations({ title: "X" }))
       expect(S.isSchema(schema)).toEqual(true)
       expect(schema.ast._tag).toEqual("Transformation")
@@ -210,7 +210,7 @@ describe("Schema > Class APIs", () => {
     })
 
     it("using the .annotations() method of a Class should return a Schema", () => {
-      class A extends S.Class<A>("A")({ a: S.string }) {}
+      class A extends S.Class<A>("A")({ a: S.String }) {}
       const schema = A.annotations({ title: "X" })
       expect(S.isSchema(schema)).toEqual(true)
       expect(schema.ast._tag).toEqual("Transformation")
@@ -251,47 +251,47 @@ describe("Schema > Class APIs", () => {
     })
 
     it("a custom _tag field should be allowed", () => {
-      class A extends S.Class<A>("A")({ _tag: S.literal("a", "b") }) {}
+      class A extends S.Class<A>("A")({ _tag: S.Literal("a", "b") }) {}
       expect(A.fields).toStrictEqual({
-        _tag: S.literal("a", "b")
+        _tag: S.Literal("a", "b")
       })
     })
 
     it("duplicated fields should not be allowed when extending with extend()", () => {
-      class A extends S.Class<A>("A")({ a: S.string }) {}
+      class A extends S.Class<A>("A")({ a: S.String }) {}
       expect(() => {
-        class A2 extends A.extend<A2>("A2")({ a: S.string }) {}
+        class A2 extends A.extend<A2>("A2")({ a: S.String }) {}
         console.log(A2)
       }).toThrow(new Error(`Duplicate property signature "a"`))
     })
 
     it("can be extended with Class fields", () => {
-      class AB extends S.Class<AB>("AB")({ a: S.string, b: S.number }) {}
+      class AB extends S.Class<AB>("AB")({ a: S.String, b: S.Number }) {}
       class C extends S.Class<C>("C")({
         ...AB.fields,
-        b: S.string,
-        c: S.boolean
+        b: S.String,
+        c: S.Boolean
       }) {}
       expect(C.fields).toStrictEqual({
-        a: S.string,
-        b: S.string,
-        c: S.boolean
+        a: S.String,
+        b: S.String,
+        c: S.Boolean
       })
       expect({ ...new C({ a: "a", b: "b", c: true }) }).toStrictEqual({ a: "a", b: "b", c: true })
     })
 
     it("can be extended with TaggedClass fields", () => {
-      class AB extends S.Class<AB>("AB")({ a: S.string, b: S.number }) {}
+      class AB extends S.Class<AB>("AB")({ a: S.String, b: S.Number }) {}
       class D extends S.TaggedClass<D>()("D", {
         ...AB.fields,
-        b: S.string,
-        c: S.boolean
+        b: S.String,
+        c: S.Boolean
       }) {}
       expect(D.fields).toStrictEqual({
-        _tag: S.literal("D"),
-        a: S.string,
-        b: S.string,
-        c: S.boolean
+        _tag: S.Literal("D"),
+        a: S.String,
+        b: S.String,
+        c: S.Boolean
       })
       expect({ ...new D({ a: "a", b: "b", c: true }) }).toStrictEqual({ _tag: "D", a: "a", b: "b", c: true })
     })
@@ -336,25 +336,25 @@ describe("Schema > Class APIs", () => {
 
   describe("TaggedClass", () => {
     it("the constructor should add a `_tag` field", () => {
-      class TA extends S.TaggedClass<TA>()("TA", { a: S.string }) {}
+      class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
       expect({ ...new TA({ a: "a" }) }).toStrictEqual({ _tag: "TA", a: "a" })
     })
 
     it("should expose the fields", () => {
-      class TA extends S.TaggedClass<TA>()("TA", { a: S.string }) {}
-      expect(TA.fields).toEqual({ _tag: S.literal("TA"), a: S.string })
+      class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
+      expect(TA.fields).toEqual({ _tag: S.Literal("TA"), a: S.String })
     })
 
     it("should expose the identifier", () => {
-      class TA extends S.TaggedClass<TA>()("TA", { a: S.string }) {}
+      class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
       expect(TA.identifier).toEqual("TA")
-      class TB extends S.TaggedClass<TB>("id")("TB", { a: S.string }) {}
+      class TB extends S.TaggedClass<TB>("id")("TB", { a: S.String }) {}
       expect(TB.identifier).toEqual("id")
     })
 
     it("constructor parameters should not overwrite the tag", async () => {
       class A extends S.TaggedClass<A>()("A", {
-        a: S.string
+        a: S.String
       }) {}
       expect(new A({ ...{ _tag: "B", a: "a" } })._tag).toBe("A")
       expect(new A({ ...{ _tag: "B", a: "a" } }, true)._tag).toBe("A")
@@ -370,16 +370,16 @@ describe("Schema > Class APIs", () => {
     it("a custom _tag field should be not allowed", () => {
       expect(() => {
         // @ts-expect-error
-        class _TA extends S.TaggedClass<_TA>()("TA", { _tag: S.literal("X"), a: S.string }) {}
+        class _TA extends S.TaggedClass<_TA>()("TA", { _tag: S.Literal("X"), a: S.String }) {}
         console.log(_TA)
       }).toThrow(new Error(`Duplicate property signature "_tag"`))
     })
 
     it("should expose the fields", async () => {
-      class TA extends S.TaggedClass<TA>()("TA", { a: S.string }) {}
+      class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
       expect(TA.fields).toStrictEqual({
-        _tag: S.literal("TA"),
-        a: S.string
+        _tag: S.Literal("TA"),
+        a: S.String
       })
     })
 
@@ -426,29 +426,29 @@ describe("Schema > Class APIs", () => {
     })
 
     it("can be extended with Class fields", () => {
-      class TA extends S.TaggedClass<TA>()("TA", { a: S.string }) {}
+      class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
       class B extends S.Class<B>("B")({
-        b: S.number,
+        b: S.Number,
         ...TA.fields
       }) {}
       expect(B.fields).toStrictEqual({
-        _tag: S.literal("TA"),
-        a: S.string,
-        b: S.number
+        _tag: S.Literal("TA"),
+        a: S.String,
+        b: S.Number
       })
       expect({ ...new B({ _tag: "TA", a: "a", b: 1 }) }).toStrictEqual({ _tag: "TA", a: "a", b: 1 })
     })
 
     it("can be extended with TaggedClass fields", () => {
-      class TA extends S.TaggedClass<TA>()("TA", { a: S.string }) {}
+      class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
       class TB extends S.TaggedClass<TB>()("TB", {
-        b: S.number,
+        b: S.Number,
         ...pipe(TA.fields, Struct.omit("_tag"))
       }) {}
       expect(TB.fields).toStrictEqual({
-        _tag: S.literal("TB"),
-        a: S.string,
-        b: S.number
+        _tag: S.Literal("TB"),
+        a: S.String,
+        b: S.Number
       })
       expect({ ...new TB({ a: "a", b: 1 }) }).toStrictEqual({ _tag: "TB", a: "a", b: 1 })
     })
@@ -462,7 +462,7 @@ describe("Schema > Class APIs", () => {
     })
     expect(PersonWithAge.fields).toStrictEqual({
       ...Person.fields,
-      age: S.number
+      age: S.Number
     })
     expect(PersonWithAge.identifier).toStrictEqual("PersonWithAge")
     expect(person.name).toEqual("John")
@@ -635,7 +635,7 @@ describe("Schema > Class APIs", () => {
 
   it("TaggedError", () => {
     class MyError extends S.TaggedError<MyError>()("MyError", {
-      id: S.number
+      id: S.Number
     }) {}
 
     let err = new MyError({ id: 1 })
@@ -656,7 +656,7 @@ describe("Schema > Class APIs", () => {
 
   it("TaggedError/message", () => {
     class MyError extends S.TaggedError<MyError>()("MyError", {
-      id: S.number
+      id: S.Number
     }) {
       get message() {
         return `bad id: ${this.id}`
@@ -674,29 +674,29 @@ describe("Schema > Class APIs", () => {
 
   describe("TaggedRequest", () => {
     it("should expose the fields", () => {
-      class TRA extends S.TaggedRequest<TRA>()("TRA", S.string, S.number, {
-        id: S.number
+      class TRA extends S.TaggedRequest<TRA>()("TRA", S.String, S.Number, {
+        id: S.Number
       }) {}
       expect(TRA.fields).toStrictEqual({
-        _tag: S.literal("TRA"),
-        id: S.number
+        _tag: S.Literal("TRA"),
+        id: S.Number
       })
     })
 
     it("should expose the identifier", () => {
-      class TRA extends S.TaggedRequest<TRA>()("TRA", S.string, S.number, {
-        id: S.number
+      class TRA extends S.TaggedRequest<TRA>()("TRA", S.String, S.Number, {
+        id: S.Number
       }) {}
       expect(TRA.identifier).toEqual("TRA")
-      class TRB extends S.TaggedRequest<TRB>("id")("TRB", S.string, S.number, {
-        id: S.number
+      class TRB extends S.TaggedRequest<TRB>("id")("TRB", S.String, S.Number, {
+        id: S.Number
       }) {}
       expect(TRB.identifier).toEqual("id")
     })
 
     it("baseline", () => {
-      class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", S.string, S.number, {
-        id: S.number
+      class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", S.String, S.Number, {
+        id: S.Number
       }) {}
 
       let req = new MyRequest({ id: 1 })
@@ -713,8 +713,8 @@ describe("Schema > Class APIs", () => {
     })
 
     it("TaggedRequest extends SerializableWithExit", () => {
-      class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", S.string, S.NumberFromString, {
-        id: S.number
+      class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", S.String, S.NumberFromString, {
+        id: S.Number
       }) {}
 
       const req = new MyRequest({ id: 1 })
@@ -746,7 +746,7 @@ describe("Schema > Class APIs", () => {
     })
 
     it("TaggedRequest context", () => {
-      class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", NameString, S.number, {
+      class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", NameString, S.Number, {
         id: IdNumber
       }) {}
 
@@ -817,7 +817,7 @@ describe("Schema > Class APIs", () => {
       class B extends S.Class<B>("B")({
         a: A
       }) {}
-      await Util.expectEncodeSuccess(S.union(B, S.NumberFromString), 1, "1")
+      await Util.expectEncodeSuccess(S.Union(B, S.NumberFromString), 1, "1")
       await Util.expectEncodeSuccess(B, { a: { n: 1 } }, { a: { n: "1" } })
     })
 
@@ -831,7 +831,7 @@ describe("Schema > Class APIs", () => {
       }
       class B extends S.Class<B>("B")({
         n: S.NumberFromString,
-        s: S.string
+        s: S.String
       }) {}
 
       await Util.expectEncodeSuccess(B, new A({ n: 1 }), { n: "1", s: "s" })
@@ -864,15 +864,15 @@ describe("Schema > Class APIs", () => {
 
   it("equivalence", () => {
     class A extends S.TaggedClass<A>()("A", {
-      a: S.string
+      a: S.String
     }) {}
     const eqA = Equivalence.make(A)
     expect(eqA(new A({ a: "a" }), new A({ a: "a" }))).toBe(true)
     expect(eqA(new A({ a: "a" }), new A({ a: "b" }))).toBe(false)
 
     class B extends S.TaggedClass<B>()("B", {
-      b: S.number,
-      as: S.array(A)
+      b: S.Number,
+      as: S.Array(A)
     }) {}
     const eqB = Equivalence.make(B)
     expect(eqB(new B({ b: 1, as: [] }), new B({ b: 1, as: [] }))).toBe(true)

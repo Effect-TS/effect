@@ -105,7 +105,7 @@ const fileSchema: Schema.Schema<Multipart.PersistedFile> = Schema.declare(isPers
 })
 
 /** @internal */
-export const filesSchema: Schema.Schema<ReadonlyArray<Multipart.PersistedFile>> = Schema.array(fileSchema)
+export const filesSchema: Schema.Schema<ReadonlyArray<Multipart.PersistedFile>> = Schema.Array(fileSchema)
 
 /** @internal */
 export const schemaPersisted = <R, I extends Partial<Multipart.Persisted>, A>(
@@ -140,7 +140,7 @@ export const schemaJson = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: Pa
   >(2, (persisted, field) =>
     Effect.map(
       Schema.decodeUnknown(
-        Schema.struct({
+        Schema.Struct({
           [field]: fromJson
         }),
         options

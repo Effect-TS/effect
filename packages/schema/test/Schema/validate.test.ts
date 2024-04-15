@@ -15,7 +15,7 @@ const expectValidateFailure = async <A, I>(
 ) => Util.expectFailure(S.validate(schema)(input), message)
 
 describe("Schema > validate", () => {
-  const schema = S.struct({ a: Util.NumberFromChar })
+  const schema = S.Struct({ a: Util.NumberFromChar })
 
   it("should return Left on invalid values", async () => {
     await Util.expectEffectSuccess(S.validate(schema)({ a: 1 }), { a: 1 })
@@ -51,7 +51,7 @@ describe("Schema > validate", () => {
 
   describe("struct", () => {
     it("required property signature", async () => {
-      const schema = S.struct({ a: Util.NumberFromChar })
+      const schema = S.Struct({ a: Util.NumberFromChar })
       await expectValidateSuccess(schema, { a: 1 })
       await expectValidateFailure(
         schema,
@@ -63,7 +63,7 @@ describe("Schema > validate", () => {
     })
 
     it("required property signature with undefined", async () => {
-      const schema = S.struct({ a: S.union(S.number, S.undefined) })
+      const schema = S.Struct({ a: S.Union(S.Number, S.Undefined) })
       await expectValidateSuccess(schema, { a: 1 })
       await expectValidateSuccess(schema, { a: undefined })
       await expectValidateSuccess(schema, { a: 1, b: "b" }, { a: 1 })

@@ -12,7 +12,7 @@ const expectAssertsFailure = <A, I>(schema: S.Schema<A, I>, input: unknown, mess
 
 describe("Schema > asserts", () => {
   it("should respect outer/inner options", () => {
-    const schema = S.struct({ a: Util.NumberFromChar })
+    const schema = S.Struct({ a: Util.NumberFromChar })
     const input = { a: 1, b: "b" }
     expect(() => S.asserts(schema)(input, { onExcessProperty: "error" })).toThrow(
       new Error(`{ a: number }
@@ -30,7 +30,7 @@ describe("Schema > asserts", () => {
 
   describe("struct", () => {
     it("required property signature", () => {
-      const schema = S.struct({ a: Util.NumberFromChar })
+      const schema = S.Struct({ a: Util.NumberFromChar })
       expectAssertsSuccess(schema, { a: 1 })
       expectAssertsFailure(
         schema,
@@ -42,7 +42,7 @@ describe("Schema > asserts", () => {
     })
 
     it("required property signature with undefined", () => {
-      const schema = S.struct({ a: S.union(S.number, S.undefined) })
+      const schema = S.Struct({ a: S.Union(S.Number, S.Undefined) })
       expectAssertsSuccess(schema, { a: 1 })
       expectAssertsSuccess(schema, { a: undefined })
       expectAssertsSuccess(schema, { a: 1, b: "b" })

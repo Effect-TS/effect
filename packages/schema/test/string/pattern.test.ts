@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 
 describe("string > pattern", () => {
   it("is", () => {
-    const schema = S.string.pipe(S.pattern(/^abb+$/))
+    const schema = S.String.pipe(S.pattern(/^abb+$/))
     const is = S.is(schema)
     expect(is("abb")).toEqual(true)
     expect(is("abbb")).toEqual(true)
@@ -15,13 +15,13 @@ describe("string > pattern", () => {
 
   it("should reset lastIndex to 0 before each `test` call (#88)", () => {
     const regex = /^(A|B)$/g
-    const schema = S.string.pipe(S.pattern(regex))
+    const schema = S.String.pipe(S.pattern(regex))
     expect(S.decodeSync(schema)("A")).toEqual("A")
     expect(S.decodeSync(schema)("A")).toEqual("A")
   })
 
   it("decoding", async () => {
-    const schema = S.string.pipe(S.pattern(/^abb+$/))
+    const schema = S.String.pipe(S.pattern(/^abb+$/))
     await Util.expectDecodeUnknownSuccess(schema, "abb")
     await Util.expectDecodeUnknownSuccess(schema, "abbb")
 

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 
 describe("Schema > union", () => {
   it("annotations()", () => {
-    const schema = S.union(S.string, S.number).annotations({ identifier: "X" }).annotations({ title: "Y" })
+    const schema = S.Union(S.String, S.Number).annotations({ identifier: "X" }).annotations({ title: "Y" })
     expect(schema.ast.annotations).toStrictEqual({
       [AST.IdentifierAnnotationId]: "X",
       [AST.TitleAnnotationId]: "Y"
@@ -13,15 +13,15 @@ describe("Schema > union", () => {
   })
 
   it("should expose the members", () => {
-    const schema = S.union(S.string, S.number)
-    expect(schema.members).toStrictEqual([S.string, S.number])
+    const schema = S.Union(S.String, S.Number)
+    expect(schema.members).toStrictEqual([S.String, S.Number])
   })
 
   describe("decoding", () => {
     it("should use identifier annotations to generate a more informative error message when an incorrect data type is provided", async () => {
-      const schema = S.union(
-        S.struct({ a: S.string }).annotations({ identifier: "MyDataType1" }),
-        S.struct({ a: S.string }).annotations({ identifier: "MyDataType2" })
+      const schema = S.Union(
+        S.Struct({ a: S.String }).annotations({ identifier: "MyDataType1" }),
+        S.Struct({ a: S.String }).annotations({ identifier: "MyDataType2" })
       )
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -35,14 +35,14 @@ describe("Schema > union", () => {
     })
 
     it("empty union", async () => {
-      const schema = S.union()
+      const schema = S.Union()
       await Util.expectDecodeUnknownFailure(schema, 1, "Expected never, actual 1")
     })
 
     it("members with literals but the input doesn't have any", async () => {
-      const schema = S.union(
-        S.struct({ a: S.literal(1), c: S.string }),
-        S.struct({ b: S.literal(2), d: S.number })
+      const schema = S.Union(
+        S.Struct({ a: S.Literal(1), c: S.String }),
+        S.Struct({ b: S.Literal(2), d: S.Number })
       )
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -85,10 +85,10 @@ describe("Schema > union", () => {
     })
 
     it("members with multiple tags", async () => {
-      const schema = S.union(
-        S.struct({ category: S.literal("catA"), tag: S.literal("a") }),
-        S.struct({ category: S.literal("catA"), tag: S.literal("b") }),
-        S.struct({ category: S.literal("catA"), tag: S.literal("c") })
+      const schema = S.Union(
+        S.Struct({ category: S.Literal("catA"), tag: S.Literal("a") }),
+        S.Struct({ category: S.Literal("catA"), tag: S.Literal("b") }),
+        S.Struct({ category: S.Literal("catA"), tag: S.Literal("c") })
       )
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -131,13 +131,13 @@ describe("Schema > union", () => {
     })
 
     it("nested unions", async () => {
-      const a = S.struct({ _tag: S.literal("a") }).annotations({ identifier: "a" })
-      const b = S.struct({ _tag: S.literal("b") }).annotations({ identifier: "b" })
-      const A = S.struct({ a: S.literal("A"), c: S.string }).annotations({ identifier: "A" })
-      const B = S.struct({ b: S.literal("B"), d: S.number }).annotations({ identifier: "B" })
-      const ab = S.union(a, b).annotations({ identifier: "ab" })
-      const AB = S.union(A, B).annotations({ identifier: "AB" })
-      const schema = S.union(ab, AB)
+      const a = S.Struct({ _tag: S.Literal("a") }).annotations({ identifier: "a" })
+      const b = S.Struct({ _tag: S.Literal("b") }).annotations({ identifier: "b" })
+      const A = S.Struct({ a: S.Literal("A"), c: S.String }).annotations({ identifier: "A" })
+      const B = S.Struct({ b: S.Literal("B"), d: S.Number }).annotations({ identifier: "B" })
+      const ab = S.Union(a, b).annotations({ identifier: "ab" })
+      const AB = S.Union(A, B).annotations({ identifier: "AB" })
+      const schema = S.Union(ab, AB)
       await Util.expectDecodeUnknownSuccess(schema, { _tag: "a" })
       await Util.expectDecodeUnknownSuccess(schema, { _tag: "b" })
       await Util.expectDecodeUnknownSuccess(schema, { a: "A", c: "c" })
@@ -165,15 +165,15 @@ describe("Schema > union", () => {
 
   describe("encoding", () => {
     it("union", async () => {
-      const schema = S.union(S.string, Util.NumberFromChar)
+      const schema = S.Union(S.String, Util.NumberFromChar)
       await Util.expectEncodeSuccess(schema, "a", "a")
       await Util.expectEncodeSuccess(schema, 1, "1")
     })
 
     it("union/ optional property signatures", async () => {
-      const ab = S.struct({ a: S.string, b: S.optional(S.number, { exact: true }) })
-      const ac = S.struct({ a: S.string, c: S.optional(S.number, { exact: true }) })
-      const schema = S.union(ab, ac)
+      const ab = S.Struct({ a: S.String, b: S.optional(S.Number, { exact: true }) })
+      const ac = S.Struct({ a: S.String, c: S.optional(S.Number, { exact: true }) })
+      const schema = S.Union(ab, ac)
       await Util.expectEncodeSuccess(
         schema,
         { a: "a", c: 1 },

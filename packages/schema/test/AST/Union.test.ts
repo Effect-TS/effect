@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 
 describe("AST.Union", () => {
   it("flatten should un-nest union members", () => {
-    const asts = AST.flatten([S.union(S.literal("a", "b"), S.literal("c", "d")).ast])
+    const asts = AST.flatten([S.Union(S.Literal("a", "b"), S.Literal("c", "d")).ast])
     expect(asts.length).toBe(4)
   })
 
@@ -31,8 +31,8 @@ describe("AST.Union", () => {
     const schema: S.Schema<A> = S.partial(
       S.suspend(
         () =>
-          S.struct({
-            a: S.union(S.null, schema)
+          S.Struct({
+            a: S.Union(S.Null, schema)
           })
       )
     )
@@ -40,15 +40,15 @@ describe("AST.Union", () => {
   })
 
   it("descriptions of nested unions should be preserved", () => {
-    const u = S.union(S.string, S.number)
+    const u = S.Union(S.String, S.Number)
     const nested1 = u.annotations({ identifier: "nested1" })
     const nested2 = u.annotations({ identifier: "nested2" })
 
     expect(String(u)).toStrictEqual("string | number")
-    expect(String(S.union(nested1, nested1))).toStrictEqual("nested1 | nested1")
-    expect(String(S.union(nested1, S.string))).toStrictEqual("nested1 | string")
-    expect(String(S.union(nested1, u))).toStrictEqual("nested1 | string | number")
-    expect(String(S.union(nested1, nested2))).toStrictEqual("nested1 | nested2")
-    expect(String(S.union(nested1, nested2, S.string))).toStrictEqual("nested1 | nested2 | string")
+    expect(String(S.Union(nested1, nested1))).toStrictEqual("nested1 | nested1")
+    expect(String(S.Union(nested1, S.String))).toStrictEqual("nested1 | string")
+    expect(String(S.Union(nested1, u))).toStrictEqual("nested1 | string | number")
+    expect(String(S.Union(nested1, nested2))).toStrictEqual("nested1 | nested2")
+    expect(String(S.Union(nested1, nested2, S.String))).toStrictEqual("nested1 | nested2 | string")
   })
 })

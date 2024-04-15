@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
 describe("Schema > validateEither", () => {
-  const schema = S.struct({ a: Util.NumberFromChar })
+  const schema = S.Struct({ a: Util.NumberFromChar })
 
   it("should return Left on invalid values", () => {
     Util.expectEitherRight(S.validateEither(schema)({ a: 1 }), { a: 1 })

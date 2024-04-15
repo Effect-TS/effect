@@ -8,6 +8,7 @@ import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
+import * as errors_ from "./internal/errors.js"
 import * as util_ from "./internal/util.js"
 import * as ParseResult from "./ParseResult.js"
 import type * as Schema from "./Schema.js"
@@ -58,7 +59,7 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
   }
   switch (ast._tag) {
     case "NeverKeyword":
-      throw new Error("cannot build an Equivalence for `never`")
+      throw new Error(errors_.getEquivalenceErrorMessage("`never`"))
     case "Transformation":
       return go(ast.to)
     case "Declaration":

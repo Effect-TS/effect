@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 describe("Schema > pick", () => {
   it("struct", async () => {
     const a = Symbol.for("@effect/schema/test/a")
-    const schema = S.struct({ [a]: S.string, b: S.NumberFromString, c: S.boolean }).pipe(
+    const schema = S.Struct({ [a]: S.String, b: S.NumberFromString, c: S.Boolean }).pipe(
       S.pick(a, "b")
     )
     await Util.expectDecodeUnknownSuccess(schema, { [a]: "a", b: "1" }, { [a]: "a", b: 1 })
@@ -32,10 +32,10 @@ describe("Schema > pick", () => {
   })
 
   it("struct with optionals", async () => {
-    const schema = S.struct({
-      a: S.optional(S.string, { exact: true }),
+    const schema = S.Struct({
+      a: S.optional(S.String, { exact: true }),
       b: S.NumberFromString,
-      c: S.boolean
+      c: S.Boolean
     })
       .pipe(
         S.pick("a", "b")
@@ -64,9 +64,9 @@ describe("Schema > pick", () => {
     }
     const A: S.Schema<A> = S.suspend( // intended outer suspend
       () =>
-        S.struct({
-          a: S.string,
-          as: S.array(A)
+        S.Struct({
+          a: S.String,
+          as: S.Array(A)
         })
     )
     const schema = A.pipe(S.pick("as"))
@@ -87,10 +87,10 @@ describe("Schema > pick", () => {
   })
 
   it("struct with property signature transformations", async () => {
-    const schema = S.struct({
-      a: S.optional(S.string, { exact: true, default: () => "" }),
+    const schema = S.Struct({
+      a: S.optional(S.String, { exact: true, default: () => "" }),
       b: S.NumberFromString,
-      c: S.boolean
+      c: S.Boolean
     }).pipe(
       S.pick("a", "b")
     )
@@ -99,7 +99,7 @@ describe("Schema > pick", () => {
   })
 
   it("record(string, number)", async () => {
-    const schema = S.record(S.string, S.number).pipe(S.pick("a", "b"))
+    const schema = S.Record(S.String, S.Number).pipe(S.pick("a", "b"))
     await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: 2 })
     await Util.expectDecodeUnknownFailure(
       schema,
@@ -120,7 +120,7 @@ describe("Schema > pick", () => {
   it("record(symbol, number)", async () => {
     const a = Symbol.for("@effect/schema/test/a")
     const b = Symbol.for("@effect/schema/test/b")
-    const schema = S.record(S.symbolFromSelf, S.number).pipe(S.pick(a, b))
+    const schema = S.Record(S.SymbolFromSelf, S.Number).pipe(S.pick(a, b))
     await Util.expectDecodeUnknownSuccess(schema, { [a]: 1, [b]: 2 })
     await Util.expectDecodeUnknownFailure(
       schema,
@@ -139,10 +139,10 @@ describe("Schema > pick", () => {
   })
 
   it("record(string, string) & record(`a${string}`, number)", async () => {
-    const schema = S.struct(
+    const schema = S.Struct(
       {},
-      S.record(S.string, S.string),
-      S.record(S.templateLiteral(S.literal("a"), S.string), S.number)
+      S.Record(S.String, S.String),
+      S.Record(S.TemplateLiteral(S.Literal("a"), S.String), S.Number)
     ).pipe(
       S.pick("a", "b")
     )
@@ -150,14 +150,14 @@ describe("Schema > pick", () => {
   })
 
   it("typeSchema(Class)", () => {
-    class A extends S.Class<A>("A")({ a: S.string, b: S.NumberFromString }) {}
+    class A extends S.Class<A>("A")({ a: S.String, b: S.NumberFromString }) {}
     const schema = A.pipe(S.typeSchema, S.pick("b"))
-    expect(schema.ast).toStrictEqual(S.struct({ b: S.number }).ast)
+    expect(schema.ast).toStrictEqual(S.Struct({ b: S.Number }).ast)
   })
 
   it("Class", () => {
-    class A extends S.Class<A>("A")({ a: S.string, b: S.NumberFromString }) {}
+    class A extends S.Class<A>("A")({ a: S.String, b: S.NumberFromString }) {}
     const schema = A.pipe(S.pick("b"))
-    expect(schema.ast).toStrictEqual(S.struct({ b: S.NumberFromString }).ast)
+    expect(schema.ast).toStrictEqual(S.Struct({ b: S.NumberFromString }).ast)
   })
 })

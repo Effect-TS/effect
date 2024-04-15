@@ -9,132 +9,132 @@ const expectConstraints = <A, I>(schema: S.Schema<A, I>, constraints: A.Constrai
 describe("Arbitrary > getConstraints", () => {
   describe("number", () => {
     it("GreaterThanTypeId", () => {
-      expectConstraints(S.number.pipe(S.greaterThan(0)), new A.NumberConstraints({ min: 0 }))
+      expectConstraints(S.Number.pipe(S.greaterThan(0)), new A.NumberConstraints({ min: 0 }))
     })
 
     it("GreaterThanOrEqualToTypeId", () => {
-      expectConstraints(S.number.pipe(S.greaterThanOrEqualTo(0)), new A.NumberConstraints({ min: 0 }))
+      expectConstraints(S.Number.pipe(S.greaterThanOrEqualTo(0)), new A.NumberConstraints({ min: 0 }))
     })
 
     it("LessThanTypeId", () => {
-      expectConstraints(S.number.pipe(S.lessThan(0)), new A.NumberConstraints({ max: 0 }))
+      expectConstraints(S.Number.pipe(S.lessThan(0)), new A.NumberConstraints({ max: 0 }))
     })
 
     it("LessThanOrEqualToTypeId", () => {
-      expectConstraints(S.number.pipe(S.lessThanOrEqualTo(0)), new A.NumberConstraints({ max: 0 }))
+      expectConstraints(S.Number.pipe(S.lessThanOrEqualTo(0)), new A.NumberConstraints({ max: 0 }))
     })
 
     it("PositiveTypeId", () => {
-      expectConstraints(S.number.pipe(S.positive()), new A.NumberConstraints({ min: 0 }))
+      expectConstraints(S.Number.pipe(S.positive()), new A.NumberConstraints({ min: 0 }))
     })
 
     it("NonNegativeTypeId", () => {
-      expectConstraints(S.number.pipe(S.nonNegative()), new A.NumberConstraints({ min: 0 }))
+      expectConstraints(S.Number.pipe(S.nonNegative()), new A.NumberConstraints({ min: 0 }))
     })
 
     it("NegativeTypeId", () => {
-      expectConstraints(S.number.pipe(S.negative()), new A.NumberConstraints({ max: 0 }))
+      expectConstraints(S.Number.pipe(S.negative()), new A.NumberConstraints({ max: 0 }))
     })
 
     it("NonPositiveTypeId", () => {
-      expectConstraints(S.number.pipe(S.nonPositive()), new A.NumberConstraints({ max: 0 }))
+      expectConstraints(S.Number.pipe(S.nonPositive()), new A.NumberConstraints({ max: 0 }))
     })
 
     it("BetweenTypeId", () => {
-      expectConstraints(S.number.pipe(S.between(0, 10)), new A.NumberConstraints({ min: 0, max: 10 }))
+      expectConstraints(S.Number.pipe(S.between(0, 10)), new A.NumberConstraints({ min: 0, max: 10 }))
     })
   })
 
   describe("bigint", () => {
     it("GreaterThanBigintTypeId", () => {
       expectConstraints(
-        S.bigintFromSelf.pipe(S.greaterThanBigint(BigInt(0))),
+        S.BigIntFromSelf.pipe(S.greaterThanBigInt(BigInt(0))),
         new A.BigIntConstraints({ min: BigInt(0) })
       )
     })
 
     it("GreaterThanOrEqualToBigintTypeId", () => {
       expectConstraints(
-        S.bigintFromSelf.pipe(S.greaterThanOrEqualToBigint(BigInt(0))),
+        S.BigIntFromSelf.pipe(S.greaterThanOrEqualToBigInt(BigInt(0))),
         new A.BigIntConstraints({ min: BigInt(0) })
       )
     })
 
     it("LessThanBigintTypeId", () => {
       expectConstraints(
-        S.bigintFromSelf.pipe(S.lessThanBigint(BigInt(0))),
+        S.BigIntFromSelf.pipe(S.lessThanBigInt(BigInt(0))),
         new A.BigIntConstraints({ max: BigInt(0) })
       )
     })
 
     it("LessThanOrEqualToBigintTypeId", () => {
       expectConstraints(
-        S.bigintFromSelf.pipe(S.lessThanOrEqualToBigint(BigInt(0))),
+        S.BigIntFromSelf.pipe(S.lessThanOrEqualToBigInt(BigInt(0))),
         new A.BigIntConstraints({ max: BigInt(0) })
       )
     })
 
     it("PositiveBigintTypeId", () => {
       expectConstraints(
-        S.bigintFromSelf.pipe(S.positiveBigint()),
+        S.BigIntFromSelf.pipe(S.positiveBigInt()),
         new A.BigIntConstraints({ min: BigInt(0) })
       )
     })
 
     it("NonNegativeBigintTypeId", () => {
       expectConstraints(
-        S.bigintFromSelf.pipe(S.nonNegativeBigint()),
+        S.BigIntFromSelf.pipe(S.nonNegativeBigInt()),
         new A.BigIntConstraints({ min: BigInt(0) })
       )
     })
 
     it("NegativeBigintTypeId", () => {
       expectConstraints(
-        S.bigintFromSelf.pipe(S.negativeBigint()),
+        S.BigIntFromSelf.pipe(S.negativeBigInt()),
         new A.BigIntConstraints({ max: BigInt(0) })
       )
     })
 
     it("NonPositiveBigintTypeId", () => {
       expectConstraints(
-        S.bigintFromSelf.pipe(S.nonPositiveBigint()),
+        S.BigIntFromSelf.pipe(S.nonPositiveBigInt()),
         new A.BigIntConstraints({ max: BigInt(0) })
       )
     })
 
     it("BetweenBigintTypeId", () => {
       expectConstraints(
-        S.bigintFromSelf.pipe(S.betweenBigint(BigInt(0), BigInt(10))),
+        S.BigIntFromSelf.pipe(S.betweenBigInt(BigInt(0), BigInt(10))),
         new A.BigIntConstraints({ min: BigInt(0), max: BigInt(10) })
       )
     })
   })
 
   it("IntTypeId", () => {
-    expectConstraints(S.number.pipe(S.int()), new A.IntegerConstraints({}))
+    expectConstraints(S.Number.pipe(S.int()), new A.IntegerConstraints({}))
   })
 
   it("MinLengthTypeId", () => {
-    expectConstraints(S.string.pipe(S.minLength(5)), new A.StringConstraints({ minLength: 5 }))
+    expectConstraints(S.String.pipe(S.minLength(5)), new A.StringConstraints({ minLength: 5 }))
   })
 
   it("MaxLengthTypeId", () => {
-    expectConstraints(S.string.pipe(S.maxLength(5)), new A.StringConstraints({ maxLength: 5 }))
+    expectConstraints(S.String.pipe(S.maxLength(5)), new A.StringConstraints({ maxLength: 5 }))
   })
 
   it("ItemsCountTypeId", () => {
     expectConstraints(
-      S.array(S.string).pipe(S.itemsCount(5)),
+      S.Array(S.String).pipe(S.itemsCount(5)),
       new A.ArrayConstraints({ minLength: 5, maxLength: 5 })
     )
   })
 
   it("MinItemsTypeId", () => {
-    expectConstraints(S.array(S.string).pipe(S.minItems(4)), new A.ArrayConstraints({ minLength: 4 }))
+    expectConstraints(S.Array(S.String).pipe(S.minItems(4)), new A.ArrayConstraints({ minLength: 4 }))
   })
 
   it("MaxItemsTypeId", () => {
-    expectConstraints(S.array(S.string).pipe(S.maxItems(6)), new A.ArrayConstraints({ maxLength: 6 }))
+    expectConstraints(S.Array(S.String).pipe(S.maxItems(6)), new A.ArrayConstraints({ maxLength: 6 }))
   })
 })
 

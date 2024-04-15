@@ -101,7 +101,7 @@ export const schema: {
  * @category schema
  */
 export const ImageData: Schema.Schema<ImageData> = schema(
-  Schema.any,
+  Schema.Any,
   (_) => [(_ as ImageData).data.buffer]
 )
 
@@ -110,7 +110,7 @@ export const ImageData: Schema.Schema<ImageData> = schema(
  * @category schema
  */
 export const MessagePort: Schema.Schema<MessagePort> = schema(
-  Schema.any,
+  Schema.Any,
   (_) => [_ as MessagePort]
 )
 

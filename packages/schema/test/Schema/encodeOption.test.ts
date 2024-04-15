@@ -7,7 +7,7 @@ describe("Schema > encodeOption", () => {
     Util.expectNone(S.encodeOption(Util.AsyncString)("a"))
   })
 
-  const schema = S.struct({ a: Util.NumberFromChar })
+  const schema = S.Struct({ a: Util.NumberFromChar })
 
   it("should return None on invalid values", () => {
     Util.expectSome(S.encodeOption(schema)({ a: 1 }), { a: "1" })

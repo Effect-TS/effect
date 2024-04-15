@@ -185,9 +185,9 @@ const channelFromQueue = <A>(queue: Queue.Queue<A | typeof EOF>) => {
   return loop
 }
 
-const emptyExit = Schema.encodeSync(Schema.exit({
-  failure: Schema.never,
-  success: Schema.never
+const emptyExit = Schema.encodeSync(Schema.Exit({
+  failure: Schema.Never,
+  success: Schema.Never
 }))(Exit.failCause(Cause.empty))
 
 /**
@@ -199,19 +199,19 @@ export const toHandler = <R extends Router<any, any>>(router: R, options?: {
 }) => {
   const spanPrefix = options?.spanPrefix ?? "Rpc.router "
   const schema: Schema.Schema<any, unknown, readonly [Schema.TaggedRequest.Any, Rpc.Rpc<any, any>]> = Schema
-    .union(
+    .Union(
       ...[...router.rpcs].map((rpc) =>
         Schema.transform(
           rpc.schema,
-          Schema.typeSchema(Schema.tuple(rpc.schema, Schema.any)),
+          Schema.typeSchema(Schema.Tuple(rpc.schema, Schema.Any)),
           { decode: (request) => [request, rpc] as const, encode: ([request]) => request }
         )
       )
     )
-  const schemaArray = Schema.array(Rpc.RequestSchema(schema))
+  const schemaArray = Schema.Array(Rpc.RequestSchema(schema))
   const decode = Schema.decodeUnknown(schemaArray)
   const getEncode = withRequestTag((req) => Schema.encode(Serializable.exitSchema(req)))
-  const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.chunk(Serializable.exitSchema(req))))
+  const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.Chunk(Serializable.exitSchema(req))))
 
   return (u: unknown): Stream.Stream<Router.Response, ParseError, Router.Context<R>> =>
     pipe(
@@ -296,19 +296,19 @@ export const toHandlerEffect = <R extends Router<any, any>>(router: R, options?:
 }) => {
   const spanPrefix = options?.spanPrefix ?? "Rpc.router "
   const schema: Schema.Schema<any, unknown, readonly [Schema.TaggedRequest.Any, Rpc.Rpc<any, any>]> = Schema
-    .union(
+    .Union(
       ...[...router.rpcs].map((rpc) =>
         Schema.transform(
           rpc.schema,
-          Schema.typeSchema(Schema.tuple(rpc.schema, Schema.any)),
+          Schema.typeSchema(Schema.Tuple(rpc.schema, Schema.Any)),
           { decode: (request) => [request, rpc] as const, encode: ([request]) => request }
         )
       )
     )
-  const schemaArray = Schema.array(Rpc.RequestSchema(schema))
+  const schemaArray = Schema.Array(Rpc.RequestSchema(schema))
   const decode = Schema.decodeUnknown(schemaArray)
   const getEncode = withRequestTag((req) => Schema.encode(Serializable.exitSchema(req)))
-  const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.chunk(Serializable.exitSchema(req))))
+  const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.Chunk(Serializable.exitSchema(req))))
 
   return (u: unknown): Effect.Effect<ReadonlyArray<Router.ResponseEffect>, ParseError, Router.Context<R>> =>
     Effect.flatMap(
@@ -364,10 +364,10 @@ export const toHandlerRaw = <R extends Router<any, any>>(router: R) => {
     readonly [Schema.TaggedRequest.Any, Rpc.Rpc<any, any>],
     unknown,
     Router.ContextRaw<R>
-  > = Schema.union(...[...router.rpcs].map((rpc) =>
+  > = Schema.Union(...[...router.rpcs].map((rpc) =>
     Schema.transform(
       Schema.typeSchema(rpc.schema),
-      Schema.typeSchema(Schema.tuple(rpc.schema, Schema.any)),
+      Schema.typeSchema(Schema.Tuple(rpc.schema, Schema.Any)),
       { decode: (request) => [request, rpc] as const, encode: ([request]) => request }
     )
   ))
@@ -396,7 +396,7 @@ export const toHandlerRaw = <R extends Router<any, any>>(router: R) => {
 export const toHandlerUndecoded = <R extends Router<any, any>>(router: R) => {
   const handler = toHandlerRaw(router)
   const getEncode = withRequestTag((req) => Schema.encode(Serializable.successSchema(req)))
-  const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.chunkFromSelf(Serializable.successSchema(req))))
+  const getEncodeChunk = withRequestTag((req) => Schema.encode(Schema.ChunkFromSelf(Serializable.successSchema(req))))
   return <Req extends Router.Request<R>>(request: Req): Rpc.Rpc.ResultUndecoded<Req, Router.Context<R>> => {
     const result = handler(request)
     if (Effect.isEffect(result)) {

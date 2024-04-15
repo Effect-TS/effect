@@ -3,24 +3,24 @@ import { describe, expect, it } from "vitest"
 
 describe("Schema > toString", () => {
   it("Schema", () => {
-    expect(String(S.string)).toStrictEqual("string")
-    expect(String(S.union(S.string, S.number))).toStrictEqual("string | number")
-    expect(String(S.tuple(S.string, S.optionalElement(S.number)))).toStrictEqual("readonly [string, number?]")
+    expect(String(S.String)).toStrictEqual("string")
+    expect(String(S.Union(S.String, S.Number))).toStrictEqual("string | number")
+    expect(String(S.Tuple(S.String, S.optionalElement(S.Number)))).toStrictEqual("readonly [string, number?]")
   })
 
   it("BrandedSchema", () => {
-    expect(String(S.string.pipe(S.brand("my-brand")))).toStrictEqual(`string & Brand<"my-brand">`)
+    expect(String(S.String.pipe(S.brand("my-brand")))).toStrictEqual(`string & Brand<"my-brand">`)
   })
 
-  it("OptionalElement", () => {
-    expect(String(S.optionalElement(S.string))).toStrictEqual("string?")
+  it("optionalElement", () => {
+    expect(String(S.optionalElement(S.String))).toStrictEqual("string?")
   })
 
   it("PropertySignature", () => {
-    expect(String(S.optional(S.string))).toStrictEqual(
+    expect(String(S.optional(S.String))).toStrictEqual(
       `PropertySignature<"?:", string | undefined, never, "?:", string | undefined>`
     )
-    expect(String(S.optional(S.string).pipe(S.fromKey("a")))).toStrictEqual(
+    expect(String(S.optional(S.String).pipe(S.fromKey("a")))).toStrictEqual(
       `PropertySignature<"?:", string | undefined, "a", "?:", string | undefined>`
     )
   })

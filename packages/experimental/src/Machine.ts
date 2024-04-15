@@ -138,7 +138,7 @@ export type ActorTypeId = typeof ActorTypeId
  * @category errors
  */
 export class MachineDefect extends Schema.TaggedError<MachineDefect>()("MachineDefect", {
-  cause: Schema.cause({ error: Schema.never })
+  cause: Schema.Cause({ error: Schema.Never })
 }) {
   /**
    * @since 1.0.0
@@ -707,7 +707,7 @@ export const boot = <
           p.tag
         )),
         decodeRequest: Schema.decodeUnknown(
-          Schema.union(
+          Schema.Union(
             ...ReadonlyArray.filter(
               procedures.public,
               Procedure.isSerializable
@@ -903,6 +903,6 @@ export const restore = <
   R | SR
 > =>
   Effect.flatMap(
-    Schema.decodeUnknown(Schema.tuple(self.schemaInput, self.schemaState))(snapshot),
+    Schema.decodeUnknown(Schema.Tuple(self.schemaInput, self.schemaState))(snapshot),
     ([input, previousState]) => (boot as any)(self, input, { previousState })
   )

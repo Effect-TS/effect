@@ -4,19 +4,19 @@ import { describe, expect, it } from "vitest"
 
 describe("AST > getWeight", () => {
   it("order", () => {
-    const transformation = S.optionFromSelf(S.number)
-    const union = S.union(S.struct({ a: S.string }), S.struct({ b: S.number }))
-    const refinement = S.array(S.string).pipe(S.filter((as) => as.length === 2))
+    const transformation = S.OptionFromSelf(S.Number)
+    const union = S.Union(S.Struct({ a: S.String }), S.Struct({ b: S.Number }))
+    const refinement = S.Array(S.String).pipe(S.filter((as) => as.length === 2))
     const actual = [
       transformation.ast,
       union.ast,
       refinement.ast,
-      S.unknown.ast,
-      S.any.ast
+      S.Unknown.ast,
+      S.Any.ast
     ].map(AST.getWeight).sort()
     const expected = [
-      S.unknown.ast,
-      S.any.ast,
+      S.Unknown.ast,
+      S.Any.ast,
       refinement.ast,
       union.ast,
       transformation.ast
@@ -25,7 +25,7 @@ describe("AST > getWeight", () => {
   })
 
   it("Class", () => {
-    class A extends S.Class<A>("A")({ a: S.string, b: S.number }) {}
+    class A extends S.Class<A>("A")({ a: S.String, b: S.Number }) {}
     const schema = A.pipe(S.typeSchema)
     expect(AST.getWeight(schema.ast)).toStrictEqual([6, 2, 0])
   })

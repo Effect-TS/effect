@@ -5,11 +5,11 @@ import { describe, expect, it } from "vitest"
 
 describe("number > multipleOf", () => {
   it("property tests", () => {
-    Util.roundtrip(S.multipleOf(2)(S.number))
+    Util.roundtrip(S.multipleOf(2)(S.Number))
   })
 
   it("is", () => {
-    const schema = S.number.pipe(S.multipleOf(-.2))
+    const schema = S.Number.pipe(S.multipleOf(-.2))
     const is = P.is(schema)
     expect(is(-2.8)).toEqual(true)
     expect(is(-2)).toEqual(true)
@@ -21,7 +21,7 @@ describe("number > multipleOf", () => {
   })
 
   it("decoding", async () => {
-    const schema = S.number.pipe(S.multipleOf(2)).annotations({ identifier: "Even" })
+    const schema = S.Number.pipe(S.multipleOf(2)).annotations({ identifier: "Even" })
     await Util.expectDecodeUnknownSuccess(schema, -4)
     await Util.expectDecodeUnknownFailure(
       schema,

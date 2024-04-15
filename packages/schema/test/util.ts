@@ -169,14 +169,14 @@ export const printAST = <A, I, R>(schema: S.Schema<A, I, R>) => {
 export const identityTransform = <A>(schema: S.Schema<A>): S.Schema<A> => schema.pipe(S.compose(schema))
 
 export const X2 = S.transform(
-  S.string,
-  S.string,
+  S.String,
+  S.String,
   { decode: (s) => s + s, encode: (s) => s.substring(0, s.length / 2) }
 )
 
 export const X3 = S.transform(
-  S.string,
-  S.string,
+  S.String,
+  S.String,
   { decode: (s) => s + s + s, encode: (s) => s.substring(0, s.length / 3) }
 )
 
@@ -289,12 +289,12 @@ export const AsyncDeclaration = S.declare(
   }
 )
 
-export const AsyncString = effectify(S.string).annotations({ identifier: "AsyncString" })
+export const AsyncString = effectify(S.String).annotations({ identifier: "AsyncString" })
 
 const Name = Context.GenericTag<"Name", string>("Name")
 
 export const DependencyString = S.transformOrFail(
-  S.string,
-  S.string,
+  S.String,
+  S.String,
   { decode: (s) => Effect.andThen(Name, s), encode: (s) => Effect.andThen(Name, s) }
 ).annotations({ identifier: "DependencyString" })

@@ -7,6 +7,7 @@ import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
 import * as FastCheck from "./FastCheck.js"
+import * as errors_ from "./internal/errors.js"
 import * as filters_ from "./internal/filters.js"
 import * as util_ from "./internal/util.js"
 import type * as Schema from "./Schema.js"
@@ -106,7 +107,7 @@ const go = (ast: AST.AST, options: Options): LazyArbitrary<any> => {
   }
   switch (ast._tag) {
     case "Declaration": {
-      throw new Error(`cannot build an Arbitrary for a declaration without annotations (${ast})`)
+      throw new Error(errors_.getArbitraryErrorMessage(`a declaration without annotations (${ast})`))
     }
     case "Literal":
       return (fc) => fc.constant(ast.literal)
@@ -117,7 +118,7 @@ const go = (ast: AST.AST, options: Options): LazyArbitrary<any> => {
       return (fc) => fc.constant(undefined)
     case "NeverKeyword":
       return () => {
-        throw new Error("cannot build an Arbitrary for `never`")
+        throw new Error(errors_.getArbitraryErrorMessage("`never`"))
       }
     case "UnknownKeyword":
     case "AnyKeyword":
@@ -278,7 +279,7 @@ const go = (ast: AST.AST, options: Options): LazyArbitrary<any> => {
     }
     case "Enums": {
       if (ast.enums.length === 0) {
-        throw new Error("cannot build an Arbitrary for an empty enum")
+        throw new Error(errors_.getArbitraryErrorMessage("an empty enum"))
       }
       return (fc) => fc.oneof(...ast.enums.map(([_, value]) => fc.constant(value)))
     }
@@ -421,9 +422,9 @@ export const getConstraints = (ast: AST.Refinement): Constraints | undefined => 
       })
     // bigint
     case filters_.GreaterThanBigintTypeId:
-    case filters_.GreaterThanOrEqualToBigintTypeId:
-    case filters_.LessThanBigintTypeId:
-    case filters_.LessThanOrEqualToBigintTypeId:
+    case filters_.GreaterThanOrEqualToBigIntTypeId:
+    case filters_.LessThanBigIntTypeId:
+    case filters_.LessThanOrEqualToBigIntTypeId:
     case filters_.BetweenBigintTypeId: {
       const constraints: any = ast.annotations[TypeAnnotationId]
       return new BigIntConstraints(constraints)

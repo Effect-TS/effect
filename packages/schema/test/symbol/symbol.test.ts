@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
 describe("symbol > symbol", () => {
-  const schema = S.symbol
+  const schema = S.Symbol
 
   it("property tests", () => {
     Util.roundtrip(schema)

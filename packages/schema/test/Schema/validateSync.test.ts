@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
 describe("Schema > validateSync", () => {
-  const schema = S.struct({ a: Util.NumberFromChar })
+  const schema = S.Struct({ a: Util.NumberFromChar })
 
   it("should throw on invalid values", () => {
     expect(S.validateSync(schema)({ a: 1 })).toEqual({ a: 1 })

@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
 describe("Schema > decodePromise", () => {
-  const schema = S.struct({ a: Util.NumberFromChar })
+  const schema = S.Struct({ a: Util.NumberFromChar })
 
   it("should return None on invalid values", async () => {
     await Util.expectPromiseSuccess(S.decodePromise(schema)({ a: "1" }), { a: 1 })

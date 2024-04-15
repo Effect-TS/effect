@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 describe("Schema > omit", () => {
   it("struct", async () => {
     const a = Symbol.for("@effect/schema/test/a")
-    const schema = S.struct({ [a]: S.string, b: S.NumberFromString, c: S.boolean }).pipe(
+    const schema = S.Struct({ [a]: S.String, b: S.NumberFromString, c: S.Boolean }).pipe(
       S.omit("c")
     )
     await Util.expectDecodeUnknownSuccess(schema, { [a]: "a", b: "1" }, { [a]: "a", b: 1 })
@@ -32,10 +32,10 @@ describe("Schema > omit", () => {
   })
 
   it("struct with optionals", async () => {
-    const schema = S.struct({
-      a: S.optional(S.string, { exact: true }),
+    const schema = S.Struct({
+      a: S.optional(S.String, { exact: true }),
       b: S.NumberFromString,
-      c: S.boolean
+      c: S.Boolean
     })
       .pipe(
         S.omit("c")
@@ -64,9 +64,9 @@ describe("Schema > omit", () => {
     }
     const A: S.Schema<A> = S.suspend( // intended outer suspend
       () =>
-        S.struct({
-          a: S.string,
-          as: S.array(A)
+        S.Struct({
+          a: S.String,
+          as: S.Array(A)
         })
     )
     const schema = A.pipe(S.omit("a"))
@@ -87,10 +87,10 @@ describe("Schema > omit", () => {
   })
 
   it("struct with property signature transformations", async () => {
-    const schema = S.struct({
-      a: S.optional(S.string, { exact: true, default: () => "" }),
+    const schema = S.Struct({
+      a: S.optional(S.String, { exact: true, default: () => "" }),
       b: S.NumberFromString,
-      c: S.boolean
+      c: S.Boolean
     }).pipe(
       S.omit("c")
     )
@@ -99,29 +99,29 @@ describe("Schema > omit", () => {
   })
 
   it("typeSchema(Class)", () => {
-    class A extends S.Class<A>("A")({ a: S.string, b: S.NumberFromString }) {}
+    class A extends S.Class<A>("A")({ a: S.String, b: S.NumberFromString }) {}
     const schema = A.pipe(S.typeSchema, S.omit("a"))
-    expect(schema.ast).toStrictEqual(S.struct({ b: S.number }).ast)
+    expect(schema.ast).toStrictEqual(S.Struct({ b: S.Number }).ast)
   })
 
   it("Class", () => {
-    class A extends S.Class<A>("A")({ a: S.string, b: S.NumberFromString }) {}
+    class A extends S.Class<A>("A")({ a: S.String, b: S.NumberFromString }) {}
     const schema = A.pipe(S.omit("a"))
-    expect(schema.ast).toStrictEqual(S.struct({ b: S.NumberFromString }).ast)
+    expect(schema.ast).toStrictEqual(S.Struct({ b: S.NumberFromString }).ast)
   })
 
   it("struct with key rename", async () => {
-    const schema = S.struct({
-      a: S.string,
-      b: S.propertySignature(S.number).pipe(S.fromKey("c"))
+    const schema = S.Struct({
+      a: S.String,
+      b: S.propertySignature(S.Number).pipe(S.fromKey("c"))
     }).pipe(S.omit("a"))
     await Util.expectDecodeUnknownSuccess(schema, { c: 1 }, { b: 1 })
   })
 
   it("rename", async () => {
-    const schema = S.struct({
-      a: S.string,
-      c: S.number
+    const schema = S.Struct({
+      a: S.String,
+      c: S.Number
     }).pipe(S.rename({ c: "b" }), S.omit("a"))
     await Util.expectDecodeUnknownSuccess(schema, { c: 1 }, { b: 1 })
   })

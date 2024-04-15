@@ -4,7 +4,7 @@ import { describe, it } from "vitest"
 
 describe("Schema > uniqueSymbolFromSelf", () => {
   const a = Symbol.for("@effect/schema/test/a")
-  const schema = S.uniqueSymbolFromSelf(a)
+  const schema = S.UniqueSymbolFromSelf(a)
   it("decoding", async () => {
     await Util.expectDecodeUnknownSuccess(schema, a)
     await Util.expectDecodeUnknownSuccess(schema, Symbol.for("@effect/schema/test/a"))

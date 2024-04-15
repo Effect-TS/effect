@@ -5,7 +5,7 @@ import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
 describe("number > greaterThan", () => {
-  const schema = S.greaterThan(0)(S.number)
+  const schema = S.greaterThan(0)(S.Number)
 
   it("property tests", () => {
     Util.roundtrip(schema)

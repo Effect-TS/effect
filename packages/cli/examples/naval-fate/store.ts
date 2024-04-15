@@ -28,11 +28,11 @@ export const NavalFateStore = Context.GenericTag<NavalFateStore>("NavalFateStore
 export const make = Effect.gen(function*($) {
   const shipsStore = yield* $(Effect.map(
     KeyValueStore.KeyValueStore,
-    (store) => store.forSchema(Schema.readonlyMap({ key: Schema.string, value: Ship }))
+    (store) => store.forSchema(Schema.ReadonlyMap({ key: Schema.String, value: Ship }))
   ))
   const minesStore = yield* $(Effect.map(
     KeyValueStore.KeyValueStore,
-    (store) => store.forSchema(Schema.array(Mine))
+    (store) => store.forSchema(Schema.Array(Mine))
   ))
 
   const getShips = shipsStore.get("ships").pipe(

@@ -29,7 +29,7 @@ export const make = <HR, E>(
   Serializable.SerializableWithResult.Context<Router.Router.Request<R>> | HR
 > => {
   const getDecode = withRequestTag((req) => Schema.decodeUnknown(Serializable.exitSchema(req)))
-  const getDecodeChunk = withRequestTag((req) => Schema.decodeUnknown(Schema.chunk(Serializable.exitSchema(req))))
+  const getDecodeChunk = withRequestTag((req) => Schema.decodeUnknown(Schema.Chunk(Serializable.exitSchema(req))))
 
   return RequestResolver.makeBatched((requests: Array<Rpc.Request<Schema.TaggedRequest.Any>>) => {
     const [effectRequests, streamRequests] = ReadonlyArray.partition(

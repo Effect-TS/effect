@@ -5,11 +5,11 @@ import { describe, it } from "vitest"
 
 describe("Either/either", () => {
   it("property tests", () => {
-    Util.roundtrip(S.either({ left: S.string, right: S.number }))
+    Util.roundtrip(S.Either({ left: S.String, right: S.Number }))
   })
 
   it("decoding", async () => {
-    const schema = S.either({ left: S.string, right: S.NumberFromString })
+    const schema = S.Either({ left: S.String, right: S.NumberFromString })
     await Util.expectDecodeUnknownSuccess(
       schema,
       JSON.parse(JSON.stringify(E.left("a"))),
@@ -23,7 +23,7 @@ describe("Either/either", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.either({ left: S.string, right: S.NumberFromString })
+    const schema = S.Either({ left: S.String, right: S.NumberFromString })
     await Util.expectEncodeSuccess(schema, E.left("a"), { _tag: "Left", left: "a" })
     await Util.expectEncodeSuccess(schema, E.right(1), { _tag: "Right", right: "1" })
   })

@@ -10,8 +10,8 @@ describe("Schema > encodedSchema", () => {
     interface A {
       prop: A | number
     }
-    const schema1: S.Schema<A, I> = S.struct({
-      prop: S.union(S.NumberFromString, S.suspend(() => schema1))
+    const schema1: S.Schema<A, I> = S.Struct({
+      prop: S.Union(S.NumberFromString, S.suspend(() => schema1))
     })
     const from1 = S.encodedSchema(schema1)
     await Util.expectDecodeUnknownSuccess(from1, { prop: "a" })
@@ -19,8 +19,8 @@ describe("Schema > encodedSchema", () => {
 
     const schema2: S.Schema<A, I> = S.suspend( // intended outer suspend
       () =>
-        S.struct({
-          prop: S.union(S.NumberFromString, schema1)
+        S.Struct({
+          prop: S.Union(S.NumberFromString, schema1)
         })
     )
     const from2 = S.encodedSchema(schema2)

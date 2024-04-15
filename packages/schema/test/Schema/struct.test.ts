@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 
 describe("Schema > struct", () => {
   it("annotations()", () => {
-    const schema = S.struct({}).annotations({ identifier: "X" }).annotations({ title: "Y" })
+    const schema = S.Struct({}).annotations({ identifier: "X" }).annotations({ title: "Y" })
     expect(schema.ast.annotations).toStrictEqual({
       [AST.IdentifierAnnotationId]: "X",
       [AST.TitleAnnotationId]: "Y"
@@ -13,36 +13,36 @@ describe("Schema > struct", () => {
   })
 
   it("should expose the fields", () => {
-    const schema = S.struct({
-      a: S.string,
-      b: S.number
+    const schema = S.Struct({
+      a: S.String,
+      b: S.Number
     })
     expect(schema.fields).toStrictEqual({
-      a: S.string,
-      b: S.number
+      a: S.String,
+      b: S.Number
     })
   })
 
   it("should return the literal interface when using the .annotations() method", () => {
-    const schema = S.struct({
-      a: S.string,
-      b: S.number
+    const schema = S.Struct({
+      a: S.String,
+      b: S.Number
     }).annotations({ identifier: "struct test" })
     expect(schema.ast.annotations).toStrictEqual({ [AST.IdentifierAnnotationId]: "struct test" })
     expect(schema.fields).toStrictEqual({
-      a: S.string,
-      b: S.number
+      a: S.String,
+      b: S.Number
     })
   })
 
   it(`should allow a "constructor" field name`, () => {
-    const schema = S.struct({ constructor: S.string })
+    const schema = S.Struct({ constructor: S.String })
     expect(schema.ast._tag).toEqual("TypeLiteral")
   })
 
   describe("decoding", () => {
     it("should use annotations to generate a more informative error message when an incorrect data type is provided", async () => {
-      const schema = S.struct({}).annotations({ identifier: "MyDataType" })
+      const schema = S.Struct({}).annotations({ identifier: "MyDataType" })
       await Util.expectDecodeUnknownFailure(
         schema,
         null,
@@ -51,7 +51,7 @@ describe("Schema > struct", () => {
     })
 
     it("empty", async () => {
-      const schema = S.struct({})
+      const schema = S.Struct({})
       await Util.expectDecodeUnknownSuccess(schema, {})
       await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
       await Util.expectDecodeUnknownSuccess(schema, [])
@@ -64,7 +64,7 @@ describe("Schema > struct", () => {
     })
 
     it("required property signature", async () => {
-      const schema = S.struct({ a: S.number })
+      const schema = S.Struct({ a: S.Number })
       await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
 
       await Util.expectDecodeUnknownFailure(
@@ -97,7 +97,7 @@ describe("Schema > struct", () => {
     })
 
     it("required property signature with undefined", async () => {
-      const schema = S.struct({ a: S.union(S.number, S.undefined) })
+      const schema = S.Struct({ a: S.Union(S.Number, S.Undefined) })
       await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
       await Util.expectDecodeUnknownSuccess(schema, { a: undefined })
       await Util.expectDecodeUnknownSuccess(schema, {}, { a: undefined })
@@ -129,7 +129,7 @@ describe("Schema > struct", () => {
     })
 
     it("optional property signature", async () => {
-      const schema = S.struct({ a: S.optional(S.number, { exact: true }) })
+      const schema = S.Struct({ a: S.optional(S.Number, { exact: true }) })
       await Util.expectDecodeUnknownSuccess(schema, {})
       await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
 
@@ -163,7 +163,7 @@ describe("Schema > struct", () => {
     })
 
     it("optional property signature with undefined", async () => {
-      const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined), { exact: true }) })
+      const schema = S.Struct({ a: S.optional(S.Union(S.Number, S.Undefined), { exact: true }) })
       await Util.expectDecodeUnknownSuccess(schema, {})
       await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
       await Util.expectDecodeUnknownSuccess(schema, { a: undefined })
@@ -195,9 +195,9 @@ describe("Schema > struct", () => {
     })
 
     it("should not add optional keys", async () => {
-      const schema = S.struct({
-        a: S.optional(S.string, { exact: true }),
-        b: S.optional(S.number, { exact: true })
+      const schema = S.Struct({
+        a: S.optional(S.String, { exact: true }),
+        b: S.optional(S.Number, { exact: true })
       })
       await Util.expectDecodeUnknownSuccess(schema, {})
     })
@@ -205,7 +205,7 @@ describe("Schema > struct", () => {
 
   describe("encoding", () => {
     it("empty", async () => {
-      const schema = S.struct({})
+      const schema = S.Struct({})
       await Util.expectEncodeSuccess(schema, {}, {})
       await Util.expectEncodeSuccess(schema, { a: 1 }, { a: 1 })
       await Util.expectEncodeSuccess(schema, [], [])
@@ -218,7 +218,7 @@ describe("Schema > struct", () => {
     })
 
     it("required property signature", async () => {
-      const schema = S.struct({ a: S.number })
+      const schema = S.Struct({ a: S.Number })
       await Util.expectEncodeSuccess(schema, { a: 1 }, { a: 1 })
       await Util.expectEncodeFailure(
         schema,
@@ -231,7 +231,7 @@ describe("Schema > struct", () => {
     })
 
     it("required property signature with undefined", async () => {
-      const schema = S.struct({ a: S.union(S.number, S.undefined) })
+      const schema = S.Struct({ a: S.Union(S.Number, S.Undefined) })
       await Util.expectEncodeSuccess(schema, { a: 1 }, { a: 1 })
       await Util.expectEncodeSuccess(schema, { a: undefined }, { a: undefined })
       await Util.expectEncodeFailure(
@@ -245,7 +245,7 @@ describe("Schema > struct", () => {
     })
 
     it("optional property signature", async () => {
-      const schema = S.struct({ a: S.optional(S.number, { exact: true }) })
+      const schema = S.Struct({ a: S.optional(S.Number, { exact: true }) })
       await Util.expectEncodeSuccess(schema, {}, {})
       await Util.expectEncodeSuccess(schema, { a: 1 }, { a: 1 })
       await Util.expectEncodeFailure(
@@ -259,7 +259,7 @@ describe("Schema > struct", () => {
     })
 
     it("optional property signature with undefined", async () => {
-      const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined), { exact: true }) })
+      const schema = S.Struct({ a: S.optional(S.Union(S.Number, S.Undefined), { exact: true }) })
       await Util.expectEncodeSuccess(schema, {}, {})
       await Util.expectEncodeSuccess(schema, { a: 1 }, { a: 1 })
       await Util.expectEncodeSuccess(schema, { a: undefined }, { a: undefined })
@@ -275,7 +275,7 @@ describe("Schema > struct", () => {
 
     it("should handle symbols as keys", async () => {
       const a = Symbol.for("@effect/schema/test/a")
-      const schema = S.struct({ [a]: S.string })
+      const schema = S.Struct({ [a]: S.String })
       await Util.expectEncodeSuccess(schema, { [a]: "a" }, { [a]: "a" })
     })
   })

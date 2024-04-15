@@ -6,37 +6,37 @@ import { Effect, List, Schedule } from "effect"
 class SendError extends Schema.TaggedError<SendError>()(
   "SendError",
   {
-    email: Schema.string,
-    reason: Schema.string
+    email: Schema.String,
+    reason: Schema.String
   }
 ) {}
 
 class SendEmail extends Schema.TaggedRequest<SendEmail>()(
   "SendEmail",
   SendError,
-  Schema.void,
+  Schema.Void,
   {
-    email: Schema.string,
-    message: Schema.string
+    email: Schema.String,
+    message: Schema.String
   }
 ) {}
 
 class ProcessEmail extends Schema.TaggedRequest<ProcessEmail>()(
   "ProcessEmail",
-  Schema.never,
-  Schema.void,
+  Schema.Never,
+  Schema.Void,
   {}
 ) {}
 
 class Shutdown extends Schema.TaggedRequest<Shutdown>()(
   "Shutdown",
-  Schema.never,
-  Schema.void,
+  Schema.Never,
+  Schema.Void,
   {}
 ) {}
 
 const mailer = Machine.makeSerializable({
-  state: Schema.list(SendEmail)
+  state: Schema.List(SendEmail)
 }, (_, previous) =>
   Effect.gen(function*(_) {
     const ctx = yield* _(Machine.MachineContext)

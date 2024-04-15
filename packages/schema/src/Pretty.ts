@@ -4,6 +4,7 @@
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
+import * as errors_ from "./internal/errors.js"
 import * as util_ from "./internal/util.js"
 import * as ParseResult from "./ParseResult.js"
 import type * as Schema from "./Schema.js"
@@ -67,7 +68,7 @@ export const match: AST.Match<Pretty<any>> = {
     if (Option.isSome(hook)) {
       return hook.value(...ast.typeParameters.map(go))
     }
-    throw new Error(`cannot build a Pretty for a declaration without annotations (${ast})`)
+    throw new Error(errors_.getPrettyErrorMessage(`a declaration without annotations (${ast})`))
   },
   "VoidKeyword": getMatcher(() => "void(0)"),
   "NeverKeyword": getMatcher(() => {

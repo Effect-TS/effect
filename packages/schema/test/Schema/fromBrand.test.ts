@@ -23,12 +23,12 @@ const Eur = Brand.nominal<Eur>()
 
 describe("Schema > fromBrand", () => {
   it("property tests", () => {
-    Util.roundtrip(S.number.pipe(S.fromBrand(Int))) // refined
-    Util.roundtrip(S.number.pipe(S.fromBrand(Eur))) // nominal
+    Util.roundtrip(S.Number.pipe(S.fromBrand(Int))) // refined
+    Util.roundtrip(S.Number.pipe(S.fromBrand(Eur))) // nominal
   })
 
   it("refined", async () => {
-    const schema = S.number.pipe(S.fromBrand(Brand.all(Positive, Int)))
+    const schema = S.Number.pipe(S.fromBrand(Brand.all(Positive, Int)))
 
     await Util.expectDecodeUnknownFailure(
       schema,

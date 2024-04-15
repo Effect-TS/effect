@@ -6,7 +6,7 @@ import { assert, describe, expect, it } from "vitest"
 
 describe("Schema > record", () => {
   it("annotations()", () => {
-    const schema = S.record(S.string, S.number).annotations({ identifier: "X" }).annotations({ title: "Y" })
+    const schema = S.Record(S.String, S.Number).annotations({ identifier: "X" }).annotations({ title: "Y" })
     expect(schema.ast.annotations).toStrictEqual({
       [AST.IdentifierAnnotationId]: "X",
       [AST.TitleAnnotationId]: "Y"
@@ -14,13 +14,13 @@ describe("Schema > record", () => {
   })
 
   it("should expose the key and the value", () => {
-    const schema = S.record(S.string, S.number)
-    expect(schema.key).toStrictEqual(S.string)
-    expect(schema.value).toStrictEqual(S.number)
+    const schema = S.Record(S.String, S.Number)
+    expect(schema.key).toStrictEqual(S.String)
+    expect(schema.value).toStrictEqual(S.Number)
   })
 
   it("should compute the partial result", () => {
-    const schema = S.record(S.string, S.number)
+    const schema = S.Record(S.String, S.Number)
     const all = S.decodeUnknownEither(schema)({ a: 1, b: "b", c: 2, d: "d" }, { errors: "all" })
     if (Either.isLeft(all)) {
       const issue = all.left.error
@@ -47,13 +47,13 @@ describe("Schema > record", () => {
 
   describe("decoding", () => {
     it("record(never, number)", async () => {
-      const schema = S.record(S.never, S.number)
+      const schema = S.Record(S.Never, S.Number)
       await Util.expectDecodeUnknownSuccess(schema, {})
       await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
     })
 
     it("record(string, number)", async () => {
-      const schema = S.record(S.string, S.number)
+      const schema = S.Record(S.String, S.Number)
       await Util.expectDecodeUnknownSuccess(schema, {})
       await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
 
@@ -83,7 +83,7 @@ describe("Schema > record", () => {
 
     it("record(symbol, number)", async () => {
       const a = Symbol.for("@effect/schema/test/a")
-      const schema = S.record(S.symbolFromSelf, S.number)
+      const schema = S.Record(S.SymbolFromSelf, S.Number)
       await Util.expectDecodeUnknownSuccess(schema, {})
       await Util.expectDecodeUnknownSuccess(schema, { [a]: 1 })
 
@@ -115,7 +115,7 @@ describe("Schema > record", () => {
     })
 
     it("record('a' | 'b', number)", async () => {
-      const schema = S.record(S.union(S.literal("a"), S.literal("b")), S.number)
+      const schema = S.Record(S.Union(S.Literal("a"), S.Literal("b")), S.Number)
       await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: 2 })
 
       await Util.expectDecodeUnknownFailure(
@@ -142,9 +142,9 @@ describe("Schema > record", () => {
     })
 
     it("record('a' | `prefix-${string}`, number)", async () => {
-      const schema = S.record(
-        S.union(S.literal("a"), S.templateLiteral(S.literal("prefix-"), S.string)),
-        S.number
+      const schema = S.Record(
+        S.Union(S.Literal("a"), S.TemplateLiteral(S.Literal("prefix-"), S.String)),
+        S.Number
       )
       await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
       await Util.expectDecodeUnknownSuccess(schema, { a: 1, "prefix-b": 2 })
@@ -166,7 +166,7 @@ describe("Schema > record", () => {
     })
 
     it("record(keyof struct({ a, b }), number)", async () => {
-      const schema = S.record(S.keyof(S.struct({ a: S.string, b: S.string })), S.number)
+      const schema = S.Record(S.keyof(S.Struct({ a: S.String, b: S.String })), S.Number)
       await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: 2 })
 
       await Util.expectDecodeUnknownFailure(
@@ -202,7 +202,7 @@ describe("Schema > record", () => {
     it("record(Symbol('a') | Symbol('b'), number)", async () => {
       const a = Symbol.for("@effect/schema/test/a")
       const b = Symbol.for("@effect/schema/test/b")
-      const schema = S.record(S.union(S.uniqueSymbolFromSelf(a), S.uniqueSymbolFromSelf(b)), S.number)
+      const schema = S.Record(S.Union(S.UniqueSymbolFromSelf(a), S.UniqueSymbolFromSelf(b)), S.Number)
       await Util.expectDecodeUnknownSuccess(schema, { [a]: 1, [b]: 2 })
 
       await Util.expectDecodeUnknownFailure(
@@ -229,7 +229,7 @@ describe("Schema > record", () => {
     })
 
     it("record(${string}-${string}, number)", async () => {
-      const schema = S.record(S.templateLiteral(S.string, S.literal("-"), S.string), S.number)
+      const schema = S.Record(S.TemplateLiteral(S.String, S.Literal("-"), S.String), S.Number)
       await Util.expectDecodeUnknownSuccess(schema, {})
       await Util.expectDecodeUnknownSuccess(schema, { "-": 1 })
       await Util.expectDecodeUnknownSuccess(schema, { "a-": 1 })
@@ -279,7 +279,7 @@ describe("Schema > record", () => {
     })
 
     it("record(minLength(2), number)", async () => {
-      const schema = S.record(S.string.pipe(S.minLength(2)), S.number)
+      const schema = S.Record(S.String.pipe(S.minLength(2)), S.Number)
       await Util.expectDecodeUnknownSuccess(schema, {})
       await Util.expectDecodeUnknownSuccess(schema, { "a": 1 }, {})
       await Util.expectDecodeUnknownSuccess(schema, { "a": "a" }, {})
@@ -304,10 +304,10 @@ describe("Schema > record", () => {
     })
 
     it("record(${string}-${string}, number) & record(string, string | number)", async () => {
-      const schema = S.struct(
+      const schema = S.Struct(
         {},
-        S.record(S.templateLiteral(S.string, S.literal("-"), S.string), S.number),
-        S.record(S.string, S.union(S.string, S.number))
+        S.Record(S.TemplateLiteral(S.String, S.Literal("-"), S.String), S.Number),
+        S.Record(S.String, S.Union(S.String, S.Number))
       )
       await Util.expectDecodeUnknownSuccess(schema, {})
       await Util.expectDecodeUnknownSuccess(schema, { "a": "a" })
@@ -334,7 +334,7 @@ describe("Schema > record", () => {
     })
 
     it("should support branded keys", async () => {
-      const schema = S.record(S.NonEmpty.pipe(S.brand("UserId")), S.number)
+      const schema = S.Record(S.NonEmpty.pipe(S.brand("UserId")), S.Number)
       await Util.expectDecodeUnknownSuccess(schema, {})
       await Util.expectDecodeUnknownSuccess(schema, { "a": 1 })
       await Util.expectDecodeUnknownSuccess(schema, { "": 1 }, {})
@@ -353,7 +353,7 @@ describe("Schema > record", () => {
 
   describe("encoding", () => {
     it("key error", async () => {
-      const schema = S.record(S.Char, S.string)
+      const schema = S.Record(S.Char, S.String)
       await Util.expectEncodeFailure(
         schema,
         { aa: "a" },
@@ -365,7 +365,7 @@ describe("Schema > record", () => {
     })
 
     it("value error", async () => {
-      const schema = S.record(S.string, S.Char)
+      const schema = S.Record(S.String, S.Char)
       await Util.expectEncodeFailure(
         schema,
         { a: "aa" },

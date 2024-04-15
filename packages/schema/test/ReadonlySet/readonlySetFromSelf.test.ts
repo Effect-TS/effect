@@ -6,11 +6,11 @@ import { describe, expect, it } from "vitest"
 
 describe("ReadonlySet > readonlySetFromSelf", () => {
   it("property tests", () => {
-    Util.roundtrip(S.readonlySetFromSelf(S.number))
+    Util.roundtrip(S.ReadonlySetFromSelf(S.Number))
   })
 
   it("decoding", async () => {
-    const schema = S.readonlySetFromSelf(S.NumberFromString)
+    const schema = S.ReadonlySetFromSelf(S.NumberFromString)
     await Util.expectDecodeUnknownSuccess(schema, new Set(), new Set())
     await Util.expectDecodeUnknownSuccess(schema, new Set(["1", "2", "3"]), new Set([1, 2, 3]))
 
@@ -32,13 +32,13 @@ describe("ReadonlySet > readonlySetFromSelf", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.readonlySetFromSelf(S.NumberFromString)
+    const schema = S.ReadonlySetFromSelf(S.NumberFromString)
     await Util.expectEncodeSuccess(schema, new Set(), new Set())
     await Util.expectEncodeSuccess(schema, new Set([1, 2, 3]), new Set(["1", "2", "3"]))
   })
 
   it("is", () => {
-    const schema = S.readonlySetFromSelf(S.string)
+    const schema = S.ReadonlySetFromSelf(S.String)
     const is = P.is(schema)
     expect(is(new Set())).toEqual(true)
     expect(is(new Set(["a", "b", "c"]))).toEqual(true)
@@ -49,7 +49,7 @@ describe("ReadonlySet > readonlySetFromSelf", () => {
   })
 
   it("pretty", () => {
-    const schema = S.readonlySetFromSelf(S.string)
+    const schema = S.ReadonlySetFromSelf(S.String)
     const pretty = Pretty.make(schema)
     expect(pretty(new Set())).toEqual("new Set([])")
     expect(pretty(new Set(["a", "b"]))).toEqual(

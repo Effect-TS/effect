@@ -452,7 +452,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>, handleIdentifier: 
             output.required.push(name)
           }
         } else {
-          throw new Error(`Cannot encode ${String(name)} key to JSON Schema`)
+          throw new Error(`cannot encode ${String(name)} key to JSON Schema`)
         }
       }
       // ---------------------------------------------

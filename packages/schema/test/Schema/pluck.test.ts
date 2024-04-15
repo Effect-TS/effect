@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 describe("Schema > pluck", () => {
   describe("decoding", () => {
     it("struct (string keys)", async () => {
-      const origin = S.struct({ a: S.string, b: S.NumberFromString })
+      const origin = S.Struct({ a: S.String, b: S.NumberFromString })
       const schema = S.pluck(origin, "a")
       await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: "2" }, "a")
       await Util.expectDecodeUnknownFailure(
@@ -22,7 +22,7 @@ describe("Schema > pluck", () => {
     it("struct (symbol keys)", async () => {
       const a = Symbol.for("effect/schema/test/a")
       const b = Symbol.for("effect/schema/test/b")
-      const origin = S.struct({ [a]: S.string, [b]: S.NumberFromString })
+      const origin = S.Struct({ [a]: S.String, [b]: S.NumberFromString })
       const schema = S.pluck(origin, a)
       await Util.expectDecodeUnknownSuccess(schema, { [a]: "a", [b]: "2" }, "a")
       await Util.expectDecodeUnknownFailure(
@@ -37,7 +37,7 @@ describe("Schema > pluck", () => {
     })
 
     it("struct with optional key", async () => {
-      const origin = S.struct({ a: S.optional(S.string), b: S.number })
+      const origin = S.Struct({ a: S.optional(S.String), b: S.Number })
       const schema = S.pluck(origin, "a")
       await Util.expectSuccess(S.decodeUnknown(schema)({ b: 2 }), undefined)
       await Util.expectSuccess(S.decodeUnknown(schema)({ a: undefined, b: 2 }), undefined)
@@ -45,7 +45,7 @@ describe("Schema > pluck", () => {
     })
 
     it("union", async () => {
-      const origin = S.union(S.struct({ _tag: S.literal("A") }), S.struct({ _tag: S.literal("B") }))
+      const origin = S.Union(S.Struct({ _tag: S.Literal("A") }), S.Struct({ _tag: S.Literal("B") }))
       const schema = S.pluck(origin, "_tag")
       await Util.expectDecodeUnknownSuccess(schema, { _tag: "A" }, "A")
       await Util.expectDecodeUnknownSuccess(schema, { _tag: "B" }, "B")
@@ -63,7 +63,7 @@ describe("Schema > pluck", () => {
 
   describe("encoding", () => {
     it("struct (string keys)", async () => {
-      const origin = S.struct({ a: S.NonEmpty })
+      const origin = S.Struct({ a: S.NonEmpty })
       const schema = S.pluck(origin, "a")
       await Util.expectEncodeSuccess(schema, "a", { a: "a" })
       await Util.expectEncodeFailure(
@@ -79,7 +79,7 @@ describe("Schema > pluck", () => {
 
     it("struct (symbol keys)", async () => {
       const a = Symbol.for("effect/schema/test/a")
-      const origin = S.struct({ [a]: S.NonEmpty })
+      const origin = S.Struct({ [a]: S.NonEmpty })
       const schema = S.pluck(origin, a)
       await Util.expectEncodeSuccess(schema, "a", { [a]: "a" })
       await Util.expectEncodeFailure(
@@ -95,14 +95,14 @@ describe("Schema > pluck", () => {
   })
 
   it("struct with optional key", async () => {
-    const origin = S.struct({ a: S.optional(S.string) })
+    const origin = S.Struct({ a: S.optional(S.String) })
     const schema = S.pluck(origin, "a")
     await Util.expectEncodeSuccess(schema, undefined, {})
     await Util.expectEncodeSuccess(schema, "a", { a: "a" })
   })
 
   it("struct with exact optional key", async () => {
-    const origin = S.struct({ a: S.optional(S.string, { exact: true }) })
+    const origin = S.Struct({ a: S.optional(S.String, { exact: true }) })
     const schema = S.pluck(origin, "a")
     await Util.expectEncodeSuccess(schema, undefined, {})
     await Util.expectEncodeSuccess(schema, "a", { a: "a" })

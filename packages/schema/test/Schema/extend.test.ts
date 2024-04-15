@@ -6,40 +6,40 @@ import { describe, expect, it } from "vitest"
 describe("Schema > extend", () => {
   describe("decoding", () => {
     it(`struct extend struct (dual)`, async () => {
-      const schema = S.extend(S.struct({ a: S.string }), S.struct({ b: S.number }))
+      const schema = S.extend(S.Struct({ a: S.String }), S.Struct({ b: S.Number }))
       await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: 1 })
     })
 
     it(`struct with defaults extend struct`, async () => {
-      const schema = S.struct({
-        a: S.optional(S.string, { exact: true, default: () => "" }),
-        b: S.string
+      const schema = S.Struct({
+        a: S.optional(S.String, { exact: true, default: () => "" }),
+        b: S.String
       })
         .pipe(
-          S.extend(S.struct({ c: S.number }))
+          S.extend(S.Struct({ c: S.Number }))
         )
       await Util.expectDecodeUnknownSuccess(schema, { b: "b", c: 1 }, { a: "", b: "b", c: 1 })
     })
 
     it(`struct extend struct with defaults`, async () => {
-      const schema = S.struct({ a: S.number }).pipe(
+      const schema = S.Struct({ a: S.Number }).pipe(
         S.extend(
-          S.struct({ b: S.string, c: S.optional(S.string, { exact: true, default: () => "" }) })
+          S.Struct({ b: S.String, c: S.optional(S.String, { exact: true, default: () => "" }) })
         )
       )
       await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: "b" }, { a: 1, b: "b", c: "" })
     })
 
     it(`struct with defaults extend struct with defaults `, async () => {
-      const schema = S.struct({
-        a: S.optional(S.string, { exact: true, default: () => "" }),
-        b: S.string
+      const schema = S.Struct({
+        a: S.optional(S.String, { exact: true, default: () => "" }),
+        b: S.String
       })
         .pipe(
           S.extend(
-            S.struct({
-              c: S.optional(S.number, { exact: true, default: () => 0 }),
-              d: S.boolean
+            S.Struct({
+              c: S.optional(S.Number, { exact: true, default: () => 0 }),
+              d: S.Boolean
             })
           )
         )
@@ -47,25 +47,25 @@ describe("Schema > extend", () => {
     })
 
     it(`union with defaults extend union with defaults `, async () => {
-      const schema = S.union(
-        S.struct({
-          a: S.optional(S.string, { exact: true, default: () => "a" }),
-          b: S.string
+      const schema = S.Union(
+        S.Struct({
+          a: S.optional(S.String, { exact: true, default: () => "a" }),
+          b: S.String
         }),
-        S.struct({
-          c: S.optional(S.string, { exact: true, default: () => "c" }),
-          d: S.string
+        S.Struct({
+          c: S.optional(S.String, { exact: true, default: () => "c" }),
+          d: S.String
         })
       ).pipe(
         S.extend(
-          S.union(
-            S.struct({
-              e: S.optional(S.string, { exact: true, default: () => "e" }),
-              f: S.string
+          S.Union(
+            S.Struct({
+              e: S.optional(S.String, { exact: true, default: () => "e" }),
+              f: S.String
             }),
-            S.struct({
-              g: S.optional(S.string, { exact: true, default: () => "g" }),
-              h: S.string
+            S.Struct({
+              g: S.optional(S.String, { exact: true, default: () => "g" }),
+              h: S.String
             })
           )
         )
@@ -85,10 +85,10 @@ describe("Schema > extend", () => {
     })
 
     it(`struct extend union`, () => {
-      const schema = S.struct({ b: S.boolean }).pipe(
-        S.extend(S.union(
-          S.struct({ a: S.literal("a") }),
-          S.struct({ a: S.literal("b") })
+      const schema = S.Struct({ b: S.Boolean }).pipe(
+        S.extend(S.Union(
+          S.Struct({ a: S.Literal("a") }),
+          S.Struct({ a: S.Literal("b") })
         ))
       )
       const is = S.is(schema)
@@ -101,11 +101,11 @@ describe("Schema > extend", () => {
     })
 
     it(`union extend struct`, () => {
-      const schema = S.union(
-        S.struct({ a: S.literal("a") }),
-        S.struct({ b: S.literal("b") })
+      const schema = S.Union(
+        S.Struct({ a: S.Literal("a") }),
+        S.Struct({ b: S.Literal("b") })
       ).pipe(
-        S.extend(S.struct({ c: S.boolean }))
+        S.extend(S.Struct({ c: S.Boolean }))
       )
       const is = S.is(schema)
 
@@ -117,14 +117,14 @@ describe("Schema > extend", () => {
     })
 
     it(`nested union extends struct`, () => {
-      const schema = S.union(
-        S.union(
-          S.struct({ a: S.literal("a") }),
-          S.struct({ a: S.literal("b") })
+      const schema = S.Union(
+        S.Union(
+          S.Struct({ a: S.Literal("a") }),
+          S.Struct({ a: S.Literal("b") })
         ),
-        S.struct({ b: S.literal("b") })
+        S.Struct({ b: S.Literal("b") })
       ).pipe(
-        S.extend(S.struct({ c: S.boolean }))
+        S.extend(S.Struct({ c: S.Boolean }))
       )
       expect(AST.isUnion(schema.ast)).toBe(true)
       const ast = schema.ast as AST.Union
@@ -142,14 +142,14 @@ describe("Schema > extend", () => {
     })
 
     it(`union extend union`, () => {
-      const schema = S.union(
-        S.struct({ a: S.literal("a") }),
-        S.struct({ a: S.literal("b") })
+      const schema = S.Union(
+        S.Struct({ a: S.Literal("a") }),
+        S.Struct({ a: S.Literal("b") })
       ).pipe(
         S.extend(
-          S.union(
-            S.struct({ c: S.boolean }),
-            S.struct({ d: S.number })
+          S.Union(
+            S.Struct({ c: S.Boolean }),
+            S.Struct({ d: S.Number })
           )
         )
       )
@@ -167,8 +167,8 @@ describe("Schema > extend", () => {
     })
 
     it("struct extend record(string, string)", async () => {
-      const schema = S.struct({ a: S.string }).pipe(
-        S.extend(S.record(S.string, S.string))
+      const schema = S.Struct({ a: S.String }).pipe(
+        S.extend(S.Record(S.String, S.String))
       )
       await Util.expectDecodeUnknownSuccess(schema, { a: "a" })
       await Util.expectDecodeUnknownSuccess(schema, { a: "a", b: "b" })
@@ -204,14 +204,14 @@ describe("Schema > extend", () => {
     })
 
     it("struct extend record(templateLiteral, string)", async () => {
-      const schema = S.struct({ a: S.string }).pipe(
-        S.extend(S.record(
-          S.templateLiteral(
-            S.string,
-            S.literal("-"),
-            S.number
+      const schema = S.Struct({ a: S.String }).pipe(
+        S.extend(S.Record(
+          S.TemplateLiteral(
+            S.String,
+            S.Literal("-"),
+            S.Number
           ),
-          S.string
+          S.String
         ))
       )
       // type A = {
@@ -224,18 +224,18 @@ describe("Schema > extend", () => {
 
     describe("both operands are transformations", () => {
       const BoolFromString = S.transform(
-        S.string,
-        S.boolean,
+        S.String,
+        S.Boolean,
         { decode: (x) => !!x, encode: (x) => "" + x }
       )
 
       it("optional, transformation", async () => {
-        const schema = S.struct({
-          a: S.optional(S.boolean, { exact: true, default: () => true })
+        const schema = S.Struct({
+          a: S.optional(S.Boolean, { exact: true, default: () => true })
         }).pipe(
           S.extend(
-            S.struct({
-              b: S.array(BoolFromString)
+            S.Struct({
+              b: S.Array(BoolFromString)
             })
           )
         )
@@ -246,12 +246,12 @@ describe("Schema > extend", () => {
       })
 
       it("transformation, optional", async () => {
-        const schema = S.struct({
-          b: S.array(BoolFromString)
+        const schema = S.Struct({
+          b: S.Array(BoolFromString)
         }).pipe(
           S.extend(
-            S.struct({
-              a: S.optional(S.boolean, { exact: true, default: () => true })
+            S.Struct({
+              a: S.optional(S.Boolean, { exact: true, default: () => true })
             })
           )
         )
@@ -265,8 +265,8 @@ describe("Schema > extend", () => {
 
   describe("encoding", () => {
     it("struct + record(string, NumberFromChar)", async () => {
-      const schema = S.struct({ a: S.number }).pipe(
-        S.extend(S.record(S.string, Util.NumberFromChar))
+      const schema = S.Struct({ a: S.Number }).pipe(
+        S.extend(S.Record(S.String, Util.NumberFromChar))
       )
       await Util.expectEncodeSuccess(schema, { a: 1 }, { a: 1 })
       await Util.expectEncodeSuccess(schema, { a: 1, b: 1 }, { a: 1, b: "1" })
@@ -274,8 +274,8 @@ describe("Schema > extend", () => {
 
     it("struct + record(symbol, NumberFromChar)", async () => {
       const b = Symbol.for("@effect/schema/test/b")
-      const schema = S.struct({ a: S.number }).pipe(
-        S.extend(S.record(S.symbolFromSelf, Util.NumberFromChar))
+      const schema = S.Struct({ a: S.Number }).pipe(
+        S.extend(S.Record(S.SymbolFromSelf, Util.NumberFromChar))
       )
       await Util.expectEncodeSuccess(schema, { a: 1 }, { a: 1 })
       await Util.expectEncodeSuccess(schema, { a: 1, [b]: 1 }, { a: 1, [b]: "1" })
@@ -283,8 +283,8 @@ describe("Schema > extend", () => {
   })
 
   it(`nested struct extend nested struct`, async () => {
-    const A = S.struct({ a: S.struct({ b: S.string }) })
-    const B = S.struct({ a: S.struct({ c: S.number }) })
+    const A = S.Struct({ a: S.Struct({ b: S.String }) })
+    const B = S.Struct({ a: S.Struct({ c: S.Number }) })
     const schema = S.extend(A, B)
     await Util.expectDecodeUnknownSuccess(schema, { a: { b: "a", c: 1 } })
 
@@ -300,40 +300,40 @@ describe("Schema > extend", () => {
   })
 
   it("errors", () => {
-    expect(() => S.string.pipe(S.extend(S.number))).toThrow(
-      new Error("cannot extend `string` with `number` (path [])")
+    expect(() => S.String.pipe(S.extend(S.Number))).toThrow(
+      new Error("Extend: cannot extend `string` with `number` (path [])")
     )
     expect(() =>
-      S.record(S.string, S.number).pipe(
-        S.extend(S.record(S.string, S.boolean))
+      S.Record(S.String, S.Number).pipe(
+        S.extend(S.Record(S.String, S.Boolean))
       )
     ).toThrow(new Error("Duplicate index signature for type `string`"))
     expect(() =>
-      S.record(S.symbolFromSelf, S.number).pipe(
-        S.extend(S.record(S.symbolFromSelf, S.boolean))
+      S.Record(S.SymbolFromSelf, S.Number).pipe(
+        S.extend(S.Record(S.SymbolFromSelf, S.Boolean))
       )
     ).toThrow(new Error("Duplicate index signature for type `symbol`"))
     expect(() =>
-      S.record(S.string, S.number).pipe(
-        S.extend(S.record(S.string.pipe(S.minLength(2)), S.boolean))
+      S.Record(S.String, S.Number).pipe(
+        S.extend(S.Record(S.String.pipe(S.minLength(2)), S.Boolean))
       )
     ).toThrow(new Error("Duplicate index signature for type `string`"))
     expect(() =>
-      S.struct({ a: S.literal("a") }).pipe(
-        S.extend(S.struct({ a: S.string }))
+      S.Struct({ a: S.Literal("a") }).pipe(
+        S.extend(S.Struct({ a: S.String }))
       )
-    ).toThrow(new Error("cannot extend `\"a\"` with `string` (path [\"a\"])"))
+    ).toThrow(new Error("Extend: cannot extend `\"a\"` with `string` (path [\"a\"])"))
     expect(() =>
-      S.struct({ a: S.literal("a") }).pipe(
+      S.Struct({ a: S.Literal("a") }).pipe(
         S.extend(
-          S.union(
-            S.struct({ a: S.string }),
-            S.struct({ b: S.number })
+          S.Union(
+            S.Struct({ a: S.String }),
+            S.Struct({ b: S.Number })
           )
         )
       )
-    ).toThrow(new Error("cannot extend `\"a\"` with `string` (path [\"a\"])"))
-    expect(() => S.extend(S.struct({ a: S.struct({ b: S.string }) }), S.struct({ a: S.struct({ b: S.number }) })))
-      .toThrow(new Error("cannot extend `string` with `number` (path [\"a\", \"b\"])"))
+    ).toThrow(new Error("Extend: cannot extend `\"a\"` with `string` (path [\"a\"])"))
+    expect(() => S.extend(S.Struct({ a: S.Struct({ b: S.String }) }), S.Struct({ a: S.Struct({ b: S.Number }) })))
+      .toThrow(new Error("Extend: cannot extend `string` with `number` (path [\"a\", \"b\"])"))
   })
 })

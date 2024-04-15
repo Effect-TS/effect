@@ -46,9 +46,9 @@ export const makeRequest = <A extends Schema.TaggedRequest.Any>(
     [PrimaryKey.symbol]: () => `${options.request._tag}:${hash}`,
     [Serializable.symbolResult]: {
       Success: isStream
-        ? Schema.never
+        ? Schema.Never
         : Serializable.successSchema(options.request as any),
-      Failure: isStream ? Schema.never : Serializable.failureSchema(options.request as any)
+      Failure: isStream ? Schema.Never : Serializable.failureSchema(options.request as any)
     },
     [Equal.symbol](that: Rpc.Request<A>) {
       return Equal.equals(options.request, that.request)

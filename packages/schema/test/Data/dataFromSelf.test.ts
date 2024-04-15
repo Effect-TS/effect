@@ -7,12 +7,12 @@ import { describe, expect, it } from "vitest"
 
 describe("Data > dataFromSelf", () => {
   it("property tests", () => {
-    Util.roundtrip(S.dataFromSelf(S.struct({ a: S.string, b: S.number })))
-    Util.roundtrip(S.dataFromSelf(S.array(S.number)))
+    Util.roundtrip(S.DataFromSelf(S.Struct({ a: S.String, b: S.Number })))
+    Util.roundtrip(S.DataFromSelf(S.Array(S.Number)))
   })
 
   it("decoding", async () => {
-    const schema = S.dataFromSelf(S.struct({ a: S.string, b: S.number }))
+    const schema = S.DataFromSelf(S.Struct({ a: S.String, b: S.Number }))
     await Util.expectDecodeUnknownSuccess(
       schema,
       Data.struct({ a: "ok", b: 0 }),
@@ -34,7 +34,7 @@ describe("Data > dataFromSelf", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.dataFromSelf(S.struct({ a: S.string, b: S.number }))
+    const schema = S.DataFromSelf(S.Struct({ a: S.String, b: S.Number }))
     await Util.expectEncodeSuccess(
       schema,
       Data.struct({ a: "ok", b: 0 }),
@@ -43,7 +43,7 @@ describe("Data > dataFromSelf", () => {
   })
 
   it("is", () => {
-    const schema = S.dataFromSelf(S.struct({ a: S.string, b: S.number }))
+    const schema = S.DataFromSelf(S.Struct({ a: S.String, b: S.Number }))
     const is = P.is(schema)
     expect(is(Data.struct({ a: "ok", b: 0 }))).toEqual(true)
     expect(is({ a: "ok", b: 0 })).toEqual(false)
@@ -51,7 +51,7 @@ describe("Data > dataFromSelf", () => {
   })
 
   it("pretty", () => {
-    const schema = S.dataFromSelf(S.struct({ a: S.string, b: S.number }))
+    const schema = S.DataFromSelf(S.Struct({ a: S.String, b: S.Number }))
     const pretty = Pretty.make(schema)
     expect(pretty(Data.struct({ a: "ok", b: 0 }))).toEqual(`Data({ "a": "ok", "b": 0 })`)
   })

@@ -5,11 +5,11 @@ import { describe, it } from "vitest"
 
 describe("List > hashSet", () => {
   it("property tests", () => {
-    Util.roundtrip(S.list(S.number))
+    Util.roundtrip(S.List(S.Number))
   })
 
   it("decoding", async () => {
-    const schema = S.list(S.number)
+    const schema = S.List(S.Number)
     await Util.expectDecodeUnknownSuccess(schema, [], List.empty())
     await Util.expectDecodeUnknownSuccess(schema, [1, 2, 3], List.fromIterable([1, 2, 3]))
 
@@ -32,7 +32,7 @@ describe("List > hashSet", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.list(S.number)
+    const schema = S.List(S.Number)
     await Util.expectEncodeSuccess(schema, List.empty(), [])
     await Util.expectEncodeSuccess(schema, List.fromIterable([1, 2, 3]), [1, 2, 3])
   })

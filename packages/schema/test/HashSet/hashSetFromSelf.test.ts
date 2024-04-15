@@ -7,11 +7,11 @@ import { describe, expect, it } from "vitest"
 
 describe("HashSet > hashSetFromSelf", () => {
   it("property tests", () => {
-    Util.roundtrip(S.hashSetFromSelf(S.number))
+    Util.roundtrip(S.HashSetFromSelf(S.Number))
   })
 
   it("decoding", async () => {
-    const schema = S.hashSetFromSelf(S.NumberFromString)
+    const schema = S.HashSetFromSelf(S.NumberFromString)
     await Util.expectDecodeUnknownSuccess(schema, HashSet.empty(), HashSet.empty())
     await Util.expectDecodeUnknownSuccess(
       schema,
@@ -37,7 +37,7 @@ describe("HashSet > hashSetFromSelf", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.hashSetFromSelf(S.NumberFromString)
+    const schema = S.HashSetFromSelf(S.NumberFromString)
     await Util.expectEncodeSuccess(schema, HashSet.empty(), HashSet.empty())
     await Util.expectEncodeSuccess(
       schema,
@@ -47,7 +47,7 @@ describe("HashSet > hashSetFromSelf", () => {
   })
 
   it("is", () => {
-    const schema = S.hashSetFromSelf(S.string)
+    const schema = S.HashSetFromSelf(S.String)
     const is = P.is(schema)
     expect(is(HashSet.empty())).toEqual(true)
     expect(is(HashSet.fromIterable(["a", "b", "c"]))).toEqual(true)
@@ -57,7 +57,7 @@ describe("HashSet > hashSetFromSelf", () => {
   })
 
   it("pretty", () => {
-    const schema = S.hashSetFromSelf(S.string)
+    const schema = S.HashSetFromSelf(S.String)
     const pretty = Pretty.make(schema)
     expect(pretty(HashSet.empty())).toEqual("HashSet()")
     expect(pretty(HashSet.fromIterable(["a", "b"]))).toEqual(

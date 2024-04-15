@@ -3,6 +3,6 @@ import { describe, expect, it } from "vitest"
 
 describe("Set > set", () => {
   it("description", () => {
-    expect(String(S.set(S.number))).toStrictEqual("(ReadonlyArray<number> <-> Set<number>)")
+    expect(String(S.Set(S.Number))).toStrictEqual("(ReadonlyArray<number> <-> Set<number>)")
   })
 })
