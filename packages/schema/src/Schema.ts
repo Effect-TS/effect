@@ -586,7 +586,7 @@ export function Literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
  * import * as S from "@effect/schema/Schema"
  * import { Either } from "effect"
  *
- * const schema = S.literal("a", "b", "c").pipe(S.pickLiteral("a", "b"))
+ * const schema = S.Literal("a", "b", "c").pipe(S.pickLiteral("a", "b"))
  *
  * assert.deepStrictEqual(S.decodeSync(schema)("a"), "a")
  * assert.deepStrictEqual(S.decodeSync(schema)("b"), "b")
