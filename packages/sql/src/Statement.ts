@@ -275,10 +275,6 @@ export interface Constructor {
 
   (value: string): Identifier
 
-  (
-    value: ReadonlyArray<Primitive | Record<string, Primitive | Fragment>>
-  ): ArrayHelper
-
   /**
    * Create unsafe SQL query
    */
@@ -288,6 +284,8 @@ export interface Constructor {
   ) => Statement<A>
 
   readonly literal: (sql: string) => Fragment
+
+  readonly in: (value: ReadonlyArray<Primitive>) => ArrayHelper
 
   readonly insert: {
     (

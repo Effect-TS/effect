@@ -192,7 +192,7 @@ class ParameterImpl implements Statement.Parameter {
 
 class ArrayHelperImpl implements Statement.ArrayHelper {
   readonly _tag = "ArrayHelper"
-  constructor(readonly value: Array<Statement.Primitive>) {}
+  constructor(readonly value: ReadonlyArray<Statement.Primitive>) {}
 }
 
 class RecordInsertHelperImpl implements Statement.RecordInsertHelper {
@@ -261,8 +261,6 @@ export const make = (
           strings as TemplateStringsArray,
           ...args
         )
-      } else if (Array.isArray(strings)) {
-        return new ArrayHelperImpl(strings)
       } else if (typeof strings === "string") {
         return new IdentifierImpl(strings)
       }
@@ -282,6 +280,9 @@ export const make = (
       },
       literal(sql: string) {
         return new FragmentImpl([new LiteralImpl(sql)])
+      },
+      in(values: ReadonlyArray<Statement.Primitive>) {
+        return new ArrayHelperImpl(values)
       },
       insert(value: any) {
         return new RecordInsertHelperImpl(
