@@ -52,7 +52,7 @@ export const makePersonService = Effect.gen(function* (_) {
   const InsertPerson = yield* _(
     Sql.resolver.ordered("InsertPerson", {
       Request: InsertPersonSchema,
-      Response: Person,
+      Result: Person,
       execute: (requests) =>
         sql`
         INSERT INTO people
