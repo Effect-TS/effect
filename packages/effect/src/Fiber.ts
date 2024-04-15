@@ -451,7 +451,8 @@ export const join: <A, E>(self: Fiber<A, E>) => Effect.Effect<A, E> = internal.j
  * @since 2.0.0
  * @category destructors
  */
-export const joinAll: <A, E>(fibers: Iterable<Fiber<A, E>>) => Effect.Effect<void, E> = fiberRuntime.fiberJoinAll
+export const joinAll: <A, E>(fibers: Iterable<Fiber<A, E>>) => Effect.Effect<ReadonlyArray<A>, E> =
+  fiberRuntime.fiberJoinAll
 
 /**
  * Maps over the value the Fiber computes.
