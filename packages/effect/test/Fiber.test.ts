@@ -215,7 +215,9 @@ describe("Fiber", () => {
   it.effect("joinAll - stack safety", () =>
     Effect.gen(function*($) {
       const result = yield* $(Fiber.joinAll(fibers))
-      assert.isUndefined(result)
+      assert.isArray(result)
+      assert(result.length === fibers.length)
+      result.forEach((_) => assert.isUndefined(_))
     }), 10000)
   it.effect("all - stack safety", () =>
     Effect.gen(function*($) {
