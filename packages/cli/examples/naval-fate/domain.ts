@@ -48,7 +48,7 @@ export class Ship extends Schema.Class<Ship>("Ship")({
   name: Schema.String,
   x: Schema.Number,
   y: Schema.Number,
-  status: Schema.literal("sailing", "destroyed")
+  status: Schema.Literal("sailing", "destroyed")
 }) {
   static readonly create = (name: string) => new Ship({ name, x: 0, y: 0, status: "sailing" })
 

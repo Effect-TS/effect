@@ -41,8 +41,8 @@ describe("Schema > union", () => {
 
     it("members with literals but the input doesn't have any", async () => {
       const schema = S.Union(
-        S.Struct({ a: S.literal(1), c: S.String }),
-        S.Struct({ b: S.literal(2), d: S.Number })
+        S.Struct({ a: S.Literal(1), c: S.String }),
+        S.Struct({ b: S.Literal(2), d: S.Number })
       )
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -86,9 +86,9 @@ describe("Schema > union", () => {
 
     it("members with multiple tags", async () => {
       const schema = S.Union(
-        S.Struct({ category: S.literal("catA"), tag: S.literal("a") }),
-        S.Struct({ category: S.literal("catA"), tag: S.literal("b") }),
-        S.Struct({ category: S.literal("catA"), tag: S.literal("c") })
+        S.Struct({ category: S.Literal("catA"), tag: S.Literal("a") }),
+        S.Struct({ category: S.Literal("catA"), tag: S.Literal("b") }),
+        S.Struct({ category: S.Literal("catA"), tag: S.Literal("c") })
       )
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -131,10 +131,10 @@ describe("Schema > union", () => {
     })
 
     it("nested unions", async () => {
-      const a = S.Struct({ _tag: S.literal("a") }).annotations({ identifier: "a" })
-      const b = S.Struct({ _tag: S.literal("b") }).annotations({ identifier: "b" })
-      const A = S.Struct({ a: S.literal("A"), c: S.String }).annotations({ identifier: "A" })
-      const B = S.Struct({ b: S.literal("B"), d: S.Number }).annotations({ identifier: "B" })
+      const a = S.Struct({ _tag: S.Literal("a") }).annotations({ identifier: "a" })
+      const b = S.Struct({ _tag: S.Literal("b") }).annotations({ identifier: "b" })
+      const A = S.Struct({ a: S.Literal("A"), c: S.String }).annotations({ identifier: "A" })
+      const B = S.Struct({ b: S.Literal("B"), d: S.Number }).annotations({ identifier: "B" })
       const ab = S.Union(a, b).annotations({ identifier: "ab" })
       const AB = S.Union(A, B).annotations({ identifier: "AB" })
       const schema = S.Union(ab, AB)

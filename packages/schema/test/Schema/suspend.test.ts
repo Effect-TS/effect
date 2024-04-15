@@ -58,13 +58,13 @@ describe("Schema > suspend", () => {
       }
 
       const Expression: S.Schema<Expression> = S.Struct({
-        type: S.literal("expression"),
+        type: S.Literal("expression"),
         value: S.Union(S.Number, S.suspend(() => Operation))
       })
 
       const Operation: S.Schema<Operation> = S.Struct({
-        type: S.literal("operation"),
-        operator: S.Union(S.literal("+"), S.literal("-")),
+        type: S.Literal("operation"),
+        operator: S.Union(S.Literal("+"), S.Literal("-")),
         left: Expression,
         right: Expression
       })

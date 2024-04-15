@@ -50,7 +50,7 @@ describe("Pretty", () => {
 
   describe("templateLiteral", () => {
     it("a${string}b", () => {
-      const schema = S.templateLiteral(S.literal("a"), S.String, S.literal("b"))
+      const schema = S.templateLiteral(S.Literal("a"), S.String, S.Literal("b"))
       const pretty = Pretty.make(schema)
       expect(pretty("acb")).toEqual(`"acb"`)
     })
@@ -101,13 +101,13 @@ describe("Pretty", () => {
 
   describe("literal", () => {
     it("null", () => {
-      const schema = S.literal(null)
+      const schema = S.Literal(null)
       const pretty = Pretty.make(schema)
       expect(pretty(null)).toEqual("null")
     })
 
     it("bigint", () => {
-      const schema = S.literal(1n)
+      const schema = S.Literal(1n)
       const pretty = Pretty.make(schema)
       expect(pretty(1n)).toEqual("1n")
     })
@@ -126,7 +126,7 @@ describe("Pretty", () => {
         Apple,
         Banana
       }
-      const schema = S.enums(Fruits)
+      const schema = S.Enums(Fruits)
       const pretty = Pretty.make(schema)
       expect(pretty(Fruits.Apple)).toEqual(`0`)
       expect(pretty(Fruits.Banana)).toEqual(`1`)
@@ -138,7 +138,7 @@ describe("Pretty", () => {
         Banana = "banana",
         Cantaloupe = 0
       }
-      const schema = S.enums(Fruits)
+      const schema = S.Enums(Fruits)
       const pretty = Pretty.make(schema)
       expect(pretty(Fruits.Apple)).toEqual(`"apple"`)
       expect(pretty(Fruits.Banana)).toEqual(`"banana"`)
@@ -151,7 +151,7 @@ describe("Pretty", () => {
         Banana: "banana",
         Cantaloupe: 3
       } as const
-      const schema = S.enums(Fruits)
+      const schema = S.Enums(Fruits)
       const pretty = Pretty.make(schema)
       expect(pretty(Fruits.Apple)).toEqual(`"apple"`)
       expect(pretty(Fruits.Banana)).toEqual(`"banana"`)
@@ -386,8 +386,8 @@ describe("Pretty", () => {
 
     it("discriminated", () => {
       const schema = S.Union(
-        S.Struct({ tag: S.literal("a"), a: S.String }),
-        S.Struct({ tag: S.literal("b"), b: S.Number })
+        S.Struct({ tag: S.Literal("a"), a: S.String }),
+        S.Struct({ tag: S.Literal("b"), b: S.Number })
       )
       const pretty = Pretty.make(schema)
       expect(pretty({ tag: "a", a: "-" })).toEqual(
@@ -435,7 +435,7 @@ describe("Pretty", () => {
     })
 
     it("literal", () => {
-      expectHook(S.literal("a"))
+      expectHook(S.Literal("a"))
     })
 
     it("symbol", () => {
@@ -447,7 +447,7 @@ describe("Pretty", () => {
     })
 
     it("templateLiteral", () => {
-      expectHook(S.templateLiteral(S.literal("a"), S.String, S.literal("b")))
+      expectHook(S.templateLiteral(S.Literal("a"), S.String, S.Literal("b")))
     })
 
     it("undefined", () => {
@@ -487,7 +487,7 @@ describe("Pretty", () => {
         Apple,
         Banana
       }
-      expectHook(S.enums(Fruits))
+      expectHook(S.Enums(Fruits))
     })
 
     it("tuple", () => {

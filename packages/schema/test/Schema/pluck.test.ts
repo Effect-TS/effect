@@ -45,7 +45,7 @@ describe("Schema > pluck", () => {
     })
 
     it("union", async () => {
-      const origin = S.Union(S.Struct({ _tag: S.literal("A") }), S.Struct({ _tag: S.literal("B") }))
+      const origin = S.Union(S.Struct({ _tag: S.Literal("A") }), S.Struct({ _tag: S.Literal("B") }))
       const schema = S.pluck(origin, "_tag")
       await Util.expectDecodeUnknownSuccess(schema, { _tag: "A" }, "A")
       await Util.expectDecodeUnknownSuccess(schema, { _tag: "B" }, "B")

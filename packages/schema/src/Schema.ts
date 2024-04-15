@@ -535,15 +535,15 @@ export const make = <A, I = A, R = never>(ast: AST.AST): Schema<A, I, R> => new 
  * @category api interface
  * @since 1.0.0
  */
-export interface literal<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>
-  extends Annotable<literal<Literals>, Literals[number]>
+export interface Literal<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>
+  extends Annotable<Literal<Literals>, Literals[number]>
 {
   readonly literals: Readonly<Literals>
 }
 
-class literalImpl<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>
+class LiteralImpl<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>
   extends SchemaImpl<Literals[number]>
-  implements literal<Literals>
+  implements Literal<Literals>
 {
   static ast = <Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>(
     literals: Literals
@@ -553,12 +553,12 @@ class literalImpl<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.Liter
       : new AST.Literal(literals[0])
   }
   readonly literals: Literals
-  constructor(literals: Literals, ast: AST.AST = literalImpl.ast(literals)) {
+  constructor(literals: Literals, ast: AST.AST = LiteralImpl.ast(literals)) {
     super(ast)
     this.literals = [...literals]
   }
   annotations(annotations: Annotations.Schema<Literals[number]>) {
-    return new literalImpl(this.literals, AST.annotations(this.ast, toASTAnnotations(annotations)))
+    return new LiteralImpl(this.literals, AST.annotations(this.ast, toASTAnnotations(annotations)))
   }
 }
 
@@ -566,17 +566,17 @@ class literalImpl<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.Liter
  * @category constructors
  * @since 1.0.0
  */
-export function literal<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>(
+export function Literal<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>(
   ...literals: Literals
-): literal<Literals>
-export function literal(): Never
-export function literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
+): Literal<Literals>
+export function Literal(): Never
+export function Literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
   ...literals: Literals
 ): Schema<Literals[number]>
-export function literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
+export function Literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
   ...literals: Literals
 ): Schema<Literals[number]> | Never {
-  return ReadonlyArray.isNonEmptyReadonlyArray(literals) ? new literalImpl(literals) : Never
+  return ReadonlyArray.isNonEmptyReadonlyArray(literals) ? new LiteralImpl(literals) : Never
 }
 
 /**
@@ -597,7 +597,7 @@ export function literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
  */
 export const pickLiteral =
   <A extends AST.LiteralValue, L extends ReadonlyArray.NonEmptyReadonlyArray<A>>(...literals: L) =>
-  <I, R>(_schema: Schema<A, I, R>): literal<[...L]> => literal(...literals)
+  <I, R>(_schema: Schema<A, I, R>): Literal<[...L]> => Literal(...literals)
 
 /**
  * @category constructors
@@ -609,11 +609,11 @@ export const UniqueSymbolFromSelf = <S extends symbol>(symbol: S): Schema<S> => 
  * @category api interface
  * @since 1.0.0
  */
-export interface enums<A extends { [x: string]: string | number }> extends Annotable<enums<A>, A[keyof A]> {
+export interface Enums<A extends { [x: string]: string | number }> extends Annotable<Enums<A>, A[keyof A]> {
   readonly enums: A
 }
 
-class enumsImpl<A extends { [x: string]: string | number }> extends SchemaImpl<A[keyof A]> implements enums<A> {
+class EnumsImpl<A extends { [x: string]: string | number }> extends SchemaImpl<A[keyof A]> implements Enums<A> {
   static ast = <A extends { [x: string]: string | number }>(enums: A): AST.AST => {
     return new AST.Enums(
       Object.keys(enums).filter(
@@ -621,11 +621,11 @@ class enumsImpl<A extends { [x: string]: string | number }> extends SchemaImpl<A
       ).map((key) => [key, enums[key]])
     )
   }
-  constructor(readonly enums: A, ast: AST.AST = enumsImpl.ast(enums)) {
+  constructor(readonly enums: A, ast: AST.AST = EnumsImpl.ast(enums)) {
     super(ast)
   }
   annotations(annotations: Annotations.Schema<A[keyof A]>) {
-    return new enumsImpl(this.enums, AST.annotations(this.ast, toASTAnnotations(annotations)))
+    return new EnumsImpl(this.enums, AST.annotations(this.ast, toASTAnnotations(annotations)))
   }
 }
 
@@ -633,7 +633,7 @@ class enumsImpl<A extends { [x: string]: string | number }> extends SchemaImpl<A
  * @category constructors
  * @since 1.0.0
  */
-export const enums = <A extends { [x: string]: string | number }>(enums: A): enums<A> => new enumsImpl(enums)
+export const Enums = <A extends { [x: string]: string | number }>(enums: A): Enums<A> => new EnumsImpl(enums)
 
 type Join<T> = T extends [infer Head, ...infer Tail]
   ? `${Head & (string | number | bigint | boolean | null | undefined)}${Tail extends [] ? ""
@@ -2818,7 +2818,7 @@ export interface transformLiteral<Type, Encoded> extends Annotable<transformLite
 export const transformLiteral = <Encoded extends AST.LiteralValue, Type extends AST.LiteralValue>(
   from: Encoded,
   to: Type
-): transformLiteral<Type, Encoded> => transform(literal(from), literal(to), { decode: () => to, encode: () => from })
+): transformLiteral<Type, Encoded> => transform(Literal(from), Literal(to), { decode: () => to, encode: () => from })
 
 /**
  * Creates a new `Schema` which maps between corresponding literal values.
@@ -2904,7 +2904,7 @@ export const attachPropertySignature: {
   ): Schema<Types.Simplify<A & { readonly [k in K]: V }>, I, R> => {
     const attached = extend(
       typeSchema(schema),
-      Struct({ [key]: Predicate.isSymbol(value) ? UniqueSymbolFromSelf(value) : literal(value) })
+      Struct({ [key]: Predicate.isSymbol(value) ? UniqueSymbolFromSelf(value) : Literal(value) })
     ).ast
     return make(
       new AST.Transformation(
@@ -5034,12 +5034,12 @@ export type OptionEncoded<I> =
   }
 
 const OptionNoneEncoded = Struct({
-  _tag: literal("None")
+  _tag: Literal("None")
 }).annotations({ description: "NoneEncoded" })
 
 const optionSomeEncoded = <A, I, R>(value: Schema<A, I, R>) =>
   Struct({
-    _tag: literal("Some"),
+    _tag: Literal("Some"),
     value
   }).annotations({ description: `SomeEncoded<${format(value)}>` })
 
@@ -5258,13 +5258,13 @@ export type EitherEncoded<IR, IL> = RightEncoded<IR> | LeftEncoded<IL>
 
 const rightEncoded = <RA, RI, RR>(right: Schema<RA, RI, RR>): Schema<RightEncoded<RA>, RightEncoded<RI>, RR> =>
   Struct({
-    _tag: literal("Right"),
+    _tag: Literal("Right"),
     right
   }).annotations({ description: `RightEncoded<${format(right)}>` })
 
 const leftEncoded = <LA, LI, LR>(left: Schema<LA, LI, LR>): Schema<LeftEncoded<LA>, LeftEncoded<LI>, LR> =>
   Struct({
-    _tag: literal("Left"),
+    _tag: Literal("Left"),
     left
   }).annotations({ description: `LeftEncoded<${format(left)}>` })
 
@@ -6329,7 +6329,7 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
   : Class<
     Self,
-    { readonly _tag: literal<[Tag]> } & Fields,
+    { readonly _tag: Literal<[Tag]> } & Fields,
     Types.Simplify<{ readonly _tag: Tag } & Struct.Type<Fields>>,
     Types.Simplify<{ readonly _tag: Tag } & Struct.Encoded<Fields>>,
     Struct.Context<Fields>,
@@ -6340,7 +6340,7 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
   makeClass({
     kind: "TaggedClass",
     identifier: identifier ?? tag,
-    fields: extendFields({ _tag: literal(tag) }, fields),
+    fields: extendFields({ _tag: Literal(tag) }, fields),
     Base: data_.Class,
     tag: { _tag: tag },
     annotations
@@ -6358,7 +6358,7 @@ export const TaggedError = <Self = never>(identifier?: string) =>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedError", `"Tag", `>
   : Class<
     Self,
-    { readonly _tag: literal<[Tag]> } & Fields,
+    { readonly _tag: Literal<[Tag]> } & Fields,
     Types.Simplify<{ readonly _tag: Tag } & Struct.Type<Fields>>,
     Types.Simplify<{ readonly _tag: Tag } & Struct.Encoded<Fields>>,
     Struct.Context<Fields>,
@@ -6372,7 +6372,7 @@ export const TaggedError = <Self = never>(identifier?: string) =>
   return makeClass({
     kind: "TaggedError",
     identifier: identifier ?? tag,
-    fields: extendFields({ _tag: literal(tag) }, fields),
+    fields: extendFields({ _tag: Literal(tag) }, fields),
     Base,
     tag: { _tag: tag },
     annotations,
@@ -6428,7 +6428,7 @@ export const TaggedRequest =
   ): [Self] extends [never] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
     : Class<
       Self,
-      { readonly _tag: literal<[Tag]> } & Fields,
+      { readonly _tag: Literal<[Tag]> } & Fields,
       Types.Simplify<{ readonly _tag: Tag } & Struct.Type<Fields>>,
       Types.Simplify<{ readonly _tag: Tag } & Struct.Encoded<Fields>>,
       Struct.Context<Fields>,
@@ -6458,7 +6458,7 @@ export const TaggedRequest =
     return makeClass({
       kind: "TaggedRequest",
       identifier: identifier ?? tag,
-      fields: extendFields({ _tag: literal(tag) }, fields),
+      fields: extendFields({ _tag: Literal(tag) }, fields),
       Base: SerializableRequest,
       tag: { _tag: tag },
       annotations
@@ -6646,17 +6646,17 @@ export type FiberIdEncoded =
   }
 
 const FiberIdCompositeEncoded = Struct({
-  _tag: literal("Composite"),
+  _tag: Literal("Composite"),
   left: suspend(() => FiberIdEncoded),
   right: suspend(() => FiberIdEncoded)
 }).annotations({ identifier: "FiberIdCompositeEncoded" })
 
 const FiberIdNoneEncoded = Struct({
-  _tag: literal("None")
+  _tag: Literal("None")
 }).annotations({ identifier: "FiberIdNoneEncoded" })
 
 const FiberIdRuntimeEncoded = Struct({
-  _tag: literal("Runtime"),
+  _tag: Literal("Runtime"),
   id: Int.pipe(nonNegative({
     title: "id",
     description: "id"
@@ -6782,35 +6782,35 @@ export type CauseEncoded<E> =
 
 const causeDieEncoded = <R>(defect: Schema<unknown, unknown, R>) =>
   Struct({
-    _tag: literal("Die"),
+    _tag: Literal("Die"),
     defect
   })
 
 const CauseEmptyEncoded = Struct({
-  _tag: literal("Empty")
+  _tag: Literal("Empty")
 })
 
 const causeFailEncoded = <E, EI, R>(error: Schema<E, EI, R>) =>
   Struct({
-    _tag: literal("Fail"),
+    _tag: Literal("Fail"),
     error
   })
 
 const CauseInterruptEncoded = Struct({
-  _tag: literal("Interrupt"),
+  _tag: Literal("Interrupt"),
   fiberId: FiberIdEncoded
 })
 
 const causeParallelEncoded = <E, EI, R>(causeEncoded: Schema<CauseEncoded<E>, CauseEncoded<EI>, R>) =>
   Struct({
-    _tag: literal("Parallel"),
+    _tag: Literal("Parallel"),
     left: causeEncoded,
     right: causeEncoded
   })
 
 const causeSequentialEncoded = <E, EI, R>(causeEncoded: Schema<CauseEncoded<E>, CauseEncoded<EI>, R>) =>
   Struct({
-    _tag: literal("Sequential"),
+    _tag: Literal("Sequential"),
     left: causeEncoded,
     right: causeEncoded
   })
@@ -7023,7 +7023,7 @@ const exitFailureEncoded = <E, EI, ER, DR>(
   defect: Schema<unknown, unknown, DR>
 ) =>
   Struct({
-    _tag: literal("Failure"),
+    _tag: Literal("Failure"),
     cause: causeEncoded(error, defect)
   }).annotations({ description: `FailureEncoded<${format(error)}>` })
 
@@ -7031,7 +7031,7 @@ const exitSuccessEncoded = <A, I, R>(
   value: Schema<A, I, R>
 ) =>
   Struct({
-    _tag: literal("Success"),
+    _tag: Literal("Success"),
     value
   }).annotations({ description: `SuccessEncoded<${format(value)}>` })
 

@@ -264,42 +264,42 @@ S.Null
 S.Null.annotations({})
 
 // $ExpectType Never
-S.literal()
+S.Literal()
 
 // $ExpectType Schema<"a", "a", never>
-S.asSchema(S.literal("a"))
+S.asSchema(S.Literal("a"))
 
-// $ExpectType literal<["a"]>
-S.literal("a")
+// $ExpectType Literal<["a"]>
+S.Literal("a")
 
 // $ExpectType Schema<"a" | "b" | "c", "a" | "b" | "c", never>
-S.asSchema(S.literal("a", "b", "c"))
+S.asSchema(S.Literal("a", "b", "c"))
 
-// $ExpectType literal<["a", "b", "c"]>
-S.literal("a", "b", "c")
+// $ExpectType Literal<["a", "b", "c"]>
+S.Literal("a", "b", "c")
 
 const literals: Array<"a" | "b" | "c"> = ["a", "b", "c"]
 
 // $ExpectType Schema<"a" | "b" | "c", "a" | "b" | "c", never>
-S.literal(...literals)
+S.Literal(...literals)
 
-// $ExpectType literal<[1]>
-S.literal(1)
+// $ExpectType Literal<[1]>
+S.Literal(1)
 
-// $ExpectType literal<[2n]>
-S.literal(2n) // bigint literal
+// $ExpectType Literal<[2n]>
+S.Literal(2n) // bigint literal
 
-// $ExpectType literal<[true]>
-S.literal(true)
+// $ExpectType Literal<[true]>
+S.Literal(true)
 
-// $ExpectType literal<["A", "B"]>
-S.literal("A", "B")
+// $ExpectType Literal<["A", "B"]>
+S.Literal("A", "B")
 
 // $ExpectType readonly ["A", "B"]
-S.literal("A", "B").literals
+S.Literal("A", "B").literals
 
-// $ExpectType literal<["A", "B"]>
-S.literal("A", "B").annotations({})
+// $ExpectType Literal<["A", "B"]>
+S.Literal("A", "B").annotations({})
 
 // ---------------------------------------------
 // strings
@@ -357,19 +357,19 @@ enum Fruits {
 }
 
 // $ExpectType Schema<Fruits, Fruits, never>
-S.asSchema(S.enums(Fruits))
+S.asSchema(S.Enums(Fruits))
 
-// $ExpectType enums<typeof Fruits>
-S.enums(Fruits)
+// $ExpectType Enums<typeof Fruits>
+S.Enums(Fruits)
 
 // $ExpectType typeof Fruits
-S.enums(Fruits).enums
+S.Enums(Fruits).enums
 
 // $ExpectType Fruits.Apple
-S.enums(Fruits).enums.Apple
+S.Enums(Fruits).enums.Apple
 
 // $ExpectType Fruits.Banana
-S.enums(Fruits).enums.Banana
+S.Enums(Fruits).enums.Banana
 
 // ---------------------------------------------
 // NullOr
@@ -688,13 +688,13 @@ S.Struct({
 })
 
 // $ExpectType Struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b", never>; }>
-S.Struct({ a: S.optional(S.literal("a", "b"), { default: () => "a", exact: true }) })
+S.Struct({ a: S.optional(S.Literal("a", "b"), { default: () => "a", exact: true }) })
 
 // $ExpectType Schema<{ readonly a: "a" | "b"; }, { readonly a?: "a" | "b"; }, never>
-S.asSchema(S.Struct({ a: S.literal("a", "b").pipe(S.optional({ default: () => "a" as const, exact: true })) }))
+S.asSchema(S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a" as const, exact: true })) }))
 
 // $ExpectType Struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b", never>; }>
-S.Struct({ a: S.literal("a", "b").pipe(S.optional({ default: () => "a" as const, exact: true })) })
+S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a" as const, exact: true })) })
 
 // ---------------------------------------------
 // optional { default: () => A }
@@ -713,13 +713,13 @@ S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString
 S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString, { default: () => 0 }) })
 
 // $ExpectType Struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b" | undefined, never>; }>
-S.Struct({ a: S.optional(S.literal("a", "b"), { default: () => "a" }) })
+S.Struct({ a: S.optional(S.Literal("a", "b"), { default: () => "a" }) })
 
 // $ExpectType Schema<{ readonly a: "a" | "b"; }, { readonly a?: "a" | "b" | undefined; }, never>
-S.asSchema(S.Struct({ a: S.literal("a", "b").pipe(S.optional({ default: () => "a" as const })) }))
+S.asSchema(S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a" as const })) }))
 
 // $ExpectType Struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b" | undefined, never>; }>
-S.Struct({ a: S.literal("a", "b").pipe(S.optional({ default: () => "a" as const })) })
+S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a" as const })) })
 
 // ---------------------------------------------
 // optional { nullable: true, default: () => A }
@@ -738,13 +738,13 @@ S.asSchema(S.Struct({ a: S.optional(S.NumberFromString, { exact: true, nullable:
 S.Struct({ a: S.optional(S.NumberFromString, { exact: true, nullable: true, default: () => 0 }) })
 
 // $ExpectType Struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b" | null | undefined, never>; }>
-S.Struct({ a: S.optional(S.literal("a", "b"), { default: () => "a", nullable: true }) })
+S.Struct({ a: S.optional(S.Literal("a", "b"), { default: () => "a", nullable: true }) })
 
 // $ExpectType Schema<{ readonly a: "a" | "b"; }, { readonly a?: "a" | "b" | null | undefined; }, never>
-S.asSchema(S.Struct({ a: S.literal("a", "b").pipe(S.optional({ default: () => "a" as const, nullable: true })) }))
+S.asSchema(S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a" as const, nullable: true })) }))
 
 // $ExpectType Struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b" | null | undefined, never>; }>
-S.Struct({ a: S.literal("a", "b").pipe(S.optional({ default: () => "a" as const, nullable: true })) })
+S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a" as const, nullable: true })) })
 
 // ---------------------------------------------
 // optional { exact: true, as: "Option" }
@@ -1008,10 +1008,10 @@ S.asSchema(S.Record(pipe(S.String, S.minLength(2)), S.String))
 S.Record(pipe(S.String, S.minLength(2)), S.String)
 
 // $ExpectType Schema<{ readonly a: string; readonly b: string; }, { readonly a: string; readonly b: string; }, never>
-S.asSchema(S.Record(S.Union(S.literal("a"), S.literal("b")), S.String))
+S.asSchema(S.Record(S.Union(S.Literal("a"), S.Literal("b")), S.String))
 
-// $ExpectType $Record<Union<[literal<["a"]>, literal<["b"]>]>, $String>
-S.Record(S.Union(S.literal("a"), S.literal("b")), S.String)
+// $ExpectType $Record<Union<[Literal<["a"]>, Literal<["b"]>]>, $String>
+S.Record(S.Union(S.Literal("a"), S.Literal("b")), S.String)
 
 // $ExpectType Schema<{ readonly [x: symbol]: string; }, { readonly [x: symbol]: string; }, never>
 S.asSchema(S.Record(S.SymbolFromSelf, S.String))
@@ -1020,10 +1020,10 @@ S.asSchema(S.Record(S.SymbolFromSelf, S.String))
 S.Record(S.SymbolFromSelf, S.String)
 
 // $ExpectType Schema<{ readonly [x: `a${string}`]: string; }, { readonly [x: `a${string}`]: string; }, never>
-S.asSchema(S.Record(S.templateLiteral(S.literal("a"), S.String), S.String))
+S.asSchema(S.Record(S.templateLiteral(S.Literal("a"), S.String), S.String))
 
 // $ExpectType $Record<Schema<`a${string}`, `a${string}`, never>, $String>
-S.Record(S.templateLiteral(S.literal("a"), S.String), S.String)
+S.Record(S.templateLiteral(S.Literal("a"), S.String), S.String)
 
 // $ExpectType Schema<{ readonly [x: string & Brand<"UserId">]: string; }, { readonly [x: string]: string; }, never>
 S.asSchema(S.Record(S.String.pipe(S.brand("UserId")), S.String))
@@ -1154,14 +1154,14 @@ S.instanceOf(Test)
 // ---------------------------------------------
 
 // $ExpectType Schema<`a${string}`, `a${string}`, never>
-S.templateLiteral(S.literal("a"), S.String)
+S.templateLiteral(S.Literal("a"), S.String)
 
 // example from https://www.typescriptlang.org/docs/handbook/2/template-literal-types.html
-const EmailLocaleIDs = S.literal("welcome_email", "email_heading")
-const FooterLocaleIDs = S.literal("footer_title", "footer_sendoff")
+const EmailLocaleIDs = S.Literal("welcome_email", "email_heading")
+const FooterLocaleIDs = S.Literal("footer_title", "footer_sendoff")
 
 // $ExpectType Schema<"welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id", "welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id", never>
-S.templateLiteral(S.Union(EmailLocaleIDs, FooterLocaleIDs), S.literal("_id"))
+S.templateLiteral(S.Union(EmailLocaleIDs, FooterLocaleIDs), S.Literal("_id"))
 
 // ---------------------------------------------
 // AttachPropertySignature
@@ -1191,17 +1191,17 @@ const FromRefinement = S.Struct({
 // $ExpectType Schema<{ readonly a?: string; readonly b?: number; } & { readonly b: number; }, { readonly a?: string; readonly b?: number; }, never>
 pipe(FromRefinement, S.filter(S.is(S.Struct({ b: S.Number }))))
 
-const LiteralFilter = S.literal("a", "b")
+const LiteralFilter = S.Literal("a", "b")
 const predicateFilter2 = (u: unknown): u is "a" => typeof u === "string" && u === "a"
 
 // $ExpectType Schema<"a", "a" | "b", never>
 pipe(LiteralFilter, S.filter(predicateFilter2))
 
 // $ExpectType Schema<"a", "a" | "b", never>
-pipe(LiteralFilter, S.filter(S.is(S.literal("a"))))
+pipe(LiteralFilter, S.filter(S.is(S.Literal("a"))))
 
 // $ExpectType Schema<never, "a" | "b", never>
-pipe(LiteralFilter, S.filter(S.is(S.literal("c"))))
+pipe(LiteralFilter, S.filter(S.is(S.Literal("c"))))
 
 declare const UnionFilter: S.Schema<
   { readonly a: string } | { readonly b: string },
@@ -1663,7 +1663,7 @@ hole<S.Schema.Encoded<typeof D>>()
 // $ExpectType "a" | "c"
 hole<S.Schema.Context<typeof D>>()
 
-// $ExpectType { readonly _tag: literal<["D"]>; readonly b: $String; readonly c: Schema<boolean, boolean, "c">; readonly a: Schema<string, string, "a">; }
+// $ExpectType { readonly _tag: Literal<["D"]>; readonly b: $String; readonly c: Schema<boolean, boolean, "c">; readonly a: Schema<string, string, "a">; }
 D.fields
 
 // $ExpectType [props: { readonly a: string; readonly b: string; readonly c: boolean; }, disableValidation?: boolean | undefined]

@@ -125,7 +125,7 @@ describe("TreeFormatter", () => {
       it("outer", async () => {
         type A = readonly [number, A | null]
         const schema: S.Schema<A> = S.suspend( // intended outer suspend
-          () => S.Tuple(S.Number, S.Union(schema, S.literal(null)))
+          () => S.Tuple(S.Number, S.Union(schema, S.Literal(null)))
         )
 
         await Util.expectDecodeUnknownFailure(
@@ -150,7 +150,7 @@ describe("TreeFormatter", () => {
         type A = readonly [number, A | null]
         const schema: S.Schema<A> = S.Tuple(
           S.Number,
-          S.Union(S.suspend(() => schema), S.literal(null))
+          S.Union(S.suspend(() => schema), S.Literal(null))
         )
 
         await Util.expectDecodeUnknownFailure(
@@ -196,7 +196,7 @@ describe("TreeFormatter", () => {
       it("outer", async () => {
         type A = readonly [number, A | null]
         const schema: S.Schema<A> = S.suspend( // intended outer suspend
-          () => S.Tuple(S.Number, S.Union(schema, S.literal(null)))
+          () => S.Tuple(S.Number, S.Union(schema, S.Literal(null)))
         ).annotations({ identifier: "A" })
 
         await Util.expectDecodeUnknownFailure(
@@ -221,7 +221,7 @@ describe("TreeFormatter", () => {
         type A = readonly [number, A | null]
         const schema: S.Schema<A> = S.Tuple(
           S.Number,
-          S.Union(S.suspend(() => schema), S.literal(null))
+          S.Union(S.suspend(() => schema), S.Literal(null))
         ).annotations({ identifier: "A" })
 
         await Util.expectDecodeUnknownFailure(
@@ -246,7 +246,7 @@ describe("TreeFormatter", () => {
         type A = readonly [number, A | null]
         const schema: S.Schema<A> = S.Tuple(
           S.Number,
-          S.Union(S.suspend(() => schema).annotations({ identifier: "A" }), S.literal(null))
+          S.Union(S.suspend(() => schema).annotations({ identifier: "A" }), S.Literal(null))
         )
 
         await Util.expectDecodeUnknownFailure(
@@ -283,7 +283,7 @@ describe("TreeFormatter", () => {
     })
 
     it("literal", async () => {
-      const schema = S.literal("a").annotations({
+      const schema = S.Literal("a").annotations({
         message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
       })
 
@@ -323,7 +323,7 @@ describe("TreeFormatter", () => {
         Apple,
         Banana
       }
-      const schema = S.enums(Fruits).annotations({
+      const schema = S.Enums(Fruits).annotations({
         message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
       })
 
@@ -335,7 +335,7 @@ describe("TreeFormatter", () => {
     })
 
     it("templateLiteral", async () => {
-      const schema = S.templateLiteral(S.literal("a"), S.String, S.literal("b")).annotations({
+      const schema = S.templateLiteral(S.Literal("a"), S.String, S.Literal("b")).annotations({
         message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
       })
 
@@ -514,7 +514,7 @@ describe("TreeFormatter", () => {
       it("outer", async () => {
         type A = readonly [number, A | null]
         const schema: S.Schema<A> = S.suspend( // intended outer suspend
-          () => S.Tuple(S.Number, S.Union(schema, S.literal(null)))
+          () => S.Tuple(S.Number, S.Union(schema, S.Literal(null)))
         ).annotations({ message: (issue) => `my custom message ${JSON.stringify(issue.actual)}` })
 
         await Util.expectDecodeUnknownFailure(
@@ -533,7 +533,7 @@ describe("TreeFormatter", () => {
         type A = readonly [number, A | null]
         const schema: S.Schema<A> = S.Tuple(
           S.Number,
-          S.Union(S.suspend(() => schema), S.literal(null))
+          S.Union(S.suspend(() => schema), S.Literal(null))
         ).annotations({ message: (issue) => `my custom message ${JSON.stringify(issue.actual)}` })
 
         await Util.expectDecodeUnknownFailure(
@@ -556,7 +556,7 @@ describe("TreeFormatter", () => {
             S.suspend(() => schema).annotations({
               message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
             }),
-            S.literal(null)
+            S.Literal(null)
           )
         )
 
@@ -588,7 +588,7 @@ describe("TreeFormatter", () => {
                 message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
               })
             ),
-            S.literal(null)
+            S.Literal(null)
           )
         )
 

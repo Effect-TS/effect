@@ -186,7 +186,7 @@ describe("ArrayFormatter", () => {
     })
 
     it("literal", () => {
-      const schema = S.literal("a").annotations({
+      const schema = S.Literal("a").annotations({
         message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
       })
 
@@ -224,7 +224,7 @@ describe("ArrayFormatter", () => {
         Apple,
         Banana
       }
-      const schema = S.enums(Fruits).annotations({
+      const schema = S.Enums(Fruits).annotations({
         message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
       })
 
@@ -236,7 +236,7 @@ describe("ArrayFormatter", () => {
     })
 
     it("templateLiteral", () => {
-      const schema = S.templateLiteral(S.literal("a"), S.String, S.literal("b")).annotations({
+      const schema = S.templateLiteral(S.Literal("a"), S.String, S.Literal("b")).annotations({
         message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
       })
 
@@ -398,7 +398,7 @@ describe("ArrayFormatter", () => {
       it("outer", () => {
         type A = readonly [number, A | null]
         const schema: S.Schema<A> = S.suspend( // intended outer suspend
-          () => S.Tuple(S.Number, S.Union(schema, S.literal(null)))
+          () => S.Tuple(S.Number, S.Union(schema, S.Literal(null)))
         ).annotations({ message: (issue) => `my custom message ${JSON.stringify(issue.actual)}` })
 
         expectIssues(schema, null, [{
@@ -417,7 +417,7 @@ describe("ArrayFormatter", () => {
         type A = readonly [number, A | null]
         const schema: S.Schema<A> = S.Tuple(
           S.Number,
-          S.Union(S.suspend(() => schema), S.literal(null))
+          S.Union(S.suspend(() => schema), S.Literal(null))
         ).annotations({ message: (issue) => `my custom message ${JSON.stringify(issue.actual)}` })
 
         expectIssues(schema, null, [{
@@ -440,7 +440,7 @@ describe("ArrayFormatter", () => {
             S.suspend(() => schema).annotations({
               message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
             }),
-            S.literal(null)
+            S.Literal(null)
           )
         )
 
@@ -470,7 +470,7 @@ describe("ArrayFormatter", () => {
                 message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
               })
             ),
-            S.literal(null)
+            S.Literal(null)
           )
         )
 

@@ -104,3 +104,5 @@
 - rename `list` to `List`
 - rename `sortedSetFromSelf` to `SortedSetFromSelf`
 - rename `sortedSet` to `SortedSet`
+- rename `literal` to `Literal`
+- rename `enums` to `Enums`

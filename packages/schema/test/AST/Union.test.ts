@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 
 describe("AST.Union", () => {
   it("flatten should un-nest union members", () => {
-    const asts = AST.flatten([S.Union(S.literal("a", "b"), S.literal("c", "d")).ast])
+    const asts = AST.flatten([S.Union(S.Literal("a", "b"), S.Literal("c", "d")).ast])
     expect(asts.length).toBe(4)
   })
 

@@ -13,10 +13,10 @@ describe("AST.unify", () => {
 
     expectUnify([S.Any, S.String], [S.Any])
     expectUnify([S.Any, S.Unknown], [S.Any])
-    expectUnify([S.literal("a"), S.Any], [S.Any])
+    expectUnify([S.Literal("a"), S.Any], [S.Any])
 
     expectUnify([S.Unknown, S.String], [S.Unknown])
-    expectUnify([S.Unknown, S.literal("a")], [S.Unknown])
+    expectUnify([S.Unknown, S.Literal("a")], [S.Unknown])
 
     expectUnify([S.Object, S.Object], [S.Object])
     expectUnify([S.Object, S.Struct({ a: S.String })], [S.Object])
@@ -26,24 +26,24 @@ describe("AST.unify", () => {
     expectUnify([S.String, S.String], [S.String])
     expectUnify([S.String, S.Number], [S.String, S.Number])
 
-    expectUnify([S.literal("a"), S.literal("a")], [S.literal("a")])
-    expectUnify([S.literal("a"), S.literal("b")], [S.literal("a"), S.literal("b")])
-    expectUnify([S.literal("a"), S.String], [S.String])
-    expectUnify([S.String, S.literal("a")], [S.String])
-    expectUnify([S.literal("a"), S.literal("b"), S.String], [S.String])
-    expectUnify([S.literal("a"), S.String, S.literal("b")], [S.String])
+    expectUnify([S.Literal("a"), S.Literal("a")], [S.Literal("a")])
+    expectUnify([S.Literal("a"), S.Literal("b")], [S.Literal("a"), S.Literal("b")])
+    expectUnify([S.Literal("a"), S.String], [S.String])
+    expectUnify([S.String, S.Literal("a")], [S.String])
+    expectUnify([S.Literal("a"), S.Literal("b"), S.String], [S.String])
+    expectUnify([S.Literal("a"), S.String, S.Literal("b")], [S.String])
 
-    expectUnify([S.literal(1), S.literal(1)], [S.literal(1)])
-    expectUnify([S.literal(1), S.literal(2)], [S.literal(1), S.literal(2)])
-    expectUnify([S.literal(1), S.Number], [S.Number])
+    expectUnify([S.Literal(1), S.Literal(1)], [S.Literal(1)])
+    expectUnify([S.Literal(1), S.Literal(2)], [S.Literal(1), S.Literal(2)])
+    expectUnify([S.Literal(1), S.Number], [S.Number])
 
-    expectUnify([S.literal(true), S.literal(true)], [S.literal(true)])
-    expectUnify([S.literal(true), S.literal(false)], [S.literal(true), S.literal(false)])
-    expectUnify([S.literal(true), S.Boolean], [S.Boolean])
+    expectUnify([S.Literal(true), S.Literal(true)], [S.Literal(true)])
+    expectUnify([S.Literal(true), S.Literal(false)], [S.Literal(true), S.Literal(false)])
+    expectUnify([S.Literal(true), S.Boolean], [S.Boolean])
 
-    expectUnify([S.literal(1n), S.literal(1n)], [S.literal(1n)])
-    expectUnify([S.literal(1n), S.literal(2n)], [S.literal(1n), S.literal(2n)])
-    expectUnify([S.literal(1n), S.BigIntFromSelf], [S.BigIntFromSelf])
+    expectUnify([S.Literal(1n), S.Literal(1n)], [S.Literal(1n)])
+    expectUnify([S.Literal(1n), S.Literal(2n)], [S.Literal(1n), S.Literal(2n)])
+    expectUnify([S.Literal(1n), S.BigIntFromSelf], [S.BigIntFromSelf])
 
     expectUnify([S.UniqueSymbolFromSelf(Symbol.for("a")), S.UniqueSymbolFromSelf(Symbol.for("a"))], [
       S.UniqueSymbolFromSelf(Symbol.for("a"))

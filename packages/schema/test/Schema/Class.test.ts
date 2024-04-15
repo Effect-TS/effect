@@ -251,9 +251,9 @@ describe("Schema > Class APIs", () => {
     })
 
     it("a custom _tag field should be allowed", () => {
-      class A extends S.Class<A>("A")({ _tag: S.literal("a", "b") }) {}
+      class A extends S.Class<A>("A")({ _tag: S.Literal("a", "b") }) {}
       expect(A.fields).toStrictEqual({
-        _tag: S.literal("a", "b")
+        _tag: S.Literal("a", "b")
       })
     })
 
@@ -288,7 +288,7 @@ describe("Schema > Class APIs", () => {
         c: S.Boolean
       }) {}
       expect(D.fields).toStrictEqual({
-        _tag: S.literal("D"),
+        _tag: S.Literal("D"),
         a: S.String,
         b: S.String,
         c: S.Boolean
@@ -342,7 +342,7 @@ describe("Schema > Class APIs", () => {
 
     it("should expose the fields", () => {
       class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
-      expect(TA.fields).toEqual({ _tag: S.literal("TA"), a: S.String })
+      expect(TA.fields).toEqual({ _tag: S.Literal("TA"), a: S.String })
     })
 
     it("should expose the identifier", () => {
@@ -370,7 +370,7 @@ describe("Schema > Class APIs", () => {
     it("a custom _tag field should be not allowed", () => {
       expect(() => {
         // @ts-expect-error
-        class _TA extends S.TaggedClass<_TA>()("TA", { _tag: S.literal("X"), a: S.String }) {}
+        class _TA extends S.TaggedClass<_TA>()("TA", { _tag: S.Literal("X"), a: S.String }) {}
         console.log(_TA)
       }).toThrow(new Error(`Duplicate property signature "_tag"`))
     })
@@ -378,7 +378,7 @@ describe("Schema > Class APIs", () => {
     it("should expose the fields", async () => {
       class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
       expect(TA.fields).toStrictEqual({
-        _tag: S.literal("TA"),
+        _tag: S.Literal("TA"),
         a: S.String
       })
     })
@@ -432,7 +432,7 @@ describe("Schema > Class APIs", () => {
         ...TA.fields
       }) {}
       expect(B.fields).toStrictEqual({
-        _tag: S.literal("TA"),
+        _tag: S.Literal("TA"),
         a: S.String,
         b: S.Number
       })
@@ -446,7 +446,7 @@ describe("Schema > Class APIs", () => {
         ...pipe(TA.fields, Struct.omit("_tag"))
       }) {}
       expect(TB.fields).toStrictEqual({
-        _tag: S.literal("TB"),
+        _tag: S.Literal("TB"),
         a: S.String,
         b: S.Number
       })
@@ -678,7 +678,7 @@ describe("Schema > Class APIs", () => {
         id: S.Number
       }) {}
       expect(TRA.fields).toStrictEqual({
-        _tag: S.literal("TRA"),
+        _tag: S.Literal("TRA"),
         id: S.Number
       })
     })

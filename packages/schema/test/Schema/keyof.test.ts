@@ -61,9 +61,9 @@ describe("Schema > keyof", () => {
     })
 
     it("template literal", () => {
-      const schema = S.Record(S.templateLiteral(S.literal("a"), S.String), S.Number)
+      const schema = S.Record(S.templateLiteral(S.Literal("a"), S.String), S.Number)
       // type K = keyof S.Schema.Type<typeof schema> // `a${string}`
-      expect(AST.keyof(schema.ast)).toEqual(S.templateLiteral(S.literal("a"), S.String).ast)
+      expect(AST.keyof(schema.ast)).toEqual(S.templateLiteral(S.Literal("a"), S.String).ast)
     })
   })
 
@@ -79,14 +79,14 @@ describe("Schema > keyof", () => {
           categories: S.Array(schema)
         })
     )
-    expect(AST.keyof(schema.ast)).toEqual(S.literal("name", "categories").ast)
+    expect(AST.keyof(schema.ast)).toEqual(S.Literal("name", "categories").ast)
   })
 
   describe("union", () => {
     it("union of structs", () => {
       const schema = S.Union(S.Struct({ a: S.String }), S.Struct({ a: S.Number }))
       // type K = keyof S.Schema.Type<typeof schema> // "a"
-      expect(AST.keyof(schema.ast)).toEqual(S.literal("a").ast)
+      expect(AST.keyof(schema.ast)).toEqual(S.Literal("a").ast)
     })
 
     it("union of records", () => {
@@ -108,7 +108,7 @@ describe("Schema > keyof", () => {
   it("should support Class", () => {
     class A extends S.Class<A>("A")({ a: S.String }) {}
     // type K = keyof S.Schema.Type<typeof A> // "a"
-    expect(AST.keyof(A.ast)).toEqual(S.literal("a").ast)
+    expect(AST.keyof(A.ast)).toEqual(S.Literal("a").ast)
   })
 
   it("should throw on unsupported schemas", () => {

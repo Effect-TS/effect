@@ -606,7 +606,7 @@ describe("Options", () => {
             "config",
             Schema.Struct({
               foo: Schema.Boolean,
-              bar: Schema.literal("baz")
+              bar: Schema.Literal("baz")
             })
           ),
           ["--config", filePath],
@@ -629,7 +629,7 @@ describe("Options", () => {
             "config",
             Schema.Struct({
               foo: Schema.Boolean,
-              bar: Schema.literal("baz")
+              bar: Schema.Literal("baz")
             })
           ),
           ["--config", filePath],
@@ -652,7 +652,7 @@ describe("Options", () => {
             "config",
             Schema.Struct({
               foo: Schema.Boolean,
-              bar: Schema.literal("baz")
+              bar: Schema.Literal("baz")
             })
           ),
           ["--config", filePath],
@@ -675,7 +675,7 @@ describe("Options", () => {
             "config",
             Schema.Struct({
               foo: Schema.Boolean,
-              bar: Schema.literal("baz")
+              bar: Schema.Literal("baz")
             })
           ),
           ["--config", filePath],

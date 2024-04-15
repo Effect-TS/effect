@@ -911,7 +911,7 @@ FastCheck.Arbitrary<{
     readonly age: string;
 }>
 */
-const PersonArbitraryEncoded = Arbitrary.make(Schema.EncodedSchema(Person))
+const PersonArbitraryEncoded = Arbitrary.make(Schema.encodedSchema(Person))
 
 console.log(FastCheck.sample(PersonArbitraryEncoded, 2))
 /*
@@ -2120,7 +2120,7 @@ assert.deepStrictEqual(
 )
 ```
 
-The previous solution works perfectly and shows how we can add and remove properties to our schema at will, making it easier to consume the result within our domain model. However, it requires a lot of boilerplate. Fortunately, there is an API called `AttachPropertySignature` designed specifically for this use case, which allows us to achieve the same result with much less effort:
+The previous solution works perfectly and shows how we can add and remove properties to our schema at will, making it easier to consume the result within our domain model. However, it requires a lot of boilerplate. Fortunately, there is an API called `attachPropertySignature` designed specifically for this use case, which allows us to achieve the same result with much less effort:
 
 ```ts
 import * as S from "@effect/schema/Schema"
@@ -2129,8 +2129,8 @@ import * as assert from "node:assert"
 const Circle = S.Struct({ radius: S.Number })
 const Square = S.Struct({ sideLength: S.Number })
 const DiscriminatedShape = S.Union(
-  Circle.pipe(S.AttachPropertySignature("kind", "circle")),
-  Square.pipe(S.AttachPropertySignature("kind", "square"))
+  Circle.pipe(S.attachPropertySignature("kind", "circle")),
+  Square.pipe(S.attachPropertySignature("kind", "square"))
 )
 
 // decoding
@@ -2174,7 +2174,7 @@ To define a tuple with Required elements, you simply specify the list of element
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// const opaque: S.tuple<[S.$String, S.$Number]>
+// const opaque: S.Tuple<[S.$String, S.$Number]>
 const opaque = S.Tuple(S.String, S.Number)
 
 // const nonOpaque: S.Schema<readonly [string, number], readonly [string, number], never>
@@ -2200,7 +2200,7 @@ To define an optional element, wrap the schema of the element with the `Optional
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// const opaque: S.tuple<[S.$String, S.OptionalElement<S.$Number>]>
+// const opaque: S.Tuple<[S.$String, S.OptionalElement<S.$Number>]>
 const opaque = S.Tuple(S.String, S.optionalElement(S.Number))
 
 // const nonOpaque: S.Schema<readonly [string, number?], readonly [string, number?], never>
@@ -2214,7 +2214,7 @@ To define rest elements, follow the list of elements (Required or optional) with
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// const opaque: S.tupleType<readonly [S.$String, S.OptionalElement<S.$Number>], [S.$boolean]>
+// const opaque: S.TupleType<readonly [S.$String, S.OptionalElement<S.$Number>], [S.$boolean]>
 const opaque = S.Tuple([S.String, S.optionalElement(S.Number)], S.Boolean)
 
 // const nonOpaque: S.Schema<readonly [string, number?, ...boolean[]], readonly [string, number?, ...boolean[]], never>
@@ -2226,7 +2226,7 @@ Optionally, you can include other elements after the rest:
 ```ts
 import * as S from "@effect/schema/Schema"
 
-// const opaque: S.tupleType<readonly [S.$String, S.OptionalElement<S.$Number>], [S.$boolean, S.$String]>
+// const opaque: S.TupleType<readonly [S.$String, S.OptionalElement<S.$Number>], [S.$boolean, S.$String]>
 const opaque = S.Tuple(
   [S.String, S.optionalElement(S.Number)],
   S.Boolean,
@@ -2287,7 +2287,7 @@ By default, when you use `S.Array`, it generates a type marked as readonly. The 
 import * as S from "@effect/schema/Schema"
 
 // Schema<number[]>
-S.Mutable(S.Array(S.Number))
+S.mutable(S.Array(S.Number))
 ```
 
 ### Non empty arrays
@@ -2355,13 +2355,13 @@ S.Record(S.TemplateLiteral(S.Literal("a"), S.String), S.String)
 
 ### Mutable Records
 
-By default, when you use `S.record`, it generates a type marked as readonly. The `Mutable` combinator is a useful function for creating a new schema with a Mutable type in a **shallow** manner:
+By default, when you use `S.Record`, it generates a type marked as readonly. The `mutable` combinator is a useful function for creating a new schema with a Mutable type in a **shallow** manner:
 
 ```ts
 import * as S from "@effect/schema/Schema";
 
 // Schema<{ [x: string]: string; }>
-S.Mutable(S.Record(S.String, S.String););
+S.mutable(S.Record(S.String, S.String););
 ```
 
 ### Exposed Values
@@ -2477,7 +2477,7 @@ By default, when you use `S.struct`, it generates a type with properties that ar
 import * as S from "@effect/schema/Schema"
 
 // Schema<{ a: string; b: number; }>
-S.Mutable(S.Struct({ a: S.String, b: S.Number }))
+S.mutable(S.Struct({ a: S.String, b: S.Number }))
 ```
 
 ## Property Signatures
@@ -3015,12 +3015,12 @@ const schema1 = S.Split(",")
 const schema2 = S.Array(S.NumberFromString)
 
 // Schema<readonly number[], string>
-const ComposedSchema = S.Compose(schema1, schema2)
+const ComposedSchema = S.compose(schema1, schema2)
 ```
 
 In this example, we have two schemas, `schema1` and `schema2`. The first schema, `schema1`, takes a string and splits it into an array using a comma as the delimiter. The second schema, `schema2`, transforms an array of strings into an array of numbers.
 
-Now, by using the `Compose` combinator, we can create a new schema, `ComposedSchema`, that combines the functionality of both `schema1` and `schema2`. This allows us to parse a string and directly obtain an array of numbers as a result.
+Now, by using the `compose` combinator, we can create a new schema, `ComposedSchema`, that combines the functionality of both `schema1` and `schema2`. This allows us to parse a string and directly obtain an array of numbers as a result.
 
 ### Non-strict Option
 
@@ -3040,10 +3040,10 @@ This is useful when you want to relax the type constraints imposed by the `decod
 import * as S from "@effect/schema/Schema"
 
 // error: Type 'string | null' is not assignable to type 'string'
-S.Compose(S.Union(S.Null, S.String), S.NumberFromString)
+S.compose(S.Union(S.Null, S.String), S.NumberFromString)
 
 // ok
-S.Compose(S.Union(S.Null, S.String), S.NumberFromString, { strict: false })
+S.compose(S.Union(S.Null, S.String), S.NumberFromString, { strict: false })
 ```
 
 ## InstanceOf
@@ -3658,6 +3658,8 @@ The `transformOrFail` combinator works in a similar way, but allows the transfor
   }
 ): transformOrFail<From, To, RD | RE>
 ```
+
+Both `decode` and `encode` functions not only receive the value to transform (`fromA` and `toI`), but also the parse options that the user sets when using the resulting schema, and the `ast`, which represents the `AST` of the schema you're transforming.
 
 Example
 
@@ -4783,7 +4785,7 @@ import * as S from "@effect/schema/Schema"
 const isFile = (input: unknown): input is File => input instanceof File
 
 // const FileFromSelf: S.Schema<File>
-const FileFromSelf = S.Declare(isFile, {
+const FileFromSelf = S.declare(isFile, {
   identifier: "FileFromSelf"
 })
 
@@ -4810,7 +4812,7 @@ export const MyReadonlySet = <A, I, R>(
   // Schema for the elements of the Set
   item: S.Schema<A, I, R>
 ): S.Schema<ReadonlySet<A>, ReadonlySet<I>, R> =>
-  S.Declare(
+  S.declare(
     // Store the schema for the elements
     [item],
     // Decoding function

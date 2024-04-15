@@ -8,7 +8,7 @@ describe("Schema > enums", () => {
       Apple,
       Banana
     }
-    const schema = S.enums(Fruits).annotations({ identifier: "Fruits" })
+    const schema = S.Enums(Fruits).annotations({ identifier: "Fruits" })
     expect(schema.enums.Apple).toBe(0)
     expect(schema.enums.Banana).toBe(1)
   })
@@ -18,7 +18,7 @@ describe("Schema > enums", () => {
       Apple,
       Banana
     }
-    const schema = S.enums(Fruits)
+    const schema = S.Enums(Fruits)
 
     it("decoding", async () => {
       await Util.expectDecodeUnknownSuccess(schema, Fruits.Apple)
@@ -45,7 +45,7 @@ describe("Schema > enums", () => {
       Banana = "banana",
       Cantaloupe = 0
     }
-    const schema = S.enums(Fruits)
+    const schema = S.Enums(Fruits)
 
     it("decoding", async () => {
       await Util.expectDecodeUnknownSuccess(schema, Fruits.Apple)
@@ -74,7 +74,7 @@ describe("Schema > enums", () => {
       Banana: "banana",
       Cantaloupe: 3
     } as const
-    const schema = S.enums(Fruits)
+    const schema = S.Enums(Fruits)
 
     it("decoding", async () => {
       await Util.expectDecodeUnknownSuccess(schema, "apple")

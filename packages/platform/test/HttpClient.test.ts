@@ -14,7 +14,7 @@ const Todo = Schema.Struct({
   completed: Schema.Boolean
 })
 const OkTodo = Schema.Struct({
-  status: Schema.literal(200),
+  status: Schema.Literal(200),
   body: Todo
 })
 

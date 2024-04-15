@@ -12,9 +12,9 @@ describe("AST > getPropertySignatures", () => {
   })
 
   it("union", () => {
-    const schema = S.Union(S.Struct({ _tag: S.literal("A") }), S.Struct({ _tag: S.literal("B") }))
+    const schema = S.Union(S.Struct({ _tag: S.Literal("A") }), S.Struct({ _tag: S.Literal("B") }))
     expect(AST.getPropertySignatures(schema.ast)).toEqual([
-      new AST.PropertySignature("_tag", S.literal("A", "B").ast, false, true)
+      new AST.PropertySignature("_tag", S.Literal("A", "B").ast, false, true)
     ])
   })
 

@@ -9,7 +9,7 @@ import type { Option } from "effect/Option"
  * @category schemas
  */
 export const SpanStatusStarted = Schema.Struct({
-  _tag: Schema.literal("Started"),
+  _tag: Schema.Literal("Started"),
   startTime: Schema.BigInt
 })
 
@@ -18,7 +18,7 @@ export const SpanStatusStarted = Schema.Struct({
  * @category schemas
  */
 export const SpanStatusEnded = Schema.Struct({
-  _tag: Schema.literal("Ended"),
+  _tag: Schema.Literal("Ended"),
   startTime: Schema.BigInt,
   endTime: Schema.BigInt
 })
@@ -34,7 +34,7 @@ export const SpanStatus = Schema.Union(SpanStatusStarted, SpanStatusEnded)
  * @category schemas
  */
 export const ExternalSpan = Schema.Struct({
-  _tag: Schema.literal("ExternalSpan"),
+  _tag: Schema.Literal("ExternalSpan"),
   spanId: Schema.String,
   traceId: Schema.String,
   sampled: Schema.Boolean
@@ -57,7 +57,7 @@ export interface ExternalSpan extends Schema.Schema.Type<typeof ExternalSpan> {}
  * @category schemas
  */
 export const Span: Schema.Schema<Span, SpanFrom> = Schema.Struct({
-  _tag: Schema.literal("Span"),
+  _tag: Schema.Literal("Span"),
   spanId: Schema.String,
   traceId: Schema.String,
   name: Schema.String,
@@ -82,7 +82,7 @@ export const SpanEvent: Schema.Schema<
     readonly startTime: string
   }
 > = Schema.Struct({
-  _tag: Schema.literal("SpanEvent"),
+  _tag: Schema.Literal("SpanEvent"),
   traceId: Schema.String,
   spanId: Schema.String,
   name: Schema.String,
@@ -170,7 +170,7 @@ export interface SpanEvent {
  * @category schemas
  */
 export const Ping = Schema.Struct({
-  _tag: Schema.literal("Ping")
+  _tag: Schema.Literal("Ping")
 })
 
 /**
@@ -178,7 +178,7 @@ export const Ping = Schema.Struct({
  * @category schemas
  */
 export const Pong = Schema.Struct({
-  _tag: Schema.literal("Pong")
+  _tag: Schema.Literal("Pong")
 })
 
 /**
@@ -186,7 +186,7 @@ export const Pong = Schema.Struct({
  * @category schemas
  */
 export const MetricsRequest = Schema.Struct({
-  _tag: Schema.literal("MetricsRequest")
+  _tag: Schema.Literal("MetricsRequest")
 })
 
 /**
@@ -204,7 +204,7 @@ export const MetricLabel = Schema.Struct({
  */
 export const metric = <Tag extends string, S, IS, R>(tag: Tag, state: Schema.Schema<S, IS, R>) =>
   Schema.Struct({
-    _tag: Schema.literal(tag),
+    _tag: Schema.Literal(tag),
     name: Schema.String,
     description: Schema.optional(Schema.String, { as: "Option" }),
     tags: Schema.Array(MetricLabel),
@@ -307,7 +307,7 @@ export type MetricFrom = Schema.Schema.Encoded<typeof Metric>
  * @category schemas
  */
 export const MetricsSnapshot = Schema.Struct({
-  _tag: Schema.literal("MetricsSnapshot"),
+  _tag: Schema.Literal("MetricsSnapshot"),
   metrics: Schema.Array(Metric)
 })
 

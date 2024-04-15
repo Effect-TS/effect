@@ -229,14 +229,14 @@ describe("ParseIssue.actual", () => {
     })
 
     it("TypeLiteral", () => {
-      expect(P.getLiterals(S.Struct({ _tag: S.literal("a") }).ast, true))
+      expect(P.getLiterals(S.Struct({ _tag: S.Literal("a") }).ast, true))
         .toEqual([["_tag", new AST.Literal("a")]])
     })
 
     it("Refinement", () => {
       expect(
         P.getLiterals(
-          S.Struct({ _tag: S.literal("a") }).pipe(
+          S.Struct({ _tag: S.Literal("a") }).pipe(
             S.filter(() => true)
           ).ast,
           true
@@ -267,8 +267,8 @@ describe("ParseIssue.actual", () => {
         P.getLiterals(
           S.Struct({
             _tag: S.transform(
-              S.literal("a"),
-              S.literal("b"),
+              S.Literal("a"),
+              S.Literal("b"),
               { decode: () => "b" as const, encode: () => "a" as const }
             )
           })
@@ -279,12 +279,12 @@ describe("ParseIssue.actual", () => {
     })
 
     it("Class (decode)", () => {
-      class A extends S.Class<A>("A")({ _tag: S.literal("a") }) {}
+      class A extends S.Class<A>("A")({ _tag: S.Literal("a") }) {}
       expect(P.getLiterals(A.ast, true)).toEqual([["_tag", new AST.Literal("a")]])
     })
 
     it("Class (encode)", () => {
-      class A extends S.Class<A>("A")({ _tag: S.literal("a") }) {}
+      class A extends S.Class<A>("A")({ _tag: S.Literal("a") }) {}
       expect(P.getLiterals(A.ast, false)).toEqual([["_tag", new AST.Literal("a")]])
     })
   })
@@ -298,7 +298,7 @@ describe("ParseIssue.actual", () => {
     })
 
     it("struct + primitive", () => {
-      const a = S.Struct({ _tag: S.literal("a") })
+      const a = S.Struct({ _tag: S.Literal("a") })
       expect(P.getSearchTree([a.ast, S.Number.ast], true)).toEqual(
         {
           keys: {
@@ -315,8 +315,8 @@ describe("ParseIssue.actual", () => {
     })
 
     it("struct + struct (same tag key)", () => {
-      const a = S.Struct({ _tag: S.literal("a") })
-      const b = S.Struct({ _tag: S.literal("b") })
+      const a = S.Struct({ _tag: S.Literal("a") })
+      const b = S.Struct({ _tag: S.Literal("b") })
       expect(P.getSearchTree([a.ast, b.ast], true)).toEqual({
         keys: {
           _tag: {
@@ -332,8 +332,8 @@ describe("ParseIssue.actual", () => {
     })
 
     it("struct + struct (different tag key)", () => {
-      const A = S.Struct({ a: S.literal("A"), c: S.String })
-      const B = S.Struct({ b: S.literal("B"), d: S.Number })
+      const A = S.Struct({ a: S.Literal("A"), c: S.String })
+      const B = S.Struct({ b: S.Literal("B"), d: S.Number })
       expect(
         P.getSearchTree([A.ast, B.ast], true)
       ).toEqual({
@@ -356,9 +356,9 @@ describe("ParseIssue.actual", () => {
     })
 
     it("should handle multiple tags", () => {
-      const a = S.Struct({ category: S.literal("catA"), tag: S.literal("a") })
-      const b = S.Struct({ category: S.literal("catA"), tag: S.literal("b") })
-      const c = S.Struct({ category: S.literal("catA"), tag: S.literal("c") })
+      const a = S.Struct({ category: S.Literal("catA"), tag: S.Literal("a") })
+      const b = S.Struct({ category: S.Literal("catA"), tag: S.Literal("b") })
+      const c = S.Struct({ category: S.Literal("catA"), tag: S.Literal("c") })
       expect(
         P.getSearchTree([
           a.ast,
@@ -387,13 +387,13 @@ describe("ParseIssue.actual", () => {
 
     it("big union", () => {
       const schema = S.Union(
-        S.Struct({ type: S.literal("a"), value: S.String }),
-        S.Struct({ type: S.literal("b"), value: S.String }),
-        S.Struct({ type: S.literal("c"), value: S.String }),
+        S.Struct({ type: S.Literal("a"), value: S.String }),
+        S.Struct({ type: S.Literal("b"), value: S.String }),
+        S.Struct({ type: S.Literal("c"), value: S.String }),
         S.Struct({ type: S.String, value: S.String }),
-        S.Struct({ type: S.literal(null), value: S.String }),
+        S.Struct({ type: S.Literal(null), value: S.String }),
         S.Struct({ type: S.Undefined, value: S.String }),
-        S.Struct({ type: S.literal("d", "e"), value: S.String }),
+        S.Struct({ type: S.Literal("d", "e"), value: S.String }),
         S.Struct({ type: S.Struct({ nested: S.String }), value: S.String }),
         S.Struct({ type: S.Array(S.Number), value: S.String })
       )
@@ -402,10 +402,10 @@ describe("ParseIssue.actual", () => {
         keys: {
           type: {
             buckets: {
-              a: [S.Struct({ type: S.literal("a"), value: S.String }).ast],
-              b: [S.Struct({ type: S.literal("b"), value: S.String }).ast],
-              c: [S.Struct({ type: S.literal("c"), value: S.String }).ast],
-              null: [S.Struct({ type: S.literal(null), value: S.String }).ast]
+              a: [S.Struct({ type: S.Literal("a"), value: S.String }).ast],
+              b: [S.Struct({ type: S.Literal("b"), value: S.String }).ast],
+              c: [S.Struct({ type: S.Literal("c"), value: S.String }).ast],
+              null: [S.Struct({ type: S.Literal(null), value: S.String }).ast]
             },
             literals: [
               new AST.Literal("a"),
@@ -418,7 +418,7 @@ describe("ParseIssue.actual", () => {
         otherwise: [
           S.Struct({ type: S.String, value: S.String }).ast,
           S.Struct({ type: S.Undefined, value: S.String }).ast,
-          S.Struct({ type: S.literal("d", "e"), value: S.String }).ast,
+          S.Struct({ type: S.Literal("d", "e"), value: S.String }).ast,
           S.Struct({ type: S.Struct({ nested: S.String }), value: S.String }).ast,
           S.Struct({ type: S.Array(S.Number), value: S.String }).ast
         ]
@@ -426,10 +426,10 @@ describe("ParseIssue.actual", () => {
     })
 
     it("nested unions", () => {
-      const a = S.Struct({ _tag: S.literal("a") })
-      const b = S.Struct({ _tag: S.literal("b") })
-      const A = S.Struct({ a: S.literal("A"), c: S.String })
-      const B = S.Struct({ b: S.literal("B"), d: S.Number })
+      const a = S.Struct({ _tag: S.Literal("a") })
+      const b = S.Struct({ _tag: S.Literal("b") })
+      const A = S.Struct({ a: S.Literal("A"), c: S.String })
+      const B = S.Struct({ b: S.Literal("B"), d: S.Number })
       const ab = S.Union(a, b)
       const AB = S.Union(A, B)
       const schema = S.Union(ab, AB)
