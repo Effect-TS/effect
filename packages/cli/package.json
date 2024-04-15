@@ -1,6 +1,6 @@
 {
   "name": "@effect/cli",
-  "version": "0.35.30",
+  "version": "0.35.31",
   "type": "module",
   "license": "MIT",
   "description": "Functional programming in TypeScript",
