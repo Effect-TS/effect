@@ -117,6 +117,23 @@ export const make = (limit: number) =>
   });
 ```
 
+### Identifiers
+
+```ts
+import { Effect } from "effect";
+import * as Sql from "@effect/sql-pg";
+
+const table = "people";
+
+export const make = (limit: number) =>
+  Effect.gen(function* (_) {
+    const sql = yield* _(Sql.client.PgClient);
+
+    const statement = sql`SELECT * FROM ${sql(table)} LIMIT ${limit}`;
+    // e.g. SELECT * FROM "people" LIMIT ?
+  });
+```
+
 ### Unsafe interpolation
 
 ```ts
@@ -151,7 +168,7 @@ export const make = (names: string[], cursor: string) =>
       sql`name IN ${sql.in(names)}`,
       sql`created_at < ${cursor}`,
     ])}`;
-    // SELECT * FROM people WHERE (name IN ? AND created_at < ?)
+    // SELECT * FROM people WHERE (name IN (?,?,?) AND created_at < ?)
   });
 ```
 
@@ -169,7 +186,7 @@ export const make = (names: string[], cursor: Date) =>
       sql`name IN ${sql.in(names)}`,
       sql`created_at < ${cursor}`,
     ])}`;
-    // SELECT * FROM people WHERE (name IN ? OR created_at < ?)
+    // SELECT * FROM people WHERE (name IN (?,?,?) OR created_at < ?)
   });
 ```
 
@@ -187,7 +204,7 @@ export const make = (names: string[], afterCursor: Date, beforeCursor: Date) =>
       sql`name IN ${sql.in(names)}`,
       sql.and([`created_at > ${afterCursor}`, `created_at < ${beforeCursor}`]),
     ])}`;
-    // SELECT * FROM people WHERE (name IN ? OR (created_at > ? AND created_at < ?))
+    // SELECT * FROM people WHERE (name IN (?,?,?) OR (created_at > ? AND created_at < ?))
   });
 ```
 
