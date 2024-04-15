@@ -243,19 +243,19 @@ export const get = <A, E>(self: FiberHandle<A, E>): Effect.Effect<Fiber.RuntimeF
  * @categories combinators
  */
 export const clear = <A, E>(self: FiberHandle<A, E>): Effect.Effect<void> =>
-  Effect.suspend(() => {
-    if (self.backing === undefined) {
-      return Effect.unit
-    }
-    return Effect.uninterruptibleMask((restore) =>
-      Effect.zipRight(
+  Effect.uninterruptibleMask((restore) =>
+    Effect.suspend(() => {
+      if (self.backing === undefined) {
+        return Effect.unit
+      }
+      return Effect.zipRight(
         restore(Fiber.interrupt(self.backing!)),
         Effect.sync(() => {
           self.backing = undefined
         })
       )
-    )
-  })
+    })
+  )
 
 /**
  * Run an Effect and add the forked fiber to the FiberHandle.
