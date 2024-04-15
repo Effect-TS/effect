@@ -5,7 +5,7 @@ import * as MockConsole from "@effect/cli/test/services/MockConsole"
 import * as MockTerminal from "@effect/cli/test/services/MockTerminal"
 import {} from "@effect/platform"
 import { NodeFileSystem, NodePath } from "@effect/platform-node"
-import { Array as ReadonlyArray, Effect } from "effect"
+import { Array, Effect } from "effect"
 import * as Console from "effect/Console"
 import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
@@ -34,12 +34,12 @@ describe("Wizard", () => {
           version: "1.0.0"
         })
       )
-      const args = ReadonlyArray.make("node", "test", "--wizard")
+      const args = Array.make("node", "test", "--wizard")
       const fiber = yield* _(Effect.fork(cli(args)))
       yield* _(MockTerminal.inputKey("c", { ctrl: true }))
       yield* _(Fiber.join(fiber))
       const lines = yield* _(MockConsole.getLines({ stripAnsi: true }))
-      const result = ReadonlyArray.some(lines, (line) => line.includes("Quitting wizard mode..."))
+      const result = Array.some(lines, (line) => line.includes("Quitting wizard mode..."))
       expect(result).toBe(true)
     }).pipe(runEffect))
 })

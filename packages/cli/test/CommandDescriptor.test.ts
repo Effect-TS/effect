@@ -11,7 +11,7 @@ import * as WordCount from "@effect/cli/test/utils/wc"
 import * as ValidationError from "@effect/cli/ValidationError"
 import * as NodeContext from "@effect/platform-node/NodeContext"
 import * as Doc from "@effect/printer/Doc"
-import { Array as ReadonlyArray, Effect, Option, String } from "effect"
+import { Array, Effect, Option, String } from "effect"
 import { describe, expect, it } from "vitest"
 
 const runEffect = <E, A>(
@@ -25,21 +25,21 @@ describe("Command", () => {
   describe("Standard Commands", () => {
     it("should validate a command with options followed by arguments", () =>
       Effect.gen(function*(_) {
-        const args1 = ReadonlyArray.make("tail", "-n", "100", "foo.log")
-        const args2 = ReadonlyArray.make("grep", "--after", "2", "--before", "3", "fooBar")
+        const args1 = Array.make("tail", "-n", "100", "foo.log")
+        const args2 = Array.make("grep", "--after", "2", "--before", "3", "fooBar")
         const result1 = yield* _(Descriptor.parse(Tail.command, args1, CliConfig.defaultConfig))
         const result2 = yield* _(Descriptor.parse(Grep.command, args2, CliConfig.defaultConfig))
         const expected1 = { name: "tail", options: 100, args: "foo.log" }
         const expected2 = { name: "grep", options: [2, 3], args: "fooBar" }
-        expect(result1).toEqual(CommandDirective.userDefined(ReadonlyArray.empty(), expected1))
-        expect(result2).toEqual(CommandDirective.userDefined(ReadonlyArray.empty(), expected2))
+        expect(result1).toEqual(CommandDirective.userDefined(Array.empty(), expected1))
+        expect(result2).toEqual(CommandDirective.userDefined(Array.empty(), expected2))
       }).pipe(runEffect))
 
     it("should provide auto-correct suggestions for misspelled options", () =>
       Effect.gen(function*(_) {
-        const args1 = ReadonlyArray.make("grep", "--afte", "2", "--before", "3", "fooBar")
-        const args2 = ReadonlyArray.make("grep", "--after", "2", "--efore", "3", "fooBar")
-        const args3 = ReadonlyArray.make("grep", "--afte", "2", "--efore", "3", "fooBar")
+        const args1 = Array.make("grep", "--afte", "2", "--before", "3", "fooBar")
+        const args2 = Array.make("grep", "--after", "2", "--efore", "3", "fooBar")
+        const args3 = Array.make("grep", "--afte", "2", "--efore", "3", "fooBar")
         const result1 = yield* _(
           Effect.flip(Descriptor.parse(Grep.command, args1, CliConfig.defaultConfig))
         )
@@ -62,7 +62,7 @@ describe("Command", () => {
 
     it("should return an error if an option is missing", () =>
       Effect.gen(function*(_) {
-        const args = ReadonlyArray.make("grep", "--a", "2", "--before", "3", "fooBar")
+        const args = Array.make("grep", "--a", "2", "--before", "3", "fooBar")
         const result = yield* _(
           Effect.flip(Descriptor.parse(Grep.command, args, CliConfig.defaultConfig))
         )
@@ -76,8 +76,8 @@ describe("Command", () => {
   describe("Commands with Clustered Options", () => {
     it("should treat clustered boolean options as un-clustered options", () =>
       Effect.gen(function*(_) {
-        const args1 = ReadonlyArray.make("wc", "-clw", "filename")
-        const args2 = ReadonlyArray.make("wc", "-c", "-l", "-w", "filename")
+        const args1 = Array.make("wc", "-clw", "filename")
+        const args2 = Array.make("wc", "-c", "-l", "-w", "filename")
         const result1 = yield* _(
           Descriptor.parse(WordCount.command, args1, CliConfig.defaultConfig)
         )
@@ -85,24 +85,24 @@ describe("Command", () => {
           Descriptor.parse(WordCount.command, args2, CliConfig.defaultConfig)
         )
         const expected = { name: "wc", options: [true, true, true, true], args: ["filename"] }
-        expect(result1).toEqual(CommandDirective.userDefined(ReadonlyArray.empty(), expected))
-        expect(result2).toEqual(CommandDirective.userDefined(ReadonlyArray.empty(), expected))
+        expect(result1).toEqual(CommandDirective.userDefined(Array.empty(), expected))
+        expect(result2).toEqual(CommandDirective.userDefined(Array.empty(), expected))
       }).pipe(runEffect))
 
     it("should not uncluster wrong clusters", () =>
       Effect.gen(function*(_) {
-        const args = ReadonlyArray.make("wc", "-clk")
+        const args = Array.make("wc", "-clk")
         const result = yield* _(Descriptor.parse(WordCount.command, args, CliConfig.defaultConfig))
         const expected = { name: "wc", options: [false, false, false, true], args: ["-clk"] }
-        expect(result).toEqual(CommandDirective.userDefined(ReadonlyArray.empty(), expected))
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), expected))
       }).pipe(runEffect))
 
     it("should not alter '-'", () =>
       Effect.gen(function*(_) {
-        const args = ReadonlyArray.make("wc", "-")
+        const args = Array.make("wc", "-")
         const result = yield* _(Descriptor.parse(WordCount.command, args, CliConfig.defaultConfig))
         const expected = { name: "wc", options: [false, false, false, true], args: ["-"] }
-        expect(result).toEqual(CommandDirective.userDefined(ReadonlyArray.empty(), expected))
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), expected))
       }).pipe(runEffect))
   })
 
@@ -116,7 +116,7 @@ describe("Command", () => {
 
     it("should match the top-level command if no subcommands are specified", () =>
       Effect.gen(function*(_) {
-        const args = ReadonlyArray.make("git", "-v")
+        const args = Array.make("git", "-v")
         const result = yield* _(Descriptor.parse(git, args, CliConfig.defaultConfig))
         const expected = { name: "git", options: true, args: void 0, subcommand: Option.none() }
         expect(result).toEqual(CommandDirective.userDefined([], expected))
@@ -124,7 +124,7 @@ describe("Command", () => {
 
     it("should match the first subcommand without any surplus arguments", () =>
       Effect.gen(function*(_) {
-        const args = ReadonlyArray.make("git", "remote")
+        const args = Array.make("git", "remote")
         const result = yield* _(Descriptor.parse(git, args, CliConfig.defaultConfig))
         const expected = {
           name: "git",
@@ -132,12 +132,12 @@ describe("Command", () => {
           args: void 0,
           subcommand: Option.some(["remote", { name: "remote", options: void 0, args: void 0 }])
         }
-        expect(result).toEqual(CommandDirective.userDefined(ReadonlyArray.empty(), expected))
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), expected))
       }).pipe(runEffect))
 
     it("matches the first subcommand with a surplus option", () =>
       Effect.gen(function*(_) {
-        const args = ReadonlyArray.make("git", "remote", "-v")
+        const args = Array.make("git", "remote", "-v")
         const result = yield* _(Descriptor.parse(git, args, CliConfig.defaultConfig))
         const expected = {
           name: "git",
@@ -145,12 +145,12 @@ describe("Command", () => {
           args: void 0,
           subcommand: Option.some(["remote", { name: "remote", options: void 0, args: void 0 }])
         }
-        expect(result).toEqual(CommandDirective.userDefined(ReadonlyArray.of("-v"), expected))
+        expect(result).toEqual(CommandDirective.userDefined(Array.of("-v"), expected))
       }).pipe(runEffect))
 
     it("matches the second subcommand without any surplus arguments", () =>
       Effect.gen(function*(_) {
-        const args = ReadonlyArray.make("git", "log")
+        const args = Array.make("git", "log")
         const result = yield* _(Descriptor.parse(git, args, CliConfig.defaultConfig))
         const expected = {
           name: "git",
@@ -158,12 +158,12 @@ describe("Command", () => {
           args: void 0,
           subcommand: Option.some(["log", { name: "log", options: void 0, args: void 0 }])
         }
-        expect(result).toEqual(CommandDirective.userDefined(ReadonlyArray.empty(), expected))
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), expected))
       }).pipe(runEffect))
 
     it("should return an error message for an unknown subcommand", () =>
       Effect.gen(function*(_) {
-        const args = ReadonlyArray.make("git", "abc")
+        const args = Array.make("git", "abc")
         const result = yield* _(Effect.flip(Descriptor.parse(git, args, CliConfig.defaultConfig)))
         expect(result).toEqual(ValidationError.commandMismatch(HelpDoc.p(
           "Invalid subcommand for git - use one of 'remote', 'log'"
@@ -185,7 +185,7 @@ describe("Command", () => {
 
     it("should parse a subcommand with required options and arguments", () =>
       Effect.gen(function*(_) {
-        const args = ReadonlyArray.make("git", "rebase", "-i", "upstream", "branch")
+        const args = Array.make("git", "rebase", "-i", "upstream", "branch")
         const result = yield* _(Descriptor.parse(git, args, CliConfig.defaultConfig))
         const expected = {
           name: "git",
@@ -197,12 +197,12 @@ describe("Command", () => {
             args: ["upstream", "branch"]
           }])
         }
-        expect(result).toEqual(CommandDirective.userDefined(ReadonlyArray.empty(), expected))
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), expected))
       }).pipe(runEffect))
 
     it("should parse a subcommand with required and optional options and arguments", () =>
       Effect.gen(function*(_) {
-        const args = ReadonlyArray.make(
+        const args = Array.make(
           "git",
           "rebase",
           "-i",
@@ -222,7 +222,7 @@ describe("Command", () => {
             args: ["upstream", "branch"]
           }])
         }
-        expect(result).toEqual(CommandDirective.userDefined(ReadonlyArray.empty(), expected))
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), expected))
       }).pipe(runEffect))
   })
 
@@ -238,7 +238,7 @@ describe("Command", () => {
 
     it("should properly parse deeply nested subcommands with options and arguments", () =>
       Effect.gen(function*(_) {
-        const args = ReadonlyArray.make("command", "sub", "subsub", "-i", "text")
+        const args = Array.make("command", "sub", "subsub", "-i", "text")
         const result = yield* _(Descriptor.parse(command, args, CliConfig.defaultConfig))
         const expected = {
           name: "command",
@@ -255,7 +255,7 @@ describe("Command", () => {
             }])
           }])
         }
-        expect(result).toEqual(CommandDirective.userDefined(ReadonlyArray.empty(), expected))
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), expected))
       }).pipe(runEffect))
   })
 
@@ -264,14 +264,14 @@ describe("Command", () => {
       Effect.gen(function*(_) {
         const config = CliConfig.make({ showBuiltIns: false })
         const cmd = Descriptor.make("tldr").pipe(Descriptor.withDescription("this is some help"))
-        const args = ReadonlyArray.of("tldr")
+        const args = Array.of("tldr")
         const result = yield* _(Descriptor.parse(cmd, args, CliConfig.defaultConfig))
         const expectedValue = { name: "tldr", options: void 0, args: void 0 }
         const expectedDoc = HelpDoc.sequence(
           HelpDoc.h1("DESCRIPTION"),
           HelpDoc.p("this is some help")
         )
-        expect(result).toEqual(CommandDirective.userDefined(ReadonlyArray.empty(), expectedValue))
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), expectedValue))
         expect(Descriptor.getHelp(cmd, config)).toEqual(expectedDoc)
       }).pipe(runEffect))
 
@@ -313,14 +313,14 @@ describe("Command", () => {
 
   describe("Built-In Options Processing", () => {
     const command = Descriptor.make("command", Options.text("a"))
-    const params1 = ReadonlyArray.make("command", "--help")
-    const params2 = ReadonlyArray.make("command", "-h")
-    const params3 = ReadonlyArray.make("command", "--wizard")
-    const params4 = ReadonlyArray.make("command", "--completions", "sh")
-    const params5 = ReadonlyArray.make("command", "-a", "--help")
-    const params6 = ReadonlyArray.make("command", "--help", "--wizard", "-b")
-    const params7 = ReadonlyArray.make("command", "-hdf", "--help")
-    const params8 = ReadonlyArray.make("command", "-af", "asdgf", "--wizard")
+    const params1 = Array.make("command", "--help")
+    const params2 = Array.make("command", "-h")
+    const params3 = Array.make("command", "--wizard")
+    const params4 = Array.make("command", "--completions", "sh")
+    const params5 = Array.make("command", "-a", "--help")
+    const params6 = Array.make("command", "--help", "--wizard", "-b")
+    const params7 = Array.make("command", "-hdf", "--help")
+    const params8 = Array.make("command", "-af", "asdgf", "--wizard")
 
     const directiveType = <A>(directive: CommandDirective.CommandDirective<A>): string => {
       if (CommandDirective.isBuiltIn(directive)) {
@@ -408,30 +408,30 @@ describe("Command", () => {
 
     it("should properly handle the end of command options symbol", () =>
       Effect.gen(function*(_) {
-        const args1 = ReadonlyArray.make("cmd", "-v", "--something", "abc", "something")
-        const args2 = ReadonlyArray.make("cmd", "-v", "--", "--something", "abc", "something")
-        const args3 = ReadonlyArray.make("cmd", "--", "-v", "--something", "abc", "something")
+        const args1 = Array.make("cmd", "-v", "--something", "abc", "something")
+        const args2 = Array.make("cmd", "-v", "--", "--something", "abc", "something")
+        const args3 = Array.make("cmd", "--", "-v", "--something", "abc", "something")
         const result1 = yield* _(Descriptor.parse(command, args1, CliConfig.defaultConfig))
         const result2 = yield* _(Descriptor.parse(command, args2, CliConfig.defaultConfig))
         const result3 = yield* _(Descriptor.parse(command, args3, CliConfig.defaultConfig))
         const expected1 = {
           name: "cmd",
           options: [Option.some("abc"), true],
-          args: ReadonlyArray.of("something")
+          args: Array.of("something")
         }
         const expected2 = {
           name: "cmd",
           options: [Option.none(), true],
-          args: ReadonlyArray.make("--something", "abc", "something")
+          args: Array.make("--something", "abc", "something")
         }
         const expected3 = {
           name: "cmd",
           options: [Option.none(), false],
-          args: ReadonlyArray.make("-v", "--something", "abc", "something")
+          args: Array.make("-v", "--something", "abc", "something")
         }
-        expect(result1).toEqual(CommandDirective.userDefined(ReadonlyArray.empty(), expected1))
-        expect(result2).toEqual(CommandDirective.userDefined(ReadonlyArray.empty(), expected2))
-        expect(result3).toEqual(CommandDirective.userDefined(ReadonlyArray.empty(), expected3))
+        expect(result1).toEqual(CommandDirective.userDefined(Array.empty(), expected1))
+        expect(result2).toEqual(CommandDirective.userDefined(Array.empty(), expected2))
+        expect(result3).toEqual(CommandDirective.userDefined(Array.empty(), expected3))
       }).pipe(runEffect))
   })
 

@@ -6,7 +6,7 @@ import { FileSystem, KeyValueStore } from "@effect/platform"
 import { NodeContext } from "@effect/platform-node"
 import { Schema } from "@effect/schema"
 import * as it from "@effect/vitest"
-import { Array as ReadonlyArray, Effect, Exit, Layer, PrimaryKey, Request, RequestResolver, TestClock } from "effect"
+import { Array, Effect, Exit, Layer, PrimaryKey, Request, RequestResolver, TestClock } from "effect"
 import { assert, describe } from "vitest"
 
 class User extends Schema.Class<User>("User")({
@@ -51,14 +51,14 @@ describe("RequestResolver", () => {
           })
           const persisted = yield* _(RequestResolverX.persisted(baseResolver, storeId))
           let users = yield* _(
-            Effect.forEach(ReadonlyArray.range(1, 5), (id) => Effect.request(new MyRequest({ id }), persisted), {
+            Effect.forEach(Array.range(1, 5), (id) => Effect.request(new MyRequest({ id }), persisted), {
               batching: true
             })
           )
           assert.strictEqual(count, 5)
           assert.strictEqual(users.length, 5)
           users = yield* _(
-            Effect.forEach(ReadonlyArray.range(1, 5), (id) => Effect.request(new MyRequest({ id }), persisted), {
+            Effect.forEach(Array.range(1, 5), (id) => Effect.request(new MyRequest({ id }), persisted), {
               batching: true
             })
           )
@@ -68,7 +68,7 @@ describe("RequestResolver", () => {
           // ttl
           let results = yield* _(
             Effect.forEach(
-              ReadonlyArray.range(-1, 3),
+              Array.range(-1, 3),
               (id) => Effect.exit(Effect.request(new TTLRequest({ id }), persisted)),
               {
                 batching: true
@@ -82,7 +82,7 @@ describe("RequestResolver", () => {
 
           results = yield* _(
             Effect.forEach(
-              ReadonlyArray.range(-1, 3),
+              Array.range(-1, 3),
               (id) => Effect.exit(Effect.request(new TTLRequest({ id }), persisted)),
               {
                 batching: true
@@ -96,7 +96,7 @@ describe("RequestResolver", () => {
 
           results = yield* _(
             Effect.forEach(
-              ReadonlyArray.range(-1, 3),
+              Array.range(-1, 3),
               (id) => Effect.exit(Effect.request(new TTLRequest({ id }), persisted)),
               {
                 batching: true
@@ -110,7 +110,7 @@ describe("RequestResolver", () => {
 
           results = yield* _(
             Effect.forEach(
-              ReadonlyArray.range(-1, 3),
+              Array.range(-1, 3),
               (id) => Effect.exit(Effect.request(new TTLRequest({ id }), persisted)),
               {
                 batching: true
@@ -126,7 +126,7 @@ describe("RequestResolver", () => {
           yield* _(store.clear)
 
           users = yield* _(
-            Effect.forEach(ReadonlyArray.range(1, 5), (id) => Effect.request(new MyRequest({ id }), persisted), {
+            Effect.forEach(Array.range(1, 5), (id) => Effect.request(new MyRequest({ id }), persisted), {
               batching: true
             })
           )

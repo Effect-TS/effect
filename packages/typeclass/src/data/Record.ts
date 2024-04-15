@@ -105,11 +105,9 @@ const _map: covariant.Covariant<Record.ReadonlyRecordTypeLambda<any>>["map"] = R
 
 const _imap = covariant.imap<Record.ReadonlyRecordTypeLambda<any>>(_map)
 
-const _partitionMap: filterable.Filterable<Record.ReadonlyRecordTypeLambda<any>>["partitionMap"] =
-  Record.partitionMap
+const _partitionMap: filterable.Filterable<Record.ReadonlyRecordTypeLambda<any>>["partitionMap"] = Record.partitionMap
 
-const _filterMap: filterable.Filterable<Record.ReadonlyRecordTypeLambda<any>>["filterMap"] =
-  Record.filterMap
+const _filterMap: filterable.Filterable<Record.ReadonlyRecordTypeLambda<any>>["filterMap"] = Record.filterMap
 
 const _traverse: traversable.Traversable<Record.ReadonlyRecordTypeLambda<any>>["traverse"] = traverse
 

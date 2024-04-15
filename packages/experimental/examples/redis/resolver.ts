@@ -3,7 +3,7 @@ import { persisted } from "@effect/experimental/RequestResolver"
 import * as TimeToLive from "@effect/experimental/TimeToLive"
 import { runMain } from "@effect/platform-node/NodeRuntime"
 import { Schema } from "@effect/schema"
-import { Array as ReadonlyArray, Effect, Exit, PrimaryKey, RequestResolver } from "effect"
+import { Array, Effect, Exit, PrimaryKey, RequestResolver } from "effect"
 
 class User extends Schema.Class<User>("User")({
   id: Schema.Number,
@@ -33,7 +33,7 @@ Effect.gen(function*(_) {
   )
 
   const users = yield* _(
-    Effect.forEach(ReadonlyArray.range(1, 5), (id) => Effect.request(new GetUserById({ id }), resolver), {
+    Effect.forEach(Array.range(1, 5), (id) => Effect.request(new GetUserById({ id }), resolver), {
       batching: true
     })
   )

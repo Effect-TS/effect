@@ -2,7 +2,7 @@ import * as CliConfig from "@effect/cli/CliConfig"
 import * as Primitive from "@effect/cli/Primitive"
 import type { FileSystem } from "@effect/platform"
 import { NodeFileSystem } from "@effect/platform-node"
-import { Array as ReadonlyArray, Effect, Equal, Function, Option } from "effect"
+import { Array, Effect, Equal, Function, Option } from "effect"
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
@@ -60,7 +60,7 @@ describe("Primitive", () => {
           Effect.gen(function*(_) {
             const alternatives = Function.unsafeCoerce<
               ReadonlyArray<[string, number]>,
-              ReadonlyArray.NonEmptyReadonlyArray<[string, number]>
+              Array.NonEmptyReadonlyArray<[string, number]>
             >(pairs)
             const choice = Primitive.choice(alternatives)
             const result = yield* _(Primitive.validate(
@@ -78,8 +78,8 @@ describe("Primitive", () => {
           const selectedName = tuple[0]
           const alternatives = Function.unsafeCoerce<
             ReadonlyArray<[string, number]>,
-            ReadonlyArray.NonEmptyReadonlyArray<[string, number]>
-          >(ReadonlyArray.filter(pairs, (pair) => !Equal.equals(tuple, pair)))
+            Array.NonEmptyReadonlyArray<[string, number]>
+          >(Array.filter(pairs, (pair) => !Equal.equals(tuple, pair)))
           const choice = Primitive.choice(alternatives)
           const result = yield* _(Effect.flip(Primitive.validate(
             choice,
@@ -153,5 +153,5 @@ const trueValuesArb = fc.constantFrom("true", "1", "y", "yes", "on").map(randomi
 const falseValuesArb = fc.constantFrom("false", "0", "n", "no", "off").map(randomizeCharacterCases)
 
 const pairsArb = fc.array(fc.tuple(fc.string(), fc.float()), { minLength: 2, maxLength: 100 })
-  .map((pairs) => ReadonlyArray.dedupeWith(pairs, ([str1], [str2]) => str1 === str2))
+  .map((pairs) => Array.dedupeWith(pairs, ([str1], [str2]) => str1 === str2))
   .chain((pairs) => fc.tuple(fc.constantFrom(...pairs), fc.constant(pairs)))

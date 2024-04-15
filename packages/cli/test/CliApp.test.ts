@@ -3,7 +3,7 @@ import * as Command from "@effect/cli/Command"
 import * as HelpDoc from "@effect/cli/HelpDoc"
 import * as ValidationError from "@effect/cli/ValidationError"
 import { NodeContext } from "@effect/platform-node"
-import { Array as ReadonlyArray, Effect } from "effect"
+import { Array, Effect } from "effect"
 import { describe, expect, it } from "vitest"
 
 const runEffect = <E, A>(
@@ -20,7 +20,7 @@ describe("CliApp", () => {
         name: "Test",
         version: "1.0.0"
       })
-      const args = ReadonlyArray.make("node", "test.js", "--bar")
+      const args = Array.make("node", "test.js", "--bar")
       const result = yield* _(Effect.flip(cli(args)))
       expect(result).toEqual(ValidationError.invalidValue(HelpDoc.p(
         "Received unknown argument: '--bar'"

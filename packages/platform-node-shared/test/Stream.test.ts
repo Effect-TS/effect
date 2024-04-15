@@ -1,5 +1,5 @@
 import * as NodeStream from "@effect/platform-node-shared/NodeStream"
-import { Array as ReadonlyArray, Channel, Chunk, Stream } from "effect"
+import { Array, Channel, Chunk, Stream } from "effect"
 import * as Effect from "effect/Effect"
 import { Duplex, Readable, Transform } from "stream"
 import { assert, describe, it } from "vitest"
@@ -163,6 +163,6 @@ describe("Stream", () => {
         Stream.decodeText(),
         Stream.runCollect
       )
-      assert.strictEqual(Chunk.join(items, ""), ReadonlyArray.range(0, 10000).join(""))
+      assert.strictEqual(Chunk.join(items, ""), Array.range(0, 10000).join(""))
     }).pipe(Effect.runPromise))
 })

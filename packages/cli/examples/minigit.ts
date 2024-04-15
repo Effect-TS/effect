@@ -1,6 +1,6 @@
 import { Args, Command, Options } from "@effect/cli"
 import { NodeContext, NodeRuntime } from "@effect/platform-node"
-import { Array as ReadonlyArray, Config, ConfigProvider, Console, Effect, Option } from "effect"
+import { Array as Array_, Config, ConfigProvider, Console, Effect, Option } from "effect"
 
 // minigit [--version] [-h | --help] [-c <name>=<value>]
 const configs = Options.keyValueMap("c").pipe(Options.optional)
@@ -22,9 +22,9 @@ const verbose = Options.boolean("verbose").pipe(
   Options.withFallbackConfig(Config.boolean("VERBOSE"))
 )
 const minigitAdd = Command.make("add", { pathspec, verbose }, ({ pathspec, verbose }) => {
-  const paths = ReadonlyArray.match(pathspec, {
+  const paths = Array_.match(pathspec, {
     onEmpty: () => "",
-    onNonEmpty: (paths) => ` ${ReadonlyArray.join(paths, " ")}`
+    onNonEmpty: (paths) => ` ${Array_.join(paths, " ")}`
   })
   return Console.log(`Running 'minigit add${paths}' with '--verbose ${verbose}'`)
 })
@@ -43,14 +43,14 @@ const minigitClone = Command.make(
     Effect.flatMap(minigit, (parentConfig) => {
       const depth = Option.map(subcommandConfig.depth, (depth) => `--depth ${depth}`)
       const repository = Option.some(subcommandConfig.repository)
-      const optionsAndArgs = ReadonlyArray.getSomes([depth, repository, subcommandConfig.directory])
+      const optionsAndArgs = Array_.getSomes([depth, repository, subcommandConfig.directory])
       const configs = Option.match(parentConfig.configs, {
         onNone: () => "",
         onSome: (map) => Array.from(map).map(([key, value]) => `${key}=${value}`).join(", ")
       })
       return Console.log(
         "Running 'minigit clone' with the following options and arguments: " +
-          `'${ReadonlyArray.join(optionsAndArgs, ", ")}'\n` +
+          `'${Array_.join(optionsAndArgs, ", ")}'\n` +
           `and the following configuration parameters: ${configs}`
       )
     })
