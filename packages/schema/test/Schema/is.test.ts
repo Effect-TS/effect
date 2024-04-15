@@ -384,7 +384,7 @@ describe("Schema > is", () => {
   })
 
   it("record(${string}-${string}, number)", () => {
-    const schema = S.Record(S.templateLiteral(S.String, S.Literal("-"), S.String), S.Number)
+    const schema = S.Record(S.TemplateLiteral(S.String, S.Literal("-"), S.String), S.Number)
     const is = P.is(schema)
     expect(is({})).toEqual(true)
     expect(is({ "-": 1 })).toEqual(true)
@@ -416,7 +416,7 @@ describe("Schema > is", () => {
   it("record(${string}-${string}, number) & record(string, string | number)", () => {
     const schema = S.Struct(
       {},
-      S.Record(S.templateLiteral(S.String, S.Literal("-"), S.String), S.Number),
+      S.Record(S.TemplateLiteral(S.String, S.Literal("-"), S.String), S.Number),
       S.Record(S.String, S.Union(S.String, S.Number))
     )
     const is = P.is(schema)

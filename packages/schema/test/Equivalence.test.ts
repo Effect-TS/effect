@@ -720,7 +720,7 @@ describe("Equivalence", () => {
     })
 
     it("templateLiteral", () => {
-      expectHook(S.templateLiteral(S.Literal("a"), S.String, S.Literal("b")))
+      expectHook(S.TemplateLiteral(S.Literal("a"), S.String, S.Literal("b")))
     })
 
     it("undefined", () => {

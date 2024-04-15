@@ -206,7 +206,7 @@ describe("Schema > extend", () => {
     it("struct extend record(templateLiteral, string)", async () => {
       const schema = S.Struct({ a: S.String }).pipe(
         S.extend(S.Record(
-          S.templateLiteral(
+          S.TemplateLiteral(
             S.String,
             S.Literal("-"),
             S.Number

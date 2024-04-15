@@ -93,3 +93,4 @@
 - rename `sortedSet` to `SortedSet`
 - rename `literal` to `Literal`
 - rename `enums` to `Enums`
+- rename `templateLiteral` to `TemplateLiteral`

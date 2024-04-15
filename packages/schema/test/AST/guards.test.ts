@@ -9,7 +9,7 @@ describe("AST > guards", () => {
   })
 
   it("isTemplateLiteral", () => {
-    expect(AST.isTemplateLiteral(S.templateLiteral(S.Literal("a"), S.String).ast)).toEqual(true)
+    expect(AST.isTemplateLiteral(S.TemplateLiteral(S.Literal("a"), S.String).ast)).toEqual(true)
     expect(AST.isTemplateLiteral(S.Number.ast)).toEqual(false)
   })
 
@@ -91,13 +91,13 @@ describe("AST > guards", () => {
   it("isParameter", () => {
     expect(AST.isParameter(AST.stringKeyword)).toEqual(true)
     expect(AST.isParameter(AST.symbolKeyword)).toEqual(true)
-    expect(AST.isParameter(S.templateLiteral(S.String, S.Literal("-"), S.String).ast))
+    expect(AST.isParameter(S.TemplateLiteral(S.String, S.Literal("-"), S.String).ast))
       .toEqual(true)
     expect(AST.isParameter(S.String.pipe(S.minLength(2)).ast)).toEqual(true)
     expect(AST.isParameter(S.Number.pipe(S.int()).ast)).toEqual(false)
     expect(AST.isParameter(S.NumberFromString.ast)).toEqual(false)
     expect(AST.isParameter(S.NumberFromString.pipe(S.int()).ast))
-    expect(AST.isParameter(S.templateLiteral(S.Literal("a", "b"), S.Literal("c")).ast)).toEqual(
+    expect(AST.isParameter(S.TemplateLiteral(S.Literal("a", "b"), S.Literal("c")).ast)).toEqual(
       false
     )
   })

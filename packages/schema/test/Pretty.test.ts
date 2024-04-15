@@ -50,7 +50,7 @@ describe("Pretty", () => {
 
   describe("templateLiteral", () => {
     it("a${string}b", () => {
-      const schema = S.templateLiteral(S.Literal("a"), S.String, S.Literal("b"))
+      const schema = S.TemplateLiteral(S.Literal("a"), S.String, S.Literal("b"))
       const pretty = Pretty.make(schema)
       expect(pretty("acb")).toEqual(`"acb"`)
     })
@@ -447,7 +447,7 @@ describe("Pretty", () => {
     })
 
     it("templateLiteral", () => {
-      expectHook(S.templateLiteral(S.Literal("a"), S.String, S.Literal("b")))
+      expectHook(S.TemplateLiteral(S.Literal("a"), S.String, S.Literal("b")))
     })
 
     it("undefined", () => {

@@ -839,7 +839,7 @@ describe("JSONSchema", () => {
 
     it("record(${string}-${string}, number)", () => {
       const schema = S.Record(
-        S.templateLiteral(S.String, S.Literal("-"), S.String),
+        S.TemplateLiteral(S.String, S.Literal("-"), S.String),
         JsonNumber
       )
       const jsonSchema = JSONSchema.make(schema)
@@ -1073,7 +1073,7 @@ describe("JSONSchema", () => {
   })
 
   it("TemplateLiteral", () => {
-    const schema = S.templateLiteral(S.Literal("a"), S.Number)
+    const schema = S.TemplateLiteral(S.Literal("a"), S.Number)
     const jsonSchema = JSONSchema.make(schema)
     expect(jsonSchema).toEqual({
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1658,7 +1658,7 @@ describe("JSONSchema", () => {
     })
 
     it("templateLiteral", () => {
-      const schema = S.templateLiteral(S.Literal("a"), S.String, S.Literal("b")).annotations({
+      const schema = S.TemplateLiteral(S.Literal("a"), S.String, S.Literal("b")).annotations({
         jsonSchema: { "type": "custom JSON Schema" }
       })
       const jsonSchema = JSONSchema.make(schema)

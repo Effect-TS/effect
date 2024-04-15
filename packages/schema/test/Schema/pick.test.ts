@@ -142,7 +142,7 @@ describe("Schema > pick", () => {
     const schema = S.Struct(
       {},
       S.Record(S.String, S.String),
-      S.Record(S.templateLiteral(S.Literal("a"), S.String), S.Number)
+      S.Record(S.TemplateLiteral(S.Literal("a"), S.String), S.Number)
     ).pipe(
       S.pick("a", "b")
     )

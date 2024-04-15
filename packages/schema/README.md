@@ -887,7 +887,7 @@ import { Arbitrary, FastCheck, Schema } from "@effect/schema"
 
 const Person = Schema.Struct({
   name: Schema.String,
-  age: Schema.String.pipe(Schema.Compose(Schema.NumberFromString), Schema.int())
+  age: Schema.String.pipe(Schema.compose(Schema.NumberFromString), Schema.int())
 })
 
 /*
@@ -1113,7 +1113,7 @@ interface Category {
 
 const schema: S.Schema<Category> = S.Struct({
   name: S.String,
-  categories: S.Array(S.Suspend(() => schema))
+  categories: S.Array(S.suspend(() => schema))
 }).annotations({ identifier: "Category" })
 
 const jsonSchema = JSONSchema.make(schema)
@@ -1271,13 +1271,13 @@ S.Never
 
 Now let's see an example with a combinator that, given an input schema for a certain type `A`, returns the schema of the pair `readonly [A, A]`:
 
-**Example** (a `Pair` combinator)
+**Example** (a `pair` combinator)
 
 ```ts
 import * as S from "@effect/schema/Schema"
 
 // API interface
-export interface Pair<S extends S.Schema.Any>
+export interface pair<S extends S.Schema.Any>
   extends S.Schema<
     readonly [S.Schema.Type<S>, S.Schema.Type<S>],
     readonly [S.Schema.Encoded<S>, S.Schema.Encoded<S>],
@@ -1285,36 +1285,36 @@ export interface Pair<S extends S.Schema.Any>
   > {}
 
 // API
-export const Pair = <S extends S.Schema.Any>(schema: S): Pair<S> =>
+export const pair = <S extends S.Schema.Any>(schema: S): pair<S> =>
   S.Tuple(S.asSchema(schema), S.asSchema(schema))
 ```
 
 > [!NOTE]
 > The `S.Schema.Any` helper represents any schema, except for `never`. For more information on the `asSchema` helper, refer to the following section "Understanding Opaque Names".
 
-If we try to use our `Pair` combinator, we see that readability is also improved in this case:
+If we try to use our `pair` combinator, we see that readability is also improved in this case:
 
 ```ts
-// const Coords: Pair<S.$Number>
-const Coords = Pair(S.Number)
+// const Coords: pair<S.$Number>
+const Coords = pair(S.Number)
 ```
 
-In hover, we simply see `Pair<S.$Number>` instead of the verbose:
+In hover, we simply see `pair<S.$Number>` instead of the verbose:
 
 ```ts
 // const Coords: S.Schema<readonly [number, number], readonly [number, number], never>
 const Coords = S.Tuple(S.Number, S.Number)
 ```
 
-The new name is not only shorter and more readable but also carries along the origin of the schema, which is a call to the `Pair` combinator.
+The new name is not only shorter and more readable but also carries along the origin of the schema, which is a call to the `pair` combinator.
 
 ## Understanding Opaque Names
 
 Opaque names generated in this way are very convenient, but sometimes there's a need to see what the underlying types are, perhaps for debugging purposes while you declare your schemas. At any time, you can use the `asSchema` function, which returns an `Schema<A, I, R>` compatible with your opaque definition:
 
 ```ts
-// const Coords: Pair<S.$Number>
-const Coords = Pair(S.Number)
+// const Coords: pair<S.$Number>
+const Coords = pair(S.Number)
 
 // const NonOpaqueCoords: S.Schema<readonly [number, number], readonly [number, number], never>
 const NonOpaqueCoords = S.asSchema(Coords)
@@ -1553,12 +1553,12 @@ const AnotherAge = Age.annotations({ identifier: "AnotherAge" })
 | `readonly [string, number]`                  | tuples                                   | `S.Tuple(S.String, S.Number)`                             |
 | `ReadonlyArray<string>`                      | arrays                                   | `S.Array(S.String)`                                       |
 | `A \| B`                                     | unions                                   | `S.Union(A, B)`                                           |
-| `A & B`                                      | intersections of non-overlapping structs | `S.Extend(A, B)`                                          |
-| `Record<A, B> & Record<C, D>`                | intersections of non-overlapping records | `S.Extend(S.Record(A, B), S.Record(C, D))`                |
-| `type A = { readonly a: A \| null }`         | recursive types                          | `S.Struct({ a: S.Union(S.Null, S.Suspend(() => self)) })` |
-| `keyof A`                                    |                                          | `S.KeyOf(A)`                                              |
-| `Partial<A>`                                 |                                          | `S.Partial(A)`                                            |
-| `Required<A>`                                |                                          | `S.Required(A)`                                           |
+| `A & B`                                      | intersections of non-overlapping structs | `S.extend(A, B)`                                          |
+| `Record<A, B> & Record<C, D>`                | intersections of non-overlapping records | `S.extend(S.Record(A, B), S.Record(C, D))`                |
+| `type A = { readonly a: A \| null }`         | recursive types                          | `S.Struct({ a: S.Union(S.Null, S.suspend(() => self)) })` |
+| `keyof A`                                    |                                          | `S.keyof(A)`                                              |
+| `Partial<A>`                                 |                                          | `S.partial(A)`                                            |
+| `Required<A>`                                |                                          | `S.required(A)`                                           |
 
 ## Primitives
 
@@ -1602,7 +1602,7 @@ We can also use `PickLiteral` with a literal schema to narrow down the possible 
 ```ts
 import * as S from "@effect/schema/Schema"
 
-S.Literal("a", "b", "c").pipe(S.PickLiteral("a", "b")) //same as S.Literal("a", "b")
+S.Literal("a", "b", "c").pipe(S.pickLiteral("a", "b")) //same as S.Literal("a", "b")
 ```
 
 Sometimes, we need to reuse a schema literal in other parts of our code. Let's see an example:
@@ -1622,7 +1622,7 @@ const Fruit = S.Struct({
 // Here, we want to reuse our FruitCategory definition to create a subtype of Fruit
 const SweetAndCitrusFruit = S.Struct({
   fruitId: FruitId,
-  category: FruitCategory.pipe(S.PickLiteral("sweet", "citrus"))
+  category: FruitCategory.pipe(S.pickLiteral("sweet", "citrus"))
   /*
     By using PickLiteral from the FruitCategory, we ensure that the values selected
     are those defined in the category definition above.
@@ -1648,7 +1648,7 @@ const literals = schema.literals // readonly ["a", "b"]
 
 ## Template literals
 
-The `templateLiteral` constructor allows you to create a schema for a TypeScript template literal type.
+The `TemplateLiteral` constructor allows you to create a schema for a TypeScript template literal type.
 
 ```ts
 import * as S from "@effect/schema/Schema"
@@ -1912,7 +1912,7 @@ type UserId = S.Schema.Type<typeof UserId> // string & Brand<typeof UserIdBrand>
 
 ### Reusing an existing branded type
 
-If you have already defined a branded type using the `effect/Brand` module, you can reuse it to define a schema using the `FromBrand` combinator exported by the `@effect/schema/Schema` module. Here's an example:
+If you have already defined a branded type using the `effect/Brand` module, you can reuse it to define a schema using the `fromBrand` combinator exported by the `@effect/schema/Schema` module. Here's an example:
 
 ```ts
 import * as B from "effect/Brand"
@@ -1924,7 +1924,7 @@ const UserId = B.nominal<UserId>()
 import * as S from "@effect/schema/Schema"
 
 // Define a schema for the branded type
-const UserIdSchema = S.String.pipe(S.FromBrand(UserId))
+const UserIdSchema = S.String.pipe(S.fromBrand(UserId))
 ```
 
 ## Native enums
@@ -2928,7 +2928,7 @@ const schema: S.Schema<{
     readonly a?: string | undefined;
 }, never>
 */
-const schema = S.Partial(S.Struct({ a: S.String }))
+const schema = S.partial(S.Struct({ a: S.String }))
 
 S.decodeUnknownSync(schema)({ a: "a" }) // ok
 S.decodeUnknownSync(schema)({ a: undefined }) // ok
@@ -2940,7 +2940,7 @@ const exact: S.Schema<{
     readonly a?: string;
 }, never>
 */
-const exactSchema = S.Partial(S.Struct({ a: S.String }), { exact: true })
+const exactSchema = S.partial(S.Struct({ a: S.String }), { exact: true })
 
 S.decodeUnknownSync(exactSchema)({ a: "a" }) // ok
 S.decodeUnknownSync(exactSchema)({ a: undefined })
@@ -2960,7 +2960,7 @@ The `Required` operation ensures that all properties in a schema are mandatory.
 import * as S from "@effect/schema/Schema"
 
 // Schema<{ readonly a: string; readonly b: number; }>
-S.Required(
+S.required(
   S.Struct({
     a: S.optional(S.String, { exact: true }),
     b: S.optional(S.Number, { exact: true })
@@ -2979,8 +2979,8 @@ const schema = S.Struct({ a: S.String, b: S.String })
 
 // Schema<{ readonly [x: string]: string; readonly a: string; readonly b: string; readonly c: string; }>
 const extended = schema.pipe(
-  S.Extend(S.Struct({ c: S.String })), // <= you can add more fields
-  S.Extend(S.Record(S.String, S.String)) // <= you can add index signatures
+  S.extend(S.Struct({ c: S.String })), // <= you can add more fields
+  S.extend(S.Record(S.String, S.String)) // <= you can add index signatures
 )
 ```
 
@@ -3003,7 +3003,7 @@ const extended = S.Struct(
 
 ## Compose
 
-Combining and reusing schemas is a common requirement, the `Compose` combinator allows you to do just that. It enables you to combine two schemas, `Schema<B, A, R1>` and `Schema<C, B, R2>`, into a single schema `Schema<C, A, R1 | R2>`:
+Combining and reusing schemas is a common requirement, the `compose` combinator allows you to do just that. It enables you to combine two schemas, `Schema<B, A, R1>` and `Schema<C, B, R2>`, into a single schema `Schema<C, A, R1 | R2>`:
 
 ```ts
 import * as S from "@effect/schema/Schema"
@@ -3027,7 +3027,7 @@ Now, by using the `compose` combinator, we can create a new schema, `ComposedSch
 If you need to be less restrictive when composing your schemas, i.e., when you have something like `Schema<R1, A, B>` and `Schema<R2, C, D>` where `C` is different from `B`, you can make use of the `{ strict: false }` option:
 
 ```ts
-declare const Compose: <A, B, R1, D, C, R2>(
+declare const compose: <A, B, R1, D, C, R2>(
   from: Schema<B, A, R1>,
   to: Schema<D, C, R2>, // Less strict constraint
   options: { strict: false }
@@ -3075,7 +3075,7 @@ interface Category {
 
 const Category: S.Schema<Category> = S.Struct({
   name: S.String,
-  subcategories: S.Array(S.Suspend(() => Category))
+  subcategories: S.Array(S.suspend(() => Category))
 })
 ```
 
@@ -3101,7 +3101,7 @@ interface Category extends S.Struct.Type<typeof fields> {
 
 const Category: S.Schema<Category> = S.Struct({
   ...fields, // Include the fields
-  subcategories: S.Array(S.Suspend(() => Category)) // Define `subcategories` using recursion
+  subcategories: S.Array(S.suspend(() => Category)) // Define `subcategories` using recursion
 })
 ```
 
@@ -3128,7 +3128,7 @@ const Expression: S.Schema<Expression> = S.Struct({
   type: S.Literal("expression"),
   value: S.Union(
     S.Number,
-    S.Suspend(() => Operation)
+    S.suspend(() => Operation)
   )
 })
 
@@ -3166,7 +3166,7 @@ Type 'Category' is not assignable to type '{ readonly id: string; readonly name:
 */
 const Category: S.Schema<Category> = S.Struct({
   ...fields,
-  subcategories: S.Array(S.Suspend(() => Category))
+  subcategories: S.Array(S.suspend(() => Category))
 })
 ```
 
@@ -3190,7 +3190,7 @@ interface CategoryEncoded extends S.Struct.Encoded<typeof fields> {
 
 const Category: S.Schema<Category, CategoryEncoded> = S.Struct({
   ...fields,
-  subcategories: S.Array(S.Suspend(() => Category))
+  subcategories: S.Array(S.suspend(() => Category))
 })
 ```
 
@@ -3310,12 +3310,12 @@ import * as S from "@effect/schema/Schema"
 
 class Category extends S.Class<Category>("Category")({
   name: S.String,
-  subcategories: S.Array(S.Suspend((): S.Schema<Category> => Category))
+  subcategories: S.Array(S.suspend((): S.Schema<Category> => Category))
 }) {}
 ```
 
 > [!NOTE]
-> It is necessary to add an explicit type annotation (`S.Suspend((): S.Schema<Category> => Category`) because otherwise TypeScript would struggle to infer types correctly. Without this annotation, you might encounter the error message: "Type 'typeof Category' is missing the following properties from type 'Schema<unknown, unknown, unknown>': ast, annotations, [TypeId], pipets(2739)"
+> It is necessary to add an explicit type annotation (`S.suspend((): S.Schema<Category> => Category`) because otherwise TypeScript would struggle to infer types correctly. Without this annotation, you might encounter the error message: "Type 'typeof Category' is missing the following properties from type 'Schema<unknown, unknown, unknown>': ast, annotations, [TypeId], pipets(2739)"
 
 ### Mutually Recursive Schemas
 
@@ -3328,7 +3328,7 @@ class Expression extends S.Class<Expression>("Expression")({
   type: S.Literal("expression"),
   value: S.Union(
     S.Number,
-    S.Suspend((): S.Schema<Operation> => Operation)
+    S.suspend((): S.Schema<Operation> => Operation)
   )
 }) {}
 
@@ -3358,11 +3358,11 @@ Type 'Category' is not assignable to type '{ readonly id: string; readonly name:
 class Category extends S.Class<Category>("Category")({
   id: S.NumberFromString,
   name: S.String,
-  subcategories: S.Array(S.Suspend((): S.Schema<Category> => Category))
+  subcategories: S.Array(S.suspend((): S.Schema<Category> => Category))
 }) {}
 ```
 
-This error occurs because the explicit annotation `S.Suspend((): S.Schema<Category> => Category` is no longer sufficient and needs to be adjusted by explicitly adding the `Encoded` type:
+This error occurs because the explicit annotation `S.suspend((): S.Schema<Category> => Category` is no longer sufficient and needs to be adjusted by explicitly adding the `Encoded` type:
 
 ```ts
 import * as S from "@effect/schema/Schema"
@@ -3377,7 +3377,7 @@ class Category extends S.Class<Category>("Category")({
   id: S.NumberFromString,
   name: S.String,
   subcategories: S.Array(
-    S.Suspend((): S.Schema<Category, CategoryEncoded> => Category)
+    S.suspend((): S.Schema<Category, CategoryEncoded> => Category)
   )
 }) {}
 ```
@@ -3400,7 +3400,7 @@ interface CategoryEncoded extends S.Struct.Encoded<typeof fields> {
 class Category extends S.Class<Category>("Category")({
   ...fields, // Include the fields
   subcategories: S.Array(
-    S.Suspend((): S.Schema<Category, CategoryEncoded> => Category)
+    S.suspend((): S.Schema<Category, CategoryEncoded> => Category)
   ) // Define `subcategories` using recursion
 }) {}
 ```
@@ -4434,7 +4434,7 @@ console.log(encode(Option.some(1))) // "1"
 import * as S from "@effect/schema/Schema"
 import * as Either from "effect/Either"
 
-const schema = S.Either({ Left: S.Trim, Right: S.NumberFromString })
+const schema = S.Either({ left: S.Trim, right: S.NumberFromString })
 
 const decode = S.decodeUnknownSync(schema)
 const encode = S.encodeSync(schema)
@@ -4459,7 +4459,7 @@ console.log(encode(Either.right(1))) // { _tag: 'Right', right: '1' }
 import * as S from "@effect/schema/Schema"
 import * as Either from "effect/Either"
 
-const schema = S.EitherFromSelf({ Left: S.Trim, Right: S.NumberFromString })
+const schema = S.EitherFromSelf({ left: S.Trim, right: S.NumberFromString })
 
 const decode = S.decodeUnknownSync(schema)
 const encode = S.encodeSync(schema)
@@ -4485,8 +4485,8 @@ import * as S from "@effect/schema/Schema"
 import * as Either from "effect/Either"
 
 const schema = S.EitherFromUnion({
-  Left: S.Boolean,
-  Right: S.NumberFromString
+  left: S.Boolean,
+  right: S.NumberFromString
 })
 
 const decode = S.decodeUnknownSync(schema)
@@ -4585,8 +4585,8 @@ console.log(
 import * as S from "@effect/schema/Schema"
 
 const schema = S.ReadonlyMapFromSelf({
-  Key: S.String,
-  Value: S.NumberFromString
+  key: S.String,
+  value: S.NumberFromString
 })
 
 const decode = S.decodeUnknownSync(schema)
@@ -4667,7 +4667,7 @@ console.log(encode(HashSet.frOmIterable([1, 2, 3]))) // { _id: 'HashSet', values
 import * as S from "@effect/schema/Schema"
 import * as HashMap from "effect/HashMap"
 
-const schema = S.HashMap({ Key: S.String, Value: S.NumberFromString })
+const schema = S.HashMap({ key: S.String, value: S.NumberFromString })
 
 const decode = S.decodeUnknownSync(schema)
 const encode = S.encodeSync(schema)
@@ -4701,7 +4701,7 @@ console.log(
 import * as S from "@effect/schema/Schema"
 import * as HashMap from "effect/HashMap"
 
-const schema = S.HashMapFromSelf({ Key: S.String, Value: S.NumberFromString })
+const schema = S.HashMapFromSelf({ key: S.String, value: S.NumberFromString })
 
 const decode = S.decodeUnknownSync(schema)
 const encode = S.encodeSync(schema)
@@ -5028,14 +5028,14 @@ i.e. products (like structs and tuples) and unions, plus a custom transformation
 
 This means that you can define your own schema constructors / combinators as long as you are able to manipulate the `AST` value accordingly, let's see an example.
 
-Say we want to define a `Pair` schema constructor, which takes a `Schema<A, I, R>` as input and returns a `Schema<readonly [A, A], readonly [I, I], R>` as output.
+Say we want to define a `pair` schema constructor, which takes a `Schema<A, I, R>` as input and returns a `Schema<readonly [A, A], readonly [I, I], R>` as output.
 
-First of all we need to define the signature of `Pair`
+First of all we need to define the signature of `pair`
 
 ```ts
 import type * as S from "@effect/schema/Schema"
 
-declare const Pair: <A, I, R>(
+declare const pair: <A, I, R>(
   schema: S.Schema<A, I, R>
 ) => S.Schema<readonly [A, A], readonly [I, I], R>
 ```
@@ -5046,7 +5046,7 @@ Then we can implement the body using the APIs exported by the `@effect/schema/AS
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 
-const Pair = <A, I, R>(
+const pair = <A, I, R>(
   schema: S.Schema<A, I, R>
 ): S.Schema<readonly [A, A], readonly [I, I], R> => {
   const element = new AST.Element(
@@ -5067,7 +5067,7 @@ This example demonstrates the use of the low-level APIs of the `AST` module, how
 ```ts
 import * as S from "@effect/schema/Schema"
 
-const Pair = <A, I, R>(
+const pair = <A, I, R>(
   schema: S.Schema<A, I, R>
 ): S.Schema<readonly [A, A], readonly [I, I], R> => S.Tuple(schema, schema)
 ```

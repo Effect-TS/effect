@@ -644,7 +644,7 @@ type Join<T> = T extends [infer Head, ...infer Tail]
  * @category constructors
  * @since 1.0.0
  */
-export const templateLiteral = <T extends [Schema.AnyNoContext, ...Array<Schema.AnyNoContext>]>(
+export const TemplateLiteral = <T extends [Schema.AnyNoContext, ...Array<Schema.AnyNoContext>]>(
   ...[head, ...tail]: T
 ): Schema<Join<{ [K in keyof T]: Schema.Type<T[K]> }>> => {
   let types: ReadonlyArray<AST.TemplateLiteral | AST.Literal> = getTemplateLiterals(head.ast)

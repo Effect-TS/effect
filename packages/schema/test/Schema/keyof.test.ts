@@ -61,9 +61,9 @@ describe("Schema > keyof", () => {
     })
 
     it("template literal", () => {
-      const schema = S.Record(S.templateLiteral(S.Literal("a"), S.String), S.Number)
+      const schema = S.Record(S.TemplateLiteral(S.Literal("a"), S.String), S.Number)
       // type K = keyof S.Schema.Type<typeof schema> // `a${string}`
-      expect(AST.keyof(schema.ast)).toEqual(S.templateLiteral(S.Literal("a"), S.String).ast)
+      expect(AST.keyof(schema.ast)).toEqual(S.TemplateLiteral(S.Literal("a"), S.String).ast)
     })
   })
 

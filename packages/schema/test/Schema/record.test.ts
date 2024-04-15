@@ -143,7 +143,7 @@ describe("Schema > record", () => {
 
     it("record('a' | `prefix-${string}`, number)", async () => {
       const schema = S.Record(
-        S.Union(S.Literal("a"), S.templateLiteral(S.Literal("prefix-"), S.String)),
+        S.Union(S.Literal("a"), S.TemplateLiteral(S.Literal("prefix-"), S.String)),
         S.Number
       )
       await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
@@ -229,7 +229,7 @@ describe("Schema > record", () => {
     })
 
     it("record(${string}-${string}, number)", async () => {
-      const schema = S.Record(S.templateLiteral(S.String, S.Literal("-"), S.String), S.Number)
+      const schema = S.Record(S.TemplateLiteral(S.String, S.Literal("-"), S.String), S.Number)
       await Util.expectDecodeUnknownSuccess(schema, {})
       await Util.expectDecodeUnknownSuccess(schema, { "-": 1 })
       await Util.expectDecodeUnknownSuccess(schema, { "a-": 1 })
@@ -306,7 +306,7 @@ describe("Schema > record", () => {
     it("record(${string}-${string}, number) & record(string, string | number)", async () => {
       const schema = S.Struct(
         {},
-        S.Record(S.templateLiteral(S.String, S.Literal("-"), S.String), S.Number),
+        S.Record(S.TemplateLiteral(S.String, S.Literal("-"), S.String), S.Number),
         S.Record(S.String, S.Union(S.String, S.Number))
       )
       await Util.expectDecodeUnknownSuccess(schema, {})

@@ -35,37 +35,37 @@ describe("Arbitrary > Arbitrary", () => {
 
   describe("templateLiteral", () => {
     it("a", () => {
-      const schema = S.templateLiteral(S.Literal("a"))
+      const schema = S.TemplateLiteral(S.Literal("a"))
       expectValidArbitrary(schema)
     })
 
     it("a b", () => {
-      const schema = S.templateLiteral(S.Literal("a"), S.Literal(" "), S.Literal("b"))
+      const schema = S.TemplateLiteral(S.Literal("a"), S.Literal(" "), S.Literal("b"))
       expectValidArbitrary(schema)
     })
 
     it("a${string}", () => {
-      const schema = S.templateLiteral(S.Literal("a"), S.String)
+      const schema = S.TemplateLiteral(S.Literal("a"), S.String)
       expectValidArbitrary(schema)
     })
 
     it("a${number}", () => {
-      const schema = S.templateLiteral(S.Literal("a"), S.Number)
+      const schema = S.TemplateLiteral(S.Literal("a"), S.Number)
       expectValidArbitrary(schema)
     })
 
     it("a", () => {
-      const schema = S.templateLiteral(S.Literal("a"))
+      const schema = S.TemplateLiteral(S.Literal("a"))
       expectValidArbitrary(schema)
     })
 
     it("${string}", () => {
-      const schema = S.templateLiteral(S.String)
+      const schema = S.TemplateLiteral(S.String)
       expectValidArbitrary(schema)
     })
 
     it("a${string}b", () => {
-      const schema = S.templateLiteral(S.Literal("a"), S.String, S.Literal("b"))
+      const schema = S.TemplateLiteral(S.Literal("a"), S.String, S.Literal("b"))
       expectValidArbitrary(schema)
     })
   })
@@ -537,7 +537,7 @@ describe("Arbitrary > Arbitrary", () => {
     })
 
     it("templateLiteral", () => {
-      expectHook(S.templateLiteral(S.Literal("a"), S.String, S.Literal("b")))
+      expectHook(S.TemplateLiteral(S.Literal("a"), S.String, S.Literal("b")))
     })
 
     it("undefined", () => {

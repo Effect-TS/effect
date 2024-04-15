@@ -5,33 +5,33 @@ import { describe, expect, it } from "vitest"
 
 describe("Schema > templateLiteral", () => {
   it("should throw on unsupported template literal spans", () => {
-    expect(() => S.templateLiteral(S.Boolean)).toThrow(
+    expect(() => S.TemplateLiteral(S.Boolean)).toThrow(
       new Error("unsupported template literal span (boolean)")
     )
   })
 
   describe("AST", () => {
     it("a", () => {
-      const schema = S.templateLiteral(S.Literal("a"))
+      const schema = S.TemplateLiteral(S.Literal("a"))
       expect(schema.ast).toEqual(new AST.Literal("a"))
     })
 
     it("a b", () => {
-      const schema = S.templateLiteral(S.Literal("a"), S.Literal(" "), S.Literal("b"))
+      const schema = S.TemplateLiteral(S.Literal("a"), S.Literal(" "), S.Literal("b"))
       expect(schema.ast).toEqual(
         new AST.Literal("a b")
       )
     })
 
     it("(a | b) c", () => {
-      const schema = S.templateLiteral(S.Literal("a", "b"), S.Literal("c"))
+      const schema = S.TemplateLiteral(S.Literal("a", "b"), S.Literal("c"))
       expect(schema.ast).toEqual(
         AST.Union.make([new AST.Literal("ac"), new AST.Literal("bc")])
       )
     })
 
     it("(a | b) c (d | e)", () => {
-      const schema = S.templateLiteral(S.Literal("a", "b"), S.Literal("c"), S.Literal("d", "e"))
+      const schema = S.TemplateLiteral(S.Literal("a", "b"), S.Literal("c"), S.Literal("d", "e"))
       expect(schema.ast).toEqual(
         AST.Union.make([
           new AST.Literal("acd"),
@@ -43,7 +43,7 @@ describe("Schema > templateLiteral", () => {
     })
 
     it("(a | b) string (d | e)", () => {
-      const schema = S.templateLiteral(S.Literal("a", "b"), S.String, S.Literal("d", "e"))
+      const schema = S.TemplateLiteral(S.Literal("a", "b"), S.String, S.Literal("d", "e"))
       expect(schema.ast).toEqual(
         AST.Union.make([
           AST.TemplateLiteral.make("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "d")]),
@@ -55,14 +55,14 @@ describe("Schema > templateLiteral", () => {
     })
 
     it("a${string}", () => {
-      const schema = S.templateLiteral(S.Literal("a"), S.String)
+      const schema = S.TemplateLiteral(S.Literal("a"), S.String)
       expect(schema.ast).toEqual(
         AST.TemplateLiteral.make("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "")])
       )
     })
 
     it("a${string}b", () => {
-      const schema = S.templateLiteral(S.Literal("a"), S.String, S.Literal("b"))
+      const schema = S.TemplateLiteral(S.Literal("a"), S.String, S.Literal("b"))
       expect(schema.ast).toEqual(
         AST.TemplateLiteral.make("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "b")])
       )
@@ -71,7 +71,7 @@ describe("Schema > templateLiteral", () => {
 
   describe("Decoder", () => {
     it("a", async () => {
-      const schema = S.templateLiteral(S.Literal("a"))
+      const schema = S.TemplateLiteral(S.Literal("a"))
       await Util.expectDecodeUnknownSuccess(schema, "a", "a")
 
       await Util.expectDecodeUnknownFailure(schema, "ab", `Expected "a", actual "ab"`)
@@ -80,21 +80,21 @@ describe("Schema > templateLiteral", () => {
     })
 
     it("a b", async () => {
-      const schema = S.templateLiteral(S.Literal("a"), S.Literal(" "), S.Literal("b"))
+      const schema = S.TemplateLiteral(S.Literal("a"), S.Literal(" "), S.Literal("b"))
       await Util.expectDecodeUnknownSuccess(schema, "a b", "a b")
 
       await Util.expectDecodeUnknownFailure(schema, "a  b", `Expected "a b", actual "a  b"`)
     })
 
     it("[${string}]", async () => {
-      const schema = S.templateLiteral(S.Literal("["), S.String, S.Literal("]"))
+      const schema = S.TemplateLiteral(S.Literal("["), S.String, S.Literal("]"))
       await Util.expectDecodeUnknownSuccess(schema, "[a]", "[a]")
 
       await Util.expectDecodeUnknownFailure(schema, "a", "Expected `[${string}]`, actual \"a\"")
     })
 
     it("a${string}", async () => {
-      const schema = S.templateLiteral(S.Literal("a"), S.String)
+      const schema = S.TemplateLiteral(S.Literal("a"), S.String)
       await Util.expectDecodeUnknownSuccess(schema, "a", "a")
       await Util.expectDecodeUnknownSuccess(schema, "ab", "ab")
 
@@ -111,7 +111,7 @@ describe("Schema > templateLiteral", () => {
     })
 
     it("a${number}", async () => {
-      const schema = S.templateLiteral(S.Literal("a"), S.Number)
+      const schema = S.TemplateLiteral(S.Literal("a"), S.Number)
       await Util.expectDecodeUnknownSuccess(schema, "a1")
       await Util.expectDecodeUnknownSuccess(schema, "a1.2")
 
@@ -147,14 +147,14 @@ describe("Schema > templateLiteral", () => {
     })
 
     it("${string}", async () => {
-      const schema = S.templateLiteral(S.String)
+      const schema = S.TemplateLiteral(S.String)
       await Util.expectDecodeUnknownSuccess(schema, "a", "a")
       await Util.expectDecodeUnknownSuccess(schema, "ab", "ab")
       await Util.expectDecodeUnknownSuccess(schema, "", "")
     })
 
     it("a${string}b", async () => {
-      const schema = S.templateLiteral(S.Literal("a"), S.String, S.Literal("b"))
+      const schema = S.TemplateLiteral(S.Literal("a"), S.String, S.Literal("b"))
       await Util.expectDecodeUnknownSuccess(schema, "ab", "ab")
       await Util.expectDecodeUnknownSuccess(schema, "acb", "acb")
       await Util.expectDecodeUnknownSuccess(schema, "abb", "abb")
@@ -177,7 +177,7 @@ describe("Schema > templateLiteral", () => {
     })
 
     it("a${string}b${string}", async () => {
-      const schema = S.templateLiteral(S.Literal("a"), S.String, S.Literal("b"), S.String)
+      const schema = S.TemplateLiteral(S.Literal("a"), S.String, S.Literal("b"), S.String)
       await Util.expectDecodeUnknownSuccess(schema, "ab", "ab")
       await Util.expectDecodeUnknownSuccess(schema, "acb", "acb")
       await Util.expectDecodeUnknownSuccess(schema, "acbd", "acbd")
@@ -197,7 +197,7 @@ describe("Schema > templateLiteral", () => {
     it("https://www.typescriptlang.org/docs/handbook/2/template-literal-types.html", async () => {
       const EmailLocaleIDs = S.Literal("welcome_email", "email_heading")
       const FooterLocaleIDs = S.Literal("footer_title", "footer_sendoff")
-      const schema = S.templateLiteral(S.Union(EmailLocaleIDs, FooterLocaleIDs), S.Literal("_id"))
+      const schema = S.TemplateLiteral(S.Union(EmailLocaleIDs, FooterLocaleIDs), S.Literal("_id"))
       await Util.expectDecodeUnknownSuccess(schema, "welcome_email_id", "welcome_email_id")
       await Util.expectDecodeUnknownSuccess(schema, "email_heading_id", "email_heading_id")
       await Util.expectDecodeUnknownSuccess(schema, "footer_title_id", "footer_title_id")

@@ -236,7 +236,7 @@ describe("ArrayFormatter", () => {
     })
 
     it("templateLiteral", () => {
-      const schema = S.templateLiteral(S.Literal("a"), S.String, S.Literal("b")).annotations({
+      const schema = S.TemplateLiteral(S.Literal("a"), S.String, S.Literal("b")).annotations({
         message: (issue) => `my custom message ${JSON.stringify(issue.actual)}`
       })
 
