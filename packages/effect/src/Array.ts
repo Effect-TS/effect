@@ -4,7 +4,7 @@
  * @since 2.0.0
  */
 
-import type { Either as Array } from "./Either.js"
+import { Either } from "./Either.js"
 import * as E from "./Either.js"
 import * as Equal from "./Equal.js"
 import * as Equivalence from "./Equivalence.js"
@@ -1604,11 +1604,11 @@ export const filterMapWhile: {
  * @since 2.0.0
  */
 export const partitionMap: {
-  <A, B, C>(f: (a: A, i: number) => Array<C, B>): (self: Iterable<A>) => [left: Array<B>, right: Array<C>]
-  <A, B, C>(self: Iterable<A>, f: (a: A, i: number) => Array<C, B>): [left: Array<B>, right: Array<C>]
+  <A, B, C>(f: (a: A, i: number) => Either<C, B>): (self: Iterable<A>) => [left: Array<B>, right: Array<C>]
+  <A, B, C>(self: Iterable<A>, f: (a: A, i: number) => Either<C, B>): [left: Array<B>, right: Array<C>]
 } = dual(
   2,
-  <A, B, C>(self: Iterable<A>, f: (a: A, i: number) => Array<C, B>): [left: Array<B>, right: Array<C>] => {
+  <A, B, C>(self: Iterable<A>, f: (a: A, i: number) => Either<C, B>): [left: Array<B>, right: Array<C>] => {
     const left: Array<B> = []
     const right: Array<C> = []
     const as = fromIterable(self)
@@ -1656,7 +1656,7 @@ export const getSomes: <A>(self: Iterable<Option<A>>) => Array<A> = filterMap(id
  * @category filtering
  * @since 2.0.0
  */
-export const getLefts = <R, L>(self: Iterable<Array<R, L>>): Array<L> => {
+export const getLefts = <R, L>(self: Iterable<Either<R, L>>): Array<L> => {
   const out: Array<L> = []
   for (const a of self) {
     if (E.isLeft(a)) {
@@ -1682,7 +1682,7 @@ export const getLefts = <R, L>(self: Iterable<Array<R, L>>): Array<L> => {
  * @category filtering
  * @since 2.0.0
  */
-export const getRights = <R, L>(self: Iterable<Array<R, L>>): Array<R> => {
+export const getRights = <R, L>(self: Iterable<Either<R, L>>): Array<R> => {
   const out: Array<R> = []
   for (const a of self) {
     if (E.isRight(a)) {
@@ -1755,7 +1755,7 @@ export const partition: {
  * @category filtering
  * @since 2.0.0
  */
-export const separate: <R, L>(self: Iterable<Array<R, L>>) => [Array<L>, Array<R>] = partitionMap(
+export const separate: <R, L>(self: Iterable<Either<R, L>>) => [Array<L>, Array<R>] = partitionMap(
   identity
 )
 
@@ -1836,7 +1836,7 @@ export const flatMapNullable: {
  * @since 2.0.0
  */
 export const liftEither = <A extends Array<unknown>, E, B>(
-  f: (...a: A) => Array<B, E>
+  f: (...a: A) => Either<B, E>
 ) =>
 (...a: A): Array<B> => {
   const e = f(...a)
