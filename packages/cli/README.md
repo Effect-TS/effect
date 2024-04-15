@@ -151,7 +151,7 @@ Let's continue with our `minigit` example and and create the `add` and `clone` s
 
 ```ts
 import { Args, Command, Options } from "@effect/cli"
-import { Console, Option, Array as ReadonlyArray } from "effect"
+import { Console, Option, Array as Array_ } from "effect"
 
 // minigit [--version] [-h | --help] [-c <name>=<value>]
 const configs = Options.keyValueMap("c").pipe(Options.optional)
@@ -170,9 +170,9 @@ const minigit = Command.make("minigit", { configs }, ({ configs }) =>
 const pathspec = Args.text({ name: "pathspec" }).pipe(Args.repeated)
 const verbose = Options.boolean("verbose").pipe(Options.withAlias("v"))
 const minigitAdd = Command.make("add", { pathspec, verbose }, ({ pathspec, verbose }) => {
-  const paths = ReadonlyArray.match(pathspec, {
+  const paths = Array_.match(pathspec, {
     onEmpty: () => "",
-    onNonEmpty: (paths) => ` ${ReadonlyArray.join(paths, " ")}`
+    onNonEmpty: (paths) => ` ${Array_.join(paths, " ")}`
   })
   return Console.log(`Running 'minigit add${paths}' with '--verbose ${verbose}'`)
 })

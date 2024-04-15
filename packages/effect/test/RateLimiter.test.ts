@@ -1,5 +1,5 @@
 import {
-  Array as ReadonlyArray,
+  Array as Array_,
   Clock,
   Deferred,
   Effect,
@@ -146,7 +146,7 @@ describe("RateLimiter", () => {
         const deferred = yield* _(Deferred.make<void>())
 
         // Use up all of the available tokens
-        yield* _(Effect.forEach(ReadonlyArray.range(1, 10), () => limit(Effect.void)))
+        yield* _(Effect.forEach(Array_.range(1, 10), () => limit(Effect.void)))
 
         // Make an additional request when there are no tokens available
         yield* _(
@@ -175,10 +175,10 @@ const RateLimiterTestSuite = (algorithm: "fixed-window" | "token-bucket") => {
       }))
       const now = yield* _(Clock.currentTimeMillis)
       const times = yield* _(Effect.forEach(
-        ReadonlyArray.range(1, 10),
+        Array_.range(1, 10),
         () => limit(Clock.currentTimeMillis)
       ))
-      const result = ReadonlyArray.every(times, (time) => time === now)
+      const result = Array_.every(times, (time) => time === now)
       assert.isTrue(result)
     }))
 
@@ -191,19 +191,19 @@ const RateLimiterTestSuite = (algorithm: "fixed-window" | "token-bucket") => {
       }))
       const now = yield* _(Clock.currentTimeMillis)
       const times1 = yield* _(Effect.forEach(
-        ReadonlyArray.range(1, 5),
+        Array_.range(1, 5),
         () => limiter(Clock.currentTimeMillis),
         { concurrency: "unbounded" }
       ))
       const fibers = yield* _(Effect.forEach(
-        ReadonlyArray.range(1, 15),
+        Array_.range(1, 15),
         () => Effect.fork(limiter(Clock.currentTimeMillis)),
         { concurrency: "unbounded" }
       ))
       yield* _(TestClock.adjust("1 seconds"))
       const times2 = yield* _(Effect.forEach(fibers, Fiber.join, { concurrency: "unbounded" }))
-      const times = ReadonlyArray.appendAll(times1, times2)
-      const result = ReadonlyArray.filter(times, (time) => time === now)
+      const times = Array_.appendAll(times1, times2)
+      const result = Array_.filter(times, (time) => time === now)
       assert.strictEqual(result.length, 10)
     }))
 

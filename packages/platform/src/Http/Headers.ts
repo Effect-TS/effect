@@ -6,7 +6,7 @@ import * as ReadonlyArray from "effect/Array"
 import { dual, identity } from "effect/Function"
 import type * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
-import * as ReadonlyRecord from "effect/Record"
+import * as Record from "effect/Record"
 import * as Secret from "effect/Secret"
 import * as String from "effect/String"
 
@@ -43,14 +43,14 @@ export interface Headers {
  */
 export const schemaFromSelf: Schema.Schema<Headers> = Schema.declare(isHeaders, {
   identifier: "Headers",
-  equivalence: () => ReadonlyRecord.getEquivalence(String.Equivalence)
+  equivalence: () => Record.getEquivalence(String.Equivalence)
 })
 
 /**
  * @since 1.0.0
  * @category schemas
  */
-export const schema: Schema.Schema<Headers, ReadonlyRecord.ReadonlyRecord<string, string | ReadonlyArray<string>>> =
+export const schema: Schema.Schema<Headers, Record.ReadonlyRecord<string, string | ReadonlyArray<string>>> =
   Schema.transform(
     Schema.Record(Schema.String, Schema.Union(Schema.String, Schema.Array(Schema.String))),
     schemaFromSelf,
@@ -62,7 +62,7 @@ export const schema: Schema.Schema<Headers, ReadonlyRecord.ReadonlyRecord<string
  * @category models
  */
 export type Input =
-  | ReadonlyRecord.ReadonlyRecord<string, string | ReadonlyArray<string> | undefined>
+  | Record.ReadonlyRecord<string, string | ReadonlyArray<string> | undefined>
   | Iterable<readonly [string, string]>
 
 /**
@@ -79,12 +79,12 @@ export const fromInput: (input?: Input) => Headers = (input) => {
   if (input === undefined) {
     return empty
   } else if (Symbol.iterator in input) {
-    return ReadonlyRecord.fromEntries(ReadonlyArray.map(
+    return Record.fromEntries(ReadonlyArray.map(
       ReadonlyArray.fromIterable(input),
       ([k, v]) => [k.toLowerCase(), v] as const
     )) as Headers
   }
-  return ReadonlyRecord.fromEntries(
+  return Record.fromEntries(
     Object.entries(input).map(([k, v]) =>
       [
         k.toLowerCase(),
@@ -98,7 +98,7 @@ export const fromInput: (input?: Input) => Headers = (input) => {
  * @since 1.0.0
  * @category constructors
  */
-export const unsafeFromRecord = (input: ReadonlyRecord.ReadonlyRecord<string, string>): Headers => input as Headers
+export const unsafeFromRecord = (input: Record.ReadonlyRecord<string, string>): Headers => input as Headers
 
 /**
  * @since 1.0.0
@@ -110,7 +110,7 @@ export const has: {
 } = dual<
   (key: string) => (self: Headers) => boolean,
   (self: Headers, key: string) => boolean
->(2, (self, key) => ReadonlyRecord.has(self as Record<string, string>, key.toLowerCase()))
+>(2, (self, key) => Record.has(self as Record<string, string>, key.toLowerCase()))
 
 /**
  * @since 1.0.0
@@ -122,7 +122,7 @@ export const get: {
 } = dual<
   (key: string) => (self: Headers) => Option.Option<string>,
   (self: Headers, key: string) => Option.Option<string>
->(2, (self, key) => ReadonlyRecord.get(self as Record<string, string>, key.toLowerCase()))
+>(2, (self, key) => Record.get(self as Record<string, string>, key.toLowerCase()))
 
 /**
  * @since 1.0.0

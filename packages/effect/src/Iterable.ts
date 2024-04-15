@@ -12,7 +12,7 @@ import { dual, identity } from "./Function.js"
 import type { Option } from "./Option.js"
 import * as O from "./Option.js"
 import { isBoolean } from "./Predicate.js"
-import type * as ReadonlyRecord from "./Record.js"
+import type * as Record from "./Record.js"
 import * as Tuple from "./Tuple.js"
 
 /**
@@ -626,15 +626,15 @@ export const group: <A>(self: Iterable<A>) => Iterable<NonEmptyArray<A>> = group
 export const groupBy: {
   <A, K extends string | symbol>(
     f: (a: A) => K
-  ): (self: Iterable<A>) => Record<ReadonlyRecord.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>>
+  ): (self: Iterable<A>) => Record<Record.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>>
   <A, K extends string | symbol>(
     self: Iterable<A>,
     f: (a: A) => K
-  ): Record<ReadonlyRecord.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>>
+  ): Record<Record.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>>
 } = dual(2, <A, K extends string | symbol>(
   self: Iterable<A>,
   f: (a: A) => K
-): Record<ReadonlyRecord.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>> => {
+): Record<Record.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>> => {
   const out: Record<string | symbol, NonEmptyArray<A>> = {}
   for (const a of self) {
     const k = f(a)

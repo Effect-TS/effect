@@ -13,7 +13,7 @@ import { globalValue } from "effect/GlobalValue"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import type * as PrimaryKey from "effect/PrimaryKey"
-import type * as ReadonlyRecord from "effect/Record"
+import type * as Record from "effect/Record"
 import type * as EffectRequest from "effect/Request"
 import type * as RequestResolver from "effect/RequestResolver"
 import type { Scope } from "effect/Scope"
@@ -310,7 +310,7 @@ export const annotateHeaders: {
  * @since 1.0.0
  * @category headers
  */
-export const schemaHeaders = <R, I extends ReadonlyRecord.ReadonlyRecord<string, string | undefined>, A>(
+export const schemaHeaders = <R, I extends Record.ReadonlyRecord<string, string | undefined>, A>(
   schema: Schema.Schema<R, I, A>
 ): Effect.Effect<R, ParseResult.ParseError, A> => {
   const decode = Schema.decodeUnknown(schema)

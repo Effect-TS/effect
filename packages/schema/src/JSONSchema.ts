@@ -4,7 +4,7 @@
 
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
-import * as ReadonlyRecord from "effect/Record"
+import * as Record from "effect/Record"
 import * as AST from "./AST.js"
 import type * as Schema from "./Schema.js"
 
@@ -219,7 +219,7 @@ export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root =
       delete $defs[id]
     }
   }
-  if (!ReadonlyRecord.isEmptyRecord($defs)) {
+  if (!Record.isEmptyRecord($defs)) {
     out.$defs = $defs
   }
   return out
@@ -248,7 +248,7 @@ const empty = (): JsonSchema7 => ({
 const $schema = "http://json-schema.org/draft-07/schema#"
 
 const getMeta = (annotated: AST.Annotated) =>
-  ReadonlyRecord.getSomes({
+  Record.getSomes({
     description: AST.getDescriptionAnnotation(annotated),
     title: AST.getTitleAnnotation(annotated),
     examples: AST.getExamplesAnnotation(annotated),
@@ -299,7 +299,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>, handleIdentifier: 
     if (Option.isSome(identifier)) {
       const id = identifier.value
       const out = { $ref: get$ref(id) }
-      if (!ReadonlyRecord.has($defs, id)) {
+      if (!Record.has($defs, id)) {
         $defs[id] = out
         $defs[id] = go(ast, $defs, false)
       }

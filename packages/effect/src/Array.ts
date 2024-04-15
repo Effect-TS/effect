@@ -18,7 +18,7 @@ import * as O from "./Option.js"
 import * as Order from "./Order.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import { isBoolean } from "./Predicate.js"
-import * as ReadonlyRecord from "./Record.js"
+import * as Record from "./Record.js"
 import * as Tuple from "./Tuple.js"
 
 /**
@@ -128,7 +128,7 @@ export const fromIterable = <A>(collection: Iterable<A>): Array<A> =>
  * @category conversions
  * @since 2.0.0
  */
-export const fromRecord: <K extends string, A>(self: Readonly<Record<K, A>>) => Array<[K, A]> = ReadonlyRecord.toEntries
+export const fromRecord: <K extends string, A>(self: Readonly<Record<K, A>>) => Array<[K, A]> = Record.toEntries
 
 /**
  * @category conversions
@@ -1317,15 +1317,15 @@ export const group: <A>(self: NonEmptyReadonlyArray<A>) => NonEmptyArray<NonEmpt
 export const groupBy: {
   <A, K extends string | symbol>(
     f: (a: A) => K
-  ): (self: Iterable<A>) => Record<ReadonlyRecord.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>>
+  ): (self: Iterable<A>) => Record<Record.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>>
   <A, K extends string | symbol>(
     self: Iterable<A>,
     f: (a: A) => K
-  ): Record<ReadonlyRecord.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>>
+  ): Record<Record.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>>
 } = dual(2, <A, K extends string | symbol>(
   self: Iterable<A>,
   f: (a: A) => K
-): Record<ReadonlyRecord.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>> => {
+): Record<Record.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>> => {
   const out: Record<string | symbol, NonEmptyArray<A>> = {}
   for (const a of self) {
     const k = f(a)

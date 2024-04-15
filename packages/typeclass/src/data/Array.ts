@@ -4,7 +4,7 @@
  * @since 1.0.0
  */
 
-import * as ReadonlyArray from "effect/Array"
+import * as ArrayInstances from "effect/Array"
 import type { Either } from "effect/Either"
 import { dual } from "effect/Function"
 import type { Kind, TypeLambda } from "effect/HKT"
@@ -29,17 +29,17 @@ import * as semiProduct from "../SemiProduct.js"
 import type * as traversable from "../Traversable.js"
 import type * as traversableFilterable from "../TraversableFilterable.js"
 
-const of = ReadonlyArray.of
+const of = ArrayInstances.of
 
-const map = ReadonlyArray.map
+const map = ArrayInstances.map
 
-const imap = covariant.imap<ReadonlyArray.ReadonlyArrayTypeLambda>(map)
+const imap = covariant.imap<ArrayInstances.ReadonlyArrayTypeLambda>(map)
 
-const flatMap = ReadonlyArray.flatMap
+const flatMap = ArrayInstances.flatMap
 
 const product = <A, B>(self: ReadonlyArray<A>, that: ReadonlyArray<B>): ReadonlyArray<[A, B]> => {
-  if (ReadonlyArray.isEmptyReadonlyArray(self) || ReadonlyArray.isEmptyReadonlyArray(that)) {
-    return ReadonlyArray.empty()
+  if (ArrayInstances.isEmptyReadonlyArray(self) || ArrayInstances.isEmptyReadonlyArray(that)) {
+    return ArrayInstances.empty()
   }
   const out: Array<[A, B]> = []
   for (let i = 0; i < self.length; i++) {
@@ -50,7 +50,7 @@ const product = <A, B>(self: ReadonlyArray<A>, that: ReadonlyArray<B>): Readonly
   return out
 }
 
-const productMany = semiProduct.productMany<ReadonlyArray.ReadonlyArrayTypeLambda>(map, product)
+const productMany = semiProduct.productMany<ArrayInstances.ReadonlyArrayTypeLambda>(map, product)
 
 const traverse = <F extends TypeLambda>(F: applicative.Applicative<F>): {
   <A, R, O, E, B>(
@@ -64,7 +64,7 @@ const traverse = <F extends TypeLambda>(F: applicative.Applicative<F>): {
   dual(2, <A, R, O, E, B>(
     self: Iterable<A>,
     f: (a: A, i: number) => Kind<F, R, O, E, B>
-  ): Kind<F, R, O, E, Array<B>> => F.productAll(ReadonlyArray.fromIterable(self).map(f)))
+  ): Kind<F, R, O, E, Array<B>> => F.productAll(ArrayInstances.fromIterable(self).map(f)))
 
 const traversePartitionMap = <F extends TypeLambda>(
   F: applicative.Applicative<F>
@@ -81,7 +81,7 @@ const traversePartitionMap = <F extends TypeLambda>(
     self: ReadonlyArray<A>,
     f: (a: A) => Kind<F, R, O, E, Either<C, B>>
   ): Kind<F, R, O, E, [Array<B>, Array<C>]> => {
-    return F.map(traverse(F)(self, f), ReadonlyArray.separate)
+    return F.map(traverse(F)(self, f), ArrayInstances.separate)
   })
 
 const traverseFilterMap = <F extends TypeLambda>(
@@ -99,14 +99,14 @@ const traverseFilterMap = <F extends TypeLambda>(
     self: ReadonlyArray<A>,
     f: (a: A) => Kind<F, R, O, E, Option<B>>
   ): Kind<F, R, O, E, Array<B>> => {
-    return F.map(traverse(F)(self, f), ReadonlyArray.getSomes)
+    return F.map(traverse(F)(self, f), ArrayInstances.getSomes)
   })
 
 /**
  * @category instances
  * @since 1.0.0
  */
-export const Of: of_.Of<ReadonlyArray.ReadonlyArrayTypeLambda> = {
+export const Of: of_.Of<ArrayInstances.ReadonlyArrayTypeLambda> = {
   of
 }
 
@@ -114,7 +114,7 @@ export const Of: of_.Of<ReadonlyArray.ReadonlyArrayTypeLambda> = {
  * @category instances
  * @since 1.0.0
  */
-export const Covariant: covariant.Covariant<ReadonlyArray.ReadonlyArrayTypeLambda> = {
+export const Covariant: covariant.Covariant<ArrayInstances.ReadonlyArrayTypeLambda> = {
   imap,
   map
 }
@@ -123,7 +123,7 @@ export const Covariant: covariant.Covariant<ReadonlyArray.ReadonlyArrayTypeLambd
  * @category instances
  * @since 1.0.0
  */
-export const Invariant: invariant.Invariant<ReadonlyArray.ReadonlyArrayTypeLambda> = {
+export const Invariant: invariant.Invariant<ArrayInstances.ReadonlyArrayTypeLambda> = {
   imap
 }
 
@@ -131,7 +131,7 @@ export const Invariant: invariant.Invariant<ReadonlyArray.ReadonlyArrayTypeLambd
  * @category instances
  * @since 1.0.0
  */
-export const Pointed: pointed.Pointed<ReadonlyArray.ReadonlyArrayTypeLambda> = {
+export const Pointed: pointed.Pointed<ArrayInstances.ReadonlyArrayTypeLambda> = {
   of,
   imap,
   map
@@ -141,7 +141,7 @@ export const Pointed: pointed.Pointed<ReadonlyArray.ReadonlyArrayTypeLambda> = {
  * @category instances
  * @since 1.0.0
  */
-export const FlatMap: flatMap_.FlatMap<ReadonlyArray.ReadonlyArrayTypeLambda> = {
+export const FlatMap: flatMap_.FlatMap<ArrayInstances.ReadonlyArrayTypeLambda> = {
   flatMap
 }
 
@@ -149,7 +149,7 @@ export const FlatMap: flatMap_.FlatMap<ReadonlyArray.ReadonlyArrayTypeLambda> = 
  * @category instances
  * @since 1.0.0
  */
-export const Chainable: chainable.Chainable<ReadonlyArray.ReadonlyArrayTypeLambda> = {
+export const Chainable: chainable.Chainable<ArrayInstances.ReadonlyArrayTypeLambda> = {
   imap,
   map,
   flatMap
@@ -159,16 +159,16 @@ export const Chainable: chainable.Chainable<ReadonlyArray.ReadonlyArrayTypeLambd
  * @category instances
  * @since 1.0.0
  */
-export const Filterable: filterable.Filterable<ReadonlyArray.ReadonlyArrayTypeLambda> = {
-  partitionMap: ReadonlyArray.partitionMap,
-  filterMap: ReadonlyArray.filterMap
+export const Filterable: filterable.Filterable<ArrayInstances.ReadonlyArrayTypeLambda> = {
+  partitionMap: ArrayInstances.partitionMap,
+  filterMap: ArrayInstances.filterMap
 }
 
 /**
  * @category instances
  * @since 1.0.0
  */
-export const Traversable: traversable.Traversable<ReadonlyArray.ReadonlyArrayTypeLambda> = {
+export const Traversable: traversable.Traversable<ArrayInstances.ReadonlyArrayTypeLambda> = {
   traverse: traverse as any
 }
 
@@ -176,7 +176,7 @@ export const Traversable: traversable.Traversable<ReadonlyArray.ReadonlyArrayTyp
  * @category instances
  * @since 1.0.0
  */
-export const SemiProduct: semiProduct.SemiProduct<ReadonlyArray.ReadonlyArrayTypeLambda> = {
+export const SemiProduct: semiProduct.SemiProduct<ArrayInstances.ReadonlyArrayTypeLambda> = {
   imap,
   product,
   productMany
@@ -187,7 +187,7 @@ export const SemiProduct: semiProduct.SemiProduct<ReadonlyArray.ReadonlyArrayTyp
  * @since 1.0.0
  */
 export const SemiApplicative: semiApplicative.SemiApplicative<
-  ReadonlyArray.ReadonlyArrayTypeLambda
+  ArrayInstances.ReadonlyArrayTypeLambda
 > = {
   imap,
   map,
@@ -199,15 +199,15 @@ export const SemiApplicative: semiApplicative.SemiApplicative<
  * @category instances
  * @since 1.0.0
  */
-export const Product: product_.Product<ReadonlyArray.ReadonlyArrayTypeLambda> = {
+export const Product: product_.Product<ArrayInstances.ReadonlyArrayTypeLambda> = {
   of,
   imap,
   product,
   productMany,
   productAll: (collection) => {
-    const arrays = ReadonlyArray.fromIterable(collection)
-    return ReadonlyArray.isEmptyReadonlyArray(arrays) ?
-      ReadonlyArray.empty() :
+    const arrays = ArrayInstances.fromIterable(collection)
+    return ArrayInstances.isEmptyReadonlyArray(arrays) ?
+      ArrayInstances.empty() :
       SemiProduct.productMany(arrays[0], arrays.slice(1))
   }
 }
@@ -216,7 +216,7 @@ export const Product: product_.Product<ReadonlyArray.ReadonlyArrayTypeLambda> = 
  * @category instances
  * @since 1.0.0
  */
-export const Applicative: applicative.Applicative<ReadonlyArray.ReadonlyArrayTypeLambda> = {
+export const Applicative: applicative.Applicative<ArrayInstances.ReadonlyArrayTypeLambda> = {
   imap,
   of,
   map,
@@ -229,7 +229,7 @@ export const Applicative: applicative.Applicative<ReadonlyArray.ReadonlyArrayTyp
  * @category instances
  * @since 1.0.0
  */
-export const Monad: monad.Monad<ReadonlyArray.ReadonlyArrayTypeLambda> = {
+export const Monad: monad.Monad<ArrayInstances.ReadonlyArrayTypeLambda> = {
   imap,
   of,
   map,
@@ -240,8 +240,8 @@ export const Monad: monad.Monad<ReadonlyArray.ReadonlyArrayTypeLambda> = {
  * @category instances
  * @since 1.0.0
  */
-export const Foldable: foldable.Foldable<ReadonlyArray.ReadonlyArrayTypeLambda> = {
-  reduce: ReadonlyArray.reduce
+export const Foldable: foldable.Foldable<ArrayInstances.ReadonlyArrayTypeLambda> = {
+  reduce: ArrayInstances.reduce
 }
 
 /**
@@ -249,7 +249,7 @@ export const Foldable: foldable.Foldable<ReadonlyArray.ReadonlyArrayTypeLambda> 
  * @since 1.0.0
  */
 export const TraversableFilterable: traversableFilterable.TraversableFilterable<
-  ReadonlyArray.ReadonlyArrayTypeLambda
+  ArrayInstances.ReadonlyArrayTypeLambda
 > = {
   traversePartitionMap: traversePartitionMap as any,
   traverseFilterMap: traverseFilterMap as any

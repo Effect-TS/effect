@@ -8,7 +8,7 @@ import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
-import * as ReadonlyRecord from "effect/Record"
+import * as Record from "effect/Record"
 import type * as Types from "effect/Types"
 import { TypeIdError } from "../Error.js"
 
@@ -36,7 +36,7 @@ export const isCookies = (u: unknown): u is Cookies => Predicate.hasProperty(u, 
  */
 export interface Cookies extends Pipeable, Inspectable.Inspectable {
   readonly [TypeId]: TypeId
-  readonly cookies: ReadonlyRecord.ReadonlyRecord<string, Cookie>
+  readonly cookies: Record.ReadonlyRecord<string, Cookie>
 }
 
 /**
@@ -103,7 +103,7 @@ const Proto: Omit<Cookies, "cookies"> = {
   toJSON(this: Cookies) {
     return {
       _id: "@effect/platform/Http/Cookies",
-      cookies: ReadonlyRecord.map(this.cookies, (cookie) => cookie.toJSON())
+      cookies: Record.map(this.cookies, (cookie) => cookie.toJSON())
     }
   },
   pipe() {
@@ -117,7 +117,7 @@ const Proto: Omit<Cookies, "cookies"> = {
  * @since 1.0.0
  * @category constructors
  */
-export const fromReadonlyRecord = (cookies: ReadonlyRecord.ReadonlyRecord<string, Cookie>): Cookies => {
+export const fromReadonlyRecord = (cookies: Record.ReadonlyRecord<string, Cookie>): Cookies => {
   const self = Object.create(Proto)
   self.cookies = cookies
   return self
@@ -299,7 +299,7 @@ export const empty: Cookies = fromIterable([])
  * @since 1.0.0
  * @category refinements
  */
-export const isEmpty = (self: Cookies): boolean => ReadonlyRecord.isEmptyRecord(self.cookies)
+export const isEmpty = (self: Cookies): boolean => Record.isEmptyRecord(self.cookies)
 
 // eslint-disable-next-line no-control-regex
 const fieldContentRegExp = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/
@@ -385,7 +385,7 @@ export const setCookie: {
 } = dual(
   2,
   (self: Cookies, cookie: Cookie) =>
-    fromReadonlyRecord(ReadonlyRecord.set(
+    fromReadonlyRecord(Record.set(
       self.cookies,
       cookie.name,
       cookie
@@ -442,7 +442,7 @@ export const remove: {
     self: Cookies,
     name: string
   ): Cookies
-} = dual(2, (self: Cookies, name: string) => fromReadonlyRecord(ReadonlyRecord.remove(self.cookies, name)))
+} = dual(2, (self: Cookies, name: string) => fromReadonlyRecord(Record.remove(self.cookies, name)))
 
 /**
  * Add a cookie to a Cookies object
@@ -467,7 +467,7 @@ export const set: {
   (self: Cookies, name: string, value: string, options?: Cookie["options"]) =>
     Either.map(
       makeCookie(name, value, options),
-      (cookie) => fromReadonlyRecord(ReadonlyRecord.set(self.cookies, name, cookie))
+      (cookie) => fromReadonlyRecord(Record.set(self.cookies, name, cookie))
     )
 )
 
@@ -492,7 +492,7 @@ export const unsafeSet: {
 } = dual(
   (args) => isCookies(args[0]),
   (self: Cookies, name: string, value: string, options?: Cookie["options"]) =>
-    fromReadonlyRecord(ReadonlyRecord.set(
+    fromReadonlyRecord(Record.set(
       self.cookies,
       name,
       unsafeMakeCookie(name, value, options)
