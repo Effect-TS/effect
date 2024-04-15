@@ -1,14 +1,14 @@
 import * as Doc from "@effect/printer/Doc"
-import * as ReadonlyArray from "effect/Array"
+import * as Array from "effect/Array"
 import { pipe } from "effect/Function"
 
 const prettyTypes = (types: ReadonlyArray<string>): Doc.Doc<never> => {
   const symbolDocuments = pipe(
-    ReadonlyArray.makeBy(types.length - 1, () => Doc.text("->")),
-    ReadonlyArray.prepend(Doc.text("::"))
+    Array.makeBy(types.length - 1, () => Doc.text("->")),
+    Array.prepend(Doc.text("::"))
   )
   const typeDocuments = types.map(Doc.text)
-  const documents = ReadonlyArray.zipWith(
+  const documents = Array.zipWith(
     symbolDocuments,
     typeDocuments,
     (left, right) => Doc.catWithSpace(left, right)

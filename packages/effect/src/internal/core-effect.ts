@@ -1,4 +1,4 @@
-import * as ReadonlyArray from "../Array.js"
+import * as Array_ from "../Array.js"
 import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
 import * as Clock from "../Clock.js"
@@ -512,7 +512,7 @@ export const filterMap = dual<
 >(2, (elements, pf) =>
   core.map(
     core.forEachSequential(elements, identity),
-    ReadonlyArray.filterMap(pf)
+    Array_.filterMap(pf)
   ))
 
 /* @internal */
@@ -695,7 +695,7 @@ export const firstSuccessOf = <Eff extends Effect.Effect<any, any, any>>(
     }
     return pipe(
       Chunk.tailNonEmpty(list),
-      ReadonlyArray.reduce(Chunk.headNonEmpty(list), (left, right) => core.orElse(left, () => right) as Eff)
+      Array_.reduce(Chunk.headNonEmpty(list), (left, right) => core.orElse(left, () => right) as Eff)
     )
   })
 
@@ -1278,7 +1278,7 @@ export const reduce = dual<
     zero: Z,
     f: (z: Z, a: A, i: number) => Effect.Effect<Z, E, R>
   ) =>
-    ReadonlyArray.fromIterable(elements).reduce(
+    Array_.fromIterable(elements).reduce(
       (acc, el, i) => core.flatMap(acc, (a) => f(a, el, i)),
       core.succeed(zero) as Effect.Effect<Z, E, R>
     )
@@ -1298,7 +1298,7 @@ export const reduceRight = dual<
 >(
   3,
   <A, Z, R, E>(elements: Iterable<A>, zero: Z, f: (a: A, z: Z, i: number) => Effect.Effect<Z, E, R>) =>
-    ReadonlyArray.fromIterable(elements).reduceRight(
+    Array_.fromIterable(elements).reduceRight(
       (acc, el, i) => core.flatMap(acc, (a) => f(el, a, i)),
       core.succeed(zero) as Effect.Effect<Z, E, R>
     )
@@ -1435,7 +1435,7 @@ export const labelMetrics = dual<
   <A, E, R>(self: Effect.Effect<A, E, R>, labels: Iterable<MetricLabel.MetricLabel>) => Effect.Effect<A, E, R>
 >(
   2,
-  (self, labels) => core.fiberRefLocallyWith(self, core.currentMetricLabels, (old) => ReadonlyArray.union(old, labels))
+  (self, labels) => core.fiberRefLocallyWith(self, core.currentMetricLabels, (old) => Array_.union(old, labels))
 )
 
 /* @internal */
@@ -2082,7 +2082,7 @@ export const unsafeMakeSpan = <XA, XE>(
         ...(options?.links ?? [])
       ] :
       Chunk.toReadonlyArray(linksFromEnv.value) :
-    options?.links ?? ReadonlyArray.empty()
+    options?.links ?? Array_.empty()
 
   const span = tracer.span(
     name,

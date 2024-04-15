@@ -1,5 +1,5 @@
 import * as Doc from "@effect/printer-ansi/AnsiDoc"
-import * as ReadonlyArray from "effect/Array"
+import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 
@@ -62,7 +62,7 @@ export const lines = (prompt: string, columns: number): number => {
   return columns === 0
     ? lines.length
     : pipe(
-      ReadonlyArray.map(lines, (line) => Math.ceil(line.length / columns)),
-      ReadonlyArray.reduce(0, (left, right) => left + right)
+      Array.map(lines, (line) => Math.ceil(line.length / columns)),
+      Array.reduce(0, (left, right) => left + right)
     )
 }

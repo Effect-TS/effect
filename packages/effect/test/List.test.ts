@@ -1,4 +1,4 @@
-import * as ReadonlyArray from "effect/Array"
+import * as Array_ from "effect/Array"
 import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
 import * as Either from "effect/Either"
@@ -251,8 +251,8 @@ describe("List", () => {
   })
 
   it("to iterable", () => {
-    expect(ReadonlyArray.fromIterable(List.empty())).toEqual([])
-    expect(ReadonlyArray.fromIterable(List.make(1, 2, 3))).toEqual([1, 2, 3])
+    expect(Array_.fromIterable(List.empty())).toEqual([])
+    expect(Array_.fromIterable(List.make(1, 2, 3))).toEqual([1, 2, 3])
   })
 
   it("fromIterable", () => {

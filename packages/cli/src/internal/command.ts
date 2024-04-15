@@ -1,7 +1,7 @@
 import type * as FileSystem from "@effect/platform/FileSystem"
 import type * as Path from "@effect/platform/Path"
 import type * as Terminal from "@effect/platform/Terminal"
-import * as ReadonlyArray from "effect/Array"
+import * as Array_ from "effect/Array"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
@@ -59,7 +59,7 @@ const parseConfig = (config: Command.Command.Config): Command.Command.ParsedConf
     if (Array.isArray(value)) {
       return {
         _tag: "Array",
-        children: ReadonlyArray.map(value, parseValue)
+        children: Array_.map(value, parseValue)
       }
     } else if (InternalArgs.isArgs(value)) {
       args.push(value)
@@ -107,7 +107,7 @@ const reconstructConfigTree = (
     } else if (node._tag === "Options") {
       return options[node.index]
     } else if (node._tag === "Array") {
-      return ReadonlyArray.map(node.children, nodeValue)
+      return Array_.map(node.children, nodeValue)
     } else {
       return reconstructConfigTree(node.tree, args, options)
     }
@@ -425,7 +425,7 @@ export const withDescription = dual<
 
 /** @internal */
 export const withSubcommands = dual<
-  <Subcommand extends ReadonlyArray.NonEmptyReadonlyArray<Command.Command<any, any, any, any>>>(
+  <Subcommand extends Array_.NonEmptyReadonlyArray<Command.Command<any, any, any, any>>>(
     subcommands: Subcommand
   ) => <Name extends string, R, E, A>(self: Command.Command<Name, R, E, A>) => Command.Command<
     Name,
@@ -451,7 +451,7 @@ export const withSubcommands = dual<
     R,
     E,
     A,
-    Subcommand extends ReadonlyArray.NonEmptyReadonlyArray<Command.Command<any, any, any, any>>
+    Subcommand extends Array_.NonEmptyReadonlyArray<Command.Command<any, any, any, any>>
   >(
     self: Command.Command<Name, R, E, A>,
     subcommands: Subcommand
@@ -477,9 +477,9 @@ export const withSubcommands = dual<
 >(2, (self, subcommands) => {
   const command = InternalDescriptor.withSubcommands(
     self.descriptor,
-    ReadonlyArray.map(subcommands, (_) => [_.tag, _.descriptor])
+    Array_.map(subcommands, (_) => [_.tag, _.descriptor])
   )
-  const subcommandMap = ReadonlyArray.reduce(
+  const subcommandMap = Array_.reduce(
     subcommands,
     new Map<Context.Tag<any, any>, Command.Command<any, any, any, any>>(),
     (handlers, subcommand) => {

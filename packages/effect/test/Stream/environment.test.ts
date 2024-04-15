@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as ReadonlyArray from "effect/Array"
+import * as Array_ from "effect/Array"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -208,11 +208,11 @@ describe("Stream", () => {
       )
       expect(spans.length).toEqual(3)
       expect(pipe(
-        ReadonlyArray.map(spans, (s) => s.parent),
-        ReadonlyArray.getSomes,
-        ReadonlyArray.filter((s): s is Tracer.Span => s._tag === "Span"),
-        ReadonlyArray.map((s) => s.name)
+        Array_.map(spans, (s) => s.parent),
+        Array_.getSomes,
+        Array_.filter((s): s is Tracer.Span => s._tag === "Span"),
+        Array_.map((s) => s.name)
       )).toEqual(["span", "span", "span"])
-      expect(ReadonlyArray.map(spans, (s) => s.name)).toEqual(["span.1", "span.2", "span.3"])
+      expect(Array_.map(spans, (s) => s.name)).toEqual(["span.1", "span.2", "span.3"])
     }))
 })

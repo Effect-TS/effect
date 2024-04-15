@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as ReadonlyArray from "effect/Array"
+import * as Array from "effect/Array"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
@@ -65,7 +65,7 @@ describe("PubSub", () => {
   })
   it.effect("sequential publishers and subscribers with one publisher and one subscriber", () =>
     Effect.gen(function*($) {
-      const values = ReadonlyArray.range(0, 9)
+      const values = Array.range(0, 9)
       const deferred1 = yield* $(Deferred.make<void>())
       const deferred2 = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.bounded<number>(10))
@@ -91,7 +91,7 @@ describe("PubSub", () => {
     }))
   it.effect("sequential publishers and subscribers with one publisher and two subscribers", () =>
     Effect.gen(function*($) {
-      const values = ReadonlyArray.range(0, 9)
+      const values = Array.range(0, 9)
       const deferred1 = yield* $(Deferred.make<void>())
       const deferred2 = yield* $(Deferred.make<void>())
       const deferred3 = yield* $(Deferred.make<void>())
@@ -135,7 +135,7 @@ describe("PubSub", () => {
     }))
   it.effect("backpressured concurrent publishers and subscribers - one to one", () =>
     Effect.gen(function*($) {
-      const values = ReadonlyArray.range(0, 64)
+      const values = Array.range(0, 64)
       const deferred = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.bounded<number>(64))
       const subscriber = yield* $(
@@ -160,7 +160,7 @@ describe("PubSub", () => {
     }))
   it.effect("backpressured concurrent publishers and subscribers - one to many", () =>
     Effect.gen(function*($) {
-      const values = ReadonlyArray.range(0, 64)
+      const values = Array.range(0, 64)
       const deferred1 = yield* $(Deferred.make<void>())
       const deferred2 = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.bounded<number>(64))
@@ -200,7 +200,7 @@ describe("PubSub", () => {
     }))
   it.effect("backpressured concurrent publishers and subscribers - many to many", () =>
     Effect.gen(function*($) {
-      const values = ReadonlyArray.range(1, 64)
+      const values = Array.range(1, 64)
       const deferred1 = yield* $(Deferred.make<void>())
       const deferred2 = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.bounded<number>(64 * 2))
@@ -211,7 +211,7 @@ describe("PubSub", () => {
             Deferred.succeed(deferred1, void 0),
             Effect.zipRight(pipe(
               values,
-              ReadonlyArray.appendAll(values),
+              Array.appendAll(values),
               Effect.forEach((_) => Queue.take(subscription))
             ))
           )
@@ -226,7 +226,7 @@ describe("PubSub", () => {
             Deferred.succeed(deferred2, void 0),
             Effect.zipRight(pipe(
               values,
-              ReadonlyArray.appendAll(values),
+              Array.appendAll(values),
               Effect.forEach((_) => Queue.take(subscription))
             ))
           )
@@ -241,24 +241,24 @@ describe("PubSub", () => {
         Effect.forEach((n) => PubSub.publish(pubsub, n)),
         Effect.fork
       )
-      yield* $(values, ReadonlyArray.map((n) => -n), Effect.forEach((n) => PubSub.publish(pubsub, n)), Effect.fork)
+      yield* $(values, Array.map((n) => -n), Effect.forEach((n) => PubSub.publish(pubsub, n)), Effect.fork)
       const result1 = yield* $(Fiber.join(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
       yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(pipe(result1, ReadonlyArray.filter((n) => n > 0)), values)
+      assert.deepStrictEqual(pipe(result1, Array.filter((n) => n > 0)), values)
       assert.deepStrictEqual(
-        pipe(result1, ReadonlyArray.filter((n) => n < 0)),
-        pipe(values, ReadonlyArray.map((n) => -n))
+        pipe(result1, Array.filter((n) => n < 0)),
+        pipe(values, Array.map((n) => -n))
       )
-      assert.deepStrictEqual(pipe(result2, ReadonlyArray.filter((n) => n > 0)), values)
+      assert.deepStrictEqual(pipe(result2, Array.filter((n) => n > 0)), values)
       assert.deepStrictEqual(
-        pipe(result2, ReadonlyArray.filter((n) => n < 0)),
-        pipe(values, ReadonlyArray.map((n) => -n))
+        pipe(result2, Array.filter((n) => n < 0)),
+        pipe(values, Array.map((n) => -n))
       )
     }))
   it.effect("dropping concurrent publishers and subscribers - one to one", () =>
     Effect.gen(function*($) {
-      const values = ReadonlyArray.range(0, 64)
+      const values = Array.range(0, 64)
       const deferred = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.dropping<number>(64))
       const subscriber = yield* $(
@@ -283,7 +283,7 @@ describe("PubSub", () => {
     }))
   it.effect("dropping concurrent publishers and subscribers - one to many", () =>
     Effect.gen(function*($) {
-      const values = ReadonlyArray.range(0, 64)
+      const values = Array.range(0, 64)
       const deferred1 = yield* $(Deferred.make<void>())
       const deferred2 = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.dropping<number>(64))
@@ -323,7 +323,7 @@ describe("PubSub", () => {
     }))
   it.effect("dropping concurrent publishers and subscribers - many to many", () =>
     Effect.gen(function*($) {
-      const values = ReadonlyArray.range(1, 64)
+      const values = Array.range(1, 64)
       const deferred1 = yield* $(Deferred.make<void>())
       const deferred2 = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.dropping<number>(64 * 2))
@@ -334,7 +334,7 @@ describe("PubSub", () => {
             Deferred.succeed(deferred1, void 0),
             Effect.zipRight(pipe(
               values,
-              ReadonlyArray.appendAll(values),
+              Array.appendAll(values),
               Effect.forEach((_) => Queue.take(subscription))
             ))
           )
@@ -349,7 +349,7 @@ describe("PubSub", () => {
             Deferred.succeed(deferred2, void 0),
             Effect.zipRight(pipe(
               values,
-              ReadonlyArray.appendAll(values),
+              Array.appendAll(values),
               Effect.forEach((_) => Queue.take(subscription))
             ))
           )
@@ -364,24 +364,24 @@ describe("PubSub", () => {
         Effect.forEach((n) => PubSub.publish(pubsub, n)),
         Effect.fork
       )
-      yield* $(values, ReadonlyArray.map((n) => -n), Effect.forEach((n) => PubSub.publish(pubsub, n)), Effect.fork)
+      yield* $(values, Array.map((n) => -n), Effect.forEach((n) => PubSub.publish(pubsub, n)), Effect.fork)
       const result1 = yield* $(Fiber.join(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
       yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(pipe(result1, ReadonlyArray.filter((n) => n > 0)), values)
+      assert.deepStrictEqual(pipe(result1, Array.filter((n) => n > 0)), values)
       assert.deepStrictEqual(
-        pipe(result1, ReadonlyArray.filter((n) => n < 0)),
-        pipe(values, ReadonlyArray.map((n) => -n))
+        pipe(result1, Array.filter((n) => n < 0)),
+        pipe(values, Array.map((n) => -n))
       )
-      assert.deepStrictEqual(pipe(result2, ReadonlyArray.filter((n) => n > 0)), values)
+      assert.deepStrictEqual(pipe(result2, Array.filter((n) => n > 0)), values)
       assert.deepStrictEqual(
-        pipe(result2, ReadonlyArray.filter((n) => n < 0)),
-        pipe(values, ReadonlyArray.map((n) => -n))
+        pipe(result2, Array.filter((n) => n < 0)),
+        pipe(values, Array.map((n) => -n))
       )
     }))
   it.effect("sliding concurrent publishers and subscribers - one to one", () =>
     Effect.gen(function*($) {
-      const values = ReadonlyArray.range(0, 64)
+      const values = Array.range(0, 64)
       const deferred = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.sliding<number>(64))
       const subscriber = yield* $(
@@ -406,7 +406,7 @@ describe("PubSub", () => {
     }))
   it.effect("sliding concurrent publishers and subscribers - one to many", () =>
     Effect.gen(function*($) {
-      const values = ReadonlyArray.range(0, 64)
+      const values = Array.range(0, 64)
       const deferred1 = yield* $(Deferred.make<void>())
       const deferred2 = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.sliding<number>(64))
@@ -446,7 +446,7 @@ describe("PubSub", () => {
     }))
   it.effect("sliding concurrent publishers and subscribers - many to many", () =>
     Effect.gen(function*($) {
-      const values = ReadonlyArray.range(1, 64)
+      const values = Array.range(1, 64)
       const deferred1 = yield* $(Deferred.make<void>())
       const deferred2 = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.sliding<number>(64 * 2))
@@ -457,7 +457,7 @@ describe("PubSub", () => {
             Deferred.succeed(deferred1, void 0),
             Effect.zipRight(pipe(
               values,
-              ReadonlyArray.appendAll(values),
+              Array.appendAll(values),
               Effect.forEach((_) => Queue.take(subscription))
             ))
           )
@@ -472,7 +472,7 @@ describe("PubSub", () => {
             Deferred.succeed(deferred2, void 0),
             Effect.zipRight(pipe(
               values,
-              ReadonlyArray.appendAll(values),
+              Array.appendAll(values),
               Effect.forEach((_) => Queue.take(subscription))
             ))
           )
@@ -487,24 +487,24 @@ describe("PubSub", () => {
         Effect.forEach((n) => PubSub.publish(pubsub, n)),
         Effect.fork
       )
-      yield* $(values, ReadonlyArray.map((n) => -n), Effect.forEach((n) => PubSub.publish(pubsub, n)), Effect.fork)
+      yield* $(values, Array.map((n) => -n), Effect.forEach((n) => PubSub.publish(pubsub, n)), Effect.fork)
       const result1 = yield* $(Fiber.join(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
       yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(pipe(result1, ReadonlyArray.filter((n) => n > 0)), values)
+      assert.deepStrictEqual(pipe(result1, Array.filter((n) => n > 0)), values)
       assert.deepStrictEqual(
-        pipe(result1, ReadonlyArray.filter((n) => n < 0)),
-        pipe(values, ReadonlyArray.map((n) => -n))
+        pipe(result1, Array.filter((n) => n < 0)),
+        pipe(values, Array.map((n) => -n))
       )
-      assert.deepStrictEqual(pipe(result2, ReadonlyArray.filter((n) => n > 0)), values)
+      assert.deepStrictEqual(pipe(result2, Array.filter((n) => n > 0)), values)
       assert.deepStrictEqual(
-        pipe(result2, ReadonlyArray.filter((n) => n < 0)),
-        pipe(values, ReadonlyArray.map((n) => -n))
+        pipe(result2, Array.filter((n) => n < 0)),
+        pipe(values, Array.map((n) => -n))
       )
     }))
   it.effect("unbounded concurrent publishers and subscribers - one to one", () =>
     Effect.gen(function*($) {
-      const values = ReadonlyArray.range(0, 64)
+      const values = Array.range(0, 64)
       const deferred = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.unbounded<number>())
       const subscriber = yield* $(
@@ -530,7 +530,7 @@ describe("PubSub", () => {
     }))
   it.effect("unbounded concurrent publishers and subscribers - one to many", () =>
     Effect.gen(function*($) {
-      const values = ReadonlyArray.range(0, 64)
+      const values = Array.range(0, 64)
       const deferred1 = yield* $(Deferred.make<void>())
       const deferred2 = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.unbounded<number>())
@@ -570,7 +570,7 @@ describe("PubSub", () => {
     }))
   it.effect("unbounded concurrent publishers and subscribers - many to many", () =>
     Effect.gen(function*($) {
-      const values = ReadonlyArray.range(1, 64)
+      const values = Array.range(1, 64)
       const deferred1 = yield* $(Deferred.make<void>())
       const deferred2 = yield* $(Deferred.make<void>())
       const pubsub = yield* $(PubSub.unbounded<number>())
@@ -581,7 +581,7 @@ describe("PubSub", () => {
             Deferred.succeed(deferred1, void 0),
             Effect.zipRight(pipe(
               values,
-              ReadonlyArray.appendAll(values),
+              Array.appendAll(values),
               Effect.forEach((_) => Queue.take(subscription))
             ))
           )
@@ -597,7 +597,7 @@ describe("PubSub", () => {
             Deferred.succeed(deferred2, void 0),
             Effect.zipRight(pipe(
               values,
-              ReadonlyArray.appendAll(values),
+              Array.appendAll(values),
               Effect.forEach((_) => Queue.take(subscription))
             ))
           )
@@ -612,19 +612,19 @@ describe("PubSub", () => {
         Effect.forEach((n) => PubSub.publish(pubsub, n)),
         Effect.fork
       )
-      yield* $(values, ReadonlyArray.map((n) => -n), Effect.forEach((n) => PubSub.publish(pubsub, n)), Effect.fork)
+      yield* $(values, Array.map((n) => -n), Effect.forEach((n) => PubSub.publish(pubsub, n)), Effect.fork)
       const result1 = yield* $(Fiber.join(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
       yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(ReadonlyArray.filter(result1, (n) => n > 0), values)
+      assert.deepStrictEqual(Array.filter(result1, (n) => n > 0), values)
       assert.deepStrictEqual(
-        ReadonlyArray.filter(result1, (n) => n < 0),
-        ReadonlyArray.map(values, (n) => -n)
+        Array.filter(result1, (n) => n < 0),
+        Array.map(values, (n) => -n)
       )
-      assert.deepStrictEqual(ReadonlyArray.filter(result2, (n) => n > 0), values)
+      assert.deepStrictEqual(Array.filter(result2, (n) => n > 0), values)
       assert.deepStrictEqual(
-        ReadonlyArray.filter(result2, (n) => n < 0),
-        ReadonlyArray.map(values, (n) => -n)
+        Array.filter(result2, (n) => n < 0),
+        Array.map(values, (n) => -n)
       )
     }))
   it.effect("null values", () => {

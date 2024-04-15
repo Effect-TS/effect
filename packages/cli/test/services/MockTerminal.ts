@@ -1,5 +1,5 @@
 import * as Terminal from "@effect/platform/Terminal"
-import * as ReadonlyArray from "effect/Array"
+import * as Array from "effect/Array"
 import * as Console from "effect/Console"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -46,7 +46,7 @@ export const make = Effect.gen(function*(_) {
   ))
 
   const inputText: MockTerminal["inputText"] = (text: string) => {
-    const inputs = ReadonlyArray.map(text.split(""), (key) => toUserInput(key))
+    const inputs = Array.map(text.split(""), (key) => toUserInput(key))
     return Queue.offerAll(queue, inputs).pipe(Effect.asVoid)
   }
 

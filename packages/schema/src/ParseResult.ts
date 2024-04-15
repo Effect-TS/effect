@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import * as ReadonlyArray from "effect/Array"
+import * as Array_ from "effect/Array"
 import { TaggedError } from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -81,7 +81,7 @@ export class TupleType {
   constructor(
     readonly ast: AST.TupleType,
     readonly actual: unknown,
-    readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Index>,
+    readonly errors: Array_.NonEmptyReadonlyArray<Index>,
     readonly output: ReadonlyArray<unknown> = []
   ) {}
 }
@@ -114,7 +114,7 @@ export class TypeLiteral {
   constructor(
     readonly ast: AST.TypeLiteral,
     readonly actual: unknown,
-    readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Key>,
+    readonly errors: Array_.NonEmptyReadonlyArray<Key>,
     readonly output: { readonly [x: string]: unknown } = {}
   ) {}
 }
@@ -254,7 +254,7 @@ export class Union {
   constructor(
     readonly ast: AST.Union,
     readonly actual: unknown,
-    readonly errors: ReadonlyArray.NonEmptyReadonlyArray<Type | TypeLiteral | Member>
+    readonly errors: Array_.NonEmptyReadonlyArray<Type | TypeLiteral | Member>
   ) {}
 }
 
@@ -1023,7 +1023,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         // handle rest element
         // ---------------------------------------------
-        if (ReadonlyArray.isNonEmptyReadonlyArray(rest)) {
+        if (Array_.isNonEmptyReadonlyArray(rest)) {
           const [head, ...tail] = rest
           for (; i < len - tail.length; i++) {
             const te = head(input[i], options)
@@ -1119,7 +1119,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // compute result
         // ---------------------------------------------
         const computeResult = ({ es, output }: State) =>
-          ReadonlyArray.isNonEmptyArray(es) ?
+          Array_.isNonEmptyArray(es) ?
             Either.left(new TupleType(ast, input, sortByIndex(es), sortByIndex(output))) :
             Either.right(sortByIndex(output))
         if (queue && queue.length > 0) {
@@ -1339,7 +1339,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // compute result
         // ---------------------------------------------
         const computeResult = ({ es, output }: State) =>
-          ReadonlyArray.isNonEmptyArray(es) ?
+          Array_.isNonEmptyArray(es) ?
             Either.left(new TypeLiteral(ast, input, sortByIndex(es), output)) :
             Either.right(output)
         if (queue && queue.length > 0) {
@@ -1471,7 +1471,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // compute result
         // ---------------------------------------------
         const computeResult = (es: State["es"]) =>
-          ReadonlyArray.isNonEmptyArray(es) ?
+          Array_.isNonEmptyArray(es) ?
             es.length === 1 && es[0][1]._tag === "Type" ?
               Either.left(es[0][1]) :
               Either.left(new Union(ast, input, sortByIndex(es))) :
@@ -1630,8 +1630,8 @@ const handleForbidden = <R, A>(
 }
 
 function sortByIndex<T>(
-  es: ReadonlyArray.NonEmptyArray<[number, T]>
-): ReadonlyArray.NonEmptyArray<T>
+  es: Array_.NonEmptyArray<[number, T]>
+): Array_.NonEmptyArray<T>
 function sortByIndex<T>(es: Array<[number, T]>): Array<T>
 function sortByIndex(es: Array<[number, any]>): any {
   return es.sort(([a], [b]) => a > b ? 1 : a < b ? -1 : 0).map(([_, a]) => a)

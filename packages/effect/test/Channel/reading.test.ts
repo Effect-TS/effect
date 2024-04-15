@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as ReadonlyArray from "effect/Array"
+import * as Array_ from "effect/Array"
 import * as Channel from "effect/Channel"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
@@ -32,7 +32,7 @@ export const refWriter = <A>(
   return Channel.readWith({
     onInput: (a: A) =>
       Channel.flatMap(
-        Channel.fromEffect(Effect.asVoid(Ref.update(ref, ReadonlyArray.prepend(a)))),
+        Channel.fromEffect(Effect.asVoid(Ref.update(ref, Array_.prepend(a)))),
         () => refWriter(ref)
       ),
     onFailure: () => Channel.void,
@@ -46,8 +46,8 @@ export const refReader = <A>(
   return pipe(
     Channel.fromEffect(
       Ref.modify(ref, (array) => {
-        if (ReadonlyArray.isEmptyReadonlyArray(array)) {
-          return [Option.none(), ReadonlyArray.empty<A>()] as const
+        if (Array_.isEmptyReadonlyArray(array)) {
+          return [Option.none(), Array_.empty<A>()] as const
         }
         return [Option.some(array[0]!), array.slice(1)] as const
       })
@@ -230,7 +230,7 @@ describe("Channel", () => {
     Effect.gen(function*($) {
       const capacity = 128
       const elements = yield* $(Effect.all(Array.from({ length: capacity }, () => Random.nextInt)))
-      const source = yield* $(Ref.make(ReadonlyArray.fromIterable(elements)))
+      const source = yield* $(Ref.make(Array_.fromIterable(elements)))
       const destination = yield* $(Ref.make<ReadonlyArray<number>>([]))
       const twoWriters = pipe(
         refWriter(destination),
@@ -267,7 +267,7 @@ describe("Channel", () => {
       const capacity = 128
       const f = (n: number) => n + 1
       const elements = yield* $(Effect.all(Array.from({ length: capacity }, () => Random.nextInt)))
-      const source = yield* $(Ref.make(ReadonlyArray.fromIterable(elements)))
+      const source = yield* $(Ref.make(Array_.fromIterable(elements)))
       const destination = yield* $(Ref.make<ReadonlyArray<number>>([]))
       const twoWriters = pipe(
         mapper(f),

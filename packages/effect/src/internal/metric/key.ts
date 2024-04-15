@@ -1,4 +1,4 @@
-import * as ReadonlyArray from "../../Array.js"
+import * as Array from "../../Array.js"
 import type * as Duration from "../../Duration.js"
 import * as Equal from "../../Equal.js"
 import { dual, pipe } from "../../Function.js"
@@ -26,7 +26,7 @@ const metricKeyVariance = {
   _Type: (_: never) => _
 }
 
-const arrayEquivilence = ReadonlyArray.getEquivalence(Equal.equals)
+const arrayEquivilence = Array.getEquivalence(Equal.equals)
 
 /** @internal */
 class MetricKeyImpl<out Type extends MetricKeyType.MetricKeyType<any, any>> implements MetricKey.MetricKey<Type> {
@@ -164,4 +164,4 @@ export const taggedWithLabels = dual<
 >(2, (self, extraTags) =>
   extraTags.length === 0
     ? self
-    : new MetricKeyImpl(self.name, self.keyType, self.description, ReadonlyArray.union(self.tags, extraTags)))
+    : new MetricKeyImpl(self.name, self.keyType, self.description, Array.union(self.tags, extraTags)))

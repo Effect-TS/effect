@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as ReadonlyArray from "effect/Array"
+import * as Array_ from "effect/Array"
 import * as Channel from "effect/Channel"
 import * as ChildExecutorDecision from "effect/ChildExecutorDecision"
 import * as Chunk from "effect/Chunk"
@@ -229,7 +229,7 @@ describe("Channel", () => {
           })
         ),
         Channel.runCollect,
-        Effect.map(([chunk]) => pipe(Array.from(chunk), ReadonlyArray.getSomes))
+        Effect.map(([chunk]) => pipe(Array.from(chunk), Array_.getSomes))
       )
       assert.deepStrictEqual(result, [
         [1, 1] as const,
@@ -275,7 +275,7 @@ describe("Channel", () => {
           })
         ),
         Channel.runCollect,
-        Effect.map(([chunk]) => pipe(Array.from(chunk), ReadonlyArray.getSomes))
+        Effect.map(([chunk]) => pipe(Array.from(chunk), Array_.getSomes))
       )
       assert.deepStrictEqual(result, [
         [1, 1] as const,

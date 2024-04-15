@@ -3,7 +3,7 @@ import type * as Path from "@effect/platform/Path"
 import type * as Terminal from "@effect/platform/Terminal"
 import * as Schema from "@effect/schema/Schema"
 import * as TreeFormatter from "@effect/schema/TreeFormatter"
-import * as ReadonlyArray from "effect/Array"
+import * as Array_ from "effect/Array"
 import type * as Config from "effect/Config"
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
@@ -232,9 +232,9 @@ export const boolean = (
     aliases,
     InternalPrimitive.boolean(Option.some(ifPresent))
   )
-  if (ReadonlyArray.isNonEmptyReadonlyArray(negationNames)) {
-    const head = ReadonlyArray.headNonEmpty(negationNames)
-    const tail = ReadonlyArray.tailNonEmpty(negationNames)
+  if (Array_.isNonEmptyReadonlyArray(negationNames)) {
+    const head = Array_.headNonEmpty(negationNames)
+    const tail = Array_.tailNonEmpty(negationNames)
     const negationOption = makeSingle(
       head,
       tail,
@@ -254,20 +254,19 @@ export const choice = <A extends string, C extends ReadonlyArray<A>>(
   choices: C
 ): Options.Options<C[number]> => {
   const primitive = InternalPrimitive.choice(
-    ReadonlyArray.map(choices, (choice) => [choice, choice])
+    Array_.map(choices, (choice) => [choice, choice])
   )
-  return makeSingle(name, ReadonlyArray.empty(), primitive)
+  return makeSingle(name, Array_.empty(), primitive)
 }
 
 /** @internal */
 export const choiceWithValue = <const C extends ReadonlyArray<[string, any]>>(
   name: string,
   choices: C
-): Options.Options<C[number][1]> => makeSingle(name, ReadonlyArray.empty(), InternalPrimitive.choice(choices))
+): Options.Options<C[number][1]> => makeSingle(name, Array_.empty(), InternalPrimitive.choice(choices))
 
 /** @internal */
-export const date = (name: string): Options.Options<Date> =>
-  makeSingle(name, ReadonlyArray.empty(), InternalPrimitive.date)
+export const date = (name: string): Options.Options<Date> => makeSingle(name, Array_.empty(), InternalPrimitive.date)
 
 /** @internal */
 export const directory = (
@@ -276,7 +275,7 @@ export const directory = (
 ): Options.Options<string> =>
   makeSingle(
     name,
-    ReadonlyArray.empty(),
+    Array_.empty(),
     InternalPrimitive.path("directory", config?.exists ?? "either")
   )
 
@@ -287,7 +286,7 @@ export const file = (
 ): Options.Options<string> =>
   makeSingle(
     name,
-    ReadonlyArray.empty(),
+    Array_.empty(),
     InternalPrimitive.path("file", config?.exists ?? "either")
   )
 
@@ -349,18 +348,18 @@ export const filterMap = dual<
 
 /** @internal */
 export const float = (name: string): Options.Options<number> =>
-  makeSingle(name, ReadonlyArray.empty(), InternalPrimitive.float)
+  makeSingle(name, Array_.empty(), InternalPrimitive.float)
 
 /** @internal */
 export const integer = (name: string): Options.Options<number> =>
-  makeSingle(name, ReadonlyArray.empty(), InternalPrimitive.integer)
+  makeSingle(name, Array_.empty(), InternalPrimitive.integer)
 
 /** @internal */
 export const keyValueMap = (
   option: string | Options.Options<string>
 ): Options.Options<HashMap.HashMap<string, string>> => {
   if (typeof option === "string") {
-    const single = makeSingle(option, ReadonlyArray.empty(), InternalPrimitive.text)
+    const single = makeSingle(option, Array_.empty(), InternalPrimitive.text)
     return makeKeyValueMap(single as Single)
   }
   if (!isSingle(option as Instruction)) {
@@ -379,11 +378,10 @@ export const none: Options.Options<void> = (() => {
 
 /** @internal */
 export const secret = (name: string): Options.Options<Secret.Secret> =>
-  makeSingle(name, ReadonlyArray.empty(), InternalPrimitive.secret)
+  makeSingle(name, Array_.empty(), InternalPrimitive.secret)
 
 /** @internal */
-export const text = (name: string): Options.Options<string> =>
-  makeSingle(name, ReadonlyArray.empty(), InternalPrimitive.text)
+export const text = (name: string): Options.Options<string> => makeSingle(name, Array_.empty(), InternalPrimitive.text)
 
 // =============================================================================
 // Combinators
@@ -395,14 +393,14 @@ export const atLeast = dual<
     (times: 0): <A>(self: Options.Options<A>) => Options.Options<Array<A>>
     (
       times: number
-    ): <A>(self: Options.Options<A>) => Options.Options<ReadonlyArray.NonEmptyArray<A>>
+    ): <A>(self: Options.Options<A>) => Options.Options<Array_.NonEmptyArray<A>>
   },
   {
     <A>(self: Options.Options<A>, times: 0): Options.Options<Array<A>>
     <A>(
       self: Options.Options<A>,
       times: number
-    ): Options.Options<ReadonlyArray.NonEmptyArray<A>>
+    ): Options.Options<Array_.NonEmptyArray<A>>
   }
 >(2, (self, times) => makeVariadic(self, Option.some(times), Option.none()) as any)
 
@@ -419,7 +417,7 @@ export const between = dual<
     (
       min: number,
       max: number
-    ): <A>(self: Options.Options<A>) => Options.Options<ReadonlyArray.NonEmptyArray<A>>
+    ): <A>(self: Options.Options<A>) => Options.Options<Array_.NonEmptyArray<A>>
   },
   {
     <A>(self: Options.Options<A>, min: 0, max: number): Options.Options<Array<A>>
@@ -427,7 +425,7 @@ export const between = dual<
       self: Options.Options<A>,
       min: number,
       max: number
-    ): Options.Options<ReadonlyArray.NonEmptyArray<A>>
+    ): Options.Options<Array_.NonEmptyArray<A>>
   }
 >(3, (self, min, max) => makeVariadic(self, Option.some(min), Option.some(max)) as any)
 
@@ -573,7 +571,7 @@ export const withAlias = dual<
   <A>(self: Options.Options<A>, alias: string) => Options.Options<A>
 >(2, (self, alias) =>
   modifySingle(self as Instruction, (single) => {
-    const aliases = ReadonlyArray.append(single.aliases, alias)
+    const aliases = Array_.append(single.aliases, alias)
     return makeSingle(
       single.name,
       aliases,
@@ -697,7 +695,7 @@ const getHelpInternal = (self: Instruction): HelpDoc.HelpDoc => {
       return InternalHelpDoc.empty
     }
     case "Single": {
-      return InternalHelpDoc.descriptionList(ReadonlyArray.of([
+      return InternalHelpDoc.descriptionList(Array_.of([
         InternalHelpDoc.getSpan(InternalUsage.getHelp(getUsageInternal(self))),
         InternalHelpDoc.sequence(
           InternalHelpDoc.p(InternalPrimitive.getHelp(self.primitiveType)),
@@ -798,13 +796,13 @@ const getIdentifierInternal = (self: Instruction): Option.Option<string> => {
     }
     case "Both":
     case "OrElse": {
-      const ids = ReadonlyArray.getSomes([
+      const ids = Array_.getSomes([
         getIdentifierInternal(self.left as Instruction),
         getIdentifierInternal(self.right as Instruction)
       ])
-      return ReadonlyArray.match(ids, {
+      return Array_.match(ids, {
         onEmpty: () => Option.none(),
-        onNonEmpty: (ids) => Option.some(ReadonlyArray.join(ids, ", "))
+        onNonEmpty: (ids) => Option.some(Array_.join(ids, ", "))
       })
     }
     case "KeyValueMap":
@@ -1088,10 +1086,10 @@ export const getNames = (self: Instruction): Array<string> => {
   const loop = (self: Instruction): ReadonlyArray<string> => {
     switch (self._tag) {
       case "Empty": {
-        return ReadonlyArray.empty()
+        return Array_.empty()
       }
       case "Single": {
-        return ReadonlyArray.prepend(self.aliases, self.name)
+        return Array_.prepend(self.aliases, self.name)
       }
       case "KeyValueMap":
       case "Variadic": {
@@ -1106,7 +1104,7 @@ export const getNames = (self: Instruction): Array<string> => {
       case "OrElse": {
         const left = loop(self.left as Instruction)
         const right = loop(self.right as Instruction)
-        return ReadonlyArray.appendAll(left, right)
+        return Array_.appendAll(left, right)
       }
     }
   }
@@ -1116,21 +1114,21 @@ export const getNames = (self: Instruction): Array<string> => {
   )
   return pipe(
     loop(self),
-    ReadonlyArray.map((str) => makeFullName(str)),
-    ReadonlyArray.sort(order),
-    ReadonlyArray.map((tuple) => tuple[1])
+    Array_.map((str) => makeFullName(str)),
+    Array_.sort(order),
+    Array_.map((tuple) => tuple[1])
   )
 }
 
 const toParseableInstruction = (self: Instruction): Array<ParseableInstruction> => {
   switch (self._tag) {
     case "Empty": {
-      return ReadonlyArray.empty()
+      return Array_.empty()
     }
     case "Single":
     case "KeyValueMap":
     case "Variadic": {
-      return ReadonlyArray.of(self)
+      return Array_.of(self)
     }
     case "Map":
     case "WithDefault":
@@ -1139,7 +1137,7 @@ const toParseableInstruction = (self: Instruction): Array<ParseableInstruction> 
     }
     case "Both":
     case "OrElse": {
-      return ReadonlyArray.appendAll(
+      return Array_.appendAll(
         toParseableInstruction(self.left as Instruction),
         toParseableInstruction(self.right as Instruction)
       )
@@ -1161,21 +1159,21 @@ const parseInternal = (
       return Effect.void
     }
     case "Single": {
-      const singleNames = ReadonlyArray.filterMap(getNames(self), (name) => HashMap.get(args, name))
-      if (ReadonlyArray.isNonEmptyReadonlyArray(singleNames)) {
-        const head = ReadonlyArray.headNonEmpty(singleNames)
-        const tail = ReadonlyArray.tailNonEmpty(singleNames)
-        if (ReadonlyArray.isEmptyReadonlyArray(tail)) {
-          if (ReadonlyArray.isEmptyReadonlyArray(head)) {
+      const singleNames = Array_.filterMap(getNames(self), (name) => HashMap.get(args, name))
+      if (Array_.isNonEmptyReadonlyArray(singleNames)) {
+        const head = Array_.headNonEmpty(singleNames)
+        const tail = Array_.tailNonEmpty(singleNames)
+        if (Array_.isEmptyReadonlyArray(tail)) {
+          if (Array_.isEmptyReadonlyArray(head)) {
             return InternalPrimitive.validate(self.primitiveType, Option.none(), config).pipe(
               Effect.mapError((e) => InternalValidationError.invalidValue(InternalHelpDoc.p(e)))
             )
           }
           if (
-            ReadonlyArray.isNonEmptyReadonlyArray(head) &&
-            ReadonlyArray.isEmptyReadonlyArray(ReadonlyArray.tailNonEmpty(head))
+            Array_.isNonEmptyReadonlyArray(head) &&
+            Array_.isEmptyReadonlyArray(Array_.tailNonEmpty(head))
           ) {
-            const value = ReadonlyArray.headNonEmpty(head)
+            const value = Array_.headNonEmpty(head)
             return InternalPrimitive.validate(self.primitiveType, Option.some(value), config).pipe(
               Effect.mapError((e) => InternalValidationError.invalidValue(InternalHelpDoc.p(e)))
             )
@@ -1197,7 +1195,7 @@ const parseInternal = (
         value: string
       ): Effect.Effect<[string, string], ValidationError.ValidationError> => {
         const split = value.trim().split("=")
-        if (ReadonlyArray.isNonEmptyReadonlyArray(split) && split.length === 2 && split[1] !== "") {
+        if (Array_.isNonEmptyReadonlyArray(split) && split.length === 2 && split[1] !== "") {
           return Effect.succeed(split as unknown as [string, string])
         }
         const error = InternalHelpDoc.p(`Expected a key/value pair but received '${value}'`)
@@ -1279,7 +1277,7 @@ const parseInternal = (
     case "Variadic": {
       const min = Option.getOrElse(self.min, () => 0)
       const max = Option.getOrElse(self.max, () => Number.MAX_SAFE_INTEGER)
-      const matchedArgument = ReadonlyArray.filterMap(getNames(self), (name) => HashMap.get(args, name))
+      const matchedArgument = Array_.filterMap(getNames(self), (name) => HashMap.get(args, name))
       const validateMinMax = (values: ReadonlyArray<string>) => {
         if (values.length < min) {
           const name = self.argumentOption.fullName
@@ -1300,15 +1298,15 @@ const parseInternal = (
       }
       // If we did not receive any variadic arguments then perform the bounds
       // checks with an empty array
-      if (ReadonlyArray.every(matchedArgument, ReadonlyArray.isEmptyReadonlyArray)) {
-        return validateMinMax(ReadonlyArray.empty())
+      if (Array_.every(matchedArgument, Array_.isEmptyReadonlyArray)) {
+        return validateMinMax(Array_.empty())
       }
       return parseInternal(self.argumentOption, args, config).pipe(Effect.matchEffect({
         onFailure: (error) =>
           InternalValidationError.isMultipleValuesDetected(error)
             ? validateMinMax(error.values)
             : Effect.fail(error),
-        onSuccess: (value) => validateMinMax(ReadonlyArray.of(value as string))
+        onSuccess: (value) => validateMinMax(Array_.of(value as string))
       }))
     }
     case "WithDefault": {
@@ -1334,14 +1332,14 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
 > => {
   switch (self._tag) {
     case "Empty": {
-      return Effect.succeed(ReadonlyArray.empty())
+      return Effect.succeed(Array_.empty())
     }
     case "Single": {
       const help = getHelpInternal(self)
       return InternalPrimitive.wizard(self.primitiveType, help).pipe(
         Effect.flatMap((input) => {
           // There will always be at least one name in names
-          const args = ReadonlyArray.make(getNames(self)[0]!, input as string)
+          const args = Array_.make(getNames(self)[0]!, input as string)
           return parseCommandLine(self, args, config).pipe(Effect.as(args))
         }),
         Effect.zipLeft(Console.log())
@@ -1356,7 +1354,7 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
         Effect.flatMap((args) => {
           const identifier = Option.getOrElse(getIdentifierInternal(self), () => "")
           return parseInternal(self, HashMap.make([identifier, args]), config).pipe(
-            Effect.as(ReadonlyArray.prepend(args, identifier))
+            Effect.as(Array_.prepend(args, identifier))
           )
         }),
         Effect.zipLeft(Console.log())
@@ -1369,7 +1367,7 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
       return Effect.zipWith(
         wizardInternal(self.left as Instruction, config),
         wizardInternal(self.right as Instruction, config),
-        (left, right) => ReadonlyArray.appendAll(left, right)
+        (left, right) => Array_.appendAll(left, right)
       )
     }
     case "OrElse": {
@@ -1379,7 +1377,7 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
         InternalHelpDoc.sequence(alternativeHelp)
       )
       const makeChoice = (title: string, value: Instruction) => ({ title, value })
-      const choices = ReadonlyArray.getSomes([
+      const choices = Array_.getSomes([
         Option.map(
           getIdentifierInternal(self.left as Instruction),
           (title) => makeChoice(title, self.left as Instruction)
@@ -1409,11 +1407,11 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
       }).pipe(
         Effect.flatMap((n) =>
           n <= 0
-            ? Effect.succeed(ReadonlyArray.empty<string>())
-            : Ref.make(ReadonlyArray.empty<string>()).pipe(
+            ? Effect.succeed(Array_.empty<string>())
+            : Ref.make(Array_.empty<string>()).pipe(
               Effect.flatMap((ref) =>
                 wizardInternal(self.argumentOption as Instruction, config).pipe(
-                  Effect.flatMap((args) => Ref.update(ref, ReadonlyArray.appendAll(args))),
+                  Effect.flatMap((args) => Ref.update(ref, Array_.appendAll(args))),
                   Effect.repeatN(n - 1),
                   Effect.zipRight(Ref.get(ref))
                 )
@@ -1441,7 +1439,7 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
         Effect.zipLeft(Console.log()),
         Effect.flatMap((useFallback) =>
           useFallback
-            ? Effect.succeed(ReadonlyArray.empty())
+            ? Effect.succeed(Array_.empty())
             : wizardInternal(self.options as Instruction, config)
         )
       )
@@ -1465,7 +1463,7 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
         Effect.zipLeft(Console.log()),
         Effect.flatMap((useFallback) =>
           useFallback
-            ? Effect.succeed(ReadonlyArray.empty())
+            ? Effect.succeed(Array_.empty())
             : wizardInternal(self.options as Instruction, config)
         )
       )
@@ -1492,7 +1490,7 @@ const matchOptions = (
     HashMap.HashMap<string, ReadonlyArray<string>>
   ]
 > => {
-  if (ReadonlyArray.isNonEmptyReadonlyArray(options)) {
+  if (Array_.isNonEmptyReadonlyArray(options)) {
     return findOptions(input, options, config).pipe(
       Effect.flatMap(([otherArgs, otherOptions, map1]) => {
         if (HashMap.isEmpty(map1)) {
@@ -1504,7 +1502,7 @@ const matchOptions = (
         }
         return matchOptions(otherArgs, otherOptions, config).pipe(
           Effect.map(([error, otherArgs, map2]) =>
-            [error, otherArgs, merge(map1, ReadonlyArray.fromIterable(map2))] as [
+            [error, otherArgs, merge(map1, Array_.fromIterable(map2))] as [
               Option.Option<ValidationError.ValidationError>,
               ReadonlyArray<string>,
               HashMap.HashMap<string, ReadonlyArray<string>>
@@ -1521,8 +1519,8 @@ const matchOptions = (
       )
     )
   }
-  return ReadonlyArray.isEmptyReadonlyArray(input)
-    ? Effect.succeed([Option.none(), ReadonlyArray.empty(), HashMap.empty()] as [
+  return Array_.isEmptyReadonlyArray(input)
+    ? Effect.succeed([Option.none(), Array_.empty(), HashMap.empty()] as [
       Option.Option<ValidationError.ValidationError>,
       ReadonlyArray<string>,
       HashMap.HashMap<string, ReadonlyArray<string>>
@@ -1550,15 +1548,15 @@ const findOptions = (
   ],
   ValidationError.ValidationError
 > =>
-  ReadonlyArray.matchLeft(options, {
-    onEmpty: () => Effect.succeed([input, ReadonlyArray.empty(), HashMap.empty()]),
+  Array_.matchLeft(options, {
+    onEmpty: () => Effect.succeed([input, Array_.empty(), HashMap.empty()]),
     onNonEmpty: (head, tail) =>
       parseCommandLine(head, input, config).pipe(
         Effect.flatMap(({ leftover, parsed }) =>
           Option.match(parsed, {
             onNone: () =>
               findOptions(leftover, tail, config).pipe(Effect.map(([nextArgs, nextOptions, map]) =>
-                [nextArgs, ReadonlyArray.prepend(nextOptions, head), map] as [
+                [nextArgs, Array_.prepend(nextOptions, head), map] as [
                   ReadonlyArray<string>,
                   ReadonlyArray<ParseableInstruction>,
                   HashMap.HashMap<string, ReadonlyArray<string>>
@@ -1579,7 +1577,7 @@ const findOptions = (
               Effect.flatMap(([otherArgs, otherOptions, map]) =>
                 Effect.fail(e).pipe(
                   Effect.when(() => HashMap.isEmpty(map)),
-                  Effect.as([otherArgs, ReadonlyArray.prepend(otherOptions, head), map] as [
+                  Effect.as([otherArgs, Array_.prepend(otherOptions, head), map] as [
                     ReadonlyArray<string>,
                     ReadonlyArray<ParseableInstruction>,
                     HashMap.HashMap<string, ReadonlyArray<string>>
@@ -1590,7 +1588,7 @@ const findOptions = (
           MissingFlag: () =>
             findOptions(input, tail, config).pipe(
               Effect.map(([otherArgs, otherOptions, map]) =>
-                [otherArgs, ReadonlyArray.prepend(otherOptions, head), map] as [
+                [otherArgs, Array_.prepend(otherOptions, head), map] as [
                   ReadonlyArray<string>,
                   ReadonlyArray<ParseableInstruction>,
                   HashMap.HashMap<string, ReadonlyArray<string>>
@@ -1628,8 +1626,8 @@ const FLAG_REGEX = /^(--[^=]+)(?:=(.+))?$/
 const processArgs = (
   args: ReadonlyArray<string>
 ): Effect.Effect<ReadonlyArray<string>, ValidationError.ValidationError> =>
-  ReadonlyArray.matchLeft(args, {
-    onEmpty: () => Effect.succeed(ReadonlyArray.empty()),
+  Array_.matchLeft(args, {
+    onEmpty: () => Effect.succeed(Array_.empty()),
     onNonEmpty: (head, tail) => {
       const value = head.trim()
       // Attempt to match clustered short command-line arguments (i.e. `-abc`)
@@ -1647,7 +1645,7 @@ const processArgs = (
         const result = FLAG_REGEX.exec(value)
         if (result !== null && result[2] !== undefined) {
           return Effect.succeed<ReadonlyArray<string>>(
-            ReadonlyArray.appendAll([result[1], result[2]], tail)
+            Array_.appendAll([result[1], result[2]], tail)
           )
         }
       }
@@ -1670,7 +1668,7 @@ const parseCommandLine = (
   switch (self._tag) {
     case "Single": {
       return processArgs(args).pipe(Effect.flatMap((args) =>
-        ReadonlyArray.matchLeft(args, {
+        Array_.matchLeft(args, {
           onEmpty: () => {
             const error = InternalHelpDoc.p(`Expected to find option: '${self.fullName}'`)
             return Effect.fail(InternalValidationError.missingFlag(error))
@@ -1678,29 +1676,29 @@ const parseCommandLine = (
           onNonEmpty: (head, tail) => {
             const normalize = (value: string) => InternalCliConfig.normalizeCase(config, value)
             const normalizedHead = normalize(head)
-            const normalizedNames = ReadonlyArray.map(getNames(self), (name) => normalize(name))
-            if (ReadonlyArray.contains(normalizedNames, normalizedHead)) {
+            const normalizedNames = Array_.map(getNames(self), (name) => normalize(name))
+            if (Array_.contains(normalizedNames, normalizedHead)) {
               if (InternalPrimitive.isBool(self.primitiveType)) {
-                return ReadonlyArray.matchLeft(tail, {
+                return Array_.matchLeft(tail, {
                   onEmpty: () => {
-                    const parsed = Option.some({ name: head, values: ReadonlyArray.empty() })
+                    const parsed = Option.some({ name: head, values: Array_.empty() })
                     return Effect.succeed({ parsed, leftover: tail })
                   },
                   onNonEmpty: (value, leftover) => {
                     if (InternalPrimitive.isTrueValue(value)) {
-                      const parsed = Option.some({ name: head, values: ReadonlyArray.of("true") })
+                      const parsed = Option.some({ name: head, values: Array_.of("true") })
                       return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
                     }
                     if (InternalPrimitive.isFalseValue(value)) {
-                      const parsed = Option.some({ name: head, values: ReadonlyArray.of("false") })
+                      const parsed = Option.some({ name: head, values: Array_.of("false") })
                       return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
                     }
-                    const parsed = Option.some({ name: head, values: ReadonlyArray.empty() })
+                    const parsed = Option.some({ name: head, values: Array_.empty() })
                     return Effect.succeed<ParsedCommandLine>({ parsed, leftover: tail })
                   }
                 })
               }
-              return ReadonlyArray.matchLeft(tail, {
+              return Array_.matchLeft(tail, {
                 onEmpty: () => {
                   const error = InternalHelpDoc.p(
                     `Expected a value following option: '${self.fullName}'`
@@ -1708,7 +1706,7 @@ const parseCommandLine = (
                   return Effect.fail(InternalValidationError.missingValue(error))
                 },
                 onNonEmpty: (value, leftover) => {
-                  const parsed = Option.some({ name: head, values: ReadonlyArray.of(value) })
+                  const parsed = Option.some({ name: head, values: Array_.of(value) })
                   return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
                 }
               })
@@ -1730,27 +1728,27 @@ const parseCommandLine = (
       ))
     }
     case "KeyValueMap": {
-      const normalizedNames = ReadonlyArray.map(
+      const normalizedNames = Array_.map(
         getNames(self.argumentOption),
         (name) => InternalCliConfig.normalizeCase(config, name)
       )
-      return ReadonlyArray.matchLeft(args, {
+      return Array_.matchLeft(args, {
         onEmpty: () => Effect.succeed<ParsedCommandLine>({ parsed: Option.none(), leftover: args }),
         onNonEmpty: (head, tail) => {
           const loop = (
             args: ReadonlyArray<string>
           ): [ReadonlyArray<string>, ReadonlyArray<string>] => {
-            let keyValues = ReadonlyArray.empty<string>()
+            let keyValues = Array_.empty<string>()
             let leftover = args as ReadonlyArray<string>
-            while (ReadonlyArray.isNonEmptyReadonlyArray(leftover)) {
-              const name = ReadonlyArray.headNonEmpty(leftover).trim()
+            while (Array_.isNonEmptyReadonlyArray(leftover)) {
+              const name = Array_.headNonEmpty(leftover).trim()
               const normalizedName = InternalCliConfig.normalizeCase(config, name)
               // Can be in the form of "--flag key1=value1 --flag key2=value2"
-              if (leftover.length >= 2 && ReadonlyArray.contains(normalizedNames, normalizedName)) {
+              if (leftover.length >= 2 && Array_.contains(normalizedNames, normalizedName)) {
                 const keyValue = leftover[1].trim()
                 const [key, value] = keyValue.split("=")
                 if (key !== undefined && value !== undefined && value.length > 0) {
-                  keyValues = ReadonlyArray.append(keyValues, keyValue)
+                  keyValues = Array_.append(keyValues, keyValue)
                   leftover = leftover.slice(2)
                   continue
                 }
@@ -1759,7 +1757,7 @@ const parseCommandLine = (
               if (name.includes("=")) {
                 const [key, value] = name.split("=")
                 if (key !== undefined && value !== undefined && value.length > 0) {
-                  keyValues = ReadonlyArray.append(keyValues, name)
+                  keyValues = Array_.append(keyValues, name)
                   leftover = leftover.slice(1)
                   continue
                 }
@@ -1769,7 +1767,7 @@ const parseCommandLine = (
             return [keyValues, leftover]
           }
           const normalizedName = InternalCliConfig.normalizeCase(config, head)
-          if (ReadonlyArray.contains(normalizedNames, normalizedName)) {
+          if (Array_.contains(normalizedNames, normalizedName)) {
             const [values, leftover] = loop(tail)
             return Effect.succeed({ parsed: Option.some({ name: head, values }), leftover })
           }
@@ -1778,23 +1776,23 @@ const parseCommandLine = (
       })
     }
     case "Variadic": {
-      const normalizedNames = ReadonlyArray.map(
+      const normalizedNames = Array_.map(
         getNames(self.argumentOption),
         (name) => InternalCliConfig.normalizeCase(config, name)
       )
       let optionName: string | undefined = undefined
-      let values = ReadonlyArray.empty<string>()
+      let values = Array_.empty<string>()
       let leftover = args as ReadonlyArray<string>
-      while (ReadonlyArray.isNonEmptyReadonlyArray(leftover)) {
-        const name = ReadonlyArray.headNonEmpty(leftover)
+      while (Array_.isNonEmptyReadonlyArray(leftover)) {
+        const name = Array_.headNonEmpty(leftover)
         const normalizedName = InternalCliConfig.normalizeCase(config, name)
-        if (leftover.length >= 2 && ReadonlyArray.contains(normalizedNames, normalizedName)) {
+        if (leftover.length >= 2 && Array_.contains(normalizedNames, normalizedName)) {
           if (optionName === undefined) {
             optionName = name
           }
           const value = leftover[1]
           if (value !== undefined && value.length > 0) {
-            values = ReadonlyArray.append(values, value.trim())
+            values = Array_.append(values, value.trim())
             leftover = leftover.slice(2)
             continue
           }
@@ -1825,16 +1823,16 @@ const matchUnclustered = (
   ],
   ValidationError.ValidationError
 > => {
-  if (ReadonlyArray.isNonEmptyReadonlyArray(input)) {
-    const flag = ReadonlyArray.headNonEmpty(input)
-    const otherFlags = ReadonlyArray.tailNonEmpty(input)
-    return findOptions(ReadonlyArray.of(flag), options, config).pipe(
+  if (Array_.isNonEmptyReadonlyArray(input)) {
+    const flag = Array_.headNonEmpty(input)
+    const otherFlags = Array_.tailNonEmpty(input)
+    return findOptions(Array_.of(flag), options, config).pipe(
       Effect.flatMap(([_, opts1, map1]) => {
         if (HashMap.isEmpty(map1)) {
           return Effect.fail(
             InternalValidationError.unclusteredFlag(
               InternalHelpDoc.empty,
-              ReadonlyArray.empty(),
+              Array_.empty(),
               tail
             )
           )
@@ -1842,7 +1840,7 @@ const matchUnclustered = (
         return matchUnclustered(otherFlags, tail, opts1, config).pipe(
           Effect.map((
             [_, opts2, map2]
-          ) => [tail, opts2, merge(map1, ReadonlyArray.fromIterable(map2))])
+          ) => [tail, opts2, merge(map1, Array_.fromIterable(map2))])
         )
       })
     )
@@ -1857,12 +1855,12 @@ const merge = (
   map1: HashMap.HashMap<string, ReadonlyArray<string>>,
   map2: ReadonlyArray<[string, ReadonlyArray<string>]>
 ): HashMap.HashMap<string, ReadonlyArray<string>> => {
-  if (ReadonlyArray.isNonEmptyReadonlyArray(map2)) {
-    const head = ReadonlyArray.headNonEmpty(map2)
-    const tail = ReadonlyArray.tailNonEmpty(map2)
+  if (Array_.isNonEmptyReadonlyArray(map2)) {
+    const head = Array_.headNonEmpty(map2)
+    const tail = Array_.tailNonEmpty(map2)
     const newMap = Option.match(HashMap.get(map1, head[0]), {
       onNone: () => HashMap.set(map1, head[0], head[1]),
-      onSome: (elems) => HashMap.set(map1, head[0], ReadonlyArray.appendAll(elems, head[1]))
+      onSome: (elems) => HashMap.set(map1, head[0], Array_.appendAll(elems, head[1]))
     })
     return merge(newMap, tail)
   }
@@ -1911,15 +1909,15 @@ const getShortDescription = (self: Instruction): string => {
 export const getBashCompletions = (self: Instruction): ReadonlyArray<string> => {
   switch (self._tag) {
     case "Empty": {
-      return ReadonlyArray.empty()
+      return Array_.empty()
     }
     case "Single": {
       const names = getNames(self)
-      const cases = ReadonlyArray.join(names, "|")
+      const cases = Array_.join(names, "|")
       const compgen = InternalPrimitive.getBashCompletions(
         self.primitiveType as InternalPrimitive.Instruction
       )
-      return ReadonlyArray.make(
+      return Array_.make(
         `${cases})`,
         `    COMPREPLY=( ${compgen} )`,
         `    return 0`,
@@ -1939,7 +1937,7 @@ export const getBashCompletions = (self: Instruction): ReadonlyArray<string> => 
     case "OrElse": {
       const left = getBashCompletions(self.left as Instruction)
       const right = getBashCompletions(self.right as Instruction)
-      return ReadonlyArray.appendAll(left, right)
+      return Array_.appendAll(left, right)
     }
   }
 }
@@ -1948,26 +1946,26 @@ export const getBashCompletions = (self: Instruction): ReadonlyArray<string> => 
 export const getFishCompletions = (self: Instruction): Array<string> => {
   switch (self._tag) {
     case "Empty": {
-      return ReadonlyArray.empty()
+      return Array_.empty()
     }
     case "Single": {
       const description = getShortDescription(self)
       const order = Order.mapInput(Order.boolean, (tuple: readonly [boolean, string]) => !tuple[0])
       return pipe(
-        ReadonlyArray.prepend(self.aliases, self.name),
-        ReadonlyArray.map((name) => [name.length === 1, name] as const),
-        ReadonlyArray.sort(order),
-        ReadonlyArray.flatMap(([isShort, name]) => ReadonlyArray.make(isShort ? "-s" : "-l", name)),
-        ReadonlyArray.appendAll(InternalPrimitive.getFishCompletions(
+        Array_.prepend(self.aliases, self.name),
+        Array_.map((name) => [name.length === 1, name] as const),
+        Array_.sort(order),
+        Array_.flatMap(([isShort, name]) => Array_.make(isShort ? "-s" : "-l", name)),
+        Array_.appendAll(InternalPrimitive.getFishCompletions(
           self.primitiveType as InternalPrimitive.Instruction
         )),
-        ReadonlyArray.appendAll(
+        Array_.appendAll(
           description.length === 0
-            ? ReadonlyArray.empty()
-            : ReadonlyArray.of(`-d '${description}'`)
+            ? Array_.empty()
+            : Array_.of(`-d '${description}'`)
         ),
-        ReadonlyArray.join(" "),
-        ReadonlyArray.of
+        Array_.join(" "),
+        Array_.of
       )
     }
     case "KeyValueMap":
@@ -1983,7 +1981,7 @@ export const getFishCompletions = (self: Instruction): Array<string> => {
     case "OrElse": {
       return pipe(
         getFishCompletions(self.left as Instruction),
-        ReadonlyArray.appendAll(getFishCompletions(self.right as Instruction))
+        Array_.appendAll(getFishCompletions(self.right as Instruction))
       )
     }
   }
@@ -1997,11 +1995,11 @@ interface ZshCompletionState {
 /** @internal */
 export const getZshCompletions = (
   self: Instruction,
-  state: ZshCompletionState = { conflicts: ReadonlyArray.empty(), multiple: false }
+  state: ZshCompletionState = { conflicts: Array_.empty(), multiple: false }
 ): Array<string> => {
   switch (self._tag) {
     case "Empty": {
-      return ReadonlyArray.empty()
+      return Array_.empty()
     }
     case "Single": {
       const names = getNames(self)
@@ -2010,10 +2008,10 @@ export const getZshCompletions = (
         self.primitiveType as InternalPrimitive.Instruction
       )
       const multiple = state.multiple ? "*" : ""
-      const conflicts = ReadonlyArray.isNonEmptyReadonlyArray(state.conflicts)
-        ? `(${ReadonlyArray.join(state.conflicts, " ")})`
+      const conflicts = Array_.isNonEmptyReadonlyArray(state.conflicts)
+        ? `(${Array_.join(state.conflicts, " ")})`
         : ""
-      return ReadonlyArray.map(
+      return Array_.map(
         names,
         (name) => `${conflicts}${multiple}${name}[${escape(description)}]${possibleValues}`
       )
@@ -2029,20 +2027,20 @@ export const getZshCompletions = (
     case "Both": {
       const left = getZshCompletions(self.left as Instruction, state)
       const right = getZshCompletions(self.right as Instruction, state)
-      return ReadonlyArray.appendAll(left, right)
+      return Array_.appendAll(left, right)
     }
     case "OrElse": {
       const leftNames = getNames(self.left as Instruction)
       const rightNames = getNames(self.right as Instruction)
       const left = getZshCompletions(
         self.left as Instruction,
-        { ...state, conflicts: ReadonlyArray.appendAll(state.conflicts, rightNames) }
+        { ...state, conflicts: Array_.appendAll(state.conflicts, rightNames) }
       )
       const right = getZshCompletions(
         self.right as Instruction,
-        { ...state, conflicts: ReadonlyArray.appendAll(state.conflicts, leftNames) }
+        { ...state, conflicts: Array_.appendAll(state.conflicts, leftNames) }
       )
-      return ReadonlyArray.appendAll(left, right)
+      return Array_.appendAll(left, right)
     }
     case "Variadic": {
       return Option.isSome(self.max) && self.max.value > 1

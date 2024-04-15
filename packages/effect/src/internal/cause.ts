@@ -1,4 +1,4 @@
-import * as ReadonlyArray from "../Array.js"
+import * as Array_ from "../Array.js"
 import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
 import * as Either from "../Either.js"
@@ -13,7 +13,6 @@ import { pipeArguments } from "../Pipeable.js"
 import { hasProperty, isFunction } from "../Predicate.js"
 import type { Predicate, Refinement } from "../Predicate.js"
 import type { AnySpan, Span } from "../Tracer.js"
-import * as Array_ from "../Array.js"
 import { getBugErrorMessage } from "./errors.js"
 import * as OpCodes from "./opCodes/cause.js"
 

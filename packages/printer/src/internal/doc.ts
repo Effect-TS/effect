@@ -2,7 +2,7 @@ import * as covariant from "@effect/typeclass/Covariant"
 import type * as invariant from "@effect/typeclass/Invariant"
 import type * as monoid from "@effect/typeclass/Monoid"
 import type * as semigroup from "@effect/typeclass/Semigroup"
-import * as ReadonlyArray from "effect/Array"
+import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import { dual, pipe } from "effect/Function"
@@ -342,9 +342,9 @@ export const concatWith = dual<
     f: (left: Doc.Doc<A>, right: Doc.Doc<A>) => Doc.Doc<A>
   ) => Doc.Doc<A>
 >(2, (docs, f) =>
-  ReadonlyArray.matchRight(ReadonlyArray.fromIterable(docs), {
+  Array.matchRight(Array.fromIterable(docs), {
     onEmpty: () => empty,
-    onNonEmpty: (init, last) => ReadonlyArray.reduceRight(init, last, (curr, acc) => f(acc, curr))
+    onNonEmpty: (init, last) => Array.reduceRight(init, last, (curr, acc) => f(acc, curr))
   }))
 
 /** @internal */
@@ -492,17 +492,17 @@ export const encloseSep = dual<
   right: Doc.Doc<B>,
   sep: Doc.Doc<C>
 ) => {
-  const documents = ReadonlyArray.fromIterable(docs)
-  if (ReadonlyArray.isEmptyReadonlyArray(documents)) {
+  const documents = Array.fromIterable(docs)
+  if (Array.isEmptyReadonlyArray(documents)) {
     return cat(left, right)
   }
   if (documents.length === 1) {
     return cat(left, cat(documents[0]!, right))
   }
   const xs = pipe(
-    ReadonlyArray.makeBy(documents.length - 1, () => sep),
-    ReadonlyArray.prepend(left),
-    ReadonlyArray.zipWith(documents, (left: Doc.Doc<A | C>, right) => cat(left, right))
+    Array.makeBy(documents.length - 1, () => sep),
+    Array.prepend(left),
+    Array.zipWith(documents, (left: Doc.Doc<A | C>, right) => cat(left, right))
   )
   return cat(cats(xs), right)
 })
@@ -748,8 +748,8 @@ const alterAnnotationsSafe = <A, B>(
     }
     case "Annotated": {
       return Effect.map(alterAnnotationsSafe(self.doc, f), (doc) =>
-        ReadonlyArray.reduceRight(
-          ReadonlyArray.fromIterable(f(self.annotation)),
+        Array.reduceRight(
+          Array.fromIterable(f(self.annotation)),
           doc,
           (doc, b) => annotate(doc, b)
         ))
@@ -882,8 +882,8 @@ export const punctuate = dual<
   <A, B>(punctuator: Doc.Doc<A>) => (docs: Iterable<Doc.Doc<B>>) => ReadonlyArray<Doc.Doc<A | B>>,
   <A, B>(docs: Iterable<Doc.Doc<B>>, punctuator: Doc.Doc<A>) => ReadonlyArray<Doc.Doc<A | B>>
 >(2, (docs, punctuator) => {
-  const documents = ReadonlyArray.fromIterable(docs)
-  return ReadonlyArray.map(documents, (x, i) => documents.length - 1 === i ? x : cat(x, punctuator))
+  const documents = Array.fromIterable(docs)
+  return Array.map(documents, (x, i) => documents.length - 1 === i ? x : cat(x, punctuator))
 })
 
 /** @internal */

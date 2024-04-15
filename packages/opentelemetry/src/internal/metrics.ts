@@ -12,7 +12,7 @@ import type {
   MetricReader
 } from "@opentelemetry/sdk-metrics"
 import { AggregationTemporality, DataPointType, InstrumentType } from "@opentelemetry/sdk-metrics"
-import * as ReadonlyArray from "effect/Array"
+import * as Array_ from "effect/Array"
 import * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -51,7 +51,7 @@ export class MetricProducerImpl implements MetricProducer {
 
     for (let i = 0, len = snapshot.length; i < len; i++) {
       const { metricKey, metricState } = snapshot[i]
-      const attributes = ReadonlyArray.reduce(metricKey.tags, {}, (acc: Record<string, string>, label) => {
+      const attributes = Array_.reduce(metricKey.tags, {}, (acc: Record<string, string>, label) => {
         acc[label.key] = label.value
         return acc
       })

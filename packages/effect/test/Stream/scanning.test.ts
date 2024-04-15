@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as ReadonlyArray from "effect/Array"
+import * as Array_ from "effect/Array"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
@@ -17,7 +17,7 @@ describe("Stream", () => {
           Effect.map((chunk) =>
             pipe(
               Chunk.toReadonlyArray(chunk),
-              ReadonlyArray.scan(0, (acc, curr) => acc + curr)
+              Array_.scan(0, (acc, curr) => acc + curr)
             )
           )
         )

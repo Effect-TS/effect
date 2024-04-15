@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import * as ReadonlyArray from "effect/Array"
+import * as array_ from "effect/Array"
 import * as bigDecimal_ from "effect/BigDecimal"
 import * as bigInt_ from "effect/BigInt"
 import * as boolean_ from "effect/Boolean"
@@ -524,17 +524,16 @@ export const make = <A, I = A, R = never>(ast: AST.AST): Schema<A, I, R> => new 
  * @category api interface
  * @since 1.0.0
  */
-export interface Literal<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>
+export interface Literal<Literals extends array_.NonEmptyReadonlyArray<AST.LiteralValue>>
   extends Annotable<Literal<Literals>, Literals[number]>
 {
   readonly literals: Readonly<Literals>
 }
 
-class LiteralImpl<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>
-  extends SchemaImpl<Literals[number]>
+class LiteralImpl<Literals extends array_.NonEmptyReadonlyArray<AST.LiteralValue>> extends SchemaImpl<Literals[number]>
   implements Literal<Literals>
 {
-  static ast = <Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>(
+  static ast = <Literals extends array_.NonEmptyReadonlyArray<AST.LiteralValue>>(
     literals: Literals
   ): AST.AST => {
     return AST.isMembers(literals)
@@ -555,7 +554,7 @@ class LiteralImpl<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.Liter
  * @category constructors
  * @since 1.0.0
  */
-export function Literal<Literals extends ReadonlyArray.NonEmptyReadonlyArray<AST.LiteralValue>>(
+export function Literal<Literals extends array_.NonEmptyReadonlyArray<AST.LiteralValue>>(
   ...literals: Literals
 ): Literal<Literals>
 export function Literal(): Never
@@ -565,7 +564,7 @@ export function Literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
 export function Literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
   ...literals: Literals
 ): Schema<Literals[number]> | Never {
-  return ReadonlyArray.isNonEmptyReadonlyArray(literals) ? new LiteralImpl(literals) : Never
+  return array_.isNonEmptyReadonlyArray(literals) ? new LiteralImpl(literals) : Never
 }
 
 /**
@@ -585,7 +584,7 @@ export function Literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
  * @since 1.0.0
  */
 export const pickLiteral =
-  <A extends AST.LiteralValue, L extends ReadonlyArray.NonEmptyReadonlyArray<A>>(...literals: L) =>
+  <A extends AST.LiteralValue, L extends array_.NonEmptyReadonlyArray<A>>(...literals: L) =>
   <I, R>(_schema: Schema<A, I, R>): Literal<[...L]> => Literal(...literals)
 
 /**
@@ -638,7 +637,7 @@ export const TemplateLiteral = <T extends [Schema.AnyNoContext, ...Array<Schema.
 ): Schema<Join<{ [K in keyof T]: Schema.Type<T[K]> }>> => {
   let types: ReadonlyArray<AST.TemplateLiteral | AST.Literal> = getTemplateLiterals(head.ast)
   for (const span of tail) {
-    types = ReadonlyArray.flatMap(
+    types = array_.flatMap(
       types,
       (a) => getTemplateLiterals(span.ast).map((b) => combineTemplateLiterals(a, b))
     )
@@ -658,7 +657,7 @@ const combineTemplateLiterals = (
   if (AST.isLiteral(b)) {
     return AST.TemplateLiteral.make(
       a.head,
-      ReadonlyArray.modifyNonEmptyLast(
+      array_.modifyNonEmptyLast(
         a.spans,
         (span) => new AST.TemplateLiteralSpan(span.type, span.literal + String(b.literal))
       )
@@ -666,8 +665,8 @@ const combineTemplateLiterals = (
   }
   return AST.TemplateLiteral.make(
     a.head,
-    ReadonlyArray.appendAll(
-      ReadonlyArray.modifyNonEmptyLast(
+    array_.appendAll(
+      array_.modifyNonEmptyLast(
         a.spans,
         (span) => new AST.TemplateLiteralSpan(span.type, span.literal + String(b.head))
       ),
@@ -686,7 +685,7 @@ const getTemplateLiterals = (
     case "StringKeyword":
       return [AST.TemplateLiteral.make("", [new AST.TemplateLiteralSpan(ast, "")])]
     case "Union":
-      return ReadonlyArray.flatMap(ast.types, getTemplateLiterals)
+      return array_.flatMap(ast.types, getTemplateLiterals)
     default:
       throw new Error(`unsupported template literal span (${ast})`)
   }
@@ -1048,7 +1047,7 @@ export function Union<Members extends ReadonlyArray<Schema.Any>>(
 ): Schema<Schema.Type<Members[number]>, Schema.Encoded<Members[number]>, Schema.Context<Members[number]>> | Never {
   return AST.isMembers(members)
     ? new UnionImpl(members)
-    : ReadonlyArray.isNonEmptyReadonlyArray(members)
+    : array_.isNonEmptyReadonlyArray(members)
     ? members[0] as any
     : Never
 }
@@ -1250,7 +1249,7 @@ export interface Tuple<Elements extends TupleType.Elements> extends TupleType<El
  */
 export function Tuple<
   const Elements extends TupleType.Elements,
-  Rest extends ReadonlyArray.NonEmptyReadonlyArray<Schema.Any>
+  Rest extends array_.NonEmptyReadonlyArray<Schema.Any>
 >(elements: Elements, ...rest: Rest): TupleType<Elements, Rest>
 export function Tuple<Elements extends TupleType.Elements>(...elements: Elements): Tuple<Elements>
 export function Tuple(...args: ReadonlyArray<any>): any {
@@ -1948,7 +1947,7 @@ export declare namespace IndexSignature {
   /**
    * @since 1.0.0
    */
-  export type NonEmptyRecords = ReadonlyArray.NonEmptyReadonlyArray<Record>
+  export type NonEmptyRecords = array_.NonEmptyReadonlyArray<Record>
 
   /**
    * @since 1.0.0
@@ -2082,7 +2081,7 @@ class TypeLiteralImpl<
           pss.push(new AST.PropertySignature(key, field.ast, false, true))
         }
       }
-      if (ReadonlyArray.isNonEmptyReadonlyArray(transformations)) {
+      if (array_.isNonEmptyReadonlyArray(transformations)) {
         const issFrom: Array<AST.IndexSignature> = []
         const issTo: Array<AST.IndexSignature> = []
         for (const r of records) {
@@ -2437,8 +2436,8 @@ const intersectUnionMembers = (
   ys: ReadonlyArray<AST.AST>,
   path: ReadonlyArray<string>
 ): Array<AST.AST> =>
-  ReadonlyArray.flatMap(xs, (x) =>
-    ReadonlyArray.flatMap(ys, (y) => {
+  array_.flatMap(xs, (x) =>
+    array_.flatMap(ys, (y) => {
       if (AST.isUnion(x)) {
         return intersectUnionMembers(x.types, AST.isUnion(y) ? y.types : [y], path)
       } else if (AST.isUnion(y)) {
@@ -3521,7 +3520,7 @@ export const split = (separator: string): Schema<ReadonlyArray<string>, string> 
   transform(
     $String,
     $Array($String),
-    { decode: string_.split(separator), encode: ReadonlyArray.join(separator) }
+    { decode: string_.split(separator), encode: array_.join(separator) }
   )
 
 /**
@@ -4693,7 +4692,7 @@ export const Uint8ArrayFromSelf: Schema<Uint8Array> = declare(
     identifier: "Uint8ArrayFromSelf",
     pretty: (): pretty_.Pretty<Uint8Array> => (u8arr) => `new Uint8Array(${JSON.stringify(Array.from(u8arr))})`,
     arbitrary: (): LazyArbitrary<Uint8Array> => (fc) => fc.uint8Array(),
-    equivalence: (): Equivalence.Equivalence<Uint8Array> => ReadonlyArray.getEquivalence(Equal.equals) as any
+    equivalence: (): Equivalence.Equivalence<Uint8Array> => array_.getEquivalence(Equal.equals) as any
   }
 )
 
@@ -4875,7 +4874,7 @@ export const head = <A, I, R>(self: Schema<ReadonlyArray<A>, I, R>): Schema<opti
   transform(
     self,
     OptionFromSelf(getNumberIndexedAccess(typeSchema(self))),
-    { decode: ReadonlyArray.head, encode: option_.match({ onNone: () => [], onSome: ReadonlyArray.of }) }
+    { decode: array_.head, encode: option_.match({ onNone: () => [], onSome: array_.of }) }
   )
 
 /**
@@ -4902,7 +4901,7 @@ export const headOrElse: {
             : fallback
             ? ParseResult.succeed(fallback())
             : ParseResult.fail(new ParseResult.Type(ast, as)),
-        encode: (a) => ParseResult.succeed(ReadonlyArray.of(a))
+        encode: (a) => ParseResult.succeed(array_.of(a))
       }
     )
 )
@@ -5436,7 +5435,7 @@ const readonlyMapEquivalence = <K, V>(
   key: Equivalence.Equivalence<K>,
   value: Equivalence.Equivalence<V>
 ): Equivalence.Equivalence<ReadonlyMap<K, V>> => {
-  const arrayEquivalence = ReadonlyArray.getEquivalence(
+  const arrayEquivalence = array_.getEquivalence(
     Equivalence.make<[K, V]>(([ka, va], [kb, vb]) => key(ka, kb) && value(va, vb))
   )
   return Equivalence.make((a, b) => arrayEquivalence(Array.from(a.entries()), Array.from(b.entries())))
@@ -5586,7 +5585,7 @@ const readonlySetPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<ReadonlyS
 const readonlySetEquivalence = <A>(
   item: Equivalence.Equivalence<A>
 ): Equivalence.Equivalence<ReadonlySet<A>> => {
-  const arrayEquivalence = ReadonlyArray.getEquivalence(item)
+  const arrayEquivalence = array_.getEquivalence(item)
   return Equivalence.make((a, b) => arrayEquivalence(Array.from(a.values()), Array.from(b.values())))
 }
 
@@ -7167,7 +7166,7 @@ const hashSetPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<hashSet_.Hash
 const hashSetEquivalence = <A>(
   item: Equivalence.Equivalence<A>
 ): Equivalence.Equivalence<hashSet_.HashSet<A>> => {
-  const arrayEquivalence = ReadonlyArray.getEquivalence(item)
+  const arrayEquivalence = array_.getEquivalence(item)
   return Equivalence.make((a, b) => arrayEquivalence(Array.from(a), Array.from(b)))
 }
 
@@ -7264,7 +7263,7 @@ const hashMapEquivalence = <K, V>(
   key: Equivalence.Equivalence<K>,
   value: Equivalence.Equivalence<V>
 ): Equivalence.Equivalence<hashMap_.HashMap<K, V>> => {
-  const arrayEquivalence = ReadonlyArray.getEquivalence(
+  const arrayEquivalence = array_.getEquivalence(
     Equivalence.make<[K, V]>(([ka, va], [kb, vb]) => key(ka, kb) && value(va, vb))
   )
   return Equivalence.make((a, b) => arrayEquivalence(Array.from(a), Array.from(b)))
@@ -7353,7 +7352,7 @@ const listPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<list_.List<A>> =
 const listEquivalence = <A>(
   item: Equivalence.Equivalence<A>
 ): Equivalence.Equivalence<list_.List<A>> => {
-  const arrayEquivalence = ReadonlyArray.getEquivalence(item)
+  const arrayEquivalence = array_.getEquivalence(item)
   return Equivalence.make((a, b) => arrayEquivalence(Array.from(a), Array.from(b)))
 }
 

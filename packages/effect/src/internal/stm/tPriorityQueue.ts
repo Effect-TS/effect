@@ -1,4 +1,4 @@
-import * as ReadonlyArray from "../../Array.js"
+import * as Array_ from "../../Array.js"
 import * as Chunk from "../../Chunk.js"
 import { dual, pipe } from "../../Function.js"
 import * as Option from "../../Option.js"
@@ -52,8 +52,8 @@ export const fromIterable =
                   map,
                   SortedMap.get(value),
                   Option.match({
-                    onNone: () => ReadonlyArray.of(value),
-                    onSome: ReadonlyArray.prepend(value)
+                    onNone: () => Array_.of(value),
+                    onSome: Array_.prepend(value)
                   })
                 )
               )
@@ -86,8 +86,8 @@ export const offer = dual<
       map,
       value,
       Option.match(SortedMap.get(map, value), {
-        onNone: () => ReadonlyArray.of(value),
-        onSome: ReadonlyArray.prepend(value)
+        onNone: () => Array_.of(value),
+        onSome: Array_.prepend(value)
       })
     )))
 
@@ -103,8 +103,8 @@ export const offerAll = dual<
           map,
           value,
           Option.match(SortedMap.get(map, value), {
-            onNone: () => ReadonlyArray.of(value),
-            onSome: ReadonlyArray.prepend(value)
+            onNone: () => Array_.of(value),
+            onSome: Array_.prepend(value)
           })
         ),
       map
@@ -147,7 +147,7 @@ export const retainIf = dual<
       self.ref,
       (map) =>
         SortedMap.reduce(map, SortedMap.empty(SortedMap.getOrder(map)), (map, value, key) => {
-          const filtered: ReadonlyArray<A> = ReadonlyArray.filter(value, predicate)
+          const filtered: ReadonlyArray<A> = Array_.filter(value, predicate)
           return filtered.length > 0 ?
             SortedMap.set(map, key, filtered as [A, ...Array<A>]) :
             SortedMap.remove(map, key)
@@ -228,7 +228,7 @@ export const takeUpTo = dual<
     let next: IteratorResult<readonly [A, [A, ...Array<A>]], any>
     while ((next = iterator.next()) && !next.done && index < n) {
       const [key, value] = next.value
-      const [left, right] = pipe(value, ReadonlyArray.splitAt(n - index))
+      const [left, right] = pipe(value, Array_.splitAt(n - index))
       for (const value of left) {
         builder.push(value)
       }

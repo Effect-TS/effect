@@ -1,4 +1,4 @@
-import * as ReadonlyArray from "effect/Array"
+import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
@@ -72,7 +72,7 @@ export const make = <R, E>(
   apps: Iterable<
     readonly [predicate: (request: ServerRequest.ServerRequest) => Effect.Effect<boolean, E, R>, app: App.Default<E, R>]
   >
-): Multiplex.Multiplex<E, R> => new MultiplexImpl(ReadonlyArray.fromIterable(apps))
+): Multiplex.Multiplex<E, R> => new MultiplexImpl(Array.fromIterable(apps))
 
 /** @internal */
 export const add = dual<

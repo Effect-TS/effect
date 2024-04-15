@@ -16,7 +16,7 @@
  *
  * @since 2.0.0
  */
-import * as ReadonlyArray from "./Array.js"
+import * as Array from "./Array.js"
 import * as Either from "./Either.js"
 import { identity } from "./Function.js"
 import * as Option from "./Option.js"
@@ -69,7 +69,7 @@ export declare namespace Brand {
    * @since 2.0.0
    * @category models
    */
-  export interface BrandErrors extends ReadonlyArray<RefinementError> {}
+  export interface BrandErrors extends Array<RefinementError> {}
 
   /**
    * Represents an error that occurs when the provided value of the branded type does not pass the refinement predicate.
@@ -183,7 +183,7 @@ export const error = (message: string, meta?: unknown): Brand.BrandErrors => [{
  */
 export const errors: (...errors: Array<Brand.BrandErrors>) => Brand.BrandErrors = (
   ...errors: Array<Brand.BrandErrors>
-): Brand.BrandErrors => ReadonlyArray.flatten(errors)
+): Brand.BrandErrors => Array.flatten(errors)
 
 /**
  * Returns a `Brand.Constructor` that can construct a branded type from an unbranded value using the provided `refinement`

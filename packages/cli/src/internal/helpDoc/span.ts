@@ -1,7 +1,7 @@
 import * as Ansi from "@effect/printer-ansi/Ansi"
 import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Color from "@effect/printer-ansi/Color"
-import * as ReadonlyArray from "effect/Array"
+import * as Array from "effect/Array"
 import { dual } from "effect/Function"
 import type * as Span from "../../HelpDoc/Span.js"
 
@@ -92,8 +92,8 @@ export const getText = (self: Span.Span): string => {
 
 /** @internal */
 export const spans = (spans: Iterable<Span.Span>): Span.Span => {
-  const elements = ReadonlyArray.fromIterable(spans)
-  if (ReadonlyArray.isNonEmptyReadonlyArray(elements)) {
+  const elements = Array.fromIterable(spans)
+  if (Array.isNonEmptyReadonlyArray(elements)) {
     return elements.slice(1).reduce(concat, elements[0])
   }
   return empty

@@ -1,6 +1,6 @@
 import * as it from "effect-test/utils/extend"
 import { withLatch, withLatchAwait } from "effect-test/utils/latch"
-import * as ReadonlyArray from "effect/Array"
+import * as Array_ from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
@@ -253,7 +253,7 @@ describe("Effect", () => {
       assert.strictEqual(Array.from(result).length, 2)
       assert.isTrue(pipe(
         result,
-        ReadonlyArray.reduce(true, (acc, curr) =>
+        Array_.reduce(true, (acc, curr) =>
           acc && Exit.isFailure(curr) && Cause.isInterruptedOnly(curr.effect_instruction_i0))
       ))
     }))

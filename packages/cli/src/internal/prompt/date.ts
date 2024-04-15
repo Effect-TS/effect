@@ -2,7 +2,7 @@ import * as Terminal from "@effect/platform/Terminal"
 import * as Ansi from "@effect/printer-ansi/Ansi"
 import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Optimize from "@effect/printer/Optimize"
-import * as ReadonlyArray from "effect/Array"
+import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Match from "effect/Match"
@@ -48,11 +48,11 @@ const renderError = (nextState: State, pointer: Doc.AnsiDoc): Doc.AnsiDoc =>
     onNone: () => Doc.empty,
     onSome: (error) => {
       const errorLines = error.split(/\r?\n/)
-      if (ReadonlyArray.isNonEmptyReadonlyArray(errorLines)) {
+      if (Array.isNonEmptyReadonlyArray(errorLines)) {
         const annotateLine = (line: string): Doc.AnsiDoc =>
           Doc.annotate(Doc.text(line), Ansi.combine(Ansi.italicized, Ansi.red))
         const prefix = Doc.cat(Doc.annotate(pointer, Ansi.red), Doc.space)
-        const lines = ReadonlyArray.map(errorLines, (str) => annotateLine(str))
+        const lines = Array.map(errorLines, (str) => annotateLine(str))
         return pipe(
           Doc.cursorSavePosition,
           Doc.cat(Doc.hardLine),
@@ -66,7 +66,7 @@ const renderError = (nextState: State, pointer: Doc.AnsiDoc): Doc.AnsiDoc =>
   })
 
 const renderParts = (nextState: State, submitted: boolean = false) =>
-  ReadonlyArray.reduce(
+  Array.reduce(
     nextState.dateParts,
     Doc.empty as Doc.AnsiDoc,
     (doc, part, currentIndex) => {
@@ -87,10 +87,10 @@ const renderOutput = (
 ): Doc.AnsiDoc => {
   const annotateLine = (line: string): Doc.AnsiDoc => Doc.annotate(Doc.text(line), Ansi.bold)
   const prefix = Doc.cat(leadingSymbol, Doc.space)
-  return ReadonlyArray.match(options.message.split(/\r?\n/), {
+  return Array.match(options.message.split(/\r?\n/), {
     onEmpty: () => Doc.hsep([prefix, trailingSymbol, parts]),
     onNonEmpty: (promptLines) => {
-      const lines = ReadonlyArray.map(promptLines, (line) => annotateLine(line))
+      const lines = Array.map(promptLines, (line) => annotateLine(line))
       return pipe(
         prefix,
         Doc.cat(Doc.nest(Doc.vsep(lines), 2)),
@@ -348,7 +348,7 @@ const makeDateParts = (
       array.push(element)
     }
     return array
-  }, ReadonlyArray.empty<DatePart>())
+  }, Array.empty<DatePart>())
   parts.splice(0, parts.length, ...orderedParts)
   return parts
 }
@@ -400,9 +400,9 @@ abstract class DatePart {
    */
   nextPart(): Option.Option<DatePart> {
     return pipe(
-      ReadonlyArray.findFirstIndex(this.parts, (part) => part === this),
+      Array.findFirstIndex(this.parts, (part) => part === this),
       Option.flatMap((currentPartIndex) =>
-        ReadonlyArray.findFirst(this.parts.slice(currentPartIndex + 1), (part) => !part.isToken())
+        Array.findFirst(this.parts.slice(currentPartIndex + 1), (part) => !part.isToken())
       )
     )
   }
@@ -412,9 +412,9 @@ abstract class DatePart {
    */
   previousPart(): Option.Option<DatePart> {
     return pipe(
-      ReadonlyArray.findFirstIndex(this.parts, (part) => part === this),
+      Array.findFirstIndex(this.parts, (part) => part === this),
       Option.flatMap((currentPartIndex) =>
-        ReadonlyArray.findLast(this.parts.slice(0, currentPartIndex), (part) => !part.isToken())
+        Array.findLast(this.parts.slice(0, currentPartIndex), (part) => !part.isToken())
       )
     )
   }

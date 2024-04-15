@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import * as ReadonlyArray from "effect/Array"
+import * as Array_ from "effect/Array"
 import type { Effect } from "effect/Effect"
 import { dual, identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
@@ -55,7 +55,7 @@ export type AST =
  * @category annotations
  * @since 1.0.0
  */
-export type BrandAnnotation = ReadonlyArray.NonEmptyReadonlyArray<string | symbol>
+export type BrandAnnotation = Array_.NonEmptyReadonlyArray<string | symbol>
 
 /**
  * @category annotations
@@ -127,7 +127,7 @@ export const DescriptionAnnotationId = Symbol.for("@effect/schema/annotation/Des
  * @category annotations
  * @since 1.0.0
  */
-export type ExamplesAnnotation<A> = ReadonlyArray.NonEmptyReadonlyArray<A>
+export type ExamplesAnnotation<A> = Array_.NonEmptyReadonlyArray<A>
 
 /**
  * @category annotations
@@ -1003,7 +1003,7 @@ export class TemplateLiteral implements Annotated {
     spans: ReadonlyArray<TemplateLiteralSpan>,
     annotations: Annotations = {}
   ): TemplateLiteral | Literal =>
-    ReadonlyArray.isNonEmptyReadonlyArray(spans) ?
+    Array_.isNonEmptyReadonlyArray(spans) ?
       new TemplateLiteral(head, spans, annotations) :
       new Literal(head)
 
@@ -1013,7 +1013,7 @@ export class TemplateLiteral implements Annotated {
   readonly _tag = "TemplateLiteral"
   private constructor(
     readonly head: string,
-    readonly spans: ReadonlyArray.NonEmptyReadonlyArray<TemplateLiteralSpan>,
+    readonly spans: Array_.NonEmptyReadonlyArray<TemplateLiteralSpan>,
     readonly annotations: Annotations = {}
   ) {}
   /**
@@ -1120,7 +1120,7 @@ export class TupleType implements Annotated {
 const formatTuple = (ast: TupleType): string => {
   const formattedElements = ast.elements.map(String)
     .join(", ")
-  return ReadonlyArray.matchLeft(ast.rest, {
+  return Array_.matchLeft(ast.rest, {
     onEmpty: () => `readonly [${formattedElements}]`,
     onNonEmpty: (head, tail) => {
       const formattedHead = String(head)
@@ -1336,7 +1336,7 @@ export type Members<A> = readonly [A, A, ...Array<A>]
 
 const removeNevers = (candidates: ReadonlyArray<AST>): Array<AST> => candidates.filter((ast) => !(ast === neverKeyword))
 
-const sortCandidates = ReadonlyArray.sort(
+const sortCandidates = Array_.sort(
   Order.mapInput(Number.Order, (ast: AST) => {
     switch (ast._tag) {
       case "AnyKeyword":
@@ -1365,7 +1365,7 @@ const literalMap = {
 
 /** @internal */
 export const flatten = (candidates: ReadonlyArray<AST>): Array<AST> =>
-  ReadonlyArray.flatMap(candidates, (ast) => isUnion(ast) ? flatten(ast.types) : [ast])
+  Array_.flatMap(candidates, (ast) => isUnion(ast) ? flatten(ast.types) : [ast])
 
 /** @internal */
 export const unify = (candidates: ReadonlyArray<AST>): Array<AST> => {
@@ -1905,7 +1905,7 @@ export const getPropertyKeyIndexedAccess = (ast: AST, name: PropertyKey): Proper
       break
     }
     case "TypeLiteral": {
-      const ops = ReadonlyArray.findFirst(ast.propertySignatures, (ps) => ps.name === name)
+      const ops = Array_.findFirst(ast.propertySignatures, (ps) => ps.name === name)
       if (Option.isSome(ops)) {
         return ops.value
       } else {
@@ -1963,7 +1963,7 @@ const getPropertyKeys = (ast: AST): Array<PropertyKey> => {
       return getPropertyKeys(ast.f())
     case "Union":
       return ast.types.slice(1).reduce(
-        (out: Array<PropertyKey>, ast) => ReadonlyArray.intersection(out, getPropertyKeys(ast)),
+        (out: Array<PropertyKey>, ast) => Array_.intersection(out, getPropertyKeys(ast)),
         getPropertyKeys(ast.types[0])
       )
     case "Transformation":
@@ -2041,7 +2041,7 @@ export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral | 
         return new Transformation(
           pick(ast.from, fromKeys),
           pick(ast.to, keys),
-          ReadonlyArray.isNonEmptyReadonlyArray(ts) ?
+          Array_.isNonEmptyReadonlyArray(ts) ?
             new TypeLiteralTransformation(ts)
             : composeTransformation
         )
@@ -2080,7 +2080,7 @@ export const partial = (ast: AST, options?: { readonly exact: true }): AST => {
     case "TupleType":
       return new TupleType(
         ast.elements.map((e) => new Element(exact ? e.type : orUndefined(e.type), true)),
-        ReadonlyArray.match(ast.rest, {
+        Array_.match(ast.rest, {
           onEmpty: () => ast.rest,
           onNonEmpty: (rest) => [Union.make([...rest, undefinedKeyword])]
         }),
@@ -2280,9 +2280,9 @@ const createJSONIdentifierAnnotation = (annotated: Annotated): Annotations | und
   })
 
 function changeMap<A>(
-  as: ReadonlyArray.NonEmptyReadonlyArray<A>,
+  as: Array_.NonEmptyReadonlyArray<A>,
   f: (a: A) => A
-): ReadonlyArray.NonEmptyReadonlyArray<A>
+): Array_.NonEmptyReadonlyArray<A>
 function changeMap<A>(as: ReadonlyArray<A>, f: (a: A) => A): ReadonlyArray<A>
 function changeMap<A>(as: ReadonlyArray<A>, f: (a: A) => A): ReadonlyArray<A> {
   let changed = false
@@ -2387,11 +2387,11 @@ export const getCardinality = (ast: AST): number => {
   }
 }
 
-const sortPropertySignatures = ReadonlyArray.sort(
+const sortPropertySignatures = Array_.sort(
   Order.mapInput(Number.Order, (ps: PropertySignature) => getCardinality(ps.type))
 )
 
-const sortIndexSignatures = ReadonlyArray.sort(
+const sortIndexSignatures = Array_.sort(
   Order.mapInput(Number.Order, (is: IndexSignature) => {
     switch (getParameterBase(is.parameter)._tag) {
       case "StringKeyword":
@@ -2471,11 +2471,11 @@ export const getParameterBase = (
   }
 }
 
-const equalsTemplateLiteralSpan = ReadonlyArray.getEquivalence<TemplateLiteralSpan>((self, that) =>
+const equalsTemplateLiteralSpan = Array_.getEquivalence<TemplateLiteralSpan>((self, that) =>
   self.type._tag === that.type._tag && self.literal === that.literal
 )
 
-const equalsEnums = ReadonlyArray.getEquivalence<readonly [string, string | number]>((self, that) =>
+const equalsEnums = Array_.getEquivalence<readonly [string, string | number]>((self, that) =>
   that[0] === self[0] && that[1] === self[1]
 )
 
@@ -2512,7 +2512,7 @@ const equals = (self: AST, that: AST) => {
   }
 }
 
-const intersection = ReadonlyArray.intersectionWith(equals)
+const intersection = Array_.intersectionWith(equals)
 
 const _keyof = (ast: AST): Array<AST> => {
   switch (ast._tag) {

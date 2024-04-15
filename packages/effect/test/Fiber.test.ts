@@ -1,6 +1,6 @@
 import * as it from "effect-test/utils/extend"
 import { withLatch } from "effect-test/utils/latch"
-import * as ReadonlyArray from "effect/Array"
+import * as Array_ from "effect/Array"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -165,7 +165,7 @@ describe("Fiber", () => {
   it.effect("dual roots", () =>
     Effect.gen(function*($) {
       const rootContains = (fiber: Fiber.RuntimeFiber<any, any>): Effect.Effect<boolean> => {
-        return pipe(Fiber.roots, Effect.map(Chunk.unsafeFromArray), Effect.map(ReadonlyArray.contains(fiber)))
+        return pipe(Fiber.roots, Effect.map(Chunk.unsafeFromArray), Effect.map(Array_.contains(fiber)))
       }
       const fiber1 = yield* $(Effect.forkDaemon(Effect.never))
       const fiber2 = yield* $(Effect.forkDaemon(Effect.never))

@@ -1,4 +1,4 @@
-import * as ReadonlyArray from "../Array.js"
+import * as Array from "../Array.js"
 import * as Equal from "../Equal.js"
 import { pipe } from "../Function.js"
 import * as Hash from "../Hash.js"
@@ -56,7 +56,7 @@ export const make = (bytes: Array<number>): Secret.Secret => {
 
 /** @internal */
 export const fromIterable = (iterable: Iterable<string>): Secret.Secret =>
-  make(ReadonlyArray.fromIterable(iterable).map((char) => char.charCodeAt(0)))
+  make(Array.fromIterable(iterable).map((char) => char.charCodeAt(0)))
 
 /** @internal */
 export const fromString = (text: string): Secret.Secret => {

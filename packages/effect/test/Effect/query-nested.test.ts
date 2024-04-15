@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as ReadonlyArray from "effect/Array"
+import * as Array from "effect/Array"
 import * as Context from "effect/Context"
 import { seconds } from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -65,12 +65,12 @@ export interface GetChildExtra extends Request.Request<ChildExtra> {
 
 export const GetChildExtra = Request.tagged<GetChildExtra>("GetChildExtra")
 
-export const parents = ReadonlyArray.range(1, 2).map<Parent>((id) => ({ id }))
+export const parents = Array.range(1, 2).map<Parent>((id) => ({ id }))
 
 export const children: ReadonlyMap<number, ReadonlyArray<Child>> = new Map(
-  ReadonlyArray.map(parents, (p) => [
+  Array.map(parents, (p) => [
     p.id,
-    ReadonlyArray.of({ id: p.id * 10, parentId: p.id })
+    Array.of({ id: p.id * 10, parentId: p.id })
   ])
 )
 

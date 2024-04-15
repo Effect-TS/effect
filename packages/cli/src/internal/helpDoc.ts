@@ -1,7 +1,7 @@
 import * as Ansi from "@effect/printer-ansi/Ansi"
 import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Optimize from "@effect/printer/Optimize"
-import * as ReadonlyArray from "effect/Array"
+import * as Array from "effect/Array"
 import { dual, pipe } from "effect/Function"
 import type * as HelpDoc from "../HelpDoc.js"
 import type * as Span from "../HelpDoc/Span.js"
@@ -58,8 +58,8 @@ export const orElse = dual<
 
 /** @internal */
 export const blocks = (helpDocs: Iterable<HelpDoc.HelpDoc>): HelpDoc.HelpDoc => {
-  const elements = ReadonlyArray.fromIterable(helpDocs)
-  if (ReadonlyArray.isNonEmptyReadonlyArray(elements)) {
+  const elements = Array.fromIterable(helpDocs)
+  if (Array.isNonEmptyReadonlyArray(elements)) {
     return elements.slice(1).reduce(sequence, elements[0])
   }
   return empty
@@ -71,7 +71,7 @@ export const getSpan = (self: HelpDoc.HelpDoc): Span.Span =>
 
 /** @internal */
 export const descriptionList = (
-  definitions: ReadonlyArray.NonEmptyReadonlyArray<[Span.Span, HelpDoc.HelpDoc]>
+  definitions: Array.NonEmptyReadonlyArray<[Span.Span, HelpDoc.HelpDoc]>
 ): HelpDoc.HelpDoc => ({
   _tag: "DescriptionList",
   definitions
@@ -79,7 +79,7 @@ export const descriptionList = (
 
 /** @internal */
 export const enumeration = (
-  elements: ReadonlyArray.NonEmptyReadonlyArray<HelpDoc.HelpDoc>
+  elements: Array.NonEmptyReadonlyArray<HelpDoc.HelpDoc>
 ): HelpDoc.HelpDoc => ({
   _tag: "Enumeration",
   elements
@@ -123,7 +123,7 @@ export const mapDescriptionList = dual<
   ) => HelpDoc.HelpDoc
 >(2, (self, f) =>
   isDescriptionList(self)
-    ? descriptionList(ReadonlyArray.map(self.definitions, ([span, helpDoc]) => f(span, helpDoc)))
+    ? descriptionList(Array.map(self.definitions, ([span, helpDoc]) => f(span, helpDoc)))
     : self)
 
 /** @internal */

@@ -3,7 +3,7 @@ import * as Ansi from "@effect/printer-ansi/Ansi"
 import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Optimize from "@effect/printer/Optimize"
 import * as Schema from "@effect/schema/Schema"
-import * as ReadonlyArray from "effect/Array"
+import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
@@ -67,13 +67,13 @@ const renderError = (nextState: State, pointer: Doc.AnsiDoc): Doc.AnsiDoc =>
   Option.match(nextState.error, {
     onNone: () => Doc.empty,
     onSome: (error) =>
-      ReadonlyArray.match(error.split(/\r?\n/), {
+      Array.match(error.split(/\r?\n/), {
         onEmpty: () => Doc.empty,
         onNonEmpty: (errorLines) => {
           const annotateLine = (line: string): Doc.AnsiDoc =>
             Doc.annotate(Doc.text(line), Ansi.combine(Ansi.italicized, Ansi.red))
           const prefix = Doc.cat(Doc.annotate(pointer, Ansi.red), Doc.space)
-          const lines = ReadonlyArray.map(errorLines, (str) => annotateLine(str))
+          const lines = Array.map(errorLines, (str) => annotateLine(str))
           return pipe(
             Doc.cursorSavePosition,
             Doc.cat(Doc.hardLine),
@@ -94,10 +94,10 @@ const renderOutput = (
 ): Doc.AnsiDoc => {
   const annotateLine = (line: string): Doc.AnsiDoc => Doc.annotate(Doc.text(line), Ansi.bold)
   const prefix = Doc.cat(leadingSymbol, Doc.space)
-  return ReadonlyArray.match(options.message.split(/\r?\n/), {
+  return Array.match(options.message.split(/\r?\n/), {
     onEmpty: () => Doc.hsep([prefix, trailingSymbol, renderInput(nextState, submitted)]),
     onNonEmpty: (promptLines) => {
-      const lines = ReadonlyArray.map(promptLines, (line) => annotateLine(line))
+      const lines = Array.map(promptLines, (line) => annotateLine(line))
       return pipe(
         prefix,
         Doc.cat(Doc.nest(Doc.vsep(lines), 2)),

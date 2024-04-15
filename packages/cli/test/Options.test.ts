@@ -7,7 +7,7 @@ import * as FileSystem from "@effect/platform/FileSystem"
 import * as Path from "@effect/platform/Path"
 import * as Schema from "@effect/schema/Schema"
 import { BigDecimal } from "effect"
-import * as ReadonlyArray from "effect/Array"
+import * as Array from "effect/Array"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -49,30 +49,30 @@ const process = <A>(
 describe("Options", () => {
   it("should validate without ambiguity", () =>
     Effect.gen(function*(_) {
-      const args = ReadonlyArray.make("--firstName", "--lastName", "--lastName", "--firstName")
+      const args = Array.make("--firstName", "--lastName", "--lastName", "--firstName")
       const result1 = yield* _(
         process(Options.all([firstName, lastName]), args, CliConfig.defaultConfig)
       )
       const result2 = yield* _(
         process(Options.all([lastName, firstName]), args, CliConfig.defaultConfig)
       )
-      const expected1 = [ReadonlyArray.empty(), ReadonlyArray.make("--lastName", "--firstName")]
-      const expected2 = [ReadonlyArray.empty(), ReadonlyArray.make("--firstName", "--lastName")]
+      const expected1 = [Array.empty(), Array.make("--lastName", "--firstName")]
+      const expected2 = [Array.empty(), Array.make("--firstName", "--lastName")]
       expect(result1).toEqual(expected1)
       expect(result2).toEqual(expected2)
     }).pipe(runEffect))
 
   it("should not uncluster values", () =>
     Effect.gen(function*(_) {
-      const args = ReadonlyArray.make("--firstName", "-ab")
+      const args = Array.make("--firstName", "-ab")
       const result = yield* _(process(firstName, args, CliConfig.defaultConfig))
-      const expected = [ReadonlyArray.empty(), "-ab"]
+      const expected = [Array.empty(), "-ab"]
       expect(result).toEqual(expected)
     }).pipe(runEffect))
 
   it("should return a HelpDoc if an option is not an exact match and it's a short option", () =>
     Effect.gen(function*(_) {
-      const args = ReadonlyArray.make("--ag", "20")
+      const args = Array.make("--ag", "20")
       const result = yield* _(Effect.flip(process(age, args, CliConfig.defaultConfig)))
       expect(result).toEqual(ValidationError.missingValue(HelpDoc.p(
         "Expected to find option: '--age'"
@@ -85,7 +85,7 @@ describe("Options", () => {
         Options.text("a").pipe(Options.map(identity)),
         Options.text("b").pipe(Options.map(identity))
       )
-      const args = ReadonlyArray.make("-a", "a", "-b", "b")
+      const args = Array.make("-a", "a", "-b", "b")
       const result = yield* _(Effect.flip(process(options, args, CliConfig.defaultConfig)))
       expect(result).toEqual(ValidationError.invalidValue(HelpDoc.p(
         "Collision between two options detected - you can only " +
@@ -95,24 +95,24 @@ describe("Options", () => {
 
   it("validates a boolean option without a value", () =>
     Effect.gen(function*(_) {
-      const args = ReadonlyArray.make("--verbose")
+      const args = Array.make("--verbose")
       const result = yield* _(process(verbose, args, CliConfig.defaultConfig))
-      const expected = [ReadonlyArray.empty(), true]
+      const expected = [Array.empty(), true]
       expect(result).toEqual(expected)
     }).pipe(runEffect))
 
   it("validates a boolean option with a followup option", () =>
     Effect.gen(function*(_) {
       const options = Options.all([Options.boolean("help"), Options.boolean("v")])
-      const args1 = ReadonlyArray.empty()
-      const args2 = ReadonlyArray.make("--help")
-      const args3 = ReadonlyArray.make("--help", "-v")
+      const args1 = Array.empty()
+      const args2 = Array.make("--help")
+      const args3 = Array.make("--help", "-v")
       const result1 = yield* _(process(options, args1, CliConfig.defaultConfig))
       const result2 = yield* _(process(options, args2, CliConfig.defaultConfig))
       const result3 = yield* _(process(options, args3, CliConfig.defaultConfig))
-      const expected1 = [ReadonlyArray.empty(), [false, false]]
-      const expected2 = [ReadonlyArray.empty(), [true, false]]
-      const expected3 = [ReadonlyArray.empty(), [true, true]]
+      const expected1 = [Array.empty(), [false, false]]
+      const expected2 = [Array.empty(), [true, false]]
+      const expected3 = [Array.empty(), [true, true]]
       expect(result1).toEqual(expected1)
       expect(result2).toEqual(expected2)
       expect(result3).toEqual(expected3)
@@ -150,7 +150,7 @@ describe("Options", () => {
   it("does not validate collision of boolean options with negation", () =>
     Effect.gen(function*(_) {
       const option = Options.boolean("v", { negationNames: ["s"] })
-      const args = ReadonlyArray.make("-v", "-s")
+      const args = Array.make("-v", "-s")
       const result = yield* _(Effect.flip(process(option, args, CliConfig.defaultConfig)))
       expect(result).toEqual(ValidationError.invalidValue(HelpDoc.p(
         "Collision between two options detected - " +
@@ -161,8 +161,8 @@ describe("Options", () => {
   it("validates a option with choices", () =>
     Effect.gen(function*($) {
       const option = Options.choice("animal", ["cat", "dog"])
-      const args1 = ReadonlyArray.make("--animal", "cat")
-      const args2 = ReadonlyArray.make("--animal", "dog")
+      const args1 = Array.make("--animal", "cat")
+      const args2 = Array.make("--animal", "dog")
       const result1 = yield* $(process(option, args1, CliConfig.defaultConfig))
       const result2 = yield* $(process(option, args2, CliConfig.defaultConfig))
       expect(result1).toEqual([[], "cat"])
@@ -180,8 +180,8 @@ describe("Options", () => {
         ["dog", dog],
         ["cat", cat]
       ])
-      const args1 = ReadonlyArray.make("--animal", "cat")
-      const args2 = ReadonlyArray.make("--animal", "dog")
+      const args1 = Array.make("--animal", "cat")
+      const args2 = Array.make("--animal", "dog")
       const result1 = yield* $(process(option, args1, CliConfig.defaultConfig))
       const result2 = yield* $(process(option, args2, CliConfig.defaultConfig))
       expect(result1).toEqual([[], cat])
@@ -216,14 +216,14 @@ describe("Options", () => {
 
   it("validates an option and returns the remainder", () =>
     Effect.gen(function*(_) {
-      const args = ReadonlyArray.make("--firstName", "John", "--lastName", "Doe")
+      const args = Array.make("--firstName", "John", "--lastName", "Doe")
       const result = yield* _(process(firstName, args, CliConfig.defaultConfig))
       expect(result).toEqual([["--lastName", "Doe"], "John"])
     }).pipe(runEffect))
 
   it("does not validate when no valid values are passed", () =>
     Effect.gen(function*(_) {
-      const args = ReadonlyArray.make("--lastName", "Doe")
+      const args = Array.make("--lastName", "Doe")
       const result = yield* _(Effect.either(process(firstName, args, CliConfig.defaultConfig)))
       expect(result).toEqual(Either.left(ValidationError.missingValue(HelpDoc.p(
         "Expected to find option: '--firstName'"
@@ -232,7 +232,7 @@ describe("Options", () => {
 
   it("does not validate when an option is passed without a corresponding value", () =>
     Effect.gen(function*(_) {
-      const args = ReadonlyArray.make("--firstName")
+      const args = Array.make("--firstName")
       const result = yield* _(Effect.either(process(firstName, args, CliConfig.defaultConfig)))
       expect(result).toEqual(Either.left(ValidationError.missingValue(HelpDoc.p(
         "Expected a value following option: '--firstName'"
@@ -242,7 +242,7 @@ describe("Options", () => {
   it("does not validate an invalid option value", () =>
     Effect.gen(function*(_) {
       const option = Options.integer("t")
-      const args = ReadonlyArray.make("-t", "abc")
+      const args = Array.make("-t", "abc")
       const result = yield* _(Effect.flip(process(option, args, CliConfig.defaultConfig)))
       expect(result).toEqual(ValidationError.invalidValue(HelpDoc.p("'abc' is not a integer")))
     }).pipe(runEffect))
@@ -250,7 +250,7 @@ describe("Options", () => {
   it("does not validate an invalid option value even when there is a default", () =>
     Effect.gen(function*(_) {
       const option = Options.withDefault(Options.integer("t"), 0)
-      const args = ReadonlyArray.make("-t", "abc")
+      const args = Array.make("-t", "abc")
       const result = yield* _(Effect.flip(process(option, args, CliConfig.defaultConfig)))
       expect(result).toEqual(ValidationError.invalidValue(HelpDoc.p("'abc' is not a integer")))
     }).pipe(runEffect))
@@ -259,10 +259,10 @@ describe("Options", () => {
     Effect.gen(function*(_) {
       const config = CliConfig.make({ isCaseSensitive: true, autoCorrectLimit: 2 })
       const option = Options.text("Firstname").pipe(Options.withAlias("F"))
-      const args1 = ReadonlyArray.make("--Firstname", "John")
-      const args2 = ReadonlyArray.make("-F", "John")
-      const args3 = ReadonlyArray.make("--firstname", "John")
-      const args4 = ReadonlyArray.make("-f", "John")
+      const args1 = Array.make("--Firstname", "John")
+      const args2 = Array.make("-F", "John")
+      const args3 = Array.make("--firstname", "John")
+      const args4 = Array.make("-f", "John")
       const result1 = yield* _(process(option, args1, config))
       const result2 = yield* _(process(option, args2, config))
       const result3 = yield* _(Effect.flip(process(option, args3, config)))
@@ -285,14 +285,14 @@ describe("Options", () => {
 
   it("validates an unsupplied optional option with remainder", () =>
     Effect.gen(function*(_) {
-      const args = ReadonlyArray.make("--bar", "baz")
+      const args = Array.make("--bar", "baz")
       const result = yield* _(process(ageOptional, args, CliConfig.defaultConfig))
       expect(result).toEqual([args, Option.none()])
     }).pipe(runEffect))
 
   it("validates a supplied optional option", () =>
     Effect.gen(function*(_) {
-      const args = ReadonlyArray.make("--age", "20")
+      const args = Array.make("--age", "20")
       const result = yield* _(process(ageOptional, args, CliConfig.defaultConfig))
       expect(result).toEqual([[], Option.some(20)])
     }).pipe(runEffect))
@@ -304,7 +304,7 @@ describe("Options", () => {
         lastName: Options.text("lastName")
       })
       const option2 = Options.all([Options.text("firstName"), Options.text("lastName")])
-      const args = ReadonlyArray.make("--firstName", "John", "--lastName", "Doe")
+      const args = Array.make("--firstName", "John", "--lastName", "Doe")
       const result1 = yield* _(process(option1, args, CliConfig.defaultConfig))
       const result2 = yield* _(process(option2, args, CliConfig.defaultConfig))
       expect(result1).toEqual([[], { firstName: "John", lastName: "Doe" }])
@@ -313,7 +313,7 @@ describe("Options", () => {
 
   it("validate provides a suggestion if a provided option is close to a specified option", () =>
     Effect.gen(function*(_) {
-      const args = ReadonlyArray.make("--firstme", "Alice")
+      const args = Array.make("--firstme", "Alice")
       const result = yield* _(Effect.flip(process(firstName, args, CliConfig.defaultConfig)))
       expect(result).toEqual(ValidationError.correctedFlag(HelpDoc.p(
         "The flag '--firstme' is not recognized. Did you mean '--firstName'?"
@@ -323,7 +323,7 @@ describe("Options", () => {
   it("validate provides a suggestion if a provided option with a default is close to a specified option", () =>
     Effect.gen(function*(_) {
       const option = firstName.pipe(Options.withDefault("Jack"))
-      const args = ReadonlyArray.make("--firstme", "Alice")
+      const args = Array.make("--firstme", "Alice")
       const result = yield* _(Effect.flip(process(option, args, CliConfig.defaultConfig)))
       expect(result).toEqual(ValidationError.invalidValue(HelpDoc.p(
         "The flag '--firstme' is not recognized. Did you mean '--firstName'?"
@@ -340,8 +340,8 @@ describe("Options", () => {
           )
         )
       )
-      const args1 = ReadonlyArray.make("--integer", "2")
-      const args2 = ReadonlyArray.make("--string", "two")
+      const args1 = Array.make("--integer", "2")
+      const args2 = Array.make("--string", "two")
       const result1 = yield* _(process(option, args1, CliConfig.defaultConfig))
       const result2 = yield* _(process(option, args2, CliConfig.defaultConfig))
       expect(result1).toEqual([[], Either.right(2)])
@@ -351,7 +351,7 @@ describe("Options", () => {
   it("orElse - option collision", () =>
     Effect.gen(function*(_) {
       const option = Options.orElse(Options.text("string"), Options.integer("integer"))
-      const args = ReadonlyArray.make("--integer", "2", "--string", "two")
+      const args = Array.make("--integer", "2", "--string", "two")
       const result = yield* _(Effect.flip(process(option, args, CliConfig.defaultConfig)))
       expect(result).toEqual(ValidationError.invalidValue(HelpDoc.p(
         "Collision between two options detected - " +
@@ -376,7 +376,7 @@ describe("Options", () => {
         Options.orElse(Options.integer("max")),
         Options.withDefault(0)
       )
-      const args = ReadonlyArray.make("--min", "abc")
+      const args = Array.make("--min", "abc")
       const result = yield* _(Effect.flip(process(option, args, CliConfig.defaultConfig)))
       const error = ValidationError.invalidValue(HelpDoc.sequence(
         HelpDoc.p("'abc' is not a integer"),
@@ -395,28 +395,28 @@ describe("Options", () => {
 
   it("keyValueMap - validates repeated values", () =>
     Effect.gen(function*(_) {
-      const args = ReadonlyArray.make("-d", "key1=v1", "-d", "key2=v2", "--verbose")
+      const args = Array.make("-d", "key1=v1", "-d", "key2=v2", "--verbose")
       const result = yield* _(process(defs, args, CliConfig.defaultConfig))
       expect(result).toEqual([["--verbose"], HashMap.make(["key1", "v1"], ["key2", "v2"])])
     }).pipe(runEffect))
 
   it("keyValueMap - validates different key/values", () =>
     Effect.gen(function*(_) {
-      const args = ReadonlyArray.make("--defs", "key1=v1", "key2=v2", "--verbose")
+      const args = Array.make("--defs", "key1=v1", "key2=v2", "--verbose")
       const result = yield* _(process(defs, args, CliConfig.defaultConfig))
       expect(result).toEqual([["--verbose"], HashMap.make(["key1", "v1"], ["key2", "v2"])])
     }).pipe(runEffect))
 
   it("keyValueMap - validates different key/values with alias", () =>
     Effect.gen(function*(_) {
-      const args = ReadonlyArray.make("-d", "key1=v1", "key2=v2", "--verbose")
+      const args = Array.make("-d", "key1=v1", "key2=v2", "--verbose")
       const result = yield* _(process(defs, args, CliConfig.defaultConfig))
       expect(result).toEqual([["--verbose"], HashMap.make(["key1", "v1"], ["key2", "v2"])])
     }).pipe(runEffect))
 
   it("keyValueMap - validate should keep non-key-value parameters that follow the key-value pairs (each preceded by alias -d)", () =>
     Effect.gen(function*(_) {
-      const args = ReadonlyArray.make(
+      const args = Array.make(
         "-d",
         "key1=val1",
         "-d",
@@ -436,7 +436,7 @@ describe("Options", () => {
 
   it("keyValueMap - validate should keep non-key-value parameters that follow the key-value pairs (only the first key/value pair is preceded by alias)", () =>
     Effect.gen(function*(_) {
-      const args = ReadonlyArray.make(
+      const args = Array.make(
         "-d",
         "key1=val1",
         "key2=val2",
@@ -454,7 +454,7 @@ describe("Options", () => {
 
   it("keyValueMap - validate should return an error for invalid key/value pairs", () =>
     Effect.gen(function*(_) {
-      const args = ReadonlyArray.make(
+      const args = Array.make(
         "-d",
         "key1=val1",
         "key2=val2",
@@ -482,8 +482,8 @@ describe("Options", () => {
       const result2 = yield* _(process(option, args2, CliConfig.defaultConfig))
       const result3 = yield* _(Effect.flip(process(option, args3, CliConfig.defaultConfig)))
       const result4 = yield* _(Effect.flip(process(option, args4, CliConfig.defaultConfig)))
-      expect(result1).toEqual([ReadonlyArray.empty(), []])
-      expect(result2).toEqual([ReadonlyArray.empty(), [1, 2, 3]])
+      expect(result1).toEqual([Array.empty(), []])
+      expect(result2).toEqual([Array.empty(), [1, 2, 3]])
       expect(result3).toEqual(ValidationError.invalidValue(HelpDoc.p("'v2' is not a integer")))
       expect(result4).toEqual(ValidationError.invalidValue(HelpDoc.p("'v2' is not a integer")))
     }).pipe(runEffect))
@@ -495,7 +495,7 @@ describe("Options", () => {
       const args2 = ["--foo", "1"]
       const result1 = yield* _(process(option, args1, CliConfig.defaultConfig))
       const result2 = yield* _(Effect.flip(process(option, args2, CliConfig.defaultConfig)))
-      expect(result1).toEqual([ReadonlyArray.empty(), [1, 2]])
+      expect(result1).toEqual([Array.empty(), [1, 2]])
       expect(result2).toEqual(ValidationError.invalidValue(HelpDoc.p(
         "Expected at least 2 value(s) for option: '--foo'"
       )))
@@ -508,7 +508,7 @@ describe("Options", () => {
       const args2 = ["--foo", "1", "--foo", "2", "--foo", "3"]
       const result1 = yield* _(process(option, args1, CliConfig.defaultConfig))
       const result2 = yield* _(Effect.flip(process(option, args2, CliConfig.defaultConfig)))
-      expect(result1).toEqual([ReadonlyArray.empty(), [1, 2]])
+      expect(result1).toEqual([Array.empty(), [1, 2]])
       expect(result2).toEqual(ValidationError.invalidValue(HelpDoc.p(
         "Expected at most 2 value(s) for option: '--foo'"
       )))
@@ -528,8 +528,8 @@ describe("Options", () => {
       expect(result1).toEqual(ValidationError.invalidValue(HelpDoc.p(
         "Expected at least 2 value(s) for option: '--foo'"
       )))
-      expect(result2).toEqual([ReadonlyArray.empty(), [1, 2]])
-      expect(result3).toEqual([ReadonlyArray.empty(), [1, 2, 3]])
+      expect(result2).toEqual([Array.empty(), [1, 2]])
+      expect(result3).toEqual([Array.empty(), [1, 2, 3]])
       expect(result4).toEqual(ValidationError.invalidValue(HelpDoc.p(
         "Expected at most 3 value(s) for option: '--foo'"
       )))

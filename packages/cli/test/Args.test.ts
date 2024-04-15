@@ -5,7 +5,7 @@ import * as ValidationError from "@effect/cli/ValidationError"
 import { FileSystem, Path } from "@effect/platform"
 import { NodeContext } from "@effect/platform-node"
 import * as Schema from "@effect/schema/Schema"
-import * as ReadonlyArray from "effect/Array"
+import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import { describe, expect, it } from "vitest"
@@ -19,30 +19,30 @@ describe("Args", () => {
     Effect.gen(function*(_) {
       const args = Args.integer().pipe(Args.withDefault(0))
       const result = yield* _(
-        Args.validate(args, ReadonlyArray.empty(), CliConfig.defaultConfig)
+        Args.validate(args, Array.empty(), CliConfig.defaultConfig)
       )
-      expect(result).toEqual([ReadonlyArray.empty(), 0])
+      expect(result).toEqual([Array.empty(), 0])
     }).pipe(runEffect))
 
   it("validates an valid optional argument", () =>
     Effect.gen(function*(_) {
       const args = Args.integer().pipe(Args.optional)
       let result = yield* _(
-        Args.validate(args, ReadonlyArray.empty(), CliConfig.defaultConfig)
+        Args.validate(args, Array.empty(), CliConfig.defaultConfig)
       )
-      expect(result).toEqual([ReadonlyArray.empty(), Option.none()])
+      expect(result).toEqual([Array.empty(), Option.none()])
 
       result = yield* _(
         Args.validate(args, ["123"], CliConfig.defaultConfig)
       )
-      expect(result).toEqual([ReadonlyArray.empty(), Option.some(123)])
+      expect(result).toEqual([Array.empty(), Option.some(123)])
     }).pipe(runEffect))
 
   it("does not validate an invalid argument even when there is a default", () =>
     Effect.gen(function*(_) {
       const args = Args.integer().pipe(Args.withDefault(0))
       const result = yield* _(Effect.flip(
-        Args.validate(args, ReadonlyArray.of("abc"), CliConfig.defaultConfig)
+        Args.validate(args, Array.of("abc"), CliConfig.defaultConfig)
       ))
       expect(result).toEqual(ValidationError.invalidArgument(HelpDoc.p("'abc' is not a integer")))
     }).pipe(runEffect))
@@ -53,9 +53,9 @@ describe("Args", () => {
       const filePath = path.join(__dirname, "Args.test.ts")
       const args = Args.file({ name: "files", exists: "yes" }).pipe(Args.repeated)
       const result = yield* _(
-        Args.validate(args, ReadonlyArray.of(filePath), CliConfig.defaultConfig)
+        Args.validate(args, Array.of(filePath), CliConfig.defaultConfig)
       )
-      expect(result).toEqual([ReadonlyArray.empty(), ReadonlyArray.of(filePath)])
+      expect(result).toEqual([Array.empty(), Array.of(filePath)])
     }).pipe(runEffect))
 
   it("should return an error when a file that is expected to exist is not found", () =>
@@ -64,7 +64,7 @@ describe("Args", () => {
       const filePath = path.join(__dirname, "NotExist.test.ts")
       const args = Args.file({ name: "files", exists: "yes" }).pipe(Args.repeated)
       const result = yield* _(
-        Effect.flip(Args.validate(args, ReadonlyArray.of(filePath), CliConfig.defaultConfig))
+        Effect.flip(Args.validate(args, Array.of(filePath), CliConfig.defaultConfig))
       )
       expect(result).toEqual(ValidationError.invalidArgument(HelpDoc.p(
         `Path '${filePath}' must exist`
@@ -77,9 +77,9 @@ describe("Args", () => {
       const filePath = path.join(__dirname, "NotExist.test.ts")
       const args = Args.file({ name: "files", exists: "no" }).pipe(Args.repeated)
       const result = yield* _(
-        Args.validate(args, ReadonlyArray.of(filePath), CliConfig.defaultConfig)
+        Args.validate(args, Array.of(filePath), CliConfig.defaultConfig)
       )
-      expect(result).toEqual([ReadonlyArray.empty(), ReadonlyArray.of(filePath)])
+      expect(result).toEqual([Array.empty(), Array.of(filePath)])
     }).pipe(runEffect))
 
   it("should validate a series of files", () =>
@@ -88,9 +88,9 @@ describe("Args", () => {
       const filePath = path.join(__dirname, "NotExist.test.ts")
       const args = Args.file({ name: "files", exists: "no" }).pipe(Args.repeated)
       const result = yield* _(
-        Args.validate(args, ReadonlyArray.make(filePath, filePath), CliConfig.defaultConfig)
+        Args.validate(args, Array.make(filePath, filePath), CliConfig.defaultConfig)
       )
-      expect(result).toEqual([ReadonlyArray.empty(), ReadonlyArray.make(filePath, filePath)])
+      expect(result).toEqual([Array.empty(), Array.make(filePath, filePath)])
     }).pipe(runEffect))
 
   it("validates an valid argument with a Schema", () =>
@@ -99,14 +99,14 @@ describe("Args", () => {
       const result = yield* _(
         Args.validate(args, ["123"], CliConfig.defaultConfig)
       )
-      expect(result).toEqual([ReadonlyArray.empty(), 123])
+      expect(result).toEqual([Array.empty(), 123])
     }).pipe(runEffect))
 
   it("does not validate an invalid argument with a Schema", () =>
     Effect.gen(function*(_) {
       const args = Args.integer().pipe(Args.withSchema(Schema.Positive))
       const result = yield* _(Effect.flip(
-        Args.validate(args, ReadonlyArray.of("-123"), CliConfig.defaultConfig)
+        Args.validate(args, Array.of("-123"), CliConfig.defaultConfig)
       ))
       expect(result).toEqual(ValidationError.invalidArgument(HelpDoc.p(
         "Positive\n" +
@@ -123,9 +123,9 @@ describe("Args", () => {
       const content = yield* _(fs.readFile(filePath))
       const args = Args.fileContent({ name: "files" }).pipe(Args.repeated)
       const result = yield* _(
-        Args.validate(args, ReadonlyArray.of(filePath), CliConfig.defaultConfig)
+        Args.validate(args, Array.of(filePath), CliConfig.defaultConfig)
       )
-      expect(result).toEqual([ReadonlyArray.empty(), ReadonlyArray.of([filePath, content])])
+      expect(result).toEqual([Array.empty(), Array.of([filePath, content])])
     }).pipe(runEffect))
 
   it("fileText", () =>
@@ -136,9 +136,9 @@ describe("Args", () => {
       const content = yield* _(fs.readFileString(filePath))
       const args = Args.fileText({ name: "files" }).pipe(Args.repeated)
       const result = yield* _(
-        Args.validate(args, ReadonlyArray.of(filePath), CliConfig.defaultConfig)
+        Args.validate(args, Array.of(filePath), CliConfig.defaultConfig)
       )
-      expect(result).toEqual([ReadonlyArray.empty(), ReadonlyArray.of([filePath, content])])
+      expect(result).toEqual([Array.empty(), Array.of([filePath, content])])
     }).pipe(runEffect))
 
   it("fileParse", () =>
@@ -149,9 +149,9 @@ describe("Args", () => {
       const content = yield* _(fs.readFileString(filePath), Effect.map(JSON.parse))
       const args = Args.fileParse({ name: "files" }).pipe(Args.repeated)
       const result = yield* _(
-        Args.validate(args, ReadonlyArray.of(filePath), CliConfig.defaultConfig)
+        Args.validate(args, Array.of(filePath), CliConfig.defaultConfig)
       )
-      expect(result).toEqual([ReadonlyArray.empty(), ReadonlyArray.of(content)])
+      expect(result).toEqual([Array.empty(), Array.of(content)])
     }).pipe(runEffect))
 
   it("fileSchema", () =>
@@ -168,8 +168,8 @@ describe("Args", () => {
         { name: "files" }
       ).pipe(Args.repeated)
       const result = yield* _(
-        Args.validate(args, ReadonlyArray.of(filePath), CliConfig.defaultConfig)
+        Args.validate(args, Array.of(filePath), CliConfig.defaultConfig)
       )
-      expect(result).toEqual([ReadonlyArray.empty(), ReadonlyArray.of(content)])
+      expect(result).toEqual([Array.empty(), Array.of(content)])
     }).pipe(runEffect))
 })

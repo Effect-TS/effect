@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as ReadonlyArray from "effect/Array"
+import * as Array_ from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
@@ -64,12 +64,12 @@ describe("Effect", () => {
     }))
   it.effect("loop - loops with the specified effectual function", () =>
     Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(ReadonlyArray.empty<number>()))
+      const ref = yield* $(Ref.make(Array_.empty<number>()))
       yield* $(
         Effect.loop(0, {
           while: (n) => n < 5,
           step: (n) => n + 1,
-          body: (n) => Ref.update(ref, ReadonlyArray.append(n))
+          body: (n) => Ref.update(ref, Array_.append(n))
         })
       )
       const result = yield* $(Ref.get(ref))
@@ -77,11 +77,11 @@ describe("Effect", () => {
     }))
   it.effect("loop/discard - loops with the specified effectual function", () =>
     Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(ReadonlyArray.empty<number>()))
+      const ref = yield* $(Ref.make(Array_.empty<number>()))
       yield* $(Effect.loop(0, {
         while: (n) => n < 5,
         step: (n) => n + 1,
-        body: (n) => Ref.update(ref, ReadonlyArray.append(n)),
+        body: (n) => Ref.update(ref, Array_.append(n)),
         discard: true
       }))
       const result = yield* $(Ref.get(ref))
@@ -143,8 +143,8 @@ describe("Effect", () => {
     }))
   it.effect("forEach/discard - runs effects in order", () =>
     Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(ReadonlyArray.empty<number>()))
-      yield* $([1, 2, 3, 4, 5], Effect.forEach((n) => Ref.update(ref, ReadonlyArray.append(n)), { discard: true }))
+      const ref = yield* $(Ref.make(Array_.empty<number>()))
+      yield* $([1, 2, 3, 4, 5], Effect.forEach((n) => Ref.update(ref, Array_.append(n)), { discard: true }))
       const result = yield* $(Ref.get(ref))
       assert.deepStrictEqual(result, [1, 2, 3, 4, 5])
     }))

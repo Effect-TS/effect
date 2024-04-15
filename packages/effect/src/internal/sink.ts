@@ -1,4 +1,4 @@
-import * as ReadonlyArray from "../Array.js"
+import * as Array from "../Array.js"
 import * as Cause from "../Cause.js"
 import type * as Channel from "../Channel.js"
 import * as Chunk from "../Chunk.js"
@@ -213,7 +213,7 @@ const collectAllWhileReader = <In>(
 ): Channel.Channel<Chunk.Chunk<In>, Chunk.Chunk<In>, never, never, Chunk.Chunk<In>, unknown> =>
   core.readWith({
     onInput: (input: Chunk.Chunk<In>) => {
-      const [collected, leftovers] = pipe(Chunk.toReadonlyArray(input), ReadonlyArray.span(predicate))
+      const [collected, leftovers] = pipe(Chunk.toReadonlyArray(input), Array.span(predicate))
       if (leftovers.length === 0) {
         return collectAllWhileReader(
           predicate,

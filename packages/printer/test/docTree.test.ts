@@ -2,7 +2,7 @@ import * as Doc from "@effect/printer/Doc"
 import * as DocStream from "@effect/printer/DocStream"
 import * as DocTree from "@effect/printer/DocTree"
 import * as Layout from "@effect/printer/Layout"
-import * as ReadonlyArray from "effect/Array"
+import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as String from "effect/String"
@@ -173,7 +173,7 @@ describe.concurrent("DocTree", () => {
             }
             const head = tree.trees[0]
             const tail = tree.trees.slice(1)
-            return ReadonlyArray.reduce(
+            return Array.reduce(
               tail,
               Effect.suspend(() => renderTreeSafe(head)),
               (acc, tree) =>

@@ -1,4 +1,4 @@
-import * as ReadonlyArray from "../Array.js"
+import * as Array_ from "../Array.js"
 import type * as Config from "../Config.js"
 import type * as ConfigError from "../ConfigError.js"
 import type * as ConfigProvider from "../ConfigProvider.js"
@@ -85,12 +85,12 @@ export const makeFlat = (
 export const fromFlat = (flat: ConfigProvider.ConfigProvider.Flat): ConfigProvider.ConfigProvider =>
   make({
     load: (config) =>
-      core.flatMap(fromFlatLoop(flat, ReadonlyArray.empty(), config, false), (chunk) =>
-        Option.match(ReadonlyArray.head(chunk), {
+      core.flatMap(fromFlatLoop(flat, Array_.empty(), config, false), (chunk) =>
+        Option.match(Array_.head(chunk), {
           onNone: () =>
             core.fail(
               configError.MissingData(
-                ReadonlyArray.empty(),
+                Array_.empty(),
                 `Expected a single value having structure: ${config}`
               )
             ),
@@ -104,7 +104,7 @@ export const fromEnv = (
   config?: Partial<ConfigProvider.ConfigProvider.FromEnvConfig>
 ): ConfigProvider.ConfigProvider => {
   const { pathDelim, seqDelim } = Object.assign({}, { pathDelim: "_", seqDelim: "," }, config)
-  const makePathString = (path: ReadonlyArray<string>): string => pipe(path, ReadonlyArray.join(pathDelim))
+  const makePathString = (path: ReadonlyArray<string>): string => pipe(path, Array_.join(pathDelim))
   const unmakePathString = (pathString: string): ReadonlyArray<string> => pathString.split(pathDelim)
 
   const getEnv = () =>
@@ -134,7 +134,7 @@ export const fromEnv = (
       const keyPaths = Array.from(keys).map((value) => unmakePathString(value.toUpperCase()))
       const filteredKeyPaths = keyPaths.filter((keyPath) => {
         for (let i = 0; i < path.length; i++) {
-          const pathComponent = pipe(path, ReadonlyArray.unsafeGet(i))
+          const pathComponent = pipe(path, Array_.unsafeGet(i))
           const currentElement = keyPath[i]
           if (currentElement === undefined || pathComponent !== currentElement) {
             return false
@@ -154,7 +154,7 @@ export const fromMap = (
   config?: Partial<ConfigProvider.ConfigProvider.FromMapConfig>
 ): ConfigProvider.ConfigProvider => {
   const { pathDelim, seqDelim } = Object.assign({ seqDelim: ",", pathDelim: "." }, config)
-  const makePathString = (path: ReadonlyArray<string>): string => pipe(path, ReadonlyArray.join(pathDelim))
+  const makePathString = (path: ReadonlyArray<string>): string => pipe(path, Array_.join(pathDelim))
   const unmakePathString = (pathString: string): ReadonlyArray<string> => pathString.split(pathDelim)
   const mapWithIndexSplit = splitIndexInKeys(
     map,
@@ -183,7 +183,7 @@ export const fromMap = (
       const keyPaths = Array.from(mapWithIndexSplit.keys()).map(unmakePathString)
       const filteredKeyPaths = keyPaths.filter((keyPath) => {
         for (let i = 0; i < path.length; i++) {
-          const pathComponent = pipe(path, ReadonlyArray.unsafeGet(i))
+          const pathComponent = pipe(path, Array_.unsafeGet(i))
           const currentElement = keyPath[i]
           if (currentElement === undefined || pathComponent !== currentElement) {
             return false
@@ -203,14 +203,14 @@ const extend = <A, B>(
   left: ReadonlyArray<A>,
   right: ReadonlyArray<B>
 ): [ReadonlyArray<A>, ReadonlyArray<B>] => {
-  const leftPad = ReadonlyArray.unfold(
+  const leftPad = Array_.unfold(
     left.length,
     (index) =>
       index >= right.length ?
         Option.none() :
         Option.some([leftDef(index), index + 1])
   )
-  const rightPad = ReadonlyArray.unfold(
+  const rightPad = Array_.unfold(
     right.length,
     (index) =>
       index >= left.length ?
@@ -244,7 +244,7 @@ const fromFlatLoop = <A>(
   const op = config as _config.ConfigPrimitive
   switch (op._tag) {
     case OpCodes.OP_CONSTANT: {
-      return core.succeed(ReadonlyArray.of(op.value)) as Effect.Effect<ReadonlyArray<A>, ConfigError.ConfigError>
+      return core.succeed(Array_.of(op.value)) as Effect.Effect<ReadonlyArray<A>, ConfigError.ConfigError>
     }
     case OpCodes.OP_DESCRIBED: {
       return core.suspend(
@@ -296,7 +296,7 @@ const fromFlatLoop = <A>(
       return core.suspend(() =>
         fromFlatLoop(
           flat,
-          concat(prefix, ReadonlyArray.of(op.name)),
+          concat(prefix, Array_.of(op.name)),
           op.config,
           split
         )
@@ -310,7 +310,7 @@ const fromFlatLoop = <A>(
             flat.load(prefix, op, split),
             core.flatMap((values) => {
               if (values.length === 0) {
-                const name = pipe(ReadonlyArray.last(prefix), Option.getOrElse(() => "<n/a>"))
+                const name = pipe(Array_.last(prefix), Option.getOrElse(() => "<n/a>"))
                 return core.fail(configError.MissingData([], `Expected ${op.description} with name ${name}`))
               }
               return core.succeed(values)
@@ -329,20 +329,20 @@ const fromFlatLoop = <A>(
             core.flatMap((indices) => {
               if (indices.length === 0) {
                 return core.suspend(() =>
-                  core.map(fromFlatLoop(flat, patchedPrefix, op.config, true), ReadonlyArray.of)
+                  core.map(fromFlatLoop(flat, patchedPrefix, op.config, true), Array_.of)
                 ) as unknown as Effect.Effect<ReadonlyArray<A>, ConfigError.ConfigError>
               }
               return pipe(
                 core.forEachSequential(
                   indices,
-                  (index) => fromFlatLoop(flat, ReadonlyArray.append(prefix, `[${index}]`), op.config, true)
+                  (index) => fromFlatLoop(flat, Array_.append(prefix, `[${index}]`), op.config, true)
                 ),
                 core.map((chunkChunk) => {
-                  const flattened = ReadonlyArray.flatten(chunkChunk)
+                  const flattened = Array_.flatten(chunkChunk)
                   if (flattened.length === 0) {
-                    return ReadonlyArray.of(ReadonlyArray.empty<A>())
+                    return Array_.of(Array_.empty<A>())
                   }
-                  return ReadonlyArray.of(flattened)
+                  return Array_.of(flattened)
                 })
               ) as unknown as Effect.Effect<ReadonlyArray<A>, ConfigError.ConfigError>
             })
@@ -363,21 +363,19 @@ const fromFlatLoop = <A>(
                   core.forEachSequential((key) =>
                     fromFlatLoop(
                       flat,
-                      concat(prefix, ReadonlyArray.of(key)),
+                      concat(prefix, Array_.of(key)),
                       op.valueConfig,
                       split
                     )
                   ),
                   core.map((values) => {
                     if (values.length === 0) {
-                      return ReadonlyArray.of(HashMap.empty())
+                      return Array_.of(HashMap.empty())
                     }
                     const matrix = values.map((x) => Array.from(x))
                     return pipe(
                       transpose(matrix),
-                      ReadonlyArray.map((values) =>
-                        HashMap.fromIterable(ReadonlyArray.zip(ReadonlyArray.fromIterable(keys), values))
-                      )
+                      Array_.map((values) => HashMap.fromIterable(Array_.zip(Array_.fromIterable(keys), values)))
                     )
                   })
                 )
@@ -407,17 +405,17 @@ const fromFlatLoop = <A>(
                   return core.fail(right.left)
                 }
                 if (Either.isRight(left) && Either.isRight(right)) {
-                  const path = pipe(prefix, ReadonlyArray.join("."))
+                  const path = pipe(prefix, Array_.join("."))
                   const fail = fromFlatLoopFail(prefix, path)
                   const [lefts, rights] = extend(
                     fail,
                     fail,
-                    pipe(left.right, ReadonlyArray.map(Either.right)),
-                    pipe(right.right, ReadonlyArray.map(Either.right))
+                    pipe(left.right, Array_.map(Either.right)),
+                    pipe(right.right, Array_.map(Either.right))
                   )
                   return pipe(
                     lefts,
-                    ReadonlyArray.zip(rights),
+                    Array_.zip(rights),
                     core.forEachSequential(([left, right]) =>
                       pipe(
                         core.zip(left, right),
@@ -590,8 +588,8 @@ export const within = dual<
     f: (self: ConfigProvider.ConfigProvider) => ConfigProvider.ConfigProvider
   ) => ConfigProvider.ConfigProvider
 >(3, (self, path, f) => {
-  const unnest = ReadonlyArray.reduce(path, self, (provider, name) => unnested(provider, name))
-  const nest = ReadonlyArray.reduceRight(path, f(unnest), (provider, name) => nested(provider, name))
+  const unnest = Array_.reduce(path, self, (provider, name) => unnested(provider, name))
+  const nest = Array_.reduceRight(path, f(unnest), (provider, name) => nested(provider, name))
   return orElse(nest, () => self)
 })
 
@@ -612,7 +610,7 @@ const parsePrimitive = <A>(
       primitive.parse(text),
       core.mapBoth({
         onFailure: configError.prefixed(path),
-        onSuccess: ReadonlyArray.of
+        onSuccess: Array_.of
       })
     )
   }
@@ -631,8 +629,8 @@ const indicesFrom = (quotedIndices: HashSet.HashSet<string>): Effect.Effect<Read
   pipe(
     core.forEachSequential(quotedIndices, parseQuotedIndex),
     core.mapBoth({
-      onFailure: () => ReadonlyArray.empty<number>(),
-      onSuccess: ReadonlyArray.sort(number.Order)
+      onFailure: () => Array_.empty<number>(),
+      onSuccess: Array_.sort(number.Order)
     }),
     core.either,
     core.map(Either.merge)
@@ -664,10 +662,10 @@ const splitIndexInKeys = (
   for (const [pathString, value] of map) {
     const keyWithIndex = pipe(
       unmakePathString(pathString),
-      ReadonlyArray.flatMap((key) =>
+      Array_.flatMap((key) =>
         Option.match(splitIndexFrom(key), {
-          onNone: () => ReadonlyArray.of(key),
-          onSome: ([key, index]) => ReadonlyArray.make(key, `[${index}]`)
+          onNone: () => Array_.of(key),
+          onSome: ([key, index]) => Array_.make(key, `[${index}]`)
         })
       )
     )
@@ -720,7 +718,7 @@ interface JsonArray extends Array<string | number | boolean | null | JsonArray |
 /** @internal */
 export const fromJson = (json: unknown): ConfigProvider.ConfigProvider => {
   const hiddenDelimiter = "\ufeff"
-  const indexedEntries = ReadonlyArray.map(
+  const indexedEntries = Array_.map(
     getIndexedEntries(json as JsonMap),
     ([key, value]): [string, string] => [configPathToString(key).join(hiddenDelimiter), value]
   )
@@ -762,10 +760,10 @@ const getIndexedEntries = (
     value: string | number | boolean | JsonMap | JsonArray | null
   ): ReadonlyArray<[path: ReadonlyArray<KeyComponent>, value: string]> => {
     if (typeof value === "string") {
-      return ReadonlyArray.make([path, value] as [ReadonlyArray<KeyComponent>, string])
+      return Array_.make([path, value] as [ReadonlyArray<KeyComponent>, string])
     }
     if (typeof value === "number" || typeof value === "boolean") {
-      return ReadonlyArray.make([path, String(value)] as [ReadonlyArray<KeyComponent>, string])
+      return Array_.make([path, String(value)] as [ReadonlyArray<KeyComponent>, string])
     }
     if (Array.isArray(value)) {
       return loopArray(path, value)
@@ -773,27 +771,27 @@ const getIndexedEntries = (
     if (typeof value === "object" && value !== null) {
       return loopObject(path, value)
     }
-    return ReadonlyArray.empty<[ReadonlyArray<KeyComponent>, string]>()
+    return Array_.empty<[ReadonlyArray<KeyComponent>, string]>()
   }
   const loopArray = (
     path: ReadonlyArray<KeyComponent>,
     values: JsonArray
   ): ReadonlyArray<[path: ReadonlyArray<KeyComponent>, value: string]> =>
-    ReadonlyArray.match(values, {
-      onEmpty: () => ReadonlyArray.make([path, "<nil>"] as [ReadonlyArray<KeyComponent>, string]),
-      onNonEmpty: ReadonlyArray.flatMap((value, index) => loopAny(ReadonlyArray.append(path, keyIndex(index)), value))
+    Array_.match(values, {
+      onEmpty: () => Array_.make([path, "<nil>"] as [ReadonlyArray<KeyComponent>, string]),
+      onNonEmpty: Array_.flatMap((value, index) => loopAny(Array_.append(path, keyIndex(index)), value))
     })
   const loopObject = (
     path: ReadonlyArray<KeyComponent>,
     value: JsonMap
   ): ReadonlyArray<[path: ReadonlyArray<KeyComponent>, value: string]> =>
     Object.entries(value).flatMap(([key, value]) => {
-      const newPath = ReadonlyArray.append(path, keyName(key))
+      const newPath = Array_.append(path, keyName(key))
       const result = loopAny(newPath, value)
-      if (ReadonlyArray.isEmptyReadonlyArray(result)) {
-        return ReadonlyArray.make([newPath, ""] as [ReadonlyArray<KeyComponent>, string])
+      if (Array_.isEmptyReadonlyArray(result)) {
+        return Array_.make([newPath, ""] as [ReadonlyArray<KeyComponent>, string])
       }
       return result
     })
-  return loopObject(ReadonlyArray.empty(), config)
+  return loopObject(Array_.empty(), config)
 }

@@ -1,4 +1,4 @@
-import * as ReadonlyArray from "effect/Array"
+import * as Array from "effect/Array"
 import * as Console from "effect/Console"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -26,16 +26,16 @@ const pattern = new RegExp(
 const stripAnsi = (str: string) => str.replace(pattern, "")
 
 export const make = Effect.gen(function*(_) {
-  const lines = yield* _(Ref.make(ReadonlyArray.empty<string>()))
+  const lines = yield* _(Ref.make(Array.empty<string>()))
 
   const getLines: MockConsole["getLines"] = (params = {}) =>
     Ref.get(lines).pipe(Effect.map((lines) =>
       params.stripAnsi || false
-        ? ReadonlyArray.map(lines, stripAnsi)
+        ? Array.map(lines, stripAnsi)
         : lines
     ))
 
-  const log: MockConsole["log"] = (...args) => Ref.update(lines, ReadonlyArray.appendAll(args))
+  const log: MockConsole["log"] = (...args) => Ref.update(lines, Array.appendAll(args))
 
   return MockConsole.of({
     [Console.TypeId]: Console.TypeId,

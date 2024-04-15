@@ -1,6 +1,6 @@
 import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
-import * as ReadonlyArray from "effect/Array"
+import * as Array from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
@@ -240,7 +240,7 @@ export const makeManager = Effect.gen(function*(_) {
         const executeEffect = (request: I) =>
           Effect.acquireUseRelease(
             executeAcquire(request),
-            ([, queue]) => Effect.flatMap(Queue.take(queue), Exit.map(ReadonlyArray.unsafeGet(0))),
+            ([, queue]) => Effect.flatMap(Queue.take(queue), Exit.map(Array.unsafeGet(0))),
             executeRelease
           )
 

@@ -4,7 +4,7 @@ import * as Router from "@effect/rpc/Router"
 import * as Rpc from "@effect/rpc/Rpc"
 import { Schema } from "@effect/schema"
 import * as S from "@effect/schema/Schema"
-import * as ReadonlyArray from "effect/Array"
+import * as Array_ from "effect/Array"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -129,9 +129,9 @@ const handlerArray = (u: ReadonlyArray<unknown>) =>
   }))).pipe(
     Stream.runCollect,
     Effect.map(flow(
-      ReadonlyArray.fromIterable,
-      ReadonlyArray.map(([, response]) => response),
-      ReadonlyArray.filter((_): _ is S.ExitEncoded<any, any> => Array.isArray(_) === false)
+      Array_.fromIterable,
+      Array_.map(([, response]) => response),
+      Array_.filter((_): _ is S.ExitEncoded<any, any> => Array.isArray(_) === false)
     ))
   )
 const handlerEffectArray = (u: ReadonlyArray<unknown>) =>
@@ -142,7 +142,7 @@ const handlerEffectArray = (u: ReadonlyArray<unknown>) =>
     sampled: true,
     headers: {}
   }))).pipe(
-    Effect.map(ReadonlyArray.filter((_): _ is S.ExitEncoded<any, any> => Array.isArray(_) === false))
+    Effect.map(Array_.filter((_): _ is S.ExitEncoded<any, any> => Array.isArray(_) === false))
   )
 const resolver = Resolver.make(handler)<typeof router>()
 const resolverEffect = ResolverNoStream.make(handlerEffect)<typeof router>()

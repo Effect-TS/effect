@@ -1,4 +1,4 @@
-import * as ReadonlyArray from "../Array.js"
+import * as Array_ from "../Array.js"
 import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
 import * as Context from "../Context.js"
@@ -886,7 +886,7 @@ export const forEachSequential: {
   2,
   <A, B, E, R>(self: Iterable<A>, f: (a: A, i: number) => Effect.Effect<B, E, R>): Effect.Effect<Array<B>, E, R> =>
     suspend(() => {
-      const arr = ReadonlyArray.fromIterable(self)
+      const arr = Array_.fromIterable(self)
       const ret = new Array(arr.length)
       let i = 0
       return as(
@@ -910,7 +910,7 @@ export const forEachSequentialDiscard: {
   2,
   <A, B, E, R>(self: Iterable<A>, f: (a: A, i: number) => Effect.Effect<B, E, R>): Effect.Effect<void, E, R> =>
     suspend(() => {
-      const arr = ReadonlyArray.fromIterable(self)
+      const arr = Array_.fromIterable(self)
       let i = 0
       return whileLoop({
         while: () => i < arr.length,
@@ -1156,7 +1156,7 @@ export const partitionMap = <A, A1, A2>(
   elements: Iterable<A>,
   f: (a: A) => Either.Either<A2, A1>
 ): [left: Array<A1>, right: Array<A2>] =>
-  ReadonlyArray.fromIterable(elements).reduceRight(
+  Array_.fromIterable(elements).reduceRight(
     ([lefts, rights], current) => {
       const either = f(current)
       switch (either._tag) {
@@ -2000,7 +2000,7 @@ export const withUnhandledErrorLogLevel = dual<
 /** @internal */
 export const currentMetricLabels: FiberRef.FiberRef<ReadonlyArray<MetricLabel.MetricLabel>> = globalValue(
   Symbol.for("effect/FiberRef/currentMetricLabels"),
-  () => fiberRefUnsafeMakeReadonlyArray(ReadonlyArray.empty())
+  () => fiberRefUnsafeMakeReadonlyArray(Array_.empty())
 )
 
 /* @internal */
@@ -2694,7 +2694,7 @@ const exitCollectAllInternal = <A, E>(
   }
   return pipe(
     Chunk.tailNonEmpty(list),
-    ReadonlyArray.reduce(
+    Array_.reduce(
       pipe(Chunk.headNonEmpty(list), exitMap<A, Chunk.Chunk<A>>(Chunk.of)),
       (accumulator, current) =>
         pipe(

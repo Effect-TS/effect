@@ -1,4 +1,4 @@
-import * as ReadonlyArray from "../Array.js"
+import * as Array_ from "../Array.js"
 import * as Chunk from "../Chunk.js"
 import type * as Deferred from "../Deferred.js"
 import type * as Effect from "../Effect.js"
@@ -208,11 +208,11 @@ class QueueImpl<in out A> implements Queue.Queue<A> {
       if (MutableRef.get(this.shutdownFlag)) {
         return core.interrupt
       }
-      const values = ReadonlyArray.fromIterable(iterable)
+      const values = Array_.fromIterable(iterable)
       const pTakers = this.queue.length() === 0
-        ? ReadonlyArray.fromIterable(unsafePollN(this.takers, values.length))
-        : ReadonlyArray.empty
-      const [forTakers, remaining] = pipe(values, ReadonlyArray.splitAt(pTakers.length))
+        ? Array_.fromIterable(unsafePollN(this.takers, values.length))
+        : Array_.empty
+      const [forTakers, remaining] = pipe(values, Array_.splitAt(pTakers.length))
       for (let i = 0; i < pTakers.length; i++) {
         const taker = (pTakers as any)[i]
         const item = forTakers[i]

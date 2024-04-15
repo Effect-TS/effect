@@ -21,7 +21,7 @@
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
  */
-import * as ReadonlyArray from "./Array.js"
+import * as Array_ from "./Array.js"
 import * as Chunk from "./Chunk.js"
 import * as Either from "./Either.js"
 import * as Equal from "./Equal.js"
@@ -91,7 +91,7 @@ export const toArray = <A>(self: List<A>): Array<A> => Array.from(self)
  * @since 2.0.0
  */
 export const getEquivalence = <A>(isEquivalent: Equivalence.Equivalence<A>): Equivalence.Equivalence<List<A>> =>
-  Equivalence.mapInput(ReadonlyArray.getEquivalence(isEquivalent), toArray<A>)
+  Equivalence.mapInput(Array_.getEquivalence(isEquivalent), toArray<A>)
 
 const _equivalence = getEquivalence(Equal.equals)
 

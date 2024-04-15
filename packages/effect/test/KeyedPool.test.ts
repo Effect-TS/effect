@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as ReadonlyArray from "effect/Array"
+import * as Array from "effect/Array"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
@@ -27,7 +27,7 @@ describe("KeyedPool", () => {
       )
       const fiber = yield* $(Effect.fork(
         Effect.forEach(
-          ReadonlyArray.range(1, N),
+          Array.range(1, N),
           () =>
             Effect.scoped(
               Effect.zipRight(
@@ -53,7 +53,7 @@ describe("KeyedPool", () => {
       }))
       const fiber = yield* $(Effect.fork(
         Effect.forEach(
-          ReadonlyArray.range(1, N),
+          Array.range(1, N),
           () =>
             Effect.scoped(pipe(
               KeyedPool.get(pool, "key1"),

@@ -4,7 +4,7 @@
  * @since 2.0.0
  */
 
-import { Either } from "./Either.js"
+import type { Either } from "./Either.js"
 import * as E from "./Either.js"
 import * as Equal from "./Equal.js"
 import * as Equivalence from "./Equivalence.js"
@@ -233,10 +233,10 @@ export const prepend: {
  * If either array is non-empty, the result is also a non-empty array.
  *
  * @example
- * import * as ReadonlyArray from "effect/Array"
+ * import * as Array from "effect/Array"
  *
  * assert.deepStrictEqual(
- *   ReadonlyArray.prependAll([1, 2], ["a", "b"]),
+ *   Array.prependAll([1, 2], ["a", "b"]),
  *   ["a", "b", 1, 2]
  * )
  *

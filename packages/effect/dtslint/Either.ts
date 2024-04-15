@@ -1,4 +1,4 @@
-import * as ReadonlyArray from "effect/Array"
+import * as Array from "effect/Array"
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Predicate from "effect/Predicate"
@@ -119,7 +119,7 @@ declare const error$arrayOfStrings: Either.Either<Array<string>, Error>
 // $ExpectType Either<[string, ...string[]], "b" | Error>
 pipe(
   error$arrayOfStrings,
-  Either.filterOrLeft(ReadonlyArray.isNonEmptyArray, (
+  Either.filterOrLeft(Array.isNonEmptyArray, (
     _s // $ExpectType NoInfer<string[]>
   ) => "b" as const)
 )
@@ -129,7 +129,7 @@ declare const error$readonlyArrayOfStrings: Either.Either<ReadonlyArray<string>,
 // $ExpectType Either<readonly [string, ...string[]], "b" | Error>
 pipe(
   error$readonlyArrayOfStrings,
-  Either.filterOrLeft(ReadonlyArray.isNonEmptyReadonlyArray, (
+  Either.filterOrLeft(Array.isNonEmptyReadonlyArray, (
     _s // $ExpectType NoInfer<readonly string[]>
   ) => "b" as const)
 )

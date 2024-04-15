@@ -4,7 +4,7 @@
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
-import * as ReadonlyArray from "effect/Array"
+import * as Array from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
@@ -703,7 +703,7 @@ export const boot = <
         )),
         decodeRequest: Schema.decodeUnknown(
           Schema.Union(
-            ...ReadonlyArray.filter(
+            ...Array.filter(
               procedures.public,
               Procedure.isSerializable
             ).map((p) => p.schema)

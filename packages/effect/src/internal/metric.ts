@@ -1,4 +1,4 @@
-import * as ReadonlyArray from "../Array.js"
+import * as Array from "../Array.js"
 import * as Clock from "../Clock.js"
 import * as Duration from "../Duration.js"
 import type * as Effect from "../Effect.js"
@@ -275,7 +275,7 @@ export const taggedWithLabelsInput = dual<
       (input, extraTags) =>
         self.unsafeUpdate(
           input,
-          ReadonlyArray.union(f(input), extraTags)
+          Array.union(f(input), extraTags)
         ),
       self.unsafeValue
     ),
@@ -294,8 +294,8 @@ export const taggedWithLabels = dual<
 >(2, (self, extraTags) => {
   return make(
     self.keyType,
-    (input, extraTags1) => self.unsafeUpdate(input, ReadonlyArray.union(extraTags, extraTags1)),
-    (extraTags1) => self.unsafeValue(ReadonlyArray.union(extraTags, extraTags1))
+    (input, extraTags1) => self.unsafeUpdate(input, Array.union(extraTags, extraTags1)),
+    (extraTags1) => self.unsafeValue(Array.union(extraTags, extraTags1))
   )
 })
 

@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as ReadonlyArray from "effect/Array"
+import * as Array_ from "effect/Array"
 import * as Clock from "effect/Clock"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -655,10 +655,10 @@ describe("Metric", () => {
       const snapshot = yield* _(Metric.snapshot)
       const values = Array.from(snapshot)
       const pair1 = yield* _(
-        ReadonlyArray.findFirst(values, (key) => Equal.equals(key.metricKey, MetricKey.counter(name)))
+        Array_.findFirst(values, (key) => Equal.equals(key.metricKey, MetricKey.counter(name)))
       )
       const pair2 = yield* _(
-        ReadonlyArray.findFirst(values, (key) =>
+        Array_.findFirst(values, (key) =>
           Equal.equals(
             key.metricKey,
             MetricKey.counter(name, {
@@ -667,7 +667,7 @@ describe("Metric", () => {
           ))
       )
       const pair3 = yield* _(
-        ReadonlyArray.findFirst(values, (key) =>
+        Array_.findFirst(values, (key) =>
           Equal.equals(
             key.metricKey,
             MetricKey.counter(name, {
@@ -703,8 +703,8 @@ describe("Metric", () => {
       Metric.counter(id).register()
       const snapshot = yield* _(Metric.snapshot)
       const value = pipe(
-        ReadonlyArray.fromIterable(snapshot),
-        ReadonlyArray.findFirst((_) => _.metricKey.name === id)
+        Array_.fromIterable(snapshot),
+        Array_.findFirst((_) => _.metricKey.name === id)
       )
       expect(value._tag).toBe("Some")
     }))

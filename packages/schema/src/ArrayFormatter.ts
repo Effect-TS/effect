@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import * as ReadonlyArray from "effect/Array"
+import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
 import type * as ParseResult from "./ParseResult.js"
 import * as TreeFormatter from "./TreeFormatter.js"
@@ -76,19 +76,19 @@ const go = (
                 return go(e, path)
             }
           }),
-          ReadonlyArray.flatten
+          Array.flatten
         ))
     case "TupleType":
       return getArray(e, path, () =>
         Effect.map(
           Effect.forEach(e.errors, (index) => go(index.error, [...path, index.index])),
-          ReadonlyArray.flatten
+          Array.flatten
         ))
     case "TypeLiteral":
       return getArray(e, path, () =>
         Effect.map(
           Effect.forEach(e.errors, (key) => go(key.error, [...path, key.key])),
-          ReadonlyArray.flatten
+          Array.flatten
         ))
     case "Transformation":
     case "Refinement":

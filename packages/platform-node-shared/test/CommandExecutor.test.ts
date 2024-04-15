@@ -6,7 +6,7 @@ import type * as CommandExecutor from "@effect/platform/CommandExecutor"
 import { SystemError } from "@effect/platform/Error"
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as Path from "@effect/platform/Path"
-import * as ReadonlyArray from "effect/Array"
+import * as Array_ from "effect/Array"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -377,7 +377,7 @@ describe("Command", () => {
           Command.runInShell("/bin/bash")
         )
         const lines = yield* _(Command.lines(command))
-        expect(ReadonlyArray.sort(files, Order.string)).toEqual(ReadonlyArray.sort(lines, Order.string))
+        expect(Array_.sort(files, Order.string)).toEqual(Array_.sort(lines, Order.string))
       }).pipe(Effect.scoped)
     ))
 })

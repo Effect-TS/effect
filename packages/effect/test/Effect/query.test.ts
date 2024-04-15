@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as ReadonlyArray from "effect/Array"
+import * as Array from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import { seconds } from "effect/Duration"
@@ -24,12 +24,12 @@ interface Requests {
 }
 const Requests = Context.GenericTag<Requests, { count: number }>("requests")
 
-export const userIds: ReadonlyArray<number> = ReadonlyArray.range(1, 26)
+export const userIds: ReadonlyArray<number> = Array.range(1, 26)
 
 export const userNames: ReadonlyMap<number, string> = new Map(
-  ReadonlyArray.zipWith(
+  Array.zipWith(
     userIds,
-    ReadonlyArray.map(ReadonlyArray.range(97, 122), (a) => String.fromCharCode(a)),
+    Array.map(Array.range(97, 122), (a) => String.fromCharCode(a)),
     (a, b) => [a, b] as const
   )
 )
