@@ -1,6 +1,7 @@
 /**
  * @since 2.0.0
  */
+import type { NonEmptyArray } from "./Array.js"
 import * as Equal from "./Equal.js"
 import { dual } from "./Function.js"
 import * as Hash from "./Hash.js"
@@ -8,7 +9,6 @@ import { format, type Inspectable, NodeInspectSymbol, toJSON } from "./Inspectab
 import * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
-import type { NonEmptyArray } from "./Array.js"
 
 const TypeId: unique symbol = Symbol.for("effect/MutableHashMap") as TypeId
 

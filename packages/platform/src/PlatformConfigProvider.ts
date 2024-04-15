@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as ReadonlyArray from "effect/Array"
 import * as Cause from "effect/Cause"
 import type * as Config from "effect/Config"
 import * as ConfigError from "effect/ConfigError"
@@ -12,7 +13,6 @@ import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as HashSet from "effect/HashSet"
 import * as Layer from "effect/Layer"
-import * as ReadonlyArray from "effect/Array"
 import { isPlatformError, type PlatformError } from "./Error.js"
 import * as FileSystem from "./FileSystem.js"
 import * as Path from "./Path.js"

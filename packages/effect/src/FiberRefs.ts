@@ -1,6 +1,7 @@
 /**
  * @since 2.0.0
  */
+import type * as Arr from "./Array.js"
 import type * as Effect from "./Effect.js"
 import type * as FiberId from "./FiberId.js"
 import type * as FiberRef from "./FiberRef.js"
@@ -8,7 +9,6 @@ import type * as HashSet from "./HashSet.js"
 import * as internal from "./internal/fiberRefs.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
-import type * as Arr from "./Array.js"
 
 /**
  * @since 2.0.0

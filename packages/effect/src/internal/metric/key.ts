@@ -1,3 +1,4 @@
+import * as ReadonlyArray from "../../Array.js"
 import type * as Duration from "../../Duration.js"
 import * as Equal from "../../Equal.js"
 import { dual, pipe } from "../../Function.js"
@@ -9,7 +10,6 @@ import type * as MetricLabel from "../../MetricLabel.js"
 import * as Option from "../../Option.js"
 import { pipeArguments } from "../../Pipeable.js"
 import { hasProperty } from "../../Predicate.js"
-import * as ReadonlyArray from "../../Array.js"
 import * as metricKeyType from "./keyType.js"
 import * as metricLabel from "./label.js"
 

@@ -1,6 +1,6 @@
 import * as _ from "@effect/typeclass/Covariant"
-import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as ReadonlyArrayInstances from "@effect/typeclass/data/Array"
+import * as OptionInstances from "@effect/typeclass/data/Option"
 import { pipe } from "effect/Function"
 import * as O from "effect/Option"
 import { describe, it } from "vitest"

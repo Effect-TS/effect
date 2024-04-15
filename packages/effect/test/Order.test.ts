@@ -1,7 +1,7 @@
 import * as U from "effect-test/util"
+import { sort } from "effect/Array"
 import { pipe } from "effect/Function"
 import * as _ from "effect/Order"
-import { sort } from "effect/Array"
 import { describe, it } from "vitest"
 
 describe("Order", () => {

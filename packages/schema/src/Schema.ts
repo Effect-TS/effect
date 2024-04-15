@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+import * as ReadonlyArray from "effect/Array"
 import * as bigDecimal_ from "effect/BigDecimal"
 import * as bigInt_ from "effect/BigInt"
 import * as boolean_ from "effect/Boolean"
@@ -28,7 +29,6 @@ import type * as Order from "effect/Order"
 import type { Pipeable } from "effect/Pipeable"
 import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
-import * as ReadonlyArray from "effect/Array"
 import * as Request from "effect/Request"
 import * as secret_ from "effect/Secret"
 import * as sortedSet_ from "effect/SortedSet"

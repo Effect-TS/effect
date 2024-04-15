@@ -1,3 +1,4 @@
+import * as ReadonlyArray from "../../Array.js"
 import * as Equal from "../../Equal.js"
 import { pipe } from "../../Function.js"
 import * as Hash from "../../Hash.js"
@@ -5,7 +6,6 @@ import type * as MetricState from "../../MetricState.js"
 import type * as Option from "../../Option.js"
 import { pipeArguments } from "../../Pipeable.js"
 import { hasProperty } from "../../Predicate.js"
-import * as ReadonlyArray from "../../Array.js"
 
 /** @internal */
 const MetricStateSymbolKey = "effect/MetricState"

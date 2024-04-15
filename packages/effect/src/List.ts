@@ -21,6 +21,7 @@
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
  */
+import * as ReadonlyArray from "./Array.js"
 import * as Chunk from "./Chunk.js"
 import * as Either from "./Either.js"
 import * as Equal from "./Equal.js"
@@ -32,7 +33,6 @@ import * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 import { hasProperty, type Predicate, type Refinement } from "./Predicate.js"
-import * as ReadonlyArray from "./Array.js"
 
 /**
  * Represents an immutable linked list of elements of type `A`.

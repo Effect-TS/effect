@@ -1,12 +1,12 @@
 /**
  * @since 1.0.0
  */
+import type { NonEmptyReadonlyArray } from "effect/Array"
 import type { Effect } from "effect/Effect"
 import type { HashMap } from "effect/HashMap"
 import type { Inspectable } from "effect/Inspectable"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
-import type { NonEmptyReadonlyArray } from "effect/Array"
 import type { Scope } from "effect/Scope"
 import type { Sink } from "effect/Sink"
 import type { Stream } from "effect/Stream"

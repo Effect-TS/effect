@@ -6,7 +6,7 @@ import { FileSystem, KeyValueStore } from "@effect/platform"
 import { NodeContext } from "@effect/platform-node"
 import { Schema } from "@effect/schema"
 import * as it from "@effect/vitest"
-import { Effect, Exit, Layer, PrimaryKey, Array as ReadonlyArray, Request, RequestResolver, TestClock } from "effect"
+import { Array as ReadonlyArray, Effect, Exit, Layer, PrimaryKey, Request, RequestResolver, TestClock } from "effect"
 import { assert, describe } from "vitest"
 
 class User extends Schema.Class<User>("User")({

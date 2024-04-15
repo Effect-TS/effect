@@ -4,11 +4,11 @@
  * @since 1.0.0
  */
 
+import * as ReadonlyArray from "effect/Array"
 import type { Either } from "effect/Either"
 import { dual } from "effect/Function"
 import type { Kind, TypeLambda } from "effect/HKT"
 import type { Option } from "effect/Option"
-import * as ReadonlyArray from "effect/Array"
 import type * as applicative from "../Applicative.js"
 import type * as chainable from "../Chainable.js"
 import * as covariant from "../Covariant.js"

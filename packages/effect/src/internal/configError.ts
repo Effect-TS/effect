@@ -1,9 +1,9 @@
+import * as RA from "../Array.js"
 import type * as Cause from "../Cause.js"
 import type * as ConfigError from "../ConfigError.js"
 import * as Either from "../Either.js"
 import { constFalse, constTrue, dual, pipe } from "../Function.js"
 import { hasProperty } from "../Predicate.js"
-import * as RA from "../Array.js"
 import * as OpCodes from "./opCodes/configError.js"
 
 /** @internal */

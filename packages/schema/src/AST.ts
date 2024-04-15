@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+import * as ReadonlyArray from "effect/Array"
 import type { Effect } from "effect/Effect"
 import { dual, identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
@@ -10,7 +11,6 @@ import * as Number from "effect/Number"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import * as Predicate from "effect/Predicate"
-import * as ReadonlyArray from "effect/Array"
 import * as regexp from "effect/RegExp"
 import type { Concurrency } from "effect/Types"
 import * as errors_ from "./internal/errors.js"

@@ -1,6 +1,8 @@
 /**
  * @since 2.0.0
  */
+import * as RA from "./Array.js"
+import type { NonEmptyReadonlyArray } from "./Array.js"
 import type { Either } from "./Either.js"
 import * as Equal from "./Equal.js"
 import * as Equivalence from "./Equivalence.js"
@@ -15,9 +17,7 @@ import * as Order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 import { hasProperty, type Predicate, type Refinement } from "./Predicate.js"
-import * as RA from "./ReadonlyArray.js"
-import type { NonEmptyReadonlyArray } from "./ReadonlyArray.js"
-import type { Covariant, NoInfer } from "./Types.js"
+import type { Covariant } from "./Types.js"
 
 const TypeId: unique symbol = Symbol.for("effect/Chunk") as TypeId
 

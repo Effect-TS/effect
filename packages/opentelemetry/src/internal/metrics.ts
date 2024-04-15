@@ -12,6 +12,7 @@ import type {
   MetricReader
 } from "@opentelemetry/sdk-metrics"
 import { AggregationTemporality, DataPointType, InstrumentType } from "@opentelemetry/sdk-metrics"
+import * as ReadonlyArray from "effect/Array"
 import * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -20,7 +21,6 @@ import type * as MetricKey from "effect/MetricKey"
 import * as MetricKeyType from "effect/MetricKeyType"
 import * as MetricState from "effect/MetricState"
 import * as Option from "effect/Option"
-import * as ReadonlyArray from "effect/Array"
 import * as Resource from "../Resource.js"
 
 const sdkName = "@effect/opentelemetry/Metrics"

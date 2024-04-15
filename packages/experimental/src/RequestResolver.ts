@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type * as Serializable from "@effect/schema/Serializable"
+import * as ReadonlyArray from "effect/Array"
 import * as Deferred from "effect/Deferred"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -10,7 +11,6 @@ import { dual, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import type * as PrimaryKey from "effect/PrimaryKey"
 import * as Queue from "effect/Queue"
-import * as ReadonlyArray from "effect/Array"
 import * as Ref from "effect/Ref"
 import * as Request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"

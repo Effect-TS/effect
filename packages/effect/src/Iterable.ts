@@ -4,6 +4,7 @@
  * @since 2.0.0
  */
 
+import type { NonEmptyArray } from "./Array.js"
 import type { Either } from "./Either.js"
 import * as E from "./Either.js"
 import * as Equal from "./Equal.js"
@@ -11,7 +12,6 @@ import { dual, identity } from "./Function.js"
 import type { Option } from "./Option.js"
 import * as O from "./Option.js"
 import { isBoolean } from "./Predicate.js"
-import type { NonEmptyArray } from "./Array.js"
 import type * as ReadonlyRecord from "./Record.js"
 import * as Tuple from "./Tuple.js"
 

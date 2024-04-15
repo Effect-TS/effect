@@ -1,10 +1,10 @@
+import * as ReadonlyArray from "effect/Array"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import { hole, identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import * as Predicate from "effect/Predicate"
-import * as ReadonlyArray from "effect/Array"
 
 declare const nonEmptyReadonlyNumbers: ReadonlyArray.NonEmptyReadonlyArray<number>
 declare const nonEmptyReadonlyStrings: ReadonlyArray.NonEmptyReadonlyArray<string>

@@ -1,5 +1,5 @@
-import * as Option from "../../Option.js"
 import * as ReadonlyArray from "../../Array.js"
+import * as Option from "../../Option.js"
 import type * as RBT from "../../RedBlackTree.js"
 import type { RedBlackTreeImpl } from "../redBlackTree.js"
 import type * as Node from "./node.js"

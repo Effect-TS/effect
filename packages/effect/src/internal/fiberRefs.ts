@@ -1,3 +1,4 @@
+import * as Arr from "../Array.js"
 import type * as Effect from "../Effect.js"
 import * as Equal from "../Equal.js"
 import type * as FiberId from "../FiberId.js"
@@ -7,7 +8,6 @@ import { dual, pipe } from "../Function.js"
 import * as HashSet from "../HashSet.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
-import * as Arr from "../Array.js"
 import * as core from "./core.js"
 
 /** @internal */

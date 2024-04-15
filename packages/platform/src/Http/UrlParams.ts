@@ -4,10 +4,10 @@
 import type { ParseOptions } from "@effect/schema/AST"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
+import * as ReadonlyArray from "effect/Array"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import * as Option from "effect/Option"
-import * as ReadonlyArray from "effect/Array"
 
 /**
  * @since 1.0.0

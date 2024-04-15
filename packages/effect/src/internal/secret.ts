@@ -1,8 +1,8 @@
+import * as ReadonlyArray from "../Array.js"
 import * as Equal from "../Equal.js"
 import { pipe } from "../Function.js"
 import * as Hash from "../Hash.js"
 import { hasProperty } from "../Predicate.js"
-import * as ReadonlyArray from "../Array.js"
 import type * as Secret from "../Secret.js"
 
 /** @internal */

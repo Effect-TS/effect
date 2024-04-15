@@ -1,6 +1,6 @@
 import * as _ from "@effect/typeclass/Bicovariant"
-import * as EitherInstances from "@effect/typeclass/data/Either"
 import * as ReadonlyArrayInstances from "@effect/typeclass/data/Array"
+import * as EitherInstances from "@effect/typeclass/data/Either"
 import * as E from "effect/Either"
 import { pipe } from "effect/Function"
 import { describe, it } from "vitest"

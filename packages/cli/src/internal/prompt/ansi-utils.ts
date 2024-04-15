@@ -1,7 +1,7 @@
 import * as Doc from "@effect/printer-ansi/AnsiDoc"
+import * as ReadonlyArray from "effect/Array"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
-import * as ReadonlyArray from "effect/Array"
 
 const defaultFigures = {
   arrowUp: Doc.text("↑"),

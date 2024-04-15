@@ -6,6 +6,7 @@
  * @since 2.0.0
  */
 
+import type { NonEmptyArray } from "./Array.js"
 import * as equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
 import * as readonlyArray from "./internal/array.js"
@@ -15,7 +16,6 @@ import * as order from "./Order.js"
 import type * as Ordering from "./Ordering.js"
 import type { Refinement } from "./Predicate.js"
 import * as predicate from "./Predicate.js"
-import type { NonEmptyArray } from "./Array.js"
 
 /**
  * Tests if a value is a `string`.

@@ -1,4 +1,4 @@
-import { Chunk, Effect, Random, Array as ReadonlyArray } from "effect"
+import { Array as ReadonlyArray, Chunk, Effect, Random } from "effect"
 import * as it from "effect-test/utils/extend"
 import { assert, describe } from "vitest"
 

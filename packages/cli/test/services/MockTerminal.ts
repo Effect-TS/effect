@@ -1,11 +1,11 @@
 import * as Terminal from "@effect/platform/Terminal"
+import * as ReadonlyArray from "effect/Array"
 import * as Console from "effect/Console"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
-import * as ReadonlyArray from "effect/Array"
 
 // =============================================================================
 // Models

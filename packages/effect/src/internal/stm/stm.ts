@@ -1,3 +1,4 @@
+import * as RA from "../../Array.js"
 import * as Cause from "../../Cause.js"
 import * as Chunk from "../../Chunk.js"
 import * as Context from "../../Context.js"
@@ -10,7 +11,6 @@ import { constFalse, constTrue, constVoid, dual, identity, pipe } from "../../Fu
 import * as Option from "../../Option.js"
 import type { Predicate, Refinement } from "../../Predicate.js"
 import * as predicate from "../../Predicate.js"
-import * as RA from "../../Array.js"
 import type * as STM from "../../STM.js"
 import type { MergeRecord } from "../../Types.js"
 import * as effectCore from "../core.js"

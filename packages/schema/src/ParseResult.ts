@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+import * as ReadonlyArray from "effect/Array"
 import { TaggedError } from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -11,7 +12,6 @@ import { globalValue } from "effect/GlobalValue"
 import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
-import * as ReadonlyArray from "effect/Array"
 import type { Concurrency, Mutable } from "effect/Types"
 import * as AST from "./AST.js"
 import * as util_ from "./internal/util.js"

@@ -1,6 +1,7 @@
 /**
  * @since 2.0.0
  */
+import * as ReadonlyArray from "./Array.js"
 import * as Either from "./Either.js"
 import * as Equal from "./Equal.js"
 import * as equivalence from "./Equivalence.js"
@@ -10,7 +11,6 @@ import { format, type Inspectable, NodeInspectSymbol } from "./Inspectable.js"
 import * as N from "./Number.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import { hasProperty } from "./Predicate.js"
-import * as ReadonlyArray from "./Array.js"
 import * as String from "./String.js"
 import type { Mutable } from "./Types.js"
 

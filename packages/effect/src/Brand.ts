@@ -16,11 +16,11 @@
  *
  * @since 2.0.0
  */
+import * as ReadonlyArray from "./Array.js"
 import * as Either from "./Either.js"
 import { identity } from "./Function.js"
 import * as Option from "./Option.js"
 import type { Predicate } from "./Predicate.js"
-import * as ReadonlyArray from "./Array.js"
 import type * as Types from "./Types.js"
 
 /**

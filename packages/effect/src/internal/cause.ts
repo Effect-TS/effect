@@ -1,3 +1,4 @@
+import * as ReadonlyArray from "../Array.js"
 import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
 import * as Either from "../Either.js"

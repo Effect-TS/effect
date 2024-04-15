@@ -2,8 +2,8 @@
  * @since 1.0.0
  */
 
-import * as Effect from "effect/Effect"
 import * as ReadonlyArray from "effect/Array"
+import * as Effect from "effect/Effect"
 import type * as ParseResult from "./ParseResult.js"
 import * as TreeFormatter from "./TreeFormatter.js"
 

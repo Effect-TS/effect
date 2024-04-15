@@ -1,3 +1,4 @@
+import * as ReadonlyArray from "../../Array.js"
 import * as Chunk from "../../Chunk.js"
 import * as Equal from "../../Equal.js"
 import { pipe } from "../../Function.js"
@@ -5,7 +6,6 @@ import * as Hash from "../../Hash.js"
 import type * as MetricBoundaries from "../../MetricBoundaries.js"
 import { pipeArguments } from "../../Pipeable.js"
 import { hasProperty } from "../../Predicate.js"
-import * as ReadonlyArray from "../../Array.js"
 
 /** @internal */
 const MetricBoundariesSymbolKey = "effect/MetricBoundaries"

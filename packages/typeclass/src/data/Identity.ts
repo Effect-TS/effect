@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
+import * as readonlyArray from "effect/Array"
 import { dual, identity } from "effect/Function"
 import type { Kind, TypeLambda } from "effect/HKT"
-import * as readonlyArray from "effect/Array"
 import type * as applicative from "../Applicative.js"
 import type * as chainable from "../Chainable.js"
 import * as covariant from "../Covariant.js"

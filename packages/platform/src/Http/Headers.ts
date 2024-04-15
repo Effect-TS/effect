@@ -2,10 +2,10 @@
  * @since 1.0.0
  */
 import * as Schema from "@effect/schema/Schema"
+import * as ReadonlyArray from "effect/Array"
 import { dual, identity } from "effect/Function"
 import type * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
-import * as ReadonlyArray from "effect/Array"
 import * as ReadonlyRecord from "effect/Record"
 import * as Secret from "effect/Secret"
 import * as String from "effect/String"

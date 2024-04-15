@@ -1,10 +1,10 @@
+import * as ReadonlyArray from "effect/Array"
 import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
 import * as Either from "effect/Either"
 import { equals, symbol } from "effect/Equal"
 import * as List from "effect/List"
 import * as Option from "effect/Option"
-import * as ReadonlyArray from "effect/Array"
 import { describe, expect, it } from "vitest"
 
 const testStructuralSharing = <A>(a: List.List<A>, b: List.List<A>, n = 0): number | undefined => {

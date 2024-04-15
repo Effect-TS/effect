@@ -1,7 +1,7 @@
+import * as ReadonlyArrayInstances from "@effect/typeclass/data/Array"
 import * as NumberInstances from "@effect/typeclass/data/Number"
 import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as PredicateInstances from "@effect/typeclass/data/Predicate"
-import * as ReadonlyArrayInstances from "@effect/typeclass/data/Array"
 import * as StringInstances from "@effect/typeclass/data/String"
 import * as of_ from "@effect/typeclass/Of"
 import * as semiApplicative from "@effect/typeclass/SemiApplicative"

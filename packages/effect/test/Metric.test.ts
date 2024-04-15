@@ -1,4 +1,5 @@
 import * as it from "effect-test/utils/extend"
+import * as ReadonlyArray from "effect/Array"
 import * as Clock from "effect/Clock"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -12,7 +13,6 @@ import * as MetricLabel from "effect/MetricLabel"
 import * as MetricPolling from "effect/MetricPolling"
 import * as MetricState from "effect/MetricState"
 import * as Option from "effect/Option"
-import * as ReadonlyArray from "effect/Array"
 import * as Schedule from "effect/Schedule"
 import { assert, describe, expect } from "vitest"
 

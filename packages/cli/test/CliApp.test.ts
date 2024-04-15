@@ -3,7 +3,7 @@ import * as Command from "@effect/cli/Command"
 import * as HelpDoc from "@effect/cli/HelpDoc"
 import * as ValidationError from "@effect/cli/ValidationError"
 import { NodeContext } from "@effect/platform-node"
-import { Effect, Array as ReadonlyArray } from "effect"
+import { Array as ReadonlyArray, Effect } from "effect"
 import { describe, expect, it } from "vitest"
 
 const runEffect = <E, A>(

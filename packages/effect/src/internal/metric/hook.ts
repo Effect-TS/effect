@@ -1,3 +1,4 @@
+import * as ReadonlyArray from "../../Array.js"
 import * as Duration from "../../Duration.js"
 import type { LazyArg } from "../../Function.js"
 import { dual, pipe } from "../../Function.js"
@@ -7,7 +8,6 @@ import type * as MetricState from "../../MetricState.js"
 import * as number from "../../Number.js"
 import * as Option from "../../Option.js"
 import { pipeArguments } from "../../Pipeable.js"
-import * as ReadonlyArray from "../../Array.js"
 import * as metricState from "./state.js"
 
 /** @internal */

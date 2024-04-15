@@ -1,9 +1,9 @@
+import * as Arr from "../../Array.js"
 import { equals } from "../../Equal.js"
 import type * as FiberId from "../../FiberId.js"
 import type * as FiberRefs from "../../FiberRefs.js"
 import type * as FiberRefsPatch from "../../FiberRefsPatch.js"
 import { dual } from "../../Function.js"
-import * as Arr from "../../Array.js"
 import * as _fiberRefs from "../fiberRefs.js"
 
 /** @internal */

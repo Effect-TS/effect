@@ -1,4 +1,5 @@
 import {
+  Array as ReadonlyArray,
   Clock,
   Deferred,
   Effect,
@@ -7,7 +8,6 @@ import {
   Function,
   Option,
   RateLimiter,
-  Array as ReadonlyArray,
   Ref,
   TestClock
 } from "effect"

@@ -1,4 +1,5 @@
 import * as it from "effect-test/utils/extend"
+import * as ReadonlyArray from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
@@ -9,7 +10,6 @@ import * as Fiber from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
-import * as ReadonlyArray from "effect/Array"
 import * as Ref from "effect/Ref"
 import { assert, describe, expect } from "vitest"
 

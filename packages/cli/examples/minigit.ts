@@ -1,6 +1,6 @@
 import { Args, Command, Options } from "@effect/cli"
 import { NodeContext, NodeRuntime } from "@effect/platform-node"
-import { Config, ConfigProvider, Console, Effect, Option, Array as ReadonlyArray } from "effect"
+import { Array as ReadonlyArray, Config, ConfigProvider, Console, Effect, Option } from "effect"
 
 // minigit [--version] [-h | --help] [-c <name>=<value>]
 const configs = Options.keyValueMap("c").pipe(Options.optional)
