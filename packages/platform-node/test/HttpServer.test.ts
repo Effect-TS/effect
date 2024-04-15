@@ -632,4 +632,23 @@ describe("HttpServer", () => {
         }).toJSON()
       )
     }).pipe(Effect.scoped, runPromise))
+
+  it("uninterruptible routes", () =>
+    Effect.gen(function*(_) {
+      yield* _(
+        Http.router.empty,
+        Http.router.get(
+          "/home",
+          Effect.gen(function*(_) {
+            const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
+            setTimeout(() => fiber.unsafeInterruptAsFork(fiber.id()), 10)
+            return yield* _(Http.response.empty(), Effect.delay(50))
+          }).pipe(Http.router.uninterruptible)
+        ),
+        Http.server.serveEffect()
+      )
+      const client = yield* _(makeClient)
+      const res = yield* _(HttpC.request.get("/home"), client, Effect.scoped)
+      assert.strictEqual(res.status, 204)
+    }).pipe(Effect.scoped, runPromise))
 })

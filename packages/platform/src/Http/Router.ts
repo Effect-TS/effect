@@ -622,3 +622,10 @@ export const provideServiceEffect: {
     E | E1
   >
 } = internal.provideServiceEffect
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const uninterruptible: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> =
+  internal.uninterruptible
