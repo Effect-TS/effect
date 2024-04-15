@@ -187,7 +187,8 @@ const toHttpApp = <R, E>(
           "*",
           options?.includePrefix ? `${path}/*` as Router.PathInput : "/*",
           app,
-          options?.includePrefix ? Option.none() : Option.some(path)
+          options?.includePrefix ? Option.none() : Option.some(path),
+          false
         ),
         {},
         {}
@@ -240,7 +241,13 @@ const toHttpApp = <R, E>(
     }
     context = Context.add(context, RouteContext, new RouteContextImpl(route, result.params, result.searchParams))
     return Effect.locally(
-      route.handler as Effect.Effect<ServerResponse.ServerResponse, E, Router.Router.ExcludeProvided<R>>,
+      (route.uninterruptible ?
+        route.handler :
+        Effect.interruptible(route.handler)) as Effect.Effect<
+          ServerResponse.ServerResponse,
+          E,
+          Router.Router.ExcludeProvided<R>
+        >,
       FiberRef.currentContext,
       context
     )
@@ -258,7 +265,8 @@ class RouteImpl<R, E> extends Inspectable.Class implements Router.Route<R, E> {
     readonly method: Method.Method | "*",
     readonly path: Router.PathInput,
     readonly handler: Router.Route.Handler<R, E>,
-    readonly prefix = Option.none<string>()
+    readonly prefix = Option.none<string>(),
+    readonly uninterruptible = false
   ) {
     super()
     this[RouteTypeId] = RouteTypeId
@@ -300,8 +308,10 @@ export const makeRoute = <R, E>(
   method: Method.Method,
   path: Router.PathInput,
   handler: Router.Route.Handler<R, E>,
-  prefix: Option.Option<string> = Option.none()
-): Router.Route<Router.Router.ExcludeProvided<R>, E> => new RouteImpl(method, path, handler, prefix) as any
+  prefix: Option.Option<string> = Option.none(),
+  uninterruptible = false
+): Router.Route<Router.Router.ExcludeProvided<R>, E> =>
+  new RouteImpl(method, path, handler, prefix, uninterruptible) as any
 
 /** @internal */
 export const concat = dual<
@@ -330,7 +340,8 @@ export const prefixAll = dual<
           Option.orElse(
             Option.map(route.prefix, (_) => prefix + _),
             () => Option.some(prefix)
-          )
+          ),
+          route.uninterruptible
         )),
       Chunk.map(self.mounts, ([path, app]) => [path === "/" ? prefix : prefix + path, app])
     )
@@ -389,14 +400,20 @@ export const mountApp = dual<
 export const route = (method: Method.Method | "*"): {
   <R1, E1>(
     path: Router.PathInput,
-    handler: Router.Route.Handler<R1, E1>
+    handler: Router.Route.Handler<R1, E1>,
+    options?: {
+      readonly uninterruptible?: boolean | undefined
+    } | undefined
   ): <R, E>(
     self: Router.Router<R, E>
   ) => Router.Router<R | Router.Router.ExcludeProvided<R1>, E1 | E>
   <R, E, R1, E1>(
     self: Router.Router<R, E>,
     path: Router.PathInput,
-    handler: Router.Route.Handler<R1, E1>
+    handler: Router.Route.Handler<R1, E1>,
+    options?: {
+      readonly uninterruptible?: boolean | undefined
+    } | undefined
   ): Router.Router<R | Router.Router.ExcludeProvided<R1>, E1 | E>
 } =>
   dual<
@@ -409,11 +426,14 @@ export const route = (method: Method.Method | "*"): {
     <R, E, R1, E1>(
       self: Router.Router<R, E>,
       path: Router.PathInput,
-      handler: Router.Route.Handler<R1, E1>
+      handler: Router.Route.Handler<R1, E1>,
+      options?: {
+        readonly uninterruptible?: boolean | undefined
+      } | undefined
     ) => Router.Router<R | Router.Router.ExcludeProvided<R1>, E | E1>
-  >(3, (self, path, handler) =>
+  >((args) => Predicate.hasProperty(args[0], TypeId), (self, path, handler, options) =>
     new RouterImpl<any, any>(
-      Chunk.append(self.routes, new RouteImpl(method, path, handler)),
+      Chunk.append(self.routes, new RouteImpl(method, path, handler, Option.none(), options?.uninterruptible ?? false)),
       self.mounts
     ))
 
@@ -454,7 +474,7 @@ export const use = dual<
   new RouterImpl<any, any>(
     Chunk.map(
       self.routes,
-      (route) => new RouteImpl(route.method, route.path, f(route.handler) as any, route.prefix)
+      (route) => new RouteImpl(route.method, route.path, f(route.handler) as any, route.prefix, route.uninterruptible)
     ),
     Chunk.map(
       self.mounts,
@@ -599,10 +619,3 @@ export const provideServiceEffect = dual<
   >,
   E | E1
 > => use(self, Effect.provideServiceEffect(tag, effect)) as any)
-
-/* @internal */
-export const uninterruptible = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  Effect.uninterruptible(Effect.flatMap(
-    effect,
-    Effect.die
-  ))

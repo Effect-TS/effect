@@ -505,6 +505,7 @@ describe("HttpServer", () => {
       yield* _(
         Http.response.empty(),
         Effect.delay(1000),
+        Effect.interruptible,
         Http.server.serveEffect((app) => Effect.onExit(app, (exit) => Deferred.complete(latch, exit)))
       )
       const client = yield* _(makeClient)
@@ -643,7 +644,8 @@ describe("HttpServer", () => {
             const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
             setTimeout(() => fiber.unsafeInterruptAsFork(fiber.id()), 10)
             return yield* _(Http.response.empty(), Effect.delay(50))
-          }).pipe(Http.router.uninterruptible)
+          }),
+          { uninterruptible: true }
         ),
         Http.server.serveEffect()
       )
