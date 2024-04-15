@@ -84,6 +84,7 @@ export interface Route<R, E> extends Inspectable {
   readonly path: PathInput
   readonly handler: Route.Handler<R, E>
   readonly prefix: Option.Option<string>
+  readonly uninterruptible: boolean
 }
 
 /**
@@ -243,7 +244,8 @@ export const makeRoute: <R, E>(
   method: Method.Method,
   path: PathInput,
   handler: Route.Handler<R, E>,
-  prefix?: Option.Option<string>
+  prefix?: Option.Option<string>,
+  uninterruptible?: boolean
 ) => Route<Exclude<R, RouteContext | ServerRequest.ServerRequest | Scope.Scope>, E> = internal.makeRoute
 
 /**
@@ -311,19 +313,21 @@ export const mountApp: {
  * @category routing
  */
 export const route: (
-  method: Method.Method | "*"
+  method: "*" | Method.Method
 ) => {
   <R1, E1>(
     path: PathInput,
-    handler: Route.Handler<R1, E1>
+    handler: Route.Handler<R1, E1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ): <R, E>(
     self: Router<R, E>
-  ) => Router<R | Exclude<R1, ServerRequest.ServerRequest | RouteContext | Scope.Scope>, E1 | E>
+  ) => Router<R | Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>, E1 | E>
   <R, E, R1, E1>(
     self: Router<R, E>,
     path: PathInput,
-    handler: Route.Handler<R1, E1>
-  ): Router<R | Exclude<R1, ServerRequest.ServerRequest | RouteContext | Scope.Scope>, E | E1>
+    handler: Route.Handler<R1, E1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+  ): Router<R | Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>, E | E1>
 } = internal.route
 
 /**
@@ -333,14 +337,16 @@ export const route: (
 export const all: {
   <R1, E1>(
     path: PathInput,
-    handler: Route.Handler<R1, E1>
+    handler: Route.Handler<R1, E1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ): <R, E>(
     self: Router<R, E>
   ) => Router<R | Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>, E1 | E>
   <R, E, R1, E1>(
     self: Router<R, E>,
     path: PathInput,
-    handler: Route.Handler<R1, E1>
+    handler: Route.Handler<R1, E1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ): Router<R | Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>, E | E1>
 } = internal.all
 
@@ -351,14 +357,16 @@ export const all: {
 export const get: {
   <R1, E1>(
     path: PathInput,
-    handler: Route.Handler<R1, E1>
+    handler: Route.Handler<R1, E1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ): <R, E>(
     self: Router<R, E>
   ) => Router<R | Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>, E1 | E>
   <R, E, R1, E1>(
     self: Router<R, E>,
     path: PathInput,
-    handler: Route.Handler<R1, E1>
+    handler: Route.Handler<R1, E1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ): Router<R | Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>, E | E1>
 } = internal.get
 
@@ -369,14 +377,16 @@ export const get: {
 export const post: {
   <R1, E1>(
     path: PathInput,
-    handler: Route.Handler<R1, E1>
+    handler: Route.Handler<R1, E1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ): <R, E>(
     self: Router<R, E>
   ) => Router<R | Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>, E1 | E>
   <R, E, R1, E1>(
     self: Router<R, E>,
     path: PathInput,
-    handler: Route.Handler<R1, E1>
+    handler: Route.Handler<R1, E1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ): Router<R | Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>, E | E1>
 } = internal.post
 
@@ -387,14 +397,16 @@ export const post: {
 export const patch: {
   <R1, E1>(
     path: PathInput,
-    handler: Route.Handler<R1, E1>
+    handler: Route.Handler<R1, E1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ): <R, E>(
     self: Router<R, E>
   ) => Router<R | Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>, E1 | E>
   <R, E, R1, E1>(
     self: Router<R, E>,
     path: PathInput,
-    handler: Route.Handler<R1, E1>
+    handler: Route.Handler<R1, E1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ): Router<R | Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>, E | E1>
 } = internal.patch
 
@@ -405,14 +417,16 @@ export const patch: {
 export const put: {
   <R1, E1>(
     path: PathInput,
-    handler: Route.Handler<R1, E1>
+    handler: Route.Handler<R1, E1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ): <R, E>(
     self: Router<R, E>
   ) => Router<R | Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>, E1 | E>
   <R, E, R1, E1>(
     self: Router<R, E>,
     path: PathInput,
-    handler: Route.Handler<R1, E1>
+    handler: Route.Handler<R1, E1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ): Router<R | Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>, E | E1>
 } = internal.put
 
@@ -423,14 +437,16 @@ export const put: {
 export const del: {
   <R1, E1>(
     path: PathInput,
-    handler: Route.Handler<R1, E1>
+    handler: Route.Handler<R1, E1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ): <R, E>(
     self: Router<R, E>
   ) => Router<R | Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>, E1 | E>
   <R, E, R1, E1>(
     self: Router<R, E>,
     path: PathInput,
-    handler: Route.Handler<R1, E1>
+    handler: Route.Handler<R1, E1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ): Router<R | Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>, E | E1>
 } = internal.del
 
@@ -441,14 +457,16 @@ export const del: {
 export const head: {
   <R1, E1>(
     path: PathInput,
-    handler: Route.Handler<R1, E1>
+    handler: Route.Handler<R1, E1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ): <R, E>(
     self: Router<R, E>
   ) => Router<R | Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>, E1 | E>
   <R, E, R1, E1>(
     self: Router<R, E>,
     path: PathInput,
-    handler: Route.Handler<R1, E1>
+    handler: Route.Handler<R1, E1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ): Router<R | Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>, E | E1>
 } = internal.head
 
@@ -459,14 +477,16 @@ export const head: {
 export const options: {
   <R1, E1>(
     path: PathInput,
-    handler: Route.Handler<R1, E1>
+    handler: Route.Handler<R1, E1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ): <R, E>(
     self: Router<R, E>
   ) => Router<R | Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>, E1 | E>
   <R, E, R1, E1>(
     self: Router<R, E>,
     path: PathInput,
-    handler: Route.Handler<R1, E1>
+    handler: Route.Handler<R1, E1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ): Router<R | Exclude<R1, RouteContext | ServerRequest.ServerRequest | Scope.Scope>, E | E1>
 } = internal.options
 
@@ -622,10 +642,3 @@ export const provideServiceEffect: {
     E | E1
   >
 } = internal.provideServiceEffect
-
-/**
- * @since 1.0.0
- * @category combinators
- */
-export const uninterruptible: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> =
-  internal.uninterruptible

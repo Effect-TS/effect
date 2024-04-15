@@ -41,34 +41,33 @@ export const toHandled = <R, E, _, RH>(
     exit: Exit.Exit<ServerResponse.ServerResponse, E | ServerError.ResponseError>
   ) => Effect.Effect<_, never, RH>,
   middleware?: Middleware | undefined
-): Default<Exclude<R | RH, Scope.Scope>, E | ServerError.ResponseError> =>
-  Effect.uninterruptibleMask((restore) => {
-    const withTracer = internalMiddleware.tracer(restore(self))
-    const responded = Effect.withFiberRuntime<
-      ServerResponse.ServerResponse,
-      E | ServerError.ResponseError,
-      R | RH | ServerRequest.ServerRequest
-    >((fiber) => {
-      const request = Context.unsafeGet(fiber.getFiberRef(FiberRef.currentContext), ServerRequest.ServerRequest)
-      const handler = fiber.getFiberRef(currentPreResponseHandlers)
-      const preHandled = handler._tag === "Some"
-        ? Effect.flatMap(withTracer, (response) => handler.value(request, response))
-        : withTracer
-      return Effect.flatMap(
-        Effect.exit(preHandled),
-        (exit) => {
-          if (exit._tag === "Failure") {
-            const dieOption = Cause.dieOption(exit.cause)
-            if (dieOption._tag === "Some" && ServerResponse.isServerResponse(dieOption.value)) {
-              exit = Exit.succeed(dieOption.value)
-            }
+): Default<Exclude<R | RH, Scope.Scope>, E | ServerError.ResponseError> => {
+  const withTracer = internalMiddleware.tracer(self)
+  const responded = Effect.withFiberRuntime<
+    ServerResponse.ServerResponse,
+    E | ServerError.ResponseError,
+    R | RH | ServerRequest.ServerRequest
+  >((fiber) => {
+    const request = Context.unsafeGet(fiber.getFiberRef(FiberRef.currentContext), ServerRequest.ServerRequest)
+    const handler = fiber.getFiberRef(currentPreResponseHandlers)
+    const preHandled = handler._tag === "Some"
+      ? Effect.flatMap(withTracer, (response) => handler.value(request, response))
+      : withTracer
+    return Effect.flatMap(
+      Effect.exit(preHandled),
+      (exit) => {
+        if (exit._tag === "Failure") {
+          const dieOption = Cause.dieOption(exit.cause)
+          if (dieOption._tag === "Some" && ServerResponse.isServerResponse(dieOption.value)) {
+            exit = Exit.succeed(dieOption.value)
           }
-          return Effect.zipRight(handleResponse(request, exit), exit)
         }
-      )
-    })
-    return Effect.scoped(middleware === undefined ? responded : middleware(responded))
+        return Effect.zipRight(handleResponse(request, exit), exit)
+      }
+    )
   })
+  return Effect.uninterruptible(Effect.scoped(middleware === undefined ? responded : middleware(responded)))
+}
 
 /**
  * @since 1.0.0
