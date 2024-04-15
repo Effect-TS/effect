@@ -4,11 +4,11 @@ import { describe, it } from "vitest"
 
 describe("ReadonlyMap > readonlyMap", () => {
   it("property tests", () => {
-    Util.roundtrip(S.ReadonlyMap({ Key: S.Number, Value: S.String }))
+    Util.roundtrip(S.ReadonlyMap({ key: S.Number, value: S.String }))
   })
 
   it("decoding", async () => {
-    const schema = S.ReadonlyMap({ Key: S.Number, Value: S.String })
+    const schema = S.ReadonlyMap({ key: S.Number, value: S.String })
     await Util.expectDecodeUnknownSuccess(schema, [], new Map())
     await Util.expectDecodeUnknownSuccess(
       schema,
@@ -37,7 +37,7 @@ describe("ReadonlyMap > readonlyMap", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.ReadonlyMap({ Key: S.Number, Value: S.String })
+    const schema = S.ReadonlyMap({ key: S.Number, value: S.String })
     await Util.expectEncodeSuccess(schema, new Map(), [])
     await Util.expectEncodeSuccess(schema, new Map([[1, "a"], [2, "b"], [3, "c"]]), [[1, "a"], [
       2,

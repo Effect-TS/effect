@@ -62,7 +62,7 @@ export const Span: Schema.Schema<Span, SpanFrom> = Schema.Struct({
   traceId: Schema.String,
   name: Schema.String,
   sampled: Schema.Boolean,
-  attributes: Schema.ReadonlyMap({ Key: Schema.String, Value: Schema.Unknown }),
+  attributes: Schema.ReadonlyMap({ key: Schema.String, value: Schema.Unknown }),
   status: SpanStatus,
   parent: Schema.Option(Schema.suspend(() => ParentSpan))
 })

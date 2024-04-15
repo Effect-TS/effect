@@ -178,7 +178,7 @@ describe("Equivalence", () => {
     })
 
     it("Either", () => {
-      const schema = S.EitherFromSelf({ Left: string, Right: number })
+      const schema = S.EitherFromSelf({ left: string, right: number })
       const equivalence = E.make(schema)
 
       expect(equivalence(Either.right(1), Either.right(1))).toBe(true)
@@ -215,7 +215,7 @@ describe("Equivalence", () => {
     })
 
     it("ReadonlyMap", () => {
-      const schema = S.ReadonlyMapFromSelf({ Key: string, Value: number })
+      const schema = S.ReadonlyMapFromSelf({ key: string, value: number })
       const equivalence = E.make(schema)
 
       expect(equivalence(new Map(), new Map())).toBe(true)

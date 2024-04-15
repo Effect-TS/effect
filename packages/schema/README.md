@@ -2968,7 +2968,7 @@ S.required(
 )
 ```
 
-## Extend
+## Extending Schemas
 
 The `extend` combinator allows you to add additional fields or index signatures to an existing `Schema`.
 
@@ -3001,7 +3001,7 @@ const extended = S.Struct(
 )
 ```
 
-## Compose
+## Composition
 
 Combining and reusing schemas is a common requirement, the `compose` combinator allows you to do just that. It enables you to combine two schemas, `Schema<B, A, R1>` and `Schema<C, B, R2>`, into a single schema `Schema<C, A, R1 | R2>`:
 
@@ -3009,7 +3009,7 @@ Combining and reusing schemas is a common requirement, the `compose` combinator 
 import * as S from "@effect/schema/Schema"
 
 // Schema<readonly string[], string>
-const schema1 = S.Split(",")
+const schema1 = S.split(",")
 
 // Schema<readonly number[], readonly string[]>
 const schema2 = S.Array(S.NumberFromString)
@@ -3046,9 +3046,9 @@ S.compose(S.Union(S.Null, S.String), S.NumberFromString)
 S.compose(S.Union(S.Null, S.String), S.NumberFromString, { strict: false })
 ```
 
-## InstanceOf
+## instanceOf
 
-In the following section, we demonstrate how to use the `InstanceOf` combinator to create a `Schema` for a class instance.
+In the following section, we demonstrate how to use the `instanceOf` combinator to create a `Schema` for a class instance.
 
 ```ts
 import * as S from "@effect/schema/Schema"
@@ -3058,7 +3058,7 @@ class Test {
 }
 
 // Schema<Test>
-S.InstanceOf(Test)
+S.instanceOf(Test)
 ```
 
 ## Recursive Schemas
@@ -3816,15 +3816,15 @@ Output:
 
 ## String Transformations
 
-### Split
+### split
 
-The `Split` combinator allows splitting a string into an array of strings.
+The `split` combinator allows splitting a string into an array of strings.
 
 ```ts
 import * as S from "@effect/schema/Schema"
 
 // Schema<string[], string>
-const schema = S.Split(",")
+const schema = S.split(",")
 const decode = S.decodeUnknownSync(schema)
 
 console.log(decode("")) // [""]
@@ -3871,15 +3871,15 @@ console.log(decode(" ABc ")) // " abc "
 
 **Note**. If you were looking for a combinator to check if a string is lowercased, check out the `lowercased` combinator.
 
-### ParseJson
+### parseJson
 
-The `ParseJson` constructor offers a method to convert JSON strings into the `unknown` type using the underlying functionality of `JSON.parse`. It also employs `JSON.stringify` for encoding.
+The `parseJson` constructor offers a method to convert JSON strings into the `unknown` type using the underlying functionality of `JSON.parse`. It also employs `JSON.stringify` for encoding.
 
 ```ts
 import * as S from "@effect/schema/Schema"
 
 // Schema<unknown, string>
-const schema = S.ParseJson()
+const schema = S.parseJson()
 const decode = S.decodeUnknownSync(schema)
 
 // Parse valid JSON strings
@@ -3896,16 +3896,16 @@ Error: (JsonString <-> unknown)
 */
 ```
 
-Additionally, you can refine the parsing result by providing a schema to the `ParseJson` constructor:
+Additionally, you can refine the parsing result by providing a schema to the `parseJson` constructor:
 
 ```ts
 import * as S from "@effect/schema/Schema"
 
 // Schema<{ readonly a: number; }, string>
-const schema = S.ParseJson(S.Struct({ a: S.Number }))
+const schema = S.parseJson(S.Struct({ a: S.Number }))
 ```
 
-In this example, we've used `ParseJson` with a struct schema to ensure that the parsed result has a specific structure, including an object with a numeric property "a". This helps in handling JSON data with predefined shapes.
+In this example, we've used `parseJson` with a struct schema to ensure that the parsed result has a specific structure, including an object with a numeric property "a". This helps in handling JSON data with predefined shapes.
 
 ## Number Transformations
 

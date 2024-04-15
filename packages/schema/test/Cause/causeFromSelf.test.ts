@@ -7,11 +7,11 @@ import { describe, expect, it } from "vitest"
 
 describe("Cause > causeFromSelf", () => {
   it("property tests", () => {
-    Util.roundtrip(S.CauseFromSelf({ Error: S.NumberFromString }))
+    Util.roundtrip(S.CauseFromSelf({ error: S.NumberFromString }))
   })
 
   it("decoding", async () => {
-    const schema = S.CauseFromSelf({ Error: S.NumberFromString })
+    const schema = S.CauseFromSelf({ error: S.NumberFromString })
 
     await Util.expectDecodeUnknownSuccess(schema, Cause.fail("1"), Cause.fail(1))
 
@@ -51,13 +51,13 @@ describe("Cause > causeFromSelf", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.CauseFromSelf({ Error: S.NumberFromString })
+    const schema = S.CauseFromSelf({ error: S.NumberFromString })
 
     await Util.expectEncodeSuccess(schema, Cause.fail(1), Cause.fail("1"))
   })
 
   it("pretty", () => {
-    const schema = S.CauseFromSelf({ Error: S.String })
+    const schema = S.CauseFromSelf({ error: S.String })
     const pretty = Pretty.make(schema)
     expect(pretty(Cause.die("error"))).toEqual(`Cause.die(Error: error)`)
     expect(pretty(Cause.empty)).toEqual(`Cause.empty`)

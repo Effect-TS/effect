@@ -1020,10 +1020,10 @@ S.asSchema(S.Record(S.SymbolFromSelf, S.String))
 S.Record(S.SymbolFromSelf, S.String)
 
 // $ExpectType Schema<{ readonly [x: `a${string}`]: string; }, { readonly [x: `a${string}`]: string; }, never>
-S.asSchema(S.Record(S.templateLiteral(S.Literal("a"), S.String), S.String))
+S.asSchema(S.Record(S.TemplateLiteral(S.Literal("a"), S.String), S.String))
 
 // $ExpectType $Record<Schema<`a${string}`, `a${string}`, never>, $String>
-S.Record(S.templateLiteral(S.Literal("a"), S.String), S.String)
+S.Record(S.TemplateLiteral(S.Literal("a"), S.String), S.String)
 
 // $ExpectType Schema<{ readonly [x: string & Brand<"UserId">]: string; }, { readonly [x: string]: string; }, never>
 S.asSchema(S.Record(S.String.pipe(S.brand("UserId")), S.String))
@@ -1154,14 +1154,14 @@ S.instanceOf(Test)
 // ---------------------------------------------
 
 // $ExpectType Schema<`a${string}`, `a${string}`, never>
-S.templateLiteral(S.Literal("a"), S.String)
+S.TemplateLiteral(S.Literal("a"), S.String)
 
 // example from https://www.typescriptlang.org/docs/handbook/2/template-literal-types.html
 const EmailLocaleIDs = S.Literal("welcome_email", "email_heading")
 const FooterLocaleIDs = S.Literal("footer_title", "footer_sendoff")
 
 // $ExpectType Schema<"welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id", "welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id", never>
-S.templateLiteral(S.Union(EmailLocaleIDs, FooterLocaleIDs), S.Literal("_id"))
+S.TemplateLiteral(S.Union(EmailLocaleIDs, FooterLocaleIDs), S.Literal("_id"))
 
 // ---------------------------------------------
 // AttachPropertySignature

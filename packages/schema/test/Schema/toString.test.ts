@@ -12,7 +12,7 @@ describe("Schema > toString", () => {
     expect(String(S.String.pipe(S.brand("my-brand")))).toStrictEqual(`string & Brand<"my-brand">`)
   })
 
-  it("OptionalElement", () => {
+  it("optionalElement", () => {
     expect(String(S.optionalElement(S.String))).toStrictEqual("string?")
   })
 

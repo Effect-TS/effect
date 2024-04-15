@@ -7,11 +7,11 @@ import { describe, expect, it } from "vitest"
 
 describe("HashMap > hashMapFromSelf", () => {
   it("property tests", () => {
-    Util.roundtrip(S.HashMapFromSelf({ Key: S.Number, Value: S.String }))
+    Util.roundtrip(S.HashMapFromSelf({ key: S.Number, value: S.String }))
   })
 
   it("decoding", async () => {
-    const schema = S.HashMapFromSelf({ Key: S.NumberFromString, Value: S.String })
+    const schema = S.HashMapFromSelf({ key: S.NumberFromString, value: S.String })
     await Util.expectDecodeUnknownSuccess(schema, HashMap.fromIterable([]))
     await Util.expectDecodeUnknownSuccess(
       schema,
@@ -39,7 +39,7 @@ describe("HashMap > hashMapFromSelf", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.HashMapFromSelf({ Key: S.NumberFromString, Value: S.String })
+    const schema = S.HashMapFromSelf({ key: S.NumberFromString, value: S.String })
     await Util.expectEncodeSuccess(schema, HashMap.fromIterable([]), HashMap.fromIterable([]))
     await Util.expectEncodeSuccess(
       schema,
@@ -49,7 +49,7 @@ describe("HashMap > hashMapFromSelf", () => {
   })
 
   it("is", () => {
-    const schema = S.HashMapFromSelf({ Key: S.Number, Value: S.String })
+    const schema = S.HashMapFromSelf({ key: S.Number, value: S.String })
     const is = P.is(schema)
     expect(is(HashMap.fromIterable([]))).toEqual(true)
     expect(is(HashMap.fromIterable([[1, "a"], [2, "b"], [3, "c"]]))).toEqual(true)
@@ -64,7 +64,7 @@ describe("HashMap > hashMapFromSelf", () => {
   })
 
   it("pretty", () => {
-    const schema = S.HashMapFromSelf({ Key: S.Number, Value: S.String })
+    const schema = S.HashMapFromSelf({ key: S.Number, value: S.String })
     const pretty = Pretty.make(schema)
     expect(pretty(HashMap.fromIterable([]))).toEqual("HashMap([])")
     expect(pretty(HashMap.fromIterable([[1, "a"], [2, "b"]]))).toEqual(
