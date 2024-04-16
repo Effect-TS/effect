@@ -3,8 +3,8 @@
  */
 import type { ParseError } from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
-import { NoSuchElementException } from "effect/Cause"
 import * as Effect from "effect/Effect"
+import type * as Option from "effect/Option"
 
 /**
  * Run a sql query with a request schema and a result schema.
@@ -65,10 +65,9 @@ export const findOne = <IR, II, IA, AR, AI, A, R, E>(
 ) => {
   const encodeRequest = Schema.encode(options.Request)
   const decode = Schema.decodeUnknown(options.Result)
-  return (request: IA): Effect.Effect<A, E | ParseError | NoSuchElementException, R | IR | AR> =>
+  return (request: IA): Effect.Effect<Option.Option<A>, E | ParseError, R | IR | AR> =>
     Effect.flatMap(
       Effect.flatMap(encodeRequest(request), options.execute),
-      (arr): Effect.Effect<A, ParseError | NoSuchElementException, AR> =>
-        Array.isArray(arr) && arr.length > 0 ? decode(arr[0]) : Effect.fail(new NoSuchElementException())
+      (arr) => Array.isArray(arr) && arr.length > 0 ? Effect.asSome(decode(arr[0])) : Effect.succeedNone
     )
 }

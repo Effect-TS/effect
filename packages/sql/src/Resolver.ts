@@ -336,25 +336,25 @@ export const grouped = <T extends string, I, II, K, RI, A, IA, Row, E, RA = neve
  * @since 1.0.0
  * @category resolvers
  */
-export const findById = <T extends string, I, II, RI, A, IA, E, RA = never, R = never>(
+export const findById = <T extends string, I, II, RI, A, IA, Row, E, RA = never, R = never>(
   tag: T,
   options:
     | {
       readonly Id: Schema.Schema<I, II, RI>
       readonly Result: Schema.Schema<A, IA>
-      readonly ResultId: (result: NoInfer<A>) => II
+      readonly ResultId: (result: NoInfer<A>, row: NoInfer<Row>) => II
       readonly execute: (
         requests: Array<NoInfer<II>>
-      ) => Effect.Effect<ReadonlyArray<unknown>, E>
+      ) => Effect.Effect<ReadonlyArray<Row>, E>
       readonly withContext?: false
     }
     | {
       readonly Id: Schema.Schema<I, II, RI>
       readonly Result: Schema.Schema<A, IA, RA>
-      readonly ResultId: (result: NoInfer<A>) => II
+      readonly ResultId: (result: NoInfer<A>, row: NoInfer<Row>) => II
       readonly execute: (
         requests: Array<NoInfer<II>>
-      ) => Effect.Effect<ReadonlyArray<unknown>, E, R>
+      ) => Effect.Effect<ReadonlyArray<Row>, E, R>
       readonly withContext: true
     }
 ): Effect.Effect<SqlResolver<T, I, Option.Option<A>, E, RI>, never, RA | R> => {
@@ -363,12 +363,13 @@ export const findById = <T extends string, I, II, RI, A, IA, E, RA = never, R = 
     (requests: Array<SqlRequest<T, Option.Option<A>, E>>) => {
       const [inputs, spanLinks, idMap] = partitionRequestsById<II>()(requests)
       return options.execute(inputs as any).pipe(
-        Effect.flatMap(decodeResults),
-        Effect.flatMap((results) =>
+        Effect.bindTo("rawResults"),
+        Effect.bind("results", ({ rawResults }) => decodeResults(rawResults)),
+        Effect.flatMap(({ rawResults, results }) =>
           Effect.forEach(
             results,
-            (result) => {
-              const id = options.ResultId(result)
+            (result, i) => {
+              const id = options.ResultId(result, rawResults[i])
               const request = idMap.get(id)
               if (request === undefined) {
                 return Effect.unit
