@@ -1,3 +1,4 @@
+import * as Array from "../Array.js"
 import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
 import * as Either from "../Either.js"
@@ -11,7 +12,6 @@ import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty, isFunction } from "../Predicate.js"
 import type { Predicate, Refinement } from "../Predicate.js"
-import * as ReadonlyArray from "../ReadonlyArray.js"
 import type { AnySpan, Span } from "../Tracer.js"
 import { getBugErrorMessage } from "./errors.js"
 import * as OpCodes from "./opCodes/cause.js"
@@ -584,7 +584,7 @@ const flattenCauseLoop = (
   while (1) {
     const [parallel, sequential] = pipe(
       causes,
-      ReadonlyArray.reduce(
+      Array.reduce(
         [HashSet.empty<unknown>(), Chunk.empty<Cause.Cause<unknown>>()] as const,
         ([parallel, sequential], cause) => {
           const [par, seq] = evaluateCause(cause)
@@ -1046,7 +1046,7 @@ export const prettyErrorMessage = (u: unknown): string => {
       hasProperty(u, "toString") &&
       isFunction(u["toString"]) &&
       u["toString"] !== Object.prototype.toString &&
-      u["toString"] !== Array.prototype.toString
+      u["toString"] !== globalThis.Array.prototype.toString
     ) {
       return u["toString"]()
     }

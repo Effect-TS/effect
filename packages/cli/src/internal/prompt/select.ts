@@ -1,10 +1,10 @@
 import * as Terminal from "@effect/platform/Terminal"
 import * as Ansi from "@effect/printer-ansi/Ansi"
 import * as Doc from "@effect/printer-ansi/AnsiDoc"
+import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
-import * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as Prompt from "../../Prompt.js"
 import * as InternalPrompt from "../prompt.js"
 import * as InternalPromptAction from "./action.js"
@@ -93,7 +93,7 @@ const renderChoices = <A>(
   const choices = options.choices
   const toDisplay = entriesToDisplay(nextState.cursor, choices.length, options.maxPerPage)
   const choicesToRender = choices.slice(toDisplay.startIndex, toDisplay.endIndex)
-  const docs = ReadonlyArray.map(choicesToRender, (choice, currentIndex) => {
+  const docs = Array.map(choicesToRender, (choice, currentIndex) => {
     const prefix = renderChoicePrefix(nextState, choicesToRender, toDisplay, currentIndex, figures)
     const title = renderChoiceTitle(choice, nextState.cursor === currentIndex)
     const description = renderChoiceDescription(choice, nextState.cursor === currentIndex)
@@ -109,10 +109,10 @@ const renderOutput = <A>(
 ): Doc.AnsiDoc => {
   const annotateLine = (line: string): Doc.AnsiDoc => Doc.annotate(Doc.text(line), Ansi.bold)
   const prefix = Doc.cat(leadingSymbol, Doc.space)
-  return ReadonlyArray.match(options.message.split(/\r?\n/), {
+  return Array.match(options.message.split(/\r?\n/), {
     onEmpty: () => Doc.hsep([prefix, trailingSymbol]),
     onNonEmpty: (promptLines) => {
-      const lines = ReadonlyArray.map(promptLines, (line) => annotateLine(line))
+      const lines = Array.map(promptLines, (line) => annotateLine(line))
       return pipe(
         prefix,
         Doc.cat(Doc.nest(Doc.vsep(lines), 2)),

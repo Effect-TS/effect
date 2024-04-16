@@ -1,11 +1,11 @@
 /**
  * @since 1.0.0
  */
+import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Lmdb from "lmdb"
 import * as Persistence from "../Persistence.js"
 import * as TimeToLive from "../TimeToLive.js"
@@ -51,7 +51,7 @@ export const make = (options: Lmdb.RootDatabaseOptionsWithPath) =>
                   try: () => store.getMany(keys),
                   catch: (error) => Persistence.PersistenceBackingError.make("getMany", error)
                 }),
-                ReadonlyArray.map((value, i) => valueToOption(keys[i], value))
+                Array.map((value, i) => valueToOption(keys[i], value))
               ),
             set: (key, value, ttl) =>
               Effect.tryPromise({

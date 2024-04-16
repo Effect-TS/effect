@@ -1,6 +1,7 @@
 import type * as FileSystem from "@effect/platform/FileSystem"
 import type * as Path from "@effect/platform/Path"
 import type * as Terminal from "@effect/platform/Terminal"
+import * as Array from "effect/Array"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
@@ -11,7 +12,6 @@ import type * as HashSet from "effect/HashSet"
 import type * as Layer from "effect/Layer"
 import type * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
-import * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as Types from "effect/Types"
 import type * as Args from "../Args.js"
 import type * as CliApp from "../CliApp.js"
@@ -59,7 +59,7 @@ const parseConfig = (config: Command.Command.Config): Command.Command.ParsedConf
     if (Array.isArray(value)) {
       return {
         _tag: "Array",
-        children: ReadonlyArray.map(value, parseValue)
+        children: Array.map(value as Array<any>, parseValue)
       }
     } else if (InternalArgs.isArgs(value)) {
       args.push(value)
@@ -107,7 +107,7 @@ const reconstructConfigTree = (
     } else if (node._tag === "Options") {
       return options[node.index]
     } else if (node._tag === "Array") {
-      return ReadonlyArray.map(node.children, nodeValue)
+      return Array.map(node.children, nodeValue)
     } else {
       return reconstructConfigTree(node.tree, args, options)
     }
@@ -191,7 +191,9 @@ export const fromDescriptor = dual<
       descriptor,
       handler ??
         ((_) => Effect.failSync(() => ValidationError.helpRequested(getDescriptor(self)))),
-      Context.GenericTag(`@effect/cli/Command/(${Array.from(InternalDescriptor.getNames(descriptor)).join("|")})`)
+      Context.GenericTag(
+        `@effect/cli/Command/(${Array.fromIterable(InternalDescriptor.getNames(descriptor)).join("|")})`
+      )
     )
     return self as any
   }
@@ -425,7 +427,7 @@ export const withDescription = dual<
 
 /** @internal */
 export const withSubcommands = dual<
-  <Subcommand extends ReadonlyArray.NonEmptyReadonlyArray<Command.Command<any, any, any, any>>>(
+  <Subcommand extends Array.NonEmptyReadonlyArray<Command.Command<any, any, any, any>>>(
     subcommands: Subcommand
   ) => <Name extends string, R, E, A>(self: Command.Command<Name, R, E, A>) => Command.Command<
     Name,
@@ -451,7 +453,7 @@ export const withSubcommands = dual<
     R,
     E,
     A,
-    Subcommand extends ReadonlyArray.NonEmptyReadonlyArray<Command.Command<any, any, any, any>>
+    Subcommand extends Array.NonEmptyReadonlyArray<Command.Command<any, any, any, any>>
   >(
     self: Command.Command<Name, R, E, A>,
     subcommands: Subcommand
@@ -477,9 +479,9 @@ export const withSubcommands = dual<
 >(2, (self, subcommands) => {
   const command = InternalDescriptor.withSubcommands(
     self.descriptor,
-    ReadonlyArray.map(subcommands, (_) => [_.tag, _.descriptor])
+    Array.map(subcommands, (_) => [_.tag, _.descriptor])
   )
-  const subcommandMap = ReadonlyArray.reduce(
+  const subcommandMap = Array.reduce(
     subcommands,
     new Map<Context.Tag<any, any>, Command.Command<any, any, any, any>>(),
     (handlers, subcommand) => {

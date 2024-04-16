@@ -3,7 +3,7 @@ import { NodeFileSystem } from "@effect/platform-node"
 import * as Schema from "@effect/schema/Schema"
 import * as Sql from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Option, ReadonlyArray } from "effect"
+import { Array, Effect, Option } from "effect"
 
 const makeClient = Effect.gen(function*(_) {
   const fs = yield* _(FileSystem.FileSystem)
@@ -17,7 +17,7 @@ const seededClient = Effect.gen(function*(_) {
   const sql = yield* _(makeClient)
   yield* _(sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`)
   yield* _(
-    Effect.forEach(ReadonlyArray.range(1, 100), (id) => sql`INSERT INTO test ${sql.insert({ id, name: `name${id}` })}`)
+    Effect.forEach(Array.range(1, 100), (id) => sql`INSERT INTO test ${sql.insert({ id, name: `name${id}` })}`)
   )
   return sql
 })

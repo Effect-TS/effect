@@ -1,7 +1,7 @@
 import type { ParseOptions } from "@effect/schema/AST"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
-import * as RA from "effect/ReadonlyArray"
+import * as RA from "effect/Array"
 import { Bench } from "tinybench"
 import { z } from "zod"
 

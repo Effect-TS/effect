@@ -21,6 +21,7 @@
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
  */
+import * as Array from "./Array.js"
 import * as Chunk from "./Chunk.js"
 import * as Either from "./Either.js"
 import * as Equal from "./Equal.js"
@@ -32,7 +33,6 @@ import * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 import { hasProperty, type Predicate, type Refinement } from "./Predicate.js"
-import * as ReadonlyArray from "./ReadonlyArray.js"
 
 /**
  * Represents an immutable linked list of elements of type `A`.
@@ -84,14 +84,14 @@ export interface Cons<out A> extends Iterable<A>, Equal.Equal, Pipeable, Inspect
  * @category conversions
  * @since 2.0.0
  */
-export const toArray = <A>(self: List<A>): Array<A> => Array.from(self)
+export const toArray = <A>(self: List<A>): Array<A> => Array.fromIterable(self)
 
 /**
  * @category equivalence
  * @since 2.0.0
  */
 export const getEquivalence = <A>(isEquivalent: Equivalence.Equivalence<A>): Equivalence.Equivalence<List<A>> =>
-  Equivalence.mapInput(ReadonlyArray.getEquivalence(isEquivalent), toArray<A>)
+  Equivalence.mapInput(Array.getEquivalence(isEquivalent), toArray<A>)
 
 const _equivalence = getEquivalence(Equal.equals)
 

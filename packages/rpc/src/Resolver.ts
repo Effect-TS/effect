@@ -5,11 +5,11 @@ import * as Headers from "@effect/platform/Http/Headers"
 import type { ParseError } from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
+import * as Array from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { dual, pipe } from "effect/Function"
-import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"
 import * as Stream from "effect/Stream"
@@ -32,7 +32,7 @@ export const make = <HR, E>(
   const getDecodeChunk = withRequestTag((req) => Schema.decodeUnknown(Schema.Chunk(Serializable.exitSchema(req))))
 
   return RequestResolver.makeBatched((requests: Array<Rpc.Request<Schema.TaggedRequest.Any>>) => {
-    const [effectRequests, streamRequests] = ReadonlyArray.partition(
+    const [effectRequests, streamRequests] = Array.partition(
       requests,
       (_): _ is Rpc.Request<Rpc.StreamRequest.Any> => StreamRequestTypeId in _.request
     )

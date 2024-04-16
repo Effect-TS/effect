@@ -1,4 +1,5 @@
 import * as it from "effect-test/utils/extend"
+import * as Array from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
@@ -8,7 +9,6 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
-import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
 
@@ -241,27 +241,27 @@ describe("Effect", () => {
       yield* $(
         Ref.get(ref),
         Effect.zipLeft(Effect.sleep(Duration.millis(1))),
-        Effect.repeat({ until: (list) => pipe(list, ReadonlyArray.findFirst((s) => s === "start 1"), Option.isSome) })
+        Effect.repeat({ until: (list) => pipe(list, Array.findFirst((s) => s === "start 1"), Option.isSome) })
       )
       yield* $(Fiber.interrupt(fiber))
       yield* $(
         Ref.get(ref),
         Effect.zipLeft(Effect.sleep(Duration.millis(1))),
-        Effect.repeat({ until: (list) => pipe(list, ReadonlyArray.findFirst((s) => s === "release 2"), Option.isSome) })
+        Effect.repeat({ until: (list) => pipe(list, Array.findFirst((s) => s === "release 2"), Option.isSome) })
       )
       const result = yield* $(Ref.get(ref))
       assert.isTrue(pipe(
         result,
-        ReadonlyArray.findFirst((s) => s === "start 1"),
+        Array.findFirst((s) => s === "start 1"),
         Option.isSome
       ))
       assert.isTrue(pipe(
         result,
-        ReadonlyArray.findFirst((s) => s === "release 1"),
+        Array.findFirst((s) => s === "release 1"),
         Option.isSome
       ))
-      assert.isTrue(pipe(result, ReadonlyArray.findFirst((s) => s === "start 2"), Option.isSome))
-      assert.isTrue(pipe(result, ReadonlyArray.findFirst((s) => s === "release 2"), Option.isSome))
+      assert.isTrue(pipe(result, Array.findFirst((s) => s === "start 2"), Option.isSome))
+      assert.isTrue(pipe(result, Array.findFirst((s) => s === "release 2"), Option.isSome))
     }))
   it.live("interrupt waits for finalizer", () =>
     Effect.gen(function*($) {

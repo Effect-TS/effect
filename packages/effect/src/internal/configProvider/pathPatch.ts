@@ -1,10 +1,10 @@
+import * as RA from "../../Array.js"
 import type * as ConfigError from "../../ConfigError.js"
 import type * as PathPatch from "../../ConfigProviderPathPatch.js"
 import * as Either from "../../Either.js"
 import { dual, pipe } from "../../Function.js"
 import * as List from "../../List.js"
 import * as Option from "../../Option.js"
-import * as RA from "../../ReadonlyArray.js"
 import * as configError from "../configError.js"
 
 /** @internal */

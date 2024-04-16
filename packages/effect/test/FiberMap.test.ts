@@ -1,4 +1,4 @@
-import { Effect, Exit, ReadonlyArray, Ref, Scope } from "effect"
+import { Array, Effect, Exit, Ref, Scope } from "effect"
 import * as it from "effect-test/utils/extend"
 import * as FiberMap from "effect/FiberMap"
 import { assert, describe } from "vitest"
@@ -11,7 +11,7 @@ describe("FiberMap", () => {
         Effect.gen(function*(_) {
           const map = yield* _(FiberMap.make<number>())
           yield* _(
-            Effect.forEach(ReadonlyArray.range(1, 10), (i) =>
+            Effect.forEach(Array.range(1, 10), (i) =>
               Effect.onInterrupt(
                 Effect.never,
                 () => Ref.update(ref, (n) => n + 1)
@@ -34,7 +34,7 @@ describe("FiberMap", () => {
         Effect.gen(function*(_) {
           const map = yield* _(FiberMap.make<number>())
           const run = yield* _(FiberMap.runtime(map)<never>())
-          ReadonlyArray.range(1, 10).forEach((i) =>
+          Array.range(1, 10).forEach((i) =>
             run(
               i,
               Effect.onInterrupt(

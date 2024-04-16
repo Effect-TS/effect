@@ -2,12 +2,12 @@
  * @since 1.0.0
  */
 import { FileSystem } from "@effect/platform/FileSystem"
+import * as Array from "effect/Array"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
-import * as ReadonlyArray from "effect/ReadonlyArray"
 import type { Client } from "./Client.js"
 import type { SqlError } from "./Error.js"
 
@@ -278,15 +278,15 @@ export const fromGlob = (
 ): Loader =>
   pipe(
     Object.keys(migrations),
-    ReadonlyArray.filterMap((_) => Option.fromNullable(_.match(/^(?:.*\/)?(\d+)_([^.]+)\.(js|ts)$/))),
-    ReadonlyArray.map(
+    Array.filterMap((_) => Option.fromNullable(_.match(/^(?:.*\/)?(\d+)_([^.]+)\.(js|ts)$/))),
+    Array.map(
       ([key, id, name]): ResolvedMigration => [
         Number(id),
         name,
         Effect.promise(() => migrations[key]())
       ]
     ),
-    ReadonlyArray.sort(migrationOrder),
+    Array.sort(migrationOrder),
     Effect.succeed
   )
 
@@ -297,15 +297,15 @@ export const fromGlob = (
 export const fromBabelGlob = (migrations: Record<string, any>): Loader =>
   pipe(
     Object.keys(migrations),
-    ReadonlyArray.filterMap((_) => Option.fromNullable(_.match(/^_(\d+)_([^.]+?)(Js|Ts)?$/))),
-    ReadonlyArray.map(
+    Array.filterMap((_) => Option.fromNullable(_.match(/^_(\d+)_([^.]+?)(Js|Ts)?$/))),
+    Array.map(
       ([key, id, name]): ResolvedMigration => [
         Number(id),
         name,
         Effect.succeed(migrations[key])
       ]
     ),
-    ReadonlyArray.sort(migrationOrder),
+    Array.sort(migrationOrder),
     Effect.succeed
   )
 
