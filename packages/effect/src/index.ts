@@ -258,6 +258,11 @@ export * as Fiber from "./Fiber.js"
 /**
  * @since 2.0.0
  */
+export * as FiberHandle from "./FiberHandle.js"
+
+/**
+ * @since 2.0.0
+ */
 export * as FiberId from "./FiberId.js"
 
 /**
