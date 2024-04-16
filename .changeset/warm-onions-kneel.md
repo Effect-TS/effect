@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-feat: Fiber.joinAll, return array of A.
+change return type of Fiber.joinAll to return an array
