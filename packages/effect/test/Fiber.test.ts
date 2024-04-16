@@ -145,7 +145,7 @@ describe("Fiber", () => {
         return pipe(Queue.offer(queue, n), Effect.asVoid)
       }
       const queue = yield* $(Queue.unbounded<number>())
-      yield* $(Queue.offerAll(queue, Array.range(0, 99)))
+      yield* $(Queue.offerAll(queue, Array.range(1, 100)))
       const result = yield* $(Effect.exit(shard(queue, 4, worker)))
       yield* $(Queue.shutdown(queue))
       assert.isTrue(Exit.isFailure(result))
