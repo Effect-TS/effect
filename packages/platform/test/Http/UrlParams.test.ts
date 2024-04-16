@@ -1,26 +1,26 @@
 import * as UrlParams from "@effect/platform/Http/UrlParams"
-import { assert, describe, it } from "vitest"
+import { assert, describe, it } from "@effect/vitest"
+import { Effect } from "effect"
 
 describe("UrlParams", () => {
-  describe("baseUrl", () => {
-    it("should return undefined when `location` is not in `globalThis` or `globalThis.location` is undefined", () => {
-      const originalLocation = globalThis.location
+  describe("makeUrl", () => {
+    it.effect("does not throw if `location` is set to `undefined`", () =>
+      Effect.gen(function*(_) {
+        const originalLocation = globalThis.location
 
-      // `globalThis.location` is undefined
-      // @ts-expect-error
-      globalThis.location = undefined
-      assert.strictEqual("location" in globalThis, true)
-      assert.strictEqual(globalThis.location, undefined)
-      assert.strictEqual(UrlParams.baseUrl(), undefined)
+        // `globalThis.location` is undefined
+        // @ts-expect-error
+        globalThis.location = undefined
+        let url = yield* _(UrlParams.makeUrl("http://example.com", [], () => "error"))
+        assert.strictEqual(url.toString(), "http://example.com/")
 
-      // `location` is not in globalThis
-      // @ts-expect-error
-      delete globalThis.location
-      assert.strictEqual("location" in globalThis, false)
-      assert.strictEqual(globalThis.location, undefined)
-      assert.strictEqual(UrlParams.baseUrl(), undefined)
+        // `location` is not in globalThis
+        // @ts-expect-error
+        delete globalThis.location
+        url = yield* _(UrlParams.makeUrl("http://example.com", [], () => "error"))
+        assert.strictEqual(url.toString(), "http://example.com/")
 
-      globalThis.location = originalLocation
-    })
+        globalThis.location = originalLocation
+      }))
   })
 })
