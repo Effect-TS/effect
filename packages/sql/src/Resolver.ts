@@ -372,7 +372,7 @@ export const findById = <T extends string, I, II, RI, A, IA, Row, E, RA = never,
               const id = options.ResultId(result, rawResults[i])
               const request = idMap.get(id)
               if (request === undefined) {
-                return Effect.unit
+                return Effect.void
               }
               idMap.delete(id)
               return Request.succeed(request, Option.some(result))
@@ -382,7 +382,7 @@ export const findById = <T extends string, I, II, RI, A, IA, Row, E, RA = never,
         ),
         Effect.tap((_) => {
           if (idMap.size === 0) {
-            return Effect.unit
+            return Effect.void
           }
           return Effect.forEach(
             idMap.values(),
@@ -431,7 +431,7 @@ const void_ = <T extends string, I, II, RI, E, R = never>(
         Effect.andThen(
           Effect.forEach(
             requests,
-            (request) => Request.complete(request, Exit.unit),
+            (request) => Request.complete(request, Exit.void),
             { discard: true }
           )
         ),

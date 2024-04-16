@@ -147,7 +147,7 @@ export const make = (
             if (error) {
               resume(Effect.fail(new SqlError({ error })))
             } else {
-              resume(Effect.unit)
+              resume(Effect.void)
             }
           })
         })
@@ -265,7 +265,7 @@ export const make = (
             if (error) {
               resume(Effect.fail(new SqlError({ error })))
             } else {
-              resume(Effect.unit)
+              resume(Effect.void)
             }
           })
         }),
@@ -274,7 +274,7 @@ export const make = (
             if (error) {
               resume(Effect.fail(new SqlError({ error })))
             } else {
-              resume(Effect.unit)
+              resume(Effect.void)
             }
           })
         }),
@@ -284,7 +284,7 @@ export const make = (
               if (error) {
                 resume(Effect.fail(new SqlError({ error })))
               } else {
-                resume(Effect.unit)
+                resume(Effect.void)
               }
             }, name)
           }),
@@ -294,7 +294,7 @@ export const make = (
               if (error) {
                 resume(Effect.fail(new SqlError({ error })))
               } else {
-                resume(Effect.unit)
+                resume(Effect.void)
               }
             }, name)
           })
@@ -351,7 +351,7 @@ export const make = (
         ([scope, conn, id], exit) => {
           const effect = Exit.isSuccess(exit)
             ? id > 0
-              ? Effect.unit
+              ? Effect.void
               : Effect.orDie(conn.commit)
             : Effect.orDie(conn.rollback(id > 0 ? `effect_sql_${id}` : undefined))
           return scope !== undefined ? Effect.ensuring(effect, Scope.close(scope, exit)) : effect

@@ -67,7 +67,7 @@ export function make({
       ([scope, conn, id], exit) => {
         const effect = Exit.isSuccess(exit)
           ? id > 0
-            ? Effect.unit
+            ? Effect.void
             : Effect.orDie(conn.executeRaw(commit))
           : id > 0
           ? Effect.orDie(conn.executeRaw(rollbackSavepoint(`effect_sql_${id}`)))
