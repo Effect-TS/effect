@@ -87,6 +87,40 @@
       "@effect/schema": ["./packages/schema/src/index.js"],
       "@effect/schema/*": ["./packages/schema/src/*.js"],
       "@effect/schema/test/*": ["./packages/schema/test/*.js"],
+      "@effect/sql": ["./packages/sql/src/index.js"],
+      "@effect/sql/*": ["./packages/sql/src/*.js"],
+      "@effect/sql/test/*": ["./packages/sql/test/*.js"],
+      "@effect/sql-mssql": ["./packages/sql-mssql/src/index.js"],
+      "@effect/sql-mssql/*": ["./packages/sql-mssql/src/*.js"],
+      "@effect/sql-mssql/test/*": ["./packages/sql-mssql/test/*.js"],
+      "@effect/sql-mysql2": ["./packages/sql-mysql2/src/index.js"],
+      "@effect/sql-mysql2/*": ["./packages/sql-mysql2/src/*.js"],
+      "@effect/sql-mysql2/test/*": ["./packages/sql-mysql2/test/*.js"],
+      "@effect/sql-pg": ["./packages/sql-pg/src/index.js"],
+      "@effect/sql-pg/*": ["./packages/sql-pg/src/*.js"],
+      "@effect/sql-pg/test/*": ["./packages/sql-pg/test/*.js"],
+      "@effect/sql-sqlite-bun": ["./packages/sql-sqlite-bun/src/index.js"],
+      "@effect/sql-sqlite-bun/*": ["./packages/sql-sqlite-bun/src/*.js"],
+      "@effect/sql-sqlite-bun/test/*": ["./packages/sql-sqlite-bun/test/*.js"],
+      "@effect/sql-sqlite-node": ["./packages/sql-sqlite-node/src/index.js"],
+      "@effect/sql-sqlite-node/*": ["./packages/sql-sqlite-node/src/*.js"],
+      "@effect/sql-sqlite-node/test/*": [
+        "./packages/sql-sqlite-node/test/*.js"
+      ],
+      "@effect/sql-sqlite-react-native": [
+        "./packages/sql-sqlite-react-native/src/index.js"
+      ],
+      "@effect/sql-sqlite-react-native/*": [
+        "./packages/sql-sqlite-react-native/src/*.js"
+      ],
+      "@effect/sql-sqlite-react-native/test/*": [
+        "./packages/sql-sqlite-react-native/test/*.js"
+      ],
+      "@effect/sql-sqlite-wasm": ["./packages/sql-sqlite-wasm/src/index.js"],
+      "@effect/sql-sqlite-wasm/*": ["./packages/sql-sqlite-wasm/src/*.js"],
+      "@effect/sql-sqlite-wasm/test/*": [
+        "./packages/sql-sqlite-wasm/test/*.js"
+      ],
       "@effect/typeclass": ["./packages/typeclass/src/index.js"],
       "@effect/typeclass/*": ["./packages/typeclass/src/*.js"],
       "@effect/typeclass/test/*": ["./packages/typeclass/test/*.js"],

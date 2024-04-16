@@ -1,0 +1,158 @@
+import * as Sql from "@effect/sql-pg"
+import { defaultTransforms } from "@effect/sql/Client"
+import { Effect, Scope, String } from "effect"
+import { assert, describe, expect, it } from "vitest"
+
+const sql = Effect.runSync(Scope.extend(Sql.client.make({}), Effect.runSync(Scope.make())))
+const compiler = Sql.client.makeCompiler()
+const compilerTransform = Sql.client.makeCompiler(String.camelToSnake)
+const transformsNested = defaultTransforms(String.snakeToCamel)
+const transforms = defaultTransforms(String.snakeToCamel, false)
+
+describe("pg", () => {
+  it("insert helper", () => {
+    const [query, params] = compiler.compile(
+      sql`INSERT INTO people ${sql.insert({ name: "Tim", age: 10 })}`
+    )
+    expect(query).toEqual(`INSERT INTO people ("name","age") VALUES ($1,$2)`)
+    expect(params).toEqual(["Tim", 10])
+  })
+
+  it("update helper", () => {
+    const [query, params] = compiler.compile(
+      sql`UPDATE people SET name = data.name FROM ${
+        sql.updateValues(
+          [{ name: "Tim" }, { name: "John" }],
+          "data"
+        )
+      }`
+    )
+    expect(query).toEqual(
+      `UPDATE people SET name = data.name FROM (values ($1),($2)) AS data("name")`
+    )
+    expect(params).toEqual(["Tim", "John"])
+  })
+
+  it("array helper", () => {
+    const [query, params] = compiler.compile(
+      sql`SELECT * FROM ${sql("people")} WHERE id IN ${sql.in([1, 2, "string"])}`
+    )
+    expect(query).toEqual(`SELECT * FROM "people" WHERE id IN ($1,$2,$3)`)
+    expect(params).toEqual([1, 2, "string"])
+  })
+
+  it("json", () => {
+    const [query, params] = compiler.compile(sql`SELECT ${sql.json({ a: 1 })}`)
+    expect(query).toEqual(`SELECT $1`)
+    expect((params[0] as any).type).toEqual(3802)
+  })
+
+  it("json transform", () => {
+    const [query, params] = compilerTransform.compile(
+      sql`SELECT ${sql.json({ aKey: 1 })}`
+    )
+    expect(query).toEqual(`SELECT $1`)
+    assert.deepEqual((params[0] as any).value, { a_key: 1 })
+  })
+
+  it("array", () => {
+    const [query, params] = compiler.compile(
+      sql`SELECT ${sql.array([1, 2, 3])}`
+    )
+    expect(query).toEqual(`SELECT $1`)
+    expect((params[0] as any).value).toEqual([1, 2, 3])
+  })
+
+  it("transform nested", () => {
+    assert.deepEqual(
+      transformsNested.array([
+        {
+          a_key: 1,
+          nested: [{ b_key: 2 }],
+          arr_primitive: [1, "2", true]
+        }
+      ]) as any,
+      [
+        {
+          aKey: 1,
+          nested: [{ bKey: 2 }],
+          arrPrimitive: [1, "2", true]
+        }
+      ]
+    )
+  })
+
+  it("transform non nested", () => {
+    assert.deepEqual(
+      transforms.array([
+        {
+          a_key: 1,
+          nested: [{ b_key: 2 }],
+          arr_primitive: [1, "2", true]
+        }
+      ]) as any,
+      [
+        {
+          aKey: 1,
+          nested: [{ b_key: 2 }],
+          arrPrimitive: [1, "2", true]
+        }
+      ]
+    )
+
+    assert.deepEqual(
+      transforms.array([
+        {
+          json_field: {
+            test_value: [1, true, null, "text"],
+            test_nested: {
+              test_value: [1, true, null, "text"]
+            }
+          }
+        }
+      ]) as any,
+      [
+        {
+          jsonField: {
+            test_value: [1, true, null, "text"],
+            test_nested: {
+              test_value: [1, true, null, "text"]
+            }
+          }
+        }
+      ]
+    )
+  })
+
+  it("insert fragments", () => {
+    const [query, params] = sql`INSERT INTO people ${
+      sql.insert({
+        name: "Tim",
+        age: 10,
+        json: sql.json({ a: 1 })
+      })
+    }`.compile()
+    assert.strictEqual(
+      query,
+      "INSERT INTO people (\"name\",\"age\",\"json\") VALUES ($1,$2,$3)"
+    )
+    assert.lengthOf(params, 3)
+    expect((params[2] as any).type).toEqual(3802)
+  })
+
+  it("insert array", () => {
+    const [query, params] = sql`INSERT INTO people ${
+      sql.insert({
+        name: "Tim",
+        age: 10,
+        array: sql.array([1, 2, 3])
+      })
+    }`.compile()
+    assert.strictEqual(
+      query,
+      "INSERT INTO people (\"name\",\"age\",\"array\") VALUES ($1,$2,$3)"
+    )
+    assert.lengthOf(params, 3)
+    expect((params[2] as any).type).toEqual(1022)
+  })
+})

@@ -11,6 +11,9 @@ const config: UserConfig = {
   esbuild: {
     target: "es2020"
   },
+  optimizeDeps: {
+    exclude: ["bun:sqlite"]
+  },
   test: {
     fakeTimers: {
       toFake: undefined
@@ -18,6 +21,7 @@ const config: UserConfig = {
     sequence: {
       concurrent: true
     },
+    include: ["test/**/*.test.ts"],
     alias: {
       // TODO: Should we use `effect/test` instead of `effect-test`?
       "effect-test": path.join(__dirname, "packages/effect/test"),
@@ -35,6 +39,14 @@ const config: UserConfig = {
       ...alias("rpc"),
       ...alias("rpc-http"),
       ...alias("schema"),
+      ...alias("sql"),
+      ...alias("sql-mssql"),
+      ...alias("sql-mysql2"),
+      ...alias("sql-pg"),
+      ...alias("sql-sqlite-bun"),
+      ...alias("sql-sqlite-node"),
+      ...alias("sql-sqlite-react-native"),
+      ...alias("sql-sqlite-wasm"),
       ...alias("typeclass"),
       ...alias("vitest")
     }

@@ -1,0 +1,22 @@
+services:
+  db:
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "Sq1Fx_password"
+    # mssql server image isn't available for arm64 architecture, so we use azure-sql instead
+    # image: mcr.microsoft.com/azure-sql-edge:1.0.4
+    # If you really want to use MS SQL Server, uncomment the following line
+    image: mcr.microsoft.com/mssql/server
+    ports:
+      - 1433:1433
+    restart: always
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P Sq1Fx_password -Q 'SELECT 1' || exit 1",
+        ]
+      interval: 10s
+      retries: 10
+      start_period: 10s
+      timeout: 3s

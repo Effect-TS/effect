@@ -21,15 +21,21 @@ export const isCommand = (u: unknown): u is Command.Command => typeof u === "obj
 
 /** @internal */
 export const env: {
-  (environment: Record<string, string>): (self: Command.Command) => Command.Command
-  (self: Command.Command, environment: Record<string, string>): Command.Command
+  (environment: Record<string, string | undefined>): (self: Command.Command) => Command.Command
+  (self: Command.Command, environment: Record<string, string | undefined>): Command.Command
 } = dual<
-  (environment: Record<string, string>) => (self: Command.Command) => Command.Command,
-  (self: Command.Command, environment: Record<string, string>) => Command.Command
+  (environment: Record<string, string | undefined>) => (self: Command.Command) => Command.Command,
+  (self: Command.Command, environment: Record<string, string | undefined>) => Command.Command
 >(2, (self, environment) => {
   switch (self._tag) {
     case "StandardCommand": {
-      return makeStandard({ ...self, env: HashMap.union(self.env, HashMap.fromIterable(Object.entries(environment))) })
+      return makeStandard({
+        ...self,
+        env: HashMap.union(
+          self.env,
+          HashMap.fromIterable(Object.entries(environment).filter(([v]) => v !== undefined))
+        ) as HashMap.HashMap<string, string>
+      })
     }
     case "PipedCommand": {
       return pipeTo(env(self.left, environment), env(self.right, environment))

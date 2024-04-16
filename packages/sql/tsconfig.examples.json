@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": ["examples"],
+  "references": [
+    { "path": "tsconfig.src.json" },
+    { "path": "../effect" },
+    { "path": "../platform" },
+    { "path": "../schema" }
+  ],
+  "compilerOptions": {
+    "tsBuildInfoFile": ".tsbuildinfo/examples.tsbuildinfo",
+    "rootDir": "examples",
+    "noEmit": true
+  }
+}

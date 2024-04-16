@@ -28,24 +28,24 @@ export const makeBatched = <A extends Request.Request<any, any>, R>(
   run: (requests: Array<A>) => Effect.Effect<void, never, R>
 ): RequestResolver.RequestResolver<A, R> =>
   new core.RequestResolverImpl<A, R>(
-    (requests) =>
-      requests.length > 1 ?
-        core.forEachSequentialDiscard(requests, (block) =>
-          invokeWithInterrupt(
-            run(
-              block
-                .filter((_) => !_.state.completed)
-                .map((_) => _.request)
-            ),
-            block
-          )) :
-        (requests.length === 1 ?
-          run(
-            requests[0]
-              .filter((_) => !_.state.completed)
-              .map((_) => _.request)
-          ) :
-          core.unit)
+    (requests) => {
+      if (requests.length > 1) {
+        return core.forEachSequentialDiscard(requests, (block) => {
+          const filtered = block.filter((_) => !_.state.completed).map((_) => _.request)
+          if (filtered.length === 0) {
+            return core.unit
+          }
+          return invokeWithInterrupt(run(filtered), block)
+        })
+      } else if (requests.length === 1) {
+        const filtered = requests[0].filter((_) => !_.state.completed).map((_) => _.request)
+        if (filtered.length === 0) {
+          return core.unit
+        }
+        return run(filtered)
+      }
+      return core.unit
+    }
   )
 
 /** @internal */

@@ -16,8 +16,6 @@
     "outDir": "build/esm",
     "declarationDir": "build/dts",
     "stripInternal": true,
-    "types": [
-      "node"
-    ]
+    "types": ["node"]
   }
 }
