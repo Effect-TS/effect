@@ -107,7 +107,7 @@ export const run: <R>(
  * @category layers
  * @since 1.0.0
  */
-export const layer = (
-  options: Migrator.MigratorOptions
-): Layer.Layer<never, SqlError | Migrator.MigrationError, Client.PgClient | FileSystem | Path | CommandExecutor> =>
+export const layer = <R>(
+  options: Migrator.MigratorOptions<R>
+): Layer.Layer<never, SqlError | Migrator.MigrationError, R | Client.PgClient | FileSystem | Path | CommandExecutor> =>
   Layer.effectDiscard(run(options))
