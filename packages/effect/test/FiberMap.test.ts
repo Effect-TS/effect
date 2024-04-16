@@ -69,7 +69,7 @@ describe("FiberMap", () => {
       FiberMap.unsafeSet(set, "a", Effect.runFork(Effect.never))
       FiberMap.unsafeSet(set, "b", Effect.runFork(Effect.never))
       assert.strictEqual(yield* _(FiberMap.size(set)), 2)
-      yield* _(Scope.close(scope, Exit.unit))
+      yield* _(Scope.close(scope, Exit.void))
       assert.strictEqual(yield* _(FiberMap.size(set)), 0)
     }))
 })
