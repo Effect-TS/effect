@@ -23,7 +23,7 @@ import * as internalClient from "./internal/client.js"
  */
 export interface SqlRequest<T extends string, A, E> extends Request.Request<A, E | ParseError> {
   readonly _tag: T
-  readonly spanLink?: Tracer.SpanLink | undefined
+  readonly spanLink: Tracer.SpanLink
   readonly input: unknown
 }
 
@@ -57,32 +57,30 @@ const makeRequest = <T extends string, I, A, E>(
 }
 
 const partitionRequests = <T extends string, A, E>(requests: ReadonlyArray<SqlRequest<T, A, E>>) => {
-  const inputs: Array<unknown> = new Array(requests.length)
-  const spanLinks: Array<Tracer.SpanLink> = []
+  const len = requests.length
+  const inputs: Array<unknown> = new Array(len)
+  const spanLinks: Array<Tracer.SpanLink> = new Array(len)
 
-  for (let i = 0, len = requests.length; i < len; i++) {
+  for (let i = 0; i < len; i++) {
     const request = requests[i]
     inputs[i] = request.input
-    if (request.spanLink !== undefined) {
-      spanLinks.push(request.spanLink)
-    }
+    spanLinks[i] = request.spanLink
   }
 
   return [inputs, spanLinks] as const
 }
 
 const partitionRequestsById = <I>() => <T extends string, A, E>(requests: ReadonlyArray<SqlRequest<T, A, E>>) => {
-  const inputs: Array<unknown> = new Array(requests.length)
-  const spanLinks: Array<Tracer.SpanLink> = []
+  const len = requests.length
+  const inputs: Array<unknown> = new Array(len)
+  const spanLinks: Array<Tracer.SpanLink> = new Array(len)
   const byIdMap = new Map<I, SqlRequest<T, A, E>>()
 
-  for (let i = 0, len = requests.length; i < len; i++) {
+  for (let i = 0; i < len; i++) {
     const request = requests[i]
     inputs[i] = request.input
+    spanLinks[i] = request.spanLink
     byIdMap.set(request.input as I, request)
-    if (request.spanLink !== undefined) {
-      spanLinks.push(request.spanLink)
-    }
   }
 
   return [inputs, spanLinks, byIdMap] as const
