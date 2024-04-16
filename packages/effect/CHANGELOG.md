@@ -1,5 +1,125 @@
 # effect
 
+## 3.0.0
+
+### Major Changes
+
+- [#2207](https://github.com/Effect-TS/effect/pull/2207) [`2fb7d9c`](https://github.com/Effect-TS/effect/commit/2fb7d9ca15037ff62a578bb9fe5732da5f4f317d) Thanks [@github-actions](https://github.com/apps/github-actions)! - Release Effect 3.0 🎉
+
+### Minor Changes
+
+- [#2207](https://github.com/Effect-TS/effect/pull/2207) [`1b5f0c7`](https://github.com/Effect-TS/effect/commit/1b5f0c77e7fd477a0026071e82129a948227f4b3) Thanks [@github-actions](https://github.com/apps/github-actions)! - close FiberHandle/FiberSet/FiberMap when it is released
+
+  When they are closed, fibers can no longer be added to them.
+
+- [#2207](https://github.com/Effect-TS/effect/pull/2207) [`d50a652`](https://github.com/Effect-TS/effect/commit/d50a652479f4d1d64f48da05c79fa847e6e51548) Thanks [@github-actions](https://github.com/apps/github-actions)! - add preregisteredWords option to frequency metric key type
+
+  You can use this to register a list of words to pre-populate the value of the
+  metric.
+
+  ```ts
+  import { Metric } from "effect";
+
+  const counts = Metric.frequency("counts", {
+    preregisteredWords: ["a", "b", "c"],
+  }).register();
+  ```
+
+- [#2207](https://github.com/Effect-TS/effect/pull/2207) [`9a3bd47`](https://github.com/Effect-TS/effect/commit/9a3bd47ebd0750c7e498162734f6d21895de0cb2) Thanks [@github-actions](https://github.com/apps/github-actions)! - Bump TypeScript min requirement to version 5.4
+
+- [#2207](https://github.com/Effect-TS/effect/pull/2207) [`be9d025`](https://github.com/Effect-TS/effect/commit/be9d025e42355260ace02dd135851a8935a4deba) Thanks [@github-actions](https://github.com/apps/github-actions)! - add unique identifier to Tracer.ParentSpan tag
+
+- [#2529](https://github.com/Effect-TS/effect/pull/2529) [`78b767c`](https://github.com/Effect-TS/effect/commit/78b767c2b1625186e17131761a0edbac25d21850) Thanks [@fubhy](https://github.com/fubhy)! - Renamed `ReadonlyArray` and `ReadonlyRecord` modules for better discoverability.
+
+- [#2207](https://github.com/Effect-TS/effect/pull/2207) [`5c2b561`](https://github.com/Effect-TS/effect/commit/5c2b5614f583b88784ed68126ae939832fb3c092) Thanks [@github-actions](https://github.com/apps/github-actions)! - The signatures of the `HaltStrategy.match` `StreamHaltStrategy.match` functions have been changed to the generally accepted ones
+
+- [#2207](https://github.com/Effect-TS/effect/pull/2207) [`a18f594`](https://github.com/Effect-TS/effect/commit/a18f5948f1439a147232448b2c443472fda0eceb) Thanks [@github-actions](https://github.com/apps/github-actions)! - support variadic arguments in Effect.log
+
+  This makes Effect.log more similar to console.log:
+
+  ```ts
+  Effect.log("hello", { foo: "bar" }, Cause.fail("error"));
+  ```
+
+- [#2207](https://github.com/Effect-TS/effect/pull/2207) [`2f96d93`](https://github.com/Effect-TS/effect/commit/2f96d938b90f8c19377583279e3c7afd9b509c50) Thanks [@github-actions](https://github.com/apps/github-actions)! - Fix ConfigError `_tag`, with the previous implementation catching the `ConfigError` with `Effect.catchTag` would show `And`, `Or`, etc.
+
+- [#2207](https://github.com/Effect-TS/effect/pull/2207) [`5a2314b`](https://github.com/Effect-TS/effect/commit/5a2314b70ec79c2c02b51cef45a5ddec8327daa1) Thanks [@github-actions](https://github.com/apps/github-actions)! - replace use of `unit` terminology with `void`
+
+  For all the data types.
+
+  ```ts
+  Effect.unit; // => Effect.void
+  Stream.unit; // => Stream.void
+
+  // etc
+  ```
+
+- [#2207](https://github.com/Effect-TS/effect/pull/2207) [`271b79f`](https://github.com/Effect-TS/effect/commit/271b79fc0b66a6c11e07a8779ff8800493a7eac2) Thanks [@github-actions](https://github.com/apps/github-actions)! - Either: fix `getEquivalence` parameter order from `Either.getEquivalence(left, right)` to `Either.getEquivalence({ left, right })`
+
+- [#2207](https://github.com/Effect-TS/effect/pull/2207) [`53d1c2a`](https://github.com/Effect-TS/effect/commit/53d1c2a77559081fbb89667e343346375c6d6650) Thanks [@github-actions](https://github.com/apps/github-actions)! - use LazyArg for Effect.if branches
+
+  Instead of:
+
+  ```ts
+  Effect.if(true, {
+    onTrue: Effect.succeed("true"),
+    onFalse: Effect.succeed("false"),
+  });
+  ```
+
+  You should now write:
+
+  ```ts
+  Effect.if(true, {
+    onTrue: () => Effect.succeed("true"),
+    onFalse: () => Effect.succeed("false"),
+  });
+  ```
+
+- [#2207](https://github.com/Effect-TS/effect/pull/2207) [`e7e1bbe`](https://github.com/Effect-TS/effect/commit/e7e1bbe68486fdf31c8f84b0880522d39adcaad3) Thanks [@github-actions](https://github.com/apps/github-actions)! - Replaced custom `NoInfer` type with the native `NoInfer` type from TypeScript 5.4
+
+- [#2207](https://github.com/Effect-TS/effect/pull/2207) [`10c169e`](https://github.com/Effect-TS/effect/commit/10c169eadc874e91b4defca3f467b4e6a50fd8f3) Thanks [@github-actions](https://github.com/apps/github-actions)! - `Cache<Key, Error, Value>` has been changed to `Cache<Key, Value, Error = never>`.
+  `ScopedCache<Key, Error, Value>` has been changed to `ScopedCache<Key, Value, Error = never>`.
+  `Lookup<Key, Environment, Error, Value>` has been changed to `Lookup<Key, Value, Error = never, Environment = never>`
+
+### Patch Changes
+
+- [#2104](https://github.com/Effect-TS/effect/pull/2104) [`1499974`](https://github.com/Effect-TS/effect/commit/14999741d2e19c1747f6a7e19d68977f6429cdb8) Thanks [@IMax153](https://github.com/IMax153)! - don't run resolver if there are no incomplete requests
+
+- [#2207](https://github.com/Effect-TS/effect/pull/2207) [`1b5f0c7`](https://github.com/Effect-TS/effect/commit/1b5f0c77e7fd477a0026071e82129a948227f4b3) Thanks [@github-actions](https://github.com/apps/github-actions)! - add FiberMap.has/unsafeHas api
+
+- [#2104](https://github.com/Effect-TS/effect/pull/2104) [`1499974`](https://github.com/Effect-TS/effect/commit/14999741d2e19c1747f6a7e19d68977f6429cdb8) Thanks [@IMax153](https://github.com/IMax153)! - add String casing transformation apis
+
+  - `snakeToCamel`
+  - `snakeToPascal`
+  - `snakeToKebab`
+  - `camelToSnake`
+  - `pascalToSnake`
+  - `kebabToSnake`
+
+- [#2207](https://github.com/Effect-TS/effect/pull/2207) [`1b5f0c7`](https://github.com/Effect-TS/effect/commit/1b5f0c77e7fd477a0026071e82129a948227f4b3) Thanks [@github-actions](https://github.com/apps/github-actions)! - add FiberHandle module, for holding a reference to a running fiber
+
+  ```ts
+  import { Effect, FiberHandle } from "effect";
+
+  Effect.gen(function* (_) {
+    const handle = yield* _(FiberHandle.make());
+
+    // run some effects
+    yield* _(FiberHandle.run(handle, Effect.never));
+    // this will interrupt the previous fiber
+    yield* _(FiberHandle.run(handle, Effect.never));
+    // this will not run, as a fiber is already running
+    yield* _(FiberHandle.run(handle, Effect.never, { onlyIfMissing: true }));
+
+    yield* _(Effect.sleep(1000));
+  }).pipe(
+    Effect.scoped, // The fiber will be interrupted when the scope is closed
+  );
+  ```
+
+- [#2521](https://github.com/Effect-TS/effect/pull/2521) [`6424181`](https://github.com/Effect-TS/effect/commit/64241815fe6a939e91e6947253e7dceea1306aa8) Thanks [@patroza](https://github.com/patroza)! - change return type of Fiber.joinAll to return an array
+
 ## 2.4.19
 
 ### Patch Changes
