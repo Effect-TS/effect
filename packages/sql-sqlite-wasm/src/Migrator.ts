@@ -39,6 +39,6 @@ export const run: <R>(
  * @category constructor
  * @since 1.0.0
  */
-export const makeLayer = (
-  options: Migrator.MigratorOptions
-): Layer.Layer<never, SqlError | Migrator.MigrationError, Client.SqliteClient> => Layer.effectDiscard(run(options))
+export const layer = <R>(
+  options: Migrator.MigratorOptions<R>
+): Layer.Layer<never, SqlError | Migrator.MigrationError, R | Client.SqliteClient> => Layer.effectDiscard(run(options))
