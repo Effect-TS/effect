@@ -51,10 +51,10 @@
   "devDependencies": {
     "@effect/platform": "workspace:^",
     "@effect/schema": "workspace:^",
-    "@types/node": "^20.11.30",
-    "@types/tar": "^6.1.11",
+    "@types/node": "^20.12.7",
+    "@types/tar": "^6.1.12",
     "effect": "workspace:^",
-    "tar": "^6.2.1"
+    "tar": "^6.1.13"
   },
   "effect": {
     "generateExports": {
