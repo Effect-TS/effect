@@ -410,6 +410,8 @@ export const run: {
     return Effect.suspend(() => {
       if (self.state._tag === "Closed") {
         return Effect.interrupt
+      } else if (unsafeHas(self, key) && options?.onlyIfMissing === true) {
+        return set(self, key, Effect.runFork(Effect.never), options)
       }
       return Effect.uninterruptibleMask((restore) =>
         Effect.tap(
@@ -426,6 +428,8 @@ export const run: {
     Effect.suspend(() => {
       if (self.state._tag === "Closed") {
         return Effect.interrupt
+      } else if (unsafeHas(self, key) && options?.onlyIfMissing === true) {
+        return set(self, key, Effect.runFork(Effect.never), options)
       }
       return Effect.uninterruptibleMask((restore) =>
         Effect.tap(
