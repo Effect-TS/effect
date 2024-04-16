@@ -208,7 +208,7 @@ export const makeUrl = <E>(url: string, params: UrlParams, onError: (e: unknown)
   })
 
 const baseUrl = (): string | undefined => {
-  if ("location" in globalThis) {
+  if ("location" in globalThis && globalThis.location !== undefined) {
     return location.origin + location.pathname
   }
   return undefined
