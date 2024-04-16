@@ -34,11 +34,12 @@ describe("FiberHandle", () => {
             onlyIfMissing: true
           })
           yield* _(Effect.yieldNow())
+          assert.strictEqual(yield* _(Ref.get(ref)), 2)
         }),
         Effect.scoped
       )
 
-      assert.strictEqual(yield* _(Ref.get(ref)), 2)
+      assert.strictEqual(yield* _(Ref.get(ref)), 3)
     }))
 
   it.scoped("join", () =>

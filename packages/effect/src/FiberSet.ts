@@ -2,6 +2,7 @@
  * @since 2.0.0
  */
 import * as Effect from "effect/Effect"
+import * as FiberId from "effect/FiberId"
 import type * as Scope from "effect/Scope"
 import * as Cause from "./Cause.js"
 import * as Deferred from "./Deferred.js"
@@ -36,8 +37,12 @@ export interface FiberSet<out A = unknown, out E = unknown>
   extends Pipeable, Inspectable.Inspectable, Iterable<Fiber.RuntimeFiber<A, E>>
 {
   readonly [TypeId]: TypeId
+  /** @internal */
   readonly backing: Set<Fiber.RuntimeFiber<A, E>>
-  readonly deferred: Deferred.Deferred<never, unknown>
+  /** @internal */
+  readonly deferred: Deferred.Deferred<void, unknown>
+  /** @internal */
+  closed: boolean
 }
 
 /**
@@ -70,11 +75,12 @@ const Proto = {
 
 const unsafeMake = <A, E>(
   backing: Set<Fiber.RuntimeFiber<A, E>>,
-  deferred: Deferred.Deferred<never, unknown>
+  deferred: Deferred.Deferred<void, unknown>
 ): FiberSet<A, E> => {
   const self = Object.create(Proto)
   self.backing = backing
   self.deferred = deferred
+  self.closed = false
   return self
 }
 
@@ -105,8 +111,11 @@ const unsafeMake = <A, E>(
  */
 export const make = <A = unknown, E = unknown>(): Effect.Effect<FiberSet<A, E>, never, Scope.Scope> =>
   Effect.acquireRelease(
-    Effect.map(Deferred.make<never, unknown>(), (deferred) => unsafeMake(new Set(), deferred)),
-    clear
+    Effect.map(Deferred.make<void, unknown>(), (deferred) => unsafeMake(new Set(), deferred)),
+    (set) => {
+      set.closed = true
+      return Effect.zipRight(clear(set), Deferred.done(set.deferred, Exit.unit))
+    }
   )
 
 /**
@@ -135,18 +144,30 @@ export const makeRuntime = <R = never, A = unknown, E = unknown>(): Effect.Effec
  * @categories combinators
  */
 export const unsafeAdd: {
-  <A, E, XE extends E, XA extends A>(fiber: Fiber.RuntimeFiber<XA, XE>): (self: FiberSet<A, E>) => void
-  <A, E, XE extends E, XA extends A>(self: FiberSet<A, E>, fiber: Fiber.RuntimeFiber<XA, XE>): void
-} = dual<
   <A, E, XE extends E, XA extends A>(
-    fiber: Fiber.RuntimeFiber<XA, XE>
-  ) => (self: FiberSet<A, E>) => void,
+    fiber: Fiber.RuntimeFiber<XA, XE>,
+    options?: {
+      readonly interruptAs?: FiberId.FiberId | undefined
+    } | undefined
+  ): (self: FiberSet<A, E>) => void
   <A, E, XE extends E, XA extends A>(
     self: FiberSet<A, E>,
-    fiber: Fiber.RuntimeFiber<XA, XE>
-  ) => void
->(2, (self, fiber) => {
-  if (self.backing.has(fiber)) {
+    fiber: Fiber.RuntimeFiber<XA, XE>,
+    options?: {
+      readonly interruptAs?: FiberId.FiberId | undefined
+    } | undefined
+  ): void
+} = dual((args) => isFiberSet(args[0]), <A, E, XE extends E, XA extends A>(
+  self: FiberSet<A, E>,
+  fiber: Fiber.RuntimeFiber<XA, XE>,
+  options?: {
+    readonly interruptAs?: FiberId.FiberId | undefined
+  } | undefined
+): void => {
+  if (self.closed) {
+    fiber.unsafeInterruptAsFork(options?.interruptAs ?? FiberId.none)
+    return
+  } else if (self.backing.has(fiber)) {
     return
   }
   ;(fiber as FiberRuntime<unknown, unknown>).setFiberRef(FiberRef.unhandledErrorLogLevel, Option.none())
@@ -181,19 +202,26 @@ export const add: {
     self: FiberSet<A, E>,
     fiber: Fiber.RuntimeFiber<XA, XE>
   ) => Effect.Effect<void>
->(2, (self, fiber) => Effect.sync(() => unsafeAdd(self, fiber)))
+>(
+  2,
+  (self, fiber) =>
+    Effect.fiberIdWith((fiberId) =>
+      Effect.sync(() =>
+        unsafeAdd(self, fiber, {
+          interruptAs: fiberId
+        })
+      )
+    )
+)
 
 /**
  * @since 2.0.0
  * @categories combinators
  */
 export const clear = <A, E>(self: FiberSet<A, E>): Effect.Effect<void> =>
-  Effect.zipRight(
-    Effect.forEach(self.backing, (fiber) => Fiber.interrupt(fiber)),
-    Effect.sync(() => {
-      self.backing.clear()
-    })
-  )
+  Effect.forEach(self.backing, (fiber) =>
+    // will be removed by the observer
+    Fiber.interrupt(fiber))
 
 /**
  * Fork an Effect and add the forked fiber to the FiberSet.
@@ -214,16 +242,30 @@ export const run: {
   const self = arguments[0] as FiberSet<any, any>
   if (arguments.length === 1) {
     return (effect: Effect.Effect<any, any, any>) =>
-      Effect.tap(
-        Effect.forkDaemon(effect),
-        (fiber) => add(self, fiber)
-      )
+      Effect.suspend(() => {
+        if (self.closed) {
+          return Effect.unit
+        }
+        return Effect.uninterruptibleMask((restore) =>
+          Effect.tap(
+            restore(Effect.forkDaemon(effect)),
+            (fiber) => add(self, fiber)
+          )
+        )
+      })
   }
   const effect = arguments[1] as Effect.Effect<any, any, any>
-  return Effect.tap(
-    Effect.forkDaemon(effect),
-    (fiber) => add(self, fiber)
-  ) as any
+  return Effect.suspend(() => {
+    if (self.closed) {
+      return Effect.unit
+    }
+    return Effect.uninterruptibleMask((restore) =>
+      Effect.tap(
+        restore(Effect.forkDaemon(effect)),
+        (fiber) => add(self, fiber)
+      )
+    )
+  }) as any
 }
 
 /**
@@ -300,5 +342,5 @@ export const size = <A, E>(self: FiberSet<A, E>): Effect.Effect<number> => Effec
  *   yield* _(FiberSet.join(set));
  * });
  */
-export const join = <A, E>(self: FiberSet<A, E>): Effect.Effect<never, E> =>
-  Deferred.await(self.deferred as Deferred.Deferred<never, E>)
+export const join = <A, E>(self: FiberSet<A, E>): Effect.Effect<void, E> =>
+  Deferred.await(self.deferred as Deferred.Deferred<void, E>)

@@ -36,8 +36,11 @@ export type TypeId = typeof TypeId
  */
 export interface FiberHandle<out A = unknown, out E = unknown> extends Pipeable, Inspectable.Inspectable {
   readonly [TypeId]: TypeId
-  readonly deferred: Deferred.Deferred<never, unknown>
+  readonly deferred: Deferred.Deferred<void, unknown>
+  /** @internal */
   backing: Fiber.RuntimeFiber<A, E> | undefined
+  /** @internal */
+  closed: boolean
 }
 
 /**
@@ -66,11 +69,12 @@ const Proto = {
 }
 
 const unsafeMake = <A = unknown, E = unknown>(
-  deferred: Deferred.Deferred<never, E>
+  deferred: Deferred.Deferred<void, E>
 ): FiberHandle<A, E> => {
   const self = Object.create(Proto)
   self.backing = undefined
   self.deferred = deferred
+  self.closed = false
   return self
 }
 
@@ -102,8 +106,12 @@ const unsafeMake = <A = unknown, E = unknown>(
  */
 export const make = <A = unknown, E = unknown>(): Effect.Effect<FiberHandle<A, E>, never, Scope.Scope> =>
   Effect.acquireRelease(
-    Effect.map(Deferred.make<never, E>(), (deferred) => unsafeMake<A, E>(deferred)),
-    clear
+    Effect.map(Deferred.make<void, E>(), (deferred) => unsafeMake<A, E>(deferred)),
+    (handle) =>
+      Effect.suspend(() => {
+        handle.closed = true
+        return Effect.zipRight(clear(handle), Deferred.done(handle.deferred, Exit.unit))
+      })
   )
 
 /**
@@ -160,8 +168,12 @@ export const unsafeSet: {
     readonly onlyIfMissing?: boolean | undefined
   }
 ): void => {
-  if (self.backing !== undefined) {
+  if (self.closed) {
+    fiber.unsafeInterruptAsFork(options?.interruptAs ?? FiberId.none)
+    return
+  } else if (self.backing !== undefined) {
     if (options?.onlyIfMissing === true) {
+      fiber.unsafeInterruptAsFork(options?.interruptAs ?? FiberId.none)
       return
     } else if (self.backing === fiber) {
       return
@@ -285,17 +297,31 @@ export const run: {
   if (arguments.length === 1) {
     const options = arguments[1] as { readonly onlyIfMissing?: boolean } | undefined
     return (effect: Effect.Effect<unknown, unknown, any>) =>
-      Effect.tap(
-        Effect.forkDaemon(effect),
-        (fiber) => set(self, fiber, options)
-      )
+      Effect.suspend(() => {
+        if (self.closed) {
+          return Effect.interrupt
+        }
+        return Effect.uninterruptibleMask((restore) =>
+          Effect.tap(
+            restore(Effect.forkDaemon(effect)),
+            (fiber) => set(self, fiber, options)
+          )
+        )
+      })
   }
   const effect = arguments[1] as Effect.Effect<any, any, any>
   const options = arguments[2] as { readonly onlyIfMissing?: boolean } | undefined
-  return Effect.tap(
-    Effect.forkDaemon(effect),
-    (fiber) => set(self, fiber, options)
-  ) as any
+  return Effect.suspend(() => {
+    if (self.closed) {
+      return Effect.interrupt
+    }
+    return Effect.uninterruptibleMask((restore) =>
+      Effect.tap(
+        restore(Effect.forkDaemon(effect)),
+        (fiber) => set(self, fiber, options)
+      )
+    )
+  }) as any
 }
 
 /**
@@ -377,5 +403,5 @@ export const runtime: <A, E>(
  *   yield* _(FiberHandle.join(handle));
  * });
  */
-export const join = <A, E>(self: FiberHandle<A, E>): Effect.Effect<never, E> =>
-  Deferred.await(self.deferred as Deferred.Deferred<never, E>)
+export const join = <A, E>(self: FiberHandle<A, E>): Effect.Effect<void, E> =>
+  Deferred.await(self.deferred as Deferred.Deferred<void, E>)

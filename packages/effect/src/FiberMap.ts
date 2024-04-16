@@ -39,8 +39,12 @@ export interface FiberMap<in out K, out A = unknown, out E = unknown>
   extends Pipeable, Inspectable.Inspectable, Iterable<[K, Fiber.RuntimeFiber<A, E>]>
 {
   readonly [TypeId]: TypeId
+  /** @internal */
   readonly backing: MutableHashMap.MutableHashMap<K, Fiber.RuntimeFiber<A, E>>
-  readonly deferred: Deferred.Deferred<never, unknown>
+  /** @internal */
+  readonly deferred: Deferred.Deferred<void, unknown>
+  /** @internal */
+  closed: boolean
 }
 
 /**
@@ -73,11 +77,12 @@ const Proto = {
 
 const unsafeMake = <K, A = unknown, E = unknown>(
   backing: MutableHashMap.MutableHashMap<K, Fiber.RuntimeFiber<A, E>>,
-  deferred: Deferred.Deferred<never, E>
+  deferred: Deferred.Deferred<void, E>
 ): FiberMap<K, A, E> => {
   const self = Object.create(Proto)
   self.backing = backing
   self.deferred = deferred
+  self.closed = false
   return self
 }
 
@@ -108,12 +113,16 @@ const unsafeMake = <K, A = unknown, E = unknown>(
  */
 export const make = <K, A = unknown, E = unknown>(): Effect.Effect<FiberMap<K, A, E>, never, Scope.Scope> =>
   Effect.acquireRelease(
-    Effect.map(Deferred.make<never, E>(), (deferred) =>
+    Effect.map(Deferred.make<void, E>(), (deferred) =>
       unsafeMake<K, A, E>(
         MutableHashMap.empty(),
         deferred
       )),
-    clear
+    (map) =>
+      Effect.suspend(() => {
+        map.closed = true
+        return Effect.zipRight(clear(map), Deferred.done(map.deferred, Exit.unit))
+      })
   )
 
 /**
@@ -168,6 +177,11 @@ export const unsafeSet: {
     interruptAs?: FiberId.FiberId
   ) => void
 >((args) => isFiberMap(args[0]), (self, key, fiber, interruptAs) => {
+  if (self.closed) {
+    fiber.unsafeInterruptAsFork(interruptAs ?? FiberId.none)
+    return
+  }
+
   const previous = MutableHashMap.get(self.backing, key)
   if (previous._tag === "Some") {
     if (previous.value === fiber) {
@@ -282,7 +296,7 @@ export const remove: {
     if (fiber._tag === "None") {
       return Effect.void
     }
-    MutableHashMap.remove(self.backing, key)
+    // will be removed by the observer
     return Fiber.interrupt(fiber.value)
   }))
 
@@ -291,12 +305,9 @@ export const remove: {
  * @categories combinators
  */
 export const clear = <K, A, E>(self: FiberMap<K, A, E>): Effect.Effect<void> =>
-  Effect.zipRight(
-    Effect.forEach(self.backing, ([_, fiber]) => Fiber.interrupt(fiber)),
-    Effect.sync(() => {
-      MutableHashMap.clear(self.backing)
-    })
-  )
+  Effect.forEach(self.backing, ([, fiber]) =>
+    // will be removed by the observer
+    Fiber.interrupt(fiber))
 
 /**
  * Run an Effect and add the forked fiber to the FiberMap.
@@ -322,18 +333,32 @@ export const run: {
     const self = arguments[0] as FiberMap<any>
     const key = arguments[1]
     return (effect: Effect.Effect<any, any, any>) =>
-      Effect.tap(
-        Effect.forkDaemon(effect),
-        (fiber) => set(self, key, fiber)
-      )
+      Effect.suspend(() => {
+        if (self.closed) {
+          return Effect.interrupt
+        }
+        return Effect.uninterruptibleMask((restore) =>
+          Effect.tap(
+            restore(Effect.forkDaemon(effect)),
+            (fiber) => set(self, key, fiber)
+          )
+        )
+      })
   }
   const self = arguments[0] as FiberMap<any>
   const key = arguments[1]
   const effect = arguments[2] as Effect.Effect<any, any, any>
-  return Effect.tap(
-    Effect.forkDaemon(effect),
-    (fiber) => set(self, key, fiber)
-  ) as any
+  return Effect.suspend(() => {
+    if (self.closed) {
+      return Effect.interrupt
+    }
+    return Effect.uninterruptibleMask((restore) =>
+      Effect.tap(
+        restore(Effect.forkDaemon(effect)),
+        (fiber) => set(self, key, fiber)
+      )
+    )
+  }) as any
 }
 
 /**
@@ -414,5 +439,5 @@ export const size = <K, A, E>(self: FiberMap<K, A, E>): Effect.Effect<number> =>
  *   yield* _(FiberMap.join(map));
  * });
  */
-export const join = <K, A, E>(self: FiberMap<K, A, E>): Effect.Effect<never, E> =>
-  Deferred.await(self.deferred as Deferred.Deferred<never, E>)
+export const join = <K, A, E>(self: FiberMap<K, A, E>): Effect.Effect<void, E> =>
+  Deferred.await(self.deferred as Deferred.Deferred<void, E>)

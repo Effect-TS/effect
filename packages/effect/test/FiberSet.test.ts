@@ -1,4 +1,4 @@
-import { Effect, ReadonlyArray, Ref } from "effect"
+import { Effect, Exit, ReadonlyArray, Ref, Scope } from "effect"
 import * as it from "effect-test/utils/extend"
 import * as FiberSet from "effect/FiberSet"
 import { assert, describe } from "vitest"
@@ -58,5 +58,16 @@ describe("FiberSet", () => {
       FiberSet.unsafeAdd(set, Effect.runFork(Effect.fail("fail")))
       const result = yield* _(FiberSet.join(set), Effect.flip)
       assert.strictEqual(result, "fail")
+    }))
+
+  it.effect("size", () =>
+    Effect.gen(function*(_) {
+      const scope = yield* _(Scope.make())
+      const set = yield* _(FiberSet.make(), Scope.extend(scope))
+      FiberSet.unsafeAdd(set, Effect.runFork(Effect.never))
+      FiberSet.unsafeAdd(set, Effect.runFork(Effect.never))
+      assert.strictEqual(yield* _(FiberSet.size(set)), 2)
+      yield* _(Scope.close(scope, Exit.unit))
+      assert.strictEqual(yield* _(FiberSet.size(set)), 0)
     }))
 })
