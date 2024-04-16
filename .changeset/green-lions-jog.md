@@ -1,5 +1,5 @@
 ---
-"@effect/platform": patch
+"effect": minor
 "@effect/platform-browser": patch
 ---
 
