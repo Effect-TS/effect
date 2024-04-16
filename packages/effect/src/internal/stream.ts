@@ -8047,7 +8047,7 @@ export const encodeText = <E, R>(self: Stream.Stream<string, E, R>): Stream.Stre
   })
 
 /** @internal */
-export const fromEventListener = <A extends Event = Event>(
+export const fromEventListener = <A = Event>(
   target: EventTarget,
   type: string,
   options?: boolean | Omit<AddEventListenerOptions, "signal">

@@ -8,10 +8,6 @@ import * as internal from "./internal/stream.js"
 /**
  * Creates a `Stream` from window.addEventListener.
  * @since 1.0.0
- * @example
- *
- * import { BrowserStream } from "@effect/platform-browser";
- * BrowserStream.fromEventListenerWindow("keypress") // Stream<KeyboardEvent>
  */
 export const fromEventListenerWindow: <K extends keyof WindowEventMap>(
   type: K,
