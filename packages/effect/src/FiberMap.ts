@@ -40,7 +40,6 @@ export interface FiberMap<in out K, out A = unknown, out E = unknown>
   extends Pipeable, Inspectable.Inspectable, Iterable<[K, Fiber.RuntimeFiber<A, E>]>
 {
   readonly [TypeId]: TypeId
-  /** @internal */
   readonly deferred: Deferred.Deferred<void, unknown>
   /** @internal */
   state: {
