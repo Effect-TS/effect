@@ -192,7 +192,7 @@ const makeResolver = <T extends string, A, E, I, II, RI, R>(
  * @since 1.0.0
  * @category resolvers
  */
-export const ordered = <T extends string, I, II, RI, A, IA, E, RA = never, R = never>(
+export const ordered = <T extends string, I, II, RI, A, IA, _, E, RA = never, R = never>(
   tag: T,
   options:
     | {
@@ -200,7 +200,7 @@ export const ordered = <T extends string, I, II, RI, A, IA, E, RA = never, R = n
       readonly Result: Schema.Schema<A, IA>
       readonly execute: (
         requests: Array<NoInfer<II>>
-      ) => Effect.Effect<ReadonlyArray<unknown>, E>
+      ) => Effect.Effect<ReadonlyArray<_>, E>
       readonly withContext?: false
     }
     | {
@@ -208,7 +208,7 @@ export const ordered = <T extends string, I, II, RI, A, IA, E, RA = never, R = n
       readonly Result: Schema.Schema<A, IA, RA>
       readonly execute: (
         requests: Array<NoInfer<II>>
-      ) => Effect.Effect<ReadonlyArray<unknown>, E, R>
+      ) => Effect.Effect<ReadonlyArray<_>, E, R>
       readonly withContext: true
     }
 ): Effect.Effect<
@@ -260,27 +260,27 @@ export const ordered = <T extends string, I, II, RI, A, IA, E, RA = never, R = n
  * @since 1.0.0
  * @category resolvers
  */
-export const grouped = <T extends string, I, II, K, RI, A, IA, E, RA = never, R = never>(
+export const grouped = <T extends string, I, II, K, RI, A, IA, Row, E, RA = never, R = never>(
   tag: T,
   options:
     | {
       readonly Request: Schema.Schema<I, II, RI>
       readonly RequestGroupKey: (request: NoInfer<II>) => K
       readonly Result: Schema.Schema<A, IA>
-      readonly ResultGroupKey: (result: NoInfer<A>) => K
+      readonly ResultGroupKey: (result: NoInfer<A>, row: NoInfer<Row>) => K
       readonly execute: (
         requests: Array<NoInfer<II>>
-      ) => Effect.Effect<ReadonlyArray<unknown>, E>
+      ) => Effect.Effect<ReadonlyArray<Row>, E>
       readonly withContext?: false
     }
     | {
       readonly Request: Schema.Schema<I, II, RI>
       readonly RequestGroupKey: (request: NoInfer<II>) => K
       readonly Result: Schema.Schema<A, IA, RA>
-      readonly ResultGroupKey: (result: NoInfer<A>) => K
+      readonly ResultGroupKey: (result: NoInfer<A>, row: NoInfer<Row>) => K
       readonly execute: (
         requests: Array<NoInfer<II>>
-      ) => Effect.Effect<ReadonlyArray<unknown>, E, R>
+      ) => Effect.Effect<ReadonlyArray<Row>, E, R>
       readonly withContext: true
     }
 ): Effect.Effect<SqlResolver<T, I, Array<A>, E, RI>, never, RA | R> => {
@@ -290,11 +290,12 @@ export const grouped = <T extends string, I, II, K, RI, A, IA, E, RA = never, R 
       const [inputs, spanLinks] = partitionRequests(requests)
       const resultMap = new Map<K, Array<A>>()
       return options.execute(inputs as any).pipe(
-        Effect.flatMap(decodeResults),
-        Effect.tap((results) => {
+        Effect.bindTo("rawResults"),
+        Effect.bind("results", ({ rawResults }) => decodeResults(rawResults)),
+        Effect.tap(({ rawResults, results }) => {
           for (let i = 0, len = results.length; i < len; i++) {
             const result = results[i]
-            const key = options.ResultGroupKey(result)
+            const key = options.ResultGroupKey(result, rawResults[i])
             const group = resultMap.get(key)
             if (group === undefined) {
               resultMap.set(key, [result])

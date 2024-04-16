@@ -4,12 +4,12 @@ import * as Pg from "@effect/sql-pg"
 import { Config, Effect, Layer, String } from "effect"
 
 class Person extends Schema.Class<Person>("Person")({
-  id: Schema.number,
-  name: Schema.string,
+  id: Schema.Number,
+  name: Schema.String,
   createdAt: Schema.DateFromSelf
 }) {}
 
-const InsertPersonSchema = Schema.struct(Person.fields).pipe(
+const InsertPersonSchema = Schema.Struct(Person.fields).pipe(
   Schema.omit("id", "createdAt")
 )
 
@@ -26,7 +26,7 @@ const program = Effect.gen(function*(_) {
 
   const GetById = yield* _(
     Pg.resolver.findById("GetPersonById", {
-      Id: Schema.number,
+      Id: Schema.Number,
       Result: Person,
       ResultId: (result) => result.id,
       execute: (ids) => sql`SELECT * FROM people WHERE id IN ${sql.in(ids)}`
@@ -35,11 +35,11 @@ const program = Effect.gen(function*(_) {
 
   const GetByName = yield* _(
     Pg.resolver.grouped("GetPersonByName", {
-      Request: Schema.string,
+      Request: Schema.String,
       RequestGroupKey: (_) => _,
       Result: Person,
       ResultGroupKey: (_) => _.name,
-      execute: (ids) => sql`SELECT * FROM people WHERE name IN ${sql.in(ids)}`
+      execute: (ids) => sql<{}>`SELECT * FROM people WHERE name IN ${sql.in(ids)}`
     })
   )
 
