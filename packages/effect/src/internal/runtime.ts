@@ -135,7 +135,7 @@ class AsyncFiberExceptionImpl<A, E = never> extends Error implements Runtime.Asy
   readonly _tag = "AsyncFiberException"
   constructor(readonly fiber: Fiber.RuntimeFiber<A, E>) {
     super(
-      `Fiber #${fiber.id().id} cannot be resolved synchronously, this is caused by using runSync on an effect that performs async work`
+      `Fiber #${fiber.id().id} cannot be resolved synchronously. This is caused by using runSync on an effect that performs async work`
     )
     this.name = this._tag
     this.stack = this.message
