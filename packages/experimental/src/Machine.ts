@@ -15,7 +15,6 @@ import * as FiberRefs from "effect/FiberRefs"
 import * as FiberSet from "effect/FiberSet"
 import { dual, identity, pipe } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
-import * as MutableHashMap from "effect/MutableHashMap"
 import * as Option from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import { pipeArguments } from "effect/Pipeable"
@@ -645,12 +644,8 @@ export const boot = <
         (id: string): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<void, never, R>
         <A, E, R>(effect: Effect.Effect<A, E, R>, id: string): Effect.Effect<void, never, R>
       } = dual(2, <A, E, R>(effect: Effect.Effect<A, E, R>, id: string): Effect.Effect<void, never, R> =>
-        Effect.suspend(() => {
-          if (MutableHashMap.has(fiberMap.backing, id)) {
-            return Effect.void
-          }
-          return forkReplace(effect, id)
-        }))
+        Effect.asVoid(FiberMap.run(fiberMap, id, MachineDefect.wrap(effect), { onlyIfMissing: true })))
+
       const forkOneWith: {
         (
           id: string,
