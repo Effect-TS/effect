@@ -4558,10 +4558,10 @@ export const encodeText: <E, R>(self: Stream<string, E, R>) => Stream<Uint8Array
 
 /**
  * Creates a `Stream` using addEventListener.
- * @since 1.0.0
+ * @since 3.1.0
  */
-export const fromEventListener: (
+export const fromEventListener: <A extends Event = Event>(
   target: EventTarget,
   type: string,
   options?: boolean | Omit<AddEventListenerOptions, "signal">
-) => Stream<Event> = internal.fromEventListener
+) => Stream<A> = internal.fromEventListener

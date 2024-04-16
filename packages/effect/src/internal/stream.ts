@@ -8047,15 +8047,15 @@ export const encodeText = <E, R>(self: Stream.Stream<string, E, R>): Stream.Stre
   })
 
 /** @internal */
-export const fromEventListener = (
+export const fromEventListener = <A extends Event = Event>(
   target: EventTarget,
   type: string,
   options?: boolean | Omit<AddEventListenerOptions, "signal">
-): Stream.Stream<Event> =>
-  _async<Event>((emit) => {
-    let batch: Array<Event> = []
+): Stream.Stream<A> =>
+  _async<A>((emit) => {
+    let batch: Array<A> = []
     let taskRunning = false
-    function cb(e: Event) {
+    function cb(e: A) {
       batch.push(e)
       if (!taskRunning) {
         taskRunning = true
@@ -8067,6 +8067,6 @@ export const fromEventListener = (
         })
       }
     }
-    target.addEventListener(type, cb, options)
-    return Effect.sync(() => target.removeEventListener(type, cb, options))
+    target.addEventListener(type, cb as any, options)
+    return Effect.sync(() => target.removeEventListener(type, cb as any, options))
   })
