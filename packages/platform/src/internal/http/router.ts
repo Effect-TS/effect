@@ -32,6 +32,8 @@ export const RouteContextTypeId: Router.RouteContextTypeId = Symbol.for(
 /** @internal */
 export const RouteContext = Context.GenericTag<Router.RouteContext>("@effect/platform/Http/Router/RouteContext")
 
+const isRouter = (u: unknown): u is Router.Router<unknown, unknown> => Predicate.hasProperty(u, TypeId)
+
 /** @internal */
 export const params = Effect.map(RouteContext, (_) => _.params)
 
@@ -437,7 +439,7 @@ export const route = (method: Method.Method | "*"): {
         readonly uninterruptible?: boolean | undefined
       } | undefined
     ) => Router.Router<E | E1, R | Router.Router.ExcludeProvided<R1>>
-  >(3, (self, path, handler, options) =>
+  >((args) => isRouter(args[0]), (self, path, handler, options) =>
     new RouterImpl<any, any>(
       Chunk.append(
         self.routes,
