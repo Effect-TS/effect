@@ -3263,8 +3263,8 @@ export const fiberInterruptFork = <A, E>(self: Fiber.Fiber<A, E>): Effect.Effect
   core.asUnit(forkDaemon(core.interruptFiber(self)))
 
 /* @internal */
-export const fiberJoinAll = <A, E>(fibers: Iterable<Fiber.Fiber<A, E>>): Effect.Effect<void, E> =>
-  core.asUnit(internalFiber.join(fiberAll(fibers)))
+export const fiberJoinAll = <A, E>(fibers: Iterable<Fiber.Fiber<A, E>>): Effect.Effect<Array<A>, E> =>
+  internalFiber.join(fiberAll(fibers))
 
 /* @internal */
 export const fiberScoped = <A, E>(self: Fiber.Fiber<A, E>): Effect.Effect<Fiber.Fiber<A, E>, never, Scope.Scope> =>
