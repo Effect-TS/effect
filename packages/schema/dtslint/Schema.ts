@@ -1241,7 +1241,7 @@ pipe(
 )
 
 // ---------------------------------------------
-// Compose
+// compose
 // ---------------------------------------------
 
 // A -> B -> C
@@ -1252,37 +1252,53 @@ S.compose(S.split(","), S.Array(S.NumberFromString))
 // $ExpectType Schema<readonly number[], string, never>
 S.split(",").pipe(S.compose(S.Array(S.NumberFromString)))
 
-// decoding (strict: false)
+// $ExpectType Schema<readonly number[], string, never>
+S.compose(S.split(","), S.Array(S.NumberFromString), { strict: true })
+
+// // $ExpectType Schema<readonly number[], string, never>
+// S.split(",").pipe(S.compose(S.Array(S.NumberFromString), { strict: true }))
+
+// @ts-expect-error
+S.compose(S.String, S.Number)
+
+// @ts-expect-error
+S.String.pipe(S.compose(S.Number))
+
+// A -> B+, B -> C
+
+// $ExpectType Schema<number, string | null, never>
+S.compose(S.Union(S.Null, S.String), S.NumberFromString)
 
 // $ExpectType Schema<number, string | null, never>
 S.compose(S.Union(S.Null, S.String), S.NumberFromString, { strict: false })
 
+// // $ExpectType Schema<number, string | null, never>
+// S.Union(S.Null, S.String).pipe(S.compose(S.NumberFromString))
+
 // $ExpectType Schema<number, string | null, never>
 S.Union(S.Null, S.String).pipe(S.compose(S.NumberFromString, { strict: false }))
 
-// decoding (strict: true)
+// A -> B, B+ -> C
 
-// @ts-expect-error
-S.compose(S.Union(S.Null, S.String), S.NumberFromString)
-
-// @ts-expect-error
-S.Union(S.Null, S.String).pipe(S.compose(S.NumberFromString))
-
-// encoding (strict: false)
+// $ExpectType Schema<number | null, string, never>
+S.compose(S.NumberFromString, S.Union(S.Null, S.Number))
 
 // $ExpectType Schema<number | null, string, never>
 S.compose(S.NumberFromString, S.Union(S.Null, S.Number), { strict: false })
 
+// // $ExpectType Schema<number | null, string, never>
+// S.NumberFromString.pipe(S.compose(S.Union(S.Null, S.Number)))
+
 // $ExpectType Schema<number | null, string, never>
 S.NumberFromString.pipe(S.compose(S.Union(S.Null, S.Number), { strict: false }))
 
-// encoding (strict: true)
+// A -> B -> C -> D
 
-// @ts-expect-error
-S.compose(S.NumberFromString, S.Union(S.Null, S.Number))
+// $ExpectType Schema<number, string, never>
+S.compose(S.String, S.Number, { strict: false })
 
-// @ts-expect-error
-S.NumberFromString.pipe(S.compose(S.Union(S.Null, S.Number)))
+// $ExpectType Schema<number, string, never>
+S.String.pipe(S.compose(S.Number, { strict: false }))
 
 // ---------------------------------------------
 // FromBrand

@@ -2531,7 +2531,7 @@ export const extend: {
 export const compose: {
   <C, B, R2>(
     to: Schema<C, B, R2>
-  ): <A, R1>(from: Schema<B, A, R1>, options?: { readonly strict: true }) => Schema<C, A, R1 | R2>
+  ): <A, R1>(from: Schema<B, A, R1>) => Schema<C, A, R1 | R2>
   <D, C, R2>(
     to: Schema<D, C, R2>,
     options: { readonly strict: false }
@@ -2541,14 +2541,22 @@ export const compose: {
     to: Schema<C, B, R2>,
     options?: { readonly strict: true }
   ): Schema<C, A, R1 | R2>
-  <A, B, R1, D, C, R2>(
+  <B, A, R1, D, C extends B, R2>(
+    from: Schema<B, A, R1>,
+    to: Schema<D, C, R2>
+  ): Schema<D, A, R1 | R2>
+  <B extends C, A, R1, D, C, R2>(
+    from: Schema<B, A, R1>,
+    to: Schema<D, C, R2>
+  ): Schema<D, A, R1 | R2>
+  <B, A, R1, D, C, R2>(
     from: Schema<B, A, R1>,
     to: Schema<D, C, R2>,
     options: { readonly strict: false }
   ): Schema<D, A, R1 | R2>
 } = dual(
   (args) => isSchema(args[1]),
-  <A, B, R1, D, C, R2>(from: Schema<A, B, R1>, to: Schema<D, C, R2>): Schema<D, A, R1 | R2> =>
+  <B, A, R1, D, C, R2>(from: Schema<B, A, R1>, to: Schema<D, C, R2>): Schema<D, A, R1 | R2> =>
     make(AST.compose(from.ast, to.ast))
 )
 
