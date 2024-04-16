@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import * as Effect from "effect/Effect"
+// TODO: This should not be importing internal types.
 import type * as core from "effect/internal/core"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
