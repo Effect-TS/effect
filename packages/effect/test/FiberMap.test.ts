@@ -1,4 +1,4 @@
-import { Effect, ReadonlyArray, Ref } from "effect"
+import { Effect, Exit, ReadonlyArray, Ref, Scope } from "effect"
 import * as it from "effect-test/utils/extend"
 import * as FiberMap from "effect/FiberMap"
 import { assert, describe } from "vitest"
@@ -60,5 +60,16 @@ describe("FiberMap", () => {
       FiberMap.unsafeSet(map, "d", Effect.runFork(Effect.fail("ignored")))
       const result = yield* _(FiberMap.join(map), Effect.flip)
       assert.strictEqual(result, "fail")
+    }))
+
+  it.effect("size", () =>
+    Effect.gen(function*(_) {
+      const scope = yield* _(Scope.make())
+      const set = yield* _(FiberMap.make<string>(), Scope.extend(scope))
+      FiberMap.unsafeSet(set, "a", Effect.runFork(Effect.never))
+      FiberMap.unsafeSet(set, "b", Effect.runFork(Effect.never))
+      assert.strictEqual(yield* _(FiberMap.size(set)), 2)
+      yield* _(Scope.close(scope, Exit.void))
+      assert.strictEqual(yield* _(FiberMap.size(set)), 0)
     }))
 })
