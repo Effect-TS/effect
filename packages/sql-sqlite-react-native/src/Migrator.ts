@@ -3,7 +3,7 @@
  */
 import type { SqlError } from "@effect/sql/Error"
 import * as Migrator from "@effect/sql/Migrator"
-import * as Effect from "effect/Effect"
+import type * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Client from "./Client.js"
 
@@ -32,9 +32,6 @@ export const run: <R>(
         name VARCHAR(255) NOT NULL
       )
     `
-  },
-  dumpSchema(_sql, _path, _table) {
-    return Effect.unit
   }
 })
 

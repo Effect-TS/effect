@@ -36,7 +36,7 @@ const void_ = <IR, II, IA, R, E>(
 ) => {
   const encode = Schema.encode(options.Request)
   return (request: IA): Effect.Effect<void, E | ParseError, R | IR> =>
-    Effect.asUnit(
+    Effect.asVoid(
       Effect.flatMap(encode(request), options.execute)
     )
 }

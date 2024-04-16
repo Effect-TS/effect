@@ -142,7 +142,7 @@ export const make = (
 
     yield* _(Effect.addFinalizer(() =>
       Effect.async<void>((resume) => {
-        pool.end(() => resume(Effect.unit))
+        pool.end(() => resume(Effect.void))
       })
     ))
 

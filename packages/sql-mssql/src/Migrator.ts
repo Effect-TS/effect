@@ -33,7 +33,7 @@ export const run: <R>(
   )`
   },
   dumpSchema(_sql, _path, _table) {
-    return Effect.unit
+    return Effect.void
   }
 })
 

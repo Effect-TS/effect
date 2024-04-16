@@ -71,18 +71,18 @@ export class MigrationError extends Data.TaggedError("MigrationError")<{
  * @since 1.0.0
  */
 export const make = <R extends Client, RD, RE, RL, R2 = never>({
-  dumpSchema,
+  dumpSchema = () => Effect.void,
   ensureTable,
   getClient,
-  lockTable = () => Effect.unit
+  lockTable = () => Effect.void
 }: {
   getClient: Effect.Effect<R, SqlError, R>
-  dumpSchema: (
+  ensureTable: (sql: R, table: string) => Effect.Effect<void, SqlError, RE>
+  dumpSchema?: (
     sql: R,
     path: string,
     migrationsTable: string
   ) => Effect.Effect<void, MigrationError, RD>
-  ensureTable: (sql: R, table: string) => Effect.Effect<void, SqlError, RE>
   lockTable?: (sql: R, table: string) => Effect.Effect<void, SqlError, RL>
 }) =>
 ({

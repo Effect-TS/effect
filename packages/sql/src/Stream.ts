@@ -45,7 +45,7 @@ export const asyncPauseResume = <A, E = never, R = never>(
 
         const offer = (chunk: Chunk.Chunk<A>) =>
           Queue.isFull(queue).pipe(
-            Effect.tap((full) => (full ? effects.onPause : Effect.unit)),
+            Effect.tap((full) => (full ? effects.onPause : Effect.void)),
             Effect.zipRight(Queue.offer(queue, chunk)),
             Effect.zipRight(effects.onResume)
           )
