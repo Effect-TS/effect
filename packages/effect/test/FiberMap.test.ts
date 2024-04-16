@@ -72,4 +72,28 @@ describe("FiberMap", () => {
       yield* _(Scope.close(scope, Exit.void))
       assert.strictEqual(yield* _(FiberMap.size(set)), 0)
     }))
+
+  it.scoped("onlyIfMissing", () =>
+    Effect.gen(function*(_) {
+      const handle = yield* _(FiberMap.make<string>())
+      const fiberA = yield* _(FiberMap.run(handle, "a", Effect.never))
+      const fiberB = yield* _(FiberMap.run(handle, "a", Effect.never, { onlyIfMissing: true }))
+      const fiberC = yield* _(FiberMap.run(handle, "a", Effect.never, { onlyIfMissing: true }))
+      yield* _(Effect.yieldNow())
+      assert.isTrue(Exit.isInterrupted(yield* _(fiberB.await)))
+      assert.isTrue(Exit.isInterrupted(yield* _(fiberC.await)))
+      assert.strictEqual(fiberA.unsafePoll(), null)
+    }))
+
+  it.scoped("runtime onlyIfMissing", () =>
+    Effect.gen(function*(_) {
+      const run = yield* _(FiberMap.makeRuntime<never, string>())
+      const fiberA = run("a", Effect.never)
+      const fiberB = run("a", Effect.never, { onlyIfMissing: true })
+      const fiberC = run("a", Effect.never, { onlyIfMissing: true })
+      yield* _(Effect.yieldNow())
+      assert.isTrue(Exit.isInterrupted(yield* _(fiberB.await)))
+      assert.isTrue(Exit.isInterrupted(yield* _(fiberC.await)))
+      assert.strictEqual(fiberA.unsafePoll(), null)
+    }))
 })
