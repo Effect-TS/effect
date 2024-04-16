@@ -1,16 +1,4 @@
-import {
-  Array as Array_,
-  Clock,
-  Deferred,
-  Effect,
-  Either,
-  Fiber,
-  Function,
-  Option,
-  RateLimiter,
-  Ref,
-  TestClock
-} from "effect"
+import { Array, Clock, Deferred, Effect, Either, Fiber, Function, Option, RateLimiter, Ref, TestClock } from "effect"
 import * as it from "effect-test/utils/extend"
 import { assert, describe } from "vitest"
 
@@ -28,7 +16,7 @@ describe("RateLimiter", () => {
 
         const now = yield* _(Clock.currentTimeMillis)
         const fib = yield* _(
-          Effect.forEach(Array.from(Array(20)), () => rl(Clock.currentTimeMillis).pipe(RateLimiter.withCost(10))).pipe(
+          Effect.replicateEffect(rl(Clock.currentTimeMillis).pipe(RateLimiter.withCost(10)), 20).pipe(
             Effect.fork
           )
         )
@@ -105,12 +93,13 @@ describe("RateLimiter", () => {
         // First 30 calls should trigger in the first 15 seconds
         // and the next 2 calls should trigger at the 1 minute mark.
         const fib = yield* _(
-          Effect.forEach(Array.from(Array(32)), () => rl(Clock.currentTimeMillis)).pipe(Effect.fork)
+          Effect.replicateEffect(rl(Clock.currentTimeMillis), 32).pipe(Effect.fork)
         )
 
         const timestamps = yield* _(
-          Effect.all(
-            Array.from(Array(60)).map(() => Effect.zipRight(TestClock.adjust("1 seconds"), Clock.currentTimeMillis))
+          Effect.replicateEffect(
+            Effect.zipRight(TestClock.adjust("1 seconds"), Clock.currentTimeMillis),
+            60
           )
         )
 
@@ -146,7 +135,7 @@ describe("RateLimiter", () => {
         const deferred = yield* _(Deferred.make<void>())
 
         // Use up all of the available tokens
-        yield* _(Effect.forEach(Array_.range(1, 10), () => limit(Effect.void)))
+        yield* _(Effect.forEach(Array.range(1, 10), () => limit(Effect.void)))
 
         // Make an additional request when there are no tokens available
         yield* _(
@@ -175,10 +164,10 @@ const RateLimiterTestSuite = (algorithm: "fixed-window" | "token-bucket") => {
       }))
       const now = yield* _(Clock.currentTimeMillis)
       const times = yield* _(Effect.forEach(
-        Array_.range(1, 10),
+        Array.range(1, 10),
         () => limit(Clock.currentTimeMillis)
       ))
-      const result = Array_.every(times, (time) => time === now)
+      const result = Array.every(times, (time) => time === now)
       assert.isTrue(result)
     }))
 
@@ -191,19 +180,19 @@ const RateLimiterTestSuite = (algorithm: "fixed-window" | "token-bucket") => {
       }))
       const now = yield* _(Clock.currentTimeMillis)
       const times1 = yield* _(Effect.forEach(
-        Array_.range(1, 5),
+        Array.range(1, 5),
         () => limiter(Clock.currentTimeMillis),
         { concurrency: "unbounded" }
       ))
       const fibers = yield* _(Effect.forEach(
-        Array_.range(1, 15),
+        Array.range(1, 15),
         () => Effect.fork(limiter(Clock.currentTimeMillis)),
         { concurrency: "unbounded" }
       ))
       yield* _(TestClock.adjust("1 seconds"))
       const times2 = yield* _(Effect.forEach(fibers, Fiber.join, { concurrency: "unbounded" }))
-      const times = Array_.appendAll(times1, times2)
-      const result = Array_.filter(times, (time) => time === now)
+      const times = Array.appendAll(times1, times2)
+      const result = Array.filter(times, (time) => time === now)
       assert.strictEqual(result.length, 10)
     }))
 
@@ -251,9 +240,10 @@ const RateLimiterTestSuite = (algorithm: "fixed-window" | "token-bucket") => {
       const now = yield* _(Clock.currentTimeMillis)
 
       const fiber = yield* _(
-        Effect.forEach(Array.from(Array(20)), () => limit(Clock.currentTimeMillis), {
-          concurrency: "unbounded"
-        }),
+        Effect.replicateEffect(
+          limit(Clock.currentTimeMillis),
+          20
+        ),
         Effect.fork
       )
 

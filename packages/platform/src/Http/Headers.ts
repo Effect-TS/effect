@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import * as Schema from "@effect/schema/Schema"
-import * as Array_ from "effect/Array"
+import * as Array from "effect/Array"
 import { dual, identity } from "effect/Function"
 import type * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
@@ -79,8 +79,8 @@ export const fromInput: (input?: Input) => Headers = (input) => {
   if (input === undefined) {
     return empty
   } else if (Symbol.iterator in input) {
-    return Record.fromEntries(Array_.map(
-      Array_.fromIterable(input),
+    return Record.fromEntries(Array.map(
+      Array.fromIterable(input),
       ([k, v]) => [k.toLowerCase(), v] as const
     )) as Headers
   }

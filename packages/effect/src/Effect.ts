@@ -5196,7 +5196,7 @@ export const makeSpanScoped: (
     readonly parent?: Tracer.AnySpan | undefined
     readonly root?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
-  }
+  } | undefined
 ) => Effect<Tracer.Span, never, Scope.Scope> = fiberRuntime.makeSpanScoped
 
 /**

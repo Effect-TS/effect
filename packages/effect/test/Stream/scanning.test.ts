@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as Array_ from "effect/Array"
+import * as Array from "effect/Array"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
@@ -17,12 +17,12 @@ describe("Stream", () => {
           Effect.map((chunk) =>
             pipe(
               Chunk.toReadonlyArray(chunk),
-              Array_.scan(0, (acc, curr) => acc + curr)
+              Array.scan(0, (acc, curr) => acc + curr)
             )
           )
         )
       }))
-      assert.deepStrictEqual(Array.from(result1), Array.from(result2))
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result1), result2)
     }))
 
   it.effect("scanReduce", () =>
@@ -33,6 +33,6 @@ describe("Stream", () => {
         Stream.scanReduce<number, number>((acc, curr) => acc + curr),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 3, 6, 10, 15])
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), [1, 3, 6, 10, 15])
     }))
 })

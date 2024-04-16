@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as Array_ from "effect/Array"
+import * as Array from "effect/Array"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -29,7 +29,7 @@ describe("Stream", () => {
         Stream.provideContext(context),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [{ string: "test" }])
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), [{ string: "test" }])
     }))
 
   it.effect("contextWith", () =>
@@ -126,7 +126,7 @@ describe("Stream", () => {
         Stream.map((s) => s.string),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), ["test"])
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), ["test"])
     }))
 
   it.effect("provideServiceStream", () =>
@@ -139,7 +139,7 @@ describe("Stream", () => {
         Stream.map((s) => s.string),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), ["test"])
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), ["test"])
     }))
 
   it.effect("serviceWith", () =>
@@ -149,7 +149,7 @@ describe("Stream", () => {
         Stream.provideLayer(Layer.succeed(StringService, { string: "test" })),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), ["test"])
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), ["test"])
     }))
 
   it.effect("serviceWithEffect", () =>
@@ -159,7 +159,7 @@ describe("Stream", () => {
         Stream.provideLayer(Layer.succeed(StringService, { string: "test" })),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), ["test"])
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), ["test"])
     }))
 
   it.effect("serviceWithStream", () =>
@@ -169,7 +169,7 @@ describe("Stream", () => {
         Stream.provideLayer(Layer.succeed(StringService, { string: "test" })),
         Stream.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), ["test"])
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), ["test"])
     }))
 
   it.effect("deep provide", () =>
@@ -208,11 +208,11 @@ describe("Stream", () => {
       )
       expect(spans.length).toEqual(3)
       expect(pipe(
-        Array_.map(spans, (s) => s.parent),
-        Array_.getSomes,
-        Array_.filter((s): s is Tracer.Span => s._tag === "Span"),
-        Array_.map((s) => s.name)
+        Array.map(spans, (s) => s.parent),
+        Array.getSomes,
+        Array.filter((s): s is Tracer.Span => s._tag === "Span"),
+        Array.map((s) => s.name)
       )).toEqual(["span", "span", "span"])
-      expect(Array_.map(spans, (s) => s.name)).toEqual(["span.1", "span.2", "span.3"])
+      expect(Array.map(spans, (s) => s.name)).toEqual(["span.1", "span.2", "span.3"])
     }))
 })

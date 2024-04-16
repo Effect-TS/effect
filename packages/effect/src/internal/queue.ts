@@ -1,4 +1,4 @@
-import * as Array_ from "../Array.js"
+import * as Array from "../Array.js"
 import * as Chunk from "../Chunk.js"
 import type * as Deferred from "../Deferred.js"
 import type * as Effect from "../Effect.js"
@@ -208,11 +208,11 @@ class QueueImpl<in out A> implements Queue.Queue<A> {
       if (MutableRef.get(this.shutdownFlag)) {
         return core.interrupt
       }
-      const values = Array_.fromIterable(iterable)
+      const values = Array.fromIterable(iterable)
       const pTakers = this.queue.length() === 0
-        ? Array_.fromIterable(unsafePollN(this.takers, values.length))
-        : Array_.empty
-      const [forTakers, remaining] = pipe(values, Array_.splitAt(pTakers.length))
+        ? Array.fromIterable(unsafePollN(this.takers, values.length))
+        : Array.empty
+      const [forTakers, remaining] = pipe(values, Array.splitAt(pTakers.length))
       for (let i = 0; i < pTakers.length; i++) {
         const taker = (pTakers as any)[i]
         const item = forTakers[i]
@@ -602,7 +602,7 @@ class BackPressureStrategy<in out A> implements Queue.Strategy<A> {
   }
 
   unsafeOffer(iterable: Iterable<A>, deferred: Deferred.Deferred<boolean>): void {
-    const stuff = Array.from(iterable)
+    const stuff = Array.fromIterable(iterable)
     for (let i = 0; i < stuff.length; i++) {
       const value = stuff[i]
       if (i === stuff.length - 1) {

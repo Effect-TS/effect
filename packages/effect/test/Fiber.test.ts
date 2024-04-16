@@ -1,6 +1,6 @@
 import * as it from "effect-test/utils/extend"
 import { withLatch } from "effect-test/utils/latch"
-import * as Array_ from "effect/Array"
+import * as Array from "effect/Array"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -17,7 +17,7 @@ import { assert, describe } from "vitest"
 
 const initial = "initial"
 const update = "update"
-const fibers = Array.from({ length: 10000 }, () => Fiber.void)
+const fibers = Array.makeBy(10000, () => Fiber.void)
 
 describe("Fiber", () => {
   it.effect("should track blockingOn in await", () =>
@@ -133,7 +133,7 @@ describe("Fiber", () => {
           Effect.forever
         )
         return pipe(
-          Effect.forkAll(Array.from({ length: n }, () => worker1)),
+          Effect.forkAll(Array.makeBy(n, () => worker1)),
           Effect.flatMap(Fiber.join),
           Effect.zipRight(Effect.never)
         )
@@ -145,7 +145,7 @@ describe("Fiber", () => {
         return pipe(Queue.offer(queue, n), Effect.asVoid)
       }
       const queue = yield* $(Queue.unbounded<number>())
-      yield* $(Queue.offerAll(queue, Array.from(Array(100), (_, i) => i + 1)))
+      yield* $(Queue.offerAll(queue, Array.range(0, 99)))
       const result = yield* $(Effect.exit(shard(queue, 4, worker)))
       yield* $(Queue.shutdown(queue))
       assert.isTrue(Exit.isFailure(result))
@@ -165,7 +165,7 @@ describe("Fiber", () => {
   it.effect("dual roots", () =>
     Effect.gen(function*($) {
       const rootContains = (fiber: Fiber.RuntimeFiber<any, any>): Effect.Effect<boolean> => {
-        return pipe(Fiber.roots, Effect.map(Chunk.unsafeFromArray), Effect.map(Array_.contains(fiber)))
+        return pipe(Fiber.roots, Effect.map(Chunk.unsafeFromArray), Effect.map(Array.contains(fiber)))
       }
       const fiber1 = yield* $(Effect.forkDaemon(Effect.never))
       const fiber2 = yield* $(Effect.forkDaemon(Effect.never))
@@ -201,7 +201,7 @@ describe("Fiber", () => {
   it.effect("await does not return until all fibers have completed execution", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(0))
-      const fiber = yield* $(Effect.forkAll(Array.from({ length: 100 }, () => Ref.set(ref, 10))))
+      const fiber = yield* $(Effect.forkAll(Array.makeBy(100, () => Ref.set(ref, 10))))
       yield* $(Fiber.interrupt(fiber))
       yield* $(Ref.set(ref, -1))
       const result = yield* $(Ref.get(ref))

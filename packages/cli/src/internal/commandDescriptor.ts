@@ -2,7 +2,7 @@ import type * as FileSystem from "@effect/platform/FileSystem"
 import type * as Path from "@effect/platform/Path"
 import type * as Terminal from "@effect/platform/Terminal"
 import * as Color from "@effect/printer-ansi/Color"
-import * as Array_ from "effect/Array"
+import * as Array from "effect/Array"
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -99,7 +99,7 @@ export interface Map extends
 export interface Subcommands extends
   Op<"Subcommands", {
     readonly parent: Instruction
-    readonly children: Array_.NonEmptyReadonlyArray<Instruction>
+    readonly children: Array.NonEmptyReadonlyArray<Instruction>
   }>
 {}
 
@@ -264,7 +264,7 @@ export const withDescription = dual<
 /** @internal */
 export const withSubcommands = dual<
   <
-    const Subcommands extends Array_.NonEmptyReadonlyArray<
+    const Subcommands extends Array.NonEmptyReadonlyArray<
       readonly [id: unknown, command: Descriptor.Command<any>]
     >
   >(
@@ -279,7 +279,7 @@ export const withSubcommands = dual<
   >,
   <
     A,
-    const Subcommands extends Array_.NonEmptyReadonlyArray<
+    const Subcommands extends Array.NonEmptyReadonlyArray<
       readonly [id: unknown, command: Descriptor.Command<any>]
     >
   >(
@@ -295,7 +295,7 @@ export const withSubcommands = dual<
   const op = Object.create(proto)
   op._tag = "Subcommands"
   op.parent = self
-  op.children = Array_.map(subcommands, ([id, command]) => map(command, (a) => [id, a]))
+  op.children = Array.map(subcommands, ([id, command]) => map(command, (a) => [id, a]))
   return op
 })
 
@@ -360,8 +360,8 @@ const getHelpInternal = (self: Instruction, config: CliConfig.CliConfig): HelpDo
           case "Standard":
           case "GetUserInput": {
             const usage = InternalHelpDoc.getSpan(InternalUsage.getHelp(getUsageInternal(command)))
-            const usages = Array_.append(preceding, usage)
-            const finalUsage = Array_.reduce(
+            const usages = Array.append(preceding, usage)
+            const finalUsage = Array.reduce(
               usages,
               InternalSpan.empty,
               (acc, next) =>
@@ -372,25 +372,25 @@ const getHelpInternal = (self: Instruction, config: CliConfig.CliConfig): HelpDo
                   : InternalSpan.spans([acc, InternalSpan.space, next])
             )
             const description = InternalHelpDoc.getSpan(command.description)
-            return Array_.of([finalUsage, description])
+            return Array.of([finalUsage, description])
           }
           case "Map": {
             return getUsage(command.command, preceding)
           }
           case "Subcommands": {
             const parentUsage = getUsage(command.parent, preceding)
-            return Option.match(Array_.head(parentUsage), {
+            return Option.match(Array.head(parentUsage), {
               onNone: () =>
-                Array_.flatMap(
+                Array.flatMap(
                   command.children,
                   (child) => getUsage(child, preceding)
                 ),
               onSome: ([usage]) => {
-                const childrenUsage = Array_.flatMap(
+                const childrenUsage = Array.flatMap(
                   command.children,
-                  (child) => getUsage(child, Array_.append(preceding, usage))
+                  (child) => getUsage(child, Array.append(preceding, usage))
                 )
-                return Array_.appendAll(parentUsage, childrenUsage)
+                return Array.appendAll(parentUsage, childrenUsage)
               }
             })
           }
@@ -399,12 +399,12 @@ const getHelpInternal = (self: Instruction, config: CliConfig.CliConfig): HelpDo
       const printSubcommands = (
         subcommands: ReadonlyArray<[Span.Span, Span.Span]>
       ): HelpDoc.HelpDoc => {
-        const maxUsageLength = Array_.reduceRight(
+        const maxUsageLength = Array.reduceRight(
           subcommands,
           0,
           (max, [usage]) => Math.max(InternalSpan.size(usage), max)
         )
-        const documents = Array_.map(subcommands, ([usage, desc]) =>
+        const documents = Array.map(subcommands, ([usage, desc]) =>
           InternalHelpDoc.p(
             InternalSpan.spans([
               usage,
@@ -412,7 +412,7 @@ const getHelpInternal = (self: Instruction, config: CliConfig.CliConfig): HelpDo
               desc
             ])
           ))
-        if (Array_.isNonEmptyReadonlyArray(documents)) {
+        if (Array.isNonEmptyReadonlyArray(documents)) {
           return InternalHelpDoc.enumeration(documents)
         }
         throw new Error("[BUG]: Subcommands.usage - received empty list of subcommands to print")
@@ -421,9 +421,9 @@ const getHelpInternal = (self: Instruction, config: CliConfig.CliConfig): HelpDo
         getHelpInternal(self.parent, config),
         InternalHelpDoc.sequence(
           InternalHelpDoc.h1("COMMANDS"),
-          printSubcommands(Array_.flatMap(
+          printSubcommands(Array.flatMap(
             self.children,
-            (child) => getUsage(child, Array_.empty())
+            (child) => getUsage(child, Array.empty())
           ))
         )
       )
@@ -435,7 +435,7 @@ const getNamesInternal = (self: Instruction): Array<string> => {
   switch (self._tag) {
     case "Standard":
     case "GetUserInput": {
-      return Array_.of(self.name)
+      return Array.of(self.name)
     }
     case "Map": {
       return getNamesInternal(self.command)
@@ -456,7 +456,7 @@ const getSubcommandsInternal = (
     switch (self._tag) {
       case "Standard":
       case "GetUserInput": {
-        return Array_.of([self.name, self])
+        return Array.of([self.name, self])
       }
       case "Map": {
         return loop(self.command, isSubcommand)
@@ -466,7 +466,7 @@ const getSubcommandsInternal = (
         // parent command
         return isSubcommand
           ? loop(self.parent, false)
-          : Array_.flatMap(self.children, (child) => loop(child, true))
+          : Array.flatMap(self.children, (child) => loop(child, true))
       }
     }
   }
@@ -477,7 +477,7 @@ const getUsageInternal = (self: Instruction): Usage.Usage => {
   switch (self._tag) {
     case "Standard": {
       return InternalUsage.concat(
-        InternalUsage.named(Array_.of(self.name), Option.none()),
+        InternalUsage.named(Array.of(self.name), Option.none()),
         InternalUsage.concat(
           InternalOptions.getUsage(self.options),
           InternalArgs.getUsage(self.args)
@@ -485,7 +485,7 @@ const getUsageInternal = (self: Instruction): Usage.Usage => {
       )
     }
     case "GetUserInput": {
-      return InternalUsage.named(Array_.of(self.name), Option.none())
+      return InternalUsage.named(Array.of(self.name), Option.none())
     }
     case "Map": {
       return getUsageInternal(self.command)
@@ -513,7 +513,7 @@ const parseInternal = (
       const parseCommandLine = (
         args: ReadonlyArray<string>
       ): Effect.Effect<ReadonlyArray<string>, ValidationError.ValidationError> =>
-        Array_.matchLeft(args, {
+        Array.matchLeft(args, {
           onEmpty: () => {
             const error = InternalHelpDoc.p(`Missing command name: '${self.name}'`)
             return Effect.fail(InternalValidationError.commandMismatch(error))
@@ -538,7 +538,7 @@ const parseInternal = (
         ValidationError.ValidationError,
         FileSystem.FileSystem | Path.Path | Terminal.Terminal
       > =>
-        Array_.matchLeft(args, {
+        Array.matchLeft(args, {
           onEmpty: () => {
             const error = InternalHelpDoc.p(`Missing command name: '${self.name}'`)
             return Effect.fail(InternalValidationError.commandMismatch(error))
@@ -550,7 +550,7 @@ const parseInternal = (
               const help = getHelpInternal(self, config)
               const usage = getUsageInternal(self)
               const options = InternalBuiltInOptions.builtInOptions(self, usage, help)
-              const argsWithoutCommand = Array_.drop(args, 1)
+              const argsWithoutCommand = Array.drop(args, 1)
               return InternalOptions.processCommandLine(options, argsWithoutCommand, config)
                 .pipe(
                   Effect.flatMap((tuple) => tuple[2]),
@@ -578,7 +578,7 @@ const parseInternal = (
             Effect.flatMap(([error, commandArgs, optionsType]) =>
               InternalArgs.validate(
                 self.args,
-                Array_.appendAll(commandArgs, forcedCommandArgs),
+                Array.appendAll(commandArgs, forcedCommandArgs),
                 config
               ).pipe(
                 Effect.catchAll((e) =>
@@ -605,14 +605,14 @@ const parseInternal = (
         ValidationError.ValidationError,
         FileSystem.FileSystem | Path.Path | Terminal.Terminal
       > => {
-        if (Array_.contains(args, "--help") || Array_.contains(args, "-h")) {
-          return parseBuiltInArgs(Array_.make(self.name, "--help"))
+        if (Array.contains(args, "--help") || Array.contains(args, "-h")) {
+          return parseBuiltInArgs(Array.make(self.name, "--help"))
         }
-        if (Array_.contains(args, "--wizard")) {
-          return parseBuiltInArgs(Array_.make(self.name, "--wizard"))
+        if (Array.contains(args, "--wizard")) {
+          return parseBuiltInArgs(Array.make(self.name, "--wizard"))
         }
-        if (Array_.contains(args, "--version")) {
-          return parseBuiltInArgs(Array_.make(self.name, "--version"))
+        if (Array.contains(args, "--version")) {
+          return parseBuiltInArgs(Array.make(self.name, "--version"))
         }
         const error = InternalHelpDoc.p(`Missing command name: '${self.name}'`)
         return Effect.fail(InternalValidationError.commandMismatch(error))
@@ -642,7 +642,7 @@ const parseInternal = (
       return InternalPrompt.run(self.prompt).pipe(
         Effect.catchTag("QuitException", (e) => Effect.die(e)),
         Effect.map((value) =>
-          InternalCommandDirective.userDefined(Array_.drop(args, 1), {
+          InternalCommandDirective.userDefined(Array.drop(args, 1), {
             name: self.name,
             value
           })
@@ -667,9 +667,9 @@ const parseInternal = (
     case "Subcommands": {
       const names = getNamesInternal(self)
       const subcommands = getSubcommandsInternal(self)
-      const [parentArgs, childArgs] = Array_.span(
+      const [parentArgs, childArgs] = Array.span(
         args,
-        (arg) => !Array_.some(subcommands, ([name]) => name === arg)
+        (arg) => !Array.some(subcommands, ([name]) => name === arg)
       )
       const parseChildren = Effect.suspend(() => {
         const iterator = self.children[Symbol.iterator]()
@@ -701,10 +701,10 @@ const parseInternal = (
             InternalCommandDirective.isBuiltIn(directive) &&
             InternalBuiltInOptions.isShowHelp(directive.option)
           ) {
-            const parentName = Option.getOrElse(Array_.head(names), () => "")
+            const parentName = Option.getOrElse(Array.head(names), () => "")
             const newDirective = InternalCommandDirective.builtIn(InternalBuiltInOptions.showHelp(
               InternalUsage.concat(
-                InternalUsage.named(Array_.of(parentName), Option.none()),
+                InternalUsage.named(Array.of(parentName), Option.none()),
                 directive.option.usage
               ),
               directive.option.helpDoc
@@ -736,7 +736,7 @@ const parseInternal = (
                 if (InternalBuiltInOptions.isShowHelp(directive.option)) {
                   // We do not want to display the child help docs if there are
                   // no arguments indicating the CLI command was for the child
-                  return Array_.isNonEmptyReadonlyArray(childArgs)
+                  return Array.isNonEmptyReadonlyArray(childArgs)
                     ? Effect.orElse(helpDirectiveForChild, () => helpDirectiveForParent)
                     : helpDirectiveForParent
                 }
@@ -746,16 +746,16 @@ const parseInternal = (
                 return Effect.succeed(directive)
               }
               case "UserDefined": {
-                const args = Array_.appendAll(directive.leftover, childArgs)
-                if (Array_.isNonEmptyReadonlyArray(args)) {
+                const args = Array.appendAll(directive.leftover, childArgs)
+                if (Array.isNonEmptyReadonlyArray(args)) {
                   return parseChildren.pipe(Effect.mapBoth({
                     onFailure: (err) => {
                       if (InternalValidationError.isCommandMismatch(err)) {
-                        const parentName = Option.getOrElse(Array_.head(names), () => "")
-                        const childNames = Array_.map(subcommands, ([name]) => `'${name}'`)
+                        const parentName = Option.getOrElse(Array.head(names), () => "")
+                        const childNames = Array.map(subcommands, ([name]) => `'${name}'`)
                         const oneOf = childNames.length === 1 ? "" : " one of"
                         const error = InternalHelpDoc.p(
-                          `Invalid subcommand for ${parentName} - use${oneOf} ${Array_.join(childNames, ", ")}`
+                          `Invalid subcommand for ${parentName} - use${oneOf} ${Array.join(childNames, ", ")}`
                         )
                         return InternalValidationError.commandMismatch(error)
                       }
@@ -775,7 +775,7 @@ const parseInternal = (
             }
           }),
           Effect.catchSome(() =>
-            Array_.isEmptyReadonlyArray(args)
+            Array.isEmptyReadonlyArray(args)
               ? Option.some(helpDirectiveForParent) :
               Option.none()
           )
@@ -788,8 +788,8 @@ const parseInternal = (
 const splitForcedArgs = (
   args: ReadonlyArray<string>
 ): [Array<string>, Array<string>] => {
-  const [remainingArgs, forcedArgs] = Array_.span(args, (str) => str !== "--")
-  return [remainingArgs, Array_.drop(forcedArgs, 1)]
+  const [remainingArgs, forcedArgs] = Array.span(args, (str) => str !== "--")
+  return [remainingArgs, Array.drop(forcedArgs, 1)]
 }
 
 const withDescriptionInternal = (
@@ -858,7 +858,7 @@ const wizardInternal = (
               InternalSpan.strong(InternalSpan.highlight("COMMAND:", Color.cyan)),
               InternalSpan.concat(InternalSpan.space),
               InternalSpan.concat(InternalSpan.highlight(
-                Array_.join(commandLine, " "),
+                Array.join(commandLine, " "),
                 Color.magenta
               ))
             ))
@@ -875,7 +875,7 @@ const wizardInternal = (
               )
               yield* _(Console.log(InternalHelpDoc.toAnsiText(message)))
               const options = yield* _(InternalOptions.wizard(self.options, config))
-              yield* _(Ref.updateAndGet(commandLineRef, Array_.appendAll(options)))
+              yield* _(Ref.updateAndGet(commandLineRef, Array.appendAll(options)))
               yield* _(logCurrentCommand)
             }
             // If the command has args, run the wizard for them
@@ -885,7 +885,7 @@ const wizardInternal = (
               )
               yield* _(Console.log(InternalHelpDoc.toAnsiText(message)))
               const options = yield* _(InternalArgs.wizard(self.args, config))
-              yield* _(Ref.updateAndGet(commandLineRef, Array_.appendAll(options)))
+              yield* _(Ref.updateAndGet(commandLineRef, Array.appendAll(options)))
               yield* _(logCurrentCommand)
             }
           }
@@ -903,13 +903,13 @@ const wizardInternal = (
           value: [title, index] as const
         })
         const choices = pipe(
-          Array.from(getSubcommandsInternal(self)),
-          Array_.map(([name], index) => makeChoice(name, index))
+          getSubcommandsInternal(self),
+          Array.map(([name], index) => makeChoice(name, index))
         )
         return loop(self.parent, commandLineRef).pipe(
           Effect.zipRight(
             InternalSelectPrompt.select({ message, choices }).pipe(
-              Effect.tap(([name]) => Ref.update(commandLineRef, Array_.append(name))),
+              Effect.tap(([name]) => Ref.update(commandLineRef, Array.append(name))),
               Effect.zipLeft(Console.log()),
               Effect.flatMap(([, nextIndex]) => loop(self.children[nextIndex], commandLineRef))
             )
@@ -994,9 +994,9 @@ const traverseCommand = <S>(
           return loop(self.command, parentCommands, subcommands, level)
         }
         case "Subcommands": {
-          const parentNames = Array.from(getNamesInternal(self.parent))
-          const nextSubcommands = Array.from(getSubcommandsInternal(self))
-          const nextParentCommands = Array_.appendAll(parentCommands, parentNames)
+          const parentNames = getNamesInternal(self.parent)
+          const nextSubcommands = getSubcommandsInternal(self)
+          const nextParentCommands = Array.appendAll(parentCommands, parentNames)
           // Traverse the parent command using old parent names and next subcommands
           return loop(self.parent, parentCommands, nextSubcommands, level).pipe(
             Effect.zipRight(Effect.forEach(self.children, (child) =>
@@ -1006,7 +1006,7 @@ const traverseCommand = <S>(
         }
       }
     }
-    return Effect.suspend(() => loop(self, Array_.empty(), Array_.empty(), 0)).pipe(
+    return Effect.suspend(() => loop(self, Array.empty(), Array.empty(), 0)).pipe(
       Effect.zipRight(SynchronizedRef.get(ref))
     )
   }))
@@ -1015,8 +1015,8 @@ const indentAll = dual<
   (indent: number) => (self: ReadonlyArray<string>) => Array<string>,
   (self: ReadonlyArray<string>, indent: number) => Array<string>
 >(2, (self: ReadonlyArray<string>, indent: number): Array<string> => {
-  const indentation = new Array(indent + 1).join(" ")
-  return Array_.map(self, (line) => `${indentation}${line}`)
+  const indentation = Array.allocate(indent + 1).join(" ")
+  return Array.map(self, (line) => `${indentation}${line}`)
 })
 
 const getBashCompletionsInternal = (
@@ -1025,7 +1025,7 @@ const getBashCompletionsInternal = (
 ): Effect.Effect<Array<string>> =>
   traverseCommand(
     self,
-    Array_.empty<[ReadonlyArray<string>, ReadonlyArray<string>]>(),
+    Array.empty<[ReadonlyArray<string>, ReadonlyArray<string>]>(),
     (state, info) => {
       const options = isStandard(info.command)
         ? Options.all([info.command.options, InternalBuiltInOptions.builtIns])
@@ -1033,24 +1033,24 @@ const getBashCompletionsInternal = (
       const optionNames = InternalOptions.getNames(options as InternalOptions.Instruction)
       const optionCases = isStandard(info.command)
         ? InternalOptions.getBashCompletions(info.command.options as InternalOptions.Instruction)
-        : Array_.empty()
+        : Array.empty()
       const subcommandNames = pipe(
         info.subcommands,
-        Array_.map(([name]) => name),
-        Array_.sort(Order.string)
+        Array.map(([name]) => name),
+        Array.sort(Order.string)
       )
-      const wordList = Array_.appendAll(optionNames, subcommandNames)
-      const preformatted = Array_.isEmptyReadonlyArray(info.parentCommands)
-        ? Array_.of(info.command.name)
+      const wordList = Array.appendAll(optionNames, subcommandNames)
+      const preformatted = Array.isEmptyReadonlyArray(info.parentCommands)
+        ? Array.of(info.command.name)
         : pipe(
           info.parentCommands,
-          Array_.append(info.command.name),
-          Array_.map((command) => command.replace("-", "__"))
+          Array.append(info.command.name),
+          Array.map((command) => command.replace("-", "__"))
         )
-      const caseName = Array_.join(preformatted, ",")
-      const funcName = Array_.join(preformatted, "__")
-      const funcLines = Array_.isEmptyReadonlyArray(info.parentCommands)
-        ? Array_.empty()
+      const caseName = Array.join(preformatted, ",")
+      const funcName = Array.join(preformatted, "__")
+      const funcLines = Array.isEmptyReadonlyArray(info.parentCommands)
+        ? Array.empty()
         : [
           `${caseName})`,
           `    cmd="${funcName}"`,
@@ -1058,7 +1058,7 @@ const getBashCompletionsInternal = (
         ]
       const cmdLines = [
         `${funcName})`,
-        `    opts="${Array_.join(wordList, " ")}"`,
+        `    opts="${Array.join(wordList, " ")}"`,
         `    if [[ \${cur} == -* || \${COMP_CWORD} -eq ${info.level + 1} ]] ; then`,
         "        COMPREPLY=( $(compgen -W \"${opts}\" -- \"${cur}\") )",
         "        return 0",
@@ -1073,17 +1073,17 @@ const getBashCompletionsInternal = (
         "    return 0",
         "    ;;"
       ]
-      const lines = Array_.append(
+      const lines = Array.append(
         state,
         [funcLines, cmdLines] as [ReadonlyArray<string>, ReadonlyArray<string>]
       )
       return Effect.succeed(lines)
     }
   ).pipe(Effect.map((lines) => {
-    const rootCommand = Array_.unsafeGet(getNamesInternal(self), 0)
+    const rootCommand = Array.unsafeGet(getNamesInternal(self), 0)
     const scriptName = `_${rootCommand}_bash_completions`
-    const funcCases = Array_.flatMap(lines, ([funcLines]) => funcLines)
-    const cmdCases = Array_.flatMap(lines, ([, cmdLines]) => cmdLines)
+    const funcCases = Array.flatMap(lines, ([funcLines]) => funcLines)
+    const cmdCases = Array.flatMap(lines, ([, cmdLines]) => cmdLines)
     return [
       `function ${scriptName}() {`,
       "    local i cur prev opts cmd",
@@ -1114,8 +1114,8 @@ const getFishCompletionsInternal = (
   self: Instruction,
   executable: string
 ): Effect.Effect<Array<string>> =>
-  traverseCommand(self, Array_.empty(), (state, info) => {
-    const baseTemplate = Array_.make("complete", "-c", executable)
+  traverseCommand(self, Array.empty(), (state, info) => {
+    const baseTemplate = Array.make("complete", "-c", executable)
     const options = isStandard(info.command)
       ? InternalOptions.all([InternalBuiltInOptions.builtIns, info.command.options])
       : InternalBuiltInOptions.builtIns
@@ -1124,71 +1124,71 @@ const getFishCompletionsInternal = (
     )
     const argsCompletions = isStandard(info.command)
       ? InternalArgs.getFishCompletions(info.command.args as InternalArgs.Instruction)
-      : Array_.empty()
+      : Array.empty()
     const rootCompletions = (conditionals: ReadonlyArray<string>) =>
       pipe(
-        Array_.map(optionsCompletions, (option) =>
+        Array.map(optionsCompletions, (option) =>
           pipe(
             baseTemplate,
-            Array_.appendAll(conditionals),
-            Array_.append(option),
-            Array_.join(" ")
+            Array.appendAll(conditionals),
+            Array.append(option),
+            Array.join(" ")
           )),
-        Array_.appendAll(
-          Array_.map(argsCompletions, (option) =>
+        Array.appendAll(
+          Array.map(argsCompletions, (option) =>
             pipe(
               baseTemplate,
-              Array_.appendAll(conditionals),
-              Array_.append(option),
-              Array_.join(" ")
+              Array.appendAll(conditionals),
+              Array.append(option),
+              Array.join(" ")
             ))
         )
       )
     const subcommandCompletions = (conditionals: ReadonlyArray<string>) =>
-      Array_.map(info.subcommands, ([name, subcommand]) => {
+      Array.map(info.subcommands, ([name, subcommand]) => {
         const description = getShortDescription(subcommand)
         return pipe(
           baseTemplate,
-          Array_.appendAll(conditionals),
-          Array_.appendAll(Array_.make("-f", "-a", `"${name}"`)),
-          Array_.appendAll(
+          Array.appendAll(conditionals),
+          Array.appendAll(Array.make("-f", "-a", `"${name}"`)),
+          Array.appendAll(
             description.length === 0
-              ? Array_.empty()
-              : Array_.make("-d", `'${description}'`)
+              ? Array.empty()
+              : Array.make("-d", `'${description}'`)
           ),
-          Array_.join(" ")
+          Array.join(" ")
         )
       })
     // If parent commands are empty, then the info is for the root command
-    if (Array_.isEmptyReadonlyArray(info.parentCommands)) {
-      const conditionals = Array_.make("-n", "\"__fish_use_subcommand\"")
+    if (Array.isEmptyReadonlyArray(info.parentCommands)) {
+      const conditionals = Array.make("-n", "\"__fish_use_subcommand\"")
       return Effect.succeed(pipe(
         state,
-        Array_.appendAll(rootCompletions(conditionals)),
-        Array_.appendAll(subcommandCompletions(conditionals))
+        Array.appendAll(rootCompletions(conditionals)),
+        Array.appendAll(subcommandCompletions(conditionals))
       ))
     }
     // Otherwise the info is for a subcommand
     const parentConditionals = pipe(
       info.parentCommands,
       // Drop the root command name from the subcommand conditionals
-      Array_.drop(1),
-      Array_.append(info.command.name),
-      Array_.map((command) => `__fish_seen_subcommand_from ${command}`)
+      Array.drop(1),
+      Array.append(info.command.name),
+      Array.map((command) => `__fish_seen_subcommand_from ${command}`)
     )
-    const subcommandConditionals = Array_.map(
+    const subcommandConditionals = Array.map(
       info.subcommands,
       ([name]) => `not __fish_seen_subcommand_from ${name}`
     )
     const baseConditionals = pipe(
-      Array_.appendAll(parentConditionals, subcommandConditionals),
-      Array_.join("; and ")
+      Array.appendAll(parentConditionals, subcommandConditionals),
+      Array.join("; and ")
     )
-    const conditionals = Array_.make("-n", `"${baseConditionals}"`)
+    const conditionals = Array.make("-n", `"${baseConditionals}"`)
     return Effect.succeed(pipe(
       state,
-      Array_.appendAll(rootCompletions(conditionals)),
-      Array_.appendAll(subcommandCompletions(conditionals))
+      Array.appendAll(rootCompletions(conditionals)),
+      Array.appendAll(subcommandCompletions(conditionals))
     ))
   })
 
@@ -1196,26 +1196,26 @@ const getZshCompletionsInternal = (
   self: Instruction,
   executable: string
 ): Effect.Effect<Array<string>> =>
-  traverseCommand(self, Array_.empty<string>(), (state, info) => {
-    const preformatted = Array_.isEmptyReadonlyArray(info.parentCommands)
-      ? Array_.of(info.command.name)
+  traverseCommand(self, Array.empty<string>(), (state, info) => {
+    const preformatted = Array.isEmptyReadonlyArray(info.parentCommands)
+      ? Array.of(info.command.name)
       : pipe(
         info.parentCommands,
-        Array_.append(info.command.name),
-        Array_.map((command) => command.replace("-", "__"))
+        Array.append(info.command.name),
+        Array.map((command) => command.replace("-", "__"))
       )
-    const underscoreName = Array_.join(preformatted, "__")
-    const spaceName = Array_.join(preformatted, " ")
+    const underscoreName = Array.join(preformatted, "__")
+    const spaceName = Array.join(preformatted, " ")
     const subcommands = pipe(
       info.subcommands,
-      Array_.map(([name, subcommand]) => {
+      Array.map(([name, subcommand]) => {
         const desc = getShortDescription(subcommand)
         return `'${name}:${desc}' \\`
       })
     )
-    const commands = Array_.isEmptyReadonlyArray(subcommands)
+    const commands = Array.isEmptyReadonlyArray(subcommands)
       ? `commands=()`
-      : `commands=(\n${Array_.join(indentAll(subcommands, 8), "\n")}\n    )`
+      : `commands=(\n${Array.join(indentAll(subcommands, 8), "\n")}\n    )`
     const handlerLines = [
       `(( $+functions[_${underscoreName}_commands] )) ||`,
       `_${underscoreName}_commands() {`,
@@ -1223,10 +1223,10 @@ const getZshCompletionsInternal = (
       `    _describe -t commands '${spaceName} commands' commands "$@"`,
       "}"
     ]
-    return Effect.succeed(Array_.appendAll(state, handlerLines))
+    return Effect.succeed(Array.appendAll(state, handlerLines))
   }).pipe(Effect.map((handlers) => {
-    const rootCommand = Array_.unsafeGet(getNamesInternal(self), 0)
-    const cases = getZshSubcommandCases(self, Array_.empty(), Array_.empty())
+    const rootCommand = Array.unsafeGet(getNamesInternal(self), 0)
+    const cases = getZshSubcommandCases(self, Array.empty(), Array.empty())
     const scriptName = `_${rootCommand}_zsh_completions`
     return [
       `#compdef ${executable}`,
@@ -1272,13 +1272,13 @@ const getZshSubcommandCases = (
       const args = isStandard(self) ? self.args : InternalArgs.none
       const optionCompletions = pipe(
         InternalOptions.getZshCompletions(options as InternalOptions.Instruction),
-        Array_.map((completion) => `'${completion}' \\`)
+        Array.map((completion) => `'${completion}' \\`)
       )
       const argCompletions = pipe(
         InternalArgs.getZshCompletions(args as InternalArgs.Instruction),
-        Array_.map((completion) => `'${completion}' \\`)
+        Array.map((completion) => `'${completion}' \\`)
       )
-      if (Array_.isEmptyReadonlyArray(parentCommands)) {
+      if (Array.isEmptyReadonlyArray(parentCommands)) {
         return [
           "_arguments \"${_arguments_options[@]}\" \\",
           ...indentAll(optionCompletions, 4),
@@ -1288,7 +1288,7 @@ const getZshSubcommandCases = (
           "    && ret=0"
         ]
       }
-      if (Array_.isEmptyReadonlyArray(subcommands)) {
+      if (Array.isEmptyReadonlyArray(subcommands)) {
         return [
           `(${self.name})`,
           "_arguments \"${_arguments_options[@]}\" \\",
@@ -1303,7 +1303,7 @@ const getZshSubcommandCases = (
         "_arguments \"${_arguments_options[@]}\" \\",
         ...indentAll(optionCompletions, 4),
         ...indentAll(argCompletions, 4),
-        `    ":: :_${Array_.append(parentCommands, self.name).join("__")}_commands" \\`,
+        `    ":: :_${Array.append(parentCommands, self.name).join("__")}_commands" \\`,
         `    "*::: :->${self.name}" \\`,
         "    && ret=0"
       ]
@@ -1312,30 +1312,30 @@ const getZshSubcommandCases = (
       return getZshSubcommandCases(self.command, parentCommands, subcommands)
     }
     case "Subcommands": {
-      const nextSubcommands = Array.from(getSubcommandsInternal(self))
-      const parentNames = Array.from(getNamesInternal(self.parent))
+      const nextSubcommands = getSubcommandsInternal(self)
+      const parentNames = getNamesInternal(self.parent)
       const parentLines = getZshSubcommandCases(
         self.parent,
         parentCommands,
-        Array_.appendAll(subcommands, nextSubcommands)
+        Array.appendAll(subcommands, nextSubcommands)
       )
       const childCases = pipe(
         self.children,
-        Array_.flatMap((child) =>
+        Array.flatMap((child) =>
           getZshSubcommandCases(
             child,
-            Array_.appendAll(parentCommands, parentNames),
+            Array.appendAll(parentCommands, parentNames),
             subcommands
           )
         )
       )
       const hyphenName = pipe(
-        Array_.appendAll(parentCommands, parentNames),
-        Array_.join("-")
+        Array.appendAll(parentCommands, parentNames),
+        Array.join("-")
       )
       const childLines = pipe(
         parentNames,
-        Array_.flatMap((parentName) => [
+        Array.flatMap((parentName) => [
           "case $state in",
           `    (${parentName})`,
           `    words=($line[1] "\${words[@]}")`,
@@ -1347,13 +1347,13 @@ const getZshSubcommandCases = (
           "    ;;",
           "esac"
         ]),
-        Array_.appendAll(
-          Array_.isEmptyReadonlyArray(parentCommands)
-            ? Array_.empty()
-            : Array_.of(";;")
+        Array.appendAll(
+          Array.isEmptyReadonlyArray(parentCommands)
+            ? Array.empty()
+            : Array.of(";;")
         )
       )
-      return Array_.appendAll(parentLines, childLines)
+      return Array.appendAll(parentLines, childLines)
     }
   }
 }

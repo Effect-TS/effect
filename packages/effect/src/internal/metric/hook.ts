@@ -1,4 +1,4 @@
-import * as Array_ from "../../Array.js"
+import * as Array from "../../Array.js"
 import * as Duration from "../../Duration.js"
 import type { LazyArg } from "../../Function.js"
 import { dual, pipe } from "../../Function.js"
@@ -123,8 +123,8 @@ export const histogram = (key: MetricKey.MetricKey.Histogram): MetricHook.Metric
 
   pipe(
     bounds,
-    Array_.sort(number.Order),
-    Array_.map((n, i) => {
+    Array.sort(number.Order),
+    Array.map((n, i) => {
       boundaries[i] = n
     })
   )
@@ -162,7 +162,7 @@ export const histogram = (key: MetricKey.MetricKey.Histogram): MetricHook.Metric
   }
 
   const getBuckets = (): ReadonlyArray<readonly [number, number]> => {
-    const builder: Array<readonly [number, number]> = Array(size)
+    const builder: Array<readonly [number, number]> = Array.allocate(size) as any
     let cumulated = 0
     for (let i = 0; i < size; i++) {
       const boundary = boundaries[i]
@@ -189,8 +189,8 @@ export const histogram = (key: MetricKey.MetricKey.Histogram): MetricHook.Metric
 /** @internal */
 export const summary = (key: MetricKey.MetricKey.Summary): MetricHook.MetricHook.Summary => {
   const { error, maxAge, maxSize, quantiles } = key.keyType
-  const sortedQuantiles = pipe(quantiles, Array_.sort(number.Order))
-  const values = Array<readonly [number, number]>(maxSize)
+  const sortedQuantiles = pipe(quantiles, Array.sort(number.Order))
+  const values = Array.allocate<readonly [number, number]>(maxSize)
 
   let head = 0
   let count = 0
@@ -228,7 +228,7 @@ export const summary = (key: MetricKey.MetricKey.Summary): MetricHook.MetricHook
     return calculateQuantiles(
       error,
       sortedQuantiles,
-      Array_.sort(builder, number.Order)
+      Array.sort(builder, number.Order)
     )
   }
 
@@ -291,8 +291,8 @@ const calculateQuantiles = (
 ): ReadonlyArray<readonly [number, Option.Option<number>]> => {
   // The number of samples examined
   const sampleCount = sortedSamples.length
-  if (!Array_.isNonEmptyReadonlyArray(sortedQuantiles)) {
-    return Array_.empty()
+  if (!Array.isNonEmptyReadonlyArray(sortedQuantiles)) {
+    return Array.empty()
   }
   const head = sortedQuantiles[0]
   const tail = sortedQuantiles.slice(1)
@@ -304,7 +304,7 @@ const calculateQuantiles = (
     head,
     sortedSamples
   )
-  const resolved = Array_.of(resolvedHead)
+  const resolved = Array.of(resolvedHead)
   tail.forEach((quantile) => {
     resolved.push(
       resolveQuantile(
@@ -317,7 +317,7 @@ const calculateQuantiles = (
       )
     )
   })
-  return Array_.map(resolved, (rq) => [rq.quantile, rq.value] as const)
+  return Array.map(resolved, (rq) => [rq.quantile, rq.value] as const)
 }
 
 /** @internal */
@@ -344,7 +344,7 @@ const resolveQuantile = (
   // eslint-disable-next-line no-constant-condition
   while (1) {
     // If the remaining list of samples is empty, there is nothing more to resolve
-    if (!Array_.isNonEmptyReadonlyArray(rest_1)) {
+    if (!Array.isNonEmptyReadonlyArray(rest_1)) {
       return {
         quantile: quantile_1,
         value: Option.none(),
@@ -357,14 +357,14 @@ const resolveQuantile = (
     if (quantile_1 === 1) {
       return {
         quantile: quantile_1,
-        value: Option.some(Array_.lastNonEmpty(rest_1)),
+        value: Option.some(Array.lastNonEmpty(rest_1)),
         consumed: consumed_1 + rest_1.length,
         rest: []
       }
     }
     // Split into two chunks - the first chunk contains all elements of the same
     // value as the chunk head
-    const sameHead = Array_.span(rest_1, (n) => n <= rest_1[0])
+    const sameHead = Array.span(rest_1, (n) => n <= rest_1[0])
     // How many elements do we want to accept for this quantile
     const desired = quantile_1 * sampleCount_1
     // The error margin
@@ -378,7 +378,7 @@ const resolveQuantile = (
     if (candConsumed < desired - allowedError) {
       error_2 = error_1
       sampleCount_2 = sampleCount_1
-      current_2 = Array_.head(rest_1)
+      current_2 = Array.head(rest_1)
       consumed_2 = candConsumed
       quantile_2 = quantile_1
       rest_2 = sameHead[1]
@@ -406,7 +406,7 @@ const resolveQuantile = (
       case "None": {
         error_2 = error_1
         sampleCount_2 = sampleCount_1
-        current_2 = Array_.head(rest_1)
+        current_2 = Array.head(rest_1)
         consumed_2 = candConsumed
         quantile_2 = quantile_1
         rest_2 = sameHead[1]
@@ -423,7 +423,7 @@ const resolveQuantile = (
         if (candError < prevError) {
           error_2 = error_1
           sampleCount_2 = sampleCount_1
-          current_2 = Array_.head(rest_1)
+          current_2 = Array.head(rest_1)
           consumed_2 = candConsumed
           quantile_2 = quantile_1
           rest_2 = sameHead[1]

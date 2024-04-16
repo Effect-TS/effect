@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as Array_ from "effect/Array"
+import * as Array from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
@@ -20,7 +20,7 @@ describe("Effect", () => {
           Effect.dropWhile((n) => Effect.succeed(n % 2 === 1))
         )
       )
-      assert.deepStrictEqual(Array.from(result), [2, 3, 4, 5])
+      assert.deepStrictEqual(result, [2, 3, 4, 5])
     }))
   it.effect("dropWhile - error", () =>
     Effect.gen(function*($) {
@@ -64,12 +64,12 @@ describe("Effect", () => {
     }))
   it.effect("loop - loops with the specified effectual function", () =>
     Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(Array_.empty<number>()))
+      const ref = yield* $(Ref.make(Array.empty<number>()))
       yield* $(
         Effect.loop(0, {
           while: (n) => n < 5,
           step: (n) => n + 1,
-          body: (n) => Ref.update(ref, Array_.append(n))
+          body: (n) => Ref.update(ref, Array.append(n))
         })
       )
       const result = yield* $(Ref.get(ref))
@@ -77,11 +77,11 @@ describe("Effect", () => {
     }))
   it.effect("loop/discard - loops with the specified effectual function", () =>
     Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(Array_.empty<number>()))
+      const ref = yield* $(Ref.make(Array.empty<number>()))
       yield* $(Effect.loop(0, {
         while: (n) => n < 5,
         step: (n) => n + 1,
-        body: (n) => Ref.update(ref, Array_.append(n)),
+        body: (n) => Ref.update(ref, Array.append(n)),
         discard: true
       }))
       const result = yield* $(Ref.get(ref))
@@ -100,12 +100,12 @@ describe("Effect", () => {
   it.effect("replicate - positive", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.all(pipe(Effect.succeed(12), Effect.replicate(2))))
-      assert.deepStrictEqual(Array.from(result), [12, 12])
+      assert.deepStrictEqual(result, [12, 12])
     }))
   it.effect(" - returns the list of results", () =>
     Effect.gen(function*($) {
       const result = yield* $([1, 2, 3, 4, 5, 6], Effect.forEach((n) => Effect.succeed(n + 1)))
-      assert.deepStrictEqual(Array.from(result), [2, 3, 4, 5, 6, 7])
+      assert.deepStrictEqual(result, [2, 3, 4, 5, 6, 7])
     }))
   it.effect("forEach - both evaluates effects and returns results in the same order", () =>
     Effect.gen(function*($) {
@@ -120,8 +120,8 @@ describe("Effect", () => {
         )
       )
       const effects = yield* $(Ref.get(ref), Effect.map(Chunk.reverse))
-      assert.deepStrictEqual(Array.from(effects), ["1", "2", "3"])
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3])
+      assert.deepStrictEqual(Chunk.toReadonlyArray(effects), ["1", "2", "3"])
+      assert.deepStrictEqual(result, [1, 2, 3])
     }))
   it.effect("forEach - fails if one of the effects fails", () =>
     Effect.gen(function*($) {
@@ -143,8 +143,8 @@ describe("Effect", () => {
     }))
   it.effect("forEach/discard - runs effects in order", () =>
     Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(Array_.empty<number>()))
-      yield* $([1, 2, 3, 4, 5], Effect.forEach((n) => Ref.update(ref, Array_.append(n)), { discard: true }))
+      const ref = yield* $(Ref.make(Array.empty<number>()))
+      yield* $([1, 2, 3, 4, 5], Effect.forEach((n) => Ref.update(ref, Array.append(n)), { discard: true }))
       const result = yield* $(Ref.get(ref))
       assert.deepStrictEqual(result, [1, 2, 3, 4, 5])
     }))
@@ -160,23 +160,23 @@ describe("Effect", () => {
   it.effect("forEach/concurrency - runs single task", () =>
     Effect.gen(function*($) {
       const result = yield* $([2], Effect.forEach((n) => Effect.succeed(n * 2), { concurrency: "unbounded" }))
-      assert.deepStrictEqual(Array.from(result), [4])
+      assert.deepStrictEqual(result, [4])
     }))
   it.effect("forEach/concurrency - runs two tasks", () =>
     Effect.gen(function*($) {
       const result = yield* $([2, 3], Effect.forEach((n) => Effect.succeed(n * 2), { concurrency: "unbounded" }))
-      assert.deepStrictEqual(Array.from(result), [4, 6])
+      assert.deepStrictEqual(result, [4, 6])
     }))
   it.effect("forEach/concurrency - runs many tasks", () =>
     Effect.gen(function*($) {
-      const array = Array.from({ length: 100 }, (_, i) => i + 1)
+      const array = Array.makeBy(100, (i) => i + 1)
       const result = yield* $(array, Effect.forEach((n) => Effect.succeed(n * 2), { concurrency: "unbounded" }))
-      assert.deepStrictEqual(Array.from(result), array.map((n) => n * 2))
+      assert.deepStrictEqual(result, array.map((n) => n * 2))
     }))
   it.effect("forEach/concurrency - runs a task that fails", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Array.from({ length: 10 }, (_, i) => i + 1),
+        Array.makeBy(10, (i) => i + 1),
         Effect.forEach((n) => n === 5 ? Effect.fail("boom") : Effect.succeed(n * 2), { concurrency: "unbounded" }),
         Effect.flip
       )
@@ -185,7 +185,7 @@ describe("Effect", () => {
   it.effect("forEach/concurrency - runs two failed tasks", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Array.from({ length: 10 }, (_, i) => i + 1),
+        Array.makeBy(10, (i) => i + 1),
         Effect.forEach((n) =>
           n === 5
             ? Effect.fail("boom1")
@@ -199,7 +199,7 @@ describe("Effect", () => {
   it.effect("forEach/concurrency - runs a task that dies", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Array.from({ length: 10 }, (_, i) => i + 1),
+        Array.makeBy(10, (i) => i + 1),
         Effect.forEach((n) => n === 5 ? Effect.dieMessage("boom") : Effect.succeed(n * 2), {
           concurrency: "unbounded"
         }),
@@ -210,7 +210,7 @@ describe("Effect", () => {
   it.effect("forEach/concurrency - runs a task that is interrupted", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Array.from({ length: 10 }, (_, i) => i + 1),
+        Array.makeBy(10, (i) => i + 1),
         Effect.forEach((n) => n === 5 ? Effect.interrupt : Effect.succeed(n * 2), { concurrency: "unbounded" }),
         Effect.exit
       )
@@ -234,7 +234,7 @@ describe("Effect", () => {
         ["1", "2", "3"],
         Effect.forEach((s) => Effect.sync(() => Number.parseInt(s)), { concurrency: "unbounded" })
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3])
+      assert.deepStrictEqual(result, [1, 2, 3])
     }))
   it.effect("forEach/concurrency - runs effects in parallel", () =>
     Effect.gen(function*($) {
@@ -277,7 +277,7 @@ describe("Effect", () => {
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(0))
       const fibers = yield* $(
-        Array.from({ length: 100 }, (_, i) => i + 1),
+        Array.makeBy(100, (i) => i + 1),
         Effect.forEach(() => pipe(Ref.update(ref, (_) => _ + 1), Effect.fork), { concurrency: "unbounded" })
       )
       yield* $(fibers, Effect.forEach(Fiber.await))
@@ -292,19 +292,19 @@ describe("Effect", () => {
           Effect.forEach((n) => Effect.succeed(n.toString()), { concurrency: 2 })
         )
       )
-      assert.deepStrictEqual(Array.from(result), ["1", "2", "3"])
+      assert.deepStrictEqual(result, ["1", "2", "3"])
     }))
   it.effect("forEach/concurrency - parallelism - works on large lists", () =>
     Effect.gen(function*($) {
       const parallelism = 10
-      const array = Array.from({ length: 100000 }, (_, i) => i)
+      const array = Array.makeBy(100000, (i) => i)
       const result = yield* $(
         pipe(
           array,
           Effect.forEach((n) => Effect.succeed(n), { concurrency: parallelism })
         )
       )
-      assert.deepStrictEqual(Array.from(result), array)
+      assert.deepStrictEqual(result, array)
     }))
   it.effect("forEach/concurrency - parallelism - runs effects in parallel", () =>
     Effect.gen(function*($) {
@@ -374,7 +374,7 @@ describe("Effect", () => {
           onSuccess: () => Chunk.empty<number>()
         })
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3])
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), [1, 2, 3])
     }))
   it.effect("forEach/concurrency+discard - runs all effects", () =>
     Effect.gen(function*($) {
@@ -387,7 +387,7 @@ describe("Effect", () => {
         })
       )
       const result = yield* $(Ref.get(ref), Effect.map(Chunk.reverse))
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3, 4, 5])
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), [1, 2, 3, 4, 5])
     }))
   it.effect("forEach/concurrency+discard - completes on empty input", () =>
     Effect.gen(function*($) {
@@ -411,7 +411,7 @@ describe("Effect", () => {
         })
       )
       const result = yield* $(Ref.get(ref), Effect.map(Chunk.reverse))
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3, 4, 5])
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), [1, 2, 3, 4, 5])
     }))
   it.effect("merge - on flipped result", () =>
     Effect.gen(function*($) {
@@ -488,26 +488,26 @@ describe("Effect", () => {
     }))
   it.effect("partition - collects only successes", () =>
     Effect.gen(function*($) {
-      const array = Array.from({ length: 10 }, (_, i) => i)
+      const array = Array.makeBy(10, (i) => i)
       const [left, right] = yield* $(array, Effect.partition(Effect.succeed))
-      assert.deepStrictEqual(Array.from(left), [])
-      assert.deepStrictEqual(Array.from(right), array)
+      assert.deepStrictEqual(left, [])
+      assert.deepStrictEqual(right, array)
     }))
   it.effect("partition - collects only failures", () =>
     Effect.gen(function*($) {
-      const array = Array.from({ length: 10 }, () => 0)
+      const array = Array.makeBy(10, () => 0)
       const [left, right] = yield* $(array, Effect.partition(Effect.fail))
-      assert.deepStrictEqual(Array.from(left), array)
-      assert.deepStrictEqual(Array.from(right), [])
+      assert.deepStrictEqual(left, array)
+      assert.deepStrictEqual(right, [])
     }))
   it.effect("partition - collects failures and successes", () =>
     Effect.gen(function*($) {
-      const array = Array.from({ length: 10 }, (_, i) => i)
+      const array = Array.makeBy(10, (i) => i)
       const [left, right] = yield* $(
         pipe(array, Effect.partition((n) => n % 2 === 0 ? Effect.fail(n) : Effect.succeed(n)))
       )
-      assert.deepStrictEqual(Array.from(left), [0, 2, 4, 6, 8])
-      assert.deepStrictEqual(Array.from(right), [1, 3, 5, 7, 9])
+      assert.deepStrictEqual(left, [0, 2, 4, 6, 8])
+      assert.deepStrictEqual(right, [1, 3, 5, 7, 9])
     }))
   it.effect("partition - evaluates effects in correct order", () =>
     Effect.gen(function*($) {
@@ -515,35 +515,35 @@ describe("Effect", () => {
       const ref = yield* $(Ref.make(Chunk.empty<number>()))
       yield* $(array, Effect.partition((n) => Ref.update(ref, Chunk.prepend(n))))
       const result = yield* $(Ref.get(ref), Effect.map(Chunk.reverse))
-      assert.deepStrictEqual(Array.from(result), [2, 4, 6, 3, 5, 6])
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), [2, 4, 6, 3, 5, 6])
     }))
   it.effect("partition/concurrency - collects successes", () =>
     Effect.gen(function*($) {
-      const array = Array.from({ length: 1000 }, (_, i) => i)
+      const array = Array.makeBy(1000, (i) => i)
       const [left, right] = yield* $(
         array,
         Effect.partition(Effect.succeed, {
           concurrency: "unbounded"
         })
       )
-      assert.deepStrictEqual(Array.from(left), [])
-      assert.deepStrictEqual(Array.from(right), array)
+      assert.deepStrictEqual(left, [])
+      assert.deepStrictEqual(right, array)
     }))
   it.effect("partition/concurrency - collects failures", () =>
     Effect.gen(function*($) {
-      const array = Array.from({ length: 10 }, () => 0)
+      const array = Array.makeBy(10, () => 0)
       const [left, right] = yield* $(
         array,
         Effect.partition(Effect.fail, {
           concurrency: "unbounded"
         })
       )
-      assert.deepStrictEqual(Array.from(left), array)
-      assert.deepStrictEqual(Array.from(right), [])
+      assert.deepStrictEqual(left, array)
+      assert.deepStrictEqual(right, [])
     }))
   it.effect("partition/concurrency - collects failures and successes", () =>
     Effect.gen(function*($) {
-      const array = Array.from({ length: 10 }, (_, i) => i)
+      const array = Array.makeBy(10, (i) => i)
       const [left, right] = yield* $(
         pipe(
           array,
@@ -552,42 +552,42 @@ describe("Effect", () => {
           })
         )
       )
-      assert.deepStrictEqual(Array.from(left), [0, 2, 4, 6, 8])
-      assert.deepStrictEqual(Array.from(right), [1, 3, 5, 7, 9])
+      assert.deepStrictEqual(left, [0, 2, 4, 6, 8])
+      assert.deepStrictEqual(right, [1, 3, 5, 7, 9])
     }))
   it.effect("partition/concurrency - parallelism - collects successes", () =>
     Effect.gen(function*($) {
-      const array = Array.from({ length: 1000 }, (_, i) => i)
+      const array = Array.makeBy(1000, (i) => i)
       const [left, right] = yield* $(
         array,
         Effect.partition(Effect.succeed, {
           concurrency: 3
         })
       )
-      assert.deepStrictEqual(Array.from(left), [])
-      assert.deepStrictEqual(Array.from(right), array)
+      assert.deepStrictEqual(left, [])
+      assert.deepStrictEqual(right, array)
     }))
   it.effect("partition/concurrency - parallelism - collects failures", () =>
     Effect.gen(function*($) {
-      const array = Array.from({ length: 10 }, () => 0)
+      const array = Array.makeBy(10, () => 0)
       const [left, right] = yield* $(
         array,
         Effect.partition(Effect.fail, { concurrency: 3 })
       )
-      assert.deepStrictEqual(Array.from(left), array)
-      assert.deepStrictEqual(Array.from(right), [])
+      assert.deepStrictEqual(left, array)
+      assert.deepStrictEqual(right, [])
     }))
   it.effect("partition/concurrency - parallelism - collects failures and successes", () =>
     Effect.gen(function*($) {
-      const array = Array.from({ length: 10 }, (_, i) => i)
+      const array = Array.makeBy(10, (i) => i)
       const [left, right] = yield* $(
         array,
         Effect.partition((n) => n % 2 === 0 ? Effect.fail(n) : Effect.succeed(n), {
           concurrency: 3
         })
       )
-      assert.deepStrictEqual(Array.from(left), [0, 2, 4, 6, 8])
-      assert.deepStrictEqual(Array.from(right), [1, 3, 5, 7, 9])
+      assert.deepStrictEqual(left, [0, 2, 4, 6, 8])
+      assert.deepStrictEqual(right, [1, 3, 5, 7, 9])
     }))
   it.effect("reduce - with a successful step function sums the list properly", () =>
     Effect.gen(function*($) {
@@ -685,7 +685,7 @@ describe("Effect", () => {
           (n) => Effect.succeed(n >= 3)
         )
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3])
+      assert.deepStrictEqual(result, [1, 2, 3])
     }))
   it.effect("takeUntil - error", () =>
     Effect.gen(function*($) {
@@ -706,7 +706,7 @@ describe("Effect", () => {
           Effect.takeWhile((n) => Effect.succeed(n % 2 === 1))
         )
       )
-      assert.deepStrictEqual(Array.from(result), [1])
+      assert.deepStrictEqual(result, [1])
     }))
   it.effect("takeWhile - error", () =>
     Effect.gen(function*($) {

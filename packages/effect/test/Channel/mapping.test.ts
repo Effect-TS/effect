@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as Array_ from "effect/Array"
+import * as Array from "effect/Array"
 import * as Channel from "effect/Channel"
 import * as ChildExecutorDecision from "effect/ChildExecutorDecision"
 import * as Chunk from "effect/Chunk"
@@ -56,7 +56,7 @@ describe("Channel", () => {
         Channel.mapOut((n) => n + 1),
         Channel.runCollect
       )
-      assert.deepStrictEqual(Array.from(chunk), [2, 3, 4])
+      assert.deepStrictEqual(Chunk.toReadonlyArray(chunk), [2, 3, 4])
       assert.isUndefined(value)
     }))
 
@@ -68,7 +68,7 @@ describe("Channel", () => {
         Channel.flatMap(() => Channel.write("x")),
         Channel.runCollect
       )
-      assert.deepStrictEqual(Array.from(chunk), ["1", "x"])
+      assert.deepStrictEqual(Chunk.toReadonlyArray(chunk), ["1", "x"])
       assert.isUndefined(value)
     }))
 
@@ -79,7 +79,7 @@ describe("Channel", () => {
         Channel.concatMap((i) => Channel.writeAll(i, i)),
         Channel.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 1, 2, 2, 3, 3])
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), [1, 1, 2, 2, 3, 3])
     }))
 
   it.effect("concatMap - complex", () =>
@@ -92,7 +92,7 @@ describe("Channel", () => {
         Channel.mapOut(Second),
         Channel.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), [
         Second(First(1)),
         Second(First(1)),
         Second(First(1)),
@@ -120,7 +120,7 @@ describe("Channel", () => {
         Channel.pipeTo(readers),
         Channel.runCollect
       )
-      assert.deepStrictEqual(Array.from(result), [1, 2, 3, 4])
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), [1, 2, 3, 4])
     }))
 
   it.effect("concatMap - downstream failure", () =>
@@ -197,7 +197,7 @@ describe("Channel", () => {
         ),
         Channel.runCollect
       )
-      assert.deepStrictEqual(Array.from(chunk), [1, 2, 3])
+      assert.deepStrictEqual(Chunk.toReadonlyArray(chunk), [1, 2, 3])
       assert.deepStrictEqual(array1, ["Inner-1", "Inner-2", "Inner-3"])
       assert.deepStrictEqual(array2, ["Outer-0"])
     }))
@@ -229,7 +229,7 @@ describe("Channel", () => {
           })
         ),
         Channel.runCollect,
-        Effect.map(([chunk]) => pipe(Array.from(chunk), Array_.getSomes))
+        Effect.map(([chunk]) => pipe(Chunk.toReadonlyArray(chunk), Array.getSomes))
       )
       assert.deepStrictEqual(result, [
         [1, 1] as const,
@@ -275,7 +275,7 @@ describe("Channel", () => {
           })
         ),
         Channel.runCollect,
-        Effect.map(([chunk]) => pipe(Array.from(chunk), Array_.getSomes))
+        Effect.map(([chunk]) => pipe(Chunk.toReadonlyArray(chunk), Array.getSomes))
       )
       assert.deepStrictEqual(result, [
         [1, 1] as const,

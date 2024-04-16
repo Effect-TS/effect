@@ -17,7 +17,6 @@
   - [FAQ](#faq)
     - [Command-Line Argument Parsing Specification](#command-line-argument-parsing-specification)
 
-
 ## Installation
 
 You can install `@effect/cli` using your preferred package manager:
@@ -52,10 +51,10 @@ For a more detailed walkthrough, take a read through the [Tutorial](#tutorial) b
 
 All Effect CLI programs ship with several built-in options:
 
-  - `[--completions (bash | sh | fish | zsh)]` - automatically generates and displays a shell completion script for your CLI application
-  - `[-h | --help]` - automatically generates and displays a help documentation for your CLI application
-  - `[--version]` - automatically displays the version of the CLI application
-  - `[--wizard]` - starts the Wizard Mode for your CLI application which guides a user through constructing a command for your the CLI application
+- `[--completions (bash | sh | fish | zsh)]` - automatically generates and displays a shell completion script for your CLI application
+- `[-h | --help]` - automatically generates and displays a help documentation for your CLI application
+- `[--version]` - automatically displays the version of the CLI application
+- `[--wizard]` - starts the Wizard Mode for your CLI application which guides a user through constructing a command for your the CLI application
 
 ## API Reference
 
@@ -73,7 +72,7 @@ minigit add   [-v | --verbose] [--] [<pathspec>...]
 minigit clone [--depth <depth>] [--] <repository> [<directory>]
 ```
 
-**NOTE**: During this quick start guide, we will focus on building the components of the CLI application that will allow us to parse the above commands into structured data. However, implementing the *functionality* of these commands is out of the scope of this quick start guide.
+**NOTE**: During this quick start guide, we will focus on building the components of the CLI application that will allow us to parse the above commands into structured data. However, implementing the _functionality_ of these commands is out of the scope of this quick start guide.
 
 The CLI application that will be built during this tutorial is also available in the [examples](./examples/minigit.ts).
 
@@ -84,10 +83,11 @@ For our `minigit` CLI, we have three commands that we would like to model. Let's
 The `Command.make` constructor creates a `Command` from a name, a `Command` `Config` object, and a `Command` handler, which is a function that receives the parsed `Config` and actually executes the `Command`. Each of these parameters is also reflected in the type signature of `Command`:
 
 `Command<Name extends string, R, E, A>` has four type arguments:
-  - `Name extends string`: the name of the command
-  - `R`: the environment required by the `Command`'s handler
-  - `E`: the expected errors returned by the `Command`'s handler
-  - `A`: the parsed `Config` object provided to the `Command`'s handler
+
+- `Name extends string`: the name of the command
+- `R`: the environment required by the `Command`'s handler
+- `E`: the expected errors returned by the `Command`'s handler
+- `A`: the parsed `Config` object provided to the `Command`'s handler
 
 Let's take a look at each of parameter in more detail:
 
@@ -125,21 +125,25 @@ const minigit = Command.make("minigit", { configs }, ({ configs }) =>
   Option.match(configs, {
     onNone: () => Console.log("Running 'minigit'"),
     onSome: (configs) => {
-      const keyValuePairs = Array.from(configs)
+      const keyValuePairs = Array.fromIterable(configs)
         .map(([key, value]) => `${key}=${value}`)
         .join(", ")
-      return Console.log(`Running 'minigit' with the following configs: ${keyValuePairs}`)
+      return Console.log(
+        `Running 'minigit' with the following configs: ${keyValuePairs}`
+      )
     }
-  }))
+  })
+)
 ```
 
 Some things to note in the above example:
-  1. We've imported the `Command` and `Options` modules from `@effect/cli`
-  2. We've also imported the `Console` and `Option` modules from the core `effect` package
-  3. We've created an `Options` object which will allow us to parse `key=value` pairs with the `-c` flag
-  4. We've made our `-c` flag an optional option using the `Options.optional` combinator
-  5. We've created a `Command` named `minigit` and passed `configs` `Options` to the `minigit` command `Config`
-  6. We've utilized the parsed `Command` `Config` for `minigit` to execute code based upon whether the optional `-c` flag was provided
+
+1. We've imported the `Command` and `Options` modules from `@effect/cli`
+2. We've also imported the `Console` and `Option` modules from the core `effect` package
+3. We've created an `Options` object which will allow us to parse `key=value` pairs with the `-c` flag
+4. We've made our `-c` flag an optional option using the `Options.optional` combinator
+5. We've created a `Command` named `minigit` and passed `configs` `Options` to the `minigit` command `Config`
+6. We've utilized the parsed `Command` `Config` for `minigit` to execute code based upon whether the optional `-c` flag was provided
 
 An astute observer may have also noticed that in the snippet above we did not specify `Options` for version and help.
 
@@ -151,7 +155,7 @@ Let's continue with our `minigit` example and and create the `add` and `clone` s
 
 ```ts
 import { Args, Command, Options } from "@effect/cli"
-import { Console, Option, Array as Array_ } from "effect"
+import { Console, Option, Array } from "effect"
 
 // minigit [--version] [-h | --help] [-c <name>=<value>]
 const configs = Options.keyValueMap("c").pipe(Options.optional)
@@ -159,44 +163,57 @@ const minigit = Command.make("minigit", { configs }, ({ configs }) =>
   Option.match(configs, {
     onNone: () => Console.log("Running 'minigit'"),
     onSome: (configs) => {
-      const keyValuePairs = Array.from(configs)
+      const keyValuePairs = Array.fromIterable(configs)
         .map(([key, value]) => `${key}=${value}`)
         .join(", ")
-      return Console.log(`Running 'minigit' with the following configs: ${keyValuePairs}`)
+      return Console.log(
+        `Running 'minigit' with the following configs: ${keyValuePairs}`
+      )
     }
-  }))
+  })
+)
 
 // minigit add [-v | --verbose] [--] [<pathspec>...]
 const pathspec = Args.text({ name: "pathspec" }).pipe(Args.repeated)
 const verbose = Options.boolean("verbose").pipe(Options.withAlias("v"))
-const minigitAdd = Command.make("add", { pathspec, verbose }, ({ pathspec, verbose }) => {
-  const paths = Array_.match(pathspec, {
-    onEmpty: () => "",
-    onNonEmpty: (paths) => ` ${Array_.join(paths, " ")}`
-  })
-  return Console.log(`Running 'minigit add${paths}' with '--verbose ${verbose}'`)
-})
+const minigitAdd = Command.make(
+  "add",
+  { pathspec, verbose },
+  ({ pathspec, verbose }) => {
+    const paths = Array.match(pathspec, {
+      onEmpty: () => "",
+      onNonEmpty: (paths) => ` ${Array.join(paths, " ")}`
+    })
+    return Console.log(
+      `Running 'minigit add${paths}' with '--verbose ${verbose}'`
+    )
+  }
+)
 
 // minigit clone [--depth <depth>] [--] <repository> [<directory>]
-const repository = Args.text({ name: 'repository' })
-const directory = Args.text({ name: 'directory' }).pipe(Args.optional)
-const depth = Options.integer('depth').pipe(Options.optional)
-const minigitClone = Command.make("clone", { repository, directory, depth }, (config) => {
-  const depth = Option.map(config.depth, (depth) => `--depth ${depth}`)
-  const repository = Option.some(config.repository)
-  const optionsAndArgs = ReadonlyArray.getSomes([depth, repository, config.directory])
-  return Console.log(
-    "Running 'minigit clone' with the following options and arguments: " +
-      `'${ReadonlyArray.join(optionsAndArgs, ", ")}'`
-  )
-})
+const repository = Args.text({ name: "repository" })
+const directory = Args.text({ name: "directory" }).pipe(Args.optional)
+const depth = Options.integer("depth").pipe(Options.optional)
+const minigitClone = Command.make(
+  "clone",
+  { repository, directory, depth },
+  (config) => {
+    const depth = Option.map(config.depth, (depth) => `--depth ${depth}`)
+    const repository = Option.some(config.repository)
+    const optionsAndArgs = Array.getSomes([depth, repository, config.directory])
+    return Console.log(
+      "Running 'minigit clone' with the following options and arguments: " +
+        `'${Array.join(optionsAndArgs, ", ")}'`
+    )
+  }
+)
 ```
 
 Some things to note in the above example:
-  1. We've additionally imported the `Args` module from `@effect/cli` and the `ReadonlyArray` module from `effect`
-  2. We've used the `Args` module to specify some positional arguments for our `add` and `clone` subcommands
-  3. We've used `Options.withAlias` to give the `--verbose` flag an alias of `-v` for our `add` subcommand
 
+1. We've additionally imported the `Args` module from `@effect/cli` and the `Array` module from `effect`
+2. We've used the `Args` module to specify some positional arguments for our `add` and `clone` subcommands
+3. We've used `Options.withAlias` to give the `--verbose` flag an alias of `-v` for our `add` subcommand
 
 #### Creating the CLI Application
 
@@ -209,7 +226,7 @@ Our final CLI application is as follows:
 ```ts
 import { Args, Command, Options } from "@effect/cli"
 import { NodeContext, NodeRuntime } from "@effect/platform-node"
-import { Console, Effect, Option, Array as ReadonlyArray } from "effect"
+import { Console, Effect, Option, Array } from "effect"
 
 // minigit [--version] [-h | --help] [-c <name>=<value>]
 const configs = Options.keyValueMap("c").pipe(Options.optional)
@@ -217,39 +234,54 @@ const minigit = Command.make("minigit", { configs }, ({ configs }) =>
   Option.match(configs, {
     onNone: () => Console.log("Running 'minigit'"),
     onSome: (configs) => {
-      const keyValuePairs = Array.from(configs)
+      const keyValuePairs = Array.fromIterable(configs)
         .map(([key, value]) => `${key}=${value}`)
         .join(", ")
-      return Console.log(`Running 'minigit' with the following configs: ${keyValuePairs}`)
+      return Console.log(
+        `Running 'minigit' with the following configs: ${keyValuePairs}`
+      )
     }
-  }))
+  })
+)
 
 // minigit add [-v | --verbose] [--] [<pathspec>...]
 const pathspec = Args.text({ name: "pathspec" }).pipe(Args.repeated)
 const verbose = Options.boolean("verbose").pipe(Options.withAlias("v"))
-const minigitAdd = Command.make("add", { pathspec, verbose }, ({ pathspec, verbose }) => {
-  const paths = ReadonlyArray.match(pathspec, {
-    onEmpty: () => "",
-    onNonEmpty: (paths) => ` ${ReadonlyArray.join(paths, " ")}`
-  })
-  return Console.log(`Running 'minigit add${paths}' with '--verbose ${verbose}'`)
-})
+const minigitAdd = Command.make(
+  "add",
+  { pathspec, verbose },
+  ({ pathspec, verbose }) => {
+    const paths = Array.match(pathspec, {
+      onEmpty: () => "",
+      onNonEmpty: (paths) => ` ${Array.join(paths, " ")}`
+    })
+    return Console.log(
+      `Running 'minigit add${paths}' with '--verbose ${verbose}'`
+    )
+  }
+)
 
 // minigit clone [--depth <depth>] [--] <repository> [<directory>]
-const repository = Args.text({ name: 'repository' })
-const directory = Args.text({ name: 'directory' }).pipe(Args.optional)
-const depth = Options.integer('depth').pipe(Options.optional)
-const minigitClone = Command.make("clone", { repository, directory, depth }, (config) => {
-  const depth = Option.map(config.depth, (depth) => `--depth ${depth}`)
-  const repository = Option.some(config.repository)
-  const optionsAndArgs = ReadonlyArray.getSomes([depth, repository, config.directory])
-  return Console.log(
-    "Running 'minigit clone' with the following options and arguments: " +
-      `'${ReadonlyArray.join(optionsAndArgs, ", ")}'`
-  )
-})
+const repository = Args.text({ name: "repository" })
+const directory = Args.text({ name: "directory" }).pipe(Args.optional)
+const depth = Options.integer("depth").pipe(Options.optional)
+const minigitClone = Command.make(
+  "clone",
+  { repository, directory, depth },
+  (config) => {
+    const depth = Option.map(config.depth, (depth) => `--depth ${depth}`)
+    const repository = Option.some(config.repository)
+    const optionsAndArgs = Array.getSomes([depth, repository, config.directory])
+    return Console.log(
+      "Running 'minigit clone' with the following options and arguments: " +
+        `'${Array.join(optionsAndArgs, ", ")}'`
+    )
+  }
+)
 
-const command = minigit.pipe(Command.withSubcommands([minigitAdd, minigitClone]))
+const command = minigit.pipe(
+  Command.withSubcommands([minigitAdd, minigitClone])
+)
 
 const cli = Command.run(command, {
   name: "Minigit Distributed Version Control",
@@ -263,11 +295,12 @@ Effect.suspend(() => cli(process.argv)).pipe(
 ```
 
 Some things to note in the above example:
-  1. We've additionally imported the `Effect` module from `effect`
-  2. We've also imported the `NodeRuntime` and `NodeContext` modules from `@effect/platform-node`
-  3. We've used `Command.withSubcommands` to add our `add` and `clone` commands as subcommands of `minigit`
-  4. We've used `Command.run` to create a `CliApp` with a `name` and a `version`
-  5. We've used `Effect.suspend` to lazily evaluate `process.argv`
+
+1. We've additionally imported the `Effect` module from `effect`
+2. We've also imported the `NodeRuntime` and `NodeContext` modules from `@effect/platform-node`
+3. We've used `Command.withSubcommands` to add our `add` and `clone` commands as subcommands of `minigit`
+4. We've used `Command.run` to create a `CliApp` with a `name` and a `version`
+5. We've used `Effect.suspend` to lazily evaluate `process.argv`
 
 #### Running the CLI Application
 
@@ -375,22 +408,35 @@ For example, let's say that our `minigit clone` subcommand needs access to the c
 const repository = Args.text({ name: "repository" })
 const directory = Args.directory().pipe(Args.optional)
 const depth = Options.integer("depth").pipe(Options.optional)
-const minigitClone = Command.make("clone", { repository, directory, depth }, (subcommandConfig) =>
-  // By using `Effect.flatMap` on the parent command, we get access to it's parsed config
-  Effect.flatMap(minigit, (parentConfig) => {
-    const depth = Option.map(subcommandConfig.depth, (depth) => `--depth ${depth}`)
-    const repository = Option.some(subcommandConfig.repository)
-    const optionsAndArgs = ReadonlyArray.getSomes([depth, repository, subcommandConfig.directory])
-    const configs = Option.match(parentConfig.configs, {
-      onNone: () => "",
-      onSome: (map) => Array.from(map).map(([key, value]) => `${key}=${value}`).join(", ")
+const minigitClone = Command.make(
+  "clone",
+  { repository, directory, depth },
+  (subcommandConfig) =>
+    // By using `Effect.flatMap` on the parent command, we get access to it's parsed config
+    Effect.flatMap(minigit, (parentConfig) => {
+      const depth = Option.map(
+        subcommandConfig.depth,
+        (depth) => `--depth ${depth}`
+      )
+      const repository = Option.some(subcommandConfig.repository)
+      const optionsAndArgs = Array.getSomes([
+        depth,
+        repository,
+        subcommandConfig.directory
+      ])
+      const configs = Option.match(parentConfig.configs, {
+        onNone: () => "",
+        onSome: (map) =>
+          Array.fromIterable(map)
+            .map(([key, value]) => `${key}=${value}`)
+            .join(", ")
+      })
+      return Console.log(
+        "Running 'minigit clone' with the following options and arguments: " +
+          `'${Array.join(optionsAndArgs, ", ")}'\n` +
+          `and the following configuration parameters: ${configs}`
+      )
     })
-    return Console.log(
-      "Running 'minigit clone' with the following options and arguments: " +
-        `'${ReadonlyArray.join(optionsAndArgs, ", ")}'\n` +
-        `and the following configuration parameters: ${configs}`
-    )
-  })
 )
 ```
 
@@ -406,9 +452,9 @@ const minigitClone: Command.Command<
   Command.Command.Context<"minigit">,
   never,
   {
-    readonly repository: string;
-    readonly directory: Option.Option<string>;
-    readonly depth: Option.Option<number>;
+    readonly repository: string
+    readonly directory: Option.Option<string>
+    readonly depth: Option.Option<number>
   }
 >
 ```
@@ -444,21 +490,22 @@ Happy Hacking!
 
 The internal command-line argument parser operates under the following specifications:
 
-  1. By default, the `Options` / `Args` of a command are only recognized _before_ subcommands
+1. By default, the `Options` / `Args` of a command are only recognized _before_ subcommands
 
-      ```sh
-      # -v is an option for program
-      program -v subcommand
-      # -v is an option for subcommand
-      program subcommand -v
-      ```
+   ```sh
+   # -v is an option for program
+   program -v subcommand
+   # -v is an option for subcommand
+   program subcommand -v
+   ```
 
-  2. The `Options` for a `Command` are _always_ parsed before positional `Args`
-      ```sh
-      # valid
-      program --option arg
-      # invalid
-      program arg --option
-      ```
+2. The `Options` for a `Command` are _always_ parsed before positional `Args`
 
-  3. Excess arguments after the command-line is fully processed results in a `ValidationError`
+   ```sh
+   # valid
+   program --option arg
+   # invalid
+   program arg --option
+   ```
+
+3. Excess arguments after the command-line is fully processed results in a `ValidationError`

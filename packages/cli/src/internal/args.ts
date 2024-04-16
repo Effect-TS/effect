@@ -3,7 +3,7 @@ import type * as Path from "@effect/platform/Path"
 import type * as Terminal from "@effect/platform/Terminal"
 import * as Schema from "@effect/schema/Schema"
 import * as TreeFormatter from "@effect/schema/TreeFormatter"
-import * as Array_ from "effect/Array"
+import * as Array from "effect/Array"
 import type * as Config from "effect/Config"
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
@@ -161,7 +161,7 @@ export const all: <
     if (isArgs(arguments[0])) {
       return map(arguments[0], (x) => [x]) as any
     } else if (Array.isArray(arguments[0])) {
-      return allTupled(arguments[0]) as any
+      return allTupled(arguments[0] as Array<any>) as any
     } else {
       const entries = Object.entries(arguments[0] as Readonly<{ [K: string]: Args.Args<any> }>)
       let result = map(entries[0][1], (value) => ({ [entries[0][0]]: value }))
@@ -283,11 +283,11 @@ export const text = (config?: Args.Args.BaseArgsConfig): Args.Args<string> =>
 export const atLeast = dual<
   {
     (times: 0): <A>(self: Args.Args<A>) => Args.Args<Array<A>>
-    (times: number): <A>(self: Args.Args<A>) => Args.Args<Array_.NonEmptyArray<A>>
+    (times: number): <A>(self: Args.Args<A>) => Args.Args<Array.NonEmptyArray<A>>
   },
   {
     <A>(self: Args.Args<A>, times: 0): Args.Args<Array<A>>
-    <A>(self: Args.Args<A>, times: number): Args.Args<Array_.NonEmptyArray<A>>
+    <A>(self: Args.Args<A>, times: number): Args.Args<Array.NonEmptyArray<A>>
   }
 >(2, (self, times) => makeVariadic(self, Option.some(times), Option.none()) as any)
 
@@ -304,7 +304,7 @@ export const between = dual<
     (
       min: number,
       max: number
-    ): <A>(self: Args.Args<A>) => Args.Args<Array_.NonEmptyArray<A>>
+    ): <A>(self: Args.Args<A>) => Args.Args<Array.NonEmptyArray<A>>
   },
   {
     <A>(self: Args.Args<A>, min: 0, max: number): Args.Args<Array<A>>
@@ -312,7 +312,7 @@ export const between = dual<
       self: Args.Args<A>,
       min: number,
       max: number
-    ): Args.Args<Array_.NonEmptyArray<A>>
+    ): Args.Args<Array.NonEmptyArray<A>>
   }
 >(3, (self, min, max) => makeVariadic(self, Option.some(min), Option.some(max)) as any)
 
@@ -568,13 +568,13 @@ const getIdentifierInternal = (self: Instruction): Option.Option<string> => {
       return getIdentifierInternal(self.args as Instruction)
     }
     case "Both": {
-      const ids = Array_.getSomes([
+      const ids = Array.getSomes([
         getIdentifierInternal(self.left as Instruction),
         getIdentifierInternal(self.right as Instruction)
       ])
-      return Array_.match(ids, {
+      return Array.match(ids, {
         onEmpty: () => Option.none(),
-        onNonEmpty: (ids) => Option.some(Array_.join(ids, ", "))
+        onNonEmpty: (ids) => Option.some(Array.join(ids, ", "))
       })
     }
   }
@@ -637,7 +637,7 @@ const getUsageInternal = (self: Instruction): Usage.Usage => {
     }
     case "Single": {
       return InternalUsage.named(
-        Array_.of(self.name),
+        Array.of(self.name),
         InternalPrimitive.getChoices(self.primitiveType)
       )
     }
@@ -743,7 +743,7 @@ const validateInternal = (
     }
     case "Single": {
       return Effect.suspend(() => {
-        return Array_.matchLeft(args, {
+        return Array.matchLeft(args, {
           onEmpty: () => {
             const choices = InternalPrimitive.getChoices(self.primitiveType)
             if (Option.isSome(self.pseudoName) && Option.isSome(choices)) {
@@ -810,13 +810,13 @@ const validateInternal = (
         }
         return validateInternal(self.args as Instruction, args, config).pipe(Effect.matchEffect({
           onFailure: (failure) =>
-            acc.length >= min1 && Array_.isEmptyReadonlyArray(args)
+            acc.length >= min1 && Array.isEmptyReadonlyArray(args)
               ? Effect.succeed([args, acc])
               : Effect.fail(failure),
-          onSuccess: ([args, a]) => loop(args, Array_.append(acc, a))
+          onSuccess: ([args, a]) => loop(args, Array.append(acc, a))
         }))
       }
-      return loop(args, Array_.empty()).pipe(
+      return loop(args, Array.empty()).pipe(
         Effect.map(([args, acc]) => [args as Array<string>, acc])
       )
     }
@@ -888,14 +888,14 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
 > => {
   switch (self._tag) {
     case "Empty": {
-      return Effect.succeed(Array_.empty())
+      return Effect.succeed(Array.empty())
     }
     case "Single": {
       const help = getHelpInternal(self)
       return InternalPrimitive.wizard(self.primitiveType, help).pipe(
         Effect.zipLeft(Console.log()),
         Effect.flatMap((input) => {
-          const args = Array_.of(input as string)
+          const args = Array.of(input as string)
           return validateInternal(self, args, config).pipe(Effect.as(args))
         })
       )
@@ -909,7 +909,7 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
       return Effect.zipWith(
         wizardInternal(self.left as Instruction, config),
         wizardInternal(self.right as Instruction, config),
-        (left, right) => Array_.appendAll(left, right)
+        (left, right) => Array.appendAll(left, right)
       ).pipe(Effect.tap((args) => validateInternal(self, args, config)))
     }
     case "Variadic": {
@@ -928,11 +928,11 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
         Effect.zipLeft(Console.log()),
         Effect.flatMap((n) =>
           n <= 0
-            ? Effect.succeed(Array_.empty<string>())
-            : Ref.make(Array_.empty<string>()).pipe(
+            ? Effect.succeed(Array.empty<string>())
+            : Ref.make(Array.empty<string>()).pipe(
               Effect.flatMap((ref) =>
                 wizardInternal(self.args as Instruction, config).pipe(
-                  Effect.flatMap((args) => Ref.update(ref, Array_.appendAll(args))),
+                  Effect.flatMap((args) => Ref.update(ref, Array.appendAll(args))),
                   Effect.repeatN(n - 1),
                   Effect.zipRight(Ref.get(ref)),
                   Effect.tap((args) => validateInternal(self, args, config))
@@ -958,7 +958,7 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
         Effect.zipLeft(Console.log()),
         Effect.flatMap((useFallback) =>
           useFallback
-            ? Effect.succeed(Array_.empty())
+            ? Effect.succeed(Array.empty())
             : wizardInternal(self.args as Instruction, config)
         )
       )
@@ -979,7 +979,7 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
         Effect.zipLeft(Console.log()),
         Effect.flatMap((useFallback) =>
           useFallback
-            ? Effect.succeed(Array_.empty())
+            ? Effect.succeed(Array.empty())
             : wizardInternal(self.args as Instruction, config)
         )
       )
@@ -1013,7 +1013,7 @@ const getShortDescription = (self: Instruction): string => {
 export const getFishCompletions = (self: Instruction): Array<string> => {
   switch (self._tag) {
     case "Empty": {
-      return Array_.empty()
+      return Array.empty()
     }
     case "Single": {
       const description = getShortDescription(self)
@@ -1021,19 +1021,19 @@ export const getFishCompletions = (self: Instruction): Array<string> => {
         InternalPrimitive.getFishCompletions(
           self.primitiveType as InternalPrimitive.Instruction
         ),
-        Array_.appendAll(
+        Array.appendAll(
           description.length === 0
-            ? Array_.empty()
-            : Array_.of(`-d '${description}'`)
+            ? Array.empty()
+            : Array.of(`-d '${description}'`)
         ),
-        Array_.join(" "),
-        Array_.of
+        Array.join(" "),
+        Array.of
       )
     }
     case "Both": {
       return pipe(
         getFishCompletions(self.left as Instruction),
-        Array_.appendAll(getFishCompletions(self.right as Instruction))
+        Array.appendAll(getFishCompletions(self.right as Instruction))
       )
     }
     case "Map":
@@ -1056,7 +1056,7 @@ export const getZshCompletions = (
 ): Array<string> => {
   switch (self._tag) {
     case "Empty": {
-      return Array_.empty()
+      return Array.empty()
     }
     case "Single": {
       const multiple = state.multiple ? "*" : ""
@@ -1067,8 +1067,8 @@ export const getZshCompletions = (
         self.primitiveType as InternalPrimitive.Instruction
       )
       return possibleValues.length === 0
-        ? Array_.empty()
-        : Array_.of(`${multiple}${optional}${self.name}${description}${possibleValues}`)
+        ? Array.empty()
+        : Array.of(`${multiple}${optional}${self.name}${description}${possibleValues}`)
     }
     case "Map": {
       return getZshCompletions(self.args as Instruction, state)
@@ -1076,7 +1076,7 @@ export const getZshCompletions = (
     case "Both": {
       const left = getZshCompletions(self.left as Instruction, state)
       const right = getZshCompletions(self.right as Instruction, state)
-      return Array_.appendAll(left, right)
+      return Array.appendAll(left, right)
     }
     case "Variadic": {
       return Option.isSome(self.max) && self.max.value > 1

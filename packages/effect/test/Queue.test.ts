@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as Array_ from "effect/Array"
+import * as Array from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
@@ -47,10 +47,10 @@ describe("Queue", () => {
   it.effect("dropping - with offerAll, check ordering", () =>
     Effect.gen(function*($) {
       const queue = yield* $(Queue.dropping<number>(128))
-      const result1 = yield* $(Queue.offerAll(queue, Array.from(new Array(256), (_, i) => i + 1)))
+      const result1 = yield* $(Queue.offerAll(queue, Array.makeBy(256, (i) => i + 1)))
       const result2 = yield* $(Queue.takeAll(queue))
       assert.isFalse(result1)
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result2), Array.from(new Array(128), (_, i) => i + 1))
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result2), Array.makeBy(128, (i) => i + 1))
     }))
   it.effect("dropping - with pending taker", () =>
     Effect.gen(function*($) {
@@ -151,7 +151,7 @@ describe("Queue", () => {
     Effect.gen(function*($) {
       const queue = yield* $(Queue.bounded<number>(10))
       const ref = yield* $(Ref.make<ReadonlyArray<number>>([]))
-      const values = Array.from(new Array(10), (_, i) => i + 1)
+      const values = Array.makeBy(10, (i) => i + 1)
       const fiber = yield* $(Effect.forkAll(values.map((n) => Queue.offer(queue, n))))
       yield* $(waitForSize(queue, 10))
       yield* $(
@@ -232,16 +232,16 @@ describe("Queue", () => {
   it.effect("offerAll with takeAll", () =>
     Effect.gen(function*($) {
       const queue = yield* $(Queue.bounded<number>(10))
-      const values = Array_.range(1, 10)
+      const values = Array.range(1, 10)
       yield* $(Queue.offerAll(queue, values))
       yield* $(waitForSize(queue, 10))
       const result = yield* $(Queue.takeAll(queue))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array_.range(1, 10))
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array.range(1, 10))
     }))
   it.effect("offerAll with takeAll and back pressure", () =>
     Effect.gen(function*($) {
       const queue = yield* $(Queue.bounded<number>(2))
-      const values = Array_.range(1, 3)
+      const values = Array.range(1, 3)
       const fiber = yield* $(Queue.offerAll(queue, values), Effect.fork)
       const size = yield* $(waitForSize(queue, 3))
       const result = yield* $(Queue.takeAll(queue))
@@ -252,8 +252,8 @@ describe("Queue", () => {
   it.effect("offerAll with takeAll and back pressure + interruption", () =>
     Effect.gen(function*($) {
       const queue = yield* $(Queue.bounded<number>(2))
-      const values1 = Array_.range(1, 2)
-      const values2 = Array_.range(3, 4)
+      const values1 = Array.range(1, 2)
+      const values2 = Array.range(3, 4)
       yield* $(Queue.offerAll(queue, values1))
       const fiber = yield* $(Queue.offerAll(queue, values2), Effect.fork)
       yield* $(waitForSize(queue, 4))
@@ -266,47 +266,47 @@ describe("Queue", () => {
   it.effect("offerAll with takeAll and back pressure, check ordering", () =>
     Effect.gen(function*($) {
       const queue = yield* $(Queue.bounded<number>(64))
-      const fiber = yield* $(Queue.offerAll(queue, Array.from(Array(128), (_, i) => i + 1)), Effect.fork)
+      const fiber = yield* $(Queue.offerAll(queue, Array.makeBy(128, (i) => i + 1)), Effect.fork)
       yield* $(waitForSize(queue, 128))
       const result = yield* $(Queue.takeAll(queue))
       yield* $(Fiber.interrupt(fiber))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array_.range(1, 64))
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array.range(1, 64))
     }))
   it.effect("offerAll with pending takers", () =>
     Effect.gen(function*($) {
       const queue = yield* $(Queue.bounded<number>(50))
-      const takers = yield* $(Effect.forkAll(Array.from({ length: 100 }, () => Queue.take(queue))))
+      const takers = yield* $(Effect.forkAll(Array.makeBy(100, () => Queue.take(queue))))
       yield* $(waitForSize(queue, -100))
-      yield* $(queue.offerAll(Array.from(Array(100), (_, i) => i + 1)))
+      yield* $(queue.offerAll(Array.makeBy(100, (i) => i + 1)))
       const result = yield* $(Fiber.join(takers))
       const size = yield* $(Queue.size(queue))
       assert.strictEqual(size, 0)
-      assert.deepStrictEqual(result, Array_.range(1, 100))
+      assert.deepStrictEqual(result, Array.range(1, 100))
     }))
   it.effect("offerAll with pending takers, check ordering", () =>
     Effect.gen(function*($) {
       const queue = yield* $(Queue.bounded<number>(256))
-      const takers = yield* $(Effect.forkAll(Array.from({ length: 64 }, () => Queue.take(queue))))
+      const takers = yield* $(Effect.forkAll(Array.makeBy(64, () => Queue.take(queue))))
       yield* $(waitForSize(queue, -64))
-      yield* $(Queue.offerAll(queue, Array.from({ length: 128 }, (_, i) => i + 1)))
+      yield* $(Queue.offerAll(queue, Array.makeBy(128, (i) => i + 1)))
       const result = yield* $(Fiber.join(takers))
       const size = yield* $(Queue.size(queue))
       assert.strictEqual(size, 64)
-      assert.deepStrictEqual(result, Array_.range(1, 64))
+      assert.deepStrictEqual(result, Array.range(1, 64))
     }))
   it.effect("offerAll with pending takers, check ordering of taker resolution", () =>
     Effect.gen(function*($) {
       const queue = yield* $(Queue.bounded<number>(200))
-      const takers = yield* $(Effect.forkAll(Array.from({ length: 100 }, () => Queue.take(queue))))
+      const takers = yield* $(Effect.forkAll(Array.makeBy(100, () => Queue.take(queue))))
       yield* $(waitForSize(queue, -100))
-      const fiber = yield* $(Effect.forkAll(Array.from({ length: 100 }, () => Queue.take(queue))))
+      const fiber = yield* $(Effect.forkAll(Array.makeBy(100, () => Queue.take(queue))))
       yield* $(waitForSize(queue, -200))
-      yield* $(Queue.offerAll(queue, Array.from({ length: 100 }, (_, i) => i + 1)))
+      yield* $(Queue.offerAll(queue, Array.makeBy(100, (i) => i + 1)))
       const result = yield* $(Fiber.join(takers))
       const size = yield* $(Queue.size(queue))
       yield* $(Fiber.interrupt(fiber))
       assert.strictEqual(size, -100)
-      assert.deepStrictEqual(result, Array_.range(1, 100))
+      assert.deepStrictEqual(result, Array.range(1, 100))
     }))
   it.effect("offerAll with take and back pressure", () =>
     Effect.gen(function*($) {
@@ -342,23 +342,23 @@ describe("Queue", () => {
     Effect.gen(function*($) {
       const queue = yield* $(Queue.bounded<number>(1000))
       yield* $(Queue.offer(queue, 1))
-      yield* $(Queue.offerAll(queue, Array_.range(2, 1000)))
+      yield* $(Queue.offerAll(queue, Array.range(2, 1000)))
       yield* $(waitForSize(queue, 1000))
       const result = yield* $(Queue.takeAll(queue))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array_.range(1, 1000))
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array.range(1, 1000))
     }))
   it.effect("offerAll combination of offer, offerAll, take, takeAll", () =>
     Effect.gen(function*($) {
       const queue = yield* $(Queue.bounded<number>(32))
       yield* $(Queue.offer(queue, 1))
       yield* $(Queue.offer(queue, 2))
-      yield* $(Queue.offerAll(queue, Array_.range(3, 35)), Effect.fork)
+      yield* $(Queue.offerAll(queue, Array.range(3, 35)), Effect.fork)
       yield* $(waitForSize(queue, 35))
       const result1 = yield* $(Queue.takeAll(queue))
       const result2 = yield* $(Queue.take(queue))
       const result3 = yield* $(Queue.take(queue))
       const result4 = yield* $(Queue.take(queue))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result1), Array_.range(1, 32))
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result1), Array.range(1, 32))
       assert.strictEqual(result2, 33)
       assert.strictEqual(result3, 34)
       assert.strictEqual(result4, 35)
@@ -366,18 +366,18 @@ describe("Queue", () => {
   it.effect("parallel takes and sequential offers", () =>
     Effect.gen(function*($) {
       const queue = yield* $(Queue.bounded<number>(100))
-      const fiber = yield* $(Effect.forkAll(Array.from({ length: 10 }, () => Queue.take(queue))))
+      const fiber = yield* $(Effect.forkAll(Array.makeBy(10, () => Queue.take(queue))))
       yield* $(
-        Array.from({ length: 10 }, (_, i) => Queue.offer(queue, i + 1))
+        Array.makeBy(10, (i) => Queue.offer(queue, i + 1))
           .reduce((acc, curr) => pipe(acc, Effect.zipRight(curr)), Effect.succeed(false))
       )
       const result = yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(result, Array_.range(1, 10))
+      assert.deepStrictEqual(result, Array.range(1, 10))
     }))
   it.effect("parallel offers and sequential takes", () =>
     Effect.gen(function*($) {
       const queue = yield* $(Queue.bounded<number>(10))
-      const fiber = yield* $(Effect.forkAll(Array.from({ length: 10 }, (_, i) => Queue.offer(queue, i + 1))))
+      const fiber = yield* $(Effect.forkAll(Array.makeBy(10, (i) => Queue.offer(queue, i + 1))))
       yield* $(waitForSize(queue, 10))
       const ref = yield* $(Ref.make<ReadonlyArray<number>>([]))
       yield* $(
@@ -387,7 +387,7 @@ describe("Queue", () => {
       )
       const result = yield* $(Ref.get(ref))
       yield* $(Fiber.join(fiber))
-      assert.deepStrictEqual(result, Array.from({ length: 10 }, (_, i) => i + 1))
+      assert.deepStrictEqual(result, Array.makeBy(10, (i) => i + 1))
     }))
   it.effect("sequential offer and take", () =>
     Effect.gen(function*($) {
@@ -538,7 +538,7 @@ describe("Queue", () => {
       yield* $(Queue.offer(queue, 2))
       yield* $(Queue.offer(queue, 3))
       const result = yield* $(Queue.takeAll(queue))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array_.range(1, 3))
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array.range(1, 3))
     }))
   it.effect("elements can be enqueued syncroniously when there is space", () =>
     Effect.gen(function*($) {
@@ -547,7 +547,7 @@ describe("Queue", () => {
       Queue.unsafeOffer(queue, 2)
       Queue.unsafeOffer(queue, 3)
       const result = yield* $(Queue.takeAll(queue))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array_.range(1, 3))
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array.range(1, 3))
     }))
   it.effect("takeAll returns all values from an empty queue", () =>
     Effect.gen(function*($) {
@@ -571,7 +571,7 @@ describe("Queue", () => {
       yield* $(waitForSize(queue, 5))
       const result1 = yield* $(Queue.takeAll(queue))
       const result2 = yield* $(Queue.take(queue))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result1), Array_.range(1, 4))
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result1), Array.range(1, 4))
       assert.strictEqual(result2, 5)
     }))
   it.effect("takeBetween returns immediately if there is enough elements", () =>
@@ -581,7 +581,7 @@ describe("Queue", () => {
       yield* $(Queue.offer(queue, 2))
       yield* $(Queue.offer(queue, 3))
       const result = yield* $(Queue.takeBetween(queue, 2, 5))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array_.range(1, 3))
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array.range(1, 3))
     }))
   it.effect("takeBetween returns an empty list if boundaries are inverted", () =>
     Effect.gen(function*($) {
@@ -616,14 +616,14 @@ describe("Queue", () => {
       const fiber = yield* $(values, Effect.forEach((n) => Queue.offer(queue, n)), Effect.fork)
       const result = yield* $(Queue.takeBetween(queue, values.length, values.length))
       yield* $(Fiber.interrupt(fiber))
-      assert.deepStrictEqual(Array.from(result), values)
+      assert.deepStrictEqual(Array.fromIterable(result), values)
     }))
   it.effect("takeN returns immediately if there is enough elements", () =>
     Effect.gen(function*($) {
       const queue = yield* $(Queue.bounded<number>(100))
       yield* $(Queue.offerAll(queue, [1, 2, 3, 4, 5]))
       const result = yield* $(Queue.takeN(queue, 3))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array_.range(1, 3))
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array.range(1, 3))
     }))
   it.effect("takeN returns an empty list if a negative number or zero is specified", () =>
     Effect.gen(function*($) {
@@ -648,7 +648,7 @@ describe("Queue", () => {
       yield* $(Queue.offer(queue, 1))
       yield* $(Queue.offer(queue, 2))
       const result = yield* $(Queue.takeUpTo(queue, 2))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array_.range(1, 2))
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array.range(1, 2))
     }))
   it.effect("should return an empty collection from an empty queue", () =>
     Effect.gen(function*($) {
@@ -670,7 +670,7 @@ describe("Queue", () => {
       yield* $(Queue.offer(queue, 3))
       yield* $(Queue.offer(queue, 4))
       const result = yield* $(Queue.takeUpTo(queue, 2))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array_.range(1, 2))
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array.range(1, 2))
     }))
   it.effect("should handle not enough items", () =>
     Effect.gen(function*($) {
@@ -680,7 +680,7 @@ describe("Queue", () => {
       yield* $(Queue.offer(queue, 3))
       yield* $(Queue.offer(queue, 4))
       const result = yield* $(Queue.takeUpTo(queue, 10))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array_.range(1, 4))
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array.range(1, 4))
     }))
   it.effect("should handle taking up to 0 items", () =>
     Effect.gen(function*($) {
@@ -718,8 +718,8 @@ describe("Queue", () => {
       yield* $(Queue.offer(queue, 3))
       yield* $(Queue.offer(queue, 4))
       const result2 = yield* $(Queue.takeUpTo(queue, 2))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result1), Array_.range(1, 2))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result2), Array_.range(3, 4))
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result1), Array.range(1, 2))
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result2), Array.range(3, 4))
     }))
   it.effect("consecutive take up to calls", () =>
     Effect.gen(function*($) {
@@ -730,8 +730,8 @@ describe("Queue", () => {
       yield* $(Queue.offer(queue, 4))
       const result1 = yield* $(Queue.takeUpTo(queue, 2))
       const result2 = yield* $(Queue.takeUpTo(queue, 2))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result1), Array_.range(1, 2))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result2), Array_.range(3, 4))
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result1), Array.range(1, 2))
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result2), Array.range(3, 4))
     }))
   it.effect("does not return back-pressured offers", () =>
     Effect.gen(function*($) {
@@ -745,7 +745,7 @@ describe("Queue", () => {
       yield* $(waitForSize(queue, 5))
       const result = yield* $(Queue.takeUpTo(queue, 5))
       yield* $(Fiber.interrupt(fiber))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array_.range(1, 4))
+      assert.deepStrictEqual(Chunk.toReadonlyArray(result), Array.range(1, 4))
     }))
   it.effect("rts - handles falsy values", () =>
     Effect.gen(function*($) {

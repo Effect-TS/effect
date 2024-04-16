@@ -1,4 +1,4 @@
-import * as Array_ from "../../Array.js"
+import * as Array from "../../Array.js"
 import * as Chunk from "../../Chunk.js"
 import { dual, pipe } from "../../Function.js"
 import * as Option from "../../Option.js"
@@ -42,7 +42,7 @@ export const fromIterable =
   <A>(order: Order.Order<A>) => (iterable: Iterable<A>): STM.STM<TPriorityQueue.TPriorityQueue<A>> =>
     pipe(
       tRef.make(
-        Array.from(iterable).reduce(
+        Array.fromIterable(iterable).reduce(
           (map, value) =>
             pipe(
               map,
@@ -52,8 +52,8 @@ export const fromIterable =
                   map,
                   SortedMap.get(value),
                   Option.match({
-                    onNone: () => Array_.of(value),
-                    onSome: Array_.prepend(value)
+                    onNone: () => Array.of(value),
+                    onSome: Array.prepend(value)
                   })
                 )
               )
@@ -86,8 +86,8 @@ export const offer = dual<
       map,
       value,
       Option.match(SortedMap.get(map, value), {
-        onNone: () => Array_.of(value),
-        onSome: Array_.prepend(value)
+        onNone: () => Array.of(value),
+        onSome: Array.prepend(value)
       })
     )))
 
@@ -97,14 +97,14 @@ export const offerAll = dual<
   <A>(self: TPriorityQueue.TPriorityQueue<A>, values: Iterable<A>) => STM.STM<void>
 >(2, (self, values) =>
   tRef.update(self.ref, (map) =>
-    Array.from(values).reduce(
+    Array.fromIterable(values).reduce(
       (map, value) =>
         SortedMap.set(
           map,
           value,
           Option.match(SortedMap.get(map, value), {
-            onNone: () => Array_.of(value),
-            onSome: Array_.prepend(value)
+            onNone: () => Array.of(value),
+            onSome: Array.prepend(value)
           })
         ),
       map
@@ -147,7 +147,7 @@ export const retainIf = dual<
       self.ref,
       (map) =>
         SortedMap.reduce(map, SortedMap.empty(SortedMap.getOrder(map)), (map, value, key) => {
-          const filtered: ReadonlyArray<A> = Array_.filter(value, predicate)
+          const filtered: ReadonlyArray<A> = Array.filter(value, predicate)
           return filtered.length > 0 ?
             SortedMap.set(map, key, filtered as [A, ...Array<A>]) :
             SortedMap.remove(map, key)
@@ -228,7 +228,7 @@ export const takeUpTo = dual<
     let next: IteratorResult<readonly [A, [A, ...Array<A>]], any>
     while ((next = iterator.next()) && !next.done && index < n) {
       const [key, value] = next.value
-      const [left, right] = pipe(value, Array_.splitAt(n - index))
+      const [left, right] = pipe(value, Array.splitAt(n - index))
       for (const value of left) {
         builder.push(value)
       }

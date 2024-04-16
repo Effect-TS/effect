@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as Array_ from "effect/Array"
+import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -51,7 +51,7 @@ export const make = (options: Lmdb.RootDatabaseOptionsWithPath) =>
                   try: () => store.getMany(keys),
                   catch: (error) => Persistence.PersistenceBackingError.make("getMany", error)
                 }),
-                Array_.map((value, i) => valueToOption(keys[i], value))
+                Array.map((value, i) => valueToOption(keys[i], value))
               ),
             set: (key, value, ttl) =>
               Effect.tryPromise({

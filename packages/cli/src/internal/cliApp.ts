@@ -1,6 +1,6 @@
 import type * as Terminal from "@effect/platform/Terminal"
 import * as Color from "@effect/printer-ansi/Color"
-import * as Array_ from "effect/Array"
+import * as Array from "effect/Array"
 import * as Console from "effect/Console"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -77,14 +77,14 @@ export const run = dual<
     // Remove the executable from the command line arguments
     const [executable, filteredArgs] = splitExecutable(self, args)
     // Prefix the command name to the command line arguments
-    const prefixedArgs = Array_.appendAll(prefixCommand(self.command), filteredArgs)
+    const prefixedArgs = Array.appendAll(prefixCommand(self.command), filteredArgs)
     // Handle the command
     return Effect.matchEffect(InternalCommand.parse(self.command, prefixedArgs, config), {
       onFailure: (e) => Effect.zipRight(printDocs(e.error), Effect.fail(e)),
       onSuccess: Unify.unify((directive) => {
         switch (directive._tag) {
           case "UserDefined": {
-            return Array_.matchLeft(directive.leftover, {
+            return Array.matchLeft(directive.leftover, {
               onEmpty: () =>
                 execute(directive.value).pipe(
                   Effect.catchSome((e) =>
@@ -123,9 +123,9 @@ const splitExecutable = <A>(self: CliApp.CliApp<A>, args: ReadonlyArray<string>)
   args: ReadonlyArray<string>
 ] => {
   if (self.executable !== undefined) {
-    return [self.executable, Array_.drop(args, 2)]
+    return [self.executable, Array.drop(args, 2)]
   }
-  const [[runtime, script], optionsAndArgs] = Array_.splitAt(args, 2)
+  const [[runtime, script], optionsAndArgs] = Array.splitAt(args, 2)
   return [`${runtime} ${script}`, optionsAndArgs]
 }
 
@@ -165,8 +165,8 @@ const handleBuiltInOption = <R, E, A>(
         InternalHelpDoc.h1("USAGE"),
         pipe(
           InternalUsage.enumerate(builtIn.usage, config),
-          Array_.map((span) => InternalHelpDoc.p(InternalSpan.concat(InternalSpan.text("$ "), span))),
-          Array_.reduceRight(
+          Array.map((span) => InternalHelpDoc.p(InternalSpan.concat(InternalSpan.text("$ "), span))),
+          Array.reduceRight(
             InternalHelpDoc.empty,
             (left, right) => InternalHelpDoc.sequence(left, right)
           )
@@ -182,21 +182,21 @@ const handleBuiltInOption = <R, E, A>(
       return Console.log(InternalHelpDoc.toAnsiText(helpDoc))
     }
     case "ShowCompletions": {
-      const command = Array.from(InternalCommand.getNames(self.command))[0]!
+      const command = Array.fromIterable(InternalCommand.getNames(self.command))[0]!
       switch (builtIn.shellType) {
         case "bash": {
           return InternalCommand.getBashCompletions(self.command, command).pipe(
-            Effect.flatMap((completions) => Console.log(Array_.join(completions, "\n")))
+            Effect.flatMap((completions) => Console.log(Array.join(completions, "\n")))
           )
         }
         case "fish": {
           return InternalCommand.getFishCompletions(self.command, command).pipe(
-            Effect.flatMap((completions) => Console.log(Array_.join(completions, "\n")))
+            Effect.flatMap((completions) => Console.log(Array.join(completions, "\n")))
           )
         }
         case "zsh":
           return InternalCommand.getZshCompletions(self.command, command).pipe(
-            Effect.flatMap((completions) => Console.log(Array_.join(completions, "\n")))
+            Effect.flatMap((completions) => Console.log(Array.join(completions, "\n")))
           )
       }
     }
@@ -234,7 +234,7 @@ const handleBuiltInOption = <R, E, A>(
       )
       const help = InternalHelpDoc.sequence(header, description)
       const text = InternalHelpDoc.toAnsiText(help)
-      const command = Array.from(InternalCommand.getNames(self.command))[0]!
+      const command = Array.fromIterable(InternalCommand.getNames(self.command))[0]!
       const wizardPrefix = getWizardPrefix(builtIn, command, args)
       return Console.log(text).pipe(
         Effect.zipRight(InternalCommand.wizard(builtIn.command, wizardPrefix, config)),
@@ -247,8 +247,8 @@ const handleBuiltInOption = <R, E, A>(
             inactive: "no"
           }).pipe(Effect.flatMap((shouldRunCommand) => {
             const finalArgs = pipe(
-              Array_.drop(args, 1),
-              Array_.prependAll(executable.split(/\s+/))
+              Array.drop(args, 1),
+              Array.prependAll(executable.split(/\s+/))
             )
             return shouldRunCommand
               ? Console.log().pipe(Effect.zipRight(run(self, finalArgs, execute)))
@@ -273,16 +273,16 @@ const handleBuiltInOption = <R, E, A>(
 
 const prefixCommand = <A>(self: Command.Command<A>): ReadonlyArray<string> => {
   let command: InternalCommand.Instruction | undefined = self as InternalCommand.Instruction
-  let prefix: ReadonlyArray<string> = Array_.empty()
+  let prefix: ReadonlyArray<string> = Array.empty()
   while (command !== undefined) {
     switch (command._tag) {
       case "Standard": {
-        prefix = Array_.of(command.name)
+        prefix = Array.of(command.name)
         command = undefined
         break
       }
       case "GetUserInput": {
-        prefix = Array_.of(command.name)
+        prefix = Array.of(command.name)
         command = undefined
         break
       }
@@ -305,21 +305,21 @@ const getWizardPrefix = (
   commandLineArgs: ReadonlyArray<string>
 ): ReadonlyArray<string> => {
   const subcommands = InternalCommand.getSubcommands(builtIn.command)
-  const [parentArgs, childArgs] = Array_.span(
+  const [parentArgs, childArgs] = Array.span(
     commandLineArgs,
     (name) => !HashMap.has(subcommands, name)
   )
-  const args = Array_.matchLeft(childArgs, {
-    onEmpty: () => Array_.filter(parentArgs, (arg) => arg !== "--wizard"),
-    onNonEmpty: (head) => Array_.append(parentArgs, head)
+  const args = Array.matchLeft(childArgs, {
+    onEmpty: () => Array.filter(parentArgs, (arg) => arg !== "--wizard"),
+    onNonEmpty: (head) => Array.append(parentArgs, head)
   })
-  return Array_.appendAll(rootCommand.split(/\s+/), args)
+  return Array.appendAll(rootCommand.split(/\s+/), args)
 }
 
 const renderWizardArgs = (args: ReadonlyArray<string>) => {
   const params = pipe(
-    Array_.filter(args, (param) => param.length > 0),
-    Array_.join(" ")
+    Array.filter(args, (param) => param.length > 0),
+    Array.join(" ")
   )
   const executeMsg = InternalSpan.text(
     "You may now execute your command directly with the following options and arguments:"

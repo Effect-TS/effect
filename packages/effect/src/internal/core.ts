@@ -1,4 +1,4 @@
-import * as Array_ from "../Array.js"
+import * as Array from "../Array.js"
 import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
 import * as Context from "../Context.js"
@@ -886,8 +886,8 @@ export const forEachSequential: {
   2,
   <A, B, E, R>(self: Iterable<A>, f: (a: A, i: number) => Effect.Effect<B, E, R>): Effect.Effect<Array<B>, E, R> =>
     suspend(() => {
-      const arr = Array_.fromIterable(self)
-      const ret = new Array(arr.length)
+      const arr = Array.fromIterable(self)
+      const ret = Array.allocate<B>(arr.length)
       let i = 0
       return as(
         whileLoop({
@@ -897,7 +897,7 @@ export const forEachSequential: {
             ret[i++] = b
           }
         }),
-        ret
+        ret as Array<B>
       )
     })
 )
@@ -910,7 +910,7 @@ export const forEachSequentialDiscard: {
   2,
   <A, B, E, R>(self: Iterable<A>, f: (a: A, i: number) => Effect.Effect<B, E, R>): Effect.Effect<void, E, R> =>
     suspend(() => {
-      const arr = Array_.fromIterable(self)
+      const arr = Array.fromIterable(self)
       let i = 0
       return whileLoop({
         while: () => i < arr.length,
@@ -1156,7 +1156,7 @@ export const partitionMap = <A, A1, A2>(
   elements: Iterable<A>,
   f: (a: A) => Either.Either<A2, A1>
 ): [left: Array<A1>, right: Array<A2>] =>
-  Array_.fromIterable(elements).reduceRight(
+  Array.fromIterable(elements).reduceRight(
     ([lefts, rights], current) => {
       const either = f(current)
       switch (either._tag) {
@@ -1168,7 +1168,7 @@ export const partitionMap = <A, A1, A2>(
         }
       }
     },
-    [new Array<A1>(), new Array<A2>()]
+    [Array.empty<A1>(), Array.empty<A2>()]
   )
 
 /* @internal */
@@ -2000,7 +2000,7 @@ export const withUnhandledErrorLogLevel = dual<
 /** @internal */
 export const currentMetricLabels: FiberRef.FiberRef<ReadonlyArray<MetricLabel.MetricLabel>> = globalValue(
   Symbol.for("effect/FiberRef/currentMetricLabels"),
-  () => fiberRefUnsafeMakeReadonlyArray(Array_.empty())
+  () => fiberRefUnsafeMakeReadonlyArray(Array.empty())
 )
 
 /* @internal */
@@ -2110,8 +2110,8 @@ export const causeSquashWith = dual<
         Chunk.head,
         Option.match({
           onNone: () => {
-            const interrupts = Array.from(internalCause.interruptors(self)).flatMap((fiberId) =>
-              Array.from(FiberId.ids(fiberId)).map((id) => `#${id}`)
+            const interrupts = Array.fromIterable(internalCause.interruptors(self)).flatMap((fiberId) =>
+              Array.fromIterable(FiberId.ids(fiberId)).map((id) => `#${id}`)
             )
             return new InterruptedException(interrupts ? `Interrupted by fibers: ${interrupts.join(", ")}` : void 0)
           },
@@ -2694,7 +2694,7 @@ const exitCollectAllInternal = <A, E>(
   }
   return pipe(
     Chunk.tailNonEmpty(list),
-    Array_.reduce(
+    Array.reduce(
       pipe(Chunk.headNonEmpty(list), exitMap<A, Chunk.Chunk<A>>(Chunk.of)),
       (accumulator, current) =>
         pipe(
@@ -2706,7 +2706,7 @@ const exitCollectAllInternal = <A, E>(
         )
     ),
     exitMap(Chunk.reverse),
-    exitMap((chunk) => Array.from(chunk)),
+    exitMap((chunk) => Chunk.toReadonlyArray(chunk) as Array<A>),
     Option.some
   )
 }

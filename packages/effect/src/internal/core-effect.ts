@@ -1,4 +1,4 @@
-import * as Array_ from "../Array.js"
+import * as Array from "../Array.js"
 import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
 import * as Clock from "../Clock.js"
@@ -512,7 +512,7 @@ export const filterMap = dual<
 >(2, (elements, pf) =>
   core.map(
     core.forEachSequential(elements, identity),
-    Array_.filterMap(pf)
+    Array.filterMap(pf)
   ))
 
 /* @internal */
@@ -695,7 +695,7 @@ export const firstSuccessOf = <Eff extends Effect.Effect<any, any, any>>(
     }
     return pipe(
       Chunk.tailNonEmpty(list),
-      Array_.reduce(Chunk.headNonEmpty(list), (left, right) => core.orElse(left, () => right) as Eff)
+      Array.reduce(Chunk.headNonEmpty(list), (left, right) => core.orElse(left, () => right) as Eff)
     )
   })
 
@@ -1020,7 +1020,7 @@ export const loop: {
 ): any =>
   options.discard
     ? loopDiscard(initial, options.while, options.step, options.body)
-    : core.map(loopInternal(initial, options.while, options.step, options.body), Array.from)
+    : core.map(loopInternal(initial, options.while, options.step, options.body), Array.fromIterable)
 
 const loopInternal = <Z, A, E, R>(
   initial: Z,
@@ -1184,7 +1184,7 @@ export const orElseSucceed = dual<
 export const parallelErrors = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, Array<E>, R> =>
   core.matchCauseEffect(self, {
     onFailure: (cause) => {
-      const errors = Array.from(internalCause.failures(cause))
+      const errors = Array.fromIterable(internalCause.failures(cause))
       return errors.length === 0
         ? core.failCause(cause as Cause.Cause<never>)
         : core.fail(errors)
@@ -1278,7 +1278,7 @@ export const reduce = dual<
     zero: Z,
     f: (z: Z, a: A, i: number) => Effect.Effect<Z, E, R>
   ) =>
-    Array_.fromIterable(elements).reduce(
+    Array.fromIterable(elements).reduce(
       (acc, el, i) => core.flatMap(acc, (a) => f(a, el, i)),
       core.succeed(zero) as Effect.Effect<Z, E, R>
     )
@@ -1298,7 +1298,7 @@ export const reduceRight = dual<
 >(
   3,
   <A, Z, R, E>(elements: Iterable<A>, zero: Z, f: (a: A, z: Z, i: number) => Effect.Effect<Z, E, R>) =>
-    Array_.fromIterable(elements).reduceRight(
+    Array.fromIterable(elements).reduceRight(
       (acc, el, i) => core.flatMap(acc, (a) => f(el, a, i)),
       core.succeed(zero) as Effect.Effect<Z, E, R>
     )
@@ -1435,7 +1435,7 @@ export const labelMetrics = dual<
   <A, E, R>(self: Effect.Effect<A, E, R>, labels: Iterable<MetricLabel.MetricLabel>) => Effect.Effect<A, E, R>
 >(
   2,
-  (self, labels) => core.fiberRefLocallyWith(self, core.currentMetricLabels, (old) => Array_.union(old, labels))
+  (self, labels) => core.fiberRefLocallyWith(self, core.currentMetricLabels, (old) => Array.union(old, labels))
 )
 
 /* @internal */
@@ -2082,7 +2082,7 @@ export const unsafeMakeSpan = <XA, XE>(
         ...(options?.links ?? [])
       ] :
       Chunk.toReadonlyArray(linksFromEnv.value) :
-    options?.links ?? Array_.empty()
+    options?.links ?? Array.empty()
 
   const span = tracer.span(
     name,

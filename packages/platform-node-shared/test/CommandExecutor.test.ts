@@ -6,7 +6,7 @@ import type * as CommandExecutor from "@effect/platform/CommandExecutor"
 import { SystemError } from "@effect/platform/Error"
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as Path from "@effect/platform/Path"
-import * as Array_ from "effect/Array"
+import * as Array from "effect/Array"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -48,7 +48,7 @@ describe("Command", () => {
     runPromise(Effect.gen(function*(_) {
       const command = Command.make("echo", "-n", "1\n2\n3")
       const result = yield* _(Stream.runCollect(Command.streamLines(command)))
-      expect(Array.from(result)).toEqual(["1", "2", "3"])
+      expect(Chunk.toReadonlyArray(result)).toEqual(["1", "2", "3"])
     })))
 
   it("should work with a Stream directly", () =>
@@ -61,7 +61,7 @@ describe("Command", () => {
         Stream.splitLines,
         Stream.runCollect
       )
-      expect(Array.from(result)).toEqual(["1", "2", "3"])
+      expect(Chunk.toReadonlyArray(result)).toEqual(["1", "2", "3"])
     })))
 
   it("should fail when trying to run a command that does not exist", () =>
@@ -377,7 +377,7 @@ describe("Command", () => {
           Command.runInShell("/bin/bash")
         )
         const lines = yield* _(Command.lines(command))
-        expect(Array_.sort(files, Order.string)).toEqual(Array_.sort(lines, Order.string))
+        expect(Array.sort(files, Order.string)).toEqual(Array.sort(lines, Order.string))
       }).pipe(Effect.scoped)
     ))
 })

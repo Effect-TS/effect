@@ -52,6 +52,14 @@ export const make = <Elements extends NonEmptyArray<any>>(
 ): NonEmptyArray<Elements[number]> => elements
 
 /**
+ * Creates a new `Array` of the specified length.
+ *
+ * @category constructors
+ * @since 2.0.0
+ */
+export const allocate = <A = never>(n: number): Array<A | undefined> => new Array(n)
+
+/**
  * Return a `NonEmptyArray` of length `n` with element `i` initialized with `f(i)`.
  *
  * **Note**. `n` is normalized to an integer >= 1.
@@ -66,11 +74,11 @@ export const make = <Elements extends NonEmptyArray<any>>(
  */
 export const makeBy = <A>(n: number, f: (i: number) => A): NonEmptyArray<A> => {
   const max = Math.max(1, Math.floor(n))
-  const out: NonEmptyArray<A> = [f(0)]
-  for (let i = 1; i < max; i++) {
-    out.push(f(i))
+  const out = new Array(max)
+  for (let i = 0; i < max; i++) {
+    out[i] = f(i)
   }
-  return out
+  return out as NonEmptyArray<A>
 }
 
 /**
@@ -322,6 +330,22 @@ export const scanRight: {
   }
   return out
 })
+
+/**
+ * Determine if `unknown` is an Array.
+ *
+ * @param self - The value to check.
+ *
+ * @example
+ * import { isArray } from "effect/Array"
+ *
+ * assert.deepStrictEqual(isArray(null), false);
+ * assert.deepStrictEqual(isArray([1, 2, 3]), true);
+ *
+ * @category guards
+ * @since 2.0.0
+ */
+export const isArray: (self: unknown) => self is Array<unknown> = Array.isArray
 
 /**
  * Determine if an `Array` is empty narrowing down the type to `[]`.

@@ -1,7 +1,7 @@
 import * as ObservableResource from "effect-test/utils/cache/ObservableResource"
 import * as WatchableLookup from "effect-test/utils/cache/WatchableLookup"
 import * as it from "effect-test/utils/extend"
-import * as Array_ from "effect/Array"
+import * as Array from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
@@ -48,7 +48,7 @@ describe("ScopedCache", () => {
             Effect.flatMap((cache) =>
               pipe(
                 Effect.forEach(
-                  Array_.map(Array_.range(1, capacity), (n) => (n / 2) | 0),
+                  Array.map(Array.range(1, capacity), (n) => (n / 2) | 0),
                   (n) => Effect.scoped(Effect.zipRight(cache.get(n), Effect.void)),
                   { concurrency: "unbounded", discard: true }
                 ),
@@ -69,7 +69,7 @@ describe("ScopedCache", () => {
       const capacity = 100
       const observablesResources = yield* $(
         Effect.forEach(
-          Array_.range(0, capacity - 1),
+          Array.range(0, capacity - 1),
           () => ObservableResource.makeVoid()
         )
       )
@@ -81,7 +81,7 @@ describe("ScopedCache", () => {
       yield* $(Effect.scoped(Effect.gen(function*($) {
         const cache = yield* $(scopedCache)
         yield* $(Effect.forEach(
-          Array_.range(0, capacity - 1),
+          Array.range(0, capacity - 1),
           (n) => Effect.scoped(Effect.zipRight(cache.get(n), Effect.void)),
           { concurrency: "unbounded", discard: true }
         ))
@@ -92,7 +92,7 @@ describe("ScopedCache", () => {
         yield* $(Effect.forEach(
           pipe(
             observablesResources,
-            Array_.filter((_, index) => index !== 42)
+            Array.filter((_, index) => index !== 42)
           ),
           (observableResource) => observableResource.assertAcquiredOnceAndNotCleaned()
         ))
@@ -131,7 +131,7 @@ describe("ScopedCache", () => {
       const capacity = 100
       const observablesResources = yield* $(
         Effect.forEach(
-          Array_.range(0, capacity - 1),
+          Array.range(0, capacity - 1),
           () => ObservableResource.makeVoid()
         )
       )
@@ -143,14 +143,14 @@ describe("ScopedCache", () => {
       yield* $(Effect.scoped(Effect.gen(function*($) {
         const cache = yield* $(scopedCache)
         yield* $(Effect.forEach(
-          Array_.range(0, capacity - 1),
+          Array.range(0, capacity - 1),
           (n) => Effect.scoped(Effect.zipRight(cache.get(n), Effect.void)),
           { concurrency: "unbounded", discard: true }
         ))
         yield* $(cache.invalidateAll)
         const contains = yield* $(
           Effect.forEach(
-            Array_.range(0, capacity - 1),
+            Array.range(0, capacity - 1),
             (n) => Effect.scoped(cache.contains(n)),
             { concurrency: "unbounded" }
           ),
@@ -199,11 +199,11 @@ describe("ScopedCache", () => {
           const cache = yield* $(scopedCache)
           const actual = yield* $(
             Effect.forEach(
-              Array_.range(1, 10),
+              Array.range(1, 10),
               (n) => Effect.scoped(Effect.flatMap(cache.get(n), Effect.succeed))
             )
           )
-          const expected = Array_.map(Array_.range(1, 10), hash(salt))
+          const expected = Array.map(Array.range(1, 10), hash(salt))
           expect(actual).toEqual(expected)
         })))
       })
@@ -222,13 +222,13 @@ describe("ScopedCache", () => {
           const cache = yield* $(scopedCache)
           const actual = yield* $(
             Effect.forEach(
-              Array_.range(1, 10),
+              Array.range(1, 10),
               (n) => Effect.scoped(Effect.flatMap(cache.get(n), Effect.succeed)),
               { concurrency: "unbounded" }
             )
           )
-          const expected = Array_.map(Array_.range(1, 10), hash(salt))
-          expect(Array.from(actual)).toEqual(Array.from(expected))
+          const expected = Array.map(Array.range(1, 10), hash(salt))
+          expect(actual).toEqual(expected)
         })))
       })
       return Effect.runPromise(program)
@@ -246,13 +246,13 @@ describe("ScopedCache", () => {
           const cache = yield* $(scopedCache)
           const actual = yield* $(
             Effect.forEach(
-              Array_.range(1, 10),
+              Array.range(1, 10),
               (n) => Effect.scoped(Effect.flatMap(cache.get(n), Effect.succeed))
             )
           )
-          const expected = Array_.map(Array_.range(1, 10), hash(salt))
+          const expected = Array.map(Array.range(1, 10), hash(salt))
           const cacheStats = yield* $(cache.cacheStats)
-          expect(Array.from(actual)).toEqual(Array.from(expected))
+          expect(actual).toEqual(expected)
           expect(cacheStats.size).toBe(5)
         })))
       })
@@ -453,7 +453,7 @@ describe("ScopedCache", () => {
           const cache = yield* $(scopedCache)
           yield* $(
             Effect.forEach(
-              Array_.range(0, numCreatedKey - 1),
+              Array.range(0, numCreatedKey - 1),
               (key) => Effect.scoped(Effect.asVoid(cache.get(key))),
               { discard: true }
             )
@@ -461,17 +461,17 @@ describe("ScopedCache", () => {
           const createdResources = yield* $(watchableLookup.createdResources())
           const cleanedAssertions = numCreatedKey - cacheSize - 1
           const oldestResourceCleaned = cleanedAssertions <= 0
-            ? Array_.empty()
+            ? Array.empty()
             : pipe(
-              Array_.range(0, numCreatedKey - cacheSize - 1),
-              Array_.flatMap((key) => Chunk.toReadonlyArray(HashMap.unsafeGet(createdResources, key))),
-              Array_.map((resource) => resource.assertAcquiredOnceAndCleaned())
+              Array.range(0, numCreatedKey - cacheSize - 1),
+              Array.flatMap((key) => Chunk.toReadonlyArray(HashMap.unsafeGet(createdResources, key))),
+              Array.map((resource) => resource.assertAcquiredOnceAndCleaned())
             )
           yield* $(Effect.all(oldestResourceCleaned, { discard: true }))
           const newestResourceNotCleanedYet = pipe(
-            Array_.range(numCreatedKey - cacheSize, numCreatedKey - 1),
-            Array_.flatMap((key) => Chunk.toReadonlyArray(HashMap.unsafeGet(createdResources, key))),
-            Array_.map((resource) => resource.assertAcquiredOnceAndNotCleaned())
+            Array.range(numCreatedKey - cacheSize, numCreatedKey - 1),
+            Array.flatMap((key) => Chunk.toReadonlyArray(HashMap.unsafeGet(createdResources, key))),
+            Array.map((resource) => resource.assertAcquiredOnceAndNotCleaned())
           )
           yield* $(Effect.all(newestResourceNotCleanedYet, { discard: true }))
         })))
@@ -701,7 +701,7 @@ describe("ScopedCache", () => {
       yield* $(Effect.scoped(Effect.gen(function*($) {
         const cache = yield* $(scopedCache)
         const count0 = yield* $(cache.size)
-        yield* $(Effect.forEach(Array_.range(1, capacity), (key) => cache.refresh(key), { discard: true }))
+        yield* $(Effect.forEach(Array.range(1, capacity), (key) => cache.refresh(key), { discard: true }))
         const count1 = yield* $(cache.size)
         expect(count0).toBe(0)
         expect(count1).toBe(capacity)
@@ -724,24 +724,24 @@ describe("ScopedCache", () => {
         yield* $(Effect.scoped(Effect.gen(function*($) {
           const cache = yield* $(scopedCache)
           yield* $(Effect.forEach(
-            Array_.range(0, numCreatedKey - 1),
+            Array.range(0, numCreatedKey - 1),
             (key) => cache.refresh(key),
             { discard: true }
           ))
           const createdResources = yield* $(watchableLookup.createdResources())
           const cleanedAssertions = numCreatedKey - cacheSize - 1
           const oldestResourceCleaned = cleanedAssertions <= 0
-            ? Array_.empty()
+            ? Array.empty()
             : pipe(
-              Array_.range(0, numCreatedKey - cacheSize - 1),
-              Array_.flatMap((key) => Chunk.toReadonlyArray(HashMap.unsafeGet(createdResources, key))),
-              Array_.map((resource) => resource.assertAcquiredOnceAndCleaned())
+              Array.range(0, numCreatedKey - cacheSize - 1),
+              Array.flatMap((key) => Chunk.toReadonlyArray(HashMap.unsafeGet(createdResources, key))),
+              Array.map((resource) => resource.assertAcquiredOnceAndCleaned())
             )
           yield* $(Effect.all(oldestResourceCleaned, { discard: true }))
           const newestResourceNotCleanedYet = pipe(
-            Array_.range(numCreatedKey - cacheSize, numCreatedKey - 1),
-            Array_.flatMap((key) => Chunk.toReadonlyArray(HashMap.unsafeGet(createdResources, key))),
-            Array_.map((resource) => resource.assertAcquiredOnceAndNotCleaned())
+            Array.range(numCreatedKey - cacheSize, numCreatedKey - 1),
+            Array.flatMap((key) => Chunk.toReadonlyArray(HashMap.unsafeGet(createdResources, key))),
+            Array.map((resource) => resource.assertAcquiredOnceAndNotCleaned())
           )
           yield* $(Effect.all(newestResourceNotCleanedYet, { discard: true }))
         })))
