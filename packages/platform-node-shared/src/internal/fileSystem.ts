@@ -1,8 +1,7 @@
 import { effectify } from "@effect/platform/Effectify"
 import * as Error from "@effect/platform/Error"
 import * as FileSystem from "@effect/platform/FileSystem"
-import type * as ParcelWatcher from "@parcel/watcher"
-import * as Chunk from "effect/Chunk"
+import type * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -524,49 +523,6 @@ const utimes = (() => {
 
 // == watch
 
-const watchParcel = (Watcher: typeof ParcelWatcher, path: string) =>
-  Stream.asyncScoped<FileSystem.WatchEvent, Error.PlatformError>((emit) =>
-    Effect.acquireRelease(
-      Effect.tryPromise({
-        try: () =>
-          Watcher.subscribe(path, (error, events) => {
-            if (error) {
-              emit.fail(Error.SystemError({
-                reason: "Unknown",
-                module: "FileSystem",
-                method: "watch",
-                pathOrDescriptor: path,
-                message: error.message
-              }))
-            } else {
-              emit.chunk(Chunk.unsafeFromArray(events.map((event) => {
-                switch (event.type) {
-                  case "create": {
-                    return FileSystem.WatchEventCreate({ path: event.path })
-                  }
-                  case "update": {
-                    return FileSystem.WatchEventUpdate({ path: event.path })
-                  }
-                  case "delete": {
-                    return FileSystem.WatchEventRemove({ path: event.path })
-                  }
-                }
-              })))
-            }
-          }),
-        catch: (error) =>
-          Error.SystemError({
-            reason: "Unknown",
-            module: "FileSystem",
-            method: "watch",
-            pathOrDescriptor: path,
-            message: (error as Error).message
-          })
-      }),
-      (sub) => Effect.promise(() => sub.unsubscribe())
-    )
-  )
-
 const watchNode = (path: string) =>
   Stream.asyncScoped<FileSystem.WatchEvent, Error.PlatformError>((emit) =>
     Effect.acquireRelease(
@@ -605,15 +561,13 @@ const watchNode = (path: string) =>
     )
   )
 
-const watch = (path: string) =>
+const watch = (backend: Option.Option<Context.Tag.Service<FileSystem.WatchBackend>>, path: string) =>
   stat(path).pipe(
-    Effect.flatMap((stat) =>
-      stat.type === "Directory" ?
-        Effect.matchCause(Effect.promise(() => import("@parcel/watcher")), {
-          onSuccess: (Watcher) => watchParcel(Watcher, path),
-          onFailure: (_) => watchNode(path)
-        }) :
-        Effect.succeed(watchNode(path))
+    Effect.map((stat) =>
+      backend.pipe(
+        Option.flatMap((_) => _.register(path, stat)),
+        Option.getOrElse(() => watchNode(path))
+      )
     ),
     Stream.unwrap
   )
@@ -639,32 +593,35 @@ const writeFile = (path: string, data: Uint8Array, options?: FileSystem.WriteFil
     }
   })
 
-const fileSystemImpl = FileSystem.make({
-  access,
-  chmod,
-  chown,
-  copy,
-  copyFile,
-  link,
-  makeDirectory,
-  makeTempDirectory,
-  makeTempDirectoryScoped,
-  makeTempFile,
-  makeTempFileScoped,
-  open,
-  readDirectory,
-  readFile,
-  readLink,
-  realPath,
-  remove,
-  rename,
-  stat,
-  symlink,
-  truncate,
-  utimes,
-  watch,
-  writeFile
-})
+const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend), (backend) =>
+  FileSystem.make({
+    access,
+    chmod,
+    chown,
+    copy,
+    copyFile,
+    link,
+    makeDirectory,
+    makeTempDirectory,
+    makeTempDirectoryScoped,
+    makeTempFile,
+    makeTempFileScoped,
+    open,
+    readDirectory,
+    readFile,
+    readLink,
+    realPath,
+    remove,
+    rename,
+    stat,
+    symlink,
+    truncate,
+    utimes,
+    watch(path) {
+      return watch(backend, path)
+    },
+    writeFile
+  }))
 
 /** @internal */
-export const layer = Layer.succeed(FileSystem.FileSystem, fileSystemImpl)
+export const layer = Layer.effect(FileSystem.FileSystem, makeFileSystem)

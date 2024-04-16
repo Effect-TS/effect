@@ -3,6 +3,7 @@
  */
 import * as Brand from "effect/Brand"
 import type { Tag } from "effect/Context"
+import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import type * as Effect from "effect/Effect"
 import type { Option } from "effect/Option"
@@ -600,3 +601,15 @@ export const WatchEventUpdate: Data.Case.Constructor<WatchEvent.Update, "_tag"> 
 export const WatchEventRemove: Data.Case.Constructor<WatchEvent.Remove, "_tag"> = Data.tagged<WatchEvent.Remove>(
   "Remove"
 )
+
+/**
+ * @since 1.0.0
+ * @category file watcher
+ */
+export class WatchBackend extends Context.Tag("@effect/platform/FileSystem/WatchBackend")<
+  WatchBackend,
+  {
+    readonly register: (path: string, stat: File.Info) => Option<Stream<WatchEvent, PlatformError>>
+  }
+>() {
+}
