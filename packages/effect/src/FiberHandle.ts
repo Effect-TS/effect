@@ -301,34 +301,34 @@ export const run: {
   ): Effect.Effect<Fiber.RuntimeFiber<XA, XE>, never, R>
 } = function() {
   const self = arguments[0] as FiberHandle
-  if (arguments.length === 1) {
-    const options = arguments[1] as { readonly onlyIfMissing?: boolean } | undefined
-    return (effect: Effect.Effect<unknown, unknown, any>) =>
-      Effect.suspend(() => {
-        if (self.state._tag === "Closed") {
-          return Effect.interrupt
-        }
-        return Effect.uninterruptibleMask((restore) =>
-          Effect.tap(
-            restore(Effect.forkDaemon(effect)),
-            (fiber) => set(self, fiber, options)
-          )
+  if (Effect.isEffect(arguments[1])) {
+    const effect = arguments[1]
+    const options = arguments[2] as { readonly onlyIfMissing?: boolean } | undefined
+    return Effect.suspend(() => {
+      if (self.state._tag === "Closed") {
+        return Effect.interrupt
+      }
+      return Effect.uninterruptibleMask((restore) =>
+        Effect.tap(
+          restore(Effect.forkDaemon(effect)),
+          (fiber) => set(self, fiber, options)
         )
-      })
-  }
-  const effect = arguments[1] as Effect.Effect<any, any, any>
-  const options = arguments[2] as { readonly onlyIfMissing?: boolean } | undefined
-  return Effect.suspend(() => {
-    if (self.state._tag === "Closed") {
-      return Effect.interrupt
-    }
-    return Effect.uninterruptibleMask((restore) =>
-      Effect.tap(
-        restore(Effect.forkDaemon(effect)),
-        (fiber) => set(self, fiber, options)
       )
-    )
-  }) as any
+    }) as any
+  }
+  const options = arguments[1] as { readonly onlyIfMissing?: boolean } | undefined
+  return (effect: Effect.Effect<unknown, unknown, any>) =>
+    Effect.suspend(() => {
+      if (self.state._tag === "Closed") {
+        return Effect.interrupt
+      }
+      return Effect.uninterruptibleMask((restore) =>
+        Effect.tap(
+          restore(Effect.forkDaemon(effect)),
+          (fiber) => set(self, fiber, options)
+        )
+      )
+    })
 }
 
 /**

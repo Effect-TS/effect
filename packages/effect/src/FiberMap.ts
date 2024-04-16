@@ -143,7 +143,11 @@ export const makeRuntime = <R, K, E = unknown, A = unknown>(): Effect.Effect<
   <XE extends E, XA extends A>(
     key: K,
     effect: Effect.Effect<XA, XE, R>,
-    options?: Runtime.RunForkOptions | undefined
+    options?:
+      | Runtime.RunForkOptions & {
+        readonly onlyIfMissing?: boolean | undefined
+      }
+      | undefined
   ) => Fiber.RuntimeFiber<XA, XE>,
   never,
   Scope.Scope | R
@@ -164,38 +168,43 @@ export const unsafeSet: {
   <K, A, E, XE extends E, XA extends A>(
     key: K,
     fiber: Fiber.RuntimeFiber<XA, XE>,
-    interruptAs?: FiberId.FiberId
+    options?: {
+      readonly interruptAs?: FiberId.FiberId | undefined
+      readonly onlyIfMissing?: boolean | undefined
+    } | undefined
   ): (self: FiberMap<K, A, E>) => void
   <K, A, E, XE extends E, XA extends A>(
     self: FiberMap<K, A, E>,
     key: K,
     fiber: Fiber.RuntimeFiber<XA, XE>,
-    interruptAs?: FiberId.FiberId
+    options?: {
+      readonly interruptAs?: FiberId.FiberId | undefined
+      readonly onlyIfMissing?: boolean | undefined
+    } | undefined
   ): void
-} = dual<
-  <K, A, E, XE extends E, XA extends A>(
-    key: K,
-    fiber: Fiber.RuntimeFiber<XA, XE>,
-    interruptAs?: FiberId.FiberId
-  ) => (self: FiberMap<K, A, E>) => void,
-  <K, A, E, XE extends E, XA extends A>(
-    self: FiberMap<K, A, E>,
-    key: K,
-    fiber: Fiber.RuntimeFiber<XA, XE>,
-    interruptAs?: FiberId.FiberId
-  ) => void
->((args) => isFiberMap(args[0]), (self, key, fiber, interruptAs) => {
+} = dual((args) => isFiberMap(args[0]), <K, A, E, XE extends E, XA extends A>(
+  self: FiberMap<K, A, E>,
+  key: K,
+  fiber: Fiber.RuntimeFiber<XA, XE>,
+  options?: {
+    readonly interruptAs?: FiberId.FiberId | undefined
+    readonly onlyIfMissing?: boolean | undefined
+  } | undefined
+): void => {
   if (self.state._tag === "Closed") {
-    fiber.unsafeInterruptAsFork(interruptAs ?? FiberId.none)
+    fiber.unsafeInterruptAsFork(options?.interruptAs ?? FiberId.none)
     return
   }
 
   const previous = MutableHashMap.get(self.state.backing, key)
   if (previous._tag === "Some") {
-    if (previous.value === fiber) {
+    if (options?.onlyIfMissing === true) {
+      fiber.unsafeInterruptAsFork(options?.interruptAs ?? FiberId.none)
+      return
+    } else if (previous.value === fiber) {
       return
     }
-    previous.value.unsafeInterruptAsFork(interruptAs ?? FiberId.none)
+    previous.value.unsafeInterruptAsFork(options?.interruptAs ?? FiberId.none)
   }
 
   ;(fiber as FiberRuntime<unknown, unknown>).setFiberRef(FiberRef.unhandledErrorLogLevel, Option.none())
@@ -224,26 +233,35 @@ export const unsafeSet: {
 export const set: {
   <K, A, E, XE extends E, XA extends A>(
     key: K,
-    fiber: Fiber.RuntimeFiber<XA, XE>
+    fiber: Fiber.RuntimeFiber<XA, XE>,
+    options?: {
+      readonly onlyIfMissing?: boolean | undefined
+    } | undefined
   ): (self: FiberMap<K, A, E>) => Effect.Effect<void>
   <K, A, E, XE extends E, XA extends A>(
     self: FiberMap<K, A, E>,
     key: K,
-    fiber: Fiber.RuntimeFiber<XA, XE>
+    fiber: Fiber.RuntimeFiber<XA, XE>,
+    options?: {
+      readonly onlyIfMissing?: boolean | undefined
+    } | undefined
   ): Effect.Effect<void>
-} = dual<
-  <K, A, E, XE extends E, XA extends A>(
-    key: K,
-    fiber: Fiber.RuntimeFiber<XA, XE>
-  ) => (self: FiberMap<K, A, E>) => Effect.Effect<void>,
-  <K, A, E, XE extends E, XA extends A>(
-    self: FiberMap<K, A, E>,
-    key: K,
-    fiber: Fiber.RuntimeFiber<XA, XE>
-  ) => Effect.Effect<void>
->(3, (self, key, fiber) =>
+} = dual((args) => isFiberMap(args[0]), <K, A, E, XE extends E, XA extends A>(
+  self: FiberMap<K, A, E>,
+  key: K,
+  fiber: Fiber.RuntimeFiber<XA, XE>,
+  options?: {
+    readonly onlyIfMissing?: boolean | undefined
+  } | undefined
+): Effect.Effect<void> =>
   Effect.fiberIdWith(
-    (fiberId) => Effect.sync(() => unsafeSet(self, key, fiber, fiberId))
+    (fiberId) =>
+      Effect.sync(() =>
+        unsafeSet(self, key, fiber, {
+          interruptAs: fiberId,
+          onlyIfMissing: options?.onlyIfMissing
+        })
+      )
   ))
 
 /**
@@ -283,6 +301,35 @@ export const get: {
     key: K
   ) => Effect.Effect<Fiber.RuntimeFiber<A, E>, NoSuchElementException>
 >(2, (self, key) => Effect.suspend(() => unsafeGet(self, key)))
+
+/**
+ * Check if a key exists in the FiberMap.
+ *
+ * @since 2.0.0
+ * @categories combinators
+ */
+export const unsafeHas: {
+  <K>(key: K): <A, E>(self: FiberMap<K, A, E>) => boolean
+  <K, A, E>(self: FiberMap<K, A, E>, key: K): boolean
+} = dual(
+  2,
+  <K, A, E>(self: FiberMap<K, A, E>, key: K): boolean =>
+    self.state._tag === "Closed" ? false : MutableHashMap.has(self.state.backing, key)
+)
+
+/**
+ * Check if a key exists in the FiberMap.
+ *
+ * @since 2.0.0
+ * @categories combinators
+ */
+export const has: {
+  <K>(key: K): <A, E>(self: FiberMap<K, A, E>) => Effect.Effect<boolean>
+  <K, A, E>(self: FiberMap<K, A, E>, key: K): Effect.Effect<boolean>
+} = dual(
+  2,
+  <K, A, E>(self: FiberMap<K, A, E>, key: K): Effect.Effect<boolean> => Effect.sync(() => unsafeHas(self, key))
+)
 
 /**
  * Remove a fiber from the FiberMap, interrupting it if it exists.
@@ -339,46 +386,54 @@ export const clear = <K, A, E>(self: FiberMap<K, A, E>): Effect.Effect<void> =>
 export const run: {
   <K, A, E>(
     self: FiberMap<K, A, E>,
-    key: K
+    key: K,
+    options?: {
+      readonly onlyIfMissing?: boolean | undefined
+    } | undefined
   ): <R, XE extends E, XA extends A>(
     effect: Effect.Effect<XA, XE, R>
   ) => Effect.Effect<Fiber.RuntimeFiber<XA, XE>, never, R>
   <K, A, E, R, XE extends E, XA extends A>(
     self: FiberMap<K, A, E>,
     key: K,
-    effect: Effect.Effect<XA, XE, R>
+    effect: Effect.Effect<XA, XE, R>,
+    options?: {
+      readonly onlyIfMissing?: boolean | undefined
+    } | undefined
   ): Effect.Effect<Fiber.RuntimeFiber<XA, XE>, never, R>
 } = function() {
-  if (arguments.length === 2) {
+  if (Effect.isEffect(arguments[2])) {
     const self = arguments[0] as FiberMap<any>
     const key = arguments[1]
-    return (effect: Effect.Effect<any, any, any>) =>
-      Effect.suspend(() => {
-        if (self.state._tag === "Closed") {
-          return Effect.interrupt
-        }
-        return Effect.uninterruptibleMask((restore) =>
-          Effect.tap(
-            restore(Effect.forkDaemon(effect)),
-            (fiber) => set(self, key, fiber)
-          )
+    const effect = arguments[2] as Effect.Effect<any, any, any>
+    const options = arguments[3] as { readonly onlyIfMissing?: boolean } | undefined
+    return Effect.suspend(() => {
+      if (self.state._tag === "Closed") {
+        return Effect.interrupt
+      }
+      return Effect.uninterruptibleMask((restore) =>
+        Effect.tap(
+          restore(Effect.forkDaemon(effect)),
+          (fiber) => set(self, key, fiber, options)
         )
-      })
+      )
+    }) as any
   }
   const self = arguments[0] as FiberMap<any>
   const key = arguments[1]
-  const effect = arguments[2] as Effect.Effect<any, any, any>
-  return Effect.suspend(() => {
-    if (self.state._tag === "Closed") {
-      return Effect.interrupt
-    }
-    return Effect.uninterruptibleMask((restore) =>
-      Effect.tap(
-        restore(Effect.forkDaemon(effect)),
-        (fiber) => set(self, key, fiber)
+  const options = arguments[2] as { readonly onlyIfMissing?: boolean } | undefined
+  return (effect: Effect.Effect<any, any, any>) =>
+    Effect.suspend(() => {
+      if (self.state._tag === "Closed") {
+        return Effect.interrupt
+      }
+      return Effect.uninterruptibleMask((restore) =>
+        Effect.tap(
+          restore(Effect.forkDaemon(effect)),
+          (fiber) => set(self, key, fiber, options)
+        )
       )
-    )
-  }) as any
+    })
 }
 
 /**
@@ -414,7 +469,11 @@ export const runtime: <K, A, E>(
   <XE extends E, XA extends A>(
     key: K,
     effect: Effect.Effect<XA, XE, R>,
-    options?: Runtime.RunForkOptions | undefined
+    options?:
+      | Runtime.RunForkOptions & {
+        readonly onlyIfMissing?: boolean | undefined
+      }
+      | undefined
   ) => Fiber.RuntimeFiber<XA, XE>,
   never,
   R
@@ -426,10 +485,14 @@ export const runtime: <K, A, E>(
       return <XE extends E, XA extends A>(
         key: K,
         effect: Effect.Effect<XA, XE, R>,
-        options?: Runtime.RunForkOptions | undefined
+        options?:
+          | Runtime.RunForkOptions & {
+            readonly onlyIfMissing?: boolean | undefined
+          }
+          | undefined
       ) => {
         const fiber = runFork(effect, options)
-        unsafeSet(self, key, fiber)
+        unsafeSet(self, key, fiber, options)
         return fiber
       }
     }
