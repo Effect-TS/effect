@@ -1,3 +1,4 @@
+import * as RA from "../Array.js"
 import * as Boolean from "../Boolean.js"
 import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
@@ -31,7 +32,6 @@ import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import * as Predicate from "../Predicate.js"
 import type * as Random from "../Random.js"
-import * as RA from "../ReadonlyArray.js"
 import * as Ref from "../Ref.js"
 import type { Entry, Request } from "../Request.js"
 import type * as RequestBlock from "../RequestBlock.js"
@@ -3576,7 +3576,7 @@ export const makeSpanScoped = (
     readonly parent?: Tracer.AnySpan | undefined
     readonly root?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
-  }
+  } | undefined
 ): Effect.Effect<Tracer.Span, never, Scope.Scope> =>
   core.uninterruptible(
     core.withFiberRuntime((fiber) => {

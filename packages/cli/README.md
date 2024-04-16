@@ -151,7 +151,7 @@ Let's continue with our `minigit` example and and create the `add` and `clone` s
 
 ```ts
 import { Args, Command, Options } from "@effect/cli"
-import { Console, Option, ReadonlyArray } from "effect"
+import { Console, Option, Array } from "effect"
 
 // minigit [--version] [-h | --help] [-c <name>=<value>]
 const configs = Options.keyValueMap("c").pipe(Options.optional)
@@ -170,9 +170,9 @@ const minigit = Command.make("minigit", { configs }, ({ configs }) =>
 const pathspec = Args.text({ name: "pathspec" }).pipe(Args.repeated)
 const verbose = Options.boolean("verbose").pipe(Options.withAlias("v"))
 const minigitAdd = Command.make("add", { pathspec, verbose }, ({ pathspec, verbose }) => {
-  const paths = ReadonlyArray.match(pathspec, {
+  const paths = Array.match(pathspec, {
     onEmpty: () => "",
-    onNonEmpty: (paths) => ` ${ReadonlyArray.join(paths, " ")}`
+    onNonEmpty: (paths) => ` ${Array.join(paths, " ")}`
   })
   return Console.log(`Running 'minigit add${paths}' with '--verbose ${verbose}'`)
 })
@@ -184,16 +184,16 @@ const depth = Options.integer('depth').pipe(Options.optional)
 const minigitClone = Command.make("clone", { repository, directory, depth }, (config) => {
   const depth = Option.map(config.depth, (depth) => `--depth ${depth}`)
   const repository = Option.some(config.repository)
-  const optionsAndArgs = ReadonlyArray.getSomes([depth, repository, config.directory])
+  const optionsAndArgs = Array.getSomes([depth, repository, config.directory])
   return Console.log(
     "Running 'minigit clone' with the following options and arguments: " +
-      `'${ReadonlyArray.join(optionsAndArgs, ", ")}'`
+      `'${Array.join(optionsAndArgs, ", ")}'`
   )
 })
 ```
 
 Some things to note in the above example:
-  1. We've additionally imported the `Args` module from `@effect/cli` and the `ReadonlyArray` module from `effect`
+  1. We've additionally imported the `Args` module from `@effect/cli` and the `Array` module from `effect`
   2. We've used the `Args` module to specify some positional arguments for our `add` and `clone` subcommands
   3. We've used `Options.withAlias` to give the `--verbose` flag an alias of `-v` for our `add` subcommand
 
@@ -209,7 +209,7 @@ Our final CLI application is as follows:
 ```ts
 import { Args, Command, Options } from "@effect/cli"
 import { NodeContext, NodeRuntime } from "@effect/platform-node"
-import { Console, Effect, Option, ReadonlyArray } from "effect"
+import { Console, Effect, Option, Array } from "effect"
 
 // minigit [--version] [-h | --help] [-c <name>=<value>]
 const configs = Options.keyValueMap("c").pipe(Options.optional)
@@ -228,9 +228,9 @@ const minigit = Command.make("minigit", { configs }, ({ configs }) =>
 const pathspec = Args.text({ name: "pathspec" }).pipe(Args.repeated)
 const verbose = Options.boolean("verbose").pipe(Options.withAlias("v"))
 const minigitAdd = Command.make("add", { pathspec, verbose }, ({ pathspec, verbose }) => {
-  const paths = ReadonlyArray.match(pathspec, {
+  const paths = Array.match(pathspec, {
     onEmpty: () => "",
-    onNonEmpty: (paths) => ` ${ReadonlyArray.join(paths, " ")}`
+    onNonEmpty: (paths) => ` ${Array.join(paths, " ")}`
   })
   return Console.log(`Running 'minigit add${paths}' with '--verbose ${verbose}'`)
 })
@@ -242,10 +242,10 @@ const depth = Options.integer('depth').pipe(Options.optional)
 const minigitClone = Command.make("clone", { repository, directory, depth }, (config) => {
   const depth = Option.map(config.depth, (depth) => `--depth ${depth}`)
   const repository = Option.some(config.repository)
-  const optionsAndArgs = ReadonlyArray.getSomes([depth, repository, config.directory])
+  const optionsAndArgs = Array.getSomes([depth, repository, config.directory])
   return Console.log(
     "Running 'minigit clone' with the following options and arguments: " +
-      `'${ReadonlyArray.join(optionsAndArgs, ", ")}'`
+      `'${Array.join(optionsAndArgs, ", ")}'`
   )
 })
 
@@ -380,14 +380,14 @@ const minigitClone = Command.make("clone", { repository, directory, depth }, (su
   Effect.flatMap(minigit, (parentConfig) => {
     const depth = Option.map(subcommandConfig.depth, (depth) => `--depth ${depth}`)
     const repository = Option.some(subcommandConfig.repository)
-    const optionsAndArgs = ReadonlyArray.getSomes([depth, repository, subcommandConfig.directory])
+    const optionsAndArgs = Array.getSomes([depth, repository, subcommandConfig.directory])
     const configs = Option.match(parentConfig.configs, {
       onNone: () => "",
       onSome: (map) => Array.from(map).map(([key, value]) => `${key}=${value}`).join(", ")
     })
     return Console.log(
       "Running 'minigit clone' with the following options and arguments: " +
-        `'${ReadonlyArray.join(optionsAndArgs, ", ")}'\n` +
+        `'${Array.join(optionsAndArgs, ", ")}'\n` +
         `and the following configuration parameters: ${configs}`
     )
   })

@@ -1,5 +1,5 @@
+import * as ReadonlyArrayInstances from "@effect/typeclass/data/Array"
 import * as OptionInstances from "@effect/typeclass/data/Option"
-import * as ReadonlyArrayInstances from "@effect/typeclass/data/ReadonlyArray"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import { describe, it } from "vitest"

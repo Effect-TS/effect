@@ -11,14 +11,14 @@ import * as Equivalence from "./Equivalence.js"
 import type { LazyArg } from "./Function.js"
 import { dual, identity } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
-import * as readonlyArray from "./internal/readonlyArray.js"
+import * as readonlyArray from "./internal/array.js"
 import * as EffectIterable from "./Iterable.js"
 import type { Option } from "./Option.js"
 import * as O from "./Option.js"
 import * as Order from "./Order.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import { isBoolean } from "./Predicate.js"
-import * as ReadonlyRecord from "./ReadonlyRecord.js"
+import * as Record from "./Record.js"
 import * as Tuple from "./Tuple.js"
 
 /**
@@ -52,12 +52,20 @@ export const make = <Elements extends NonEmptyArray<any>>(
 ): NonEmptyArray<Elements[number]> => elements
 
 /**
+ * Creates a new `Array` of the specified length.
+ *
+ * @category constructors
+ * @since 2.0.0
+ */
+export const allocate = <A = never>(n: number): Array<A | undefined> => new Array(n)
+
+/**
  * Return a `NonEmptyArray` of length `n` with element `i` initialized with `f(i)`.
  *
  * **Note**. `n` is normalized to an integer >= 1.
  *
  * @example
- * import { makeBy } from 'effect/ReadonlyArray'
+ * import { makeBy } from 'effect/Array'
  *
  * assert.deepStrictEqual(makeBy(5, n => n * 2), [0, 2, 4, 6, 8])
  *
@@ -66,18 +74,18 @@ export const make = <Elements extends NonEmptyArray<any>>(
  */
 export const makeBy = <A>(n: number, f: (i: number) => A): NonEmptyArray<A> => {
   const max = Math.max(1, Math.floor(n))
-  const out: NonEmptyArray<A> = [f(0)]
-  for (let i = 1; i < max; i++) {
-    out.push(f(i))
+  const out = new Array(max)
+  for (let i = 0; i < max; i++) {
+    out[i] = f(i)
   }
-  return out
+  return out as NonEmptyArray<A>
 }
 
 /**
  * Return a `NonEmptyArray` containing a range of integers, including both endpoints.
  *
  * @example
- * import { range } from 'effect/ReadonlyArray'
+ * import { range } from 'effect/Array'
  *
  * assert.deepStrictEqual(range(1, 3), [1, 2, 3])
  *
@@ -93,7 +101,7 @@ export const range = (start: number, end: number): NonEmptyArray<number> =>
  * **Note**. `n` is normalized to an integer >= 1.
  *
  * @example
- * import { replicate } from 'effect/ReadonlyArray'
+ * import { replicate } from 'effect/Array'
  *
  * assert.deepStrictEqual(replicate("a", 3), ["a", "a", "a"])
  *
@@ -120,7 +128,7 @@ export const fromIterable = <A>(collection: Iterable<A>): Array<A> =>
  * @param self - The record to transform.
  *
  * @example
- * import { fromRecord } from "effect/ReadonlyArray"
+ * import { fromRecord } from "effect/Array"
  *
  * const x = { a: 1, b: 2, c: 3 }
  * assert.deepStrictEqual(fromRecord(x), [["a", 1], ["b", 2], ["c", 3]])
@@ -128,7 +136,7 @@ export const fromIterable = <A>(collection: Iterable<A>): Array<A> =>
  * @category conversions
  * @since 2.0.0
  */
-export const fromRecord: <K extends string, A>(self: Readonly<Record<K, A>>) => Array<[K, A]> = ReadonlyRecord.toEntries
+export const fromRecord: <K extends string, A>(self: Readonly<Record<K, A>>) => Array<[K, A]> = Record.toEntries
 
 /**
  * @category conversions
@@ -233,10 +241,10 @@ export const prepend: {
  * If either array is non-empty, the result is also a non-empty array.
  *
  * @example
- * import * as ReadonlyArray from "effect/ReadonlyArray"
+ * import * as Array from "effect/Array"
  *
  * assert.deepStrictEqual(
- *   ReadonlyArray.prependAll([1, 2], ["a", "b"]),
+ *   Array.prependAll([1, 2], ["a", "b"]),
  *   ["a", "b", 1, 2]
  * )
  *
@@ -324,12 +332,28 @@ export const scanRight: {
 })
 
 /**
+ * Determine if `unknown` is an Array.
+ *
+ * @param self - The value to check.
+ *
+ * @example
+ * import { isArray } from "effect/Array"
+ *
+ * assert.deepStrictEqual(isArray(null), false);
+ * assert.deepStrictEqual(isArray([1, 2, 3]), true);
+ *
+ * @category guards
+ * @since 2.0.0
+ */
+export const isArray: (self: unknown) => self is Array<unknown> = Array.isArray
+
+/**
  * Determine if an `Array` is empty narrowing down the type to `[]`.
  *
  * @param self - The `Array` to check.
  *
  * @example
- * import { isEmptyArray } from "effect/ReadonlyArray"
+ * import { isEmptyArray } from "effect/Array"
  *
  * assert.deepStrictEqual(isEmptyArray([]), true);
  * assert.deepStrictEqual(isEmptyArray([1, 2, 3]), false);
@@ -345,7 +369,7 @@ export const isEmptyArray = <A>(self: Array<A>): self is [] => self.length === 0
  * @param self - The `ReadonlyArray` to check.
  *
  * @example
- * import { isEmptyReadonlyArray } from "effect/ReadonlyArray"
+ * import { isEmptyReadonlyArray } from "effect/Array"
  *
  * assert.deepStrictEqual(isEmptyReadonlyArray([]), true);
  * assert.deepStrictEqual(isEmptyReadonlyArray([1, 2, 3]), false);
@@ -363,7 +387,7 @@ export const isEmptyReadonlyArray: <A>(self: ReadonlyArray<A>) => self is readon
  * @param self - The `Array` to check.
  *
  * @example
- * import { isNonEmptyArray } from "effect/ReadonlyArray"
+ * import { isNonEmptyArray } from "effect/Array"
  *
  * assert.deepStrictEqual(isNonEmptyArray([]), false);
  * assert.deepStrictEqual(isNonEmptyArray([1, 2, 3]), true);
@@ -381,7 +405,7 @@ export const isNonEmptyArray: <A>(self: Array<A>) => self is NonEmptyArray<A> = 
  * @param self - The `ReadonlyArray` to check.
  *
  * @example
- * import { isNonEmptyReadonlyArray } from "effect/ReadonlyArray"
+ * import { isNonEmptyReadonlyArray } from "effect/Array"
  *
  * assert.deepStrictEqual(isNonEmptyReadonlyArray([]), false);
  * assert.deepStrictEqual(isNonEmptyReadonlyArray([1, 2, 3]), true);
@@ -1317,15 +1341,15 @@ export const group: <A>(self: NonEmptyReadonlyArray<A>) => NonEmptyArray<NonEmpt
 export const groupBy: {
   <A, K extends string | symbol>(
     f: (a: A) => K
-  ): (self: Iterable<A>) => Record<ReadonlyRecord.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>>
+  ): (self: Iterable<A>) => Record<Record.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>>
   <A, K extends string | symbol>(
     self: Iterable<A>,
     f: (a: A) => K
-  ): Record<ReadonlyRecord.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>>
+  ): Record<Record.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>>
 } = dual(2, <A, K extends string | symbol>(
   self: Iterable<A>,
   f: (a: A) => K
-): Record<ReadonlyRecord.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>> => {
+): Record<Record.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>> => {
   const out: Record<string | symbol, NonEmptyArray<A>> = {}
   for (const a of self) {
     const k = f(a)
@@ -1628,7 +1652,7 @@ export const partitionMap: {
  * Retrieves the `Some` values from an `Iterable` of `Option`s, collecting them into an array.
  *
  * @example
- * import { getSomes } from "effect/ReadonlyArray"
+ * import { getSomes } from "effect/Array"
  * import { some, none } from "effect/Option"
  *
  * assert.deepStrictEqual(
@@ -1645,7 +1669,7 @@ export const getSomes: <A>(self: Iterable<Option<A>>) => Array<A> = filterMap(id
  * Retrieves the `Left` values from an `Iterable` of `Either`s, collecting them into an array.
  *
  * @example
- * import { getLefts } from "effect/ReadonlyArray"
+ * import { getLefts } from "effect/Array"
  * import { right, left } from "effect/Either"
  *
  * assert.deepStrictEqual(
@@ -1671,7 +1695,7 @@ export const getLefts = <R, L>(self: Iterable<Either<R, L>>): Array<L> => {
  * Retrieves the `Right` values from an `Iterable` of `Either`s, collecting them into an array.
  *
  * @example
- * import { getRights } from "effect/ReadonlyArray"
+ * import { getRights } from "effect/Array"
  * import { right, left } from "effect/Either"
  *
  * assert.deepStrictEqual(

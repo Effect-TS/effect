@@ -1,5 +1,6 @@
 import * as it from "effect-test/utils/extend"
 import { withLatch, withLatchAwait } from "effect-test/utils/latch"
+import * as Array from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
@@ -13,7 +14,6 @@ import { constVoid, pipe } from "effect/Function"
 import * as HashSet from "effect/HashSet"
 import * as MutableRef from "effect/MutableRef"
 import * as Option from "effect/Option"
-import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Ref from "effect/Ref"
 import * as TestClock from "effect/TestClock"
 import { assert, describe } from "vitest"
@@ -250,10 +250,10 @@ describe("Effect", () => {
       )
       yield* $(Deferred.await(latch1), Effect.zipRight(Fiber.interrupt(fiber)))
       const result = yield* $(Ref.get(exits), Effect.map(process))
-      assert.strictEqual(Array.from(result).length, 2)
+      assert.strictEqual(Chunk.size(result), 2)
       assert.isTrue(pipe(
         result,
-        ReadonlyArray.reduce(true, (acc, curr) =>
+        Array.reduce(true, (acc, curr) =>
           acc && Exit.isFailure(curr) && Cause.isInterruptedOnly(curr.effect_instruction_i0))
       ))
     }))

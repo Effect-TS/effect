@@ -30,6 +30,13 @@ export {
 } from "./Function.js"
 
 /**
+ * This module provides utility functions for working with arrays in TypeScript.
+ *
+ * @since 2.0.0
+ */
+export * as Array from "./Array.js"
+
+/**
  * This module provides utility functions and type class instances for working with the `BigDecimal` type in TypeScript.
  * It includes functions for basic arithmetic operations, as well as type class instances for `Equivalence` and `Order`.
  *
@@ -581,18 +588,11 @@ export * as RateLimiter from "./RateLimiter.js"
 export * as Readable from "./Readable.js"
 
 /**
- * This module provides utility functions for working with arrays in TypeScript.
- *
- * @since 2.0.0
- */
-export * as ReadonlyArray from "./ReadonlyArray.js"
-
-/**
  * This module provides utility functions for working with records in TypeScript.
  *
  * @since 2.0.0
  */
-export * as ReadonlyRecord from "./ReadonlyRecord.js"
+export * as Record from "./Record.js"
 
 /**
  * @since 2.0.0

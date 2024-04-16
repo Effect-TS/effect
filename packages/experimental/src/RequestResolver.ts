@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type * as Serializable from "@effect/schema/Serializable"
+import * as Array from "effect/Array"
 import * as Deferred from "effect/Deferred"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -10,7 +11,6 @@ import { dual, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import type * as PrimaryKey from "effect/PrimaryKey"
 import * as Queue from "effect/Queue"
-import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Ref from "effect/Ref"
 import * as Request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"
@@ -59,8 +59,8 @@ export const dataLoader = dual<
         Queue.shutdown
       )
     )
-    const batch = yield* _(Ref.make(ReadonlyArray.empty<DataLoaderItem<A>>()))
-    const takeOne = Effect.flatMap(Queue.take(queue), (item) => Ref.updateAndGet(batch, ReadonlyArray.append(item)))
+    const batch = yield* _(Ref.make(Array.empty<DataLoaderItem<A>>()))
+    const takeOne = Effect.flatMap(Queue.take(queue), (item) => Ref.updateAndGet(batch, Array.append(item)))
     const takeRest = takeOne.pipe(
       Effect.repeat({
         until: (items) =>
@@ -69,7 +69,7 @@ export const dataLoader = dual<
       }),
       Effect.timeout(options.window),
       Effect.ignore,
-      Effect.zipRight(Ref.getAndSet(batch, ReadonlyArray.empty()))
+      Effect.zipRight(Ref.getAndSet(batch, Array.empty()))
     )
 
     yield* _(
@@ -163,7 +163,7 @@ export const persisted: {
     const partition = (requests: ReadonlyArray<Req>) =>
       storage.getMany(requests as any).pipe(
         Effect.map(
-          ReadonlyArray.partitionMap((_, i) =>
+          Array.partitionMap((_, i) =>
             Option.match(_, {
               onNone: () => Either.left(requests[i]),
               onSome: (_) => Either.right([requests[i], _] as const)
