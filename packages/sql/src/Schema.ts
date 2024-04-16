@@ -20,7 +20,7 @@ export const findAll = <IR, II, IA, AR, AI, A, R, E>(
   }
 ) => {
   const encodeRequest = Schema.encode(options.Request)
-  const decode = Schema.decodeUnknown(Schema.array(options.Result))
+  const decode = Schema.decodeUnknown(Schema.Array(options.Result))
   return (request: IA): Effect.Effect<ReadonlyArray<A>, E | ParseError, R | IR | AR> =>
     Effect.flatMap(
       Effect.flatMap(encodeRequest(request), options.execute),

@@ -218,7 +218,7 @@ export const ordered = <T extends string, I, II, RI, A, IA, E, RA = never, R = n
   never,
   RA | R
 > => {
-  const decodeResults = Schema.decodeUnknown(Schema.array(options.Result))
+  const decodeResults = Schema.decodeUnknown(Schema.Array(options.Result))
   const resolver = RequestResolver.makeBatched(
     (requests: Array<SqlRequest<T, A, E | ResultLengthMismatch>>) => {
       const [inputs, spanLinks] = partitionRequests(requests)
@@ -286,7 +286,7 @@ export const grouped = <T extends string, I, II, K, RI, A, IA, E, RA = never, R 
       readonly withContext: true
     }
 ): Effect.Effect<SqlResolver<T, I, Array<A>, E, RI>, never, RA | R> => {
-  const decodeResults = Schema.decodeUnknown(Schema.array(options.Result))
+  const decodeResults = Schema.decodeUnknown(Schema.Array(options.Result))
   const resolver = RequestResolver.makeBatched(
     (requests: Array<SqlRequest<T, Array<A>, E>>) => {
       const [inputs, spanLinks] = partitionRequests(requests)
@@ -359,7 +359,7 @@ export const findById = <T extends string, I, II, RI, A, IA, E, RA = never, R = 
       readonly withContext: true
     }
 ): Effect.Effect<SqlResolver<T, I, Option.Option<A>, E, RI>, never, RA | R> => {
-  const decodeResults = Schema.decodeUnknown(Schema.array(options.Result))
+  const decodeResults = Schema.decodeUnknown(Schema.Array(options.Result))
   const resolver = RequestResolver.makeBatched(
     (requests: Array<SqlRequest<T, Option.Option<A>, E>>) => {
       const [inputs, spanLinks, idMap] = partitionRequestsById<II>()(requests)
