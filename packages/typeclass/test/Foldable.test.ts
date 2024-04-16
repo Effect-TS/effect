@@ -1,4 +1,4 @@
-import * as ReadonlyArrayInstances from "@effect/typeclass/data/Array"
+import * as ArrayInstances from "@effect/typeclass/data/Array"
 import * as NumberInstances from "@effect/typeclass/data/Number"
 import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as Foldable from "@effect/typeclass/Foldable"
@@ -10,8 +10,8 @@ import * as U from "./util.js"
 describe.concurrent("Foldable", () => {
   it("reduceComposition", () => {
     const reduce = Foldable.reduceComposition(
-      ReadonlyArrayInstances.Foldable,
-      ReadonlyArrayInstances.Foldable
+      ArrayInstances.Foldable,
+      ArrayInstances.Foldable
     )
     const f = (b: string, a: string) => b + a
     U.deepStrictEqual(reduce([], "-", f), "-")
@@ -32,12 +32,12 @@ describe.concurrent("Foldable", () => {
   })
 
   it("combineMap", () => {
-    const combineMap = Foldable.combineMap(ReadonlyArrayInstances.Foldable)
+    const combineMap = Foldable.combineMap(ArrayInstances.Foldable)
     U.deepStrictEqual(combineMap(NumberInstances.MonoidSum)([1, 2, 3], U.double), 12)
   })
 
   it("reduceKind", () => {
-    const reduceKind = Foldable.reduceKind(ReadonlyArrayInstances.Foldable)(OptionInstances.Monad)
+    const reduceKind = Foldable.reduceKind(ArrayInstances.Foldable)(OptionInstances.Monad)
     U.deepStrictEqual(reduceKind([], "-", () => O.none()), O.some("-"))
     U.deepStrictEqual(reduceKind(["a"], "-", () => O.none()), O.none())
     U.deepStrictEqual(
@@ -51,7 +51,7 @@ describe.concurrent("Foldable", () => {
   })
 
   it("coproductMapKind", () => {
-    const coproductMapKind = Foldable.coproductMapKind(ReadonlyArrayInstances.Foldable)(
+    const coproductMapKind = Foldable.coproductMapKind(ArrayInstances.Foldable)(
       OptionInstances.Alternative
     )
     U.deepStrictEqual(pipe([], coproductMapKind(() => O.none())), O.none())

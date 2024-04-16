@@ -1,5 +1,5 @@
 import * as _ from "@effect/typeclass/Bicovariant"
-import * as ReadonlyArrayInstances from "@effect/typeclass/data/Array"
+import * as ArrayInstances from "@effect/typeclass/data/Array"
 import * as EitherInstances from "@effect/typeclass/data/Either"
 import * as E from "effect/Either"
 import { pipe } from "effect/Function"
@@ -22,7 +22,7 @@ describe.concurrent("Bicovariant", () => {
   })
 
   it("bimapComposition", () => {
-    const bimap = _.bimapComposition(ReadonlyArrayInstances.Covariant, EitherInstances.Bicovariant)
+    const bimap = _.bimapComposition(ArrayInstances.Covariant, EitherInstances.Bicovariant)
     const f = (s: string) => s.length
     const g = (n: number) => n * 2
     U.deepStrictEqual(bimap([E.right(1), E.right(2), E.left("eee")], f, g), [

@@ -1,4 +1,4 @@
-import * as ReadonlyArrayInstances from "@effect/typeclass/data/Array"
+import * as ArrayInstances from "@effect/typeclass/data/Array"
 import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as Traversable from "@effect/typeclass/Traversable"
 import { pipe } from "effect/Function"
@@ -9,8 +9,8 @@ import * as U from "./util.js"
 describe.concurrent("Traversable", () => {
   it("traverseComposition", () => {
     const traverse = Traversable.traverseComposition(
-      ReadonlyArrayInstances.Traversable,
-      ReadonlyArrayInstances.Traversable
+      ArrayInstances.Traversable,
+      ArrayInstances.Traversable
     )(OptionInstances.Applicative)
     U.deepStrictEqual(
       traverse([[1, 2], [3]], (a) => (a > 0 ? O.some(a) : O.none())),
@@ -23,7 +23,7 @@ describe.concurrent("Traversable", () => {
   })
 
   it("sequence", () => {
-    const sequence = Traversable.sequence(ReadonlyArrayInstances.Traversable)(
+    const sequence = Traversable.sequence(ArrayInstances.Traversable)(
       OptionInstances.Applicative
     )
     U.deepStrictEqual(sequence([O.some(1), O.some(2)]), O.some([1, 2]))
@@ -31,7 +31,7 @@ describe.concurrent("Traversable", () => {
   })
 
   it("traverseTap", () => {
-    const traverseTap = Traversable.traverseTap(ReadonlyArrayInstances.Traversable)(
+    const traverseTap = Traversable.traverseTap(ArrayInstances.Traversable)(
       OptionInstances.Applicative
     )
     U.deepStrictEqual(

@@ -1,5 +1,5 @@
 import * as _ from "@effect/typeclass/Covariant"
-import * as ReadonlyArrayInstances from "@effect/typeclass/data/Array"
+import * as ArrayInstances from "@effect/typeclass/data/Array"
 import * as OptionInstances from "@effect/typeclass/data/Option"
 import { pipe } from "effect/Function"
 import * as O from "effect/Option"
@@ -9,7 +9,7 @@ import * as U from "./util.js"
 
 describe.concurrent("Covariant", () => {
   it("mapComposition", () => {
-    const map = _.mapComposition(ReadonlyArrayInstances.Covariant, ReadonlyArrayInstances.Covariant)
+    const map = _.mapComposition(ArrayInstances.Covariant, ArrayInstances.Covariant)
     const f = (a: string) => a + "!"
     U.deepStrictEqual(map([], f), [])
     U.deepStrictEqual(map([[]], f), [[]])

@@ -1,4 +1,4 @@
-import * as ReadonlyArrayInstances from "@effect/typeclass/data/Array"
+import * as ArrayInstances from "@effect/typeclass/data/Array"
 import * as NumberInstances from "@effect/typeclass/data/Number"
 import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as PredicateInstances from "@effect/typeclass/data/Predicate"
@@ -82,10 +82,10 @@ describe.concurrent("SemiProduct", () => {
       U.deepStrictEqual(actual, expected)
     }
 
-    assertSameResult(ReadonlyArrayInstances.SemiApplicative)([])([])
-    assertSameResult(ReadonlyArrayInstances.SemiApplicative)([])([1, 2, 3])
-    assertSameResult(ReadonlyArrayInstances.SemiApplicative)([[4]])([1, 2, 3])
-    assertSameResult(ReadonlyArrayInstances.SemiApplicative)([[4, 5, 6], [7, 8], [9, 10, 11]])([
+    assertSameResult(ArrayInstances.SemiApplicative)([])([])
+    assertSameResult(ArrayInstances.SemiApplicative)([])([1, 2, 3])
+    assertSameResult(ArrayInstances.SemiApplicative)([[4]])([1, 2, 3])
+    assertSameResult(ArrayInstances.SemiApplicative)([[4, 5, 6], [7, 8], [9, 10, 11]])([
       1,
       2,
       3
@@ -95,7 +95,7 @@ describe.concurrent("SemiProduct", () => {
   describe.concurrent("productComposition", () => {
     it("ReadonlyArray", () => {
       const product = _.productComposition(
-        ReadonlyArrayInstances.SemiApplicative,
+        ArrayInstances.SemiApplicative,
         OptionInstances.SemiProduct
       )
       U.deepStrictEqual(product([], [O.none()]), [])
@@ -124,7 +124,7 @@ describe.concurrent("SemiProduct", () => {
   describe.concurrent("productManyComposition", () => {
     it("ReadonlyArray", () => {
       const productMany = _.productManyComposition(
-        ReadonlyArrayInstances.SemiApplicative,
+        ArrayInstances.SemiApplicative,
         OptionInstances.SemiProduct
       )
       expect(productMany([O.some(1), O.none()], [])).toEqual([

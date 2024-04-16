@@ -1,4 +1,4 @@
-import * as ReadonlyArrayInstances from "@effect/typeclass/data/Array"
+import * as ArrayInstances from "@effect/typeclass/data/Array"
 import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as _ from "@effect/typeclass/TraversableFilterable"
 import * as E from "effect/Either"
@@ -12,9 +12,9 @@ describe.concurrent("TraversableFilterable", () => {
       self: ReadonlyArray<A>,
       f: (a: A) => O.Option<E.Either<C, B>>
     ) => O.Option<[ReadonlyArray<B>, ReadonlyArray<C>]> = _.traversePartitionMap({
-      ...ReadonlyArrayInstances.Traversable,
-      ...ReadonlyArrayInstances.Covariant,
-      ...ReadonlyArrayInstances.Filterable
+      ...ArrayInstances.Traversable,
+      ...ArrayInstances.Covariant,
+      ...ArrayInstances.Filterable
     })(OptionInstances.Applicative)
     const f = (s: string) => s.length > 1 ? O.some(E.right(s)) : s.length > 0 ? O.some(E.left(s)) : O.none()
     expect(traversePartitionMap([], f)).toEqual(O.some([[], []]))
@@ -30,8 +30,8 @@ describe.concurrent("TraversableFilterable", () => {
       self: ReadonlyArray<A>,
       f: (a: A) => O.Option<O.Option<B>>
     ) => O.Option<ReadonlyArray<B>> = _.traverseFilterMap({
-      ...ReadonlyArrayInstances.Traversable,
-      ...ReadonlyArrayInstances.Filterable
+      ...ArrayInstances.Traversable,
+      ...ArrayInstances.Filterable
     })(OptionInstances.Applicative)
     const f = (s: string) => s.length > 1 ? O.some(O.some(s)) : s.length > 0 ? O.some(O.none()) : O.none()
     assert.deepStrictEqual(traverseFilterMap([], f), O.some([]))
@@ -47,7 +47,7 @@ describe.concurrent("TraversableFilterable", () => {
 
   it("traverseFilter", () => {
     const traverseFilter = _.traverseFilter(
-      ReadonlyArrayInstances.TraversableFilterable
+      ArrayInstances.TraversableFilterable
     )(OptionInstances.Applicative)
     const f = traverseFilter((s: string) => s.length > 2 ? O.some(false) : s.length > 1 ? O.some(true) : O.none())
     U.deepStrictEqual(f([]), O.some([]))
@@ -60,7 +60,7 @@ describe.concurrent("TraversableFilterable", () => {
 
   it("traversePartition", () => {
     const traversePartition = _.traversePartition(
-      ReadonlyArrayInstances.TraversableFilterable
+      ArrayInstances.TraversableFilterable
     )(OptionInstances.Applicative)
     const f = traversePartition((s: string) => s.length > 2 ? O.some(false) : s.length > 1 ? O.some(true) : O.none())
     expect(f([])).toEqual(O.some([[], []]))

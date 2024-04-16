@@ -1,4 +1,4 @@
-import * as ReadonlyArrayInstances from "@effect/typeclass/data/Array"
+import * as ArrayInstances from "@effect/typeclass/data/Array"
 import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as _ from "@effect/typeclass/Filterable"
 import * as E from "effect/Either"
@@ -10,7 +10,7 @@ import * as U from "./util.js"
 describe.concurrent("Filterable", () => {
   it("filterMapComposition", () => {
     const filterMap = _.filterMapComposition(
-      ReadonlyArrayInstances.Covariant,
+      ArrayInstances.Covariant,
       OptionInstances.Filterable
     )
     const f = (s: string) => s.length > 1 ? O.some(s.length) : O.none()
@@ -22,7 +22,7 @@ describe.concurrent("Filterable", () => {
 
   it("partitionMapComposition", () => {
     const partitionMap = _.partitionMapComposition(
-      ReadonlyArrayInstances.Covariant,
+      ArrayInstances.Covariant,
       OptionInstances.Filterable
     )
     const f = (s: string) => s.length > 1 ? E.right(s.length) : E.left(s + "!")
@@ -33,7 +33,7 @@ describe.concurrent("Filterable", () => {
   })
 
   it("filter", () => {
-    const filter = _.filter(ReadonlyArrayInstances.Filterable)
+    const filter = _.filter(ArrayInstances.Filterable)
     const f = filter((n: number) => n > 0)
     U.deepStrictEqual(pipe([], f), [])
     U.deepStrictEqual(pipe([1], f), [1])
@@ -42,7 +42,7 @@ describe.concurrent("Filterable", () => {
   })
 
   it("partition", () => {
-    const partition = _.partition(ReadonlyArrayInstances.Filterable)
+    const partition = _.partition(ArrayInstances.Filterable)
     const f = partition((n: number) => n > 0)
     U.deepStrictEqual(pipe([], f), [[], []])
     U.deepStrictEqual(pipe([1], f), [[], [1]])
@@ -51,7 +51,7 @@ describe.concurrent("Filterable", () => {
   })
 
   it("compact", () => {
-    const compact = _.compact(ReadonlyArrayInstances.Filterable)
+    const compact = _.compact(ArrayInstances.Filterable)
     assert.deepStrictEqual(compact([]), [])
     assert.deepStrictEqual(compact([O.some(1), O.some(2), O.some(3)]), [
       1,
@@ -65,7 +65,7 @@ describe.concurrent("Filterable", () => {
   })
 
   it("separate", () => {
-    const separate = _.separate(ReadonlyArrayInstances.Filterable)
+    const separate = _.separate(ArrayInstances.Filterable)
     U.deepStrictEqual(pipe([], separate), [[], []])
     U.deepStrictEqual(pipe([E.right(1), E.left("e"), E.right(2)], separate), [
       ["e"],
