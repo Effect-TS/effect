@@ -38,9 +38,12 @@ export interface FiberHandle<out A = unknown, out E = unknown> extends Pipeable,
   readonly [TypeId]: TypeId
   readonly deferred: Deferred.Deferred<void, unknown>
   /** @internal */
-  backing: Fiber.RuntimeFiber<A, E> | undefined
-  /** @internal */
-  closed: boolean
+  state: {
+    readonly _tag: "Open"
+    fiber: Fiber.RuntimeFiber<A, E> | undefined
+  } | {
+    readonly _tag: "Closed"
+  }
 }
 
 /**
@@ -57,7 +60,7 @@ const Proto = {
   toJSON(this: FiberHandle) {
     return {
       _id: "FiberHandle",
-      backing: this.backing
+      state: this.state
     }
   },
   [Inspectable.NodeInspectSymbol](this: FiberHandle) {
@@ -72,9 +75,8 @@ const unsafeMake = <A = unknown, E = unknown>(
   deferred: Deferred.Deferred<void, E>
 ): FiberHandle<A, E> => {
   const self = Object.create(Proto)
-  self.backing = undefined
+  self.state = { _tag: "Open", fiber: undefined }
   self.deferred = deferred
-  self.closed = false
   return self
 }
 
@@ -108,10 +110,13 @@ export const make = <A = unknown, E = unknown>(): Effect.Effect<FiberHandle<A, E
   Effect.acquireRelease(
     Effect.map(Deferred.make<void, E>(), (deferred) => unsafeMake<A, E>(deferred)),
     (handle) =>
-      Effect.suspend(() => {
-        handle.closed = true
-        return Effect.zipRight(clear(handle), Deferred.done(handle.deferred, Exit.void))
-      })
+      Effect.zipRight(
+        clear(handle),
+        Effect.suspend(() => {
+          handle.state = { _tag: "Closed" }
+          return Deferred.done(handle.deferred, Exit.void)
+        })
+      )
   )
 
 /**
@@ -168,25 +173,25 @@ export const unsafeSet: {
     readonly onlyIfMissing?: boolean | undefined
   }
 ): void => {
-  if (self.closed) {
+  if (self.state._tag === "Closed") {
     fiber.unsafeInterruptAsFork(options?.interruptAs ?? FiberId.none)
     return
-  } else if (self.backing !== undefined) {
+  } else if (self.state.fiber !== undefined) {
     if (options?.onlyIfMissing === true) {
       fiber.unsafeInterruptAsFork(options?.interruptAs ?? FiberId.none)
       return
-    } else if (self.backing === fiber) {
+    } else if (self.state.fiber === fiber) {
       return
     }
-    self.backing.unsafeInterruptAsFork(options?.interruptAs ?? FiberId.none)
-    self.backing === undefined
+    self.state.fiber.unsafeInterruptAsFork(options?.interruptAs ?? FiberId.none)
+    self.state.fiber === undefined
   }
 
   ;(fiber as FiberRuntime<unknown, unknown>).setFiberRef(FiberRef.unhandledErrorLogLevel, Option.none())
-  self.backing = fiber
+  self.state.fiber = fiber
   fiber.addObserver((exit) => {
-    if (fiber === self.backing) {
-      self.backing = undefined
+    if (self.state._tag === "Open" && fiber === self.state.fiber) {
+      self.state.fiber = undefined
     }
     if (Exit.isFailure(exit) && !Cause.isInterruptedOnly(exit.cause)) {
       Deferred.unsafeDone(self.deferred, exit as any)
@@ -239,7 +244,7 @@ export const set: {
  * @categories combinators
  */
 export const unsafeGet = <A, E>(self: FiberHandle<A, E>): Option.Option<Fiber.RuntimeFiber<A, E>> =>
-  Option.fromNullable(self.backing)
+  self.state._tag === "Closed" ? Option.none() : Option.fromNullable(self.state.fiber)
 
 /**
  * Retrieve the fiber from the FiberHandle.
@@ -248,7 +253,7 @@ export const unsafeGet = <A, E>(self: FiberHandle<A, E>): Option.Option<Fiber.Ru
  * @categories combinators
  */
 export const get = <A, E>(self: FiberHandle<A, E>): Effect.Effect<Fiber.RuntimeFiber<A, E>, NoSuchElementException> =>
-  Effect.suspend(() => Option.fromNullable(self.backing))
+  Effect.suspend(() => unsafeGet(self))
 
 /**
  * @since 2.0.0
@@ -257,13 +262,15 @@ export const get = <A, E>(self: FiberHandle<A, E>): Effect.Effect<Fiber.RuntimeF
 export const clear = <A, E>(self: FiberHandle<A, E>): Effect.Effect<void> =>
   Effect.uninterruptibleMask((restore) =>
     Effect.suspend(() => {
-      if (self.backing === undefined) {
+      if (self.state._tag === "Closed" || self.state.fiber === undefined) {
         return Effect.void
       }
       return Effect.zipRight(
-        restore(Fiber.interrupt(self.backing!)),
+        restore(Fiber.interrupt(self.state.fiber)),
         Effect.sync(() => {
-          self.backing = undefined
+          if (self.state._tag === "Open") {
+            self.state.fiber = undefined
+          }
         })
       )
     })
@@ -298,7 +305,7 @@ export const run: {
     const options = arguments[1] as { readonly onlyIfMissing?: boolean } | undefined
     return (effect: Effect.Effect<unknown, unknown, any>) =>
       Effect.suspend(() => {
-        if (self.closed) {
+        if (self.state._tag === "Closed") {
           return Effect.interrupt
         }
         return Effect.uninterruptibleMask((restore) =>
@@ -312,7 +319,7 @@ export const run: {
   const effect = arguments[1] as Effect.Effect<any, any, any>
   const options = arguments[2] as { readonly onlyIfMissing?: boolean } | undefined
   return Effect.suspend(() => {
-    if (self.closed) {
+    if (self.state._tag === "Closed") {
       return Effect.interrupt
     }
     return Effect.uninterruptibleMask((restore) =>
