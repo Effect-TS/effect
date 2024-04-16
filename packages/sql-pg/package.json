@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "type": "module",
   "license": "MIT",
-  "description": "A Postgresql toolkit for Effect",
+  "description": "A PostgreSQL toolkit for Effect",
   "homepage": "https://effect.website",
   "repository": {
     "type": "git",

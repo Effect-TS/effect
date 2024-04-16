@@ -3,7 +3,7 @@
   "version": "0.35.31",
   "type": "module",
   "license": "MIT",
-  "description": "Functional programming in TypeScript",
+  "description": "A library for building command-line interfaces with Effect",
   "homepage": "https://effect.website",
   "repository": {
     "type": "git",
@@ -14,11 +14,13 @@
     "url": "https://github.com/effect-ts/effect/issues"
   },
   "tags": [
+    "cli",
     "typescript",
     "algebraic-data-types",
     "functional-programming"
   ],
   "keywords": [
+    "cli",
     "typescript",
     "algebraic-data-types",
     "functional-programming"

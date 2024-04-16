@@ -3,7 +3,7 @@
   "type": "module",
   "version": "0.32.42",
   "license": "MIT",
-  "description": "Unified interfaces for common platform-specific services",
+  "description": "Platform specific implementations for the Bun runtime",
   "homepage": "https://effect.website",
   "repository": {
     "type": "git",
@@ -14,11 +14,13 @@
     "url": "https://github.com/effect-ts/effect/issues"
   },
   "tags": [
+    "bun",
     "typescript",
     "algebraic-data-types",
     "functional-programming"
   ],
   "keywords": [
+    "bun",
     "typescript",
     "algebraic-data-types",
     "functional-programming"
