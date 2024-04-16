@@ -90,7 +90,7 @@ export const make = (
             rowsAsArray
           }, (error: unknown | null, results: ReadonlyArray<any>, _fields: any) => {
             if (error) {
-              resume(new SqlError({ error }))
+              resume(Effect.fail(new SqlError({ error })))
             } else if (transform && !rowsAsArray && options.transformResultNames) {
               resume(Effect.succeed(transformRows(results)))
             } else {

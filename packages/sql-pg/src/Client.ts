@@ -122,10 +122,7 @@ export const make = (
     yield* _(Effect.addFinalizer(() => Effect.promise(() => client.end())))
 
     class ConnectionImpl implements Connection {
-      constructor(
-        private readonly pg: postgres.Sql<{}>,
-        private readonly options: PgClientConfig
-      ) {}
+      constructor(private readonly pg: postgres.Sql<{}>) {}
 
       private run(query: PendingQuery<any> | PendingValuesQuery<any>) {
         return Effect.async<ReadonlyArray<any>, SqlError>((resume) => {
@@ -138,7 +135,7 @@ export const make = (
       }
 
       private runTransform(query: PendingQuery<any>) {
-        return this.options.transformResultNames
+        return options.transformResultNames
           ? Effect.map(this.run(query), transformRows)
           : this.run(query)
       }
@@ -174,7 +171,7 @@ export const make = (
 
     return Object.assign(
       Client.make({
-        acquirer: Effect.succeed(new ConnectionImpl(client, options)),
+        acquirer: Effect.succeed(new ConnectionImpl(client)),
         transactionAcquirer: Effect.map(
           Effect.acquireRelease(
             Effect.tryPromise({
@@ -183,7 +180,7 @@ export const make = (
             }),
             (pg) => Effect.sync(() => pg.release())
           ),
-          (_) => new ConnectionImpl(_, options)
+          (_) => new ConnectionImpl(_)
         ),
         compiler
       }),
