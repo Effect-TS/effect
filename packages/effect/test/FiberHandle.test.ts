@@ -1,4 +1,4 @@
-import { Effect, Ref } from "effect"
+import { Effect, Exit, Ref } from "effect"
 import * as it from "effect-test/utils/extend"
 import * as FiberHandle from "effect/FiberHandle"
 import { assert, describe } from "vitest"
@@ -34,12 +34,12 @@ describe("FiberHandle", () => {
             onlyIfMissing: true
           })
           yield* _(Effect.yieldNow())
-          assert.strictEqual(yield* _(Ref.get(ref)), 2)
+          assert.strictEqual(yield* _(Ref.get(ref)), 1)
         }),
         Effect.scoped
       )
 
-      assert.strictEqual(yield* _(Ref.get(ref)), 3)
+      assert.strictEqual(yield* _(Ref.get(ref)), 2)
     }))
 
   it.scoped("join", () =>
@@ -49,5 +49,29 @@ describe("FiberHandle", () => {
       FiberHandle.unsafeSet(handle, Effect.runFork(Effect.fail("fail")))
       const result = yield* _(FiberHandle.join(handle), Effect.flip)
       assert.strictEqual(result, "fail")
+    }))
+
+  it.scoped("onlyIfMissing", () =>
+    Effect.gen(function*(_) {
+      const handle = yield* _(FiberHandle.make())
+      const fiberA = yield* _(FiberHandle.run(handle, Effect.never))
+      const fiberB = yield* _(FiberHandle.run(handle, Effect.never, { onlyIfMissing: true }))
+      const fiberC = yield* _(FiberHandle.run(handle, Effect.never, { onlyIfMissing: true }))
+      yield* _(Effect.yieldNow())
+      assert.isTrue(Exit.isInterrupted(yield* _(fiberB.await)))
+      assert.isTrue(Exit.isInterrupted(yield* _(fiberC.await)))
+      assert.strictEqual(fiberA.unsafePoll(), null)
+    }))
+
+  it.scoped("runtime onlyIfMissing", () =>
+    Effect.gen(function*(_) {
+      const run = yield* _(FiberHandle.makeRuntime<never>())
+      const fiberA = run(Effect.never)
+      const fiberB = run(Effect.never, { onlyIfMissing: true })
+      const fiberC = run(Effect.never, { onlyIfMissing: true })
+      yield* _(Effect.yieldNow())
+      assert.isTrue(Exit.isInterrupted(yield* _(fiberB.await)))
+      assert.isTrue(Exit.isInterrupted(yield* _(fiberC.await)))
+      assert.strictEqual(fiberA.unsafePoll(), null)
     }))
 })

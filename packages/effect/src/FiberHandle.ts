@@ -276,6 +276,16 @@ export const clear = <A, E>(self: FiberHandle<A, E>): Effect.Effect<void> =>
     })
   )
 
+const constInterruptedFiber = (function() {
+  let fiber: Fiber.RuntimeFiber<never, never> | undefined = undefined
+  return () => {
+    if (fiber === undefined) {
+      fiber = Effect.runFork(Effect.interrupt)
+    }
+    return fiber
+  }
+})()
+
 /**
  * Run an Effect and add the forked fiber to the FiberHandle.
  * When the fiber completes, it will be removed from the FiberHandle.
@@ -308,7 +318,7 @@ export const run: {
       if (self.state._tag === "Closed") {
         return Effect.interrupt
       } else if (self.state.fiber !== undefined && options?.onlyIfMissing === true) {
-        return set(self, Effect.runFork(Effect.never), options)
+        return Effect.sync(constInterruptedFiber)
       }
       return Effect.uninterruptibleMask((restore) =>
         Effect.tap(
@@ -324,7 +334,7 @@ export const run: {
       if (self.state._tag === "Closed") {
         return Effect.interrupt
       } else if (self.state.fiber !== undefined && options?.onlyIfMissing === true) {
-        return set(self, Effect.runFork(Effect.never), options)
+        return Effect.sync(constInterruptedFiber)
       }
       return Effect.uninterruptibleMask((restore) =>
         Effect.tap(
@@ -390,6 +400,11 @@ export const runtime: <A, E>(
           }
           | undefined
       ) => {
+        if (self.state._tag === "Closed") {
+          return constInterruptedFiber()
+        } else if (self.state.fiber !== undefined && options?.onlyIfMissing === true) {
+          return constInterruptedFiber()
+        }
         const fiber = runFork(effect, options)
         unsafeSet(self, fiber, options)
         return fiber
