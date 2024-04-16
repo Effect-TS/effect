@@ -3,7 +3,7 @@
   "version": "0.31.29",
   "type": "module",
   "license": "MIT",
-  "description": "Functional programming in TypeScript",
+  "description": "OpenTelemetry integration for Effect",
   "homepage": "https://effect.website",
   "repository": {
     "type": "git",
@@ -14,11 +14,19 @@
     "url": "https://github.com/effect-ts/effect/issues"
   },
   "tags": [
+    "opentelemetry",
+    "observability",
+    "tracing",
+    "metrics",
     "typescript",
     "algebraic-data-types",
     "functional-programming"
   ],
   "keywords": [
+    "opentelemetry",
+    "observability",
+    "tracing",
+    "metrics",
     "typescript",
     "algebraic-data-types",
     "functional-programming"

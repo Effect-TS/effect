@@ -3,7 +3,7 @@
   "version": "0.14.14",
   "type": "module",
   "license": "MIT",
-  "description": "Functional programming in TypeScript",
+  "description": "Experimental modules for the Effect ecosystem",
   "homepage": "https://effect.website",
   "repository": {
     "type": "git",
