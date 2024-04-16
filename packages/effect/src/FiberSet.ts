@@ -114,7 +114,7 @@ export const make = <A = unknown, E = unknown>(): Effect.Effect<FiberSet<A, E>, 
     Effect.map(Deferred.make<void, unknown>(), (deferred) => unsafeMake(new Set(), deferred)),
     (set) => {
       set.closed = true
-      return Effect.zipRight(clear(set), Deferred.done(set.deferred, Exit.unit))
+      return Effect.zipRight(clear(set), Deferred.done(set.deferred, Exit.void))
     }
   )
 
@@ -244,7 +244,7 @@ export const run: {
     return (effect: Effect.Effect<any, any, any>) =>
       Effect.suspend(() => {
         if (self.closed) {
-          return Effect.unit
+          return Effect.interrupt
         }
         return Effect.uninterruptibleMask((restore) =>
           Effect.tap(
@@ -257,7 +257,7 @@ export const run: {
   const effect = arguments[1] as Effect.Effect<any, any, any>
   return Effect.suspend(() => {
     if (self.closed) {
-      return Effect.unit
+      return Effect.interrupt
     }
     return Effect.uninterruptibleMask((restore) =>
       Effect.tap(

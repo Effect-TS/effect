@@ -110,7 +110,7 @@ export const make = <A = unknown, E = unknown>(): Effect.Effect<FiberHandle<A, E
     (handle) =>
       Effect.suspend(() => {
         handle.closed = true
-        return Effect.zipRight(clear(handle), Deferred.done(handle.deferred, Exit.unit))
+        return Effect.zipRight(clear(handle), Deferred.done(handle.deferred, Exit.void))
       })
   )
 
@@ -258,7 +258,7 @@ export const clear = <A, E>(self: FiberHandle<A, E>): Effect.Effect<void> =>
   Effect.uninterruptibleMask((restore) =>
     Effect.suspend(() => {
       if (self.backing === undefined) {
-        return Effect.unit
+        return Effect.void
       }
       return Effect.zipRight(
         restore(Fiber.interrupt(self.backing!)),

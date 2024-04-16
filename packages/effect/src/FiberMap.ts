@@ -121,7 +121,7 @@ export const make = <K, A = unknown, E = unknown>(): Effect.Effect<FiberMap<K, A
     (map) =>
       Effect.suspend(() => {
         map.closed = true
-        return Effect.zipRight(clear(map), Deferred.done(map.deferred, Exit.unit))
+        return Effect.zipRight(clear(map), Deferred.done(map.deferred, Exit.void))
       })
   )
 

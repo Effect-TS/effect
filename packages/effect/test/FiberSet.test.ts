@@ -67,7 +67,7 @@ describe("FiberSet", () => {
       FiberSet.unsafeAdd(set, Effect.runFork(Effect.never))
       FiberSet.unsafeAdd(set, Effect.runFork(Effect.never))
       assert.strictEqual(yield* _(FiberSet.size(set)), 2)
-      yield* _(Scope.close(scope, Exit.unit))
+      yield* _(Scope.close(scope, Exit.void))
       assert.strictEqual(yield* _(FiberSet.size(set)), 0)
     }))
 })

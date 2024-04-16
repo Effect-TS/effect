@@ -45,7 +45,7 @@ describe("FiberHandle", () => {
   it.scoped("join", () =>
     Effect.gen(function*(_) {
       const handle = yield* _(FiberHandle.make())
-      FiberHandle.unsafeSet(handle, Effect.runFork(Effect.unit))
+      FiberHandle.unsafeSet(handle, Effect.runFork(Effect.void))
       FiberHandle.unsafeSet(handle, Effect.runFork(Effect.fail("fail")))
       const result = yield* _(FiberHandle.join(handle), Effect.flip)
       assert.strictEqual(result, "fail")
