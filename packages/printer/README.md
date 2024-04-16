@@ -51,8 +51,8 @@ First, let's setup the imports we need:
 ```ts
 import * as Doc from "@effect/printer/Doc"
 import * as Render from "@effect/printer/Render"
-import { pipe } from "@effect/data/Function"
-import * as ReadonlyArray from "@effect/data/ReadonlyArray"
+import * as Array from "effect/Array"
+import { pipe } from "effect/Function"
 ```
 
 Next, we intersperse the `"->"` character between our types and add a leading `"::"` character:
@@ -60,13 +60,12 @@ Next, we intersperse the `"->"` character between our types and add a leading `"
 ```ts
 const prettyTypes = (types: ReadonlyArray<string>): Doc.Doc<never> => {
   const symbolDocuments = pipe(
-    ReadonlyArray.makeBy(types.length - 1, () => Doc.text("->")),
-    ReadonlyArray.prepend(Doc.text("::"))
+    Array.makeBy(types.length - 1, () => Doc.text("->")),
+    Array.prepend(Doc.text("::"))
   )
   const typeDocuments = types.map(Doc.text)
   const documents = pipe(
-
-    ReadonlyArray.zipWith(
+    Array.zipWith(
       symbolDocuments,
       typeDocuments,
       (left, right) => Doc.catWithSpace(left, right)
