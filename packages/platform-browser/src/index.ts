@@ -16,6 +16,11 @@ export * as BrowserRuntime from "./BrowserRuntime.js"
 /**
  * @since 1.0.0
  */
+export * as BrowserStream from "./BrowserStream.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as BrowserWorker from "./BrowserWorker.js"
 
 /**
