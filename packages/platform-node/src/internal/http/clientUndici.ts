@@ -38,14 +38,6 @@ export const dispatcherLayer = Layer.scoped(Dispatcher, makeDispatcher)
 /** @internal */
 export const dispatcherLayerGlobal = Layer.sync(Dispatcher, () => Undici.getGlobalDispatcher())
 
-const makeAbortSignal = Effect.map(
-  Effect.acquireRelease(
-    Effect.sync(() => new AbortController()),
-    (controller) => Effect.sync(() => controller.abort())
-  ),
-  (_) => _.signal
-)
-
 /** @internal */
 export const currentUndiciOptions = globalValue(
   Symbol.for("@effect/platform-node/NodeHttpClient/currentUndici"),
@@ -75,7 +67,7 @@ export const make = (dispatcher: Undici.Dispatcher): Client.Client.Default =>
             error: _
           }))),
       Effect.bind("body", () => convertBody(request.body)),
-      Effect.bind("signal", () => makeAbortSignal),
+      Effect.bind("signal", () => Effect.makeAbortSignalScoped),
       Effect.flatMap(({ body, signal, url }) =>
         Effect.tryPromise({
           try: () =>

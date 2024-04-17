@@ -5392,3 +5392,27 @@ export const Tag: <const Id extends string>(id: Id) => <Self, Type>() =>
     })
     return done
   }
+  
+/**
+ * Creates an `AbortSignal`.
+ * @since 1.0.0
+ */
+export const makeAbortSignal: Effect<AbortSignal> = map(
+  tap(
+    sync(() => new AbortController()), 
+    controller => onInterrupt(() => sync(() => controller.abort())
+  )),
+  (_) => _.signal
+) 
+
+/**
+ * Creates an `AbortSignal` that is automatically aborted when the Scope is closed.
+ * @since 1.0.0
+ */
+export const makeAbortSignalScoped: Effect<AbortSignal, never, Scope.Scope> = map(
+  acquireRelease(
+    sync(() => new AbortController()),
+    (controller) => sync(() => controller.abort())
+  ),
+  (_) => _.signal
+)
