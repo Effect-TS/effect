@@ -281,9 +281,7 @@ export const make = (
       literal(sql: string) {
         return new FragmentImpl([new LiteralImpl(sql)])
       },
-      in(values: ReadonlyArray<Statement.Primitive>) {
-        return new ArrayHelperImpl(values)
-      },
+      in: in_,
       insert(value: any) {
         return new RecordInsertHelperImpl(
           Array.isArray(value) ? value : [value]
@@ -348,6 +346,21 @@ function convertLiteralOrFragment(clause: string | Statement.Fragment): Array<St
     return [new LiteralImpl(clause)]
   }
   return clause.segments as Array<Statement.Segment>
+}
+
+function in_(values: ReadonlyArray<Statement.Primitive>): Statement.ArrayHelper
+function in_(column: string, values: ReadonlyArray<Statement.Primitive>): Statement.Fragment
+function in_(): Statement.Fragment | Statement.ArrayHelper {
+  if (arguments.length === 1) {
+    return new ArrayHelperImpl(arguments[0])
+  }
+  const column = arguments[0]
+  const values = arguments[1]
+  return values.length === 0 ? unsafeFragment("1=0") : new FragmentImpl([
+    new IdentifierImpl(column),
+    new LiteralImpl(" IN "),
+    new ArrayHelperImpl(values)
+  ])
 }
 
 /** @internal */

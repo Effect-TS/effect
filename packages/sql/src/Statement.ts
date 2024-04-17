@@ -285,7 +285,10 @@ export interface Constructor {
 
   readonly literal: (sql: string) => Fragment
 
-  readonly in: (value: ReadonlyArray<Primitive>) => ArrayHelper
+  readonly in: {
+    (value: ReadonlyArray<Primitive>): ArrayHelper
+    (column: string, value: ReadonlyArray<Primitive>): Fragment
+  }
 
   readonly insert: {
     (
