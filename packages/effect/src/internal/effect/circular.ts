@@ -468,6 +468,22 @@ export const timeoutFailCause = dual<
   })))
 
 /** @internal */
+export const timeoutOption = dual<
+  (
+    duration: Duration.DurationInput
+  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<Option.Option<A>, E, R>,
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
+    duration: Duration.DurationInput
+  ) => Effect.Effect<Option.Option<A>, E, R>
+>(2, (self, duration) =>
+  timeoutTo(self, {
+    duration,
+    onSuccess: Option.some,
+    onTimeout: Option.none
+  }))
+
+/** @internal */
 export const timeoutTo = dual<
   <A, B, B1>(
     options: {
