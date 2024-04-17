@@ -6249,7 +6249,8 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
         options: ParseOptions,
         ast: AST.Transformation
       ) => Effect.Effect<A, ParseResult.ParseIssue, R3>
-    }
+    },
+    annotations?: Annotations.Schema<Transformed>
   ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transform">
     : Class<
       Transformed,
@@ -6279,7 +6280,8 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
         options: ParseOptions,
         ast: AST.Transformation
       ) => Effect.Effect<I, ParseResult.ParseIssue, R3>
-    }
+    },
+    annotations?: Annotations.Schema<Transformed>
   ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transformFrom">
     : Class<
       Transformed,
