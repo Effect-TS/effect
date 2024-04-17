@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-disallow interruption to occur during reversion of runtime flags
+merge revert runtime flag operations to prevent interruption gaps
