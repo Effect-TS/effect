@@ -8048,3 +8048,28 @@ export const encodeText = <E, R>(self: Stream.Stream<string, E, R>): Stream.Stre
     const encoder = new TextEncoder()
     return map(self, (s) => encoder.encode(s))
   })
+
+/** @internal */
+export const fromEventListener = <A = Event>(
+  target: EventTarget,
+  type: string,
+  options?: boolean | Omit<AddEventListenerOptions, "signal">
+): Stream.Stream<A> =>
+  _async<A>((emit) => {
+    let batch: Array<A> = []
+    let taskRunning = false
+    function cb(e: A) {
+      batch.push(e)
+      if (!taskRunning) {
+        taskRunning = true
+        queueMicrotask(() => {
+          const events = batch
+          batch = []
+          taskRunning = false
+          emit.chunk(Chunk.unsafeFromArray(events))
+        })
+      }
+    }
+    target.addEventListener(type, cb as any, options)
+    return Effect.sync(() => target.removeEventListener(type, cb as any, options))
+  })
