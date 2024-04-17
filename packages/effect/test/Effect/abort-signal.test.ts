@@ -9,10 +9,10 @@ import { describe } from "vitest"
 describe("Effect", () => {
   it.scoped("makeAbortSignalScoped", (ctx) =>
     Effect.gen(function*(_) {
-      const signal1 = yield* _(Effect.makeAbortSignalScoped)
+      const signal1 = yield* _(Effect.makeAbortSignal)
       ctx.expect(signal1.aborted).toBeFalsy()
 
-      const signal2 = yield* _(Effect.makeAbortSignalScoped, Effect.scoped)
+      const signal2 = yield* _(Effect.makeAbortSignal, Effect.scoped)
       ctx.expect(signal2.aborted).toBeTruthy()
     }))
 })

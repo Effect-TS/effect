@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-added Effect.makeAbortSignal and Effect.makeAbortSignalScoped
+added Effect.makeAbortSignal

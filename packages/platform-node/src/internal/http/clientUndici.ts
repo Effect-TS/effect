@@ -67,7 +67,7 @@ export const make = (dispatcher: Undici.Dispatcher): Client.Client.Default =>
             error: _
           }))),
       Effect.bind("body", () => convertBody(request.body)),
-      Effect.bind("signal", () => Effect.makeAbortSignalScoped),
+      Effect.bind("signal", () => Effect.makeAbortSignal),
       Effect.flatMap(({ body, signal, url }) =>
         Effect.tryPromise({
           try: () =>
