@@ -7,7 +7,7 @@ import * as Effect from "effect/Effect"
 import { describe } from "vitest"
 
 describe("Effect", () => {
-  it.scoped("makeAbortSignalScoped", (ctx) =>
+  it.scoped("makeAbortSignal", (ctx) =>
     Effect.gen(function*(_) {
       const signal1 = yield* _(Effect.makeAbortSignal)
       ctx.expect(signal1.aborted).toBeFalsy()
