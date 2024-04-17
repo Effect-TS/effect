@@ -1,7 +1,7 @@
 {
   "extends": "./tsconfig.src.json",
   "references": [
-    { "path": "../effect/tsconfig.src.json" }, // TODO: Switch to `tsconfig.build.json`
+    { "path": "../effect/tsconfig.build.json" },
     { "path": "../schema/tsconfig.build.json" }
   ],
   "compilerOptions": {
