@@ -24,13 +24,23 @@ describe("ReadonlyArray", () => {
     expect(RA.of(1)).toEqual([1])
   })
 
-  it("fromIterable/Array should return the same reference if the iterable is an Array", () => {
-    const i = [1, 2, 3]
-    expect(RA.fromIterable(i) === i).toEqual(true)
-  })
+  describe("fromIterable", () => {
+    it("(input: Array, f === undefined) should return the same reference if the iterable is an Array", () => {
+      const i = [1, 2, 3]
+      expect(RA.fromIterable(i) === i).toEqual(true)
+    })
 
-  it("fromIterable/Iterable", () => {
-    expect(RA.fromIterable(new Set([1, 2, 3]))).toEqual([1, 2, 3])
+    it("(input: Array, f !== undefined)", () => {
+      expect(RA.fromIterable([1, 2, 3], (n, i) => (n * 2 + i).toString())).toEqual(["2", "5", "8"])
+    })
+
+    it("input: Iterable, f === undefined", () => {
+      expect(RA.fromIterable(new Set([1, 2, 3]))).toEqual([1, 2, 3])
+    })
+
+    it("input: Iterable, f !== undefined", () => {
+      expect(RA.fromIterable(new Set([1, 2, 3]), (n, i) => (n * 2 + i).toString())).toEqual(["2", "5", "8"])
+    })
   })
 
   describe("iterable inputs", () => {

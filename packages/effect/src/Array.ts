@@ -119,8 +119,11 @@ export const replicate: {
  * @category constructors
  * @since 2.0.0
  */
-export const fromIterable = <A>(collection: Iterable<A>): Array<A> =>
-  Array.isArray(collection) ? collection : Array.from(collection)
+export function fromIterable<A, B>(collection: Iterable<A>, f: (a: A, i: number) => B): Array<B>
+export function fromIterable<A>(collection: Iterable<A>): Array<A>
+export function fromIterable<A>(collection: Iterable<A>, f?: (a: A, i: number) => A): Array<A> {
+  return f ? Array.from(collection, f) : Array.isArray(collection) ? collection : Array.from(collection)
+}
 
 /**
  * Takes a record and returns an array of tuples containing its keys and values.
