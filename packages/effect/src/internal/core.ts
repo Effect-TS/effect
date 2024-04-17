@@ -140,10 +140,8 @@ export type Continuation =
 export class RevertFlags {
   readonly _op = OpCodes.OP_REVERT_FLAGS
   constructor(
-    readonly patch: RuntimeFlagsPatch.RuntimeFlagsPatch,
-    readonly op: Primitive & { _op: OpCodes.OP_UPDATE_RUNTIME_FLAGS }
-  ) {
-  }
+    readonly patch: RuntimeFlagsPatch.RuntimeFlagsPatch
+  ) {}
 }
 
 /** @internal */

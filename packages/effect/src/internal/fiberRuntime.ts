@@ -41,7 +41,7 @@ import { currentScheduler, type Scheduler } from "../Scheduler.js"
 import type * as Scope from "../Scope.js"
 import type * as Supervisor from "../Supervisor.js"
 import type * as Tracer from "../Tracer.js"
-import type { Concurrency } from "../Types.js"
+import type { Concurrency, Mutable } from "../Types.js"
 import * as _RequestBlock from "./blockedRequests.js"
 import * as internalCause from "./cause.js"
 import * as clock from "./clock.js"
@@ -168,6 +168,9 @@ const contOpSuccess = {
     value: unknown
   ) => {
     self.patchRuntimeFlags(self._runtimeFlags, cont.patch)
+    if (_runtimeFlags.interruptible(self._runtimeFlags) && self.isInterrupted()) {
+      return core.exitFailCause(self.getInterruptedCause())
+    }
     return core.exitSucceed(value)
   },
   [OpCodes.OP_WHILE]: (
@@ -1025,6 +1028,10 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
     return
   }
 
+  peekStack(): core.Continuation | undefined {
+    return this._stack[this._stack.length - 1]
+  }
+
   getNextSuccessCont() {
     let frame = this.popStack()
     while (frame) {
@@ -1207,7 +1214,13 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
       if (op.effect_instruction_i1 !== undefined) {
         // Since we updated the flags, we need to revert them
         const revertFlags = _runtimeFlags.diff(newRuntimeFlags, oldRuntimeFlags)
-        this.pushStack(new core.RevertFlags(revertFlags, op))
+        // If the head of the stack is another RevertFlags, we can combine them
+        const prev = this.peekStack()
+        if (prev !== undefined && prev._op === OpCodes.OP_REVERT_FLAGS) {
+          ;(prev as Mutable<core.RevertFlags>).patch = RuntimeFlagsPatch.both(revertFlags, prev.patch)
+        } else {
+          this.pushStack(new core.RevertFlags(revertFlags))
+        }
         return op.effect_instruction_i1(oldRuntimeFlags)
       } else {
         return core.exitVoid

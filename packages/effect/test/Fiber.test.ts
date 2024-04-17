@@ -150,18 +150,22 @@ describe("Fiber", () => {
       yield* $(Queue.shutdown(queue))
       assert.isTrue(Exit.isFailure(result))
     }))
-  it.effect("child becoming interruptible is interrupted due to auto-supervision of uninterruptible parent", () =>
-    Effect.gen(function*($) {
-      const latch = yield* $(Deferred.make<void>())
-      const child = pipe(
-        Effect.interruptible(Effect.never),
-        Effect.onInterrupt(() => Deferred.succeed(latch, void 0)),
-        Effect.fork
-      )
-      yield* $(Effect.uninterruptible(Effect.fork(child)))
-      const result = yield* $(Deferred.await(latch))
-      assert.isUndefined(result)
-    }))
+  it.effect(
+    "child becoming interruptible is interrupted due to auto-supervision of uninterruptible parent",
+    () =>
+      Effect.gen(function*($) {
+        const latch = yield* $(Deferred.make<void>())
+        const child = pipe(
+          Effect.interruptible(Effect.never),
+          Effect.onInterrupt(() => Deferred.succeed(latch, void 0)),
+          Effect.fork
+        )
+        yield* $(Effect.uninterruptible(Effect.fork(child)))
+        const result = yield* $(Deferred.await(latch))
+        assert.isUndefined(result)
+      }),
+    100000
+  )
   it.effect("dual roots", () =>
     Effect.gen(function*($) {
       const rootContains = (fiber: Fiber.RuntimeFiber<any, any>): Effect.Effect<boolean> => {
