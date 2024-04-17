@@ -19,9 +19,26 @@ declare const pimitiveNumber: number
 declare const pimitiveNumerOrString: string | number
 declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
 
+declare const unknownValue: unknown
+declare const stringOrStringArrayOrUnion: string | Array<string> | null
+
 const symA = Symbol.for("a")
 const symB = Symbol.for("b")
 const symC = Symbol.for("c")
+
+// -------------------------------------------------------------------------------------
+// isArray
+// -------------------------------------------------------------------------------------
+
+if (Array.isArray(unknownValue)) {
+  // $ExpectType unknown[]
+  unknownValue
+}
+
+if (Array.isArray(stringOrStringArrayOrUnion)) {
+  // $ExpectType string[]
+  stringOrStringArrayOrUnion
+}
 
 // -------------------------------------------------------------------------------------
 // isEmptyReadonlyArray
