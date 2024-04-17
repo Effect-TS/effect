@@ -1197,16 +1197,17 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
     const updateFlags = op.effect_instruction_i0
     const oldRuntimeFlags = this._runtimeFlags
     const newRuntimeFlags = _runtimeFlags.patch(oldRuntimeFlags, updateFlags)
-    // One more chance to short circuit: if we're immediately going
-    // to interrupt. Interruption will cause immediate reversion of
-    // the flag, so as long as we "peek ahead", there's no need to
-    // set them to begin with.
     if (oldRuntimeFlags === newRuntimeFlags) {
+      // No change, short circuit
       if (op.effect_instruction_i1 !== undefined) {
         return op.effect_instruction_i1(oldRuntimeFlags)
       }
       return core.exitVoid
     } else if (_runtimeFlags.interruptible(newRuntimeFlags) && this.isInterrupted()) {
+      // One more chance to short circuit: if we're immediately going
+      // to interrupt. Interruption will cause immediate reversion of
+      // the flag, so as long as we "peek ahead", there's no need to
+      // set them to begin with.
       return core.exitFailCause(this.getInterruptedCause())
     } else {
       // Impossible to short circuit, so record the changes
