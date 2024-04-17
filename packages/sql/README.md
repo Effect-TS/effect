@@ -154,7 +154,7 @@ export const makePersonService = Effect.gen(function* (_) {
       Id: Schema.Number,
       Result: Person,
       ResultId: (_) => _.id,
-      execute: (ids) => sql`SELECT * FROM people WHERE id IN ${sql(ids)}`
+      execute: (ids) => sql`SELECT * FROM people WHERE ${sql.in("id", ids)}`
     })
   )
 
@@ -251,7 +251,7 @@ export const make = (names: string[], cursor: Date) =>
       sql.in("name", names),
       sql`created_at < ${cursor}`
     ])}`
-    // SELECT * FROM people WHERE (name IN (?,?,?) OR created_at < ?)
+    // SELECT * FROM people WHERE ("name" IN (?,?,?) OR created_at < ?)
   })
 ```
 
@@ -266,10 +266,10 @@ export const make = (names: string[], afterCursor: Date, beforeCursor: Date) =>
     const sql = yield* _(Sql.client.PgClient)
 
     const statement = sql`SELECT * FROM people WHERE ${sql.or([
-      sql`name IN ${sql.in(names)}`,
+      sql.in("name", names),
       sql.and([`created_at > ${afterCursor}`, `created_at < ${beforeCursor}`])
     ])}`
-    // SELECT * FROM people WHERE (name IN (?,?,?) OR (created_at > ? AND created_at < ?))
+    // SELECT * FROM people WHERE ("name" IN (?,?,?) OR (created_at > ? AND created_at < ?))
   })
 ```
 
