@@ -345,7 +345,10 @@ export const scanRight: {
  * @category guards
  * @since 2.0.0
  */
-export const isArray: (self: unknown) => self is Array<unknown> = Array.isArray
+export const isArray: {
+  (self: unknown): self is Array<unknown>
+  <T>(self: T): self is Extract<T, ReadonlyArray<any>>
+} = Array.isArray
 
 /**
  * Determine if an `Array` is empty narrowing down the type to `[]`.
