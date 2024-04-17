@@ -604,4 +604,13 @@ describe("Effect", () => {
       yield* $(Fiber.interrupt(fiber))
       assert.strictEqual(signal!.aborted, true)
     }))
+  it.effect("interruption does not occur on boundaries", () =>
+    Effect.gen(function*(_) {
+      const effect = Effect.uninterruptible(Effect.succeed(123).pipe(Effect.delay(10)))
+      const fiber = yield* _(Effect.uninterruptibleMask((restore) => restore(effect)), Effect.fork)
+      yield* _(Effect.yieldNow())
+      yield* _(Fiber.interrupt(fiber), Effect.fork)
+      yield* _(TestClock.adjust(10))
+      assert.deepStrictEqual(yield* _(fiber.await), Exit.succeed(123))
+    }))
 })

@@ -168,11 +168,7 @@ const contOpSuccess = {
     value: unknown
   ) => {
     self.patchRuntimeFlags(self._runtimeFlags, cont.patch)
-    if (_runtimeFlags.interruptible(self._runtimeFlags) && self.isInterrupted()) {
-      return core.exitFailCause(self.getInterruptedCause())
-    } else {
-      return core.exitSucceed(value)
-    }
+    return core.exitSucceed(value)
   },
   [OpCodes.OP_WHILE]: (
     self: FiberRuntime<any, any>,
@@ -1198,12 +1194,17 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
     // to interrupt. Interruption will cause immediate reversion of
     // the flag, so as long as we "peek ahead", there's no need to
     // set them to begin with.
-    if (_runtimeFlags.interruptible(newRuntimeFlags) && this.isInterrupted()) {
+    if (oldRuntimeFlags === newRuntimeFlags) {
+      if (op.effect_instruction_i1 !== undefined) {
+        return op.effect_instruction_i1(oldRuntimeFlags)
+      }
+      return core.exitVoid
+    } else if (_runtimeFlags.interruptible(newRuntimeFlags) && this.isInterrupted()) {
       return core.exitFailCause(this.getInterruptedCause())
     } else {
       // Impossible to short circuit, so record the changes
       this.patchRuntimeFlags(this._runtimeFlags, updateFlags)
-      if (op.effect_instruction_i1) {
+      if (op.effect_instruction_i1 !== undefined) {
         // Since we updated the flags, we need to revert them
         const revertFlags = _runtimeFlags.diff(newRuntimeFlags, oldRuntimeFlags)
         this.pushStack(new core.RevertFlags(revertFlags, op))

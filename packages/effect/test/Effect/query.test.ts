@@ -280,10 +280,7 @@ describe("Effect", () => {
           yield* $(Effect.yieldNow())
           yield* $(Fiber.interrupt(fiber))
           const exit = yield* $(Fiber.await(fiber))
-          expect(exit._tag).toEqual("Failure")
-          if (exit._tag === "Failure") {
-            expect(Cause.isInterruptedOnly(exit.cause)).toEqual(true)
-          }
+          expect(exit).toEqual(Exit.succeed(Array.fromIterable(userNames.values())))
           expect(yield* $(Counter)).toEqual({ count: 3 })
           expect(yield* $(FiberRef.get(interrupts))).toEqual({ interrupts: 0 })
         })
