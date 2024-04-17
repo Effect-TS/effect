@@ -2956,7 +2956,7 @@ export const timeout: {
  * timeout, resulting in earliest possible return, before an underlying effect
  * has been successfully interrupted.
  *
- * @since 2.0.0
+ * @since 3.1.0
  * @category delays & timeouts
  */
 export const timeoutOption: {
