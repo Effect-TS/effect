@@ -230,10 +230,10 @@ export const make = (names: string[], cursor: string) =>
     const sql = yield* _(Sql.client.PgClient)
 
     const statement = sql`SELECT * FROM people WHERE ${sql.and([
-      sql`name IN ${sql.in(names)}`,
+      sql.in("name", names),
       sql`created_at < ${cursor}`
     ])}`
-    // SELECT * FROM people WHERE (name IN (?,?,?) AND created_at < ?)
+    // SELECT * FROM people WHERE ("name" IN (?,?,?) AND created_at < ?)
   })
 ```
 
@@ -248,7 +248,7 @@ export const make = (names: string[], cursor: Date) =>
     const sql = yield* _(Sql.client.PgClient)
 
     const statement = sql`SELECT * FROM people WHERE ${sql.or([
-      sql`name IN ${sql.in(names)}`,
+      sql.in("name", names),
       sql`created_at < ${cursor}`
     ])}`
     // SELECT * FROM people WHERE (name IN (?,?,?) OR created_at < ?)

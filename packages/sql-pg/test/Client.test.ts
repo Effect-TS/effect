@@ -41,6 +41,34 @@ describe("pg", () => {
     expect(params).toEqual([1, 2, "string"])
   })
 
+  it("array helper with column", () => {
+    let result = compiler.compile(
+      sql`SELECT * FROM ${sql("people")} WHERE ${sql.in("id", [1, 2, "string"])}`
+    )
+    expect(result[0]).toEqual(`SELECT * FROM "people" WHERE "id" IN ($1,$2,$3)`)
+    expect(result[1]).toEqual([1, 2, "string"])
+
+    result = compiler.compile(
+      sql`SELECT * FROM ${sql("people")} WHERE ${sql.in("id", [])}`
+    )
+    expect(result[0]).toEqual(`SELECT * FROM "people" WHERE 1=0`)
+    expect(result[1]).toEqual([])
+  })
+
+  it("and", () => {
+    const now = new Date()
+    const result = compiler.compile(
+      sql`SELECT * FROM ${sql("people")} WHERE ${
+        sql.and([
+          sql.in("name", ["Tim", "John"]),
+          sql`created_at < ${now}`
+        ])
+      }`
+    )
+    expect(result[0]).toEqual(`SELECT * FROM "people" WHERE ("name" IN ($1,$2) AND created_at < $3)`)
+    expect(result[1]).toEqual(["Tim", "John", now])
+  })
+
   it("json", () => {
     const [query, params] = compiler.compile(sql`SELECT ${sql.json({ a: 1 })}`)
     expect(query).toEqual(`SELECT $1`)
