@@ -25,7 +25,7 @@ For detailed information and usage examples, please visit the [Effect website](h
 
 To get started with Effect, watch our introductory video on YouTube. This video provides an overview of Effect and its key features, making it a great starting point for newcomers:
 
-[![Introduction to Effect](https://img.youtube.com/vi/SloZE4i4Zfk/maxresdefault.jpg)](https://youtu.be/SloZE4i4Zfk)
+[![Introduction to Effect](https://img.youtube.com/vi/ViSiXfBKElQ/maxresdefault.jpg)](https://youtu.be/ViSiXfBKElQ)
 
 ## Connect with Our Community
 
