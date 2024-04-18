@@ -26,7 +26,8 @@ const TypeMatcherProto: Omit<TypeMatcher<any, any, any, any>, "cases"> = {
     _input: identity,
     _filters: identity,
     _remaining: identity,
-    _result: identity
+    _result: identity,
+    _return: identity
   },
   _tag: "TypeMatcher",
   add<I, R, RA, A>(
@@ -55,7 +56,8 @@ const ValueMatcherProto: Omit<
   [TypeId]: {
     _input: identity,
     _filters: identity,
-    _result: identity
+    _result: identity,
+    _return: identity
   },
   _tag: "ValueMatcher",
   add<I, R, RA, A, Pr>(
@@ -237,22 +239,31 @@ export const typeTags = <I>() =>
 }
 
 /** @internal */
+export const withReturnType =
+  <Ret>() =>
+  <I, F, R, A, Pr, _>(self: Matcher<I, F, R, A, Pr, _>): Ret extends ([A] extends [never] ? any
+    : A) ? Matcher<I, F, R, A, Pr, Ret>
+    : "withReturnType constraint does not extend Result type" => self as any
+
+/** @internal */
 export const when = <
   R,
   const P extends Types.PatternPrimitive<R> | Types.PatternBase<R>,
-  Fn extends (_: Types.WhenMatch<R, P>) => unknown
+  Ret,
+  Fn extends (_: Types.WhenMatch<R, P>) => Ret
 >(
   pattern: P,
   f: Fn
 ) =>
 <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr, Ret>
 ): Matcher<
   I,
   Types.AddWithout<F, Types.PForExclude<P>>,
   Types.ApplyFilters<I, Types.AddWithout<F, Types.PForExclude<P>>>,
   A | ReturnType<Fn>,
-  Pr
+  Pr,
+  Ret
 > => (self as any).add(makeWhen(makePredicate(pattern), f as any))
 
 /** @internal */
@@ -261,18 +272,20 @@ export const whenOr = <
   const P extends ReadonlyArray<
     Types.PatternPrimitive<R> | Types.PatternBase<R>
   >,
-  Fn extends (_: Types.WhenMatch<R, P[number]>) => unknown
+  Ret,
+  Fn extends (_: Types.WhenMatch<R, P[number]>) => Ret
 >(
   ...args: [...patterns: P, f: Fn]
 ) =>
 <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr, Ret>
 ): Matcher<
   I,
   Types.AddWithout<F, Types.PForExclude<P[number]>>,
   Types.ApplyFilters<I, Types.AddWithout<F, Types.PForExclude<P[number]>>>,
   A | ReturnType<Fn>,
-  Pr
+  Pr,
+  Ret
 > => {
   const onMatch = args[args.length - 1] as any
   const patterns = args.slice(0, -1) as unknown as P
@@ -285,12 +298,13 @@ export const whenAnd = <
   const P extends ReadonlyArray<
     Types.PatternPrimitive<R> | Types.PatternBase<R>
   >,
-  Fn extends (_: Types.WhenMatch<R, Types.ArrayToIntersection<P>>) => unknown
+  Ret,
+  Fn extends (_: Types.WhenMatch<R, Types.ArrayToIntersection<P>>) => Ret
 >(
   ...args: [...patterns: P, f: Fn]
 ) =>
 <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr, Ret>
 ): Matcher<
   I,
   Types.AddWithout<F, Types.PForExclude<Types.ArrayToIntersection<P>>>,
@@ -307,41 +321,43 @@ export const whenAnd = <
 }
 
 /** @internal */
-export const discriminator = <D extends string>(field: D) =>
-<R, P extends Types.Tags<D, R> & string, B>(
-  ...pattern: [
-    first: P,
-    ...values: Array<P>,
-    f: (_: Extract<R, Record<D, P>>) => B
-  ]
-) => {
-  const f = pattern[pattern.length - 1]
-  const values: Array<P> = pattern.slice(0, -1) as any
-  const pred = values.length === 1
-    ? (_: any) => _[field] === values[0]
-    : (_: any) => values.includes(_[field])
+export const discriminator =
+  <D extends string>(field: D) =>
+  <R, P extends Types.Tags<D, R> & string, Ret, B extends Ret>(
+    ...pattern: [
+      first: P,
+      ...values: Array<P>,
+      f: (_: Extract<R, Record<D, P>>) => B
+    ]
+  ) => {
+    const f = pattern[pattern.length - 1]
+    const values: Array<P> = pattern.slice(0, -1) as any
+    const pred = values.length === 1
+      ? (_: any) => _[field] === values[0]
+      : (_: any) => values.includes(_[field])
 
-  return <I, F, A, Pr>(
-    self: Matcher<I, F, R, A, Pr>
-  ): Matcher<
-    I,
-    Types.AddWithout<F, Extract<R, Record<D, P>>>,
-    Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<D, P>>>>,
-    A | B,
-    Pr
-  > => (self as any).add(makeWhen(pred, f as any)) as any
-}
+    return <I, F, A, Pr>(
+      self: Matcher<I, F, R, A, Pr, Ret>
+    ): Matcher<
+      I,
+      Types.AddWithout<F, Extract<R, Record<D, P>>>,
+      Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<D, P>>>>,
+      A | B,
+      Pr,
+      Ret
+    > => (self as any).add(makeWhen(pred, f as any)) as any
+  }
 
 /** @internal */
 export const discriminatorStartsWith = <D extends string>(field: D) =>
-<R, P extends string, B>(
+<R, P extends string, Ret, B extends Ret>(
   pattern: P,
   f: (_: Extract<R, Record<D, `${P}${string}`>>) => B
 ) => {
   const pred = (_: any) => typeof _[field] === "string" && _[field].startsWith(pattern)
 
   return <I, F, A, Pr>(
-    self: Matcher<I, F, R, A, Pr>
+    self: Matcher<I, F, R, A, Pr, Ret>
   ): Matcher<
     I,
     Types.AddWithout<F, Extract<R, Record<D, `${P}${string}`>>>,
@@ -350,7 +366,8 @@ export const discriminatorStartsWith = <D extends string>(field: D) =>
       Types.AddWithout<F, Extract<R, Record<D, `${P}${string}`>>>
     >,
     A | B,
-    Pr
+    Pr,
+    Ret
   > => (self as any).add(makeWhen(pred, f as any)) as any
 }
 
@@ -358,10 +375,11 @@ export const discriminatorStartsWith = <D extends string>(field: D) =>
 export const discriminators = <D extends string>(field: D) =>
 <
   R,
+  Ret,
   P extends {
     readonly [Tag in Types.Tags<D, R> & string]?: (
       _: Extract<R, Record<D, Tag>>
-    ) => any
+    ) => Ret
   }
 >(
   fields: P
@@ -372,13 +390,14 @@ export const discriminators = <D extends string>(field: D) =>
   )
 
   return <I, F, A, Pr>(
-    self: Matcher<I, F, R, A, Pr>
+    self: Matcher<I, F, R, A, Pr, Ret>
   ): Matcher<
     I,
     Types.AddWithout<F, Extract<R, Record<D, keyof P>>>,
     Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<D, keyof P>>>>,
     A | ReturnType<P[keyof P] & {}>,
-    Pr
+    Pr,
+    Ret
   > => (self as any).add(predicate)
 }
 
@@ -387,15 +406,16 @@ export const discriminatorsExhaustive: <D extends string>(
   field: D
 ) => <
   R,
+  Ret,
   P extends {
     readonly [Tag in Types.Tags<D, R> & string]: (
       _: Extract<R, Record<D, Tag>>
-    ) => any
+    ) => Ret
   }
 >(
   fields: P
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr, Ret>
 ) => [Pr] extends [never] ? (u: I) => Unify<A | ReturnType<P[keyof P]>>
   : Unify<A | ReturnType<P[keyof P]>> = (field: string) => (fields: object) => {
     const addCases = discriminators(field)(fields)
@@ -403,20 +423,21 @@ export const discriminatorsExhaustive: <D extends string>(
   }
 
 /** @internal */
-export const tag: <R, P extends Types.Tags<"_tag", R> & string, B>(
+export const tag: <R, P extends Types.Tags<"_tag", R> & string, Ret, B extends Ret>(
   ...pattern: [
     first: P,
     ...values: Array<P>,
     f: (_: Extract<R, Record<"_tag", P>>) => B
   ]
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr, Ret>
 ) => Matcher<
   I,
   Types.AddWithout<F, Extract<R, Record<"_tag", P>>>,
   Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<"_tag", P>>>>,
   B | A,
-  Pr
+  Pr,
+  Ret
 > = discriminator("_tag")
 
 /** @internal */
@@ -432,19 +453,21 @@ export const tagsExhaustive = discriminatorsExhaustive("_tag")
 export const not = <
   R,
   const P extends Types.PatternPrimitive<R> | Types.PatternBase<R>,
-  Fn extends (_: Types.NotMatch<R, P>) => unknown
+  Ret,
+  Fn extends (_: Types.NotMatch<R, P>) => Ret
 >(
   pattern: P,
   f: Fn
 ) =>
 <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr, Ret>
 ): Matcher<
   I,
   Types.AddOnly<F, Types.WhenMatch<R, P>>,
   Types.ApplyFilters<I, Types.AddOnly<F, Types.WhenMatch<R, P>>>,
   A | ReturnType<Fn>,
-  Pr
+  Pr,
+  Ret
 > => (self as any).add(makeNot(makePredicate(pattern), f as any))
 
 /** @internal */
@@ -485,9 +508,9 @@ export const instanceOfUnsafe: <A extends abstract new(...args: any) => any>(
 ) => SafeRefinement<InstanceType<A>, InstanceType<A>> = instanceOf
 
 /** @internal */
-export const orElse = <RA, B>(f: (b: RA) => B) =>
+export const orElse = <RA, Ret, B extends Ret>(f: (b: RA) => B) =>
 <I, R, A, Pr>(
-  self: Matcher<I, R, RA, A, Pr>
+  self: Matcher<I, R, RA, A, Pr, Ret>
 ): [Pr] extends [never] ? (input: I) => Unify<A | B> : Unify<A | B> => {
   const result = either(self)
 
@@ -504,16 +527,16 @@ export const orElse = <RA, B>(f: (b: RA) => B) =>
 }
 
 /** @internal */
-export const orElseAbsurd = <I, R, RA, A, Pr>(
-  self: Matcher<I, R, RA, A, Pr>
+export const orElseAbsurd = <I, R, RA, A, Pr, Ret>(
+  self: Matcher<I, R, RA, A, Pr, Ret>
 ): [Pr] extends [never] ? (input: I) => Unify<A> : Unify<A> =>
   orElse(() => {
     throw new Error("effect/Match/orElseAbsurd: absurd")
   })(self)
 
 /** @internal */
-export const either: <I, F, R, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+export const either: <I, F, R, A, Pr, Ret>(
+  self: Matcher<I, F, R, A, Pr, Ret>
 ) => [Pr] extends [never] ? (input: I) => Either.Either<Unify<A>, R>
   : Either.Either<Unify<A>, R> = (<I, R, RA, A>(self: Matcher<I, R, RA, A, I>) => {
     if (self._tag === "ValueMatcher") {
@@ -547,8 +570,8 @@ export const either: <I, F, R, A, Pr>(
   }) as any
 
 /** @internal */
-export const option: <I, F, R, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+export const option: <I, F, R, A, Pr, Ret>(
+  self: Matcher<I, F, R, A, Pr, Ret>
 ) => [Pr] extends [never] ? (input: I) => Option.Option<Unify<A>>
   : Option.Option<Unify<A>> = (<I, A>(self: Matcher<I, any, any, A, I>) => {
     const toEither = either(self)
@@ -568,8 +591,8 @@ export const option: <I, F, R, A, Pr>(
 const getExhaustiveAbsurdErrorMessage = "effect/Match/exhaustive: absurd"
 
 /** @internal */
-export const exhaustive: <I, F, A, Pr>(
-  self: Matcher<I, F, never, A, Pr>
+export const exhaustive: <I, F, A, Pr, Ret>(
+  self: Matcher<I, F, never, A, Pr, Ret>
 ) => [Pr] extends [never] ? (u: I) => Unify<A> : Unify<A> = (<I, F, A>(
   self: Matcher<I, F, never, A, I>
 ) => {

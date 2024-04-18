@@ -25,21 +25,22 @@ export type MatcherTypeId = typeof MatcherTypeId
  * @category model
  * @since 1.0.0
  */
-export type Matcher<Input, Filters, RemainingApplied, Result, Provided> =
-  | TypeMatcher<Input, Filters, RemainingApplied, Result>
-  | ValueMatcher<Input, Filters, RemainingApplied, Result, Provided>
+export type Matcher<Input, Filters, RemainingApplied, Result, Provided, Return = any> =
+  | TypeMatcher<Input, Filters, RemainingApplied, Result, Return>
+  | ValueMatcher<Input, Filters, RemainingApplied, Result, Provided, Return>
 
 /**
  * @category model
  * @since 1.0.0
  */
-export interface TypeMatcher<in Input, out Filters, out Remaining, out Result> extends Pipeable {
+export interface TypeMatcher<in Input, out Filters, out Remaining, out Result, out Return = any> extends Pipeable {
   readonly _tag: "TypeMatcher"
   readonly [MatcherTypeId]: {
     readonly _input: Contravariant<Input>
     readonly _filters: Covariant<Filters>
     readonly _remaining: Covariant<Remaining>
     readonly _result: Covariant<Result>
+    readonly _return: Covariant<Return>
   }
   readonly cases: ReadonlyArray<Case>
   add<I, R, RA, A>(_case: Case): TypeMatcher<I, R, RA, A>
@@ -49,12 +50,15 @@ export interface TypeMatcher<in Input, out Filters, out Remaining, out Result> e
  * @category model
  * @since 1.0.0
  */
-export interface ValueMatcher<in Input, Filters, out Remaining, out Result, Provided> extends Pipeable {
+export interface ValueMatcher<in Input, Filters, out Remaining, out Result, Provided, out Return = any>
+  extends Pipeable
+{
   readonly _tag: "ValueMatcher"
   readonly [MatcherTypeId]: {
     readonly _input: Contravariant<Input>
     readonly _filters: Covariant<Filters>
     readonly _result: Covariant<Result>
+    readonly _return: Covariant<Return>
   }
   readonly provided: Provided
   readonly value: Either.Either<Provided, Remaining>
@@ -134,22 +138,33 @@ export const typeTags: <I>() => <
  * @category combinators
  * @since 1.0.0
  */
+export const withReturnType: <Ret>() => <I, F, R, A, Pr, _>(
+  self: Matcher<I, F, R, A, Pr, _>
+) => Ret extends ([A] extends [never] ? any : A) ? Matcher<I, F, R, A, Pr, Ret>
+  : "withReturnType constraint does not extend Result type" = internal.withReturnType
+
+/**
+ * @category combinators
+ * @since 1.0.0
+ */
 export const when: <
   R,
   const P extends Types.PatternPrimitive<R> | Types.PatternBase<R>,
-  Fn extends (_: Types.WhenMatch<R, P>) => unknown
+  Ret,
+  Fn extends (_: Types.WhenMatch<R, P>) => Ret
 >(
   pattern: P,
   f: Fn
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr, Ret>
 ) => Matcher<
   I,
   Types.AddWithout<F, Types.PForExclude<P>>,
   Types.ApplyFilters<I, Types.AddWithout<F, Types.PForExclude<P>>>,
   A | ReturnType<Fn>,
-  Pr
-> = internal.when as any
+  Pr,
+  Ret
+> = internal.when
 
 /**
  * @category combinators
@@ -157,21 +172,21 @@ export const when: <
  */
 export const whenOr: <
   R,
-  const P extends ReadonlyArray<
-    Types.PatternPrimitive<R> | Types.PatternBase<R>
-  >,
-  Fn extends (_: Types.WhenMatch<R, P[number]>) => unknown
+  const P extends ReadonlyArray<Types.PatternPrimitive<R> | Types.PatternBase<R>>,
+  Ret,
+  Fn extends (_: Types.WhenMatch<R, P[number]>) => Ret
 >(
   ...args: [...patterns: P, f: Fn]
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr, Ret>
 ) => Matcher<
   I,
   Types.AddWithout<F, Types.PForExclude<P[number]>>,
   Types.ApplyFilters<I, Types.AddWithout<F, Types.PForExclude<P[number]>>>,
   A | ReturnType<Fn>,
-  Pr
-> = internal.whenOr as any
+  Pr,
+  Ret
+> = internal.whenOr
 
 /**
  * @category combinators
@@ -179,24 +194,20 @@ export const whenOr: <
  */
 export const whenAnd: <
   R,
-  const P extends ReadonlyArray<
-    Types.PatternPrimitive<R> | Types.PatternBase<R>
-  >,
-  Fn extends (_: Types.WhenMatch<R, Types.ArrayToIntersection<P>>) => unknown
+  const P extends ReadonlyArray<Types.PatternPrimitive<R> | Types.PatternBase<R>>,
+  Ret,
+  Fn extends (_: Types.WhenMatch<R, UnionToIntersection<P[number]>>) => Ret
 >(
   ...args: [...patterns: P, f: Fn]
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr, Ret>
 ) => Matcher<
   I,
-  Types.AddWithout<F, Types.PForExclude<Types.ArrayToIntersection<P>>>,
-  Types.ApplyFilters<
-    I,
-    Types.AddWithout<F, Types.PForExclude<Types.ArrayToIntersection<P>>>
-  >,
+  Types.AddWithout<F, Types.PForExclude<UnionToIntersection<P[number]>>>,
+  Types.ApplyFilters<I, Types.AddWithout<F, Types.PForExclude<UnionToIntersection<P[number]>>>>,
   A | ReturnType<Fn>,
   Pr
-> = internal.whenAnd as any
+> = internal.whenAnd
 
 /**
  * @category combinators
@@ -204,20 +215,17 @@ export const whenAnd: <
  */
 export const discriminator: <D extends string>(
   field: D
-) => <R, P extends Types.Tags<D, R> & string, B>(
-  ...pattern: [
-    first: P,
-    ...values: Array<P>,
-    f: (_: Extract<R, Record<D, P>>) => B
-  ]
+) => <R, P extends Types.Tags<D, R> & string, Ret, B extends Ret>(
+  ...pattern: [first: P, ...values: Array<P>, f: (_: Extract<R, Record<D, P>>) => B]
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr, Ret>
 ) => Matcher<
   I,
   Types.AddWithout<F, Extract<R, Record<D, P>>>,
   Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<D, P>>>>,
   B | A,
-  Pr
+  Pr,
+  Ret
 > = internal.discriminator
 
 /**
@@ -226,20 +234,18 @@ export const discriminator: <D extends string>(
  */
 export const discriminatorStartsWith: <D extends string>(
   field: D
-) => <R, P extends string, B>(
+) => <R, P extends string, Ret, B extends Ret>(
   pattern: P,
   f: (_: Extract<R, Record<D, `${P}${string}`>>) => B
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr, Ret>
 ) => Matcher<
   I,
   Types.AddWithout<F, Extract<R, Record<D, `${P}${string}`>>>,
-  Types.ApplyFilters<
-    I,
-    Types.AddWithout<F, Extract<R, Record<D, `${P}${string}`>>>
-  >,
+  Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<D, `${P}${string}`>>>>,
   B | A,
-  Pr
+  Pr,
+  Ret
 > = internal.discriminatorStartsWith as any
 
 /**
@@ -248,25 +254,17 @@ export const discriminatorStartsWith: <D extends string>(
  */
 export const discriminators: <D extends string>(
   field: D
-) => <
-  R,
-  P extends
-    & {
-      readonly [Tag in Types.Tags<D, R> & string]?:
-        | ((_: Extract<R, Record<D, Tag>>) => any)
-        | undefined
-    }
-    & { readonly [Tag in Exclude<keyof P, Types.Tags<D, R>>]: never }
->(
+) => <R, Ret, P extends { readonly [Tag in Types.Tags<D, R> & string]?: (_: Extract<R, Record<D, Tag>>) => Ret }>(
   fields: P
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr, Ret>
 ) => Matcher<
   I,
   Types.AddWithout<F, Extract<R, Record<D, keyof P>>>,
   Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<D, keyof P>>>>,
   A | ReturnType<P[keyof P] & {}>,
-  Pr
+  Pr,
+  Ret
 > = internal.discriminators
 
 /**
@@ -275,60 +273,46 @@ export const discriminators: <D extends string>(
  */
 export const discriminatorsExhaustive: <D extends string>(
   field: D
-) => <
-  R,
-  P extends
-    & {
-      readonly [Tag in Types.Tags<D, R> & string]: (
-        _: Extract<R, Record<D, Tag>>
-      ) => any
-    }
-    & { readonly [Tag in Exclude<keyof P, Types.Tags<D, R>>]: never }
->(
+) => <R, Ret, P extends { readonly [Tag in Types.Tags<D, R> & string]: (_: Extract<R, Record<D, Tag>>) => Ret }>(
   fields: P
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
-) => [Pr] extends [never] ? (u: I) => Unify<A | ReturnType<P[keyof P]>>
-  : Unify<A | ReturnType<P[keyof P]>> = internal.discriminatorsExhaustive
+  self: Matcher<I, F, R, A, Pr, Ret>
+) => [Pr] extends [never] ? (u: I) => Unify<A | ReturnType<P[keyof P]>> : Unify<A | ReturnType<P[keyof P]>> =
+  internal.discriminatorsExhaustive
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const tag: <R, P extends Types.Tags<"_tag", R> & string, B>(
-  ...pattern: [
-    first: P,
-    ...values: Array<P>,
-    f: (_: Extract<R, Record<"_tag", P>>) => B
-  ]
+export const tag: <R, P extends Types.Tags<"_tag", R> & string, Ret, B extends Ret>(
+  ...pattern: [first: P, ...values: Array<P>, f: (_: Extract<R, Record<"_tag", P>>) => B]
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr, Ret>
 ) => Matcher<
   I,
   Types.AddWithout<F, Extract<R, Record<"_tag", P>>>,
   Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<"_tag", P>>>>,
   B | A,
-  Pr
+  Pr,
+  Ret
 > = internal.tag
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const tagStartsWith: <R, P extends string, B>(
+export const tagStartsWith: <R, P extends string, Ret, B extends Ret>(
   pattern: P,
   f: (_: Extract<R, Record<"_tag", `${P}${string}`>>) => B
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr, Ret>
 ) => Matcher<
   I,
   Types.AddWithout<F, Extract<R, Record<"_tag", `${P}${string}`>>>,
-  Types.ApplyFilters<
-    I,
-    Types.AddWithout<F, Extract<R, Record<"_tag", `${P}${string}`>>>
-  >,
+  Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<"_tag", `${P}${string}`>>>>,
   B | A,
-  Pr
+  Pr,
+  Ret
 > = internal.tagStartsWith as any
 
 /**
@@ -337,26 +321,19 @@ export const tagStartsWith: <R, P extends string, B>(
  */
 export const tags: <
   R,
-  P extends
-    & {
-      readonly [Tag in Types.Tags<"_tag", R> & string]?:
-        | ((_: Extract<R, Record<"_tag", Tag>>) => any)
-        | undefined
-    }
-    & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", R>>]: never }
+  Ret,
+  P extends { readonly [Tag in Types.Tags<"_tag", R> & string]?: (_: Extract<R, Record<"_tag", Tag>>) => Ret }
 >(
   fields: P
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr, Ret>
 ) => Matcher<
   I,
   Types.AddWithout<F, Extract<R, Record<"_tag", keyof P>>>,
-  Types.ApplyFilters<
-    I,
-    Types.AddWithout<F, Extract<R, Record<"_tag", keyof P>>>
-  >,
+  Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<"_tag", keyof P>>>>,
   A | ReturnType<P[keyof P] & {}>,
-  Pr
+  Pr,
+  Ret
 > = internal.tags
 
 /**
@@ -365,19 +342,14 @@ export const tags: <
  */
 export const tagsExhaustive: <
   R,
-  P extends
-    & {
-      readonly [Tag in Types.Tags<"_tag", R> & string]: (
-        _: Extract<R, Record<"_tag", Tag>>
-      ) => any
-    }
-    & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", R>>]: never }
+  Ret,
+  P extends { readonly [Tag in Types.Tags<"_tag", R> & string]: (_: Extract<R, Record<"_tag", Tag>>) => Ret }
 >(
   fields: P
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
-) => [Pr] extends [never] ? (u: I) => Unify<A | ReturnType<P[keyof P]>>
-  : Unify<A | ReturnType<P[keyof P]>> = internal.tagsExhaustive
+  self: Matcher<I, F, R, A, Pr, Ret>
+) => [Pr] extends [never] ? (u: I) => Unify<A | ReturnType<P[keyof P]>> : Unify<A | ReturnType<P[keyof P]>> =
+  internal.tagsExhaustive
 
 /**
  * @category combinators
@@ -386,19 +358,21 @@ export const tagsExhaustive: <
 export const not: <
   R,
   const P extends Types.PatternPrimitive<R> | Types.PatternBase<R>,
-  Fn extends (_: Types.NotMatch<R, P>) => unknown
+  Ret,
+  Fn extends (_: Exclude<R, Types.ExtractMatch<R, Types.PForExclude<P>>>) => Ret
 >(
   pattern: P,
   f: Fn
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr, Ret>
 ) => Matcher<
   I,
   Types.AddOnly<F, Types.WhenMatch<R, P>>,
   Types.ApplyFilters<I, Types.AddOnly<F, Types.WhenMatch<R, P>>>,
   A | ReturnType<Fn>,
-  Pr
-> = internal.not as any
+  Pr,
+  Ret
+> = internal.not
 
 /**
  * @category predicates
@@ -506,44 +480,42 @@ export const instanceOfUnsafe: <A extends abstract new(...args: any) => any>(
  * @category conversions
  * @since 1.0.0
  */
-export const orElse: <RA, B>(
+export const orElse: <RA, Ret, B extends Ret>(
   f: (b: RA) => B
 ) => <I, R, A, Pr>(
-  self: Matcher<I, R, RA, A, Pr>
+  self: Matcher<I, R, RA, A, Pr, Ret>
 ) => [Pr] extends [never] ? (input: I) => Unify<B | A> : Unify<B | A> = internal.orElse
 
 /**
  * @category conversions
  * @since 1.0.0
  */
-export const orElseAbsurd: <I, R, RA, A, Pr>(
-  self: Matcher<I, R, RA, A, Pr>
+export const orElseAbsurd: <I, R, RA, A, Pr, Ret>(
+  self: Matcher<I, R, RA, A, Pr, Ret>
 ) => [Pr] extends [never] ? (input: I) => Unify<A> : Unify<A> = internal.orElseAbsurd
 
 /**
  * @category conversions
  * @since 1.0.0
  */
-export const either: <I, F, R, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
-) => [Pr] extends [never] ? (input: I) => Either.Either<Unify<A>, R>
-  : Either.Either<Unify<A>, R> = internal.either
+export const either: <I, F, R, A, Pr, Ret>(
+  self: Matcher<I, F, R, A, Pr, Ret>
+) => [Pr] extends [never] ? (input: I) => Either.Either<Unify<A>, R> : Either.Either<Unify<A>, R> = internal.either
 
 /**
  * @category conversions
  * @since 1.0.0
  */
-export const option: <I, F, R, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
-) => [Pr] extends [never] ? (input: I) => Option.Option<Unify<A>>
-  : Option.Option<Unify<A>> = internal.option
+export const option: <I, F, R, A, Pr, Ret>(
+  self: Matcher<I, F, R, A, Pr, Ret>
+) => [Pr] extends [never] ? (input: I) => Option.Option<Unify<A>> : Option.Option<Unify<A>> = internal.option
 
 /**
  * @category conversions
  * @since 1.0.0
  */
-export const exhaustive: <I, F, A, Pr>(
-  self: Matcher<I, F, never, A, Pr>
+export const exhaustive: <I, F, A, Pr, Ret>(
+  self: Matcher<I, F, never, A, Pr, Ret>
 ) => [Pr] extends [never] ? (u: I) => Unify<A> : Unify<A> = internal.exhaustive
 
 /**

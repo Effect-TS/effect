@@ -775,4 +775,48 @@ describe("Match", () => {
     expect(match(Symbol.for("a"))).toEqual("symbol")
     expect(match(123)).toEqual("else")
   })
+
+  it("withReturnType", () => {
+    const match = pipe(
+      M.type<string>(),
+      M.withReturnType<string>(),
+      M.when("A", (_) => "A"),
+      M.orElse(() => "else")
+    )
+    expect(match("A")).toEqual("A")
+    expect(match("a")).toEqual("else")
+  })
+
+  it("withReturnType after predicate", () => {
+    const match = pipe(
+      M.type<string>(),
+      M.when("A", (_) => "A"),
+      M.withReturnType<string>(),
+      M.orElse(() => "else")
+    )
+    expect(match("A")).toEqual("A")
+    expect(match("a")).toEqual("else")
+  })
+
+  it("withReturnType mismatch", () => {
+    const match = pipe(
+      M.type<string>(),
+      M.withReturnType<string>(),
+      // @ts-expect-error
+      M.when("A", (_) => 123),
+      M.orElse(() => "else")
+    )
+    expect(match("A")).toEqual(123)
+    expect(match("a")).toEqual("else")
+  })
+
+  it("withReturnType constraint mismatch", () => {
+    pipe(
+      M.type<string>(),
+      M.when("A", (_) => 123),
+      M.withReturnType<string>(),
+      // @ts-expect-error
+      M.orElse(() => "else")
+    )
+  })
 })
