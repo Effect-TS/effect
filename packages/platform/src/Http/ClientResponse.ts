@@ -133,6 +133,16 @@ export const json: <E, R>(
   effect: Effect.Effect<ClientResponse, E, R>
 ) => Effect.Effect<unknown, Error.ResponseError | E, Exclude<R, Scope.Scope>> = internal.json
 
+const void_: <E, R>(effect: Effect.Effect<ClientResponse, E, R>) => Effect.Effect<void, E, Exclude<R, Scope.Scope>> =
+  internal.void_
+export {
+  /**
+   * @since 1.0.0
+   * @category accessors
+   */
+  void_ as void
+}
+
 /**
  * @since 1.0.0
  * @category accessors
