@@ -6,6 +6,7 @@ import type { Tag } from "effect/Context"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import type * as Effect from "effect/Effect"
+import type { Layer } from "effect/Layer"
 import type { Option } from "effect/Option"
 import type { Scope } from "effect/Scope"
 import type { Sink } from "effect/Sink"
@@ -444,6 +445,22 @@ export const FileSystem: Tag<FileSystem, FileSystem> = internal.tag
 export const make: (
   impl: Omit<FileSystem, "exists" | "readFileString" | "stream" | "sink" | "writeFileString">
 ) => FileSystem = internal.make
+
+/**
+ * Create a no-op file system that can be used for testing.
+ *
+ * @since 1.0.0
+ * @category constructor
+ */
+export const makeNoop: (fileSystem: Partial<FileSystem>) => FileSystem = internal.makeNoop
+
+/**
+ * Create a no-op file system that can be used for testing.
+ *
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerNoop: (fileSystem: Partial<FileSystem>) => Layer<FileSystem> = internal.layerNoop
 
 /**
  * @since 1.0.0
