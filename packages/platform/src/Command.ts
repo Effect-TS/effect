@@ -64,14 +64,18 @@ export declare namespace Command {
  * Configures the pipe that is established between the parent and child
  * processes' `stdin` stream.
  *
+ * Defaults to "pipe"
+ *
  * @since 1.0.0
  * @category models
  */
-export type CommandInput = Stream<Uint8Array, PlatformError>
+export type CommandInput = "inherit" | "pipe" | Stream<Uint8Array, PlatformError>
 
 /**
  * Configures the pipes that are established between the parent and child
  * processes `stderr` and `stdout` streams.
+ *
+ * Defaults to "pipe"
  *
  * @since 1.0.0
  * @category models
@@ -89,7 +93,7 @@ export interface StandardCommand extends Command.Proto {
   readonly env: HashMap<string, string>
   readonly cwd: Option<string>
   readonly shell: boolean | string
-  readonly stdin: Option<Command.Input>
+  readonly stdin: Command.Input
   readonly stdout: Command.Output
   readonly stderr: Command.Output
   readonly gid: Option<number>
