@@ -7,11 +7,11 @@
   "homepage": "https://effect.website",
   "repository": {
     "type": "git",
-    "url": "https://github.com/effect-ts/effect.git",
+    "url": "https://github.com/Effect-TS/effect.git",
     "directory": "packages/platform"
   },
   "bugs": {
-    "url": "https://github.com/effect-ts/effect/issues"
+    "url": "https://github.com/Effect-TS/effect/issues"
   },
   "tags": [
     "typescript",
@@ -26,7 +26,7 @@
   "publishConfig": {
     "access": "public",
     "directory": "dist",
-    "provenance": false
+    "provenance": true
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",
