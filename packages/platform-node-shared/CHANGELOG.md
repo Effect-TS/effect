@@ -1,5 +1,28 @@
 # @effect/platform-node-shared
 
+## 0.4.1
+
+### Patch Changes
+
+- [#2542](https://github.com/Effect-TS/effect/pull/2542) [`87c5687`](https://github.com/Effect-TS/effect/commit/87c5687de0782dab177b7861217fa3b040046282) Thanks [@tim-smart](https://github.com/tim-smart)! - allow fs.watch backend to be customized
+
+  If you want to use the @parcel/watcher backend, you now need to provide it to
+  your effects.
+
+  ```ts
+  import { Layer } from "effect";
+  import { FileSystem } from "@effect/platform";
+  import { NodeFileSystem } from "@effect/platform-node";
+  import * as ParcelWatcher from "@effect/platform-node/NodeFileSystem/ParcelWatcher";
+
+  // create a Layer that uses the ParcelWatcher backend
+  NodeFileSystem.layer.pipe(Layer.provide(ParcelWatcher.layer));
+  ```
+
+- Updated dependencies [[`3da0cfa`](https://github.com/Effect-TS/effect/commit/3da0cfa12c407fd930dc480be1ecc9217a8058f8), [`570e8d8`](https://github.com/Effect-TS/effect/commit/570e8d87e7c0e9ad4cd2686462fdb9b4812f7716), [`87c5687`](https://github.com/Effect-TS/effect/commit/87c5687de0782dab177b7861217fa3b040046282), [`8edacca`](https://github.com/Effect-TS/effect/commit/8edacca37f8e37c01a63fec332b06d9361efaa7b)]:
+  - effect@3.0.1
+  - @effect/platform@0.49.1
+
 ## 0.4.0
 
 ### Minor Changes
