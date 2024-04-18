@@ -154,9 +154,7 @@ export const make = (command: string, ...args: Array<string>): Command.Command =
     env: HashMap.empty(),
     cwd: Option.none(),
     shell: false,
-    // The initial process input here does not matter, we just want the child
-    // process to default to `"pipe"` for the stdin stream.
-    stdin: Option.some(Stream.empty),
+    stdin: "pipe",
     stdout: "pipe",
     stderr: "pipe",
     gid: Option.none(),
@@ -203,7 +201,7 @@ export const stdin: {
 >(2, (self, input) => {
   switch (self._tag) {
     case "StandardCommand": {
-      return makeStandard({ ...self, stdin: Option.some(input) })
+      return makeStandard({ ...self, stdin: input })
     }
     // For piped commands it only makes sense to provide `stdin` for the
     // left-most command as the rest will be piped in.

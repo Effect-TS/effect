@@ -4,7 +4,7 @@ import type * as Error from "@effect/platform/Error"
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
-import { constUndefined, pipe } from "effect/Function"
+import { constUndefined, identity, pipe } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -16,8 +16,8 @@ import { handleErrnoException } from "./error.js"
 import { fromWritable } from "./sink.js"
 import { fromReadable } from "./stream.js"
 
-const inputToStdioOption = (stdin: Option.Option<Command.Command.Input>): "pipe" | "inherit" =>
-  Option.match(stdin, { onNone: () => "inherit", onSome: () => "pipe" })
+const inputToStdioOption = (stdin: Command.Command.Input): "pipe" | "inherit" =>
+  typeof stdin === "string" ? stdin : "pipe"
 
 const outputToStdioOption = (output: Command.Command.Output): "pipe" | "inherit" =>
   typeof output === "string" ? output : "pipe"
@@ -168,12 +168,11 @@ const runCommand =
               stdout
             })
           }),
-          Effect.tap((process) =>
-            Option.match(command.stdin, {
-              onNone: () => Effect.void,
-              onSome: (stdin) => Effect.forkDaemon(Stream.run(stdin, process.stdin))
-            })
-          )
+          typeof command.stdin === "string"
+            ? identity
+            : Effect.tap((process) =>
+              Effect.forkDaemon(Stream.run(command.stdin as Stream.Stream<Uint8Array>, process.stdin))
+            )
         )
       }
       case "PipedCommand": {
