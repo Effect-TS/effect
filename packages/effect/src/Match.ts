@@ -254,7 +254,13 @@ export const discriminatorStartsWith: <D extends string>(
  */
 export const discriminators: <D extends string>(
   field: D
-) => <R, Ret, P extends { readonly [Tag in Types.Tags<D, R> & string]?: (_: Extract<R, Record<D, Tag>>) => Ret }>(
+) => <
+  R,
+  Ret,
+  P extends
+    & { readonly [Tag in Types.Tags<D, R> & string]?: ((_: Extract<R, Record<D, Tag>>) => Ret) | undefined }
+    & { readonly [Tag in Exclude<keyof P, Types.Tags<D, R>>]: never }
+>(
   fields: P
 ) => <I, F, A, Pr>(
   self: Matcher<I, F, R, A, Pr, Ret>
@@ -273,7 +279,13 @@ export const discriminators: <D extends string>(
  */
 export const discriminatorsExhaustive: <D extends string>(
   field: D
-) => <R, Ret, P extends { readonly [Tag in Types.Tags<D, R> & string]: (_: Extract<R, Record<D, Tag>>) => Ret }>(
+) => <
+  R,
+  Ret,
+  P extends
+    & { readonly [Tag in Types.Tags<D, R> & string]: (_: Extract<R, Record<D, Tag>>) => Ret }
+    & { readonly [Tag in Exclude<keyof P, Types.Tags<D, R>>]: never }
+>(
   fields: P
 ) => <I, F, A, Pr>(
   self: Matcher<I, F, R, A, Pr, Ret>
@@ -322,7 +334,9 @@ export const tagStartsWith: <R, P extends string, Ret, B extends Ret>(
 export const tags: <
   R,
   Ret,
-  P extends { readonly [Tag in Types.Tags<"_tag", R> & string]?: (_: Extract<R, Record<"_tag", Tag>>) => Ret }
+  P extends
+    & { readonly [Tag in Types.Tags<"_tag", R> & string]?: ((_: Extract<R, Record<"_tag", Tag>>) => Ret) | undefined }
+    & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", R>>]: never }
 >(
   fields: P
 ) => <I, F, A, Pr>(
@@ -343,7 +357,9 @@ export const tags: <
 export const tagsExhaustive: <
   R,
   Ret,
-  P extends { readonly [Tag in Types.Tags<"_tag", R> & string]: (_: Extract<R, Record<"_tag", Tag>>) => Ret }
+  P extends
+    & { readonly [Tag in Types.Tags<"_tag", R> & string]: (_: Extract<R, Record<"_tag", Tag>>) => Ret }
+    & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", R>>]: never }
 >(
   fields: P
 ) => <I, F, A, Pr>(

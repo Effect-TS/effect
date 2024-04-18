@@ -219,7 +219,7 @@ export const valueTags = <
 >(
   fields: P
 ) => {
-  const match: any = tagsExhaustive(fields)(makeTypeMatcher([]))
+  const match: any = tagsExhaustive(fields as any)(makeTypeMatcher([]))
   return (input: I): Unify<ReturnType<P[keyof P]>> => match(input)
 }
 
@@ -234,7 +234,7 @@ export const typeTags = <I>() =>
 >(
   fields: P
 ) => {
-  const match: any = tagsExhaustive(fields)(makeTypeMatcher([]))
+  const match: any = tagsExhaustive(fields as any)(makeTypeMatcher([]))
   return (input: I): Unify<ReturnType<P[keyof P]>> => match(input)
 }
 
@@ -376,11 +376,13 @@ export const discriminators = <D extends string>(field: D) =>
 <
   R,
   Ret,
-  P extends {
-    readonly [Tag in Types.Tags<D, R> & string]?: (
-      _: Extract<R, Record<D, Tag>>
-    ) => Ret
-  }
+  P extends
+    & {
+      readonly [Tag in Types.Tags<D, R> & string]?:
+        | ((_: Extract<R, Record<D, Tag>>) => Ret)
+        | undefined
+    }
+    & { readonly [Tag in Exclude<keyof P, Types.Tags<D, R>>]: never }
 >(
   fields: P
 ) => {
@@ -407,11 +409,13 @@ export const discriminatorsExhaustive: <D extends string>(
 ) => <
   R,
   Ret,
-  P extends {
-    readonly [Tag in Types.Tags<D, R> & string]: (
-      _: Extract<R, Record<D, Tag>>
-    ) => Ret
-  }
+  P extends
+    & {
+      readonly [Tag in Types.Tags<D, R> & string]: (
+        _: Extract<R, Record<D, Tag>>
+      ) => Ret
+    }
+    & { readonly [Tag in Exclude<keyof P, Types.Tags<D, R>>]: never }
 >(
   fields: P
 ) => <I, F, A, Pr>(
