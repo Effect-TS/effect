@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import * as Array from "effect/Array"
+import * as Arr from "effect/Array"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as AST from "./AST.js"
@@ -211,7 +211,7 @@ const go = (ast: AST.AST, options: Options): LazyArbitrary<any> => {
         // ---------------------------------------------
         // handle rest element
         // ---------------------------------------------
-        if (Array.isNonEmptyReadonlyArray(rest)) {
+        if (Arr.isNonEmptyReadonlyArray(rest)) {
           const [head, ...tail] = rest
           const arb = head(fc)
           const constraints = options.constraints

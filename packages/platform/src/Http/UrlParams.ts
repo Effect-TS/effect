@@ -4,7 +4,7 @@
 import type { ParseOptions } from "@effect/schema/AST"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
-import * as Array from "effect/Array"
+import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import * as Option from "effect/Option"
@@ -27,9 +27,9 @@ export type Input = Readonly<Record<string, string>> | Iterable<readonly [string
  */
 export const fromInput = (input: Input): UrlParams => {
   if (Symbol.iterator in input) {
-    return Array.fromIterable(input)
+    return Arr.fromIterable(input)
   }
-  return Array.fromIterable(Object.entries(input))
+  return Arr.fromIterable(Object.entries(input))
 }
 
 /**
@@ -59,7 +59,7 @@ export const getAll: {
   (key: string) => (self: UrlParams) => ReadonlyArray<string>,
   (self: UrlParams, key: string) => ReadonlyArray<string>
 >(2, (self, key) =>
-  Array.reduce(self, [] as Array<string>, (acc, [k, value]) => {
+  Arr.reduce(self, [] as Array<string>, (acc, [k, value]) => {
     if (k === key) {
       acc.push(value)
     }
@@ -78,7 +78,7 @@ export const getFirst: {
   (self: UrlParams, key: string) => Option.Option<string>
 >(2, (self, key) =>
   Option.map(
-    Array.findFirst(
+    Arr.findFirst(
       self,
       ([k]) => k === key
     ),
@@ -97,7 +97,7 @@ export const getLast: {
   (self: UrlParams, key: string) => Option.Option<string>
 >(2, (self, key) =>
   Option.map(
-    Array.findLast(
+    Arr.findLast(
       self,
       ([k]) => k === key
     ),
@@ -115,8 +115,8 @@ export const set: {
   (key: string, value: string) => (self: UrlParams) => UrlParams,
   (self: UrlParams, key: string, value: string) => UrlParams
 >(3, (self, key, value) =>
-  Array.append(
-    Array.filter(self, ([k]) => k !== key),
+  Arr.append(
+    Arr.filter(self, ([k]) => k !== key),
     [key, value]
   ))
 
@@ -133,8 +133,8 @@ export const setAll: {
 >(2, (self, input) => {
   const toSet = fromInput(input)
   const keys = toSet.map(([k]) => k)
-  return Array.appendAll(
-    Array.filter(self, ([k]) => keys.includes(k)),
+  return Arr.appendAll(
+    Arr.filter(self, ([k]) => keys.includes(k)),
     toSet
   )
 })
@@ -150,7 +150,7 @@ export const append: {
   (key: string, value: string) => (self: UrlParams) => UrlParams,
   (self: UrlParams, key: string, value: string) => UrlParams
 >(3, (self, key, value) =>
-  Array.append(
+  Arr.append(
     self,
     [key, value]
   ))
@@ -166,7 +166,7 @@ export const appendAll: {
   (input: Input) => (self: UrlParams) => UrlParams,
   (self: UrlParams, input: Input) => UrlParams
 >(2, (self, input) =>
-  Array.appendAll(
+  Arr.appendAll(
     self,
     fromInput(input)
   ))
@@ -181,7 +181,7 @@ export const remove: {
 } = dual<
   (key: string) => (self: UrlParams) => UrlParams,
   (self: UrlParams, key: string) => UrlParams
->(2, (self, key) => Array.filter(self, ([k]) => k !== key))
+>(2, (self, key) => Arr.filter(self, ([k]) => k !== key))
 
 /**
  * @since 1.0.0
@@ -197,7 +197,7 @@ export const makeUrl = <E>(url: string, params: UrlParams, onError: (e: unknown)
   Effect.try({
     try: () => {
       const urlInstance = new URL(url, baseUrl())
-      Array.forEach(params, ([key, value]) => {
+      Arr.forEach(params, ([key, value]) => {
         if (value !== undefined) {
           urlInstance.searchParams.append(key, value)
         }

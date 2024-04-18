@@ -1,4 +1,4 @@
-import * as Array from "effect/Array"
+import * as Arr from "effect/Array"
 import { dual, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import type * as CliConfig from "../CliConfig.js"
@@ -71,13 +71,13 @@ export const concat = dual<
 /** @internal */
 export const getHelp = (self: Usage.Usage): HelpDoc.HelpDoc => {
   const spans = enumerate(self, InternalCliConfig.defaultConfig)
-  if (Array.isNonEmptyReadonlyArray(spans)) {
-    const head = Array.headNonEmpty(spans)
-    const tail = Array.tailNonEmpty(spans)
-    if (Array.isNonEmptyReadonlyArray(tail)) {
+  if (Arr.isNonEmptyReadonlyArray(spans)) {
+    const head = Arr.headNonEmpty(spans)
+    const tail = Arr.tailNonEmpty(spans)
+    if (Arr.isNonEmptyReadonlyArray(tail)) {
       return pipe(
-        Array.map(spans, (span) => InternalHelpDoc.p(span)),
-        Array.reduceRight(
+        Arr.map(spans, (span) => InternalHelpDoc.p(span)),
+        Arr.reduceRight(
           InternalHelpDoc.empty,
           (left, right) => InternalHelpDoc.sequence(left, right)
         )
@@ -107,7 +107,7 @@ const simplify = (self: Usage.Usage, config: CliConfig.CliConfig): Usage.Usage =
       return mixed
     }
     case "Named": {
-      if (Option.isNone(Array.head(render(self, config)))) {
+      if (Option.isNone(Arr.head(render(self, config)))) {
         return empty
       }
       return self
@@ -153,10 +153,10 @@ const simplify = (self: Usage.Usage, config: CliConfig.CliConfig): Usage.Usage =
 const render = (self: Usage.Usage, config: CliConfig.CliConfig): Array<Span.Span> => {
   switch (self._tag) {
     case "Empty": {
-      return Array.of(InternalSpan.text(""))
+      return Arr.of(InternalSpan.text(""))
     }
     case "Mixed": {
-      return Array.of(InternalSpan.text("<command>"))
+      return Arr.of(InternalSpan.text("<command>"))
     }
     case "Named": {
       const typeInfo = config.showTypes
@@ -169,24 +169,24 @@ const render = (self: Usage.Usage, config: CliConfig.CliConfig): Array<Span.Span
         ? self.names
         : self.names.length > 1
         ? pipe(
-          Array.filter(self.names, (name) => name.startsWith("--")),
-          Array.head,
-          Option.map(Array.of),
+          Arr.filter(self.names, (name) => name.startsWith("--")),
+          Arr.head,
+          Option.map(Arr.of),
           Option.getOrElse(() => self.names)
         )
         : self.names
-      const nameInfo = InternalSpan.text(Array.join(namesToShow, ", "))
+      const nameInfo = InternalSpan.text(Arr.join(namesToShow, ", "))
       return config.showAllNames && self.names.length > 1
-        ? Array.of(InternalSpan.spans([
+        ? Arr.of(InternalSpan.spans([
           InternalSpan.text("("),
           nameInfo,
           typeInfo,
           InternalSpan.text(")")
         ]))
-        : Array.of(InternalSpan.concat(nameInfo, typeInfo))
+        : Arr.of(InternalSpan.concat(nameInfo, typeInfo))
     }
     case "Optional": {
-      return Array.map(render(self.usage, config), (span) =>
+      return Arr.map(render(self.usage, config), (span) =>
         InternalSpan.spans([
           InternalSpan.text("["),
           span,
@@ -194,7 +194,7 @@ const render = (self: Usage.Usage, config: CliConfig.CliConfig): Array<Span.Span
         ]))
     }
     case "Repeated": {
-      return Array.map(
+      return Arr.map(
         render(self.usage, config),
         (span) => InternalSpan.concat(span, InternalSpan.text("..."))
       )
@@ -206,15 +206,15 @@ const render = (self: Usage.Usage, config: CliConfig.CliConfig): Array<Span.Span
         self.left._tag === "Concat" ||
         self.right._tag === "Concat"
       ) {
-        return Array.appendAll(
+        return Arr.appendAll(
           render(self.left, config),
           render(self.right, config)
         )
       }
-      return Array.flatMap(
+      return Arr.flatMap(
         render(self.left, config),
         (left) =>
-          Array.map(
+          Arr.map(
             render(self.right, config),
             (right) => InternalSpan.spans([left, InternalSpan.text("|"), right])
           )
@@ -223,13 +223,13 @@ const render = (self: Usage.Usage, config: CliConfig.CliConfig): Array<Span.Span
     case "Concat": {
       const leftSpan = render(self.left, config)
       const rightSpan = render(self.right, config)
-      const separator = Array.isNonEmptyReadonlyArray(leftSpan) &&
-          Array.isNonEmptyReadonlyArray(rightSpan)
+      const separator = Arr.isNonEmptyReadonlyArray(leftSpan) &&
+          Arr.isNonEmptyReadonlyArray(rightSpan)
         ? InternalSpan.space
         : InternalSpan.empty
-      return Array.flatMap(
+      return Arr.flatMap(
         leftSpan,
-        (left) => Array.map(rightSpan, (right) => InternalSpan.spans([left, separator, right]))
+        (left) => Arr.map(rightSpan, (right) => InternalSpan.spans([left, separator, right]))
       )
     }
   }

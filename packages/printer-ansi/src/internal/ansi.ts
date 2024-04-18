@@ -1,6 +1,6 @@
 import * as Monoid from "@effect/typeclass/Monoid"
 import * as Semigroup from "@effect/typeclass/Semigroup"
-import * as Array from "effect/Array"
+import * as Arr from "effect/Array"
 import { dual } from "effect/Function"
 import * as Option from "effect/Option"
 import type * as Ansi from "../Ansi.js"
@@ -222,16 +222,16 @@ export const bgWhiteBright: Ansi.Ansi = bgColorBright(InternalColor.white)
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const beep: Ansi.Ansi = make({ commands: Array.of(BEL) })
+export const beep: Ansi.Ansi = make({ commands: Arr.of(BEL) })
 
 /** @internal */
 export const cursorTo = (column: number, row?: number): Ansi.Ansi => {
   if (row === undefined) {
     const command = `${ESC}${Math.max(column + 1, 0)}G`
-    return make({ commands: Array.of(command) })
+    return make({ commands: Arr.of(command) })
   }
   const command = `${ESC}${row + 1}${SEP}${Math.max(column + 1, 0)}H`
-  return make({ commands: Array.of(command) })
+  return make({ commands: Arr.of(command) })
 }
 
 /** @internal */
@@ -249,53 +249,53 @@ export const cursorMove = (column: number, row: number = 0): Ansi.Ansi => {
   if (column < 0) {
     command += `${ESC}${-column}D`
   }
-  return make({ commands: Array.of(command) })
+  return make({ commands: Arr.of(command) })
 }
 
 /** @internal */
 export const cursorUp = (lines: number = 1): Ansi.Ansi => {
   const command = `${ESC}${lines}A`
-  return make({ commands: Array.of(command) })
+  return make({ commands: Arr.of(command) })
 }
 
 /** @internal */
 export const cursorDown = (lines: number = 1): Ansi.Ansi => {
   const command = `${ESC}${lines}B`
-  return make({ commands: Array.of(command) })
+  return make({ commands: Arr.of(command) })
 }
 
 /** @internal */
 export const cursorForward = (columns: number = 1): Ansi.Ansi => {
   const command = `${ESC}${columns}C`
-  return make({ commands: Array.of(command) })
+  return make({ commands: Arr.of(command) })
 }
 
 /** @internal */
 export const cursorBackward = (columns: number = 1): Ansi.Ansi => {
   const command = `${ESC}${columns}D`
-  return make({ commands: Array.of(command) })
+  return make({ commands: Arr.of(command) })
 }
 
 /** @internal */
-export const cursorLeft: Ansi.Ansi = make({ commands: Array.of(`${ESC}G`) })
+export const cursorLeft: Ansi.Ansi = make({ commands: Arr.of(`${ESC}G`) })
 
 /** @internal */
-export const cursorSavePosition: Ansi.Ansi = make({ commands: Array.of(`${ESC}s`) })
+export const cursorSavePosition: Ansi.Ansi = make({ commands: Arr.of(`${ESC}s`) })
 
 /** @internal */
-export const cursorRestorePosition: Ansi.Ansi = make({ commands: Array.of(`${ESC}u`) })
+export const cursorRestorePosition: Ansi.Ansi = make({ commands: Arr.of(`${ESC}u`) })
 
 /** @internal */
-export const cursorNextLine = (rows: number = 1): Ansi.Ansi => make({ commands: Array.of(`${ESC}${rows}E`) })
+export const cursorNextLine = (rows: number = 1): Ansi.Ansi => make({ commands: Arr.of(`${ESC}${rows}E`) })
 
 /** @internal */
-export const cursorPrevLine = (rows: number = 1): Ansi.Ansi => make({ commands: Array.of(`${ESC}${rows}F`) })
+export const cursorPrevLine = (rows: number = 1): Ansi.Ansi => make({ commands: Arr.of(`${ESC}${rows}F`) })
 
 /** @internal */
-export const cursorHide: Ansi.Ansi = make({ commands: Array.of(`${ESC}?25l`) })
+export const cursorHide: Ansi.Ansi = make({ commands: Arr.of(`${ESC}?25l`) })
 
 /** @internal */
-export const cursorShow: Ansi.Ansi = make({ commands: Array.of(`${ESC}?25h`) })
+export const cursorShow: Ansi.Ansi = make({ commands: Arr.of(`${ESC}?25h`) })
 
 /** @internal */
 export const eraseLines = (rows: number): Ansi.Ansi => {
@@ -306,26 +306,26 @@ export const eraseLines = (rows: number): Ansi.Ansi => {
   if (rows > 0) {
     command += `${ESC}G`
   }
-  return make({ commands: Array.of(command) })
+  return make({ commands: Arr.of(command) })
 }
 
 /** @internal */
-export const eraseEndLine: Ansi.Ansi = make({ commands: Array.of(`${ESC}K`) })
+export const eraseEndLine: Ansi.Ansi = make({ commands: Arr.of(`${ESC}K`) })
 
 /** @internal */
-export const eraseStartLine: Ansi.Ansi = make({ commands: Array.of(`${ESC}1K`) })
+export const eraseStartLine: Ansi.Ansi = make({ commands: Arr.of(`${ESC}1K`) })
 
 /** @internal */
-export const eraseLine: Ansi.Ansi = make({ commands: Array.of(`${ESC}2K`) })
+export const eraseLine: Ansi.Ansi = make({ commands: Arr.of(`${ESC}2K`) })
 
 /** @internal */
-export const eraseDown: Ansi.Ansi = make({ commands: Array.of(`${ESC}J`) })
+export const eraseDown: Ansi.Ansi = make({ commands: Arr.of(`${ESC}J`) })
 
 /** @internal */
-export const eraseUp: Ansi.Ansi = make({ commands: Array.of(`${ESC}1J`) })
+export const eraseUp: Ansi.Ansi = make({ commands: Arr.of(`${ESC}1J`) })
 
 /** @internal */
-export const eraseScreen: Ansi.Ansi = make({ commands: Array.of(`${ESC}2J`) })
+export const eraseScreen: Ansi.Ansi = make({ commands: Arr.of(`${ESC}2J`) })
 
 // -----------------------------------------------------------------------------
 // Destructors
@@ -352,7 +352,7 @@ const combineInternal = (self: AnsiImpl, that: AnsiImpl): Ansi.Ansi => AnsiSemig
 
 const stringifyInternal = (self: AnsiImpl): string => {
   const displaySequence = SGR.toEscapeSequence(
-    Array.getSomes([
+    Arr.getSomes([
       Option.some(SGR.reset),
       self.foreground,
       self.background,
@@ -362,6 +362,6 @@ const stringifyInternal = (self: AnsiImpl): string => {
       self.underlined
     ])
   )
-  const commandSequence = Array.join(self.commands, "")
+  const commandSequence = Arr.join(self.commands, "")
   return `${displaySequence}${commandSequence}`
 }

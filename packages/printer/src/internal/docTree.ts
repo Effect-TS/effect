@@ -2,7 +2,7 @@ import * as covariant from "@effect/typeclass/Covariant"
 import type * as invariant from "@effect/typeclass/Invariant"
 import type * as monoid from "@effect/typeclass/Monoid"
 import type * as semigroup from "@effect/typeclass/Semigroup"
-import * as Array from "effect/Array"
+import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import { dual, pipe } from "effect/Function"
@@ -202,8 +202,8 @@ const alterAnnotationsSafe = <A, B>(
       return Effect.succeed(line(self.indentation))
     }
     case "AnnotationTree": {
-      return Array.reduce(
-        Array.fromIterable(f(self.annotation)),
+      return Arr.reduce(
+        Arr.fromIterable(f(self.annotation)),
         Effect.suspend(() => alterAnnotationsSafe(self.tree, f)),
         (acc, b) => Effect.map(acc, annotation(b))
       )
@@ -255,7 +255,7 @@ const foldMapSafe = <A, M>(
       )
     }
     case "ConcatTree": {
-      if (Array.isEmptyReadonlyArray(self.trees)) {
+      if (Arr.isEmptyReadonlyArray(self.trees)) {
         return Effect.succeed(M.empty)
       }
       return Effect.map(
@@ -263,7 +263,7 @@ const foldMapSafe = <A, M>(
         (trees) => {
           const head = trees[0]
           const tail = trees.slice(1)
-          return Array.reduce(tail, head, M.combine)
+          return Arr.reduce(tail, head, M.combine)
         }
       )
     }
@@ -321,12 +321,12 @@ const renderSimplyDecoratedSafe = <A, M>(
       )
     }
     case "ConcatTree": {
-      if (Array.isEmptyReadonlyArray(self.trees)) {
+      if (Arr.isEmptyReadonlyArray(self.trees)) {
         return Effect.succeed(M.empty)
       }
       const head = self.trees[0]
       const tail = self.trees.slice(1)
-      return Array.reduce(
+      return Arr.reduce(
         tail,
         Effect.suspend(() => renderSimplyDecoratedSafe(head, M, renderText, renderAnnotation)),
         (acc, tree) =>
@@ -499,8 +499,8 @@ const imap = covariant.imap<DocTree.DocTree.TypeLambda>(map)
 /** @internal */
 export const getSemigroup = <A>(_: void): semigroup.Semigroup<DocTree.DocTree<A>> => {
   return {
-    combine: (self, that) => concat(Array.make(self, that)),
-    combineMany: (self, trees) => concat(Array.fromIterable([self, ...trees]))
+    combine: (self, that) => concat(Arr.make(self, that)),
+    combineMany: (self, trees) => concat(Arr.fromIterable([self, ...trees]))
   }
 }
 
@@ -508,9 +508,9 @@ export const getSemigroup = <A>(_: void): semigroup.Semigroup<DocTree.DocTree<A>
 export const getMonoid = <A>(_: void): monoid.Monoid<DocTree.DocTree<A>> => {
   return {
     empty,
-    combine: (self, that) => concat(Array.make(self, that)),
-    combineMany: (self, trees) => concat(Array.fromIterable([self, ...trees])),
-    combineAll: (trees) => concat(Array.fromIterable(trees))
+    combine: (self, that) => concat(Arr.make(self, that)),
+    combineMany: (self, trees) => concat(Arr.fromIterable([self, ...trees])),
+    combineAll: (trees) => concat(Arr.fromIterable(trees))
   }
 }
 

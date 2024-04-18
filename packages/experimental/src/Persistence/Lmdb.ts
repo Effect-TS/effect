@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as Array from "effect/Array"
+import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -31,7 +31,7 @@ export const make = (options: Lmdb.RootDatabaseOptionsWithPath) =>
             (store) => Effect.promise(() => store.close())
           ))
           const valueToOption = (key: string, _: any) => {
-            if (!Array.isArray(_)) return Option.none()
+            if (!Arr.isArray(_)) return Option.none()
             const [value, expires] = _ as [unknown, number | null]
             if (expires !== null && expires <= clock.unsafeCurrentTimeMillis()) {
               store.remove(key)
@@ -51,7 +51,7 @@ export const make = (options: Lmdb.RootDatabaseOptionsWithPath) =>
                   try: () => store.getMany(keys),
                   catch: (error) => Persistence.PersistenceBackingError.make("getMany", error)
                 }),
-                Array.map((value, i) => valueToOption(keys[i], value))
+                Arr.map((value, i) => valueToOption(keys[i], value))
               ),
             set: (key, value, ttl) =>
               Effect.tryPromise({

@@ -1,4 +1,4 @@
-import * as Array from "../../Array.js"
+import * as Arr from "../../Array.js"
 import * as Chunk from "../../Chunk.js"
 import * as Equal from "../../Equal.js"
 import { pipe } from "../../Function.js"
@@ -44,8 +44,8 @@ export const isMetricBoundaries = (u: unknown): u is MetricBoundaries.MetricBoun
 export const fromIterable = (iterable: Iterable<number>): MetricBoundaries.MetricBoundaries => {
   const values = pipe(
     iterable,
-    Array.appendAll(Chunk.of(Number.POSITIVE_INFINITY)),
-    Array.dedupe
+    Arr.appendAll(Chunk.of(Number.POSITIVE_INFINITY)),
+    Arr.dedupe
   )
   return new MetricBoundariesImpl(values)
 }
@@ -57,7 +57,7 @@ export const linear = (options: {
   readonly count: number
 }): MetricBoundaries.MetricBoundaries =>
   pipe(
-    Array.makeBy(options.count - 1, (i) => options.start + i * options.width),
+    Arr.makeBy(options.count - 1, (i) => options.start + i * options.width),
     Chunk.unsafeFromArray,
     fromIterable
   )
@@ -69,7 +69,7 @@ export const exponential = (options: {
   readonly count: number
 }): MetricBoundaries.MetricBoundaries =>
   pipe(
-    Array.makeBy(options.count - 1, (i) => options.start * Math.pow(options.factor, i)),
+    Arr.makeBy(options.count - 1, (i) => options.start * Math.pow(options.factor, i)),
     Chunk.unsafeFromArray,
     fromIterable
   )

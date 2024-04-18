@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import * as Array from "effect/Array"
+import * as Arr from "effect/Array"
 import { TaggedError } from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -81,7 +81,7 @@ export class TupleType {
   constructor(
     readonly ast: AST.TupleType,
     readonly actual: unknown,
-    readonly errors: Array.NonEmptyReadonlyArray<Index>,
+    readonly errors: Arr.NonEmptyReadonlyArray<Index>,
     readonly output: ReadonlyArray<unknown> = []
   ) {}
 }
@@ -114,7 +114,7 @@ export class TypeLiteral {
   constructor(
     readonly ast: AST.TypeLiteral,
     readonly actual: unknown,
-    readonly errors: Array.NonEmptyReadonlyArray<Key>,
+    readonly errors: Arr.NonEmptyReadonlyArray<Key>,
     readonly output: { readonly [x: string]: unknown } = {}
   ) {}
 }
@@ -254,7 +254,7 @@ export class Union {
   constructor(
     readonly ast: AST.Union,
     readonly actual: unknown,
-    readonly errors: Array.NonEmptyReadonlyArray<Type | TypeLiteral | Member>
+    readonly errors: Arr.NonEmptyReadonlyArray<Type | TypeLiteral | Member>
   ) {}
 }
 
@@ -925,7 +925,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
       const concurrency = getConcurrency(ast)
       const batching = getBatching(ast)
       return (input: unknown, options) => {
-        if (!Array.isArray(input)) {
+        if (!Arr.isArray(input)) {
           return Either.left(new Type(ast, input))
         }
         const allErrors = options?.errors === "all"
@@ -1023,7 +1023,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         // handle rest element
         // ---------------------------------------------
-        if (Array.isNonEmptyReadonlyArray(rest)) {
+        if (Arr.isNonEmptyReadonlyArray(rest)) {
           const [head, ...tail] = rest
           for (; i < len - tail.length; i++) {
             const te = head(input[i], options)
@@ -1119,15 +1119,15 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // compute result
         // ---------------------------------------------
         const computeResult = ({ es, output }: State) =>
-          Array.isNonEmptyArray(es) ?
+          Arr.isNonEmptyArray(es) ?
             Either.left(new TupleType(ast, input, sortByIndex(es), sortByIndex(output))) :
             Either.right(sortByIndex(output))
         if (queue && queue.length > 0) {
           const cqueue = queue
           return Effect.suspend(() => {
             const state: State = {
-              es: Array.copy(es),
-              output: Array.copy(output)
+              es: Arr.copy(es),
+              output: Arr.copy(output)
             }
             return Effect.flatMap(
               Effect.forEach(cqueue, (f) => f(state), { concurrency, batching, discard: true }),
@@ -1339,14 +1339,14 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // compute result
         // ---------------------------------------------
         const computeResult = ({ es, output }: State) =>
-          Array.isNonEmptyArray(es) ?
+          Arr.isNonEmptyArray(es) ?
             Either.left(new TypeLiteral(ast, input, sortByIndex(es), output)) :
             Either.right(output)
         if (queue && queue.length > 0) {
           const cqueue = queue
           return Effect.suspend(() => {
             const state: State = {
-              es: Array.copy(es),
+              es: Arr.copy(es),
               output: Object.assign({}, output)
             }
             return Effect.flatMap(
@@ -1471,7 +1471,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // compute result
         // ---------------------------------------------
         const computeResult = (es: State["es"]) =>
-          Array.isNonEmptyArray(es) ?
+          Arr.isNonEmptyArray(es) ?
             es.length === 1 && es[0][1]._tag === "Type" ?
               Either.left(es[0][1]) :
               Either.left(new Union(ast, input, sortByIndex(es))) :
@@ -1481,7 +1481,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         if (queue && queue.length > 0) {
           const cqueue = queue
           return Effect.suspend(() => {
-            const state: State = { es: Array.copy(es) }
+            const state: State = { es: Arr.copy(es) }
             return Effect.flatMap(
               Effect.forEach(cqueue, (f) => f(state), { concurrency, batching, discard: true }),
               () => {
@@ -1630,8 +1630,8 @@ const handleForbidden = <R, A>(
 }
 
 function sortByIndex<T>(
-  es: Array.NonEmptyArray<[number, T]>
-): Array.NonEmptyArray<T>
+  es: Arr.NonEmptyArray<[number, T]>
+): Arr.NonEmptyArray<T>
 function sortByIndex<T>(es: Array<[number, T]>): Array<T>
 function sortByIndex(es: Array<[number, any]>): any {
   return es.sort(([a], [b]) => a > b ? 1 : a < b ? -1 : 0).map(([_, a]) => a)

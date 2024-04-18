@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as Array from "effect/Array"
+import * as Arr from "effect/Array"
 import * as Cause from "effect/Cause"
 import type * as Config from "effect/Config"
 import * as ConfigError from "effect/ConfigError"
@@ -31,7 +31,7 @@ export const fromFileTree = (options?: {
       const rootDirectory = options?.rootDirectory ?? "/"
 
       const parseConfig = <A>(primitive: Config.Config.Primitive<A>) => (value: string) =>
-        Either.map(primitive.parse(value.trim()), Array.of)
+        Either.map(primitive.parse(value.trim()), Arr.of)
 
       const readConfig = <A>(filePath: string, primitive: Config.Config.Primitive<A>) =>
         Effect.flatMap(

@@ -1,5 +1,5 @@
 import * as Doc from "@effect/printer-ansi/AnsiDoc"
-import * as Array from "effect/Array"
+import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 
@@ -62,7 +62,7 @@ export const lines = (prompt: string, columns: number): number => {
   return columns === 0
     ? lines.length
     : pipe(
-      Array.map(lines, (line) => Math.ceil(line.length / columns)),
-      Array.reduce(0, (left, right) => left + right)
+      Arr.map(lines, (line) => Math.ceil(line.length / columns)),
+      Arr.reduce(0, (left, right) => left + right)
     )
 }
