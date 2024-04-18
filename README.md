@@ -7,7 +7,7 @@ Welcome to Effect, a powerful TypeScript framework that provides a fully-fledged
 - TypeScript 5.4 or newer
 - The `strict` flag enabled in your `tsconfig.json` file
 
-```
+```jsonc
 {
   // ...
   "compilerOptions": {
