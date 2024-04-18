@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema > suspend", () => {
+describe("suspend", () => {
   describe("decoding", () => {
     it("baseline", async () => {
       interface A {

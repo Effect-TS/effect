@@ -6,7 +6,7 @@ import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import * as Option from "effect/Option"
 import { describe, expect, it } from "vitest"
 
-describe("Schema > filter", () => {
+describe("filter", () => {
   it("annotation options", () => {
     const schema = S.String.pipe(
       S.filter((s): s is string => s.length === 1, {

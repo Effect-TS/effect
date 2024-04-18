@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import * as Option from "effect/Option"
 import { describe, it } from "vitest"
 
-describe("Schema > optionalToRequired", () => {
+describe("optionalToRequired", () => {
   it("two transformation schemas", async () => {
     const ps = S.optionalToRequired(
       S.NumberFromString,

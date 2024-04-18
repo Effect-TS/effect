@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema > encodeOption", () => {
+describe("encodeOption", () => {
   it("should return none on async", () => {
     Util.expectNone(S.encodeOption(Util.AsyncString)("a"))
   })

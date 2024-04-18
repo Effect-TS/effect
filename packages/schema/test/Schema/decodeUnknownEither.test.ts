@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema > decodeUnknownEither", () => {
+describe("decodeUnknownEither", () => {
   it("should return Left on async", () => {
     Util.expectEitherLeft(
       S.decodeUnknownEither(Util.AsyncString)("a"),

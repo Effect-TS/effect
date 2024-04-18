@@ -14,7 +14,7 @@ const expectValidateFailure = async <A, I>(
   message: string
 ) => Util.expectFailure(S.validate(schema)(input), message)
 
-describe("Schema > validate", () => {
+describe("validate", () => {
   const schema = S.Struct({ a: Util.NumberFromChar })
 
   it("should return Left on invalid values", async () => {

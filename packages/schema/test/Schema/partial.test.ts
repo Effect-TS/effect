@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { identity } from "effect/Function"
 import { describe, expect, it } from "vitest"
 
-describe("Schema > partial", () => {
+describe("partial", () => {
   describe("{ exact: false }", () => {
     it("struct", async () => {
       const schema = S.partial(S.Struct({ a: S.Number }))

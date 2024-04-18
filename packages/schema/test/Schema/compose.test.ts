@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema > compose", async () => {
+describe("compose", async () => {
   it("B = C", async () => {
     const schema1 = S.compose(S.split(","), S.Array(S.NumberFromString))
     await Util.expectDecodeUnknownSuccess(schema1, "1,2,3", [1, 2, 3])

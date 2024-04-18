@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema > `onExcessProperty` option", () => {
+describe("`onExcessProperty` option", () => {
   describe("`ignore` option", () => {
     it("should not change tuple behaviour", async () => {
       const schema = S.Tuple(S.Number)

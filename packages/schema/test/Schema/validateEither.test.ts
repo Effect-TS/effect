@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema > validateEither", () => {
+describe("validateEither", () => {
   const schema = S.Struct({ a: Util.NumberFromChar })
 
   it("should return Left on invalid values", () => {

@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("Schema > decodeSync", () => {
+describe("decodeSync", () => {
   const schema = S.Struct({ a: Util.NumberFromChar })
 
   it("should throw on invalid values", () => {

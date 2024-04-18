@@ -3,7 +3,7 @@ import * as S from "@effect/schema/Schema"
 import { identity } from "effect"
 import { describe, expect, it } from "vitest"
 
-describe("Schema > mutable", () => {
+describe("mutable", () => {
   it("string", () => {
     expect(S.mutable(S.String).ast).toEqual(S.String.ast)
   })

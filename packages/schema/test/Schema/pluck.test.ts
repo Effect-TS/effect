@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema > pluck", () => {
+describe("pluck", () => {
   describe("decoding", () => {
     it("struct (string keys)", async () => {
       const origin = S.Struct({ a: S.String, b: S.NumberFromString })

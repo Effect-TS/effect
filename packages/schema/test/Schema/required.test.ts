@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import { identity } from "effect/Function"
 import { describe, expect, it } from "vitest"
 
-describe("Schema > required", () => {
+describe("required", () => {
   it("string", () => {
     expect(S.required(S.String).ast).toEqual(S.String.ast)
   })

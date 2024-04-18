@@ -1,7 +1,7 @@
 import * as S from "@effect/schema/Schema"
 import { describe, expect, it } from "vitest"
 
-describe("Schema/pipe", () => {
+describe("pipe", () => {
   it("schemas should be pipeable", () => {
     const int = <A extends number, I>(self: S.Schema<A, I>) => self.pipe(S.int(), S.brand("Int"))
 

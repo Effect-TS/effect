@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema > transformLiteral", () => {
+describe("transformLiteral", () => {
   describe("Struct", () => {
     it("simple", async () => {
       const schema = S.transformLiteral(0, "a")
@@ -13,7 +13,7 @@ describe("Schema > transformLiteral", () => {
   })
 })
 
-describe("Schema > transformLiterals", () => {
+describe("transformLiterals", () => {
   describe("Struct", () => {
     it("simple", async () => {
       const schema = S.transformLiterals(

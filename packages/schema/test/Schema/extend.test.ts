@@ -3,7 +3,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("Schema > extend", () => {
+describe("extend", () => {
   describe("decoding", () => {
     it(`struct extend struct (dual)`, async () => {
       const schema = S.extend(S.Struct({ a: S.String }), S.Struct({ b: S.Number }))

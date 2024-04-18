@@ -3,7 +3,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("Schema > is", () => {
+describe("is", () => {
   it("never", () => {
     const is = P.is(S.Never)
     expect(is(1)).toEqual(false)

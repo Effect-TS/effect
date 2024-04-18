@@ -10,7 +10,7 @@ const expectAssertsFailure = <A, I>(schema: S.Schema<A, I>, input: unknown, mess
   expect(() => S.asserts(schema)(input)).toThrow(new Error(message))
 }
 
-describe("Schema > asserts", () => {
+describe("asserts", () => {
   it("should respect outer/inner options", () => {
     const schema = S.Struct({ a: Util.NumberFromChar })
     const input = { a: 1, b: "b" }

@@ -3,7 +3,7 @@ import * as Util from "@effect/schema/test/util"
 import * as Exit from "effect/Exit"
 import { describe, it } from "vitest"
 
-describe("Schema > parseJson", () => {
+describe("parseJson", () => {
   describe("parseJson()", () => {
     it("decoding", async () => {
       const schema = S.parseJson()
