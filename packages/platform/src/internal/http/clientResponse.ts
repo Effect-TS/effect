@@ -213,6 +213,10 @@ export const formData = <E, R>(effect: Effect.Effect<ClientResponse.ClientRespon
   Effect.scoped(Effect.flatMap(effect, (_) => _.formData))
 
 /** @internal */
+export const void_ = <E, R>(effect: Effect.Effect<ClientResponse.ClientResponse, E, R>) =>
+  Effect.scoped(Effect.asVoid(effect))
+
+/** @internal */
 export const stream = <E, R>(effect: Effect.Effect<ClientResponse.ClientResponse, E, R>) =>
   Stream.unwrapScoped(Effect.map(effect, (_) => _.stream))
 
