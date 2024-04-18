@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.49.3
+
+### Patch Changes
+
+- [#2558](https://github.com/Effect-TS/effect/pull/2558) [`8d39d65`](https://github.com/Effect-TS/effect/commit/8d39d6554af548228ad767112ce2e0b1f68fa8e1) Thanks [@tim-smart](https://github.com/tim-smart)! - add no-op FileSystem constructor for testing
+
 ## 0.49.2
 
 ### Patch Changes
