@@ -1,5 +1,14 @@
 # @effect/sql-sqlite-bun
 
+## 0.1.1
+
+### Patch Changes
+
+- Updated dependencies [[`3da0cfa`](https://github.com/Effect-TS/effect/commit/3da0cfa12c407fd930dc480be1ecc9217a8058f8), [`570e8d8`](https://github.com/Effect-TS/effect/commit/570e8d87e7c0e9ad4cd2686462fdb9b4812f7716), [`87c5687`](https://github.com/Effect-TS/effect/commit/87c5687de0782dab177b7861217fa3b040046282), [`f838c15`](https://github.com/Effect-TS/effect/commit/f838c15ca83938a5ee9bfec49deb025564a570ff), [`8edacca`](https://github.com/Effect-TS/effect/commit/8edacca37f8e37c01a63fec332b06d9361efaa7b)]:
+  - effect@3.0.1
+  - @effect/platform@0.49.1
+  - @effect/sql@0.1.1
+
 ## 0.1.0
 
 ### Minor Changes
