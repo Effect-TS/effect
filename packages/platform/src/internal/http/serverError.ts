@@ -26,3 +26,12 @@ export const isClientAbortCause = <E>(cause: Cause.Cause<E>): boolean =>
     false,
     (_, cause) => cause._tag === "Interrupt" && cause.fiberId === clientAbortFiberId ? Option.some(true) : Option.none()
   )
+
+/** @internal */
+
+export const causeStatusCode = <E>(cause: Cause.Cause<E>): number =>
+  Cause.isInterruptedOnly(cause) ?
+    isClientAbortCause(cause) ?
+      499 :
+      503 :
+    500

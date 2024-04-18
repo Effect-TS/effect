@@ -10,6 +10,7 @@ import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
+import * as Tracer from "effect/Tracer"
 import * as FindMyWay from "find-my-way-ts"
 import type * as App from "../../Http/App.js"
 import type * as Method from "../../Http/Method.js"
@@ -242,6 +243,12 @@ const toHttpApp = <R, E>(
       context = Context.add(context, ServerRequest.ServerRequest, sliceRequestUrl(request, route.prefix.value))
     }
     context = Context.add(context, RouteContext, new RouteContextImpl(route, result.params, result.searchParams))
+
+    const span = Context.getOption(context, Tracer.ParentSpan)
+    if (span._tag === "Some" && span.value._tag === "Span") {
+      span.value.attribute("http.route", route.path)
+    }
+
     return Effect.locally(
       (route.uninterruptible ?
         route.handler :

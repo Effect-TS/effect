@@ -95,3 +95,8 @@ export const clientAbortFiberId: FiberId.FiberId = internal.clientAbortFiberId
  * @since 1.0.0
  */
 export const isClientAbortCause: <E>(cause: Cause.Cause<E>) => boolean = internal.isClientAbortCause
+
+/**
+ * @since 1.0.0
+ */
+export const causeStatusCode: <E>(cause: Cause.Cause<E>) => number = internal.causeStatusCode

@@ -37,54 +37,42 @@ export const withXHRArrayBuffer = <A, E, R>(effect: Effect.Effect<A, E, R>): Eff
   )
 
 /** @internal */
-export const makeXMLHttpRequest = Client.makeDefault((request, fiber) =>
-  UrlParams.makeUrl(request.url, request.urlParams, (_) =>
-    new Error.RequestError({
-      request,
-      reason: "InvalidUrl",
-      error: _
-    })).pipe(
-      Effect.bindTo("url"),
-      Effect.bind("xhr", () =>
-        Effect.acquireRelease(
-          Effect.sync(fiber.getFiberRef(currentXMLHttpRequest)),
-          (xhr) =>
-            Effect.sync(() => {
-              xhr.abort()
-              xhr.onreadystatechange = null
+export const makeXMLHttpRequest = Client.makeDefault((request, url, signal, fiber) =>
+  Effect.suspend(() => {
+    const xhr = fiber.getFiberRef(currentXMLHttpRequest)()
+    signal.addEventListener("abort", () => {
+      xhr.abort()
+      xhr.onreadystatechange = null
+    })
+    xhr.open(request.method, url.toString(), true)
+    xhr.responseType = fiber.getFiberRef(currentXHRResponseType)
+    Object.entries(request.headers).forEach(([k, v]) => {
+      xhr.setRequestHeader(k, v)
+    })
+    return Effect.zipRight(
+      sendBody(xhr, request),
+      Effect.async<ClientResponseImpl, Error.RequestError>((resume) => {
+        let sent = false
+        const onChange = () => {
+          if (!sent && xhr.readyState >= 2) {
+            sent = true
+            resume(Effect.succeed(new ClientResponseImpl(request, xhr)))
+          }
+        }
+        xhr.onreadystatechange = onChange
+        xhr.onerror = (_event) => {
+          resume(Effect.fail(
+            new Error.RequestError({
+              request,
+              reason: "Transport",
+              error: xhr.statusText
             })
-        )),
-      Effect.flatMap(({ url, xhr }) => {
-        xhr.open(request.method, url.toString(), true)
-        xhr.responseType = fiber.getFiberRef(currentXHRResponseType)
-        Object.entries(request.headers).forEach(([k, v]) => {
-          xhr.setRequestHeader(k, v)
-        })
-        return Effect.zipRight(
-          sendBody(xhr, request),
-          Effect.async<ClientResponseImpl, Error.RequestError>((resume) => {
-            let sent = false
-            const onChange = () => {
-              if (!sent && xhr.readyState >= 2) {
-                sent = true
-                resume(Effect.succeed(new ClientResponseImpl(request, xhr)))
-              }
-            }
-            xhr.onreadystatechange = onChange
-            xhr.onerror = (_event) => {
-              resume(Effect.fail(
-                new Error.RequestError({
-                  request,
-                  reason: "Transport",
-                  error: xhr.statusText
-                })
-              ))
-            }
-            onChange()
-          })
-        )
+          ))
+        }
+        onChange()
       })
     )
+  })
 )
 
 const sendBody = (

@@ -44,7 +44,6 @@ export const toHandled = <E, R, _, RH>(
   ) => Effect.Effect<_, never, RH>,
   middleware?: Middleware | undefined
 ): Default<E | ServerError.ResponseError, Exclude<R | RH, Scope.Scope>> => {
-  const withTracer = internalMiddleware.tracer(self)
   const responded = Effect.withFiberRuntime<
     ServerResponse.ServerResponse,
     E | ServerError.ResponseError,
@@ -53,8 +52,8 @@ export const toHandled = <E, R, _, RH>(
     const request = Context.unsafeGet(fiber.getFiberRef(FiberRef.currentContext), ServerRequest.ServerRequest)
     const handler = fiber.getFiberRef(currentPreResponseHandlers)
     const preHandled = handler._tag === "Some"
-      ? Effect.flatMap(withTracer, (response) => handler.value(request, response))
-      : withTracer
+      ? Effect.flatMap(self, (response) => handler.value(request, response))
+      : self
     return Effect.flatMap(
       Effect.exit(preHandled),
       (exit) => {
@@ -68,7 +67,8 @@ export const toHandled = <E, R, _, RH>(
       }
     )
   })
-  return Effect.uninterruptible(Effect.scoped(middleware === undefined ? responded : middleware(responded)))
+  const withTracer = internalMiddleware.tracer(responded)
+  return Effect.uninterruptible(Effect.scoped(middleware === undefined ? withTracer : middleware(withTracer)))
 }
 
 /**

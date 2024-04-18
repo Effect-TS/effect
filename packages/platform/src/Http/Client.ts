@@ -253,6 +253,8 @@ export const make: <A, E, R, R2, E2>(
 export const makeDefault: (
   f: (
     request: ClientRequest.ClientRequest,
+    url: URL,
+    signal: AbortSignal,
     fiber: RuntimeFiber<ClientResponse.ClientResponse, Error.HttpClientError>
   ) => Effect.Effect<ClientResponse.ClientResponse, Error.HttpClientError, Scope.Scope>
 ) => Client.Default = internal.makeDefault

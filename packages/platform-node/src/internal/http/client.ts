@@ -5,7 +5,6 @@ import type * as ClientRequest from "@effect/platform/Http/ClientRequest"
 import * as ClientResponse from "@effect/platform/Http/ClientResponse"
 import * as Cookies from "@effect/platform/Http/Cookies"
 import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
-import * as UrlParams from "@effect/platform/Http/UrlParams"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
@@ -55,44 +54,28 @@ export const makeAgentLayer = (options?: Https.AgentOptions): Layer.Layer<NodeCl
 /** @internal */
 export const agentLayer = makeAgentLayer()
 
-const makeAbortController = Effect.acquireRelease(
-  Effect.sync(() => new AbortController()),
-  (controller) => Effect.sync(() => controller.abort())
-)
-
 const fromAgent = (agent: NodeClient.HttpAgent): Client.Client.Default =>
-  Client.makeDefault((request) =>
-    Effect.flatMap(
-      UrlParams.makeUrl(request.url, request.urlParams, (_) =>
-        new Error.RequestError({
-          request,
-          reason: "InvalidUrl",
-          error: _
-        })),
-      (url) =>
-        Effect.flatMap(makeAbortController, (controller) => {
-          const nodeRequest = url.protocol === "https:" ?
-            Https.request(url, {
-              agent: agent.https,
-              method: request.method,
-              headers: request.headers,
-              signal: controller.signal
-            }) :
-            Http.request(url, {
-              agent: agent.http,
-              method: request.method,
-              headers: request.headers,
-              signal: controller.signal
-            })
-          return pipe(
-            Effect.zipRight(sendBody(nodeRequest, request, request.body), waitForResponse(nodeRequest, request), {
-              concurrent: true
-            }),
-            Effect.map((_) => new ClientResponseImpl(request, _))
-          )
-        })
+  Client.makeDefault((request, url, signal) => {
+    const nodeRequest = url.protocol === "https:" ?
+      Https.request(url, {
+        agent: agent.https,
+        method: request.method,
+        headers: request.headers,
+        signal
+      }) :
+      Http.request(url, {
+        agent: agent.http,
+        method: request.method,
+        headers: request.headers,
+        signal
+      })
+    return pipe(
+      Effect.zipRight(sendBody(nodeRequest, request, request.body), waitForResponse(nodeRequest, request), {
+        concurrent: true
+      }),
+      Effect.map((_) => new ClientResponseImpl(request, _))
     )
-  )
+  })
 
 const sendBody = (
   nodeRequest: Http.ClientRequest,
