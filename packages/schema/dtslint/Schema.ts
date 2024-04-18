@@ -49,7 +49,7 @@ S.Struct({ a: S.String }).pipe(S.annotations({}))
 // $ExpectType Schema<A, { readonly a: string; }, never>
 A.pipe(S.annotations({}))
 
-// $ExpectType number & Brand<"Int">
+// $ExpectType 1 & Brand<"Int">
 S.Number.pipe(S.int(), S.brand("Int"))(1)
 
 // ---------------------------------------------
