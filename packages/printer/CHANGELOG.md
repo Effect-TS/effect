@@ -1,5 +1,15 @@
 # @effect/printer
 
+## 0.33.2
+
+### Patch Changes
+
+- [#2562](https://github.com/Effect-TS/effect/pull/2562) [`2cecdbd`](https://github.com/Effect-TS/effect/commit/2cecdbd1cf30befce4e84796ccd953ea55ecfb86) Thanks [@fubhy](https://github.com/fubhy)! - Added provenance publishing
+
+- Updated dependencies [[`2cecdbd`](https://github.com/Effect-TS/effect/commit/2cecdbd1cf30befce4e84796ccd953ea55ecfb86)]:
+  - @effect/typeclass@0.24.2
+  - effect@3.0.2
+
 ## 0.33.1
 
 ### Patch Changes

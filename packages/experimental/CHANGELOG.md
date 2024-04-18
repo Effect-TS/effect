@@ -1,5 +1,17 @@
 # @effect/experimental
 
+## 0.15.4
+
+### Patch Changes
+
+- [#2562](https://github.com/Effect-TS/effect/pull/2562) [`2cecdbd`](https://github.com/Effect-TS/effect/commit/2cecdbd1cf30befce4e84796ccd953ea55ecfb86) Thanks [@fubhy](https://github.com/fubhy)! - Added provenance publishing
+
+- Updated dependencies [[`2cecdbd`](https://github.com/Effect-TS/effect/commit/2cecdbd1cf30befce4e84796ccd953ea55ecfb86)]:
+  - @effect/platform-node@0.46.4
+  - @effect/platform@0.49.4
+  - effect@3.0.2
+  - @effect/schema@0.66.2
+
 ## 0.15.3
 
 ### Patch Changes
