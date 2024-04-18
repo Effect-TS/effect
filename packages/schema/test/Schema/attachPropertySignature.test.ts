@@ -3,7 +3,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema/attachPropertySignature", () => {
+describe("attachPropertySignature", () => {
   it("string keys literal values", async () => {
     const Circle = S.Struct({ radius: S.Number })
     const Square = S.Struct({ sideLength: S.Number })

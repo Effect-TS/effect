@@ -21,7 +21,7 @@ const PositiveInt = Brand.all(Int, Positive)
 type Eur = number & Brand.Brand<"Eur">
 const Eur = Brand.nominal<Eur>()
 
-describe("Schema > fromBrand", () => {
+describe("fromBrand", () => {
   it("property tests", () => {
     Util.roundtrip(S.Number.pipe(S.fromBrand(Int))) // refined
     Util.roundtrip(S.Number.pipe(S.fromBrand(Eur))) // nominal

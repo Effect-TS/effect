@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema > validatePromise", () => {
+describe("validatePromise", () => {
   const schema = S.Struct({ a: Util.NumberFromChar })
 
   it("should return None on invalid values", async () => {

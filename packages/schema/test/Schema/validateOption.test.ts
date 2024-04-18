@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, it } from "vitest"
 
-describe("Schema > validateOption", () => {
+describe("validateOption", () => {
   it("should return none on async", () => {
     Util.expectNone(S.validateOption(Util.AsyncDeclaration)("a"))
   })

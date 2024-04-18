@@ -1,7 +1,7 @@
 import * as S from "@effect/schema/Schema"
 import { describe, expect, it } from "vitest"
 
-describe("Schema > toString", () => {
+describe("toString", () => {
   it("Schema", () => {
     expect(String(S.String)).toStrictEqual("string")
     expect(String(S.Union(S.String, S.Number))).toStrictEqual("string | number")

@@ -3,7 +3,7 @@ import * as P from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import { describe, expect, it } from "vitest"
 
-describe("Schema > keyof", () => {
+describe("keyof", () => {
   it("should unify string literals with string", () => {
     const schema = S.Struct({ a: S.String }, S.Record(S.String, S.String))
     const keyof = S.keyof(schema)

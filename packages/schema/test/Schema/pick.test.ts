@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("Schema > pick", () => {
+describe("pick", () => {
   it("struct", async () => {
     const a = Symbol.for("@effect/schema/test/a")
     const schema = S.Struct({ [a]: S.String, b: S.NumberFromString, c: S.Boolean }).pipe(

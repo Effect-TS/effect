@@ -1,7 +1,7 @@
 import * as S from "@effect/schema/Schema"
 import { describe, expect, it } from "vitest"
 
-describe("Schema/exports", () => {
+describe("exports", () => {
   it("exports", () => {
     expect(S.decodeUnknown).exist
     expect(S.decodeUnknownSync).exist

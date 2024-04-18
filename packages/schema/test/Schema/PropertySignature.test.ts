@@ -5,7 +5,7 @@ import { identity } from "effect/Function"
 import * as Option from "effect/Option"
 import { describe, expect, it } from "vitest"
 
-describe("Schema > PropertySignature", () => {
+describe("PropertySignature", () => {
   describe("annotations", () => {
     it("propertySignature(S.string)", () => {
       const schema = S.Struct({

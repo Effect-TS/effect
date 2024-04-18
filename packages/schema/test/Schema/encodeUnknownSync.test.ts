@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("Schema > encodeUnknownSync", () => {
+describe("encodeUnknownSync", () => {
   it("should throw on async", () => {
     expect(() => S.encodeUnknownSync(Util.AsyncString)("a")).toThrow(
       new Error(

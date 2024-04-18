@@ -2,7 +2,7 @@ import { format } from "@effect/schema/Schema"
 import * as S from "@effect/schema/Schema"
 import { describe, expect, it } from "vitest"
 
-describe("Schema > format", () => {
+describe("format", () => {
   it("refinement", () => {
     const schema = S.String.pipe(S.minLength(2))
     expect(format(schema)).toEqual("a string at least 2 character(s) long")

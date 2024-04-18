@@ -3,7 +3,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("Schema/literal > pickLiteral", () => {
+describe("literal > pickLiteral", () => {
   it("should return an unwrapped AST with exactly one literal", () => {
     expect(S.Literal("a").pipe(S.pickLiteral("a")).ast).toEqual(new AST.Literal("a"))
   })

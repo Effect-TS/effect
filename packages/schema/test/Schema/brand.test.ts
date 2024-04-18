@@ -11,7 +11,7 @@ import { assert, describe, expect, it } from "vitest"
 const isBrandConstructor = (u: unknown): u is Brand.Brand.Constructor<any> =>
   Predicate.hasProperty(u, Brand.RefinedConstructorsTypeId)
 
-describe("Schema > brand", () => {
+describe("brand", () => {
   describe("annotations", () => {
     it("using .annotations() twice", () => {
       const schema = S.Number.pipe(S.brand("A"))

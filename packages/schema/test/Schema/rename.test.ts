@@ -2,7 +2,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { describe, expect, it } from "vitest"
 
-describe("Schema > rename", () => {
+describe("rename", () => {
   describe("Struct", () => {
     it("from string key to string key", async () => {
       const schema = S.Struct({ a: S.String, b: S.Number })
