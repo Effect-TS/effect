@@ -11,13 +11,13 @@ describe("UrlParams", () => {
         // `globalThis.location` is undefined
         // @ts-expect-error
         globalThis.location = undefined
-        let url = yield* _(UrlParams.makeUrl("http://example.com", [], () => "error"))
+        let url = yield* _(UrlParams.makeUrl("http://example.com", []))
         assert.strictEqual(url.toString(), "http://example.com/")
 
         // `location` is not in globalThis
         // @ts-expect-error
         delete globalThis.location
-        url = yield* _(UrlParams.makeUrl("http://example.com", [], () => "error"))
+        url = yield* _(UrlParams.makeUrl("http://example.com", []))
         assert.strictEqual(url.toString(), "http://example.com/")
 
         globalThis.location = originalLocation

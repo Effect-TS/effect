@@ -5,7 +5,8 @@ import type { ParseOptions } from "@effect/schema/AST"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Arr from "effect/Array"
-import * as Effect from "effect/Effect"
+import type * as Effect from "effect/Effect"
+import * as Either from "effect/Either"
 import { dual } from "effect/Function"
 import * as Option from "effect/Option"
 
@@ -193,19 +194,20 @@ export const toString = (self: UrlParams): string => new URLSearchParams(self as
  * @since 1.0.0
  * @category constructors
  */
-export const makeUrl = <E>(url: string, params: UrlParams, onError: (e: unknown) => E): Effect.Effect<URL, E> =>
-  Effect.try({
-    try: () => {
-      const urlInstance = new URL(url, baseUrl())
-      Arr.forEach(params, ([key, value]) => {
-        if (value !== undefined) {
-          urlInstance.searchParams.append(key, value)
-        }
-      })
-      return urlInstance
-    },
-    catch: onError
-  })
+export const makeUrl = (url: string, params: UrlParams): Either.Either<URL, Error> => {
+  try {
+    const urlInstance = new URL(url, baseUrl())
+    for (let i = 0; i < params.length; i++) {
+      const [key, value] = params[i]
+      if (value !== undefined) {
+        urlInstance.searchParams.append(key, value)
+      }
+    }
+    return Either.right(urlInstance)
+  } catch (e) {
+    return Either.left(e as Error)
+  }
+}
 
 const baseUrl = (): string | undefined => {
   if ("location" in globalThis && globalThis.location !== undefined) {

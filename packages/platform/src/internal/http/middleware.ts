@@ -1,4 +1,3 @@
-import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
@@ -75,25 +74,24 @@ export const logger = make((httpApp) => {
     const context = fiber.getFiberRef(FiberRef.currentContext)
     const request = Context.unsafeGet(context, ServerRequest.ServerRequest)
     return Effect.withLogSpan(
-      Effect.onExit(httpApp, (exit) => {
+      Effect.flatMap(Effect.exit(httpApp), (exit) => {
         if (fiber.getFiberRef(loggerDisabled)) {
-          return Effect.void
+          return exit
         }
-        return exit._tag === "Failure" ?
-          Effect.annotateLogs(Effect.log(exit.cause), {
-            "http.method": request.method,
-            "http.url": request.url,
-            "http.status": Cause.isInterruptedOnly(exit.cause)
-              ? ServerError.isClientAbortCause(exit.cause)
-                ? 499
-                : 503
-              : 500
-          }) :
-          Effect.annotateLogs(Effect.log("Sent HTTP response"), {
-            "http.method": request.method,
-            "http.url": request.url,
-            "http.status": exit.value.status
-          })
+        return Effect.zipRight(
+          exit._tag === "Failure" ?
+            Effect.annotateLogs(Effect.log(exit.cause), {
+              "http.method": request.method,
+              "http.url": request.url,
+              "http.status": ServerError.causeStatusCode(exit.cause)
+            }) :
+            Effect.annotateLogs(Effect.log("Sent HTTP response"), {
+              "http.method": request.method,
+              "http.url": request.url,
+              "http.status": exit.value.status
+            }),
+          exit
+        )
       }),
       `http.span.${++counter}`
     )
@@ -109,16 +107,52 @@ export const tracer = make((httpApp) =>
     if (disabled) {
       return httpApp
     }
-    const appWithStatus = Effect.tap(
-      httpApp,
-      (response) => Effect.annotateCurrentSpan("http.status", response.status)
-    )
-    return Effect.withSpan(
-      appWithStatus,
+    const host = request.headers["host"] ?? "localhost"
+    const protocol = request.headers["x-forwarded-proto"] === "https" ? "https" : "http"
+    let url: URL | undefined = undefined
+    try {
+      url = new URL(request.url, `${protocol}://${host}`)
+    } catch (_) {
+      //
+    }
+    return Effect.useSpan(
       `http.server ${request.method}`,
-      {
-        attributes: { "http.method": request.method, "http.url": request.url },
-        parent: Option.getOrUndefined(TraceContext.fromHeaders(request.headers))
+      { parent: Option.getOrUndefined(TraceContext.fromHeaders(request.headers)) },
+      (span) => {
+        span.attribute("http.request.method", request.method)
+        if (url !== undefined) {
+          span.attribute("url.full", url.toString())
+          span.attribute("url.path", url.pathname)
+          const query = url.search.slice(1)
+          if (query !== "") {
+            span.attribute("url.query", url.search.slice(1))
+          }
+          span.attribute("url.scheme", url.protocol.slice(0, -1))
+        }
+        if (request.headers["user-agent"] !== undefined) {
+          span.attribute("user_agent.original", request.headers["user-agent"])
+        }
+        Object.entries(request.headers).forEach(([key, value]) => {
+          span.attribute(`http.request.header.${key}`, value)
+        })
+        if (request.remoteAddress._tag === "Some") {
+          span.attribute("client.address", request.remoteAddress.value)
+        }
+        return Effect.flatMap(
+          Effect.exit(Effect.withParentSpan(httpApp, span)),
+          (exit) => {
+            if (exit._tag === "Failure") {
+              span.attribute("http.response.status_code", ServerError.causeStatusCode(exit.cause))
+            } else {
+              const response = exit.value
+              span.attribute("http.response.status_code", response.status)
+              Object.entries(response.headers).forEach(([key, value]) => {
+                span.attribute(`http.response.header.${key}`, value)
+              })
+            }
+            return exit
+          }
+        )
       }
     )
   })
