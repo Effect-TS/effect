@@ -1,6 +1,6 @@
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as Schema from "@effect/schema/Schema"
-import * as Array from "effect/Array"
+import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
 import { dual, pipe } from "effect/Function"
 import * as Option from "effect/Option"
@@ -258,8 +258,8 @@ const getChoicesInternal = (self: Instruction): Option.Option<string> => {
     }
     case "Choice": {
       const choices = pipe(
-        Array.map(self.alternatives, ([choice]) => choice),
-        Array.join(" | ")
+        Arr.map(self.alternatives, ([choice]) => choice),
+        Arr.join(" | ")
       )
       return Option.some(choices)
     }
@@ -283,8 +283,8 @@ const getHelpInternal = (self: Instruction): Span.Span => {
     }
     case "Choice": {
       const choices = pipe(
-        Array.map(self.alternatives, ([choice]) => choice),
-        Array.join(", ")
+        Arr.map(self.alternatives, ([choice]) => choice),
+        Arr.join(", ")
       )
       return InternalSpan.text(`One of the following: ${choices}`)
     }
@@ -401,12 +401,12 @@ const validateInternal = (
         value,
         () => `Choice options to not have a default value`
       ).pipe(
-        Effect.flatMap((value) => Array.findFirst(self.alternatives, ([choice]) => choice === value)),
+        Effect.flatMap((value) => Arr.findFirst(self.alternatives, ([choice]) => choice === value)),
         Effect.mapBoth({
           onFailure: () => {
             const choices = pipe(
-              Array.map(self.alternatives, ([choice]) => choice),
-              Array.join(", ")
+              Arr.map(self.alternatives, ([choice]) => choice),
+              Arr.join(", ")
             )
             return `Expected one of the following cases: ${choices}`
           },
@@ -536,7 +536,7 @@ const wizardInternal = (self: Instruction, help: HelpDoc.HelpDoc): Prompt.Prompt
       const message = InternalHelpDoc.sequence(help, primitiveHelp)
       return InternalSelectPrompt.select({
         message: InternalHelpDoc.toAnsiText(message).trimEnd(),
-        choices: Array.map(
+        choices: Arr.map(
           self.alternatives,
           ([title]) => ({ title, value: title })
         )
@@ -625,8 +625,8 @@ export const getBashCompletions = (self: Instruction): string => {
     }
     case "Choice": {
       const choices = pipe(
-        Array.map(self.alternatives, ([choice]) => choice),
-        Array.join(",")
+        Arr.map(self.alternatives, ([choice]) => choice),
+        Arr.join(",")
       )
       return `$(compgen -W "${choices}" -- "\${cur}")`
     }
@@ -637,45 +637,45 @@ export const getBashCompletions = (self: Instruction): string => {
 export const getFishCompletions = (self: Instruction): Array<string> => {
   switch (self._tag) {
     case "Bool": {
-      return Array.empty()
+      return Arr.empty()
     }
     case "DateTime":
     case "Float":
     case "Integer":
     case "Secret":
     case "Text": {
-      return Array.make("-r", "-f")
+      return Arr.make("-r", "-f")
     }
     case "Path": {
       switch (self.pathType) {
         case "file": {
           return self.pathExists === "yes" || self.pathExists === "either"
-            ? Array.make("-r", "-F")
-            : Array.make("-r")
+            ? Arr.make("-r", "-F")
+            : Arr.make("-r")
         }
         case "directory": {
           return self.pathExists === "yes" || self.pathExists === "either"
-            ? Array.make(
+            ? Arr.make(
               "-r",
               "-f",
               "-a",
               `"(__fish_complete_directories (commandline -ct))"`
             )
-            : Array.make("-r")
+            : Arr.make("-r")
         }
         case "either": {
           return self.pathExists === "yes" || self.pathExists === "either"
-            ? Array.make("-r", "-F")
-            : Array.make("-r")
+            ? Arr.make("-r", "-F")
+            : Arr.make("-r")
         }
       }
     }
     case "Choice": {
       const choices = pipe(
-        Array.map(self.alternatives, ([choice]) => `${choice}''`),
-        Array.join(",")
+        Arr.map(self.alternatives, ([choice]) => `${choice}''`),
+        Arr.join(",")
       )
-      return Array.make("-r", "-f", "-a", `"{${choices}}"`)
+      return Arr.make("-r", "-f", "-a", `"{${choices}}"`)
     }
   }
 }
@@ -688,8 +688,8 @@ export const getZshCompletions = (self: Instruction): string => {
     }
     case "Choice": {
       const choices = pipe(
-        Array.map(self.alternatives, ([name]) => name),
-        Array.join(" ")
+        Arr.map(self.alternatives, ([name]) => name),
+        Arr.join(" ")
       )
       return `:CHOICE:(${choices})`
     }

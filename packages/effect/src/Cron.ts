@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import * as Array from "./Array.js"
+import * as Arr from "./Array.js"
 import * as Either from "./Either.js"
 import * as Equal from "./Equal.js"
 import * as equivalence from "./Equivalence.js"
@@ -46,11 +46,11 @@ const CronProto: Omit<Cron, "minutes" | "hours" | "days" | "months" | "weekdays"
   },
   [Hash.symbol](this: Cron): number {
     return pipe(
-      Hash.array(Array.fromIterable(this.minutes)),
-      Hash.combine(Hash.array(Array.fromIterable(this.hours))),
-      Hash.combine(Hash.array(Array.fromIterable(this.days))),
-      Hash.combine(Hash.array(Array.fromIterable(this.months))),
-      Hash.combine(Hash.array(Array.fromIterable(this.weekdays))),
+      Hash.array(Arr.fromIterable(this.minutes)),
+      Hash.combine(Hash.array(Arr.fromIterable(this.hours))),
+      Hash.combine(Hash.array(Arr.fromIterable(this.days))),
+      Hash.combine(Hash.array(Arr.fromIterable(this.months))),
+      Hash.combine(Hash.array(Arr.fromIterable(this.weekdays))),
       Hash.cached(this)
     )
   },
@@ -60,11 +60,11 @@ const CronProto: Omit<Cron, "minutes" | "hours" | "days" | "months" | "weekdays"
   toJSON(this: Cron) {
     return {
       _id: "Cron",
-      minutes: Array.fromIterable(this.minutes),
-      hours: Array.fromIterable(this.hours),
-      days: Array.fromIterable(this.days),
-      months: Array.fromIterable(this.months),
-      weekdays: Array.fromIterable(this.weekdays)
+      minutes: Arr.fromIterable(this.minutes),
+      hours: Arr.fromIterable(this.hours),
+      days: Arr.fromIterable(this.days),
+      months: Arr.fromIterable(this.months),
+      weekdays: Arr.fromIterable(this.weekdays)
     }
   },
   [NodeInspectSymbol](this: Cron) {
@@ -107,11 +107,11 @@ export const make = ({
   readonly weekdays: Iterable<number>
 }): Cron => {
   const o: Mutable<Cron> = Object.create(CronProto)
-  o.minutes = new Set(Array.sort(minutes, N.Order))
-  o.hours = new Set(Array.sort(hours, N.Order))
-  o.days = new Set(Array.sort(days, N.Order))
-  o.months = new Set(Array.sort(months, N.Order))
-  o.weekdays = new Set(Array.sort(weekdays, N.Order))
+  o.minutes = new Set(Arr.sort(minutes, N.Order))
+  o.hours = new Set(Arr.sort(hours, N.Order))
+  o.days = new Set(Arr.sort(days, N.Order))
+  o.months = new Set(Arr.sort(months, N.Order))
+  o.weekdays = new Set(Arr.sort(weekdays, N.Order))
   return o
 }
 
@@ -364,7 +364,7 @@ export const Equivalence: equivalence.Equivalence<Cron> = equivalence.make((self
 
 const restrictionsArrayEquals = equivalence.array(equivalence.number)
 const restrictionsEquals = (self: ReadonlySet<number>, that: ReadonlySet<number>): boolean =>
-  restrictionsArrayEquals(Array.fromIterable(self), Array.fromIterable(that))
+  restrictionsArrayEquals(Arr.fromIterable(self), Arr.fromIterable(that))
 
 /**
  * Checks if two `Cron`s are equal.

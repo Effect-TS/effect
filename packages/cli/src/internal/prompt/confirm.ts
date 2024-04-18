@@ -2,7 +2,7 @@ import * as Terminal from "@effect/platform/Terminal"
 import * as Ansi from "@effect/printer-ansi/Ansi"
 import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Optimize from "@effect/printer/Optimize"
-import * as Array from "effect/Array"
+import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
@@ -39,10 +39,10 @@ const renderOutput = (
 ): Doc.AnsiDoc => {
   const annotateLine = (line: string): Doc.AnsiDoc => pipe(Doc.text(line), Doc.annotate(Ansi.bold))
   const prefix = Doc.cat(leadingSymbol, Doc.space)
-  return Array.match(options.message.split(/\r?\n/), {
+  return Arr.match(options.message.split(/\r?\n/), {
     onEmpty: () => Doc.hsep([prefix, trailingSymbol, confirm]),
     onNonEmpty: (promptLines) => {
-      const lines = Array.map(promptLines, (line) => annotateLine(line))
+      const lines = Arr.map(promptLines, (line) => annotateLine(line))
       return pipe(
         prefix,
         Doc.cat(Doc.nest(Doc.vsep(lines), 2)),

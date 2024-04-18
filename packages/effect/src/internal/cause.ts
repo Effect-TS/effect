@@ -1,4 +1,4 @@
-import * as Array from "../Array.js"
+import * as Arr from "../Array.js"
 import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
 import * as Either from "../Either.js"
@@ -584,7 +584,7 @@ const flattenCauseLoop = (
   while (1) {
     const [parallel, sequential] = pipe(
       causes,
-      Array.reduce(
+      Arr.reduce(
         [HashSet.empty<unknown>(), Chunk.empty<Cause.Cause<unknown>>()] as const,
         ([parallel, sequential], cause) => {
           const [par, seq] = evaluateCause(cause)

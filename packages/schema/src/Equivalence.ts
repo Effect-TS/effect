@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import * as Array from "effect/Array"
+import * as Arr from "effect/Array"
 import * as Equal from "effect/Equal"
 import * as Equivalence from "effect/Equivalence"
 import * as Option from "effect/Option"
@@ -104,7 +104,7 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
         // ---------------------------------------------
         // handle rest element
         // ---------------------------------------------
-        if (Array.isNonEmptyReadonlyArray(rest)) {
+        if (Arr.isNonEmptyReadonlyArray(rest)) {
           const [head, ...tail] = rest
           for (; i < len - tail.length; i++) {
             if (!head(a[i], b[i])) {

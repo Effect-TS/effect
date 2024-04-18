@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import { FileSystem } from "@effect/platform/FileSystem"
-import * as Array from "effect/Array"
+import * as Arr from "effect/Array"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
@@ -278,15 +278,15 @@ export const fromGlob = (
 ): Loader =>
   pipe(
     Object.keys(migrations),
-    Array.filterMap((_) => Option.fromNullable(_.match(/^(?:.*\/)?(\d+)_([^.]+)\.(js|ts)$/))),
-    Array.map(
+    Arr.filterMap((_) => Option.fromNullable(_.match(/^(?:.*\/)?(\d+)_([^.]+)\.(js|ts)$/))),
+    Arr.map(
       ([key, id, name]): ResolvedMigration => [
         Number(id),
         name,
         Effect.promise(() => migrations[key]())
       ]
     ),
-    Array.sort(migrationOrder),
+    Arr.sort(migrationOrder),
     Effect.succeed
   )
 
@@ -297,15 +297,15 @@ export const fromGlob = (
 export const fromBabelGlob = (migrations: Record<string, any>): Loader =>
   pipe(
     Object.keys(migrations),
-    Array.filterMap((_) => Option.fromNullable(_.match(/^_(\d+)_([^.]+?)(Js|Ts)?$/))),
-    Array.map(
+    Arr.filterMap((_) => Option.fromNullable(_.match(/^_(\d+)_([^.]+?)(Js|Ts)?$/))),
+    Arr.map(
       ([key, id, name]): ResolvedMigration => [
         Number(id),
         name,
         Effect.succeed(migrations[key])
       ]
     ),
-    Array.sort(migrationOrder),
+    Arr.sort(migrationOrder),
     Effect.succeed
   )
 

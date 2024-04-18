@@ -1,4 +1,4 @@
-import * as Array from "../../Array.js"
+import * as Arr from "../../Array.js"
 import type * as Differ from "../../Differ.js"
 import * as Equal from "../../Equal.js"
 import * as Dual from "../../Function.js"
@@ -135,7 +135,7 @@ export const diff = <Value, Patch>(
     patch = combine(patch, makeSlice(0, i))
   }
   if (i < options.newValue.length) {
-    patch = combine(patch, makeAppend(Array.drop(i)(options.newValue)))
+    patch = combine(patch, makeAppend(Arr.drop(i)(options.newValue)))
   }
   return patch
 }
@@ -173,10 +173,10 @@ export const patch = Dual.dual<
     return oldValue
   }
   let readonlyArray = oldValue.slice()
-  let patches: Array<Differ.Differ.ReadonlyArray.Patch<Value, Patch>> = Array.of(self)
-  while (Array.isNonEmptyArray(patches)) {
-    const head: Instruction = Array.headNonEmpty(patches) as Instruction
-    const tail = Array.tailNonEmpty(patches)
+  let patches: Array<Differ.Differ.ReadonlyArray.Patch<Value, Patch>> = Arr.of(self)
+  while (Arr.isNonEmptyArray(patches)) {
+    const head: Instruction = Arr.headNonEmpty(patches) as Instruction
+    const tail = Arr.tailNonEmpty(patches)
     switch (head._tag) {
       case "Empty": {
         patches = tail

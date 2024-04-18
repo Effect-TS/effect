@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as Array from "effect/Array"
+import * as Arr from "effect/Array"
 import * as Option from "effect/Option"
 import * as AST from "./AST.js"
 import * as errors_ from "./internal/errors.js"
@@ -116,7 +116,7 @@ export const match: AST.Match<Pretty<any>> = {
       // ---------------------------------------------
       // handle rest element
       // ---------------------------------------------
-      if (Array.isNonEmptyReadonlyArray(rest)) {
+      if (Arr.isNonEmptyReadonlyArray(rest)) {
         const [head, ...tail] = rest
         for (; i < input.length - tail.length; i++) {
           output.push(head(input[i]))
@@ -175,7 +175,7 @@ export const match: AST.Match<Pretty<any>> = {
         }
       }
 
-      return Array.isNonEmptyReadonlyArray(output) ? "{ " + output.join(", ") + " }" : "{}"
+      return Arr.isNonEmptyReadonlyArray(output) ? "{ " + output.join(", ") + " }" : "{}"
     }
   },
   "Union": (ast, go) => {

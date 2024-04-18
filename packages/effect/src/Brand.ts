@@ -16,7 +16,7 @@
  *
  * @since 2.0.0
  */
-import * as Array from "./Array.js"
+import * as Arr from "./Array.js"
 import * as Either from "./Either.js"
 import { identity } from "./Function.js"
 import * as Option from "./Option.js"
@@ -183,7 +183,7 @@ export const error = (message: string, meta?: unknown): Brand.BrandErrors => [{
  */
 export const errors: (...errors: Array<Brand.BrandErrors>) => Brand.BrandErrors = (
   ...errors: Array<Brand.BrandErrors>
-): Brand.BrandErrors => Array.flatten(errors)
+): Brand.BrandErrors => Arr.flatten(errors)
 
 /**
  * Returns a `Brand.Constructor` that can construct a branded type from an unbranded value using the provided `refinement`
