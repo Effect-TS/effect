@@ -69,7 +69,7 @@ export declare namespace Brand {
    * @since 2.0.0
    * @category models
    */
-  export interface BrandErrors extends Arr<RefinementError> {}
+  export interface BrandErrors extends Array<RefinementError> {}
 
   /**
    * Represents an error that occurs when the provided value of the branded type does not pass the refinement predicate.

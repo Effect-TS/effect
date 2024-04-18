@@ -712,7 +712,7 @@ const keyIndex = (index: number): KeyComponent => ({
 interface JsonMap {
   [member: string]: string | number | boolean | null | JsonArray | JsonMap
 }
-interface JsonArray extends Arr<string | number | boolean | null | JsonArray | JsonMap> {}
+interface JsonArray extends Array<string | number | boolean | null | JsonArray | JsonMap> {}
 
 /** @internal */
 export const fromJson = (json: unknown): ConfigProvider.ConfigProvider => {
