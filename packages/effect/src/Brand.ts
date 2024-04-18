@@ -92,22 +92,22 @@ export declare namespace Brand {
      * Constructs a branded type from a value of type `A`, throwing an error if
      * the provided `A` is not valid.
      */
-    (args: Brand.Unbranded<A>): A
+    <V extends Brand.Unbranded<A>>(args: V): V & A
     /**
      * Constructs a branded type from a value of type `A`, returning `Some<A>`
      * if the provided `A` is valid, `None` otherwise.
      */
-    option(args: Brand.Unbranded<A>): Option.Option<A>
+    option<V extends Brand.Unbranded<A>>(args: V): Option.Option<V & A>
     /**
      * Constructs a branded type from a value of type `A`, returning `Right<A>`
      * if the provided `A` is valid, `Left<BrandError>` otherwise.
      */
-    either(args: Brand.Unbranded<A>): Either.Either<A, Brand.BrandErrors>
+    either<V extends Brand.Unbranded<A>>(args: V): Either.Either<V & A, Brand.BrandErrors>
     /**
      * Attempts to refine the provided value of type `A`, returning `true` if
      * the provided `A` is valid, `false` otherwise.
      */
-    is(a: Brand.Unbranded<A>): a is Brand.Unbranded<A> & A
+    is<V extends Brand.Unbranded<A>>(a: V): a is V & A
   }
 
   /**
