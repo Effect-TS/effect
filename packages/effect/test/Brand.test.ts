@@ -34,7 +34,7 @@ describe("Brand", () => {
     assert.throws(() => Int(1.1))
     assert.deepStrictEqual(Int.option(1), Option.some(1))
     assert.deepStrictEqual(Int.option(1.1), Option.none())
-    assert.deepStrictEqual(Int.either(1), Either.right(1 as Int))
+    assert.deepStrictEqual(Int.either(1), Either.right(Int(1)))
     assert.deepStrictEqual(
       Int.either(1.1),
       Either.left(Brand.error("Expected 1.1 to be an integer"))
@@ -66,7 +66,7 @@ describe("Brand", () => {
     assert.throws(() => PositiveInt(1.1))
     assert.deepStrictEqual(PositiveInt.option(1), Option.some(1))
     assert.deepStrictEqual(PositiveInt.option(1.1), Option.none())
-    assert.deepStrictEqual(PositiveInt.either(1), Either.right(1 as PositiveInt))
+    assert.deepStrictEqual(PositiveInt.either(1), Either.right(PositiveInt(1)))
     assert.deepStrictEqual(
       PositiveInt.either(1.1),
       Either.left(Brand.error("Expected 1.1 to be an integer"))
