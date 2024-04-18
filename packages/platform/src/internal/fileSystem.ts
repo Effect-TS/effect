@@ -3,6 +3,7 @@ import * as Chunk from "effect/Chunk"
 import { GenericTag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import { identity, pipe } from "effect/Function"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
@@ -85,6 +86,116 @@ export const make = (
       )
   })
 }
+
+const notFound = (method: string, path: string) =>
+  Error.SystemError({
+    module: "FileSystem",
+    method,
+    reason: "NotFound",
+    message: "No such file or directory",
+    pathOrDescriptor: path
+  })
+
+/** @internal */
+export const makeNoop = (
+  fileSystem: Partial<FileSystem>
+): FileSystem => {
+  return {
+    access(path) {
+      return Effect.fail(notFound("access", path))
+    },
+    chmod(path) {
+      return Effect.fail(notFound("chmod", path))
+    },
+    chown(path) {
+      return Effect.fail(notFound("chown", path))
+    },
+    copy(path) {
+      return Effect.fail(notFound("copy", path))
+    },
+    copyFile(path) {
+      return Effect.fail(notFound("copyFile", path))
+    },
+    exists() {
+      return Effect.succeed(false)
+    },
+    link(path) {
+      return Effect.fail(notFound("link", path))
+    },
+    makeDirectory() {
+      return Effect.die("not implemented")
+    },
+    makeTempDirectory() {
+      return Effect.die("not implemented")
+    },
+    makeTempDirectoryScoped() {
+      return Effect.die("not implemented")
+    },
+    makeTempFile() {
+      return Effect.die("not implemented")
+    },
+    makeTempFileScoped() {
+      return Effect.die("not implemented")
+    },
+    open(path) {
+      return Effect.fail(notFound("open", path))
+    },
+    readDirectory(path) {
+      return Effect.fail(notFound("readDirectory", path))
+    },
+    readFile(path) {
+      return Effect.fail(notFound("readFile", path))
+    },
+    readFileString(path) {
+      return Effect.fail(notFound("readFileString", path))
+    },
+    readLink(path) {
+      return Effect.fail(notFound("readLink", path))
+    },
+    realPath(path) {
+      return Effect.fail(notFound("realPath", path))
+    },
+    remove() {
+      return Effect.void
+    },
+    rename(oldPath) {
+      return Effect.fail(notFound("rename", oldPath))
+    },
+    sink(path) {
+      return Sink.fail(notFound("sink", path))
+    },
+    stat(path) {
+      return Effect.fail(notFound("stat", path))
+    },
+    stream(path) {
+      return Stream.fail(notFound("stream", path))
+    },
+    symlink(fromPath) {
+      return Effect.fail(notFound("symlink", fromPath))
+    },
+    truncate(path) {
+      return Effect.fail(notFound("truncate", path))
+    },
+    utimes(path) {
+      return Effect.fail(notFound("utimes", path))
+    },
+    watch(path) {
+      return Stream.fail(notFound("watch", path))
+    },
+    writeFile(path) {
+      return Effect.fail(notFound("writeFile", path))
+    },
+    writeFileString(path) {
+      return Effect.fail(notFound("writeFileString", path))
+    },
+    ...fileSystem
+  }
+}
+
+/** @internal */
+export const layerNoop = (
+  fileSystem: Partial<FileSystem>
+): Layer.Layer<FileSystem> => Layer.succeed(tag, makeNoop(fileSystem))
 
 /** @internal */
 const stream = (file: File, {
