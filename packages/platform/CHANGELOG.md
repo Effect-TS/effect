@@ -1,5 +1,21 @@
 # @effect/platform
 
+## 0.50.0
+
+### Minor Changes
+
+- [#2567](https://github.com/Effect-TS/effect/pull/2567) [`6f38dff`](https://github.com/Effect-TS/effect/commit/6f38dff41ffa34532cc2f25b90446550c5730bb6) Thanks [@tim-smart](https://github.com/tim-smart)! - add URL & AbortSignal to Http.client.makeDefault
+
+### Patch Changes
+
+- [#2567](https://github.com/Effect-TS/effect/pull/2567) [`6f38dff`](https://github.com/Effect-TS/effect/commit/6f38dff41ffa34532cc2f25b90446550c5730bb6) Thanks [@tim-smart](https://github.com/tim-smart)! - add more span attributes to http traces
+
+- [#2565](https://github.com/Effect-TS/effect/pull/2565) [`a3b0e6c`](https://github.com/Effect-TS/effect/commit/a3b0e6c490772e6d44b5d98dcf2729c4d5310ecc) Thanks [@tim-smart](https://github.com/tim-smart)! - add Http.response.void helper, for creating a http request that returns void
+
+- Updated dependencies [[`a7b4b84`](https://github.com/Effect-TS/effect/commit/a7b4b84bd5a25f51aba922f9259c3a58c98c6a4e)]:
+  - effect@3.0.3
+  - @effect/schema@0.66.3
+
 ## 0.49.4
 
 ### Patch Changes

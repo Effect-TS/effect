@@ -1,5 +1,24 @@
 # effect
 
+## 3.0.3
+
+### Patch Changes
+
+- [#2568](https://github.com/Effect-TS/effect/pull/2568) [`a7b4b84`](https://github.com/Effect-TS/effect/commit/a7b4b84bd5a25f51aba922f9259c3a58c98c6a4e) Thanks [@tim-smart](https://github.com/tim-smart)! - add Match.withReturnType api
+
+  Which can be used to constrain the return type of a match expression.
+
+  ```ts
+  import { Match } from "effect";
+
+  Match.type<string>().pipe(
+    Match.withReturnType<string>(),
+    Match.when("foo", () => "foo"), // valid
+    Match.when("bar", () => 123), // type error
+    Match.else(() => "baz"),
+  );
+  ```
+
 ## 3.0.2
 
 ### Patch Changes
