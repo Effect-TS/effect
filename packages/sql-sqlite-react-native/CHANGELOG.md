@@ -1,5 +1,11 @@
 # @effect/sql-sqlite-react-native
 
+## 0.2.0
+
+### Minor Changes
+
+- [#2569](https://github.com/Effect-TS/effect/pull/2569) [`faf6abe`](https://github.com/Effect-TS/effect/commit/faf6abe7ecb7bd87e441e4b6fb906a8c35dddf8a) Thanks [@tim-smart](https://github.com/tim-smart)! - use op-sqlite for sqlite react native
+
 ## 0.1.5
 
 ### Patch Changes
