@@ -1,5 +1,15 @@
 # @effect/opentelemetry
 
+## 0.33.0
+
+### Minor Changes
+
+- [#2572](https://github.com/Effect-TS/effect/pull/2572) [`c8c798a`](https://github.com/Effect-TS/effect/commit/c8c798a46a193fa678194b31fe2af99048fe71e0) Thanks [@nickrttn](https://github.com/nickrttn)! - Update @opentelemetry/\* peer dependencies to ensure allowed versions include used imports
+
+### Patch Changes
+
+- [#2575](https://github.com/Effect-TS/effect/pull/2575) [`d2ebe0e`](https://github.com/Effect-TS/effect/commit/d2ebe0e48aae248ac014fb976fa2d7bf3038394d) Thanks [@tim-smart](https://github.com/tim-smart)! - add otel Resource.layerFromEnv, for constructing a resource from env variables
+
 ## 0.32.3
 
 ### Patch Changes
