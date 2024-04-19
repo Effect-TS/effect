@@ -18,14 +18,14 @@ import * as Tracer from "./Tracer.js"
  * @category model
  */
 export interface Configuration {
-  readonly spanProcessor?: SpanProcessor
-  readonly tracerConfig?: Omit<TracerConfig, "resource">
-  readonly metricReader?: MetricReader
-  readonly resource: {
+  readonly spanProcessor?: SpanProcessor | undefined
+  readonly tracerConfig?: Omit<TracerConfig, "resource"> | undefined
+  readonly metricReader?: MetricReader | undefined
+  readonly resource?: {
     readonly serviceName: string
     readonly serviceVersion?: string
     readonly attributes?: Resources.ResourceAttributes
-  }
+  } | undefined
 }
 
 /**
@@ -71,15 +71,17 @@ export const layer: {
         ? evaluate as Effect.Effect<Configuration>
         : Effect.sync(evaluate),
       (config) => {
-        const ResourceLive = Resource.layer(config.resource)
+        const ResourceLive = config.resource === undefined
+          ? Resource.layerFromEnv()
+          : Resource.layer(config.resource)
         const TracerLive = config.spanProcessor ?
           Tracer.layer.pipe(
             Layer.provide(layerTracerProvider(config.spanProcessor, config.tracerConfig))
           )
-          : Layer.effectDiscard(Effect.void)
+          : Layer.empty
         const MetricsLive = config.metricReader
           ? Metrics.layer(() => config.metricReader!)
-          : Layer.effectDiscard(Effect.void)
+          : Layer.empty
         return Layer.merge(TracerLive, MetricsLive).pipe(
           Layer.provideMerge(ResourceLive)
         )
