@@ -10,7 +10,10 @@ import {
   TELEMETRYSDKLANGUAGEVALUES_NODEJS,
   TELEMETRYSDKLANGUAGEVALUES_WEBJS
 } from "@opentelemetry/semantic-conventions"
+import { Config } from "effect"
+import * as Arr from "effect/Array"
 import { GenericTag } from "effect/Context"
+import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 
 /**
@@ -52,6 +55,45 @@ export const layer = (config: {
     new Resources.Resource(attributes)
   )
 }
+
+/**
+ * @since 1.0.0
+ * @category layer
+ */
+export const layerFromEnv = (
+  additionalAttributes?:
+    | Resources.ResourceAttributes
+    | undefined
+): Layer.Layer<Resource> =>
+  Layer.effect(
+    Resource,
+    Effect.gen(function*(_) {
+      const serviceName = yield* _(Config.string("OTEL_SERVICE_NAME"), Config.option, Effect.orDie)
+      const attributes = yield* _(
+        Config.string("OTEL_RESOURCE_ATTRIBUTES"),
+        Config.withDefault(""),
+        Config.map((s) => {
+          const attrs = s.split(",")
+          return Arr.reduce(attrs, {} as Resources.ResourceAttributes, (acc, attr) => {
+            const parts = attr.split("=")
+            if (parts.length !== 2) {
+              return acc
+            }
+            acc[parts[0].trim()] = parts[1].trim()
+            return acc
+          })
+        }),
+        Effect.orDie
+      )
+      if (serviceName._tag === "Some") {
+        attributes[SEMRESATTRS_SERVICE_NAME] = serviceName.value
+      }
+      if (additionalAttributes) {
+        Object.assign(attributes, additionalAttributes)
+      }
+      return new Resources.Resource(attributes)
+    })
+  )
 
 /**
  * @since 2.0.0
