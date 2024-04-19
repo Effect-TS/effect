@@ -1763,6 +1763,9 @@ export class PropertySignatureTransformation {
   ) {}
 }
 
+const isRenamingPropertySignatureTransformation = (t: PropertySignatureTransformation) =>
+  t.decode === identity && t.encode === identity
+
 /**
  * @category model
  * @since 1.0.0
@@ -2098,11 +2101,18 @@ export const partial = (ast: AST, options?: { readonly exact: true }): AST => {
     case "Suspend":
       return new Suspend(() => partial(ast.f(), options))
     case "Declaration":
-      throw new Error(errors_.getAPIErrorMessage("Partial", "cannot handle declarations"))
+      throw new Error(errors_.getAPIErrorMessage("partial", "cannot handle declarations"))
     case "Refinement":
-      throw new Error(errors_.getAPIErrorMessage("Partial", "cannot handle refinements"))
-    case "Transformation":
-      throw new Error(errors_.getAPIErrorMessage("Partial", "cannot handle transformations"))
+      throw new Error(errors_.getAPIErrorMessage("partial", "cannot handle refinements"))
+    case "Transformation": {
+      if (
+        isTypeLiteralTransformation(ast.transformation) &&
+        ast.transformation.propertySignatureTransformations.every(isRenamingPropertySignatureTransformation)
+      ) {
+        return new Transformation(partial(ast.from, options), partial(ast.to, options), ast.transformation)
+      }
+      throw new Error(errors_.getAPIErrorMessage("partial", "cannot handle transformations"))
+    }
   }
   return ast
 }
@@ -2130,11 +2140,18 @@ export const required = (ast: AST): AST => {
     case "Suspend":
       return new Suspend(() => required(ast.f()))
     case "Declaration":
-      throw new Error(errors_.getAPIErrorMessage("Required", "cannot handle declarations"))
+      throw new Error(errors_.getAPIErrorMessage("required", "cannot handle declarations"))
     case "Refinement":
-      throw new Error(errors_.getAPIErrorMessage("Required", "cannot handle refinements"))
-    case "Transformation":
-      throw new Error(errors_.getAPIErrorMessage("Required", "cannot handle transformations"))
+      throw new Error(errors_.getAPIErrorMessage("required", "cannot handle refinements"))
+    case "Transformation": {
+      if (
+        isTypeLiteralTransformation(ast.transformation) &&
+        ast.transformation.propertySignatureTransformations.every(isRenamingPropertySignatureTransformation)
+      ) {
+        return new Transformation(required(ast.from), required(ast.to), ast.transformation)
+      }
+      throw new Error(errors_.getAPIErrorMessage("required", "cannot handle transformations"))
+    }
   }
   return ast
 }
