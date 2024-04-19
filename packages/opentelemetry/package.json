@@ -48,12 +48,12 @@
   },
   "peerDependencies": {
     "@opentelemetry/api": "^1.6",
-    "@opentelemetry/resources": "^1.17",
-    "@opentelemetry/sdk-metrics": "^1.17",
-    "@opentelemetry/sdk-trace-base": "^1.17",
-    "@opentelemetry/sdk-trace-node": "^1.17",
-    "@opentelemetry/sdk-trace-web": "^1.17",
-    "@opentelemetry/semantic-conventions": "^1.17",
+    "@opentelemetry/resources": "^1.22",
+    "@opentelemetry/sdk-metrics": "^1.22",
+    "@opentelemetry/sdk-trace-base": "^1.22",
+    "@opentelemetry/sdk-trace-node": "^1.22",
+    "@opentelemetry/sdk-trace-web": "^1.22",
+    "@opentelemetry/semantic-conventions": "^1.22",
     "effect": "workspace:^"
   },
   "peerDependenciesMeta": {
