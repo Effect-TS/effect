@@ -14,7 +14,7 @@ import { identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
-import * as Sqlite from "react-native-quick-sqlite"
+import * as Sqlite from "@op-engineering/op-sqlite"
 
 /**
  * @category models
@@ -39,6 +39,7 @@ export const SqliteClient: Context.Tag<SqliteClient, SqliteClient> = Context.Gen
 export interface SqliteClientConfig {
   readonly filename: string
   readonly location?: string | undefined
+  readonly encryptionKey?: string | undefined
   readonly transformResultNames?: ((str: string) => string) | undefined
   readonly transformQueryNames?: ((str: string) => string) | undefined
 }
@@ -76,7 +77,8 @@ export const make = (
     const makeConnection = Effect.gen(function*(_) {
       const db = Sqlite.open({
         name: options.filename,
-        location: options.location!
+        location: options.location!,
+        encryptionKey: options.encryptionKey!
       })
       yield* _(Effect.addFinalizer(() => Effect.sync(() => db.close())))
 

@@ -578,9 +578,9 @@ importers:
 
   packages/sql-sqlite-react-native:
     dependencies:
-      react-native-quick-sqlite:
-        specifier: ^8.0.6
-        version: 8.0.6(react-native@0.73.6)(react@18.2.0)
+      '@op-engineering/op-sqlite':
+        specifier: 4.0.0-beta1
+        version: 4.0.0-beta1(react-native@0.73.6)(react@18.2.0)
     devDependencies:
       '@effect/sql':
         specifier: workspace:^
@@ -3313,6 +3313,16 @@ packages:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.17.1
     dev: true
+
+  /@op-engineering/op-sqlite@4.0.0-beta1(react-native@0.73.6)(react@18.2.0):
+    resolution: {integrity: sha512-giL94Tv7r9BmNiT9RmsER3Blz+lB+gYOXepVDA7DOjcluOZusJdTvMqvm/r7uEu3+iloZ6iK7NjKI4zud7S5xA==}
+    peerDependencies:
+      react: '*'
+      react-native: '*'
+    dependencies:
+      react: 18.2.0
+      react-native: 0.73.6(@babel/core@7.24.4)(@babel/preset-env@7.24.4)(react@18.2.0)
+    dev: false
 
   /@opentelemetry/api-logs@0.50.0:
     resolution: {integrity: sha512-JdZuKrhOYggqOpUljAq4WWNi5nB10PmgoF0y2CvedLGXd0kSawb/UBnWT8gg1ND3bHCNHStAIVT0ELlxJJRqrA==}
@@ -9398,16 +9408,6 @@ packages:
 
   /react-is@18.2.0:
     resolution: {integrity: sha512-xWGDIW6x921xtzPkhiULtthJHoJvBbF3q26fzloPCK0hsvxtPVelvftw3zjbHWSkR2km9Z+4uxbDDK/6Zw9B8w==}
-
-  /react-native-quick-sqlite@8.0.6(react-native@0.73.6)(react@18.2.0):
-    resolution: {integrity: sha512-XtwXnfZ1a6zRzAHoWFyVJsP3p8etx3/xww1oFKGdiOSj054PdYIeup9A53rtQ6ENyg+aqSKOgmxoN/PetulGOQ==}
-    peerDependencies:
-      react: '*'
-      react-native: '*'
-    dependencies:
-      react: 18.2.0
-      react-native: 0.73.6(@babel/core@7.24.4)(@babel/preset-env@7.24.4)(react@18.2.0)
-    dev: false
 
   /react-native@0.73.6(@babel/core@7.24.4)(@babel/preset-env@7.24.4)(react@18.2.0):
     resolution: {integrity: sha512-oqmZe8D2/VolIzSPZw+oUd6j/bEmeRHwsLn1xLA5wllEYsZ5zNuMsDus235ONOnCRwexqof/J3aztyQswSmiaA==}

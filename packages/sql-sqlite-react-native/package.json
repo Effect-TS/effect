@@ -46,6 +46,6 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "react-native-quick-sqlite": "^8.0.6"
+    "@op-engineering/op-sqlite": "4.0.0-beta1"
   }
 }
