@@ -1,5 +1,46 @@
 # @effect/schema
 
+## 0.66.4
+
+### Patch Changes
+
+- [#2577](https://github.com/Effect-TS/effect/pull/2577) [`773b8e0`](https://github.com/Effect-TS/effect/commit/773b8e01521e8fa7c38ff15d92d21d6fd6dad56f) Thanks [@gcanti](https://github.com/gcanti)! - partial / required: add support for renaming property keys in property signature transformations
+
+  Before
+
+  ```ts
+  import { Schema } from "@effect/schema";
+
+  const TestType = Schema.Struct({
+    a: Schema.String,
+    b: Schema.propertySignature(Schema.String).pipe(Schema.fromKey("c")),
+  });
+
+  const PartialTestType = Schema.partial(TestType);
+  // throws Error: Partial: cannot handle transformations
+  ```
+
+  Now
+
+  ```ts
+  import { Schema } from "@effect/schema";
+
+  const TestType = Schema.Struct({
+    a: Schema.String,
+    b: Schema.propertySignature(Schema.String).pipe(Schema.fromKey("c")),
+  });
+
+  const PartialTestType = Schema.partial(TestType);
+
+  console.log(Schema.decodeUnknownSync(PartialTestType)({ a: "a", c: "c" })); // { a: 'a', b: 'c' }
+  console.log(Schema.decodeUnknownSync(PartialTestType)({ a: "a" })); // { a: 'a' }
+
+  const RequiredTestType = Schema.required(PartialTestType);
+
+  console.log(Schema.decodeUnknownSync(RequiredTestType)({ a: "a", c: "c" })); // { a: 'a', b: 'c' }
+  console.log(Schema.decodeUnknownSync(RequiredTestType)({ a: "a" })); // { a: 'a', b: undefined }
+  ```
+
 ## 0.66.3
 
 ### Patch Changes

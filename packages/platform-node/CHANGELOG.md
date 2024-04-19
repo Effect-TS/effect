@@ -1,5 +1,13 @@
 # @effect/platform-node
 
+## 0.47.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/platform@0.50.1
+  - @effect/platform-node-shared@0.4.6
+
 ## 0.47.0
 
 ### Minor Changes
