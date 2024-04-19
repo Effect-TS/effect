@@ -8,7 +8,7 @@ describe("required", () => {
     expect(S.required(S.String).ast).toEqual(S.String.ast)
   })
 
-  it("struct", async () => {
+  it("Struct", async () => {
     const schema = S.required(S.Struct({
       a: S.optional(S.NumberFromString.pipe(S.greaterThan(0)), { exact: true })
     }))
@@ -32,7 +32,7 @@ describe("required", () => {
     )
   })
 
-  describe("tuple", () => {
+  describe("Tuple", () => {
     it("e?", async () => {
       // type A = readonly [string?]
       // type B = Required<A>
@@ -135,7 +135,7 @@ describe("required", () => {
     })
   })
 
-  it("union", async () => {
+  it("Union", async () => {
     const schema = S.required(S.Union(
       S.Struct({ a: S.optional(S.String, { exact: true }) }),
       S.Struct({ b: S.optional(S.Number, { exact: true }) })
@@ -191,21 +191,36 @@ describe("required", () => {
     )
   })
 
-  it("declarations should throw", async () => {
-    expect(() => S.required(S.OptionFromSelf(S.String))).toThrow(
-      new Error("Required: cannot handle declarations")
-    )
-  })
+  describe("unsupported schemas", () => {
+    it("declarations should throw", async () => {
+      expect(() => S.required(S.OptionFromSelf(S.String))).toThrow(
+        new Error("required: cannot handle declarations")
+      )
+    })
 
-  it("refinements should throw", async () => {
-    expect(() => S.required(S.String.pipe(S.minLength(2)))).toThrow(
-      new Error("Required: cannot handle refinements")
-    )
-  })
+    it("refinements should throw", async () => {
+      expect(() => S.required(S.String.pipe(S.minLength(2)))).toThrow(
+        new Error("required: cannot handle refinements")
+      )
+    })
 
-  it("transformations should throw", async () => {
-    expect(() => S.required(S.transform(S.String, S.String, { decode: identity, encode: identity }))).toThrow(
-      new Error("Required: cannot handle transformations")
-    )
+    describe("Transformation", () => {
+      it("should support property key renamings", () => {
+        const original = S.Struct({
+          a: S.String,
+          b: S.propertySignature(S.String).pipe(S.fromKey("c"))
+        })
+        const schema = S.required(S.partial(original))
+        expect(S.format(schema)).toBe(
+          "({ a: string | undefined; c: string | undefined } <-> { a: string | undefined; b: string | undefined })"
+        )
+      })
+
+      it("transformations should throw", async () => {
+        expect(() => S.required(S.transform(S.String, S.String, { decode: identity, encode: identity }))).toThrow(
+          new Error("required: cannot handle transformations")
+        )
+      })
+    })
   })
 })

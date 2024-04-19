@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 
 describe("partial", () => {
   describe("{ exact: false }", () => {
-    it("struct", async () => {
+    it("Struct", async () => {
       const schema = S.partial(S.Struct({ a: S.Number }))
       await Util.expectDecodeUnknownSuccess(schema, {})
       await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
@@ -24,14 +24,14 @@ describe("partial", () => {
       )
     })
 
-    it("record", async () => {
+    it("Record", async () => {
       const schema = S.partial(S.Record(S.String, S.NumberFromString))
       await Util.expectDecodeUnknownSuccess(schema, {}, {})
       await Util.expectDecodeUnknownSuccess(schema, { a: "1" }, { a: 1 })
       await Util.expectDecodeUnknownSuccess(schema, { a: undefined })
     })
 
-    describe("tuple", () => {
+    describe("Tuple", () => {
       it("e", async () => {
         const schema = S.partial(S.Tuple(S.NumberFromString))
         await Util.expectDecodeUnknownSuccess(schema, ["1"], [1])
@@ -49,7 +49,7 @@ describe("partial", () => {
       })
     })
 
-    it("array", async () => {
+    it("Array", async () => {
       const schema = S.partial(S.Array(S.Number))
       await Util.expectDecodeUnknownSuccess(schema, [])
       await Util.expectDecodeUnknownSuccess(schema, [1])
@@ -70,7 +70,7 @@ describe("partial", () => {
   })
 
   describe("{ exact: true }", () => {
-    it("struct", async () => {
+    it("Struct", async () => {
       const schema = S.partial(S.Struct({ a: S.Number }), { exact: true })
       await Util.expectDecodeUnknownSuccess(schema, {})
       await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
@@ -84,14 +84,14 @@ describe("partial", () => {
       )
     })
 
-    it("record", async () => {
+    it("Record", async () => {
       const schema = S.partial(S.Record(S.String, S.NumberFromString), { exact: true })
       await Util.expectDecodeUnknownSuccess(schema, {}, {})
       await Util.expectDecodeUnknownSuccess(schema, { a: "1" }, { a: 1 })
       await Util.expectDecodeUnknownSuccess(schema, { a: undefined })
     })
 
-    describe("tuple", () => {
+    describe("Tuple", () => {
       it("e", async () => {
         const schema = S.partial(S.Tuple(S.NumberFromString), { exact: true })
         await Util.expectDecodeUnknownSuccess(schema, ["1"], [1])
@@ -127,7 +127,7 @@ describe("partial", () => {
       })
     })
 
-    it("array", async () => {
+    it("Array", async () => {
       const schema = S.partial(S.Array(S.Number), { exact: true })
       await Util.expectDecodeUnknownSuccess(schema, [])
       await Util.expectDecodeUnknownSuccess(schema, [1])
@@ -146,7 +146,7 @@ describe("partial", () => {
       )
     })
 
-    it("union", async () => {
+    it("Union", async () => {
       const schema = S.partial(S.Union(S.Array(S.Number), S.String), { exact: true })
       await Util.expectDecodeUnknownSuccess(schema, "a")
       await Util.expectDecodeUnknownSuccess(schema, [])
@@ -199,24 +199,71 @@ describe("partial", () => {
          └─ Expected null, actual 1`
       )
     })
+  })
 
-    it("declarations should throw", async () => {
+  describe("unsupported schemas", () => {
+    it("declarations should throw", () => {
+      expect(() => S.partial(S.OptionFromSelf(S.String))).toThrow(
+        new Error("partial: cannot handle declarations")
+      )
       expect(() => S.partial(S.OptionFromSelf(S.String), { exact: true })).toThrow(
-        new Error("Partial: cannot handle declarations")
+        new Error("partial: cannot handle declarations")
       )
     })
 
-    it("refinements should throw", async () => {
+    it("refinements should throw", () => {
+      expect(() => S.partial(S.String.pipe(S.minLength(2)))).toThrow(
+        new Error("partial: cannot handle refinements")
+      )
       expect(() => S.partial(S.String.pipe(S.minLength(2)), { exact: true })).toThrow(
-        new Error("Partial: cannot handle refinements")
+        new Error("partial: cannot handle refinements")
       )
     })
 
-    it("transformations should throw", async () => {
-      expect(() => S.partial(S.transform(S.String, S.String, { decode: identity, encode: identity }), { exact: true }))
-        .toThrow(
-          new Error("Partial: cannot handle transformations")
+    describe("Transformation", () => {
+      describe("should support property key renamings", () => {
+        it("{ exact: false }", async () => {
+          const original = S.Struct({
+            a: S.String,
+            b: S.propertySignature(S.String).pipe(S.fromKey("c"))
+          })
+          const schema = S.partial(original)
+          expect(S.format(schema)).toBe(
+            "({ a?: string | undefined; c?: string | undefined } <-> { a?: string | undefined; b?: string | undefined })"
+          )
+          await Util.expectDecodeUnknownSuccess(schema, {})
+          await Util.expectDecodeUnknownSuccess(schema, { a: undefined })
+          await Util.expectDecodeUnknownSuccess(schema, { c: undefined }, { b: undefined })
+          await Util.expectDecodeUnknownSuccess(schema, { a: "a" })
+          await Util.expectDecodeUnknownSuccess(schema, { c: "b" }, { b: "b" })
+          await Util.expectDecodeUnknownSuccess(schema, { a: undefined, c: undefined }, { a: undefined, b: undefined })
+          await Util.expectDecodeUnknownSuccess(schema, { a: "a", c: undefined }, { a: "a", b: undefined })
+          await Util.expectDecodeUnknownSuccess(schema, { a: undefined, c: "b" }, { a: undefined, b: "b" })
+          await Util.expectDecodeUnknownSuccess(schema, { a: "a", c: "b" }, { a: "a", b: "b" })
+        })
+
+        it("{ exact: true }", async () => {
+          const original = S.Struct({
+            a: S.String,
+            b: S.propertySignature(S.String).pipe(S.fromKey("c"))
+          })
+          const schema = S.partial(original, { exact: true })
+          expect(S.format(schema)).toBe("({ a?: string; c?: string } <-> { a?: string; b?: string })")
+          await Util.expectDecodeUnknownSuccess(schema, {})
+          await Util.expectDecodeUnknownSuccess(schema, { a: "a" })
+          await Util.expectDecodeUnknownSuccess(schema, { c: "b" }, { b: "b" })
+          await Util.expectDecodeUnknownSuccess(schema, { a: "a", c: "b" }, { a: "a", b: "b" })
+        })
+      })
+
+      it("transformations should throw", () => {
+        expect(() => S.partial(S.transform(S.String, S.String, { decode: identity, encode: identity }))).toThrow(
+          new Error("partial: cannot handle transformations")
         )
+        expect(() =>
+          S.partial(S.transform(S.String, S.String, { decode: identity, encode: identity }), { exact: true })
+        ).toThrow(new Error("partial: cannot handle transformations"))
+      })
     })
   })
 })
