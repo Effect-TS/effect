@@ -531,6 +531,21 @@ export * as Number from "./Number.js"
 export * as Option from "./Option.js"
 
 /**
+ * This module provides an implementation of the `Order` type class which is used to define a total ordering on some type `A`.
+ * An order is defined by a relation `<=`, which obeys the following laws:
+ *
+ * - either `x <= y` or `y <= x` (totality)
+ * - if `x <= y` and `y <= x`, then `x == y` (antisymmetry)
+ * - if `x <= y` and `y <= z`, then `x <= z` (transitivity)
+ *
+ * The truth table for compare is defined as follows:
+ *
+ * | `x <= y` | `x >= y` | Ordering |                       |
+ * | -------- | -------- | -------- | --------------------- |
+ * | `true`   | `true`   | `0`      | corresponds to x == y |
+ * | `true`   | `false`  | `< 0`    | corresponds to x < y  |
+ * | `false`  | `true`   | `> 0`    | corresponds to x > y  |
+ *
  * @since 2.0.0
  */
 export * as Order from "./Order.js"
