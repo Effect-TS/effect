@@ -1,26 +1,26 @@
 {
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@8.15.1",
+  "packageManager": "pnpm@8.15.1+sha256.245fe901f8e7fa8782d7f17d32b6a83995e2ae03984cb5b62b8949bfdc27c7b5",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
     "clean": "node scripts/clean.mjs",
-    "codegen": "pnpm --recursive --parallel run codegen",
-    "build": "tsc -b tsconfig.build.json && pnpm --recursive --parallel run build",
+    "codegen": "corepack pnpm --recursive --parallel run codegen",
+    "build": "tsc -b tsconfig.build.json && corepack pnpm --recursive --parallel run build",
     "circular": "node scripts/circular.mjs",
     "test": "vitest",
     "coverage": "vitest --coverage",
     "check": "tsc -b tsconfig.json",
-    "check-recursive": "pnpm --recursive exec tsc -b tsconfig.json",
+    "check-recursive": "corepack pnpm --recursive exec tsc -b tsconfig.json",
     "lint": "eslint \"**/{src,test,examples,scripts,dtslint}/**/*.{ts,mjs}\"",
-    "lint-fix": "pnpm lint --fix",
-    "docgen": "pnpm --recursive --parallel exec docgen && node scripts/docs.mjs",
+    "lint-fix": "corepack pnpm lint --fix",
+    "docgen": "corepack pnpm --recursive --parallel exec docgen && node scripts/docs.mjs",
     "dtslint": "pnpm --recursive --parallel run dtslint",
     "dtslint-clean": "dtslint --installAll",
     "changeset-version": "changeset version && node scripts/version.mjs",
-    "changeset-publish": "pnpm build && changeset publish"
+    "changeset-publish": "corepack pnpm build && changeset publish"
   },
   "resolutions": {
     "dependency-tree": "^10.0.9",
