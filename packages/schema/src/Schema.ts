@@ -2098,8 +2098,8 @@ class TypeLiteralImpl<
           })
         }
         return new AST.Transformation(
-          new AST.TypeLiteral(from, issFrom),
-          new AST.TypeLiteral(to, issTo),
+          new AST.TypeLiteral(from, issFrom, { [AST.TitleAnnotationId]: "Struct (Encoded side)" }),
+          new AST.TypeLiteral(to, issTo, { [AST.TitleAnnotationId]: "Struct (Type side)" }),
           new AST.TypeLiteralTransformation(transformations)
         )
       }

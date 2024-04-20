@@ -99,9 +99,9 @@ describe("PropertySignature", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       { a: "a" },
-      `({ a?: NumberFromString } <-> { a: number })
+      `(Struct (Encoded side) <-> Struct (Type side))
 └─ Encoded side transformation failure
-   └─ { a?: NumberFromString }
+   └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString
             └─ Transformation process failure
@@ -128,9 +128,9 @@ describe("PropertySignature", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       { a: "a" },
-      `({ a?: NumberFromString } <-> { a: number })
+      `(Struct (Encoded side) <-> Struct (Type side))
 └─ Encoded side transformation failure
-   └─ { a?: NumberFromString }
+   └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString
             └─ Transformation process failure
