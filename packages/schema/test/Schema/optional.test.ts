@@ -90,9 +90,9 @@ describe("optional APIs", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a" },
-        `({ a?: NumberFromString | null | undefined } <-> { a?: number | undefined })
+        `(Struct (Encoded side) <-> Struct (Type side))
 └─ Encoded side transformation failure
-   └─ { a?: NumberFromString | null | undefined }
+   └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString | null | undefined
             ├─ Union member
@@ -122,9 +122,9 @@ describe("optional APIs", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: undefined },
-        `({ a?: NumberFromString | null } <-> { a?: number })
+        `(Struct (Encoded side) <-> Struct (Type side))
 └─ Encoded side transformation failure
-   └─ { a?: NumberFromString | null }
+   └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString | null
             ├─ Union member
@@ -137,9 +137,9 @@ describe("optional APIs", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a" },
-        `({ a?: NumberFromString | null } <-> { a?: number })
+        `(Struct (Encoded side) <-> Struct (Type side))
 └─ Encoded side transformation failure
-   └─ { a?: NumberFromString | null }
+   └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString | null
             ├─ Union member
@@ -167,9 +167,9 @@ describe("optional APIs", () => {
         {
           a: "a"
         },
-        `({ a?: NumberFromString } <-> { a: Option<number> })
+        `(Struct (Encoded side) <-> Struct (Type side))
 └─ Encoded side transformation failure
-   └─ { a?: NumberFromString }
+   └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString
             └─ Transformation process failure
@@ -194,9 +194,9 @@ describe("optional APIs", () => {
         {
           a: "a"
         },
-        `({ a?: NumberFromString | null } <-> { a: Option<number> })
+        `(Struct (Encoded side) <-> Struct (Type side))
 └─ Encoded side transformation failure
-   └─ { a?: NumberFromString | null }
+   └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString | null
             ├─ Union member
@@ -223,9 +223,9 @@ describe("optional APIs", () => {
         {
           a: "a"
         },
-        `({ a?: NumberFromString | undefined } <-> { a: Option<number> })
+        `(Struct (Encoded side) <-> Struct (Type side))
 └─ Encoded side transformation failure
-   └─ { a?: NumberFromString | undefined }
+   └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString | undefined
             ├─ Union member
@@ -255,9 +255,9 @@ describe("optional APIs", () => {
         {
           a: "a"
         },
-        `({ a?: NumberFromString | null | undefined } <-> { a: Option<number> })
+        `(Struct (Encoded side) <-> Struct (Type side))
 └─ Encoded side transformation failure
-   └─ { a?: NumberFromString | null | undefined }
+   └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString | null | undefined
             ├─ Union member
@@ -285,9 +285,9 @@ describe("optional APIs", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a" },
-        `({ a?: NumberFromString } <-> { a: number })
+        `(Struct (Encoded side) <-> Struct (Type side))
 └─ Encoded side transformation failure
-   └─ { a?: NumberFromString }
+   └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString
             └─ Transformation process failure
@@ -310,9 +310,9 @@ describe("optional APIs", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a" },
-        `({ a?: NumberFromString | undefined } <-> { a: number })
+        `(Struct (Encoded side) <-> Struct (Type side))
 └─ Encoded side transformation failure
-   └─ { a?: NumberFromString | undefined }
+   └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString | undefined
             ├─ Union member
@@ -340,9 +340,9 @@ describe("optional APIs", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a" },
-        `({ a?: NumberFromString | null | undefined } <-> { a: number })
+        `(Struct (Encoded side) <-> Struct (Type side))
 └─ Encoded side transformation failure
-   └─ { a?: NumberFromString | null | undefined }
+   └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString | null | undefined
             ├─ Union member
@@ -371,9 +371,9 @@ describe("optional APIs", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a" },
-        `({ a?: NumberFromString | null } <-> { a: number })
+        `(Struct (Encoded side) <-> Struct (Type side))
 └─ Encoded side transformation failure
-   └─ { a?: NumberFromString | null }
+   └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString | null
             ├─ Union member
