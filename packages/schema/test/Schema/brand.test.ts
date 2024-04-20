@@ -13,6 +13,12 @@ const isBrandConstructor = (u: unknown): u is Brand.Brand.Constructor<any> =>
 
 describe("brand", () => {
   describe("annotations", () => {
+    it("toString / format", () => {
+      const schema = S.Number.pipe(S.brand("A"))
+      expect(String(schema)).toBe(`number & Brand<"A">`)
+      expect(S.format(schema)).toBe(`number & Brand<"A">`)
+    })
+
     it("using .annotations() twice", () => {
       const schema = S.Number.pipe(S.brand("A"))
       const annotatedSchema = schema.annotations({
@@ -48,7 +54,7 @@ describe("brand", () => {
       expect(schema.ast.annotations).toEqual({
         [AST.TypeAnnotationId]: S.IntTypeId,
         [AST.BrandAnnotationId]: ["A"],
-        [AST.TitleAnnotationId]: "integer",
+        [AST.TitleAnnotationId]: `integer & Brand<"A">`,
         [AST.DescriptionAnnotationId]: "an A brand",
         [AST.JSONSchemaAnnotationId]: { type: "integer" }
       })
@@ -67,7 +73,7 @@ describe("brand", () => {
       expect(schema.ast.annotations).toEqual({
         [AST.TypeAnnotationId]: S.IntTypeId,
         [AST.BrandAnnotationId]: ["A", "B"],
-        [AST.TitleAnnotationId]: "integer",
+        [AST.TitleAnnotationId]: `integer & Brand<"A"> & Brand<"B">`,
         [AST.DescriptionAnnotationId]: "a B brand",
         [AST.JSONSchemaAnnotationId]: { type: "integer" }
       })
@@ -87,7 +93,7 @@ describe("brand", () => {
       expect(schema.ast.annotations).toEqual({
         [AST.TypeAnnotationId]: S.IntTypeId,
         [AST.BrandAnnotationId]: [A, B],
-        [AST.TitleAnnotationId]: "integer",
+        [AST.TitleAnnotationId]: "integer & Brand<Symbol(A)> & Brand<Symbol(B)>",
         [AST.DescriptionAnnotationId]: "a B brand",
         [AST.JSONSchemaAnnotationId]: { type: "integer" }
       })
@@ -131,7 +137,7 @@ describe("brand", () => {
   it("either", () => {
     const Int = S.NumberFromString.pipe(S.int(), S.brand("Int"))
     expect(Int.either(1)).toEqual(Either.right(1))
-    expect(Either.mapLeft(Int.either(1.2), (errors) => errors[0].message)).toEqual(Either.left(`integer
+    expect(Either.mapLeft(Int.either(1.2), (errors) => errors[0].message)).toEqual(Either.left(`integer & Brand<"Int">
 └─ Predicate refinement failure
    └─ Expected an integer, actual 1.2`))
   })
