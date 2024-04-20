@@ -28,6 +28,7 @@ Error: ({ a?: string; b: string; c: string; d: string; e: string; f: string } <-
    └─ { a?: string; b: string; c: string; d: string; e: string; f: string }
       └─ ["a"]
          └─ Expected a string, actual 1
+*/
 ```
 
 Now
