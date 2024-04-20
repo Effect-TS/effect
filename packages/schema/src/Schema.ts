@@ -6286,6 +6286,13 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
     disableValidation?: boolean | undefined
   ): A & Omit<Inherited, keyof A> & Proto
 
+  make(
+    props: Types.Equals<C, {}> extends true ? void | {}
+      : Types.Equals<FilterOptionalKeys<C>, {}> extends true ? void | C
+      : C,
+    disableValidation?: boolean | undefined
+  ): A & Omit<Inherited, keyof A> & Proto
+
   readonly fields: { readonly [K in keyof Fields]: Fields[K] }
 
   readonly identifier: string
@@ -6583,6 +6590,10 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
 
     toString() {
       return toStringOverride !== undefined ? toStringOverride(this) : pretty_.make(this.constructor as any)(this)
+    }
+
+    static make(inp: any, ...args: any[]) {
+      return new this(inp, ...args)
     }
 
     static pipe() {
