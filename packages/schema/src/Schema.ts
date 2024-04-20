@@ -2275,15 +2275,12 @@ const makeBrandSchema = <S extends Schema.AnyNoContext, B extends string | symbo
     })
   )
   // make refined a BrandSchema...
-  refined[TypeId] = variance
   refined.ast = ast
-  refined.pipe = function() {
-    return pipeArguments(this, arguments)
-  }
+  refined[TypeId] = variance
+  Object.setPrototypeOf(refined, SchemaImpl.prototype)
   refined.annotations = (annotations: Annotations.Schema<Schema.Type<S> & brand_.Brand<B>>) => {
     return makeBrandSchema(ast, annotations, brand)
   }
-  refined.toString = () => `${ast} & Brand<${formatPropertyKey(brand)}>`
   return refined
 }
 
@@ -2340,6 +2337,8 @@ export const brand = <S extends Schema.AnyNoContext, B extends string | symbol>(
     onSome: (brands) => [...brands, brand]
   })
   return makeBrandSchema(self.ast, {
+    // add a default title annotation containing the brand
+    title: String(self.ast) + ` & Brand<${util_.formatUnknown(brand)}>`,
     ...annotations,
     [AST.BrandAnnotationId]: brandAnnotation
   }, brand)
@@ -6487,6 +6486,10 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
   const classSymbol = Symbol.for(`@effect/schema/${kind}/${identifier}`)
   const schema = fromSchema ?? Struct(fields)
   const validate = ParseResult.validateSync(schema)
+  const from = option_.match(AST.getTitleAnnotation(schema.ast), {
+    onNone: () => schema.annotations({ title: `${identifier} (Encoded side)` }),
+    onSome: () => schema
+  })
 
   return class extends Base {
     constructor(
@@ -6508,16 +6511,20 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
       return classSymbol
     }
 
-    toString() {
-      return toStringOverride !== undefined ? toStringOverride(this) : pretty_.make(this.constructor as any)(this)
-    }
-
     static pipe() {
       return pipeArguments(this, arguments)
     }
 
     static annotations(annotations: Annotations.Schema<any>) {
       return make(this.ast).annotations(annotations)
+    }
+
+    static toString() {
+      return `(${String(from)} <-> ${identifier})`
+    }
+
+    toString() {
+      return toStringOverride !== undefined ? toStringOverride(this) : pretty_.make(this.constructor as any)(this)
     }
 
     static fields = { ...fields }
@@ -6558,10 +6565,6 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
           ...annotations
         }
       )
-      const from = option_.match(AST.getTitleAnnotation(schema.ast), {
-        onNone: () => schema.annotations({ title: `${identifier} (Encoded side)` }),
-        onSome: () => schema
-      })
       const transformation = transform(
         from,
         declaration,

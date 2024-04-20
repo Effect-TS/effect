@@ -129,6 +129,8 @@ describe("Class APIs", () => {
     it("should be a Schema", () => {
       class A extends S.Class<A>("A")({ a: S.String }) {}
       expect(S.isSchema(A)).toEqual(true)
+      expect(String(A)).toBe("(A (Encoded side) <-> A)")
+      expect(S.format(A)).toBe("(A (Encoded side) <-> A)")
     })
 
     it("should expose the fields", () => {
