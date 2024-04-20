@@ -278,6 +278,10 @@ export const DEFINITION_PREFIX = "#/$defs/"
 const get$ref = (id: string): string => `${DEFINITION_PREFIX}${id}`
 
 const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>, handleIdentifier: boolean = true): JsonSchema7 => {
+  const surrogate = AST.getSurrogateAnnotation(ast)
+  if (Option.isSome(surrogate)) {
+    return go(surrogate.value, $defs, handleIdentifier)
+  }
   const hook = AST.getJSONSchemaAnnotation(ast)
   if (Option.isSome(hook)) {
     const handler = hook.value as JsonSchema7
