@@ -1,5 +1,95 @@
 # @effect/schema
 
+## 0.66.5
+
+### Patch Changes
+
+- [#2582](https://github.com/Effect-TS/effect/pull/2582) [`b3fe829`](https://github.com/Effect-TS/effect/commit/b3fe829e8b12726afe94086b5375968f41a26411) Thanks [@gcanti](https://github.com/gcanti)! - Add default title annotations to both sides of Struct transformations.
+
+  This simple addition helps make error messages shorter and more understandable.
+
+  Before
+
+  ```ts
+  import { Schema } from "@effect/schema";
+
+  const schema = Schema.Struct({
+    a: Schema.optional(Schema.String, { exact: true, default: () => "" }),
+    b: Schema.String,
+    c: Schema.String,
+    d: Schema.String,
+    e: Schema.String,
+    f: Schema.String,
+  });
+
+  Schema.decodeUnknownSync(schema)({ a: 1 });
+  /*
+  throws
+  Error: ({ a?: string; b: string; c: string; d: string; e: string; f: string } <-> { a: string; b: string; c: string; d: string; e: string; f: string })
+  └─ Encoded side transformation failure
+     └─ { a?: string; b: string; c: string; d: string; e: string; f: string }
+        └─ ["a"]
+           └─ Expected a string, actual 1
+  */
+  ```
+
+  Now
+
+  ```ts
+  import { Schema } from "@effect/schema";
+
+  const schema = Schema.Struct({
+    a: Schema.optional(Schema.String, { exact: true, default: () => "" }),
+    b: Schema.String,
+    c: Schema.String,
+    d: Schema.String,
+    e: Schema.String,
+    f: Schema.String,
+  });
+
+  Schema.decodeUnknownSync(schema)({ a: 1 });
+  /*
+  throws
+  Error: (Struct (Encoded side) <-> Struct (Type side))
+  └─ Encoded side transformation failure
+     └─ Struct (Encoded side)
+        └─ ["a"]
+           └─ Expected a string, actual 1
+  */
+  ```
+
+- [#2581](https://github.com/Effect-TS/effect/pull/2581) [`a58b7de`](https://github.com/Effect-TS/effect/commit/a58b7deb8bb1d3b0dd636decf5d16f115f37eb72) Thanks [@gcanti](https://github.com/gcanti)! - Fix formatting for Class and brands AST.
+
+- [#2579](https://github.com/Effect-TS/effect/pull/2579) [`d90e8c3`](https://github.com/Effect-TS/effect/commit/d90e8c3090cbc78e2bc7b51c974df66ffefacdfa) Thanks [@gcanti](https://github.com/gcanti)! - Schema: JSONSchema should support make(Class)
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "@effect/schema";
+
+  class A extends Schema.Class<A>("A")({
+    a: Schema.String,
+  }) {}
+
+  console.log(JSONSchema.make(A)); // throws MissingAnnotation: cannot build a JSON Schema for a declaration without a JSON Schema annotation
+  ```
+
+  Now
+
+  ```ts
+  console.log(JSONSchema.make(A));
+  /*
+  Output:
+  {
+    '$schema': 'http://json-schema.org/draft-07/schema#',
+    type: 'object',
+    required: [ 'a' ],
+    properties: { a: { type: 'string', description: 'a string', title: 'string' } },
+    additionalProperties: false
+  }
+  */
+  ```
+
 ## 0.66.4
 
 ### Patch Changes
