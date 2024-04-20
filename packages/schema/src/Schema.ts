@@ -2040,6 +2040,7 @@ export interface TypeLiteral<
     | IndexSignature.Context<Records>
   >
 {
+  make: (input: Types.Simplify<ToStructConstructor<Fields>>) => Types.Simplify<TypeLiteral.Type<Fields, Records>>
   readonly fields: { readonly [K in keyof Fields]: Fields[K] }
   readonly records: Readonly<Records>
   annotations(
@@ -2150,6 +2151,23 @@ class TypeLiteralImpl<
     annotations: Annotations.Schema<Types.Simplify<TypeLiteral.Type<Fields, Records>>>
   ): TypeLiteral<Fields, Records> {
     return new TypeLiteralImpl(this.fields, this.records, AST.annotations(this.ast, toASTAnnotations(annotations)))
+  }
+
+  make(props: Types.Simplify<ToStructConstructor<Fields>>): Types.Simplify<TypeLiteral.Type<Fields, Records>> {
+    const p: any = { ...props as any }
+    Object.entries(this.fields).forEach(([k, v]) => {
+      if (p[k] === undefined) {
+        const ast = v.ast._tag === "PropertySignatureDeclaration"
+          ? v.ast
+          : v.ast._tag === "PropertySignatureTransformation"
+          ? v.ast.to
+          : undefined
+        if (ast?.defaultConstructor) {
+          p[k] = ast.defaultConstructor()
+        }
+      }
+    })
+    return p
   }
 }
 
