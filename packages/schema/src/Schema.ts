@@ -3518,7 +3518,7 @@ export const Trim: Trim = transform(
 ).annotations({ identifier: "Trim" })
 
 /**
- * Returns a achema that allows splitting a string into an array of strings.
+ * Returns a schema that allows splitting a string into an array of strings.
  *
  * @category string transformations
  * @since 1.0.0
@@ -7537,8 +7537,8 @@ const schemaFromArbitrary = <A>(value: LazyArbitrary<A>): Schema<A> =>
 export interface BooleanFromUnknown extends Annotable<BooleanFromUnknown, boolean, unknown> {}
 
 /**
- * Convers an arbitrary value to a `boolean` by testing whether it is truthy.
- * Uses `!!val` to convert the value to a `boolean`.
+ * Converts an arbitrary value to a `boolean` by testing whether it is truthy.
+ * Uses `!!val` to coerce the value to a `boolean`.
  *
  * @see https://developer.mozilla.org/docs/Glossary/Truthy
  * @category boolean constructors
