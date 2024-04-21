@@ -2,13 +2,15 @@
  * @since 1.0.0
  */
 import * as Schema from "@effect/schema/Schema"
-import * as Arr from "effect/Array"
+import * as FiberRef from "effect/FiberRef"
 import { dual, identity } from "effect/Function"
+import { globalValue } from "effect/GlobalValue"
 import type * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Record from "effect/Record"
 import * as Secret from "effect/Secret"
 import * as String from "effect/String"
+import type { Mutable } from "effect/Types"
 
 /**
  * @since 1.0.0
@@ -36,6 +38,13 @@ export interface Headers {
   readonly [HeadersTypeId]: HeadersTypeId
   readonly [key: string]: string
 }
+
+const Proto = Object.assign(Object.create(null), {
+  [HeadersTypeId]: HeadersTypeId
+})
+
+const make = (input: Record.ReadonlyRecord<string, string>): Mutable<Headers> =>
+  Object.assign(Object.create(Proto), input) as Headers
 
 /**
  * @since 1.0.0
@@ -69,7 +78,7 @@ export type Input =
  * @since 1.0.0
  * @category constructors
  */
-export const empty: Headers = Object.create(null) as Headers
+export const empty: Headers = Object.create(Proto)
 
 /**
  * @since 1.0.0
@@ -79,26 +88,29 @@ export const fromInput: (input?: Input) => Headers = (input) => {
   if (input === undefined) {
     return empty
   } else if (Symbol.iterator in input) {
-    return Record.fromEntries(Arr.map(
-      Arr.fromIterable(input),
-      ([k, v]) => [k.toLowerCase(), v] as const
-    )) as Headers
+    const out: Record<string, string> = Object.create(Proto)
+    for (const [k, v] of input) {
+      out[k.toLowerCase()] = v
+    }
+    return out as Headers
   }
-  return Record.fromEntries(
-    Object.entries(input).map(([k, v]) =>
-      [
-        k.toLowerCase(),
-        Arr.isArray(v) ? v.join(", ") : v
-      ] as const
-    )
-  ) as Headers
+  const out: Record<string, string> = Object.create(Proto)
+  for (const [k, v] of Object.entries(input)) {
+    if (Array.isArray(v)) {
+      out[k.toLowerCase()] = v.join(", ")
+    } else if (v !== undefined) {
+      out[k.toLowerCase()] = v as string
+    }
+  }
+  return out as Headers
 }
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const unsafeFromRecord = (input: Record.ReadonlyRecord<string, string>): Headers => input as Headers
+export const unsafeFromRecord = (input: Record.ReadonlyRecord<string, string>): Headers =>
+  Object.setPrototypeOf(input, Proto) as Headers
 
 /**
  * @since 1.0.0
@@ -110,7 +122,7 @@ export const has: {
 } = dual<
   (key: string) => (self: Headers) => boolean,
   (self: Headers, key: string) => boolean
->(2, (self, key) => Record.has(self as Record<string, string>, key.toLowerCase()))
+>(2, (self, key) => key.toLowerCase() in self)
 
 /**
  * @since 1.0.0
@@ -134,10 +146,11 @@ export const set: {
 } = dual<
   (key: string, value: string) => (self: Headers) => Headers,
   (self: Headers, key: string, value: string) => Headers
->(3, (self, key, value) => ({
-  ...self,
-  [key.toLowerCase()]: value
-}))
+>(3, (self, key, value) => {
+  const out = make(self)
+  out[key.toLowerCase()] = value
+  return out
+})
 
 /**
  * @since 1.0.0
@@ -149,10 +162,11 @@ export const setAll: {
 } = dual<
   (headers: Input) => (self: Headers) => Headers,
   (self: Headers, headers: Input) => Headers
->(2, (self, headers) => ({
-  ...self,
-  ...fromInput(headers)
-}))
+>(2, (self, headers) =>
+  make({
+    ...self,
+    ...fromInput(headers)
+  }))
 
 /**
  * @since 1.0.0
@@ -164,10 +178,11 @@ export const merge: {
 } = dual<
   (headers: Headers) => (self: Headers) => Headers,
   (self: Headers, headers: Headers) => Headers
->(2, (self, headers) => ({
-  ...self,
-  ...headers
-}))
+>(2, (self, headers) => {
+  const out = make(self)
+  Object.assign(out, headers)
+  return out
+})
 
 /**
  * @since 1.0.0
@@ -180,35 +195,58 @@ export const remove: {
   (key: string) => (self: Headers) => Headers,
   (self: Headers, key: string) => Headers
 >(2, (self, key) => {
-  const out = { ...self }
+  const out = make(self)
   delete out[key.toLowerCase()]
   return out
 })
 
 /**
  * @since 1.0.0
+ * @category combinators
  */
 export const redact: {
-  (key: string | ReadonlyArray<string>): (self: Headers) => Record<string, string | Secret.Secret>
-  (self: Headers, key: string | ReadonlyArray<string>): Record<string, string | Secret.Secret>
-} = dual<
-  (key: string | ReadonlyArray<string>) => (self: Headers) => Record<string, string | Secret.Secret>,
-  (self: Headers, key: string | ReadonlyArray<string>) => Record<string, string | Secret.Secret>
->(
+  (key: string | RegExp | ReadonlyArray<string | RegExp>): (self: Headers) => Record<string, string | Secret.Secret>
+  (self: Headers, key: string | RegExp | ReadonlyArray<string | RegExp>): Record<string, string | Secret.Secret>
+} = dual(
   2,
-  (self, key) => {
+  (self: Headers, key: string | RegExp | ReadonlyArray<string | RegExp>): Record<string, string | Secret.Secret> => {
     const out: Record<string, string | Secret.Secret> = { ...self }
-    const modify = (key: string) => {
-      const k = key.toLowerCase()
-      if (has(self, k)) {
-        out[k] = Secret.fromString(self[k])
+    const modify = (key: string | RegExp) => {
+      if (typeof key === "string") {
+        const k = key.toLowerCase()
+        if (k in self) {
+          out[k] = Secret.fromString(self[k])
+        }
+      } else {
+        for (const name in self) {
+          if (key.test(name)) {
+            out[name] = Secret.fromString(self[name])
+          }
+        }
       }
     }
-    if (Predicate.isString(key)) {
-      modify(key)
+    if (Array.isArray(key)) {
+      for (let i = 0; i < key.length; i++) {
+        modify(key[i])
+      }
     } else {
-      key.forEach(modify)
+      modify(key as string | RegExp)
     }
     return out
   }
+)
+
+/**
+ * @since 1.0.0
+ * @category fiber refs
+ */
+export const currentRedactedNames = globalValue(
+  "@effect/platform/Http/Headers/currentRedactedNames",
+  () =>
+    FiberRef.unsafeMake<ReadonlyArray<string | RegExp>>([
+      "authorization",
+      "cookie",
+      "set-cookie",
+      "x-api-key"
+    ])
 )

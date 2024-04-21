@@ -112,9 +112,15 @@ export const tracer = make((httpApp) =>
     let url: URL | undefined = undefined
     try {
       url = new URL(request.url, `${protocol}://${host}`)
+      if (url.username !== "" || url.password !== "") {
+        url.username = "REDACTED"
+        url.password = "REDACTED"
+      }
     } catch (_) {
       //
     }
+    const redactedHeaderNames = fiber.getFiberRef(Headers.currentRedactedNames)
+    const redactedHeaders = Headers.redact(request.headers, redactedHeaderNames)
     return Effect.useSpan(
       `http.server ${request.method}`,
       { parent: Option.getOrUndefined(TraceContext.fromHeaders(request.headers)) },
@@ -132,9 +138,9 @@ export const tracer = make((httpApp) =>
         if (request.headers["user-agent"] !== undefined) {
           span.attribute("user_agent.original", request.headers["user-agent"])
         }
-        Object.entries(request.headers).forEach(([key, value]) => {
-          span.attribute(`http.request.header.${key}`, value)
-        })
+        for (const name in redactedHeaders) {
+          span.attribute(`http.request.header.${name}`, String(redactedHeaders[name]))
+        }
         if (request.remoteAddress._tag === "Some") {
           span.attribute("client.address", request.remoteAddress.value)
         }
@@ -146,9 +152,10 @@ export const tracer = make((httpApp) =>
             } else {
               const response = exit.value
               span.attribute("http.response.status_code", response.status)
-              Object.entries(response.headers).forEach(([key, value]) => {
-                span.attribute(`http.response.header.${key}`, value)
-              })
+              const redactedHeaders = Headers.redact(response.headers, redactedHeaderNames)
+              for (const name in redactedHeaders) {
+                span.attribute(`http.response.header.${name}`, String(redactedHeaders[name]))
+              }
             }
             return exit
           }
