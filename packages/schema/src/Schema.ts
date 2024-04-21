@@ -6538,9 +6538,8 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
       const encode = ParseResult.encodeUnknown(toSchema)
       const pretty = pretty_.make(toSchema)
       const arb = arbitrary_.makeLazy(toSchema)
-      const equivalence = equivalence_.make(toSchema)
       const declaration: Schema.Any = declare(
-        [],
+        [toSchema],
         {
           decode: () => (input, _, ast) =>
             input instanceof this || fallbackInstanceOf(input)
@@ -6560,7 +6559,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
           description: `an instance of ${identifier}`,
           pretty: () => (self: any) => `${identifier}(${pretty(self)})`,
           arbitrary: () => (fc: any) => arb(fc).map((props: any) => new this(props)),
-          equivalence: () => equivalence as any,
+          equivalence: identity,
           [AST.SurrogateAnnotationId]: toSchema.ast,
           ...annotations
         }
