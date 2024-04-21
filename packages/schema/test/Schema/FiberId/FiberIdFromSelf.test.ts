@@ -1,10 +1,14 @@
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
-import * as Util from "@effect/schema/test/util"
+import * as Util from "@effect/schema/test/TestUtils"
 import * as FiberId from "effect/FiberId"
 import { describe, expect, it } from "vitest"
 
 describe("FiberIdFromSelf", () => {
+  it("arbitrary", () => {
+    Util.expectArbitrary(S.FiberIdFromSelf)
+  })
+
   it("property tests", () => {
     Util.roundtrip(S.FiberIdFromSelf)
   })

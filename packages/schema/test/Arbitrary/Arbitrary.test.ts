@@ -1,6 +1,6 @@
 import * as Arbitrary from "@effect/schema/Arbitrary"
 import * as S from "@effect/schema/Schema"
-import { expectValidArbitrary } from "@effect/schema/test/util"
+import { expectValidArbitrary } from "@effect/schema/test/TestUtils"
 import { isUnknown } from "effect/Predicate"
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"

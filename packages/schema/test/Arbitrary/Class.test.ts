@@ -1,5 +1,5 @@
 import * as S from "@effect/schema/Schema"
-import { expectValidArbitrary } from "@effect/schema/test/util"
+import { expectValidArbitrary } from "@effect/schema/test/TestUtils"
 import { describe, it } from "vitest"
 
 describe("class", () => {

@@ -4,7 +4,7 @@ import * as ParseResult from "@effect/schema/ParseResult"
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
-import * as Util from "@effect/schema/test/util"
+import * as Util from "@effect/schema/test/TestUtils"
 import { Context, Effect, Exit, pipe, Struct } from "effect"
 import * as Data from "effect/Data"
 import * as Equal from "effect/Equal"
@@ -862,6 +862,11 @@ describe("Class APIs", () => {
         )
       })
     })
+  })
+
+  it("arbitrary", () => {
+    class A extends S.Class<A>("A")({ a: S.String }) {}
+    Util.expectArbitrary(A)
   })
 
   it("equivalence", () => {

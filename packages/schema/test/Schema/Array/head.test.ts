@@ -1,5 +1,5 @@
 import * as S from "@effect/schema/Schema"
-import * as Util from "@effect/schema/test/util"
+import * as Util from "@effect/schema/test/TestUtils"
 import * as Option from "effect/Option"
 import { describe, it } from "vitest"
 
