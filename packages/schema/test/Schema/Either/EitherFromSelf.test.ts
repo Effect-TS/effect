@@ -1,11 +1,15 @@
 import * as P from "@effect/schema/ParseResult"
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
-import * as Util from "@effect/schema/test/util"
+import * as Util from "@effect/schema/test/TestUtils"
 import * as E from "effect/Either"
 import { describe, expect, it } from "vitest"
 
 describe("EitherFromSelf", () => {
+  it("arbitrary", () => {
+    Util.expectArbitrary(S.EitherFromSelf({ left: S.String, right: S.Number }))
+  })
+
   it("property tests", () => {
     Util.roundtrip(S.EitherFromSelf({ left: S.String, right: S.Number }))
   })

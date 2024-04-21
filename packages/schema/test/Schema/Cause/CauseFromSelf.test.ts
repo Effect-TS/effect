@@ -1,11 +1,15 @@
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
-import * as Util from "@effect/schema/test/util"
+import * as Util from "@effect/schema/test/TestUtils"
 import * as Cause from "effect/Cause"
 import * as FiberId from "effect/FiberId"
 import { describe, expect, it } from "vitest"
 
 describe("CauseFromSelf", () => {
+  it("arbitrary", () => {
+    Util.expectArbitrary(S.CauseFromSelf({ error: S.NumberFromString }))
+  })
+
   it("property tests", () => {
     Util.roundtrip(S.CauseFromSelf({ error: S.NumberFromString }))
   })

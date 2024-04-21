@@ -1,6 +1,6 @@
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
-import * as Util from "@effect/schema/test/util"
+import * as Util from "@effect/schema/test/TestUtils"
 import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"

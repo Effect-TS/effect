@@ -1,5 +1,5 @@
 import * as S from "@effect/schema/Schema"
-import * as Util from "@effect/schema/test/util"
+import * as Util from "@effect/schema/test/TestUtils"
 import { Cause, FiberId } from "effect"
 import { assert, describe, it } from "vitest"
 

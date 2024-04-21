@@ -39,6 +39,7 @@ import * as arbitrary_ from "./Arbitrary.js"
 import type { ParseOptions } from "./AST.js"
 import * as AST from "./AST.js"
 import * as equivalence_ from "./Equivalence.js"
+import type * as fastCheck_ from "./FastCheck.js"
 import * as errors_ from "./internal/errors.js"
 import * as filters_ from "./internal/filters.js"
 import * as serializable_ from "./internal/serializable.js"
@@ -5049,10 +5050,11 @@ const optionEncoded = <A, I, R>(value: Schema<A, I, R>) =>
 const optionDecode = <A>(input: OptionEncoded<A>): option_.Option<A> =>
   input._tag === "None" ? option_.none() : option_.some(input.value)
 
-const optionArbitrary = <A>(value: LazyArbitrary<A>): LazyArbitrary<option_.Option<A>> => {
-  const arb = arbitrary_.makeLazy(optionEncoded(schemaFromArbitrary(value)))
-  return (fc) => arb(fc).map(optionDecode)
-}
+const optionArbitrary = <A>(value: LazyArbitrary<A>): LazyArbitrary<option_.Option<A>> => (fc) =>
+  fc.oneof(
+    fc.record({ _tag: fc.constant("None" as const) }),
+    fc.record({ _tag: fc.constant("Some" as const), value: value(fc) })
+  ).map(optionDecode)
 
 const optionPretty = <A>(value: pretty_.Pretty<A>): pretty_.Pretty<option_.Option<A>> =>
   option_.match({
@@ -5277,10 +5279,12 @@ const eitherDecode = <R, L>(input: EitherEncoded<R, L>): either_.Either<R, L> =>
 const eitherArbitrary = <R, L>(
   right: LazyArbitrary<R>,
   left: LazyArbitrary<L>
-): LazyArbitrary<either_.Either<R, L>> => {
-  const arb = arbitrary_.makeLazy(eitherEncoded(schemaFromArbitrary(right), schemaFromArbitrary(left)))
-  return (fc) => arb(fc).map(eitherDecode)
-}
+): LazyArbitrary<either_.Either<R, L>> =>
+(fc) =>
+  fc.oneof(
+    fc.record({ _tag: fc.constant("Left" as const), left: left(fc) }),
+    fc.record({ _tag: fc.constant("Right" as const), right: right(fc) })
+  ).map(eitherDecode)
 
 const eitherPretty = <R, L>(
   right: pretty_.Pretty<R>,
@@ -6374,14 +6378,13 @@ export const TaggedError = <Self = never>(identifier?: string) =>
     tag: { _tag: tag },
     annotations,
     toStringOverride(self) {
-      if (!(Predicate.isString(self.message) && self.message.length > 0)) {
-        return pretty_.make(self.constructor as any)(self)
+      if ((Predicate.isString(self.message) && self.message.length > 0)) {
+        let message = `${self._tag}: ${self.message}`
+        if (Predicate.isString(self.stack)) {
+          message = `${message}\n${self.stack.split("\n").slice(1).join("\n")}`
+        }
+        return message
       }
-      let message = `${self._tag}: ${self.message}`
-      if (Predicate.isString(self.stack)) {
-        message = `${message}\n${self.stack.split("\n").slice(1).join("\n")}`
-      }
-      return message
     }
   })
 }
@@ -6481,7 +6484,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
   fromSchema?: Schema.Any | undefined
   tag?: { _tag: AST.LiteralValue } | undefined
   annotations?: Annotations.Schema<any> | undefined
-  toStringOverride?: ((self: any) => string) | undefined
+  toStringOverride?: (self: any) => string | undefined
 }): any => {
   const classSymbol = Symbol.for(`@effect/schema/${kind}/${identifier}`)
   const schema = fromSchema ?? Struct(fields)
@@ -6524,7 +6527,16 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
     }
 
     toString() {
-      return toStringOverride !== undefined ? toStringOverride(this) : pretty_.make(this.constructor as any)(this)
+      if (toStringOverride !== undefined) {
+        const out = toStringOverride(this)
+        if (out !== undefined) {
+          return out
+        }
+      }
+      return `${identifier}({ ${
+        util_.ownKeys(fields).map((p: any) => `${util_.formatPropertyKey(p)}: ${util_.formatUnknown(this[p])}`)
+          .join(", ")
+      } })`
     }
 
     static fields = { ...fields }
@@ -6536,11 +6548,8 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
       const guard = ParseResult.is(toSchema)
       const fallbackInstanceOf = (u: unknown) => Predicate.hasProperty(u, classSymbol) && guard(u)
       const encode = ParseResult.encodeUnknown(toSchema)
-      const pretty = pretty_.make(toSchema)
-      const arb = arbitrary_.makeLazy(toSchema)
-      const equivalence = equivalence_.make(toSchema)
       const declaration: Schema.Any = declare(
-        [],
+        [toSchema],
         {
           decode: () => (input, _, ast) =>
             input instanceof this || fallbackInstanceOf(input)
@@ -6558,9 +6567,9 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
           identifier,
           title: identifier,
           description: `an instance of ${identifier}`,
-          pretty: () => (self: any) => `${identifier}(${pretty(self)})`,
-          arbitrary: () => (fc: any) => arb(fc).map((props: any) => new this(props)),
-          equivalence: () => equivalence as any,
+          pretty: (pretty) => (self: any) => `${identifier}(${pretty(self)})`,
+          arbitrary: (arb) => (fc: any) => arb(fc).map((props: any) => new this(props)),
+          equivalence: identity,
           [AST.SurrogateAnnotationId]: toSchema.ast,
           ...annotations
         }
@@ -6646,27 +6655,27 @@ export type FiberIdEncoded =
     readonly startTimeMillis: number
   }
 
-const FiberIdCompositeEncoded = Struct({
-  _tag: Literal("Composite"),
-  left: suspend(() => FiberIdEncoded),
-  right: suspend(() => FiberIdEncoded)
-}).annotations({ identifier: "FiberIdCompositeEncoded" })
-
 const FiberIdNoneEncoded = Struct({
   _tag: Literal("None")
 }).annotations({ identifier: "FiberIdNoneEncoded" })
 
 const FiberIdRuntimeEncoded = Struct({
   _tag: Literal("Runtime"),
-  id: Int.pipe(nonNegative({
+  id: Int.annotations({
     title: "id",
     description: "id"
-  })),
-  startTimeMillis: Int.pipe(nonNegative({
+  }),
+  startTimeMillis: Int.annotations({
     title: "startTimeMillis",
     description: "startTimeMillis"
-  }))
+  })
 }).annotations({ identifier: "FiberIdRuntimeEncoded" })
+
+const FiberIdCompositeEncoded = Struct({
+  _tag: Literal("Composite"),
+  left: suspend(() => FiberIdEncoded),
+  right: suspend(() => FiberIdEncoded)
+}).annotations({ identifier: "FiberIdCompositeEncoded" })
 
 const FiberIdEncoded: Schema<FiberIdEncoded> = Union(
   FiberIdNoneEncoded,
@@ -6674,9 +6683,13 @@ const FiberIdEncoded: Schema<FiberIdEncoded> = Union(
   FiberIdCompositeEncoded
 ).annotations({ identifier: "FiberIdEncoded" })
 
-const fiberIdFromArbitrary = arbitrary_.makeLazy(FiberIdEncoded)
-
-const fiberIdArbitrary: LazyArbitrary<fiberId_.FiberId> = (fc) => fiberIdFromArbitrary(fc).map(fiberIdDecode)
+const fiberIdArbitrary: LazyArbitrary<fiberId_.FiberId> = (fc) =>
+  fc.letrec((tie) => ({
+    None: fc.record({ _tag: fc.constant("None" as const) }),
+    Runtime: fc.record({ _tag: fc.constant("Runtime" as const), id: fc.integer(), startTimeMillis: fc.integer() }),
+    Composite: fc.record({ _tag: fc.constant("Composite" as const), left: tie("FiberId"), right: tie("FiberId") }),
+    FiberId: fc.oneof(tie("None"), tie("Runtime"), tie("Composite")) as any as fastCheck_.Arbitrary<fiberId_.FiberId>
+  })).FiberId.map(fiberIdDecode)
 
 const fiberIdPretty: pretty_.Pretty<fiberId_.FiberId> = (fiberId) => {
   switch (fiberId._tag) {
@@ -6835,10 +6848,24 @@ const causeEncoded = <E, EI, R1, R2>(
 const causeArbitrary = <E>(
   error: LazyArbitrary<E>,
   defect: LazyArbitrary<unknown>
-): LazyArbitrary<cause_.Cause<E>> => {
-  const arb = arbitrary_.makeLazy(causeEncoded(schemaFromArbitrary(error), schemaFromArbitrary(defect)))
-  return (fc) => arb(fc).map(causeDecode)
-}
+): LazyArbitrary<cause_.Cause<E>> =>
+(fc) =>
+  fc.letrec((tie) => ({
+    Empty: fc.record({ _tag: fc.constant("Empty" as const) }),
+    Fail: fc.record({ _tag: fc.constant("Fail" as const), error: error(fc) }),
+    Die: fc.record({ _tag: fc.constant("Die" as const), defect: defect(fc) }),
+    Interrupt: fc.record({ _tag: fc.constant("Interrupt" as const), fiberId: fiberIdArbitrary(fc) }),
+    Sequential: fc.record({ _tag: fc.constant("Sequential" as const), left: tie("Cause"), right: tie("Cause") }),
+    Parallel: fc.record({ _tag: fc.constant("Parallel" as const), left: tie("Cause"), right: tie("Cause") }),
+    Cause: fc.oneof(
+      tie("Empty"),
+      tie("Fail"),
+      tie("Die"),
+      tie("Interrupt"),
+      tie("Sequential"),
+      tie("Parallel")
+    ) as any as fastCheck_.Arbitrary<cause_.Cause<E>>
+  })).Cause.map(causeDecode)
 
 const causePretty = <E>(error: pretty_.Pretty<E>): pretty_.Pretty<cause_.Cause<E>> => (cause) => {
   const f = (cause: cause_.Cause<E>): string => {
@@ -7061,12 +7088,12 @@ const exitArbitrary = <A, E>(
   value: LazyArbitrary<A>,
   error: LazyArbitrary<E>,
   defect: LazyArbitrary<unknown>
-): LazyArbitrary<exit_.Exit<A, E>> => {
-  const arb = arbitrary_.makeLazy(
-    exitEncoded(schemaFromArbitrary(value), schemaFromArbitrary(error), schemaFromArbitrary(defect))
-  )
-  return (fc) => arb(fc).map(exitDecode)
-}
+): LazyArbitrary<exit_.Exit<A, E>> =>
+(fc) =>
+  fc.oneof(
+    fc.record({ _tag: fc.constant("Failure" as const), cause: causeArbitrary(error, defect)(fc) }),
+    fc.record({ _tag: fc.constant("Success" as const), value: value(fc) })
+  ).map(exitDecode)
 
 const exitPretty =
   <A, E>(value: pretty_.Pretty<A>, error: pretty_.Pretty<E>): pretty_.Pretty<exit_.Exit<A, E>> => (exit) =>
@@ -7524,11 +7551,6 @@ export const SortedSet = <Value extends Schema.Any>(
     { decode: (as) => sortedSet_.fromIterable(as, ordA), encode: (set) => Array.from(sortedSet_.values(set)) }
   )
 }
-
-const schemaFromArbitrary = <A>(value: LazyArbitrary<A>): Schema<A> =>
-  suspend<A, A, never>(() => Any).annotations({
-    [arbitrary_.ArbitraryHookId]: () => value
-  })
 
 /**
  * @category api interface

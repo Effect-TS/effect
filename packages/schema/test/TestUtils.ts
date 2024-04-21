@@ -80,6 +80,13 @@ const effectifyAST = (ast: AST.AST): AST.AST => {
 export const effectify = <A, I>(schema: S.Schema<A, I, never>): S.Schema<A, I, never> =>
   S.make(effectifyAST(schema.ast))
 
+export const expectArbitrary = <A, I>(schema: S.Schema<A, I, never>, n: number = 5) => {
+  const is = S.is(schema)
+  const as = fc.sample(A.make(schema), n)
+  // console.log(as)
+  expect(as.every((a) => is(a))).toBe(true)
+}
+
 export const roundtrip = <A, I>(schema: S.Schema<A, I, never>, params?: Parameters<typeof fc.assert>[1]) => {
   if (!doRoundtrip) {
     return

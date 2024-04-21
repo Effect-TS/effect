@@ -1,7 +1,7 @@
 import * as Equivalence from "@effect/schema/Equivalence"
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
-import * as Util from "@effect/schema/test/util"
+import * as Util from "@effect/schema/test/TestUtils"
 import { BigDecimal } from "effect"
 import { describe, expect, it } from "vitest"
 

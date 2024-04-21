@@ -1,7 +1,7 @@
 import * as AST from "@effect/schema/AST"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
-import * as Util from "@effect/schema/test/util"
+import * as Util from "@effect/schema/test/TestUtils"
 import * as Brand from "effect/Brand"
 import * as Either from "effect/Either"
 import * as Option from "effect/Option"
