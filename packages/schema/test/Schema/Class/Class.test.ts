@@ -219,6 +219,12 @@ describe("Class APIs", () => {
       expect(schema.ast.annotations[AST.TitleAnnotationId]).toEqual("X")
     })
 
+    it("default toString()", () => {
+      const b = Symbol.for("b")
+      class A extends S.Class<A>("A")({ a: S.String, [b]: S.Number }) {}
+      expect(String(new A({ a: "a", [b]: 1 }))).toBe(`A({ "a": "a", Symbol(b): 1 })`)
+    })
+
     it("decoding", async () => {
       class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
       await Util.expectDecodeUnknownSuccess(A, { a: "a" }, new A({ a: "a" }))
@@ -502,7 +508,7 @@ describe("Class APIs", () => {
     const personAge = new PersonWithAge({ id: 1, name: "John", age: 30 })
 
     expect(String(person)).toEqual(`Person({ "id": 1, "name": "John" })`)
-    expect(String(personAge)).toEqual(`PersonWithAge({ "id": 1, "age": 30, "name": "John" })`)
+    expect(String(personAge)).toEqual(`PersonWithAge({ "id": 1, "name": "John", "age": 30 })`)
 
     expect(person instanceof Data.Class).toEqual(true)
     expect(personAge instanceof Data.Class).toEqual(true)
@@ -611,7 +617,7 @@ describe("Class APIs", () => {
     let person = new TaggedPersonWithAge({ id: 1, name: "John", age: 30 })
 
     expect(String(person)).toEqual(
-      `TaggedPersonWithAge({ "_tag": "TaggedPerson", "id": 1, "age": 30, "name": "John" })`
+      `TaggedPersonWithAge({ "_tag": "TaggedPerson", "id": 1, "name": "John", "age": 30 })`
     )
     expect(person._tag).toEqual("TaggedPerson")
     expect(person.upperName).toEqual("JOHN")

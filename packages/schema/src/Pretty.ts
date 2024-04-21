@@ -156,7 +156,7 @@ export const match: AST.Match<Pretty<any>> = {
           continue
         }
         output.push(
-          `${getPrettyPropertyKey(name)}: ${propertySignaturesTypes[i](input[name])}`
+          `${util_.formatPropertyKey(name)}: ${propertySignaturesTypes[i](input[name])}`
         )
       }
       // ---------------------------------------------
@@ -170,7 +170,7 @@ export const match: AST.Match<Pretty<any>> = {
             if (Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
               continue
             }
-            output.push(`${getPrettyPropertyKey(key)}: ${type(input[key])}`)
+            output.push(`${util_.formatPropertyKey(key)}: ${type(input[key])}`)
           }
         }
       }
@@ -213,6 +213,3 @@ export const match: AST.Match<Pretty<any>> = {
 }
 
 const compile = AST.getCompiler(match)
-
-const getPrettyPropertyKey = (name: PropertyKey): string =>
-  typeof name === "string" ? JSON.stringify(name) : String(name)

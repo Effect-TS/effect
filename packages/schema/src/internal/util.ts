@@ -72,3 +72,7 @@ export const formatUnknown = (u: unknown): string => {
     return String(u)
   }
 }
+
+/** @internal */
+export const formatPropertyKey = (name: PropertyKey): string =>
+  typeof name === "string" ? JSON.stringify(name) : String(name)

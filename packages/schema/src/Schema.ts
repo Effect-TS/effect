@@ -6378,14 +6378,13 @@ export const TaggedError = <Self = never>(identifier?: string) =>
     tag: { _tag: tag },
     annotations,
     toStringOverride(self) {
-      if (!(Predicate.isString(self.message) && self.message.length > 0)) {
-        return pretty_.make(self.constructor as any)(self)
+      if ((Predicate.isString(self.message) && self.message.length > 0)) {
+        let message = `${self._tag}: ${self.message}`
+        if (Predicate.isString(self.stack)) {
+          message = `${message}\n${self.stack.split("\n").slice(1).join("\n")}`
+        }
+        return message
       }
-      let message = `${self._tag}: ${self.message}`
-      if (Predicate.isString(self.stack)) {
-        message = `${message}\n${self.stack.split("\n").slice(1).join("\n")}`
-      }
-      return message
     }
   })
 }
@@ -6485,7 +6484,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
   fromSchema?: Schema.Any | undefined
   tag?: { _tag: AST.LiteralValue } | undefined
   annotations?: Annotations.Schema<any> | undefined
-  toStringOverride?: ((self: any) => string) | undefined
+  toStringOverride?: (self: any) => string | undefined
 }): any => {
   const classSymbol = Symbol.for(`@effect/schema/${kind}/${identifier}`)
   const schema = fromSchema ?? Struct(fields)
@@ -6528,7 +6527,16 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
     }
 
     toString() {
-      return toStringOverride !== undefined ? toStringOverride(this) : pretty_.make(this.constructor as any)(this)
+      if (toStringOverride !== undefined) {
+        const out = toStringOverride(this)
+        if (out !== undefined) {
+          return out
+        }
+      }
+      return `${identifier}({ ${
+        util_.ownKeys(fields).map((p: any) => `${util_.formatPropertyKey(p)}: ${util_.formatUnknown(this[p])}`)
+          .join(", ")
+      } })`
     }
 
     static fields = { ...fields }
@@ -6540,7 +6548,6 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
       const guard = ParseResult.is(toSchema)
       const fallbackInstanceOf = (u: unknown) => Predicate.hasProperty(u, classSymbol) && guard(u)
       const encode = ParseResult.encodeUnknown(toSchema)
-      const pretty = pretty_.make(toSchema)
       const declaration: Schema.Any = declare(
         [toSchema],
         {
@@ -6560,7 +6567,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
           identifier,
           title: identifier,
           description: `an instance of ${identifier}`,
-          pretty: () => (self: any) => `${identifier}(${pretty(self)})`,
+          pretty: (pretty) => (self: any) => `${identifier}(${pretty(self)})`,
           arbitrary: (arb) => (fc: any) => arb(fc).map((props: any) => new this(props)),
           equivalence: identity,
           [AST.SurrogateAnnotationId]: toSchema.ast,
