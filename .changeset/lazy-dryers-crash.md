@@ -21,3 +21,4 @@ export interface BrandSchema<A extends brand_.Brand<any>, I>
 
 - add decoding / encoding / validation methods to `Schema` interface:
   - is
+  - decodeUnknownSync

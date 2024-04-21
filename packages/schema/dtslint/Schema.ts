@@ -2275,3 +2275,17 @@ S.asSchema(S.SortedSet(S.NumberFromString, N.Order))
 
 // $ExpectType SortedSet<NumberFromString>
 S.SortedSet(S.NumberFromString, N.Order)
+
+// ---------------------------------------------
+// methods
+// ---------------------------------------------
+
+declare const schemaWithContext: S.Schema<number, string, "a">
+
+// @ts-expect-error
+schemaWithContext.decodeUnknownSync(null)
+
+class AWithContext extends S.Class<AWithContext>("AWithContext")({ s: schemaWithContext }) {}
+
+// @ts-expect-error
+AWithContext.decodeUnknownSync(null)

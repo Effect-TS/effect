@@ -75,6 +75,7 @@ export interface Schema<in out A, in out I = A, out R = never> extends Schema.Va
   readonly ast: AST.AST
   annotations(annotations: Annotations.Schema<A>): Schema<A, I, R>
   is(u: unknown, options?: AST.ParseOptions): u is A
+  decodeUnknownSync<A, I>(this: Schema<A, I, never>, u: unknown, options?: AST.ParseOptions): A
 }
 
 const variance = {
@@ -144,6 +145,9 @@ class SchemaImpl<in out A, in out I = A, out R = never> implements Schema.Varian
   }
   is(u: unknown, options?: AST.ParseOptions): u is A {
     return ParseResult.is(this)(u, options)
+  }
+  decodeUnknownSync<A, I>(this: Schema<A, I, never>, u: unknown, options?: AST.ParseOptions): A {
+    return ParseResult.decodeUnknownSync(this)(u, options)
   }
   toString() {
     return String(this.ast)
@@ -6562,6 +6566,10 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
 
     static is(this: any, u: unknown, options?: AST.ParseOptions) {
       return ParseResult.is(this)(u, options)
+    }
+
+    static decodeUnknownSync(this: any, u: unknown, options?: AST.ParseOptions) {
+      return ParseResult.decodeUnknownSync(this)(u, options)
     }
 
     static toString() {
