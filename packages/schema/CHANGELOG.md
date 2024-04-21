@@ -1,5 +1,21 @@
 # @effect/schema
 
+## 0.66.6
+
+### Patch Changes
+
+- [#2586](https://github.com/Effect-TS/effect/pull/2586) [`9dfc156`](https://github.com/Effect-TS/effect/commit/9dfc156dc13fb4da9c777aae3acece4b5ecf0064) Thanks [@gcanti](https://github.com/gcanti)! - remove non-tree-shakable compiler dependencies from the Schema module:
+
+  - remove dependency from `Arbitrary` compiler
+  - remove dependency from `Equivalence` compiler
+  - remove dependency from `Pretty` compiler
+
+- [#2583](https://github.com/Effect-TS/effect/pull/2583) [`80271bd`](https://github.com/Effect-TS/effect/commit/80271bdc648e9efa659ce66b2c255754a6a1a8b0) Thanks [@suddenlyGiovanni](https://github.com/suddenlyGiovanni)! - - Fixed a typo in the JSDoc comment of the `BooleanFromUnknown` boolean constructors in `Schema.ts`
+
+  - Fixed a typo in the JSDoc comment of the `split` string transformations combinator in `Schema.ts`
+
+- [#2585](https://github.com/Effect-TS/effect/pull/2585) [`e4ba97d`](https://github.com/Effect-TS/effect/commit/e4ba97d060c16bdf4e3b5bd5db6777f121a6768c) Thanks [@gcanti](https://github.com/gcanti)! - JSONSchema: rearrange handling of surrogate annotations to occur after JSON schema annotations
+
 ## 0.66.5
 
 ### Patch Changes
