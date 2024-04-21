@@ -6,7 +6,7 @@ import * as array_ from "effect/Array"
 import * as bigDecimal_ from "effect/BigDecimal"
 import * as bigInt_ from "effect/BigInt"
 import * as boolean_ from "effect/Boolean"
-import * as brand_ from "effect/Brand"
+import type * as brand_ from "effect/Brand"
 import * as cause_ from "effect/Cause"
 import * as chunk_ from "effect/Chunk"
 import * as data_ from "effect/Data"
@@ -47,7 +47,6 @@ import * as util_ from "./internal/util.js"
 import * as ParseResult from "./ParseResult.js"
 import * as pretty_ from "./Pretty.js"
 import type * as Serializable from "./Serializable.js"
-import * as TreeFormatter from "./TreeFormatter.js"
 
 /**
  * @since 1.0.0
@@ -75,6 +74,7 @@ export type TypeId = typeof TypeId
 export interface Schema<in out A, in out I = A, out R = never> extends Schema.Variance<A, I, R>, Pipeable {
   readonly ast: AST.AST
   annotations(annotations: Annotations.Schema<A>): Schema<A, I, R>
+  is(u: unknown, options?: AST.ParseOptions): u is A
 }
 
 const variance = {
@@ -141,6 +141,9 @@ class SchemaImpl<in out A, in out I = A, out R = never> implements Schema.Varian
   }
   annotations(annotations: Annotations.Schema<A>): Schema<A, I, R> {
     return new SchemaImpl(AST.annotations(this.ast, toASTAnnotations(annotations)))
+  }
+  is(u: unknown, options?: AST.ParseOptions): u is A {
+    return ParseResult.is(this)(u, options)
   }
   toString() {
     return String(this.ast)
@@ -2263,35 +2266,31 @@ export const pluck: {
 
 const makeBrandSchema = <S extends Schema.AnyNoContext, B extends string | symbol>(
   self: AST.AST,
-  annotations: Annotations.Schema<Schema.Type<S> & brand_.Brand<B>>,
-  brand: string | symbol
+  annotations: Annotations.Schema<Schema.Type<S> & brand_.Brand<B>>
 ): brand<S, B> => {
   const ast = AST.annotations(self, toASTAnnotations(annotations))
-  const validateEither_ = validateEither(make(ast))
-
-  const refined: any = brand_.refined((unbranded) =>
-    either_.match(validateEither_(unbranded), {
-      onLeft: (e) => option_.some(brand_.error(TreeFormatter.formatErrorSync(e), e)),
-      onRight: () => option_.none()
-    })
+  const schema = make(ast)
+  //     v-- function
+  const out: any = ParseResult.validateSync(schema)
+  // ----------------
+  // Schema interface
+  // ----------------
+  Object.setPrototypeOf(
+    Object.assign(out, schema, {
+      annotations: (a: typeof annotations) => makeBrandSchema(ast, a)
+    }),
+    Object.getPrototypeOf(schema)
   )
-  // make refined a BrandSchema...
-  refined.ast = ast
-  refined[TypeId] = variance
-  Object.setPrototypeOf(refined, SchemaImpl.prototype)
-  refined.annotations = (annotations: Annotations.Schema<Schema.Type<S> & brand_.Brand<B>>) => {
-    return makeBrandSchema(ast, annotations, brand)
-  }
-  return refined
+  return out
 }
 
 /**
  * @category branding
  * @since 1.0.0
  */
-export interface BrandSchema<A extends brand_.Brand<any>, I>
-  extends Annotable<BrandSchema<A, I>, A, I>, brand_.Brand.Constructor<A>
-{}
+export interface BrandSchema<A extends brand_.Brand<any>, I> extends Annotable<BrandSchema<A, I>, A, I> {
+  (args: brand_.Brand.Unbranded<A>): A
+}
 
 /**
  * @category api interface
@@ -2342,7 +2341,7 @@ export const brand = <S extends Schema.AnyNoContext, B extends string | symbol>(
     title: String(self.ast) + ` & Brand<${util_.formatUnknown(brand)}>`,
     ...annotations,
     [AST.BrandAnnotationId]: brandAnnotation
-  }, brand)
+  })
 }
 
 /**
@@ -6508,40 +6507,11 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
       super(props, true)
     }
 
+    // ----------------
+    // Schema interface
+    // ----------------
+
     static [TypeId] = variance
-
-    get [classSymbol]() {
-      return classSymbol
-    }
-
-    static pipe() {
-      return pipeArguments(this, arguments)
-    }
-
-    static annotations(annotations: Annotations.Schema<any>) {
-      return make(this.ast).annotations(annotations)
-    }
-
-    static toString() {
-      return `(${String(from)} <-> ${identifier})`
-    }
-
-    toString() {
-      if (toStringOverride !== undefined) {
-        const out = toStringOverride(this)
-        if (out !== undefined) {
-          return out
-        }
-      }
-      return `${identifier}({ ${
-        util_.ownKeys(fields).map((p: any) => `${util_.formatPropertyKey(p)}: ${util_.formatUnknown(this[p])}`)
-          .join(", ")
-      } })`
-    }
-
-    static fields = { ...fields }
-
-    static identifier = identifier
 
     static get ast() {
       const toSchema = typeSchema(schema)
@@ -6581,6 +6551,30 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
       ).annotations({ [AST.SurrogateAnnotationId]: schema.ast })
       return transformation.ast
     }
+
+    static pipe() {
+      return pipeArguments(this, arguments)
+    }
+
+    static annotations(annotations: Annotations.Schema<any>) {
+      return make(this.ast).annotations(annotations)
+    }
+
+    static is(this: any, u: unknown, options?: AST.ParseOptions) {
+      return ParseResult.is(this)(u, options)
+    }
+
+    static toString() {
+      return `(${String(from)} <-> ${identifier})`
+    }
+
+    // ----------------
+    // Class interface
+    // ----------------
+
+    static fields = { ...fields }
+
+    static identifier = identifier
 
     static extend<Extended>(identifier: string) {
       return (newFields: Struct.Fields, annotations?: Annotations.Schema<Extended>) => {
@@ -6632,6 +6626,27 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
           annotations
         })
       }
+    }
+
+    // ----------------
+    // other
+    // ----------------
+
+    get [classSymbol]() {
+      return classSymbol
+    }
+
+    toString() {
+      if (toStringOverride !== undefined) {
+        const out = toStringOverride(this)
+        if (out !== undefined) {
+          return out
+        }
+      }
+      return `${identifier}({ ${
+        util_.ownKeys(fields).map((p: any) => `${util_.formatPropertyKey(p)}: ${util_.formatUnknown(this[p])}`)
+          .join(", ")
+      } })`
     }
   }
 }
