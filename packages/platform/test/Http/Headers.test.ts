@@ -38,5 +38,21 @@ describe("Headers", () => {
       assert.strictEqual(Secret.value(redacted.authorization as Secret.Secret), "Bearer some-token")
       assert.strictEqual(Secret.value(redacted["x-api-key"] as Secret.Secret), "some-key")
     })
+
+    it("RegExp", () => {
+      const headers = Headers.fromInput({
+        "Authorization": "Bearer some-token",
+        "sec-ret": "some",
+        "sec-ret-2": "some"
+      })
+
+      const redacted = Headers.redact(headers, [/^sec-/])
+
+      assert.deepEqual(redacted, {
+        "authorization": "Bearer some-token",
+        "sec-ret": Secret.fromString("some"),
+        "sec-ret-2": Secret.fromString("some")
+      })
+    })
   })
 })

@@ -203,6 +203,7 @@ export const makeUrl = (url: string, params: UrlParams): Either.Either<URL, Erro
         urlInstance.searchParams.append(key, value)
       }
     }
+
     return Either.right(urlInstance)
   } catch (e) {
     return Either.left(e as Error)

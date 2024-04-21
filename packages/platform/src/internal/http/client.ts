@@ -20,6 +20,7 @@ import * as Error from "../../Http/ClientError.js"
 import type * as ClientRequest from "../../Http/ClientRequest.js"
 import type * as ClientResponse from "../../Http/ClientResponse.js"
 import * as Cookies from "../../Http/Cookies.js"
+import * as Headers from "../../Http/Headers.js"
 import * as Method from "../../Http/Method.js"
 import * as TraceContext from "../../Http/TraceContext.js"
 import * as UrlParams from "../../Http/UrlParams.js"
@@ -137,9 +138,11 @@ export const makeDefault = (
               if (query !== "") {
                 span.attribute("url.query", query)
               }
-              Object.entries(request.headers).forEach(([key, value]) => {
-                span.attribute(`http.request.header.${key}`, value)
-              })
+              const redactedHeaderNames = fiber.getFiberRef(Headers.currentRedactedNames)
+              const redactedHeaders = Headers.redact(request.headers, redactedHeaderNames)
+              for (const name in redactedHeaders) {
+                span.attribute(`http.request.header.${name}`, String(redactedHeaders[name]))
+              }
               return Effect.tap(
                 Effect.withParentSpan(
                   f(
@@ -152,9 +155,10 @@ export const makeDefault = (
                 ),
                 (response) => {
                   span.attribute("http.response.status_code", response.status)
-                  Object.entries(response.headers).forEach(([key, value]) => {
-                    span.attribute(`http.response.header.${key}`, value)
-                  })
+                  const redactedHeaders = Headers.redact(response.headers, redactedHeaderNames)
+                  for (const name in redactedHeaders) {
+                    span.attribute(`http.response.header.${name}`, String(redactedHeaders[name]))
+                  }
                 }
               )
             }
@@ -172,7 +176,7 @@ export const fetch: Client.Client.Default = makeDefault((request, url, signal, f
   const context = fiber.getFiberRef(FiberRef.currentContext)
   const fetch: typeof globalThis.fetch = context.unsafeMap.get(Fetch.key) ?? globalThis.fetch
   const options = fiber.getFiberRef(currentFetchOptions)
-  const headers = new Headers(request.headers)
+  const headers = new globalThis.Headers(request.headers)
   const send = (body: BodyInit | undefined) =>
     Effect.map(
       Effect.tryPromise({
