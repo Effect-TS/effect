@@ -1543,6 +1543,36 @@ describe("JSONSchema", () => {
       })
     })
 
+    it("should support make(S.typeSchema(Class))", () => {
+      class A extends S.Class<A>("A")({ a: S.String }) {}
+      const jsonSchema = JSONSchema.make(S.typeSchema(A))
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": [
+          "a"
+        ],
+        "properties": {
+          "a": {
+            "type": "string",
+            "description": "a string",
+            "title": "string"
+          }
+        },
+        "additionalProperties": false
+      })
+    })
+
+    it("should support make(S.typeSchema(Class)) with custom annotation", () => {
+      class A extends S.Class<A>("A")({ a: S.String }, {
+        jsonSchema: {}
+      }) {}
+      const jsonSchema = JSONSchema.make(S.typeSchema(A))
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      })
+    })
+
     it("should support make(S.encodedSchema(Class))", () => {
       class A extends S.Class<A>("A")({ a: S.String }) {}
       const jsonSchema = JSONSchema.make(S.encodedSchema(A))
