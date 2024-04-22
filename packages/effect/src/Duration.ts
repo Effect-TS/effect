@@ -800,7 +800,7 @@ export const parseIso8601 = (str: string): Option.Option<Duration> => {
     sum(days(obj.days || 0)),
     sum(weeks(obj.weeks || 0)),
     sum(days((obj.months || 0) * 30)), // using 30 days in 1 month. P30D would be prefered
-    sum(days((obj.years || 0) * 365)) // using 30 days in 1 month. P366D would be prefered
+    sum(days((obj.years || 0) * 365)) // using 365 days in 1 year. P365D would be prefered
   )
 
   return Option.some(duration)
