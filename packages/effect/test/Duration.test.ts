@@ -9,16 +9,16 @@ describe("Duration", () => {
   it("exports", () => {
     expect(Duration.matchWith).exist
   })
-  
+
   it("parseIso8601", () => {
     expect(Duration.parseIso8601("PD")).toEqual(Option.none())
 
     expect(Duration.parseIso8601("P2D")).toEqual(Option.some(Duration.days(2)))
     expect(Duration.parseIso8601("P1Y1D")).toEqual(Option.some(Duration.days(366)))
     expect(Duration.parseIso8601("PT1S")).toEqual(Option.some(Duration.seconds(1)))
-    
+
     const dur = Duration.hours(1).pipe(
-      Duration.sum(Duration.minutes(30)), 
+      Duration.sum(Duration.minutes(30)),
       Duration.sum(Duration.seconds(10.5))
     )
 
