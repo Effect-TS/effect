@@ -1,5 +1,14 @@
 # @effect/platform
 
+## 0.50.3
+
+### Patch Changes
+
+- [#2589](https://github.com/Effect-TS/effect/pull/2589) [`b3b51a2`](https://github.com/Effect-TS/effect/commit/b3b51a2ea0c6ab92a363db46ebaa7e1176d089f5) Thanks [@tim-smart](https://github.com/tim-smart)! - redact some common sensitive http headers names in traces
+
+- Updated dependencies [[`9dfc156`](https://github.com/Effect-TS/effect/commit/9dfc156dc13fb4da9c777aae3acece4b5ecf0064), [`80271bd`](https://github.com/Effect-TS/effect/commit/80271bdc648e9efa659ce66b2c255754a6a1a8b0), [`e4ba97d`](https://github.com/Effect-TS/effect/commit/e4ba97d060c16bdf4e3b5bd5db6777f121a6768c)]:
+  - @effect/schema@0.66.6
+
 ## 0.50.2
 
 ### Patch Changes
