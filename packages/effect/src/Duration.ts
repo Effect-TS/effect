@@ -740,3 +740,58 @@ export const format = (self: DurationInput): string => {
 
   return parts.reverse().join(" ")
 }
+
+const numbers = "\\d+";
+const fractionalNumbers = "".concat(numbers, "(?:[\\.,]").concat(numbers, ")?");
+const datePattern = "(".concat(numbers, "Y)?(").concat(numbers, "M)?(").concat(numbers, "W)?(").concat(numbers, "D)?");
+const timePattern = "T(".concat(fractionalNumbers, "H)?(").concat(fractionalNumbers, "M)?(").concat(fractionalNumbers, "S)?");
+const iso8601 = "P(?:".concat(datePattern, "(?:").concat(timePattern, ")?)");
+const pattern = new RegExp(iso8601);
+const keys = [
+    "years",
+    "months",
+    "weeks",
+    "days",
+    "hours",
+    "minutes",
+    "seconds",
+] as const;
+
+/**
+ * Parses ISO8601 formatted duration strings (e.g. P1Y1D, PT1H30M10.5S). 
+ * Treats 1 month as 30 days and 1 year as 356 days.
+ *
+ * @since 3.1.0
+ */
+export const parseIso8601 = (str: string): Option.Option<Duration> => {
+    var matches = str.replace(/,/g, ".").match(pattern);
+    if (!matches) {
+        return Option.none()
+    }
+    // Slice away first entry in match-array (the input string)
+    var slicedMatches = matches.slice(1);
+    if (slicedMatches.filter(function (v) { return v != null; }).length === 0) {
+      return Option.none()
+    }
+    // Check only one fraction is used
+    if (slicedMatches.filter(function (v) { return /\./.test(v || ""); }).length > 1) {
+      return Option.none()
+    }
+    const obj = slicedMatches.reduce<Partial<Record<typeof keys[number], number>>>(function (prev, next, idx) {
+        prev[keys[idx]] = parseFloat(next || "0") || 0;
+        return prev;
+    }, {});
+    
+    const duration = zero.pipe(
+      sum(seconds(obj.seconds || 0)),
+      sum(minutes(obj.minutes || 0)),
+      sum(hours(obj.hours || 0)),
+      sum(days(obj.days || 0)),
+      sum(weeks(obj.weeks || 0)),
+      sum(days((obj.months || 0) * 30)), // using 30 days in 1 month. P30D would be prefered
+      sum(days((obj.years || 0) * 365)), // using 30 days in 1 month. P100D would be prefered
+    )
+    
+    return Option.some(duration) 
+};
+
