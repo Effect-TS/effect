@@ -122,8 +122,8 @@ export const tracer = make((httpApp) =>
     const redactedHeaderNames = fiber.getFiberRef(Headers.currentRedactedNames)
     const redactedHeaders = Headers.redact(request.headers, redactedHeaderNames)
     return Effect.useSpan(
-      `http.server ${request.method}`,
-      { parent: Option.getOrUndefined(TraceContext.fromHeaders(request.headers)) },
+      `HTTP ${request.method}`,
+      { parent: Option.getOrUndefined(TraceContext.fromHeaders(request.headers)), kind: "server" },
       (span) => {
         span.attribute("http.request.method", request.method)
         if (url !== undefined) {

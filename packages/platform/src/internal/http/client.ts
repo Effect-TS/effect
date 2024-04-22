@@ -125,7 +125,8 @@ export const makeDefault = (
         return Effect.zipRight(
           addAbort,
           Effect.useSpan(
-            `http.client ${request.method}`,
+            `HTTP ${request.method}`,
+            { kind: "client" },
             (span) => {
               span.attribute("server.address", url.origin)
               if (url.port !== "") {
