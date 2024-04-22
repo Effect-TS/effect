@@ -39,6 +39,7 @@ export class NativeSpan implements Tracer.Span {
   readonly spanId: string
   readonly traceId: string = "native"
   readonly sampled = true
+  readonly kind = "internal"
 
   status: Tracer.SpanStatus
   attributes: Map<string, unknown>

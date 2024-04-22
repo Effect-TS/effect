@@ -2971,6 +2971,7 @@ const NoopSpanProto: Tracer.Span = {
   },
   attributes: new Map(),
   links: [],
+  kind: "internal",
   attribute() {},
   event() {},
   end() {}

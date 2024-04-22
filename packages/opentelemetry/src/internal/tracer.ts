@@ -11,6 +11,14 @@ import { Resource } from "../Resource.js"
 
 const OtelSpanTypeId = Symbol.for("@effect/opentelemetry/Tracer/OtelSpan")
 
+const kindMap = {
+  "internal": OtelApi.SpanKind.INTERNAL,
+  "client": OtelApi.SpanKind.CLIENT,
+  "server": OtelApi.SpanKind.SERVER,
+  "producer": OtelApi.SpanKind.PRODUCER,
+  "consumer": OtelApi.SpanKind.CONSUMER
+}
+
 /** @internal */
 export class OtelSpan implements EffectTracer.Span {
   readonly [OtelSpanTypeId]: typeof OtelSpanTypeId
@@ -30,7 +38,8 @@ export class OtelSpan implements EffectTracer.Span {
     readonly parent: Option.Option<EffectTracer.AnySpan>,
     readonly context: Context.Context<never>,
     readonly links: ReadonlyArray<EffectTracer.SpanLink>,
-    startTime: bigint
+    startTime: bigint,
+    readonly kind: EffectTracer.SpanKind
   ) {
     this[OtelSpanTypeId] = OtelSpanTypeId
     const active = contextApi.active()
@@ -43,7 +52,8 @@ export class OtelSpan implements EffectTracer.Span {
             context: makeSpanContext(link.span),
             attributes: recordToAttributes(link.attributes)
           }))
-          : undefined as any
+          : undefined as any,
+        kind: kindMap[this.kind]
       },
       parent._tag === "Some"
         ? populateContext(active, parent.value, context)
@@ -112,7 +122,7 @@ export const Tracer = Context.GenericTag<OtelApi.Tracer>("@effect/opentelemetry/
 /** @internal */
 export const make = Effect.map(Tracer, (tracer) =>
   EffectTracer.make({
-    span(name, parent, context, links, startTime) {
+    span(name, parent, context, links, startTime, kind) {
       return new OtelSpan(
         OtelApi.context,
         tracer,
@@ -120,7 +130,8 @@ export const make = Effect.map(Tracer, (tracer) =>
         parent,
         context,
         links,
-        startTime
+        startTime,
+        kind
       )
     },
     context(execution, fiber) {
