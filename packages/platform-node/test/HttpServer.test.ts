@@ -484,7 +484,7 @@ describe("HttpServer", () => {
         HttpC.response.json,
         Effect.withTracer(Tracer.make({
           span(name, parent, _, __, ___, kind) {
-            assert.strictEqual(name, "HTTP GET")
+            assert.strictEqual(name, "http.client GET")
             assert.strictEqual(kind, "client")
             assert(parent._tag === "Some" && parent.value._tag === "Span")
             assert.strictEqual(parent.value.name, "request parent")
