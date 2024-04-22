@@ -6,7 +6,7 @@ import * as array_ from "effect/Array"
 import * as bigDecimal_ from "effect/BigDecimal"
 import * as bigInt_ from "effect/BigInt"
 import * as boolean_ from "effect/Boolean"
-import * as brand_ from "effect/Brand"
+import type * as brand_ from "effect/Brand"
 import * as cause_ from "effect/Cause"
 import * as chunk_ from "effect/Chunk"
 import * as data_ from "effect/Data"
@@ -47,7 +47,6 @@ import * as util_ from "./internal/util.js"
 import * as ParseResult from "./ParseResult.js"
 import * as pretty_ from "./Pretty.js"
 import type * as Serializable from "./Serializable.js"
-import * as TreeFormatter from "./TreeFormatter.js"
 
 /**
  * @since 1.0.0
@@ -2267,15 +2266,8 @@ const makeBrandSchema = <S extends Schema.AnyNoContext, B extends string | symbo
 ): brand<S, B> => {
   const ast = AST.annotations(self, toASTAnnotations(annotations))
   const schema = make(ast)
-  const validateEither_ = validateEither(schema)
-
   //     v-- function
-  const out: any = brand_.refined((unbranded) =>
-    either_.match(validateEither_(unbranded), {
-      onLeft: (e) => option_.some(brand_.error(TreeFormatter.formatErrorSync(e), e)),
-      onRight: () => option_.none()
-    })
-  )
+  const out: any = ParseResult.validateSync(schema)
   // ----------------
   // Schema interface
   // ----------------
@@ -2292,9 +2284,9 @@ const makeBrandSchema = <S extends Schema.AnyNoContext, B extends string | symbo
  * @category branding
  * @since 1.0.0
  */
-export interface BrandSchema<A extends brand_.Brand<any>, I>
-  extends Annotable<BrandSchema<A, I>, A, I>, brand_.Brand.Constructor<A>
-{}
+export interface BrandSchema<A extends brand_.Brand<any>, I> extends Annotable<BrandSchema<A, I>, A, I> {
+  (args: brand_.Brand.Unbranded<A>): A
+}
 
 /**
  * @category api interface

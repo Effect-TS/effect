@@ -9,8 +9,9 @@ describe("pipe", () => {
 
     const PositiveInt = S.NumberFromString.pipe(int, positive)
 
-    expect(PositiveInt.is(1)).toEqual(true)
-    expect(PositiveInt.is(-1)).toEqual(false)
-    expect(PositiveInt.is(1.2)).toEqual(false)
+    const is = S.is(PositiveInt)
+    expect(is(1)).toEqual(true)
+    expect(is(-1)).toEqual(false)
+    expect(is(1.2)).toEqual(false)
   })
 })
