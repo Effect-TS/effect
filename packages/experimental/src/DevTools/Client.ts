@@ -164,7 +164,7 @@ export const makeTracer: Effect.Effect<Tracer.Tracer, never, Client> = Effect.ge
 
   return Tracer.make({
     span(name, parent, context, links, startTime) {
-      const span = currentTracer.span(name, parent, context, links, startTime)
+      const span = currentTracer.span(name, parent, context, links, startTime, "internal")
       client.unsafeAddSpan(span)
       const oldEvent = span.event
       span.event = function(this: any, name, startTime, attributes) {

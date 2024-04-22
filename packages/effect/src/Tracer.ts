@@ -30,7 +30,7 @@ export interface Tracer {
     context: Context.Context<never>,
     links: ReadonlyArray<SpanLink>,
     startTime: bigint,
-    kind?: SpanKind | undefined
+    kind: SpanKind
   ): Span
   context<X>(f: () => X, fiber: Fiber.RuntimeFiber<any, any>): X
 }
@@ -82,7 +82,7 @@ export interface ExternalSpan {
 }
 
 /**
- * @since 3.0.5
+ * @since 3.1.0
  * @category models
  */
 export interface SpanOptions {
@@ -95,7 +95,7 @@ export interface SpanOptions {
 }
 
 /**
- * @since 3.0.5
+ * @since 3.1.0
  * @category models
  */
 export type SpanKind = "internal" | "server" | "client" | "producer" | "consumer"

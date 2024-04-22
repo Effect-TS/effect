@@ -1,6 +1,6 @@
 ---
-"@effect/opentelemetry": patch
-"effect": patch
+"@effect/opentelemetry": minor
+"effect": minor
 ---
 
 feat: add missing SpanKind

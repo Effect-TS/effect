@@ -125,7 +125,7 @@ export const makeDefault = (
         return Effect.zipRight(
           addAbort,
           Effect.useSpan(
-            `HTTP ${request.method}`,
+            `http.client ${request.method}`,
             { kind: "client" },
             (span) => {
               span.attribute("http.request.method", request.method)
