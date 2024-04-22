@@ -5,72 +5,24 @@ import * as Option from "effect/Option"
 import { deepStrictEqual } from "effect/test/util"
 import { assert, describe, expect, it } from "vitest"
 
-const numbers = "\\d+";
-const fractionalNumbers = "".concat(numbers, "(?:[\\.,]").concat(numbers, ")?");
-const datePattern = "(".concat(numbers, "Y)?(").concat(numbers, "M)?(").concat(numbers, "W)?(").concat(numbers, "D)?");
-const timePattern = "T(".concat(fractionalNumbers, "H)?(").concat(fractionalNumbers, "M)?(").concat(fractionalNumbers, "S)?");
-const iso8601 = "P(?:".concat(datePattern, "(?:").concat(timePattern, ")?)");
-const pattern = new RegExp(iso8601);
-const keys = [
-    "years",
-    "months",
-    "weeks",
-    "days",
-    "hours",
-    "minutes",
-    "seconds",
-] as const;
-
-export const parseIso8601 = (str: string): Option.Option<Duration.Duration> => {
-    var matches = str.replace(/,/g, ".").match(pattern);
-    if (!matches) {
-        return Option.none()
-    }
-    // Slice away first entry in match-array (the input string)
-    var slicedMatches = matches.slice(1);
-    if (slicedMatches.filter(function (v) { return v != null; }).length === 0) {
-      return Option.none()
-    }
-    // Check only one fraction is used
-    if (slicedMatches.filter(function (v) { return /\./.test(v || ""); }).length > 1) {
-      return Option.none()
-    }
-    const obj = slicedMatches.reduce<Partial<Record<typeof keys[number], number>>>(function (prev, next, idx) {
-        prev[keys[idx]] = parseFloat(next || "0") || 0;
-        return prev;
-    }, {});
-    
-    const duration = Duration.zero.pipe(
-      Duration.sum(Duration.seconds(obj.seconds || 0)),
-      Duration.sum(Duration.minutes(obj.minutes || 0)),
-      Duration.sum(Duration.hours(obj.hours || 0)),
-      Duration.sum(Duration.days(obj.days || 0)),
-      Duration.sum(Duration.weeks(obj.weeks || 0)),
-      Duration.sum(Duration.days((obj.months || 0) * 30)), // using 30 days in 1 month. P30D would be prefered
-      Duration.sum(Duration.days((obj.years || 0) * 365)), // using 30 days in 1 month. P100D would be prefered
-    )
-    
-    return Option.some(duration) 
-};
-
 describe("Duration", () => {
   it("exports", () => {
     expect(Duration.matchWith).exist
   })
   
   it("parseIso8601", () => {
-    expect(parseIso8601("PD")).toEqual(Option.none())
+    expect(Duration.parseIso8601("PD")).toEqual(Option.none())
 
-    expect(parseIso8601("P2D")).toEqual(Option.some(Duration.days(2)))
-    expect(parseIso8601("P1Y1D")).toEqual(Option.some(Duration.days(366)))
-    expect(parseIso8601("PT1S")).toEqual(Option.some(Duration.seconds(1)))
+    expect(Duration.parseIso8601("P2D")).toEqual(Option.some(Duration.days(2)))
+    expect(Duration.parseIso8601("P1Y1D")).toEqual(Option.some(Duration.days(366)))
+    expect(Duration.parseIso8601("PT1S")).toEqual(Option.some(Duration.seconds(1)))
     
     const dur = Duration.hours(1).pipe(
       Duration.sum(Duration.minutes(30)), 
       Duration.sum(Duration.seconds(10.5))
     )
 
-    expect(parseIso8601("PT1H30M10.5S")).toEqual(Option.some(dur))
+    expect(Duration.parseIso8601("PT1H30M10.5S")).toEqual(Option.some(dur))
   })
 
   it("decode", () => {
