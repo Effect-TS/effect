@@ -2263,26 +2263,29 @@ export const pluck: {
 
 const makeBrandSchema = <S extends Schema.AnyNoContext, B extends string | symbol>(
   self: AST.AST,
-  annotations: Annotations.Schema<Schema.Type<S> & brand_.Brand<B>>,
-  brand: string | symbol
+  annotations: Annotations.Schema<Schema.Type<S> & brand_.Brand<B>>
 ): brand<S, B> => {
   const ast = AST.annotations(self, toASTAnnotations(annotations))
-  const validateEither_ = validateEither(make(ast))
+  const schema = make(ast)
+  const validateEither_ = validateEither(schema)
 
-  const refined: any = brand_.refined((unbranded) =>
+  //     v-- function
+  const out: any = brand_.refined((unbranded) =>
     either_.match(validateEither_(unbranded), {
       onLeft: (e) => option_.some(brand_.error(TreeFormatter.formatErrorSync(e), e)),
       onRight: () => option_.none()
     })
   )
-  // make refined a BrandSchema...
-  refined.ast = ast
-  refined[TypeId] = variance
-  Object.setPrototypeOf(refined, SchemaImpl.prototype)
-  refined.annotations = (annotations: Annotations.Schema<Schema.Type<S> & brand_.Brand<B>>) => {
-    return makeBrandSchema(ast, annotations, brand)
-  }
-  return refined
+  // ----------------
+  // Schema interface
+  // ----------------
+  Object.setPrototypeOf(
+    Object.assign(out, schema, {
+      annotations: (a: typeof annotations) => makeBrandSchema(ast, a)
+    }),
+    Object.getPrototypeOf(schema)
+  )
+  return out
 }
 
 /**
@@ -2342,7 +2345,7 @@ export const brand = <S extends Schema.AnyNoContext, B extends string | symbol>(
     title: String(self.ast) + ` & Brand<${util_.formatUnknown(brand)}>`,
     ...annotations,
     [AST.BrandAnnotationId]: brandAnnotation
-  }, brand)
+  })
 }
 
 /**
@@ -2877,7 +2880,7 @@ export function transformLiterals<
  * @since 1.0.0
  */
 export const attachPropertySignature: {
-  <K extends PropertyKey, V extends AST.LiteralValue | symbol, A extends object>(
+  <K extends PropertyKey, V extends AST.LiteralValue | symbol, A>(
     key: K,
     value: V,
     annotations?: Annotations.Schema<Types.Simplify<A & { readonly [k in K]: V }>>
@@ -6508,40 +6511,11 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
       super(props, true)
     }
 
+    // ----------------
+    // Schema interface
+    // ----------------
+
     static [TypeId] = variance
-
-    get [classSymbol]() {
-      return classSymbol
-    }
-
-    static pipe() {
-      return pipeArguments(this, arguments)
-    }
-
-    static annotations(annotations: Annotations.Schema<any>) {
-      return make(this.ast).annotations(annotations)
-    }
-
-    static toString() {
-      return `(${String(from)} <-> ${identifier})`
-    }
-
-    toString() {
-      if (toStringOverride !== undefined) {
-        const out = toStringOverride(this)
-        if (out !== undefined) {
-          return out
-        }
-      }
-      return `${identifier}({ ${
-        util_.ownKeys(fields).map((p: any) => `${util_.formatPropertyKey(p)}: ${util_.formatUnknown(this[p])}`)
-          .join(", ")
-      } })`
-    }
-
-    static fields = { ...fields }
-
-    static identifier = identifier
 
     static get ast() {
       const toSchema = typeSchema(schema)
@@ -6581,6 +6555,26 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
       ).annotations({ [AST.SurrogateAnnotationId]: schema.ast })
       return transformation.ast
     }
+
+    static pipe() {
+      return pipeArguments(this, arguments)
+    }
+
+    static annotations(annotations: Annotations.Schema<any>) {
+      return make(this.ast).annotations(annotations)
+    }
+
+    static toString() {
+      return `(${String(from)} <-> ${identifier})`
+    }
+
+    // ----------------
+    // Class interface
+    // ----------------
+
+    static fields = { ...fields }
+
+    static identifier = identifier
 
     static extend<Extended>(identifier: string) {
       return (newFields: Struct.Fields, annotations?: Annotations.Schema<Extended>) => {
@@ -6632,6 +6626,27 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
           annotations
         })
       }
+    }
+
+    // ----------------
+    // other
+    // ----------------
+
+    get [classSymbol]() {
+      return classSymbol
+    }
+
+    toString() {
+      if (toStringOverride !== undefined) {
+        const out = toStringOverride(this)
+        if (out !== undefined) {
+          return out
+        }
+      }
+      return `${identifier}({ ${
+        util_.ownKeys(fields).map((p: any) => `${util_.formatPropertyKey(p)}: ${util_.formatUnknown(this[p])}`)
+          .join(", ")
+      } })`
     }
   }
 }

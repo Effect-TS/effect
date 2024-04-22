@@ -1,3 +1,4 @@
+import type * as AST from "@effect/schema/AST"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Brand from "effect/Brand"
@@ -1164,7 +1165,7 @@ const FooterLocaleIDs = S.Literal("footer_title", "footer_sendoff")
 S.TemplateLiteral(S.Union(EmailLocaleIDs, FooterLocaleIDs), S.Literal("_id"))
 
 // ---------------------------------------------
-// AttachPropertySignature
+// attachPropertySignature
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly radius: number; readonly kind: "circle"; }, { readonly radius: number; }, never>
@@ -1172,6 +1173,14 @@ pipe(S.Struct({ radius: S.Number }), S.attachPropertySignature("kind", "circle")
 
 // $ExpectType Schema<{ readonly radius: number; readonly kind: "circle"; }, { readonly radius: string; }, never>
 pipe(S.Struct({ radius: S.NumberFromString }), S.attachPropertySignature("kind", "circle"))
+
+const taggedStruct = <Name extends AST.LiteralValue | symbol, Fields extends S.Struct.Fields>(
+  name: Name,
+  fields: Fields
+) => S.Struct(fields).pipe(S.attachPropertySignature("_tag", name))
+
+// $ExpectType Schema<{ readonly a: string; readonly _tag: "A"; }, { readonly a: string; }, never>
+taggedStruct("A", { a: S.String })
 
 // ---------------------------------------------
 // filter
