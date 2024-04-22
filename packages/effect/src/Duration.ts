@@ -762,7 +762,7 @@ const keys = [
 
 /**
  * Parses ISO8601 formatted duration strings (e.g. P1Y1D, PT1H30M10.5S).
- * Treats 1 month as 30 days and 1 year as 356 days.
+ * Treats 1 month as 30 days and 1 year as 365 days.
  *
  * @since 3.1.0
  */
@@ -800,7 +800,7 @@ export const parseIso8601 = (str: string): Option.Option<Duration> => {
     sum(days(obj.days || 0)),
     sum(weeks(obj.weeks || 0)),
     sum(days((obj.months || 0) * 30)), // using 30 days in 1 month. P30D would be prefered
-    sum(days((obj.years || 0) * 365)) // using 30 days in 1 month. P100D would be prefered
+    sum(days((obj.years || 0) * 365)) // using 30 days in 1 month. P366D would be prefered
   )
 
   return Option.some(duration)
