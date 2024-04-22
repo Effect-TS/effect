@@ -4,6 +4,7 @@
 import type * as AST from "@effect/schema/AST"
 import type { ParseError } from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
+import * as Serializable from "@effect/schema/Serializable"
 import * as Effect from "effect/Effect"
 import { absurd } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
@@ -24,31 +25,69 @@ import * as UrlParams from "./UrlParams.js"
 
 /**
  * @since 1.0.0
- * @category symbols
+ * @category annotations
  */
-export const Path = Symbol.for("@effect/platform/Http/Endpoint/Path")
+export const PathId = Symbol.for("@effect/platform/Http/Endpoint/Path")
 
 /**
  * @since 1.0.0
- * @category symbols
+ * @category annotations
  */
-export const Method = Symbol.for("@effect/platform/Http/Endpoint/Method")
+export const MethodId = Symbol.for("@effect/platform/Http/Endpoint/Method")
 
 /**
  * @since 1.0.0
- * @category symbols
+ * @category annotations
  */
-export const Status = Symbol.for("@effect/platform/Http/Endpoint/Status")
+export const StatusId = Symbol.for("@effect/platform/Http/Endpoint/Status")
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const annotations = <A>(
+  annotations: Schema.Annotations.Schema<A> & {
+    readonly path: string
+    readonly method?: Method_
+    readonly status?: number
+  }
+): Schema.Annotations.Schema<A> => {
+  const obj: Record<string | symbol, any> = annotations
+  obj[PathId] = obj.path
+  delete obj.path
+  if (obj.method !== undefined) {
+    obj[MethodId] = obj.method
+    delete obj.method
+  }
+  if (obj.status !== undefined) {
+    obj[StatusId] = obj.status
+    delete obj.status
+  }
+  return obj
+}
+
+const getAnnotations = (ast: AST.AST): {
+  readonly path: string
+  readonly method: Method_ | undefined
+  readonly status: number | undefined
+} => {
+  if (ast._tag === "Transformation") {
+    ast = ast.to
+  }
+  const path = ast.annotations[PathId] as string
+  if (path === undefined) {
+    throw new Error("Endpoint schema is missing path annotation")
+  }
+  const method = ast.annotations[MethodId] as Method_
+  const status = ast.annotations[StatusId] as number
+  return { path, method, status }
+}
 
 /**
  * @since 1.0.0
  * @category models
  */
-export interface Endpoint<A, I, R> extends Schema.Schema<A, I, R> {
-  readonly [Path]: string
-  readonly [Method]?: Method_
-  readonly [Status]?: number
-}
+export interface Endpoint<A, I, R> extends Schema.Schema<A, I, R> {}
 
 /**
  * @since 1.0.0
@@ -360,15 +399,13 @@ export const decodeRequest = <A, I, R>(
  * @category parsers
  */
 export const parse = <A, I, R>(self: Endpoint<A, I, R>): Endpoint.Parsed => {
-  const out: Mutable<Endpoint.Parsed> = {
-    method: self[Method]!,
-    status: self[Status]!,
-    path: self[Path],
+  const out = {
+    ...getAnnotations(self.ast),
     urlParams: {},
     pathParams: {},
     headers: {},
     body: Option.none()
-  }
+  } as Mutable<Endpoint.Parsed>
 
   function walk(ast: AST.AST): void {
     if (AnnotationId in ast.annotations) {
@@ -463,14 +500,16 @@ interface EncodeInstruction {
 }
 
 const makeEncoder = <A, I, R>(
-  self: Endpoint<A, I, R>
-): (value: A) => Effect.Effect<ClientRequest.ClientRequest, ParseError, R> => {
-  if (encoderCache.has(self)) {
-    return encoderCache.get(self) as any
+  self: Serializable.Serializable<A, I, R>
+): Effect.Effect<ClientRequest.ClientRequest, ParseError, R> => {
+  const selfSchema = Serializable.selfSchema(self)
+  if (encoderCache.has(selfSchema)) {
+    return encoderCache.get(selfSchema)!(self) as any
   }
 
+  const annotations = getAnnotations(selfSchema.ast)
   let bodyHandled = false
-  let method = self[Method]!
+  let method = annotations.method!
   const instructions: Array<EncodeInstruction> = []
 
   function walk(ast: AST.AST, path: ReadonlyArray<PropertyKey>): void {
@@ -559,18 +598,18 @@ const makeEncoder = <A, I, R>(
       }
     }
   }
-  walk(self.ast, [])
+  walk(selfSchema.ast, [])
 
   if (method === undefined) {
     method = bodyHandled ? "POST" : "GET"
   }
 
   const instructionsLen = instructions.length
-  const encode = Schema.encode(self)
+  const encode = Schema.encode(selfSchema)
   function encoder(value: A) {
     return Effect.map(encode(value), (value) => {
       const options: Mutable<ClientRequest.Options> = {
-        url: self[Path]
+        url: annotations.path
       }
       for (let i = 0; i < instructionsLen; i++) {
         instructions[i](options, value)
@@ -581,7 +620,7 @@ const makeEncoder = <A, I, R>(
     })
   }
   encoderCache.set(self, encoder)
-  return encoder
+  return encoder(self as A)
 }
 
 /**
@@ -589,5 +628,5 @@ const makeEncoder = <A, I, R>(
  * @category encoder
  */
 export const encodeRequest = <A, I, R>(
-  self: Endpoint<A, I, R>
-): (value: A) => Effect.Effect<ClientRequest.ClientRequest, ParseError, R> => makeEncoder(self)
+  self: Serializable.Serializable<A, I, R>
+): Effect.Effect<ClientRequest.ClientRequest, ParseError, R> => makeEncoder(self)

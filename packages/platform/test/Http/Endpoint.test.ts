@@ -4,18 +4,24 @@ import { Schema } from "@effect/schema"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer } from "effect"
 
-class GetUserById extends Schema.TaggedRequest<GetUserById>()("GetUserById", Schema.Never, Schema.Any, {
-  id: Endpoint.PathParam("id", Schema.NumberFromString),
-  page: Schema.optional(Endpoint.Header("x-page", Schema.NumberFromString)),
-  body: Endpoint.BodyJson(Schema.Struct({
-    name: Schema.String,
-    age: Schema.Number
-  })),
-  cached: Schema.optional(Endpoint.UrlParam("cached", Schema.Literal("true", "false")))
-}) {
-  static [Endpoint.Path] = "/users/:id"
-  static [Endpoint.Method] = "POST" as const
-}
+class GetUserById extends Schema.TaggedRequest<GetUserById>()(
+  "GetUserById",
+  Schema.Never,
+  Schema.Any,
+  {
+    id: Endpoint.PathParam("id", Schema.NumberFromString),
+    page: Schema.optional(Endpoint.Header("x-page", Schema.NumberFromString)),
+    body: Endpoint.BodyJson(Schema.Struct({
+      name: Schema.String,
+      age: Schema.Number
+    })),
+    cached: Schema.optional(Endpoint.UrlParam("cached", Schema.Literal("true", "false")))
+  },
+  Endpoint.annotations({
+    path: "/users/:id",
+    method: "POST"
+  })
+) {}
 
 const EnvLive = FileSystem.layerNoop({}).pipe(
   Layer.merge(Path.layer)
@@ -25,9 +31,8 @@ describe("Endpoint", () => {
   describe("encodeRequest", () => {
     it.effect("correctly encodes a request", () =>
       Effect.gen(function*(_) {
-        const encode = Endpoint.encodeRequest(GetUserById)
         const request = yield* _(
-          encode(
+          Endpoint.encodeRequest(
             new GetUserById({
               id: 123,
               page: 1,
