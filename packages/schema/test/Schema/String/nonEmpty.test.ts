@@ -4,6 +4,11 @@ import { describe, it } from "vitest"
 
 describe("nonEmpty", () => {
   const schema = S.NonEmpty
+
+  it("constructor", () => {
+    Util.expectConstructorSuccess(S.NonEmpty, "a")
+  })
+
   it("decoding", async () => {
     await Util.expectDecodeUnknownSuccess(schema, "a")
     await Util.expectDecodeUnknownSuccess(schema, "aa")
