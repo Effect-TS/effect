@@ -1,5 +1,8 @@
 ---
-"@effect/platform": minor
+"@effect/experimental": patch
+"@effect/platform": patch
+"@effect/rpc": patch
+"@effect/sql": patch
 ---
 
-fix: http client and server should use corresponding span kinds.
+set span `kind` where applicable

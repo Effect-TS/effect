@@ -131,7 +131,7 @@ export const make = Effect.map(Tracer, (tracer) =>
         context,
         links,
         startTime,
-        kind ?? "internal"
+        kind
       )
     },
     context(execution, fiber) {
