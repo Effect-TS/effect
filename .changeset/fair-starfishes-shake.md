@@ -22,6 +22,7 @@
   }
   ```
 
+- return `BrandSchema` from `fromBrand`
 - add `filter` API interface
 
   ```ts

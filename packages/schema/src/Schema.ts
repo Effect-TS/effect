@@ -6,7 +6,7 @@ import * as array_ from "effect/Array"
 import * as bigDecimal_ from "effect/BigDecimal"
 import * as bigInt_ from "effect/BigInt"
 import * as boolean_ from "effect/Boolean"
-import type * as brand_ from "effect/Brand"
+import type { Brand } from "effect/Brand"
 import * as cause_ from "effect/Cause"
 import * as chunk_ from "effect/Chunk"
 import * as data_ from "effect/Data"
@@ -803,12 +803,12 @@ export const BrandTypeId = Symbol.for("@effect/schema/TypeId/Brand")
  * @category constructors
  * @since 1.0.0
  */
-export const fromBrand = <C extends brand_.Brand<string | symbol>>(
-  constructor: brand_.Brand.Constructor<C>,
-  annotations?: Annotations.Filter<brand_.Brand.Unbranded<C>>
+export const fromBrand = <C extends Brand<string | symbol>>(
+  constructor: Brand.Constructor<C>,
+  annotations?: Annotations.Filter<C>
 ) =>
-<R, I, A extends brand_.Brand.Unbranded<C>>(self: Schema<A, I, R>): Schema<A & C, I, R> =>
-  make(
+<A extends Brand.Unbranded<C>, I, R>(self: Schema<A, I, R>): BrandSchema<A & C, I, R> =>
+  brandImpl.make<Schema<A & C, I, R>, string | symbol>(
     new AST.Refinement(
       self.ast,
       (a: A, _: ParseOptions, ast: AST.AST): option_.Option<ParseResult.ParseIssue> => {
@@ -2274,8 +2274,8 @@ export const pluck: {
  * @category branding
  * @since 1.0.0
  */
-export interface BrandSchema<A extends brand_.Brand<any>, I, R> extends Annotable<BrandSchema<A, I, R>, A, I, R> {
-  (a: brand_.Brand.Unbranded<A>): A
+export interface BrandSchema<A extends Brand<any>, I, R> extends Annotable<BrandSchema<A, I, R>, A, I, R> {
+  (a: Brand.Unbranded<A>): A
 }
 
 /**
@@ -2283,28 +2283,28 @@ export interface BrandSchema<A extends brand_.Brand<any>, I, R> extends Annotabl
  * @since 1.0.0
  */
 export interface brand<S extends Schema.Any, B extends string | symbol>
-  extends BrandSchema<Schema.Type<S> & brand_.Brand<B>, Schema.Encoded<S>, Schema.Context<S>>
+  extends BrandSchema<Schema.Type<S> & Brand<B>, Schema.Encoded<S>, Schema.Context<S>>
 {
-  annotations(annotations: Annotations.Schema<Schema.Type<S> & brand_.Brand<B>>): brand<S, B>
+  annotations(annotations: Annotations.Schema<Schema.Type<S> & Brand<B>>): brand<S, B>
 }
 
 class brandImpl<S extends Schema.Any, B extends string | symbol>
-  extends SchemaImpl<Schema.Type<S> & brand_.Brand<B>, Schema.Encoded<S>, Schema.Context<S>>
+  extends SchemaImpl<Schema.Type<S> & Brand<B>, Schema.Encoded<S>, Schema.Context<S>>
 {
   static make = <S extends Schema.Any, B extends string | symbol>(ast: AST.AST): brand<S, B> => {
     const schema = new brandImpl(ast)
     const validateSync = ParseResult.validateSync(schema)
-    const out = (args: Schema.Type<S>) => validateSync(args)
-    Object.setPrototypeOf(Object.assign(out, schema), Object.getPrototypeOf(schema))
+    const brandConstructor = (args: Schema.Type<S>) => validateSync(args)
+    Object.setPrototypeOf(Object.assign(brandConstructor, schema), Object.getPrototypeOf(schema))
     // @ts-expect-error
-    return out
+    return brandConstructor
   }
 
   constructor(ast: AST.AST) {
     super(ast)
   }
 
-  annotations(annotations: Annotations.Schema<Schema.Type<S> & brand_.Brand<B>>): brand<S, B> {
+  annotations(annotations: Annotations.Schema<Schema.Type<S> & Brand<B>>): brand<S, B> {
     return brandImpl.make(AST.annotations(this.ast, toASTAnnotations(annotations)))
   }
 }
@@ -2330,7 +2330,7 @@ class brandImpl<S extends Schema.Any, B extends string | symbol>
  */
 export const brand = <S extends Schema.AnyNoContext, B extends string | symbol>(
   brand: B,
-  annotations?: Annotations.Schema<Schema.Type<S> & brand_.Brand<B>>
+  annotations?: Annotations.Schema<Schema.Type<S> & Brand<B>>
 ) =>
 (self: S): brand<S, B> => {
   const annotation: AST.BrandAnnotation = option_.match(AST.getBrandAnnotation(self.ast), {
@@ -2591,10 +2591,10 @@ class filterImpl<A, I, R> extends SchemaImpl<A, I, R> {
   static make = <A, I, R>(ast: AST.AST): filter<A, I, R> => {
     const schema = new filterImpl(ast)
     const validateSync = ParseResult.validateSync(schema)
-    const out = (args: A) => validateSync(args)
-    Object.setPrototypeOf(Object.assign(out, schema), Object.getPrototypeOf(schema))
+    const filterConstructor = (args: A) => validateSync(args)
+    Object.setPrototypeOf(Object.assign(filterConstructor, schema), Object.getPrototypeOf(schema))
     // @ts-expect-error
-    return out
+    return filterConstructor
   }
 
   constructor(ast: AST.AST) {
@@ -2629,7 +2629,7 @@ export function filter<A>(
   return <I, R>(self: Schema<A, I, R>) => {
     const ast = new AST.Refinement(
       self.ast,
-      (a, options, ast) => {
+      function filter(a, options, ast) {
         const out = predicate(a, options, ast)
         if (Predicate.isBoolean(out)) {
           return out

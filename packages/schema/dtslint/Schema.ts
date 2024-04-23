@@ -1307,7 +1307,7 @@ S.String.pipe(S.compose(S.Number, { strict: false }))
 type Eur = number & Brand.Brand<"Eur">
 const Eur = Brand.nominal<Eur>()
 
-// $ExpectType Schema<number & Brand<"Eur">, number, never>
+// $ExpectType BrandSchema<number & Brand<"Eur">, number, never>
 S.Number.pipe(S.fromBrand(Eur))
 
 // ---------------------------------------------
