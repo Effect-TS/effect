@@ -80,17 +80,21 @@ const effectifyAST = (ast: AST.AST): AST.AST => {
 export const effectify = <A, I>(schema: S.Schema<A, I, never>): S.Schema<A, I, never> =>
   S.make(effectifyAST(schema.ast))
 
-export const expectConstructorSuccess = <A, B>(f: (a: A) => B, input: A, expected: A = input) => {
+export const expectConstructorSuccess = <A, B>(
+  schema: { readonly make: (a: A) => B },
+  input: A,
+  expected: A = input
+) => {
   try {
-    expect(f(input)).toStrictEqual(expected)
+    expect(schema.make(input)).toStrictEqual(expected)
   } catch (e: any) {
     expect.fail("expected `IntegerFromString(1.1)` to throw an error")
   }
 }
 
-export const expectConstructorFailure = <A, B>(f: (a: A) => B, input: A, message: string) => {
+export const expectConstructorFailure = <A, B>(schema: { readonly make: (a: A) => B }, input: A, message: string) => {
   try {
-    f(input)
+    schema.make(input)
     expect.fail("expected to throw an error")
   } catch (e: any) {
     expect(e.message).toStrictEqual(message)

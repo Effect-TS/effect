@@ -808,7 +808,7 @@ export const fromBrand = <C extends Brand<string | symbol>>(
   annotations?: Annotations.Filter<C>
 ) =>
 <A extends Brand.Unbranded<C>, I, R>(self: Schema<A, I, R>): BrandSchema<A & C, I, R> =>
-  brandImpl.make<Schema<A & C, I, R>, string | symbol>(
+  new brandImpl<Schema<A & C, I, R>, string | symbol>(
     new AST.Refinement(
       self.ast,
       (a: A, _: ParseOptions, ast: AST.AST): option_.Option<ParseResult.ParseIssue> => {
@@ -2028,6 +2028,7 @@ export interface TypeLiteral<
   annotations(
     annotations: Annotations.Schema<Types.Simplify<TypeLiteral.Type<Fields, Records>>>
   ): TypeLiteral<Fields, Records>
+  make(a: Types.Simplify<TypeLiteral.Type<Fields, Records>>): Types.Simplify<TypeLiteral.Type<Fields, Records>>
 }
 
 const isPropertySignature = (u: unknown): u is PropertySignature.All =>
@@ -2123,6 +2124,10 @@ class TypeLiteralImpl<
 
   readonly records: Readonly<Records>
 
+  readonly make: (
+    a: Types.Simplify<TypeLiteral.Type<Fields, Records>>
+  ) => Types.Simplify<TypeLiteral.Type<Fields, Records>>
+
   constructor(
     fields: Fields,
     records: Records,
@@ -2131,6 +2136,7 @@ class TypeLiteralImpl<
     super(ast)
     this.fields = { ...fields }
     this.records = [...records] as Records
+    this.make = ParseResult.validateSync(this)
   }
 
   annotations(
@@ -2275,7 +2281,7 @@ export const pluck: {
  * @since 1.0.0
  */
 export interface BrandSchema<A extends Brand<any>, I, R> extends Annotable<BrandSchema<A, I, R>, A, I, R> {
-  (a: Brand.Unbranded<A>): A
+  make(a: Brand.Unbranded<A>): A
 }
 
 /**
@@ -2291,21 +2297,15 @@ export interface brand<S extends Schema.Any, B extends string | symbol>
 class brandImpl<S extends Schema.Any, B extends string | symbol>
   extends SchemaImpl<Schema.Type<S> & Brand<B>, Schema.Encoded<S>, Schema.Context<S>>
 {
-  static make = <S extends Schema.Any, B extends string | symbol>(ast: AST.AST): brand<S, B> => {
-    const schema = new brandImpl(ast)
-    const validateSync = ParseResult.validateSync(schema)
-    const brandConstructor = (args: Schema.Type<S>) => validateSync(args)
-    Object.setPrototypeOf(Object.assign(brandConstructor, schema), Object.getPrototypeOf(schema))
-    // @ts-expect-error
-    return brandConstructor
-  }
+  readonly make: (a: Brand.Unbranded<Schema.Type<S> & Brand<B>>) => Schema.Type<S> & Brand<B>
 
   constructor(ast: AST.AST) {
     super(ast)
+    this.make = ParseResult.validateSync(this)
   }
 
   annotations(annotations: Annotations.Schema<Schema.Type<S> & Brand<B>>): brand<S, B> {
-    return brandImpl.make(AST.annotations(this.ast, toASTAnnotations(annotations)))
+    return new brandImpl(AST.annotations(this.ast, toASTAnnotations(annotations)))
   }
 }
 
@@ -2346,7 +2346,7 @@ export const brand = <S extends Schema.AnyNoContext, B extends string | symbol>(
       [AST.BrandAnnotationId]: annotation
     })
   )
-  return brandImpl.make(ast)
+  return new brandImpl(ast)
 }
 
 /**
@@ -2583,26 +2583,20 @@ export const suspend = <A, I, R>(f: () => Schema<A, I, R>): suspend<A, I, R> => 
  * @since 1.0.0
  */
 export interface filter<A, I = A, R = never> extends Schema<A, I, R> {
-  (a: A): A
   annotations(annotations: Annotations.Schema<A>): filter<A, I, R>
+  make(a: A): A
 }
 
 class filterImpl<A, I, R> extends SchemaImpl<A, I, R> {
-  static make = <A, I, R>(ast: AST.AST): filter<A, I, R> => {
-    const schema = new filterImpl(ast)
-    const validateSync = ParseResult.validateSync(schema)
-    const filterConstructor = (args: A) => validateSync(args)
-    Object.setPrototypeOf(Object.assign(filterConstructor, schema), Object.getPrototypeOf(schema))
-    // @ts-expect-error
-    return filterConstructor
-  }
+  readonly make: (a: A) => A
 
   constructor(ast: AST.AST) {
     super(ast)
+    this.make = ParseResult.validateSync(this)
   }
 
   annotations(annotations: Annotations.Schema<A>): filter<A, I, R> {
-    return filterImpl.make(AST.annotations(this.ast, toASTAnnotations(annotations)))
+    return new filterImpl(AST.annotations(this.ast, toASTAnnotations(annotations)))
   }
 }
 
@@ -2640,7 +2634,7 @@ export function filter<A>(
       },
       toASTAnnotations(annotations)
     )
-    return filterImpl.make(ast)
+    return new filterImpl(ast)
   }
 }
 
