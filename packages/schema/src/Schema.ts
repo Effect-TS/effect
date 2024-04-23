@@ -2124,10 +2124,6 @@ class TypeLiteralImpl<
 
   readonly records: Readonly<Records>
 
-  readonly make: (
-    a: Types.Simplify<TypeLiteral.Type<Fields, Records>>
-  ) => Types.Simplify<TypeLiteral.Type<Fields, Records>>
-
   constructor(
     fields: Fields,
     records: Records,
@@ -2136,13 +2132,18 @@ class TypeLiteralImpl<
     super(ast)
     this.fields = { ...fields }
     this.records = [...records] as Records
-    this.make = ParseResult.validateSync(this)
   }
 
   annotations(
     annotations: Annotations.Schema<Types.Simplify<TypeLiteral.Type<Fields, Records>>>
   ): TypeLiteral<Fields, Records> {
     return new TypeLiteralImpl(this.fields, this.records, AST.annotations(this.ast, toASTAnnotations(annotations)))
+  }
+
+  make(
+    a: Types.Simplify<TypeLiteral.Type<Fields, Records>>
+  ): Types.Simplify<TypeLiteral.Type<Fields, Records>> {
+    return ParseResult.validateSync(this)(a)
   }
 }
 
@@ -2297,15 +2298,16 @@ export interface brand<S extends Schema.Any, B extends string | symbol>
 class brandImpl<S extends Schema.Any, B extends string | symbol>
   extends SchemaImpl<Schema.Type<S> & Brand<B>, Schema.Encoded<S>, Schema.Context<S>>
 {
-  readonly make: (a: Brand.Unbranded<Schema.Type<S> & Brand<B>>) => Schema.Type<S> & Brand<B>
-
   constructor(ast: AST.AST) {
     super(ast)
-    this.make = ParseResult.validateSync(this)
   }
 
   annotations(annotations: Annotations.Schema<Schema.Type<S> & Brand<B>>): brand<S, B> {
     return new brandImpl(AST.annotations(this.ast, toASTAnnotations(annotations)))
+  }
+
+  make(a: Brand.Unbranded<Schema.Type<S> & Brand<B>>): Schema.Type<S> & Brand<B> {
+    return ParseResult.validateSync(this)(a)
   }
 }
 
@@ -2588,15 +2590,16 @@ export interface filter<A, I = A, R = never> extends Schema<A, I, R> {
 }
 
 class filterImpl<A, I, R> extends SchemaImpl<A, I, R> {
-  readonly make: (a: A) => A
-
   constructor(ast: AST.AST) {
     super(ast)
-    this.make = ParseResult.validateSync(this)
   }
 
   annotations(annotations: Annotations.Schema<A>): filter<A, I, R> {
     return new filterImpl(AST.annotations(this.ast, toASTAnnotations(annotations)))
+  }
+
+  make(a: A): A {
+    return ParseResult.validateSync(this)(a)
   }
 }
 

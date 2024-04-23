@@ -46,7 +46,7 @@ describe("brand", () => {
       const annotatedSchema = schema.annotations({
         description: "description"
       }).annotations({ title: "title" })
-      expect(typeof annotatedSchema).toBe("function")
+      expect(typeof annotatedSchema.make).toBe("function")
     })
 
     it("brand as string (1 brand)", () => {
