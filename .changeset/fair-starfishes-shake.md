@@ -2,6 +2,22 @@
 "@effect/schema": minor
 ---
 
+POC:
+
+```ts
+import { Schema } from "@effect/schema"
+
+class MyLiteralOpaque extends Schema.Literal(1) {}
+
+const MyLiteral = Schema.Literal(2)
+
+const schema = Schema.Struct({ a: MyLiteralOpaque, b: MyLiteral })
+
+export type T = Schema.Schema.Type<typeof schema>
+
+console.log(String(MyLiteral))
+```
+
 - remove `asBrandSchema`
 - change `BrandSchema` interface
 
