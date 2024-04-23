@@ -7,7 +7,7 @@ const NodeSdkLive = NodeSdk.layer(() => ({
   resource: {
     serviceName: "example"
   },
-  spanProcessor: new SimpleSpanProcessor(new ConsoleSpanExporter())
+  spanProcessors: [new SimpleSpanProcessor(new ConsoleSpanExporter())]
 }))
 
 const program = pipe(

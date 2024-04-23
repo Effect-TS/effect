@@ -9,11 +9,13 @@ const NodeSdkLive = NodeSdk.layer(() => ({
   resource: {
     serviceName: "example"
   },
-  spanProcessor: new BatchSpanProcessor(
-    new OTLPTraceExporter({
-      url: "http://localhost:4318/v1/traces"
-    })
-  )
+  spanProcessors: [
+    new BatchSpanProcessor(
+      new OTLPTraceExporter({
+        url: "http://localhost:4318/v1/traces"
+      })
+    )
+  ]
 }))
 
 const program = pipe(

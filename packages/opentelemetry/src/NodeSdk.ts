@@ -6,6 +6,7 @@ import type * as Resources from "@opentelemetry/resources"
 import type { MetricReader } from "@opentelemetry/sdk-metrics"
 import type { SpanProcessor, TracerConfig } from "@opentelemetry/sdk-trace-base"
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node"
+import type { NonEmptyReadonlyArray } from "effect/Array"
 import * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -18,7 +19,7 @@ import * as Tracer from "./Tracer.js"
  * @category model
  */
 export interface Configuration {
-  readonly spanProcessor?: SpanProcessor | undefined
+  readonly spanProcessors?: NonEmptyReadonlyArray<SpanProcessor> | undefined
   readonly tracerConfig?: Omit<TracerConfig, "resource"> | undefined
   readonly metricReader?: MetricReader | undefined
   readonly resource?: {
@@ -33,7 +34,7 @@ export interface Configuration {
  * @category layers
  */
 export const layerTracerProvider = (
-  processor: SpanProcessor,
+  processors: ReadonlyArray<SpanProcessor>,
   config?: Omit<TracerConfig, "resource">
 ): Layer.Layer<TracerProvider, never, Resource.Resource> =>
   Layer.scoped(
@@ -47,7 +48,7 @@ export const layerTracerProvider = (
               ...(config ?? undefined),
               resource
             })
-            provider.addSpanProcessor(processor)
+            processors.forEach((p) => provider.addSpanProcessor(p))
             return provider
           }),
           (provider) => Effect.ignoreLogged(Effect.promise(() => provider.shutdown()))
@@ -74,13 +75,13 @@ export const layer: {
         const ResourceLive = config.resource === undefined
           ? Resource.layerFromEnv()
           : Resource.layer(config.resource)
-        const TracerLive = config.spanProcessor ?
+        const TracerLive = config.spanProcessors ?
           Tracer.layer.pipe(
-            Layer.provide(layerTracerProvider(config.spanProcessor, config.tracerConfig))
+            Layer.provide(layerTracerProvider(config.spanProcessors, config.tracerConfig))
           )
           : Layer.empty
         const MetricsLive = config.metricReader
-          ? Metrics.layer(() => config.metricReader!)
+          ? Metrics.layer(() => [config.metricReader!])
           : Layer.empty
         return Layer.merge(TracerLive, MetricsLive).pipe(
           Layer.provideMerge(ResourceLive)
