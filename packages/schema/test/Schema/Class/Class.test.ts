@@ -12,6 +12,13 @@ import * as O from "effect/Option"
 import * as Request from "effect/Request"
 import { assert, describe, expect, it } from "vitest"
 
+const expectFields = (f1: S.Struct.Fields, f2: S.Struct.Fields) => {
+  expect(Reflect.ownKeys(f1).sort()).toStrictEqual(Reflect.ownKeys(f2).sort())
+  for (const k of Reflect.ownKeys(f1)) {
+    expect(Reflect.ownKeys(f1[k])).toStrictEqual(Reflect.ownKeys(f2[k]))
+  }
+}
+
 class Person extends S.Class<Person>("Person")({
   id: S.Number,
   name: S.String.pipe(S.nonEmpty())
@@ -260,7 +267,7 @@ describe("Class APIs", () => {
 
     it("a custom _tag field should be allowed", () => {
       class A extends S.Class<A>("A")({ _tag: S.Literal("a", "b") }) {}
-      expect(A.fields).toStrictEqual({
+      expectFields(A.fields, {
         _tag: S.Literal("a", "b")
       })
     })
@@ -280,7 +287,7 @@ describe("Class APIs", () => {
         b: S.String,
         c: S.Boolean
       }) {}
-      expect(C.fields).toStrictEqual({
+      expectFields(C.fields, {
         a: S.String,
         b: S.String,
         c: S.Boolean
@@ -295,7 +302,7 @@ describe("Class APIs", () => {
         b: S.String,
         c: S.Boolean
       }) {}
-      expect(D.fields).toStrictEqual({
+      expectFields(D.fields, {
         _tag: S.Literal("D"),
         a: S.String,
         b: S.String,
@@ -350,7 +357,7 @@ describe("Class APIs", () => {
 
     it("should expose the fields", () => {
       class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
-      expect(TA.fields).toEqual({ _tag: S.Literal("TA"), a: S.String })
+      expectFields(TA.fields, { _tag: S.Literal("TA"), a: S.String })
     })
 
     it("should expose the identifier", () => {
@@ -385,7 +392,7 @@ describe("Class APIs", () => {
 
     it("should expose the fields", async () => {
       class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
-      expect(TA.fields).toStrictEqual({
+      expectFields(TA.fields, {
         _tag: S.Literal("TA"),
         a: S.String
       })
@@ -439,7 +446,7 @@ describe("Class APIs", () => {
         b: S.Number,
         ...TA.fields
       }) {}
-      expect(B.fields).toStrictEqual({
+      expectFields(B.fields, {
         _tag: S.Literal("TA"),
         a: S.String,
         b: S.Number
@@ -453,7 +460,7 @@ describe("Class APIs", () => {
         b: S.Number,
         ...pipe(TA.fields, Struct.omit("_tag"))
       }) {}
-      expect(TB.fields).toStrictEqual({
+      expectFields(TB.fields, {
         _tag: S.Literal("TB"),
         a: S.String,
         b: S.Number
@@ -685,7 +692,7 @@ describe("Class APIs", () => {
       class TRA extends S.TaggedRequest<TRA>()("TRA", S.String, S.Number, {
         id: S.Number
       }) {}
-      expect(TRA.fields).toStrictEqual({
+      expectFields(TRA.fields, {
         _tag: S.Literal("TRA"),
         id: S.Number
       })

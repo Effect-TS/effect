@@ -515,10 +515,31 @@ export const isSchema = (u: unknown): u is Schema.Any =>
   Predicate.hasProperty(u, TypeId) && Predicate.isObject(u[TypeId])
 
 /**
+ * @category API interface
+ * @since 1.0.0
+ */
+export interface make<A, I = A, R = never> extends Schema<A, I, R> {
+  new(_: never): {}
+}
+
+/**
  * @category constructors
  * @since 1.0.0
  */
-export const make = <A, I = A, R = never>(ast: AST.AST): Schema<A, I, R> => new SchemaImpl(ast)
+export const make = <A, I = A, R = never>(ast: AST.AST): make<A, I, R> =>
+  class SchemaClass {
+    static [TypeId] = variance
+    static ast = ast
+    static annotations(annotations: Annotations.Schema<A>): make<A, I, R> {
+      return make(AST.annotations(this.ast, toASTAnnotations(annotations)))
+    }
+    static pipe() {
+      return pipeArguments(this, arguments)
+    }
+    static toString() {
+      return String(ast)
+    }
+  }
 
 /**
  * @category api interface
@@ -527,6 +548,7 @@ export const make = <A, I = A, R = never>(ast: AST.AST): Schema<A, I, R> => new 
 export interface Literal<Literals extends array_.NonEmptyReadonlyArray<AST.LiteralValue>>
   extends Annotable<Literal<Literals>, Literals[number]>
 {
+  new(_: never): {}
   readonly literals: Readonly<Literals>
 }
 
@@ -537,20 +559,16 @@ const getDefaultLiteralAST = <Literals extends array_.NonEmptyReadonlyArray<AST.
     ? AST.Union.make(AST.mapMembers(literals, (literal) => new AST.Literal(literal)))
     : new AST.Literal(literals[0])
 
-class LiteralImpl<Literals extends array_.NonEmptyReadonlyArray<AST.LiteralValue>> extends SchemaImpl<Literals[number]>
-  implements Literal<Literals>
-{
-  readonly literals: Literals
-
-  constructor(literals: Literals, ast: AST.AST = getDefaultLiteralAST(literals)) {
-    super(ast)
-    this.literals = [...literals]
+const createLiteralClass = <Literals extends array_.NonEmptyReadonlyArray<AST.LiteralValue>>(
+  literals: Literals,
+  ast: AST.AST = getDefaultLiteralAST(literals)
+): Literal<Literals> =>
+  class LiteralClass extends make<Literals[number]>(ast) {
+    static override annotations(annotations: Annotations.Schema<Literals[number]>): Literal<Literals> {
+      return createLiteralClass(literals, AST.annotations(this.ast, toASTAnnotations(annotations)))
+    }
+    static literals = [...literals]
   }
-
-  annotations(annotations: Annotations.Schema<Literals[number]>) {
-    return new LiteralImpl(this.literals, AST.annotations(this.ast, toASTAnnotations(annotations)))
-  }
-}
 
 /**
  * @category constructors
@@ -566,7 +584,7 @@ export function Literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
 export function Literal<Literals extends ReadonlyArray<AST.LiteralValue>>(
   ...literals: Literals
 ): Schema<Literals[number]> | Never {
-  return array_.isNonEmptyReadonlyArray(literals) ? new LiteralImpl(literals) : Never
+  return array_.isNonEmptyReadonlyArray(literals) ? createLiteralClass(literals) : Never
 }
 
 /**
