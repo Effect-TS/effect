@@ -530,19 +530,19 @@ export interface Literal<Literals extends array_.NonEmptyReadonlyArray<AST.Liter
   readonly literals: Readonly<Literals>
 }
 
+const getDefaultLiteralAST = <Literals extends array_.NonEmptyReadonlyArray<AST.LiteralValue>>(
+  literals: Literals
+): AST.AST =>
+  AST.isMembers(literals)
+    ? AST.Union.make(AST.mapMembers(literals, (literal) => new AST.Literal(literal)))
+    : new AST.Literal(literals[0])
+
 class LiteralImpl<Literals extends array_.NonEmptyReadonlyArray<AST.LiteralValue>> extends SchemaImpl<Literals[number]>
   implements Literal<Literals>
 {
-  static ast = <Literals extends array_.NonEmptyReadonlyArray<AST.LiteralValue>>(
-    literals: Literals
-  ): AST.AST =>
-    AST.isMembers(literals)
-      ? AST.Union.make(AST.mapMembers(literals, (literal) => new AST.Literal(literal)))
-      : new AST.Literal(literals[0])
-
   readonly literals: Literals
 
-  constructor(literals: Literals, ast: AST.AST = LiteralImpl.ast(literals)) {
+  constructor(literals: Literals, ast: AST.AST = getDefaultLiteralAST(literals)) {
     super(ast)
     this.literals = [...literals]
   }
@@ -603,15 +603,15 @@ export interface Enums<A extends { [x: string]: string | number }> extends Annot
   readonly enums: A
 }
 
-class EnumsImpl<A extends { [x: string]: string | number }> extends SchemaImpl<A[keyof A]> implements Enums<A> {
-  static ast = <A extends { [x: string]: string | number }>(enums: A): AST.AST =>
-    new AST.Enums(
-      Object.keys(enums).filter(
-        (key) => typeof enums[enums[key]] !== "number"
-      ).map((key) => [key, enums[key]])
-    )
+const getDefaultEnumsAST = <A extends { [x: string]: string | number }>(enums: A): AST.AST =>
+  new AST.Enums(
+    Object.keys(enums).filter(
+      (key) => typeof enums[enums[key]] !== "number"
+    ).map((key) => [key, enums[key]])
+  )
 
-  constructor(readonly enums: A, ast: AST.AST = EnumsImpl.ast(enums)) {
+class EnumsImpl<A extends { [x: string]: string | number }> extends SchemaImpl<A[keyof A]> implements Enums<A> {
+  constructor(readonly enums: A, ast: AST.AST = getDefaultEnumsAST(enums)) {
     super(ast)
   }
 
@@ -1018,16 +1018,16 @@ export interface Union<Members extends ReadonlyArray<Schema.Any>> extends
   annotations(annotations: Annotations.Schema<Schema.Type<Members[number]>>): Union<Members>
 }
 
+const getDefaultUnionAST = <Members extends ReadonlyArray<Schema.Any>>(members: Members): AST.AST =>
+  AST.Union.members(members.map((m) => m.ast))
+
 class UnionImpl<Members extends ReadonlyArray<Schema.Any>>
   extends SchemaImpl<Schema.Type<Members[number]>, Schema.Encoded<Members[number]>, Schema.Context<Members[number]>>
   implements Union<Members>
 {
-  static ast = <Members extends ReadonlyArray<Schema.Any>>(members: Members): AST.AST =>
-    AST.Union.members(members.map((m) => m.ast))
-
   readonly members: Readonly<Members>
 
-  constructor(members: Members, ast: AST.AST = UnionImpl.ast(members)) {
+  constructor(members: Members, ast: AST.AST = getDefaultUnionAST(members)) {
     super(ast)
     this.members = [...members] as any as Members
   }
@@ -1203,6 +1203,21 @@ export interface TupleType<
   annotations(annotations: Annotations.Schema<TupleType.Type<Elements, Rest>>): TupleType<Elements, Rest>
 }
 
+const getDefaultTupleTypeAST = <
+  Elements extends TupleType.Elements,
+  Rest extends ReadonlyArray<Schema.Any>
+>(
+  elements: Elements,
+  rest: Rest
+): AST.AST =>
+  new AST.TupleType(
+    elements.map((schema) =>
+      isSchema(schema) ? new AST.Element(schema.ast, false) : new AST.Element(schema.optionalElement.ast, true)
+    ),
+    rest.map((e) => e.ast),
+    true
+  )
+
 class TupleTypeImpl<
   Elements extends TupleType.Elements,
   Rest extends ReadonlyArray<Schema.Any>
@@ -1211,25 +1226,10 @@ class TupleTypeImpl<
   TupleType.Encoded<Elements, Rest>,
   Schema.Context<Elements[number]> | Schema.Context<Rest[number]>
 > implements TupleType<Elements, Rest> {
-  static ast = <
-    Elements extends TupleType.Elements,
-    Rest extends ReadonlyArray<Schema.Any>
-  >(
-    elements: Elements,
-    rest: Rest
-  ): AST.AST =>
-    new AST.TupleType(
-      elements.map((schema) =>
-        isSchema(schema) ? new AST.Element(schema.ast, false) : new AST.Element(schema.optionalElement.ast, true)
-      ),
-      rest.map((e) => e.ast),
-      true
-    )
-
   constructor(
     readonly elements: Elements,
     readonly rest: Rest,
-    ast: AST.AST = TupleTypeImpl.ast(elements, rest)
+    ast: AST.AST = getDefaultTupleTypeAST(elements, rest)
   ) {
     super(ast)
   }
@@ -2033,6 +2033,83 @@ export interface TypeLiteral<
 const isPropertySignature = (u: unknown): u is PropertySignature.All =>
   Predicate.hasProperty(u, PropertySignatureTypeId)
 
+const getDefaultTypeLiteralAST = <
+  Fields extends Struct.Fields,
+  const Records extends IndexSignature.Records
+>(fields: Fields, records: Records): AST.AST => {
+  const ownKeys = util_.ownKeys(fields)
+  const pss: Array<AST.PropertySignature> = []
+  if (ownKeys.length > 0) {
+    const from: Array<AST.PropertySignature> = []
+    const to: Array<AST.PropertySignature> = []
+    const transformations: Array<AST.PropertySignatureTransformation> = []
+    for (let i = 0; i < ownKeys.length; i++) {
+      const key = ownKeys[i]
+      const field = fields[key]
+      if (isPropertySignature(field)) {
+        const ast: PropertySignature.AST = field.ast
+        switch (ast._tag) {
+          case "PropertySignatureDeclaration": {
+            const type = ast.type
+            const isOptional = ast.isOptional
+            const toAnnotations = ast.annotations
+            from.push(new AST.PropertySignature(key, type, isOptional, true))
+            to.push(new AST.PropertySignature(key, AST.typeAST(type), isOptional, true, toAnnotations))
+            pss.push(
+              new AST.PropertySignature(key, type, isOptional, true, toAnnotations)
+            )
+            break
+          }
+          case "PropertySignatureTransformation": {
+            const fromKey = ast.from.fromKey ?? key
+            from.push(
+              new AST.PropertySignature(fromKey, ast.from.type, ast.from.isOptional, true, ast.from.annotations)
+            )
+            to.push(
+              new AST.PropertySignature(key, ast.to.type, ast.to.isOptional, true, ast.to.annotations)
+            )
+            transformations.push(new AST.PropertySignatureTransformation(fromKey, key, ast.decode, ast.encode))
+            break
+          }
+        }
+      } else {
+        from.push(new AST.PropertySignature(key, field.ast, false, true))
+        to.push(new AST.PropertySignature(key, AST.typeAST(field.ast), false, true))
+        pss.push(new AST.PropertySignature(key, field.ast, false, true))
+      }
+    }
+    if (array_.isNonEmptyReadonlyArray(transformations)) {
+      const issFrom: Array<AST.IndexSignature> = []
+      const issTo: Array<AST.IndexSignature> = []
+      for (const r of records) {
+        const { indexSignatures, propertySignatures } = AST.record(r.key.ast, r.value.ast)
+        propertySignatures.forEach((ps) => {
+          from.push(ps)
+          to.push(
+            new AST.PropertySignature(ps.name, AST.typeAST(ps.type), ps.isOptional, ps.isReadonly, ps.annotations)
+          )
+        })
+        indexSignatures.forEach((is) => {
+          issFrom.push(is)
+          issTo.push(new AST.IndexSignature(is.parameter, AST.typeAST(is.type), is.isReadonly))
+        })
+      }
+      return new AST.Transformation(
+        new AST.TypeLiteral(from, issFrom, { [AST.TitleAnnotationId]: "Struct (Encoded side)" }),
+        new AST.TypeLiteral(to, issTo, { [AST.TitleAnnotationId]: "Struct (Type side)" }),
+        new AST.TypeLiteralTransformation(transformations)
+      )
+    }
+  }
+  const iss: Array<AST.IndexSignature> = []
+  for (const r of records) {
+    const { indexSignatures, propertySignatures } = AST.record(r.key.ast, r.value.ast)
+    propertySignatures.forEach((ps) => pss.push(ps))
+    indexSignatures.forEach((is) => iss.push(is))
+  }
+  return new AST.TypeLiteral(pss, iss)
+}
+
 class TypeLiteralImpl<
   Fields extends Struct.Fields,
   const Records extends IndexSignature.Records
@@ -2042,83 +2119,6 @@ class TypeLiteralImpl<
   | Struct.Context<Fields>
   | IndexSignature.Context<Records>
 > implements TypeLiteral<Fields, Records> {
-  static ast = <
-    Fields extends Struct.Fields,
-    const Records extends IndexSignature.Records
-  >(fields: Fields, records: Records): AST.AST => {
-    const ownKeys = util_.ownKeys(fields)
-    const pss: Array<AST.PropertySignature> = []
-    if (ownKeys.length > 0) {
-      const from: Array<AST.PropertySignature> = []
-      const to: Array<AST.PropertySignature> = []
-      const transformations: Array<AST.PropertySignatureTransformation> = []
-      for (let i = 0; i < ownKeys.length; i++) {
-        const key = ownKeys[i]
-        const field = fields[key]
-        if (isPropertySignature(field)) {
-          const ast: PropertySignature.AST = field.ast
-          switch (ast._tag) {
-            case "PropertySignatureDeclaration": {
-              const type = ast.type
-              const isOptional = ast.isOptional
-              const toAnnotations = ast.annotations
-              from.push(new AST.PropertySignature(key, type, isOptional, true))
-              to.push(new AST.PropertySignature(key, AST.typeAST(type), isOptional, true, toAnnotations))
-              pss.push(
-                new AST.PropertySignature(key, type, isOptional, true, toAnnotations)
-              )
-              break
-            }
-            case "PropertySignatureTransformation": {
-              const fromKey = ast.from.fromKey ?? key
-              from.push(
-                new AST.PropertySignature(fromKey, ast.from.type, ast.from.isOptional, true, ast.from.annotations)
-              )
-              to.push(
-                new AST.PropertySignature(key, ast.to.type, ast.to.isOptional, true, ast.to.annotations)
-              )
-              transformations.push(new AST.PropertySignatureTransformation(fromKey, key, ast.decode, ast.encode))
-              break
-            }
-          }
-        } else {
-          from.push(new AST.PropertySignature(key, field.ast, false, true))
-          to.push(new AST.PropertySignature(key, AST.typeAST(field.ast), false, true))
-          pss.push(new AST.PropertySignature(key, field.ast, false, true))
-        }
-      }
-      if (array_.isNonEmptyReadonlyArray(transformations)) {
-        const issFrom: Array<AST.IndexSignature> = []
-        const issTo: Array<AST.IndexSignature> = []
-        for (const r of records) {
-          const { indexSignatures, propertySignatures } = AST.record(r.key.ast, r.value.ast)
-          propertySignatures.forEach((ps) => {
-            from.push(ps)
-            to.push(
-              new AST.PropertySignature(ps.name, AST.typeAST(ps.type), ps.isOptional, ps.isReadonly, ps.annotations)
-            )
-          })
-          indexSignatures.forEach((is) => {
-            issFrom.push(is)
-            issTo.push(new AST.IndexSignature(is.parameter, AST.typeAST(is.type), is.isReadonly))
-          })
-        }
-        return new AST.Transformation(
-          new AST.TypeLiteral(from, issFrom, { [AST.TitleAnnotationId]: "Struct (Encoded side)" }),
-          new AST.TypeLiteral(to, issTo, { [AST.TitleAnnotationId]: "Struct (Type side)" }),
-          new AST.TypeLiteralTransformation(transformations)
-        )
-      }
-    }
-    const iss: Array<AST.IndexSignature> = []
-    for (const r of records) {
-      const { indexSignatures, propertySignatures } = AST.record(r.key.ast, r.value.ast)
-      propertySignatures.forEach((ps) => pss.push(ps))
-      indexSignatures.forEach((is) => iss.push(is))
-    }
-    return new AST.TypeLiteral(pss, iss)
-  }
-
   readonly fields: { readonly [K in keyof Fields]: Fields[K] }
 
   readonly records: Readonly<Records>
@@ -2126,7 +2126,7 @@ class TypeLiteralImpl<
   constructor(
     fields: Fields,
     records: Records,
-    ast: AST.AST = TypeLiteralImpl.ast(fields, records)
+    ast: AST.AST = getDefaultTypeLiteralAST(fields, records)
   ) {
     super(ast)
     this.fields = { ...fields }
