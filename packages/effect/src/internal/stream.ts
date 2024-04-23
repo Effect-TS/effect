@@ -6803,24 +6803,12 @@ export const whenEffect = dual<
 export const withSpan = dual<
   (
     name: string,
-    options?: {
-      readonly attributes?: Record<string, unknown> | undefined
-      readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-      readonly parent?: Tracer.AnySpan | undefined
-      readonly root?: boolean | undefined
-      readonly context?: Context.Context<never> | undefined
-    }
+    options?: Tracer.SpanOptions
   ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, Exclude<R, Tracer.ParentSpan>>,
   <A, E, R>(
     self: Stream.Stream<A, E, R>,
     name: string,
-    options?: {
-      readonly attributes?: Record<string, unknown> | undefined
-      readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-      readonly parent?: Tracer.AnySpan | undefined
-      readonly root?: boolean | undefined
-      readonly context?: Context.Context<never> | undefined
-    }
+    options?: Tracer.SpanOptions
   ) => Stream.Stream<A, E, Exclude<R, Tracer.ParentSpan>>
 >(3, (self, name, options) => new StreamImpl(channel.withSpan(toChannel(self), name, options)))
 

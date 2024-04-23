@@ -49,7 +49,8 @@ export class NativeSpan implements Tracer.Span {
     readonly parent: Option.Option<Tracer.AnySpan>,
     readonly context: Context.Context<never>,
     readonly links: ReadonlyArray<Tracer.SpanLink>,
-    readonly startTime: bigint
+    readonly startTime: bigint,
+    readonly kind: Tracer.SpanKind
   ) {
     this.status = {
       _tag: "Started",
@@ -80,13 +81,14 @@ export class NativeSpan implements Tracer.Span {
 
 /** @internal */
 export const nativeTracer: Tracer.Tracer = make({
-  span: (name, parent, context, links, startTime) =>
+  span: (name, parent, context, links, startTime, kind) =>
     new NativeSpan(
       name,
       parent,
       context,
       links,
-      startTime
+      startTime,
+      kind
     ),
   context: (f) => f()
 })
