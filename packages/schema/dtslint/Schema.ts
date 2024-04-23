@@ -51,7 +51,7 @@ S.Struct({ a: S.String }).pipe(S.annotations({}))
 A.pipe(S.annotations({}))
 
 // $ExpectType number & Brand<"Int">
-S.Number.pipe(S.int(), S.brand("Int"))(1)
+S.Number.pipe(S.int(), S.brand("Int")).make(1)
 
 // ---------------------------------------------
 // S.message
