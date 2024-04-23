@@ -1114,26 +1114,23 @@ export const unwrapScoped = <A, E1, R1, E, R>(
 
 /** @internal */
 export const withSpan = dual<
-  (name: string, options?: {
-    readonly attributes?: Record<string, unknown> | undefined
-    readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.AnySpan | undefined
-    readonly root?: boolean | undefined
-    readonly context?: Context.Context<never> | undefined
-    readonly onEnd?:
-      | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>)
-      | undefined
-  }) => <A, E, R>(self: Layer.Layer<A, E, R>) => Layer.Layer<A, E, Exclude<R, Tracer.ParentSpan>>,
-  <A, E, R>(self: Layer.Layer<A, E, R>, name: string, options?: {
-    readonly attributes?: Record<string, unknown> | undefined
-    readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.AnySpan | undefined
-    readonly root?: boolean | undefined
-    readonly context?: Context.Context<never> | undefined
-    readonly onEnd?:
-      | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>)
-      | undefined
-  }) => Layer.Layer<A, E, Exclude<R, Tracer.ParentSpan>>
+  (
+    name: string,
+    options?: Tracer.SpanOptions & {
+      readonly onEnd?:
+        | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>)
+        | undefined
+    }
+  ) => <A, E, R>(self: Layer.Layer<A, E, R>) => Layer.Layer<A, E, Exclude<R, Tracer.ParentSpan>>,
+  <A, E, R>(
+    self: Layer.Layer<A, E, R>,
+    name: string,
+    options?: Tracer.SpanOptions & {
+      readonly onEnd?:
+        | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>)
+        | undefined
+    }
+  ) => Layer.Layer<A, E, Exclude<R, Tracer.ParentSpan>>
 >((args) => isLayer(args[0]), (self, name, options) =>
   unwrapScoped(
     core.map(

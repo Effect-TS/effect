@@ -29,7 +29,8 @@ export interface Tracer {
     parent: Option.Option<AnySpan>,
     context: Context.Context<never>,
     links: ReadonlyArray<SpanLink>,
-    startTime: bigint
+    startTime: bigint,
+    kind: SpanKind
   ): Span
   context<X>(f: () => X, fiber: Fiber.RuntimeFiber<any, any>): X
 }
@@ -81,6 +82,25 @@ export interface ExternalSpan {
 }
 
 /**
+ * @since 3.1.0
+ * @category models
+ */
+export interface SpanOptions {
+  readonly attributes?: Record<string, unknown> | undefined
+  readonly links?: ReadonlyArray<SpanLink> | undefined
+  readonly parent?: AnySpan | undefined
+  readonly root?: boolean | undefined
+  readonly context?: Context.Context<never> | undefined
+  readonly kind?: SpanKind | undefined
+}
+
+/**
+ * @since 3.1.0
+ * @category models
+ */
+export type SpanKind = "internal" | "server" | "client" | "producer" | "consumer"
+
+/**
  * @since 2.0.0
  * @category models
  */
@@ -95,6 +115,7 @@ export interface Span {
   readonly attributes: ReadonlyMap<string, unknown>
   readonly links: ReadonlyArray<SpanLink>
   readonly sampled: boolean
+  readonly kind: SpanKind
   end(endTime: bigint, exit: Exit.Exit<unknown, unknown>): void
   attribute(key: string, value: unknown): void
   event(name: string, startTime: bigint, attributes?: Record<string, unknown>): void
