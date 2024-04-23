@@ -22,6 +22,18 @@ type Eur = number & Brand.Brand<"Eur">
 const Eur = Brand.nominal<Eur>()
 
 describe("fromBrand", () => {
+  it("constructor", () => {
+    const schema = S.NumberFromString.pipe(S.fromBrand(PositiveInt)).annotations({ identifier: "PositiveInt" })
+    Util.expectConstructorSuccess(schema, 1)
+    Util.expectConstructorFailure(
+      schema,
+      -1,
+      `PositiveInt
+└─ Predicate refinement failure
+   └─ Expected -1 to be positive`
+    )
+  })
+
   it("property tests", () => {
     Util.roundtrip(S.Number.pipe(S.fromBrand(Int))) // refined
     Util.roundtrip(S.Number.pipe(S.fromBrand(Eur))) // nominal
