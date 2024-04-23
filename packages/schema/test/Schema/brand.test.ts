@@ -1,9 +1,24 @@
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import { assert, describe, expect, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("brand", () => {
+  it("constructor", () => {
+    const IntegerFromString = S.NumberFromString.pipe(
+      S.int({ identifier: "IntegerFromString" }),
+      S.brand("Int")
+    )
+    Util.expectConstructorSuccess(IntegerFromString, 1)
+    Util.expectConstructorFailure(
+      IntegerFromString,
+      1.1,
+      `IntegerFromString
+└─ Predicate refinement failure
+   └─ Expected IntegerFromString (an integer), actual 1.1`
+    )
+  })
+
   describe("annotations", () => {
     it("toString / format", () => {
       const schema = S.Number.pipe(S.brand("A"))
@@ -90,22 +105,6 @@ describe("brand", () => {
         [AST.JSONSchemaAnnotationId]: { type: "integer" }
       })
     })
-  })
-
-  it("the constructor should throw on invalid values", () => {
-    const IntegerFromString = S.NumberFromString.pipe(
-      S.int({ identifier: "IntegerFromString" }),
-      S.brand("Int")
-    )
-    expect(IntegerFromString(1)).toEqual(1)
-    try {
-      IntegerFromString(1.1)
-      assert.fail("expected `IntegerFromString(1.1)` to throw an error")
-    } catch (e: any) {
-      expect(e.message).toStrictEqual(`IntegerFromString
-└─ Predicate refinement failure
-   └─ Expected IntegerFromString (an integer), actual 1.1`)
-    }
   })
 
   it("composition", () => {

@@ -274,7 +274,7 @@ S.suspend(() => aContext)
 // filter
 // ---------------------------------------------
 
-// $ExpectType Schema<string, string, "aContext">
+// $ExpectType filter<string, string, "aContext">
 aContext.pipe(S.filter(() => false))
 
 // ---------------------------------------------
