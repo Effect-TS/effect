@@ -803,11 +803,11 @@ export const BrandTypeId = Symbol.for("@effect/schema/TypeId/Brand")
  * @category constructors
  * @since 1.0.0
  */
-export const fromBrand = <C extends Brand<string | symbol>>(
+export const fromBrand = <C extends Brand<string | symbol>, A extends Brand.Unbranded<C>>(
   constructor: Brand.Constructor<C>,
-  annotations?: Annotations.Filter<C>
+  annotations?: Annotations.Filter<C, A>
 ) =>
-<A extends Brand.Unbranded<C>, I, R>(self: Schema<A, I, R>): BrandSchema<A & C, I, R> =>
+<I, R>(self: Schema<A, I, R>): BrandSchema<A & C, I, R> =>
   new brandImpl<Schema<A & C, I, R>, string | symbol>(
     new AST.Refinement(
       self.ast,
@@ -2618,7 +2618,7 @@ export function filter<A>(
 ): <I, R>(self: Schema<A, I, R>) => filter<A, I, R>
 export function filter<C extends A, B extends A, A = C>(
   refinement: Predicate.Refinement<A, B>,
-  annotations?: Annotations.Filter<C & B>
+  annotations?: Annotations.Filter<C & B, C>
 ): <I, R>(self: Schema<C, I, R>) => filter<C & B, I, R>
 export function filter<A>(
   predicate: Predicate.Predicate<NoInfer<A>>,
@@ -2997,7 +2997,7 @@ export declare namespace Annotations {
   /**
    * @since 1.0.0
    */
-  export interface Filter<A> extends Schema<A, readonly [A]> {}
+  export interface Filter<A, P = A> extends Schema<A, readonly [P]> {}
 }
 
 /**
