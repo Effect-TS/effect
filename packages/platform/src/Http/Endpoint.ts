@@ -1,11 +1,14 @@
 /**
  * @since 1.0.0
  */
-import type * as AST from "@effect/schema/AST"
+import * as AST from "@effect/schema/AST"
 import type { ParseError } from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import type * as Exit from "effect/Exit"
+import * as FiberRef from "effect/FiberRef"
 import { absurd } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Option from "effect/Option"
@@ -15,13 +18,16 @@ import type { Scope } from "../../../effect/src/Scope.js"
 import type { FileSystem } from "../FileSystem.js"
 import type { Path as Path_ } from "../Path.js"
 import * as Body_ from "./Body.js"
+import type * as Client from "./Client.js"
 import * as ClientRequest from "./ClientRequest.js"
+import * as ClientResponse from "./ClientResponse.js"
 import type { Method as Method_ } from "./Method.js"
 import type * as Multipart from "./Multipart.js"
-import type * as Router from "./Router.js"
+import * as Router from "./Router.js"
 import type { RequestError } from "./ServerError.js"
-import type * as ServerRequest from "./ServerRequest.js"
-import * as UrlParams from "./UrlParams.js"
+import * as ServerRequest from "./ServerRequest.js"
+import * as ServerResponse from "./ServerResponse.js"
+import * as UrlParams_ from "./UrlParams.js"
 
 /**
  * @since 1.0.0
@@ -87,7 +93,7 @@ const getAnnotations = (ast: AST.AST): {
  * @since 1.0.0
  * @category models
  */
-export interface Endpoint<A, I, R> extends Schema.Schema<A, I, R> {}
+export interface Endpoint<A extends Serializable.SerializableWithResult.Any, I, R> extends Schema.Schema<A, I, R> {}
 
 /**
  * @since 1.0.0
@@ -98,20 +104,20 @@ export declare namespace Endpoint {
    * @since 1.0.0
    * @category models
    */
+  export type Any = Endpoint<any, any, any>
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
   export interface Parsed {
     readonly method: Method_
     readonly path: string
     readonly status: number
-    readonly urlParams: {
-      readonly [key: string]: AST.AST
-    }
-    readonly pathParams: {
-      readonly [name: string]: AST.AST
-    }
-    readonly headers: {
-      readonly [name: string]: AST.AST
-    }
-    readonly body: Option.Option<readonly [AST.AST, BodyAnnotation]>
+    readonly urlParams: Option.Option<AST.TypeLiteral>
+    readonly pathParams: Option.Option<AST.TypeLiteral>
+    readonly headers: Option.Option<AST.TypeLiteral>
+    readonly body: Option.Option<readonly [AST.AST, BodyAnnotation["format"]]>
   }
 }
 
@@ -122,8 +128,11 @@ export declare namespace Endpoint {
 export type Annotation =
   | BodyAnnotation
   | PathParamAnnotation
+  | PathParamsAnnotation
   | UrlParamAnnotation
+  | UrlParamsAnnotation
   | HeaderAnnotation
+  | HeadersAnnotation
 
 const AnnotationId = Symbol.for("@effect/platform/Http/Endpoint/Annotation")
 
@@ -149,6 +158,14 @@ export interface PathParamAnnotation {
  * @since 1.0.0
  * @category annotations
  */
+export interface PathParamsAnnotation {
+  readonly _tag: "PathParams"
+}
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
 export interface UrlParamAnnotation {
   readonly _tag: "UrlParam"
   readonly name: string
@@ -158,9 +175,25 @@ export interface UrlParamAnnotation {
  * @since 1.0.0
  * @category annotations
  */
+export interface UrlParamsAnnotation {
+  readonly _tag: "UrlParams"
+}
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
 export interface HeaderAnnotation {
   readonly _tag: "Header"
   readonly name: string
+}
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export interface HeadersAnnotation {
+  readonly _tag: "Headers"
 }
 
 /**
@@ -210,6 +243,17 @@ export const UrlParam = <A, I extends string, R>(
  * @since 1.0.0
  * @category schemas
  */
+export const UrlParams = <A, I extends ReadonlyRecord<string, string | undefined>, R>(
+  schema: Schema.Schema<A, I, R>
+): Schema.Schema<A, I, R> =>
+  schema.annotations({
+    [AnnotationId]: { _tag: "UrlParams" }
+  })
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
 export const PathParam = <A, I extends string, R>(
   name: string,
   schema: Schema.Schema<A, I, R>
@@ -222,12 +266,34 @@ export const PathParam = <A, I extends string, R>(
  * @since 1.0.0
  * @category schemas
  */
+export const PathParams = <A, I extends ReadonlyRecord<string, string | undefined>, R>(
+  schema: Schema.Schema<A, I, R>
+): Schema.Schema<A, I, R> =>
+  schema.annotations({
+    [AnnotationId]: { _tag: "PathParams" }
+  })
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
 export const Header = <A, I extends string, R>(
   name: string,
   schema: Schema.Schema<A, I, R>
 ): Schema.Schema<A, I, R> =>
   schema.annotations({
     [AnnotationId]: { _tag: "Header", name: name.toLowerCase() }
+  })
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const Headers = <A, I extends ReadonlyRecord<string, string | undefined>, R>(
+  schema: Schema.Schema<A, I, R>
+): Schema.Schema<A, I, R> =>
+  schema.annotations({
+    [AnnotationId]: { _tag: "Headers" }
   })
 
 interface Instruction {
@@ -279,11 +345,15 @@ export interface RequestParser<A, R> {
   >
 }
 
+const throwMultipleBodyError = () => {
+  throw new Error("An endpoint can only have one body annotation")
+}
+
 /**
  * @since 1.0.0
  * @category parsers
  */
-export const decodeRequest = <A, I, R>(
+export const decodeRequest = <A extends Serializable.SerializableWithResult.Any, I, R>(
   schema: Endpoint<A, I, R>
 ): RequestParser<A, R> => {
   const ast = schema.ast
@@ -296,7 +366,7 @@ export const decodeRequest = <A, I, R>(
       switch (annotation._tag) {
         case "Body": {
           if (bodyAnnotation._tag === "Some") {
-            break
+            return throwMultipleBodyError()
           }
           bodyAnnotation = Option.some(annotation)
           instructions.push(function(obj, _request, _context, body) {
@@ -310,15 +380,33 @@ export const decodeRequest = <A, I, R>(
           })
           break
         }
+        case "UrlParams": {
+          instructions.push(function(obj, _request, context, _body) {
+            setObjPath(obj, path, context.searchParams)
+          })
+          break
+        }
         case "Header": {
           instructions.push(function(obj, request, _context, _body) {
             setObjPath(obj, path, request.headers[annotation.name])
           })
           break
         }
+        case "Headers": {
+          instructions.push(function(obj, request, _context, _body) {
+            setObjPath(obj, path, request.headers)
+          })
+          break
+        }
         case "PathParam": {
           instructions.push(function(obj, _request, context, _body) {
             setObjPath(obj, path, context.params[annotation.name])
+          })
+          break
+        }
+        case "PathParams": {
+          instructions.push(function(obj, _request, context, _body) {
+            setObjPath(obj, path, context.params)
           })
           break
         }
@@ -398,36 +486,110 @@ export const decodeRequest = <A, I, R>(
  * @since 1.0.0
  * @category parsers
  */
-export const parse = <A, I, R>(self: Endpoint<A, I, R>): Endpoint.Parsed => {
+export const parse = <A extends Serializable.SerializableWithResult.Any, I, R>(
+  self: Endpoint<A, I, R>
+): Endpoint.Parsed => {
   const out = {
     ...getAnnotations(self.ast),
-    urlParams: {},
-    pathParams: {},
-    headers: {},
+    urlParams: Option.none(),
+    pathParams: Option.none(),
+    headers: Option.none(),
     body: Option.none()
   } as Mutable<Endpoint.Parsed>
 
-  function walk(ast: AST.AST): void {
+  function walk(ast: AST.AST, isOptional = false): void {
     if (AnnotationId in ast.annotations) {
       const annotation = ast.annotations[AnnotationId] as Annotation
       switch (annotation._tag) {
         case "Body": {
           if (out.body._tag === "Some") {
-            break
+            return throwMultipleBodyError()
           }
-          out.body = Option.some([ast, annotation])
+          out.body = Option.some([ast, annotation.format])
           break
         }
         case "UrlParam": {
-          ;(out.urlParams[annotation.name] as any) = ast
+          const typeLiteral = out.urlParams._tag === "None" ? new AST.TypeLiteral([], []) : out.urlParams.value
+          out.urlParams = Option.some(
+            new AST.TypeLiteral([
+              ...typeLiteral.propertySignatures,
+              new AST.PropertySignature(annotation.name, ast, isOptional, true)
+            ], typeLiteral.indexSignatures)
+          )
+          break
+        }
+        case "UrlParams": {
+          ast = AST.encodedAST(ast)
+          if (ast._tag !== "TypeLiteral") {
+            break
+          }
+          out.urlParams = Option.some(
+            out.urlParams._tag === "None" ?
+              ast :
+              new AST.TypeLiteral([
+                ...out.urlParams.value.propertySignatures,
+                ...ast.propertySignatures
+              ], [
+                ...out.urlParams.value.indexSignatures,
+                ...ast.indexSignatures
+              ])
+          )
           break
         }
         case "Header": {
-          ;(out.headers[annotation.name] as any) = ast
+          const typeLiteral = out.headers._tag === "None" ? new AST.TypeLiteral([], []) : out.headers.value
+          out.headers = Option.some(
+            new AST.TypeLiteral([
+              ...typeLiteral.propertySignatures,
+              new AST.PropertySignature(annotation.name, ast, isOptional, true)
+            ], typeLiteral.indexSignatures)
+          )
+          break
+        }
+        case "Headers": {
+          ast = AST.encodedAST(ast)
+          if (ast._tag !== "TypeLiteral") {
+            break
+          }
+          out.headers = Option.some(
+            out.headers._tag === "None" ?
+              ast :
+              new AST.TypeLiteral([
+                ...out.headers.value.propertySignatures,
+                ...ast.propertySignatures
+              ], [
+                ...out.headers.value.indexSignatures,
+                ...ast.indexSignatures
+              ])
+          )
           break
         }
         case "PathParam": {
-          ;(out.pathParams[annotation.name] as any) = ast
+          const typeLiteral = out.pathParams._tag === "None" ? new AST.TypeLiteral([], []) : out.pathParams.value
+          out.pathParams = Option.some(
+            new AST.TypeLiteral([
+              ...typeLiteral.propertySignatures,
+              new AST.PropertySignature(annotation.name, ast, isOptional, true)
+            ], typeLiteral.indexSignatures)
+          )
+          break
+        }
+        case "PathParams": {
+          ast = AST.encodedAST(ast)
+          if (ast._tag !== "TypeLiteral") {
+            break
+          }
+          out.pathParams = Option.some(
+            out.pathParams._tag === "None" ?
+              ast :
+              new AST.TypeLiteral([
+                ...out.pathParams.value.propertySignatures,
+                ...ast.propertySignatures
+              ], [
+                ...out.pathParams.value.indexSignatures,
+                ...ast.indexSignatures
+              ])
+          )
           break
         }
         default: {
@@ -439,7 +601,7 @@ export const parse = <A, I, R>(self: Endpoint<A, I, R>): Endpoint.Parsed => {
 
     switch (ast._tag) {
       case "Refinement": {
-        walk(ast.from)
+        walk(AST.annotations(ast.from, ast.annotations))
         break
       }
       case "Suspend": {
@@ -447,7 +609,7 @@ export const parse = <A, I, R>(self: Endpoint<A, I, R>): Endpoint.Parsed => {
         break
       }
       case "Transformation": {
-        walk(ast.from)
+        walk(AST.annotations(ast.from, { ...ast.to.annotations, ...ast.annotations }))
         break
       }
       case "TupleType": {
@@ -466,11 +628,18 @@ export const parse = <A, I, R>(self: Endpoint<A, I, R>): Endpoint.Parsed => {
     if (ast._tag === "TypeLiteral") {
       for (let i = 0; i < ast.propertySignatures.length; i++) {
         const property = ast.propertySignatures[i]
-        walk(property.type)
+        walk(property.type, property.isOptional)
       }
     }
   }
   walk(self.ast)
+
+  if (out.method === undefined) {
+    out.method = out.body._tag === "Some" ? "POST" : "GET"
+  }
+  if (out.status === undefined) {
+    out.status = out.body._tag === "Some" ? 200 : 204
+  }
 
   return out
 }
@@ -479,7 +648,7 @@ export const parse = <A, I, R>(self: Endpoint<A, I, R>): Endpoint.Parsed => {
  * @since 1.0.0
  * @category encoder
  */
-export interface RequestEncoder<A, I, R> {
+export interface RequestEncoder<A extends Serializable.SerializableWithResult.Any, I, R> {
   (
     self: Endpoint<A, I, R>,
     value: A
@@ -492,19 +661,19 @@ export interface RequestEncoder<A, I, R> {
 
 const encoderCache: WeakMap<
   object,
-  (value: any) => Effect.Effect<ClientRequest.ClientRequest, ParseError, unknown>
+  (value: any) => Effect.Effect<ClientRequest.ClientRequest, ParseError, any>
 > = globalValue("@effect/platform/Http/Endpoint/encoderCache", () => new WeakMap())
 
 interface EncodeInstruction {
   (request: Mutable<ClientRequest.Options>, value: any): void
 }
 
-const makeEncoder = <A, I, R>(
+function makeEncoder<A, I, R>(
   self: Serializable.Serializable<A, I, R>
-): Effect.Effect<ClientRequest.ClientRequest, ParseError, R> => {
+): (value: A) => Effect.Effect<ClientRequest.ClientRequest, ParseError, R> {
   const selfSchema = Serializable.selfSchema(self)
   if (encoderCache.has(selfSchema)) {
-    return encoderCache.get(selfSchema)!(self) as any
+    return encoderCache.get(selfSchema)!
   }
 
   const annotations = getAnnotations(selfSchema.ast)
@@ -518,7 +687,7 @@ const makeEncoder = <A, I, R>(
       switch (annotation._tag) {
         case "Body": {
           if (bodyHandled) {
-            return
+            return throwMultipleBodyError()
           }
           bodyHandled = true
           instructions.push(function(request, value) {
@@ -526,7 +695,7 @@ const makeEncoder = <A, I, R>(
               ? Body_.unsafeJson(getObjPath(value, path))
               : annotation.format === "multipart"
               ? Body_.empty
-              : Body_.urlParams(UrlParams.fromInput(getObjPath(value, path) as any))
+              : Body_.urlParams(UrlParams_.fromInput(getObjPath(value, path) as any))
           })
           break
         }
@@ -541,6 +710,17 @@ const makeEncoder = <A, I, R>(
           })
           break
         }
+        case "UrlParams": {
+          instructions.push(function(request, value) {
+            const val = getObjPath(value, path)
+            if (val === undefined) {
+              return
+            }
+            request.urlParams ??= {}
+            Object.assign(request.urlParams, val)
+          })
+          break
+        }
         case "Header": {
           instructions.push(function(request, value) {
             const val = getObjPath(value, path)
@@ -552,9 +732,28 @@ const makeEncoder = <A, I, R>(
           })
           break
         }
+        case "Headers": {
+          instructions.push(function(request, value) {
+            const val = getObjPath(value, path)
+            if (val === undefined) {
+              return
+            }
+            request.headers ??= {}
+            Object.assign(request.headers, val)
+          })
+          break
+        }
         case "PathParam": {
           instructions.push(function(request, value) {
             request.url! = request.url!.replace(`:${annotation.name}`, getObjPath(value, path) as string)
+          })
+          break
+        }
+        case "PathParams": {
+          instructions.push(function(request, value) {
+            Object.entries(getObjPath(value, path)).forEach(([key, value]) => {
+              request.url! = request.url!.replace(`:${key}`, value as string)
+            })
           })
           break
         }
@@ -620,7 +819,7 @@ const makeEncoder = <A, I, R>(
     })
   }
   encoderCache.set(self, encoder)
-  return encoder(self as A)
+  return encoder
 }
 
 /**
@@ -629,4 +828,211 @@ const makeEncoder = <A, I, R>(
  */
 export const encodeRequest = <A, I, R>(
   self: Serializable.Serializable<A, I, R>
-): Effect.Effect<ClientRequest.ClientRequest, ParseError, R> => makeEncoder(self)
+): Effect.Effect<ClientRequest.ClientRequest, ParseError, R> => makeEncoder(self)(self as A)
+
+/**
+ * @since 1.0.0
+ * @category handlers
+ */
+export const HandledTypeId = Symbol.for("@effect/platform/Http/Endpoint/Handled")
+
+/**
+ * @since 1.0.0
+ * @category groups
+ */
+export type HandledTypeId = typeof HandledTypeId
+
+/**
+ * @since 1.0.0
+ * @category handlers
+ */
+export interface Handled<A extends Serializable.SerializableWithResult.Any, R> {
+  readonly [HandledTypeId]: HandledTypeId
+  readonly endpoint: Endpoint<A, unknown, R>
+  readonly parsed: Endpoint.Parsed
+  readonly handler: (value: A) => Effect.Effect<Serializable.WithResult.Success<A>, Serializable.WithResult.Error<A>, R>
+}
+
+/**
+ * @since 1.0.0
+ * @category handlers
+ */
+export declare namespace Handled {
+  /**
+   * @since 1.0.0
+   * @category handlers
+   */
+  export type Any = Handled<any, any>
+}
+
+/**
+ * @since 1.0.0
+ * @category handlers
+ */
+export const handle = <A extends Serializable.SerializableWithResult.Any, I, R>(
+  endpoint: Endpoint<A, I, R>,
+  handler: (_: A) => Effect.Effect<Serializable.WithResult.Success<A>, Serializable.WithResult.Error<A>, R>
+): Handled<A, R> => ({
+  [HandledTypeId]: HandledTypeId,
+  endpoint: endpoint as any,
+  handler,
+  parsed: parse(endpoint)
+})
+
+/**
+ * @since 1.0.0
+ * @category handlers
+ */
+export const handledToRoute = <Request extends Serializable.SerializableWithResult.Any, R>(
+  self: Handled<Request, R>
+): Router.Route<
+  RequestError | ParseError | Multipart.MultipartError,
+  Path_ | FileSystem
+> => {
+  const encode = decodeRequest(self.endpoint)
+  let encodeExit: ((exit: unknown) => Effect.Effect<unknown, ParseError>) | undefined
+  return Router.makeRoute(
+    self.parsed.method,
+    self.parsed.path as Router.PathInput,
+    Effect.withFiberRuntime<
+      ServerResponse.ServerResponse,
+      RequestError | ParseError | Multipart.MultipartError,
+      Scope | FileSystem | Path_ | R
+    >(
+      (fiber) => {
+        const context = fiber.getFiberRef(FiberRef.currentContext)
+        const request = Context.unsafeGet(context, ServerRequest.ServerRequest)
+        const routeContext = Context.unsafeGet(context, Router.RouteContext)
+        return Effect.map(
+          Effect.flatMap(encode(request, routeContext), (req) => {
+            if (encodeExit === undefined) {
+              encodeExit = Schema.encodeUnknown(Serializable.exitSchema(req as any))
+            }
+            return Effect.flatMap(Effect.exit(self.handler(req)), encodeExit)
+          }),
+          ServerResponse.unsafeJson
+        )
+      }
+    )
+  ) as any
+}
+
+/**
+ * @since 1.0.0
+ * @category groups
+ */
+export const GroupTypeId = Symbol.for("@effect/platform/Http/Endpoint/Group")
+
+/**
+ * @since 1.0.0
+ * @category groups
+ */
+export type GroupTypeId = typeof GroupTypeId
+
+/**
+ * @since 1.0.0
+ * @category groups
+ */
+export interface Group<Request extends Serializable.SerializableWithResult.Any, R> {
+  readonly [GroupTypeId]: GroupTypeId
+  readonly name: string | undefined
+  readonly description: string | undefined
+  readonly children: ReadonlyArray<Handled<Request, R> | Group<Request, R>>
+}
+
+/**
+ * @since 1.0.0
+ * @category groups
+ */
+export declare namespace Group {
+  /**
+   * @since 1.0.0
+   * @category groups
+   */
+  export type Any = Group<any, any>
+
+  /**
+   * @since 1.0.0
+   * @category groups
+   */
+  export type Request<G extends Group.Any> = G extends Group<infer A, infer _R> ? A : never
+}
+
+/**
+ * @since 1.0.0
+ * @category groups
+ */
+export const group = <Children extends ReadonlyArray<Handled.Any | Group.Any>>(
+  options: {
+    readonly name?: string | undefined
+    readonly description?: string | undefined
+  },
+  ...children: Children
+): Group<
+  Children[number] extends infer Child ? Child extends Handled<infer A, infer _R> ? A :
+    Child extends Group<infer A, infer _R> ? A
+    : never :
+    never,
+  Children[number] extends infer Child ? Child extends Handled<infer _A, infer R> ? R :
+    Child extends Group<infer _A, infer R> ? R
+    : never :
+    never
+> => ({
+  [GroupTypeId]: GroupTypeId,
+  name: options.name,
+  description: options.description,
+  children
+})
+
+/**
+ * @since 1.0.0
+ * @category groups
+ */
+export const groupToRouter = <Request extends Serializable.SerializableWithResult.Any, R>(
+  self: Group<Request, R>
+): Router.Router<RequestError | ParseError | Multipart.MultipartError, Path_ | FileSystem> => {
+  const endpoints: Array<Handled<Request, R>> = []
+  function walk(group: Group<Request, R>): void {
+    for (let i = 0; i < group.children.length; i++) {
+      const child = group.children[i]
+      if (HandledTypeId in child) {
+        endpoints.push(child)
+      } else {
+        walk(child)
+      }
+    }
+  }
+  walk(self)
+  return Router.fromIterable(endpoints.map(handledToRoute))
+}
+
+const decodeExitCache: WeakMap<object, (u: any) => Effect.Effect<Exit.Exit<any, any>, any, any>> = globalValue(
+  "@effect/platform/Http/Endpoint/decodeExitCache",
+  () => new WeakMap()
+)
+
+const getDecodeExit = (self: Serializable.SerializableWithResult.Any) => {
+  const selfSchema = Serializable.selfSchema(self)
+  if (decodeExitCache.has(selfSchema)) {
+    return decodeExitCache.get(selfSchema)!
+  }
+  const decodeExitSchema = ClientResponse.schemaBodyJsonScoped(Serializable.exitSchema(self as any))
+  decodeExitCache.set(selfSchema, decodeExitSchema)
+  return decodeExitSchema
+}
+
+/**
+ * @since 1.0.0
+ * @category client
+ */
+export const client =
+  <G extends Group.Any>() =>
+  <E, R>(client: Client.Client.WithResponse<E, R>) =>
+  <Request extends Group.Request<G>>(request: Request): Effect.Effect<
+    Serializable.WithResult.Success<Request>,
+    E | Serializable.WithResult.Error<Request>,
+    R | Serializable.SerializableWithResult.Context<Request>
+  > => {
+    const decodeExit = getDecodeExit(request)
+    return Effect.flatten(decodeExit(Effect.flatMap(encodeRequest(request), client)))
+  }

@@ -2,20 +2,33 @@ import { FileSystem, HttpClient, HttpServer, Path } from "@effect/platform"
 import * as Endpoint from "@effect/platform/Http/Endpoint"
 import { Schema } from "@effect/schema"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Layer } from "effect"
+import { Effect, Layer, Option } from "effect"
+
+const PositiveInt = Schema.NumberFromString.pipe(Schema.positive(), Schema.int())
+
+const Pagination = Schema.Struct({
+  page: Schema.optional(Endpoint.Header("x-page", PositiveInt), { default: () => 1 })
+})
+
+class User extends Schema.Class<User>("User")({
+  id: Schema.Number,
+  name: Schema.String
+}) {}
 
 class GetUserById extends Schema.TaggedRequest<GetUserById>()(
   "GetUserById",
   Schema.Never,
-  Schema.Any,
+  User,
   {
     id: Endpoint.PathParam("id", Schema.NumberFromString),
-    page: Schema.optional(Endpoint.Header("x-page", Schema.NumberFromString)),
+    pagination: Pagination,
     body: Endpoint.BodyJson(Schema.Struct({
       name: Schema.String,
       age: Schema.Number
     })),
-    cached: Schema.optional(Endpoint.UrlParam("cached", Schema.Literal("true", "false")))
+    search: Endpoint.UrlParams(Schema.Struct({
+      cached: Schema.optional(Schema.Literal("true", "false"))
+    }))
   },
   Endpoint.annotations({
     path: "/users/:id",
@@ -35,8 +48,12 @@ describe("Endpoint", () => {
           Endpoint.encodeRequest(
             new GetUserById({
               id: 123,
-              page: 1,
-              cached: "true",
+              pagination: {
+                page: 1
+              },
+              search: {
+                cached: "true"
+              },
               body: {
                 name: "John",
                 age: 30
@@ -75,7 +92,7 @@ describe("Endpoint", () => {
                 age: 30
               }),
               headers: {
-                "x-page": "1"
+                "x-page": "2"
               }
             })
           ),
@@ -93,14 +110,24 @@ describe("Endpoint", () => {
           request,
           new GetUserById({
             id: 123,
-            page: 1,
+            pagination: {
+              page: 2
+            },
             body: {
               name: "John",
               age: 30
             },
-            cached: "true"
+            search: {
+              cached: "true"
+            }
           })
         )
       }).pipe(Effect.scoped, Effect.provide(EnvLive)))
+  })
+
+  describe("parse", () => {
+    it("parses", () => {
+      console.log(Option.getOrThrow(Endpoint.parse(GetUserById).urlParams).propertySignatures)
+    })
   })
 })
