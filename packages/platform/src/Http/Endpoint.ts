@@ -7,20 +7,19 @@ import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import type * as Exit from "effect/Exit"
 import * as FiberRef from "effect/FiberRef"
-import { absurd } from "effect/Function"
+import { absurd, pipe } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Option from "effect/Option"
-import type { ReadonlyRecord } from "effect/Record"
+import * as Record from "effect/Record"
 import type { Mutable } from "effect/Types"
 import type { Scope } from "../../../effect/src/Scope.js"
 import type { FileSystem } from "../FileSystem.js"
 import type { Path as Path_ } from "../Path.js"
 import * as Body_ from "./Body.js"
 import type * as Client from "./Client.js"
+import * as ClientError from "./ClientError.js"
 import * as ClientRequest from "./ClientRequest.js"
-import * as ClientResponse from "./ClientResponse.js"
 import type { Method as Method_ } from "./Method.js"
 import type * as Multipart from "./Multipart.js"
 import * as Router from "./Router.js"
@@ -55,7 +54,7 @@ export const annotations = <A>(
   annotations: Schema.Annotations.Schema<A> & {
     readonly path: string
     readonly method?: Method_
-    readonly status?: number
+    readonly statusCode?: number
   }
 ): Schema.Annotations.Schema<A> => {
   const obj: Record<string | symbol, any> = annotations
@@ -75,7 +74,7 @@ export const annotations = <A>(
 const getAnnotations = (ast: AST.AST): {
   readonly path: string
   readonly method: Method_ | undefined
-  readonly status: number | undefined
+  readonly statusCode: number | undefined
 } => {
   if (ast._tag === "Transformation") {
     ast = ast.to
@@ -85,8 +84,33 @@ const getAnnotations = (ast: AST.AST): {
     throw new Error("Endpoint schema is missing path annotation")
   }
   const method = ast.annotations[MethodId] as Method_
-  const status = ast.annotations[StatusId] as number
-  return { path, method, status }
+  const statusCode = ast.annotations[StatusId] as number
+  return { path, method, statusCode }
+}
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const errorAnnotations = <A>(
+  annotations: Schema.Annotations.Schema<A> & {
+    readonly statusCode: number
+  }
+): Schema.Annotations.Schema<A> => {
+  const obj: Record<string | symbol, any> = annotations
+  obj[StatusId] = obj.statusCode
+  delete obj.statusCode
+  return obj
+}
+
+const getErrorAnnotations = (ast: AST.AST): {
+  readonly statusCode: number
+} => {
+  if (ast._tag === "Transformation") {
+    ast = ast.to
+  }
+  const statusCode = ast.annotations[StatusId] as number ?? 500
+  return { statusCode }
 }
 
 /**
@@ -113,7 +137,7 @@ export declare namespace Endpoint {
   export interface Parsed {
     readonly method: Method_
     readonly path: string
-    readonly status: number
+    readonly statusCode?: number | undefined
     readonly urlParams: Option.Option<AST.TypeLiteral>
     readonly pathParams: Option.Option<AST.TypeLiteral>
     readonly headers: Option.Option<AST.TypeLiteral>
@@ -223,7 +247,7 @@ export const BodyMultipart = <A, I extends Partial<Multipart.Persisted>, R>(
  * @since 1.0.0
  * @category schemas
  */
-export const BodyUrlEncoded = <A, I extends ReadonlyRecord<string, string | undefined>, R>(
+export const BodyUrlEncoded = <A, I extends Record.ReadonlyRecord<string, string | undefined>, R>(
   schema: Schema.Schema<A, I, R>
 ): Schema.Schema<A, I, R> => Body(schema, "urlencoded")
 
@@ -243,7 +267,7 @@ export const UrlParam = <A, I extends string, R>(
  * @since 1.0.0
  * @category schemas
  */
-export const UrlParams = <A, I extends ReadonlyRecord<string, string | undefined>, R>(
+export const UrlParams = <A, I extends Record.ReadonlyRecord<string, string | undefined>, R>(
   schema: Schema.Schema<A, I, R>
 ): Schema.Schema<A, I, R> =>
   schema.annotations({
@@ -266,7 +290,7 @@ export const PathParam = <A, I extends string, R>(
  * @since 1.0.0
  * @category schemas
  */
-export const PathParams = <A, I extends ReadonlyRecord<string, string | undefined>, R>(
+export const PathParams = <A, I extends Record.ReadonlyRecord<string, string | undefined>, R>(
   schema: Schema.Schema<A, I, R>
 ): Schema.Schema<A, I, R> =>
   schema.annotations({
@@ -289,7 +313,7 @@ export const Header = <A, I extends string, R>(
  * @since 1.0.0
  * @category schemas
  */
-export const Headers = <A, I extends ReadonlyRecord<string, string | undefined>, R>(
+export const Headers = <A, I extends Record.ReadonlyRecord<string, string | undefined>, R>(
   schema: Schema.Schema<A, I, R>
 ): Schema.Schema<A, I, R> =>
   schema.annotations({
@@ -637,11 +661,47 @@ export const parse = <A extends Serializable.SerializableWithResult.Any, I, R>(
   if (out.method === undefined) {
     out.method = out.body._tag === "Some" ? "POST" : "GET"
   }
-  if (out.status === undefined) {
-    out.status = out.body._tag === "Some" ? 200 : 204
-  }
 
   return out
+}
+
+// TODO: memoize
+/**
+ * @since 1.0.0
+ * @category parsers
+ */
+export const errorMap = <A, I, R>(
+  self: Schema.Schema<A, I, R>
+): Record.ReadonlyRecord<string, Schema.Schema<A, I, R>> => {
+  const out: Record<string, AST.AST> = {}
+
+  function walk(ast: AST.AST): void {
+    switch (ast._tag) {
+      case "Suspend": {
+        walk(ast.f())
+        break
+      }
+      case "Union": {
+        for (let i = 0; i < ast.types.length; i++) {
+          walk(ast.types[i])
+        }
+        break
+      }
+      default: {
+        const annotations = ast._tag === "Transformation" ? ast.to.annotations : ast.annotations
+        const annotation = annotations[StatusId] as number ?? 500
+        const current = out[annotation]
+        if (current !== undefined) {
+          out[annotation] = AST.Union.unify([current, ast])
+        } else {
+          out[annotation] = ast
+        }
+      }
+    }
+  }
+  walk(self.ast)
+
+  return Record.map(out, (ast) => Schema.make(ast))
 }
 
 /**
@@ -869,7 +929,7 @@ export declare namespace Handled {
  * @since 1.0.0
  * @category handlers
  */
-export const handle = <A extends Serializable.SerializableWithResult.Any, I, R>(
+export const make = <A extends Serializable.SerializableWithResult.Any, I, R>(
   endpoint: Endpoint<A, I, R>,
   handler: (_: A) => Effect.Effect<Serializable.WithResult.Success<A>, Serializable.WithResult.Error<A>, R>
 ): Handled<A, R> => ({
@@ -883,14 +943,14 @@ export const handle = <A extends Serializable.SerializableWithResult.Any, I, R>(
  * @since 1.0.0
  * @category handlers
  */
-export const handledToRoute = <Request extends Serializable.SerializableWithResult.Any, R>(
+export const toRoute = <Request extends Serializable.SerializableWithResult.Any, R>(
   self: Handled<Request, R>
 ): Router.Route<
   RequestError | ParseError | Multipart.MultipartError,
   Path_ | FileSystem
 > => {
   const encode = decodeRequest(self.endpoint)
-  let encodeExit: ((exit: unknown) => Effect.Effect<unknown, ParseError>) | undefined
+  let encodeCause: (u: any) => Effect.Effect<Schema.CauseEncoded<any>, any, any>
   return Router.makeRoute(
     self.parsed.method,
     self.parsed.path as Router.PathInput,
@@ -903,15 +963,30 @@ export const handledToRoute = <Request extends Serializable.SerializableWithResu
         const context = fiber.getFiberRef(FiberRef.currentContext)
         const request = Context.unsafeGet(context, ServerRequest.ServerRequest)
         const routeContext = Context.unsafeGet(context, Router.RouteContext)
-        return Effect.map(
-          Effect.flatMap(encode(request, routeContext), (req) => {
-            if (encodeExit === undefined) {
-              encodeExit = Schema.encodeUnknown(Serializable.exitSchema(req as any))
-            }
-            return Effect.flatMap(Effect.exit(self.handler(req)), encodeExit)
-          }),
-          ServerResponse.unsafeJson
-        )
+        return Effect.flatMap(encode(request, routeContext), (req) => {
+          if (encodeCause === undefined) {
+            encodeCause = Schema.encodeUnknown(Schema.Cause({ error: Serializable.failureSchema(req as any) }))
+          }
+          const successSchema = Serializable.successSchema(req as any)
+          const noBody = successSchema.ast._tag === "VoidKeyword"
+          return pipe(
+            self.handler(req),
+            noBody ?
+              Effect.as(ServerResponse.empty({ status: self.parsed.statusCode })) :
+              Effect.flatMap((value) =>
+                Effect.orDie(Serializable.serializeSuccess(req as any, value)).pipe(
+                  Effect.map((value) => ServerResponse.unsafeJson(value, { status: self.parsed.statusCode }))
+                )
+              ),
+            Effect.catchAll((error) => {
+              const failureSchema = Serializable.failureSchema(req as any)
+              const statusCode = getErrorAnnotations(failureSchema.ast).statusCode
+              return Serializable.serializeFailure(req as any, error).pipe(
+                Effect.map((value) => ServerResponse.unsafeJson(value, { status: statusCode }))
+              )
+            })
+          ) as any
+        })
       }
     )
   ) as any
@@ -988,7 +1063,7 @@ export const group = <Children extends ReadonlyArray<Handled.Any | Group.Any>>(
  * @since 1.0.0
  * @category groups
  */
-export const groupToRouter = <Request extends Serializable.SerializableWithResult.Any, R>(
+export const toRouter = <Request extends Serializable.SerializableWithResult.Any, R>(
   self: Group<Request, R>
 ): Router.Router<RequestError | ParseError | Multipart.MultipartError, Path_ | FileSystem> => {
   const endpoints: Array<Handled<Request, R>> = []
@@ -1003,24 +1078,10 @@ export const groupToRouter = <Request extends Serializable.SerializableWithResul
     }
   }
   walk(self)
-  return Router.fromIterable(endpoints.map(handledToRoute))
+  return Router.fromIterable(endpoints.map(toRoute))
 }
 
-const decodeExitCache: WeakMap<object, (u: any) => Effect.Effect<Exit.Exit<any, any>, any, any>> = globalValue(
-  "@effect/platform/Http/Endpoint/decodeExitCache",
-  () => new WeakMap()
-)
-
-const getDecodeExit = (self: Serializable.SerializableWithResult.Any) => {
-  const selfSchema = Serializable.selfSchema(self)
-  if (decodeExitCache.has(selfSchema)) {
-    return decodeExitCache.get(selfSchema)!
-  }
-  const decodeExitSchema = ClientResponse.schemaBodyJsonScoped(Serializable.exitSchema(self as any))
-  decodeExitCache.set(selfSchema, decodeExitSchema)
-  return decodeExitSchema
-}
-
+// TODO: Move to Http Client
 /**
  * @since 1.0.0
  * @category client
@@ -1033,6 +1094,47 @@ export const client =
     E | Serializable.WithResult.Error<Request>,
     R | Serializable.SerializableWithResult.Context<Request>
   > => {
-    const decodeExit = getDecodeExit(request)
-    return Effect.flatten(decodeExit(Effect.flatMap(encodeRequest(request), client)))
+    const selfSchema = Serializable.selfSchema(request)
+    const annotations = getAnnotations(selfSchema.ast)
+    const successSchema = Serializable.successSchema(request)
+    const noBody = successSchema.ast._tag === "VoidKeyword"
+    const successStatus = annotations.statusCode ?? noBody ? 204 : 200
+    return encodeRequest(request).pipe(
+      Effect.bindTo("httpRequest"),
+      Effect.bind("response", ({ httpRequest }) => client(httpRequest)),
+      Effect.flatMap(({ httpRequest, response }) => {
+        if (response.status === successStatus) {
+          if (noBody) {
+            return Effect.void
+          }
+          return Effect.flatMap(response.json, Schema.decodeUnknown(successSchema))
+        } else if (response.headers["content-type"] !== "application/json") {
+          return Effect.fail(
+            new ClientError.ResponseError({
+              request: httpRequest,
+              response,
+              reason: "StatusCode",
+              error: `non-${successStatus} status code`
+            })
+          )
+        }
+        const failureSchema = Serializable.failureSchema(request)
+        const ast = errorMap(failureSchema)[response.status]
+        if (ast === undefined) {
+          return Effect.fail(
+            new ClientError.ResponseError({
+              request: httpRequest,
+              response,
+              reason: "StatusCode",
+              error: `non-${successStatus} status code`
+            })
+          )
+        }
+        return response.json.pipe(
+          Effect.flatMap(Schema.decodeUnknown(ast)),
+          Effect.flatMap(Effect.fail)
+        )
+      }),
+      Effect.scoped
+    ) as any
   }

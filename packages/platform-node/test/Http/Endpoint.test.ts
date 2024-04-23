@@ -1,6 +1,5 @@
-import { HttpClient, HttpServer } from "@effect/platform"
+import { HttpClient, HttpServer as Http } from "@effect/platform"
 import { NodeHttpClient, NodeHttpServer } from "@effect/platform-node"
-import * as Endpoint from "@effect/platform/Http/Endpoint"
 import { Schema } from "@effect/schema"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer } from "effect"
@@ -17,43 +16,51 @@ class GetUserById extends Schema.TaggedRequest<GetUserById>()(
   Schema.Never,
   User,
   {
-    id: Endpoint.PathParam("id", Schema.NumberFromString),
-    user: Endpoint.BodyJson(Schema.Struct({
+    id: Http.endpoint.PathParam("id", Schema.NumberFromString),
+    user: Http.endpoint.BodyJson(Schema.Struct({
       name: Schema.String
     })),
-    suffix: Endpoint.UrlParam("suffix", Schema.String),
-    search: Endpoint.UrlParams(Schema.Struct({
+    suffix: Http.endpoint.UrlParam("suffix", Schema.String),
+    search: Http.endpoint.UrlParams(Schema.Struct({
       age: Schema.NumberFromString
     })),
-    extraAge: Endpoint.Header("x-extra-age", Schema.NumberFromString)
+    extraAge: Http.endpoint.Header("x-extra-age", Schema.NumberFromString)
   },
-  Endpoint.annotations({
+  Http.endpoint.annotations({
     path: "/users/:id",
     method: "POST"
   })
 ) {}
 
+class UserError extends Schema.TaggedError<UserError>()(
+  "UserError",
+  {},
+  Http.endpoint.errorAnnotations({
+    statusCode: 400
+  })
+) {}
+
 class CreateUser extends Schema.TaggedRequest<CreateUser>()(
   "CreateUser",
-  Schema.Never,
+  UserError,
   Schema.Void,
   {
-    user: Endpoint.BodyJson(Schema.Struct({
+    user: Http.endpoint.BodyJson(Schema.Struct({
       name: Schema.String,
       age: Schema.Number
     }))
   },
-  Endpoint.annotations({
+  Http.endpoint.annotations({
     path: "/users",
     method: "POST"
   })
 ) {}
 
-const group = Endpoint.group(
+const group = Http.endpoint.group(
   {
     name: "users"
   },
-  Endpoint.handle(GetUserById, (req) =>
+  Http.endpoint.make(GetUserById, (req) =>
     Effect.succeed(
       new User({
         id: req.id,
@@ -61,31 +68,36 @@ const group = Endpoint.group(
         age: req.search.age + req.extraAge
       })
     )),
-  Endpoint.handle(CreateUser, ({ user }) => Effect.log("Creating user", user))
+  Http.endpoint.make(CreateUser, ({ user }) =>
+    user.name === "fail" ?
+      Effect.fail(new UserError()) :
+      user.name === "defect" ?
+      Effect.die("defect") :
+      Effect.log("Creating user", user))
 )
 
 type Group = typeof group
 
-const router = Endpoint.groupToRouter(group)
+const router = Http.endpoint.toRouter(group)
 
 const ServerLive = NodeHttpServer.server.layer(createServer, { port: 0 })
 const EnvLive = Layer.mergeAll(ServerLive, NodeHttpClient.layerUndici)
 const makeClient = Effect.map(
-  Effect.all([HttpServer.server.Server, HttpClient.client.Client]),
+  Effect.all([Http.server.Server, HttpClient.client.Client]),
   ([server, client]) => {
     client = HttpClient.client.mapRequest(
       client,
-      HttpClient.request.prependUrl(`http://127.0.0.1:${(server.address as HttpServer.server.TcpAddress).port}`)
+      HttpClient.request.prependUrl(`http://127.0.0.1:${(server.address as Http.server.TcpAddress).port}`)
     )
-    return Endpoint.client<Group>()(client)
+    return Http.endpoint.client<Group>()(client)
   }
 )
 
 describe("Endpoint", () => {
   describe("e2e", () => {
-    it.scoped("works", () =>
+    it.scoped("success", () =>
       Effect.gen(function*(_) {
-        yield* _(router, HttpServer.server.serveEffect())
+        yield* _(router, Http.server.serveEffect())
         const client = yield* _(makeClient)
         const user = yield* _(client(
           new GetUserById({
@@ -104,6 +116,24 @@ describe("Endpoint", () => {
 
         const result = yield* _(client(new CreateUser({ user: { name: "John", age: 30 } })))
         assert.isUndefined(result)
+      }).pipe(Effect.provide(EnvLive)))
+
+    it.scoped("failure", () =>
+      Effect.gen(function*(_) {
+        yield* _(router, Http.server.serveEffect())
+        const client = yield* _(makeClient)
+        const result = yield* _(client(new CreateUser({ user: { name: "fail", age: 30 } })), Effect.flip)
+        assert.deepStrictEqual(result, new UserError())
+      }).pipe(Effect.provide(EnvLive)))
+
+    it.scoped("defect", () =>
+      Effect.gen(function*(_) {
+        yield* _(router, Http.server.serveEffect())
+        const client = yield* _(makeClient)
+        const result = yield* _(client(new CreateUser({ user: { name: "defect", age: 30 } })), Effect.flip)
+        assert(result._tag === "ResponseError")
+        assert.strictEqual(result.reason, "StatusCode")
+        assert.strictEqual(result.response.status, 500)
       }).pipe(Effect.provide(EnvLive)))
   })
 })

@@ -1,5 +1,4 @@
-import { FileSystem, HttpClient, HttpServer, Path } from "@effect/platform"
-import * as Endpoint from "@effect/platform/Http/Endpoint"
+import { FileSystem, HttpClient, HttpServer as Http, Path } from "@effect/platform"
 import { Schema } from "@effect/schema"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Option } from "effect"
@@ -7,7 +6,7 @@ import { Effect, Layer, Option } from "effect"
 const PositiveInt = Schema.NumberFromString.pipe(Schema.positive(), Schema.int())
 
 const Pagination = Schema.Struct({
-  page: Schema.optional(Endpoint.Header("x-page", PositiveInt), { default: () => 1 })
+  page: Schema.optional(Http.endpoint.Header("x-page", PositiveInt), { default: () => 1 })
 })
 
 class User extends Schema.Class<User>("User")({
@@ -20,17 +19,17 @@ class GetUserById extends Schema.TaggedRequest<GetUserById>()(
   Schema.Never,
   User,
   {
-    id: Endpoint.PathParam("id", Schema.NumberFromString),
+    id: Http.endpoint.PathParam("id", Schema.NumberFromString),
     pagination: Pagination,
-    body: Endpoint.BodyJson(Schema.Struct({
+    body: Http.endpoint.BodyJson(Schema.Struct({
       name: Schema.String,
       age: Schema.Number
     })),
-    search: Endpoint.UrlParams(Schema.Struct({
+    search: Http.endpoint.UrlParams(Schema.Struct({
       cached: Schema.optional(Schema.Literal("true", "false"))
     }))
   },
-  Endpoint.annotations({
+  Http.endpoint.annotations({
     path: "/users/:id",
     method: "POST"
   })
@@ -45,7 +44,7 @@ describe("Endpoint", () => {
     it.effect("correctly encodes a request", () =>
       Effect.gen(function*(_) {
         const request = yield* _(
-          Endpoint.encodeRequest(
+          Http.endpoint.encodeRequest(
             new GetUserById({
               id: 123,
               pagination: {
@@ -82,9 +81,9 @@ describe("Endpoint", () => {
   describe("decodeRequest", () => {
     it.effect("correctly decodes a request", () =>
       Effect.gen(function*(_) {
-        const decode = Endpoint.decodeRequest(GetUserById)
+        const decode = Http.endpoint.decodeRequest(GetUserById)
         const effect = decode(
-          HttpServer.request.fromWeb(
+          Http.request.fromWeb(
             new Request("http://localhost:3000/api/123", {
               method: "POST",
               body: JSON.stringify({
@@ -127,7 +126,7 @@ describe("Endpoint", () => {
 
   describe("parse", () => {
     it("parses", () => {
-      console.log(Option.getOrThrow(Endpoint.parse(GetUserById).urlParams).propertySignatures)
+      console.log(Option.getOrThrow(Http.endpoint.parse(GetUserById).urlParams).propertySignatures)
     })
   })
 })
