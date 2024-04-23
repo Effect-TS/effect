@@ -118,6 +118,7 @@ const makeResolver = <T extends string, A, E, I, II, RI, R>(
       return function(input: I) {
         return Effect.useSpan(
           `sql.Resolver.execute ${tag}`,
+          { kind: "client" },
           (span) =>
             Effect.withFiberRuntime<A, E | ParseError, RI>((fiber) => {
               span.attribute("request.input", input)
@@ -244,6 +245,7 @@ export const ordered = <T extends string, I, II, RI, A, IA, _, E, RA = never, R 
           )
         ),
         Effect.withSpan(`sql.Resolver.batch ${tag}`, {
+          kind: "client",
           links: spanLinks,
           attributes: { "request.count": inputs.length }
         })
@@ -322,6 +324,7 @@ export const grouped = <T extends string, I, II, K, RI, A, IA, Row, E, RA = neve
           )
         ),
         Effect.withSpan(`sql.Resolver.batch ${tag}`, {
+          kind: "client",
           links: spanLinks,
           attributes: { "request.count": inputs.length }
         })
@@ -399,6 +402,7 @@ export const findById = <T extends string, I, II, RI, A, IA, Row, E, RA = never,
           )
         ),
         Effect.withSpan(`sql.Resolver.batch ${tag}`, {
+          kind: "client",
           links: spanLinks,
           attributes: { "request.count": inputs.length }
         })
@@ -444,6 +448,7 @@ const void_ = <T extends string, I, II, RI, E, R = never>(
           )
         ),
         Effect.withSpan(`sql.Resolver.batch ${tag}`, {
+          kind: "client",
           links: spanLinks,
           attributes: { "request.count": inputs.length }
         })

@@ -959,12 +959,7 @@ export const setScheduler: (scheduler: Scheduler.Scheduler) => Layer<never> = (
  */
 export const span: (
   name: string,
-  options?: {
-    readonly attributes?: Record<string, unknown> | undefined
-    readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.AnySpan | undefined
-    readonly root?: boolean | undefined
-    readonly context?: Context.Context<never> | undefined
+  options?: Tracer.SpanOptions & {
     readonly onEnd?:
       | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>)
       | undefined
@@ -1015,12 +1010,7 @@ export const setUnhandledErrorLogLevel: (level: Option.Option<LogLevel>) => Laye
 export const withSpan: {
   (
     name: string,
-    options?: {
-      readonly attributes?: Record<string, unknown> | undefined
-      readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-      readonly parent?: Tracer.AnySpan | undefined
-      readonly root?: boolean | undefined
-      readonly context?: Context.Context<never> | undefined
+    options?: Tracer.SpanOptions & {
       readonly onEnd?:
         | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>)
         | undefined
@@ -1029,12 +1019,7 @@ export const withSpan: {
   <A, E, R>(
     self: Layer<A, E, R>,
     name: string,
-    options?: {
-      readonly attributes?: Record<string, unknown> | undefined
-      readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-      readonly parent?: Tracer.AnySpan | undefined
-      readonly root?: boolean | undefined
-      readonly context?: Context.Context<never> | undefined
+    options?: Tracer.SpanOptions & {
       readonly onEnd?:
         | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>)
         | undefined

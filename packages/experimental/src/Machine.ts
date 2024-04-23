@@ -541,7 +541,8 @@ export const boot = <
             attributes: {
               "effect.machine": runState.identifier,
               ...request
-            }
+            },
+            kind: "client"
           }, (span) =>
             Queue.offer(requests, [request, deferred, span, true]).pipe(
               Effect.zipRight(Deferred.await(deferred)),
@@ -563,7 +564,8 @@ export const boot = <
             attributes: {
               "effect.machine": runState.identifier,
               ...request
-            }
+            },
+            kind: "client"
           }, (span) => Queue.offer(requests, [request, deferred, span, true]))
         }
       )
@@ -756,6 +758,7 @@ export const boot = <
             )
             if (addSpan) {
               handler = Effect.withSpan(handler, `Machine.process ${request._tag}`, {
+                kind: "server",
                 parent: span,
                 attributes: {
                   "effect.machine": runState.identifier

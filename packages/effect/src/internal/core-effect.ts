@@ -2027,13 +2027,7 @@ const bigint0 = BigInt(0)
 export const unsafeMakeSpan = <XA, XE>(
   fiber: FiberRuntime<XA, XE>,
   name: string,
-  options?: {
-    readonly attributes?: Record<string, unknown> | undefined
-    readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.AnySpan | undefined
-    readonly root?: boolean | undefined
-    readonly context?: Context.Context<never> | undefined
-  }
+  options?: Tracer.SpanOptions
 ) => {
   const enabled = fiber.getFiberRef(core.currentTracerEnabled)
   if (enabled === false) {
@@ -2071,7 +2065,8 @@ export const unsafeMakeSpan = <XA, XE>(
     parent,
     options?.context ?? Context.empty(),
     links,
-    timingEnabled ? clock.unsafeCurrentTimeNanos() : bigint0
+    timingEnabled ? clock.unsafeCurrentTimeNanos() : bigint0,
+    options?.kind ?? "internal"
   )
 
   if (annotationsFromEnv._tag === "Some") {
@@ -2087,13 +2082,7 @@ export const unsafeMakeSpan = <XA, XE>(
 /** @internal */
 export const makeSpan = (
   name: string,
-  options?: {
-    readonly attributes?: Record<string, unknown> | undefined
-    readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.AnySpan | undefined
-    readonly root?: boolean | undefined
-    readonly context?: Context.Context<never> | undefined
-  }
+  options?: Tracer.SpanOptions
 ): Effect.Effect<Tracer.Span> => core.withFiberRuntime((fiber) => core.succeed(unsafeMakeSpan(fiber, name, options)))
 
 /* @internal */
@@ -2107,13 +2096,11 @@ export const spanLinks: Effect.Effect<Chunk.Chunk<Tracer.SpanLink>> = core
 /** @internal */
 export const useSpan: {
   <A, E, R>(name: string, evaluate: (span: Tracer.Span) => Effect.Effect<A, E, R>): Effect.Effect<A, E, R>
-  <A, E, R>(name: string, options: {
-    readonly attributes?: Record<string, unknown> | undefined
-    readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.AnySpan | undefined
-    readonly root?: boolean | undefined
-    readonly context?: Context.Context<never> | undefined
-  }, evaluate: (span: Tracer.Span) => Effect.Effect<A, E, R>): Effect.Effect<A, E, R>
+  <A, E, R>(
+    name: string,
+    options: Tracer.SpanOptions,
+    evaluate: (span: Tracer.Span) => Effect.Effect<A, E, R>
+  ): Effect.Effect<A, E, R>
 } = <A, E, R>(
   name: string,
   ...args: [evaluate: (span: Tracer.Span) => Effect.Effect<A, E, R>] | [
@@ -2121,13 +2108,7 @@ export const useSpan: {
     evaluate: (span: Tracer.Span) => Effect.Effect<A, E, R>
   ]
 ) => {
-  const options: {
-    readonly attributes?: Record<string, unknown> | undefined
-    readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.AnySpan | undefined
-    readonly root?: boolean | undefined
-    readonly context?: Context.Context<never> | undefined
-  } | undefined = args.length === 1 ? undefined : args[0]
+  const options: Tracer.SpanOptions | undefined = args.length === 1 ? undefined : args[0]
   const evaluate: (span: Tracer.Span) => Effect.Effect<A, E, R> = args[args.length - 1]
 
   return core.withFiberRuntime<A, E, R>((fiber) => {
@@ -2154,20 +2135,15 @@ export const withParentSpan = dual<
 
 /** @internal */
 export const withSpan = dual<
-  (name: string, options?: {
-    readonly attributes?: Record<string, unknown> | undefined
-    readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.AnySpan | undefined
-    readonly root?: boolean | undefined
-    readonly context?: Context.Context<never> | undefined
-  }) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan>>,
-  <A, E, R>(self: Effect.Effect<A, E, R>, name: string, options?: {
-    readonly attributes?: Record<string, unknown> | undefined
-    readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.AnySpan | undefined
-    readonly root?: boolean | undefined
-    readonly context?: Context.Context<never> | undefined
-  }) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan>>
+  (
+    name: string,
+    options?: Tracer.SpanOptions
+  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan>>,
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
+    name: string,
+    options?: Tracer.SpanOptions
+  ) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan>>
 >(
   (args) => typeof args[0] !== "string",
   (self, name, options) =>
