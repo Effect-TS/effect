@@ -11,9 +11,9 @@ export * as HttpResolverNoStream from "./HttpResolverNoStream.js"
 /**
  * @since 1.0.0
  */
-export * as HttpRouter from "./HttpRouter.js"
+export * as HttpServer from "./HttpServer.js"
 
 /**
  * @since 1.0.0
  */
-export * as HttpRouterNoStream from "./HttpRouterNoStream.js"
+export * as HttpServerNoStream from "./HttpServerNoStream.js"

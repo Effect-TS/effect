@@ -1,4 +1,4 @@
-import * as Rpc from "@effect/rpc/Rpc"
+import { Handler } from "@effect/platform"
 import * as S from "@effect/schema/Schema"
 import { pipe } from "effect/Function"
 
@@ -10,7 +10,7 @@ export class User extends S.Class<User>("User")({
   name: S.String
 }) {}
 
-export class GetUserIds extends Rpc.StreamRequest<GetUserIds>()("GetUserIds", S.Never, UserId, {}) {}
+export class GetUserIds extends Handler.StreamRequest<GetUserIds>()("GetUserIds", S.Never, UserId, {}) {}
 export class GetUser extends S.TaggedRequest<GetUser>()("GetUser", S.Never, User, {
   id: UserId
 }) {}

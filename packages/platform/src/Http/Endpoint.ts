@@ -9,18 +9,19 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import { absurd, pipe } from "effect/Function"
-import { globalValue } from "effect/GlobalValue"
 import * as Option from "effect/Option"
-import * as Record from "effect/Record"
-import type { Mutable } from "effect/Types"
-import type { Scope } from "../../../effect/src/Scope.js"
+import type * as Record from "effect/Record"
+import type * as Request from "effect/Request"
+import type { Scope } from "effect/Scope"
+import type * as Types from "effect/Types"
 import type { FileSystem } from "../FileSystem.js"
+import * as Handler from "../Handler.js"
 import type { Path as Path_ } from "../Path.js"
 import * as Body_ from "./Body.js"
 import type * as Client from "./Client.js"
 import * as ClientError from "./ClientError.js"
 import * as ClientRequest from "./ClientRequest.js"
-import type { Method as Method_ } from "./Method.js"
+import type { Method } from "./Method.js"
 import type * as Multipart from "./Multipart.js"
 import * as Router from "./Router.js"
 import type { RequestError } from "./ServerError.js"
@@ -32,129 +33,106 @@ import * as UrlParams_ from "./UrlParams.js"
  * @since 1.0.0
  * @category annotations
  */
-export const PathId = Symbol.for("@effect/platform/Http/Endpoint/Path")
+export const PathTag = Context.GenericTag<Router.PathInput>("@effect/platform/Http/Endpoint/Path")
 
 /**
  * @since 1.0.0
  * @category annotations
  */
-export const MethodId = Symbol.for("@effect/platform/Http/Endpoint/Method")
+export const MethodTag = Context.GenericTag<Method>("@effect/platform/Http/Endpoint/Method")
 
 /**
  * @since 1.0.0
  * @category annotations
  */
-export const StatusId = Symbol.for("@effect/platform/Http/Endpoint/Status")
+export const StatusTag = Context.GenericTag<number>("@effect/platform/Http/Endpoint/Status")
 
 /**
  * @since 1.0.0
  * @category annotations
  */
-export const annotations = <A>(
+export interface Annotations<A> extends Schema.Annotations.Schema<A> {
+  readonly path: Router.PathInput
+  readonly method?: Method | undefined
+  readonly status?: number | undefined
+}
+
+const getAnnotations = Handler.getAnnotations({
+  required: {
+    path: PathTag
+  },
+  optional: {
+    method: MethodTag,
+    status: StatusTag
+  }
+})
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const annotations: <A>(annotations: Annotations<A>) => Schema.Annotations.Schema<A> = Handler.makeAnnotations({
+  required: {
+    path: PathTag
+  },
+  optional: {
+    method: MethodTag,
+    status: StatusTag
+  }
+})
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const annotationsWithPrefix: {
+  (pathPrefix: string): <A>(annotations: Annotations<A>) => Schema.Annotations.Schema<A>
+  (
+    f: <A>(annotations: Annotations<A>) => Schema.Annotations.Schema<A>,
+    pathPrefix: string
+  ): <A>(annotations: Annotations<A>) => Schema.Annotations.Schema<A>
+} = function() {
+  const pathSym = Symbol.for(PathTag.key)
+  if (arguments.length === 1) {
+    const pathPrefix = arguments[0] as string
+    return function<A>(input: Annotations<A>) {
+      const result = annotations(input) as Types.Mutable<Schema.Annotations.Schema<A>>
+      result[pathSym] = result[pathSym] === "/" ? pathPrefix : pathPrefix + result[pathSym]
+      return result
+    }
+  }
+  const f = arguments[0] as <A>(annotations: Annotations<A>) => Schema.Annotations.Schema<A>
+  const pathPrefix = arguments[1] as string
+  return function<A>(annotations: Annotations<A>) {
+    const result = f(annotations) as any
+    result[pathSym] = result[pathSym] === "/" ? pathPrefix : pathPrefix + result[pathSym]
+    return result
+  }
+}
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export const errorAnnotations: <A>(
   annotations: Schema.Annotations.Schema<A> & {
-    readonly path: string
-    readonly method?: Method_
-    readonly statusCode?: number
-  }
-): Schema.Annotations.Schema<A> => {
-  const obj: Record<string | symbol, any> = annotations
-  obj[PathId] = obj.path
-  delete obj.path
-  if (obj.method !== undefined) {
-    obj[MethodId] = obj.method
-    delete obj.method
-  }
-  if (obj.status !== undefined) {
-    obj[StatusId] = obj.status
-    delete obj.status
-  }
-  return obj
-}
-
-const getAnnotations = (ast: AST.AST): {
-  readonly path: string
-  readonly method: Method_ | undefined
-  readonly status: number | undefined
-} => {
-  if (ast._tag === "Transformation") {
-    ast = ast.to
-  }
-  const path = ast.annotations[PathId] as string
-  if (path === undefined) {
-    throw new Error("Endpoint schema is missing path annotation")
-  }
-  const method = ast.annotations[MethodId] as Method_
-  const status = ast.annotations[StatusId] as number
-  return { path, method, status }
-}
-
-/**
- * @since 1.0.0
- * @category annotations
- */
-export const errorAnnotations = <A>(
-  annotations: Schema.Annotations.Schema<A> & {
-    readonly statusCode: number
-  }
-): Schema.Annotations.Schema<A> => {
-  const obj: Record<string | symbol, any> = annotations
-  obj[StatusId] = obj.statusCode
-  delete obj.statusCode
-  return obj
-}
-
-const getErrorAnnotations = (ast: AST.AST): {
-  readonly status: number
-} => {
-  if (ast._tag === "Transformation") {
-    ast = ast.to
-  }
-  const status = ast.annotations[StatusId] as number ?? 500
-  return { status }
-}
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface Endpoint<A extends Serializable.SerializableWithResult.Any, I, R> extends Schema.Schema<A, I, R> {
-  new(...args: ReadonlyArray<any>): A
-}
-
-/**
- * @since 1.0.0
- * @category models
- */
-export declare namespace Endpoint {
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export type Any = Endpoint<any, any, any>
-
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export interface Parsed {
-    readonly method: Method_
-    readonly path: string
     readonly status: number
-    readonly emptyResponse: boolean
-    readonly urlParams: Option.Option<AST.TypeLiteral>
-    readonly pathParams: Option.Option<AST.TypeLiteral>
-    readonly headers: Option.Option<AST.TypeLiteral>
-    readonly body: Option.Option<readonly [AST.AST, BodyAnnotation["format"]]>
-    readonly errors: Record.ReadonlyRecord<string, Schema.Schema.Any>
   }
-}
+) => Schema.Annotations.Schema<A> = Handler
+  .makeAnnotations({
+    required: {
+      status: StatusTag
+    },
+    optional: {}
+  })
 
 /**
  * @since 1.0.0
  * @category annotations
  */
-export type Annotation =
+export type RequestAnnotation =
   | BodyAnnotation
+  | BodyUnionAnnotation
   | PathParamAnnotation
   | PathParamsAnnotation
   | UrlParamAnnotation
@@ -162,7 +140,7 @@ export type Annotation =
   | HeaderAnnotation
   | HeadersAnnotation
 
-const AnnotationId = Symbol.for("@effect/platform/Http/Endpoint/Annotation")
+const RequestAnnotationId = Symbol.for("@effect/platform/Http/Endpoint/RequestAnnotation")
 
 /**
  * @since 1.0.0
@@ -170,7 +148,15 @@ const AnnotationId = Symbol.for("@effect/platform/Http/Endpoint/Annotation")
  */
 export interface BodyAnnotation {
   readonly _tag: "Body"
-  readonly format: "json" | "multipart" | "urlencoded"
+  readonly format: "json" | "multipart" | "urlParamsBody"
+}
+
+/**
+ * @since 1.0.0
+ * @category annotations
+ */
+export interface BodyUnionAnnotation {
+  readonly _tag: "BodyUnion"
 }
 
 /**
@@ -228,10 +214,72 @@ export interface HeadersAnnotation {
  * @since 1.0.0
  * @category schemas
  */
-export const Body = <S extends Schema.Schema.Any>(schema: S, format: "json" | "multipart" | "urlencoded"): S =>
+export const Body = <S extends Schema.Schema.Any>(schema: S, format: "json" | "multipart" | "urlParamsBody"): S =>
   schema.annotations({
-    [AnnotationId]: { _tag: "Body", format }
+    [RequestAnnotationId]: { _tag: "Body", format }
   }) as S
+
+/**
+ * @since 1.0.0
+ * @category schemas
+ */
+export const BodyUnion = <
+  S extends {
+    readonly Json?: Schema.Schema.Any
+    readonly Multipart?: Schema.Schema.Any
+    readonly UrlEncoded?: Schema.Schema.Any
+  }
+>(schemas: S): Schema.Schema<
+  | (S extends { readonly Json: Schema.Schema<infer A, infer _I, infer _R> } ? {
+      readonly _tag: "json"
+      readonly body: A
+    } :
+    never)
+  | (S extends { readonly Multipart: Schema.Schema<infer A, infer _I, infer _R> } ? {
+      readonly _tag: "multipart"
+      readonly body: A
+    } :
+    never)
+  | (S extends { readonly UrlEncoded: Schema.Schema<infer A, infer _I, infer _R> } ? {
+      readonly _tag: "urlParamsBody"
+      readonly body: A
+    } :
+    never),
+  unknown,
+  Schema.Schema.Context<S[keyof S]>
+> => {
+  const members: Array<Schema.Schema.Any> = []
+  if (schemas.Json !== undefined) {
+    members.push(Body(
+      Schema.Struct({
+        _tag: Schema.Literal("json"),
+        body: schemas.Json
+      }),
+      "json"
+    ))
+  }
+  if (schemas.Multipart !== undefined) {
+    members.push(Body(
+      Schema.Struct({
+        _tag: Schema.Literal("multipart"),
+        body: schemas.Multipart
+      }),
+      "multipart"
+    ))
+  }
+  if (schemas.UrlEncoded !== undefined) {
+    members.push(Body(
+      Schema.Struct({
+        _tag: Schema.Literal("urlParamsBody"),
+        body: schemas.UrlEncoded
+      }),
+      "urlParamsBody"
+    ))
+  }
+  return Schema.Union(...members).annotations({
+    [RequestAnnotationId]: { _tag: "BodyUnion" }
+  }) as any
+}
 
 /**
  * @since 1.0.0
@@ -253,7 +301,7 @@ export const BodyMultipart = <A, I extends Partial<Multipart.Persisted>, R>(
  */
 export const BodyUrlEncoded = <A, I extends Record.ReadonlyRecord<string, string | undefined>, R>(
   schema: Schema.Schema<A, I, R>
-): Schema.Schema<A, I, R> => Body(schema, "urlencoded")
+): Schema.Schema<A, I, R> => Body(schema, "urlParamsBody")
 
 /**
  * @since 1.0.0
@@ -264,7 +312,7 @@ export const UrlParam = <A, I extends string, R>(
   schema: Schema.Schema<A, I, R>
 ): Schema.Schema<A, I, R> =>
   schema.annotations({
-    [AnnotationId]: { _tag: "UrlParam", name }
+    [RequestAnnotationId]: { _tag: "UrlParam", name }
   })
 
 /**
@@ -275,7 +323,7 @@ export const UrlParams = <A, I extends Record.ReadonlyRecord<string, string | un
   schema: Schema.Schema<A, I, R>
 ): Schema.Schema<A, I, R> =>
   schema.annotations({
-    [AnnotationId]: { _tag: "UrlParams" }
+    [RequestAnnotationId]: { _tag: "UrlParams" }
   })
 
 /**
@@ -287,7 +335,7 @@ export const PathParam = <A, I extends string, R>(
   schema: Schema.Schema<A, I, R>
 ): Schema.Schema<A, I, R> =>
   schema.annotations({
-    [AnnotationId]: { _tag: "PathParam", name }
+    [RequestAnnotationId]: { _tag: "PathParam", name }
   })
 
 /**
@@ -298,7 +346,7 @@ export const PathParams = <A, I extends Record.ReadonlyRecord<string, string | u
   schema: Schema.Schema<A, I, R>
 ): Schema.Schema<A, I, R> =>
   schema.annotations({
-    [AnnotationId]: { _tag: "PathParams" }
+    [RequestAnnotationId]: { _tag: "PathParams" }
   })
 
 /**
@@ -310,7 +358,7 @@ export const Header = <A, I extends string, R>(
   schema: Schema.Schema<A, I, R>
 ): Schema.Schema<A, I, R> =>
   schema.annotations({
-    [AnnotationId]: { _tag: "Header", name: name.toLowerCase() }
+    [RequestAnnotationId]: { _tag: "Header", name: name.toLowerCase() }
   })
 
 /**
@@ -321,11 +369,50 @@ export const Headers = <A, I extends Record.ReadonlyRecord<string, string | unde
   schema: Schema.Schema<A, I, R>
 ): Schema.Schema<A, I, R> =>
   schema.annotations({
-    [AnnotationId]: { _tag: "Headers" }
+    [RequestAnnotationId]: { _tag: "Headers" }
   })
 
-interface Instruction {
-  (obj: Record<string, any>, request: ServerRequest.ServerRequest, context: Router.RouteContext, body: unknown): void
+const getErrorMap = <A, I, R>(
+  self: Schema.Schema<A, I, R>
+): Record.ReadonlyRecord<string, AST.AST> => {
+  const out: Record<string, AST.AST> = {}
+
+  function walk(ast: AST.AST, originalAST?: AST.AST): void {
+    switch (ast._tag) {
+      case "Suspend": {
+        walk(ast.f())
+        break
+      }
+      case "Union": {
+        for (let i = 0; i < ast.types.length; i++) {
+          walk(ast.types[i])
+        }
+        break
+      }
+      case "Transformation": {
+        walk(AST.annotations(ast.to, { ...ast.annotations, ...ast.to.annotations }), ast)
+        break
+      }
+      default: {
+        const annotation = ast.annotations[Symbol.for(StatusTag.key)] as number ?? 500
+        const current = out[annotation]
+        if (current !== undefined) {
+          out[annotation] = current._tag === "Union"
+            ? AST.Union.make([...current.types, originalAST ?? ast])
+            : AST.Union.make([current, originalAST ?? ast])
+        } else {
+          out[annotation] = originalAST ?? ast
+        }
+      }
+    }
+  }
+  walk(self.ast)
+
+  return out
+}
+
+const throwMultipleBodyError = () => {
+  throw new Error("An HTTP Endpoint can only have one BodyAnnotation")
 }
 
 function getObjPath(obj: any, path: ReadonlyArray<PropertyKey>): any {
@@ -356,47 +443,108 @@ function setObjPath(obj: any, path: ReadonlyArray<PropertyKey>, value: unknown):
   current[next!] = value
 }
 
-/**
- * @since 1.0.0
- * @category parser
- */
-export interface RequestParser<A, R> {
+interface Instruction {
   (
+    obj: Record<string, any>,
     request: ServerRequest.ServerRequest,
-    context: Router.RouteContext
-  ): Effect.Effect<
-    A,
-    | RequestError
-    | ParseError
-    | Multipart.MultipartError,
-    R | Scope | FileSystem | Path_
-  >
-}
-
-const throwMultipleBodyError = () => {
-  throw new Error("An endpoint can only have one body annotation")
+    context: Router.RouteContext,
+    body: unknown
+  ): void
 }
 
 /**
  * @since 1.0.0
  * @category parsers
  */
-export const decodeRequest = <A extends Serializable.SerializableWithResult.Any, I, R>(
-  schema: Endpoint<A, I, R>
-): RequestParser<A, R> => {
-  const ast = schema.ast
-  let bodyAnnotation = Option.none<BodyAnnotation>()
+export const parse: <A extends Schema.TaggedRequest.Any, I, R>(
+  schema: Handler.SchemaWithProto<A, I, R>
+) => {
+  readonly path: Router.PathInput
+  readonly decodeServerRequest: (
+    request: ServerRequest.ServerRequest,
+    context: Router.RouteContext
+  ) => Effect.Effect<
+    A,
+    | RequestError
+    | ParseError
+    | Multipart.MultipartError,
+    R | Scope | FileSystem | Path_
+  >
+  readonly emptyResponse: boolean
+  readonly successStatus: number
+  readonly method: Method
+  readonly urlParams: Option.Option<AST.TypeLiteral>
+  readonly pathParams: Option.Option<AST.TypeLiteral>
+  readonly headers: Option.Option<AST.TypeLiteral>
+  readonly body: {
+    json: Option.Option<AST.AST>
+    multipart: Option.Option<AST.AST>
+    urlParamsBody: Option.Option<AST.AST>
+  }
+  readonly errorMap: Record.ReadonlyRecord<string, AST.AST>
+  readonly FailureWithStatus: Schema.Schema<
+    Request.Request.Error<A>,
+    readonly [status: number, error: unknown],
+    R
+  >
+} = Handler.makeParser({
+  requiredAnnotations: {
+    path: PathTag
+  },
+  optionalAnnotations: {
+    method: MethodTag,
+    status: StatusTag
+  }
+}, ({ FailureSchema, SuccessSchema, annotations, ast, schema }) => {
+  const emptyResponse = SuccessSchema.ast._tag === "VoidKeyword"
+  const successStatus = Option.getOrElse(annotations.status, () => emptyResponse ? 204 : 200)
+  const errorMap = getErrorMap(FailureSchema)
   const instructions: Array<Instruction> = []
+  let requestBodyFound = false
+  let isBodyUnion = false
+  const out = {
+    path: annotations.path,
+    emptyResponse,
+    successStatus,
+    method: Option.getOrElse(annotations.method, () => requestBodyFound ? "POST" : "GET"),
+    urlParams: Option.none<AST.TypeLiteral>(),
+    pathParams: Option.none<AST.TypeLiteral>(),
+    headers: Option.none<AST.TypeLiteral>(),
+    body: {
+      json: Option.none<AST.AST>(),
+      multipart: Option.none<AST.AST>(),
+      urlParamsBody: Option.none<AST.AST>()
+    },
+    errorMap
+  }
 
-  function walk(ast: AST.AST, path: ReadonlyArray<PropertyKey>): void {
-    if (AnnotationId in ast.annotations) {
-      const annotation = ast.annotations[AnnotationId] as Annotation
+  function walk(ast: AST.AST, path: ReadonlyArray<PropertyKey>, inBodyUnion = false, isOptional = false): void {
+    if (RequestAnnotationId in ast.annotations) {
+      const annotation = ast.annotations[RequestAnnotationId] as RequestAnnotation
       switch (annotation._tag) {
         case "Body": {
-          if (bodyAnnotation._tag === "Some") {
+          if (requestBodyFound) {
             return throwMultipleBodyError()
           }
-          bodyAnnotation = Option.some(annotation)
+          requestBodyFound = true
+          out.body[annotation.format] = Option.some(ast)
+          instructions.push(function(obj, _request, _context, body) {
+            setObjPath(obj, path, body)
+          })
+          break
+        }
+        case "BodyUnion": {
+          if (requestBodyFound) {
+            return throwMultipleBodyError()
+          }
+          requestBodyFound = true
+          isBodyUnion = true
+          const types = (ast as AST.Union).types
+          for (let i = 0; i < types.length; i++) {
+            const type = types[i]
+            const annotation = type.annotations[RequestAnnotationId] as BodyAnnotation
+            out.body[annotation.format] = Option.some(type)
+          }
           instructions.push(function(obj, _request, _context, body) {
             setObjPath(obj, path, body)
           })
@@ -406,36 +554,108 @@ export const decodeRequest = <A extends Serializable.SerializableWithResult.Any,
           instructions.push(function(obj, _request, context, _body) {
             setObjPath(obj, path, context.searchParams[annotation.name])
           })
+          const typeLiteral = out.urlParams._tag === "None"
+            ? new AST.TypeLiteral([], [])
+            : out.urlParams.value
+          out.urlParams = Option.some(
+            new AST.TypeLiteral([
+              ...typeLiteral.propertySignatures,
+              new AST.PropertySignature(annotation.name, ast, isOptional, true)
+            ], typeLiteral.indexSignatures)
+          )
           break
         }
         case "UrlParams": {
+          const encoded = AST.encodedAST(ast)
+          if (encoded._tag !== "TypeLiteral") {
+            break
+          }
           instructions.push(function(obj, _request, context, _body) {
             setObjPath(obj, path, context.searchParams)
           })
+          out.urlParams = Option.some(
+            out.urlParams._tag === "None" ?
+              encoded :
+              new AST.TypeLiteral([
+                ...out.urlParams.value.propertySignatures,
+                ...encoded.propertySignatures
+              ], [
+                ...out.urlParams.value.indexSignatures,
+                ...encoded.indexSignatures
+              ])
+          )
           break
         }
         case "Header": {
           instructions.push(function(obj, request, _context, _body) {
             setObjPath(obj, path, request.headers[annotation.name])
           })
+          const typeLiteral = out.headers._tag === "None"
+            ? new AST.TypeLiteral([], [])
+            : out.headers.value
+          out.headers = Option.some(
+            new AST.TypeLiteral([
+              ...typeLiteral.propertySignatures,
+              new AST.PropertySignature(annotation.name, ast, isOptional, true)
+            ], typeLiteral.indexSignatures)
+          )
           break
         }
         case "Headers": {
+          const encoded = AST.encodedAST(ast)
+          if (encoded._tag !== "TypeLiteral") {
+            break
+          }
           instructions.push(function(obj, request, _context, _body) {
             setObjPath(obj, path, request.headers)
           })
+          out.headers = Option.some(
+            out.headers._tag === "None" ?
+              encoded :
+              new AST.TypeLiteral([
+                ...out.headers.value.propertySignatures,
+                ...encoded.propertySignatures
+              ], [
+                ...out.headers.value.indexSignatures,
+                ...encoded.indexSignatures
+              ])
+          )
           break
         }
         case "PathParam": {
           instructions.push(function(obj, _request, context, _body) {
             setObjPath(obj, path, context.params[annotation.name])
           })
+          const typeLiteral = out.pathParams._tag === "None"
+            ? new AST.TypeLiteral([], [])
+            : out.pathParams.value
+          out.pathParams = Option.some(
+            new AST.TypeLiteral([
+              ...typeLiteral.propertySignatures,
+              new AST.PropertySignature(annotation.name, ast, isOptional, true)
+            ], typeLiteral.indexSignatures)
+          )
           break
         }
         case "PathParams": {
+          const encoded = AST.encodedAST(ast)
+          if (encoded._tag !== "TypeLiteral") {
+            break
+          }
           instructions.push(function(obj, _request, context, _body) {
             setObjPath(obj, path, context.params)
           })
+          out.pathParams = Option.some(
+            out.pathParams._tag === "None" ?
+              encoded :
+              new AST.TypeLiteral([
+                ...out.pathParams.value.propertySignatures,
+                ...encoded.propertySignatures
+              ], [
+                ...out.pathParams.value.indexSignatures,
+                ...encoded.indexSignatures
+              ])
+          )
           break
         }
         default: {
@@ -452,34 +672,42 @@ export const decodeRequest = <A extends Serializable.SerializableWithResult.Any,
         break
       }
       case "Refinement": {
-        walk(ast.from, path)
+        walk(ast.from, path, inBodyUnion)
         break
       }
       case "Suspend": {
-        walk(ast.f(), path)
+        walk(ast.f(), path, inBodyUnion)
         break
       }
       case "Transformation": {
-        walk(ast.from, path)
+        walk(
+          AST.annotations(ast.from, {
+            ...ast.annotations,
+            ...ast.to.annotations
+          }),
+          path,
+          inBodyUnion
+        )
+        break
+      }
+      case "TypeLiteral": {
+        for (let i = 0; i < ast.propertySignatures.length; i++) {
+          const property = ast.propertySignatures[i]
+          walk(property.type, [...path, property.name], inBodyUnion, property.isOptional)
+        }
         break
       }
       case "TupleType": {
         for (let i = 0; i < ast.elements.length; i++) {
           const element = ast.elements[i]
-          walk(element.type, [...path, i])
+          walk(element.type, [...path, i], inBodyUnion)
         }
         break
       }
       case "Union": {
         for (let i = 0; i < ast.types.length; i++) {
-          walk(ast.types[i], path)
+          walk(ast.types[i], path, inBodyUnion)
         }
-      }
-    }
-    if (ast._tag === "TypeLiteral") {
-      for (let i = 0; i < ast.propertySignatures.length; i++) {
-        const property = ast.propertySignatures[i]
-        walk(property.type, [...path, property.name])
       }
     }
   }
@@ -487,7 +715,10 @@ export const decodeRequest = <A extends Serializable.SerializableWithResult.Any,
 
   const decode = Schema.decodeUnknown(schema)
 
-  return (request: ServerRequest.ServerRequest, context: Router.RouteContext) => {
+  function decodeServerRequest(
+    request: ServerRequest.ServerRequest,
+    context: Router.RouteContext
+  ): Effect.Effect<any, any, any> {
     function withBody(body: any): unknown {
       const obj = Object.create(null)
       for (let i = 0; i < instructions.length; i++) {
@@ -496,283 +727,102 @@ export const decodeRequest = <A extends Serializable.SerializableWithResult.Any,
       return obj
     }
 
-    if (bodyAnnotation._tag === "None") {
+    if (!requestBodyFound) {
       return decode(withBody(undefined))
     }
 
-    const bodyEffect = bodyAnnotation.value.format === "json"
-      ? request.json
-      : bodyAnnotation.value.format === "multipart"
-      ? request.multipart
-      : Effect.map(request.urlParamsBody, Object.fromEntries)
-
-    return Effect.flatMap(bodyEffect as any, (body) => decode(withBody(body)))
+    const format: BodyAnnotation["format"] = request.headers["content-type"]?.includes("multipart/form-data")
+      ? "multipart"
+      : request.headers["content-type"]?.includes("application/x-www-form-urlencoded")
+      ? "urlParamsBody"
+      : "json"
+    const bodyEffect = format === "urlParamsBody"
+      ? Effect.map(request.urlParamsBody, Object.fromEntries)
+      : request[format]
+    return Effect.flatMap(bodyEffect as any, (body) =>
+      decode(withBody(
+        isBodyUnion ?
+          { _tag: format, body } :
+          body
+      )))
   }
-}
+
+  const FailureWithStatus = Schema.Union(
+    ...Object.entries(errorMap).map(([status, ast]) =>
+      Schema.transform(Schema.Tuple(Schema.Number, Schema.Unknown), Schema.make(ast), {
+        decode: ([, error]) => error,
+        encode: (error) => [Number(status), error],
+        strict: false
+      })
+    )
+  ) as Schema.Schema<any, any, any>
+
+  return {
+    ...out,
+    decodeServerRequest,
+    FailureWithStatus
+  } as const
+})
 
 /**
  * @since 1.0.0
  * @category parsers
  */
-export const parse = <A extends Serializable.SerializableWithResult.Any, I, R>(
-  self: Endpoint<A, I, R>
-): Endpoint.Parsed => {
-  const failureSchema = Serializable.failureSchema(self.prototype)
-  const successSchema = Serializable.successSchema(self.prototype)
-  const emptyResponse = successSchema.ast._tag === "VoidKeyword"
-  const out = {
-    ...getAnnotations(self.ast),
-    emptyResponse,
-    urlParams: Option.none(),
-    pathParams: Option.none(),
-    headers: Option.none(),
-    body: Option.none(),
-    errors: getErrorMap(failureSchema)
-  } as Mutable<Endpoint.Parsed>
-  if (out.status === undefined) {
-    out.status = emptyResponse ? 204 : 200
-  }
-
-  function walk(ast: AST.AST, isOptional = false): void {
-    if (AnnotationId in ast.annotations) {
-      const annotation = ast.annotations[AnnotationId] as Annotation
-      switch (annotation._tag) {
-        case "Body": {
-          if (out.body._tag === "Some") {
-            return throwMultipleBodyError()
-          }
-          out.body = Option.some([ast, annotation.format])
-          break
-        }
-        case "UrlParam": {
-          const typeLiteral = out.urlParams._tag === "None" ? new AST.TypeLiteral([], []) : out.urlParams.value
-          out.urlParams = Option.some(
-            new AST.TypeLiteral([
-              ...typeLiteral.propertySignatures,
-              new AST.PropertySignature(annotation.name, ast, isOptional, true)
-            ], typeLiteral.indexSignatures)
-          )
-          break
-        }
-        case "UrlParams": {
-          ast = AST.encodedAST(ast)
-          if (ast._tag !== "TypeLiteral") {
-            break
-          }
-          out.urlParams = Option.some(
-            out.urlParams._tag === "None" ?
-              ast :
-              new AST.TypeLiteral([
-                ...out.urlParams.value.propertySignatures,
-                ...ast.propertySignatures
-              ], [
-                ...out.urlParams.value.indexSignatures,
-                ...ast.indexSignatures
-              ])
-          )
-          break
-        }
-        case "Header": {
-          const typeLiteral = out.headers._tag === "None" ? new AST.TypeLiteral([], []) : out.headers.value
-          out.headers = Option.some(
-            new AST.TypeLiteral([
-              ...typeLiteral.propertySignatures,
-              new AST.PropertySignature(annotation.name, ast, isOptional, true)
-            ], typeLiteral.indexSignatures)
-          )
-          break
-        }
-        case "Headers": {
-          ast = AST.encodedAST(ast)
-          if (ast._tag !== "TypeLiteral") {
-            break
-          }
-          out.headers = Option.some(
-            out.headers._tag === "None" ?
-              ast :
-              new AST.TypeLiteral([
-                ...out.headers.value.propertySignatures,
-                ...ast.propertySignatures
-              ], [
-                ...out.headers.value.indexSignatures,
-                ...ast.indexSignatures
-              ])
-          )
-          break
-        }
-        case "PathParam": {
-          const typeLiteral = out.pathParams._tag === "None" ? new AST.TypeLiteral([], []) : out.pathParams.value
-          out.pathParams = Option.some(
-            new AST.TypeLiteral([
-              ...typeLiteral.propertySignatures,
-              new AST.PropertySignature(annotation.name, ast, isOptional, true)
-            ], typeLiteral.indexSignatures)
-          )
-          break
-        }
-        case "PathParams": {
-          ast = AST.encodedAST(ast)
-          if (ast._tag !== "TypeLiteral") {
-            break
-          }
-          out.pathParams = Option.some(
-            out.pathParams._tag === "None" ?
-              ast :
-              new AST.TypeLiteral([
-                ...out.pathParams.value.propertySignatures,
-                ...ast.propertySignatures
-              ], [
-                ...out.pathParams.value.indexSignatures,
-                ...ast.indexSignatures
-              ])
-          )
-          break
-        }
-        default: {
-          return absurd(annotation)
-        }
-      }
-      return
-    }
-
-    switch (ast._tag) {
-      case "Refinement": {
-        walk(AST.annotations(ast.from, ast.annotations))
-        break
-      }
-      case "Suspend": {
-        walk(ast.f())
-        break
-      }
-      case "Transformation": {
-        walk(AST.annotations(ast.from, { ...ast.to.annotations, ...ast.annotations }))
-        break
-      }
-      case "TupleType": {
-        for (let i = 0; i < ast.elements.length; i++) {
-          const element = ast.elements[i]
-          walk(element.type)
-        }
-        break
-      }
-      case "Union": {
-        for (let i = 0; i < ast.types.length; i++) {
-          walk(ast.types[i])
-        }
-      }
-    }
-    if (ast._tag === "TypeLiteral") {
-      for (let i = 0; i < ast.propertySignatures.length; i++) {
-        const property = ast.propertySignatures[i]
-        walk(property.type, property.isOptional)
-      }
-    }
-  }
-  walk(self.ast)
-
-  if (out.method === undefined) {
-    out.method = out.body._tag === "Some" ? "POST" : "GET"
-  }
-
-  return out
+export const toClientRequest = <A extends Schema.TaggedRequest.Any>(
+  self: A
+): Effect.Effect<ClientRequest.ClientRequest, ParseError, Serializable.SerializableWithResult.Context<A>> => {
+  const selfSchema = Serializable.selfSchema(self)
+  return makeEncoder(selfSchema as any)(self as A) as any
 }
-
-// TODO: memoize
-/**
- * @since 1.0.0
- * @category parsers
- */
-export const getErrorMap = <A, I, R>(
-  self: Schema.Schema<A, I, R>
-): Record.ReadonlyRecord<string, Schema.Schema<A, I, R>> => {
-  const out: Record<string, AST.AST> = {}
-
-  function walk(ast: AST.AST): void {
-    switch (ast._tag) {
-      case "Suspend": {
-        walk(ast.f())
-        break
-      }
-      case "Union": {
-        for (let i = 0; i < ast.types.length; i++) {
-          walk(ast.types[i])
-        }
-        break
-      }
-      case "Transformation": {
-        walk(AST.annotations(ast.to, { ...ast.annotations, ...ast.to.annotations }))
-        break
-      }
-      default: {
-        const annotation = ast.annotations[StatusId] as number ?? 500
-        const current = out[annotation]
-        if (current !== undefined) {
-          out[annotation] = current._tag === "Union"
-            ? AST.Union.make([...current.types, ast])
-            : AST.Union.make([current, ast])
-        } else {
-          out[annotation] = ast
-        }
-      }
-    }
-  }
-  walk(self.ast)
-
-  return Record.map(out, (ast) => Schema.make(ast))
-}
-
-/**
- * @since 1.0.0
- * @category encoder
- */
-export interface RequestEncoder<A extends Serializable.SerializableWithResult.Any, I, R> {
-  (
-    self: Endpoint<A, I, R>,
-    value: A
-  ): Effect.Effect<
-    ClientRequest.ClientRequest,
-    ParseError,
-    R
-  >
-}
-
-const encoderCache: WeakMap<
-  object,
-  (value: any) => Effect.Effect<ClientRequest.ClientRequest, ParseError, any>
-> = globalValue("@effect/platform/Http/Endpoint/encoderCache", () => new WeakMap())
 
 interface EncodeInstruction {
-  (request: Mutable<ClientRequest.Options>, value: any): void
+  (request: Types.Mutable<ClientRequest.Options>, value: any): void
 }
 
-function makeEncoder<A, I, R>(
-  self: Serializable.Serializable<A, I, R>
-): (value: A) => Effect.Effect<ClientRequest.ClientRequest, ParseError, R> {
-  const selfSchema = Serializable.selfSchema(self)
-  if (encoderCache.has(selfSchema)) {
-    return encoderCache.get(selfSchema)!
+const makeEncoder: <A extends Schema.TaggedRequest.Any, I, R>(
+  schema: Handler.SchemaWithProto<A, I, R>
+) => (value: A) => Effect.Effect<ClientRequest.ClientRequest, ParseError, R> = Handler.makeParser({
+  requiredAnnotations: {
+    path: PathTag
+  },
+  optionalAnnotations: {
+    method: MethodTag,
+    status: StatusTag
   }
-
-  const annotations = getAnnotations(selfSchema.ast)
-  let bodyHandled = false
-  let method = annotations.method!
+}, ({ annotations, schema }) => {
+  let hasRequestBody = false
   const instructions: Array<EncodeInstruction> = []
 
   function walk(ast: AST.AST, path: ReadonlyArray<PropertyKey>): void {
-    if (AnnotationId in ast.annotations) {
-      const annotation = ast.annotations[AnnotationId] as Annotation
+    if (RequestAnnotationId in ast.annotations) {
+      const annotation = ast.annotations[RequestAnnotationId] as RequestAnnotation
       switch (annotation._tag) {
         case "Body": {
-          if (bodyHandled) {
+          if (hasRequestBody) {
             return throwMultipleBodyError()
           }
-          bodyHandled = true
+          hasRequestBody = true
           instructions.push(function(request, value) {
             request.body = annotation.format === "json"
               ? Body_.unsafeJson(getObjPath(value, path))
               : annotation.format === "multipart"
               ? Body_.empty
               : Body_.urlParams(UrlParams_.fromInput(getObjPath(value, path) as any))
+          })
+          break
+        }
+        case "BodyUnion": {
+          if (hasRequestBody) {
+            return throwMultipleBodyError()
+          }
+          hasRequestBody = true
+          instructions.push(function(request, value) {
+            const body = getObjPath(value, path) as { _tag: string; body: any }
+            request.body = body._tag === "json"
+              ? Body_.unsafeJson(body.body)
+              : body._tag === "multipart"
+              ? Body_.empty // TODO: client side multipart
+              : Body_.urlParams(UrlParams_.fromInput(body.body))
           })
           break
         }
@@ -861,30 +911,29 @@ function makeEncoder<A, I, R>(
         }
         break
       }
+      case "TypeLiteral": {
+        for (let i = 0; i < ast.propertySignatures.length; i++) {
+          const property = ast.propertySignatures[i]
+          walk(property.type, [...path, property.name])
+        }
+        break
+      }
       case "Union": {
         for (let i = 0; i < ast.types.length; i++) {
           walk(ast.types[i], path)
         }
-      }
-    }
-    if (ast._tag === "TypeLiteral") {
-      for (let i = 0; i < ast.propertySignatures.length; i++) {
-        const property = ast.propertySignatures[i]
-        walk(property.type, [...path, property.name])
+        break
       }
     }
   }
-  walk(selfSchema.ast, [])
+  walk(schema.ast, [])
 
-  if (method === undefined) {
-    method = bodyHandled ? "POST" : "GET"
-  }
-
+  const method = Option.getOrElse(annotations.method, () => hasRequestBody ? "POST" : "GET")
   const instructionsLen = instructions.length
-  const encode = Schema.encode(selfSchema)
-  function encoder(value: A) {
+  const encode = Schema.encode(schema)
+  function encoder(value: any): Effect.Effect<ClientRequest.ClientRequest, any, any> {
     return Effect.map(encode(value), (value) => {
-      const options: Mutable<ClientRequest.Options> = {
+      const options: Types.Mutable<ClientRequest.Options> = {
         url: annotations.path
       }
       for (let i = 0; i < instructionsLen; i++) {
@@ -895,81 +944,23 @@ function makeEncoder<A, I, R>(
       return ClientRequest.make(method)(url, options)
     })
   }
-  encoderCache.set(self, encoder)
   return encoder
-}
-
-/**
- * @since 1.0.0
- * @category encoder
- */
-export const encodeRequest = <A, I, R>(
-  self: Serializable.Serializable<A, I, R>
-): Effect.Effect<ClientRequest.ClientRequest, ParseError, R> => makeEncoder(self)(self as A)
-
-/**
- * @since 1.0.0
- * @category handlers
- */
-export const HandledTypeId = Symbol.for("@effect/platform/Http/Endpoint/Handled")
-
-/**
- * @since 1.0.0
- * @category groups
- */
-export type HandledTypeId = typeof HandledTypeId
-
-/**
- * @since 1.0.0
- * @category handlers
- */
-export interface Handled<A extends Serializable.SerializableWithResult.Any, R> {
-  readonly [HandledTypeId]: HandledTypeId
-  readonly endpoint: Endpoint<A, unknown, R>
-  readonly parsed: Endpoint.Parsed
-  readonly handler: (value: A) => Effect.Effect<Serializable.WithResult.Success<A>, Serializable.WithResult.Error<A>, R>
-}
-
-/**
- * @since 1.0.0
- * @category handlers
- */
-export declare namespace Handled {
-  /**
-   * @since 1.0.0
-   * @category handlers
-   */
-  export type Any = Handled<any, any>
-}
-
-/**
- * @since 1.0.0
- * @category handlers
- */
-export const make = <A extends Serializable.SerializableWithResult.Any, I, R>(
-  endpoint: Endpoint<A, I, R>,
-  handler: (_: A) => Effect.Effect<Serializable.WithResult.Success<A>, Serializable.WithResult.Error<A>, R>
-): Handled<A, R> => ({
-  [HandledTypeId]: HandledTypeId,
-  endpoint: endpoint as any,
-  handler,
-  parsed: parse(endpoint)
 })
 
 /**
  * @since 1.0.0
  * @category handlers
  */
-export const toRoute = <Request extends Serializable.SerializableWithResult.Any, R>(
-  self: Handled<Request, R>
+export const toRoute = <A extends Schema.TaggedRequest.Any, R>(
+  self: Handler.Handler<A, R>
 ): Router.Route<
-  RequestError | ParseError | Multipart.MultipartError,
-  Path_ | FileSystem
+  ParseError | RequestError | Multipart.MultipartError,
+  FileSystem | Path_ | Exclude<R, Router.RouteContext | ServerRequest.ServerRequest | Scope>
 > => {
-  const encode = decodeRequest(self.endpoint)
+  const parsed = parse(self.schema)
   return Router.makeRoute(
-    self.parsed.method,
-    self.parsed.path as Router.PathInput,
+    parsed.method,
+    parsed.path,
     Effect.withFiberRuntime<
       ServerResponse.ServerResponse,
       RequestError | ParseError | Multipart.MultipartError,
@@ -979,115 +970,39 @@ export const toRoute = <Request extends Serializable.SerializableWithResult.Any,
         const context = fiber.getFiberRef(FiberRef.currentContext)
         const request = Context.unsafeGet(context, ServerRequest.ServerRequest)
         const routeContext = Context.unsafeGet(context, Router.RouteContext)
-        return Effect.flatMap(encode(request, routeContext), (req) =>
+        if (self._tag === "Stream") {
+          return Effect.succeed(ServerResponse.empty())
+        }
+        return Effect.flatMap(parsed.decodeServerRequest(request, routeContext), (req) =>
           pipe(
             self.handler(req),
-            self.parsed.emptyResponse ?
-              Effect.as(ServerResponse.empty({ status: self.parsed.status })) :
-              Effect.flatMap((value) =>
-                Effect.orDie(Serializable.serializeSuccess(req as any, value)).pipe(
-                  Effect.map((value) => ServerResponse.unsafeJson(value, { status: self.parsed.status }))
-                )
-              ),
-            Effect.catchAll((error) => {
-              const failureSchema = Serializable.failureSchema(req as any)
-              const status = getErrorAnnotations(failureSchema.ast).status
-              return Serializable.serializeFailure(req as any, error).pipe(
-                Effect.map((value) => ServerResponse.unsafeJson(value, { status }))
+            Effect.flatMap((value) =>
+              Effect.orDie(Serializable.serializeSuccess(req as any, value)).pipe(
+                Effect.map((value) => ServerResponse.unsafeJson(value, { status: parsed.successStatus }))
               )
-            })
+            ),
+            Effect.catchAll((error) =>
+              Schema.encode(parsed.FailureWithStatus)(error).pipe(
+                Effect.map(([status, error]) => ServerResponse.unsafeJson(error, { status }))
+              )
+            )
           ) as any)
       }
     )
-  ) as any
+  )
 }
 
 /**
  * @since 1.0.0
  * @category groups
  */
-export const GroupTypeId = Symbol.for("@effect/platform/Http/Endpoint/Group")
-
-/**
- * @since 1.0.0
- * @category groups
- */
-export type GroupTypeId = typeof GroupTypeId
-
-/**
- * @since 1.0.0
- * @category groups
- */
-export interface Group<Request extends Serializable.SerializableWithResult.Any, R> {
-  readonly [GroupTypeId]: GroupTypeId
-  readonly name: string | undefined
-  readonly description: string | undefined
-  readonly children: ReadonlyArray<Handled<Request, R> | Group<Request, R>>
-}
-
-/**
- * @since 1.0.0
- * @category groups
- */
-export declare namespace Group {
-  /**
-   * @since 1.0.0
-   * @category groups
-   */
-  export type Any = Group<any, any>
-
-  /**
-   * @since 1.0.0
-   * @category groups
-   */
-  export type Request<G extends Group.Any> = G extends Group<infer A, infer _R> ? A : never
-}
-
-/**
- * @since 1.0.0
- * @category groups
- */
-export const group = <Children extends ReadonlyArray<Handled.Any | Group.Any>>(
-  options: {
-    readonly name?: string | undefined
-    readonly description?: string | undefined
-  },
-  ...children: Children
-): Group<
-  Children[number] extends infer Child ? Child extends Handled<infer A, infer _R> ? A :
-    Child extends Group<infer A, infer _R> ? A
-    : never :
-    never,
-  Children[number] extends infer Child ? Child extends Handled<infer _A, infer R> ? R :
-    Child extends Group<infer _A, infer R> ? R
-    : never :
-    never
-> => ({
-  [GroupTypeId]: GroupTypeId,
-  name: options.name,
-  description: options.description,
-  children
-})
-
-/**
- * @since 1.0.0
- * @category groups
- */
-export const toRouter = <Request extends Serializable.SerializableWithResult.Any, R>(
-  self: Group<Request, R>
-): Router.Router<RequestError | ParseError | Multipart.MultipartError, Path_ | FileSystem> => {
-  const endpoints: Array<Handled<Request, R>> = []
-  function walk(group: Group<Request, R>): void {
-    for (let i = 0; i < group.children.length; i++) {
-      const child = group.children[i]
-      if (HandledTypeId in child) {
-        endpoints.push(child)
-      } else {
-        walk(child)
-      }
-    }
-  }
-  walk(self)
+export const toRouter = <A extends Schema.TaggedRequest.Any, R>(
+  self: Handler.Group<A, R>
+): Router.Router<
+  ParseError | RequestError | Multipart.MultipartError,
+  FileSystem | Path_ | Exclude<R, Router.RouteContext | ServerRequest.ServerRequest | Scope>
+> => {
+  const endpoints = Handler.getChildren(self)
   return Router.fromIterable(endpoints.map(toRoute))
 }
 
@@ -1097,9 +1012,9 @@ export const toRouter = <Request extends Serializable.SerializableWithResult.Any
  * @category client
  */
 export const client =
-  <G extends Group.Any>() =>
+  <G extends Handler.Group.Any>() =>
   <E, R>(client: Client.Client.WithResponse<E, R>) =>
-  <Request extends Group.Request<G>>(request: Request): Effect.Effect<
+  <Request extends Handler.Group.Request<G>>(request: Request): Effect.Effect<
     Serializable.WithResult.Success<Request>,
     E | Serializable.WithResult.Error<Request>,
     R | Serializable.SerializableWithResult.Context<Request>
@@ -1108,8 +1023,8 @@ export const client =
     const annotations = getAnnotations(selfSchema.ast)
     const successSchema = Serializable.successSchema(request)
     const noBody = successSchema.ast._tag === "VoidKeyword"
-    const successStatus = annotations.status ?? noBody ? 204 : 200
-    return encodeRequest(request).pipe(
+    const successStatus = Option.getOrElse(annotations.status, () => noBody ? 204 : 200)
+    return toClientRequest(request).pipe(
       Effect.bindTo("httpRequest"),
       Effect.bind("response", ({ httpRequest }) => client(httpRequest)),
       Effect.flatMap(({ httpRequest, response }) => {

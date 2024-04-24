@@ -1,4 +1,4 @@
-import { HttpClient, HttpServer as Http } from "@effect/platform"
+import { Handler, HttpClient, HttpServer as Http } from "@effect/platform"
 import { NodeHttpClient, NodeHttpServer } from "@effect/platform-node"
 import { Schema } from "@effect/schema"
 import { assert, describe, it } from "@effect/vitest"
@@ -10,6 +10,9 @@ class User extends Schema.Class<User>("User")({
   name: Schema.String,
   age: Schema.Number
 }) {}
+
+const apiAnnotations = Http.endpoint.annotationsWithPrefix("/api")
+const userAnnotations = Http.endpoint.annotationsWithPrefix(apiAnnotations, "/users")
 
 class GetUserById extends Schema.TaggedRequest<GetUserById>()(
   "GetUserById",
@@ -26,8 +29,8 @@ class GetUserById extends Schema.TaggedRequest<GetUserById>()(
     })),
     extraAge: Http.endpoint.Header("x-extra-age", Schema.NumberFromString)
   },
-  Http.endpoint.annotations({
-    path: "/users/:id",
+  userAnnotations({
+    path: "/:id",
     method: "POST"
   })
 ) {}
@@ -35,14 +38,18 @@ class GetUserById extends Schema.TaggedRequest<GetUserById>()(
 class UserError extends Schema.TaggedError<UserError>()(
   "UserError",
   {},
-  Http.endpoint.errorAnnotations({
-    statusCode: 400
-  })
+  Http.endpoint.errorAnnotations({ status: 400 })
+) {}
+
+class RateLimited extends Schema.TaggedError<RateLimited>()(
+  "RateLimited",
+  {},
+  Http.endpoint.errorAnnotations({ status: 429 })
 ) {}
 
 class CreateUser extends Schema.TaggedRequest<CreateUser>()(
   "CreateUser",
-  UserError,
+  Schema.Union(UserError, RateLimited),
   Schema.Void,
   {
     user: Http.endpoint.BodyJson(Schema.Struct({
@@ -50,17 +57,38 @@ class CreateUser extends Schema.TaggedRequest<CreateUser>()(
       age: Schema.Number
     }))
   },
-  Http.endpoint.annotations({
-    path: "/users",
+  userAnnotations({
+    path: "/",
     method: "POST"
   })
 ) {}
 
-const group = Http.endpoint.group(
+class UpdateUser extends Schema.TaggedRequest<UpdateUser>()(
+  "UpdateUser",
+  UserError,
+  Schema.Void,
   {
-    name: "users"
+    id: Http.endpoint.PathParam("id", Schema.NumberFromString),
+    user: Http.endpoint.BodyUnion({
+      Json: Schema.Struct({
+        name: Schema.String,
+        age: Schema.Number
+      }),
+      UrlEncoded: Schema.Struct({
+        name: Schema.String,
+        age: Schema.NumberFromString
+      })
+    })
   },
-  Http.endpoint.make(GetUserById, (req) =>
+  userAnnotations({
+    status: 201,
+    path: "/:id",
+    method: "PATCH"
+  })
+) {}
+
+const group = Handler.group(
+  Handler.effect(GetUserById, (req) =>
     Effect.succeed(
       new User({
         id: req.id,
@@ -68,12 +96,20 @@ const group = Http.endpoint.group(
         age: req.search.age + req.extraAge
       })
     )),
-  Http.endpoint.make(CreateUser, ({ user }) =>
+  Handler.effect(CreateUser, ({ user }) =>
     user.name === "fail" ?
       Effect.fail(new UserError()) :
       user.name === "defect" ?
       Effect.die("defect") :
-      Effect.log("Creating user", user))
+      user.name === "rate" ?
+      Effect.fail(new RateLimited()) :
+      Effect.log("Creating user", user)),
+  Handler.effect(UpdateUser, ({ id, user }) =>
+    user.body.name === "fail" ?
+      Effect.fail(new UserError()) :
+      user.body.name === "defect" ?
+      Effect.die("defect") :
+      Effect.log("Updating user", id, user))
 )
 
 type Group = typeof group
@@ -122,8 +158,10 @@ describe("Endpoint", () => {
       Effect.gen(function*(_) {
         yield* _(router, Http.server.serveEffect())
         const client = yield* _(makeClient)
-        const result = yield* _(client(new CreateUser({ user: { name: "fail", age: 30 } })), Effect.flip)
+        let result = yield* _(client(new CreateUser({ user: { name: "fail", age: 30 } })), Effect.flip)
         assert.deepStrictEqual(result, new UserError())
+        result = yield* _(client(new CreateUser({ user: { name: "rate", age: 30 } })), Effect.flip)
+        assert.deepStrictEqual(result, new RateLimited())
       }).pipe(Effect.provide(EnvLive)))
 
     it.scoped("defect", () =>
@@ -134,6 +172,20 @@ describe("Endpoint", () => {
         assert(result._tag === "ResponseError")
         assert.strictEqual(result.reason, "StatusCode")
         assert.strictEqual(result.response.status, 500)
+      }).pipe(Effect.provide(EnvLive)))
+
+    it.scoped("BodyUnion", () =>
+      Effect.gen(function*(_) {
+        yield* _(router, Http.server.serveEffect())
+        const client = yield* _(makeClient)
+        let result = yield* _(
+          client(new UpdateUser({ id: 123, user: { _tag: "json", body: { name: "John", age: 30 } } }))
+        )
+        assert.isUndefined(result)
+        result = yield* _(
+          client(new UpdateUser({ id: 123, user: { _tag: "urlParamsBody", body: { name: "John", age: 30 } } }))
+        )
+        assert.isUndefined(result)
       }).pipe(Effect.provide(EnvLive)))
   })
 })

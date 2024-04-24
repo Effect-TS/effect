@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Handler from "@effect/platform/Handler"
 import * as Headers from "@effect/platform/Http/Headers"
 import type { ParseError } from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
@@ -13,9 +14,9 @@ import { dual, pipe } from "effect/Function"
 import * as Request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"
 import * as Stream from "effect/Stream"
-import { StreamRequestTypeId, withRequestTag } from "./internal/rpc.js"
-import type * as Router from "./Router.js"
-import * as Rpc from "./Rpc.js"
+import { withRequestTag } from "./internal/request.js"
+import * as RpcRequest from "./Request.js"
+import type * as Router from "./Server.js"
 
 /**
  * @since 1.0.0
@@ -24,17 +25,17 @@ import * as Rpc from "./Rpc.js"
 export const make = <HR, E>(
   handler: (u: ReadonlyArray<unknown>) => Stream.Stream<unknown, E, HR>
 ) =>
-<R extends Router.Router<any, any>>(): RequestResolver.RequestResolver<
-  Rpc.Request<Router.Router.Request<R>>,
-  Serializable.SerializableWithResult.Context<Router.Router.Request<R>> | HR
+<R extends Handler.Group.Any>(): RequestResolver.RequestResolver<
+  RpcRequest.Request<Handler.Group.Request<R>>,
+  Serializable.SerializableWithResult.Context<Handler.Group.Request<R>> | HR
 > => {
   const getDecode = withRequestTag((req) => Schema.decodeUnknown(Serializable.exitSchema(req)))
   const getDecodeChunk = withRequestTag((req) => Schema.decodeUnknown(Schema.Chunk(Serializable.exitSchema(req))))
 
-  return RequestResolver.makeBatched((requests: Arr.NonEmptyArray<Rpc.Request<Schema.TaggedRequest.Any>>) => {
+  return RequestResolver.makeBatched((requests: Arr.NonEmptyArray<RpcRequest.Request<Schema.TaggedRequest.Any>>) => {
     const [effectRequests, streamRequests] = Arr.partition(
       requests,
-      (_): _ is Rpc.Request<Rpc.StreamRequest.Any> => StreamRequestTypeId in _.request
+      (_): _ is RpcRequest.Request<Handler.StreamRequest.Any> => Handler.StreamRequestTypeId in _.request
     )
 
     const processEffects = pipe(
@@ -47,7 +48,7 @@ export const make = <HR, E>(
         Stream.runForEach(
           Stream.filter(
             handler(payload),
-            (_): _ is Router.Router.Response => Arr.isArray(_) && _.length === 2
+            (_): _ is Router.Response => Arr.isArray(_) && _.length === 2
           ),
           ([index, response]): Effect.Effect<void, ParseError, any> => {
             const request = effectRequests[index]
@@ -77,7 +78,7 @@ export const make = <HR, E>(
           Effect.map((payload) =>
             pipe(
               handler([payload]),
-              Stream.mapEffect((_) => Effect.orDie(decode((_ as Router.Router.Response)[1]))),
+              Stream.mapEffect((_) => Effect.orDie(decode((_ as Router.Response)[1]))),
               Stream.flattenChunks,
               Stream.flatMap(Exit.match({
                 onFailure: (cause) => Cause.isEmptyType(cause) ? Stream.empty : Stream.failCause(cause),
@@ -111,16 +112,16 @@ export const annotateHeaders: {
   (
     headers: Headers.Input
   ): <Req extends Schema.TaggedRequest.Any, R>(
-    self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>
-  ) => RequestResolver.RequestResolver<Rpc.Request<Req>, R>
+    self: RequestResolver.RequestResolver<RpcRequest.Request<Req>, R>
+  ) => RequestResolver.RequestResolver<RpcRequest.Request<Req>, R>
   <Req extends Schema.TaggedRequest.Any, R>(
-    self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>,
+    self: RequestResolver.RequestResolver<RpcRequest.Request<Req>, R>,
     headers: Headers.Input
-  ): RequestResolver.RequestResolver<Rpc.Request<Req>, R>
+  ): RequestResolver.RequestResolver<RpcRequest.Request<Req>, R>
 } = dual(2, <Req extends Schema.TaggedRequest.Any, R>(
-  self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>,
+  self: RequestResolver.RequestResolver<RpcRequest.Request<Req>, R>,
   headers: Headers.Input
-): RequestResolver.RequestResolver<Rpc.Request<Req>, R> => {
+): RequestResolver.RequestResolver<RpcRequest.Request<Req>, R> => {
   const resolved = Headers.fromInput(headers)
   return RequestResolver.makeWithEntry((requests) => {
     requests.forEach((entries) =>
@@ -140,16 +141,16 @@ export const annotateHeadersEffect: {
   <E, R2>(
     headers: Effect.Effect<Headers.Input, E, R2>
   ): <Req extends Schema.TaggedRequest.Any, R>(
-    self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>
-  ) => RequestResolver.RequestResolver<Rpc.Request<Req>, R | R2>
+    self: RequestResolver.RequestResolver<RpcRequest.Request<Req>, R>
+  ) => RequestResolver.RequestResolver<RpcRequest.Request<Req>, R | R2>
   <Req extends Schema.TaggedRequest.Any, R, E, R2>(
-    self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>,
+    self: RequestResolver.RequestResolver<RpcRequest.Request<Req>, R>,
     headers: Effect.Effect<Headers.Input, E, R2>
-  ): RequestResolver.RequestResolver<Rpc.Request<Req>, R | R2>
+  ): RequestResolver.RequestResolver<RpcRequest.Request<Req>, R | R2>
 } = dual(2, <Req extends Schema.TaggedRequest.Any, R, E, R2>(
-  self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>,
+  self: RequestResolver.RequestResolver<RpcRequest.Request<Req>, R>,
   headers: Effect.Effect<Headers.Input, E, R2>
-): RequestResolver.RequestResolver<Rpc.Request<Req>, R | R2> =>
+): RequestResolver.RequestResolver<RpcRequest.Request<Req>, R | R2> =>
   RequestResolver.makeWithEntry((requests) =>
     headers.pipe(
       Effect.map(Headers.fromInput),
@@ -179,12 +180,12 @@ export const annotateHeadersEffect: {
  */
 export type Client<
   R extends
-    | RequestResolver.RequestResolver<Rpc.Request<any>, never>
-    | Effect.Effect<RequestResolver.RequestResolver<Rpc.Request<any>, never>, never, any>
-> = R extends Effect.Effect<RequestResolver.RequestResolver<Rpc.Request<infer RReq>>, infer _E, infer R> ?
-  (<Req extends RReq>(request: Req) => Rpc.Rpc.Result<Req, R>)
-  : R extends RequestResolver.RequestResolver<Rpc.Request<infer RReq>, never> ?
-    (<Req extends RReq>(request: Req) => Rpc.Rpc.Result<Req>)
+    | RequestResolver.RequestResolver<RpcRequest.Request<any>, never>
+    | Effect.Effect<RequestResolver.RequestResolver<RpcRequest.Request<any>, never>, never, any>
+> = R extends Effect.Effect<RequestResolver.RequestResolver<RpcRequest.Request<infer RReq>>, infer _E, infer R> ?
+  (<Req extends RReq>(request: Req) => Handler.Handler.Result<Req, R>)
+  : R extends RequestResolver.RequestResolver<RpcRequest.Request<infer RReq>, never> ?
+    (<Req extends RReq>(request: Req) => Handler.Handler.Result<Req>)
   : never
 
 /**
@@ -193,11 +194,11 @@ export type Client<
  */
 export const toClient = <
   R extends
-    | RequestResolver.RequestResolver<Rpc.Request<any>, never>
-    | Effect.Effect<RequestResolver.RequestResolver<Rpc.Request<any>, never>, never, any>
+    | RequestResolver.RequestResolver<RpcRequest.Request<any>, never>
+    | Effect.Effect<RequestResolver.RequestResolver<RpcRequest.Request<any>, never>, never, any>
 >(
   resolver: R,
   options?: {
     readonly spanPrefix?: string
   }
-): Client<R> => ((request: Schema.TaggedRequest.Any) => Rpc.call(request, resolver, options)) as any
+): Client<R> => ((request: Schema.TaggedRequest.Any) => RpcRequest.call(request, resolver, options)) as any

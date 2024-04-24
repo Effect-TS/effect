@@ -1,11 +1,12 @@
 /**
  * @since 1.0.0
  */
+import type * as Handler from "@effect/platform/Handler"
 import type * as App from "@effect/platform/Http/App"
 import type * as ServerError from "@effect/platform/Http/ServerError"
 import * as ServerRequest from "@effect/platform/Http/ServerRequest"
 import * as ServerResponse from "@effect/platform/Http/ServerResponse"
-import * as Router from "@effect/rpc/Router"
+import * as Server from "@effect/rpc/Server"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -16,11 +17,11 @@ import * as Stream from "effect/Stream"
  * @since 1.0.0
  * @category conversions
  */
-export const toHttpApp = <R extends Router.Router<any, any>>(self: R): App.Default<
+export const toHttpApp = <R extends Handler.Group.Any>(self: R): App.Default<
   ServerError.RequestError,
-  Router.Router.Context<R>
+  Handler.Group.Context<R>
 > => {
-  const handler = Router.toHandler(self)
+  const handler = Server.fromGroup(self)
   return Effect.withFiberRuntime((fiber) => {
     const context = fiber.getFiberRef(FiberRef.currentContext)
     const request = Context.unsafeGet(context, ServerRequest.ServerRequest)
