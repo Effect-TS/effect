@@ -2,9 +2,9 @@
 "effect": patch
 ---
 
-allow use of Effect.gen without the adapter
+allow use of generators (Effect.gen) without the adapter
 
-Effect now implements a Iterable that can be `yield*`'ed directly.
+Effect's data types now implement a Iterable that can be `yield*`'ed directly.
 
 ```ts
 Effect.gen(function* () {
