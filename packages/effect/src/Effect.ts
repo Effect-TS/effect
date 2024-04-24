@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import type { NonEmptyArray, NonEmptyReadonlyArray } from "./Array.js"
+import type * as RA from "./Array.js"
 import type * as Cause from "./Cause.js"
 import type * as Chunk from "./Chunk.js"
 import type * as Clock from "./Clock.js"
@@ -58,8 +58,6 @@ import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
 import type { Concurrency, Covariant, MergeRecord, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
-
-import type * as RA from "./Array.js"
 
 // -------------------------------------------------------------------------------------
 // models
@@ -660,14 +658,14 @@ export const forEach: {
     }
   ): (self: Iterable<A>) => Effect<void, E, R>
   <A, B, E, R>(
-    self: NonEmptyReadonlyArray<A>,
+    self: RA.NonEmptyReadonlyArray<A>,
     f: (a: A, i: number) => Effect<B, E, R>,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard?: false | undefined
     } | undefined
-  ): Effect<NonEmptyArray<B>, E, R>
+  ): Effect<RA.NonEmptyArray<B>, E, R>
   <A, B, E, R>(
     self: Iterable<A>,
     f: (a: A, i: number) => Effect<B, E, R>,
