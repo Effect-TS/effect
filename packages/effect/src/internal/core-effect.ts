@@ -233,20 +233,22 @@ export const catchSomeDefect = dual<
 /* @internal */
 export const catchTag = dual<
   <K extends (E extends { _tag: string } ? E["_tag"] : never), E, A1, E1, R1>(
-    k: K,
+    k: K | { readonly _tag: K },
     f: (e: Extract<E, { _tag: K }>) => Effect.Effect<A1, E1, R1>
   ) => <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A | A1, Exclude<E, { _tag: K }> | E1, R | R1>,
   <A, E, R, K extends (E extends { _tag: string } ? E["_tag"] : never), R1, E1, A1>(
     self: Effect.Effect<A, E, R>,
-    k: K,
+    k: K | { readonly _tag: K },
     f: (e: Extract<E, { _tag: K }>) => Effect.Effect<A1, E1, R1>
   ) => Effect.Effect<A | A1, Exclude<E, { _tag: K }> | E1, R | R1>
 >(3, <A, E, R, K extends (E extends { _tag: string } ? E["_tag"] : never), R1, E1, A1>(
   self: Effect.Effect<A, E, R>,
-  k: K,
+  k: K | { readonly _tag: K },
   f: (e: Extract<E, { _tag: K }>) => Effect.Effect<A1, E1, R1>
-): Effect.Effect<A | A1, Exclude<E, { _tag: K }> | E1, R | R1> =>
-  core.catchIf(self, Predicate.isTagged(k) as Predicate.Refinement<E, Extract<E, { _tag: K }>>, f) as any)
+): Effect.Effect<A | A1, Exclude<E, { _tag: K }> | E1, R | R1> => {
+  const _tag = typeof k === "string" ? k : k._tag
+  return core.catchIf(self, Predicate.isTagged(_tag) as Predicate.Refinement<E, Extract<E, { _tag: K }>>, f) as any
+})
 
 /** @internal */
 export const catchTags: {

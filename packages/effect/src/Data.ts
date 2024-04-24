@@ -441,11 +441,15 @@ export const Error: new<A extends Record<string, any> = {}>(
  * @since 2.0.0
  * @category constructors
  */
-export const TaggedError = <Tag extends string>(tag: Tag): new<A extends Record<string, any> = {}>(
-  args: Types.Equals<A, {}> extends true ? void
-    : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }
-) => Cause.YieldableError & { readonly _tag: Tag } & Readonly<A> => {
+export const TaggedError = <Tag extends string>(tag: Tag): {
+  readonly _tag: Tag
+  new<A extends Record<string, any> = {}>(
+    args: Types.Equals<A, {}> extends true ? void
+      : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }
+  ): Cause.YieldableError & { readonly _tag: Tag } & Readonly<A>
+} => {
   class Base extends Error<{}> {
+    static _tag = tag
     readonly _tag = tag
   }
   ;(Base.prototype as any).name = tag

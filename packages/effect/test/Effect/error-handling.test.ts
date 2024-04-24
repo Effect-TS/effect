@@ -3,6 +3,7 @@ import * as it from "effect-test/utils/extend"
 import { assertType, satisfies } from "effect-test/utils/types"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
+import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
@@ -236,6 +237,15 @@ describe("Effect", () => {
         onFailure: Effect.succeed
       }))
       assert.deepStrictEqual(result, { _tag: "ErrorA" })
+    }))
+  it.effect("catch - recovers from one of several tagged errors with classes", () =>
+    Effect.gen(function*($) {
+      class ErrorA extends Data.TaggedError("ErrorA")<{}> {}
+      class ErrorB extends Data.TaggedError("ErrorB")<{}> {}
+      const effect: Effect.Effect<never, ErrorA | ErrorB, never> = new ErrorA()
+      const recovered = Effect.catchTag(effect, ErrorA, (_) => Effect.succeed(_._tag))
+      const result = yield* $(recovered)
+      assert.deepStrictEqual(result, "ErrorA")
     }))
   it.effect("catch - does not recover from one of several tagged errors", () =>
     Effect.gen(function*($) {
