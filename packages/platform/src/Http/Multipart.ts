@@ -215,6 +215,12 @@ export const withFieldMimeTypes: {
  * @since 1.0.0
  * @category schema
  */
+export const fileSchema: Schema.Schema<PersistedFile> = internal.fileSchema
+
+/**
+ * @since 1.0.0
+ * @category schema
+ */
 export const filesSchema: Schema.Schema<ReadonlyArray<PersistedFile>> = internal.filesSchema
 
 /**
