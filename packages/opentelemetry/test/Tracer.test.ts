@@ -11,7 +11,7 @@ const TracingLive = NodeSdk.layer(Effect.sync(() => ({
   resource: {
     serviceName: "test"
   },
-  spanProcessors: [new SimpleSpanProcessor(new InMemorySpanExporter())] as const
+  spanProcessors: [new SimpleSpanProcessor(new InMemorySpanExporter())]
 })))
 
 // needed to test context propagation

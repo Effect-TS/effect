@@ -7,6 +7,7 @@ import type { MetricReader } from "@opentelemetry/sdk-metrics"
 import type { SpanProcessor, TracerConfig } from "@opentelemetry/sdk-trace-base"
 import { WebTracerProvider } from "@opentelemetry/sdk-trace-web"
 import type { NonEmptyReadonlyArray } from "effect/Array"
+import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -19,9 +20,9 @@ import * as Tracer from "./Tracer.js"
  * @category model
  */
 export interface Configuration {
-  readonly spanProcessors?: NonEmptyReadonlyArray<SpanProcessor>
+  readonly spanProcessors?: ReadonlyArray<SpanProcessor>
   readonly tracerConfig?: Omit<TracerConfig, "resource">
-  readonly metricReaders?: NonEmptyReadonlyArray<MetricReader>
+  readonly metricReaders?: ReadonlyArray<MetricReader>
   readonly resource: {
     readonly serviceName: string
     readonly serviceVersion?: string
@@ -73,12 +74,20 @@ export const layer: {
         : Effect.sync(evaluate),
       (config) => {
         const ResourceLive = Resource.layer(config.resource)
-        const TracerLive = config.spanProcessors ?
-          Tracer.layer.pipe(Layer.provide(layerTracerProvider(config.spanProcessors, config.tracerConfig)))
-          : Layer.effectDiscard(Effect.void)
-        const MetricsLive = config.metricReaders
-          ? Metrics.layer(() => config.metricReaders!)
-          : Layer.effectDiscard(Effect.void)
+        const spanProcessors = config.spanProcessors && Arr.isNonEmptyReadonlyArray(config.spanProcessors)
+          ? config.spanProcessors
+          : undefined
+        const TracerLive = spanProcessors ?
+          Tracer.layer.pipe(
+            Layer.provide(layerTracerProvider(spanProcessors, config.tracerConfig))
+          )
+          : Layer.empty
+        const metricReaders = config.metricReaders && Arr.isNonEmptyReadonlyArray(config.metricReaders)
+          ? config.metricReaders
+          : undefined
+        const MetricsLive = metricReaders
+          ? Metrics.layer(() => metricReaders)
+          : Layer.empty
         return Layer.merge(TracerLive, MetricsLive).pipe(
           Layer.provideMerge(ResourceLive)
         )

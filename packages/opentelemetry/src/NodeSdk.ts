@@ -7,6 +7,7 @@ import type { MetricReader } from "@opentelemetry/sdk-metrics"
 import type { SpanProcessor, TracerConfig } from "@opentelemetry/sdk-trace-base"
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node"
 import type { NonEmptyReadonlyArray } from "effect/Array"
+import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -19,9 +20,9 @@ import * as Tracer from "./Tracer.js"
  * @category model
  */
 export interface Configuration {
-  readonly spanProcessors?: NonEmptyReadonlyArray<SpanProcessor> | undefined
+  readonly spanProcessors?: ReadonlyArray<SpanProcessor> | undefined
   readonly tracerConfig?: Omit<TracerConfig, "resource"> | undefined
-  readonly metricReader?: MetricReader | undefined
+  readonly metricReaders?: ReadonlyArray<MetricReader> | undefined
   readonly resource?: {
     readonly serviceName: string
     readonly serviceVersion?: string
@@ -34,7 +35,7 @@ export interface Configuration {
  * @category layers
  */
 export const layerTracerProvider = (
-  processors: ReadonlyArray<SpanProcessor>,
+  processors: NonEmptyReadonlyArray<SpanProcessor>,
   config?: Omit<TracerConfig, "resource">
 ): Layer.Layer<TracerProvider, never, Resource.Resource> =>
   Layer.scoped(
@@ -75,13 +76,19 @@ export const layer: {
         const ResourceLive = config.resource === undefined
           ? Resource.layerFromEnv()
           : Resource.layer(config.resource)
-        const TracerLive = config.spanProcessors ?
+        const spanProcessors = config.spanProcessors && Arr.isNonEmptyReadonlyArray(config.spanProcessors)
+          ? config.spanProcessors
+          : undefined
+        const TracerLive = spanProcessors ?
           Tracer.layer.pipe(
-            Layer.provide(layerTracerProvider(config.spanProcessors, config.tracerConfig))
+            Layer.provide(layerTracerProvider(spanProcessors, config.tracerConfig))
           )
           : Layer.empty
-        const MetricsLive = config.metricReader
-          ? Metrics.layer(() => [config.metricReader!])
+        const metricReaders = config.metricReaders && Arr.isNonEmptyReadonlyArray(config.metricReaders)
+          ? config.metricReaders
+          : undefined
+        const MetricsLive = metricReaders
+          ? Metrics.layer(() => metricReaders)
           : Layer.empty
         return Layer.merge(TracerLive, MetricsLive).pipe(
           Layer.provideMerge(ResourceLive)
