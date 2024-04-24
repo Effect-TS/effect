@@ -94,6 +94,9 @@ export interface Effect<out A, out E = never, out R = never> extends Effect.Vari
   readonly [Unify.typeSymbol]?: unknown
   readonly [Unify.unifySymbol]?: EffectUnify<this>
   readonly [Unify.ignoreSymbol]?: EffectUnifyIgnore
+
+  // TODO: figure out how to add this without changing variance
+  // [Symbol.iterator](): Generator<Effect<A, E, R>, A>
 }
 
 /**
