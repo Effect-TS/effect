@@ -66,7 +66,6 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
           core.scopeAddFinalizer(
             closeableScope,
             core.fiberIdWith((id) =>
-              // Type 'Effect<void, never, never> | Effect<Exit<A, E>, never, never>' is not assignable to type 'Effect<void, never, never>'
               equals(id, fiberRuntime.id()) ? core.void : core.interruptAsFiber(fiberRuntime, id)
             )
           ),

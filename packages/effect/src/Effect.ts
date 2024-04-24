@@ -98,7 +98,7 @@ export interface Effect<out A, out E = never, out R = never> extends Effect.Vari
 }
 
 /**
- * @since 2.0.0
+ * @since 3.0.0
  * @category models
  */
 export interface EffectGenerator<Eff extends Effect<any, any, any>> {
