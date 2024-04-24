@@ -641,12 +641,10 @@ describe("Effect", () => {
   it.effect("reduceEffect/concurrency - reduce list using function", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        pipe(
-          [3, 5, 7].map(Effect.succeed),
-          Effect.reduceEffect(Effect.succeed(1), (acc, a) => acc + a, {
-            concurrency: "unbounded"
-          })
-        )
+        [3, 5, 7].map(Effect.succeed),
+        Effect.reduceEffect(Effect.succeed(1), (acc, a) => acc + a, {
+          concurrency: "unbounded"
+        })
       )
       assert.strictEqual(result, 1 + 3 + 5 + 7)
     }))
