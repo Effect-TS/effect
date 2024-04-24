@@ -9,8 +9,8 @@ import type { Simplify } from "effect/Types"
 
 declare const anyNever: S.Schema<any, never>
 declare const neverAny: S.Schema<never, any>
-declare const anyNeverPropertySignature: S.PropertySignature<"?:", any, never, "?:", never, never>
-declare const neverAnyPropertySignature: S.PropertySignature<"?:", never, never, "?:", any, never>
+declare const anyNeverPropertySignature: S.PropertySignature<"?:", any, never, "?:", never, false, never>
+declare const neverAnyPropertySignature: S.PropertySignature<"?:", never, never, "?:", any, false, never>
 
 class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
 
@@ -564,25 +564,25 @@ S.asSchema(S.Struct({ a: neverAnyPropertySignature }))
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: boolean; }, { readonly a: string; readonly b: number; readonly c?: boolean; }, never>
 S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { exact: true }) }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<"?:", boolean, never, "?:", boolean, never>; }>
+// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<"?:", boolean, never, "?:", boolean, false, never>; }>
 S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { exact: true }) })
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: number; }, { readonly a: string; readonly b: number; readonly c?: string; }, never>
 S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString, { exact: true }) }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<"?:", number, never, "?:", string, never>; }>
+// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<"?:", number, never, "?:", string, false, never>; }>
 S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString, { exact: true }) })
 
 // $ExpectType Schema<{ readonly a?: never; }, { readonly a?: never; }, never>
 S.asSchema(S.Struct({ a: S.optional(S.Never, { exact: true }) }))
 
-// $ExpectType Struct<{ a: PropertySignature<"?:", never, never, "?:", never, never>; }>
+// $ExpectType Struct<{ a: PropertySignature<"?:", never, never, "?:", never, false, never>; }>
 S.Struct({ a: S.optional(S.Never, { exact: true }) })
 
 // $ExpectType Schema<{ readonly a?: string; }, { readonly a?: string; }, never>
 S.asSchema(S.Struct({ a: S.String.pipe(S.optional({ exact: true })) }))
 
-// $ExpectType Struct<{ a: PropertySignature<"?:", string, never, "?:", string, never>; }>
+// $ExpectType Struct<{ a: PropertySignature<"?:", string, never, "?:", string, false, never>; }>
 S.Struct({ a: S.String.pipe(S.optional({ exact: true })) })
 
 // ---------------------------------------------
@@ -601,25 +601,25 @@ S.optional(S.String, { default: null })
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: boolean | undefined; }, { readonly a: string; readonly b: number; readonly c?: boolean | undefined; }, never>
 S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean) }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<"?:", boolean | undefined, never, "?:", boolean | undefined, never>; }>
+// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<"?:", boolean | undefined, never, "?:", boolean | undefined, false, never>; }>
 S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean) })
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: number | undefined; }, { readonly a: string; readonly b: number; readonly c?: string | undefined; }, never>
 S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString) }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<"?:", number | undefined, never, "?:", string | undefined, never>; }>
+// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<"?:", number | undefined, never, "?:", string | undefined, false, never>; }>
 S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString) })
 
 // $ExpectType Schema<{ readonly a?: undefined; }, { readonly a?: undefined; }, never>
 S.asSchema(S.Struct({ a: S.optional(S.Never) }))
 
-// $ExpectType Struct<{ a: PropertySignature<"?:", undefined, never, "?:", undefined, never>; }>
+// $ExpectType Struct<{ a: PropertySignature<"?:", undefined, never, "?:", undefined, false, never>; }>
 S.Struct({ a: S.optional(S.Never) })
 
 // $ExpectType Schema<{ readonly a?: string | undefined; }, { readonly a?: string | undefined; }, never>
 S.asSchema(S.Struct({ a: S.String.pipe(S.optional()) }))
 
-// $ExpectType Struct<{ a: PropertySignature<"?:", string | undefined, never, "?:", string | undefined, never>; }>
+// $ExpectType Struct<{ a: PropertySignature<"?:", string | undefined, never, "?:", string | undefined, false, never>; }>
 S.Struct({ a: S.String.pipe(S.optional()) })
 
 // ---------------------------------------------
@@ -633,7 +633,7 @@ S.asSchema(S.Struct({
   c: S.optional(S.Boolean, { exact: true, default: () => false })
 }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", boolean, never, "?:", boolean, never>; }>
+// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", boolean, never, "?:", boolean, false, never>; }>
 S.Struct({
   a: S.String,
   b: S.Number,
@@ -647,20 +647,20 @@ S.asSchema(S.Struct({
   c: S.optional(S.NumberFromString, { exact: true, default: () => 0 })
 }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", number, never, "?:", string, never>; }>
+// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", number, never, "?:", string, false, never>; }>
 S.Struct({
   a: S.String,
   b: S.Number,
   c: S.optional(S.NumberFromString, { exact: true, default: () => 0 })
 })
 
-// $ExpectType Struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b", never>; }>
+// $ExpectType Struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b", false, never>; }>
 S.Struct({ a: S.optional(S.Literal("a", "b"), { default: () => "a", exact: true }) })
 
 // $ExpectType Schema<{ readonly a: "a" | "b"; }, { readonly a?: "a" | "b"; }, never>
 S.asSchema(S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a" as const, exact: true })) }))
 
-// $ExpectType Struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b", never>; }>
+// $ExpectType Struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b", false, never>; }>
 S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a" as const, exact: true })) })
 
 // ---------------------------------------------
@@ -670,22 +670,22 @@ S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a" as const,
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: boolean; }, { readonly a: string; readonly b: number; readonly c?: boolean | undefined; }, never>
 S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { default: () => false }) }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", boolean, never, "?:", boolean | undefined, never>; }>
+// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", boolean, never, "?:", boolean | undefined, false, never>; }>
 S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { default: () => false }) })
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: number; }, { readonly a: string; readonly b: number; readonly c?: string | undefined; }, never>
 S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString, { default: () => 0 }) }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", number, never, "?:", string | undefined, never>; }>
+// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", number, never, "?:", string | undefined, false, never>; }>
 S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString, { default: () => 0 }) })
 
-// $ExpectType Struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b" | undefined, never>; }>
+// $ExpectType Struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b" | undefined, false, never>; }>
 S.Struct({ a: S.optional(S.Literal("a", "b"), { default: () => "a" }) })
 
 // $ExpectType Schema<{ readonly a: "a" | "b"; }, { readonly a?: "a" | "b" | undefined; }, never>
 S.asSchema(S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a" as const })) }))
 
-// $ExpectType Struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b" | undefined, never>; }>
+// $ExpectType Struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b" | undefined, false, never>; }>
 S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a" as const })) })
 
 // ---------------------------------------------
@@ -695,22 +695,22 @@ S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a" as const 
 // $ExpectType Schema<{ readonly a: number; }, { readonly a?: string | null | undefined; }, never>
 S.asSchema(S.Struct({ a: S.optional(S.NumberFromString, { nullable: true, default: () => 0 }) }))
 
-// $ExpectType Struct<{ a: PropertySignature<":", number, never, "?:", string | null | undefined, never>; }>
+// $ExpectType Struct<{ a: PropertySignature<":", number, never, "?:", string | null | undefined, false, never>; }>
 S.Struct({ a: S.optional(S.NumberFromString, { nullable: true, default: () => 0 }) })
 
 // $ExpectType Schema<{ readonly a: number; }, { readonly a?: string | null; }, never>
 S.asSchema(S.Struct({ a: S.optional(S.NumberFromString, { exact: true, nullable: true, default: () => 0 }) }))
 
-// $ExpectType Struct<{ a: PropertySignature<":", number, never, "?:", string | null, never>; }>
+// $ExpectType Struct<{ a: PropertySignature<":", number, never, "?:", string | null, false, never>; }>
 S.Struct({ a: S.optional(S.NumberFromString, { exact: true, nullable: true, default: () => 0 }) })
 
-// $ExpectType Struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b" | null | undefined, never>; }>
+// $ExpectType Struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b" | null | undefined, false, never>; }>
 S.Struct({ a: S.optional(S.Literal("a", "b"), { default: () => "a", nullable: true }) })
 
 // $ExpectType Schema<{ readonly a: "a" | "b"; }, { readonly a?: "a" | "b" | null | undefined; }, never>
 S.asSchema(S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a" as const, nullable: true })) }))
 
-// $ExpectType Struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b" | null | undefined, never>; }>
+// $ExpectType Struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b" | null | undefined, false, never>; }>
 S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a" as const, nullable: true })) })
 
 // ---------------------------------------------
@@ -720,7 +720,7 @@ S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a" as const,
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: Option<boolean>; }, { readonly a: string; readonly b: number; readonly c?: boolean; }, never>
 S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { exact: true, as: "Option" }) }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", Option<boolean>, never, "?:", boolean, never>; }>
+// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", Option<boolean>, never, "?:", boolean, false, never>; }>
 S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { exact: true, as: "Option" }) })
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: Option<number>; }, { readonly a: string; readonly b: number; readonly c?: string; }, never>
@@ -730,7 +730,7 @@ S.asSchema(S.Struct({
   c: S.optional(S.NumberFromString, { exact: true, as: "Option" })
 }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", Option<number>, never, "?:", string, never>; }>
+// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", Option<number>, never, "?:", string, false, never>; }>
 S.Struct({
   a: S.String,
   b: S.Number,
@@ -740,7 +740,7 @@ S.Struct({
 // $ExpectType Schema<{ readonly a: Option<string>; }, { readonly a?: string; }, never>
 S.asSchema(S.Struct({ a: S.String.pipe(S.optional({ exact: true, as: "Option" })) }))
 
-// $ExpectType Struct<{ a: PropertySignature<":", Option<string>, never, "?:", string, never>; }>
+// $ExpectType Struct<{ a: PropertySignature<":", Option<string>, never, "?:", string, false, never>; }>
 S.Struct({ a: S.String.pipe(S.optional({ exact: true, as: "Option" })) })
 
 // ---------------------------------------------
@@ -750,19 +750,19 @@ S.Struct({ a: S.String.pipe(S.optional({ exact: true, as: "Option" })) })
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: Option<boolean>; }, { readonly a: string; readonly b: number; readonly c?: boolean | undefined; }, never>
 S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { as: "Option" }) }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", Option<boolean>, never, "?:", boolean | undefined, never>; }>
+// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", Option<boolean>, never, "?:", boolean | undefined, false, never>; }>
 S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { as: "Option" }) })
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: Option<number>; }, { readonly a: string; readonly b: number; readonly c?: string | undefined; }, never>
 S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString, { as: "Option" }) }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", Option<number>, never, "?:", string | undefined, never>; }>
+// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", Option<number>, never, "?:", string | undefined, false, never>; }>
 S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString, { as: "Option" }) })
 
 // $ExpectType Schema<{ readonly a: Option<string>; }, { readonly a?: string | undefined; }, never>
 S.asSchema(S.Struct({ a: S.String.pipe(S.optional({ as: "Option" })) }))
 
-// $ExpectType Struct<{ a: PropertySignature<":", Option<string>, never, "?:", string | undefined, never>; }>
+// $ExpectType Struct<{ a: PropertySignature<":", Option<string>, never, "?:", string | undefined, false, never>; }>
 S.Struct({ a: S.String.pipe(S.optional({ as: "Option" })) })
 
 // ---------------------------------------------
@@ -772,13 +772,13 @@ S.Struct({ a: S.String.pipe(S.optional({ as: "Option" })) })
 // $ExpectType Schema<{ readonly a: Option<number>; }, { readonly a?: string | null | undefined; }, never>
 S.asSchema(S.Struct({ a: S.optional(S.NumberFromString, { nullable: true, as: "Option" }) }))
 
-// $ExpectType Struct<{ a: PropertySignature<":", Option<number>, never, "?:", string | null | undefined, never>; }>
+// $ExpectType Struct<{ a: PropertySignature<":", Option<number>, never, "?:", string | null | undefined, false, never>; }>
 S.Struct({ a: S.optional(S.NumberFromString, { nullable: true, as: "Option" }) })
 
 // $ExpectType Schema<{ readonly a: Option<string>; }, { readonly a?: string | null | undefined; }, never>
 S.asSchema(S.Struct({ a: S.String.pipe(S.optional({ nullable: true, as: "Option" })) }))
 
-// $ExpectType Struct<{ a: PropertySignature<":", Option<string>, never, "?:", string | null | undefined, never>; }>
+// $ExpectType Struct<{ a: PropertySignature<":", Option<string>, never, "?:", string | null | undefined, false, never>; }>
 S.Struct({ a: S.String.pipe(S.optional({ nullable: true, as: "Option" })) })
 
 // ---------------------------------------------
@@ -788,13 +788,13 @@ S.Struct({ a: S.String.pipe(S.optional({ nullable: true, as: "Option" })) })
 // $ExpectType Schema<{ readonly a: Option<number>; }, { readonly a?: string | null; }, never>
 S.asSchema(S.Struct({ a: S.optional(S.NumberFromString, { exact: true, nullable: true, as: "Option" }) }))
 
-// $ExpectType Struct<{ a: PropertySignature<":", Option<number>, never, "?:", string | null, never>; }>
+// $ExpectType Struct<{ a: PropertySignature<":", Option<number>, never, "?:", string | null, false, never>; }>
 S.Struct({ a: S.optional(S.NumberFromString, { exact: true, nullable: true, as: "Option" }) })
 
 // $ExpectType Schema<{ readonly a: Option<string>; }, { readonly a?: string | null; }, never>
 S.asSchema(S.Struct({ a: S.String.pipe(S.optional({ exact: true, nullable: true, as: "Option" })) }))
 
-// $ExpectType Struct<{ a: PropertySignature<":", Option<string>, never, "?:", string | null, never>; }>
+// $ExpectType Struct<{ a: PropertySignature<":", Option<string>, never, "?:", string | null, false, never>; }>
 S.Struct({ a: S.String.pipe(S.optional({ exact: true, nullable: true, as: "Option" })) })
 
 // ---------------------------------------------
@@ -1517,14 +1517,14 @@ S.SecretFromSelf
 // propertySignature
 // ---------------------------------------------
 
-// $ExpectType PropertySignature<":", string, never, ":", string, never>
+// $ExpectType PropertySignature<":", string, never, ":", string, false, never>
 S.propertySignature(S.String).annotations({ description: "description" })
 
 // ---------------------------------------------
 // PropertySignature .annotations({}) method
 // ---------------------------------------------
 
-// $ExpectType PropertySignature<"?:", string | undefined, never, "?:", string | undefined, never>
+// $ExpectType PropertySignature<"?:", string | undefined, never, "?:", string | undefined, false, never>
 S.optional(S.String).annotations({ description: "description" })
 
 // ---------------------------------------------
@@ -1692,56 +1692,72 @@ hole<Simplify<S.Struct.Type<{ a: S.Schema<number, string> }>>>()
 // $ExpectType { readonly a: number; readonly b: number; }
 hole<
   Simplify<
-    S.Struct.Type<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, ":", string, "context"> }>
+    S.Struct.Type<
+      { a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, ":", string, false, "context"> }
+    >
   >
 >()
 
 // $ExpectType { readonly a: number; readonly b: number; }
 hole<
   Simplify<
-    S.Struct.Type<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, "?:", string, "context"> }>
+    S.Struct.Type<
+      { a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, "?:", string, false, "context"> }
+    >
   >
 >()
 
 // $ExpectType { readonly a: number; readonly b: number; }
 hole<
   Simplify<
-    S.Struct.Type<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", ":", string, "context"> }>
+    S.Struct.Type<
+      { a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", ":", string, false, "context"> }
+    >
   >
 >()
 
 // $ExpectType { readonly a: number; readonly b: number; }
 hole<
   Simplify<
-    S.Struct.Type<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", "?:", string, "context"> }>
+    S.Struct.Type<
+      { a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", "?:", string, false, "context"> }
+    >
   >
 >()
 
 // $ExpectType { readonly a: number; readonly b?: number; }
 hole<
   Simplify<
-    S.Struct.Type<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, ":", string, "context"> }>
+    S.Struct.Type<
+      { a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, ":", string, false, "context"> }
+    >
   >
 >()
 
 // $ExpectType { readonly a: number; readonly b?: number; }
 hole<
   Simplify<
-    S.Struct.Type<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, "?:", string, "context"> }>
+    S.Struct.Type<
+      { a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, "?:", string, false, "context"> }
+    >
   >
 >()
 
 // $ExpectType { readonly a: number; readonly b?: number; }
 hole<
   Simplify<
-    S.Struct.Type<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", ":", string, "context"> }>
+    S.Struct.Type<
+      { a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", ":", string, false, "context"> }
+    >
   >
 >()
 
 // $ExpectType { readonly a: number; readonly b?: number; }
 hole<
   Simplify<
-    S.Struct.Type<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", "?:", string, "context"> }>
+    S.Struct.Type<
+      { a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", "?:", string, false, "context"> }
+    >
   >
 >()
 
@@ -1765,7 +1781,7 @@ hole<Simplify<S.Struct.Encoded<{ a: S.Schema<number, string> }>>>()
 hole<
   Simplify<
     S.Struct.Encoded<
-      { a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, ":", string, "context"> }
+      { a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, ":", string, false, "context"> }
     >
   >
 >()
@@ -1774,7 +1790,7 @@ hole<
 hole<
   Simplify<
     S.Struct.Encoded<
-      { a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, "?:", string, "context"> }
+      { a: S.Schema<number, string>; b: S.PropertySignature<":", number, never, "?:", string, false, "context"> }
     >
   >
 >()
@@ -1782,14 +1798,18 @@ hole<
 // $ExpectType { readonly a: string; readonly c: string; }
 hole<
   Simplify<
-    S.Struct.Encoded<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", ":", string, "context"> }>
+    S.Struct.Encoded<
+      { a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", ":", string, false, "context"> }
+    >
   >
 >()
 
 // $ExpectType { readonly a: string; readonly c?: string; }
 hole<
   Simplify<
-    S.Struct.Encoded<{ a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", "?:", string, "context"> }>
+    S.Struct.Encoded<
+      { a: S.Schema<number, string>; b: S.PropertySignature<":", number, "c", "?:", string, false, "context"> }
+    >
   >
 >()
 
@@ -1797,7 +1817,7 @@ hole<
 hole<
   Simplify<
     S.Struct.Encoded<
-      { a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, ":", string, "context"> }
+      { a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, ":", string, false, "context"> }
     >
   >
 >()
@@ -1806,7 +1826,7 @@ hole<
 hole<
   Simplify<
     S.Struct.Encoded<
-      { a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, "?:", string, "context"> }
+      { a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, never, "?:", string, false, "context"> }
     >
   >
 >()
@@ -1814,7 +1834,9 @@ hole<
 // $ExpectType { readonly a: string; readonly c: string; }
 hole<
   Simplify<
-    S.Struct.Encoded<{ a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", ":", string, "context"> }>
+    S.Struct.Encoded<
+      { a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", ":", string, false, "context"> }
+    >
   >
 >()
 
@@ -1822,7 +1844,7 @@ hole<
 hole<
   Simplify<
     S.Struct.Encoded<
-      { a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", "?:", string, "context"> }
+      { a: S.Schema<number, string>; b: S.PropertySignature<"?:", number, "c", "?:", string, false, "context"> }
     >
   >
 >()
