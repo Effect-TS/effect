@@ -9,9 +9,9 @@ import { describe, expect, it } from "vitest"
 
 describe("Either", () => {
   it("gen", () => {
-    const a = Either.gen(function*($) {
-      const x = yield* $(Either.right(1))
-      const y = yield* $(Either.right(2))
+    const a = Either.gen(function*() {
+      const x = yield* Either.right(1)
+      const y = yield* Either.right(2)
       return x + y
     })
     // eslint-disable-next-line require-yield
@@ -26,10 +26,10 @@ describe("Either", () => {
       yield* $(Either.right(1))
       return yield* $(Either.right(2))
     })
-    const e = Either.gen(function*($) {
-      yield* $(Either.right(1))
-      yield* $(Either.left("err"))
-      return yield* $(Either.right(2))
+    const e = Either.gen(function*() {
+      yield* Either.right(1)
+      yield* Either.left("err")
+      return yield* Either.right(2)
     })
     const f = Either.gen(function*($) {
       yield* $(Either.left("err"))
