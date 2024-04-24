@@ -100,20 +100,20 @@ pipe(
 )
 
 // -------------------------------------------------------------------------------------
-// forEach - tuple
+// forEach - tuple as non empty array
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Effect<[string, ...string[]], "err-1", "dep-1">
-Effect.forEach(["a", "b"], (
-  // $ExpectType string
+Effect.forEach(["a", "b"] as const, (
+  // $ExpectType "a" | "b"
   _a,
   // $ExpectType number
   _i
 ) => string)
 
 // $ExpectType Effect<void, "err-1", "dep-1">
-Effect.forEach(["a", "b"], (
-  // $ExpectType string
+Effect.forEach(["a", "b"] as const, (
+  // $ExpectType "a" | "b"
   _a,
   // $ExpectType number
   _i
@@ -121,9 +121,9 @@ Effect.forEach(["a", "b"], (
 
 // $ExpectType Effect<[string, ...string[]], "err-1", "dep-1">
 pipe(
-  ["a", "b"] as NonEmptyReadonlyArray<string>,
+  ["a", "b"] as const,
   Effect.forEach((
-    // $ExpectType string
+    // $ExpectType "a" | "b"
     _a,
     // $ExpectType number
     _i
@@ -132,9 +132,9 @@ pipe(
 
 // $ExpectType Effect<void, "err-1", "dep-1">
 pipe(
-  ["a", "b"] as NonEmptyReadonlyArray<string>,
+  ["a", "b"] as const,
   Effect.forEach((
-    // $ExpectType string
+    // $ExpectType "a" | "b"
     _a,
     // $ExpectType number
     _i
