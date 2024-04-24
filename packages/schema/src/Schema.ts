@@ -1342,7 +1342,8 @@ export class PropertySignatureDeclaration {
     readonly type: AST.AST,
     readonly isOptional: boolean,
     readonly isReadonly: boolean,
-    readonly annotations: AST.Annotations
+    readonly annotations: AST.Annotations,
+    readonly defaultValue: (() => unknown) | undefined
   ) {}
   /**
    * @since 1.0.0
@@ -1377,7 +1378,8 @@ export class ToPropertySignature implements AST.Annotated {
     readonly type: AST.AST,
     readonly isOptional: boolean,
     readonly isReadonly: boolean,
-    readonly annotations: AST.Annotations
+    readonly annotations: AST.Annotations,
+    readonly defaultValue: (() => unknown) | undefined
   ) {}
 }
 
@@ -1438,7 +1440,8 @@ const propertySignatureAnnotations_ = (
         ast.type,
         ast.isOptional,
         ast.isReadonly,
-        { ...ast.annotations, ...annotations }
+        { ...ast.annotations, ...annotations },
+        undefined
       )
     }
     case "PropertySignatureTransformation": {
@@ -1452,7 +1455,7 @@ const propertySignatureAnnotations_ = (
         new ToPropertySignature(ast.to.type, ast.to.isOptional, ast.to.isReadonly, {
           ...ast.to.annotations,
           ...annotations
-        }),
+        }, undefined),
         ast.decode,
         ast.encode
       )
@@ -1470,14 +1473,14 @@ export interface PropertySignature<
   Key extends PropertyKey,
   EncodedToken extends PropertySignature.Token,
   Encoded,
-  HasDefault extends boolean,
+  HasDefault extends boolean = false,
   R = never
 > extends Schema.Variance<Type, Encoded, R>, Pipeable {
   readonly [PropertySignatureTypeId]: null
-  readonly _EncodedToken: EncodedToken
   readonly _TypeToken: TypeToken
-  readonly _Key: Key
+  readonly _EncodedToken: EncodedToken
   readonly _HasDefault: HasDefault
+  readonly _Key: Key
   readonly ast: PropertySignature.AST
 
   annotations(
@@ -1492,14 +1495,14 @@ export class PropertySignatureImpl<
   Key extends PropertyKey,
   EncodedToken extends PropertySignature.Token,
   Encoded,
-  HasDefault extends boolean,
+  HasDefault extends boolean = false,
   R = never
 > implements PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, HasDefault, R> {
   readonly [TypeId]!: Schema.Variance<Type, Encoded, R>[TypeId]
   readonly [PropertySignatureTypeId] = null
+  readonly _TypeToken!: TypeToken
   readonly _Key!: Key
   readonly _EncodedToken!: EncodedToken
-  readonly _TypeToken!: TypeToken
   readonly _HasDefault!: HasDefault
 
   constructor(
@@ -1528,7 +1531,61 @@ export class PropertySignatureImpl<
 export const propertySignature = <A, I, R>(
   self: Schema<A, I, R>
 ): PropertySignature<PropertySignature.GetToken<false>, A, never, PropertySignature.GetToken<false>, I, false, R> =>
-  new PropertySignatureImpl(new PropertySignatureDeclaration(self.ast, false, true, {}))
+  new PropertySignatureImpl(new PropertySignatureDeclaration(self.ast, false, true, {}, undefined))
+
+/**
+ * @category PropertySignature
+ * @since 1.0.0
+ */
+export const withDefault: {
+  <Type>(defaultValue: () => NoInfer<Type>): <
+    TypeToken extends PropertySignature.Token,
+    Key extends PropertyKey,
+    EncodedToken extends PropertySignature.Token,
+    Encoded,
+    R
+  >(
+    self: PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, boolean, R>
+  ) => PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, true, R>
+  <
+    TypeToken extends PropertySignature.Token,
+    Type,
+    Key extends PropertyKey,
+    EncodedToken extends PropertySignature.Token,
+    Encoded,
+    R
+  >(
+    self: PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, boolean, R>,
+    defaultValue: () => NoInfer<Type>
+  ): PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, true, R>
+} = dual(2, <
+  TypeToken extends PropertySignature.Token,
+  Type,
+  Key extends PropertyKey,
+  EncodedToken extends PropertySignature.Token,
+  Encoded,
+  R
+>(
+  self: PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, boolean, R>,
+  defaultValue: () => NoInfer<Type>
+): PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, true, R> => {
+  const ast = self.ast
+  switch (ast._tag) {
+    case "PropertySignatureDeclaration":
+      return new PropertySignatureImpl(
+        new PropertySignatureDeclaration(ast.type, ast.isOptional, ast.isReadonly, ast.annotations, defaultValue)
+      )
+    case "PropertySignatureTransformation":
+      return new PropertySignatureImpl(
+        new PropertySignatureTransformation(
+          ast.from,
+          new ToPropertySignature(ast.to.type, ast.to.isOptional, ast.to.isReadonly, ast.to.annotations, defaultValue),
+          ast.decode,
+          ast.encode
+        )
+      )
+  }
+})
 
 /**
  * @category PropertySignature
@@ -1536,10 +1593,10 @@ export const propertySignature = <A, I, R>(
  */
 export const fromKey: {
   <Key extends PropertyKey>(key: Key): <
-    Type,
     TypeToken extends PropertySignature.Token,
-    Encoded,
+    Type,
     EncodedToken extends PropertySignature.Token,
+    Encoded,
     HasDefault extends boolean,
     R
   >(
@@ -1581,7 +1638,7 @@ export const fromKey: {
             ast.annotations,
             key
           ),
-          new ToPropertySignature(AST.typeAST(ast.type), ast.isOptional, ast.isReadonly, {}),
+          new ToPropertySignature(AST.typeAST(ast.type), ast.isOptional, ast.isReadonly, {}, undefined),
           identity,
           identity
         )
@@ -1623,7 +1680,7 @@ export const optionalToRequired = <FA, FI, FR, TA, TI, TR>(
   new PropertySignatureImpl(
     new PropertySignatureTransformation(
       new FromPropertySignature(from.ast, true, true, {}, undefined),
-      new ToPropertySignature(to.ast, false, true, {}),
+      new ToPropertySignature(to.ast, false, true, {}, undefined),
       (o) => option_.some(options.decode(o)),
       option_.flatMap(options.encode)
     )
@@ -1651,7 +1708,7 @@ export const optionalToOptional = <FA, FI, FR, TA, TI, TR>(
   new PropertySignatureImpl(
     new PropertySignatureTransformation(
       new FromPropertySignature(from.ast, true, true, {}, undefined),
-      new ToPropertySignature(to.ast, true, true, {}),
+      new ToPropertySignature(to.ast, true, true, {}, undefined),
       options.decode,
       options.encode
     )
@@ -1801,7 +1858,7 @@ export const optional: {
           { decode: option_.filter(Predicate.isNotNull<A | null>), encode: identity }
         )
       } else {
-        return new PropertySignatureImpl(new PropertySignatureDeclaration(schema.ast, true, true, {}))
+        return new PropertySignatureImpl(new PropertySignatureDeclaration(schema.ast, true, true, {}, undefined))
       }
     }
   } else {
@@ -1848,7 +1905,7 @@ export const optional: {
         )
       } else {
         return new PropertySignatureImpl(
-          new PropertySignatureDeclaration(UndefinedOr(schema).ast, true, true, {})
+          new PropertySignatureDeclaration(UndefinedOr(schema).ast, true, true, {}, undefined)
         )
       }
     }
@@ -1912,6 +1969,23 @@ export declare namespace Struct {
    * @since 1.0.0
    */
   export type Context<F extends Fields> = Schema.Context<F[keyof F]>
+
+  type PropertySignatureWithDefault =
+    | PropertySignature<PropertySignature.Token, any, PropertyKey, PropertySignature.Token, any, true, unknown>
+    | PropertySignature<PropertySignature.Token, any, PropertyKey, PropertySignature.Token, never, true, unknown>
+    | PropertySignature<PropertySignature.Token, never, PropertyKey, PropertySignature.Token, any, true, unknown>
+    | PropertySignature<PropertySignature.Token, never, PropertyKey, PropertySignature.Token, never, true, unknown>
+
+  /**
+   * @since 1.0.0
+   */
+  export type Constructor<F extends Fields> = Types.UnionToIntersection<
+    {
+      [K in keyof F]: F[K] extends OptionalPropertySignature ? { readonly [H in K]?: Schema.Type<F[H]> } :
+        F[K] extends PropertySignatureWithDefault ? { readonly [H in K]?: Schema.Type<F[H]> } :
+        { readonly [h in K]: Schema.Type<F[h]> }
+    }[keyof F]
+  > extends infer Q ? Q : never
 }
 
 /**
@@ -1984,6 +2058,13 @@ export declare namespace TypeLiteral {
   export type Encoded<Fields extends Struct.Fields, Records extends IndexSignature.Records> =
     & Struct.Encoded<Fields>
     & IndexSignature.Encoded<Records>
+
+  /**
+   * @since 1.0.0
+   */
+  export type Constructor<Fields extends Struct.Fields, Records extends IndexSignature.Records> =
+    & Struct.Constructor<Fields>
+    & IndexSignature.Type<Records>
 }
 
 /**
@@ -2007,7 +2088,9 @@ export interface TypeLiteral<
   annotations(
     annotations: Annotations.Schema<Types.Simplify<TypeLiteral.Type<Fields, Records>>>
   ): TypeLiteral<Fields, Records>
-  make(a: Types.Simplify<TypeLiteral.Type<Fields, Records>>): Types.Simplify<TypeLiteral.Type<Fields, Records>>
+  make(
+    props: Types.Simplify<TypeLiteral.Constructor<Fields, Records>>
+  ): Types.Simplify<TypeLiteral.Type<Fields, Records>>
 }
 
 const isPropertySignature = (u: unknown): u is PropertySignature.All =>
@@ -2090,6 +2173,22 @@ const getDefaultTypeLiteralAST = <
   return new AST.TypeLiteral(pss, iss)
 }
 
+const getFieldsDefaults = (fields: Struct.Fields): object => {
+  const out: any = {}
+  const ownKeys = util_.ownKeys(fields)
+  for (const key of ownKeys) {
+    const field = fields[key]
+    if (isPropertySignature(field)) {
+      const ast = field.ast
+      const defaultValue = ast._tag === "PropertySignatureDeclaration" ? ast.defaultValue : ast.to.defaultValue
+      if (defaultValue !== undefined) {
+        out[key] = defaultValue()
+      }
+    }
+  }
+  return out
+}
+
 const makeTypeLiteralClass = <
   Fields extends Struct.Fields,
   const Records extends IndexSignature.Records
@@ -2097,8 +2196,9 @@ const makeTypeLiteralClass = <
   fields: Fields,
   records: Records,
   ast: AST.AST = getDefaultTypeLiteralAST(fields, records)
-): TypeLiteral<Fields, Records> =>
-  class TypeLiteralClass extends make<
+): TypeLiteral<Fields, Records> => {
+  const defaults = getFieldsDefaults(fields)
+  return class TypeLiteralClass extends make<
     Types.Simplify<TypeLiteral.Type<Fields, Records>>,
     Types.Simplify<TypeLiteral.Encoded<Fields, Records>>,
     | Struct.Context<Fields>
@@ -2115,11 +2215,12 @@ const makeTypeLiteralClass = <
     static records = [...records] as Records
 
     static make(
-      a: Types.Simplify<TypeLiteral.Type<Fields, Records>>
+      props: Types.Simplify<TypeLiteral.Constructor<Fields, Records>>
     ): Types.Simplify<TypeLiteral.Type<Fields, Records>> {
-      return ParseResult.validateSync(this)(a)
+      return ParseResult.validateSync(this)({ ...defaults, ...props as any })
     }
   }
+}
 
 /**
  * @category api interface
@@ -2256,7 +2357,9 @@ export const pluck: {
  * @category branding
  * @since 1.0.0
  */
-export interface BrandSchema<A extends Brand<any>, I, R> extends AnnotableClass<BrandSchema<A, I, R>, A, I, R> {
+export interface BrandSchema<A extends Brand<any>, I = A, R = never>
+  extends AnnotableClass<BrandSchema<A, I, R>, A, I, R>
+{
   make(a: Brand.Unbranded<A>): A
 }
 
@@ -6111,7 +6214,7 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
       Types.Simplify<A & Struct.Type<newFields>>,
       Types.Simplify<I & Struct.Encoded<newFields>>,
       R | Struct.Context<newFields>,
-      Types.Simplify<C & Struct.Type<newFields>>,
+      Types.Simplify<C & Struct.Constructor<newFields>>,
       Self,
       Proto
     >
@@ -6142,7 +6245,7 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
       Types.Simplify<A & Struct.Type<newFields>>,
       I,
       R | Struct.Context<newFields> | R2 | R3,
-      Types.Simplify<C & Struct.Type<newFields>>,
+      Types.Simplify<C & Struct.Constructor<newFields>>,
       Self,
       Proto
     >
@@ -6173,7 +6276,7 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
       Types.Simplify<A & Struct.Type<newFields>>,
       I,
       R | Struct.Context<newFields> | R2 | R3,
-      Types.Simplify<C & Struct.Type<newFields>>,
+      Types.Simplify<C & Struct.Constructor<newFields>>,
       Self,
       Proto
     >
@@ -6194,7 +6297,7 @@ export const Class = <Self = never>(identifier: string) =>
     Types.Simplify<Struct.Type<Fields>>,
     Types.Simplify<Struct.Encoded<Fields>>,
     Struct.Context<Fields>,
-    Types.Simplify<Struct.Type<Fields>>,
+    Types.Simplify<Struct.Constructor<Fields>>,
     {},
     {}
   > => makeClass({ kind: "Class", identifier, fields, Base: data_.Class, annotations })
@@ -6215,7 +6318,7 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
     Types.Simplify<{ readonly _tag: Tag } & Struct.Type<Fields>>,
     Types.Simplify<{ readonly _tag: Tag } & Struct.Encoded<Fields>>,
     Struct.Context<Fields>,
-    Types.Simplify<Struct.Type<Fields>>,
+    Types.Simplify<Struct.Constructor<Fields>>,
     {},
     {}
   > =>
@@ -6244,7 +6347,7 @@ export const TaggedError = <Self = never>(identifier?: string) =>
     Types.Simplify<{ readonly _tag: Tag } & Struct.Type<Fields>>,
     Types.Simplify<{ readonly _tag: Tag } & Struct.Encoded<Fields>>,
     Struct.Context<Fields>,
-    Types.Simplify<Struct.Type<Fields>>,
+    Types.Simplify<Struct.Constructor<Fields>>,
     {},
     cause_.YieldableError
   > =>
@@ -6313,7 +6416,7 @@ export const TaggedRequest =
       Types.Simplify<{ readonly _tag: Tag } & Struct.Type<Fields>>,
       Types.Simplify<{ readonly _tag: Tag } & Struct.Encoded<Fields>>,
       Struct.Context<Fields>,
-      Types.Simplify<Struct.Type<Fields>>,
+      Types.Simplify<Struct.Constructor<Fields>>,
       TaggedRequest<
         Tag,
         Self,
@@ -6375,11 +6478,14 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
     onSome: () => schema
   })
 
+  const defaults = getFieldsDefaults(fields)
+
   return class extends Base {
     constructor(
       props: { [x: string | symbol]: unknown } = {},
       disableValidation: boolean = false
     ) {
+      props = { ...defaults, ...props }
       if (tag !== undefined) {
         props = { ...props, ...tag }
       }
