@@ -34,7 +34,7 @@ const tokenBucket = (limit: number, window: DurationInput): Effect.Effect<
   Effect.gen(function*(_) {
     const millisPerToken = Math.ceil(Duration.toMillis(window) / limit)
     const semaphore = yield* _(Effect.makeSemaphore(limit))
-    const latch = yield* _(Effect.makeSemaphore(0))
+    const latch = yield* Effect.makeSemaphore(0)
     const refill: Effect.Effect<void> = Effect.sleep(millisPerToken).pipe(
       Effect.zipRight(latch.releaseAll),
       Effect.zipRight(semaphore.release(1)),

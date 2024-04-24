@@ -59,8 +59,8 @@ export const Spawner = Context.GenericTag<Worker.Spawner, Worker.SpawnerFn>(
 )
 
 /** @internal */
-export const makeManager = Effect.gen(function*(_) {
-  const platform = yield* _(PlatformWorker)
+export const makeManager = Effect.gen(function*() {
+  const platform = yield* PlatformWorker
   let idCounter = 0
   return WorkerManager.of({
     [WorkerManagerTypeId]: WorkerManagerTypeId,
@@ -71,19 +71,19 @@ export const makeManager = Effect.gen(function*(_) {
       queue,
       transfers = (_) => []
     }: Worker.Worker.Options<I>) {
-      return Effect.gen(function*(_) {
-        const spawn = yield* _(Spawner)
+      return Effect.gen(function*() {
+        const spawn = yield* Spawner
         const id = idCounter++
         let requestIdCounter = 0
-        const semaphore = yield* _(Effect.makeSemaphore(permits))
+        const semaphore = yield* Effect.makeSemaphore(permits)
         const requestMap = new Map<
           number,
           readonly [Queue.Queue<Exit.Exit<ReadonlyArray<O>, E | WorkerError>>, Deferred.Deferred<void>]
         >()
-        const sendQueue = yield* _(Effect.acquireRelease(
+        const sendQueue = yield* Effect.acquireRelease(
           Queue.unbounded<readonly [message: Worker.Worker.Request, transfers?: ReadonlyArray<unknown>]>(),
           Queue.shutdown
-        ))
+        )
 
         const collector = Transferable.unsafeMakeCollector()
         const wrappedEncode = encode ?
@@ -94,36 +94,33 @@ export const makeManager = Effect.gen(function*(_) {
             )) :
           Effect.succeed
 
-        const outbound = queue ?? (yield* _(defaultQueue<I>()))
-        yield* _(Effect.addFinalizer(() => outbound.shutdown))
+        const outbound = queue ?? (yield* defaultQueue<I>())
+        yield Effect.addFinalizer(() => outbound.shutdown)
 
-        yield* _(
-          Effect.gen(function*(_) {
-            const readyLatch = yield* _(Deferred.make<void>())
-            const backing = yield* _(
-              platform.spawn<Worker.Worker.Request, Worker.Worker.Response<E, O>>(spawn(id))
-            )
-            const send = pipe(
-              sendQueue.take,
-              Effect.flatMap(([message, transfers]) => backing.send(message, transfers)),
-              Effect.forever
-            )
-            const take = pipe(
-              Queue.take(backing.queue),
-              Effect.flatMap((msg) => {
-                if (msg[0] === 0) {
-                  return Deferred.complete(readyLatch, Effect.void)
-                }
-                return handleMessage(msg[1])
-              }),
-              Effect.forever
-            )
-            return yield* _(Effect.all([
-              Fiber.join(backing.fiber),
-              Effect.zipRight(Deferred.await(readyLatch), send),
-              take
-            ], { concurrency: "unbounded" }))
-          }),
+        yield Effect.gen(function*() {
+          const readyLatch = yield* Deferred.make<void>()
+          const backing = yield* platform.spawn<Worker.Worker.Request, Worker.Worker.Response<E, O>>(spawn(id))
+          const send = pipe(
+            sendQueue.take,
+            Effect.flatMap(([message, transfers]) => backing.send(message, transfers)),
+            Effect.forever
+          )
+          const take = pipe(
+            Queue.take(backing.queue),
+            Effect.flatMap((msg) => {
+              if (msg[0] === 0) {
+                return Deferred.complete(readyLatch, Effect.void)
+              }
+              return handleMessage(msg[1])
+            }),
+            Effect.forever
+          )
+          return yield* Effect.all([
+            Fiber.join(backing.fiber),
+            Effect.zipRight(Deferred.await(readyLatch), send),
+            take
+          ], { concurrency: "unbounded" })
+        }).pipe(
           Effect.scoped,
           Effect.onError((cause) =>
             Effect.forEach(requestMap.values(), ([queue]) => Queue.offer(queue, Exit.failCause(cause)))
@@ -141,14 +138,14 @@ export const makeManager = Effect.gen(function*(_) {
           Effect.forkScoped
         )
 
-        yield* _(Effect.addFinalizer(() =>
+        yield Effect.addFinalizer(() =>
           Effect.zipRight(
             Effect.forEach(requestMap.values(), ([queue]) => Queue.offer(queue, Exit.failCause(Cause.empty)), {
               discard: true
             }),
             Effect.sync(() => requestMap.clear())
           )
-        ))
+        )
 
         const handleMessage = (response: Worker.Worker.Response<E, O>) =>
           Effect.suspend(() => {
@@ -244,8 +241,7 @@ export const makeManager = Effect.gen(function*(_) {
             executeRelease
           )
 
-        yield* _(
-          semaphore.take(1),
+        yield semaphore.take(1).pipe(
           Effect.zipRight(outbound.take),
           Effect.flatMap(([id, request, span]) =>
             pipe(
@@ -279,8 +275,7 @@ export const makeManager = Effect.gen(function*(_) {
         )
 
         if (initialMessage) {
-          yield* _(
-            Effect.sync(initialMessage),
+          yield Effect.sync(initialMessage).pipe(
             Effect.flatMap(executeEffect),
             Effect.mapError((error) => new WorkerError({ reason: "spawn", error }))
           )
@@ -299,8 +294,8 @@ export const layerManager = Layer.effect(WorkerManager, makeManager)
 export const makePool = <I, O, E>(
   options: Worker.WorkerPool.Options<I>
 ) =>
-  Effect.gen(function*(_) {
-    const manager = yield* _(WorkerManager)
+  Effect.gen(function*() {
+    const manager = yield* WorkerManager
     const workers = new Set<Worker.Worker<I, O, E>>()
     const acquire = pipe(
       manager.spawn<I, O, E>(options),
@@ -308,19 +303,17 @@ export const makePool = <I, O, E>(
       Effect.tap((worker) => Effect.addFinalizer(() => Effect.sync(() => workers.delete(worker)))),
       options.onCreate ? Effect.tap(options.onCreate) : identity
     )
-    const backing = yield* _(
-      "timeToLive" in options ?
-        Pool.makeWithTTL({
-          acquire,
-          min: options.minSize,
-          max: options.maxSize,
-          timeToLive: options.timeToLive
-        }) :
-        Pool.make({
-          acquire,
-          size: options.size
-        })
-    )
+    const backing = yield* "timeToLive" in options ?
+      Pool.makeWithTTL({
+        acquire,
+        min: options.minSize,
+        max: options.maxSize,
+        timeToLive: options.timeToLive
+      }) :
+      Pool.make({
+        acquire,
+        size: options.size
+      })
     const pool: Worker.WorkerPool<I, O, E> = {
       backing,
       broadcast: (message: I) =>
@@ -357,19 +350,17 @@ export const makeSerialized = <
 >(
   options: Worker.SerializedWorker.Options<I>
 ): Effect.Effect<Worker.SerializedWorker<I>, WorkerError, Worker.WorkerManager | Worker.Spawner | Scope.Scope> =>
-  Effect.gen(function*(_) {
-    const manager = yield* _(WorkerManager)
-    const backing = yield* _(
-      manager.spawn({
-        ...options as any,
-        encode(message) {
-          return Effect.mapError(
-            Serializable.serialize(message as any),
-            (error) => new WorkerError({ reason: "encode", error })
-          )
-        }
-      })
-    )
+  Effect.gen(function*() {
+    const manager = yield* WorkerManager
+    const backing = yield* manager.spawn({
+      ...options as any,
+      encode(message) {
+        return Effect.mapError(
+          Serializable.serialize(message as any),
+          (error) => new WorkerError({ reason: "encode", error })
+        )
+      }
+    })
     const execute = <Req extends I>(message: Req) => {
       const parseSuccess = Schema.decode(Serializable.successSchema(message as any))
       const parseFailure = Schema.decode(Serializable.failureSchema(message as any))
@@ -398,8 +389,8 @@ export const makeSerialized = <
 export const makePoolSerialized = <I extends Schema.TaggedRequest.Any>(
   options: Worker.SerializedWorkerPool.Options<I>
 ) =>
-  Effect.gen(function*(_) {
-    const manager = yield* _(WorkerManager)
+  Effect.gen(function*() {
+    const manager = yield* WorkerManager
     const workers = new Set<Worker.SerializedWorker<I>>()
     const acquire = pipe(
       makeSerialized<I>(options),
@@ -412,19 +403,17 @@ export const makePoolSerialized = <I extends Schema.TaggedRequest.Any>(
         : identity,
       Effect.provideService(WorkerManager, manager)
     )
-    const backing = yield* _(
-      "timeToLive" in options ?
-        Pool.makeWithTTL({
-          acquire,
-          min: options.minSize,
-          max: options.maxSize,
-          timeToLive: options.timeToLive
-        }) :
-        Pool.make({
-          acquire,
-          size: options.size
-        })
-    )
+    const backing = yield* "timeToLive" in options ?
+      Pool.makeWithTTL({
+        acquire,
+        min: options.minSize,
+        max: options.maxSize,
+        timeToLive: options.timeToLive
+      }) :
+      Pool.make({
+        acquire,
+        size: options.size
+      })
     const pool: Worker.SerializedWorkerPool<I> = {
       backing,
       broadcast: <Req extends I>(message: Req) =>

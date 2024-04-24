@@ -94,6 +94,18 @@ export interface Effect<out A, out E = never, out R = never> extends Effect.Vari
   readonly [Unify.typeSymbol]?: unknown
   readonly [Unify.unifySymbol]?: EffectUnify<this>
   readonly [Unify.ignoreSymbol]?: EffectUnifyIgnore
+  [Symbol.iterator](): EffectGenerator<Effect<A, E, R>>
+}
+
+/**
+ * @since 3.0.0
+ * @category models
+ */
+export interface EffectGenerator<Eff extends Effect<any, any, any>> {
+  next(...args: ReadonlyArray<any>): IteratorResult<Eff, Effect.Success<Eff>>
+  return(value: Effect.Success<Eff>): IteratorResult<Eff, Effect.Success<Eff>>
+  throw(e: any): IteratorResult<Eff, Effect.Success<Eff>>
+  [Symbol.iterator](): EffectGenerator<Eff>
 }
 
 /**
@@ -139,7 +151,9 @@ export interface Blocked<out A, out E> extends Effect<A, E> {
  * @category models
  */
 declare module "./Context.js" {
-  interface Tag<Id, Value> extends Effect<Value, never, Id> {}
+  interface Tag<Id, Value> extends Effect<Value, never, Id> {
+    [Symbol.iterator](): EffectGenerator<Tag<Id, Value>>
+  }
   interface TagUnifyIgnore {
     Effect?: true
     Either?: true
@@ -154,9 +168,11 @@ declare module "./Context.js" {
 declare module "./Either.js" {
   interface Left<L, R> extends Effect<R, L> {
     readonly _tag: "Left"
+    [Symbol.iterator](): EffectGenerator<Left<L, R>>
   }
   interface Right<L, R> extends Effect<R, L> {
     readonly _tag: "Right"
+    [Symbol.iterator](): EffectGenerator<Right<L, R>>
   }
   interface EitherUnifyIgnore {
     Effect?: true
@@ -172,9 +188,11 @@ declare module "./Either.js" {
 declare module "./Option.js" {
   interface None<A> extends Effect<A, Cause.NoSuchElementException> {
     readonly _tag: "None"
+    [Symbol.iterator](): EffectGenerator<None<A>>
   }
   interface Some<A> extends Effect<A, Cause.NoSuchElementException> {
     readonly _tag: "Some"
+    [Symbol.iterator](): EffectGenerator<Some<A>>
   }
   interface OptionUnifyIgnore {
     Effect?: true
@@ -1104,52 +1122,39 @@ export const dieSync: (evaluate: LazyArg<unknown>) => Effect<never> = core.dieSy
  * @category constructors
  */
 export const gen: {
-  <Eff extends EffectGen<any, any, any>, AEff>(
+  <Eff extends Effect<any, any, any>, AEff>(
     f: (resume: Adapter) => Generator<Eff, AEff, any>
   ): Effect<
     AEff,
-    [Eff] extends [never] ? never : [Eff] extends [EffectGen<any, infer E, any>] ? E : never,
-    [Eff] extends [never] ? never : [Eff] extends [EffectGen<any, any, infer R>] ? R : never
+    [Eff] extends [never] ? never : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E : never,
+    [Eff] extends [never] ? never : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R : never
   >
-  <Self, Eff extends EffectGen<any, any, any>, AEff>(
+  <Self, Eff extends Effect<any, any, any>, AEff>(
     self: Self,
     f: (this: Self, resume: Adapter) => Generator<Eff, AEff, any>
   ): Effect<
     AEff,
-    [Eff] extends [never] ? never : [Eff] extends [EffectGen<any, infer E, any>] ? E : never,
-    [Eff] extends [never] ? never : [Eff] extends [EffectGen<any, any, infer R>] ? R : never
+    [Eff] extends [never] ? never : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E : never,
+    [Eff] extends [never] ? never : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R : never
   >
 } = effect.gen
-
-/**
- * @category models
- * @since 2.0.0
- */
-export interface EffectGen<out A, out E, out R> {
-  readonly _A: () => A
-  readonly _E: () => E
-  readonly _R: () => R
-  readonly value: Effect<A, E, R>
-
-  [Symbol.iterator](): Generator<EffectGen<A, E, R>, A>
-}
 
 /**
  * @since 2.0.0
  * @category models
  */
 export interface Adapter {
-  <A, E, R>(self: Effect<A, E, R>): EffectGen<A, E, R>
-  <A, _A, _E, _R>(a: A, ab: (a: A) => Effect<_A, _E, _R>): EffectGen<_A, _E, _R>
-  <A, B, _A, _E, _R>(a: A, ab: (a: A) => B, bc: (b: B) => Effect<_A, _E, _R>): EffectGen<_A, _E, _R>
-  <A, B, C, _A, _E, _R>(a: A, ab: (a: A) => B, bc: (b: B) => C, cd: (c: C) => Effect<_A, _E, _R>): EffectGen<_A, _E, _R>
+  <A, E, R>(self: Effect<A, E, R>): Effect<A, E, R>
+  <A, _A, _E, _R>(a: A, ab: (a: A) => Effect<_A, _E, _R>): Effect<_A, _E, _R>
+  <A, B, _A, _E, _R>(a: A, ab: (a: A) => B, bc: (b: B) => Effect<_A, _E, _R>): Effect<_A, _E, _R>
+  <A, B, C, _A, _E, _R>(a: A, ab: (a: A) => B, bc: (b: B) => C, cd: (c: C) => Effect<_A, _E, _R>): Effect<_A, _E, _R>
   <A, B, C, D, _A, _E, _R>(
     a: A,
     ab: (a: A) => B,
     bc: (b: B) => C,
     cd: (c: C) => D,
     de: (d: D) => Effect<_A, _E, _R>
-  ): EffectGen<_A, _E, _R>
+  ): Effect<_A, _E, _R>
   <A, B, C, D, E, _A, _E, _R>(
     a: A,
     ab: (a: A) => B,
@@ -1157,7 +1162,7 @@ export interface Adapter {
     cd: (c: C) => D,
     de: (d: D) => E,
     ef: (e: E) => Effect<_A, _E, _R>
-  ): EffectGen<_A, _E, _R>
+  ): Effect<_A, _E, _R>
   <A, B, C, D, E, F, _A, _E, _R>(
     a: A,
     ab: (a: A) => B,
@@ -1166,7 +1171,7 @@ export interface Adapter {
     de: (d: D) => E,
     ef: (e: E) => F,
     fg: (f: F) => Effect<_A, _E, _R>
-  ): EffectGen<_A, _E, _R>
+  ): Effect<_A, _E, _R>
   <A, B, C, D, E, F, G, _A, _E, _R>(
     a: A,
     ab: (a: A) => B,
@@ -1176,7 +1181,7 @@ export interface Adapter {
     ef: (e: E) => F,
     fg: (f: F) => G,
     gh: (g: G) => Effect<_A, _E, _R>
-  ): EffectGen<_A, _E, _R>
+  ): Effect<_A, _E, _R>
   <A, B, C, D, E, F, G, H, _A, _E, _R>(
     a: A,
     ab: (a: A) => B,
@@ -1187,7 +1192,7 @@ export interface Adapter {
     fg: (f: F) => G,
     gh: (g: G) => H,
     hi: (g: H) => Effect<_A, _E, _R>
-  ): EffectGen<_A, _E, _R>
+  ): Effect<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, _A, _E, _R>(
     a: A,
     ab: (a: A) => B,
@@ -1199,7 +1204,7 @@ export interface Adapter {
     gh: (g: G) => H,
     hi: (h: H) => I,
     ij: (i: I) => Effect<_A, _E, _R>
-  ): EffectGen<_A, _E, _R>
+  ): Effect<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, J, _A, _E, _R>(
     a: A,
     ab: (a: A) => B,
@@ -1212,7 +1217,7 @@ export interface Adapter {
     hi: (h: H) => I,
     ij: (i: I) => J,
     jk: (j: J) => Effect<_A, _E, _R>
-  ): EffectGen<_A, _E, _R>
+  ): Effect<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, J, K, _A, _E, _R>(
     a: A,
     ab: (a: A) => B,
@@ -1226,7 +1231,7 @@ export interface Adapter {
     ij: (i: I) => J,
     jk: (j: J) => K,
     kl: (k: K) => Effect<_A, _E, _R>
-  ): EffectGen<_A, _E, _R>
+  ): Effect<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, J, K, L, _A, _E, _R>(
     a: A,
     ab: (a: A) => B,
@@ -1241,7 +1246,7 @@ export interface Adapter {
     jk: (j: J) => K,
     kl: (k: K) => L,
     lm: (l: L) => Effect<_A, _E, _R>
-  ): EffectGen<_A, _E, _R>
+  ): Effect<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, _A, _E, _R>(
     a: A,
     ab: (a: A) => B,
@@ -1257,7 +1262,7 @@ export interface Adapter {
     kl: (k: K) => L,
     lm: (l: L) => M,
     mn: (m: M) => Effect<_A, _E, _R>
-  ): EffectGen<_A, _E, _R>
+  ): Effect<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, _A, _E, _R>(
     a: A,
     ab: (a: A) => B,
@@ -1274,7 +1279,7 @@ export interface Adapter {
     lm: (l: L) => M,
     mn: (m: M) => N,
     no: (n: N) => Effect<_A, _E, _R>
-  ): EffectGen<_A, _E, _R>
+  ): Effect<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, _A, _E, _R>(
     a: A,
     ab: (a: A) => B,
@@ -1292,7 +1297,7 @@ export interface Adapter {
     mn: (m: M) => N,
     no: (n: N) => O,
     op: (o: O) => Effect<_A, _E, _R>
-  ): EffectGen<_A, _E, _R>
+  ): Effect<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, _A, _E, _R>(
     a: A,
     ab: (a: A) => B,
@@ -1311,7 +1316,7 @@ export interface Adapter {
     no: (n: N) => O,
     op: (o: O) => P,
     pq: (p: P) => Effect<_A, _E, _R>
-  ): EffectGen<_A, _E, _R>
+  ): Effect<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, _A, _E, _R>(
     a: A,
     ab: (a: A) => B,
@@ -1331,7 +1336,7 @@ export interface Adapter {
     op: (o: O) => P,
     pq: (p: P) => Q,
     qr: (q: Q) => Effect<_A, _E, _R>
-  ): EffectGen<_A, _E, _R>
+  ): Effect<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, _A, _E, _R>(
     a: A,
     ab: (a: A) => B,
@@ -1352,7 +1357,7 @@ export interface Adapter {
     pq: (p: P) => Q,
     qr: (q: Q) => R,
     rs: (r: R) => Effect<_A, _E, _R>
-  ): EffectGen<_A, _E, _R>
+  ): Effect<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, _A, _E, _R>(
     a: A,
     ab: (a: A) => B,
@@ -1374,7 +1379,7 @@ export interface Adapter {
     qr: (q: Q) => R,
     rs: (r: R) => S,
     st: (s: S) => Effect<_A, _E, _R>
-  ): EffectGen<_A, _E, _R>
+  ): Effect<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, _A, _E, _R>(
     a: A,
     ab: (a: A) => B,
@@ -1397,7 +1402,7 @@ export interface Adapter {
     rs: (r: R) => S,
     st: (s: S) => T,
     tu: (s: T) => Effect<_A, _E, _R>
-  ): EffectGen<_A, _E, _R>
+  ): Effect<_A, _E, _R>
 }
 
 /**

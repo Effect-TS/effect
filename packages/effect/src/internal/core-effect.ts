@@ -34,7 +34,6 @@ import * as fiberRefsPatch from "./fiberRefs/patch.js"
 import type { FiberRuntime } from "./fiberRuntime.js"
 import * as metricLabel from "./metric/label.js"
 import * as runtimeFlags from "./runtimeFlags.js"
-import * as SingleShotGen from "./singleShotGen.js"
 import * as internalTracer from "./tracer.js"
 
 /* @internal */
@@ -774,23 +773,6 @@ export const forever = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<ne
   return loop
 }
 
-/** @internal */
-class EffectGen {
-  constructor(readonly value: Effect.Effect<any, any, any>) {
-  }
-  [Symbol.iterator]() {
-    return new SingleShotGen.SingleShotGen(this)
-  }
-}
-
-const adapter = function() {
-  let x = arguments[0]
-  for (let i = 1; i < arguments.length; i++) {
-    x = arguments[i](x)
-  }
-  return new EffectGen(x) as any
-}
-
 /**
  * Inspired by https://github.com/tusharmath/qio/pull/22 (revised)
   @internal */
@@ -802,16 +784,13 @@ export const gen: typeof Effect.gen = function() {
     f = arguments[1].bind(arguments[0])
   }
   return core.suspend(() => {
-    const iterator = f(adapter)
+    const iterator = f(pipe)
     const state = iterator.next()
     const run = (
       state: IteratorYieldResult<any> | IteratorReturnResult<any>
     ): Effect.Effect<any, any, any> => (state.done
       ? core.succeed(state.value)
-      : pipe(
-        state.value.value as unknown as Effect.Effect<any, any, any>,
-        core.flatMap((val: any) => run(iterator.next(val)))
-      ))
+      : core.flatMap(state.value, (val: any) => run(iterator.next(val))))
     return run(state)
   })
 }

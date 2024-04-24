@@ -47,6 +47,7 @@ import type * as fiberScope from "./fiberScope.js"
 import * as DeferredOpCodes from "./opCodes/deferred.js"
 import * as OpCodes from "./opCodes/effect.js"
 import * as _runtimeFlags from "./runtimeFlags.js"
+import { SingleShotGen } from "./singleShotGen.js"
 import * as internalTracer from "./tracer.js"
 
 // -----------------------------------------------------------------------------
@@ -178,6 +179,9 @@ class EffectPrimitive {
   [NodeInspectSymbol]() {
     return this.toJSON()
   }
+  [Symbol.iterator]() {
+    return new SingleShotGen(this)
+  }
 }
 
 /** @internal */
@@ -216,6 +220,9 @@ class EffectPrimitiveFailure {
   [NodeInspectSymbol]() {
     return this.toJSON()
   }
+  [Symbol.iterator]() {
+    return new SingleShotGen(this)
+  }
 }
 
 /** @internal */
@@ -253,6 +260,9 @@ class EffectPrimitiveSuccess {
   }
   [NodeInspectSymbol]() {
     return this.toJSON()
+  }
+  [Symbol.iterator]() {
+    return new SingleShotGen(this)
   }
 }
 
