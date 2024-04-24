@@ -660,8 +660,7 @@ export const filter: {
   <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A>
 } = dual(
   2,
-  <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A> =>
-    unsafeFromArray(RA.filterMap(self, O.liftPredicate(predicate)))
+  <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A> => unsafeFromArray(RA.filter(self, predicate))
 )
 
 /**

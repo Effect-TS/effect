@@ -23,13 +23,11 @@ describe("Effect", () => {
       assert.deepStrictEqual(result, [2, 3, 4, 5])
     }))
   it.effect("dropWhile - error", () =>
-    Effect.gen(function*($) {
-      const result = yield* $(
-        pipe(
-          [1, 1, 1],
-          Effect.dropWhile(() => Effect.fail("Ouch")),
-          Effect.either
-        )
+    Effect.gen(function*() {
+      const result = yield* pipe(
+        [1, 1, 1],
+        Effect.dropWhile(() => Effect.fail("Ouch")),
+        Effect.either
       )
       assert.deepStrictEqual(result, Either.left("Ouch"))
     }))
