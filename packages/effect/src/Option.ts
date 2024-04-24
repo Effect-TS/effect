@@ -1273,14 +1273,14 @@ export const gen: Gen.Gen<OptionTypeLambda, Gen.Adapter<OptionTypeLambda>> = (f)
   if (state.done) {
     return some(state.value)
   } else {
-    let current = state.value.value
+    let current = state.value
     if (isNone(current)) {
       return current
     }
     while (!state.done) {
       state = iterator.next(current.value)
       if (!state.done) {
-        current = state.value.value
+        current = state.value
         if (isNone(current)) {
           return current
         }
