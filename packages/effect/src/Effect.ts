@@ -102,13 +102,9 @@ export interface Effect<out A, out E = never, out R = never> extends Effect.Vari
  * @category models
  */
 export interface EffectGenerator<Eff extends Effect<any, any, any>> {
-  next(
-    ...args: ReadonlyArray<any>
-  ): Eff extends Effect.Variance<infer A, infer E, infer R> ? IteratorResult<Effect<A, E, R>, A> : never
-  return(
-    value: Effect.Success<Eff>
-  ): Eff extends Effect.Variance<infer A, infer E, infer R> ? IteratorResult<Effect<A, E, R>, A> : never
-  throw(e: any): Eff extends Effect.Variance<infer A, infer E, infer R> ? IteratorResult<Effect<A, E, R>, A> : never
+  next(...args: ReadonlyArray<any>): IteratorResult<Eff, Effect.Success<Eff>>
+  return(value: Effect.Success<Eff>): IteratorResult<Eff, Effect.Success<Eff>>
+  throw(e: any): IteratorResult<Eff, Effect.Success<Eff>>
   [Symbol.iterator](): EffectGenerator<Eff>
 }
 

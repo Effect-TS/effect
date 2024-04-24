@@ -257,13 +257,11 @@ describe("STM", () => {
   it.effect("eventually - succeeds", () =>
     Effect.gen(function*($) {
       const f = (ref: TRef.TRef<number>) =>
-        STM.gen(function*($) {
-          const n = yield* $(TRef.get(ref))
-          return yield* $(
-            n < 10 ?
-              pipe(ref, TRef.update((n) => n + 1), STM.zipRight(STM.fail("Ouch"))) :
-              STM.succeed(n)
-          )
+        STM.gen(function*() {
+          const n = yield* TRef.get(ref)
+          return yield* n < 10 ?
+            pipe(ref, TRef.update((n) => n + 1), STM.zipRight(STM.fail("Ouch"))) :
+            STM.succeed(n)
         })
       const transaction = pipe(
         TRef.make(0),

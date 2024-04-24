@@ -150,18 +150,6 @@ export declare namespace STM {
 }
 
 /**
- * @category models
- * @since 2.0.0
- */
-export interface STMGen<out A, out E, out R> {
-  readonly _A: () => A
-  readonly _E: () => E
-  readonly _R: () => R
-  readonly value: STM<A, E, R>
-  [Symbol.iterator](): Generator<STMGen<A, E, R>, A>
-}
-
-/**
  * Returns `true` if the provided value is an `STM`, `false` otherwise.
  *
  * @since 2.0.0
@@ -810,17 +798,17 @@ export const fromOption: <A>(option: Option.Option<A>) => STM<A, Option.Option<n
  * @category models
  */
 export interface Adapter {
-  <A, E, R>(self: STM<A, E, R>): STMGen<A, E, R>
-  <A, _R, _E, _A>(a: A, ab: (a: A) => STM<_A, _E, _R>): STMGen<_A, _E, _R>
-  <A, B, _R, _E, _A>(a: A, ab: (a: A) => B, bc: (b: B) => STM<_A, _E, _R>): STMGen<_A, _E, _R>
-  <A, B, C, _R, _E, _A>(a: A, ab: (a: A) => B, bc: (b: B) => C, cd: (c: C) => STM<_A, _E, _R>): STMGen<_A, _E, _R>
+  <A, E, R>(self: STM<A, E, R>): STM<A, E, R>
+  <A, _R, _E, _A>(a: A, ab: (a: A) => STM<_A, _E, _R>): STM<_A, _E, _R>
+  <A, B, _R, _E, _A>(a: A, ab: (a: A) => B, bc: (b: B) => STM<_A, _E, _R>): STM<_A, _E, _R>
+  <A, B, C, _R, _E, _A>(a: A, ab: (a: A) => B, bc: (b: B) => C, cd: (c: C) => STM<_A, _E, _R>): STM<_A, _E, _R>
   <A, B, C, D, _R, _E, _A>(
     a: A,
     ab: (a: A) => B,
     bc: (b: B) => C,
     cd: (c: C) => D,
     de: (d: D) => STM<_A, _E, _R>
-  ): STMGen<_A, _E, _R>
+  ): STM<_A, _E, _R>
   <A, B, C, D, E, _R, _E, _A>(
     a: A,
     ab: (a: A) => B,
@@ -828,7 +816,7 @@ export interface Adapter {
     cd: (c: C) => D,
     de: (d: D) => E,
     ef: (e: E) => STM<_A, _E, _R>
-  ): STMGen<_A, _E, _R>
+  ): STM<_A, _E, _R>
   <A, B, C, D, E, F, _R, _E, _A>(
     a: A,
     ab: (a: A) => B,
@@ -837,7 +825,7 @@ export interface Adapter {
     de: (d: D) => E,
     ef: (e: E) => F,
     fg: (f: F) => STM<_A, _E, _R>
-  ): STMGen<_A, _E, _R>
+  ): STM<_A, _E, _R>
   <A, B, C, D, E, F, G, _R, _E, _A>(
     a: A,
     ab: (a: A) => B,
@@ -847,7 +835,7 @@ export interface Adapter {
     ef: (e: E) => F,
     fg: (f: F) => G,
     gh: (g: F) => STM<_A, _E, _R>
-  ): STMGen<_A, _E, _R>
+  ): STM<_A, _E, _R>
   <A, B, C, D, E, F, G, H, _R, _E, _A>(
     a: A,
     ab: (a: A) => B,
@@ -858,7 +846,7 @@ export interface Adapter {
     fg: (f: F) => G,
     gh: (g: G) => H,
     hi: (g: H) => STM<_A, _E, _R>
-  ): STMGen<_A, _E, _R>
+  ): STM<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, _R, _E, _A>(
     a: A,
     ab: (a: A) => B,
@@ -870,7 +858,7 @@ export interface Adapter {
     gh: (g: G) => H,
     hi: (h: H) => I,
     ij: (i: I) => STM<_A, _E, _R>
-  ): STMGen<_A, _E, _R>
+  ): STM<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, J, _R, _E, _A>(
     a: A,
     ab: (a: A) => B,
@@ -883,7 +871,7 @@ export interface Adapter {
     hi: (h: H) => I,
     ij: (i: I) => J,
     jk: (j: J) => STM<_A, _E, _R>
-  ): STMGen<_A, _E, _R>
+  ): STM<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, J, K, _R, _E, _A>(
     a: A,
     ab: (a: A) => B,
@@ -897,7 +885,7 @@ export interface Adapter {
     ij: (i: I) => J,
     jk: (j: J) => K,
     kl: (k: K) => STM<_A, _E, _R>
-  ): STMGen<_A, _E, _R>
+  ): STM<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, J, K, L, _R, _E, _A>(
     a: A,
     ab: (a: A) => B,
@@ -912,7 +900,7 @@ export interface Adapter {
     jk: (j: J) => K,
     kl: (k: K) => L,
     lm: (l: L) => STM<_A, _E, _R>
-  ): STMGen<_A, _E, _R>
+  ): STM<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, _R, _E, _A>(
     a: A,
     ab: (a: A) => B,
@@ -928,7 +916,7 @@ export interface Adapter {
     kl: (k: K) => L,
     lm: (l: L) => M,
     mn: (m: M) => STM<_A, _E, _R>
-  ): STMGen<_A, _E, _R>
+  ): STM<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, _R, _E, _A>(
     a: A,
     ab: (a: A) => B,
@@ -945,7 +933,7 @@ export interface Adapter {
     lm: (l: L) => M,
     mn: (m: M) => N,
     no: (n: N) => STM<_A, _E, _R>
-  ): STMGen<_A, _E, _R>
+  ): STM<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, _R, _E, _A>(
     a: A,
     ab: (a: A) => B,
@@ -963,7 +951,7 @@ export interface Adapter {
     mn: (m: M) => N,
     no: (n: N) => O,
     op: (o: O) => STM<_A, _E, _R>
-  ): STMGen<_A, _E, _R>
+  ): STM<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, _R, _E, _A>(
     a: A,
     ab: (a: A) => B,
@@ -982,7 +970,7 @@ export interface Adapter {
     no: (n: N) => O,
     op: (o: O) => P,
     pq: (p: P) => STM<_A, _E, _R>
-  ): STMGen<_A, _E, _R>
+  ): STM<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, _R, _E, _A>(
     a: A,
     ab: (a: A) => B,
@@ -1002,7 +990,7 @@ export interface Adapter {
     op: (o: O) => P,
     pq: (p: P) => Q,
     qr: (q: Q) => STM<_A, _E, _R>
-  ): STMGen<_A, _E, _R>
+  ): STM<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, _R, _E, _A>(
     a: A,
     ab: (a: A) => B,
@@ -1023,7 +1011,7 @@ export interface Adapter {
     pq: (p: P) => Q,
     qr: (q: Q) => R,
     rs: (r: R) => STM<_A, _E, _R>
-  ): STMGen<_A, _E, _R>
+  ): STM<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, _R, _E, _A>(
     a: A,
     ab: (a: A) => B,
@@ -1045,7 +1033,7 @@ export interface Adapter {
     qr: (q: Q) => R,
     rs: (r: R) => S,
     st: (s: S) => STM<_A, _E, _R>
-  ): STMGen<_A, _E, _R>
+  ): STM<_A, _E, _R>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, _R, _E, _A>(
     a: A,
     ab: (a: A) => B,
@@ -1068,19 +1056,19 @@ export interface Adapter {
     rs: (r: R) => S,
     st: (s: S) => T,
     tu: (s: T) => STM<_A, _E, _R>
-  ): STMGen<_A, _E, _R>
+  ): STM<_A, _E, _R>
 }
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const gen: <Eff extends STMGen<any, any, any>, AEff>(
+export const gen: <Eff extends STM<any, any, any>, AEff>(
   f: (resume: Adapter) => Generator<Eff, AEff, any>
 ) => STM<
   AEff,
-  [Eff] extends [never] ? never : [Eff] extends [STMGen<any, infer E, any>] ? E : never,
-  [Eff] extends [never] ? never : [Eff] extends [STMGen<any, any, infer R>] ? R : never
+  [Eff] extends [never] ? never : [Eff] extends [STM<any, infer E, any>] ? E : never,
+  [Eff] extends [never] ? never : [Eff] extends [STM<any, any, infer R>] ? R : never
 > = stm.gen
 
 /**
