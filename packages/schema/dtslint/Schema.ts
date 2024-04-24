@@ -2280,3 +2280,60 @@ S.asSchema(S.SortedSet(S.NumberFromString, N.Order))
 
 // $ExpectType SortedSet<typeof NumberFromString>
 S.SortedSet(S.NumberFromString, N.Order)
+
+// ---------------------------------------------
+// Struct.Constructor
+// ---------------------------------------------
+
+// $ExpectType { readonly a?: string; } & { readonly b: number; } & { readonly c?: boolean; }
+hole<
+  S.Struct.Constructor<{
+    a: S.PropertySignature<":", string, never, ":", string, true, never>
+    b: typeof S.Number
+    c: S.PropertySignature<":", boolean, never, ":", boolean, true, never>
+  }>
+>()
+
+// ---------------------------------------------
+// withDefault
+// ---------------------------------------------
+
+// @ts-expect-error
+S.propertySignature(S.String).pipe(S.withDefault(() => 1))
+
+// $ExpectType PropertySignature<":", string, never, ":", string, true, never>
+S.propertySignature(S.String).pipe(S.withDefault(() => "a"))
+
+// $ExpectType PropertySignature<":", string, never, ":", string, true, never>
+S.withDefault(S.propertySignature(S.String), () => "a")
+
+// ---------------------------------------------
+// Struct.make
+// ---------------------------------------------
+
+const make1 = S.Struct({
+  a: S.propertySignature(S.String).pipe(S.withDefault(() => "")),
+  b: S.Number,
+  c: S.propertySignature(S.Boolean).pipe(S.withDefault(() => true))
+}).make
+
+// $ExpectType { readonly a?: string; readonly b: number; readonly c?: boolean; }
+hole<Parameters<typeof make1>["0"]>()
+
+const make2 = S.Struct({
+  a: S.withDefault(S.propertySignature(S.String), () => ""),
+  b: S.Number,
+  c: S.withDefault(S.propertySignature(S.Boolean), () => true)
+}).make
+
+// $ExpectType { readonly a?: string; readonly b: number; readonly c?: boolean; }
+hole<Parameters<typeof make2>["0"]>()
+
+class AA extends S.Class<AA>("AA")({
+  a: S.propertySignature(S.String).pipe(S.withDefault(() => "")),
+  b: S.Number,
+  c: S.propertySignature(S.Boolean).pipe(S.withDefault(() => true))
+}) {}
+
+// $ExpectType [props: { readonly a?: string; readonly b: number; readonly c?: boolean; }, disableValidation?: boolean | undefined]
+hole<ConstructorParameters<typeof AA>>()

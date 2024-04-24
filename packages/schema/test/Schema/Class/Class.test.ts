@@ -178,6 +178,18 @@ describe("Class APIs", () => {
       expect(new A({ a: "" }, true).a).toStrictEqual("")
     })
 
+    it("the constructor should support defaults", () => {
+      const b = Symbol.for("b")
+      class A extends S.Class<A>("A")({
+        a: S.propertySignature(S.String).pipe(S.withDefault(() => "")),
+        [b]: S.propertySignature(S.Number).pipe(S.withDefault(() => 1))
+      }) {}
+      expect({ ...new A({ a: "a", [b]: 2 }) }).toStrictEqual({ a: "a", [b]: 2 })
+      expect({ ...new A({ a: "a" }) }).toStrictEqual({ a: "a", [b]: 1 })
+      expect({ ...new A({ [b]: 2 }) }).toStrictEqual({ a: "", [b]: 2 })
+      expect({ ...new A({}) }).toStrictEqual({ a: "", [b]: 1 })
+    })
+
     it("a Class with no fields should have a void constructor", () => {
       class A extends S.Class<A>("A")({}) {}
       expect({ ...new A() }).toStrictEqual({})
