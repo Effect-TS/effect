@@ -4,6 +4,7 @@ import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Schedule from "effect/Schedule"
+import type { NonEmptyReadonlyArray } from "../src/Array.js"
 
 declare const string: Effect.Effect<string, "err-1", "dep-1">
 declare const number: Effect.Effect<number, "err-2", "dep-2">
@@ -15,10 +16,52 @@ declare const numberArray: Array<number>
 declare const numberEffectIterable: Array<Effect.Effect<number>>
 
 // -------------------------------------------------------------------------------------
-// forEach
+// forEach - array
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Effect<string[], "err-1", "dep-1">
+Effect.forEach(["a", "b"] as Array<string>, (
+  // $ExpectType string
+  _a,
+  // $ExpectType number
+  _i
+) => string)
+
+// $ExpectType Effect<void, "err-1", "dep-1">
+Effect.forEach(["a", "b"] as Array<string>, (
+  // $ExpectType string
+  _a,
+  // $ExpectType number
+  _i
+) => string, { discard: true })
+
+// $ExpectType Effect<string[], "err-1", "dep-1">
+pipe(
+  ["a", "b"] as Array<string>,
+  Effect.forEach((
+    // $ExpectType string
+    _a,
+    // $ExpectType number
+    _i
+  ) => string)
+)
+
+// $ExpectType Effect<void, "err-1", "dep-1">
+pipe(
+  ["a", "b"] as Array<string>,
+  Effect.forEach((
+    // $ExpectType string
+    _a,
+    // $ExpectType number
+    _i
+  ) => string, { discard: true })
+)
+
+// -------------------------------------------------------------------------------------
+// forEach - nonempty
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Effect<[string, ...string[]], "err-1", "dep-1">
 Effect.forEach(["a", "b"], (
   // $ExpectType string
   _a,
@@ -34,9 +77,9 @@ Effect.forEach(["a", "b"], (
   _i
 ) => string, { discard: true })
 
-// $ExpectType Effect<string[], "err-1", "dep-1">
+// $ExpectType Effect<[string, ...string[]], "err-1", "dep-1">
 pipe(
-  ["a", "b"],
+  ["a", "b"] as NonEmptyReadonlyArray<string>,
   Effect.forEach((
     // $ExpectType string
     _a,
@@ -47,7 +90,7 @@ pipe(
 
 // $ExpectType Effect<void, "err-1", "dep-1">
 pipe(
-  ["a", "b"],
+  ["a", "b"] as NonEmptyReadonlyArray<string>,
   Effect.forEach((
     // $ExpectType string
     _a,
