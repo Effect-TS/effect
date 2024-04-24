@@ -379,6 +379,9 @@ const getErrorMap = <A, I, R>(
 
   function walk(ast: AST.AST, originalAST?: AST.AST): void {
     switch (ast._tag) {
+      case "NeverKeyword": {
+        break
+      }
       case "Suspend": {
         walk(ast.f())
         break
@@ -403,6 +406,7 @@ const getErrorMap = <A, I, R>(
         } else {
           out[annotation] = originalAST ?? ast
         }
+        break
       }
     }
   }

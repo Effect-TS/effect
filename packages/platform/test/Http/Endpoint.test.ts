@@ -1,7 +1,7 @@
 import { FileSystem, HttpClient, HttpServer as Http, Path } from "@effect/platform"
 import { Schema } from "@effect/schema"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Layer, Option } from "effect"
+import { Effect, Layer } from "effect"
 
 const PositiveInt = Schema.NumberFromString.pipe(Schema.positive(), Schema.int())
 
@@ -44,7 +44,7 @@ describe("Endpoint", () => {
     it.effect("correctly encodes a request", () =>
       Effect.gen(function*(_) {
         const request = yield* _(
-          Http.endpoint.encodeRequest(
+          Http.endpoint.toClientRequest(
             new GetUserById({
               id: 123,
               pagination: {
@@ -81,7 +81,7 @@ describe("Endpoint", () => {
   describe("decodeRequest", () => {
     it.effect("correctly decodes a request", () =>
       Effect.gen(function*(_) {
-        const decode = Http.endpoint.decodeRequest(GetUserById)
+        const decode = Http.endpoint.parse(GetUserById).decodeServerRequest
         const effect = decode(
           Http.request.fromWeb(
             new Request("http://localhost:3000/api/123", {
@@ -126,7 +126,9 @@ describe("Endpoint", () => {
 
   describe("parse", () => {
     it("parses", () => {
-      console.log(Option.getOrThrow(Http.endpoint.parse(GetUserById).urlParams).propertySignatures)
+      const parsed = Http.endpoint.parse(GetUserById)
+      // TODO
+      console.log(parsed)
     })
   })
 })
