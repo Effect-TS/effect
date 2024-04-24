@@ -34,7 +34,6 @@ import * as fiberRefsPatch from "./fiberRefs/patch.js"
 import type { FiberRuntime } from "./fiberRuntime.js"
 import * as metricLabel from "./metric/label.js"
 import * as runtimeFlags from "./runtimeFlags.js"
-import * as SingleShotGen from "./singleShotGen.js"
 import * as internalTracer from "./tracer.js"
 
 /* @internal */
@@ -774,21 +773,12 @@ export const forever = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<ne
   return loop
 }
 
-/** @internal */
-class EffectGen {
-  constructor(readonly value: Effect.Effect<any, any, any>) {
-  }
-  [Symbol.iterator]() {
-    return new SingleShotGen.SingleShotGen(this)
-  }
-}
-
 const adapter = function() {
   let x = arguments[0]
   for (let i = 1; i < arguments.length; i++) {
     x = arguments[i](x)
   }
-  return new EffectGen(x) as any
+  return x
 }
 
 /**

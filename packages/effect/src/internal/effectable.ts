@@ -7,6 +7,7 @@ import { pipeArguments } from "../Pipeable.js"
 import type * as Sink from "../Sink.js"
 import type * as Stream from "../Stream.js"
 import * as OpCodes from "./opCodes/effect.js"
+import * as SingleShotGen from "./singleShotGen.js"
 import * as version from "./version.js"
 
 /** @internal */
@@ -74,6 +75,9 @@ export const EffectPrototype: Effect.Effect<never> & Equal.Equal = {
   },
   [Hash.symbol]() {
     return Hash.cached(this, Hash.random(this))
+  },
+  [Symbol.iterator]() {
+    return new SingleShotGen.SingleShotGen(this) as any
   },
   pipe() {
     return pipeArguments(this, arguments)
