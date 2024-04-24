@@ -1,5 +1,21 @@
 # effect
 
+## 3.0.4
+
+### Patch Changes
+
+- [#2602](https://github.com/Effect-TS/effect/pull/2602) [`9a24667`](https://github.com/Effect-TS/effect/commit/9a246672008a2b668d43fbfd2fe5508c54b2b920) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - allow use of generators (Effect.gen) without the adapter
+
+  Effect's data types now implement a Iterable that can be `yield*`'ed directly.
+
+  ```ts
+  Effect.gen(function* () {
+    const a = yield* Effect.success(1);
+    const b = yield* Effect.success(2);
+    return a + b;
+  });
+  ```
+
 ## 3.0.3
 
 ### Patch Changes
