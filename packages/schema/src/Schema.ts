@@ -990,13 +990,16 @@ const makeUnionClass = <Members extends ReadonlyArray<Schema.Any>>(
  */
 export function Union<Members extends AST.Members<Schema.Any>>(...members: Members): Union<Members>
 export function Union<Member extends Schema.Any>(member: Member): Member
-export function Union(): Never
+export function Union(): typeof Never
 export function Union<Members extends ReadonlyArray<Schema.Any>>(
   ...members: Members
 ): Schema<Schema.Type<Members[number]>, Schema.Encoded<Members[number]>, Schema.Context<Members[number]>>
 export function Union<Members extends ReadonlyArray<Schema.Any>>(
   ...members: Members
-): Schema<Schema.Type<Members[number]>, Schema.Encoded<Members[number]>, Schema.Context<Members[number]>> | Never {
+):
+  | Schema<Schema.Type<Members[number]>, Schema.Encoded<Members[number]>, Schema.Context<Members[number]>>
+  | typeof Never
+{
   return AST.isMembers(members)
     ? makeUnionClass(members)
     : array_.isNonEmptyReadonlyArray(members)
