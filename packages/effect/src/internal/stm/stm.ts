@@ -613,21 +613,13 @@ export const fromOption = <A>(option: Option.Option<A>): STM.STM<A, Option.Optio
     onSome: core.succeed
   })
 
-const adapter = function() {
-  let x = arguments[0]
-  for (let i = 1; i < arguments.length; i++) {
-    x = arguments[i](x)
-  }
-  return x
-}
-
 /**
  * Inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  * @internal
  */
 export const gen: typeof STM.gen = (f) =>
   suspend(() => {
-    const iterator = f(adapter)
+    const iterator = f(pipe)
     const state = iterator.next()
     const run = (
       state: IteratorYieldResult<any> | IteratorReturnResult<any>
