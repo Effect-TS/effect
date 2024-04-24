@@ -7,6 +7,7 @@ import { NodeContext } from "@effect/platform-node"
 import { Schema } from "@effect/schema"
 import * as it from "@effect/vitest"
 import { Array, Effect, Exit, Layer, PrimaryKey, Request, RequestResolver, TestClock } from "effect"
+import type { NonEmptyArray } from "effect/Array"
 import { assert, describe } from "vitest"
 
 class User extends Schema.Class<User>("User")({
@@ -42,7 +43,7 @@ describe("RequestResolver", () => {
       it.effect(storeId, () =>
         Effect.gen(function*(_) {
           let count = 0
-          const baseResolver = RequestResolver.makeBatched((reqs: Array<MyRequest | TTLRequest>) => {
+          const baseResolver = RequestResolver.makeBatched((reqs: NonEmptyArray<MyRequest | TTLRequest>) => {
             count += reqs.length
             return Effect.forEach(reqs, (req) => {
               if (req.id === -1) return Request.fail(req, "not found")
