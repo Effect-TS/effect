@@ -142,13 +142,13 @@ const permutation = (ref1: TRef.TRef<number>, ref2: TRef.TRef<number>): STM.STM<
 
 describe("STM", () => {
   it.effect("catchAll", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const transaction = pipe(
         STM.fail("Ouch!"),
         STM.tap(() => STM.succeed("everything is fine")),
         STM.catchAll((s) => STM.succeed(`${s} phew`))
       )
-      const result = yield* $(STM.commit(transaction))
+      const result = yield* STM.commit(transaction)
       assert.deepStrictEqual(result, "Ouch! phew")
     }))
 

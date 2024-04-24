@@ -1116,16 +1116,16 @@ export const dieSync: (evaluate: LazyArg<unknown>) => Effect<never> = core.dieSy
  * @category constructors
  */
 export const gen: {
-  <Eff extends Effect<any, any, any>, AEff, _>(
-    f: (resume: Adapter) => Generator<Eff, AEff, _>
+  <Eff extends Effect<any, any, any>, AEff>(
+    f: (resume: Adapter) => Generator<Eff, AEff, any>
   ): Effect<
     AEff,
     [Eff] extends [never] ? never : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E : never,
     [Eff] extends [never] ? never : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R : never
   >
-  <Self, Eff extends Effect<any, any, any>, AEff, _>(
+  <Self, Eff extends Effect<any, any, any>, AEff>(
     self: Self,
-    f: (this: Self, resume: Adapter) => Generator<Eff, AEff, _>
+    f: (this: Self, resume: Adapter) => Generator<Eff, AEff, any>
   ): Effect<
     AEff,
     [Eff] extends [never] ? never : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E : never,

@@ -1067,8 +1067,8 @@ export const gen: <Eff extends STM<any, any, any>, AEff>(
   f: (resume: Adapter) => Generator<Eff, AEff, any>
 ) => STM<
   AEff,
-  [Eff] extends [never] ? never : [Eff] extends [STM<any, infer E, any>] ? E : never,
-  [Eff] extends [never] ? never : [Eff] extends [STM<any, any, infer R>] ? R : never
+  [Eff] extends [never] ? never : [Eff] extends [STM<infer _A, infer E, infer _R>] ? E : never,
+  [Eff] extends [never] ? never : [Eff] extends [STM<infer _A, infer _E, infer R>] ? R : never
 > = stm.gen
 
 /**
