@@ -37,7 +37,7 @@ Effect.forEach(["a", "b"] as Array<string>, (
 
 // $ExpectType Effect<string[], "err-1", "dep-1">
 pipe(
-  ["a", "b"] as Array<string>,
+  ["a", "b"],
   Effect.forEach((
     // $ExpectType string
     _a,
@@ -48,7 +48,7 @@ pipe(
 
 // $ExpectType Effect<void, "err-1", "dep-1">
 pipe(
-  ["a", "b"] as Array<string>,
+  ["a", "b"],
   Effect.forEach((
     // $ExpectType string
     _a,
@@ -59,6 +59,48 @@ pipe(
 
 // -------------------------------------------------------------------------------------
 // forEach - nonempty
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Effect<[string, ...string[]], "err-1", "dep-1">
+Effect.forEach(["a", "b"], (
+  // $ExpectType string
+  _a,
+  // $ExpectType number
+  _i
+) => string)
+
+// $ExpectType Effect<void, "err-1", "dep-1">
+Effect.forEach(["a", "b"], (
+  // $ExpectType string
+  _a,
+  // $ExpectType number
+  _i
+) => string, { discard: true })
+
+// $ExpectType Effect<[string, ...string[]], "err-1", "dep-1">
+pipe(
+  ["a", "b"] as NonEmptyReadonlyArray<string>,
+  Effect.forEach((
+    // $ExpectType string
+    _a,
+    // $ExpectType number
+    _i
+  ) => string)
+)
+
+// $ExpectType Effect<void, "err-1", "dep-1">
+pipe(
+  ["a", "b"] as NonEmptyReadonlyArray<string>,
+  Effect.forEach((
+    // $ExpectType string
+    _a,
+    // $ExpectType number
+    _i
+  ) => string, { discard: true })
+)
+
+// -------------------------------------------------------------------------------------
+// forEach - tuple
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Effect<[string, ...string[]], "err-1", "dep-1">
