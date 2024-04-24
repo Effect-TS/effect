@@ -72,6 +72,7 @@ export interface STM<out A, out E = never, out R = never>
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: STMUnify<this>
   [Unify.ignoreSymbol]?: STMUnifyIgnore
+  [Symbol.iterator](): Effect.EffectGenerator<STM<A, E, R>>
 }
 
 /**

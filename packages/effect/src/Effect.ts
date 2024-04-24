@@ -94,7 +94,7 @@ export interface Effect<out A, out E = never, out R = never> extends Effect.Vari
   readonly [Unify.typeSymbol]?: unknown
   readonly [Unify.unifySymbol]?: EffectUnify<this>
   readonly [Unify.ignoreSymbol]?: EffectUnifyIgnore
-  [Symbol.iterator](): EffectGenerator<this>
+  [Symbol.iterator](): EffectGenerator<Effect<A, E, R>>
 }
 
 /**
@@ -151,7 +151,9 @@ export interface Blocked<out A, out E> extends Effect<A, E> {
  * @category models
  */
 declare module "./Context.js" {
-  interface Tag<Id, Value> extends Effect<Value, never, Id> {}
+  interface Tag<Id, Value> extends Effect<Value, never, Id> {
+    [Symbol.iterator](): EffectGenerator<Tag<Id, Value>>
+  }
   interface TagUnifyIgnore {
     Effect?: true
     Either?: true
@@ -166,9 +168,11 @@ declare module "./Context.js" {
 declare module "./Either.js" {
   interface Left<L, R> extends Effect<R, L> {
     readonly _tag: "Left"
+    [Symbol.iterator](): EffectGenerator<Left<L, R>>
   }
   interface Right<L, R> extends Effect<R, L> {
     readonly _tag: "Right"
+    [Symbol.iterator](): EffectGenerator<Right<L, R>>
   }
   interface EitherUnifyIgnore {
     Effect?: true
@@ -184,9 +188,11 @@ declare module "./Either.js" {
 declare module "./Option.js" {
   interface None<A> extends Effect<A, Cause.NoSuchElementException> {
     readonly _tag: "None"
+    [Symbol.iterator](): EffectGenerator<None<A>>
   }
   interface Some<A> extends Effect<A, Cause.NoSuchElementException> {
     readonly _tag: "Some"
+    [Symbol.iterator](): EffectGenerator<Some<A>>
   }
   interface OptionUnifyIgnore {
     Effect?: true
