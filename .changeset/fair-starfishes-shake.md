@@ -4,19 +4,35 @@
 
 POC:
 
-```ts
-import { Schema } from "@effect/schema"
+- add `SchemaClass` interface
+- add `AnnotableClass` interface
+- make schemas extendable
 
-class MyLiteralOpaque extends Schema.Literal(1) {}
+  ```ts
+  import { Schema as S } from "@effect/schema"
 
-const MyLiteral = Schema.Literal(2)
+  class A extends S.Struct({
+    name: S.String
+  }) {}
 
-const schema = Schema.Struct({ a: MyLiteralOpaque, b: MyLiteral })
+  class B extends S.Struct({
+    a: A
+  }) {
+    static decodeUnknownSync(u: unknown) {
+      return S.decodeUnknownSync(this)(u)
+    }
+  }
 
-export type T = Schema.Schema.Type<typeof schema>
+  // const U: S.Union<[typeof A, typeof B]>
+  export const U = S.Union(A, B)
 
-console.log(String(MyLiteral))
-```
+  console.log(B.decodeUnknownSync({}))
+  /*
+  Error: { a: { name: string } }
+  └─ ["a"]
+   └─ is missing
+  */
+  ```
 
 - remove `asBrandSchema`
 - change `BrandSchema` interface
@@ -33,7 +49,7 @@ console.log(String(MyLiteral))
 
   ```ts
   export interface BrandSchema<A extends Brand<any>, I, R>
-    extends Annotable<BrandSchema<A, I, R>, A, I, R> {
+    extends AnnotableClass<BrandSchema<A, I, R>, A, I, R> {
     make(a: Brand.Unbranded<A>): A
   }
   ```
