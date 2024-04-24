@@ -101,11 +101,8 @@ export interface Effect<out A, out E = never, out R = never> extends Effect.Vari
  * @since 3.0.0
  * @category models
  */
-export interface EffectGenerator<Eff extends Effect<any, any, any>> {
-  next(...args: ReadonlyArray<any>): IteratorResult<Eff, Effect.Success<Eff>>
-  return(value: Effect.Success<Eff>): IteratorResult<Eff, Effect.Success<Eff>>
-  throw(e: any): IteratorResult<Eff, Effect.Success<Eff>>
-  [Symbol.iterator](): EffectGenerator<Eff>
+export interface EffectGenerator<T extends Effect<any, any, any>> {
+  next(...args: ReadonlyArray<any>): IteratorResult<T, Effect.Success<T>>
 }
 
 /**
@@ -1123,7 +1120,7 @@ export const dieSync: (evaluate: LazyArg<unknown>) => Effect<never> = core.dieSy
  */
 export const gen: {
   <Eff extends Effect<any, any, any>, AEff>(
-    f: (resume: Adapter) => Generator<Eff, AEff, any>
+    f: (resume: Adapter) => Generator<Eff, AEff, never>
   ): Effect<
     AEff,
     [Eff] extends [never] ? never : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E : never,
@@ -1131,7 +1128,7 @@ export const gen: {
   >
   <Self, Eff extends Effect<any, any, any>, AEff>(
     self: Self,
-    f: (this: Self, resume: Adapter) => Generator<Eff, AEff, any>
+    f: (this: Self, resume: Adapter) => Generator<Eff, AEff, never>
   ): Effect<
     AEff,
     [Eff] extends [never] ? never : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E : never,

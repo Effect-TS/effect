@@ -1065,7 +1065,7 @@ export interface Adapter {
  * @category constructors
  */
 export const gen: <Eff extends STM<any, any, any>, AEff>(
-  f: (resume: Adapter) => Generator<Eff, AEff, any>
+  f: (resume: Adapter) => Generator<Eff, AEff, never>
 ) => STM<
   AEff,
   [Eff] extends [never] ? never : [Eff] extends [STM<infer _A, infer E, infer _R>] ? E : never,

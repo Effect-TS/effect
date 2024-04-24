@@ -713,7 +713,7 @@ export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (f)
       return current
     }
     while (!state.done) {
-      state = iterator.next(current.right)
+      state = iterator.next(current.right as never)
       if (!state.done) {
         current = state.value
         if (isLeft(current)) {
