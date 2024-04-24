@@ -1,8 +1,10 @@
 /**
  * @since 2.0.0
  */
+import { identity } from "./Function.js"
 import type { Kind, TypeLambda } from "./HKT.js"
 import { isNullable } from "./Predicate.js"
+import type * as Types from "./Types.js"
 
 /*
  * Copyright 2014 Thom Chiovoloni, released under the MIT license.
@@ -18,17 +20,166 @@ import { isNullable } from "./Predicate.js"
  */
 
 /**
+ * @category symbols
+ * @since 2.0.0
+ */
+export const GenKindTypeId = Symbol.for("effect/Gen/GenKind")
+
+/**
+ * @category symbols
+ * @since 2.0.0
+ */
+export type GenKindTypeId = typeof GenKindTypeId
+
+/**
+ * @category models
+ * @since 2.0.0
+ */
+export interface GenKind<F extends TypeLambda, R, O, E, A> extends Variance<F, R, O, E> {
+  readonly value: Kind<F, R, O, E, A>
+
+  [Symbol.iterator](): Generator<GenKind<F, R, O, E, A>, A>
+}
+
+/**
+ * @category constructors
+ * @since 2.0.0
+ */
+export class GenKindImpl<F extends TypeLambda, R, O, E, A> implements GenKind<F, R, O, E, A> {
+  constructor(
+    /**
+     * @since 2.0.0
+     */
+    readonly value: Kind<F, R, O, E, A>
+  ) {}
+
+  /**
+   * @since 2.0.0
+   */
+  get _F() {
+    return identity
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  get _R() {
+    return (_: R) => _
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  get _O() {
+    return (_: never): O => _
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  get _E() {
+    return (_: never): E => _
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  readonly [GenKindTypeId]: typeof GenKindTypeId = GenKindTypeId;
+
+  /**
+   * @since 2.0.0
+   */
+  [Symbol.iterator](): Generator<GenKind<F, R, O, E, A>, A> {
+    return new SingleShotGen<GenKind<F, R, O, E, A>, A>(this as any)
+  }
+}
+
+/**
+ * @category constructors
+ * @since 2.0.0
+ */
+export class SingleShotGen<T, A> implements Generator<T, A> {
+  private called = false
+
+  constructor(readonly self: T) {}
+
+  /**
+   * @since 2.0.0
+   */
+  next(a: A): IteratorResult<T, A> {
+    return this.called ?
+      ({
+        value: a,
+        done: true
+      }) :
+      (this.called = true,
+        ({
+          value: this.self,
+          done: false
+        }))
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  return(a: A): IteratorResult<T, A> {
+    return ({
+      value: a,
+      done: true
+    })
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  throw(e: unknown): IteratorResult<T, A> {
+    throw e
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  [Symbol.iterator](): Generator<T, A> {
+    return new SingleShotGen<T, A>(this.self)
+  }
+}
+
+/**
+ * @category constructors
+ * @since 2.0.0
+ */
+export const makeGenKind = <F extends TypeLambda, R, O, E, A>(
+  kind: Kind<F, R, O, E, A>
+): GenKind<F, R, O, E, A> => new GenKindImpl(kind)
+
+/**
+ * @category models
+ * @since 2.0.0
+ */
+export interface Variance<in out F extends TypeLambda, in R, out O, out E> {
+  readonly [GenKindTypeId]: GenKindTypeId
+  readonly _F: Types.Invariant<F>
+  readonly _R: Types.Contravariant<R>
+  readonly _O: Types.Covariant<O>
+  readonly _E: Types.Covariant<E>
+}
+
+/**
+ * @category models
+ * @since 2.0.0
+ */
+/**
  * @category models
  * @since 2.0.0
  */
 export interface Gen<F extends TypeLambda, Z> {
-  <K extends Kind<F, any, any, any, any>, A>(
+  <K extends Variance<F, any, any, any> | Kind<F, any, any, any, any>, A>(
     body: (resume: Z) => Generator<K, A>
   ): Kind<
     F,
-    [K] extends [Kind<F, infer _In, infer _Out2, infer _Out1, infer _Target>] ? _In : never,
-    [K] extends [Kind<F, infer _In, infer _Out2, infer _Out1, infer _Target>] ? _Out2 : never,
-    [K] extends [Kind<F, infer _In, infer _Out2, infer _Out1, infer _Target>] ? _Out1 : never,
+    [K] extends [Variance<F, infer R, any, any>] ? R : [K] extends [Kind<F, infer R, any, any, any>] ? R : never,
+    [K] extends [Variance<F, any, infer O, any>] ? O : [K] extends [Kind<F, any, infer O, any, any>] ? O : never,
+    [K] extends [Variance<F, any, any, infer E>] ? E : [K] extends [Kind<F, any, any, infer E, any>] ? E : never,
     A
   >
 }
