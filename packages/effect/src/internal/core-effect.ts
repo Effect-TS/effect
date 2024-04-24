@@ -798,10 +798,7 @@ export const gen: typeof Effect.gen = function() {
       state: IteratorYieldResult<any> | IteratorReturnResult<any>
     ): Effect.Effect<any, any, any> => (state.done
       ? core.succeed(state.value)
-      : pipe(
-        state.value.value as unknown as Effect.Effect<any, any, any>,
-        core.flatMap((val: any) => run(iterator.next(val)))
-      ))
+      : core.flatMap(state.value, (val: any) => run(iterator.next(val))))
     return run(state)
   })
 }

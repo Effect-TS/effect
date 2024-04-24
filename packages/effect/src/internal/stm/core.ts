@@ -19,6 +19,7 @@ import { ChannelTypeId } from "../core-stream.js"
 import { withFiberRuntime } from "../core.js"
 import { effectVariance } from "../effectable.js"
 import { OP_COMMIT } from "../opCodes/effect.js"
+import { SingleShotGen } from "../singleShotGen.js"
 import { SinkTypeId } from "../sink.js"
 import * as OpCodes from "./opCodes/stm.js"
 import * as TExitOpCodes from "./opCodes/tExit.js"
@@ -169,6 +170,9 @@ class STMPrimitive implements STM.STM<any, any, any> {
   }
   [Hash.symbol](this: {}) {
     return Hash.cached(this, Hash.random(this))
+  }
+  [Symbol.iterator]() {
+    return new SingleShotGen(this) as any
   }
   commit(this: STM.STM<any, any, any>): Effect.Effect<any, any, any> {
     return unsafeAtomically(this, constVoid, constVoid)

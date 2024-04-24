@@ -94,13 +94,21 @@ export interface Effect<out A, out E = never, out R = never> extends Effect.Vari
   readonly [Unify.typeSymbol]?: unknown
   readonly [Unify.unifySymbol]?: EffectUnify<this>
   readonly [Unify.ignoreSymbol]?: EffectUnifyIgnore
-
-  [Symbol.iterator](): EffectGenerator<Effect<A, E, R>>
+  [Symbol.iterator](): EffectGenerator<this>
 }
-interface EffectGenerator<Eff extends Effect<any, any, any>> {
-  next(): IteratorResult<Eff, Effect.Success<Eff>>
-  return(value: Effect.Success<Eff>): IteratorResult<Eff, Effect.Success<Eff>>
-  throw(e: any): IteratorResult<Eff, Effect.Success<Eff>>
+
+/**
+ * @since 2.0.0
+ * @category models
+ */
+export interface EffectGenerator<Eff extends Effect<any, any, any>> {
+  next(
+    ...args: ReadonlyArray<any>
+  ): Eff extends Effect.Variance<infer A, infer E, infer R> ? IteratorResult<Effect<A, E, R>, A> : never
+  return(
+    value: Effect.Success<Eff>
+  ): Eff extends Effect.Variance<infer A, infer E, infer R> ? IteratorResult<Effect<A, E, R>, A> : never
+  throw(e: any): Eff extends Effect.Variance<infer A, infer E, infer R> ? IteratorResult<Effect<A, E, R>, A> : never
   [Symbol.iterator](): EffectGenerator<Eff>
 }
 
@@ -1112,20 +1120,20 @@ export const dieSync: (evaluate: LazyArg<unknown>) => Effect<never> = core.dieSy
  * @category constructors
  */
 export const gen: {
-  <Eff extends Effect<any, any, any>, AEff>(
-    f: (resume: Adapter) => Generator<Eff, AEff, any>
+  <Eff extends Effect<any, any, any>, AEff, _>(
+    f: (resume: Adapter) => Generator<Eff, AEff, _>
   ): Effect<
     AEff,
-    [Eff] extends [never] ? never : [Eff] extends [Effect<any, infer E, any>] ? E : never,
-    [Eff] extends [never] ? never : [Eff] extends [Effect<any, any, infer R>] ? R : never
+    [Eff] extends [never] ? never : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E : never,
+    [Eff] extends [never] ? never : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R : never
   >
-  <Self, Eff extends Effect<any, any, any>, AEff>(
+  <Self, Eff extends Effect<any, any, any>, AEff, _>(
     self: Self,
-    f: (this: Self, resume: Adapter) => Generator<Eff, AEff, any>
+    f: (this: Self, resume: Adapter) => Generator<Eff, AEff, _>
   ): Effect<
     AEff,
-    [Eff] extends [never] ? never : [Eff] extends [Effect<any, infer E, any>] ? E : never,
-    [Eff] extends [never] ? never : [Eff] extends [Effect<any, any, infer R>] ? R : never
+    [Eff] extends [never] ? never : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E : never,
+    [Eff] extends [never] ? never : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R : never
   >
 } = effect.gen
 
