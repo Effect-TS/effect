@@ -920,12 +920,16 @@ export class BigIntFromSelf extends make<bigint>(AST.bigIntKeyword) {}
  */
 export class SymbolFromSelf extends make<symbol>(AST.symbolKeyword) {}
 
+/** @ignore */
 class $String extends make<string>(AST.stringKeyword) {}
 
+/** @ignore */
 class $Number extends make<number>(AST.numberKeyword) {}
 
+/** @ignore */
 class $Boolean extends make<boolean>(AST.booleanKeyword) {}
 
+/** @ignore */
 class $Object extends make<object>(AST.objectKeyword) {}
 
 export {
@@ -4015,6 +4019,7 @@ export class JsonNumber extends $Number.pipe(
  */
 export class Not extends transform($Boolean, $Boolean, { decode: boolean_.not, encode: boolean_.not }) {}
 
+/** @ignore */
 class $Symbol extends transform(
   $String,
   SymbolFromSelf,
@@ -4226,6 +4231,7 @@ export const clampBigInt =
       { strict: false, decode: (self) => bigInt_.clamp(self, { minimum, maximum }), encode: identity }
     )
 
+/** @ignore */
 class $BigInt extends transformOrFail(
   $String,
   BigIntFromSelf,
@@ -4868,6 +4874,7 @@ export class DateFromString extends transform(
   { decode: (s) => new Date(s), encode: (n) => n.toISOString() }
 ).annotations({ identifier: "DateFromString" }) {}
 
+/** @ignore */
 class $Date extends DateFromString.pipe(
   validDate({ identifier: "Date" })
 ) {}
