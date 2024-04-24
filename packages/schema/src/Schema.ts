@@ -2859,14 +2859,14 @@ export const attachPropertySignature: {
     value: V,
     annotations?: Annotations.Schema<Types.Simplify<A & { readonly [k in K]: V }>>
   ): <I, R>(
-    schema: Schema<A, I, R>
+    schema: SchemaClass<A, I, R>
   ) => Schema<Types.Simplify<A & { readonly [k in K]: V }>, I, R>
   <A, I, R, K extends PropertyKey, V extends AST.LiteralValue | symbol>(
     schema: Schema<A, I, R>,
     key: K,
     value: V,
     annotations?: Annotations.Schema<Types.Simplify<A & { readonly [k in K]: V }>>
-  ): Schema<Types.Simplify<A & { readonly [k in K]: V }>, I, R>
+  ): SchemaClass<Types.Simplify<A & { readonly [k in K]: V }>, I, R>
 } = dual(
   (args) => isSchema(args[0]),
   <A, I, R, K extends PropertyKey, V extends AST.LiteralValue | symbol>(
@@ -3334,9 +3334,9 @@ export const lowercased =
  * @category string constructors
  * @since 1.0.0
  */
-export const Lowercased = $String.pipe(
+export class Lowercased extends $String.pipe(
   lowercased({ identifier: "Lowercased", title: "Lowercased" })
-)
+) {}
 
 /**
  * @category type id
@@ -3364,9 +3364,9 @@ export const uppercased =
  * @category string constructors
  * @since 1.0.0
  */
-export const Uppercased: filter<string> = $String.pipe(
+export class Uppercased extends $String.pipe(
   uppercased({ identifier: "Uppercased", title: "Uppercased" })
-)
+) {}
 
 /**
  * @category type id
@@ -3417,7 +3417,7 @@ export const length = <A extends string>(
  * @category string constructors
  * @since 1.0.0
  */
-export const Char: filter<string> = $String.pipe(length(1, { identifier: "Char" }))
+export class Char extends $String.pipe(length(1, { identifier: "Char" })) {}
 
 /**
  * @category string filters
@@ -3432,28 +3432,16 @@ export const nonEmpty = <A extends string>(
   })
 
 /**
- * @category api interface
- * @since 1.0.0
- */
-export interface Lowercase extends Annotable<Lowercase, string> {}
-
-/**
  * This schema converts a string to lowercase.
  *
  * @category string transformations
  * @since 1.0.0
  */
-export const Lowercase: Lowercase = transform(
+export class Lowercase extends transform(
   $String,
   Lowercased,
   { decode: (s) => s.toLowerCase(), encode: identity }
-).annotations({ identifier: "Lowercase" })
-
-/**
- * @category api interface
- * @since 1.0.0
- */
-export interface Uppercase extends Annotable<Uppercase, string> {}
+).annotations({ identifier: "Lowercase" }) {}
 
 /**
  * This schema converts a string to uppercase.
@@ -3461,25 +3449,19 @@ export interface Uppercase extends Annotable<Uppercase, string> {}
  * @category string transformations
  * @since 1.0.0
  */
-export const Uppercase: Uppercase = transform(
+export class Uppercase extends transform(
   $String,
   Uppercased,
   { decode: (s) => s.toUpperCase(), encode: identity }
-).annotations({ identifier: "Uppercase" })
+).annotations({ identifier: "Uppercase" }) {}
 
 /**
  * @category string constructors
  * @since 1.0.0
  */
-export const Trimmed: filter<string> = $String.pipe(
+export class Trimmed extends $String.pipe(
   trimmed({ identifier: "Trimmed", title: "Trimmed" })
-)
-
-/**
- * @category api interface
- * @since 1.0.0
- */
-export interface Trim extends Annotable<Trim, string> {}
+) {}
 
 /**
  * This schema allows removing whitespaces from the beginning and end of a string.
@@ -3487,11 +3469,11 @@ export interface Trim extends Annotable<Trim, string> {}
  * @category string transformations
  * @since 1.0.0
  */
-export const Trim: Trim = transform(
+export class Trim extends transform(
   $String,
   Trimmed,
   { decode: (s) => s.trim(), encode: identity }
-).annotations({ identifier: "Trim" })
+).annotations({ identifier: "Trim" }) {}
 
 /**
  * Returns a schema that allows splitting a string into an array of strings.
@@ -3499,7 +3481,7 @@ export const Trim: Trim = transform(
  * @category string transformations
  * @since 1.0.0
  */
-export const split = (separator: string): Schema<ReadonlyArray<string>, string> =>
+export const split = (separator: string): transform<typeof $String, $Array<typeof $String>> =>
   transform(
     $String,
     $Array($String),
@@ -3568,9 +3550,9 @@ export const parseJson: {
  * @category string constructors
  * @since 1.0.0
  */
-export const NonEmpty: filter<string> = $String.pipe(
+export class NonEmpty extends $String.pipe(
   nonEmpty({ identifier: "NonEmpty", title: "NonEmpty" })
-)
+) {}
 
 /**
  * @category type id
@@ -3588,7 +3570,7 @@ const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-
  * @category string constructors
  * @since 1.0.0
  */
-export const UUID: filter<string> = $String.pipe(
+export class UUID extends $String.pipe(
   pattern(uuidRegex, {
     typeId: UUIDTypeId,
     identifier: "UUID",
@@ -3596,7 +3578,7 @@ export const UUID: filter<string> = $String.pipe(
     description: "a Universally Unique Identifier",
     arbitrary: (): LazyArbitrary<string> => (fc) => fc.uuid()
   })
-)
+) {}
 
 /**
  * @category type id
@@ -3615,7 +3597,7 @@ const ulidRegex = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i
  * @category string constructors
  * @since 1.0.0
  */
-export const ULID: filter<string> = $String.pipe(
+export class ULID extends $String.pipe(
   pattern(ulidRegex, {
     typeId: ULIDTypeId,
     identifier: "ULID",
@@ -3623,7 +3605,7 @@ export const ULID: filter<string> = $String.pipe(
     description: "a Universally Unique Lexicographically Sortable Identifier",
     arbitrary: (): LazyArbitrary<string> => (fc) => fc.ulid()
   })
-)
+) {}
 
 /**
  * @category type id
@@ -3919,18 +3901,13 @@ export const nonNegative = <A extends number>(
  * @since 1.0.0
  */
 export const clamp =
-  (minimum: number, maximum: number) => <R, I, A extends number>(self: Schema<A, I, R>): Schema<A, I, R> =>
+  (minimum: number, maximum: number) =>
+  <A extends number, I, R>(self: Schema<A, I, R>): transform<Schema<A, I, R>, filter<A>> =>
     transform(
       self,
       self.pipe(typeSchema, between(minimum, maximum)),
       { strict: false, decode: (self) => number_.clamp(self, { minimum, maximum }), encode: identity }
     )
-
-/**
- * @category api interface
- * @since 1.0.0
- */
-export interface NumberFromString extends AnnotableClass<NumberFromString, number, string> {}
 
 /**
  * This schema transforms a `string` into a `number` by parsing the string using the `Number` function.
@@ -3942,64 +3919,64 @@ export interface NumberFromString extends AnnotableClass<NumberFromString, numbe
  * @category number constructors
  * @since 1.0.0
  */
-export const NumberFromString: NumberFromString = transformOrFail(
+export class NumberFromString extends transformOrFail(
   $String,
   $Number,
   {
     decode: (s, _, ast) => ParseResult.fromOption(number_.parse(s), () => new ParseResult.Type(ast, s)),
     encode: (n) => ParseResult.succeed(String(n))
   }
-).annotations({ identifier: "NumberFromString" })
+).annotations({ identifier: "NumberFromString" }) {}
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const Finite: filter<number> = $Number.pipe(finite({ identifier: "Finite", title: "Finite" }))
+export class Finite extends $Number.pipe(finite({ identifier: "Finite", title: "Finite" })) {}
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const Int: filter<number> = $Number.pipe(int({ identifier: "Int", title: "Int" }))
+export class Int extends $Number.pipe(int({ identifier: "Int", title: "Int" })) {}
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const NonNaN: filter<number> = $Number.pipe(nonNaN({ identifier: "NonNaN", title: "NonNaN" }))
+export class NonNaN extends $Number.pipe(nonNaN({ identifier: "NonNaN", title: "NonNaN" })) {}
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const Positive: filter<number> = $Number.pipe(
+export class Positive extends $Number.pipe(
   positive({ identifier: "Positive", title: "Positive" })
-)
+) {}
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const Negative: filter<number> = $Number.pipe(
+export class Negative extends $Number.pipe(
   negative({ identifier: "Negative", title: "Negative" })
-)
+) {}
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const NonPositive: filter<number> = $Number.pipe(
+export class NonPositive extends $Number.pipe(
   nonPositive({ identifier: "NonPositive", title: "NonPositive" })
-)
+) {}
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export const NonNegative: filter<number> = $Number.pipe(
+export class NonNegative extends $Number.pipe(
   nonNegative({ identifier: "NonNegative", title: "NonNegative" })
-)
+) {}
 
 /**
  * @category type id
@@ -4025,7 +4002,7 @@ export const JsonNumberTypeId = Symbol.for("@effect/schema/TypeId/JsonNumber")
  * @category number constructors
  * @since 1.0.0
  */
-export const JsonNumber: filter<number> = $Number.pipe(
+export class JsonNumber extends $Number.pipe(
   filter((n) => !Number.isNaN(n) && Number.isFinite(n), {
     typeId: JsonNumberTypeId,
     identifier: "JsonNumber",
@@ -4033,31 +4010,19 @@ export const JsonNumber: filter<number> = $Number.pipe(
     description: "a JSON-compatible number, excluding NaN, +Infinity, and -Infinity",
     jsonSchema: { type: "number" }
   })
-)
-
-/**
- * @category api interface
- * @since 1.0.0
- */
-export interface Not extends AnnotableClass<Not, boolean> {}
+) {}
 
 /**
  * @category boolean transformations
  * @since 1.0.0
  */
-export const Not: Not = transform($Boolean, $Boolean, { decode: boolean_.not, encode: boolean_.not })
+export class Not extends transform($Boolean, $Boolean, { decode: boolean_.not, encode: boolean_.not }) {}
 
-/**
- * @category api interface
- * @since 1.0.0
- */
-export interface $Symbol extends AnnotableClass<$Symbol, symbol, string> {}
-
-const $Symbol: $Symbol = transform(
+class $Symbol extends transform(
   $String,
   SymbolFromSelf,
   { strict: false, decode: (s) => Symbol.for(s), encode: (sym) => sym.description }
-).annotations({ identifier: "symbol" })
+).annotations({ identifier: "symbol" }) {}
 
 export {
   /**
@@ -4256,27 +4221,22 @@ export const nonPositiveBigInt = <A extends bigint>(
  * @since 1.0.0
  */
 export const clampBigInt =
-  (minimum: bigint, maximum: bigint) => <R, I, A extends bigint>(self: Schema<A, I, R>): Schema<A, I, R> =>
+  (minimum: bigint, maximum: bigint) =>
+  <A extends bigint, I, R>(self: Schema<A, I, R>): transform<Schema<A, I, R>, filter<A>> =>
     transform(
       self,
       self.pipe(typeSchema, betweenBigInt(minimum, maximum)),
       { strict: false, decode: (self) => bigInt_.clamp(self, { minimum, maximum }), encode: identity }
     )
 
-/**
- * @category api interface
- * @since 1.0.0
- */
-export interface $BigInt extends AnnotableClass<$BigInt, bigint, string> {}
-
-const $BigInt: $BigInt = transformOrFail(
+class $BigInt extends transformOrFail(
   $String,
   BigIntFromSelf,
   {
     decode: (s, _, ast) => ParseResult.fromOption(bigInt_.fromString(s), () => new ParseResult.Type(ast, s)),
     encode: (n) => ParseResult.succeed(String(n))
   }
-).annotations({ identifier: "bigint" })
+).annotations({ identifier: "bigint" }) {}
 
 export {
   /**
@@ -4355,12 +4315,6 @@ export const NonNegativeBigInt: filter<bigint, string> = $BigInt.pipe(
 )
 
 /**
- * @category api interface
- * @since 1.0.0
- */
-export interface BigIntFromNumber extends AnnotableClass<BigIntFromNumber, bigint, number> {}
-
-/**
  * This schema transforms a `number` into a `bigint` by parsing the number using the `BigInt` function.
  *
  * It returns an error if the value can't be safely encoded as a `number` due to being out of range.
@@ -4368,7 +4322,7 @@ export interface BigIntFromNumber extends AnnotableClass<BigIntFromNumber, bigin
  * @category bigint transformations
  * @since 1.0.0
  */
-export const BigIntFromNumber: BigIntFromNumber = transformOrFail(
+export class BigIntFromNumber extends transformOrFail(
   $Number,
   BigIntFromSelf,
   {
@@ -4379,32 +4333,20 @@ export const BigIntFromNumber: BigIntFromNumber = transformOrFail(
       ),
     encode: (b, _, ast) => ParseResult.fromOption(bigInt_.toNumber(b), () => new ParseResult.Type(ast, b))
   }
-).annotations({ identifier: "BigintFromNumber" })
-
-/**
- * @category api interface
- * @since 1.0.0
- */
-export interface SecretFromSelf extends AnnotableClass<SecretFromSelf, secret_.Secret> {}
+).annotations({ identifier: "BigintFromNumber" }) {}
 
 /**
  * @category Secret constructors
  * @since 1.0.0
  */
-export const SecretFromSelf: SecretFromSelf = declare(
+export class SecretFromSelf extends declare(
   secret_.isSecret,
   {
     identifier: "SecretFromSelf",
     pretty: (): pretty_.Pretty<secret_.Secret> => (secret) => String(secret),
     arbitrary: (): LazyArbitrary<secret_.Secret> => (fc) => fc.string().map((_) => secret_.fromString(_))
   }
-)
-
-/**
- * @category api interface
- * @since 1.0.0
- */
-export interface Secret extends AnnotableClass<Secret, secret_.Secret, string> {}
+) {}
 
 /**
  * A schema that transforms a `string` into a `Secret`.
@@ -4412,23 +4354,17 @@ export interface Secret extends AnnotableClass<Secret, secret_.Secret, string> {
  * @category Secret transformations
  * @since 1.0.0
  */
-export const Secret: Secret = transform(
+export class Secret extends transform(
   $String,
   SecretFromSelf,
   { strict: false, decode: (str) => secret_.fromString(str), encode: (secret) => secret_.value(secret) }
-).annotations({ identifier: "Secret" })
-
-/**
- * @category api interface
- * @since 1.0.0
- */
-export interface DurationFromSelf extends AnnotableClass<DurationFromSelf, duration_.Duration> {}
+).annotations({ identifier: "Secret" }) {}
 
 /**
  * @category Duration constructors
  * @since 1.0.0
  */
-export const DurationFromSelf: DurationFromSelf = declare(
+export class DurationFromSelf extends declare(
   duration_.isDuration,
   {
     identifier: "DurationFromSelf",
@@ -4447,13 +4383,7 @@ export const DurationFromSelf: DurationFromSelf = declare(
       ),
     equivalence: (): Equivalence.Equivalence<duration_.Duration> => duration_.Equivalence
   }
-)
-
-/**
- * @category api interface
- * @since 1.0.0
- */
-export interface DurationFromNanos extends AnnotableClass<DurationFromNanos, duration_.Duration, bigint> {}
+) {}
 
 /**
  * A schema that transforms a `bigint` tuple into a `Duration`.
@@ -4462,7 +4392,7 @@ export interface DurationFromNanos extends AnnotableClass<DurationFromNanos, dur
  * @category Duration transformations
  * @since 1.0.0
  */
-export const DurationFromNanos: DurationFromNanos = transformOrFail(
+export class DurationFromNanos extends transformOrFail(
   BigIntFromSelf,
   DurationFromSelf,
   {
@@ -4473,13 +4403,7 @@ export const DurationFromNanos: DurationFromNanos = transformOrFail(
         onSome: (val) => ParseResult.succeed(val)
       })
   }
-).annotations({ identifier: "DurationFromNanos" })
-
-/**
- * @category api interface
- * @since 1.0.0
- */
-export interface DurationFromMillis extends AnnotableClass<DurationFromMillis, duration_.Duration, number> {}
+).annotations({ identifier: "DurationFromNanos" }) {}
 
 /**
  * A schema that transforms a `number` tuple into a `Duration`.
@@ -4488,11 +4412,11 @@ export interface DurationFromMillis extends AnnotableClass<DurationFromMillis, d
  * @category Duration transformations
  * @since 1.0.0
  */
-export const DurationFromMillis: DurationFromMillis = transform(
+export class DurationFromMillis extends transform(
   $Number,
   DurationFromSelf,
   { decode: (ms) => duration_.millis(ms), encode: (n) => duration_.toMillis(n) }
-).annotations({ identifier: "DurationFromMillis" })
+).annotations({ identifier: "DurationFromMillis" }) {}
 
 const hrTime: Schema<readonly [seconds: number, nanos: number]> = Tuple(
   NonNegative.pipe(
@@ -4510,27 +4434,19 @@ const hrTime: Schema<readonly [seconds: number, nanos: number]> = Tuple(
 )
 
 /**
- * @category api interface
- * @since 1.0.0
- */
-export interface Duration
-  extends AnnotableClass<Duration, duration_.Duration, readonly [seconds: number, nanos: number]>
-{}
-
-/**
  * A schema that transforms a `[number, number]` tuple into a `Duration`.
  *
  * @category Duration transformations
  * @since 1.0.0
  */
-export const Duration: Duration = transform(
+export class Duration extends transform(
   hrTime,
   DurationFromSelf,
   {
     decode: ([seconds, nanos]) => duration_.nanos(BigInt(seconds) * BigInt(1e9) + BigInt(nanos)),
     encode: (duration) => duration_.toHrTime(duration)
   }
-).annotations({ identifier: "Duration" })
+).annotations({ identifier: "Duration" }) {}
 
 /**
  * Clamps a `Duration` between a minimum and a maximum value.
@@ -4540,7 +4456,7 @@ export const Duration: Duration = transform(
  */
 export const clampDuration =
   (minimum: duration_.DurationInput, maximum: duration_.DurationInput) =>
-  <R, I, A extends duration_.Duration>(self: Schema<A, I, R>): Schema<A, I, R> =>
+  <A extends duration_.Duration, I, R>(self: Schema<A, I, R>): transform<Schema<A, I, R>, filter<A>> =>
     transform(
       self,
       self.pipe(typeSchema, betweenDuration(minimum, maximum)),
@@ -4914,18 +4830,12 @@ export const validDate =
     )
 
 /**
- * @category api interface
- * @since 1.0.0
- */
-export interface DateFromSelf extends AnnotableClass<DateFromSelf, Date> {}
-
-/**
  * Represents a schema for handling potentially **invalid** `Date` instances (e.g., `new Date("Invalid Date")` is not rejected).
  *
  * @category Date constructors
  * @since 1.0.0
  */
-export const DateFromSelf: DateFromSelf = declare(
+export class DateFromSelf extends declare(
   Predicate.isDate,
   {
     identifier: "DateFromSelf",
@@ -4934,7 +4844,7 @@ export const DateFromSelf: DateFromSelf = declare(
     arbitrary: (): LazyArbitrary<Date> => (fc) => fc.date({ noInvalidDate: false }),
     equivalence: () => Equivalence.Date
   }
-)
+) {}
 
 /**
  * Represents a schema for handling only **valid** dates. For example, `new Date("Invalid Date")` is rejected, even though it is an instance of `Date`.
@@ -4942,18 +4852,12 @@ export const DateFromSelf: DateFromSelf = declare(
  * @category Date constructors
  * @since 1.0.0
  */
-export const ValidDateFromSelf: filter<Date> = DateFromSelf.pipe(
+export class ValidDateFromSelf extends DateFromSelf.pipe(
   validDate({
     identifier: "ValidDateFromSelf",
     description: "a valid Date instance"
   })
-)
-
-/**
- * @category api interface
- * @since 1.0.0
- */
-export interface DateFromString extends AnnotableClass<DateFromString, Date, string> {}
+) {}
 
 /**
  * Represents a schema that converts a `string` into a (potentially invalid) `Date` (e.g., `new Date("Invalid Date")` is not rejected).
@@ -4961,15 +4865,15 @@ export interface DateFromString extends AnnotableClass<DateFromString, Date, str
  * @category Date transformations
  * @since 1.0.0
  */
-export const DateFromString: DateFromString = transform(
+export class DateFromString extends transform(
   $String,
   DateFromSelf,
   { decode: (s) => new Date(s), encode: (n) => n.toISOString() }
-).annotations({ identifier: "DateFromString" })
+).annotations({ identifier: "DateFromString" }) {}
 
-const $Date: filter<Date, string> = DateFromString.pipe(
+class $Date extends DateFromString.pipe(
   validDate({ identifier: "Date" })
-)
+) {}
 
 export {
   /**
@@ -5691,16 +5595,10 @@ const bigDecimalArbitrary = (): LazyArbitrary<bigDecimal_.BigDecimal> => (fc) =>
   fc.tuple(fc.bigInt(), fc.integer()).map(([value, scale]) => bigDecimal_.make(value, scale))
 
 /**
- * @category api interface
- * @since 1.0.0
- */
-export interface BigDecimalFromSelf extends AnnotableClass<BigDecimalFromSelf, bigDecimal_.BigDecimal> {}
-
-/**
  * @category BigDecimal constructors
  * @since 1.0.0
  */
-export const BigDecimalFromSelf: BigDecimalFromSelf = declare(
+export class BigDecimalFromSelf extends declare(
   bigDecimal_.isBigDecimal,
   {
     identifier: "BigDecimalFromSelf",
@@ -5708,19 +5606,13 @@ export const BigDecimalFromSelf: BigDecimalFromSelf = declare(
     arbitrary: bigDecimalArbitrary,
     equivalence: () => bigDecimal_.Equivalence
   }
-)
-
-/**
- * @category api interface
- * @since 1.0.0
- */
-export interface BigDecimal extends AnnotableClass<BigDecimal, bigDecimal_.BigDecimal, string> {}
+) {}
 
 /**
  * @category BigDecimal transformations
  * @since 1.0.0
  */
-export const BigDecimal: BigDecimal = transformOrFail(
+export class BigDecimal extends transformOrFail(
   $String,
   BigDecimalFromSelf,
   {
@@ -5731,13 +5623,7 @@ export const BigDecimal: BigDecimal = transformOrFail(
       })),
     encode: (val) => ParseResult.succeed(bigDecimal_.format(bigDecimal_.normalize(val)))
   }
-).annotations({ identifier: "BigDecimal" })
-
-/**
- * @category api interface
- * @since 1.0.0
- */
-export interface BigDecimalFromNumber extends AnnotableClass<BigDecimalFromNumber, bigDecimal_.BigDecimal, number> {}
+).annotations({ identifier: "BigDecimal" }) {}
 
 /**
  * A schema that transforms a `number` into a `BigDecimal`.
@@ -5746,14 +5632,14 @@ export interface BigDecimalFromNumber extends AnnotableClass<BigDecimalFromNumbe
  * @category BigDecimal transformations
  * @since 1.0.0
  */
-export const BigDecimalFromNumber: BigDecimalFromNumber = transformOrFail(
+export class BigDecimalFromNumber extends transformOrFail(
   $Number,
   BigDecimalFromSelf,
   {
     decode: (num) => ParseResult.succeed(bigDecimal_.fromNumber(num)),
     encode: (val) => ParseResult.succeed(bigDecimal_.unsafeToNumber(val))
   }
-).annotations({ identifier: "BigDecimalFromNumber" })
+).annotations({ identifier: "BigDecimalFromNumber" }) {}
 
 /**
  * @category type id
@@ -6023,7 +5909,7 @@ export const betweenBigDecimal = <A extends bigDecimal_.BigDecimal>(
  */
 export const clampBigDecimal =
   (minimum: bigDecimal_.BigDecimal, maximum: bigDecimal_.BigDecimal) =>
-  <R, I, A extends bigDecimal_.BigDecimal>(self: Schema<A, I, R>): Schema<A, I, R> =>
+  <A extends bigDecimal_.BigDecimal, I, R>(self: Schema<A, I, R>): transform<Schema<A, I, R>, filter<A>> =>
     transform(
       self,
       self.pipe(typeSchema, betweenBigDecimal(minimum, maximum)),
@@ -6681,23 +6567,17 @@ const fiberIdPretty: pretty_.Pretty<fiberId_.FiberId> = (fiberId) => {
 }
 
 /**
- * @category api interface
- * @since 1.0.0
- */
-export interface FiberIdFromSelf extends AnnotableClass<FiberIdFromSelf, fiberId_.FiberId> {}
-
-/**
  * @category FiberId constructors
  * @since 1.0.0
  */
-export const FiberIdFromSelf: FiberIdFromSelf = declare(
+export class FiberIdFromSelf extends declare(
   fiberId_.isFiberId,
   {
     identifier: "FiberIdFromSelf",
     pretty: () => fiberIdPretty,
     arbitrary: () => fiberIdArbitrary
   }
-)
+) {}
 
 const fiberIdDecode = (input: FiberIdEncoded): fiberId_.FiberId => {
   switch (input._tag) {
@@ -6726,20 +6606,14 @@ const fiberIdEncode = (input: fiberId_.FiberId): FiberIdEncoded => {
 }
 
 /**
- * @category api interface
- * @since 1.0.0
- */
-export interface FiberId extends AnnotableClass<FiberId, fiberId_.FiberId, FiberIdEncoded> {}
-
-/**
  * @category FiberId transformations
  * @since 1.0.0
  */
-export const FiberId: FiberId = transform(
+export class FiberId extends transform(
   FiberIdEncoded,
   FiberIdFromSelf,
   { decode: fiberIdDecode, encode: fiberIdEncode }
-).annotations({ identifier: "FiberId" })
+).annotations({ identifier: "FiberId" }) {}
 
 /**
  * @category Cause utils
@@ -7531,12 +7405,6 @@ export const SortedSet = <Value extends Schema.Any>(
 }
 
 /**
- * @category api interface
- * @since 1.0.0
- */
-export interface BooleanFromUnknown extends AnnotableClass<BooleanFromUnknown, boolean, unknown> {}
-
-/**
  * Converts an arbitrary value to a `boolean` by testing whether it is truthy.
  * Uses `!!val` to coerce the value to a `boolean`.
  *
@@ -7544,8 +7412,8 @@ export interface BooleanFromUnknown extends AnnotableClass<BooleanFromUnknown, b
  * @category boolean constructors
  * @since 1.0.0
  */
-export const BooleanFromUnknown: BooleanFromUnknown = transform(
+export class BooleanFromUnknown extends transform(
   Unknown,
   $Boolean,
   { decode: Predicate.isTruthy, encode: identity }
-).annotations({ identifier: "BooleanFromUnknown" })
+).annotations({ identifier: "BooleanFromUnknown" }) {}
