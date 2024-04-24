@@ -169,13 +169,13 @@ export interface Variance<in out F extends TypeLambda, in R, out O, out E> {
  * @since 2.0.0
  */
 export interface Gen<F extends TypeLambda, Z> {
-  <K extends Variance<F, any, any, any>, A>(
+  <K extends Variance<F, any, any, any> | Kind<F, any, any, any, any>, A>(
     body: (resume: Z) => Generator<K, A>
   ): Kind<
     F,
-    [K] extends [Variance<F, infer R, any, any>] ? R : never,
-    [K] extends [Variance<F, any, infer O, any>] ? O : never,
-    [K] extends [Variance<F, any, any, infer E>] ? E : never,
+    [K] extends [Variance<F, infer R, any, any>] ? R : [K] extends [Kind<F, infer R, any, any, any>] ? R : never,
+    [K] extends [Variance<F, any, infer O, any>] ? O : [K] extends [Kind<F, any, infer O, any, any>] ? O : never,
+    [K] extends [Variance<F, any, any, infer E>] ? E : [K] extends [Kind<F, any, any, infer E, any>] ? E : never,
     A
   >
 }

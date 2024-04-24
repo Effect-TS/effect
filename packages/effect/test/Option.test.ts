@@ -13,9 +13,9 @@ const p = (n: number): boolean => n > 2
 
 describe("Option", () => {
   it("gen", () => {
-    const a = _.gen(function*($) {
-      const x = yield* $(_.some(1))
-      const y = yield* $(_.some(2))
+    const a = _.gen(function*() {
+      const x = yield* _.some(1)
+      const y = yield* _.some(2)
       return x + y
     })
     // eslint-disable-next-line require-yield
