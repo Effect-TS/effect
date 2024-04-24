@@ -21,10 +21,10 @@ const Tag2 = Context.GenericTag<"Tag2", number>("Tag2")
 // declare
 // ---------------------------------------------
 
-// $ExpectType Schema<string, string, never>
+// $ExpectType SchemaClass<string, string, never>
 S.declare((u): u is string => typeof u === "string")
 
-// $ExpectType Schema<string, number, "aContext" | "bContext">
+// $ExpectType SchemaClass<string, number, "aContext" | "bContext">
 S.declare(
   [aContext, bContext],
   { decode: (_a, _b) => () => ParseResult.succeed("a"), encode: (_a, _b) => () => ParseResult.succeed(1) },
@@ -192,17 +192,17 @@ S.asSchema(S.Struct({ a: aContext, b: bContext }))
 S.Struct({ a: aContext, b: bContext })
 
 // ---------------------------------------------
-// Pick
+// pick
 // ---------------------------------------------
 
-// $ExpectType Schema<{ readonly a: string; }, { readonly a: string; }, "aContext" | "bContext">
+// $ExpectType SchemaClass<{ readonly a: string; }, { readonly a: string; }, "aContext" | "bContext">
 S.Struct({ a: aContext, b: bContext }).pipe(S.pick("a"))
 
 // ---------------------------------------------
-// Omit
+// omit
 // ---------------------------------------------
 
-// $ExpectType Schema<{ readonly a: string; }, { readonly a: string; }, "aContext" | "bContext">
+// $ExpectType SchemaClass<{ readonly a: string; }, { readonly a: string; }, "aContext" | "bContext">
 S.Struct({ a: aContext, b: bContext }).pipe(S.omit("b"))
 
 // ---------------------------------------------
@@ -213,17 +213,17 @@ S.Struct({ a: aContext, b: bContext }).pipe(S.omit("b"))
 aContext.pipe(S.brand("a"))
 
 // ---------------------------------------------
-// Partial
+// partial
 // ---------------------------------------------
 
-// $ExpectType Schema<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b?: number; }, "aContext" | "bContext">
+// $ExpectType SchemaClass<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b?: number; }, "aContext" | "bContext">
 S.partial(S.Struct({ a: aContext, b: bContext }), { exact: true })
 
 // ---------------------------------------------
-// Required
+// required
 // ---------------------------------------------
 
-// $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }, "aContext" | "bContext">
+// $ExpectType SchemaClass<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }, "aContext" | "bContext">
 S.required(S.partial(S.Struct({ a: aContext, b: bContext }), { exact: true }))
 
 // ---------------------------------------------
@@ -260,7 +260,7 @@ S.Struct({ a: aContext, b: bContext }).pipe(S.extend(S.Struct({ c: cContext })))
 // compose
 // ---------------------------------------------
 
-// $ExpectType Schema<number, string, "aContext" | "bContext">
+// $ExpectType SchemaClass<number, string, "aContext" | "bContext">
 aContext.pipe(S.compose(bContext, { strict: false }))
 
 // ---------------------------------------------
@@ -373,7 +373,7 @@ aContext.pipe(S.equivalence(() => true))
 // rename
 // ---------------------------------------------
 
-// $ExpectType Schema<{ readonly c: string; readonly d: number; }, { readonly a: string; readonly b: number; }, "aContext" | "bContext">
+// $ExpectType SchemaClass<{ readonly c: string; readonly d: number; }, { readonly a: string; readonly b: number; }, "aContext" | "bContext">
 S.rename(S.Struct({ a: aContext, b: bContext }), { a: "c", b: "d" })
 
 // ---------------------------------------------
