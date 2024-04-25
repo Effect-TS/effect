@@ -4438,6 +4438,28 @@ export const annotateLogs: {
 } = effect.annotateLogs
 
 /**
+ * Annotates each log with the specified log annotation(s), until the Scope is closed.
+ *
+ * @since 3.1.0
+ * @category logging
+ * @example
+ * import { Effect } from "effect"
+ *
+ * Effect.gen(function*() {
+ *   yield* Effect.log("no annotations")
+ *   yield* Effect.annotateLogsScoped({ foo: "bar" })
+ *   yield* Effect.log("annotated with foo=bar")
+ * }).pipe(
+ *   Effect.scoped,
+ *   Effect.andThen(Effect.log("no annotations again"))
+ * )
+ */
+export const annotateLogsScoped: {
+  (key: string, value: unknown): Effect<void, never, Scope.Scope>
+  (values: Record<string, unknown>): Effect<void, never, Scope.Scope>
+} = fiberRuntime.annotateLogsScoped
+
+/**
  * Retrieves the log annotations associated with the current scope.
  *
  * @since 2.0.0
