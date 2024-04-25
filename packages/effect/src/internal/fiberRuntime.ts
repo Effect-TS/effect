@@ -1502,6 +1502,29 @@ export const batchedLogger = dual<
     )
   }))
 
+export const annotateLogsScoped: {
+  (key: string, value: unknown): Effect.Effect<void, never, Scope.Scope>
+  (values: Record<string, unknown>): Effect.Effect<void, never, Scope.Scope>
+} = function() {
+  if (typeof arguments[0] === "string") {
+    return fiberRefLocallyScopedWith(
+      core.currentLogAnnotations,
+      HashMap.set(arguments[0], arguments[1])
+    )
+  }
+  const entries = Object.entries(arguments[0])
+  return fiberRefLocallyScopedWith(
+    core.currentLogAnnotations,
+    HashMap.mutate((annotations) => {
+      for (let i = 0; i < entries.length; i++) {
+        const [key, value] = entries[i]
+        HashMap.set(annotations, key, value)
+      }
+      return annotations
+    })
+  )
+}
+
 // circular with Effect
 
 /* @internal */
