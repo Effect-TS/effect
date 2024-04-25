@@ -1883,14 +1883,16 @@ export const replicateEffect: {
 
 /* @internal */
 export const forEach: {
-  <A, B, E, R>(
-    f: (a: A, i: number) => Effect.Effect<B, E, R>,
+  <B, E, R, S extends Iterable<any>>(
+    f: (a: RA.ReadonlyArray.Infer<S>, i: number) => Effect.Effect<B, E, R>,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard?: false | undefined
-    }
-  ): (self: Iterable<A>) => Effect.Effect<Array<B>, E, R>
+    } | undefined
+  ): (
+    self: S
+  ) => Effect.Effect<RA.ReadonlyArray.With<S, B>, E, R>
   <A, B, E, R>(
     f: (a: A, i: number) => Effect.Effect<B, E, R>,
     options: {
@@ -1900,13 +1902,22 @@ export const forEach: {
     }
   ): (self: Iterable<A>) => Effect.Effect<void, E, R>
   <A, B, E, R>(
+    self: RA.NonEmptyReadonlyArray<A>,
+    f: (a: A, i: number) => Effect.Effect<B, E, R>,
+    options?: {
+      readonly concurrency?: Concurrency | undefined
+      readonly batching?: boolean | "inherit" | undefined
+      readonly discard?: false | undefined
+    } | undefined
+  ): Effect.Effect<RA.NonEmptyArray<B>, E, R>
+  <A, B, E, R>(
     self: Iterable<A>,
     f: (a: A, i: number) => Effect.Effect<B, E, R>,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard?: false | undefined
-    }
+    } | undefined
   ): Effect.Effect<Array<B>, E, R>
   <A, B, E, R>(
     self: Iterable<A>,

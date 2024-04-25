@@ -1,6 +1,7 @@
 /**
  * @since 2.0.0
  */
+import type * as RA from "./Array.js"
 import type * as Cause from "./Cause.js"
 import type * as Chunk from "./Chunk.js"
 import type * as Clock from "./Clock.js"
@@ -648,20 +649,21 @@ export const findFirst: {
 export const firstSuccessOf: <Eff extends Effect<any, any, any>>(
   effects: Iterable<Eff>
 ) => Effect<Effect.Success<Eff>, Effect.Error<Eff>, Effect.Context<Eff>> = effect.firstSuccessOf
-
 /**
  * @since 2.0.0
  * @category collecting & elements
  */
 export const forEach: {
-  <A, B, E, R>(
-    f: (a: A, i: number) => Effect<B, E, R>,
+  <B, E, R, S extends Iterable<any>>(
+    f: (a: RA.ReadonlyArray.Infer<S>, i: number) => Effect<B, E, R>,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard?: false | undefined
     } | undefined
-  ): (self: Iterable<A>) => Effect<Array<B>, E, R>
+  ): (
+    self: S
+  ) => Effect<RA.ReadonlyArray.With<S, B>, E, R>
   <A, B, E, R>(
     f: (a: A, i: number) => Effect<B, E, R>,
     options: {
@@ -670,6 +672,15 @@ export const forEach: {
       readonly discard: true
     }
   ): (self: Iterable<A>) => Effect<void, E, R>
+  <A, B, E, R>(
+    self: RA.NonEmptyReadonlyArray<A>,
+    f: (a: A, i: number) => Effect<B, E, R>,
+    options?: {
+      readonly concurrency?: Concurrency | undefined
+      readonly batching?: boolean | "inherit" | undefined
+      readonly discard?: false | undefined
+    } | undefined
+  ): Effect<RA.NonEmptyArray<B>, E, R>
   <A, B, E, R>(
     self: Iterable<A>,
     f: (a: A, i: number) => Effect<B, E, R>,
@@ -688,7 +699,7 @@ export const forEach: {
       readonly discard: true
     }
   ): Effect<void, E, R>
-} = fiberRuntime.forEach
+} = fiberRuntime.forEach as any
 
 /**
  * Returns a successful effect with the head of the collection if the collection

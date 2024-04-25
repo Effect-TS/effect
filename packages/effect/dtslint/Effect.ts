@@ -1,3 +1,4 @@
+import type { NonEmptyReadonlyArray } from "effect/Array"
 import type { Cause } from "effect/Cause"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
@@ -15,11 +16,11 @@ declare const numberArray: Array<number>
 declare const numberEffectIterable: Array<Effect.Effect<number>>
 
 // -------------------------------------------------------------------------------------
-// forEach
+// forEach - array
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Effect<string[], "err-1", "dep-1">
-Effect.forEach(["a", "b"], (
+Effect.forEach(["a", "b"] as Array<string>, (
   // $ExpectType string
   _a,
   // $ExpectType number
@@ -27,7 +28,7 @@ Effect.forEach(["a", "b"], (
 ) => string)
 
 // $ExpectType Effect<void, "err-1", "dep-1">
-Effect.forEach(["a", "b"], (
+Effect.forEach(["a", "b"] as Array<string>, (
   // $ExpectType string
   _a,
   // $ExpectType number
@@ -50,6 +51,90 @@ pipe(
   ["a", "b"],
   Effect.forEach((
     // $ExpectType string
+    _a,
+    // $ExpectType number
+    _i
+  ) => string, { discard: true })
+)
+
+// -------------------------------------------------------------------------------------
+// forEach - nonempty
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Effect<[string, ...string[]], "err-1", "dep-1">
+Effect.forEach(["a", "b"], (
+  // $ExpectType string
+  _a,
+  // $ExpectType number
+  _i
+) => string)
+
+// $ExpectType Effect<void, "err-1", "dep-1">
+Effect.forEach(["a", "b"], (
+  // $ExpectType string
+  _a,
+  // $ExpectType number
+  _i
+) => string, { discard: true })
+
+// $ExpectType Effect<[string, ...string[]], "err-1", "dep-1">
+pipe(
+  ["a", "b"] as NonEmptyReadonlyArray<string>,
+  Effect.forEach((
+    // $ExpectType string
+    _a,
+    // $ExpectType number
+    _i
+  ) => string)
+)
+
+// $ExpectType Effect<void, "err-1", "dep-1">
+pipe(
+  ["a", "b"] as NonEmptyReadonlyArray<string>,
+  Effect.forEach((
+    // $ExpectType string
+    _a,
+    // $ExpectType number
+    _i
+  ) => string, { discard: true })
+)
+
+// -------------------------------------------------------------------------------------
+// forEach - tuple as non empty array
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Effect<[string, ...string[]], "err-1", "dep-1">
+Effect.forEach(["a", "b"] as const, (
+  // $ExpectType "a" | "b"
+  _a,
+  // $ExpectType number
+  _i
+) => string)
+
+// $ExpectType Effect<void, "err-1", "dep-1">
+Effect.forEach(["a", "b"] as const, (
+  // $ExpectType "a" | "b"
+  _a,
+  // $ExpectType number
+  _i
+) => string, { discard: true })
+
+// $ExpectType Effect<[string, ...string[]], "err-1", "dep-1">
+pipe(
+  ["a", "b"] as const,
+  Effect.forEach((
+    // $ExpectType "a" | "b"
+    _a,
+    // $ExpectType number
+    _i
+  ) => string)
+)
+
+// $ExpectType Effect<void, "err-1", "dep-1">
+pipe(
+  ["a", "b"] as const,
+  Effect.forEach((
+    // $ExpectType "a" | "b"
     _a,
     // $ExpectType number
     _i
