@@ -14,7 +14,6 @@ import * as predicate from "../../Predicate.js"
 import type * as STM from "../../STM.js"
 import type { MergeRecord } from "../../Types.js"
 import * as effectCore from "../core.js"
-import * as SingleShotGen from "../singleShotGen.js"
 import * as core from "./core.js"
 import * as Journal from "./stm/journal.js"
 import * as STMState from "./stm/stmState.js"
@@ -614,39 +613,20 @@ export const fromOption = <A>(option: Option.Option<A>): STM.STM<A, Option.Optio
     onSome: core.succeed
   })
 
-/** @internal */
-class STMGen {
-  constructor(readonly value: STM.STM<any, any, any>) {}
-  [Symbol.iterator]() {
-    return new SingleShotGen.SingleShotGen(this)
-  }
-}
-
-const adapter = function() {
-  let x = arguments[0]
-  for (let i = 1; i < arguments.length; i++) {
-    x = arguments[i](x)
-  }
-  return new STMGen(x) as any
-}
-
 /**
  * Inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  * @internal
  */
 export const gen: typeof STM.gen = (f) =>
   suspend(() => {
-    const iterator = f(adapter)
+    const iterator = f(pipe)
     const state = iterator.next()
     const run = (
       state: IteratorYieldResult<any> | IteratorReturnResult<any>
     ): STM.STM<any, any, any> =>
       state.done ?
         core.succeed(state.value) :
-        core.flatMap(
-          state.value.value as unknown as STM.STM<any, any, any>,
-          (val: any) => run(iterator.next(val))
-        )
+        core.flatMap(state.value, (val: any) => run(iterator.next(val as never)))
     return run(state)
   })
 

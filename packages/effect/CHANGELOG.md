@@ -1,5 +1,29 @@
 # effect
 
+## 3.0.5
+
+### Patch Changes
+
+- [#2611](https://github.com/Effect-TS/effect/pull/2611) [`6222404`](https://github.com/Effect-TS/effect/commit/62224044678751829ed2f128e05133a91c6b0569) Thanks [@tim-smart](https://github.com/tim-smart)! - simplify EffectGenerator type to improve inference
+
+- [#2608](https://github.com/Effect-TS/effect/pull/2608) [`868ed2a`](https://github.com/Effect-TS/effect/commit/868ed2a8fe94ee7f4206a6070f29dcf2a5ba1dc3) Thanks [@patroza](https://github.com/patroza)! - feat: foreach preserve non emptyness.
+
+## 3.0.4
+
+### Patch Changes
+
+- [#2602](https://github.com/Effect-TS/effect/pull/2602) [`9a24667`](https://github.com/Effect-TS/effect/commit/9a246672008a2b668d43fbfd2fe5508c54b2b920) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - allow use of generators (Effect.gen) without the adapter
+
+  Effect's data types now implement a Iterable that can be `yield*`'ed directly.
+
+  ```ts
+  Effect.gen(function* () {
+    const a = yield* Effect.success(1);
+    const b = yield* Effect.success(2);
+    return a + b;
+  });
+  ```
+
 ## 3.0.3
 
 ### Patch Changes

@@ -4,7 +4,7 @@
 
 import * as Equivalence from "./Equivalence.js"
 import type { LazyArg } from "./Function.js"
-import { constNull, constUndefined, dual, identity } from "./Function.js"
+import { constNull, constUndefined, dual, identity, pipe } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as either from "./internal/either.js"
@@ -14,7 +14,7 @@ import type { Predicate, Refinement } from "./Predicate.js"
 import { isFunction } from "./Predicate.js"
 import type { Covariant, MergeRecord, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
-import * as Gen from "./Utils.js"
+import type * as Gen from "./Utils.js"
 
 /**
  * @category models
@@ -698,26 +698,24 @@ export const all: <const I extends Iterable<Either<any, any>> | Record<string, E
  */
 export const flip = <R, L>(self: Either<R, L>): Either<L, R> => isLeft(self) ? right(self.left) : left(self.right)
 
-const adapter = Gen.adapter<EitherTypeLambda>()
-
 /**
  * @category generators
  * @since 2.0.0
  */
 export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (f) => {
-  const iterator = f(adapter)
+  const iterator = f(pipe)
   let state: IteratorYieldResult<any> | IteratorReturnResult<any> = iterator.next()
   if (state.done) {
     return right(state.value) as any
   } else {
-    let current = state.value.value
+    let current = state.value
     if (isLeft(current)) {
       return current
     }
     while (!state.done) {
-      state = iterator.next(current.right)
+      state = iterator.next(current.right as never)
       if (!state.done) {
-        current = state.value.value
+        current = state.value
         if (isLeft(current)) {
           return current
         }
