@@ -9,6 +9,8 @@ jobs:
     if: ${{ github.repository_owner == 'Effect-Ts' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/snapshot') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      id-token: write
     steps:
       - name: Enforce permission requirement
         uses: prince-chrismc/check-actor-permissions-action@v3
