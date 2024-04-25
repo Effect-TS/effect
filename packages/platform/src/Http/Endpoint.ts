@@ -237,7 +237,7 @@ export const BodyUnion = <
     never)
   | (S extends { readonly Multipart: Schema.Schema<infer A, infer _I, infer _R> } ? {
       readonly _tag: "multipart"
-      readonly body: A
+      readonly body: A | globalThis.FormData
     } :
     never)
   | (S extends { readonly UrlEncoded: Schema.Schema<infer A, infer _I, infer _R> } ? {
@@ -262,7 +262,7 @@ export const BodyUnion = <
     members.push(Body(
       Schema.Struct({
         _tag: Schema.Literal("multipart"),
-        body: schemas.Multipart
+        body: Schema.Union(schemas.Multipart, Schema.instanceOf(globalThis.FormData))
       }),
       "multipart"
     ))
@@ -293,7 +293,14 @@ export const BodyJson = <S extends Schema.Schema.Any>(schema: S): S => Body(sche
  */
 export const BodyMultipart = <A, I extends Partial<Multipart.Persisted>, R>(
   schema: Schema.Schema<A, I, R>
-): Schema.Schema<A, I, R> => Body(schema, "multipart")
+): Schema.Schema<A | globalThis.FormData, I | globalThis.FormData, R> =>
+  Body(
+    Schema.Union(
+      schema,
+      Schema.instanceOf(globalThis.FormData)
+    ),
+    "multipart"
+  )
 
 /**
  * @since 1.0.0
@@ -810,7 +817,7 @@ const makeEncoder: <A extends Schema.TaggedRequest.Any, I, R>(
             request.body = annotation.format === "json"
               ? Body_.unsafeJson(getObjPath(value, path))
               : annotation.format === "multipart"
-              ? Body_.empty
+              ? Body_.formData(getObjPath(value, path))
               : Body_.urlParams(UrlParams_.fromInput(getObjPath(value, path) as any))
           })
           break
@@ -825,7 +832,7 @@ const makeEncoder: <A extends Schema.TaggedRequest.Any, I, R>(
             request.body = body._tag === "json"
               ? Body_.unsafeJson(body.body)
               : body._tag === "multipart"
-              ? Body_.empty // TODO: client side multipart
+              ? Body_.formData(body.body)
               : Body_.urlParams(UrlParams_.fromInput(body.body))
           })
           break

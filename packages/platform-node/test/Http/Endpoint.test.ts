@@ -87,6 +87,22 @@ class UpdateUser extends Schema.TaggedRequest<UpdateUser>()(
   })
 ) {}
 
+class UploadImage extends Schema.TaggedRequest<UploadImage>()(
+  "UploadImage",
+  Schema.Never,
+  Schema.Void,
+  {
+    body: Http.endpoint.BodyMultipart(Schema.Struct({
+      field: Schema.String,
+      file: Http.multipart.filesSchema
+    }))
+  },
+  apiAnnotations({
+    path: "/",
+    method: "POST"
+  })
+) {}
+
 const group = Handler.group(
   Handler.effect(GetUserById, (req) =>
     Effect.succeed(
@@ -109,7 +125,8 @@ const group = Handler.group(
       Effect.fail(new UserError()) :
       user.body.name === "defect" ?
       Effect.die("defect") :
-      Effect.log("Updating user", id, user))
+      Effect.log("Updating user", id, user)),
+  Handler.effect(UploadImage, ({ body }) => Effect.log("Uploading image", body))
 )
 
 type Group = typeof group
@@ -185,6 +202,17 @@ describe("Endpoint", () => {
         result = yield* _(
           client(new UpdateUser({ id: 123, user: { _tag: "urlParamsBody", body: { name: "John", age: 30 } } }))
         )
+        assert.isUndefined(result)
+      }).pipe(Effect.provide(EnvLive)))
+
+    it.scoped("multipart", () =>
+      Effect.gen(function*() {
+        yield Http.server.serveEffect(router)
+        const client = yield* makeClient
+        const data = new FormData()
+        data.append("field", "value")
+        data.append("file", new Blob(["content"], { type: "text/plain" }), "file.txt")
+        const result = yield* client(new UploadImage({ body: data }))
         assert.isUndefined(result)
       }).pipe(Effect.provide(EnvLive)))
   })
