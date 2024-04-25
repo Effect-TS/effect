@@ -4,7 +4,7 @@ import * as Util from "@effect/schema/test/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("brand", () => {
-  it("constructor", () => {
+  it("make", () => {
     const IntegerFromString = S.NumberFromString.pipe(
       S.int({ identifier: "IntegerFromString" }),
       S.brand("Int")

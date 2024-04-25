@@ -4,43 +4,6 @@ import * as Util from "@effect/schema/test/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("Struct", () => {
-  describe("constructor", () => {
-    it("required fields", () => {
-      const schema = S.Struct({ a: S.String })
-      expect(schema.make({ a: "a" })).toStrictEqual({ a: "a" })
-    })
-
-    it("optional fields", () => {
-      const schema = S.Struct({ a: S.optional(S.String) })
-      expect(schema.make({ a: "a" })).toStrictEqual({ a: "a" })
-      expect(schema.make({})).toStrictEqual({})
-    })
-
-    it("fields with defaults (data last)", () => {
-      const b = Symbol.for("b")
-      const schema = S.Struct({
-        a: S.propertySignature(S.String).pipe(S.withDefault(() => "")),
-        [b]: S.propertySignature(S.Number).pipe(S.withDefault(() => 0))
-      })
-      expect(schema.make({ a: "a", [b]: 2 })).toStrictEqual({ a: "a", [b]: 2 })
-      expect(schema.make({ a: "a" })).toStrictEqual({ a: "a", [b]: 0 })
-      expect(schema.make({ [b]: 2 })).toStrictEqual({ a: "", [b]: 2 })
-      expect(schema.make({})).toStrictEqual({ a: "", [b]: 0 })
-    })
-
-    it("fields with defaults (data first)", () => {
-      const b = Symbol.for("b")
-      const schema = S.Struct({
-        a: S.withDefault(S.propertySignature(S.String), () => ""),
-        [b]: S.withDefault(S.propertySignature(S.Number), () => 0)
-      })
-      expect(schema.make({ a: "a", [b]: 2 })).toStrictEqual({ a: "a", [b]: 2 })
-      expect(schema.make({ a: "a" })).toStrictEqual({ a: "a", [b]: 0 })
-      expect(schema.make({ [b]: 2 })).toStrictEqual({ a: "", [b]: 2 })
-      expect(schema.make({})).toStrictEqual({ a: "", [b]: 0 })
-    })
-  })
-
   it("annotations()", () => {
     const schema = S.Struct({}).annotations({ identifier: "X" }).annotations({ title: "Y" })
     expect(schema.ast.annotations).toStrictEqual({

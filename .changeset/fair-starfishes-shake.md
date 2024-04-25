@@ -152,7 +152,10 @@ import { Schema } from "@effect/schema"
 
 const PersonSchema = Schema.Struct({
   name: Schema.NonEmpty,
-  age: Schema.propertySignature(Schema.Number).pipe(Schema.withDefault(() => 0))
+  age: Schema.Number.pipe(
+    Schema.propertySignature,
+    Schema.withConstructorDefault(() => 0)
+  )
 })
 
 // The age field is optional and defaults to 0

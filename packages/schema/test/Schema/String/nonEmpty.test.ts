@@ -5,7 +5,7 @@ import { describe, it } from "vitest"
 describe("nonEmpty", () => {
   const schema = S.NonEmpty
 
-  it("constructor", () => {
+  it("make", () => {
     Util.expectConstructorSuccess(S.NonEmpty, "a")
     Util.expectConstructorFailure(
       S.NonEmpty,

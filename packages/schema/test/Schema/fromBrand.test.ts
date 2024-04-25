@@ -22,7 +22,7 @@ type Eur = number & Brand.Brand<"Eur">
 const Eur = Brand.nominal<Eur>()
 
 describe("fromBrand", () => {
-  it("constructor", () => {
+  it("make", () => {
     const schema = S.NumberFromString.pipe(S.fromBrand(PositiveInt)).annotations({ identifier: "PositiveInt" })
     Util.expectConstructorSuccess(schema, 1)
     Util.expectConstructorFailure(
