@@ -178,7 +178,7 @@ export const persisted: {
       result: Request.Request.Result<Req>
     ): Effect.Effect<void, never, any> => Effect.ignoreLogged(storage.set(request as any, result))
 
-    return RequestResolver.makeBatched((requests: Array<Req>) =>
+    return RequestResolver.makeBatched((requests: Arr.NonEmptyArray<Req>) =>
       Effect.flatMap(partition(requests), ([remaining, results]) => {
         const completeCached = Effect.forEach(
           results,

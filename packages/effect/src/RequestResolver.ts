@@ -2,6 +2,7 @@
  * @since 2.0.0
  */
 
+import type { NonEmptyArray } from "./Array.js"
 import * as Context from "./Context.js"
 import * as Effect from "./Effect.js"
 import type * as Either from "./Either.js"
@@ -138,7 +139,7 @@ export const makeWithEntry: <A, R>(
  * @category constructors
  */
 export const makeBatched: <A extends Request.Request<any, any>, R>(
-  run: (requests: Array<A>) => Effect.Effect<void, never, R>
+  run: (requests: NonEmptyArray<A>) => Effect.Effect<void, never, R>
 ) => RequestResolver<A, R> = internal.makeBatched
 
 /**
@@ -269,7 +270,7 @@ export const fromFunction: <A extends Request.Request<any>>(
  * @category constructors
  */
 export const fromFunctionBatched: <A extends Request.Request<any>>(
-  f: (chunk: Array<A>) => Iterable<Request.Request.Success<A>>
+  f: (chunk: NonEmptyArray<A>) => Iterable<Request.Request.Success<A>>
 ) => RequestResolver<A> = internal.fromFunctionBatched
 
 /**
