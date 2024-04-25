@@ -12,13 +12,16 @@ Before
 import { Schema } from "@effect/schema"
 
 const PersonSchema = Schema.Struct({
-  name: Schema.String
+  name: Schema.String,
+  age: Schema.NumberFromString
 })
 
-type Person = Schema.Schema.Type<typeof PersonSchema>
+type PersonType = Schema.Schema.Type<typeof PersonSchema>
+
+type PersonEncoded = Schema.Schema.Encoded<typeof PersonSchema>
 ```
 
-In the previous version, to get the type of `PersonSchema`, we had to use `Schema.Schema.Type`. It was a bit verbose.
+In the previous version, to get the type of `PersonSchema`, we had to use `Schema.Schema.Type` (and `Schema.Schema.Encoded`). It was a bit verbose.
 
 Now
 
@@ -26,10 +29,13 @@ Now
 import { Schema } from "@effect/schema"
 
 const PersonSchema = Schema.Struct({
-  name: Schema.String
+  name: Schema.String,
+  age: Schema.NumberFromString
 })
 
-type Person = typeof PersonSchema.Type
+type PersonType = typeof PersonSchema.Type
+
+type PersonEncoded = typeof PersonSchema.Encoded
 ```
 
 With this update, accessing the type of `PersonSchema` is more straightforward. You can directly use `typeof` to get the type, making it simpler and cleaner.
