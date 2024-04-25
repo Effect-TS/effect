@@ -115,7 +115,7 @@ describe("HttpServer", () => {
           "/upload",
           Effect.gen(function*(_) {
             const files = yield* _(Http.request.schemaBodyForm(Schema.Struct({
-              file: Http.multipart.filesSchema,
+              file: Http.multipart.FilesSchema,
               test: Schema.String
             })))
             expect(files).toHaveProperty("file")

@@ -24,7 +24,7 @@ const HttpLive = Http.router.empty.pipe(
     "/upload",
     Effect.gen(function*(_) {
       const data = yield* _(Http.request.schemaBodyForm(Schema.Struct({
-        files: Http.multipart.filesSchema
+        files: Http.multipart.FilesSchema
       })))
       console.log("got files", data.files)
       return Http.response.empty()
