@@ -1,10 +1,10 @@
+import type { NonEmptyReadonlyArray } from "effect/Array"
 import type { Cause } from "effect/Cause"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Schedule from "effect/Schedule"
-import type { NonEmptyReadonlyArray } from "effect/Array"
 
 declare const string: Effect.Effect<string, "err-1", "dep-1">
 declare const number: Effect.Effect<number, "err-2", "dep-2">
