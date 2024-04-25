@@ -74,7 +74,6 @@ export type TypeId = typeof TypeId
 export interface Schema<in out A, in out I = A, out R = never> extends Schema.Variance<A, I, R>, Pipeable {
   readonly Type: A
   readonly Encoded: I
-  readonly Context: R
   readonly ast: AST.AST
   annotations(annotations: Annotations.Schema<A>): Schema<A, I, R>
 }
@@ -95,7 +94,6 @@ export const make = <A, I = A, R = never>(ast: AST.AST): SchemaClass<A, I, R> =>
   class SchemaClass {
     static Type: A
     static Encoded: I
-    static Context: R
     static [TypeId] = variance
     static ast = ast
     static annotations(annotations: Annotations.Schema<A>) {
