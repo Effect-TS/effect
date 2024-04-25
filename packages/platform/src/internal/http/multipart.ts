@@ -100,12 +100,22 @@ export const withFieldMimeTypes = dual<
   <R, E, A>(effect: Effect.Effect<A, E, R>, mimeTypes: ReadonlyArray<string>) => Effect.Effect<A, E, R>
 >(2, (effect, mimeTypes) => Effect.locally(effect, fieldMimeTypes, Chunk.fromIterable(mimeTypes)))
 
-const fileSchema: Schema.Schema<Multipart.PersistedFile> = Schema.declare(isPersistedFile, {
+/** @internal */
+export const FileSchema: Schema.Schema<Multipart.PersistedFile> = Schema.declare(isPersistedFile, {
   identifier: "PersistedFile"
 })
 
 /** @internal */
-export const filesSchema: Schema.Schema<ReadonlyArray<Multipart.PersistedFile>> = Schema.Array(fileSchema)
+export const FilesSchema: Schema.Schema<ReadonlyArray<Multipart.PersistedFile>> = Schema.Array(FileSchema)
+
+/** @internal */
+export const SingleFileSchema: Schema.transform<
+  Schema.Schema<ReadonlyArray<Multipart.PersistedFile>>,
+  Schema.Schema<Multipart.PersistedFile>
+> = Schema.transform(FilesSchema.pipe(Schema.itemsCount(1)), FileSchema, {
+  decode: ([file]) => file,
+  encode: (file) => [file]
+})
 
 /** @internal */
 export const schemaPersisted = <R, I extends Partial<Multipart.Persisted>, A>(
