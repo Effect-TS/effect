@@ -626,7 +626,7 @@ export const gen: typeof STM.gen = (f) =>
     ): STM.STM<any, any, any> =>
       state.done ?
         core.succeed(state.value) :
-        core.flatMap(state.value, (val: any) => run(iterator.next(val)))
+        core.flatMap(state.value, (val: any) => run(iterator.next(val as never)))
     return run(state)
   })
 

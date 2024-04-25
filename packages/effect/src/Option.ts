@@ -1276,7 +1276,7 @@ export const gen: Gen.Gen<OptionTypeLambda, Gen.Adapter<OptionTypeLambda>> = (f)
       return current
     }
     while (!state.done) {
-      state = iterator.next(current.value)
+      state = iterator.next(current.value as never)
       if (!state.done) {
         current = state.value
         if (isNone(current)) {
