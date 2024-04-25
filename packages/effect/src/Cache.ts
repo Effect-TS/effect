@@ -67,7 +67,7 @@ export interface Cache<in out Key, out Value, out Error = never> extends Consume
    * by the lookup function. Additionally, `refresh` always triggers the
    * lookup function, disregarding the last `Error`.
    */
-  refresh(key: Key): Effect.Effect<void, Error>
+  refresh(key: Key): Effect.Effect<unknown, Error>
 
   /**
    * Associates the specified value with the specified key in the cache.

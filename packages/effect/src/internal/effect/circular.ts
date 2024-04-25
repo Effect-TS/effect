@@ -267,7 +267,7 @@ export const forkAll: {
   }): Effect.Effect<void, never, Effect.Effect.Context<Eff>>
 } = dual((args) => Predicate.isIterable(args[0]), <A, E, R>(effects: Iterable<Effect.Effect<A, E, R>>, options: {
   readonly discard: true
-}): Effect.Effect<void, never, R> =>
+}): Effect.Effect<unknown, never, R> =>
   options?.discard ?
     core.forEachSequentialDiscard(effects, fiberRuntime.fork) :
     core.map(core.forEachSequential(effects, fiberRuntime.fork), fiberRuntime.fiberAll))

@@ -46,7 +46,7 @@ export const make = (
     const server = yield* _(Effect.acquireRelease(
       Effect.sync(evaluate),
       (server) =>
-        Effect.async<void>((resume) => {
+        Effect.async<unknown>((resume) => {
           server.close((error) => {
             if (error) {
               resume(Effect.die(error))
@@ -57,7 +57,7 @@ export const make = (
         })
     ))
 
-    yield* _(Effect.async<void, Error.ServeError>((resume) => {
+    yield* _(Effect.async<unknown, Error.ServeError>((resume) => {
       server.on("error", (error) => {
         resume(Effect.fail(new Error.ServeError({ error })))
       })
@@ -72,7 +72,7 @@ export const make = (
       Effect.acquireRelease(
         Effect.sync(() => new WS.WebSocketServer({ noServer: true })),
         (wss) =>
-          Effect.async<void>((resume) => {
+          Effect.async<unknown>((resume) => {
             wss.close(() => resume(Effect.void))
           })
       ),
@@ -377,7 +377,7 @@ export const layerConfig = (
   )
 
 const handleResponse = (request: ServerRequest.ServerRequest, response: ServerResponse.ServerResponse) =>
-  Effect.suspend((): Effect.Effect<void, Error.ResponseError> => {
+  Effect.suspend((): Effect.Effect<unknown, Error.ResponseError> => {
     const nodeResponse = (request as ServerRequestImpl).resolvedResponse
     if (nodeResponse.writableEnded) {
       return Effect.void
@@ -431,7 +431,7 @@ const handleResponse = (request: ServerRequest.ServerRequest, response: ServerRe
         return Effect.void
       }
       case "FormData": {
-        return Effect.async<void, Error.ResponseError>((resume) => {
+        return Effect.async<unknown, Error.ResponseError>((resume) => {
           const r = new Response(body.formData)
           nodeResponse.writeHead(response.status, {
             ...headers,

@@ -55,7 +55,7 @@ export interface RequestResolver<in A, out R = never> extends RequestResolver.Va
    * of requests that must be performed sequentially. The inner `Chunk`
    * represents a batch of requests that can be performed in parallel.
    */
-  runAll(requests: Array<Array<Request.Entry<A>>>): Effect.Effect<void, never, R>
+  runAll(requests: Array<Array<Request.Entry<A>>>): Effect.Effect<unknown, never, R>
 
   /**
    * Identify the data source using the specific identifier
@@ -116,7 +116,7 @@ export const isRequestResolver: (u: unknown) => u is RequestResolver<unknown, un
  * @category constructors
  */
 export const make: <A, R>(
-  runAll: (requests: Array<Array<A>>) => Effect.Effect<void, never, R>
+  runAll: (requests: Array<Array<A>>) => Effect.Effect<unknown, never, R>
 ) => RequestResolver<A, R> = internal.make
 
 /**
@@ -127,7 +127,7 @@ export const make: <A, R>(
  * @category constructors
  */
 export const makeWithEntry: <A, R>(
-  runAll: (requests: Array<Array<Request.Entry<A>>>) => Effect.Effect<void, never, R>
+  runAll: (requests: Array<Array<Request.Entry<A>>>) => Effect.Effect<unknown, never, R>
 ) => RequestResolver<A, R> = internal.makeWithEntry
 
 /**
@@ -138,7 +138,7 @@ export const makeWithEntry: <A, R>(
  * @category constructors
  */
 export const makeBatched: <A extends Request.Request<any, any>, R>(
-  run: (requests: Array<A>) => Effect.Effect<void, never, R>
+  run: (requests: Array<A>) => Effect.Effect<unknown, never, R>
 ) => RequestResolver<A, R> = internal.makeBatched
 
 /**

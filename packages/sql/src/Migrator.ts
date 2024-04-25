@@ -64,7 +64,11 @@ export class MigrationError extends Data.TaggedError("MigrationError")<{
     | "duplicates"
     | "locked"
   readonly message: string
-}> {}
+}> {
+  [Symbol.iterator]() {
+    return this as any // TOOD: fix
+  }
+}
 
 /**
  * @category constructor
@@ -77,13 +81,13 @@ export const make = <R extends Client, RD, RE, RL, R2 = never>({
   lockTable = () => Effect.void
 }: {
   getClient: Effect.Effect<R, SqlError, R>
-  ensureTable: (sql: R, table: string) => Effect.Effect<void, SqlError, RE>
+  ensureTable: (sql: R, table: string) => Effect.Effect<unknown, SqlError, RE>
   dumpSchema?: (
     sql: R,
     path: string,
     migrationsTable: string
-  ) => Effect.Effect<void, MigrationError, RD>
-  lockTable?: (sql: R, table: string) => Effect.Effect<void, SqlError, RL>
+  ) => Effect.Effect<unknown, MigrationError, RD>
+  lockTable?: (sql: R, table: string) => Effect.Effect<unknown, SqlError, RL>
 }) =>
 ({
   loader,

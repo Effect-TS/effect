@@ -644,7 +644,11 @@ describe("Class APIs", () => {
   it("TaggedError", () => {
     class MyError extends S.TaggedError<MyError>()("MyError", {
       id: S.Number
-    }) {}
+    }) {
+      [Symbol.iterator]() {
+        return this as any // TODO: fix this
+      }
+    }
 
     let err = new MyError({ id: 1 })
 

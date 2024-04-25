@@ -271,8 +271,8 @@ export const isShutdown: <A>(self: TQueue<A>) => STM.STM<boolean> = internal.isS
  * @category mutations
  */
 export const offer: {
-  <A>(value: A): (self: TEnqueue<A>) => STM.STM<void>
-  <A>(self: TEnqueue<A>, value: A): STM.STM<void>
+  <A>(value: A): (self: TEnqueue<A>) => STM.STM<unknown>
+  <A>(self: TEnqueue<A>, value: A): STM.STM<unknown>
 } = internal.offer
 
 /**

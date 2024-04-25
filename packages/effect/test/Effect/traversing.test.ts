@@ -446,8 +446,8 @@ describe("Effect", () => {
     }))
   it.effect("mergeAll - return error if it exists in list", () =>
     Effect.gen(function*($) {
-      const effects: ReadonlyArray<Effect.Effect<void, number>> = [Effect.void, Effect.fail(1)]
-      const result = yield* $(effects, Effect.mergeAll(void 0 as void, constVoid), Effect.exit)
+      const effects: ReadonlyArray<Effect.Effect<unknown, number>> = [Effect.void, Effect.fail(1)]
+      const result = yield* $(effects, Effect.mergeAll(void 0, constVoid), Effect.exit)
       assert.deepStrictEqual(result, Exit.fail(1))
     }))
   it.effect("mergeAll/concurrency - return zero element on empty input", () =>
@@ -476,10 +476,10 @@ describe("Effect", () => {
     }))
   it.effect("mergeAll/concurrency - return error if it exists in list", () =>
     Effect.gen(function*($) {
-      const effects: ReadonlyArray<Effect.Effect<void, number>> = [Effect.void, Effect.fail(1)]
+      const effects: ReadonlyArray<Effect.Effect<unknown, number>> = [Effect.void, Effect.fail(1)]
       const result = yield* $(
         effects,
-        Effect.mergeAll(void 0 as void, constVoid, {
+        Effect.mergeAll(void 0, constVoid, {
           concurrency: "unbounded"
         }),
         Effect.exit
@@ -665,7 +665,7 @@ describe("Effect", () => {
     }))
   it.effect("reduceEffect/concurrency - return error if it exists in list", () =>
     Effect.gen(function*($) {
-      const effects: ReadonlyArray<Effect.Effect<void, number>> = [Effect.void, Effect.fail(1)]
+      const effects: ReadonlyArray<Effect.Effect<unknown, number>> = [Effect.void, Effect.fail(1)]
       const result = yield* $(
         pipe(
           effects,

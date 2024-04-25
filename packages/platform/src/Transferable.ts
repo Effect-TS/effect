@@ -65,7 +65,7 @@ export const makeCollector: Effect.Effect<CollectorService> = Effect.sync(unsafe
  * @since 1.0.0
  * @category accessors
  */
-export const addAll = (tranferables: Iterable<globalThis.Transferable>): Effect.Effect<void> =>
+export const addAll = (tranferables: Iterable<globalThis.Transferable>): Effect.Effect<unknown> =>
   Effect.flatMap(
     Effect.serviceOption(Collector),
     Option.match({

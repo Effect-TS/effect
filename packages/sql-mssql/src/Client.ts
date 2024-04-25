@@ -84,10 +84,10 @@ interface MssqlConnection extends Connection {
     procedure: Procedure.ProcedureWithValues<any, any, any>
   ) => Effect.Effect<any, SqlError>
 
-  readonly begin: Effect.Effect<void, SqlError>
-  readonly commit: Effect.Effect<void, SqlError>
-  readonly savepoint: (name: string) => Effect.Effect<void, SqlError>
-  readonly rollback: (name?: string) => Effect.Effect<void, SqlError>
+  readonly begin: Effect.Effect<unknown, SqlError>
+  readonly commit: Effect.Effect<unknown, SqlError>
+  readonly savepoint: (name: string) => Effect.Effect<unknown, SqlError>
+  readonly rollback: (name?: string) => Effect.Effect<unknown, SqlError>
 }
 
 const TransactionConnection = Client.TransactionConnection as unknown as Context.Tag<
@@ -142,7 +142,7 @@ export const make = (
       yield* _(Effect.addFinalizer(() => Effect.sync(() => conn.close())))
 
       yield* _(
-        Effect.async<void, SqlError>((resume) => {
+        Effect.async<unknown, SqlError>((resume) => {
           conn.connect((error) => {
             if (error) {
               resume(Effect.fail(new SqlError({ error })))
@@ -260,7 +260,7 @@ export const make = (
         call: (procedure) => {
           return runProcedure(procedure)
         },
-        begin: Effect.async<void, SqlError>((resume) => {
+        begin: Effect.async<unknown, SqlError>((resume) => {
           conn.beginTransaction((error) => {
             if (error) {
               resume(Effect.fail(new SqlError({ error })))
@@ -269,7 +269,7 @@ export const make = (
             }
           })
         }),
-        commit: Effect.async<void, SqlError>((resume) => {
+        commit: Effect.async<unknown, SqlError>((resume) => {
           conn.commitTransaction((error) => {
             if (error) {
               resume(Effect.fail(new SqlError({ error })))
@@ -279,7 +279,7 @@ export const make = (
           })
         }),
         savepoint: (name: string) =>
-          Effect.async<void, SqlError>((resume) => {
+          Effect.async<unknown, SqlError>((resume) => {
             conn.saveTransaction((error) => {
               if (error) {
                 resume(Effect.fail(new SqlError({ error })))
@@ -289,7 +289,7 @@ export const make = (
             }, name)
           }),
         rollback: (name?: string) =>
-          Effect.async<void, SqlError>((resume) => {
+          Effect.async<unknown, SqlError>((resume) => {
             conn.rollbackTransaction((error) => {
               if (error) {
                 resume(Effect.fail(new SqlError({ error })))

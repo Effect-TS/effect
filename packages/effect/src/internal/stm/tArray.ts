@@ -338,9 +338,9 @@ export const findLastSTM = dual<
 
 /** @internal */
 export const forEach = dual<
-  <A, R, E>(f: (value: A) => STM.STM<void, E, R>) => (self: TArray.TArray<A>) => STM.STM<void, E, R>,
-  <A, R, E>(self: TArray.TArray<A>, f: (value: A) => STM.STM<void, E, R>) => STM.STM<void, E, R>
->(2, (self, f) => reduceSTM(self, void 0 as void, (_, a) => f(a)))
+  <A, R, E>(f: (value: A) => STM.STM<unknown, E, R>) => (self: TArray.TArray<A>) => STM.STM<unknown, E, R>,
+  <A, R, E>(self: TArray.TArray<A>, f: (value: A) => STM.STM<unknown, E, R>) => STM.STM<unknown, E, R>
+>(2, (self, f) => reduceSTM(self, void 0 as unknown, (_, a) => f(a)))
 
 /** @internal */
 export const fromIterable = <A>(iterable: Iterable<A>): STM.STM<TArray.TArray<A>> =>

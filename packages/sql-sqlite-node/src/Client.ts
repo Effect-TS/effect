@@ -23,7 +23,7 @@ import * as Scope from "effect/Scope"
 export interface SqliteClient extends Client.Client {
   readonly config: SqliteClientConfig
   readonly export: Effect.Effect<Uint8Array, SqlError>
-  readonly loadExtension: (path: string) => Effect.Effect<void, SqlError>
+  readonly loadExtension: (path: string) => Effect.Effect<unknown, SqlError>
 }
 
 /**
@@ -51,7 +51,7 @@ export interface SqliteClientConfig {
 
 interface SqliteConnection extends Connection {
   readonly export: Effect.Effect<Uint8Array, SqlError>
-  readonly loadExtension: (path: string) => Effect.Effect<void, SqlError>
+  readonly loadExtension: (path: string) => Effect.Effect<unknown, SqlError>
 }
 
 /**

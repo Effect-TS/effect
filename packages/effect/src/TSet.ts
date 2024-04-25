@@ -91,8 +91,8 @@ export const empty: <A>() => STM.STM<TSet<A>> = internal.empty
  * @category elements
  */
 export const forEach: {
-  <A, R, E>(f: (value: A) => STM.STM<void, E, R>): (self: TSet<A>) => STM.STM<void, E, R>
-  <A, R, E>(self: TSet<A>, f: (value: A) => STM.STM<void, E, R>): STM.STM<void, E, R>
+  <A, R, E>(f: (value: A) => STM.STM<unknown, E, R>): (self: TSet<A>) => STM.STM<unknown, E, R>
+  <A, R, E>(self: TSet<A>, f: (value: A) => STM.STM<unknown, E, R>): STM.STM<unknown, E, R>
 } = internal.forEach
 
 /**
@@ -360,6 +360,6 @@ export const transformSTM: {
  * @category mutations
  */
 export const union: {
-  <A>(other: TSet<A>): (self: TSet<A>) => STM.STM<void>
-  <A>(self: TSet<A>, other: TSet<A>): STM.STM<void>
+  <A>(other: TSet<A>): (self: TSet<A>) => STM.STM<unknown>
+  <A>(self: TSet<A>, other: TSet<A>): STM.STM<unknown>
 } = internal.union

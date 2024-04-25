@@ -94,6 +94,8 @@ export interface Effect<out A, out E = never, out R = never> extends Effect.Vari
   readonly [Unify.typeSymbol]?: unknown
   readonly [Unify.unifySymbol]?: EffectUnify<this>
   readonly [Unify.ignoreSymbol]?: EffectUnifyIgnore
+
+  [Symbol.iterator](): Generator<Effect<A, E, R>, A>
 }
 
 /**
@@ -994,7 +996,7 @@ export const validateFirst: {
  * @category constructors
  */
 export const async: <A, E = never, R = never>(
-  register: (callback: (_: Effect<A, E, R>) => void, signal: AbortSignal) => void | Effect<void, never, R>,
+  register: (callback: (_: Effect<A, E, R>) => void, signal: AbortSignal) => void | Effect<unknown, never, R>,
   blockingOn?: FiberId.FiberId
 ) => Effect<A, E, R> = core.async
 
@@ -1466,7 +1468,7 @@ export const suspend: <A, E, R>(effect: LazyArg<Effect<A, E, R>>) => Effect<A, E
  */
 export const sync: <A>(evaluate: LazyArg<A>) => Effect<A> = core.sync
 
-const _void: Effect<void> = core.void
+const _void: Effect<unknown> = core.void
 export {
   /**
    * @since 2.0.0
@@ -2354,7 +2356,7 @@ export const acquireUseRelease: {
  */
 export const addFinalizer: <X, R>(
   finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect<X, never, R>
-) => Effect<void, never, Scope.Scope | R> = fiberRuntime.addFinalizer
+) => Effect<unknown, never, Scope.Scope | R> = fiberRuntime.addFinalizer
 
 /**
  * Returns an effect that, if this effect _starts_ execution, then the
@@ -5005,7 +5007,7 @@ export const request: {
 export const cacheRequestResult: <A extends Request.Request<any, any>>(
   request: A,
   result: Request.Request.Result<A>
-) => Effect<void> = query.cacheRequest
+) => Effect<unknown> = query.cacheRequest
 
 /**
  * @since 2.0.0

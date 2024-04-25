@@ -26,7 +26,7 @@ export interface ServerImpl {
  */
 export interface Client {
   readonly queue: Queue.Dequeue<Domain.Request.WithoutPing>
-  readonly request: (_: Domain.Response.WithoutPong) => Effect.Effect<void>
+  readonly request: (_: Domain.Response.WithoutPong) => Effect.Effect<unknown>
 }
 
 /**

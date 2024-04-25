@@ -259,7 +259,7 @@ export const get = <A, E>(self: FiberHandle<A, E>): Effect.Effect<Fiber.RuntimeF
  * @since 2.0.0
  * @categories combinators
  */
-export const clear = <A, E>(self: FiberHandle<A, E>): Effect.Effect<void> =>
+export const clear = <A, E>(self: FiberHandle<A, E>): Effect.Effect<unknown> =>
   Effect.uninterruptibleMask((restore) =>
     Effect.suspend(() => {
       if (self.state._tag === "Closed" || self.state.fiber === undefined) {

@@ -223,11 +223,11 @@ export const set = dual<
 >(2, (self, value) => update(self as any, value))
 
 /** @internal */
-export const succeed = <Out>(out: Out): Metric.Metric<void, unknown, Out> => make(void 0 as void, constVoid, () => out)
+export const succeed = <Out>(out: Out): Metric.Metric<undefined, unknown, Out> => make(void 0, constVoid, () => out)
 
 /** @internal */
-export const sync = <Out>(evaluate: LazyArg<Out>): Metric.Metric<void, unknown, Out> =>
-  make(void 0 as void, constVoid, evaluate)
+export const sync = <Out>(evaluate: LazyArg<Out>): Metric.Metric<undefined, unknown, Out> =>
+  make(void 0, constVoid, evaluate)
 
 /** @internal */
 export const summary = (

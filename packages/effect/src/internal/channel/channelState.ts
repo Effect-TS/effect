@@ -126,8 +126,8 @@ export const isFromEffect = <E, R>(self: ChannelState<E, R>): self is FromEffect
 export const isRead = <E, R>(self: ChannelState<E, R>): self is Read => (self as Primitive)._tag === OpCodes.OP_READ
 
 /** @internal */
-export const effect = <E, R>(self: ChannelState<E, R>): Effect.Effect<void, E, R> =>
-  isFromEffect(self) ? self.effect as Effect.Effect<void, E, R> : Effect.void
+export const effect = <E, R>(self: ChannelState<E, R>): Effect.Effect<unknown, E, R> =>
+  isFromEffect(self) ? self.effect as Effect.Effect<unknown, E, R> : Effect.void
 
 /** @internal */
 export const effectOrUndefinedIgnored = <E, R>(self: ChannelState<E, R>): Effect.Effect<void, E, R> | undefined =>

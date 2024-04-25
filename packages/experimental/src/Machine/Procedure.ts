@@ -143,7 +143,7 @@ export declare namespace Procedure {
    * @category models
    */
   export interface ContextProto<Requests extends TaggedRequest.Any, State> extends BaseContext {
-    readonly send: <Req extends Requests>(request: Req) => Effect.Effect<void>
+    readonly send: <Req extends Requests>(request: Req) => Effect.Effect<unknown>
     readonly sendAwait: <Req extends Requests>(request: Req) => Effect.Effect<
       Request.Success<Req>,
       Request.Error<Req>
@@ -151,33 +151,33 @@ export declare namespace Procedure {
     readonly forkWith: {
       (state: State): <A, E, R>(
         effect: Effect.Effect<A, E, R>
-      ) => Effect.Effect<readonly [void, State], never, R>
+      ) => Effect.Effect<readonly [unknown, State], never, R>
       <A, E, R>(
         effect: Effect.Effect<A, E, R>,
         state: State
-      ): Effect.Effect<readonly [void, State], never, R>
+      ): Effect.Effect<readonly [unknown, State], never, R>
     }
     readonly forkOneWith: {
       (
         id: string,
         state: State
-      ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<readonly [void, State], never, R>
+      ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<readonly [unknown, State], never, R>
       <A, E, R>(
         effect: Effect.Effect<A, E, R>,
         id: string,
         state: State
-      ): Effect.Effect<readonly [void, State], never, R>
+      ): Effect.Effect<readonly [unknown, State], never, R>
     }
     readonly forkReplaceWith: {
       (
         id: string,
         state: State
-      ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<readonly [void, State], never, R>
+      ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<readonly [unknown, State], never, R>
       <A, E, R>(
         effect: Effect.Effect<A, E, R>,
         id: string,
         state: State
-      ): Effect.Effect<readonly [void, State], never, R>
+      ): Effect.Effect<readonly [unknown, State], never, R>
     }
   }
 

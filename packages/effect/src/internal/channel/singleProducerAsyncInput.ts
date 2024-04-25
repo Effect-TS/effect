@@ -41,7 +41,7 @@ type OP_STATE_DONE = typeof OP_STATE_DONE
 /** @internal */
 interface Empty {
   readonly _tag: OP_STATE_EMPTY
-  readonly notifyProducer: Deferred.Deferred<void>
+  readonly notifyProducer: Deferred.Deferred<unknown>
 }
 
 /** @internal */
@@ -63,7 +63,7 @@ interface Done<_Done> {
 }
 
 /** @internal */
-const stateEmpty = (notifyProducer: Deferred.Deferred<void>): State<never, never, never> => ({
+const stateEmpty = (notifyProducer: Deferred.Deferred<unknown>): State<never, never, never> => ({
   _tag: OP_STATE_EMPTY,
   notifyProducer
 })
@@ -137,7 +137,7 @@ class SingleProducerAsyncInputImpl<in out Err, in out Elem, in out Done>
   }
 
   emit(element: Elem): Effect.Effect<unknown> {
-    return Effect.flatMap(Deferred.make<void>(), (deferred) =>
+    return Effect.flatMap(Deferred.make<unknown>(), (deferred) =>
       Effect.flatten(
         Ref.modify(this.ref, (state) => {
           switch (state._tag) {
@@ -253,7 +253,7 @@ export const make = <Err, Elem, Done>(): Effect.Effect<
   SingleProducerAsyncInput.SingleProducerAsyncInput<Err, Elem, Done>
 > =>
   pipe(
-    Deferred.make<void>(),
+    Deferred.make<unknown>(),
     Effect.flatMap((deferred) => Ref.make(stateEmpty(deferred) as State<Err, Elem, Done>)),
     Effect.map((ref) => new SingleProducerAsyncInputImpl(ref))
   )

@@ -48,7 +48,7 @@ export interface Scope extends Pipeable {
   /**
    * @internal
    */
-  addFinalizer(finalizer: Scope.Finalizer): Effect.Effect<void>
+  addFinalizer(finalizer: Scope.Finalizer): Effect.Effect<unknown>
 }
 
 /**
@@ -78,7 +78,7 @@ export declare namespace Scope {
    * @since 2.0.0
    * @category model
    */
-  export type Finalizer = (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>
+  export type Finalizer = (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<unknown>
   /**
    * @since 2.0.0
    * @category model
@@ -96,7 +96,7 @@ export declare namespace Scope {
 export const addFinalizer: (
   self: Scope,
   finalizer: Effect.Effect<unknown>
-) => Effect.Effect<void> = core.scopeAddFinalizer
+) => Effect.Effect<unknown> = core.scopeAddFinalizer
 
 /**
  * A simplified version of `addFinalizerWith` when the `finalizer` does not
@@ -105,7 +105,7 @@ export const addFinalizer: (
  * @since 2.0.0
  * @category utils
  */
-export const addFinalizerExit: (self: Scope, finalizer: Scope.Finalizer) => Effect.Effect<void> =
+export const addFinalizerExit: (self: Scope, finalizer: Scope.Finalizer) => Effect.Effect<unknown> =
   core.scopeAddFinalizerExit
 
 /**

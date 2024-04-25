@@ -87,7 +87,7 @@ export const fromNetSocket = (
         yield* _(
           Queue.take(sendQueue),
           Effect.tap((chunk) =>
-            Effect.async<void, Socket.SocketError, never>((resume) => {
+            Effect.async<unknown, Socket.SocketError, never>((resume) => {
               if (Socket.isCloseEvent(chunk)) {
                 conn.destroy(chunk.code > 1000 ? new Error(`closed with code ${chunk.code}`) : undefined)
               } else if (chunk === EOF) {
@@ -107,7 +107,7 @@ export const fromNetSocket = (
           run(handler(chunk))
         })
         yield* _(
-          Effect.async<void, Socket.SocketError, never>((resume) => {
+          Effect.async<unknown, Socket.SocketError, never>((resume) => {
             conn.on("end", () => {
               resume(Effect.void)
             })

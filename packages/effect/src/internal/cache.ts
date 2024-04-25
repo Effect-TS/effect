@@ -429,7 +429,7 @@ class CacheImpl<in out Key, in out Value, in out Error> implements Cache.Cache<K
     })
   }
 
-  refresh(key: Key): Effect.Effect<void, Error> {
+  refresh(key: Key): Effect.Effect<unknown, Error> {
     return effect.clockWith((clock) =>
       core.suspend(() => {
         const k = key

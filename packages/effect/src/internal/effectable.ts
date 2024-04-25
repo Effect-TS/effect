@@ -75,6 +75,9 @@ export const EffectPrototype: Effect.Effect<never> & Equal.Equal = {
   [Hash.symbol]() {
     return Hash.cached(this, Hash.random(this))
   },
+  [Symbol.iterator]() {
+    return this as any // TODO: fix
+  },
   pipe() {
     return pipeArguments(this, arguments)
   }

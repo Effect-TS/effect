@@ -35,7 +35,7 @@ const isTSet = (u: unknown) => hasProperty(u, TSetTypeId)
 export const add = dual<
   <A>(value: A) => (self: TSet.TSet<A>) => STM.STM<void>,
   <A>(self: TSet.TSet<A>, value: A) => STM.STM<void>
->(2, (self, value) => tMap.set(self.tMap, value, void 0 as void))
+>(2, (self, value) => tMap.set(self.tMap, value, void 0))
 
 /** @internal */
 export const difference = dual<
@@ -52,9 +52,9 @@ export const empty = <A>(): STM.STM<TSet.TSet<A>> => fromIterable<A>([])
 
 /** @internal */
 export const forEach = dual<
-  <A, R, E>(f: (value: A) => STM.STM<void, E, R>) => (self: TSet.TSet<A>) => STM.STM<void, E, R>,
-  <A, R, E>(self: TSet.TSet<A>, f: (value: A) => STM.STM<void, E, R>) => STM.STM<void, E, R>
->(2, (self, f) => reduceSTM(self, void 0 as void, (_, value) => f(value)))
+  <A, R, E>(f: (value: A) => STM.STM<unknown, E, R>) => (self: TSet.TSet<A>) => STM.STM<unknown, E, R>,
+  <A, R, E>(self: TSet.TSet<A>, f: (value: A) => STM.STM<unknown, E, R>) => STM.STM<unknown, E, R>
+>(2, (self, f) => reduceSTM(self, void 0 as unknown, (_, value) => f(value)))
 
 /** @internal */
 export const fromIterable = <A>(iterable: Iterable<A>): STM.STM<TSet.TSet<A>> =>
@@ -254,6 +254,6 @@ export const transformSTM = dual<
 
 /** @internal */
 export const union = dual<
-  <A>(other: TSet.TSet<A>) => (self: TSet.TSet<A>) => STM.STM<void>,
-  <A>(self: TSet.TSet<A>, other: TSet.TSet<A>) => STM.STM<void>
+  <A>(other: TSet.TSet<A>) => (self: TSet.TSet<A>) => STM.STM<unknown>,
+  <A>(self: TSet.TSet<A>, other: TSet.TSet<A>) => STM.STM<unknown>
 >(2, (self, other) => forEach(other, (value) => add(self, value)))

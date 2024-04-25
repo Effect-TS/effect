@@ -69,7 +69,7 @@ export interface ScopedCache<in Key, out Value, out Error = never>
   /**
    * Invalidates the resource associated with the specified key.
    */
-  invalidate(key: Key): Effect.Effect<void>
+  invalidate(key: Key): Effect.Effect<unknown>
 
   /**
    * Invalidates all values in the cache.

@@ -26,27 +26,27 @@ export type TypeId = typeof TypeId
  */
 export interface Console {
   readonly [TypeId]: TypeId
-  assert(condition: boolean, ...args: ReadonlyArray<any>): Effect<void>
-  readonly clear: Effect<void>
-  count(label?: string): Effect<void>
-  countReset(label?: string): Effect<void>
-  debug(...args: ReadonlyArray<any>): Effect<void>
-  dir(item: any, options?: any): Effect<void>
-  dirxml(...args: ReadonlyArray<any>): Effect<void>
-  error(...args: ReadonlyArray<any>): Effect<void>
+  assert(condition: boolean, ...args: ReadonlyArray<any>): Effect<unknown>
+  readonly clear: Effect<unknown>
+  count(label?: string): Effect<unknown>
+  countReset(label?: string): Effect<unknown>
+  debug(...args: ReadonlyArray<any>): Effect<unknown>
+  dir(item: any, options?: any): Effect<unknown>
+  dirxml(...args: ReadonlyArray<any>): Effect<unknown>
+  error(...args: ReadonlyArray<any>): Effect<unknown>
   group(options?: {
     readonly label?: string | undefined
     readonly collapsed?: boolean | undefined
-  }): Effect<void>
-  readonly groupEnd: Effect<void>
-  info(...args: ReadonlyArray<any>): Effect<void>
-  log(...args: ReadonlyArray<any>): Effect<void>
-  table(tabularData: any, properties?: ReadonlyArray<string>): Effect<void>
-  time(label?: string): Effect<void>
-  timeEnd(label?: string): Effect<void>
-  timeLog(label?: string, ...args: ReadonlyArray<any>): Effect<void>
-  trace(...args: ReadonlyArray<any>): Effect<void>
-  warn(...args: ReadonlyArray<any>): Effect<void>
+  }): Effect<unknown>
+  readonly groupEnd: Effect<unknown>
+  info(...args: ReadonlyArray<any>): Effect<unknown>
+  log(...args: ReadonlyArray<any>): Effect<unknown>
+  table(tabularData: any, properties?: ReadonlyArray<string>): Effect<unknown>
+  time(label?: string): Effect<unknown>
+  timeEnd(label?: string): Effect<unknown>
+  timeLog(label?: string, ...args: ReadonlyArray<any>): Effect<unknown>
+  trace(...args: ReadonlyArray<any>): Effect<unknown>
+  warn(...args: ReadonlyArray<any>): Effect<unknown>
   readonly unsafe: UnsafeConsole
 }
 
@@ -109,49 +109,49 @@ export const consoleWith: <A, E, R>(f: (console: Console) => Effect<A, E, R>) =>
  * @since 2.0.0
  * @category accessor
  */
-export const assert: (condition: boolean, ...args: ReadonlyArray<any>) => Effect<void> = internal.assert
+export const assert: (condition: boolean, ...args: ReadonlyArray<any>) => Effect<unknown> = internal.assert
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const clear: Effect<void> = internal.clear
+export const clear: Effect<unknown> = internal.clear
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const count: (label?: string) => Effect<void> = internal.count
+export const count: (label?: string) => Effect<unknown> = internal.count
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const countReset: (label?: string) => Effect<void> = internal.countReset
+export const countReset: (label?: string) => Effect<unknown> = internal.countReset
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const debug: (...args: ReadonlyArray<any>) => Effect<void> = internal.debug
+export const debug: (...args: ReadonlyArray<any>) => Effect<unknown> = internal.debug
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const dir: (item: any, options?: any) => Effect<void> = internal.dir
+export const dir: (item: any, options?: any) => Effect<unknown> = internal.dir
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const dirxml: (...args: ReadonlyArray<any>) => Effect<void> = internal.dirxml
+export const dirxml: (...args: ReadonlyArray<any>) => Effect<unknown> = internal.dirxml
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const error: (...args: ReadonlyArray<any>) => Effect<void> = internal.error
+export const error: (...args: ReadonlyArray<any>) => Effect<unknown> = internal.error
 
 /**
  * @since 2.0.0
@@ -159,49 +159,49 @@ export const error: (...args: ReadonlyArray<any>) => Effect<void> = internal.err
  */
 export const group: (
   options?: { label?: string | undefined; collapsed?: boolean | undefined } | undefined
-) => Effect<void, never, Scope> = internal.group
+) => Effect<unknown, never, Scope> = internal.group
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const info: (...args: ReadonlyArray<any>) => Effect<void> = internal.info
+export const info: (...args: ReadonlyArray<any>) => Effect<unknown> = internal.info
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const log: (...args: ReadonlyArray<any>) => Effect<void> = internal.log
+export const log: (...args: ReadonlyArray<any>) => Effect<unknown> = internal.log
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const table: (tabularData: any, properties?: ReadonlyArray<string>) => Effect<void> = internal.table
+export const table: (tabularData: any, properties?: ReadonlyArray<string>) => Effect<unknown> = internal.table
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const time: (label?: string | undefined) => Effect<void, never, Scope> = internal.time
+export const time: (label?: string | undefined) => Effect<unknown, never, Scope> = internal.time
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const timeLog: (label?: string, ...args: ReadonlyArray<any>) => Effect<void> = internal.timeLog
+export const timeLog: (label?: string, ...args: ReadonlyArray<any>) => Effect<unknown> = internal.timeLog
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const trace: (...args: ReadonlyArray<any>) => Effect<void> = internal.trace
+export const trace: (...args: ReadonlyArray<any>) => Effect<unknown> = internal.trace
 
 /**
  * @since 2.0.0
  * @category accessor
  */
-export const warn: (...args: ReadonlyArray<any>) => Effect<void> = internal.warn
+export const warn: (...args: ReadonlyArray<any>) => Effect<unknown> = internal.warn
 
 /**
  * @since 2.0.0

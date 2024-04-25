@@ -181,12 +181,12 @@ export const findAllSTM = dual<
 
 /** @internal */
 export const forEach = dual<
-  <K, V, X, E, R>(f: (key: K, value: V) => STM.STM<X, E, R>) => (self: TMap.TMap<K, V>) => STM.STM<void, E, R>,
-  <K, V, X, E, R>(self: TMap.TMap<K, V>, f: (key: K, value: V) => STM.STM<X, E, R>) => STM.STM<void, E, R>
+  <K, V, X, E, R>(f: (key: K, value: V) => STM.STM<X, E, R>) => (self: TMap.TMap<K, V>) => STM.STM<unknown, E, R>,
+  <K, V, X, E, R>(self: TMap.TMap<K, V>, f: (key: K, value: V) => STM.STM<X, E, R>) => STM.STM<unknown, E, R>
 >(2, (self, f) =>
   reduceSTM(
     self,
-    void 0 as void,
+    void 0 as unknown,
     (_, value, key) => stm.asVoid(f(key, value))
   ))
 

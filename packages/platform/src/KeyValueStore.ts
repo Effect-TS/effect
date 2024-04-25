@@ -38,17 +38,17 @@ export interface KeyValueStore {
   /**
    * Sets the value of the specified key.
    */
-  readonly set: (key: string, value: string) => Effect.Effect<void, PlatformError.PlatformError>
+  readonly set: (key: string, value: string) => Effect.Effect<unknown, PlatformError.PlatformError>
 
   /**
    * Removes the specified key.
    */
-  readonly remove: (key: string) => Effect.Effect<void, PlatformError.PlatformError>
+  readonly remove: (key: string) => Effect.Effect<unknown, PlatformError.PlatformError>
 
   /**
    * Removes all entries.
    */
-  readonly clear: Effect.Effect<void, PlatformError.PlatformError>
+  readonly clear: Effect.Effect<unknown, PlatformError.PlatformError>
 
   /**
    * Returns the number of entries.
@@ -158,17 +158,17 @@ export interface SchemaStore<R, A> {
   readonly set: (
     key: string,
     value: A
-  ) => Effect.Effect<void, PlatformError.PlatformError | ParseResult.ParseError, R>
+  ) => Effect.Effect<unknown, PlatformError.PlatformError | ParseResult.ParseError, R>
 
   /**
    * Removes the specified key.
    */
-  readonly remove: (key: string) => Effect.Effect<void, PlatformError.PlatformError>
+  readonly remove: (key: string) => Effect.Effect<unknown, PlatformError.PlatformError>
 
   /**
    * Removes all entries.
    */
-  readonly clear: Effect.Effect<void, PlatformError.PlatformError>
+  readonly clear: Effect.Effect<unknown, PlatformError.PlatformError>
 
   /**
    * Returns the number of entries.

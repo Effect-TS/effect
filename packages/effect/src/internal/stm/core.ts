@@ -154,7 +154,10 @@ class STMPrimitive implements STM.STM<any, any, any> {
   [Effect.EffectTypeId]: any;
   [StreamTypeId]: any;
   [SinkTypeId]: any;
-  [ChannelTypeId]: any
+  [ChannelTypeId]: any;
+  [Symbol.iterator]() {
+    return this as any // TODO: fix
+  }
   get [STMTypeId]() {
     return stmVariance
   }

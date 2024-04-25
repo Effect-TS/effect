@@ -141,7 +141,7 @@ export const make = (
       } as Mysql.PoolOptions)
 
     yield* _(Effect.addFinalizer(() =>
-      Effect.async<void>((resume) => {
+      Effect.async<unknown>((resume) => {
         pool.end(() => resume(Effect.void))
       })
     ))

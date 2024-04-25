@@ -175,9 +175,9 @@ export declare namespace WorkerPool {
  * @since 1.0.0
  */
 export interface WorkerQueue<I> {
-  readonly offer: (id: number, item: I, span: Option.Option<Tracer.Span>) => Effect.Effect<void>
+  readonly offer: (id: number, item: I, span: Option.Option<Tracer.Span>) => Effect.Effect<unknown>
   readonly take: Effect.Effect<readonly [id: number, item: I, span: Option.Option<Tracer.Span>]>
-  readonly shutdown: Effect.Effect<void>
+  readonly shutdown: Effect.Effect<unknown>
 }
 
 /**

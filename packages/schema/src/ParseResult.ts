@@ -967,7 +967,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           output: typeof output
         }
         let queue:
-          | Array<(_: State) => Effect.Effect<void, ParseIssue, any>>
+          | Array<(_: State) => Effect.Effect<unknown, ParseIssue, any>>
           | undefined = undefined
 
         // ---------------------------------------------
@@ -1210,7 +1210,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           output: typeof output
         }
         let queue:
-          | Array<(state: State) => Effect.Effect<void, ParseIssue, any>>
+          | Array<(state: State) => Effect.Effect<unknown, ParseIssue, any>>
           | undefined = undefined
 
         const isExact = options?.isExact === true

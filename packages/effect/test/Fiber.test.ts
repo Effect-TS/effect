@@ -41,7 +41,7 @@ describe("Fiber", () => {
       const blockingOn = yield* $(
         Fiber.status(fiber),
         Effect.flatMap(
-          (status) => FiberStatus.isSuspended(status) ? Effect.succeed(status.blockingOn) : Effect.fail(void 0 as void)
+          (status) => FiberStatus.isSuspended(status) ? Effect.succeed(status.blockingOn) : Effect.fail(void 0)
         ),
         Effect.eventually
       )

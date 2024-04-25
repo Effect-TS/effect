@@ -158,7 +158,7 @@ export const toScoped = <Key, Value, Error = never>(
 /** @internal */
 export const releaseOwner = <Key, Value, Error = never>(
   self: Complete<Key, Value, Error>
-): Effect.Effect<void> =>
+): Effect.Effect<unknown> =>
   Exit.matchEffect(self.exit, {
     onFailure: () => core.void,
     onSuccess: ([, finalizer]) =>
@@ -305,7 +305,7 @@ class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value
     )
   }
 
-  invalidate(key: Key): Effect.Effect<void> {
+  invalidate(key: Key): Effect.Effect<unknown> {
     return core.suspend(() => {
       if (MutableHashMap.has(this.cacheState.map, key)) {
         const mapValue = Option.getOrUndefined(MutableHashMap.get(this.cacheState.map, key))!
@@ -558,7 +558,7 @@ class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value
     return cleanedKeys
   }
 
-  cleanMapValue(mapValue: MapValue<Key, Value, Error> | undefined): Effect.Effect<void> {
+  cleanMapValue(mapValue: MapValue<Key, Value, Error> | undefined): Effect.Effect<unknown> {
     if (mapValue === undefined) {
       return core.void
     }

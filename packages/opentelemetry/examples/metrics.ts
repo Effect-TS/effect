@@ -71,7 +71,7 @@ const MetricsLive = NodeSdk.layer(() => ({
   resource: {
     serviceName: "example"
   },
-  metricReader: new PrometheusExporter({ port: 9464 })
+  metricReader: new PrometheusExporter({ port: 9464 }) as any // TODO: fix type
 }))
 
 pipe(

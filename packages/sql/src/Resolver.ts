@@ -100,8 +100,8 @@ export interface SqlResolver<T extends string, I, A, E, R>
   readonly cachePopulate: (
     id: I,
     result: A
-  ) => Effect.Effect<void, ParseError, R>
-  readonly cacheInvalidate: (id: I) => Effect.Effect<void, ParseError, R>
+  ) => Effect.Effect<unknown, ParseError, R>
+  readonly cacheInvalidate: (id: I) => Effect.Effect<unknown, ParseError, R>
   readonly request: (input: I) => Effect.Effect<SqlRequest<T, A, E>, ParseError, R>
 }
 

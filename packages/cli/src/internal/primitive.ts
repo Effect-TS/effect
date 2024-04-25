@@ -476,7 +476,7 @@ const validatePathExistence = (
   path: string,
   shouldPathExist: Primitive.Primitive.PathExists,
   pathExists: boolean
-): Effect.Effect<void, string> => {
+): Effect.Effect<unknown, string> => {
   if (shouldPathExist === "no" && pathExists) {
     return Effect.fail(`Path '${path}' must not exist`)
   }
@@ -490,7 +490,7 @@ const validatePathType = (
   path: string,
   pathType: Primitive.Primitive.PathType,
   fileSystem: FileSystem.FileSystem
-): Effect.Effect<void, string> => {
+): Effect.Effect<unknown, string> => {
   switch (pathType) {
     case "file": {
       const checkIsFile = fileSystem.stat(path).pipe(

@@ -435,9 +435,9 @@ export const run: {
     config: Omit<CliApp.ConstructorArgs<never>, "command">
   ): <Name extends string, R, E, A>(
     self: Command<Name, R, E, A>
-  ) => (args: ReadonlyArray<string>) => Effect<void, E | ValidationError, R | CliApp.Environment>
+  ) => (args: ReadonlyArray<string>) => Effect<unknown, E | ValidationError, R | CliApp.Environment>
   <Name extends string, R, E, A>(
     self: Command<Name, R, E, A>,
     config: Omit<CliApp.ConstructorArgs<never>, "command">
-  ): (args: ReadonlyArray<string>) => Effect<void, E | ValidationError, R | CliApp.Environment>
+  ): (args: ReadonlyArray<string>) => Effect<unknown, E | ValidationError, R | CliApp.Environment>
 } = Internal.run

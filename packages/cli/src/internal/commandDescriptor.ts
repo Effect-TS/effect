@@ -970,7 +970,7 @@ const traverseCommand = <S>(
       parentCommands: ReadonlyArray<string>,
       subcommands: ReadonlyArray<[string, Standard | GetUserInput]>,
       level: number
-    ): Effect.Effect<void, never, never> => {
+    ): Effect.Effect<unknown, never, never> => {
       switch (self._tag) {
         case "Standard": {
           const info: CommandInfo = {

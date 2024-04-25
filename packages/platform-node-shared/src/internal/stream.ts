@@ -222,13 +222,13 @@ export const fromReadableChannel = <E, A = Uint8Array>(
 /** @internal */
 export const writeInput = <IE, A>(
   writable: Writable | NodeJS.WritableStream,
-  onFailure: (cause: Cause.Cause<IE>) => Effect.Effect<void>,
+  onFailure: (cause: Cause.Cause<IE>) => Effect.Effect<unknown>,
   { encoding, endOnDone = true }: FromWritableOptions = {},
   onDone = Effect.void
 ): AsyncInput.AsyncInputProducer<IE, Chunk.Chunk<A>, unknown> => {
   const write = writeEffect(writable, encoding)
   const close = endOnDone
-    ? Effect.async<void>((resume) => {
+    ? Effect.async<unknown>((resume) => {
       if ("closed" in writable && writable.closed) {
         resume(Effect.void)
       } else {
@@ -253,7 +253,7 @@ export const writeEffect = <A>(
 (chunk: Chunk.Chunk<A>) =>
   chunk.length === 0 ?
     Effect.void :
-    Effect.async<void>((resume) => {
+    Effect.async<unknown>((resume) => {
       const iterator = chunk[Symbol.iterator]()
       let next = iterator.next()
       function loop() {

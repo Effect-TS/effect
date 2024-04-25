@@ -866,7 +866,7 @@ export const Undefined: Undefined = make(AST.undefinedKeyword)
  * @category api interface
  * @since 1.0.0
  */
-export interface Void extends Annotable<Void, void> {}
+export interface Void extends Annotable<Void, unknown> {}
 
 /**
  * @category primitives

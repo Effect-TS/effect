@@ -31,7 +31,7 @@ export interface Terminal {
   /**
    * Displays text to the the default standard output.
    */
-  readonly display: (text: string) => Effect<void, PlatformError>
+  readonly display: (text: string) => Effect<unknown, PlatformError>
 }
 
 /**

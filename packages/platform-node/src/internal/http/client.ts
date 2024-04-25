@@ -81,8 +81,8 @@ const sendBody = (
   nodeRequest: Http.ClientRequest,
   request: ClientRequest.ClientRequest,
   body: Body.Body
-): Effect.Effect<void, Error.RequestError> =>
-  Effect.suspend((): Effect.Effect<void, Error.RequestError> => {
+): Effect.Effect<unknown, Error.RequestError> =>
+  Effect.suspend((): Effect.Effect<unknown, Error.RequestError> => {
     switch (body._tag) {
       case "Empty": {
         nodeRequest.end()
@@ -157,7 +157,7 @@ const waitForResponse = (nodeRequest: Http.ClientRequest, request: ClientRequest
   })
 
 const waitForFinish = (nodeRequest: Http.ClientRequest, request: ClientRequest.ClientRequest) =>
-  Effect.async<void, Error.RequestError>((resume) => {
+  Effect.async<unknown, Error.RequestError>((resume) => {
     function onError(error: Error) {
       resume(Effect.fail(
         new Error.RequestError({

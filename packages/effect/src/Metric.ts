@@ -370,7 +370,7 @@ export const snapshot: Effect.Effect<ReadonlyArray<MetricPair.MetricPair.Untyped
  * @since 2.0.0
  * @category constructors
  */
-export const succeed: <Out>(out: Out) => Metric<void, unknown, Out> = internal.succeed
+export const succeed: <Out>(out: Out) => Metric<undefined, unknown, Out> = internal.succeed
 
 /**
  * Creates a metric that ignores input and produces constant output.
@@ -378,7 +378,7 @@ export const succeed: <Out>(out: Out) => Metric<void, unknown, Out> = internal.s
  * @since 2.0.0
  * @category constructors
  */
-export const sync: <Out>(evaluate: LazyArg<Out>) => Metric<void, unknown, Out> = internal.sync
+export const sync: <Out>(evaluate: LazyArg<Out>) => Metric<undefined, unknown, Out> = internal.sync
 
 /**
  * Creates a Summary metric that records observations and calculates quantiles.

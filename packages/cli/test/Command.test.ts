@@ -135,7 +135,7 @@ describe("Command", () => {
 // --
 
 interface Messages {
-  readonly log: (message: string) => Effect.Effect<void>
+  readonly log: (message: string) => Effect.Effect<unknown>
   readonly messages: Effect.Effect<ReadonlyArray<string>>
 }
 const Messages = Context.GenericTag<Messages>("Messages")

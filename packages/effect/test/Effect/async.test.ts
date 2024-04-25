@@ -100,7 +100,7 @@ describe("Effect", () => {
       const unexpectedPlace = yield* $(Ref.make(Chunk.empty<number>()))
       const runtime = yield* $(Effect.runtime<never>())
       const fiber = yield* $(
-        Effect.async<void, never, never>((resume) => {
+        Effect.async<unknown, never, never>((resume) => {
           Runtime.runCallback(runtime)(pipe(
             Deferred.await(step),
             Effect.zipRight(Effect.sync(() => resume(Ref.update(unexpectedPlace, Chunk.prepend(1)))))
@@ -108,7 +108,7 @@ describe("Effect", () => {
           return Effect.void
         }),
         Effect.flatMap(() =>
-          Effect.async<void, never, never>(() => {
+          Effect.async<unknown, never, never>(() => {
             // The callback is never called so this never completes
             Runtime.runCallback(runtime)(Deferred.succeed(step, void 0))
           })

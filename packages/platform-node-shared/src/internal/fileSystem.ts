@@ -328,7 +328,7 @@ const makeFile = (() => {
       )
     }
 
-    private writeAllChunk(buffer: Uint8Array): Effect.Effect<void, Error.PlatformError> {
+    private writeAllChunk(buffer: Uint8Array): Effect.Effect<unknown, Error.PlatformError> {
       return Effect.flatMap(
         Effect.suspend(() =>
           nodeWriteAll(this.fd, buffer, undefined, undefined, this.append ? undefined : Number(this.position))
@@ -575,7 +575,7 @@ const watch = (backend: Option.Option<Context.Tag.Service<FileSystem.WatchBacken
 // == writeFile
 
 const writeFile = (path: string, data: Uint8Array, options?: FileSystem.WriteFileOptions) =>
-  Effect.async<void, Error.PlatformError>((resume, signal) => {
+  Effect.async<unknown, Error.PlatformError>((resume, signal) => {
     try {
       NFS.writeFile(path, data, {
         signal,

@@ -277,8 +277,8 @@ export const isShutdown = <A>(self: TQueue.TDequeue<A> | TQueue.TEnqueue<A>): ST
 
 /** @internal */
 export const offer = dual<
-  <A>(value: A) => (self: TQueue.TEnqueue<A>) => STM.STM<void>,
-  <A>(self: TQueue.TEnqueue<A>, value: A) => STM.STM<void>
+  <A>(value: A) => (self: TQueue.TEnqueue<A>) => STM.STM<unknown>,
+  <A>(self: TQueue.TEnqueue<A>, value: A) => STM.STM<unknown>
 >(2, (self, value) => self.offer(value))
 
 /** @internal */

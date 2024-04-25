@@ -47,6 +47,9 @@ export class WorkerError extends Schema.TaggedError<WorkerError>()("WorkerError"
   reason: Schema.Literal("spawn", "decode", "send", "unknown", "encode"),
   error: causeDefectPretty
 }) {
+  [Symbol.iterator]() {
+    return this as any // TODO: fix
+  }
   /**
    * @since 1.0.0
    */

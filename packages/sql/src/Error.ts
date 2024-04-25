@@ -18,6 +18,9 @@ export type SqlErrorTypeId = typeof SqlErrorTypeId
  * @since 1.0.0
  */
 export class SqlError extends RefailError(SqlErrorTypeId, "SqlError")<{}> {
+  [Symbol.iterator]() {
+    return this as any // TODO: fix
+  }
   get code() {
     if (Predicate.hasProperty(this.error, "code")) {
       return this.error.code

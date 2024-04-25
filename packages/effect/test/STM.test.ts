@@ -127,7 +127,7 @@ const compute3TRefN = (
     Effect.repeatN(n)
   )
 
-const permutation = (ref1: TRef.TRef<number>, ref2: TRef.TRef<number>): STM.STM<void> =>
+const permutation = (ref1: TRef.TRef<number>, ref2: TRef.TRef<number>): STM.STM<unknown> =>
   pipe(
     STM.all([TRef.get(ref1), TRef.get(ref2)]),
     STM.flatMap(([a, b]) =>
@@ -535,7 +535,7 @@ describe("STM", () => {
     Effect.gen(function*($) {
       const transaction = pipe(
         [STM.void, STM.fail(1)] as Array<STM.STM<void, number>>,
-        STM.mergeAll(void 0 as void, constVoid)
+        STM.mergeAll(void 0, constVoid)
       )
       const result = yield* $(Effect.exit(STM.commit(transaction)))
       assert.deepStrictEqual(result, Exit.fail(1))

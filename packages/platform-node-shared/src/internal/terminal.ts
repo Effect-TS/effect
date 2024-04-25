@@ -91,7 +91,7 @@ export const make = (
       releaseReadlineInterface
     )
 
-    const display = (prompt: string): Effect.Effect<void, Error.PlatformError> =>
+    const display = (prompt: string): Effect.Effect<unknown, Error.PlatformError> =>
       Effect.uninterruptible(
         Effect.async((resume) => {
           output.write(prompt, (err) => {

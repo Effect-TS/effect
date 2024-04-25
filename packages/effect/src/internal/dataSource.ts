@@ -13,18 +13,18 @@ import { complete } from "./request.js"
 
 /** @internal */
 export const make = <A, R>(
-  runAll: (requests: Array<Array<A>>) => Effect.Effect<void, never, R>
+  runAll: (requests: Array<Array<A>>) => Effect.Effect<unknown, never, R>
 ): RequestResolver.RequestResolver<A, R> =>
   new core.RequestResolverImpl((requests) => runAll(requests.map((_) => _.map((_) => _.request))))
 
 /** @internal */
 export const makeWithEntry = <A, R>(
-  runAll: (requests: Array<Array<Request.Entry<A>>>) => Effect.Effect<void, never, R>
+  runAll: (requests: Array<Array<Request.Entry<A>>>) => Effect.Effect<unknown, never, R>
 ): RequestResolver.RequestResolver<A, R> => new core.RequestResolverImpl((requests) => runAll(requests))
 
 /** @internal */
 export const makeBatched = <A extends Request.Request<any, any>, R>(
-  run: (requests: Array<A>) => Effect.Effect<void, never, R>
+  run: (requests: Array<A>) => Effect.Effect<unknown, never, R>
 ): RequestResolver.RequestResolver<A, R> =>
   new core.RequestResolverImpl<A, R>(
     (requests) => {

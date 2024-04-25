@@ -108,9 +108,9 @@ export interface BackingPersistenceStore {
     key: string,
     value: unknown,
     ttl: Option.Option<Duration.Duration>
-  ) => Effect.Effect<void, PersistenceError>
-  readonly remove: (key: string) => Effect.Effect<void, PersistenceError>
-  readonly clear: Effect.Effect<void, PersistenceError>
+  ) => Effect.Effect<unknown, PersistenceError>
+  readonly remove: (key: string) => Effect.Effect<unknown, PersistenceError>
+  readonly clear: Effect.Effect<unknown, PersistenceError>
 }
 
 /**
@@ -158,11 +158,11 @@ export interface ResultPersistenceStore {
   readonly set: <R, IE, E, IA, A>(
     key: ResultPersistence.Key<R, IE, E, IA, A>,
     value: Exit.Exit<A, E>
-  ) => Effect.Effect<void, PersistenceError, R>
+  ) => Effect.Effect<unknown, PersistenceError, R>
   readonly remove: <R, IE, E, IA, A>(
     key: ResultPersistence.Key<R, IE, E, IA, A>
-  ) => Effect.Effect<void, PersistenceError>
-  readonly clear: Effect.Effect<void, PersistenceError>
+  ) => Effect.Effect<unknown, PersistenceError>
+  readonly clear: Effect.Effect<unknown, PersistenceError>
 }
 
 /**

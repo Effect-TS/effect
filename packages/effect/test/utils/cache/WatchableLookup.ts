@@ -13,8 +13,8 @@ import { expect } from "vitest"
 
 export interface WatchableLookup<Key, Value, Error = never> {
   (key: Key): Effect.Effect<Value, Error, Scope.Scope>
-  lock: () => Effect.Effect<void>
-  unlock: () => Effect.Effect<void>
+  lock: () => Effect.Effect<unknown>
+  unlock: () => Effect.Effect<unknown>
   createdResources: () => Effect.Effect<
     HashMap.HashMap<Key, Chunk.Chunk<ObservableResource.ObservableResource<Error, Value>>>
   >
@@ -22,12 +22,12 @@ export interface WatchableLookup<Key, Value, Error = never> {
   getCalledTimes: (key: Key) => Effect.Effect<number>
   resourcesCleaned: (
     resources: Iterable<ObservableResource.ObservableResource<Error, Value>>
-  ) => Effect.Effect<void>
-  assertCalledTimes: (key: Key, sizeAssertion: (value: number) => void) => Effect.Effect<void>
-  assertFirstNCreatedResourcesCleaned: (key: Key, n: number) => Effect.Effect<void>
-  assertAllCleaned: () => Effect.Effect<void>
-  assertAllCleanedForKey: (key: Key) => Effect.Effect<void>
-  assertAtLeastOneResourceNotCleanedForKey: (key: Key) => Effect.Effect<void>
+  ) => Effect.Effect<unknown>
+  assertCalledTimes: (key: Key, sizeAssertion: (value: number) => void) => Effect.Effect<unknown>
+  assertFirstNCreatedResourcesCleaned: (key: Key, n: number) => Effect.Effect<unknown>
+  assertAllCleaned: () => Effect.Effect<unknown>
+  assertAllCleanedForKey: (key: Key) => Effect.Effect<unknown>
+  assertAtLeastOneResourceNotCleanedForKey: (key: Key) => Effect.Effect<unknown>
 }
 
 export const make = <Key, Value>(

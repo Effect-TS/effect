@@ -463,7 +463,7 @@ export const as = dual<
 export const _async = <A, E = never, R = never>(
   register: (
     emit: Emit.Emit<R, E, A, void>
-  ) => Effect.Effect<void, never, R> | void,
+  ) => Effect.Effect<unknown, never, R> | void,
   outputBuffer = 16
 ): Stream.Stream<A, E, R> =>
   Effect.acquireRelease(

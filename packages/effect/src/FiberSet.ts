@@ -230,7 +230,7 @@ export const add: {
  * @since 2.0.0
  * @categories combinators
  */
-export const clear = <A, E>(self: FiberSet<A, E>): Effect.Effect<void> =>
+export const clear = <A, E>(self: FiberSet<A, E>): Effect.Effect<unknown> =>
   Effect.suspend(() => {
     if (self.state._tag === "Closed") {
       return Effect.void

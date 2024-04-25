@@ -293,8 +293,8 @@ export const findLastSTM: {
  * @category elements
  */
 export const forEach: {
-  <A, R, E>(f: (value: A) => STM.STM<void, E, R>): (self: TArray<A>) => STM.STM<void, E, R>
-  <A, R, E>(self: TArray<A>, f: (value: A) => STM.STM<void, E, R>): STM.STM<void, E, R>
+  <A, R, E>(f: (value: A) => STM.STM<unknown, E, R>): (self: TArray<A>) => STM.STM<unknown, E, R>
+  <A, R, E>(self: TArray<A>, f: (value: A) => STM.STM<unknown, E, R>): STM.STM<unknown, E, R>
 } = internal.forEach
 
 /**

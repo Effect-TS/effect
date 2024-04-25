@@ -19,7 +19,11 @@ const Name = Context.GenericTag<Name, string>("Name")
 
 class SomeError extends S.TaggedError<SomeError>()("SomeError", {
   message: S.String
-}) {}
+}) {
+  [Symbol.iterator]() {
+    return this as any // TODO: fix this
+  }
+}
 
 class Post extends S.Class<Post>("Post")({
   id: S.Number,

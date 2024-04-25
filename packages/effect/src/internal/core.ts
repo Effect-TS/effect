@@ -430,7 +430,7 @@ export const as: {
 )
 
 /* @internal */
-export const asVoid = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<void, E, R> => as(self, void 0)
+export const asVoid = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<undefined, E, R> => as(self, void 0)
 
 /* @internal */
 export const custom: {
@@ -481,7 +481,7 @@ export const async = <A, E = never, R = never>(
   register: (
     callback: (_: Effect.Effect<A, E, R>) => void,
     signal: AbortSignal
-  ) => void | Effect.Effect<void, never, R>,
+  ) => void | Effect.Effect<unknown, never, R>,
   blockingOn: FiberId.FiberId = FiberId.none
 ): Effect.Effect<A, E, R> => {
   return custom(register, function() {
@@ -502,7 +502,7 @@ export const async = <A, E = never, R = never>(
       }
     }
     effect.effect_instruction_i1 = blockingOn
-    let cancelerRef: Effect.Effect<void, never, R> | void = undefined
+    let cancelerRef: Effect.Effect<unknown, never, R> | void = undefined
     let controllerRef: AbortController | void = undefined
     if (this.effect_instruction_i0.length !== 1) {
       controllerRef = new AbortController()
@@ -1300,7 +1300,7 @@ export const uninterruptibleMask = <A, E, R>(
     return effect
   })
 
-const void_: Effect.Effect<void> = succeed(void 0)
+const void_: Effect.Effect<undefined> = succeed(void 0)
 export {
   /* @internal */
   void_ as void
@@ -1750,7 +1750,7 @@ export class RequestResolverImpl<in A, out R> implements RequestResolver.Request
   constructor(
     readonly runAll: (
       requests: Array<Array<Request.Entry<A>>>
-    ) => Effect.Effect<void, never, R>,
+    ) => Effect.Effect<unknown, never, R>,
     readonly target?: unknown
   ) {
     this.runAll = runAll as any
@@ -2068,13 +2068,13 @@ export const CloseableScopeTypeId: Scope.CloseableScopeTypeId = Symbol.for(
 export const scopeAddFinalizer = (
   self: Scope.Scope,
   finalizer: Effect.Effect<unknown>
-): Effect.Effect<void> => self.addFinalizer(() => asVoid(finalizer))
+): Effect.Effect<unknown> => self.addFinalizer(() => asVoid(finalizer))
 
 /* @internal */
 export const scopeAddFinalizerExit = (
   self: Scope.Scope,
   finalizer: Scope.Scope.Finalizer
-): Effect.Effect<void> => self.addFinalizer(finalizer)
+): Effect.Effect<unknown> => self.addFinalizer(finalizer)
 
 /* @internal */
 export const scopeClose = (

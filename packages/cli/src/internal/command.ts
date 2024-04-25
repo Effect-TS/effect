@@ -542,13 +542,13 @@ export const run = dual<
     self: Command.Command<Name, R, E, A>
   ) => (
     args: ReadonlyArray<string>
-  ) => Effect.Effect<void, E | ValidationError.ValidationError, R | CliApp.CliApp.Environment>,
+  ) => Effect.Effect<unknown, E | ValidationError.ValidationError, R | CliApp.CliApp.Environment>,
   <Name extends string, R, E, A>(
     self: Command.Command<Name, R, E, A>,
     config: Omit<CliApp.CliApp.ConstructorArgs<never>, "command">
   ) => (
     args: ReadonlyArray<string>
-  ) => Effect.Effect<void, E | ValidationError.ValidationError, R | CliApp.CliApp.Environment>
+  ) => Effect.Effect<unknown, E | ValidationError.ValidationError, R | CliApp.CliApp.Environment>
 >(2, (self, config) => {
   const app = InternalCliApp.make({
     ...config,

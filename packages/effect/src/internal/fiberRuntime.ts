@@ -1536,7 +1536,7 @@ export const acquireReleaseInterruptible: {
 /* @internal */
 export const addFinalizer = <X, R>(
   finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<X, never, R>
-): Effect.Effect<void, never, R | Scope.Scope> =>
+): Effect.Effect<unknown, never, R | Scope.Scope> =>
   core.withFiberRuntime(
     (runtime) => {
       const acquireRefs = runtime.getFiberRefs()
@@ -1926,7 +1926,7 @@ export const forEach: {
     readonly discard?: boolean | undefined
   }
 ) =>
-  core.withFiberRuntime<A | void, E, R>((r) => {
+  core.withFiberRuntime<A | null | undefined | {}, E, R>((r) => {
     const isRequestBatchingEnabled = options?.batching === true ||
       (options?.batching === "inherit" && r.getFiberRef(core.currentRequestBatching))
 
@@ -3503,7 +3503,7 @@ export const invokeWithInterrupt: <A, E, R>(
       core.flatMap(
         forkDaemon(core.interruptible(self)),
         (processing) =>
-          core.async<void, E>((cb) => {
+          core.async<unknown, E>((cb) => {
             const counts = entries.map((_) => _.listeners.count)
             const checkDone = () => {
               if (counts.every((count) => count === 0)) {

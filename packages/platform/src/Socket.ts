@@ -50,7 +50,11 @@ export interface Socket {
   readonly runRaw: <R, E, _>(
     handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>
   ) => Effect.Effect<void, SocketError | E, R>
-  readonly writer: Effect.Effect<(chunk: Uint8Array | string | CloseEvent) => Effect.Effect<void>, never, Scope.Scope>
+  readonly writer: Effect.Effect<
+    (chunk: Uint8Array | string | CloseEvent) => Effect.Effect<unknown>,
+    never,
+    Scope.Scope
+  >
 }
 
 /**
@@ -348,7 +352,7 @@ export const fromWebSocket = (
 
         if (ws.readyState !== 1) {
           yield* _(
-            Effect.async<void, SocketError, never>((resume) => {
+            Effect.async<unknown, SocketError, never>((resume) => {
               ws.onopen = () => {
                 resume(Effect.void)
               }

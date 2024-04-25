@@ -4,7 +4,11 @@ import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import { assert, describe, expect } from "vitest"
 
-class TestError extends Data.TaggedError("TestError")<{}> {}
+class TestError extends Data.TaggedError("TestError")<{}> {
+  [Symbol.iterator]() {
+    return this as any // TODO: fix
+  }
+}
 
 describe("Effect", () => {
   it.effect("TaggedError has a stack", () =>

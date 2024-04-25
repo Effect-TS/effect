@@ -295,7 +295,7 @@ export const asSomeError: <A, E, R>(self: STM<A, E, R>) => STM<A, Option.Option<
  * @since 2.0.0
  * @category mapping
  */
-export const asVoid: <A, E, R>(self: STM<A, E, R>) => STM<void, E, R> = stm.asVoid
+export const asVoid: <A, E, R>(self: STM<A, E, R>) => STM<unknown, E, R> = stm.asVoid
 
 /**
  * Creates an `STM` value from a partial (but pure) function.
@@ -1128,7 +1128,7 @@ export {
  * @since 2.0.0
  * @category mutations
  */
-export const ignore: <A, E, R>(self: STM<A, E, R>) => STM<void, never, R> = stm.ignore
+export const ignore: <A, E, R>(self: STM<A, E, R>) => STM<unknown, never, R> = stm.ignore
 
 /**
  * Interrupts the fiber running the effect.

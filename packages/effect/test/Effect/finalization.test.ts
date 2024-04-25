@@ -20,7 +20,7 @@ const asyncExampleError = <A>(): Effect.Effect<A, unknown> => {
   })
 }
 
-const asyncVoid = <E>(): Effect.Effect<void, E> => {
+const asyncVoid = <E>(): Effect.Effect<unknown, E> => {
   return Effect.async((cb) => {
     cb(Effect.void)
   })

@@ -146,7 +146,7 @@ export const fromRequest = <
 export const cacheRequest = <A extends Request.Request<any, any>>(
   request: A,
   result: Request.Request.Result<A>
-): Effect.Effect<void> => {
+): Effect.Effect<unknown> => {
   return core.fiberRefGetWith(currentCacheEnabled, (cacheEnabled) => {
     if (cacheEnabled) {
       return core.fiberRefGetWith(currentCache, (cache) =>

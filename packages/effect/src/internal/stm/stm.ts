@@ -98,7 +98,7 @@ export const asSomeError = <A, E, R>(self: STM.STM<A, E, R>): STM.STM<A, Option.
   pipe(self, mapError(Option.some))
 
 /** @internal */
-export const asVoid = <A, E, R>(self: STM.STM<A, E, R>): STM.STM<void, E, R> => pipe(self, core.map(constVoid))
+export const asVoid = <A, E, R>(self: STM.STM<A, E, R>): STM.STM<unknown, E, R> => pipe(self, core.map(constVoid))
 
 /** @internal */
 export const attempt = <A>(evaluate: LazyArg<A>): STM.STM<A, unknown> =>
@@ -712,7 +712,7 @@ export const if_ = dual<
 )
 
 /** @internal */
-export const ignore = <A, E, R>(self: STM.STM<A, E, R>): STM.STM<void, never, R> =>
+export const ignore = <A, E, R>(self: STM.STM<A, E, R>): STM.STM<unknown, never, R> =>
   match(self, { onFailure: () => void_, onSuccess: () => void_ })
 
 /** @internal */

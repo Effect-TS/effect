@@ -324,7 +324,7 @@ export const compact = <A>(self: TR.Trie<Option.Option<A>>) => filterMap(self, i
 export const forEach = dual<
   <V>(f: (value: V, key: string) => void) => (self: TR.Trie<V>) => void,
   <V>(self: TR.Trie<V>, f: (value: V, key: string) => void) => void
->(2, (self, f) => reduce(self, void 0 as void, (_, value, key) => f(value, key)))
+>(2, (self, f) => reduce(self, void 0 as unknown, (_, value, key) => f(value, key)))
 
 /** @internal */
 export const keysWithPrefix = dual<

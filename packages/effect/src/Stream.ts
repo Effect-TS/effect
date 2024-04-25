@@ -256,7 +256,7 @@ export const as: {
 } = internal.as
 
 const _async: <A, E = never, R = never>(
-  register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<void, never, R> | void,
+  register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<unknown, never, R> | void,
   outputBuffer?: number
 ) => Stream<A, E, R> = internal._async
 

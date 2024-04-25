@@ -451,7 +451,7 @@ export const flatMap = Dual.dual<
 export const forEach = Dual.dual<
   <V, K>(f: (value: V, key: K) => void) => (self: HM.HashMap<K, V>) => void,
   <V, K>(self: HM.HashMap<K, V>, f: (value: V, key: K) => void) => void
->(2, (self, f) => reduce(self, void 0 as void, (_, value, key) => f(value, key)))
+>(2, (self, f) => reduce(self, void 0 as unknown, (_, value, key) => f(value, key)))
 
 /** @internal */
 export const reduce = Dual.dual<

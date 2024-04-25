@@ -338,16 +338,16 @@ export const has: {
  * @categories combinators
  */
 export const remove: {
-  <K>(key: K): <A, E>(self: FiberMap<K, A, E>) => Effect.Effect<void>
-  <K, A, E>(self: FiberMap<K, A, E>, key: K): Effect.Effect<void>
+  <K>(key: K): <A, E>(self: FiberMap<K, A, E>) => Effect.Effect<unknown>
+  <K, A, E>(self: FiberMap<K, A, E>, key: K): Effect.Effect<unknown>
 } = dual<
   <K>(
     key: K
-  ) => <A, E>(self: FiberMap<K, A, E>) => Effect.Effect<void>,
+  ) => <A, E>(self: FiberMap<K, A, E>) => Effect.Effect<unknown>,
   <K, A, E>(
     self: FiberMap<K, A, E>,
     key: K
-  ) => Effect.Effect<void>
+  ) => Effect.Effect<unknown>
 >(2, (self, key) =>
   Effect.suspend(() => {
     if (self.state._tag === "Closed") {
@@ -365,7 +365,7 @@ export const remove: {
  * @since 2.0.0
  * @categories combinators
  */
-export const clear = <K, A, E>(self: FiberMap<K, A, E>): Effect.Effect<void> =>
+export const clear = <K, A, E>(self: FiberMap<K, A, E>): Effect.Effect<unknown> =>
   Effect.suspend(() => {
     if (self.state._tag === "Closed") {
       return Effect.void
