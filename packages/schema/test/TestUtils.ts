@@ -88,7 +88,7 @@ export const expectConstructorSuccess = <A, B>(
   try {
     expect(schema.make(input)).toStrictEqual(expected)
   } catch (e: any) {
-    expect.fail("expected `IntegerFromString(1.1)` to throw an error")
+    expect.fail(e.message)
   }
 }
 

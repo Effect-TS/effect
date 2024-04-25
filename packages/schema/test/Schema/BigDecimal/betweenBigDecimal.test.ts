@@ -9,7 +9,7 @@ const min = BigDecimal.make(-1n, 0)
 describe("betweenBigDecimal", () => {
   const schema = S.BigDecimal.pipe(S.betweenBigDecimal(min, max))
 
-  it("constructor", () => {
+  it("make", () => {
     Util.expectConstructorSuccess(schema, BigDecimal.make(0n, 0))
     Util.expectConstructorFailure(
       schema,

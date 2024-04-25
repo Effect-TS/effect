@@ -181,8 +181,8 @@ describe("Class APIs", () => {
     it("the constructor should support defaults", () => {
       const b = Symbol.for("b")
       class A extends S.Class<A>("A")({
-        a: S.propertySignature(S.String).pipe(S.withDefault(() => "")),
-        [b]: S.propertySignature(S.Number).pipe(S.withDefault(() => 1))
+        a: S.propertySignature(S.String).pipe(S.withConstructorDefault(() => "")),
+        [b]: S.propertySignature(S.Number).pipe(S.withConstructorDefault(() => 1))
       }) {}
       expect({ ...new A({ a: "a", [b]: 2 }) }).toStrictEqual({ a: "a", [b]: 2 })
       expect({ ...new A({ a: "a" }) }).toStrictEqual({ a: "a", [b]: 1 })

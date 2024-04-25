@@ -1535,7 +1535,7 @@ export const propertySignature = <A, I, R>(
  * @category PropertySignature
  * @since 1.0.0
  */
-export const withDefault: {
+export const withConstructorDefault: {
   <Type>(defaultValue: () => NoInfer<Type>): <
     TypeToken extends PropertySignature.Token,
     Key extends PropertyKey,

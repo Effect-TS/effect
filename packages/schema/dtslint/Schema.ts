@@ -2295,44 +2295,44 @@ hole<
 >()
 
 // ---------------------------------------------
-// withDefault
+// withConstructorDefault
 // ---------------------------------------------
 
 // @ts-expect-error
-S.propertySignature(S.String).pipe(S.withDefault(() => 1))
+S.propertySignature(S.String).pipe(S.withConstructorDefault(() => 1))
 
 // $ExpectType PropertySignature<":", string, never, ":", string, true, never>
-S.propertySignature(S.String).pipe(S.withDefault(() => "a"))
+S.propertySignature(S.String).pipe(S.withConstructorDefault(() => "a"))
 
 // $ExpectType PropertySignature<":", string, never, ":", string, true, never>
-S.withDefault(S.propertySignature(S.String), () => "a")
+S.withConstructorDefault(S.propertySignature(S.String), () => "a")
 
 // ---------------------------------------------
 // Struct.make
 // ---------------------------------------------
 
 const make1 = S.Struct({
-  a: S.propertySignature(S.String).pipe(S.withDefault(() => "")),
+  a: S.propertySignature(S.String).pipe(S.withConstructorDefault(() => "")),
   b: S.Number,
-  c: S.propertySignature(S.Boolean).pipe(S.withDefault(() => true))
+  c: S.propertySignature(S.Boolean).pipe(S.withConstructorDefault(() => true))
 }).make
 
 // $ExpectType { readonly a?: string; readonly b: number; readonly c?: boolean; }
 hole<Parameters<typeof make1>["0"]>()
 
 const make2 = S.Struct({
-  a: S.withDefault(S.propertySignature(S.String), () => ""),
+  a: S.withConstructorDefault(S.propertySignature(S.String), () => ""),
   b: S.Number,
-  c: S.withDefault(S.propertySignature(S.Boolean), () => true)
+  c: S.withConstructorDefault(S.propertySignature(S.Boolean), () => true)
 }).make
 
 // $ExpectType { readonly a?: string; readonly b: number; readonly c?: boolean; }
 hole<Parameters<typeof make2>["0"]>()
 
 class AA extends S.Class<AA>("AA")({
-  a: S.propertySignature(S.String).pipe(S.withDefault(() => "")),
+  a: S.propertySignature(S.String).pipe(S.withConstructorDefault(() => "")),
   b: S.Number,
-  c: S.propertySignature(S.Boolean).pipe(S.withDefault(() => true))
+  c: S.propertySignature(S.Boolean).pipe(S.withConstructorDefault(() => true))
 }) {}
 
 // $ExpectType [props: { readonly a?: string; readonly b: number; readonly c?: boolean; }, disableValidation?: boolean | undefined]
