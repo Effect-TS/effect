@@ -493,3 +493,30 @@ export const asyncEffect = <A, E, R, R3, E2, R2>(
           ))
     )
   })
+
+/* @internal */
+export const scopedAsDisposable = <A, E, R>(
+  effect: Effect.Effect<A, E, R>
+): Effect.Effect<
+  { readonly value: A; [Symbol.dispose](): void },
+  E,
+  Exclude<R, _scope.Scope>
+> =>
+  core.uninterruptible(
+    core.flatMap(
+      runtime<never>(),
+      (runtime) => {
+        const scope = FiberRuntime.scopeUnsafeMake()
+        const runFork = unsafeFork(runtime)
+        return core.map(
+          FiberRuntime.scopeExtend(effect, scope),
+          (value) => ({
+            value,
+            [Symbol.dispose]() {
+              runFork(scope.close(core.exitVoid))
+            }
+          })
+        )
+      }
+    )
+  )

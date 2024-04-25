@@ -2478,6 +2478,16 @@ export const scoped: <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, Exclude<
   fiberRuntime.scopedEffect
 
 /**
+ * Scopes all resources uses in the `effect` to the lifetime of the returned `Disposable`.
+ *
+ * @since 3.1.0
+ * @category scoping, resources & finalization
+ */
+export const scopedAsDisposable: <A, E, R>(
+  effect: Effect<A, E, R>
+) => Effect<{ readonly value: A; [Symbol.dispose](): void }, E, Exclude<R, Scope.Scope>> = _runtime.scopedAsDisposable
+
+/**
  * Scopes all resources acquired by `resource` to the lifetime of `use`
  * without effecting the scope of any resources acquired by `use`.
  *

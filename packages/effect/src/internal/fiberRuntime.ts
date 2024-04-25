@@ -3102,7 +3102,8 @@ const ScopeImplProto: Omit<ScopeImpl, "strategy" | "state"> = {
   }
 }
 
-const scopeUnsafeMake = (
+/** @internal */
+export const scopeUnsafeMake = (
   strategy: ExecutionStrategy.ExecutionStrategy = executionStrategy.sequential
 ): ScopeImpl => {
   const scope = Object.create(ScopeImplProto)
