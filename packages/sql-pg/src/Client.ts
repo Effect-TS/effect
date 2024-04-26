@@ -185,6 +185,7 @@ export const make = (
         compiler,
         spanAttributes: [
           ["db.system", "postgresql"],
+          ["db.name", opts.database ?? options.username ?? "postgres"],
           ["server.address", opts.host ?? "localhost"],
           ["server.port", opts.port ?? 5432]
         ]
