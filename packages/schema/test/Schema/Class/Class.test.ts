@@ -206,6 +206,15 @@ describe("Class APIs", () => {
       expect({ ...new A({}) }).toStrictEqual({})
     })
 
+    it("a Class with all defaulted fields should have a void constructor", () => {
+      class A extends S.Class<A>("A")({
+        a: S.String.pipe(S.propertySignature, S.withConstructorDefault(() => ""))
+      }) {}
+      expect({ ...new A() }).toStrictEqual({ a: "" })
+      expect({ ...new A(undefined) }).toStrictEqual({ a: "" })
+      expect({ ...new A({}) }).toStrictEqual({ a: "" })
+    })
+
     it("should support methods", () => {
       class A extends S.Class<A>("A")({ a: S.String }) {
         method(b: string) {

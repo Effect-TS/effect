@@ -1563,6 +1563,13 @@ class VoidClass extends S.Class<VoidClass>("VoidClass")({}) {}
 // $ExpectType [props?: void | {}, disableValidation?: boolean | undefined]
 hole<ConstructorParameters<typeof VoidClass>>()
 
+class AllDefaultedFieldClass extends S.Class<AllDefaultedFieldClass>("AllDefaultedFieldClass")({
+  a: S.String.pipe(S.propertySignature, S.withConstructorDefault(() => ""))
+}) {}
+
+// $ExpectType [props?: void | {}, disableValidation?: boolean | undefined]
+hole<ConstructorParameters<typeof AllDefaultedFieldClass>>()
+
 declare const aContext: S.Schema<string, string, "a">
 declare const bContext: S.Schema<number, number, "b">
 declare const cContext: S.Schema<boolean, boolean, "c">
