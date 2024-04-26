@@ -1276,6 +1276,8 @@ export const gen: Gen.Gen<OptionTypeLambda, Gen.Adapter<OptionTypeLambda>> = (f)
     let current = state.value
     if (Gen.isGenKind(current)) {
       current = current.value
+    } else {
+      current = Gen.yieldMapGetRemove(current)
     }
     if (isNone(current)) {
       return current
@@ -1286,6 +1288,8 @@ export const gen: Gen.Gen<OptionTypeLambda, Gen.Adapter<OptionTypeLambda>> = (f)
         current = state.value
         if (Gen.isGenKind(current)) {
           current = current.value
+        } else {
+          current = Gen.yieldMapGetRemove(current)
         }
         if (isNone(current)) {
           return current

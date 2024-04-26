@@ -15,6 +15,7 @@ import { hasProperty } from "../../Predicate.js"
 import type * as Scheduler from "../../Scheduler.js"
 import type * as STM from "../../STM.js"
 import { StreamTypeId } from "../../Stream.js"
+import { YieldKey, yieldMap } from "../../Utils.js"
 import { ChannelTypeId } from "../core-stream.js"
 import { withFiberRuntime } from "../core.js"
 import { effectVariance } from "../effectable.js"
@@ -172,7 +173,9 @@ class STMPrimitive implements STM.STM<any, any, any> {
     return Hash.cached(this, Hash.random(this))
   }
   [Symbol.iterator]() {
-    return new SingleShotGen(this) as any
+    const key = new YieldKey()
+    yieldMap.set(key, this)
+    return new SingleShotGen(key) as any
   }
   commit(this: STM.STM<any, any, any>): Effect.Effect<any, any, any> {
     return unsafeAtomically(this, constVoid, constVoid)

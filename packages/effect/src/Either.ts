@@ -713,6 +713,8 @@ export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (f)
     let current = state.value
     if (Gen.isGenKind(current)) {
       current = current.value
+    } else {
+      current = Gen.yieldMapGetRemove(current)
     }
     if (isLeft(current)) {
       return current
@@ -723,6 +725,8 @@ export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (f)
         current = state.value
         if (Gen.isGenKind(current)) {
           current = current.value
+        } else {
+          current = Gen.yieldMapGetRemove(current)
         }
         if (isLeft(current)) {
           return current

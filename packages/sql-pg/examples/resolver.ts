@@ -16,7 +16,7 @@ const InsertPersonSchema = Schema.Struct(Person.fields).pipe(
 const program = Effect.gen(function*() {
   const sql = yield* Pg.client.PgClient
 
-  yield sql`TRUNCATE TABLE people RESTART IDENTITY CASCADE`
+  yield* sql`TRUNCATE TABLE people RESTART IDENTITY CASCADE`
 
   const Insert = yield* Pg.resolver.ordered("InsertPerson", {
     Request: InsertPersonSchema,
@@ -49,7 +49,7 @@ const program = Effect.gen(function*() {
     )
   )
 
-  yield sql`SELECT * FROM people`.pipe(
+  yield* sql`SELECT * FROM people`.pipe(
     Effect.andThen(Effect.fail("boom")),
     sql.withTransaction,
     Effect.ignore

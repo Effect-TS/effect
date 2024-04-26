@@ -2,7 +2,9 @@
  * @since 2.0.0
  */
 import { identity } from "./Function.js"
+import { globalValue } from "./GlobalValue.js"
 import type { Kind, TypeLambda } from "./HKT.js"
+import { getBugErrorMessage } from "./internal/errors.js"
 import { isNullable, isObject } from "./Predicate.js"
 import type * as Types from "./Types.js"
 
@@ -179,13 +181,19 @@ export interface Variance<in out F extends TypeLambda, in R, out O, out E> {
  * @since 2.0.0
  */
 export interface Gen<F extends TypeLambda, Z> {
-  <K extends Variance<F, any, any, any> | Kind<F, any, any, any, any>, A>(
+  <K extends Variance<F, any, any, any> | YieldKey<Kind<F, any, any, any, any>>, A>(
     body: (resume: Z) => Generator<K, A, never>
   ): Kind<
     F,
-    [K] extends [Variance<F, infer R, any, any>] ? R : [K] extends [Kind<F, infer R, any, any, any>] ? R : never,
-    [K] extends [Variance<F, any, infer O, any>] ? O : [K] extends [Kind<F, any, infer O, any, any>] ? O : never,
-    [K] extends [Variance<F, any, any, infer E>] ? E : [K] extends [Kind<F, any, any, infer E, any>] ? E : never,
+    [K] extends [Variance<F, infer R, any, any>] ? R
+      : [K] extends [YieldKey<Kind<F, infer R, any, any, any>>] ? R
+      : never,
+    [K] extends [Variance<F, any, infer O, any>] ? O
+      : [K] extends [YieldKey<Kind<F, any, infer O, any, any>>] ? O
+      : never,
+    [K] extends [Variance<F, any, any, infer E>] ? E
+      : [K] extends [YieldKey<Kind<F, any, any, infer E, any>>] ? E
+      : never,
     A
   >
 }
@@ -704,4 +712,38 @@ function add64(
   }
   out[0] = hi
   out[1] = lo
+}
+
+/**
+ * @since 3.0.6
+ */
+export const YieldKeyTypeId = Symbol.for("effect/Utils/YieldKey")
+
+const yieldKeyIdFn = globalValue(YieldKeyTypeId, () => <T>(_: never): T => _)
+
+/**
+ * @since 3.0.6
+ */
+export class YieldKey<T> {
+  /**
+   * @since 3.0.6
+   */
+  readonly [YieldKeyTypeId] = yieldKeyIdFn<T>
+}
+
+/**
+ * @since 3.0.6
+ */
+export const yieldMap = globalValue("effect/Utils/YieldMap", () => new WeakMap<YieldKey<any>, any>())
+
+/**
+ * @since 3.0.6
+ */
+export const yieldMapGetRemove = <T>(key: YieldKey<T>): T => {
+  if (!yieldMap.has(key)) {
+    throw new Error(getBugErrorMessage("yieldMapGetRemove"))
+  }
+  const value = yieldMap.get(key)
+  yieldMap.delete(key)
+  return value
 }

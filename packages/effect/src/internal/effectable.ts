@@ -6,8 +6,8 @@ import * as Hash from "../Hash.js"
 import { pipeArguments } from "../Pipeable.js"
 import type * as Sink from "../Sink.js"
 import type * as Stream from "../Stream.js"
+import { SingleShotGen, YieldKey, yieldMap } from "../Utils.js"
 import * as OpCodes from "./opCodes/effect.js"
-import * as SingleShotGen from "./singleShotGen.js"
 import * as version from "./version.js"
 
 /** @internal */
@@ -77,7 +77,9 @@ export const EffectPrototype: Effect.Effect<never> & Equal.Equal = {
     return Hash.cached(this, Hash.random(this))
   },
   [Symbol.iterator]() {
-    return new SingleShotGen.SingleShotGen(this) as any
+    const key = new YieldKey()
+    yieldMap.set(key, this)
+    return new SingleShotGen(key) as any
   },
   pipe() {
     return pipeArguments(this, arguments)
