@@ -1,5 +1,17 @@
 # effect
 
+## 3.0.6
+
+### Patch Changes
+
+- [#2625](https://github.com/Effect-TS/effect/pull/2625) [`ffe4f4e`](https://github.com/Effect-TS/effect/commit/ffe4f4e95db35fff6869e360b072e3837befa0a1) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Avoid circularity on generators
+
+- [#2626](https://github.com/Effect-TS/effect/pull/2626) [`027418e`](https://github.com/Effect-TS/effect/commit/027418edaa6aa6c0ae4861b95832827b45adace4) Thanks [@fubhy](https://github.com/fubhy)! - Reintroduce custom `NoInfer` type
+
+- [#2609](https://github.com/Effect-TS/effect/pull/2609) [`ac1898e`](https://github.com/Effect-TS/effect/commit/ac1898eb7bc96880f911c276048e2ea3d6fe9c50) Thanks [@patroza](https://github.com/patroza)! - change: BatchedRequestResolver works with NonEmptyArray
+
+- [#2625](https://github.com/Effect-TS/effect/pull/2625) [`ffe4f4e`](https://github.com/Effect-TS/effect/commit/ffe4f4e95db35fff6869e360b072e3837befa0a1) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Make sure GenKind utilities are backward compatible
+
 ## 3.0.5
 
 ### Patch Changes
