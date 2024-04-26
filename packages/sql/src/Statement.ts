@@ -42,6 +42,7 @@ export interface Statement<A> extends Fragment, Effect<ReadonlyArray<A>, SqlErro
   readonly withoutTransform: Effect<ReadonlyArray<A>, SqlError>
   readonly stream: Stream.Stream<A, SqlError>
   readonly values: Effect<ReadonlyArray<ReadonlyArray<Primitive>>, SqlError>
+  readonly unprepared: Effect<ReadonlyArray<A>, SqlError>
   readonly compile: () => readonly [
     sql: string,
     params: ReadonlyArray<Primitive>
@@ -340,7 +341,8 @@ export interface Constructor {
  */
 export const make: (
   acquirer: Connection.Acquirer,
-  compiler: Compiler
+  compiler: Compiler,
+  spanAttributes?: ReadonlyArray<readonly [string, unknown]>
 ) => Constructor = internal.make
 
 /**
