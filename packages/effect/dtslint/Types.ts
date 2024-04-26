@@ -73,6 +73,30 @@ hole<Types.Mutable<readonly [string, number]>>()
 hole<Types.Simplify<Types.Mutable<{ readonly [_: string]: number }>>>()
 
 // -------------------------------------------------------------------------------------
+// DeepMutable
+// -------------------------------------------------------------------------------------
+
+type TaggedValues<A> = {
+  readonly _tag: string
+  readonly value: ReadonlyArray<A>
+}
+
+// $ExpectType [string, number, boolean, bigint]
+hole<[Types.DeepMutable<string>, Types.DeepMutable<number>, Types.DeepMutable<boolean>, Types.DeepMutable<bigint>]>()
+
+// $ExpectType { [x: string]: number; }
+hole<Types.DeepMutable<{ readonly [_: string]: number }>>()
+
+// $ExpectType Set<{ value: { _tag: string; value: number[]; }; }>
+hole<Types.DeepMutable<ReadonlySet<{ readonly value: TaggedValues<number> }>>>()
+
+// $ExpectType Map<{ _tag: string; value: string[]; }, Set<{ _tag: string; value: number[]; }>>
+hole<Types.DeepMutable<ReadonlyMap<TaggedValues<string>, ReadonlySet<TaggedValues<number>>>>>()
+
+// $ExpectType { _tag: string; value: { _tag: string; value: { _tag: string; value: boolean[]; }[]; }[]; }[]
+hole<Types.DeepMutable<ReadonlyArray<TaggedValues<TaggedValues<TaggedValues<boolean>>>>>>()
+
+// -------------------------------------------------------------------------------------
 // MatchRecord
 // -------------------------------------------------------------------------------------
 
