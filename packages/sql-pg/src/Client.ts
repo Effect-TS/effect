@@ -182,7 +182,12 @@ export const make = (
           ),
           (_) => new ConnectionImpl(_)
         ),
-        compiler
+        compiler,
+        spanAttributes: [
+          ["db.system", "postgresql"],
+          ["server.address", opts.host ?? "localhost"],
+          ["server.port", opts.port ?? 5432]
+        ]
       }),
       {
         config: options,

@@ -170,7 +170,12 @@ export const make = (
       Client.make({
         acquirer: Effect.succeed(poolConnection),
         transactionAcquirer,
-        compiler
+        compiler,
+        spanAttributes: [
+          ["db.system", "mysql"],
+          ["server.address", options.host ?? "localhost"],
+          ["server.port", options.port ?? 3306]
+        ]
       }),
       { config: options }
     )

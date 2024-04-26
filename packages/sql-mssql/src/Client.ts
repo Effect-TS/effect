@@ -362,7 +362,13 @@ export const make = (
       Client.make({
         acquirer: pool.get,
         compiler,
-        transactionAcquirer: pool.get
+        transactionAcquirer: pool.get,
+        spanAttributes: [
+          ["db.system", "mssql"],
+          ["db.name", options.database ?? "master"],
+          ["server.address", options.server],
+          ["server.port", options.port ?? 1433]
+        ]
       }),
       {
         config: options,

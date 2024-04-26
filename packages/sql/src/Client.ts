@@ -56,11 +56,12 @@ export namespace Client {
     readonly acquirer: Connection.Acquirer
     readonly compiler: Compiler
     readonly transactionAcquirer: Connection.Acquirer
-    readonly beginTransaction?: string
-    readonly rollback?: string
-    readonly commit?: string
-    readonly savepoint?: (name: string) => string
-    readonly rollbackSavepoint?: (name: string) => string
+    readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
+    readonly beginTransaction?: string | undefined
+    readonly rollback?: string | undefined
+    readonly commit?: string | undefined
+    readonly savepoint?: ((name: string) => string) | undefined
+    readonly rollbackSavepoint?: ((name: string) => string) | undefined
   }
 }
 
