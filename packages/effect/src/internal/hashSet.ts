@@ -1,4 +1,5 @@
 import * as Equal from "../Equal.js"
+import * as Equivalence from "../Equivalence.js"
 import { dual } from "../Function.js"
 import * as Hash from "../Hash.js"
 import type { HashMap } from "../HashMap.js"
@@ -320,3 +321,12 @@ export const partition: {
   }
   return [endMutation(left), endMutation(right)]
 })
+
+/** @internal */
+export const getEquivalence = <A>(
+  equivalence: Equivalence.Equivalence<A>
+): Equivalence.Equivalence<HS.HashSet<A>> => {
+  const hmEq = HM.getEquivalence({ key: equivalence, value: () => true })
+
+  return Equivalence.make((self, that) => hmEq((self as HashSetImpl<A>)._keyMap, (that as HashSetImpl<A>)._keyMap))
+}

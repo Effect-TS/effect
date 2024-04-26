@@ -3,6 +3,7 @@
  */
 
 import type { Equal } from "./Equal.js"
+import type { Equivalence } from "./Equivalence.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as HS from "./internal/hashSet.js"
 import type { Pipeable } from "./Pipeable.js"
@@ -298,3 +299,11 @@ export const partition: {
   ): [excluded: HashSet<Exclude<A, B>>, satisfying: HashSet<B>]
   <A>(self: HashSet<A>, predicate: Predicate<A>): [excluded: HashSet<A>, satisfying: HashSet<A>]
 } = HS.partition
+
+/**
+ * @category equivalence
+ * @since 3.1.0
+ */
+export const getEquivalence: <A>(
+  equivalence: Equivalence<A>
+) => Equivalence<HashSet<A>> = HS.getEquivalence

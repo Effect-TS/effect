@@ -3,6 +3,7 @@
  */
 
 import type { Equal } from "./Equal.js"
+import type { Equivalence } from "./Equivalence.js"
 import type { HashSet } from "./HashSet.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as HM from "./internal/hashMap.js"
@@ -419,3 +420,11 @@ export const findFirst: {
   <K, A, B extends A>(self: HashMap<K, A>, predicate: (a: A, k: K) => a is B): Option<[K, B]>
   <K, A>(self: HashMap<K, A>, predicate: (a: A, k: K) => boolean): Option<[K, A]>
 } = HM.findFirst
+
+/**
+ * @category equivalence
+ * @since 3.1.0
+ */
+export const getEquivalence: <K, V>(
+  equivalences: { key: Equivalence<K>; value: Equivalence<V> }
+) => Equivalence<HashMap<K, V>> = HM.getEquivalence

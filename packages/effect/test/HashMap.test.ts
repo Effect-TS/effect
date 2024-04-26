@@ -425,4 +425,29 @@ describe("HashMap", () => {
     expect(HM.findFirst(map1, (v, _k) => v.s === "bb")).toStrictEqual(Option.some([key(1), value("bb")]))
     expect(HM.findFirst(map1, (v, k) => k.n === 0 && v.s === "bb")).toStrictEqual(Option.none())
   })
+
+  it("equivalence", () => {
+    const eq = HM.getEquivalence({ key: Equal.equals, value: Equal.equals })
+
+    expect(eq(HM.empty(), HM.empty())).toBe(true)
+    expect(eq(HM.empty(), HM.make([1, 1]))).toBe(false)
+    expect(eq(HM.make([1, 1]), HM.make([1, 1]))).toBe(true)
+    expect(eq(HM.make([1, 1], [2, 2]), HM.make([2, 2], [1, 1]))).toBe(true)
+    expect(eq(HM.make([1, 1]), HM.make([1, 2]))).toBe(false)
+    expect(eq(HM.make([1, 1]), HM.make([1, 1], [2, 2]))).toBe(false)
+  })
+
+  it("vitest equality", () => {
+    expect(HM.empty()).toStrictEqual(HM.empty())
+    expect(HM.make([1, 1])).toStrictEqual(HM.make([1, 1]))
+    expect(HM.make([[1, 2], 2])).toStrictEqual(HM.make([[1, 2], 2]))
+    expect(HM.make([1, [1, 2]])).toStrictEqual(HM.make([1, [1, 2]]))
+
+    expect(HM.empty()).not.toStrictEqual(HM.make([1, 1]))
+    expect(HM.make([1, 1])).not.toStrictEqual(HM.make([2, 2]))
+    expect(HM.make([1, 1])).not.toStrictEqual(HM.make([1, 1], [2, 2]))
+    expect(HM.make([1, 1])).not.toStrictEqual(HM.make([1, 2]))
+    expect(HM.make([[1, 1], 2])).not.toStrictEqual(HM.make([[1, 2], 2]))
+    expect(HM.make([1, [1, 1]])).not.toStrictEqual(HM.make([1, [1, 2]]))
+  })
 })

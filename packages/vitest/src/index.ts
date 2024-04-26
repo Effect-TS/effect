@@ -1,11 +1,17 @@
 /**
  * @since 1.0.0
  */
+import type { Tester, TesterContext } from "@vitest/expect"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Either from "effect/Either"
+import type * as Equivalence from "effect/Equivalence"
 import { pipe } from "effect/Function"
+import * as HashMap from "effect/HashMap"
+import * as HashSet from "effect/HashSet"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
+import * as Option from "effect/Option"
 import * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
 import * as TestEnvironment from "effect/TestContext"
@@ -21,6 +27,55 @@ export type API = TestAPI<{}>
 const TestEnv = TestEnvironment.TestContext.pipe(
   Layer.provide(Logger.remove(Logger.defaultLogger))
 )
+
+/** @internal */
+const makeCustomTesters = (equivalence: Equivalence.Equivalence<unknown>): ReadonlyArray<
+  { is: (u: unknown) => boolean; equals: (a: any, b: any) => boolean }
+> => [
+  {
+    is: Option.isOption,
+    equals: Option.getEquivalence(equivalence)
+  },
+  {
+    is: Either.isEither,
+    equals: Either.getEquivalence({ left: equivalence, right: equivalence })
+  },
+  {
+    is: HashSet.isHashSet,
+    equals: HashSet.getEquivalence(equivalence)
+  },
+  {
+    is: HashMap.isHashMap,
+    equals: HashMap.getEquivalence({ key: equivalence, value: equivalence })
+  }
+]
+
+/** @internal */
+function customTester(this: TesterContext, a: unknown, b: unknown, customTesters: Array<Tester>) {
+  const testers = makeCustomTesters((a, b) => this.equals(a, b, customTesters))
+
+  for (const { equals, is } of testers) {
+    const isA = is(a)
+    const isB = is(b)
+
+    if (isA && isB) {
+      return equals(a, b)
+    }
+
+    if (isA || isB) {
+      return false
+    }
+  }
+
+  return undefined
+}
+
+/**
+ * @since 1.0.0
+ */
+export const addEqualityTesters = () => {
+  V.expect.addEqualityTesters([customTester])
+}
 
 /**
  * @since 1.0.0

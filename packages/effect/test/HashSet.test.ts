@@ -228,4 +228,21 @@ describe("HashSet", () => {
     expect(HashSet.isHashSet(null)).toBe(false)
     expect(HashSet.isHashSet({})).toBe(false)
   })
+
+  it("equivalence", () => {
+    const eq = HashSet.getEquivalence(Equal.equals)
+    expect(eq(HashSet.empty(), HashSet.empty())).toBe(true)
+    expect(eq(HashSet.empty(), HashSet.make(1))).toBe(false)
+    expect(eq(HashSet.make(1), HashSet.make(1))).toBe(true)
+    expect(eq(HashSet.make(2, 1), HashSet.make(1, 2))).toBe(true)
+    expect(eq(HashSet.make(1, 2), HashSet.make(1, 2, 3))).toBe(false)
+  })
+
+  it("vitest equality", () => {
+    expect(HashSet.empty()).toStrictEqual(HashSet.empty())
+    expect(HashSet.make(1)).toStrictEqual(HashSet.make(1))
+
+    expect(HashSet.empty()).not.toStrictEqual(HashSet.make(1))
+    expect(HashSet.make(1)).not.toStrictEqual(HashSet.make(1, 2))
+  })
 })

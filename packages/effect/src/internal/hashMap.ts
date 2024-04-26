@@ -1,4 +1,5 @@
 import * as Equal from "../Equal.js"
+import * as Equivalence from "../Equivalence.js"
 import * as Dual from "../Function.js"
 import { identity, pipe } from "../Function.js"
 import * as Hash from "../Hash.js"
@@ -538,3 +539,33 @@ export const findFirst: {
     return Option.none()
   }
 )
+
+/** @internal */
+export const getEquivalence = <K, V>(
+  { key, value }: { key: Equivalence.Equivalence<K>; value: Equivalence.Equivalence<V> }
+): Equivalence.Equivalence<HM.HashMap<K, V>> => {
+  // TODO:
+  return Equivalence.make((self, that) => {
+    if (size(that) !== size(self)) {
+      return false
+    }
+
+    for (const [k1, v1] of self) {
+      let found = false
+      for (const [k2, v2] of that) {
+        if (key(k1, k2)) {
+          if (!value(v1, v2)) {
+            return false
+          }
+          found = true
+          break
+        }
+      }
+      if (!found) {
+        return false
+      }
+    }
+
+    return true
+  })
+}
