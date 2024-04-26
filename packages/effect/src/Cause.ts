@@ -36,7 +36,7 @@ import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import type * as Sink from "./Sink.js"
 import type * as Stream from "./Stream.js"
-import type { Covariant } from "./Types.js"
+import type { Covariant, NoInfer } from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -194,7 +194,7 @@ export interface YieldableError extends Pipeable, Inspectable, Readonly<Error> {
   readonly [Stream.StreamTypeId]: Effect.Effect.VarianceStruct<never, this, never>
   readonly [Sink.SinkTypeId]: Sink.Sink.VarianceStruct<never, unknown, never, this, never>
   readonly [Channel.ChannelTypeId]: Channel.Channel.VarianceStruct<never, unknown, this, unknown, never, unknown, never>
-  [Symbol.iterator](): Generator<Effect.Effect<never, this, never>, never>
+  [Symbol.iterator](): Effect.EffectGenerator<Effect.Effect<never, this, never>>
 }
 
 /**

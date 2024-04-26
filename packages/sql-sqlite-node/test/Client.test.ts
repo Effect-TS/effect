@@ -13,7 +13,7 @@ const makeClient = Effect.gen(function*(_) {
 }).pipe(Effect.provide(NodeFileSystem.layer))
 
 describe("Client", () => {
-  it.effect("should work", () =>
+  it.scoped("should work", () =>
     Effect.gen(function*(_) {
       const sql = yield* _(makeClient)
       yield* _(sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`)
@@ -26,5 +26,27 @@ describe("Client", () => {
         { id: 1, name: "hello" },
         { id: 2, name: "world" }
       ])
-    }).pipe(Effect.scoped))
+    }))
+
+  it.scoped("withTransaction", () =>
+    Effect.gen(function*() {
+      const sql = yield* makeClient
+      yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
+      yield* sql.withTransaction(sql`INSERT INTO test (name) VALUES ('hello')`)
+      const rows = yield* sql`SELECT * FROM test`
+      assert.deepStrictEqual(rows, [{ id: 1, name: "hello" }])
+    }))
+
+  it.scoped("withTransaction rollback", () =>
+    Effect.gen(function*() {
+      const sql = yield* makeClient
+      yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
+      yield* sql`INSERT INTO test (name) VALUES ('hello')`.pipe(
+        Effect.andThen(Effect.fail("boom")),
+        sql.withTransaction,
+        Effect.ignore
+      )
+      const rows = yield* sql`SELECT * FROM test`
+      assert.deepStrictEqual(rows, [])
+    }))
 })

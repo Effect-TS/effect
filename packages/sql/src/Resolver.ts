@@ -3,6 +3,7 @@
  */
 import type { ParseError } from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
+import type { NonEmptyArray } from "effect/Array"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
@@ -199,7 +200,7 @@ export const ordered = <T extends string, I, II, RI, A, IA, _, E, RA = never, R 
       readonly Request: Schema.Schema<I, II, RI>
       readonly Result: Schema.Schema<A, IA>
       readonly execute: (
-        requests: Array<NoInfer<II>>
+        requests: Array<Types.NoInfer<II>>
       ) => Effect.Effect<ReadonlyArray<_>, E>
       readonly withContext?: false
     }
@@ -207,7 +208,7 @@ export const ordered = <T extends string, I, II, RI, A, IA, _, E, RA = never, R 
       readonly Request: Schema.Schema<I, II, RI>
       readonly Result: Schema.Schema<A, IA, RA>
       readonly execute: (
-        requests: Array<NoInfer<II>>
+        requests: Array<Types.NoInfer<II>>
       ) => Effect.Effect<ReadonlyArray<_>, E, R>
       readonly withContext: true
     }
@@ -218,7 +219,7 @@ export const ordered = <T extends string, I, II, RI, A, IA, _, E, RA = never, R 
 > => {
   const decodeResults = Schema.decodeUnknown(Schema.Array(options.Result))
   const resolver = RequestResolver.makeBatched(
-    (requests: Array<SqlRequest<T, A, E | ResultLengthMismatch>>) => {
+    (requests: NonEmptyArray<SqlRequest<T, A, E | ResultLengthMismatch>>) => {
       const [inputs, spanLinks] = partitionRequests(requests)
       return options.execute(inputs as any).pipe(
         Effect.filterOrFail(
@@ -265,28 +266,28 @@ export const grouped = <T extends string, I, II, K, RI, A, IA, Row, E, RA = neve
   options:
     | {
       readonly Request: Schema.Schema<I, II, RI>
-      readonly RequestGroupKey: (request: NoInfer<II>) => K
+      readonly RequestGroupKey: (request: Types.NoInfer<II>) => K
       readonly Result: Schema.Schema<A, IA>
-      readonly ResultGroupKey: (result: NoInfer<A>, row: NoInfer<Row>) => K
+      readonly ResultGroupKey: (result: Types.NoInfer<A>, row: Types.NoInfer<Row>) => K
       readonly execute: (
-        requests: Array<NoInfer<II>>
+        requests: Array<Types.NoInfer<II>>
       ) => Effect.Effect<ReadonlyArray<Row>, E>
       readonly withContext?: false
     }
     | {
       readonly Request: Schema.Schema<I, II, RI>
-      readonly RequestGroupKey: (request: NoInfer<II>) => K
+      readonly RequestGroupKey: (request: Types.NoInfer<II>) => K
       readonly Result: Schema.Schema<A, IA, RA>
-      readonly ResultGroupKey: (result: NoInfer<A>, row: NoInfer<Row>) => K
+      readonly ResultGroupKey: (result: Types.NoInfer<A>, row: Types.NoInfer<Row>) => K
       readonly execute: (
-        requests: Array<NoInfer<II>>
+        requests: Array<Types.NoInfer<II>>
       ) => Effect.Effect<ReadonlyArray<Row>, E, R>
       readonly withContext: true
     }
 ): Effect.Effect<SqlResolver<T, I, Array<A>, E, RI>, never, RA | R> => {
   const decodeResults = Schema.decodeUnknown(Schema.Array(options.Result))
   const resolver = RequestResolver.makeBatched(
-    (requests: Array<SqlRequest<T, Array<A>, E>>) => {
+    (requests: NonEmptyArray<SqlRequest<T, Array<A>, E>>) => {
       const [inputs, spanLinks] = partitionRequests(requests)
       const resultMap = new Map<K, Array<A>>()
       return options.execute(inputs as any).pipe(
@@ -342,25 +343,25 @@ export const findById = <T extends string, I, II, RI, A, IA, Row, E, RA = never,
     | {
       readonly Id: Schema.Schema<I, II, RI>
       readonly Result: Schema.Schema<A, IA>
-      readonly ResultId: (result: NoInfer<A>, row: NoInfer<Row>) => II
+      readonly ResultId: (result: Types.NoInfer<A>, row: Types.NoInfer<Row>) => II
       readonly execute: (
-        requests: Array<NoInfer<II>>
+        requests: Array<Types.NoInfer<II>>
       ) => Effect.Effect<ReadonlyArray<Row>, E>
       readonly withContext?: false
     }
     | {
       readonly Id: Schema.Schema<I, II, RI>
       readonly Result: Schema.Schema<A, IA, RA>
-      readonly ResultId: (result: NoInfer<A>, row: NoInfer<Row>) => II
+      readonly ResultId: (result: Types.NoInfer<A>, row: Types.NoInfer<Row>) => II
       readonly execute: (
-        requests: Array<NoInfer<II>>
+        requests: Array<Types.NoInfer<II>>
       ) => Effect.Effect<ReadonlyArray<Row>, E, R>
       readonly withContext: true
     }
 ): Effect.Effect<SqlResolver<T, I, Option.Option<A>, E, RI>, never, RA | R> => {
   const decodeResults = Schema.decodeUnknown(Schema.Array(options.Result))
   const resolver = RequestResolver.makeBatched(
-    (requests: Array<SqlRequest<T, Option.Option<A>, E>>) => {
+    (requests: NonEmptyArray<SqlRequest<T, Option.Option<A>, E>>) => {
       const [inputs, spanLinks, idMap] = partitionRequestsById<II>()(requests)
       return options.execute(inputs as any).pipe(
         Effect.bindTo("rawResults"),
@@ -412,20 +413,20 @@ const void_ = <T extends string, I, II, RI, E, R = never>(
     | {
       readonly Request: Schema.Schema<I, II, RI>
       readonly execute: (
-        requests: Array<NoInfer<II>>
+        requests: Array<Types.NoInfer<II>>
       ) => Effect.Effect<ReadonlyArray<unknown>, E>
       readonly withContext?: false
     }
     | {
       readonly Request: Schema.Schema<I, II, RI>
       readonly execute: (
-        requests: Array<NoInfer<II>>
+        requests: Array<Types.NoInfer<II>>
       ) => Effect.Effect<ReadonlyArray<unknown>, E, R>
       readonly withContext: true
     }
 ): Effect.Effect<SqlResolver<T, I, void, E, RI>, never, R> => {
   const resolver = RequestResolver.makeBatched(
-    (requests: Array<SqlRequest<T, void, E>>) => {
+    (requests: NonEmptyArray<SqlRequest<T, void, E>>) => {
       const [inputs, spanLinks] = partitionRequests(requests)
       return options.execute(inputs as any).pipe(
         Effect.andThen(

@@ -13,37 +13,33 @@ const InsertPersonSchema = Schema.Struct(Person.fields).pipe(
   Schema.omit("id", "createdAt")
 )
 
-const program = Effect.gen(function*(_) {
-  const sql = yield* _(Pg.client.PgClient)
+const program = Effect.gen(function*() {
+  const sql = yield* Pg.client.PgClient
 
-  const Insert = yield* _(
-    Pg.resolver.ordered("InsertPerson", {
-      Request: InsertPersonSchema,
-      Result: Person,
-      execute: (requests) => sql`INSERT INTO people ${sql.insert(requests)} RETURNING people.*`
-    })
-  )
+  yield* sql`TRUNCATE TABLE people RESTART IDENTITY CASCADE`
 
-  const GetById = yield* _(
-    Pg.resolver.findById("GetPersonById", {
-      Id: Schema.Number,
-      Result: Person,
-      ResultId: (result) => result.id,
-      execute: (ids) => sql`SELECT * FROM people WHERE id IN ${sql.in(ids)}`
-    })
-  )
+  const Insert = yield* Pg.resolver.ordered("InsertPerson", {
+    Request: InsertPersonSchema,
+    Result: Person,
+    execute: (requests) => sql`INSERT INTO people ${sql.insert(requests)} RETURNING people.*`
+  })
 
-  const GetByName = yield* _(
-    Pg.resolver.grouped("GetPersonByName", {
-      Request: Schema.String,
-      RequestGroupKey: (_) => _,
-      Result: Person,
-      ResultGroupKey: (_) => _.name,
-      execute: (ids) => sql<{}>`SELECT * FROM people WHERE name IN ${sql.in(ids)}`
-    })
-  )
+  const GetById = yield* Pg.resolver.findById("GetPersonById", {
+    Id: Schema.Number,
+    Result: Person,
+    ResultId: (result) => result.id,
+    execute: (ids) => sql`SELECT * FROM people WHERE id IN ${sql.in(ids)}`
+  })
 
-  const inserted = yield* _(
+  const GetByName = yield* Pg.resolver.grouped("GetPersonByName", {
+    Request: Schema.String,
+    RequestGroupKey: (_) => _,
+    Result: Person,
+    ResultGroupKey: (_) => _.name,
+    execute: (ids) => sql<{}>`SELECT * FROM people WHERE name IN ${sql.in(ids)}`
+  })
+
+  const inserted = yield* sql.withTransaction(
     Effect.all(
       [
         Insert.execute({ name: "John Doe" }),
@@ -53,22 +49,24 @@ const program = Effect.gen(function*(_) {
     )
   )
 
+  yield* sql`SELECT * FROM people`.pipe(
+    Effect.andThen(Effect.fail("boom")),
+    sql.withTransaction,
+    Effect.ignore
+  )
+
   console.log(
-    yield* _(
-      Effect.all(
-        [GetById.execute(inserted[0].id), GetById.execute(inserted[1].id)],
-        { batching: true }
-      )
+    yield* Effect.all(
+      [GetById.execute(inserted[0].id), GetById.execute(inserted[1].id)],
+      { batching: true }
     )
   )
 
   console.log(
-    yield* _(
-      Effect.forEach(
-        ["John Doe", "Joe Bloggs", "John Doe"],
-        (id) => GetByName.execute(id),
-        { batching: true }
-      )
+    yield* Effect.forEach(
+      ["John Doe", "Joe Bloggs", "John Doe"],
+      (id) => GetByName.execute(id),
+      { batching: true }
     )
   )
 })

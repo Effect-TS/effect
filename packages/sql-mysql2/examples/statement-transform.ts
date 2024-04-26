@@ -34,6 +34,7 @@ const program = Effect.gen(function*(_) {
   yield* _(
     sql`SELECT * FROM people`,
     Effect.replicateEffect(50),
+    sql.withTransaction,
     Effect.locally(currentResourceName, "GET /people")
   )
 })

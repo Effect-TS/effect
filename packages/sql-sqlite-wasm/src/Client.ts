@@ -155,7 +155,8 @@ export const make = (
       Client.make({
         acquirer,
         compiler,
-        transactionAcquirer
+        transactionAcquirer,
+        spanAttributes: [["db.system", "sqlite"]]
       }),
       {
         config: options,

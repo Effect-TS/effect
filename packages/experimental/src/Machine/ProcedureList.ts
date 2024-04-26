@@ -4,6 +4,7 @@
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
+import type * as Types from "effect/Types"
 import * as Procedure from "./Procedure.js"
 
 /**
@@ -174,7 +175,7 @@ export const add = <Req extends Procedure.TaggedRequest.Any>(): {
     R2
   >(
     tag: Req["_tag"],
-    handler: Procedure.Handler<Req, NoInfer<State>, NoInfer<Public> | NoInfer<Private>, R2>
+    handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
   ): <R>(
     self: ProcedureList<State, Public, Private, R>
   ) => ProcedureList<State, Req | Public, Private, R | R2>
@@ -187,7 +188,7 @@ export const add = <Req extends Procedure.TaggedRequest.Any>(): {
   >(
     self: ProcedureList<State, Public, Private, R>,
     tag: Req["_tag"],
-    handler: Procedure.Handler<Req, NoInfer<State>, NoInfer<Public> | NoInfer<Private>, R2>
+    handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
   ): ProcedureList<State, Req | Public, Private, R | R2>
 } =>
   dual(
@@ -201,7 +202,7 @@ export const add = <Req extends Procedure.TaggedRequest.Any>(): {
     >(
       self: ProcedureList<State, Public, Private, R>,
       tag: Req["_tag"],
-      handler: Procedure.Handler<Req, NoInfer<State>, NoInfer<Public> | NoInfer<Private>, R2>
+      handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
     ): ProcedureList<State, Req | Public, Private, R | R2> =>
       addProcedure(self, Procedure.make<any, any>()<Req>()(tag, handler))
   )
@@ -218,7 +219,7 @@ export const addPrivate = <Req extends Procedure.TaggedRequest.Any>(): {
     R2
   >(
     tag: Req["_tag"],
-    handler: Procedure.Handler<Req, NoInfer<State>, NoInfer<Public> | NoInfer<Private>, R2>
+    handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
   ): <R>(
     self: ProcedureList<State, Public, Private, R>
   ) => ProcedureList<State, Public, Private | Req, R | R2>
@@ -231,7 +232,7 @@ export const addPrivate = <Req extends Procedure.TaggedRequest.Any>(): {
   >(
     self: ProcedureList<State, Public, Private, R>,
     tag: Req["_tag"],
-    handler: Procedure.Handler<Req, NoInfer<State>, NoInfer<Public> | NoInfer<Private>, R2>
+    handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
   ): ProcedureList<State, Public, Private | Req, R | R2>
 } =>
   dual(
@@ -245,7 +246,7 @@ export const addPrivate = <Req extends Procedure.TaggedRequest.Any>(): {
     >(
       self: ProcedureList<State, Public, Private, R>,
       tag: Req["_tag"],
-      handler: Procedure.Handler<Req, NoInfer<State>, NoInfer<Public> | NoInfer<Private>, R2>
+      handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
     ): ProcedureList<State, Public, Private | Req, R | R2> =>
       addProcedurePrivate(self, Procedure.make<any, any>()<Req>()(tag, handler))
   )
@@ -256,15 +257,15 @@ export const addPrivate = <Req extends Procedure.TaggedRequest.Any>(): {
  */
 export const withInitialState: {
   <State>(
-    initialState: NoInfer<State>
+    initialState: Types.NoInfer<State>
   ): <Public extends Procedure.TaggedRequest.Any, Private extends Procedure.TaggedRequest.Any, R>(
     self: ProcedureList<State, Public, Private, R>
   ) => ProcedureList<State, Public, Private, R>
   <State, Public extends Procedure.TaggedRequest.Any, Private extends Procedure.TaggedRequest.Any, R>(
     self: ProcedureList<State, Public, Private, R>,
-    initialState: NoInfer<State>
+    initialState: Types.NoInfer<State>
   ): ProcedureList<State, Public, Private, R>
 } = dual(2, <State, Public extends Procedure.TaggedRequest.Any, Private extends Procedure.TaggedRequest.Any, R>(
   self: ProcedureList<State, Public, Private, R>,
-  initialState: NoInfer<State>
+  initialState: Types.NoInfer<State>
 ): ProcedureList<State, Public, Private, R> => makeProto({ ...self, initialState }))

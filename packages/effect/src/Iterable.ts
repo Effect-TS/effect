@@ -14,6 +14,7 @@ import * as O from "./Option.js"
 import { isBoolean } from "./Predicate.js"
 import type * as Record from "./Record.js"
 import * as Tuple from "./Tuple.js"
+import type { NoInfer } from "./Types.js"
 
 /**
  * Return a `Iterable` with element `i` initialized with `f(i)`.

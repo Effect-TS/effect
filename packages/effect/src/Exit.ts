@@ -10,6 +10,7 @@ import * as core from "./internal/core.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
+import type { NoInfer } from "./Types.js"
 import type * as Unify from "./Unify.js"
 
 /**

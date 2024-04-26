@@ -2,6 +2,7 @@
  * @since 2.0.0
  */
 
+import type { NonEmptyArray } from "./Array.js"
 import * as Context from "./Context.js"
 import * as Effect from "./Effect.js"
 import type * as Either from "./Either.js"
@@ -138,7 +139,7 @@ export const makeWithEntry: <A, R>(
  * @category constructors
  */
 export const makeBatched: <A extends Request.Request<any, any>, R>(
-  run: (requests: Array<A>) => Effect.Effect<void, never, R>
+  run: (requests: NonEmptyArray<A>) => Effect.Effect<void, never, R>
 ) => RequestResolver<A, R> = internal.makeBatched
 
 /**
@@ -187,13 +188,13 @@ export const around: {
  */
 export const aroundRequests: {
   <A, A2, R2, X, R3>(
-    before: (requests: ReadonlyArray<NoInfer<A>>) => Effect.Effect<A2, never, R2>,
-    after: (requests: ReadonlyArray<NoInfer<A>>, _: A2) => Effect.Effect<X, never, R3>
+    before: (requests: ReadonlyArray<Types.NoInfer<A>>) => Effect.Effect<A2, never, R2>,
+    after: (requests: ReadonlyArray<Types.NoInfer<A>>, _: A2) => Effect.Effect<X, never, R3>
   ): <R>(self: RequestResolver<A, R>) => RequestResolver<A, R2 | R3 | R>
   <A, R, A2, R2, X, R3>(
     self: RequestResolver<A, R>,
-    before: (requests: ReadonlyArray<NoInfer<A>>) => Effect.Effect<A2, never, R2>,
-    after: (requests: ReadonlyArray<NoInfer<A>>, _: A2) => Effect.Effect<X, never, R3>
+    before: (requests: ReadonlyArray<Types.NoInfer<A>>) => Effect.Effect<A2, never, R2>,
+    after: (requests: ReadonlyArray<Types.NoInfer<A>>, _: A2) => Effect.Effect<X, never, R3>
   ): RequestResolver<A, R | R2 | R3>
 } = internal.aroundRequests
 
@@ -269,7 +270,7 @@ export const fromFunction: <A extends Request.Request<any>>(
  * @category constructors
  */
 export const fromFunctionBatched: <A extends Request.Request<any>>(
-  f: (chunk: Array<A>) => Iterable<Request.Request.Success<A>>
+  f: (chunk: NonEmptyArray<A>) => Iterable<Request.Request.Success<A>>
 ) => RequestResolver<A> = internal.fromFunctionBatched
 
 /**

@@ -166,11 +166,22 @@ export const make = (
       (conn) => new ConnectionImpl(conn)
     )
 
+    const spanAttributes: Array<[string, unknown]> = [
+      ["db.system", "mysql"],
+      ["server.address", options.host ?? "localhost"],
+      ["server.port", options.port ?? 3306]
+    ]
+
+    if (options.database) {
+      spanAttributes.push(["db.name", options.database])
+    }
+
     return Object.assign(
       Client.make({
         acquirer: Effect.succeed(poolConnection),
         transactionAcquirer,
-        compiler
+        compiler,
+        spanAttributes
       }),
       { config: options }
     )

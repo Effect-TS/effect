@@ -7,6 +7,7 @@ import type * as Either from "../Either.js"
 import { dual, pipe } from "../Function.js"
 import type * as Request from "../Request.js"
 import type * as RequestResolver from "../RequestResolver.js"
+import type { NoInfer } from "../Types.js"
 import * as core from "./core.js"
 import { invokeWithInterrupt, zipWithOptions } from "./fiberRuntime.js"
 import { complete } from "./request.js"
@@ -24,21 +25,21 @@ export const makeWithEntry = <A, R>(
 
 /** @internal */
 export const makeBatched = <A extends Request.Request<any, any>, R>(
-  run: (requests: Array<A>) => Effect.Effect<void, never, R>
+  run: (requests: RA.NonEmptyArray<A>) => Effect.Effect<void, never, R>
 ): RequestResolver.RequestResolver<A, R> =>
   new core.RequestResolverImpl<A, R>(
     (requests) => {
       if (requests.length > 1) {
         return core.forEachSequentialDiscard(requests, (block) => {
           const filtered = block.filter((_) => !_.state.completed).map((_) => _.request)
-          if (filtered.length === 0) {
+          if (!RA.isNonEmptyArray(filtered)) {
             return core.void
           }
           return invokeWithInterrupt(run(filtered), block)
         })
       } else if (requests.length === 1) {
         const filtered = requests[0].filter((_) => !_.state.completed).map((_) => _.request)
-        if (filtered.length === 0) {
+        if (!RA.isNonEmptyArray(filtered)) {
           return core.void
         }
         return run(filtered)
@@ -210,7 +211,7 @@ export const eitherWith = dual<
 export const fromFunction = <A extends Request.Request<any>>(
   f: (request: A) => Request.Request.Success<A>
 ): RequestResolver.RequestResolver<A> =>
-  makeBatched((requests: Array<A>) =>
+  makeBatched((requests: RA.NonEmptyArray<A>) =>
     core.forEachSequentialDiscard(
       requests,
       (request) => complete(request, core.exitSucceed(f(request)) as any)
@@ -219,9 +220,9 @@ export const fromFunction = <A extends Request.Request<any>>(
 
 /** @internal */
 export const fromFunctionBatched = <A extends Request.Request<any>>(
-  f: (chunk: Array<A>) => Iterable<Request.Request.Success<A>>
+  f: (chunk: RA.NonEmptyArray<A>) => Iterable<Request.Request.Success<A>>
 ): RequestResolver.RequestResolver<A> =>
-  makeBatched((as: Array<A>) =>
+  makeBatched((as: RA.NonEmptyArray<A>) =>
     Effect.forEach(
       f(as),
       (res, i) => complete(as[i], core.exitSucceed(res) as any),
@@ -233,7 +234,7 @@ export const fromFunctionBatched = <A extends Request.Request<any>>(
 export const fromEffect = <R, A extends Request.Request<any, any>>(
   f: (a: A) => Effect.Effect<Request.Request.Success<A>, Request.Request.Error<A>, R>
 ): RequestResolver.RequestResolver<A, R> =>
-  makeBatched((requests: Array<A>) =>
+  makeBatched((requests: RA.NonEmptyArray<A>) =>
     Effect.forEach(
       requests,
       (a) => Effect.flatMap(Effect.exit(f(a)), (e) => complete(a, e as any)),
@@ -261,7 +262,7 @@ export const fromEffectTagged = <
   A,
   ReturnType<Fns[keyof Fns]> extends Effect.Effect<infer _A, infer _E, infer R> ? R : never
 > =>
-  makeBatched<A, any>((requests: Array<A>) => {
+  makeBatched<A, any>((requests: RA.NonEmptyArray<A>) => {
     const grouped: Record<string, Array<A>> = {}
     const tags: Array<A["_tag"]> = []
     for (let i = 0, len = requests.length; i < len; i++) {

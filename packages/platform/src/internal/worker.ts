@@ -95,9 +95,9 @@ export const makeManager = Effect.gen(function*() {
           Effect.succeed
 
         const outbound = queue ?? (yield* defaultQueue<I>())
-        yield Effect.addFinalizer(() => outbound.shutdown)
+        yield* Effect.addFinalizer(() => outbound.shutdown)
 
-        yield Effect.gen(function*() {
+        yield* Effect.gen(function*() {
           const readyLatch = yield* Deferred.make<void>()
           const backing = yield* platform.spawn<Worker.Worker.Request, Worker.Worker.Response<E, O>>(spawn(id))
           const send = pipe(
@@ -138,7 +138,7 @@ export const makeManager = Effect.gen(function*() {
           Effect.forkScoped
         )
 
-        yield Effect.addFinalizer(() =>
+        yield* Effect.addFinalizer(() =>
           Effect.zipRight(
             Effect.forEach(requestMap.values(), ([queue]) => Queue.offer(queue, Exit.failCause(Cause.empty)), {
               discard: true
@@ -241,7 +241,7 @@ export const makeManager = Effect.gen(function*() {
             executeRelease
           )
 
-        yield semaphore.take(1).pipe(
+        yield* semaphore.take(1).pipe(
           Effect.zipRight(outbound.take),
           Effect.flatMap(([id, request, span]) =>
             pipe(
@@ -275,7 +275,7 @@ export const makeManager = Effect.gen(function*() {
         )
 
         if (initialMessage) {
-          yield Effect.sync(initialMessage).pipe(
+          yield* Effect.sync(initialMessage).pipe(
             Effect.flatMap(executeEffect),
             Effect.mapError((error) => new WorkerError({ reason: "spawn", error }))
           )

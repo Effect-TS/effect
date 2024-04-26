@@ -89,21 +89,30 @@ export const make = (
         })
       )
 
+      const runStatement = (
+        statement: Sqlite.Statement,
+        params: ReadonlyArray<Statement.Primitive> = []
+      ) =>
+        Effect.try({
+          try: () => {
+            if (statement.reader) {
+              return statement.all(...params) as ReadonlyArray<any>
+            }
+            statement.run(...params)
+            return []
+          },
+          catch: (error) => new SqlError({ error })
+        })
+
       const run = (
         sql: string,
         params: ReadonlyArray<Statement.Primitive> = []
-      ) =>
-        Effect.flatMap(prepareCache.get(sql), (statement) =>
-          Effect.try({
-            try: () => {
-              if (statement.reader) {
-                return statement.all(...params) as ReadonlyArray<any>
-              }
-              statement.run(...params)
-              return []
-            },
-            catch: (error) => new SqlError({ error })
-          }))
+      ) => Effect.flatMap(prepareCache.get(sql), (s) => runStatement(s, params))
+
+      const runRaw = (
+        sql: string,
+        params: ReadonlyArray<Statement.Primitive> = []
+      ) => Effect.map(runStatement(db.prepare(sql), params), transformRows)
 
       const runTransform = options.transformResultNames
         ? (sql: string, params?: ReadonlyArray<Statement.Primitive>) => Effect.map(run(sql, params), transformRows)
@@ -142,7 +151,7 @@ export const make = (
           return run(sql, params)
         },
         executeRaw(sql, params) {
-          return runTransform(sql, params)
+          return runRaw(sql, params)
         },
         executeStream(_sql, _params) {
           return Effect.dieMessage("executeStream not implemented")
@@ -181,7 +190,8 @@ export const make = (
       Client.make({
         acquirer,
         compiler,
-        transactionAcquirer
+        transactionAcquirer,
+        spanAttributes: [["db.system", "sqlite"]]
       }),
       {
         config: options,

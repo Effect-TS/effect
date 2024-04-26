@@ -2690,8 +2690,8 @@ export function filter<C extends A, B extends A, A = C>(
   annotations?: Annotations.Filter<C & B, C>
 ): <I, R>(self: Schema<C, I, R>) => filter<C & B, I, R>
 export function filter<A>(
-  predicate: Predicate.Predicate<NoInfer<A>>,
-  annotations?: Annotations.Filter<NoInfer<A>>
+  predicate: Predicate.Predicate<Types.NoInfer<A>>,
+  annotations?: Annotations.Filter<Types.NoInfer<A>>
 ): <I, R>(self: Schema<A, I, R>) => filter<A, I, R>
 export function filter<A>(
   predicate: Predicate.Predicate<A> | AST.Refinement["filter"],

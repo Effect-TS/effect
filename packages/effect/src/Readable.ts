@@ -6,6 +6,7 @@ import { dual } from "./Function.js"
 import * as core from "./internal/core.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import { hasProperty } from "./Predicate.js"
+import type { NoInfer } from "./Types.js"
 
 /**
  * @since 2.0.0
