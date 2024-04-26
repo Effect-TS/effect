@@ -1,8 +1,17 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("make", () => {
+  it("should support lazy defaults", () => {
+    let i = 0
+    const schema = S.Struct({
+      a: S.propertySignature(S.Number).pipe(S.withConstructorDefault(() => ++i))
+    })
+    expect(schema.make({})).toStrictEqual({ a: 1 })
+    expect(schema.make({})).toStrictEqual({ a: 2 })
+  })
+
   it("required fields", () => {
     const schema = S.Struct({ a: S.String })
     Util.expectConstructorSuccess(schema, { a: "a" })

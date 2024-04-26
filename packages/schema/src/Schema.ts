@@ -2195,7 +2195,6 @@ const makeTypeLiteralClass = <
   records: Records,
   ast: AST.AST = getDefaultTypeLiteralAST(fields, records)
 ): TypeLiteral<Fields, Records> => {
-  const defaults = getFieldsDefaults(fields)
   return class TypeLiteralClass extends make<
     Types.Simplify<TypeLiteral.Type<Fields, Records>>,
     Types.Simplify<TypeLiteral.Encoded<Fields, Records>>,
@@ -2215,7 +2214,7 @@ const makeTypeLiteralClass = <
     static make(
       props: Types.Simplify<TypeLiteral.Constructor<Fields, Records>>
     ): Types.Simplify<TypeLiteral.Type<Fields, Records>> {
-      return ParseResult.validateSync(this)({ ...defaults, ...props as any })
+      return ParseResult.validateSync(this)({ ...getFieldsDefaults(fields), ...props as any })
     }
   }
 }
@@ -6484,14 +6483,12 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
     onSome: () => schema
   })
 
-  const defaults = getFieldsDefaults(fields)
-
   return class extends Base {
     constructor(
       props: { [x: string | symbol]: unknown } = {},
       disableValidation: boolean = false
     ) {
-      props = { ...defaults, ...props }
+      props = { ...getFieldsDefaults(fields), ...props }
       if (tag !== undefined) {
         props = { ...props, ...tag }
       }
