@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type { MetricProducer, MetricReader } from "@opentelemetry/sdk-metrics"
+import type { NonEmptyReadonlyArray } from "effect/Array"
 import type * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import type { Layer } from "effect/Layer"
@@ -21,11 +22,13 @@ export const makeProducer: Effect.Effect<MetricProducer, never, Resource> = inte
  */
 export const registerProducer: (
   self: MetricProducer,
-  metricReader: LazyArg<MetricReader>
-) => Effect.Effect<MetricReader, never, Scope.Scope> = internal.registerProducer
+  metricReader: LazyArg<MetricReader | NonEmptyReadonlyArray<MetricReader>>
+) => Effect.Effect<Array<any>, never, Scope.Scope> = internal.registerProducer
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layer: (evaluate: LazyArg<MetricReader>) => Layer<never, never, Resource> = internal.layer
+export const layer: (
+  evaluate: LazyArg<MetricReader | NonEmptyReadonlyArray<MetricReader>>
+) => Layer<never, never, Resource> = internal.layer
