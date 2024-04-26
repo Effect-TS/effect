@@ -290,18 +290,27 @@ export const makeProducer = Effect.map(
 )
 
 /** @internal */
-export const registerProducer = (self: MetricProducer, metricReader: LazyArg<MetricReader>) =>
+export const registerProducer = (
+  self: MetricProducer,
+  metricReader: LazyArg<MetricReader | Arr.NonEmptyReadonlyArray<MetricReader>>
+) =>
   Effect.acquireRelease(
     Effect.sync(() => {
       const reader = metricReader()
-      reader.setMetricProducer(self)
-      return reader
+      const readers: Array<MetricReader> = Array.isArray(reader) ? reader : [reader] as any
+      readers.forEach((reader) => reader.setMetricProducer(self))
+      return readers
     }),
-    (reader) => Effect.ignoreLogged(Effect.promise(() => reader.shutdown()))
+    (readers) =>
+      Effect.ignoreLogged(Effect.promise(() =>
+        Promise.all(
+          readers.map((reader) => reader.shutdown())
+        )
+      ))
   )
 
 /** @internal */
-export const layer = (evaluate: LazyArg<MetricReader>) =>
+export const layer = (evaluate: LazyArg<MetricReader | Arr.NonEmptyReadonlyArray<MetricReader>>) =>
   Layer.scopedDiscard(Effect.flatMap(
     makeProducer,
     (producer) => registerProducer(producer, evaluate)
