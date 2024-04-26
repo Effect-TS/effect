@@ -1439,7 +1439,7 @@ const propertySignatureAnnotations_ = (
         ast.isOptional,
         ast.isReadonly,
         { ...ast.annotations, ...annotations },
-        undefined
+        ast.defaultValue
       )
     }
     case "PropertySignatureTransformation": {
@@ -1453,7 +1453,7 @@ const propertySignatureAnnotations_ = (
         new ToPropertySignature(ast.to.type, ast.to.isOptional, ast.to.isReadonly, {
           ...ast.to.annotations,
           ...annotations
-        }, undefined),
+        }, ast.to.defaultValue),
         ast.decode,
         ast.encode
       )
@@ -1636,7 +1636,7 @@ export const fromKey: {
             ast.annotations,
             key
           ),
-          new ToPropertySignature(AST.typeAST(ast.type), ast.isOptional, ast.isReadonly, {}, undefined),
+          new ToPropertySignature(AST.typeAST(ast.type), ast.isOptional, ast.isReadonly, {}, ast.defaultValue),
           identity,
           identity
         )
