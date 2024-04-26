@@ -19,11 +19,11 @@ describe("Either", () => {
       return 10
     })
     const c = Either.gen(function*() {
-      yield Either.right(1)
-      yield Either.right(2)
+      yield* Either.right(1)
+      yield* Either.right(2)
     })
     const d = Either.gen(function*() {
-      yield Either.right(1)
+      yield* Either.right(1)
       return yield* Either.right(2)
     })
     const e = Either.gen(function*() {

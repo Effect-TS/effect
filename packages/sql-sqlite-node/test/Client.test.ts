@@ -31,8 +31,8 @@ describe("Client", () => {
   it.scoped("withTransaction", () =>
     Effect.gen(function*() {
       const sql = yield* makeClient
-      yield sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
-      yield sql.withTransaction(sql`INSERT INTO test (name) VALUES ('hello')`)
+      yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
+      yield* sql.withTransaction(sql`INSERT INTO test (name) VALUES ('hello')`)
       const rows = yield* sql`SELECT * FROM test`
       assert.deepStrictEqual(rows, [{ id: 1, name: "hello" }])
     }))
@@ -40,8 +40,8 @@ describe("Client", () => {
   it.scoped("withTransaction rollback", () =>
     Effect.gen(function*() {
       const sql = yield* makeClient
-      yield sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
-      yield sql`INSERT INTO test (name) VALUES ('hello')`.pipe(
+      yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
+      yield* sql`INSERT INTO test (name) VALUES ('hello')`.pipe(
         Effect.andThen(Effect.fail("boom")),
         sql.withTransaction,
         Effect.ignore

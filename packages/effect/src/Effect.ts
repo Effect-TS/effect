@@ -58,6 +58,7 @@ import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
 import type { Concurrency, Covariant, MergeRecord, NoInfer, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
+import type { YieldWrap } from "./Utils.js"
 
 // -------------------------------------------------------------------------------------
 // models
@@ -103,7 +104,7 @@ export interface Effect<out A, out E = never, out R = never> extends Effect.Vari
  * @category models
  */
 export interface EffectGenerator<T extends Effect<any, any, any>> {
-  next(...args: ReadonlyArray<any>): IteratorResult<T, Effect.Success<T>>
+  next(...args: ReadonlyArray<any>): IteratorResult<YieldWrap<T>, Effect.Success<T>>
 }
 
 /**
@@ -1130,20 +1131,20 @@ export const dieSync: (evaluate: LazyArg<unknown>) => Effect<never> = core.dieSy
  * @category constructors
  */
 export const gen: {
-  <Eff extends Effect<any, any, any>, AEff>(
+  <Eff extends YieldWrap<Effect<any, any, any>>, AEff>(
     f: (resume: Adapter) => Generator<Eff, AEff, never>
   ): Effect<
     AEff,
-    [Eff] extends [never] ? never : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E : never,
-    [Eff] extends [never] ? never : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R : never
+    [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+    [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
   >
-  <Self, Eff extends Effect<any, any, any>, AEff>(
+  <Self, Eff extends YieldWrap<Effect<any, any, any>>, AEff>(
     self: Self,
     f: (this: Self, resume: Adapter) => Generator<Eff, AEff, never>
   ): Effect<
     AEff,
-    [Eff] extends [never] ? never : [Eff] extends [Effect<infer _A, infer E, infer _R>] ? E : never,
-    [Eff] extends [never] ? never : [Eff] extends [Effect<infer _A, infer _E, infer R>] ? R : never
+    [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+    [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
   >
 } = effect.gen
 

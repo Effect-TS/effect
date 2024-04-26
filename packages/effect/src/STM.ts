@@ -16,6 +16,7 @@ import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import type { Covariant, MergeRecord, NoInfer } from "./Types.js"
 import type * as Unify from "./Unify.js"
+import type { YieldWrap } from "./Utils.js"
 
 /**
  * @since 2.0.0
@@ -1064,12 +1065,12 @@ export interface Adapter {
  * @since 2.0.0
  * @category constructors
  */
-export const gen: <Eff extends STM<any, any, any>, AEff>(
+export const gen: <Eff extends YieldWrap<STM<any, any, any>>, AEff>(
   f: (resume: Adapter) => Generator<Eff, AEff, never>
 ) => STM<
   AEff,
-  [Eff] extends [never] ? never : [Eff] extends [STM<infer _A, infer E, infer _R>] ? E : never,
-  [Eff] extends [never] ? never : [Eff] extends [STM<infer _A, infer _E, infer R>] ? R : never
+  [Eff] extends [never] ? never : [Eff] extends [YieldWrap<STM<infer _A, infer E, infer _R>>] ? E : never,
+  [Eff] extends [never] ? never : [Eff] extends [YieldWrap<STM<infer _A, infer _E, infer R>>] ? R : never
 > = stm.gen
 
 /**
