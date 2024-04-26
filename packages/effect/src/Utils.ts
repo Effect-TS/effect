@@ -722,6 +722,9 @@ export const YieldWrapTypeId = Symbol.for("effect/Utils/YieldWrap")
  * @since 3.0.6
  */
 export class YieldWrap<T> {
+  /**
+   * @since 3.0.6
+   */
   readonly #value: T
   constructor(value: T) {
     this.#value = value
