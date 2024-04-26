@@ -197,6 +197,8 @@ describe("Class APIs", () => {
       }) {}
       expect({ ...new A({}) }).toStrictEqual({ a: 1 })
       expect({ ...new A({}) }).toStrictEqual({ a: 2 })
+      new A({ a: 10 })
+      expect({ ...new A({}) }).toStrictEqual({ a: 3 })
     })
 
     it("a Class with no fields should have a void constructor", () => {

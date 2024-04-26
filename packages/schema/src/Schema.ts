@@ -2171,12 +2171,12 @@ const getDefaultTypeLiteralAST = <
   return new AST.TypeLiteral(pss, iss)
 }
 
-const getFieldsDefaults = (fields: Struct.Fields): object => {
-  const out: any = {}
+const lazilyMergeDefaults = (fields: Struct.Fields, props: any): { [x: string | symbol]: unknown } => {
+  const out: Record<PropertyKey, unknown> = { ...props }
   const ownKeys = util_.ownKeys(fields)
   for (const key of ownKeys) {
     const field = fields[key]
-    if (isPropertySignature(field)) {
+    if (props[key] === undefined && isPropertySignature(field)) {
       const ast = field.ast
       const defaultValue = ast._tag === "PropertySignatureDeclaration" ? ast.defaultValue : ast.to.defaultValue
       if (defaultValue !== undefined) {
@@ -2214,7 +2214,7 @@ const makeTypeLiteralClass = <
     static make(
       props: Types.Simplify<TypeLiteral.Constructor<Fields, Records>>
     ): Types.Simplify<TypeLiteral.Type<Fields, Records>> {
-      return ParseResult.validateSync(this)({ ...getFieldsDefaults(fields), ...props as any })
+      return ParseResult.validateSync(this)(lazilyMergeDefaults(fields, props))
     }
   }
 }
@@ -6492,7 +6492,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
       props: { [x: string | symbol]: unknown } = {},
       disableValidation: boolean = false
     ) {
-      props = { ...getFieldsDefaults(fields), ...props }
+      props = lazilyMergeDefaults(fields, props)
       if (tag !== undefined) {
         props = { ...props, ...tag }
       }

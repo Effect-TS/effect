@@ -10,6 +10,8 @@ describe("make", () => {
     })
     expect(schema.make({})).toStrictEqual({ a: 1 })
     expect(schema.make({})).toStrictEqual({ a: 2 })
+    schema.make({ a: 10 })
+    expect(schema.make({})).toStrictEqual({ a: 3 })
   })
 
   it("required fields", () => {
