@@ -11,6 +11,7 @@ import type { Equivalence } from "./Equivalence.js"
 import { dual, identity } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 import * as Option from "./Option.js"
+import type { NoInfer } from "./Types.js"
 
 /**
  * @category models

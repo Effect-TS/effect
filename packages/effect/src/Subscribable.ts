@@ -7,6 +7,7 @@ import { pipeArguments } from "./Pipeable.js"
 import { hasProperty } from "./Predicate.js"
 import * as Readable from "./Readable.js"
 import * as Stream from "./Stream.js"
+import type { NoInfer } from "./Types.js"
 
 /**
  * @since 2.0.0
