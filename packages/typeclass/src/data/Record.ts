@@ -10,6 +10,8 @@ import type * as applicative from "../Applicative.js"
 import * as covariant from "../Covariant.js"
 import type * as filterable from "../Filterable.js"
 import type * as invariant from "../Invariant.js"
+import * as monoid from "../Monoid.js"
+import * as semigroup from "../Semigroup.js"
 import type * as traversable from "../Traversable.js"
 import type * as traversableFilterable from "../TraversableFilterable.js"
 
@@ -201,3 +203,59 @@ export const getTraversableFilterable = <K extends string>(): traversableFiltera
  * @since 1.0.0
  */
 export const TraversableFilterable = getTraversableFilterable()
+
+/**
+ * A `Semigroup` that creates an union of two records.
+ *
+ * @example
+ * import * as NumberInstances from "@effect/typeclass/data/Number"
+ * import { SemigroupUnion } from "@effect/typeclass/data/Record"
+ *
+ * assert.deepStrictEqual(SemigroupUnion(NumberInstances.MonoidSum).combine({ a: 1 }, { a: 1, b: 3 }), { a: 2, b: 3 })
+ *
+ * @category instances
+ * @since 1.0.0
+ */
+export const SemigroupUnion: <A>(
+  value: semigroup.Semigroup<A>
+) => semigroup.Semigroup<Record.ReadonlyRecord<string | symbol, A>> = <A>(value: semigroup.Semigroup<A>) =>
+  semigroup.make<Record<string | symbol, A>>((self, that) => Record.union(self, that, value.combine))
+
+/**
+ * A `Monoid` that creates an union of two records.
+ *
+ * The `empty` value is `{}`.
+ *
+ * @example
+ * import * as NumberInstances from "@effect/typeclass/data/Number"
+ * import { MonoidUnion } from "@effect/typeclass/data/Record"
+ * 
+ * const monoid = MonoidUnion(NumberInstances.MonoidSum)
+ *
+ * assert.deepStrictEqual(monoid.combine({ a: 1 }, { a: 1, b: 3 }), { a: 2, b: 3 })
+ * assert.deepStrictEqual(monoid.combine({ a: 1 }, monoid.empty), { a: 1 })
+ *
+ * @category instances
+ * @since 1.0.0
+ */
+export const MonoidUnion: <A>(
+  value: monoid.Monoid<A>
+) => monoid.Monoid<Record.ReadonlyRecord<string | symbol, A>> = <A>(value: monoid.Monoid<A>) =>
+  monoid.fromSemigroup(SemigroupUnion<A>(value), Record.empty<string | symbol, A>())
+
+/**
+ * A `Semigroup` that creates an intersection of two records.
+ *
+ * @example
+ * import * as NumberInstances from "@effect/typeclass/data/Number"
+ * import { SemigroupIntersection } from "@effect/typeclass/data/Record"
+ *
+ * assert.deepStrictEqual(SemigroupIntersection(NumberInstances.MonoidSum).combine({ a: 1 }, { a: 1, b: 3 }), { a: 2 })
+ *
+ * @category instances
+ * @since 1.0.0
+ */
+export const SemigroupIntersection: <A>(
+  value: semigroup.Semigroup<A>
+) => semigroup.Semigroup<Record.ReadonlyRecord<string | symbol, A>> = <A>(value: semigroup.Semigroup<A>) =>
+  semigroup.make<Record<string | symbol, A>>((self, that) => Record.intersection(self, that, value.combine))
