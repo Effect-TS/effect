@@ -9,4 +9,4 @@
 "@effect/sql": patch
 ---
 
-add sql`...`.uprepared, to run a query without trying to PREPARE it
+add sql`...`.unprepared, to run a query without trying to PREPARE it
