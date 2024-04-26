@@ -191,7 +191,7 @@ export type DeepMutable<T> = T extends ReadonlyMap<infer K, infer V> ? Map<DeepM
   : [keyof T] extends [never] ? T
   : { -readonly [K in keyof T]: DeepMutable<T[K]> }
 
-/*
+/**
  * Avoid inference on a specific parameter
  *
  * @since 2.0.0
