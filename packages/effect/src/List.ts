@@ -33,6 +33,7 @@ import * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 import { hasProperty, type Predicate, type Refinement } from "./Predicate.js"
+import type { NoInfer } from "./Types.js"
 
 /**
  * Represents an immutable linked list of elements of type `A`.

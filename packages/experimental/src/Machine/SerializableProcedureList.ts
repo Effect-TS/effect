@@ -5,6 +5,7 @@ import type * as Schema from "@effect/schema/Schema"
 import type * as Serializable from "@effect/schema/Serializable"
 import type * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
+import type * as Types from "effect/Types"
 import * as Procedure from "./Procedure.js"
 import * as ProcedureList from "./ProcedureList.js"
 
@@ -52,7 +53,7 @@ export const add: {
     R2
   >(
     schema: Schema.Schema<Req, I, ReqR> & { readonly fields: Fields },
-    handler: Procedure.Handler<Req, NoInfer<State>, NoInfer<Public> | NoInfer<Private>, R2>
+    handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
   ): <R>(
     self: SerializableProcedureList<State, Public, Private, R>
   ) => SerializableProcedureList<
@@ -74,7 +75,7 @@ export const add: {
   >(
     self: SerializableProcedureList<State, Public, Private, R>,
     schema: Schema.Schema<Req, I, ReqR> & { readonly fields: Fields },
-    handler: Procedure.Handler<Req, NoInfer<State>, NoInfer<Public> | NoInfer<Private>, R2>
+    handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
   ): SerializableProcedureList<State, Req | Public, Private, R | R2 | Serializable.SerializableWithResult.Context<Req>>
 } = dual(
   3,
@@ -91,7 +92,7 @@ export const add: {
   >(
     self: SerializableProcedureList<State, Public, Private, R>,
     schema: Schema.Schema<Req, I, ReqR> & { readonly fields: Fields },
-    handler: Procedure.Handler<Req, NoInfer<State>, NoInfer<Public> | NoInfer<Private>, R2>
+    handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
   ): SerializableProcedureList<
     State,
     Req | Public,
@@ -116,7 +117,7 @@ export const addPrivate: {
     R2
   >(
     schema: Schema.Schema<Req, I, ReqR> & { readonly fields: Fields },
-    handler: Procedure.Handler<Req, NoInfer<State>, NoInfer<Public> | NoInfer<Private>, R2>
+    handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
   ): <R>(
     self: SerializableProcedureList<State, Public, Private, R>
   ) => SerializableProcedureList<
@@ -138,7 +139,7 @@ export const addPrivate: {
   >(
     self: SerializableProcedureList<State, Public, Private, R>,
     schema: Schema.Schema<Req, I, ReqR> & { readonly fields: Fields },
-    handler: Procedure.Handler<Req, NoInfer<State>, NoInfer<Public> | NoInfer<Private>, R2>
+    handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
   ): SerializableProcedureList<State, Public, Private | Req, R | R2 | Serializable.SerializableWithResult.Context<Req>>
 } = dual(
   3,
@@ -155,7 +156,7 @@ export const addPrivate: {
   >(
     self: SerializableProcedureList<State, Public, Private, R>,
     schema: Schema.Schema<Req, I, ReqR> & { readonly fields: Fields },
-    handler: Procedure.Handler<Req, NoInfer<State>, NoInfer<Public> | NoInfer<Private>, R2>
+    handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
   ): SerializableProcedureList<
     State,
     Public,
@@ -170,12 +171,12 @@ export const addPrivate: {
  */
 export const withInitialState: {
   <State>(
-    initialState: NoInfer<State>
+    initialState: Types.NoInfer<State>
   ): <Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, R>(
     self: SerializableProcedureList<State, Public, Private, R>
   ) => SerializableProcedureList<State, Public, Private, R>
   <State, Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, R>(
     self: SerializableProcedureList<State, Public, Private, R>,
-    initialState: NoInfer<State>
+    initialState: Types.NoInfer<State>
   ): SerializableProcedureList<State, Public, Private, R>
 } = ProcedureList.withInitialState as any

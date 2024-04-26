@@ -200,7 +200,7 @@ export const ordered = <T extends string, I, II, RI, A, IA, _, E, RA = never, R 
       readonly Request: Schema.Schema<I, II, RI>
       readonly Result: Schema.Schema<A, IA>
       readonly execute: (
-        requests: Array<NoInfer<II>>
+        requests: Array<Types.NoInfer<II>>
       ) => Effect.Effect<ReadonlyArray<_>, E>
       readonly withContext?: false
     }
@@ -208,7 +208,7 @@ export const ordered = <T extends string, I, II, RI, A, IA, _, E, RA = never, R 
       readonly Request: Schema.Schema<I, II, RI>
       readonly Result: Schema.Schema<A, IA, RA>
       readonly execute: (
-        requests: Array<NoInfer<II>>
+        requests: Array<Types.NoInfer<II>>
       ) => Effect.Effect<ReadonlyArray<_>, E, R>
       readonly withContext: true
     }
@@ -266,21 +266,21 @@ export const grouped = <T extends string, I, II, K, RI, A, IA, Row, E, RA = neve
   options:
     | {
       readonly Request: Schema.Schema<I, II, RI>
-      readonly RequestGroupKey: (request: NoInfer<II>) => K
+      readonly RequestGroupKey: (request: Types.NoInfer<II>) => K
       readonly Result: Schema.Schema<A, IA>
-      readonly ResultGroupKey: (result: NoInfer<A>, row: NoInfer<Row>) => K
+      readonly ResultGroupKey: (result: Types.NoInfer<A>, row: Types.NoInfer<Row>) => K
       readonly execute: (
-        requests: Array<NoInfer<II>>
+        requests: Array<Types.NoInfer<II>>
       ) => Effect.Effect<ReadonlyArray<Row>, E>
       readonly withContext?: false
     }
     | {
       readonly Request: Schema.Schema<I, II, RI>
-      readonly RequestGroupKey: (request: NoInfer<II>) => K
+      readonly RequestGroupKey: (request: Types.NoInfer<II>) => K
       readonly Result: Schema.Schema<A, IA, RA>
-      readonly ResultGroupKey: (result: NoInfer<A>, row: NoInfer<Row>) => K
+      readonly ResultGroupKey: (result: Types.NoInfer<A>, row: Types.NoInfer<Row>) => K
       readonly execute: (
-        requests: Array<NoInfer<II>>
+        requests: Array<Types.NoInfer<II>>
       ) => Effect.Effect<ReadonlyArray<Row>, E, R>
       readonly withContext: true
     }
@@ -343,18 +343,18 @@ export const findById = <T extends string, I, II, RI, A, IA, Row, E, RA = never,
     | {
       readonly Id: Schema.Schema<I, II, RI>
       readonly Result: Schema.Schema<A, IA>
-      readonly ResultId: (result: NoInfer<A>, row: NoInfer<Row>) => II
+      readonly ResultId: (result: Types.NoInfer<A>, row: Types.NoInfer<Row>) => II
       readonly execute: (
-        requests: Array<NoInfer<II>>
+        requests: Array<Types.NoInfer<II>>
       ) => Effect.Effect<ReadonlyArray<Row>, E>
       readonly withContext?: false
     }
     | {
       readonly Id: Schema.Schema<I, II, RI>
       readonly Result: Schema.Schema<A, IA, RA>
-      readonly ResultId: (result: NoInfer<A>, row: NoInfer<Row>) => II
+      readonly ResultId: (result: Types.NoInfer<A>, row: Types.NoInfer<Row>) => II
       readonly execute: (
-        requests: Array<NoInfer<II>>
+        requests: Array<Types.NoInfer<II>>
       ) => Effect.Effect<ReadonlyArray<Row>, E, R>
       readonly withContext: true
     }
@@ -413,14 +413,14 @@ const void_ = <T extends string, I, II, RI, E, R = never>(
     | {
       readonly Request: Schema.Schema<I, II, RI>
       readonly execute: (
-        requests: Array<NoInfer<II>>
+        requests: Array<Types.NoInfer<II>>
       ) => Effect.Effect<ReadonlyArray<unknown>, E>
       readonly withContext?: false
     }
     | {
       readonly Request: Schema.Schema<I, II, RI>
       readonly execute: (
-        requests: Array<NoInfer<II>>
+        requests: Array<Types.NoInfer<II>>
       ) => Effect.Effect<ReadonlyArray<unknown>, E, R>
       readonly withContext: true
     }
