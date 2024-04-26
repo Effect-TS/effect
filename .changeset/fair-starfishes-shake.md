@@ -200,6 +200,7 @@ Error: { person: { name: string } }
 
 ## Other Breaking Changes
 
+- move `fast-check` from `peerDependencies` to `dependencies`
 - remove `asBrandSchema` utility
 - change `BrandSchema` interface
 

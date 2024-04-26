@@ -44,9 +44,11 @@
     "coverage": "vitest --coverage",
     "circular": "madge --extensions ts --circular --no-color --no-spinner src"
   },
+  "dependencies": {
+    "fast-check": "^3.17.2"
+  },
   "peerDependencies": {
-    "effect": "workspace:^",
-    "fast-check": "^3.13.2"
+    "effect": "workspace:^"
   },
   "devDependencies": {
     "ajv": "^8.12.0",

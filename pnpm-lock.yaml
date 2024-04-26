@@ -458,6 +458,10 @@ importers:
     publishDirectory: dist
 
   packages/schema:
+    dependencies:
+      fast-check:
+        specifier: ^3.17.2
+        version: 3.17.2
     devDependencies:
       ajv:
         specifier: ^8.12.0
@@ -465,9 +469,6 @@ importers:
       effect:
         specifier: workspace:^
         version: link:../effect/dist
-      fast-check:
-        specifier: ^3.17.1
-        version: 3.17.2
       tinybench:
         specifier: ^2.7.0
         version: 2.8.0
@@ -870,16 +871,6 @@ packages:
       source-map: 0.5.7
     dev: true
 
-  /@babel/generator@7.24.1:
-    resolution: {integrity: sha512-DfCRfZsBcrPEHUfuBMgbJ1Ut01Y/itOs+hY2nFLgqsqXd52/iSiVq5TITtUasIUgm+IIKdY2/1I7auiQOEeC9A==}
-    engines: {node: '>=6.9.0'}
-    dependencies:
-      '@babel/types': 7.24.0
-      '@jridgewell/gen-mapping': 0.3.5
-      '@jridgewell/trace-mapping': 0.3.25
-      jsesc: 2.5.2
-    dev: false
-
   /@babel/generator@7.24.4:
     resolution: {integrity: sha512-Xd6+v6SnjWVx/nus+y0l1sxMOTOMBkyL4+BIdbALyatQnAe/SRVjANeDPSCYaX+i1iJmuGSKf3Z+E+V/va1Hvw==}
     engines: {node: '>=6.9.0'}
@@ -1122,6 +1113,7 @@ packages:
     hasBin: true
     dependencies:
       '@babel/types': 7.24.0
+    dev: true
 
   /@babel/parser@7.24.4:
     resolution: {integrity: sha512-zTvEBcghmeBma9QIGunWevvBAp4/Qu9Bdq+2k0Ot4fVMD6v3dsC9WOcRSKk7tRRyBM/53yKMJko9xOatGQAwSg==}
@@ -3915,7 +3907,7 @@ packages:
     peerDependencies:
       '@babel/preset-env': ^7.1.6
     dependencies:
-      '@babel/parser': 7.24.1
+      '@babel/parser': 7.24.4
       '@babel/preset-env': 7.24.4(@babel/core@7.24.4)
       flow-parser: 0.206.0
       glob: 7.2.3
@@ -6400,7 +6392,6 @@ packages:
     engines: {node: '>=8.0.0'}
     dependencies:
       pure-rand: 6.1.0
-    dev: true
 
   /fast-decode-uri-component@1.0.1:
     resolution: {integrity: sha512-WKgKWg5eUxvRZGwW8FvfbaH7AXSh2cL+3j5fMGzUMCxWBJ3dV3a7Wz8y2f/uQ0e3B6WmodD3oS54jTQ9HVTIIg==}
@@ -7607,7 +7598,7 @@ packages:
       '@babel/preset-env': ^7.1.6
     dependencies:
       '@babel/core': 7.24.4
-      '@babel/parser': 7.24.1
+      '@babel/parser': 7.24.4
       '@babel/plugin-proposal-class-properties': 7.18.6(@babel/core@7.24.4)
       '@babel/plugin-proposal-nullish-coalescing-operator': 7.18.6(@babel/core@7.24.4)
       '@babel/plugin-proposal-optional-chaining': 7.21.0(@babel/core@7.24.4)
@@ -8298,7 +8289,7 @@ packages:
     engines: {node: '>=18'}
     dependencies:
       '@babel/core': 7.24.4
-      '@babel/generator': 7.24.1
+      '@babel/generator': 7.24.4
       '@babel/template': 7.24.0
       '@babel/traverse': 7.24.1
       nullthrows: 1.1.1
@@ -8311,8 +8302,8 @@ packages:
     engines: {node: '>=18'}
     dependencies:
       '@babel/core': 7.24.4
-      '@babel/generator': 7.24.1
-      '@babel/parser': 7.24.1
+      '@babel/generator': 7.24.4
+      '@babel/parser': 7.24.4
       '@babel/types': 7.24.0
       metro: 0.80.8
       metro-babel-transformer: 0.80.8
@@ -8336,8 +8327,8 @@ packages:
     dependencies:
       '@babel/code-frame': 7.24.2
       '@babel/core': 7.24.4
-      '@babel/generator': 7.24.1
-      '@babel/parser': 7.24.1
+      '@babel/generator': 7.24.4
+      '@babel/parser': 7.24.4
       '@babel/template': 7.24.0
       '@babel/traverse': 7.24.1
       '@babel/types': 7.24.0
@@ -9313,7 +9304,6 @@ packages:
 
   /pure-rand@6.1.0:
     resolution: {integrity: sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA==}
-    dev: true
 
   /queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
