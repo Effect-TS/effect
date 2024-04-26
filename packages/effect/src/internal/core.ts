@@ -36,6 +36,7 @@ import * as RuntimeFlagsPatch from "../RuntimeFlagsPatch.js"
 import type * as Scope from "../Scope.js"
 import type * as Tracer from "../Tracer.js"
 import type { NotFunction } from "../Types.js"
+import { genWrap } from "../Utils.js"
 import * as _blockedRequests from "./blockedRequests.js"
 import * as internalCause from "./cause.js"
 import * as deferred from "./deferred.js"
@@ -180,7 +181,7 @@ class EffectPrimitive {
     return this.toJSON()
   }
   [Symbol.iterator]() {
-    return new SingleShotGen(this)
+    return new SingleShotGen(genWrap(this))
   }
 }
 
@@ -221,7 +222,7 @@ class EffectPrimitiveFailure {
     return this.toJSON()
   }
   [Symbol.iterator]() {
-    return new SingleShotGen(this)
+    return new SingleShotGen(genWrap(this))
   }
 }
 
@@ -262,7 +263,7 @@ class EffectPrimitiveSuccess {
     return this.toJSON()
   }
   [Symbol.iterator]() {
-    return new SingleShotGen(this)
+    return new SingleShotGen(genWrap(this))
   }
 }
 

@@ -14,7 +14,7 @@ import type { Predicate, Refinement } from "./Predicate.js"
 import { isFunction } from "./Predicate.js"
 import type { Covariant, MergeRecord, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
-import type * as Gen from "./Utils.js"
+import * as Gen from "./Utils.js"
 
 /**
  * @category models
@@ -708,14 +708,14 @@ export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (f)
   if (state.done) {
     return right(state.value) as any
   } else {
-    let current = state.value
+    let current = Gen.genUnwrap(state)
     if (isLeft(current)) {
       return current
     }
     while (!state.done) {
       state = iterator.next(current.right as never)
       if (!state.done) {
-        current = state.value
+        current = Gen.genUnwrap(state)
         if (isLeft(current)) {
           return current
         }

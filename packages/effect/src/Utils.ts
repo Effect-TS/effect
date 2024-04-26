@@ -23,6 +23,36 @@ import type * as Types from "./Types.js"
  * @category symbols
  * @since 2.0.0
  */
+export const GenValueTypeId = Symbol.for("effect/Gen/GenValue")
+
+/**
+ * @since 2.0.0
+ */
+export interface GenWrap<A> {
+  readonly [GenValueTypeId]: A
+}
+
+/**
+ * @since 2.0.0
+ */
+export const genWrap = <A>(value: A): GenWrap<A> =>
+  Object.create(null, {
+    [GenValueTypeId]: {
+      enumerable: false,
+      value
+    }
+  })
+
+/**
+ * @since 2.0.0
+ */
+export const genUnwrap = <A extends object>(value: IteratorYieldResult<A>): A =>
+  GenValueTypeId in value.value ? value.value[GenValueTypeId] as A : value.value
+
+/**
+ * @category symbols
+ * @since 2.0.0
+ */
 export const GenKindTypeId = Symbol.for("effect/Gen/GenKind")
 
 /**

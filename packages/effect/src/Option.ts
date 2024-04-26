@@ -16,7 +16,7 @@ import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import type { Covariant, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
-import type * as Gen from "./Utils.js"
+import * as Gen from "./Utils.js"
 
 /**
  * @category models
@@ -1271,14 +1271,14 @@ export const gen: Gen.Gen<OptionTypeLambda, Gen.Adapter<OptionTypeLambda>> = (f)
   if (state.done) {
     return some(state.value)
   } else {
-    let current = state.value
+    let current = Gen.genUnwrap(state)
     if (isNone(current)) {
       return current
     }
     while (!state.done) {
       state = iterator.next(current.value as never)
       if (!state.done) {
-        current = state.value
+        current = Gen.genUnwrap(state)
         if (isNone(current)) {
           return current
         }

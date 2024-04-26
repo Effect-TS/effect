@@ -26,6 +26,7 @@ import * as Ref from "../Ref.js"
 import type * as runtimeFlagsPatch from "../RuntimeFlagsPatch.js"
 import * as Tracer from "../Tracer.js"
 import type { MergeRecord } from "../Types.js"
+import { genUnwrap } from "../Utils.js"
 import * as internalCause from "./cause.js"
 import { clockTag } from "./clock.js"
 import * as core from "./core.js"
@@ -790,7 +791,7 @@ export const gen: typeof Effect.gen = function() {
       state: IteratorYieldResult<any> | IteratorReturnResult<any>
     ): Effect.Effect<any, any, any> => (state.done
       ? core.succeed(state.value)
-      : core.flatMap(state.value, (val: any) => run(iterator.next(val))))
+      : core.flatMap(genUnwrap(state), (val: any) => run(iterator.next(val))))
     return run(state)
   })
 }
