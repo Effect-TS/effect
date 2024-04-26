@@ -171,6 +171,29 @@ export type Mutable<T> = {
 }
 
 /**
+ * Like `Types.Mutable`, but works recursively.
+ *
+ * @example
+ * import type * as Types from "effect/Types"
+ *
+ * type DeepMutableStruct = Types.DeepMutable<{ 
+ *   readonly a: string; 
+ *   readonly b: readonly string[]
+ * }> 
+ * // { a: string; b: string[] }
+ *
+ * @since 3.1.0
+ * @category types
+ */
+export type DeepMutable<T> = {
+  -readonly [P in keyof T]: T[P] extends (infer U)[]
+    ? Mutable<U>
+    : T[P] extends object
+      ? Mutable<T[P]>
+      : T[P];
+};
+
+/**
  * Invariant helper.
  *
  * @since 2.0.0
