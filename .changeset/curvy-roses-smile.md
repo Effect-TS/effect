@@ -9,4 +9,4 @@
 "@effect/sql": patch
 ---
 
-add sql transcation tracing spans
+add sql transaction tracing spans
