@@ -190,6 +190,15 @@ describe("Class APIs", () => {
       expect({ ...new A({}) }).toStrictEqual({ a: "", [b]: 1 })
     })
 
+    it("the constructor should support lazy defaults", () => {
+      let i = 0
+      class A extends S.Class<A>("A")({
+        a: S.propertySignature(S.Number).pipe(S.withConstructorDefault(() => ++i))
+      }) {}
+      expect({ ...new A({}) }).toStrictEqual({ a: 1 })
+      expect({ ...new A({}) }).toStrictEqual({ a: 2 })
+    })
+
     it("a Class with no fields should have a void constructor", () => {
       class A extends S.Class<A>("A")({}) {}
       expect({ ...new A() }).toStrictEqual({})
