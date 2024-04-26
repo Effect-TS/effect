@@ -714,7 +714,7 @@ export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (f)
     if (Gen.isGenKind(current)) {
       current = current.value
     } else {
-      current = Gen.yieldMapGetRemove(current)
+      current = Gen.yieldWrapGet(current)
     }
     if (isLeft(current)) {
       return current
@@ -726,7 +726,7 @@ export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (f)
         if (Gen.isGenKind(current)) {
           current = current.value
         } else {
-          current = Gen.yieldMapGetRemove(current)
+          current = Gen.yieldWrapGet(current)
         }
         if (isLeft(current)) {
           return current
