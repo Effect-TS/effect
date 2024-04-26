@@ -13,6 +13,7 @@ import { pipeArguments } from "../Pipeable.js"
 import { hasProperty, isFunction } from "../Predicate.js"
 import type { Predicate, Refinement } from "../Predicate.js"
 import type { AnySpan, Span } from "../Tracer.js"
+import type { NoInfer } from "../Types.js"
 import { getBugErrorMessage } from "./errors.js"
 import * as OpCodes from "./opCodes/cause.js"
 

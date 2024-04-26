@@ -2532,18 +2532,21 @@ export const extend: {
  * @since 1.0.0
  */
 export const compose: {
+  <D, C extends B, R2, B>(
+    to: Schema<D, C, R2>
+  ): <A, R1>(from: Schema<B, A, R1>) => Schema<D, A, R1 | R2>
+  <D, C, R2>(
+    to: Schema<D, C, R2>
+  ): <B extends C, A, R1>(from: Schema<B, A, R1>) => Schema<D, A, R1 | R2>
   <C, B, R2>(
-    to: Schema<C, B, R2>
+    to: Schema<C, B, R2>,
+    options?: { readonly strict: true }
   ): <A, R1>(from: Schema<B, A, R1>) => Schema<C, A, R1 | R2>
   <D, C, R2>(
     to: Schema<D, C, R2>,
     options: { readonly strict: false }
   ): <B, A, R1>(from: Schema<B, A, R1>) => Schema<D, A, R1 | R2>
-  <B, A, R1, C, R2>(
-    from: Schema<B, A, R1>,
-    to: Schema<C, B, R2>,
-    options?: { readonly strict: true }
-  ): Schema<C, A, R1 | R2>
+
   <B, A, R1, D, C extends B, R2>(
     from: Schema<B, A, R1>,
     to: Schema<D, C, R2>
@@ -2552,6 +2555,11 @@ export const compose: {
     from: Schema<B, A, R1>,
     to: Schema<D, C, R2>
   ): Schema<D, A, R1 | R2>
+  <B, A, R1, C, R2>(
+    from: Schema<B, A, R1>,
+    to: Schema<C, B, R2>,
+    options?: { readonly strict: true }
+  ): Schema<C, A, R1 | R2>
   <B, A, R1, D, C, R2>(
     from: Schema<B, A, R1>,
     to: Schema<D, C, R2>,
@@ -2590,8 +2598,8 @@ export function filter<C extends A, B extends A, A = C>(
   annotations?: Annotations.Filter<A>
 ): <I, R>(self: Schema<C, I, R>) => Schema<C & B, I, R>
 export function filter<A>(
-  predicate: Predicate.Predicate<NoInfer<A>>,
-  annotations?: Annotations.Filter<NoInfer<A>>
+  predicate: Predicate.Predicate<Types.NoInfer<A>>,
+  annotations?: Annotations.Filter<Types.NoInfer<A>>
 ): <I, R>(self: Schema<A, I, R>) => Schema<A, I, R>
 export function filter<A>(
   predicate: Predicate.Predicate<A> | AST.Refinement["filter"],
