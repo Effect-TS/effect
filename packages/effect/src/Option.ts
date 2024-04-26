@@ -5,7 +5,7 @@ import type { Either } from "./Either.js"
 import * as Equal from "./Equal.js"
 import * as Equivalence from "./Equivalence.js"
 import type { LazyArg } from "./Function.js"
-import { constNull, constUndefined, dual, identity, isFunction, pipe } from "./Function.js"
+import { constNull, constUndefined, dual, identity, isFunction } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as either from "./internal/either.js"
@@ -16,7 +16,7 @@ import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import type { Covariant, NoInfer, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
-import type * as Gen from "./Utils.js"
+import * as Gen from "./Utils.js"
 
 /**
  * @category models
@@ -1261,17 +1261,22 @@ export const bind: {
  */
 export const Do: Option<{}> = some({})
 
+const adapter = Gen.adapter<OptionTypeLambda>()
+
 /**
  * @category generators
  * @since 2.0.0
  */
 export const gen: Gen.Gen<OptionTypeLambda, Gen.Adapter<OptionTypeLambda>> = (f) => {
-  const iterator = f(pipe)
+  const iterator = f(adapter)
   let state: IteratorYieldResult<any> | IteratorReturnResult<any> = iterator.next()
   if (state.done) {
     return some(state.value)
   } else {
     let current = state.value
+    if (Gen.isGenKind(current)) {
+      current = current.value
+    }
     if (isNone(current)) {
       return current
     }
@@ -1279,6 +1284,9 @@ export const gen: Gen.Gen<OptionTypeLambda, Gen.Adapter<OptionTypeLambda>> = (f)
       state = iterator.next(current.value as never)
       if (!state.done) {
         current = state.value
+        if (Gen.isGenKind(current)) {
+          current = current.value
+        }
         if (isNone(current)) {
           return current
         }
