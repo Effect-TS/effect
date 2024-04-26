@@ -5,6 +5,7 @@ import type * as Cause from "./Cause.js"
 import * as core from "./internal/core.js"
 import * as internal from "./internal/data.js"
 import { StructuralPrototype } from "./internal/effectable.js"
+import * as Predicate from "./Predicate.js"
 import type * as Types from "./Types.js"
 
 /**
@@ -331,6 +332,23 @@ export declare namespace TaggedEnum {
     A extends { readonly _tag: string },
     K extends A["_tag"]
   > = Extract<A, { readonly _tag: K }>
+
+  /**
+   * @since 3.1.0
+   */
+  export type Constructor<A extends { readonly _tag: string }> = Types.Simplify<
+    & {
+      readonly [Tag in A["_tag"]]: Case.Constructor<Extract<A, { readonly _tag: Tag }>, "_tag">
+    }
+    & {
+      readonly $is: <Tag extends A["_tag"]>(tag: Tag) => (u: unknown) => u is Extract<A, { readonly _tag: Tag }>
+      readonly $match: <
+        Cases extends {
+          readonly [Tag in A["_tag"]]: (args: Extract<A, { readonly _tag: Tag }>) => any
+        }
+      >(cases: Cases) => (value: A) => ReturnType<Cases[A["_tag"]]>
+    }
+  >
 }
 
 /**
@@ -407,15 +425,33 @@ export const taggedEnum: {
     ) => TaggedEnum.Value<TaggedEnum.Kind<Z, A, B, C, D>, Tag>
   }
 
-  <A extends { readonly _tag: string }>(): {
-    readonly [Tag in A["_tag"]]: Case.Constructor<Extract<A, { readonly _tag: Tag }>, "_tag">
-  }
+  <A extends { readonly _tag: string }>(): TaggedEnum.Constructor<A>
 } = () =>
   new Proxy({}, {
     get(_target, tag, _receiver) {
+      if (tag === "$is") {
+        return taggedIs
+      } else if (tag === "$match") {
+        return taggedMatch
+      }
       return tagged(tag as string)
     }
   }) as any
+
+function taggedIs<A extends { readonly _tag: string }, Tag extends A["_tag"]>(tag: Tag) {
+  return Predicate.isTagged(tag)
+}
+
+function taggedMatch<
+  A extends { readonly _tag: string },
+  Cases extends {
+    readonly [K in A["_tag"]]: (args: Extract<A, { readonly _tag: K }>) => any
+  }
+>(cases: Cases) {
+  return function(value: A): ReturnType<Cases[A["_tag"]]> {
+    return cases[value._tag as A["_tag"]](value as any)
+  }
+}
 
 /**
  * Provides a constructor for a Case Class.

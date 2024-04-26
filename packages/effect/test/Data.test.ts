@@ -177,7 +177,12 @@ describe("Data", () => {
       NotFound: {}
       InternalServerError: { reason: string }
     }>
-    const { InternalServerError, NotFound } = Data.taggedEnum<HttpError>()
+    const {
+      $is,
+      $match,
+      InternalServerError,
+      NotFound
+    } = Data.taggedEnum<HttpError>()
 
     const a = NotFound()
     const b = InternalServerError({ reason: "test" })
@@ -191,6 +196,15 @@ describe("Data", () => {
 
     expect(Equal.equals(a, b)).toBe(false)
     expect(Equal.equals(b, c)).toBe(true)
+
+    expect($is("NotFound")(a)).toBe(true)
+    expect($is("InternalServerError")(a)).toBe(false)
+    const matcher = $match({
+      NotFound: () => 0,
+      InternalServerError: () => 1
+    })
+    expect(matcher(a)).toEqual(0)
+    expect(matcher(b)).toEqual(1)
   })
 
   it("taggedEnum - generics", () => {
