@@ -2,11 +2,11 @@
 "@effect/schema": patch
 ---
 
-## Extracting Inferred Types
+## Simplifying Type Extraction from Schemas
 
-When working with schemas, sometimes we want to extract certain types automatically. To make this easier, we've made some changes to the `Schema` interface. Now, you can directly access `Type`, `Encoded`, and `Context` from a schema without needing to use `Schema.Schema`.
+When working with schemas, sometimes we want to extract certain types automatically. To make this easier, we've made some changes to the `Schema` interface. Now, you can easily access `Type` and `Encoded` directly from a schema without the need for `Schema.Schema.Type` and `Schema.Schema.Type`.
 
-Before
+Previous Approach
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -21,9 +21,9 @@ type PersonType = Schema.Schema.Type<typeof PersonSchema>
 type PersonEncoded = Schema.Schema.Encoded<typeof PersonSchema>
 ```
 
-In the previous version, to get the type of `PersonSchema`, we had to use `Schema.Schema.Type` (and `Schema.Schema.Encoded`). It was a bit verbose.
+In the previous version, to obtain the type of `PersonSchema`, we had to use `Schema.Schema.Type` (and `Schema.Schema.Encoded`). While this method **still works**, it's a bit verbose.
 
-Now
+Current Approach
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -38,11 +38,11 @@ type PersonType = typeof PersonSchema.Type
 type PersonEncoded = typeof PersonSchema.Encoded
 ```
 
-With this update, accessing the type of `PersonSchema` is more straightforward. You can directly use `typeof` to get the type, making it simpler and cleaner.
+With this update, accessing the type of `PersonSchema` becomes much simpler. You can now directly use `typeof` to retrieve both the types (`Type` and `Encoded`), making the code more straightforward and cleaner.
 
-## Default Constructors
+## Introducing Default Constructors
 
-Creating values that match a schema is fundamental when working with data. To simplify this process, we've introduced default constructors for various types of schemas: type literals (such as structs and records), filters, and brands. Let's dive into each of them with some examples to understand better how they work.
+When dealing with data, creating values that match a specific schema is crucial. To simplify this process, we've introduced **default constructors** for various types of schemas: `Struct`s, `Record`s, `filter`s, and `brand`s. Let's dive into each of them with some examples to understand better how they work.
 
 Example (`Struct`)
 
@@ -123,13 +123,13 @@ Error: a number between 1 and 10
 */
 ```
 
-When you use our default constructors, it's important to understand the type of value they produce. For the `BrandedNumberSchema` example, the return type of the constructor is `number & Brand<"MyNumber">`, which means the resulting value is a number with an added branding "MyNumber".
+When utilizing our default constructors, it's important to grasp the type of value they generate. In the `BrandedNumberSchema` example, the return type of the constructor is `number & Brand<"MyNumber">`, indicating that the resulting value is a number with the added branding "MyNumber".
 
-This is different from the filter example where the return type is just `number`. The branding provides additional information about the type, making it easier to identify and work with your data.
+This differs from the filter example where the return type is simply `number`. The branding offers additional insights about the type, facilitating the identification and manipulation of your data.
 
-### Setting Default Values
+### Introduction to Setting Default Values
 
-When working with constructors, sometimes you want to set default values for certain fields. This can be especially useful when you're not sure if a field will always have a value. With our new `withDefault` combinator, you can easily control the optionality of a field in your default constructor.
+When constructing objects, it's common to want to assign default values to certain fields to simplify the creation of new instances. Our new `withConstructorDefault` combinator allows you to effortlessly manage the optionality of a field in your default constructor.
 
 Example Without Default
 
@@ -162,29 +162,92 @@ const PersonSchema = Schema.Struct({
 console.log(PersonSchema.make({ name: "John" })) // Output: { age: 0, name: 'John' }
 ```
 
-In the second example, notice how the `age` field is now optional and defaults to 0 when not provided.
+In the second example, notice how the `age` field is now optional and defaults to `0` when not provided.
 
-## Schemas as Classes
-
-We've introduced a new way to define schemas using classes. This approach makes your schema types opaque. Let's look at how you can define and use schemas as classes.
+Defaults are **lazily evaluated**, meaning that a new instance of the default is generated every time the constructor is called:
 
 ```ts
-import { Schema as S } from "@effect/schema"
+import { Schema } from "@effect/schema"
 
-class Person extends S.Struct({
-  name: S.String
+const PersonSchema = Schema.Struct({
+  name: Schema.NonEmpty,
+  age: Schema.Number.pipe(
+    Schema.propertySignature,
+    Schema.withConstructorDefault(() => 0)
+  ),
+  timestamp: Schema.Number.pipe(
+    Schema.propertySignature,
+    Schema.withConstructorDefault(() => new Date().getTime())
+  )
+})
+
+console.log(PersonSchema.make({ name: "name1" })) // { age: 0, timestamp: 1714232909221, name: 'name1' }
+console.log(PersonSchema.make({ name: "name2" })) // { age: 0, timestamp: 1714232909227, name: 'name2' }
+```
+
+Note how the `timestamp` field varies.
+
+## Introducing Schemas as Classes
+
+We've introduced a new method for defining schemas using classes. This approach provides opaque schema types, offering a clearer representation. Let's look at how you can define and use schemas as classes.
+
+```ts
+import { Schema } from "@effect/schema"
+
+class Person extends Schema.Struct({
+  name: Schema.String
 }) {}
 
-class Group extends S.Struct({
+class Group extends Schema.Struct({
+  person: Person
+}) {}
+
+// const MyUnion: S.Union<[typeof Person, typeof Group]>
+export const MyUnion = Schema.Union(Person, Group)
+```
+
+Notice how the inferred type for `MyUnion` now refers only to the class types, removing the detailed structure, which can sometimes be overwhelming to comprehend. Compare this with the previous method of defining schemas (the old method **still works** if you prefer it!)
+
+```ts
+import { Schema } from "@effect/schema"
+
+const Person = Schema.Struct({
+  name: Schema.String
+})
+
+const Group = Schema.Struct({
+  person: Person
+})
+
+/*
+const MyUnion: Schema.Union<[Schema.Struct<{
+    name: typeof Schema.String;
+}>, Schema.Struct<{
+    person: Schema.Struct<{
+        name: typeof Schema.String;
+    }>;
+}>]>
+*/
+export const MyUnion = Schema.Union(Person, Group)
+```
+
+The new system opens up avenues for new patterns. For example, you can enrich your schema with custom values and functions.
+Let's see an example with the previously defined `Group` schema. For instance, we can add a decoding function attached directly to the schema for convenience:
+
+```ts
+import { Schema } from "@effect/schema"
+
+class Person extends Schema.Struct({
+  name: Schema.String
+}) {}
+
+class Group extends Schema.Struct({
   person: Person
 }) {
   static decodeUnknownSync(u: unknown) {
-    return S.decodeUnknownSync(this)(u)
+    return Schema.decodeUnknownSync(this)(u)
   }
 }
-
-// const MyUnion: S.Union<[typeof Person, typeof Group]>
-export const MyUnion = S.Union(Person, Group)
 
 console.log(Group.decodeUnknownSync({}))
 /*
@@ -194,9 +257,82 @@ Error: { person: { name: string } }
 */
 ```
 
+## Refactoring of Custom Message System
+
+We've refactored the system that handles user-defined custom messages to make it more intuitive.
+
+Now, custom messages no longer have absolute precedence by default. Instead, it becomes an opt-in behavior by explicitly setting a new flag `override` with the value `true`. Let's see an example:
+
+### Previous Approach
+
+```ts
+import { Schema } from "@effect/schema"
+
+const MyString = Schema.String.pipe(
+  Schema.minLength(1),
+  Schema.maxLength(2)
+).annotations({
+  // This message always takes precedence over all previous default messages
+  // So, for any error, the same message will always be shown
+  message: () => "my custom message"
+})
+
+const decode = Schema.decodeUnknownEither(MyString)
+
+console.log(decode(null)) // "my custom message"
+console.log(decode("")) // "my custom message"
+console.log(decode("abc")) // "my custom message"
+```
+
+As you can see, no matter where the decoding error is raised, the same error message will always be presented because in the previous version, the custom message by default overrides those generated by previous filters.
+
+Now, let's see how the same schema works with the new system.
+
+### Current Approach
+
+```ts
+import { Schema } from "@effect/schema"
+
+const MyString = Schema.String.pipe(
+  Schema.minLength(1),
+  Schema.maxLength(2)
+).annotations({
+  // This message is shown only if the last filter (`maxLength`) fails
+  message: () => "my custom message"
+})
+
+const decode = Schema.decodeUnknownEither(MyString)
+
+console.log(decode(null)) // "Expected a string, actual null"
+console.log(decode("")) // `Expected a string at least 1 character(s) long, actual ""`
+console.log(decode("abc")) // "my custom message"
+```
+
+To restore the old behavior (for example, to address the scenario where a user wants to define a single cumulative custom message describing the properties that a valid value must have and does not want to see default messages), you need to set the `override` flag to `true`:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const MyString = Schema.String.pipe(
+  Schema.minLength(1),
+  Schema.maxLength(2)
+).annotations({
+  // By setting the `override` flag to `true`, this message will always be shown for any error
+  message: () => ({ message: "my custom message", override: true })
+})
+
+const decode = Schema.decodeUnknownEither(MyString)
+
+console.log(decode(null)) // "my custom message"
+console.log(decode("")) // "my custom message"
+console.log(decode("abc")) // "my custom message"
+```
+
 ## Patches
 
 - return `BrandSchema` from `fromBrand`
+- add `SchemaClass` interface
+- add `AnnotableClass` interface
 
 ## Other Breaking Changes
 
