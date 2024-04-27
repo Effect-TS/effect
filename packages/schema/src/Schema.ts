@@ -6316,7 +6316,14 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
 export const Class = <Self = never>(identifier: string) =>
 <Fields extends Struct.Fields>(
   fields: Fields,
-  annotations?: Annotations.Schema<Self>
+  annotations?: Annotations.Schema<Self>,
+  filter?:
+    | Predicate.Predicate<Types.Simplify<Struct.Type<Fields>>>
+    | ((
+      a: Types.Simplify<Struct.Type<Fields>>,
+      options: ParseOptions,
+      self: AST.Refinement
+    ) => option_.Option<ParseResult.ParseIssue>) // if we use `Self` we get a recursion error, even though its not.
 ): [Self] extends [never] ? MissingSelfGeneric<"Class">
   : Class<
     Self,
@@ -6327,7 +6334,7 @@ export const Class = <Self = never>(identifier: string) =>
     Types.Simplify<Struct.Type<Fields>>,
     {},
     {}
-  > => makeClass({ kind: "Class", identifier, fields, Base: data_.Class, annotations })
+  > => makeClass({ kind: "Class", identifier, fields, Base: data_.Class, annotations, filter })
 
 /**
  * @category classes
@@ -6487,18 +6494,25 @@ const extendFields = (a: Struct.Fields, b: Struct.Fields): Struct.Fields => {
   return out
 }
 
-const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, tag, toStringOverride }: {
-  kind: string
-  identifier: string
-  fields: Struct.Fields
-  Base: new(...args: ReadonlyArray<any>) => any
-  fromSchema?: Schema.Any | undefined
-  tag?: { _tag: AST.LiteralValue } | undefined
-  annotations?: Annotations.Schema<any> | undefined
-  toStringOverride?: (self: any) => string | undefined
-}): any => {
+const makeClass = (
+  { Base, annotations, fields, filter: ffilter, fromSchema, identifier, kind, tag, toStringOverride }: {
+    kind: string
+    identifier: string
+    fields: Struct.Fields
+    Base: new(...args: ReadonlyArray<any>) => any
+    fromSchema?: Schema.Any | undefined
+    tag?: { _tag: AST.LiteralValue } | undefined
+    annotations?: Annotations.Schema<any> | undefined
+    toStringOverride?: (self: any) => string | undefined
+    filter?:
+      | Predicate.Predicate<any>
+      | ((a: any, options: ParseOptions, self: AST.Refinement) => option_.Option<ParseResult.ParseIssue>)
+      | undefined
+  }
+): any => {
   const classSymbol = Symbol.for(`@effect/schema/${kind}/${identifier}`)
-  const schema = fromSchema ?? Struct(fields)
+  let schema = fromSchema ?? Struct(fields)
+  if (ffilter) schema = schema.pipe(filter(ffilter as any))
   const validate = ParseResult.validateSync(schema)
   const from = option_.match(AST.getTitleAnnotation(schema.ast), {
     onNone: () => schema.annotations({ title: `${identifier} (Encoded side)` }),
