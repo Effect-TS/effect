@@ -5,6 +5,7 @@ import { getFinalTransformation } from "@effect/schema/ParseResult"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import { formatErrorSync } from "@effect/schema/TreeFormatter"
+import { jestExpect as expect } from "@jest/expect"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -12,7 +13,7 @@ import * as Either from "effect/Either"
 import * as Option from "effect/Option"
 import * as Runtime from "effect/Runtime"
 import * as fc from "fast-check"
-import { expect } from "vitest"
+import { assert } from "vitest"
 
 const doEffectify = true
 const doRoundtrip = false
@@ -88,14 +89,14 @@ export const expectConstructorSuccess = <A, B>(
   try {
     expect(schema.make(input)).toStrictEqual(expected)
   } catch (e: any) {
-    expect.fail(e.message)
+    assert.fail(e.message)
   }
 }
 
 export const expectConstructorFailure = <A, B>(schema: { readonly make: (a: A) => B }, input: A, message: string) => {
   try {
     schema.make(input)
-    expect.fail("expected to throw an error")
+    assert.fail("expected to throw an error")
   } catch (e: any) {
     expect(e.message).toStrictEqual(message)
   }
@@ -291,11 +292,19 @@ export const expectEffectSuccess = async <E, A>(effect: Effect.Effect<A, E>, a: 
 }
 
 export const expectEitherLeft = <A>(e: Either.Either<A, ParseResult.ParseError>, message: string) => {
-  expect(Either.mapLeft(e, formatErrorSync)).toStrictEqual(Either.left(message))
+  if (Either.isLeft(e)) {
+    expect(formatErrorSync(e.left)).toStrictEqual(message)
+  } else {
+    assert.fail(`expected a Left`)
+  }
 }
 
 export const expectEitherRight = <E, A>(e: Either.Either<A, E>, a: A) => {
-  expect(e).toStrictEqual(Either.right(a))
+  if (Either.isRight(e)) {
+    expect(e.right).toStrictEqual(a)
+  } else {
+    assert.fail(`expected a Right`)
+  }
 }
 
 export const expectNone = <A>(o: Option.Option<A>) => {

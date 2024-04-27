@@ -12,7 +12,7 @@ describe("HashSetFromSelf", () => {
 
   it("decoding", async () => {
     const schema = S.HashSetFromSelf(S.NumberFromString)
-    await Util.expectDecodeUnknownSuccess(schema, HashSet.empty(), HashSet.empty())
+    await Util.expectDecodeUnknownSuccess(schema, HashSet.empty(), HashSet.fromIterable([]))
     await Util.expectDecodeUnknownSuccess(
       schema,
       HashSet.fromIterable(["1", "2", "3"]),
@@ -38,7 +38,7 @@ describe("HashSetFromSelf", () => {
 
   it("encoding", async () => {
     const schema = S.HashSetFromSelf(S.NumberFromString)
-    await Util.expectEncodeSuccess(schema, HashSet.empty(), HashSet.empty())
+    await Util.expectEncodeSuccess(schema, HashSet.empty(), HashSet.fromIterable([]))
     await Util.expectEncodeSuccess(
       schema,
       HashSet.fromIterable([1, 2, 3]),

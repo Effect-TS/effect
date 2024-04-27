@@ -10,7 +10,7 @@ describe("DateFromSelf", () => {
 
   it("decoding", async () => {
     await Util.expectDecodeUnknownSuccess(S.DateFromSelf, new Date(), new Date())
-    await Util.expectDecodeUnknownSuccess(S.DateFromSelf, new Date("invalid"), new Date("invalid"))
+    await Util.expectDecodeUnknownSuccess(S.DateFromSelf, new Date("invalid"))
 
     await Util.expectDecodeUnknownFailure(
       S.DateFromSelf,
@@ -22,7 +22,8 @@ describe("DateFromSelf", () => {
   it("encoding", async () => {
     const now = new Date()
     await Util.expectEncodeSuccess(S.DateFromSelf, now, now)
-    await Util.expectEncodeSuccess(S.DateFromSelf, new Date("invalid"), new Date("invalid"))
+    const invalid = new Date("invalid")
+    await Util.expectEncodeSuccess(S.DateFromSelf, invalid, invalid)
   })
 
   it("pretty", () => {

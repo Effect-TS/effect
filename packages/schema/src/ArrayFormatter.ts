@@ -12,7 +12,17 @@ import * as TreeFormatter from "./TreeFormatter.js"
  * @since 1.0.0
  */
 export interface Issue {
-  readonly _tag: ParseResult.ParseIssue["_tag"] | ParseResult.Missing["_tag"] | ParseResult.Unexpected["_tag"]
+  readonly _tag:
+    | "Transformation"
+    | "Type"
+    | "Declaration"
+    | "Refinement"
+    | "TupleType"
+    | "TypeLiteral"
+    | "Union"
+    | "Forbidden"
+    | "Missing"
+    | "Unexpected"
   readonly path: ReadonlyArray<PropertyKey>
   readonly message: string
 }
@@ -90,9 +100,9 @@ const go = (
           Effect.forEach(e.errors, (key) => go(key.error, [...path, key.key])),
           Arr.flatten
         ))
-    case "Transformation":
-    case "Refinement":
     case "Declaration":
+    case "Refinement":
+    case "Transformation":
       return getArray(e, path, () => go(e.error, path))
   }
 }

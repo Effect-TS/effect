@@ -51,6 +51,7 @@
     "effect": "workspace:^"
   },
   "devDependencies": {
+    "@jest/expect": "^29.7.0",
     "ajv": "^8.12.0",
     "effect": "workspace:^",
     "fast-check": "^3.17.1",
