@@ -62,7 +62,7 @@ pipe(
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Effect<[string, ...string[]], "err-1", "dep-1">
-Effect.forEach(["a", "b"], (
+Effect.forEach(["a", "b"] as NonEmptyReadonlyArray<string>, (
   // $ExpectType string
   _a,
   // $ExpectType number
