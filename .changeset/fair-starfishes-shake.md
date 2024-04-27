@@ -1,5 +1,5 @@
 ---
-"@effect/schema": minor
+"@effect/schema": patch
 ---
 
 ## Extracting Inferred Types
