@@ -1,5 +1,43 @@
 # @effect/schema
 
+## 0.66.10
+
+### Patch Changes
+
+- Updated dependencies [[`18de56b`](https://github.com/Effect-TS/effect/commit/18de56b4a6b6d1f99230dfabf9147d59ea4dd759)]:
+  - effect@3.0.7
+
+## 0.66.9
+
+### Patch Changes
+
+- [#2626](https://github.com/Effect-TS/effect/pull/2626) [`027418e`](https://github.com/Effect-TS/effect/commit/027418edaa6aa6c0ae4861b95832827b45adace4) Thanks [@fubhy](https://github.com/fubhy)! - Reintroduce custom `NoInfer` type
+
+- [#2631](https://github.com/Effect-TS/effect/pull/2631) [`8206529`](https://github.com/Effect-TS/effect/commit/8206529d6a7bbf3e3c6f670afb0381e83176736e) Thanks [@gcanti](https://github.com/gcanti)! - add support for data-last subtype overloads in `compose`
+
+  Before
+
+  ```ts
+  import { Schema as S } from "@effect/schema";
+
+  S.Union(S.Null, S.String).pipe(S.compose(S.NumberFromString)); // ts error
+  S.NumberFromString.pipe(S.compose(S.Union(S.Null, S.Number))); // ts error
+  ```
+
+  Now
+
+  ```ts
+  import { Schema as S } from "@effect/schema";
+
+  // $ExpectType Schema<number, string | null, never>
+  S.Union(S.Null, S.String).pipe(S.compose(S.NumberFromString)); // ok
+  // $ExpectType Schema<number | null, string, never>
+  S.NumberFromString.pipe(S.compose(S.Union(S.Null, S.Number))); // ok
+  ```
+
+- Updated dependencies [[`ffe4f4e`](https://github.com/Effect-TS/effect/commit/ffe4f4e95db35fff6869e360b072e3837befa0a1), [`027418e`](https://github.com/Effect-TS/effect/commit/027418edaa6aa6c0ae4861b95832827b45adace4), [`ac1898e`](https://github.com/Effect-TS/effect/commit/ac1898eb7bc96880f911c276048e2ea3d6fe9c50), [`ffe4f4e`](https://github.com/Effect-TS/effect/commit/ffe4f4e95db35fff6869e360b072e3837befa0a1)]:
+  - effect@3.0.6
+
 ## 0.66.8
 
 ### Patch Changes

@@ -673,24 +673,15 @@ export const forEach: {
       readonly discard: true
     }
   ): (self: Iterable<A>) => Effect<void, E, R>
-  <A, B, E, R>(
-    self: RA.NonEmptyReadonlyArray<A>,
-    f: (a: A, i: number) => Effect<B, E, R>,
+  <B, E, R, S extends Iterable<any>>(
+    self: S,
+    f: (a: RA.ReadonlyArray.Infer<S>, i: number) => Effect<B, E, R>,
     options?: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
       readonly discard?: false | undefined
     } | undefined
-  ): Effect<RA.NonEmptyArray<B>, E, R>
-  <A, B, E, R>(
-    self: Iterable<A>,
-    f: (a: A, i: number) => Effect<B, E, R>,
-    options?: {
-      readonly concurrency?: Concurrency | undefined
-      readonly batching?: boolean | "inherit" | undefined
-      readonly discard?: false | undefined
-    } | undefined
-  ): Effect<Array<B>, E, R>
+  ): Effect<RA.ReadonlyArray.With<S, B>, E, R>
   <A, B, E, R>(
     self: Iterable<A>,
     f: (a: A, i: number) => Effect<B, E, R>,
