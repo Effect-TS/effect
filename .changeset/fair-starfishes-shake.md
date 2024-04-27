@@ -328,6 +328,66 @@ console.log(decode("")) // "my custom message"
 console.log(decode("abc")) // "my custom message"
 ```
 
+The new system is particularly useful when the schema on which custom messages are defined is more complex than a scalar value (like `string` or `number`), for example, if it's a struct containing a field that is an array of structs. Let's see an example that illustrates how convenient it is to rely on default messages when the decoding error occurs in a nested structure:
+
+```ts
+import { Schema } from "@effect/schema"
+import { pipe } from "effect"
+
+const schema = Schema.Struct({
+  outcomes: pipe(
+    Schema.Array(
+      Schema.Struct({
+        id: Schema.String,
+        text: pipe(
+          Schema.String,
+          Schema.message(() => "error_invalid_outcome_type"),
+          Schema.minLength(1, { message: () => "error_required_field" }),
+          Schema.maxLength(50, { message: () => "error_max_length_field" })
+        )
+      })
+    ),
+    Schema.minItems(1, { message: () => "error_min_length_field" })
+  )
+})
+
+Schema.decodeUnknownSync(schema, { errors: "all" })({
+  outcomes: []
+})
+/*
+throws
+Error: { outcomes: an array of at least 1 items }
+└─ ["outcomes"]
+   └─ error_min_length_field
+*/
+
+Schema.decodeUnknownSync(schema, { errors: "all" })({
+  outcomes: [
+    { id: "1", text: "" },
+    { id: "2", text: "this one is valid" },
+    { id: "3", text: "1234567890".repeat(6) }
+  ]
+})
+/*
+throws
+Error: { outcomes: an array of at least 1 items }
+└─ ["outcomes"]
+   └─ an array of at least 1 items
+      └─ From side refinement failure
+         └─ ReadonlyArray<{ id: string; text: a string at most 50 character(s) long }>
+            ├─ [0]
+            │  └─ { id: string; text: a string at most 50 character(s) long }
+            │     └─ ["text"]
+            │        └─ error_required_field
+            └─ [2]
+               └─ { id: string; text: a string at most 50 character(s) long }
+                  └─ ["text"]
+                     └─ error_max_length_field
+*/
+```
+
+In the previous version, we would have received the message "error_min_length_field" for any decoding error, which is evidently suboptimal and has now been corrected.
+
 ## Patches
 
 - return `BrandSchema` from `fromBrand`
