@@ -3518,9 +3518,26 @@ export const invokeWithInterrupt: <A, E, R>(
             const counts = entries.map((_) => _.listeners.count)
             const checkDone = () => {
               if (counts.every((count) => count === 0)) {
-                cleanup.forEach((f) => f())
-                onInterrupt?.()
-                cb(core.interruptFiber(processing))
+                if (
+                  entries.every((_) => {
+                    if (_.result.state.current._tag === "Pending") {
+                      return true
+                    } else if (
+                      _.result.state.current._tag === "Done" &&
+                      core.exitIsExit(_.result.state.current.effect) &&
+                      _.result.state.current.effect._tag === "Failure" &&
+                      internalCause.isInterrupted(_.result.state.current.effect.cause)
+                    ) {
+                      return true
+                    } else {
+                      return false
+                    }
+                  })
+                ) {
+                  cleanup.forEach((f) => f())
+                  onInterrupt?.()
+                  cb(core.interruptFiber(processing))
+                }
               }
             }
             processing.addObserver((exit) => {
