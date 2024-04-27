@@ -160,6 +160,22 @@ const EnvLive = Layer.mergeAll(
 const provideEnv = Effect.provide(EnvLive)
 
 describe("Effect", () => {
+  it.effect("avoid false interruption when concurrency happens in resolver", () =>
+    Effect.gen(function*() {
+      class RequestUserById extends Request.TaggedClass("RequestUserById")<number, never, {
+        id: string
+      }> {}
+      let count = 0
+      const resolver = Resolver.makeBatched((i) => {
+        count++
+        return Effect.forEach(i, Request.complete(Exit.succeed(1)), { concurrency: "unbounded" })
+      })
+      yield* Effect.request(new RequestUserById({ id: "1" }), resolver).pipe(
+        Effect.withRequestCaching(true),
+        Effect.repeatN(3)
+      )
+      expect(count).toBe(1)
+    }))
   it.effect("requests are executed correctly", () =>
     provideEnv(
       Effect.gen(function*($) {
