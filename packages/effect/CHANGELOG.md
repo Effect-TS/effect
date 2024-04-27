@@ -1,5 +1,11 @@
 # effect
 
+## 3.0.7
+
+### Patch Changes
+
+- [#2637](https://github.com/Effect-TS/effect/pull/2637) [`18de56b`](https://github.com/Effect-TS/effect/commit/18de56b4a6b6d1f99230dfabf9147d59ea4dd759) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Avoid treating completed requests as interrupted when race conditions occur
+
 ## 3.0.6
 
 ### Patch Changes
