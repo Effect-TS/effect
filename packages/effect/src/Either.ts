@@ -715,7 +715,7 @@ export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (f)
       current = current.value
     }
     if (isLeft(current)) {
-      return current
+      return left(current.left)
     }
     while (!state.done) {
       state = iterator.next(current.right)
@@ -725,7 +725,7 @@ export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (f)
           current = current.value
         }
         if (isLeft(current)) {
-          return current
+          return left(current.left)
         }
       }
     }
