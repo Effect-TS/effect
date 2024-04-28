@@ -705,28 +705,24 @@ const adapter = Gen.adapter<EitherTypeLambda>()
  * @since 2.0.0
  */
 export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (f) => {
-  const iterator = f(adapter)
-  let state: IteratorYieldResult<any> | IteratorReturnResult<any> = iterator.next()
+  const iterator = f(adapter) as any
+  let state: IteratorYieldResult<any> | IteratorReturnResult<any> = iterator.next(Gen.GenSignal)
   if (state.done) {
     return right(state.value) as any
   } else {
     let current = state.value
     if (Gen.isGenKind(current)) {
       current = current.value
-    } else {
-      current = Gen.yieldWrapGet(current)
     }
     if (isLeft(current)) {
       return current
     }
     while (!state.done) {
-      state = iterator.next(current.right as never)
+      state = iterator.next(Gen.GenSignal, current.right)
       if (!state.done) {
         current = state.value
         if (Gen.isGenKind(current)) {
           current = current.value
-        } else {
-          current = Gen.yieldWrapGet(current)
         }
         if (isLeft(current)) {
           return current
