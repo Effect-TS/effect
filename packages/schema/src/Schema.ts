@@ -835,7 +835,7 @@ export const fromBrand = <C extends Brand<string | symbol>, A extends Brand.Unbr
   makeBrandClass<Schema<A & C, I, R>, string | symbol>(
     new AST.Refinement(
       self.ast,
-      (a: A, _: ParseOptions, ast: AST.AST): option_.Option<ParseResult.ParseIssue> => {
+      function predicate(a: A, _: ParseOptions, ast: AST.AST): option_.Option<ParseResult.ParseIssue> {
         const either = constructor.either(a)
         return either_.isLeft(either) ?
           option_.some(new ParseResult.Type(ast, a, either.left.map((v) => v.message).join(", "))) :

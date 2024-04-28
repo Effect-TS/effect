@@ -409,6 +409,7 @@ const aField = schema.from.fields.a
 - add `SchemaClass` interface
 - add `AnnotableClass` interface
 - fix `AST.toString` to honor `readonly` modifiers
+- improve `AST.toString` for refinements
 
 ## Other Breaking Changes
 

@@ -53,7 +53,7 @@ describe("filter", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       { a: "a", b: "b" },
-      `<refinement schema>
+      `{ { readonly a: string; readonly b: string } | predicate }
 └─ Predicate refinement failure
    └─ b should be equal to a's value ("a")`
     )

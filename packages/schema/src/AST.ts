@@ -1604,7 +1604,7 @@ export class Refinement<From extends AST = AST> implements Annotated {
    * @since 1.0.0
    */
   toString(verbose: boolean = false) {
-    return Option.getOrElse(getExpected(this, verbose), () => "<refinement schema>")
+    return Option.getOrElse(getExpected(this, verbose), () => `{ ${this.from} | ${this.filter.name} }`)
   }
   /**
    * @since 1.0.0

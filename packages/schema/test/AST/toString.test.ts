@@ -21,4 +21,10 @@ describe("toString", () => {
       `{ [x: string]: number }`
     )
   })
+
+  it("Refinement", () => {
+    expect(S.String.pipe(S.filter(() => true)).ast.toString()).toBe(
+      `{ string | predicate }`
+    )
+  })
 })
