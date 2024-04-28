@@ -496,4 +496,12 @@ describe("Option", () => {
     expect(f(_.none(), _.some(2))).toStrictEqual(_.none())
     expect(f(_.some(1), _.some(2))).toStrictEqual(_.some(3))
   })
+
+  it("vitest equality", () => {
+    expect(_.some(2)).toStrictEqual(_.some(2))
+    expect(_.none()).toStrictEqual(_.none())
+
+    expect(_.some(2)).not.toStrictEqual(_.some(1))
+    expect(_.none()).not.toStrictEqual(_.some(1))
+  })
 })
