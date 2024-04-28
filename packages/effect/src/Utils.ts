@@ -3,7 +3,6 @@
  */
 import { identity } from "./Function.js"
 import type { Kind, TypeLambda } from "./HKT.js"
-import { getBugErrorMessage } from "./internal/errors.js"
 import { isNullable, isObject } from "./Predicate.js"
 import type * as Types from "./Types.js"
 
@@ -180,18 +179,18 @@ export interface Variance<in out F extends TypeLambda, in R, out O, out E> {
  * @since 2.0.0
  */
 export interface Gen<F extends TypeLambda, Z> {
-  <K extends Variance<F, any, any, any> | YieldWrap<Kind<F, any, any, any, any>>, A>(
+  <K extends Variance<F, any, any, any> | Kind<F, any, any, any, any>, A>(
     body: (resume: Z) => Generator<K, A, never>
   ): Kind<
     F,
     [K] extends [Variance<F, infer R, any, any>] ? R
-      : [K] extends [YieldWrap<Kind<F, infer R, any, any, any>>] ? R
+      : [K] extends [Kind<F, infer R, any, any, any>] ? R
       : never,
     [K] extends [Variance<F, any, infer O, any>] ? O
-      : [K] extends [YieldWrap<Kind<F, any, infer O, any, any>>] ? O
+      : [K] extends [Kind<F, any, infer O, any, any>] ? O
       : never,
     [K] extends [Variance<F, any, any, infer E>] ? E
-      : [K] extends [YieldWrap<Kind<F, any, any, infer E, any>>] ? E
+      : [K] extends [Kind<F, any, any, infer E, any>] ? E
       : never,
     A
   >
@@ -713,36 +712,55 @@ function add64(
   out[1] = lo
 }
 
-/**
- * @since 3.0.6
- */
-export const YieldWrapTypeId = Symbol.for("effect/Utils/YieldWrap")
-
-/**
- * @since 3.0.6
- */
-export class YieldWrap<T> {
+/** @internal */
+export class EmptyGen<T, A> implements Generator<T, A> {
   /**
-   * @since 3.0.6
+   * @since 3.0.7
    */
-  readonly #value: T
-  constructor(value: T) {
-    this.#value = value
+  next(value: A): IteratorResult<T, A> {
+    return {
+      done: true,
+      value
+    }
   }
+
   /**
-   * @since 3.0.6
+   * @since 3.0.7
    */
-  [YieldWrapTypeId](): T {
-    return this.#value
+  return(a: A): IteratorResult<T, A> {
+    return ({
+      value: a,
+      done: true
+    })
+  }
+
+  /**
+   * @since 3.0.7
+   */
+  throw(e: unknown): IteratorResult<T, A> {
+    throw e
+  }
+
+  /**
+   * @since 3.0.7
+   */
+  [Symbol.iterator](): Generator<T, A> {
+    return this
   }
 }
 
-/**
- * @since 3.0.6
- */
-export function yieldWrapGet<T>(self: YieldWrap<T>): T {
-  if (typeof self === "object" && self !== null && YieldWrapTypeId in self) {
-    return self[YieldWrapTypeId]()
-  }
-  throw new Error(getBugErrorMessage("yieldWrapGet"))
+const emptyGen = new EmptyGen<any, any>()
+function emptyGenFn() {
+  return emptyGen
 }
+const emptyGenProxy: ProxyHandler<any> = {
+  get(target, prop) {
+    if (prop === Symbol.iterator) {
+      return emptyGenFn
+    }
+    return target[prop]
+  }
+}
+
+/** @internal */
+export const makeEmptyIterable = <A extends object>(self: A): A => new Proxy(self, emptyGenProxy)

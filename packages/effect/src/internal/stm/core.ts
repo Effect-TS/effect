@@ -15,12 +15,11 @@ import { hasProperty } from "../../Predicate.js"
 import type * as Scheduler from "../../Scheduler.js"
 import type * as STM from "../../STM.js"
 import { StreamTypeId } from "../../Stream.js"
-import { YieldWrap } from "../../Utils.js"
+import { makeEmptyIterable, SingleShotGen } from "../../Utils.js"
 import { ChannelTypeId } from "../core-stream.js"
 import { withFiberRuntime } from "../core.js"
 import { effectVariance } from "../effectable.js"
 import { OP_COMMIT } from "../opCodes/effect.js"
-import { SingleShotGen } from "../singleShotGen.js"
 import { SinkTypeId } from "../sink.js"
 import * as OpCodes from "./opCodes/stm.js"
 import * as TExitOpCodes from "./opCodes/tExit.js"
@@ -173,7 +172,7 @@ class STMPrimitive implements STM.STM<any, any, any> {
     return Hash.cached(this, Hash.random(this))
   }
   [Symbol.iterator]() {
-    return new SingleShotGen(new YieldWrap(this)) as any
+    return new SingleShotGen(makeEmptyIterable(this)) as any
   }
   commit(this: STM.STM<any, any, any>): Effect.Effect<any, any, any> {
     return unsafeAtomically(this, constVoid, constVoid)

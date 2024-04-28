@@ -13,7 +13,6 @@ import type { Predicate, Refinement } from "../../Predicate.js"
 import * as predicate from "../../Predicate.js"
 import type * as STM from "../../STM.js"
 import type { MergeRecord, NoInfer } from "../../Types.js"
-import { yieldWrapGet } from "../../Utils.js"
 import * as effectCore from "../core.js"
 import * as core from "./core.js"
 import * as Journal from "./stm/journal.js"
@@ -620,14 +619,14 @@ export const fromOption = <A>(option: Option.Option<A>): STM.STM<A, Option.Optio
  */
 export const gen: typeof STM.gen = (f) =>
   suspend(() => {
-    const iterator = f(pipe)
+    const iterator = f(pipe) as any
     const state = iterator.next()
     const run = (
       state: IteratorYieldResult<any> | IteratorReturnResult<any>
     ): STM.STM<any, any, any> =>
       state.done ?
         core.succeed(state.value) :
-        core.flatMap(yieldWrapGet(state.value) as any, (val: any) => run(iterator.next(val as never)))
+        core.flatMap(state.value as any, (val: any) => run(iterator.next(val as never)))
     return run(state)
   })
 
