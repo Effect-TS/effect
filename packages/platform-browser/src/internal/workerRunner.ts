@@ -12,7 +12,7 @@ const cachedPorts = globalValue("@effect/platform-browser/Worker/cachedPorts", (
 function globalHandleConnect(event: MessageEvent) {
   cachedPorts.add((event as MessageEvent).ports[0])
 }
-if ("onconnect" in self) {
+if (typeof self !== "undefined" && "onconnect" in self) {
   self.onconnect = globalHandleConnect
 }
 
