@@ -261,16 +261,26 @@ export const filterStatus = dual<
           request,
           response,
           reason: "StatusCode",
-          error: "non 2xx status code"
+          error: "invalid status code"
         })
     )))
 
 /** @internal */
-export const filterStatusOk: <E, R>(
+export const filterStatusOk = <E, R>(
   self: Client.Client.WithResponse<E, R>
-) => Client.Client.WithResponse<E | Error.ResponseError, R> = filterStatus(
-  (status) => status >= 200 && status < 300
-)
+): Client.Client.WithResponse<E | Error.ResponseError, R> =>
+  transform(self, (effect, request) =>
+    Effect.filterOrFail(
+      effect,
+      (response) => response.status >= 200 && response.status < 300,
+      (response) =>
+        new Error.ResponseError({
+          request,
+          response,
+          reason: "StatusCode",
+          error: "non 2xx status code"
+        })
+    ))
 
 /** @internal */
 export const fetchOk: Client.Client.Default = filterStatusOk(fetch)
