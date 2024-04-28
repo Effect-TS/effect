@@ -393,6 +393,7 @@ In the previous version, we would have received the message "error_min_length_fi
 - return `BrandSchema` from `fromBrand`
 - add `SchemaClass` interface
 - add `AnnotableClass` interface
+- add `filter` API interface
 - fix `AST.toString` to honor `readonly` modifiers
 
 ## Other Breaking Changes

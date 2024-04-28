@@ -32,6 +32,12 @@ hole<S.Schema.Type<typeof S.Never>>()
 // S.annotations
 // ---------------------------------------------
 
+// @ts-expect-error
+S.String.annotations({ a: 1 })
+
+// $ExpectType SchemaClass<string, string, never>
+S.String.annotations({ [Symbol.for("a")]: 1 })
+
 /**
  * @category api interface
  * @since 1.0.0
@@ -1205,12 +1211,6 @@ pipe(
     }
   )
 )
-
-// @ts-expect-error
-S.String.annotations({ a: 1 })
-
-// $ExpectType SchemaClass<string, string, never>
-S.String.annotations({ [Symbol.for("a")]: 1 })
 
 // ---------------------------------------------
 // compose
