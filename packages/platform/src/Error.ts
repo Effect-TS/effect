@@ -4,7 +4,7 @@
 import type * as Cause from "effect/Cause"
 import * as Data from "effect/Data"
 import * as Predicate from "effect/Predicate"
-import type { Simplify } from "../../effect/src/Types.js"
+import type { Simplify } from "effect/Types"
 import * as internal from "./internal/error.js"
 
 /**
