@@ -52,7 +52,7 @@ hole<S.Schema<string>>().pipe(S.annotations({}))
 // $ExpectType AnnotatedString
 AnnotatedString.pipe(S.annotations({}))
 
-// $ExpectType brand<filter<number, number, never>, "Int">
+// $ExpectType brand<filter<Schema<number, number, never>>, "Int">
 S.Number.pipe(S.int(), S.brand("Int"), S.annotations({}))
 
 // $ExpectType Struct<{ a: AnnotatedString; }>
@@ -278,46 +278,46 @@ S.Literal("A", "B").annotations({})
 // strings
 // ---------------------------------------------
 
-// $ExpectType filter<string, string, never>
+// $ExpectType filter<Schema<string, string, never>>
 pipe(S.String, S.maxLength(5))
 
-// $ExpectType filter<string, string, never>
+// $ExpectType filter<Schema<string, string, never>>
 pipe(S.String, S.minLength(5))
 
-// $ExpectType filter<string, string, never>
+// $ExpectType filter<Schema<string, string, never>>
 pipe(S.String, S.length(5))
 
-// $ExpectType filter<string, string, never>
+// $ExpectType filter<Schema<string, string, never>>
 pipe(S.String, S.pattern(/a/))
 
-// $ExpectType filter<string, string, never>
+// $ExpectType filter<Schema<string, string, never>>
 pipe(S.String, S.startsWith("a"))
 
-// $ExpectType filter<string, string, never>
+// $ExpectType filter<Schema<string, string, never>>
 pipe(S.String, S.endsWith("a"))
 
-// $ExpectType filter<string, string, never>
+// $ExpectType filter<Schema<string, string, never>>
 pipe(S.String, S.includes("a"))
 
-// $ExpectType filter<number, number, never>
+// $ExpectType filter<Schema<number, number, never>>
 pipe(S.Number, S.greaterThan(5))
 
-// $ExpectType filter<number, number, never>
+// $ExpectType filter<Schema<number, number, never>>
 pipe(S.Number, S.greaterThanOrEqualTo(5))
 
-// $ExpectType filter<number, number, never>
+// $ExpectType filter<Schema<number, number, never>>
 pipe(S.Number, S.lessThan(5))
 
-// $ExpectType filter<number, number, never>
+// $ExpectType filter<Schema<number, number, never>>
 pipe(S.Number, S.lessThanOrEqualTo(5))
 
-// $ExpectType filter<number, number, never>
+// $ExpectType filter<Schema<number, number, never>>
 pipe(S.Number, S.int())
 
-// $ExpectType filter<number, number, never>
+// $ExpectType filter<Schema<number, number, never>>
 pipe(S.Number, S.nonNaN()) // not NaN
 
-// $ExpectType filter<number, number, never>
+// $ExpectType filter<Schema<number, number, never>>
 pipe(S.Number, S.finite()) // value must be finite, not Infinity or -Infinity
 
 // ---------------------------------------------
@@ -888,13 +888,13 @@ S.asSchema(pipe(S.Number, S.int(), S.brand("Int")))
 // $ExpectType Schema<number & Brand<"Int">, number, never>
 S.asSchema(pipe(S.Number, S.int(), S.brand("Int"))).annotations({})
 
-// $ExpectType brand<filter<number, number, never>, "Int">
+// $ExpectType brand<filter<Schema<number, number, never>>, "Int">
 pipe(S.Number, S.int(), S.brand("Int"))
 
 // $ExpectType Schema<number & Brand<"Int">, string, never>
 S.asSchema(pipe(S.NumberFromString, S.int(), S.brand("Int")))
 
-// $ExpectType brand<filter<number, string, never>, "Int">
+// $ExpectType brand<filter<Schema<number, string, never>>, "Int">
 pipe(S.NumberFromString, S.int(), S.brand("Int"))
 
 // ---------------------------------------------
@@ -968,7 +968,7 @@ S.Record(S.String, S.NumberFromString)
 // $ExpectType Schema<{ readonly [x: string]: string; }, { readonly [x: string]: string; }, never>
 S.asSchema(S.Record(pipe(S.String, S.minLength(2)), S.String))
 
-// $ExpectType $Record<filter<string, string, never>, typeof $String>
+// $ExpectType $Record<filter<Schema<string, string, never>>, typeof $String>
 S.Record(pipe(S.String, S.minLength(2)), S.String)
 
 // $ExpectType Schema<{ readonly a: string; readonly b: string; }, { readonly a: string; readonly b: string; }, never>
@@ -1152,7 +1152,7 @@ taggedStruct("A", { a: S.String })
 const predicateFilter1 = (u: unknown): boolean => typeof u === "string"
 const FromFilter = S.Union(S.String, S.Number)
 
-// $ExpectType filter<string | number, string | number, never>
+// $ExpectType filter<Union<[typeof $String, typeof $Number]>>
 pipe(FromFilter, S.filter(predicateFilter1))
 
 const FromRefinement = S.Struct({
@@ -1160,19 +1160,19 @@ const FromRefinement = S.Struct({
   b: S.optional(S.Number, { exact: true })
 })
 
-// $ExpectType filter<{ readonly a?: string; readonly b?: number; } & { readonly b: number; }, { readonly a?: string; readonly b?: number; }, never>
+// $ExpectType refine<{ readonly a?: string; readonly b?: number; } & { readonly b: number; }, Schema<unknown, { readonly a?: string; readonly b?: number; }, never>>
 pipe(FromRefinement, S.filter(S.is(S.Struct({ b: S.Number }))))
 
 const LiteralFilter = S.Literal("a", "b")
 const predicateFilter2 = (u: unknown): u is "a" => typeof u === "string" && u === "a"
 
-// $ExpectType filter<"a", "a" | "b", never>
+// $ExpectType refine<"a", Schema<unknown, "a" | "b", never>>
 pipe(LiteralFilter, S.filter(predicateFilter2))
 
-// $ExpectType filter<"a", "a" | "b", never>
+// $ExpectType refine<"a", Schema<unknown, "a" | "b", never>>
 pipe(LiteralFilter, S.filter(S.is(S.Literal("a"))))
 
-// $ExpectType filter<never, "a" | "b", never>
+// $ExpectType refine<never, Schema<unknown, "a" | "b", never>>
 pipe(LiteralFilter, S.filter(S.is(S.Literal("c"))))
 
 declare const UnionFilter: S.Schema<
@@ -1181,10 +1181,10 @@ declare const UnionFilter: S.Schema<
   never
 >
 
-// $ExpectType filter<({ readonly a: string; } | { readonly b: string; }) & { readonly b: string; }, { readonly a: string; } | { readonly b: string; }, never>
+// $ExpectType refine<({ readonly a: string; } | { readonly b: string; }) & { readonly b: string; }, Schema<unknown, { readonly a: string; } | { readonly b: string; }, never>>
 pipe(UnionFilter, S.filter(S.is(S.Struct({ b: S.String }))))
 
-// $ExpectType filter<number & Brand<"MyNumber">, number, never>
+// $ExpectType refine<number & Brand<"MyNumber">, Schema<number, number, never>>
 pipe(S.Number, S.filter((n): n is number & Brand.Brand<"MyNumber"> => n > 0))
 
 // annotations
@@ -1316,7 +1316,7 @@ S.asSchema(S.mutable(S.Union(S.Struct({ a: S.Number }), S.Array(S.String))))
 // $ExpectType mutable<Union<[Struct<{ a: typeof $Number; }>, $Array<typeof $String>]>>
 S.mutable(S.Union(S.Struct({ a: S.Number }), S.Array(S.String)))
 
-// $ExpectType mutable<filter<readonly string[], readonly string[], never>>
+// $ExpectType mutable<filter<Schema<readonly string[], readonly string[], never>>>
 S.mutable(S.Array(S.String).pipe(S.maxItems(2)))
 
 // $ExpectType Schema<string[], string[], never>
