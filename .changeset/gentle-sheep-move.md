@@ -2,4 +2,4 @@
 "@effect/platform": patch
 ---
 
-fix type import from "effect" peer
+Fixed import path for type import.
