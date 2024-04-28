@@ -1,7 +1,7 @@
 import * as AST from "@effect/schema/AST"
 import { describe, expect, it } from "vitest"
 
-describe("AST > record", () => {
+describe("record", () => {
   it("numeric literal", () => {
     expect(AST.record(new AST.Literal(1), AST.numberKeyword).propertySignatures).toEqual(
       [new AST.PropertySignature(1, AST.numberKeyword, false, true)]

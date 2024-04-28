@@ -1308,11 +1308,11 @@ export class TypeLiteral implements Annotated {
 
 const formatTypeLiteral = (ast: TypeLiteral): string => {
   const formattedPropertySignatures = ast.propertySignatures.map((ps) =>
-    String(ps.name) + (ps.isOptional ? "?" : "") + ": " + ps.type
+    (ps.isReadonly ? "readonly " : "") + String(ps.name) + (ps.isOptional ? "?" : "") + ": " + ps.type
   ).join("; ")
   if (ast.indexSignatures.length > 0) {
     const formattedIndexSignatures = ast.indexSignatures.map((is) =>
-      `[x: ${getParameterBase(is.parameter)}]: ${is.type}`
+      (is.isReadonly ? "readonly " : "") + `[x: ${getParameterBase(is.parameter)}]: ${is.type}`
     ).join("; ")
     if (ast.propertySignatures.length > 0) {
       return `{ ${formattedPropertySignatures}; ${formattedIndexSignatures} }`
@@ -1924,19 +1924,19 @@ export const getPropertyKeyIndexedAccess = (ast: AST, name: PropertyKey): Proper
               case "TemplateLiteral": {
                 const regex = getTemplateLiteralRegExp(parameterBase)
                 if (regex.test(name)) {
-                  return new PropertySignature(name, is.type, false, false)
+                  return new PropertySignature(name, is.type, false, true)
                 }
                 break
               }
               case "StringKeyword":
-                return new PropertySignature(name, is.type, false, false)
+                return new PropertySignature(name, is.type, false, true)
             }
           }
         } else if (Predicate.isSymbol(name)) {
           for (const is of ast.indexSignatures) {
             const parameterBase = getParameterBase(is.parameter)
             if (isSymbolKeyword(parameterBase)) {
-              return new PropertySignature(name, is.type, false, false)
+              return new PropertySignature(name, is.type, false, true)
             }
           }
         }

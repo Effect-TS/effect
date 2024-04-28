@@ -13,19 +13,19 @@ describe("pick", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       null,
-      "Expected { Symbol(@effect/schema/test/a): string; b: NumberFromString }, actual null"
+      "Expected { readonly Symbol(@effect/schema/test/a): string; readonly b: NumberFromString }, actual null"
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       { [a]: "a" },
-      `{ Symbol(@effect/schema/test/a): string; b: NumberFromString }
+      `{ readonly Symbol(@effect/schema/test/a): string; readonly b: NumberFromString }
 └─ ["b"]
    └─ is missing`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       { b: 1 },
-      `{ Symbol(@effect/schema/test/a): string; b: NumberFromString }
+      `{ readonly Symbol(@effect/schema/test/a): string; readonly b: NumberFromString }
 └─ [Symbol(@effect/schema/test/a)]
    └─ is missing`
     )
@@ -46,12 +46,12 @@ describe("pick", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       null,
-      "Expected { a?: string; b: NumberFromString }, actual null"
+      "Expected { readonly a?: string; readonly b: NumberFromString }, actual null"
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       { a: "a" },
-      `{ a?: string; b: NumberFromString }
+      `{ readonly a?: string; readonly b: NumberFromString }
 └─ ["b"]
    └─ is missing`
     )
@@ -76,11 +76,11 @@ describe("pick", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       { as: [{ as: [] }] },
-      `{ as: ReadonlyArray<<suspended schema>> }
+      `{ readonly as: ReadonlyArray<<suspended schema>> }
 └─ ["as"]
    └─ ReadonlyArray<<suspended schema>>
       └─ [0]
-         └─ { a: string; as: ReadonlyArray<<suspended schema>> }
+         └─ { readonly a: string; readonly as: ReadonlyArray<<suspended schema>> }
             └─ ["a"]
                └─ is missing`
     )
@@ -104,14 +104,14 @@ describe("pick", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       { a: "a", b: 2 },
-      `{ a: number; b: number }
+      `{ readonly a: number; readonly b: number }
 └─ ["a"]
    └─ Expected a number, actual "a"`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       { a: 1, b: "b" },
-      `{ a: number; b: number }
+      `{ readonly a: number; readonly b: number }
 └─ ["b"]
    └─ Expected a number, actual "b"`
     )
@@ -125,14 +125,14 @@ describe("pick", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       { [a]: "a", [b]: 2 },
-      `{ Symbol(@effect/schema/test/a): number; Symbol(@effect/schema/test/b): number }
+      `{ readonly Symbol(@effect/schema/test/a): number; readonly Symbol(@effect/schema/test/b): number }
 └─ [Symbol(@effect/schema/test/a)]
    └─ Expected a number, actual "a"`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       { [a]: 1, [b]: "b" },
-      `{ Symbol(@effect/schema/test/a): number; Symbol(@effect/schema/test/b): number }
+      `{ readonly Symbol(@effect/schema/test/a): number; readonly Symbol(@effect/schema/test/b): number }
 └─ [Symbol(@effect/schema/test/b)]
    └─ Expected a number, actual "b"`
     )

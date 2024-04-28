@@ -176,28 +176,28 @@ describe("extend", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         {},
-        `{ a: string; [x: string]: string }
+        `{ readonly a: string; readonly [x: string]: string }
 └─ ["a"]
    └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { b: "b" },
-        `{ a: string; [x: string]: string }
+        `{ readonly a: string; readonly [x: string]: string }
 └─ ["a"]
    └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1 },
-        `{ a: string; [x: string]: string }
+        `{ readonly a: string; readonly [x: string]: string }
 └─ ["a"]
    └─ Expected a string, actual 1`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a", b: 1 },
-        `{ a: string; [x: string]: string }
+        `{ readonly a: string; readonly [x: string]: string }
 └─ ["b"]
    └─ Expected a string, actual 1`
       )
@@ -291,9 +291,9 @@ describe("extend", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       { a: { b: "a", c: null } },
-      `{ a: { b: string; c: number } }
+      `{ readonly a: { readonly b: string; readonly c: number } }
 └─ ["a"]
-   └─ { b: string; c: number }
+   └─ { readonly b: string; readonly c: number }
       └─ ["c"]
          └─ Expected a number, actual null`
     )

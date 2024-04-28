@@ -30,7 +30,7 @@ describe("CauseFromSelf", () => {
       `Cause<NumberFromString>
 └─ CauseEncoded<NumberFromString>
    └─ Union member
-      └─ { _tag: "Fail"; error: NumberFromString }
+      └─ { readonly _tag: "Fail"; readonly error: NumberFromString }
          └─ ["error"]
             └─ NumberFromString
                └─ Transformation process failure
@@ -42,11 +42,11 @@ describe("CauseFromSelf", () => {
       `Cause<NumberFromString>
 └─ CauseEncoded<NumberFromString>
    └─ Union member
-      └─ { _tag: "Parallel"; left: CauseEncoded<NumberFromString>; right: CauseEncoded<NumberFromString> }
+      └─ { readonly _tag: "Parallel"; readonly left: CauseEncoded<NumberFromString>; readonly right: CauseEncoded<NumberFromString> }
          └─ ["right"]
             └─ CauseEncoded<NumberFromString>
                └─ Union member
-                  └─ { _tag: "Fail"; error: NumberFromString }
+                  └─ { readonly _tag: "Fail"; readonly error: NumberFromString }
                      └─ ["error"]
                         └─ NumberFromString
                            └─ Transformation process failure

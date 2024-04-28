@@ -2,7 +2,7 @@ import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import { describe, expect, it } from "vitest"
 
-describe("AST > getCardinality", () => {
+describe("getCardinality", () => {
   it("order", () => {
     const struct = S.Struct({ a: S.String })
     const actual = [

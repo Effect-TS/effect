@@ -60,12 +60,12 @@ describe("record", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         [],
-        "Expected { [x: string]: number }, actual []"
+        "Expected { readonly [x: string]: number }, actual []"
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a" },
-        `{ [x: string]: number }
+        `{ readonly [x: string]: number }
 └─ ["a"]
    └─ Expected a number, actual "a"`
       )
@@ -74,7 +74,7 @@ describe("record", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, [b]: "b" },
-        `{ [x: string]: number }
+        `{ readonly [x: string]: number }
 └─ [Symbol(@effect/schema/test/b)]
    └─ is unexpected, expected a string`,
         Util.onExcessPropertyError
@@ -90,12 +90,12 @@ describe("record", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         [],
-        "Expected { [x: symbol]: number }, actual []"
+        "Expected { readonly [x: symbol]: number }, actual []"
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { [a]: "a" },
-        `{ [x: symbol]: number }
+        `{ readonly [x: symbol]: number }
 └─ [Symbol(@effect/schema/test/a)]
    └─ Expected a number, actual "a"`
       )
@@ -107,7 +107,7 @@ describe("record", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { [a]: 1, b: "b" },
-        `{ [x: symbol]: number }
+        `{ readonly [x: symbol]: number }
 └─ ["b"]
    └─ is unexpected, expected a symbol`,
         Util.onExcessPropertyError
@@ -121,21 +121,21 @@ describe("record", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         {},
-        `{ a: number; b: number }
+        `{ readonly a: number; readonly b: number }
 └─ ["a"]
    └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1 },
-        `{ a: number; b: number }
+        `{ readonly a: number; readonly b: number }
 └─ ["b"]
    └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { b: 2 },
-        `{ a: number; b: number }
+        `{ readonly a: number; readonly b: number }
 └─ ["a"]
    └─ is missing`
       )
@@ -152,14 +152,14 @@ describe("record", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         {},
-        `{ a: number; [x: \`prefix-\${string}\`]: number }
+        `{ readonly a: number; readonly [x: \`prefix-\${string}\`]: number }
 └─ ["a"]
    └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, "prefix-b": "b" },
-        `{ a: number; [x: \`prefix-\${string}\`]: number }
+        `{ readonly a: number; readonly [x: \`prefix-\${string}\`]: number }
 └─ ["prefix-b"]
    └─ Expected a number, actual "b"`
       )
@@ -172,28 +172,28 @@ describe("record", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         {},
-        `{ a: number; b: number }
+        `{ readonly a: number; readonly b: number }
 └─ ["a"]
    └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1 },
-        `{ a: number; b: number }
+        `{ readonly a: number; readonly b: number }
 └─ ["b"]
    └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { b: 2 },
-        `{ a: number; b: number }
+        `{ readonly a: number; readonly b: number }
 └─ ["a"]
    └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a" },
-        `{ a: number; b: number }
+        `{ readonly a: number; readonly b: number }
 └─ ["a"]
    └─ Expected a number, actual "a"`
       )
@@ -208,21 +208,21 @@ describe("record", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         {},
-        `{ Symbol(@effect/schema/test/a): number; Symbol(@effect/schema/test/b): number }
+        `{ readonly Symbol(@effect/schema/test/a): number; readonly Symbol(@effect/schema/test/b): number }
 └─ [Symbol(@effect/schema/test/a)]
    └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { [a]: 1 },
-        `{ Symbol(@effect/schema/test/a): number; Symbol(@effect/schema/test/b): number }
+        `{ readonly Symbol(@effect/schema/test/a): number; readonly Symbol(@effect/schema/test/b): number }
 └─ [Symbol(@effect/schema/test/b)]
    └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { [b]: 2 },
-        `{ Symbol(@effect/schema/test/a): number; Symbol(@effect/schema/test/b): number }
+        `{ readonly Symbol(@effect/schema/test/a): number; readonly Symbol(@effect/schema/test/b): number }
 └─ [Symbol(@effect/schema/test/a)]
    └─ is missing`
       )
@@ -242,28 +242,28 @@ describe("record", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { "-": "a" },
-        `{ [x: \`\${string}-\${string}\`]: number }
+        `{ readonly [x: \`\${string}-\${string}\`]: number }
 └─ ["-"]
    └─ Expected a number, actual "a"`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { "a-": "a" },
-        `{ [x: \`\${string}-\${string}\`]: number }
+        `{ readonly [x: \`\${string}-\${string}\`]: number }
 └─ ["a-"]
    └─ Expected a number, actual "a"`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { "-b": "b" },
-        `{ [x: \`\${string}-\${string}\`]: number }
+        `{ readonly [x: \`\${string}-\${string}\`]: number }
 └─ ["-b"]
    └─ Expected a number, actual "b"`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { "a-b": "ab" },
-        `{ [x: \`\${string}-\${string}\`]: number }
+        `{ readonly [x: \`\${string}-\${string}\`]: number }
 └─ ["a-b"]
    └─ Expected a number, actual "ab"`
       )
@@ -271,7 +271,7 @@ describe("record", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { "a": 1 },
-        `{ [x: \`\${string}-\${string}\`]: number }
+        `{ readonly [x: \`\${string}-\${string}\`]: number }
 └─ ["a"]
    └─ is unexpected, expected \`\${string}-\${string}\``,
         Util.onExcessPropertyError
@@ -289,14 +289,14 @@ describe("record", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { "aa": "aa" },
-        `{ [x: string]: number }
+        `{ readonly [x: string]: number }
 └─ ["aa"]
    └─ Expected a number, actual "aa"`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { "a": 1 },
-        `{ [x: string]: number }
+        `{ readonly [x: string]: number }
 └─ ["a"]
    └─ is unexpected, expected a string at least 2 character(s) long`,
         Util.onExcessPropertyError
@@ -316,14 +316,14 @@ describe("record", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { "a-": "a" },
-        `{ [x: \`\${string}-\${string}\`]: number; [x: string]: string | number }
+        `{ readonly [x: \`\${string}-\${string}\`]: number; readonly [x: string]: string | number }
 └─ ["a-"]
    └─ Expected a number, actual "a"`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { "a": true },
-        `{ [x: \`\${string}-\${string}\`]: number; [x: string]: string | number }
+        `{ readonly [x: \`\${string}-\${string}\`]: number; readonly [x: string]: string | number }
 └─ ["a"]
    └─ string | number
       ├─ Union member
@@ -343,7 +343,7 @@ describe("record", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { "": 1 },
-        `{ [x: string]: number }
+        `{ readonly [x: string]: number }
 └─ [""]
    └─ is unexpected, expected NonEmpty (a non empty string)`,
         Util.onExcessPropertyError
@@ -357,7 +357,7 @@ describe("record", () => {
       await Util.expectEncodeFailure(
         schema,
         { aa: "a" },
-        `{ [x: string]: string }
+        `{ readonly [x: string]: string }
 └─ ["aa"]
    └─ is unexpected, expected Char (a single character)`,
         Util.onExcessPropertyError
@@ -369,7 +369,7 @@ describe("record", () => {
       await Util.expectEncodeFailure(
         schema,
         { a: "aa" },
-        `{ [x: string]: Char }
+        `{ readonly [x: string]: Char }
 └─ ["a"]
    └─ Char
       └─ Predicate refinement failure

@@ -26,7 +26,7 @@ describe("optional APIs", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a" },
-        `{ a?: NumberFromString }
+        `{ readonly a?: NumberFromString }
 └─ ["a"]
    └─ NumberFromString
       └─ Transformation process failure
@@ -43,7 +43,7 @@ describe("optional APIs", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a", b: 1 },
-        `{ a?: never; b: number }
+        `{ readonly a?: never; readonly b: number }
 └─ ["a"]
    └─ Expected never, actual "a"`
       )
@@ -61,7 +61,7 @@ describe("optional APIs", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a" },
-        `{ a?: NumberFromString | undefined }
+        `{ readonly a?: NumberFromString | undefined }
 └─ ["a"]
    └─ NumberFromString | undefined
       ├─ Union member

@@ -21,13 +21,13 @@ describe("DataFromSelf", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       { a: "ok", b: 0 },
-      `Expected Data<{ a: string; b: number }>, actual {"a":"ok","b":0}`
+      `Expected Data<{ readonly a: string; readonly b: number }>, actual {"a":"ok","b":0}`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       Data.struct({ a: "ok", b: "0" }),
-      `Data<{ a: string; b: number }>
-└─ { a: string; b: number }
+      `Data<{ readonly a: string; readonly b: number }>
+└─ { readonly a: string; readonly b: number }
    └─ ["b"]
       └─ Expected a number, actual "0"`
     )

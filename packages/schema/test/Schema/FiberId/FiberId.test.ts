@@ -33,7 +33,7 @@ describe("FiberId", () => {
          └─ FiberIdCompositeEncoded
             └─ ["right"]
                └─ FiberIdEncoded
-                  └─ { _tag: "None" | "Runtime" | "Composite" }
+                  └─ { readonly _tag: "None" | "Runtime" | "Composite" }
                      └─ ["_tag"]
                         └─ Expected "None" | "Runtime" | "Composite", actual "-"`
     )

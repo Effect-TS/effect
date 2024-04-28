@@ -21,7 +21,7 @@ describe("validate", () => {
     await Util.expectEffectSuccess(S.validate(schema)({ a: 1 }), { a: 1 })
     await Util.expectEffectFailure(
       S.validate(schema)({ a: null }),
-      `{ a: number }
+      `{ readonly a: number }
 └─ ["a"]
    └─ Expected a number, actual null`
     )
@@ -31,13 +31,13 @@ describe("validate", () => {
     const input = { a: 1, b: "b" }
     await Util.expectEffectFailure(
       S.validate(schema)(input, { onExcessProperty: "error" }),
-      `{ a: number }
+      `{ readonly a: number }
 └─ ["b"]
    └─ is unexpected, expected "a"`
     )
     await Util.expectEffectFailure(
       S.validate(schema, { onExcessProperty: "error" })(input),
-      `{ a: number }
+      `{ readonly a: number }
 └─ ["b"]
    └─ is unexpected, expected "a"`
     )
@@ -56,7 +56,7 @@ describe("validate", () => {
       await expectValidateFailure(
         schema,
         { a: null },
-        `{ a: number }
+        `{ readonly a: number }
 └─ ["a"]
    └─ Expected a number, actual null`
       )
@@ -68,11 +68,11 @@ describe("validate", () => {
       await expectValidateSuccess(schema, { a: undefined })
       await expectValidateSuccess(schema, { a: 1, b: "b" }, { a: 1 })
       await expectValidateSuccess(schema, {}, { a: undefined })
-      await expectValidateFailure(schema, null, `Expected { a: number | undefined }, actual null`)
+      await expectValidateFailure(schema, null, `Expected { readonly a: number | undefined }, actual null`)
       await expectValidateFailure(
         schema,
         { a: "a" },
-        `{ a: number | undefined }
+        `{ readonly a: number | undefined }
 └─ ["a"]
    └─ number | undefined
       ├─ Union member

@@ -2,7 +2,7 @@ import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import { describe, expect, it } from "vitest"
 
-describe("AST > partial", () => {
+describe("partial", () => {
   describe("{ exact: false }", () => {
     it("struct", () => {
       // type A = { readonly a: string }

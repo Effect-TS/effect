@@ -165,7 +165,7 @@ describe("Class APIs", () => {
     it("the constructor should validate the input by default", () => {
       class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
       expect(() => new A({ a: "" })).toThrow(
-        new Error(`{ a: NonEmpty }
+        new Error(`{ readonly a: NonEmpty }
 └─ ["a"]
    └─ NonEmpty
       └─ Predicate refinement failure
@@ -903,7 +903,7 @@ describe("Class APIs", () => {
           schema,
           null as any,
           `A
-└─ Expected { n: number }, actual null`
+└─ Expected { readonly n: number }, actual null`
         )
       })
     })

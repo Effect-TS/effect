@@ -1,8 +1,8 @@
 import * as AST from "@effect/schema/AST"
 import { describe, expect, it } from "vitest"
 
-describe("AST > annotations", () => {
-  it("annotations", () => {
+describe("annotations", () => {
+  it("should ad annotations", () => {
     const symA = Symbol.for("a")
     const ast = AST.annotations(AST.stringKeyword, { [symA]: "A" })
     expect(ast instanceof AST.StringKeyword).toBe(true)

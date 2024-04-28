@@ -11,9 +11,9 @@ describe("pluck", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, b: "2" },
-        `({ a: string } <-> string)
+        `({ readonly a: string } <-> string)
 └─ Encoded side transformation failure
-   └─ { a: string }
+   └─ { readonly a: string }
       └─ ["a"]
          └─ Expected a string, actual 1`
       )
@@ -28,9 +28,9 @@ describe("pluck", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { [a]: 1, [b]: "2" },
-        `({ Symbol(effect/schema/test/a): string } <-> string)
+        `({ readonly Symbol(effect/schema/test/a): string } <-> string)
 └─ Encoded side transformation failure
-   └─ { Symbol(effect/schema/test/a): string }
+   └─ { readonly Symbol(effect/schema/test/a): string }
       └─ [Symbol(effect/schema/test/a)]
          └─ Expected a string, actual 1`
       )
@@ -52,9 +52,9 @@ describe("pluck", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         {},
-        `({ _tag: "A" | "B" } <-> "A" | "B")
+        `({ readonly _tag: "A" | "B" } <-> "A" | "B")
 └─ Encoded side transformation failure
-   └─ { _tag: "A" | "B" }
+   └─ { readonly _tag: "A" | "B" }
       └─ ["_tag"]
          └─ is missing`
       )
@@ -69,7 +69,7 @@ describe("pluck", () => {
       await Util.expectEncodeFailure(
         schema,
         "",
-        `({ a: NonEmpty } <-> NonEmpty)
+        `({ readonly a: NonEmpty } <-> NonEmpty)
 └─ Type side transformation failure
    └─ NonEmpty
       └─ Predicate refinement failure
@@ -85,7 +85,7 @@ describe("pluck", () => {
       await Util.expectEncodeFailure(
         schema,
         "",
-        `({ Symbol(effect/schema/test/a): NonEmpty } <-> NonEmpty)
+        `({ readonly Symbol(effect/schema/test/a): NonEmpty } <-> NonEmpty)
 └─ Type side transformation failure
    └─ NonEmpty
       └─ Predicate refinement failure

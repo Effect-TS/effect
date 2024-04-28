@@ -19,9 +19,9 @@ describe("Data", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       { a: "ok", b: "0" },
-      `({ a: string; b: number } <-> Data<{ a: string; b: number }>)
+      `({ readonly a: string; readonly b: number } <-> Data<{ readonly a: string; readonly b: number }>)
 └─ Encoded side transformation failure
-   └─ { a: string; b: number }
+   └─ { readonly a: string; readonly b: number }
       └─ ["b"]
          └─ Expected a number, actual "0"`
     )

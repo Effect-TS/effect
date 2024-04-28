@@ -97,7 +97,7 @@ describe("Formatter", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         input,
-        `{ a: string }
+        `{ readonly a: string }
 └─ ["a"]
    └─ is missing`
       )
@@ -165,7 +165,7 @@ describe("Formatter", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         input,
-        `{ a: string }
+        `{ readonly a: string }
 └─ ["b"]
    └─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
@@ -852,7 +852,7 @@ describe("Formatter", () => {
       └─ From side refinement failure
          └─ C
             └─ [0]
-               └─ { b: a string at most 2 character(s) long }
+               └─ { readonly b: a string at most 2 character(s) long }
                   └─ ["b"]
                      └─ type`
       )
@@ -872,7 +872,7 @@ describe("Formatter", () => {
       └─ From side refinement failure
          └─ C
             └─ [0]
-               └─ { b: a string at most 2 character(s) long }
+               └─ { readonly b: a string at most 2 character(s) long }
                   └─ ["b"]
                      └─ minLength`
       )
@@ -892,7 +892,7 @@ describe("Formatter", () => {
       └─ From side refinement failure
          └─ C
             └─ [0]
-               └─ { b: a string at most 2 character(s) long }
+               └─ { readonly b: a string at most 2 character(s) long }
                   └─ ["b"]
                      └─ maxLength`
       )

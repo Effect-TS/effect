@@ -20,27 +20,27 @@ describe("suspend", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         null,
-        `Expected { a: string; as: ReadonlyArray<<suspended schema>> }, actual null`
+        `Expected { readonly a: string; readonly as: ReadonlyArray<<suspended schema>> }, actual null`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a1" },
-        `{ a: string; as: ReadonlyArray<<suspended schema>> }
+        `{ readonly a: string; readonly as: ReadonlyArray<<suspended schema>> }
 └─ ["as"]
    └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a1", as: [{ a: "a2", as: [1] }] },
-        `{ a: string; as: ReadonlyArray<<suspended schema>> }
+        `{ readonly a: string; readonly as: ReadonlyArray<<suspended schema>> }
 └─ ["as"]
    └─ ReadonlyArray<<suspended schema>>
       └─ [0]
-         └─ { a: string; as: ReadonlyArray<<suspended schema>> }
+         └─ { readonly a: string; readonly as: ReadonlyArray<<suspended schema>> }
             └─ ["as"]
                └─ ReadonlyArray<<suspended schema>>
                   └─ [0]
-                     └─ Expected { a: string; as: ReadonlyArray<<suspended schema>> }, actual 1`
+                     └─ Expected { readonly a: string; readonly as: ReadonlyArray<<suspended schema>> }, actual 1`
       )
     })
 

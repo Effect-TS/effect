@@ -76,12 +76,12 @@ describe("parseJson", () => {
         schema,
         `{"a"}`,
         Util.isBun
-          ? `((JsonString <-> unknown) <-> { a: number })
+          ? `((JsonString <-> unknown) <-> { readonly a: number })
 └─ Encoded side transformation failure
     └─ (JsonString <-> unknown)
       └─ Transformation process failure
           └─ JSON Parse error: Expected ':' before value in object property definition`
-          : `((JsonString <-> unknown) <-> { a: number })
+          : `((JsonString <-> unknown) <-> { readonly a: number })
 └─ Encoded side transformation failure
    └─ (JsonString <-> unknown)
       └─ Transformation process failure
@@ -90,9 +90,9 @@ describe("parseJson", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         `{"a":"b"}`,
-        `((JsonString <-> unknown) <-> { a: number })
+        `((JsonString <-> unknown) <-> { readonly a: number })
 └─ Type side transformation failure
-   └─ { a: number }
+   └─ { readonly a: number }
       └─ ["a"]
          └─ Expected a number, actual "b"`
       )

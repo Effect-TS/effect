@@ -11,7 +11,7 @@ const expectHash = <A, I, R>(schema: S.Schema<A, I, R>, n: number) => {
   expect(S.hash(schema)).toBe(n)
 }
 
-describe("AST > .toString()", () => {
+describe(".toString()", () => {
   it("string", () => {
     const schema = S.String
     expectToString(
@@ -300,7 +300,7 @@ describe("AST > .toString()", () => {
   })
 })
 
-describe("AST > hash", () => {
+describe("hash", () => {
   it("string", () => {
     const schema = S.String
     expectHash(schema, -806008681)
