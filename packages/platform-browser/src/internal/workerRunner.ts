@@ -12,18 +12,18 @@ const cachedPorts = globalValue("@effect/platform-browser/Worker/cachedPorts", (
 function globalHandleConnect(event: MessageEvent) {
   cachedPorts.add((event as MessageEvent).ports[0])
 }
-if ("onconnect" in self) {
+if (typeof self !== "undefined" && "onconnect" in self) {
   self.onconnect = globalHandleConnect
 }
 
 const platformRunnerImpl = Runner.PlatformRunner.of({
   [Runner.PlatformRunnerTypeId]: Runner.PlatformRunnerTypeId,
   start<I, O>(shutdown: Effect.Effect<void>) {
-    return Effect.gen(function*(_) {
+    return Effect.gen(function*() {
       let currentPortId = 0
 
-      const queue = yield* _(Queue.unbounded<readonly [portId: number, message: I]>())
-      const runFork = yield* _(FiberSet.makeRuntime<never>())
+      const queue = yield* Queue.unbounded<readonly [portId: number, message: I]>()
+      const runFork = yield* FiberSet.makeRuntime<never>()
       const ports = new Map<number, MessagePort>()
       const send = (portId: number, message: O, transfer?: ReadonlyArray<unknown>) =>
         Effect.sync(() => {
@@ -88,11 +88,11 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
           const port = (event as MessageEvent).ports[0]
           handlePort(port, true)
         }
-        yield* _(Effect.addFinalizer(() =>
+        yield* Effect.addFinalizer(() =>
           Effect.sync(() => {
             ;(self as any).onconnect = globalHandleConnect
           })
-        ))
+        )
         for (const port of cachedPorts) {
           handlePort(port, true)
         }
