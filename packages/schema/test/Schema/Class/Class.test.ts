@@ -169,7 +169,6 @@ describe("Class APIs", () => {
     it("the constructor should validate the input with filter", () => {
       class A extends S.Class<A>("A")(
         { min: S.NonNegative, max: S.NonNegative },
-        undefined,
         (a, _, ast) =>
           a.min > a.max
             ? O.some(new ParseResult.Type(ast, "min should be strictly less than max", `${a.min} >= ${a.max}`))
