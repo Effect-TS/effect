@@ -2482,7 +2482,12 @@ export const mutable = <S extends Schema.Any>(schema: S): mutable<S> => make(AST
 const getExtendErrorMessage = (x: AST.AST, y: AST.AST, path: ReadonlyArray<string>) =>
   errors_.getAPIErrorMessage("Extend", `cannot extend \`${x}\` with \`${y}\` (path [${path?.join(", ")}])`)
 
-const intersectTypeLiterals = (x: AST.AST, y: AST.AST, path: ReadonlyArray<string>): AST.TypeLiteral => {
+const intersectTypeLiterals = (
+  x: AST.AST,
+  y: AST.AST,
+  filters: ReadonlyArray<AST.Refinement["filter"]>,
+  path: ReadonlyArray<string>
+): AST.TypeLiteral => {
   if (AST.isTypeLiteral(x) && AST.isTypeLiteral(y)) {
     const propertySignatures = [...x.propertySignatures]
     for (const ps of y.propertySignatures) {
@@ -2493,7 +2498,12 @@ const intersectTypeLiterals = (x: AST.AST, y: AST.AST, path: ReadonlyArray<strin
       } else {
         const { isOptional, type } = propertySignatures[i]
         path = [...path, util_.formatUnknown(name)]
-        propertySignatures[i] = new AST.PropertySignature(name, extendAST(type, ps.type, path), isOptional, true)
+        propertySignatures[i] = new AST.PropertySignature(
+          name,
+          extendAST(type, ps.type, filters, path),
+          isOptional,
+          true
+        )
       }
     }
     return new AST.TypeLiteral(
@@ -2504,65 +2514,101 @@ const intersectTypeLiterals = (x: AST.AST, y: AST.AST, path: ReadonlyArray<strin
   throw new Error(getExtendErrorMessage(x, y, path))
 }
 
-const extendAST = (x: AST.AST, y: AST.AST, path: ReadonlyArray<string>): AST.AST =>
-  AST.Union.make(intersectUnionMembers([x], [y], path))
+const extendAST = (
+  x: AST.AST,
+  y: AST.AST,
+  filters: ReadonlyArray<AST.Refinement["filter"]>,
+  path: ReadonlyArray<string>
+): AST.AST => {
+  const out = AST.Union.make(intersectUnionMembers([x], [y], filters, path))
+  if (filters.length > 0 && AST.isTypeLiteral(x) && AST.isTypeLiteral(y)) {
+    const filter: AST.Refinement["filter"] = (input, options, ast) => {
+      for (const f of filters) {
+        const o = f(input, options, ast)
+        if (option_.isSome(o)) {
+          return o
+        }
+      }
+      return option_.none()
+    }
+    return new AST.Refinement(out, filter)
+  }
+  return out
+}
 
 const intersectUnionMembers = (
   xs: ReadonlyArray<AST.AST>,
   ys: ReadonlyArray<AST.AST>,
+  filters: ReadonlyArray<AST.Refinement["filter"]>,
   path: ReadonlyArray<string>
 ): Array<AST.AST> =>
   array_.flatMap(xs, (x) =>
     array_.flatMap(ys, (y) => {
       if (AST.isUnion(x)) {
-        return intersectUnionMembers(x.types, AST.isUnion(y) ? y.types : [y], path)
+        return intersectUnionMembers(x.types, AST.isUnion(y) ? y.types : [y], filters, path)
       } else if (AST.isUnion(y)) {
-        return intersectUnionMembers([x], y.types, path)
+        return intersectUnionMembers([x], y.types, filters, path)
       }
 
-      if (AST.isTypeLiteral(x)) {
-        if (AST.isTypeLiteral(y)) {
-          return [intersectTypeLiterals(x, y, path)]
-        } else if (
-          AST.isTransformation(y) && AST.isTypeLiteralTransformation(y.transformation)
-        ) {
-          return [
-            new AST.Transformation(
-              intersectTypeLiterals(x, y.from, path),
-              intersectTypeLiterals(AST.typeAST(x), y.to, path),
-              new AST.TypeLiteralTransformation(
-                y.transformation.propertySignatureTransformations
-              )
-            )
-          ]
+      switch (x._tag) {
+        case "Refinement":
+          return [extendAST(x.from, y, [...filters, x.filter], path)]
+        case "TypeLiteral": {
+          switch (y._tag) {
+            case "Refinement":
+              return [extendAST(x, y.from, [...filters, y.filter], path)]
+            case "TypeLiteral":
+              return [intersectTypeLiterals(x, y, filters, path)]
+            case "Transformation": {
+              if (AST.isTypeLiteralTransformation(y.transformation)) {
+                return [
+                  new AST.Transformation(
+                    intersectTypeLiterals(x, y.from, filters, path),
+                    intersectTypeLiterals(AST.typeAST(x), y.to, filters, path),
+                    new AST.TypeLiteralTransformation(
+                      y.transformation.propertySignatureTransformations
+                    )
+                  )
+                ]
+              }
+              break
+            }
+          }
+          break
         }
-      } else if (
-        AST.isTransformation(x) && AST.isTypeLiteralTransformation(x.transformation)
-      ) {
-        if (AST.isTypeLiteral(y)) {
-          return [
-            new AST.Transformation(
-              intersectTypeLiterals(x.from, y, path),
-              intersectTypeLiterals(x.to, AST.typeAST(y), path),
-              new AST.TypeLiteralTransformation(
-                x.transformation.propertySignatureTransformations
-              )
-            )
-          ]
-        } else if (
-          AST.isTransformation(y) && AST.isTypeLiteralTransformation(y.transformation)
-        ) {
-          return [
-            new AST.Transformation(
-              intersectTypeLiterals(x.from, y.from, path),
-              intersectTypeLiterals(x.to, y.to, path),
-              new AST.TypeLiteralTransformation(
-                x.transformation.propertySignatureTransformations.concat(
-                  y.transformation.propertySignatureTransformations
-                )
-              )
-            )
-          ]
+        case "Transformation": {
+          if (AST.isTypeLiteralTransformation(x.transformation)) {
+            switch (y._tag) {
+              case "TypeLiteral":
+                return [
+                  new AST.Transformation(
+                    intersectTypeLiterals(x.from, y, filters, path),
+                    intersectTypeLiterals(x.to, AST.typeAST(y), filters, path),
+                    new AST.TypeLiteralTransformation(
+                      x.transformation.propertySignatureTransformations
+                    )
+                  )
+                ]
+              case "Transformation":
+                {
+                  if (AST.isTypeLiteralTransformation(y.transformation)) {
+                    return [
+                      new AST.Transformation(
+                        intersectTypeLiterals(x.from, y.from, filters, path),
+                        intersectTypeLiterals(x.to, y.to, filters, path),
+                        new AST.TypeLiteralTransformation(
+                          x.transformation.propertySignatureTransformations.concat(
+                            y.transformation.propertySignatureTransformations
+                          )
+                        )
+                      )
+                    ]
+                  }
+                }
+                break
+            }
+          }
+          break
         }
       }
       throw new Error(getExtendErrorMessage(x, y, path))
@@ -2598,7 +2644,7 @@ export const extend: {
   <Self extends Schema.Any, That extends Schema.Any>(
     self: Self,
     that: That
-  ) => make(extendAST(self.ast, that.ast, []))
+  ) => make(extendAST(self.ast, that.ast, [], []))
 )
 
 /**
@@ -2665,7 +2711,7 @@ export interface refine<A, From extends Schema.Any>
   extends AnnotableClass<refine<A, From>, A, Schema.Encoded<From>, Schema.Context<From>>
 {
   readonly from: From
-  readonly predicate: (
+  readonly filter: (
     a: Schema.Type<From>,
     options: ParseOptions,
     self: AST.Refinement
@@ -2675,21 +2721,21 @@ export interface refine<A, From extends Schema.Any>
 
 const makeRefineClass = <From extends Schema.Any, A>(
   from: From,
-  predicate: (
+  filter: (
     a: Schema.Type<From>,
     options: ParseOptions,
     self: AST.Refinement
   ) => option_.Option<ParseResult.ParseIssue>,
   ast: AST.AST
 ): refine<A, From> =>
-  class FilterClass extends make<A, Schema.Encoded<From>, Schema.Context<From>>(ast) {
+  class RefineClass extends make<A, Schema.Encoded<From>, Schema.Context<From>>(ast) {
     static override annotations(annotations: Annotations.Schema<A>): refine<A, From> {
-      return makeRefineClass(this.from, this.predicate, AST.annotations(this.ast, toASTAnnotations(annotations)))
+      return makeRefineClass(this.from, this.filter, AST.annotations(this.ast, toASTAnnotations(annotations)))
     }
 
     static from = from
 
-    static predicate = predicate
+    static filter = filter
 
     static make(a: Schema.Type<From>): A {
       return ParseResult.validateSync(this)(a)
@@ -2727,7 +2773,7 @@ export function filter<A>(
   annotations?: Annotations.Filter<A>
 ): <I, R>(self: Schema<A, I, R>) => refine<A, Schema<A, I, R>> {
   return <I, R>(self: Schema<A, I, R>) => {
-    function predicate(a: any, options: AST.ParseOptions, ast: AST.Refinement) {
+    function filter(a: any, options: AST.ParseOptions, ast: AST.Refinement) {
       const out = predicate_(a, options, ast)
       if (Predicate.isBoolean(out)) {
         return out
@@ -2738,10 +2784,10 @@ export function filter<A>(
     }
     const ast = new AST.Refinement(
       self.ast,
-      predicate,
+      filter,
       toASTAnnotations(annotations)
     )
-    return makeRefineClass(self, predicate, ast)
+    return makeRefineClass(self, filter, ast)
   }
 }
 

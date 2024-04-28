@@ -45,26 +45,26 @@ describe("fromBrand", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       -0.5,
-      `{ number | predicate }
+      `{ number | filter }
 └─ Predicate refinement failure
    └─ Expected -0.5 to be positive, Expected -0.5 to be an integer`
     )
     expect(() => S.decodeUnknownSync(schema)(-0.5)).toThrow(
-      new Error(`{ number | predicate }
+      new Error(`{ number | filter }
 └─ Predicate refinement failure
    └─ Expected -0.5 to be positive, Expected -0.5 to be an integer`)
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       -1,
-      `{ number | predicate }
+      `{ number | filter }
 └─ Predicate refinement failure
    └─ Expected -1 to be positive`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       0,
-      `{ number | predicate }
+      `{ number | filter }
 └─ Predicate refinement failure
    └─ Expected 0 to be positive`
     )
@@ -72,7 +72,7 @@ describe("fromBrand", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       1.5,
-      `{ number | predicate }
+      `{ number | filter }
 └─ Predicate refinement failure
    └─ Expected 1.5 to be an integer`
     )

@@ -405,11 +405,17 @@ const aField = schema.from.fields.a
 
 ## Patches
 
+AST
+
+- fix `AST.toString` to honor `readonly` modifiers
+- improve `AST.toString` for refinements
+
+Schema
+
 - return `BrandSchema` from `fromBrand`
 - add `SchemaClass` interface
 - add `AnnotableClass` interface
-- fix `AST.toString` to honor `readonly` modifiers
-- improve `AST.toString` for refinements
+- `extend`: add support for refinements, closes #2642
 
 ## Other Breaking Changes
 
