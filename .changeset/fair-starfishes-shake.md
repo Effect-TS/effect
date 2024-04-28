@@ -388,12 +388,26 @@ Error: { outcomes: an array of at least 1 items }
 
 In the previous version, we would have received the message "error_min_length_field" for any decoding error, which is evidently suboptimal and has now been corrected.
 
+## Filter API Interface
+
+We've introduced a new API interface to the `filter` API. This allows you to access the refined schema using the exposed `from` field:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  a: Schema.String
+}).pipe(Schema.filter(() => true))
+
+// const aField: typeof Schema.String
+const aField = schema.from.fields.a
+```
+
 ## Patches
 
 - return `BrandSchema` from `fromBrand`
 - add `SchemaClass` interface
 - add `AnnotableClass` interface
-- add `filter` API interface
 - fix `AST.toString` to honor `readonly` modifiers
 
 ## Other Breaking Changes
