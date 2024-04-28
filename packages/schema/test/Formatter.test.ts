@@ -979,6 +979,69 @@ describe("Formatter", () => {
       )
     })
   })
+
+  describe("Union", () => {
+    it("default message", async () => {
+      const schema = S.Union(S.String, S.Number)
+      const input = null
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        input,
+        `string | number
+├─ Union member
+│  └─ Expected a string, actual null
+└─ Union member
+   └─ Expected a number, actual null`
+      )
+      expectIssues(schema, input, [{
+        _tag: "Type",
+        path: [],
+        message: "Expected a string, actual null"
+      }, {
+        _tag: "Type",
+        path: [],
+        message: "Expected a number, actual null"
+      }])
+    })
+
+    it("default message with identifier", async () => {
+      const schema = S.Union(S.String, S.Number).annotations({ identifier: "identifier" })
+      const input = null
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        input,
+        `identifier
+├─ Union member
+│  └─ Expected a string, actual null
+└─ Union member
+   └─ Expected a number, actual null`
+      )
+      expectIssues(schema, input, [{
+        _tag: "Type",
+        path: [],
+        message: "Expected a string, actual null"
+      }, {
+        _tag: "Type",
+        path: [],
+        message: "Expected a number, actual null"
+      }])
+    })
+
+    it("custom message", async () => {
+      const schema = S.Union(S.String, S.Number).annotations({ message: () => "custom message" })
+      const input = null
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        input,
+        "custom message"
+      )
+      expectIssues(schema, input, [{
+        _tag: "Union",
+        path: [],
+        message: "custom message"
+      }])
+    })
+  })
 })
 
 describe("handle identifiers", () => {
