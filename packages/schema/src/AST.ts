@@ -1899,7 +1899,7 @@ export const getNumberIndexedAccess = (ast: AST): AST => {
     case "Suspend":
       return getNumberIndexedAccess(ast.f())
   }
-  throw new Error(errors_.getAPIErrorMessage("NumberIndexedAccess", `unsupported schema (${ast})`))
+  throw new Error(errors_.getAPIErrorMessage("getNumberIndexedAccess", `unsupported schema (${ast})`))
 }
 
 /** @internal */
@@ -2002,7 +2002,7 @@ export const record = (key: AST, value: AST): {
           propertySignatures.push(new PropertySignature(key.literal, value, false, true))
         } else {
           throw new Error(
-            errors_.getAPIErrorMessage("Record", `unsupported literal (${util_.formatUnknown(key.literal)})`)
+            errors_.getAPIErrorMessage("record", `unsupported literal (${util_.formatUnknown(key.literal)})`)
           )
         }
         break
@@ -2013,7 +2013,7 @@ export const record = (key: AST, value: AST): {
         key.types.forEach(go)
         break
       default:
-        throw new Error(errors_.getAPIErrorMessage("Record", `unsupported key schema (${key})`))
+        throw new Error(errors_.getAPIErrorMessage("record", `unsupported key schema (${key})`))
     }
   }
   go(key)
@@ -2059,7 +2059,7 @@ export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral | 
         if (Option.isSome(annotation)) {
           return pick(annotation.value, keys)
         }
-        throw new Error(errors_.getAPIErrorMessage("Pick", "cannot handle this kind of transformation"))
+        throw new Error(errors_.getAPIErrorMessage("pick", "cannot handle this kind of transformation"))
       }
     }
   }
@@ -2559,7 +2559,7 @@ const _keyof = (ast: AST): Array<AST> => {
     case "Transformation":
       return _keyof(ast.to)
   }
-  throw new Error(errors_.getAPIErrorMessage("KeyOf", `unsupported schema (${ast})`))
+  throw new Error(errors_.getAPIErrorMessage("keyof", `unsupported schema (${ast})`))
 }
 
 /** @internal */

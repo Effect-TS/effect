@@ -1206,6 +1206,12 @@ pipe(
   )
 )
 
+// @ts-expect-error
+S.String.annotations({ a: 1 })
+
+// $ExpectType SchemaClass<string, string, never>
+S.String.annotations({ [Symbol.for("a")]: 1 })
+
 // ---------------------------------------------
 // compose
 // ---------------------------------------------
