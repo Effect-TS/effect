@@ -418,3 +418,25 @@ In the previous version, we would have received the message "error_min_length_fi
     make(a: Brand.Unbranded<A>): A
   }
   ```
+
+  Previously, you could directly use the `Brand.Constructor`, but now you need to use its `make` constructor:
+
+  Before
+
+  ```ts
+  import { Schema } from "@effect/schema"
+
+  const UserId = Schema.Number.pipe(Schema.brand("UserId"))
+
+  console.log(UserId(1)) // 1
+  ```
+
+  Now
+
+  ```ts
+  import { Schema } from "@effect/schema"
+
+  const UserId = Schema.Number.pipe(Schema.brand("UserId"))
+
+  console.log(UserId.make(1)) // 1
+  ```
