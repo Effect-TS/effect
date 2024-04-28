@@ -171,14 +171,14 @@ describe("Class APIs", () => {
         { min: S.NonNegative, max: S.NonNegative },
         undefined,
         (a, _, ast) =>
-          a.min > a.max ?
-            O.none() :
-            O.some(new ParseResult.Type(ast, "min should be strictly less than max", `${a.min} >= ${a.max}`))
+          a.min > a.max
+            ? O.some(new ParseResult.Type(ast, "min should be strictly less than max", `${a.min} >= ${a.max}`))
+            : O.none()
       ) {}
-      expect(() => new A({ min: 2, max: 3 })).toThrow(
+      expect(() => new A({ min: 3, max: 2 })).toThrow(
         new Error(`<refinement schema>
 └─ Predicate refinement failure
-   └─ 2 >= 3`)
+   └─ 3 >= 2`)
       )
     })
 
