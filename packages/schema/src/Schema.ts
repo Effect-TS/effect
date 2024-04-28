@@ -6233,6 +6233,13 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
 
   readonly extend: <Extended = never>(identifier: string) => <newFields extends Struct.Fields>(
     fields: newFields,
+    filter?:
+      | Predicate.Predicate<Types.Simplify<Struct.Type<Fields & newFields>>>
+      | ((
+        a: Types.Simplify<Struct.Type<Fields & newFields>>,
+        options: ParseOptions,
+        self: AST.Refinement
+      ) => option_.Option<ParseResult.ParseIssue>),
     annotations?: Annotations.Schema<Extended>
   ) => [Extended] extends [never] ? MissingSelfGeneric<"Base.extend">
     : Class<
@@ -6263,6 +6270,13 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
         options: ParseOptions,
         ast: AST.Transformation
       ) => Effect.Effect<A, ParseResult.ParseIssue, R3>
+      readonly filter?:
+        | Predicate.Predicate<Types.Simplify<Struct.Type<Fields & newFields>>>
+        | ((
+          a: Types.Simplify<Struct.Type<Fields & newFields>>,
+          options: ParseOptions,
+          self: AST.Refinement
+        ) => option_.Option<ParseResult.ParseIssue>)
     },
     annotations?: Annotations.Schema<Transformed>
   ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transform">
@@ -6294,6 +6308,13 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
         options: ParseOptions,
         ast: AST.Transformation
       ) => Effect.Effect<I, ParseResult.ParseIssue, R3>
+      readonly filter?:
+        | Predicate.Predicate<Types.Simplify<Struct.Type<Fields & newFields>>>
+        | ((
+          a: Types.Simplify<Struct.Type<Fields & newFields>>,
+          options: ParseOptions,
+          self: AST.Refinement
+        ) => option_.Option<ParseResult.ParseIssue>)
     },
     annotations?: Annotations.Schema<Transformed>
   ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transformFrom">
@@ -6316,14 +6337,14 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
 export const Class = <Self = never>(identifier: string) =>
 <Fields extends Struct.Fields>(
   fields: Fields,
-  annotations?: Annotations.Schema<Self>,
   filter?:
     | Predicate.Predicate<Types.Simplify<Struct.Type<Fields>>>
     | ((
       a: Types.Simplify<Struct.Type<Fields>>,
       options: ParseOptions,
       self: AST.Refinement
-    ) => option_.Option<ParseResult.ParseIssue>) // if we use `Self` we get a recursion error, even though its not.
+    ) => option_.Option<ParseResult.ParseIssue>),
+  annotations?: Annotations.Schema<Self>
 ): [Self] extends [never] ? MissingSelfGeneric<"Class">
   : Class<
     Self,
@@ -6344,6 +6365,13 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
 <Tag extends string, Fields extends Struct.Fields>(
   tag: Tag,
   fields: Fields,
+  filter?:
+    | Predicate.Predicate<Types.Simplify<Struct.Type<Fields>>>
+    | ((
+      a: Types.Simplify<Struct.Type<Fields>>,
+      options: ParseOptions,
+      self: AST.Refinement
+    ) => option_.Option<ParseResult.ParseIssue>),
   annotations?: Annotations.Schema<Self>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
   : Class<
@@ -6362,6 +6390,7 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
     fields: extendFields({ _tag: Literal(tag) }, fields),
     Base: data_.Class,
     tag: { _tag: tag },
+    filter,
     annotations
   })
 
@@ -6373,6 +6402,13 @@ export const TaggedError = <Self = never>(identifier?: string) =>
 <Tag extends string, Fields extends Struct.Fields>(
   tag: Tag,
   fields: Fields,
+  filter?:
+    | Predicate.Predicate<Types.Simplify<Struct.Type<Fields>>>
+    | ((
+      a: Types.Simplify<Struct.Type<Fields>>,
+      options: ParseOptions,
+      self: AST.Refinement
+    ) => option_.Option<ParseResult.ParseIssue>),
   annotations?: Annotations.Schema<Self>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedError", `"Tag", `>
   : Class<
@@ -6394,6 +6430,7 @@ export const TaggedError = <Self = never>(identifier?: string) =>
     fields: extendFields({ _tag: Literal(tag) }, fields),
     Base,
     tag: { _tag: tag },
+    filter,
     annotations,
     toStringOverride(self) {
       if ((Predicate.isString(self.message) && self.message.length > 0)) {
@@ -6599,13 +6636,24 @@ const makeClass = (
     static identifier = identifier
 
     static extend<Extended>(identifier: string) {
-      return (newFields: Struct.Fields, annotations?: Annotations.Schema<Extended>) => {
+      return (
+        newFields: Struct.Fields,
+        filter?:
+          | Predicate.Predicate<Types.Simplify<Struct.Type<typeof fields & typeof newFields>>>
+          | ((
+            a: Types.Simplify<Struct.Type<typeof fields & typeof newFields>>,
+            options: ParseOptions,
+            self: AST.Refinement
+          ) => option_.Option<ParseResult.ParseIssue>),
+        annotations?: Annotations.Schema<Extended>
+      ) => {
         const extendedFields = extendFields(fields, newFields)
         return makeClass({
           kind,
           identifier,
           fields: extendedFields,
           Base: this,
+          filter,
           tag,
           annotations
         })
@@ -6625,6 +6673,7 @@ const makeClass = (
           ),
           fields: transformedFields,
           Base: this,
+          filter: options.filter,
           tag,
           annotations
         })
@@ -6642,6 +6691,7 @@ const makeClass = (
             Struct(transformedFields),
             options
           ),
+          filter: options.filter,
           fields: transformedFields,
           Base: this,
           tag,
