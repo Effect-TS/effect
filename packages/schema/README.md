@@ -5307,165 +5307,130 @@ In the first example, the error message indicates a "from" side refinement failu
 
 ## Custom Error Messages
 
+Custom messages can be set using the `message` annotation:
+
+```ts
+type MessageAnnotation = (issue: ParseIssue) =>
+  | string
+  | Effect<string>
+  | {
+      readonly message: string | Effect<string>
+      readonly override: boolean
+    }
+```
+
+Here's a simple example of how to set a custom message for the built-in `String` schema:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const MyString = Schema.String.annotations({
+  message: () => "my custom message"
+})
+```
+
 ### General Guidelines for Messages
 
 The general logic followed to determine the messages is as follows:
 
 1. If no custom messages are set, the default message related to the innermost schema where the operation (i.e., decoding or encoding) failed is used.
-2. If at least one custom message is set, then the one corresponding to the **first** failed schema is used, starting from the innermost schema to the outermost.
 
-In practice, either only default messages are used or only custom messages are used. This is to address the scenario where a user wants to define a single cumulative custom message describing the properties that a valid value must have and does not want to see default messages. Therefore, in the presence of even a single custom message, if different messages are desired for even the innermost schemas, custom messages must also be set for those.
+2. If custom messages are set, then the message corresponding to the **first** failed schema is used, starting from the innermost schema to the outermost. However, if the failing schema does not have a custom message, then **the default message is used**.
+
+3. As an opt-in feature, **you can override guideline 2** by setting the `overwrite` flag to `true`. This allows the custom message to take precedence over all other custom messages from inner schemas. This is to address the scenario where a user wants to define a single cumulative custom message describing the properties that a valid value must have and does not want to see default messages.
+
+Let's see some practical examples.
+
+### Scalar Schemas
+
+```ts
+import { Schema } from "@effect/schema"
+
+const MyString = Schema.String.annotations({
+  message: () => "my custom message"
+})
+
+const decode = Schema.decodeUnknownEither(MyString)
+
+console.log(decode(null)) // "my custom message"
+```
 
 ### Refinements
 
-You have the option to customize error messages for refinements using the `message` annotation:
+This example demonstrates setting a custom message on the last refinement in a chain of refinements. As you can see, the custom message is only used if the refinement related to `maxLength` fails; otherwise, default messages are used.
 
 ```ts
-import * as S from "@effect/schema/Schema"
+import { Schema } from "@effect/schema"
 
-const schema = S.Struct({
-  name: S.NonEmpty.annotations({
-    identifier: "Name",
-    message: () => "Name: a required non empty string"
-  }),
-  age: S.Positive.pipe(
-    S.int({ identifier: "Age", message: () => "Age: a positive integer" })
-  )
-}).annotations({ identifier: "Person" })
+const MyString = Schema.String.pipe(
+  Schema.minLength(1),
+  Schema.maxLength(2)
+).annotations({
+  // This message is displayed only if the last filter (`maxLength`) fails
+  message: () => "my custom message"
+})
 
-S.decodeUnknownSync(schema)({ name: null, age: 18 })
-/*
-throws:
-Error: Person
-└─ ["name"]
-   └─ Name: a required non empty string
-*/
+const decode = Schema.decodeUnknownEither(MyString)
 
-S.decodeUnknownSync(schema)({ name: "", age: 18 })
-/*
-throws:
-Error: Person
-└─ ["name"]
-   └─ Name: a required non empty string
-*/
+console.log(decode(null)) // "Expected a string, actual null"
+console.log(decode("")) // `Expected a string at least 1 character(s) long, actual ""`
+console.log(decode("abc")) // "my custom message"
 ```
 
 When setting multiple override messages, the one corresponding to the **first** failed predicate is used, starting from the innermost refinement to the outermost:
 
 ```ts
-import * as S from "@effect/schema/Schema"
+import { Schema } from "@effect/schema"
 
-const schema = S.Struct({
-  name: S.NonEmpty,
-  age: S.Number.annotations({ message: () => "please enter a number" }).pipe(
-    S.positive({ message: () => "please enter a positive number" }),
-    S.int({ message: () => "please enter an integer" })
+const MyString = Schema.String
+  // This message is displayed only if a non-String is passed as input
+  .annotations({ message: () => "String custom message" })
+  .pipe(
+    // This message is displayed only if the filter `minLength` fails
+    Schema.minLength(1, { message: () => "minLength custom message" }),
+    // This message is displayed only if the filter `maxLength` fails
+    Schema.maxLength(2, { message: () => "maxLength custom message" })
   )
-}).annotations({ identifier: "Person" })
 
-S.decodeUnknownSync(schema)({ name: "John", age: null })
-/*
-throws:
-Error: Person
-└─ ["age"]
-   └─ please enter a number
-*/
+const decode = Schema.decodeUnknownEither(MyString)
 
-S.decodeUnknownSync(schema)({ name: "John", age: -1 })
-/*
-throws:
-Error: Person
-└─ ["age"]
-   └─ please enter a positive number
-*/
+console.log(decode(null)) // "String custom message"
+console.log(decode("")) // "minLength custom message"
+console.log(decode("abc")) // "maxLength custom message"
+```
 
-S.decodeUnknownSync(schema)({ name: "John", age: 1.2 })
-/*
-throws:
-Error: Person
-└─ ["age"]
-   └─ please enter an integer
-*/
+You have the option to change the default behavior by setting the `override` flag to `true`. This is useful when you want to create a single comprehensive custom message that describes the required properties of a valid value without displaying default messages.
 
-S.decodeUnknownSync(schema)({ name: "John", age: -1.2 })
-/*
-throws:
-Error: Person
-└─ ["age"]
-   └─ please enter a positive number
-*/
+```ts
+import { Schema } from "@effect/schema"
+
+const MyString = Schema.String.pipe(
+  Schema.minLength(1),
+  Schema.maxLength(2)
+).annotations({
+  // By setting the `override` flag to `true`, this message will always be shown for any error
+  message: () => ({ message: "my custom message", override: true })
+})
+
+const decode = Schema.decodeUnknownEither(MyString)
+
+console.log(decode(null)) // "my custom message"
+console.log(decode("")) // "my custom message"
+console.log(decode("abc")) // "my custom message"
 ```
 
 ### Transformations
 
-When a transformation encounters an error, the default error message provides information on whether the failure happened in the "from" part, the "to" part, or within the transformation process itself:
+In this example, `IntFromString` is a transformation schema that converts strings to integers. It applies specific validation messages based on different scenarios.
 
 ```ts
-import * as ParseResult from "@effect/schema/ParseResult"
-import * as S from "@effect/schema/Schema"
+import { ParseResult, Schema } from "@effect/schema"
 
-const IntFromString = S.transformOrFail(S.String, S.Int, {
-  decode: (s, _, ast) => {
-    const n = Number(s)
-    return Number.isNaN(n)
-      ? ParseResult.fail(new ParseResult.Type(ast, s))
-      : ParseResult.succeed(n)
-  },
-  encode: (n) => ParseResult.succeed(String(n))
-}).annotations({ identifier: "IntFromString" })
-
-const schema = S.Struct({
-  name: S.NonEmpty,
-  age: IntFromString
-}).annotations({ identifier: "Person" })
-
-// "from" failure
-S.decodeUnknownSync(schema)({ name: "John", age: null })
-/*
-throws:
-Error: Person
-└─ ["age"]
-   └─ IntFromString
-      └─ Encoded side transformation failure
-         └─ Expected a string, actual null
-*/
-
-// "to" failure
-S.decodeUnknownSync(schema)({ name: "John", age: "1.2" })
-/*
-throws:
-Error: Person
-└─ ["age"]
-   └─ IntFromString
-      └─ Type side transformation failure
-         └─ Int
-            └─ Predicate refinement failure
-               └─ Expected Int (an integer), actual 1.2
-*/
-
-// "transformation" failure
-S.decodeUnknownSync(schema)({ name: "John", age: "a" })
-/*
-throws:
-Error: Person
-└─ ["age"]
-   └─ IntFromString
-      └─ Transformation process failure
-         └─ Expected IntFromString, actual "a"
-*/
-```
-
-### Transformations overrides
-
-You have the option to customize error messages for transformations using the `message` annotation:
-
-```ts
-import * as ParseResult from "@effect/schema/ParseResult"
-import * as S from "@effect/schema/Schema"
-
-const IntFromString = S.transformOrFail(
-  S.String.annotations({ message: () => "please enter a string" }),
-  S.Int.annotations({ message: () => "please enter an integer" }),
+const IntFromString = Schema.transformOrFail(
+  // This message is displayed only if the input is not a string
+  Schema.String.annotations({ message: () => "please enter a string" }),
+  // This message is displayed only if the input can be converted to a number but it's not an integer
+  Schema.Int.annotations({ message: () => "please enter an integer" }),
   {
     decode: (s, _, ast) => {
       const n = Number(s)
@@ -5475,41 +5440,74 @@ const IntFromString = S.transformOrFail(
     },
     encode: (n) => ParseResult.succeed(String(n))
   }
-).annotations({
-  identifier: "IntFromString",
-  message: () => "please enter a parseable string"
+)
+  // This message is displayed only if the input cannot be converted to a number
+  .annotations({ message: () => "please enter a parseable string" })
+
+const decode = Schema.decodeUnknownEither(IntFromString)
+
+console.log(decode(null)) // "please enter a string"
+console.log(decode("1.2")) // "please enter an integer"
+console.log(decode("not a number")) // "please enter a parseable string"
+```
+
+### Compound Schemas
+
+The custom message system becomes especially handy when dealing with complex schemas, unlike simple scalar values like `string` or `number`. For instance, consider a schema comprising nested structures, such as a struct containing an array of other structs. Let's explore an example demonstrating the advantage of default messages in handling decoding errors within such nested structures:
+
+```ts
+import { Schema } from "@effect/schema"
+import { pipe } from "effect"
+
+const schema = Schema.Struct({
+  outcomes: pipe(
+    Schema.Array(
+      Schema.Struct({
+        id: Schema.String,
+        text: pipe(
+          Schema.String,
+          Schema.message(() => "error_invalid_outcome_type"),
+          Schema.minLength(1, { message: () => "error_required_field" }),
+          Schema.maxLength(50, { message: () => "error_max_length_field" })
+        )
+      })
+    ),
+    Schema.minItems(1, { message: () => "error_min_length_field" })
+  )
 })
 
-const schema = S.Struct({
-  name: S.NonEmpty,
-  age: IntFromString
-}).annotations({ identifier: "Person" })
-
-// "from" failure
-S.decodeUnknownSync(schema)({ name: "John", age: null })
+Schema.decodeUnknownSync(schema, { errors: "all" })({
+  outcomes: []
+})
 /*
-throws:
-Error: Person
-└─ ["age"]
-   └─ please enter a string
+throws
+Error: { outcomes: an array of at least 1 items }
+└─ ["outcomes"]
+   └─ error_min_length_field
 */
 
-// "to" failure
-S.decodeUnknownSync(schema)({ name: "John", age: "1.2" })
+Schema.decodeUnknownSync(schema, { errors: "all" })({
+  outcomes: [
+    { id: "1", text: "" },
+    { id: "2", text: "this one is valid" },
+    { id: "3", text: "1234567890".repeat(6) }
+  ]
+})
 /*
-throws:
-Error: Person
-└─ ["age"]
-   └─ please enter an integer
-*/
-
-// "transformation" failure
-S.decodeUnknownSync(schema)({ name: "John", age: "a" })
-/*
-throws:
-Error: Person
-└─ ["age"]
-   └─ please enter a parseable string
+throws
+Error: { outcomes: an array of at least 1 items }
+└─ ["outcomes"]
+   └─ an array of at least 1 items
+      └─ From side refinement failure
+         └─ ReadonlyArray<{ id: string; text: a string at most 50 character(s) long }>
+            ├─ [0]
+            │  └─ { id: string; text: a string at most 50 character(s) long }
+            │     └─ ["text"]
+            │        └─ error_required_field
+            └─ [2]
+               └─ { id: string; text: a string at most 50 character(s) long }
+                  └─ ["text"]
+                     └─ error_max_length_field
 */
 ```
 
@@ -5518,12 +5516,8 @@ Error: Person
 Messages are not only of type `string` but can return an `Effect` so that they can have dependencies (for example, from an internationalization service). Let's see the outline of a similar situation with a very simplified example for demonstration purposes:
 
 ```ts
-import * as S from "@effect/schema/Schema"
-import * as TreeFormatter from "@effect/schema/TreeFormatter"
-import * as Context from "effect/Context"
-import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
-import * as Option from "effect/Option"
+import { Schema, TreeFormatter } from "@effect/schema"
+import { Context, Effect, Either, Option } from "effect"
 
 // internationalization service
 class Messages extends Context.Tag("Messages")<
@@ -5533,8 +5527,8 @@ class Messages extends Context.Tag("Messages")<
   }
 >() {}
 
-const Name = S.NonEmpty.pipe(
-  S.message(() =>
+const Name = Schema.NonEmpty.pipe(
+  Schema.message(() =>
     Effect.gen(function* (_) {
       const service = yield* _(Effect.serviceOption(Messages))
       return Option.match(service, {
@@ -5545,11 +5539,11 @@ const Name = S.NonEmpty.pipe(
   )
 )
 
-S.decodeUnknownSync(Name)("") // => throws "Invalid string"
+Schema.decodeUnknownSync(Name)("") // => throws "Invalid string"
 
-const result = S.decodeUnknownEither(Name)("").pipe(
+const result = Schema.decodeUnknownEither(Name)("").pipe(
   Either.mapLeft((error) =>
-    TreeFormatter.formatErrorEffect(error).pipe(
+    TreeFormatter.formatError(error).pipe(
       Effect.provideService(Messages, { NonEmpty: "should be non empty" }),
       Effect.runSync
     )
