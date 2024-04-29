@@ -40,7 +40,7 @@
   "devDependencies": {
     "@effect/platform": "workspace:^",
     "@effect/sql": "workspace:^",
-    "@types/better-sqlite3": "^7.6.9",
+    "@types/better-sqlite3": "^7.6.10",
     "effect": "workspace:^"
   },
   "peerDependencies": {
@@ -49,6 +49,6 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "better-sqlite3": "^9.5.0"
+    "better-sqlite3": "^9.6.0"
   }
 }

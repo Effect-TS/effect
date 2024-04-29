@@ -46,6 +46,6 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "@op-engineering/op-sqlite": "4.0.0-beta1"
+    "@op-engineering/op-sqlite": "5.0.5"
   }
 }
