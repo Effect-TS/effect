@@ -5,9 +5,6 @@ import * as N from "effect/Number"
 import * as O from "effect/Option"
 import * as SM from "effect/SortedMap"
 import { assert, describe, expect, it } from "vitest"
-import { SortedMap } from "../src/index.js"
-
-
 
 class Key implements Eq.Equal {
   constructor(readonly id: number) {}
@@ -189,7 +186,7 @@ describe("SortedMap", () => {
 
     const [excl, satisfying] = pipe(
       map1,
-      SortedMap.partition((member) => member.id <= 3)
+      SM.partition((member) => member.id <= 3)
     )
 
     assert.deepEqual(
@@ -210,7 +207,7 @@ describe("SortedMap", () => {
 
     const [excl2, satisfying2] = pipe(
       map1,
-      SortedMap.partition((member) => member.id <= 6)
+      SM.partition((member) => member.id <= 6)
     )
 
     assert.deepEqual(
@@ -231,7 +228,7 @@ describe("SortedMap", () => {
 
     const [excl3, satisfying3] = pipe(
       map1,
-      SortedMap.partition((member) => member.id === 0)
+      SM.partition((member) => member.id === 0)
     )
 
     assert.deepEqual(
