@@ -763,4 +763,4 @@ const emptyGenProxy: ProxyHandler<any> = {
 }
 
 /** @internal */
-export const makeEmptyIterable = <A extends object>(self: A): A => new Proxy(self, emptyGenProxy)
+export const withEmptyIterator = <A extends object>(self: A): A => new Proxy(self, emptyGenProxy)
