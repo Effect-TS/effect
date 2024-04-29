@@ -3361,7 +3361,7 @@ export const maxLength = <A extends string>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter(
-      (a): a is A => a.length <= maxLength,
+      (a) => a.length <= maxLength,
       {
         typeId: MaxLengthTypeId,
         description: `a string at most ${maxLength} character(s) long`,
@@ -3394,7 +3394,7 @@ export const minLength = <A extends string>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter(
-      (a): a is A => a.length >= minLength,
+      (a) => a.length >= minLength,
       {
         typeId: MinLengthTypeId,
         description: `a string at least ${minLength} character(s) long`,
@@ -3422,7 +3422,7 @@ export const pattern = <A extends string>(
   const pattern = regex.source
   return self.pipe(
     filter(
-      (a): a is A => {
+      (a) => {
         // The following line ensures that `lastIndex` is reset to `0` in case the user has specified the `g` flag
         regex.lastIndex = 0
         return regex.test(a)
@@ -3455,7 +3455,7 @@ export const startsWith = <A extends string>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter(
-      (a): a is A => a.startsWith(startsWith),
+      (a) => a.startsWith(startsWith),
       {
         typeId: { id: StartsWithTypeId, annotation: { startsWith } },
         description: `a string starting with ${JSON.stringify(startsWith)}`,
@@ -3482,7 +3482,7 @@ export const endsWith = <A extends string>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter(
-      (a): a is A => a.endsWith(endsWith),
+      (a) => a.endsWith(endsWith),
       {
         typeId: { id: EndsWithTypeId, annotation: { endsWith } },
         description: `a string ending with ${JSON.stringify(endsWith)}`,
@@ -3509,7 +3509,7 @@ export const includes = <A extends string>(
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
     filter(
-      (a): a is A => a.includes(searchString),
+      (a) => a.includes(searchString),
       {
         typeId: { id: IncludesTypeId, annotation: { includes: searchString } },
         description: `a string including ${JSON.stringify(searchString)}`,
@@ -3534,7 +3534,7 @@ export const LowercasedTypeId = Symbol.for("@effect/schema/TypeId/Lowercased")
 export const lowercased =
   <A extends string>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
     self.pipe(
-      filter((a): a is A => a === a.toLowerCase(), {
+      filter((a) => a === a.toLowerCase(), {
         typeId: LowercasedTypeId,
         description: "a lowercase string",
         ...annotations
@@ -3564,7 +3564,7 @@ export const UppercasedTypeId = Symbol.for("@effect/schema/TypeId/Uppercased")
 export const uppercased =
   <A extends string>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
     self.pipe(
-      filter((a): a is A => a === a.toUpperCase(), {
+      filter((a) => a === a.toUpperCase(), {
         typeId: UppercasedTypeId,
         description: "an uppercase string",
         ...annotations
@@ -3604,7 +3604,7 @@ export const length = <A extends string>(
   const maxLength = Predicate.isObject(length) ? Math.max(minLength, Math.floor(length.max)) : minLength
   if (minLength !== maxLength) {
     return self.pipe(
-      filter((a): a is A => a.length >= minLength && a.length <= maxLength, {
+      filter((a) => a.length >= minLength && a.length <= maxLength, {
         typeId: LengthTypeId,
         description: `a string at least ${minLength} character(s) and at most ${maxLength} character(s) long`,
         jsonSchema: { minLength, maxLength },
@@ -3613,7 +3613,7 @@ export const length = <A extends string>(
     )
   }
   return self.pipe(
-    filter((a): a is A => a.length === minLength, {
+    filter((a) => a.length === minLength, {
       typeId: LengthTypeId,
       description: minLength === 1 ? `a single character` : `a string ${minLength} character(s) long`,
       jsonSchema: { minLength, maxLength: minLength },
@@ -3835,7 +3835,7 @@ export const FiniteTypeId = Symbol.for("@effect/schema/TypeId/Finite")
 export const finite =
   <A extends number>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
     self.pipe(
-      filter((a): a is A => Number.isFinite(a), {
+      filter((a) => Number.isFinite(a), {
         typeId: FiniteTypeId,
         description: "a finite number",
         ...annotations
@@ -3866,7 +3866,7 @@ export const greaterThan = <A extends number>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => a > min, {
+    filter((a) => a > min, {
       typeId: GreaterThanTypeId,
       description: min === 0 ? "a positive number" : `a number greater than ${min}`,
       jsonSchema: { exclusiveMinimum: min },
@@ -3898,7 +3898,7 @@ export const greaterThanOrEqualTo = <A extends number>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => a >= min, {
+    filter((a) => a >= min, {
       typeId: GreaterThanOrEqualToTypeId,
       description: min === 0 ? "a non-negative number" : `a number greater than or equal to ${min}`,
       jsonSchema: { minimum: min },
@@ -3922,7 +3922,7 @@ export const multipleOf = <A extends number>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => number_.remainder(a, divisor) === 0, {
+    filter((a) => number_.remainder(a, divisor) === 0, {
       typeId: MultipleOfTypeId,
       description: `a number divisible by ${divisor}`,
       jsonSchema: { multipleOf: Math.abs(divisor) }, // spec requires positive divisor
@@ -3949,7 +3949,7 @@ export type IntTypeId = typeof IntTypeId
 export const int =
   <A extends number>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
     self.pipe(
-      filter((a): a is A => Number.isSafeInteger(a), {
+      filter((a) => Number.isSafeInteger(a), {
         typeId: IntTypeId,
         title: "integer",
         description: "an integer",
@@ -3980,7 +3980,7 @@ export const lessThan =
   <A extends number>(max: number, annotations?: Annotations.Filter<A>) =>
   <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
     self.pipe(
-      filter((a): a is A => a < max, {
+      filter((a) => a < max, {
         typeId: LessThanTypeId,
         description: max === 0 ? "a negative number" : `a number less than ${max}`,
         jsonSchema: { exclusiveMaximum: max },
@@ -4012,7 +4012,7 @@ export const lessThanOrEqualTo = <A extends number>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => a <= max, {
+    filter((a) => a <= max, {
       typeId: LessThanOrEqualToTypeId,
       description: max === 0 ? "a non-positive number" : `a number less than or equal to ${max}`,
       jsonSchema: { maximum: max },
@@ -4045,7 +4045,7 @@ export const between = <A extends number>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => a >= min && a <= max, {
+    filter((a) => a >= min && a <= max, {
       typeId: BetweenTypeId,
       description: `a number between ${min} and ${max}`,
       jsonSchema: { maximum: max, minimum: min },
@@ -4066,7 +4066,7 @@ export const NonNaNTypeId = Symbol.for("@effect/schema/TypeId/NonNaN")
 export const nonNaN =
   <A extends number>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
     self.pipe(
-      filter((a): a is A => !Number.isNaN(a), {
+      filter((a) => !Number.isNaN(a), {
         typeId: NonNaNTypeId,
         description: "a number excluding NaN",
         ...annotations
@@ -4268,7 +4268,7 @@ export const greaterThanBigInt = <A extends bigint>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => a > min, {
+    filter((a) => a > min, {
       typeId: { id: GreaterThanBigIntTypeId, annotation: { min } },
       description: min === 0n ? "a positive bigint" : `a bigint greater than ${min}n`,
       ...annotations
@@ -4297,7 +4297,7 @@ export const greaterThanOrEqualToBigInt = <A extends bigint>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => a >= min, {
+    filter((a) => a >= min, {
       typeId: { id: GreaterThanOrEqualToBigIntTypeId, annotation: { min } },
       description: min === 0n
         ? "a non-negative bigint"
@@ -4328,7 +4328,7 @@ export const lessThanBigInt = <A extends bigint>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => a < max, {
+    filter((a) => a < max, {
       typeId: { id: LessThanBigIntTypeId, annotation: { max } },
       description: max === 0n ? "a negative bigint" : `a bigint less than ${max}n`,
       ...annotations
@@ -4357,7 +4357,7 @@ export const lessThanOrEqualToBigInt = <A extends bigint>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => a <= max, {
+    filter((a) => a <= max, {
       typeId: { id: LessThanOrEqualToBigIntTypeId, annotation: { max } },
       description: max === 0n ? "a non-positive bigint" : `a bigint less than or equal to ${max}n`,
       ...annotations
@@ -4387,7 +4387,7 @@ export const betweenBigInt = <A extends bigint>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => a >= min && a <= max, {
+    filter((a) => a >= min && a <= max, {
       typeId: { id: BetweenBigIntTypeId, annotation: { max, min } },
       description: `a bigint between ${min}n and ${max}n`,
       ...annotations
@@ -4692,7 +4692,7 @@ export const lessThanDuration = <A extends duration_.Duration>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => duration_.lessThan(a, max), {
+    filter((a) => duration_.lessThan(a, max), {
       typeId: { id: LessThanDurationTypeId, annotation: { max } },
       description: `a Duration less than ${duration_.decode(max)}`,
       ...annotations
@@ -4717,7 +4717,7 @@ export const lessThanOrEqualToDuration = <A extends duration_.Duration>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => duration_.lessThanOrEqualTo(a, max), {
+    filter((a) => duration_.lessThanOrEqualTo(a, max), {
       typeId: { id: LessThanDurationTypeId, annotation: { max } },
       description: `a Duration less than or equal to ${duration_.decode(max)}`,
       ...annotations
@@ -4740,7 +4740,7 @@ export const greaterThanDuration = <A extends duration_.Duration>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => duration_.greaterThan(a, min), {
+    filter((a) => duration_.greaterThan(a, min), {
       typeId: { id: GreaterThanDurationTypeId, annotation: { min } },
       description: `a Duration greater than ${duration_.decode(min)}`,
       ...annotations
@@ -4765,7 +4765,7 @@ export const greaterThanOrEqualToDuration = <A extends duration_.Duration>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => duration_.greaterThanOrEqualTo(a, min), {
+    filter((a) => duration_.greaterThanOrEqualTo(a, min), {
       typeId: { id: GreaterThanOrEqualToDurationTypeId, annotation: { min } },
       description: `a Duration greater than or equal to ${duration_.decode(min)}`,
       ...annotations
@@ -4789,7 +4789,7 @@ export const betweenDuration = <A extends duration_.Duration>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => duration_.between(a, { minimum, maximum }), {
+    filter((a) => duration_.between(a, { minimum, maximum }), {
       typeId: { id: BetweenDurationTypeId, annotation: { maximum, minimum } },
       description: `a Duration between ${duration_.decode(minimum)} and ${duration_.decode(maximum)}`,
       ...annotations
@@ -5871,7 +5871,7 @@ export const greaterThanBigDecimal = <A extends bigDecimal_.BigDecimal>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => bigDecimal_.greaterThan(a, min), {
+    filter((a) => bigDecimal_.greaterThan(a, min), {
       typeId: { id: GreaterThanBigDecimalTypeId, annotation: { min } },
       description: `a BigDecimal greater than ${bigDecimal_.format(min)}`,
       ...annotations
@@ -5896,7 +5896,7 @@ export const greaterThanOrEqualToBigDecimal = <A extends bigDecimal_.BigDecimal>
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => bigDecimal_.greaterThanOrEqualTo(a, min), {
+    filter((a) => bigDecimal_.greaterThanOrEqualTo(a, min), {
       typeId: { id: GreaterThanOrEqualToBigDecimalTypeId, annotation: { min } },
       description: `a BigDecimal greater than or equal to ${bigDecimal_.format(min)}`,
       ...annotations
@@ -5919,7 +5919,7 @@ export const lessThanBigDecimal = <A extends bigDecimal_.BigDecimal>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => bigDecimal_.lessThan(a, max), {
+    filter((a) => bigDecimal_.lessThan(a, max), {
       typeId: { id: LessThanBigDecimalTypeId, annotation: { max } },
       description: `a BigDecimal less than ${bigDecimal_.format(max)}`,
       ...annotations
@@ -5944,7 +5944,7 @@ export const lessThanOrEqualToBigDecimal = <A extends bigDecimal_.BigDecimal>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => bigDecimal_.lessThanOrEqualTo(a, max), {
+    filter((a) => bigDecimal_.lessThanOrEqualTo(a, max), {
       typeId: { id: LessThanOrEqualToBigDecimalTypeId, annotation: { max } },
       description: `a BigDecimal less than or equal to ${bigDecimal_.format(max)}`,
       ...annotations
@@ -5968,7 +5968,7 @@ export const positiveBigDecimal = <A extends bigDecimal_.BigDecimal>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => bigDecimal_.isPositive(a), {
+    filter((a) => bigDecimal_.isPositive(a), {
       typeId: { id: PositiveBigDecimalTypeId, annotation: {} },
       description: `a positive BigDecimal`,
       ...annotations
@@ -6003,7 +6003,7 @@ export const nonNegativeBigDecimal = <A extends bigDecimal_.BigDecimal>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => a.value >= 0n, {
+    filter((a) => a.value >= 0n, {
       typeId: { id: NonNegativeBigDecimalTypeId, annotation: {} },
       description: `a non-negative BigDecimal`,
       ...annotations
@@ -6038,7 +6038,7 @@ export const negativeBigDecimal = <A extends bigDecimal_.BigDecimal>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => bigDecimal_.isNegative(a), {
+    filter((a) => bigDecimal_.isNegative(a), {
       typeId: { id: NegativeBigDecimalTypeId, annotation: {} },
       description: `a negative BigDecimal`,
       ...annotations
@@ -6073,7 +6073,7 @@ export const nonPositiveBigDecimal = <A extends bigDecimal_.BigDecimal>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => a.value <= 0n, {
+    filter((a) => a.value <= 0n, {
       typeId: { id: NonPositiveBigDecimalTypeId, annotation: {} },
       description: `a non-positive BigDecimal`,
       ...annotations
@@ -6108,7 +6108,7 @@ export const betweenBigDecimal = <A extends bigDecimal_.BigDecimal>(
 ) =>
 <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
   self.pipe(
-    filter((a): a is A => bigDecimal_.between(a, { minimum, maximum }), {
+    filter((a) => bigDecimal_.between(a, { minimum, maximum }), {
       typeId: { id: BetweenBigDecimalTypeId, annotation: { maximum, minimum } },
       description: `a BigDecimal between ${bigDecimal_.format(minimum)} and ${bigDecimal_.format(maximum)}`,
       ...annotations
