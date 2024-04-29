@@ -1,6 +1,7 @@
 import * as A from "@effect/schema/Arbitrary"
 import * as S from "@effect/schema/Schema"
-import { describe, expect, it } from "vitest"
+import { jestExpect as expect } from "@jest/expect"
+import { describe, it } from "vitest"
 
 const expectConstraints = <A, I>(schema: S.Schema<A, I>, constraints: A.Constraints) => {
   expect(A.getConstraints(schema.ast as any)).toEqual(constraints)

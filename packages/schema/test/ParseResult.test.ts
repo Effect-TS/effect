@@ -1,9 +1,10 @@
 import * as AST from "@effect/schema/AST"
 import * as P from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
+import { jestExpect as expect } from "@jest/expect"
 import { Effect, Either, Exit } from "effect"
 import { inspect } from "node:util"
-import { describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
 describe("ParseResult", () => {
   const typeParseError1 = P.parseError(new P.Type(S.String.ast, null))

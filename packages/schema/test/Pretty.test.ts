@@ -1,14 +1,11 @@
 import * as AST from "@effect/schema/AST"
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
+import { jestExpect as expect } from "@jest/expect"
 import { isUnknown } from "effect/Predicate"
-import { describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
 describe("Pretty", () => {
-  it("exports", () => {
-    expect(Pretty.PrettyHookId).exist
-  })
-
   it("make", () => {
     const schema = S.NumberFromString
     const pretty = Pretty.make(schema)

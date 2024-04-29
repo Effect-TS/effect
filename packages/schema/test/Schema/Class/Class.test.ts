@@ -5,12 +5,13 @@ import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
 import * as Util from "@effect/schema/test/TestUtils"
+import { jestExpect as expect } from "@jest/expect"
 import { Context, Effect, Exit, pipe, Struct } from "effect"
 import * as Data from "effect/Data"
 import * as Equal from "effect/Equal"
 import * as O from "effect/Option"
 import * as Request from "effect/Request"
-import { assert, describe, expect, it } from "vitest"
+import { assert, describe, it } from "vitest"
 
 const expectFields = (f1: S.Struct.Fields, f2: S.Struct.Fields) => {
   expect(Reflect.ownKeys(f1).sort()).toStrictEqual(Reflect.ownKeys(f2).sort())
@@ -712,7 +713,7 @@ describe("Class APIs", () => {
 
     const err = new MyError({ id: 1 })
 
-    expect(String(err)).include(`MyError: bad id: 1`)
+    expect(String(err).includes(`MyError: bad id: 1`)).toBe(true)
     expect(String(err)).toContain("Class.test.ts:")
     expect(err.stack).toContain("Class.test.ts:")
     expect(err._tag).toEqual("MyError")

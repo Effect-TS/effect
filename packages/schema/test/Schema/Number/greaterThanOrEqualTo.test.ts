@@ -2,7 +2,8 @@ import * as P from "@effect/schema/ParseResult"
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import { describe, expect, it } from "vitest"
+import { jestExpect as expect } from "@jest/expect"
+import { describe, it } from "vitest"
 
 describe("greaterThanOrEqualTo", () => {
   const schema = S.greaterThanOrEqualTo(0)(S.Number)

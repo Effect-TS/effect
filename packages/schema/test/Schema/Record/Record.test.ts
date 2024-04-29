@@ -1,8 +1,9 @@
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
+import { jestExpect as expect } from "@jest/expect"
 import * as Either from "effect/Either"
-import { assert, describe, expect, it } from "vitest"
+import { assert, describe, it } from "vitest"
 
 describe("record", () => {
   it("annotations()", () => {

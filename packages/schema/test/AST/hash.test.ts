@@ -1,5 +1,6 @@
 import * as S from "@effect/schema/Schema"
-import { describe, expect, it } from "vitest"
+import { jestExpect as expect } from "@jest/expect"
+import { describe, it } from "vitest"
 
 const expectToString = <A, I, R>(schema: S.Schema<A, I, R>, expected: string) => {
   const actual = JSON.stringify(schema.ast.toJSON(), null, 2)

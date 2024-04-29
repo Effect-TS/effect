@@ -1,7 +1,8 @@
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
+import { jestExpect as expect } from "@jest/expect"
 import { identity } from "effect"
-import { describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
 const expectSameReference = (schema: S.Schema.Any) => {
   const mutable = AST.mutable(AST.isSuspend(schema.ast) ? schema.ast.f() : schema.ast)
