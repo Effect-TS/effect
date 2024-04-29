@@ -1406,7 +1406,7 @@ export interface Adapter {
 }
 
 /**
- * Returns a effect that will never produce anything. The moral equivalent of
+ * Returns an effect that will never produce anything. The moral equivalent of
  * `while(true) {}`, only without the wasted CPU cycles.
  *
  * @since 2.0.0
