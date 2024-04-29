@@ -187,6 +187,52 @@ console.log(PersonSchema.make({ name: "name2" })) // { age: 0, timestamp: 171423
 
 Note how the `timestamp` field varies.
 
+Default values are also "portable", meaning that if you reuse the same property signature in another schema, the default is carried over:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const PersonSchema = Schema.Struct({
+  name: Schema.NonEmpty,
+  age: Schema.Number.pipe(
+    Schema.propertySignature,
+    Schema.withConstructorDefault(() => 0)
+  ),
+  timestamp: Schema.Number.pipe(
+    Schema.propertySignature,
+    Schema.withConstructorDefault(() => new Date().getTime())
+  )
+})
+
+const AnotherSchema = Schema.Struct({
+  foo: Schema.String,
+  age: PersonSchema.fields.age
+})
+
+console.log(AnotherSchema.make({ foo: "bar" })) // => { foo: 'bar', age: 0 }
+```
+
+Defaults can also be applied using the `Class` API:
+
+```ts
+import { Schema } from "@effect/schema"
+
+class Person extends Schema.Class<Person>("Person")({
+  name: Schema.NonEmpty,
+  age: Schema.Number.pipe(
+    Schema.propertySignature,
+    Schema.withConstructorDefault(() => 0)
+  ),
+  timestamp: Schema.Number.pipe(
+    Schema.propertySignature,
+    Schema.withConstructorDefault(() => new Date().getTime())
+  )
+}) {}
+
+console.log(new Person({ name: "name1" })) // Person { age: 0, timestamp: 1714400867208, name: 'name1' }
+console.log(new Person({ name: "name2" })) // Person { age: 0, timestamp: 1714400867215, name: 'name2' }
+```
+
 ## Introducing Schemas as Classes
 
 We've introduced a new method for defining schemas using classes. This approach provides opaque schema types, offering a clearer representation. Let's look at how you can define and use schemas as classes.
