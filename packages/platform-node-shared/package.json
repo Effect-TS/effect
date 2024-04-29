@@ -54,7 +54,7 @@
     "@types/node": "^20.12.7",
     "@types/tar": "^6.1.12",
     "effect": "workspace:^",
-    "tar": "^6.1.13"
+    "tar": "^6"
   },
   "effect": {
     "generateExports": {

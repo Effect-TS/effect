@@ -46,6 +46,6 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "@sqlite.org/sqlite-wasm": "3.45.2-build1"
+    "@sqlite.org/sqlite-wasm": "3.45.3-build1"
   }
 }

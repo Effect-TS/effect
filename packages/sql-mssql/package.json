@@ -48,6 +48,6 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "tedious": "^18"
+    "tedious": "^18.2.0"
   }
 }
