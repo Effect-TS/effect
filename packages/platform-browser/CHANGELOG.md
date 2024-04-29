@@ -1,5 +1,15 @@
 # @effect/platform-browser
 
+## 0.33.8
+
+### Patch Changes
+
+- [#2651](https://github.com/Effect-TS/effect/pull/2651) [`46b1327`](https://github.com/Effect-TS/effect/commit/46b1327ff0eadb215fd98b40375738cc15f1bc58) Thanks [@tim-smart](https://github.com/tim-smart)! - fix issue where "self" can be undefined in /platform workers
+
+- Updated dependencies [[`16039a0`](https://github.com/Effect-TS/effect/commit/16039a08f04f11545e2fdf40952788a8f9cef04f), [`557707b`](https://github.com/Effect-TS/effect/commit/557707bc9e5f230c8964d2757012075c34339b5c), [`d1d33e1`](https://github.com/Effect-TS/effect/commit/d1d33e10b25109f44b5ab1c6e4d778a59c0d3eeb), [`f4ed306`](https://github.com/Effect-TS/effect/commit/f4ed3068a70b50302d078a30d18ca3cfd2bc679c), [`661004f`](https://github.com/Effect-TS/effect/commit/661004f4bf5f8b25f5a0678c21a3a822188ce461), [`e79cb83`](https://github.com/Effect-TS/effect/commit/e79cb83d3b19098bc40a3012e2a059b8426306c2)]:
+  - @effect/platform@0.50.8
+  - effect@3.0.8
+
 ## 0.33.7
 
 ### Patch Changes
