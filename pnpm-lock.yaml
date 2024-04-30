@@ -71,14 +71,14 @@ importers:
         specifier: ^7.8.0
         version: 7.8.0(eslint@8.57.0)(typescript@5.4.5)
       '@vitest/browser':
-        specifier: ^1.5.3
-        version: 1.5.3(playwright@1.43.1)(vitest@1.5.3)
+        specifier: 1.5.2
+        version: 1.5.2(playwright@1.43.1)(vitest@1.5.2)
       '@vitest/coverage-v8':
-        specifier: ^1.5.3
-        version: 1.5.3(vitest@1.5.3(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.3)(happy-dom@14.7.1)(terser@5.31.0))
+        specifier: 1.5.2
+        version: 1.5.2(vitest@1.5.2(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.2)(happy-dom@14.7.1)(terser@5.31.0))
       '@vitest/web-worker':
-        specifier: ^1.5.3
-        version: 1.5.3(vitest@1.5.3(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.3)(happy-dom@14.7.1)(terser@5.31.0))
+        specifier: 1.5.2
+        version: 1.5.2(vitest@1.5.2(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.2)(happy-dom@14.7.1)(terser@5.31.0))
       babel-plugin-annotate-pure-calls:
         specifier: ^0.4.0
         version: 0.4.0(@babel/core@7.24.5)
@@ -131,8 +131,8 @@ importers:
         specifier: ^5.2.10
         version: 5.2.10(@types/node@20.12.7)(terser@5.31.0)
       vitest:
-        specifier: ^1.5.3
-        version: 1.5.3(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.3)(happy-dom@14.7.1)(terser@5.31.0)
+        specifier: 1.5.2
+        version: 1.5.2(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.2)(happy-dom@14.7.1)(terser@5.31.0)
 
   packages/cli:
     dependencies:
@@ -217,7 +217,7 @@ importers:
         version: 3.0.7
       vitest-websocket-mock:
         specifier: ^0.3.0
-        version: 0.3.0(vitest@1.5.3(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.3)(happy-dom@14.7.1)(terser@5.31.0))
+        version: 0.3.0(vitest@1.5.3(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.2)(happy-dom@14.7.1)(terser@5.31.0))
       ws:
         specifier: ^8.17.0
         version: 8.17.0
@@ -618,7 +618,7 @@ importers:
         version: link:../effect/dist
       vitest:
         specifier: ^1.5.3
-        version: 1.5.3(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.3)(happy-dom@14.7.1)(terser@5.31.0)
+        version: 1.5.3(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.2)(happy-dom@14.7.1)(terser@5.31.0)
     publishDirectory: dist
 
 packages:
@@ -2676,12 +2676,12 @@ packages:
   '@ungap/structured-clone@1.2.0':
     resolution: {integrity: sha512-zuVdFrMJiuCDQUMCzQaD6KL28MjnqqN8XnAqiEq9PNm/hCPTSGfrXCOfwj1ow4LFb/tNymJPwsNbVePc1xFqrQ==}
 
-  '@vitest/browser@1.5.3':
-    resolution: {integrity: sha512-75XHo+qzbTqvb7kvOCZt4EAphugo8HbeepqcXLWqQiNCYd/PkBWzPu5pSptGVt86WDd8DUVybyq/nGVY1XfWZA==}
+  '@vitest/browser@1.5.2':
+    resolution: {integrity: sha512-9XuSvOQBvupBOCtMHtWULGlIw53Lusbnr/Owil7yIJ8bID+xo/xz0KLaVGnKCJVhPrv3CtacrmC0on8erXoZ3g==}
     peerDependencies:
       playwright: '*'
       safaridriver: '*'
-      vitest: 1.5.3
+      vitest: 1.5.2
       webdriverio: '*'
     peerDependenciesMeta:
       playwright:
@@ -2691,28 +2691,43 @@ packages:
       webdriverio:
         optional: true
 
-  '@vitest/coverage-v8@1.5.3':
-    resolution: {integrity: sha512-DPyGSu/fPHOJuPxzFSQoT4N/Fu/2aJfZRtEpEp8GI7NHsXBGE94CQ+pbEGBUMFjatsHPDJw/+TAF9r4ens2CNw==}
+  '@vitest/coverage-v8@1.5.2':
+    resolution: {integrity: sha512-QJqxRnbCwNtbbegK9E93rBmhN3dbfG1bC/o52Bqr0zGCYhQzwgwvrJBG7Q8vw3zilX6Ryy6oa/mkZku2lLJx1Q==}
     peerDependencies:
-      vitest: 1.5.3
+      vitest: 1.5.2
+
+  '@vitest/expect@1.5.2':
+    resolution: {integrity: sha512-rf7MTD1WCoDlN3FfYJ9Llfp0PbdtOMZ3FIF0AVkDnKbp3oiMW1c8AmvRZBcqbAhDUAvF52e9zx4WQM1r3oraVA==}
 
   '@vitest/expect@1.5.3':
     resolution: {integrity: sha512-y+waPz31pOFr3rD7vWTbwiLe5+MgsMm40jTZbQE8p8/qXyBX3CQsIXRx9XK12IbY7q/t5a5aM/ckt33b4PxK2g==}
 
+  '@vitest/runner@1.5.2':
+    resolution: {integrity: sha512-7IJ7sJhMZrqx7HIEpv3WrMYcq8ZNz9L6alo81Y6f8hV5mIE6yVZsFoivLZmr0D777klm1ReqonE9LyChdcmw6g==}
+
   '@vitest/runner@1.5.3':
     resolution: {integrity: sha512-7PlfuReN8692IKQIdCxwir1AOaP5THfNkp0Uc4BKr2na+9lALNit7ub9l3/R7MP8aV61+mHKRGiqEKRIwu6iiQ==}
+
+  '@vitest/snapshot@1.5.2':
+    resolution: {integrity: sha512-CTEp/lTYos8fuCc9+Z55Ga5NVPKUgExritjF5VY7heRFUfheoAqBneUlvXSUJHUZPjnPmyZA96yLRJDP1QATFQ==}
 
   '@vitest/snapshot@1.5.3':
     resolution: {integrity: sha512-K3mvIsjyKYBhNIDujMD2gfQEzddLe51nNOAf45yKRt/QFJcUIeTQd2trRvv6M6oCBHNVnZwFWbQ4yj96ibiDsA==}
 
+  '@vitest/spy@1.5.2':
+    resolution: {integrity: sha512-xCcPvI8JpCtgikT9nLpHPL1/81AYqZy1GCy4+MCHBE7xi8jgsYkULpW5hrx5PGLgOQjUpb6fd15lqcriJ40tfQ==}
+
   '@vitest/spy@1.5.3':
     resolution: {integrity: sha512-Llj7Jgs6lbnL55WoshJUUacdJfjU2honvGcAJBxhra5TPEzTJH8ZuhI3p/JwqqfnTr4PmP7nDmOXP53MS7GJlg==}
+
+  '@vitest/utils@1.5.2':
+    resolution: {integrity: sha512-sWOmyofuXLJ85VvXNsroZur7mOJGiQeM0JN3/0D1uU8U9bGFM69X1iqHaRXl6R8BwaLY6yPCogP257zxTzkUdA==}
 
   '@vitest/utils@1.5.3':
     resolution: {integrity: sha512-rE9DTN1BRhzkzqNQO+kw8ZgfeEBCLXiHJwetk668shmNBpSagQxneT5eSqEBLP+cqSiAeecvQmbpFfdMyLcIQA==}
 
-  '@vitest/web-worker@1.5.3':
-    resolution: {integrity: sha512-mgMzjh9w5HRdayy3NrN40AEbohIr14s/cDCvydwX4/V2ahm+S2y2PG1SDx9yMhAZrLVrNicysSN7xoQ5SjfQ+g==}
+  '@vitest/web-worker@1.5.2':
+    resolution: {integrity: sha512-6GYj8hJdJEOZqCe/RAs8kIBmb5oKZn0hUf+cCX8UdwBOiuS8nwvLlG+69aQTwvXKkz3ccOwDu89fNU2M3dNsaw==}
     peerDependencies:
       vitest: ^1.0.0
 
@@ -6105,6 +6120,11 @@ packages:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
 
+  vite-node@1.5.2:
+    resolution: {integrity: sha512-Y8p91kz9zU+bWtF7HGt6DVw2JbhyuB2RlZix3FPYAYmUyZ3n7iTp8eSyLyY6sxtPegvxQtmlTMhfPhUfCUF93A==}
+    engines: {node: ^18.0.0 || >=20.0.0}
+    hasBin: true
+
   vite-node@1.5.3:
     resolution: {integrity: sha512-axFo00qiCpU/JLd8N1gu9iEYL3xTbMbMrbe5nDp9GL0nb6gurIdZLkkFogZXWnE8Oyy5kfSLwNVIcVsnhE7lgQ==}
     engines: {node: ^18.0.0 || >=20.0.0}
@@ -6142,6 +6162,31 @@ packages:
     resolution: {integrity: sha512-kTEFtfHIUDiiiEBj/CR6WajugqObjnuNdolGRJA3vo3Xt+fmfd1Ghwe+NpJytG6OE57noHOCUXzs2R9XUF0cwg==}
     peerDependencies:
       vitest: '>=1 <2'
+
+  vitest@1.5.2:
+    resolution: {integrity: sha512-l9gwIkq16ug3xY7BxHwcBQovLZG75zZL0PlsiYQbf76Rz6QGs54416UWMtC0jXeihvHvcHrf2ROEjkQRVpoZYw==}
+    engines: {node: ^18.0.0 || >=20.0.0}
+    hasBin: true
+    peerDependencies:
+      '@edge-runtime/vm': '*'
+      '@types/node': ^18.0.0 || >=20.0.0
+      '@vitest/browser': 1.5.2
+      '@vitest/ui': 1.5.2
+      happy-dom: '*'
+      jsdom: '*'
+    peerDependenciesMeta:
+      '@edge-runtime/vm':
+        optional: true
+      '@types/node':
+        optional: true
+      '@vitest/browser':
+        optional: true
+      '@vitest/ui':
+        optional: true
+      happy-dom:
+        optional: true
+      jsdom:
+        optional: true
 
   vitest@1.5.3:
     resolution: {integrity: sha512-2oM7nLXylw3mQlW6GXnRriw+7YvZFk/YNV8AxIC3Z3MfFbuziLGWP9GPxxu/7nRlXhqyxBikpamr+lEEj1sUEw==}
@@ -8791,16 +8836,26 @@ snapshots:
 
   '@ungap/structured-clone@1.2.0': {}
 
-  '@vitest/browser@1.5.3(playwright@1.43.1)(vitest@1.5.3)':
+  '@vitest/browser@1.5.2(playwright@1.43.1)(vitest@1.5.2)':
     dependencies:
-      '@vitest/utils': 1.5.3
+      '@vitest/utils': 1.5.2
       magic-string: 0.30.10
       sirv: 2.0.4
-      vitest: 1.5.3(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.3)(happy-dom@14.7.1)(terser@5.31.0)
+      vitest: 1.5.2(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.2)(happy-dom@14.7.1)(terser@5.31.0)
     optionalDependencies:
       playwright: 1.43.1
 
-  '@vitest/coverage-v8@1.5.3(vitest@1.5.3(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.3)(happy-dom@14.7.1)(terser@5.31.0))':
+  '@vitest/browser@1.5.2(playwright@1.43.1)(vitest@1.5.3)':
+    dependencies:
+      '@vitest/utils': 1.5.2
+      magic-string: 0.30.10
+      sirv: 2.0.4
+      vitest: 1.5.3(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.2)(happy-dom@14.7.1)(terser@5.31.0)
+    optionalDependencies:
+      playwright: 1.43.1
+    optional: true
+
+  '@vitest/coverage-v8@1.5.2(vitest@1.5.2(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.2)(happy-dom@14.7.1)(terser@5.31.0))':
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@bcoe/v8-coverage': 0.2.3
@@ -8815,9 +8870,15 @@ snapshots:
       std-env: 3.7.0
       strip-literal: 2.1.0
       test-exclude: 6.0.0
-      vitest: 1.5.3(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.3)(happy-dom@14.7.1)(terser@5.31.0)
+      vitest: 1.5.2(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.2)(happy-dom@14.7.1)(terser@5.31.0)
     transitivePeerDependencies:
       - supports-color
+
+  '@vitest/expect@1.5.2':
+    dependencies:
+      '@vitest/spy': 1.5.2
+      '@vitest/utils': 1.5.2
+      chai: 4.4.1
 
   '@vitest/expect@1.5.3':
     dependencies:
@@ -8825,11 +8886,23 @@ snapshots:
       '@vitest/utils': 1.5.3
       chai: 4.4.1
 
+  '@vitest/runner@1.5.2':
+    dependencies:
+      '@vitest/utils': 1.5.2
+      p-limit: 5.0.0
+      pathe: 1.1.2
+
   '@vitest/runner@1.5.3':
     dependencies:
       '@vitest/utils': 1.5.3
       p-limit: 5.0.0
       pathe: 1.1.2
+
+  '@vitest/snapshot@1.5.2':
+    dependencies:
+      magic-string: 0.30.10
+      pathe: 1.1.2
+      pretty-format: 29.7.0
 
   '@vitest/snapshot@1.5.3':
     dependencies:
@@ -8837,9 +8910,20 @@ snapshots:
       pathe: 1.1.2
       pretty-format: 29.7.0
 
+  '@vitest/spy@1.5.2':
+    dependencies:
+      tinyspy: 2.2.1
+
   '@vitest/spy@1.5.3':
     dependencies:
       tinyspy: 2.2.1
+
+  '@vitest/utils@1.5.2':
+    dependencies:
+      diff-sequences: 29.6.3
+      estree-walker: 3.0.3
+      loupe: 2.3.7
+      pretty-format: 29.7.0
 
   '@vitest/utils@1.5.3':
     dependencies:
@@ -8848,10 +8932,10 @@ snapshots:
       loupe: 2.3.7
       pretty-format: 29.7.0
 
-  '@vitest/web-worker@1.5.3(vitest@1.5.3(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.3)(happy-dom@14.7.1)(terser@5.31.0))':
+  '@vitest/web-worker@1.5.2(vitest@1.5.2(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.2)(happy-dom@14.7.1)(terser@5.31.0))':
     dependencies:
       debug: 4.3.4
-      vitest: 1.5.3(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.3)(happy-dom@14.7.1)(terser@5.31.0)
+      vitest: 1.5.2(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.2)(happy-dom@14.7.1)(terser@5.31.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -12689,6 +12773,23 @@ snapshots:
 
   vary@1.1.2: {}
 
+  vite-node@1.5.2(@types/node@20.12.7)(terser@5.31.0):
+    dependencies:
+      cac: 6.7.14
+      debug: 4.3.4
+      pathe: 1.1.2
+      picocolors: 1.0.0
+      vite: 5.2.10(@types/node@20.12.7)(terser@5.31.0)
+    transitivePeerDependencies:
+      - '@types/node'
+      - less
+      - lightningcss
+      - sass
+      - stylus
+      - sugarss
+      - supports-color
+      - terser
+
   vite-node@1.5.3(@types/node@20.12.7)(terser@5.31.0):
     dependencies:
       cac: 6.7.14
@@ -12716,13 +12817,49 @@ snapshots:
       fsevents: 2.3.3
       terser: 5.31.0
 
-  vitest-websocket-mock@0.3.0(vitest@1.5.3(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.3)(happy-dom@14.7.1)(terser@5.31.0)):
+  vitest-websocket-mock@0.3.0(vitest@1.5.3(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.2)(happy-dom@14.7.1)(terser@5.31.0)):
     dependencies:
       jest-diff: 29.7.0
       mock-socket: 9.3.1
-      vitest: 1.5.3(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.3)(happy-dom@14.7.1)(terser@5.31.0)
+      vitest: 1.5.3(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.2)(happy-dom@14.7.1)(terser@5.31.0)
 
-  vitest@1.5.3(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.3)(happy-dom@14.7.1)(terser@5.31.0):
+  vitest@1.5.2(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.2)(happy-dom@14.7.1)(terser@5.31.0):
+    dependencies:
+      '@vitest/expect': 1.5.2
+      '@vitest/runner': 1.5.2
+      '@vitest/snapshot': 1.5.2
+      '@vitest/spy': 1.5.2
+      '@vitest/utils': 1.5.2
+      acorn-walk: 8.3.2
+      chai: 4.4.1
+      debug: 4.3.4
+      execa: 8.0.1
+      local-pkg: 0.5.0
+      magic-string: 0.30.10
+      pathe: 1.1.2
+      picocolors: 1.0.0
+      std-env: 3.7.0
+      strip-literal: 2.1.0
+      tinybench: 2.8.0
+      tinypool: 0.8.4
+      vite: 5.2.10(@types/node@20.12.7)(terser@5.31.0)
+      vite-node: 1.5.2(@types/node@20.12.7)(terser@5.31.0)
+      why-is-node-running: 2.2.2
+    optionalDependencies:
+      '@edge-runtime/vm': 3.2.0
+      '@types/node': 20.12.7
+      '@vitest/browser': 1.5.2(playwright@1.43.1)(vitest@1.5.2)
+      happy-dom: 14.7.1
+    transitivePeerDependencies:
+      - less
+      - lightningcss
+      - sass
+      - stylus
+      - sugarss
+      - supports-color
+      - terser
+
+  vitest@1.5.3(@edge-runtime/vm@3.2.0)(@types/node@20.12.7)(@vitest/browser@1.5.2)(happy-dom@14.7.1)(terser@5.31.0):
     dependencies:
       '@vitest/expect': 1.5.3
       '@vitest/runner': 1.5.3
@@ -12747,7 +12884,7 @@ snapshots:
     optionalDependencies:
       '@edge-runtime/vm': 3.2.0
       '@types/node': 20.12.7
-      '@vitest/browser': 1.5.3(playwright@1.43.1)(vitest@1.5.3)
+      '@vitest/browser': 1.5.2(playwright@1.43.1)(vitest@1.5.3)
       happy-dom: 14.7.1
     transitivePeerDependencies:
       - less
