@@ -270,14 +270,14 @@ importers:
   packages/platform:
     dependencies:
       find-my-way-ts:
-        specifier: ^0.1.1
-        version: 0.1.1
+        specifier: ^0.1.2
+        version: 0.1.2
       isows:
         specifier: ^1.0.4
         version: 1.0.4(ws@8.17.0)
       multipasta:
-        specifier: ^0.2.0
-        version: 0.2.0
+        specifier: ^0.2.1
+        version: 0.2.1
       path-browserify:
         specifier: ^1.0.1
         version: 1.0.1
@@ -296,8 +296,8 @@ importers:
   packages/platform-browser:
     dependencies:
       multipasta:
-        specifier: ^0.2.0
-        version: 0.2.0
+        specifier: ^0.2.1
+        version: 0.2.1
     devDependencies:
       '@effect/platform':
         specifier: workspace:^
@@ -377,8 +377,8 @@ importers:
         specifier: ^2.4.1
         version: 2.4.1
       multipasta:
-        specifier: ^0.2.0
-        version: 0.2.0
+        specifier: ^0.2.1
+        version: 0.2.1
     devDependencies:
       '@effect/platform':
         specifier: workspace:^
@@ -3698,8 +3698,8 @@ packages:
     resolution: {integrity: sha512-Tq6PixE0w/VMFfCgbONnkiQIVol/JJL7nRMi20fqzA4NRs9AfeqMGeRdPi3wIhYkxjeBaWh2rxwapn5Tu3IqOQ==}
     engines: {node: '>=6'}
 
-  find-my-way-ts@0.1.1:
-    resolution: {integrity: sha512-nXUdq29JRQ1tYa1/n+DHTVChMARJHz+gi7sDZibwQukzHP7Hrr6s+sxKbaIM8xB3LzhSBJy5yLb0JhIUmHmOiA==}
+  find-my-way-ts@0.1.2:
+    resolution: {integrity: sha512-AWsH49RGcyayzzxSAkwQKC1bToY5ForAfNreix88slo7wijg1wwTtCPvUUoVm/qhIY3UVSHBKApw8mOGPxsvSg==}
 
   find-up@3.0.0:
     resolution: {integrity: sha512-1yD6RmLI1XBfxugvORwlck6f75tYL+iR0jqwsOrOxMZyGYqUuDhJ0l4AXdO1iX/FTs9cBAMEk1gWSEx1kSbylg==}
@@ -4841,8 +4841,8 @@ packages:
   msgpackr@1.10.1:
     resolution: {integrity: sha512-r5VRLv9qouXuLiIBrLpl2d5ZvPt8svdQTl5/vMvE4nzDMyEX4sgW5yWhuBBj5UmgwOTWj8CIdSXn5sAfsHAWIQ==}
 
-  multipasta@0.2.0:
-    resolution: {integrity: sha512-MNAym1D9GTpY0/CKYJFDmaJ3TfhblfsQyyipCCSsgasMZCAyR2fCNDJhR7lACfJ0YMwQSDi5RHeIdJcsze6WMg==}
+  multipasta@0.2.1:
+    resolution: {integrity: sha512-0NR15o5iewJFMsZ4jN6cztCd4izTLZPyHUfBrakbg/x70B8zplPE6qumbs+A7LmhGtQMzpN/K8MOOdifMgAKFA==}
 
   mysql2@3.9.7:
     resolution: {integrity: sha512-KnJT8vYRcNAZv73uf9zpXqNbvBG7DJrs+1nACsjZP1HMJ1TgXEy8wnNilXAn/5i57JizXKtrUtwDB7HxT9DDpw==}
@@ -10049,7 +10049,7 @@ snapshots:
       make-dir: 2.1.0
       pkg-dir: 3.0.0
 
-  find-my-way-ts@0.1.1:
+  find-my-way-ts@0.1.2:
     dependencies:
       fast-querystring: 1.1.2
 
@@ -11357,7 +11357,7 @@ snapshots:
     optionalDependencies:
       msgpackr-extract: 3.0.2
 
-  multipasta@0.2.0: {}
+  multipasta@0.2.1: {}
 
   mysql2@3.9.7:
     dependencies:

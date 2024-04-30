@@ -39,9 +39,9 @@
     "coverage": "vitest --coverage"
   },
   "dependencies": {
-    "find-my-way-ts": "^0.1.1",
+    "find-my-way-ts": "^0.1.2",
     "isows": "^1.0.4",
-    "multipasta": "^0.2.0",
+    "multipasta": "^0.2.1",
     "path-browserify": "^1.0.1"
   },
   "peerDependencies": {

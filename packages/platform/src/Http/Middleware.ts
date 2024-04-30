@@ -103,3 +103,14 @@ export const withTracerDisabledForUrls: {
  * @category constructors
  */
 export const xForwardedHeaders: <R, E>(httpApp: App.Default<E, R>) => App.Default<E, R> = internal.xForwardedHeaders
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const searchParamsParser: <E, R>(
+  httpApp: App.Default<E, R>
+) => App.Default<
+  E,
+  Exclude<R, ServerRequest.ParsedSearchParams>
+> = internal.searchParamsParser
