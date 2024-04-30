@@ -128,6 +128,14 @@ describe("SortedMap", () => {
     assert.deepEqual(SM.headOption(map2), O.none())
   })
 
+  it("lastOption", () => {
+    const map1 = makeSortedMap([0, 10], [1, 20], [2, 30])
+    const map2 = SM.empty<number, number>(N.Order)
+
+    assert.deepEqual(SM.lastOption(map1), O.some([key(2), value(30)] as const))
+    assert.deepEqual(SM.lastOption(map2), O.none())
+  })
+
   it("isEmpty", () => {
     const map1 = makeSortedMap([0, 10], [1, 20], [2, 30])
     const map2 = SM.empty<number, number>(N.Order)
@@ -169,6 +177,73 @@ describe("SortedMap", () => {
         [key(1), 21],
         [key(2), 32]
       ]
+    )
+  })
+
+  it("partition", () => {
+    const map1 = makeSortedMap([1, 10], [2, 20], [3, 30], [4, 40], [5, 50])
+
+    const [excl, satisfying] = pipe(
+      map1,
+      SM.partition((member) => member.id <= 3)
+    )
+
+    assert.deepEqual(
+      Array.from(satisfying),
+      [
+        [key(1), value(10)],
+        [key(2), value(20)],
+        [key(3), value(30)]
+      ]
+    )
+    assert.deepEqual(
+      Array.from(excl),
+      [
+        [key(4), value(40)],
+        [key(5), value(50)]
+      ]
+    )
+
+    const [excl2, satisfying2] = pipe(
+      map1,
+      SM.partition((member) => member.id <= 6)
+    )
+
+    assert.deepEqual(
+      Array.from(satisfying2),
+      [
+        [key(1), value(10)],
+        [key(2), value(20)],
+        [key(3), value(30)],
+        [key(4), value(40)],
+        [key(5), value(50)]
+      ]
+    )
+
+    assert.deepEqual(
+      Array.from(excl2),
+      []
+    )
+
+    const [excl3, satisfying3] = pipe(
+      map1,
+      SM.partition((member) => member.id === 0)
+    )
+
+    assert.deepEqual(
+      Array.from(excl3),
+      [
+        [key(1), value(10)],
+        [key(2), value(20)],
+        [key(3), value(30)],
+        [key(4), value(40)],
+        [key(5), value(50)]
+      ]
+    )
+
+    assert.deepEqual(
+      Array.from(satisfying3),
+      []
     )
   })
 
