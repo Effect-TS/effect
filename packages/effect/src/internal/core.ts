@@ -197,10 +197,18 @@ class EffectPrimitiveFailure {
     this._tag = _op
   }
   [Equal.symbol](this: {}, that: unknown) {
-    return this === that
+    return exitIsExit(that) && that._op === "Failure" &&
+      // @ts-expect-error
+      Equal.equals(this.effect_instruction_i0, that.effect_instruction_i0)
   }
   [Hash.symbol](this: {}) {
-    return Hash.cached(this, Hash.random(this))
+    return pipe(
+      // @ts-expect-error
+      Hash.string(this._tag),
+      // @ts-expect-error
+      Hash.combine(Hash.hash(this.effect_instruction_i0)),
+      Hash.cached(this)
+    )
   }
   get cause() {
     return this.effect_instruction_i0
@@ -238,10 +246,18 @@ class EffectPrimitiveSuccess {
     this._tag = _op
   }
   [Equal.symbol](this: {}, that: unknown) {
-    return this === that
+    return exitIsExit(that) && that._op === "Success" &&
+      // @ts-expect-error
+      Equal.equals(this.effect_instruction_i0, that.effect_instruction_i0)
   }
   [Hash.symbol](this: {}) {
-    return Hash.cached(this, Hash.random(this))
+    return pipe(
+      // @ts-expect-error
+      Hash.string(this._tag),
+      // @ts-expect-error
+      Hash.combine(Hash.hash(this.effect_instruction_i0)),
+      Hash.cached(this)
+    )
   }
   get value() {
     return this.effect_instruction_i0
