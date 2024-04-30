@@ -55,11 +55,11 @@ describe("FiberRefs", () => {
       Effect.gen(function*() {
         const scope = yield* Scope.make()
         assert.strictEqual(HashMap.size(yield* FiberRef.get(FiberRef.currentLogAnnotations)), 0)
-        yield Effect.annotateLogsScoped({
+        yield* Effect.annotateLogsScoped({
           test: 123
         }).pipe(Scope.extend(scope))
         assert.strictEqual(HashMap.size(yield* FiberRef.get(FiberRef.currentLogAnnotations)), 1)
-        yield Scope.close(scope, Exit.void)
+        yield* Scope.close(scope, Exit.void)
         assert.strictEqual(HashMap.size(yield* FiberRef.get(FiberRef.currentLogAnnotations)), 0)
       }))
   })
