@@ -6,10 +6,12 @@ import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Predicate from "effect/Predicate"
+import type * as App from "../../Http/App.js"
 import * as Headers from "../../Http/Headers.js"
 import type * as Middleware from "../../Http/Middleware.js"
 import * as ServerError from "../../Http/ServerError.js"
 import * as ServerRequest from "../../Http/ServerRequest.js"
+import type { ServerResponse } from "../../Http/ServerResponse.js"
 import * as TraceContext from "../../Http/TraceContext.js"
 
 /** @internal */
@@ -179,3 +181,20 @@ export const xForwardedHeaders = make((httpApp) =>
       })
       : request)
 )
+
+/** @internal */
+export const searchParamsParser = <E, R>(httpApp: App.Default<E, R>) =>
+  Effect.withFiberRuntime<
+    ServerResponse,
+    E,
+    ServerRequest.ServerRequest | Exclude<R, ServerRequest.ParsedSearchParams>
+  >((fiber) => {
+    const context = fiber.getFiberRef(FiberRef.currentContext)
+    const request = Context.unsafeGet(context, ServerRequest.ServerRequest)
+    const params = ServerRequest.searchParamsFromURL(new URL(request.url))
+    return Effect.locally(
+      httpApp,
+      FiberRef.currentContext,
+      Context.add(context, ServerRequest.ParsedSearchParams, params)
+    ) as any
+  })
