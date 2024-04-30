@@ -1,5 +1,39 @@
 # @effect/platform
 
+## 0.52.0
+
+### Minor Changes
+
+- [#2669](https://github.com/Effect-TS/effect/pull/2669) [`9deab0a`](https://github.com/Effect-TS/effect/commit/9deab0aec9e99501f9441843e34df9afa10c5be9) Thanks [@tim-smart](https://github.com/tim-smart)! - move http search params apis to ServerRequest module
+
+  If you want to access the search params for a request, you can now use the `Http.request.ParsedSearchParams` tag.
+
+  ```ts
+  import * as Http from "@effect/platform/HttpServer";
+  import { Effect } from "effect";
+
+  Effect.gen(function* () {
+    const searchParams = yield* Http.request.ParsedSearchParams;
+    console.log(searchParams);
+  });
+  ```
+
+  The schema method has also been moved to the `ServerRequest` module. It is now available as `Http.request.schemaSearchParams`.
+
+### Patch Changes
+
+- [#2672](https://github.com/Effect-TS/effect/pull/2672) [`7719b8a`](https://github.com/Effect-TS/effect/commit/7719b8a7350c14e952ffe685bfd5308773b3e271) Thanks [@tim-smart](https://github.com/tim-smart)! - allow http client trace propagation to be controlled
+
+  To disable trace propagation:
+
+  ```ts
+  import { HttpClient as Http } from "@effect/platform";
+
+  Http.request
+    .get("https://example.com")
+    .pipe(Http.client.fetchOk, Http.client.withTracerPropagation(false));
+  ```
+
 ## 0.51.0
 
 ### Minor Changes
