@@ -262,16 +262,19 @@ export const lastOption = <K, V>(self: SortedMap<K, V>): Option.Option<[K, V]> =
  * @category filtering
  */
 export const partition: {
-  <K,V>(
+  <K, V>(
     predicate: (a: Types.NoInfer<K>) => boolean
-  ): (self: SortedMap<K,V>) => [excluded: SortedMap<K,V>, satisfying: SortedMap<K,V>]
-  <K,V>(self: SortedMap<K,V>, predicate: (a: K) => boolean): [excluded: SortedMap<K,V>, satisfying: SortedMap<K,V>]
+  ): (self: SortedMap<K, V>) => [excluded: SortedMap<K, V>, satisfying: SortedMap<K, V>]
+  <K, V>(self: SortedMap<K, V>, predicate: (a: K) => boolean): [excluded: SortedMap<K, V>, satisfying: SortedMap<K, V>]
 } = Dual.dual(
   2,
-  <K,V>(self: SortedMap<K,V>, predicate: (a: K) => boolean): [excluded: SortedMap<K,V>, satisfying: SortedMap<K,V>] => {
+  <K, V>(
+    self: SortedMap<K, V>,
+    predicate: (a: K) => boolean
+  ): [excluded: SortedMap<K, V>, satisfying: SortedMap<K, V>] => {
     const ord = RBT.getOrder(self.tree)
-    let right = empty<K,V>(ord)
-    let left = empty<K,V>(ord)
+    let right = empty<K, V>(ord)
+    let left = empty<K, V>(ord)
     for (const value of self) {
       if (predicate(value[0])) {
         right = set(right, value[0], value[1])

@@ -136,7 +136,6 @@ describe("SortedMap", () => {
     assert.deepEqual(SM.lastOption(map2), O.none())
   })
 
-
   it("isEmpty", () => {
     const map1 = makeSortedMap([0, 10], [1, 20], [2, 30])
     const map2 = SM.empty<number, number>(N.Order)
@@ -181,7 +180,7 @@ describe("SortedMap", () => {
     )
   })
 
-  it('partition', () => {
+  it("partition", () => {
     const map1 = makeSortedMap([1, 10], [2, 20], [3, 30], [4, 40], [5, 50])
 
     const [excl, satisfying] = pipe(
@@ -201,7 +200,7 @@ describe("SortedMap", () => {
       Array.from(excl),
       [
         [key(4), value(40)],
-        [key(5), value(50)],
+        [key(5), value(50)]
       ]
     )
 
@@ -217,7 +216,7 @@ describe("SortedMap", () => {
         [key(2), value(20)],
         [key(3), value(30)],
         [key(4), value(40)],
-        [key(5), value(50)],
+        [key(5), value(50)]
       ]
     )
 
@@ -238,7 +237,7 @@ describe("SortedMap", () => {
         [key(2), value(20)],
         [key(3), value(30)],
         [key(4), value(40)],
-        [key(5), value(50)],
+        [key(5), value(50)]
       ]
     )
 
