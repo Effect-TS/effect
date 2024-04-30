@@ -1,5 +1,73 @@
 # effect
 
+## 3.1.0
+
+### Minor Changes
+
+- [#2543](https://github.com/Effect-TS/effect/pull/2543) [`c3c12c6`](https://github.com/Effect-TS/effect/commit/c3c12c6625633fe80e79f9db75a3b8cf8ca8b11d) Thanks [@github-actions](https://github.com/apps/github-actions)! - add SortedMap.lastOption & partition apis
+
+- [#2543](https://github.com/Effect-TS/effect/pull/2543) [`ba64ea6`](https://github.com/Effect-TS/effect/commit/ba64ea6757810c5e74cad3863a7d19d4d38af66b) Thanks [@github-actions](https://github.com/apps/github-actions)! - add `Types.DeepMutable`, an alternative to `Types.Mutable` that makes all properties recursively mutable
+
+- [#2543](https://github.com/Effect-TS/effect/pull/2543) [`b5de2d2`](https://github.com/Effect-TS/effect/commit/b5de2d2ce5b1afe8be90827bf898a95cec40eb2b) Thanks [@github-actions](https://github.com/apps/github-actions)! - add Effect.annotateLogsScoped
+
+  This api allows you to annotate logs until the Scope has been closed.
+
+  ```ts
+  import { Effect } from "effect";
+
+  Effect.gen(function* () {
+    yield* Effect.log("no annotations");
+    yield* Effect.annotateLogsScoped({ foo: "bar" });
+    yield* Effect.log("annotated with foo=bar");
+  }).pipe(Effect.scoped, Effect.andThen(Effect.log("no annotations again")));
+  ```
+
+- [#2543](https://github.com/Effect-TS/effect/pull/2543) [`a1c7ab8`](https://github.com/Effect-TS/effect/commit/a1c7ab8ffedacd18c1fc784f4ff5844f79498b83) Thanks [@github-actions](https://github.com/apps/github-actions)! - added Stream.fromEventListener, and BrowserStream.{fromEventListenerWindow, fromEventListenerDocument} for constructing a stream from addEventListener
+
+- [#2543](https://github.com/Effect-TS/effect/pull/2543) [`a023f28`](https://github.com/Effect-TS/effect/commit/a023f28336f3865687d9a30c1883e36909906d85) Thanks [@github-actions](https://github.com/apps/github-actions)! - add `kind` property to `Tracer.Span`
+
+  This can be used to specify what kind of service created the span.
+
+- [#2543](https://github.com/Effect-TS/effect/pull/2543) [`1c9454d`](https://github.com/Effect-TS/effect/commit/1c9454d532eae79b9f759aea77f59332cc6d18ed) Thanks [@github-actions](https://github.com/apps/github-actions)! - add Effect.timeoutOption
+
+  Returns an effect that will return `None` if the effect times out, otherwise it
+  will return `Some` of the produced value.
+
+  ```ts
+  import { Effect } from "effect";
+
+  // will return `None` after 500 millis
+  Effect.succeed("hello").pipe(
+    Effect.delay(1000),
+    Effect.timeoutOption("500 millis"),
+  );
+  ```
+
+- [#2543](https://github.com/Effect-TS/effect/pull/2543) [`92d56db`](https://github.com/Effect-TS/effect/commit/92d56dbb3f33e36636c2a2f1030c56492e39cf4d) Thanks [@github-actions](https://github.com/apps/github-actions)! - add $is & $match helpers to Data.TaggedEnum constructors
+
+  ```ts
+  import { Data } from "effect";
+
+  type HttpError = Data.TaggedEnum<{
+    NotFound: {};
+    InternalServerError: { reason: string };
+  }>;
+  const { $is, $match, InternalServerError, NotFound } =
+    Data.taggedEnum<HttpError>();
+
+  // create a matcher
+  const matcher = $match({
+    NotFound: () => 0,
+    InternalServerError: () => 1,
+  });
+
+  // true
+  $is("NotFound")(NotFound());
+
+  // false
+  $is("NotFound")(InternalServerError({ reason: "fail" }));
+  ```
+
 ## 3.0.8
 
 ### Patch Changes
