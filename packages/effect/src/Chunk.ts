@@ -1417,3 +1417,23 @@ export const difference: {
   2,
   <A>(self: Chunk<A>, that: Chunk<A>): Chunk<A> => unsafeFromArray(RA.difference(that, self))
 )
+
+/**
+ * Creates a `Chunk` of values not included in the other given `Chunk`.
+ * The order and references of result values are determined by the first `Chunk`.
+ *
+ * The first comparator `Chunk` may be wrapped in an `Option`. A `None` value is
+ * treated as an empty `Chunk` during comparison.
+ *
+ * This is primarily for convenience on zip operations, gets, or similar.
+ *
+ * @since 3.2.0
+ */
+export const differenceOption: {
+  <A>(that: Chunk<A>): (self: Option<Chunk<A>>) => Chunk<A>
+  <A>(self: Option<Chunk<A>>, that: Chunk<A>): Chunk<A>
+} = dual(
+  2,
+  <A>(self: Option<Chunk<A>>, that: Chunk<A>): Chunk<A> =>
+    unsafeFromArray(RA.difference(that, O.getOrElse(self, empty)))
+)

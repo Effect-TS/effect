@@ -19,6 +19,7 @@ describe("Chunk", () => {
     expect(Chunk.containsWith).exist
     expect(Chunk.difference).exist
     expect(Chunk.differenceWith).exist
+    expect(Chunk.differenceOption).exist
     expect(Chunk.findFirst).exist
     expect(Chunk.findFirstIndex).exist
     expect(Chunk.findLast).exist
@@ -877,15 +878,6 @@ describe("Chunk", () => {
     expect(equivalence(Chunk.make(1, 2, 3), Chunk.make(1, 2, 4))).toBe(false)
   })
 
-  it("difference", () => {
-    const curr = Chunk.make(1, 3, 5, 7, 9)
-
-    expect(Chunk.difference(Chunk.make(1, 2, 3, 4, 5), curr)).toEqual(Chunk.make(7, 9))
-    expect(Chunk.difference(Chunk.empty(), curr)).toEqual(curr)
-    expect(Chunk.difference(curr, Chunk.empty())).toEqual(Chunk.empty())
-    expect(Chunk.difference(curr, curr)).toEqual(Chunk.empty())
-  })
-
   it("differenceWith", () => {
     const eq = <E extends { id: number }>(a: E, b: E) => a.id === b.id
     const diffW = pipe(eq, Chunk.differenceWith)
@@ -896,5 +888,26 @@ describe("Chunk", () => {
     expect(diffW(Chunk.empty(), curr)).toEqual(curr)
     expect(diffW(curr, Chunk.empty())).toEqual(Chunk.empty())
     expect(diffW(curr, curr)).toEqual(Chunk.empty())
+  })
+
+  it("difference", () => {
+    const curr = Chunk.make(1, 3, 5, 7, 9)
+
+    expect(Chunk.difference(Chunk.make(1, 2, 3, 4, 5), curr)).toEqual(Chunk.make(7, 9))
+    expect(Chunk.difference(Chunk.empty(), curr)).toEqual(curr)
+    expect(Chunk.difference(curr, Chunk.empty())).toEqual(Chunk.empty())
+    expect(Chunk.difference(curr, curr)).toEqual(Chunk.empty())
+  })
+
+  it("differenceOption", () => {
+    const curr = Chunk.make(1, 3, 5, 7, 9)
+
+    const { none, some } = Option
+
+    expect(Chunk.differenceOption(some(Chunk.make(1, 2, 3, 4, 5)), curr)).toEqual(Chunk.make(7, 9))
+    expect(Chunk.differenceOption(some(Chunk.empty()), curr)).toEqual(curr)
+    expect(Chunk.differenceOption(none(), curr)).toEqual(curr)
+    expect(Chunk.differenceOption(some(curr), Chunk.empty())).toEqual(Chunk.empty())
+    expect(Chunk.differenceOption(some(curr), curr)).toEqual(Chunk.empty())
   })
 })
