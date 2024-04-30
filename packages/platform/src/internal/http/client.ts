@@ -54,6 +54,23 @@ export const withTracerDisabledWhen = dual<
 >(2, (self, pred) => Effect.locally(self, currentTracerDisabledWhen, pred))
 
 /** @internal */
+export const currentTracerPropagation = globalValue(
+  Symbol.for("@effect/platform/Http/Client/currentTracerPropagation"),
+  () => FiberRef.unsafeMake(true)
+)
+
+/** @internal */
+export const withTracerPropagation = dual<
+  (
+    enabled: boolean
+  ) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <R, E, A>(
+    effect: Effect.Effect<A, E, R>,
+    enabled: boolean
+  ) => Effect.Effect<A, E, R>
+>(2, (self, enabled) => Effect.locally(self, currentTracerPropagation, enabled))
+
+/** @internal */
 export const currentFetchOptions = globalValue(
   Symbol.for("@effect/platform/Http/Client/currentFetchOptions"),
   () => FiberRef.unsafeMake<RequestInit>({})
@@ -115,7 +132,8 @@ export const makeDefault = (
           return Effect.fail(new Error.RequestError({ request, reason: "InvalidUrl", error: urlResult.left }))
         }
         const url = urlResult.right
-        const tracerDisabled = fiber.getFiberRef(currentTracerDisabledWhen)(request)
+        const tracerDisabled = !fiber.getFiberRef(FiberRef.currentTracerEnabled) ||
+          fiber.getFiberRef(currentTracerDisabledWhen)(request)
         if (tracerDisabled) {
           return Effect.zipRight(
             addAbort,
@@ -145,10 +163,13 @@ export const makeDefault = (
               for (const name in redactedHeaders) {
                 span.attribute(`http.request.header.${name}`, String(redactedHeaders[name]))
               }
+              request = fiber.getFiberRef(currentTracerPropagation)
+                ? internalRequest.setHeaders(request, TraceContext.toHeaders(span))
+                : request
               return Effect.tap(
                 Effect.withParentSpan(
                   f(
-                    internalRequest.setHeaders(request, TraceContext.toHeaders(span)),
+                    request,
                     url,
                     controller.signal,
                     fiber
