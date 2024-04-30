@@ -65,6 +65,152 @@ export interface JsonSchema7Const {
 }
 
 /**
+ * @internal
+ */
+enum JsonSchema7StringBuiltinFormats {
+  /*
+   * ## DateTimes
+   * Dates and times are represented {@link https://datatracker.ietf.org/doc/html/rfc3339#appendix-A | in RFC 3339, section 5.6 }.
+   * This is a subset of the date format also commonly known as ISO8601 format.
+   */
+
+  /**
+   * Date and time together
+   * @example
+   * '2018-11-13T20:20:39+00:00'
+   */
+  dateTime = "date-time",
+
+  /**
+   * time
+   * @example
+   * '20:20:39+00:00'
+   */
+  time = "time",
+
+  /**
+   * Date
+   * @example
+   * '2018-11-13'
+   */
+  date = "date",
+
+  /**
+   * A duration as defined by the {@link https://datatracker.ietf.org/doc/html/rfc3339#appendix-A|ISO 8601 ABNF for "duration"}.
+   * @example
+   * 'P3D'  // expresses a duration of 3 days.
+   */
+  duration = "duration",
+
+  /*
+   * ## EmailAddresses
+   */
+
+  /**
+   * Internet email address, see {@link http://tools.ietf.org/html/rfc5321#section-4.1.2|RFC 5321, section 4.1.2}.
+   */
+  email = "email",
+  /**
+   * The internationalized form of an Internet email address, see {@link https://tools.ietf.org/html/rfc6531|RFC 6531}.
+   */
+  idnEmail = "idn-email",
+
+  /*
+   * ## Hostnames
+   */
+
+  /**
+   * Internet host name, see {@link https://datatracker.ietf.org/doc/html/rfc1123#section-2.1|RFC 1123, section 2.1}.
+   */
+  hostname = "hostname",
+  /**
+   * An internationalized Internet host name, see {@link https://tools.ietf.org/html/rfc5890#section-2.3.2.3|RFC5890, section 2.3.2.3}.
+   */
+  idnHostname = "idn-hostname",
+
+  /*
+   * ## IPAddresses
+   */
+
+  /**
+   * IPv4 address, according to dotted-quad ABNF syntax as defined in {@link http://tools.ietf.org/html/rfc2673#section-3.2|RFC 2673, section 3.2}.
+   */
+  ipv4 = "ipv4",
+
+  /**
+   * IPv6 address, as defined in {@link http://tools.ietf.org/html/rfc2373#section-2.2|RFC 2373, section 2.2}.
+   */
+  ipv6 = "ipv6",
+
+  /*
+   * ## ResourceIdentifiers
+   */
+
+  /**
+   * A Universally Unique Identifier as defined by {@link https://datatracker.ietf.org/doc/html/rfc4122|RFC 4122}.
+   * @example
+   * "3e4666bf-d5e5-4aa7-b8ce-cefe41c7568a"
+   */
+  uuid = "uuid",
+
+  /**
+   * A universal resource identifier (URI), according to {@link http://tools.ietf.org/html/rfc3986|RFC3986}.
+   */
+  uri = "uri",
+
+  /**
+   * A URI Reference (either a URI or a relative-reference), according to {@link http://tools.ietf.org/html/rfc3986#section-4.1|RFC3986, section 4.1}.
+   */
+  uriReference = "uri-reference",
+
+  /**
+   * The internationalized equivalent of a "uri", according to {@link https://tools.ietf.org/html/rfc3987|RFC3987}.
+   */
+  iri = "iri",
+
+  /**
+   * The internationalized equivalent of a "uri-reference", according to {@link https://tools.ietf.org/html/rfc3987|RFC3987}.
+   */
+  iriReference = "iri-reference",
+
+  /**
+   * ## URItemplate
+   */
+
+  /**
+   * A URI Template (of any level) according to {@link https://tools.ietf.org/html/rfc6570|RFC6570}.
+   * If you don't already know what a URI Template is, you probably don't need this value.
+   */
+  uriTemplate = "uri-template",
+
+  /**
+   * ## JSONPointer
+   */
+
+  /**
+   * A JSON Pointer, according to {@link https://tools.ietf.org/html/rfc6901|RFC6901}.
+   * There is more discussion on the use of JSON Pointer within JSON Schema in {@link https://json-schema.org/understanding-json-schema/structuring|Structuring a complex schema}.
+   * Note that this should be used only when the entire string contains only JSON Pointer content, e.g. `/foo/bar`.
+   * JSON Pointer URI fragments, e.g. `#/foo/bar/` should use `"uri-reference"`.
+   */
+  jsonPointer = "json-pointer",
+
+  /**
+   * A relative {@link https://tools.ietf.org/html/draft-handrews-relative-json-pointer-01|JSON pointer}.
+   */
+  relativeJsonPointer = "relative-json-pointer",
+
+  /*
+   * ## RegularExpressions
+   */
+
+  /**
+   * A regular expression, which should be valid according to the {@link https://www.ecma-international.org/publications-and-standards/standards/ecma-262/|ECMA 262 dialect}.
+   */
+  regex = "regex"
+}
+
+/**
  * @category model
  * @since 1.0.0
  */
@@ -74,6 +220,12 @@ export interface JsonSchema7String {
   maxLength?: number
   pattern?: string
   description?: string
+
+  /**
+   * Structural validation alone may be insufficient to validate that an instance meets all the requirements of an application.
+   * The "format" keyword is defined to allow interoperable semantic validation for a fixed subset of values which are accurately described by authoritative resources, be they RFCs or other external specifications.
+   */
+  format?: `${JsonSchema7StringBuiltinFormats}` & string
 }
 
 /**
