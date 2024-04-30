@@ -132,7 +132,8 @@ export const makeDefault = (
           return Effect.fail(new Error.RequestError({ request, reason: "InvalidUrl", error: urlResult.left }))
         }
         const url = urlResult.right
-        const tracerDisabled = fiber.getFiberRef(currentTracerDisabledWhen)(request)
+        const tracerDisabled = !fiber.getFiberRef(FiberRef.currentTracerEnabled) ||
+          fiber.getFiberRef(currentTracerDisabledWhen)(request)
         if (tracerDisabled) {
           return Effect.zipRight(
             addAbort,
