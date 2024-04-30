@@ -4131,16 +4131,18 @@ export const clamp =
  * @category number transformations
  * @since 1.0.0
  */
-export const parseNumber = <A extends string, I, R>(self: Schema<A, I, R>): transformOrFail<Schema<A, I, R>, typeof $Number> =>
-    transformOrFail(
-      self,
-      $Number,
-      {
-        strict: false,
-        decode: (s, _, ast) => ParseResult.fromOption(number_.parse(s), () => new ParseResult.Type(ast, s)),
-        encode: (n) => ParseResult.succeed(String(n))
-      }
-    )
+export const parseNumber = <A extends string, I, R>(
+  self: Schema<A, I, R>
+): transformOrFail<Schema<A, I, R>, typeof $Number> =>
+  transformOrFail(
+    self,
+    $Number,
+    {
+      strict: false,
+      decode: (s, _, ast) => ParseResult.fromOption(number_.parse(s), () => new ParseResult.Type(ast, s)),
+      encode: (n) => ParseResult.succeed(String(n))
+    }
+  )
 
 /**
  * This schema transforms a `string` into a `number` by parsing the string using the `parse` function of the `effect/Number` module.
