@@ -252,13 +252,13 @@ export const entries = <K, V>(self: SortedMap<K, V>): IterableIterator<[K, V]> =
 }
 
 /**
- * @since 3.0.0
+ * @since 3.1.0
  * @category elements
  */
 export const lastOption = <K, V>(self: SortedMap<K, V>): Option.Option<[K, V]> => RBT.last(self.tree)
 
 /**
- * @since 3.0.0
+ * @since 3.1.0
  * @category filtering
  */
 export const partition: {
