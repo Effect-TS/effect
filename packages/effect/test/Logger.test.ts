@@ -8,6 +8,7 @@ import * as HashMap from "effect/HashMap"
 import { logLevelInfo } from "effect/internal/core"
 import * as List from "effect/List"
 import * as Logger from "effect/Logger"
+import * as Data from "effect/Data"
 import * as LogSpan from "effect/LogSpan"
 import { afterEach, assert, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -110,6 +111,32 @@ with line breaks" good_key3="I_have=a"`
     expect(result).toEqual(
       `timestamp=${date.toJSON()} level=INFO fiber= message=a message=b message=c`
     )
+  })
+  
+  it("Error", () => {
+    const date = new Date()
+    vi.setSystemTime(date)
+    
+    class Err extends Data.TaggedError("Err")<{
+      message: string
+    }> {}
+    
+    const result = Logger.stringLogger.log({
+      fiberId: FiberId.none,
+      logLevel: logLevelInfo,
+      message: new Err({ message: "err" }),
+      cause: Cause.empty,
+      context: FiberRefs.unsafeMake(new Map()),
+      spans: List.empty(),
+      annotations: HashMap.empty(),
+      date
+    })
+    
+    expect(result).toEqual(
+      `timestamp=${date.toJSON()} level=INFO fiber= name=Err message=err`
+    )
+
+
   })
 })
 
