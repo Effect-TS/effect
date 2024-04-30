@@ -1502,6 +1502,29 @@ export const batchedLogger = dual<
     )
   }))
 
+export const annotateLogsScoped: {
+  (key: string, value: unknown): Effect.Effect<void, never, Scope.Scope>
+  (values: Record<string, unknown>): Effect.Effect<void, never, Scope.Scope>
+} = function() {
+  if (typeof arguments[0] === "string") {
+    return fiberRefLocallyScopedWith(
+      core.currentLogAnnotations,
+      HashMap.set(arguments[0], arguments[1])
+    )
+  }
+  const entries = Object.entries(arguments[0])
+  return fiberRefLocallyScopedWith(
+    core.currentLogAnnotations,
+    HashMap.mutate((annotations) => {
+      for (let i = 0; i < entries.length; i++) {
+        const [key, value] = entries[i]
+        HashMap.set(annotations, key, value)
+      }
+      return annotations
+    })
+  )
+}
+
 // circular with Effect
 
 /* @internal */
@@ -3598,13 +3621,7 @@ export const interruptWhenPossible = dual<
 /** @internal */
 export const makeSpanScoped = (
   name: string,
-  options?: {
-    readonly attributes?: Record<string, unknown> | undefined
-    readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.AnySpan | undefined
-    readonly root?: boolean | undefined
-    readonly context?: Context.Context<never> | undefined
-  } | undefined
+  options?: Tracer.SpanOptions | undefined
 ): Effect.Effect<Tracer.Span, never, Scope.Scope> =>
   core.uninterruptible(
     core.withFiberRuntime((fiber) => {
@@ -3631,20 +3648,15 @@ export const withTracerScoped = (value: Tracer.Tracer): Effect.Effect<void, neve
 
 /** @internal */
 export const withSpanScoped = dual<
-  (name: string, options?: {
-    readonly attributes?: Record<string, unknown> | undefined
-    readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.AnySpan | undefined
-    readonly root?: boolean | undefined
-    readonly context?: Context.Context<never> | undefined
-  }) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan> | Scope.Scope>,
-  <A, E, R>(self: Effect.Effect<A, E, R>, name: string, options?: {
-    readonly attributes?: Record<string, unknown> | undefined
-    readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.AnySpan | undefined
-    readonly root?: boolean | undefined
-    readonly context?: Context.Context<never> | undefined
-  }) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan> | Scope.Scope>
+  (
+    name: string,
+    options?: Tracer.SpanOptions
+  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan> | Scope.Scope>,
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
+    name: string,
+    options?: Tracer.SpanOptions
+  ) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan> | Scope.Scope>
 >(
   (args) => typeof args[0] !== "string",
   (self, name, options) =>

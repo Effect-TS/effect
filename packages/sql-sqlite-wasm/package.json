@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-sqlite-wasm",
-  "version": "0.1.12",
+  "version": "0.1.14",
   "type": "module",
   "license": "MIT",
   "description": "A SQLite toolkit for Effect",
@@ -46,6 +46,6 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "@sqlite.org/sqlite-wasm": "3.45.2-build1"
+    "@sqlite.org/sqlite-wasm": "3.45.3-build1"
   }
 }

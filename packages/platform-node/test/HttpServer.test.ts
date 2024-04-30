@@ -115,7 +115,7 @@ describe("HttpServer", () => {
           "/upload",
           Effect.gen(function*(_) {
             const files = yield* _(Http.request.schemaBodyForm(Schema.Struct({
-              file: Http.multipart.filesSchema,
+              file: Http.multipart.FilesSchema,
               test: Schema.String
             })))
             expect(files).toHaveProperty("file")
@@ -483,8 +483,9 @@ describe("HttpServer", () => {
         client(HttpC.request.get("/")),
         HttpC.response.json,
         Effect.withTracer(Tracer.make({
-          span(name, parent) {
+          span(name, parent, _, __, ___, kind) {
             assert.strictEqual(name, "http.client GET")
+            assert.strictEqual(kind, "client")
             assert(parent._tag === "Some" && parent.value._tag === "Span")
             assert.strictEqual(parent.value.name, "request parent")
             return requestSpan

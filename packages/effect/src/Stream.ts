@@ -4025,24 +4025,12 @@ export const whenEffect: {
 export const withSpan: {
   (
     name: string,
-    options?: {
-      readonly attributes?: Record<string, unknown> | undefined
-      readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-      readonly parent?: Tracer.AnySpan | undefined
-      readonly root?: boolean | undefined
-      readonly context?: Context.Context<never> | undefined
-    } | undefined
+    options?: Tracer.SpanOptions | undefined
   ): <A, E, R>(self: Stream<A, E, R>) => Stream<A, E, Exclude<R, Tracer.ParentSpan>>
   <A, E, R>(
     self: Stream<A, E, R>,
     name: string,
-    options?: {
-      readonly attributes?: Record<string, unknown> | undefined
-      readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-      readonly parent?: Tracer.AnySpan | undefined
-      readonly root?: boolean | undefined
-      readonly context?: Context.Context<never> | undefined
-    } | undefined
+    options?: Tracer.SpanOptions | undefined
   ): Stream<A, E, Exclude<R, Tracer.ParentSpan>>
 } = internal.withSpan
 
@@ -4558,3 +4546,13 @@ export const decodeText: {
  * @category encoding
  */
 export const encodeText: <E, R>(self: Stream<string, E, R>) => Stream<Uint8Array, E, R> = internal.encodeText
+
+/**
+ * Creates a `Stream` using addEventListener.
+ * @since 3.1.0
+ */
+export const fromEventListener: <A = Event>(
+  target: EventTarget,
+  type: string,
+  options?: boolean | Omit<AddEventListenerOptions, "signal">
+) => Stream<A> = internal.fromEventListener

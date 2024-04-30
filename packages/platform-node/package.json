@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform-node",
   "type": "module",
-  "version": "0.47.7",
+  "version": "0.48.0",
   "license": "MIT",
   "description": "Platform specific implementations for the Node.js runtime",
   "homepage": "https://effect.website",
@@ -46,8 +46,8 @@
   "dependencies": {
     "@effect/platform-node-shared": "workspace:^",
     "mime": "^3.0.0",
-    "undici": "^6.10.1",
-    "ws": "^8.16.0"
+    "undici": "^6.15.0",
+    "ws": "^8.17.0"
   },
   "peerDependencies": {
     "@effect/platform": "workspace:^",

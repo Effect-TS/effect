@@ -1,6 +1,6 @@
 {
   "name": "@effect/cli",
-  "version": "0.36.12",
+  "version": "0.36.14",
   "type": "module",
   "license": "MIT",
   "description": "A library for building command-line interfaces with Effect",
@@ -72,6 +72,6 @@
   "dependencies": {
     "ini": "^4.1.2",
     "toml": "^3.0.0",
-    "yaml": "^2.4.1"
+    "yaml": "^2.4.2"
   }
 }

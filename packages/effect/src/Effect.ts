@@ -1406,7 +1406,7 @@ export interface Adapter {
 }
 
 /**
- * Returns a effect that will never produce anything. The moral equivalent of
+ * Returns an effect that will never produce anything. The moral equivalent of
  * `while(true) {}`, only without the wasted CPU cycles.
  *
  * @since 2.0.0
@@ -2923,9 +2923,8 @@ export const timedWith: {
 } = effect.timedWith
 
 /**
- * Returns an effect that will timeout this effect, returning `None` if the
- * timeout elapses before the effect has produced a value; and returning
- * `Some` of the produced value otherwise.
+ * Returns an effect that will timeout this effect, failing with a `Cause.TimeoutException`
+ * if the timeout elapses before the effect has produced a value.
  *
  * If the timeout elapses without producing a value, the running effect will
  * be safely interrupted.
@@ -2945,6 +2944,30 @@ export const timeout: {
   (duration: Duration.DurationInput): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E | Cause.TimeoutException, R>
   <A, E, R>(self: Effect<A, E, R>, duration: Duration.DurationInput): Effect<A, Cause.TimeoutException | E, R>
 } = circular.timeout
+
+/**
+ * Returns an effect that will timeout this effect, returning `None` if the
+ * timeout elapses before the effect has produced a value; and returning
+ * `Some` of the produced value otherwise.
+ *
+ * If the timeout elapses without producing a value, the running effect will
+ * be safely interrupted.
+ *
+ * WARNING: The effect returned by this method will not itself return until
+ * the underlying effect is actually interrupted. This leads to more
+ * predictable resource utilization. If early return is desired, then instead
+ * of using `effect.timeout(d)`, use `effect.disconnect.timeout(d)`, which
+ * first disconnects the effect's interruption signal before performing the
+ * timeout, resulting in earliest possible return, before an underlying effect
+ * has been successfully interrupted.
+ *
+ * @since 3.1.0
+ * @category delays & timeouts
+ */
+export const timeoutOption: {
+  (duration: Duration.DurationInput): <A, E, R>(self: Effect<A, E, R>) => Effect<Option.Option<A>, E, R>
+  <A, E, R>(self: Effect<A, E, R>, duration: Duration.DurationInput): Effect<Option.Option<A>, E, R>
+} = circular.timeoutOption
 
 /**
  * The same as `timeout`, but instead of producing a `None` in the event of
@@ -4430,6 +4453,28 @@ export const annotateLogs: {
 } = effect.annotateLogs
 
 /**
+ * Annotates each log with the specified log annotation(s), until the Scope is closed.
+ *
+ * @since 3.1.0
+ * @category logging
+ * @example
+ * import { Effect } from "effect"
+ *
+ * Effect.gen(function*() {
+ *   yield* Effect.log("no annotations")
+ *   yield* Effect.annotateLogsScoped({ foo: "bar" })
+ *   yield* Effect.log("annotated with foo=bar")
+ * }).pipe(
+ *   Effect.scoped,
+ *   Effect.andThen(Effect.log("no annotations again"))
+ * )
+ */
+export const annotateLogsScoped: {
+  (key: string, value: unknown): Effect<void, never, Scope.Scope>
+  (values: Record<string, unknown>): Effect<void, never, Scope.Scope>
+} = fiberRuntime.annotateLogsScoped
+
+/**
  * Retrieves the log annotations associated with the current scope.
  *
  * @since 2.0.0
@@ -5174,13 +5219,7 @@ export const linkSpans: {
  */
 export const makeSpan: (
   name: string,
-  options?: {
-    readonly attributes?: Record<string, unknown> | undefined
-    readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.AnySpan | undefined
-    readonly root?: boolean | undefined
-    readonly context?: Context.Context<never> | undefined
-  }
+  options?: Tracer.SpanOptions
 ) => Effect<Tracer.Span> = effect.makeSpan
 
 /**
@@ -5195,13 +5234,7 @@ export const makeSpan: (
  */
 export const makeSpanScoped: (
   name: string,
-  options?: {
-    readonly attributes?: Record<string, unknown> | undefined
-    readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-    readonly parent?: Tracer.AnySpan | undefined
-    readonly root?: boolean | undefined
-    readonly context?: Context.Context<never> | undefined
-  } | undefined
+  options?: Tracer.SpanOptions | undefined
 ) => Effect<Tracer.Span, never, Scope.Scope> = fiberRuntime.makeSpanScoped
 
 /**
@@ -5218,13 +5251,7 @@ export const useSpan: {
   <A, E, R>(name: string, evaluate: (span: Tracer.Span) => Effect<A, E, R>): Effect<A, E, R>
   <A, E, R>(
     name: string,
-    options: {
-      readonly attributes?: Record<string, unknown> | undefined
-      readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-      readonly parent?: Tracer.AnySpan | undefined
-      readonly root?: boolean | undefined
-      readonly context?: Context.Context<never> | undefined
-    },
+    options: Tracer.SpanOptions,
     evaluate: (span: Tracer.Span) => Effect<A, E, R>
   ): Effect<A, E, R>
 } = effect.useSpan
@@ -5238,24 +5265,12 @@ export const useSpan: {
 export const withSpan: {
   (
     name: string,
-    options?: {
-      readonly attributes?: Record<string, unknown> | undefined
-      readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-      readonly parent?: Tracer.AnySpan | undefined
-      readonly root?: boolean | undefined
-      readonly context?: Context.Context<never> | undefined
-    } | undefined
+    options?: Tracer.SpanOptions | undefined
   ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, Exclude<R, Tracer.ParentSpan>>
   <A, E, R>(
     self: Effect<A, E, R>,
     name: string,
-    options?: {
-      readonly attributes?: Record<string, unknown> | undefined
-      readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-      readonly parent?: Tracer.AnySpan | undefined
-      readonly root?: boolean | undefined
-      readonly context?: Context.Context<never> | undefined
-    } | undefined
+    options?: Tracer.SpanOptions | undefined
   ): Effect<A, E, Exclude<R, Tracer.ParentSpan>>
 } = effect.withSpan
 
@@ -5270,24 +5285,12 @@ export const withSpan: {
 export const withSpanScoped: {
   (
     name: string,
-    options?: {
-      readonly attributes?: Record<string, unknown> | undefined
-      readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-      readonly parent?: Tracer.AnySpan | undefined
-      readonly root?: boolean | undefined
-      readonly context?: Context.Context<never> | undefined
-    }
+    options?: Tracer.SpanOptions
   ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, Exclude<R, Tracer.ParentSpan> | Scope.Scope>
   <A, E, R>(
     self: Effect<A, E, R>,
     name: string,
-    options?: {
-      readonly attributes?: Record<string, unknown> | undefined
-      readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-      readonly parent?: Tracer.AnySpan | undefined
-      readonly root?: boolean | undefined
-      readonly context?: Context.Context<never> | undefined
-    }
+    options?: Tracer.SpanOptions
   ): Effect<A, E, Exclude<R, Tracer.ParentSpan> | Scope.Scope>
 } = fiberRuntime.withSpanScoped
 

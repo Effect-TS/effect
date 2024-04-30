@@ -6803,24 +6803,12 @@ export const whenEffect = dual<
 export const withSpan = dual<
   (
     name: string,
-    options?: {
-      readonly attributes?: Record<string, unknown> | undefined
-      readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-      readonly parent?: Tracer.AnySpan | undefined
-      readonly root?: boolean | undefined
-      readonly context?: Context.Context<never> | undefined
-    }
+    options?: Tracer.SpanOptions
   ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, Exclude<R, Tracer.ParentSpan>>,
   <A, E, R>(
     self: Stream.Stream<A, E, R>,
     name: string,
-    options?: {
-      readonly attributes?: Record<string, unknown> | undefined
-      readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
-      readonly parent?: Tracer.AnySpan | undefined
-      readonly root?: boolean | undefined
-      readonly context?: Context.Context<never> | undefined
-    }
+    options?: Tracer.SpanOptions
   ) => Stream.Stream<A, E, Exclude<R, Tracer.ParentSpan>>
 >(3, (self, name, options) => new StreamImpl(channel.withSpan(toChannel(self), name, options)))
 
@@ -8047,4 +8035,29 @@ export const encodeText = <E, R>(self: Stream.Stream<string, E, R>): Stream.Stre
   suspend(() => {
     const encoder = new TextEncoder()
     return map(self, (s) => encoder.encode(s))
+  })
+
+/** @internal */
+export const fromEventListener = <A = Event>(
+  target: EventTarget,
+  type: string,
+  options?: boolean | Omit<AddEventListenerOptions, "signal">
+): Stream.Stream<A> =>
+  _async<A>((emit) => {
+    let batch: Array<A> = []
+    let taskRunning = false
+    function cb(e: A) {
+      batch.push(e)
+      if (!taskRunning) {
+        taskRunning = true
+        queueMicrotask(() => {
+          const events = batch
+          batch = []
+          taskRunning = false
+          emit.chunk(Chunk.unsafeFromArray(events))
+        })
+      }
+    }
+    target.addEventListener(type, cb as any, options)
+    return Effect.sync(() => target.removeEventListener(type, cb as any, options))
   })

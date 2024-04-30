@@ -360,4 +360,14 @@ describe("Cause", () => {
       assert.strictEqual(Cause.pretty(Cause.fail([{ toString: "" }])), `Error: [{"toString":""}]`)
     })
   })
+
+  it("equals keep account for the failure type", () => {
+    expect(Equal.equals(Cause.die(0), Cause.fail(0))).toBe(false)
+    expect(
+      Equal.equals(
+        Cause.parallel(Cause.fail("fail1"), Cause.die("fail2")),
+        Cause.parallel(Cause.fail("fail2"), Cause.die("fail1"))
+      )
+    ).toBe(false)
+  })
 })

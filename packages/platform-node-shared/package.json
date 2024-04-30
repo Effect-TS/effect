@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform-node-shared",
   "type": "module",
-  "version": "0.4.12",
+  "version": "0.4.14",
   "license": "MIT",
   "description": "Unified interfaces for common platform-specific services",
   "homepage": "https://effect.website",
@@ -54,7 +54,7 @@
     "@types/node": "^20.12.7",
     "@types/tar": "^6.1.12",
     "effect": "workspace:^",
-    "tar": "^6.1.13"
+    "tar": "^6"
   },
   "effect": {
     "generateExports": {
