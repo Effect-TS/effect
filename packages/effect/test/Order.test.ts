@@ -57,14 +57,14 @@ describe("Order", () => {
   })
 
   it("between", () => {
-    const between = _.between(_.number)({ minimum: 1, maximum: 10 })
+    const between = _.between(_.number)({ gte: 1, lte: 10 })
     U.deepStrictEqual(between(2), true)
     U.deepStrictEqual(between(10), true)
     U.deepStrictEqual(between(20), false)
     U.deepStrictEqual(between(1), true)
     U.deepStrictEqual(between(-10), false)
 
-    U.deepStrictEqual(_.between(_.number)(2, { minimum: 1, maximum: 10 }), true)
+    U.deepStrictEqual(_.between(_.number)(2, { gte: 1, lte: 10 }), true)
   })
 
   it("reverse", () => {

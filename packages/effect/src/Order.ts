@@ -18,6 +18,7 @@
  */
 import { dual } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
+import { Simplify } from "./Types.js";
 
 /**
  * @category type class
@@ -26,6 +27,25 @@ import type { TypeLambda } from "./HKT.js"
 export interface Order<in A> {
   (self: A, that: A): -1 | 0 | 1
 }
+
+/** @internal */
+type Without<T, U> = { [P in Exclude<keyof T, keyof U>]?: never };
+
+/** @internal */
+type XOR<T, U> = T | U extends object
+	? (Without<T, U> & U) | (Without<U, T> & T)
+	: T | U;
+
+/**
+ * @category types
+ * @since 2.0.0
+ */
+export type Range<A> = Simplify<
+	| (XOR<{ gt: A }, { gte: A }> & Partial<XOR<{ lt: A }, { lte: A }>>)
+	| (Partial<XOR<{ gt: A }, { gte: A }>> & XOR<{ lt: A }, { lte: A }>)
+>;
+
+
 
 /**
  * @category type lambdas
@@ -353,19 +373,16 @@ export const clamp = <A>(O: Order<A>): {
  * @since 2.0.0
  */
 export const between = <A>(O: Order<A>): {
-  (options: {
-    minimum: A
-    maximum: A
-  }): (self: A) => boolean
-  (self: A, options: {
-    minimum: A
-    maximum: A
-  }): boolean
+  (range: Range<A>): (self: A) => boolean
+  (self: A, range: Range<A>): boolean
 } =>
   dual(
     2,
-    (self: A, options: {
-      minimum: A
-      maximum: A
-    }): boolean => !lessThan(O)(self, options.minimum) && !greaterThan(O)(self, options.maximum)
+    (self: A, range: Range<A>): boolean => {
+      if(range.gt && !greaterThan(O)(self, range.gt)) return false;
+      if(range.gte && !greaterThanOrEqualTo(O)(self, range.gte)) return false;
+      if(range.lt && !lessThan(O)(self, range.lt)) return false;
+      if(range.lte && !lessThanOrEqualTo(O)(self, range.lte)) return false;
+      return true;
+    }
   )
