@@ -237,19 +237,18 @@ export const makeSerializable = <
 >() =>
 <
   Req extends Schema.TaggedRequest.Any,
-  Fields extends { readonly _tag: Schema.Literal<[Req["_tag"]]> },
   IS,
   R,
   RS
 >(
-  schema: Schema.Schema<Req, IS, RS> & { readonly fields: Fields },
+  schema: Schema.Schema<Req, IS, RS> & { readonly _tag: Req["_tag"] },
   handler: Handler<Req, State, Requests, R>
 ): SerializableProcedure<Req, State, R | Serializable.SerializableWithResult.Context<Req>> => ({
   [TypeId]: TypeId,
   [SerializableTypeId]: SerializableTypeId,
   schema: schema as any,
   handler,
-  tag: schema.fields._tag.literals[0],
+  tag: schema._tag,
   pipe() {
     return pipeArguments(this, arguments)
   }

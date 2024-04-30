@@ -662,6 +662,9 @@ Schema
 - `extend`: add support for refinements, closes #2642
 - add `pattern` json schema annotation to `Trimmed`
 - add `parseNumber` number transformation
+- add `TaggedClass` api interface
+- add `TaggedError` api interface
+- add `TaggedRequestAPI` api interface
 
 ## Other Breaking Changes
 

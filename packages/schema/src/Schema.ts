@@ -6412,6 +6412,25 @@ export const getClassTag = <Tag extends string>(tag: Tag) =>
   withConstructorDefault(propertySignature(Literal(tag)), () => tag)
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface TaggedClass<Self, Tag extends string, Fields extends Struct.Fields> extends
+  Class<
+    Self,
+    { readonly _tag: PropertySignature<":", Tag, never, ":", Tag, true, never> } & Fields,
+    Types.Simplify<{ readonly _tag: Tag } & Struct.Type<Fields>>,
+    Types.Simplify<{ readonly _tag: Tag } & Struct.Encoded<Fields>>,
+    Struct.Context<Fields>,
+    Types.Simplify<Struct.Constructor<Fields>>,
+    {},
+    {}
+  >
+{
+  readonly _tag: Tag
+}
+
+/**
  * @category classes
  * @since 1.0.0
  */
@@ -6421,7 +6440,23 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
   fields: Fields,
   annotations?: Annotations.Schema<Self>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
-  : Class<
+  : TaggedClass<Self, Tag, Fields> =>
+  class extends makeClass({
+    kind: "TaggedClass",
+    identifier: identifier ?? tag,
+    fields: extendFields({ _tag: getClassTag(tag) }, fields),
+    Base: data_.Class,
+    annotations
+  }) {
+    static _tag = tag
+  } as any
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface TaggedError<Self, Tag extends string, Fields extends Struct.Fields> extends
+  Class<
     Self,
     { readonly _tag: PropertySignature<":", Tag, never, ":", Tag, true, never> } & Fields,
     Types.Simplify<{ readonly _tag: Tag } & Struct.Type<Fields>>,
@@ -6429,15 +6464,11 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
     Struct.Context<Fields>,
     Types.Simplify<Struct.Constructor<Fields>>,
     {},
-    {}
-  > =>
-  makeClass({
-    kind: "TaggedClass",
-    identifier: identifier ?? tag,
-    fields: extendFields({ _tag: getClassTag(tag) }, fields),
-    Base: data_.Class,
-    annotations
-  })
+    cause_.YieldableError
+  >
+{
+  readonly _tag: Tag
+}
 
 /**
  * @category classes
@@ -6449,20 +6480,11 @@ export const TaggedError = <Self = never>(identifier?: string) =>
   fields: Fields,
   annotations?: Annotations.Schema<Self>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedError", `"Tag", `>
-  : Class<
-    Self,
-    { readonly _tag: PropertySignature<":", Tag, never, ":", Tag, true, never> } & Fields,
-    Types.Simplify<{ readonly _tag: Tag } & Struct.Type<Fields>>,
-    Types.Simplify<{ readonly _tag: Tag } & Struct.Encoded<Fields>>,
-    Struct.Context<Fields>,
-    Types.Simplify<Struct.Constructor<Fields>>,
-    {},
-    cause_.YieldableError
-  > =>
+  : TaggedError<Self, Tag, Fields> =>
 {
   class Base extends data_.Error {}
   ;(Base.prototype as any).name = tag
-  return makeClass({
+  return class extends makeClass({
     kind: "TaggedError",
     identifier: identifier ?? tag,
     fields: extendFields({ _tag: getClassTag(tag) }, fields),
@@ -6477,7 +6499,9 @@ export const TaggedError = <Self = never>(identifier?: string) =>
         return message
       }
     }
-  })
+  }) {
+    static _tag = tag
+  } as any
 }
 
 /**
@@ -6505,19 +6529,12 @@ export declare namespace TaggedRequest {
 }
 
 /**
- * @category classes
+ * @category api interface
  * @since 1.0.0
  */
-export const TaggedRequest =
-  <Self = never>(identifier?: string) =>
-  <Tag extends string, Fields extends Struct.Fields, EA, EI, ER, AA, AI, AR>(
-    tag: Tag,
-    Failure: Schema<EA, EI, ER>,
-    Success: Schema<AA, AI, AR>,
-    fields: Fields,
-    annotations?: Annotations.Schema<Self>
-  ): [Self] extends [never] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
-    : Class<
+export interface TaggedRequestAPI<Self, Tag extends string, Fields extends Struct.Fields, EA, EI, ER, AA, AI, AR>
+  extends
+    Class<
       Self,
       { readonly _tag: PropertySignature<":", Tag, never, ":", Tag, true, never> } & Fields,
       Types.Simplify<{ readonly _tag: Tag } & Struct.Type<Fields>>,
@@ -6536,7 +6553,25 @@ export const TaggedRequest =
         ER | AR
       >,
       {}
-    > =>
+    >
+{
+  readonly _tag: Tag
+}
+
+/**
+ * @category classes
+ * @since 1.0.0
+ */
+export const TaggedRequest =
+  <Self = never>(identifier?: string) =>
+  <Tag extends string, Fields extends Struct.Fields, EA, EI, ER, AA, AI, AR>(
+    tag: Tag,
+    Failure: Schema<EA, EI, ER>,
+    Success: Schema<AA, AI, AR>,
+    fields: Fields,
+    annotations?: Annotations.Schema<Self>
+  ): [Self] extends [never] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
+    : TaggedRequestAPI<Self, Tag, Fields, EA, EI, ER, AA, AI, AR> =>
   {
     class SerializableRequest extends Request.Class<any, any, { readonly _tag: string }> {
       get [serializable_.symbol]() {
@@ -6546,13 +6581,15 @@ export const TaggedRequest =
         return { Failure, Success }
       }
     }
-    return makeClass({
+    return class extends makeClass({
       kind: "TaggedRequest",
       identifier: identifier ?? tag,
       fields: extendFields({ _tag: getClassTag(tag) }, fields),
       Base: SerializableRequest,
       annotations
-    })
+    }) {
+      static _tag = tag
+    } as any
   }
 
 const extendFields = (a: Struct.Fields, b: Struct.Fields): Struct.Fields => {

@@ -388,10 +388,11 @@ describe("Class APIs", () => {
       expect({ ...new TA({ a: "a" }) }).toStrictEqual({ _tag: "TA", a: "a" })
     })
 
-    it("should expose the fields", () => {
+    it("should expose the fields and the tag", () => {
       class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
       expectFields(TA.fields, { _tag: S.getClassTag("TA"), a: S.String })
       expect(S.Struct(TA.fields).make({ a: "a" })).toStrictEqual({ _tag: "TA", a: "a" })
+      expect(TA._tag).toBe("TA")
     })
 
     it("should expose the identifier", () => {
@@ -422,14 +423,6 @@ describe("Class APIs", () => {
         class _TA extends S.TaggedClass<_TA>()("TA", { _tag: S.Literal("X"), a: S.String }) {}
         console.log(_TA)
       }).toThrow(new Error(`Duplicate property signature "_tag"`))
-    })
-
-    it("should expose the fields", async () => {
-      class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
-      expectFields(TA.fields, {
-        _tag: S.getClassTag("TA"),
-        a: S.String
-      })
     })
 
     it("decoding", async () => {
@@ -500,6 +493,15 @@ describe("Class APIs", () => {
         b: S.Number
       })
       expect({ ...new TB({ a: "a", b: 1 }) }).toStrictEqual({ _tag: "TB", a: "a", b: 1 })
+    })
+  })
+
+  describe("TaggedError", () => {
+    it("should expose the fields and the tag", () => {
+      class TE extends S.TaggedError<TE>()("TE", { a: S.String }) {}
+      expectFields(TE.fields, { _tag: S.getClassTag("TE"), a: S.String })
+      expect(S.Struct(TE.fields).make({ a: "a" })).toStrictEqual({ _tag: "TE", a: "a" })
+      expect(TE._tag).toBe("TE")
     })
   })
 
@@ -722,7 +724,7 @@ describe("Class APIs", () => {
   })
 
   describe("TaggedRequest", () => {
-    it("should expose the fields", () => {
+    it("should expose the fields and the tag", () => {
       class TRA extends S.TaggedRequest<TRA>()("TRA", S.String, S.Number, {
         id: S.Number
       }) {}
@@ -730,6 +732,7 @@ describe("Class APIs", () => {
         _tag: S.getClassTag("TRA"),
         id: S.Number
       })
+      expect(TRA._tag).toBe("TRA")
     })
 
     it("should expose the identifier", () => {
