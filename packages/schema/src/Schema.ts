@@ -2795,7 +2795,7 @@ export function filter<A>(
  * @category api interface
  * @since 1.0.0
  */
-export interface transformOrFail<From extends Schema.Any, To extends Schema.Any, R> extends
+export interface transformOrFail<From extends Schema.Any, To extends Schema.Any, R = never> extends
   AnnotableClass<
     transformOrFail<From, To, R>,
     Schema.Type<To>,
@@ -2923,7 +2923,7 @@ export const transformOrFail: {
  * @category api interface
  * @since 1.0.0
  */
-export interface transform<From extends Schema.Any, To extends Schema.Any> extends transformOrFail<From, To, never> {
+export interface transform<From extends Schema.Any, To extends Schema.Any> extends transformOrFail<From, To> {
   annotations(annotations: Annotations.Schema<Schema.Type<To>>): transform<From, To>
 }
 
@@ -4122,7 +4122,28 @@ export const clamp =
     )
 
 /**
- * This schema transforms a `string` into a `number` by parsing the string using the `Number` function.
+ * Transforms a `string` into a `number` by parsing the string using the `parse` function of the `effect/Number` module.
+ *
+ * It returns an error if the value can't be converted (for example when non-numeric characters are provided).
+ *
+ * The following special string values are supported: "NaN", "Infinity", "-Infinity".
+ *
+ * @category number transformations
+ * @since 1.0.0
+ */
+export const parseNumber = <A extends string, I, R>(self: Schema<A, I, R>): transformOrFail<Schema<A, I, R>, typeof $Number> =>
+    transformOrFail(
+      self,
+      $Number,
+      {
+        strict: false,
+        decode: (s, _, ast) => ParseResult.fromOption(number_.parse(s), () => new ParseResult.Type(ast, s)),
+        encode: (n) => ParseResult.succeed(String(n))
+      }
+    )
+
+/**
+ * This schema transforms a `string` into a `number` by parsing the string using the `parse` function of the `effect/Number` module.
  *
  * It returns an error if the value can't be converted (for example when non-numeric characters are provided).
  *
@@ -4131,14 +4152,7 @@ export const clamp =
  * @category number constructors
  * @since 1.0.0
  */
-export class NumberFromString extends transformOrFail(
-  $String,
-  $Number,
-  {
-    decode: (s, _, ast) => ParseResult.fromOption(number_.parse(s), () => new ParseResult.Type(ast, s)),
-    encode: (n) => ParseResult.succeed(String(n))
-  }
-).annotations({ identifier: "NumberFromString" }) {}
+export class NumberFromString extends parseNumber($String).annotations({ identifier: "NumberFromString" }) {}
 
 /**
  * @category number constructors

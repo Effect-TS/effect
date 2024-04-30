@@ -629,6 +629,7 @@ Schema
 - add `AnnotableClass` interface
 - `extend`: add support for refinements, closes #2642
 - add `pattern` json schema annotation to `Trimmed`
+- add `parseNumber` number transformation
 
 ## Other Breaking Changes
 
