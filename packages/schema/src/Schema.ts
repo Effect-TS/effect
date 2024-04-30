@@ -2171,12 +2171,14 @@ const getDefaultTypeLiteralAST = <
   return new AST.TypeLiteral(pss, iss)
 }
 
-const lazilyMergeDefaults = (fields: Struct.Fields, props: any): { [x: string | symbol]: unknown } => {
-  const out: Record<PropertyKey, unknown> = { ...props }
+const lazilyMergeDefaults = (
+  fields: Struct.Fields,
+  out: Record<PropertyKey, unknown>
+): { [x: string | symbol]: unknown } => {
   const ownKeys = util_.ownKeys(fields)
   for (const key of ownKeys) {
     const field = fields[key]
-    if (props[key] === undefined && isPropertySignature(field)) {
+    if (out[key] === undefined && isPropertySignature(field)) {
       const ast = field.ast
       const defaultValue = ast._tag === "PropertySignatureDeclaration" ? ast.defaultValue : ast.to.defaultValue
       if (defaultValue !== undefined) {
@@ -2214,7 +2216,7 @@ const makeTypeLiteralClass = <
     static make(
       props: Types.Simplify<TypeLiteral.Constructor<Fields, Records>>
     ): Types.Simplify<TypeLiteral.Type<Fields, Records>> {
-      return ParseResult.validateSync(this)(lazilyMergeDefaults(fields, props))
+      return ParseResult.validateSync(this)(lazilyMergeDefaults(fields, { ...props as any }))
     }
   }
 }
@@ -6434,7 +6436,6 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
     identifier: identifier ?? tag,
     fields: extendFields({ _tag: getClassTag(tag) }, fields),
     Base: data_.Class,
-    tag: { _tag: tag },
     annotations
   })
 
@@ -6466,7 +6467,6 @@ export const TaggedError = <Self = never>(identifier?: string) =>
     identifier: identifier ?? tag,
     fields: extendFields({ _tag: getClassTag(tag) }, fields),
     Base,
-    tag: { _tag: tag },
     annotations,
     toStringOverride(self) {
       if ((Predicate.isString(self.message) && self.message.length > 0)) {
@@ -6551,7 +6551,6 @@ export const TaggedRequest =
       identifier: identifier ?? tag,
       fields: extendFields({ _tag: getClassTag(tag) }, fields),
       Base: SerializableRequest,
-      tag: { _tag: tag },
       annotations
     })
   }
@@ -6567,13 +6566,12 @@ const extendFields = (a: Struct.Fields, b: Struct.Fields): Struct.Fields => {
   return out
 }
 
-const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, tag, toStringOverride }: {
-  kind: string
+const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, toStringOverride }: {
+  kind: "Class" | "TaggedClass" | "TaggedError" | "TaggedRequest"
   identifier: string
   fields: Struct.Fields
   Base: new(...args: ReadonlyArray<any>) => any
   fromSchema?: Schema.Any | undefined
-  tag?: { _tag: AST.LiteralValue } | undefined
   annotations?: Annotations.Schema<any> | undefined
   toStringOverride?: (self: any) => string | undefined
 }): any => {
@@ -6590,10 +6588,11 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
       props: { [x: string | symbol]: unknown } = {},
       disableValidation: boolean = false
     ) {
-      props = lazilyMergeDefaults(fields, props)
-      if (tag !== undefined) {
-        props = { ...props, ...tag }
+      props = { ...props }
+      if (kind !== "Class") {
+        delete props["_tag"]
       }
+      props = lazilyMergeDefaults(fields, props)
       if (disableValidation !== true) {
         props = validate(props)
       }
@@ -6673,7 +6672,6 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
           identifier,
           fields: extendedFields,
           Base: this,
-          tag,
           annotations
         })
       }
@@ -6692,7 +6690,6 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
           ),
           fields: transformedFields,
           Base: this,
-          tag,
           annotations
         })
       }
@@ -6711,7 +6708,6 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
           ),
           fields: transformedFields,
           Base: this,
-          tag,
           annotations
         })
       }
