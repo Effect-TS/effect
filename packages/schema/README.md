@@ -5005,6 +5005,9 @@ console.log(encode(SortedSet.frOmIterable(N.Order)([1, 2, 3]))) // { _id: 'Sorte
 
 When dealing with data, creating values that match a specific schema is crucial. To simplify this process, we've introduced **default constructors** for various types of schemas: `Struct`s, `Record`s, `filter`s, and `brand`s. Let's dive into each of them with some examples to understand better how they work.
 
+> [!NOTE]
+> Default constructors associated with a schema `Schema<A, I, R>` are specifically related to the `A` type, not the `I` type.
+
 Example (`Struct`)
 
 ```ts
