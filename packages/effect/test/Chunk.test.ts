@@ -17,6 +17,8 @@ describe("Chunk", () => {
     expect(Chunk.unsafeFromNonEmptyArray).exist
     expect(Chunk.contains).exist
     expect(Chunk.containsWith).exist
+    expect(Chunk.difference).exist
+    expect(Chunk.differenceWith).exist
     expect(Chunk.findFirst).exist
     expect(Chunk.findFirstIndex).exist
     expect(Chunk.findLast).exist
@@ -873,5 +875,26 @@ describe("Chunk", () => {
     expect(equivalence(Chunk.make(1, 2, 3), Chunk.make(1, 2, 3))).toBe(true)
     expect(equivalence(Chunk.make(1, 2, 3), Chunk.make(1, 2))).toBe(false)
     expect(equivalence(Chunk.make(1, 2, 3), Chunk.make(1, 2, 4))).toBe(false)
+  })
+
+  it("difference", () => {
+    const curr = Chunk.make(1, 3, 5, 7, 9)
+
+    expect(Chunk.difference(Chunk.make(1, 2, 3, 4, 5), curr)).toEqual(Chunk.make(7, 9))
+    expect(Chunk.difference(Chunk.empty(), curr)).toEqual(curr)
+    expect(Chunk.difference(curr, Chunk.empty())).toEqual(Chunk.empty())
+    expect(Chunk.difference(curr, curr)).toEqual(Chunk.empty())
+  })
+
+  it("differenceWith", () => {
+    const eq = <E extends { id: number }>(a: E, b: E) => a.id === b.id
+    const diffW = pipe(eq, Chunk.differenceWith)
+
+    const curr = Chunk.make({ id: 1 }, { id: 2 }, { id: 3 })
+
+    expect(diffW(Chunk.make({ id: 1 }, { id: 2 }), curr)).toEqual(Chunk.make({ id: 3 }))
+    expect(diffW(Chunk.empty(), curr)).toEqual(curr)
+    expect(diffW(curr, Chunk.empty())).toEqual(Chunk.empty())
+    expect(diffW(curr, curr)).toEqual(Chunk.empty())
   })
 })
