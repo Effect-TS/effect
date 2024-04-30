@@ -28,6 +28,12 @@ export const TypeId: ServerRequest.TypeId = Symbol.for("@effect/platform/Http/Se
 export const serverRequestTag = Context.GenericTag<ServerRequest.ServerRequest>("@effect/platform/Http/ServerRequest")
 
 /** @internal */
+export const parsedSearchParamsTag = Context.GenericTag<
+  ServerRequest.ParsedSearchParams,
+  ReadonlyRecord<string, string | Array<string>>
+>("@effect/platform/Http/ServerRequest/ParsedSearchParams")
+
+/** @internal */
 export const upgrade = Effect.flatMap(serverRequestTag, (request) => request.upgrade)
 
 /** @internal */
@@ -35,6 +41,24 @@ export const upgradeChannel = <IE = never>() => Channel.unwrap(Effect.map(upgrad
 
 /** @internal */
 export const multipartPersisted = Effect.flatMap(serverRequestTag, (request) => request.multipart)
+
+/** @internal */
+export const searchParamsFromURL = (url: URL): ReadonlyRecord<string, string | Array<string>> => {
+  const out: Record<string, string | Array<string>> = {}
+  for (const [key, value] of url.searchParams.entries()) {
+    const entry = out[key]
+    if (entry !== undefined) {
+      if (Array.isArray(entry)) {
+        entry.push(value)
+      } else {
+        out[key] = [entry, value]
+      }
+    } else {
+      out[key] = value
+    }
+  }
+  return out
+}
 
 /** @internal */
 export const schemaCookies = <R, I extends Readonly<Record<string, string>>, A>(
@@ -52,6 +76,15 @@ export const schemaHeaders = <R, I extends Readonly<Record<string, string>>, A>(
 ) => {
   const parse = IncomingMessage.schemaHeaders(schema, options)
   return Effect.flatMap(serverRequestTag, parse)
+}
+
+/** @internal */
+export const schemaSearchParams = <R, I extends Readonly<Record<string, string | Array<string> | undefined>>, A>(
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
+) => {
+  const parse = Schema.decodeUnknown(schema, options)
+  return Effect.flatMap(parsedSearchParamsTag, parse)
 }
 
 /** @internal */
