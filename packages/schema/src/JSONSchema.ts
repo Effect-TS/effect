@@ -12,7 +12,18 @@ import type * as Schema from "./Schema.js"
  * @category model
  * @since 1.0.0
  */
-export interface JsonSchema7Any {
+export interface JsonSchemaAnnotations {
+  title?: string
+  description?: string
+  default?: unknown
+  examples?: Array<unknown>
+}
+
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface JsonSchema7Any extends JsonSchemaAnnotations {
   $id: "/schemas/any"
 }
 
@@ -20,7 +31,7 @@ export interface JsonSchema7Any {
  * @category model
  * @since 1.0.0
  */
-export interface JsonSchema7Unknown {
+export interface JsonSchema7Unknown extends JsonSchemaAnnotations {
   $id: "/schemas/unknown"
 }
 
@@ -28,7 +39,7 @@ export interface JsonSchema7Unknown {
  * @category model
  * @since 1.0.0
  */
-export interface JsonSchema7object {
+export interface JsonSchema7object extends JsonSchemaAnnotations {
   $id: "/schemas/object"
   oneOf: [
     { type: "object" },
@@ -40,7 +51,7 @@ export interface JsonSchema7object {
  * @category model
  * @since 1.0.0
  */
-export interface JsonSchema7empty {
+export interface JsonSchema7empty extends JsonSchemaAnnotations {
   $id: "/schemas/{}"
   oneOf: [
     { type: "object" },
@@ -52,7 +63,7 @@ export interface JsonSchema7empty {
  * @category model
  * @since 1.0.0
  */
-export interface JsonSchema7Ref {
+export interface JsonSchema7Ref extends JsonSchemaAnnotations {
   $ref: string
 }
 
@@ -60,7 +71,7 @@ export interface JsonSchema7Ref {
  * @category model
  * @since 1.0.0
  */
-export interface JsonSchema7Const {
+export interface JsonSchema7Const extends JsonSchemaAnnotations {
   const: AST.LiteralValue
 }
 
@@ -68,19 +79,18 @@ export interface JsonSchema7Const {
  * @category model
  * @since 1.0.0
  */
-export interface JsonSchema7String {
+export interface JsonSchema7String extends JsonSchemaAnnotations {
   type: "string"
   minLength?: number
   maxLength?: number
   pattern?: string
-  description?: string
 }
 
 /**
  * @category model
  * @since 1.0.0
  */
-export interface JsonSchema7Numeric {
+export interface JsonSchema7Numeric extends JsonSchemaAnnotations {
   minimum?: number
   exclusiveMinimum?: number
   maximum?: number
@@ -107,7 +117,7 @@ export interface JsonSchema7Integer extends JsonSchema7Numeric {
  * @category model
  * @since 1.0.0
  */
-export interface JsonSchema7Boolean {
+export interface JsonSchema7Boolean extends JsonSchemaAnnotations {
   type: "boolean"
 }
 
@@ -115,7 +125,7 @@ export interface JsonSchema7Boolean {
  * @category model
  * @since 1.0.0
  */
-export interface JsonSchema7Array {
+export interface JsonSchema7Array extends JsonSchemaAnnotations {
   type: "array"
   items?: JsonSchema7 | Array<JsonSchema7>
   minItems?: number
@@ -127,7 +137,7 @@ export interface JsonSchema7Array {
  * @category model
  * @since 1.0.0
  */
-export interface JsonSchema7OneOf {
+export interface JsonSchema7OneOf extends JsonSchemaAnnotations {
   oneOf: Array<JsonSchema7>
 }
 
@@ -135,7 +145,7 @@ export interface JsonSchema7OneOf {
  * @category model
  * @since 1.0.0
  */
-export interface JsonSchema7Enum {
+export interface JsonSchema7Enum extends JsonSchemaAnnotations {
   enum: Array<AST.LiteralValue>
 }
 
@@ -143,7 +153,7 @@ export interface JsonSchema7Enum {
  * @category model
  * @since 1.0.0
  */
-export interface JsonSchema7Enums {
+export interface JsonSchema7Enums extends JsonSchemaAnnotations {
   $comment: "/schemas/enums"
   oneOf: Array<{
     title: string
@@ -155,7 +165,7 @@ export interface JsonSchema7Enums {
  * @category model
  * @since 1.0.0
  */
-export interface JsonSchema7AnyOf {
+export interface JsonSchema7AnyOf extends JsonSchemaAnnotations {
   anyOf: Array<JsonSchema7>
 }
 
@@ -163,7 +173,7 @@ export interface JsonSchema7AnyOf {
  * @category model
  * @since 1.0.0
  */
-export interface JsonSchema7Object {
+export interface JsonSchema7Object extends JsonSchemaAnnotations {
   type: "object"
   required: Array<string>
   properties: Record<string, JsonSchema7>
@@ -277,20 +287,37 @@ export const DEFINITION_PREFIX = "#/$defs/"
 
 const get$ref = (id: string): string => `${DEFINITION_PREFIX}${id}`
 
+const hasTransformation = (ast: AST.Refinement): boolean => {
+  switch (ast.from._tag) {
+    case "Transformation":
+      return true
+    case "Refinement":
+      return hasTransformation(ast.from)
+    case "Suspend":
+      {
+        const from = ast.from.f()
+        if (AST.isRefinement(from)) {
+          return hasTransformation(from)
+        }
+      }
+      break
+  }
+  return false
+}
+
 const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>, handleIdentifier: boolean = true): JsonSchema7 => {
   const hook = AST.getJSONSchemaAnnotation(ast)
   if (Option.isSome(hook)) {
     const handler = hook.value as JsonSchema7
-    switch (ast._tag) {
-      case "Refinement":
-        try {
-          return { ...go(ast.from, $defs), ...getMeta(ast), ...handler }
-        } catch (e) {
-          if (e instanceof Error && e.name === "MissingAnnotation") {
-            return { ...getMeta(ast), ...handler }
-          }
-          throw e
+    if (AST.isRefinement(ast) && !hasTransformation(ast)) {
+      try {
+        return { ...go(ast.from, $defs), ...getMeta(ast), ...handler }
+      } catch (e) {
+        if (e instanceof Error && e.name === "MissingAnnotation") {
+          return { ...getMeta(ast), ...handler }
         }
+        throw e
+      }
     }
     return handler
   }
@@ -298,7 +325,7 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>, handleIdentifier: 
   if (Option.isSome(surrogate)) {
     return go(surrogate.value, $defs, handleIdentifier)
   }
-  if (handleIdentifier) {
+  if (handleIdentifier && !AST.isTransformation(ast)) {
     const identifier = AST.getJSONIdentifier(ast)
     if (Option.isSome(identifier)) {
       const id = identifier.value
@@ -530,6 +557,6 @@ const go = (ast: AST.AST, $defs: Record<string, JsonSchema7>, handleIdentifier: 
       return go(ast.f(), $defs)
     }
     case "Transformation":
-      return go(ast.to, $defs)
+      return go(ast.from, $defs)
   }
 }

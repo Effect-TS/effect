@@ -1015,12 +1015,11 @@ console.log(Pretty.make(schema)(1)) // my format: 1
 The `make` function from the `@effect/schema/JSONSchema` module enables you to create a JSON Schema based on a defined schema:
 
 ```ts
-import * as JSONSchema from "@effect/schema/JSONSchema"
-import * as S from "@effect/schema/Schema"
+import { JSONSchema, Schema } from "@effect/schema"
 
-const Person = S.Struct({
-  name: S.String,
-  age: S.Number
+const Person = Schema.Struct({
+  name: Schema.NonEmpty,
+  age: Schema.Number
 })
 
 const jsonSchema = JSONSchema.make(Person)
@@ -1032,19 +1031,20 @@ Output:
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "required": [
-    "name",
-    "age"
+    "age",
+    "name"
   ],
   "properties": {
-    "name": {
-      "type": "string",
-      "description": "a string",
-      "title": "string"
-    },
     "age": {
       "type": "number",
       "description": "a number",
       "title": "number"
+    },
+    "name": {
+      "type": "string",
+      "description": "a non empty string",
+      "title": "NonEmpty",
+      "minLength": 1
     }
   },
   "additionalProperties": false
@@ -1052,19 +1052,64 @@ Output:
 */
 ```
 
-In this example, we have created a schema for a "Person" with a name (a string) and an age (a number). We then use the `JSONSchema.make` function to generate the corresponding JSON Schema.
+In this example, we have created a schema for a "Person" with a name (a non-empty string) and an age (a number). We then use the `JSONSchema.make` function to generate the corresponding JSON Schema.
+
+Note that `JSONSchema.make` attempts to produce the optimal JSON Schema for the input part of the decoding phase. This means that starting from the most nested schema, it traverses the chain, including each refinement, and stops at the first transformation found.
+
+For instance, if we modify the schema of the `age` field:
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const Person = Schema.Struct({
+  name: Schema.NonEmpty,
+  age: Schema.Number.pipe(
+    // refinement, will be included in the generated JSON Schema
+    Schema.int(),
+    // transformation, will be excluded in the generated JSON Schema
+    Schema.clamp(1, 10)
+  )
+})
+
+const jsonSchema = JSONSchema.make(Person)
+
+console.log(JSON.stringify(jsonSchema, null, 2))
+```
+
+We can see that the new JSON Schema generated for the `age` field is of type `"integer"`, retaining the useful refinement (being an integer) and excluding the transformation (clamping between `1` and `10`):
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["name", "age"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "a non empty string",
+      "title": "NonEmpty",
+      "minLength": 1
+    },
+    "age": {
+      "type": "integer",
+      "description": "an integer",
+      "title": "integer"
+    }
+  },
+  "additionalProperties": false
+}
+```
 
 ### Identifier Annotations
 
 You can enhance your schemas with `identifier` annotations. If you do, your schema will be included within a "definitions" object property on the root and referenced from there:
 
 ```ts
-import * as JSONSchema from "@effect/schema/JSONSchema"
-import * as S from "@effect/schema/Schema"
+import { JSONSchema, Schema } from "@effect/schema"
 
-const Name = S.String.annotations({ identifier: "Name" })
-const Age = S.Number.annotations({ identifier: "Age" })
-const Person = S.Struct({
+const Name = Schema.String.annotations({ identifier: "Name" })
+const Age = Schema.Number.annotations({ identifier: "Age" })
+const Person = Schema.Struct({
   name: Name,
   age: Age
 })
@@ -1108,22 +1153,88 @@ Output:
 
 This technique helps organize your JSON Schema by creating separate definitions for each identifier annotated schema, making it more readable and maintainable.
 
+### Standard JSON Schema Annotations
+
+Standard JSON Schema annotations such as `title`, `description`, `default`, and `Examples` are supported:
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  foo: Schema.optional(
+    Schema.String.annotations({
+      description: "an optional string field",
+      title: "foo",
+      examples: ["a", "b"]
+    }).pipe(Schema.compose(Schema.Trim)),
+    {
+      default: () => ""
+    }
+  ).annotations({ description: "a required, trimmed string field" })
+})
+
+// Generate a JSON Schema for the input part
+console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+/*
+Output:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [],
+  "properties": {
+    "foo": {
+      "type": "string",
+      "description": "an optional string field",
+      "title": "foo",
+      "examples": [
+        "a",
+        "b"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "title": "Struct (Encoded side)"
+}
+*/
+
+// Generate a JSON Schema for the output part
+console.log(JSON.stringify(JSONSchema.make(Schema.typeSchema(schema)), null, 2))
+/*
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "foo"
+  ],
+  "properties": {
+    "foo": {
+      "type": "string",
+      "description": "a required string field",
+      "title": "Trimmed",
+      "pattern": "^.*[a-zA-Z0-9]+.*$"
+    }
+  },
+  "additionalProperties": false,
+  "title": "Struct (Type side)"
+}
+*/
+```
+
 ### Recursive and Mutually Recursive Schemas
 
 Recursive and mutually recursive schemas are supported, but in these cases, identifier annotations are **required**:
 
 ```ts
-import * as JSONSchema from "@effect/schema/JSONSchema"
-import * as S from "@effect/schema/Schema"
+import { JSONSchema, Schema } from "@effect/schema"
 
 interface Category {
   readonly name: string
   readonly categories: ReadonlyArray<Category>
 }
 
-const schema: S.Schema<Category> = S.Struct({
-  name: S.String,
-  categories: S.Array(S.suspend(() => schema))
+const schema: Schema.Schema<Category> = Schema.Struct({
+  name: Schema.String,
+  categories: Schema.Array(Schema.suspend(() => schema))
 }).annotations({ identifier: "Category" })
 
 const jsonSchema = JSONSchema.make(schema)
@@ -1165,42 +1276,78 @@ In the example above, we define a schema for a "Category" that can contain a "na
 
 This ensures that the JSON Schema properly handles the recursive structure and creates distinct definitions for each annotated schema, improving readability and maintainability.
 
-### JSON Schema Annotations
+### Custom JSON Schema Annotations
 
 When defining a **refinement** (e.g., through the `filter` function), you can attach a JSON Schema annotation to your schema containing a JSON Schema "fragment" related to this particular refinement. This fragment will be used to generate the corresponding JSON Schema. Note that if the schema consists of more than one refinement, the corresponding annotations will be merged.
 
 ```ts
-import * as JSONSchema from "@effect/schema/JSONSchema"
-import * as S from "@effect/schema/Schema"
+import { JSONSchema, Schema } from "@effect/schema"
 
 // Simulate one or more refinements
-const Positive = S.Number.pipe(
-  S.filter((n) => n > 0, {
+const Positive = Schema.Number.pipe(
+  Schema.filter((n) => n > 0, {
     jsonSchema: { minimum: 0 }
   })
 )
 
 const schema = Positive.pipe(
-  S.filter((n) => n <= 10, {
+  Schema.filter((n) => n <= 10, {
     jsonSchema: { maximum: 10 }
   })
 )
 
-console.log(JSONSchema.make(schema))
+const jsonSchema = JSONSchema.make(schema)
+
+console.log(JSON.stringify(jsonSchema, null, 2))
 /*
 Output:
 {
-  '$schema': 'http://json-schema.org/draft-07/schema#',
-  type: 'number',
-  description: 'a number',
-  title: 'number',
-  minimum: 0,
-  maximum: 10
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "number",
+  "description": "a number",
+  "title": "number",
+  "minimum": 0,
+  "maximum": 10
 }
 */
 ```
 
-As seen in the example, the JSON Schema annotations are merged with the base JSON Schema from `S.Number`. This approach helps handle multiple refinements while maintaining clarity in your code.
+For all other types of schema that are not refinements, the content of the annotation is used and overrides anything the system would have generated by default:
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Struct({ foo: Schema.String }).annotations({
+  jsonSchema: { type: "object" }
+})
+
+const jsonSchema = JSONSchema.make(schema)
+
+console.log(JSON.stringify(jsonSchema, null, 2))
+/*
+Output
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object"
+}
+the default would be:
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "foo"
+  ],
+  "properties": {
+    "foo": {
+      "type": "string",
+      "description": "a string",
+      "title": "string"
+    }
+  },
+  "additionalProperties": false
+}
+*/
+```
 
 ## Generating Equivalences
 
@@ -4827,7 +4974,7 @@ console.log(decode(SortedSet.frOmIterable(Str.Order)(["1", "2", "3"]))) // { _id
 console.log(encode(SortedSet.frOmIterable(N.Order)([1, 2, 3]))) // { _id: 'SortedSet', values: [ '1', '2', '3' ] }
 ```
 
-# Introducing Default Constructors
+# Default Constructors
 
 When dealing with data, creating values that match a specific schema is crucial. To simplify this process, we've introduced **default constructors** for various types of schemas: `Struct`s, `Record`s, `filter`s, and `brand`s. Let's dive into each of them with some examples to understand better how they work.
 
@@ -4913,6 +5060,35 @@ Error: a number between 1 and 10
 When utilizing our default constructors, it's important to grasp the type of value they generate. In the `BrandedNumberSchema` example, the return type of the constructor is `number & Brand<"MyNumber">`, indicating that the resulting value is a number with the added branding "MyNumber".
 
 This differs from the filter example where the return type is simply `number`. The branding offers additional insights about the type, facilitating the identification and manipulation of your data.
+
+Note that default constructors are "unsafe" in the sense that if the input does not conform to the schema, the constructor throws an error containing a description of what is wrong. This is because the goal of default constructors is to provide a quick way to create compliant values (for example, for writing tests or configurations, or in any situation where it is assumed that the input passed to the constructors is valid and the opposite situation is exceptional). To have a "safe" constructor, you can use `Schema.validateEither`:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const MyNumber = Schema.Number.pipe(Schema.between(1, 10))
+
+const ctor = Schema.validateEither(MyNumber)
+
+console.log(ctor(5))
+/*
+{ _id: 'Either', _tag: 'Right', right: 5 }
+*/
+
+console.log(ctor(20))
+/*
+{
+  _id: 'Either',
+  _tag: 'Left',
+  left: {
+    _id: 'ParseError',
+    message: 'a number between 1 and 10\n' +
+      '└─ Predicate refinement failure\n' +
+      '   └─ Expected a number between 1 and 10, actual 20'
+  }
+}
+*/
+```
 
 ## Introduction to Setting Default Values
 

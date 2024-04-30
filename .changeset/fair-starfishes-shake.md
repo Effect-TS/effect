@@ -127,6 +127,35 @@ When utilizing our default constructors, it's important to grasp the type of val
 
 This differs from the filter example where the return type is simply `number`. The branding offers additional insights about the type, facilitating the identification and manipulation of your data.
 
+Note that default constructors are "unsafe" in the sense that if the input does not conform to the schema, the constructor throws an error containing a description of what is wrong. This is because the goal of default constructors is to provide a quick way to create compliant values (for example, for writing tests or configurations, or in any situation where it is assumed that the input passed to the constructors is valid and the opposite situation is exceptional). To have a "safe" constructor, you can use `Schema.validateEither`:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const MyNumber = Schema.Number.pipe(Schema.between(1, 10))
+
+const ctor = Schema.validateEither(MyNumber)
+
+console.log(ctor(5))
+/*
+{ _id: 'Either', _tag: 'Right', right: 5 }
+*/
+
+console.log(ctor(20))
+/*
+{
+  _id: 'Either',
+  _tag: 'Left',
+  left: {
+    _id: 'ParseError',
+    message: 'a number between 1 and 10\n' +
+      '└─ Predicate refinement failure\n' +
+      '   └─ Expected a number between 1 and 10, actual 20'
+  }
+}
+*/
+```
+
 ### Introduction to Setting Default Values
 
 When constructing objects, it's common to want to assign default values to certain fields to simplify the creation of new instances. Our new `withConstructorDefault` combinator allows you to effortlessly manage the optionality of a field in your default constructor.
@@ -449,6 +478,143 @@ const schema = Schema.Struct({
 const aField = schema.from.fields.a
 ```
 
+## JSON Schema Compiler Refactoring
+
+The JSON Schema compiler has been refactored to be more user-friendly. Now, the `make` API attempts to produce the optimal JSON Schema for the input part of the decoding phase. This means that starting from the most nested schema, it traverses the chain, including each refinement, and stops at the first transformation found.
+
+Let's see an example:
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  foo: Schema.String.pipe(Schema.minLength(2)),
+  bar: Schema.optional(Schema.NumberFromString, {
+    default: () => 0
+  })
+})
+
+console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+```
+
+Now, let's compare the JSON Schemas produced in both the previous and new versions.
+
+### Before
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["bar", "foo"],
+  "properties": {
+    "bar": {
+      "type": "number",
+      "description": "a number",
+      "title": "number"
+    },
+    "foo": {
+      "type": "string",
+      "description": "a string at least 2 character(s) long",
+      "title": "string",
+      "minLength": 2
+    }
+  },
+  "additionalProperties": false,
+  "title": "Struct (Type side)"
+}
+```
+
+As you can see, the JSON Schema produced has:
+
+- a required `foo` field, correctly modeled with a constraint (`"minLength": 2`)
+- a **required numeric `bar` field**
+
+This happens because in the previous version, the `JSONSchema.make` API by default produces a JSON Schema for the `Type` part of the schema. That is:
+
+```ts
+type Type = Schema.Schema.Type<typeof schema>
+/*
+type Type = {
+    readonly foo: string;
+    readonly bar: number;
+}
+*/
+```
+
+However, typically, we are interested in generating a JSON Schema for the input part of the decoding process, i.e., in this case for:
+
+```ts
+type Encoded = Schema.Schema.Encoded<typeof schema>
+/*
+type Encoded = {
+    readonly foo: string;
+    readonly bar?: string | undefined;
+}
+*/
+```
+
+At first glance, a possible solution might be to generate the JSON Schema of `Schema.encodedSchema(schema)`:
+
+```ts
+console.log(
+  JSON.stringify(JSONSchema.make(Schema.encodedSchema(schema)), null, 2)
+)
+```
+
+But here's what the result would be:
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["foo"],
+  "properties": {
+    "foo": {
+      "type": "string",
+      "description": "a string",
+      "title": "string"
+    },
+    "bar": {
+      "type": "string",
+      "description": "a string",
+      "title": "string"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+As you can see, we lost the `"minLength": 2` constraint, which is the useful part of precisely defining our schemas using refinements.
+
+### After
+
+Now, let's see what `JSONSchema.make` API produces by default for the same schema:
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["foo"],
+  "properties": {
+    "foo": {
+      "type": "string",
+      "description": "a string at least 2 character(s) long",
+      "title": "string",
+      "minLength": 2
+    },
+    "bar": {
+      "type": "string",
+      "description": "a string",
+      "title": "string"
+    }
+  },
+  "additionalProperties": false,
+  "title": "Struct (Encoded side)"
+}
+```
+
+As you can verify, the refinement has been preserved.
+
 ## Patches
 
 AST
@@ -462,10 +628,27 @@ Schema
 - add `SchemaClass` interface
 - add `AnnotableClass` interface
 - `extend`: add support for refinements, closes #2642
+- add `pattern` json schema annotation to `Trimmed`
 
 ## Other Breaking Changes
 
 - move `fast-check` from `peerDependencies` to `dependencies`
+
+JSONSchema
+
+- extend all interfaces with `JsonSchemaAnnotations`
+
+  ```ts
+  export interface JsonSchemaAnnotations {
+    title?: string
+    description?: string
+    default?: unknown
+    examples?: Array<unknown>
+  }
+  ```
+
+Schema
+
 - remove `asBrandSchema` utility
 - change `BrandSchema` interface
 
