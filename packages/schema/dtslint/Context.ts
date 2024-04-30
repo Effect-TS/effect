@@ -440,7 +440,7 @@ class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", bContext, cCon
 // $ExpectType "aContext"
 hole<S.Schema.Context<typeof MyRequest>>()
 
-// $ExpectType { readonly _tag: Literal<["MyRequest"]>; readonly a: aContext; }
+// $ExpectType { readonly _tag: PropertySignature<":", "MyRequest", never, ":", "MyRequest", true, never>; readonly a: aContext; }
 MyRequest.fields
 
 declare const myRequest: MyRequest

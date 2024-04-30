@@ -618,6 +618,35 @@ Now, let's see what `JSONSchema.make` API produces by default for the same schem
 
 As you can verify, the refinement has been preserved.
 
+## Tagged Class API Improvements
+
+The new combinator `withConstructorDefault` has also allowed us to enhance the `fields` feature exposed by the following APIs:
+
+- `TaggedClass`
+- `TaggedError`
+- `TaggedRequest`
+
+Let's illustrate with an example:
+
+```ts
+import { Schema } from "@effect/schema"
+
+class A extends Schema.TaggedClass<A>("A")("A", {
+  a: Schema.String
+}) {}
+
+/*
+const schema: Schema.Struct<{
+    readonly _tag: Schema.PropertySignature<":", "A", never, ":", "A", true, never>;
+    readonly a: typeof Schema.String;
+}>
+*/
+export const schema = Schema.Struct(A.fields)
+
+// The `_tag` field is optional!
+schema.make({ a: "foo" })
+```
+
 ## Patches
 
 AST

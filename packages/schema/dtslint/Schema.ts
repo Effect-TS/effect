@@ -1658,7 +1658,7 @@ hole<S.Schema.Encoded<typeof D>>()
 // $ExpectType "a" | "c"
 hole<S.Schema.Context<typeof D>>()
 
-// $ExpectType { readonly _tag: Literal<["D"]>; readonly b: typeof $String; readonly c: Schema<boolean, boolean, "c">; readonly a: Schema<string, string, "a">; }
+// $ExpectType { readonly _tag: PropertySignature<":", "D", never, ":", "D", true, never>; readonly b: typeof $String; readonly c: Schema<boolean, boolean, "c">; readonly a: Schema<string, string, "a">; }
 D.fields
 
 // $ExpectType [props: { readonly a: string; readonly b: string; readonly c: boolean; }, disableValidation?: boolean | undefined]
@@ -1685,6 +1685,40 @@ class VoidTaggedClass extends S.TaggedClass<VoidTaggedClass>()("VoidTaggedClass"
 
 // $ExpectType [props?: void | {}, disableValidation?: boolean | undefined]
 hole<ConstructorParameters<typeof VoidTaggedClass>>()
+
+// $ExpectType Schema<{ readonly a: string; readonly _tag: "MyTaggedClass"; }, { readonly a: string; readonly _tag: "MyTaggedClass"; }, never>
+S.asSchema(S.Struct(MyTaggedClass.fields))
+
+// $ExpectType [props: { readonly a: string; readonly _tag?: "MyTaggedClass"; }]
+hole<Parameters<S.Struct<typeof MyTaggedClass.fields>["make"]>>()
+
+// ---------------------------------------------
+// TaggedError
+// ---------------------------------------------
+
+class MyTaggedError extends S.TaggedError<MyTaggedError>()("MyTaggedError", {
+  a: S.String
+}) {}
+
+// $ExpectType Schema<{ readonly a: string; readonly _tag: "MyTaggedError"; }, { readonly a: string; readonly _tag: "MyTaggedError"; }, never>
+S.asSchema(S.Struct(MyTaggedError.fields))
+
+// $ExpectType [props: { readonly a: string; readonly _tag?: "MyTaggedError"; }]
+hole<Parameters<S.Struct<typeof MyTaggedError.fields>["make"]>>()
+
+// ---------------------------------------------
+// TaggedRequest
+// ---------------------------------------------
+
+class MyTaggedRequest extends S.TaggedRequest<MyTaggedRequest>()("MyTaggedRequest", S.String, S.Number, {
+  a: S.String
+}) {}
+
+// $ExpectType Schema<{ readonly a: string; readonly _tag: "MyTaggedRequest"; }, { readonly a: string; readonly _tag: "MyTaggedRequest"; }, never>
+S.asSchema(S.Struct(MyTaggedRequest.fields))
+
+// $ExpectType [props: { readonly a: string; readonly _tag?: "MyTaggedRequest"; }]
+hole<Parameters<S.Struct<typeof MyTaggedRequest.fields>["make"]>>()
 
 // ---------------------------------------------
 // Struct.Type

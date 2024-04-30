@@ -336,7 +336,7 @@ describe("Class APIs", () => {
         c: S.Boolean
       }) {}
       expectFields(D.fields, {
-        _tag: S.Literal("D"),
+        _tag: S.getClassTag("D"),
         a: S.String,
         b: S.String,
         c: S.Boolean
@@ -390,7 +390,8 @@ describe("Class APIs", () => {
 
     it("should expose the fields", () => {
       class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
-      expectFields(TA.fields, { _tag: S.Literal("TA"), a: S.String })
+      expectFields(TA.fields, { _tag: S.getClassTag("TA"), a: S.String })
+      expect(S.Struct(TA.fields).make({ a: "a" })).toStrictEqual({ _tag: "TA", a: "a" })
     })
 
     it("should expose the identifier", () => {
@@ -426,7 +427,7 @@ describe("Class APIs", () => {
     it("should expose the fields", async () => {
       class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
       expectFields(TA.fields, {
-        _tag: S.Literal("TA"),
+        _tag: S.getClassTag("TA"),
         a: S.String
       })
     })
@@ -480,7 +481,7 @@ describe("Class APIs", () => {
         ...TA.fields
       }) {}
       expectFields(B.fields, {
-        _tag: S.Literal("TA"),
+        _tag: S.getClassTag("TA"),
         a: S.String,
         b: S.Number
       })
@@ -494,7 +495,7 @@ describe("Class APIs", () => {
         ...pipe(TA.fields, Struct.omit("_tag"))
       }) {}
       expectFields(TB.fields, {
-        _tag: S.Literal("TB"),
+        _tag: S.getClassTag("TB"),
         a: S.String,
         b: S.Number
       })
@@ -726,7 +727,7 @@ describe("Class APIs", () => {
         id: S.Number
       }) {}
       expectFields(TRA.fields, {
-        _tag: S.Literal("TRA"),
+        _tag: S.getClassTag("TRA"),
         id: S.Number
       })
     })
