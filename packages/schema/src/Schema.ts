@@ -5011,6 +5011,24 @@ export const DateFromString: DateFromString = transform(
  * @category api interface
  * @since 1.0.0
  */
+export interface DateFromNumber extends Annotable<DateFromNumber, Date, number> {}
+
+/**
+ * Represents a schema that converts a `number` into a (potentially invalid) `Date` (e.g., `new Date(Infinity)` is not rejected).
+ *
+ * @category Date transformations
+ * @since 1.0.0
+ */
+export const DateFromNumber: DateFromNumber = transform(
+  $Number,
+  DateFromSelf,
+  { decode: (s) => new Date(s), encode: (n) => n.getTime() }
+).annotations({ identifier: "DateFromNumber" })
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
 export interface $Date extends Annotable<$Date, Date, string> {}
 
 const $Date: $Date = DateFromString.pipe(
