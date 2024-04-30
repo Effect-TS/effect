@@ -463,6 +463,21 @@ export const withTracerDisabledWhen: {
  * @since 1.0.0
  * @category fiber refs
  */
+export const currentTracerPropagation: FiberRef.FiberRef<boolean> = internal.currentTracerPropagation
+
+/**
+ * @since 1.0.0
+ * @category fiber refs
+ */
+export const withTracerPropagation: {
+  (enabled: boolean): <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <R, E, A>(effect: Effect.Effect<A, E, R>, enabled: boolean): Effect.Effect<A, E, R>
+} = internal.withTracerPropagation
+
+/**
+ * @since 1.0.0
+ * @category fiber refs
+ */
 export const currentFetchOptions: FiberRef.FiberRef<RequestInit> = internal.currentFetchOptions
 
 /**
