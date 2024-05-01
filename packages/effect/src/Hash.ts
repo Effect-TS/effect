@@ -4,7 +4,7 @@
 import { pipe } from "./Function.js"
 import { globalValue } from "./GlobalValue.js"
 import { hasProperty } from "./Predicate.js"
-import { PCGRandom } from "./Utils.js"
+import { PCGRandom, structuralRegionState } from "./Utils.js"
 
 /** @internal */
 const randomHashCache = globalValue(
@@ -72,6 +72,9 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
  * @category hashing
  */
 export const random: <A extends object>(self: A) => number = (self) => {
+  if (structuralRegionState.enabled === true) {
+    return 0
+  }
   if (!randomHashCache.has(self)) {
     randomHashCache.set(self, number(pcgr.integer(Number.MAX_SAFE_INTEGER)))
   }
@@ -168,22 +171,36 @@ export const cached: {
   if (arguments.length === 1) {
     const self = arguments[0] as object
     return function(hash: number) {
-      Object.defineProperty(self, symbol, {
-        value() {
-          return hash
-        },
-        enumerable: false
-      })
+      // @ts-expect-error
+      const original = self[symbol].bind(self)
+      if (structuralRegionState.enabled === false) {
+        Object.defineProperty(self, symbol, {
+          value() {
+            if (structuralRegionState.enabled === true) {
+              return original()
+            }
+            return hash
+          },
+          enumerable: false
+        })
+      }
       return hash
     } as any
   }
   const self = arguments[0] as object
   const hash = arguments[1] as number
-  Object.defineProperty(self, symbol, {
-    value() {
-      return hash
-    },
-    enumerable: false
-  })
+  // @ts-expect-error
+  const original = self[symbol].bind(self)
+  if (structuralRegionState.enabled === false) {
+    Object.defineProperty(self, symbol, {
+      value() {
+        if (structuralRegionState.enabled === true) {
+          return original()
+        }
+        return hash
+      },
+      enumerable: false
+    })
+  }
   return hash
 }

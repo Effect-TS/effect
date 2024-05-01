@@ -15,6 +15,7 @@ const config: UserConfig = {
     exclude: ["bun:sqlite"]
   },
   test: {
+    setupFiles: [path.join(__dirname, "setupTests.ts")],
     fakeTimers: {
       toFake: undefined
     },

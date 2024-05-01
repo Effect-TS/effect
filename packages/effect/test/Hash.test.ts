@@ -1,9 +1,36 @@
+import * as Equal from "effect/Equal"
 import { absurd, identity } from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as HashSet from "effect/HashSet"
+import * as Option from "effect/Option"
+import * as Utils from "effect/Utils"
 import { describe, expect, it } from "vitest"
 
 describe("Hash", () => {
+  it("structural", () => {
+    const a = { foo: { bar: "ok", baz: { arr: [0, 1, 2] } } }
+    const b = { foo: { bar: "ok", baz: { arr: [0, 1, 2] } } }
+    expect(Hash.hash(a)).not.toBe(Hash.hash(b))
+    expect(Equal.equals(a, b)).toBe(false)
+    Utils.structuralRegion(() => {
+      expect(Hash.hash(a)).toBe(Hash.hash(b))
+      expect(Equal.equals(a, b)).toBe(true)
+    })
+    expect(Hash.hash(a)).not.toBe(Hash.hash(b))
+    expect(Equal.equals(a, b)).toBe(false)
+  })
+  it("structural cached", () => {
+    const a = Option.some({ foo: { bar: "ok", baz: { arr: [0, 1, 2] } } })
+    const b = Option.some({ foo: { bar: "ok", baz: { arr: [0, 1, 2] } } })
+    expect(Hash.hash(a)).not.toBe(Hash.hash(b))
+    expect(Equal.equals(a, b)).toBe(false)
+    Utils.structuralRegion(() => {
+      expect(Hash.hash(a)).toBe(Hash.hash(b))
+      expect(Equal.equals(a, b)).toBe(true)
+    })
+    expect(Hash.hash(a)).not.toBe(Hash.hash(b))
+    expect(Equal.equals(a, b)).toBe(false)
+  })
   it("exports", () => {
     expect(Hash.string).exist
     expect(Hash.structureKeys).exist

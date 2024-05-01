@@ -1,3 +1,4 @@
+import * as Cause from "effect/Cause"
 import * as Exit from "effect/Exit"
 import { describe, expect, it } from "vitest"
 
@@ -72,5 +73,19 @@ describe("Exit", () => {
   }
 }`)
     })
+  })
+
+  it("vitest equality", () => {
+    expect(Exit.succeed(1)).toEqual(Exit.succeed(1))
+    expect(Exit.fail("failure")).toEqual(Exit.fail("failure"))
+    expect(Exit.die("defect")).toEqual(Exit.die("defect"))
+
+    expect(Exit.succeed(1)).not.toEqual(Exit.succeed(2))
+    expect(Exit.fail("failure")).not.toEqual(Exit.fail("failure1"))
+    expect(Exit.die("failure")).not.toEqual(Exit.fail("failure1"))
+    expect(Exit.die("failure")).not.toEqual(Exit.fail("failure1"))
+    expect(Exit.failCause(Cause.sequential(Cause.fail("f1"), Cause.fail("f2")))).not.toEqual(
+      Exit.failCause(Cause.sequential(Cause.fail("f1"), Cause.fail("f3")))
+    )
   })
 })
