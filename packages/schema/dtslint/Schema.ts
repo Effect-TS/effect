@@ -287,8 +287,11 @@ pipe(S.String, S.minLength(5))
 // $ExpectType filter<Schema<string, string, never>>
 pipe(S.String, S.length(5))
 
-// $ExpectType filter<Schema<string, string, never>>
+// $ExpectType pattern<Schema<string, string, never>>
 pipe(S.String, S.pattern(/a/))
+
+// $ExpectType RegExp
+pipe(S.String, S.pattern(/a/)).regexp
 
 // $ExpectType filter<Schema<string, string, never>>
 pipe(S.String, S.startsWith("a"))
@@ -1652,7 +1655,7 @@ class D extends S.TaggedClass<D>()("D", {
 // $ExpectType D
 hole<S.Schema.Type<typeof D>>()
 
-// $ExpectType { readonly _tag: "D"; readonly a: string; readonly b: string; readonly c: boolean; }
+// $ExpectType { readonly a: string; readonly b: string; readonly c: boolean; readonly _tag: "D"; }
 hole<S.Schema.Encoded<typeof D>>()
 
 // $ExpectType "a" | "c"
@@ -1675,7 +1678,7 @@ class MyTaggedClass extends S.TaggedClass<MyTaggedClass>()("MyTaggedClass", {
 // $ExpectType [props: { readonly a: string; }, disableValidation?: boolean | undefined]
 hole<ConstructorParameters<typeof MyTaggedClass>>()
 
-// $ExpectType { readonly _tag: "MyTaggedClass"; readonly a: string; }
+// $ExpectType { readonly a: string; readonly _tag: "MyTaggedClass"; }
 hole<S.Schema.Encoded<typeof MyTaggedClass>>()
 
 // $ExpectType MyTaggedClass

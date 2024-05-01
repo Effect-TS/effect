@@ -419,7 +419,6 @@ describe("Class APIs", () => {
 
     it("a custom _tag field should be not allowed", () => {
       expect(() => {
-        // @ts-expect-error
         class _TA extends S.TaggedClass<_TA>()("TA", { _tag: S.Literal("X"), a: S.String }) {}
         console.log(_TA)
       }).toThrow(new Error(`Duplicate property signature "_tag"`))

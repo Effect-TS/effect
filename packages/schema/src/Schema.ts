@@ -3414,31 +3414,41 @@ export const minLength = <A extends string>(
 export const PatternTypeId = Symbol.for("@effect/schema/TypeId/Pattern")
 
 /**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface pattern<S extends Schema.Any> extends filter<S> {
+  readonly regexp: RegExp
+}
+
+/**
  * @category string filters
  * @since 1.0.0
  */
 export const pattern = <A extends string>(
-  regex: RegExp,
+  regexp: RegExp,
   annotations?: Annotations.Filter<A>
 ) =>
-<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> => {
-  const pattern = regex.source
-  return self.pipe(
+<I, R>(self: Schema<A, I, R>): pattern<Schema<A, I, R>> => {
+  const pattern = regexp.source
+  return class PatternClass extends self.pipe(
     filter(
       (a) => {
         // The following line ensures that `lastIndex` is reset to `0` in case the user has specified the `g` flag
-        regex.lastIndex = 0
-        return regex.test(a)
+        regexp.lastIndex = 0
+        return regexp.test(a)
       },
       {
-        typeId: { id: PatternTypeId, annotation: { regex } },
+        typeId: { id: PatternTypeId, annotation: { regex: regexp } },
         description: `a string matching the pattern ${pattern}`,
         jsonSchema: { pattern },
-        arbitrary: () => (fc) => fc.stringMatching(regex) as any,
+        arbitrary: () => (fc) => fc.stringMatching(regexp) as any,
         ...annotations
       }
     )
-  )
+  ) {
+    static regexp = regexp
+  }
 }
 
 /**
@@ -3774,7 +3784,7 @@ export class NonEmpty extends $String.pipe(
  */
 export const UUIDTypeId = Symbol.for("@effect/schema/TypeId/UUID")
 
-const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i
+const uuidRegexp = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i
 
 /**
  * Represents a Universally Unique Identifier (UUID).
@@ -3785,7 +3795,7 @@ const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-
  * @since 1.0.0
  */
 export class UUID extends $String.pipe(
-  pattern(uuidRegex, {
+  pattern(uuidRegexp, {
     typeId: UUIDTypeId,
     identifier: "UUID",
     title: "UUID",
@@ -3800,7 +3810,7 @@ export class UUID extends $String.pipe(
  */
 export const ULIDTypeId = Symbol.for("@effect/schema/TypeId/ULID")
 
-const ulidRegex = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i
+const ulidRegexp = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i
 
 /**
  * Represents a Universally Unique Lexicographically Sortable Identifier (ULID).
@@ -3812,7 +3822,7 @@ const ulidRegex = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i
  * @since 1.0.0
  */
 export class ULID extends $String.pipe(
-  pattern(ulidRegex, {
+  pattern(ulidRegexp, {
     typeId: ULIDTypeId,
     identifier: "ULID",
     title: "ULID",
@@ -6297,13 +6307,15 @@ type RequiredKeys<T> = {
  * @category api interface
  * @since 1.0.0
  */
-export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited, Proto> extends Schema<Self, I, R> {
+export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited, Proto>
+  extends Schema<Self, Types.Simplify<I>, R>
+{
   new(
-    props: RequiredKeys<C> extends never ? void | {} : C,
+    props: RequiredKeys<C> extends never ? void | {} : Types.Simplify<C>,
     disableValidation?: boolean | undefined
   ): A & Omit<Inherited, keyof A> & Proto
 
-  annotations(annotations: Annotations.Schema<Self>): SchemaClass<Self, I, R>
+  annotations(annotations: Annotations.Schema<Self>): SchemaClass<Self, Types.Simplify<I>, R>
 
   readonly fields: { readonly [K in keyof Fields]: Fields[K] }
 
@@ -6316,10 +6328,10 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
     : Class<
       Extended,
       Fields & newFields,
-      Types.Simplify<A & Struct.Type<newFields>>,
-      Types.Simplify<I & Struct.Encoded<newFields>>,
+      A & Struct.Type<newFields>,
+      I & Struct.Encoded<newFields>,
       R | Struct.Context<newFields>,
-      Types.Simplify<C & Struct.Constructor<newFields>>,
+      C & Struct.Constructor<newFields>,
       Self,
       Proto
     >
@@ -6347,10 +6359,10 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
     : Class<
       Transformed,
       Fields & newFields,
-      Types.Simplify<A & Struct.Type<newFields>>,
+      A & Struct.Type<newFields>,
       I,
       R | Struct.Context<newFields> | R2 | R3,
-      Types.Simplify<C & Struct.Constructor<newFields>>,
+      C & Struct.Constructor<newFields>,
       Self,
       Proto
     >
@@ -6378,10 +6390,10 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
     : Class<
       Transformed,
       Fields & newFields,
-      Types.Simplify<A & Struct.Type<newFields>>,
+      A & Struct.Type<newFields>,
       I,
       R | Struct.Context<newFields> | R2 | R3,
-      Types.Simplify<C & Struct.Constructor<newFields>>,
+      C & Struct.Constructor<newFields>,
       Self,
       Proto
     >
@@ -6399,10 +6411,10 @@ export const Class = <Self = never>(identifier: string) =>
   : Class<
     Self,
     Fields,
-    Types.Simplify<Struct.Type<Fields>>,
-    Types.Simplify<Struct.Encoded<Fields>>,
+    Struct.Type<Fields>,
+    Struct.Encoded<Fields>,
     Struct.Context<Fields>,
-    Types.Simplify<Struct.Constructor<Fields>>,
+    Struct.Constructor<Fields>,
     {},
     {}
   > => makeClass({ kind: "Class", identifier, fields, Base: data_.Class, annotations })
@@ -6418,11 +6430,11 @@ export const getClassTag = <Tag extends string>(tag: Tag) =>
 export interface TaggedClass<Self, Tag extends string, Fields extends Struct.Fields> extends
   Class<
     Self,
-    { readonly _tag: PropertySignature<":", Tag, never, ":", Tag, true, never> } & Fields,
-    Types.Simplify<{ readonly _tag: Tag } & Struct.Type<Fields>>,
-    Types.Simplify<{ readonly _tag: Tag } & Struct.Encoded<Fields>>,
+    Fields,
+    Struct.Type<Fields>,
+    Struct.Encoded<Fields>,
     Struct.Context<Fields>,
-    Types.Simplify<Struct.Constructor<Fields>>,
+    Struct.Constructor<Omit<Fields, "_tag">>,
     {},
     {}
   >
@@ -6440,8 +6452,8 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
   fields: Fields,
   annotations?: Annotations.Schema<Self>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
-  : TaggedClass<Self, Tag, Fields> =>
-  class extends makeClass({
+  : TaggedClass<Self, Tag, { readonly _tag: PropertySignature<":", Tag, never, ":", Tag, true, never> } & Fields> =>
+  class TaggedClass extends makeClass({
     kind: "TaggedClass",
     identifier: identifier ?? tag,
     fields: extendFields({ _tag: getClassTag(tag) }, fields),
@@ -6455,14 +6467,14 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
  * @category api interface
  * @since 1.0.0
  */
-export interface TaggedError<Self, Tag extends string, Fields extends Struct.Fields> extends
+export interface TaggedErrorClass<Self, Tag extends string, Fields extends Struct.Fields> extends
   Class<
     Self,
-    { readonly _tag: PropertySignature<":", Tag, never, ":", Tag, true, never> } & Fields,
-    Types.Simplify<{ readonly _tag: Tag } & Struct.Type<Fields>>,
-    Types.Simplify<{ readonly _tag: Tag } & Struct.Encoded<Fields>>,
+    Fields,
+    Struct.Type<Fields>,
+    Struct.Encoded<Fields>,
     Struct.Context<Fields>,
-    Types.Simplify<Struct.Constructor<Fields>>,
+    Struct.Constructor<Omit<Fields, "_tag">>,
     {},
     cause_.YieldableError
   >
@@ -6480,11 +6492,15 @@ export const TaggedError = <Self = never>(identifier?: string) =>
   fields: Fields,
   annotations?: Annotations.Schema<Self>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedError", `"Tag", `>
-  : TaggedError<Self, Tag, Fields> =>
+  : TaggedErrorClass<
+    Self,
+    Tag,
+    { readonly _tag: PropertySignature<":", Tag, never, ":", Tag, true, never> } & Fields
+  > =>
 {
   class Base extends data_.Error {}
   ;(Base.prototype as any).name = tag
-  return class extends makeClass({
+  return class TaggedErrorClass extends makeClass({
     kind: "TaggedError",
     identifier: identifier ?? tag,
     fields: extendFields({ _tag: getClassTag(tag) }, fields),
@@ -6508,8 +6524,28 @@ export const TaggedError = <Self = never>(identifier?: string) =>
  * @category classes
  * @since 1.0.0
  */
-export interface TaggedRequest<Tag extends string, S, SI, SR, A, AI, E, EI, RR>
-  extends Request.Request<A, E>, Serializable.SerializableWithResult<S, SI, SR, A, AI, E, EI, RR>
+export interface TaggedRequest<
+  Tag extends string,
+  Self,
+  FieldsI,
+  FieldsR,
+  SuccessA,
+  SuccessI,
+  FailureA,
+  FailureI,
+  SuccessAndFailureR
+> extends
+  Request.Request<SuccessA, FailureA>,
+  Serializable.SerializableWithResult<
+    Self,
+    FieldsI,
+    FieldsR,
+    SuccessA,
+    SuccessI,
+    FailureA,
+    FailureI,
+    SuccessAndFailureR
+  >
 {
   readonly _tag: Tag
 }
@@ -6532,28 +6568,33 @@ export declare namespace TaggedRequest {
  * @category api interface
  * @since 1.0.0
  */
-export interface TaggedRequestAPI<Self, Tag extends string, Fields extends Struct.Fields, EA, EI, ER, AA, AI, AR>
-  extends
-    Class<
+export interface TaggedRequestClass<
+  Self,
+  Tag extends string,
+  Fields extends Struct.Fields,
+  Failure extends Schema.All,
+  Success extends Schema.All
+> extends
+  Class<
+    Self,
+    Fields,
+    Struct.Type<Fields>,
+    Struct.Encoded<Fields>,
+    Struct.Context<Fields>,
+    Struct.Constructor<Omit<Fields, "_tag">>,
+    TaggedRequest<
+      Tag,
       Self,
-      { readonly _tag: PropertySignature<":", Tag, never, ":", Tag, true, never> } & Fields,
-      Types.Simplify<{ readonly _tag: Tag } & Struct.Type<Fields>>,
-      Types.Simplify<{ readonly _tag: Tag } & Struct.Encoded<Fields>>,
+      Struct.Encoded<Fields>,
       Struct.Context<Fields>,
-      Types.Simplify<Struct.Constructor<Fields>>,
-      TaggedRequest<
-        Tag,
-        Self,
-        { readonly _tag: Tag } & Struct.Encoded<Fields>,
-        Struct.Context<Fields>,
-        AA,
-        AI,
-        EA,
-        EI,
-        ER | AR
-      >,
-      {}
-    >
+      Schema.Type<Success>,
+      Schema.Encoded<Success>,
+      Schema.Type<Failure>,
+      Schema.Encoded<Failure>,
+      Schema.Context<Success> | Schema.Context<Failure>
+    >,
+    {}
+  >
 {
   readonly _tag: Tag
 }
@@ -6564,14 +6605,20 @@ export interface TaggedRequestAPI<Self, Tag extends string, Fields extends Struc
  */
 export const TaggedRequest =
   <Self = never>(identifier?: string) =>
-  <Tag extends string, Fields extends Struct.Fields, EA, EI, ER, AA, AI, AR>(
+  <Tag extends string, Fields extends Struct.Fields, Failure extends Schema.All, Success extends Schema.All>(
     tag: Tag,
-    Failure: Schema<EA, EI, ER>,
-    Success: Schema<AA, AI, AR>,
+    Failure: Failure,
+    Success: Success,
     fields: Fields,
     annotations?: Annotations.Schema<Self>
   ): [Self] extends [never] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
-    : TaggedRequestAPI<Self, Tag, Fields, EA, EI, ER, AA, AI, AR> =>
+    : TaggedRequestClass<
+      Self,
+      Tag,
+      { readonly _tag: PropertySignature<":", Tag, never, ":", Tag, true, never> } & Fields,
+      Failure,
+      Success
+    > =>
   {
     class SerializableRequest extends Request.Class<any, any, { readonly _tag: string }> {
       get [serializable_.symbol]() {
@@ -6581,7 +6628,7 @@ export const TaggedRequest =
         return { Failure, Success }
       }
     }
-    return class extends makeClass({
+    return class TaggedRequestClass extends makeClass({
       kind: "TaggedRequest",
       identifier: identifier ?? tag,
       fields: extendFields({ _tag: getClassTag(tag) }, fields),
