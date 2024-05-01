@@ -2146,6 +2146,37 @@ export const withSpan: {
   return (self: Effect.Effect<any, any, any>) => useSpan(name, options, (span) => withParentSpan(self, span))
 } as any
 
+export const functionWithSpan = <Fn extends (...args: ReadonlyArray<any>) => Effect.Effect<any, any, any>>(
+  options: {
+    readonly body: Fn
+    readonly options: Effect.FunctionWithSpanOptions<Parameters<Fn>>
+    readonly captureStackTrace?: boolean | undefined
+  }
+): Fn =>
+  (function(this: any) {
+    let captureStackTrace: Error | boolean = options.captureStackTrace ?? false
+    if (options.captureStackTrace !== false) {
+      const limit = Error.stackTraceLimit
+      Error.stackTraceLimit = 2
+      const error = new Error()
+      Error.stackTraceLimit = limit
+      if (error.stack !== undefined) {
+        const stack = error.stack.trim().split("\n")
+        error.stack = stack.slice(2).join("\n").trim()
+        captureStackTrace = error
+      }
+    }
+    return core.suspend(() => {
+      const opts = typeof options.options === "function"
+        ? options.options.apply(null, arguments as any)
+        : options.options
+      return withSpan(options.body.apply(this, arguments as any), opts.name, {
+        ...opts,
+        captureStackTrace
+      })
+    })
+  }) as any
+
 // -------------------------------------------------------------------------------------
 // optionality
 // -------------------------------------------------------------------------------------

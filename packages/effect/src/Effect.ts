@@ -5365,6 +5365,40 @@ export const withSpan: {
 } = effect.withSpan
 
 /**
+ * Wraps a function that returns an effect with a new span for tracing.
+ *
+ * @since 3.2.0
+ * @category models
+ */
+export type FunctionWithSpanOptions<Params extends ReadonlyArray<any>> =
+  | (Omit<Tracer.SpanOptions, "captureStackTrace"> & { readonly name: string })
+  | ((...args: Params) => Omit<Tracer.SpanOptions, "captureStackTrace"> & { readonly name: string })
+
+/**
+ * Wraps a function that returns an effect with a new span for tracing.
+ *
+ * @since 3.2.0
+ * @category tracing
+ * @example
+ * import { Effect } from "effect"
+ *
+ * const getTodo: (id: number) => Effect.Effect<string, never, never> = Effect.functionWithSpan({
+ *   body: (id: number) => Effect.succeed(`Got todo ${id}!`),
+ *   options: (id) => ({
+ *     name: `getTodo-${id}`,
+ *     attributes: { id }
+ *   })
+ * })
+ */
+export const functionWithSpan: <Fn extends (...args: ReadonlyArray<any>) => Effect<any, any, any>>(
+  options: {
+    readonly body: Fn
+    readonly options: FunctionWithSpanOptions<Parameters<Fn>>
+    readonly captureStackTrace?: boolean | undefined
+  }
+) => Fn = effect.functionWithSpan
+
+/**
  * Wraps the effect with a new span for tracing.
  *
  * The span is ended when the Scope is finalized.
