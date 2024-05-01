@@ -173,9 +173,9 @@ class FiberFailureImpl extends Error implements Runtime.FiberFailure {
     const prettyErrors = InternalCause.prettyErrors(cause)
     if (prettyErrors.length > 0) {
       const head = prettyErrors[0]
-      this.name = head.message.split(":")[0]
-      this.message = head.message.substring(this.name.length + 2)
-      this.stack = InternalCause.pretty(cause)
+      this.name = head.name
+      this.message = head.message
+      this.stack = head.stack
     }
 
     this.name = `(FiberFailure) ${this.name}`
@@ -188,7 +188,7 @@ class FiberFailureImpl extends Error implements Runtime.FiberFailure {
     }
   }
   toString(): string {
-    return "(FiberFailure) " + InternalCause.pretty(this[FiberFailureCauseId])
+    return "(FiberFailure) " + (this.stack ?? this.message)
   }
   [Inspectable.NodeInspectSymbol](): unknown {
     return this.toString()

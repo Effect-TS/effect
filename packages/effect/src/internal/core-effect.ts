@@ -2169,10 +2169,17 @@ export const functionWithSpan = <Fn extends (...args: ReadonlyArray<any>) => Eff
       const opts = typeof options.options === "function"
         ? options.options.apply(null, arguments as any)
         : options.options
-      return withSpan(options.body.apply(this, arguments as any), opts.name, {
-        ...opts,
-        captureStackTrace
-      })
+
+      return withSpan(
+        core.custom(options.body, function() {
+          return this.effect_instruction_i0.apply(this, arguments as any)
+        }),
+        opts.name,
+        {
+          ...opts,
+          captureStackTrace
+        }
+      )
     })
   }) as any
 

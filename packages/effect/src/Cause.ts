@@ -36,6 +36,7 @@ import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import type * as Sink from "./Sink.js"
 import type * as Stream from "./Stream.js"
+import type { Span } from "./Tracer.js"
 import type { Covariant, NoInfer } from "./Types.js"
 
 /**
@@ -913,6 +914,23 @@ export const isUnknownException: (u: unknown) => u is UnknownException = core.is
  * @category rendering
  */
 export const pretty: <E>(cause: Cause<E>) => string = internal.pretty
+
+/**
+ * @since 3.2.0
+ * @category models
+ */
+export interface PrettyError extends Error {
+  readonly stack: string
+  readonly span: Span | undefined
+}
+
+/**
+ * Returns the specified `Cause` as a pretty-printed string.
+ *
+ * @since 3.2.0
+ * @category rendering
+ */
+export const prettyErrors: <E>(cause: Cause<E>) => Array<PrettyError> = internal.prettyErrors
 
 /**
  * Returns the original, unproxied, instance of a thrown error
