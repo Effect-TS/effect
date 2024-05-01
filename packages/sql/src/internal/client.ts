@@ -58,7 +58,7 @@ export function make({
     Effect.uninterruptibleMask((restore) =>
       Effect.useSpan(
         "sql.transaction",
-        { captureStackTrace: false },
+        { kind: "client", captureStackTrace: false },
         (span) =>
           Effect.withFiberRuntime<A, E | Error.SqlError, R>((fiber) => {
             for (const [key, value] of spanAttributes) {
