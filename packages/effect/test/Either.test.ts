@@ -364,4 +364,14 @@ describe("Either", () => {
       Either.left("d")
     )
   })
+
+  it("vitest equality", () => {
+    expect(Either.right(1)).toStrictEqual(Either.right(1))
+    expect(Either.left(1)).toStrictEqual(Either.left(1))
+
+    expect(Either.right(2)).not.toStrictEqual(Either.right(1))
+    expect(Either.left(2)).not.toStrictEqual(Either.left(1))
+    expect(Either.left(1)).not.toStrictEqual(Either.right(1))
+    expect(Either.left(1)).not.toStrictEqual(Either.right(2))
+  })
 })
