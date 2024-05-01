@@ -14,8 +14,8 @@ import * as Predicate from "effect/Predicate"
 import * as regexp from "effect/RegExp"
 import type { Concurrency } from "effect/Types"
 import * as errors_ from "./internal/errors.js"
+import type { JSONSchema7 } from "./internal/JSONSchema7Interface.js"
 import * as util_ from "./internal/util.js"
-import type { JsonSchema7Root } from "./JSONSchema.js"
 import type { ParseIssue } from "./ParseResult.js"
 
 /**
@@ -152,9 +152,7 @@ export const DefaultAnnotationId = Symbol.for("@effect/schema/annotation/Default
  * @category annotations
  * @since 1.0.0
  */
-export type JSONSchemaAnnotation =
-  | object
-  | (object & JsonSchema7Root)
+export type JSONSchemaAnnotation = object & JSONSchema7
 
 /**
  * @category annotations
