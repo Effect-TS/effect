@@ -1069,11 +1069,9 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
     let current: Span | AnySpan | undefined = span
     let i = 0
     while (current && current._tag === "Span" && i < 10) {
-      let stack = current.attributes.get("code.stacktrace")
-      message += `\r\n    at ${current.name}`
+      const stack = current.attributes.get("code.stacktrace")
       if (typeof stack === "string") {
-        stack = stack.replace(/^at /, "")
-        out.push(`    at ${current.name} (${stack})`)
+        out.push(`    at ${current.name} (${stack.replace(/^at /, "")})`)
       } else {
         out.push(`    at ${current.name}`)
       }
