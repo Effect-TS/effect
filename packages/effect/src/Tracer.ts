@@ -92,6 +92,7 @@ export interface SpanOptions {
   readonly root?: boolean | undefined
   readonly context?: Context.Context<never> | undefined
   readonly kind?: SpanKind | undefined
+  readonly captureStackTrace?: boolean | Error | undefined
 }
 
 /**

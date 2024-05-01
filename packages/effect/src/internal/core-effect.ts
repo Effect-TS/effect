@@ -2011,7 +2011,7 @@ const bigint0 = BigInt(0)
 export const unsafeMakeSpan = <XA, XE>(
   fiber: FiberRuntime<XA, XE>,
   name: string,
-  options?: Tracer.SpanOptions
+  options: Tracer.SpanOptions
 ) => {
   const enabled = fiber.getFiberRef(core.currentTracerEnabled)
   if (enabled === false) {
@@ -2029,34 +2029,38 @@ export const unsafeMakeSpan = <XA, XE>(
   const annotationsFromEnv = FiberRefs.get(fiberRefs, core.currentTracerSpanAnnotations)
   const linksFromEnv = FiberRefs.get(fiberRefs, core.currentTracerSpanLinks)
 
-  const parent = options?.parent
+  const parent = options.parent
     ? Option.some(options.parent)
-    : options?.root
+    : options.root
     ? Option.none()
     : Context.getOption(context, internalTracer.spanTag)
 
   const links = linksFromEnv._tag === "Some" ?
-    options?.links !== undefined ?
+    options.links !== undefined ?
       [
         ...Chunk.toReadonlyArray(linksFromEnv.value),
-        ...(options?.links ?? [])
+        ...(options.links ?? [])
       ] :
       Chunk.toReadonlyArray(linksFromEnv.value) :
-    options?.links ?? Arr.empty()
+    options.links ?? Arr.empty()
 
   const span = tracer.span(
     name,
     parent,
-    options?.context ?? Context.empty(),
+    options.context ?? Context.empty(),
     links,
     timingEnabled ? clock.unsafeCurrentTimeNanos() : bigint0,
-    options?.kind ?? "internal"
+    options.kind ?? "internal"
   )
+
+  if (typeof options.captureStackTrace === "object" && typeof options.captureStackTrace.stack === "string") {
+    span.attribute("code.stacktrace", options.captureStackTrace.stack)
+  }
 
   if (annotationsFromEnv._tag === "Some") {
     HashMap.forEach(annotationsFromEnv.value, (value, key) => span.attribute(key, value))
   }
-  if (options?.attributes !== undefined) {
+  if (options.attributes !== undefined) {
     Object.entries(options.attributes).forEach(([k, v]) => span.attribute(k, v))
   }
 
@@ -2067,7 +2071,10 @@ export const unsafeMakeSpan = <XA, XE>(
 export const makeSpan = (
   name: string,
   options?: Tracer.SpanOptions
-): Effect.Effect<Tracer.Span> => core.withFiberRuntime((fiber) => core.succeed(unsafeMakeSpan(fiber, name, options)))
+): Effect.Effect<Tracer.Span> => {
+  options = internalTracer.addSpanStackTrace(options)
+  return core.withFiberRuntime((fiber) => core.succeed(unsafeMakeSpan(fiber, name, options)))
+}
 
 /* @internal */
 export const spanAnnotations: Effect.Effect<HashMap.HashMap<string, unknown>> = core
@@ -2092,7 +2099,7 @@ export const useSpan: {
     evaluate: (span: Tracer.Span) => Effect.Effect<A, E, R>
   ]
 ) => {
-  const options: Tracer.SpanOptions | undefined = args.length === 1 ? undefined : args[0]
+  const options = internalTracer.addSpanStackTrace(args.length === 1 ? undefined : args[0])
   const evaluate: (span: Tracer.Span) => Effect.Effect<A, E, R> = args[args.length - 1]
 
   return core.withFiberRuntime<A, E, R>((fiber) => {
@@ -2118,25 +2125,26 @@ export const withParentSpan = dual<
 >(2, (self, span) => provideService(self, internalTracer.spanTag, span))
 
 /** @internal */
-export const withSpan = dual<
+export const withSpan: {
   (
     name: string,
-    options?: Tracer.SpanOptions
-  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan>>,
+    options?: Tracer.SpanOptions | undefined
+  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan>>
   <A, E, R>(
     self: Effect.Effect<A, E, R>,
     name: string,
-    options?: Tracer.SpanOptions
-  ) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan>>
->(
-  (args) => typeof args[0] !== "string",
-  (self, name, options) =>
-    useSpan(
-      name,
-      options ?? {},
-      (span) => withParentSpan(self, span)
-    )
-)
+    options?: Tracer.SpanOptions | undefined
+  ): Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan>>
+} = function() {
+  const dataFirst = typeof arguments[0] !== "string"
+  const name = dataFirst ? arguments[1] : arguments[0]
+  const options = internalTracer.addSpanStackTrace(dataFirst ? arguments[2] : arguments[1])
+  if (dataFirst) {
+    const self = arguments[0]
+    return useSpan(name, options, (span) => withParentSpan(self, span))
+  }
+  return (self: Effect.Effect<any, any, any>) => useSpan(name, options, (span) => withParentSpan(self, span))
+} as any
 
 // -------------------------------------------------------------------------------------
 // optionality

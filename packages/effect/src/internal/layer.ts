@@ -1113,7 +1113,7 @@ export const unwrapScoped = <A, E1, R1, E, R>(
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const withSpan = dual<
+export const withSpan: {
   (
     name: string,
     options?: Tracer.SpanOptions & {
@@ -1121,7 +1121,7 @@ export const withSpan = dual<
         | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>)
         | undefined
     }
-  ) => <A, E, R>(self: Layer.Layer<A, E, R>) => Layer.Layer<A, E, Exclude<R, Tracer.ParentSpan>>,
+  ): <A, E, R>(self: Layer.Layer<A, E, R>) => Layer.Layer<A, E, Exclude<R, Tracer.ParentSpan>>
   <A, E, R>(
     self: Layer.Layer<A, E, R>,
     name: string,
@@ -1130,19 +1130,42 @@ export const withSpan = dual<
         | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>)
         | undefined
     }
-  ) => Layer.Layer<A, E, Exclude<R, Tracer.ParentSpan>>
->((args) => isLayer(args[0]), (self, name, options) =>
-  unwrapScoped(
-    core.map(
-      options?.onEnd
-        ? core.tap(
-          fiberRuntime.makeSpanScoped(name, options),
-          (span) => fiberRuntime.addFinalizer((exit) => options.onEnd!(span, exit))
-        )
-        : fiberRuntime.makeSpanScoped(name, options),
-      (span) => withParentSpan(self, span)
+  ): Layer.Layer<A, E, Exclude<R, Tracer.ParentSpan>>
+} = function() {
+  const dataFirst = typeof arguments[0] !== "string"
+  const name = dataFirst ? arguments[1] : arguments[0]
+  const options = tracer.addSpanStackTrace(dataFirst ? arguments[2] : arguments[1]) as Tracer.SpanOptions & {
+    readonly onEnd?:
+      | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>)
+      | undefined
+  }
+  if (dataFirst) {
+    const self = arguments[0]
+    return unwrapScoped(
+      core.map(
+        options?.onEnd
+          ? core.tap(
+            fiberRuntime.makeSpanScoped(name, options),
+            (span) => fiberRuntime.addFinalizer((exit) => options.onEnd!(span, exit))
+          )
+          : fiberRuntime.makeSpanScoped(name, options),
+        (span) => withParentSpan(self, span)
+      )
     )
-  ))
+  }
+  return (self: Layer.Layer<any, any, any>) =>
+    unwrapScoped(
+      core.map(
+        options?.onEnd
+          ? core.tap(
+            fiberRuntime.makeSpanScoped(name, options),
+            (span) => fiberRuntime.addFinalizer((exit) => options.onEnd!(span, exit))
+          )
+          : fiberRuntime.makeSpanScoped(name, options),
+        (span) => withParentSpan(self, span)
+      )
+    )
+} as any
 
 /** @internal */
 export const withParentSpan = dual<

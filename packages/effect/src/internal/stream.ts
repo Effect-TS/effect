@@ -50,6 +50,7 @@ import * as SinkEndReason from "./stream/sinkEndReason.js"
 import * as ZipAllState from "./stream/zipAllState.js"
 import * as ZipChunksState from "./stream/zipChunksState.js"
 import * as InternalTake from "./take.js"
+import * as InternalTracer from "./tracer.js"
 
 /** @internal */
 const StreamSymbolKey = "effect/Stream"
@@ -6801,17 +6802,26 @@ export const whenEffect = dual<
 )
 
 /** @internal */
-export const withSpan = dual<
+export const withSpan: {
   (
     name: string,
     options?: Tracer.SpanOptions
-  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, Exclude<R, Tracer.ParentSpan>>,
+  ): <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, Exclude<R, Tracer.ParentSpan>>
   <A, E, R>(
     self: Stream.Stream<A, E, R>,
     name: string,
     options?: Tracer.SpanOptions
-  ) => Stream.Stream<A, E, Exclude<R, Tracer.ParentSpan>>
->(3, (self, name, options) => new StreamImpl(channel.withSpan(toChannel(self), name, options)))
+  ): Stream.Stream<A, E, Exclude<R, Tracer.ParentSpan>>
+} = function() {
+  const dataFirst = typeof arguments[0] !== "string"
+  const name = dataFirst ? arguments[1] : arguments[0]
+  const options = InternalTracer.addSpanStackTrace(dataFirst ? arguments[2] : arguments[1])
+  if (dataFirst) {
+    const self = arguments[0]
+    return new StreamImpl(channel.withSpan(toChannel(self), name, options))
+  }
+  return (self: Stream.Stream<any, any, any>) => new StreamImpl(channel.withSpan(toChannel(self), name, options))
+} as any
 
 /** @internal */
 export const zip = dual<

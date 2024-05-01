@@ -18,9 +18,9 @@ describe("Tracer", () => {
         const span = yield* $(
           Effect.withSpan("A")(Effect.currentSpan)
         )
-
         assert.deepEqual(span.name, "A")
         assert.deepEqual(span.parent, Option.none())
+        assert.include(span.attributes.get("code.stacktrace"), "Tracer.test.ts:19")
       }))
 
     it.effect("parent", () =>
@@ -140,6 +140,7 @@ describe("Tracer", () => {
       Effect.gen(function*(_) {
         const span = yield* _(Effect.scoped(Effect.makeSpanScoped("A")))
         assert.deepEqual(span.status._tag, "Ended")
+        assert.include(span.attributes.get("code.stacktrace"), "Tracer.test.ts:141")
       }))
 
     it.effect("annotateCurrentSpan", () =>
@@ -181,6 +182,7 @@ describe("Tracer", () => {
           ),
           Option.some("parent")
         )
+        assert.include(span.attributes.get("code.stacktrace"), "Tracer.test.ts:177")
       }).pipe(
         Effect.provide(Layer.unwrapScoped(
           Effect.map(
@@ -193,13 +195,12 @@ describe("Tracer", () => {
     it.effect("Layer.span", () =>
       Effect.gen(function*(_) {
         const span = yield* _(Effect.makeSpan("child"))
-        assert.deepEqual(
-          span.parent.pipe(
-            Option.filter((span): span is Span => span._tag === "Span"),
-            Option.map((span) => span.name)
-          ),
-          Option.some("parent")
+        const parent = span.parent.pipe(
+          Option.filter((span): span is Span => span._tag === "Span"),
+          Option.getOrThrow
         )
+        assert.strictEqual(parent.name, "parent")
+        assert.include(parent.attributes.get("code.stacktrace"), "Tracer.test.ts:205")
       }).pipe(
         Effect.provide(Layer.span("parent"))
       ))
@@ -242,6 +243,7 @@ describe("Tracer", () => {
         const layer = Layer.effectDiscard(Effect.gen(function*(_) {
           const span = yield* _(Effect.currentSpan)
           assert.strictEqual(span.name, "span")
+          assert.include(span.attributes.get("code.stacktrace"), "Tracer.test.ts:248")
         })).pipe(
           Layer.withSpan("span", {
             onEnd: (span, _exit) =>
