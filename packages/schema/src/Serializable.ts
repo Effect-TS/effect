@@ -34,6 +34,16 @@ export declare namespace Serializable {
    * @since 1.0.0
    */
   export type Context<T> = T extends Serializable<infer _A, infer _I, infer R> ? R : never
+
+  /**
+   * @since 1.0.0
+   */
+  export type Self<T> = T extends Serializable<infer A, infer _I, infer _R> ? A : never
+
+  /**
+   * @since 1.0.0
+   */
+  export type Any = Serializable<any, any, any>
 }
 
 /**
@@ -68,6 +78,23 @@ export declare namespace WithResult {
    * @since 1.0.0
    */
   export type Context<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer R> ? R : never
+
+  /**
+   * @since 1.0.0
+   */
+  export type Error<T> = T extends WithResult<infer _A, infer _I, infer E, infer _EI, infer _R> ? E
+    : never
+
+  /**
+   * @since 1.0.0
+   */
+  export type Success<T> = T extends WithResult<infer A, infer _I, infer _E, infer _EI, infer _R> ? A
+    : never
+
+  /**
+   * @since 1.0.0
+   */
+  export type Any = WithResult<any, any, any, any, any> | WithResult<any, any, never, never, any>
 }
 
 /**
@@ -129,6 +156,13 @@ export declare namespace SerializableWithResult {
   export type Context<T> = T extends
     SerializableWithResult<infer _S, infer _SI, infer SR, infer _A, infer _AI, infer _E, infer _EI, infer RR> ? SR | RR
     : never
+
+  /**
+   * @since 1.0.0
+   */
+  export type Any =
+    | SerializableWithResult<any, any, any, any, any, any, any, any>
+    | SerializableWithResult<any, any, any, any, any, never, never, any>
 }
 
 /**

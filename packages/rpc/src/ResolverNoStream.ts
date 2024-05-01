@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Handler from "@effect/platform/Handler"
 import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
 import type { NonEmptyArray } from "effect/Array"
@@ -12,9 +13,8 @@ import { pipe } from "effect/Function"
 import * as Request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"
 import * as Stream from "effect/Stream"
-import { StreamRequestTypeId, withRequestTag } from "./internal/rpc.js"
-import type * as Router from "./Router.js"
-import type * as Rpc from "./Rpc.js"
+import { withRequestTag } from "./internal/request.js"
+import type * as RpcReq from "./Request.js"
 
 /**
  * @since 1.0.0
@@ -23,14 +23,14 @@ import type * as Rpc from "./Rpc.js"
 export const make = <HR, E>(
   handler: (u: ReadonlyArray<unknown>) => Effect.Effect<unknown, E, HR>
 ) =>
-<R extends Router.Router<any, any>>(): RequestResolver.RequestResolver<
-  Rpc.Request<Router.Router.Request<R>>,
-  Serializable.SerializableWithResult.Context<Router.Router.Request<R>> | HR
+<R extends Handler.Group.Any>(): RequestResolver.RequestResolver<
+  RpcReq.Request<Handler.Group.Request<R>>,
+  Serializable.SerializableWithResult.Context<Handler.Group.Request<R>> | HR
 > => {
   const getDecode = withRequestTag((req) => Schema.decodeUnknown(Serializable.exitSchema(req)))
   const getDecodeChunk = withRequestTag((req) => Schema.decodeUnknown(Schema.Chunk(Serializable.exitSchema(req))))
 
-  return RequestResolver.makeBatched((requests: NonEmptyArray<Rpc.Request<Schema.TaggedRequest.Any>>) =>
+  return RequestResolver.makeBatched((requests: NonEmptyArray<RpcReq.Request<Schema.TaggedRequest.Any>>) =>
     pipe(
       Effect.forEach(requests, (_) =>
         Effect.map(
@@ -44,7 +44,7 @@ export const make = <HR, E>(
       ),
       Effect.flatMap(Effect.forEach((response, index) => {
         const request = requests[index]
-        if (StreamRequestTypeId in request.request) {
+        if (Handler.StreamRequestTypeId in request.request) {
           return pipe(
             getDecodeChunk(request.request)(response),
             Effect.orDie,

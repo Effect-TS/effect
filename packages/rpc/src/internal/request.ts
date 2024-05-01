@@ -1,3 +1,4 @@
+import * as Handler from "@effect/platform/Handler"
 import type * as Headers from "@effect/platform/Http/Headers"
 import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
@@ -5,7 +6,7 @@ import * as Equal from "effect/Equal"
 import * as Hash from "effect/Hash"
 import * as PrimaryKey from "effect/PrimaryKey"
 import * as Request from "effect/Request"
-import type * as Rpc from "../Rpc.js"
+import type * as RpcReq from "../Request.js"
 
 /** @internal */
 export const withRequestTag = <A>(
@@ -26,9 +27,6 @@ export const withRequestTag = <A>(
 }
 
 /** @internal */
-export const StreamRequestTypeId = Symbol.for("@effect/rpc/Rpc/StreamRequest")
-
-/** @internal */
 export const makeRequest = <A extends Schema.TaggedRequest.Any>(
   options: {
     readonly request: A
@@ -37,8 +35,8 @@ export const makeRequest = <A extends Schema.TaggedRequest.Any>(
     readonly sampled: boolean
     readonly headers: Headers.Headers
   }
-): Rpc.Request<A> => {
-  const isStream = StreamRequestTypeId in options.request
+): RpcReq.Request<A> => {
+  const isStream = Handler.StreamRequestTypeId in options.request
   const hash = Hash.hash(options.request)
   return ({
     ...options,
@@ -50,11 +48,11 @@ export const makeRequest = <A extends Schema.TaggedRequest.Any>(
         : Serializable.successSchema(options.request as any),
       Failure: isStream ? Schema.Never : Serializable.failureSchema(options.request as any)
     },
-    [Equal.symbol](that: Rpc.Request<A>) {
+    [Equal.symbol](that: RpcReq.Request<A>) {
       return Equal.equals(options.request, that.request)
     },
     [Hash.symbol]() {
       return hash
     }
-  } as Rpc.Request<A>)
+  } as RpcReq.Request<A>)
 }

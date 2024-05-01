@@ -1,7 +1,8 @@
+import * as Handler from "@effect/platform/Handler"
+import * as RpcReq from "@effect/rpc/Request"
 import * as Resolver from "@effect/rpc/Resolver"
 import * as ResolverNoStream from "@effect/rpc/ResolverNoStream"
-import * as Router from "@effect/rpc/Router"
-import * as Rpc from "@effect/rpc/Rpc"
+import * as Server from "@effect/rpc/Server"
 import { Schema } from "@effect/schema"
 import * as S from "@effect/schema/Schema"
 import * as Array from "effect/Array"
@@ -30,8 +31,8 @@ class CreatePost extends S.TaggedRequest<CreatePost>()("CreatePost", S.Never, Po
   body: S.String
 }) {}
 
-const posts = Router.make(
-  Rpc.effect(CreatePost, ({ body }) => Effect.succeed(new Post({ id: 1, body })))
+const posts = Handler.group(
+  Handler.effect(CreatePost, ({ body }) => Effect.succeed(new Post({ id: 1, body })))
 )
 
 class Greet extends S.TaggedRequest<Greet>()("Greet", S.Never, S.String, {
@@ -64,61 +65,61 @@ class EchoHeaders
   extends S.TaggedRequest<EchoHeaders>()("EchoHeaders", S.Never, S.Record(S.String, S.Union(S.String, S.Undefined)), {})
 {}
 
-class Counts extends Rpc.StreamRequest<Counts>()(
+class Counts extends Handler.StreamRequest<Counts>()(
   "Counts",
   S.Never,
   S.Number,
   {}
 ) {}
 
-class FailStream extends Rpc.StreamRequest<FailStream>()(
+class FailStream extends Handler.StreamRequest<FailStream>()(
   "FailStream",
   SomeError,
   S.Number,
   {}
 ) {}
 
-const router = Router.make(
+const router = Handler.group(
   posts,
-  Rpc.effect(Greet, ({ name }) => Effect.succeed(`Hello, ${name}!`)),
-  Rpc.effect(Fail, () =>
+  Handler.effect(Greet, ({ name }) => Effect.succeed(`Hello, ${name}!`)),
+  Handler.effect(Fail, () =>
     new SomeError({
       message: "fail"
     })),
-  Rpc.effect(FailNoInput, () => new SomeError({ message: "fail" })),
-  Rpc.effect(EncodeInput, ({ date }) => Effect.succeed(date)),
-  Rpc.effect(EncodeDate, ({ date }) =>
+  Handler.effect(FailNoInput, () => new SomeError({ message: "fail" })),
+  Handler.effect(EncodeInput, ({ date }) => Effect.succeed(date)),
+  Handler.effect(EncodeDate, ({ date }) =>
     Effect.try({
       try: () => new Date(date),
       catch: () => new SomeError({ message: "fail" })
     })),
-  Rpc.effect(Refined, ({ number }) => Effect.succeed(number)),
-  Rpc.effect(SpanName, () =>
+  Handler.effect(Refined, ({ number }) => Effect.succeed(number)),
+  Handler.effect(SpanName, () =>
     Effect.currentSpan.pipe(
       Effect.map((span) => span.name),
       Effect.orDie
     )),
-  Rpc.effect(GetName, () => Name),
-  Rpc.stream(Counts, () =>
+  Handler.effect(GetName, () => Name),
+  Handler.stream(Counts, () =>
     Stream.make(1, 2, 3, 4, 5).pipe(
       Stream.tap((_) => Effect.sleep(10))
     )),
-  Rpc.effect(EchoHeaders, () =>
-    Rpc.schemaHeaders(S.Struct({
+  Handler.effect(EchoHeaders, () =>
+    RpcReq.schemaHeaders(S.Struct({
       foo: Schema.String,
       baz: Schema.optional(Schema.String)
     })).pipe(Effect.orDie)),
-  Rpc.stream(FailStream, () =>
+  Handler.stream(FailStream, () =>
     Stream.range(0, 10).pipe(
       Stream.mapEffect((i) => i === 3 ? Effect.fail(new SomeError({ message: "fail" })) : Effect.succeed(i))
     ))
 ).pipe(
-  Router.provideService(Name, "John")
+  Handler.provideService(Name, "John")
 )
 
-const handler = Router.toHandler(router)
-const handlerEffect = Router.toHandlerEffect(router)
-const handlerUndecoded = Router.toHandlerUndecoded(router)
+const handler = Server.fromGroup(router)
+const handlerEffect = Server.fromGroupEffect(router)
+const handlerUndecoded = Server.fromGroupUndecoded(router)
 const handlerArray = (u: ReadonlyArray<unknown>) =>
   handler(u.map((request, i) => ({
     request,
@@ -317,7 +318,7 @@ describe.each([{
 }])("$name", ({ resolver }) => {
   test("effect", () =>
     Effect.gen(function*(_) {
-      const name = yield* _(Rpc.call(new SpanName(), resolver))
+      const name = yield* _(RpcReq.call(new SpanName(), resolver))
       assert.strictEqual(name, "Rpc.router SpanName")
 
       const clientName = yield* _(client(new SpanName()))
@@ -327,8 +328,8 @@ describe.each([{
   test("headers", () =>
     Effect.gen(function*(_) {
       const headers = yield* _(
-        Rpc.call(new EchoHeaders(), resolver),
-        Rpc.annotateHeaders({ FOO: "bar" })
+        RpcReq.call(new EchoHeaders(), resolver),
+        RpcReq.annotateHeaders({ FOO: "bar" })
       )
       assert.deepStrictEqual(headers, { foo: "bar" })
     }).pipe(Effect.runPromise))
@@ -336,8 +337,8 @@ describe.each([{
   test("annotateHeadersEffect", () =>
     Effect.gen(function*(_) {
       const headers = yield* _(
-        Rpc.call(new EchoHeaders(), resolverWithHeaders),
-        Rpc.annotateHeaders({ FOO: "bar" })
+        RpcReq.call(new EchoHeaders(), resolverWithHeaders),
+        RpcReq.annotateHeaders({ FOO: "bar" })
       )
       assert.deepStrictEqual(headers, { foo: "bar", baz: "qux" })
     }).pipe(Effect.tapErrorCause(Effect.logError), Effect.runPromise))
@@ -345,7 +346,7 @@ describe.each([{
   test("stream", () =>
     Effect.gen(function*(_) {
       const counts = yield* _(
-        Rpc.call(new Counts(), resolver),
+        RpcReq.call(new Counts(), resolver),
         Stream.runCollect,
         Effect.map(Chunk.toReadonlyArray)
       )
@@ -362,7 +363,7 @@ describe.each([{
     Effect.gen(function*(_) {
       let n = 0
       const result = yield* _(
-        Rpc.call(new FailStream(), resolver),
+        RpcReq.call(new FailStream(), resolver),
         Stream.tap((i) =>
           Effect.sync(() => {
             n = i

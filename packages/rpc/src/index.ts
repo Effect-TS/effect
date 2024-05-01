@@ -1,6 +1,11 @@
 /**
  * @since 1.0.0
  */
+export * as Request from "./Request.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Resolver from "./Resolver.js"
 
 /**
@@ -11,9 +16,4 @@ export * as ResolverNoStream from "./ResolverNoStream.js"
 /**
  * @since 1.0.0
  */
-export * as Router from "./Router.js"
-
-/**
- * @since 1.0.0
- */
-export * as Rpc from "./Rpc.js"
+export * as Server from "./Server.js"

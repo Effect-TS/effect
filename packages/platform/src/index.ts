@@ -26,6 +26,11 @@ export * as FileSystem from "./FileSystem.js"
 /**
  * @since 1.0.0
  */
+export * as Handler from "./Handler.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as HttpClient from "./HttpClient.js"
 
 /**

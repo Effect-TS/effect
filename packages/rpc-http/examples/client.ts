@@ -2,8 +2,8 @@ import * as Http from "@effect/platform/HttpClient"
 import { Resolver } from "@effect/rpc"
 import { HttpResolver } from "@effect/rpc-http"
 import { Console, Effect, Stream } from "effect"
-import type { UserRouter } from "./router.js"
 import { GetUser, GetUserIds } from "./schema.js"
+import type { UserRouter } from "./server.js"
 
 // Create the client
 const client = HttpResolver.make<UserRouter>(
