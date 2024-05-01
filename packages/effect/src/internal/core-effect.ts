@@ -2149,7 +2149,7 @@ export const withSpan: {
 export const functionWithSpan = <Fn extends (...args: ReadonlyArray<any>) => Effect.Effect<any, any, any>>(
   options: {
     readonly body: Fn
-    readonly options: Effect.FunctionWithSpanOptions<Parameters<Fn>>
+    readonly options: Effect.FunctionWithSpanOptions | ((...args: Parameters<Fn>) => Effect.FunctionWithSpanOptions)
     readonly captureStackTrace?: boolean | undefined
   }
 ): Fn =>

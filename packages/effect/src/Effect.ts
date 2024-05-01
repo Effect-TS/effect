@@ -5370,9 +5370,15 @@ export const withSpan: {
  * @since 3.2.0
  * @category models
  */
-export type FunctionWithSpanOptions<Params extends ReadonlyArray<any>> =
-  | (Omit<Tracer.SpanOptions, "captureStackTrace"> & { readonly name: string })
-  | ((...args: Params) => Omit<Tracer.SpanOptions, "captureStackTrace"> & { readonly name: string })
+export interface FunctionWithSpanOptions {
+  readonly name: string
+  readonly attributes?: Record<string, unknown> | undefined
+  readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
+  readonly parent?: Tracer.AnySpan | undefined
+  readonly root?: boolean | undefined
+  readonly context?: Context.Context<never> | undefined
+  readonly kind?: Tracer.SpanKind | undefined
+}
 
 /**
  * Wraps a function that returns an effect with a new span for tracing.
@@ -5393,7 +5399,7 @@ export type FunctionWithSpanOptions<Params extends ReadonlyArray<any>> =
 export const functionWithSpan: <Fn extends (...args: ReadonlyArray<any>) => Effect<any, any, any>>(
   options: {
     readonly body: Fn
-    readonly options: FunctionWithSpanOptions<Parameters<Fn>>
+    readonly options: FunctionWithSpanOptions | ((...args: Parameters<Fn>) => FunctionWithSpanOptions)
     readonly captureStackTrace?: boolean | undefined
   }
 ) => Fn = effect.functionWithSpan
