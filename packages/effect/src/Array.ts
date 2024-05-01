@@ -20,7 +20,7 @@ import type { Predicate, Refinement } from "./Predicate.js"
 import { isBoolean } from "./Predicate.js"
 import * as Record from "./Record.js"
 import * as Tuple from "./Tuple.js"
-import type { NoInfer } from "./Types.js"
+import type { MergeRecord, NoInfer } from "./Types.js"
 
 /**
  * @category type lambdas
@@ -2114,3 +2114,82 @@ export const cartesian: {
   2,
   <A, B>(self: ReadonlyArray<A>, that: ReadonlyArray<B>): Array<[A, B]> => cartesianWith(self, that, (a, b) => [a, b])
 )
+
+// -------------------------------------------------------------------------------------
+// do notation
+// -------------------------------------------------------------------------------------
+
+/**
+ * @since 2.4.0
+ * @category do notation
+ */
+export const Do: Array<{}> = of({})
+
+/**
+ * Binds an effectful value in a `do` scope
+ *
+ * @since 2.4.0
+ * @category do notation
+ */
+export const bind: {
+  <N extends string, K, A>(
+    tag: Exclude<N, keyof K>,
+    f: (_: K) => Array<A>
+  ): (self: Array<K>) => Array<MergeRecord<K, { [k in N]: A }>>
+  <K, N extends string, A>(
+    self: Array<K>,
+    tag: Exclude<N, keyof K>,
+    f: (_: K) => Array<A>
+  ): Array<MergeRecord<K, { [k in N]: A }>>
+} = dual(3, <K, N extends string, A>(
+  self: Array<K>,
+  tag: Exclude<N, keyof K>,
+  f: (_: K) => Array<A>
+): Array<MergeRecord<K, { [k in N]: A }>> =>
+  flatMap(self, (k) =>
+    map(
+      f(k),
+      (a): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: a } as any)
+    )))
+
+/**
+ * @category do notation
+ * @since 2.4.0
+ */
+export const bindTo: {
+  <N extends string>(tag: N): <A>(self: Array<A>) => Array<Record<N, A>>
+  <A, N extends string>(self: Array<A>, tag: N): Array<Record<N, A>>
+} = dual(
+  2,
+  <A, N extends string>(self: Array<A>, tag: N): Array<Record<N, A>> => map(self, (a) => ({ [tag]: a } as Record<N, A>))
+)
+
+const let_: {
+  <N extends string, K, A>(
+    tag: Exclude<N, keyof K>,
+    f: (_: K) => A
+  ): (self: Array<K>) => Array<MergeRecord<K, { [k in N]: A }>>
+  <K, N extends string, A>(
+    self: Array<K>,
+    tag: Exclude<N, keyof K>,
+    f: (_: K) => A
+  ): Array<MergeRecord<K, { [k in N]: A }>>
+} = dual(3, <K, N extends string, A>(
+  self: Array<K>,
+  tag: Exclude<N, keyof K>,
+  f: (_: K) => A
+): Array<MergeRecord<K, { [k in N]: A }>> =>
+  map(
+    self,
+    (k): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: f(k) } as any)
+  ))
+
+export {
+  /**
+   * Like bind for values
+   *
+   * @since 2.4.0
+   * @category do notation
+   */
+  let_ as let
+}
