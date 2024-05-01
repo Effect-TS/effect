@@ -994,7 +994,11 @@ export const pretty = <E>(cause: Cause.Cause<E>): string => {
       let current: Span | AnySpan | undefined = e.span
       let i = 0
       while (current && current._tag === "Span" && i < 10) {
+        const stack = current.attributes.get("code.stacktrace")
         message += `\r\n    at ${current.name}`
+        if (typeof stack === "string") {
+          message += `\r\n        ${filterStack(stack)}`
+        }
         current = Option.getOrUndefined(current.parent)
         i++
       }

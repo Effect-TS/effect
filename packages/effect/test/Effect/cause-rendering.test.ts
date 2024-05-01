@@ -16,7 +16,9 @@ describe("Effect", () => {
       )))
       const rendered = Cause.pretty(cause)
       assert.include(rendered, "spanA")
+      assert.include(rendered, "cause-rendering.test.ts:12")
       assert.include(rendered, "spanB")
+      assert.include(rendered, "cause-rendering.test.ts:11")
     }))
   it.effect("catchTag should not invalidate traces", () =>
     Effect.gen(function*($) {
