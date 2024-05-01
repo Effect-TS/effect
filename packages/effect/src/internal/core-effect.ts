@@ -2053,8 +2053,8 @@ export const unsafeMakeSpan = <XA, XE>(
     options.kind ?? "internal"
   )
 
-  if (typeof options.captureStackTrace === "object" && typeof options.captureStackTrace.stack === "string") {
-    span.attribute("code.stacktrace", options.captureStackTrace.stack)
+  if (typeof options.captureStackTrace === "string") {
+    span.attribute("code.stacktrace", options.captureStackTrace)
   }
 
   if (annotationsFromEnv._tag === "Some") {
@@ -2154,7 +2154,7 @@ export const functionWithSpan = <Fn extends (...args: ReadonlyArray<any>) => Eff
   }
 ): Fn =>
   (function(this: any) {
-    let captureStackTrace: Error | boolean = options.captureStackTrace ?? false
+    let captureStackTrace: string | boolean = options.captureStackTrace ?? false
     if (options.captureStackTrace !== false) {
       const limit = Error.stackTraceLimit
       Error.stackTraceLimit = 2
@@ -2162,8 +2162,7 @@ export const functionWithSpan = <Fn extends (...args: ReadonlyArray<any>) => Eff
       Error.stackTraceLimit = limit
       if (error.stack !== undefined) {
         const stack = error.stack.trim().split("\n")
-        error.stack = stack.slice(2).join("\n").trim()
-        captureStackTrace = error
+        captureStackTrace = stack.slice(2).join("\n").trim()
       }
     }
     return core.suspend(() => {
