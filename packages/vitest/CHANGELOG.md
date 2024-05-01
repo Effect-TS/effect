@@ -1,5 +1,16 @@
 # @effect/vitest
 
+## 0.4.0
+
+### Minor Changes
+
+- [#2670](https://github.com/Effect-TS/effect/pull/2670) [`e5e56d1`](https://github.com/Effect-TS/effect/commit/e5e56d138dbed3204636f605229c6685f89659fc) Thanks [@tim-smart](https://github.com/tim-smart)! - Introduce `addEqualityTesters` function which adds a custom vitest tester
+
+### Patch Changes
+
+- Updated dependencies [[`e5e56d1`](https://github.com/Effect-TS/effect/commit/e5e56d138dbed3204636f605229c6685f89659fc)]:
+  - effect@3.1.1
+
 ## 0.3.9
 
 ### Patch Changes
