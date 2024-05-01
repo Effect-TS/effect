@@ -1,0 +1,5 @@
+---
+"effect": major
+---
+
+Restructure RequestBlock

@@ -1837,21 +1837,11 @@ export const requestBlockLocally = <A>(
   self: BlockedRequests.RequestBlock,
   ref: FiberRef.FiberRef<A>,
   value: A
-): BlockedRequests.RequestBlock => _blockedRequests.reduce(self, LocallyReducer(ref, value))
-
-const LocallyReducer = <A>(
-  ref: FiberRef.FiberRef<A>,
-  value: A
-): BlockedRequests.RequestBlock.Reducer<BlockedRequests.RequestBlock> => ({
-  emptyCase: () => _blockedRequests.empty,
-  parCase: (left, right) => _blockedRequests.par(left, right),
-  seqCase: (left, right) => _blockedRequests.seq(left, right),
-  singleCase: (dataSource, blockedRequest) =>
-    _blockedRequests.single(
-      resolverLocally(dataSource, ref, value),
-      blockedRequest as any
-    )
-})
+): BlockedRequests.RequestBlock =>
+  Chunk.map(self, (_) => ({
+    blockedRequest: _.blockedRequest,
+    dataSource: resolverLocally(_.dataSource, ref, value) as any
+  }))
 
 /* @internal */
 export const fiberRefLocally: {
