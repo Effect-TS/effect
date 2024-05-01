@@ -666,6 +666,7 @@ Schema
 - add `TaggedErrorClass` api interface (exposing a `_tag` field)
 - add `TaggedRequestClass` api interface (exposing a `_tag` field)
 - add `pattern` api interface (exposing a `regexp` field)
+- add `DateFromNumber` schema
 
 ## Other Breaking Changes
 

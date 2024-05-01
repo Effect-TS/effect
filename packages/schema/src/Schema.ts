@@ -5110,7 +5110,7 @@ export class ValidDateFromSelf extends DateFromSelf.pipe(
 export class DateFromString extends transform(
   $String,
   DateFromSelf,
-  { decode: (s) => new Date(s), encode: (n) => n.toISOString() }
+  { decode: (s) => new Date(s), encode: (d) => d.toISOString() }
 ).annotations({ identifier: "DateFromString" }) {}
 
 /** @ignore */
@@ -5127,6 +5127,19 @@ export {
    */
   $Date as Date
 }
+
+/**
+ * Represents a schema that converts a `number` into a (potentially invalid) `Date` (e.g., `NaN`, `Infinity` and `-Infinity` are not rejected).
+ * Encoding will return `NaN` for invalid dates.
+ *
+ * @category Date transformations
+ * @since 1.0.0
+ */
+export class DateFromNumber extends transform(
+  $Number,
+  DateFromSelf,
+  { decode: (n) => new Date(n), encode: (d) => d.getTime() }
+).annotations({ identifier: "DateFromNumber" }) {}
 
 /**
  * @category Option utils
