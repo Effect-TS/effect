@@ -1140,6 +1140,20 @@ export const gen: {
 } = effect.gen
 
 /**
+ * @since 3.2.0
+ * @category constructors
+ */
+export const genFn: <Args extends ReadonlyArray<any>, Eff extends YieldWrap<Effect<any, any, any>>, AEff>(
+  f: (...args: Args) => Generator<Eff, AEff, never>
+) => (
+  ...args: Args
+) => Effect<
+  AEff,
+  [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer E, infer _R>>] ? E : never,
+  [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect<infer _A, infer _E, infer R>>] ? R : never
+> = effect.genFn
+
+/**
  * @since 2.0.0
  * @category models
  */

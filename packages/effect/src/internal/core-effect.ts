@@ -26,6 +26,7 @@ import * as Ref from "../Ref.js"
 import type * as runtimeFlagsPatch from "../RuntimeFlagsPatch.js"
 import * as Tracer from "../Tracer.js"
 import type { MergeRecord, NoInfer } from "../Types.js"
+import type { YieldWrap } from "../Utils.js"
 import { yieldWrapGet } from "../Utils.js"
 import * as internalCause from "./cause.js"
 import { clockTag } from "./clock.js"
@@ -797,6 +798,32 @@ export const gen: typeof Effect.gen = function() {
     return run(state)
   })
 }
+
+export const genFn = <
+  Args extends ReadonlyArray<any>,
+  Eff extends YieldWrap<Effect.Effect<any, any, any>>,
+  AEff
+>(
+  f: (...args: Args) => Generator<Eff, AEff, never>
+): (...args: Args) => Effect.Effect<
+  AEff,
+  [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect.Effect<infer _A, infer E, infer _R>>] ? E : never,
+  [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Effect.Effect<infer _A, infer _E, infer R>>] ? R : never
+> =>
+  function(this: any) {
+    return core.suspend(() => {
+      const iterator = f.apply(this, arguments as any) as Generator<YieldWrap<Effect.Effect<any, any, any>>, AEff, any>
+      const state = iterator.next()
+      const run = (
+        state: IteratorYieldResult<any> | IteratorReturnResult<any>
+      ): Effect.Effect<any, any, any> => {
+        return (state.done
+          ? core.succeed(state.value)
+          : core.flatMap(yieldWrapGet(state.value) as any, (val: any) => run(iterator.next(val))))
+      }
+      return run(state)
+    })
+  }
 
 /* @internal */
 export const fiberRefs: Effect.Effect<FiberRefs.FiberRefs> = core.withFiberRuntime((state) =>
