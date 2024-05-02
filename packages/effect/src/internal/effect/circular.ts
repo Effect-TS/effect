@@ -27,6 +27,7 @@ import * as effect from "../core-effect.js"
 import * as core from "../core.js"
 import * as executionStrategy from "../executionStrategy.js"
 import * as internalFiber from "../fiber.js"
+import * as fiberRef from "../fiberRef.js"
 import * as fiberRuntime from "../fiberRuntime.js"
 import { globalScope } from "../fiberScope.js"
 import * as internalRef from "../ref.js"
@@ -75,7 +76,7 @@ class Semaphore {
             item.value()
             item = iter.next()
           }
-        }, fiber.getFiberRef(core.currentSchedulingPriority))
+        }, fiber.getFiberRef(fiberRef.currentSchedulingPriority))
       }
       return core.succeed(this.free)
     })

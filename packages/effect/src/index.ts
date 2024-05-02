@@ -738,6 +738,13 @@ export * as SingleProducerAsyncInput from "./SingleProducerAsyncInput.js"
 export * as Sink from "./Sink.js"
 
 /**
+ * A lightweight alternative to the `Effect` data type, with a subset of the functionality.
+ *
+ * @since 3.2.0
+ */
+export * as Smol from "./Smol.js"
+
+/**
  * @since 2.0.0
  */
 export * as SortedMap from "./SortedMap.js"

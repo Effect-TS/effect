@@ -10,6 +10,7 @@ import type { LazyArg } from "./Function.js"
 import type * as HashMap from "./HashMap.js"
 import type * as HashSet from "./HashSet.js"
 import * as core from "./internal/core.js"
+import * as fiberRef from "./internal/fiberRef.js"
 import * as fiberRuntime from "./internal/fiberRuntime.js"
 import * as query from "./internal/query.js"
 import type * as List from "./List.js"
@@ -31,7 +32,7 @@ import type * as Types from "./Types.js"
  * @since 2.0.0
  * @category symbols
  */
-export const FiberRefTypeId: unique symbol = core.FiberRefTypeId
+export const FiberRefTypeId: unique symbol = fiberRef.TypeId
 
 /**
  * @since 2.0.0
@@ -113,21 +114,21 @@ export const unsafeMake: <Value>(
     readonly fork?: ((a: Value) => Value) | undefined
     readonly join?: ((left: Value, right: Value) => Value) | undefined
   }
-) => FiberRef<Value> = core.fiberRefUnsafeMake
+) => FiberRef<Value> = fiberRef.unsafeMake
 
 /**
  * @since 2.0.0
  * @category constructors
  */
 export const unsafeMakeHashSet: <A>(initial: HashSet.HashSet<A>) => FiberRef<HashSet.HashSet<A>> =
-  core.fiberRefUnsafeMakeHashSet
+  fiberRef.unsafeMakeHashSet
 
 /**
  * @since 2.0.0
  * @category constructors
  */
 export const unsafeMakeContext: <A>(initial: Context.Context<A>) => FiberRef<Context.Context<A>> =
-  core.fiberRefUnsafeMakeContext
+  fiberRef.unsafeMakeContext
 
 /**
  * @since 2.0.0
@@ -147,7 +148,7 @@ export const unsafeMakePatch: <Value, Patch>(
     readonly fork: Patch
     readonly join?: ((oldV: Value, newV: Value) => Value) | undefined
   }
-) => FiberRef<Value> = core.fiberRefUnsafeMakePatch
+) => FiberRef<Value> = fiberRef.unsafeMakePatch
 
 /**
  * @since 2.0.0
@@ -275,13 +276,13 @@ export const updateSomeAndGet: {
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentConcurrency: FiberRef<number | "unbounded"> = core.currentConcurrency
+export const currentConcurrency: FiberRef<number | "unbounded"> = fiberRef.currentConcurrency
 
 /**
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentRequestBatchingEnabled: FiberRef<boolean> = core.currentRequestBatching
+export const currentRequestBatchingEnabled: FiberRef<boolean> = fiberRef.currentRequestBatching
 
 /**
  * @since 2.0.0
@@ -299,31 +300,31 @@ export const currentRequestCacheEnabled: FiberRef<boolean> = query.currentCacheE
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentContext: FiberRef<Context.Context<never>> = core.currentContext
+export const currentContext: FiberRef<Context.Context<never>> = fiberRef.currentContext
 
 /**
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentSchedulingPriority: FiberRef<number> = core.currentSchedulingPriority
+export const currentSchedulingPriority: FiberRef<number> = fiberRef.currentSchedulingPriority
 
 /**
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentMaxOpsBeforeYield: FiberRef<number> = core.currentMaxOpsBeforeYield
+export const currentMaxOpsBeforeYield: FiberRef<number> = fiberRef.currentMaxOpsBeforeYield
 
 /**
  * @since 2.0.0
  * @category fiberRefs
  */
-export const unhandledErrorLogLevel: FiberRef<Option.Option<LogLevel.LogLevel>> = core.currentUnhandledErrorLogLevel
+export const unhandledErrorLogLevel: FiberRef<Option.Option<LogLevel.LogLevel>> = fiberRef.currentUnhandledErrorLogLevel
 
 /**
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentLogAnnotations: FiberRef<HashMap.HashMap<string, unknown>> = core.currentLogAnnotations
+export const currentLogAnnotations: FiberRef<HashMap.HashMap<string, unknown>> = fiberRef.currentLogAnnotations
 
 /**
  * @since 2.0.0
@@ -335,19 +336,19 @@ export const currentLoggers: FiberRef<HashSet.HashSet<Logger.Logger<unknown, any
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentLogLevel: FiberRef<LogLevel.LogLevel> = core.currentLogLevel
+export const currentLogLevel: FiberRef<LogLevel.LogLevel> = fiberRef.currentLogLevel
 
 /**
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentMinimumLogLevel: FiberRef<LogLevel.LogLevel> = fiberRuntime.currentMinimumLogLevel
+export const currentMinimumLogLevel: FiberRef<LogLevel.LogLevel> = fiberRef.currentMinimumLogLevel
 
 /**
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentLogSpan: FiberRef<List.List<LogSpan.LogSpan>> = core.currentLogSpan
+export const currentLogSpan: FiberRef<List.List<LogSpan.LogSpan>> = fiberRef.currentLogSpan
 
 /**
  * @since 2.0.0
@@ -371,32 +372,32 @@ export const currentSupervisor: FiberRef<Supervisor.Supervisor<any>> = fiberRunt
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentMetricLabels: FiberRef<ReadonlyArray<MetricLabel.MetricLabel>> = core.currentMetricLabels
+export const currentMetricLabels: FiberRef<ReadonlyArray<MetricLabel.MetricLabel>> = fiberRef.currentMetricLabels
 
 /**
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentTracerEnabled: FiberRef<boolean> = core.currentTracerEnabled
+export const currentTracerEnabled: FiberRef<boolean> = fiberRef.currentTracerEnabled
 
 /**
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentTracerTimingEnabled: FiberRef<boolean> = core.currentTracerTimingEnabled
+export const currentTracerTimingEnabled: FiberRef<boolean> = fiberRef.currentTracerTimingEnabled
 
 /**
  * @since 2.0.0
  * @category fiberRefs
  */
 export const currentTracerSpanAnnotations: FiberRef<HashMap.HashMap<string, unknown>> =
-  core.currentTracerSpanAnnotations
+  fiberRef.currentTracerSpanAnnotations
 
 /**
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentTracerSpanLinks: FiberRef<Chunk.Chunk<Tracer.SpanLink>> = core.currentTracerSpanLinks
+export const currentTracerSpanLinks: FiberRef<Chunk.Chunk<Tracer.SpanLink>> = fiberRef.currentTracerSpanLinks
 
 /**
  * @since 2.0.0

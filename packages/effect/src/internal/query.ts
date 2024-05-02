@@ -9,6 +9,7 @@ import type * as RequestResolver from "../RequestResolver.js"
 import * as BlockedRequests from "./blockedRequests.js"
 import { unsafeMakeWith } from "./cache.js"
 import * as core from "./core.js"
+import * as fiberRef from "./fiberRef.js"
 import { ensuring } from "./fiberRuntime.js"
 import { Listeners } from "./request.js"
 
@@ -21,7 +22,7 @@ type RequestCache = Cache.Cache<Request.Request<any, any>, {
 export const currentCache = globalValue(
   Symbol.for("effect/FiberRef/currentCache"),
   () =>
-    core.fiberRefUnsafeMake<RequestCache>(unsafeMakeWith<Request.Request<any, any>, {
+    fiberRef.unsafeMake<RequestCache>(unsafeMakeWith<Request.Request<any, any>, {
       listeners: Request.Listeners
       handle: Deferred<any, any>
     }>(
@@ -34,7 +35,7 @@ export const currentCache = globalValue(
 /** @internal */
 export const currentCacheEnabled = globalValue(
   Symbol.for("effect/FiberRef/currentCacheEnabled"),
-  () => core.fiberRefUnsafeMake(false)
+  () => fiberRef.unsafeMake(false)
 )
 
 /** @internal */

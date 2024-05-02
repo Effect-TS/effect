@@ -3,9 +3,9 @@ import { dual } from "../Function.js"
 import * as HashMap from "../HashMap.js"
 import * as List from "../List.js"
 import type * as Logger from "../Logger.js"
-import * as core from "./core.js"
 import * as _fiberId from "./fiberId.js"
 import * as fiberRefs from "./fiberRefs.js"
+import * as logLevel from "./logLevel.js"
 
 /** @internal */
 export const test = dual<
@@ -14,7 +14,7 @@ export const test = dual<
 >(2, (self, input) =>
   self.log({
     fiberId: _fiberId.none,
-    logLevel: core.logLevelInfo,
+    logLevel: logLevel.info,
     message: input,
     cause: Cause.empty,
     context: fiberRefs.empty(),

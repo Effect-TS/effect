@@ -4,7 +4,6 @@ import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
 import * as Context from "../Context.js"
 import type * as Deferred from "../Deferred.js"
-import type * as Differ from "../Differ.js"
 import type * as Effect from "../Effect.js"
 import * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
@@ -18,12 +17,9 @@ import type { LazyArg } from "../Function.js"
 import { dual, identity, pipe } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
 import * as Hash from "../Hash.js"
-import * as HashMap from "../HashMap.js"
 import type * as HashSet from "../HashSet.js"
 import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
-import * as List from "../List.js"
 import type * as LogLevel from "../LogLevel.js"
-import type * as LogSpan from "../LogSpan.js"
 import type * as MetricLabel from "../MetricLabel.js"
 import * as MutableRef from "../MutableRef.js"
 import * as Option from "../Option.js"
@@ -41,11 +37,10 @@ import { YieldWrap } from "../Utils.js"
 import * as _blockedRequests from "./blockedRequests.js"
 import * as internalCause from "./cause.js"
 import * as deferred from "./deferred.js"
-import * as internalDiffer from "./differ.js"
 import { effectVariance, StructuralCommitPrototype } from "./effectable.js"
 import { getBugErrorMessage } from "./errors.js"
+import * as fiberRef from "./fiberRef.js"
 import type * as FiberRuntime from "./fiberRuntime.js"
-import type * as fiberScope from "./fiberScope.js"
 import * as DeferredOpCodes from "./opCodes/deferred.js"
 import * as OpCodes from "./opCodes/effect.js"
 import * as _runtimeFlags from "./runtimeFlags.js"
@@ -1272,9 +1267,9 @@ export const transplant = <A, E, R>(
   f: (grafter: <A2, E2, R2>(effect: Effect.Effect<A2, E2, R2>) => Effect.Effect<A2, E2, R2>) => Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R> =>
   withFiberRuntime<A, E, R>((state) => {
-    const scopeOverride = state.getFiberRef(currentForkScopeOverride)
+    const scopeOverride = state.getFiberRef(fiberRef.currentForkScopeOverride)
     const scope = pipe(scopeOverride, Option.getOrElse(() => state.scope()))
-    return f(fiberRefLocally(currentForkScopeOverride, Option.some(scope)))
+    return f(fiberRefLocally(fiberRef.currentForkScopeOverride, Option.some(scope)))
   })
 
 /* @internal */
@@ -1383,13 +1378,13 @@ export const whileLoop = <A, E, R>(
 export const withConcurrency = dual<
   (concurrency: number | "unbounded") => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
   <A, E, R>(self: Effect.Effect<A, E, R>, concurrency: number | "unbounded") => Effect.Effect<A, E, R>
->(2, (self, concurrency) => fiberRefLocally(self, currentConcurrency, concurrency))
+>(2, (self, concurrency) => fiberRefLocally(self, fiberRef.currentConcurrency, concurrency))
 
 /* @internal */
 export const withRequestBatching = dual<
   (requestBatching: boolean) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
   <A, E, R>(self: Effect.Effect<A, E, R>, requestBatching: boolean) => Effect.Effect<A, E, R>
->(2, (self, requestBatching) => fiberRefLocally(self, currentRequestBatching, requestBatching))
+>(2, (self, requestBatching) => fiberRefLocally(self, fiberRef.currentRequestBatching, requestBatching))
 
 /* @internal */
 export const withRuntimeFlags = dual<
@@ -1409,7 +1404,7 @@ export const withTracerEnabled = dual<
 >(2, (effect, enabled) =>
   fiberRefLocally(
     effect,
-    currentTracerEnabled,
+    fiberRef.currentTracerEnabled,
     enabled
   ))
 
@@ -1420,7 +1415,7 @@ export const withTracerTiming = dual<
 >(2, (effect, enabled) =>
   fiberRefLocally(
     effect,
-    currentTracerTimingEnabled,
+    fiberRef.currentTracerTimingEnabled,
     enabled
   ))
 
@@ -1534,125 +1529,18 @@ export const interruptAsFiber = dual<
 >(2, (self, fiberId) => flatMap(self.interruptAsFork(fiberId), () => self.await))
 
 // -----------------------------------------------------------------------------
-// LogLevel
-// -----------------------------------------------------------------------------
-
-/** @internal */
-export const logLevelAll: LogLevel.LogLevel = {
-  _tag: "All",
-  syslog: 0,
-  label: "ALL",
-  ordinal: Number.MIN_SAFE_INTEGER,
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-/** @internal */
-export const logLevelFatal: LogLevel.LogLevel = {
-  _tag: "Fatal",
-  syslog: 2,
-  label: "FATAL",
-  ordinal: 50000,
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-/** @internal */
-export const logLevelError: LogLevel.LogLevel = {
-  _tag: "Error",
-  syslog: 3,
-  label: "ERROR",
-  ordinal: 40000,
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-/** @internal */
-export const logLevelWarning: LogLevel.LogLevel = {
-  _tag: "Warning",
-  syslog: 4,
-  label: "WARN",
-  ordinal: 30000,
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-/** @internal */
-export const logLevelInfo: LogLevel.LogLevel = {
-  _tag: "Info",
-  syslog: 6,
-  label: "INFO",
-  ordinal: 20000,
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-/** @internal */
-export const logLevelDebug: LogLevel.LogLevel = {
-  _tag: "Debug",
-  syslog: 7,
-  label: "DEBUG",
-  ordinal: 10000,
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-/** @internal */
-export const logLevelTrace: LogLevel.LogLevel = {
-  _tag: "Trace",
-  syslog: 7,
-  label: "TRACE",
-  ordinal: 0,
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-/** @internal */
-export const logLevelNone: LogLevel.LogLevel = {
-  _tag: "None",
-  syslog: 7,
-  label: "OFF",
-  ordinal: Number.MAX_SAFE_INTEGER,
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-/** @internal */
-export const allLogLevels: ReadonlyArray<LogLevel.LogLevel> = [
-  logLevelAll,
-  logLevelTrace,
-  logLevelDebug,
-  logLevelInfo,
-  logLevelWarning,
-  logLevelError,
-  logLevelFatal,
-  logLevelNone
-]
-
-// -----------------------------------------------------------------------------
 // FiberRef
 // -----------------------------------------------------------------------------
 
 /** @internal */
-const FiberRefSymbolKey = "effect/FiberRef"
-
-/** @internal */
-export const FiberRefTypeId: FiberRef.FiberRefTypeId = Symbol.for(
-  FiberRefSymbolKey
-) as FiberRef.FiberRefTypeId
-
-const fiberRefVariance = {
-  /* c8 ignore next */
-  _A: (_: any) => _
-}
+export const currentInterruptedCause: FiberRef.FiberRef<Cause.Cause<never>> = globalValue(
+  Symbol.for("effect/FiberRef/currentInterruptedCause"),
+  () =>
+    fiberRef.unsafeMake(internalCause.empty, {
+      fork: () => internalCause.empty,
+      join: (parent, _) => parent
+    })
+)
 
 /* @internal */
 export const fiberRefGet = <A>(self: FiberRef.FiberRef<A>): Effect.Effect<A> =>
@@ -1872,211 +1760,27 @@ export const fiberRefLocallyWith = dual<
   <A>(self: FiberRef.FiberRef<A>, f: (a: A) => A) => <B, E, R>(use: Effect.Effect<B, E, R>) => Effect.Effect<B, E, R>,
   <B, E, R, A>(use: Effect.Effect<B, E, R>, self: FiberRef.FiberRef<A>, f: (a: A) => A) => Effect.Effect<B, E, R>
 >(3, (use, self, f) => fiberRefGetWith(self, (a) => fiberRefLocally(use, self, f(a))))
-
-/** @internal */
-export const fiberRefUnsafeMake = <Value>(
-  initial: Value,
-  options?: {
-    readonly fork?: ((a: Value) => Value) | undefined
-    readonly join?: ((left: Value, right: Value) => Value) | undefined
-  }
-): FiberRef.FiberRef<Value> =>
-  fiberRefUnsafeMakePatch(initial, {
-    differ: internalDiffer.update(),
-    fork: options?.fork ?? identity,
-    join: options?.join
-  })
-
-/** @internal */
-export const fiberRefUnsafeMakeHashSet = <A>(
-  initial: HashSet.HashSet<A>
-): FiberRef.FiberRef<HashSet.HashSet<A>> => {
-  const differ = internalDiffer.hashSet<A>()
-  return fiberRefUnsafeMakePatch(initial, {
-    differ,
-    fork: differ.empty
-  })
-}
-
-/** @internal */
-export const fiberRefUnsafeMakeReadonlyArray = <A>(
-  initial: ReadonlyArray<A>
-): FiberRef.FiberRef<ReadonlyArray<A>> => {
-  const differ = internalDiffer.readonlyArray(internalDiffer.update<A>())
-  return fiberRefUnsafeMakePatch(initial, {
-    differ,
-    fork: differ.empty
-  })
-}
-
-/** @internal */
-export const fiberRefUnsafeMakeContext = <A>(
-  initial: Context.Context<A>
-): FiberRef.FiberRef<Context.Context<A>> => {
-  const differ = internalDiffer.environment<A>()
-  return fiberRefUnsafeMakePatch(initial, {
-    differ,
-    fork: differ.empty
-  })
-}
-
-/** @internal */
-export const fiberRefUnsafeMakePatch = <Value, Patch>(
-  initial: Value,
-  options: {
-    readonly differ: Differ.Differ<Value, Patch>
-    readonly fork: Patch
-    readonly join?: ((oldV: Value, newV: Value) => Value) | undefined
-  }
-): FiberRef.FiberRef<Value> => ({
-  [FiberRefTypeId]: fiberRefVariance,
-  initial,
-  diff: (oldValue, newValue) => options.differ.diff(oldValue, newValue),
-  combine: (first, second) => options.differ.combine(first as Patch, second as Patch),
-  patch: (patch) => (oldValue) => options.differ.patch(patch as Patch, oldValue),
-  fork: options.fork,
-  join: options.join ?? ((_, n) => n),
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-})
-
-/** @internal */
-export const fiberRefUnsafeMakeRuntimeFlags = (
-  initial: RuntimeFlags.RuntimeFlags
-): FiberRef.FiberRef<RuntimeFlags.RuntimeFlags> =>
-  fiberRefUnsafeMakePatch(initial, {
-    differ: _runtimeFlags.differ,
-    fork: _runtimeFlags.differ.empty
-  })
-
-/** @internal */
-export const currentContext: FiberRef.FiberRef<Context.Context<never>> = globalValue(
-  Symbol.for("effect/FiberRef/currentContext"),
-  () => fiberRefUnsafeMakeContext(Context.empty())
-)
-
-/** @internal */
-export const currentSchedulingPriority: FiberRef.FiberRef<number> = globalValue(
-  Symbol.for("effect/FiberRef/currentSchedulingPriority"),
-  () => fiberRefUnsafeMake(0)
-)
-
-/** @internal */
-export const currentMaxOpsBeforeYield: FiberRef.FiberRef<number> = globalValue(
-  Symbol.for("effect/FiberRef/currentMaxOpsBeforeYield"),
-  () => fiberRefUnsafeMake(2048)
-)
-
-/** @internal */
-export const currentLogAnnotations: FiberRef.FiberRef<HashMap.HashMap<string, unknown>> = globalValue(
-  Symbol.for("effect/FiberRef/currentLogAnnotation"),
-  () => fiberRefUnsafeMake(HashMap.empty())
-)
-
-/** @internal */
-export const currentLogLevel: FiberRef.FiberRef<LogLevel.LogLevel> = globalValue(
-  Symbol.for("effect/FiberRef/currentLogLevel"),
-  () => fiberRefUnsafeMake<LogLevel.LogLevel>(logLevelInfo)
-)
-
-/** @internal */
-export const currentLogSpan: FiberRef.FiberRef<List.List<LogSpan.LogSpan>> = globalValue(
-  Symbol.for("effect/FiberRef/currentLogSpan"),
-  () => fiberRefUnsafeMake(List.empty<LogSpan.LogSpan>())
-)
-
 /** @internal */
 export const withSchedulingPriority = dual<
   (priority: number) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
   <A, E, R>(self: Effect.Effect<A, E, R>, priority: number) => Effect.Effect<A, E, R>
->(2, (self, scheduler) => fiberRefLocally(self, currentSchedulingPriority, scheduler))
+>(2, (self, scheduler) => fiberRefLocally(self, fiberRef.currentSchedulingPriority, scheduler))
 
 /** @internal */
 export const withMaxOpsBeforeYield = dual<
   (priority: number) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
   <A, E, R>(self: Effect.Effect<A, E, R>, priority: number) => Effect.Effect<A, E, R>
->(2, (self, scheduler) => fiberRefLocally(self, currentMaxOpsBeforeYield, scheduler))
-
-/** @internal */
-export const currentConcurrency: FiberRef.FiberRef<"unbounded" | number> = globalValue(
-  Symbol.for("effect/FiberRef/currentConcurrency"),
-  () => fiberRefUnsafeMake<"unbounded" | number>("unbounded")
-)
-
-/**
- * @internal
- */
-export const currentRequestBatching = globalValue(
-  Symbol.for("effect/FiberRef/currentRequestBatching"),
-  () => fiberRefUnsafeMake(true)
-)
-
-/** @internal */
-export const currentUnhandledErrorLogLevel: FiberRef.FiberRef<Option.Option<LogLevel.LogLevel>> = globalValue(
-  Symbol.for("effect/FiberRef/currentUnhandledErrorLogLevel"),
-  () => fiberRefUnsafeMake(Option.some<LogLevel.LogLevel>(logLevelDebug))
-)
+>(2, (self, scheduler) => fiberRefLocally(self, fiberRef.currentMaxOpsBeforeYield, scheduler))
 
 /** @internal */
 export const withUnhandledErrorLogLevel = dual<
   (level: Option.Option<LogLevel.LogLevel>) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
   <A, E, R>(self: Effect.Effect<A, E, R>, level: Option.Option<LogLevel.LogLevel>) => Effect.Effect<A, E, R>
->(2, (self, level) => fiberRefLocally(self, currentUnhandledErrorLogLevel, level))
-
-/** @internal */
-export const currentMetricLabels: FiberRef.FiberRef<ReadonlyArray<MetricLabel.MetricLabel>> = globalValue(
-  Symbol.for("effect/FiberRef/currentMetricLabels"),
-  () => fiberRefUnsafeMakeReadonlyArray(Arr.empty())
-)
+>(2, (self, level) => fiberRefLocally(self, fiberRef.currentUnhandledErrorLogLevel, level))
 
 /* @internal */
 export const metricLabels: Effect.Effect<ReadonlyArray<MetricLabel.MetricLabel>> = fiberRefGet(
-  currentMetricLabels
-)
-
-/** @internal */
-export const currentForkScopeOverride: FiberRef.FiberRef<Option.Option<fiberScope.FiberScope>> = globalValue(
-  Symbol.for("effect/FiberRef/currentForkScopeOverride"),
-  () =>
-    fiberRefUnsafeMake(Option.none(), {
-      fork: () => Option.none() as Option.Option<fiberScope.FiberScope>,
-      join: (parent, _) => parent
-    })
-)
-
-/** @internal */
-export const currentInterruptedCause: FiberRef.FiberRef<Cause.Cause<never>> = globalValue(
-  Symbol.for("effect/FiberRef/currentInterruptedCause"),
-  () =>
-    fiberRefUnsafeMake(internalCause.empty, {
-      fork: () => internalCause.empty,
-      join: (parent, _) => parent
-    })
-)
-
-/** @internal */
-export const currentTracerEnabled: FiberRef.FiberRef<boolean> = globalValue(
-  Symbol.for("effect/FiberRef/currentTracerEnabled"),
-  () => fiberRefUnsafeMake(true)
-)
-
-/** @internal */
-export const currentTracerTimingEnabled: FiberRef.FiberRef<boolean> = globalValue(
-  Symbol.for("effect/FiberRef/currentTracerTiming"),
-  () => fiberRefUnsafeMake(true)
-)
-
-/** @internal */
-export const currentTracerSpanAnnotations: FiberRef.FiberRef<HashMap.HashMap<string, unknown>> = globalValue(
-  Symbol.for("effect/FiberRef/currentTracerSpanAnnotations"),
-  () => fiberRefUnsafeMake(HashMap.empty())
-)
-
-/** @internal */
-export const currentTracerSpanLinks: FiberRef.FiberRef<Chunk.Chunk<Tracer.SpanLink>> = globalValue(
-  Symbol.for("effect/FiberRef/currentTracerSpanLinks"),
-  () => fiberRefUnsafeMake(Chunk.empty())
+  fiberRef.currentMetricLabels
 )
 
 // -----------------------------------------------------------------------------
@@ -2921,7 +2625,7 @@ const deferredInterruptJoiner = <A, E>(
 // Context
 // -----------------------------------------------------------------------------
 
-const constContext = fiberRefGet(currentContext)
+const constContext = fiberRefGet(fiberRef.currentContext)
 
 /* @internal */
 export const context = <R>(): Effect.Effect<Context.Context<R>, never, R> => constContext as any
@@ -2942,7 +2646,7 @@ export const provideContext = dual<
   <A, E, R>(self: Effect.Effect<A, E, R>, context: Context.Context<R>) => Effect.Effect<A, E>
 >(2, <A, E, R>(self: Effect.Effect<A, E, R>, context: Context.Context<R>) =>
   fiberRefLocally(
-    currentContext,
+    fiberRef.currentContext,
     context
   )(self as Effect.Effect<A, E>))
 
@@ -2952,7 +2656,7 @@ export const provideSomeContext = dual<
   <A, E, R1, R>(self: Effect.Effect<A, E, R1>, context: Context.Context<R>) => Effect.Effect<A, E, Exclude<R1, R>>
 >(2, <A, E, R1, R>(self: Effect.Effect<A, E, R1>, context: Context.Context<R>) =>
   fiberRefLocallyWith(
-    currentContext,
+    fiberRef.currentContext,
     (parent) => Context.merge(parent, context)
   )(self as Effect.Effect<A, E>))
 
@@ -2976,7 +2680,7 @@ export const mapInputContext = dual<
 
 /** @internal */
 export const currentSpanFromFiber = <A, E>(fiber: Fiber.RuntimeFiber<A, E>): Option.Option<Tracer.Span> => {
-  const span = fiber.getFiberRef(currentContext).unsafeMap.get(internalTracer.spanTag.key) as
+  const span = fiber.getFiberRef(fiberRef.currentContext).unsafeMap.get(internalTracer.spanTag.key) as
     | Tracer.AnySpan
     | undefined
   return span !== undefined && span._tag === "Span" ? Option.some(span) : Option.none()

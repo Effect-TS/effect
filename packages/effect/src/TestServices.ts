@@ -9,6 +9,7 @@ import type * as FiberRef from "./FiberRef.js"
 import { dual, pipe } from "./Function.js"
 import * as core from "./internal/core.js"
 import * as defaultServices from "./internal/defaultServices.js"
+import * as fiberRef from "./internal/fiberRef.js"
 import * as fiberRuntime from "./internal/fiberRuntime.js"
 import * as layer from "./internal/layer.js"
 import * as ref from "./internal/ref.js"
@@ -46,7 +47,7 @@ export const liveServices: Context.Context<TestServices> = pipe(
 /**
  * @since 2.0.0
  */
-export const currentServices: FiberRef.FiberRef<Context.Context<TestServices>> = core.fiberRefUnsafeMakeContext(
+export const currentServices: FiberRef.FiberRef<Context.Context<TestServices>> = fiberRef.unsafeMakeContext(
   liveServices
 )
 

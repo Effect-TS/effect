@@ -14,6 +14,7 @@ import * as clock from "./clock.js"
 import * as configProvider from "./configProvider.js"
 import * as core from "./core.js"
 import * as console_ from "./defaultServices/console.js"
+import * as fiberRef from "./fiberRef.js"
 import * as random from "./random.js"
 import * as tracer from "./tracer.js"
 
@@ -35,7 +36,7 @@ export const liveServices: Context.Context<DefaultServices.DefaultServices> = pi
  */
 export const currentServices = globalValue(
   Symbol.for("effect/DefaultServices/currentServices"),
-  () => core.fiberRefUnsafeMakeContext(liveServices)
+  () => fiberRef.unsafeMakeContext(liveServices)
 )
 
 // circular with Clock
