@@ -898,7 +898,7 @@ describe("Class APIs", () => {
         await Util.expectEncodeSuccess(schema, { n: 1 }, new A({ n: 1 }))
       })
 
-      it.only("should fail on bad values", async () => {
+      it("should fail on bad values", async () => {
         class A extends S.Class<A>("A")({
           n: S.NumberFromString
         }) {}
