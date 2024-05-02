@@ -206,3 +206,33 @@ Stream.takeUntil(numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType Stream<string | number, never, never>
 pipe(numbersOrStrings, Stream.takeUntil(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// do notation
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Stream<{ a: number; b: string; c: boolean; }, never, never>
+pipe(
+  Stream.Do,
+  Stream.bind("a", (
+    _scope // $ExpectType {}
+  ) => Stream.succeed(1)),
+  Stream.bind("b", (
+    _scope // $ExpectType { a: number; }
+  ) => Stream.succeed("b")),
+  Stream.let("c", (
+    _scope // $ExpectType { a: number; b: string; }
+  ) => true)
+)
+
+// $ExpectType Stream<{ a: number; b: string; c: boolean; }, never, never>
+pipe(
+  Stream.succeed(1),
+  Stream.bindTo("a"),
+  Stream.bind("b", (
+    _scope // $ExpectType { a: number; }
+  ) => Stream.succeed("b")),
+  Stream.let("c", (
+    _scope // $ExpectType { a: number; b: string; }
+  ) => true)
+)

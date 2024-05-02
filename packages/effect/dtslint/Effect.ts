@@ -1074,3 +1074,33 @@ string.pipe(Effect.retryOrElse(Schedule.forever, (_e: string) => Effect.succeed(
 string.pipe(Effect.retryOrElse(Schedule.forever, (
   _e // $ExpectType "err-1"
 ) => Effect.succeed(0)))
+
+// -------------------------------------------------------------------------------------
+// do notation
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Effect<{ a: number; b: string; c: boolean; }, never, never>
+pipe(
+  Effect.Do,
+  Effect.bind("a", (
+    _scope // $ExpectType {}
+  ) => Effect.succeed(1)),
+  Effect.bind("b", (
+    _scope // $ExpectType { a: number; }
+  ) => Effect.succeed("b")),
+  Effect.let("c", (
+    _scope // $ExpectType { a: number; b: string; }
+  ) => true)
+)
+
+// $ExpectType Effect<{ a: number; b: string; c: boolean; }, never, never>
+pipe(
+  Effect.succeed(1),
+  Effect.bindTo("a"),
+  Effect.bind("b", (
+    _scope // $ExpectType { a: number; }
+  ) => Effect.succeed("b")),
+  Effect.let("c", (
+    _scope // $ExpectType { a: number; b: string; }
+  ) => true)
+)
