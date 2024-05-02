@@ -7,7 +7,7 @@
 /**
  * Returns the tags in a type.
  * @example
- * import * as Types from "effect/Types"
+ * import type { Types } from "effect"
  *
  * type Res = Types.Tags<string | { _tag: "a" } | { _tag: "b" } > // "a" | "b"
  *
@@ -19,7 +19,7 @@ export type Tags<E> = E extends { _tag: string } ? E["_tag"] : never
 /**
  * Excludes the tagged object from the type.
  * @example
- * import * as Types from "effect/Types"
+ * import type { Types } from "effect"
  *
  * type Res = Types.ExcludeTag<string | { _tag: "a" } | { _tag: "b" }, "a"> // string | { _tag: "b" }
  *
@@ -32,7 +32,7 @@ export type ExcludeTag<E, K extends Tags<E>> = Exclude<E, { _tag: K }>
  * Extracts the type of the given tag.
  *
  * @example
- * import * as Types from "effect/Types"
+ * import type { Types } from "effect"
  *
  * type Res = Types.ExtractTag<{ _tag: "a", a: number } | { _tag: "b", b: number }, "b"> // { _tag: "b", b: number }
  *
@@ -54,7 +54,7 @@ export type UnionToIntersection<T> = (T extends any ? (x: T) => any : never) ext
  * Simplifies the type signature of a type.
  *
  * @example
- * import * as Types from "effect/Types"
+ * import type { Types } from "effect"
  *
  * type Res = Types.Simplify<{ a: number } & { b: number }> // { a: number; b: number; }
  *
@@ -69,7 +69,7 @@ export type Simplify<A> = {
  * Determines if two types are equal.
  *
  * @example
- * import * as Types from "effect/Types"
+ * import type { Types } from "effect"
  *
  * type Res1 = Types.Equals<{ a: number }, { a: number }> // true
  * type Res2 = Types.Equals<{ a: number }, { b: number }> // false
@@ -86,7 +86,7 @@ export type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <
  * Determines if a record contains any of the given keys.
  *
  * @example
- * import * as Types from "effect/Types"
+ * import type { Types } from "effect"
  *
  * type Res1 = Types.Has<{ a: number }, "a" | "b"> // true
  * type Res2 = Types.Has<{ c: number }, "a" | "b"> // false
@@ -102,7 +102,7 @@ export type Has<A, Key extends string> = (Key extends infer K ? K extends keyof 
  * Merges two object where the keys of the left object take precedence in the case of a conflict.
  *
  * @example
- * import * as Types from "effect/Types"
+ * import type { Types } from "effect"
  * type MergeLeft = Types.MergeLeft<{ a: number, b: number; }, { a: string }> // { a: number; b: number; }
  *
  * @since 2.0.0
@@ -118,7 +118,7 @@ export type MergeLeft<K, H> = Simplify<
  * Merges two object where the keys of the right object take precedence in the case of a conflict.
  *
  * @example
- * import * as Types from "effect/Types"
+ * import type { Types } from "effect"
  * type MergeRight = Types.MergeRight<{ a: number, b: number; }, { a: string }> // { a: string; b: number; }
  *
  * @since 2.0.0
@@ -153,7 +153,7 @@ export type Concurrency = number | "unbounded" | "inherit"
  * Make all properties in `T` mutable. Supports arrays, tuples, and records as well.
  *
  * @example
- * import type * as Types from "effect/Types"
+ * import type { Types } from "effect"
  *
  * type MutableStruct = Types.Mutable<{ readonly a: string; readonly b: number }> // { a: string; b: number; }
  *
@@ -174,7 +174,7 @@ export type Mutable<T> = {
  * Like `Types.Mutable`, but works recursively.
  *
  * @example
- * import type * as Types from "effect/Types"
+ * import type { Types } from "effect"
  *
  * type DeepMutableStruct = Types.DeepMutable<{
  *   readonly a: string;

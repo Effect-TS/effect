@@ -14,11 +14,10 @@ import type { MatchRecord, Simplify } from "./Types.js"
  * Create a new object by picking properties of an existing object.
  *
  * @example
- * import { pick } from "effect/Struct"
- * import { pipe } from "effect/Function"
+ * import { pipe, Struct } from "effect"
  *
- * assert.deepStrictEqual(pipe({ a: "a", b: 1, c: true }, pick("a", "b")), { a: "a", b: 1 })
- * assert.deepStrictEqual(pick({ a: "a", b: 1, c: true }, "a", "b"), { a: "a", b: 1 })
+ * assert.deepStrictEqual(pipe({ a: "a", b: 1, c: true }, Struct.pick("a", "b")), { a: "a", b: 1 })
+ * assert.deepStrictEqual(Struct.pick({ a: "a", b: 1, c: true }, "a", "b"), { a: "a", b: 1 })
  *
  * @since 2.0.0
  */
@@ -49,11 +48,10 @@ export const pick: {
  * Create a new object by omitting properties of an existing object.
  *
  * @example
- * import { omit } from "effect/Struct"
- * import { pipe } from "effect/Function"
+ * import { pipe, Struct } from "effect"
  *
- * assert.deepStrictEqual(pipe({ a: "a", b: 1, c: true }, omit("c")), { a: "a", b: 1 })
- * assert.deepStrictEqual(omit({ a: "a", b: 1, c: true }, "c"), { a: "a", b: 1 })
+ * assert.deepStrictEqual(pipe({ a: "a", b: 1, c: true }, Struct.omit("c")), { a: "a", b: 1 })
+ * assert.deepStrictEqual(Struct.omit({ a: "a", b: 1, c: true }, "c"), { a: "a", b: 1 })
  *
  * @since 2.0.0
  */
@@ -83,13 +81,11 @@ export const omit: {
  * Alias of {@link Equivalence.struct}.
  *
  * @example
- * import { getEquivalence } from "effect/Struct"
- * import * as S from "effect/String"
- * import * as N from "effect/Number"
+ * import { Struct, String, Number } from "effect"
  *
- * const PersonEquivalence = getEquivalence({
- *   name: S.Equivalence,
- *   age: N.Equivalence
+ * const PersonEquivalence = Struct.getEquivalence({
+ *   name: String.Equivalence,
+ *   age: Number.Equivalence
  * })
  *
  * assert.deepStrictEqual(
@@ -136,13 +132,12 @@ type Transformed<O, T extends PartialTransform<O>> =
  * If no transformation function is provided for a key, it will return the origional value for that key.
  *
  * @example
- * import { evolve } from 'effect/Struct'
- * import { pipe } from 'effect/Function'
+ * import { pipe, Struct } from "effect"
  *
  * assert.deepStrictEqual(
  *   pipe(
  *     { a: 'a', b: 1, c: 3 },
- *     evolve({
+ *     Struct.evolve({
  *       a: (a) => a.length,
  *       b: (b) => b * 2
  *     })
@@ -178,8 +173,7 @@ export const evolve: {
  * Retrieves the value associated with the specified key from a struct.
  *
  * @example
- * import * as Struct from "effect/Struct"
- * import { pipe } from "effect/Function"
+ * import { pipe, Struct } from "effect"
  *
  * const value = pipe({ a: 1, b: 2 }, Struct.get("a"))
  *

@@ -292,13 +292,12 @@ export const has: {
  * @param key - Key to retrieve from record.
  *
  * @example
- * import { get } from "effect/Record"
- * import { some, none } from "effect/Option"
+ * import { Record as R, Option } from "effect"
  *
  * const person: Record<string, unknown> = { name: "John Doe", age: 35 }
  *
- * assert.deepStrictEqual(get(person, "name"), some("John Doe"))
- * assert.deepStrictEqual(get(person, "email"), none())
+ * assert.deepStrictEqual(R.get(person, "name"), Option.some("John Doe"))
+ * assert.deepStrictEqual(R.get(person, "email"), Option.none())
  *
  * @since 2.0.0
  */
@@ -320,17 +319,16 @@ export const get: {
  * @param f - The function to apply to the element.
  *
  * @example
- * import { modify } from "effect/Record"
- * import { some, none } from "effect/Option"
+ * import { Record as R } from "effect"
  *
  * const f = (x: number) => x * 2
  *
  * assert.deepStrictEqual(
- *  modify({ a: 3 }, 'a', f),
+ *  R.modify({ a: 3 }, 'a', f),
  *  { a: 6 }
  * )
  * assert.deepStrictEqual(
- *  modify({ a: 3 } as Record<string, number>, 'b', f),
+ *  R.modify({ a: 3 } as Record<string, number>, 'b', f),
  *  { a: 3 }
  * )
  *
@@ -361,18 +359,17 @@ export const modify: {
  * @param f - The function to apply to the element.
  *
  * @example
- * import { modifyOption } from "effect/Record"
- * import { some, none } from "effect/Option"
+ * import { Record as R, Option } from "effect"
  *
  * const f = (x: number) => x * 2
  *
  * assert.deepStrictEqual(
- *  modifyOption({ a: 3 }, 'a', f),
- *  some({ a: 6 })
+ *  R.modifyOption({ a: 3 }, 'a', f),
+ *  Option.some({ a: 6 })
  * )
  * assert.deepStrictEqual(
- *  modifyOption({ a: 3 } as Record<string, number>, 'b', f),
- *  none()
+ *  R.modifyOption({ a: 3 } as Record<string, number>, 'b', f),
+ *  Option.none()
  * )
  *
  * @since 2.0.0
@@ -409,14 +406,13 @@ export const modifyOption: {
  * @param b - The new value to replace the existing value with.
  *
  * @example
- * import { empty, replaceOption } from "effect/Record"
- * import { some, none } from "effect/Option"
+ * import { Record, Option } from "effect"
  *
  * assert.deepStrictEqual(
- *   replaceOption({ a: 1, b: 2, c: 3 }, 'a', 10),
- *   some({ a: 10, b: 2, c: 3 })
+ *   Record.replaceOption({ a: 1, b: 2, c: 3 }, 'a', 10),
+ *   Option.some({ a: 10, b: 2, c: 3 })
  * )
- * assert.deepStrictEqual(replaceOption(empty<string>(), 'a', 10), none())
+ * assert.deepStrictEqual(Record.replaceOption(Record.empty<string>(), 'a', 10), Option.none())
  *
  * @since 2.0.0
  */
@@ -477,11 +473,10 @@ export const remove: {
  * @param key - The key of the property to retrieve.
  *
  * @example
- * import { pop } from "effect/Record"
- * import { some, none } from 'effect/Option'
+ * import { Record as R, Option } from "effect"
  *
- * assert.deepStrictEqual(pop({ a: 1, b: 2 }, "a"), some([1, { b: 2 }]))
- * assert.deepStrictEqual(pop({ a: 1, b: 2 } as Record<string, number>, "c"), none())
+ * assert.deepStrictEqual(R.pop({ a: 1, b: 2 }, "a"), Option.some([1, { b: 2 }]))
+ * assert.deepStrictEqual(R.pop({ a: 1, b: 2 } as Record<string, number>, "c"), Option.none())
  *
  * @category record
  * @since 2.0.0
@@ -610,12 +605,11 @@ export const mapEntries: {
  * @param f - The transformation function.
  *
  * @example
- * import { filterMap } from "effect/Record"
- * import { some, none } from 'effect/Option'
+ * import { Record, Option } from "effect"
  *
  * const x = { a: 1, b: 2, c: 3 }
- * const f = (a: number, key: string) => a > 2 ? some(a * 2) : none()
- * assert.deepStrictEqual(filterMap(x, f), { c: 6 })
+ * const f = (a: number, key: string) => a > 2 ? Option.some(a * 2) : Option.none()
+ * assert.deepStrictEqual(Record.filterMap(x, f), { c: 6 })
  *
  * @since 2.0.0
  */
@@ -696,11 +690,10 @@ export const filter: {
  * @param self - A record with `Option` values.
  *
  * @example
- * import { getSomes } from "effect/Record"
- * import { some, none } from "effect/Option"
+ * import { Record, Option } from "effect"
  *
  * assert.deepStrictEqual(
- *   getSomes({ a: some(1), b: none(), c: some(2) }),
+ *   Record.getSomes({ a: Option.some(1), b: Option.none(), c: Option.some(2) }),
  *   { a: 1, c: 2 }
  * )
  *
@@ -717,11 +710,10 @@ export const getSomes: <K extends string, A>(
  * Given a record with `Either` values, returns a new record containing only the `Left` values, preserving the original keys.
  *
  * @example
- * import { getLefts } from "effect/Record"
- * import { right, left } from "effect/Either"
+ * import { Record, Either } from "effect"
  *
  * assert.deepStrictEqual(
- *   getLefts({ a: right(1), b: left("err"), c: right(2) }),
+ *   Record.getLefts({ a: Either.right(1), b: Either.left("err"), c: Either.right(2) }),
  *   { b: "err" }
  * )
  *
@@ -746,11 +738,10 @@ export const getLefts = <K extends string, R, L>(
  * Given a record with `Either` values, returns a new record containing only the `Right` values, preserving the original keys.
  *
  * @example
- * import { getRights } from "effect/Record"
- * import { right, left } from "effect/Either"
+ * import { Record, Either } from "effect"
  *
  * assert.deepStrictEqual(
- *   getRights({ a: right(1), b: left("err"), c: right(2) }),
+ *   Record.getRights({ a: Either.right(1), b: Either.left("err"), c: Either.right(2) }),
  *   { a: 1, c: 2 }
  * )
  *
@@ -778,12 +769,11 @@ export const getRights = <K extends string, R, L>(
  * @param f - The predicate function to apply to each element.
  *
  * @example
- * import { partitionMap } from "effect/Record"
- * import { left, right } from 'effect/Either'
+ * import { Record, Either } from "effect"
  *
  * const x = { a: 1, b: 2, c: 3 }
- * const f = (n: number) => (n % 2 === 0 ? right(n) : left(n))
- * assert.deepStrictEqual(partitionMap(x, f), [{ a: 1, c: 3 }, { b: 2}])
+ * const f = (n: number) => (n % 2 === 0 ? Either.right(n) : Either.left(n))
+ * assert.deepStrictEqual(Record.partitionMap(x, f), [{ a: 1, c: 3 }, { b: 2}])
  *
  * @category filtering
  * @since 2.0.0
@@ -825,11 +815,10 @@ export const partitionMap: {
  * @param self - the record to partition.
  *
  * @example
- * import { separate } from "effect/Record"
- * import { left, right } from 'effect/Either'
+ * import { Record, Either } from "effect"
  *
  * assert.deepStrictEqual(
- *   separate({ a: left("e"), b: right(1) }),
+ *   Record.separate({ a: Either.left("e"), b: Either.right(1) }),
  *   [{ a: "e" }, { b: 1 }]
  * )
  *
@@ -962,11 +951,10 @@ export const set: {
  * @param value - The new value to associate with the key.
  *
  * @example
- * import { replace } from "effect/Record"
- * import { some, none } from "effect/Option"
+ * import { Record } from "effect"
  *
- * assert.deepStrictEqual(replace("a", 3)({ a: 1, b: 2 }), { a: 3, b: 2 });
- * assert.deepStrictEqual(replace("c", 3)({ a: 1, b: 2 }), { a: 1, b: 2 });
+ * assert.deepStrictEqual(Record.replace("a", 3)({ a: 1, b: 2 }), { a: 3, b: 2 });
+ * assert.deepStrictEqual(Record.replace("c", 3)({ a: 1, b: 2 }), { a: 1, b: 2 });
  *
  * @since 2.0.0
  */
