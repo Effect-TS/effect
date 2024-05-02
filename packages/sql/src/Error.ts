@@ -7,7 +7,7 @@ import * as Predicate from "effect/Predicate"
 /**
  * @since 1.0.0
  */
-export const SqlErrorTypeId = Symbol.for("@effect/sql/Error")
+export const SqlErrorTypeId: unique symbol = Symbol.for("@effect/sql/Error")
 
 /**
  * @since 1.0.0

@@ -283,7 +283,7 @@ export const makeCache = (
  * @since 2.0.0
  * @category symbols
  */
-export const EntryTypeId = Symbol.for("effect/RequestBlock.Entry")
+export const EntryTypeId: unique symbol = Symbol.for("effect/RequestBlock.Entry")
 
 /**
  * @since 2.0.0

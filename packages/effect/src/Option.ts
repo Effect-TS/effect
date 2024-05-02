@@ -28,7 +28,7 @@ export type Option<A> = None<A> | Some<A>
  * @category symbols
  * @since 2.0.0
  */
-export const TypeId = Symbol.for("effect/Option")
+export const TypeId: unique symbol = Symbol.for("effect/Option")
 
 /**
  * @category symbols

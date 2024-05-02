@@ -22,7 +22,7 @@ import * as Rpc from "./Rpc.js"
  * @since 1.0.0
  * @category type ids
  */
-export const TypeId = Symbol.for("@effect/rpc/Router")
+export const TypeId: unique symbol = Symbol.for("@effect/rpc/Router")
 
 /**
  * @since 1.0.0

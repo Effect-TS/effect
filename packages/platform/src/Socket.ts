@@ -22,7 +22,7 @@ import { RefailError, TypeIdError } from "./Error.js"
  * @since 1.0.0
  * @category type ids
  */
-export const TypeId = Symbol.for("@effect/platform/Socket")
+export const TypeId: unique symbol = Symbol.for("@effect/platform/Socket")
 
 /**
  * @since 1.0.0
@@ -57,7 +57,7 @@ export interface Socket {
  * @since 1.0.0
  * @category type ids
  */
-export const CloseEventTypeId = Symbol.for("@effect/platform/Socket/CloseEvent")
+export const CloseEventTypeId: unique symbol = Symbol.for("@effect/platform/Socket/CloseEvent")
 
 /**
  * @since 1.0.0
@@ -95,7 +95,7 @@ export const isCloseEvent = (u: unknown): u is CloseEvent => Predicate.hasProper
  * @since 1.0.0
  * @category type ids
  */
-export const SocketErrorTypeId = Symbol.for("@effect/platform/Socket/SocketError")
+export const SocketErrorTypeId: unique symbol = Symbol.for("@effect/platform/Socket/SocketError")
 
 /**
  * @since 1.0.0

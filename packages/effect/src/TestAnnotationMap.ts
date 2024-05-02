@@ -9,7 +9,7 @@ import type * as TestAnnotation from "./TestAnnotation.js"
 /**
  * @since 2.0.0
  */
-export const TestAnnotationMapTypeId = Symbol.for("effect/TestAnnotationMap")
+export const TestAnnotationMapTypeId: unique symbol = Symbol.for("effect/TestAnnotationMap")
 
 /**
  * @since 2.0.0
