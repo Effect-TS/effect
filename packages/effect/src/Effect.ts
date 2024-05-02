@@ -56,7 +56,7 @@ import * as Scheduler from "./Scheduler.js"
 import type * as Scope from "./Scope.js"
 import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
-import type { Concurrency, Covariant, MergeRecord, NoInfer, NotFunction } from "./Types.js"
+import type { Concurrency, Covariant, NoInfer, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
 import type { YieldWrap } from "./Utils.js"
 
@@ -3275,15 +3275,15 @@ export const Do: Effect<{}> = effect.Do
  * @category do notation
  */
 export const bind: {
-  <N extends string, K, A, E2, R2>(
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Effect<A, E2, R2>
-  ): <E, R>(self: Effect<K, E, R>) => Effect<MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
-  <K, E, R, N extends string, A, E2, R2>(
-    self: Effect<K, E, R>,
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Effect<A, E2, R2>
-  ): Effect<MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
+  <N extends string, A extends object, B, E2, R2>(
+    name: Exclude<N, keyof A>,
+    f: (a: A) => Effect<B, E2, R2>
+  ): <E1, R1>(self: Effect<A, E1, R1>) => Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E2 | E1, R2 | R1>
+  <A extends object, N extends string, E1, R1, B, E2, R2>(
+    self: Effect<A, E1, R1>,
+    name: Exclude<N, keyof A>,
+    f: (a: A) => Effect<B, E2, R2>
+  ): Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E1 | E2, R1 | R2>
 } = effect.bind
 
 /**

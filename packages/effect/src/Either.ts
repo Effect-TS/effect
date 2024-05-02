@@ -13,7 +13,7 @@ import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import { isFunction } from "./Predicate.js"
-import type { Covariant, MergeRecord, NoInfer, NotFunction } from "./Types.js"
+import type { Covariant, NoInfer, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
 import * as Gen from "./Utils.js"
 
@@ -755,25 +755,16 @@ export const Do: Either<{}> = right({})
  * @category do notation
  */
 export const bind: {
-  <N extends string, K, A, E2>(
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Either<A, E2>
-  ): <E>(self: Either<K, E>) => Either<MergeRecord<K, { [k in N]: A }>, E2 | E>
-  <K, E, N extends string, A, E2>(
-    self: Either<E, K>,
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Either<A, E2>
-  ): Either<MergeRecord<K, { [k in N]: A }>, E2 | E>
-} = dual(3, <K, E, N extends string, A, E2>(
-  self: Either<K, E>,
-  tag: Exclude<N, keyof K>,
-  f: (_: K) => Either<A, E2>
-): Either<MergeRecord<K, { [k in N]: A }>, E2 | E> =>
-  flatMap(self, (k) =>
-    map(
-      f(k),
-      (a): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: a } as any)
-    )))
+  <N extends string, A extends object, B, L2>(
+    name: Exclude<N, keyof A>,
+    f: (a: A) => Either<B, L2>
+  ): <L1>(self: Either<A, L1>) => Either<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, L1 | L2>
+  <A extends object, L1, N extends string, B, L2>(
+    self: Either<A, L1>,
+    name: Exclude<N, keyof A>,
+    f: (a: A) => Either<B, L2>
+  ): Either<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, L1 | L2>
+} = doNotation.bind<EitherTypeLambda>(map, flatMap)
 
 /**
  * @category do notation

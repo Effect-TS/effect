@@ -31,7 +31,7 @@ import * as HaltStrategy from "../StreamHaltStrategy.js"
 import type * as Take from "../Take.js"
 import type * as Tracer from "../Tracer.js"
 import * as Tuple from "../Tuple.js"
-import type { MergeRecord, NoInfer } from "../Types.js"
+import type { NoInfer } from "../Types.js"
 import * as channel from "./channel.js"
 import * as channelExecutor from "./channel/channelExecutor.js"
 import * as MergeStrategy from "./channel/mergeStrategy.js"
@@ -7922,35 +7922,35 @@ export const Do: Stream.Stream<{}> = succeed({})
 
 /** @internal */
 export const bind = dual<
-  <N extends string, K, A, E2, R2>(
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Stream.Stream<A, E2, R2>,
+  <N extends string, A, B, E2, R2>(
+    tag: Exclude<N, keyof A>,
+    f: (_: A) => Stream.Stream<B, E2, R2>,
     options?: {
       readonly concurrency?: number | "unbounded" | undefined
       readonly bufferSize?: number | undefined
     }
-  ) => <E, R>(self: Stream.Stream<K, E, R>) => Stream.Stream<
-    MergeRecord<K, { [k in N]: A }>,
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<
+    { [K in keyof A | N]: K extends keyof A ? A[K] : B },
     E | E2,
     R | R2
   >,
-  <K, E, R, N extends string, A, E2, R2>(
-    self: Stream.Stream<K, E, R>,
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Stream.Stream<A, E2, R2>,
+  <A, E, R, N extends string, B, E2, R2>(
+    self: Stream.Stream<A, E, R>,
+    tag: Exclude<N, keyof A>,
+    f: (_: A) => Stream.Stream<B, E2, R2>,
     options?: {
       readonly concurrency?: number | "unbounded" | undefined
       readonly bufferSize?: number | undefined
     }
   ) => Stream.Stream<
-    MergeRecord<K, { [k in N]: A }>,
+    { [K in keyof A | N]: K extends keyof A ? A[K] : B },
     E | E2,
     R | R2
   >
->((args) => typeof args[0] !== "string", <K, E, R, N extends string, A, E2, R2>(
-  self: Stream.Stream<K, E, R>,
-  tag: Exclude<N, keyof K>,
-  f: (_: K) => Stream.Stream<A, E2, R2>,
+>((args) => typeof args[0] !== "string", <A, E, R, N extends string, B, E2, R2>(
+  self: Stream.Stream<A, E, R>,
+  tag: Exclude<N, keyof A>,
+  f: (_: A) => Stream.Stream<B, E2, R2>,
   options?: {
     readonly concurrency?: number | "unbounded" | undefined
     readonly bufferSize?: number | undefined
@@ -7959,7 +7959,7 @@ export const bind = dual<
   flatMap(self, (k) =>
     map(
       f(k),
-      (a): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: a } as any)
+      (a) => ({ ...k, [tag]: a } as { [K in keyof A | N]: K extends keyof A ? A[K] : B })
     ), options))
 
 /* @internal */

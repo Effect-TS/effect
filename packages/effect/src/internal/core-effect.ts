@@ -25,7 +25,7 @@ import type * as Random from "../Random.js"
 import * as Ref from "../Ref.js"
 import type * as runtimeFlagsPatch from "../RuntimeFlagsPatch.js"
 import * as Tracer from "../Tracer.js"
-import type { MergeRecord, NoInfer } from "../Types.js"
+import type { NoInfer } from "../Types.js"
 import { yieldWrapGet } from "../Utils.js"
 import * as internalCause from "./cause.js"
 import { clockTag } from "./clock.js"
@@ -370,25 +370,18 @@ export const Do: Effect.Effect<{}> = core.succeed({})
 
 /* @internal */
 export const bind: {
-  <N extends string, K, A, E2, R2>(
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Effect.Effect<A, E2, R2>
-  ): <E, R>(self: Effect.Effect<K, E, R>) => Effect.Effect<MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
-  <K, E, R, N extends string, A, E2, R2>(
-    self: Effect.Effect<K, E, R>,
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Effect.Effect<A, E2, R2>
-  ): Effect.Effect<MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
-} = dual(3, <K, E, R, N extends string, A, E2, R2>(
-  self: Effect.Effect<K, E, R>,
-  tag: Exclude<N, keyof K>,
-  f: (_: K) => Effect.Effect<A, E2, R2>
-): Effect.Effect<MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R> =>
-  core.flatMap(self, (k) =>
-    core.map(
-      f(k),
-      (a): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: a } as any)
-    )))
+  <N extends string, A extends object, B, E2, R2>(
+    name: Exclude<N, keyof A>,
+    f: (a: A) => Effect.Effect<B, E2, R2>
+  ): <E1, R1>(
+    self: Effect.Effect<A, E1, R1>
+  ) => Effect.Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E2 | E1, R2 | R1>
+  <A extends object, N extends string, E1, R1, B, E2, R2>(
+    self: Effect.Effect<A, E1, R1>,
+    name: Exclude<N, keyof A>,
+    f: (a: A) => Effect.Effect<B, E2, R2>
+  ): Effect.Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E1 | E2, R1 | R2>
+} = doNotation.bind<Effect.EffectTypeLambda>(core.map, core.flatMap)
 
 /* @internal */
 export const bindTo: {

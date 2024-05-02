@@ -6,6 +6,16 @@ type Map<F extends TypeLambda> = {
   <R, O, E, A, B>(self: Kind<F, R, O, E, A>, f: (a: A) => B): Kind<F, R, O, E, B>
 }
 
+type FlatMap<F extends TypeLambda> = {
+  <A, R2, O2, E2, B>(
+    f: (a: A) => Kind<F, R2, O2, E2, B>
+  ): <R1, O1, E1>(self: Kind<F, R1, O1, E1, A>) => Kind<F, R1 & R2, O1 | O2, E1 | E2, B>
+  <R1, O1, E1, A, R2, O2, E2, B>(
+    self: Kind<F, R1, O1, E1, A>,
+    f: (a: A) => Kind<F, R2, O2, E2, B>
+  ): Kind<F, R1 & R2, O1 | O2, E1 | E2, B>
+}
+
 /** @internal */
 export const let_ = <F extends TypeLambda>(
   map: Map<F>
@@ -43,3 +53,25 @@ export const bindTo = <F extends TypeLambda>(map: Map<F>): {
     self: Kind<F, R, O, E, A>,
     name: N
   ): Kind<F, R, O, E, { [K in N]: A }> => map(self, (a) => ({ [name]: a } as { [K in N]: A })))
+
+/** @internal */
+export const bind = <F extends TypeLambda>(map: Map<F>, flatMap: FlatMap<F>): {
+  <N extends string, A extends object, R2, O2, E2, B>(
+    name: Exclude<N, keyof A>,
+    f: (a: A) => Kind<F, R2, O2, E2, B>
+  ): <R1, O1, E1>(
+    self: Kind<F, R1, O1, E1, A>
+  ) => Kind<F, R1 & R2, O1 | O2, E1 | E2, { [K in keyof A | N]: K extends keyof A ? A[K] : B }>
+  <R1, O1, E1, A extends object, N extends string, R2, O2, E2, B>(
+    self: Kind<F, R1, O1, E1, A>,
+    name: Exclude<N, keyof A>,
+    f: (a: A) => Kind<F, R2, O2, E2, B>
+  ): Kind<F, R1 & R2, O1 | O2, E1 | E2, { [K in keyof A | N]: K extends keyof A ? A[K] : B }>
+} =>
+  dual(3, <R1, O1, E1, A, N extends string, R2, O2, E2, B>(
+    self: Kind<F, R1, O1, E1, A>,
+    name: Exclude<N, keyof A>,
+    f: (a: A) => Kind<F, R2, O2, E2, B>
+  ): Kind<F, R1 & R2, O1 | O2, E1 | E2, { [K in keyof A | N]: K extends keyof A ? A[K] : B }> =>
+    flatMap(self, (a) =>
+      map(f(a), (b) => Object.assign({}, a, { [name]: b }) as { [K in keyof A | N]: K extends keyof A ? A[K] : B })))

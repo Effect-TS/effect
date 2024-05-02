@@ -1241,12 +1241,7 @@ export const bind: {
     name: Exclude<N, keyof A>,
     f: (a: A) => Option<B>
   ): Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
-} = dual(3, <A, N extends string, B>(
-  self: Option<A>,
-  name: Exclude<N, keyof A>,
-  f: (a: A) => Option<B>
-): Option<{ [K in keyof A | N]: K extends keyof A ? A[K] : B }> =>
-  flatMap(self, (a) => map(f(a), (b) => Object.assign({}, a, { [name]: b }) as any)))
+} = doNotation.bind<OptionTypeLambda>(map, flatMap)
 
 /**
  * @category do notation
