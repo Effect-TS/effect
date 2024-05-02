@@ -324,7 +324,7 @@ export const append: {
  * If either list is non-empty, the result is also a non-empty list.
  *
  * @example
- * import * as List from "effect/List"
+ * import { List } from "effect"
  *
  * assert.deepStrictEqual(
  *   List.make(1, 2).pipe(List.appendAll(List.make("a", "b")), List.toArray),
@@ -357,7 +357,7 @@ export const prepend: {
  * If either list is non-empty, the result is also a non-empty list.
  *
  * @example
- * import * as List from "effect/List"
+ * import { List } from "effect"
  *
  * assert.deepStrictEqual(
  *   List.make(1, 2).pipe(List.prependAll(List.make("a", "b")), List.toArray),

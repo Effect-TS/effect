@@ -17,7 +17,7 @@ export interface FunctionTypeLambda extends TypeLambda {
  * @param input - The value to test.
  *
  * @example
- * import { isFunction } from 'effect/Predicate'
+ * import { isFunction } from "effect/Predicate"
  *
  * assert.deepStrictEqual(isFunction(isFunction), true)
  * assert.deepStrictEqual(isFunction("function"), false)
@@ -154,7 +154,7 @@ export const dual: {
  *
  * @example
  * import { pipe, apply } from "effect/Function"
- * import { length } from 'effect/String'
+ * import { length } from "effect/String"
  *
  * assert.deepStrictEqual(pipe(length, apply("hello")), 5)
  *
@@ -408,6 +408,8 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  *
  * @example
  * import { pipe } from "effect/Function"
+ * // Alternatively, you can use the following import syntax, as `pipe` is also conveniently exported from the `effect` entry point:
+ * // import { pipe } from "effect"
  *
  * const length = (s: string): number => s.length
  * const double = (n: number): number => n * 2

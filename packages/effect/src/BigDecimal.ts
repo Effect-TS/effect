@@ -374,12 +374,11 @@ export const roundTerminal = (n: bigint): bigint => {
  * @param that - The divisor operand.
  *
  * @example
- * import { divide, unsafeFromString } from "effect/BigDecimal"
- * import { some, none } from "effect/Option"
+ * import { BigDecimal, Option } from "effect"
  *
- * assert.deepStrictEqual(divide(unsafeFromString("6"), unsafeFromString("3")), some(unsafeFromString("2")))
- * assert.deepStrictEqual(divide(unsafeFromString("6"), unsafeFromString("4")), some(unsafeFromString("1.5")))
- * assert.deepStrictEqual(divide(unsafeFromString("6"), unsafeFromString("0")), none())
+ * assert.deepStrictEqual(BigDecimal.divide(BigDecimal.unsafeFromString("6"), BigDecimal.unsafeFromString("3")), Option.some(BigDecimal.unsafeFromString("2")))
+ * assert.deepStrictEqual(BigDecimal.divide(BigDecimal.unsafeFromString("6"), BigDecimal.unsafeFromString("4")), Option.some(BigDecimal.unsafeFromString("1.5")))
+ * assert.deepStrictEqual(BigDecimal.divide(BigDecimal.unsafeFromString("6"), BigDecimal.unsafeFromString("0")), Option.none())
  *
  * @since 2.0.0
  * @category math
@@ -556,7 +555,7 @@ export const greaterThanOrEqualTo: {
  * @param maximum - The `maximum` value to check.
  *
  * @example
- * import * as BigDecimal from "effect/BigDecimal"
+ * import { BigDecimal } from "effect"
  *
  * const between = BigDecimal.between({
  *   minimum: BigDecimal.unsafeFromString("1"),
@@ -593,7 +592,7 @@ export const between: {
  * @param maximum - The upper end of the range.
  *
  * @example
- * import * as BigDecimal from "effect/BigDecimal"
+ * import { BigDecimal } from "effect"
  *
  * const clamp = BigDecimal.clamp({
  *   minimum: BigDecimal.unsafeFromString("1"),
@@ -715,12 +714,11 @@ export const negate = (n: BigDecimal): BigDecimal => make(-n.value, n.scale)
  * @param divisor - The divisor.
  *
  * @example
- * import { remainder, unsafeFromString } from "effect/BigDecimal"
- * import { some } from "effect/Option"
+ * import { BigDecimal, Option } from "effect"
  *
- * assert.deepStrictEqual(remainder(unsafeFromString("2"), unsafeFromString("2")), some(unsafeFromString("0")))
- * assert.deepStrictEqual(remainder(unsafeFromString("3"), unsafeFromString("2")), some(unsafeFromString("1")))
- * assert.deepStrictEqual(remainder(unsafeFromString("-4"), unsafeFromString("2")), some(unsafeFromString("0")))
+ * assert.deepStrictEqual(BigDecimal.remainder(BigDecimal.unsafeFromString("2"), BigDecimal.unsafeFromString("2")), Option.some(BigDecimal.unsafeFromString("0")))
+ * assert.deepStrictEqual(BigDecimal.remainder(BigDecimal.unsafeFromString("3"), BigDecimal.unsafeFromString("2")), Option.some(BigDecimal.unsafeFromString("1")))
+ * assert.deepStrictEqual(BigDecimal.remainder(BigDecimal.unsafeFromString("-4"), BigDecimal.unsafeFromString("2")), Option.some(BigDecimal.unsafeFromString("0")))
  *
  * @since 2.0.0
  * @category math
@@ -832,12 +830,11 @@ export const fromNumber = (n: number): BigDecimal => {
  * @param s - The `string` to parse.
  *
  * @example
- * import { fromString, make } from "effect/BigDecimal"
- * import { some, none } from "effect/Option"
+ * import { BigDecimal, Option } from "effect"
  *
- * assert.deepStrictEqual(fromString("123"), some(make(123n, 0)))
- * assert.deepStrictEqual(fromString("123.456"), some(make(123456n, 3)))
- * assert.deepStrictEqual(fromString("123.abc"), none())
+ * assert.deepStrictEqual(BigDecimal.fromString("123"), Option.some(BigDecimal.make(123n, 0)))
+ * assert.deepStrictEqual(BigDecimal.fromString("123.456"), Option.some(BigDecimal.make(123456n, 3)))
+ * assert.deepStrictEqual(BigDecimal.fromString("123.abc"), Option.none())
  *
  * @since 2.0.0
  * @category constructors

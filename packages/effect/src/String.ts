@@ -23,10 +23,10 @@ import * as predicate from "./Predicate.js"
  * @param input - The value to test.
  *
  * @example
- * import { isString } from 'effect/String'
+ * import { String } from "effect"
  *
- * assert.deepStrictEqual(isString("a"), true)
- * assert.deepStrictEqual(isString(1), false)
+ * assert.deepStrictEqual(String.isString("a"), true)
+ * assert.deepStrictEqual(String.isString(1), false)
  *
  * @category guards
  * @since 2.0.0
@@ -71,10 +71,9 @@ export const concat: {
 
 /**
  * @example
- * import * as S from 'effect/String'
- * import { pipe } from 'effect/Function'
+ * import { pipe, String } from "effect"
  *
- * assert.deepStrictEqual(pipe('a', S.toUpperCase), 'A')
+ * assert.deepStrictEqual(pipe('a', String.toUpperCase), 'A')
  *
  * @since 2.0.0
  */
@@ -82,10 +81,9 @@ export const toUpperCase = <S extends string>(self: S): Uppercase<S> => self.toU
 
 /**
  * @example
- * import * as S from 'effect/String'
- * import { pipe } from 'effect/Function'
+ * import { pipe, String } from "effect"
  *
- * assert.deepStrictEqual(pipe('A', S.toLowerCase), 'a')
+ * assert.deepStrictEqual(pipe('A', String.toLowerCase), 'a')
  *
  * @since 2.0.0
  */
@@ -93,10 +91,9 @@ export const toLowerCase = <T extends string>(self: T): Lowercase<T> => self.toL
 
 /**
  * @example
- * import * as S from 'effect/String'
- * import { pipe } from 'effect/Function'
+ * import { pipe, String } from "effect"
  *
- * assert.deepStrictEqual(pipe('abc', S.capitalize), 'Abc')
+ * assert.deepStrictEqual(pipe('abc', String.capitalize), 'Abc')
  *
  * @since 2.0.0
  */
@@ -108,10 +105,9 @@ export const capitalize = <T extends string>(self: T): Capitalize<T> => {
 
 /**
  * @example
- * import * as S from 'effect/String'
- * import { pipe } from 'effect/Function'
+ * import { pipe, String } from "effect"
  *
- * assert.deepStrictEqual(pipe('ABC', S.uncapitalize), 'aBC')
+ * assert.deepStrictEqual(pipe('ABC', String.uncapitalize), 'aBC')
  *
  * @since 2.0.0
  */
@@ -123,10 +119,9 @@ export const uncapitalize = <T extends string>(self: T): Uncapitalize<T> => {
 
 /**
  * @example
- * import * as S from 'effect/String'
- * import { pipe } from 'effect/Function'
+ * import { pipe, String } from "effect"
  *
- * assert.deepStrictEqual(pipe('abc', S.replace('b', 'd')), 'adc')
+ * assert.deepStrictEqual(pipe('abc', String.replace('b', 'd')), 'adc')
  *
  * @since 2.0.0
  */
@@ -140,9 +135,9 @@ export type Trim<A extends string> = TrimEnd<TrimStart<A>>
 
 /**
  * @example
- * import * as S from 'effect/String'
+ * import { String } from "effect"
  *
- * assert.deepStrictEqual(S.trim(' a '), 'a')
+ * assert.deepStrictEqual(String.trim(' a '), 'a')
  *
  * @since 2.0.0
  */
@@ -159,9 +154,9 @@ export type TrimStart<A extends string> = A extends ` ${infer B}` ? TrimStart<B>
 
 /**
  * @example
- * import * as S from 'effect/String'
+ * import { String } from "effect"
  *
- * assert.deepStrictEqual(S.trimStart(' a '), 'a ')
+ * assert.deepStrictEqual(String.trimStart(' a '), 'a ')
  *
  * @since 2.0.0
  */
@@ -178,9 +173,9 @@ export type TrimEnd<A extends string> = A extends `${infer B} ` ? TrimEnd<B>
 
 /**
  * @example
- * import * as S from 'effect/String'
+ * import { String } from "effect"
  *
- * assert.deepStrictEqual(S.trimEnd(' a '), ' a')
+ * assert.deepStrictEqual(String.trimEnd(' a '), ' a')
  *
  * @since 2.0.0
  */
@@ -188,10 +183,9 @@ export const trimEnd = <A extends string>(self: A): TrimEnd<A> => self.trimEnd()
 
 /**
  * @example
- * import * as S from 'effect/String'
- * import { pipe } from 'effect/Function'
+ * import { pipe, String } from "effect"
  *
- * assert.deepStrictEqual(pipe('abcd', S.slice(1, 3)), 'bc')
+ * assert.deepStrictEqual(pipe('abcd', String.slice(1, 3)), 'bc')
  *
  * @since 2.0.0
  */
@@ -201,10 +195,10 @@ export const slice = (start?: number, end?: number) => (self: string): string =>
  * Test whether a `string` is empty.
  *
  * @example
- * import * as S from 'effect/String'
+ * import { String } from "effect"
  *
- * assert.deepStrictEqual(S.isEmpty(''), true)
- * assert.deepStrictEqual(S.isEmpty('a'), false)
+ * assert.deepStrictEqual(String.isEmpty(''), true)
+ * assert.deepStrictEqual(String.isEmpty('a'), false)
  *
  * @since 2.0.0
  */
@@ -221,9 +215,9 @@ export const isNonEmpty = (self: string): boolean => self.length > 0
  * Calculate the number of characters in a `string`.
  *
  * @example
- * import * as S from 'effect/String'
+ * import { String } from "effect"
  *
- * assert.deepStrictEqual(S.length('abc'), 3)
+ * assert.deepStrictEqual(String.length('abc'), 3)
  *
  * @since 2.0.0
  */
@@ -231,11 +225,10 @@ export const length = (self: string): number => self.length
 
 /**
  * @example
- * import * as S from 'effect/String'
- * import { pipe } from 'effect/Function'
+ * import { pipe, String } from "effect"
  *
- * assert.deepStrictEqual(pipe('abc', S.split('')), ['a', 'b', 'c'])
- * assert.deepStrictEqual(pipe('', S.split('')), [''])
+ * assert.deepStrictEqual(pipe('abc', String.split('')), ['a', 'b', 'c'])
+ * assert.deepStrictEqual(pipe('', String.split('')), [''])
  *
  * @since 2.0.0
  */
@@ -270,12 +263,10 @@ export const endsWith = (searchString: string, position?: number) => (self: stri
 
 /**
  * @example
- * import * as S from 'effect/String'
- * import * as Option from 'effect/Option'
- * import { pipe } from 'effect/Function'
+ * import { pipe, String, Option } from "effect"
  *
- * assert.deepStrictEqual(pipe("abc", S.charCodeAt(1)), Option.some(98))
- * assert.deepStrictEqual(pipe("abc", S.charCodeAt(4)), Option.none())
+ * assert.deepStrictEqual(pipe("abc", String.charCodeAt(1)), Option.some(98))
+ * assert.deepStrictEqual(pipe("abc", String.charCodeAt(4)), Option.none())
  *
  * @since 2.0.0
  */
@@ -290,11 +281,10 @@ export const charCodeAt: {
 
 /**
  * @example
- * import * as S from 'effect/String'
- * import { pipe } from 'effect/Function'
+ * import { pipe, String, Option } from "effect"
  *
- * assert.deepStrictEqual(pipe("abcd", S.substring(1)), "bcd")
- * assert.deepStrictEqual(pipe("abcd", S.substring(1, 3)), "bc")
+ * assert.deepStrictEqual(pipe("abcd", String.substring(1)), "bcd")
+ * assert.deepStrictEqual(pipe("abcd", String.substring(1, 3)), "bc")
  *
  * @since 2.0.0
  */
@@ -302,12 +292,10 @@ export const substring = (start: number, end?: number) => (self: string): string
 
 /**
  * @example
- * import * as S from 'effect/String'
- * import * as Option from 'effect/Option'
- * import { pipe } from 'effect/Function'
+ * import { pipe, String, Option } from "effect"
  *
- * assert.deepStrictEqual(pipe("abc", S.at(1)), Option.some("b"))
- * assert.deepStrictEqual(pipe("abc", S.at(4)), Option.none())
+ * assert.deepStrictEqual(pipe("abc", String.at(1)), Option.some("b"))
+ * assert.deepStrictEqual(pipe("abc", String.at(4)), Option.none())
  *
  * @since 2.0.0
  */
@@ -318,12 +306,10 @@ export const at: {
 
 /**
  * @example
- * import * as S from 'effect/String'
- * import * as Option from 'effect/Option'
- * import { pipe } from 'effect/Function'
+ * import { pipe, String, Option } from "effect"
  *
- * assert.deepStrictEqual(pipe("abc", S.charAt(1)), Option.some("b"))
- * assert.deepStrictEqual(pipe("abc", S.charAt(4)), Option.none())
+ * assert.deepStrictEqual(pipe("abc", String.charAt(1)), Option.some("b"))
+ * assert.deepStrictEqual(pipe("abc", String.charAt(4)), Option.none())
  *
  * @since 2.0.0
  */
@@ -337,11 +323,9 @@ export const charAt: {
 
 /**
  * @example
- * import * as S from 'effect/String'
- * import * as Option from 'effect/Option'
- * import { pipe } from 'effect/Function'
+ * import { pipe, String, Option } from "effect"
  *
- * assert.deepStrictEqual(pipe("abc", S.codePointAt(1)), Option.some(98))
+ * assert.deepStrictEqual(pipe("abc", String.codePointAt(1)), Option.some(98))
  *
  * @since 2.0.0
  */
@@ -352,11 +336,9 @@ export const codePointAt: {
 
 /**
  * @example
- * import * as S from 'effect/String'
- * import * as Option from 'effect/Option'
- * import { pipe } from 'effect/Function'
+ * import { pipe, String, Option } from "effect"
  *
- * assert.deepStrictEqual(pipe("abbbc", S.indexOf("b")), Option.some(1))
+ * assert.deepStrictEqual(pipe("abbbc", String.indexOf("b")), Option.some(1))
  *
  * @since 2.0.0
  */
@@ -365,12 +347,10 @@ export const indexOf = (searchString: string) => (self: string): Option.Option<n
 
 /**
  * @example
- * import * as S from 'effect/String'
- * import * as Option from 'effect/Option'
- * import { pipe } from 'effect/Function'
+ * import { pipe, String, Option } from "effect"
  *
- * assert.deepStrictEqual(pipe("abbbc", S.lastIndexOf("b")), Option.some(3))
- * assert.deepStrictEqual(pipe("abbbc", S.lastIndexOf("d")), Option.none())
+ * assert.deepStrictEqual(pipe("abbbc", String.lastIndexOf("b")), Option.some(3))
+ * assert.deepStrictEqual(pipe("abbbc", String.lastIndexOf("d")), Option.none())
  *
  * @since 2.0.0
  */
@@ -379,12 +359,11 @@ export const lastIndexOf = (searchString: string) => (self: string): Option.Opti
 
 /**
  * @example
- * import * as S from 'effect/String'
- * import { pipe } from 'effect/Function'
+ * import { pipe, String } from "effect"
  *
- * assert.deepStrictEqual(pipe("a", S.localeCompare("b")), -1)
- * assert.deepStrictEqual(pipe("b", S.localeCompare("a")), 1)
- * assert.deepStrictEqual(pipe("a", S.localeCompare("a")), 0)
+ * assert.deepStrictEqual(pipe("a", String.localeCompare("b")), -1)
+ * assert.deepStrictEqual(pipe("b", String.localeCompare("a")), 1)
+ * assert.deepStrictEqual(pipe("a", String.localeCompare("a")), 0)
  *
  * @since 2.0.0
  */
@@ -409,15 +388,14 @@ export const matchAll = (regexp: RegExp) => (self: string): IterableIterator<Reg
 
 /**
  * @example
- * import * as S from 'effect/String'
- * import { pipe } from 'effect/Function'
+ * import { pipe, String } from "effect"
  *
  * const str = "\u1E9B\u0323";
- * assert.deepStrictEqual(pipe(str, S.normalize()), "\u1E9B\u0323")
- * assert.deepStrictEqual(pipe(str, S.normalize("NFC")), "\u1E9B\u0323")
- * assert.deepStrictEqual(pipe(str, S.normalize("NFD")), "\u017F\u0323\u0307")
- * assert.deepStrictEqual(pipe(str, S.normalize("NFKC")), "\u1E69")
- * assert.deepStrictEqual(pipe(str, S.normalize("NFKD")), "\u0073\u0323\u0307")
+ * assert.deepStrictEqual(pipe(str, String.normalize()), "\u1E9B\u0323")
+ * assert.deepStrictEqual(pipe(str, String.normalize("NFC")), "\u1E9B\u0323")
+ * assert.deepStrictEqual(pipe(str, String.normalize("NFD")), "\u017F\u0323\u0307")
+ * assert.deepStrictEqual(pipe(str, String.normalize("NFKC")), "\u1E69")
+ * assert.deepStrictEqual(pipe(str, String.normalize("NFKD")), "\u0073\u0323\u0307")
  *
  * @since 2.0.0
  */
@@ -425,11 +403,10 @@ export const normalize = (form?: "NFC" | "NFD" | "NFKC" | "NFKD") => (self: stri
 
 /**
  * @example
- * import * as S from 'effect/String'
- * import { pipe } from 'effect/Function'
+ * import { pipe, String } from "effect"
  *
- * assert.deepStrictEqual(pipe("a", S.padEnd(5)), "a    ")
- * assert.deepStrictEqual(pipe("a", S.padEnd(5, "_")), "a____")
+ * assert.deepStrictEqual(pipe("a", String.padEnd(5)), "a    ")
+ * assert.deepStrictEqual(pipe("a", String.padEnd(5, "_")), "a____")
  *
  * @since 2.0.0
  */
@@ -438,11 +415,10 @@ export const padEnd = (maxLength: number, fillString?: string) => (self: string)
 
 /**
  * @example
- * import * as S from 'effect/String'
- * import { pipe } from 'effect/Function'
+ * import { pipe, String } from "effect"
  *
- * assert.deepStrictEqual(pipe("a", S.padStart(5)), "    a")
- * assert.deepStrictEqual(pipe("a", S.padStart(5, "_")), "____a")
+ * assert.deepStrictEqual(pipe("a", String.padStart(5)), "    a")
+ * assert.deepStrictEqual(pipe("a", String.padStart(5, "_")), "____a")
  *
  * @since 2.0.0
  */
@@ -451,10 +427,9 @@ export const padStart = (maxLength: number, fillString?: string) => (self: strin
 
 /**
  * @example
- * import * as S from 'effect/String'
- * import { pipe } from 'effect/Function'
+ * import { pipe, String } from "effect"
  *
- * assert.deepStrictEqual(pipe("a", S.repeat(5)), "aaaaa")
+ * assert.deepStrictEqual(pipe("a", String.repeat(5)), "aaaaa")
  *
  * @since 2.0.0
  */
@@ -462,11 +437,10 @@ export const repeat = (count: number) => (self: string): string => self.repeat(c
 
 /**
  * @example
- * import * as S from 'effect/String'
- * import { pipe } from 'effect/Function'
+ * import { pipe, String } from "effect"
  *
- * assert.deepStrictEqual(pipe("ababb", S.replaceAll("b", "c")), "acacc")
- * assert.deepStrictEqual(pipe("ababb", S.replaceAll(/ba/g, "cc")), "accbb")
+ * assert.deepStrictEqual(pipe("ababb", String.replaceAll("b", "c")), "acacc")
+ * assert.deepStrictEqual(pipe("ababb", String.replaceAll(/ba/g, "cc")), "accbb")
  *
  * @since 2.0.0
  */
@@ -475,13 +449,11 @@ export const replaceAll = (searchValue: string | RegExp, replaceValue: string) =
 
 /**
  * @example
- * import * as S from 'effect/String'
- * import * as Option from 'effect/Option'
- * import { pipe } from 'effect/Function'
+ * import { pipe, String, Option } from "effect"
  *
- * assert.deepStrictEqual(pipe("ababb", S.search("b")), Option.some(1))
- * assert.deepStrictEqual(pipe("ababb", S.search(/abb/)), Option.some(2))
- * assert.deepStrictEqual(pipe("ababb", S.search("d")), Option.none())
+ * assert.deepStrictEqual(pipe("ababb", String.search("b")), Option.some(1))
+ * assert.deepStrictEqual(pipe("ababb", String.search(/abb/)), Option.some(2))
+ * assert.deepStrictEqual(pipe("ababb", String.search("d")), Option.none())
  *
  * @since 2.0.0
  */
@@ -496,11 +468,10 @@ export const search: {
 
 /**
  * @example
- * import * as S from 'effect/String'
- * import { pipe } from 'effect/Function'
+ * import { pipe, String } from "effect"
  *
  * const str = "\u0130"
- * assert.deepStrictEqual(pipe(str, S.toLocaleLowerCase("tr")), "i")
+ * assert.deepStrictEqual(pipe(str, String.toLocaleLowerCase("tr")), "i")
  *
  * @since 2.0.0
  */
@@ -509,11 +480,10 @@ export const toLocaleLowerCase = (locale?: string | Array<string>) => (self: str
 
 /**
  * @example
- * import * as S from 'effect/String'
- * import { pipe } from 'effect/Function'
+ * import { pipe, String } from "effect"
  *
  * const str = "i\u0307"
- * assert.deepStrictEqual(pipe(str, S.toLocaleUpperCase("lt-LT")), "I")
+ * assert.deepStrictEqual(pipe(str, String.toLocaleUpperCase("lt-LT")), "I")
  *
  * @since 2.0.0
  */
@@ -531,9 +501,9 @@ export const toLocaleUpperCase = (locale?: string | Array<string>) => (self: str
  * If `n` is a float, it will be rounded down to the nearest integer.
  *
  * @example
- * import * as S from 'effect/String'
+ * import { String } from "effect"
  *
- * assert.deepStrictEqual(S.takeLeft("Hello World", 5), "Hello")
+ * assert.deepStrictEqual(String.takeLeft("Hello World", 5), "Hello")
  *
  * @since 2.0.0
  */
@@ -553,9 +523,9 @@ export const takeLeft: {
  * If `n` is a float, it will be rounded down to the nearest integer.
  *
  * @example
- * import * as S from 'effect/String'
+ * import { String } from "effect"
  *
- * assert.deepStrictEqual(S.takeRight("Hello World", 5), "World")
+ * assert.deepStrictEqual(String.takeRight("Hello World", 5), "World")
  *
  * @since 2.0.0
  */

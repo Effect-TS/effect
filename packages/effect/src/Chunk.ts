@@ -551,7 +551,7 @@ export const dropWhile: {
  * If either chunk is non-empty, the result is also a non-empty chunk.
  *
  * @example
- * import * as Chunk from "effect/Chunk"
+ * import { Chunk } from "effect"
  *
  * assert.deepStrictEqual(
  *   Chunk.make(1, 2).pipe(Chunk.prependAll(Chunk.make("a", "b")), Chunk.toArray),
@@ -575,7 +575,7 @@ export const prependAll: {
  * If either chunk is non-empty, the result is also a non-empty chunk.
  *
  * @example
- * import * as Chunk from "effect/Chunk"
+ * import { Chunk } from "effect"
  *
  * assert.deepStrictEqual(
  *   Chunk.make(1, 2).pipe(Chunk.appendAll(Chunk.make("a", "b")), Chunk.toArray),
@@ -866,7 +866,7 @@ export declare namespace Chunk {
  * If the input chunk is non-empty, the resulting chunk will also be non-empty.
  *
  * @example
- * import * as Chunk from "effect/Chunk"
+ * import { Chunk } from "effect"
  *
  * assert.deepStrictEqual(
  *   Chunk.map(Chunk.make(1, 2), (n) => n + 1),

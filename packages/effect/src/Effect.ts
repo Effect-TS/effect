@@ -321,8 +321,7 @@ export const cachedFunction: <A, B, E, R>(
  * evaluated multiple times.
  *
  * @example
- * import * as Effect from "effect/Effect"
- * import * as Console from "effect/Console"
+ * import { Effect, Console } from "effect"
  *
  * const program = Effect.gen(function* (_) {
  *   const twice = Console.log("twice")
@@ -958,8 +957,7 @@ export const validateAll: {
  * If `elements` is empty then `Effect.fail([])` is returned.
  *
  * @example
- * import * as Effect from "effect/Effect"
- * import * as Exit from "effect/Exit"
+ * import { Effect, Exit } from "effect"
  *
  * const f = (n: number) => (n > 0 ? Effect.succeed(n) : Effect.fail(`${n} is negative`))
  *
@@ -1035,7 +1033,7 @@ export const asyncEffect: <A, E, R, R3, E2, R2>(
  * It is meant to be called with a bag of instructions that become available in the "this" of the effect.
  *
  * @example
- * import * as Effect from "effect/Effect"
+ * import { Effect } from "effect"
  *
  * const throwingFunction = () => { throw new Error() }
  * const blowUp = Effect.custom(throwingFunction, function() {
@@ -3720,7 +3718,7 @@ export const flatMap: {
  * - a function returning an effect
  *
  * @example
- * import * as Effect from "effect/Effect"
+ * import { Effect } from "effect"
  *
  * assert.deepStrictEqual(Effect.runSync(Effect.succeed("aa").pipe(Effect.andThen(1))), 1)
  * assert.deepStrictEqual(Effect.runSync(Effect.succeed("aa").pipe(Effect.andThen((s) => s.length))), 2)
