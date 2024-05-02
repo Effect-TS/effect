@@ -431,27 +431,29 @@ const handleResponse = (request: ServerRequest.ServerRequest, response: ServerRe
         return Effect.void
       }
       case "FormData": {
-        return Effect.async<void, Error.ResponseError>((resume) => {
+        return Effect.suspend(() => {
           const r = new Response(body.formData)
           nodeResponse.writeHead(response.status, {
             ...headers,
             ...Object.fromEntries(r.headers)
           })
-          Readable.fromWeb(r.body as any)
-            .pipe(nodeResponse)
-            .on("error", (error) => {
-              resume(Effect.fail(
-                new Error.ResponseError({
-                  request,
-                  response,
-                  reason: "Decode",
-                  error
-                })
-              ))
-            })
-            .once("finish", () => {
-              resume(Effect.void)
-            })
+          return Effect.async<void, Error.ResponseError>((resume, signal) => {
+            Readable.fromWeb(r.body as any, { signal })
+              .pipe(nodeResponse)
+              .on("error", (error) => {
+                resume(Effect.fail(
+                  new Error.ResponseError({
+                    request,
+                    response,
+                    reason: "Decode",
+                    error
+                  })
+                ))
+              })
+              .once("finish", () => {
+                resume(Effect.void)
+              })
+          }).pipe(Effect.interruptible)
         })
       }
       case "Stream": {
@@ -474,7 +476,7 @@ const handleResponse = (request: ServerRequest.ServerRequest, response: ServerRe
               reason: "Decode",
               error
             }))
-        )
+        ).pipe(Effect.interruptible)
       }
     }
   })
