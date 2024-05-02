@@ -197,4 +197,21 @@ describe("pg", () => {
     assert.lengthOf(params, 3)
     expect((params[2] as any).type).toEqual(1022)
   })
+
+  it("update fragments", () => {
+    const now = new Date()
+    const [query, params] = sql`UPDATE people SET json = data.json FROM ${
+      sql.updateValues(
+        [{ json: sql.json({ a: 1 }) }, { json: sql.json({ b: 1 }) }],
+        "data"
+      )
+    } WHERE created_at > ${now}`.compile()
+    assert.strictEqual(
+      query,
+      `UPDATE people SET json = data.json FROM (values ($1),($2)) AS data("json") WHERE created_at > $3`
+    )
+    assert.lengthOf(params, 3)
+    expect((params[0] as any).type).toEqual(3802)
+    expect((params[1] as any).type).toEqual(3802)
+  })
 })
