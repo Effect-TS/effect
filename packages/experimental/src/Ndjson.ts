@@ -14,7 +14,7 @@ import { dual, pipe } from "effect/Function"
  * @since 1.0.0
  * @category type ids
  */
-export const NdjsonErrorTypeId = Symbol.for("@effect/experimental/Ndjson/NdjsonError")
+export const NdjsonErrorTypeId: unique symbol = Symbol.for("@effect/experimental/Ndjson/NdjsonError")
 
 /**
  * @since 1.0.0

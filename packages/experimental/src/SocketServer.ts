@@ -10,7 +10,7 @@ import type * as Effect from "effect/Effect"
  * @since 1.0.0
  * @category type ids
  */
-export const SocketServerTypeId = Symbol.for("@effect/experimental/SocketServer")
+export const SocketServerTypeId: unique symbol = Symbol.for("@effect/experimental/SocketServer")
 
 /**
  * @since 1.0.0
