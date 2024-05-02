@@ -82,4 +82,11 @@ describe("Smol", () => {
       Smol.tap((_) => Smol.sync(() => assert.strictEqual(_, "A"))),
       Smol.runPromise
     ))
+
+  it("gen", () =>
+    Smol.gen(function*(_) {
+      const result = yield* Smol.succeed(1)
+      assert.strictEqual(result, 1)
+      return result
+    }).pipe(Smol.runPromise).then((_) => assert.deepStrictEqual(_, 1)))
 })

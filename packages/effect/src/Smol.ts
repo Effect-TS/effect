@@ -10,9 +10,11 @@ import type { FiberRef } from "./FiberRef.js"
 import { constVoid, dual, identity, type LazyArg } from "./Function.js"
 import { globalValue } from "./GlobalValue.js"
 import * as fiberRef from "./internal/fiberRef.js"
+import { SingleShotGen } from "./internal/singleShotGen.js"
 import * as Option from "./Option.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import type { Covariant, NoInfer } from "./Types.js"
+import { YieldWrap, yieldWrapGet } from "./Utils.js"
 
 /**
  * @since 3.2.0
@@ -44,6 +46,25 @@ export interface Smol<out A, out E = never, out R = never> extends Pipeable {
     _R: Covariant<R>
   }
   readonly [runSymbol]: (env: Env<any>, onResult: (result: Result<A, E>) => void) => void
+  [Symbol.iterator](): SmolIterator<Smol<A, E, R>>
+}
+
+/**
+ * @since 3.2.0
+ */
+export declare namespace Smol {
+  /**
+   * @since 3.2.0
+   */
+  export type Success<T> = T extends Smol<infer _A, infer _E, infer _R> ? _A : never
+}
+
+/**
+ * @since 3.2.0
+ * @category models
+ */
+export interface SmolIterator<T extends Smol<any, any, any>> {
+  next(...args: ReadonlyArray<any>): IteratorResult<YieldWrap<T>, Smol.Success<T>>
 }
 
 /**
@@ -201,6 +222,9 @@ const SmolProto: Omit<Smol<any, any, any>, runSymbol> = {
   },
   pipe() {
     return pipeArguments(this, arguments)
+  },
+  [Symbol.iterator]() {
+    return new SingleShotGen(new YieldWrap(this)) as any
   }
 }
 
@@ -594,6 +618,26 @@ export const provideServiceEffect: {
     acquire: Smol<S, E2, R2>
   ): Smol<A, E | E2, Exclude<R, I> | R2> => flatMap(acquire, (service) => provideService(self, tag, service))
 )
+
+export const gen = <Eff extends YieldWrap<Smol<any, any, any>>, AEff>(
+  f: (_: any) => Generator<Eff, AEff, never>
+): Smol<
+  AEff,
+  [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Smol<infer _A, infer E, infer _R>>] ? E : never,
+  [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Smol<infer _A, infer _E, infer R>>] ? R : never
+> =>
+  suspend(function() {
+    const iterator = f() as any
+    const state = iterator.next()
+    const run = (
+      state: IteratorYieldResult<any> | IteratorReturnResult<any>
+    ): Smol<any, any, any> => {
+      return (state.done
+        ? succeed(state.value)
+        : flatMap(yieldWrapGet(state.value) as any, (val: any) => run(iterator.next(val))))
+    }
+    return run(state)
+  })
 
 class HandleImpl<A, E> implements Handle<A, E> {
   readonly [HandleTypeId]: HandleTypeId
