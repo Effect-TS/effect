@@ -470,6 +470,7 @@ class CompilerImpl implements Statement.Compiler {
     const binds: Array<Statement.Primitive> = []
     let placeholderCount = 0
     const placeholder = () => this.parameterPlaceholder(++placeholderCount)
+    const placeholderNoIncrement = () => this.parameterPlaceholder(placeholderCount)
 
     for (let i = 0; i < len; i++) {
       const segment = segments[i]
@@ -511,7 +512,7 @@ class CompilerImpl implements Statement.Compiler {
                 segment.value.length
               ),
               segment.value.map((record) =>
-                keys.map((key) => extractPrimitive(record[key], this.onCustom, placeholder))
+                keys.map((key) => extractPrimitive(record[key], this.onCustom, placeholderNoIncrement))
               )
             )
             sql += s
@@ -535,7 +536,7 @@ class CompilerImpl implements Statement.Compiler {
                   extractPrimitive(
                     segment.value[i]?.[keys[j]] ?? null,
                     this.onCustom,
-                    placeholder
+                    placeholderNoIncrement
                   )
                 )
               }
@@ -556,7 +557,7 @@ class CompilerImpl implements Statement.Compiler {
                 extractPrimitive(
                   segment.value[key],
                   this.onCustom,
-                  placeholder
+                  placeholderNoIncrement
                 )
               )
             )
@@ -574,7 +575,7 @@ class CompilerImpl implements Statement.Compiler {
                 extractPrimitive(
                   segment.value[keys[i]],
                   this.onCustom,
-                  placeholder
+                  placeholderNoIncrement
                 )
               )
             }
@@ -592,7 +593,7 @@ class CompilerImpl implements Statement.Compiler {
             segment.alias,
             generateColumns(keys, this.onIdentifier),
             segment.value.map((record) =>
-              keys.map((key) => extractPrimitive(record?.[key], this.onCustom, placeholder))
+              keys.map((key) => extractPrimitive(record?.[key], this.onCustom, placeholderNoIncrement))
             )
           )
           sql += s
