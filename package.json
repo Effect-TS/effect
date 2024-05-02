@@ -52,6 +52,7 @@
     "@typescript-eslint/parser": "^7.8.0",
     "@vitest/browser": "^1.5.2",
     "@vitest/coverage-v8": "^1.5.2",
+    "@vitest/expect": "^1.5.3",
     "@vitest/web-worker": "^1.5.2",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "eslint": "^8.57.0",
@@ -70,7 +71,7 @@
     "tsx": "^4.7.3",
     "typescript": "^5.4.5",
     "vite": "^5.2.10",
-    "vitest": "^1.5.2"
+    "vitest": "^1.5.3"
   },
   "pnpm": {
     "patchedDependencies": {

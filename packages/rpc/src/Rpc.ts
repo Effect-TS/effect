@@ -25,7 +25,7 @@ import * as Internal from "./internal/rpc.js"
  * @since 1.0.0
  * @category type ids
  */
-export const TypeId = Symbol.for("@effect/rpc/Rpc")
+export const TypeId: unique symbol = Symbol.for("@effect/rpc/Rpc")
 
 /**
  * @since 1.0.0

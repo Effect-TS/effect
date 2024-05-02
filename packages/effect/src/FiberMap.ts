@@ -24,7 +24,7 @@ import * as Runtime from "./Runtime.js"
  * @since 2.0.0
  * @categories type ids
  */
-export const TypeId = Symbol.for("effect/FiberMap")
+export const TypeId: unique symbol = Symbol.for("effect/FiberMap")
 
 /**
  * @since 2.0.0

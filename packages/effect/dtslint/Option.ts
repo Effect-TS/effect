@@ -49,17 +49,6 @@ pipe(
 pipe(Option.some("a"), Option.getOrElse(() => null))
 
 // -------------------------------------------------------------------------------------
-// do notation
-// -------------------------------------------------------------------------------------
-
-// $ExpectType Option<{ a: number; b: string; }>
-pipe(
-  Option.Do,
-  Option.bind("a", () => Option.some(1)),
-  Option.bind("b", () => Option.some("b"))
-)
-
-// -------------------------------------------------------------------------------------
 // filter
 // -------------------------------------------------------------------------------------
 
@@ -198,3 +187,33 @@ numberOrString.pipe(Option.andThen(() => numberOrString))
 
 // $ExpectType string | number
 export type V = Option.Option.Value<typeof numberOrString>
+
+// -------------------------------------------------------------------------------------
+// do notation
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Option<{ a: number; b: string; c: boolean; }>
+pipe(
+  Option.Do,
+  Option.bind("a", (
+    _scope // $ExpectType {}
+  ) => Option.some(1)),
+  Option.bind("b", (
+    _scope // $ExpectType { a: number; }
+  ) => Option.some("b")),
+  Option.let("c", (
+    _scope // $ExpectType { a: number; b: string; }
+  ) => true)
+)
+
+// $ExpectType Option<{ a: number; b: string; c: boolean; }>
+pipe(
+  Option.some(1),
+  Option.bindTo("a"),
+  Option.bind("b", (
+    _scope // $ExpectType { a: number; }
+  ) => Option.some("b")),
+  Option.let("c", (
+    _scope // $ExpectType { a: number; b: string; }
+  ) => true)
+)

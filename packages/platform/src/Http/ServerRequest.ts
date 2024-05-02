@@ -79,6 +79,28 @@ export const ServerRequest: Context.Tag<ServerRequest, ServerRequest> = internal
 
 /**
  * @since 1.0.0
+ * @category search params
+ */
+export interface ParsedSearchParams {
+  readonly _: unique symbol
+}
+
+/**
+ * @since 1.0.0
+ * @category search params
+ */
+export const ParsedSearchParams: Context.Tag<ParsedSearchParams, ReadonlyRecord<string, string | Array<string>>> =
+  internal.parsedSearchParamsTag
+
+/**
+ * @since 1.0.0
+ * @category search params
+ */
+export const searchParamsFromURL: (url: URL) => ReadonlyRecord<string, string | Array<string>> =
+  internal.searchParamsFromURL
+
+/**
+ * @since 1.0.0
  * @category accessors
  */
 export const persistedMultipart: Effect.Effect<
@@ -124,6 +146,15 @@ export const schemaHeaders: <R, I extends Readonly<Record<string, string>>, A>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => Effect.Effect<A, ParseResult.ParseError, ServerRequest | R> = internal.schemaHeaders
+
+/**
+ * @since 1.0.0
+ * @category schema
+ */
+export const schemaSearchParams: <R, I extends Readonly<Record<string, string | Array<string> | undefined>>, A>(
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
+) => Effect.Effect<A, ParseResult.ParseError, ParsedSearchParams | R> = internal.schemaSearchParams
 
 /**
  * @since 1.0.0

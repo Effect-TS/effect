@@ -39,18 +39,15 @@ const isRouter = (u: unknown): u is Router.Router<unknown, unknown> => Predicate
 export const params = Effect.map(RouteContext, (_) => _.params)
 
 /** @internal */
-export const searchParams = Effect.map(RouteContext, (_) => _.searchParams)
-
-/** @internal */
 export const schemaJson = <
   R,
   I extends Partial<{
     readonly method: Method.Method
     readonly url: string
-    readonly cookies: Readonly<Record<string, string>>
-    readonly headers: Readonly<Record<string, string>>
-    readonly pathParams: Readonly<Record<string, string>>
-    readonly searchParams: Readonly<Record<string, string>>
+    readonly cookies: Readonly<Record<string, string | undefined>>
+    readonly headers: Readonly<Record<string, string | undefined>>
+    readonly pathParams: Readonly<Record<string, string | undefined>>
+    readonly searchParams: Readonly<Record<string, string | Array<string> | undefined>>
     readonly body: any
   }>,
   A
@@ -60,18 +57,22 @@ export const schemaJson = <
 ) => {
   const parse = Schema.decodeUnknown(schema, options)
   return Effect.flatMap(
-    ServerRequest.ServerRequest,
-    (request) =>
-      Effect.flatMap(Effect.zip(request.json, RouteContext), ([body, context]) =>
+    Effect.context<ServerRequest.ServerRequest | ServerRequest.ParsedSearchParams | Router.RouteContext>(),
+    (context) => {
+      const request = Context.get(context, ServerRequest.ServerRequest)
+      const searchParams = Context.get(context, ServerRequest.ParsedSearchParams)
+      const routeContext = Context.get(context, RouteContext)
+      return Effect.flatMap(request.json, (body) =>
         parse({
           method: request.method,
           url: request.url,
           headers: request.headers,
           cookies: request.cookies,
-          pathParams: context.params,
-          searchParams: context.searchParams,
+          pathParams: routeContext.params,
+          searchParams,
           body
         }))
+    }
   )
 }
 
@@ -81,10 +82,10 @@ export const schemaNoBody = <
   I extends Partial<{
     readonly method: Method.Method
     readonly url: string
-    readonly cookies: Readonly<Record<string, string>>
-    readonly headers: Readonly<Record<string, string>>
-    readonly pathParams: Readonly<Record<string, string>>
-    readonly searchParams: Readonly<Record<string, string>>
+    readonly cookies: Readonly<Record<string, string | undefined>>
+    readonly headers: Readonly<Record<string, string | undefined>>
+    readonly pathParams: Readonly<Record<string, string | undefined>>
+    readonly searchParams: Readonly<Record<string, string | Array<string> | undefined>>
   }>,
   A
 >(
@@ -93,45 +94,46 @@ export const schemaNoBody = <
 ) => {
   const parse = Schema.decodeUnknown(schema, options)
   return Effect.flatMap(
-    ServerRequest.ServerRequest,
-    (request) =>
-      Effect.flatMap(RouteContext, (context) =>
-        parse({
-          method: request.method,
-          url: request.url,
-          headers: request.headers,
-          cookies: request.cookies,
-          pathParams: context.params,
-          searchParams: context.searchParams
-        }))
+    Effect.context<ServerRequest.ServerRequest | ServerRequest.ParsedSearchParams | Router.RouteContext>(),
+    (context) => {
+      const request = Context.get(context, ServerRequest.ServerRequest)
+      const searchParams = Context.get(context, ServerRequest.ParsedSearchParams)
+      const routeContext = Context.get(context, RouteContext)
+      return parse({
+        method: request.method,
+        url: request.url,
+        headers: request.headers,
+        cookies: request.cookies,
+        pathParams: routeContext.params,
+        searchParams
+      })
+    }
   )
 }
 
 /** @internal */
-export const schemaParams = <R, I extends Readonly<Record<string, string>>, A>(
+export const schemaParams = <R, I extends Readonly<Record<string, string | Array<string> | undefined>>, A>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {
   const parse = Schema.decodeUnknown(schema, options)
-  return Effect.flatMap(RouteContext, (_) => parse({ ..._.searchParams, ..._.params }))
+  return Effect.flatMap(
+    Effect.context<ServerRequest.ParsedSearchParams | Router.RouteContext>(),
+    (context) => {
+      const searchParams = Context.get(context, ServerRequest.ParsedSearchParams)
+      const routeContext = Context.get(context, RouteContext)
+      return parse({ ...searchParams, ...routeContext.params })
+    }
+  )
 }
 
 /** @internal */
-export const schemaPathParams = <R, I extends Readonly<Record<string, string>>, A>(
+export const schemaPathParams = <R, I extends Readonly<Record<string, string | undefined>>, A>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {
   const parse = Schema.decodeUnknown(schema, options)
   return Effect.flatMap(RouteContext, (_) => parse(_.params))
-}
-
-/** @internal */
-export const schemaSearchParams = <R, I extends Readonly<Record<string, string>>, A>(
-  schema: Schema.Schema<A, I, R>,
-  options?: ParseOptions | undefined
-) => {
-  const parse = Schema.decodeUnknown(schema, options)
-  return Effect.flatMap(RouteContext, (_) => parse(_.searchParams))
 }
 
 class RouterImpl<E = never, R = never> extends Effectable.StructuralClass<
@@ -193,7 +195,6 @@ const toHttpApp = <R, E>(
           options?.includePrefix ? Option.none() : Option.some(path),
           false
         ),
-        {},
         {}
       ),
       options
@@ -212,15 +213,15 @@ const toHttpApp = <R, E>(
     E | Error.RouteNotFound,
     R | ServerRequest.ServerRequest
   >((fiber) => {
-    let context = fiber.getFiberRef(FiberRef.currentContext)
+    const context = Context.unsafeMake(new Map(fiber.getFiberRef(FiberRef.currentContext).unsafeMap))
     const request = Context.unsafeGet(context, ServerRequest.ServerRequest)
     if (mountsLen > 0) {
       for (let i = 0; i < mountsLen; i++) {
         const [path, routeContext, options] = mounts[i]
         if (request.url.startsWith(path)) {
-          context = Context.add(context, RouteContext, routeContext)
+          context.unsafeMap.set(RouteContext.key, routeContext)
           if (options?.includePrefix !== true) {
-            context = Context.add(context, ServerRequest.ServerRequest, sliceRequestUrl(request, path))
+            context.unsafeMap.set(ServerRequest.ServerRequest.key, sliceRequestUrl(request, path))
           }
           return Effect.locally(
             routeContext.route.handler as App.Default<E, R>,
@@ -240,9 +241,10 @@ const toHttpApp = <R, E>(
     }
     const route = result.handler
     if (route.prefix._tag === "Some") {
-      context = Context.add(context, ServerRequest.ServerRequest, sliceRequestUrl(request, route.prefix.value))
+      context.unsafeMap.set(ServerRequest.ServerRequest.key, sliceRequestUrl(request, route.prefix.value))
     }
-    context = Context.add(context, RouteContext, new RouteContextImpl(route, result.params, result.searchParams))
+    context.unsafeMap.set(ServerRequest.ParsedSearchParams.key, result.searchParams)
+    context.unsafeMap.set(RouteContext.key, new RouteContextImpl(route, result.params))
 
     const span = Context.getOption(context, Tracer.ParentSpan)
     if (span._tag === "Some" && span.value._tag === "Span") {
@@ -294,8 +296,7 @@ class RouteContextImpl implements Router.RouteContext {
   readonly [RouteContextTypeId]: Router.RouteContextTypeId
   constructor(
     readonly route: Router.Route<unknown, unknown>,
-    readonly params: Readonly<Record<string, string | undefined>>,
-    readonly searchParams: Readonly<Record<string, string>>
+    readonly params: Readonly<Record<string, string | undefined>>
   ) {
     this[RouteContextTypeId] = RouteContextTypeId
   }

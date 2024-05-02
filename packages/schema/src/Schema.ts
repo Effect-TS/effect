@@ -821,7 +821,7 @@ export const declare: {
  * @category type id
  * @since 1.0.0
  */
-export const BrandTypeId = Symbol.for("@effect/schema/TypeId/Brand")
+export const BrandTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/Brand")
 
 /**
  * @category constructors
@@ -849,7 +849,7 @@ export const fromBrand = <C extends Brand<string | symbol>, A extends Brand.Unbr
  * @category type id
  * @since 1.0.0
  */
-export const InstanceOfTypeId = Symbol.for("@effect/schema/TypeId/InstanceOf")
+export const InstanceOfTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/InstanceOf")
 
 /**
  * @category api interface
@@ -3319,7 +3319,7 @@ export const rename: {
  * @category type id
  * @since 1.0.0
  */
-export const TrimmedTypeId = Symbol.for("@effect/schema/TypeId/Trimmed")
+export const TrimmedTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/Trimmed")
 
 /**
  * Verifies that a string contains no leading or trailing whitespaces.
@@ -3411,7 +3411,7 @@ export const minLength = <A extends string>(
  * @category type id
  * @since 1.0.0
  */
-export const PatternTypeId = Symbol.for("@effect/schema/TypeId/Pattern")
+export const PatternTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/Pattern")
 
 /**
  * @category api interface
@@ -3455,7 +3455,7 @@ export const pattern = <A extends string>(
  * @category type id
  * @since 1.0.0
  */
-export const StartsWithTypeId = Symbol.for("@effect/schema/TypeId/StartsWith")
+export const StartsWithTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/StartsWith")
 
 /**
  * @category string filters
@@ -3482,7 +3482,7 @@ export const startsWith = <A extends string>(
  * @category type id
  * @since 1.0.0
  */
-export const EndsWithTypeId = Symbol.for("@effect/schema/TypeId/EndsWith")
+export const EndsWithTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/EndsWith")
 
 /**
  * @category string filters
@@ -3509,7 +3509,7 @@ export const endsWith = <A extends string>(
  * @category type id
  * @since 1.0.0
  */
-export const IncludesTypeId = Symbol.for("@effect/schema/TypeId/Includes")
+export const IncludesTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/Includes")
 
 /**
  * @category string filters
@@ -3536,7 +3536,7 @@ export const includes = <A extends string>(
  * @category type id
  * @since 1.0.0
  */
-export const LowercasedTypeId = Symbol.for("@effect/schema/TypeId/Lowercased")
+export const LowercasedTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/Lowercased")
 
 /**
  * Verifies that a string is lowercased.
@@ -3566,7 +3566,7 @@ export class Lowercased extends $String.pipe(
  * @category type id
  * @since 1.0.0
  */
-export const UppercasedTypeId = Symbol.for("@effect/schema/TypeId/Uppercased")
+export const UppercasedTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/Uppercased")
 
 /**
  * Verifies that a string is uppercased.
@@ -3782,7 +3782,7 @@ export class NonEmpty extends $String.pipe(
  * @category type id
  * @since 1.0.0
  */
-export const UUIDTypeId = Symbol.for("@effect/schema/TypeId/UUID")
+export const UUIDTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/UUID")
 
 const uuidRegexp = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i
 
@@ -3808,7 +3808,7 @@ export class UUID extends $String.pipe(
  * @category type id
  * @since 1.0.0
  */
-export const ULIDTypeId = Symbol.for("@effect/schema/TypeId/ULID")
+export const ULIDTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/ULID")
 
 const ulidRegexp = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i
 
@@ -3835,7 +3835,7 @@ export class ULID extends $String.pipe(
  * @category type id
  * @since 1.0.0
  */
-export const FiniteTypeId = Symbol.for("@effect/schema/TypeId/Finite")
+export const FiniteTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/Finite")
 
 /**
  * Ensures that the provided value is a finite number.
@@ -3923,7 +3923,7 @@ export const greaterThanOrEqualTo = <A extends number>(
  * @category type id
  * @since 1.0.0
  */
-export const MultipleOfTypeId = Symbol.for("@effect/schema/TypeId/MultipleOf")
+export const MultipleOfTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/MultipleOf")
 
 /**
  * @category number filters
@@ -4070,7 +4070,7 @@ export const between = <A extends number>(
  * @category type id
  * @since 1.0.0
  */
-export const NonNaNTypeId = Symbol.for("@effect/schema/TypeId/NonNaN")
+export const NonNaNTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/NonNaN")
 
 /**
  * @category number filters
@@ -4222,7 +4222,7 @@ export class NonNegative extends $Number.pipe(
  * @category type id
  * @since 1.0.0
  */
-export const JsonNumberTypeId = Symbol.for("@effect/schema/TypeId/JsonNumber")
+export const JsonNumberTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/JsonNumber")
 
 /**
  * The `JsonNumber` is a schema for representing JSON numbers. It ensures that the provided value is a valid
@@ -4709,7 +4709,7 @@ export const clampDuration =
  * @category type id
  * @since 1.0.0
  */
-export const LessThanDurationTypeId = Symbol.for("@effect/schema/TypeId/LessThanDuration")
+export const LessThanDurationTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/LessThanDuration")
 
 /**
  * @category Duration filters
@@ -4732,7 +4732,7 @@ export const lessThanDuration = <A extends duration_.Duration>(
  * @category type id
  * @since 1.0.0
  */
-export const LessThanOrEqualToDurationTypeId = Symbol.for(
+export const LessThanOrEqualToDurationTypeId: unique symbol = Symbol.for(
   "@effect/schema/TypeId/LessThanOrEqualToDuration"
 )
 
@@ -4757,7 +4757,7 @@ export const lessThanOrEqualToDuration = <A extends duration_.Duration>(
  * @category type id
  * @since 1.0.0
  */
-export const GreaterThanDurationTypeId = Symbol.for("@effect/schema/TypeId/GreaterThanDuration")
+export const GreaterThanDurationTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/GreaterThanDuration")
 
 /**
  * @category Duration filters
@@ -4780,7 +4780,7 @@ export const greaterThanDuration = <A extends duration_.Duration>(
  * @category type id
  * @since 1.0.0
  */
-export const GreaterThanOrEqualToDurationTypeId = Symbol.for(
+export const GreaterThanOrEqualToDurationTypeId: unique symbol = Symbol.for(
   "@effect/schema/TypeId/GreaterThanOrEqualToDuration"
 )
 
@@ -4805,7 +4805,7 @@ export const greaterThanOrEqualToDuration = <A extends duration_.Duration>(
  * @category type id
  * @since 1.0.0
  */
-export const BetweenDurationTypeId = Symbol.for("@effect/schema/TypeId/BetweenDuration")
+export const BetweenDurationTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/BetweenDuration")
 
 /**
  * @category Duration filters
@@ -5053,7 +5053,7 @@ export const headOrElse: {
  * @category type id
  * @since 1.0.0
  */
-export const ValidDateTypeId = Symbol.for("@effect/schema/TypeId/ValidDate")
+export const ValidDateTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/ValidDate")
 
 /**
  * A filter that **excludes invalid** dates (e.g., `new Date("Invalid Date")` is rejected).
@@ -5901,7 +5901,7 @@ export class BigDecimalFromNumber extends transformOrFail(
  * @category type id
  * @since 1.0.0
  */
-export const GreaterThanBigDecimalTypeId = Symbol.for("@effect/schema/TypeId/GreaterThanBigDecimal")
+export const GreaterThanBigDecimalTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/GreaterThanBigDecimal")
 
 /**
  * @category BigDecimal filters
@@ -5924,7 +5924,7 @@ export const greaterThanBigDecimal = <A extends bigDecimal_.BigDecimal>(
  * @category type id
  * @since 1.0.0
  */
-export const GreaterThanOrEqualToBigDecimalTypeId = Symbol.for(
+export const GreaterThanOrEqualToBigDecimalTypeId: unique symbol = Symbol.for(
   "@effect/schema/TypeId/GreaterThanOrEqualToBigDecimal"
 )
 
@@ -5949,7 +5949,7 @@ export const greaterThanOrEqualToBigDecimal = <A extends bigDecimal_.BigDecimal>
  * @category type id
  * @since 1.0.0
  */
-export const LessThanBigDecimalTypeId = Symbol.for("@effect/schema/TypeId/LessThanBigDecimal")
+export const LessThanBigDecimalTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/LessThanBigDecimal")
 
 /**
  * @category BigDecimal filters
@@ -5972,7 +5972,7 @@ export const lessThanBigDecimal = <A extends bigDecimal_.BigDecimal>(
  * @category type id
  * @since 1.0.0
  */
-export const LessThanOrEqualToBigDecimalTypeId = Symbol.for(
+export const LessThanOrEqualToBigDecimalTypeId: unique symbol = Symbol.for(
   "@effect/schema/TypeId/LessThanOrEqualToBigDecimal"
 )
 
@@ -5997,7 +5997,7 @@ export const lessThanOrEqualToBigDecimal = <A extends bigDecimal_.BigDecimal>(
  * @category type id
  * @since 1.0.0
  */
-export const PositiveBigDecimalTypeId = Symbol.for(
+export const PositiveBigDecimalTypeId: unique symbol = Symbol.for(
   "@effect/schema/TypeId/PositiveBigDecimal"
 )
 
@@ -6032,7 +6032,7 @@ export const PositiveBigDecimalFromSelf: filter<Schema<bigDecimal_.BigDecimal>> 
  * @category type id
  * @since 1.0.0
  */
-export const NonNegativeBigDecimalTypeId = Symbol.for(
+export const NonNegativeBigDecimalTypeId: unique symbol = Symbol.for(
   "@effect/schema/TypeId/NonNegativeBigDecimal"
 )
 
@@ -6067,7 +6067,7 @@ export const NonNegativeBigDecimalFromSelf: filter<Schema<bigDecimal_.BigDecimal
  * @category type id
  * @since 1.0.0
  */
-export const NegativeBigDecimalTypeId = Symbol.for(
+export const NegativeBigDecimalTypeId: unique symbol = Symbol.for(
   "@effect/schema/TypeId/NegativeBigDecimal"
 )
 
@@ -6102,7 +6102,7 @@ export const NegativeBigDecimalFromSelf: filter<Schema<bigDecimal_.BigDecimal>> 
  * @category type id
  * @since 1.0.0
  */
-export const NonPositiveBigDecimalTypeId = Symbol.for(
+export const NonPositiveBigDecimalTypeId: unique symbol = Symbol.for(
   "@effect/schema/TypeId/NonPositiveBigDecimal"
 )
 
@@ -6137,7 +6137,7 @@ export const NonPositiveBigDecimalFromSelf: filter<Schema<bigDecimal_.BigDecimal
  * @category type id
  * @since 1.0.0
  */
-export const BetweenBigDecimalTypeId = Symbol.for("@effect/schema/TypeId/BetweenBigDecimal")
+export const BetweenBigDecimalTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/BetweenBigDecimal")
 
 /**
  * @category BigDecimal filters

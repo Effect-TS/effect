@@ -22,7 +22,7 @@ import * as Runtime from "./Runtime.js"
  * @since 2.0.0
  * @categories type ids
  */
-export const TypeId = Symbol.for("effect/FiberSet")
+export const TypeId: unique symbol = Symbol.for("effect/FiberSet")
 
 /**
  * @since 2.0.0

@@ -1,8 +1,10 @@
 /**
  * @since 1.0.0
  */
+import type { TesterContext } from "@vitest/expect"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
@@ -10,6 +12,7 @@ import * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
 import * as TestEnvironment from "effect/TestContext"
 import type * as TestServices from "effect/TestServices"
+import * as Utils from "effect/Utils"
 import type { TestAPI } from "vitest"
 import * as V from "vitest"
 
@@ -21,6 +24,17 @@ export type API = TestAPI<{}>
 const TestEnv = TestEnvironment.TestContext.pipe(
   Layer.provide(Logger.remove(Logger.defaultLogger))
 )
+/** @internal */
+function customTester(this: TesterContext, a: unknown, b: unknown) {
+  return Utils.structuralRegion(() => Equal.equals(a, b), (x, y) => this.equals(x, y))
+}
+
+/**
+ * @since 1.0.0
+ */
+export const addEqualityTesters = () => {
+  V.expect.addEqualityTesters([customTester])
+}
 
 /**
  * @since 1.0.0
