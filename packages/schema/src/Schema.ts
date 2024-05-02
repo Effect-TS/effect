@@ -6418,7 +6418,7 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
  */
 export const Class = <Self = never>(identifier: string) =>
 <Fields extends Struct.Fields>(
-  fields: Fields,
+  fields: Fields | Struct<Fields> | filter<Struct<Fields>>,
   annotations?: Annotations.Schema<Self>
 ): [Self] extends [never] ? MissingSelfGeneric<"Class">
   : Class<
@@ -6670,17 +6670,30 @@ const extendFields = (a: Struct.Fields, b: Struct.Fields): Struct.Fields => {
   return out
 }
 
+type HasFields<Fields extends Struct.Fields> = {
+  readonly fields: Fields
+} | {
+  readonly from: HasFields<Fields>
+}
+
+const getFields = <Fields extends Struct.Fields>(definition: HasFields<Fields>): Fields => {
+  if ("fields" in definition) {
+    return definition.fields
+  }
+  return getFields(definition.from)
+}
+
 const makeClass = ({ Base, annotations, definition, identifier, kind, toStringOverride }: {
   kind: "Class" | "TaggedClass" | "TaggedError" | "TaggedRequest"
   identifier: string
-  definition: Struct.Fields | (Schema.Any & { readonly fields: Struct.Fields })
+  definition: Struct.Fields | (Schema.Any & HasFields<Struct.Fields>)
   Base: new(...args: ReadonlyArray<any>) => any
   annotations?: Annotations.Schema<any> | undefined
   toStringOverride?: (self: any) => string | undefined
 }): any => {
   const classSymbol = Symbol.for(`@effect/schema/${kind}/${identifier}`)
   const surrogate = isSchema(definition) ? definition : Struct(definition)
-  const fields = isSchema(definition) ? definition.fields : definition
+  const fields = isSchema(definition) ? getFields(definition) : definition
   const validate = ParseResult.validateSync(surrogate.annotations({ title: `${identifier} (Constructor)` }))
   const encodedSide: Schema.Any = option_.match(AST.getTitleAnnotation(surrogate.ast), {
     onNone: () => surrogate.annotations({ title: `${identifier} (Encoded side)` }),
