@@ -1054,12 +1054,16 @@ export const prettyErrorMessage = (u: unknown): string => {
   return `Error: ${JSON.stringify(u)}`
 }
 
+const locationRegex = /\((.*)\)/
+
 const prettyErrorStack = (message: string, stack: string, span?: Span | undefined): string => {
   const out: Array<string> = [message]
   const lines = stack.split("\n")
 
   for (let i = 1; i < lines.length; i++) {
-    out.push(lines[i].replace(/at .*effect_instruction_i.*\((.*)\)/, "at $1"))
+    out.push(
+      lines[i].replace(/at .*effect_instruction_i.*\((.*)\)/, "at $1").replace(/EffectPrimitive\.\w+/, "<anonymous>")
+    )
     if (lines[i].includes("effect_instruction_i")) {
       break
     }
@@ -1071,7 +1075,9 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
     while (current && current._tag === "Span" && i < 10) {
       const stack = current.attributes.get("code.stacktrace")
       if (typeof stack === "string") {
-        out.push(`    at ${current.name} (${stack.replace(/^at /, "")})`)
+        const locationMatch = stack.match(locationRegex)
+        const location = locationMatch ? locationMatch[1] : stack
+        out.push(`    at ${current.name} (${location})`)
       } else {
         out.push(`    at ${current.name}`)
       }
