@@ -7964,7 +7964,7 @@ export const bind = dual<
 /* @internal */
 export const bindTo = dual<
   <N extends string>(tag: N) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<
-    Record<N, A>,
+    { [K in N]: A },
     E,
     R
   >,
@@ -7972,14 +7972,14 @@ export const bindTo = dual<
     self: Stream.Stream<A, E, R>,
     tag: N
   ) => Stream.Stream<
-    Record<N, A>,
+    { [K in N]: A },
     E,
     R
   >
 >(
   2,
-  <A, E, R, N extends string>(self: Stream.Stream<A, E, R>, tag: N): Stream.Stream<Record<N, A>, E, R> =>
-    map(self, (a) => ({ [tag]: a } as Record<N, A>))
+  <A, E, R, N extends string>(self: Stream.Stream<A, E, R>, tag: N): Stream.Stream<{ [K in N]: A }, E, R> =>
+    map(self, (a) => ({ [tag]: a } as { [K in N]: A }))
 )
 
 /* @internal */

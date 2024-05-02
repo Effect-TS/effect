@@ -4498,8 +4498,8 @@ export const bindEffect: {
  * @category do notation
  */
 export const bindTo: {
-  <N extends string>(tag: N): <A, E, R>(self: Stream<A, E, R>) => Stream<Record<N, A>, E, R>
-  <A, E, R, N extends string>(self: Stream<A, E, R>, tag: N): Stream<Record<N, A>, E, R>
+  <N extends string>(tag: N): <A, E, R>(self: Stream<A, E, R>) => Stream<{ [K in N]: A }, E, R>
+  <A, E, R, N extends string>(self: Stream<A, E, R>, tag: N): Stream<{ [K in N]: A }, E, R>
 } = internal.bindTo
 
 const let_: {

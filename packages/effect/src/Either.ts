@@ -779,12 +779,12 @@ export const bind: {
  * @since 2.4.0
  */
 export const bindTo: {
-  <N extends string>(tag: N): <A, E>(self: Either<A, E>) => Either<Record<N, A>, E>
-  <A, E, N extends string>(self: Either<A, E>, tag: N): Either<Record<N, A>, E>
+  <N extends string>(tag: N): <A, E>(self: Either<A, E>) => Either<{ [K in N]: A }, E>
+  <A, E, N extends string>(self: Either<A, E>, tag: N): Either<{ [K in N]: A }, E>
 } = dual(
   2,
-  <A, E, N extends string>(self: Either<A, E>, tag: N): Either<Record<N, A>, E> =>
-    map(self, (a) => ({ [tag]: a } as Record<N, A>))
+  <A, E, N extends string>(self: Either<A, E>, tag: N): Either<{ [K in N]: A }, E> =>
+    map(self, (a) => ({ [tag]: a } as { [K in N]: A }))
 )
 
 const let_: {
