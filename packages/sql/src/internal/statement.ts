@@ -291,7 +291,7 @@ export const make = (
         )
       },
       update(value: any, omit: any) {
-        return new RecordUpdateHelperSingleImpl(value, omit)
+        return new RecordUpdateHelperSingleImpl(value, omit ?? [])
       },
       updateValues(value: any, alias: any) {
         return new RecordUpdateHelperImpl(value, alias)
