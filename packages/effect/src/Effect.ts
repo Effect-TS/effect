@@ -5388,7 +5388,7 @@ export interface FunctionWithSpanOptions {
  * @example
  * import { Effect } from "effect"
  *
- * const getTodo: (id: number) => Effect.Effect<string, never, never> = Effect.functionWithSpan({
+ * const getTodo = Effect.functionWithSpan({
  *   body: (id: number) => Effect.succeed(`Got todo ${id}!`),
  *   options: (id) => ({
  *     name: `getTodo-${id}`,

@@ -2165,6 +2165,7 @@ export const functionWithSpan = <Fn extends (...args: ReadonlyArray<any>) => Eff
         captureStackTrace = stack.slice(2).join("\n").trim()
       }
     }
+    const args = arguments
     return core.suspend(() => {
       const opts = typeof options.options === "function"
         ? options.options.apply(null, arguments as any)
@@ -2172,7 +2173,7 @@ export const functionWithSpan = <Fn extends (...args: ReadonlyArray<any>) => Eff
 
       return withSpan(
         core.custom(options.body, function() {
-          return this.effect_instruction_i0.apply(this, arguments as any)
+          return this.effect_instruction_i0.apply(this, args as any)
         }),
         opts.name,
         {
