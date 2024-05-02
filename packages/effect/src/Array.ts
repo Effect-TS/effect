@@ -12,6 +12,7 @@ import type { LazyArg } from "./Function.js"
 import { dual, identity } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 import * as readonlyArray from "./internal/array.js"
+import * as doNotation from "./internal/doNotation.js"
 import * as EffectIterable from "./Iterable.js"
 import type { Option } from "./Option.js"
 import * as O from "./Option.js"
@@ -20,7 +21,7 @@ import type { Predicate, Refinement } from "./Predicate.js"
 import { isBoolean } from "./Predicate.js"
 import * as Record from "./Record.js"
 import * as Tuple from "./Tuple.js"
-import type { MergeRecord, NoInfer } from "./Types.js"
+import type { NoInfer } from "./Types.js"
 
 /**
  * @category type lambdas
@@ -2120,76 +2121,210 @@ export const cartesian: {
 // -------------------------------------------------------------------------------------
 
 /**
- * @since 2.4.0
+ * The "do simulation" for array allows you to sequentially apply operations to the elements of arrays, just as nested loops allow you to go through all combinations of elements in an arrays.
+ *
+ * It can be used to simulate "array comprehension".
+ * It's a technique that allows you to create new arrays by iterating over existing ones and applying specific **conditions** or **transformations** to the elements. It's like assembling a new collection from pieces of other collections based on certain rules.
+ *
+ * Here's how the do simulation works:
+ *
+ * 1. Start the do simulation using the `Do` value
+ * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Array` values
+ * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+ * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+ * 5. Regular `Option` functions like `map` and `filter` can still be used within the do simulation. These functions will receive the accumulated variables as arguments within the scope
+ *
+ * @see {@link bindTo}
+ * @see {@link bind}
+ * @see {@link let_ let}
+ *
+ * @example
+ * import { Array as Arr, pipe } from "effect"
+ * const doResult = pipe(
+ *   Arr.Do,
+ *   Arr.bind("x", () => [1, 3, 5]),
+ *   Arr.bind("y", () => [2, 4, 6]),
+ *   Arr.filter(({ x, y }) => x < y), // condition
+ *   Arr.map(({ x, y }) => [x, y] as const) // transformation
+ * )
+ * assert.deepStrictEqual(doResult, [[1, 2], [1, 4], [1, 6], [3, 4], [3, 6], [5, 6]])
+ *
+ * // equivalent
+ * const x = [1, 3, 5],
+ *       y = [2, 4, 6],
+ *       result = [];
+ * for(let i = 0; i < x.length; i++) {
+ *   for(let j = 0; j < y.length; j++) {
+ *     const _x = x[i], _y = y[j];
+ *     if(_x < _y) result.push([_x, _y] as const)
+ *   }
+ * }
+ *
  * @category do notation
+ * @since 2.0.0
  */
 export const Do: Array<{}> = of({})
 
 /**
- * Binds an effectful value in a `do` scope
+ * The "do simulation" for array allows you to sequentially apply operations to the elements of arrays, just as nested loops allow you to go through all combinations of elements in an arrays.
  *
- * @since 2.4.0
+ * It can be used to simulate "array comprehension".
+ * It's a technique that allows you to create new arrays by iterating over existing ones and applying specific **conditions** or **transformations** to the elements. It's like assembling a new collection from pieces of other collections based on certain rules.
+ *
+ * Here's how the do simulation works:
+ *
+ * 1. Start the do simulation using the `Do` value
+ * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Array` values
+ * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+ * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+ * 5. Regular `Option` functions like `map` and `filter` can still be used within the do simulation. These functions will receive the accumulated variables as arguments within the scope
+ *
+ * @see {@link bindTo}
+ * @see {@link Do}
+ * @see {@link let_ let}
+ *
+ * @example
+ * import { Array as Arr, pipe } from "effect"
+ * const doResult = pipe(
+ *   Arr.Do,
+ *   Arr.bind("x", () => [1, 3, 5]),
+ *   Arr.bind("y", () => [2, 4, 6]),
+ *   Arr.filter(({ x, y }) => x < y), // condition
+ *   Arr.map(({ x, y }) => [x, y] as const) // transformation
+ * )
+ * assert.deepStrictEqual(doResult, [[1, 2], [1, 4], [1, 6], [3, 4], [3, 6], [5, 6]])
+ *
+ * // equivalent
+ * const x = [1, 3, 5],
+ *       y = [2, 4, 6],
+ *       result = [];
+ * for(let i = 0; i < x.length; i++) {
+ *   for(let j = 0; j < y.length; j++) {
+ *     const _x = x[i], _y = y[j];
+ *     if(_x < _y) result.push([_x, _y] as const)
+ *   }
+ * }
+ *
  * @category do notation
+ * @since 2.0.0
  */
 export const bind: {
-  <N extends string, K, A>(
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Array<A>
-  ): (self: Array<K>) => Array<MergeRecord<K, { [k in N]: A }>>
-  <K, N extends string, A>(
-    self: Array<K>,
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Array<A>
-  ): Array<MergeRecord<K, { [k in N]: A }>>
-} = dual(3, <K, N extends string, A>(
-  self: Array<K>,
-  tag: Exclude<N, keyof K>,
-  f: (_: K) => Array<A>
-): Array<MergeRecord<K, { [k in N]: A }>> =>
-  flatMap(self, (k) =>
-    map(
-      f(k),
-      (a): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: a } as any)
-    )))
+  <A extends object, N extends string, B>(
+    tag: Exclude<N, keyof A>,
+    f: (a: A) => ReadonlyArray<B>
+  ): (
+    self: Array<A>
+  ) => Array<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
+  <A extends object, N extends string, B>(
+    self: Array<A>,
+    tag: Exclude<N, keyof A>,
+    f: (a: A) => ReadonlyArray<B>
+  ): Array<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
+} = doNotation.bind<ReadonlyArrayTypeLambda>(map, flatMap) as any
 
 /**
+ * The "do simulation" for array allows you to sequentially apply operations to the elements of arrays, just as nested loops allow you to go through all combinations of elements in an arrays.
+ *
+ * It can be used to simulate "array comprehension".
+ * It's a technique that allows you to create new arrays by iterating over existing ones and applying specific **conditions** or **transformations** to the elements. It's like assembling a new collection from pieces of other collections based on certain rules.
+ *
+ * Here's how the do simulation works:
+ *
+ * 1. Start the do simulation using the `Do` value
+ * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Array` values
+ * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+ * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+ * 5. Regular `Option` functions like `map` and `filter` can still be used within the do simulation. These functions will receive the accumulated variables as arguments within the scope
+ *
+ * @see {@link bindTo}
+ * @see {@link Do}
+ * @see {@link let_ let}
+ *
+ * @example
+ * import { Array as Arr, pipe } from "effect"
+ * const doResult = pipe(
+ *   Arr.Do,
+ *   Arr.bind("x", () => [1, 3, 5]),
+ *   Arr.bind("y", () => [2, 4, 6]),
+ *   Arr.filter(({ x, y }) => x < y), // condition
+ *   Arr.map(({ x, y }) => [x, y] as const) // transformation
+ * )
+ * assert.deepStrictEqual(doResult, [[1, 2], [1, 4], [1, 6], [3, 4], [3, 6], [5, 6]])
+ *
+ * // equivalent
+ * const x = [1, 3, 5],
+ *       y = [2, 4, 6],
+ *       result = [];
+ * for(let i = 0; i < x.length; i++) {
+ *   for(let j = 0; j < y.length; j++) {
+ *     const _x = x[i], _y = y[j];
+ *     if(_x < _y) result.push([_x, _y] as const)
+ *   }
+ * }
+ *
  * @category do notation
- * @since 2.4.0
+ * @since 2.0.0
  */
 export const bindTo: {
-  <N extends string>(tag: N): <A>(self: Array<A>) => Array<Record<N, A>>
-  <A, N extends string>(self: Array<A>, tag: N): Array<Record<N, A>>
-} = dual(
-  2,
-  <A, N extends string>(self: Array<A>, tag: N): Array<Record<N, A>> => map(self, (a) => ({ [tag]: a } as Record<N, A>))
-)
+  <N extends string>(tag: N): <A>(self: ReadonlyArray<A>) => Array<{ [K in N]: A }>
+  <A, N extends string>(self: ReadonlyArray<A>, tag: N): Array<{ [K in N]: A }>
+} = doNotation.bindTo<ReadonlyArrayTypeLambda>(map) as any
 
 const let_: {
-  <N extends string, K, A>(
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => A
-  ): (self: Array<K>) => Array<MergeRecord<K, { [k in N]: A }>>
-  <K, N extends string, A>(
-    self: Array<K>,
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => A
-  ): Array<MergeRecord<K, { [k in N]: A }>>
-} = dual(3, <K, N extends string, A>(
-  self: Array<K>,
-  tag: Exclude<N, keyof K>,
-  f: (_: K) => A
-): Array<MergeRecord<K, { [k in N]: A }>> =>
-  map(
-    self,
-    (k): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: f(k) } as any)
-  ))
+  <N extends string, B, A extends object>(
+    tag: Exclude<N, keyof A>,
+    f: (a: A) => B
+  ): (self: ReadonlyArray<A>) => Array<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
+  <N extends string, A extends object, B>(
+    self: ReadonlyArray<A>,
+    tag: Exclude<N, keyof A>,
+    f: (a: A) => B
+  ): Array<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
+} = doNotation.let_<ReadonlyArrayTypeLambda>(map) as any
 
 export {
   /**
-   * Like bind for values
+   * The "do simulation" for array allows you to sequentially apply operations to the elements of arrays, just as nested loops allow you to go through all combinations of elements in an arrays.
    *
-   * @since 2.4.0
+   * It can be used to simulate "array comprehension".
+   * It's a technique that allows you to create new arrays by iterating over existing ones and applying specific **conditions** or **transformations** to the elements. It's like assembling a new collection from pieces of other collections based on certain rules.
+   *
+   * Here's how the do simulation works:
+   *
+   * 1. Start the do simulation using the `Do` value
+   * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Array` values
+   * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+   * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+   * 5. Regular `Option` functions like `map` and `filter` can still be used within the do simulation. These functions will receive the accumulated variables as arguments within the scope
+   *
+   * @see {@link bindTo}
+   * @see {@link bind}
+   * @see {@link Do}
+   *
+   * @example
+   * import { Array as Arr, pipe } from "effect"
+   * const doResult = pipe(
+   *   Arr.Do,
+   *   Arr.bind("x", () => [1, 3, 5]),
+   *   Arr.bind("y", () => [2, 4, 6]),
+   *   Arr.filter(({ x, y }) => x < y), // condition
+   *   Arr.map(({ x, y }) => [x, y] as const) // transformation
+   * )
+   * assert.deepStrictEqual(doResult, [[1, 2], [1, 4], [1, 6], [3, 4], [3, 6], [5, 6]])
+   *
+   * // equivalent
+   * const x = [1, 3, 5],
+   *       y = [2, 4, 6],
+   *       result = [];
+   * for(let i = 0; i < x.length; i++) {
+   *   for(let j = 0; j < y.length; j++) {
+   *     const _x = x[i], _y = y[j];
+   *     if(_x < _y) result.push([_x, _y] as const)
+   *   }
+   * }
+   *
    * @category do notation
+   * @since 2.0.0
    */
   let_ as let
 }
