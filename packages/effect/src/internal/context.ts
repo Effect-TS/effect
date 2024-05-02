@@ -1,13 +1,13 @@
 import type * as C from "../Context.js"
 import * as Equal from "../Equal.js"
-import { dual } from "../Function.js"
+import { dual, identity } from "../Function.js"
 import * as Hash from "../Hash.js"
 import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import type * as O from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import type * as STM from "../STM.js"
-import { EffectPrototype, effectVariance } from "./effectable.js"
+import { EffectPrototype, effectVariance, SmolRunSymbol, SmolTypeId } from "./effectable.js"
 import * as option from "./option.js"
 
 /** @internal */
@@ -52,6 +52,14 @@ export const TagProto: any = {
     self: Service
   ): C.Context<Identifier> {
     return make(this, self)
+  },
+  [SmolTypeId]: {
+    _A: identity,
+    _E: identity,
+    _R: identity
+  },
+  [SmolRunSymbol](env: any, onResult: any) {
+    onResult(this)
   }
 }
 

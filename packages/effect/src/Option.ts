@@ -15,6 +15,7 @@ import type { Order } from "./Order.js"
 import * as order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
+import type { Smol } from "./Smol.js"
 import type { Covariant, NoInfer, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
 import * as Gen from "./Utils.js"
@@ -41,7 +42,7 @@ export type TypeId = typeof TypeId
  * @category models
  * @since 2.0.0
  */
-export interface None<out A> extends Pipeable, Inspectable {
+export interface None<out A> extends Pipeable, Inspectable, Smol<A, None<never>> {
   readonly _tag: "None"
   readonly _op: "None"
   readonly [TypeId]: {
@@ -56,7 +57,7 @@ export interface None<out A> extends Pipeable, Inspectable {
  * @category models
  * @since 2.0.0
  */
-export interface Some<out A> extends Pipeable, Inspectable {
+export interface Some<out A> extends Pipeable, Inspectable, Smol<A, None<never>> {
   readonly _tag: "Some"
   readonly _op: "Some"
   readonly value: A

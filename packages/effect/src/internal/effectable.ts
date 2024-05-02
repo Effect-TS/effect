@@ -5,6 +5,7 @@ import * as Equal from "../Equal.js"
 import * as Hash from "../Hash.js"
 import { pipeArguments } from "../Pipeable.js"
 import type * as Sink from "../Sink.js"
+import type * as Smol from "../Smol.js"
 import type * as Stream from "../Stream.js"
 import { SingleShotGen, YieldWrap } from "../Utils.js"
 import * as OpCodes from "./opCodes/effect.js"
@@ -23,6 +24,12 @@ export const SinkTypeId: Sink.SinkTypeId = Symbol.for("effect/Sink") as Sink.Sin
 export const ChannelTypeId: Channel.ChannelTypeId = Symbol.for("effect/Channel") as Channel.ChannelTypeId
 
 /** @internal */
+export const SmolTypeId: Smol.TypeId = Symbol.for("effect/Smol") as Smol.TypeId
+
+/** @internal */
+export const SmolRunSymbol: Smol.runSymbol = Symbol.for("effect/Smol/runSymbol") as Smol.runSymbol
+
+/** @internal */
 export const effectVariance = {
   /* c8 ignore next */
   _R: (_: never) => _,
@@ -32,6 +39,16 @@ export const effectVariance = {
   _A: (_: never) => _,
 
   _V: version.getCurrentVersion()
+}
+
+/** @internal */
+export const smolVariance = {
+  /* c8 ignore next */
+  _R: (_: never) => _,
+  /* c8 ignore next */
+  _E: (_: never) => _,
+  /* c8 ignore next */
+  _A: (_: never) => _
 }
 
 const sinkVariance = {
