@@ -34,7 +34,7 @@ const RightProto = Object.assign(Object.create(CommonProto), {
   _tag: "Right",
   _op: "Right",
   [Equal.symbol]<L, R>(this: Either.Right<L, R>, that: unknown): boolean {
-    return isEither(that) && isRight(that) && Equal.equals(that.right, this.right)
+    return isEither(that) && isRight(that) && Equal.equals(this.right, that.right)
   },
   [Hash.symbol]<L, R>(this: Either.Right<L, R>) {
     return Hash.combine(Hash.hash(this._tag))(Hash.hash(this.right))
@@ -52,7 +52,7 @@ const LeftProto = Object.assign(Object.create(CommonProto), {
   _tag: "Left",
   _op: "Left",
   [Equal.symbol]<L, R>(this: Either.Left<L, R>, that: unknown): boolean {
-    return isEither(that) && isLeft(that) && Equal.equals(that.left, this.left)
+    return isEither(that) && isLeft(that) && Equal.equals(this.left, that.left)
   },
   [Hash.symbol]<L, R>(this: Either.Left<L, R>) {
     return Hash.combine(Hash.hash(this._tag))(Hash.hash(this.left))

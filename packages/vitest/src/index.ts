@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import type { TesterContext } from "@vitest/expect"
+import type { Tester, TesterContext } from "@vitest/expect"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
@@ -25,8 +25,12 @@ const TestEnv = TestEnvironment.TestContext.pipe(
   Layer.provide(Logger.remove(Logger.defaultLogger))
 )
 /** @internal */
-function customTester(this: TesterContext, a: unknown, b: unknown) {
-  return Utils.structuralRegion(() => Equal.equals(a, b), (x, y) => this.equals(x, y))
+function customTester(this: TesterContext, a: unknown, b: unknown, customTesters: Array<Tester>) {
+  if (!Equal.isEqual(a) || !Equal.isEqual(b)) {
+    return undefined
+  }
+
+  return Utils.structuralRegion(() => Equal.equals(a, b), (x, y) => this.equals(x, y, customTesters))
 }
 
 /**
