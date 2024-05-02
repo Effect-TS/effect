@@ -5396,13 +5396,13 @@ export interface FunctionWithSpanOptions {
  *   })
  * })
  */
-export const functionWithSpan: <Fn extends (...args: ReadonlyArray<any>) => Effect<any, any, any>>(
+export const functionWithSpan: <Args extends Array<any>, Ret extends Effect<any, any, any>>(
   options: {
-    readonly body: Fn
-    readonly options: FunctionWithSpanOptions | ((...args: Parameters<Fn>) => FunctionWithSpanOptions)
+    readonly body: (...args: Args) => Ret
+    readonly options: FunctionWithSpanOptions | ((...args: Args) => FunctionWithSpanOptions)
     readonly captureStackTrace?: boolean | undefined
   }
-) => Fn = effect.functionWithSpan
+) => (...args: Args) => Unify.Unify<Ret> = effect.functionWithSpan
 
 /**
  * Wraps the effect with a new span for tracing.

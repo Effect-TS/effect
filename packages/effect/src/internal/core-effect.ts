@@ -26,6 +26,7 @@ import * as Ref from "../Ref.js"
 import type * as runtimeFlagsPatch from "../RuntimeFlagsPatch.js"
 import * as Tracer from "../Tracer.js"
 import type { NoInfer } from "../Types.js"
+import type { Unify } from "../Unify.js"
 import { yieldWrapGet } from "../Utils.js"
 import * as internalCause from "./cause.js"
 import { clockTag } from "./clock.js"
@@ -2146,13 +2147,13 @@ export const withSpan: {
   return (self: Effect.Effect<any, any, any>) => useSpan(name, options, (span) => withParentSpan(self, span))
 } as any
 
-export const functionWithSpan = <Fn extends (...args: ReadonlyArray<any>) => Effect.Effect<any, any, any>>(
+export const functionWithSpan = <Args extends Array<any>, Ret extends Effect.Effect<any, any, any>>(
   options: {
-    readonly body: Fn
-    readonly options: Effect.FunctionWithSpanOptions | ((...args: Parameters<Fn>) => Effect.FunctionWithSpanOptions)
+    readonly body: (...args: Args) => Ret
+    readonly options: Effect.FunctionWithSpanOptions | ((...args: Args) => Effect.FunctionWithSpanOptions)
     readonly captureStackTrace?: boolean | undefined
   }
-): Fn =>
+): (...args: Args) => Unify<Ret> =>
   (function(this: any) {
     let captureStackTrace: string | boolean = options.captureStackTrace ?? false
     if (options.captureStackTrace !== false) {
