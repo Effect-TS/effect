@@ -16,7 +16,7 @@ import type { Mutable } from "effect/Types"
  * @since 1.0.0
  * @category type ids
  */
-export const HeadersTypeId = Symbol.for("@effect/platform/Http/Headers")
+export const HeadersTypeId: unique symbol = Symbol.for("@effect/platform/Http/Headers")
 
 /**
  * @since 1.0.0

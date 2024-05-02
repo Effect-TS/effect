@@ -21,7 +21,7 @@ import * as TimeToLive from "./TimeToLive.js"
  * @since 1.0.0
  * @category type ids
  */
-export const ErrorTypeId = Symbol.for("@effect/experimental/PersistenceError")
+export const ErrorTypeId: unique symbol = Symbol.for("@effect/experimental/PersistenceError")
 
 /**
  * @since 1.0.0
@@ -80,7 +80,7 @@ export class PersistenceBackingError extends RefailError(ErrorTypeId, "Persisten
  * @since 1.0.0
  * @category type ids
  */
-export const BackingPersistenceTypeId = Symbol.for("@effect/experimental/BackingPersistence")
+export const BackingPersistenceTypeId: unique symbol = Symbol.for("@effect/experimental/BackingPersistence")
 
 /**
  * @since 1.0.0
@@ -127,7 +127,7 @@ export const BackingPersistence: Context.Tag<BackingPersistence, BackingPersiste
  * @since 1.0.0
  * @category type ids
  */
-export const ResultPersistenceTypeId = Symbol.for("@effect/experimental/ResultPersistence")
+export const ResultPersistenceTypeId: unique symbol = Symbol.for("@effect/experimental/ResultPersistence")
 
 /**
  * @since 1.0.0

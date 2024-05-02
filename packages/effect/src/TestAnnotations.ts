@@ -20,7 +20,7 @@ import * as TestAnnotationMap from "./TestAnnotationMap.js"
 /**
  * @since 2.0.0
  */
-export const TestAnnotationsTypeId = Symbol.for("effect/TestAnnotations")
+export const TestAnnotationsTypeId: unique symbol = Symbol.for("effect/TestAnnotations")
 
 /**
  * @since 2.0.0

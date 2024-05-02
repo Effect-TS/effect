@@ -14,7 +14,7 @@ import * as Parameter from "./Parameter.js"
  * @category type id
  * @since 1.0.0
  */
-export const TypeId = Symbol.for("@effect/sql-mssql/Procedure")
+export const TypeId: unique symbol = Symbol.for("@effect/sql-mssql/Procedure")
 
 /**
  * @category type id

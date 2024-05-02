@@ -25,7 +25,7 @@ import type * as Types from "./Types.js"
  * @category symbols
  * @since 2.0.0
  */
-export const GenKindTypeId = Symbol.for("effect/Gen/GenKind")
+export const GenKindTypeId: unique symbol = Symbol.for("effect/Gen/GenKind")
 
 /**
  * @category symbols
@@ -717,7 +717,7 @@ function add64(
 /**
  * @since 3.0.6
  */
-export const YieldWrapTypeId = Symbol.for("effect/Utils/YieldWrap")
+export const YieldWrapTypeId: unique symbol = Symbol.for("effect/Utils/YieldWrap")
 
 /**
  * @since 3.0.6

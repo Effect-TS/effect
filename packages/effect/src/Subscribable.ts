@@ -13,7 +13,7 @@ import type { NoInfer } from "./Types.js"
  * @since 2.0.0
  * @category type ids
  */
-export const TypeId = Symbol.for("effect/Subscribable")
+export const TypeId: unique symbol = Symbol.for("effect/Subscribable")
 
 /**
  * @since 2.0.0
