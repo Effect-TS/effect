@@ -1,5 +1,11 @@
 # effect
 
+## 3.1.2
+
+### Patch Changes
+
+- [#2679](https://github.com/Effect-TS/effect/pull/2679) [`2e1cdf6`](https://github.com/Effect-TS/effect/commit/2e1cdf67d141281288fffe9a5c10d1379a800513) Thanks [@tim-smart](https://github.com/tim-smart)! - ensure all type ids are annotated with `unique symbol`
+
 ## 3.1.1
 
 ### Patch Changes
