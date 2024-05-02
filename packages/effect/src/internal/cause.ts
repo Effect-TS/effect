@@ -1061,6 +1061,9 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
   const lines = stack.split("\n")
 
   for (let i = 1; i < lines.length; i++) {
+    if (lines[i].includes("EffectPrimitive.commit")) {
+      break
+    }
     out.push(
       lines[i].replace(/at .*effect_instruction_i.*\((.*)\)/, "at $1").replace(/EffectPrimitive\.\w+/, "<anonymous>")
     )

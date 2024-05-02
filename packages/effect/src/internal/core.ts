@@ -2159,12 +2159,6 @@ export const causeSquashWith = dual<
 /** @internal */
 export const YieldableError: new(message?: string) => Cause.YieldableError = (function() {
   class YieldableError extends globalThis.Error {
-    constructor(message?: string, options?: ErrorOptions) {
-      const prevLimit = Error.stackTraceLimit
-      Error.stackTraceLimit = 1
-      super(message, options)
-      Error.stackTraceLimit = prevLimit
-    }
     commit() {
       return fail(this)
     }
