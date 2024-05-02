@@ -7,12 +7,13 @@ import type { LazyArg } from "./Function.js"
 import { constNull, constUndefined, dual, identity } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 import type { Inspectable } from "./Inspectable.js"
+import * as doNotation from "./internal/doNotation.js"
 import * as either from "./internal/either.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import { isFunction } from "./Predicate.js"
-import type { Covariant, MergeRecord, NoInfer, NotFunction } from "./Types.js"
+import type { Covariant, NoInfer, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
 import * as Gen from "./Utils.js"
 
@@ -742,77 +743,148 @@ export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (f)
 // -------------------------------------------------------------------------------------
 
 /**
- * @since 2.4.0
+ * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
+ *
+ * Here's how the do simulation works:
+ *
+ * 1. Start the do simulation using the `Do` value
+ * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Either` values
+ * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+ * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+ *
+ * @see {@link bind}
+ * @see {@link bindTo}
+ * @see {@link let_ let}
+ *
+ * @example
+ * import { Either, pipe } from "effect"
+ *
+ * const result = pipe(
+ *   Either.Do,
+ *   Either.bind("x", () => Either.right(2)),
+ *   Either.bind("y", () => Either.right(3)),
+ *   Either.let("sum", ({ x, y }) => x + y)
+ * )
+ * assert.deepStrictEqual(result, Either.right({ x: 2, y: 3, sum: 5 }))
+ *
  * @category do notation
+ * @since 2.0.0
  */
 export const Do: Either<{}> = right({})
 
 /**
- * Binds an effectful value in a `do` scope
+ * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
  *
- * @since 2.4.0
+ * Here's how the do simulation works:
+ *
+ * 1. Start the do simulation using the `Do` value
+ * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Either` values
+ * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+ * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+ *
+ * @see {@link Do}
+ * @see {@link bindTo}
+ * @see {@link let_ let}
+ *
+ * @example
+ * import { Either, pipe } from "effect"
+ *
+ * const result = pipe(
+ *   Either.Do,
+ *   Either.bind("x", () => Either.right(2)),
+ *   Either.bind("y", () => Either.right(3)),
+ *   Either.let("sum", ({ x, y }) => x + y)
+ * )
+ * assert.deepStrictEqual(result, Either.right({ x: 2, y: 3, sum: 5 }))
+ *
  * @category do notation
+ * @since 2.0.0
  */
 export const bind: {
-  <N extends string, K, A, E2>(
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Either<A, E2>
-  ): <E>(self: Either<K, E>) => Either<MergeRecord<K, { [k in N]: A }>, E2 | E>
-  <K, E, N extends string, A, E2>(
-    self: Either<E, K>,
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Either<A, E2>
-  ): Either<MergeRecord<K, { [k in N]: A }>, E2 | E>
-} = dual(3, <K, E, N extends string, A, E2>(
-  self: Either<K, E>,
-  tag: Exclude<N, keyof K>,
-  f: (_: K) => Either<A, E2>
-): Either<MergeRecord<K, { [k in N]: A }>, E2 | E> =>
-  flatMap(self, (k) =>
-    map(
-      f(k),
-      (a): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: a } as any)
-    )))
+  <N extends string, A extends object, B, L2>(
+    name: Exclude<N, keyof A>,
+    f: (a: A) => Either<B, L2>
+  ): <L1>(self: Either<A, L1>) => Either<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, L1 | L2>
+  <A extends object, L1, N extends string, B, L2>(
+    self: Either<A, L1>,
+    name: Exclude<N, keyof A>,
+    f: (a: A) => Either<B, L2>
+  ): Either<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, L1 | L2>
+} = doNotation.bind<EitherTypeLambda>(map, flatMap)
 
 /**
+ * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
+ *
+ * Here's how the do simulation works:
+ *
+ * 1. Start the do simulation using the `Do` value
+ * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Either` values
+ * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+ * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+ *
+ * @see {@link Do}
+ * @see {@link bind}
+ * @see {@link let_ let}
+ *
+ * @example
+ * import { Either, pipe } from "effect"
+ *
+ * const result = pipe(
+ *   Either.Do,
+ *   Either.bind("x", () => Either.right(2)),
+ *   Either.bind("y", () => Either.right(3)),
+ *   Either.let("sum", ({ x, y }) => x + y)
+ * )
+ * assert.deepStrictEqual(result, Either.right({ x: 2, y: 3, sum: 5 }))
+ *
  * @category do notation
- * @since 2.4.0
+ * @since 2.0.0
  */
 export const bindTo: {
-  <N extends string>(tag: N): <A, E>(self: Either<A, E>) => Either<Record<N, A>, E>
-  <A, E, N extends string>(self: Either<A, E>, tag: N): Either<Record<N, A>, E>
-} = dual(
-  2,
-  <A, E, N extends string>(self: Either<A, E>, tag: N): Either<Record<N, A>, E> =>
-    map(self, (a) => ({ [tag]: a } as Record<N, A>))
-)
+  <N extends string>(name: N): <R, L>(self: Either<R, L>) => Either<{ [K in N]: R }, L>
+  <R, L, N extends string>(self: Either<R, L>, name: N): Either<{ [K in N]: R }, L>
+} = doNotation.bindTo<EitherTypeLambda>(map)
 
 const let_: {
-  <N extends string, K, A>(
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => A
-  ): <E>(self: Either<K, E>) => Either<MergeRecord<K, { [k in N]: A }>, E>
-  <K, E, N extends string, A>(
-    self: Either<K, E>,
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => A
-  ): Either<MergeRecord<K, { [k in N]: A }>, E>
-} = dual(3, <K, E, N extends string, A>(
-  self: Either<K, E>,
-  tag: Exclude<N, keyof K>,
-  f: (_: K) => A
-): Either<MergeRecord<K, { [k in N]: A }>, E> =>
-  map(
-    self,
-    (k): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: f(k) } as any)
-  ))
+  <N extends string, R extends object, B>(
+    name: Exclude<N, keyof R>,
+    f: (r: R) => B
+  ): <L>(self: Either<R, L>) => Either<{ [K in N | keyof R]: K extends keyof R ? R[K] : B }, L>
+  <R extends object, L, N extends string, B>(
+    self: Either<R, L>,
+    name: Exclude<N, keyof R>,
+    f: (r: R) => B
+  ): Either<{ [K in N | keyof R]: K extends keyof R ? R[K] : B }, L>
+} = doNotation.let_<EitherTypeLambda>(map)
 
 export {
   /**
-   * Like bind for values
+   * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
    *
-   * @since 2.4.0
+   * Here's how the do simulation works:
+   *
+   * 1. Start the do simulation using the `Do` value
+   * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Either` values
+   * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+   * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+   *
+   * @see {@link Do}
+   * @see {@link bindTo}
+   * @see {@link bind}
+   *
+   * @example
+   * import { Either, pipe } from "effect"
+   *
+   * const result = pipe(
+   *   Either.Do,
+   *   Either.bind("x", () => Either.right(2)),
+   *   Either.bind("y", () => Either.right(3)),
+   *   Either.let("sum", ({ x, y }) => x + y)
+   * )
+   * assert.deepStrictEqual(result, Either.right({ x: 2, y: 3, sum: 5 }))
+   *
    * @category do notation
+   * @since 2.0.0
    */
   let_ as let
 }
