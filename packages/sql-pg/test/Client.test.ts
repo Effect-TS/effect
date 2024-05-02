@@ -18,7 +18,7 @@ describe("pg", () => {
     expect(params).toEqual(["Tim", 10])
   })
 
-  it("update helper", () => {
+  it("updateValues helper", () => {
     const [query, params] = compiler.compile(
       sql`UPDATE people SET name = data.name FROM ${
         sql.updateValues(
@@ -31,6 +31,20 @@ describe("pg", () => {
       `UPDATE people SET name = data.name FROM (values ($1),($2)) AS data("name")`
     )
     expect(params).toEqual(["Tim", "John"])
+  })
+
+  it("update helper", () => {
+    let result = compiler.compile(
+      sql`UPDATE people SET ${sql.update({ name: "Tim" })}`
+    )
+    expect(result[0]).toEqual(`UPDATE people SET "name" = $1`)
+    expect(result[1]).toEqual(["Tim"])
+
+    result = compiler.compile(
+      sql`UPDATE people SET ${sql.update({ name: "Tim", age: 10 }, ["age"])}`
+    )
+    expect(result[0]).toEqual(`UPDATE people SET "name" = $1`)
+    expect(result[1]).toEqual(["Tim"])
   })
 
   it("array helper", () => {
