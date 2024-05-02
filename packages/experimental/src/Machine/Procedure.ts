@@ -13,7 +13,7 @@ import type { Request } from "effect/Request"
  * @since 1.0.0
  * @category type ids
  */
-export const TypeId = Symbol.for("@effect/experimental/Machine/Procedure")
+export const TypeId: unique symbol = Symbol.for("@effect/experimental/Machine/Procedure")
 
 /**
  * @since 1.0.0
@@ -57,7 +57,7 @@ export interface Procedure<Request extends TaggedRequest.Any, State, R> extends 
  * @since 1.0.0
  * @category type ids
  */
-export const SerializableTypeId = Symbol.for("@effect/experimental/Machine/SerializableProcedure")
+export const SerializableTypeId: unique symbol = Symbol.for("@effect/experimental/Machine/SerializableProcedure")
 
 /**
  * @since 1.0.0

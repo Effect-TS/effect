@@ -9,7 +9,7 @@ import * as core from "./internal/core.js"
 /**
  * @since 2.0.0
  */
-export const TestSizedTypeId = Symbol.for("effect/TestSized")
+export const TestSizedTypeId: unique symbol = Symbol.for("effect/TestSized")
 
 /**
  * @since 2.0.0
