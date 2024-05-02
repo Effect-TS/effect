@@ -60,6 +60,8 @@ export interface PgClientConfig {
   readonly transformQueryNames?: ((str: string) => string) | undefined
   readonly transformJson?: boolean | undefined
   readonly fetchTypes?: boolean | undefined
+  readonly prepare?: boolean | undefined
+  readonly types?: Record<string, postgres.PostgresType> | undefined
 
   readonly debug?: postgres.Options<{}>["debug"] | undefined
 }
@@ -112,6 +114,8 @@ export const make = (
       username: options.username,
       password: options.password ? Secret.value(options.password) : undefined,
       fetch_types: options.fetchTypes ?? true,
+      prepare: options.prepare ?? true,
+      types: options.types,
       debug: options.debug
     }
 
