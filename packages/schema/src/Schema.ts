@@ -6703,7 +6703,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, to
     static [TypeId] = variance
 
     static get ast() {
-      const toSchema = typeSchema(schema)
+      const toSchema = typeSchema(schema).annotations({ title: `${identifier} (Type side)` })
       const guard = ParseResult.is(toSchema)
       const fallbackInstanceOf = (u: unknown) => Predicate.hasProperty(u, classSymbol) && guard(u)
       const encode = ParseResult.encodeUnknown(toSchema)
