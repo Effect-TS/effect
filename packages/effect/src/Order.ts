@@ -318,8 +318,7 @@ export const max = <A>(O: Order<A>): {
  * Clamp a value between a minimum and a maximum.
  *
  * @example
- * import * as Order from "effect/Order"
- * import * as Number from "effect/Number"
+ * import { Order, Number } from "effect"
  *
  * const clamp = Order.clamp(Number.Order)({ minimum: 1, maximum: 5 })
  *

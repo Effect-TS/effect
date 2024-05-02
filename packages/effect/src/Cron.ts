@@ -170,8 +170,7 @@ export const isParseError = (u: unknown): u is ParseError => hasProperty(u, Pars
  * @param cron - The cron expression to parse.
  *
  * @example
- * import * as Cron from "effect/Cron"
- * import * as Either from "effect/Either"
+ * import { Cron, Either } from "effect"
  *
  * // At 04:00 on every day-of-month from 8 through 14.
  * assert.deepStrictEqual(Cron.parse("0 4 8-14 * *"), Either.right(Cron.make({
@@ -208,8 +207,7 @@ export const parse = (cron: string): Either.Either<Cron, ParseError> => {
  * @param date - The `Date` to check against.
  *
  * @example
- * import * as Cron from "effect/Cron"
- * import * as Either from "effect/Either"
+ * import { Cron, Either } from "effect"
  *
  * const cron = Either.getOrThrow(Cron.parse("0 4 8-14 * *"))
  * assert.deepStrictEqual(Cron.match(cron, new Date("2021-01-08 04:00:00")), true)
@@ -258,8 +256,7 @@ export const match = (cron: Cron, date: Date): boolean => {
  * Uses the current time as a starting point if no value is provided for `now`.
  *
  * @example
- * import * as Cron from "effect/Cron"
- * import * as Either from "effect/Either"
+ * import { Cron, Either } from "effect"
  *
  * const after = new Date("2021-01-01 00:00:00")
  * const cron = Either.getOrThrow(Cron.parse("0 4 8-14 * *"))

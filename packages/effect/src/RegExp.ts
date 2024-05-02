@@ -8,7 +8,7 @@
  * Escapes special characters in a regular expression pattern.
  *
  * @example
- * import * as RegExp from "effect/RegExp"
+ * import { RegExp } from "effect"
  *
  * assert.deepStrictEqual(RegExp.escape("a*b"), "a\\*b")
  *

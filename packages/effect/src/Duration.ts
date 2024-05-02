@@ -694,7 +694,7 @@ export const equals: {
  * @since 2.0.0
  *
  * @example
- * import * as Duration from "effect/Duration"
+ * import { Duration } from "effect"
  *
  * Duration.format(Duration.millis(1000)) // "1s"
  * Duration.format(Duration.millis(1001)) // "1s 1ms"
