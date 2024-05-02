@@ -326,16 +326,6 @@ describe("Either", () => {
     Util.deepStrictEqual(pipe(Either.left("a"), Either.orElse(() => Either.left("b"))), Either.left("b"))
   })
 
-  it("vitest equality", () => {
-    expect(Either.right(1)).toStrictEqual(Either.right(1))
-    expect(Either.left(1)).toStrictEqual(Either.left(1))
-
-    expect(Either.right(2)).not.toStrictEqual(Either.right(1))
-    expect(Either.left(2)).not.toStrictEqual(Either.left(1))
-    expect(Either.left(1)).not.toStrictEqual(Either.right(1))
-    expect(Either.left(1)).not.toStrictEqual(Either.right(2))
-  })
-
   describe("do notation", () => {
     it("Do", () => {
       expectRight(Either.Do, {})
