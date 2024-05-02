@@ -7,6 +7,7 @@ import type { LazyArg } from "./Function.js"
 import { constNull, constUndefined, dual, identity } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 import type { Inspectable } from "./Inspectable.js"
+import * as doNotation from "./internal/doNotation.js"
 import * as either from "./internal/either.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
@@ -788,24 +789,16 @@ export const bindTo: {
 )
 
 const let_: {
-  <N extends string, K, A>(
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => A
-  ): <E>(self: Either<K, E>) => Either<MergeRecord<K, { [k in N]: A }>, E>
-  <K, E, N extends string, A>(
-    self: Either<K, E>,
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => A
-  ): Either<MergeRecord<K, { [k in N]: A }>, E>
-} = dual(3, <K, E, N extends string, A>(
-  self: Either<K, E>,
-  tag: Exclude<N, keyof K>,
-  f: (_: K) => A
-): Either<MergeRecord<K, { [k in N]: A }>, E> =>
-  map(
-    self,
-    (k): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: f(k) } as any)
-  ))
+  <N extends string, R extends object, B>(
+    name: Exclude<N, keyof R>,
+    f: (r: R) => B
+  ): <L>(self: Either<R, L>) => Either<{ [K in N | keyof R]: K extends keyof R ? R[K] : B }, L>
+  <R extends object, L, N extends string, B>(
+    self: Either<R, L>,
+    name: Exclude<N, keyof R>,
+    f: (r: R) => B
+  ): Either<{ [K in N | keyof R]: K extends keyof R ? R[K] : B }, L>
+} = doNotation.let_<EitherTypeLambda>(map)
 
 export {
   /**

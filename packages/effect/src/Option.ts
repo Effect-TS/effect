@@ -8,6 +8,7 @@ import type { LazyArg } from "./Function.js"
 import { constNull, constUndefined, dual, identity, isFunction } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 import type { Inspectable } from "./Inspectable.js"
+import * as doNotation from "./internal/doNotation.js"
 import * as either from "./internal/either.js"
 import * as option from "./internal/option.js"
 import type { Order } from "./Order.js"
@@ -1219,12 +1220,7 @@ const let_: {
     name: Exclude<N, keyof A>,
     f: (a: A) => B
   ): Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
-} = dual(3, <A extends object, N extends string, B>(
-  self: Option<A>,
-  name: Exclude<N, keyof A>,
-  f: (a: A) => B
-): Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }> =>
-  map(self, (a) => Object.assign({}, a, { [name]: f(a) }) as any))
+} = doNotation.let_<OptionTypeLambda>(map)
 
 export {
   /**

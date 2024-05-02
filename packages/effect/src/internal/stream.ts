@@ -37,6 +37,7 @@ import * as channelExecutor from "./channel/channelExecutor.js"
 import * as MergeStrategy from "./channel/mergeStrategy.js"
 import * as singleProducerAsyncInput from "./channel/singleProducerAsyncInput.js"
 import * as core from "./core-stream.js"
+import * as doNotation from "./doNotation.js"
 import { RingBuffer } from "./ringBuffer.js"
 import * as _sink from "./sink.js"
 import * as DebounceState from "./stream/debounceState.js"
@@ -7983,29 +7984,19 @@ export const bindTo = dual<
 )
 
 /* @internal */
-export const let_ = dual<
-  <N extends string, K, A>(
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => A
-  ) => <E, R>(self: Stream.Stream<K, E, R>) => Stream.Stream<
-    MergeRecord<K, { [k in N]: A }>,
-    E,
-    R
-  >,
-  <K, E, R, N extends string, A>(
-    self: Stream.Stream<K, E, R>,
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => A
-  ) => Stream.Stream<
-    MergeRecord<K, { [k in N]: A }>,
-    E,
-    R
-  >
->(3, <K, E, R, N extends string, A>(self: Stream.Stream<K, E, R>, tag: Exclude<N, keyof K>, f: (_: K) => A) =>
-  map(
-    self,
-    (k): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: f(k) } as any)
-  ))
+export const let_: {
+  <N extends string, A extends object, B>(
+    name: Exclude<N, keyof A>,
+    f: (a: A) => B
+  ): <E, R>(
+    self: Stream.Stream<A, E, R>
+  ) => Stream.Stream<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
+  <A extends object, E, R, N extends string, B>(
+    self: Stream.Stream<A, E, R>,
+    name: Exclude<N, keyof A>,
+    f: (a: A) => B
+  ): Stream.Stream<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
+} = doNotation.let_<Stream.StreamTypeLambda>(map)
 
 // Circular with Channel
 

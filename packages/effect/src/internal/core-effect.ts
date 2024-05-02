@@ -31,6 +31,7 @@ import * as internalCause from "./cause.js"
 import { clockTag } from "./clock.js"
 import * as core from "./core.js"
 import * as defaultServices from "./defaultServices.js"
+import * as doNotation from "./doNotation.js"
 import * as fiberRefsPatch from "./fiberRefs/patch.js"
 import type { FiberRuntime } from "./fiberRuntime.js"
 import * as metricLabel from "./metric/label.js"
@@ -401,24 +402,18 @@ export const bindTo: {
 
 /* @internal */
 export const let_: {
-  <N extends string, K, A>(
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => A
-  ): <E, R>(self: Effect.Effect<K, E, R>) => Effect.Effect<MergeRecord<K, { [k in N]: A }>, E, R>
-  <K, E, R, N extends string, A>(
-    self: Effect.Effect<K, E, R>,
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => A
-  ): Effect.Effect<MergeRecord<K, { [k in N]: A }>, E, R>
-} = dual(3, <K, E, R, N extends string, A>(
-  self: Effect.Effect<K, E, R>,
-  tag: Exclude<N, keyof K>,
-  f: (_: K) => A
-): Effect.Effect<MergeRecord<K, { [k in N]: A }>, E, R> =>
-  core.map(
-    self,
-    (k): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: f(k) } as any)
-  ))
+  <N extends string, A extends object, B>(
+    name: Exclude<N, keyof A>,
+    f: (a: A) => B
+  ): <E, R>(
+    self: Effect.Effect<A, E, R>
+  ) => Effect.Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
+  <A extends object, N extends string, E, R, B>(
+    self: Effect.Effect<A, E, R>,
+    name: Exclude<N, keyof A>,
+    f: (a: A) => B
+  ): Effect.Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
+} = doNotation.let_<Effect.EffectTypeLambda>(core.map)
 
 /* @internal */
 export const dropUntil: {
