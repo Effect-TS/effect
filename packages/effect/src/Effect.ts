@@ -3291,8 +3291,8 @@ export const bind: {
  * @since 2.0.0
  */
 export const bindTo: {
-  <N extends string>(tag: N): <A, E, R>(self: Effect<A, E, R>) => Effect<{ [K in N]: A }, E, R>
-  <A, E, R, N extends string>(self: Effect<A, E, R>, tag: N): Effect<{ [K in N]: A }, E, R>
+  <N extends string>(name: N): <A, E, R>(self: Effect<A, E, R>) => Effect<{ [K in N]: A }, E, R>
+  <A, E, R, N extends string>(self: Effect<A, E, R>, name: N): Effect<{ [K in N]: A }, E, R>
 } = effect.bindTo
 
 const let_: {

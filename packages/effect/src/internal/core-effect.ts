@@ -392,13 +392,9 @@ export const bind: {
 
 /* @internal */
 export const bindTo: {
-  <N extends string>(tag: N): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<{ [K in N]: A }, E, R>
-  <A, E, R, N extends string>(self: Effect.Effect<A, E, R>, tag: N): Effect.Effect<{ [K in N]: A }, E, R>
-} = dual(
-  2,
-  <A, E, R, N extends string>(self: Effect.Effect<A, E, R>, tag: N): Effect.Effect<{ [K in N]: A }, E, R> =>
-    core.map(self, (a) => ({ [tag]: a } as { [K in N]: A }))
-)
+  <N extends string>(name: N): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<{ [K in N]: A }, E, R>
+  <A, E, R, N extends string>(self: Effect.Effect<A, E, R>, name: N): Effect.Effect<{ [K in N]: A }, E, R>
+} = doNotation.bindTo<Effect.EffectTypeLambda>(core.map)
 
 /* @internal */
 export const let_: {

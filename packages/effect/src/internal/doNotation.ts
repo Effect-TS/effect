@@ -6,6 +6,7 @@ type Map<F extends TypeLambda> = {
   <R, O, E, A, B>(self: Kind<F, R, O, E, A>, f: (a: A) => B): Kind<F, R, O, E, B>
 }
 
+/** @internal */
 export const let_ = <F extends TypeLambda>(
   map: Map<F>
 ): {
@@ -27,3 +28,18 @@ export const let_ = <F extends TypeLambda>(
     f: (a: A) => B
   ): Kind<F, R, O, E, { [K in keyof A | N]: K extends keyof A ? A[K] : B }> =>
     map(self, (a) => Object.assign({}, a, { [name]: f(a) }) as any))
+
+/** @internal */
+export const bindTo = <F extends TypeLambda>(map: Map<F>): {
+  <N extends string>(
+    name: N
+  ): <R, O, E, A>(self: Kind<F, R, O, E, A>) => Kind<F, R, O, E, { [K in N]: A }>
+  <R, O, E, A, N extends string>(
+    self: Kind<F, R, O, E, A>,
+    name: N
+  ): Kind<F, R, O, E, { [K in N]: A }>
+} =>
+  dual(2, <R, O, E, A, N extends string>(
+    self: Kind<F, R, O, E, A>,
+    name: N
+  ): Kind<F, R, O, E, { [K in N]: A }> => map(self, (a) => ({ [name]: a } as { [K in N]: A })))

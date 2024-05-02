@@ -1205,10 +1205,7 @@ export const exists: {
 export const bindTo: {
   <N extends string>(name: N): <A>(self: Option<A>) => Option<{ [K in N]: A }>
   <A, N extends string>(self: Option<A>, name: N): Option<{ [K in N]: A }>
-} = dual(
-  2,
-  <A, N extends string>(self: Option<A>, name: N): Option<{ [K in N]: A }> => map(self, (a) => ({ [name]: a } as any))
-)
+} = doNotation.bindTo<OptionTypeLambda>(map)
 
 const let_: {
   <N extends string, A extends object, B>(

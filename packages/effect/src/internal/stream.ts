@@ -7963,25 +7963,10 @@ export const bind = dual<
     ), options))
 
 /* @internal */
-export const bindTo = dual<
-  <N extends string>(tag: N) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<
-    { [K in N]: A },
-    E,
-    R
-  >,
-  <A, E, R, N extends string>(
-    self: Stream.Stream<A, E, R>,
-    tag: N
-  ) => Stream.Stream<
-    { [K in N]: A },
-    E,
-    R
-  >
->(
-  2,
-  <A, E, R, N extends string>(self: Stream.Stream<A, E, R>, tag: N): Stream.Stream<{ [K in N]: A }, E, R> =>
-    map(self, (a) => ({ [tag]: a } as { [K in N]: A }))
-)
+export const bindTo: {
+  <N extends string>(name: N): <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<{ [K in N]: A }, E, R>
+  <A, E, R, N extends string>(self: Stream.Stream<A, E, R>, name: N): Stream.Stream<{ [K in N]: A }, E, R>
+} = doNotation.bindTo<Stream.StreamTypeLambda>(map)
 
 /* @internal */
 export const let_: {
