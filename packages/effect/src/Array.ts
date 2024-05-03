@@ -2263,7 +2263,7 @@ export const bind: {
  * }
  *
  * @category do notation
- * @since 2.0.0
+ * @since 3.2.0
  */
 export const bindTo: {
   <N extends string>(tag: N): <A>(self: ReadonlyArray<A>) => Array<{ [K in N]: A }>
