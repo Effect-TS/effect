@@ -2216,7 +2216,7 @@ export const bind: {
     self: ReadonlyArray<A>
   ) => Array<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
   <A extends object, N extends string, B>(
-    self: Array<A>,
+    self: ReadonlyArray<A>,
     tag: Exclude<N, keyof A>,
     f: (a: A) => ReadonlyArray<B>
   ): Array<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
