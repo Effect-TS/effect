@@ -6,14 +6,12 @@
 import * as Context from "./Context.js"
 import * as Duration from "./Duration.js"
 import * as Either from "./Either.js"
-import type { FiberRef } from "./FiberRef.js"
 import { constVoid, dual, identity, type LazyArg } from "./Function.js"
-import { globalValue } from "./GlobalValue.js"
-import * as fiberRef from "./internal/fiberRef.js"
 import { SingleShotGen } from "./internal/singleShotGen.js"
 import * as Option from "./Option.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
-import type { Covariant, NoInfer } from "./Types.js"
+import type { ReadonlyRecord } from "./Record.js"
+import type { Concurrency, Covariant, NoInfer, NotFunction } from "./Types.js"
 import { YieldWrap, yieldWrapGet } from "./Utils.js"
 
 /**
@@ -61,6 +59,11 @@ export declare namespace Smol {
 
 /**
  * @since 3.2.0
+ */
+export const isSmol = (u: unknown): u is Smol<any, any, any> => typeof u === "object" && u !== null && TypeId in u
+
+/**
+ * @since 3.2.0
  * @category models
  */
 export interface SmolIterator<T extends Smol<any, any, any>> {
@@ -84,7 +87,26 @@ export interface Env<R> {
   readonly [EnvTypeId]: {
     _R: Covariant<R>
   }
-  readonly fiberRefs: ReadonlyMap<FiberRef<any>, unknown>
+  readonly refs: ReadonlyRecord<string, unknown>
+}
+
+/**
+ * @since 3.2.0
+ */
+export const EnvRefTypeId: unique symbol = Symbol.for("effect/Smol/EnvRef")
+
+/**
+ * @since 3.2.0
+ */
+export type EnvRefTypeId = typeof EnvRefTypeId
+
+/**
+ * @since 3.2.0
+ */
+export interface EnvRef<A> {
+  readonly [EnvRefTypeId]: EnvRefTypeId
+  readonly key: string
+  readonly initial: A
 }
 
 // Failures
@@ -210,6 +232,7 @@ export interface Handle<A, E = never> {
   readonly unsafeAbort: () => void
   readonly addObserver: (observer: (result: Result<A, E>) => void) => void
   readonly removeObserver: (observer: (result: Result<A, E>) => void) => void
+  readonly unsafePoll: () => Result<A, E> | null
 }
 
 // Smol
@@ -230,21 +253,20 @@ const SmolProto: Omit<Smol<any, any, any>, runSymbol> = {
 
 const TagTypeId = Symbol.for("effect/Context/Tag")
 const OptionTypeId = Symbol.for("effect/Option")
-const EitherTypeId = Symbol.for("effect/Either")
 
 function run<A, E, R>(self: Smol<A, E, R>, env: Env<R>, onResult: (result: Result<any, any>) => void) {
   self[runSymbol](env, function(result) {
     if (TagTypeId in result) {
       // handle tags
-      const context = envGet(env, fiberRef.currentContext)
+      const context = envGet(env, currentContext)
       onResult(Either.right(Context.unsafeGet(context, result as any)))
     } else if (OptionTypeId in result) {
       // Option
       const o: any = result
       onResult(o._tag === "Some" ? Either.right(o.value) : Either.left(FailureExpected(Option.none())))
-    } else if (result._tag === "Left" && EitherTypeId in result.left) {
+    } else if (result._tag === "Left" && !(FailureTypeId in result.left)) {
       // Either.Left
-      onResult(Either.mapLeft(result, FailureExpected))
+      onResult(Either.left(FailureExpected(result.left)))
     } else {
       onResult(result)
     }
@@ -277,7 +299,7 @@ export const make = <A, E, R>(
   run: (env: Env<R>, onResult: (result: Either.Either<A, Failure<E>>) => void) => void
 ): Smol<A, E, R> =>
   unsafeMake(function(env: Env<R>, onResult: (result: Result<A, E>) => void) {
-    if (envGet(env, currentAbortSignal).aborted) {
+    if (envGet(env, currentInterruptible) && envGet(env, currentAbortSignal).aborted) {
       return onResult(ResultAborted)
     }
     try {
@@ -363,6 +385,14 @@ export const map: {
 /**
  * @since 3.2.0
  */
+export const as: {
+  <A, B>(value: B): <E, R>(self: Smol<A, E, R>) => Smol<B, E, R>
+  <A, E, R, B>(self: Smol<A, E, R>, value: B): Smol<B, E, R>
+} = dual(2, <A, E, R, B>(self: Smol<A, E, R>, value: B): Smol<B, E, R> => map(self, (_) => value))
+
+/**
+ * @since 3.2.0
+ */
 export const flatMap: {
   <A, B, E2, R2>(f: (a: NoInfer<A>) => Smol<B, E2, R2>): <E, R>(self: Smol<A, E, R>) => Smol<B, E, R>
   <A, E, R, B, E2, R2>(self: Smol<A, E, R>, f: (a: NoInfer<A>) => Smol<B, E2, R2>): Smol<B, E | E2, R | R2>
@@ -382,9 +412,73 @@ export const flatMap: {
 /**
  * @since 3.2.0
  */
+export const andThen: {
+  <A, X>(
+    f: (a: NoInfer<A>) => X
+  ): <E, R>(
+    self: Smol<A, E, R>
+  ) => [X] extends [Smol<infer A1, infer E1, infer R1>] ? Smol<A1, E | E1, R | R1>
+    : Smol<X, E, R>
+  <X>(
+    f: NotFunction<X>
+  ): <A, E, R>(
+    self: Smol<A, E, R>
+  ) => [X] extends [Smol<infer A1, infer E1, infer R1>] ? Smol<A1, E | E1, R | R1>
+    : Smol<X, E, R>
+  <A, E, R, X>(
+    self: Smol<A, E, R>,
+    f: (a: NoInfer<A>) => X
+  ): [X] extends [Smol<infer A1, infer E1, infer R1>] ? Smol<A1, E | E1, R | R1>
+    : Smol<X, E, R>
+  <A, E, R, X>(
+    self: Smol<A, E, R>,
+    f: NotFunction<X>
+  ): [X] extends [Smol<infer A1, infer E1, infer R1>] ? Smol<A1, E | E1, R | R1>
+    : Smol<X, E, R>
+} = dual(
+  2,
+  <A, E, R, B, E2, R2>(self: Smol<A, E, R>, f: any): Smol<B, E | E2, R | R2> =>
+    make(function(env, onResult) {
+      run(self, env, function(result) {
+        if (result._tag === "Left") {
+          return onResult(result as any)
+        }
+        const value = isSmol(f) ? f : typeof f === "function" ? f(result.right) : f
+        if (isSmol(value)) {
+          run(value, env, onResult)
+        } else {
+          onResult(Either.right(value))
+        }
+      })
+    })
+)
+
+/**
+ * @since 3.2.0
+ */
 export const tap: {
-  <A, B, E2, R2>(f: (a: NoInfer<A>) => Smol<B, E2, R2>): <E, R>(self: Smol<A, E, R>) => Smol<A, E, R>
-  <A, E, R, B, E2, R2>(self: Smol<A, E, R>, f: (a: NoInfer<A>) => Smol<B, E2, R2>): Smol<A, E | E2, R | R2>
+  <A, X>(
+    f: (a: NoInfer<A>) => X
+  ): <E, R>(
+    self: Smol<A, E, R>
+  ) => [X] extends [Smol<infer _A1, infer E1, infer R1>] ? Smol<A, E | E1, R | R1>
+    : Smol<A, E, R>
+  <X>(
+    f: NotFunction<X>
+  ): <A, E, R>(
+    self: Smol<A, E, R>
+  ) => [X] extends [Smol<infer _A1, infer E1, infer R1>] ? Smol<A, E | E1, R | R1>
+    : Smol<A, E, R>
+  <A, E, R, X>(
+    self: Smol<A, E, R>,
+    f: (a: NoInfer<A>) => X
+  ): [X] extends [Smol<infer _A1, infer E1, infer R1>] ? Smol<A, E | E1, R | R1>
+    : Smol<A, E, R>
+  <A, E, R, X>(
+    self: Smol<A, E, R>,
+    f: NotFunction<X>
+  ): [X] extends [Smol<infer _A1, infer E1, infer R1>] ? Smol<A, E | E1, R | R1>
+    : Smol<A, E, R>
 } = dual(
   2,
   <A, E, R, B, E2, R2>(self: Smol<A, E, R>, f: (a: A) => Smol<B, E2, R2>): Smol<A, E | E2, R | R2> =>
@@ -393,9 +487,12 @@ export const tap: {
         if (result._tag === "Left") {
           return onResult(result as any)
         }
-        run(f(result.right), env, function(_) {
+        const value = isSmol(f) ? f : typeof f === "function" ? f(result.right) : f
+        if (isSmol(value)) {
+          run(value, env, onResult)
+        } else {
           onResult(result)
-        })
+        }
       })
     })
 )
@@ -485,7 +582,7 @@ export const delay: {
 /**
  * @since 3.2.0
  */
-export const result = <A, E, R>(self: Smol<A, E, R>): Smol<Result<A, E>, never, R> =>
+export const asResult = <A, E, R>(self: Smol<A, E, R>): Smol<Result<A, E>, never, R> =>
   make(function(env, onResult) {
     run(self, env, function(result) {
       onResult(Either.right(result))
@@ -496,13 +593,13 @@ export const result = <A, E, R>(self: Smol<A, E, R>): Smol<Result<A, E>, never, 
  * @since 3.2.0
  */
 export const onResult: {
-  <A, E, XE, XR>(f: (result: Result<A, E>) => Smol<A, XE, XR>): <R>(self: Smol<A, E, R>) => Smol<A, E | XE, R | XR>
-  <A, E, R, XE, XR>(self: Smol<A, E, R>, f: (result: Result<A, E>) => Smol<A, XE, XR>): Smol<A, E | XE, R | XR>
+  <A, E, XE, XR>(f: (result: Result<A, E>) => Smol<void, XE, XR>): <R>(self: Smol<A, E, R>) => Smol<A, E | XE, R | XR>
+  <A, E, R, XE, XR>(self: Smol<A, E, R>, f: (result: Result<A, E>) => Smol<void, XE, XR>): Smol<A, E | XE, R | XR>
 } = dual(
   2,
-  <A, E, R, XE, XR>(self: Smol<A, E, R>, f: (result: Result<A, E>) => Smol<A, XE, XR>): Smol<A, E | XE, R | XR> =>
+  <A, E, R, XE, XR>(self: Smol<A, E, R>, f: (result: Result<A, E>) => Smol<void, XE, XR>): Smol<A, E | XE, R | XR> =>
     uninterruptibleMask((restore) =>
-      flatMap(result(restore(self)), (result) => zipRight(f(result), fromResult(result)))
+      flatMap(asResult(restore(self)), (result) => zipRight(f(result), fromResult(result)))
     )
 )
 
@@ -519,7 +616,7 @@ export const acquireUseRelease = <Resource, E, R, A, E2, R2, R3>(
       acquire,
       (a) =>
         flatMap(
-          result(restore(use(a))),
+          asResult(restore(use(a))),
           (result) => zipRight(release(a, result), fromResult(result))
         )
     )
@@ -528,32 +625,37 @@ export const acquireUseRelease = <Resource, E, R, A, E2, R2, R3>(
 /**
  * @since 3.2.0
  */
-export const fiberRefGet = <A>(fiberRef: FiberRef<A>): Smol<A> =>
+export const envRefGet = <A>(fiberRef: EnvRef<A>): Smol<A> =>
   make((env, onResult) => onResult(Either.right(envGet(env, fiberRef))))
 
 /**
  * @since 3.2.0
  */
 export const locally: {
-  <A>(fiberRef: FiberRef<A>, value: A): <XA, E, R>(self: Smol<XA, E, R>) => Smol<XA, E, R>
-  <XA, E, R, A>(self: Smol<XA, E, R>, fiberRef: FiberRef<A>, value: A): Smol<XA, E, R>
+  <A>(fiberRef: EnvRef<A>, value: A): <XA, E, R>(self: Smol<XA, E, R>) => Smol<XA, E, R>
+  <XA, E, R, A>(self: Smol<XA, E, R>, fiberRef: EnvRef<A>, value: A): Smol<XA, E, R>
 } = dual(
   3,
-  <XA, E, R, A>(self: Smol<XA, E, R>, fiberRef: FiberRef<A>, value: A): Smol<XA, E, R> =>
+  <XA, E, R, A>(self: Smol<XA, E, R>, fiberRef: EnvRef<A>, value: A): Smol<XA, E, R> =>
     make((env, onResult) => run(self, envSet(env, fiberRef, value), onResult))
 )
 
 /**
  * @since 3.2.0
  */
-export const context = <R>(): Smol<R, never, R> => fiberRefGet(fiberRef.currentContext) as any
+export const context = <R>(): Smol<R, never, R> => envRefGet(currentContext) as any
 
 /**
  * @since 3.2.0
  */
 export const uninterruptible = <A, E, R>(self: Smol<A, E, R>): Smol<A, E, R> =>
   unsafeMakeNoAbort(function(env, onResult) {
-    run(self, envSet(env, currentAbortSignal, new AbortController().signal), onResult)
+    const nextEnv = envMutate(env, function(env) {
+      env[currentInterruptible.key] = false
+      env[currentAbortSignal.key] = new AbortController().signal
+      return env
+    })
+    run(self, nextEnv, onResult)
   })
 
 /**
@@ -563,11 +665,16 @@ export const uninterruptibleMask = <A, E, R>(
   f: (restore: <A, E, R>(effect: Smol<A, E, R>) => Smol<A, E, R>) => Smol<A, E, R>
 ): Smol<A, E, R> =>
   unsafeMakeNoAbort((env, onResult) => {
-    const controller = envGet(env, currentAbortController)
-    const signal = envGet(env, currentAbortSignal)
-    const isInterruptible = controller.signal === signal
+    const isInterruptible = envGet(env, currentInterruptible)
     const effect = isInterruptible ? f(interruptible) : f(identity)
-    run(effect, envSet(env, currentAbortSignal, new AbortController().signal), onResult)
+    const nextEnv = isInterruptible ?
+      envMutate(env, function(env) {
+        env[currentInterruptible.key] = false
+        env[currentAbortSignal.key] = new AbortController().signal
+        return env
+      }) :
+      env
+    run(effect, nextEnv, onResult)
   })
 
 /**
@@ -575,9 +682,16 @@ export const uninterruptibleMask = <A, E, R>(
  */
 export const interruptible = <A, E, R>(self: Smol<A, E, R>): Smol<A, E, R> =>
   make((env, onResult) => {
-    const controller = envGet(env, currentAbortController)
-    const signal = envGet(env, currentAbortSignal)
-    const newEnv = controller.signal === signal ? env : envSet(env, currentAbortSignal, controller.signal)
+    const isInterruptible = envGet(env, currentInterruptible)
+    let newEnv = env
+    if (!isInterruptible) {
+      const controller = envGet(env, currentAbortController)
+      newEnv = envMutate(env, function(env) {
+        env[currentInterruptible.key] = true
+        env[currentAbortSignal.key] = controller.signal
+        return env
+      })
+    }
     run(self, newEnv, onResult)
   })
 
@@ -591,8 +705,8 @@ export const provideService: {
   3,
   <A, E, R, I, S>(self: Smol<A, E, R>, tag: Context.Tag<I, S>, service: S): Smol<A, E, Exclude<R, I>> =>
     make(function(env, onResult) {
-      const context = envGet(env, fiberRef.currentContext)
-      const nextEnv = envSet(env, fiberRef.currentContext, Context.add(context, tag, service))
+      const context = envGet(env, currentContext)
+      const nextEnv = envSet(env, currentContext, Context.add(context, tag, service))
       run(self, nextEnv, onResult)
     })
 )
@@ -627,16 +741,141 @@ export const gen = <Eff extends YieldWrap<Smol<any, any, any>>, AEff>(
   [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Smol<infer _A, infer _E, infer R>>] ? R : never
 > =>
   suspend(function() {
-    const iterator = f() as any
-    const state = iterator.next()
-    const run = (
-      state: IteratorYieldResult<any> | IteratorReturnResult<any>
-    ): Smol<any, any, any> => {
-      return (state.done
+    const iterator = f(undefined) as any
+    function run(state: IteratorResult<any>): Smol<any, any, any> {
+      return state.done
         ? succeed(state.value)
-        : flatMap(yieldWrapGet(state.value) as any, (val: any) => run(iterator.next(val))))
+        : flatMap(yieldWrapGet(state.value) as any, (val: any) => run(iterator.next(val)))
     }
-    return run(state)
+    return run(iterator.next())
+  })
+
+// ========================================================================
+// Collecting
+// ========================================================================
+
+/**
+ * @since 3.2.0
+ */
+export const forEach: {
+  <A, B, E, R>(iterable: Iterable<A>, f: (a: NoInfer<A>) => Smol<B, E, R>, options?: {
+    readonly concurrency?: Concurrency | undefined
+    readonly discard?: false | undefined
+  }): Smol<Array<B>, E, R>
+  <A, B, E, R>(iterable: Iterable<A>, f: (a: NoInfer<A>) => Smol<B, E, R>, options: {
+    readonly concurrency?: Concurrency | undefined
+    readonly discard: true
+  }): Smol<void, E, R>
+} = <
+  A,
+  B,
+  E,
+  R
+>(iterable: Iterable<A>, f: (a: NoInfer<A>) => Smol<B, E, R>, options?: {
+  readonly concurrency?: Concurrency | undefined
+  readonly discard?: boolean | undefined
+}): Smol<any, E, R> =>
+  make(function(env, onResult) {
+    const concurrency = options?.concurrency === "inherit" ? envGet(env, currentConcurrency) : options?.concurrency ?? 1
+    if (concurrency === "unbounded" || concurrency > 1) {
+      run(
+        unsafeForEachConcurrent(iterable, f, {
+          discard: options?.discard,
+          concurrency
+        }),
+        env,
+        onResult
+      )
+    } else {
+      run(unsafeForEachSequential(iterable, f, options), env, onResult)
+    }
+  })
+
+const unsafeForEachSequential = <
+  A,
+  B,
+  E,
+  R
+>(iterable: Iterable<A>, f: (a: NoInfer<A>) => Smol<B, E, R>, options?: {
+  readonly discard?: boolean | undefined
+}): Smol<any, E, R> => {
+  const iterator = iterable[Symbol.iterator]()
+  const out: Array<B> | undefined = options?.discard ? undefined : []
+  function loop(result: IteratorResult<A>): Smol<void, E, R> {
+    if (result.done) {
+      return void_
+    }
+    return flatMap(f(result.value), (b) => {
+      if (out !== undefined) {
+        out.push(b)
+      }
+      return loop(iterator.next())
+    })
+  }
+  return as(loop(iterator.next()), out)
+}
+
+const unsafeForEachConcurrent = <
+  A,
+  B,
+  E,
+  R
+>(iterable: Iterable<A>, f: (a: NoInfer<A>) => Smol<B, E, R>, options: {
+  readonly concurrency: number | "unbounded"
+  readonly discard?: boolean | undefined
+}): Smol<any, E, R> =>
+  unsafeMake(function(env, onResult) {
+    // abort
+    const controller = new AbortController()
+    const parentSignal = envGet(env, currentAbortSignal)
+    function onAbort() {
+      controller.abort()
+      parentSignal.removeEventListener("abort", onAbort)
+    }
+    parentSignal.addEventListener("abort", onAbort)
+    const envWithSignal = envSet(env, currentAbortSignal, controller.signal)
+
+    // iterate
+    const concurrency = options.concurrency === "unbounded" ? Infinity : options.concurrency
+    let failure: Result<any, any> | undefined = undefined
+    const items = Array.from(iterable)
+    const length = items.length
+    const out: Array<B> | undefined = options?.discard ? undefined : new Array(length)
+    let index = 0
+    let inProgress = 0
+    let doneCount = 0
+    function pump() {
+      while (inProgress < concurrency && index < length) {
+        const currentIndex = index
+        const item = items[currentIndex]
+        index++
+        inProgress++
+        try {
+          run(f(item), envWithSignal, function(result) {
+            doneCount++
+            inProgress--
+            if (result._tag === "Left") {
+              if (failure === undefined) {
+                failure = result
+                onAbort()
+              }
+            } else if (out !== undefined) {
+              out[currentIndex] = result.right
+            }
+            if (doneCount === length) {
+              parentSignal.removeEventListener("abort", onAbort)
+              onResult(failure ?? Either.right(out))
+            } else if (inProgress < concurrency) {
+              pump()
+            }
+          })
+        } catch (err) {
+          failure = Either.left(FailureUnexpected(err))
+          onAbort()
+        }
+      }
+    }
+    pump()
   })
 
 class HandleImpl<A, E> implements Handle<A, E> {
@@ -652,11 +891,15 @@ class HandleImpl<A, E> implements Handle<A, E> {
     this.isRoot = controller !== undefined
     this._controller = controller ?? new AbortController()
     if (!this.isRoot) {
-      parentSignal.addEventListener("abort", this.onAbort)
+      parentSignal.addEventListener("abort", this.unsafeAbort)
     }
   }
 
-  onAbort = () => {
+  unsafePoll(): Result<A, E> | null {
+    return this._result ?? null
+  }
+
+  unsafeAbort = () => {
     this._controller.abort()
   }
 
@@ -666,7 +909,7 @@ class HandleImpl<A, E> implements Handle<A, E> {
     }
     this._result = result
     if (!this.isRoot) {
-      this.parentSignal.removeEventListener("abort", this.onAbort)
+      this.parentSignal.removeEventListener("abort", this.unsafeAbort)
     }
     this._controller.abort()
     this.observers.forEach((observer) => observer(result))
@@ -718,10 +961,6 @@ class HandleImpl<A, E> implements Handle<A, E> {
     })
   }
 
-  unsafeAbort() {
-    this._controller.abort()
-  }
-
   get abort(): Smol<void> {
     return suspend(() => {
       this.unsafeAbort()
@@ -738,8 +977,8 @@ export const fork = <A, E, R>(self: Smol<A, E, R>): Smol<Handle<A, E>, never, R>
     const signal = envGet(env, currentAbortSignal)
     const handle = new HandleImpl<A, E>(signal)
     const nextEnv = envMutate(env, (map) => {
-      map.set(currentAbortController, handle._controller)
-      map.set(currentAbortSignal, handle._controller.signal)
+      map[currentAbortController.key] = handle._controller
+      map[currentAbortSignal.key] = handle._controller.signal
       return map
     })
     Promise.resolve().then(() => {
@@ -758,8 +997,8 @@ export const forkDaemon = <A, E, R>(self: Smol<A, E, R>): Smol<Handle<A, E>, nev
     const controller = new AbortController()
     const handle = new HandleImpl<A, E>(controller.signal, controller)
     const nextEnv = envMutate(env, (map) => {
-      map.set(currentAbortController, handle._controller)
-      map.set(currentAbortSignal, handle._controller.signal)
+      map[currentAbortController.key] = controller
+      map[currentAbortSignal.key] = controller.signal
       return map
     })
     Promise.resolve().then(() => {
@@ -775,9 +1014,10 @@ export const forkDaemon = <A, E, R>(self: Smol<A, E, R>): Smol<Handle<A, E>, nev
  */
 export const runFork = <A, E>(effect: Smol<A, E>): Handle<A, E> => {
   const controller = new AbortController()
-  const env = unsafeMakeEnv(
-    new Map<any, any>([[currentAbortSignal, controller.signal], [currentAbortController, controller]])
-  )
+  const refs = Object.create(null)
+  refs[currentAbortController.key] = controller
+  refs[currentAbortSignal.key] = controller.signal
+  const env = makeEnv(refs)
   const handle = new HandleImpl<A, E>(controller.signal, controller)
   run(effect, envSet(env, currentAbortSignal, handle._controller.signal), (result) => {
     handle.emit(result)
@@ -800,7 +1040,142 @@ export const runPromise = <A, E>(effect: Smol<A, E>): Promise<A> =>
     })
   })
 
+// ========================================================================
+// Scope
+// ========================================================================
+
+/**
+ * @since 3.2.0
+ */
+export const ScopeTypeId: unique symbol = Symbol.for("effect/Smol/Scope")
+
+/**
+ * @since 3.2.0
+ */
+export type ScopeTypeId = typeof ScopeTypeId
+
+/**
+ * @since 3.2.0
+ */
+export interface Scope {
+  readonly [ScopeTypeId]: ScopeTypeId
+  readonly addFinalizer: (finalizer: (result: Result<any, any>) => Smol<void>) => Smol<void>
+  readonly fork: Smol<Scope.Closeable>
+}
+
+/**
+ * @since 3.2.0
+ */
+export declare namespace Scope {
+  /**
+   * @since 3.2.0
+   */
+  export interface Closeable extends Scope {
+    readonly close: (result: Result<any, any>) => Smol<void>
+  }
+}
+
+/**
+ * @since 3.2.0
+ */
+export const Scope: Context.Tag<Scope, Scope> = Context.GenericTag<Scope>("effect/Smol/Scope")
+
+class ScopeImpl implements Scope.Closeable {
+  readonly [ScopeTypeId]: ScopeTypeId
+  state: {
+    readonly _tag: "Open"
+    readonly finalizers: Set<(result: Result<any, any>) => Smol<void>>
+  } | {
+    readonly _tag: "Closed"
+    readonly result: Result<any, any>
+  } = { _tag: "Open", finalizers: new Set() }
+
+  constructor() {
+    this[ScopeTypeId] = ScopeTypeId
+  }
+
+  unsafeAddFinalizer(finalizer: (result: Result<any, any>) => Smol<void>): void {
+    if (this.state._tag === "Open") {
+      this.state.finalizers.add(finalizer)
+    }
+  }
+  addFinalizer(finalizer: (result: Result<any, any>) => Smol<void>): Smol<void> {
+    return suspend(() => {
+      if (this.state._tag === "Open") {
+        this.state.finalizers.add(finalizer)
+        return void_
+      }
+      return finalizer(this.state.result)
+    })
+  }
+  unsafeRemoveFinalizer(finalizer: (result: Result<any, any>) => Smol<void>): void {
+    if (this.state._tag === "Open") {
+      this.state.finalizers.delete(finalizer)
+    }
+  }
+  close(result: Result<any, any>): Smol<void> {
+    return suspend(() => {
+      if (this.state._tag === "Open") {
+        const finalizers = Array.from(this.state.finalizers).reverse()
+        this.state = { _tag: "Closed", result }
+        return flatMap(
+          forEach(finalizers, (finalizer) => asResult(finalizer(result))),
+          (results) => asVoid(fromResult(Either.all(results)))
+        )
+      }
+      return void_
+    })
+  }
+  get fork() {
+    return sync(() => {
+      const newScope = new ScopeImpl()
+      if (this.state._tag === "Closed") {
+        newScope.state = this.state
+        return newScope
+      }
+      function fin(result: Result<any, any>) {
+        return newScope.close(result)
+      }
+      this.state.finalizers.add(fin)
+      newScope.unsafeAddFinalizer((_) => sync(() => this.unsafeRemoveFinalizer(fin)))
+      return newScope
+    })
+  }
+}
+
+/**
+ * @since 3.2.0
+ */
+export const makeScope = (): Smol<Scope.Closeable> => sync(() => new ScopeImpl())
+
+/**
+ * @since 3.2.0
+ */
+export const scoped = <A, E, R>(self: Smol<A, E, R>): Smol<A, E, Exclude<R, Scope>> =>
+  suspend(function() {
+    const scope = new ScopeImpl()
+    return onResult(provideService(self, Scope, scope), (result) => scope.close(result))
+  })
+
+/**
+ * @since 3.2.0
+ */
+export const acquireRelease = <A, E, R>(
+  acquire: Smol<A, E, R>,
+  release: (a: A, result: Result<any, any>) => Smol<void>
+): Smol<A, E, R | Scope> =>
+  uninterruptible(flatMap(
+    Scope,
+    (scope) =>
+      tap(
+        acquire,
+        (a) => scope.addFinalizer((result) => release(a, result))
+      )
+  ))
+
+// ========================================================================
 // Env
+// ========================================================================
 
 const EnvProto = {
   [EnvTypeId]: {
@@ -811,11 +1186,11 @@ const EnvProto = {
 /**
  * @since 3.2.0
  */
-export const unsafeMakeEnv = <R>(
-  fiberRefs: ReadonlyMap<FiberRef<any>, unknown>
+export const makeEnv = <R = never>(
+  refs: Record<string, unknown>
 ): Env<R> => {
   const self = Object.create(EnvProto)
-  self.fiberRefs = fiberRefs
+  self.refs = refs
   return self
 }
 
@@ -824,27 +1199,24 @@ export const unsafeMakeEnv = <R>(
  */
 export const unsafeEmptyEnv = (): Env<never> => {
   const controller = new AbortController()
-  return unsafeMakeEnv(
-    new Map<FiberRef<any>, unknown>([
-      [currentAbortSignal, controller.signal],
-      [currentAbortController, controller]
-    ])
-  )
+  const refs = Object.create(null)
+  refs[currentAbortController.key] = controller
+  refs[currentAbortSignal.key] = controller.signal
+  return makeEnv(refs)
 }
 
 /**
  * @since 3.2.0
  */
-export const envGet = <R, A>(env: Env<R>, fiberRef: FiberRef<A>): A =>
-  env.fiberRefs.get(fiberRef) as A ?? fiberRef.initial
+export const envGet = <R, A>(env: Env<R>, ref: EnvRef<A>): A => env.refs[ref.key] as A ?? ref.initial
 
 /**
  * @since 3.2.0
  */
-export const envSet = <R, A>(env: Env<R>, fiberRef: FiberRef<A>, value: A): Env<R> => {
-  const map = new Map(env.fiberRefs)
-  map.set(fiberRef, value)
-  return unsafeMakeEnv(map)
+export const envSet = <R, A>(env: Env<R>, ref: EnvRef<A>, value: A): Env<R> => {
+  const refs = Object.assign(Object.create(null), env.refs)
+  refs[ref.key] = value
+  return makeEnv(refs)
 }
 
 /**
@@ -852,17 +1224,72 @@ export const envSet = <R, A>(env: Env<R>, fiberRef: FiberRef<A>, value: A): Env<
  */
 export const envMutate = <R>(
   env: Env<R>,
-  f: (map: Map<FiberRef<any>, unknown>) => ReadonlyMap<FiberRef<any>, unknown>
-): Env<R> => unsafeMakeEnv(f(new Map(env.fiberRefs)))
+  f: (map: Record<string, unknown>) => ReadonlyRecord<string, unknown>
+): Env<R> => makeEnv(f(Object.assign(Object.create(null), env.refs)))
 
-// Fiber refs
+// ========================================================================
+// Env refs
+// ========================================================================
 
-export const currentAbortSignal: FiberRef<AbortSignal> = globalValue(
-  "effect/Smol/currentAbortSignal",
-  () => fiberRef.unsafeMake(new AbortController().signal)
+const EnvRefProto = {
+  [EnvRefTypeId]: EnvRefTypeId
+}
+
+/**
+ * @since 3.2.0
+ */
+export const makeEnvRef = <A>(key: string, initial: A): EnvRef<A> => {
+  const self = Object.create(EnvRefProto)
+  self.key = key
+  self.initial = initial
+  return self
+}
+
+/**
+ * @since 3.2.0
+ */
+export const currentAbortController: EnvRef<AbortController> = makeEnvRef(
+  "effect/Smol/currentAbortController",
+  new AbortController()
 )
 
-export const currentAbortController: FiberRef<AbortController> = globalValue(
-  "effect/Smol/currentAbortController",
-  () => fiberRef.unsafeMake(new AbortController())
+/**
+ * @since 3.2.0
+ */
+export const currentAbortSignal: EnvRef<AbortSignal> = makeEnvRef(
+  "effect/Smol/currentAbortSignal",
+  currentAbortController.initial.signal
+)
+
+/**
+ * @since 3.2.0
+ */
+export const currentContext: EnvRef<Context.Context<never>> = makeEnvRef(
+  "effect/Smol/currentContext",
+  Context.empty()
+)
+
+const currentInterruptible: EnvRef<boolean> = makeEnvRef(
+  "effect/Smol/currentInterruptible",
+  true
+)
+
+/**
+ * @since 3.2.0
+ */
+export const currentConcurrency: EnvRef<"unbounded" | number> = makeEnvRef(
+  "effect/Smol/currentConcurrency",
+  "unbounded"
+)
+
+/**
+ * @since 3.2.0
+ */
+export const withConcurrency: {
+  (concurrency: "unbounded" | number): <A, E, R>(self: Smol<A, E, R>) => Smol<A, E, R>
+  <A, E, R>(self: Smol<A, E, R>, concurrency: "unbounded" | number): Smol<A, E, R>
+} = dual(
+  2,
+  <A, E, R>(self: Smol<A, E, R>, concurrency: "unbounded" | number): Smol<A, E, R> =>
+    locally(self, currentConcurrency, concurrency)
 )
