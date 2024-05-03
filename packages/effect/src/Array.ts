@@ -2163,7 +2163,7 @@ export const cartesian: {
  * @category do notation
  * @since 3.2.0
  */
-export const Do: Array<{}> = of({})
+export const Do: ReadonlyArray<{}> = of({})
 
 /**
  * The "do simulation" for array allows you to sequentially apply operations to the elements of arrays, just as nested loops allow you to go through all combinations of elements in an arrays.
