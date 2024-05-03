@@ -295,6 +295,7 @@ export const expectEitherLeft = <A>(e: Either.Either<A, ParseResult.ParseError>,
   if (Either.isLeft(e)) {
     expect(formatErrorSync(e.left)).toStrictEqual(message)
   } else {
+    console.log(e.right)
     assert.fail(`expected a Left`)
   }
 }
@@ -303,6 +304,7 @@ export const expectEitherRight = <E, A>(e: Either.Either<A, E>, a: A) => {
   if (Either.isRight(e)) {
     expect(e.right).toStrictEqual(a)
   } else {
+    console.log(e.left)
     assert.fail(`expected a Right`)
   }
 }
@@ -335,3 +337,9 @@ export const DependencyString = S.transformOrFail(
   S.String,
   { decode: (s) => Effect.andThen(Name, s), encode: (s) => Effect.andThen(Name, s) }
 ).annotations({ identifier: "DependencyString" })
+
+export const expectFields = (f1: S.Struct.Fields, f2: S.Struct.Fields) => {
+  const ks1 = Reflect.ownKeys(f1).sort().map((k) => [k, f1[k].ast.toString()])
+  const ks2 = Reflect.ownKeys(f2).sort().map((k) => [k, f2[k].ast.toString()])
+  expect(ks1).toStrictEqual(ks2)
+}

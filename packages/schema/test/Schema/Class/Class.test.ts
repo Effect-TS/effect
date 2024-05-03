@@ -1,24 +1,13 @@
 import * as AST from "@effect/schema/AST"
-import * as Equivalence from "@effect/schema/Equivalence"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
-import * as Serializable from "@effect/schema/Serializable"
 import * as Util from "@effect/schema/test/TestUtils"
 import { jestExpect as expect } from "@jest/expect"
-import { Context, Effect, Exit, pipe, Struct } from "effect"
+import { Context, Effect } from "effect"
 import * as Data from "effect/Data"
 import * as Equal from "effect/Equal"
-import * as O from "effect/Option"
-import * as Request from "effect/Request"
-import { assert, describe, it } from "vitest"
-
-const expectFields = (f1: S.Struct.Fields, f2: S.Struct.Fields) => {
-  expect(Reflect.ownKeys(f1).sort()).toStrictEqual(Reflect.ownKeys(f2).sort())
-  for (const k of Reflect.ownKeys(f1)) {
-    expect(Reflect.ownKeys(f1[k])).toStrictEqual(Reflect.ownKeys(f2[k]))
-  }
-}
+import { describe, it } from "vitest"
 
 class Person extends S.Class<Person>("Person")({
   id: S.Number,
@@ -47,39 +36,6 @@ const NameString = S.String.pipe(
   )
 )
 
-const Id = Context.GenericTag<"Id", number>("Name")
-const IdNumber = S.Number.pipe(
-  S.transformOrFail(
-    S.Number,
-    {
-      decode: (_, _opts, ast) =>
-        Effect.filterOrFail(
-          Id,
-          (id) => _ === id,
-          () => new ParseResult.Type(ast, _, "Does not match Id")
-        ),
-      encode: (_) => ParseResult.succeed(_)
-    }
-  )
-)
-
-class TaggedPerson extends S.TaggedClass<TaggedPerson>()("TaggedPerson", {
-  id: S.Number,
-  name: S.String.pipe(S.nonEmpty())
-}) {
-  get upperName() {
-    return this.name.toUpperCase()
-  }
-}
-
-class TaggedPersonWithAge extends TaggedPerson.extend<TaggedPersonWithAge>("TaggedPersonWithAge")({
-  age: S.Number
-}) {
-  get isAdult() {
-    return this.age >= 18
-  }
-}
-
 class PersonWithAge extends Person.extend<PersonWithAge>("PersonWithAge")({
   age: S.Number
 }) {
@@ -88,484 +44,275 @@ class PersonWithAge extends Person.extend<PersonWithAge>("PersonWithAge")({
   }
 }
 
-class PersonWithNick extends PersonWithAge.extend<PersonWithNick>("PersonWithNick")({
-  nick: S.String
-}) {}
+describe("Class", () => {
+  it("should be a Schema", () => {
+    class A extends S.Class<A>("A")({ a: S.String }) {}
+    expect(S.isSchema(A)).toEqual(true)
+    expect(String(A)).toBe("(A (Encoded side) <-> A)")
+    expect(S.format(A)).toBe("(A (Encoded side) <-> A)")
+  })
 
-const Thing = S.optional(S.Struct({ id: S.Number }), { exact: true, as: "Option" })
+  it("should expose the fields", () => {
+    class A extends S.Class<A>("A")({ a: S.String }) {}
+    expect(A.fields).toEqual({ a: S.String })
+  })
 
-class PersonWithTransform extends Person.transformOrFail<PersonWithTransform>("PersonWithTransform")(
-  {
-    thing: Thing
-  },
-  {
-    decode: (input, _, ast) =>
-      input.id === 2 ?
-        ParseResult.fail(new ParseResult.Type(ast, input)) :
-        ParseResult.succeed({
-          ...input,
-          thing: O.some({ id: 123 })
-        }),
-    encode: (input, _, ast) =>
-      input.id === 2 ?
-        ParseResult.fail(new ParseResult.Type(ast, input)) :
-        ParseResult.succeed(input)
-  }
-) {}
+  it("should expose the identifier", () => {
+    class A extends S.Class<A>("A")({ a: S.String }) {}
+    expect(A.identifier).toEqual("A")
+  })
 
-class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWithTransformFrom>("PersonWithTransformFrom")(
-  {
-    thing: Thing
-  },
-  {
-    decode: (input, _, ast) =>
-      input.id === 2 ?
-        ParseResult.fail(new ParseResult.Type(ast, input)) :
-        ParseResult.succeed({
-          ...input,
-          thing: { id: 123 }
-        }),
-    encode: (input, _, ast) =>
-      input.id === 2 ?
-        ParseResult.fail(new ParseResult.Type(ast, input)) :
-        ParseResult.succeed(input)
-  }
-) {}
+  it("should add an identifier annotation", () => {
+    class A extends S.Class<A>("MyName")({ a: S.String }) {}
+    expect((A.ast as AST.Transformation).to.annotations[AST.IdentifierAnnotationId]).toEqual("MyName")
+  })
 
-describe("Class APIs", () => {
-  describe("Class", () => {
-    it("should be a Schema", () => {
-      class A extends S.Class<A>("A")({ a: S.String }) {}
-      expect(S.isSchema(A)).toEqual(true)
-      expect(String(A)).toBe("(A (Encoded side) <-> A)")
-      expect(S.format(A)).toBe("(A (Encoded side) <-> A)")
-    })
+  it("should be a constructor", () => {
+    class A extends S.Class<A>("A")({ a: S.String }) {}
+    const instance = new A({ a: "a" })
+    expect(instance.a).toStrictEqual("a")
+    expect(instance instanceof A).toBe(true)
+  })
 
-    it("should expose the fields", () => {
-      class A extends S.Class<A>("A")({ a: S.String }) {}
-      expect(A.fields).toEqual({ a: S.String })
-    })
-
-    it("should expose the identifier", () => {
-      class A extends S.Class<A>("A")({ a: S.String }) {}
-      expect(A.identifier).toEqual("A")
-    })
-
-    it("should add an identifier annotation", () => {
-      class A extends S.Class<A>("MyName")({ a: S.String }) {}
-      expect((A.ast as AST.Transformation).to.annotations[AST.IdentifierAnnotationId]).toEqual("MyName")
-    })
-
-    it("should be a constructor", () => {
-      class A extends S.Class<A>("A")({ a: S.String }) {}
-      const instance = new A({ a: "a" })
-      expect(instance.a).toStrictEqual("a")
-      expect(instance instanceof A).toBe(true)
-    })
-
-    it("the constructor should validate the input by default", () => {
-      class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
-      expect(() => new A({ a: "" })).toThrow(
-        new Error(`A (Constructor)
+  it("the constructor should validate the input by default", () => {
+    class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
+    expect(() => new A({ a: "" })).toThrow(
+      new Error(`A (Constructor)
 └─ ["a"]
    └─ NonEmpty
       └─ Predicate refinement failure
          └─ Expected NonEmpty (a non empty string), actual ""`)
-      )
-    })
+    )
+  })
 
-    it("the constructor validation can be disabled", () => {
-      class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
-      expect(new A({ a: "" }, true).a).toStrictEqual("")
-    })
+  it("the constructor validation can be disabled", () => {
+    class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
+    expect(new A({ a: "" }, true).a).toStrictEqual("")
+  })
 
-    it("the constructor should support defaults", () => {
-      const b = Symbol.for("b")
-      class A extends S.Class<A>("A")({
-        a: S.propertySignature(S.String).pipe(S.withConstructorDefault(() => "")),
-        [b]: S.propertySignature(S.Number).pipe(S.withConstructorDefault(() => 1))
-      }) {}
-      expect({ ...new A({ a: "a", [b]: 2 }) }).toStrictEqual({ a: "a", [b]: 2 })
-      expect({ ...new A({ a: "a" }) }).toStrictEqual({ a: "a", [b]: 1 })
-      expect({ ...new A({ [b]: 2 }) }).toStrictEqual({ a: "", [b]: 2 })
-      expect({ ...new A({}) }).toStrictEqual({ a: "", [b]: 1 })
-    })
+  it("the constructor should support defaults", () => {
+    const b = Symbol.for("b")
+    class A extends S.Class<A>("A")({
+      a: S.propertySignature(S.String).pipe(S.withConstructorDefault(() => "")),
+      [b]: S.propertySignature(S.Number).pipe(S.withConstructorDefault(() => 1))
+    }) {}
+    expect({ ...new A({ a: "a", [b]: 2 }) }).toStrictEqual({ a: "a", [b]: 2 })
+    expect({ ...new A({ a: "a" }) }).toStrictEqual({ a: "a", [b]: 1 })
+    expect({ ...new A({ [b]: 2 }) }).toStrictEqual({ a: "", [b]: 2 })
+    expect({ ...new A({}) }).toStrictEqual({ a: "", [b]: 1 })
+  })
 
-    it("the constructor should support lazy defaults", () => {
-      let i = 0
-      class A extends S.Class<A>("A")({
-        a: S.propertySignature(S.Number).pipe(S.withConstructorDefault(() => ++i))
-      }) {}
-      expect({ ...new A({}) }).toStrictEqual({ a: 1 })
-      expect({ ...new A({}) }).toStrictEqual({ a: 2 })
-      new A({ a: 10 })
-      expect({ ...new A({}) }).toStrictEqual({ a: 3 })
-    })
+  it("the constructor should support lazy defaults", () => {
+    let i = 0
+    class A extends S.Class<A>("A")({
+      a: S.propertySignature(S.Number).pipe(S.withConstructorDefault(() => ++i))
+    }) {}
+    expect({ ...new A({}) }).toStrictEqual({ a: 1 })
+    expect({ ...new A({}) }).toStrictEqual({ a: 2 })
+    new A({ a: 10 })
+    expect({ ...new A({}) }).toStrictEqual({ a: 3 })
+  })
 
-    it("a Class with no fields should have a void constructor", () => {
-      class A extends S.Class<A>("A")({}) {}
-      expect({ ...new A() }).toStrictEqual({})
-      expect({ ...new A(undefined, true) }).toStrictEqual({})
-      expect({ ...new A({}) }).toStrictEqual({})
-    })
+  it("a Class with no fields should have a void constructor", () => {
+    class A extends S.Class<A>("A")({}) {}
+    expect({ ...new A() }).toStrictEqual({})
+    expect({ ...new A(undefined, true) }).toStrictEqual({})
+    expect({ ...new A({}) }).toStrictEqual({})
+  })
 
-    it("a Class with all defaulted fields should have a void constructor", () => {
-      class A extends S.Class<A>("A")({
-        a: S.String.pipe(S.propertySignature, S.withConstructorDefault(() => ""))
-      }) {}
-      expect({ ...new A() }).toStrictEqual({ a: "" })
-      expect({ ...new A(undefined) }).toStrictEqual({ a: "" })
-      expect({ ...new A({}) }).toStrictEqual({ a: "" })
-    })
+  it("a Class with all defaulted fields should have a void constructor", () => {
+    class A extends S.Class<A>("A")({
+      a: S.String.pipe(S.propertySignature, S.withConstructorDefault(() => ""))
+    }) {}
+    expect({ ...new A() }).toStrictEqual({ a: "" })
+    expect({ ...new A(undefined) }).toStrictEqual({ a: "" })
+    expect({ ...new A({}) }).toStrictEqual({ a: "" })
+  })
 
-    it("should support methods", () => {
-      class A extends S.Class<A>("A")({ a: S.String }) {
-        method(b: string) {
-          return `method: ${this.a} ${b}`
-        }
+  it("should support methods", () => {
+    class A extends S.Class<A>("A")({ a: S.String }) {
+      method(b: string) {
+        return `method: ${this.a} ${b}`
       }
-      expect(new A({ a: "a" }).method("b")).toEqual("method: a b")
-    })
+    }
+    expect(new A({ a: "a" }).method("b")).toEqual("method: a b")
+  })
 
-    it("should support getters", () => {
-      class A extends S.Class<A>("A")({ a: S.String }) {
-        get getter() {
-          return `getter: ${this.a}`
-        }
+  it("should support getters", () => {
+    class A extends S.Class<A>("A")({ a: S.String }) {
+      get getter() {
+        return `getter: ${this.a}`
       }
-      expect(new A({ a: "a" }).getter).toEqual("getter: a")
-    })
+    }
+    expect(new A({ a: "a" }).getter).toEqual("getter: a")
+  })
 
-    it("should support annotations when declaring the Class", () => {
-      class A extends S.Class<A>("A")({
-        a: S.String
-      }, { title: "X" }) {}
-      expect((A.ast as AST.Transformation).to.annotations[AST.TitleAnnotationId]).toEqual("X")
-    })
+  it("should support annotations when declaring the Class", () => {
+    class A extends S.Class<A>("A")({
+      a: S.String
+    }, { title: "X" }) {}
+    expect((A.ast as AST.Transformation).to.annotations[AST.TitleAnnotationId]).toEqual("X")
+  })
 
-    it("using S.annotations() on a Class should return a Schema", () => {
-      class A extends S.Class<A>("A")({ a: S.String }) {}
-      const schema = A.pipe(S.annotations({ title: "X" }))
-      expect(S.isSchema(schema)).toEqual(true)
-      expect(schema.ast._tag).toEqual("Transformation")
-      expect(schema.ast.annotations[AST.TitleAnnotationId]).toEqual("X")
-    })
+  it("using S.annotations() on a Class should return a Schema", () => {
+    class A extends S.Class<A>("A")({ a: S.String }) {}
+    const schema = A.pipe(S.annotations({ title: "X" }))
+    expect(S.isSchema(schema)).toEqual(true)
+    expect(schema.ast._tag).toEqual("Transformation")
+    expect(schema.ast.annotations[AST.TitleAnnotationId]).toEqual("X")
+  })
 
-    it("using the .annotations() method of a Class should return a Schema", () => {
-      class A extends S.Class<A>("A")({ a: S.String }) {}
-      const schema = A.annotations({ title: "X" })
-      expect(S.isSchema(schema)).toEqual(true)
-      expect(schema.ast._tag).toEqual("Transformation")
-      expect(schema.ast.annotations[AST.TitleAnnotationId]).toEqual("X")
-    })
+  it("using the .annotations() method of a Class should return a Schema", () => {
+    class A extends S.Class<A>("A")({ a: S.String }) {}
+    const schema = A.annotations({ title: "X" })
+    expect(S.isSchema(schema)).toEqual(true)
+    expect(schema.ast._tag).toEqual("Transformation")
+    expect(schema.ast.annotations[AST.TitleAnnotationId]).toEqual("X")
+  })
 
-    it("default toString()", () => {
-      const b = Symbol.for("b")
-      class A extends S.Class<A>("A")({ a: S.String, [b]: S.Number }) {}
-      expect(String(new A({ a: "a", [b]: 1 }))).toBe(`A({ "a": "a", Symbol(b): 1 })`)
-    })
+  it("default toString()", () => {
+    const b = Symbol.for("b")
+    class A extends S.Class<A>("A")({ a: S.String, [b]: S.Number }) {}
+    expect(String(new A({ a: "a", [b]: 1 }))).toBe(`A({ "a": "a", Symbol(b): 1 })`)
+  })
 
-    it("decoding", async () => {
-      class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
-      await Util.expectDecodeUnknownSuccess(A, { a: "a" }, new A({ a: "a" }))
-      await Util.expectDecodeUnknownFailure(
-        A,
-        { a: "" },
-        `(A (Encoded side) <-> A)
+  it("decoding", async () => {
+    class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
+    await Util.expectDecodeUnknownSuccess(A, { a: "a" }, new A({ a: "a" }))
+    await Util.expectDecodeUnknownFailure(
+      A,
+      { a: "" },
+      `(A (Encoded side) <-> A)
 └─ Encoded side transformation failure
    └─ A (Encoded side)
       └─ ["a"]
          └─ NonEmpty
             └─ Predicate refinement failure
                └─ Expected NonEmpty (a non empty string), actual ""`
-      )
-    })
+    )
+  })
 
-    it("encoding", async () => {
-      class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
-      await Util.expectEncodeSuccess(A, new A({ a: "a" }), { a: "a" })
-      await Util.expectEncodeSuccess(A, { a: "a" }, { a: "a" })
-      await Util.expectEncodeFailure(
-        A,
-        new A({ a: "" }, true),
-        `(A (Encoded side) <-> A)
+  it("encoding", async () => {
+    class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
+    await Util.expectEncodeSuccess(A, new A({ a: "a" }), { a: "a" })
+    await Util.expectEncodeSuccess(A, { a: "a" }, { a: "a" })
+    await Util.expectEncodeFailure(
+      A,
+      new A({ a: "" }, true),
+      `(A (Encoded side) <-> A)
 └─ Encoded side transformation failure
    └─ A (Encoded side)
       └─ ["a"]
          └─ NonEmpty
             └─ Predicate refinement failure
                └─ Expected NonEmpty (a non empty string), actual ""`
-      )
+    )
+  })
+
+  it("a custom _tag field should be allowed", () => {
+    class A extends S.Class<A>("A")({ _tag: S.Literal("a", "b") }) {}
+    Util.expectFields(A.fields, {
+      _tag: S.Literal("a", "b")
     })
+  })
 
-    it("a custom _tag field should be allowed", () => {
-      class A extends S.Class<A>("A")({ _tag: S.Literal("a", "b") }) {}
-      expectFields(A.fields, {
-        _tag: S.Literal("a", "b")
-      })
+  it("duplicated fields should not be allowed when extending with extend()", () => {
+    class A extends S.Class<A>("A")({ a: S.String }) {}
+    expect(() => {
+      class A2 extends A.extend<A2>("A2")({ a: S.String }) {}
+      console.log(A2)
+    }).toThrow(new Error(`Duplicate property signature "a"`))
+  })
+
+  it("can be extended with Class fields", () => {
+    class AB extends S.Class<AB>("AB")({ a: S.String, b: S.Number }) {}
+    class C extends S.Class<C>("C")({
+      ...AB.fields,
+      b: S.String,
+      c: S.Boolean
+    }) {}
+    Util.expectFields(C.fields, {
+      a: S.String,
+      b: S.String,
+      c: S.Boolean
     })
+    expect({ ...new C({ a: "a", b: "b", c: true }) }).toStrictEqual({ a: "a", b: "b", c: true })
+  })
 
-    it("duplicated fields should not be allowed when extending with extend()", () => {
-      class A extends S.Class<A>("A")({ a: S.String }) {}
-      expect(() => {
-        class A2 extends A.extend<A2>("A2")({ a: S.String }) {}
-        console.log(A2)
-      }).toThrow(new Error(`Duplicate property signature "a"`))
+  it("can be extended with TaggedClass fields", () => {
+    class AB extends S.Class<AB>("AB")({ a: S.String, b: S.Number }) {}
+    class D extends S.TaggedClass<D>()("D", {
+      ...AB.fields,
+      b: S.String,
+      c: S.Boolean
+    }) {}
+    Util.expectFields(D.fields, {
+      _tag: S.getClassTag("D"),
+      a: S.String,
+      b: S.String,
+      c: S.Boolean
     })
+    expect({ ...new D({ a: "a", b: "b", c: true }) }).toStrictEqual({ _tag: "D", a: "a", b: "b", c: true })
+  })
 
-    it("can be extended with Class fields", () => {
-      class AB extends S.Class<AB>("AB")({ a: S.String, b: S.Number }) {}
-      class C extends S.Class<C>("C")({
-        ...AB.fields,
-        b: S.String,
-        c: S.Boolean
-      }) {}
-      expectFields(C.fields, {
-        a: S.String,
-        b: S.String,
-        c: S.Boolean
-      })
-      expect({ ...new C({ a: "a", b: "b", c: true }) }).toStrictEqual({ a: "a", b: "b", c: true })
-    })
+  it("S.typeSchema(Class)", async () => {
+    const PersonFromSelf = S.typeSchema(Person)
+    await Util.expectDecodeUnknownSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
+    await Util.expectDecodeUnknownFailure(
+      PersonFromSelf,
+      { id: 1, name: "John" },
+      `Expected Person (an instance of Person), actual {"id":1,"name":"John"}`
+    )
+  })
 
-    it("can be extended with TaggedClass fields", () => {
-      class AB extends S.Class<AB>("AB")({ a: S.String, b: S.Number }) {}
-      class D extends S.TaggedClass<D>()("D", {
-        ...AB.fields,
-        b: S.String,
-        c: S.Boolean
-      }) {}
-      expectFields(D.fields, {
-        _tag: S.getClassTag("D"),
-        a: S.String,
-        b: S.String,
-        c: S.Boolean
-      })
-      expect({ ...new D({ a: "a", b: "b", c: true }) }).toStrictEqual({ _tag: "D", a: "a", b: "b", c: true })
-    })
+  it("is", () => {
+    const is = S.is(S.typeSchema(Person))
+    expect(is(new Person({ id: 1, name: "name" }))).toEqual(true)
+    expect(is({ id: 1, name: "name" })).toEqual(false)
+  })
 
-    it("S.typeSchema(Class)", async () => {
-      const PersonFromSelf = S.typeSchema(Person)
-      await Util.expectDecodeUnknownSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
-      await Util.expectDecodeUnknownFailure(
-        PersonFromSelf,
-        { id: 1, name: "John" },
-        `Expected Person (an instance of Person), actual {"id":1,"name":"John"}`
-      )
-    })
+  it("with a field with a context !== never", async () => {
+    class PersonContext extends S.Class<PersonContext>("PersonContext")({
+      ...Person.fields,
+      name: NameString
+    }) {}
 
-    it("is", () => {
-      const is = S.is(S.typeSchema(Person))
-      expect(is(new Person({ id: 1, name: "name" }))).toEqual(true)
-      expect(is({ id: 1, name: "name" })).toEqual(false)
-    })
+    const person = S.decodeUnknown(PersonContext)({ id: 1, name: "John" }).pipe(
+      Effect.provideService(Name, "John"),
+      Effect.runSync
+    )
+    expect(person.name).toEqual("John")
 
-    it("with a field with a context !== never", async () => {
-      class PersonContext extends S.Class<PersonContext>("PersonContext")({
-        ...Person.fields,
-        name: NameString
-      }) {}
+    const PersonFromSelf = S.typeSchema(Person)
+    await Util.expectDecodeUnknownSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
+    await Util.expectDecodeUnknownFailure(
+      PersonFromSelf,
+      { id: 1, name: "John" },
+      `Expected Person (an instance of Person), actual {"id":1,"name":"John"}`
+    )
+  })
 
-      const person = S.decodeUnknown(PersonContext)({ id: 1, name: "John" }).pipe(
-        Effect.provideService(Name, "John"),
-        Effect.runSync
-      )
-      expect(person.name).toEqual("John")
+  it("should accept a Struct as input", () => {
+    const fields = { a: S.String, b: S.Number }
+    class A extends S.Class<A>("A")(S.Struct(fields)) {}
+    Util.expectFields(A.fields, fields)
+  })
 
-      const PersonFromSelf = S.typeSchema(Person)
-      await Util.expectDecodeUnknownSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
-      await Util.expectDecodeUnknownFailure(
-        PersonFromSelf,
-        { id: 1, name: "John" },
-        `Expected Person (an instance of Person), actual {"id":1,"name":"John"}`
-      )
-    })
-
-    it("should accept a Struct as input", () => {
-      const fields = { a: S.String, b: S.Number }
-      class A extends S.Class<A>("A")(S.Struct(fields)) {}
-      expectFields(A.fields, fields)
-    })
-
-    it("should accept a refinement of a Struct as input", async () => {
-      const fields = { a: S.Number, b: S.Number }
-      class A extends S.Class<A>("A")(
-        S.Struct(fields).pipe(S.filter(({ a, b }) => a === b, {
-          message: () => "a should be equal to b"
-        }))
-      ) {}
-      expectFields(A.fields, fields)
-      await Util.expectDecodeUnknownSuccess(A, { a: 1, b: 1 })
-      await Util.expectDecodeUnknownFailure(
-        A,
-        { a: 1, b: 2 },
-        `(A (Encoded side) <-> A)
+  it("should accept a refinement of a Struct as input", async () => {
+    const fields = { a: S.Number, b: S.Number }
+    class A extends S.Class<A>("A")(
+      S.Struct(fields).pipe(S.filter(({ a, b }) => a === b, {
+        message: () => "a should be equal to b"
+      }))
+    ) {}
+    Util.expectFields(A.fields, fields)
+    await Util.expectDecodeUnknownSuccess(A, { a: 1, b: 1 })
+    await Util.expectDecodeUnknownFailure(
+      A,
+      { a: 1, b: 2 },
+      `(A (Encoded side) <-> A)
 └─ Encoded side transformation failure
    └─ a should be equal to b`
-      )
-    })
-  })
-
-  describe("TaggedClass", () => {
-    it("the constructor should add a `_tag` field", () => {
-      class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
-      expect({ ...new TA({ a: "a" }) }).toStrictEqual({ _tag: "TA", a: "a" })
-    })
-
-    it("should expose the fields and the tag", () => {
-      class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
-      expectFields(TA.fields, { _tag: S.getClassTag("TA"), a: S.String })
-      expect(S.Struct(TA.fields).make({ a: "a" })).toStrictEqual({ _tag: "TA", a: "a" })
-      expect(TA._tag).toBe("TA")
-    })
-
-    it("should expose the identifier", () => {
-      class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
-      expect(TA.identifier).toEqual("TA")
-      class TB extends S.TaggedClass<TB>("id")("TB", { a: S.String }) {}
-      expect(TB.identifier).toEqual("id")
-    })
-
-    it("constructor parameters should not overwrite the tag", async () => {
-      class A extends S.TaggedClass<A>()("A", {
-        a: S.String
-      }) {}
-      expect(new A({ ...{ _tag: "B", a: "a" } })._tag).toBe("A")
-      expect(new A({ ...{ _tag: "B", a: "a" } }, true)._tag).toBe("A")
-    })
-
-    it("a TaggedClass with no fields should have a void constructor", () => {
-      class TA extends S.TaggedClass<TA>()("TA", {}) {}
-      expect({ ...new TA() }).toStrictEqual({ _tag: "TA" })
-      expect({ ...new TA(undefined) }).toStrictEqual({ _tag: "TA" })
-      expect({ ...new TA(undefined, true) }).toStrictEqual({ _tag: "TA" })
-    })
-
-    it("a custom _tag field should be not allowed", () => {
-      expect(() => {
-        class _TA extends S.TaggedClass<_TA>()("TA", { _tag: S.Literal("X"), a: S.String }) {}
-        console.log(_TA)
-      }).toThrow(new Error(`Duplicate property signature "_tag"`))
-    })
-
-    it("decoding", async () => {
-      class TA extends S.TaggedClass<TA>()("TA", { a: S.NonEmpty }) {}
-      await Util.expectDecodeUnknownSuccess(TA, { _tag: "TA", a: "a" }, new TA({ a: "a" }))
-      await Util.expectDecodeUnknownFailure(
-        TA,
-        { a: "a" },
-        `(TA (Encoded side) <-> TA)
-└─ Encoded side transformation failure
-   └─ TA (Encoded side)
-      └─ ["_tag"]
-         └─ is missing`
-      )
-      await Util.expectDecodeUnknownFailure(
-        TA,
-        { _tag: "TA", a: "" },
-        `(TA (Encoded side) <-> TA)
-└─ Encoded side transformation failure
-   └─ TA (Encoded side)
-      └─ ["a"]
-         └─ NonEmpty
-            └─ Predicate refinement failure
-               └─ Expected NonEmpty (a non empty string), actual ""`
-      )
-    })
-
-    it("encoding", async () => {
-      class TA extends S.TaggedClass<TA>()("TA", { a: S.NonEmpty }) {}
-      await Util.expectEncodeSuccess(TA, new TA({ a: "a" }), { _tag: "TA", a: "a" })
-      await Util.expectEncodeSuccess(TA, { _tag: "TA", a: "a" } as any, { _tag: "TA", a: "a" })
-      await Util.expectEncodeFailure(
-        TA,
-        new TA({ a: "" }, true),
-        `(TA (Encoded side) <-> TA)
-└─ Encoded side transformation failure
-   └─ TA (Encoded side)
-      └─ ["a"]
-         └─ NonEmpty
-            └─ Predicate refinement failure
-               └─ Expected NonEmpty (a non empty string), actual ""`
-      )
-    })
-
-    it("can be extended with Class fields", () => {
-      class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
-      class B extends S.Class<B>("B")({
-        b: S.Number,
-        ...TA.fields
-      }) {}
-      expectFields(B.fields, {
-        _tag: S.getClassTag("TA"),
-        a: S.String,
-        b: S.Number
-      })
-      expect({ ...new B({ _tag: "TA", a: "a", b: 1 }) }).toStrictEqual({ _tag: "TA", a: "a", b: 1 })
-    })
-
-    it("can be extended with TaggedClass fields", () => {
-      class TA extends S.TaggedClass<TA>()("TA", { a: S.String }) {}
-      class TB extends S.TaggedClass<TB>()("TB", {
-        b: S.Number,
-        ...pipe(TA.fields, Struct.omit("_tag"))
-      }) {}
-      expectFields(TB.fields, {
-        _tag: S.getClassTag("TB"),
-        a: S.String,
-        b: S.Number
-      })
-      expect({ ...new TB({ a: "a", b: 1 }) }).toStrictEqual({ _tag: "TB", a: "a", b: 1 })
-    })
-  })
-
-  describe("TaggedError", () => {
-    it("should expose the fields and the tag", () => {
-      class TE extends S.TaggedError<TE>()("TE", { a: S.String }) {}
-      expectFields(TE.fields, { _tag: S.getClassTag("TE"), a: S.String })
-      expect(S.Struct(TE.fields).make({ a: "a" })).toStrictEqual({ _tag: "TE", a: "a" })
-      expect(TE._tag).toBe("TE")
-    })
-  })
-
-  it("extends", () => {
-    const person = S.decodeUnknownSync(PersonWithAge)({
-      id: 1,
-      name: "John",
-      age: 30
-    })
-    expect(PersonWithAge.fields).toStrictEqual({
-      ...Person.fields,
-      age: S.Number
-    })
-    expect(PersonWithAge.identifier).toStrictEqual("PersonWithAge")
-    expect(person.name).toEqual("John")
-    expect(person.age).toEqual(30)
-    expect(person.isAdult).toEqual(true)
-    expect(person.upperName).toEqual("JOHN")
-    expect(typeof person.upperName).toEqual("string")
-  })
-
-  it("extends extends", () => {
-    const person = S.decodeUnknownSync(PersonWithNick)({
-      id: 1,
-      name: "John",
-      age: 30,
-      nick: "Joe"
-    })
-    expect(person.age).toEqual(30)
-    expect(person.nick).toEqual("Joe")
-  })
-
-  it("extends error", () => {
-    expect(() => S.decodeUnknownSync(PersonWithAge)({ id: 1, name: "John" })).toThrow(
-      new Error(
-        `(PersonWithAge (Encoded side) <-> PersonWithAge)
-└─ Encoded side transformation failure
-   └─ PersonWithAge (Encoded side)
-      └─ ["age"]
-         └─ is missing`
-      )
     )
   })
 
@@ -591,279 +338,6 @@ describe("Class APIs", () => {
     expect(pretty(new Person({ id: 1, name: "John" }))).toEqual(
       `Person({ "id": 1, "name": "John" })`
     )
-  })
-
-  it("transformOrFail", async () => {
-    const decode = S.decodeSync(PersonWithTransform)
-    const person = decode({
-      id: 1,
-      name: "John"
-    })
-    expect(PersonWithTransform.fields).toStrictEqual({
-      ...Person.fields,
-      thing: Thing
-    })
-    expect(PersonWithTransform.identifier).toStrictEqual("PersonWithTransform")
-    expect(person.id).toEqual(1)
-    expect(person.name).toEqual("John")
-    expect(O.isSome(person.thing) && person.thing.value.id === 123).toEqual(true)
-    expect(person.upperName).toEqual("JOHN")
-    expect(typeof person.upperName).toEqual("string")
-
-    await Util.expectDecodeUnknownFailure(
-      PersonWithTransform,
-      {
-        id: 2,
-        name: "John"
-      },
-      `(PersonWithTransform (Encoded side) <-> PersonWithTransform)
-└─ Encoded side transformation failure
-   └─ PersonWithTransform (Encoded side)
-      └─ Transformation process failure
-         └─ Expected PersonWithTransform (Encoded side), actual {"id":2,"name":"John"}`
-    )
-    await Util.expectEncodeFailure(
-      PersonWithTransform,
-      new PersonWithTransform({ id: 2, name: "John", thing: O.some({ id: 1 }) }),
-      `(PersonWithTransform (Encoded side) <-> PersonWithTransform)
-└─ Encoded side transformation failure
-   └─ PersonWithTransform (Encoded side)
-      └─ Transformation process failure
-         └─ Expected PersonWithTransform (Encoded side), actual {"id":2,"name":"John","thing":{
-  "_id": "Option",
-  "_tag": "Some",
-  "value": {
-    "id": 1
-  }
-}}`
-    )
-  })
-
-  it("transformOrFailFrom", async () => {
-    const decode = S.decodeSync(PersonWithTransformFrom)
-    const person = decode({
-      id: 1,
-      name: "John"
-    })
-    expect(PersonWithTransformFrom.fields).toStrictEqual({
-      ...Person.fields,
-      thing: Thing
-    })
-    expect(PersonWithTransformFrom.identifier).toStrictEqual("PersonWithTransformFrom")
-    expect(person.id).toEqual(1)
-    expect(person.name).toEqual("John")
-    expect(O.isSome(person.thing) && person.thing.value.id === 123).toEqual(true)
-    expect(person.upperName).toEqual("JOHN")
-    expect(typeof person.upperName).toEqual("string")
-
-    await Util.expectDecodeUnknownFailure(
-      PersonWithTransformFrom,
-      {
-        id: 2,
-        name: "John"
-      },
-      `(PersonWithTransformFrom (Encoded side) <-> PersonWithTransformFrom)
-└─ Encoded side transformation failure
-   └─ PersonWithTransformFrom (Encoded side)
-      └─ Transformation process failure
-         └─ Expected PersonWithTransformFrom (Encoded side), actual {"id":2,"name":"John"}`
-    )
-    await Util.expectEncodeFailure(
-      PersonWithTransformFrom,
-      new PersonWithTransformFrom({ id: 2, name: "John", thing: O.some({ id: 1 }) }),
-      `(PersonWithTransformFrom (Encoded side) <-> PersonWithTransformFrom)
-└─ Encoded side transformation failure
-   └─ PersonWithTransformFrom (Encoded side)
-      └─ Transformation process failure
-         └─ Expected PersonWithTransformFrom (Encoded side), actual {"id":2,"name":"John","thing":{"id":1}}`
-    )
-  })
-
-  it("TaggedClass", () => {
-    let person = new TaggedPersonWithAge({ id: 1, name: "John", age: 30 })
-
-    expect(String(person)).toEqual(
-      `TaggedPersonWithAge({ "_tag": "TaggedPerson", "id": 1, "name": "John", "age": 30 })`
-    )
-    expect(person._tag).toEqual("TaggedPerson")
-    expect(person.upperName).toEqual("JOHN")
-
-    expect(() => S.decodeUnknownSync(TaggedPersonWithAge)({ id: 1, name: "John", age: 30 })).toThrow(
-      new Error(
-        `(TaggedPersonWithAge (Encoded side) <-> TaggedPersonWithAge)
-└─ Encoded side transformation failure
-   └─ TaggedPersonWithAge (Encoded side)
-      └─ ["_tag"]
-         └─ is missing`
-      )
-    )
-    person = S.decodeUnknownSync(TaggedPersonWithAge)({
-      _tag: "TaggedPerson",
-      id: 1,
-      name: "John",
-      age: 30
-    })
-    expect(person._tag).toEqual("TaggedPerson")
-    expect(person.upperName).toEqual("JOHN")
-  })
-
-  it("TaggedError", () => {
-    class MyError extends S.TaggedError<MyError>()("MyError", {
-      id: S.Number
-    }) {}
-
-    let err = new MyError({ id: 1 })
-
-    expect(String(err)).toEqual(`MyError({ "_tag": "MyError", "id": 1 })`)
-    expect(err.stack).toContain("Class.test.ts:")
-    expect(err._tag).toEqual("MyError")
-    expect(err.id).toEqual(1)
-
-    err = Effect.runSync(Effect.flip(err))
-    expect(err._tag).toEqual("MyError")
-    expect(err.id).toEqual(1)
-
-    err = S.decodeUnknownSync(MyError)({ _tag: "MyError", id: 1 })
-    expect(err._tag).toEqual("MyError")
-    expect(err.id).toEqual(1)
-  })
-
-  it("TaggedError/message", () => {
-    class MyError extends S.TaggedError<MyError>()("MyError", {
-      id: S.Number
-    }) {
-      get message() {
-        return `bad id: ${this.id}`
-      }
-    }
-
-    const err = new MyError({ id: 1 })
-
-    expect(String(err).includes(`MyError: bad id: 1`)).toBe(true)
-    expect(String(err)).toContain("Class.test.ts:")
-    expect(err.stack).toContain("Class.test.ts:")
-    expect(err._tag).toEqual("MyError")
-    expect(err.id).toEqual(1)
-  })
-
-  describe("TaggedRequest", () => {
-    it("should expose the fields and the tag", () => {
-      class TRA extends S.TaggedRequest<TRA>()("TRA", S.String, S.Number, {
-        id: S.Number
-      }) {}
-      expectFields(TRA.fields, {
-        _tag: S.getClassTag("TRA"),
-        id: S.Number
-      })
-      expect(TRA._tag).toBe("TRA")
-    })
-
-    it("should expose the identifier", () => {
-      class TRA extends S.TaggedRequest<TRA>()("TRA", S.String, S.Number, {
-        id: S.Number
-      }) {}
-      expect(TRA.identifier).toEqual("TRA")
-      class TRB extends S.TaggedRequest<TRB>("id")("TRB", S.String, S.Number, {
-        id: S.Number
-      }) {}
-      expect(TRB.identifier).toEqual("id")
-    })
-
-    it("baseline", () => {
-      class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", S.String, S.Number, {
-        id: S.Number
-      }) {}
-
-      let req = new MyRequest({ id: 1 })
-
-      expect(String(req)).toEqual(`MyRequest({ "_tag": "MyRequest", "id": 1 })`)
-      expect(req._tag).toEqual("MyRequest")
-      expect(req.id).toEqual(1)
-      expect(Request.isRequest(req)).toEqual(true)
-
-      req = S.decodeSync(MyRequest)({ _tag: "MyRequest", id: 1 })
-      expect(req._tag).toEqual("MyRequest")
-      expect(req.id).toEqual(1)
-      expect(Request.isRequest(req)).toEqual(true)
-    })
-
-    it("TaggedRequest extends SerializableWithExit", () => {
-      class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", S.String, S.NumberFromString, {
-        id: S.Number
-      }) {}
-
-      const req = new MyRequest({ id: 1 })
-      assert.deepStrictEqual(
-        Serializable.serialize(req).pipe(Effect.runSync),
-        { _tag: "MyRequest", id: 1 }
-      )
-      assert(Equal.equals(
-        Serializable.deserialize(req, { _tag: "MyRequest", id: 1 }).pipe(Effect.runSync),
-        req
-      ))
-      assert.deepStrictEqual(
-        Serializable.serializeExit(req, Exit.fail("fail")).pipe(Effect.runSync),
-        { _tag: "Failure", cause: { _tag: "Fail", error: "fail" } }
-      )
-      assert.deepStrictEqual(
-        Serializable.deserializeExit(req, { _tag: "Failure", cause: { _tag: "Fail", error: "fail" } })
-          .pipe(Effect.runSync),
-        Exit.fail("fail")
-      )
-      assert.deepStrictEqual(
-        Serializable.serializeExit(req, Exit.succeed(123)).pipe(Effect.runSync),
-        { _tag: "Success", value: "123" }
-      )
-      assert.deepStrictEqual(
-        Serializable.deserializeExit(req, { _tag: "Success", value: "123" }).pipe(Effect.runSync),
-        Exit.succeed(123)
-      )
-    })
-
-    it("TaggedRequest context", () => {
-      class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", NameString, S.Number, {
-        id: IdNumber
-      }) {}
-
-      let req = new MyRequest({ id: 1 }, true)
-      expect(String(req)).toEqual(`MyRequest({ "_tag": "MyRequest", "id": 1 })`)
-
-      req = S.decode(MyRequest)({ _tag: "MyRequest", id: 1 }).pipe(
-        Effect.provideService(Id, 1),
-        Effect.runSync
-      )
-      expect(String(req)).toEqual(`MyRequest({ "_tag": "MyRequest", "id": 1 })`)
-
-      assert.deepStrictEqual(
-        Serializable.serialize(req).pipe(
-          Effect.provideService(Id, 1),
-          Effect.runSync
-        ),
-        { _tag: "MyRequest", id: 1 }
-      )
-      assert.deepStrictEqual(
-        Serializable.deserialize(req, { _tag: "MyRequest", id: 1 }).pipe(
-          Effect.provideService(Id, 1),
-          Effect.runSync
-        ),
-        req
-      )
-      assert.deepStrictEqual(
-        Serializable.serializeExit(req, Exit.fail("fail")).pipe(
-          Effect.provideService(Name, "fail"),
-          Effect.runSync
-        ),
-        { _tag: "Failure", cause: { _tag: "Fail", error: "fail" } }
-      )
-      assert.deepStrictEqual(
-        Serializable.deserializeExit(req, { _tag: "Failure", cause: { _tag: "Fail", error: "fail" } })
-          .pipe(
-            Effect.provideService(Name, "fail"),
-            Effect.runSync
-          ),
-        Exit.fail("fail")
-      )
-    })
   })
 
   describe("encode", () => {
@@ -940,24 +414,5 @@ describe("Class APIs", () => {
   it("arbitrary", () => {
     class A extends S.Class<A>("A")({ a: S.String }) {}
     Util.expectArbitrary(A)
-  })
-
-  it("equivalence", () => {
-    class A extends S.TaggedClass<A>()("A", {
-      a: S.String
-    }) {}
-    const eqA = Equivalence.make(A)
-    expect(eqA(new A({ a: "a" }), new A({ a: "a" }))).toBe(true)
-    expect(eqA(new A({ a: "a" }), new A({ a: "b" }))).toBe(false)
-
-    class B extends S.TaggedClass<B>()("B", {
-      b: S.Number,
-      as: S.Array(A)
-    }) {}
-    const eqB = Equivalence.make(B)
-    expect(eqB(new B({ b: 1, as: [] }), new B({ b: 1, as: [] }))).toBe(true)
-    expect(eqB(new B({ b: 1, as: [] }), new B({ b: 2, as: [] }))).toBe(false)
-    expect(eqB(new B({ b: 1, as: [new A({ a: "a" })] }), new B({ b: 1, as: [new A({ a: "a" })] }))).toBe(true)
-    expect(eqB(new B({ b: 1, as: [new A({ a: "a" })] }), new B({ b: 1, as: [new A({ a: "b" })] }))).toBe(false)
   })
 })

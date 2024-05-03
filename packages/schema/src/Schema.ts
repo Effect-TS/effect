@@ -6415,11 +6415,11 @@ const isHasFields = <Fields extends Struct.Fields>(
   fields: Fields | HasFields<Fields>
 ): fields is HasFields<Fields> => isSchema(fields)
 
-const getFields = <Fields extends Struct.Fields>(hasFields: HasFields<Fields>): Fields => {
-  if ("fields" in hasFields) {
-    return hasFields.fields
-  }
-  return getFields(hasFields.from)
+const getFields = <Fields extends Struct.Fields>(hasFields: HasFields<Fields>): Fields =>
+  "fields" in hasFields ? hasFields.fields : getFields(hasFields.from)
+
+const getSchemaAndFields = <Fields extends Struct.Fields>(fields: Fields | HasFields<Fields>) => {
+  return [isHasFields(fields) ? fields : Struct(fields), isHasFields(fields) ? getFields(fields) : fields] as const
 }
 
 /**
@@ -6428,7 +6428,7 @@ const getFields = <Fields extends Struct.Fields>(hasFields: HasFields<Fields>): 
  */
 export const Class = <Self = never>(identifier: string) =>
 <Fields extends Struct.Fields>(
-  fields: Fields | HasFields<Fields>,
+  fieldsOr: Fields | HasFields<Fields>,
   annotations?: Annotations.Schema<Self>
 ): [Self] extends [never] ? MissingSelfGeneric<"Class">
   : Class<
@@ -6440,14 +6440,17 @@ export const Class = <Self = never>(identifier: string) =>
     {},
     {}
   > =>
-  makeClass({
+{
+  const [schema, fields] = getSchemaAndFields(fieldsOr)
+  return makeClass({
     kind: "Class",
     identifier,
-    schema: isHasFields(fields) ? fields : Struct(fields),
-    fields: isHasFields(fields) ? getFields(fields) : fields,
+    schema,
+    fields,
     Base: data_.Class,
     annotations
   })
+}
 
 /** @internal */
 export const getClassTag = <Tag extends string>(tag: Tag) =>
