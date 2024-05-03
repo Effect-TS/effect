@@ -366,7 +366,7 @@ export const diffFiberRefsAndRuntimeFlags = <A, E, R>(
   )
 
 /* @internal */
-export const Do: doNotation.EmptyScope<Effect.EffectTypeLambda> = core.succeed({})
+export const Do: Effect.Effect<{}> = core.succeed({})
 
 /* @internal */
 export const bind: {

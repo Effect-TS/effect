@@ -7918,7 +7918,7 @@ const zipChunks = <A, B, C>(
 // Do notation
 
 /** @internal */
-export const Do: doNotation.EmptyScope<Stream.StreamTypeLambda> = succeed({})
+export const Do: Stream.Stream<{}> = succeed({})
 
 /** @internal */
 export const bind = dual<

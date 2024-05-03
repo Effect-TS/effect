@@ -16,8 +16,6 @@ type FlatMap<F extends TypeLambda> = {
   ): Kind<F, R1 & R2, O1 | O2, E1 | E2, B>
 }
 
-export type EmptyScope<F extends TypeLambda> = Kind<F, never, never, never, {}>
-
 /** @internal */
 export const let_ = <F extends TypeLambda>(
   map: Map<F>
