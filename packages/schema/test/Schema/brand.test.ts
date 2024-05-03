@@ -110,6 +110,7 @@ describe("brand", () => {
       IntegerFromString(1.1)
       assert.fail("expected `IntegerFromString(1.1)` to throw an error")
     } catch (e) {
+      const ast = S.typeSchema(IntegerFromString).ast as AST.Refinement
       expect(e).toStrictEqual(
         Brand.error(
           `IntegerFromString
@@ -117,10 +118,10 @@ describe("brand", () => {
    └─ Expected IntegerFromString (an integer), actual 1.1`,
           ParseResult.parseError(
             new ParseResult.Refinement(
-              IntegerFromString.ast as any,
+              ast,
               1.1,
               "Predicate",
-              new ParseResult.Type(IntegerFromString.ast, 1.1)
+              new ParseResult.Type(ast, 1.1)
             )
           )
         )
