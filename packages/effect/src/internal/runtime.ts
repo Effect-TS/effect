@@ -175,7 +175,7 @@ class FiberFailureImpl extends Error implements Runtime.FiberFailure {
       const head = prettyErrors[0]
       this.name = head.name
       this.message = head.message
-      this.stack = head.stack
+      this.stack = head.stack!
     }
 
     this.name = `(FiberFailure) ${this.name}`

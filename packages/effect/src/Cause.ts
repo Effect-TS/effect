@@ -920,7 +920,6 @@ export const pretty: <E>(cause: Cause<E>) => string = internal.pretty
  * @category models
  */
 export interface PrettyError extends Error {
-  readonly stack: string
   readonly span: Span | undefined
 }
 

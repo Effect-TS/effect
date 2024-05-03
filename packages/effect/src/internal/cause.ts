@@ -973,40 +973,27 @@ export const pretty = <E>(cause: Cause.Cause<E>): string => {
   if (isInterruptedOnly(cause)) {
     return "All fibers interrupted without errors."
   }
-  return prettyErrors<E>(cause).map((e) => e.stack).join("\r\n")
+  return prettyErrors<E>(cause).map((e) => e.stack).join("\n")
 }
 
-class PrettyError implements Cause.PrettyError {
-  constructor(readonly originalError: unknown) {}
-
-  get name(): string {
-    return this.originalError instanceof Error ? this.originalError.name : "Error"
-  }
-
-  private _message: string | undefined = undefined
-  get message() {
-    if (this._message) {
-      return this._message
-    }
-    return this._message = prettyErrorMessage(this.originalError)
-  }
-
-  get span(): Span | undefined {
-    return hasProperty(this.originalError, spanSymbol) ? this.originalError[spanSymbol] as Span : undefined
-  }
-
-  private _stack: string | undefined = undefined
-  get stack() {
-    if (this._stack) {
-      return this._stack
-    }
-    return this._stack = prettyErrorStack(
+class PrettyError extends globalThis.Error implements Cause.PrettyError {
+  constructor(originalError: unknown) {
+    const prevLimit = Error.stackTraceLimit
+    Error.stackTraceLimit = 0
+    super(prettyErrorMessage(originalError), { cause: originalError })
+    Error.stackTraceLimit = prevLimit
+    this.name = originalError instanceof Error ? originalError.name : "Error"
+    this.stack = prettyErrorStack(
       this.message,
-      this.originalError instanceof Error && this.originalError.stack
-        ? this.originalError.stack
+      originalError instanceof Error && originalError.stack
+        ? originalError.stack
         : "",
       this.span
     )
+  }
+
+  get span(): Span | undefined {
+    return hasProperty(this.cause, spanSymbol) ? this.cause[spanSymbol] as Span : undefined
   }
 
   toJSON() {
@@ -1079,7 +1066,7 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
       const stack = current.attributes.get("code.stacktrace")
       if (typeof stack === "string") {
         const locationMatch = stack.match(locationRegex)
-        const location = locationMatch ? locationMatch[1] : stack
+        const location = locationMatch ? locationMatch[1] : stack.replace(/^at /, "")
         out.push(`    at ${current.name} (${location})`)
       } else {
         out.push(`    at ${current.name}`)
@@ -1089,7 +1076,7 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
     }
   }
 
-  return out.join("\r\n")
+  return out.join("\n")
 }
 
 const spanSymbol = Symbol.for("effect/SpanAnnotation")
