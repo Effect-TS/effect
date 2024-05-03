@@ -6320,13 +6320,13 @@ type RequiredKeys<T> = {
  * @category api interface
  * @since 1.0.0
  */
-export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited, Proto>
+export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, Proto>
   extends Schema<Self, Types.Simplify<I>, R>
 {
   new(
     props: RequiredKeys<C> extends never ? void | {} : Types.Simplify<C>,
     disableValidation?: boolean | undefined
-  ): A & Omit<Inherited, keyof A> & Proto
+  ): Struct.Type<Fields> & Omit<Inherited, keyof Fields> & Proto
 
   annotations(annotations: Annotations.Schema<Self>): SchemaClass<Self, Types.Simplify<I>, R>
 
@@ -6341,7 +6341,6 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
     : Class<
       Extended,
       Fields & newFields,
-      A & Struct.Type<newFields>,
       I & Struct.Encoded<newFields>,
       R | Struct.Context<newFields>,
       C & Struct.Constructor<newFields>,
@@ -6357,22 +6356,21 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
     fields: newFields,
     options: {
       readonly decode: (
-        input: A,
+        input: Types.Simplify<Struct.Type<Fields>>,
         options: ParseOptions,
         ast: AST.Transformation
-      ) => Effect.Effect<Types.Simplify<A & Struct.Type<newFields>>, ParseResult.ParseIssue, R2>
+      ) => Effect.Effect<Types.Simplify<Struct.Type<Fields & newFields>>, ParseResult.ParseIssue, R2>
       readonly encode: (
-        input: Types.Simplify<A & Struct.Type<newFields>>,
+        input: Types.Simplify<Struct.Type<Fields & newFields>>,
         options: ParseOptions,
         ast: AST.Transformation
-      ) => Effect.Effect<A, ParseResult.ParseIssue, R3>
+      ) => Effect.Effect<Struct.Type<Fields>, ParseResult.ParseIssue, R3>
     },
     annotations?: Annotations.Schema<Transformed>
   ) => [Transformed] extends [never] ? MissingSelfGeneric<"Base.transform">
     : Class<
       Transformed,
       Fields & newFields,
-      A & Struct.Type<newFields>,
       I,
       R | Struct.Context<newFields> | R2 | R3,
       C & Struct.Constructor<newFields>,
@@ -6388,7 +6386,7 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
     fields: newFields,
     options: {
       readonly decode: (
-        input: I,
+        input: Types.Simplify<I>,
         options: ParseOptions,
         ast: AST.Transformation
       ) => Effect.Effect<Types.Simplify<I & Struct.Encoded<newFields>>, ParseResult.ParseIssue, R2>
@@ -6403,7 +6401,6 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
     : Class<
       Transformed,
       Fields & newFields,
-      A & Struct.Type<newFields>,
       I,
       R | Struct.Context<newFields> | R2 | R3,
       C & Struct.Constructor<newFields>,
@@ -6412,19 +6409,31 @@ export interface Class<Self, Fields extends Struct.Fields, A, I, R, C, Inherited
     >
 }
 
+type HasFields<Fields extends Struct.Fields> = Struct<Fields> | filter<Struct<Fields>>
+
+const isHasFields = <Fields extends Struct.Fields>(
+  fields: Fields | HasFields<Fields>
+): fields is HasFields<Fields> => isSchema(fields)
+
+const getFields = <Fields extends Struct.Fields>(hasFields: HasFields<Fields>): Fields => {
+  if ("fields" in hasFields) {
+    return hasFields.fields
+  }
+  return getFields(hasFields.from)
+}
+
 /**
  * @category classes
  * @since 1.0.0
  */
 export const Class = <Self = never>(identifier: string) =>
 <Fields extends Struct.Fields>(
-  fields: Fields | Struct<Fields> | filter<Struct<Fields>>,
+  fields: Fields | HasFields<Fields>,
   annotations?: Annotations.Schema<Self>
 ): [Self] extends [never] ? MissingSelfGeneric<"Class">
   : Class<
     Self,
     Fields,
-    Struct.Type<Fields>,
     Struct.Encoded<Fields>,
     Struct.Context<Fields>,
     Struct.Constructor<Fields>,
@@ -6434,7 +6443,8 @@ export const Class = <Self = never>(identifier: string) =>
   makeClass({
     kind: "Class",
     identifier,
-    definition: fields,
+    schema: isHasFields(fields) ? fields : Struct(fields),
+    fields: isHasFields(fields) ? getFields(fields) : fields,
     Base: data_.Class,
     annotations
   })
@@ -6451,7 +6461,6 @@ export interface TaggedClass<Self, Tag extends string, Fields extends Struct.Fie
   Class<
     Self,
     Fields,
-    Struct.Type<Fields>,
     Struct.Encoded<Fields>,
     Struct.Context<Fields>,
     Struct.Constructor<Omit<Fields, "_tag">>,
@@ -6473,15 +6482,19 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
   annotations?: Annotations.Schema<Self>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
   : TaggedClass<Self, Tag, { readonly _tag: PropertySignature<":", Tag, never, ":", Tag, true, never> } & Fields> =>
-  class TaggedClass extends makeClass({
+{
+  const taggedFields = extendFields({ _tag: getClassTag(tag) }, fields)
+  return class TaggedClass extends makeClass({
     kind: "TaggedClass",
     identifier: identifier ?? tag,
-    definition: extendFields({ _tag: getClassTag(tag) }, fields),
+    schema: Struct(taggedFields),
+    fields: taggedFields,
     Base: data_.Class,
     annotations
   }) {
     static _tag = tag
   } as any
+}
 
 /**
  * @category api interface
@@ -6491,7 +6504,6 @@ export interface TaggedErrorClass<Self, Tag extends string, Fields extends Struc
   Class<
     Self,
     Fields,
-    Struct.Type<Fields>,
     Struct.Encoded<Fields>,
     Struct.Context<Fields>,
     Struct.Constructor<Omit<Fields, "_tag">>,
@@ -6520,10 +6532,12 @@ export const TaggedError = <Self = never>(identifier?: string) =>
 {
   class Base extends data_.Error {}
   ;(Base.prototype as any).name = tag
+  const taggedFields = extendFields({ _tag: getClassTag(tag) }, fields)
   return class TaggedErrorClass extends makeClass({
     kind: "TaggedError",
     identifier: identifier ?? tag,
-    definition: extendFields({ _tag: getClassTag(tag) }, fields),
+    schema: Struct(taggedFields),
+    fields: taggedFields,
     Base,
     annotations,
     toStringOverride(self) {
@@ -6598,7 +6612,6 @@ export interface TaggedRequestClass<
   Class<
     Self,
     Fields,
-    Struct.Type<Fields>,
     Struct.Encoded<Fields>,
     Struct.Context<Fields>,
     Struct.Constructor<Omit<Fields, "_tag">>,
@@ -6648,10 +6661,12 @@ export const TaggedRequest =
         return { Failure, Success }
       }
     }
+    const taggedFields = extendFields({ _tag: getClassTag(tag) }, fields)
     return class TaggedRequestClass extends makeClass({
       kind: "TaggedRequest",
       identifier: identifier ?? tag,
-      definition: extendFields({ _tag: getClassTag(tag) }, fields),
+      schema: Struct(taggedFields),
+      fields: taggedFields,
       Base: SerializableRequest,
       annotations
     }) {
@@ -6670,36 +6685,28 @@ const extendFields = (a: Struct.Fields, b: Struct.Fields): Struct.Fields => {
   return out
 }
 
-type HasFields<Fields extends Struct.Fields> = {
-  readonly fields: Fields
-} | {
-  readonly from: HasFields<Fields>
-}
-
-const getFields = <Fields extends Struct.Fields>(definition: HasFields<Fields>): Fields => {
-  if ("fields" in definition) {
-    return definition.fields
+// does not overwrite existing title annotation
+const orElseTitleAnnotation = <A, I, R>(schema: Schema<A, I, R>, title: string): Schema<A, I, R> => {
+  const annotation = AST.getTitleAnnotation(schema.ast)
+  if (option_.isNone(annotation)) {
+    return schema.annotations({ title })
   }
-  return getFields(definition.from)
+  return schema
 }
 
-const makeClass = ({ Base, annotations, definition, identifier, kind, toStringOverride }: {
+const makeClass = ({ Base, annotations, fields, identifier, kind, schema, toStringOverride }: {
   kind: "Class" | "TaggedClass" | "TaggedError" | "TaggedRequest"
   identifier: string
-  definition: Struct.Fields | (Schema.Any & HasFields<Struct.Fields>)
+  schema: Schema.Any
+  fields: Struct.Fields
   Base: new(...args: ReadonlyArray<any>) => any
   annotations?: Annotations.Schema<any> | undefined
   toStringOverride?: (self: any) => string | undefined
 }): any => {
   const classSymbol = Symbol.for(`@effect/schema/${kind}/${identifier}`)
-  const surrogate = isSchema(definition) ? definition : Struct(definition)
-  const fields = isSchema(definition) ? getFields(definition) : definition
-  const validate = ParseResult.validateSync(surrogate.annotations({ title: `${identifier} (Constructor)` }))
-  const encodedSide: Schema.Any = option_.match(AST.getTitleAnnotation(surrogate.ast), {
-    onNone: () => surrogate.annotations({ title: `${identifier} (Encoded side)` }),
-    onSome: () => surrogate
-  })
-  const typeSide = typeSchema(surrogate).annotations({ title: `${identifier} (Type side)` })
+  const validate = ParseResult.validateSync(orElseTitleAnnotation(schema, `${identifier} (Constructor)`))
+  const encodedSide: Schema.Any = orElseTitleAnnotation(schema, `${identifier} (Encoded side)`)
+  const typeSide = orElseTitleAnnotation(typeSchema(schema), `${identifier} (Type side)`)
   const guard = ParseResult.is(typeSide)
   const fallbackInstanceOf = (u: unknown) => Predicate.hasProperty(u, classSymbol) && guard(u)
   const encode = ParseResult.encodeUnknown(typeSide)
@@ -6757,7 +6764,7 @@ const makeClass = ({ Base, annotations, definition, identifier, kind, toStringOv
         encodedSide,
         declaration,
         { decode: (input) => new this(input, true), encode: identity }
-      ).annotations({ [AST.SurrogateAnnotationId]: surrogate.ast })
+      ).annotations({ [AST.SurrogateAnnotationId]: schema.ast })
       return transformation.ast
     }
 
@@ -6787,7 +6794,8 @@ const makeClass = ({ Base, annotations, definition, identifier, kind, toStringOv
         return makeClass({
           kind,
           identifier,
-          definition: Struct(extendedFields),
+          schema: Struct(extendedFields),
+          fields: extendedFields,
           Base: this,
           annotations
         })
@@ -6800,13 +6808,12 @@ const makeClass = ({ Base, annotations, definition, identifier, kind, toStringOv
         return makeClass({
           kind,
           identifier,
-          definition: class TransformOrFailClass extends transformOrFail(
-            surrogate,
+          schema: transformOrFail(
+            schema,
             typeSchema(Struct(transformedFields)),
             options
-          ) {
-            static fields = transformedFields
-          },
+          ),
+          fields: transformedFields,
           Base: this,
           annotations
         })
@@ -6819,13 +6826,12 @@ const makeClass = ({ Base, annotations, definition, identifier, kind, toStringOv
         return makeClass({
           kind,
           identifier,
-          definition: class TransformOrFailFromClass extends transformOrFail(
-            encodedSchema(surrogate),
+          schema: transformOrFail(
+            encodedSchema(schema),
             Struct(transformedFields),
             options
-          ) {
-            static fields = transformedFields
-          },
+          ),
+          fields: transformedFields,
           Base: this,
           annotations
         })
