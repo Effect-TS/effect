@@ -281,7 +281,7 @@ describe("extend", () => {
 
   it("errors", () => {
     expect(() => Schema.String.pipe(Schema.extend(Schema.Number))).toThrow(
-      new Error("Extend: cannot extend `string` with `number` (path [])")
+      new Error("Extend: cannot extend `string` with `number`")
     )
     expect(() =>
       Schema.Record(Schema.String, Schema.Number).pipe(

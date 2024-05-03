@@ -2481,8 +2481,13 @@ export interface mutable<S extends Schema.Any> extends
  */
 export const mutable = <S extends Schema.Any>(schema: S): mutable<S> => make(AST.mutable(schema.ast))
 
-const getExtendErrorMessage = (x: AST.AST, y: AST.AST, path: ReadonlyArray<string>) =>
-  errors_.getAPIErrorMessage("Extend", `cannot extend \`${x}\` with \`${y}\` (path [${path?.join(", ")}])`)
+const getExtendErrorMessage = (x: AST.AST, y: AST.AST, path: ReadonlyArray<string>) => {
+  let message = `cannot extend \`${x}\` with \`${y}\``
+  if (path.length > 0) {
+    message += ` (path [${path.join(", ")}])`
+  }
+  return errors_.getAPIErrorMessage("Extend", message)
+}
 
 const intersectTypeLiterals = (
   x: AST.AST,
@@ -2499,10 +2504,9 @@ const intersectTypeLiterals = (
         propertySignatures.push(ps)
       } else {
         const { isOptional, type } = propertySignatures[i]
-        path = [...path, util_.formatUnknown(name)]
         propertySignatures[i] = new AST.PropertySignature(
           name,
-          extendAST(type, ps.type, filters, path),
+          extendAST(type, ps.type, filters, [...path, util_.formatUnknown(name)]),
           isOptional,
           true
         )

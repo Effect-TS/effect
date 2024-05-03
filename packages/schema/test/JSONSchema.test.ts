@@ -115,6 +115,20 @@ describe("JSONSchema", () => {
         "cannot build a JSON Schema for a bigint literal without a JSON Schema annotation"
       )
     })
+
+    it("Tuple", () => {
+      expectError(
+        Schema.Tuple(Schema.Void),
+        "cannot build a JSON Schema for `void` without a JSON Schema annotation (path [0])"
+      )
+    })
+
+    it("Struct", () => {
+      expectError(
+        Schema.Struct({ a: Schema.Void }),
+        `cannot build a JSON Schema for \`void\` without a JSON Schema annotation (path ["a"])`
+      )
+    })
   })
 
   it("Any", () => {
@@ -793,7 +807,7 @@ describe("JSONSchema", () => {
         Schema.Struct({
           a: Schema.UndefinedOr(Schema.String)
         }),
-        "cannot build a JSON Schema for `undefined` without a JSON Schema annotation"
+        `cannot build a JSON Schema for \`undefined\` without a JSON Schema annotation (path ["a"])`
       )
     })
   })
@@ -1082,7 +1096,10 @@ describe("JSONSchema", () => {
         a: Schema.String,
         as: Schema.Array(Schema.suspend(() => schema))
       })
-      expectError(schema, "Generating a JSON Schema for suspended schemas requires an identifier annotation")
+      expectError(
+        schema,
+        `Generating a JSON Schema for suspended schemas requires an identifier annotation (path ["as"])`
+      )
     })
 
     it("should support outer suspended schemas", () => {
