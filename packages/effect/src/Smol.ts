@@ -312,18 +312,26 @@ export const make = <A, E, R>(
 /**
  * @since 3.2.0
  */
-export const succeed = <A>(a: A): Smol<A> => make((_context, onResult) => onResult(Either.right(a)))
+export const succeed = <A>(a: A): Smol<A> =>
+  make(function(_env, onResult) {
+    onResult(Either.right(a))
+  })
 
 /**
  * @since 3.2.0
  */
-export const fail = <E>(e: E): Smol<never, E> => make((_context, onResult) => onResult(Either.left(FailureExpected(e))))
+export const fail = <E>(e: E): Smol<never, E> =>
+  make(function(_env, onResult) {
+    onResult(Either.left(FailureExpected(e)))
+  })
 
 /**
  * @since 3.2.0
  */
 export const failWith = <E>(failure: Failure<E>): Smol<never, E> =>
-  make((_context, onResult) => onResult(Either.left(failure)))
+  make(function(_env, onResult) {
+    onResult(Either.left(failure))
+  })
 
 /**
  * @since 3.2.0
@@ -483,15 +491,20 @@ export const tap: {
   2,
   <A, E, R, B, E2, R2>(self: Smol<A, E, R>, f: (a: A) => Smol<B, E2, R2>): Smol<A, E | E2, R | R2> =>
     make(function(env, onResult) {
-      run(self, env, function(result) {
-        if (result._tag === "Left") {
-          return onResult(result as any)
+      run(self, env, function(selfResult) {
+        if (selfResult._tag === "Left") {
+          return onResult(selfResult as any)
         }
-        const value = isSmol(f) ? f : typeof f === "function" ? f(result.right) : f
+        const value = isSmol(f) ? f : typeof f === "function" ? f(selfResult.right) : f
         if (isSmol(value)) {
-          run(value, env, onResult)
+          run(value, env, function(tapResult) {
+            if (tapResult._tag === "Left") {
+              return onResult(tapResult)
+            }
+            onResult(selfResult)
+          })
         } else {
-          onResult(result)
+          onResult(selfResult)
         }
       })
     })
@@ -530,19 +543,24 @@ export const async = <A, E = never, R = never>(
   flatten(
     make(function(env, onResult) {
       let resumed = false
+      let onAbort: LazyArg<void> | undefined = undefined
+      const signal = envGet(env, currentAbortSignal)
       function resume(effect: Smol<A, E, R>) {
         if (resumed) {
           return
         }
         resumed = true
+        if (onAbort !== undefined) {
+          signal.removeEventListener("abort", onAbort)
+        }
         onResult(Either.right(effect))
       }
-      const signal = envGet(env, currentAbortSignal)
       const cleanup = register(resume, signal)
       if (cleanup) {
-        signal.addEventListener("abort", () => {
+        onAbort = function() {
           resume(uninterruptible(zipRight(cleanup, failWith(FailureAborted))))
-        }, { once: true })
+        }
+        signal.addEventListener("abort", onAbort)
       }
     })
   )
