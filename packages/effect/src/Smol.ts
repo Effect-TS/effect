@@ -797,7 +797,7 @@ export const forEach: {
     const concurrency = options?.concurrency === "inherit" ? envGet(env, currentConcurrency) : options?.concurrency ?? 1
     if (concurrency === "unbounded" || concurrency > 1) {
       run(
-        unsafeForEachConcurrent(iterable, f, {
+        forEachConcurrent(iterable, f, {
           discard: options?.discard,
           concurrency
         }),
@@ -816,24 +816,47 @@ const unsafeForEachSequential = <
   R
 >(iterable: Iterable<A>, f: (a: NoInfer<A>) => Smol<B, E, R>, options?: {
   readonly discard?: boolean | undefined
-}): Smol<any, E, R> => {
-  const iterator = iterable[Symbol.iterator]()
-  const out: Array<B> | undefined = options?.discard ? undefined : []
-  function loop(result: IteratorResult<A>): Smol<void, E, R> {
-    if (result.done) {
-      return void_
-    }
-    return flatMap(f(result.value), (b) => {
-      if (out !== undefined) {
-        out.push(b)
+}): Smol<any, E, R> =>
+  make(function(env, onResult) {
+    const items = Array.from(iterable)
+    const length = items.length
+    const out: Array<B> | undefined = options?.discard ? undefined : new Array(length)
+    let index = 0
+    let running = false
+    function tick(): void {
+      running = true
+      while (index < length) {
+        let complete = false
+        const current = index++
+        try {
+          run(f(items[current]), env, function(result) {
+            complete = true
+            if (result._tag === "Left") {
+              index = length
+              onResult(result)
+            } else if (out !== undefined) {
+              out[current] = result.right
+            }
+            if (current === length - 1) {
+              onResult(Either.right(out))
+            } else if (!running) {
+              tick()
+            }
+          })
+        } catch (err) {
+          onResult(Either.left(FailureUnexpected(err)))
+          break
+        }
+        if (!complete) {
+          break
+        }
       }
-      return loop(iterator.next())
-    })
-  }
-  return as(loop(iterator.next()), out)
-}
+      running = false
+    }
+    tick()
+  })
 
-const unsafeForEachConcurrent = <
+const forEachConcurrent = <
   A,
   B,
   E,
@@ -847,6 +870,7 @@ const unsafeForEachConcurrent = <
     const controller = new AbortController()
     const parentSignal = envGet(env, currentAbortSignal)
     function onAbort() {
+      length = index
       controller.abort()
       parentSignal.removeEventListener("abort", onAbort)
     }
@@ -857,12 +881,14 @@ const unsafeForEachConcurrent = <
     const concurrency = options.concurrency === "unbounded" ? Infinity : options.concurrency
     let failure: Result<any, any> | undefined = undefined
     const items = Array.from(iterable)
-    const length = items.length
+    let length = items.length
     const out: Array<B> | undefined = options?.discard ? undefined : new Array(length)
     let index = 0
     let inProgress = 0
     let doneCount = 0
+    let pumping = false
     function pump() {
+      pumping = true
       while (inProgress < concurrency && index < length) {
         const currentIndex = index
         const item = items[currentIndex]
@@ -883,7 +909,7 @@ const unsafeForEachConcurrent = <
             if (doneCount === length) {
               parentSignal.removeEventListener("abort", onAbort)
               onResult(failure ?? Either.right(out))
-            } else if (inProgress < concurrency) {
+            } else if (!pumping && inProgress < concurrency) {
               pump()
             }
           })
@@ -892,6 +918,7 @@ const unsafeForEachConcurrent = <
           onAbort()
         }
       }
+      pumping = false
     }
     pump()
   })
