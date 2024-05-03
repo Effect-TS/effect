@@ -2206,7 +2206,7 @@ export const Do: Array<{}> = of({})
  * }
  *
  * @category do notation
- * @since 2.0.0
+ * @since 3.2.0
  */
 export const bind: {
   <A extends object, N extends string, B>(
