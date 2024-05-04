@@ -5,12 +5,13 @@ import * as Command from "@effect/platform/Command"
 import type { CommandExecutor } from "@effect/platform/CommandExecutor"
 import { FileSystem } from "@effect/platform/FileSystem"
 import { Path } from "@effect/platform/Path"
+import type * as Client from "@effect/sql/Client"
 import type { SqlError } from "@effect/sql/Error"
 import * as Migrator from "@effect/sql/Migrator"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Secret from "effect/Secret"
-import * as Client from "./Client.js"
+import type { PgClient } from "./Client.js"
 
 /**
  * @since 1.0.0
@@ -26,28 +27,10 @@ export const run: <R>(
 ) => Effect.Effect<
   ReadonlyArray<readonly [id: number, name: string]>,
   SqlError | Migrator.MigrationError,
-  Client.PgClient | FileSystem | Path | CommandExecutor | R
+  Client.Client | FileSystem | Path | CommandExecutor | R
 > = Migrator.make({
-  getClient: Client.PgClient,
-  ensureTable(sql, table) {
-    return Effect.catchAll(
-      sql`select ${table}::regclass`,
-      () =>
-        sql`
-        CREATE TABLE ${sql(table)} (
-          migration_id integer primary key,
-          created_at timestamp with time zone not null default now(),
-          name text not null
-        )
-      `
-    )
-  },
-  lockTable(sql, table) {
-    return sql`
-      LOCK TABLE ${sql(table)} IN ACCESS EXCLUSIVE MODE
-    `
-  },
-  dumpSchema(sql, path, table) {
+  dumpSchema(sql_, path, table) {
+    const sql = sql_ as PgClient
     const pgDump = (args: Array<string>) =>
       Effect.gen(function*(_) {
         const dump = yield* _(
@@ -109,5 +92,5 @@ export const run: <R>(
  */
 export const layer = <R>(
   options: Migrator.MigratorOptions<R>
-): Layer.Layer<never, SqlError | Migrator.MigrationError, R | Client.PgClient | FileSystem | Path | CommandExecutor> =>
+): Layer.Layer<never, SqlError | Migrator.MigrationError, R | Client.Client | FileSystem | Path | CommandExecutor> =>
   Layer.effectDiscard(run(options))

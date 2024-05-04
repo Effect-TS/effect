@@ -73,7 +73,8 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
     readonly segments: ReadonlyArray<Statement.Segment>,
     readonly acquirer: Connection.Connection.Acquirer,
     readonly compiler: Statement.Compiler,
-    readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
+    readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>,
+    readonly disableTransform = false
   ) {
     super()
   }
@@ -106,8 +107,16 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
     )
   }
 
+  private _withoutTransform: StatementPrimitive<A> | undefined
   get withoutTransform(): Effect.Effect<ReadonlyArray<A>, Error.SqlError> {
-    return this.withConnection(
+    this._withoutTransform ??= new StatementPrimitive(
+      this.segments,
+      this.acquirer,
+      this.compiler,
+      this.spanAttributes,
+      true
+    )
+    return this._withoutTransform.withConnection(
       "executeWithoutTransform",
       (connection, sql, params) => connection.executeWithoutTransform(sql, params)
     )
@@ -144,12 +153,8 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
     return this.withConnection("executeRaw", (connection, sql, params) => connection.executeRaw(sql, params))
   }
 
-  private _compiled: readonly [string, ReadonlyArray<Statement.Primitive>] | undefined = undefined
   compile() {
-    if (this._compiled) {
-      return this._compiled
-    }
-    return this._compiled = this.compiler.compile(this)
+    return this.compiler.compile(this, this.disableTransform)
   }
   commit(): Effect.Effect<ReadonlyArray<A>, Error.SqlError> {
     return this.withConnection("execute", (connection, sql, params) => connection.execute(sql, params))
@@ -299,7 +304,10 @@ export const make = (
       and,
       or,
       csv,
-      join
+      join,
+      onDialect(options: Record<Statement.Dialect, any>) {
+        return options[compiler.dialect]
+      }
     }
   )
 
@@ -433,8 +441,9 @@ export const csv: {
 /** @internal */
 class CompilerImpl implements Statement.Compiler {
   constructor(
+    readonly dialect: Statement.Dialect,
     readonly parameterPlaceholder: (index: number) => string,
-    readonly onIdentifier: (value: string) => string,
+    readonly onIdentifier: (value: string, withoutTransform: boolean) => string,
     readonly onRecordUpdate: (
       placeholders: string,
       alias: string,
@@ -443,7 +452,8 @@ class CompilerImpl implements Statement.Compiler {
     ) => readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>],
     readonly onCustom: (
       type: Statement.Custom<string, unknown, unknown>,
-      placeholder: () => string
+      placeholder: () => string,
+      withoutTransform: boolean
     ) => readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>],
     readonly onInsert?: (
       columns: ReadonlyArray<string>,
@@ -457,7 +467,8 @@ class CompilerImpl implements Statement.Compiler {
   ) {}
 
   compile(
-    statement: Statement.Fragment
+    statement: Statement.Fragment,
+    withoutTransform = false
   ): readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>] {
     if ((statement as any).__compiled) {
       return (statement as any).__compiled
@@ -485,7 +496,7 @@ class CompilerImpl implements Statement.Compiler {
         }
 
         case "Identifier": {
-          sql += this.onIdentifier(segment.value)
+          sql += this.onIdentifier(segment.value, withoutTransform)
           break
         }
 
@@ -506,13 +517,15 @@ class CompilerImpl implements Statement.Compiler {
 
           if (this.onInsert) {
             const [s, b] = this.onInsert(
-              keys.map(this.onIdentifier),
+              keys.map((_) => this.onIdentifier(_, withoutTransform)),
               placeholders(
                 generatePlaceholder(placeholder, keys.length),
                 segment.value.length
               ),
               segment.value.map((record) =>
-                keys.map((key) => extractPrimitive(record[key], this.onCustom, placeholderNoIncrement))
+                keys.map((key) =>
+                  extractPrimitive(record[key], this.onCustom, placeholderNoIncrement, withoutTransform)
+                )
               )
             )
             sql += s
@@ -521,7 +534,8 @@ class CompilerImpl implements Statement.Compiler {
             sql += `${
               generateColumns(
                 keys,
-                this.onIdentifier
+                this.onIdentifier,
+                withoutTransform
               )
             } VALUES ${
               placeholders(
@@ -536,7 +550,8 @@ class CompilerImpl implements Statement.Compiler {
                   extractPrimitive(
                     segment.value[i]?.[keys[j]] ?? null,
                     this.onCustom,
-                    placeholderNoIncrement
+                    placeholderNoIncrement,
+                    withoutTransform
                   )
                 )
               }
@@ -552,12 +567,13 @@ class CompilerImpl implements Statement.Compiler {
           }
           if (this.onRecordUpdateSingle) {
             const [s, b] = this.onRecordUpdateSingle(
-              keys.map(this.onIdentifier),
+              keys.map((_) => this.onIdentifier(_, withoutTransform)),
               keys.map((key) =>
                 extractPrimitive(
                   segment.value[key],
                   this.onCustom,
-                  placeholderNoIncrement
+                  placeholderNoIncrement,
+                  withoutTransform
                 )
               )
             )
@@ -565,7 +581,7 @@ class CompilerImpl implements Statement.Compiler {
             binds.push.apply(binds, b as any)
           } else {
             for (let i = 0, len = keys.length; i < len; i++) {
-              const column = this.onIdentifier(keys[i])
+              const column = this.onIdentifier(keys[i], withoutTransform)
               if (i === 0) {
                 sql += `${column} = ${placeholder()}`
               } else {
@@ -575,7 +591,8 @@ class CompilerImpl implements Statement.Compiler {
                 extractPrimitive(
                   segment.value[keys[i]],
                   this.onCustom,
-                  placeholderNoIncrement
+                  placeholderNoIncrement,
+                  withoutTransform
                 )
               )
             }
@@ -591,9 +608,11 @@ class CompilerImpl implements Statement.Compiler {
               segment.value.length
             ),
             segment.alias,
-            generateColumns(keys, this.onIdentifier),
+            generateColumns(keys, this.onIdentifier, withoutTransform),
             segment.value.map((record) =>
-              keys.map((key) => extractPrimitive(record?.[key], this.onCustom, placeholderNoIncrement))
+              keys.map((key) =>
+                extractPrimitive(record?.[key], this.onCustom, placeholderNoIncrement, withoutTransform)
+              )
             )
           )
           sql += s
@@ -602,7 +621,7 @@ class CompilerImpl implements Statement.Compiler {
         }
 
         case "Custom": {
-          const [s, b] = this.onCustom(segment, placeholder)
+          const [s, b] = this.onCustom(segment, placeholder, withoutTransform)
           sql += s
           binds.push.apply(binds, b as any)
           break
@@ -617,8 +636,9 @@ class CompilerImpl implements Statement.Compiler {
 /** @internal */
 export const makeCompiler = <C extends Statement.Custom<any, any, any, any> = any>(
   options: {
+    readonly dialect: Statement.Dialect
     readonly placeholder: (index: number) => string
-    readonly onIdentifier: (value: string) => string
+    readonly onIdentifier: (value: string, withoutTransform: boolean) => string
     readonly onRecordUpdate: (
       placeholders: string,
       alias: string,
@@ -627,7 +647,8 @@ export const makeCompiler = <C extends Statement.Custom<any, any, any, any> = an
     ) => readonly [sql: string, params: ReadonlyArray<Statement.Primitive>]
     readonly onCustom: (
       type: C,
-      placeholder: () => string
+      placeholder: () => string,
+      withoutTransform: boolean
     ) => readonly [sql: string, params: ReadonlyArray<Statement.Primitive>]
     readonly onInsert?: (
       columns: ReadonlyArray<string>,
@@ -641,6 +662,7 @@ export const makeCompiler = <C extends Statement.Custom<any, any, any, any> = an
   }
 ): Statement.Compiler =>
   new CompilerImpl(
+    options.dialect,
     options.placeholder,
     options.onIdentifier,
     options.onRecordUpdate,
@@ -681,25 +703,28 @@ const generatePlaceholder = (evaluate: () => string, len: number) => {
 
 const generateColumns = (
   keys: ReadonlyArray<string>,
-  escape: (_: string) => string
+  escape: (_: string, withoutTransform: boolean) => string,
+  withoutTransform: boolean
 ) => {
   if (keys.length === 0) {
     return "()"
   }
 
-  let str = `(${escape(keys[0])}`
+  let str = `(${escape(keys[0], withoutTransform)}`
   for (let i = 1; i < keys.length; i++) {
-    str += `,${escape(keys[i])}`
+    str += `,${escape(keys[i], withoutTransform)}`
   }
   return str + ")"
 }
 
 /** @internal */
-export const defaultEscape = (c: string) => {
+export function defaultEscape(c: string) {
   const re = new RegExp(c, "g")
   const double = c + c
   const dot = c + "." + c
-  return (str: string) => c + str.replace(re, double).replace(/\./g, dot) + c
+  return function(str: string) {
+    return c + str.replace(re, double).replace(/\./g, dot) + c
+  }
 }
 
 /** @internal */
@@ -734,14 +759,16 @@ const extractPrimitive = (
   value: Statement.Primitive | Statement.Fragment,
   onCustom: (
     type: Statement.Custom<string, unknown, unknown>,
-    placeholder: () => string
+    placeholder: () => string,
+    withoutTransform: boolean
   ) => readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>],
-  placeholder: () => string
+  placeholder: () => string,
+  withoutTransform: boolean
 ): Statement.Primitive => {
   if (isFragment(value)) {
     const head = value.segments[0]
     if (head._tag === "Custom") {
-      const compiled = onCustom(head, placeholder)
+      const compiled = onCustom(head, placeholder, withoutTransform)
       return compiled[1][0] ?? null
     } else if (head._tag === "Parameter") {
       return head.value
@@ -749,4 +776,90 @@ const extractPrimitive = (
     return null
   }
   return value
+}
+
+const escapeSqlite = defaultEscape("\"")
+
+/** @internal */
+export const makeCompilerSqlite = (transform?: (_: string) => string) =>
+  makeCompiler({
+    dialect: "sqlite",
+    placeholder(_) {
+      return "?"
+    },
+    onIdentifier: transform ?
+      function(value: any, withoutTransform: boolean) {
+        return escapeSqlite(withoutTransform ? value : transform(value))
+      } :
+      escapeSqlite,
+    onRecordUpdate() {
+      return ["", []]
+    },
+    onCustom() {
+      return ["", []]
+    }
+  })
+
+/** @internal */
+export const defaultTransforms = (
+  transformer: (str: string) => string,
+  nested = true
+) => {
+  const transformValue = (value: any) => {
+    if (Array.isArray(value)) {
+      if (value.length === 0 || value[0].constructor !== Object) {
+        return value
+      }
+      return array(value)
+    } else if (value?.constructor === Object) {
+      return transformObject(value)
+    }
+    return value
+  }
+
+  const transformObject = (obj: Record<string, any>): any => {
+    const newObj: Record<string, any> = {}
+    for (const key in obj) {
+      newObj[transformer(key)] = transformValue(obj[key])
+    }
+    return newObj
+  }
+
+  const transformArrayNested = <A extends object>(
+    rows: ReadonlyArray<A>
+  ): ReadonlyArray<A> => {
+    const newRows: Array<A> = new Array(rows.length)
+    for (let i = 0, len = rows.length; i < len; i++) {
+      const row = rows[i]
+      const obj: any = {}
+      for (const key in row) {
+        obj[transformer(key)] = transformValue(row[key])
+      }
+      newRows[i] = obj
+    }
+    return newRows
+  }
+
+  const transformArray = <A extends object>(
+    rows: ReadonlyArray<A>
+  ): ReadonlyArray<A> => {
+    const newRows: Array<A> = new Array(rows.length)
+    for (let i = 0, len = rows.length; i < len; i++) {
+      const row = rows[i]
+      const obj: any = {}
+      for (const key in row) {
+        obj[transformer(key)] = row[key]
+      }
+      newRows[i] = obj
+    }
+    return newRows
+  }
+
+  const array = nested ? transformArrayNested : transformArray
+
+  return {
+    value: transformValue,
+    object: transformObject,
+    array
+  } as const
 }

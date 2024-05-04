@@ -1,11 +1,11 @@
 /**
  * @since 1.0.0
  */
+import type * as Client from "@effect/sql/Client"
 import type { SqlError } from "@effect/sql/Error"
 import * as Migrator from "@effect/sql/Migrator"
 import type * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as Client from "./Client.js"
 
 /**
  * @since 1.0.0
@@ -21,19 +21,8 @@ export const run: <R>(
 ) => Effect.Effect<
   ReadonlyArray<readonly [id: number, name: string]>,
   SqlError | Migrator.MigrationError,
-  Client.SqliteClient | R
-> = Migrator.make({
-  getClient: Client.SqliteClient,
-  ensureTable(sql, table) {
-    return sql`
-      CREATE TABLE IF NOT EXISTS ${sql(table)} (
-        migration_id integer PRIMARY KEY NOT NULL,
-        created_at datetime NOT NULL DEFAULT current_timestamp,
-        name VARCHAR(255) NOT NULL
-      )
-    `
-  }
-})
+  Client.Client | R
+> = Migrator.make({})
 
 /**
  * @category constructor
@@ -41,4 +30,4 @@ export const run: <R>(
  */
 export const layer = <R>(
   options: Migrator.MigratorOptions<R>
-): Layer.Layer<never, SqlError | Migrator.MigrationError, R | Client.SqliteClient> => Layer.effectDiscard(run(options))
+): Layer.Layer<never, SqlError | Migrator.MigrationError, R | Client.Client> => Layer.effectDiscard(run(options))

@@ -5,12 +5,13 @@ import * as Command from "@effect/platform/Command"
 import type { CommandExecutor } from "@effect/platform/CommandExecutor"
 import { FileSystem } from "@effect/platform/FileSystem"
 import { Path } from "@effect/platform/Path"
+import type * as Client from "@effect/sql/Client"
 import type { SqlError } from "@effect/sql/Error"
 import * as Migrator from "@effect/sql/Migrator"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Secret from "effect/Secret"
-import * as Client from "./Client.js"
+import type { MysqlClient } from "./Client.js"
 
 /**
  * @since 1.0.0
@@ -26,21 +27,10 @@ export const run: <R>(
 ) => Effect.Effect<
   ReadonlyArray<readonly [id: number, name: string]>,
   SqlError | Migrator.MigrationError,
-  Client.MysqlClient | R | FileSystem | Path | CommandExecutor
+  Client.Client | R | FileSystem | Path | CommandExecutor
 > = Migrator.make({
-  getClient: Client.MysqlClient,
-  ensureTable(sql, table) {
-    return sql`CREATE TABLE IF NOT EXISTS ${sql(table)} (
-      migration_id INTEGER UNSIGNED NOT NULL,
-      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      name VARCHAR(255) NOT NULL,
-      PRIMARY KEY (migration_id)
-    )`
-  },
-  lockTable(sql, table) {
-    return sql`LOCK TABLE ${sql(table)} IN ACCESS EXCLUSIVE MODE`
-  },
-  dumpSchema(sql, path, table) {
+  dumpSchema(sql_, path, table) {
+    const sql = sql_ as MysqlClient
     const mysqlDump = (args: Array<string>) =>
       Effect.gen(function*(_) {
         const dump = yield* _(
@@ -103,5 +93,5 @@ export const layer = <R>(
 ): Layer.Layer<
   never,
   SqlError | Migrator.MigrationError,
-  Client.MysqlClient | FileSystem | Path | CommandExecutor | R
+  Client.Client | FileSystem | Path | CommandExecutor | R
 > => Layer.effectDiscard(run(options))

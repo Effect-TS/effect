@@ -38,6 +38,12 @@ export interface Fragment {
  * @category model
  * @since 1.0.0
  */
+export type Dialect = "sqlite" | "pg" | "mysql" | "mssql"
+
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface Statement<A> extends Fragment, Effect<ReadonlyArray<A>, SqlError>, Pipeable {
   readonly withoutTransform: Effect<ReadonlyArray<A>, SqlError>
   readonly stream: Stream.Stream<A, SqlError>
@@ -333,6 +339,13 @@ export interface Constructor {
     addParens?: boolean,
     fallback?: string
   ) => (clauses: ReadonlyArray<string | Fragment>) => Fragment
+
+  readonly onDialect: <A, B, C, D>(options: {
+    readonly sqlite: () => A
+    readonly pg: () => B
+    readonly mysql: () => C
+    readonly mssql: () => D
+  }) => A | B | C | D
 }
 
 /**
@@ -390,8 +403,10 @@ export const join: (
  * @since 1.0.0
  */
 export interface Compiler {
+  readonly dialect: Dialect
   readonly compile: (
-    statement: Fragment
+    statement: Fragment,
+    withoutTransform: boolean
   ) => readonly [sql: string, params: ReadonlyArray<Primitive>]
 }
 
@@ -401,15 +416,20 @@ export interface Compiler {
  */
 export const makeCompiler: <C extends Custom<any, any, any, any> = any>(
   options: {
+    readonly dialect: Dialect
     readonly placeholder: (index: number) => string
-    readonly onIdentifier: (value: string) => string
+    readonly onIdentifier: (value: string, withoutTransform: boolean) => string
     readonly onRecordUpdate: (
       placeholders: string,
       alias: string,
       columns: string,
       values: ReadonlyArray<ReadonlyArray<Primitive>>
     ) => readonly [sql: string, params: ReadonlyArray<Primitive>]
-    readonly onCustom: (type: C, placeholder: () => string) => readonly [sql: string, params: ReadonlyArray<Primitive>]
+    readonly onCustom: (
+      type: C,
+      placeholder: () => string,
+      withoutTransform: boolean
+    ) => readonly [sql: string, params: ReadonlyArray<Primitive>]
     readonly onInsert?: (
       columns: ReadonlyArray<string>,
       placeholders: string,
@@ -423,6 +443,13 @@ export const makeCompiler: <C extends Custom<any, any, any, any> = any>(
 ) => Compiler = internal.makeCompiler
 
 /**
+ * @category compiler
+ * @since 1.0.0
+ */
+export const makeCompilerSqlite: (transform?: ((_: string) => string) | undefined) => Compiler =
+  internal.makeCompilerSqlite
+
+/**
  * @since 1.0.0
  */
 export const defaultEscape: (c: string) => (str: string) => string = internal.defaultEscape
@@ -431,3 +458,15 @@ export const defaultEscape: (c: string) => (str: string) => string = internal.de
  * @since 1.0.0
  */
 export const primitiveKind: (value: Primitive) => PrimitiveKind = internal.primitiveKind
+
+/**
+ * @since 1.0.0
+ */
+export const defaultTransforms: (
+  transformer: (str: string) => string,
+  nested?: boolean
+) => {
+  readonly value: (value: any) => any
+  readonly object: (obj: Record<string, any>) => any
+  readonly array: <A extends object>(rows: ReadonlyArray<A>) => ReadonlyArray<A>
+} = internal.defaultTransforms

@@ -7,7 +7,7 @@ import { SqlError } from "@effect/sql/Error"
 import * as Statement from "@effect/sql/Statement"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
-import * as Context from "effect/Context"
+import type * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -50,7 +50,7 @@ export interface MssqlClient extends Client.Client {
  * @category tags
  * @since 1.0.0
  */
-export const MssqlClient = Context.GenericTag<MssqlClient>("@effect/sql-mssql/MssqlClient")
+export const MssqlClient: Context.Tag<Client.Client, MssqlClient> = Client.Client as any
 
 /**
  * @category models
@@ -106,7 +106,7 @@ export const make = (
     const parameterTypes = options.parameterTypes ?? defaultParameterTypes
     const compiler = makeCompiler(options.transformQueryNames)
 
-    const transformRows = Client.defaultTransforms(
+    const transformRows = Statement.defaultTransforms(
       options.transformResultNames!
     ).array
 
@@ -396,11 +396,10 @@ export const make = (
  * @category layers
  * @since 1.0.0
  */
-export const layer: (
+export const layer = (
   config: Config.Config.Wrap<MssqlClientConfig>
-) => Layer.Layer<MssqlClient, ConfigError> = (
-  config: Config.Config.Wrap<MssqlClientConfig>
-) => Layer.scoped(MssqlClient, Effect.flatMap(Config.unwrap(config), make))
+): Layer.Layer<Client.Client, ConfigError, never> =>
+  Layer.scoped(MssqlClient, Effect.flatMap(Config.unwrap(config), make))
 
 /**
  * @category compiler
@@ -408,38 +407,35 @@ export const layer: (
  */
 export const makeCompiler = (transform?: (_: string) => string) =>
   Statement.makeCompiler<MssqlCustom>({
-    placeholder: (_) => `@${numberToAlpha(_ - 1)}`,
-    onIdentifier: transform ? (_) => escape(transform(_)) : escape,
-    onRecordUpdate: (placeholders, valueAlias, valueColumns, values) => [
-      `(values ${placeholders}) AS ${valueAlias}${valueColumns}`,
-      values.flat()
-    ],
-    onCustom: (type, placeholder) => {
+    dialect: "mssql",
+    placeholder(_) {
+      return `@${numberToAlpha(_ - 1)}`
+    },
+    onIdentifier: transform ?
+      function(value, withoutTransform) {
+        return withoutTransform ? escape(value) : escape(transform(value))
+      } :
+      escape,
+    onRecordUpdate(placeholders, valueAlias, valueColumns, values) {
+      return [
+        `(values ${placeholders}) AS ${valueAlias}${valueColumns}`,
+        values.flat()
+      ]
+    },
+    onCustom(type, placeholder) {
       switch (type.kind) {
         case "MssqlParam": {
           return [placeholder(), [type] as any]
         }
       }
     },
-    onInsert: (columns, placeholders, values) => [
-      `(${columns.join(",")}) OUTPUT INSERTED.* VALUES ${placeholders}`,
-      values.flat()
-    ]
+    onInsert(columns, placeholders, values) {
+      return [
+        `(${columns.join(",")}) OUTPUT INSERTED.* VALUES ${placeholders}`,
+        values.flat()
+      ]
+    }
   })
-
-/**
- * @since 1.0.0
- */
-export const defaultParameterTypes: Record<Statement.PrimitiveKind, DataType> = {
-  string: Tedious.TYPES.VarChar,
-  number: Tedious.TYPES.Int,
-  bigint: Tedious.TYPES.BigInt,
-  boolean: Tedious.TYPES.Bit,
-  Date: Tedious.TYPES.DateTime,
-  Uint8Array: Tedious.TYPES.VarBinary,
-  Int8Array: Tedious.TYPES.VarBinary,
-  null: Tedious.TYPES.Bit
-}
 
 // compiler helpers
 
@@ -455,20 +451,18 @@ function numberToAlpha(n: number) {
   return s
 }
 
-function rowsToObjects(rows: ReadonlyArray<any>) {
-  const newRows = new Array(rows.length)
-
-  for (let i = 0, len = rows.length; i < len; i++) {
-    const row = rows[i]
-    const newRow: any = {}
-    for (let j = 0, columnLen = row.length; j < columnLen; j++) {
-      const column = row[j]
-      newRow[column.metadata.colName] = column.value
-    }
-    newRows[i] = newRow
-  }
-
-  return newRows
+/**
+ * @since 1.0.0
+ */
+export const defaultParameterTypes: Record<Statement.PrimitiveKind, DataType> = {
+  string: Tedious.TYPES.VarChar,
+  number: Tedious.TYPES.Int,
+  bigint: Tedious.TYPES.BigInt,
+  boolean: Tedious.TYPES.Bit,
+  Date: Tedious.TYPES.DateTime,
+  Uint8Array: Tedious.TYPES.VarBinary,
+  Int8Array: Tedious.TYPES.VarBinary,
+  null: Tedious.TYPES.Bit
 }
 
 // custom types
@@ -486,3 +480,19 @@ interface MssqlParam extends
 
 const mssqlParam = Statement.custom<MssqlParam>("MssqlParam")
 const isMssqlParam = Statement.isCustom<MssqlParam>("MssqlParam")
+
+function rowsToObjects(rows: ReadonlyArray<any>) {
+  const newRows = new Array(rows.length)
+
+  for (let i = 0, len = rows.length; i < len; i++) {
+    const row = rows[i]
+    const newRow: any = {}
+    for (let j = 0, columnLen = row.length; j < columnLen; j++) {
+      const column = row[j]
+      newRow[column.metadata.colName] = column.value
+    }
+    newRows[i] = newRow
+  }
+
+  return newRows
+}

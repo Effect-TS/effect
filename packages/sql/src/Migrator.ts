@@ -8,7 +8,7 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
-import type { Client } from "./Client.js"
+import * as Client from "./Client.js"
 import type { SqlError } from "./Error.js"
 
 /**
@@ -70,20 +70,14 @@ export class MigrationError extends Data.TaggedError("MigrationError")<{
  * @category constructor
  * @since 1.0.0
  */
-export const make = <R extends Client, RD, RE, RL, R2 = never>({
-  dumpSchema = () => Effect.void,
-  ensureTable,
-  getClient,
-  lockTable = () => Effect.void
+export const make = <RD, R2 = never>({
+  dumpSchema = () => Effect.void
 }: {
-  getClient: Effect.Effect<R, SqlError, R>
-  ensureTable: (sql: R, table: string) => Effect.Effect<void, SqlError, RE>
   dumpSchema?: (
-    sql: R,
+    sql: Client.Client,
     path: string,
     migrationsTable: string
   ) => Effect.Effect<void, MigrationError, RD>
-  lockTable?: (sql: R, table: string) => Effect.Effect<void, SqlError, RL>
 }) =>
 ({
   loader,
@@ -92,11 +86,42 @@ export const make = <R extends Client, RD, RE, RL, R2 = never>({
 }: MigratorOptions<R2>): Effect.Effect<
   ReadonlyArray<readonly [id: number, name: string]>,
   MigrationError | SqlError,
-  R | RD | RE | RL | R2
+  Client.Client | RD | R2
 > =>
   Effect.gen(function*(_) {
-    const sql = yield* _(getClient)
-    const ensureMigrationsTable = ensureTable(sql, table)
+    const sql = yield* Client.Client
+    const ensureMigrationsTable = sql.onDialect({
+      mssql: () =>
+        sql`IF OBJECT_ID(N'${sql.literal(table)}', N'U') IS NULL
+  CREATE TABLE ${sql(table)} (
+    migration_id INT NOT NULL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT GETDATE()
+  )`,
+      mysql: () =>
+        sql`CREATE TABLE IF NOT EXISTS ${sql(table)} (
+  migration_id INTEGER UNSIGNED NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  name VARCHAR(255) NOT NULL,
+  PRIMARY KEY (migration_id)
+)`,
+      pg: () =>
+        Effect.catchAll(
+          sql`select ${table}::regclass`,
+          () =>
+            sql`CREATE TABLE ${sql(table)} (
+  migration_id integer primary key,
+  created_at timestamp with time zone not null default now(),
+  name text not null
+)`
+        ),
+      sqlite: () =>
+        sql`CREATE TABLE IF NOT EXISTS ${sql(table)} (
+  migration_id integer PRIMARY KEY NOT NULL,
+  created_at datetime NOT NULL DEFAULT current_timestamp,
+  name VARCHAR(255) NOT NULL
+)`
+    })
 
     const insertMigrations = (
       rows: ReadonlyArray<[id: number, name: string]>
@@ -166,28 +191,29 @@ export const make = <R extends Client, RD, RE, RL, R2 = never>({
     // === run
 
     const run = Effect.gen(function*(_) {
-      yield* _(lockTable(sql, table))
+      yield* sql.onDialect({
+        mssql: () => Effect.void,
+        mysql: () => sql`LOCK TABLE ${sql(table)} IN ACCESS EXCLUSIVE MODE`,
+        pg: () => sql`LOCK TABLE ${sql(table)} IN ACCESS EXCLUSIVE MODE`,
+        sqlite: () => Effect.void
+      })
 
-      const [latestMigrationId, current] = yield* _(
-        Effect.all([
-          Effect.map(
-            latestMigration,
-            Option.match({
-              onNone: () => 0,
-              onSome: (_) => _.id
-            })
-          ),
-          loader
-        ])
-      )
+      const [latestMigrationId, current] = yield* Effect.all([
+        Effect.map(
+          latestMigration,
+          Option.match({
+            onNone: () => 0,
+            onSome: (_) => _.id
+          })
+        ),
+        loader
+      ])
 
       if (new Set(current.map(([id]) => id)).size !== current.length) {
-        yield* _(
-          new MigrationError({
-            reason: "duplicates",
-            message: "Found duplicate migration id's"
-          })
-        )
+        return yield* new MigrationError({
+          reason: "duplicates",
+          message: "Found duplicate migration id's"
+        })
       }
 
       const required: Array<ResolvedMigration> = []

@@ -9,7 +9,7 @@ import { asyncPauseResume } from "@effect/sql/Stream"
 import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
-import * as Context from "effect/Context"
+import type * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -30,7 +30,7 @@ export interface MysqlClient extends Client.Client {
  * @category tags
  * @since 1.0.0
  */
-export const MysqlClient = Context.GenericTag<MysqlClient>("sqlfx/mysql2/MysqlClient")
+export const MysqlClient: Context.Tag<Client.Client, MysqlClient> = Client.Client as any
 
 /**
  * @category models
@@ -57,8 +57,6 @@ export interface MysqlClientConfig {
   readonly transformQueryNames?: (str: string) => string
 }
 
-const escape = Statement.defaultEscape("`")
-
 /**
  * @category constructors
  * @since 1.0.0
@@ -68,8 +66,7 @@ export const make = (
 ): Effect.Effect<MysqlClient, never, Scope> =>
   Effect.gen(function*(_) {
     const compiler = makeCompiler(options.transformQueryNames)
-
-    const transformRows = Client.defaultTransforms(
+    const transformRows = Statement.defaultTransforms(
       options.transformResultNames!
     ).array
 
@@ -191,11 +188,9 @@ export const make = (
  * @category layers
  * @since 1.0.0
  */
-export const layer: (
+export const layer = (
   config: Config.Config.Wrap<MysqlClientConfig>
-) => Layer.Layer<MysqlClient, ConfigError> = (
-  config: Config.Config.Wrap<MysqlClientConfig>
-) => Layer.scoped(MysqlClient, Effect.flatMap(Config.unwrap(config), make))
+): Layer.Layer<Client.Client, ConfigError> => Layer.scoped(MysqlClient, Effect.flatMap(Config.unwrap(config), make))
 
 /**
  * @category compiler
@@ -203,11 +198,18 @@ export const layer: (
  */
 export const makeCompiler = (transform?: (_: string) => string) =>
   Statement.makeCompiler({
+    dialect: "mysql",
     placeholder: (_) => `?`,
-    onIdentifier: transform ? (_) => escape(transform(_)) : escape,
+    onIdentifier: transform ?
+      function(value, withoutTransform) {
+        return withoutTransform ? escape(value) : escape(transform(value))
+      } :
+      escape,
     onCustom: () => ["", []],
     onRecordUpdate: () => ["", []]
   })
+
+const escape = Statement.defaultEscape("`")
 
 function queryStream(
   conn: Mysql.PoolConnection,

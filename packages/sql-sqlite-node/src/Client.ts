@@ -9,7 +9,7 @@ import Sqlite from "better-sqlite3"
 import * as Cache from "effect/Cache"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
-import * as Context from "effect/Context"
+import type * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
@@ -30,9 +30,7 @@ export interface SqliteClient extends Client.Client {
  * @category tags
  * @since 1.0.0
  */
-export const SqliteClient: Context.Tag<SqliteClient, SqliteClient> = Context.GenericTag(
-  "@effect/sql-sqlite-node/SqliteClient"
-)
+export const SqliteClient: Context.Tag<Client.Client, SqliteClient> = Client.Client as any
 
 /**
  * @category models
@@ -62,8 +60,8 @@ export const make = (
   options: SqliteClientConfig
 ): Effect.Effect<SqliteClient, never, Scope.Scope> =>
   Effect.gen(function*(_) {
-    const compiler = makeCompiler(options.transformQueryNames)
-    const transformRows = Client.defaultTransforms(
+    const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
+    const transformRows = Statement.defaultTransforms(
       options.transformResultNames!
     ).array
 
@@ -207,22 +205,8 @@ export const make = (
  */
 export const layer = (
   config: Config.Config.Wrap<SqliteClientConfig>
-): Layer.Layer<SqliteClient, ConfigError> =>
+): Layer.Layer<Client.Client, ConfigError> =>
   Layer.scoped(
     SqliteClient,
     Effect.flatMap(Config.unwrap(config), make)
   )
-
-const escape = Statement.defaultEscape("\"")
-
-/**
- * @category compiler
- * @since 1.0.0
- */
-export const makeCompiler = (transform?: (_: string) => string) =>
-  Statement.makeCompiler({
-    placeholder: (_) => `?`,
-    onIdentifier: transform ? (_) => escape(transform(_)) : escape,
-    onRecordUpdate: () => ["", []],
-    onCustom: () => ["", []]
-  })

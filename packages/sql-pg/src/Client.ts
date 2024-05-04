@@ -9,7 +9,7 @@ import * as Statement from "@effect/sql/Statement"
 import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
-import * as Context from "effect/Context"
+import type * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -33,7 +33,7 @@ export interface PgClient extends Client.Client {
  * @category tags
  * @since 1.0.0
  */
-export const PgClient: Context.Tag<PgClient, PgClient> = Context.GenericTag<PgClient>("@effect/sql-pg/PgClient")
+export const PgClient: Context.Tag<Client.Client, PgClient> = Client.Client as any
 
 /**
  * @category constructors
@@ -66,8 +66,6 @@ export interface PgClientConfig {
   readonly debug?: postgres.Options<{}>["debug"] | undefined
 }
 
-const escape = Statement.defaultEscape("\"")
-
 type PartialWithUndefined<T> = { [K in keyof T]?: T[K] | undefined }
 
 /**
@@ -82,8 +80,7 @@ export const make = (
       options.transformQueryNames,
       options.transformJson
     )
-
-    const transformRows = Client.defaultTransforms(
+    const transformRows = Statement.defaultTransforms(
       options.transformResultNames!,
       options.transformJson
     ).array
@@ -206,11 +203,9 @@ export const make = (
  * @category constructor
  * @since 1.0.0
  */
-export const layer: (
+export const layer = (
   config: Config.Config.Wrap<PgClientConfig>
-) => Layer.Layer<PgClient, ConfigError> = (
-  config: Config.Config.Wrap<PgClientConfig>
-) => Layer.scoped(PgClient, Effect.flatMap(Config.unwrap(config), make))
+): Layer.Layer<Client.Client, ConfigError> => Layer.scoped(PgClient, Effect.flatMap(Config.unwrap(config), make))
 
 /**
  * @category constructor
@@ -223,26 +218,33 @@ export const makeCompiler = (
   const pg = postgres({ max: 0 })
 
   const transformValue = transformJson && transform
-    ? Client.defaultTransforms(transform).value
+    ? Statement.defaultTransforms(transform).value
     : undefined
 
   return Statement.makeCompiler<PgCustom>({
-    placeholder: (_) => `$${_}`,
-    onIdentifier: transform ? (_) => escape(transform(_)) : escape,
+    dialect: "pg",
+    placeholder(_) {
+      return `$${_}`
+    },
+    onIdentifier: transform ?
+      function(value, withoutTransform) {
+        return withoutTransform ? escape(value) : escape(transform(value))
+      } :
+      escape,
     onRecordUpdate: (placeholders, valueAlias, valueColumns, values) => [
       `(values ${placeholders}) AS ${valueAlias}${valueColumns}`,
       values.flat()
     ],
-    onCustom: (type, placeholder) => {
+    onCustom(type, placeholder, withoutTransform) {
       switch (type.kind) {
         case "PgJson": {
           return [
             placeholder(),
             [
               pg.json(
-                transformValue !== undefined
-                  ? transformValue(type.i0)
-                  : type.i0
+                withoutTransform || transformValue === undefined
+                  ? type.i0
+                  : transformValue(type.i0)
               ) as any
             ]
           ]
@@ -270,6 +272,8 @@ export const makeCompiler = (
     }
   })
 }
+
+const escape = Statement.defaultEscape("\"")
 
 /**
  * @category custom types
