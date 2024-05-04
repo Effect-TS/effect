@@ -16,13 +16,22 @@ describe("mssql", () => {
   it("insert helper", () => {
     const [query, params] = sql`INSERT INTO ${sql("people")} ${sql.insert({ name: "Tim", age: 10 })}`.compile()
     expect(query).toEqual(
+      `INSERT INTO [people] ([name],[age]) VALUES (@a,@b)`
+    )
+    expect(params).toEqual(["Tim", 10])
+  })
+
+  it("insert helper returning", () => {
+    const [query, params] = sql`INSERT INTO ${sql("people")} ${sql.insert({ name: "Tim", age: 10 }).returning("*")}`
+      .compile()
+    expect(query).toEqual(
       `INSERT INTO [people] ([name],[age]) OUTPUT INSERTED.* VALUES (@a,@b)`
     )
     expect(params).toEqual(["Tim", 10])
   })
 
   it("update helper", () => {
-    const [query, params] = sql`UPDATE people SET name = data.name FROM ${
+    const [query, params] = sql`UPDATE people SET name = data.name ${
       sql.updateValues(
         [{ name: "Tim" }, { name: "John" }],
         "data"
@@ -32,6 +41,28 @@ describe("mssql", () => {
       `UPDATE people SET name = data.name FROM (values (@a),(@b)) AS data([name])`
     )
     expect(params).toEqual(["Tim", "John"])
+  })
+
+  it("update helper returning", () => {
+    const [query, params] = sql`UPDATE people SET name = data.name ${
+      sql.updateValues(
+        [{ name: "Tim" }, { name: "John" }],
+        "data"
+      ).returning("*")
+    }`.compile()
+    expect(query).toEqual(
+      `UPDATE people SET name = data.name OUTPUT INSERTED.* FROM (values (@a),(@b)) AS data([name])`
+    )
+    expect(params).toEqual(["Tim", "John"])
+  })
+
+  it("update single helper returning", () => {
+    const [query, params] = sql`UPDATE people SET ${sql.update({ name: "Tim" }).returning("*")}`
+      .compile()
+    expect(query).toEqual(
+      `UPDATE people SET [name] = @a OUTPUT INSERTED.*`
+    )
+    expect(params).toEqual(["Tim"])
   })
 
   it("array helper", () => {

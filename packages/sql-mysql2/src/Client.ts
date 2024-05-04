@@ -199,14 +199,20 @@ export const layer = (
 export const makeCompiler = (transform?: (_: string) => string) =>
   Statement.makeCompiler({
     dialect: "mysql",
-    placeholder: (_) => `?`,
+    placeholder(_) {
+      return `?`
+    },
     onIdentifier: transform ?
       function(value, withoutTransform) {
         return withoutTransform ? escape(value) : escape(transform(value))
       } :
       escape,
-    onCustom: () => ["", []],
-    onRecordUpdate: () => ["", []]
+    onCustom() {
+      return ["", []]
+    },
+    onRecordUpdate() {
+      return ["", []]
+    }
   })
 
 const escape = Statement.defaultEscape("`")

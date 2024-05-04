@@ -22,6 +22,9 @@ import * as Scope from "effect/Scope"
 export interface SqliteClient extends Client.Client {
   readonly config: SqliteClientConfig
   readonly export: Effect.Effect<Uint8Array, SqlError>
+
+  /** Not supported in sqlite */
+  readonly updateValues: never
 }
 
 /**
@@ -155,7 +158,7 @@ export const make = (
         compiler,
         transactionAcquirer,
         spanAttributes: [["db.system", "sqlite"]]
-      }),
+      }) as SqliteClient,
       {
         config: options,
         export: Effect.flatMap(acquirer, (_) => _.export)

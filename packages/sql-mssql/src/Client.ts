@@ -416,10 +416,13 @@ export const makeCompiler = (transform?: (_: string) => string) =>
         return withoutTransform ? escape(value) : escape(transform(value))
       } :
       escape,
-    onRecordUpdate(placeholders, valueAlias, valueColumns, values) {
+    onRecordUpdate(placeholders, valueAlias, valueColumns, values, returning) {
+      const returningSql = returning ? returning[0] === "*" ? "OUTPUT INSERTED.* " : `OUTPUT ${returning[0]} ` : ""
       return [
-        `(values ${placeholders}) AS ${valueAlias}${valueColumns}`,
-        values.flat()
+        `${returningSql}FROM (values ${placeholders}) AS ${valueAlias}${valueColumns}`,
+        returning ?
+          returning[1].concat(values.flat()) :
+          values.flat()
       ]
     },
     onCustom(type, placeholder) {
@@ -429,9 +432,10 @@ export const makeCompiler = (transform?: (_: string) => string) =>
         }
       }
     },
-    onInsert(columns, placeholders, values) {
+    onInsert(columns, placeholders, values, returning) {
+      const returningSql = returning ? returning[0] === "*" ? " OUTPUT INSERTED.*" : ` OUTPUT ${returning[0]}` : ""
       return [
-        `(${columns.join(",")}) OUTPUT INSERTED.* VALUES ${placeholders}`,
+        `(${columns.join(",")})${returningSql} VALUES ${placeholders}`,
         values.flat()
       ]
     }

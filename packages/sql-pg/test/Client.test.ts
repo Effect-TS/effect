@@ -28,6 +28,19 @@ describe("pg", () => {
     expect(params).toEqual(["Tim", "John"])
   })
 
+  it("updateValues helper returning", () => {
+    const [query, params] = sql`UPDATE people SET name = data.name FROM ${
+      sql.updateValues(
+        [{ name: "Tim" }, { name: "John" }],
+        "data"
+      ).returning("*")
+    }`.compile()
+    expect(query).toEqual(
+      `UPDATE people SET name = data.name FROM (values ($1),($2)) AS data("name") RETURNING *`
+    )
+    expect(params).toEqual(["Tim", "John"])
+  })
+
   it("update helper", () => {
     let result = sql`UPDATE people SET ${sql.update({ name: "Tim" })}`.compile()
     expect(result[0]).toEqual(`UPDATE people SET "name" = $1`)
@@ -35,6 +48,12 @@ describe("pg", () => {
 
     result = sql`UPDATE people SET ${sql.update({ name: "Tim", age: 10 }, ["age"])}`.compile()
     expect(result[0]).toEqual(`UPDATE people SET "name" = $1`)
+    expect(result[1]).toEqual(["Tim"])
+  })
+
+  it("update helper returning", () => {
+    const result = sql`UPDATE people SET ${sql.update({ name: "Tim" }).returning("*")}`.compile()
+    expect(result[0]).toEqual(`UPDATE people SET "name" = $1 RETURNING *`)
     expect(result[1]).toEqual(["Tim"])
   })
 
@@ -195,5 +214,24 @@ describe("pg", () => {
     assert.lengthOf(params, 3)
     expect((params[0] as any).type).toEqual(3802)
     expect((params[1] as any).type).toEqual(3802)
+  })
+
+  it("onDialect", () => {
+    assert.strictEqual(
+      sql.onDialect({
+        sqlite: () => "A",
+        pg: () => "B",
+        mysql: () => "C",
+        mssql: () => "D"
+      }),
+      "B"
+    )
+    assert.strictEqual(
+      sql.onDialectOrElse({
+        orElse: () => "A",
+        pg: () => "B"
+      }),
+      "B"
+    )
   })
 })

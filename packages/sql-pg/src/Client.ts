@@ -231,10 +231,14 @@ export const makeCompiler = (
         return withoutTransform ? escape(value) : escape(transform(value))
       } :
       escape,
-    onRecordUpdate: (placeholders, valueAlias, valueColumns, values) => [
-      `(values ${placeholders}) AS ${valueAlias}${valueColumns}`,
-      values.flat()
-    ],
+    onRecordUpdate(placeholders, valueAlias, valueColumns, values, returning) {
+      return [
+        `(values ${placeholders}) AS ${valueAlias}${valueColumns}${returning ? ` RETURNING ${returning[0]}` : ""}`,
+        returning ?
+          values.flat().concat(returning[1]) :
+          values.flat()
+      ]
+    },
     onCustom(type, placeholder, withoutTransform) {
       switch (type.kind) {
         case "PgJson": {

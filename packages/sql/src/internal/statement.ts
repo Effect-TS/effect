@@ -200,25 +200,47 @@ class ArrayHelperImpl implements Statement.ArrayHelper {
   constructor(readonly value: ReadonlyArray<Statement.Primitive>) {}
 }
 
+function identifierWrap(sql: string | Statement.Identifier | Statement.Fragment): string | Statement.Fragment {
+  return typeof sql === "string"
+    ? sql
+    : FragmentId in sql
+    ? sql
+    : new FragmentImpl([sql])
+}
+
 class RecordInsertHelperImpl implements Statement.RecordInsertHelper {
   readonly _tag = "RecordInsertHelper"
-  constructor(readonly value: ReadonlyArray<Record<string, Statement.Primitive>>) {}
+  constructor(
+    readonly value: ReadonlyArray<Record<string, Statement.Primitive>>,
+    readonly returningIdentifier: string | Statement.Fragment | undefined
+  ) {}
+  returning(sql: string | Statement.Identifier | Statement.Fragment) {
+    return new RecordInsertHelperImpl(this.value, identifierWrap(sql))
+  }
 }
 
 class RecordUpdateHelperImpl implements Statement.RecordUpdateHelper {
   readonly _tag = "RecordUpdateHelper"
   constructor(
     readonly value: ReadonlyArray<Record<string, Statement.Primitive>>,
-    readonly alias: string
+    readonly alias: string,
+    readonly returningIdentifier: string | Statement.Fragment | undefined
   ) {}
+  returning(sql: string | Statement.Identifier | Statement.Fragment) {
+    return new RecordUpdateHelperImpl(this.value, this.alias, identifierWrap(sql))
+  }
 }
 
 class RecordUpdateHelperSingleImpl implements Statement.RecordUpdateHelperSingle {
   readonly _tag = "RecordUpdateHelperSingle"
   constructor(
     readonly value: Record<string, Statement.Primitive>,
-    readonly omit: ReadonlyArray<string>
+    readonly omit: ReadonlyArray<string>,
+    readonly returningIdentifier: string | Statement.Fragment | undefined
   ) {}
+  returning(sql: string | Statement.Identifier | Statement.Fragment) {
+    return new RecordUpdateHelperSingleImpl(this.value, this.omit, identifierWrap(sql))
+  }
 }
 
 class CustomImpl<T extends string, A, B, C> implements Statement.Custom<T, A, B, C> {
@@ -292,21 +314,25 @@ export const make = (
       in: in_,
       insert(value: any) {
         return new RecordInsertHelperImpl(
-          Array.isArray(value) ? value : [value]
+          Array.isArray(value) ? value : [value],
+          undefined
         )
       },
       update(value: any, omit: any) {
-        return new RecordUpdateHelperSingleImpl(value, omit ?? [])
+        return new RecordUpdateHelperSingleImpl(value, omit ?? [], undefined)
       },
       updateValues(value: any, alias: any) {
-        return new RecordUpdateHelperImpl(value, alias)
+        return new RecordUpdateHelperImpl(value, alias, undefined)
       },
       and,
       or,
       csv,
       join,
       onDialect(options: Record<Statement.Dialect, any>) {
-        return options[compiler.dialect]
+        return options[compiler.dialect]()
+      },
+      onDialectOrElse(options: any) {
+        return options[compiler.dialect] !== undefined ? options[compiler.dialect]() : options.orElse()
       }
     }
   )
@@ -448,7 +474,8 @@ class CompilerImpl implements Statement.Compiler {
       placeholders: string,
       alias: string,
       columns: string,
-      values: ReadonlyArray<ReadonlyArray<Statement.Primitive>>
+      values: ReadonlyArray<ReadonlyArray<Statement.Primitive>>,
+      returning: readonly [sql: string, params: ReadonlyArray<Statement.Primitive>] | undefined
     ) => readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>],
     readonly onCustom: (
       type: Statement.Custom<string, unknown, unknown>,
@@ -458,17 +485,20 @@ class CompilerImpl implements Statement.Compiler {
     readonly onInsert?: (
       columns: ReadonlyArray<string>,
       placeholders: string,
-      values: ReadonlyArray<ReadonlyArray<Statement.Primitive>>
+      values: ReadonlyArray<ReadonlyArray<Statement.Primitive>>,
+      returning: readonly [sql: string, params: ReadonlyArray<Statement.Primitive>] | undefined
     ) => readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>],
     readonly onRecordUpdateSingle?: (
       columns: ReadonlyArray<string>,
-      values: ReadonlyArray<Statement.Primitive>
+      values: ReadonlyArray<Statement.Primitive>,
+      returning: readonly [sql: string, params: ReadonlyArray<Statement.Primitive>] | undefined
     ) => readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>]
   ) {}
 
   compile(
     statement: Statement.Fragment,
-    withoutTransform = false
+    withoutTransform = false,
+    placeholderOverride?: () => string
   ): readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>] {
     if ((statement as any).__compiled) {
       return (statement as any).__compiled
@@ -480,7 +510,7 @@ class CompilerImpl implements Statement.Compiler {
     let sql = ""
     const binds: Array<Statement.Primitive> = []
     let placeholderCount = 0
-    const placeholder = () => this.parameterPlaceholder(++placeholderCount)
+    const placeholder = placeholderOverride ?? (() => this.parameterPlaceholder(++placeholderCount))
     const placeholderNoIncrement = () => this.parameterPlaceholder(placeholderCount)
 
     for (let i = 0; i < len; i++) {
@@ -526,7 +556,12 @@ class CompilerImpl implements Statement.Compiler {
                 keys.map((key) =>
                   extractPrimitive(record[key], this.onCustom, placeholderNoIncrement, withoutTransform)
                 )
-              )
+              ),
+              typeof segment.returningIdentifier === "string"
+                ? [segment.returningIdentifier, []]
+                : segment.returningIdentifier
+                ? this.compile(segment.returningIdentifier, withoutTransform, placeholder)
+                : undefined
             )
             sql += s
             binds.push.apply(binds, b as any)
@@ -556,6 +591,15 @@ class CompilerImpl implements Statement.Compiler {
                 )
               }
             }
+
+            if (typeof segment.returningIdentifier === "string") {
+              sql += ` RETURNING ${segment.returningIdentifier}`
+            } else if (segment.returningIdentifier) {
+              sql += " RETURNING "
+              const [s, b] = this.compile(segment.returningIdentifier, withoutTransform, placeholder)
+              sql += s
+              binds.push.apply(binds, b as any)
+            }
           }
           break
         }
@@ -575,7 +619,12 @@ class CompilerImpl implements Statement.Compiler {
                   placeholderNoIncrement,
                   withoutTransform
                 )
-              )
+              ),
+              typeof segment.returningIdentifier === "string"
+                ? [segment.returningIdentifier, []]
+                : segment.returningIdentifier
+                ? this.compile(segment.returningIdentifier, withoutTransform, placeholder)
+                : undefined
             )
             sql += s
             binds.push.apply(binds, b as any)
@@ -596,6 +645,18 @@ class CompilerImpl implements Statement.Compiler {
                 )
               )
             }
+            if (typeof segment.returningIdentifier === "string") {
+              if (this.dialect === "mssql") {
+                sql += ` OUTPUT ${segment.returningIdentifier === "*" ? "INSERTED.*" : segment.returningIdentifier}`
+              } else {
+                sql += ` RETURNING ${segment.returningIdentifier}`
+              }
+            } else if (segment.returningIdentifier) {
+              sql += this.dialect === "mssql" ? " OUTPUT " : " RETURNING "
+              const [s, b] = this.compile(segment.returningIdentifier, withoutTransform, placeholder)
+              sql += s
+              binds.push.apply(binds, b as any)
+            }
           }
           break
         }
@@ -613,7 +674,12 @@ class CompilerImpl implements Statement.Compiler {
               keys.map((key) =>
                 extractPrimitive(record?.[key], this.onCustom, placeholderNoIncrement, withoutTransform)
               )
-            )
+            ),
+            typeof segment.returningIdentifier === "string"
+              ? [segment.returningIdentifier, []]
+              : segment.returningIdentifier
+              ? this.compile(segment.returningIdentifier, withoutTransform, placeholder)
+              : undefined
           )
           sql += s
           binds.push.apply(binds, b as any)
@@ -643,7 +709,8 @@ export const makeCompiler = <C extends Statement.Custom<any, any, any, any> = an
       placeholders: string,
       alias: string,
       columns: string,
-      values: ReadonlyArray<ReadonlyArray<Statement.Primitive>>
+      values: ReadonlyArray<ReadonlyArray<Statement.Primitive>>,
+      returning: readonly [sql: string, params: ReadonlyArray<Statement.Primitive>] | undefined
     ) => readonly [sql: string, params: ReadonlyArray<Statement.Primitive>]
     readonly onCustom: (
       type: C,
@@ -653,11 +720,13 @@ export const makeCompiler = <C extends Statement.Custom<any, any, any, any> = an
     readonly onInsert?: (
       columns: ReadonlyArray<string>,
       placeholders: string,
-      values: ReadonlyArray<ReadonlyArray<Statement.Primitive>>
+      values: ReadonlyArray<ReadonlyArray<Statement.Primitive>>,
+      returning: readonly [sql: string, params: ReadonlyArray<Statement.Primitive>] | undefined
     ) => readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>]
     readonly onRecordUpdateSingle?: (
       columns: ReadonlyArray<string>,
-      values: ReadonlyArray<Statement.Primitive>
+      values: ReadonlyArray<Statement.Primitive>,
+      returning: readonly [sql: string, params: ReadonlyArray<Statement.Primitive>] | undefined
     ) => readonly [sql: string, params: ReadonlyArray<Statement.Primitive>]
   }
 ): Statement.Compiler =>
@@ -788,8 +857,8 @@ export const makeCompilerSqlite = (transform?: (_: string) => string) =>
       return "?"
     },
     onIdentifier: transform ?
-      function(value: any, withoutTransform: boolean) {
-        return escapeSqlite(withoutTransform ? value : transform(value))
+      function(value) {
+        return transform(value)
       } :
       escapeSqlite,
     onRecordUpdate() {

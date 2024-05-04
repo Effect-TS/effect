@@ -177,6 +177,8 @@ export interface ArrayHelper {
 export interface RecordInsertHelper {
   readonly _tag: "RecordInsertHelper"
   readonly value: ReadonlyArray<Record<string, Primitive | Fragment>>
+  readonly returningIdentifier: string | Fragment | undefined
+  readonly returning: (sql: string | Identifier | Fragment) => RecordInsertHelper
 }
 
 /**
@@ -187,6 +189,8 @@ export interface RecordUpdateHelper {
   readonly _tag: "RecordUpdateHelper"
   readonly value: ReadonlyArray<Record<string, Primitive | Fragment>>
   readonly alias: string
+  readonly returningIdentifier: string | Fragment | undefined
+  readonly returning: (sql: string | Identifier | Fragment) => RecordUpdateHelper
 }
 
 /**
@@ -197,6 +201,8 @@ export interface RecordUpdateHelperSingle {
   readonly _tag: "RecordUpdateHelperSingle"
   readonly value: Record<string, Primitive | Fragment>
   readonly omit: ReadonlyArray<string>
+  readonly returningIdentifier: string | Fragment | undefined
+  readonly returning: (sql: string | Identifier | Fragment) => RecordUpdateHelperSingle
 }
 
 /**
@@ -304,11 +310,17 @@ export interface Constructor {
     (value: Record<string, Primitive | Fragment>): RecordInsertHelper
   }
 
+  /** Update a single row */
   readonly update: <A extends Record<string, Primitive | Fragment>>(
     value: A,
     omit?: ReadonlyArray<keyof A>
   ) => RecordUpdateHelperSingle
 
+  /**
+   * Update multiple rows
+   *
+   * **Note:** Not supported in sqlite
+   */
   readonly updateValues: (
     value: ReadonlyArray<Record<string, Primitive | Fragment>>,
     alias: string
@@ -346,6 +358,14 @@ export interface Constructor {
     readonly mysql: () => C
     readonly mssql: () => D
   }) => A | B | C | D
+
+  readonly onDialectOrElse: <A, B = never, C = never, D = never, E = never>(options: {
+    readonly orElse: () => A
+    readonly sqlite?: () => B
+    readonly pg?: () => C
+    readonly mysql?: () => D
+    readonly mssql?: () => E
+  }) => A | B | C | D | E
 }
 
 /**
@@ -423,7 +443,8 @@ export const makeCompiler: <C extends Custom<any, any, any, any> = any>(
       placeholders: string,
       alias: string,
       columns: string,
-      values: ReadonlyArray<ReadonlyArray<Primitive>>
+      values: ReadonlyArray<ReadonlyArray<Primitive>>,
+      returning: readonly [sql: string, params: ReadonlyArray<Primitive>] | undefined
     ) => readonly [sql: string, params: ReadonlyArray<Primitive>]
     readonly onCustom: (
       type: C,
@@ -433,11 +454,13 @@ export const makeCompiler: <C extends Custom<any, any, any, any> = any>(
     readonly onInsert?: (
       columns: ReadonlyArray<string>,
       placeholders: string,
-      values: ReadonlyArray<ReadonlyArray<Primitive>>
+      values: ReadonlyArray<ReadonlyArray<Primitive>>,
+      returning: readonly [sql: string, params: ReadonlyArray<Primitive>] | undefined
     ) => readonly [sql: string, binds: ReadonlyArray<Primitive>]
     readonly onRecordUpdateSingle?: (
       columns: ReadonlyArray<string>,
-      values: ReadonlyArray<Primitive>
+      values: ReadonlyArray<Primitive>,
+      returning: readonly [sql: string, params: ReadonlyArray<Primitive>] | undefined
     ) => readonly [sql: string, params: ReadonlyArray<Primitive>]
   }
 ) => Compiler = internal.makeCompiler
