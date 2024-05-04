@@ -6540,7 +6540,7 @@ export interface TaggedErrorClass<Self, Tag extends string, Fields extends Struc
 export const TaggedError = <Self = never>(identifier?: string) =>
 <Tag extends string, Fields extends Struct.Fields>(
   tag: Tag,
-  fields: Fields,
+  fieldsOr: Fields | HasFields<Fields>,
   annotations?: Annotations.Schema<Self>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedError", `"Tag", `>
   : TaggedErrorClass<
@@ -6551,11 +6551,14 @@ export const TaggedError = <Self = never>(identifier?: string) =>
 {
   class Base extends data_.Error {}
   ;(Base.prototype as any).name = tag
-  const taggedFields = extendFields({ _tag: getClassTag(tag) }, fields)
+  const fields = getFieldsFromFieldsOr(fieldsOr)
+  const schema = getSchemaFromFieldsOr(fieldsOr)
+  const newFields = { _tag: getClassTag(tag) }
+  const taggedFields = extendFields(newFields, fields)
   return class TaggedErrorClass extends makeClass({
     kind: "TaggedError",
     identifier: identifier ?? tag,
-    schema: Struct(taggedFields),
+    schema: extend(schema, Struct(newFields)),
     fields: taggedFields,
     Base,
     annotations,

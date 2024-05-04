@@ -63,23 +63,23 @@ describe("TaggedClass", () => {
 
   it("should accept a refinement of a Struct as argument", async () => {
     const fields = { a: S.Number, b: S.Number }
-    class TA extends S.TaggedClass<TA>()(
-      "TA",
+    class A extends S.TaggedClass<A>()(
+      "A",
       S.Struct(fields).pipe(S.filter(({ a, b }) => a === b ? undefined : "a should be equal to b"))
     ) {}
-    Util.expectFields(TA.fields, { _tag: S.getClassTag("TA"), ...fields })
-    await Util.expectDecodeUnknownSuccess(TA, { _tag: "TA", a: 1, b: 1 })
+    Util.expectFields(A.fields, { _tag: S.getClassTag("A"), ...fields })
+    await Util.expectDecodeUnknownSuccess(A, new A({ a: 1, b: 1 }))
     await Util.expectDecodeUnknownFailure(
-      TA,
-      { _tag: "TA", a: 1, b: 2 },
-      `(TA (Encoded side) <-> TA)
+      A,
+      { _tag: "A", a: 1, b: 2 },
+      `(A (Encoded side) <-> A)
 └─ Encoded side transformation failure
-   └─ TA (Encoded side)
+   └─ A (Encoded side)
       └─ Predicate refinement failure
          └─ a should be equal to b`
     )
-    expect(() => new TA({ a: 1, b: 2 })).toThrow(
-      new Error(`TA (Constructor)
+    expect(() => new A({ a: 1, b: 2 })).toThrow(
+      new Error(`A (Constructor)
 └─ Predicate refinement failure
    └─ a should be equal to b`)
     )
@@ -174,7 +174,7 @@ describe("TaggedClass", () => {
     expect(eqB(new B({ b: 1, as: [new A({ a: "a" })] }), new B({ b: 1, as: [new A({ a: "b" })] }))).toBe(false)
   })
 
-  it("?", () => {
+  it("baseline", () => {
     class TaggedPerson extends S.TaggedClass<TaggedPerson>()("TaggedPerson", {
       id: S.Number,
       name: S.String.pipe(S.nonEmpty())
