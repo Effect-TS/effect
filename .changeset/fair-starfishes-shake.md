@@ -711,6 +711,50 @@ Error: { number | filter }
 
 Now the `filter` function has a cleaner signature, making it easier to understand and use for newcomers. It allows developers to set default error messages more intuitively, enhancing the overall developer experience.
 
+### Portable filters
+
+Setting messages in the manner shown in the previous example makes filters "portable", meaning they are preserved when using extensions, such as `Schema.extend` or `Class.extend`. Therefore, it is preferred over setting messages with the `message` annotation.
+
+## Improve `extend` to support refinements
+
+Now `extend` supports extending refinements, so you can do something like this:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const RefinedStruct = Schema.Struct({
+  a: Schema.Number,
+  b: Schema.Number
+}).pipe(
+  Schema.filter((value) => {
+    if (value.a !== value.b) {
+      return "`a` must be equal to `b`"
+    }
+  })
+)
+
+const AnotherStruct = Schema.Struct({
+  c: Schema.String,
+  d: Schema.String
+})
+
+// in the previous version you would receive an error:
+// Extend: cannot extend `<refinement schema>` with `{ c: string; d: string }` (path [])
+const Extended = Schema.extend(RefinedStruct, AnotherStruct)
+
+console.log(String(Extended))
+
+console.log(Schema.decodeUnknownSync(Extended)({ a: 1, b: 1, c: "c", d: "d" }))
+// => { a: 1, b: 1, c: 'c', d: 'd' }
+console.log(Schema.decodeUnknownSync(Extended)({ a: 1, b: 2, c: "c", d: "d" }))
+/*
+throws
+Error: { { readonly a: number; readonly b: number; readonly c: string; readonly d: string } | filter }
+└─ Predicate refinement failure
+   └─ `a` must be equal to `b`
+*/
+```
+
 ## Patches
 
 AST

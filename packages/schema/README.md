@@ -1839,62 +1839,88 @@ In the `@effect/schema/Schema` library, you can apply custom validation logic us
 You can define a custom validation check on any schema using the `filter` function. Here's a simple example:
 
 ```ts
-import * as S from "@effect/schema/Schema"
+import { Schema } from "@effect/schema"
 
-const LongString = S.String.pipe(
-  S.filter((s) => s.length >= 10, {
-    message: () => "a string at least 10 characters long"
-  })
+const LongString = Schema.String.pipe(
+  Schema.filter((s) =>
+    s.length >= 10 ? undefined : "a string at least 10 characters long"
+  )
 )
 
-console.log(S.decodeUnknownSync(LongString)("a"))
+console.log(Schema.decodeUnknownSync(LongString)("a"))
 /*
 throws:
-Error: a string at least 10 characters long
+Error: { string | filter }
+└─ Predicate refinement failure
+   └─ a string at least 10 characters long
 */
 ```
 
-It's recommended to include as much metadata as possible for later introspection of the schema, such as an identifier, JSON schema representation, and a description:
+In the new signature of `filter`, the type of the predicate passed as an argument is as follows:
 
 ```ts
-import * as S from "@effect/schema/Schema"
-
-const LongString = S.String.pipe(
-  S.filter((s) => s.length >= 10, {
-    message: () => "a string at least 10 characters long",
-    identifier: "LongString",
-    jsonSchema: { minLength: 10 },
-    description:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua"
-  })
-)
+predicate: (
+  a: Types.NoInfer<Schema.Type<S>>,
+  options: ParseOptions,
+  self: AST.Refinement
+) => undefined | boolean | string | ParseResult.ParseIssue
 ```
 
-For more complex scenarios, you can return an `Option<ParseError>` type instead of a boolean. In this context, `None` indicates success, and `Some(issue)` rejects the input with a specific error. Here's an example:
+with the following semantics:
+
+- `true` means the filter is successful.
+- `false` or `undefined` means the filter fails and no default message is set.
+- `string` means the filter fails and the returned string is used as the default message.
+- `ParseIssue` means the filter fails and the returned ParseIssue is used as an error.
+
+It's also recommended to include as much metadata as possible for later introspection of the schema, such as an identifier, JSON schema representation, and a description:
 
 ```ts
-import * as ParseResult from "@effect/schema/ParseResult"
-import * as S from "@effect/schema/Schema"
-import * as Option from "effect/Option"
+import { Schema } from "@effect/schema"
 
-const schema = S.Struct({ a: S.String, b: S.String }).pipe(
-  S.filter((o) =>
+const LongString = Schema.String.pipe(
+  Schema.filter(
+    (s) =>
+      s.length >= 10 ? undefined : "a string at least 10 characters long",
+    {
+      identifier: "LongString",
+      jsonSchema: { minLength: 10 },
+      description:
+        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua"
+    }
+  )
+)
+
+console.log(Schema.decodeUnknownSync(LongString)("a"))
+/*
+throws:
+Error: LongString
+└─ Predicate refinement failure
+   └─ a string at least 10 characters long
+*/
+```
+
+For more complex scenarios, you can return a `ParseIssue`. Here's an example:
+
+```ts
+import { ParseResult, Schema } from "@effect/schema"
+
+const schema = Schema.Struct({ a: Schema.String, b: Schema.String }).pipe(
+  Schema.filter((o) =>
     o.b === o.a
-      ? Option.none()
-      : Option.some(
-          new ParseResult.Type(
-            S.Literal(o.a).ast,
-            o.b,
-            `b ("${o.b}") should be equal to a ("${o.a}")`
-          )
+      ? undefined
+      : new ParseResult.Type(
+          Schema.Literal(o.a).ast,
+          o.b,
+          `b ("${o.b}") should be equal to a ("${o.a}")`
         )
   )
 )
 
-console.log(S.decodeUnknownSync(schema)({ a: "foo", b: "bar" }))
+console.log(Schema.decodeUnknownSync(schema)({ a: "foo", b: "bar" }))
 /*
 throws:
-Error: <refinement schema>
+Error: { { readonly a: string; readonly b: string } | filter }
 └─ Predicate refinement failure
    └─ b ("bar") should be equal to a ("foo")
 */
@@ -1921,19 +1947,19 @@ In this example, you're able to access the original schema (`Schema.String`) for
 ### String Filters
 
 ```ts
-import * as S from "@effect/schema/Schema"
+import { Schema } from "@effect/schema"
 
-S.String.pipe(S.maxLength(5)) // Specifies maximum length of a string
-S.String.pipe(S.minLength(5)) // Specifies minimum length of a string
-S.NonEmpty // Equivalent to ensuring the string has a minimum length of 1
-S.String.pipe(S.length(5)) // Specifies exact length of a string
-S.String.pipe(S.length({ min: 2, max: 4 })) // Specifies a range for the length of a string
-S.String.pipe(S.pattern(regex)) // Matches a string against a regular expression pattern
-S.String.pipe(S.startsWith(string)) // Ensures a string starts with a specific substring
-S.String.pipe(S.endsWith(string)) // Ensures a string ends with a specific substring
-S.String.pipe(S.includes(searchString)) // Checks if a string includes a specific substring
-S.String.pipe(S.trimmed()) // Validates that a string has no leading or trailing whitespaces
-S.String.pipe(S.lowercased()) // Validates that a string is entirely in lowercase
+Schema.String.pipe(Schema.maxLength(5)) // Specifies maximum length of a string
+Schema.String.pipe(Schema.minLength(5)) // Specifies minimum length of a string
+Schema.NonEmpty // Equivalent to ensuring the string has a minimum length of 1
+Schema.String.pipe(Schema.length(5)) // Specifies exact length of a string
+Schema.String.pipe(Schema.length({ min: 2, max: 4 })) // Specifies a range for the length of a string
+Schema.String.pipe(Schema.pattern(regex)) // Matches a string against a regular expression pattern
+Schema.String.pipe(Schema.startsWith(string)) // Ensures a string starts with a specific substring
+Schema.String.pipe(Schema.endsWith(string)) // Ensures a string ends with a specific substring
+Schema.String.pipe(Schema.includes(searchString)) // Checks if a string includes a specific substring
+Schema.String.pipe(Schema.trimmed()) // Validates that a string has no leading or trailing whitespaces
+Schema.String.pipe(Schema.lowercased()) // Validates that a string is entirely in lowercase
 ```
 
 > [!NOTE]
@@ -1942,84 +1968,88 @@ S.String.pipe(S.lowercased()) // Validates that a string is entirely in lowercas
 ### Number Filters
 
 ```ts
-import * as S from "@effect/schema/Schema"
+import { Schema } from "@effect/schema"
 
-S.Number.pipe(S.greaterThan(5)) // Specifies a number greater than 5
-S.Number.pipe(S.greaterThanOrEqualTo(5)) // Specifies a number greater than or equal to 5
-S.Number.pipe(S.lessThan(5)) // Specifies a number less than 5
-S.Number.pipe(S.lessThanOrEqualTo(5)) // Specifies a number less than or equal to 5
-S.Number.pipe(S.between(-2, 2)) // Specifies a number between -2 and 2, inclusive
+Schema.Number.pipe(Schema.greaterThan(5)) // Specifies a number greater than 5
+Schema.Number.pipe(Schema.greaterThanOrEqualTo(5)) // Specifies a number greater than or equal to 5
+Schema.Number.pipe(Schema.lessThan(5)) // Specifies a number less than 5
+Schema.Number.pipe(Schema.lessThanOrEqualTo(5)) // Specifies a number less than or equal to 5
+Schema.Number.pipe(Schema.between(-2, 2)) // Specifies a number between -2 and 2, inclusive
 
-S.Number.pipe(S.int()) // Specifies that the value must be an integer
+Schema.Number.pipe(Schema.int()) // Specifies that the value must be an integer
 
-S.Number.pipe(S.nonNaN()) // Ensures the value is not NaN
-S.Number.pipe(S.finite()) // Ensures the value is finite and not Infinity or -Infinity
+Schema.Number.pipe(Schema.nonNaN()) // Ensures the value is not NaN
+Schema.Number.pipe(Schema.finite()) // Ensures the value is finite and not Infinity or -Infinity
 
-S.Number.pipe(S.positive()) // Specifies a positive number (> 0)
-S.Number.pipe(S.nonNegative()) // Specifies a non-negative number (>= 0)
-S.Number.pipe(S.negative()) // Specifies a negative number (< 0)
-S.Number.pipe(S.nonPositive()) // Specifies a non-positive number (<= 0)
+Schema.Number.pipe(Schema.positive()) // Specifies a positive number (> 0)
+Schema.Number.pipe(Schema.nonNegative()) // Specifies a non-negative number (>= 0)
+Schema.Number.pipe(Schema.negative()) // Specifies a negative number (< 0)
+Schema.Number.pipe(Schema.nonPositive()) // Specifies a non-positive number (<= 0)
 
-S.Number.pipe(S.multipleOf(5)) // Specifies a number that is evenly divisible by 5
+Schema.Number.pipe(Schema.multipleOf(5)) // Specifies a number that is evenly divisible by 5
 ```
 
 ### BigInt Filters
 
 ```ts
-import * as S from "@effect/schema/Schema"
+import { Schema } from "@effect/schema"
 
-S.BigInt.pipe(S.greaterThanBigInt(5n)) // Specifies a BigInt greater than 5
-S.BigInt.pipe(S.greaterThanOrEqualToBigInt(5n)) // Specifies a BigInt greater than or equal to 5
-S.BigInt.pipe(S.lessThanBigInt(5n)) // Specifies a BigInt less than 5
-S.BigInt.pipe(S.lessThanOrEqualToBigInt(5n)) // Specifies a BigInt less than or equal to 5
-S.BigInt.pipe(S.betweenBigInt(-2n, 2n)) // Specifies a BigInt between -2 and 2, inclusive
+Schema.BigInt.pipe(Schema.greaterThanBigInt(5n)) // Specifies a BigInt greater than 5
+Schema.BigInt.pipe(Schema.greaterThanOrEqualToBigInt(5n)) // Specifies a BigInt greater than or equal to 5
+Schema.BigInt.pipe(Schema.lessThanBigInt(5n)) // Specifies a BigInt less than 5
+Schema.BigInt.pipe(Schema.lessThanOrEqualToBigInt(5n)) // Specifies a BigInt less than or equal to 5
+Schema.BigInt.pipe(Schema.betweenBigInt(-2n, 2n)) // Specifies a BigInt between -2 and 2, inclusive
 
-S.BigInt.pipe(S.positiveBigInt()) // Specifies a positive BigInt (> 0n)
-S.BigInt.pipe(S.nonNegativeBigInt()) // Specifies a non-negative BigInt (>= 0n)
-S.BigInt.pipe(S.negativeBigInt()) // Specifies a negative BigInt (< 0n)
-S.BigInt.pipe(S.nonPositiveBigInt()) // Specifies a non-positive BigInt (<= 0n)
+Schema.BigInt.pipe(Schema.positiveBigInt()) // Specifies a positive BigInt (> 0n)
+Schema.BigInt.pipe(Schema.nonNegativeBigInt()) // Specifies a non-negative BigInt (>= 0n)
+Schema.BigInt.pipe(Schema.negativeBigInt()) // Specifies a negative BigInt (< 0n)
+Schema.BigInt.pipe(Schema.nonPositiveBigInt()) // Specifies a non-positive BigInt (<= 0n)
 ```
 
 ### BigDecimal Filters
 
 ```ts
-import * as S from "@effect/schema/Schema"
-import * as BigDecimal from "effect/BigDecimal"
+import { Schema } from "@effect/schema"
+import { BigDecimal } from "effect"
 
-S.BigDecimal.pipe(S.greaterThanBigDecimal(BigDecimal.fromNumber(5))) // Specifies a BigDecimal greater than 5
-S.BigDecimal.pipe(S.greaterThanOrEqualToBigDecimal(BigDecimal.fromNumber(5))) // Specifies a BigDecimal greater than or equal to 5
-S.BigDecimal.pipe(S.lessThanBigDecimal(BigDecimal.fromNumber(5))) // Specifies a BigDecimal less than 5
-S.BigDecimal.pipe(S.lessThanOrEqualToBigDecimal(BigDecimal.fromNumber(5))) // Specifies a BigDecimal less than or equal to 5
-S.BigDecimal.pipe(
-  S.betweenBigDecimal(BigDecimal.fromNumber(-2), BigDecimal.fromNumber(2))
+Schema.BigDecimal.pipe(Schema.greaterThanBigDecimal(BigDecimal.fromNumber(5))) // Specifies a BigDecimal greater than 5
+Schema.BigDecimal.pipe(
+  Schema.greaterThanOrEqualToBigDecimal(BigDecimal.fromNumber(5))
+) // Specifies a BigDecimal greater than or equal to 5
+Schema.BigDecimal.pipe(Schema.lessThanBigDecimal(BigDecimal.fromNumber(5))) // Specifies a BigDecimal less than 5
+Schema.BigDecimal.pipe(
+  Schema.lessThanOrEqualToBigDecimal(BigDecimal.fromNumber(5))
+) // Specifies a BigDecimal less than or equal to 5
+Schema.BigDecimal.pipe(
+  Schema.betweenBigDecimal(BigDecimal.fromNumber(-2), BigDecimal.fromNumber(2))
 ) // Specifies a BigDecimal between -2 and 2, inclusive
 
-S.BigDecimal.pipe(S.positiveBigDecimal()) // Specifies a positive BigDecimal (> 0)
-S.BigDecimal.pipe(S.nonNegativeBigDecimal()) // Specifies a non-negative BigDecimal (>= 0)
-S.BigDecimal.pipe(S.negativeBigDecimal()) // Specifies a negative BigDecimal (< 0)
-S.BigDecimal.pipe(S.nonPositiveBigDecimal()) // Specifies a non-positive BigDecimal (<= 0)
+Schema.BigDecimal.pipe(Schema.positiveBigDecimal()) // Specifies a positive BigDecimal (> 0)
+Schema.BigDecimal.pipe(Schema.nonNegativeBigDecimal()) // Specifies a non-negative BigDecimal (>= 0)
+Schema.BigDecimal.pipe(Schema.negativeBigDecimal()) // Specifies a negative BigDecimal (< 0)
+Schema.BigDecimal.pipe(Schema.nonPositiveBigDecimal()) // Specifies a non-positive BigDecimal (<= 0)
 ```
 
 ### Duration Filters
 
 ```ts
-import * as S from "@effect/schema/Schema"
+import { Schema } from "@effect/schema"
 
-S.Duration.pipe(S.greaterThanDuration("5 seconds")) // Specifies a duration greater than 5 seconds
-S.Duration.pipe(S.greaterThanOrEqualToDuration("5 seconds")) // Specifies a duration greater than or equal to 5 seconds
-S.Duration.pipe(S.lessThanDuration("5 seconds")) // Specifies a duration less than 5 seconds
-S.Duration.pipe(S.lessThanOrEqualToDuration("5 seconds")) // Specifies a duration less than or equal to 5 seconds
-S.Duration.pipe(S.betweenDuration("5 seconds", "10 seconds")) // Specifies a duration between 5 seconds and 10 seconds, inclusive
+Schema.Duration.pipe(Schema.greaterThanDuration("5 seconds")) // Specifies a duration greater than 5 seconds
+Schema.Duration.pipe(Schema.greaterThanOrEqualToDuration("5 seconds")) // Specifies a duration greater than or equal to 5 seconds
+Schema.Duration.pipe(Schema.lessThanDuration("5 seconds")) // Specifies a duration less than 5 seconds
+Schema.Duration.pipe(Schema.lessThanOrEqualToDuration("5 seconds")) // Specifies a duration less than or equal to 5 seconds
+Schema.Duration.pipe(Schema.betweenDuration("5 seconds", "10 seconds")) // Specifies a duration between 5 seconds and 10 seconds, inclusive
 ```
 
 ### Array Filters
 
 ```ts
-import * as S from "@effect/schema/Schema"
+import { Schema } from "@effect/schema"
 
-S.Array(S.Number).pipe(S.maxItems(2)) // Specifies the maximum number of items in the array
-S.Array(S.Number).pipe(S.minItems(2)) // Specifies the minimum number of items in the array
-S.Array(S.Number).pipe(S.itemsCount(2)) // Specifies the exact number of items in the array
+Schema.Array(Schema.Number).pipe(Schema.maxItems(2)) // Specifies the maximum number of items in the array
+Schema.Array(Schema.Number).pipe(Schema.minItems(2)) // Specifies the minimum number of items in the array
+Schema.Array(Schema.Number).pipe(Schema.itemsCount(2)) // Specifies the exact number of items in the array
 ```
 
 ## Branded types
