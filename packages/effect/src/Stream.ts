@@ -3862,6 +3862,17 @@ export const toQueueOfElements: {
 export const toReadableStream: <A, E>(source: Stream<A, E>) => ReadableStream<A> = internal.toReadableStream
 
 /**
+ * Converts the stream to a `Effect<ReadableStream>`.
+ *
+ * See https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream.
+ *
+ * @since 2.0.0
+ * @category destructors
+ */
+export const toReadableStreamEffect: <A, E, R>(source: Stream<A, E, R>) => Effect.Effect<ReadableStream<A>, never, R> =
+  internal.toReadableStreamEffect
+
+/**
  * Applies the transducer to the stream and emits its outputs.
  *
  * @since 2.0.0

@@ -222,23 +222,23 @@ export const fetch: Client.Client.Default = makeDefault((request, url, signal, f
       (response) => internalResponse.fromWeb(request, response)
     )
   if (Method.hasBody(request.method)) {
-    return send(convertBody(request.body))
+    return Effect.flatMap(convertBody(request.body), send)
   }
   return send(undefined)
 })
 
-const convertBody = (body: Body.Body): BodyInit | undefined => {
+const convertBody = (body: Body.Body): Effect.Effect<BodyInit | undefined> => {
   switch (body._tag) {
     case "Empty":
-      return undefined
+      return Effect.succeed(undefined)
     case "Raw":
-      return body.body as any
+      return Effect.succeed(body.body as any)
     case "Uint8Array":
-      return body.body
+      return Effect.succeed(body.body)
     case "FormData":
-      return body.formData
+      return Effect.succeed(body.formData)
     case "Stream":
-      return Stream.toReadableStream(body.stream)
+      return Stream.toReadableStreamEffect(body.stream)
   }
 }
 

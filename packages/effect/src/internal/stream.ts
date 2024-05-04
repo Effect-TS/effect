@@ -6541,45 +6541,52 @@ export const toQueueOfElements = dual<
   ))
 
 /** @internal */
-export const toReadableStream = <A, E>(source: Stream.Stream<A, E>) => {
-  let pull: Effect.Effect<void>
-  let scope: Scope.CloseableScope
-  return new ReadableStream<A>({
-    start(controller) {
-      scope = Effect.runSync(Scope.make())
-      pull = pipe(
-        toPull(source),
-        Scope.use(scope),
-        Effect.runSync,
-        Effect.tap((chunk) =>
-          Effect.sync(() => {
-            Chunk.map(chunk, (a) => {
-              controller.enqueue(a)
-            })
-          })
-        ),
-        Effect.tapErrorCause(() => Scope.close(scope, Exit.void)),
-        Effect.catchTags({
-          "None": () =>
+export const toReadableStream = <A, E>(source: Stream.Stream<A, E>) => Effect.runSync(toReadableStreamEffect(source))
+
+/** @internal */
+export const toReadableStreamEffect = <A, E, R>(source: Stream.Stream<A, E, R>) =>
+  Effect.map(Effect.runtime<R>(), (runtime) => {
+    const runSync = Runtime.runSync(runtime)
+    const runPromise = Runtime.runPromise(runtime)
+
+    let pull: Effect.Effect<void, never, R>
+    let scope: Scope.CloseableScope
+    return new ReadableStream<A>({
+      start(controller) {
+        scope = runSync(Scope.make())
+        pull = pipe(
+          toPull(source),
+          Scope.use(scope),
+          runSync,
+          Effect.tap((chunk) =>
             Effect.sync(() => {
-              controller.close()
-            }),
-          "Some": (error) =>
-            Effect.sync(() => {
-              controller.error(error.value)
+              Chunk.map(chunk, (a) => {
+                controller.enqueue(a)
+              })
             })
-        }),
-        Effect.asVoid
-      )
-    },
-    pull() {
-      return Effect.runPromise(pull)
-    },
-    cancel() {
-      return Effect.runPromise(Scope.close(scope, Exit.void))
-    }
+          ),
+          Effect.tapErrorCause(() => Scope.close(scope, Exit.void)),
+          Effect.catchTags({
+            "None": () =>
+              Effect.sync(() => {
+                controller.close()
+              }),
+            "Some": (error) =>
+              Effect.sync(() => {
+                controller.error(error.value)
+              })
+          }),
+          Effect.asVoid
+        )
+      },
+      pull() {
+        return runPromise(pull)
+      },
+      cancel() {
+        return runPromise(Scope.close(scope, Exit.void))
+      }
+    })
   })
-}
 
 /** @internal */
 export const transduce = dual<
