@@ -292,13 +292,21 @@ describe("Class", () => {
     )
   })
 
-  it("should accept a Struct as input", () => {
+  it("should accept a simple object as argument", () => {
+    const fields = { a: S.String, b: S.Number }
+    class A extends S.Class<A>("A")({ fields }) {}
+    Util.expectFields(A.fields, fields)
+    class B extends S.Class<B>("B")({ from: { fields } }) {}
+    Util.expectFields(B.fields, fields)
+  })
+
+  it("should accept a Struct as argument", () => {
     const fields = { a: S.String, b: S.Number }
     class A extends S.Class<A>("A")(S.Struct(fields)) {}
     Util.expectFields(A.fields, fields)
   })
 
-  it("should accept a refinement of a Struct as input", async () => {
+  it("should accept a refinement of a Struct as argument", async () => {
     const fields = { a: S.Number, b: S.Number }
     class A extends S.Class<A>("A")(
       S.Struct(fields).pipe(S.filter(({ a, b }) => a === b, {
@@ -313,6 +321,9 @@ describe("Class", () => {
       `(A (Encoded side) <-> A)
 └─ Encoded side transformation failure
    └─ a should be equal to b`
+    )
+    expect(() => new A({ a: 1, b: 2 })).toThrow(
+      new Error(`a should be equal to b`)
     )
   })
 

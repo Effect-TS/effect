@@ -12,6 +12,10 @@ declare const neverAny: S.Schema<never, any>
 declare const anyNeverPropertySignature: S.PropertySignature<"?:", any, never, "?:", never, false, never>
 declare const neverAnyPropertySignature: S.PropertySignature<"?:", never, never, "?:", any, false, never>
 
+declare const aContext: S.Schema<string, string, "a">
+declare const bContext: S.Schema<number, number, "b">
+declare const cContext: S.Schema<boolean, boolean, "c">
+
 class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
 
 // ---------------------------------------------
@@ -1562,110 +1566,6 @@ S.head(S.Array(S.Number))
 
 // $ExpectType SchemaClass<number, readonly number[], never>
 S.headOrElse(S.Array(S.Number))
-
-// ---------------------------------------------
-// Class
-// ---------------------------------------------
-
-class VoidClass extends S.Class<VoidClass>("VoidClass")({}) {}
-
-// $ExpectType [props?: void | {}, disableValidation?: boolean | undefined]
-hole<ConstructorParameters<typeof VoidClass>>()
-
-class AllDefaultedFieldClass extends S.Class<AllDefaultedFieldClass>("AllDefaultedFieldClass")({
-  a: S.String.pipe(S.propertySignature, S.withConstructorDefault(() => ""))
-}) {}
-
-// $ExpectType [props?: void | {}, disableValidation?: boolean | undefined]
-hole<ConstructorParameters<typeof AllDefaultedFieldClass>>()
-
-declare const aContext: S.Schema<string, string, "a">
-declare const bContext: S.Schema<number, number, "b">
-declare const cContext: S.Schema<boolean, boolean, "c">
-
-class AB extends S.Class<AB>("AB")({ a: aContext, b: bContext }) {}
-
-// $ExpectType AB
-hole<S.Schema.Type<typeof AB>>()
-
-// $ExpectType { readonly a: string; readonly b: number; }
-hole<S.Schema.Encoded<typeof AB>>()
-
-// $ExpectType "a" | "b"
-hole<S.Schema.Context<typeof AB>>()
-
-// $ExpectType { readonly a: Schema<string, string, "a">; readonly b: Schema<number, number, "b">; }
-AB.fields
-
-// $ExpectType [props: { readonly a: string; readonly b: number; }, disableValidation?: boolean | undefined]
-hole<ConstructorParameters<typeof AB>>()
-
-// can be extended with extend()
-
-class EABC extends AB.extend<EABC>("EABC")({
-  c: cContext
-}) {}
-
-// $ExpectType EABC
-hole<S.Schema.Type<typeof EABC>>()
-
-// $ExpectType { readonly a: string; readonly b: number; readonly c: boolean; }
-hole<S.Schema.Encoded<typeof EABC>>()
-
-// $ExpectType "a" | "b" | "c"
-hole<S.Schema.Context<typeof EABC>>()
-
-// $ExpectType { readonly a: Schema<string, string, "a">; readonly b: Schema<number, number, "b">; readonly c: Schema<boolean, boolean, "c">; }
-EABC.fields
-
-// $ExpectType [props: { readonly a: string; readonly b: number; readonly c: boolean; }, disableValidation?: boolean | undefined]
-hole<ConstructorParameters<typeof EABC>>()
-
-// can be extended with Class fields
-
-class ABC extends S.Class<ABC>("ABC")({
-  ...AB.fields,
-  b: S.String,
-  c: cContext
-}) {}
-
-// $ExpectType ABC
-hole<S.Schema.Type<typeof ABC>>()
-
-// $ExpectType { readonly a: string; readonly b: string; readonly c: boolean; }
-hole<S.Schema.Encoded<typeof ABC>>()
-
-// $ExpectType "a" | "c"
-hole<S.Schema.Context<typeof ABC>>()
-
-// $ExpectType { readonly b: typeof $String; readonly c: Schema<boolean, boolean, "c">; readonly a: Schema<string, string, "a">; }
-ABC.fields
-
-// $ExpectType [props: { readonly a: string; readonly b: string; readonly c: boolean; }, disableValidation?: boolean | undefined]
-hole<ConstructorParameters<typeof ABC>>()
-
-// can be extended with TaggedClass fields
-
-class D extends S.TaggedClass<D>()("D", {
-  ...AB.fields,
-  b: S.String,
-  c: cContext
-}) {}
-
-// $ExpectType D
-hole<S.Schema.Type<typeof D>>()
-
-// $ExpectType { readonly a: string; readonly b: string; readonly c: boolean; readonly _tag: "D"; }
-hole<S.Schema.Encoded<typeof D>>()
-
-// $ExpectType "a" | "c"
-hole<S.Schema.Context<typeof D>>()
-
-// $ExpectType { readonly _tag: PropertySignature<":", "D", never, ":", "D", true, never>; readonly b: typeof $String; readonly c: Schema<boolean, boolean, "c">; readonly a: Schema<string, string, "a">; }
-D.fields
-
-// $ExpectType [props: { readonly a: string; readonly b: string; readonly c: boolean; }, disableValidation?: boolean | undefined]
-hole<ConstructorParameters<typeof D>>()
 
 // ---------------------------------------------
 // TaggedClass

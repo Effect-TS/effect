@@ -6413,18 +6413,25 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
     >
 }
 
-type HasFields<Fields extends Struct.Fields> = Struct<Fields> | filter<Struct<Fields>>
+type HasFields<Fields extends Struct.Fields> = {
+  readonly fields: Fields
+} | {
+  readonly from: HasFields<Fields>
+}
 
-const isHasFields = <Fields extends Struct.Fields>(
-  fields: Fields | HasFields<Fields>
-): fields is HasFields<Fields> => isSchema(fields)
+const isField = (u: unknown) => isSchema(u) || isPropertySignature(u)
+
+const isFields = <Fields extends Struct.Fields>(fields: object): fields is Fields =>
+  util_.ownKeys(fields).every((key) => isField((fields as any)[key]))
 
 const getFields = <Fields extends Struct.Fields>(hasFields: HasFields<Fields>): Fields =>
   "fields" in hasFields ? hasFields.fields : getFields(hasFields.from)
 
-const getSchemaAndFields = <Fields extends Struct.Fields>(fields: Fields | HasFields<Fields>) => {
-  return [isHasFields(fields) ? fields : Struct(fields), isHasFields(fields) ? getFields(fields) : fields] as const
-}
+const getSchemaFromFieldsOr = <Fields extends Struct.Fields>(fieldsOr: Fields | HasFields<Fields>): Schema.Any =>
+  isFields(fieldsOr) ? Struct(fieldsOr) : isSchema(fieldsOr) ? fieldsOr : Struct(getFields(fieldsOr))
+
+const getFieldsFromFieldsOr = <Fields extends Struct.Fields>(fieldsOr: Fields | HasFields<Fields>): Fields =>
+  isFields(fieldsOr) ? fieldsOr : getFields(fieldsOr)
 
 /**
  * @category classes
@@ -6445,12 +6452,11 @@ export const Class = <Self = never>(identifier: string) =>
     {}
   > =>
 {
-  const [schema, fields] = getSchemaAndFields(fieldsOr)
   return makeClass({
     kind: "Class",
     identifier,
-    schema,
-    fields,
+    schema: getSchemaFromFieldsOr(fieldsOr),
+    fields: getFieldsFromFieldsOr(fieldsOr),
     Base: data_.Class,
     annotations
   })
