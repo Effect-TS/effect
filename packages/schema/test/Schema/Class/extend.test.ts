@@ -77,7 +77,7 @@ describe("extend", () => {
     class Base extends S.Class<Base>("Base")(baseFields) {}
     const fields = { a: S.Number, b: S.Number }
     class A extends Base.extend<A>("A")(
-      S.Struct(fields).pipe(S.filter(({ a, b }) => a === b))
+      S.Struct(fields).pipe(S.filter(({ a, b }) => a === b ? undefined : "a should be equal to b"))
     ) {}
     Util.expectFields(A.fields, { ...baseFields, ...fields })
     await Util.expectDecodeUnknownSuccess(A, { base: "base", a: 1, b: 1 })
@@ -88,12 +88,12 @@ describe("extend", () => {
 └─ Encoded side transformation failure
    └─ A (Encoded side)
       └─ Predicate refinement failure
-         └─ Expected A (Encoded side), actual {"base":"base","a":1,"b":2}`
+         └─ a should be equal to b`
     )
     expect(() => new A({ base: "base", a: 1, b: 2 })).toThrow(
       new Error(`A (Constructor)
 └─ Predicate refinement failure
-   └─ Expected A (Constructor), actual {"base":"base","a":1,"b":2}`)
+   └─ a should be equal to b`)
     )
   })
 

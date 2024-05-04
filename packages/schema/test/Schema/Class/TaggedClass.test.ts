@@ -65,9 +65,7 @@ describe("TaggedClass", () => {
     const fields = { a: S.Number, b: S.Number }
     class TA extends S.TaggedClass<TA>()(
       "TA",
-      S.Struct(fields).pipe(S.filter(({ a, b }) => a === b, {
-        message: () => "a should be equal to b"
-      }))
+      S.Struct(fields).pipe(S.filter(({ a, b }) => a === b ? undefined : "a should be equal to b"))
     ) {}
     Util.expectFields(TA.fields, { _tag: S.getClassTag("TA"), ...fields })
     await Util.expectDecodeUnknownSuccess(TA, { _tag: "TA", a: 1, b: 1 })
@@ -78,12 +76,12 @@ describe("TaggedClass", () => {
 └─ Encoded side transformation failure
    └─ TA (Encoded side)
       └─ Predicate refinement failure
-         └─ Expected TA (Encoded side), actual {"_tag":"TA","a":1,"b":2}`
+         └─ a should be equal to b`
     )
     expect(() => new TA({ a: 1, b: 2 })).toThrow(
       new Error(`TA (Constructor)
 └─ Predicate refinement failure
-   └─ Expected TA (Constructor), actual {"_tag":"TA","a":1,"b":2}`)
+   └─ a should be equal to b`)
     )
   })
 

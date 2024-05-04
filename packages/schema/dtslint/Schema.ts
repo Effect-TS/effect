@@ -1156,6 +1156,28 @@ taggedStruct("A", { a: S.String })
 // filter
 // ---------------------------------------------
 
+S.String.pipe(S.filter((
+  _s // $ExpectType string
+) => undefined))
+
+S.String.pipe(S.filter((
+  _s // $ExpectType string
+) => "err"))
+
+S.String.pipe(S.filter((
+  _s // $ExpectType string
+) => true))
+
+S.String.pipe(S.filter((
+  _s // $ExpectType string
+) => false))
+
+S.String.pipe(S.filter((
+  s, // $ExpectType string
+  _,
+  ast // $ExpectType Refinement<AST>
+) => new ParseResult.Type(ast, s, "err")))
+
 const predicateFilter1 = (u: unknown): boolean => typeof u === "string"
 const FromFilter = S.Union(S.String, S.Number)
 

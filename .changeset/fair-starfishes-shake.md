@@ -618,7 +618,7 @@ Now, let's see what `JSONSchema.make` API produces by default for the same schem
 
 As you can verify, the refinement has been preserved.
 
-## Tagged Class API Improvements
+## Class API Improvements
 
 The new combinator `withConstructorDefault` has also allowed us to enhance the `fields` feature exposed by the following APIs:
 
@@ -646,6 +646,70 @@ export const schema = Schema.Struct(A.fields)
 // The `_tag` field is optional!
 schema.make({ a: "foo" })
 ```
+
+## Simplified Filter API Signature
+
+The signature of the `filter` function has been simplified and streamlined to be more ergonomic when setting a default message. In the new signature of `filter`, the type of the predicate passed as an argument is as follows:
+
+```ts
+predicate: (
+  a: Types.NoInfer<Schema.Type<S>>,
+  options: ParseOptions,
+  self: AST.Refinement
+) => undefined | boolean | string | ParseResult.ParseIssue
+```
+
+with the following semantics:
+
+- `true` means the filter is successful.
+- `false` or `undefined` means the filter fails and no default message is set.
+- `string` means the filter fails and the returned string is used as the default message.
+- `ParseIssue` means the filter fails and the returned ParseIssue is used as an error.
+
+Let's see an example of how it worked before and how it works now.
+
+**Before**
+
+```ts
+import { Schema, ParseResult } from "@effect/schema"
+import { Option } from "effect"
+
+const Positive = Schema.Number.pipe(
+  Schema.filter((n, _, ast) =>
+    n > 0
+      ? Option.none()
+      : Option.some(new ParseResult.Type(ast, n, "must be positive"))
+  )
+)
+
+Schema.decodeUnknownSync(Positive)(-1)
+/*
+throws
+Error: <refinement schema>
+└─ Predicate refinement failure
+   └─ must be positive
+*/
+```
+
+**Now**
+
+```ts
+import { Schema } from "@effect/schema"
+
+const Positive = Schema.Number.pipe(
+  Schema.filter((n) => (n > 0 ? undefined : "must be positive"))
+)
+
+Schema.decodeUnknownSync(Positive)(-1)
+/*
+throws
+Error: { number | filter }
+└─ Predicate refinement failure
+   └─ must be positive
+*/
+```
+
+Now the `filter` function has a cleaner signature, making it easier to understand and use for newcomers. It allows developers to set default error messages more intuitively, enhancing the overall developer experience.
 
 ## Patches
 

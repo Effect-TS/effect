@@ -309,9 +309,7 @@ describe("Class", () => {
   it("should accept a refinement of a Struct as argument", async () => {
     const fields = { a: S.Number, b: S.Number }
     class A extends S.Class<A>("A")(
-      S.Struct(fields).pipe(S.filter(({ a, b }) => a === b, {
-        message: () => "a should be equal to b"
-      }))
+      S.Struct(fields).pipe(S.filter(({ a, b }) => a === b ? undefined : "a should be equal to b"))
     ) {}
     Util.expectFields(A.fields, fields)
     await Util.expectDecodeUnknownSuccess(A, { a: 1, b: 1 })
@@ -320,10 +318,14 @@ describe("Class", () => {
       { a: 1, b: 2 },
       `(A (Encoded side) <-> A)
 └─ Encoded side transformation failure
-   └─ a should be equal to b`
+   └─ A (Encoded side)
+      └─ Predicate refinement failure
+         └─ a should be equal to b`
     )
     expect(() => new A({ a: 1, b: 2 })).toThrow(
-      new Error(`a should be equal to b`)
+      new Error(`A (Constructor)
+└─ Predicate refinement failure
+   └─ a should be equal to b`)
     )
   })
 

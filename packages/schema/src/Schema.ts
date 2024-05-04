@@ -2758,35 +2758,38 @@ export interface filter<From extends Schema.Any> extends refine<Schema.Type<From
  * @category combinators
  * @since 1.0.0
  */
+export function filter<C extends A, B extends A, A = C>(
+  refinement: (a: A, options: ParseOptions, self: AST.Refinement) => a is B,
+  annotations?: Annotations.Filter<C & B, C>
+): <I, R>(self: Schema<C, I, R>) => refine<C & B, Schema<A, I, R>>
 export function filter<S extends Schema.Any>(
   predicate: (
     a: Types.NoInfer<Schema.Type<S>>,
     options: ParseOptions,
     self: AST.Refinement
-  ) => option_.Option<ParseResult.ParseIssue>,
-  annotations?: Annotations.Filter<Schema.Type<S>>
-): (self: S) => filter<S>
-export function filter<C extends A, B extends A, A = C>(
-  refinement: Predicate.Refinement<A, B>,
-  annotations?: Annotations.Filter<C & B, C>
-): <I, R>(self: Schema<C, I, R>) => refine<C & B, Schema<A, I, R>>
-export function filter<S extends Schema.Any>(
-  predicate: Predicate.Predicate<Types.NoInfer<Schema.Type<S>>>,
+  ) => undefined | boolean | string | ParseResult.ParseIssue,
   annotations?: Annotations.Filter<Types.NoInfer<Schema.Type<S>>>
 ): (self: S) => filter<S>
 export function filter<A>(
-  predicate_: Predicate.Predicate<A> | AST.Refinement["filter"],
+  predicate: (
+    a: A,
+    options: ParseOptions,
+    self: AST.Refinement
+  ) => undefined | boolean | string | ParseResult.ParseIssue,
   annotations?: Annotations.Filter<A>
 ): <I, R>(self: Schema<A, I, R>) => refine<A, Schema<A, I, R>> {
   return <I, R>(self: Schema<A, I, R>) => {
     function filter(a: any, options: AST.ParseOptions, ast: AST.Refinement) {
-      const out = predicate_(a, options, ast)
+      const out = predicate(a, options, ast)
       if (Predicate.isBoolean(out)) {
         return out
           ? option_.none()
           : option_.some(new ParseResult.Type(ast, a))
       }
-      return out
+      if (Predicate.isString(out)) {
+        return option_.some(new ParseResult.Type(ast, a, out))
+      }
+      return out === undefined ? option_.none() : option_.some(out)
     }
     const ast = new AST.Refinement(
       self.ast,

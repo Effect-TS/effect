@@ -3,7 +3,6 @@ import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
 import { jestExpect as expect } from "@jest/expect"
-import * as Option from "effect/Option"
 import { describe, it } from "vitest"
 
 describe("filter", () => {
@@ -39,13 +38,11 @@ describe("filter", () => {
     const schema = S.Struct({ a: S.String, b: S.String }).pipe(
       S.filter((o) =>
         o.b === o.a
-          ? Option.none()
-          : Option.some(
-            new ParseResult.Type(
-              S.Literal(o.a).ast,
-              o.b,
-              `b should be equal to a's value ("${o.a}")`
-            )
+          ? undefined
+          : new ParseResult.Type(
+            S.Literal(o.a).ast,
+            o.b,
+            `b should be equal to a's value ("${o.a}")`
           )
       )
     )

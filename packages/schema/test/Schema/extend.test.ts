@@ -1,8 +1,6 @@
-import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
 import { jestExpect as expect } from "@jest/expect"
-import { Option } from "effect"
 import { describe, it } from "vitest"
 
 describe("extend", () => {
@@ -217,9 +215,7 @@ describe("extend", () => {
     it("S extends R", async () => {
       const S = Schema.Struct({ a: Schema.String })
       const R = Schema.Struct({ b: Schema.Number }).pipe(
-        Schema.filter((input, _, ast) =>
-          input.b <= 0 ? Option.some(new ParseResult.Type(ast, input, "R filter")) : Option.none()
-        )
+        Schema.filter((input) => input.b <= 0 ? "R filter" : undefined)
       )
       const schema = Schema.extend(S, R)
       expect(String(schema)).toBe(`{ { readonly a: string; readonly b: number } | filter }`)
@@ -232,16 +228,36 @@ describe("extend", () => {
       )
     })
 
+    it("S extends RR (two filters)", async () => {
+      const S = Schema.Struct({ a: Schema.String })
+      const RR = Schema.Struct({ b: Schema.Number }).pipe(
+        Schema.filter((input) => input.b <= 0 ? "filter1" : undefined),
+        Schema.filter((input) => input.b >= 10 ? "filter2" : undefined)
+      )
+      const schema = Schema.extend(S, RR)
+      expect(String(schema)).toBe(`{ { readonly a: string; readonly b: number } | filter }`)
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        { a: "a", b: -1 },
+        `{ { readonly a: string; readonly b: number } | filter }
+└─ Predicate refinement failure
+   └─ filter1`
+      )
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        { a: "a", b: 11 },
+        `{ { readonly a: string; readonly b: number } | filter }
+└─ Predicate refinement failure
+   └─ filter2`
+      )
+    })
+
     it("R1 extends R2", async () => {
       const R1 = Schema.Struct({ a: Schema.String }).pipe(
-        Schema.filter((input, _, ast) =>
-          input.a.length === 0 ? Option.some(new ParseResult.Type(ast, input, "R1 filter")) : Option.none()
-        )
+        Schema.filter((input) => input.a.length === 0 ? "R1 filter" : undefined)
       )
       const R2 = Schema.Struct({ b: Schema.Number }).pipe(
-        Schema.filter((input, _, ast) =>
-          input.b <= 0 ? Option.some(new ParseResult.Type(ast, input, "R2 filter")) : Option.none()
-        )
+        Schema.filter((input) => input.b <= 0 ? "R2 filter" : undefined)
       )
       const schema = Schema.extend(R1, R2)
       expect(String(schema)).toBe(
@@ -268,9 +284,7 @@ describe("extend", () => {
       const S2 = Schema.Struct({ a2: Schema.String })
       const U = Schema.Union(S1, S2)
       const R = Schema.Struct({ b: Schema.Number }).pipe(
-        Schema.filter((input, _, ast) =>
-          input.b <= 0 ? Option.some(new ParseResult.Type(ast, input, "R filter")) : Option.none()
-        )
+        Schema.filter((input) => input.b <= 0 ? "R filter" : undefined)
       )
       const schema = Schema.extend(U, R)
       expect(String(schema)).toBe(
