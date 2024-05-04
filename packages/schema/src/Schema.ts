@@ -6491,16 +6491,19 @@ export interface TaggedClass<Self, Tag extends string, Fields extends Struct.Fie
 export const TaggedClass = <Self = never>(identifier?: string) =>
 <Tag extends string, Fields extends Struct.Fields>(
   tag: Tag,
-  fields: Fields,
+  fieldsOr: Fields | HasFields<Fields>,
   annotations?: Annotations.Schema<Self>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
   : TaggedClass<Self, Tag, { readonly _tag: PropertySignature<":", Tag, never, ":", Tag, true, never> } & Fields> =>
 {
-  const taggedFields = extendFields({ _tag: getClassTag(tag) }, fields)
+  const fields = getFieldsFromFieldsOr(fieldsOr)
+  const schema = getSchemaFromFieldsOr(fieldsOr)
+  const newFields = { _tag: getClassTag(tag) }
+  const taggedFields = extendFields(newFields, fields)
   return class TaggedClass extends makeClass({
     kind: "TaggedClass",
     identifier: identifier ?? tag,
-    schema: Struct(taggedFields),
+    schema: extend(schema, Struct(newFields)),
     fields: taggedFields,
     Base: data_.Class,
     annotations

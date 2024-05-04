@@ -47,6 +47,46 @@ describe("TaggedClass", () => {
     }).toThrow(new Error(`Duplicate property signature "_tag"`))
   })
 
+  it("should accept a simple object as argument", () => {
+    const fields = { a: S.String, b: S.Number }
+    class A extends S.TaggedClass<A>()("A", { fields }) {}
+    Util.expectFields(A.fields, { _tag: S.getClassTag("A"), ...fields })
+    class B extends S.TaggedClass<B>()("B", { from: { fields } }) {}
+    Util.expectFields(B.fields, { _tag: S.getClassTag("B"), ...fields })
+  })
+
+  it("should accept a Struct as argument", () => {
+    const fields = { a: S.String, b: S.Number }
+    class A extends S.TaggedClass<A>()("A", S.Struct(fields)) {}
+    Util.expectFields(A.fields, { _tag: S.getClassTag("A"), ...fields })
+  })
+
+  it("should accept a refinement of a Struct as argument", async () => {
+    const fields = { a: S.Number, b: S.Number }
+    class TA extends S.TaggedClass<TA>()(
+      "TA",
+      S.Struct(fields).pipe(S.filter(({ a, b }) => a === b, {
+        message: () => "a should be equal to b"
+      }))
+    ) {}
+    Util.expectFields(TA.fields, { _tag: S.getClassTag("TA"), ...fields })
+    await Util.expectDecodeUnknownSuccess(TA, { _tag: "TA", a: 1, b: 1 })
+    await Util.expectDecodeUnknownFailure(
+      TA,
+      { _tag: "TA", a: 1, b: 2 },
+      `(TA (Encoded side) <-> TA)
+└─ Encoded side transformation failure
+   └─ TA (Encoded side)
+      └─ Predicate refinement failure
+         └─ Expected TA (Encoded side), actual {"_tag":"TA","a":1,"b":2}`
+    )
+    expect(() => new TA({ a: 1, b: 2 })).toThrow(
+      new Error(`TA (Constructor)
+└─ Predicate refinement failure
+   └─ Expected TA (Constructor), actual {"_tag":"TA","a":1,"b":2}`)
+    )
+  })
+
   it("decoding", async () => {
     class TA extends S.TaggedClass<TA>()("TA", { a: S.NonEmpty }) {}
     await Util.expectDecodeUnknownSuccess(TA, { _tag: "TA", a: "a" }, new TA({ a: "a" }))
