@@ -11,7 +11,7 @@ import * as Migrator from "@effect/sql/Migrator"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Secret from "effect/Secret"
-import type { MysqlClient } from "./Client.js"
+import { MysqlClient } from "./Client.js"
 
 /**
  * @since 1.0.0
@@ -22,17 +22,17 @@ export * from "@effect/sql/Migrator"
  * @category constructor
  * @since 1.0.0
  */
-export const run: <R>(
-  options: Migrator.MigratorOptions<R>
+export const run: <R2 = never>(
+  options: Migrator.MigratorOptions<R2>
 ) => Effect.Effect<
   ReadonlyArray<readonly [id: number, name: string]>,
-  SqlError | Migrator.MigrationError,
-  Client.Client | R | FileSystem | Path | CommandExecutor
+  Migrator.MigrationError | SqlError,
+  FileSystem | Path | MysqlClient | Client.Client | CommandExecutor | R2
 > = Migrator.make({
-  dumpSchema(sql_, path, table) {
-    const sql = sql_ as MysqlClient
+  dumpSchema(path, table) {
     const mysqlDump = (args: Array<string>) =>
       Effect.gen(function*(_) {
+        const sql = yield* MysqlClient
         const dump = yield* _(
           Command.make(
             "mysqldump",
@@ -92,6 +92,6 @@ export const layer = <R>(
   options: Migrator.MigratorOptions<R>
 ): Layer.Layer<
   never,
-  SqlError | Migrator.MigrationError,
-  Client.Client | FileSystem | Path | CommandExecutor | R
+  Migrator.MigrationError | SqlError,
+  MysqlClient | Client.Client | CommandExecutor | FileSystem | Path | R
 > => Layer.effectDiscard(run(options))

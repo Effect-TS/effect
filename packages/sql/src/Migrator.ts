@@ -70,16 +70,15 @@ export class MigrationError extends Data.TaggedError("MigrationError")<{
  * @category constructor
  * @since 1.0.0
  */
-export const make = <RD, R2 = never>({
+export const make = <RD = never>({
   dumpSchema = () => Effect.void
 }: {
   dumpSchema?: (
-    sql: Client.Client,
     path: string,
     migrationsTable: string
   ) => Effect.Effect<void, MigrationError, RD>
 }) =>
-({
+<R2 = never>({
   loader,
   schemaDirectory,
   table = "effect_sql_migrations"
@@ -285,7 +284,7 @@ export const make = <RD, R2 = never>({
 
     if (schemaDirectory && completed.length > 0) {
       yield* _(
-        dumpSchema(sql, `${schemaDirectory}/_schema.sql`, table),
+        dumpSchema(`${schemaDirectory}/_schema.sql`, table),
         Effect.catchAllCause((cause) => Effect.logInfo("Could not dump schema", cause))
       )
     }

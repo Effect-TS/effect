@@ -9,7 +9,7 @@ import Sqlite from "better-sqlite3"
 import * as Cache from "effect/Cache"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
-import type * as Context from "effect/Context"
+import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
@@ -17,10 +17,23 @@ import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
 
 /**
+ * @category type ids
+ * @since 1.0.0
+ */
+export const TypeId: unique symbol = Symbol.for("@effect/sql-sqlite-node/Client")
+
+/**
+ * @category type ids
+ * @since 1.0.0
+ */
+export type TypeId = typeof TypeId
+
+/**
  * @category models
  * @since 1.0.0
  */
 export interface SqliteClient extends Client.Client {
+  readonly [TypeId]: TypeId
   readonly config: SqliteClientConfig
   readonly export: Effect.Effect<Uint8Array, SqlError>
   readonly loadExtension: (path: string) => Effect.Effect<void, SqlError>
@@ -33,7 +46,7 @@ export interface SqliteClient extends Client.Client {
  * @category tags
  * @since 1.0.0
  */
-export const SqliteClient: Context.Tag<Client.Client, SqliteClient> = Client.Client as any
+export const SqliteClient = Context.GenericTag<SqliteClient>("@effect/sql-sqlite-node/Client")
 
 /**
  * @category models
@@ -195,6 +208,7 @@ export const make = (
         spanAttributes: [["db.system", "sqlite"]]
       }) as SqliteClient,
       {
+        [TypeId]: TypeId as TypeId,
         config: options,
         export: Effect.flatMap(acquirer, (_) => _.export),
         loadExtension: (path: string) => Effect.flatMap(acquirer, (_) => _.loadExtension(path))
@@ -208,8 +222,14 @@ export const make = (
  */
 export const layer = (
   config: Config.Config.Wrap<SqliteClientConfig>
-): Layer.Layer<Client.Client, ConfigError> =>
-  Layer.scoped(
-    SqliteClient,
-    Effect.flatMap(Config.unwrap(config), make)
+): Layer.Layer<SqliteClient | Client.Client, ConfigError> =>
+  Layer.scopedContext(
+    Config.unwrap(config).pipe(
+      Effect.flatMap(make),
+      Effect.map((client) =>
+        Context.make(SqliteClient, client).pipe(
+          Context.add(Client.Client, client)
+        )
+      )
+    )
   )

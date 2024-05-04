@@ -8,7 +8,7 @@ import * as Statement from "@effect/sql/Statement"
 import * as Sqlite from "@op-engineering/op-sqlite"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
-import type * as Context from "effect/Context"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import { identity } from "effect/Function"
@@ -17,10 +17,23 @@ import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
 
 /**
+ * @category type ids
+ * @since 1.0.0
+ */
+export const TypeId: unique symbol = Symbol.for("@effect/sql-sqlite-react-native/Client")
+
+/**
+ * @category type ids
+ * @since 1.0.0
+ */
+export type TypeId = typeof TypeId
+
+/**
  * @category models
  * @since 1.0.0
  */
 export interface SqliteClient extends Client.Client {
+  readonly [TypeId]: TypeId
   readonly config: SqliteClientConfig
 
   /** Not supported in sqlite */
@@ -31,7 +44,7 @@ export interface SqliteClient extends Client.Client {
  * @category tags
  * @since 1.0.0
  */
-export const SqliteClient: Context.Tag<Client.Client, SqliteClient> = Client.Client as any
+export const SqliteClient = Context.GenericTag<SqliteClient>("@effect/sql-sqlite-react-native/Client")
 
 /**
  * @category models
@@ -156,7 +169,7 @@ export const make = (
         transactionAcquirer,
         spanAttributes: [["db.system", "sqlite"]]
       }) as SqliteClient,
-      { config: options }
+      { [TypeId]: TypeId, config: options }
     )
   })
 
@@ -166,8 +179,14 @@ export const make = (
  */
 export const layer = (
   config: Config.Config.Wrap<SqliteClientConfig>
-): Layer.Layer<Client.Client, ConfigError> =>
-  Layer.scoped(
-    SqliteClient,
-    Effect.flatMap(Config.unwrap(config), make)
+): Layer.Layer<SqliteClient | Client.Client, ConfigError> =>
+  Layer.scopedContext(
+    Config.unwrap(config).pipe(
+      Effect.flatMap(make),
+      Effect.map((client) =>
+        Context.make(SqliteClient, client).pipe(
+          Context.add(Client.Client, client)
+        )
+      )
+    )
   )

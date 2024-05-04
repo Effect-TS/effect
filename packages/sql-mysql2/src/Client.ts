@@ -9,7 +9,7 @@ import { asyncPauseResume } from "@effect/sql/Stream"
 import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
-import type * as Context from "effect/Context"
+import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -19,10 +19,23 @@ import * as Stream from "effect/Stream"
 import * as Mysql from "mysql2"
 
 /**
+ * @category type ids
+ * @since 1.0.0
+ */
+export const TypeId: unique symbol = Symbol.for("@effect/sql-mysql2/Client")
+
+/**
+ * @category type ids
+ * @since 1.0.0
+ */
+export type TypeId = typeof TypeId
+
+/**
  * @category models
  * @since 1.0.0
  */
 export interface MysqlClient extends Client.Client {
+  readonly [TypeId]: TypeId
   readonly config: MysqlClientConfig
 }
 
@@ -30,7 +43,7 @@ export interface MysqlClient extends Client.Client {
  * @category tags
  * @since 1.0.0
  */
-export const MysqlClient: Context.Tag<Client.Client, MysqlClient> = Client.Client as any
+export const MysqlClient = Context.GenericTag<MysqlClient>("@effect/sql-mysql2/Client")
 
 /**
  * @category models
@@ -180,7 +193,7 @@ export const make = (
         compiler,
         spanAttributes
       }),
-      { config: options }
+      { [TypeId]: TypeId as TypeId, config: options }
     )
   })
 
@@ -190,7 +203,17 @@ export const make = (
  */
 export const layer = (
   config: Config.Config.Wrap<MysqlClientConfig>
-): Layer.Layer<Client.Client, ConfigError> => Layer.scoped(MysqlClient, Effect.flatMap(Config.unwrap(config), make))
+): Layer.Layer<MysqlClient | Client.Client, ConfigError> =>
+  Layer.scopedContext(
+    Config.unwrap(config).pipe(
+      Effect.flatMap(make),
+      Effect.map((client) =>
+        Context.make(MysqlClient, client).pipe(
+          Context.add(Client.Client, client)
+        )
+      )
+    )
+  )
 
 /**
  * @category compiler

@@ -7,7 +7,7 @@ import { SqlError } from "@effect/sql/Error"
 import * as Statement from "@effect/sql/Statement"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
-import type * as Context from "effect/Context"
+import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -25,10 +25,24 @@ import type { Parameter } from "./Parameter.js"
 import type * as Procedure from "./Procedure.js"
 
 /**
+ * @category type ids
+ * @since 1.0.0
+ */
+export const TypeId: unique symbol = Symbol.for("@effect/sql-mssql/Client")
+
+/**
+ * @category type ids
+ * @since 1.0.0
+ */
+export type TypeId = typeof TypeId
+
+/**
  * @category models
  * @since 1.0.0
  */
 export interface MssqlClient extends Client.Client {
+  readonly [TypeId]: TypeId
+
   readonly config: MssqlClientConfig
 
   readonly param: (
@@ -50,7 +64,7 @@ export interface MssqlClient extends Client.Client {
  * @category tags
  * @since 1.0.0
  */
-export const MssqlClient: Context.Tag<Client.Client, MssqlClient> = Client.Client as any
+export const MssqlClient = Context.GenericTag<MssqlClient>("@effect/sql-mssql/Client")
 
 /**
  * @category models
@@ -371,16 +385,14 @@ export const make = (
         ]
       }),
       {
+        [TypeId]: TypeId as TypeId,
         config: options,
-
         withTransaction,
-
         param: (
           type: DataType,
           value: Statement.Primitive,
           options: ParameterOptions = {}
         ) => mssqlParam(type, value, options),
-
         call: <
           I extends Record<string, Parameter<any>>,
           O extends Record<string, Parameter<any>>,
@@ -398,8 +410,17 @@ export const make = (
  */
 export const layer = (
   config: Config.Config.Wrap<MssqlClientConfig>
-): Layer.Layer<Client.Client, ConfigError, never> =>
-  Layer.scoped(MssqlClient, Effect.flatMap(Config.unwrap(config), make))
+): Layer.Layer<Client.Client | MssqlClient, ConfigError> =>
+  Layer.scopedContext(
+    Config.unwrap(config).pipe(
+      Effect.flatMap(make),
+      Effect.map((client) =>
+        Context.make(MssqlClient, client).pipe(
+          Context.add(Client.Client, client)
+        )
+      )
+    )
+  )
 
 /**
  * @category compiler

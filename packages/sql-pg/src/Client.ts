@@ -9,7 +9,7 @@ import * as Statement from "@effect/sql/Statement"
 import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
-import type * as Context from "effect/Context"
+import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -20,10 +20,23 @@ import type { PendingQuery, PendingValuesQuery } from "postgres"
 import postgres from "postgres"
 
 /**
+ * @category type ids
+ * @since 1.0.0
+ */
+export const TypeId: unique symbol = Symbol.for("@effect/sql-pg/Client")
+
+/**
+ * @category type ids
+ * @since 1.0.0
+ */
+export type TypeId = typeof TypeId
+
+/**
  * @category models
  * @since 1.0.0
  */
 export interface PgClient extends Client.Client {
+  readonly [TypeId]: TypeId
   readonly config: PgClientConfig
   readonly json: (_: unknown) => Fragment
   readonly array: (_: ReadonlyArray<Primitive>) => Fragment
@@ -33,7 +46,7 @@ export interface PgClient extends Client.Client {
  * @category tags
  * @since 1.0.0
  */
-export const PgClient: Context.Tag<Client.Client, PgClient> = Client.Client as any
+export const PgClient = Context.GenericTag<PgClient>("@effect/sql-pg/Client")
 
 /**
  * @category constructors
@@ -192,6 +205,7 @@ export const make = (
         ]
       }),
       {
+        [TypeId]: TypeId as TypeId,
         config: options,
         json: (_: unknown) => PgJson(_),
         array: (_: ReadonlyArray<Primitive>) => PgArray(_)
@@ -205,7 +219,17 @@ export const make = (
  */
 export const layer = (
   config: Config.Config.Wrap<PgClientConfig>
-): Layer.Layer<Client.Client, ConfigError> => Layer.scoped(PgClient, Effect.flatMap(Config.unwrap(config), make))
+): Layer.Layer<PgClient | Client.Client, ConfigError> =>
+  Layer.scopedContext(
+    Config.unwrap(config).pipe(
+      Effect.flatMap(make),
+      Effect.map((client) =>
+        Context.make(PgClient, client).pipe(
+          Context.add(Client.Client, client)
+        )
+      )
+    )
+  )
 
 /**
  * @category constructor
