@@ -6339,7 +6339,7 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
   readonly identifier: string
 
   extend<Extended = never>(identifier: string): <newFields extends Struct.Fields>(
-    fields: newFields,
+    fields: newFields | HasFields<newFields>,
     annotations?: Annotations.Schema<Extended>
   ) => [Extended] extends [never] ? MissingSelfGeneric<"Base.extend">
     : Class<
@@ -6802,12 +6802,14 @@ const makeClass = ({ Base, annotations, fields, identifier, kind, schema, toStri
     static identifier = identifier
 
     static extend<Extended>(identifier: string) {
-      return (newFields: Struct.Fields, annotations?: Annotations.Schema<Extended>) => {
+      return (newFieldsOr: Struct.Fields | HasFields<Struct.Fields>, annotations?: Annotations.Schema<Extended>) => {
+        const newFields = getFieldsFromFieldsOr(newFieldsOr)
+        const newSchema = getSchemaFromFieldsOr(newFieldsOr)
         const extendedFields = extendFields(fields, newFields)
         return makeClass({
           kind,
           identifier,
-          schema: Struct(extendedFields),
+          schema: extend(schema, newSchema),
           fields: extendedFields,
           Base: this,
           annotations

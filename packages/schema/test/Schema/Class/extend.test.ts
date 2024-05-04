@@ -54,6 +54,49 @@ describe("extend", () => {
     expect(person.nick).toEqual("Joe")
   })
 
+  it("should accept a simple object as argument", () => {
+    const baseFields = { base: S.String }
+    class Base extends S.Class<Base>("Base")(baseFields) {}
+    const fields = { a: S.String, b: S.Number }
+    class A extends Base.extend<A>("A")({ fields }) {}
+    Util.expectFields(A.fields, { ...baseFields, ...fields })
+    class B extends Base.extend<B>("B")({ from: { fields } }) {}
+    Util.expectFields(B.fields, { ...baseFields, ...fields })
+  })
+
+  it("should accept a Struct as argument", () => {
+    const baseFields = { base: S.String }
+    class Base extends S.Class<Base>("Base")(baseFields) {}
+    const fields = { a: S.String, b: S.Number }
+    class A extends Base.extend<A>("A")(S.Struct(fields)) {}
+    Util.expectFields(A.fields, { ...baseFields, ...fields })
+  })
+
+  it("should accept a refinement of a Struct as argument", async () => {
+    const baseFields = { base: S.String }
+    class Base extends S.Class<Base>("Base")(baseFields) {}
+    const fields = { a: S.Number, b: S.Number }
+    class A extends Base.extend<A>("A")(
+      S.Struct(fields).pipe(S.filter(({ a, b }) => a === b))
+    ) {}
+    Util.expectFields(A.fields, { ...baseFields, ...fields })
+    await Util.expectDecodeUnknownSuccess(A, { base: "base", a: 1, b: 1 })
+    await Util.expectDecodeUnknownFailure(
+      A,
+      { base: "base", a: 1, b: 2 },
+      `(A (Encoded side) <-> A)
+└─ Encoded side transformation failure
+   └─ A (Encoded side)
+      └─ Predicate refinement failure
+         └─ Expected A (Encoded side), actual {"base":"base","a":1,"b":2}`
+    )
+    expect(() => new A({ base: "base", a: 1, b: 2 })).toThrow(
+      new Error(`A (Constructor)
+└─ Predicate refinement failure
+   └─ Expected A (Constructor), actual {"base":"base","a":1,"b":2}`)
+    )
+  })
+
   it("decoding", async () => {
     await Util.expectDecodeUnknownFailure(
       PersonWithAge,
