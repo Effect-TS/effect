@@ -234,4 +234,12 @@ describe("pg", () => {
       "B"
     )
   })
+
+  it("identifier transform", () => {
+    const [query] = compilerTransform.compile(
+      sql`SELECT * from ${sql("peopleTest")}`,
+      false
+    )
+    expect(query).toEqual(`SELECT * from "people_test"`)
+  })
 })
