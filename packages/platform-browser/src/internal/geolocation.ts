@@ -33,7 +33,6 @@ export const layer = Layer.succeed(
             (position) => emit.single(Either.right(position)),
             (error) => {
               if (error.code === error.PERMISSION_DENIED) {
-                navigator.geolocation.clearWatch(handlerId)
                 emit.fail(error as Geolocation.GeolocationPermissionDeniedError)
               } else {
                 emit.single(Either.left(
