@@ -49,7 +49,7 @@ export interface Statement<A> extends Fragment, Effect<ReadonlyArray<A>, SqlErro
   readonly stream: Stream.Stream<A, SqlError>
   readonly values: Effect<ReadonlyArray<ReadonlyArray<Primitive>>, SqlError>
   readonly unprepared: Effect<ReadonlyArray<A>, SqlError>
-  readonly compile: () => readonly [
+  readonly compile: (withoutTransform?: boolean | undefined) => readonly [
     sql: string,
     params: ReadonlyArray<Primitive>
   ]

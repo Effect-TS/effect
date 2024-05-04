@@ -73,8 +73,7 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
     readonly segments: ReadonlyArray<Statement.Segment>,
     readonly acquirer: Connection.Connection.Acquirer,
     readonly compiler: Statement.Compiler,
-    readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>,
-    readonly disableTransform = false
+    readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
   ) {
     super()
   }
@@ -85,7 +84,8 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
       connection: Connection.Connection,
       sql: string,
       params: ReadonlyArray<Statement.Primitive>
-    ) => Effect.Effect<XA, E>
+    ) => Effect.Effect<XA, E>,
+    withoutTransform = false
   ): Effect.Effect<XA, E | Error.SqlError> {
     return Effect.useSpan(
       "sql.execute",
@@ -96,7 +96,7 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
           const statement = transform._tag === "Some"
             ? transform.value(this, make(this.acquirer, this.compiler), fiber.getFiberRefs(), span)
             : this
-          const [sql, params] = statement.compile()
+          const [sql, params] = statement.compile(withoutTransform)
           for (const [key, value] of this.spanAttributes) {
             span.attribute(key, value)
           }
@@ -107,18 +107,11 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
     )
   }
 
-  private _withoutTransform: StatementPrimitive<A> | undefined
   get withoutTransform(): Effect.Effect<ReadonlyArray<A>, Error.SqlError> {
-    this._withoutTransform ??= new StatementPrimitive(
-      this.segments,
-      this.acquirer,
-      this.compiler,
-      this.spanAttributes,
-      true
-    )
-    return this._withoutTransform.withConnection(
+    return this.withConnection(
       "executeWithoutTransform",
-      (connection, sql, params) => connection.executeWithoutTransform(sql, params)
+      (connection, sql, params) => connection.executeWithoutTransform(sql, params),
+      true
     )
   }
 
@@ -153,8 +146,8 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
     return this.withConnection("executeRaw", (connection, sql, params) => connection.executeRaw(sql, params))
   }
 
-  compile() {
-    return this.compiler.compile(this, this.disableTransform)
+  compile(withoutTransform?: boolean | undefined) {
+    return this.compiler.compile(this, withoutTransform ?? false)
   }
   commit(): Effect.Effect<ReadonlyArray<A>, Error.SqlError> {
     return this.withConnection("execute", (connection, sql, params) => connection.execute(sql, params))
@@ -464,6 +457,9 @@ export const csv: {
   ])
 }
 
+const statementCacheSymbol = Symbol.for("@effect/sql/Statement/statementCache")
+const statementCacheNoTransformSymbol = Symbol.for("@effect/sql/Statement/statementCacheNoTransform")
+
 /** @internal */
 class CompilerImpl implements Statement.Compiler {
   constructor(
@@ -500,8 +496,9 @@ class CompilerImpl implements Statement.Compiler {
     withoutTransform = false,
     placeholderOverride?: () => string
   ): readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>] {
-    if ((statement as any).__compiled) {
-      return (statement as any).__compiled
+    const cacheSymbol = withoutTransform ? statementCacheNoTransformSymbol : statementCacheSymbol
+    if (cacheSymbol in statement) {
+      return (statement as any)[cacheSymbol]
     }
 
     const segments = statement.segments
@@ -695,7 +692,11 @@ class CompilerImpl implements Statement.Compiler {
       }
     }
 
-    return ((statement as any).__compiled = [sql.trim(), binds] as const)
+    const result = [sql, binds] as const
+    if (placeholderOverride !== undefined) {
+      return result
+    }
+    return (statement as any)[cacheSymbol] = result
   }
 }
 
