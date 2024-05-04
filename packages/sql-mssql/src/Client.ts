@@ -436,7 +436,9 @@ export const makeCompiler = (transform?: (_: string) => string) =>
       const returningSql = returning ? returning[0] === "*" ? " OUTPUT INSERTED.*" : ` OUTPUT ${returning[0]}` : ""
       return [
         `(${columns.join(",")})${returningSql} VALUES ${placeholders}`,
-        values.flat()
+        returning ?
+          returning[1].concat(values.flat()) :
+          values.flat()
       ]
     }
   })
