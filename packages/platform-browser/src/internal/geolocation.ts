@@ -1,13 +1,12 @@
-import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Either from "effect/Either"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
-import type { Geolocation } from "../Geolocation.js"
+import type * as Geolocation from "../Geolocation.js"
 
 /** @internal */
-export const tag = Context.GenericTag<Geolocation>("@effect/platform-browser/Geolocation")
+export const tag = Context.GenericTag<Geolocation.Geolocation>("@effect/platform-browser/Geolocation")
 
 /** @internal */
 export const layer = Layer.succeed(
@@ -22,14 +21,31 @@ export const layer = Layer.succeed(
         )
       ),
     watchPosition: (options?: PositionOptions) =>
-      Stream.async<GeolocationPosition, GeolocationPositionError>((emit) => {
-        const handlerId = navigator.geolocation.watchPosition(
-          (position) => emit(Effect.succeed(Chunk.of(position))),
-          (error) => emit(Effect.fail(Option.some(error))),
-          options
-        )
+      Stream.async<
+        Either.Either<
+          GeolocationPosition,
+          Geolocation.GeolocationPositionUnavailableError | Geolocation.GeolocationTimeoutError
+        >,
+        Geolocation.GeolocationPermissionDeniedError
+      >(
+        (emit) => {
+          const handlerId = navigator.geolocation.watchPosition(
+            (position) => emit.single(Either.right(position)),
+            (error) => {
+              if (error.code === error.PERMISSION_DENIED) {
+                navigator.geolocation.clearWatch(handlerId)
+                emit.fail(error as Geolocation.GeolocationPermissionDeniedError)
+              } else {
+                emit.single(Either.left(
+                  error as Geolocation.GeolocationPositionUnavailableError | Geolocation.GeolocationTimeoutError
+                ))
+              }
+            },
+            options
+          )
 
-        return Effect.sync(() => navigator.geolocation.clearWatch(handlerId))
-      })
+          return Effect.sync(() => navigator.geolocation.clearWatch(handlerId))
+        }
+      )
   }
 )
