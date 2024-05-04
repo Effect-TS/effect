@@ -857,8 +857,8 @@ export const makeCompilerSqlite = (transform?: (_: string) => string) =>
       return "?"
     },
     onIdentifier: transform ?
-      function(value) {
-        return transform(value)
+      function(value, withoutTransform) {
+        return withoutTransform ? escapeSqlite(value) : escapeSqlite(transform(value))
       } :
       escapeSqlite,
     onRecordUpdate() {
