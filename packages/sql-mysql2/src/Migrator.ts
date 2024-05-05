@@ -5,12 +5,13 @@ import * as Command from "@effect/platform/Command"
 import type { CommandExecutor } from "@effect/platform/CommandExecutor"
 import { FileSystem } from "@effect/platform/FileSystem"
 import { Path } from "@effect/platform/Path"
+import type * as Client from "@effect/sql/Client"
 import type { SqlError } from "@effect/sql/Error"
 import * as Migrator from "@effect/sql/Migrator"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Secret from "effect/Secret"
-import * as Client from "./Client.js"
+import { MysqlClient } from "./Client.js"
 
 /**
  * @since 1.0.0
@@ -21,28 +22,17 @@ export * from "@effect/sql/Migrator"
  * @category constructor
  * @since 1.0.0
  */
-export const run: <R>(
-  options: Migrator.MigratorOptions<R>
+export const run: <R2 = never>(
+  options: Migrator.MigratorOptions<R2>
 ) => Effect.Effect<
   ReadonlyArray<readonly [id: number, name: string]>,
-  SqlError | Migrator.MigrationError,
-  Client.MysqlClient | R | FileSystem | Path | CommandExecutor
+  Migrator.MigrationError | SqlError,
+  FileSystem | Path | MysqlClient | Client.Client | CommandExecutor | R2
 > = Migrator.make({
-  getClient: Client.MysqlClient,
-  ensureTable(sql, table) {
-    return sql`CREATE TABLE IF NOT EXISTS ${sql(table)} (
-      migration_id INTEGER UNSIGNED NOT NULL,
-      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      name VARCHAR(255) NOT NULL,
-      PRIMARY KEY (migration_id)
-    )`
-  },
-  lockTable(sql, table) {
-    return sql`LOCK TABLE ${sql(table)} IN ACCESS EXCLUSIVE MODE`
-  },
-  dumpSchema(sql, path, table) {
+  dumpSchema(path, table) {
     const mysqlDump = (args: Array<string>) =>
       Effect.gen(function*(_) {
+        const sql = yield* MysqlClient
         const dump = yield* _(
           Command.make(
             "mysqldump",
@@ -102,6 +92,6 @@ export const layer = <R>(
   options: Migrator.MigratorOptions<R>
 ): Layer.Layer<
   never,
-  SqlError | Migrator.MigrationError,
-  Client.MysqlClient | FileSystem | Path | CommandExecutor | R
+  Migrator.MigrationError | SqlError,
+  MysqlClient | Client.Client | CommandExecutor | FileSystem | Path | R
 > => Layer.effectDiscard(run(options))

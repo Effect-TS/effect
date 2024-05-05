@@ -17,20 +17,34 @@ import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
 
 /**
+ * @category type ids
+ * @since 1.0.0
+ */
+export const TypeId: unique symbol = Symbol.for("@effect/sql-sqlite-react-native/Client")
+
+/**
+ * @category type ids
+ * @since 1.0.0
+ */
+export type TypeId = typeof TypeId
+
+/**
  * @category models
  * @since 1.0.0
  */
 export interface SqliteClient extends Client.Client {
+  readonly [TypeId]: TypeId
   readonly config: SqliteClientConfig
+
+  /** Not supported in sqlite */
+  readonly updateValues: never
 }
 
 /**
  * @category tags
  * @since 1.0.0
  */
-export const SqliteClient: Context.Tag<SqliteClient, SqliteClient> = Context.GenericTag(
-  "@effect/sql-sqlite-react-native/SqliteClient"
-)
+export const SqliteClient = Context.GenericTag<SqliteClient>("@effect/sql-sqlite-react-native/Client")
 
 /**
  * @category models
@@ -67,8 +81,8 @@ export const make = (
   options: SqliteClientConfig
 ): Effect.Effect<SqliteClient, never, Scope.Scope> =>
   Effect.gen(function*(_) {
-    const compiler = makeCompiler(options.transformQueryNames)
-    const transformRows = Client.defaultTransforms(
+    const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
+    const transformRows = Statement.defaultTransforms(
       options.transformResultNames!
     ).array
 
@@ -154,8 +168,8 @@ export const make = (
         compiler,
         transactionAcquirer,
         spanAttributes: [["db.system", "sqlite"]]
-      }),
-      { config: options }
+      }) as SqliteClient,
+      { [TypeId]: TypeId, config: options }
     )
   })
 
@@ -165,22 +179,14 @@ export const make = (
  */
 export const layer = (
   config: Config.Config.Wrap<SqliteClientConfig>
-): Layer.Layer<SqliteClient, ConfigError> =>
-  Layer.scoped(
-    SqliteClient,
-    Effect.flatMap(Config.unwrap(config), make)
+): Layer.Layer<SqliteClient | Client.Client, ConfigError> =>
+  Layer.scopedContext(
+    Config.unwrap(config).pipe(
+      Effect.flatMap(make),
+      Effect.map((client) =>
+        Context.make(SqliteClient, client).pipe(
+          Context.add(Client.Client, client)
+        )
+      )
+    )
   )
-
-const escape = Statement.defaultEscape("\"")
-
-/**
- * @category compiler
- * @since 1.0.0
- */
-export const makeCompiler = (transform?: (_: string) => string) =>
-  Statement.makeCompiler({
-    placeholder: (_) => `?`,
-    onIdentifier: transform ? (_) => escape(transform(_)) : escape,
-    onRecordUpdate: () => ["", []],
-    onCustom: () => ["", []]
-  })

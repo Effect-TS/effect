@@ -5,12 +5,13 @@ import * as Command from "@effect/platform/Command"
 import type { CommandExecutor } from "@effect/platform/CommandExecutor"
 import { FileSystem } from "@effect/platform/FileSystem"
 import { Path } from "@effect/platform/Path"
+import type * as Client from "@effect/sql/Client"
 import type { SqlError } from "@effect/sql/Error"
 import * as Migrator from "@effect/sql/Migrator"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Secret from "effect/Secret"
-import * as Client from "./Client.js"
+import { PgClient } from "./Client.js"
 
 /**
  * @since 1.0.0
@@ -21,35 +22,17 @@ export * from "@effect/sql/Migrator"
  * @category constructor
  * @since 1.0.0
  */
-export const run: <R>(
-  options: Migrator.MigratorOptions<R>
+export const run: <R2 = never>(
+  options: Migrator.MigratorOptions<R2>
 ) => Effect.Effect<
   ReadonlyArray<readonly [id: number, name: string]>,
-  SqlError | Migrator.MigrationError,
-  Client.PgClient | FileSystem | Path | CommandExecutor | R
+  Migrator.MigrationError | SqlError,
+  FileSystem | Path | PgClient | Client.Client | CommandExecutor | R2
 > = Migrator.make({
-  getClient: Client.PgClient,
-  ensureTable(sql, table) {
-    return Effect.catchAll(
-      sql`select ${table}::regclass`,
-      () =>
-        sql`
-        CREATE TABLE ${sql(table)} (
-          migration_id integer primary key,
-          created_at timestamp with time zone not null default now(),
-          name text not null
-        )
-      `
-    )
-  },
-  lockTable(sql, table) {
-    return sql`
-      LOCK TABLE ${sql(table)} IN ACCESS EXCLUSIVE MODE
-    `
-  },
-  dumpSchema(sql, path, table) {
+  dumpSchema(path, table) {
     const pgDump = (args: Array<string>) =>
       Effect.gen(function*(_) {
+        const sql = yield* PgClient
         const dump = yield* _(
           Command.make("pg_dump", ...args, "--no-owner", "--no-privileges"),
           Command.env({
@@ -109,5 +92,8 @@ export const run: <R>(
  */
 export const layer = <R>(
   options: Migrator.MigratorOptions<R>
-): Layer.Layer<never, SqlError | Migrator.MigrationError, R | Client.PgClient | FileSystem | Path | CommandExecutor> =>
-  Layer.effectDiscard(run(options))
+): Layer.Layer<
+  never,
+  Migrator.MigrationError | SqlError,
+  PgClient | Client.Client | CommandExecutor | FileSystem | Path | R
+> => Layer.effectDiscard(run(options))

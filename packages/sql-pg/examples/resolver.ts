@@ -1,5 +1,6 @@
 import * as DevTools from "@effect/experimental/DevTools"
 import * as Schema from "@effect/schema/Schema"
+import * as Sql from "@effect/sql"
 import * as Pg from "@effect/sql-pg"
 import { Config, Effect, Layer, String } from "effect"
 
@@ -13,25 +14,25 @@ const InsertPersonSchema = Schema.Struct(Person.fields).pipe(
   Schema.omit("id", "createdAt")
 )
 
-const program = Effect.gen(function*() {
-  const sql = yield* Pg.client.PgClient
+const program = Effect.gen(function*(_) {
+  const sql = yield* Sql.client.Client
 
   yield* sql`TRUNCATE TABLE people RESTART IDENTITY CASCADE`
 
-  const Insert = yield* Pg.resolver.ordered("InsertPerson", {
+  const Insert = yield* Sql.resolver.ordered("InsertPerson", {
     Request: InsertPersonSchema,
     Result: Person,
     execute: (requests) => sql`INSERT INTO people ${sql.insert(requests)} RETURNING people.*`
   })
 
-  const GetById = yield* Pg.resolver.findById("GetPersonById", {
+  const GetById = yield* Sql.resolver.findById("GetPersonById", {
     Id: Schema.Number,
     Result: Person,
     ResultId: (result) => result.id,
     execute: (ids) => sql`SELECT * FROM people WHERE id IN ${sql.in(ids)}`
   })
 
-  const GetByName = yield* Pg.resolver.grouped("GetPersonByName", {
+  const GetByName = yield* Sql.resolver.grouped("GetPersonByName", {
     Request: Schema.String,
     RequestGroupKey: (_) => _,
     Result: Person,

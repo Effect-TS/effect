@@ -38,12 +38,18 @@ export interface Fragment {
  * @category model
  * @since 1.0.0
  */
+export type Dialect = "sqlite" | "pg" | "mysql" | "mssql"
+
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface Statement<A> extends Fragment, Effect<ReadonlyArray<A>, SqlError>, Pipeable {
   readonly withoutTransform: Effect<ReadonlyArray<A>, SqlError>
   readonly stream: Stream.Stream<A, SqlError>
   readonly values: Effect<ReadonlyArray<ReadonlyArray<Primitive>>, SqlError>
   readonly unprepared: Effect<ReadonlyArray<A>, SqlError>
-  readonly compile: () => readonly [
+  readonly compile: (withoutTransform?: boolean | undefined) => readonly [
     sql: string,
     params: ReadonlyArray<Primitive>
   ]
@@ -171,6 +177,8 @@ export interface ArrayHelper {
 export interface RecordInsertHelper {
   readonly _tag: "RecordInsertHelper"
   readonly value: ReadonlyArray<Record<string, Primitive | Fragment>>
+  readonly returningIdentifier: string | Fragment | undefined
+  readonly returning: (sql: string | Identifier | Fragment) => RecordInsertHelper
 }
 
 /**
@@ -181,6 +189,8 @@ export interface RecordUpdateHelper {
   readonly _tag: "RecordUpdateHelper"
   readonly value: ReadonlyArray<Record<string, Primitive | Fragment>>
   readonly alias: string
+  readonly returningIdentifier: string | Fragment | undefined
+  readonly returning: (sql: string | Identifier | Fragment) => RecordUpdateHelper
 }
 
 /**
@@ -191,6 +201,8 @@ export interface RecordUpdateHelperSingle {
   readonly _tag: "RecordUpdateHelperSingle"
   readonly value: Record<string, Primitive | Fragment>
   readonly omit: ReadonlyArray<string>
+  readonly returningIdentifier: string | Fragment | undefined
+  readonly returning: (sql: string | Identifier | Fragment) => RecordUpdateHelperSingle
 }
 
 /**
@@ -298,11 +310,17 @@ export interface Constructor {
     (value: Record<string, Primitive | Fragment>): RecordInsertHelper
   }
 
+  /** Update a single row */
   readonly update: <A extends Record<string, Primitive | Fragment>>(
     value: A,
     omit?: ReadonlyArray<keyof A>
   ) => RecordUpdateHelperSingle
 
+  /**
+   * Update multiple rows
+   *
+   * **Note:** Not supported in sqlite
+   */
   readonly updateValues: (
     value: ReadonlyArray<Record<string, Primitive | Fragment>>,
     alias: string
@@ -333,6 +351,21 @@ export interface Constructor {
     addParens?: boolean,
     fallback?: string
   ) => (clauses: ReadonlyArray<string | Fragment>) => Fragment
+
+  readonly onDialect: <A, B, C, D>(options: {
+    readonly sqlite: () => A
+    readonly pg: () => B
+    readonly mysql: () => C
+    readonly mssql: () => D
+  }) => A | B | C | D
+
+  readonly onDialectOrElse: <A, B = never, C = never, D = never, E = never>(options: {
+    readonly orElse: () => A
+    readonly sqlite?: () => B
+    readonly pg?: () => C
+    readonly mysql?: () => D
+    readonly mssql?: () => E
+  }) => A | B | C | D | E
 }
 
 /**
@@ -390,8 +423,10 @@ export const join: (
  * @since 1.0.0
  */
 export interface Compiler {
+  readonly dialect: Dialect
   readonly compile: (
-    statement: Fragment
+    statement: Fragment,
+    withoutTransform: boolean
   ) => readonly [sql: string, params: ReadonlyArray<Primitive>]
 }
 
@@ -401,26 +436,41 @@ export interface Compiler {
  */
 export const makeCompiler: <C extends Custom<any, any, any, any> = any>(
   options: {
+    readonly dialect: Dialect
     readonly placeholder: (index: number) => string
-    readonly onIdentifier: (value: string) => string
+    readonly onIdentifier: (value: string, withoutTransform: boolean) => string
     readonly onRecordUpdate: (
       placeholders: string,
       alias: string,
       columns: string,
-      values: ReadonlyArray<ReadonlyArray<Primitive>>
+      values: ReadonlyArray<ReadonlyArray<Primitive>>,
+      returning: readonly [sql: string, params: ReadonlyArray<Primitive>] | undefined
     ) => readonly [sql: string, params: ReadonlyArray<Primitive>]
-    readonly onCustom: (type: C, placeholder: () => string) => readonly [sql: string, params: ReadonlyArray<Primitive>]
+    readonly onCustom: (
+      type: C,
+      placeholder: () => string,
+      withoutTransform: boolean
+    ) => readonly [sql: string, params: ReadonlyArray<Primitive>]
     readonly onInsert?: (
       columns: ReadonlyArray<string>,
       placeholders: string,
-      values: ReadonlyArray<ReadonlyArray<Primitive>>
+      values: ReadonlyArray<ReadonlyArray<Primitive>>,
+      returning: readonly [sql: string, params: ReadonlyArray<Primitive>] | undefined
     ) => readonly [sql: string, binds: ReadonlyArray<Primitive>]
     readonly onRecordUpdateSingle?: (
       columns: ReadonlyArray<string>,
-      values: ReadonlyArray<Primitive>
+      values: ReadonlyArray<Primitive>,
+      returning: readonly [sql: string, params: ReadonlyArray<Primitive>] | undefined
     ) => readonly [sql: string, params: ReadonlyArray<Primitive>]
   }
 ) => Compiler = internal.makeCompiler
+
+/**
+ * @category compiler
+ * @since 1.0.0
+ */
+export const makeCompilerSqlite: (transform?: ((_: string) => string) | undefined) => Compiler =
+  internal.makeCompilerSqlite
 
 /**
  * @since 1.0.0
@@ -431,3 +481,15 @@ export const defaultEscape: (c: string) => (str: string) => string = internal.de
  * @since 1.0.0
  */
 export const primitiveKind: (value: Primitive) => PrimitiveKind = internal.primitiveKind
+
+/**
+ * @since 1.0.0
+ */
+export const defaultTransforms: (
+  transformer: (str: string) => string,
+  nested?: boolean
+) => {
+  readonly value: (value: any) => any
+  readonly object: (obj: Record<string, any>) => any
+  readonly array: <A extends object>(rows: ReadonlyArray<A>) => ReadonlyArray<A>
+} = internal.defaultTransforms

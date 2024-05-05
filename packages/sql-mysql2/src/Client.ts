@@ -19,10 +19,23 @@ import * as Stream from "effect/Stream"
 import * as Mysql from "mysql2"
 
 /**
+ * @category type ids
+ * @since 1.0.0
+ */
+export const TypeId: unique symbol = Symbol.for("@effect/sql-mysql2/Client")
+
+/**
+ * @category type ids
+ * @since 1.0.0
+ */
+export type TypeId = typeof TypeId
+
+/**
  * @category models
  * @since 1.0.0
  */
 export interface MysqlClient extends Client.Client {
+  readonly [TypeId]: TypeId
   readonly config: MysqlClientConfig
 }
 
@@ -30,7 +43,7 @@ export interface MysqlClient extends Client.Client {
  * @category tags
  * @since 1.0.0
  */
-export const MysqlClient = Context.GenericTag<MysqlClient>("sqlfx/mysql2/MysqlClient")
+export const MysqlClient = Context.GenericTag<MysqlClient>("@effect/sql-mysql2/Client")
 
 /**
  * @category models
@@ -57,8 +70,6 @@ export interface MysqlClientConfig {
   readonly transformQueryNames?: (str: string) => string
 }
 
-const escape = Statement.defaultEscape("`")
-
 /**
  * @category constructors
  * @since 1.0.0
@@ -68,8 +79,7 @@ export const make = (
 ): Effect.Effect<MysqlClient, never, Scope> =>
   Effect.gen(function*(_) {
     const compiler = makeCompiler(options.transformQueryNames)
-
-    const transformRows = Client.defaultTransforms(
+    const transformRows = Statement.defaultTransforms(
       options.transformResultNames!
     ).array
 
@@ -183,7 +193,7 @@ export const make = (
         compiler,
         spanAttributes
       }),
-      { config: options }
+      { [TypeId]: TypeId as TypeId, config: options }
     )
   })
 
@@ -191,11 +201,19 @@ export const make = (
  * @category layers
  * @since 1.0.0
  */
-export const layer: (
+export const layer = (
   config: Config.Config.Wrap<MysqlClientConfig>
-) => Layer.Layer<MysqlClient, ConfigError> = (
-  config: Config.Config.Wrap<MysqlClientConfig>
-) => Layer.scoped(MysqlClient, Effect.flatMap(Config.unwrap(config), make))
+): Layer.Layer<MysqlClient | Client.Client, ConfigError> =>
+  Layer.scopedContext(
+    Config.unwrap(config).pipe(
+      Effect.flatMap(make),
+      Effect.map((client) =>
+        Context.make(MysqlClient, client).pipe(
+          Context.add(Client.Client, client)
+        )
+      )
+    )
+  )
 
 /**
  * @category compiler
@@ -203,11 +221,24 @@ export const layer: (
  */
 export const makeCompiler = (transform?: (_: string) => string) =>
   Statement.makeCompiler({
-    placeholder: (_) => `?`,
-    onIdentifier: transform ? (_) => escape(transform(_)) : escape,
-    onCustom: () => ["", []],
-    onRecordUpdate: () => ["", []]
+    dialect: "mysql",
+    placeholder(_) {
+      return `?`
+    },
+    onIdentifier: transform ?
+      function(value, withoutTransform) {
+        return withoutTransform ? escape(value) : escape(transform(value))
+      } :
+      escape,
+    onCustom() {
+      return ["", []]
+    },
+    onRecordUpdate() {
+      return ["", []]
+    }
   })
+
+const escape = Statement.defaultEscape("`")
 
 function queryStream(
   conn: Mysql.PoolConnection,

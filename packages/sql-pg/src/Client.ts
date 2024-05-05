@@ -20,10 +20,23 @@ import type { PendingQuery, PendingValuesQuery } from "postgres"
 import postgres from "postgres"
 
 /**
+ * @category type ids
+ * @since 1.0.0
+ */
+export const TypeId: unique symbol = Symbol.for("@effect/sql-pg/Client")
+
+/**
+ * @category type ids
+ * @since 1.0.0
+ */
+export type TypeId = typeof TypeId
+
+/**
  * @category models
  * @since 1.0.0
  */
 export interface PgClient extends Client.Client {
+  readonly [TypeId]: TypeId
   readonly config: PgClientConfig
   readonly json: (_: unknown) => Fragment
   readonly array: (_: ReadonlyArray<Primitive>) => Fragment
@@ -33,7 +46,7 @@ export interface PgClient extends Client.Client {
  * @category tags
  * @since 1.0.0
  */
-export const PgClient: Context.Tag<PgClient, PgClient> = Context.GenericTag<PgClient>("@effect/sql-pg/PgClient")
+export const PgClient = Context.GenericTag<PgClient>("@effect/sql-pg/Client")
 
 /**
  * @category constructors
@@ -66,8 +79,6 @@ export interface PgClientConfig {
   readonly debug?: postgres.Options<{}>["debug"] | undefined
 }
 
-const escape = Statement.defaultEscape("\"")
-
 type PartialWithUndefined<T> = { [K in keyof T]?: T[K] | undefined }
 
 /**
@@ -82,8 +93,7 @@ export const make = (
       options.transformQueryNames,
       options.transformJson
     )
-
-    const transformRows = Client.defaultTransforms(
+    const transformRows = Statement.defaultTransforms(
       options.transformResultNames!,
       options.transformJson
     ).array
@@ -195,6 +205,7 @@ export const make = (
         ]
       }),
       {
+        [TypeId]: TypeId as TypeId,
         config: options,
         json: (_: unknown) => PgJson(_),
         array: (_: ReadonlyArray<Primitive>) => PgArray(_)
@@ -206,11 +217,19 @@ export const make = (
  * @category constructor
  * @since 1.0.0
  */
-export const layer: (
+export const layer = (
   config: Config.Config.Wrap<PgClientConfig>
-) => Layer.Layer<PgClient, ConfigError> = (
-  config: Config.Config.Wrap<PgClientConfig>
-) => Layer.scoped(PgClient, Effect.flatMap(Config.unwrap(config), make))
+): Layer.Layer<PgClient | Client.Client, ConfigError> =>
+  Layer.scopedContext(
+    Config.unwrap(config).pipe(
+      Effect.flatMap(make),
+      Effect.map((client) =>
+        Context.make(PgClient, client).pipe(
+          Context.add(Client.Client, client)
+        )
+      )
+    )
+  )
 
 /**
  * @category constructor
@@ -223,26 +242,37 @@ export const makeCompiler = (
   const pg = postgres({ max: 0 })
 
   const transformValue = transformJson && transform
-    ? Client.defaultTransforms(transform).value
+    ? Statement.defaultTransforms(transform).value
     : undefined
 
   return Statement.makeCompiler<PgCustom>({
-    placeholder: (_) => `$${_}`,
-    onIdentifier: transform ? (_) => escape(transform(_)) : escape,
-    onRecordUpdate: (placeholders, valueAlias, valueColumns, values) => [
-      `(values ${placeholders}) AS ${valueAlias}${valueColumns}`,
-      values.flat()
-    ],
-    onCustom: (type, placeholder) => {
+    dialect: "pg",
+    placeholder(_) {
+      return `$${_}`
+    },
+    onIdentifier: transform ?
+      function(value, withoutTransform) {
+        return withoutTransform ? escape(value) : escape(transform(value))
+      } :
+      escape,
+    onRecordUpdate(placeholders, valueAlias, valueColumns, values, returning) {
+      return [
+        `(values ${placeholders}) AS ${valueAlias}${valueColumns}${returning ? ` RETURNING ${returning[0]}` : ""}`,
+        returning ?
+          values.flat().concat(returning[1]) :
+          values.flat()
+      ]
+    },
+    onCustom(type, placeholder, withoutTransform) {
       switch (type.kind) {
         case "PgJson": {
           return [
             placeholder(),
             [
               pg.json(
-                transformValue !== undefined
-                  ? transformValue(type.i0)
-                  : type.i0
+                withoutTransform || transformValue === undefined
+                  ? type.i0
+                  : transformValue(type.i0)
               ) as any
             ]
           ]
@@ -270,6 +300,8 @@ export const makeCompiler = (
     }
   })
 }
+
+const escape = Statement.defaultEscape("\"")
 
 /**
  * @category custom types
