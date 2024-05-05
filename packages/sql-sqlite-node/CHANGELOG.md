@@ -1,5 +1,63 @@
 # @effect/sql-sqlite-node
 
+## 0.2.0
+
+### Minor Changes
+
+- [#2693](https://github.com/Effect-TS/effect/pull/2693) [`0724274`](https://github.com/Effect-TS/effect/commit/07242746ed8a3b0383631108360a0ad4f6e062f0) Thanks [@tim-smart](https://github.com/tim-smart)! - make @effect/sql dialect agnostic
+
+  All of the client implementations now share the same Context.Tag. This means you can create
+  services that support multiple SQL flavors.
+
+  You can now use the `@effect/sql` package to access the client apis:
+
+  ```ts
+  import * as Sql from "@effect/sql";
+  import { Effect } from "effect";
+
+  Effect.gen(function* () {
+    const sql = yield* Sql.client.Client;
+    yield* sql`SELECT * FROM users`;
+  });
+  ```
+
+  If you need a functionality that is specific to a implementation, you can use the tag from the
+  implementation package:
+
+  ```ts
+  import * as Sqlite from "@effect/sql-sqlite-node";
+  import { Effect } from "effect";
+
+  Effect.gen(function* () {
+    const sql = yield* Sqlite.client.SqliteClient;
+    const dump = yield* sql.export;
+  });
+  ```
+
+  If you need to run a different query depending on the dialect, you can use the `sql.onDialect` api:
+
+  ```ts
+  import * as Sql from "@effect/sql";
+  import { Effect } from "effect";
+
+  Effect.gen(function* () {
+    const sql = yield* Sql.client.Client;
+    yield* sql.onDialect({
+      sqlite: () => sql`SELECT * FROM sqlite_master`,
+      mysql: () => sql`SHOW TABLES`,
+      mssql: () => sql`SELECT * FROM sys.tables`,
+      pg: () => sql`SELECT * FROM pg_catalog.pg_tables`,
+    });
+  });
+  ```
+
+### Patch Changes
+
+- [#2693](https://github.com/Effect-TS/effect/pull/2693) [`0724274`](https://github.com/Effect-TS/effect/commit/07242746ed8a3b0383631108360a0ad4f6e062f0) Thanks [@tim-smart](https://github.com/tim-smart)! - add .returning helper to insert and update apis
+
+- Updated dependencies [[`0724274`](https://github.com/Effect-TS/effect/commit/07242746ed8a3b0383631108360a0ad4f6e062f0), [`0724274`](https://github.com/Effect-TS/effect/commit/07242746ed8a3b0383631108360a0ad4f6e062f0)]:
+  - @effect/sql@0.2.0
+
 ## 0.1.17
 
 ### Patch Changes
