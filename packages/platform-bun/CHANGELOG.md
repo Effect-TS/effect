@@ -1,5 +1,13 @@
 # @effect/platform-bun
 
+## 0.34.4
+
+### Patch Changes
+
+- Updated dependencies [[`5866c62`](https://github.com/Effect-TS/effect/commit/5866c621d7eb4cc84e4ba972bfdfd219734cd45d)]:
+  - @effect/platform@0.52.3
+  - @effect/platform-node-shared@0.4.18
+
 ## 0.34.3
 
 ### Patch Changes
