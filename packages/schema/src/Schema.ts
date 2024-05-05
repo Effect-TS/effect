@@ -2519,31 +2519,24 @@ const intersectTypeLiterals = (
   throw new Error(getExtendErrorMessage(x, y, path))
 }
 
-// filters: ReadonlyArray<AST.Refinement["filter"]>
-
-const addRefinement = (filter: AST.Refinement["filter"], asts: ReadonlyArray<AST.AST>): Array<AST.Refinement> =>
-  asts.map((ast) => new AST.Refinement(ast, filter))
+const addRefinementToMembers = (refinement: AST.Refinement, asts: ReadonlyArray<AST.AST>): Array<AST.Refinement> =>
+  asts.map((ast) =>
+    new AST.Refinement(
+      ast,
+      refinement.filter,
+      // preserve message annotation
+      option_.match(AST.getMessageAnnotation(refinement), {
+        onNone: () => undefined,
+        onSome: (message) => ({ [AST.MessageAnnotationId]: message })
+      })
+    )
+  )
 
 const extendAST = (
   x: AST.AST,
   y: AST.AST,
   path: ReadonlyArray<string>
-): AST.AST => {
-  const out = AST.Union.make(intersectUnionMembers([x], [y], path))
-  // if (filters.length > 0) {
-  //   const filter: AST.Refinement["filter"] = (input, options, ast) => {
-  //     for (const f of filters) {
-  //       const o = f(input, options, ast)
-  //       if (option_.isSome(o)) {
-  //         return o
-  //       }
-  //     }
-  //     return option_.none()
-  //   }
-  //   return new AST.Refinement(out, filter)
-  // }
-  return out
-}
+): AST.AST => AST.Union.make(intersectUnionMembers([x], [y], path))
 
 const getTypes = (ast: AST.AST): ReadonlyArray<AST.AST> => AST.isUnion(ast) ? ast.types : [ast]
 
@@ -2560,7 +2553,7 @@ const intersectUnionMembers = (
         case "Suspend":
           return [new AST.Suspend(() => extendAST(x.f(), y, path))]
         case "Refinement":
-          return addRefinement(x.filter, intersectUnionMembers(getTypes(x.from), getTypes(y), path))
+          return addRefinementToMembers(x, intersectUnionMembers(getTypes(x.from), getTypes(y), path))
         case "TypeLiteral": {
           switch (y._tag) {
             case "Union":
@@ -2568,7 +2561,7 @@ const intersectUnionMembers = (
             case "Suspend":
               return [new AST.Suspend(() => extendAST(x, y.f(), path))]
             case "Refinement":
-              return addRefinement(y.filter, intersectUnionMembers([x], getTypes(y.from), path))
+              return addRefinementToMembers(y, intersectUnionMembers([x], getTypes(y.from), path))
             case "TypeLiteral":
               return [intersectTypeLiterals(x, y, path)]
             case "Transformation": {

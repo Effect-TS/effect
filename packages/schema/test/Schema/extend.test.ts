@@ -217,69 +217,55 @@ describe("extend", () => {
     it("S extends R", async () => {
       const S = Schema.Struct({ a: Schema.String })
       const R = Schema.Struct({ b: Schema.Number }).pipe(
-        Schema.filter((input) => input.b <= 0 ? "R filter" : undefined)
+        Schema.filter((input) => input.b > 0, { message: () => "R filter" })
       )
       const schema = Schema.extend(S, R)
       expect(String(schema)).toBe(`{ { readonly a: string; readonly b: number } | filter }`)
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a", b: -1 },
-        `{ { readonly a: string; readonly b: number } | filter }
-└─ Predicate refinement failure
-   └─ R filter`
+        `R filter`
       )
     })
 
     it("S extends RR (two filters)", async () => {
       const S = Schema.Struct({ a: Schema.String })
       const RR = Schema.Struct({ b: Schema.Number }).pipe(
-        Schema.filter((input) => input.b <= 0 ? "filter1" : undefined),
-        Schema.filter((input) => input.b >= 10 ? "filter2" : undefined)
+        Schema.filter((input) => input.b > 0, { message: () => "filter1" }),
+        Schema.filter((input) => input.b < 10, { message: () => "filter2" })
       )
       const schema = Schema.extend(S, RR)
       expect(String(schema)).toBe(`{ { { readonly a: string; readonly b: number } | filter } | filter }`)
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a", b: -1 },
-        `{ { { readonly a: string; readonly b: number } | filter } | filter }
-└─ From side refinement failure
-   └─ { { readonly a: string; readonly b: number } | filter }
-      └─ Predicate refinement failure
-         └─ filter1`
+        `filter1`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a", b: 11 },
-        `{ { { readonly a: string; readonly b: number } | filter } | filter }
-└─ Predicate refinement failure
-   └─ filter2`
+        `filter2`
       )
     })
 
     it("R1 extends R2", async () => {
       const R1 = Schema.Struct({ a: Schema.String }).pipe(
-        Schema.filter((input) => input.a.length === 0 ? "R1 filter" : undefined)
+        Schema.filter((input) => input.a.length > 0, { message: () => "R1 filter" })
       )
       const R2 = Schema.Struct({ b: Schema.Number }).pipe(
-        Schema.filter((input) => input.b <= 0 ? "R2 filter" : undefined)
+        Schema.filter((input) => input.b > 0, { message: () => "R2 filter" })
       )
       const schema = Schema.extend(R1, R2)
       expect(String(schema)).toBe(`{ { { readonly a: string; readonly b: number } | filter } | filter }`)
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "", b: 1 },
-        `{ { { readonly a: string; readonly b: number } | filter } | filter }
-└─ Predicate refinement failure
-   └─ R1 filter`
+        `R1 filter`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a", b: -1 },
-        `{ { { readonly a: string; readonly b: number } | filter } | filter }
-└─ From side refinement failure
-   └─ { { readonly a: string; readonly b: number } | filter }
-      └─ Predicate refinement failure
-         └─ R2 filter`
+        `R2 filter`
       )
     })
 
@@ -287,7 +273,7 @@ describe("extend", () => {
       const S1 = Schema.Struct({ a: Schema.String })
       const S2 = Schema.Struct({ b: Schema.Number })
       const R = Schema.Struct({ c: Schema.Boolean }).pipe(
-        Schema.filter((input) => input.c === false ? "R filter" : undefined)
+        Schema.filter((input) => input.c === true, { message: () => "R filter" })
       )
       const schema = Schema.extend(Schema.Union(S1, S2), R)
       expect(String(schema)).toBe(
@@ -298,9 +284,7 @@ describe("extend", () => {
         { a: "a", c: false },
         `{ { readonly c: boolean; readonly a: string } | filter } | { { readonly c: boolean; readonly b: number } | filter }
 ├─ Union member
-│  └─ { { readonly c: boolean; readonly a: string } | filter }
-│     └─ Predicate refinement failure
-│        └─ R filter
+│  └─ R filter
 └─ Union member
    └─ { { readonly c: boolean; readonly b: number } | filter }
       └─ From side refinement failure
@@ -319,21 +303,19 @@ describe("extend", () => {
 │           └─ ["a"]
 │              └─ is missing
 └─ Union member
-   └─ { { readonly c: boolean; readonly b: number } | filter }
-      └─ Predicate refinement failure
-         └─ R filter`
+   └─ R filter`
       )
     })
 
     it("(R1 | R2) extends R3", async () => {
       const R1 = Schema.Struct({ a: Schema.String }).pipe(
-        Schema.filter((input) => input.a.length === 0 ? "R1 filter" : undefined)
+        Schema.filter((input) => input.a.length > 0, { message: () => "R1 filter" })
       )
       const R2 = Schema.Struct({ b: Schema.Number }).pipe(
-        Schema.filter((input) => input.b <= 0 ? "R2 filter" : undefined)
+        Schema.filter((input) => input.b > 0, { message: () => "R2 filter" })
       )
       const R3 = Schema.Struct({ c: Schema.Boolean }).pipe(
-        Schema.filter((input) => input.c === false ? "R3 filter" : undefined)
+        Schema.filter((input) => input.c === true, { message: () => "R3 filter" })
       )
       const schema = Schema.extend(Schema.Union(R1, R2), R3)
       expect(String(schema)).toBe(
@@ -344,9 +326,7 @@ describe("extend", () => {
         { a: "", c: true },
         `{ { { readonly c: boolean; readonly a: string } | filter } | filter } | { { { readonly c: boolean; readonly b: number } | filter } | filter }
 ├─ Union member
-│  └─ { { { readonly c: boolean; readonly a: string } | filter } | filter }
-│     └─ Predicate refinement failure
-│        └─ R1 filter
+│  └─ R1 filter
 └─ Union member
    └─ { { { readonly c: boolean; readonly b: number } | filter } | filter }
       └─ From side refinement failure
@@ -369,20 +349,14 @@ describe("extend", () => {
 │                 └─ ["a"]
 │                    └─ is missing
 └─ Union member
-   └─ { { { readonly c: boolean; readonly b: number } | filter } | filter }
-      └─ Predicate refinement failure
-         └─ R2 filter`
+   └─ R2 filter`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a", c: false },
         `{ { { readonly c: boolean; readonly a: string } | filter } | filter } | { { { readonly c: boolean; readonly b: number } | filter } | filter }
 ├─ Union member
-│  └─ { { { readonly c: boolean; readonly a: string } | filter } | filter }
-│     └─ From side refinement failure
-│        └─ { { readonly c: boolean; readonly a: string } | filter }
-│           └─ Predicate refinement failure
-│              └─ R3 filter
+│  └─ R3 filter
 └─ Union member
    └─ { { { readonly c: boolean; readonly b: number } | filter } | filter }
       └─ From side refinement failure
@@ -405,11 +379,7 @@ describe("extend", () => {
 │                 └─ ["a"]
 │                    └─ is missing
 └─ Union member
-   └─ { { { readonly c: boolean; readonly b: number } | filter } | filter }
-      └─ From side refinement failure
-         └─ { { readonly c: boolean; readonly b: number } | filter }
-            └─ Predicate refinement failure
-               └─ R3 filter`
+   └─ R3 filter`
       )
     })
   })
