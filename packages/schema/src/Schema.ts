@@ -1605,19 +1605,21 @@ export const withDecodingDefault: {
   <Type>(defaultValue: () => Types.NoInfer<Type>): <
     Key extends PropertyKey,
     Encoded,
+    HasDefault extends boolean,
     R
   >(
-    self: PropertySignature<"?:", Type, Key, "?:", Encoded, boolean, R>
-  ) => PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, true, R>
+    self: PropertySignature<"?:", Type, Key, "?:", Encoded, HasDefault, R>
+  ) => PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, HasDefault, R>
   <
     Type,
     Key extends PropertyKey,
     Encoded,
+    HasDefault extends boolean,
     R
   >(
-    self: PropertySignature<"?:", Type, Key, "?:", Encoded, boolean, R>,
+    self: PropertySignature<"?:", Type, Key, "?:", Encoded, HasDefault, R>,
     defaultValue: () => Types.NoInfer<Type>
-  ): PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, true, R>
+  ): PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, HasDefault, R>
 } = dual(2, <
   Type,
   Key extends PropertyKey,
@@ -1649,6 +1651,49 @@ export const withDecodingDefault: {
       )
   }
 })
+
+/**
+ * Enhances a property signature with a default decoding value and a default constructor value.
+ *
+ * @category PropertySignature
+ * @since 1.0.0
+ */
+export const withDefaults: {
+  <Type>(defaults: {
+    constructor: () => Types.NoInfer<Exclude<Type, undefined>>
+    decoding: () => Types.NoInfer<Type>
+  }): <
+    Key extends PropertyKey,
+    Encoded,
+    R
+  >(
+    self: PropertySignature<"?:", Type, Key, "?:", Encoded, boolean, R>
+  ) => PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, true, R>
+  <
+    Type,
+    Key extends PropertyKey,
+    Encoded,
+    R
+  >(
+    self: PropertySignature<"?:", Type, Key, "?:", Encoded, boolean, R>,
+    defaults: {
+      constructor: () => Types.NoInfer<Exclude<Type, undefined>>
+      decoding: () => Types.NoInfer<Type>
+    }
+  ): PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, true, R>
+} = dual(2, <
+  Type,
+  Key extends PropertyKey,
+  Encoded,
+  R
+>(
+  self: PropertySignature<"?:", Type, Key, "?:", Encoded, boolean, R>,
+  defaults: {
+    constructor: () => Types.NoInfer<Exclude<Type, undefined>>
+    decoding: () => Types.NoInfer<Type>
+  }
+): PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, true, R> =>
+  self.pipe(withDecodingDefault(defaults.decoding), withConstructorDefault(defaults.constructor)))
 
 /**
  * Enhances a property signature by specifying a different key for it in the Encoded type.

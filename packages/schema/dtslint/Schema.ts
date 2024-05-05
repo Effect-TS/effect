@@ -2316,5 +2316,21 @@ hole<ConstructorParameters<typeof AA>>()
 // $ExpectType Schema<{ readonly a: string; }, { readonly a?: string | undefined; }, never>
 S.asSchema(S.Struct({ a: S.optional(S.String).pipe(S.withDecodingDefault(() => "")) }))
 
-// $ExpectType Struct<{ a: PropertySignature<":", string, never, "?:", string | undefined, true, never>; }>
+// $ExpectType Struct<{ a: PropertySignature<":", string, never, "?:", string | undefined, false, never>; }>
 S.Struct({ a: S.optional(S.String).pipe(S.withDecodingDefault(() => "")) })
+
+// ---------------------------------------------
+// withDefaults
+// ---------------------------------------------
+
+// $ExpectType Schema<{ readonly a: string; }, { readonly a?: string | undefined; }, never>
+S.asSchema(S.Struct({ a: S.optional(S.String).pipe(S.withDefaults({ decoding: () => "", constructor: () => "" })) }))
+
+// $ExpectType Struct<{ a: PropertySignature<":", string, never, "?:", string | undefined, true, never>; }>
+S.Struct({ a: S.optional(S.String).pipe(S.withDefaults({ decoding: () => "", constructor: () => "" })) })
+
+const make3 =
+  S.Struct({ a: S.optional(S.String).pipe(S.withDefaults({ decoding: () => "", constructor: () => "" })) }).make
+
+// $ExpectType { readonly a?: string; }
+hole<Parameters<typeof make3>["0"]>()
