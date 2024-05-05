@@ -6541,16 +6541,30 @@ export const toQueueOfElements = dual<
   ))
 
 /** @internal */
-export const toReadableStream = <A, E>(source: Stream.Stream<A, E>) => {
-  let pull: Effect.Effect<void>
+export const toReadableStream = <A, E>(self: Stream.Stream<A, E>) =>
+  toReadableStreamRuntime(self, Runtime.defaultRuntime)
+
+/** @internal */
+export const toReadableStreamEffect = <A, E, R>(self: Stream.Stream<A, E, R>) =>
+  Effect.map(Effect.runtime<R>(), (runtime) => toReadableStreamRuntime(self, runtime))
+
+/** @internal */
+export const toReadableStreamRuntime = dual<
+  <XR>(runtime: Runtime.Runtime<XR>) => <A, E, R extends XR>(self: Stream.Stream<A, E, R>) => ReadableStream<A>,
+  <A, E, XR, R extends XR>(self: Stream.Stream<A, E, R>, runtime: Runtime.Runtime<XR>) => ReadableStream<A>
+>(2, <A, E, XR, R extends XR>(self: Stream.Stream<A, E, R>, runtime: Runtime.Runtime<XR>): ReadableStream<A> => {
+  const runSync = Runtime.runSync(runtime)
+  const runPromise = Runtime.runPromise(runtime)
+
+  let pull: Effect.Effect<void, never, R>
   let scope: Scope.CloseableScope
   return new ReadableStream<A>({
     start(controller) {
-      scope = Effect.runSync(Scope.make())
+      scope = runSync(Scope.make())
       pull = pipe(
-        toPull(source),
-        Scope.use(scope),
-        Effect.runSync,
+        toPull(self),
+        Scope.extend(scope),
+        runSync,
         Effect.tap((chunk) =>
           Effect.sync(() => {
             Chunk.map(chunk, (a) => {
@@ -6573,13 +6587,13 @@ export const toReadableStream = <A, E>(source: Stream.Stream<A, E>) => {
       )
     },
     pull() {
-      return Effect.runPromise(pull)
+      return runPromise(pull)
     },
     cancel() {
-      return Effect.runPromise(Scope.close(scope, Exit.void))
+      return runPromise(Scope.close(scope, Exit.void))
     }
   })
-}
+})
 
 /** @internal */
 export const transduce = dual<

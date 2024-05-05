@@ -4,6 +4,7 @@ import { Ref } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Logger from "effect/Logger"
 import * as Stream from "effect/Stream"
 import { assert, describe, expect, it } from "vitest"
 
@@ -128,5 +129,27 @@ describe("HttpClient", () => {
       )
       const response = yield* _(Http.request.get("/todos/1"), todoClient)
       expect(response.id).toBe(1)
+    }).pipe(Effect.provide(Http.client.layer), Effect.runPromise))
+
+  it("streamBody accesses the current runtime", () =>
+    Effect.gen(function*(_) {
+      const defaultClient = yield* _(Http.client.Client)
+
+      const requestStream = Stream.fromIterable(["hello", "world"]).pipe(
+        Stream.tap((_) => Effect.log(_)),
+        Stream.encodeText
+      )
+
+      const logs: Array<unknown> = []
+      const logger = Logger.make(({ message }) => logs.push(message))
+
+      yield* Http.request.post("https://jsonplaceholder.typicode.com").pipe(
+        Http.request.streamBody(requestStream),
+        defaultClient,
+        Effect.provide(Logger.replace(Logger.defaultLogger, logger)),
+        Effect.scoped
+      )
+
+      expect(logs).toEqual(["hello", "world"])
     }).pipe(Effect.provide(Http.client.layer), Effect.runPromise))
 })

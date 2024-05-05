@@ -258,8 +258,8 @@ export const formData = (
   )
 
 /** @internal */
-export const stream = (
-  body: Stream.Stream<Uint8Array, unknown>,
+export const stream = <E>(
+  body: Stream.Stream<Uint8Array, E>,
   options?: ServerResponse.Options | undefined
 ): ServerResponse.ServerResponse =>
   new ServerResponseImpl(
