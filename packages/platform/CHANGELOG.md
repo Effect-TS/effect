@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.52.3
+
+### Patch Changes
+
+- [#2698](https://github.com/Effect-TS/effect/pull/2698) [`5866c62`](https://github.com/Effect-TS/effect/commit/5866c621d7eb4cc84e4ba972bfdfd219734cd45d) Thanks [@tim-smart](https://github.com/tim-smart)! - fix http ServerResponse cookie apis
+
 ## 0.52.2
 
 ### Patch Changes
