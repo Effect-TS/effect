@@ -47,6 +47,12 @@ export interface Client extends Constructor {
  * @category models
  * @since 1.0.0
  */
+export const Client: Tag<Client, Client> = internal.clientTag
+
+/**
+ * @category models
+ * @since 1.0.0
+ */
 export namespace Client {
   /**
    * @category models
@@ -78,18 +84,6 @@ export const make: ({
   savepoint,
   transactionAcquirer
 }: Client.MakeOptions) => Client = internal.make
-
-/**
- * @since 1.0.0
- */
-export const defaultTransforms: (
-  transformer: (str: string) => string,
-  nested?: boolean
-) => {
-  readonly value: (value: any) => any
-  readonly object: (obj: Record<string, any>) => any
-  readonly array: <A extends object>(rows: ReadonlyArray<A>) => ReadonlyArray<A>
-} = internal.defaultTransforms
 
 /**
  * @since 1.0.0

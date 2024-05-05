@@ -1,13 +1,13 @@
 import { BunFileSystem } from "@effect/platform-bun"
 import { FileSystem } from "@effect/platform/FileSystem"
-import * as Sql from "@effect/sql-sqlite-bun"
+import * as Sqlite from "@effect/sql-sqlite-bun"
 import { describe, expect, test } from "bun:test"
 import { Effect } from "effect"
 
 const makeClient = Effect.gen(function*(_) {
   const fs = yield* _(FileSystem)
   const dir = yield* _(fs.makeTempDirectoryScoped())
-  return yield* _(Sql.client.make({
+  return yield* _(Sqlite.client.make({
     filename: dir + "/test.db"
   }))
 }).pipe(Effect.provide(BunFileSystem.layer))

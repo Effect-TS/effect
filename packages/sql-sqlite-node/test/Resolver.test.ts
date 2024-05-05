@@ -1,14 +1,15 @@
 import { FileSystem } from "@effect/platform"
 import { NodeFileSystem } from "@effect/platform-node"
 import * as Schema from "@effect/schema/Schema"
-import * as Sql from "@effect/sql-sqlite-node"
+import * as Sql from "@effect/sql"
+import * as Sqlite from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Array, Effect, Option } from "effect"
 
 const makeClient = Effect.gen(function*(_) {
   const fs = yield* _(FileSystem.FileSystem)
   const dir = yield* _(fs.makeTempDirectoryScoped())
-  return yield* _(Sql.client.make({
+  return yield* _(Sqlite.client.make({
     filename: dir + "/test.db"
   }))
 }).pipe(Effect.provide(NodeFileSystem.layer))
