@@ -3252,7 +3252,7 @@ const extended = Schema.Struct(
 > [!NOTE]
 > Note that there are strict limitations on the schemas that can be handled by `extend`:
 
-1. It only supports structs, refinements of structs, or unions of structs (informally Supported = Structs | Refinement of Supported | Unions of Supported)
+1. It only supports **structs**, refinements of structs, unions of structs, suspensions of structs (informally `Supported = Struct | Refinement of Supported | Union of Supported | suspend(() => Supported)`)
 2. The arguments must represent disjoint types (e.g., `extend(Struct({ a: String }), Struct({ a: String })))` raises an error)
 
 ## Composition

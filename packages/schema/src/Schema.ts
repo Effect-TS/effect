@@ -2492,7 +2492,6 @@ const getExtendErrorMessage = (x: AST.AST, y: AST.AST, path: ReadonlyArray<strin
 const intersectTypeLiterals = (
   x: AST.AST,
   y: AST.AST,
-  filters: ReadonlyArray<AST.Refinement["filter"]>,
   path: ReadonlyArray<string>
 ): AST.TypeLiteral => {
   if (AST.isTypeLiteral(x) && AST.isTypeLiteral(y)) {
@@ -2506,7 +2505,7 @@ const intersectTypeLiterals = (
         const { isOptional, type } = propertySignatures[i]
         propertySignatures[i] = new AST.PropertySignature(
           name,
-          extendAST(type, ps.type, filters, [...path, util_.formatUnknown(name)]),
+          extendAST(type, ps.type, [...path, util_.formatUnknown(name)]),
           isOptional,
           true
         )
@@ -2520,57 +2519,64 @@ const intersectTypeLiterals = (
   throw new Error(getExtendErrorMessage(x, y, path))
 }
 
+// filters: ReadonlyArray<AST.Refinement["filter"]>
+
+const addRefinement = (filter: AST.Refinement["filter"], asts: ReadonlyArray<AST.AST>): Array<AST.Refinement> =>
+  asts.map((ast) => new AST.Refinement(ast, filter))
+
 const extendAST = (
   x: AST.AST,
   y: AST.AST,
-  filters: ReadonlyArray<AST.Refinement["filter"]>,
   path: ReadonlyArray<string>
 ): AST.AST => {
-  const out = AST.Union.make(intersectUnionMembers([x], [y], filters, path))
-  if (filters.length > 0 && AST.isTypeLiteral(x) && AST.isTypeLiteral(y)) {
-    const filter: AST.Refinement["filter"] = (input, options, ast) => {
-      for (const f of filters) {
-        const o = f(input, options, ast)
-        if (option_.isSome(o)) {
-          return o
-        }
-      }
-      return option_.none()
-    }
-    return new AST.Refinement(out, filter)
-  }
+  const out = AST.Union.make(intersectUnionMembers([x], [y], path))
+  // if (filters.length > 0) {
+  //   const filter: AST.Refinement["filter"] = (input, options, ast) => {
+  //     for (const f of filters) {
+  //       const o = f(input, options, ast)
+  //       if (option_.isSome(o)) {
+  //         return o
+  //       }
+  //     }
+  //     return option_.none()
+  //   }
+  //   return new AST.Refinement(out, filter)
+  // }
   return out
 }
+
+const getTypes = (ast: AST.AST): ReadonlyArray<AST.AST> => AST.isUnion(ast) ? ast.types : [ast]
 
 const intersectUnionMembers = (
   xs: ReadonlyArray<AST.AST>,
   ys: ReadonlyArray<AST.AST>,
-  filters: ReadonlyArray<AST.Refinement["filter"]>,
   path: ReadonlyArray<string>
 ): Array<AST.AST> =>
   array_.flatMap(xs, (x) =>
     array_.flatMap(ys, (y) => {
-      if (AST.isUnion(x)) {
-        return intersectUnionMembers(x.types, AST.isUnion(y) ? y.types : [y], filters, path)
-      } else if (AST.isUnion(y)) {
-        return intersectUnionMembers([x], y.types, filters, path)
-      }
-
       switch (x._tag) {
+        case "Union":
+          return intersectUnionMembers(x.types, getTypes(y), path)
+        case "Suspend":
+          return [new AST.Suspend(() => extendAST(x.f(), y, path))]
         case "Refinement":
-          return [extendAST(x.from, y, [...filters, x.filter], path)]
+          return addRefinement(x.filter, intersectUnionMembers(getTypes(x.from), getTypes(y), path))
         case "TypeLiteral": {
           switch (y._tag) {
+            case "Union":
+              return intersectUnionMembers([x], y.types, path)
+            case "Suspend":
+              return [new AST.Suspend(() => extendAST(x, y.f(), path))]
             case "Refinement":
-              return [extendAST(x, y.from, [...filters, y.filter], path)]
+              return addRefinement(y.filter, intersectUnionMembers([x], getTypes(y.from), path))
             case "TypeLiteral":
-              return [intersectTypeLiterals(x, y, filters, path)]
+              return [intersectTypeLiterals(x, y, path)]
             case "Transformation": {
               if (AST.isTypeLiteralTransformation(y.transformation)) {
                 return [
                   new AST.Transformation(
-                    intersectTypeLiterals(x, y.from, filters, path),
-                    intersectTypeLiterals(AST.typeAST(x), y.to, filters, path),
+                    intersectTypeLiterals(x, y.from, path),
+                    intersectTypeLiterals(AST.typeAST(x), y.to, path),
                     new AST.TypeLiteralTransformation(
                       y.transformation.propertySignatureTransformations
                     )
@@ -2588,8 +2594,8 @@ const intersectUnionMembers = (
               case "TypeLiteral":
                 return [
                   new AST.Transformation(
-                    intersectTypeLiterals(x.from, y, filters, path),
-                    intersectTypeLiterals(x.to, AST.typeAST(y), filters, path),
+                    intersectTypeLiterals(x.from, y, path),
+                    intersectTypeLiterals(x.to, AST.typeAST(y), path),
                     new AST.TypeLiteralTransformation(
                       x.transformation.propertySignatureTransformations
                     )
@@ -2600,8 +2606,8 @@ const intersectUnionMembers = (
                   if (AST.isTypeLiteralTransformation(y.transformation)) {
                     return [
                       new AST.Transformation(
-                        intersectTypeLiterals(x.from, y.from, filters, path),
-                        intersectTypeLiterals(x.to, y.to, filters, path),
+                        intersectTypeLiterals(x.from, y.from, path),
+                        intersectTypeLiterals(x.to, y.to, path),
                         new AST.TypeLiteralTransformation(
                           x.transformation.propertySignatureTransformations.concat(
                             y.transformation.propertySignatureTransformations
@@ -2636,7 +2642,8 @@ export interface extend<Self extends Schema.Any, That extends Schema.Any> extend
 /**
  * Extends a schema by adding additional fields or index signatures.
  *
- * 1) It only supports **structs**, refinements of structs, or unions of structs (informally Supported = Structs | Refinement of Supported | Unions of Supported)
+ * 1) It only supports **structs**, refinements of structs, unions of structs, suspensions of structs
+ * (informally `Supported = Struct | Refinement of Supported | Union of Supported | suspend(() => Supported)`)
  * 2) The arguments must represent disjoint types (e.g., `extend(Struct({ a: String }), Struct({ a: String })))` raises an error)
  *
  * @example
@@ -2674,7 +2681,7 @@ export const extend: {
   <Self extends Schema.Any, That extends Schema.Any>(
     self: Self,
     that: That
-  ) => make(extendAST(self.ast, that.ast, [], []))
+  ) => make(extendAST(self.ast, that.ast, []))
 )
 
 /**

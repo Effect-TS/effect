@@ -715,7 +715,7 @@ Now the `filter` function has a cleaner signature, making it easier to understan
 
 Setting messages in the manner shown in the previous example makes filters "portable", meaning they are preserved when using extensions, such as `Schema.extend` or `Class.extend`. Therefore, it is preferred over setting messages with the `message` annotation.
 
-## Improve `extend` to support refinements
+## Improve `extend` to support refinements and `suspend`ed schemas
 
 Now `extend` supports extending refinements, so you can do something like this:
 
@@ -752,6 +752,81 @@ throws
 Error: { { readonly a: number; readonly b: number; readonly c: string; readonly d: string } | filter }
 └─ Predicate refinement failure
    └─ `a` must be equal to `b`
+*/
+```
+
+We've also added support for `Schema.suspend`. Here's an example:
+
+```ts
+import { Arbitrary, FastCheck, Schema } from "@effect/schema"
+
+// Define a recursive list type
+type List =
+  | {
+      readonly type: "nil"
+    }
+  | {
+      readonly type: "cons"
+      readonly tail: {
+        readonly value: number
+      } & List // extend
+    }
+
+// Define a schema for the list type
+const List: Schema.Schema<List> = Schema.Union(
+  Schema.Struct({ type: Schema.Literal("nil") }),
+  Schema.Struct({
+    type: Schema.Literal("cons"),
+    tail: Schema.extend(
+      Schema.Struct({ value: Schema.Number }),
+      Schema.suspend(() => List) // extend
+    )
+  })
+)
+
+console.log(JSON.stringify(FastCheck.sample(Arbitrary.make(List), 5), null, 2))
+/*
+[
+  {
+    "type": "cons",
+    "tail": {
+      "type": "cons",
+      "value": 4.8301839079380824e+36,
+      "tail": {
+        "type": "cons",
+        "value": 1.5771055128598197e-29,
+        "tail": {
+          "type": "nil",
+          "value": -15237.7763671875
+        }
+      }
+    }
+  },
+  {
+    "type": "cons",
+    "tail": {
+      "type": "nil",
+      "value": 5.808463088527973e-18
+    }
+  },
+  {
+    "type": "nil"
+  },
+  {
+    "type": "nil"
+  },
+  {
+    "type": "cons",
+    "tail": {
+      "type": "cons",
+      "value": -0.7920627593994141,
+      "tail": {
+        "type": "nil",
+        "value": 63.837738037109375
+      }
+    }
+  }
+]
 */
 ```
 
