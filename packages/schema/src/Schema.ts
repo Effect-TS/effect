@@ -1523,6 +1523,8 @@ export class PropertySignatureImpl<
 }
 
 /**
+ * Lifts a `Schema` into a `PropertySignature`.
+ *
  * @category PropertySignature
  * @since 1.0.0
  */
@@ -1532,6 +1534,8 @@ export const propertySignature = <A, I, R>(
   new PropertySignatureImpl(new PropertySignatureDeclaration(self.ast, false, true, {}, undefined))
 
 /**
+ * Enhances a property signature with a default constructor value.
+ *
  * @category PropertySignature
  * @since 1.0.0
  */
@@ -1585,7 +1589,70 @@ export const withConstructorDefault: {
   }
 })
 
+const applyDefaultValue = <A>(o: option_.Option<A>, defaultValue: () => A) =>
+  option_.match(o, {
+    onNone: () => option_.some(defaultValue()),
+    onSome: (value) => option_.some(value === undefined ? defaultValue() : value)
+  })
+
 /**
+ * Enhances a property signature with a default decoding value.
+ *
+ * @category PropertySignature
+ * @since 1.0.0
+ */
+export const withDecodingDefault: {
+  <Type>(defaultValue: () => Types.NoInfer<Type>): <
+    Key extends PropertyKey,
+    Encoded,
+    R
+  >(
+    self: PropertySignature<"?:", Type, Key, "?:", Encoded, boolean, R>
+  ) => PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, true, R>
+  <
+    Type,
+    Key extends PropertyKey,
+    Encoded,
+    R
+  >(
+    self: PropertySignature<"?:", Type, Key, "?:", Encoded, boolean, R>,
+    defaultValue: () => Types.NoInfer<Type>
+  ): PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, true, R>
+} = dual(2, <
+  Type,
+  Key extends PropertyKey,
+  Encoded,
+  R
+>(
+  self: PropertySignature<"?:", Type, Key, "?:", Encoded, boolean, R>,
+  defaultValue: () => Types.NoInfer<Type>
+): PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, true, R> => {
+  const ast = self.ast
+  switch (ast._tag) {
+    case "PropertySignatureDeclaration":
+      return new PropertySignatureImpl(
+        new PropertySignatureTransformation(
+          ast,
+          new ToPropertySignature(AST.typeAST(ast.type), false, true, {}, undefined),
+          (o) => applyDefaultValue(o, defaultValue),
+          identity
+        )
+      )
+    case "PropertySignatureTransformation":
+      return new PropertySignatureImpl(
+        new PropertySignatureTransformation(
+          ast.from,
+          new ToPropertySignature(ast.to.type, false, ast.to.isReadonly, ast.to.annotations, ast.to.defaultValue),
+          (o) => applyDefaultValue(ast.decode(o), defaultValue),
+          ast.encode
+        )
+      )
+  }
+})
+
+/**
+ * Enhances a property signature by specifying a different key for it in the Encoded type.
+ *
  * @category PropertySignature
  * @since 1.0.0
  */
@@ -1661,8 +1728,10 @@ export const fromKey: {
 })
 
 /**
- * - `decode`: `none` as argument means: the value is missing in the input
- * - `encode`: `none` as return value means: the value will be missing in the output
+ * Converts an optional property to a required one through a transformation `Option -> Option`.
+ *
+ * - `decode`: `none` as argument means the value is missing in the input.
+ * - `encode`: `none` as return value means the value will be missing in the output.
  *
  * @category PropertySignature
  * @since 1.0.0
@@ -1685,12 +1754,14 @@ export const optionalToRequired = <FA, FI, FR, TA, TI, TR>(
   )
 
 /**
+ * Converts an optional property to another optional property through a transformation `Option -> Option`.
+ *
  * - `decode`:
- *   - `none` as argument means: the value is missing in the input
- *   - `none` as return value means: the value will be missing in the output
+ *   - `none` as argument means the value is missing in the input.
+ *   - `none` as return value means the value will be missing in the output.
  * - `encode`:
- *   - `none` as argument means: the value is missing in the input
- *   - `none` as return value means: the value will be missing in the output
+ *   - `none` as argument means the value is missing in the input.
+ *   - `none` as return value means the value will be missing in the output.
  *
  * @category PropertySignature
  * @since 1.0.0

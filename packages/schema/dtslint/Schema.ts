@@ -1369,9 +1369,8 @@ S.asSchema(S.extend(S.mutable(S.Struct({ a: S.String })), S.Struct({ b: S.Number
 // $ExpectType Schema<{ [x: string]: string; a: string; }, { [x: string]: string; a: string; }, never>
 S.asSchema(S.extend(S.mutable(S.Struct({ a: S.String })), S.mutable(S.Record(S.String, S.String))))
 
-// TODO: rises an error in TypeScript@5.0
-// // $ExpectType Schema<{ readonly [x: string]: string; a: string; }, { readonly [x: string]: string; a: string; }, never>
-// S.asSchema(S.extend(S.Mutable(S.Struct({ a: S.String })), S.Record(S.String, S.String)))
+// $ExpectType Schema<{ readonly [x: string]: string; a: string; }, { readonly [x: string]: string; a: string; }, never>
+S.asSchema(S.extend(S.mutable(S.Struct({ a: S.String })), S.Record(S.String, S.String)))
 
 // ---------------------------------------------
 // transform
@@ -2309,3 +2308,13 @@ class AA extends S.Class<AA>("AA")({
 
 // $ExpectType [props: { readonly a?: string; readonly b: number; readonly c?: boolean; }, disableValidation?: boolean | undefined]
 hole<ConstructorParameters<typeof AA>>()
+
+// ---------------------------------------------
+// withDecodingDefault
+// ---------------------------------------------
+
+// $ExpectType Schema<{ readonly a: string; }, { readonly a?: string | undefined; }, never>
+S.asSchema(S.Struct({ a: S.optional(S.String).pipe(S.withDecodingDefault(() => "")) }))
+
+// $ExpectType Struct<{ a: PropertySignature<":", string, never, "?:", string | undefined, true, never>; }>
+S.Struct({ a: S.optional(S.String).pipe(S.withDecodingDefault(() => "")) })

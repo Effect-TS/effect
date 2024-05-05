@@ -265,6 +265,24 @@ console.log(new Person({ name: "name1" })) // Person { age: 0, timestamp: 171440
 console.log(new Person({ name: "name2" })) // Person { age: 0, timestamp: 1714400867215, name: 'name2' }
 ```
 
+## Introducing Default Decoding Values
+
+Our new `withDecodingDefault` combinator makes it easy to handle the optionality of a field during the decoding process.
+
+```typescript
+import { Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  a: Schema.optional(Schema.String).pipe(Schema.withDecodingDefault(() => ""))
+})
+
+console.log(Schema.decodeUnknownSync(schema)({})) // { a: '' }
+console.log(Schema.decodeUnknownSync(schema)({ a: undefined })) // { a: '' }
+console.log(Schema.decodeUnknownSync(schema)({ a: "a" })) // { a: 'a' }
+```
+
+This new combinator, `withDecodingDefault`, allows you to set default values for optional fields when decoding data. In the example above, the field `a` in the schema is optional, and if it is missing or `undefined` in the input data, it will default to an empty string (`''`). This can be particularly helpful when working with optional fields where you want to ensure a consistent value is present, even if it's missing in the input data.
+
 ## Introducing Schemas as Classes
 
 We've introduced a new method for defining schemas using classes. This approach provides opaque schema types, offering a clearer representation. Let's look at how you can define and use schemas as classes.
