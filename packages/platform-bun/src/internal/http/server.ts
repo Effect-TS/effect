@@ -27,6 +27,7 @@ import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type { ReadonlyRecord } from "effect/Record"
+import type * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import { Readable } from "node:stream"
@@ -73,25 +74,27 @@ export const make = (
     return Server.make({
       address: { _tag: "TcpAddress", port: server.port, hostname: server.hostname },
       serve(httpApp, middleware) {
-        const app = App.toHandled(httpApp, (request, exit) =>
-          Effect.sync(() => {
-            const impl = request as ServerRequestImpl
-            if (exit._tag === "Success") {
-              impl.resolve(makeResponse(request, exit.value))
-            } else if (Cause.isInterruptedOnly(exit.cause)) {
-              impl.resolve(
-                new Response(undefined, {
-                  status: impl.source.signal.aborted ? 499 : 503
-                })
-              )
-            } else {
-              impl.reject(Cause.pretty(exit.cause))
-            }
-          }), middleware)
-
         return pipe(
           FiberSet.makeRuntime<never>(),
-          Effect.flatMap((runFork) =>
+          Effect.bindTo("runFork"),
+          Effect.bind("runtime", () => Effect.runtime<never>()),
+          Effect.let("app", ({ runtime }) =>
+            App.toHandled(httpApp, (request, exit) =>
+              Effect.sync(() => {
+                const impl = request as ServerRequestImpl
+                if (exit._tag === "Success") {
+                  impl.resolve(makeResponse(request, exit.value, runtime))
+                } else if (Cause.isInterruptedOnly(exit.cause)) {
+                  impl.resolve(
+                    new Response(undefined, {
+                      status: impl.source.signal.aborted ? 499 : 503
+                    })
+                  )
+                } else {
+                  impl.reject(Cause.pretty(exit.cause))
+                }
+              }), middleware)),
+          Effect.flatMap(({ app, runFork }) =>
             Effect.async<never>((_) => {
               function handler(request: Request, server: BunServer) {
                 return new Promise<Response>((resolve, reject) => {
@@ -121,7 +124,11 @@ export const make = (
     })
   })
 
-const makeResponse = (request: ServerRequest.ServerRequest, response: ServerResponse.ServerResponse): Response => {
+const makeResponse = (
+  request: ServerRequest.ServerRequest,
+  response: ServerResponse.ServerResponse,
+  runtime: Runtime.Runtime<never>
+): Response => {
   const fields: {
     headers: globalThis.Headers
     status?: number
@@ -157,7 +164,10 @@ const makeResponse = (request: ServerRequest.ServerRequest, response: ServerResp
       return new Response(body.formData as any, fields)
     }
     case "Stream": {
-      return new Response(Stream.toReadableStream(body.stream), fields)
+      return new Response(
+        Stream.toReadableStreamRuntime(body.stream, runtime),
+        fields
+      )
     }
   }
 }
