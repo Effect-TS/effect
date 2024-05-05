@@ -1536,7 +1536,7 @@ export const propertySignature = <A, I, R>(
  * @since 1.0.0
  */
 export const withConstructorDefault: {
-  <Type>(defaultValue: () => NoInfer<Type>): <
+  <Type>(defaultValue: () => Types.NoInfer<Type>): <
     TypeToken extends PropertySignature.Token,
     Key extends PropertyKey,
     EncodedToken extends PropertySignature.Token,
@@ -1554,7 +1554,7 @@ export const withConstructorDefault: {
     R
   >(
     self: PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, boolean, R>,
-    defaultValue: () => NoInfer<Type>
+    defaultValue: () => Types.NoInfer<Type>
   ): PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, true, R>
 } = dual(2, <
   TypeToken extends PropertySignature.Token,
@@ -1565,7 +1565,7 @@ export const withConstructorDefault: {
   R
 >(
   self: PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, boolean, R>,
-  defaultValue: () => NoInfer<Type>
+  defaultValue: () => Types.NoInfer<Type>
 ): PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, true, R> => {
   const ast = self.ast
   switch (ast._tag) {
@@ -2482,11 +2482,11 @@ export interface mutable<S extends Schema.Any> extends
 export const mutable = <S extends Schema.Any>(schema: S): mutable<S> => make(AST.mutable(schema.ast))
 
 const getExtendErrorMessage = (x: AST.AST, y: AST.AST, path: ReadonlyArray<string>) => {
-  let message = `cannot extend \`${x}\` with \`${y}\``
+  let message = `unsupported schema or overlapping types, cannot extend \`${x}\` with \`${y}\``
   if (path.length > 0) {
     message += ` (path [${path.join(", ")}])`
   }
-  return errors_.getAPIErrorMessage("Extend", message)
+  return errors_.getAPIErrorMessage("extend", message)
 }
 
 const intersectTypeLiterals = (
@@ -2634,6 +2634,30 @@ export interface extend<Self extends Schema.Any, That extends Schema.Any> extend
 {}
 
 /**
+ * Extends a schema by adding additional fields or index signatures.
+ *
+ * 1) It only supports **structs**, refinements of structs, or unions of structs (informally Supported = Structs | Refinement of Supported | Unions of Supported)
+ * 2) The arguments must represent disjoint types (e.g., `extend(Struct({ a: String }), Struct({ a: String })))` raises an error)
+ *
+ * @example
+ * import * as Schema from "@effect/schema/Schema"
+ *
+ * const schema = Schema.Struct({
+ *   a: Schema.String,
+ *   b: Schema.String
+ * })
+ *
+ * // const extended: S.Schema<{
+ * //     readonly [x: string]: string;
+ * //     readonly a: string;
+ * //     readonly b: string;
+ * //     readonly c: string;
+ * // }>
+ * const extended = Schema.asSchema(schema.pipe(
+ *   Schema.extend(Schema.Struct({ c: Schema.String })), // <= you can add more fields
+ *   Schema.extend(Schema.Record(Schema.String, Schema.String)) // <= you can add index signatures
+ * ))
+ *
  * @category combinators
  * @since 1.0.0
  */

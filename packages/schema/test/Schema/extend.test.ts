@@ -295,7 +295,7 @@ describe("extend", () => {
 
   it("errors", () => {
     expect(() => Schema.String.pipe(Schema.extend(Schema.Number))).toThrow(
-      new Error("Extend: cannot extend `string` with `number`")
+      new Error("extend: unsupported schema or overlapping types, cannot extend `string` with `number`")
     )
     expect(() =>
       Schema.Record(Schema.String, Schema.Number).pipe(
@@ -316,7 +316,9 @@ describe("extend", () => {
       Schema.Struct({ a: Schema.Literal("a") }).pipe(
         Schema.extend(Schema.Struct({ a: Schema.String }))
       )
-    ).toThrow(new Error("Extend: cannot extend `\"a\"` with `string` (path [\"a\"])"))
+    ).toThrow(
+      new Error("extend: unsupported schema or overlapping types, cannot extend `\"a\"` with `string` (path [\"a\"])")
+    )
     expect(() =>
       Schema.Struct({ a: Schema.Literal("a") }).pipe(
         Schema.extend(
@@ -326,13 +328,19 @@ describe("extend", () => {
           )
         )
       )
-    ).toThrow(new Error("Extend: cannot extend `\"a\"` with `string` (path [\"a\"])"))
+    ).toThrow(
+      new Error("extend: unsupported schema or overlapping types, cannot extend `\"a\"` with `string` (path [\"a\"])")
+    )
     expect(() =>
       Schema.extend(
         Schema.Struct({ a: Schema.Struct({ b: Schema.String }) }),
         Schema.Struct({ a: Schema.Struct({ b: Schema.Number }) })
       )
     )
-      .toThrow(new Error("Extend: cannot extend `string` with `number` (path [\"a\", \"b\"])"))
+      .toThrow(
+        new Error(
+          "extend: unsupported schema or overlapping types, cannot extend `string` with `number` (path [\"a\", \"b\"])"
+        )
+      )
   })
 })

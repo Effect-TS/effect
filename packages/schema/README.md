@@ -3207,34 +3207,53 @@ S.required(
 
 The `extend` combinator allows you to add additional fields or index signatures to an existing `Schema`.
 
+Example
+
 ```ts
-import * as S from "@effect/schema/Schema"
+import { Schema } from "@effect/schema"
 
-const schema = S.Struct({ a: S.String, b: S.String })
+const schema = Schema.Struct({
+  a: Schema.String,
+  b: Schema.String
+})
 
-// Schema<{ readonly [x: string]: string; readonly a: string; readonly b: string; readonly c: string; }>
-const extended = schema.pipe(
-  S.extend(S.Struct({ c: S.String })), // <= you can add more fields
-  S.extend(S.Record(S.String, S.String)) // <= you can add index signatures
+/*
+const extended: S.Schema<{
+    readonly [x: string]: string;
+    readonly a: string;
+    readonly b: string;
+    readonly c: string;
+}>
+*/
+const extended = Schema.asSchema(
+  schema.pipe(
+    Schema.extend(Schema.Struct({ c: Schema.String })), // <= you can add more fields
+    Schema.extend(Schema.Record(Schema.String, Schema.String)) // <= you can add index signatures
+  )
 )
 ```
 
 Alternatively, you can utilize the `fields` property of structs:
 
 ```ts
-import * as S from "@effect/schema/Schema"
+import { Schema } from "@effect/schema"
 
-const schema = S.Struct({ a: S.String, b: S.String })
+const schema = Schema.Struct({ a: Schema.String, b: Schema.String })
 
-// Schema<{ readonly [x: string]: string; readonly a: string; readonly b: string; readonly c: string; }>
-const extended = S.Struct(
+const extended = Schema.Struct(
   {
     ...schema.fields,
-    c: S.String
+    c: Schema.String
   },
-  { key: S.String, value: S.String }
+  { key: Schema.String, value: Schema.String }
 )
 ```
+
+> [!NOTE]
+> Note that there are strict limitations on the schemas that can be handled by `extend`:
+
+1. It only supports structs, refinements of structs, or unions of structs (informally Supported = Structs | Refinement of Supported | Unions of Supported)
+2. The arguments must represent disjoint types (e.g., `extend(Struct({ a: String }), Struct({ a: String })))` raises an error)
 
 ## Composition
 
