@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-Add Stream.toReadableStreamEffect.
+Add Stream.toReadableStreamEffect / .toReadableStreamRuntime

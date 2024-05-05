@@ -14,7 +14,6 @@ import * as Ref from "effect/Ref"
 import type * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import type * as Body from "../../Http/Body.js"
 import type * as Client from "../../Http/Client.js"
 import * as Error from "../../Http/ClientError.js"
 import type * as ClientRequest from "../../Http/ClientRequest.js"
@@ -222,25 +221,18 @@ export const fetch: Client.Client.Default = makeDefault((request, url, signal, f
       (response) => internalResponse.fromWeb(request, response)
     )
   if (Method.hasBody(request.method)) {
-    return Effect.flatMap(convertBody(request.body), send)
+    switch (request.body._tag) {
+      case "Raw":
+      case "Uint8Array":
+        return send(request.body.body as any)
+      case "FormData":
+        return send(request.body.formData)
+      case "Stream":
+        return Effect.flatMap(Stream.toReadableStreamEffect(request.body.stream), send)
+    }
   }
   return send(undefined)
 })
-
-const convertBody = (body: Body.Body): Effect.Effect<BodyInit | undefined> => {
-  switch (body._tag) {
-    case "Empty":
-      return Effect.succeed(undefined)
-    case "Raw":
-      return Effect.succeed(body.body as any)
-    case "Uint8Array":
-      return Effect.succeed(body.body)
-    case "FormData":
-      return Effect.succeed(body.formData)
-    case "Stream":
-      return Stream.toReadableStreamEffect(body.stream)
-  }
-}
 
 /** @internal */
 export const transform = dual<

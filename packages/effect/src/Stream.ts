@@ -22,6 +22,7 @@ import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import type * as PubSub from "./PubSub.js"
 import type * as Queue from "./Queue.js"
+import type { Runtime } from "./Runtime.js"
 import type * as Schedule from "./Schedule.js"
 import type * as Scope from "./Scope.js"
 import type * as Sink from "./Sink.js"
@@ -3859,7 +3860,7 @@ export const toQueueOfElements: {
  * @since 2.0.0
  * @category destructors
  */
-export const toReadableStream: <A, E>(source: Stream<A, E>) => ReadableStream<A> = internal.toReadableStream
+export const toReadableStream: <A, E>(self: Stream<A, E>) => ReadableStream<A> = internal.toReadableStream
 
 /**
  * Converts the stream to a `Effect<ReadableStream>`.
@@ -3869,8 +3870,26 @@ export const toReadableStream: <A, E>(source: Stream<A, E>) => ReadableStream<A>
  * @since 2.0.0
  * @category destructors
  */
-export const toReadableStreamEffect: <A, E, R>(source: Stream<A, E, R>) => Effect.Effect<ReadableStream<A>, never, R> =
+export const toReadableStreamEffect: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<ReadableStream<A>, never, R> =
   internal.toReadableStreamEffect
+
+/**
+ * Converts the stream to a `ReadableStream` using the provided runtime.
+ *
+ * See https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream.
+ *
+ * @since 2.0.0
+ * @category destructors
+ */
+export const toReadableStreamRuntime: {
+  <XR>(
+    runtime: Runtime<XR>
+  ): <A, E, R extends XR>(self: Stream<A, E, R>) => ReadableStream<A>
+  <A, E, XR, R extends XR>(
+    self: Stream<A, E, R>,
+    runtime: Runtime<XR>
+  ): ReadableStream<A>
+} = internal.toReadableStreamRuntime
 
 /**
  * Applies the transducer to the stream and emits its outputs.
