@@ -5013,7 +5013,6 @@ const makeEncodingTransformation = (
     $String,
     Uint8ArrayFromSelf,
     {
-      strict: false,
       decode: (s, _, ast) =>
         either_.mapLeft(
           decode(s),
