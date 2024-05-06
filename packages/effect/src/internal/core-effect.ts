@@ -2166,6 +2166,8 @@ export const functionWithSpan = <Args extends Array<any>, Ret extends Effect.Eff
         captureStackTrace = stack.slice(2).join("\n").trim()
       }
     }
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const self = this
     const args = arguments
     return core.suspend(() => {
       const opts = typeof options.options === "function"
@@ -2173,8 +2175,8 @@ export const functionWithSpan = <Args extends Array<any>, Ret extends Effect.Eff
         : options.options
 
       return withSpan(
-        core.custom(options.body, function effect_cutpoint() {
-          return this.effect_instruction_i0.apply(this, args as any)
+        core.custom(options.body, function() {
+          return this.effect_instruction_i0.apply(self, args as any)
         }),
         opts.name,
         {
