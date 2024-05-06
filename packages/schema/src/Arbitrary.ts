@@ -7,7 +7,6 @@ import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as AST from "./AST.js"
 import * as FastCheck from "./FastCheck.js"
-import * as errors_ from "./internal/errors.js"
 import * as filters_ from "./internal/filters.js"
 import * as util_ from "./internal/util.js"
 import type * as Schema from "./Schema.js"
@@ -93,6 +92,8 @@ const getRefinementFromArbitrary = (ast: AST.Refinement, options: Options) => {
   return go(ast.from, constraints ? { ...options, constraints } : options)
 }
 
+const getArbitraryErrorMessage = (message: string) => `cannot build an Arbitrary for ${message}`
+
 const go = (ast: AST.AST, options: Options): LazyArbitrary<any> => {
   const hook = getHook(ast)
   if (Option.isSome(hook)) {
@@ -107,7 +108,7 @@ const go = (ast: AST.AST, options: Options): LazyArbitrary<any> => {
   }
   switch (ast._tag) {
     case "Declaration": {
-      throw new Error(errors_.getArbitraryErrorMessage(`a declaration without annotations (${ast})`))
+      throw new Error(getArbitraryErrorMessage(`a declaration without annotations (${ast})`))
     }
     case "Literal":
       return (fc) => fc.constant(ast.literal)
@@ -118,7 +119,7 @@ const go = (ast: AST.AST, options: Options): LazyArbitrary<any> => {
       return (fc) => fc.constant(undefined)
     case "NeverKeyword":
       return () => {
-        throw new Error(errors_.getArbitraryErrorMessage("`never`"))
+        throw new Error(getArbitraryErrorMessage("`never`"))
       }
     case "UnknownKeyword":
     case "AnyKeyword":
@@ -279,7 +280,7 @@ const go = (ast: AST.AST, options: Options): LazyArbitrary<any> => {
     }
     case "Enums": {
       if (ast.enums.length === 0) {
-        throw new Error(errors_.getArbitraryErrorMessage("an empty enum"))
+        throw new Error(getArbitraryErrorMessage("an empty enum"))
       }
       return (fc) => fc.oneof(...ast.enums.map(([_, value]) => fc.constant(value)))
     }

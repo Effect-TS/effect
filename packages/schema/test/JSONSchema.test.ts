@@ -814,13 +814,13 @@ describe("JSONSchema", () => {
 
   describe("Record", () => {
     it("Record(symbol, number)", () => {
-      expectError(Schema.Record(Schema.SymbolFromSelf, JsonNumber), "Unsupported index signature parameter (symbol)")
+      expectError(Schema.Record(Schema.SymbolFromSelf, JsonNumber), "unsupported index signature parameter (symbol)")
     })
 
     it("record(refinement, number)", () => {
       expectError(
         Schema.Record(Schema.String.pipe(Schema.minLength(1)), JsonNumber),
-        "Unsupported index signature parameter (a string at least 1 character(s) long)"
+        "unsupported index signature parameter (a string at least 1 character(s) long)"
       )
     })
 

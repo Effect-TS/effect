@@ -8,7 +8,6 @@ import * as Equivalence from "effect/Equivalence"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as AST from "./AST.js"
-import * as errors_ from "./internal/errors.js"
 import * as util_ from "./internal/util.js"
 import * as ParseResult from "./ParseResult.js"
 import type * as Schema from "./Schema.js"
@@ -45,6 +44,8 @@ const getHook = AST.getAnnotation<
   EquivalenceHookId
 )
 
+const getEquivalenceErrorMessage = (message: string) => `cannot build an Equivalence for ${message}`
+
 const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
   const hook = getHook(ast)
   if (Option.isSome(hook)) {
@@ -59,7 +60,7 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
   }
   switch (ast._tag) {
     case "NeverKeyword":
-      throw new Error(errors_.getEquivalenceErrorMessage("`never`"))
+      throw new Error(getEquivalenceErrorMessage("`never`"))
     case "Transformation":
       return go(ast.to)
     case "Declaration":

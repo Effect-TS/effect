@@ -91,13 +91,13 @@ const go = (
     case "TupleType":
       return getArray(e, path, () =>
         Effect.map(
-          Effect.forEach(e.errors, (index) => go(index.error, [...path, index.index])),
+          Effect.forEach(e.errors, (index) => go(index.error, path.concat(index.index))),
           Arr.flatten
         ))
     case "TypeLiteral":
       return getArray(e, path, () =>
         Effect.map(
-          Effect.forEach(e.errors, (key) => go(key.error, [...path, key.key])),
+          Effect.forEach(e.errors, (key) => go(key.error, path.concat(key.key))),
           Arr.flatten
         ))
     case "Declaration":

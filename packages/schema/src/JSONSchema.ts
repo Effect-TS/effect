@@ -6,7 +6,7 @@ import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Record from "effect/Record"
 import * as AST from "./AST.js"
-import * as util_ from "./internal/util.js"
+import * as errors_ from "./internal/errors.js"
 import type * as Schema from "./Schema.js"
 
 /**
@@ -274,14 +274,13 @@ const pruneUndefinedKeyword = (ps: AST.PropertySignature): AST.AST => {
   return type
 }
 
-const getErrorMessageWithPath = (message: string, path: ReadonlyArray<string>) =>
-  path.length > 0 ? `${message} (path [${path?.join(", ")}])` : message
+const getMissingAnnotationErrorMessage = (name: string, path: ReadonlyArray<PropertyKey>): string =>
+  errors_.getErrorMessageWithPath(`cannot build a JSON Schema for ${name} without a JSON Schema annotation`, path)
 
-const getMissingAnnotationErrorMessage = (name: string, path: ReadonlyArray<string>): string =>
-  getErrorMessageWithPath(`cannot build a JSON Schema for ${name} without a JSON Schema annotation`, path)
-
-const getUnsupportedIndexSignatureParameterErrorMessage = (parameter: AST.AST, path: ReadonlyArray<string>): string =>
-  getErrorMessageWithPath(`Unsupported index signature parameter (${parameter})`, path)
+const getUnsupportedIndexSignatureParameterErrorMessage = (
+  parameter: AST.AST,
+  path: ReadonlyArray<PropertyKey>
+): string => errors_.getErrorMessageWithPath(`unsupported index signature parameter (${parameter})`, path)
 
 /** @internal */
 export const DEFINITION_PREFIX = "#/$defs/"
@@ -310,7 +309,7 @@ const go = (
   ast: AST.AST,
   $defs: Record<string, JsonSchema7>,
   handleIdentifier: boolean,
-  path: ReadonlyArray<string>
+  path: ReadonlyArray<PropertyKey>
 ): JsonSchema7 => {
   const hook = AST.getJSONSchemaAnnotation(ast)
   if (Option.isSome(hook)) {
@@ -382,7 +381,7 @@ const go = (
       throw new Error(getMissingAnnotationErrorMessage("`symbol`", path))
     case "TupleType": {
       const len = ast.elements.length
-      const elements = ast.elements.map((e, i) => go(e.type, $defs, true, [...path, String(i)]))
+      const elements = ast.elements.map((e, i) => go(e.type, $defs, true, path.concat(i)))
       const rest = ast.rest.map((ast) => go(ast, $defs, true, path))
       const output: JsonSchema7Array = { type: "array" }
       // ---------------------------------------------
@@ -408,7 +407,7 @@ const go = (
         // ---------------------------------------------
         if (rest.length > 1) {
           throw new Error(
-            getErrorMessageWithPath(
+            errors_.getErrorMessageWithPath(
               "Generating a JSON Schema for post-rest elements is not currently supported. You're welcome to contribute by submitting a Pull Request.",
               path
             )
@@ -462,7 +461,7 @@ const go = (
       }
       const propertySignatures = ast.propertySignatures.map((ps) => {
         return {
-          ...go(pruneUndefinedKeyword(ps), $defs, true, [...path, util_.formatUnknown(ps.name)]),
+          ...go(pruneUndefinedKeyword(ps), $defs, true, path.concat(ps.name)),
           ...getJsonSchemaAnnotations(ps)
         }
       })
@@ -486,7 +485,7 @@ const go = (
             output.required.push(name)
           }
         } else {
-          throw new Error(getErrorMessageWithPath(`cannot encode ${String(name)} key to JSON Schema`, path))
+          throw new Error(errors_.getErrorMessageWithPath(`cannot encode ${String(name)} key to JSON Schema`, path))
         }
       }
       // ---------------------------------------------
@@ -540,7 +539,10 @@ const go = (
     }
     case "Refinement": {
       throw new Error(
-        getErrorMessageWithPath("cannot build a JSON Schema for a refinement without a JSON Schema annotation", path)
+        errors_.getErrorMessageWithPath(
+          "cannot build a JSON Schema for a refinement without a JSON Schema annotation",
+          path
+        )
       )
     }
     case "TemplateLiteral": {
@@ -556,7 +558,7 @@ const go = (
       const identifier = Option.orElse(AST.getJSONIdentifier(ast), () => AST.getJSONIdentifier(ast.f()))
       if (Option.isNone(identifier)) {
         throw new Error(
-          getErrorMessageWithPath(
+          errors_.getErrorMessageWithPath(
             "Generating a JSON Schema for suspended schemas requires an identifier annotation",
             path
           )

@@ -2597,18 +2597,15 @@ export interface mutable<S extends Schema.Any> extends
  */
 export const mutable = <S extends Schema.Any>(schema: S): mutable<S> => make(AST.mutable(schema.ast))
 
-const getExtendErrorMessage = (x: AST.AST, y: AST.AST, path: ReadonlyArray<string>) => {
-  let message = `unsupported schema or overlapping types, cannot extend \`${x}\` with \`${y}\``
-  if (path.length > 0) {
-    message += ` (path [${path.join(", ")}])`
-  }
-  return errors_.getAPIErrorMessage("extend", message)
+const getExtendErrorMessage = (x: AST.AST, y: AST.AST, path: ReadonlyArray<PropertyKey>) => {
+  const message = `unsupported schema or overlapping types, cannot extend ${x} with ${y}`
+  return errors_.getErrorMessageWithPath(errors_.getErrorMessage("extend", message), path)
 }
 
 const intersectTypeLiterals = (
   x: AST.AST,
   y: AST.AST,
-  path: ReadonlyArray<string>
+  path: ReadonlyArray<PropertyKey>
 ): AST.TypeLiteral => {
   if (AST.isTypeLiteral(x) && AST.isTypeLiteral(y)) {
     const propertySignatures = [...x.propertySignatures]
@@ -2621,7 +2618,7 @@ const intersectTypeLiterals = (
         const { isOptional, type } = propertySignatures[i]
         propertySignatures[i] = new AST.PropertySignature(
           name,
-          extendAST(type, ps.type, [...path, util_.formatUnknown(name)]),
+          extendAST(type, ps.type, path.concat(name)),
           isOptional,
           true
         )
@@ -2651,7 +2648,7 @@ const addRefinementToMembers = (refinement: AST.Refinement, asts: ReadonlyArray<
 const extendAST = (
   x: AST.AST,
   y: AST.AST,
-  path: ReadonlyArray<string>
+  path: ReadonlyArray<PropertyKey>
 ): AST.AST => AST.Union.make(intersectUnionMembers([x], [y], path))
 
 const getTypes = (ast: AST.AST): ReadonlyArray<AST.AST> => AST.isUnion(ast) ? ast.types : [ast]
@@ -2659,7 +2656,7 @@ const getTypes = (ast: AST.AST): ReadonlyArray<AST.AST> => AST.isUnion(ast) ? as
 const intersectUnionMembers = (
   xs: ReadonlyArray<AST.AST>,
   ys: ReadonlyArray<AST.AST>,
-  path: ReadonlyArray<string>
+  path: ReadonlyArray<PropertyKey>
 ): Array<AST.AST> =>
   array_.flatMap(xs, (x) =>
     array_.flatMap(ys, (y) => {

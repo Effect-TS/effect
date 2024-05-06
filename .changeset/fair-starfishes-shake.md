@@ -895,6 +895,15 @@ Schema
 
 - move `fast-check` from `peerDependencies` to `dependencies`
 
+AST
+
+- add `path` argument to `Compiler` API
+
+  ```diff
+  -export type Compiler<A> = (ast: AST) => A
+  +export type Compiler<A> = (ast: AST, path: ReadonlyArray<PropertyKey>) => A
+  ```
+
 JSONSchema
 
 - extend all interfaces with `JsonSchemaAnnotations`

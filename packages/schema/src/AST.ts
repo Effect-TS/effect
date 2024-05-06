@@ -1099,7 +1099,7 @@ export class TupleType implements Annotated {
       }
     }
     if (hasIllegalRequiredElement || (hasOptionalElement && rest.length > 1)) {
-      throw new Error(errors_.getRequiredElementFollowinAnOptionalElementErrorMessage)
+      throw new Error(getRequiredElementFollowinAnOptionalElementErrorMessage)
     }
   }
   /**
@@ -1218,7 +1218,7 @@ export class IndexSignature {
     if (isParameter(parameter)) {
       this.parameter = parameter
     } else {
-      throw new Error(errors_.getIndexSignatureParameterErrorMessage)
+      throw new Error(getIndexSignatureParameterErrorMessage)
     }
   }
   /**
@@ -1273,12 +1273,12 @@ export class TypeLiteral implements Annotated {
       const parameter = getParameterBase(indexSignatures[i].parameter)
       if (isStringKeyword(parameter)) {
         if (parameters.string) {
-          throw new Error(errors_.getDuplicateIndexSignatureErrorMessage("string"))
+          throw new Error(getDuplicateIndexSignatureErrorMessage("string"))
         }
         parameters.string = true
       } else if (isSymbolKeyword(parameter)) {
         if (parameters.symbol) {
-          throw new Error(errors_.getDuplicateIndexSignatureErrorMessage("symbol"))
+          throw new Error(getDuplicateIndexSignatureErrorMessage("symbol"))
         }
         parameters.symbol = true
       }
@@ -1791,12 +1791,12 @@ export class TypeLiteralTransformation {
     for (const pst of propertySignatureTransformations) {
       const from = pst.from
       if (fromKeys[from]) {
-        throw new Error(errors_.getDuplicatePropertySignatureTransformationErrorMessage(from))
+        throw new Error(getDuplicatePropertySignatureTransformationErrorMessage(from))
       }
       fromKeys[from] = true
       const to = pst.to
       if (toKeys[to]) {
-        throw new Error(errors_.getDuplicatePropertySignatureTransformationErrorMessage(to))
+        throw new Error(getDuplicatePropertySignatureTransformationErrorMessage(to))
       }
       toKeys[to] = true
     }
@@ -1899,7 +1899,7 @@ export const getNumberIndexedAccess = (ast: AST): AST => {
     case "Suspend":
       return getNumberIndexedAccess(ast.f())
   }
-  throw new Error(errors_.getAPIErrorMessage("getNumberIndexedAccess", `unsupported schema (${ast})`))
+  throw new Error(errors_.getErrorMessage("getNumberIndexedAccess", `unsupported schema (${ast})`))
 }
 
 /** @internal */
@@ -2002,7 +2002,7 @@ export const record = (key: AST, value: AST): {
           propertySignatures.push(new PropertySignature(key.literal, value, false, true))
         } else {
           throw new Error(
-            errors_.getAPIErrorMessage("record", `unsupported literal (${util_.formatUnknown(key.literal)})`)
+            errors_.getErrorMessage("record", `unsupported literal (${util_.formatUnknown(key.literal)})`)
           )
         }
         break
@@ -2013,7 +2013,7 @@ export const record = (key: AST, value: AST): {
         key.types.forEach(go)
         break
       default:
-        throw new Error(errors_.getAPIErrorMessage("record", `unsupported key schema (${key})`))
+        throw new Error(errors_.getErrorMessage("record", `unsupported key schema (${key})`))
     }
   }
   go(key)
@@ -2059,7 +2059,7 @@ export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral | 
         if (Option.isSome(annotation)) {
           return pick(annotation.value, keys)
         }
-        throw new Error(errors_.getAPIErrorMessage("pick", "cannot handle this kind of transformation"))
+        throw new Error(errors_.getErrorMessage("pick", "cannot handle this kind of transformation"))
       }
     }
   }
@@ -2106,9 +2106,9 @@ export const partial = (ast: AST, options?: { readonly exact: true }): AST => {
     case "Suspend":
       return new Suspend(() => partial(ast.f(), options))
     case "Declaration":
-      throw new Error(errors_.getAPIErrorMessage("partial", "cannot handle declarations"))
+      throw new Error(errors_.getErrorMessage("partial", "cannot handle declarations"))
     case "Refinement":
-      throw new Error(errors_.getAPIErrorMessage("partial", "cannot handle refinements"))
+      throw new Error(errors_.getErrorMessage("partial", "cannot handle refinements"))
     case "Transformation": {
       if (
         isTypeLiteralTransformation(ast.transformation) &&
@@ -2116,7 +2116,7 @@ export const partial = (ast: AST, options?: { readonly exact: true }): AST => {
       ) {
         return new Transformation(partial(ast.from, options), partial(ast.to, options), ast.transformation)
       }
-      throw new Error(errors_.getAPIErrorMessage("partial", "cannot handle transformations"))
+      throw new Error(errors_.getErrorMessage("partial", "cannot handle transformations"))
     }
   }
   return ast
@@ -2145,9 +2145,9 @@ export const required = (ast: AST): AST => {
     case "Suspend":
       return new Suspend(() => required(ast.f()))
     case "Declaration":
-      throw new Error(errors_.getAPIErrorMessage("required", "cannot handle declarations"))
+      throw new Error(errors_.getErrorMessage("required", "cannot handle declarations"))
     case "Refinement":
-      throw new Error(errors_.getAPIErrorMessage("required", "cannot handle refinements"))
+      throw new Error(errors_.getErrorMessage("required", "cannot handle refinements"))
     case "Transformation": {
       if (
         isTypeLiteralTransformation(ast.transformation) &&
@@ -2155,7 +2155,7 @@ export const required = (ast: AST): AST => {
       ) {
         return new Transformation(required(ast.from), required(ast.to), ast.transformation)
       }
-      throw new Error(errors_.getAPIErrorMessage("required", "cannot handle transformations"))
+      throw new Error(errors_.getErrorMessage("required", "cannot handle transformations"))
     }
   }
   return ast
@@ -2214,20 +2214,20 @@ export const mutable = (ast: AST): AST => {
 /**
  * @since 1.0.0
  */
-export type Compiler<A> = (ast: AST) => A
+export type Compiler<A> = (ast: AST, path: ReadonlyArray<PropertyKey>) => A
 
 /**
  * @since 1.0.0
  */
 export type Match<A> = {
-  [K in AST["_tag"]]: (ast: Extract<AST, { _tag: K }>, compile: Compiler<A>) => A
+  [K in AST["_tag"]]: (ast: Extract<AST, { _tag: K }>, compile: Compiler<A>, path: ReadonlyArray<PropertyKey>) => A
 }
 
 /**
  * @since 1.0.0
  */
 export const getCompiler = <A>(match: Match<A>): Compiler<A> => {
-  const compile = (ast: AST): A => match[ast._tag](ast as any, compile)
+  const compile = (ast: AST, path: ReadonlyArray<PropertyKey>): A => match[ast._tag](ast as any, compile, path)
   return compile
 }
 
@@ -2559,7 +2559,7 @@ const _keyof = (ast: AST): Array<AST> => {
     case "Transformation":
       return _keyof(ast.to)
   }
-  throw new Error(errors_.getAPIErrorMessage("keyof", `unsupported schema (${ast})`))
+  throw new Error(errors_.getErrorMessage("keyof", `unsupported schema (${ast})`))
 }
 
 /** @internal */
@@ -2635,3 +2635,15 @@ const getExpected = (ast: AST, verbose: boolean): Option.Option<string> => {
     )
   }
 }
+
+const getDuplicateIndexSignatureErrorMessage = (name: "string" | "symbol"): string =>
+  `Duplicate index signature for type \`${name}\``
+
+const getIndexSignatureParameterErrorMessage =
+  "An index signature parameter type must be `string`, `symbol`, a template literal type or a refinement of the previous types"
+
+const getRequiredElementFollowinAnOptionalElementErrorMessage =
+  "A required element cannot follow an optional element. ts(1257)"
+
+const getDuplicatePropertySignatureTransformationErrorMessage = (name: PropertyKey): string =>
+  `Duplicate property signature transformation ${util_.formatUnknown(name)}`
