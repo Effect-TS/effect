@@ -199,7 +199,7 @@ export const makeTracer: Effect.Effect<Tracer.Tracer, never, Client> = Effect.ge
  * @since 1.0.0
  * @category layers
  */
-export const layerTracer = (url = "ws://localhost:34437"): Layer.Layer<never> =>
+export const layerTracer = (url = "ws://localhost:34437"): Layer.Layer<never, never, Socket.WebSocketConstructor> =>
   pipe(
     makeTracer,
     Effect.map(Layer.setTracer),
