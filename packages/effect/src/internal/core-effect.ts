@@ -2173,7 +2173,7 @@ export const functionWithSpan = <Args extends Array<any>, Ret extends Effect.Eff
         : options.options
 
       return withSpan(
-        core.custom(options.body, function() {
+        core.custom(options.body, function effect_cutpoint() {
           return this.effect_instruction_i0.apply(this, args as any)
         }),
         opts.name,

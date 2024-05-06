@@ -1048,7 +1048,7 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
   const lines = stack.split("\n")
 
   for (let i = 1; i < lines.length; i++) {
-    if (lines[i].includes("EffectPrimitive.commit")) {
+    if (lines[i].includes("effect_cutpoint")) {
       break
     }
     out.push(
