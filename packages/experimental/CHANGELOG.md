@@ -1,5 +1,25 @@
 # @effect/experimental
 
+## 0.15.18
+
+### Patch Changes
+
+- Updated dependencies [[`5866c62`](https://github.com/Effect-TS/effect/commit/5866c621d7eb4cc84e4ba972bfdfd219734cd45d)]:
+  - @effect/platform@0.52.3
+  - @effect/platform-node@0.48.4
+
+## 0.15.17
+
+### Patch Changes
+
+- [#2679](https://github.com/Effect-TS/effect/pull/2679) [`2e1cdf6`](https://github.com/Effect-TS/effect/commit/2e1cdf67d141281288fffe9a5c10d1379a800513) Thanks [@tim-smart](https://github.com/tim-smart)! - ensure all type ids are annotated with `unique symbol`
+
+- Updated dependencies [[`e4b82d2`](https://github.com/Effect-TS/effect/commit/e4b82d239bf0974173b5d687b45d1b1899be615f), [`2e1cdf6`](https://github.com/Effect-TS/effect/commit/2e1cdf67d141281288fffe9a5c10d1379a800513)]:
+  - @effect/platform-node@0.48.3
+  - @effect/platform@0.52.2
+  - effect@3.1.2
+  - @effect/schema@0.66.14
+
 ## 0.15.16
 
 ### Patch Changes

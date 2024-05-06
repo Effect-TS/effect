@@ -1,5 +1,82 @@
 # @effect/sql
 
+## 0.2.1
+
+### Patch Changes
+
+- Updated dependencies [[`5866c62`](https://github.com/Effect-TS/effect/commit/5866c621d7eb4cc84e4ba972bfdfd219734cd45d)]:
+  - @effect/platform@0.52.3
+
+## 0.2.0
+
+### Minor Changes
+
+- [#2693](https://github.com/Effect-TS/effect/pull/2693) [`0724274`](https://github.com/Effect-TS/effect/commit/07242746ed8a3b0383631108360a0ad4f6e062f0) Thanks [@tim-smart](https://github.com/tim-smart)! - make @effect/sql dialect agnostic
+
+  All of the client implementations now share the same Context.Tag. This means you can create
+  services that support multiple SQL flavors.
+
+  You can now use the `@effect/sql` package to access the client apis:
+
+  ```ts
+  import * as Sql from "@effect/sql";
+  import { Effect } from "effect";
+
+  Effect.gen(function* () {
+    const sql = yield* Sql.client.Client;
+    yield* sql`SELECT * FROM users`;
+  });
+  ```
+
+  If you need a functionality that is specific to a implementation, you can use the tag from the
+  implementation package:
+
+  ```ts
+  import * as Sqlite from "@effect/sql-sqlite-node";
+  import { Effect } from "effect";
+
+  Effect.gen(function* () {
+    const sql = yield* Sqlite.client.SqliteClient;
+    const dump = yield* sql.export;
+  });
+  ```
+
+  If you need to run a different query depending on the dialect, you can use the `sql.onDialect` api:
+
+  ```ts
+  import * as Sql from "@effect/sql";
+  import { Effect } from "effect";
+
+  Effect.gen(function* () {
+    const sql = yield* Sql.client.Client;
+    yield* sql.onDialect({
+      sqlite: () => sql`SELECT * FROM sqlite_master`,
+      mysql: () => sql`SHOW TABLES`,
+      mssql: () => sql`SELECT * FROM sys.tables`,
+      pg: () => sql`SELECT * FROM pg_catalog.pg_tables`,
+    });
+  });
+  ```
+
+### Patch Changes
+
+- [#2693](https://github.com/Effect-TS/effect/pull/2693) [`0724274`](https://github.com/Effect-TS/effect/commit/07242746ed8a3b0383631108360a0ad4f6e062f0) Thanks [@tim-smart](https://github.com/tim-smart)! - add .returning helper to insert and update apis
+
+## 0.1.17
+
+### Patch Changes
+
+- [#2679](https://github.com/Effect-TS/effect/pull/2679) [`2e1cdf6`](https://github.com/Effect-TS/effect/commit/2e1cdf67d141281288fffe9a5c10d1379a800513) Thanks [@tim-smart](https://github.com/tim-smart)! - ensure all type ids are annotated with `unique symbol`
+
+- [#2685](https://github.com/Effect-TS/effect/pull/2685) [`d3cf2d8`](https://github.com/Effect-TS/effect/commit/d3cf2d80038310ccc0a6a015d13d86291a953b41) Thanks [@giacomoran](https://github.com/giacomoran)! - fix `sql.update` default arguments
+
+- [#2684](https://github.com/Effect-TS/effect/pull/2684) [`56ec8dd`](https://github.com/Effect-TS/effect/commit/56ec8ddc3495f11a1ca8acc59098d9a2f5ced615) Thanks [@giacomoran](https://github.com/giacomoran)! - fix placeholder count in sql helpers
+
+- Updated dependencies [[`2e1cdf6`](https://github.com/Effect-TS/effect/commit/2e1cdf67d141281288fffe9a5c10d1379a800513)]:
+  - @effect/platform@0.52.2
+  - effect@3.1.2
+  - @effect/schema@0.66.14
+
 ## 0.1.16
 
 ### Patch Changes

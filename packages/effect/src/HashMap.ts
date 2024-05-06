@@ -40,7 +40,7 @@ export declare namespace HashMap {
    * This type-level utility extracts the key type `K` from a `HashMap<K, V>` type.
    *
    * @example
-   * import * as HashMap from "effect/HashMap"
+   * import { HashMap } from "effect"
    *
    * declare const hm: HashMap.HashMap<string, number>
    *
@@ -55,7 +55,7 @@ export declare namespace HashMap {
    * This type-level utility extracts the value type `V` from a `HashMap<K, V>` type.
    *
    * @example
-   * import * as HashMap from "effect/HashMap"
+   * import { HashMap } from "effect"
    *
    * declare const hm: HashMap.HashMap<string, number>
    *

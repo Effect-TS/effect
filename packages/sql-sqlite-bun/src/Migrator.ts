@@ -5,11 +5,12 @@ import * as Command from "@effect/platform/Command"
 import type { CommandExecutor } from "@effect/platform/CommandExecutor"
 import { FileSystem } from "@effect/platform/FileSystem"
 import { Path } from "@effect/platform/Path"
+import type * as Client from "@effect/sql/Client"
 import type { SqlError } from "@effect/sql/Error"
 import * as Migrator from "@effect/sql/Migrator"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as Client from "./Client.js"
+import { SqliteClient } from "./Client.js"
 
 /**
  * @since 1.0.0
@@ -20,28 +21,19 @@ export * from "@effect/sql/Migrator"
  * @category constructor
  * @since 1.0.0
  */
-export const run: <R>(
-  options: Migrator.MigratorOptions<R>
+export const run: <R2 = never>(
+  options: Migrator.MigratorOptions<R2>
 ) => Effect.Effect<
   ReadonlyArray<readonly [id: number, name: string]>,
-  SqlError | Migrator.MigrationError,
-  Client.SqliteClient | R | FileSystem | Path | CommandExecutor
+  Migrator.MigrationError | SqlError,
+  FileSystem | Path | SqliteClient | Client.Client | CommandExecutor | R2
 > = Migrator.make({
-  getClient: Client.SqliteClient,
-  ensureTable(sql, table) {
-    return sql`
-      CREATE TABLE IF NOT EXISTS ${sql(table)} (
-        migration_id integer PRIMARY KEY NOT NULL,
-        created_at datetime NOT NULL DEFAULT current_timestamp,
-        name VARCHAR(255) NOT NULL
-      )
-    `
-  },
-  dumpSchema(sql, path, table) {
+  dumpSchema(path, table) {
     const dump = (args: Array<string>) =>
       Effect.gen(function*(_) {
+        const sql = yield* SqliteClient
         const dump = yield* _(
-          Command.make("sqlite3", sql.config.filename, ...args),
+          Command.make("sqlite3", (sql as SqliteClient).config.filename, ...args),
           Command.string
         )
         return dump.replace(/^create table sqlite_sequence\(.*$/im, "")
@@ -88,5 +80,5 @@ export const layer = <R>(
 ): Layer.Layer<
   never,
   SqlError | Migrator.MigrationError,
-  R | Client.SqliteClient | FileSystem | Path | CommandExecutor
+  SqliteClient | Client.Client | CommandExecutor | FileSystem | Path | R
 > => Layer.effectDiscard(run(options))

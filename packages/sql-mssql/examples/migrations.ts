@@ -1,19 +1,20 @@
 import * as DevTools from "@effect/experimental/DevTools"
 import { NodeFileSystem } from "@effect/platform-node"
-import * as Sql from "@effect/sql-mssql"
+import * as Sql from "@effect/sql"
+import * as Mssql from "@effect/sql-mssql"
 import { Config, Effect, Layer, Logger, LogLevel, Secret, String } from "effect"
 import { pipe } from "effect/Function"
 import { fileURLToPath } from "node:url"
 
 const peopleProcedure = pipe(
-  Sql.procedure.make("people_proc"),
-  Sql.procedure.param<string>()("name", Sql.types.VarChar),
-  Sql.procedure.withRows<{ readonly id: number; readonly name: string }>(),
-  Sql.procedure.compile
+  Mssql.procedure.make("people_proc"),
+  Mssql.procedure.param<string>()("name", Mssql.types.VarChar),
+  Mssql.procedure.withRows<{ readonly id: number; readonly name: string }>(),
+  Mssql.procedure.compile
 )
 
 const program = Effect.gen(function*(_) {
-  const sql = yield* _(Sql.client.MssqlClient)
+  const sql = yield* _(Mssql.client.MssqlClient)
 
   yield* _(
     sql`
@@ -78,13 +79,13 @@ const program = Effect.gen(function*(_) {
   )
 })
 
-const SqlLive = Sql.migrator.layer({
+const SqlLive = Mssql.migrator.layer({
   loader: Sql.migrator.fromFileSystem(
     fileURLToPath(new URL("./migrations", import.meta.url))
   )
 }).pipe(
   Layer.provideMerge(
-    Sql.client.layer({
+    Mssql.client.layer({
       database: Config.succeed("msdb"),
       server: Config.succeed("localhost"),
       username: Config.succeed("sa"),

@@ -130,7 +130,7 @@ export const left: <L>(left: L) => Either<never, L> = either.left
  * the provided default as a `Left`.
  *
  * @example
- * import * as Either from 'effect/Either'
+ * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.fromNullable(1, () => 'fallback'), Either.right(1))
  * assert.deepStrictEqual(Either.fromNullable(null, () => 'fallback'), Either.left('fallback'))
@@ -149,8 +149,7 @@ export const fromNullable: {
 
 /**
  * @example
- * import * as Either from 'effect/Either'
- * import * as Option from 'effect/Option'
+ * import { Either, Option } from "effect"
  *
  * assert.deepStrictEqual(Either.fromOption(Option.some(1), () => 'error'), Either.right(1))
  * assert.deepStrictEqual(Either.fromOption(Option.none(), () => 'error'), Either.left('error'))
@@ -209,11 +208,11 @@ export {
  * @param input - The value to test.
  *
  * @example
- * import { isEither, left, right } from 'effect/Either'
+ * import { Either } from "effect"
  *
- * assert.deepStrictEqual(isEither(right(1)), true)
- * assert.deepStrictEqual(isEither(left("a")), true)
- * assert.deepStrictEqual(isEither({ right: 1 }), false)
+ * assert.deepStrictEqual(Either.isEither(Either.right(1)), true)
+ * assert.deepStrictEqual(Either.isEither(Either.left("a")), true)
+ * assert.deepStrictEqual(Either.isEither({ right: 1 }), false)
  *
  * @category guards
  * @since 2.0.0
@@ -226,10 +225,10 @@ export const isEither: (input: unknown) => input is Either<unknown, unknown> = e
  * @param self - The `Either` to check.
  *
  * @example
- * import { isLeft, left, right } from 'effect/Either'
+ * import { Either } from "effect"
  *
- * assert.deepStrictEqual(isLeft(right(1)), false)
- * assert.deepStrictEqual(isLeft(left("a")), true)
+ * assert.deepStrictEqual(Either.isLeft(Either.right(1)), false)
+ * assert.deepStrictEqual(Either.isLeft(Either.left("a")), true)
  *
  * @category guards
  * @since 2.0.0
@@ -242,10 +241,10 @@ export const isLeft: <R, L>(self: Either<R, L>) => self is Left<L, R> = either.i
  * @param self - The `Either` to check.
  *
  * @example
- * import { isRight, left, right } from 'effect/Either'
+ * import { Either } from "effect"
  *
- * assert.deepStrictEqual(isRight(right(1)), true)
- * assert.deepStrictEqual(isRight(left("a")), false)
+ * assert.deepStrictEqual(Either.isRight(Either.right(1)), true)
+ * assert.deepStrictEqual(Either.isRight(Either.left("a")), false)
  *
  * @category guards
  * @since 2.0.0
@@ -258,11 +257,10 @@ export const isRight: <R, L>(self: Either<R, L>) => self is Right<L, R> = either
  * Alias of {@link toOption}.
  *
  * @example
- * import * as O from 'effect/Option'
- * import * as E from 'effect/Either'
+ * import { Either, Option } from "effect"
  *
- * assert.deepStrictEqual(E.getRight(E.right('ok')), O.some('ok'))
- * assert.deepStrictEqual(E.getRight(E.left('err')), O.none())
+ * assert.deepStrictEqual(Either.getRight(Either.right('ok')), Option.some('ok'))
+ * assert.deepStrictEqual(Either.getRight(Either.left('err')), Option.none())
  *
  * @category getters
  * @since 2.0.0
@@ -273,11 +271,10 @@ export const getRight: <R, L>(self: Either<R, L>) => Option<R> = either.getRight
  * Converts a `Either` to an `Option` discarding the value.
  *
  * @example
- * import * as O from 'effect/Option'
- * import * as E from 'effect/Either'
+ * import { Either, Option } from "effect"
  *
- * assert.deepStrictEqual(E.getLeft(E.right('ok')), O.none())
- * assert.deepStrictEqual(E.getLeft(E.left('err')), O.some('err'))
+ * assert.deepStrictEqual(Either.getLeft(Either.right('ok')), Option.none())
+ * assert.deepStrictEqual(Either.getLeft(Either.left('err')), Option.some('err'))
  *
  * @category getters
  * @since 2.0.0
@@ -361,16 +358,15 @@ export const map: {
  * if the value is a `Right` the inner value is applied to the `onRight` function.
  *
  * @example
- * import * as E from 'effect/Either'
- * import { pipe } from 'effect/Function'
+ * import { pipe, Either } from "effect"
  *
  * const onLeft  = (strings: ReadonlyArray<string>): string => `strings: ${strings.join(', ')}`
  *
  * const onRight = (value: number): string => `Ok: ${value}`
  *
- * assert.deepStrictEqual(pipe(E.right(1), E.match({ onLeft, onRight })), 'Ok: 1')
+ * assert.deepStrictEqual(pipe(Either.right(1), Either.match({ onLeft, onRight })), 'Ok: 1')
  * assert.deepStrictEqual(
- *   pipe(E.left(['string 1', 'string 2']), E.match({ onLeft, onRight })),
+ *   pipe(Either.left(['string 1', 'string 2']), Either.match({ onLeft, onRight })),
  *   'strings: string 1, string 2'
  * )
  *
@@ -399,24 +395,23 @@ export const match: {
  * If the predicate fails, set the left value with the result of the provided function.
  *
  * @example
- * import * as E from 'effect/Either'
- * import { pipe } from 'effect/Function'
+ * import { pipe, Either } from "effect"
  *
  * const isPositive = (n: number): boolean => n > 0
  *
  * assert.deepStrictEqual(
  *   pipe(
- *     E.right(1),
- *     E.filterOrLeft(isPositive, n => `${n} is not positive`)
+ *     Either.right(1),
+ *     Either.filterOrLeft(isPositive, n => `${n} is not positive`)
  *   ),
- *   E.right(1)
+ *   Either.right(1)
  * )
  * assert.deepStrictEqual(
  *   pipe(
- *     E.right(0),
- *     E.filterOrLeft(isPositive, n => `${n} is not positive`)
+ *     Either.right(0),
+ *     Either.filterOrLeft(isPositive, n => `${n} is not positive`)
  *   ),
- *   E.left("0 is not positive")
+ *   Either.left("0 is not positive")
  * )
  *
  * @since 2.0.0
@@ -456,7 +451,7 @@ export const merge: <R, L>(self: Either<R, L>) => L | R = match({
  * Returns the wrapped value if it's a `Right` or a default value if is a `Left`.
  *
  * @example
- * import * as Either from 'effect/Either'
+ * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.getOrElse(Either.right(1), (error) => error + "!"), 1)
  * assert.deepStrictEqual(Either.getOrElse(Either.left("not a number"), (error) => error + "!"), "not a number!")
@@ -474,7 +469,7 @@ export const getOrElse: {
 
 /**
  * @example
- * import * as Either from 'effect/Either'
+ * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.getOrNull(Either.right(1)), 1)
  * assert.deepStrictEqual(Either.getOrNull(Either.left("a")), null)
@@ -486,7 +481,7 @@ export const getOrNull: <R, L>(self: Either<R, L>) => R | null = getOrElse(const
 
 /**
  * @example
- * import * as Either from 'effect/Either'
+ * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.getOrUndefined(Either.right(1)), 1)
  * assert.deepStrictEqual(Either.getOrUndefined(Either.left("a")), undefined)
@@ -505,13 +500,13 @@ export const getOrUndefined: <R, L>(self: Either<R, L>) => R | undefined = getOr
  * @param onLeft - A function that will be called if the `Either` is `Left`. It returns the error to be thrown.
  *
  * @example
- * import * as E from "effect/Either"
+ * import { Either } from "effect"
  *
  * assert.deepStrictEqual(
- *   E.getOrThrowWith(E.right(1), () => new Error('Unexpected Left')),
+ *   Either.getOrThrowWith(Either.right(1), () => new Error('Unexpected Left')),
  *   1
  * )
- * assert.throws(() => E.getOrThrowWith(E.left("error"), () => new Error('Unexpected Left')))
+ * assert.throws(() => Either.getOrThrowWith(Either.left("error"), () => new Error('Unexpected Left')))
  *
  * @category getters
  * @since 2.0.0
@@ -535,10 +530,10 @@ export const getOrThrowWith: {
  * @throws `Error("getOrThrow called on a Left")`
  *
  * @example
- * import * as E from "effect/Either"
+ * import { Either } from "effect"
  *
- * assert.deepStrictEqual(E.getOrThrow(E.right(1)), 1)
- * assert.throws(() => E.getOrThrow(E.left("error")))
+ * assert.deepStrictEqual(Either.getOrThrow(Either.right(1)), 1)
+ * assert.throws(() => Either.getOrThrow(Either.left("error")))
  *
  * @category getters
  * @since 2.0.0
@@ -645,7 +640,7 @@ export const ap: {
  * @param fields - the struct of `Either`s to be sequenced.
  *
  * @example
- * import * as Either from "effect/Either"
+ * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.all([Either.right(1), Either.right(2)]), Either.right([1, 2]))
  * assert.deepStrictEqual(Either.all({ right: Either.right(1), b: Either.right("hello") }), Either.right({ right: 1, b: "hello" }))

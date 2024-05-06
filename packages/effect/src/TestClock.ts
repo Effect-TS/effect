@@ -47,11 +47,7 @@ import * as Live from "./TestLive.js"
  * For example, here is how we can test `Effect.timeout` using `TestClock`:
  *
  * ```ts
- * import * as Duration from "effect/Duration"
- * import * as Effect from "effect/Effect"
- * import * as Fiber from "effect/Fiber"
- * import * as TestClock from "effect/TestClock"
- * import * as Option from "effect/Option"
+ * import { Duration, Effect, Fiber, TestClock, Option } from "effect"
  *
  * Effect.gen(function*() {
  *   const fiber = yield* pipe(

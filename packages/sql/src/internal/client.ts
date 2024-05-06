@@ -16,6 +16,9 @@ import * as Statement from "../Statement.js"
 export const TypeId: Client.TypeId = Symbol.for("@effect/sql/Client") as Client.TypeId
 
 /** @internal */
+export const clientTag = Context.GenericTag<Client.Client>("@effect/sql/Client")
+
+/** @internal */
 export const TransactionConnection = Context.GenericTag<
   Client.TransactionConnection,
   readonly [conn: Connection.Connection, counter: number]
@@ -115,68 +118,4 @@ export function make({
   ;(client as any).safe = client
 
   return client
-}
-
-/** @internal */
-export const defaultTransforms = (
-  transformer: (str: string) => string,
-  nested = true
-) => {
-  const transformValue = (value: any) => {
-    if (Array.isArray(value)) {
-      if (value.length === 0 || value[0].constructor !== Object) {
-        return value
-      }
-      return array(value)
-    } else if (value?.constructor === Object) {
-      return transformObject(value)
-    }
-    return value
-  }
-
-  const transformObject = (obj: Record<string, any>): any => {
-    const newObj: Record<string, any> = {}
-    for (const key in obj) {
-      newObj[transformer(key)] = transformValue(obj[key])
-    }
-    return newObj
-  }
-
-  const transformArrayNested = <A extends object>(
-    rows: ReadonlyArray<A>
-  ): ReadonlyArray<A> => {
-    const newRows: Array<A> = new Array(rows.length)
-    for (let i = 0, len = rows.length; i < len; i++) {
-      const row = rows[i]
-      const obj: any = {}
-      for (const key in row) {
-        obj[transformer(key)] = transformValue(row[key])
-      }
-      newRows[i] = obj
-    }
-    return newRows
-  }
-
-  const transformArray = <A extends object>(
-    rows: ReadonlyArray<A>
-  ): ReadonlyArray<A> => {
-    const newRows: Array<A> = new Array(rows.length)
-    for (let i = 0, len = rows.length; i < len; i++) {
-      const row = rows[i]
-      const obj: any = {}
-      for (const key in row) {
-        obj[transformer(key)] = row[key]
-      }
-      newRows[i] = obj
-    }
-    return newRows
-  }
-
-  const array = nested ? transformArrayNested : transformArray
-
-  return {
-    value: transformValue,
-    object: transformObject,
-    array
-  } as const
 }

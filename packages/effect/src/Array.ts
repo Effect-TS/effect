@@ -66,7 +66,7 @@ export const allocate = <A = never>(n: number): Array<A | undefined> => new Arra
  * **Note**. `n` is normalized to an integer >= 1.
  *
  * @example
- * import { makeBy } from 'effect/Array'
+ * import { makeBy } from "effect/Array"
  *
  * assert.deepStrictEqual(makeBy(5, n => n * 2), [0, 2, 4, 6, 8])
  *
@@ -86,7 +86,7 @@ export const makeBy = <A>(n: number, f: (i: number) => A): NonEmptyArray<A> => {
  * Return a `NonEmptyArray` containing a range of integers, including both endpoints.
  *
  * @example
- * import { range } from 'effect/Array'
+ * import { range } from "effect/Array"
  *
  * assert.deepStrictEqual(range(1, 3), [1, 2, 3])
  *
@@ -102,7 +102,7 @@ export const range = (start: number, end: number): NonEmptyArray<number> =>
  * **Note**. `n` is normalized to an integer >= 1.
  *
  * @example
- * import { replicate } from 'effect/Array'
+ * import { replicate } from "effect/Array"
  *
  * assert.deepStrictEqual(replicate("a", 3), ["a", "a", "a"])
  *
@@ -242,7 +242,7 @@ export const prepend: {
  * If either array is non-empty, the result is also a non-empty array.
  *
  * @example
- * import * as Array from "effect/Array"
+ * import { Array } from "effect"
  *
  * assert.deepStrictEqual(
  *   Array.prependAll([1, 2], ["a", "b"]),
@@ -1656,11 +1656,10 @@ export const partitionMap: {
  * Retrieves the `Some` values from an `Iterable` of `Option`s, collecting them into an array.
  *
  * @example
- * import { getSomes } from "effect/Array"
- * import { some, none } from "effect/Option"
+ * import { Array, Option } from "effect"
  *
  * assert.deepStrictEqual(
- *   getSomes([some(1), none(), some(2)]),
+ *   Array.getSomes([Option.some(1), Option.none(), Option.some(2)]),
  *   [1, 2]
  * )
  *
@@ -1673,11 +1672,10 @@ export const getSomes: <A>(self: Iterable<Option<A>>) => Array<A> = filterMap(id
  * Retrieves the `Left` values from an `Iterable` of `Either`s, collecting them into an array.
  *
  * @example
- * import { getLefts } from "effect/Array"
- * import { right, left } from "effect/Either"
+ * import { Array, Either } from "effect"
  *
  * assert.deepStrictEqual(
- *   getLefts([right(1), left("err"), right(2)]),
+ *   Array.getLefts([Either.right(1), Either.left("err"), Either.right(2)]),
  *   ["err"]
  * )
  *
@@ -1699,11 +1697,10 @@ export const getLefts = <R, L>(self: Iterable<Either<R, L>>): Array<L> => {
  * Retrieves the `Right` values from an `Iterable` of `Either`s, collecting them into an array.
  *
  * @example
- * import { getRights } from "effect/Array"
- * import { right, left } from "effect/Either"
+ * import { Array, Either } from "effect"
  *
  * assert.deepStrictEqual(
- *   getRights([right(1), left("err"), right(2)]),
+ *   Array.getRights([Either.right(1), Either.left("err"), Either.right(2)]),
  *   [1, 2]
  * )
  *

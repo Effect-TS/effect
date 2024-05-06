@@ -19,7 +19,7 @@ import * as predicate from "./Predicate.js"
  * @param input - The value to test.
  *
  * @example
- * import { isNumber } from 'effect/Number'
+ * import { isNumber } from "effect/Number"
  *
  * assert.deepStrictEqual(isNumber(2), true)
  * assert.deepStrictEqual(isNumber("2"), false)
@@ -36,7 +36,7 @@ export const isNumber: (input: unknown) => input is number = predicate.isNumber
  * @param that - The second operand.
  *
  * @example
- * import { sum } from 'effect/Number'
+ * import { sum } from "effect/Number"
  *
  * assert.deepStrictEqual(sum(2, 3), 5)
  *
@@ -55,7 +55,7 @@ export const sum: {
  * @param that - The second operand.
  *
  * @example
- * import { multiply } from 'effect/Number'
+ * import { multiply } from "effect/Number"
  *
  * assert.deepStrictEqual(multiply(2, 3), 6)
  *
@@ -74,7 +74,7 @@ export const multiply: {
  * @param that - The second operand.
  *
  * @example
- * import { subtract } from 'effect/Number'
+ * import { subtract } from "effect/Number"
  *
  * assert.deepStrictEqual(subtract(2, 3), -1)
  *
@@ -93,11 +93,10 @@ export const subtract: {
  * @param that - The divisor operand.
  *
  * @example
- * import { divide } from 'effect/Number'
- * import { some, none } from 'effect/Option'
+ * import { Number, Option } from "effect"
  *
- * assert.deepStrictEqual(divide(6, 3), some(2))
- * assert.deepStrictEqual(divide(6, 0), none())
+ * assert.deepStrictEqual(Number.divide(6, 3), Option.some(2))
+ * assert.deepStrictEqual(Number.divide(6, 0), Option.none())
  *
  * @category math
  * @since 2.0.0
@@ -119,7 +118,7 @@ export const divide: {
  * @param that - The divisor operand.
  *
  * @example
- * import { unsafeDivide } from 'effect/Number'
+ * import { unsafeDivide } from "effect/Number"
  *
  * assert.deepStrictEqual(unsafeDivide(6, 3), 2)
  *
@@ -137,7 +136,7 @@ export const unsafeDivide: {
  * @param n - A `number` to be incremented.
  *
  * @example
- * import { increment } from 'effect/Number'
+ * import { increment } from "effect/Number"
  *
  * assert.deepStrictEqual(increment(2), 3)
  *
@@ -152,7 +151,7 @@ export const increment = (n: number): number => n + 1
  * @param n - A `number` to be decremented.
  *
  * @example
- * import { decrement } from 'effect/Number'
+ * import { decrement } from "effect/Number"
  *
  * assert.deepStrictEqual(decrement(3), 2)
  *
@@ -180,7 +179,7 @@ export const Order: order.Order<number> = order.number
  * @param that - The second argument.
  *
  * @example
- * import { lessThan } from 'effect/Number'
+ * import { lessThan } from "effect/Number"
  *
  * assert.deepStrictEqual(lessThan(2, 3), true)
  * assert.deepStrictEqual(lessThan(3, 3), false)
@@ -201,7 +200,7 @@ export const lessThan: {
  * @param that - The second `number` to compare with.
  *
  * @example
- * import { lessThanOrEqualTo } from 'effect/Number'
+ * import { lessThanOrEqualTo } from "effect/Number"
  *
  * assert.deepStrictEqual(lessThanOrEqualTo(2, 3), true)
  * assert.deepStrictEqual(lessThanOrEqualTo(3, 3), true)
@@ -222,7 +221,7 @@ export const lessThanOrEqualTo: {
  * @param that - The second argument.
  *
  * @example
- * import { greaterThan } from 'effect/Number'
+ * import { greaterThan } from "effect/Number"
  *
  * assert.deepStrictEqual(greaterThan(2, 3), false)
  * assert.deepStrictEqual(greaterThan(3, 3), false)
@@ -243,7 +242,7 @@ export const greaterThan: {
  * @param that - The second `number` to compare with.
  *
  * @example
- * import { greaterThanOrEqualTo } from 'effect/Number'
+ * import { greaterThanOrEqualTo } from "effect/Number"
  *
  * assert.deepStrictEqual(greaterThanOrEqualTo(2, 3), false)
  * assert.deepStrictEqual(greaterThanOrEqualTo(3, 3), true)
@@ -265,7 +264,7 @@ export const greaterThanOrEqualTo: {
  * @param maximum - The `maximum` value to check.
  *
  * @example
- * import * as Number from 'effect/Number'
+ * import { Number } from "effect"
  *
  * const between = Number.between({ minimum: 0, maximum: 5 })
  *
@@ -299,7 +298,7 @@ export const between: {
  * @param maximum - The upper end of the range.
  *
  * @example
- * import * as Number from 'effect/Number'
+ * import { Number } from "effect"
  *
  * const clamp = Number.clamp({ minimum: 1, maximum: 5 })
  *
@@ -327,7 +326,7 @@ export const clamp: {
  * @param that - The second `number`.
  *
  * @example
- * import { min } from 'effect/Number'
+ * import { min } from "effect/Number"
  *
  * assert.deepStrictEqual(min(2, 3), 2)
  *
@@ -345,7 +344,7 @@ export const min: {
  * @param that - The second `number`.
  *
  * @example
- * import { max } from 'effect/Number'
+ * import { max } from "effect/Number"
  *
  * assert.deepStrictEqual(max(2, 3), 3)
  *
@@ -362,7 +361,7 @@ export const max: {
  * @param n - The `number` to determine the sign of.
  *
  * @example
- * import { sign } from 'effect/Number'
+ * import { sign } from "effect/Number"
  *
  * assert.deepStrictEqual(sign(-5), -1)
  * assert.deepStrictEqual(sign(0), 0)
@@ -379,7 +378,7 @@ export const sign = (n: number): Ordering => Order(n, 0)
  * @param collection - The collection of `number`s to sum.
  *
  * @example
- * import { sumAll } from 'effect/Number'
+ * import { sumAll } from "effect/Number"
  *
  * assert.deepStrictEqual(sumAll([2, 3, 4]), 9)
  *

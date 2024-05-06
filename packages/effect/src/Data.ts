@@ -26,8 +26,7 @@ export declare namespace Case {
 
 /**
  * @example
- * import * as Data from "effect/Data"
- * import * as Equal from "effect/Equal"
+ * import { Data, Equal } from "effect"
  *
  * const alice = Data.struct({ name: "Alice", age: 30 })
  *
@@ -53,8 +52,7 @@ export const unsafeStruct = <A extends Record<string, any>>(as: A): { readonly [
 
 /**
  * @example
- * import * as Data from "effect/Data"
- * import * as Equal from "effect/Equal"
+ * import { Data, Equal } from "effect"
  *
  * const alice = Data.tuple("Alice", 30)
  *
@@ -73,8 +71,7 @@ export const tuple = <As extends ReadonlyArray<any>>(...as: As): Readonly<As> =>
 
 /**
  * @example
- * import * as Data from "effect/Data"
- * import * as Equal from "effect/Equal"
+ * import { Data, Equal } from "effect"
  *
  * const alice = Data.struct({ name: "Alice", age: 30 })
  * const bob = Data.struct({ name: "Bob", age: 40 })
@@ -112,8 +109,7 @@ export {
    * Provides a constructor for the specified `Case`.
    *
    * @example
-   * import * as Data from "effect/Data"
-   * import * as Equal from "effect/Equal"
+   * import { Data, Equal } from "effect"
    *
    * interface Person {
    *   readonly name: string
@@ -141,7 +137,7 @@ export {
  * Provides a tagged constructor for the specified `Case`.
  *
  * @example
- * import * as Data from "effect/Data"
+ * import { Data } from "effect"
  *
  * interface Person {
  *   readonly _tag: "Person" // the tag
@@ -170,8 +166,7 @@ export const tagged = <A extends { readonly _tag: string }>(
  * Provides a constructor for a Case Class.
  *
  * @example
- * import * as Data from "effect/Data"
- * import * as Equal from "effect/Equal"
+ * import { Data, Equal } from "effect"
  *
  * class Person extends Data.Class<{ readonly name: string }> {}
  *
@@ -196,8 +191,7 @@ export const Class: new<A extends Record<string, any> = {}>(
  * Provides a Tagged constructor for a Case Class.
  *
  * @example
- * import * as Data from "effect/Data"
- * import * as Equal from "effect/Equal"
+ * import { Data, Equal } from "effect"
  *
  * class Person extends Data.TaggedClass("Person")<{ readonly name: string }> {}
  *
@@ -240,7 +234,7 @@ export const Structural: new<A>(
  * Create a tagged enum data type, which is a union of `Data` structs.
  *
  * ```ts
- * import * as Data from "effect/Data"
+ * import { Data } from "effect"
  *
  * type HttpError = Data.TaggedEnum<{
  *   BadRequest: { readonly status: 400, readonly message: string }
@@ -358,7 +352,7 @@ export declare namespace TaggedEnum {
  * the constructor.
  *
  * @example
- * import * as Data from "effect/Data"
+ * import { Data } from "effect"
  *
  * const { BadRequest, NotFound } = Data.taggedEnum<
  *   | { readonly _tag: "BadRequest"; readonly status: 400; readonly message: string }
@@ -368,7 +362,7 @@ export declare namespace TaggedEnum {
  * const notFound = NotFound({ status: 404, message: "Not Found" })
  *
  * @example
- * import * as Data from "effect/Data"
+ * import { Data } from "effect"
  *
  * type MyResult<E, A> = Data.TaggedEnum<{
  *   Failure: { readonly error: E }
