@@ -14,6 +14,15 @@ describe("Arbitrary > Arbitrary", () => {
     )
   })
 
+  it("the errors should disply a path", () => {
+    expect(() => Arbitrary.makeLazy(S.Tuple(S.declare(isUnknown)))).toThrow(
+      new Error(`cannot build an Arbitrary for a declaration without annotations (<declaration schema>) (path [0])`)
+    )
+    expect(() => Arbitrary.makeLazy(S.Struct({ a: S.declare(isUnknown) }))).toThrow(
+      new Error(`cannot build an Arbitrary for a declaration without annotations (<declaration schema>) (path ["a"])`)
+    )
+  })
+
   it("make(S.typeSchema(schema))", () => {
     const schema = S.NumberFromString
     expectValidArbitrary(S.typeSchema(schema))
