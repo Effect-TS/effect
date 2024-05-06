@@ -73,6 +73,15 @@ const symbol = S.SymbolFromSelf.annotations({
 })
 
 describe("Equivalence", () => {
+  it("the errors should disply a path", () => {
+    expect(() => E.make(S.Tuple(S.Never as any))).toThrow(
+      new Error(`cannot build an Equivalence for \`never\` (path [0])`)
+    )
+    expect(() => E.make(S.Struct({ a: S.Never as any }))).toThrow(
+      new Error(`cannot build an Equivalence for \`never\` (path ["a"])`)
+    )
+  })
+
   it("transformation", () => {
     const schema = S.NumberFromString
     const equivalence = E.make(schema)
