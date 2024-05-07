@@ -2,28 +2,11 @@
 "@effect/schema": patch
 ---
 
-## Simplifying Type Extraction from Schemas
+## Simplifying Type Extraction
 
-When working with schemas, sometimes we want to extract certain types automatically. To make this easier, we've made some changes to the `Schema` interface. Now, you can easily access `Type` and `Encoded` directly from a schema without the need for `Schema.Schema.Type` and `Schema.Schema.Encoded`.
-
-Previous Approach
-
-```ts
-import { Schema } from "@effect/schema"
-
-const PersonSchema = Schema.Struct({
-  name: Schema.String,
-  age: Schema.NumberFromString
-})
-
-type PersonType = Schema.Schema.Type<typeof PersonSchema>
-
-type PersonEncoded = Schema.Schema.Encoded<typeof PersonSchema>
-```
-
-In the previous version, to obtain the type of `PersonSchema`, we had to use `Schema.Schema.Type` (and `Schema.Schema.Encoded`). While this method **still works**, it's a bit verbose.
-
-Current Approach
+When we work with schemas, it's common to need to extract their types automatically.
+To make this easier, we've made some changes to the `Schema` interface.
+Now, you can easily access `Type` and `Encoded` directly from a schema without the need for `Schema.Schema.Type` and `Schema.Schema.Encoded`.
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -33,31 +16,34 @@ const PersonSchema = Schema.Struct({
   age: Schema.NumberFromString
 })
 
+// same as type PersonType = Schema.Schema.Type<typeof PersonSchema>
 type PersonType = typeof PersonSchema.Type
 
+// same as Schema.Schema.Encoded<typeof PersonSchema>
 type PersonEncoded = typeof PersonSchema.Encoded
 ```
 
-With this update, accessing the type of `PersonSchema` becomes much simpler. You can now directly use `typeof` to retrieve both the types (`Type` and `Encoded`), making the code more straightforward and cleaner.
+## Default Constructors
 
-## Introducing Default Constructors
-
-When dealing with data, creating values that match a specific schema is crucial. To simplify this process, we've introduced **default constructors** for various types of schemas: `Struct`s, `Record`s, `filter`s, and `brand`s. Let's dive into each of them with some examples to understand better how they work.
+When dealing with data, creating values that match a specific schema is crucial.
+To simplify this process, we've introduced **default constructors** for various types of schemas: `Struct`s, `filter`s, and `brand`s.
 
 > [!NOTE]
 > Default constructors associated with a schema `Schema<A, I, R>` are specifically related to the `A` type, not the `I` type.
 
-Example (`Struct`)
+Let's dive into each of them with some examples to understand better how they work.
+
+**Example** (`Struct`)
 
 ```ts
 import { Schema } from "@effect/schema"
 
-const Struct = Schema.Struct({
+const MyStruct = Schema.Struct({
   name: Schema.NonEmpty
 })
 
-Struct.make({ name: "a" }) // ok
-Struct.make({ name: "" })
+MyStruct.make({ name: "a" }) // ok
+MyStruct.make({ name: "" })
 /*
 throws
 Error: { name: NonEmpty }
@@ -68,26 +54,7 @@ Error: { name: NonEmpty }
 */
 ```
 
-Example (`Record`)
-
-```ts
-import { Schema } from "@effect/schema"
-
-const Record = Schema.Record(Schema.String, Schema.NonEmpty)
-
-Record.make({ a: "a", b: "b" }) // ok
-Record.make({ a: "a", b: "" })
-/*
-throws
-Error: { [x: string]: NonEmpty }
-└─ ["b"]
-   └─ NonEmpty
-      └─ Predicate refinement failure
-         └─ Expected NonEmpty (a non empty string), actual ""
-*/
-```
-
-Example (`filter`)
+**Example** (`filter`)
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -105,19 +72,19 @@ Error: a number between 1 and 10
 */
 ```
 
-Example (`brand`)
+**Example** (`brand`)
 
 ```ts
 import { Schema } from "@effect/schema"
 
-const BrandedNumberSchema = Schema.Number.pipe(
+const MyBrand = Schema.Number.pipe(
   Schema.between(1, 10),
   Schema.brand("MyNumber")
 )
 
 // const n: number & Brand<"MyNumber">
-const n = BrandedNumberSchema.make(5) // ok
-BrandedNumberSchema.make(20)
+const n = MyBrand.make(5) // ok
+MyBrand.make(20)
 /*
 throws
 Error: a number between 1 and 10
@@ -126,11 +93,13 @@ Error: a number between 1 and 10
 */
 ```
 
-When utilizing our default constructors, it's important to grasp the type of value they generate. In the `BrandedNumberSchema` example, the return type of the constructor is `number & Brand<"MyNumber">`, indicating that the resulting value is a number with the added branding "MyNumber".
+When utilizing our default constructors, it's important to grasp the type of value they generate. In the `MyBrand` example, the return type of the constructor is `number & Brand<"MyNumber">`, indicating that the resulting value is a `number` with the added branding "MyNumber".
 
 This differs from the filter example where the return type is simply `number`. The branding offers additional insights about the type, facilitating the identification and manipulation of your data.
 
-Note that default constructors are "unsafe" in the sense that if the input does not conform to the schema, the constructor throws an error containing a description of what is wrong. This is because the goal of default constructors is to provide a quick way to create compliant values (for example, for writing tests or configurations, or in any situation where it is assumed that the input passed to the constructors is valid and the opposite situation is exceptional). To have a "safe" constructor, you can use `Schema.validateEither`:
+Note that default constructors are "unsafe" in the sense that if the input does not conform to the schema, the constructor **throws an error** containing a description of what is wrong. This is because the goal of default constructors is to provide a quick way to create compliant values (for example, for writing tests or configurations, or in any situation where it is assumed that the input passed to the constructors is valid and the opposite situation is exceptional).
+
+To have a "safe" constructor, you can use `Schema.validateEither`:
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -159,25 +128,12 @@ console.log(ctor(20))
 */
 ```
 
-### Introduction to Setting Default Values
+### Default Constructor Values
 
-When constructing objects, it's common to want to assign default values to certain fields to simplify the creation of new instances. Our new `withConstructorDefault` combinator allows you to effortlessly manage the optionality of a field in your default constructor.
+When constructing objects, it's common to want to assign default values to certain fields to simplify the creation of new instances.
+Our new `Schema.withConstructorDefault` combinator allows you to effortlessly manage the optionality of a field **in your default constructor**.
 
-Example Without Default
-
-```ts
-import { Schema } from "@effect/schema"
-
-const PersonSchema = Schema.Struct({
-  name: Schema.NonEmpty,
-  age: Schema.Number
-})
-
-// Both name and age are required
-PersonSchema.make({ name: "John", age: 30 })
-```
-
-Example With Default
+**Example**
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -191,10 +147,9 @@ const PersonSchema = Schema.Struct({
 })
 
 // The age field is optional and defaults to 0
-console.log(PersonSchema.make({ name: "John" })) // Output: { age: 0, name: 'John' }
+console.log(PersonSchema.make({ name: "John" }))
+// => { age: 0, name: 'John' }
 ```
-
-In the second example, notice how the `age` field is now optional and defaults to `0` when not provided.
 
 Defaults are **lazily evaluated**, meaning that a new instance of the default is generated every time the constructor is called:
 
@@ -213,11 +168,36 @@ const PersonSchema = Schema.Struct({
   )
 })
 
-console.log(PersonSchema.make({ name: "name1" })) // { age: 0, timestamp: 1714232909221, name: 'name1' }
-console.log(PersonSchema.make({ name: "name2" })) // { age: 0, timestamp: 1714232909227, name: 'name2' }
+console.log(PersonSchema.make({ name: "name1" }))
+// => { age: 0, timestamp: 1714232909221, name: 'name1' }
+console.log(PersonSchema.make({ name: "name2" }))
+// => { age: 0, timestamp: 1714232909227, name: 'name2' }
 ```
 
 Note how the `timestamp` field varies.
+
+Defaults can also be applied using the `Class` API:
+
+```ts
+import { Schema } from "@effect/schema"
+
+class Person extends Schema.Class<Person>("Person")({
+  name: Schema.NonEmpty,
+  age: Schema.Number.pipe(
+    Schema.propertySignature,
+    Schema.withConstructorDefault(() => 0)
+  ),
+  timestamp: Schema.Number.pipe(
+    Schema.propertySignature,
+    Schema.withConstructorDefault(() => new Date().getTime())
+  )
+}) {}
+
+console.log(new Person({ name: "name1" }))
+// => Person { age: 0, timestamp: 1714400867208, name: 'name1' }
+console.log(new Person({ name: "name2" }))
+// => Person { age: 0, timestamp: 1714400867215, name: 'name2' }
+```
 
 Default values are also "portable", meaning that if you reuse the same property signature in another schema, the default is carried over:
 
@@ -265,30 +245,31 @@ console.log(new Person({ name: "name1" })) // Person { age: 0, timestamp: 171440
 console.log(new Person({ name: "name2" })) // Person { age: 0, timestamp: 1714400867215, name: 'name2' }
 ```
 
-## Introducing Default Decoding Values
+## Default Decoding Values
 
-Our new `withDecodingDefault` combinator makes it easy to handle the optionality of a field during the decoding process.
+Our new `Schema.withDecodingDefault` combinator makes it easy to handle the optionality of a field during the **decoding process**.
 
-```typescript
+```ts
 import { Schema } from "@effect/schema"
 
-const schema = Schema.Struct({
+const MySchema = Schema.Struct({
   a: Schema.optional(Schema.String).pipe(Schema.withDecodingDefault(() => ""))
 })
 
-console.log(Schema.decodeUnknownSync(schema)({})) // { a: '' }
-console.log(Schema.decodeUnknownSync(schema)({ a: undefined })) // { a: '' }
-console.log(Schema.decodeUnknownSync(schema)({ a: "a" })) // { a: 'a' }
+console.log(Schema.decodeUnknownSync(MySchema)({}))
+// => { a: '' }
+console.log(Schema.decodeUnknownSync(MySchema)({ a: undefined }))
+// => { a: '' }
+console.log(Schema.decodeUnknownSync(MySchema)({ a: "a" }))
+// => { a: 'a' }
 ```
-
-This new combinator, `withDecodingDefault`, allows you to set default values for optional fields when decoding data. In the example above, the field `a` in the schema is optional, and if it is missing or `undefined` in the input data, it will default to an empty string (`''`). This can be particularly helpful when working with optional fields where you want to ensure a consistent value is present, even if it's missing in the input data.
 
 If you want to set default values both for the decoding phase and for the default constructor, you can use `Schema.withDefaults`:
 
 ```ts
 import { Schema } from "@effect/schema"
 
-const schema = Schema.Struct({
+const MySchema = Schema.Struct({
   a: Schema.optional(Schema.String).pipe(
     Schema.withDefaults({
       decoding: () => "",
@@ -297,44 +278,51 @@ const schema = Schema.Struct({
   )
 })
 
-console.log(Schema.decodeUnknownSync(schema)({})) // { a: '' }
-console.log(Schema.decodeUnknownSync(schema)({ a: undefined })) // { a: '' }
-console.log(Schema.decodeUnknownSync(schema)({ a: "a" })) // { a: 'a' }
+console.log(Schema.decodeUnknownSync(MySchema)({}))
+// => { a: '' }
+console.log(Schema.decodeUnknownSync(MySchema)({ a: undefined }))
+// => { a: '' }
+console.log(Schema.decodeUnknownSync(MySchema)({ a: "a" }))
+// => { a: 'a' }
 
-console.log(schema.make({})) // { a: '-' }
-console.log(schema.make({ a: "a" })) // { a: 'a' }
+console.log(MySchema.make({})) // => { a: '-' }
+console.log(MySchema.make({ a: "a" })) // => { a: 'a' }
 ```
 
 ## Introducing Schemas as Classes
 
-We've introduced a new method for defining schemas using classes. This approach provides opaque schema types, offering a clearer representation. Let's look at how you can define and use schemas as classes.
+We've introduced a new method for **defining schemas using classes**.
+This approach provides **opaque schema types**, offering a clearer representation.
+Let's look at how you can define and use schemas as classes.
 
 ```ts
 import { Schema } from "@effect/schema"
 
-class Person extends Schema.Struct({
+class PersonSchema extends Schema.Struct({
   name: Schema.String
 }) {}
 
-class Group extends Schema.Struct({
-  person: Person
+class GroupSchema extends Schema.Struct({
+  person: PersonSchema
 }) {}
 
-// const MyUnion: S.Union<[typeof Person, typeof Group]>
-export const MyUnion = Schema.Union(Person, Group)
+// const MyUnion: S.Union<[typeof PersonSchema, typeof GroupSchema]>
+export const MyUnion = Schema.Union(PersonSchema, GroupSchema)
 ```
 
-Notice how the inferred type for `MyUnion` now refers only to the class types, removing the detailed structure, which can sometimes be overwhelming to comprehend. Compare this with the previous method of defining schemas (the old method **still works** if you prefer it!)
+Notice how the inferred type for `MyUnion` now refers only to the class types (`typeof PersonSchema`, `typeof GroupSchema`),
+removing the detailed structure, which can sometimes be overwhelming to comprehend.
+Compare this with the previous method of defining schemas (the old method **still works** if you prefer it!):
 
 ```ts
 import { Schema } from "@effect/schema"
 
-const Person = Schema.Struct({
+const PersonSchema = Schema.Struct({
   name: Schema.String
 })
 
-const Group = Schema.Struct({
-  person: Person
+const GroupSchema = Schema.Struct({
+  person: PersonSchema
 })
 
 /*
@@ -346,28 +334,30 @@ const MyUnion: Schema.Union<[Schema.Struct<{
     }>;
 }>]>
 */
-export const MyUnion = Schema.Union(Person, Group)
+export const MyUnion = Schema.Union(PersonSchema, GroupSchema)
 ```
 
-The new system opens up avenues for new patterns. For example, you can enrich your schema with custom values and functions.
-Let's see an example with the previously defined `Group` schema. For instance, we can add a decoding function attached directly to the schema for convenience:
+The new system brings in new opportunities for implementing different patterns.
+For example, you can enrich your schema with custom values and functions.
+Let's see an example with the previously defined `Group` schema.
+For instance, we can add a decoding function attached directly to the schema for convenience:
 
 ```ts
 import { Schema } from "@effect/schema"
 
-class Person extends Schema.Struct({
+class PersonSchema extends Schema.Struct({
   name: Schema.String
 }) {}
 
-class Group extends Schema.Struct({
-  person: Person
+class GroupSchema extends Schema.Struct({
+  person: PersonSchema
 }) {
   static decodeUnknownSync(u: unknown) {
     return Schema.decodeUnknownSync(this)(u)
   }
 }
 
-console.log(Group.decodeUnknownSync({}))
+console.log(GroupSchema.decodeUnknownSync({}))
 /*
 Error: { person: { name: string } }
 └─ ["person"]
@@ -381,7 +371,7 @@ We've refactored the system that handles user-defined custom messages to make it
 
 Now, custom messages no longer have absolute precedence by default. Instead, it becomes an opt-in behavior by explicitly setting a new flag `override` with the value `true`. Let's see an example:
 
-### Previous Approach
+**Previous Approach**
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -390,7 +380,7 @@ const MyString = Schema.String.pipe(
   Schema.minLength(1),
   Schema.maxLength(2)
 ).annotations({
-  // This message always takes precedence over all previous default messages
+  // This message always takes precedence
   // So, for any error, the same message will always be shown
   message: () => "my custom message"
 })
@@ -406,7 +396,7 @@ As you can see, no matter where the decoding error is raised, the same error mes
 
 Now, let's see how the same schema works with the new system.
 
-### Current Approach
+**Current Approach**
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -415,7 +405,7 @@ const MyString = Schema.String.pipe(
   Schema.minLength(1),
   Schema.maxLength(2)
 ).annotations({
-  // This message is shown only if the last filter (`maxLength`) fails
+  // This message is shown only if the maxLength filter fails
   message: () => "my custom message"
 })
 
@@ -435,7 +425,8 @@ const MyString = Schema.String.pipe(
   Schema.minLength(1),
   Schema.maxLength(2)
 ).annotations({
-  // By setting the `override` flag to `true`, this message will always be shown for any error
+  // By setting the `override` flag to `true`
+  // this message will always be shown for any error
   message: () => ({ message: "my custom message", override: true })
 })
 
@@ -513,13 +504,72 @@ We've introduced a new API interface to the `filter` API. This allows you to acc
 ```ts
 import { Schema } from "@effect/schema"
 
-const schema = Schema.Struct({
+const MyFilter = Schema.Struct({
   a: Schema.String
-}).pipe(Schema.filter(() => true))
+}).pipe(Schema.filter(() => /* some filter... */ true))
 
 // const aField: typeof Schema.String
-const aField = schema.from.fields.a
+const aField = MyFilter.from.fields.a
 ```
+
+The signature of the `filter` function has been simplified and streamlined to be more ergonomic when setting a default message. In the new signature of `filter`, the type of the predicate passed as an argument is as follows:
+
+```ts
+predicate: (a: A, options: ParseOptions, self: AST.Refinement) =>
+  undefined | boolean | string | ParseResult.ParseIssue
+```
+
+with the following semantics:
+
+- `true` means the filter is successful.
+- `false` or `undefined` means the filter fails and no default message is set.
+- `string` means the filter fails and the returned string is used as the default message.
+- `ParseIssue` means the filter fails and the returned ParseIssue is used as an error.
+
+Let's see an example of how it worked before and how it works now.
+
+**Before**
+
+```ts
+import { Schema, ParseResult } from "@effect/schema"
+import { Option } from "effect"
+
+const Positive = Schema.Number.pipe(
+  Schema.filter((n, _, ast) =>
+    n > 0
+      ? Option.none()
+      : Option.some(new ParseResult.Type(ast, n, "must be positive"))
+  )
+)
+
+Schema.decodeUnknownSync(Positive)(-1)
+/*
+throws
+Error: <refinement schema>
+└─ Predicate refinement failure
+   └─ must be positive
+*/
+```
+
+**Now**
+
+```ts
+import { Schema } from "@effect/schema"
+
+const Positive = Schema.Number.pipe(
+  Schema.filter((n) => (n > 0 ? undefined : "must be positive"))
+)
+
+Schema.decodeUnknownSync(Positive)(-1)
+/*
+throws
+Error: { number | filter }
+└─ Predicate refinement failure
+   └─ must be positive
+*/
+```
+
+Setting messages in the manner shown in the previous example makes filters "portable", meaning they are preserved when using extensions, such as `Schema.extend` or `Class.extend`. Therefore, it is preferred over setting messages with the `message` annotation.
 
 ## JSON Schema Compiler Refactoring
 
@@ -542,7 +592,7 @@ console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
 
 Now, let's compare the JSON Schemas produced in both the previous and new versions.
 
-### Before
+**Before**
 
 ```json
 {
@@ -629,7 +679,7 @@ But here's what the result would be:
 
 As you can see, we lost the `"minLength": 2` constraint, which is the useful part of precisely defining our schemas using refinements.
 
-### After
+**After**
 
 Now, let's see what `JSONSchema.make` API produces by default for the same schema:
 
@@ -657,103 +707,6 @@ Now, let's see what `JSONSchema.make` API produces by default for the same schem
 ```
 
 As you can verify, the refinement has been preserved.
-
-## Class API Improvements
-
-The new combinator `withConstructorDefault` has also allowed us to enhance the `fields` feature exposed by the following APIs:
-
-- `TaggedClass`
-- `TaggedError`
-- `TaggedRequest`
-
-Let's illustrate with an example:
-
-```ts
-import { Schema } from "@effect/schema"
-
-class A extends Schema.TaggedClass<A>("A")("A", {
-  a: Schema.String
-}) {}
-
-/*
-const schema: Schema.Struct<{
-    readonly _tag: Schema.PropertySignature<":", "A", never, ":", "A", true, never>;
-    readonly a: typeof Schema.String;
-}>
-*/
-export const schema = Schema.Struct(A.fields)
-
-// The `_tag` field is optional!
-schema.make({ a: "foo" })
-```
-
-## Simplified Filter API Signature
-
-The signature of the `filter` function has been simplified and streamlined to be more ergonomic when setting a default message. In the new signature of `filter`, the type of the predicate passed as an argument is as follows:
-
-```ts
-predicate: (
-  a: Types.NoInfer<Schema.Type<S>>,
-  options: ParseOptions,
-  self: AST.Refinement
-) => undefined | boolean | string | ParseResult.ParseIssue
-```
-
-with the following semantics:
-
-- `true` means the filter is successful.
-- `false` or `undefined` means the filter fails and no default message is set.
-- `string` means the filter fails and the returned string is used as the default message.
-- `ParseIssue` means the filter fails and the returned ParseIssue is used as an error.
-
-Let's see an example of how it worked before and how it works now.
-
-**Before**
-
-```ts
-import { Schema, ParseResult } from "@effect/schema"
-import { Option } from "effect"
-
-const Positive = Schema.Number.pipe(
-  Schema.filter((n, _, ast) =>
-    n > 0
-      ? Option.none()
-      : Option.some(new ParseResult.Type(ast, n, "must be positive"))
-  )
-)
-
-Schema.decodeUnknownSync(Positive)(-1)
-/*
-throws
-Error: <refinement schema>
-└─ Predicate refinement failure
-   └─ must be positive
-*/
-```
-
-**Now**
-
-```ts
-import { Schema } from "@effect/schema"
-
-const Positive = Schema.Number.pipe(
-  Schema.filter((n) => (n > 0 ? undefined : "must be positive"))
-)
-
-Schema.decodeUnknownSync(Positive)(-1)
-/*
-throws
-Error: { number | filter }
-└─ Predicate refinement failure
-   └─ must be positive
-*/
-```
-
-Now the `filter` function has a cleaner signature, making it easier to understand and use for newcomers. It allows developers to set default error messages more intuitively, enhancing the overall developer experience.
-
-### Portable filters
-
-Setting messages in the manner shown in the previous example makes filters "portable", meaning they are preserved when using extensions, such as `Schema.extend` or `Class.extend`. Therefore, it is preferred over setting messages with the `message` annotation.
 
 ## Improve `extend` to support refinements and `suspend`ed schemas
 
