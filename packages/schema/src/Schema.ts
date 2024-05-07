@@ -83,7 +83,7 @@ export interface Schema<in out A, in out I = A, out R = never> extends Schema.Va
  * @since 1.0.0
  */
 export interface SchemaClass<A, I = A, R = never> extends Annotable<SchemaClass<A, I, R>, A, I, R> {
-  new(): {}
+  new(_: never): Schema.Variance<A, I, R>
 }
 
 /**
@@ -92,6 +92,7 @@ export interface SchemaClass<A, I = A, R = never> extends Annotable<SchemaClass<
  */
 export const make = <A, I = A, R = never>(ast: AST.AST): SchemaClass<A, I, R> =>
   class SchemaClass {
+    [TypeId] = variance
     static Type: A
     static Encoded: I
     static [TypeId] = variance
@@ -203,7 +204,7 @@ export interface Annotable<Self extends Schema<A, I, R>, A, I = A, R = never> ex
 export interface AnnotableClass<Self extends SchemaClass<A, I, R>, A, I = A, R = never>
   extends Annotable<Self, A, I, R>
 {
-  new(): {}
+  new(_: never): Schema.Variance<A, I, R>
 }
 
 /**

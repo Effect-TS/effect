@@ -19,6 +19,16 @@ declare const cContext: S.Schema<boolean, boolean, "c">
 class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
 
 // ---------------------------------------------
+// SchemaClass
+// ---------------------------------------------
+
+// @ts-expect-error
+export const instance: S.String = {}
+
+// @ts-expect-error
+new S.String()
+
+// ---------------------------------------------
 // Schema.Encoded
 // ---------------------------------------------
 

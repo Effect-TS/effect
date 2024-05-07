@@ -4,7 +4,7 @@
 
 ## Simplifying Type Extraction from Schemas
 
-When working with schemas, sometimes we want to extract certain types automatically. To make this easier, we've made some changes to the `Schema` interface. Now, you can easily access `Type` and `Encoded` directly from a schema without the need for `Schema.Schema.Type` and `Schema.Schema.Type`.
+When working with schemas, sometimes we want to extract certain types automatically. To make this easier, we've made some changes to the `Schema` interface. Now, you can easily access `Type` and `Encoded` directly from a schema without the need for `Schema.Schema.Type` and `Schema.Schema.Encoded`.
 
 Previous Approach
 
