@@ -53,7 +53,7 @@
     "@opentelemetry/sdk-trace-base": "^1.22",
     "@opentelemetry/sdk-trace-node": "^1.22",
     "@opentelemetry/sdk-trace-web": "^1.22",
-    "@opentelemetry/semantic-conventions": "^1.22",
+    "@opentelemetry/semantic-conventions": "^1.24.1",
     "effect": "workspace:^"
   },
   "peerDependenciesMeta": {

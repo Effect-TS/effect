@@ -46,6 +46,7 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "@op-engineering/op-sqlite": "5.0.5"
+    "@op-engineering/op-sqlite": "5.0.5",
+    "@opentelemetry/semantic-conventions": "^1.24.1"
   }
 }

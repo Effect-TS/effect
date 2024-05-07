@@ -5,6 +5,7 @@ import * as Client from "@effect/sql/Client"
 import type { Connection } from "@effect/sql/Connection"
 import { SqlError } from "@effect/sql/Error"
 import * as Statement from "@effect/sql/Statement"
+import * as Otel from "@opentelemetry/semantic-conventions"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
@@ -378,8 +379,8 @@ export const make = (
         compiler,
         transactionAcquirer: pool.get,
         spanAttributes: [
-          ["db.system", "mssql"],
-          ["db.name", options.database ?? "master"],
+          [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_MSSQL],
+          [Otel.SEMATTRS_DB_NAME, options.database ?? "master"],
           ["server.address", options.server],
           ["server.port", options.port ?? 1433]
         ]
