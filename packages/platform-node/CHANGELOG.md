@@ -1,5 +1,29 @@
 # @effect/platform-node
 
+## 0.49.0
+
+### Minor Changes
+
+- [#2703](https://github.com/Effect-TS/effect/pull/2703) [`d57fbbb`](https://github.com/Effect-TS/effect/commit/d57fbbbd6c466936213a671fc3cd2390064f864e) Thanks [@tim-smart](https://github.com/tim-smart)! - replace isows with WebSocketConstructor service in @effect/platform/Socket
+
+  You now have to provide a WebSocketConstructor implementation to the `Socket.makeWebSocket` api.
+
+  ```ts
+  import * as Socket from "@effect/platform/Socket";
+  import * as NodeSocket from "@effect/platform-node/NodeSocket";
+  import { Effect } from "effect";
+
+  Socket.makeWebSocket("ws://localhost:8080").pipe(
+    Effect.provide(NodeSocket.layerWebSocketConstructor), // use "ws" npm package
+  );
+  ```
+
+### Patch Changes
+
+- Updated dependencies [[`d57fbbb`](https://github.com/Effect-TS/effect/commit/d57fbbbd6c466936213a671fc3cd2390064f864e)]:
+  - @effect/platform@0.53.0
+  - @effect/platform-node-shared@0.4.19
+
 ## 0.48.4
 
 ### Patch Changes
