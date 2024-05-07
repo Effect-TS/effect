@@ -869,13 +869,7 @@ JSONSchema
 
 Schema
 
-- rename `$String` API interface to `String$`
-- rename `$Number` API interface to `Number$`
-- rename `$Boolean` API interface to `Boolean$`
-- rename `$Object` API interface to `Object$`
-- rename `$BigInt` API interface to `BigInt$`
-- rename `$Symbol` API interface to `Symbol$`
-- rename `$Date` API interface to `Date$`
+- replace numerous API interfaces with class-based schema definitions
 - rename `$Array` API interface to `Array$`
 - rename `$Record` API interface to `Record$`
 - rename `$ReadonlyMap` API interface to `ReadonlyMap$`
