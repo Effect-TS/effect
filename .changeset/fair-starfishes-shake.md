@@ -569,8 +569,6 @@ Error: { number | filter }
 */
 ```
 
-Setting messages in the manner shown in the previous example makes filters "portable", meaning they are preserved when using extensions, such as `Schema.extend` or `Class.extend`. Therefore, it is preferred over setting messages with the `message` annotation.
-
 ## JSON Schema Compiler Refactoring
 
 The JSON Schema compiler has been refactored to be more user-friendly. Now, the `make` API attempts to produce the optimal JSON Schema for the input part of the decoding phase. This means that starting from the most nested schema, it traverses the chain, including each refinement, and stops at the first transformation found.
