@@ -6499,7 +6499,6 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
 }): any => {
   const classSymbol = Symbol.for(`@effect/schema/${kind}/${identifier}`)
   const schema = fromSchema ?? Struct(fields)
-  const validate = ParseResult.validateSync(schema)
   const from = option_.match(AST.getTitleAnnotation(schema.ast), {
     onNone: () => schema.annotations({ title: `${identifier} (Encoded side)` }),
     onSome: () => schema
@@ -6514,7 +6513,7 @@ const makeClass = ({ Base, annotations, fields, fromSchema, identifier, kind, ta
         props = { ...props, ...tag }
       }
       if (disableValidation !== true) {
-        props = validate(props)
+        props = ParseResult.validateSync(schema)(props)
       }
       super(props, true)
     }
