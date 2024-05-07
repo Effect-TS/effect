@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.66.15
+
+### Patch Changes
+
+- [#2710](https://github.com/Effect-TS/effect/pull/2710) [`121d6d9`](https://github.com/Effect-TS/effect/commit/121d6d93755138c7510ba3ab4f0019ec0cb91890) Thanks [@gcanti](https://github.com/gcanti)! - Class API: avoid access before initialization when creating a class with suspended props, closes #2709
+
 ## 0.66.14
 
 ### Patch Changes
