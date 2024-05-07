@@ -1,6 +1,11 @@
 /**
  * @since 1.0.0
  */
+export * as BrowerSocket from "./BrowerSocket.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as BrowserHttpClient from "./BrowserHttpClient.js"
 
 /**

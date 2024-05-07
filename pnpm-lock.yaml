@@ -275,9 +275,6 @@ importers:
       find-my-way-ts:
         specifier: ^0.1.2
         version: 0.1.2
-      isows:
-        specifier: ^1.0.4
-        version: 1.0.4(ws@8.17.0)
       multipasta:
         specifier: ^0.2.1
         version: 0.2.1
@@ -4259,11 +4256,6 @@ packages:
   isobject@3.0.1:
     resolution: {integrity: sha512-WhB9zCku7EGTj/HQQRz5aUQEUeoQZH2bWcltRErOpymJ4boYE6wL9Tbr23krRPSZ+C5zqNSrSw+Cc7sZZ4b7vg==}
     engines: {node: '>=0.10.0'}
-
-  isows@1.0.4:
-    resolution: {integrity: sha512-hEzjY+x9u9hPmBom9IIAqdJCwNLax+xrPb51vEPpERoFlIxgmZcHzsT5jKG06nvInKOBGvReAVz80Umed5CczQ==}
-    peerDependencies:
-      ws: '*'
 
   istanbul-lib-coverage@3.2.2:
     resolution: {integrity: sha512-O8dpsF+r0WV/8MNRKfnmrtCWhuKjxrq2w+jpzBL5UZKTi2LeVWnWOmWRxFlesJONmc+wLAGvKQZEOanko0LFTg==}
@@ -10620,10 +10612,6 @@ snapshots:
       isarray: 1.0.0
 
   isobject@3.0.1: {}
-
-  isows@1.0.4(ws@8.17.0):
-    dependencies:
-      ws: 8.17.0
 
   istanbul-lib-coverage@3.2.2: {}
 

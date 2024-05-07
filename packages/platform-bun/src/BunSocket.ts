@@ -3,7 +3,6 @@
  */
 import * as Socket from "@effect/platform/Socket"
 import * as Layer from "effect/Layer"
-import * as WS from "ws"
 
 /**
  * @since 1.0.0
@@ -25,12 +24,7 @@ export const layerWebSocket = (url: string, options?: {
  * @since 1.0.0
  * @category layers
  */
-export const layerWebSocketConstructor: Layer.Layer<Socket.WebSocketConstructor> = Layer.sync(
+export const layerWebSocketConstructor: Layer.Layer<Socket.WebSocketConstructor> = Layer.succeed(
   Socket.WebSocketConstructor,
-  () => {
-    if ("WebSocket" in globalThis) {
-      return (url) => new globalThis.WebSocket(url)
-    }
-    return (url) => new WS.WebSocket(url) as unknown as globalThis.WebSocket
-  }
+  (url) => new globalThis.WebSocket(url)
 )
