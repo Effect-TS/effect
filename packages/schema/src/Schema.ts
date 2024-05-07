@@ -82,9 +82,7 @@ export interface Schema<in out A, in out I = A, out R = never> extends Schema.Va
  * @category model
  * @since 1.0.0
  */
-export interface SchemaClass<A, I = A, R = never> extends Annotable<SchemaClass<A, I, R>, A, I, R> {
-  new(_: never): Schema.Variance<A, I, R>
-}
+export interface SchemaClass<A, I = A, R = never> extends AnnotableClass<SchemaClass<A, I, R>, A, I, R> {}
 
 /**
  * @category constructors
@@ -201,9 +199,7 @@ export interface Annotable<Self extends Schema<A, I, R>, A, I = A, R = never> ex
  * @category annotations
  * @since 1.0.0
  */
-export interface AnnotableClass<Self extends SchemaClass<A, I, R>, A, I = A, R = never>
-  extends Annotable<Self, A, I, R>
-{
+export interface AnnotableClass<Self extends Schema<A, I, R>, A, I = A, R = never> extends Annotable<Self, A, I, R> {
   new(_: never): Schema.Variance<A, I, R>
 }
 
@@ -881,61 +877,85 @@ export const instanceOf = <A extends abstract new(...args: any) => any>(
  * @category primitives
  * @since 1.0.0
  */
-export class Undefined extends make<undefined>(AST.undefinedKeyword) {}
+export class Undefined extends make<undefined>(AST.undefinedKeyword) {
+  static override annotations: (annotations: Annotations.Schema<undefined>) => typeof Undefined = super.annotations
+}
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export class Void extends make<void>(AST.voidKeyword) {}
+export class Void extends make<void>(AST.voidKeyword) {
+  static override annotations: (annotations: Annotations.Schema<void>) => typeof Void = super.annotations
+}
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export class Null extends make<null>(AST.null) {}
+export class Null extends make<null>(AST.null) {
+  static override annotations: (annotations: Annotations.Schema<null>) => typeof Null = super.annotations
+}
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export class Never extends make<never>(AST.neverKeyword) {}
+export class Never extends make<never>(AST.neverKeyword) {
+  static override annotations: (annotations: Annotations.Schema<never>) => typeof Never = super.annotations
+}
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export class Unknown extends make<unknown>(AST.unknownKeyword) {}
+export class Unknown extends make<unknown>(AST.unknownKeyword) {
+  static override annotations: (annotations: Annotations.Schema<unknown>) => typeof Unknown = super.annotations
+}
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export class Any extends make<any>(AST.anyKeyword) {}
+export class Any extends make<any>(AST.anyKeyword) {
+  static override annotations: (annotations: Annotations.Schema<any>) => typeof Any = super.annotations
+}
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export class BigIntFromSelf extends make<bigint>(AST.bigIntKeyword) {}
+export class BigIntFromSelf extends make<bigint>(AST.bigIntKeyword) {
+  static override annotations: (annotations: Annotations.Schema<bigint>) => typeof BigIntFromSelf = super.annotations
+}
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export class SymbolFromSelf extends make<symbol>(AST.symbolKeyword) {}
+export class SymbolFromSelf extends make<symbol>(AST.symbolKeyword) {
+  static override annotations: (annotations: Annotations.Schema<symbol>) => typeof SymbolFromSelf = super.annotations
+}
 
 /** @ignore */
-class String$ extends make<string>(AST.stringKeyword) {}
+class String$ extends make<string>(AST.stringKeyword) {
+  static override annotations: (annotations: Annotations.Schema<string>) => typeof String$ = super.annotations
+}
 
 /** @ignore */
-class Number$ extends make<number>(AST.numberKeyword) {}
+class Number$ extends make<number>(AST.numberKeyword) {
+  static override annotations: (annotations: Annotations.Schema<number>) => typeof Number$ = super.annotations
+}
 
 /** @ignore */
-class Boolean$ extends make<boolean>(AST.booleanKeyword) {}
+class Boolean$ extends make<boolean>(AST.booleanKeyword) {
+  static override annotations: (annotations: Annotations.Schema<boolean>) => typeof Boolean$ = super.annotations
+}
 
 /** @ignore */
-class Object$ extends make<object>(AST.objectKeyword) {}
+class Object$ extends make<object>(AST.objectKeyword) {
+  static override annotations: (annotations: Annotations.Schema<object>) => typeof Object$ = super.annotations
+}
 
 export {
   /**
@@ -3559,41 +3579,31 @@ export const minLength = <A extends string>(
 export const PatternTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/Pattern")
 
 /**
- * @category api interface
- * @since 1.0.0
- */
-export interface pattern<S extends Schema.Any> extends filter<S> {
-  readonly regexp: RegExp
-}
-
-/**
  * @category string filters
  * @since 1.0.0
  */
 export const pattern = <A extends string>(
-  regexp: RegExp,
+  regex: RegExp,
   annotations?: Annotations.Filter<A>
 ) =>
-<I, R>(self: Schema<A, I, R>): pattern<Schema<A, I, R>> => {
-  const pattern = regexp.source
-  return class PatternClass extends self.pipe(
+<I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> => {
+  const pattern = regex.source
+  return self.pipe(
     filter(
-      (a) => {
+      (a): a is A => {
         // The following line ensures that `lastIndex` is reset to `0` in case the user has specified the `g` flag
-        regexp.lastIndex = 0
-        return regexp.test(a)
+        regex.lastIndex = 0
+        return regex.test(a)
       },
       {
-        typeId: { id: PatternTypeId, annotation: { regex: regexp } },
+        typeId: { id: PatternTypeId, annotation: { regex } },
         description: `a string matching the pattern ${pattern}`,
         jsonSchema: { pattern },
-        arbitrary: () => (fc) => fc.stringMatching(regexp) as any,
+        arbitrary: () => (fc) => fc.stringMatching(regex) as any,
         ...annotations
       }
     )
-  ) {
-    static regexp = regexp
-  }
+  )
 }
 
 /**
@@ -3705,7 +3715,9 @@ export const lowercased =
  */
 export class Lowercased extends String$.pipe(
   lowercased({ identifier: "Lowercased", title: "Lowercased" })
-) {}
+) {
+  static override annotations: (annotations: Annotations.Schema<string>) => typeof Lowercased = super.annotations
+}
 
 /**
  * @category type id
@@ -3735,7 +3747,9 @@ export const uppercased =
  */
 export class Uppercased extends String$.pipe(
   uppercased({ identifier: "Uppercased", title: "Uppercased" })
-) {}
+) {
+  static override annotations: (annotations: Annotations.Schema<string>) => typeof Uppercased = super.annotations
+}
 
 /**
  * @category type id
@@ -3786,7 +3800,9 @@ export const length = <A extends string>(
  * @category string constructors
  * @since 1.0.0
  */
-export class Char extends String$.pipe(length(1, { identifier: "Char" })) {}
+export class Char extends String$.pipe(length(1, { identifier: "Char" })) {
+  static override annotations: (annotations: Annotations.Schema<string>) => typeof Char = super.annotations
+}
 
 /**
  * @category string filters
@@ -3810,7 +3826,9 @@ export class Lowercase extends transform(
   String$,
   Lowercased,
   { decode: (s) => s.toLowerCase(), encode: identity }
-).annotations({ identifier: "Lowercase" }) {}
+).annotations({ identifier: "Lowercase" }) {
+  static override annotations: (annotations: Annotations.Schema<string>) => typeof Lowercase = super.annotations
+}
 
 /**
  * This schema converts a string to uppercase.
@@ -3822,7 +3840,9 @@ export class Uppercase extends transform(
   String$,
   Uppercased,
   { decode: (s) => s.toUpperCase(), encode: identity }
-).annotations({ identifier: "Uppercase" }) {}
+).annotations({ identifier: "Uppercase" }) {
+  static override annotations: (annotations: Annotations.Schema<string>) => typeof Uppercase = super.annotations
+}
 
 /**
  * @category string constructors
@@ -3830,7 +3850,9 @@ export class Uppercase extends transform(
  */
 export class Trimmed extends String$.pipe(
   trimmed({ identifier: "Trimmed", title: "Trimmed" })
-) {}
+) {
+  static override annotations: (annotations: Annotations.Schema<string>) => typeof Trimmed = super.annotations
+}
 
 /**
  * This schema allows removing whitespaces from the beginning and end of a string.
@@ -3842,7 +3864,9 @@ export class Trim extends transform(
   String$,
   Trimmed,
   { decode: (s) => s.trim(), encode: identity }
-).annotations({ identifier: "Trim" }) {}
+).annotations({ identifier: "Trim" }) {
+  static override annotations: (annotations: Annotations.Schema<string>) => typeof Trim = super.annotations
+}
 
 /**
  * Returns a schema that allows splitting a string into an array of strings.
@@ -3921,7 +3945,9 @@ export const parseJson: {
  */
 export class NonEmpty extends String$.pipe(
   nonEmpty({ identifier: "NonEmpty", title: "NonEmpty" })
-) {}
+) {
+  static override annotations: (annotations: Annotations.Schema<string>) => typeof NonEmpty = super.annotations
+}
 
 /**
  * @category type id
@@ -3947,7 +3973,9 @@ export class UUID extends String$.pipe(
     description: "a Universally Unique Identifier",
     arbitrary: (): LazyArbitrary<string> => (fc) => fc.uuid()
   })
-) {}
+) {
+  static override annotations: (annotations: Annotations.Schema<string>) => typeof UUID = super.annotations
+}
 
 /**
  * @category type id
@@ -3974,7 +4002,9 @@ export class ULID extends String$.pipe(
     description: "a Universally Unique Lexicographically Sortable Identifier",
     arbitrary: (): LazyArbitrary<string> => (fc) => fc.ulid()
   })
-) {}
+) {
+  static override annotations: (annotations: Annotations.Schema<string>) => typeof ULID = super.annotations
+}
 
 /**
  * @category type id
@@ -4311,25 +4341,33 @@ export const parseNumber = <A extends string, I, R>(
  * @category number constructors
  * @since 1.0.0
  */
-export class NumberFromString extends parseNumber(String$).annotations({ identifier: "NumberFromString" }) {}
+export class NumberFromString extends parseNumber(String$).annotations({ identifier: "NumberFromString" }) {
+  static override annotations: (annotations: Annotations.Schema<number>) => typeof NumberFromString = super.annotations
+}
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export class Finite extends Number$.pipe(finite({ identifier: "Finite", title: "Finite" })) {}
+export class Finite extends Number$.pipe(finite({ identifier: "Finite", title: "Finite" })) {
+  static override annotations: (annotations: Annotations.Schema<number>) => typeof Finite = super.annotations
+}
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export class Int extends Number$.pipe(int({ identifier: "Int", title: "Int" })) {}
+export class Int extends Number$.pipe(int({ identifier: "Int", title: "Int" })) {
+  static override annotations: (annotations: Annotations.Schema<number>) => typeof Int = super.annotations
+}
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export class NonNaN extends Number$.pipe(nonNaN({ identifier: "NonNaN", title: "NonNaN" })) {}
+export class NonNaN extends Number$.pipe(nonNaN({ identifier: "NonNaN", title: "NonNaN" })) {
+  static override annotations: (annotations: Annotations.Schema<number>) => typeof NonNaN = super.annotations
+}
 
 /**
  * @category number constructors
@@ -4337,7 +4375,9 @@ export class NonNaN extends Number$.pipe(nonNaN({ identifier: "NonNaN", title: "
  */
 export class Positive extends Number$.pipe(
   positive({ identifier: "Positive", title: "Positive" })
-) {}
+) {
+  static override annotations: (annotations: Annotations.Schema<number>) => typeof Positive = super.annotations
+}
 
 /**
  * @category number constructors
@@ -4345,7 +4385,9 @@ export class Positive extends Number$.pipe(
  */
 export class Negative extends Number$.pipe(
   negative({ identifier: "Negative", title: "Negative" })
-) {}
+) {
+  static override annotations: (annotations: Annotations.Schema<number>) => typeof Negative = super.annotations
+}
 
 /**
  * @category number constructors
@@ -4353,7 +4395,9 @@ export class Negative extends Number$.pipe(
  */
 export class NonPositive extends Number$.pipe(
   nonPositive({ identifier: "NonPositive", title: "NonPositive" })
-) {}
+) {
+  static override annotations: (annotations: Annotations.Schema<number>) => typeof NonPositive = super.annotations
+}
 
 /**
  * @category number constructors
@@ -4361,7 +4405,9 @@ export class NonPositive extends Number$.pipe(
  */
 export class NonNegative extends Number$.pipe(
   nonNegative({ identifier: "NonNegative", title: "NonNegative" })
-) {}
+) {
+  static override annotations: (annotations: Annotations.Schema<number>) => typeof NonNegative = super.annotations
+}
 
 /**
  * @category type id
@@ -4395,20 +4441,26 @@ export class JsonNumber extends Number$.pipe(
     description: "a JSON-compatible number, excluding NaN, +Infinity, and -Infinity",
     jsonSchema: { type: "number" }
   })
-) {}
+) {
+  static override annotations: (annotations: Annotations.Schema<number>) => typeof JsonNumber = super.annotations
+}
 
 /**
  * @category boolean transformations
  * @since 1.0.0
  */
-export class Not extends transform(Boolean$, Boolean$, { decode: boolean_.not, encode: boolean_.not }) {}
+export class Not extends transform(Boolean$, Boolean$, { decode: boolean_.not, encode: boolean_.not }) {
+  static override annotations: (annotations: Annotations.Schema<boolean>) => typeof Not = super.annotations
+}
 
 /** @ignore */
 class Symbol$ extends transform(
   String$,
   SymbolFromSelf,
   { strict: false, decode: (s) => Symbol.for(s), encode: (sym) => sym.description }
-).annotations({ identifier: "symbol" }) {}
+).annotations({ identifier: "symbol" }) {
+  static override annotations: (annotations: Annotations.Schema<symbol>) => typeof Symbol$ = super.annotations
+}
 
 export {
   /**
@@ -4623,7 +4675,9 @@ class BigInt$ extends transformOrFail(
     decode: (s, _, ast) => ParseResult.fromOption(bigInt_.fromString(s), () => new ParseResult.Type(ast, s)),
     encode: (n) => ParseResult.succeed(String(n))
   }
-).annotations({ identifier: "bigint" }) {}
+).annotations({ identifier: "bigint" }) {
+  static override annotations: (annotations: Annotations.Schema<bigint>) => typeof BigInt$ = super.annotations
+}
 
 export {
   /**
@@ -4720,7 +4774,9 @@ export class BigIntFromNumber extends transformOrFail(
       ),
     encode: (b, _, ast) => ParseResult.fromOption(bigInt_.toNumber(b), () => new ParseResult.Type(ast, b))
   }
-).annotations({ identifier: "BigintFromNumber" }) {}
+).annotations({ identifier: "BigintFromNumber" }) {
+  static override annotations: (annotations: Annotations.Schema<bigint>) => typeof BigIntFromNumber = super.annotations
+}
 
 /**
  * @category Secret constructors
@@ -4733,7 +4789,10 @@ export class SecretFromSelf extends declare(
     pretty: (): pretty_.Pretty<secret_.Secret> => (secret) => String(secret),
     arbitrary: (): LazyArbitrary<secret_.Secret> => (fc) => fc.string().map((_) => secret_.fromString(_))
   }
-) {}
+) {
+  static override annotations: (annotations: Annotations.Schema<secret_.Secret>) => typeof SecretFromSelf = super
+    .annotations
+}
 
 /**
  * A schema that transforms a `string` into a `Secret`.
@@ -4745,7 +4804,9 @@ export class Secret extends transform(
   String$,
   SecretFromSelf,
   { strict: false, decode: (str) => secret_.fromString(str), encode: (secret) => secret_.value(secret) }
-).annotations({ identifier: "Secret" }) {}
+).annotations({ identifier: "Secret" }) {
+  static override annotations: (annotations: Annotations.Schema<secret_.Secret>) => typeof Secret = super.annotations
+}
 
 /**
  * @category Duration constructors
@@ -4770,7 +4831,10 @@ export class DurationFromSelf extends declare(
       ),
     equivalence: (): Equivalence.Equivalence<duration_.Duration> => duration_.Equivalence
   }
-) {}
+) {
+  static override annotations: (annotations: Annotations.Schema<duration_.Duration>) => typeof DurationFromSelf = super
+    .annotations
+}
 
 /**
  * A schema that transforms a `bigint` tuple into a `Duration`.
@@ -4790,7 +4854,10 @@ export class DurationFromNanos extends transformOrFail(
         onSome: (val) => ParseResult.succeed(val)
       })
   }
-).annotations({ identifier: "DurationFromNanos" }) {}
+).annotations({ identifier: "DurationFromNanos" }) {
+  static override annotations: (annotations: Annotations.Schema<duration_.Duration>) => typeof DurationFromNanos = super
+    .annotations
+}
 
 /**
  * A schema that transforms a `number` tuple into a `Duration`.
@@ -4803,7 +4870,10 @@ export class DurationFromMillis extends transform(
   Number$,
   DurationFromSelf,
   { decode: (ms) => duration_.millis(ms), encode: (n) => duration_.toMillis(n) }
-).annotations({ identifier: "DurationFromMillis" }) {}
+).annotations({ identifier: "DurationFromMillis" }) {
+  static override annotations: (annotations: Annotations.Schema<duration_.Duration>) => typeof DurationFromMillis =
+    super.annotations
+}
 
 const hrTime: Schema<readonly [seconds: number, nanos: number]> = Tuple(
   NonNegative.pipe(
@@ -4833,7 +4903,10 @@ export class Duration extends transform(
     decode: ([seconds, nanos]) => duration_.nanos(BigInt(seconds) * BigInt(1e9) + BigInt(nanos)),
     encode: (duration) => duration_.toHrTime(duration)
   }
-).annotations({ identifier: "Duration" }) {}
+).annotations({ identifier: "Duration" }) {
+  static override annotations: (annotations: Annotations.Schema<duration_.Duration>) => typeof Duration = super
+    .annotations
+}
 
 /**
  * Clamps a `Duration` between a minimum and a maximum value.
@@ -5230,7 +5303,9 @@ export class DateFromSelf extends declare(
     arbitrary: (): LazyArbitrary<Date> => (fc) => fc.date({ noInvalidDate: false }),
     equivalence: () => Equivalence.Date
   }
-) {}
+) {
+  static override annotations: (annotations: Annotations.Schema<Date>) => typeof DateFromSelf = super.annotations
+}
 
 /**
  * Represents a schema for handling only **valid** dates. For example, `new Date("Invalid Date")` is rejected, even though it is an instance of `Date`.
@@ -5243,7 +5318,9 @@ export class ValidDateFromSelf extends DateFromSelf.pipe(
     identifier: "ValidDateFromSelf",
     description: "a valid Date instance"
   })
-) {}
+) {
+  static override annotations: (annotations: Annotations.Schema<Date>) => typeof ValidDateFromSelf = super.annotations
+}
 
 /**
  * Represents a schema that converts a `string` into a (potentially invalid) `Date` (e.g., `new Date("Invalid Date")` is not rejected).
@@ -5255,12 +5332,16 @@ export class DateFromString extends transform(
   String$,
   DateFromSelf,
   { decode: (s) => new Date(s), encode: (d) => d.toISOString() }
-).annotations({ identifier: "DateFromString" }) {}
+).annotations({ identifier: "DateFromString" }) {
+  static override annotations: (annotations: Annotations.Schema<Date>) => typeof DateFromString = super.annotations
+}
 
 /** @ignore */
 class Date$ extends DateFromString.pipe(
   validDate({ identifier: "Date" })
-) {}
+) {
+  static override annotations: (annotations: Annotations.Schema<Date>) => typeof Date$ = super.annotations
+}
 
 export {
   /**
@@ -5283,7 +5364,9 @@ export class DateFromNumber extends transform(
   Number$,
   DateFromSelf,
   { decode: (n) => new Date(n), encode: (d) => d.getTime() }
-).annotations({ identifier: "DateFromNumber" }) {}
+).annotations({ identifier: "DateFromNumber" }) {
+  static override annotations: (annotations: Annotations.Schema<Date>) => typeof DateFromNumber = super.annotations
+}
 
 /**
  * @category Option utils
@@ -6006,7 +6089,10 @@ export class BigDecimalFromSelf extends declare(
     arbitrary: bigDecimalArbitrary,
     equivalence: () => bigDecimal_.Equivalence
   }
-) {}
+) {
+  static override annotations: (annotations: Annotations.Schema<bigDecimal_.BigDecimal>) => typeof BigDecimalFromSelf =
+    super.annotations
+}
 
 /**
  * @category BigDecimal transformations
@@ -6023,7 +6109,10 @@ export class BigDecimal extends transformOrFail(
       })),
     encode: (val) => ParseResult.succeed(bigDecimal_.format(bigDecimal_.normalize(val)))
   }
-).annotations({ identifier: "BigDecimal" }) {}
+).annotations({ identifier: "BigDecimal" }) {
+  static override annotations: (annotations: Annotations.Schema<bigDecimal_.BigDecimal>) => typeof BigDecimal = super
+    .annotations
+}
 
 /**
  * A schema that transforms a `number` into a `BigDecimal`.
@@ -6039,7 +6128,11 @@ export class BigDecimalFromNumber extends transformOrFail(
     decode: (num) => ParseResult.succeed(bigDecimal_.fromNumber(num)),
     encode: (val) => ParseResult.succeed(bigDecimal_.unsafeToNumber(val))
   }
-).annotations({ identifier: "BigDecimalFromNumber" }) {}
+).annotations({ identifier: "BigDecimalFromNumber" }) {
+  static override annotations: (
+    annotations: Annotations.Schema<bigDecimal_.BigDecimal>
+  ) => typeof BigDecimalFromNumber = super.annotations
+}
 
 /**
  * @category type id
@@ -7099,7 +7192,10 @@ export class FiberIdFromSelf extends declare(
     pretty: () => fiberIdPretty,
     arbitrary: () => fiberIdArbitrary
   }
-) {}
+) {
+  static override annotations: (annotations: Annotations.Schema<fiberId_.FiberId>) => typeof FiberIdFromSelf = super
+    .annotations
+}
 
 const fiberIdDecode = (input: FiberIdEncoded): fiberId_.FiberId => {
   switch (input._tag) {
@@ -7135,7 +7231,9 @@ export class FiberId extends transform(
   FiberIdEncoded,
   FiberIdFromSelf,
   { decode: fiberIdDecode, encode: fiberIdEncode }
-).annotations({ identifier: "FiberId" }) {}
+).annotations({ identifier: "FiberId" }) {
+  static override annotations: (annotations: Annotations.Schema<fiberId_.FiberId>) => typeof FiberId = super.annotations
+}
 
 /**
  * @category Cause utils
@@ -7938,4 +8036,7 @@ export class BooleanFromUnknown extends transform(
   Unknown,
   Boolean$,
   { decode: Predicate.isTruthy, encode: identity }
-).annotations({ identifier: "BooleanFromUnknown" }) {}
+).annotations({ identifier: "BooleanFromUnknown" }) {
+  static override annotations: (annotations: Annotations.Schema<boolean>) => typeof BooleanFromUnknown = super
+    .annotations
+}

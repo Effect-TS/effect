@@ -21,12 +21,6 @@ describe("pattern", () => {
     expect(S.decodeSync(schema)("A")).toEqual("A")
   })
 
-  it("should expose a regexp field", () => {
-    const regexp = /^(A|B)$/g
-    const schema = S.String.pipe(S.pattern(regexp))
-    expect(schema.regexp).toStrictEqual(regexp)
-  })
-
   it("decoding", async () => {
     const schema = S.String.pipe(S.pattern(/^abb+$/))
     await Util.expectDecodeUnknownSuccess(schema, "abb")

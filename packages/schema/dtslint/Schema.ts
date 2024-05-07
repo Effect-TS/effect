@@ -49,7 +49,7 @@ hole<S.Schema.Type<typeof S.Never>>()
 // @ts-expect-error
 S.String.annotations({ a: 1 })
 
-// $ExpectType SchemaClass<string, string, never>
+// $ExpectType typeof String$
 S.String.annotations({ [Symbol.for("a")]: 1 })
 
 /**
@@ -301,11 +301,8 @@ pipe(S.String, S.minLength(5))
 // $ExpectType filter<Schema<string, string, never>>
 pipe(S.String, S.length(5))
 
-// $ExpectType pattern<Schema<string, string, never>>
+// $ExpectType filter<Schema<string, string, never>>
 pipe(S.String, S.pattern(/a/))
-
-// $ExpectType RegExp
-pipe(S.String, S.pattern(/a/)).regexp
 
 // $ExpectType filter<Schema<string, string, never>>
 pipe(S.String, S.startsWith("a"))
