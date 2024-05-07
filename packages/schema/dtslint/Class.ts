@@ -96,7 +96,7 @@ hole<S.Schema.Encoded<typeof ExtendedFromClassFields>>()
 // $ExpectType "a" | "c"
 hole<S.Schema.Context<typeof ExtendedFromClassFields>>()
 
-// $ExpectType { readonly b: typeof $String; readonly c: Schema<boolean, boolean, "c">; readonly a: Schema<string, string, "a">; }
+// $ExpectType { readonly b: typeof String$; readonly c: Schema<boolean, boolean, "c">; readonly a: Schema<string, string, "a">; }
 ExtendedFromClassFields.fields
 
 // $ExpectType [props: { readonly a: string; readonly b: string; readonly c: boolean; }, disableValidation?: boolean | undefined]
@@ -123,7 +123,7 @@ hole<S.Schema.Encoded<typeof ExtendedFromTaggedClassFields>>()
 // $ExpectType "a" | "c"
 hole<S.Schema.Context<typeof ExtendedFromTaggedClassFields>>()
 
-// $ExpectType { readonly _tag: PropertySignature<":", "ExtendedFromTaggedClassFields", never, ":", "ExtendedFromTaggedClassFields", true, never>; readonly b: typeof $String; readonly c: Schema<boolean, boolean, "c">; readonly a: Schema<string, string, "a">; }
+// $ExpectType { readonly _tag: PropertySignature<":", "ExtendedFromTaggedClassFields", never, ":", "ExtendedFromTaggedClassFields", true, never>; readonly b: typeof String$; readonly c: Schema<boolean, boolean, "c">; readonly a: Schema<string, string, "a">; }
 ExtendedFromTaggedClassFields.fields
 
 // $ExpectType [props: { readonly a: string; readonly b: string; readonly c: boolean; }, disableValidation?: boolean | undefined]

@@ -183,19 +183,19 @@ S.Undefined
 // $ExpectType Schema<string, string, never>
 S.asSchema(S.String)
 
-// $ExpectType typeof $String
+// $ExpectType typeof String$
 S.String
 
 // $ExpectType Schema<number, number, never>
 S.asSchema(S.Number)
 
-// $ExpectType typeof $Number
+// $ExpectType typeof Number$
 S.Number
 
 // $ExpectType Schema<boolean, boolean, never>
 S.asSchema(S.Boolean)
 
-// $ExpectType typeof $Boolean
+// $ExpectType typeof Boolean$
 S.Boolean
 
 // $ExpectType Schema<bigint, bigint, never>
@@ -207,7 +207,7 @@ S.BigIntFromSelf
 // $ExpectType Schema<bigint, string, never>
 S.asSchema(S.BigInt)
 
-// $ExpectType typeof $BigInt
+// $ExpectType typeof BigInt$
 S.BigInt
 
 // $ExpectType Schema<symbol, symbol, never>
@@ -219,7 +219,7 @@ S.SymbolFromSelf
 // $ExpectType Schema<symbol, string, never>
 S.asSchema(S.Symbol)
 
-// $ExpectType typeof $Symbol
+// $ExpectType typeof Symbol$
 S.Symbol
 
 // $ExpectType Schema<unknown, unknown, never>
@@ -237,7 +237,7 @@ S.Any
 // $ExpectType Schema<object, object, never>
 S.asSchema(S.Object)
 
-// $ExpectType typeof $Object
+// $ExpectType typeof Object$
 S.Object
 
 // ---------------------------------------------
@@ -368,7 +368,7 @@ S.Enums(Fruits).enums.Banana
 // $ExpectType Schema<string | null, string | null, never>
 S.asSchema(S.NullOr(S.String))
 
-// $ExpectType NullOr<typeof $String>
+// $ExpectType NullOr<typeof String$>
 S.NullOr(S.String)
 
 // $ExpectType Schema<number | null, string | null, never>
@@ -381,22 +381,22 @@ S.NullOr(S.NumberFromString)
 // Union
 // ---------------------------------------------
 
-// $ExpectType Union<[typeof $String, typeof $Number]>
+// $ExpectType Union<[typeof String$, typeof Number$]>
 S.Union(S.String, S.Number).annotations({})
 
 // $ExpectType Schema<string | number, string | number, never>
 S.asSchema(S.Union(S.String, S.Number))
 
-// $ExpectType Union<[typeof $String, typeof $Number]>
+// $ExpectType Union<[typeof String$, typeof Number$]>
 S.Union(S.String, S.Number)
 
 // $ExpectType Schema<number | boolean, string | boolean, never>
 S.asSchema(S.Union(S.Boolean, S.NumberFromString))
 
-// $ExpectType Union<[typeof $Boolean, typeof NumberFromString]>
+// $ExpectType Union<[typeof Boolean$, typeof NumberFromString]>
 S.Union(S.Boolean, S.NumberFromString)
 
-// $ExpectType readonly [typeof $String, typeof $Number]
+// $ExpectType readonly [typeof String$, typeof Number$]
 S.Union(S.String, S.Number).members
 
 // ---------------------------------------------
@@ -413,16 +413,16 @@ S.keyof(S.Struct({ a: S.String, b: S.NumberFromString }))
 // $ExpectType Schema<readonly [string, number], readonly [string, number], never>
 S.asSchema(S.Tuple(S.String, S.Number))
 
-// $ExpectType Tuple<[typeof $String, typeof $Number]>
+// $ExpectType Tuple<[typeof String$, typeof Number$]>
 S.Tuple(S.String, S.Number)
 
 // $ExpectType Schema<readonly [string, number], readonly [string, string], never>
 S.asSchema(S.Tuple(S.String, S.NumberFromString))
 
-// $ExpectType Tuple<[typeof $String, typeof NumberFromString]>
+// $ExpectType Tuple<[typeof String$, typeof NumberFromString]>
 S.Tuple(S.String, S.NumberFromString)
 
-// $ExpectType readonly [typeof $String, typeof $Number]
+// $ExpectType readonly [typeof String$, typeof Number$]
 S.Tuple(S.String, S.Number).elements
 
 // $ExpectType readonly []
@@ -435,16 +435,16 @@ S.Tuple(S.String, S.Number).rest
 // $ExpectType Schema<readonly [string, ...number[], boolean], readonly [string, ...number[], boolean], never>
 S.asSchema(S.Tuple([S.String], S.Number, S.Boolean))
 
-// $ExpectType TupleType<readonly [typeof $String], [typeof $Number, typeof $Boolean]>
+// $ExpectType TupleType<readonly [typeof String$], [typeof Number$, typeof Boolean$]>
 S.Tuple([S.String], S.Number, S.Boolean)
 
-// $ExpectType readonly [typeof $String]
+// $ExpectType readonly [typeof String$]
 S.Tuple([S.String], S.Number).elements
 
-// $ExpectType readonly [typeof $Number]
+// $ExpectType readonly [typeof Number$]
 S.Tuple([S.String], S.Number).rest
 
-// $ExpectType readonly [typeof $Number, typeof $Boolean]
+// $ExpectType readonly [typeof Number$, typeof Boolean$]
 S.Tuple([S.String], S.Number, S.Boolean).rest
 
 // ---------------------------------------------
@@ -454,13 +454,13 @@ S.Tuple([S.String], S.Number, S.Boolean).rest
 // $ExpectType Schema<readonly [string, number, boolean?], readonly [string, number, boolean?], never>
 S.asSchema(S.Tuple(S.String, S.Number, S.optionalElement(S.Boolean)))
 
-// $ExpectType Tuple<[typeof $String, typeof $Number, OptionalElement<typeof $Boolean>]>
+// $ExpectType Tuple<[typeof String$, typeof Number$, OptionalElement<typeof Boolean$>]>
 S.Tuple(S.String, S.Number, S.optionalElement(S.Boolean))
 
 // $ExpectType Schema<readonly [string, number, number?], readonly [string, string, string?], never>
 S.asSchema(S.Tuple(S.String, S.NumberFromString, S.optionalElement(S.NumberFromString)))
 
-// $ExpectType Tuple<[typeof $String, typeof NumberFromString, OptionalElement<typeof NumberFromString>]>
+// $ExpectType Tuple<[typeof String$, typeof NumberFromString, OptionalElement<typeof NumberFromString>]>
 S.Tuple(S.String, S.NumberFromString, S.optionalElement(S.NumberFromString))
 
 // ---------------------------------------------
@@ -470,25 +470,25 @@ S.Tuple(S.String, S.NumberFromString, S.optionalElement(S.NumberFromString))
 // $ExpectType Schema<readonly number[], readonly number[], never>
 S.asSchema(S.Array(S.Number))
 
-// $ExpectType $Array<typeof $Number>
+// $ExpectType Array$<typeof Number$>
 S.Array(S.Number)
 
-// $ExpectType $Array<typeof $Number>
+// $ExpectType Array$<typeof Number$>
 S.Number.pipe(S.Array)
 
 // $ExpectType Schema<readonly number[], readonly string[], never>
 S.asSchema(S.Array(S.NumberFromString))
 
-// $ExpectType $Array<typeof NumberFromString>
+// $ExpectType Array$<typeof NumberFromString>
 S.Array(S.NumberFromString)
 
-// $ExpectType typeof $String
+// $ExpectType typeof String$
 S.Array(S.String).value
 
 // $ExpectType readonly []
 S.Array(S.String).elements
 
-// $ExpectType readonly [typeof $String]
+// $ExpectType readonly [typeof String$]
 S.Array(S.String).rest
 
 // ---------------------------------------------
@@ -498,10 +498,10 @@ S.Array(S.String).rest
 // $ExpectType Schema<readonly [number, ...number[]], readonly [number, ...number[]], never>
 S.asSchema(S.NonEmptyArray(S.Number))
 
-// $ExpectType NonEmptyArray<typeof $Number>
+// $ExpectType NonEmptyArray<typeof Number$>
 S.NonEmptyArray(S.Number)
 
-// $ExpectType NonEmptyArray<typeof $Number>
+// $ExpectType NonEmptyArray<typeof Number$>
 S.Number.pipe(S.NonEmptyArray)
 
 // $ExpectType Schema<readonly [number, ...number[]], readonly [string, ...string[]], never>
@@ -510,35 +510,35 @@ S.asSchema(S.NonEmptyArray(S.NumberFromString))
 // $ExpectType NonEmptyArray<typeof NumberFromString>
 S.NonEmptyArray(S.NumberFromString)
 
-// $ExpectType typeof $String
+// $ExpectType typeof String$
 S.NonEmptyArray(S.String).value
 
-// $ExpectType readonly [typeof $String]
+// $ExpectType readonly [typeof String$]
 S.NonEmptyArray(S.String).elements
 
-// $ExpectType readonly [typeof $String]
+// $ExpectType readonly [typeof String$]
 S.NonEmptyArray(S.String).rest
 
 // ---------------------------------------------
 // Struct
 // ---------------------------------------------
 
-// $ExpectType { readonly a: typeof $String; readonly b: typeof $Number; }
+// $ExpectType { readonly a: typeof String$; readonly b: typeof Number$; }
 S.Struct({ a: S.String, b: S.Number }).fields
 
 // $ExpectType readonly []
 S.Struct({ a: S.String, b: S.Number }).records
 
-// $ExpectType { readonly a: typeof $String; readonly b: typeof $Number; }
+// $ExpectType { readonly a: typeof String$; readonly b: typeof Number$; }
 S.Struct({ a: S.String, b: S.Number }).annotations({}).fields
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }, never>
 S.asSchema(S.Struct({ a: S.String, b: S.Number }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; }>
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; }>
 S.Struct({ a: S.String, b: S.Number })
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof NumberFromString; }>
+// $ExpectType Struct<{ a: typeof String$; b: typeof NumberFromString; }>
 const MyModel = S.Struct({ a: S.String, b: S.NumberFromString })
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: string; }, never>
@@ -559,13 +559,13 @@ S.Struct({ a: S.Never })
 // $ExpectType Schema<{ readonly [x: string]: number; readonly a: number; }, { readonly [x: string]: string; readonly a: string; }, never>
 S.asSchema(S.Struct({ a: S.NumberFromString }, { key: S.String, value: S.NumberFromString }))
 
-// $ExpectType TypeLiteral<{ a: typeof NumberFromString; }, readonly [{ readonly key: typeof $String; readonly value: typeof NumberFromString; }]>
+// $ExpectType TypeLiteral<{ a: typeof NumberFromString; }, readonly [{ readonly key: typeof String$; readonly value: typeof NumberFromString; }]>
 S.Struct({ a: S.NumberFromString }, { key: S.String, value: S.NumberFromString })
 
-// $ExpectType readonly [{ readonly key: typeof $String; readonly value: typeof $Number; }]
+// $ExpectType readonly [{ readonly key: typeof String$; readonly value: typeof Number$; }]
 S.Struct({ a: S.Number }, { key: S.String, value: S.Number }).records
 
-// $ExpectType readonly [{ readonly key: typeof $String; readonly value: typeof $Number; }, { readonly key: typeof $Symbol; readonly value: typeof $Number; }]
+// $ExpectType readonly [{ readonly key: typeof String$; readonly value: typeof Number$; }, { readonly key: typeof Symbol$; readonly value: typeof Number$; }]
 S.Struct({ a: S.Number }, { key: S.String, value: S.Number }, { key: S.Symbol, value: S.Number }).records
 
 // $ExpectType Schema<{ readonly a: any; }, { readonly a: never; }, never>
@@ -587,13 +587,13 @@ S.asSchema(S.Struct({ a: neverAnyPropertySignature }))
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: boolean; }, { readonly a: string; readonly b: number; readonly c?: boolean; }, never>
 S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { exact: true }) }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<"?:", boolean, never, "?:", boolean, false, never>; }>
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: PropertySignature<"?:", boolean, never, "?:", boolean, false, never>; }>
 S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { exact: true }) })
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: number; }, { readonly a: string; readonly b: number; readonly c?: string; }, never>
 S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString, { exact: true }) }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<"?:", number, never, "?:", string, false, never>; }>
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: PropertySignature<"?:", number, never, "?:", string, false, never>; }>
 S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString, { exact: true }) })
 
 // $ExpectType Schema<{ readonly a?: never; }, { readonly a?: never; }, never>
@@ -624,13 +624,13 @@ S.optional(S.String, { default: null })
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: boolean | undefined; }, { readonly a: string; readonly b: number; readonly c?: boolean | undefined; }, never>
 S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean) }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<"?:", boolean | undefined, never, "?:", boolean | undefined, false, never>; }>
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: PropertySignature<"?:", boolean | undefined, never, "?:", boolean | undefined, false, never>; }>
 S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean) })
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: number | undefined; }, { readonly a: string; readonly b: number; readonly c?: string | undefined; }, never>
 S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString) }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<"?:", number | undefined, never, "?:", string | undefined, false, never>; }>
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: PropertySignature<"?:", number | undefined, never, "?:", string | undefined, false, never>; }>
 S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString) })
 
 // $ExpectType Schema<{ readonly a?: undefined; }, { readonly a?: undefined; }, never>
@@ -656,7 +656,7 @@ S.asSchema(S.Struct({
   c: S.optional(S.Boolean, { exact: true, default: () => false })
 }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", boolean, never, "?:", boolean, false, never>; }>
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: PropertySignature<":", boolean, never, "?:", boolean, false, never>; }>
 S.Struct({
   a: S.String,
   b: S.Number,
@@ -670,7 +670,7 @@ S.asSchema(S.Struct({
   c: S.optional(S.NumberFromString, { exact: true, default: () => 0 })
 }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", number, never, "?:", string, false, never>; }>
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: PropertySignature<":", number, never, "?:", string, false, never>; }>
 S.Struct({
   a: S.String,
   b: S.Number,
@@ -693,13 +693,13 @@ S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a" as const,
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: boolean; }, { readonly a: string; readonly b: number; readonly c?: boolean | undefined; }, never>
 S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { default: () => false }) }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", boolean, never, "?:", boolean | undefined, false, never>; }>
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: PropertySignature<":", boolean, never, "?:", boolean | undefined, false, never>; }>
 S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { default: () => false }) })
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: number; }, { readonly a: string; readonly b: number; readonly c?: string | undefined; }, never>
 S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString, { default: () => 0 }) }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", number, never, "?:", string | undefined, false, never>; }>
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: PropertySignature<":", number, never, "?:", string | undefined, false, never>; }>
 S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString, { default: () => 0 }) })
 
 // $ExpectType Struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b" | undefined, false, never>; }>
@@ -743,7 +743,7 @@ S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a" as const,
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: Option<boolean>; }, { readonly a: string; readonly b: number; readonly c?: boolean; }, never>
 S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { exact: true, as: "Option" }) }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", Option<boolean>, never, "?:", boolean, false, never>; }>
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: PropertySignature<":", Option<boolean>, never, "?:", boolean, false, never>; }>
 S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { exact: true, as: "Option" }) })
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: Option<number>; }, { readonly a: string; readonly b: number; readonly c?: string; }, never>
@@ -753,7 +753,7 @@ S.asSchema(S.Struct({
   c: S.optional(S.NumberFromString, { exact: true, as: "Option" })
 }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", Option<number>, never, "?:", string, false, never>; }>
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: PropertySignature<":", Option<number>, never, "?:", string, false, never>; }>
 S.Struct({
   a: S.String,
   b: S.Number,
@@ -773,13 +773,13 @@ S.Struct({ a: S.String.pipe(S.optional({ exact: true, as: "Option" })) })
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: Option<boolean>; }, { readonly a: string; readonly b: number; readonly c?: boolean | undefined; }, never>
 S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { as: "Option" }) }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", Option<boolean>, never, "?:", boolean | undefined, false, never>; }>
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: PropertySignature<":", Option<boolean>, never, "?:", boolean | undefined, false, never>; }>
 S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean, { as: "Option" }) })
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: Option<number>; }, { readonly a: string; readonly b: number; readonly c?: string | undefined; }, never>
 S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString, { as: "Option" }) }))
 
-// $ExpectType Struct<{ a: typeof $String; b: typeof $Number; c: PropertySignature<":", Option<number>, never, "?:", string | undefined, false, never>; }>
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; c: PropertySignature<":", Option<number>, never, "?:", string | undefined, false, never>; }>
 S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString, { as: "Option" }) })
 
 // $ExpectType Schema<{ readonly a: Option<string>; }, { readonly a?: string | undefined; }, never>
@@ -961,61 +961,61 @@ S.required(
 // $ExpectType Schema<string, string, never>
 S.asSchema(S.Record(S.String, S.String).key)
 
-// $ExpectType typeof $String
+// $ExpectType typeof String$
 S.Record(S.String, S.String).key
 
 // $ExpectType Schema<string, string, never>
 S.asSchema(S.Record(S.String, S.String).value)
 
-// $ExpectType typeof $String
+// $ExpectType typeof String$
 S.Record(S.String, S.String).value
 
 // $ExpectType Schema<{ readonly [x: string]: string; }, { readonly [x: string]: string; }, never>
 S.asSchema(S.Record(S.String, S.String))
 
-// $ExpectType $Record<typeof $String, typeof $String>
+// $ExpectType Record$<typeof String$, typeof String$>
 S.Record(S.String, S.String)
 
 // $ExpectType Schema<{ readonly [x: string]: number; }, { readonly [x: string]: string; }, never>
 S.asSchema(S.Record(S.String, S.NumberFromString))
 
-// $ExpectType $Record<typeof $String, typeof NumberFromString>
+// $ExpectType Record$<typeof String$, typeof NumberFromString>
 S.Record(S.String, S.NumberFromString)
 
 // $ExpectType Schema<{ readonly [x: string]: string; }, { readonly [x: string]: string; }, never>
 S.asSchema(S.Record(pipe(S.String, S.minLength(2)), S.String))
 
-// $ExpectType $Record<filter<Schema<string, string, never>>, typeof $String>
+// $ExpectType Record$<filter<Schema<string, string, never>>, typeof String$>
 S.Record(pipe(S.String, S.minLength(2)), S.String)
 
 // $ExpectType Schema<{ readonly a: string; readonly b: string; }, { readonly a: string; readonly b: string; }, never>
 S.asSchema(S.Record(S.Union(S.Literal("a"), S.Literal("b")), S.String))
 
-// $ExpectType $Record<Union<[Literal<["a"]>, Literal<["b"]>]>, typeof $String>
+// $ExpectType Record$<Union<[Literal<["a"]>, Literal<["b"]>]>, typeof String$>
 S.Record(S.Union(S.Literal("a"), S.Literal("b")), S.String)
 
 // $ExpectType Schema<{ readonly [x: symbol]: string; }, { readonly [x: symbol]: string; }, never>
 S.asSchema(S.Record(S.SymbolFromSelf, S.String))
 
-// $ExpectType $Record<typeof SymbolFromSelf, typeof $String>
+// $ExpectType Record$<typeof SymbolFromSelf, typeof String$>
 S.Record(S.SymbolFromSelf, S.String)
 
 // $ExpectType Schema<{ readonly [x: `a${string}`]: string; }, { readonly [x: `a${string}`]: string; }, never>
 S.asSchema(S.Record(S.TemplateLiteral(S.Literal("a"), S.String), S.String))
 
-// $ExpectType $Record<SchemaClass<`a${string}`, `a${string}`, never>, typeof $String>
+// $ExpectType Record$<SchemaClass<`a${string}`, `a${string}`, never>, typeof String$>
 S.Record(S.TemplateLiteral(S.Literal("a"), S.String), S.String)
 
 // $ExpectType Schema<{ readonly [x: string & Brand<"UserId">]: string; }, { readonly [x: string]: string; }, never>
 S.asSchema(S.Record(S.String.pipe(S.brand("UserId")), S.String))
 
-// $ExpectType $Record<brand<typeof $String, "UserId">, typeof $String>
+// $ExpectType Record$<brand<typeof String$, "UserId">, typeof String$>
 S.Record(S.String.pipe(S.brand("UserId")), S.String)
 
 // $ExpectType Schema<{ readonly [x: string & Brand<symbol>]: string; }, { readonly [x: string]: string; }, never>
 S.asSchema(S.Record(S.String.pipe(S.brand(Symbol.for("UserId"))), S.String))
 
-// $ExpectType $Record<brand<typeof $String, symbol>, typeof $String>
+// $ExpectType Record$<brand<typeof String$, symbol>, typeof String$>
 S.Record(S.String.pipe(S.brand(Symbol.for("UserId"))), S.String)
 
 // ---------------------------------------------
@@ -1028,7 +1028,7 @@ S.asSchema(pipe(
   S.extend(S.Struct({ c: S.String }))
 ))
 
-// $ExpectType extend<Struct<{ a: typeof $String; b: typeof $String; }>, Struct<{ c: typeof $String; }>>
+// $ExpectType extend<Struct<{ a: typeof String$; b: typeof String$; }>, Struct<{ c: typeof String$; }>>
 pipe(
   S.Struct({ a: S.String, b: S.String }),
   S.extend(S.Struct({ c: S.String }))
@@ -1037,13 +1037,13 @@ pipe(
 // $ExpectType Schema<{ readonly a: string; readonly b: string; readonly c: string; }, { readonly a: string; readonly b: string; readonly c: string; }, never>
 S.asSchema(S.extend(S.Struct({ a: S.String, b: S.String }), S.Struct({ c: S.String })))
 
-// $ExpectType extend<Struct<{ a: typeof $String; b: typeof $String; }>, Struct<{ c: typeof $String; }>>
+// $ExpectType extend<Struct<{ a: typeof String$; b: typeof String$; }>, Struct<{ c: typeof String$; }>>
 S.extend(S.Struct({ a: S.String, b: S.String }), S.Struct({ c: S.String }))
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; } | { readonly a: string; readonly c: boolean; }, { readonly a: string; readonly b: number; } | { readonly a: string; readonly c: boolean; }, never>
 S.asSchema(S.extend(S.Struct({ a: S.String }), S.Union(S.Struct({ b: S.Number }), S.Struct({ c: S.Boolean }))))
 
-// $ExpectType extend<Struct<{ a: typeof $String; }>, Union<[Struct<{ b: typeof $Number; }>, Struct<{ c: typeof $Boolean; }>]>>
+// $ExpectType extend<Struct<{ a: typeof String$; }>, Union<[Struct<{ b: typeof Number$; }>, Struct<{ c: typeof Boolean$; }>]>>
 S.extend(S.Struct({ a: S.String }), S.Union(S.Struct({ b: S.Number }), S.Struct({ c: S.Boolean })))
 
 // TODO: rises an error in TypeScript@5.0
@@ -1191,7 +1191,7 @@ S.String.pipe(S.filter((
 const predicateFilter1 = (u: unknown): boolean => typeof u === "string"
 const FromFilter = S.Union(S.String, S.Number)
 
-// $ExpectType filter<Union<[typeof $String, typeof $Number]>>
+// $ExpectType filter<Union<[typeof String$, typeof Number$]>>
 pipe(FromFilter, S.filter(predicateFilter1))
 
 const FromRefinement = S.Struct({
@@ -1328,31 +1328,31 @@ S.Number.pipe(S.fromBrand(Eur))
 // $ExpectType Schema<string, string, never>
 S.asSchema(S.mutable(S.String))
 
-// mutable<typeof $String>
+// mutable<typeof String$>
 S.mutable(S.String)
 
 // $ExpectType Schema<{ a: number; }, { a: number; }, never>
 S.asSchema(S.mutable(S.Struct({ a: S.Number })))
 
-// $ExpectType mutable<Struct<{ a: typeof $Number; }>>
+// $ExpectType mutable<Struct<{ a: typeof Number$; }>>
 S.mutable(S.Struct({ a: S.Number }))
 
 // $ExpectType Schema<{ [x: string]: number; }, { [x: string]: number; }, never>
 S.asSchema(S.mutable(S.Record(S.String, S.Number)))
 
-// $ExpectType mutable<$Record<typeof $String, typeof $Number>>
+// $ExpectType mutable<Record$<typeof String$, typeof Number$>>
 S.mutable(S.Record(S.String, S.Number))
 
 // $ExpectType Schema<string[], string[], never>
 S.asSchema(S.mutable(S.Array(S.String)))
 
-// $ExpectType mutable<$Array<typeof $String>>
+// $ExpectType mutable<Array$<typeof String$>>
 S.mutable(S.Array(S.String))
 
 // $ExpectType Schema<string[] | { a: number; }, string[] | { a: number; }, never>
 S.asSchema(S.mutable(S.Union(S.Struct({ a: S.Number }), S.Array(S.String))))
 
-// $ExpectType mutable<Union<[Struct<{ a: typeof $Number; }>, $Array<typeof $String>]>>
+// $ExpectType mutable<Union<[Struct<{ a: typeof Number$; }>, Array$<typeof String$>]>>
 S.mutable(S.Union(S.Struct({ a: S.Number }), S.Array(S.String)))
 
 // $ExpectType mutable<filter<Schema<readonly string[], readonly string[], never>>>
@@ -1367,7 +1367,7 @@ S.mutable(S.suspend(() => S.Array(S.String)))
 // $ExpectType Schema<string[], string[], never>
 S.asSchema(S.mutable(S.transform(S.Array(S.String), S.Array(S.String), { decode: identity, encode: identity })))
 
-// $ExpectType mutable<transform<$Array<typeof $String>, $Array<typeof $String>>>
+// $ExpectType mutable<transform<Array$<typeof String$>, Array$<typeof String$>>>
 S.mutable(S.transform(S.Array(S.String), S.Array(S.String), { decode: identity, encode: identity }))
 
 // $ExpectType Schema<{ a: string; b: number; }, { a: string; b: number; }, never>
@@ -1386,16 +1386,16 @@ S.asSchema(S.extend(S.mutable(S.Struct({ a: S.String })), S.Record(S.String, S.S
 // transform
 // ---------------------------------------------
 
-// $ExpectType transform<typeof $String, typeof $Number>
+// $ExpectType transform<typeof String$, typeof Number$>
 const transform1 = S.String.pipe(S.transform(S.Number, { decode: (s) => s.length, encode: (n) => String(n) }))
 
-// $ExpectType typeof $String
+// $ExpectType typeof String$
 transform1.from
 
-// $ExpectType typeof $Number
+// $ExpectType typeof Number$
 transform1.to
 
-// $ExpectType transform<typeof $String, typeof $Number>
+// $ExpectType transform<typeof String$, typeof Number$>
 transform1.annotations({})
 
 // $ExpectType Schema<number, string, never>
@@ -1404,7 +1404,7 @@ S.asSchema(transform1)
 // $ExpectType Schema<number, string, never>
 S.asSchema(S.String.pipe(S.transform(S.Number, { strict: false, decode: (s) => s, encode: (n) => n })))
 
-// $ExpectType transform<typeof $String, typeof $Number>
+// $ExpectType transform<typeof String$, typeof Number$>
 S.String.pipe(S.transform(S.Number, { strict: false, decode: (s) => s, encode: (n) => n }))
 
 // @ts-expect-error
@@ -1417,7 +1417,7 @@ S.String.pipe(S.transform(S.Number, (s) => s.length, (n) => n))
 // transformOrFail
 // ---------------------------------------------
 
-// $ExpectType transformOrFail<typeof $String, typeof $Number, never>
+// $ExpectType transformOrFail<typeof String$, typeof Number$, never>
 const transformOrFail1 = S.String.pipe(
   S.transformOrFail(
     S.Number,
@@ -1425,13 +1425,13 @@ const transformOrFail1 = S.String.pipe(
   )
 )
 
-// $ExpectType typeof $String
+// $ExpectType typeof String$
 transformOrFail1.from
 
-// $ExpectType typeof $Number
+// $ExpectType typeof Number$
 transformOrFail1.to
 
-// $ExpectType transformOrFail<typeof $String, typeof $Number, never>
+// $ExpectType transformOrFail<typeof String$, typeof Number$, never>
 transformOrFail1.annotations({})
 
 // $ExpectType Schema<number, string, never>
@@ -1445,7 +1445,7 @@ S.asSchema(S.String.pipe(
   )
 ))
 
-// $ExpectType transformOrFail<typeof $String, typeof $Number, never>
+// $ExpectType transformOrFail<typeof String$, typeof Number$, never>
 S.String.pipe(
   S.transformOrFail(
     S.Number,
@@ -1837,7 +1837,7 @@ hole<
 // $ExpectType Schema<Option<number>, Option<number>, never>
 S.asSchema(S.OptionFromSelf(S.Number))
 
-// $ExpectType OptionFromSelf<typeof $Number>
+// $ExpectType OptionFromSelf<typeof Number$>
 S.OptionFromSelf(S.Number)
 
 // $ExpectType Schema<Option<number>, Option<string>, never>
@@ -1853,7 +1853,7 @@ S.OptionFromSelf(S.NumberFromString)
 // $ExpectType Schema<Option<number>, OptionEncoded<number>, never>
 S.asSchema(S.Option(S.Number))
 
-// $ExpectType Option<typeof $Number>
+// $ExpectType Option<typeof Number$>
 S.Option(S.Number)
 
 // $ExpectType Schema<Option<number>, OptionEncoded<string>, never>
@@ -1869,7 +1869,7 @@ S.Option(S.NumberFromString)
 // $ExpectType Schema<Option<number>, number | null, never>
 S.asSchema(S.OptionFromNullOr(S.Number))
 
-// $ExpectType OptionFromNullOr<typeof $Number>
+// $ExpectType OptionFromNullOr<typeof Number$>
 S.OptionFromNullOr(S.Number)
 
 // $ExpectType Schema<Option<number>, string | null, never>
@@ -1905,7 +1905,7 @@ S.OptionFromNullishOr(S.NumberFromString, undefined)
 // $ExpectType Schema<Either<number, string>, Either<string, string>, never>
 S.asSchema(S.EitherFromSelf({ right: S.NumberFromString, left: S.String }))
 
-// $ExpectType EitherFromSelf<typeof NumberFromString, typeof $String>
+// $ExpectType EitherFromSelf<typeof NumberFromString, typeof String$>
 S.EitherFromSelf({ right: S.NumberFromString, left: S.String })
 
 // ---------------------------------------------
@@ -1915,7 +1915,7 @@ S.EitherFromSelf({ right: S.NumberFromString, left: S.String })
 // $ExpectType Schema<Either<number, string>, EitherEncoded<string, string>, never>
 S.asSchema(S.Either({ right: S.NumberFromString, left: S.String }))
 
-// $ExpectType Either<typeof NumberFromString, typeof $String>
+// $ExpectType Either<typeof NumberFromString, typeof String$>
 S.Either({ right: S.NumberFromString, left: S.String })
 
 // ---------------------------------------------
@@ -1925,7 +1925,7 @@ S.Either({ right: S.NumberFromString, left: S.String })
 // $ExpectType Schema<Either<number, boolean>, string | boolean, never>
 S.asSchema(S.EitherFromUnion({ right: S.NumberFromString, left: S.Boolean }))
 
-// $ExpectType EitherFromUnion<typeof NumberFromString, typeof $Boolean>
+// $ExpectType EitherFromUnion<typeof NumberFromString, typeof Boolean$>
 S.EitherFromUnion({ right: S.NumberFromString, left: S.Boolean })
 
 // ---------------------------------------------
@@ -1935,7 +1935,7 @@ S.EitherFromUnion({ right: S.NumberFromString, left: S.Boolean })
 // $ExpectType Schema<ReadonlyMap<number, string>, ReadonlyMap<string, string>, never>
 S.asSchema(S.ReadonlyMapFromSelf({ key: S.NumberFromString, value: S.String }))
 
-// $ExpectType ReadonlyMapFromSelf<typeof NumberFromString, typeof $String>
+// $ExpectType ReadonlyMapFromSelf<typeof NumberFromString, typeof String$>
 S.ReadonlyMapFromSelf({ key: S.NumberFromString, value: S.String })
 
 // ---------------------------------------------
@@ -1945,7 +1945,7 @@ S.ReadonlyMapFromSelf({ key: S.NumberFromString, value: S.String })
 // $ExpectType Schema<Map<number, string>, ReadonlyMap<string, string>, never>
 S.asSchema(S.MapFromSelf({ key: S.NumberFromString, value: S.String }))
 
-// $ExpectType MapFromSelf<typeof NumberFromString, typeof $String>
+// $ExpectType MapFromSelf<typeof NumberFromString, typeof String$>
 S.MapFromSelf({ key: S.NumberFromString, value: S.String })
 
 // ---------------- -----------------------------
@@ -1955,7 +1955,7 @@ S.MapFromSelf({ key: S.NumberFromString, value: S.String })
 // $ExpectType Schema<ReadonlyMap<number, string>, readonly (readonly [string, string])[], never>
 S.asSchema(S.ReadonlyMap({ key: S.NumberFromString, value: S.String }))
 
-// $ExpectType $ReadonlyMap<typeof NumberFromString, typeof $String>
+// $ExpectType ReadonlyMap$<typeof NumberFromString, typeof String$>
 S.ReadonlyMap({ key: S.NumberFromString, value: S.String })
 
 // ---------------------------------------------
@@ -1965,7 +1965,7 @@ S.ReadonlyMap({ key: S.NumberFromString, value: S.String })
 // $ExpectType Schema<Map<number, string>, readonly (readonly [string, string])[], never>
 S.asSchema(S.Map({ key: S.NumberFromString, value: S.String }))
 
-// $ExpectType $Map<typeof NumberFromString, typeof $String>
+// $ExpectType Map$<typeof NumberFromString, typeof String$>
 S.Map({ key: S.NumberFromString, value: S.String })
 
 // ---------------------------------------------
@@ -1975,7 +1975,7 @@ S.Map({ key: S.NumberFromString, value: S.String })
 // $ExpectType Schema<HashMap<number, string>, HashMap<string, string>, never>
 S.asSchema(S.HashMapFromSelf({ key: S.NumberFromString, value: S.String }))
 
-// $ExpectType HashMapFromSelf<typeof NumberFromString, typeof $String>
+// $ExpectType HashMapFromSelf<typeof NumberFromString, typeof String$>
 S.HashMapFromSelf({ key: S.NumberFromString, value: S.String })
 
 // ---------------------------------------------
@@ -1985,7 +1985,7 @@ S.HashMapFromSelf({ key: S.NumberFromString, value: S.String })
 // $ExpectType Schema<HashMap<number, string>, readonly (readonly [string, string])[], never>
 S.asSchema(S.HashMap({ key: S.NumberFromString, value: S.String }))
 
-// $ExpectType HashMap<typeof NumberFromString, typeof $String>
+// $ExpectType HashMap<typeof NumberFromString, typeof String$>
 S.HashMap({ key: S.NumberFromString, value: S.String })
 
 // ---------------------------------------------
@@ -2015,7 +2015,7 @@ S.SetFromSelf(S.NumberFromString)
 // $ExpectType Schema<ReadonlySet<number>, readonly string[], never>
 S.asSchema(S.ReadonlySet(S.NumberFromString))
 
-// $ExpectType $ReadonlySet<typeof NumberFromString>
+// $ExpectType ReadonlySet$<typeof NumberFromString>
 S.ReadonlySet(S.NumberFromString)
 
 // ---------------------------------------------
@@ -2025,7 +2025,7 @@ S.ReadonlySet(S.NumberFromString)
 // $ExpectType Schema<Set<number>, readonly string[], never>
 S.asSchema(S.Set(S.NumberFromString))
 
-// $ExpectType $Set<typeof NumberFromString>
+// $ExpectType Set$<typeof NumberFromString>
 S.Set(S.NumberFromString)
 
 // ---------------------------------------------
@@ -2095,13 +2095,13 @@ S.List(S.NumberFromString)
 // $ExpectType Schema<Exit<number, string>, Exit<number, string>, never>
 S.asSchema(S.ExitFromSelf({ success: S.Number, failure: S.String }))
 
-// $ExpectType ExitFromSelf<typeof $Number, typeof $String, never>
+// $ExpectType ExitFromSelf<typeof Number$, typeof String$, never>
 S.ExitFromSelf({ success: S.Number, failure: S.String })
 
 // $ExpectType Schema<Exit<number, string>, Exit<number, string>, "a">
 S.asSchema(S.ExitFromSelf({ success: S.Number, failure: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() }))
 
-// $ExpectType ExitFromSelf<typeof $Number, typeof $String, "a">
+// $ExpectType ExitFromSelf<typeof Number$, typeof String$, "a">
 S.ExitFromSelf({ success: S.Number, failure: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() })
 
 // ---------------------------------------------
@@ -2111,13 +2111,13 @@ S.ExitFromSelf({ success: S.Number, failure: S.String, defect: hole<S.Schema<unk
 // $ExpectType Schema<Exit<number, string>, ExitEncoded<number, string>, never>
 S.asSchema(S.Exit({ success: S.Number, failure: S.String }))
 
-// $ExpectType Exit<typeof $Number, typeof $String, never>
+// $ExpectType Exit<typeof Number$, typeof String$, never>
 S.Exit({ success: S.Number, failure: S.String })
 
 // $ExpectType Schema<Exit<number, string>, ExitEncoded<number, string>, "a">
 S.asSchema(S.Exit({ success: S.Number, failure: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() }))
 
-// $ExpectType Exit<typeof $Number, typeof $String, "a">
+// $ExpectType Exit<typeof Number$, typeof String$, "a">
 S.Exit({ success: S.Number, failure: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() })
 
 // ---------------------------------------------
@@ -2127,13 +2127,13 @@ S.Exit({ success: S.Number, failure: S.String, defect: hole<S.Schema<unknown, un
 // $ExpectType Schema<Cause<string>, Cause<string>, never>
 S.asSchema(S.CauseFromSelf({ error: S.String }))
 
-// $ExpectType CauseFromSelf<typeof $String, never>
+// $ExpectType CauseFromSelf<typeof String$, never>
 S.CauseFromSelf({ error: S.String })
 
 // $ExpectType Schema<Cause<string>, Cause<string>, "a">
 S.asSchema(S.CauseFromSelf({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() }))
 
-// $ExpectType CauseFromSelf<typeof $String, "a">
+// $ExpectType CauseFromSelf<typeof String$, "a">
 S.CauseFromSelf({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() })
 
 // ---------------------------------------------
@@ -2143,13 +2143,13 @@ S.CauseFromSelf({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>
 // $ExpectType Schema<Cause<string>, CauseEncoded<string>, never>
 S.asSchema(S.Cause({ error: S.String }))
 
-// $ExpectType Cause<typeof $String, never>
+// $ExpectType Cause<typeof String$, never>
 S.Cause({ error: S.String })
 
 // $ExpectType Schema<Cause<string>, CauseEncoded<string>, "a">
 S.asSchema(S.Cause({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() }))
 
-// $ExpectType Cause<typeof $String, "a">
+// $ExpectType Cause<typeof String$, "a">
 S.Cause({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() })
 
 // ---------------------------------------------

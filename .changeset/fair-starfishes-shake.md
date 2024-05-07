@@ -919,6 +919,12 @@ JSONSchema
 
 Schema
 
+- rename `$Array` API interface to `Array$`
+- rename `$Record` API interface to `Record$`
+- rename `$ReadonlyMap` API interface to `ReadonlyMap$`
+- rename `$Map` API interface to `Map$`
+- rename `$ReadonlySet` API interface to `ReadonlySet$`
+- rename `$Set` API interface to `Set$`
 - remove `asBrandSchema` utility
 - change `BrandSchema` interface
 

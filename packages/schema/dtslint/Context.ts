@@ -147,7 +147,7 @@ S.Tuple(aContext, S.optionalElement(bContext))
 // $ExpectType Schema<readonly string[], readonly string[], "aContext">
 S.asSchema(S.Array(aContext))
 
-// $ExpectType $Array<aContext>
+// $ExpectType Array$<aContext>
 S.Array(aContext)
 
 // ---------------------------------------------
@@ -243,7 +243,7 @@ S.mutable(S.Struct({ a: aContext, b: bContext }))
 // $ExpectType Schema<{ readonly [x: string]: number; }, { readonly [x: string]: number; }, "aContext" | "bContext">
 S.asSchema(S.Record(aContext, bContext))
 
-// $ExpectType $Record<aContext, bContext>
+// $ExpectType Record$<aContext, bContext>
 S.Record(aContext, bContext)
 
 // ---------------------------------------------

@@ -926,38 +926,38 @@ export class BigIntFromSelf extends make<bigint>(AST.bigIntKeyword) {}
 export class SymbolFromSelf extends make<symbol>(AST.symbolKeyword) {}
 
 /** @ignore */
-class $String extends make<string>(AST.stringKeyword) {}
+class String$ extends make<string>(AST.stringKeyword) {}
 
 /** @ignore */
-class $Number extends make<number>(AST.numberKeyword) {}
+class Number$ extends make<number>(AST.numberKeyword) {}
 
 /** @ignore */
-class $Boolean extends make<boolean>(AST.booleanKeyword) {}
+class Boolean$ extends make<boolean>(AST.booleanKeyword) {}
 
 /** @ignore */
-class $Object extends make<object>(AST.objectKeyword) {}
+class Object$ extends make<object>(AST.objectKeyword) {}
 
 export {
   /**
    * @category primitives
    * @since 1.0.0
    */
-  $Boolean as Boolean,
+  Boolean$ as Boolean,
   /**
    * @category primitives
    * @since 1.0.0
    */
-  $Number as Number,
+  Number$ as Number,
   /**
    * @category primitives
    * @since 1.0.0
    */
-  $Object as Object,
+  Object$ as Object,
   /**
    * @category primitives
    * @since 1.0.0
    */
-  $String as String
+  String$ as String
 }
 
 /**
@@ -1228,12 +1228,12 @@ export function Tuple(...args: ReadonlyArray<any>): any {
  * @category api interface
  * @since 1.0.0
  */
-export interface $Array<Value extends Schema.Any> extends TupleType<[], [Value]> {
+export interface Array$<Value extends Schema.Any> extends TupleType<[], [Value]> {
   readonly value: Value
-  annotations(annotations: Annotations.Schema<TupleType.Type<[], [Value]>>): $Array<Value>
+  annotations(annotations: Annotations.Schema<TupleType.Type<[], [Value]>>): Array$<Value>
 }
 
-const makeArrayClass = <Value extends Schema.Any>(value: Value, ast?: AST.AST): $Array<Value> =>
+const makeArrayClass = <Value extends Schema.Any>(value: Value, ast?: AST.AST): Array$<Value> =>
   class ArrayClass extends makeTupleTypeClass<[], [Value]>([], [value], ast) {
     static override annotations(annotations: Annotations.Schema<TupleType.Type<[], [Value]>>) {
       return makeArrayClass(this.value, AST.annotations(this.ast, toASTAnnotations(annotations)))
@@ -1242,14 +1242,14 @@ const makeArrayClass = <Value extends Schema.Any>(value: Value, ast?: AST.AST): 
     static value = value
   }
 
-const $Array = <Value extends Schema.Any>(value: Value): $Array<Value> => makeArrayClass(value)
+const Array$ = <Value extends Schema.Any>(value: Value): Array$<Value> => makeArrayClass(value)
 
 export {
   /**
    * @category constructors
    * @since 1.0.0
    */
-  $Array as Array
+  Array$ as Array
 }
 
 /**
@@ -2366,15 +2366,15 @@ export function Struct<Fields extends Struct.Fields, const Records extends Index
  * @category api interface
  * @since 1.0.0
  */
-export interface $Record<K extends Schema.All, V extends Schema.All> extends TypeLiteral<{}, [{ key: K; value: V }]> {
+export interface Record$<K extends Schema.All, V extends Schema.All> extends TypeLiteral<{}, [{ key: K; value: V }]> {
   readonly key: K
   readonly value: V
   annotations(
     annotations: Annotations.Schema<Types.Simplify<TypeLiteral.Type<{}, [{ key: K; value: V }]>>>
-  ): $Record<K, V>
+  ): Record$<K, V>
 }
 
-const makeRecordClass = <K extends Schema.All, V extends Schema.All>(key: K, value: V, ast?: AST.AST): $Record<K, V> =>
+const makeRecordClass = <K extends Schema.All, V extends Schema.All>(key: K, value: V, ast?: AST.AST): Record$<K, V> =>
   class RecordClass extends makeTypeLiteralClass({}, [{ key, value }], ast) {
     static override annotations(
       annotations: Annotations.Schema<Types.Simplify<TypeLiteral.Type<{}, [{ key: K; value: V }]>>>
@@ -2391,7 +2391,7 @@ const makeRecordClass = <K extends Schema.All, V extends Schema.All>(key: K, val
  * @category constructors
  * @since 1.0.0
  */
-export const Record = <K extends Schema.All, V extends Schema.All>(key: K, value: V): $Record<K, V> =>
+export const Record = <K extends Schema.All, V extends Schema.All>(key: K, value: V): Record$<K, V> =>
   makeRecordClass(key, value)
 
 /**
@@ -3351,7 +3351,7 @@ export const examples =
   <S extends Annotable.All>(examples: AST.ExamplesAnnotation<Schema.Type<S>>) => (self: S): Annotable.Self<S> =>
     self.annotations({ [AST.ExamplesAnnotationId]: examples })
 
-const $default = <S extends Annotable.All>(value: Schema.Type<S>) => (self: S): Annotable.Self<S> =>
+const default$ = <S extends Annotable.All>(value: Schema.Type<S>) => (self: S): Annotable.Self<S> =>
   self.annotations({ [AST.DefaultAnnotationId]: value })
 
 export {
@@ -3359,7 +3359,7 @@ export {
    * @category annotations
    * @since 1.0.0
    */
-  $default as default
+  default$ as default
 }
 
 /**
@@ -3703,7 +3703,7 @@ export const lowercased =
  * @category string constructors
  * @since 1.0.0
  */
-export class Lowercased extends $String.pipe(
+export class Lowercased extends String$.pipe(
   lowercased({ identifier: "Lowercased", title: "Lowercased" })
 ) {}
 
@@ -3733,7 +3733,7 @@ export const uppercased =
  * @category string constructors
  * @since 1.0.0
  */
-export class Uppercased extends $String.pipe(
+export class Uppercased extends String$.pipe(
   uppercased({ identifier: "Uppercased", title: "Uppercased" })
 ) {}
 
@@ -3786,7 +3786,7 @@ export const length = <A extends string>(
  * @category string constructors
  * @since 1.0.0
  */
-export class Char extends $String.pipe(length(1, { identifier: "Char" })) {}
+export class Char extends String$.pipe(length(1, { identifier: "Char" })) {}
 
 /**
  * @category string filters
@@ -3807,7 +3807,7 @@ export const nonEmpty = <A extends string>(
  * @since 1.0.0
  */
 export class Lowercase extends transform(
-  $String,
+  String$,
   Lowercased,
   { decode: (s) => s.toLowerCase(), encode: identity }
 ).annotations({ identifier: "Lowercase" }) {}
@@ -3819,7 +3819,7 @@ export class Lowercase extends transform(
  * @since 1.0.0
  */
 export class Uppercase extends transform(
-  $String,
+  String$,
   Uppercased,
   { decode: (s) => s.toUpperCase(), encode: identity }
 ).annotations({ identifier: "Uppercase" }) {}
@@ -3828,7 +3828,7 @@ export class Uppercase extends transform(
  * @category string constructors
  * @since 1.0.0
  */
-export class Trimmed extends $String.pipe(
+export class Trimmed extends String$.pipe(
   trimmed({ identifier: "Trimmed", title: "Trimmed" })
 ) {}
 
@@ -3839,7 +3839,7 @@ export class Trimmed extends $String.pipe(
  * @since 1.0.0
  */
 export class Trim extends transform(
-  $String,
+  String$,
   Trimmed,
   { decode: (s) => s.trim(), encode: identity }
 ).annotations({ identifier: "Trim" }) {}
@@ -3850,10 +3850,10 @@ export class Trim extends transform(
  * @category string transformations
  * @since 1.0.0
  */
-export const split = (separator: string): transform<typeof $String, $Array<typeof $String>> =>
+export const split = (separator: string): transform<typeof String$, Array$<typeof String$>> =>
   transform(
-    $String,
-    $Array($String),
+    String$,
+    Array$(String$),
     { decode: string_.split(separator), encode: array_.join(separator) }
   )
 
@@ -3866,7 +3866,7 @@ export type ParseJsonOptions = {
   readonly space?: Parameters<typeof JSON.stringify>[2]
 }
 
-const JsonString = $String.annotations({
+const JsonString = String$.annotations({
   [AST.IdentifierAnnotationId]: "JsonString",
   [AST.TitleAnnotationId]: "JsonString",
   [AST.DescriptionAnnotationId]: "a JSON string"
@@ -3919,7 +3919,7 @@ export const parseJson: {
  * @category string constructors
  * @since 1.0.0
  */
-export class NonEmpty extends $String.pipe(
+export class NonEmpty extends String$.pipe(
   nonEmpty({ identifier: "NonEmpty", title: "NonEmpty" })
 ) {}
 
@@ -3939,7 +3939,7 @@ const uuidRegexp = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}
  * @category string constructors
  * @since 1.0.0
  */
-export class UUID extends $String.pipe(
+export class UUID extends String$.pipe(
   pattern(uuidRegexp, {
     typeId: UUIDTypeId,
     identifier: "UUID",
@@ -3966,7 +3966,7 @@ const ulidRegexp = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i
  * @category string constructors
  * @since 1.0.0
  */
-export class ULID extends $String.pipe(
+export class ULID extends String$.pipe(
   pattern(ulidRegexp, {
     typeId: ULIDTypeId,
     identifier: "ULID",
@@ -4290,10 +4290,10 @@ export const clamp =
  */
 export const parseNumber = <A extends string, I, R>(
   self: Schema<A, I, R>
-): transformOrFail<Schema<A, I, R>, typeof $Number> =>
+): transformOrFail<Schema<A, I, R>, typeof Number$> =>
   transformOrFail(
     self,
-    $Number,
+    Number$,
     {
       strict: false,
       decode: (s, _, ast) => ParseResult.fromOption(number_.parse(s), () => new ParseResult.Type(ast, s)),
@@ -4311,31 +4311,31 @@ export const parseNumber = <A extends string, I, R>(
  * @category number constructors
  * @since 1.0.0
  */
-export class NumberFromString extends parseNumber($String).annotations({ identifier: "NumberFromString" }) {}
+export class NumberFromString extends parseNumber(String$).annotations({ identifier: "NumberFromString" }) {}
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export class Finite extends $Number.pipe(finite({ identifier: "Finite", title: "Finite" })) {}
+export class Finite extends Number$.pipe(finite({ identifier: "Finite", title: "Finite" })) {}
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export class Int extends $Number.pipe(int({ identifier: "Int", title: "Int" })) {}
+export class Int extends Number$.pipe(int({ identifier: "Int", title: "Int" })) {}
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export class NonNaN extends $Number.pipe(nonNaN({ identifier: "NonNaN", title: "NonNaN" })) {}
+export class NonNaN extends Number$.pipe(nonNaN({ identifier: "NonNaN", title: "NonNaN" })) {}
 
 /**
  * @category number constructors
  * @since 1.0.0
  */
-export class Positive extends $Number.pipe(
+export class Positive extends Number$.pipe(
   positive({ identifier: "Positive", title: "Positive" })
 ) {}
 
@@ -4343,7 +4343,7 @@ export class Positive extends $Number.pipe(
  * @category number constructors
  * @since 1.0.0
  */
-export class Negative extends $Number.pipe(
+export class Negative extends Number$.pipe(
   negative({ identifier: "Negative", title: "Negative" })
 ) {}
 
@@ -4351,7 +4351,7 @@ export class Negative extends $Number.pipe(
  * @category number constructors
  * @since 1.0.0
  */
-export class NonPositive extends $Number.pipe(
+export class NonPositive extends Number$.pipe(
   nonPositive({ identifier: "NonPositive", title: "NonPositive" })
 ) {}
 
@@ -4359,7 +4359,7 @@ export class NonPositive extends $Number.pipe(
  * @category number constructors
  * @since 1.0.0
  */
-export class NonNegative extends $Number.pipe(
+export class NonNegative extends Number$.pipe(
   nonNegative({ identifier: "NonNegative", title: "NonNegative" })
 ) {}
 
@@ -4387,7 +4387,7 @@ export const JsonNumberTypeId: unique symbol = Symbol.for("@effect/schema/TypeId
  * @category number constructors
  * @since 1.0.0
  */
-export class JsonNumber extends $Number.pipe(
+export class JsonNumber extends Number$.pipe(
   filter((n) => !Number.isNaN(n) && Number.isFinite(n), {
     typeId: JsonNumberTypeId,
     identifier: "JsonNumber",
@@ -4401,11 +4401,11 @@ export class JsonNumber extends $Number.pipe(
  * @category boolean transformations
  * @since 1.0.0
  */
-export class Not extends transform($Boolean, $Boolean, { decode: boolean_.not, encode: boolean_.not }) {}
+export class Not extends transform(Boolean$, Boolean$, { decode: boolean_.not, encode: boolean_.not }) {}
 
 /** @ignore */
-class $Symbol extends transform(
-  $String,
+class Symbol$ extends transform(
+  String$,
   SymbolFromSelf,
   { strict: false, decode: (s) => Symbol.for(s), encode: (sym) => sym.description }
 ).annotations({ identifier: "symbol" }) {}
@@ -4417,7 +4417,7 @@ export {
    * @category symbol transformations
    * @since 1.0.0
    */
-  $Symbol as Symbol
+  Symbol$ as Symbol
 }
 
 /**
@@ -4616,8 +4616,8 @@ export const clampBigInt =
     )
 
 /** @ignore */
-class $BigInt extends transformOrFail(
-  $String,
+class BigInt$ extends transformOrFail(
+  String$,
   BigIntFromSelf,
   {
     decode: (s, _, ast) => ParseResult.fromOption(bigInt_.fromString(s), () => new ParseResult.Type(ast, s)),
@@ -4634,7 +4634,7 @@ export {
    * @category bigint transformations
    * @since 1.0.0
    */
-  $BigInt as BigInt
+  BigInt$ as BigInt
 }
 
 /**
@@ -4649,7 +4649,7 @@ export const PositiveBigIntFromSelf: filter<Schema<bigint>> = BigIntFromSelf.pip
  * @category bigint constructors
  * @since 1.0.0
  */
-export const PositiveBigInt: filter<Schema<bigint, string>> = $BigInt.pipe(
+export const PositiveBigInt: filter<Schema<bigint, string>> = BigInt$.pipe(
   positiveBigInt({ identifier: "PositiveBigint", title: "PositiveBigint" })
 )
 
@@ -4665,7 +4665,7 @@ export const NegativeBigIntFromSelf: filter<Schema<bigint>> = BigIntFromSelf.pip
  * @category bigint constructors
  * @since 1.0.0
  */
-export const NegativeBigInt: filter<Schema<bigint, string>> = $BigInt.pipe(
+export const NegativeBigInt: filter<Schema<bigint, string>> = BigInt$.pipe(
   negativeBigInt({ identifier: "NegativeBigint", title: "NegativeBigint" })
 )
 
@@ -4681,7 +4681,7 @@ export const NonPositiveBigIntFromSelf: filter<Schema<bigint>> = BigIntFromSelf.
  * @category bigint constructors
  * @since 1.0.0
  */
-export const NonPositiveBigInt: filter<Schema<bigint, string>> = $BigInt.pipe(
+export const NonPositiveBigInt: filter<Schema<bigint, string>> = BigInt$.pipe(
   nonPositiveBigInt({ identifier: "NonPositiveBigint", title: "NonPositiveBigint" })
 )
 
@@ -4697,7 +4697,7 @@ export const NonNegativeBigIntFromSelf: filter<Schema<bigint>> = BigIntFromSelf.
  * @category bigint constructors
  * @since 1.0.0
  */
-export const NonNegativeBigInt: filter<Schema<bigint, string>> = $BigInt.pipe(
+export const NonNegativeBigInt: filter<Schema<bigint, string>> = BigInt$.pipe(
   nonNegativeBigInt({ identifier: "NonNegativeBigint", title: "NonNegativeBigint" })
 )
 
@@ -4710,7 +4710,7 @@ export const NonNegativeBigInt: filter<Schema<bigint, string>> = $BigInt.pipe(
  * @since 1.0.0
  */
 export class BigIntFromNumber extends transformOrFail(
-  $Number,
+  Number$,
   BigIntFromSelf,
   {
     decode: (n, _, ast) =>
@@ -4742,7 +4742,7 @@ export class SecretFromSelf extends declare(
  * @since 1.0.0
  */
 export class Secret extends transform(
-  $String,
+  String$,
   SecretFromSelf,
   { strict: false, decode: (str) => secret_.fromString(str), encode: (secret) => secret_.value(secret) }
 ).annotations({ identifier: "Secret" }) {}
@@ -4800,7 +4800,7 @@ export class DurationFromNanos extends transformOrFail(
  * @since 1.0.0
  */
 export class DurationFromMillis extends transform(
-  $Number,
+  Number$,
   DurationFromSelf,
   { decode: (ms) => duration_.millis(ms), encode: (n) => duration_.toMillis(n) }
 ).annotations({ identifier: "DurationFromMillis" }) {}
@@ -4984,8 +4984,8 @@ export const Uint8ArrayFromSelf: Schema<Uint8Array> = declare(
   }
 )
 
-const $Uint8Array: Schema<Uint8Array, ReadonlyArray<number>> = transform(
-  $Array($Number.pipe(
+const Uint8Array$: Schema<Uint8Array, ReadonlyArray<number>> = transform(
+  Array$(Number$.pipe(
     between(0, 255, {
       title: "8-bit unsigned integer",
       description: "a 8-bit unsigned integer"
@@ -5002,7 +5002,7 @@ export {
    * @category Uint8Array transformations
    * @since 1.0.0
    */
-  $Uint8Array as Uint8Array
+  Uint8Array$ as Uint8Array
 }
 
 const makeEncodingTransformation = (
@@ -5011,7 +5011,7 @@ const makeEncodingTransformation = (
   encode: (u: Uint8Array) => string
 ): Schema<Uint8Array, string> =>
   transformOrFail(
-    $String,
+    String$,
     Uint8ArrayFromSelf,
     {
       decode: (s, _, ast) =>
@@ -5252,13 +5252,13 @@ export class ValidDateFromSelf extends DateFromSelf.pipe(
  * @since 1.0.0
  */
 export class DateFromString extends transform(
-  $String,
+  String$,
   DateFromSelf,
   { decode: (s) => new Date(s), encode: (d) => d.toISOString() }
 ).annotations({ identifier: "DateFromString" }) {}
 
 /** @ignore */
-class $Date extends DateFromString.pipe(
+class Date$ extends DateFromString.pipe(
   validDate({ identifier: "Date" })
 ) {}
 
@@ -5269,7 +5269,7 @@ export {
    * @category Date transformations
    * @since 1.0.0
    */
-  $Date as Date
+  Date$ as Date
 }
 
 /**
@@ -5280,7 +5280,7 @@ export {
  * @since 1.0.0
  */
 export class DateFromNumber extends transform(
-  $Number,
+  Number$,
   DateFromSelf,
   { decode: (n) => new Date(n), encode: (d) => d.getTime() }
 ).annotations({ identifier: "DateFromNumber" }) {}
@@ -5750,8 +5750,8 @@ const mapFromSelf_ = <K extends Schema.Any, V extends Schema.Any>(
   declare(
     [key, value],
     {
-      decode: (Key, Value) => readonlyMapParse(ParseResult.decodeUnknown($Array(Tuple(Key, Value)))),
-      encode: (Key, Value) => readonlyMapParse(ParseResult.encodeUnknown($Array(Tuple(Key, Value))))
+      decode: (Key, Value) => readonlyMapParse(ParseResult.decodeUnknown(Array$(Tuple(Key, Value)))),
+      encode: (Key, Value) => readonlyMapParse(ParseResult.encodeUnknown(Array$(Tuple(Key, Value))))
     },
     {
       description,
@@ -5796,9 +5796,9 @@ export const MapFromSelf = <K extends Schema.Any, V extends Schema.Any>({ key, v
  * @category api interface
  * @since 1.0.0
  */
-export interface $ReadonlyMap<K extends Schema.Any, V extends Schema.Any> extends
+export interface ReadonlyMap$<K extends Schema.Any, V extends Schema.Any> extends
   AnnotableClass<
-    $ReadonlyMap<K, V>,
+    ReadonlyMap$<K, V>,
     ReadonlyMap<Schema.Type<K>, Schema.Type<V>>,
     ReadonlyArray<readonly [Schema.Encoded<K>, Schema.Encoded<V>]>,
     Schema.Context<K> | Schema.Context<V>
@@ -5812,11 +5812,11 @@ export interface $ReadonlyMap<K extends Schema.Any, V extends Schema.Any> extend
 export const ReadonlyMap = <K extends Schema.Any, V extends Schema.Any>({ key, value }: {
   readonly key: K
   readonly value: V
-}): $ReadonlyMap<K, V> => {
+}): ReadonlyMap$<K, V> => {
   const key_ = asSchema(key)
   const value_ = asSchema(value)
   return transform(
-    $Array(Tuple(key_, value_)),
+    Array$(Tuple(key_, value_)),
     ReadonlyMapFromSelf({ key: typeSchema(key_), value: typeSchema(value_) }),
     { decode: (as) => new Map(as), encode: (map) => Array.from(map.entries()) }
   )
@@ -5826,9 +5826,9 @@ export const ReadonlyMap = <K extends Schema.Any, V extends Schema.Any>({ key, v
  * @category api interface
  * @since 1.0.0
  */
-export interface $Map<K extends Schema.Any, V extends Schema.Any> extends
+export interface Map$<K extends Schema.Any, V extends Schema.Any> extends
   AnnotableClass<
-    $Map<K, V>,
+    Map$<K, V>,
     Map<Schema.Type<K>, Schema.Type<V>>,
     ReadonlyArray<readonly [Schema.Encoded<K>, Schema.Encoded<V>]>,
     Schema.Context<K> | Schema.Context<V>
@@ -5838,11 +5838,11 @@ export interface $Map<K extends Schema.Any, V extends Schema.Any> extends
 const map = <K extends Schema.Any, V extends Schema.Any>({ key, value }: {
   readonly key: K
   readonly value: V
-}): $Map<K, V> => {
+}): Map$<K, V> => {
   const key_ = asSchema(key)
   const value_ = asSchema(value)
   return transform(
-    $Array(Tuple(key_, value_)),
+    Array$(Tuple(key_, value_)),
     MapFromSelf({ key: typeSchema(key_), value: typeSchema(value_) }),
     { decode: (as) => new Map(as), encode: (map) => Array.from(map.entries()) }
   )
@@ -5894,8 +5894,8 @@ const setFromSelf_ = <Value extends Schema.Any>(value: Value, description: strin
   declare(
     [value],
     {
-      decode: (item) => readonlySetParse(ParseResult.decodeUnknown($Array(item))),
-      encode: (item) => readonlySetParse(ParseResult.encodeUnknown($Array(item)))
+      decode: (item) => readonlySetParse(ParseResult.decodeUnknown(Array$(item))),
+      encode: (item) => readonlySetParse(ParseResult.encodeUnknown(Array$(item)))
     },
     {
       description,
@@ -5936,9 +5936,9 @@ export const SetFromSelf = <Value extends Schema.Any>(value: Value): SetFromSelf
  * @category api interface
  * @since 1.0.0
  */
-export interface $ReadonlySet<Value extends Schema.Any> extends
+export interface ReadonlySet$<Value extends Schema.Any> extends
   AnnotableClass<
-    $ReadonlySet<Value>,
+    ReadonlySet$<Value>,
     ReadonlySet<Schema.Type<Value>>,
     ReadonlyArray<Schema.Encoded<Value>>,
     Schema.Context<Value>
@@ -5949,10 +5949,10 @@ export interface $ReadonlySet<Value extends Schema.Any> extends
  * @category ReadonlySet transformations
  * @since 1.0.0
  */
-export const ReadonlySet = <Value extends Schema.Any>(value: Value): $ReadonlySet<Value> => {
+export const ReadonlySet = <Value extends Schema.Any>(value: Value): ReadonlySet$<Value> => {
   const value_ = asSchema(value)
   return transform(
-    $Array(value_),
+    Array$(value_),
     ReadonlySetFromSelf(typeSchema(value_)),
     { decode: (as) => new Set(as), encode: (set) => Array.from(set) }
   )
@@ -5962,19 +5962,19 @@ export const ReadonlySet = <Value extends Schema.Any>(value: Value): $ReadonlySe
  * @category api interface
  * @since 1.0.0
  */
-export interface $Set<Value extends Schema.Any> extends
+export interface Set$<Value extends Schema.Any> extends
   AnnotableClass<
-    $Set<Value>,
+    Set$<Value>,
     Set<Schema.Type<Value>>,
     ReadonlyArray<Schema.Encoded<Value>>,
     Schema.Context<Value>
   >
 {}
 
-const set = <Value extends Schema.Any>(value: Value): $Set<Value> => {
+const set = <Value extends Schema.Any>(value: Value): Set$<Value> => {
   const value_ = asSchema(value)
   return transform(
-    $Array(value_),
+    Array$(value_),
     SetFromSelf(typeSchema(value_)),
     { decode: (as) => new Set(as), encode: (set) => Array.from(set) }
   )
@@ -6013,7 +6013,7 @@ export class BigDecimalFromSelf extends declare(
  * @since 1.0.0
  */
 export class BigDecimal extends transformOrFail(
-  $String,
+  String$,
   BigDecimalFromSelf,
   {
     decode: (num, _, ast) =>
@@ -6033,7 +6033,7 @@ export class BigDecimal extends transformOrFail(
  * @since 1.0.0
  */
 export class BigDecimalFromNumber extends transformOrFail(
-  $Number,
+  Number$,
   BigDecimalFromSelf,
   {
     decode: (num) => ParseResult.succeed(bigDecimal_.fromNumber(num)),
@@ -6353,8 +6353,8 @@ export const ChunkFromSelf = <Value extends Schema.Any>(value: Value): ChunkFrom
   return declare(
     [value],
     {
-      decode: (item) => chunkParse(ParseResult.decodeUnknown($Array(item))),
-      encode: (item) => chunkParse(ParseResult.encodeUnknown($Array(item)))
+      decode: (item) => chunkParse(ParseResult.decodeUnknown(Array$(item))),
+      encode: (item) => chunkParse(ParseResult.encodeUnknown(Array$(item)))
     },
     {
       description: `Chunk<${format(value)}>`,
@@ -6385,7 +6385,7 @@ export interface Chunk<Value extends Schema.Any> extends
 export const Chunk = <Value extends Schema.Any>(value: Value): Chunk<Value> => {
   const value_ = asSchema(value)
   return transform(
-    $Array(value_),
+    Array$(value_),
     ChunkFromSelf(typeSchema(value_)),
     { decode: (as) => as.length === 0 ? chunk_.empty() : chunk_.fromIterable(as), encode: chunk_.toReadonlyArray }
   )
@@ -7618,8 +7618,8 @@ export const HashSetFromSelf = <Value extends Schema.Any>(
   return declare(
     [value],
     {
-      decode: (item) => hashSetParse(ParseResult.decodeUnknown($Array(item))),
-      encode: (item) => hashSetParse(ParseResult.encodeUnknown($Array(item)))
+      decode: (item) => hashSetParse(ParseResult.decodeUnknown(Array$(item))),
+      encode: (item) => hashSetParse(ParseResult.encodeUnknown(Array$(item)))
     },
     {
       description: `HashSet<${format(value)}>`,
@@ -7650,7 +7650,7 @@ export interface HashSet<Value extends Schema.Any> extends
 export const HashSet = <Value extends Schema.Any>(value: Value): HashSet<Value> => {
   const value_ = asSchema(value)
   return transform(
-    $Array(value_),
+    Array$(value_),
     HashSetFromSelf(typeSchema(value_)),
     { decode: (as) => hashSet_.fromIterable(as), encode: (set) => Array.from(set) }
   )
@@ -7715,8 +7715,8 @@ export const HashMapFromSelf = <K extends Schema.Any, V extends Schema.Any>({ ke
   return declare(
     [key, value],
     {
-      decode: (key, value) => hashMapParse(ParseResult.decodeUnknown($Array(Tuple(key, value)))),
-      encode: (key, value) => hashMapParse(ParseResult.encodeUnknown($Array(Tuple(key, value))))
+      decode: (key, value) => hashMapParse(ParseResult.decodeUnknown(Array$(Tuple(key, value)))),
+      encode: (key, value) => hashMapParse(ParseResult.encodeUnknown(Array$(Tuple(key, value))))
     },
     {
       description: `HashMap<${format(key)}, ${format(value)}>`,
@@ -7751,7 +7751,7 @@ export const HashMap = <K extends Schema.Any, V extends Schema.Any>({ key, value
   const key_ = asSchema(key)
   const value_ = asSchema(value)
   return transform(
-    $Array(Tuple(key_, value_)),
+    Array$(Tuple(key_, value_)),
     HashMapFromSelf({ key: typeSchema(key_), value: typeSchema(value_) }),
     { decode: (as) => hashMap_.fromIterable(as), encode: (map) => Array.from(map) }
   )
@@ -7804,8 +7804,8 @@ export const ListFromSelf = <Value extends Schema.Any>(
   return declare(
     [value],
     {
-      decode: (item) => listParse(ParseResult.decodeUnknown($Array(item))),
-      encode: (item) => listParse(ParseResult.encodeUnknown($Array(item)))
+      decode: (item) => listParse(ParseResult.decodeUnknown(Array$(item))),
+      encode: (item) => listParse(ParseResult.encodeUnknown(Array$(item)))
     },
     {
       description: `List<${format(value)}>`,
@@ -7836,7 +7836,7 @@ export interface List<Value extends Schema.Any> extends
 export const List = <Value extends Schema.Any>(value: Value): List<Value> => {
   const value_ = asSchema(value)
   return transform(
-    $Array(value_),
+    Array$(value_),
     ListFromSelf(typeSchema(value_)),
     { decode: (as) => list_.fromIterable(as), encode: (set) => Array.from(set) }
   )
@@ -7884,8 +7884,8 @@ export const SortedSetFromSelf = <Value extends Schema.Any>(
   return declare(
     [value],
     {
-      decode: (item) => sortedSetParse(ParseResult.decodeUnknown($Array(item)), ordA),
-      encode: (item) => sortedSetParse(ParseResult.encodeUnknown($Array(item)), ordI)
+      decode: (item) => sortedSetParse(ParseResult.decodeUnknown(Array$(item)), ordA),
+      encode: (item) => sortedSetParse(ParseResult.encodeUnknown(Array$(item)), ordI)
     },
     {
       description: `SortedSet<${format(value)}>`,
@@ -7920,7 +7920,7 @@ export const SortedSet = <Value extends Schema.Any>(
   const value_ = asSchema(value)
   const to = typeSchema(value_)
   return transform(
-    $Array(value_),
+    Array$(value_),
     SortedSetFromSelf<typeof to>(to, ordA, ordA),
     { decode: (as) => sortedSet_.fromIterable(as, ordA), encode: (set) => Array.from(sortedSet_.values(set)) }
   )
@@ -7936,6 +7936,6 @@ export const SortedSet = <Value extends Schema.Any>(
  */
 export class BooleanFromUnknown extends transform(
   Unknown,
-  $Boolean,
+  Boolean$,
   { decode: Predicate.isTruthy, encode: identity }
 ).annotations({ identifier: "BooleanFromUnknown" }) {}
