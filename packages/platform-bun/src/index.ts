@@ -41,6 +41,11 @@ export * as BunSink from "./BunSink.js"
 /**
  * @since 1.0.0
  */
+export * as BunSocket from "./BunSocket.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as BunStream from "./BunStream.js"
 
 /**

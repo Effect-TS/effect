@@ -78,6 +78,10 @@ describe("Socket", () => {
         server.close()
         const exit = yield* _(Fiber.join(fiber), Effect.exit)
         expect(exit._tag).toEqual("Success")
-      }).pipe(Effect.scoped, Effect.runPromise))
+      }).pipe(
+        Effect.scoped,
+        Effect.provideService(Socket.WebSocketConstructor, (url) => new globalThis.WebSocket(url)),
+        Effect.runPromise
+      ))
   })
 })
