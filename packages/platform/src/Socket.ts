@@ -15,7 +15,6 @@ import * as Predicate from "effect/Predicate"
 import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
 import type * as AsyncProducer from "effect/SingleProducerAsyncInput"
-import { WebSocket as IsoWS } from "isows"
 import { RefailError, TypeIdError } from "./Error.js"
 
 /**
@@ -274,20 +273,32 @@ export const WebSocket: Context.Tag<WebSocket, globalThis.WebSocket> = Context.G
 
 /**
  * @since 1.0.0
+ * @category tags
+ */
+export interface WebSocketConstructor {
+  readonly _: unique symbol
+}
+
+/**
+ * @since 1.0.0
+ * @category tags
+ */
+export const WebSocketConstructor: Context.Tag<WebSocketConstructor, (url: string) => globalThis.WebSocket> = Context
+  .GenericTag("@effect/platform/Socket/WebSocketConstructor")
+
+/**
+ * @since 1.0.0
  * @category constructors
  */
 export const makeWebSocket = (url: string | Effect.Effect<string>, options?: {
   readonly closeCodeIsError?: (code: number) => boolean
   readonly openTimeout?: DurationInput
-}): Effect.Effect<Socket> =>
+}): Effect.Effect<Socket, never, WebSocketConstructor> =>
   fromWebSocket(
     Effect.acquireRelease(
-      Effect.map(typeof url === "string" ? Effect.succeed(url) : url, (url) => {
-        if ("WebSocket" in globalThis) {
-          return new globalThis.WebSocket(url)
-        }
-        return new IsoWS(url)
-      }),
+      (typeof url === "string" ? Effect.succeed(url) : url).pipe(
+        Effect.flatMap((url) => Effect.map(WebSocketConstructor, (f) => f(url)))
+      ),
       (ws) => Effect.sync(() => ws.close())
     ),
     options
@@ -297,20 +308,25 @@ export const makeWebSocket = (url: string | Effect.Effect<string>, options?: {
  * @since 1.0.0
  * @category constructors
  */
-export const fromWebSocket = (
-  acquire: Effect.Effect<globalThis.WebSocket, SocketError, Scope.Scope>,
+export const fromWebSocket = <R>(
+  acquire: Effect.Effect<globalThis.WebSocket, SocketError, R>,
   options?: {
     readonly closeCodeIsError?: (code: number) => boolean
     readonly openTimeout?: DurationInput
   }
-): Effect.Effect<Socket> =>
+): Effect.Effect<Socket, never, Exclude<R, Scope.Scope>> =>
   Effect.gen(function*(_) {
     const closeCodeIsError = options?.closeCodeIsError ?? defaultCloseCodeIsError
-    const sendQueue = yield* _(Queue.unbounded<Uint8Array | string | CloseEvent>())
+    const sendQueue = yield* Queue.unbounded<Uint8Array | string | CloseEvent>()
+    const acquireContext = yield* Effect.context<Exclude<R, Scope.Scope>>()
+    const acquireWithContext = Effect.provide(acquire, acquireContext) as Effect.Effect<
+      globalThis.WebSocket,
+      SocketError
+    >
 
     const runRaw = <R, E, _>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>) =>
       Effect.gen(function*(_) {
-        const ws = yield* _(acquire)
+        const ws = yield* acquireWithContext
         const fiberSet = yield* _(FiberSet.make<any, E | SocketError>())
         const run = yield* _(
           FiberSet.runtime(fiberSet)<R>(),
@@ -430,7 +446,8 @@ export const makeWebSocketChannel = <IE = never>(
   SocketError | IE,
   IE,
   void,
-  unknown
+  unknown,
+  WebSocketConstructor
 > =>
   Channel.unwrapScoped(
     Effect.map(makeWebSocket(url, options), toChannelWith<IE>())
@@ -442,4 +459,8 @@ export const makeWebSocketChannel = <IE = never>(
  */
 export const layerWebSocket = (url: string, options?: {
   readonly closeCodeIsError?: (code: number) => boolean
-}): Layer.Layer<Socket> => Layer.scoped(Socket, makeWebSocket(url, options))
+}): Layer.Layer<Socket, never, WebSocketConstructor> =>
+  Layer.scoped(
+    Socket,
+    makeWebSocket(url, options)
+  )
