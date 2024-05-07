@@ -126,6 +126,12 @@ class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWithTrans
 
 describe("Class APIs", () => {
   describe("Class", () => {
+    it("suspend before initialization", async () => {
+      class A extends S.Class<A>("A")({ a: S.optional(S.suspend(() => string)) }) {}
+      const string = S.String
+      await Util.expectDecodeUnknownSuccess(A, new A({ a: "a" }))
+    })
+
     it("should be a Schema", () => {
       class A extends S.Class<A>("A")({ a: S.String }) {}
       expect(S.isSchema(A)).toEqual(true)
