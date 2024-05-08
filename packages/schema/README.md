@@ -1376,264 +1376,7 @@ const schema = Schema.String.annotations({
 console.log(Equivalence.make(schema)("aaa", "abb")) // Output: true
 ```
 
-# API Interfaces
-
-## What's an API Interface?
-
-An "API Interface" is an `interface` specifically defined for a schema exported from `@effect/schema` or for a particular API exported from `@effect/schema`. Let's see an example with a simple schema:
-
-**Example** (an `Age` schema)
-
-```ts
-import { Schema } from "@effect/schema"
-
-// API interface
-interface Age extends Schema.Schema<number> {}
-
-const Age: Age = Schema.Number.pipe(Schema.between(0, 100))
-
-// type AgeType = number
-type AgeType = Schema.Schema.Type<typeof Age>
-// type AgeEncoded = number
-type AgeEncoded = Schema.Schema.Encoded<typeof Age>
-```
-
-The benefit is that when we hover over the `Age` schema, we see `Age` instead of `Schema<number, number, never>`. This is a small improvement if we only think about the `Age` schema, but as we'll see shortly, these improvements in schema visualization add up, resulting in a significant improvement in the readability of our schemas.
-
-Many of the built-in schemas exported from `@effect/schema` have been equipped with API interfaces, for example `number` or `never`.
-
-```ts
-import { Schema } from "@effect/schema"
-
-// const number: S.Number$
-Schema.Number
-
-// const never: S.Never
-Schema.Never
-```
-
-> [!NOTE]
-> Notice that we had to add a `$` suffix to the API interface name because we couldn't simply use "Number" since it's a reserved name for the TypeScript `Number` type.
-
-Now let's see an example with a combinator that, given an input schema for a certain type `A`, returns the schema of the pair `readonly [A, A]`:
-
-**Example** (a `pair` combinator)
-
-```ts
-import { Schema } from "@effect/schema"
-
-// API interface
-export interface pair<S extends Schema.Schema.Any>
-  extends Schema.Schema<
-    readonly [Schema.Schema.Type<S>, Schema.Schema.Type<S>],
-    readonly [Schema.Schema.Encoded<S>, Schema.Schema.Encoded<S>],
-    Schema.Schema.Context<S>
-  > {}
-
-// API
-export const pair = <S extends Schema.Schema.Any>(schema: S): pair<S> =>
-  Schema.Tuple(Schema.asSchema(schema), Schema.asSchema(schema))
-```
-
-> [!NOTE]
-> The `Schema.Schema.Any` helper represents any schema, except for `never`. For more information on the `asSchema` helper, refer to the following section "Understanding Opaque Names".
-
-If we try to use our `pair` combinator, we see that readability is also improved in this case:
-
-```ts
-// const Coords: pair<typeof Schema.Number>
-const Coords = pair(Schema.Number)
-```
-
-In hover, we simply see `pair<typeof Schema.Number>` instead of the verbose:
-
-```ts
-// const Coords: Schema.Tuple<[typeof Schema.Number, typeof Schema.Number]>
-const Coords = Schema.Tuple(Schema.Number, Schema.Number)
-```
-
-The new name is not only shorter and more readable but also carries along the origin of the schema, which is a call to the `pair` combinator.
-
-## Understanding Opaque Names
-
-Opaque names generated in this way are very convenient, but sometimes there's a need to see what the underlying types are, perhaps for debugging purposes while you declare your schemas. At any time, you can use the `asSchema` function, which returns an `Schema<A, I, R>` compatible with your opaque definition:
-
-```ts
-// const Coords: pair<typeof Schema.Number>
-const Coords = pair(Schema.Number)
-
-// const NonOpaqueCoords: Schema.Schema<readonly [number, number], readonly [number, number], never>
-const NonOpaqueCoords = Schema.asSchema(Coords)
-```
-
-> [!NOTE]
-> The call to `asSchema` is negligible in terms of overhead since it's nothing more than a glorified identity function.
-
-Many of the built-in combinators exported from `@effect/schema` have been equipped with API interfaces, for example `struct`:
-
-```ts
-import { Schema } from "@effect/schema"
-
-/*
-const Person: Schema.Struct<{
-    name: typeof Schema.String;
-    age: typeof Schema.Number;
-}>
-*/
-const Person = Schema.Struct({
-  name: Schema.String,
-  age: Schema.Number
-})
-```
-
-In hover, we simply see:
-
-```ts
-const Person: Schema.Struct<{
-  name: typeof Schema.String
-  age: typeof Schema.Number
-}>
-```
-
-instead of the verbose:
-
-```ts
-const Person: Schema.Schema<
-  {
-    readonly name: string
-    readonly age: number
-  },
-  {
-    readonly name: string
-    readonly age: number
-  },
-  never
->
-```
-
-## Exposing Arguments
-
-The benefits of API interfaces don't end with better readability; in fact, the driving force behind the introduction of API interfaces arises more from the need to expose some important information about the schemas that users generate. Let's see some examples related to literals and structs:
-
-**Example** (exposed literals)
-
-Now when we define literals, we can retrieve them using the `literals` field exposed by the generated schema:
-
-```ts
-import { Schema } from "@effect/schema"
-
-// const myliterals: Schema.Literal<["A", "B"]>
-const myliterals = Schema.Literal("A", "B")
-
-// literals: readonly ["A", "B"]
-myliterals.literals
-
-console.log(myliterals.literals) // Output: [ 'A', 'B' ]
-```
-
-**Example** (exposed fields)
-
-Similarly to what we've seen for literals, when we define a struct, we can retrieve its `fields`:
-
-```ts
-import { Schema } from "@effect/schema"
-
-/*
-const Person: Schema.Struct<{
-    name: typeof Schema.String;
-    age: typeof Schema.Number;
-}>
-*/
-const Person = Schema.Struct({
-  name: Schema.String,
-  age: Schema.Number
-})
-
-/*
-fields: {
-    readonly name: typeof Schema.String;
-    readonly age: typeof Schema.Number;
-}
-*/
-Person.fields
-
-console.log(Person.fields)
-/*
-{
-  name: Schema {
-    ast: StringKeyword { _tag: 'StringKeyword', annotations: [Object] },
-    ...
-  },
-  age: Schema {
-    ast: NumberKeyword { _tag: 'NumberKeyword', annotations: [Object] },
-    ...
-  }
-}
-*/
-```
-
-Being able to retrieve the `fields` is particularly advantageous when you want to extend a struct with new fields; now you can do it simply using the spread operator:
-
-```ts
-import * as S from "@effect/schema/Schema"
-
-import { Schema } from "@effect/schema"
-
-const Person = Schema.Struct({
-  name: Schema.String,
-  age: Schema.Number
-})
-
-/*
-const PersonWithId: Schema.Struct<{
-    id: typeof Schema.Number;
-    name: typeof Schema.String;
-    age: typeof Schema.Number;
-}>
-*/
-const PersonWithId = Schema.Struct({
-  ...Person.fields,
-  id: Schema.Number
-})
-```
-
-The list of APIs equipped with API interfaces is extensive; here we provide only the main ones just to give you an idea of the new development possibilities that have opened up:
-
-```ts
-import { Schema } from "@effect/schema"
-
-// ------------------------
-// array value
-// ------------------------
-
-// value: typeof Schema.String
-Schema.Array(Schema.String).value
-
-// ------------------------
-// record key and value
-// ------------------------
-
-// key: typeof Schema.String
-Schema.Record(Schema.String, Schema.Number).key
-// value: typeof Schema.Number
-Schema.Record(Schema.String, Schema.Number).value
-
-// ------------------------
-// union members
-// ------------------------
-
-// members: readonly [typeof Schema.String, typeof Schema.Number]
-Schema.Union(Schema.String, Schema.Number).members
-
-// ------------------------
-// tuple elements
-// ------------------------
-
-// elements: readonly [typeof Schema.String, typeof Schema.Number]
-Schema.Tuple(Schema.String, Schema.Number).elements
-```
-
-# Basic usage
+# Basic Usage
 
 ## Cheatsheet
 
@@ -3113,6 +2856,89 @@ console.log(Schema.decodeUnknownSync(renamedSchema)({ c: "c", b: 1 }))
 
 In the example above, we have an original schema with properties "a" and "b." Using the `rename` API, we create a new schema where we rename the "a" property to "c." The resulting schema, when used with `S.decodeUnknownSync`, transforms the input object by renaming the specified property.
 
+## instanceOf
+
+When you need to define a schema for your custom data type defined through a `class`, the most convenient and fast way is to use the `Schema.instanceOf` constructor. Let's see an example:
+
+```ts
+import { Schema } from "@effect/schema"
+
+class MyData {
+  constructor(readonly name: string) {}
+}
+
+// Schema.instanceOf<MyData>
+const MyDataSchema = Schema.instanceOf(MyData)
+
+console.log(Schema.decodeUnknownSync(MyDataSchema)(new MyData("name")))
+// MyData { name: 'name' }
+console.log(Schema.decodeUnknownSync(MyDataSchema)({ name: "name" }))
+/*
+throws
+Error: Expected an instance of MyData, actual {"name":"name"}
+*/
+```
+
+The `Schema.instanceOf` constructor is just a lightweight wrapper of the `Schema.declare` API, which is the primitive in `@effect/schema` for declaring new custom data types.
+
+However, note that `instanceOf` can only be used for classes that expose a **public constructor**. If you try to use it with classes that, for some reason, have marked the constructor as `private`, you'll receive a TypeScript error:
+
+```ts
+import { Schema } from "@effect/schema"
+
+class MyData {
+  static make = (name: string) => new MyData(name)
+  private constructor(readonly name: string) {}
+}
+
+/*
+Argument of type 'typeof MyData' is not assignable to parameter of type 'abstract new (...args: any) => any'.
+  Cannot assign a 'private' constructor type to a 'public' constructor type.ts(2345)
+*/
+const MyDataSchema = Schema.instanceOf(MyData)
+```
+
+In such cases, you cannot use `Schema.instanceOf`, and you must rely on `Schema.declare` like this:
+
+```ts
+import { Schema } from "@effect/schema"
+
+class MyData {
+  static make = (name: string) => new MyData(name)
+  private constructor(readonly name: string) {}
+}
+
+const MyDataSchema = Schema.declare(
+  (input: unknown): input is MyData => input instanceof MyData
+)
+
+console.log(Schema.decodeUnknownSync(MyDataSchema)(MyData.make("name")))
+// MyData { name: 'name' }
+console.log(Schema.decodeUnknownSync(MyDataSchema)({ name: "name" }))
+/*
+throws
+Error: Expected <declaration schema>, actual {"name":"name"}
+*/
+```
+
+To improve the error message in case of failed decoding, remember to add annotations:
+
+```ts
+const MyDataSchema = Schema.declare(
+  (input: unknown): input is MyData => input instanceof MyData,
+  {
+    identifier: "MyData",
+    description: "an instance of MyData"
+  }
+)
+
+console.log(Schema.decodeUnknownSync(MyDataSchema)({ name: "name" }))
+/*
+throws
+Error: Expected MyData (an instance of MyData), actual {"name":"name"}
+*/
+```
+
 ## pick
 
 The `pick` operation is used to select specific properties from a schema.
@@ -3313,635 +3139,169 @@ Schema.compose(
 )
 ```
 
-## instanceOf
+# Declaring New Data Types
 
-When you need to define a schema for your custom data type defined through a `class`, the most convenient and fast way is to use the `Schema.instanceOf` constructor. Let's see an example:
+Creating schemas for new data types is crucial to defining the expected structure of information in your application. This guide explores how to declare schemas for new data types. We'll cover two important concepts: declaring schemas for primitive data types and type constructors.
+
+## Declaring Schemas for Primitive Data Types
+
+A primitive data type represents simple values. To declare a schema for a primitive data type, like the `File` type in TypeScript, we use the `S.declare` constructor along with a type guard. Let's go through an example:
 
 ```ts
 import { Schema } from "@effect/schema"
 
-class MyData {
-  constructor(readonly name: string) {}
-}
+const isFile = (input: unknown): input is File => input instanceof File
 
-// Schema.instanceOf<MyData>
-const MyDataSchema = Schema.instanceOf(MyData)
+// const FileFromSelf: S.Schema<File>
+const FileFromSelf = Schema.declare(isFile, {
+  identifier: "FileFromSelf"
+})
 
-console.log(Schema.decodeUnknownSync(MyDataSchema)(new MyData("name")))
-// MyData { name: 'name' }
-console.log(Schema.decodeUnknownSync(MyDataSchema)({ name: "name" }))
+const decode = Schema.decodeUnknownSync(FileFromSelf)
+
+console.log(decode(new File([], ""))) // File { size: 0, type: '', name: '', lastModified: 1705595977234 }
+
+decode(null)
 /*
 throws
-Error: Expected an instance of MyData, actual {"name":"name"}
+Error: Error: Expected FileFromSelf, actual null
 */
 ```
 
-The `Schema.instanceOf` constructor is just a lightweight wrapper of the `Schema.declare` API, which is the primitive in `@effect/schema` for declaring new custom data types.
+## Declaring Schemas for Type Constructors
 
-However, note that `instanceOf` can only be used for classes that expose a **public constructor**. If you try to use it with classes that, for some reason, have marked the constructor as `private`, you'll receive a TypeScript error:
-
-```ts
-import { Schema } from "@effect/schema"
-
-class MyData {
-  static make = (name: string) => new MyData(name)
-  private constructor(readonly name: string) {}
-}
-
-/*
-Argument of type 'typeof MyData' is not assignable to parameter of type 'abstract new (...args: any) => any'.
-  Cannot assign a 'private' constructor type to a 'public' constructor type.ts(2345)
-*/
-const MyDataSchema = Schema.instanceOf(MyData)
-```
-
-In such cases, you cannot use `Schema.instanceOf`, and you must rely on `Schema.declare` like this:
+Type constructors are generic types that take one or more types as arguments and return a new type. If you need to define a schema for a type constructor, you can use the `S.declare` constructor. Let's illustrate this with a schema for `ReadonlySet<A>`:
 
 ```ts
-import { Schema } from "@effect/schema"
+import { ParseResult, Schema } from "@effect/schema"
 
-class MyData {
-  static make = (name: string) => new MyData(name)
-  private constructor(readonly name: string) {}
-}
+export const MyReadonlySet = <A, I, R>(
+  // Schema for the elements of the Set
+  item: Schema.Schema<A, I, R>
+): Schema.Schema<ReadonlySet<A>, ReadonlySet<I>, R> =>
+  Schema.declare(
+    // Store the schema for the elements
+    [item],
+    {
+      // Decoding function
+      decode: (item) => (input, parseOptions, ast) => {
+        if (input instanceof Set) {
+          // Decode the elements
+          const elements = ParseResult.decodeUnknown(Schema.Array(item))(
+            Array.from(input.values()),
+            parseOptions
+          )
+          // Return a Set containing the parsed elements
+          return ParseResult.map(elements, (as): ReadonlySet<A> => new Set(as))
+        }
+        return ParseResult.fail(new ParseResult.Type(ast, input))
+      },
+      // Encoding function
+      encode: (item) => (input, parseOptions, ast) => {
+        if (input instanceof Set) {
+          // Encode the elements
+          const elements = ParseResult.encodeUnknown(Schema.Array(item))(
+            Array.from(input.values()),
+            parseOptions
+          )
+          // Return a Set containing the parsed elements
+          return ParseResult.map(elements, (is): ReadonlySet<I> => new Set(is))
+        }
+        return ParseResult.fail(new ParseResult.Type(ast, input))
+      }
+    },
+    {
+      description: `ReadonlySet<${Schema.format(item)}>`
+    }
+  )
 
-const MyDataSchema = Schema.declare(
-  (input: unknown): input is MyData => input instanceof MyData
-)
+// const setOfNumbers: S.Schema<ReadonlySet<string>, ReadonlySet<number>>
+const setOfNumbers = MyReadonlySet(Schema.NumberFromString)
 
-console.log(Schema.decodeUnknownSync(MyDataSchema)(MyData.make("name")))
-// MyData { name: 'name' }
-console.log(Schema.decodeUnknownSync(MyDataSchema)({ name: "name" }))
+const decode = Schema.decodeUnknownSync(setOfNumbers)
+
+console.log(decode(new Set(["1", "2", "3"]))) // Set(3) { 1, 2, 3 }
+
+decode(null)
 /*
 throws
-Error: Expected <declaration schema>, actual {"name":"name"}
+Error: Expected ReadonlySet<NumberFromString>, actual null
 */
-```
 
-To improve the error message in case of failed decoding, remember to add annotations:
-
-```ts
-const MyDataSchema = Schema.declare(
-  (input: unknown): input is MyData => input instanceof MyData,
-  {
-    identifier: "MyData",
-    description: "an instance of MyData"
-  }
-)
-
-console.log(Schema.decodeUnknownSync(MyDataSchema)({ name: "name" }))
+decode(new Set(["1", null, "3"]))
 /*
 throws
-Error: Expected MyData (an instance of MyData), actual {"name":"name"}
+Error: ReadonlySet<NumberFromString>
+└─ ReadonlyArray<NumberFromString>
+   └─ [1]
+      └─ NumberFromString
+         └─ From side transformation failure
+            └─ Expected a string, actual null
 */
 ```
 
-## Recursive Schemas
+> [!WARNING]
+> The decoding and encoding functions cannot use context (the `R` type parameter) and cannot use async effects.
 
-The `suspend` combinator is useful when you need to define a `Schema` that depends on itself, like in the case of recursive data structures. In this example, the `Category` schema depends on itself because it has a field `subcategories` that is an array of `Category` objects.
+## Adding Annotations
 
-```ts
-import { Schema } from "@effect/schema"
-
-interface Category {
-  readonly name: string
-  readonly subcategories: ReadonlyArray<Category>
-}
-
-const Category: Schema.Schema<Category> = Schema.Struct({
-  name: Schema.String,
-  subcategories: Schema.Array(Schema.suspend(() => Category))
-})
-```
-
-> [!NOTE]
-> It is necessary to define the `Category` type and add an explicit type annotation (`const Category: S.Schema<Category>`) because otherwise TypeScript would struggle to infer types correctly. Without this annotation, you might encounter the error message: "'Category' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.ts(7022)"
-
-### A Helpful Pattern to Simplify Schema Definition
-
-As we've observed, it's necessary to define an interface for the `Type` of the schema to enable recursive schema definition, which can complicate things and be quite tedious. One pattern to mitigate this is to **separate the field responsible for recursion** from all other fields.
+When you define a new data type, some compilers like `Arbitrary` or `Pretty` may not know how to handle the newly defined data. For instance:
 
 ```ts
-import { Schema } from "@effect/schema"
+import { Arbitrary, Schema } from "@effect/schema"
 
-const fields = {
-  name: Schema.String
-  // ...possibly other fields
-}
+const isFile = (input: unknown): input is File => input instanceof File
 
-// Define an interface for the Category schema, extending the Type of the defined fields
-interface Category extends Schema.Struct.Type<typeof fields> {
-  readonly subcategories: ReadonlyArray<Category> // Define `subcategories` using recursion
-}
-
-const Category: Schema.Schema<Category> = Schema.Struct({
-  ...fields, // Include the fields
-  subcategories: Schema.Array(Schema.suspend(() => Category)) // Define `subcategories` using recursion
-})
-```
-
-### Mutually Recursive Schemas
-
-Here's an example of two mutually recursive schemas, `Expression` and `Operation`, that represent a simple arithmetic expression tree.
-
-```ts
-import { Schema } from "@effect/schema"
-
-interface Expression {
-  readonly type: "expression"
-  readonly value: number | Operation
-}
-
-interface Operation {
-  readonly type: "operation"
-  readonly operator: "+" | "-"
-  readonly left: Expression
-  readonly right: Expression
-}
-
-const Expression: Schema.Schema<Expression> = Schema.Struct({
-  type: Schema.Literal("expression"),
-  value: Schema.Union(
-    Schema.Number,
-    Schema.suspend(() => Operation)
-  )
+const FileFromSelf = Schema.declare(isFile, {
+  identifier: "FileFromSelf"
 })
 
-const Operation: Schema.Schema<Operation> = Schema.Struct({
-  type: Schema.Literal("operation"),
-  operator: Schema.Literal("+", "-"),
-  left: Expression,
-  right: Expression
-})
-```
-
-### Recursive Types with Different Encoded and Type
-
-Defining a recursive schema where the `Encoded` type differs from the `Type` type adds another layer of complexity. In such cases, we need to define two interfaces: one for the `Type` type, as seen previously, and another for the `Encoded` type.
-
-Let's consider an example: suppose we want to add an `id` field to the `Category` schema, where the schema for `id` is `NumberFromString`. It's important to note that `NumberFromString` is a schema that transforms a string into a number, so the `Type` and `Encoded` types of `NumberFromString` differ, being `number` and `string` respectively. When we add this field to the `Category` schema, TypeScript raises an error:
-
-```ts
-import { Schema } from "@effect/schema"
-
-const fields = {
-  id: Schema.NumberFromString,
-  name: Schema.String
-}
-
-interface Category extends Schema.Struct.Type<typeof fields> {
-  readonly subcategories: ReadonlyArray<Category>
-}
-
+// Create an Arbitrary instance for FileFromSelf schema
+const arb = Arbitrary.make(FileFromSelf)
 /*
-TypeScript error:
-Type 'Category' is not assignable to type '{ readonly id: string; readonly name: string; readonly subcategories: readonly Category[]; }'.
-  Types of property 'id' are incompatible.
-    Type 'number' is not assignable to type 'string'.ts(2322)
+throws:
+Error: cannot build an Arbitrary for a declaration without annotations (FileFromSelf)
 */
-const Category: Schema.Schema<Category> = Schema.Struct({
-  ...fields,
-  subcategories: Schema.Array(Schema.suspend(() => Category))
+```
+
+In such cases, you need to provide annotations to ensure proper functionality:
+
+```ts
+import { Arbitrary, FastCheck, Pretty, Schema } from "@effect/schema"
+
+const isFile = (input: unknown): input is File => input instanceof File
+
+const FileFromSelf = Schema.declare(isFile, {
+  identifier: "FileFromSelf",
+  // Provide an arbitrary function to generate random File instances
+  arbitrary: () => (fc) =>
+    fc
+      .tuple(fc.string(), fc.string())
+      .map(([path, content]) => new File([content], path)),
+  // Provide a pretty function to generate human-readable representation of File instances
+  pretty: () => (file) => `File(${file.name})`
 })
-```
 
-This error occurs because the explicit annotation `const Category: S.Schema<Category>` is no longer sufficient and needs to be adjusted by explicitly adding the `Encoded` type:
+// Create an Arbitrary instance for FileFromSelf schema
+const arb = Arbitrary.make(FileFromSelf)
 
-```ts
-import { Schema } from "@effect/schema"
-
-const fields = {
-  id: Schema.NumberFromString,
-  name: Schema.String
-}
-
-interface Category extends Schema.Struct.Type<typeof fields> {
-  readonly subcategories: ReadonlyArray<Category>
-}
-
-interface CategoryEncoded extends Schema.Struct.Encoded<typeof fields> {
-  readonly subcategories: ReadonlyArray<CategoryEncoded>
-}
-
-const Category: Schema.Schema<Category, CategoryEncoded> = Schema.Struct({
-  ...fields,
-  subcategories: Schema.Array(Schema.suspend(() => Category))
-})
-```
-
-# Advanced Usage
-
-## Troubleshooting When Working With Generic Schemas
-
-Sometimes, while working with functions that handle generic schemas, you may encounter the issue where TypeScript fails to fully resolve the schema type, making it unusable within the function body. Let's see an example:
-
-```ts
-import { Schema } from "@effect/schema"
-
-// A function that uses a generic schema
-const MyStruct = <X extends Schema.Schema.All>(x: X) => Schema.Struct({ x })
-
-// Helper type that returns the return type of the `MyStruct` function
-type MyStructReturnType<X extends Schema.Schema.All> = Schema.Schema.Type<
-  ReturnType<typeof MyStruct<X>>
->
-
-// In the function body, `obj` has type `Simplify<Schema.Struct.Type<{ x: X; }>>`
-// so it's not possible to access the `x` field
-function test<X extends Schema.Schema.All>(obj: MyStructReturnType<X>) {
-  obj.x // error: Property 'x' does not exist on type 'Simplify<Type<{ x: X; }>>'.ts(2339)
-}
-```
-
-In the function body, `obj` has type
-
-```ts
-Simplify<Schema.Struct.Type<{ x: X }>>
-```
-
-so it's not possible to access the `x` field.
-
-To solve the problem, you need to force TypeScript to resolve the type of `obj`, and you can do this with the type-level helper `Schema.Schema.AsSchema`, which is the type-level counterpart of the function `Schema.asSchema`:
-
-```ts
-function test<X extends Schema.Schema.All>(
-  obj: MyStructReturnType<Schema.Schema.AsSchema<X>>
-) {
-  obj.x // Schema.Schema.Type<X>
-}
-```
-
-Now the type of `obj` is resolved to
-
-```ts
-{
-    readonly x: Schema.Schema.Type<X>;
-}
-```
-
-and therefore, we can access its `x` field.
-
-# Classes
-
-When working with schemas, you have a choice beyond the `S.struct` constructor. You can leverage the power of classes through the `Class` utility, which comes with its own set of advantages tailored to common use cases.
-
-## The Benefits of Using Classes
-
-Classes offer several features that simplify the schema creation process:
-
-- **All-in-One Definition**: With classes, you can define both a schema and an opaque type simultaneously.
-- **Shared Functionality**: You can incorporate shared functionality using class methods or getters.
-- **Value Equality and Hashing**: Utilize the built-in capability for checking value equality and applying hashing (thanks to `Class` implementing `Data.Case`).
-
-Let's dive into an illustrative example to better understand how classes work:
-
-```ts
-import { Schema } from "@effect/schema"
-
-// Define your schema by providing the type to `Class` and the desired fields
-class Person extends Schema.Class<Person>("Person")({
-  id: Schema.Number,
-  name: Schema.String.pipe(Schema.nonEmpty())
-}) {}
-```
-
-## Validation and Instantiation
-
-The class constructor serves as a validation and instantiation tool. It ensures that the provided properties meet the schema requirements:
-
-```ts
-const tim = new Person({ id: 1, name: "Tim" })
-```
-
-Keep in mind that it throws an error for invalid properties...
-
-```ts
-new Person({ id: 1, name: "" })
-/* throws
-Error: Person (Constructor)
-└─ ["name"]
-   └─ a non empty string
-      └─ Predicate refinement failure
-         └─ Expected a non empty string, actual ""
-*/
-```
-
-...unless you explicitly disable validation:
-
-```ts
-new Person({ id: 1, name: "" }, true) // no error
-```
-
-## No Args
-
-If you don't want to have any arguments, you can use `{}`:
-
-```ts
-import { Schema } from "@effect/schema"
-
-class NoArgs extends Schema.Class<NoArgs>("NoArgs")({}) {}
-
-const noargs = new NoArgs()
-```
-
-## Custom Getters and Methods
-
-For more flexibility, you can also introduce custom getters and methods:
-
-```ts
-import { Schema } from "@effect/schema"
-
-class Person extends Schema.Class<Person>("Person")({
-  id: Schema.Number,
-  name: Schema.String.pipe(Schema.nonEmpty())
-}) {
-  get upperName() {
-    return this.name.toUpperCase()
-  }
-}
-
-const john = new Person({ id: 1, name: "John" })
-
-console.log(john.upperName) // "JOHN"
-```
-
-## Accessing Related Schemas
-
-The class constructor itself is a Schema, and can be assigned/provided anywhere a Schema is expected. There is also a `.fields` property, which can be used when the class prototype is not required.
-
-```ts
-import { Schema } from "@effect/schema"
-
-class Person extends Schema.Class<Person>("Person")({
-  id: Schema.Number,
-  name: Schema.String.pipe(Schema.nonEmpty())
-}) {}
-
-console.log(Schema.isSchema(Person)) // true
-
-/*
-{
-    readonly id: typeof Schema.Number;
-    readonly name: Schema.filter<Schema.Schema<string, string, never>>;
-}
-*/
-Person.fields
-```
-
-## Recursive Schemas
-
-The `suspend` combinator is useful when you need to define a `Schema` that depends on itself, like in the case of recursive data structures. In this example, the `Category` schema depends on itself because it has a field `subcategories` that is an array of `Category` objects.
-
-```ts
-import { Schema } from "@effect/schema"
-
-class Category extends Schema.Class<Category>("Category")({
-  name: Schema.String,
-  subcategories: Schema.Array(
-    Schema.suspend((): Schema.Schema<Category> => Category)
-  )
-}) {}
-```
-
-> [!NOTE]
-> It is necessary to add an explicit type annotation (`S.suspend((): S.Schema<Category> => Category`) because otherwise TypeScript would struggle to infer types correctly. Without this annotation, you might encounter the error message: "Type 'typeof Category' is missing the following properties from type 'Schema<unknown, unknown, unknown>': ast, annotations, [TypeId], pipets(2739)"
-
-### Mutually Recursive Schemas
-
-Here's an example of two mutually recursive schemas, `Expression` and `Operation`, that represent a simple arithmetic expression tree.
-
-```ts
-import { Schema } from "@effect/schema"
-
-class Expression extends Schema.Class<Expression>("Expression")({
-  type: Schema.Literal("expression"),
-  value: Schema.Union(
-    Schema.Number,
-    Schema.suspend((): Schema.Schema<Operation> => Operation)
-  )
-}) {}
-
-class Operation extends Schema.Class<Operation>("Operation")({
-  type: Schema.Literal("operation"),
-  operator: Schema.Literal("+", "-"),
-  left: Expression,
-  right: Expression
-}) {}
-```
-
-### Recursive Types with Different Encoded and Type
-
-Defining a recursive schema where the `Encoded` type differs from the `Type` type adds another layer of complexity. In such cases, we need to define an interface for the `Encoded` type.
-
-Let's consider an example: suppose we want to add an `id` field to the `Category` schema, where the schema for `id` is `NumberFromString`. It's important to note that `NumberFromString` is a schema that transforms a string into a number, so the `Type` and `Encoded` types of `NumberFromString` differ, being `number` and `string` respectively. When we add this field to the `Category` schema, TypeScript raises an error:
-
-```ts
-import { Schema } from "@effect/schema"
-
-/*
-TypeScript error:
-Type 'Category' is not assignable to type '{ readonly id: string; readonly name: string; readonly subcategories: readonly Category[]; }'.
-  Types of property 'id' are incompatible.
-    Type 'number' is not assignable to type 'string'.ts(2322)
-*/
-class Category extends Schema.Class<Category>("Category")({
-  id: Schema.NumberFromString,
-  name: Schema.String,
-  subcategories: Schema.Array(
-    Schema.suspend((): Schema.Schema<Category> => Category)
-  )
-}) {}
-```
-
-This error occurs because the explicit annotation `S.suspend((): S.Schema<Category> => Category` is no longer sufficient and needs to be adjusted by explicitly adding the `Encoded` type:
-
-```ts
-import { Schema } from "@effect/schema"
-
-interface CategoryEncoded {
-  readonly id: string
-  readonly name: string
-  readonly subcategories: ReadonlyArray<CategoryEncoded>
-}
-
-class Category extends Schema.Class<Category>("Category")({
-  id: Schema.NumberFromString,
-  name: Schema.String,
-  subcategories: Schema.Array(
-    Schema.suspend((): Schema.Schema<Category, CategoryEncoded> => Category)
-  )
-}) {}
-```
-
-As we've observed, it's necessary to define an interface for the `Encoded` of the schema to enable recursive schema definition, which can complicate things and be quite tedious. One pattern to mitigate this is to **separate the field responsible for recursion** from all other fields.
-
-```ts
-import { Schema } from "@effect/schema"
-
-const fields = {
-  id: Schema.NumberFromString,
-  name: Schema.String
-  // ...possibly other fields
-}
-
-interface CategoryEncoded extends Schema.Struct.Encoded<typeof fields> {
-  readonly subcategories: ReadonlyArray<CategoryEncoded> // Define `subcategories` using recursion
-}
-
-class Category extends Schema.Class<Category>("Category")({
-  ...fields, // Include the fields
-  subcategories: Schema.Array(
-    Schema.suspend((): Schema.Schema<Category, CategoryEncoded> => Category)
-  ) // Define `subcategories` using recursion
-}) {}
-```
-
-## Tagged Class variants
-
-You can also create classes that extend `TaggedClass` & `TaggedError` from the `effect/Data` module:
-
-```ts
-import { Schema } from "@effect/schema"
-
-class TaggedPerson extends Schema.TaggedClass<TaggedPerson>()("TaggedPerson", {
-  name: Schema.String
-}) {}
-
-class HttpError extends Schema.TaggedError<HttpError>()("HttpError", {
-  status: Schema.Number
-}) {}
-
-const joe = new TaggedPerson({ name: "Joe" })
-console.log(joe._tag) // "TaggedPerson"
-
-const error = new HttpError({ status: 404 })
-console.log(error._tag) // "HttpError"
-console.log(error.stack) // access the stack trace
-```
-
-## Extending existing Classes
-
-In situations where you need to augment your existing class with more fields, the built-in `extend` utility comes in handy:
-
-```ts
-import { Schema } from "@effect/schema"
-
-class Person extends Schema.Class<Person>("Person")({
-  id: Schema.Number,
-  name: Schema.String.pipe(Schema.nonEmpty())
-}) {
-  get upperName() {
-    return this.name.toUpperCase()
-  }
-}
-
-class PersonWithAge extends Person.extend<PersonWithAge>("PersonWithAge")({
-  age: Schema.Number
-}) {
-  get isAdult() {
-    return this.age >= 18
-  }
-}
-```
-
-## Transformations
-
-You have the option to enhance a class with (effectful) transformations. This becomes valuable when you want to enrich or validate an entity sourced from a data store.
-
-```ts
-import { Schema } from "@effect/schema"
-import { Effect, Option } from "effect"
-
-export class Person extends Schema.Class<Person>("Person")({
-  id: Schema.Number,
-  name: Schema.String
-}) {}
-
-console.log(Schema.decodeUnknownSync(Person)({ id: 1, name: "name" }))
+// Generate sample files using the Arbitrary instance
+const files = FastCheck.sample(arb, 2)
+console.log(files)
 /*
 Output:
-Person { id: 1, name: 'name' }
+[
+  File { size: 5, type: '', name: 'C', lastModified: 1706435571176 },
+  File { size: 1, type: '', name: '98Ggmc', lastModified: 1706435571176 }
+]
 */
 
-function getAge(id: number): Effect.Effect<number, Error> {
-  return Effect.succeed(id + 2)
-}
+// Create a Pretty instance for FileFromSelf schema
+const pretty = Pretty.make(FileFromSelf)
 
-export class PersonWithTransform extends Person.transformOrFail<PersonWithTransform>(
-  "PersonWithTransform"
-)(
-  {
-    age: Schema.optional(Schema.Number, { exact: true, as: "Option" })
-  },
-  {
-    decode: (input) =>
-      Effect.mapBoth(getAge(input.id), {
-        onFailure: (e) =>
-          new ParseResult.Type(Schema.String.ast, input.id, e.message),
-        // must return { age: Option<number> }
-        onSuccess: (age) => ({ ...input, age: Option.some(age) })
-      }),
-    encode: ParseResult.succeed
-  }
-) {}
-
-Schema.decodeUnknownPromise(PersonWithTransform)({ id: 1, name: "name" }).then(
-  console.log
-)
-/*
-Output:
-PersonWithTransform {
-  id: 1,
-  name: 'name',
-  age: { _id: 'Option', _tag: 'Some', value: 3 }
-}
-*/
-
-export class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWithTransformFrom>(
-  "PersonWithTransformFrom"
-)(
-  {
-    age: Schema.optional(Schema.Number, { exact: true, as: "Option" })
-  },
-  {
-    decode: (input) =>
-      Effect.mapBoth(getAge(input.id), {
-        onFailure: (e) =>
-          new ParseResult.Type(Schema.String.ast, input, e.message),
-        // must return { age?: number }
-        onSuccess: (age) => (age > 18 ? { ...input, age } : { ...input })
-      }),
-    encode: ParseResult.succeed
-  }
-) {}
-
-Schema.decodeUnknownPromise(PersonWithTransformFrom)({
-  id: 1,
-  name: "name"
-}).then(console.log)
-/*
-Output:
-PersonWithTransformFrom {
-  id: 1,
-  name: 'name',
-  age: { _id: 'Option', _tag: 'None' }
-}
-*/
+// Print human-readable representation of a file
+console.log(pretty(files[0])) // "File(C)"
 ```
-
-The decision of which API to use, either `transformOrFail` or `transformOrFailFrom`, depends on when you wish to execute the transformation:
-
-1. Using `transformOrFail`:
-
-   - The transformation occurs at the end of the process.
-   - It expects you to provide a value of type `{ age: Option<number> }`.
-   - After processing the initial input, the new transformation comes into play, and you need to ensure the final output adheres to the specified structure.
-
-2. Using `transformOrFailFrom`:
-   - The new transformation starts as soon as the initial input is handled.
-   - You should provide a value `{ age?: number }`.
-   - Based on this fresh input, the subsequent transformation `{ age: S.optionalToOption(S.Number, { exact: true }) }` is executed.
-   - This approach allows for immediate handling of the input, potentially influencing the subsequent transformations.
 
 # Transformations
 
@@ -4657,9 +4017,1569 @@ const decode = Schema.decodeUnknownSync(schema)
 console.log(decode("keep it secret, keep it safe")) // {}
 ```
 
+# Defining Schemas as Classes
+
+When it comes to defining schemas, there's another possible approach: using classes. This approach provides opaque schema types, offering a clearer representation.
+
+> [!WARNING]
+> Even though schemas defined this way are classes, **their constructors are not meant to be used** (which is why they have been disabled).
+
+Let's look at how you can define and use schemas as classes.
+
+```ts
+import { Schema } from "@effect/schema"
+
+class Person extends Schema.Struct({
+  name: Schema.String
+}) {}
+
+class Group extends Schema.Struct({
+  person: Person
+}) {}
+
+// const MyUnion: S.Union<[typeof Person, typeof Group]>
+export const MyUnion = Schema.Union(Person, Group)
+```
+
+Notice how the inferred type for `MyUnion` now refers only to the class types, removing the detailed structure, which can sometimes be overwhelming to comprehend. Compare this with the previous method of defining schemas (the old method **still works** if you prefer it!)
+
+```ts
+import { Schema } from "@effect/schema"
+
+const Person = Schema.Struct({
+  name: Schema.String
+})
+
+const Group = Schema.Struct({
+  person: Person
+})
+
+/*
+const MyUnion: Schema.Union<[Schema.Struct<{
+    name: typeof Schema.String;
+}>, Schema.Struct<{
+    person: Schema.Struct<{
+        name: typeof Schema.String;
+    }>;
+}>]>
+*/
+export const MyUnion = Schema.Union(Person, Group)
+```
+
+The newer approach to defining schemas opens up opportunities for exploring different patterns.
+For instance, you can enrich your schema with custom values and functions.
+Let's see an example with the previously defined `Group` schema. For instance, we can add a decoding function attached directly to the schema for convenience:
+
+```ts
+import { Schema } from "@effect/schema"
+
+class Person extends Schema.Struct({
+  name: Schema.String
+}) {}
+
+class Group extends Schema.Struct({
+  person: Person
+}) {
+  static decodeUnknownSync(u: unknown) {
+    return Schema.decodeUnknownSync(this)(u)
+  }
+}
+
+console.log(Group.decodeUnknownSync({}))
+/*
+Error: { person: { name: string } }
+└─ ["person"]
+ └─ is missing
+*/
+```
+
+# Advanced Usage
+
+## Annotations
+
+One of the fundamental requirements in the design of `@effect/schema` is that it is extensible and customizable. Customizations are achieved through "annotations". Each node contained in the AST of `@effect/schema/AST` contains an `annotations: Record<symbol, unknown>` field that can be used to attach additional information to the schema.
+You can manage these annotations using the `annotations` method.
+
+Let's see some examples:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const Password =
+  // initial schema, a string
+  Schema.String
+    // add an error message for non-string values
+    .annotations({ message: () => "not a string" })
+    .pipe(
+      // add a constraint to the schema, only non-empty strings are valid
+      // and add an error message for empty strings
+      Schema.nonEmpty({ message: () => "required" }),
+      // add a constraint to the schema, only strings with a length less or equal than 10 are valid
+      // and add an error message for strings that are too long
+      Schema.maxLength(10, { message: (s) => `${s} is too long` })
+      // add an identifier to the schema
+    )
+    .annotations({
+      // add an identifier to the schema
+      identifier: "Password",
+      // add a title to the schema
+      title: "password",
+      // add a description to the schema
+      description:
+        "A password is a string of characters used to verify the identity of a user during the authentication process",
+      // add examples to the schema
+      examples: ["1Ki77y", "jelly22fi$h"],
+      // add documentation to the schema
+      documentation: `jsDoc documentation...`
+    })
+```
+
+The example shows some built-in combinators to add meta information, but users can easily add their own meta information by defining a custom annotation.
+
+Here's an example of how to add a `deprecated` annotation:
+
+```ts
+import { AST, Schema } from "@effect/schema"
+
+const DeprecatedId = Symbol.for(
+  "some/unique/identifier/for/the/custom/annotation"
+)
+
+const deprecated = <A, I, R>(
+  self: Schema.Schema<A, I, R>
+): Schema.Schema<A, I, R> =>
+  Schema.make(AST.annotations(self.ast, { [DeprecatedId]: true }))
+
+const schema = deprecated(Schema.String)
+
+console.log(schema)
+/*
+Output:
+{
+  ast: {
+    _tag: 'StringKeyword',
+    annotations: {
+      [Symbol(@effect/schema/annotation/Title)]: 'string',
+      [Symbol(@effect/schema/annotation/Description)]: 'a string',
+      [Symbol(some/unique/identifier/for/the/custom/annotation)]: true
+    }
+  }
+  ...
+}
+*/
+```
+
+Annotations can be read using the `getAnnotation` helper, here's an example:
+
+```ts
+import { AST, Schema } from "@effect/schema"
+import { Option } from "effect"
+
+const DeprecatedId = Symbol.for(
+  "some/unique/identifier/for/the/custom/annotation"
+)
+
+const deprecated = <A, I, R>(
+  self: Schema.Schema<A, I, R>
+): Schema.Schema<A, I, R> =>
+  Schema.make(AST.annotations(self.ast, { [DeprecatedId]: true }))
+
+const schema = deprecated(Schema.String)
+
+const isDeprecated = <A, I, R>(schema: Schema.Schema<A, I, R>): boolean =>
+  AST.getAnnotation<boolean>(DeprecatedId)(schema.ast).pipe(
+    Option.getOrElse(() => false)
+  )
+
+console.log(isDeprecated(Schema.String)) // false
+console.log(isDeprecated(schema)) // true
+```
+
+## Recursive Schemas
+
+The `suspend` combinator is useful when you need to define a `Schema` that depends on itself, like in the case of recursive data structures. In this example, the `Category` schema depends on itself because it has a field `subcategories` that is an array of `Category` objects.
+
+```ts
+import { Schema } from "@effect/schema"
+
+interface Category {
+  readonly name: string
+  readonly subcategories: ReadonlyArray<Category>
+}
+
+const Category: Schema.Schema<Category> = Schema.Struct({
+  name: Schema.String,
+  subcategories: Schema.Array(Schema.suspend(() => Category))
+})
+```
+
+> [!NOTE]
+> It is necessary to define the `Category` type and add an explicit type annotation (`const Category: S.Schema<Category>`) because otherwise TypeScript would struggle to infer types correctly. Without this annotation, you might encounter the error message: "'Category' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.ts(7022)"
+
+### A Helpful Pattern to Simplify Schema Definition
+
+As we've observed, it's necessary to define an interface for the `Type` of the schema to enable recursive schema definition, which can complicate things and be quite tedious. One pattern to mitigate this is to **separate the field responsible for recursion** from all other fields.
+
+```ts
+import { Schema } from "@effect/schema"
+
+const fields = {
+  name: Schema.String
+  // ...possibly other fields
+}
+
+// Define an interface for the Category schema, extending the Type of the defined fields
+interface Category extends Schema.Struct.Type<typeof fields> {
+  readonly subcategories: ReadonlyArray<Category> // Define `subcategories` using recursion
+}
+
+const Category: Schema.Schema<Category> = Schema.Struct({
+  ...fields, // Include the fields
+  subcategories: Schema.Array(Schema.suspend(() => Category)) // Define `subcategories` using recursion
+})
+```
+
+### Mutually Recursive Schemas
+
+Here's an example of two mutually recursive schemas, `Expression` and `Operation`, that represent a simple arithmetic expression tree.
+
+```ts
+import { Schema } from "@effect/schema"
+
+interface Expression {
+  readonly type: "expression"
+  readonly value: number | Operation
+}
+
+interface Operation {
+  readonly type: "operation"
+  readonly operator: "+" | "-"
+  readonly left: Expression
+  readonly right: Expression
+}
+
+const Expression: Schema.Schema<Expression> = Schema.Struct({
+  type: Schema.Literal("expression"),
+  value: Schema.Union(
+    Schema.Number,
+    Schema.suspend(() => Operation)
+  )
+})
+
+const Operation: Schema.Schema<Operation> = Schema.Struct({
+  type: Schema.Literal("operation"),
+  operator: Schema.Literal("+", "-"),
+  left: Expression,
+  right: Expression
+})
+```
+
+### Recursive Types with Different Encoded and Type
+
+Defining a recursive schema where the `Encoded` type differs from the `Type` type adds another layer of complexity. In such cases, we need to define two interfaces: one for the `Type` type, as seen previously, and another for the `Encoded` type.
+
+Let's consider an example: suppose we want to add an `id` field to the `Category` schema, where the schema for `id` is `NumberFromString`. It's important to note that `NumberFromString` is a schema that transforms a string into a number, so the `Type` and `Encoded` types of `NumberFromString` differ, being `number` and `string` respectively. When we add this field to the `Category` schema, TypeScript raises an error:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const fields = {
+  id: Schema.NumberFromString,
+  name: Schema.String
+}
+
+interface Category extends Schema.Struct.Type<typeof fields> {
+  readonly subcategories: ReadonlyArray<Category>
+}
+
+/*
+TypeScript error:
+Type 'Category' is not assignable to type '{ readonly id: string; readonly name: string; readonly subcategories: readonly Category[]; }'.
+  Types of property 'id' are incompatible.
+    Type 'number' is not assignable to type 'string'.ts(2322)
+*/
+const Category: Schema.Schema<Category> = Schema.Struct({
+  ...fields,
+  subcategories: Schema.Array(Schema.suspend(() => Category))
+})
+```
+
+This error occurs because the explicit annotation `const Category: S.Schema<Category>` is no longer sufficient and needs to be adjusted by explicitly adding the `Encoded` type:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const fields = {
+  id: Schema.NumberFromString,
+  name: Schema.String
+}
+
+interface Category extends Schema.Struct.Type<typeof fields> {
+  readonly subcategories: ReadonlyArray<Category>
+}
+
+interface CategoryEncoded extends Schema.Struct.Encoded<typeof fields> {
+  readonly subcategories: ReadonlyArray<CategoryEncoded>
+}
+
+const Category: Schema.Schema<Category, CategoryEncoded> = Schema.Struct({
+  ...fields,
+  subcategories: Schema.Array(Schema.suspend(() => Category))
+})
+```
+
+## Error messages
+
+### Default Error Messages
+
+When a parsing, decoding, or encoding process encounters a failure, a default error message is automatically generated for you. Let's explore some examples:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  name: Schema.String,
+  age: Schema.Number
+})
+
+Schema.decodeUnknownSync(schema)(null)
+/*
+throws:
+Error: Expected { readonly name: string; readonly age: number }, actual null
+*/
+
+Schema.decodeUnknownSync(schema)({}, { errors: "all" })
+/*
+throws:
+Error: { readonly name: string; readonly age: number }
+├─ ["name"]
+│  └─ is missing
+└─ ["age"]
+   └─ is missing
+*/
+```
+
+#### Identifiers in Error Messages
+
+When you include an identifier annotation, it will be incorporated into the default error message, followed by a description if provided:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  name: Schema.String.annotations({ identifier: "Name" }),
+  age: Schema.Number.annotations({ identifier: "Age" })
+}).annotations({ identifier: "Person" })
+
+Schema.decodeUnknownSync(schema)(null)
+/*
+throws:
+Error: Expected Person, actual null
+*/
+
+Schema.decodeUnknownSync(schema)({}, { errors: "all" })
+/*
+throws:
+Error: Person
+├─ ["name"]
+│  └─ is missing
+└─ ["age"]
+   └─ is missing
+*/
+
+Schema.decodeUnknownSync(schema)({ name: null, age: null }, { errors: "all" })
+/*
+throws:
+Error: Person
+├─ ["name"]
+│  └─ Expected Name (a string), actual null
+└─ ["age"]
+   └─ Expected Age (a number), actual null
+*/
+```
+
+#### Refinements
+
+When a refinement fails, the default error message indicates whether the failure occurred in the "from" part or within the predicate defining the refinement:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  name: Schema.NonEmpty.annotations({ identifier: "Name" }), // refinement
+  age: Schema.Positive.pipe(Schema.int({ identifier: "Age" })) // refinement
+}).annotations({ identifier: "Person" })
+
+// "from" failure
+Schema.decodeUnknownSync(schema)({ name: null, age: 18 })
+/*
+throws:
+Error: Person
+└─ ["name"]
+   └─ Name
+      └─ From side refinement failure
+         └─ Expected a string, actual null
+*/
+
+// predicate failure
+Schema.decodeUnknownSync(schema)({ name: "", age: 18 })
+/*
+throws:
+Error: Person
+└─ ["name"]
+   └─ Name
+      └─ Predicate refinement failure
+         └─ Expected Name (a non empty string), actual ""
+*/
+```
+
+In the first example, the error message indicates a "from" side refinement failure in the "Name" property, specifying that a string was expected but received null. In the second example, a predicate refinement failure is reported, indicating that a non-empty string was expected for "Name," but an empty string was provided.
+
+### Custom Error Messages
+
+Custom messages can be set using the `message` annotation:
+
+```ts
+type MessageAnnotation = (issue: ParseIssue) =>
+  | string
+  | Effect<string>
+  | {
+      readonly message: string | Effect<string>
+      readonly override: boolean
+    }
+```
+
+Here's a simple example of how to set a custom message for the built-in `String` schema:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const MyString = Schema.String.annotations({
+  message: () => "my custom message"
+})
+```
+
+#### General Guidelines for Messages
+
+The general logic followed to determine the messages is as follows:
+
+1. If no custom messages are set, the default message related to the innermost schema where the operation (i.e., decoding or encoding) failed is used.
+
+2. If custom messages are set, then the message corresponding to the **first** failed schema is used, starting from the innermost schema to the outermost. However, if the failing schema does not have a custom message, then **the default message is used**.
+
+3. As an opt-in feature, **you can override guideline 2** by setting the `overwrite` flag to `true`. This allows the custom message to take precedence over all other custom messages from inner schemas. This is to address the scenario where a user wants to define a single cumulative custom message describing the properties that a valid value must have and does not want to see default messages.
+
+Let's see some practical examples.
+
+#### Scalar Schemas
+
+```ts
+import { Schema } from "@effect/schema"
+
+const MyString = Schema.String.annotations({
+  message: () => "my custom message"
+})
+
+const decode = Schema.decodeUnknownEither(MyString)
+
+console.log(decode(null)) // "my custom message"
+```
+
+#### Refinements
+
+This example demonstrates setting a custom message on the last refinement in a chain of refinements. As you can see, the custom message is only used if the refinement related to `maxLength` fails; otherwise, default messages are used.
+
+```ts
+import { Schema } from "@effect/schema"
+
+const MyString = Schema.String.pipe(
+  Schema.minLength(1),
+  Schema.maxLength(2)
+).annotations({
+  // This message is displayed only if the last filter (`maxLength`) fails
+  message: () => "my custom message"
+})
+
+const decode = Schema.decodeUnknownEither(MyString)
+
+console.log(decode(null)) // "Expected a string, actual null"
+console.log(decode("")) // `Expected a string at least 1 character(s) long, actual ""`
+console.log(decode("abc")) // "my custom message"
+```
+
+When setting multiple override messages, the one corresponding to the **first** failed predicate is used, starting from the innermost refinement to the outermost:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const MyString = Schema.String
+  // This message is displayed only if a non-String is passed as input
+  .annotations({ message: () => "String custom message" })
+  .pipe(
+    // This message is displayed only if the filter `minLength` fails
+    Schema.minLength(1, { message: () => "minLength custom message" }),
+    // This message is displayed only if the filter `maxLength` fails
+    Schema.maxLength(2, { message: () => "maxLength custom message" })
+  )
+
+const decode = Schema.decodeUnknownEither(MyString)
+
+console.log(decode(null)) // "String custom message"
+console.log(decode("")) // "minLength custom message"
+console.log(decode("abc")) // "maxLength custom message"
+```
+
+You have the option to change the default behavior by setting the `override` flag to `true`. This is useful when you want to create a single comprehensive custom message that describes the required properties of a valid value without displaying default messages.
+
+```ts
+import { Schema } from "@effect/schema"
+
+const MyString = Schema.String.pipe(
+  Schema.minLength(1),
+  Schema.maxLength(2)
+).annotations({
+  // By setting the `override` flag to `true`, this message will always be shown for any error
+  message: () => ({ message: "my custom message", override: true })
+})
+
+const decode = Schema.decodeUnknownEither(MyString)
+
+console.log(decode(null)) // "my custom message"
+console.log(decode("")) // "my custom message"
+console.log(decode("abc")) // "my custom message"
+```
+
+#### Transformations
+
+In this example, `IntFromString` is a transformation schema that converts strings to integers. It applies specific validation messages based on different scenarios.
+
+```ts
+import { ParseResult, Schema } from "@effect/schema"
+
+const IntFromString = Schema.transformOrFail(
+  // This message is displayed only if the input is not a string
+  Schema.String.annotations({ message: () => "please enter a string" }),
+  // This message is displayed only if the input can be converted to a number but it's not an integer
+  Schema.Int.annotations({ message: () => "please enter an integer" }),
+  {
+    decode: (s, _, ast) => {
+      const n = Number(s)
+      return Number.isNaN(n)
+        ? ParseResult.fail(new ParseResult.Type(ast, s))
+        : ParseResult.succeed(n)
+    },
+    encode: (n) => ParseResult.succeed(String(n))
+  }
+)
+  // This message is displayed only if the input cannot be converted to a number
+  .annotations({ message: () => "please enter a parseable string" })
+
+const decode = Schema.decodeUnknownEither(IntFromString)
+
+console.log(decode(null)) // "please enter a string"
+console.log(decode("1.2")) // "please enter an integer"
+console.log(decode("not a number")) // "please enter a parseable string"
+```
+
+#### Compound Schemas
+
+The custom message system becomes especially handy when dealing with complex schemas, unlike simple scalar values like `string` or `number`. For instance, consider a schema comprising nested structures, such as a struct containing an array of other structs. Let's explore an example demonstrating the advantage of default messages in handling decoding errors within such nested structures:
+
+```ts
+import { Schema } from "@effect/schema"
+import { pipe } from "effect"
+
+const schema = Schema.Struct({
+  outcomes: pipe(
+    Schema.Array(
+      Schema.Struct({
+        id: Schema.String,
+        text: pipe(
+          Schema.String,
+          Schema.message(() => "error_invalid_outcome_type"),
+          Schema.minLength(1, { message: () => "error_required_field" }),
+          Schema.maxLength(50, { message: () => "error_max_length_field" })
+        )
+      })
+    ),
+    Schema.minItems(1, { message: () => "error_min_length_field" })
+  )
+})
+
+Schema.decodeUnknownSync(schema, { errors: "all" })({
+  outcomes: []
+})
+/*
+throws
+Error: { outcomes: an array of at least 1 items }
+└─ ["outcomes"]
+   └─ error_min_length_field
+*/
+
+Schema.decodeUnknownSync(schema, { errors: "all" })({
+  outcomes: [
+    { id: "1", text: "" },
+    { id: "2", text: "this one is valid" },
+    { id: "3", text: "1234567890".repeat(6) }
+  ]
+})
+/*
+throws
+Error: { outcomes: an array of at least 1 items }
+└─ ["outcomes"]
+   └─ an array of at least 1 items
+      └─ From side refinement failure
+         └─ ReadonlyArray<{ id: string; text: a string at most 50 character(s) long }>
+            ├─ [0]
+            │  └─ { id: string; text: a string at most 50 character(s) long }
+            │     └─ ["text"]
+            │        └─ error_required_field
+            └─ [2]
+               └─ { id: string; text: a string at most 50 character(s) long }
+                  └─ ["text"]
+                     └─ error_max_length_field
+*/
+```
+
+#### Effectful messages
+
+Messages are not only of type `string` but can return an `Effect` so that they can have dependencies (for example, from an internationalization service). Let's see the outline of a similar situation with a very simplified example for demonstration purposes:
+
+```ts
+import { Schema, TreeFormatter } from "@effect/schema"
+import { Context, Effect, Either, Option } from "effect"
+
+// internationalization service
+class Messages extends Context.Tag("Messages")<
+  Messages,
+  {
+    NonEmpty: string
+  }
+>() {}
+
+const Name = Schema.NonEmpty.pipe(
+  Schema.message(() =>
+    Effect.gen(function* (_) {
+      const service = yield* _(Effect.serviceOption(Messages))
+      return Option.match(service, {
+        onNone: () => "Invalid string",
+        onSome: (messages) => messages.NonEmpty
+      })
+    })
+  )
+)
+
+Schema.decodeUnknownSync(Name)("") // => throws "Invalid string"
+
+const result = Schema.decodeUnknownEither(Name)("").pipe(
+  Either.mapLeft((error) =>
+    TreeFormatter.formatError(error).pipe(
+      Effect.provideService(Messages, { NonEmpty: "should be non empty" }),
+      Effect.runSync
+    )
+  )
+)
+
+console.log(result) // => { _id: 'Either', _tag: 'Left', left: 'should be non empty' }
+```
+
+## Classes
+
+When working with schemas, you have a choice beyond the `S.struct` constructor. You can leverage the power of classes through the `Class` utility, which comes with its own set of advantages tailored to common use cases.
+
+### The Benefits of Using Classes
+
+Classes offer several features that simplify the schema creation process:
+
+- **All-in-One Definition**: With classes, you can define both a schema and an opaque type simultaneously.
+- **Shared Functionality**: You can incorporate shared functionality using class methods or getters.
+- **Value Equality and Hashing**: Utilize the built-in capability for checking value equality and applying hashing (thanks to `Class` implementing `Data.Case`).
+
+Let's dive into an illustrative example to better understand how classes work:
+
+```ts
+import { Schema } from "@effect/schema"
+
+// Define your schema by providing the type to `Class` and the desired fields
+class Person extends Schema.Class<Person>("Person")({
+  id: Schema.Number,
+  name: Schema.String.pipe(Schema.nonEmpty())
+}) {}
+```
+
+### Validation and Instantiation
+
+The class constructor serves as a validation and instantiation tool. It ensures that the provided properties meet the schema requirements:
+
+```ts
+const tim = new Person({ id: 1, name: "Tim" })
+```
+
+Keep in mind that it throws an error for invalid properties...
+
+```ts
+new Person({ id: 1, name: "" })
+/* throws
+Error: Person (Constructor)
+└─ ["name"]
+   └─ a non empty string
+      └─ Predicate refinement failure
+         └─ Expected a non empty string, actual ""
+*/
+```
+
+...unless you explicitly disable validation:
+
+```ts
+new Person({ id: 1, name: "" }, true) // no error
+```
+
+### No Args
+
+If you don't want to have any arguments, you can use `{}`:
+
+```ts
+import { Schema } from "@effect/schema"
+
+class NoArgs extends Schema.Class<NoArgs>("NoArgs")({}) {}
+
+const noargs = new NoArgs()
+```
+
+### Custom Getters and Methods
+
+For more flexibility, you can also introduce custom getters and methods:
+
+```ts
+import { Schema } from "@effect/schema"
+
+class Person extends Schema.Class<Person>("Person")({
+  id: Schema.Number,
+  name: Schema.String.pipe(Schema.nonEmpty())
+}) {
+  get upperName() {
+    return this.name.toUpperCase()
+  }
+}
+
+const john = new Person({ id: 1, name: "John" })
+
+console.log(john.upperName) // "JOHN"
+```
+
+### Accessing Related Schemas
+
+The class constructor itself is a Schema, and can be assigned/provided anywhere a Schema is expected. There is also a `.fields` property, which can be used when the class prototype is not required.
+
+```ts
+import { Schema } from "@effect/schema"
+
+class Person extends Schema.Class<Person>("Person")({
+  id: Schema.Number,
+  name: Schema.String.pipe(Schema.nonEmpty())
+}) {}
+
+console.log(Schema.isSchema(Person)) // true
+
+/*
+{
+    readonly id: typeof Schema.Number;
+    readonly name: Schema.filter<Schema.Schema<string, string, never>>;
+}
+*/
+Person.fields
+```
+
+### Recursive Schemas
+
+The `suspend` combinator is useful when you need to define a `Schema` that depends on itself, like in the case of recursive data structures. In this example, the `Category` schema depends on itself because it has a field `subcategories` that is an array of `Category` objects.
+
+```ts
+import { Schema } from "@effect/schema"
+
+class Category extends Schema.Class<Category>("Category")({
+  name: Schema.String,
+  subcategories: Schema.Array(
+    Schema.suspend((): Schema.Schema<Category> => Category)
+  )
+}) {}
+```
+
+> [!NOTE]
+> It is necessary to add an explicit type annotation (`S.suspend((): S.Schema<Category> => Category`) because otherwise TypeScript would struggle to infer types correctly. Without this annotation, you might encounter the error message: "Type 'typeof Category' is missing the following properties from type 'Schema<unknown, unknown, unknown>': ast, annotations, [TypeId], pipets(2739)"
+
+#### Mutually Recursive Schemas
+
+Here's an example of two mutually recursive schemas, `Expression` and `Operation`, that represent a simple arithmetic expression tree.
+
+```ts
+import { Schema } from "@effect/schema"
+
+class Expression extends Schema.Class<Expression>("Expression")({
+  type: Schema.Literal("expression"),
+  value: Schema.Union(
+    Schema.Number,
+    Schema.suspend((): Schema.Schema<Operation> => Operation)
+  )
+}) {}
+
+class Operation extends Schema.Class<Operation>("Operation")({
+  type: Schema.Literal("operation"),
+  operator: Schema.Literal("+", "-"),
+  left: Expression,
+  right: Expression
+}) {}
+```
+
+#### Recursive Types with Different Encoded and Type
+
+Defining a recursive schema where the `Encoded` type differs from the `Type` type adds another layer of complexity. In such cases, we need to define an interface for the `Encoded` type.
+
+Let's consider an example: suppose we want to add an `id` field to the `Category` schema, where the schema for `id` is `NumberFromString`. It's important to note that `NumberFromString` is a schema that transforms a string into a number, so the `Type` and `Encoded` types of `NumberFromString` differ, being `number` and `string` respectively. When we add this field to the `Category` schema, TypeScript raises an error:
+
+```ts
+import { Schema } from "@effect/schema"
+
+/*
+TypeScript error:
+Type 'Category' is not assignable to type '{ readonly id: string; readonly name: string; readonly subcategories: readonly Category[]; }'.
+  Types of property 'id' are incompatible.
+    Type 'number' is not assignable to type 'string'.ts(2322)
+*/
+class Category extends Schema.Class<Category>("Category")({
+  id: Schema.NumberFromString,
+  name: Schema.String,
+  subcategories: Schema.Array(
+    Schema.suspend((): Schema.Schema<Category> => Category)
+  )
+}) {}
+```
+
+This error occurs because the explicit annotation `S.suspend((): S.Schema<Category> => Category` is no longer sufficient and needs to be adjusted by explicitly adding the `Encoded` type:
+
+```ts
+import { Schema } from "@effect/schema"
+
+interface CategoryEncoded {
+  readonly id: string
+  readonly name: string
+  readonly subcategories: ReadonlyArray<CategoryEncoded>
+}
+
+class Category extends Schema.Class<Category>("Category")({
+  id: Schema.NumberFromString,
+  name: Schema.String,
+  subcategories: Schema.Array(
+    Schema.suspend((): Schema.Schema<Category, CategoryEncoded> => Category)
+  )
+}) {}
+```
+
+As we've observed, it's necessary to define an interface for the `Encoded` of the schema to enable recursive schema definition, which can complicate things and be quite tedious. One pattern to mitigate this is to **separate the field responsible for recursion** from all other fields.
+
+```ts
+import { Schema } from "@effect/schema"
+
+const fields = {
+  id: Schema.NumberFromString,
+  name: Schema.String
+  // ...possibly other fields
+}
+
+interface CategoryEncoded extends Schema.Struct.Encoded<typeof fields> {
+  readonly subcategories: ReadonlyArray<CategoryEncoded> // Define `subcategories` using recursion
+}
+
+class Category extends Schema.Class<Category>("Category")({
+  ...fields, // Include the fields
+  subcategories: Schema.Array(
+    Schema.suspend((): Schema.Schema<Category, CategoryEncoded> => Category)
+  ) // Define `subcategories` using recursion
+}) {}
+```
+
+### Tagged Class variants
+
+You can also create classes that extend `TaggedClass` & `TaggedError` from the `effect/Data` module:
+
+```ts
+import { Schema } from "@effect/schema"
+
+class TaggedPerson extends Schema.TaggedClass<TaggedPerson>()("TaggedPerson", {
+  name: Schema.String
+}) {}
+
+class HttpError extends Schema.TaggedError<HttpError>()("HttpError", {
+  status: Schema.Number
+}) {}
+
+const joe = new TaggedPerson({ name: "Joe" })
+console.log(joe._tag) // "TaggedPerson"
+
+const error = new HttpError({ status: 404 })
+console.log(error._tag) // "HttpError"
+console.log(error.stack) // access the stack trace
+```
+
+### Extending existing Classes
+
+In situations where you need to augment your existing class with more fields, the built-in `extend` utility comes in handy:
+
+```ts
+import { Schema } from "@effect/schema"
+
+class Person extends Schema.Class<Person>("Person")({
+  id: Schema.Number,
+  name: Schema.String.pipe(Schema.nonEmpty())
+}) {
+  get upperName() {
+    return this.name.toUpperCase()
+  }
+}
+
+class PersonWithAge extends Person.extend<PersonWithAge>("PersonWithAge")({
+  age: Schema.Number
+}) {
+  get isAdult() {
+    return this.age >= 18
+  }
+}
+```
+
+### Transformations
+
+You have the option to enhance a class with (effectful) transformations. This becomes valuable when you want to enrich or validate an entity sourced from a data store.
+
+```ts
+import { Schema } from "@effect/schema"
+import { Effect, Option } from "effect"
+
+export class Person extends Schema.Class<Person>("Person")({
+  id: Schema.Number,
+  name: Schema.String
+}) {}
+
+console.log(Schema.decodeUnknownSync(Person)({ id: 1, name: "name" }))
+/*
+Output:
+Person { id: 1, name: 'name' }
+*/
+
+function getAge(id: number): Effect.Effect<number, Error> {
+  return Effect.succeed(id + 2)
+}
+
+export class PersonWithTransform extends Person.transformOrFail<PersonWithTransform>(
+  "PersonWithTransform"
+)(
+  {
+    age: Schema.optional(Schema.Number, { exact: true, as: "Option" })
+  },
+  {
+    decode: (input) =>
+      Effect.mapBoth(getAge(input.id), {
+        onFailure: (e) =>
+          new ParseResult.Type(Schema.String.ast, input.id, e.message),
+        // must return { age: Option<number> }
+        onSuccess: (age) => ({ ...input, age: Option.some(age) })
+      }),
+    encode: ParseResult.succeed
+  }
+) {}
+
+Schema.decodeUnknownPromise(PersonWithTransform)({ id: 1, name: "name" }).then(
+  console.log
+)
+/*
+Output:
+PersonWithTransform {
+  id: 1,
+  name: 'name',
+  age: { _id: 'Option', _tag: 'Some', value: 3 }
+}
+*/
+
+export class PersonWithTransformFrom extends Person.transformOrFailFrom<PersonWithTransformFrom>(
+  "PersonWithTransformFrom"
+)(
+  {
+    age: Schema.optional(Schema.Number, { exact: true, as: "Option" })
+  },
+  {
+    decode: (input) =>
+      Effect.mapBoth(getAge(input.id), {
+        onFailure: (e) =>
+          new ParseResult.Type(Schema.String.ast, input, e.message),
+        // must return { age?: number }
+        onSuccess: (age) => (age > 18 ? { ...input, age } : { ...input })
+      }),
+    encode: ParseResult.succeed
+  }
+) {}
+
+Schema.decodeUnknownPromise(PersonWithTransformFrom)({
+  id: 1,
+  name: "name"
+}).then(console.log)
+/*
+Output:
+PersonWithTransformFrom {
+  id: 1,
+  name: 'name',
+  age: { _id: 'Option', _tag: 'None' }
+}
+*/
+```
+
+The decision of which API to use, either `transformOrFail` or `transformOrFailFrom`, depends on when you wish to execute the transformation:
+
+1. Using `transformOrFail`:
+
+   - The transformation occurs at the end of the process.
+   - It expects you to provide a value of type `{ age: Option<number> }`.
+   - After processing the initial input, the new transformation comes into play, and you need to ensure the final output adheres to the specified structure.
+
+2. Using `transformOrFailFrom`:
+   - The new transformation starts as soon as the initial input is handled.
+   - You should provide a value `{ age?: number }`.
+   - Based on this fresh input, the subsequent transformation `{ age: S.optionalToOption(S.Number, { exact: true }) }` is executed.
+   - This approach allows for immediate handling of the input, potentially influencing the subsequent transformations.
+
+## Default Constructors
+
+When dealing with data, creating values that match a specific schema is crucial. To simplify this process, we've introduced **default constructors** for various types of schemas: `Struct`s, `Record`s, `filter`s, and `brand`s. Let's dive into each of them with some examples to understand better how they work.
+
+> [!NOTE]
+> Default constructors associated with a schema `Schema<A, I, R>` are specifically related to the `A` type, not the `I` type.
+
+Example (`Struct`)
+
+```ts
+import { Schema } from "@effect/schema"
+
+const Struct = Schema.Struct({
+  name: Schema.NonEmpty
+})
+
+Struct.make({ name: "a" }) // ok
+Struct.make({ name: "" })
+/*
+throws
+Error: { name: NonEmpty }
+└─ ["name"]
+   └─ NonEmpty
+      └─ Predicate refinement failure
+         └─ Expected NonEmpty (a non empty string), actual ""
+*/
+```
+
+Example (`Record`)
+
+```ts
+import { Schema } from "@effect/schema"
+
+const Record = Schema.Record(Schema.String, Schema.NonEmpty)
+
+Record.make({ a: "a", b: "b" }) // ok
+Record.make({ a: "a", b: "" })
+/*
+throws
+Error: { [x: string]: NonEmpty }
+└─ ["b"]
+   └─ NonEmpty
+      └─ Predicate refinement failure
+         └─ Expected NonEmpty (a non empty string), actual ""
+*/
+```
+
+Example (`filter`)
+
+```ts
+import { Schema } from "@effect/schema"
+
+const MyNumber = Schema.Number.pipe(Schema.between(1, 10))
+
+// const n: number
+const n = MyNumber.make(5) // ok
+MyNumber.make(20)
+/*
+throws
+Error: a number between 1 and 10
+└─ Predicate refinement failure
+  └─ Expected a number between 1 and 10, actual 20
+*/
+```
+
+Example (`brand`)
+
+```ts
+import { Schema } from "@effect/schema"
+
+const BrandedNumberSchema = Schema.Number.pipe(
+  Schema.between(1, 10),
+  Schema.brand("MyNumber")
+)
+
+// const n: number & Brand<"MyNumber">
+const n = BrandedNumberSchema.make(5) // ok
+BrandedNumberSchema.make(20)
+/*
+throws
+Error: a number between 1 and 10
+└─ Predicate refinement failure
+  └─ Expected a number between 1 and 10, actual 20
+*/
+```
+
+When utilizing our default constructors, it's important to grasp the type of value they generate. In the `BrandedNumberSchema` example, the return type of the constructor is `number & Brand<"MyNumber">`, indicating that the resulting value is a number with the added branding "MyNumber".
+
+This differs from the filter example where the return type is simply `number`. The branding offers additional insights about the type, facilitating the identification and manipulation of your data.
+
+Note that default constructors are "unsafe" in the sense that if the input does not conform to the schema, the constructor throws an error containing a description of what is wrong. This is because the goal of default constructors is to provide a quick way to create compliant values (for example, for writing tests or configurations, or in any situation where it is assumed that the input passed to the constructors is valid and the opposite situation is exceptional). To have a "safe" constructor, you can use `Schema.validateEither`:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const MyNumber = Schema.Number.pipe(Schema.between(1, 10))
+
+const ctor = Schema.validateEither(MyNumber)
+
+console.log(ctor(5))
+/*
+{ _id: 'Either', _tag: 'Right', right: 5 }
+*/
+
+console.log(ctor(20))
+/*
+{
+  _id: 'Either',
+  _tag: 'Left',
+  left: {
+    _id: 'ParseError',
+    message: 'a number between 1 and 10\n' +
+      '└─ Predicate refinement failure\n' +
+      '   └─ Expected a number between 1 and 10, actual 20'
+  }
+}
+*/
+```
+
+### Introduction to Setting Default Values
+
+When constructing objects, it's common to want to assign default values to certain fields to simplify the creation of new instances. Our new `withConstructorDefault` combinator allows you to effortlessly manage the optionality of a field in your default constructor.
+
+Example Without Default
+
+```ts
+import { Schema } from "@effect/schema"
+
+const PersonSchema = Schema.Struct({
+  name: Schema.NonEmpty,
+  age: Schema.Number
+})
+
+// Both name and age are required
+PersonSchema.make({ name: "John", age: 30 })
+```
+
+Example With Default
+
+```ts
+import { Schema } from "@effect/schema"
+
+const PersonSchema = Schema.Struct({
+  name: Schema.NonEmpty,
+  age: Schema.Number.pipe(
+    Schema.propertySignature,
+    Schema.withConstructorDefault(() => 0)
+  )
+})
+
+// The age field is optional and defaults to 0
+console.log(PersonSchema.make({ name: "John" })) // Output: { age: 0, name: 'John' }
+```
+
+In the second example, notice how the `age` field is now optional and defaults to `0` when not provided.
+
+Defaults are **lazily evaluated**, meaning that a new instance of the default is generated every time the constructor is called:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const PersonSchema = Schema.Struct({
+  name: Schema.NonEmpty,
+  age: Schema.Number.pipe(
+    Schema.propertySignature,
+    Schema.withConstructorDefault(() => 0)
+  ),
+  timestamp: Schema.Number.pipe(
+    Schema.propertySignature,
+    Schema.withConstructorDefault(() => new Date().getTime())
+  )
+})
+
+console.log(PersonSchema.make({ name: "name1" })) // { age: 0, timestamp: 1714232909221, name: 'name1' }
+console.log(PersonSchema.make({ name: "name2" })) // { age: 0, timestamp: 1714232909227, name: 'name2' }
+```
+
+Note how the `timestamp` field varies.
+
+Default values are also "portable", meaning that if you reuse the same property signature in another schema, the default is carried over:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const PersonSchema = Schema.Struct({
+  name: Schema.NonEmpty,
+  age: Schema.Number.pipe(
+    Schema.propertySignature,
+    Schema.withConstructorDefault(() => 0)
+  ),
+  timestamp: Schema.Number.pipe(
+    Schema.propertySignature,
+    Schema.withConstructorDefault(() => new Date().getTime())
+  )
+})
+
+const AnotherSchema = Schema.Struct({
+  foo: Schema.String,
+  age: PersonSchema.fields.age
+})
+
+console.log(AnotherSchema.make({ foo: "bar" })) // => { foo: 'bar', age: 0 }
+```
+
+Defaults can also be applied using the `Class` API:
+
+```ts
+import { Schema } from "@effect/schema"
+
+class Person extends Schema.Class<Person>("Person")({
+  name: Schema.NonEmpty,
+  age: Schema.Number.pipe(
+    Schema.propertySignature,
+    Schema.withConstructorDefault(() => 0)
+  ),
+  timestamp: Schema.Number.pipe(
+    Schema.propertySignature,
+    Schema.withConstructorDefault(() => new Date().getTime())
+  )
+}) {}
+
+console.log(new Person({ name: "name1" })) // Person { age: 0, timestamp: 1714400867208, name: 'name1' }
+console.log(new Person({ name: "name2" })) // Person { age: 0, timestamp: 1714400867215, name: 'name2' }
+```
+
+## API Interfaces
+
+### What's an API Interface?
+
+An "API Interface" is an `interface` specifically defined for a schema exported from `@effect/schema` or for a particular API exported from `@effect/schema`. Let's see an example with a simple schema:
+
+**Example** (an `Age` schema)
+
+```ts
+import { Schema } from "@effect/schema"
+
+// API interface
+interface Age extends Schema.Schema<number> {}
+
+const Age: Age = Schema.Number.pipe(Schema.between(0, 100))
+
+// type AgeType = number
+type AgeType = Schema.Schema.Type<typeof Age>
+// type AgeEncoded = number
+type AgeEncoded = Schema.Schema.Encoded<typeof Age>
+```
+
+The benefit is that when we hover over the `Age` schema, we see `Age` instead of `Schema<number, number, never>`. This is a small improvement if we only think about the `Age` schema, but as we'll see shortly, these improvements in schema visualization add up, resulting in a significant improvement in the readability of our schemas.
+
+Many of the built-in schemas exported from `@effect/schema` have been equipped with API interfaces, for example `number` or `never`.
+
+```ts
+import { Schema } from "@effect/schema"
+
+// const number: S.Number$
+Schema.Number
+
+// const never: S.Never
+Schema.Never
+```
+
+> [!NOTE]
+> Notice that we had to add a `$` suffix to the API interface name because we couldn't simply use "Number" since it's a reserved name for the TypeScript `Number` type.
+
+Now let's see an example with a combinator that, given an input schema for a certain type `A`, returns the schema of the pair `readonly [A, A]`:
+
+**Example** (a `pair` combinator)
+
+```ts
+import { Schema } from "@effect/schema"
+
+// API interface
+export interface pair<S extends Schema.Schema.Any>
+  extends Schema.Schema<
+    readonly [Schema.Schema.Type<S>, Schema.Schema.Type<S>],
+    readonly [Schema.Schema.Encoded<S>, Schema.Schema.Encoded<S>],
+    Schema.Schema.Context<S>
+  > {}
+
+// API
+export const pair = <S extends Schema.Schema.Any>(schema: S): pair<S> =>
+  Schema.Tuple(Schema.asSchema(schema), Schema.asSchema(schema))
+```
+
+> [!NOTE]
+> The `Schema.Schema.Any` helper represents any schema, except for `never`. For more information on the `asSchema` helper, refer to the following section "Understanding Opaque Names".
+
+If we try to use our `pair` combinator, we see that readability is also improved in this case:
+
+```ts
+// const Coords: pair<typeof Schema.Number>
+const Coords = pair(Schema.Number)
+```
+
+In hover, we simply see `pair<typeof Schema.Number>` instead of the verbose:
+
+```ts
+// const Coords: Schema.Tuple<[typeof Schema.Number, typeof Schema.Number]>
+const Coords = Schema.Tuple(Schema.Number, Schema.Number)
+```
+
+The new name is not only shorter and more readable but also carries along the origin of the schema, which is a call to the `pair` combinator.
+
+### Understanding Opaque Names
+
+Opaque names generated in this way are very convenient, but sometimes there's a need to see what the underlying types are, perhaps for debugging purposes while you declare your schemas. At any time, you can use the `asSchema` function, which returns an `Schema<A, I, R>` compatible with your opaque definition:
+
+```ts
+// const Coords: pair<typeof Schema.Number>
+const Coords = pair(Schema.Number)
+
+// const NonOpaqueCoords: Schema.Schema<readonly [number, number], readonly [number, number], never>
+const NonOpaqueCoords = Schema.asSchema(Coords)
+```
+
+> [!NOTE]
+> The call to `asSchema` is negligible in terms of overhead since it's nothing more than a glorified identity function.
+
+Many of the built-in combinators exported from `@effect/schema` have been equipped with API interfaces, for example `struct`:
+
+```ts
+import { Schema } from "@effect/schema"
+
+/*
+const Person: Schema.Struct<{
+    name: typeof Schema.String;
+    age: typeof Schema.Number;
+}>
+*/
+const Person = Schema.Struct({
+  name: Schema.String,
+  age: Schema.Number
+})
+```
+
+In hover, we simply see:
+
+```ts
+const Person: Schema.Struct<{
+  name: typeof Schema.String
+  age: typeof Schema.Number
+}>
+```
+
+instead of the verbose:
+
+```ts
+const Person: Schema.Schema<
+  {
+    readonly name: string
+    readonly age: number
+  },
+  {
+    readonly name: string
+    readonly age: number
+  },
+  never
+>
+```
+
+### Exposing Arguments
+
+The benefits of API interfaces don't end with better readability; in fact, the driving force behind the introduction of API interfaces arises more from the need to expose some important information about the schemas that users generate. Let's see some examples related to literals and structs:
+
+**Example** (exposed literals)
+
+Now when we define literals, we can retrieve them using the `literals` field exposed by the generated schema:
+
+```ts
+import { Schema } from "@effect/schema"
+
+// const myliterals: Schema.Literal<["A", "B"]>
+const myliterals = Schema.Literal("A", "B")
+
+// literals: readonly ["A", "B"]
+myliterals.literals
+
+console.log(myliterals.literals) // Output: [ 'A', 'B' ]
+```
+
+**Example** (exposed fields)
+
+Similarly to what we've seen for literals, when we define a struct, we can retrieve its `fields`:
+
+```ts
+import { Schema } from "@effect/schema"
+
+/*
+const Person: Schema.Struct<{
+    name: typeof Schema.String;
+    age: typeof Schema.Number;
+}>
+*/
+const Person = Schema.Struct({
+  name: Schema.String,
+  age: Schema.Number
+})
+
+/*
+fields: {
+    readonly name: typeof Schema.String;
+    readonly age: typeof Schema.Number;
+}
+*/
+Person.fields
+
+console.log(Person.fields)
+/*
+{
+  name: Schema {
+    ast: StringKeyword { _tag: 'StringKeyword', annotations: [Object] },
+    ...
+  },
+  age: Schema {
+    ast: NumberKeyword { _tag: 'NumberKeyword', annotations: [Object] },
+    ...
+  }
+}
+*/
+```
+
+Being able to retrieve the `fields` is particularly advantageous when you want to extend a struct with new fields; now you can do it simply using the spread operator:
+
+```ts
+import * as S from "@effect/schema/Schema"
+
+import { Schema } from "@effect/schema"
+
+const Person = Schema.Struct({
+  name: Schema.String,
+  age: Schema.Number
+})
+
+/*
+const PersonWithId: Schema.Struct<{
+    id: typeof Schema.Number;
+    name: typeof Schema.String;
+    age: typeof Schema.Number;
+}>
+*/
+const PersonWithId = Schema.Struct({
+  ...Person.fields,
+  id: Schema.Number
+})
+```
+
+The list of APIs equipped with API interfaces is extensive; here we provide only the main ones just to give you an idea of the new development possibilities that have opened up:
+
+```ts
+import { Schema } from "@effect/schema"
+
+// ------------------------
+// array value
+// ------------------------
+
+// value: typeof Schema.String
+Schema.Array(Schema.String).value
+
+// ------------------------
+// record key and value
+// ------------------------
+
+// key: typeof Schema.String
+Schema.Record(Schema.String, Schema.Number).key
+// value: typeof Schema.Number
+Schema.Record(Schema.String, Schema.Number).value
+
+// ------------------------
+// union members
+// ------------------------
+
+// members: readonly [typeof Schema.String, typeof Schema.Number]
+Schema.Union(Schema.String, Schema.Number).members
+
+// ------------------------
+// tuple elements
+// ------------------------
+
+// elements: readonly [typeof Schema.String, typeof Schema.Number]
+Schema.Tuple(Schema.String, Schema.Number).elements
+```
+
+### Troubleshooting When Working With Generic Schemas
+
+Sometimes, while working with functions that handle generic schemas, you may encounter the issue where TypeScript fails to fully resolve the schema type, making it unusable within the function body. Let's see an example:
+
+```ts
+import { Schema } from "@effect/schema"
+
+// A function that uses a generic schema
+const MyStruct = <X extends Schema.Schema.All>(x: X) => Schema.Struct({ x })
+
+// Helper type that returns the return type of the `MyStruct` function
+type MyStructReturnType<X extends Schema.Schema.All> = Schema.Schema.Type<
+  ReturnType<typeof MyStruct<X>>
+>
+
+// In the function body, `obj` has type `Simplify<Schema.Struct.Type<{ x: X; }>>`
+// so it's not possible to access the `x` field
+function test<X extends Schema.Schema.All>(obj: MyStructReturnType<X>) {
+  obj.x // error: Property 'x' does not exist on type 'Simplify<Type<{ x: X; }>>'.ts(2339)
+}
+```
+
+In the function body, `obj` has type
+
+```ts
+Simplify<Schema.Struct.Type<{ x: X }>>
+```
+
+so it's not possible to access the `x` field.
+
+To solve the problem, you need to force TypeScript to resolve the type of `obj`, and you can do this with the type-level helper `Schema.Schema.AsSchema`, which is the type-level counterpart of the function `Schema.asSchema`:
+
+```ts
+function test<X extends Schema.Schema.All>(
+  obj: MyStructReturnType<Schema.Schema.AsSchema<X>>
+) {
+  obj.x // Schema.Schema.Type<X>
+}
+```
+
+Now the type of `obj` is resolved to
+
+```ts
+{
+    readonly x: Schema.Schema.Type<X>;
+}
+```
+
+and therefore, we can access its `x` field.
+
 # Effect Data Types
 
-## Interop with `effect/Data`
+## Interop With Data
 
 The `effect/Data` module in the Effect ecosystem serves as a utility module that simplifies the process of comparing values for equality without the need for explicit implementations of the `Equal` and `Hash` interfaces. It provides convenient APIs that automatically generate default implementations for equality checks, making it easier for developers to perform equality comparisons in their applications.
 
@@ -5196,465 +6116,6 @@ console.log(decode(SortedSet.fromIterable(String.Order)(["1", "2", "3"]))) // { 
 console.log(encode(SortedSet.fromIterable(Number.Order)([1, 2, 3]))) // { _id: 'SortedSet', values: [ '1', '2', '3' ] }
 ```
 
-# Default Constructors
-
-When dealing with data, creating values that match a specific schema is crucial. To simplify this process, we've introduced **default constructors** for various types of schemas: `Struct`s, `Record`s, `filter`s, and `brand`s. Let's dive into each of them with some examples to understand better how they work.
-
-> [!NOTE]
-> Default constructors associated with a schema `Schema<A, I, R>` are specifically related to the `A` type, not the `I` type.
-
-Example (`Struct`)
-
-```ts
-import { Schema } from "@effect/schema"
-
-const Struct = Schema.Struct({
-  name: Schema.NonEmpty
-})
-
-Struct.make({ name: "a" }) // ok
-Struct.make({ name: "" })
-/*
-throws
-Error: { name: NonEmpty }
-└─ ["name"]
-   └─ NonEmpty
-      └─ Predicate refinement failure
-         └─ Expected NonEmpty (a non empty string), actual ""
-*/
-```
-
-Example (`Record`)
-
-```ts
-import { Schema } from "@effect/schema"
-
-const Record = Schema.Record(Schema.String, Schema.NonEmpty)
-
-Record.make({ a: "a", b: "b" }) // ok
-Record.make({ a: "a", b: "" })
-/*
-throws
-Error: { [x: string]: NonEmpty }
-└─ ["b"]
-   └─ NonEmpty
-      └─ Predicate refinement failure
-         └─ Expected NonEmpty (a non empty string), actual ""
-*/
-```
-
-Example (`filter`)
-
-```ts
-import { Schema } from "@effect/schema"
-
-const MyNumber = Schema.Number.pipe(Schema.between(1, 10))
-
-// const n: number
-const n = MyNumber.make(5) // ok
-MyNumber.make(20)
-/*
-throws
-Error: a number between 1 and 10
-└─ Predicate refinement failure
-  └─ Expected a number between 1 and 10, actual 20
-*/
-```
-
-Example (`brand`)
-
-```ts
-import { Schema } from "@effect/schema"
-
-const BrandedNumberSchema = Schema.Number.pipe(
-  Schema.between(1, 10),
-  Schema.brand("MyNumber")
-)
-
-// const n: number & Brand<"MyNumber">
-const n = BrandedNumberSchema.make(5) // ok
-BrandedNumberSchema.make(20)
-/*
-throws
-Error: a number between 1 and 10
-└─ Predicate refinement failure
-  └─ Expected a number between 1 and 10, actual 20
-*/
-```
-
-When utilizing our default constructors, it's important to grasp the type of value they generate. In the `BrandedNumberSchema` example, the return type of the constructor is `number & Brand<"MyNumber">`, indicating that the resulting value is a number with the added branding "MyNumber".
-
-This differs from the filter example where the return type is simply `number`. The branding offers additional insights about the type, facilitating the identification and manipulation of your data.
-
-Note that default constructors are "unsafe" in the sense that if the input does not conform to the schema, the constructor throws an error containing a description of what is wrong. This is because the goal of default constructors is to provide a quick way to create compliant values (for example, for writing tests or configurations, or in any situation where it is assumed that the input passed to the constructors is valid and the opposite situation is exceptional). To have a "safe" constructor, you can use `Schema.validateEither`:
-
-```ts
-import { Schema } from "@effect/schema"
-
-const MyNumber = Schema.Number.pipe(Schema.between(1, 10))
-
-const ctor = Schema.validateEither(MyNumber)
-
-console.log(ctor(5))
-/*
-{ _id: 'Either', _tag: 'Right', right: 5 }
-*/
-
-console.log(ctor(20))
-/*
-{
-  _id: 'Either',
-  _tag: 'Left',
-  left: {
-    _id: 'ParseError',
-    message: 'a number between 1 and 10\n' +
-      '└─ Predicate refinement failure\n' +
-      '   └─ Expected a number between 1 and 10, actual 20'
-  }
-}
-*/
-```
-
-## Introduction to Setting Default Values
-
-When constructing objects, it's common to want to assign default values to certain fields to simplify the creation of new instances. Our new `withConstructorDefault` combinator allows you to effortlessly manage the optionality of a field in your default constructor.
-
-Example Without Default
-
-```ts
-import { Schema } from "@effect/schema"
-
-const PersonSchema = Schema.Struct({
-  name: Schema.NonEmpty,
-  age: Schema.Number
-})
-
-// Both name and age are required
-PersonSchema.make({ name: "John", age: 30 })
-```
-
-Example With Default
-
-```ts
-import { Schema } from "@effect/schema"
-
-const PersonSchema = Schema.Struct({
-  name: Schema.NonEmpty,
-  age: Schema.Number.pipe(
-    Schema.propertySignature,
-    Schema.withConstructorDefault(() => 0)
-  )
-})
-
-// The age field is optional and defaults to 0
-console.log(PersonSchema.make({ name: "John" })) // Output: { age: 0, name: 'John' }
-```
-
-In the second example, notice how the `age` field is now optional and defaults to `0` when not provided.
-
-Defaults are **lazily evaluated**, meaning that a new instance of the default is generated every time the constructor is called:
-
-```ts
-import { Schema } from "@effect/schema"
-
-const PersonSchema = Schema.Struct({
-  name: Schema.NonEmpty,
-  age: Schema.Number.pipe(
-    Schema.propertySignature,
-    Schema.withConstructorDefault(() => 0)
-  ),
-  timestamp: Schema.Number.pipe(
-    Schema.propertySignature,
-    Schema.withConstructorDefault(() => new Date().getTime())
-  )
-})
-
-console.log(PersonSchema.make({ name: "name1" })) // { age: 0, timestamp: 1714232909221, name: 'name1' }
-console.log(PersonSchema.make({ name: "name2" })) // { age: 0, timestamp: 1714232909227, name: 'name2' }
-```
-
-Note how the `timestamp` field varies.
-
-Default values are also "portable", meaning that if you reuse the same property signature in another schema, the default is carried over:
-
-```ts
-import { Schema } from "@effect/schema"
-
-const PersonSchema = Schema.Struct({
-  name: Schema.NonEmpty,
-  age: Schema.Number.pipe(
-    Schema.propertySignature,
-    Schema.withConstructorDefault(() => 0)
-  ),
-  timestamp: Schema.Number.pipe(
-    Schema.propertySignature,
-    Schema.withConstructorDefault(() => new Date().getTime())
-  )
-})
-
-const AnotherSchema = Schema.Struct({
-  foo: Schema.String,
-  age: PersonSchema.fields.age
-})
-
-console.log(AnotherSchema.make({ foo: "bar" })) // => { foo: 'bar', age: 0 }
-```
-
-Defaults can also be applied using the `Class` API:
-
-```ts
-import { Schema } from "@effect/schema"
-
-class Person extends Schema.Class<Person>("Person")({
-  name: Schema.NonEmpty,
-  age: Schema.Number.pipe(
-    Schema.propertySignature,
-    Schema.withConstructorDefault(() => 0)
-  ),
-  timestamp: Schema.Number.pipe(
-    Schema.propertySignature,
-    Schema.withConstructorDefault(() => new Date().getTime())
-  )
-}) {}
-
-console.log(new Person({ name: "name1" })) // Person { age: 0, timestamp: 1714400867208, name: 'name1' }
-console.log(new Person({ name: "name2" })) // Person { age: 0, timestamp: 1714400867215, name: 'name2' }
-```
-
-# Introducing Schemas as Classes
-
-We've introduced a new method for defining schemas using classes. This approach provides opaque schema types, offering a clearer representation. Let's look at how you can define and use schemas as classes.
-
-```ts
-import { Schema } from "@effect/schema"
-
-class Person extends Schema.Struct({
-  name: Schema.String
-}) {}
-
-class Group extends Schema.Struct({
-  person: Person
-}) {}
-
-// const MyUnion: S.Union<[typeof Person, typeof Group]>
-export const MyUnion = Schema.Union(Person, Group)
-```
-
-Notice how the inferred type for `MyUnion` now refers only to the class types, removing the detailed structure, which can sometimes be overwhelming to comprehend. Compare this with the previous method of defining schemas (the old method **still works** if you prefer it!)
-
-```ts
-import { Schema } from "@effect/schema"
-
-const Person = Schema.Struct({
-  name: Schema.String
-})
-
-const Group = Schema.Struct({
-  person: Person
-})
-
-/*
-const MyUnion: Schema.Union<[Schema.Struct<{
-    name: typeof Schema.String;
-}>, Schema.Struct<{
-    person: Schema.Struct<{
-        name: typeof Schema.String;
-    }>;
-}>]>
-*/
-export const MyUnion = Schema.Union(Person, Group)
-```
-
-The new system opens up avenues for new patterns. For example, you can enrich your schema with custom values and functions.
-Let's see an example with the previously defined `Group` schema. For instance, we can add a decoding function attached directly to the schema for convenience:
-
-```ts
-import { Schema } from "@effect/schema"
-
-class Person extends Schema.Struct({
-  name: Schema.String
-}) {}
-
-class Group extends Schema.Struct({
-  person: Person
-}) {
-  static decodeUnknownSync(u: unknown) {
-    return Schema.decodeUnknownSync(this)(u)
-  }
-}
-
-console.log(Group.decodeUnknownSync({}))
-/*
-Error: { person: { name: string } }
-└─ ["person"]
- └─ is missing
-*/
-```
-
-# Understanding Schema Declaration for New Data Types
-
-Creating schemas for new data types is crucial to defining the expected structure of information in your application. This guide explores how to declare schemas for new data types. We'll cover two important concepts: declaring schemas for primitive data types and type constructors.
-
-## Declaring Schemas for Primitive Data Types
-
-A primitive data type represents simple values. To declare a schema for a primitive data type, like the `File` type in TypeScript, we use the `S.declare` constructor along with a type guard. Let's go through an example:
-
-```ts
-import { Schema } from "@effect/schema"
-
-const isFile = (input: unknown): input is File => input instanceof File
-
-// const FileFromSelf: S.Schema<File>
-const FileFromSelf = Schema.declare(isFile, {
-  identifier: "FileFromSelf"
-})
-
-const decode = Schema.decodeUnknownSync(FileFromSelf)
-
-console.log(decode(new File([], ""))) // File { size: 0, type: '', name: '', lastModified: 1705595977234 }
-
-decode(null)
-/*
-throws
-Error: Error: Expected FileFromSelf, actual null
-*/
-```
-
-## Declaring Schemas for Type Constructors
-
-Type constructors are generic types that take one or more types as arguments and return a new type. If you need to define a schema for a type constructor, you can use the `S.declare` constructor. Let's illustrate this with a schema for `ReadonlySet<A>`:
-
-```ts
-import { ParseResult, Schema } from "@effect/schema"
-
-export const MyReadonlySet = <A, I, R>(
-  // Schema for the elements of the Set
-  item: Schema.Schema<A, I, R>
-): Schema.Schema<ReadonlySet<A>, ReadonlySet<I>, R> =>
-  Schema.declare(
-    // Store the schema for the elements
-    [item],
-    {
-      // Decoding function
-      decode: (item) => (input, parseOptions, ast) => {
-        if (input instanceof Set) {
-          // Decode the elements
-          const elements = ParseResult.decodeUnknown(Schema.Array(item))(
-            Array.from(input.values()),
-            parseOptions
-          )
-          // Return a Set containing the parsed elements
-          return ParseResult.map(elements, (as): ReadonlySet<A> => new Set(as))
-        }
-        return ParseResult.fail(new ParseResult.Type(ast, input))
-      },
-      // Encoding function
-      encode: (item) => (input, parseOptions, ast) => {
-        if (input instanceof Set) {
-          // Encode the elements
-          const elements = ParseResult.encodeUnknown(Schema.Array(item))(
-            Array.from(input.values()),
-            parseOptions
-          )
-          // Return a Set containing the parsed elements
-          return ParseResult.map(elements, (is): ReadonlySet<I> => new Set(is))
-        }
-        return ParseResult.fail(new ParseResult.Type(ast, input))
-      }
-    },
-    {
-      description: `ReadonlySet<${Schema.format(item)}>`
-    }
-  )
-
-// const setOfNumbers: S.Schema<ReadonlySet<string>, ReadonlySet<number>>
-const setOfNumbers = MyReadonlySet(Schema.NumberFromString)
-
-const decode = Schema.decodeUnknownSync(setOfNumbers)
-
-console.log(decode(new Set(["1", "2", "3"]))) // Set(3) { 1, 2, 3 }
-
-decode(null)
-/*
-throws
-Error: Expected ReadonlySet<NumberFromString>, actual null
-*/
-
-decode(new Set(["1", null, "3"]))
-/*
-throws
-Error: ReadonlySet<NumberFromString>
-└─ ReadonlyArray<NumberFromString>
-   └─ [1]
-      └─ NumberFromString
-         └─ From side transformation failure
-            └─ Expected a string, actual null
-*/
-```
-
-> [!WARNING]
-> The decoding and encoding functions cannot use context (the `R` type parameter) and cannot use async effects.
-
-## Adding Annotations
-
-When you define a new data type, some compilers like `Arbitrary` or `Pretty` may not know how to handle the newly defined data. For instance:
-
-```ts
-import { Arbitrary, Schema } from "@effect/schema"
-
-const isFile = (input: unknown): input is File => input instanceof File
-
-const FileFromSelf = Schema.declare(isFile, {
-  identifier: "FileFromSelf"
-})
-
-// Create an Arbitrary instance for FileFromSelf schema
-const arb = Arbitrary.make(FileFromSelf)
-/*
-throws:
-Error: cannot build an Arbitrary for a declaration without annotations (FileFromSelf)
-*/
-```
-
-In such cases, you need to provide annotations to ensure proper functionality:
-
-```ts
-import { Arbitrary, FastCheck, Pretty, Schema } from "@effect/schema"
-
-const isFile = (input: unknown): input is File => input instanceof File
-
-const FileFromSelf = Schema.declare(isFile, {
-  identifier: "FileFromSelf",
-  // Provide an arbitrary function to generate random File instances
-  arbitrary: () => (fc) =>
-    fc
-      .tuple(fc.string(), fc.string())
-      .map(([path, content]) => new File([content], path)),
-  // Provide a pretty function to generate human-readable representation of File instances
-  pretty: () => (file) => `File(${file.name})`
-})
-
-// Create an Arbitrary instance for FileFromSelf schema
-const arb = Arbitrary.make(FileFromSelf)
-
-// Generate sample files using the Arbitrary instance
-const files = FastCheck.sample(arb, 2)
-console.log(files)
-/*
-Output:
-[
-  File { size: 5, type: '', name: 'C', lastModified: 1706435571176 },
-  File { size: 1, type: '', name: '98Ggmc', lastModified: 1706435571176 }
-]
-*/
-
-// Create a Pretty instance for FileFromSelf schema
-const pretty = Pretty.make(FileFromSelf)
-
-// Print human-readable representation of a file
-console.log(pretty(files[0])) // "File(C)"
-```
-
 # Useful Examples
 
 ## Email
@@ -5792,462 +6253,7 @@ const pair = <A, I, R>(
   Schema.Tuple(schema, schema)
 ```
 
-# Annotations
-
-One of the fundamental requirements in the design of `@effect/schema` is that it is extensible and customizable. Customizations are achieved through "annotations". Each node contained in the AST of `@effect/schema/AST` contains an `annotations: Record<symbol, unknown>` field that can be used to attach additional information to the schema.
-You can manage these annotations using the `annotations` method.
-
-Let's see some examples:
-
-```ts
-import { Schema } from "@effect/schema"
-
-const Password =
-  // initial schema, a string
-  Schema.String
-    // add an error message for non-string values
-    .annotations({ message: () => "not a string" })
-    .pipe(
-      // add a constraint to the schema, only non-empty strings are valid
-      // and add an error message for empty strings
-      Schema.nonEmpty({ message: () => "required" }),
-      // add a constraint to the schema, only strings with a length less or equal than 10 are valid
-      // and add an error message for strings that are too long
-      Schema.maxLength(10, { message: (s) => `${s} is too long` })
-      // add an identifier to the schema
-    )
-    .annotations({
-      // add an identifier to the schema
-      identifier: "Password",
-      // add a title to the schema
-      title: "password",
-      // add a description to the schema
-      description:
-        "A password is a string of characters used to verify the identity of a user during the authentication process",
-      // add examples to the schema
-      examples: ["1Ki77y", "jelly22fi$h"],
-      // add documentation to the schema
-      documentation: `jsDoc documentation...`
-    })
-```
-
-The example shows some built-in combinators to add meta information, but users can easily add their own meta information by defining a custom annotation.
-
-Here's an example of how to add a `deprecated` annotation:
-
-```ts
-import { AST, Schema } from "@effect/schema"
-
-const DeprecatedId = Symbol.for(
-  "some/unique/identifier/for/the/custom/annotation"
-)
-
-const deprecated = <A, I, R>(
-  self: Schema.Schema<A, I, R>
-): Schema.Schema<A, I, R> =>
-  Schema.make(AST.annotations(self.ast, { [DeprecatedId]: true }))
-
-const schema = deprecated(Schema.String)
-
-console.log(schema)
-/*
-Output:
-{
-  ast: {
-    _tag: 'StringKeyword',
-    annotations: {
-      [Symbol(@effect/schema/annotation/Title)]: 'string',
-      [Symbol(@effect/schema/annotation/Description)]: 'a string',
-      [Symbol(some/unique/identifier/for/the/custom/annotation)]: true
-    }
-  }
-  ...
-}
-*/
-```
-
-Annotations can be read using the `getAnnotation` helper, here's an example:
-
-```ts
-import { AST, Schema } from "@effect/schema"
-import { Option } from "effect"
-
-const DeprecatedId = Symbol.for(
-  "some/unique/identifier/for/the/custom/annotation"
-)
-
-const deprecated = <A, I, R>(
-  self: Schema.Schema<A, I, R>
-): Schema.Schema<A, I, R> =>
-  Schema.make(AST.annotations(self.ast, { [DeprecatedId]: true }))
-
-const schema = deprecated(Schema.String)
-
-const isDeprecated = <A, I, R>(schema: Schema.Schema<A, I, R>): boolean =>
-  AST.getAnnotation<boolean>(DeprecatedId)(schema.ast).pipe(
-    Option.getOrElse(() => false)
-  )
-
-console.log(isDeprecated(Schema.String)) // false
-console.log(isDeprecated(schema)) // true
-```
-
-# Error messages
-
-## Default Error Messages
-
-When a parsing, decoding, or encoding process encounters a failure, a default error message is automatically generated for you. Let's explore some examples:
-
-```ts
-import { Schema } from "@effect/schema"
-
-const schema = Schema.Struct({
-  name: Schema.String,
-  age: Schema.Number
-})
-
-Schema.decodeUnknownSync(schema)(null)
-/*
-throws:
-Error: Expected { readonly name: string; readonly age: number }, actual null
-*/
-
-Schema.decodeUnknownSync(schema)({}, { errors: "all" })
-/*
-throws:
-Error: { readonly name: string; readonly age: number }
-├─ ["name"]
-│  └─ is missing
-└─ ["age"]
-   └─ is missing
-*/
-```
-
-### Identifiers in Error Messages
-
-When you include an identifier annotation, it will be incorporated into the default error message, followed by a description if provided:
-
-```ts
-import { Schema } from "@effect/schema"
-
-const schema = Schema.Struct({
-  name: Schema.String.annotations({ identifier: "Name" }),
-  age: Schema.Number.annotations({ identifier: "Age" })
-}).annotations({ identifier: "Person" })
-
-Schema.decodeUnknownSync(schema)(null)
-/*
-throws:
-Error: Expected Person, actual null
-*/
-
-Schema.decodeUnknownSync(schema)({}, { errors: "all" })
-/*
-throws:
-Error: Person
-├─ ["name"]
-│  └─ is missing
-└─ ["age"]
-   └─ is missing
-*/
-
-Schema.decodeUnknownSync(schema)({ name: null, age: null }, { errors: "all" })
-/*
-throws:
-Error: Person
-├─ ["name"]
-│  └─ Expected Name (a string), actual null
-└─ ["age"]
-   └─ Expected Age (a number), actual null
-*/
-```
-
-### Refinements
-
-When a refinement fails, the default error message indicates whether the failure occurred in the "from" part or within the predicate defining the refinement:
-
-```ts
-import { Schema } from "@effect/schema"
-
-const schema = Schema.Struct({
-  name: Schema.NonEmpty.annotations({ identifier: "Name" }), // refinement
-  age: Schema.Positive.pipe(Schema.int({ identifier: "Age" })) // refinement
-}).annotations({ identifier: "Person" })
-
-// "from" failure
-Schema.decodeUnknownSync(schema)({ name: null, age: 18 })
-/*
-throws:
-Error: Person
-└─ ["name"]
-   └─ Name
-      └─ From side refinement failure
-         └─ Expected a string, actual null
-*/
-
-// predicate failure
-Schema.decodeUnknownSync(schema)({ name: "", age: 18 })
-/*
-throws:
-Error: Person
-└─ ["name"]
-   └─ Name
-      └─ Predicate refinement failure
-         └─ Expected Name (a non empty string), actual ""
-*/
-```
-
-In the first example, the error message indicates a "from" side refinement failure in the "Name" property, specifying that a string was expected but received null. In the second example, a predicate refinement failure is reported, indicating that a non-empty string was expected for "Name," but an empty string was provided.
-
-## Custom Error Messages
-
-Custom messages can be set using the `message` annotation:
-
-```ts
-type MessageAnnotation = (issue: ParseIssue) =>
-  | string
-  | Effect<string>
-  | {
-      readonly message: string | Effect<string>
-      readonly override: boolean
-    }
-```
-
-Here's a simple example of how to set a custom message for the built-in `String` schema:
-
-```ts
-import { Schema } from "@effect/schema"
-
-const MyString = Schema.String.annotations({
-  message: () => "my custom message"
-})
-```
-
-### General Guidelines for Messages
-
-The general logic followed to determine the messages is as follows:
-
-1. If no custom messages are set, the default message related to the innermost schema where the operation (i.e., decoding or encoding) failed is used.
-
-2. If custom messages are set, then the message corresponding to the **first** failed schema is used, starting from the innermost schema to the outermost. However, if the failing schema does not have a custom message, then **the default message is used**.
-
-3. As an opt-in feature, **you can override guideline 2** by setting the `overwrite` flag to `true`. This allows the custom message to take precedence over all other custom messages from inner schemas. This is to address the scenario where a user wants to define a single cumulative custom message describing the properties that a valid value must have and does not want to see default messages.
-
-Let's see some practical examples.
-
-### Scalar Schemas
-
-```ts
-import { Schema } from "@effect/schema"
-
-const MyString = Schema.String.annotations({
-  message: () => "my custom message"
-})
-
-const decode = Schema.decodeUnknownEither(MyString)
-
-console.log(decode(null)) // "my custom message"
-```
-
-### Refinements
-
-This example demonstrates setting a custom message on the last refinement in a chain of refinements. As you can see, the custom message is only used if the refinement related to `maxLength` fails; otherwise, default messages are used.
-
-```ts
-import { Schema } from "@effect/schema"
-
-const MyString = Schema.String.pipe(
-  Schema.minLength(1),
-  Schema.maxLength(2)
-).annotations({
-  // This message is displayed only if the last filter (`maxLength`) fails
-  message: () => "my custom message"
-})
-
-const decode = Schema.decodeUnknownEither(MyString)
-
-console.log(decode(null)) // "Expected a string, actual null"
-console.log(decode("")) // `Expected a string at least 1 character(s) long, actual ""`
-console.log(decode("abc")) // "my custom message"
-```
-
-When setting multiple override messages, the one corresponding to the **first** failed predicate is used, starting from the innermost refinement to the outermost:
-
-```ts
-import { Schema } from "@effect/schema"
-
-const MyString = Schema.String
-  // This message is displayed only if a non-String is passed as input
-  .annotations({ message: () => "String custom message" })
-  .pipe(
-    // This message is displayed only if the filter `minLength` fails
-    Schema.minLength(1, { message: () => "minLength custom message" }),
-    // This message is displayed only if the filter `maxLength` fails
-    Schema.maxLength(2, { message: () => "maxLength custom message" })
-  )
-
-const decode = Schema.decodeUnknownEither(MyString)
-
-console.log(decode(null)) // "String custom message"
-console.log(decode("")) // "minLength custom message"
-console.log(decode("abc")) // "maxLength custom message"
-```
-
-You have the option to change the default behavior by setting the `override` flag to `true`. This is useful when you want to create a single comprehensive custom message that describes the required properties of a valid value without displaying default messages.
-
-```ts
-import { Schema } from "@effect/schema"
-
-const MyString = Schema.String.pipe(
-  Schema.minLength(1),
-  Schema.maxLength(2)
-).annotations({
-  // By setting the `override` flag to `true`, this message will always be shown for any error
-  message: () => ({ message: "my custom message", override: true })
-})
-
-const decode = Schema.decodeUnknownEither(MyString)
-
-console.log(decode(null)) // "my custom message"
-console.log(decode("")) // "my custom message"
-console.log(decode("abc")) // "my custom message"
-```
-
-### Transformations
-
-In this example, `IntFromString` is a transformation schema that converts strings to integers. It applies specific validation messages based on different scenarios.
-
-```ts
-import { ParseResult, Schema } from "@effect/schema"
-
-const IntFromString = Schema.transformOrFail(
-  // This message is displayed only if the input is not a string
-  Schema.String.annotations({ message: () => "please enter a string" }),
-  // This message is displayed only if the input can be converted to a number but it's not an integer
-  Schema.Int.annotations({ message: () => "please enter an integer" }),
-  {
-    decode: (s, _, ast) => {
-      const n = Number(s)
-      return Number.isNaN(n)
-        ? ParseResult.fail(new ParseResult.Type(ast, s))
-        : ParseResult.succeed(n)
-    },
-    encode: (n) => ParseResult.succeed(String(n))
-  }
-)
-  // This message is displayed only if the input cannot be converted to a number
-  .annotations({ message: () => "please enter a parseable string" })
-
-const decode = Schema.decodeUnknownEither(IntFromString)
-
-console.log(decode(null)) // "please enter a string"
-console.log(decode("1.2")) // "please enter an integer"
-console.log(decode("not a number")) // "please enter a parseable string"
-```
-
-### Compound Schemas
-
-The custom message system becomes especially handy when dealing with complex schemas, unlike simple scalar values like `string` or `number`. For instance, consider a schema comprising nested structures, such as a struct containing an array of other structs. Let's explore an example demonstrating the advantage of default messages in handling decoding errors within such nested structures:
-
-```ts
-import { Schema } from "@effect/schema"
-import { pipe } from "effect"
-
-const schema = Schema.Struct({
-  outcomes: pipe(
-    Schema.Array(
-      Schema.Struct({
-        id: Schema.String,
-        text: pipe(
-          Schema.String,
-          Schema.message(() => "error_invalid_outcome_type"),
-          Schema.minLength(1, { message: () => "error_required_field" }),
-          Schema.maxLength(50, { message: () => "error_max_length_field" })
-        )
-      })
-    ),
-    Schema.minItems(1, { message: () => "error_min_length_field" })
-  )
-})
-
-Schema.decodeUnknownSync(schema, { errors: "all" })({
-  outcomes: []
-})
-/*
-throws
-Error: { outcomes: an array of at least 1 items }
-└─ ["outcomes"]
-   └─ error_min_length_field
-*/
-
-Schema.decodeUnknownSync(schema, { errors: "all" })({
-  outcomes: [
-    { id: "1", text: "" },
-    { id: "2", text: "this one is valid" },
-    { id: "3", text: "1234567890".repeat(6) }
-  ]
-})
-/*
-throws
-Error: { outcomes: an array of at least 1 items }
-└─ ["outcomes"]
-   └─ an array of at least 1 items
-      └─ From side refinement failure
-         └─ ReadonlyArray<{ id: string; text: a string at most 50 character(s) long }>
-            ├─ [0]
-            │  └─ { id: string; text: a string at most 50 character(s) long }
-            │     └─ ["text"]
-            │        └─ error_required_field
-            └─ [2]
-               └─ { id: string; text: a string at most 50 character(s) long }
-                  └─ ["text"]
-                     └─ error_max_length_field
-*/
-```
-
-### Effectful messages
-
-Messages are not only of type `string` but can return an `Effect` so that they can have dependencies (for example, from an internationalization service). Let's see the outline of a similar situation with a very simplified example for demonstration purposes:
-
-```ts
-import { Schema, TreeFormatter } from "@effect/schema"
-import { Context, Effect, Either, Option } from "effect"
-
-// internationalization service
-class Messages extends Context.Tag("Messages")<
-  Messages,
-  {
-    NonEmpty: string
-  }
->() {}
-
-const Name = Schema.NonEmpty.pipe(
-  Schema.message(() =>
-    Effect.gen(function* (_) {
-      const service = yield* _(Effect.serviceOption(Messages))
-      return Option.match(service, {
-        onNone: () => "Invalid string",
-        onSome: (messages) => messages.NonEmpty
-      })
-    })
-  )
-)
-
-Schema.decodeUnknownSync(Name)("") // => throws "Invalid string"
-
-const result = Schema.decodeUnknownEither(Name)("").pipe(
-  Either.mapLeft((error) =>
-    TreeFormatter.formatError(error).pipe(
-      Effect.provideService(Messages, { NonEmpty: "should be non empty" }),
-      Effect.runSync
-    )
-  )
-)
-
-console.log(result) // => { _id: 'Either', _tag: 'Left', left: 'should be non empty' }
-```
-
-# Comparison
+# Comparisons
 
 ## Zod
 
@@ -7450,7 +7456,7 @@ const Cat = S.Struct({ name: S.String }).pipe(S.brand("Cat"))
 
 No equivalent as it's the default behavior.
 
-# Documentation
+# API Reference
 
 - [API Reference](https://effect-ts.github.io/effect/docs/schema)
 
