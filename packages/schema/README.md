@@ -92,14 +92,6 @@ When working with schemas, there's an important rule to keep in mind: your schem
 
 In simpler terms, if you encode a value and then immediately decode it, the result should match the original value you started with. This rule ensures that your data remains consistent and reliable throughout the encoding and decoding process.
 
-# Credits
-
-This library was inspired by the following projects:
-
-- [io-ts](https://github.com/gcanti/io-ts)
-- [zod](https://github.com/colinhacks/zod)
-- [zio-schema](https://github.com/zio/zio-schema)
-
 # Requirements
 
 - TypeScript 5.0 or newer
@@ -7395,6 +7387,14 @@ We welcome contributions via pull requests! Here are some guidelines to help you
 - Please make sure all tests pass and add new tests as necessary.
 - If your change requires documentation, please update the relevant documentation.
 - Please be patient! We will do our best to review your pull request as soon as possible.
+
+# Credits
+
+This library was inspired by the following projects:
+
+- [io-ts](https://github.com/gcanti/io-ts)
+- [zod](https://github.com/colinhacks/zod)
+- [zio-schema](https://github.com/zio/zio-schema)
 
 ## License
 

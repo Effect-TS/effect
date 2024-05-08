@@ -45,6 +45,13 @@ class PersonWithAge extends Person.extend<PersonWithAge>("PersonWithAge")({
 }
 
 describe("Class", () => {
+  it("suspend before initialization", async () => {
+    const schema = S.suspend(() => string)
+    class A extends S.Class<A>("A")({ a: S.optional(schema) }) {}
+    const string = S.String
+    await Util.expectDecodeUnknownSuccess(A, { a: "a" })
+  })
+
   it("should be a Schema", () => {
     class A extends S.Class<A>("A")({ a: S.String }) {}
     expect(S.isSchema(A)).toEqual(true)

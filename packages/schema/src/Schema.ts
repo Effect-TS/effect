@@ -6684,8 +6684,7 @@ export const Class = <Self = never>(identifier: string) =>
     {},
     {}
   > =>
-{
-  return makeClass({
+  makeClass({
     kind: "Class",
     identifier,
     schema: getSchemaFromFieldsOr(fieldsOr),
@@ -6693,7 +6692,6 @@ export const Class = <Self = never>(identifier: string) =>
     Base: data_.Class,
     annotations
   })
-}
 
 /** @internal */
 export const getClassTag = <Tag extends string>(tag: Tag) =>
@@ -6956,12 +6954,10 @@ const makeClass = ({ Base, annotations, fields, identifier, kind, schema, toStri
   toStringOverride?: (self: any) => string | undefined
 }): any => {
   const classSymbol = Symbol.for(`@effect/schema/${kind}/${identifier}`)
-  const validate = ParseResult.validateSync(orElseTitleAnnotation(schema, `${identifier} (Constructor)`))
+  const validateSchema = orElseTitleAnnotation(schema, `${identifier} (Constructor)`)
   const encodedSide: Schema.Any = orElseTitleAnnotation(schema, `${identifier} (Encoded side)`)
   const typeSide = orElseTitleAnnotation(typeSchema(schema), `${identifier} (Type side)`)
-  const guard = ParseResult.is(typeSide)
-  const fallbackInstanceOf = (u: unknown) => Predicate.hasProperty(u, classSymbol) && guard(u)
-  const encode = ParseResult.encodeUnknown(typeSide)
+  const fallbackInstanceOf = (u: unknown) => Predicate.hasProperty(u, classSymbol) && ParseResult.is(typeSide)(u)
 
   return class extends Base {
     constructor(
@@ -6974,7 +6970,7 @@ const makeClass = ({ Base, annotations, fields, identifier, kind, schema, toStri
       }
       props = lazilyMergeDefaults(fields, props)
       if (disableValidation !== true) {
-        props = validate(props)
+        props = ParseResult.validateSync(validateSchema)(props)
       }
       super(props, true)
     }
@@ -6997,7 +6993,7 @@ const makeClass = ({ Base, annotations, fields, identifier, kind, schema, toStri
             input instanceof this
               ? ParseResult.succeed(input)
               : ParseResult.map(
-                encode(input, options),
+                ParseResult.encodeUnknown(typeSide)(input, options),
                 (props) => new this(props, true)
               )
         },
