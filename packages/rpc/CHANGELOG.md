@@ -1,5 +1,16 @@
 # @effect/rpc
 
+## 0.30.21
+
+### Patch Changes
+
+- [#2714](https://github.com/Effect-TS/effect/pull/2714) [`266767c`](https://github.com/Effect-TS/effect/commit/266767cb5837f7bbe59c3e01bdbd2041cbf4e31a) Thanks [@gcanti](https://github.com/gcanti)! - fix `Rpc.Rpc.Proto["schema"]` type
+
+- Updated dependencies [[`1f6dc96`](https://github.com/Effect-TS/effect/commit/1f6dc96f51c7bb9c8d11415358308604ba7c7c8e)]:
+  - effect@3.1.3
+  - @effect/platform@0.53.2
+  - @effect/schema@0.66.16
+
 ## 0.30.20
 
 ### Patch Changes
