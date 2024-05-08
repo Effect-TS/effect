@@ -840,6 +840,7 @@ Schema
 - add `TaggedErrorClass` api interface (exposing a `_tag` field)
 - add `TaggedRequestClass` api interface (exposing a `_tag` field)
 - add `DateFromNumber` schema
+- add `Schema.Schema.AsSchema` type-level helper to facilitate working with generic schemas.
 
 ## Other Breaking Changes
 

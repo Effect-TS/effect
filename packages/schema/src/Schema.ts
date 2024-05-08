@@ -284,6 +284,13 @@ export declare namespace Schema {
     | Schema<any, never, unknown>
     | Schema<never, any, unknown>
     | Schema<never, never, unknown>
+
+  /**
+   * Type-level counterpart of `Schema.asSchema` function.
+   *
+   * @since 1.0.0
+   */
+  export type AsSchema<S extends All> = Schema<Type<S>, Encoded<S>, Context<S>>
 }
 
 /**

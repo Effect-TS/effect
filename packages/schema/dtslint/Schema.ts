@@ -2341,3 +2341,32 @@ const make3 =
 
 // $ExpectType { readonly a?: string; }
 hole<Parameters<typeof make3>["0"]>()
+
+// ---------------------------------------------
+// Schema.AsSchema
+// ---------------------------------------------
+
+const MyStruct = <X extends S.Schema.All>(x: X) => S.Struct({ x })
+
+type MyStructReturnType<X extends S.Schema.All> = S.Schema.Type<ReturnType<typeof MyStruct<X>>>
+
+export function AsSchemaTest1<X extends S.Schema.All>(obj: MyStructReturnType<S.Schema.AsSchema<X>>) {
+  obj.x // $ExpectType Type<X>
+}
+
+type XStruct<X extends S.Schema.All> = S.Schema<
+  S.Struct.Type<{
+    expectedVersion: typeof S.Number
+    props: X
+  }>,
+  S.Struct.Encoded<{
+    expectedVersion: typeof S.Number
+    props: X
+  }>
+>
+export const AsSchemaTest2 = <X extends S.Schema.All>(
+  domainEvent: S.Schema.Type<XStruct<S.Schema.AsSchema<X>>>
+) => {
+  domainEvent.expectedVersion // $ExpectType number
+  domainEvent.props // $ExpectType Type<X>
+}

@@ -3529,6 +3529,58 @@ const Category: Schema.Schema<Category, CategoryEncoded> = Schema.Struct({
 })
 ```
 
+# Advanced Usage
+
+## Troubleshooting When Working With Generic Schemas
+
+Sometimes, while working with functions that handle generic schemas, you may encounter the issue where TypeScript fails to fully resolve the schema type, making it unusable within the function body. Let's see an example:
+
+```ts
+import { Schema } from "@effect/schema"
+
+// A function that uses a generic schema
+const MyStruct = <X extends Schema.Schema.All>(x: X) => Schema.Struct({ x })
+
+// Helper type that returns the return type of the `MyStruct` function
+type MyStructReturnType<X extends Schema.Schema.All> = Schema.Schema.Type<
+  ReturnType<typeof MyStruct<X>>
+>
+
+// In the function body, `obj` has type `Simplify<Schema.Struct.Type<{ x: X; }>>`
+// so it's not possible to access the `x` field
+function test<X extends Schema.Schema.All>(obj: MyStructReturnType<X>) {
+  obj.x // error: Property 'x' does not exist on type 'Simplify<Type<{ x: X; }>>'.ts(2339)
+}
+```
+
+In the function body, `obj` has type
+
+```ts
+Simplify<Schema.Struct.Type<{ x: X }>>
+```
+
+so it's not possible to access the `x` field.
+
+To solve the problem, you need to force TypeScript to resolve the type of `obj`, and you can do this with the type-level helper `Schema.Schema.AsSchema`, which is the type-level counterpart of the function `Schema.asSchema`:
+
+```ts
+function test<X extends Schema.Schema.All>(
+  obj: MyStructReturnType<Schema.Schema.AsSchema<X>>
+) {
+  obj.x // Schema.Schema.Type<X>
+}
+```
+
+Now the type of `obj` is resolved to
+
+```ts
+{
+    readonly x: Schema.Schema.Type<X>;
+}
+```
+
+and therefore, we can access its `x` field.
+
 # Classes
 
 When working with schemas, you have a choice beyond the `S.struct` constructor. You can leverage the power of classes through the `Class` utility, which comes with its own set of advantages tailored to common use cases.
