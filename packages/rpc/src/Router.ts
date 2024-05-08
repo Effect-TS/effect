@@ -198,7 +198,7 @@ export const toHandler = <R extends Router<any, any>>(router: R, options?: {
   readonly spanPrefix?: string
 }) => {
   const spanPrefix = options?.spanPrefix ?? "Rpc.router "
-  const schema: Schema.Schema<any, unknown, readonly [Schema.TaggedRequest.Any, Rpc.Rpc<any, any>]> = Schema
+  const schema = Schema
     .Union(
       ...[...router.rpcs].map((rpc) =>
         Schema.transform(
@@ -297,7 +297,7 @@ export const toHandlerEffect = <R extends Router<any, any>>(router: R, options?:
   readonly spanPrefix?: string
 }) => {
   const spanPrefix = options?.spanPrefix ?? "Rpc.router "
-  const schema: Schema.Schema<any, unknown, readonly [Schema.TaggedRequest.Any, Rpc.Rpc<any, any>]> = Schema
+  const schema = Schema
     .Union(
       ...[...router.rpcs].map((rpc) =>
         Schema.transform(
