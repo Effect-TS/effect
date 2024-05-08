@@ -1,5 +1,16 @@
 # @effect/platform-node
 
+## 0.49.2
+
+### Patch Changes
+
+- [#2706](https://github.com/Effect-TS/effect/pull/2706) [`1f6dc96`](https://github.com/Effect-TS/effect/commit/1f6dc96f51c7bb9c8d11415358308604ba7c7c8e) Thanks [@sukovanej](https://github.com/sukovanej)! - Attempt to close a server only if `listen` succeeds. This fixes the error reporting in case a port is already in use.
+
+- Updated dependencies [[`1f6dc96`](https://github.com/Effect-TS/effect/commit/1f6dc96f51c7bb9c8d11415358308604ba7c7c8e)]:
+  - effect@3.1.3
+  - @effect/platform@0.53.2
+  - @effect/platform-node-shared@0.4.21
+
 ## 0.49.1
 
 ### Patch Changes
