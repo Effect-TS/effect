@@ -3315,17 +3315,85 @@ Schema.compose(
 
 ## instanceOf
 
-In the following section, we demonstrate how to use the `instanceOf` combinator to create a `Schema` for a class instance.
+When you need to define a schema for your custom data type defined through a `class`, the most convenient and fast way is to use the `Schema.instanceOf` constructor. Let's see an example:
 
 ```ts
 import { Schema } from "@effect/schema"
 
-class Test {
+class MyData {
   constructor(readonly name: string) {}
 }
 
-// Schema<Test>
-Schema.instanceOf(Test)
+// Schema.instanceOf<MyData>
+const MyDataSchema = Schema.instanceOf(MyData)
+
+console.log(Schema.decodeUnknownSync(MyDataSchema)(new MyData("name")))
+// MyData { name: 'name' }
+console.log(Schema.decodeUnknownSync(MyDataSchema)({ name: "name" }))
+/*
+throws
+Error: Expected an instance of MyData, actual {"name":"name"}
+*/
+```
+
+The `Schema.instanceOf` constructor is just a lightweight wrapper of the `Schema.declare` API, which is the primitive in `@effect/schema` for declaring new custom data types.
+
+However, note that `instanceOf` can only be used for classes that expose a **public constructor**. If you try to use it with classes that, for some reason, have marked the constructor as `private`, you'll receive a TypeScript error:
+
+```ts
+import { Schema } from "@effect/schema"
+
+class MyData {
+  static make = (name: string) => new MyData(name)
+  private constructor(readonly name: string) {}
+}
+
+/*
+Argument of type 'typeof MyData' is not assignable to parameter of type 'abstract new (...args: any) => any'.
+  Cannot assign a 'private' constructor type to a 'public' constructor type.ts(2345)
+*/
+const MyDataSchema = Schema.instanceOf(MyData)
+```
+
+In such cases, you cannot use `Schema.instanceOf`, and you must rely on `Schema.declare` like this:
+
+```ts
+import { Schema } from "@effect/schema"
+
+class MyData {
+  static make = (name: string) => new MyData(name)
+  private constructor(readonly name: string) {}
+}
+
+const MyDataSchema = Schema.declare(
+  (input: unknown): input is MyData => input instanceof MyData
+)
+
+console.log(Schema.decodeUnknownSync(MyDataSchema)(MyData.make("name")))
+// MyData { name: 'name' }
+console.log(Schema.decodeUnknownSync(MyDataSchema)({ name: "name" }))
+/*
+throws
+Error: Expected <declaration schema>, actual {"name":"name"}
+*/
+```
+
+To improve the error message in case of failed decoding, remember to add annotations:
+
+```ts
+const MyDataSchema = Schema.declare(
+  (input: unknown): input is MyData => input instanceof MyData,
+  {
+    identifier: "MyData",
+    description: "an instance of MyData"
+  }
+)
+
+console.log(Schema.decodeUnknownSync(MyDataSchema)({ name: "name" }))
+/*
+throws
+Error: Expected MyData (an instance of MyData), actual {"name":"name"}
+*/
 ```
 
 ## Recursive Schemas
