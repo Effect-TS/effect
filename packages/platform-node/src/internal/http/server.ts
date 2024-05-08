@@ -17,7 +17,6 @@ import * as Socket from "@effect/platform/Socket"
 import * as Cause from "effect/Cause"
 import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
 import * as FiberSet from "effect/FiberSet"
 import { type LazyArg } from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -42,29 +41,34 @@ export const make = (
   options: Net.ListenOptions
 ): Effect.Effect<Server.Server, Error.ServeError, Scope.Scope> =>
   Effect.gen(function*(_) {
-    const scope = yield* _(Effect.scope)
-    const server = yield* _(Effect.sync(evaluate))
+    const scope = yield* Effect.scope
+    const server = yield* Effect.acquireRelease(
+      Effect.sync(evaluate),
+      (server) =>
+        Effect.async<void>((resume) => {
+          if (!server.listening) {
+            return resume(Effect.void)
+          }
+          server.close((error) => {
+            if (error) {
+              resume(Effect.die(error))
+            } else {
+              resume(Effect.void)
+            }
+          })
+        })
+    )
 
-    yield* _(Effect.async<void, Error.ServeError>((resume) => {
-      server.on("error", (error) => {
+    yield* Effect.async<void, Error.ServeError>((resume) => {
+      function onError(error: Error) {
         resume(Effect.fail(new Error.ServeError({ error })))
-      })
+      }
+      server.on("error", onError)
       server.listen(options, () => {
+        server.off("error", onError)
         resume(Effect.void)
       })
-    }))
-
-    yield* _(Effect.addFinalizer(() =>
-      Effect.async<void>((resume) => {
-        server.close((error) => {
-          if (error) {
-            resume(Effect.die(error))
-          } else {
-            resume(Effect.void)
-          }
-        })
-      })
-    ))
+    })
 
     const address = server.address()!
 
