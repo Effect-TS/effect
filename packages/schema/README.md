@@ -4019,7 +4019,7 @@ console.log(decode("keep it secret, keep it safe")) // {}
 
 # Defining Schemas as Classes
 
-When it comes to defining schemas, there's another possible approach: using classes. This approach provides opaque schema types, offering a clearer representation.
+When it comes to defining schemas, there's another possible approach: using classes. This approach provides **opaque schema types**, offering a clearer representation.
 
 > [!WARNING]
 > Even though schemas defined this way are classes, **their constructors are not meant to be used** (which is why they have been disabled).
@@ -4064,6 +4064,51 @@ const MyUnion: Schema.Union<[Schema.Struct<{
 }>]>
 */
 export const MyUnion = Schema.Union(Person, Group)
+```
+
+This type of opaque types is particularly advantageous with large unions with many members and with nested unions. Here's a comparison:
+
+**Example** (without classes)
+
+```ts
+import { Schema } from "@effect/schema"
+
+const A = Schema.String
+const B = Schema.Number
+const C = Schema.Boolean
+const D = Schema.BigInt
+const AB = Schema.Union(A, B)
+const CD = Schema.Union(C, D)
+
+/*
+Schema.Union<[
+  Schema.Union<[typeof Schema.String, typeof Schema.Number]>,
+  Schema.Union<[typeof Schema.Boolean, typeof Schema.BigInt]>
+]>
+*/
+const ABCD = Schema.Union(AB, CD)
+```
+
+**Example** (with classes)
+
+```ts
+import { Schema } from "@effect/schema"
+
+class A extends Schema.String {}
+class B extends Schema.Number {}
+class C extends Schema.Boolean {}
+class D extends Schema.BigInt {}
+class AB extends Schema.Union(A, B) {}
+class CD extends Schema.Union(C, D) {}
+
+/*
+class ABCD
+*/
+class ABCD extends Schema.Union(AB, CD) {}
+
+ABCD.members // readonly [typeof AB, typeof CD]
+
+ABCD.members[0].members // readonly [typeof A, typeof B]
 ```
 
 The newer approach to defining schemas opens up opportunities for exploring different patterns.
