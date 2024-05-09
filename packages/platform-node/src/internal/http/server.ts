@@ -41,12 +41,14 @@ export const make = (
   options: Net.ListenOptions
 ): Effect.Effect<Server.Server, Error.ServeError, Scope.Scope> =>
   Effect.gen(function*(_) {
-    const scope = yield* _(Effect.scope)
-
-    const server = yield* _(Effect.acquireRelease(
+    const scope = yield* Effect.scope
+    const server = yield* Effect.acquireRelease(
       Effect.sync(evaluate),
       (server) =>
         Effect.async<void>((resume) => {
+          if (!server.listening) {
+            return resume(Effect.void)
+          }
           server.close((error) => {
             if (error) {
               resume(Effect.die(error))
@@ -55,16 +57,18 @@ export const make = (
             }
           })
         })
-    ))
+    )
 
-    yield* _(Effect.async<void, Error.ServeError>((resume) => {
-      server.on("error", (error) => {
+    yield* Effect.async<void, Error.ServeError>((resume) => {
+      function onError(error: Error) {
         resume(Effect.fail(new Error.ServeError({ error })))
-      })
+      }
+      server.on("error", onError)
       server.listen(options, () => {
+        server.off("error", onError)
         resume(Effect.void)
       })
-    }))
+    })
 
     const address = server.address()!
 
