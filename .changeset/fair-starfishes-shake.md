@@ -855,6 +855,16 @@ AST
   +export type Compiler<A> = (ast: AST, path: ReadonlyArray<PropertyKey>) => A
   ```
 
+- remove `hash` function, you can replace it with the following code:
+
+  ```ts
+  import { Hash } from "effect"
+  import { AST } from "@effect/schema"
+
+  export const hash = (ast: AST.AST): number =>
+    Hash.string(JSON.stringify(ast, null, 2))
+  ```
+
 JSONSchema
 
 - extend all interfaces with `JsonSchemaAnnotations`
@@ -879,6 +889,7 @@ Schema
 - rename `$Set` API interface to `Set$`
 - remove `asBrandSchema` utility
 - change `BrandSchema` interface
+- remove `hash` function
 
   from
 

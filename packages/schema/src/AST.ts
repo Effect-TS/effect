@@ -6,7 +6,6 @@ import * as Arr from "effect/Array"
 import type { Effect } from "effect/Effect"
 import { dual, identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
-import * as Hash from "effect/Hash"
 import * as Number from "effect/Number"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
@@ -2376,11 +2375,6 @@ const toJSONAnnotations = (annotations: Annotations): object => {
   }
   return out
 }
-
-/**
- * @since 1.0.0
- */
-export const hash = (ast: AST): number => Hash.string(JSON.stringify(ast, null, 2))
 
 /** @internal */
 export const getCardinality = (ast: AST): number => {

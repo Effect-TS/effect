@@ -211,12 +211,6 @@ export const asSchema = <S extends Schema.All>(
 ): Schema<Schema.Type<S>, Schema.Encoded<S>, Schema.Context<S>> => schema as any
 
 /**
- * @category hashing
- * @since 1.0.0
- */
-export const hash = <A, I, R>(schema: Schema<A, I, R>): number => AST.hash(schema.ast)
-
-/**
  * @category formatting
  * @since 1.0.0
  */
