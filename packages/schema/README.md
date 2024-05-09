@@ -3150,12 +3150,10 @@ A primitive data type represents simple values. To declare a schema for a primit
 ```ts
 import { Schema } from "@effect/schema"
 
-const isFile = (input: unknown): input is File => input instanceof File
-
-// const FileFromSelf: S.Schema<File>
-const FileFromSelf = Schema.declare(isFile, {
-  identifier: "FileFromSelf"
-})
+// Schema.SchemaClass<File, File, never>
+const FileFromSelf = Schema.declare(
+  (input: unknown): input is File => input instanceof File
+)
 
 const decode = Schema.decodeUnknownSync(FileFromSelf)
 
@@ -3164,7 +3162,33 @@ console.log(decode(new File([], ""))) // File { size: 0, type: '', name: '', las
 decode(null)
 /*
 throws
-Error: Error: Expected FileFromSelf, actual null
+Error: Expected <declaration schema>, actual null
+*/
+```
+
+As you can see, the error message describes what went wrong but doesn't provide much information about which schema caused the error (`"Expected <declaration schema>"`). To enhance the default error message, you can add annotations, particularly the `identifier`, `title`, and `description` annotations (none of these annotations are required, but they are encouraged for good practice and can make your schema "self-documenting"). These annotations will be utilized by the messaging system to return more meaningful messages.
+
+A "title" should be concise, while a "description" provides a more detailed explanation of the purpose of the data described by the schema.
+
+```ts
+import { Schema } from "@effect/schema"
+
+const FileFromSelf = Schema.declare(
+  (input: unknown): input is File => input instanceof File,
+  {
+    identifier: "FileFromSelf",
+    description: "The `File` type in JavaScript"
+  }
+)
+
+const decode = Schema.decodeUnknownSync(FileFromSelf)
+
+console.log(decode(new File([], ""))) // File { size: 0, type: '', name: '', lastModified: 1705595977234 }
+
+decode(null)
+/*
+throws
+Error: Expected FileFromSelf (The File type in JavaScript), actual null
 */
 ```
 
@@ -3250,11 +3274,12 @@ When you define a new data type, some compilers like `Arbitrary` or `Pretty` may
 ```ts
 import { Arbitrary, Schema } from "@effect/schema"
 
-const isFile = (input: unknown): input is File => input instanceof File
-
-const FileFromSelf = Schema.declare(isFile, {
-  identifier: "FileFromSelf"
-})
+const FileFromSelf = Schema.declare(
+  (input: unknown): input is File => input instanceof File,
+  {
+    identifier: "FileFromSelf"
+  }
+)
 
 // Create an Arbitrary instance for FileFromSelf schema
 const arb = Arbitrary.make(FileFromSelf)
@@ -3269,18 +3294,19 @@ In such cases, you need to provide annotations to ensure proper functionality:
 ```ts
 import { Arbitrary, FastCheck, Pretty, Schema } from "@effect/schema"
 
-const isFile = (input: unknown): input is File => input instanceof File
-
-const FileFromSelf = Schema.declare(isFile, {
-  identifier: "FileFromSelf",
-  // Provide an arbitrary function to generate random File instances
-  arbitrary: () => (fc) =>
-    fc
-      .tuple(fc.string(), fc.string())
-      .map(([path, content]) => new File([content], path)),
-  // Provide a pretty function to generate human-readable representation of File instances
-  pretty: () => (file) => `File(${file.name})`
-})
+const FileFromSelf = Schema.declare(
+  (input: unknown): input is File => input instanceof File,
+  {
+    identifier: "FileFromSelf",
+    // Provide an arbitrary function to generate random File instances
+    arbitrary: () => (fc) =>
+      fc
+        .tuple(fc.string(), fc.string())
+        .map(([path, content]) => new File([content], path)),
+    // Provide a pretty function to generate human-readable representation of File instances
+    pretty: () => (file) => `File(${file.name})`
+  }
+)
 
 // Create an Arbitrary instance for FileFromSelf schema
 const arb = Arbitrary.make(FileFromSelf)
