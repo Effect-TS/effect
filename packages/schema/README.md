@@ -1271,19 +1271,29 @@ This ensures that the JSON Schema properly handles the recursive structure and c
 
 When defining a **refinement** (e.g., through the `filter` function), you can attach a JSON Schema annotation to your schema containing a JSON Schema "fragment" related to this particular refinement. This fragment will be used to generate the corresponding JSON Schema. Note that if the schema consists of more than one refinement, the corresponding annotations will be merged.
 
+> Note:
+>
+> The `jsonSchema` property is intentionally defined as a generic object. This allows it to describe non-standard extensions.
+> As a result, the responsibility of enforcing type constraints is left to you, the user.
+> If you prefer stricter type enforcement or need to support non-standard extensions, you can introduce a `satisfies` constraint on the object literal. This constraint should be used in conjunction with the typing library of your choice.
+>
+> In the following example, we've used the `@types/json-schema` package to provide TypeScript definitions for JSON Schema. This approach not only ensures type correctness but also enables autocomplete suggestions in your IDE.
+
 ```ts
 import { JSONSchema, Schema } from "@effect/schema"
+import type { JSONSchema7 } from "json-schema"
+
 
 // Simulate one or more refinements
 const Positive = Schema.Number.pipe(
   Schema.filter((n) => n > 0, {
-    jsonSchema: { minimum: 0 }
+    jsonSchema: { minimum: 0 }, // `jsonSchema` is a generic object; you can add any key-value pair without type errors or autocomplete suggestions.
   })
 )
 
 const schema = Positive.pipe(
   Schema.filter((n) => n <= 10, {
-    jsonSchema: { maximum: 10 }
+    jsonSchema: { maximum: 10 } satisfies JSONSchema7, //  Now `jsonSchema` is constrained to fulfill the JSONSchema7 type; incorrect properties will trigger type errors, and you'll get autocomplete suggestions.
   })
 )
 
