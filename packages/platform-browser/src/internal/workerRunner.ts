@@ -22,6 +22,8 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
     return Effect.gen(function*() {
       let currentPortId = 0
 
+      yield* Effect.addFinalizer(() => Effect.sync(() => self.close()))
+
       const queue = yield* Queue.unbounded<readonly [portId: number, message: I]>()
       const runFork = yield* FiberSet.makeRuntime<never>()
       const ports = new Map<number, MessagePort>()
@@ -41,7 +43,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
             const message = (event as MessageEvent).data as Runner.BackingRunner.Message<I>
             if (message[0] === 0) {
               queue.unsafeOffer([portId, message[1]])
-            } else if (sharedWorker) {
+            } else if (sharedWorker && ports.size > 1) {
               resume(Effect.interrupt)
             } else {
               Effect.runFork(shutdown)
