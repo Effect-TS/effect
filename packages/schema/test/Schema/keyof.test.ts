@@ -1,7 +1,8 @@
 import * as AST from "@effect/schema/AST"
 import * as P from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
-import { describe, expect, it } from "vitest"
+import { jestExpect as expect } from "@jest/expect"
+import { describe, it } from "vitest"
 
 describe("keyof", () => {
   it("should unify string literals with string", () => {
@@ -113,7 +114,7 @@ describe("keyof", () => {
 
   it("should throw on unsupported schemas", () => {
     expect(() => S.keyof(S.Option(S.String))).toThrow(
-      new Error("KeyOf: unsupported schema (Option<string>)")
+      new Error("keyof: unsupported schema (Option<string>)")
     )
   })
 })

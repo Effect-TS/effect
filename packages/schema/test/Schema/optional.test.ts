@@ -1,8 +1,9 @@
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
+import { jestExpect as expect } from "@jest/expect"
 import * as O from "effect/Option"
-import { describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
 describe("optional APIs", () => {
   it("annotations", async () => {
@@ -26,7 +27,7 @@ describe("optional APIs", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a" },
-        `{ a?: NumberFromString }
+        `{ readonly a?: NumberFromString }
 └─ ["a"]
    └─ NumberFromString
       └─ Transformation process failure
@@ -43,7 +44,7 @@ describe("optional APIs", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a", b: 1 },
-        `{ a?: never; b: number }
+        `{ readonly a?: never; readonly b: number }
 └─ ["a"]
    └─ Expected never, actual "a"`
       )
@@ -61,7 +62,7 @@ describe("optional APIs", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a" },
-        `{ a?: NumberFromString | undefined }
+        `{ readonly a?: NumberFromString | undefined }
 └─ ["a"]
    └─ NumberFromString | undefined
       ├─ Union member

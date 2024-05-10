@@ -1,6 +1,7 @@
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
-import { describe, expect, it } from "vitest"
+import { jestExpect as expect } from "@jest/expect"
+import { describe, it } from "vitest"
 
 describe("AST.Union", () => {
   it("flatten should un-nest union members", () => {

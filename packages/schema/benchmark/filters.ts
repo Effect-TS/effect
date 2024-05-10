@@ -31,15 +31,15 @@ const UserZod = z.object({
   })
 })
 
-const schema = S.struct({
-  name: S.string.pipe(S.minLength(3), S.maxLength(20)),
-  age: S.number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(120)),
-  address: S.struct({
-    street: S.string.pipe(S.minLength(3), S.maxLength(200)),
-    number: S.number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(120)),
-    city: S.string.pipe(S.minLength(3), S.maxLength(200)),
-    country: S.string.pipe(S.minLength(3), S.maxLength(200)),
-    zip: S.string.pipe(S.minLength(3), S.maxLength(200))
+const schema = S.Struct({
+  name: S.String.pipe(S.minLength(3), S.maxLength(20)),
+  age: S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(120)),
+  address: S.Struct({
+    street: S.String.pipe(S.minLength(3), S.maxLength(200)),
+    number: S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(120)),
+    city: S.String.pipe(S.minLength(3), S.maxLength(200)),
+    country: S.String.pipe(S.minLength(3), S.maxLength(200)),
+    zip: S.String.pipe(S.minLength(3), S.maxLength(200))
   })
 })
 

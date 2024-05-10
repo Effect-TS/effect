@@ -52,10 +52,10 @@ export const symbolResult: unique symbol = serializable_.symbolResult as any
  * @since 1.0.0
  * @category model
  */
-export interface WithResult<A, I, E, EI, R> {
+export interface WithResult<SuccessA, SuccessI, FailureA, FailureI, SuccessAndFailureR> {
   readonly [symbolResult]: {
-    readonly Success: Schema.Schema<A, I, R>
-    readonly Failure: Schema.Schema<E, EI, R>
+    readonly Success: Schema.Schema<SuccessA, SuccessI, SuccessAndFailureR>
+    readonly Failure: Schema.Schema<FailureA, FailureI, SuccessAndFailureR>
   }
 }
 
@@ -114,8 +114,18 @@ export const exitSchema = <A, I, E, EI, R>(
  * @since 1.0.0
  * @category model
  */
-export interface SerializableWithResult<S, SI, SR, A, AI, E, EI, RR>
-  extends Serializable<S, SI, SR>, WithResult<A, AI, E, EI, RR>
+export interface SerializableWithResult<
+  Self,
+  FieldsI,
+  FieldsR,
+  SuccessA,
+  SuccessI,
+  FailureA,
+  FailureI,
+  SuccessAndFailureR
+> extends
+  Serializable<Self, FieldsI, FieldsR>,
+  WithResult<SuccessA, SuccessI, FailureA, FailureI, SuccessAndFailureR>
 {}
 
 /**

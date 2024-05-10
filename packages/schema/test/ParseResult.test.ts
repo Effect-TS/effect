@@ -1,9 +1,10 @@
 import * as AST from "@effect/schema/AST"
 import * as P from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
+import { jestExpect as expect } from "@jest/expect"
 import { Effect, Either, Exit } from "effect"
 import { inspect } from "node:util"
-import { describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
 describe("ParseResult", () => {
   const typeParseError1 = P.parseError(new P.Type(S.String.ast, null))
@@ -12,7 +13,7 @@ describe("ParseResult", () => {
   it("toString()", () => {
     const schema = S.Struct({ a: S.String })
     expect(S.decodeUnknownEither(schema)({}).pipe(Either.mapLeft((e) => e.toString()))).toStrictEqual(
-      Either.left(`{ a: string }
+      Either.left(`{ readonly a: string }
 └─ ["a"]
    └─ is missing`)
     )
@@ -24,7 +25,7 @@ describe("ParseResult", () => {
       .toStrictEqual(
         Either.left({
           _id: "ParseError",
-          message: `{ a: string }
+          message: `{ readonly a: string }
 └─ ["a"]
    └─ is missing`
         })
@@ -37,7 +38,7 @@ describe("ParseResult", () => {
       .toStrictEqual(
         Either.left(inspect({
           _id: "ParseError",
-          message: `{ a: string }
+          message: `{ readonly a: string }
 └─ ["a"]
    └─ is missing`
         }))

@@ -1,6 +1,7 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import { describe, expect, it } from "vitest"
+import { jestExpect as expect } from "@jest/expect"
+import { describe, it } from "vitest"
 
 const expectAssertsSuccess = <A, I>(schema: S.Schema<A, I>, input: unknown) => {
   expect(S.asserts(schema)(input)).toEqual(undefined)
@@ -15,12 +16,12 @@ describe("asserts", () => {
     const schema = S.Struct({ a: Util.NumberFromChar })
     const input = { a: 1, b: "b" }
     expect(() => S.asserts(schema)(input, { onExcessProperty: "error" })).toThrow(
-      new Error(`{ a: number }
+      new Error(`{ readonly a: number }
 └─ ["b"]
    └─ is unexpected, expected "a"`)
     )
     expect(() => S.asserts(schema, { onExcessProperty: "error" })(input)).toThrow(
-      new Error(`{ a: number }
+      new Error(`{ readonly a: number }
 └─ ["b"]
    └─ is unexpected, expected "a"`)
     )
@@ -35,7 +36,7 @@ describe("asserts", () => {
       expectAssertsFailure(
         schema,
         { a: null },
-        `{ a: number }
+        `{ readonly a: number }
 └─ ["a"]
    └─ Expected a number, actual null`
       )
@@ -50,15 +51,15 @@ describe("asserts", () => {
       expectAssertsFailure(
         schema,
         {},
-        `{ a: number | undefined }
+        `{ readonly a: number | undefined }
 └─ ["a"]
    └─ is missing`
       )
-      expectAssertsFailure(schema, null, `Expected { a: number | undefined }, actual null`)
+      expectAssertsFailure(schema, null, `Expected { readonly a: number | undefined }, actual null`)
       expectAssertsFailure(
         schema,
         { a: "a" },
-        `{ a: number | undefined }
+        `{ readonly a: number | undefined }
 └─ ["a"]
    └─ number | undefined
       ├─ Union member

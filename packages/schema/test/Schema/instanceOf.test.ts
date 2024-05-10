@@ -3,7 +3,8 @@ import * as P from "@effect/schema/ParseResult"
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import { describe, expect, it } from "vitest"
+import { jestExpect as expect } from "@jest/expect"
+import { describe, it } from "vitest"
 
 describe("instanceOf", () => {
   it("is", () => {
@@ -49,12 +50,5 @@ describe("instanceOf", () => {
       const pretty = Pretty.make(schema)
       expect(pretty(new Set([1, 2, 3]))).toEqual("new Set([1,2,3])")
     })
-  })
-
-  it("Custom message", async () => {
-    const schema = S.instanceOf(Set, {
-      message: () => "This is a custom message"
-    })
-    await Util.expectDecodeUnknownFailure(schema, 1, `This is a custom message`)
   })
 })

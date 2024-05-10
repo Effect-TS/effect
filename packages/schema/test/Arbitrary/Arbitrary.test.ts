@@ -1,19 +1,25 @@
 import * as Arbitrary from "@effect/schema/Arbitrary"
 import * as S from "@effect/schema/Schema"
 import { expectValidArbitrary } from "@effect/schema/test/TestUtils"
+import { jestExpect as expect } from "@jest/expect"
 import { isUnknown } from "effect/Predicate"
 import * as fc from "fast-check"
-import { describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
 describe("Arbitrary > Arbitrary", () => {
-  it("exports", () => {
-    expect(Arbitrary.ArbitraryHookId).exist
-  })
-
   it("should throw on declarations without annotations", () => {
     const schema = S.declare(isUnknown)
     expect(() => Arbitrary.makeLazy(schema)).toThrow(
       new Error("cannot build an Arbitrary for a declaration without annotations (<declaration schema>)")
+    )
+  })
+
+  it("the errors should disply a path", () => {
+    expect(() => Arbitrary.makeLazy(S.Tuple(S.declare(isUnknown)))).toThrow(
+      new Error(`cannot build an Arbitrary for a declaration without annotations (<declaration schema>) (path [0])`)
+    )
+    expect(() => Arbitrary.makeLazy(S.Struct({ a: S.declare(isUnknown) }))).toThrow(
+      new Error(`cannot build an Arbitrary for a declaration without annotations (<declaration schema>) (path ["a"])`)
     )
   })
 

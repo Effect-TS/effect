@@ -1,14 +1,11 @@
 import * as AST from "@effect/schema/AST"
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
+import { jestExpect as expect } from "@jest/expect"
 import { isUnknown } from "effect/Predicate"
-import { describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
 describe("Pretty", () => {
-  it("exports", () => {
-    expect(Pretty.PrettyHookId).exist
-  })
-
   it("make", () => {
     const schema = S.NumberFromString
     const pretty = Pretty.make(schema)
@@ -36,13 +33,22 @@ describe("Pretty", () => {
     )
   })
 
+  it("the errors should disply a path", () => {
+    expect(() => Pretty.make(S.Tuple(S.declare(isUnknown)))).toThrow(
+      new Error(`cannot build a Pretty for a declaration without annotations (<declaration schema>) (path [0])`)
+    )
+    expect(() => Pretty.make(S.Struct({ a: S.declare(isUnknown) }))).toThrow(
+      new Error(`cannot build a Pretty for a declaration without annotations (<declaration schema>) (path ["a"])`)
+    )
+  })
+
   it("should allow for custom compilers", () => {
     const match: typeof Pretty.match = {
       ...Pretty.match,
       "BooleanKeyword": () => (b: boolean) => b ? "True" : "False"
     }
     const go = AST.getCompiler(match)
-    const pretty = <A>(schema: S.Schema<A>) => (a: A): string => go(schema.ast)(a)
+    const pretty = <A>(schema: S.Schema<A>) => (a: A): string => go(schema.ast, [])(a)
     expect(pretty(S.Boolean)(true)).toEqual(`True`)
     const schema = S.Tuple(S.String, S.Boolean)
     expect(pretty(schema)(["a", true])).toEqual(`["a", True]`)

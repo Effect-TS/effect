@@ -2,8 +2,9 @@ import * as P from "@effect/schema/ParseResult"
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
+import { jestExpect as expect } from "@jest/expect"
 import * as HashSet from "effect/HashSet"
-import { describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
 describe("HashSetFromSelf", () => {
   it("property tests", () => {
@@ -12,7 +13,7 @@ describe("HashSetFromSelf", () => {
 
   it("decoding", async () => {
     const schema = S.HashSetFromSelf(S.NumberFromString)
-    await Util.expectDecodeUnknownSuccess(schema, HashSet.empty(), HashSet.empty())
+    await Util.expectDecodeUnknownSuccess(schema, HashSet.empty(), HashSet.fromIterable([]))
     await Util.expectDecodeUnknownSuccess(
       schema,
       HashSet.fromIterable(["1", "2", "3"]),
@@ -38,7 +39,7 @@ describe("HashSetFromSelf", () => {
 
   it("encoding", async () => {
     const schema = S.HashSetFromSelf(S.NumberFromString)
-    await Util.expectEncodeSuccess(schema, HashSet.empty(), HashSet.empty())
+    await Util.expectEncodeSuccess(schema, HashSet.empty(), HashSet.fromIterable([]))
     await Util.expectEncodeSuccess(
       schema,
       HashSet.fromIterable([1, 2, 3]),

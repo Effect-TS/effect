@@ -1,8 +1,9 @@
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
-import { describe, expect, it } from "vitest"
+import { jestExpect as expect } from "@jest/expect"
+import { describe, it } from "vitest"
 
-describe("AST > getWeight", () => {
+describe("getWeight", () => {
   it("order", () => {
     const transformation = S.OptionFromSelf(S.Number)
     const union = S.Union(S.Struct({ a: S.String }), S.Struct({ b: S.Number }))

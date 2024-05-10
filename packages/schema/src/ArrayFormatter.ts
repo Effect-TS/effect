@@ -12,7 +12,17 @@ import * as TreeFormatter from "./TreeFormatter.js"
  * @since 1.0.0
  */
 export interface Issue {
-  readonly _tag: ParseResult.ParseIssue["_tag"] | ParseResult.Missing["_tag"] | ParseResult.Unexpected["_tag"]
+  readonly _tag:
+    | "Transformation"
+    | "Type"
+    | "Declaration"
+    | "Refinement"
+    | "TupleType"
+    | "TypeLiteral"
+    | "Union"
+    | "Forbidden"
+    | "Missing"
+    | "Unexpected"
   readonly path: ReadonlyArray<PropertyKey>
   readonly message: string
 }
@@ -41,6 +51,8 @@ export const formatError = (error: ParseResult.ParseError): Effect.Effect<Array<
  */
 export const formatErrorSync = (error: ParseResult.ParseError): Array<Issue> => formatIssueSync(error.error)
 
+const succeed = (issue: Issue) => Effect.succeed([issue])
+
 const getArray = (
   issue: ParseResult.ParseIssue,
   path: ReadonlyArray<PropertyKey>,
@@ -48,8 +60,10 @@ const getArray = (
 ) =>
   Effect.matchEffect(TreeFormatter.getMessage(issue), {
     onFailure,
-    onSuccess: (message) => Effect.succeed<Array<Issue>>([{ _tag: issue._tag, path, message }])
+    onSuccess: (message) => succeed({ _tag: issue._tag, path, message })
   })
+
+const flatten = (eff: Effect.Effect<Array<Array<Issue>>>): Effect.Effect<Array<Issue>> => Effect.map(eff, Arr.flatten)
 
 const go = (
   e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpected,
@@ -60,14 +74,14 @@ const go = (
     case "Type":
       return Effect.map(TreeFormatter.formatTypeMessage(e), (message) => [{ _tag, path, message }])
     case "Forbidden":
-      return Effect.succeed([{ _tag, path, message: TreeFormatter.formatForbiddenMessage(e) }])
+      return succeed({ _tag, path, message: TreeFormatter.formatForbiddenMessage(e) })
     case "Unexpected":
-      return Effect.succeed([{ _tag, path, message: `is unexpected, expected ${e.ast.toString(true)}` }])
+      return succeed({ _tag, path, message: `is unexpected, expected ${e.ast.toString(true)}` })
     case "Missing":
-      return Effect.succeed([{ _tag, path, message: "is missing" }])
+      return succeed({ _tag, path, message: "is missing" })
     case "Union":
       return getArray(e, path, () =>
-        Effect.map(
+        flatten(
           Effect.forEach(e.errors, (e) => {
             switch (e._tag) {
               case "Member":
@@ -75,24 +89,23 @@ const go = (
               default:
                 return go(e, path)
             }
-          }),
-          Arr.flatten
+          })
         ))
     case "TupleType":
-      return getArray(e, path, () =>
-        Effect.map(
-          Effect.forEach(e.errors, (index) => go(index.error, [...path, index.index])),
-          Arr.flatten
-        ))
+      return getArray(
+        e,
+        path,
+        () => flatten(Effect.forEach(e.errors, (index) => go(index.error, path.concat(index.index))))
+      )
     case "TypeLiteral":
-      return getArray(e, path, () =>
-        Effect.map(
-          Effect.forEach(e.errors, (key) => go(key.error, [...path, key.key])),
-          Arr.flatten
-        ))
-    case "Transformation":
-    case "Refinement":
+      return getArray(
+        e,
+        path,
+        () => flatten(Effect.forEach(e.errors, (key) => go(key.error, path.concat(key.key))))
+      )
     case "Declaration":
+    case "Refinement":
+    case "Transformation":
       return getArray(e, path, () => go(e.error, path))
   }
 }

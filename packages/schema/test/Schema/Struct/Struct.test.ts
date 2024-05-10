@@ -1,7 +1,8 @@
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import { describe, expect, it } from "vitest"
+import { jestExpect as expect } from "@jest/expect"
+import { describe, it } from "vitest"
 
 describe("Struct", () => {
   it("annotations()", () => {
@@ -70,26 +71,26 @@ describe("Struct", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         null,
-        `Expected { a: number }, actual null`
+        `Expected { readonly a: number }, actual null`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         {},
-        `{ a: number }
+        `{ readonly a: number }
 └─ ["a"]
    └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: undefined },
-        `{ a: number }
+        `{ readonly a: number }
 └─ ["a"]
    └─ Expected a number, actual undefined`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, b: "b" },
-        `{ a: number }
+        `{ readonly a: number }
 └─ ["b"]
    └─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
@@ -105,12 +106,12 @@ describe("Struct", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         null,
-        `Expected { a: number | undefined }, actual null`
+        `Expected { readonly a: number | undefined }, actual null`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a" },
-        `{ a: number | undefined }
+        `{ readonly a: number | undefined }
 └─ ["a"]
    └─ number | undefined
       ├─ Union member
@@ -121,7 +122,7 @@ describe("Struct", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, b: "b" },
-        `{ a: number | undefined }
+        `{ readonly a: number | undefined }
 └─ ["b"]
    └─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
@@ -136,26 +137,26 @@ describe("Struct", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         null,
-        `Expected { a?: number }, actual null`
+        `Expected { readonly a?: number }, actual null`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a" },
-        `{ a?: number }
+        `{ readonly a?: number }
 └─ ["a"]
    └─ Expected a number, actual "a"`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: undefined },
-        `{ a?: number }
+        `{ readonly a?: number }
 └─ ["a"]
    └─ Expected a number, actual undefined`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, b: "b" },
-        `{ a?: number }
+        `{ readonly a?: number }
 └─ ["b"]
    └─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
@@ -171,12 +172,12 @@ describe("Struct", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         null,
-        `Expected { a?: number | undefined }, actual null`
+        `Expected { readonly a?: number | undefined }, actual null`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a" },
-        `{ a?: number | undefined }
+        `{ readonly a?: number | undefined }
 └─ ["a"]
    └─ number | undefined
       ├─ Union member
@@ -187,7 +188,7 @@ describe("Struct", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, b: "b" },
-        `{ a?: number | undefined }
+        `{ readonly a?: number | undefined }
 └─ ["b"]
    └─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
@@ -223,7 +224,7 @@ describe("Struct", () => {
       await Util.expectEncodeFailure(
         schema,
         { a: 1, b: "b" } as any,
-        `{ a: number }
+        `{ readonly a: number }
 └─ ["b"]
    └─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
@@ -237,7 +238,7 @@ describe("Struct", () => {
       await Util.expectEncodeFailure(
         schema,
         { a: 1, b: "b" } as any,
-        `{ a: number | undefined }
+        `{ readonly a: number | undefined }
 └─ ["b"]
    └─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
@@ -251,7 +252,7 @@ describe("Struct", () => {
       await Util.expectEncodeFailure(
         schema,
         { a: 1, b: "b" } as any,
-        `{ a?: number }
+        `{ readonly a?: number }
 └─ ["b"]
    └─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
@@ -266,7 +267,7 @@ describe("Struct", () => {
       await Util.expectEncodeFailure(
         schema,
         { a: 1, b: "b" } as any,
-        `{ a?: number | undefined }
+        `{ readonly a?: number | undefined }
 └─ ["b"]
    └─ is unexpected, expected "a"`,
         Util.onExcessPropertyError

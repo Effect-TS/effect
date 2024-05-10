@@ -78,7 +78,7 @@ describe("Cause", () => {
       `(CauseEncoded<NumberFromString> <-> Cause<number>)
 └─ Encoded side transformation failure
    └─ CauseEncoded<NumberFromString>
-      └─ { _tag: "Empty" | "Fail" | "Die" | "Interrupt" | "Sequential" | "Parallel" }
+      └─ { readonly _tag: "Empty" | "Fail" | "Die" | "Interrupt" | "Sequential" | "Parallel" }
          └─ ["_tag"]
             └─ is missing`
     )
@@ -89,11 +89,11 @@ describe("Cause", () => {
 └─ Encoded side transformation failure
    └─ CauseEncoded<NumberFromString>
       └─ Union member
-         └─ { _tag: "Parallel"; left: CauseEncoded<NumberFromString>; right: CauseEncoded<NumberFromString> }
+         └─ { readonly _tag: "Parallel"; readonly left: CauseEncoded<NumberFromString>; readonly right: CauseEncoded<NumberFromString> }
             └─ ["left"]
                └─ CauseEncoded<NumberFromString>
                   └─ Union member
-                     └─ { _tag: "Fail"; error: NumberFromString }
+                     └─ { readonly _tag: "Fail"; readonly error: NumberFromString }
                         └─ ["error"]
                            └─ is missing`
     )

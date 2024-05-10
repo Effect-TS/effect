@@ -1,8 +1,9 @@
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
-import { describe, expect, it } from "vitest"
+import { jestExpect as expect } from "@jest/expect"
+import { describe, it } from "vitest"
 
-describe("AST > getPropertySignatures", () => {
+describe("getPropertySignatures", () => {
   it("struct", () => {
     const schema = S.Struct({ a: S.String, b: S.Number })
     expect(AST.getPropertySignatures(schema.ast)).toEqual([

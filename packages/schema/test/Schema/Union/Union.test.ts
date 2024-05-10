@@ -1,7 +1,8 @@
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import { describe, expect, it } from "vitest"
+import { jestExpect as expect } from "@jest/expect"
+import { describe, it } from "vitest"
 
 describe("Union", () => {
   it("annotations()", () => {
@@ -47,38 +48,38 @@ describe("Union", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         null,
-        `Expected { a: 1; c: string } | { b: 2; d: number }, actual null`
+        `Expected { readonly a: 1; readonly c: string } | { readonly b: 2; readonly d: number }, actual null`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         {},
-        `{ a: 1; c: string } | { b: 2; d: number }
-├─ { a: 1 }
+        `{ readonly a: 1; readonly c: string } | { readonly b: 2; readonly d: number }
+├─ { readonly a: 1 }
 │  └─ ["a"]
 │     └─ is missing
-└─ { b: 2 }
+└─ { readonly b: 2 }
    └─ ["b"]
       └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: null },
-        `{ a: 1; c: string } | { b: 2; d: number }
-├─ { a: 1 }
+        `{ readonly a: 1; readonly c: string } | { readonly b: 2; readonly d: number }
+├─ { readonly a: 1 }
 │  └─ ["a"]
 │     └─ Expected 1, actual null
-└─ { b: 2 }
+└─ { readonly b: 2 }
    └─ ["b"]
       └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { b: 3 },
-        `{ a: 1; c: string } | { b: 2; d: number }
-├─ { a: 1 }
+        `{ readonly a: 1; readonly c: string } | { readonly b: 2; readonly d: number }
+├─ { readonly a: 1 }
 │  └─ ["a"]
 │     └─ is missing
-└─ { b: 2 }
+└─ { readonly b: 2 }
    └─ ["b"]
       └─ Expected 2, actual 3`
       )
@@ -93,38 +94,38 @@ describe("Union", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         null,
-        `Expected { category: "catA"; tag: "a" } | { category: "catA"; tag: "b" } | { category: "catA"; tag: "c" }, actual null`
+        `Expected { readonly category: "catA"; readonly tag: "a" } | { readonly category: "catA"; readonly tag: "b" } | { readonly category: "catA"; readonly tag: "c" }, actual null`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         {},
-        `{ category: "catA"; tag: "a" } | { category: "catA"; tag: "b" } | { category: "catA"; tag: "c" }
-├─ { category: "catA" }
+        `{ readonly category: "catA"; readonly tag: "a" } | { readonly category: "catA"; readonly tag: "b" } | { readonly category: "catA"; readonly tag: "c" }
+├─ { readonly category: "catA" }
 │  └─ ["category"]
 │     └─ is missing
-└─ { tag: "b" | "c" }
+└─ { readonly tag: "b" | "c" }
    └─ ["tag"]
       └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { category: null },
-        `{ category: "catA"; tag: "a" } | { category: "catA"; tag: "b" } | { category: "catA"; tag: "c" }
-├─ { category: "catA" }
+        `{ readonly category: "catA"; readonly tag: "a" } | { readonly category: "catA"; readonly tag: "b" } | { readonly category: "catA"; readonly tag: "c" }
+├─ { readonly category: "catA" }
 │  └─ ["category"]
 │     └─ Expected "catA", actual null
-└─ { tag: "b" | "c" }
+└─ { readonly tag: "b" | "c" }
    └─ ["tag"]
       └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { tag: "d" },
-        `{ category: "catA"; tag: "a" } | { category: "catA"; tag: "b" } | { category: "catA"; tag: "c" }
-├─ { category: "catA" }
+        `{ readonly category: "catA"; readonly tag: "a" } | { readonly category: "catA"; readonly tag: "b" } | { readonly category: "catA"; readonly tag: "c" }
+├─ { readonly category: "catA" }
 │  └─ ["category"]
 │     └─ is missing
-└─ { tag: "b" | "c" }
+└─ { readonly tag: "b" | "c" }
    └─ ["tag"]
       └─ Expected "b" | "c", actual "d"`
       )
@@ -148,15 +149,15 @@ describe("Union", () => {
         `ab | AB
 ├─ Union member
 │  └─ ab
-│     └─ { _tag: "a" | "b" }
+│     └─ { readonly _tag: "a" | "b" }
 │        └─ ["_tag"]
 │           └─ is missing
 └─ Union member
    └─ AB
-      ├─ { a: "A" }
+      ├─ { readonly a: "A" }
       │  └─ ["a"]
       │     └─ is missing
-      └─ { b: "B" }
+      └─ { readonly b: "B" }
          └─ ["b"]
             └─ is missing`
       )
