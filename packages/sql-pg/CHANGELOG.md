@@ -1,5 +1,13 @@
 # @effect/sql-pg
 
+## 0.2.5
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/platform@0.53.3
+  - @effect/sql@0.2.5
+
 ## 0.2.4
 
 ### Patch Changes
