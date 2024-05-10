@@ -5436,6 +5436,46 @@ export const withSpan: {
 } = effect.withSpan
 
 /**
+ * Wraps a function that returns an effect with a new span for tracing.
+ *
+ * @since 3.2.0
+ * @category models
+ */
+export interface FunctionWithSpanOptions {
+  readonly name: string
+  readonly attributes?: Record<string, unknown> | undefined
+  readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
+  readonly parent?: Tracer.AnySpan | undefined
+  readonly root?: boolean | undefined
+  readonly context?: Context.Context<never> | undefined
+  readonly kind?: Tracer.SpanKind | undefined
+}
+
+/**
+ * Wraps a function that returns an effect with a new span for tracing.
+ *
+ * @since 3.2.0
+ * @category tracing
+ * @example
+ * import { Effect } from "effect"
+ *
+ * const getTodo = Effect.functionWithSpan({
+ *   body: (id: number) => Effect.succeed(`Got todo ${id}!`),
+ *   options: (id) => ({
+ *     name: `getTodo-${id}`,
+ *     attributes: { id }
+ *   })
+ * })
+ */
+export const functionWithSpan: <Args extends Array<any>, Ret extends Effect<any, any, any>>(
+  options: {
+    readonly body: (...args: Args) => Ret
+    readonly options: FunctionWithSpanOptions | ((...args: Args) => FunctionWithSpanOptions)
+    readonly captureStackTrace?: boolean | undefined
+  }
+) => (...args: Args) => Unify.Unify<Ret> = effect.functionWithSpan
+
+/**
  * Wraps the effect with a new span for tracing.
  *
  * The span is ended when the Scope is finalized.
