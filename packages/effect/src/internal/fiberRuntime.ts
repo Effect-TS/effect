@@ -3622,8 +3622,9 @@ export const interruptWhenPossible = dual<
 export const makeSpanScoped = (
   name: string,
   options?: Tracer.SpanOptions | undefined
-): Effect.Effect<Tracer.Span, never, Scope.Scope> =>
-  core.uninterruptible(
+): Effect.Effect<Tracer.Span, never, Scope.Scope> => {
+  options = tracer.addSpanStackTrace(options)
+  return core.uninterruptible(
     core.withFiberRuntime((fiber) => {
       const scope = Context.unsafeGet(fiber.getFiberRef(core.currentContext), scopeTag)
       const span = internalEffect.unsafeMakeSpan(fiber, name, options)
@@ -3641,27 +3642,37 @@ export const makeSpanScoped = (
       )
     })
   )
+}
 
 /* @internal */
 export const withTracerScoped = (value: Tracer.Tracer): Effect.Effect<void, never, Scope.Scope> =>
   fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(tracer.tracerTag, value))
 
 /** @internal */
-export const withSpanScoped = dual<
+export const withSpanScoped: {
   (
     name: string,
     options?: Tracer.SpanOptions
-  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan> | Scope.Scope>,
+  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Scope.Scope | Exclude<R, Tracer.ParentSpan>>
   <A, E, R>(
     self: Effect.Effect<A, E, R>,
     name: string,
     options?: Tracer.SpanOptions
-  ) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan> | Scope.Scope>
->(
-  (args) => typeof args[0] !== "string",
-  (self, name, options) =>
-    core.flatMap(
-      makeSpanScoped(name, options),
+  ): Effect.Effect<A, E, Scope.Scope | Exclude<R, Tracer.ParentSpan>>
+} = function() {
+  const dataFirst = typeof arguments[0] !== "string"
+  const name = dataFirst ? arguments[1] : arguments[0]
+  const options = tracer.addSpanStackTrace(dataFirst ? arguments[2] : arguments[1])
+  if (dataFirst) {
+    const self = arguments[0]
+    return core.flatMap(
+      makeSpanScoped(name, tracer.addSpanStackTrace(options)),
       (span) => internalEffect.provideService(self, tracer.spanTag, span)
     )
-)
+  }
+  return (self: Effect.Effect<any, any, any>) =>
+    core.flatMap(
+      makeSpanScoped(name, tracer.addSpanStackTrace(options)),
+      (span) => internalEffect.provideService(self, tracer.spanTag, span)
+    )
+} as any
