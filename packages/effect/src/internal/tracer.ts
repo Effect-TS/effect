@@ -106,3 +106,24 @@ export const externalSpan = (options: {
   sampled: options.sampled ?? true,
   context: options.context ?? Context.empty()
 })
+
+/** @internal */
+export const addSpanStackTrace = (options: Tracer.SpanOptions | undefined): Tracer.SpanOptions => {
+  if (options?.captureStackTrace === false) {
+    return options
+  } else if (options?.captureStackTrace !== undefined && typeof options.captureStackTrace !== "boolean") {
+    return options
+  }
+  const limit = Error.stackTraceLimit
+  Error.stackTraceLimit = 3
+  const traceError = new Error()
+  Error.stackTraceLimit = limit
+  if (traceError.stack === undefined) {
+    return { ...options, captureStackTrace: false }
+  }
+  const stack = traceError.stack.split("\n")
+  if (!stack[3]) {
+    return { ...options, captureStackTrace: false }
+  }
+  return { ...options, captureStackTrace: stack[3].trim() }
+}

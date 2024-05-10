@@ -143,7 +143,7 @@ export const makeDefault = (
           addAbort,
           Effect.useSpan(
             `http.client ${request.method}`,
-            { kind: "client" },
+            { kind: "client", captureStackTrace: false },
             (span) => {
               span.attribute("http.request.method", request.method)
               span.attribute("server.address", url.origin)
