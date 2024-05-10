@@ -1,5 +1,5 @@
 ---
-"@effect/schema": patch
+"@effect/schema": minor
 ---
 
 ## Simplifying Type Extraction
