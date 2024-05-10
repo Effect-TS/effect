@@ -898,6 +898,11 @@ export * as TSet from "./TSet.js"
 /**
  * @since 2.0.0
  */
+export * as TSubscriptionRef from "./TSubscriptionRef.js"
+
+/**
+ * @since 2.0.0
+ */
 export * as Take from "./Take.js"
 
 /**

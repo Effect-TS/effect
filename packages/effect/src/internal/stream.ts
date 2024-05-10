@@ -31,6 +31,8 @@ import type * as Stream from "../Stream.js"
 import type * as Emit from "../StreamEmit.js"
 import * as HaltStrategy from "../StreamHaltStrategy.js"
 import type * as Take from "../Take.js"
+import * as TPubSub from "../TPubSub.js"
+import * as TQueue from "../TQueue.js"
 import type * as Tracer from "../Tracer.js"
 import * as Tuple from "../Tuple.js"
 import type { NoInfer, TupleOf } from "../Types.js"
@@ -3134,6 +3136,36 @@ export const fromPubSub: {
 }
 
 /** @internal */
+export const fromTPubSub: {
+  <A>(pubsub: TPubSub.TPubSub<A>, options: {
+    readonly scoped: true
+    readonly maxChunkSize?: number | undefined
+    readonly shutdown?: boolean | undefined
+  }): Effect.Effect<Stream.Stream<A>, never, Scope.Scope>
+  <A>(pubsub: TPubSub.TPubSub<A>, options?: {
+    readonly scoped?: false | undefined
+    readonly maxChunkSize?: number | undefined
+    readonly shutdown?: boolean | undefined
+  }): Stream.Stream<A>
+} = (pubsub, options): any => {
+  const maxChunkSize = options?.maxChunkSize ?? DefaultChunkSize
+
+  if (options?.scoped) {
+    const effect = Effect.map(
+      TPubSub.subscribe(pubsub),
+      (queue) => fromTQueue(queue, { maxChunkSize, shutdown: true })
+    )
+
+    return options.shutdown ? Effect.map(effect, ensuring(TPubSub.shutdown(pubsub))) : effect
+  }
+  const stream = flatMap(
+    scoped(TPubSub.subscribe(pubsub)),
+    (queue) => fromTQueue(queue, { maxChunkSize })
+  )
+  return options?.shutdown ? ensuring(stream, TPubSub.shutdown(pubsub)) : stream
+}
+
+/** @internal */
 export const fromIterable = <A>(iterable: Iterable<A>): Stream.Stream<A> =>
   suspend(() =>
     Chunk.isChunk(iterable) ?
@@ -3222,6 +3254,31 @@ export const fromQueue = <A>(
     ),
     repeatEffectChunkOption,
     options?.shutdown ? ensuring(Queue.shutdown(queue)) : identity
+  )
+
+/** @internal */
+export const fromTQueue = <A>(
+  queue: TQueue.TDequeue<A>,
+  options?: {
+    readonly maxChunkSize?: number | undefined
+    readonly shutdown?: boolean | undefined
+  }
+): Stream.Stream<A> =>
+  pipe(
+    TQueue.takeBetween(queue, 1, options?.maxChunkSize ?? DefaultChunkSize),
+    Effect.map(Chunk.fromIterable),
+    Effect.catchAllCause((cause) =>
+      pipe(
+        TQueue.isShutdown(queue),
+        Effect.flatMap((isShutdown) =>
+          isShutdown && Cause.isInterrupted(cause) ?
+            pull.end() :
+            pull.failCause(cause)
+        )
+      )
+    ),
+    repeatEffectChunkOption,
+    options?.shutdown ? ensuring(TQueue.shutdown(queue)) : identity
   )
 
 /** @internal */
