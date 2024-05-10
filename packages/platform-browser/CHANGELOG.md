@@ -1,5 +1,11 @@
 # @effect/platform-browser
 
+## 0.33.17
+
+### Patch Changes
+
+- [#2722](https://github.com/Effect-TS/effect/pull/2722) [`d4fb55d`](https://github.com/Effect-TS/effect/commit/d4fb55dc04d370c19a1176fa13ff7266c222e15e) Thanks [@tim-smart](https://github.com/tim-smart)! - run .close() when browser worker shuts down
+
 ## 0.33.16
 
 ### Patch Changes
