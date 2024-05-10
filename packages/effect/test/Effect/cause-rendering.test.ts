@@ -16,7 +16,9 @@ describe("Effect", () => {
       )))
       const rendered = Cause.pretty(cause)
       assert.include(rendered, "spanA")
+      assert.include(rendered, "cause-rendering.test.ts:12")
       assert.include(rendered, "spanB")
+      assert.include(rendered, "cause-rendering.test.ts:11")
     }))
   it.effect("catchTag should not invalidate traces", () =>
     Effect.gen(function*($) {
@@ -97,5 +99,22 @@ describe("Effect", () => {
       )
       const pretty = Cause.pretty(cause)
       assert.include(pretty, "cause-rendering.test.ts")
+    }))
+
+  it.effect("functionWithSpan PrettyError stack", () =>
+    Effect.gen(function*() {
+      const fail = Effect.functionWithSpan({
+        body: (_id: number) => Effect.fail(new Error("boom")),
+        options: (id) => ({ name: `span-${id}` })
+      })
+      const cause = yield* fail(123).pipe(Effect.sandbox, Effect.flip)
+      const prettyErrors = Cause.prettyErrors(cause)
+      assert.strictEqual(prettyErrors.length, 1)
+      const error = prettyErrors[0]
+      assert.strictEqual(error.name, "Error")
+      assert.notInclude(error.stack, "/internal/")
+      assert.include(error.stack, "cause-rendering.test.ts:107")
+      assert.include(error.stack, "span-123")
+      assert.include(error.stack, "cause-rendering.test.ts:110")
     }))
 })
