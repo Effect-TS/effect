@@ -193,7 +193,7 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
         Effect.map(
           Effect.forEach(
             e.errors,
-            (index) => Effect.map(go(index.error), (tree) => make(`[${index.index}]`, [tree]))
+            (index) => Effect.map(go(index.error), (tree) => make(`[${util_.formatPropertyKey(index.index)}]`, [tree]))
           ),
           (forest) => make(getParseIssueTitle(e), forest)
         ))
@@ -201,7 +201,7 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
       return getTree(e, () =>
         Effect.map(
           Effect.forEach(e.errors, (key) =>
-            Effect.map(go(key.error), (tree) => make(`[${util_.formatUnknown(key.key)}]`, [tree]))),
+            Effect.map(go(key.error), (tree) => make(`[${util_.formatPropertyKey(key.key)}]`, [tree]))),
           (forest) =>
             make(getParseIssueTitle(e), forest)
         ))
