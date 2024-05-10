@@ -19,13 +19,13 @@ import { z } from "zod"
 
 const bench = new Bench({ time: 1000 })
 
-const Vector = S.tuple(S.number, S.number, S.number)
+const Vector = S.Tuple(S.Number, S.Number, S.Number)
 const VectorZod = z.tuple([z.number(), z.number(), z.number()])
 
-const Asteroid = S.struct({
-  type: S.literal("asteroid"),
+const Asteroid = S.Struct({
+  type: S.Literal("asteroid"),
   location: Vector,
-  mass: S.number
+  mass: S.Number
 })
 const AsteroidZod = z.object({
   type: z.literal("asteroid"),
@@ -33,12 +33,12 @@ const AsteroidZod = z.object({
   mass: z.number()
 })
 
-const Planet = S.struct({
-  type: S.literal("planet"),
+const Planet = S.Struct({
+  type: S.Literal("planet"),
   location: Vector,
-  mass: S.number,
-  population: S.number,
-  habitable: S.boolean
+  mass: S.Number,
+  population: S.Number,
+  habitable: S.Boolean
 })
 const PlanetZod = z.object({
   type: z.literal("planet"),
@@ -48,11 +48,11 @@ const PlanetZod = z.object({
   habitable: z.boolean()
 })
 
-const Rank = S.union(
-  S.literal("captain"),
-  S.literal("first mate"),
-  S.literal("officer"),
-  S.literal("ensign")
+const Rank = S.Union(
+  S.Literal("captain"),
+  S.Literal("first mate"),
+  S.Literal("officer"),
+  S.Literal("ensign")
 )
 const RankZod = z.union([
   z.literal("captain"),
@@ -61,9 +61,9 @@ const RankZod = z.union([
   z.literal("ensign")
 ])
 
-const CrewMember = S.struct({
-  name: S.string,
-  age: S.number,
+const CrewMember = S.Struct({
+  name: S.String,
+  age: S.Number,
   rank: Rank,
   home: Planet
 })
@@ -74,12 +74,12 @@ const CrewMemberZod = z.object({
   home: PlanetZod
 })
 
-const Ship = S.struct({
-  type: S.literal("ship"),
+const Ship = S.Struct({
+  type: S.Literal("ship"),
   location: Vector,
-  mass: S.number,
-  name: S.string,
-  crew: S.array(CrewMember)
+  mass: S.Number,
+  name: S.String,
+  crew: S.Array(CrewMember)
 })
 const ShipZod = z.object({
   type: z.literal("ship"),
@@ -89,7 +89,7 @@ const ShipZod = z.object({
   crew: z.array(CrewMemberZod)
 })
 
-export const schema = S.union(Asteroid, Planet, Ship)
+export const schema = S.Union(Asteroid, Planet, Ship)
 export const schemaZod = z.discriminatedUnion("type", [AsteroidZod, PlanetZod, ShipZod])
 
 const good = {
@@ -135,7 +135,7 @@ const bad = {
 }
 
 export const schemadecodeUnknownEither = S.decodeUnknownEither(schema)
-const parseResultdecodeUnknownEither = ParseResult.decodeUnknownEither(schema)
+export const parseResultdecodeUnknownEither = ParseResult.decodeUnknownEither(schema)
 const options: ParseOptions = { errors: "all" }
 
 bench

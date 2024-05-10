@@ -9,7 +9,7 @@ describe("decodePromise", () => {
     await Util.expectPromiseSuccess(S.decodePromise(schema)({ a: "1" }), { a: 1 })
     await Util.expectPromiseFailure(
       S.decodePromise(schema)({ a: "10" }),
-      `{ a: NumberFromChar }
+      `{ readonly a: NumberFromChar }
 └─ ["a"]
    └─ NumberFromChar
       └─ Encoded side transformation failure
@@ -23,13 +23,13 @@ describe("decodePromise", () => {
     const input = { a: "1", b: "b" }
     await Util.expectPromiseFailure(
       S.decodePromise(schema)(input, { onExcessProperty: "error" }),
-      `{ a: NumberFromChar }
+      `{ readonly a: NumberFromChar }
 └─ ["b"]
    └─ is unexpected, expected "a"`
     )
     await Util.expectPromiseFailure(
       S.decodePromise(schema, { onExcessProperty: "error" })(input),
-      `{ a: NumberFromChar }
+      `{ readonly a: NumberFromChar }
 └─ ["b"]
    └─ is unexpected, expected "a"`
     )

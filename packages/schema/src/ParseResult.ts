@@ -495,7 +495,10 @@ const getEither = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions
 const getSync = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
   const parser = getEither(ast, isDecoding, options)
   return (input: unknown, overrideOptions?: AST.ParseOptions) =>
-    Either.getOrThrowWith(parser(input, overrideOptions), (e) => new Error(TreeFormatter.formatIssueSync(e)))
+    Either.getOrThrowWith(
+      parser(input, overrideOptions),
+      (issue) => new Error(TreeFormatter.formatIssueSync(issue), { cause: issue })
+    )
 }
 
 const getOption = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {

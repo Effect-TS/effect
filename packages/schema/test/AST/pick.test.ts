@@ -1,8 +1,9 @@
 import type * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
-import { describe, expect, it } from "vitest"
+import { jestExpect as expect } from "@jest/expect"
+import { describe, it } from "vitest"
 
-describe("AST > pick", () => {
+describe("pick", () => {
   it("TypeLiteral", async () => {
     const schema = S.Struct({ a: S.NumberFromString, b: S.Number })
     const ast = schema.pipe(S.pick("a")).ast

@@ -82,7 +82,7 @@ const formatRefinementKind = (kind: ParseResult.Refinement["kind"]): string => {
   }
 }
 
-const getPrevMessage = (
+const getInnerMessage = (
   issue: ParseResult.ParseIssue
 ): Effect.Effect<string, Cause.NoSuchElementException> => {
   switch (issue._tag) {
@@ -92,25 +92,51 @@ const getPrevMessage = (
       }
       break
     }
-    case "Transformation":
+    case "Transformation": {
       return getMessage(issue.error)
+    }
   }
   return Option.none()
 }
 
 const getCurrentMessage: (
   issue: ParseResult.ParseIssue
-) => Effect.Effect<string, Cause.NoSuchElementException> = (issue: ParseResult.ParseIssue) =>
+) => Effect.Effect<{ message: string; override: boolean }, Cause.NoSuchElementException> = (
+  issue: ParseResult.ParseIssue
+) =>
   AST.getMessageAnnotation(issue.ast).pipe(Effect.flatMap((annotation) => {
     const out = annotation(issue)
-    return Predicate.isString(out) ? Effect.succeed(out) : out
+    return Predicate.isString(out)
+      ? Effect.succeed({ message: out, override: false })
+      : Effect.isEffect(out)
+      ? Effect.map(out, (message) => ({ message, override: false }))
+      : Predicate.isString(out.message)
+      ? Effect.succeed({ message: out.message, override: out.override })
+      : Effect.map(out.message, (message) => ({ message, override: out.override }))
   }))
 
 /** @internal */
 export const getMessage: (
   issue: ParseResult.ParseIssue
-) => Effect.Effect<string, Cause.NoSuchElementException> = (issue: ParseResult.ParseIssue) =>
-  Effect.catchAll(getPrevMessage(issue), () => getCurrentMessage(issue))
+) => Effect.Effect<string, Cause.NoSuchElementException> = (issue: ParseResult.ParseIssue) => {
+  const current = getCurrentMessage(issue)
+  return getInnerMessage(issue).pipe(
+    Effect.flatMap((inner) => Effect.map(current, (current) => current.override ? current.message : inner)),
+    Effect.catchAll(() =>
+      Effect.flatMap(current, (current) => {
+        if (
+          !current.override && (
+            (issue._tag === "Refinement" && issue.kind !== "Predicate") ||
+            (issue._tag === "Transformation" && issue.kind !== "Transformation")
+          )
+        ) {
+          return Option.none()
+        }
+        return Effect.succeed(current.message)
+      })
+    )
+  )
+}
 
 const getParseIssueTitleAnnotation = (issue: ParseResult.ParseIssue): Option.Option<string> =>
   Option.filterMap(
@@ -167,7 +193,7 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
         Effect.map(
           Effect.forEach(
             e.errors,
-            (index) => Effect.map(go(index.error), (tree) => make(`[${index.index}]`, [tree]))
+            (index) => Effect.map(go(index.error), (tree) => make(`[${util_.formatPropertyKey(index.index)}]`, [tree]))
           ),
           (forest) => make(getParseIssueTitle(e), forest)
         ))
@@ -175,7 +201,7 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
       return getTree(e, () =>
         Effect.map(
           Effect.forEach(e.errors, (key) =>
-            Effect.map(go(key.error), (tree) => make(`[${util_.formatUnknown(key.key)}]`, [tree]))),
+            Effect.map(go(key.error), (tree) => make(`[${util_.formatPropertyKey(key.key)}]`, [tree]))),
           (forest) =>
             make(getParseIssueTitle(e), forest)
         ))

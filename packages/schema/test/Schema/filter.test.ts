@@ -2,9 +2,8 @@ import * as AST from "@effect/schema/AST"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import * as TreeFormatter from "@effect/schema/TreeFormatter"
-import * as Option from "effect/Option"
-import { describe, expect, it } from "vitest"
+import { jestExpect as expect } from "@jest/expect"
+import { describe, it } from "vitest"
 
 describe("filter", () => {
   it("annotation options", () => {
@@ -39,13 +38,11 @@ describe("filter", () => {
     const schema = S.Struct({ a: S.String, b: S.String }).pipe(
       S.filter((o) =>
         o.b === o.a
-          ? Option.none()
-          : Option.some(
-            new ParseResult.Type(
-              S.Literal(o.a).ast,
-              o.b,
-              `b should be equal to a's value ("${o.a}")`
-            )
+          ? undefined
+          : new ParseResult.Type(
+            S.Literal(o.a).ast,
+            o.b,
+            `b should be equal to a's value ("${o.a}")`
           )
       )
     )
@@ -54,31 +51,9 @@ describe("filter", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       { a: "a", b: "b" },
-      `<refinement schema>
+      `{ { readonly a: string; readonly b: string } | filter }
 └─ Predicate refinement failure
    └─ b should be equal to a's value ("a")`
     )
-  })
-
-  it("custom message", async () => {
-    const schema = S.String.pipe(S.filter((s): s is string => s.length === 1, {
-      message: (issue) => `invalid ${issue.actual}`
-    }))
-    await Util.expectDecodeUnknownFailure(schema, null, `invalid null`)
-  })
-
-  it("inner custom message", async () => {
-    const schema = S.String.pipe(
-      S.filter((s): s is string => s.length === 1, {
-        message: (issue) => {
-          if (issue._tag === "Refinement" && issue.kind === "From") {
-            return TreeFormatter.formatIssueSync(issue.error)
-          }
-          return `invalid ${issue.actual}`
-        }
-      })
-    )
-    await Util.expectDecodeUnknownFailure(schema, "aa", `invalid aa`)
-    await Util.expectDecodeUnknownFailure(schema, null, `Expected a string, actual null`)
   })
 })

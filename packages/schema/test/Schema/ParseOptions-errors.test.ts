@@ -96,7 +96,7 @@ describe("`errors` option", () => {
         await Util.expectDecodeUnknownFailure(
           schema,
           {},
-          `{ a: string; b: number }
+          `{ readonly a: string; readonly b: number }
 ├─ ["a"]
 │  └─ is missing
 └─ ["b"]
@@ -110,7 +110,7 @@ describe("`errors` option", () => {
         await Util.expectDecodeUnknownFailure(
           schema,
           { a: 1, b: "b" },
-          `{ a: string; b: number }
+          `{ readonly a: string; readonly b: number }
 ├─ ["a"]
 │  └─ Expected a string, actual 1
 └─ ["b"]
@@ -124,7 +124,7 @@ describe("`errors` option", () => {
         await Util.expectDecodeUnknownFailure(
           schema,
           { a: 1, b: "b", c: "c" },
-          `{ a: number }
+          `{ readonly a: number }
 ├─ ["b"]
 │  └─ is unexpected, expected "a"
 └─ ["c"]
@@ -140,7 +140,7 @@ describe("`errors` option", () => {
         await Util.expectDecodeUnknownFailure(
           schema,
           { a: 1, b: 2 },
-          `{ [x: string]: number }
+          `{ readonly [x: string]: number }
 ├─ ["a"]
 │  └─ is unexpected, expected a string at least 2 character(s) long
 └─ ["b"]
@@ -154,7 +154,7 @@ describe("`errors` option", () => {
         await Util.expectDecodeUnknownFailure(
           schema,
           { a: "a", b: "b" },
-          `{ [x: string]: number }
+          `{ readonly [x: string]: number }
 ├─ ["a"]
 │  └─ Expected a number, actual "a"
 └─ ["b"]
@@ -254,7 +254,7 @@ describe("`errors` option", () => {
         await Util.expectEncodeFailure(
           schema,
           { a: 10, b: 10 },
-          `{ a: NumberFromChar; b: NumberFromChar }
+          `{ readonly a: NumberFromChar; readonly b: NumberFromChar }
 ├─ ["a"]
 │  └─ NumberFromChar
 │     └─ Encoded side transformation failure
@@ -278,7 +278,7 @@ describe("`errors` option", () => {
         await Util.expectEncodeFailure(
           schema,
           { aa: "a", bb: "bb" },
-          `{ [x: string]: string }
+          `{ readonly [x: string]: string }
 ├─ ["aa"]
 │  └─ is unexpected, expected Char (a single character)
 └─ ["bb"]
@@ -292,7 +292,7 @@ describe("`errors` option", () => {
         await Util.expectEncodeFailure(
           schema,
           { a: "aa", b: "bb" },
-          `{ [x: string]: Char }
+          `{ readonly [x: string]: Char }
 ├─ ["a"]
 │  └─ Char
 │     └─ Predicate refinement failure

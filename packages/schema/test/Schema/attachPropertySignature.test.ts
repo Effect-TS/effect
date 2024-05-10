@@ -113,7 +113,7 @@ describe("attachPropertySignature", () => {
     await Util.expectEncodeFailure(
       schema1,
       null as any,
-      `({ a: string } <-> AttachedProperty)
+      `({ readonly a: string } <-> AttachedProperty)
 └─ Type side transformation failure
    └─ Expected AttachedProperty, actual null`
     )
@@ -128,7 +128,7 @@ describe("attachPropertySignature", () => {
     await Util.expectEncodeFailure(
       schema2,
       null as any,
-      `({ a: string } <-> AttachedProperty)
+      `({ readonly a: string } <-> AttachedProperty)
 └─ Type side transformation failure
    └─ Expected AttachedProperty, actual null`
     )
@@ -145,7 +145,7 @@ describe("attachPropertySignature", () => {
       null,
       `AttachedProperty
 └─ Encoded side transformation failure
-   └─ Expected { a: string }, actual null`
+   └─ Expected { readonly a: string }, actual null`
     )
   })
 })

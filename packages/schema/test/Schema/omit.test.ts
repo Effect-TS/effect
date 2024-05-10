@@ -1,6 +1,7 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import { describe, expect, it } from "vitest"
+import { jestExpect as expect } from "@jest/expect"
+import { describe, it } from "vitest"
 
 describe("omit", () => {
   it("struct", async () => {
@@ -13,19 +14,19 @@ describe("omit", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       null,
-      "Expected { Symbol(@effect/schema/test/a): string; b: NumberFromString }, actual null"
+      "Expected { readonly Symbol(@effect/schema/test/a): string; readonly b: NumberFromString }, actual null"
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       { [a]: "a" },
-      `{ Symbol(@effect/schema/test/a): string; b: NumberFromString }
+      `{ readonly Symbol(@effect/schema/test/a): string; readonly b: NumberFromString }
 └─ ["b"]
    └─ is missing`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       { b: 1 },
-      `{ Symbol(@effect/schema/test/a): string; b: NumberFromString }
+      `{ readonly Symbol(@effect/schema/test/a): string; readonly b: NumberFromString }
 └─ [Symbol(@effect/schema/test/a)]
    └─ is missing`
     )
@@ -46,12 +47,12 @@ describe("omit", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       null,
-      "Expected { a?: string; b: NumberFromString }, actual null"
+      "Expected { readonly a?: string; readonly b: NumberFromString }, actual null"
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       { a: "a" },
-      `{ a?: string; b: NumberFromString }
+      `{ readonly a?: string; readonly b: NumberFromString }
 └─ ["b"]
    └─ is missing`
     )
@@ -76,11 +77,11 @@ describe("omit", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       { as: [{ as: [] }] },
-      `{ as: ReadonlyArray<<suspended schema>> }
+      `{ readonly as: ReadonlyArray<<suspended schema>> }
 └─ ["as"]
    └─ ReadonlyArray<<suspended schema>>
       └─ [0]
-         └─ { a: string; as: ReadonlyArray<<suspended schema>> }
+         └─ { readonly a: string; readonly as: ReadonlyArray<<suspended schema>> }
             └─ ["a"]
                └─ is missing`
     )

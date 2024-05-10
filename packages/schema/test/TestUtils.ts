@@ -5,6 +5,7 @@ import { getFinalTransformation } from "@effect/schema/ParseResult"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import { formatErrorSync } from "@effect/schema/TreeFormatter"
+import { jestExpect as expect } from "@jest/expect"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -12,7 +13,7 @@ import * as Either from "effect/Either"
 import * as Option from "effect/Option"
 import * as Runtime from "effect/Runtime"
 import * as fc from "fast-check"
-import { expect } from "vitest"
+import { assert } from "vitest"
 
 const doEffectify = true
 const doRoundtrip = false
@@ -79,6 +80,27 @@ const effectifyAST = (ast: AST.AST): AST.AST => {
 
 export const effectify = <A, I>(schema: S.Schema<A, I, never>): S.Schema<A, I, never> =>
   S.make(effectifyAST(schema.ast))
+
+export const expectConstructorSuccess = <A, B>(
+  schema: { readonly make: (a: A) => B },
+  input: A,
+  expected: A = input
+) => {
+  try {
+    expect(schema.make(input)).toStrictEqual(expected)
+  } catch (e: any) {
+    assert.fail(e.message)
+  }
+}
+
+export const expectConstructorFailure = <A, B>(schema: { readonly make: (a: A) => B }, input: A, message: string) => {
+  try {
+    schema.make(input)
+    assert.fail("expected to throw an error")
+  } catch (e: any) {
+    expect(e.message).toStrictEqual(message)
+  }
+}
 
 export const expectArbitrary = <A, I>(schema: S.Schema<A, I, never>, n: number = 5) => {
   const is = S.is(schema)
@@ -270,11 +292,21 @@ export const expectEffectSuccess = async <E, A>(effect: Effect.Effect<A, E>, a: 
 }
 
 export const expectEitherLeft = <A>(e: Either.Either<A, ParseResult.ParseError>, message: string) => {
-  expect(Either.mapLeft(e, formatErrorSync)).toStrictEqual(Either.left(message))
+  if (Either.isLeft(e)) {
+    expect(formatErrorSync(e.left)).toStrictEqual(message)
+  } else {
+    console.log(e.right)
+    assert.fail(`expected a Left`)
+  }
 }
 
 export const expectEitherRight = <E, A>(e: Either.Either<A, E>, a: A) => {
-  expect(e).toStrictEqual(Either.right(a))
+  if (Either.isRight(e)) {
+    expect(e.right).toStrictEqual(a)
+  } else {
+    console.log(e.left)
+    assert.fail(`expected a Right`)
+  }
 }
 
 export const expectNone = <A>(o: Option.Option<A>) => {
@@ -305,3 +337,9 @@ export const DependencyString = S.transformOrFail(
   S.String,
   { decode: (s) => Effect.andThen(Name, s), encode: (s) => Effect.andThen(Name, s) }
 ).annotations({ identifier: "DependencyString" })
+
+export const expectFields = (f1: S.Struct.Fields, f2: S.Struct.Fields) => {
+  const ks1 = Reflect.ownKeys(f1).sort().map((k) => [k, f1[k].ast.toString()])
+  const ks2 = Reflect.ownKeys(f2).sort().map((k) => [k, f2[k].ast.toString()])
+  expect(ks1).toStrictEqual(ks2)
+}

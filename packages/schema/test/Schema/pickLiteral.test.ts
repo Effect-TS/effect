@@ -1,9 +1,10 @@
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import { describe, expect, it } from "vitest"
+import { jestExpect as expect } from "@jest/expect"
+import { describe, it } from "vitest"
 
-describe("literal > pickLiteral", () => {
+describe("pickLiteral", () => {
   it("should return an unwrapped AST with exactly one literal", () => {
     expect(S.Literal("a").pipe(S.pickLiteral("a")).ast).toEqual(new AST.Literal("a"))
   })

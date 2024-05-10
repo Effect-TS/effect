@@ -16,7 +16,7 @@ import { Bench } from "tinybench"
 
 const bench = new Bench({ time: 1000 })
 
-const schema = S.array(S.string)
+const schema = S.Array(S.String)
 
 const good = ["a", "b", "c"]
 

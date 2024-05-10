@@ -1,5 +1,6 @@
 import * as AST from "@effect/schema/AST"
-import { describe, expect, it } from "vitest"
+import { jestExpect as expect } from "@jest/expect"
+import { describe, it } from "vitest"
 
 describe("AST.IndexSignature", () => {
   it("new IndexSignature should throw on unsupported ASTs", () => {

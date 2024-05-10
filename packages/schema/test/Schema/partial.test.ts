@@ -1,7 +1,8 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
+import { jestExpect as expect } from "@jest/expect"
 import { identity } from "effect/Function"
-import { describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
 describe("partial", () => {
   describe("{ exact: false }", () => {
@@ -14,7 +15,7 @@ describe("partial", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: null },
-        `{ a?: number | undefined }
+        `{ readonly a?: number | undefined }
 └─ ["a"]
    └─ number | undefined
       ├─ Union member
@@ -78,7 +79,7 @@ describe("partial", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: undefined },
-        `{ a?: number }
+        `{ readonly a?: number }
 └─ ["a"]
    └─ Expected a number, actual undefined`
       )
@@ -190,11 +191,11 @@ describe("partial", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1 },
-        `{ a?: <suspended schema> | null }
+        `{ readonly a?: <suspended schema> | null }
 └─ ["a"]
    └─ <suspended schema> | null
       ├─ Union member
-      │  └─ Expected { a?: <suspended schema> | null }, actual 1
+      │  └─ Expected { readonly a?: <suspended schema> | null }, actual 1
       └─ Union member
          └─ Expected null, actual 1`
       )
@@ -229,7 +230,7 @@ describe("partial", () => {
           })
           const schema = S.partial(original)
           expect(S.format(schema)).toBe(
-            "({ a?: string | undefined; c?: string | undefined } <-> { a?: string | undefined; b?: string | undefined })"
+            "({ readonly a?: string | undefined; readonly c?: string | undefined } <-> { readonly a?: string | undefined; readonly b?: string | undefined })"
           )
           await Util.expectDecodeUnknownSuccess(schema, {})
           await Util.expectDecodeUnknownSuccess(schema, { a: undefined })
@@ -248,7 +249,9 @@ describe("partial", () => {
             b: S.propertySignature(S.String).pipe(S.fromKey("c"))
           })
           const schema = S.partial(original, { exact: true })
-          expect(S.format(schema)).toBe("({ a?: string; c?: string } <-> { a?: string; b?: string })")
+          expect(S.format(schema)).toBe(
+            "({ readonly a?: string; readonly c?: string } <-> { readonly a?: string; readonly b?: string })"
+          )
           await Util.expectDecodeUnknownSuccess(schema, {})
           await Util.expectDecodeUnknownSuccess(schema, { a: "a" })
           await Util.expectDecodeUnknownSuccess(schema, { c: "b" }, { b: "b" })

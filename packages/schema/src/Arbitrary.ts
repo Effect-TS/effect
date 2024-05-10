@@ -46,7 +46,7 @@ export const arbitrary =
  * @category arbitrary
  * @since 1.0.0
  */
-export const makeLazy = <A, I, R>(schema: Schema.Schema<A, I, R>): LazyArbitrary<A> => go(schema.ast, {})
+export const makeLazy = <A, I, R>(schema: Schema.Schema<A, I, R>): LazyArbitrary<A> => go(schema.ast, {}, [])
 
 /**
  * Returns a fast-check Arbitrary for the `A` type of the provided schema.
@@ -88,26 +88,29 @@ type Options = {
   readonly isSuspend?: boolean
 }
 
-const getRefinementFromArbitrary = (ast: AST.Refinement, options: Options) => {
+const getRefinementFromArbitrary = (ast: AST.Refinement, options: Options, path: ReadonlyArray<PropertyKey>) => {
   const constraints = combineConstraints(options.constraints, getConstraints(ast))
-  return go(ast.from, constraints ? { ...options, constraints } : options)
+  return go(ast.from, constraints ? { ...options, constraints } : options, path)
 }
 
-const go = (ast: AST.AST, options: Options): LazyArbitrary<any> => {
+const getArbitraryErrorMessage = (message: string, path: ReadonlyArray<PropertyKey>) =>
+  errors_.getErrorMessageWithPath(`cannot build an Arbitrary for ${message}`, path)
+
+const go = (ast: AST.AST, options: Options, path: ReadonlyArray<PropertyKey>): LazyArbitrary<any> => {
   const hook = getHook(ast)
   if (Option.isSome(hook)) {
     switch (ast._tag) {
       case "Declaration":
-        return hook.value(...ast.typeParameters.map((p) => go(p, options)))
+        return hook.value(...ast.typeParameters.map((p) => go(p, options, path)))
       case "Refinement":
-        return hook.value(getRefinementFromArbitrary(ast, options))
+        return hook.value(getRefinementFromArbitrary(ast, options, path))
       default:
         return hook.value()
     }
   }
   switch (ast._tag) {
     case "Declaration": {
-      throw new Error(errors_.getArbitraryErrorMessage(`a declaration without annotations (${ast})`))
+      throw new Error(getArbitraryErrorMessage(`a declaration without annotations (${ast})`, path))
     }
     case "Literal":
       return (fc) => fc.constant(ast.literal)
@@ -118,7 +121,7 @@ const go = (ast: AST.AST, options: Options): LazyArbitrary<any> => {
       return (fc) => fc.constant(undefined)
     case "NeverKeyword":
       return () => {
-        throw new Error(errors_.getArbitraryErrorMessage("`never`"))
+        throw new Error(getArbitraryErrorMessage("`never`", path))
       }
     case "UnknownKeyword":
     case "AnyKeyword":
@@ -180,13 +183,14 @@ const go = (ast: AST.AST, options: Options): LazyArbitrary<any> => {
     case "TupleType": {
       const elements: Array<LazyArbitrary<any>> = []
       let hasOptionals = false
+      let i = 0
       for (const element of ast.elements) {
-        elements.push(go(element.type, options))
+        elements.push(go(element.type, options, path.concat(i++)))
         if (element.isOptional) {
           hasOptionals = true
         }
       }
-      const rest = ast.rest.map((e) => go(e, options))
+      const rest = ast.rest.map((e) => go(e, options, path))
       return (fc) => {
         // ---------------------------------------------
         // handle elements
@@ -240,9 +244,9 @@ const go = (ast: AST.AST, options: Options): LazyArbitrary<any> => {
       }
     }
     case "TypeLiteral": {
-      const propertySignaturesTypes = ast.propertySignatures.map((f) => go(f.type, options))
+      const propertySignaturesTypes = ast.propertySignatures.map((ps) => go(ps.type, options, path.concat(ps.name)))
       const indexSignatures = ast.indexSignatures.map((is) =>
-        [go(is.parameter, options), go(is.type, options)] as const
+        [go(is.parameter, options, path), go(is.type, options, path)] as const
       )
       return (fc) => {
         const arbs: any = {}
@@ -274,25 +278,25 @@ const go = (ast: AST.AST, options: Options): LazyArbitrary<any> => {
       }
     }
     case "Union": {
-      const types = ast.types.map((t) => go(t, options))
+      const types = ast.types.map((t) => go(t, options, path))
       return (fc) => fc.oneof({ depthSize }, ...types.map((arb) => arb(fc)))
     }
     case "Enums": {
       if (ast.enums.length === 0) {
-        throw new Error(errors_.getArbitraryErrorMessage("an empty enum"))
+        throw new Error(getArbitraryErrorMessage("an empty enum", path))
       }
       return (fc) => fc.oneof(...ast.enums.map(([_, value]) => fc.constant(value)))
     }
     case "Refinement": {
-      const from = getRefinementFromArbitrary(ast, options)
+      const from = getRefinementFromArbitrary(ast, options, path)
       return (fc) => from(fc).filter((a) => Option.isNone(ast.filter(a, AST.defaultParseOption, ast)))
     }
     case "Suspend": {
-      const get = util_.memoizeThunk(() => go(ast.f(), { ...options, isSuspend: true }))
+      const get = util_.memoizeThunk(() => go(ast.f(), { ...options, isSuspend: true }, path))
       return (fc) => fc.constant(null).chain(() => get()(fc))
     }
     case "Transformation":
-      return go(ast.to, options)
+      return go(ast.to, options, path)
   }
 }
 

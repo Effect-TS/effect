@@ -9,7 +9,7 @@ describe("decode", () => {
     await Util.expectEffectSuccess(S.decode(schema)({ a: "1" }), { a: 1 })
     await Util.expectEffectFailure(
       S.decode(schema)({ a: "10" }),
-      `{ a: NumberFromChar }
+      `{ readonly a: NumberFromChar }
 └─ ["a"]
    └─ NumberFromChar
       └─ Encoded side transformation failure
@@ -23,13 +23,13 @@ describe("decode", () => {
     const input = { a: "1", b: "b" }
     await Util.expectEffectFailure(
       S.decode(schema)(input, { onExcessProperty: "error" }),
-      `{ a: NumberFromChar }
+      `{ readonly a: NumberFromChar }
 └─ ["b"]
    └─ is unexpected, expected "a"`
     )
     await Util.expectEffectFailure(
       S.decode(schema, { onExcessProperty: "error" })(input),
-      `{ a: NumberFromChar }
+      `{ readonly a: NumberFromChar }
 └─ ["b"]
    └─ is unexpected, expected "a"`
     )

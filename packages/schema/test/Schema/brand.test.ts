@@ -1,17 +1,25 @@
 import * as AST from "@effect/schema/AST"
-import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import * as Brand from "effect/Brand"
-import * as Either from "effect/Either"
-import * as Option from "effect/Option"
-import * as Predicate from "effect/Predicate"
-import { assert, describe, expect, it } from "vitest"
-
-const isBrandConstructor = (u: unknown): u is Brand.Brand.Constructor<any> =>
-  Predicate.hasProperty(u, Brand.RefinedConstructorsTypeId)
+import { jestExpect as expect } from "@jest/expect"
+import { describe, it } from "vitest"
 
 describe("brand", () => {
+  it("make", () => {
+    const IntegerFromString = S.NumberFromString.pipe(
+      S.int({ identifier: "IntegerFromString" }),
+      S.brand("Int")
+    )
+    Util.expectConstructorSuccess(IntegerFromString, 1)
+    Util.expectConstructorFailure(
+      IntegerFromString,
+      1.1,
+      `IntegerFromString
+└─ Predicate refinement failure
+   └─ Expected IntegerFromString (an integer), actual 1.1`
+    )
+  })
+
   describe("annotations", () => {
     it("toString / format", () => {
       const schema = S.Number.pipe(S.brand("A"))
@@ -39,7 +47,7 @@ describe("brand", () => {
       const annotatedSchema = schema.annotations({
         description: "description"
       }).annotations({ title: "title" })
-      expect(isBrandConstructor(annotatedSchema)).toBe(true)
+      expect(typeof annotatedSchema.make).toBe("function")
     })
 
     it("brand as string (1 brand)", () => {
@@ -100,54 +108,6 @@ describe("brand", () => {
     })
   })
 
-  it("the constructor should throw on invalid values", () => {
-    const IntegerFromString = S.NumberFromString.pipe(
-      S.int({ identifier: "IntegerFromString" }),
-      S.brand("Int")
-    )
-    expect(IntegerFromString(1)).toEqual(1)
-    try {
-      IntegerFromString(1.1)
-      assert.fail("expected `IntegerFromString(1.1)` to throw an error")
-    } catch (e) {
-      expect(e).toStrictEqual(
-        Brand.error(
-          `IntegerFromString
-└─ Predicate refinement failure
-   └─ Expected IntegerFromString (an integer), actual 1.1`,
-          ParseResult.parseError(
-            new ParseResult.Refinement(
-              IntegerFromString.ast as any,
-              1.1,
-              "Predicate",
-              new ParseResult.Type(IntegerFromString.ast, 1.1)
-            )
-          )
-        )
-      )
-    }
-  })
-
-  it("option", () => {
-    const Int = S.NumberFromString.pipe(S.int(), S.brand("Int"))
-    expect(Int.option(1)).toEqual(Option.some(1))
-    expect(Int.option(1.2)).toEqual(Option.none())
-  })
-
-  it("either", () => {
-    const Int = S.NumberFromString.pipe(S.int(), S.brand("Int"))
-    expect(Int.either(1)).toEqual(Either.right(1))
-    expect(Either.mapLeft(Int.either(1.2), (errors) => errors[0].message)).toEqual(Either.left(`integer & Brand<"Int">
-└─ Predicate refinement failure
-   └─ Expected an integer, actual 1.2`))
-  })
-
-  it("is", () => {
-    const Int = S.NumberFromString.pipe(S.int(), S.brand("Int"))
-    expect(Int.is(1)).toEqual(true)
-    expect(Int.is(1.2)).toEqual(false)
-  })
-
   it("composition", () => {
     const int = <A extends number, I>(self: S.Schema<A, I>) => self.pipe(S.int(), S.brand("Int"))
 
@@ -155,9 +115,10 @@ describe("brand", () => {
 
     const PositiveInt = S.NumberFromString.pipe(int, positive)
 
-    expect(PositiveInt.is(1)).toEqual(true)
-    expect(PositiveInt.is(-1)).toEqual(false)
-    expect(PositiveInt.is(1.2)).toEqual(false)
+    const is = S.is(PositiveInt)
+    expect(is(1)).toEqual(true)
+    expect(is(-1)).toEqual(false)
+    expect(is(1.2)).toEqual(false)
   })
 
   describe("decoding", () => {
