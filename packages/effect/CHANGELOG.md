@@ -1,5 +1,11 @@
 # effect
 
+## 3.1.4
+
+### Patch Changes
+
+- [#2732](https://github.com/Effect-TS/effect/pull/2732) [`e41e911`](https://github.com/Effect-TS/effect/commit/e41e91122fa6dd12fc81e50dcad0db891be67146) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Call Equal.equals internally in order inputs were passed.
+
 ## 3.1.3
 
 ### Patch Changes
