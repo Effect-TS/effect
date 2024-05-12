@@ -44,7 +44,13 @@ function compareBoth(self: unknown, that: unknown): boolean {
   if (selfType === "object" || selfType === "function") {
     if (self !== null && that !== null) {
       if (isEqual(self) && isEqual(that)) {
-        return Hash.hash(self) === Hash.hash(that) && self[symbol](that)
+        if (Hash.hash(self) === Hash.hash(that) && self[symbol](that)) {
+          return true
+        } else {
+          return structuralRegionState.enabled && structuralRegionState.tester
+            ? structuralRegionState.tester(self, that)
+            : false
+        }
       }
     }
     if (structuralRegionState.enabled) {

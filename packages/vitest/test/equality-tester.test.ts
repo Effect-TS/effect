@@ -1,4 +1,5 @@
 import * as Cause from "effect/Cause"
+import * as Data from "effect/Data"
 import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"
@@ -7,6 +8,12 @@ import { describe, expect, it } from "vitest"
 describe("toMatchObject", () => {
   it("plain objects", () => {
     expect({ a: 1, b: 2 }).toMatchObject({ a: 1 })
+  })
+
+  it("Data.struct", () => {
+    const alice = Data.struct({ name: "Alice", age: 30 })
+
+    expect(alice).toMatchObject(Data.struct({ name: "Alice" }))
   })
 
   it("option", () => {

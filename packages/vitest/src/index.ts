@@ -24,13 +24,16 @@ export type API = TestAPI<{}>
 const TestEnv = TestEnvironment.TestContext.pipe(
   Layer.provide(Logger.remove(Logger.defaultLogger))
 )
+
 /** @internal */
 function customTester(this: TesterContext, a: unknown, b: unknown, customTesters: Array<Tester>) {
   if (!Equal.isEqual(a) || !Equal.isEqual(b)) {
     return undefined
   }
-
-  return Utils.structuralRegion(() => Equal.equals(a, b), (x, y) => this.equals(x, y, customTesters))
+  return Utils.structuralRegion(
+    () => Equal.equals(a, b),
+    (x, y) => this.equals(x, y, customTesters.filter((t) => t !== customTester))
+  )
 }
 
 /**
