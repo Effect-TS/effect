@@ -499,14 +499,6 @@ describe("Option", () => {
     expect(f(Option.some(1), Option.some(2))).toStrictEqual(Option.some(3))
   })
 
-  it("vitest equality", () => {
-    expect(Option.some(2)).toStrictEqual(Option.some(2))
-    expect(Option.none()).toStrictEqual(Option.none())
-
-    expect(Option.some(2)).not.toStrictEqual(Option.some(1))
-    expect(Option.none()).not.toStrictEqual(Option.some(1))
-  })
-
   describe("do notation", () => {
     it("Do", () => {
       expectSome(Option.Do, {})

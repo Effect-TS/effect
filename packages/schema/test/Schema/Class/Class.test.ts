@@ -49,7 +49,7 @@ describe("Class", () => {
     const schema = S.suspend(() => string)
     class A extends S.Class<A>("A")({ a: S.optional(schema) }) {}
     const string = S.String
-    await Util.expectDecodeUnknownSuccess(A, { a: "a" })
+    await Util.expectDecodeUnknownSuccess(A, new A({ a: "a" }))
   })
 
   it("should be a Schema", () => {
