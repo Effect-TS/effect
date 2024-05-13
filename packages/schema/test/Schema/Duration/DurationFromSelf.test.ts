@@ -1,9 +1,8 @@
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import { jestExpect as expect } from "@jest/expect"
 import { Duration } from "effect"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("DurationFromSelf", () => {
   const schema = S.DurationFromSelf

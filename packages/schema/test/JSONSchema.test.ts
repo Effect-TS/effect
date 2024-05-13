@@ -2,11 +2,10 @@ import * as A from "@effect/schema/Arbitrary"
 import * as AST from "@effect/schema/AST"
 import * as JSONSchema from "@effect/schema/JSONSchema"
 import * as Schema from "@effect/schema/Schema"
-import { jestExpect as expect } from "@jest/expect"
 import AjvNonEsm from "ajv"
 import * as Predicate from "effect/Predicate"
 import * as fc from "fast-check"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 const Ajv = AjvNonEsm.default
 

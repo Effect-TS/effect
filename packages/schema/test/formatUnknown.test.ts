@@ -1,5 +1,4 @@
-import { jestExpect as expect } from "@jest/expect"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 import { formatUnknown } from "../src/internal/util.js"
 
 describe("util > formatUnknown", () => {

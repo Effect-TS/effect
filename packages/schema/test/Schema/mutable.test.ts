@@ -1,8 +1,7 @@
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
-import { jestExpect as expect } from "@jest/expect"
 import { identity } from "effect"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("mutable", () => {
   it("string", () => {

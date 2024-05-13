@@ -2,8 +2,7 @@ import * as Arbitrary from "@effect/schema/Arbitrary"
 import * as FastCheck from "@effect/schema/FastCheck"
 import * as Schema from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import { jestExpect as expect } from "@jest/expect"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("extend", () => {
   it(`struct extend struct (dual)`, async () => {
