@@ -1089,9 +1089,9 @@ describe("handle identifiers", () => {
 
     it("inner/outer", async () => {
       type A = readonly [number, A | null]
-      const schema: S.Schema<A> = S.Tuple(
+      const schema = S.Tuple(
         S.Number,
-        S.Union(S.suspend(() => schema), S.Literal(null))
+        S.Union(S.suspend((): S.Schema<A> => schema), S.Literal(null))
       ).annotations({ identifier: "A" })
 
       await Util.expectDecodeUnknownFailure(
@@ -1114,9 +1114,9 @@ describe("handle identifiers", () => {
 
     it("inner/inner", async () => {
       type A = readonly [number, A | null]
-      const schema: S.Schema<A> = S.Tuple(
+      const schema = S.Tuple(
         S.Number,
-        S.Union(S.suspend(() => schema).annotations({ identifier: "A" }), S.Literal(null))
+        S.Union(S.suspend((): S.Schema<A> => schema).annotations({ identifier: "A" }), S.Literal(null))
       )
 
       await Util.expectDecodeUnknownFailure(
