@@ -731,7 +731,7 @@ export const asserts = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: AST.P
       isExact: true
     }) as any
     if (Either.isLeft(result)) {
-      throw new Error(TreeFormatter.formatIssueSync(result.left))
+      throw new Error(TreeFormatter.formatIssueSync(result.left), { cause: result.left })
     }
   }
 }
