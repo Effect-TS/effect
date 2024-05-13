@@ -2,11 +2,10 @@ import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
 import * as Util from "@effect/schema/test/TestUtils"
-import { jestExpect as expect } from "@jest/expect"
 import { Context, Effect, Exit } from "effect"
 import * as Equal from "effect/Equal"
 import * as Request from "effect/Request"
-import { assert, describe, it } from "vitest"
+import { assert, describe, expect, it } from "vitest"
 
 const Name = Context.GenericTag<"Name", string>("Name")
 const NameString = S.String.pipe(

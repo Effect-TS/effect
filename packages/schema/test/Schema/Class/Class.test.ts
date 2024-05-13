@@ -3,11 +3,10 @@ import * as ParseResult from "@effect/schema/ParseResult"
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import { jestExpect as expect } from "@jest/expect"
 import { Context, Effect } from "effect"
 import * as Data from "effect/Data"
 import * as Equal from "effect/Equal"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 class Person extends S.Class<Person>("Person")({
   id: S.Number,

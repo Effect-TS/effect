@@ -1,7 +1,6 @@
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
-import { jestExpect as expect } from "@jest/expect"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("encodedAST", () => {
   describe(`should return the same reference if the AST doesn't represent a transformation`, () => {

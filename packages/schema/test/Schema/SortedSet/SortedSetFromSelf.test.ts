@@ -3,11 +3,10 @@ import * as P from "@effect/schema/ParseResult"
 import * as Pretty from "@effect/schema/Pretty"
 import * as Schema from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import { jestExpect as expect } from "@jest/expect"
 import * as N from "effect/Number"
 import * as SortedSet from "effect/SortedSet"
 import * as S from "effect/String"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("SortedSetFromSelf", () => {
   it("property tests", () => {

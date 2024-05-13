@@ -1,9 +1,8 @@
 import * as Equivalence from "@effect/schema/Equivalence"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import { jestExpect as expect } from "@jest/expect"
 import { pipe, Struct } from "effect"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("TaggedClass", () => {
   it("the constructor should add a `_tag` field", () => {

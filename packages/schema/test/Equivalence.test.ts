@@ -1,7 +1,6 @@
 import * as A from "@effect/schema/Arbitrary"
 import * as E from "@effect/schema/Equivalence"
 import * as S from "@effect/schema/Schema"
-import { jestExpect as expect } from "@jest/expect"
 import * as Chunk from "effect/Chunk"
 import * as Data from "effect/Data"
 import * as Either from "effect/Either"
@@ -11,7 +10,7 @@ import * as Hash from "effect/Hash"
 import * as Option from "effect/Option"
 import { isUnknown } from "effect/Predicate"
 import * as fc from "fast-check"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 /**
  * Tests that the generated Eq is a valid Eq

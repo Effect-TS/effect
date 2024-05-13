@@ -5,7 +5,6 @@ import { getFinalTransformation } from "@effect/schema/ParseResult"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import { formatErrorSync } from "@effect/schema/TreeFormatter"
-import { jestExpect as expect } from "@jest/expect"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -13,7 +12,7 @@ import * as Either from "effect/Either"
 import * as Option from "effect/Option"
 import * as Runtime from "effect/Runtime"
 import * as fc from "fast-check"
-import { assert } from "vitest"
+import { assert, expect } from "vitest"
 
 const doEffectify = true
 const doRoundtrip = false
