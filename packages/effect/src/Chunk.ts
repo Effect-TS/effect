@@ -1387,3 +1387,33 @@ export const reduceRight: {
   <B, A>(b: B, f: (b: B, a: A, i: number) => B): (self: Chunk<A>) => B
   <A, B>(self: Chunk<A>, b: B, f: (b: B, a: A, i: number) => B): B
 } = RA.reduceRight
+
+/**
+ * Creates a `Chunk` of values not included in the other given `Chunk` using the provided `isEquivalent` function.
+ * The order and references of result values are determined by the first `Chunk`.
+ *
+ * @since 3.2.0
+ */
+export const differenceWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
+  (that: Chunk<A>): (self: Chunk<A>) => Chunk<A>
+  (self: Chunk<A>, that: Chunk<A>): Chunk<A>
+} => {
+  return dual(
+    2,
+    (self: Chunk<A>, that: Chunk<A>): Chunk<A> => unsafeFromArray(RA.differenceWith(isEquivalent)(that, self))
+  )
+}
+
+/**
+ * Creates a `Chunk` of values not included in the other given `Chunk`.
+ * The order and references of result values are determined by the first `Chunk`.
+ *
+ * @since 3.2.0
+ */
+export const difference: {
+  <A>(that: Chunk<A>): (self: Chunk<A>) => Chunk<A>
+  <A>(self: Chunk<A>, that: Chunk<A>): Chunk<A>
+} = dual(
+  2,
+  <A>(self: Chunk<A>, that: Chunk<A>): Chunk<A> => unsafeFromArray(RA.difference(that, self))
+)
