@@ -11,6 +11,15 @@ const expectAssertsFailure = <A, I>(schema: S.Schema<A, I>, input: unknown, mess
 }
 
 describe("asserts", () => {
+  it("the returned error should include a cause", () => {
+    const asserts: (u: unknown) => asserts u is string = S.asserts(S.String)
+    try {
+      asserts(1)
+    } catch (e: any) {
+      expect(e.cause).exist
+    }
+  })
+
   it("should respect outer/inner options", () => {
     const schema = S.Struct({ a: Util.NumberFromChar })
     const input = { a: 1, b: "b" }
