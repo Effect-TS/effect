@@ -442,9 +442,9 @@ describe("is", () => {
         readonly name: string
         readonly categories: ReadonlyArray<Category>
       }
-      const schema: S.Schema<Category> = S.Struct({
+      const schema = S.Struct({
         name: S.String,
-        categories: S.Array(S.suspend(() => schema))
+        categories: S.Array(S.suspend((): S.Schema<Category> => schema))
       })
       const is = P.is(schema)
       expect(is({ name: "a", categories: [] })).toEqual(true)
@@ -469,11 +469,11 @@ describe("is", () => {
         readonly b: number
         readonly as: ReadonlyArray<A>
       }
-      const schemaA: S.Schema<A> = S.Struct({
+      const schemaA = S.Struct({
         a: S.String,
-        bs: S.Array(S.suspend(() => schemaB))
+        bs: S.Array(S.suspend((): S.Schema<B> => schemaB))
       })
-      const schemaB: S.Schema<B> = S.Struct({
+      const schemaB = S.Struct({
         b: S.Number,
         as: S.Array(S.suspend(() => schemaA))
       })

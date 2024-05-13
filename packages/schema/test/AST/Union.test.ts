@@ -28,6 +28,7 @@ describe("AST.Union", () => {
     interface A {
       readonly a?: null | A | undefined
     }
+    // intended outer suspend
     const schema: S.Schema<A> = S.partial(
       S.suspend(
         () =>
