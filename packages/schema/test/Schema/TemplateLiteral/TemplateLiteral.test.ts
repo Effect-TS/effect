@@ -1,8 +1,7 @@
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import { jestExpect as expect } from "@jest/expect"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("TemplateLiteral", () => {
   it("should throw on unsupported template literal spans", () => {

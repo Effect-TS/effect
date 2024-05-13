@@ -1,10 +1,9 @@
 import * as Arbitrary from "@effect/schema/Arbitrary"
 import * as S from "@effect/schema/Schema"
 import { expectValidArbitrary } from "@effect/schema/test/TestUtils"
-import { jestExpect as expect } from "@jest/expect"
 import { isUnknown } from "effect/Predicate"
 import * as fc from "fast-check"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("Arbitrary > Arbitrary", () => {
   it("should throw on declarations without annotations", () => {

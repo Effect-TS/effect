@@ -4,13 +4,12 @@ import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
 import * as TreeFormatter from "@effect/schema/TreeFormatter"
-import { jestExpect as expect } from "@jest/expect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 const options: ParseOptions = { errors: "all", onExcessProperty: "error" }
 

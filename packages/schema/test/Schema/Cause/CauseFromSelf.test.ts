@@ -1,10 +1,9 @@
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import { jestExpect as expect } from "@jest/expect"
 import * as Cause from "effect/Cause"
 import * as FiberId from "effect/FiberId"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("CauseFromSelf", () => {
   it("arbitrary", () => {

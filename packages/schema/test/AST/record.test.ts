@@ -1,6 +1,5 @@
 import * as AST from "@effect/schema/AST"
-import { jestExpect as expect } from "@jest/expect"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("record", () => {
   it("numeric literal", () => {

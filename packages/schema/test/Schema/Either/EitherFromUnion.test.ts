@@ -1,8 +1,7 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import { jestExpect as expect } from "@jest/expect"
 import * as E from "effect/Either"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("EitherFromUnion", () => {
   it("property tests", () => {
