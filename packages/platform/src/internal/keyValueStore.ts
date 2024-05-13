@@ -5,6 +5,7 @@ import { dual, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as FileSystem from "../FileSystem.js"
+import * as PlatformError from "../Error.js"
 import type * as KeyValueStore from "../KeyValueStore.js"
 import * as Path from "../Path.js"
 
@@ -174,3 +175,71 @@ export const layerSchema = <A, I, R>(
   const layer = Layer.effect(tag, Effect.map(keyValueStoreTag, (store) => store.forSchema(schema)))
   return { tag, layer } as const
 }
+
+/** @internal */
+const storageError = (props: Omit<Parameters<typeof PlatformError.SystemError>[0], "reason" | "module">) =>
+  PlatformError.SystemError({
+    reason: "PermissionDenied",
+    module: "KeyValueStore",
+    ...props
+  })
+
+/** @internal */
+export const layerStorage = (pathOrDescriptor: string, storage: Storage) => Layer.succeed(
+  keyValueStoreTag,
+  make({
+    get: (key: string) =>
+      Effect.try({
+        try: () => Option.fromNullable(storage.getItem(key)),
+        catch: () =>
+          storageError({
+            pathOrDescriptor,
+            method: "get",
+            message: `Unable to get item with key ${key}`
+          })
+      }),
+
+    set: (key: string, value: string) =>
+      Effect.try({
+        try: () => storage.setItem(key, value),
+        catch: () =>
+          storageError({
+            pathOrDescriptor,
+            method: "set",
+            message: `Unable to set item with key ${key}`
+          })
+      }),
+
+    remove: (key: string) =>
+      Effect.try({
+        try: () => storage.removeItem(key),
+        catch: () =>
+          storageError({
+            pathOrDescriptor,
+            method: "remove",
+            message: `Unable to remove item with key ${key}`
+          })
+      }),
+
+    clear: Effect.try({
+      try: () => storage.clear(),
+      catch: () =>
+        storageError({
+          pathOrDescriptor,
+          method: "clear",
+          message: `Unable to clear storage`
+        })
+    }),
+
+    size: Effect.try({
+      try: () => storage.length,
+      catch: () =>
+        storageError({
+          pathOrDescriptor,
+          method: "size",
+          message: `Unable to get size`
+        })
+    })
+  })
+)
+
