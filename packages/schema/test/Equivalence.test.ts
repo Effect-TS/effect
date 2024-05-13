@@ -599,9 +599,9 @@ describe("Equivalence", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: S.Schema<A> = S.Struct({
+      const schema = S.Struct({
         a: string,
-        as: S.Array(S.suspend(() => schema))
+        as: S.Array(S.suspend((): S.Schema<A> => schema))
       })
 
       const equivalence = E.make(schema)
@@ -633,12 +633,12 @@ describe("Equivalence", () => {
         readonly right: Expression
       }
 
-      const Expression: S.Schema<Expression> = S.Struct({
+      const Expression = S.Struct({
         type: S.Literal("expression"),
-        value: S.Union(number, S.suspend(() => Operation))
+        value: S.Union(number, S.suspend((): S.Schema<Operation> => Operation))
       })
 
-      const Operation: S.Schema<Operation> = S.Struct({
+      const Operation = S.Struct({
         type: S.Literal("operation"),
         operator: S.Union(S.Literal("+"), S.Literal("-")),
         left: Expression,
@@ -789,9 +789,9 @@ describe("Equivalence", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: S.Schema<A> = S.Struct({
+      const schema = S.Struct({
         a: S.String,
-        as: S.Array(S.suspend(() => schema))
+        as: S.Array(S.suspend((): S.Schema<A> => schema))
       })
       expectHook(schema)
     })

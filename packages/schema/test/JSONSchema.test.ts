@@ -1091,9 +1091,9 @@ describe("JSONSchema", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: Schema.Schema<A> = Schema.Struct({
+      const schema = Schema.Struct({
         a: Schema.String,
-        as: Schema.Array(Schema.suspend(() => schema))
+        as: Schema.Array(Schema.suspend((): Schema.Schema<A> => schema))
       })
       expectError(
         schema,
@@ -1107,6 +1107,7 @@ describe("JSONSchema", () => {
         readonly as: ReadonlyArray<A>
       }
       const schema: Schema.Schema<A> = Schema.suspend(() =>
+        // intended outer suspend
         Schema.Struct({
           a: Schema.String,
           as: Schema.Array(schema)
@@ -1158,9 +1159,9 @@ describe("JSONSchema", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: Schema.Schema<A> = Schema.Struct({
+      const schema = Schema.Struct({
         a: Schema.String,
-        as: Schema.Array(Schema.suspend(() => schema).annotations({ identifier: "A" }))
+        as: Schema.Array(Schema.suspend((): Schema.Schema<A> => schema).annotations({ identifier: "A" }))
       })
       const jsonSchema: JSONSchema.JsonSchema7Root = {
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1226,9 +1227,9 @@ describe("JSONSchema", () => {
         readonly name: string
         readonly categories: ReadonlyArray<Category>
       }
-      const schema: Schema.Schema<Category> = Schema.Struct({
+      const schema = Schema.Struct({
         name: Schema.String,
-        categories: Schema.Array(Schema.suspend(() => schema))
+        categories: Schema.Array(Schema.suspend((): Schema.Schema<Category> => schema))
       }).annotations({ identifier: "Category" })
       const jsonSchema: JSONSchema.JsonSchema7Root = {
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1291,6 +1292,7 @@ describe("JSONSchema", () => {
         readonly right: Expression
       }
 
+      // intended outer suspend
       const Expression: Schema.Schema<Expression> = Schema.suspend(() =>
         Schema.Struct({
           type: Schema.Literal("expression"),
@@ -1298,6 +1300,7 @@ describe("JSONSchema", () => {
         })
       ).annotations({ identifier: "Expression" })
 
+      // intended outer suspend
       const Operation: Schema.Schema<Operation> = Schema.suspend(() =>
         Schema.Struct({
           type: Schema.Literal("operation"),
@@ -1805,9 +1808,11 @@ describe("JSONSchema", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: Schema.Schema<A> = Schema.Struct({
+      const schema = Schema.Struct({
         a: Schema.String,
-        as: Schema.Array(Schema.suspend(() => schema).annotations({ jsonSchema: { "type": "custom JSON Schema" } }))
+        as: Schema.Array(
+          Schema.suspend((): Schema.Schema<A> => schema).annotations({ jsonSchema: { "type": "custom JSON Schema" } })
+        )
       })
 
       expectJSONSchema(schema, {

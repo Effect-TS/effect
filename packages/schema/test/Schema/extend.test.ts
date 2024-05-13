@@ -393,13 +393,13 @@ describe("extend", () => {
           readonly value: number
         } & List
       }
-      const List: Schema.Schema<List> = Schema.Union(
+      const List = Schema.Union(
         Schema.Struct({ type: Schema.Literal("nil") }),
         Schema.Struct({
           type: Schema.Literal("cons"),
           tail: Schema.extend(
             Schema.Struct({ value: Schema.Number }),
-            Schema.suspend(() => List)
+            Schema.suspend((): Schema.Schema<List> => List)
           )
         })
       )

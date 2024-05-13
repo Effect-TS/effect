@@ -1223,9 +1223,11 @@ interface Category {
   readonly categories: ReadonlyArray<Category>
 }
 
-const schema: Schema.Schema<Category> = Schema.Struct({
+const schema = Schema.Struct({
   name: Schema.String,
-  categories: Schema.Array(Schema.suspend(() => schema))
+  categories: Schema.Array(
+    Schema.suspend((): Schema.Schema<Category> => schema)
+  )
 }).annotations({ identifier: "Category" })
 
 const jsonSchema = JSONSchema.make(schema)
@@ -1283,17 +1285,16 @@ When defining a **refinement** (e.g., through the `filter` function), you can at
 import { JSONSchema, Schema } from "@effect/schema"
 import type { JSONSchema7 } from "json-schema"
 
-
 // Simulate one or more refinements
 const Positive = Schema.Number.pipe(
   Schema.filter((n) => n > 0, {
-    jsonSchema: { minimum: 0 }, // `jsonSchema` is a generic object; you can add any key-value pair without type errors or autocomplete suggestions.
+    jsonSchema: { minimum: 0 } // `jsonSchema` is a generic object; you can add any key-value pair without type errors or autocomplete suggestions.
   })
 )
 
 const schema = Positive.pipe(
   Schema.filter((n) => n <= 10, {
-    jsonSchema: { maximum: 10 } satisfies JSONSchema7, //  Now `jsonSchema` is constrained to fulfill the JSONSchema7 type; incorrect properties will trigger type errors, and you'll get autocomplete suggestions.
+    jsonSchema: { maximum: 10 } satisfies JSONSchema7 //  Now `jsonSchema` is constrained to fulfill the JSONSchema7 type; incorrect properties will trigger type errors, and you'll get autocomplete suggestions.
   })
 )
 
@@ -4167,9 +4168,11 @@ interface Category {
   readonly subcategories: ReadonlyArray<Category>
 }
 
-const Category: Schema.Schema<Category> = Schema.Struct({
+const Category = Schema.Struct({
   name: Schema.String,
-  subcategories: Schema.Array(Schema.suspend(() => Category))
+  subcategories: Schema.Array(
+    Schema.suspend((): Schema.Schema<Category> => Category)
+  )
 })
 ```
 
@@ -4193,9 +4196,11 @@ interface Category extends Schema.Struct.Type<typeof fields> {
   readonly subcategories: ReadonlyArray<Category> // Define `subcategories` using recursion
 }
 
-const Category: Schema.Schema<Category> = Schema.Struct({
+const Category = Schema.Struct({
   ...fields, // Include the fields
-  subcategories: Schema.Array(Schema.suspend(() => Category)) // Define `subcategories` using recursion
+  subcategories: Schema.Array(
+    Schema.suspend((): Schema.Schema<Category> => Category)
+  ) // Define `subcategories` using recursion
 })
 ```
 
@@ -4218,15 +4223,15 @@ interface Operation {
   readonly right: Expression
 }
 
-const Expression: Schema.Schema<Expression> = Schema.Struct({
+const Expression = Schema.Struct({
   type: Schema.Literal("expression"),
   value: Schema.Union(
     Schema.Number,
-    Schema.suspend(() => Operation)
+    Schema.suspend((): Schema.Schema<Operation> => Operation)
   )
 })
 
-const Operation: Schema.Schema<Operation> = Schema.Struct({
+const Operation = Schema.Struct({
   type: Schema.Literal("operation"),
   operator: Schema.Literal("+", "-"),
   left: Expression,
@@ -4254,13 +4259,15 @@ interface Category extends Schema.Struct.Type<typeof fields> {
 
 /*
 TypeScript error:
-Type 'Category' is not assignable to type '{ readonly id: string; readonly name: string; readonly subcategories: readonly Category[]; }'.
-  Types of property 'id' are incompatible.
-    Type 'number' is not assignable to type 'string'.ts(2322)
+Type 'Struct<{ subcategories: Array$<suspend<Category, Category, never>>; id: typeof NumberFromString; name: typeof String$; }>' is not assignable to type 'Schema<Category, Category, never>'.
+  The types of 'Encoded.id' are incompatible between these types.
+    Type 'string' is not assignable to type 'number'.ts(2322)
 */
-const Category: Schema.Schema<Category> = Schema.Struct({
+const Category = Schema.Struct({
   ...fields,
-  subcategories: Schema.Array(Schema.suspend(() => Category))
+  subcategories: Schema.Array(
+    Schema.suspend((): Schema.Schema<Category> => Category)
+  )
 })
 ```
 
@@ -4282,9 +4289,11 @@ interface CategoryEncoded extends Schema.Struct.Encoded<typeof fields> {
   readonly subcategories: ReadonlyArray<CategoryEncoded>
 }
 
-const Category: Schema.Schema<Category, CategoryEncoded> = Schema.Struct({
+const Category = Schema.Struct({
   ...fields,
-  subcategories: Schema.Array(Schema.suspend(() => Category))
+  subcategories: Schema.Array(
+    Schema.suspend((): Schema.Schema<Category, CategoryEncoded> => Category)
+  )
 })
 ```
 

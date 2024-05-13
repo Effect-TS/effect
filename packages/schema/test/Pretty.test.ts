@@ -409,9 +409,9 @@ describe("Pretty", () => {
       readonly a: string
       readonly as: ReadonlyArray<A>
     }
-    const A: S.Schema<A> = S.Struct({
+    const A = S.Struct({
       a: S.String,
-      as: S.Array(S.suspend(() => A))
+      as: S.Array(S.suspend((): S.Schema<A> => A))
     })
     const pretty = Pretty.make(A)
     expect(pretty({ a: "a", as: [] })).toEqual(
@@ -512,9 +512,9 @@ describe("Pretty", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: S.Schema<A> = S.Struct({
+      const schema = S.Struct({
         a: S.String,
-        as: S.Array(S.suspend(() => schema))
+        as: S.Array(S.suspend((): S.Schema<A> => schema))
       })
       expectHook(schema)
     })
