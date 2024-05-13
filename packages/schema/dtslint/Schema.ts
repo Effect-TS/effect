@@ -1043,39 +1043,54 @@ S.asSchema(S.extend(S.Struct({ a: S.String }), S.Union(S.Struct({ b: S.Number })
 // $ExpectType extend<Struct<{ a: typeof String$; }>, Union<[Struct<{ b: typeof Number$; }>, Struct<{ c: typeof Boolean$; }>]>>
 S.extend(S.Struct({ a: S.String }), S.Union(S.Struct({ b: S.Number }), S.Struct({ c: S.Boolean })))
 
-// TODO: rises an error in TypeScript@5.0
-// // $ExpectType Schema<{ readonly [x: string]: string; readonly a: string; readonly b: string; readonly c: string; }, { readonly [x: string]: string; readonly a: string; readonly b: string; readonly c: string; }, never>
-// pipe(
-//   S.Struct({ a: S.String, b: S.String }),
-//   S.extend(S.Struct({ c: S.String })),
-//   S.extend(S.Record(S.String, S.String))
-// )
+// $ExpectType Schema<{ readonly [x: string]: string; readonly a: string; readonly b: string; readonly c: string; }, { readonly [x: string]: string; readonly a: string; readonly b: string; readonly c: string; }, never>
+S.asSchema(pipe(
+  S.Struct({ a: S.String, b: S.String }),
+  S.extend(S.Struct({ c: S.String })),
+  S.extend(S.Record(S.String, S.String))
+))
+
+// $ExpectType extend<extend<Struct<{ a: typeof String$; b: typeof String$; }>, Struct<{ c: typeof String$; }>>, Record$<typeof String$, typeof String$>>
+pipe(
+  S.Struct({ a: S.String, b: S.String }),
+  S.extend(S.Struct({ c: S.String })),
+  S.extend(S.Record(S.String, S.String))
+)
 
 // ---------------------------------------------
 // suspend
 // ---------------------------------------------
 
-interface SuspendType1 {
+interface SuspendIEqualA {
   readonly a: number
-  readonly as: ReadonlyArray<SuspendType1>
+  readonly as: ReadonlyArray<SuspendIEqualA>
 }
-const suspend1: S.Schema<SuspendType1> = S.Struct({
+
+const SuspendIEqualA = S.Struct({
   a: S.Number,
-  as: S.Array(S.suspend(() => suspend1))
+  as: S.Array(S.suspend((): S.Schema<SuspendIEqualA> => SuspendIEqualA))
 })
 
-interface LazyEncoded2 {
+// $ExpectType { readonly a: typeof Number$; readonly as: Array$<suspend<SuspendIEqualA, SuspendIEqualA, never>>; }
+SuspendIEqualA.fields
+
+interface SuspendINotEqualA_A {
   readonly a: string
-  readonly as: ReadonlyArray<LazyEncoded2>
+  readonly as: ReadonlyArray<SuspendINotEqualA_A>
 }
-interface LazyType2 {
+
+interface SuspendINotEqualA_I {
   readonly a: number
-  readonly as: ReadonlyArray<LazyType2>
+  readonly as: ReadonlyArray<SuspendINotEqualA_I>
 }
-const lazy2: S.Schema<LazyType2, LazyEncoded2> = S.Struct({
+
+const SuspendINotEqualA = S.Struct({
   a: S.NumberFromString,
-  as: S.Array(S.suspend(() => lazy2))
+  as: S.Array(S.suspend((): S.Schema<SuspendINotEqualA_I, SuspendINotEqualA_A> => SuspendINotEqualA))
 })
+
+// $ExpectType { readonly a: typeof NumberFromString; readonly as: Array$<suspend<SuspendINotEqualA_I, SuspendINotEqualA_A, never>>; }
+SuspendINotEqualA.fields
 
 // ---------------------------------------------
 // rename
