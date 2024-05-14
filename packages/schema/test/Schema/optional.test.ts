@@ -297,6 +297,13 @@ describe("optional APIs", () => {
       await Util.expectEncodeSuccess(schema, { a: 1 }, { a: "1" })
       await Util.expectEncodeSuccess(schema, { a: 0 }, { a: "0" })
     })
+
+    it("should apply the default to the default constructor", () => {
+      const schema = S.Struct({
+        a: S.optional(S.NumberFromString, { exact: true, default: () => 0 })
+      })
+      expect(schema.make({})).toStrictEqual({ a: 0 })
+    })
   })
 
   describe("optional > { default: () => A }", () => {
@@ -325,6 +332,13 @@ describe("optional APIs", () => {
 
       await Util.expectEncodeSuccess(schema, { a: 1 }, { a: "1" })
       await Util.expectEncodeSuccess(schema, { a: 0 }, { a: "0" })
+    })
+
+    it("should apply the default to the default constructor", () => {
+      const schema = S.Struct({
+        a: S.optional(S.NumberFromString, { default: () => 0 })
+      })
+      expect(schema.make({})).toStrictEqual({ a: 0 })
     })
   })
 
@@ -358,6 +372,13 @@ describe("optional APIs", () => {
       await Util.expectEncodeSuccess(schema, { a: 1 }, { a: "1" })
       await Util.expectEncodeSuccess(schema, { a: 0 }, { a: "0" })
     })
+
+    it("should apply the default to the default constructor", () => {
+      const schema = S.Struct({
+        a: S.optional(S.NumberFromString, { nullable: true, default: () => 0 })
+      })
+      expect(schema.make({})).toStrictEqual({ a: 0 })
+    })
   })
 
   describe("optional > { exact: true, nullable: true, default: () => A }", () => {
@@ -386,6 +407,13 @@ describe("optional APIs", () => {
 
       await Util.expectEncodeSuccess(schema, { a: 1 }, { a: "1" })
       await Util.expectEncodeSuccess(schema, { a: 0 }, { a: "0" })
+    })
+
+    it("should apply the default to the default constructor", () => {
+      const schema = S.Struct({
+        a: S.optional(S.NumberFromString, { exact: true, nullable: true, default: () => 0 })
+      })
+      expect(schema.make({})).toStrictEqual({ a: 0 })
     })
   })
 })
