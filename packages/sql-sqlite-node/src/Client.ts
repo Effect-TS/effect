@@ -36,6 +36,7 @@ export interface SqliteClient extends Client.Client {
   readonly [TypeId]: TypeId
   readonly config: SqliteClientConfig
   readonly export: Effect.Effect<Uint8Array, SqlError>
+  readonly backup: (destination: string) => Effect.Effect<void, SqlError>
   readonly loadExtension: (path: string) => Effect.Effect<void, SqlError>
 
   /** Not supported in sqlite */
@@ -65,6 +66,7 @@ export interface SqliteClientConfig {
 
 interface SqliteConnection extends Connection {
   readonly export: Effect.Effect<Uint8Array, SqlError>
+  readonly backup: (destination: string) => Effect.Effect<void, SqlError>
   readonly loadExtension: (path: string) => Effect.Effect<void, SqlError>
 }
 
@@ -174,6 +176,12 @@ export const make = (
           try: () => db.serialize(),
           catch: (error) => new SqlError({ error })
         }),
+        backup(destination) {
+          return Effect.tryPromise({
+            try: () => db.backup(destination),
+            catch: (error) => new SqlError({ error })
+          })
+        },
         loadExtension(path) {
           return Effect.try({
             try: () => db.loadExtension(path),
