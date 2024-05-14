@@ -8,6 +8,7 @@ import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
+import type { FiberFailure } from "effect/Runtime"
 import * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
 import * as TestEnvironment from "effect/TestContext"
@@ -15,6 +16,18 @@ import type * as TestServices from "effect/TestServices"
 import * as Utils from "effect/Utils"
 import type { TestAPI } from "vitest"
 import * as V from "vitest"
+
+const runTest = <E, A>(effect: Effect.Effect<A, E>) =>
+  Effect.runPromise(effect).catch((error) => {
+    const failure = error as FiberFailure
+    const newError = new Error(failure.message)
+    if (failure.stack) {
+      newError.stack = failure.stack
+    }
+    newError.name = failure.name
+    newError.cause = failure.cause
+    throw newError
+  })
 
 /**
  * @since 1.0.0
@@ -58,7 +71,7 @@ export const effect = (() => {
         pipe(
           Effect.suspend(() => self(c)),
           Effect.provide(TestEnv),
-          Effect.runPromise
+          runTest
         ),
       timeout
     )
@@ -74,7 +87,7 @@ export const effect = (() => {
           pipe(
             Effect.suspend(() => self(c)),
             Effect.provide(TestEnv),
-            Effect.runPromise
+            runTest
           ),
         timeout
       ),
@@ -89,7 +102,7 @@ export const effect = (() => {
           pipe(
             Effect.suspend(() => self(c)),
             Effect.provide(TestEnv),
-            Effect.runPromise
+            runTest
           ),
         timeout
       )
@@ -109,7 +122,7 @@ export const live = <E, A>(
     (c) =>
       pipe(
         Effect.suspend(() => self(c)),
-        Effect.runPromise
+        runTest
       ),
     timeout
   )
@@ -150,7 +163,7 @@ export const scoped = <E, A>(
         Effect.suspend(() => self(c)),
         Effect.scoped,
         Effect.provide(TestEnv),
-        Effect.runPromise
+        runTest
       ),
     timeout
   )
@@ -169,7 +182,7 @@ export const scopedLive = <E, A>(
       pipe(
         Effect.suspend(() => self(c)),
         Effect.scoped,
-        Effect.runPromise
+        runTest
       ),
     timeout
   )
