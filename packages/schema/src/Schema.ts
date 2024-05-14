@@ -1893,7 +1893,7 @@ export const optional: {
       | I
       | (Types.Has<Options, "nullable"> extends true ? null : never)
       | (Types.Has<Options, "exact"> extends true ? never : undefined),
-      false,
+      Types.Has<Options, "default">,
       R
     >
   <
@@ -1937,7 +1937,7 @@ export const optional: {
       | I
       | (Types.Has<Options, "nullable"> extends true ? null : never)
       | (Types.Has<Options, "exact"> extends true ? never : undefined),
-      false,
+      Types.Has<Options, "default">,
       R
     >
 } = dual((args) => isSchema(args[0]), <A, I, R>(
@@ -1957,19 +1957,25 @@ export const optional: {
   if (isExact) {
     if (defaultValue) {
       if (isNullable) {
-        return optionalToRequired(
-          NullOr(schema),
-          typeSchema(schema),
-          {
-            decode: option_.match({ onNone: defaultValue, onSome: (a) => a === null ? defaultValue() : a }),
-            encode: option_.some
-          }
+        return withConstructorDefault(
+          optionalToRequired(
+            NullOr(schema),
+            typeSchema(schema),
+            {
+              decode: option_.match({ onNone: defaultValue, onSome: (a) => a === null ? defaultValue() : a }),
+              encode: option_.some
+            }
+          ),
+          defaultValue
         )
       } else {
-        return optionalToRequired(
-          schema,
-          typeSchema(schema),
-          { decode: option_.match({ onNone: defaultValue, onSome: identity }), encode: option_.some }
+        return withConstructorDefault(
+          optionalToRequired(
+            schema,
+            typeSchema(schema),
+            { decode: option_.match({ onNone: defaultValue, onSome: identity }), encode: option_.some }
+          ),
+          defaultValue
         )
       }
     } else if (asOption) {
@@ -2000,22 +2006,28 @@ export const optional: {
   } else {
     if (defaultValue) {
       if (isNullable) {
-        return optionalToRequired(
-          NullishOr(schema),
-          typeSchema(schema),
-          {
-            decode: option_.match({ onNone: defaultValue, onSome: (a) => (a == null ? defaultValue() : a) }),
-            encode: option_.some
-          }
+        return withConstructorDefault(
+          optionalToRequired(
+            NullishOr(schema),
+            typeSchema(schema),
+            {
+              decode: option_.match({ onNone: defaultValue, onSome: (a) => (a == null ? defaultValue() : a) }),
+              encode: option_.some
+            }
+          ),
+          defaultValue
         )
       } else {
-        return optionalToRequired(
-          UndefinedOr(schema),
-          typeSchema(schema),
-          {
-            decode: option_.match({ onNone: defaultValue, onSome: (a) => (a === undefined ? defaultValue() : a) }),
-            encode: option_.some
-          }
+        return withConstructorDefault(
+          optionalToRequired(
+            UndefinedOr(schema),
+            typeSchema(schema),
+            {
+              decode: option_.match({ onNone: defaultValue, onSome: (a) => (a === undefined ? defaultValue() : a) }),
+              encode: option_.some
+            }
+          ),
+          defaultValue
         )
       }
     } else if (asOption) {

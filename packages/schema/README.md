@@ -2622,6 +2622,36 @@ console.log(Schema.decodeUnknownSync(Person)({ name: "name", AGE: "18" }))
 
 ### Default Values
 
+The `default` option allows you to set a default value for both the decoding phase and the default constructor.
+
+**Example**
+
+Let's see how default values work in both the decoding and constructing phases, illustrating how the default value is applied when certain properties are not provided.
+
+```ts
+import { Schema } from "@effect/schema"
+
+const Product = Schema.Struct({
+  name: Schema.String,
+  price: Schema.NumberFromString,
+  quantity: Schema.optional(Schema.NumberFromString, { default: () => 1 })
+})
+
+// Applying defaults in the decoding phase
+console.log(Schema.decodeUnknownSync(Product)({ name: "Laptop", price: "999" })) // { name: 'Laptop', price: 999, quantity: 1 }
+console.log(
+  Schema.decodeUnknownSync(Product)({
+    name: "Laptop",
+    price: "999",
+    quantity: "2"
+  })
+) // { name: 'Laptop', price: 999, quantity: 2 }
+
+// Applying defaults in the constructor
+console.log(Product.make({ name: "Laptop", price: 999 })) // { name: 'Laptop', price: 999, quantity: 1 }
+console.log(Product.make({ name: "Laptop", price: 999, quantity: 2 })) // { name: 'Laptop', price: 999, quantity: 2 }
+```
+
 | Combinator | From                                                                   | To                                                                                |
 | ---------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | `optional` | `Schema<A, I, R>`, `{ default: () => A }`                              | `PropertySignature<":", string, never, "?:", string \| undefined, never>`         |
