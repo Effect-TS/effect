@@ -1048,7 +1048,7 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
   const lines = stack.split("\n")
 
   for (let i = 1; i < lines.length; i++) {
-    if (lines[i].includes("effect_cutpoint")) {
+    if (lines[i].includes("effect_cutpoint") || lines[i].includes("Generator.next")) {
       break
     }
     out.push(

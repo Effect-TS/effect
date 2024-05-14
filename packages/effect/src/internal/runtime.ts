@@ -179,6 +179,10 @@ class FiberFailureImpl extends Error implements Runtime.FiberFailure {
     }
 
     this.name = `(FiberFailure) ${this.name}`
+
+    if (this.message === undefined || this.message.length === 0) {
+      this.message = "An error has occurred"
+    }
   }
 
   toJSON(): unknown {
@@ -187,6 +191,7 @@ class FiberFailureImpl extends Error implements Runtime.FiberFailure {
       cause: this[FiberFailureCauseId].toJSON()
     }
   }
+
   toString(): string {
     return "(FiberFailure) " + (this.stack ?? this.message)
   }
