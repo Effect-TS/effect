@@ -1,4 +1,4 @@
-import type * as AST from "@effect/schema/AST"
+import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import { describe, expect, it } from "vitest"
 
@@ -19,12 +19,22 @@ describe("pick", () => {
       expect(ast).toStrictEqual(S.compose(S.Struct({ a: S.NumberFromString }), S.Struct({ a: S.Number })).ast)
     })
 
-    it("TypeLiteralTransformation", async () => {
-      const schema = S.Struct({ a: S.optional(S.NumberFromString, { default: () => 0 }), b: S.Number })
-      const ast = schema.pipe(S.pick("a")).ast as AST.Transformation
-      expect(ast.from).toStrictEqual(S.Struct({ a: S.optional(S.NumberFromString) }).ast)
-      expect(ast.to).toStrictEqual(S.Struct({ a: S.Number }).ast)
-      expect(ast.transformation).toStrictEqual((schema.ast as AST.Transformation).transformation)
+    describe("TypeLiteralTransformation", () => {
+      it("picking keys with PropertySignatureTransformations", async () => {
+        const schema = S.Struct({ a: S.optional(S.NumberFromString, { default: () => 0 }), b: S.Number })
+        const ast = schema.pipe(S.pick("a")).ast as AST.Transformation
+        expect(ast.from).toStrictEqual(S.Struct({ a: S.optional(S.NumberFromString) }).ast)
+        expect(ast.to).toStrictEqual(S.Struct({ a: S.Number }).ast)
+        expect(ast.transformation).toStrictEqual((schema.ast as AST.Transformation).transformation)
+      })
+
+      it("picking keys without PropertySignatureTransformations", async () => {
+        const schema = S.Struct({ a: S.optional(S.NumberFromString, { default: () => 0 }), b: S.NumberFromString })
+        const ast = schema.pipe(S.pick("b")).ast as AST.TypeLiteral
+        expect(ast.propertySignatures).toStrictEqual([
+          new AST.PropertySignature("b", S.NumberFromString.ast, false, true)
+        ])
+      })
     })
 
     it("with SurrogateAnnotation", async () => {

@@ -2045,13 +2045,13 @@ export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral | 
             fromKeys.push(k)
           }
         }
-        return new Transformation(
-          pick(ast.from, fromKeys),
-          pick(ast.to, keys),
-          Arr.isNonEmptyReadonlyArray(ts) ?
+        return Arr.isNonEmptyReadonlyArray(ts) ?
+          new Transformation(
+            pick(ast.from, fromKeys),
+            pick(ast.to, keys),
             new TypeLiteralTransformation(ts)
-            : composeTransformation
-        )
+          ) :
+          pick(ast.from, fromKeys)
       }
       case "FinalTransformation": {
         const annotation = getSurrogateAnnotation(ast)
