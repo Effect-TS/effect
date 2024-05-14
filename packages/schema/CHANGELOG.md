@@ -1,5 +1,41 @@
 # @effect/schema
 
+## 0.67.2
+
+### Patch Changes
+
+- [#2738](https://github.com/Effect-TS/effect/pull/2738) [`89a3afb`](https://github.com/Effect-TS/effect/commit/89a3afbe191c83b84b17bfaa95519aff0749afbe) Thanks [@gcanti](https://github.com/gcanti)! - add `cause` in errors thrown by `asserts`, closes #2729
+
+- [#2741](https://github.com/Effect-TS/effect/pull/2741) [`992c8e2`](https://github.com/Effect-TS/effect/commit/992c8e21535db9f0c66e81d32fee8af56a96274f) Thanks [@gcanti](https://github.com/gcanti)! - `Schema.optional`: the `default` option now allows setting a default value for **both** the decoding phase and the default constructor. Previously, it only set the decoding default. Closes #2740.
+
+  **Example**
+
+  ```ts
+  import { Schema } from "@effect/schema";
+
+  const Product = Schema.Struct({
+    name: Schema.String,
+    price: Schema.NumberFromString,
+    quantity: Schema.optional(Schema.NumberFromString, { default: () => 1 }),
+  });
+
+  // Applying defaults in the decoding phase
+  console.log(
+    Schema.decodeUnknownSync(Product)({ name: "Laptop", price: "999" }),
+  ); // { name: 'Laptop', price: 999, quantity: 1 }
+  console.log(
+    Schema.decodeUnknownSync(Product)({
+      name: "Laptop",
+      price: "999",
+      quantity: "2",
+    }),
+  ); // { name: 'Laptop', price: 999, quantity: 2 }
+
+  // Applying defaults in the constructor
+  console.log(Product.make({ name: "Laptop", price: 999 })); // { name: 'Laptop', price: 999, quantity: 1 }
+  console.log(Product.make({ name: "Laptop", price: 999, quantity: 2 })); // { name: 'Laptop', price: 999, quantity: 2 }
+  ```
+
 ## 0.67.1
 
 ### Patch Changes
