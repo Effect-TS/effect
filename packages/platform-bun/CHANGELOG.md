@@ -1,5 +1,13 @@
 # @effect/platform-bun
 
+## 0.34.11
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/platform@0.53.5
+  - @effect/platform-node-shared@0.4.24
+
 ## 0.34.10
 
 ### Patch Changes
