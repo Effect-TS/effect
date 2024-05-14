@@ -253,7 +253,7 @@ export const prepend: {
  * @since 2.0.0
  */
 export const prependAll: {
-  <S extends ReadonlyArray<any> | Iterable<any>, T extends ReadonlyArray<any> | Iterable<any>>(
+  <S extends ReadonlyArray.Input, T extends ReadonlyArray.Input>(
     that: T
   ): (self: S) => ReadonlyArray.OrNonEmpty<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
   <A, B>(self: Iterable<A>, that: NonEmptyReadonlyArray<B>): NonEmptyArray<A | B>
@@ -283,7 +283,7 @@ export const append: {
  * @since 2.0.0
  */
 export const appendAll: {
-  <S extends ReadonlyArray<any> | Iterable<any>, T extends ReadonlyArray<any> | Iterable<any>>(
+  <S extends ReadonlyArray.Input, T extends ReadonlyArray.Input>(
     that: T
   ): (self: S) => ReadonlyArray.OrNonEmpty<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
   <A, B>(self: Iterable<A>, that: NonEmptyReadonlyArray<B>): NonEmptyArray<A | B>
@@ -877,7 +877,7 @@ export const remove: {
  * @category elements
  * @since 2.0.0
  */
-export const reverse = <S extends Iterable<any> | NonEmptyReadonlyArray<any>>(
+export const reverse = <S extends ReadonlyArray.Input>(
   self: S
 ): S extends NonEmptyReadonlyArray<infer A> ? NonEmptyArray<A> : S extends Iterable<infer A> ? Array<A> : never =>
   Array.from(self).reverse() as any
@@ -906,7 +906,7 @@ export const sort: {
  * @category elements
  */
 export const sortWith: {
-  <S extends Iterable<any> | NonEmptyReadonlyArray<any>, B>(
+  <S extends ReadonlyArray.Input, B>(
     f: (a: ReadonlyArray.Infer<S>) => B,
     order: Order.Order<B>
   ): (self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
@@ -1015,7 +1015,7 @@ export const unzip: <S extends Iterable<readonly [any, any]> | NonEmptyReadonlyA
 export const intersperse: {
   <B>(
     middle: B
-  ): <S extends ReadonlyArray<any> | Iterable<any>>(self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
+  ): <S extends ReadonlyArray.Input>(self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>
   <A, B>(self: NonEmptyReadonlyArray<A>, middle: B): NonEmptyArray<A | B>
   <A, B>(self: Iterable<A>, middle: B): Array<A | B>
 } = dual(2, <A, B>(self: Iterable<A>, middle: B): Array<A | B> => {
@@ -1097,7 +1097,7 @@ export const setNonEmptyLast: {
  * @since 2.0.0
  */
 export const rotate: {
-  (n: number): <S extends ReadonlyArray<any> | Iterable<any>>(self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
+  (n: number): <S extends ReadonlyArray.Input>(self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
   <A>(self: NonEmptyReadonlyArray<A>, n: number): NonEmptyArray<A>
   <A>(self: Iterable<A>, n: number): Array<A>
 } = dual(2, <A>(self: Iterable<A>, n: number): Array<A> => {
@@ -1158,7 +1158,7 @@ export const contains: {
  * @since 2.0.0
  */
 export const chop: {
-  <S extends ReadonlyArray<any> | Iterable<any>, B>(
+  <S extends ReadonlyArray.Input, B>(
     f: (as: NonEmptyReadonlyArray<ReadonlyArray.Infer<S>>) => readonly [B, ReadonlyArray<ReadonlyArray.Infer<S>>]
   ): (self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
   <A, B>(
@@ -1284,7 +1284,7 @@ export const copy: {
 export const chunksOf: {
   (
     n: number
-  ): <S extends ReadonlyArray<any> | Iterable<any>>(
+  ): <S extends ReadonlyArray.Input>(
     self: S
   ) => ReadonlyArray.With<S, NonEmptyArray<ReadonlyArray.Infer<S>>>
   <A>(self: NonEmptyReadonlyArray<A>, n: number): NonEmptyArray<NonEmptyArray<A>>
@@ -1370,7 +1370,7 @@ export const groupBy: {
  * @since 2.0.0
  */
 export const unionWith: {
-  <S extends ReadonlyArray<any> | Iterable<any>, T extends ReadonlyArray<any> | Iterable<any>>(
+  <S extends ReadonlyArray.Input, T extends ReadonlyArray.Input>(
     that: T,
     isEquivalent: (self: ReadonlyArray.Infer<S>, that: ReadonlyArray.Infer<T>) => boolean
   ): (self: S) => ReadonlyArray.OrNonEmpty<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
@@ -1402,9 +1402,9 @@ export const unionWith: {
  * @since 2.0.0
  */
 export const union: {
-  <T extends ReadonlyArray<any> | Iterable<any>>(
+  <T extends ReadonlyArray.Input>(
     that: T
-  ): <S extends ReadonlyArray<any> | Iterable<any>>(
+  ): <S extends ReadonlyArray.Input>(
     self: S
   ) => ReadonlyArray.OrNonEmpty<S, T, ReadonlyArray.Infer<S> | ReadonlyArray.Infer<T>>
   <A, B>(self: NonEmptyReadonlyArray<A>, that: ReadonlyArray<B>): NonEmptyArray<A | B>
@@ -1487,25 +1487,29 @@ export const of = <A>(a: A): NonEmptyArray<A> => [a]
  */
 export declare namespace ReadonlyArray {
   /**
+   * @since 3.1.5
+   */
+  export type Input<T = any> = ReadonlyArray<T> | Iterable<T>
+
+  /**
    * @since 2.0.0
    */
-  export type Infer<S extends ReadonlyArray<any> | Iterable<any>> = S extends ReadonlyArray<infer A> ? A
+  export type Infer<S extends Input> = S extends ReadonlyArray<infer A> ? A
     : S extends Iterable<infer A> ? A
     : never
 
   /**
    * @since 2.0.0
    */
-  export type With<S extends ReadonlyArray<any> | Iterable<any>, A> = S extends NonEmptyReadonlyArray<any> ?
-    NonEmptyArray<A>
+  export type With<S extends Input, A> = S extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A>
     : Array<A>
 
   /**
    * @since 2.0.0
    */
   export type OrNonEmpty<
-    S extends ReadonlyArray<any> | Iterable<any>,
-    T extends ReadonlyArray<any> | Iterable<any>,
+    S extends Input,
+    T extends Input,
     A
   > = S extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A>
     : T extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A>
@@ -1515,8 +1519,8 @@ export declare namespace ReadonlyArray {
    * @since 2.0.0
    */
   export type AndNonEmpty<
-    S extends ReadonlyArray<any> | Iterable<any>,
-    T extends ReadonlyArray<any> | Iterable<any>,
+    S extends Input,
+    T extends Input,
     A
   > = S extends NonEmptyReadonlyArray<any> ? T extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A>
     : Array<A>
@@ -1783,7 +1787,9 @@ export const partition: {
  * @category filtering
  * @since 2.0.0
  */
-export const separate: <R, L>(self: Iterable<Either<R, L>>) => [Array<L>, Array<R>] = partitionMap(
+export const separate: <T extends ReadonlyArray.Input<Either<any, any>>>(
+  self: T
+) => [Array<Either.Left<ReadonlyArray.Infer<T>>>, Array<Either.Right<ReadonlyArray.Infer<T>>>] = partitionMap(
   identity
 )
 
@@ -1986,7 +1992,7 @@ export const forEach: {
  * @since 2.0.0
  */
 export const dedupeWith: {
-  <S extends ReadonlyArray<any> | Iterable<any>>(
+  <S extends ReadonlyArray.Input<any>>(
     isEquivalent: (self: ReadonlyArray.Infer<S>, that: ReadonlyArray.Infer<S>) => boolean
   ): (self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
   <A>(self: NonEmptyReadonlyArray<A>, isEquivalent: (self: A, that: A) => boolean): NonEmptyArray<A>
@@ -2015,7 +2021,7 @@ export const dedupeWith: {
  *
  * @since 2.0.0
  */
-export const dedupe = <S extends Iterable<any> | NonEmptyReadonlyArray<any>>(
+export const dedupe = <S extends ReadonlyArray.Input>(
   self: S
 ): S extends NonEmptyReadonlyArray<infer A> ? NonEmptyArray<A> : S extends Iterable<infer A> ? Array<A> : never =>
   dedupeWith(self, Equal.equivalence()) as any

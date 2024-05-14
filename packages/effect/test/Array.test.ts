@@ -794,8 +794,8 @@ describe("ReadonlyArray", () => {
 
   it("separate", () => {
     expect(RA.separate([])).toEqual([[], []])
-    expect(RA.separate([E.right(1), E.left("e"), E.right(2)])).toEqual([
-      ["e"],
+    expect(RA.separate([E.right(1), E.left("e"), E.left(2), E.right(2)])).toEqual([
+      ["e", 2],
       [1, 2]
     ])
   })
