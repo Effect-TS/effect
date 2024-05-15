@@ -1,5 +1,11 @@
 # @effect/sql-sqlite-node
 
+## 0.2.9
+
+### Patch Changes
+
+- [#2749](https://github.com/Effect-TS/effect/pull/2749) [`fdb7203`](https://github.com/Effect-TS/effect/commit/fdb7203ac0d41dde9951048c1c967d80add92ae5) Thanks [@tim-smart](https://github.com/tim-smart)! - add backup api to sqlite-node client
+
 ## 0.2.8
 
 ### Patch Changes
