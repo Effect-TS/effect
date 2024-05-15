@@ -396,13 +396,14 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.Serve
           }
           resume(Effect.map(Deferred.await(deferred), (ws) => {
             const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
-              Effect.sync(() =>
+              Effect.sync(() => {
                 typeof chunk === "string"
                   ? ws.sendText(chunk)
                   : Socket.isCloseEvent(chunk)
                   ? ws.close(chunk.code, chunk.reason)
                   : ws.sendBinary(chunk)
-              )
+                return true
+              })
             const writer = Effect.succeed(write)
             const runRaw = <R, E, _>(
               handler: (_: Uint8Array | string) => Effect.Effect<_, E, R>

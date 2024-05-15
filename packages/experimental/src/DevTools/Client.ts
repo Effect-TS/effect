@@ -121,12 +121,7 @@ export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket>
         }
       }
     }),
-    Effect.tapErrorCause(Effect.logDebug),
-    Effect.retry(
-      Schedule.exponential("500 millis").pipe(
-        Schedule.union(Schedule.spaced("10 seconds"))
-      )
-    ),
+    Effect.retry(Schedule.spaced("3 seconds")),
     Effect.forkScoped,
     Effect.interruptible
   )
