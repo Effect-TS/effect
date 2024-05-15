@@ -1,3 +1,4 @@
+import * as Otel from "@opentelemetry/semantic-conventions"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import * as FiberRef from "effect/FiberRef"
@@ -100,8 +101,8 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
           for (const [key, value] of this.spanAttributes) {
             span.attribute(key, value)
           }
-          span.attribute("db.operation.name", operation)
-          span.attribute("db.query.text", sql)
+          span.attribute(Otel.SEMATTRS_DB_OPERATION, operation)
+          span.attribute(Otel.SEMATTRS_DB_STATEMENT, sql)
           return Effect.scoped(Effect.flatMap(this.acquirer, (_) => f(_, sql, params)))
         })
     )
@@ -128,8 +129,8 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
           for (const [key, value] of this.spanAttributes) {
             span.attribute(key, value)
           }
-          span.attribute("db.operation.name", "executeStream")
-          span.attribute("db.query.text", sql)
+          span.attribute(Otel.SEMATTRS_DB_OPERATION, "executeStream")
+          span.attribute(Otel.SEMATTRS_DB_STATEMENT, sql)
           return Effect.map(this.acquirer, (_) => _.executeStream(sql, params))
         })
     ))
