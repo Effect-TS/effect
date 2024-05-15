@@ -1,5 +1,14 @@
 # @effect/opentelemetry
 
+## 0.34.5
+
+### Patch Changes
+
+- [#2736](https://github.com/Effect-TS/effect/pull/2736) [`40c2b1d`](https://github.com/Effect-TS/effect/commit/40c2b1d9234bcfc9ab4039282b621ca092f800cd) Thanks [@patroza](https://github.com/patroza)! - update otel dependencies
+
+- Updated dependencies [[`6ac4847`](https://github.com/Effect-TS/effect/commit/6ac48479447c01a4f35d655552af93e47e562610)]:
+  - effect@3.1.5
+
 ## 0.34.4
 
 ### Patch Changes

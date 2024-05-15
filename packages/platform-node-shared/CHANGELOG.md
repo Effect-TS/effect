@@ -1,5 +1,15 @@
 # @effect/platform-node-shared
 
+## 0.4.25
+
+### Patch Changes
+
+- [#2750](https://github.com/Effect-TS/effect/pull/2750) [`6ac4847`](https://github.com/Effect-TS/effect/commit/6ac48479447c01a4f35d655552af93e47e562610) Thanks [@tim-smart](https://github.com/tim-smart)! - fix memory leak in Socket's
+
+- Updated dependencies [[`6ac4847`](https://github.com/Effect-TS/effect/commit/6ac48479447c01a4f35d655552af93e47e562610), [`6ac4847`](https://github.com/Effect-TS/effect/commit/6ac48479447c01a4f35d655552af93e47e562610)]:
+  - @effect/platform@0.53.6
+  - effect@3.1.5
+
 ## 0.4.24
 
 ### Patch Changes
