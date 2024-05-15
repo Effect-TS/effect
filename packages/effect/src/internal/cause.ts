@@ -977,23 +977,18 @@ export const pretty = <E>(cause: Cause.Cause<E>): string => {
 }
 
 class PrettyError extends globalThis.Error implements Cause.PrettyError {
-  #cause = undefined
+  span: undefined | Span = undefined
   constructor(originalError: unknown) {
     const prevLimit = Error.stackTraceLimit
     Error.stackTraceLimit = 0
     super(prettyErrorMessage(originalError))
-    // @ts-expect-error
-    this.#cause = originalError
     Error.stackTraceLimit = prevLimit
     this.name = originalError instanceof Error ? originalError.name : "Error"
-    this.stack = prettyErrorStack(
-      this.message,
-      originalError instanceof Error && originalError.stack
-        ? originalError.stack
-        : "",
-      this.span
-    )
     if (typeof originalError === "object" && originalError !== null) {
+      if (spanSymbol in originalError) {
+        // @ts-expect-error
+        this.span = originalError[spanSymbol]
+      }
       Object.keys(originalError).forEach((key) => {
         if (!(key in this)) {
           // @ts-expect-error
@@ -1001,10 +996,13 @@ class PrettyError extends globalThis.Error implements Cause.PrettyError {
         }
       })
     }
-  }
-
-  get span(): Span | undefined {
-    return this.#cause && hasProperty(this.#cause, spanSymbol) ? this.#cause[spanSymbol] as Span : undefined
+    this.stack = prettyErrorStack(
+      this.message,
+      originalError instanceof Error && originalError.stack
+        ? originalError.stack
+        : "",
+      this.span
+    )
   }
 
   toJSON() {

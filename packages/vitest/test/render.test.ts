@@ -2,7 +2,15 @@
 import { expect, it } from "@effect/vitest"
 import { Effect } from "effect"
 
-it.effect.skip("should work", () =>
+const fn = Effect.functionWithSpan({
+  options: (n) => ({ name: `fn-${n}` }),
+  body: <A>(a: A) =>
+    Effect.sync(() => {
+      expect(a).toBe({ foo: 2 })
+    })
+})
+
+it.effect("should work", () =>
   Effect.gen(function*() {
-    expect({ foo: 1 }).toBe({ foo: 2 })
+    yield* fn({ foo: 0 })
   }))
