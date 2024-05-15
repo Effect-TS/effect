@@ -11,6 +11,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       id-token: write
+      pull-requests: write
     steps:
       - name: Enforce permission requirement
         uses: prince-chrismc/check-actor-permissions-action@v3
