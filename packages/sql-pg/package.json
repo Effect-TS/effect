@@ -48,6 +48,7 @@
     "effect": "workspace:^"
   },
   "dependencies": {
+    "@opentelemetry/semantic-conventions": "^1.24.1",
     "postgres": "^3.4.4"
   }
 }

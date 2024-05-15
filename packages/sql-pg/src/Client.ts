@@ -6,6 +6,7 @@ import type { Connection } from "@effect/sql/Connection"
 import { SqlError } from "@effect/sql/Error"
 import type { Custom, Fragment, Primitive } from "@effect/sql/Statement"
 import * as Statement from "@effect/sql/Statement"
+import * as Otel from "@opentelemetry/semantic-conventions"
 import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
@@ -198,8 +199,8 @@ export const make = (
         ),
         compiler,
         spanAttributes: [
-          ["db.system", "postgresql"],
-          ["db.name", opts.database ?? options.username ?? "postgres"],
+          [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_POSTGRESQL],
+          [Otel.SEMATTRS_DB_NAME, opts.database ?? options.username ?? "postgres"],
           ["server.address", opts.host ?? "localhost"],
           ["server.port", opts.port ?? 5432]
         ]

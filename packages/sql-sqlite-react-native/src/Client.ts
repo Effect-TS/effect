@@ -6,6 +6,7 @@ import type { Connection } from "@effect/sql/Connection"
 import { SqlError } from "@effect/sql/Error"
 import * as Statement from "@effect/sql/Statement"
 import * as Sqlite from "@op-engineering/op-sqlite"
+import * as Otel from "@opentelemetry/semantic-conventions"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
@@ -167,7 +168,7 @@ export const make = (
         acquirer,
         compiler,
         transactionAcquirer,
-        spanAttributes: [["db.system", "sqlite"]]
+        spanAttributes: [[Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_SQLITE]]
       }) as SqliteClient,
       { [TypeId]: TypeId, config: options }
     )

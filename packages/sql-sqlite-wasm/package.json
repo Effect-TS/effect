@@ -46,6 +46,7 @@
     "effect": "workspace:^"
   },
   "dependencies": {
+    "@opentelemetry/semantic-conventions": "^1.24.1",
     "@sqlite.org/sqlite-wasm": "3.45.3-build1"
   }
 }
