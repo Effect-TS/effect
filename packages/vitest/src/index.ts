@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type { Tester, TesterContext } from "@vitest/expect"
+import * as Cause from "effect/Cause"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
@@ -21,6 +22,7 @@ const runTest = <E, A>(effect: Effect.Effect<A, E>) =>
   Effect.runPromise(effect).catch((error) => {
     const failure = error as FiberFailure
     const newError = new Error(failure.message)
+    const errors = Cause.
     if (failure.stack) {
       newError.stack = failure.stack
     }
