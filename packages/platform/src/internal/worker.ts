@@ -71,8 +71,8 @@ export const makeManager = Effect.gen(function*() {
       queue,
       transfers = (_) => []
     }: Worker.Worker.Options<I>) {
-      return Effect.gen(function*() {
-        const spawn = yield* Spawner
+      return Effect.gen(function*(_) {
+        const spawn = yield* _(Spawner)
         const id = idCounter++
         let requestIdCounter = 0
         const semaphore = yield* Effect.makeSemaphore(permits)
@@ -125,11 +125,7 @@ export const makeManager = Effect.gen(function*() {
           Effect.onError((cause) =>
             Effect.forEach(requestMap.values(), ([queue]) => Queue.offer(queue, Exit.failCause(cause)))
           ),
-          Effect.retry(
-            Schedule.exponential("250 millis").pipe(
-              Schedule.union(Schedule.spaced("30 seconds"))
-            )
-          ),
+          Effect.retry(Schedule.spaced(1000)),
           Effect.annotateLogs({
             package: "@effect/platform",
             module: "Worker"

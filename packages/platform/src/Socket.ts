@@ -8,8 +8,11 @@ import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as ExecutionStrategy from "effect/ExecutionStrategy"
 import * as Exit from "effect/Exit"
+import * as FiberRef from "effect/FiberRef"
 import * as FiberSet from "effect/FiberSet"
+import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
 import * as Queue from "effect/Queue"
@@ -49,7 +52,11 @@ export interface Socket {
   readonly runRaw: <R, E, _>(
     handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>
   ) => Effect.Effect<void, SocketError | E, R>
-  readonly writer: Effect.Effect<(chunk: Uint8Array | string | CloseEvent) => Effect.Effect<void>, never, Scope.Scope>
+  readonly writer: Effect.Effect<
+    (chunk: Uint8Array | string | CloseEvent) => Effect.Effect<boolean>,
+    never,
+    Scope.Scope
+  >
 }
 
 /**
@@ -173,9 +180,10 @@ export const toChannel = <IE>(
   void,
   unknown
 > =>
-  Channel.unwrap(
+  Channel.unwrapScoped(
     Effect.gen(function*(_) {
-      const writeScope = yield* _(Scope.make())
+      const parentScope = yield* Effect.scope
+      const writeScope = yield* _(Scope.fork(parentScope, ExecutionStrategy.sequential))
       const write = yield* _(Scope.extend(self.writer, writeScope))
       const exitQueue = yield* _(Queue.unbounded<Exit.Exit<Chunk.Chunk<Uint8Array>, SocketError | IE>>())
 
@@ -299,7 +307,14 @@ export const makeWebSocket = (url: string | Effect.Effect<string>, options?: {
       (typeof url === "string" ? Effect.succeed(url) : url).pipe(
         Effect.flatMap((url) => Effect.map(WebSocketConstructor, (f) => f(url)))
       ),
-      (ws) => Effect.sync(() => ws.close())
+      (ws) =>
+        Effect.sync(() => {
+          ws.onclose = null
+          ws.onerror = null
+          ws.onmessage = null
+          ws.onopen = null
+          return ws.close()
+        })
     ),
     options
   )
@@ -317,16 +332,17 @@ export const fromWebSocket = <R>(
 ): Effect.Effect<Socket, never, Exclude<R, Scope.Scope>> =>
   Effect.gen(function*(_) {
     const closeCodeIsError = options?.closeCodeIsError ?? defaultCloseCodeIsError
-    const sendQueue = yield* Queue.unbounded<Uint8Array | string | CloseEvent>()
+    const sendQueue = yield* _(Queue.dropping<Uint8Array | string | CloseEvent>(
+      yield* FiberRef.get(currentSendQueueCapacity)
+    ))
     const acquireContext = yield* Effect.context<Exclude<R, Scope.Scope>>()
-    const acquireWithContext = Effect.provide(acquire, acquireContext) as Effect.Effect<
-      globalThis.WebSocket,
-      SocketError
-    >
 
     const runRaw = <R, E, _>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>) =>
       Effect.gen(function*(_) {
-        const ws = yield* acquireWithContext
+        const scope = yield* Effect.scope
+        const ws = yield* (acquire.pipe(
+          Effect.provide(Context.add(acquireContext, Scope.Scope, scope))
+        ) as Effect.Effect<globalThis.WebSocket>)
         const fiberSet = yield* _(FiberSet.make<any, E | SocketError>())
         const run = yield* _(
           FiberSet.runtime(fiberSet)<R>(),
@@ -363,12 +379,16 @@ export const fromWebSocket = <R>(
         }
 
         if (ws.readyState !== 1) {
-          yield* _(
-            Effect.async<void, SocketError, never>((resume) => {
-              ws.onopen = () => {
-                resume(Effect.void)
-              }
-            }),
+          yield* Effect.async<void, SocketError, never>((resume) => {
+            function onOpen() {
+              ws.removeEventListener("open", onOpen)
+              resume(Effect.void)
+            }
+            ws.addEventListener("open", onOpen)
+            return Effect.sync(() => {
+              ws.removeEventListener("open", onOpen)
+            })
+          }).pipe(
             Effect.timeoutFail({
               duration: options?.openTimeout ?? 10000,
               onTimeout: () => new SocketGenericError({ reason: "OpenTimeout", error: "timeout waiting for \"open\"" })
@@ -460,7 +480,16 @@ export const makeWebSocketChannel = <IE = never>(
 export const layerWebSocket = (url: string, options?: {
   readonly closeCodeIsError?: (code: number) => boolean
 }): Layer.Layer<Socket, never, WebSocketConstructor> =>
-  Layer.scoped(
+  Layer.effect(
     Socket,
     makeWebSocket(url, options)
   )
+
+/**
+ * @since 1.0.0
+ * @category fiber refs
+ */
+export const currentSendQueueCapacity: FiberRef.FiberRef<number> = globalValue(
+  "@effect/platform/Socket/currentSendQueueCapacity",
+  () => FiberRef.unsafeMake(16)
+)

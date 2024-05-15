@@ -6,11 +6,12 @@ import * as Channel from "effect/Channel"
 import type * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as FiberRef from "effect/FiberRef"
 import * as FiberSet from "effect/FiberSet"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
-import type * as Scope from "effect/Scope"
+import * as Scope from "effect/Scope"
 import * as Net from "node:net"
 
 /**
@@ -36,7 +37,7 @@ const EOF = Symbol.for("@effect/experimental/Socket/Node/EOF")
  */
 export const makeNet = (
   options: Net.NetConnectOpts
-): Effect.Effect<Socket.Socket, Socket.SocketError, Scope.Scope> =>
+): Effect.Effect<Socket.Socket, Socket.SocketError> =>
   fromNetSocket(
     Effect.acquireRelease(
       Effect.async<Net.Socket, Socket.SocketError, never>((resume) => {
@@ -70,15 +71,21 @@ export const makeNet = (
  * @since 1.0.0
  * @category constructors
  */
-export const fromNetSocket = (
-  open: Effect.Effect<Net.Socket, Socket.SocketError, Scope.Scope>
-): Effect.Effect<Socket.Socket> =>
+export const fromNetSocket = <RO>(
+  open: Effect.Effect<Net.Socket, Socket.SocketError, RO>
+): Effect.Effect<Socket.Socket, never, Exclude<RO, Scope.Scope>> =>
   Effect.gen(function*(_) {
-    const sendQueue = yield* _(Queue.unbounded<Uint8Array | string | Socket.CloseEvent | typeof EOF>())
+    const sendQueue = yield* _(Queue.dropping<Uint8Array | string | Socket.CloseEvent | typeof EOF>(
+      yield* FiberRef.get(Socket.currentSendQueueCapacity)
+    ))
+    const openContext = yield* Effect.context<Exclude<RO, Scope.Scope>>()
 
     const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R>) =>
       Effect.gen(function*(_) {
-        const conn = yield* _(open)
+        const scope = yield* Effect.scope
+        const conn = yield* open.pipe(
+          Effect.provide(Context.add(openContext, Scope.Scope, scope))
+        ) as Effect.Effect<Net.Socket>
         const fiberSet = yield* _(FiberSet.make<any, E | Socket.SocketError>())
         const run = yield* _(
           FiberSet.runtime(fiberSet)<R>(),
@@ -97,6 +104,7 @@ export const fromNetSocket = (
                   resume(error ? Effect.fail(new Socket.SocketGenericError({ reason: "Write", error })) : Effect.void)
                 })
               }
+              return Effect.void
             })
           ),
           Effect.forever,
@@ -108,13 +116,13 @@ export const fromNetSocket = (
         })
         yield* _(
           Effect.async<void, Socket.SocketError, never>((resume) => {
-            conn.on("end", () => {
+            function onEnd() {
               resume(Effect.void)
-            })
-            conn.on("error", (error) => {
+            }
+            function onError(error: Error) {
               resume(Effect.fail(new Socket.SocketGenericError({ reason: "Read", error })))
-            })
-            conn.on("close", (hadError) => {
+            }
+            function onClose(hadError: boolean) {
               resume(
                 Effect.fail(
                   new Socket.SocketCloseError({
@@ -123,6 +131,14 @@ export const fromNetSocket = (
                   })
                 )
               )
+            }
+            conn.on("end", onEnd)
+            conn.on("error", onError)
+            conn.on("close", onClose)
+            return Effect.sync(() => {
+              conn.off("end", onEnd)
+              conn.off("error", onError)
+              conn.off("close", onClose)
             })
           }),
           Effect.raceFirst(FiberSet.join(fiberSet))
@@ -169,7 +185,7 @@ export const makeNetChannel = <IE = never>(
  * @category layers
  */
 export const layerNet = (options: Net.NetConnectOpts): Layer.Layer<Socket.Socket, Socket.SocketError> =>
-  Layer.scoped(
+  Layer.effect(
     Socket.Socket,
     makeNet(options)
   )

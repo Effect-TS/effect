@@ -671,7 +671,9 @@ export const exponential = (
   factor = 2.0
 ): Schedule.Schedule<Duration.Duration> => {
   const base = Duration.decode(baseInput)
-  return delayedSchedule(map(forever, (i) => Duration.times(base, Math.pow(factor, i))))
+  return delayedSchedule(
+    map(forever, (i) => Duration.times(base, Math.min(Number.MAX_SAFE_INTEGER, Math.pow(factor, i))))
+  )
 }
 
 /** @internal */
