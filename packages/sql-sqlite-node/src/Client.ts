@@ -36,10 +36,20 @@ export interface SqliteClient extends Client.Client {
   readonly [TypeId]: TypeId
   readonly config: SqliteClientConfig
   readonly export: Effect.Effect<Uint8Array, SqlError>
+  readonly backup: (destination: string) => Effect.Effect<BackupMetadata, SqlError>
   readonly loadExtension: (path: string) => Effect.Effect<void, SqlError>
 
   /** Not supported in sqlite */
   readonly updateValues: never
+}
+
+/**
+ * @category models
+ * @since 1.0.0
+ */
+export interface BackupMetadata {
+  readonly totalPages: number
+  readonly remainingPages: number
 }
 
 /**
@@ -65,6 +75,7 @@ export interface SqliteClientConfig {
 
 interface SqliteConnection extends Connection {
   readonly export: Effect.Effect<Uint8Array, SqlError>
+  readonly backup: (destination: string) => Effect.Effect<BackupMetadata, SqlError>
   readonly loadExtension: (path: string) => Effect.Effect<void, SqlError>
 }
 
@@ -174,6 +185,12 @@ export const make = (
           try: () => db.serialize(),
           catch: (error) => new SqlError({ error })
         }),
+        backup(destination) {
+          return Effect.tryPromise({
+            try: () => db.backup(destination),
+            catch: (error) => new SqlError({ error })
+          })
+        },
         loadExtension(path) {
           return Effect.try({
             try: () => db.loadExtension(path),
@@ -211,6 +228,7 @@ export const make = (
         [TypeId]: TypeId as TypeId,
         config: options,
         export: Effect.flatMap(acquirer, (_) => _.export),
+        backup: (destination: string) => Effect.flatMap(acquirer, (_) => _.backup(destination)),
         loadExtension: (path: string) => Effect.flatMap(acquirer, (_) => _.loadExtension(path))
       }
     )
