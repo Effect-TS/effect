@@ -983,11 +983,11 @@ class PrettyError extends globalThis.Error implements Cause.PrettyError {
     Error.stackTraceLimit = 0
     super(prettyErrorMessage(originalError))
     Error.stackTraceLimit = prevLimit
+
     this.name = originalError instanceof Error ? originalError.name : "Error"
     if (typeof originalError === "object" && originalError !== null) {
       if (spanSymbol in originalError) {
-        // @ts-expect-error
-        this.span = originalError[spanSymbol]
+        this.span = originalError[spanSymbol] as Span
       }
       Object.keys(originalError).forEach((key) => {
         if (!(key in this)) {
