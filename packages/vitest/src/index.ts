@@ -6,10 +6,10 @@ import * as Cause from "effect/Cause"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
+import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
-import type { FiberFailure } from "effect/Runtime"
 import * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
 import * as TestEnvironment from "effect/TestContext"
@@ -19,17 +19,20 @@ import type { TestAPI } from "vitest"
 import * as V from "vitest"
 
 const runTest = <E, A>(effect: Effect.Effect<A, E>) =>
-  Effect.runPromise(effect).catch((error) => {
-    const failure = error as FiberFailure
-    const newError = new Error(failure.message)
-    const errors = Cause.
-    if (failure.stack) {
-      newError.stack = failure.stack
+  Effect.gen(function*() {
+    const exit: Exit.Exit<A, E> = yield* Effect.exit(effect)
+    if (Exit.isSuccess(exit)) {
+      return () => {}
+    } else {
+      const errors = Cause.prettyErrors(exit.cause)
+      for (let i = 1; i < errors.length; i++) {
+        yield* Effect.logError(errors[i])
+      }
+      return () => {
+        throw errors[0]
+      }
     }
-    newError.name = failure.name
-    newError.cause = failure.cause
-    throw newError
-  })
+  }).pipe(Effect.runPromise).then((f) => f())
 
 /**
  * @since 1.0.0

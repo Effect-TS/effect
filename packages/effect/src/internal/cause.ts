@@ -980,7 +980,7 @@ class PrettyError extends globalThis.Error implements Cause.PrettyError {
   constructor(originalError: unknown) {
     const prevLimit = Error.stackTraceLimit
     Error.stackTraceLimit = 0
-    super(prettyErrorMessage(originalError), { cause: originalError })
+    super(prettyErrorMessage(originalError))
     Error.stackTraceLimit = prevLimit
     this.name = originalError instanceof Error ? originalError.name : "Error"
     this.stack = prettyErrorStack(
@@ -990,6 +990,14 @@ class PrettyError extends globalThis.Error implements Cause.PrettyError {
         : "",
       this.span
     )
+    if (typeof originalError === "object" && originalError !== null) {
+      Object.keys(originalError).forEach((key) => {
+        if (!(key in this)) {
+          // @ts-expect-error
+          this[key] = originalError[key]
+        }
+      })
+    }
   }
 
   get span(): Span | undefined {
