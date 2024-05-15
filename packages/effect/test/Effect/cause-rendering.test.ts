@@ -117,4 +117,21 @@ describe("Effect", () => {
       assert.include(error.stack, "span-123")
       assert.include(error.stack, "cause-rendering.test.ts:110")
     }))
+
+  it.effect("includes span name in stack", () =>
+    Effect.gen(function*() {
+      const fn = Effect.functionWithSpan({
+        options: (n) => ({ name: `fn-${n}` }),
+        body: (a: number) =>
+          Effect.sync(() => {
+            assert.strictEqual(a, 2)
+          })
+      })
+      const cause = yield* fn(0).pipe(
+        Effect.sandbox,
+        Effect.flip
+      )
+      const prettyErrors = Cause.prettyErrors(cause)
+      assert.include(prettyErrors[0].stack ?? "", "at fn-0 ")
+    }))
 })
