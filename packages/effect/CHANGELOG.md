@@ -1,5 +1,11 @@
 # effect
 
+## 3.1.5
+
+### Patch Changes
+
+- [#2750](https://github.com/Effect-TS/effect/pull/2750) [`6ac4847`](https://github.com/Effect-TS/effect/commit/6ac48479447c01a4f35d655552af93e47e562610) Thanks [@tim-smart](https://github.com/tim-smart)! - ensure exponential schedules don't reach Infinity
+
 ## 3.1.4
 
 ### Patch Changes
