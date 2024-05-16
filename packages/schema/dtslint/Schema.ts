@@ -2395,3 +2395,13 @@ export const AsSchemaTest2 = <X extends S.Schema.All>(
   domainEvent.expectedVersion // $ExpectType number
   domainEvent.props // $ExpectType Type<X>
 }
+
+// ---------------------------------------------
+// Schema.is
+// ---------------------------------------------
+
+// $ExpectType string[]
+hole<Array<string | number>>().filter(S.is(S.String))
+
+// $ExpectType string | undefined
+hole<Array<string | number>>().find(S.is(S.String))
