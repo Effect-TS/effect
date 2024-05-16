@@ -1,5 +1,14 @@
 # @effect/platform-browser
 
+## 0.33.22
+
+### Patch Changes
+
+- [#2691](https://github.com/Effect-TS/effect/pull/2691) [`dc06f27`](https://github.com/Effect-TS/effect/commit/dc06f273fdcc9beeecef26f6e844fcce31b092a2) Thanks [@KhraksMamtsov](https://github.com/KhraksMamtsov)! - add Geolocation module to @effect/platform-browser
+
+- Updated dependencies []:
+  - @effect/platform@0.53.7
+
 ## 0.33.21
 
 ### Patch Changes
