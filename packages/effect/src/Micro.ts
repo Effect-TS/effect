@@ -832,11 +832,11 @@ export const forEach: {
         onResult
       )
     } else {
-      unsafeForEachSequential(iterable, f, options)[runSymbol](env, onResult)
+      forEachSequential(iterable, f, options)[runSymbol](env, onResult)
     }
   })
 
-const unsafeForEachSequential = <
+const forEachSequential = <
   A,
   B,
   E,
@@ -1119,30 +1119,30 @@ export const runPromise = <A, E>(effect: Micro<A, E>): Promise<A> =>
 /**
  * @since 3.2.0
  */
-export const ScopeTypeId: unique symbol = Symbol.for("effect/Micro/Scope")
+export const MicroScopeTypeId: unique symbol = Symbol.for("effect/Micro/MicroScope")
 
 /**
  * @since 3.2.0
  */
-export type ScopeTypeId = typeof ScopeTypeId
+export type MicroScopeTypeId = typeof MicroScopeTypeId
 
 /**
  * @since 3.2.0
  */
-export interface Scope {
-  readonly [ScopeTypeId]: ScopeTypeId
+export interface MicroScope {
+  readonly [MicroScopeTypeId]: MicroScopeTypeId
   readonly addFinalizer: (finalizer: (result: Result<any, any>) => Micro<void>) => Micro<void>
-  readonly fork: Micro<Scope.Closeable>
+  readonly fork: Micro<MicroScope.Closeable>
 }
 
 /**
  * @since 3.2.0
  */
-export declare namespace Scope {
+export declare namespace MicroScope {
   /**
    * @since 3.2.0
    */
-  export interface Closeable extends Scope {
+  export interface Closeable extends MicroScope {
     readonly close: (result: Result<any, any>) => Micro<void>
   }
 }
@@ -1150,10 +1150,10 @@ export declare namespace Scope {
 /**
  * @since 3.2.0
  */
-export const Scope: Context.Tag<Scope, Scope> = Context.GenericTag<Scope>("effect/Micro/Scope")
+export const MicroScope: Context.Tag<MicroScope, MicroScope> = Context.GenericTag<MicroScope>("effect/Micro/MicroScope")
 
-class ScopeImpl implements Scope.Closeable {
-  readonly [ScopeTypeId]: ScopeTypeId
+class ScopeImpl implements MicroScope.Closeable {
+  readonly [MicroScopeTypeId]: MicroScopeTypeId
   state: {
     readonly _tag: "Open"
     readonly finalizers: Set<(result: Result<any, any>) => Micro<void>>
@@ -1163,7 +1163,7 @@ class ScopeImpl implements Scope.Closeable {
   } = { _tag: "Open", finalizers: new Set() }
 
   constructor() {
-    this[ScopeTypeId] = ScopeTypeId
+    this[MicroScopeTypeId] = MicroScopeTypeId
   }
 
   unsafeAddFinalizer(finalizer: (result: Result<any, any>) => Micro<void>): void {
@@ -1218,15 +1218,20 @@ class ScopeImpl implements Scope.Closeable {
 /**
  * @since 3.2.0
  */
-export const makeScope = (): Micro<Scope.Closeable> => sync(() => new ScopeImpl())
+export const makeScope = (): Micro<MicroScope.Closeable> => sync(() => new ScopeImpl())
 
 /**
  * @since 3.2.0
  */
-export const scoped = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, Exclude<R, Scope>> =>
+export const scope: Micro<MicroScope, never, MicroScope> = service(MicroScope)
+
+/**
+ * @since 3.2.0
+ */
+export const scoped = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, Exclude<R, MicroScope>> =>
   suspend(function() {
     const scope = new ScopeImpl()
-    return onResult(provideService(self, Scope, scope), (result) => scope.close(result))
+    return onResult(provideService(self, MicroScope, scope), (result) => scope.close(result))
   })
 
 /**
@@ -1235,9 +1240,9 @@ export const scoped = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, Exclude<R, Sc
 export const acquireRelease = <A, E, R>(
   acquire: Micro<A, E, R>,
   release: (a: A, result: Result<any, any>) => Micro<void>
-): Micro<A, E, R | Scope> =>
+): Micro<A, E, R | MicroScope> =>
   uninterruptible(flatMap(
-    service(Scope),
+    scope,
     (scope) =>
       tap(
         acquire,
