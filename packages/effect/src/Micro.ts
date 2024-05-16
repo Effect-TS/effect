@@ -5,6 +5,8 @@
  */
 import * as Context from "./Context.js"
 import * as Duration from "./Duration.js"
+import type { Effect } from "./Effect.js"
+import * as Effectable from "./Effectable.js"
 import * as Either from "./Either.js"
 import { constVoid, dual, identity, type LazyArg } from "./Function.js"
 import { SingleShotGen } from "./internal/singleShotGen.js"
@@ -37,7 +39,7 @@ export type runSymbol = typeof runSymbol
 /**
  * @since 3.2.0
  */
-export interface Micro<out A, out E = never, out R = never> extends Pipeable {
+export interface Micro<out A, out E = never, out R = never> extends Effect<A, E, R> {
   readonly [TypeId]: {
     _A: Covariant<A>
     _E: Covariant<E>
@@ -237,14 +239,13 @@ export interface Handle<A, E = never> {
 
 // Micro
 
-const MicroProto: Omit<Micro<any, any, any>, runSymbol> = {
+const MicroProto = {
+  ...Effectable.EffectPrototype,
+  _op: "Micro",
   [TypeId]: {
     _A: identity,
     _E: identity,
     _R: identity
-  },
-  pipe() {
-    return pipeArguments(this, arguments)
   },
   [Symbol.iterator]() {
     return new SingleShotGen(new YieldWrap(this)) as any
@@ -323,6 +324,14 @@ export const succeed = <A>(a: A): Micro<A> =>
 export const fail = <E>(e: E): Micro<never, E> =>
   make(function(_env, onResult) {
     onResult(Either.left(FailureExpected(e)))
+  })
+
+/**
+ * @since 3.2.0
+ */
+export const die = (defect: unknown): Micro<never> =>
+  make(function(_env, onResult) {
+    onResult(Either.left(FailureUnexpected(defect)))
   })
 
 /**
@@ -714,6 +723,22 @@ export const interruptible = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, R> =>
     }
     run(self, newEnv, onResult)
   })
+
+/**
+ * @since 3.2.0
+ */
+export const provideContext: {
+  <XR>(context: Context.Context<XR>): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, Exclude<R, XR>>
+  <A, E, R, XR>(self: Micro<A, E, R>, context: Context.Context<XR>): Micro<A, E, Exclude<R, XR>>
+} = dual(
+  2,
+  <A, E, R, XR>(self: Micro<A, E, R>, provided: Context.Context<XR>): Micro<A, E, Exclude<R, XR>> =>
+    make(function(env, onResult) {
+      const context = envGet(env, currentContext)
+      const nextEnv = envSet(env, currentContext, Context.merge(context, provided))
+      run(self, nextEnv, onResult)
+    })
+)
 
 /**
  * @since 3.2.0

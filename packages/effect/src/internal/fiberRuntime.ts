@@ -28,6 +28,7 @@ import * as Inspectable from "../Inspectable.js"
 import type { Logger } from "../Logger.js"
 import * as LogLevel from "../LogLevel.js"
 import type * as MetricLabel from "../MetricLabel.js"
+import * as Micro from "../Micro.js"
 import * as MRef from "../MutableRef.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
@@ -1071,6 +1072,26 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
 
   ["Some"](op: core.Primitive & { _op: "Some" }) {
     return core.exitSucceed(op.value)
+  }
+
+  ["Micro"](op: Micro.Micro<any, any, never> & { _op: "Micro" }) {
+    return core.flatMap(
+      core.fiberRefGet(core.currentContext),
+      (context) =>
+        core.async<any, any>((resume) => {
+          const handle = Micro.runFork(Micro.provideContext(op, context))
+          handle.addObserver(function(result) {
+            if (result._tag === "Right") {
+              resume(core.exitSucceed(result.right))
+            } else if (result.left._tag === "Expected") {
+              resume(core.fail(result.left.error))
+            } else {
+              resume(core.die(result.left.defect))
+            }
+          })
+          return handle.abort
+        })
+    )
   }
 
   [OpCodes.OP_SYNC](op: core.Primitive & { _op: OpCodes.OP_SYNC }) {

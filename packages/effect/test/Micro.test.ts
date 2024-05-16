@@ -1,5 +1,7 @@
-import { Context, Either, Micro, Option } from "effect"
+import { Cause, Context, Effect, Either, Micro, Option } from "effect"
 import { assert, describe, it } from "effect-test/utils/extend"
+
+class ATag extends Context.Tag("ATag")<ATag, "A">() {}
 
 describe("Smol", () => {
   it("runPromise", async () => {
@@ -61,8 +63,6 @@ describe("Smol", () => {
     assert.isTrue(use)
     assert.isTrue(release)
   })
-
-  class ATag extends Context.Tag("ATag")<ATag, "A">() {}
 
   it("Context.Tag", () =>
     ATag.pipe(
@@ -194,8 +194,42 @@ describe("Smol", () => {
             })
         ).pipe(Micro.scoped, Micro.fork)
         handle.unsafeAbort()
-        console.log(yield* handle.await)
+        yield* handle.await
         assert.strictEqual(release, true)
       }).pipe(Micro.runPromise))
+  })
+
+  describe.only("valid Effect", () => {
+    it.effect("success", () =>
+      Effect.gen(function*(_) {
+        const result = yield* Micro.succeed(123)
+        assert.strictEqual(result, 123)
+      }))
+
+    it.effect("failure", () =>
+      Effect.gen(function*(_) {
+        const result = yield* Micro.fail("boom").pipe(
+          Effect.sandbox,
+          Effect.flip
+        )
+        assert.deepStrictEqual(result, Cause.fail("boom"))
+      }))
+
+    it.effect("defects", () =>
+      Effect.gen(function*(_) {
+        const result = yield* Micro.die("boom").pipe(
+          Effect.sandbox,
+          Effect.flip
+        )
+        assert.deepStrictEqual(result, Cause.die("boom"))
+      }))
+
+    it.effect("context", () =>
+      Effect.gen(function*(_) {
+        const result = yield* ATag.pipe(
+          Micro.map((_) => _)
+        )
+        assert.deepStrictEqual(result, "A")
+      }).pipe(Effect.provideService(ATag, "A")))
   })
 })
