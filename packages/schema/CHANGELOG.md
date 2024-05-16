@@ -1,5 +1,63 @@
 # @effect/schema
 
+## 0.67.4
+
+### Patch Changes
+
+- [#2756](https://github.com/Effect-TS/effect/pull/2756) [`ee08593`](https://github.com/Effect-TS/effect/commit/ee0859398ecc2589cab0d017bef6a17e00c34dfd) Thanks [@gcanti](https://github.com/gcanti)! - Improving Predicate Usability of `Schema.is`
+
+  Before this update, the `Schema.is(mySchema)` function couldn't be easily used as a predicate or refinement in common array methods like `filter` or `find`. This was because the function's signature was:
+
+  ```ts
+  (value: unknown, overrideOptions?: AST.ParseOptions) => value is A
+  ```
+
+  Meanwhile, the function expected by methods like `filter` has the following signature:
+
+  ```ts
+  (value: unknown, index: number) => value is A
+  ```
+
+  To make `Schema.is` compatible with these array methods, we've adjusted the function's signature to accept `number` as a possible value for the second parameter, in which case it is ignored:
+
+  ```diff
+  -(value: unknown, overrideOptions?: AST.ParseOptions) => value is A
+  +(value: unknown, overrideOptions?: AST.ParseOptions | number) => value is A
+  ```
+
+  Here's a practical example comparing the behavior before and after the change:
+
+  **Before:**
+
+  ```ts
+  import { Schema } from "@effect/schema";
+
+  declare const array: Array<string | number>;
+
+  /*
+  Throws an error:
+  No overload matches this call.
+  ...
+  Types of parameters 'overrideOptions' and 'index' are incompatible.
+  */
+  const strings = array.filter(Schema.is(Schema.String));
+  ```
+
+  **Now:**
+
+  ```ts
+  import { Schema } from "@effect/schema";
+
+  declare const array: Array<string | number>;
+
+  // const strings: string[]
+  const strings = array.filter(Schema.is(Schema.String));
+  ```
+
+  Note that the result has been correctly narrowed to `string[]`.
+
+- [#2746](https://github.com/Effect-TS/effect/pull/2746) [`da6d7d8`](https://github.com/Effect-TS/effect/commit/da6d7d845246e9d04631d64fa7694944b6010d09) Thanks [@gcanti](https://github.com/gcanti)! - `pick`: do not return a `ComposeTransformation` if none of the picked keys are related to a property signature transformation, closes #2743
+
 ## 0.67.3
 
 ### Patch Changes

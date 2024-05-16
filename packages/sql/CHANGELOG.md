@@ -1,5 +1,15 @@
 # @effect/sql
 
+## 0.2.9
+
+### Patch Changes
+
+- [#2712](https://github.com/Effect-TS/effect/pull/2712) [`01b4553`](https://github.com/Effect-TS/effect/commit/01b4553df4d2a7c5824a112f405a49f8fcfebbf4) Thanks [@vecerek](https://github.com/vecerek)! - Use constants from `@opentelemetry/semantic-conventions` as span attribute names instead of hard-coded values
+
+- Updated dependencies [[`ee08593`](https://github.com/Effect-TS/effect/commit/ee0859398ecc2589cab0d017bef6a17e00c34dfd), [`da6d7d8`](https://github.com/Effect-TS/effect/commit/da6d7d845246e9d04631d64fa7694944b6010d09)]:
+  - @effect/schema@0.67.4
+  - @effect/platform@0.53.7
+
 ## 0.2.8
 
 ### Patch Changes
