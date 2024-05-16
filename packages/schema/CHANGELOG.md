@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.67.5
+
+### Patch Changes
+
+- [#2757](https://github.com/Effect-TS/effect/pull/2757) [`9c514de`](https://github.com/Effect-TS/effect/commit/9c514de28152696edff008324d2d7e67d55afd56) Thanks [@fubhy](https://github.com/fubhy)! - Re-publishing due to empty root entrypoint
+
 ## 0.67.4
 
 ### Patch Changes

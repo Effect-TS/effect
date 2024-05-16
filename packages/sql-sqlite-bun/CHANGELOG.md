@@ -1,5 +1,13 @@
 # @effect/sql-sqlite-bun
 
+## 0.2.10
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/platform@0.53.8
+  - @effect/sql@0.2.10
+
 ## 0.2.9
 
 ### Patch Changes
