@@ -2,4 +2,4 @@
 "@effect/platform-browser": patch
 ---
 
-wrap Geolocation API
+add Geolocation module to @effect/platform-browser

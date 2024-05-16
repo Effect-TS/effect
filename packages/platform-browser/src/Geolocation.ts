@@ -1,61 +1,133 @@
 /**
  * @since 1.0.0
  */
-import type { Tag } from "effect/Context"
-import type { Effect } from "effect/Effect"
-import type { Either } from "effect/Either"
-import type { Layer } from "effect/Layer"
-import type { Stream } from "effect/Stream"
-import * as internal from "./internal/geolocation.js"
+import { RefailError } from "@effect/platform/Error"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Either from "effect/Either"
+import { identity } from "effect/Function"
+import * as Layer from "effect/Layer"
+import * as Queue from "effect/Queue"
+import * as Stream from "effect/Stream"
 
 /**
  * @since 1.0.0
- * @category interface
+ * @category type ids
+ */
+export const TypeId: unique symbol = Symbol.for("@effect/platform-browser/Geolocation")
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export type TypeId = typeof TypeId
+
+/**
+ * @since 1.0.0
+ * @category models
  */
 export interface Geolocation {
+  readonly [TypeId]: TypeId
   readonly getCurrentPosition: (
-    options?: PositionOptions
-  ) => Effect<GeolocationPosition, GeolocationPositionError>
+    options?: PositionOptions | undefined
+  ) => Effect.Effect<GeolocationPosition, GeolocationError>
   readonly watchPosition: (
-    options?: PositionOptions
-  ) => Stream<
-    Either<GeolocationPosition, GeolocationTimeoutError | GeolocationPositionUnavailableError>,
-    GeolocationPermissionDeniedError
-  >
+    options?:
+      | PositionOptions & {
+        readonly bufferSize?: number | undefined
+      }
+      | undefined
+  ) => Stream.Stream<GeolocationPosition, GeolocationError>
 }
 
 /**
  * @since 1.0.0
- * @category tag
+ * @category tags
  */
-export const Geolocation: Tag<Geolocation, Geolocation> = internal.tag
-
-/**
- * A layer that directly interfaces with the navigator.geolocation api
- *
- * @since 1.0.0
- * @category layer
- */
-export const layer: Layer<Geolocation> = internal.layer
+export const Geolocation: Context.Tag<Geolocation, Geolocation> = Context.GenericTag<Geolocation>(
+  "@effect/platform-browser/Geolocation"
+)
 
 /**
  * @since 1.0.0
- * @category type
+ * @category type ids
  */
-export interface GeolocationPermissionDeniedError extends GeolocationPositionError {
-  code: GeolocationPositionError["PERMISSION_DENIED"]
-}
+export const ErrorTypeId: unique symbol = Symbol.for("@effect/platform-browser/Geolocation/GeolocationError")
+
 /**
  * @since 1.0.0
- * @category type
+ * @category type ids
  */
-export interface GeolocationPositionUnavailableError extends GeolocationPositionError {
-  code: GeolocationPositionError["POSITION_UNAVAILABLE"]
-}
+export type ErrorTypeId = typeof ErrorTypeId
+
 /**
  * @since 1.0.0
- * @category type
+ * @category errors
  */
-export interface GeolocationTimeoutError extends GeolocationPositionError {
-  code: GeolocationPositionError["TIMEOUT"]
-}
+export class GeolocationError extends RefailError(ErrorTypeId, "GeolocationError")<{
+  readonly reason: "PositionUnavailable" | "PermissionDenied" | "Timeout"
+}> {}
+
+const makeQueue = (
+  options:
+    | PositionOptions & {
+      readonly bufferSize?: number | undefined
+    }
+    | undefined
+) =>
+  Queue.sliding<Either.Either<GeolocationPosition, GeolocationError>>(options?.bufferSize ?? 16).pipe(
+    Effect.tap((queue) =>
+      Effect.acquireRelease(
+        Effect.sync(() =>
+          navigator.geolocation.watchPosition(
+            (position) => queue.unsafeOffer(Either.right(position)),
+            (error) => {
+              if (error.code === error.PERMISSION_DENIED) {
+                queue.unsafeOffer(Either.left(new GeolocationError({ reason: "PermissionDenied", error })))
+              } else if (error.code === error.TIMEOUT) {
+                queue.unsafeOffer(Either.left(new GeolocationError({ reason: "Timeout", error })))
+              }
+            },
+            options
+          )
+        ),
+        (handleId) => Effect.sync(() => navigator.geolocation.clearWatch(handleId))
+      )
+    )
+  )
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layer: Layer.Layer<Geolocation> = Layer.succeed(
+  Geolocation,
+  Geolocation.of({
+    [TypeId]: TypeId,
+    getCurrentPosition: (options) =>
+      makeQueue(options).pipe(
+        Effect.flatMap(Queue.take),
+        Effect.flatten,
+        Effect.scoped
+      ),
+    watchPosition: (options) =>
+      makeQueue(options).pipe(
+        Effect.map(Stream.fromQueue),
+        Stream.unwrapScoped,
+        Stream.mapEffect(identity)
+      )
+  })
+)
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const watchPosition = (
+  options?:
+    | PositionOptions & {
+      readonly bufferSize?: number | undefined
+    }
+    | undefined
+): Stream.Stream<GeolocationPosition, GeolocationError, Geolocation> =>
+  Stream.unwrap(Effect.map(Geolocation, (geolocation) => geolocation.watchPosition(options)))
