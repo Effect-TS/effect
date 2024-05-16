@@ -65,7 +65,7 @@ describe("Smol", () => {
   })
 
   it("Context.Tag", () =>
-    ATag.pipe(
+    Micro.service(ATag).pipe(
       Micro.tap((_) => Micro.sync(() => assert.strictEqual(_, "A"))),
       Micro.provideService(ATag, "A"),
       Micro.runPromise
@@ -73,12 +73,14 @@ describe("Smol", () => {
 
   it("Option", () =>
     Option.some("A").pipe(
-      Micro.tap((_) => Micro.sync(() => assert.strictEqual(_, "A"))),
+      Micro.fromOption,
+      Micro.tap((_) => assert.strictEqual(_, "A")),
       Micro.runPromise
     ))
 
   it("Either", () =>
     Either.right("A").pipe(
+      Micro.fromEither,
       Micro.tap((_) => Micro.sync(() => assert.strictEqual(_, "A"))),
       Micro.runPromise
     ))
@@ -199,7 +201,7 @@ describe("Smol", () => {
       }).pipe(Micro.runPromise))
   })
 
-  describe.only("valid Effect", () => {
+  describe("valid Effect", () => {
     it.effect("success", () =>
       Effect.gen(function*(_) {
         const result = yield* Micro.succeed(123)
@@ -227,6 +229,7 @@ describe("Smol", () => {
     it.effect("context", () =>
       Effect.gen(function*(_) {
         const result = yield* ATag.pipe(
+          Micro.service,
           Micro.map((_) => _)
         )
         assert.deepStrictEqual(result, "A")

@@ -252,28 +252,6 @@ const MicroProto = {
   }
 }
 
-const TagTypeId = Symbol.for("effect/Context/Tag")
-const OptionTypeId = Symbol.for("effect/Option")
-
-function run<A, E, R>(self: Micro<A, E, R>, env: Env<R>, onResult: (result: Result<any, any>) => void) {
-  self[runSymbol](env, function(result) {
-    if (TagTypeId in result) {
-      // handle tags
-      const context = envGet(env, currentContext)
-      onResult(Either.right(Context.unsafeGet(context, result as any)))
-    } else if (OptionTypeId in result) {
-      // Option
-      const o: any = result
-      onResult(o._tag === "Some" ? Either.right(o.value) : Either.left(FailureExpected(Option.none())))
-    } else if (result._tag === "Left" && !(FailureTypeId in result.left)) {
-      // Either.Left
-      onResult(Either.left(FailureExpected(result.left)))
-    } else {
-      onResult(result)
-    }
-  })
-}
-
 const unsafeMake = <A, E, R>(
   run: (env: Env<R>, onResult: (result: Either.Either<A, Failure<E>>) => void) => void
 ): Micro<A, E, R> => {
@@ -361,12 +339,35 @@ export const fromResult = <A, E>(self: Result<A, E>): Micro<A, E> =>
 /**
  * @since 3.2.0
  */
+export const service = <I, S>(tag: Context.Tag<I, S>): Micro<S, never, I> =>
+  make(function(env, onResult) {
+    onResult(Either.right(Context.get(envGet(env, currentContext) as Context.Context<I>, tag as any) as S))
+  })
+
+/**
+ * @since 3.2.0
+ */
+export const fromOption = <A>(option: Option.Option<A>): Micro<A, Option.None<never>> =>
+  make(function(_env, onResult) {
+    onResult(option._tag === "Some" ? Either.right(option.value) : Either.left(FailureExpected(Option.none())) as any)
+  })
+
+/**
+ * @since 3.2.0
+ */
+export const fromEither = <R, L>(either: Either.Either<R, L>): Micro<R, L> =>
+  make(function(_env, onResult) {
+    onResult(either._tag === "Right" ? either : Either.left(FailureExpected(either.left)) as any)
+  })
+
+/**
+ * @since 3.2.0
+ */
 export const flatten = <A, E, R, E2, R2>(self: Micro<Micro<A, E, R>, E2, R2>): Micro<A, E | E2, R | R2> =>
   make(function(env, onResult) {
-    run(
-      self,
+    self[runSymbol](
       env,
-      (result) => result._tag === "Left" ? onResult(result as any) : run(result.right, env, onResult)
+      (result) => result._tag === "Left" ? onResult(result as any) : result.right[runSymbol](env, onResult)
     )
   })
 
@@ -375,7 +376,7 @@ export const flatten = <A, E, R, E2, R2>(self: Micro<Micro<A, E, R>, E2, R2>): M
  */
 export const suspend = <A, E, R>(evaluate: LazyArg<Micro<A, E, R>>): Micro<A, E, R> =>
   make(function(env, onResult) {
-    run(evaluate(), env, onResult)
+    evaluate()[runSymbol](env, onResult)
   })
 
 const void_: Micro<void> = succeed(void 0)
@@ -394,7 +395,7 @@ export const map: {
   <A, E, R, B>(self: Micro<A, E, R>, f: (a: NoInfer<A>) => B): Micro<B, E, R>
 } = dual(2, <A, E, R, B>(self: Micro<A, E, R>, f: (a: A) => B): Micro<B, E, R> =>
   make(function(env, onResult) {
-    run(self, env, function(result) {
+    self[runSymbol](env, function(result) {
       onResult(Either.map(result, f))
     })
   }))
@@ -417,11 +418,11 @@ export const flatMap: {
   2,
   <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: A) => Micro<B, E2, R2>): Micro<B, E | E2, R | R2> =>
     make(function(env, onResult) {
-      run(self, env, function(result) {
+      self[runSymbol](env, function(result) {
         if (result._tag === "Left") {
           return onResult(result as any)
         }
-        run(f(result.right), env, onResult)
+        f(result.right)[runSymbol](env, onResult)
       })
     })
 )
@@ -456,13 +457,13 @@ export const andThen: {
   2,
   <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: any): Micro<B, E | E2, R | R2> =>
     make(function(env, onResult) {
-      run(self, env, function(result) {
+      self[runSymbol](env, function(result) {
         if (result._tag === "Left") {
           return onResult(result as any)
         }
         const value = isMicro(f) ? f : typeof f === "function" ? f(result.right) : f
         if (isMicro(value)) {
-          run(value, env, onResult)
+          value[runSymbol](env, onResult)
         } else {
           onResult(Either.right(value))
         }
@@ -500,13 +501,13 @@ export const tap: {
   2,
   <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: A) => Micro<B, E2, R2>): Micro<A, E | E2, R | R2> =>
     make(function(env, onResult) {
-      run(self, env, function(selfResult) {
+      self[runSymbol](env, function(selfResult) {
         if (selfResult._tag === "Left") {
           return onResult(selfResult as any)
         }
         const value = isMicro(f) ? f : typeof f === "function" ? f(selfResult.right) : f
         if (isMicro(value)) {
-          run(value, env, function(tapResult) {
+          value[runSymbol](env, function(tapResult) {
             if (tapResult._tag === "Left") {
               return onResult(tapResult)
             }
@@ -534,11 +535,11 @@ export const zipRight: {
   2,
   <A, E, R, B, E2, R2>(self: Micro<A, E, R>, that: Micro<B, E2, R2>): Micro<B, E | E2, R | R2> =>
     make(function(env, onResult) {
-      run(self, env, function(result) {
+      self[runSymbol](env, function(result) {
         if (result._tag === "Left") {
           return onResult(result as any)
         }
-        run(that, env, onResult)
+        that[runSymbol](env, onResult)
       })
     })
 )
@@ -611,7 +612,7 @@ export const delay: {
  */
 export const asResult = <A, E, R>(self: Micro<A, E, R>): Micro<Result<A, E>, never, R> =>
   make(function(env, onResult) {
-    run(self, env, function(result) {
+    self[runSymbol](env, function(result) {
       onResult(Either.right(result))
     })
   })
@@ -666,7 +667,7 @@ export const locally: {
 } = dual(
   3,
   <XA, E, R, A>(self: Micro<XA, E, R>, fiberRef: EnvRef<A>, value: A): Micro<XA, E, R> =>
-    make((env, onResult) => run(self, envSet(env, fiberRef, value), onResult))
+    make((env, onResult) => self[runSymbol](envSet(env, fiberRef, value), onResult))
 )
 
 /**
@@ -684,7 +685,7 @@ export const uninterruptible = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, R> =
       env[currentAbortSignal.key] = new AbortController().signal
       return env
     })
-    run(self, nextEnv, onResult)
+    self[runSymbol](nextEnv, onResult)
   })
 
 /**
@@ -703,7 +704,7 @@ export const uninterruptibleMask = <A, E, R>(
         return env
       }) :
       env
-    run(effect, nextEnv, onResult)
+    effect[runSymbol](nextEnv, onResult)
   })
 
 /**
@@ -721,7 +722,7 @@ export const interruptible = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, R> =>
         return env
       })
     }
-    run(self, newEnv, onResult)
+    self[runSymbol](newEnv, onResult)
   })
 
 /**
@@ -736,7 +737,7 @@ export const provideContext: {
     make(function(env, onResult) {
       const context = envGet(env, currentContext)
       const nextEnv = envSet(env, currentContext, Context.merge(context, provided))
-      run(self, nextEnv, onResult)
+      self[runSymbol](nextEnv, onResult)
     })
 )
 
@@ -752,7 +753,7 @@ export const provideService: {
     make(function(env, onResult) {
       const context = envGet(env, currentContext)
       const nextEnv = envSet(env, currentContext, Context.add(context, tag, service))
-      run(self, nextEnv, onResult)
+      self[runSymbol](nextEnv, onResult)
     })
 )
 
@@ -823,16 +824,15 @@ export const forEach: {
   make(function(env, onResult) {
     const concurrency = options?.concurrency === "inherit" ? envGet(env, currentConcurrency) : options?.concurrency ?? 1
     if (concurrency === "unbounded" || concurrency > 1) {
-      run(
-        forEachConcurrent(iterable, f, {
-          discard: options?.discard,
-          concurrency
-        }),
+      forEachConcurrent(iterable, f, {
+        discard: options?.discard,
+        concurrency
+      })[runSymbol](
         env,
         onResult
       )
     } else {
-      run(unsafeForEachSequential(iterable, f, options), env, onResult)
+      unsafeForEachSequential(iterable, f, options)[runSymbol](env, onResult)
     }
   })
 
@@ -856,7 +856,7 @@ const unsafeForEachSequential = <
         let complete = false
         const current = index++
         try {
-          run(f(items[current]), env, function(result) {
+          f(items[current])[runSymbol](env, function(result) {
             complete = true
             if (result._tag === "Left") {
               index = length
@@ -922,7 +922,7 @@ const forEachConcurrent = <
         index++
         inProgress++
         try {
-          run(f(item), envWithSignal, function(result) {
+          f(item)[runSymbol](envWithSignal, function(result) {
             doneCount++
             inProgress--
             if (result._tag === "Left") {
@@ -1054,7 +1054,7 @@ export const fork = <A, E, R>(self: Micro<A, E, R>): Micro<Handle<A, E>, never, 
       return map
     })
     Promise.resolve().then(() => {
-      run(self, nextEnv, (result) => {
+      self[runSymbol](nextEnv, (result) => {
         handle.emit(result)
       })
       onResult(Either.right(handle))
@@ -1074,7 +1074,7 @@ export const forkDaemon = <A, E, R>(self: Micro<A, E, R>): Micro<Handle<A, E>, n
       return map
     })
     Promise.resolve().then(() => {
-      run(self, nextEnv, (result) => {
+      self[runSymbol](nextEnv, (result) => {
         handle.emit(result)
       })
       onResult(Either.right(handle))
@@ -1091,7 +1091,7 @@ export const runFork = <A, E>(effect: Micro<A, E>): Handle<A, E> => {
   refs[currentAbortSignal.key] = controller.signal
   const env = makeEnv(refs)
   const handle = new HandleImpl<A, E>(controller.signal, controller)
-  run(effect, envSet(env, currentAbortSignal, handle._controller.signal), (result) => {
+  effect[runSymbol](envSet(env, currentAbortSignal, handle._controller.signal), (result) => {
     handle.emit(result)
   })
   return handle
@@ -1237,7 +1237,7 @@ export const acquireRelease = <A, E, R>(
   release: (a: A, result: Result<any, any>) => Micro<void>
 ): Micro<A, E, R | Scope> =>
   uninterruptible(flatMap(
-    Scope,
+    service(Scope),
     (scope) =>
       tap(
         acquire,

@@ -3,7 +3,6 @@ import type * as Effect from "../Effect.js"
 import type * as Effectable from "../Effectable.js"
 import * as Equal from "../Equal.js"
 import * as Hash from "../Hash.js"
-import type * as Micro from "../Micro.js"
 import { pipeArguments } from "../Pipeable.js"
 import type * as Sink from "../Sink.js"
 import type * as Stream from "../Stream.js"
@@ -24,12 +23,6 @@ export const SinkTypeId: Sink.SinkTypeId = Symbol.for("effect/Sink") as Sink.Sin
 export const ChannelTypeId: Channel.ChannelTypeId = Symbol.for("effect/Channel") as Channel.ChannelTypeId
 
 /** @internal */
-export const MicroTypeId: Micro.TypeId = Symbol.for("effect/Micro") as Micro.TypeId
-
-/** @internal */
-export const MicroRunSymblo: Micro.runSymbol = Symbol.for("effect/Micro/runSymbol") as Micro.runSymbol
-
-/** @internal */
 export const effectVariance = {
   /* c8 ignore next */
   _R: (_: never) => _,
@@ -39,16 +32,6 @@ export const effectVariance = {
   _A: (_: never) => _,
 
   _V: version.getCurrentVersion()
-}
-
-/** @internal */
-export const smolVariance = {
-  /* c8 ignore next */
-  _R: (_: never) => _,
-  /* c8 ignore next */
-  _E: (_: never) => _,
-  /* c8 ignore next */
-  _A: (_: never) => _
 }
 
 const sinkVariance = {

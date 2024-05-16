@@ -7,7 +7,7 @@ import * as Hash from "../Hash.js"
 import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import type * as Option from "../Option.js"
 import { hasProperty } from "../Predicate.js"
-import { EffectPrototype, MicroRunSymblo, MicroTypeId, smolVariance } from "./effectable.js"
+import { EffectPrototype } from "./effectable.js"
 
 const TypeId: Option.TypeId = Symbol.for("effect/Option") as Option.TypeId
 
@@ -21,10 +21,6 @@ const CommonProto = {
   },
   toString<A>(this: Option.Option<A>) {
     return format(this.toJSON())
-  },
-  [MicroTypeId]: smolVariance,
-  [MicroRunSymblo](env: any, onResult: any) {
-    onResult(this)
   }
 }
 

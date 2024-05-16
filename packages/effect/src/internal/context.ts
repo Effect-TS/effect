@@ -1,13 +1,13 @@
 import type * as C from "../Context.js"
 import * as Equal from "../Equal.js"
-import { dual, identity } from "../Function.js"
+import { dual } from "../Function.js"
 import * as Hash from "../Hash.js"
 import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import type * as O from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import type * as STM from "../STM.js"
-import { EffectPrototype, effectVariance, MicroRunSymblo, MicroTypeId } from "./effectable.js"
+import { EffectPrototype, effectVariance } from "./effectable.js"
 import * as option from "./option.js"
 
 /** @internal */
@@ -52,14 +52,6 @@ export const TagProto: any = {
     self: Service
   ): C.Context<Identifier> {
     return make(this, self)
-  },
-  [MicroTypeId]: {
-    _A: identity,
-    _E: identity,
-    _R: identity
-  },
-  [MicroRunSymblo](env: any, onResult: any) {
-    onResult(this)
   }
 }
 
