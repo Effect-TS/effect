@@ -155,7 +155,7 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
         const fiber = run(Effect.provideService(handled, ServerRequest.ServerRequest, req))
         request.signal.addEventListener("abort", () => {
           fiber.unsafeInterruptAsFork(ServerError.clientAbortFiberId)
-        })
+        }, { once: true })
       })
   }
 }

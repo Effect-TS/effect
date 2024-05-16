@@ -47,7 +47,7 @@ describe("Effect", () => {
     const effect = Effect.tryPromise<void>((signal) => {
       signal.addEventListener("abort", () => {
         aborted = true
-      })
+      }, { once: true })
       return new Promise((resolve) => {
         setTimeout(() => {
           resolve()
@@ -70,7 +70,7 @@ describe("Effect", () => {
       try: (signal) => {
         signal.addEventListener("abort", () => {
           aborted = true
-        })
+        }, { once: true })
         return new Promise((resolve) => {
           setTimeout(() => {
             resolve()
