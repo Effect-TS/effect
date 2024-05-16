@@ -1,5 +1,12 @@
 # @effect/platform-browser
 
+## 0.33.23
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/platform@0.53.8
+
 ## 0.33.22
 
 ### Patch Changes
