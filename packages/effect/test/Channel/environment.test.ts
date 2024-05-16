@@ -1,10 +1,10 @@
-import * as it from "effect-test/utils/extend"
 import * as Channel from "effect/Channel"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
+import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 const NumberServiceSymbolKey = "effect/test/NumberService"

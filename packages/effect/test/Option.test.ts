@@ -1,4 +1,3 @@
-import * as Util from "effect-test/util"
 import * as Chunk from "effect/Chunk"
 import * as E from "effect/Either"
 import * as Equal from "effect/Equal"
@@ -7,6 +6,7 @@ import * as Hash from "effect/Hash"
 import * as N from "effect/Number"
 import * as Option from "effect/Option"
 import * as S from "effect/String"
+import * as Util from "effect/test/util"
 import { assert, assertType, describe, expect, it } from "vitest"
 
 const p = (n: number): boolean => n > 2

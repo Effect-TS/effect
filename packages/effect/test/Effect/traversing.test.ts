@@ -1,4 +1,3 @@
-import * as it from "effect-test/utils/extend"
 import * as Array from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
@@ -9,6 +8,7 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { constVoid, identity, pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
+import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 describe("Effect", () => {

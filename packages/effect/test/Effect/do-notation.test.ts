@@ -1,7 +1,7 @@
-import * as Util from "effect-test/util"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
+import * as Util from "effect/test/util"
 import { describe, it } from "vitest"
 
 const expectRight = <R, L>(e: Effect.Effect<R, L>, expected: R) => {

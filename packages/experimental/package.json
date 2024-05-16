@@ -76,7 +76,8 @@
       "include": [
         "*.ts",
         "DevTools/*.ts",
-        "Socket/*.ts",
+        "Machine/*.ts",
+        "Persistence/*.ts",
         "SocketServer/*.ts"
       ]
     }

@@ -1,8 +1,8 @@
-import { deepStrictEqual } from "effect-test/util"
 import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as HashSet from "effect/HashSet"
+import { deepStrictEqual } from "effect/test/util"
 import { assert, describe, expect, it } from "vitest"
 
 class Value implements Equal.Equal {
