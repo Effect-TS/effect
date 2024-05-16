@@ -10,9 +10,9 @@
 import type { Equal } from "./Equal.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as internal from "./internal/context.js"
+import type { Micro } from "./Micro.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
-import type { Smol } from "./Smol.js"
 import type * as Types from "./Types.js"
 import type * as Unify from "./Unify.js"
 
@@ -28,7 +28,7 @@ export type TagTypeId = typeof TagTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Tag<in out Id, in out Value> extends Pipeable, Inspectable, Smol<Value, never, Id> {
+export interface Tag<in out Id, in out Value> extends Pipeable, Inspectable, Micro<Value, never, Id> {
   readonly _tag: "Tag"
   readonly _op: "Tag"
   readonly [TagTypeId]: {

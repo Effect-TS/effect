@@ -9,7 +9,7 @@ import * as Hash from "../Hash.js"
 import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import type { Option } from "../Option.js"
 import { hasProperty } from "../Predicate.js"
-import { EffectPrototype, SmolRunSymbol, SmolTypeId, smolVariance } from "./effectable.js"
+import { EffectPrototype, MicroRunSymblo, MicroTypeId, smolVariance } from "./effectable.js"
 import * as option from "./option.js"
 
 /**
@@ -28,7 +28,7 @@ const CommonProto = {
   toString<L, R>(this: Either.Left<L, R>) {
     return format(this.toJSON())
   },
-  [SmolTypeId]: smolVariance
+  [MicroTypeId]: smolVariance
 }
 
 const RightProto = Object.assign(Object.create(CommonProto), {
@@ -47,7 +47,7 @@ const RightProto = Object.assign(Object.create(CommonProto), {
       right: toJSON(this.right)
     }
   },
-  [SmolRunSymbol](_env: any, onResult: any) {
+  [MicroRunSymblo](_env: any, onResult: any) {
     onResult(this)
   }
 })
@@ -68,7 +68,7 @@ const LeftProto = Object.assign(Object.create(CommonProto), {
       left: toJSON(this.left)
     }
   },
-  [SmolRunSymbol](_env: any, onResult: any) {
+  [MicroRunSymblo](_env: any, onResult: any) {
     onResult(left(this))
   }
 })

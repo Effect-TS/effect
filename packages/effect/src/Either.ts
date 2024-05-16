@@ -9,11 +9,11 @@ import type { TypeLambda } from "./HKT.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as doNotation from "./internal/doNotation.js"
 import * as either from "./internal/either.js"
+import type { Micro } from "./Micro.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import { isFunction } from "./Predicate.js"
-import type { Smol } from "./Smol.js"
 import type { Covariant, NoInfer, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
 import * as Gen from "./Utils.js"
@@ -40,7 +40,7 @@ export type TypeId = typeof TypeId
  * @category models
  * @since 2.0.0
  */
-export interface Left<out L, out R> extends Pipeable, Inspectable, Smol<R, L> {
+export interface Left<out L, out R> extends Pipeable, Inspectable, Micro<R, L> {
   readonly _tag: "Left"
   readonly _op: "Left"
   readonly left: L
@@ -57,7 +57,7 @@ export interface Left<out L, out R> extends Pipeable, Inspectable, Smol<R, L> {
  * @category models
  * @since 2.0.0
  */
-export interface Right<out L, out R> extends Pipeable, Inspectable, Smol<R, L> {
+export interface Right<out L, out R> extends Pipeable, Inspectable, Micro<R, L> {
   readonly _tag: "Right"
   readonly _op: "Right"
   readonly right: R

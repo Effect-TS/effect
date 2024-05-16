@@ -3,9 +3,9 @@ import type * as Effect from "../Effect.js"
 import type * as Effectable from "../Effectable.js"
 import * as Equal from "../Equal.js"
 import * as Hash from "../Hash.js"
+import type * as Micro from "../Micro.js"
 import { pipeArguments } from "../Pipeable.js"
 import type * as Sink from "../Sink.js"
-import type * as Smol from "../Smol.js"
 import type * as Stream from "../Stream.js"
 import { SingleShotGen, YieldWrap } from "../Utils.js"
 import * as OpCodes from "./opCodes/effect.js"
@@ -24,10 +24,10 @@ export const SinkTypeId: Sink.SinkTypeId = Symbol.for("effect/Sink") as Sink.Sin
 export const ChannelTypeId: Channel.ChannelTypeId = Symbol.for("effect/Channel") as Channel.ChannelTypeId
 
 /** @internal */
-export const SmolTypeId: Smol.TypeId = Symbol.for("effect/Smol") as Smol.TypeId
+export const MicroTypeId: Micro.TypeId = Symbol.for("effect/Micro") as Micro.TypeId
 
 /** @internal */
-export const SmolRunSymbol: Smol.runSymbol = Symbol.for("effect/Smol/runSymbol") as Smol.runSymbol
+export const MicroRunSymblo: Micro.runSymbol = Symbol.for("effect/Micro/runSymbol") as Micro.runSymbol
 
 /** @internal */
 export const effectVariance = {

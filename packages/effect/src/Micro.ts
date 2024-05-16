@@ -17,7 +17,7 @@ import { YieldWrap, yieldWrapGet } from "./Utils.js"
 /**
  * @since 3.2.0
  */
-export const TypeId: unique symbol = Symbol.for("effect/Smol")
+export const TypeId: unique symbol = Symbol.for("effect/Micro")
 
 /**
  * @since 3.2.0
@@ -27,7 +27,7 @@ export type TypeId = typeof TypeId
 /**
  * @since 3.2.0
  */
-export const runSymbol: unique symbol = Symbol.for("effect/Smol/runSymbol")
+export const runSymbol: unique symbol = Symbol.for("effect/Micro/runSymbol")
 
 /**
  * @since 3.2.0
@@ -37,43 +37,43 @@ export type runSymbol = typeof runSymbol
 /**
  * @since 3.2.0
  */
-export interface Smol<out A, out E = never, out R = never> extends Pipeable {
+export interface Micro<out A, out E = never, out R = never> extends Pipeable {
   readonly [TypeId]: {
     _A: Covariant<A>
     _E: Covariant<E>
     _R: Covariant<R>
   }
   readonly [runSymbol]: (env: Env<any>, onResult: (result: Result<A, E>) => void) => void
-  [Symbol.iterator](): SmolIterator<Smol<A, E, R>>
+  [Symbol.iterator](): MicroIterator<Micro<A, E, R>>
 }
 
 /**
  * @since 3.2.0
  */
-export declare namespace Smol {
+export declare namespace Micro {
   /**
    * @since 3.2.0
    */
-  export type Success<T> = T extends Smol<infer _A, infer _E, infer _R> ? _A : never
+  export type Success<T> = T extends Micro<infer _A, infer _E, infer _R> ? _A : never
 }
 
 /**
  * @since 3.2.0
  */
-export const isSmol = (u: unknown): u is Smol<any, any, any> => typeof u === "object" && u !== null && TypeId in u
+export const isMicro = (u: unknown): u is Micro<any, any, any> => typeof u === "object" && u !== null && TypeId in u
 
 /**
  * @since 3.2.0
  * @category models
  */
-export interface SmolIterator<T extends Smol<any, any, any>> {
-  next(...args: ReadonlyArray<any>): IteratorResult<YieldWrap<T>, Smol.Success<T>>
+export interface MicroIterator<T extends Micro<any, any, any>> {
+  next(...args: ReadonlyArray<any>): IteratorResult<YieldWrap<T>, Micro.Success<T>>
 }
 
 /**
  * @since 3.2.0
  */
-export const EnvTypeId = Symbol.for("effect/Smol/Env")
+export const EnvTypeId = Symbol.for("effect/Micro/Env")
 
 /**
  * @since 3.2.0
@@ -93,7 +93,7 @@ export interface Env<R> {
 /**
  * @since 3.2.0
  */
-export const EnvRefTypeId: unique symbol = Symbol.for("effect/Smol/EnvRef")
+export const EnvRefTypeId: unique symbol = Symbol.for("effect/Micro/EnvRef")
 
 /**
  * @since 3.2.0
@@ -114,7 +114,7 @@ export interface EnvRef<A> {
 /**
  * @since 3.2.0
  */
-export const FailureTypeId = Symbol.for("effect/Smol/Failure")
+export const FailureTypeId = Symbol.for("effect/Micro/Failure")
 
 /**
  * @since 3.2.0
@@ -214,7 +214,7 @@ const ResultAborted = Either.left(FailureAborted)
 /**
  * @since 3.2.0
  */
-export const HandleTypeId: unique symbol = Symbol.for("effect/Smol/Handle")
+export const HandleTypeId: unique symbol = Symbol.for("effect/Micro/Handle")
 
 /**
  * @since 3.2.0
@@ -226,18 +226,18 @@ export type HandleTypeId = typeof HandleTypeId
  */
 export interface Handle<A, E = never> {
   readonly [HandleTypeId]: HandleTypeId
-  readonly await: Smol<Result<A, E>>
-  readonly join: Smol<A, E>
-  readonly abort: Smol<void>
+  readonly await: Micro<Result<A, E>>
+  readonly join: Micro<A, E>
+  readonly abort: Micro<void>
   readonly unsafeAbort: () => void
   readonly addObserver: (observer: (result: Result<A, E>) => void) => void
   readonly removeObserver: (observer: (result: Result<A, E>) => void) => void
   readonly unsafePoll: () => Result<A, E> | null
 }
 
-// Smol
+// Micro
 
-const SmolProto: Omit<Smol<any, any, any>, runSymbol> = {
+const MicroProto: Omit<Micro<any, any, any>, runSymbol> = {
   [TypeId]: {
     _A: identity,
     _E: identity,
@@ -254,7 +254,7 @@ const SmolProto: Omit<Smol<any, any, any>, runSymbol> = {
 const TagTypeId = Symbol.for("effect/Context/Tag")
 const OptionTypeId = Symbol.for("effect/Option")
 
-function run<A, E, R>(self: Smol<A, E, R>, env: Env<R>, onResult: (result: Result<any, any>) => void) {
+function run<A, E, R>(self: Micro<A, E, R>, env: Env<R>, onResult: (result: Result<any, any>) => void) {
   self[runSymbol](env, function(result) {
     if (TagTypeId in result) {
       // handle tags
@@ -275,15 +275,15 @@ function run<A, E, R>(self: Smol<A, E, R>, env: Env<R>, onResult: (result: Resul
 
 const unsafeMake = <A, E, R>(
   run: (env: Env<R>, onResult: (result: Either.Either<A, Failure<E>>) => void) => void
-): Smol<A, E, R> => {
-  const self = Object.create(SmolProto)
+): Micro<A, E, R> => {
+  const self = Object.create(MicroProto)
   self[runSymbol] = run
   return self
 }
 
 const unsafeMakeNoAbort = <A, E, R>(
   run: (env: Env<R>, onResult: (result: Either.Either<A, Failure<E>>) => void) => void
-): Smol<A, E, R> =>
+): Micro<A, E, R> =>
   unsafeMake(function(env, onResult) {
     try {
       run(env, onResult)
@@ -297,7 +297,7 @@ const unsafeMakeNoAbort = <A, E, R>(
  */
 export const make = <A, E, R>(
   run: (env: Env<R>, onResult: (result: Either.Either<A, Failure<E>>) => void) => void
-): Smol<A, E, R> =>
+): Micro<A, E, R> =>
   unsafeMake(function(env: Env<R>, onResult: (result: Result<A, E>) => void) {
     if (envGet(env, currentInterruptible) && envGet(env, currentAbortSignal).aborted) {
       return onResult(ResultAborted)
@@ -312,7 +312,7 @@ export const make = <A, E, R>(
 /**
  * @since 3.2.0
  */
-export const succeed = <A>(a: A): Smol<A> =>
+export const succeed = <A>(a: A): Micro<A> =>
   make(function(_env, onResult) {
     onResult(Either.right(a))
   })
@@ -320,7 +320,7 @@ export const succeed = <A>(a: A): Smol<A> =>
 /**
  * @since 3.2.0
  */
-export const fail = <E>(e: E): Smol<never, E> =>
+export const fail = <E>(e: E): Micro<never, E> =>
   make(function(_env, onResult) {
     onResult(Either.left(FailureExpected(e)))
   })
@@ -328,7 +328,7 @@ export const fail = <E>(e: E): Smol<never, E> =>
 /**
  * @since 3.2.0
  */
-export const failWith = <E>(failure: Failure<E>): Smol<never, E> =>
+export const failWith = <E>(failure: Failure<E>): Micro<never, E> =>
   make(function(_env, onResult) {
     onResult(Either.left(failure))
   })
@@ -336,7 +336,7 @@ export const failWith = <E>(failure: Failure<E>): Smol<never, E> =>
 /**
  * @since 3.2.0
  */
-export const sync = <A>(evaluate: LazyArg<A>): Smol<A> =>
+export const sync = <A>(evaluate: LazyArg<A>): Micro<A> =>
   make(function(_env, onResult) {
     onResult(Either.right(evaluate()))
   })
@@ -344,7 +344,7 @@ export const sync = <A>(evaluate: LazyArg<A>): Smol<A> =>
 /**
  * @since 3.2.0
  */
-export const fromResult = <A, E>(self: Result<A, E>): Smol<A, E> =>
+export const fromResult = <A, E>(self: Result<A, E>): Micro<A, E> =>
   make(function(_env, onResult) {
     onResult(self)
   })
@@ -352,7 +352,7 @@ export const fromResult = <A, E>(self: Result<A, E>): Smol<A, E> =>
 /**
  * @since 3.2.0
  */
-export const flatten = <A, E, R, E2, R2>(self: Smol<Smol<A, E, R>, E2, R2>): Smol<A, E | E2, R | R2> =>
+export const flatten = <A, E, R, E2, R2>(self: Micro<Micro<A, E, R>, E2, R2>): Micro<A, E | E2, R | R2> =>
   make(function(env, onResult) {
     run(
       self,
@@ -364,12 +364,12 @@ export const flatten = <A, E, R, E2, R2>(self: Smol<Smol<A, E, R>, E2, R2>): Smo
 /**
  * @since 3.2.0
  */
-export const suspend = <A, E, R>(evaluate: LazyArg<Smol<A, E, R>>): Smol<A, E, R> =>
+export const suspend = <A, E, R>(evaluate: LazyArg<Micro<A, E, R>>): Micro<A, E, R> =>
   make(function(env, onResult) {
     run(evaluate(), env, onResult)
   })
 
-const void_: Smol<void> = succeed(void 0)
+const void_: Micro<void> = succeed(void 0)
 export {
   /**
    * @since 3.2.0
@@ -381,9 +381,9 @@ export {
  * @since 3.2.0
  */
 export const map: {
-  <A, B>(f: (a: NoInfer<A>) => B): <E, R>(self: Smol<A, E, R>) => Smol<B, E, R>
-  <A, E, R, B>(self: Smol<A, E, R>, f: (a: NoInfer<A>) => B): Smol<B, E, R>
-} = dual(2, <A, E, R, B>(self: Smol<A, E, R>, f: (a: A) => B): Smol<B, E, R> =>
+  <A, B>(f: (a: NoInfer<A>) => B): <E, R>(self: Micro<A, E, R>) => Micro<B, E, R>
+  <A, E, R, B>(self: Micro<A, E, R>, f: (a: NoInfer<A>) => B): Micro<B, E, R>
+} = dual(2, <A, E, R, B>(self: Micro<A, E, R>, f: (a: A) => B): Micro<B, E, R> =>
   make(function(env, onResult) {
     run(self, env, function(result) {
       onResult(Either.map(result, f))
@@ -394,19 +394,19 @@ export const map: {
  * @since 3.2.0
  */
 export const as: {
-  <A, B>(value: B): <E, R>(self: Smol<A, E, R>) => Smol<B, E, R>
-  <A, E, R, B>(self: Smol<A, E, R>, value: B): Smol<B, E, R>
-} = dual(2, <A, E, R, B>(self: Smol<A, E, R>, value: B): Smol<B, E, R> => map(self, (_) => value))
+  <A, B>(value: B): <E, R>(self: Micro<A, E, R>) => Micro<B, E, R>
+  <A, E, R, B>(self: Micro<A, E, R>, value: B): Micro<B, E, R>
+} = dual(2, <A, E, R, B>(self: Micro<A, E, R>, value: B): Micro<B, E, R> => map(self, (_) => value))
 
 /**
  * @since 3.2.0
  */
 export const flatMap: {
-  <A, B, E2, R2>(f: (a: NoInfer<A>) => Smol<B, E2, R2>): <E, R>(self: Smol<A, E, R>) => Smol<B, E, R>
-  <A, E, R, B, E2, R2>(self: Smol<A, E, R>, f: (a: NoInfer<A>) => Smol<B, E2, R2>): Smol<B, E | E2, R | R2>
+  <A, B, E2, R2>(f: (a: NoInfer<A>) => Micro<B, E2, R2>): <E, R>(self: Micro<A, E, R>) => Micro<B, E, R>
+  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: NoInfer<A>) => Micro<B, E2, R2>): Micro<B, E | E2, R | R2>
 } = dual(
   2,
-  <A, E, R, B, E2, R2>(self: Smol<A, E, R>, f: (a: A) => Smol<B, E2, R2>): Smol<B, E | E2, R | R2> =>
+  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: A) => Micro<B, E2, R2>): Micro<B, E | E2, R | R2> =>
     make(function(env, onResult) {
       run(self, env, function(result) {
         if (result._tag === "Left") {
@@ -424,35 +424,35 @@ export const andThen: {
   <A, X>(
     f: (a: NoInfer<A>) => X
   ): <E, R>(
-    self: Smol<A, E, R>
-  ) => [X] extends [Smol<infer A1, infer E1, infer R1>] ? Smol<A1, E | E1, R | R1>
-    : Smol<X, E, R>
+    self: Micro<A, E, R>
+  ) => [X] extends [Micro<infer A1, infer E1, infer R1>] ? Micro<A1, E | E1, R | R1>
+    : Micro<X, E, R>
   <X>(
     f: NotFunction<X>
   ): <A, E, R>(
-    self: Smol<A, E, R>
-  ) => [X] extends [Smol<infer A1, infer E1, infer R1>] ? Smol<A1, E | E1, R | R1>
-    : Smol<X, E, R>
+    self: Micro<A, E, R>
+  ) => [X] extends [Micro<infer A1, infer E1, infer R1>] ? Micro<A1, E | E1, R | R1>
+    : Micro<X, E, R>
   <A, E, R, X>(
-    self: Smol<A, E, R>,
+    self: Micro<A, E, R>,
     f: (a: NoInfer<A>) => X
-  ): [X] extends [Smol<infer A1, infer E1, infer R1>] ? Smol<A1, E | E1, R | R1>
-    : Smol<X, E, R>
+  ): [X] extends [Micro<infer A1, infer E1, infer R1>] ? Micro<A1, E | E1, R | R1>
+    : Micro<X, E, R>
   <A, E, R, X>(
-    self: Smol<A, E, R>,
+    self: Micro<A, E, R>,
     f: NotFunction<X>
-  ): [X] extends [Smol<infer A1, infer E1, infer R1>] ? Smol<A1, E | E1, R | R1>
-    : Smol<X, E, R>
+  ): [X] extends [Micro<infer A1, infer E1, infer R1>] ? Micro<A1, E | E1, R | R1>
+    : Micro<X, E, R>
 } = dual(
   2,
-  <A, E, R, B, E2, R2>(self: Smol<A, E, R>, f: any): Smol<B, E | E2, R | R2> =>
+  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: any): Micro<B, E | E2, R | R2> =>
     make(function(env, onResult) {
       run(self, env, function(result) {
         if (result._tag === "Left") {
           return onResult(result as any)
         }
-        const value = isSmol(f) ? f : typeof f === "function" ? f(result.right) : f
-        if (isSmol(value)) {
+        const value = isMicro(f) ? f : typeof f === "function" ? f(result.right) : f
+        if (isMicro(value)) {
           run(value, env, onResult)
         } else {
           onResult(Either.right(value))
@@ -468,35 +468,35 @@ export const tap: {
   <A, X>(
     f: (a: NoInfer<A>) => X
   ): <E, R>(
-    self: Smol<A, E, R>
-  ) => [X] extends [Smol<infer _A1, infer E1, infer R1>] ? Smol<A, E | E1, R | R1>
-    : Smol<A, E, R>
+    self: Micro<A, E, R>
+  ) => [X] extends [Micro<infer _A1, infer E1, infer R1>] ? Micro<A, E | E1, R | R1>
+    : Micro<A, E, R>
   <X>(
     f: NotFunction<X>
   ): <A, E, R>(
-    self: Smol<A, E, R>
-  ) => [X] extends [Smol<infer _A1, infer E1, infer R1>] ? Smol<A, E | E1, R | R1>
-    : Smol<A, E, R>
+    self: Micro<A, E, R>
+  ) => [X] extends [Micro<infer _A1, infer E1, infer R1>] ? Micro<A, E | E1, R | R1>
+    : Micro<A, E, R>
   <A, E, R, X>(
-    self: Smol<A, E, R>,
+    self: Micro<A, E, R>,
     f: (a: NoInfer<A>) => X
-  ): [X] extends [Smol<infer _A1, infer E1, infer R1>] ? Smol<A, E | E1, R | R1>
-    : Smol<A, E, R>
+  ): [X] extends [Micro<infer _A1, infer E1, infer R1>] ? Micro<A, E | E1, R | R1>
+    : Micro<A, E, R>
   <A, E, R, X>(
-    self: Smol<A, E, R>,
+    self: Micro<A, E, R>,
     f: NotFunction<X>
-  ): [X] extends [Smol<infer _A1, infer E1, infer R1>] ? Smol<A, E | E1, R | R1>
-    : Smol<A, E, R>
+  ): [X] extends [Micro<infer _A1, infer E1, infer R1>] ? Micro<A, E | E1, R | R1>
+    : Micro<A, E, R>
 } = dual(
   2,
-  <A, E, R, B, E2, R2>(self: Smol<A, E, R>, f: (a: A) => Smol<B, E2, R2>): Smol<A, E | E2, R | R2> =>
+  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: A) => Micro<B, E2, R2>): Micro<A, E | E2, R | R2> =>
     make(function(env, onResult) {
       run(self, env, function(selfResult) {
         if (selfResult._tag === "Left") {
           return onResult(selfResult as any)
         }
-        const value = isSmol(f) ? f : typeof f === "function" ? f(selfResult.right) : f
-        if (isSmol(value)) {
+        const value = isMicro(f) ? f : typeof f === "function" ? f(selfResult.right) : f
+        if (isMicro(value)) {
           run(value, env, function(tapResult) {
             if (tapResult._tag === "Left") {
               return onResult(tapResult)
@@ -513,17 +513,17 @@ export const tap: {
 /**
  * @since 3.2.0
  */
-export const asVoid = <A, E, R>(self: Smol<A, E, R>): Smol<void, E, R> => map(self, (_) => undefined)
+export const asVoid = <A, E, R>(self: Micro<A, E, R>): Micro<void, E, R> => map(self, (_) => undefined)
 
 /**
  * @since 3.2.0
  */
 export const zipRight: {
-  <A, B, E2, R2>(that: Smol<B, E2, R2>): <E, R>(self: Smol<A, E, R>) => Smol<B, E, R>
-  <A, E, R, B, E2, R2>(self: Smol<A, E, R>, that: Smol<B, E2, R2>): Smol<B, E | E2, R | R2>
+  <A, B, E2, R2>(that: Micro<B, E2, R2>): <E, R>(self: Micro<A, E, R>) => Micro<B, E, R>
+  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, that: Micro<B, E2, R2>): Micro<B, E | E2, R | R2>
 } = dual(
   2,
-  <A, E, R, B, E2, R2>(self: Smol<A, E, R>, that: Smol<B, E2, R2>): Smol<B, E | E2, R | R2> =>
+  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, that: Micro<B, E2, R2>): Micro<B, E | E2, R | R2> =>
     make(function(env, onResult) {
       run(self, env, function(result) {
         if (result._tag === "Left") {
@@ -538,14 +538,14 @@ export const zipRight: {
  * @since 3.2.0
  */
 export const async = <A, E = never, R = never>(
-  register: (resume: (effect: Smol<A, E, R>) => void, signal: AbortSignal) => void | Smol<void, never, R>
-): Smol<A, E, R> =>
+  register: (resume: (effect: Micro<A, E, R>) => void, signal: AbortSignal) => void | Micro<void, never, R>
+): Micro<A, E, R> =>
   flatten(
     make(function(env, onResult) {
       let resumed = false
       let onAbort: LazyArg<void> | undefined = undefined
       const signal = envGet(env, currentAbortSignal)
-      function resume(effect: Smol<A, E, R>) {
+      function resume(effect: Micro<A, E, R>) {
         if (resumed) {
           return
         }
@@ -568,7 +568,7 @@ export const async = <A, E = never, R = never>(
 /**
  * @since 3.2.0
  */
-export const never: Smol<never> = async<never>(function() {
+export const never: Micro<never> = async<never>(function() {
   const interval = setInterval(constVoid, 2147483646)
   return sync(() => clearInterval(interval))
 })
@@ -576,7 +576,7 @@ export const never: Smol<never> = async<never>(function() {
 /**
  * @since 3.2.0
  */
-export const sleep = (duration: Duration.DurationInput): Smol<void> => {
+export const sleep = (duration: Duration.DurationInput): Micro<void> => {
   const millis = Duration.toMillis(duration)
   return async(function(resume) {
     const timeout = setTimeout(function() {
@@ -590,17 +590,17 @@ export const sleep = (duration: Duration.DurationInput): Smol<void> => {
  * @since 3.2.0
  */
 export const delay: {
-  (duration: Duration.DurationInput): <A, E, R>(self: Smol<A, E, R>) => Smol<A, E, R>
-  <A, E, R>(self: Smol<A, E, R>, duration: Duration.DurationInput): Smol<A, E, R>
+  (duration: Duration.DurationInput): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, R>
+  <A, E, R>(self: Micro<A, E, R>, duration: Duration.DurationInput): Micro<A, E, R>
 } = dual(
   2,
-  <A, E, R>(self: Smol<A, E, R>, duration: Duration.DurationInput): Smol<A, E, R> => zipRight(sleep(duration), self)
+  <A, E, R>(self: Micro<A, E, R>, duration: Duration.DurationInput): Micro<A, E, R> => zipRight(sleep(duration), self)
 )
 
 /**
  * @since 3.2.0
  */
-export const asResult = <A, E, R>(self: Smol<A, E, R>): Smol<Result<A, E>, never, R> =>
+export const asResult = <A, E, R>(self: Micro<A, E, R>): Micro<Result<A, E>, never, R> =>
   make(function(env, onResult) {
     run(self, env, function(result) {
       onResult(Either.right(result))
@@ -611,11 +611,13 @@ export const asResult = <A, E, R>(self: Smol<A, E, R>): Smol<Result<A, E>, never
  * @since 3.2.0
  */
 export const onResult: {
-  <A, E, XE, XR>(f: (result: Result<A, E>) => Smol<void, XE, XR>): <R>(self: Smol<A, E, R>) => Smol<A, E | XE, R | XR>
-  <A, E, R, XE, XR>(self: Smol<A, E, R>, f: (result: Result<A, E>) => Smol<void, XE, XR>): Smol<A, E | XE, R | XR>
+  <A, E, XE, XR>(
+    f: (result: Result<A, E>) => Micro<void, XE, XR>
+  ): <R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
+  <A, E, R, XE, XR>(self: Micro<A, E, R>, f: (result: Result<A, E>) => Micro<void, XE, XR>): Micro<A, E | XE, R | XR>
 } = dual(
   2,
-  <A, E, R, XE, XR>(self: Smol<A, E, R>, f: (result: Result<A, E>) => Smol<void, XE, XR>): Smol<A, E | XE, R | XR> =>
+  <A, E, R, XE, XR>(self: Micro<A, E, R>, f: (result: Result<A, E>) => Micro<void, XE, XR>): Micro<A, E | XE, R | XR> =>
     uninterruptibleMask((restore) =>
       flatMap(asResult(restore(self)), (result) => zipRight(f(result), fromResult(result)))
     )
@@ -625,10 +627,10 @@ export const onResult: {
  * @since 3.2.0
  */
 export const acquireUseRelease = <Resource, E, R, A, E2, R2, R3>(
-  acquire: Smol<Resource, E, R>,
-  use: (a: Resource) => Smol<A, E2, R2>,
-  release: (a: Resource, result: Result<A, E2>) => Smol<void, never, R3>
-): Smol<A, E | E2, R | R2 | R3> =>
+  acquire: Micro<Resource, E, R>,
+  use: (a: Resource) => Micro<A, E2, R2>,
+  release: (a: Resource, result: Result<A, E2>) => Micro<void, never, R3>
+): Micro<A, E | E2, R | R2 | R3> =>
   uninterruptibleMask((restore) =>
     flatMap(
       acquire,
@@ -643,30 +645,30 @@ export const acquireUseRelease = <Resource, E, R, A, E2, R2, R3>(
 /**
  * @since 3.2.0
  */
-export const envRefGet = <A>(fiberRef: EnvRef<A>): Smol<A> =>
+export const envRefGet = <A>(fiberRef: EnvRef<A>): Micro<A> =>
   make((env, onResult) => onResult(Either.right(envGet(env, fiberRef))))
 
 /**
  * @since 3.2.0
  */
 export const locally: {
-  <A>(fiberRef: EnvRef<A>, value: A): <XA, E, R>(self: Smol<XA, E, R>) => Smol<XA, E, R>
-  <XA, E, R, A>(self: Smol<XA, E, R>, fiberRef: EnvRef<A>, value: A): Smol<XA, E, R>
+  <A>(fiberRef: EnvRef<A>, value: A): <XA, E, R>(self: Micro<XA, E, R>) => Micro<XA, E, R>
+  <XA, E, R, A>(self: Micro<XA, E, R>, fiberRef: EnvRef<A>, value: A): Micro<XA, E, R>
 } = dual(
   3,
-  <XA, E, R, A>(self: Smol<XA, E, R>, fiberRef: EnvRef<A>, value: A): Smol<XA, E, R> =>
+  <XA, E, R, A>(self: Micro<XA, E, R>, fiberRef: EnvRef<A>, value: A): Micro<XA, E, R> =>
     make((env, onResult) => run(self, envSet(env, fiberRef, value), onResult))
 )
 
 /**
  * @since 3.2.0
  */
-export const context = <R>(): Smol<R, never, R> => envRefGet(currentContext) as any
+export const context = <R>(): Micro<R, never, R> => envRefGet(currentContext) as any
 
 /**
  * @since 3.2.0
  */
-export const uninterruptible = <A, E, R>(self: Smol<A, E, R>): Smol<A, E, R> =>
+export const uninterruptible = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, R> =>
   unsafeMakeNoAbort(function(env, onResult) {
     const nextEnv = envMutate(env, function(env) {
       env[currentInterruptible.key] = false
@@ -680,8 +682,8 @@ export const uninterruptible = <A, E, R>(self: Smol<A, E, R>): Smol<A, E, R> =>
  * @since 3.2.0
  */
 export const uninterruptibleMask = <A, E, R>(
-  f: (restore: <A, E, R>(effect: Smol<A, E, R>) => Smol<A, E, R>) => Smol<A, E, R>
-): Smol<A, E, R> =>
+  f: (restore: <A, E, R>(effect: Micro<A, E, R>) => Micro<A, E, R>) => Micro<A, E, R>
+): Micro<A, E, R> =>
   unsafeMakeNoAbort((env, onResult) => {
     const isInterruptible = envGet(env, currentInterruptible)
     const effect = isInterruptible ? f(interruptible) : f(identity)
@@ -698,7 +700,7 @@ export const uninterruptibleMask = <A, E, R>(
 /**
  * @since 3.2.0
  */
-export const interruptible = <A, E, R>(self: Smol<A, E, R>): Smol<A, E, R> =>
+export const interruptible = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, R> =>
   make((env, onResult) => {
     const isInterruptible = envGet(env, currentInterruptible)
     let newEnv = env
@@ -717,11 +719,11 @@ export const interruptible = <A, E, R>(self: Smol<A, E, R>): Smol<A, E, R> =>
  * @since 3.2.0
  */
 export const provideService: {
-  <I, S>(tag: Context.Tag<I, S>, service: S): <A, E, R>(self: Smol<A, E, R>) => Smol<A, E, Exclude<R, I>>
-  <A, E, R, I, S>(self: Smol<A, E, R>, tag: Context.Tag<I, S>, service: S): Smol<A, E, Exclude<R, I>>
+  <I, S>(tag: Context.Tag<I, S>, service: S): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, Exclude<R, I>>
+  <A, E, R, I, S>(self: Micro<A, E, R>, tag: Context.Tag<I, S>, service: S): Micro<A, E, Exclude<R, I>>
 } = dual(
   3,
-  <A, E, R, I, S>(self: Smol<A, E, R>, tag: Context.Tag<I, S>, service: S): Smol<A, E, Exclude<R, I>> =>
+  <A, E, R, I, S>(self: Micro<A, E, R>, tag: Context.Tag<I, S>, service: S): Micro<A, E, Exclude<R, I>> =>
     make(function(env, onResult) {
       const context = envGet(env, currentContext)
       const nextEnv = envSet(env, currentContext, Context.add(context, tag, service))
@@ -735,32 +737,32 @@ export const provideService: {
 export const provideServiceEffect: {
   <I, S, E2, R2>(
     tag: Context.Tag<I, S>,
-    acquire: Smol<S, E2, R2>
-  ): <A, E, R>(self: Smol<A, E, R>) => Smol<A, E | E2, Exclude<R, I> | R2>
+    acquire: Micro<S, E2, R2>
+  ): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E | E2, Exclude<R, I> | R2>
   <A, E, R, I, S, E2, R2>(
-    self: Smol<A, E, R>,
+    self: Micro<A, E, R>,
     tag: Context.Tag<I, S>,
-    acquire: Smol<S, E2, R2>
-  ): Smol<A, E | E2, Exclude<R, I> | R2>
+    acquire: Micro<S, E2, R2>
+  ): Micro<A, E | E2, Exclude<R, I> | R2>
 } = dual(
   3,
   <A, E, R, I, S, E2, R2>(
-    self: Smol<A, E, R>,
+    self: Micro<A, E, R>,
     tag: Context.Tag<I, S>,
-    acquire: Smol<S, E2, R2>
-  ): Smol<A, E | E2, Exclude<R, I> | R2> => flatMap(acquire, (service) => provideService(self, tag, service))
+    acquire: Micro<S, E2, R2>
+  ): Micro<A, E | E2, Exclude<R, I> | R2> => flatMap(acquire, (service) => provideService(self, tag, service))
 )
 
-export const gen = <Eff extends YieldWrap<Smol<any, any, any>>, AEff>(
+export const gen = <Eff extends YieldWrap<Micro<any, any, any>>, AEff>(
   f: (_: any) => Generator<Eff, AEff, never>
-): Smol<
+): Micro<
   AEff,
-  [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Smol<infer _A, infer E, infer _R>>] ? E : never,
-  [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Smol<infer _A, infer _E, infer R>>] ? R : never
+  [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Micro<infer _A, infer E, infer _R>>] ? E : never,
+  [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Micro<infer _A, infer _E, infer R>>] ? R : never
 > =>
   suspend(function() {
     const iterator = f(undefined) as any
-    function run(state: IteratorResult<any>): Smol<any, any, any> {
+    function run(state: IteratorResult<any>): Micro<any, any, any> {
       return state.done
         ? succeed(state.value)
         : flatMap(yieldWrapGet(state.value) as any, (val: any) => run(iterator.next(val)))
@@ -776,23 +778,23 @@ export const gen = <Eff extends YieldWrap<Smol<any, any, any>>, AEff>(
  * @since 3.2.0
  */
 export const forEach: {
-  <A, B, E, R>(iterable: Iterable<A>, f: (a: NoInfer<A>) => Smol<B, E, R>, options?: {
+  <A, B, E, R>(iterable: Iterable<A>, f: (a: NoInfer<A>) => Micro<B, E, R>, options?: {
     readonly concurrency?: Concurrency | undefined
     readonly discard?: false | undefined
-  }): Smol<Array<B>, E, R>
-  <A, B, E, R>(iterable: Iterable<A>, f: (a: NoInfer<A>) => Smol<B, E, R>, options: {
+  }): Micro<Array<B>, E, R>
+  <A, B, E, R>(iterable: Iterable<A>, f: (a: NoInfer<A>) => Micro<B, E, R>, options: {
     readonly concurrency?: Concurrency | undefined
     readonly discard: true
-  }): Smol<void, E, R>
+  }): Micro<void, E, R>
 } = <
   A,
   B,
   E,
   R
->(iterable: Iterable<A>, f: (a: NoInfer<A>) => Smol<B, E, R>, options?: {
+>(iterable: Iterable<A>, f: (a: NoInfer<A>) => Micro<B, E, R>, options?: {
   readonly concurrency?: Concurrency | undefined
   readonly discard?: boolean | undefined
-}): Smol<any, E, R> =>
+}): Micro<any, E, R> =>
   make(function(env, onResult) {
     const concurrency = options?.concurrency === "inherit" ? envGet(env, currentConcurrency) : options?.concurrency ?? 1
     if (concurrency === "unbounded" || concurrency > 1) {
@@ -814,9 +816,9 @@ const unsafeForEachSequential = <
   B,
   E,
   R
->(iterable: Iterable<A>, f: (a: NoInfer<A>) => Smol<B, E, R>, options?: {
+>(iterable: Iterable<A>, f: (a: NoInfer<A>) => Micro<B, E, R>, options?: {
   readonly discard?: boolean | undefined
-}): Smol<any, E, R> =>
+}): Micro<any, E, R> =>
   make(function(env, onResult) {
     const items = Array.from(iterable)
     const length = items.length
@@ -861,10 +863,10 @@ const forEachConcurrent = <
   B,
   E,
   R
->(iterable: Iterable<A>, f: (a: NoInfer<A>) => Smol<B, E, R>, options: {
+>(iterable: Iterable<A>, f: (a: NoInfer<A>) => Micro<B, E, R>, options: {
   readonly concurrency: number | "unbounded"
   readonly discard?: boolean | undefined
-}): Smol<any, E, R> =>
+}): Micro<any, E, R> =>
   unsafeMake(function(env, onResult) {
     // abort
     const controller = new AbortController()
@@ -972,7 +974,7 @@ class HandleImpl<A, E> implements Handle<A, E> {
     this.observers.delete(observer)
   }
 
-  get await(): Smol<Result<A, E>> {
+  get await(): Micro<Result<A, E>> {
     return suspend(() => {
       if (this._result) {
         return succeed(this._result)
@@ -989,7 +991,7 @@ class HandleImpl<A, E> implements Handle<A, E> {
     })
   }
 
-  get join(): Smol<A, E> {
+  get join(): Micro<A, E> {
     return suspend(() => {
       if (this._result) {
         return fromResult(this._result)
@@ -1006,7 +1008,7 @@ class HandleImpl<A, E> implements Handle<A, E> {
     })
   }
 
-  get abort(): Smol<void> {
+  get abort(): Micro<void> {
     return suspend(() => {
       this.unsafeAbort()
       return asVoid(this.await)
@@ -1017,7 +1019,7 @@ class HandleImpl<A, E> implements Handle<A, E> {
 /**
  * @since 3.2.0
  */
-export const fork = <A, E, R>(self: Smol<A, E, R>): Smol<Handle<A, E>, never, R> =>
+export const fork = <A, E, R>(self: Micro<A, E, R>): Micro<Handle<A, E>, never, R> =>
   make(function(env, onResult) {
     const signal = envGet(env, currentAbortSignal)
     const handle = new HandleImpl<A, E>(signal)
@@ -1037,7 +1039,7 @@ export const fork = <A, E, R>(self: Smol<A, E, R>): Smol<Handle<A, E>, never, R>
 /**
  * @since 3.2.0
  */
-export const forkDaemon = <A, E, R>(self: Smol<A, E, R>): Smol<Handle<A, E>, never, R> =>
+export const forkDaemon = <A, E, R>(self: Micro<A, E, R>): Micro<Handle<A, E>, never, R> =>
   make(function(env, onResult) {
     const controller = new AbortController()
     const handle = new HandleImpl<A, E>(controller.signal, controller)
@@ -1057,7 +1059,7 @@ export const forkDaemon = <A, E, R>(self: Smol<A, E, R>): Smol<Handle<A, E>, nev
 /**
  * @since 3.2.0
  */
-export const runFork = <A, E>(effect: Smol<A, E>): Handle<A, E> => {
+export const runFork = <A, E>(effect: Micro<A, E>): Handle<A, E> => {
   const controller = new AbortController()
   const refs = Object.create(null)
   refs[currentAbortController.key] = controller
@@ -1073,7 +1075,7 @@ export const runFork = <A, E>(effect: Smol<A, E>): Handle<A, E> => {
 /**
  * @since 3.2.0
  */
-export const runPromise = <A, E>(effect: Smol<A, E>): Promise<A> =>
+export const runPromise = <A, E>(effect: Micro<A, E>): Promise<A> =>
   new Promise((resolve, reject) => {
     const handle = runFork(effect)
     handle.addObserver((result) => {
@@ -1092,7 +1094,7 @@ export const runPromise = <A, E>(effect: Smol<A, E>): Promise<A> =>
 /**
  * @since 3.2.0
  */
-export const ScopeTypeId: unique symbol = Symbol.for("effect/Smol/Scope")
+export const ScopeTypeId: unique symbol = Symbol.for("effect/Micro/Scope")
 
 /**
  * @since 3.2.0
@@ -1104,8 +1106,8 @@ export type ScopeTypeId = typeof ScopeTypeId
  */
 export interface Scope {
   readonly [ScopeTypeId]: ScopeTypeId
-  readonly addFinalizer: (finalizer: (result: Result<any, any>) => Smol<void>) => Smol<void>
-  readonly fork: Smol<Scope.Closeable>
+  readonly addFinalizer: (finalizer: (result: Result<any, any>) => Micro<void>) => Micro<void>
+  readonly fork: Micro<Scope.Closeable>
 }
 
 /**
@@ -1116,20 +1118,20 @@ export declare namespace Scope {
    * @since 3.2.0
    */
   export interface Closeable extends Scope {
-    readonly close: (result: Result<any, any>) => Smol<void>
+    readonly close: (result: Result<any, any>) => Micro<void>
   }
 }
 
 /**
  * @since 3.2.0
  */
-export const Scope: Context.Tag<Scope, Scope> = Context.GenericTag<Scope>("effect/Smol/Scope")
+export const Scope: Context.Tag<Scope, Scope> = Context.GenericTag<Scope>("effect/Micro/Scope")
 
 class ScopeImpl implements Scope.Closeable {
   readonly [ScopeTypeId]: ScopeTypeId
   state: {
     readonly _tag: "Open"
-    readonly finalizers: Set<(result: Result<any, any>) => Smol<void>>
+    readonly finalizers: Set<(result: Result<any, any>) => Micro<void>>
   } | {
     readonly _tag: "Closed"
     readonly result: Result<any, any>
@@ -1139,12 +1141,12 @@ class ScopeImpl implements Scope.Closeable {
     this[ScopeTypeId] = ScopeTypeId
   }
 
-  unsafeAddFinalizer(finalizer: (result: Result<any, any>) => Smol<void>): void {
+  unsafeAddFinalizer(finalizer: (result: Result<any, any>) => Micro<void>): void {
     if (this.state._tag === "Open") {
       this.state.finalizers.add(finalizer)
     }
   }
-  addFinalizer(finalizer: (result: Result<any, any>) => Smol<void>): Smol<void> {
+  addFinalizer(finalizer: (result: Result<any, any>) => Micro<void>): Micro<void> {
     return suspend(() => {
       if (this.state._tag === "Open") {
         this.state.finalizers.add(finalizer)
@@ -1153,12 +1155,12 @@ class ScopeImpl implements Scope.Closeable {
       return finalizer(this.state.result)
     })
   }
-  unsafeRemoveFinalizer(finalizer: (result: Result<any, any>) => Smol<void>): void {
+  unsafeRemoveFinalizer(finalizer: (result: Result<any, any>) => Micro<void>): void {
     if (this.state._tag === "Open") {
       this.state.finalizers.delete(finalizer)
     }
   }
-  close(result: Result<any, any>): Smol<void> {
+  close(result: Result<any, any>): Micro<void> {
     return suspend(() => {
       if (this.state._tag === "Open") {
         const finalizers = Array.from(this.state.finalizers).reverse()
@@ -1191,12 +1193,12 @@ class ScopeImpl implements Scope.Closeable {
 /**
  * @since 3.2.0
  */
-export const makeScope = (): Smol<Scope.Closeable> => sync(() => new ScopeImpl())
+export const makeScope = (): Micro<Scope.Closeable> => sync(() => new ScopeImpl())
 
 /**
  * @since 3.2.0
  */
-export const scoped = <A, E, R>(self: Smol<A, E, R>): Smol<A, E, Exclude<R, Scope>> =>
+export const scoped = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, Exclude<R, Scope>> =>
   suspend(function() {
     const scope = new ScopeImpl()
     return onResult(provideService(self, Scope, scope), (result) => scope.close(result))
@@ -1206,9 +1208,9 @@ export const scoped = <A, E, R>(self: Smol<A, E, R>): Smol<A, E, Exclude<R, Scop
  * @since 3.2.0
  */
 export const acquireRelease = <A, E, R>(
-  acquire: Smol<A, E, R>,
-  release: (a: A, result: Result<any, any>) => Smol<void>
-): Smol<A, E, R | Scope> =>
+  acquire: Micro<A, E, R>,
+  release: (a: A, result: Result<any, any>) => Micro<void>
+): Micro<A, E, R | Scope> =>
   uninterruptible(flatMap(
     Scope,
     (scope) =>
@@ -1294,7 +1296,7 @@ export const makeEnvRef = <A>(key: string, initial: A): EnvRef<A> => {
  * @since 3.2.0
  */
 export const currentAbortController: EnvRef<AbortController> = makeEnvRef(
-  "effect/Smol/currentAbortController",
+  "effect/Micro/currentAbortController",
   new AbortController()
 )
 
@@ -1302,7 +1304,7 @@ export const currentAbortController: EnvRef<AbortController> = makeEnvRef(
  * @since 3.2.0
  */
 export const currentAbortSignal: EnvRef<AbortSignal> = makeEnvRef(
-  "effect/Smol/currentAbortSignal",
+  "effect/Micro/currentAbortSignal",
   currentAbortController.initial.signal
 )
 
@@ -1310,12 +1312,12 @@ export const currentAbortSignal: EnvRef<AbortSignal> = makeEnvRef(
  * @since 3.2.0
  */
 export const currentContext: EnvRef<Context.Context<never>> = makeEnvRef(
-  "effect/Smol/currentContext",
+  "effect/Micro/currentContext",
   Context.empty()
 )
 
 const currentInterruptible: EnvRef<boolean> = makeEnvRef(
-  "effect/Smol/currentInterruptible",
+  "effect/Micro/currentInterruptible",
   true
 )
 
@@ -1323,7 +1325,7 @@ const currentInterruptible: EnvRef<boolean> = makeEnvRef(
  * @since 3.2.0
  */
 export const currentConcurrency: EnvRef<"unbounded" | number> = makeEnvRef(
-  "effect/Smol/currentConcurrency",
+  "effect/Micro/currentConcurrency",
   "unbounded"
 )
 
@@ -1331,10 +1333,10 @@ export const currentConcurrency: EnvRef<"unbounded" | number> = makeEnvRef(
  * @since 3.2.0
  */
 export const withConcurrency: {
-  (concurrency: "unbounded" | number): <A, E, R>(self: Smol<A, E, R>) => Smol<A, E, R>
-  <A, E, R>(self: Smol<A, E, R>, concurrency: "unbounded" | number): Smol<A, E, R>
+  (concurrency: "unbounded" | number): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, R>
+  <A, E, R>(self: Micro<A, E, R>, concurrency: "unbounded" | number): Micro<A, E, R>
 } = dual(
   2,
-  <A, E, R>(self: Smol<A, E, R>, concurrency: "unbounded" | number): Smol<A, E, R> =>
+  <A, E, R>(self: Micro<A, E, R>, concurrency: "unbounded" | number): Micro<A, E, R> =>
     locally(self, currentConcurrency, concurrency)
 )

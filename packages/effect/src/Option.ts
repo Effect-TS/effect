@@ -11,11 +11,11 @@ import type { Inspectable } from "./Inspectable.js"
 import * as doNotation from "./internal/doNotation.js"
 import * as either from "./internal/either.js"
 import * as option from "./internal/option.js"
+import type { Micro } from "./Micro.js"
 import type { Order } from "./Order.js"
 import * as order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
-import type { Smol } from "./Smol.js"
 import type { Covariant, NoInfer, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
 import * as Gen from "./Utils.js"
@@ -42,7 +42,7 @@ export type TypeId = typeof TypeId
  * @category models
  * @since 2.0.0
  */
-export interface None<out A> extends Pipeable, Inspectable, Smol<A, None<never>> {
+export interface None<out A> extends Pipeable, Inspectable, Micro<A, None<never>> {
   readonly _tag: "None"
   readonly _op: "None"
   readonly [TypeId]: {
@@ -57,7 +57,7 @@ export interface None<out A> extends Pipeable, Inspectable, Smol<A, None<never>>
  * @category models
  * @since 2.0.0
  */
-export interface Some<out A> extends Pipeable, Inspectable, Smol<A, None<never>> {
+export interface Some<out A> extends Pipeable, Inspectable, Micro<A, None<never>> {
   readonly _tag: "Some"
   readonly _op: "Some"
   readonly value: A

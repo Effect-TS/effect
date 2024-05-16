@@ -7,7 +7,7 @@ import type * as O from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import type * as STM from "../STM.js"
-import { EffectPrototype, effectVariance, SmolRunSymbol, SmolTypeId } from "./effectable.js"
+import { EffectPrototype, effectVariance, MicroRunSymblo, MicroTypeId } from "./effectable.js"
 import * as option from "./option.js"
 
 /** @internal */
@@ -53,12 +53,12 @@ export const TagProto: any = {
   ): C.Context<Identifier> {
     return make(this, self)
   },
-  [SmolTypeId]: {
+  [MicroTypeId]: {
     _A: identity,
     _E: identity,
     _R: identity
   },
-  [SmolRunSymbol](env: any, onResult: any) {
+  [MicroRunSymblo](env: any, onResult: any) {
     onResult(this)
   }
 }
