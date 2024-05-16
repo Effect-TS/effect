@@ -1,5 +1,15 @@
 # @effect/sql-sqlite-node
 
+## 0.2.10
+
+### Patch Changes
+
+- [#2712](https://github.com/Effect-TS/effect/pull/2712) [`01b4553`](https://github.com/Effect-TS/effect/commit/01b4553df4d2a7c5824a112f405a49f8fcfebbf4) Thanks [@vecerek](https://github.com/vecerek)! - Use constants from `@opentelemetry/semantic-conventions` as span attribute names instead of hard-coded values
+
+- Updated dependencies [[`01b4553`](https://github.com/Effect-TS/effect/commit/01b4553df4d2a7c5824a112f405a49f8fcfebbf4)]:
+  - @effect/sql@0.2.9
+  - @effect/platform@0.53.7
+
 ## 0.2.9
 
 ### Patch Changes
