@@ -4130,11 +4130,44 @@ export declare namespace Repeat {
 }
 
 /**
- * Returns a new effect that repeats this effect according to the specified
- * schedule or until the first failure. Scheduled recurrences are in addition
- * to the first execution, so that `io.repeat(Schedule.once)` yields an effect
- * that executes `io`, and then if that succeeds, executes `io` an additional
- * time.
+ * The `repeat` function returns a new effect that repeats the given effect
+ * according to a specified schedule or until the first failure. The scheduled
+ * recurrences are in addition to the initial execution, so `Effect.repeat(action,
+ * Schedule.once)` executes `action` once initially, and if it succeeds, repeats it
+ * an additional time.
+ *
+ * @example
+ * // Success Example
+ * import { Effect, Schedule, Console } from "effect"
+ *
+ * const action = Console.log("success")
+ * const policy = Schedule.addDelay(Schedule.recurs(2), () => "100 millis")
+ * const program = Effect.repeat(action, policy)
+ *
+ * Effect.runPromise(program).then((n) => console.log(`repetitions: ${n}`))
+ *
+ * @example
+ * // Failure Example
+ * import { Effect, Schedule } from "effect"
+ *
+ * let count = 0
+ *
+ * // Define an async effect that simulates an action with possible failures
+ * const action = Effect.async<string, string>((resume) => {
+ *   if (count > 1) {
+ *     console.log("failure")
+ *     resume(Effect.fail("Uh oh!"))
+ *   } else {
+ *     count++
+ *     console.log("success")
+ *     resume(Effect.succeed("yay!"))
+ *   }
+ * })
+ *
+ * const policy = Schedule.addDelay(Schedule.recurs(2), () => "100 millis")
+ * const program = Effect.repeat(action, policy)
+ *
+ * Effect.runPromiseExit(program).then(console.log)
  *
  * @since 2.0.0
  * @category repetition / recursion
@@ -4156,10 +4189,18 @@ export const repeat: {
 } = _schedule.repeat_combined
 
 /**
- * Returns a new effect that repeats this effect the specified number of times
- * or until the first failure. Repeats are in addition to the first execution,
- * so that `io.repeatN(1)` yields an effect that executes `io`, and then if
- * that succeeds, executes `io` an additional time.
+ * The `repeatN` function returns a new effect that repeats the specified effect a
+ * given number of times or until the first failure. The repeats are in addition
+ * to the initial execution, so `Effect.repeatN(action, 1)` executes `action` once
+ * initially and then repeats it one additional time if it succeeds.
+ *
+ * @example
+ * import { Effect, Console } from "effect"
+ *
+ * const action = Console.log("success")
+ * const program = Effect.repeatN(action, 2)
+ *
+ * Effect.runPromise(program)
  *
  * @since 2.0.0
  * @category repetition / recursion
@@ -4170,13 +4211,43 @@ export const repeatN: {
 } = effect.repeatN
 
 /**
- * Returns a new effect that repeats this effect according to the specified
- * schedule or until the first failure, at which point, the failure value and
- * schedule output are passed to the specified handler.
+ * The `repeatOrElse` function returns a new effect that repeats the specified
+ * effect according to the given schedule or until the first failure. When a
+ * failure occurs, the failure value and schedule output are passed to a
+ * specified handler. Scheduled recurrences are in addition to the initial
+ * execution, so `Effect.repeat(action, Schedule.once)` executes `action` once
+ * initially and then repeats it an additional time if it succeeds.
  *
- * Scheduled recurrences are in addition to the first execution, so that
- * `pipe(effect, Effect.repeat(Schedule.once()))` yields an effect that executes
- * `effect`, and then if that succeeds, executes `effect` an additional time.
+ * @example
+ * import { Effect, Schedule } from "effect"
+ *
+ * let count = 0
+ *
+ * // Define an async effect that simulates an action with possible failures
+ * const action = Effect.async<string, string>((resume) => {
+ *   if (count > 1) {
+ *     console.log("failure")
+ *     resume(Effect.fail("Uh oh!"))
+ *   } else {
+ *     count++
+ *     console.log("success")
+ *     resume(Effect.succeed("yay!"))
+ *   }
+ * })
+ *
+ * const policy = Schedule.addDelay(
+ *   Schedule.recurs(2), // Repeat for a maximum of 2 times
+ *   () => "100 millis" // Add a delay of 100 milliseconds between repetitions
+ * )
+ *
+ * const program = Effect.repeatOrElse(action, policy, () =>
+ *   Effect.sync(() => {
+ *     console.log("orElse")
+ *     return count - 1
+ *   })
+ * )
+ *
+ * Effect.runPromise(program).then((n) => console.log(`repetitions: ${n}`))
  *
  * @since 2.0.0
  * @category repetition / recursion
