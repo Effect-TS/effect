@@ -5,7 +5,6 @@ import * as Context from "./Context.js"
 import type * as Effect from "./Effect.js"
 import type * as FiberRef from "./FiberRef.js"
 import * as core from "./internal/core.js"
-import * as fiberRef from "./internal/fiberRef.js"
 
 /**
  * @since 2.0.0
@@ -48,7 +47,7 @@ class SizedImpl implements TestSized {
 /**
  * @since 2.0.0
  */
-export const make = (size: number): TestSized => new SizedImpl(fiberRef.unsafeMake(size))
+export const make = (size: number): TestSized => new SizedImpl(core.fiberRefUnsafeMake(size))
 
 /**
  * @since 2.0.0

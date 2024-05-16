@@ -18,7 +18,6 @@ import { pipeArguments } from "../Pipeable.js"
 import * as Cause from "./cause.js"
 import * as _effect from "./core-effect.js"
 import * as core from "./core.js"
-import * as fiberRef from "./fiberRef.js"
 import * as metricBoundaries from "./metric/boundaries.js"
 import * as metricKey from "./metric/key.js"
 import * as metricLabel from "./metric/label.js"
@@ -482,7 +481,7 @@ export const update = dual<
   <Type, In, Out>(self: Metric.Metric<Type, In, Out>, input: In) => Effect.Effect<void>
 >(2, (self, input) =>
   core.fiberRefGetWith(
-    fiberRef.currentMetricLabels,
+    core.currentMetricLabels,
     (tags) => core.sync(() => self.unsafeUpdate(input, tags))
   ))
 
@@ -491,7 +490,7 @@ export const value = <Type, In, Out>(
   self: Metric.Metric<Type, In, Out>
 ): Effect.Effect<Out> =>
   core.fiberRefGetWith(
-    fiberRef.currentMetricLabels,
+    core.currentMetricLabels,
     (tags) => core.sync(() => self.unsafeValue(tags))
   )
 

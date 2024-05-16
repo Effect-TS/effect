@@ -8,7 +8,6 @@ import type { FiberRef } from "./FiberRef.js"
 import { dual } from "./Function.js"
 import { globalValue } from "./GlobalValue.js"
 import * as core from "./internal/core.js"
-import * as fiberRef from "./internal/fiberRef.js"
 
 /**
  * @since 2.0.0
@@ -117,8 +116,8 @@ export class MixedScheduler implements Scheduler {
    * @since 2.0.0
    */
   shouldYield(fiber: RuntimeFiber<unknown, unknown>): number | false {
-    return fiber.currentOpCount > fiber.getFiberRef(fiberRef.currentMaxOpsBeforeYield)
-      ? fiber.getFiberRef(fiberRef.currentSchedulingPriority)
+    return fiber.currentOpCount > fiber.getFiberRef(core.currentMaxOpsBeforeYield)
+      ? fiber.getFiberRef(core.currentSchedulingPriority)
       : false
   }
 
@@ -173,8 +172,8 @@ export class SyncScheduler implements Scheduler {
    * @since 2.0.0
    */
   shouldYield(fiber: RuntimeFiber<unknown, unknown>): number | false {
-    return fiber.currentOpCount > fiber.getFiberRef(fiberRef.currentMaxOpsBeforeYield)
-      ? fiber.getFiberRef(fiberRef.currentSchedulingPriority)
+    return fiber.currentOpCount > fiber.getFiberRef(core.currentMaxOpsBeforeYield)
+      ? fiber.getFiberRef(core.currentSchedulingPriority)
       : false
   }
 
@@ -225,8 +224,8 @@ export class ControlledScheduler implements Scheduler {
    * @since 2.0.0
    */
   shouldYield(fiber: RuntimeFiber<unknown, unknown>): number | false {
-    return fiber.currentOpCount > fiber.getFiberRef(fiberRef.currentMaxOpsBeforeYield)
-      ? fiber.getFiberRef(fiberRef.currentSchedulingPriority)
+    return fiber.currentOpCount > fiber.getFiberRef(core.currentMaxOpsBeforeYield)
+      ? fiber.getFiberRef(core.currentSchedulingPriority)
       : false
   }
 
@@ -279,8 +278,8 @@ export const makeMatrix = (...record: Array<[number, Scheduler]>): Scheduler => 
  * @category utilities
  */
 export const defaultShouldYield: Scheduler["shouldYield"] = (fiber) => {
-  return fiber.currentOpCount > fiber.getFiberRef(fiberRef.currentMaxOpsBeforeYield)
-    ? fiber.getFiberRef(fiberRef.currentSchedulingPriority)
+  return fiber.currentOpCount > fiber.getFiberRef(core.currentMaxOpsBeforeYield)
+    ? fiber.getFiberRef(core.currentSchedulingPriority)
     : false
 }
 
@@ -349,7 +348,7 @@ export const timerBatched = (ms: number, shouldYield: Scheduler["shouldYield"] =
 /** @internal */
 export const currentScheduler: FiberRef<Scheduler> = globalValue(
   Symbol.for("effect/FiberRef/currentScheduler"),
-  () => fiberRef.unsafeMake(defaultScheduler)
+  () => core.fiberRefUnsafeMake(defaultScheduler)
 )
 
 /** @internal */

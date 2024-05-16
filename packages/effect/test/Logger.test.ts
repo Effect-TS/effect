@@ -5,9 +5,9 @@ import * as FiberId from "effect/FiberId"
 import * as FiberRefs from "effect/FiberRefs"
 import { identity } from "effect/Function"
 import * as HashMap from "effect/HashMap"
+import { logLevelInfo } from "effect/internal/core"
 import * as List from "effect/List"
 import * as Logger from "effect/Logger"
-import * as LogLevel from "effect/LogLevel"
 import * as LogSpan from "effect/LogSpan"
 import { afterEach, assert, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -43,7 +43,7 @@ describe("stringLogger", () => {
 
     const result = Logger.stringLogger.log({
       fiberId: FiberId.none,
-      logLevel: LogLevel.Info,
+      logLevel: logLevelInfo,
       message: "My message",
       cause: Cause.empty,
       context: FiberRefs.unsafeMake(new Map()),
@@ -72,7 +72,7 @@ describe("stringLogger", () => {
 
     const result = Logger.stringLogger.log({
       fiberId: FiberId.none,
-      logLevel: LogLevel.Info,
+      logLevel: logLevelInfo,
       message: "My\nmessage",
       cause: Cause.empty,
       context: FiberRefs.unsafeMake(new Map()),
@@ -98,7 +98,7 @@ with line breaks" good_key3="I_have=a"`
 
     const result = Logger.stringLogger.log({
       fiberId: FiberId.none,
-      logLevel: LogLevel.Info,
+      logLevel: logLevelInfo,
       message: ["a", "b", "c"],
       cause: Cause.empty,
       context: FiberRefs.unsafeMake(new Map()),
@@ -133,7 +133,7 @@ describe("logfmtLogger", () => {
 
     const result = Logger.logfmtLogger.log({
       fiberId: FiberId.none,
-      logLevel: LogLevel.Info,
+      logLevel: logLevelInfo,
       message: "My message",
       cause: Cause.empty,
       context: FiberRefs.unsafeMake(new Map()),
@@ -162,7 +162,7 @@ describe("logfmtLogger", () => {
 
     const result = Logger.logfmtLogger.log({
       fiberId: FiberId.none,
-      logLevel: LogLevel.Info,
+      logLevel: logLevelInfo,
       message: "My\nmessage",
       cause: Cause.empty,
       context: FiberRefs.unsafeMake(new Map()),
@@ -178,7 +178,7 @@ describe("logfmtLogger", () => {
 
   it(".pipe", () => {
     expect(Logger.stringLogger.pipe(identity)).toBe(Logger.stringLogger)
-    expect(LogLevel.Info.pipe(identity)).toBe(LogLevel.Info)
+    expect(logLevelInfo.pipe(identity)).toBe(logLevelInfo)
   })
 
   it("objects", () => {
@@ -187,7 +187,7 @@ describe("logfmtLogger", () => {
 
     const result = Logger.logfmtLogger.log({
       fiberId: FiberId.none,
-      logLevel: LogLevel.Info,
+      logLevel: logLevelInfo,
       message: { hello: "world" },
       cause: Cause.empty,
       context: FiberRefs.unsafeMake(new Map()),
@@ -210,7 +210,7 @@ describe("logfmtLogger", () => {
 
     const result = Logger.logfmtLogger.log({
       fiberId: FiberId.none,
-      logLevel: LogLevel.Info,
+      logLevel: logLevelInfo,
       message: msg,
       cause: Cause.empty,
       context: FiberRefs.unsafeMake(new Map()),
@@ -230,7 +230,7 @@ describe("logfmtLogger", () => {
 
     const result = Logger.logfmtLogger.log({
       fiberId: FiberId.none,
-      logLevel: LogLevel.Info,
+      logLevel: logLevelInfo,
       message: Symbol.for("effect/Logger/test"),
       cause: Cause.empty,
       context: FiberRefs.unsafeMake(new Map()),
@@ -250,7 +250,7 @@ describe("logfmtLogger", () => {
 
     const result = Logger.logfmtLogger.log({
       fiberId: FiberId.none,
-      logLevel: LogLevel.Info,
+      logLevel: logLevelInfo,
       message: () => "hello world",
       cause: Cause.empty,
       context: FiberRefs.unsafeMake(new Map()),
@@ -272,7 +272,7 @@ describe("logfmtLogger", () => {
 
     const result = Logger.logfmtLogger.log({
       fiberId: FiberId.none,
-      logLevel: LogLevel.Info,
+      logLevel: logLevelInfo,
       message: "hello world",
       cause: Cause.empty,
       context: FiberRefs.unsafeMake(new Map()),
@@ -301,7 +301,7 @@ describe("logfmtLogger", () => {
       const log = (message: string) =>
         logger.log({
           fiberId: FiberId.none,
-          logLevel: LogLevel.Info,
+          logLevel: logLevelInfo,
           message,
           cause: Cause.empty,
           context: FiberRefs.unsafeMake(new Map()),
@@ -337,7 +337,7 @@ describe("logfmtLogger", () => {
 
     const result = Logger.logfmtLogger.log({
       fiberId: FiberId.none,
-      logLevel: LogLevel.Info,
+      logLevel: logLevelInfo,
       message: ["a", "b", "c"],
       cause: Cause.empty,
       context: FiberRefs.unsafeMake(new Map()),
@@ -374,7 +374,7 @@ describe("jsonLogger", () => {
 
     const result = Logger.jsonLogger.log({
       fiberId: FiberId.none,
-      logLevel: LogLevel.Info,
+      logLevel: logLevelInfo,
       message: "My message",
       cause: Cause.empty,
       context: FiberRefs.unsafeMake(new Map()),
@@ -407,7 +407,7 @@ describe("jsonLogger", () => {
 
     const result = Logger.jsonLogger.log({
       fiberId: FiberId.none,
-      logLevel: LogLevel.Info,
+      logLevel: logLevelInfo,
       message: { hello: "world" },
       cause: Cause.empty,
       context: FiberRefs.unsafeMake(new Map()),
@@ -435,7 +435,7 @@ describe("jsonLogger", () => {
 
     const result = Logger.jsonLogger.log({
       fiberId: FiberId.none,
-      logLevel: LogLevel.Info,
+      logLevel: logLevelInfo,
       message: msg,
       cause: Cause.empty,
       context: FiberRefs.unsafeMake(new Map()),
@@ -460,7 +460,7 @@ describe("jsonLogger", () => {
 
     const result = Logger.jsonLogger.log({
       fiberId: FiberId.none,
-      logLevel: LogLevel.Info,
+      logLevel: logLevelInfo,
       message: Symbol.for("effect/Logger/test"),
       cause: Cause.empty,
       context: FiberRefs.unsafeMake(new Map()),
@@ -485,7 +485,7 @@ describe("jsonLogger", () => {
 
     const result = Logger.jsonLogger.log({
       fiberId: FiberId.none,
-      logLevel: LogLevel.Info,
+      logLevel: logLevelInfo,
       message: () => "hello world",
       cause: Cause.empty,
       context: FiberRefs.unsafeMake(new Map()),

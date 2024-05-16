@@ -20,7 +20,6 @@ import * as _scope from "../Scope.js"
 import * as InternalCause from "./cause.js"
 import * as core from "./core.js"
 import * as executionStrategy from "./executionStrategy.js"
-import * as fiberRef from "./fiberRef.js"
 import * as FiberRuntime from "./fiberRuntime.js"
 import * as fiberScope from "./fiberScope.js"
 import * as OpCodes from "./opCodes/effect.js"
@@ -36,7 +35,7 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
   const fiberId = FiberId.unsafeMake()
   const fiberRefUpdates: ReadonlyArray.NonEmptyArray<
     readonly [FiberRef.FiberRef<any>, ReadonlyArray.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>]
-  > = [[fiberRef.currentContext, [[fiberId, runtime.context]]]]
+  > = [[core.currentContext, [[fiberId, runtime.context]]]]
 
   if (options?.scheduler) {
     fiberRefUpdates.push([_scheduler.currentScheduler, [[fiberId, options.scheduler]]])
@@ -328,7 +327,7 @@ export const runtime = <R>(): Effect.Effect<Runtime.Runtime<R>, never, R> =>
   core.withFiberRuntime((state, status) =>
     core.succeed(
       new RuntimeImpl<R>(
-        state.getFiberRef(fiberRef.currentContext as unknown as FiberRef.FiberRef<Context.Context<R>>),
+        state.getFiberRef(core.currentContext as unknown as FiberRef.FiberRef<Context.Context<R>>),
         status.runtimeFlags,
         state.getFiberRefs()
       )

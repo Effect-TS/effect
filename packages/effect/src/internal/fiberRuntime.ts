@@ -56,7 +56,6 @@ import { consoleTag } from "./defaultServices/console.js"
 import * as executionStrategy from "./executionStrategy.js"
 import * as internalFiber from "./fiber.js"
 import * as FiberMessage from "./fiberMessage.js"
-import * as fiberRef from "./fiberRef.js"
 import * as fiberRefs from "./fiberRefs.js"
 import * as fiberScope from "./fiberScope.js"
 import * as internalLogger from "./logger.js"
@@ -306,7 +305,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
     this._supervisor = this.getFiberRef(currentSupervisor)
     this._scheduler = this.getFiberRef(currentScheduler)
     if (_runtimeFlags.runtimeMetrics(runtimeFlags0)) {
-      const tags = this.getFiberRef(fiberRef.currentMetricLabels)
+      const tags = this.getFiberRef(core.currentMetricLabels)
       fiberStarted.unsafeUpdate(1, tags)
       fiberActive.unsafeUpdate(1, tags)
     }
@@ -655,7 +654,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   drainQueueLaterOnExecutor() {
     this._scheduler.scheduleTask(
       this.run,
-      this.getFiberRef(fiberRef.currentSchedulingPriority)
+      this.getFiberRef(core.currentSchedulingPriority)
     )
   }
 
@@ -765,7 +764,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
 
   reportExitValue(exit: Exit.Exit<A, E>) {
     if (_runtimeFlags.runtimeMetrics(this._runtimeFlags)) {
-      const tags = this.getFiberRef(fiberRef.currentMetricLabels)
+      const tags = this.getFiberRef(core.currentMetricLabels)
       const startTimeMillis = this.id().startTimeMillis
       const endTimeMillis = Date.now()
       fiberLifetimes.unsafeUpdate(endTimeMillis - startTimeMillis, tags)
@@ -782,7 +781,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
       }
     }
     if (exit._tag === "Failure") {
-      const level = this.getFiberRef(fiberRef.currentUnhandledErrorLogLevel)
+      const level = this.getFiberRef(core.currentUnhandledErrorLogLevel)
       if (!internalCause.isInterruptedOnly(exit.cause) && level._tag === "Some") {
         this.log("Fiber terminated with an unhandled error", exit.cause, level)
       }
@@ -808,13 +807,13 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   ): void {
     const logLevel = Option.isSome(overrideLogLevel) ?
       overrideLogLevel.value :
-      this.getFiberRef(fiberRef.currentLogLevel)
-    const minimumLogLevel = this.getFiberRef(fiberRef.currentMinimumLogLevel)
+      this.getFiberRef(core.currentLogLevel)
+    const minimumLogLevel = this.getFiberRef(currentMinimumLogLevel)
     if (LogLevel.greaterThan(minimumLogLevel, logLevel)) {
       return
     }
-    const spans = this.getFiberRef(fiberRef.currentLogSpan)
-    const annotations = this.getFiberRef(fiberRef.currentLogAnnotations)
+    const spans = this.getFiberRef(core.currentLogSpan)
+    const annotations = this.getFiberRef(core.currentLogAnnotations)
     const loggers = this.getLoggers()
     const contextMap = this.getFiberRefs()
     if (HashSet.size(loggers) > 0) {
@@ -1053,7 +1052,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
 
   [OpCodes.OP_TAG](op: core.Primitive & { _op: OpCodes.OP_SYNC }) {
     return core.map(
-      core.fiberRefGet(fiberRef.currentContext),
+      core.fiberRefGet(core.currentContext),
       (context) => Context.unsafeGet(context, op as unknown as Context.Tag<any, any>)
     )
   }
@@ -1350,18 +1349,13 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   }
 }
 
-// fiber refs
+// circular with Logger
 
 /** @internal */
-export const fiberRefUnsafeMakeRuntimeFlags = (
-  initial: RuntimeFlags.RuntimeFlags
-): FiberRef.FiberRef<RuntimeFlags.RuntimeFlags> =>
-  fiberRef.unsafeMakePatch(initial, {
-    differ: _runtimeFlags.differ,
-    fork: _runtimeFlags.differ.empty
-  })
-
-// circular with Logger
+export const currentMinimumLogLevel: FiberRef.FiberRef<LogLevel.LogLevel> = globalValue(
+  "effect/FiberRef/currentMinimumLogLevel",
+  () => core.fiberRefUnsafeMake<LogLevel.LogLevel>(LogLevel.fromLiteral("Info"))
+)
 
 /** @internal */
 export const loggerWithConsoleLog = <M, O>(self: Logger<M, O>): Logger<M, void> =>
@@ -1413,7 +1407,7 @@ export const tracerLogger = globalValue(
       logLevel,
       message
     }) => {
-      const span = Option.flatMap(fiberRefs.get(context, fiberRef.currentContext), Context.getOption(tracer.spanTag))
+      const span = Option.flatMap(fiberRefs.get(context, core.currentContext), Context.getOption(tracer.spanTag))
       const clockService = Option.map(
         fiberRefs.get(context, defaultServices.currentServices),
         (_) => Context.get(_, clock.clockTag)
@@ -1441,10 +1435,7 @@ export const tracerLogger = globalValue(
 /** @internal */
 export const loggerWithSpanAnnotations = <Message, Output>(self: Logger<Message, Output>): Logger<Message, Output> =>
   internalLogger.mapInputOptions(self, (options: Logger.Options<Message>) => {
-    const span = Option.flatMap(
-      fiberRefs.get(options.context, fiberRef.currentContext),
-      Context.getOption(tracer.spanTag)
-    )
+    const span = Option.flatMap(fiberRefs.get(options.context, core.currentContext), Context.getOption(tracer.spanTag))
     if (span._tag === "None") {
       return options
     }
@@ -1464,7 +1455,7 @@ export const currentLoggers: FiberRef.FiberRef<
   HashSet.HashSet<Logger<unknown, any>>
 > = globalValue(
   Symbol.for("effect/FiberRef/currentLoggers"),
-  () => fiberRef.unsafeMakeHashSet(HashSet.make(defaultLogger, tracerLogger))
+  () => core.fiberRefUnsafeMakeHashSet(HashSet.make(defaultLogger, tracerLogger))
 )
 
 /** @internal */
@@ -1520,13 +1511,13 @@ export const annotateLogsScoped: {
 } = function() {
   if (typeof arguments[0] === "string") {
     return fiberRefLocallyScopedWith(
-      fiberRef.currentLogAnnotations,
+      core.currentLogAnnotations,
       HashMap.set(arguments[0], arguments[1])
     )
   }
   const entries = Object.entries(arguments[0])
   return fiberRefLocallyScopedWith(
-    fiberRef.currentLogAnnotations,
+    core.currentLogAnnotations,
     HashMap.mutate((annotations) => {
       for (let i = 0; i < entries.length; i++) {
         const [key, value] = entries[i]
@@ -1602,7 +1593,7 @@ export const addFinalizer = <X, R>(
 
 /* @internal */
 export const daemonChildren = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => {
-  const forkScope = core.fiberRefLocally(fiberRef.currentForkScopeOverride, Option.some(fiberScope.globalScope))
+  const forkScope = core.fiberRefLocally(core.currentForkScopeOverride, Option.some(fiberScope.globalScope))
   return forkScope(self)
 }
 
@@ -1974,7 +1965,7 @@ export const forEach: {
 ) =>
   core.withFiberRuntime<A | void, E, R>((r) => {
     const isRequestBatchingEnabled = options?.batching === true ||
-      (options?.batching === "inherit" && r.getFiberRef(fiberRef.currentRequestBatching))
+      (options?.batching === "inherit" && r.getFiberRef(core.currentRequestBatching))
 
     if (options?.discard) {
       return concurrency.match(
@@ -2305,7 +2296,7 @@ export const unsafeMakeChildFiber = <A, E, R, E2, B>(
   const childFiber = new FiberRuntime<A, E>(childId, childFiberRefs, parentRuntimeFlags)
   const childContext = fiberRefs.getOrDefault(
     childFiberRefs,
-    fiberRef.currentContext as unknown as FiberRef.FiberRef<Context.Context<R>>
+    core.currentContext as unknown as FiberRef.FiberRef<Context.Context<R>>
   )
   const supervisor = childFiber._supervisor
 
@@ -2319,7 +2310,7 @@ export const unsafeMakeChildFiber = <A, E, R, E2, B>(
   childFiber.addObserver((exit) => supervisor.onEnd(exit, childFiber))
 
   const parentScope = overrideScope !== null ? overrideScope : pipe(
-    parentFiber.getFiberRef(fiberRef.currentForkScopeOverride),
+    parentFiber.getFiberRef(core.currentForkScopeOverride),
     Option.getOrElse(() => parentFiber.scope())
   )
 
@@ -2744,7 +2735,7 @@ export const tagMetricsScoped = (key: string, value: string): Effect.Effect<void
 export const labelMetricsScoped = (
   labels: Iterable<MetricLabel.MetricLabel>
 ): Effect.Effect<void, never, Scope.Scope> =>
-  fiberRefLocallyScopedWith(fiberRef.currentMetricLabels, (old) => RA.union(old, labels))
+  fiberRefLocallyScopedWith(core.currentMetricLabels, (old) => RA.union(old, labels))
 
 /* @internal */
 export const using = dual<
@@ -3187,7 +3178,7 @@ export const scopeUse = dual<
 export const fiberRefUnsafeMakeSupervisor = (
   initial: Supervisor.Supervisor<any>
 ): FiberRef.FiberRef<Supervisor.Supervisor<any>> =>
-  fiberRef.unsafeMakePatch(initial, {
+  core.fiberRefUnsafeMakePatch(initial, {
     differ: SupervisorPatch.differ,
     fork: SupervisorPatch.empty
   })
@@ -3223,7 +3214,7 @@ export const fiberRefMake = <A>(
     readonly join?: ((left: A, right: A) => A) | undefined
   }
 ): Effect.Effect<FiberRef.FiberRef<A>, never, Scope.Scope> =>
-  fiberRefMakeWith(() => fiberRef.unsafeMake(initial, options))
+  fiberRefMakeWith(() => core.fiberRefUnsafeMake(initial, options))
 
 /* @internal */
 export const fiberRefMakeWith = <Value>(
@@ -3238,16 +3229,16 @@ export const fiberRefMakeWith = <Value>(
 export const fiberRefMakeContext = <A>(
   initial: Context.Context<A>
 ): Effect.Effect<FiberRef.FiberRef<Context.Context<A>>, never, Scope.Scope> =>
-  fiberRefMakeWith(() => fiberRef.unsafeMakeContext(initial))
+  fiberRefMakeWith(() => core.fiberRefUnsafeMakeContext(initial))
 
 /* @internal */
 export const fiberRefMakeRuntimeFlags = (
   initial: RuntimeFlags.RuntimeFlags
 ): Effect.Effect<FiberRef.FiberRef<RuntimeFlags.RuntimeFlags>, never, Scope.Scope> =>
-  fiberRefMakeWith(() => fiberRefUnsafeMakeRuntimeFlags(initial))
+  fiberRefMakeWith(() => core.fiberRefUnsafeMakeRuntimeFlags(initial))
 
 /** @internal */
-export const currentRuntimeFlags: FiberRef.FiberRef<RuntimeFlags.RuntimeFlags> = fiberRefUnsafeMakeRuntimeFlags(
+export const currentRuntimeFlags: FiberRef.FiberRef<RuntimeFlags.RuntimeFlags> = core.fiberRefUnsafeMakeRuntimeFlags(
   _runtimeFlags.none
 )
 
@@ -3638,9 +3629,9 @@ export const makeSpanScoped = (
   options = tracer.addSpanStackTrace(options)
   return core.uninterruptible(
     core.withFiberRuntime((fiber) => {
-      const scope = Context.unsafeGet(fiber.getFiberRef(fiberRef.currentContext), scopeTag)
+      const scope = Context.unsafeGet(fiber.getFiberRef(core.currentContext), scopeTag)
       const span = internalEffect.unsafeMakeSpan(fiber, name, options)
-      const timingEnabled = fiber.getFiberRef(fiberRef.currentTracerTimingEnabled)
+      const timingEnabled = fiber.getFiberRef(core.currentTracerTimingEnabled)
       const clock_ = Context.get(fiber.getFiberRef(defaultServices.currentServices), clock.clockTag)
       return core.as(
         core.scopeAddFinalizerExit(scope, (exit) =>

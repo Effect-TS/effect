@@ -1,9 +1,9 @@
 import { globalValue } from "../GlobalValue.js"
 import type * as Request from "../Request.js"
-import { unsafeMake } from "./fiberRef.js"
+import { fiberRefUnsafeMake } from "./core.js"
 
 /** @internal */
 export const currentRequestMap = globalValue(
   Symbol.for("effect/FiberRef/currentRequestMap"),
-  () => unsafeMake(new Map<any, Request.Entry<any>>())
+  () => fiberRefUnsafeMake(new Map<any, Request.Entry<any>>())
 )

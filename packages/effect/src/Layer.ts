@@ -28,7 +28,6 @@ import type { LazyArg } from "./Function.js"
 import { clockTag } from "./internal/clock.js"
 import * as core from "./internal/core.js"
 import * as defaultServices from "./internal/defaultServices.js"
-import * as fiberRef from "./internal/fiberRef.js"
 import * as fiberRuntime from "./internal/fiberRuntime.js"
 import * as internal from "./internal/layer.js"
 import * as circularLayer from "./internal/layer/circular.js"
@@ -929,7 +928,7 @@ export const setRequestBatching: (requestBatching: boolean) => Layer<never> = (
   requestBatching: boolean
 ) =>
   scopedDiscard(
-    fiberRuntime.fiberRefLocallyScoped(fiberRef.currentRequestBatching, requestBatching)
+    fiberRuntime.fiberRefLocallyScoped(core.currentRequestBatching, requestBatching)
   )
 
 /**
@@ -1003,7 +1002,7 @@ export const setTracer: (tracer: Tracer.Tracer) => Layer<never> = circularLayer.
  */
 export const setTracerEnabled: (enabled: boolean) => Layer<never> = (enabled: boolean) =>
   scopedDiscard(
-    fiberRuntime.fiberRefLocallyScoped(fiberRef.currentTracerEnabled, enabled)
+    fiberRuntime.fiberRefLocallyScoped(core.currentTracerEnabled, enabled)
   )
 
 /**
@@ -1012,7 +1011,7 @@ export const setTracerEnabled: (enabled: boolean) => Layer<never> = (enabled: bo
  */
 export const setTracerTiming: (enabled: boolean) => Layer<never> = (enabled: boolean) =>
   scopedDiscard(
-    fiberRuntime.fiberRefLocallyScoped(fiberRef.currentTracerTimingEnabled, enabled)
+    fiberRuntime.fiberRefLocallyScoped(core.currentTracerTimingEnabled, enabled)
   )
 
 /**
@@ -1023,7 +1022,7 @@ export const setUnhandledErrorLogLevel: (level: Option.Option<LogLevel>) => Laye
   level: Option.Option<LogLevel>
 ): Layer<never> =>
   scopedDiscard(
-    fiberRuntime.fiberRefLocallyScoped(fiberRef.currentUnhandledErrorLogLevel, level)
+    fiberRuntime.fiberRefLocallyScoped(core.currentUnhandledErrorLogLevel, level)
   )
 
 /**

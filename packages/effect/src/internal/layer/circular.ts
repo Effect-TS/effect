@@ -11,7 +11,6 @@ import type { Scope } from "../../Scope.js"
 import type * as Supervisor from "../../Supervisor.js"
 import type * as Tracer from "../../Tracer.js"
 import * as core from "../core.js"
-import * as fiberRef from "../fiberRef.js"
 import * as fiberRuntime from "../fiberRuntime.js"
 import * as layer from "../layer.js"
 import * as runtimeFlags from "../runtimeFlags.js"
@@ -25,7 +24,7 @@ import * as tracer from "../tracer.js"
 export const minimumLogLevel = (level: LogLevel.LogLevel): Layer.Layer<never> =>
   layer.scopedDiscard(
     fiberRuntime.fiberRefLocallyScoped(
-      fiberRef.currentMinimumLogLevel,
+      fiberRuntime.currentMinimumLogLevel,
       level
     )
   )
@@ -36,7 +35,7 @@ export const withMinimumLogLevel = dual<
   <A, E, R>(self: Effect.Effect<A, E, R>, level: LogLevel.LogLevel) => Effect.Effect<A, E, R>
 >(2, (self, level) =>
   core.fiberRefLocally(
-    fiberRef.currentMinimumLogLevel,
+    fiberRuntime.currentMinimumLogLevel,
     level
   )(self))
 

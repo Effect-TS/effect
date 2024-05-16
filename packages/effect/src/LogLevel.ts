@@ -4,8 +4,6 @@
 import type * as Effect from "./Effect.js"
 import { dual, pipe } from "./Function.js"
 import * as core from "./internal/core.js"
-import * as internalFiberRef from "./internal/fiberRef.js"
-import * as internal from "./internal/logLevel.js"
 import * as number from "./Number.js"
 import * as order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
@@ -122,55 +120,55 @@ export interface None extends Pipeable {
  * @since 2.0.0
  * @category constructors
  */
-export const All: LogLevel = internal.all
+export const All: LogLevel = core.logLevelAll
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const Fatal: LogLevel = internal.fatal
+export const Fatal: LogLevel = core.logLevelFatal
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const Error: LogLevel = internal.error
+export const Error: LogLevel = core.logLevelError
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const Warning: LogLevel = internal.warning
+export const Warning: LogLevel = core.logLevelWarning
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const Info: LogLevel = internal.info
+export const Info: LogLevel = core.logLevelInfo
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const Debug: LogLevel = internal.debug
+export const Debug: LogLevel = core.logLevelDebug
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const Trace: LogLevel = internal.trace
+export const Trace: LogLevel = core.logLevelTrace
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const None: LogLevel = internal.none
+export const None: LogLevel = core.logLevelNone
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const allLevels: ReadonlyArray<LogLevel> = internal.allLevels
+export const allLevels = core.allLogLevels
 
 /**
  * Locally applies the specified `LogLevel` to an `Effect` workflow, reverting
@@ -185,7 +183,7 @@ export const locally: {
 } = dual(
   2,
   <A, E, R>(use: Effect.Effect<A, E, R>, self: LogLevel): Effect.Effect<A, E, R> =>
-    core.fiberRefLocally(use, internalFiberRef.currentLogLevel, self)
+    core.fiberRefLocally(use, core.currentLogLevel, self)
 )
 
 /**
@@ -237,6 +235,23 @@ export const greaterThanEqual: {
  * @since 2.0.0
  * @category conversions
  */
-export const fromLiteral: (
-  literal: Literal
-) => LogLevel = internal.fromLiteral
+export const fromLiteral = (literal: Literal): LogLevel => {
+  switch (literal) {
+    case "All":
+      return All
+    case "Debug":
+      return Debug
+    case "Error":
+      return Error
+    case "Fatal":
+      return Fatal
+    case "Info":
+      return Info
+    case "Trace":
+      return Trace
+    case "None":
+      return None
+    case "Warning":
+      return Warning
+  }
+}

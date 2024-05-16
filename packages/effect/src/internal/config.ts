@@ -13,9 +13,9 @@ import { hasProperty, type Predicate, type Refinement } from "../Predicate.js"
 import type * as Redacted from "../Redacted.js"
 import type * as Secret from "../Secret.js"
 import * as configError from "./configError.js"
+import * as core from "./core.js"
 import * as defaultServices from "./defaultServices.js"
 import * as effectable from "./effectable.js"
-import * as InternalLogLevel from "./logLevel.js"
 import * as OpCodes from "./opCodes/config.js"
 import * as redacted_ from "./redacted.js"
 import * as InternalSecret from "./secret.js"
@@ -283,7 +283,7 @@ export const literal = <Literals extends ReadonlyArray<Config.LiteralValue>>(...
 export const logLevel = (name?: string): Config.Config<LogLevel.LogLevel> => {
   const config = mapOrFail(string(), (value) => {
     const label = value.toUpperCase()
-    const level = InternalLogLevel.allLevels.find((level) => level.label === label)
+    const level = core.allLogLevels.find((level) => level.label === label)
     return level === undefined
       ? Either.left(configError.InvalidData([], `Expected a log level but received ${value}`))
       : Either.right(level)

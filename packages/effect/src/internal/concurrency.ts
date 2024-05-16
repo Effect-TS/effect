@@ -1,7 +1,6 @@
 import type { Effect } from "../Effect.js"
 import type { Concurrency } from "../Types.js"
 import * as core from "./core.js"
-import * as fiberRef from "./fiberRef.js"
 
 /** @internal */
 export const match = <A, E, R>(
@@ -17,7 +16,7 @@ export const match = <A, E, R>(
       return unbounded()
     case "inherit":
       return core.fiberRefGetWith(
-        fiberRef.currentConcurrency,
+        core.currentConcurrency,
         (concurrency) =>
           concurrency === "unbounded" ?
             unbounded() :
@@ -43,7 +42,7 @@ export const matchSimple = <A, E, R>(
       return concurrent()
     case "inherit":
       return core.fiberRefGetWith(
-        fiberRef.currentConcurrency,
+        core.currentConcurrency,
         (concurrency) =>
           concurrency === "unbounded" || concurrency > 1 ?
             concurrent() :
