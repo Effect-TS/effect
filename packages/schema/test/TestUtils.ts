@@ -81,20 +81,26 @@ export const effectify = <A, I>(schema: S.Schema<A, I, never>): S.Schema<A, I, n
   S.make(effectifyAST(schema.ast))
 
 export const expectConstructorSuccess = <A, B>(
-  schema: { readonly make: (a: A) => B },
+  // Destructure to verify that "this" type is bound
+  { make }: { readonly make: (a: A) => B },
   input: A,
   expected: A = input
 ) => {
   try {
-    expect(schema.make(input)).toStrictEqual(expected)
+    expect(make(input)).toStrictEqual(expected)
   } catch (e: any) {
     assert.fail(e.message)
   }
 }
 
-export const expectConstructorFailure = <A, B>(schema: { readonly make: (a: A) => B }, input: A, message: string) => {
+export const expectConstructorFailure = <A, B>(
+  // Destructure to verify that "this" type is bound
+  { make }: { readonly make: (a: A) => B },
+  input: A,
+  message: string
+) => {
   try {
-    schema.make(input)
+    make(input)
     assert.fail("expected to throw an error")
   } catch (e: any) {
     expect(e.message).toStrictEqual(message)

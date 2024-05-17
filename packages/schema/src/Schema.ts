@@ -2363,9 +2363,9 @@ const makeTypeLiteralClass = <
 
     static records = [...records] as Records
 
-    static make(
+    static make = (
       props: Types.Simplify<TypeLiteral.Constructor<Fields, Records>>
-    ): Types.Simplify<TypeLiteral.Type<Fields, Records>> {
+    ): Types.Simplify<TypeLiteral.Type<Fields, Records>> => {
       return ParseResult.validateSync(this)(lazilyMergeDefaults(fields, { ...props as any }))
     }
   }
@@ -2528,7 +2528,7 @@ const makeBrandClass = <S extends Schema.Any, B extends string | symbol>(ast: AS
       return makeBrandClass(AST.annotations(this.ast, toASTAnnotations(annotations)))
     }
 
-    static make(a: Brand.Unbranded<Schema.Type<S> & Brand<B>>): Schema.Type<S> & Brand<B> {
+    static make = (a: Brand.Unbranded<Schema.Type<S> & Brand<B>>): Schema.Type<S> & Brand<B> => {
       return ParseResult.validateSync(this)(a)
     }
   }
@@ -2914,7 +2914,7 @@ const makeRefineClass = <From extends Schema.Any, A>(
 
     static filter = filter
 
-    static make(a: Schema.Type<From>): A {
+    static make = (a: Schema.Type<From>): A => {
       return ParseResult.validateSync(this)(a)
     }
   }
