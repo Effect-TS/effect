@@ -43,7 +43,7 @@ export const makeXMLHttpRequest = Client.makeDefault((request, url, signal, fibe
     signal.addEventListener("abort", () => {
       xhr.abort()
       xhr.onreadystatechange = null
-    })
+    }, { once: true })
     xhr.open(request.method, url.toString(), true)
     xhr.responseType = fiber.getFiberRef(currentXHRResponseType)
     Object.entries(request.headers).forEach(([k, v]) => {

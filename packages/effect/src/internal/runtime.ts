@@ -290,7 +290,7 @@ export const unsafeRunPromiseExit = <R>(runtime: Runtime.Runtime<R>) =>
       } else {
         options.signal.addEventListener("abort", () => {
           fiber.unsafeInterruptAsFork(fiber.id())
-        })
+        }, { once: true })
       }
     }
   })

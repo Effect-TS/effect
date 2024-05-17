@@ -102,7 +102,7 @@ export const make = (
                   ))
                   request.signal.addEventListener("abort", () => {
                     runFork(fiber.interruptAsFork(Error.clientAbortFiberId))
-                  })
+                  }, { once: true })
                 })
               }
               handlerStack.push(handler)
