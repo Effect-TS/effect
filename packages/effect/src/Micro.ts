@@ -10,9 +10,9 @@ import * as Effectable from "./Effectable.js"
 import * as Either from "./Either.js"
 import { constVoid, dual, identity, type LazyArg } from "./Function.js"
 import { SingleShotGen } from "./internal/singleShotGen.js"
+import * as Env from "./MicroEnv.js"
 import * as Option from "./Option.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
-import type { ReadonlyRecord } from "./Record.js"
 import type { Concurrency, Covariant, NoInfer, NotFunction } from "./Types.js"
 import { YieldWrap, yieldWrapGet } from "./Utils.js"
 
@@ -45,7 +45,7 @@ export interface Micro<out A, out E = never, out R = never> extends Effect<A, E,
     _E: Covariant<E>
     _R: Covariant<R>
   }
-  readonly [runSymbol]: (env: Env<any>, onResult: (result: Result<A, E>) => void) => void
+  readonly [runSymbol]: (env: Env.MicroEnv<any>, onResult: (result: Result<A, E>) => void) => void
   [Symbol.iterator](): MicroIterator<Micro<A, E, R>>
 }
 
@@ -70,45 +70,6 @@ export const isMicro = (u: unknown): u is Micro<any, any, any> => typeof u === "
  */
 export interface MicroIterator<T extends Micro<any, any, any>> {
   next(...args: ReadonlyArray<any>): IteratorResult<YieldWrap<T>, Micro.Success<T>>
-}
-
-/**
- * @since 3.2.0
- */
-export const EnvTypeId = Symbol.for("effect/Micro/Env")
-
-/**
- * @since 3.2.0
- */
-export type EnvTypeId = typeof EnvTypeId
-
-/**
- * @since 3.2.0
- */
-export interface Env<R> {
-  readonly [EnvTypeId]: {
-    _R: Covariant<R>
-  }
-  readonly refs: ReadonlyRecord<string, unknown>
-}
-
-/**
- * @since 3.2.0
- */
-export const EnvRefTypeId: unique symbol = Symbol.for("effect/Micro/EnvRef")
-
-/**
- * @since 3.2.0
- */
-export type EnvRefTypeId = typeof EnvRefTypeId
-
-/**
- * @since 3.2.0
- */
-export interface EnvRef<A> {
-  readonly [EnvRefTypeId]: EnvRefTypeId
-  readonly key: string
-  readonly initial: A
 }
 
 // Failures
@@ -253,7 +214,7 @@ const MicroProto = {
 }
 
 const unsafeMake = <A, E, R>(
-  run: (env: Env<R>, onResult: (result: Result<A, E>) => void) => void
+  run: (env: Env.MicroEnv<R>, onResult: (result: Result<A, E>) => void) => void
 ): Micro<A, E, R> => {
   const self = Object.create(MicroProto)
   self[runSymbol] = run
@@ -261,7 +222,7 @@ const unsafeMake = <A, E, R>(
 }
 
 const unsafeMakeNoAbort = <A, E, R>(
-  run: (env: Env<R>, onResult: (result: Result<A, E>) => void) => void
+  run: (env: Env.MicroEnv<R>, onResult: (result: Result<A, E>) => void) => void
 ): Micro<A, E, R> =>
   unsafeMake(function(env, onResult) {
     try {
@@ -275,10 +236,10 @@ const unsafeMakeNoAbort = <A, E, R>(
  * @since 3.2.0
  */
 export const make = <A, E, R>(
-  run: (env: Env<R>, onResult: (result: Result<A, E>) => void) => void
+  run: (env: Env.MicroEnv<R>, onResult: (result: Result<A, E>) => void) => void
 ): Micro<A, E, R> =>
-  unsafeMake(function(env: Env<R>, onResult: (result: Result<A, E>) => void) {
-    if (envGet(env, currentInterruptible) && envGet(env, currentAbortSignal).aborted) {
+  unsafeMake(function(env: Env.MicroEnv<R>, onResult: (result: Result<A, E>) => void) {
+    if (Env.get(env, currentInterruptible) && Env.get(env, Env.currentAbortSignal).aborted) {
       return onResult(ResultAborted)
     }
     try {
@@ -341,7 +302,7 @@ export const fromResult = <A, E>(self: Result<A, E>): Micro<A, E> =>
  */
 export const service = <I, S>(tag: Context.Tag<I, S>): Micro<S, never, I> =>
   make(function(env, onResult) {
-    onResult(Either.right(Context.get(envGet(env, currentContext) as Context.Context<I>, tag as any) as S))
+    onResult(Either.right(Context.get(Env.get(env, Env.currentContext) as Context.Context<I>, tag as any) as S))
   })
 
 /**
@@ -554,7 +515,7 @@ export const async = <A, E = never, R = never>(
     make(function(env, onResult) {
       let resumed = false
       let onAbort: LazyArg<void> | undefined = undefined
-      const signal = envGet(env, currentAbortSignal)
+      const signal = Env.get(env, Env.currentAbortSignal)
       function resume(effect: Micro<A, E, R>) {
         if (resumed) {
           return
@@ -655,34 +616,34 @@ export const acquireUseRelease = <Resource, E, R, A, E2, R2, R3>(
 /**
  * @since 3.2.0
  */
-export const envRefGet = <A>(fiberRef: EnvRef<A>): Micro<A> =>
-  make((env, onResult) => onResult(Either.right(envGet(env, fiberRef))))
+export const envGet = <A>(fiberRef: Env.MicroEnvRef<A>): Micro<A> =>
+  make((env, onResult) => onResult(Either.right(Env.get(env, fiberRef))))
 
 /**
  * @since 3.2.0
  */
 export const locally: {
-  <A>(fiberRef: EnvRef<A>, value: A): <XA, E, R>(self: Micro<XA, E, R>) => Micro<XA, E, R>
-  <XA, E, R, A>(self: Micro<XA, E, R>, fiberRef: EnvRef<A>, value: A): Micro<XA, E, R>
+  <A>(fiberRef: Env.MicroEnvRef<A>, value: A): <XA, E, R>(self: Micro<XA, E, R>) => Micro<XA, E, R>
+  <XA, E, R, A>(self: Micro<XA, E, R>, fiberRef: Env.MicroEnvRef<A>, value: A): Micro<XA, E, R>
 } = dual(
   3,
-  <XA, E, R, A>(self: Micro<XA, E, R>, fiberRef: EnvRef<A>, value: A): Micro<XA, E, R> =>
-    make((env, onResult) => self[runSymbol](envSet(env, fiberRef, value), onResult))
+  <XA, E, R, A>(self: Micro<XA, E, R>, fiberRef: Env.MicroEnvRef<A>, value: A): Micro<XA, E, R> =>
+    make((env, onResult) => self[runSymbol](Env.set(env, fiberRef, value), onResult))
 )
 
 /**
  * @since 3.2.0
  */
-export const context = <R>(): Micro<R, never, R> => envRefGet(currentContext) as any
+export const context = <R>(): Micro<Context.Context<R>> => envGet(Env.currentContext) as any
 
 /**
  * @since 3.2.0
  */
 export const uninterruptible = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, R> =>
   unsafeMakeNoAbort(function(env, onResult) {
-    const nextEnv = envMutate(env, function(env) {
+    const nextEnv = Env.mutate(env, function(env) {
       env[currentInterruptible.key] = false
-      env[currentAbortSignal.key] = new AbortController().signal
+      env[Env.currentAbortSignal.key] = new AbortController().signal
       return env
     })
     self[runSymbol](nextEnv, onResult)
@@ -695,12 +656,12 @@ export const uninterruptibleMask = <A, E, R>(
   f: (restore: <A, E, R>(effect: Micro<A, E, R>) => Micro<A, E, R>) => Micro<A, E, R>
 ): Micro<A, E, R> =>
   unsafeMakeNoAbort((env, onResult) => {
-    const isInterruptible = envGet(env, currentInterruptible)
+    const isInterruptible = Env.get(env, currentInterruptible)
     const effect = isInterruptible ? f(interruptible) : f(identity)
     const nextEnv = isInterruptible ?
-      envMutate(env, function(env) {
+      Env.mutate(env, function(env) {
         env[currentInterruptible.key] = false
-        env[currentAbortSignal.key] = new AbortController().signal
+        env[Env.currentAbortSignal.key] = new AbortController().signal
         return env
       }) :
       env
@@ -712,13 +673,13 @@ export const uninterruptibleMask = <A, E, R>(
  */
 export const interruptible = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, R> =>
   make((env, onResult) => {
-    const isInterruptible = envGet(env, currentInterruptible)
+    const isInterruptible = Env.get(env, currentInterruptible)
     let newEnv = env
     if (!isInterruptible) {
-      const controller = envGet(env, currentAbortController)
-      newEnv = envMutate(env, function(env) {
+      const controller = Env.get(env, Env.currentAbortController)
+      newEnv = Env.mutate(env, function(env) {
         env[currentInterruptible.key] = true
-        env[currentAbortSignal.key] = controller.signal
+        env[Env.currentAbortSignal.key] = controller.signal
         return env
       })
     }
@@ -735,8 +696,8 @@ export const provideContext: {
   2,
   <A, E, R, XR>(self: Micro<A, E, R>, provided: Context.Context<XR>): Micro<A, E, Exclude<R, XR>> =>
     make(function(env, onResult) {
-      const context = envGet(env, currentContext)
-      const nextEnv = envSet(env, currentContext, Context.merge(context, provided))
+      const context = Env.get(env, Env.currentContext)
+      const nextEnv = Env.set(env, Env.currentContext, Context.merge(context, provided))
       self[runSymbol](nextEnv, onResult)
     })
 )
@@ -751,8 +712,8 @@ export const provideService: {
   3,
   <A, E, R, I, S>(self: Micro<A, E, R>, tag: Context.Tag<I, S>, service: S): Micro<A, E, Exclude<R, I>> =>
     make(function(env, onResult) {
-      const context = envGet(env, currentContext)
-      const nextEnv = envSet(env, currentContext, Context.add(context, tag, service))
+      const context = Env.get(env, Env.currentContext)
+      const nextEnv = Env.set(env, Env.currentContext, Context.add(context, tag, service))
       self[runSymbol](nextEnv, onResult)
     })
 )
@@ -822,7 +783,9 @@ export const forEach: {
   readonly discard?: boolean | undefined
 }): Micro<any, E, R> =>
   make(function(env, onResult) {
-    const concurrency = options?.concurrency === "inherit" ? envGet(env, currentConcurrency) : options?.concurrency ?? 1
+    const concurrency = options?.concurrency === "inherit"
+      ? Env.get(env, Env.currentConcurrency)
+      : options?.concurrency ?? 1
     if (concurrency === "unbounded" || concurrency > 1) {
       forEachConcurrent(iterable, f, {
         discard: options?.discard,
@@ -895,14 +858,14 @@ const forEachConcurrent = <
   unsafeMake(function(env, onResult) {
     // abort
     const controller = new AbortController()
-    const parentSignal = envGet(env, currentAbortSignal)
+    const parentSignal = Env.get(env, Env.currentAbortSignal)
     function onAbort() {
       length = index
       controller.abort()
       parentSignal.removeEventListener("abort", onAbort)
     }
     parentSignal.addEventListener("abort", onAbort)
-    const envWithSignal = envSet(env, currentAbortSignal, controller.signal)
+    const envWithSignal = Env.set(env, Env.currentAbortSignal, controller.signal)
 
     // iterate
     const concurrency = options.concurrency === "unbounded" ? Infinity : options.concurrency
@@ -1046,11 +1009,11 @@ class HandleImpl<A, E> implements Handle<A, E> {
  */
 export const fork = <A, E, R>(self: Micro<A, E, R>): Micro<Handle<A, E>, never, R> =>
   make(function(env, onResult) {
-    const signal = envGet(env, currentAbortSignal)
+    const signal = Env.get(env, Env.currentAbortSignal)
     const handle = new HandleImpl<A, E>(signal)
-    const nextEnv = envMutate(env, (map) => {
-      map[currentAbortController.key] = handle._controller
-      map[currentAbortSignal.key] = handle._controller.signal
+    const nextEnv = Env.mutate(env, (map) => {
+      map[Env.currentAbortController.key] = handle._controller
+      map[Env.currentAbortSignal.key] = handle._controller.signal
       return map
     })
     Promise.resolve().then(() => {
@@ -1068,9 +1031,9 @@ export const forkDaemon = <A, E, R>(self: Micro<A, E, R>): Micro<Handle<A, E>, n
   make(function(env, onResult) {
     const controller = new AbortController()
     const handle = new HandleImpl<A, E>(controller.signal, controller)
-    const nextEnv = envMutate(env, (map) => {
-      map[currentAbortController.key] = controller
-      map[currentAbortSignal.key] = controller.signal
+    const nextEnv = Env.mutate(env, (map) => {
+      map[Env.currentAbortController.key] = controller
+      map[Env.currentAbortSignal.key] = controller.signal
       return map
     })
     Promise.resolve().then(() => {
@@ -1087,11 +1050,11 @@ export const forkDaemon = <A, E, R>(self: Micro<A, E, R>): Micro<Handle<A, E>, n
 export const runFork = <A, E>(effect: Micro<A, E>): Handle<A, E> => {
   const controller = new AbortController()
   const refs = Object.create(null)
-  refs[currentAbortController.key] = controller
-  refs[currentAbortSignal.key] = controller.signal
-  const env = makeEnv(refs)
+  refs[Env.currentAbortController.key] = controller
+  refs[Env.currentAbortSignal.key] = controller.signal
+  const env = Env.make(refs)
   const handle = new HandleImpl<A, E>(controller.signal, controller)
-  effect[runSymbol](envSet(env, currentAbortSignal, handle._controller.signal), (result) => {
+  effect[runSymbol](Env.set(env, Env.currentAbortSignal, handle._controller.signal), (result) => {
     handle.emit(result)
   })
   return handle
@@ -1250,113 +1213,9 @@ export const acquireRelease = <A, E, R>(
       )
   ))
 
-// ========================================================================
-// Env
-// ========================================================================
-
-const EnvProto = {
-  [EnvTypeId]: {
-    _R: identity
-  }
-}
-
-/**
- * @since 3.2.0
- */
-export const makeEnv = <R = never>(
-  refs: Record<string, unknown>
-): Env<R> => {
-  const self = Object.create(EnvProto)
-  self.refs = refs
-  return self
-}
-
-/**
- * @since 3.2.0
- */
-export const unsafeEmptyEnv = (): Env<never> => {
-  const controller = new AbortController()
-  const refs = Object.create(null)
-  refs[currentAbortController.key] = controller
-  refs[currentAbortSignal.key] = controller.signal
-  return makeEnv(refs)
-}
-
-/**
- * @since 3.2.0
- */
-export const envGet = <R, A>(env: Env<R>, ref: EnvRef<A>): A => env.refs[ref.key] as A ?? ref.initial
-
-/**
- * @since 3.2.0
- */
-export const envSet = <R, A>(env: Env<R>, ref: EnvRef<A>, value: A): Env<R> => {
-  const refs = Object.assign(Object.create(null), env.refs)
-  refs[ref.key] = value
-  return makeEnv(refs)
-}
-
-/**
- * @since 3.2.0
- */
-export const envMutate = <R>(
-  env: Env<R>,
-  f: (map: Record<string, unknown>) => ReadonlyRecord<string, unknown>
-): Env<R> => makeEnv(f(Object.assign(Object.create(null), env.refs)))
-
-// ========================================================================
-// Env refs
-// ========================================================================
-
-const EnvRefProto = {
-  [EnvRefTypeId]: EnvRefTypeId
-}
-
-/**
- * @since 3.2.0
- */
-export const makeEnvRef = <A>(key: string, initial: A): EnvRef<A> => {
-  const self = Object.create(EnvRefProto)
-  self.key = key
-  self.initial = initial
-  return self
-}
-
-/**
- * @since 3.2.0
- */
-export const currentAbortController: EnvRef<AbortController> = makeEnvRef(
-  "effect/Micro/currentAbortController",
-  new AbortController()
-)
-
-/**
- * @since 3.2.0
- */
-export const currentAbortSignal: EnvRef<AbortSignal> = makeEnvRef(
-  "effect/Micro/currentAbortSignal",
-  currentAbortController.initial.signal
-)
-
-/**
- * @since 3.2.0
- */
-export const currentContext: EnvRef<Context.Context<never>> = makeEnvRef(
-  "effect/Micro/currentContext",
-  Context.empty()
-)
-
-const currentInterruptible: EnvRef<boolean> = makeEnvRef(
+const currentInterruptible: Env.MicroEnvRef<boolean> = Env.makeRef(
   "effect/Micro/currentInterruptible",
   true
-)
-
-/**
- * @since 3.2.0
- */
-export const currentConcurrency: EnvRef<"unbounded" | number> = makeEnvRef(
-  "effect/Micro/currentConcurrency",
-  "unbounded"
 )
 
 /**
@@ -1368,5 +1227,5 @@ export const withConcurrency: {
 } = dual(
   2,
   <A, E, R>(self: Micro<A, E, R>, concurrency: "unbounded" | number): Micro<A, E, R> =>
-    locally(self, currentConcurrency, concurrency)
+    locally(self, Env.currentConcurrency, concurrency)
 )
