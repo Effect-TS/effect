@@ -646,6 +646,50 @@ Note that during encoding, the number value `30` was converted to a string `"30"
 > [!NOTE]
 > The [`onExcessProperty`](#excess-properties) and [`error`](#all-errors) options also affect encoding.
 
+### Handling Unsupported Encoding
+
+Although it is generally recommended to define schemas that support both decoding and encoding, there are situations where encoding support might be impossible. In such cases, the `Forbidden` error can be used to handle unsupported encoding.
+
+Here is an example of a transformation that never fails during decoding. It returns an `Either` containing either the decoded value or the original input. For encoding, it is reasonable to not support it and use `Forbidden` as the result.
+
+```ts
+import { ParseResult, Schema } from "@effect/schema"
+import { Either } from "effect"
+
+// Define a schema that safely decodes to Either type
+export const SafeDecode = <A, I>(self: Schema.Schema<A, I, never>) => {
+  const decodeUnknownEither = Schema.decodeUnknownEither(self)
+  return Schema.transformOrFail(
+    Schema.Unknown,
+    Schema.EitherFromSelf({
+      left: Schema.Unknown,
+      right: Schema.typeSchema(self)
+    }),
+    {
+      strict: true,
+      decode: (input) =>
+        ParseResult.succeed(
+          Either.mapLeft(decodeUnknownEither(input), () => input)
+        ),
+      encode: (actual, _, ast) =>
+        Either.match(actual, {
+          onLeft: () =>
+            ParseResult.fail(
+              new ParseResult.Forbidden(ast, actual, "cannot encode a Left")
+            ),
+          onRight: ParseResult.succeed
+        })
+    }
+  )
+}
+```
+
+**Explanation**
+
+- **Decoding**: The `SafeDecode` function ensures that decoding never fails. It wraps the decoded value in an `Either`, where a successful decoding results in a `Right` and a failed decoding results in a `Left` containing the original input.
+
+- **Encoding**: The encoding process uses the `Forbidden` error to indicate that encoding a `Left` value is not supported. Only `Right` values are successfully encoded.
+
 ## Formatting Errors
 
 When you're working with Effect Schema and encounter errors during decoding, or encoding functions, you can format these errors in two different ways: using the `TreeFormatter` or the `ArrayFormatter`.
