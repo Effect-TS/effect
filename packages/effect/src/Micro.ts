@@ -253,7 +253,7 @@ const MicroProto = {
 }
 
 const unsafeMake = <A, E, R>(
-  run: (env: Env<R>, onResult: (result: Either.Either<A, Failure<E>>) => void) => void
+  run: (env: Env<R>, onResult: (result: Result<A, E>) => void) => void
 ): Micro<A, E, R> => {
   const self = Object.create(MicroProto)
   self[runSymbol] = run
@@ -261,7 +261,7 @@ const unsafeMake = <A, E, R>(
 }
 
 const unsafeMakeNoAbort = <A, E, R>(
-  run: (env: Env<R>, onResult: (result: Either.Either<A, Failure<E>>) => void) => void
+  run: (env: Env<R>, onResult: (result: Result<A, E>) => void) => void
 ): Micro<A, E, R> =>
   unsafeMake(function(env, onResult) {
     try {
@@ -275,7 +275,7 @@ const unsafeMakeNoAbort = <A, E, R>(
  * @since 3.2.0
  */
 export const make = <A, E, R>(
-  run: (env: Env<R>, onResult: (result: Either.Either<A, Failure<E>>) => void) => void
+  run: (env: Env<R>, onResult: (result: Result<A, E>) => void) => void
 ): Micro<A, E, R> =>
   unsafeMake(function(env: Env<R>, onResult: (result: Result<A, E>) => void) {
     if (envGet(env, currentInterruptible) && envGet(env, currentAbortSignal).aborted) {
