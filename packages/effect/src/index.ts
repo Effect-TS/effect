@@ -487,6 +487,11 @@ export * as MetricState from "./MetricState.js"
 export * as Micro from "./Micro.js"
 
 /**
+ * @since 3.2.0
+ */
+export * as MicroEnv from "./MicroEnv.js"
+
+/**
  * @since 2.0.0
  *
  * Enables low level framework authors to run on their own isolated effect version
