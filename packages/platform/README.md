@@ -765,3 +765,196 @@ Create an `index.html` file in your project directory:
   </body>
 </html>
 ```
+
+## Routing
+
+Routing refers to how an application’s endpoints (URIs) respond to client requests.
+
+You define routing using methods of the `HttpServer.router` object that correspond to HTTP methods; for example, `HttpServer.router.get()` to handle GET requests and `HttpServer.router.post` to handle POST requests. You can also use `HttpServer.router.all()` to handle all HTTP methods.
+
+These routing methods specify a `Route.Handler` called when the application receives a request to the specified route (endpoint) and HTTP method. In other words, the application “listens” for requests that match the specified route(s) and method(s), and when it detects a match, it calls the specified handler.
+
+The following code is an example of a very basic route.
+
+```ts
+// respond with "hello world" when a GET request is made to the homepage
+HttpServer.router.get("/", HttpServer.response.text("Hello World"))
+```
+
+### Route methods
+
+A route method is derived from one of the HTTP methods, and is attached to an instance of the `HttpServer.router` object.
+
+The following code is an example of routes that are defined for the GET and the POST methods to the root of the app.
+
+```ts
+// GET method route
+HttpServer.router.get(
+  "/",
+  HttpServer.response.text("GET request to the homepage")
+)
+
+// POST method route
+HttpServer.router.post(
+  "/",
+  HttpServer.response.text("POST request to the homepage")
+)
+```
+
+`HttpServer.router` supports methods that correspond to all HTTP request methods: `get`, `post`, and so on.
+
+There is a special routing method, `HttpServer.router.all()`, used to load middleware functions at a path for **all** HTTP request methods. For example, the following handler is executed for requests to the route “/secret” whether using GET, POST, PUT, DELETE.
+
+```ts
+HttpServer.router.all(
+  "/secret",
+  HttpServer.response
+    .empty()
+    .pipe(Effect.tap(Console.log("Accessing the secret section ...")))
+)
+```
+
+### Route paths
+
+Route paths, when combined with a request method, define the endpoints where requests can be made. Route paths can be specified as strings according to the following type:
+
+```ts
+type PathInput = `/${string}` | "*"
+```
+
+> [!NOTE]
+> Query strings are not part of the route path.
+
+Here are some examples of route paths based on strings.
+
+This route path will match requests to the root route, /.
+
+```ts
+HttpServer.router.get("/", HttpServer.response.text("root"))
+```
+
+This route path will match requests to `/user`.
+
+```ts
+HttpServer.router.get("/user", HttpServer.response.text("user"))
+```
+
+This route path matches requests to any path starting with `/user` (e.g., `/user`, `/users`, etc.)
+
+```ts
+HttpServer.router.get(
+  "/user*",
+  Effect.map(HttpServer.request.ServerRequest, (req) =>
+    HttpServer.response.text(req.url)
+  )
+)
+```
+
+### Route parameters
+
+Route parameters are named URL segments that are used to capture the values specified at their position in the URL. By using a schema the captured values are populated in an object, with the name of the route parameter specified in the path as their respective keys.
+
+Route parameters are named segments in a URL that capture the values specified at those positions. These captured values are stored in an object, with the parameter names used as keys.
+
+For example:
+
+```
+Route path: /users/:userId/books/:bookId
+Request URL: http://localhost:3000/users/34/books/8989
+params: { "userId": "34", "bookId": "8989" }
+```
+
+To define routes with parameters, include the parameter names in the path and use a schema to validate and parse these parameters, as shown below.
+
+```ts
+import { HttpServer } from "@effect/platform"
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { Schema } from "@effect/schema"
+import { Effect, Layer } from "effect"
+import { createServer } from "node:http"
+
+// Define the schema for route parameters
+const Params = Schema.Struct({
+  userId: Schema.String,
+  bookId: Schema.String
+})
+
+// Create a router with a route that captures parameters
+const router = HttpServer.router.empty.pipe(
+  HttpServer.router.get(
+    "/users/:userId/books/:bookId",
+    HttpServer.router
+      .schemaPathParams(Params)
+      .pipe(Effect.flatMap((params) => HttpServer.response.json(params)))
+  )
+)
+
+const app = router.pipe(
+  HttpServer.server.serve(),
+  HttpServer.server.withLogAddress
+)
+
+const port = 3000
+
+const ServerLive = NodeHttpServer.server.layer(() => createServer(), { port })
+
+NodeRuntime.runMain(Layer.launch(Layer.provide(app, ServerLive)))
+```
+
+### Response methods
+
+The methods on `HttpServer.response` object in the following table can send a response to the client, and terminate the request-response cycle. If none of these methods are called from a route handler, the client request will be left hanging.
+
+| Method       | Description                    |
+| ------------ | ------------------------------ |
+| **empty**    | Sends an empty response.       |
+| **formData** | Sends form data.               |
+| **html**     | Sends an HTML response.        |
+| **raw**      | Sends a raw response.          |
+| **setBody**  | Sets the body of the response. |
+| **stream**   | Sends a streaming response.    |
+| **text**     | Sends a plain text response.   |
+
+### Router
+
+Use the `HttpServer.router` object to create modular, mountable route handlers. A `Router` instance is a complete middleware and routing system; for this reason, it is often referred to as a “mini-app”.
+
+The following example creates a router as a module, loads a middleware function in it, defines some routes, and mounts the router module on a path in the main app.
+
+Create a router file named `birds.ts` in the app directory, with the following content:
+
+```ts
+import { HttpServer } from "@effect/platform"
+
+export const birds = HttpServer.router.empty.pipe(
+  HttpServer.router.get("/", HttpServer.response.text("Birds home page")),
+  HttpServer.router.get("/about", HttpServer.response.text("About birds"))
+)
+```
+
+Then, load the router module in the app:
+
+```ts
+import { HttpServer } from "@effect/platform"
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { Layer } from "effect"
+import { createServer } from "node:http"
+import { birds } from "./birds"
+
+const router = HttpServer.router.empty.pipe(
+  HttpServer.router.mount("/birds", birds)
+)
+
+const app = router.pipe(
+  HttpServer.server.serve(),
+  HttpServer.server.withLogAddress
+)
+
+const port = 3000
+
+const ServerLive = NodeHttpServer.server.layer(() => createServer(), { port })
+
+NodeRuntime.runMain(Layer.launch(Layer.provide(app, ServerLive)))
+```
+
+The app will now be able to handle requests to `/birds` and `/birds/about`.
