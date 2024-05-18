@@ -1961,6 +1961,7 @@ export const optional: {
     readonly default?: () => A
     readonly nullable?: true
     readonly as?: "Option"
+    readonly onNoneEncoding?: null | undefined
   }
 ): PropertySignature<any, any, never, any, any, boolean, any> => {
   const isExact = options?.exact
@@ -2049,13 +2050,29 @@ export const optional: {
         return optionalToRequired(
           NullishOr(schema),
           OptionFromSelf(typeSchema(schema)),
-          { decode: option_.filter<A | null | undefined, A>((a): a is A => a != null), encode: identity }
+          {
+            decode: option_.filter<A | null | undefined, A>((a): a is A => a != null),
+            encode: (t) => {
+              if ("onNoneEncoding" in options) {
+                return option_.orElse(t, () => option_.some(options.onNoneEncoding))
+              }
+              return t
+            }
+          }
         )
       } else {
         return optionalToRequired(
           UndefinedOr(schema),
           OptionFromSelf(typeSchema(schema)),
-          { decode: option_.filter(Predicate.isNotUndefined<A | undefined>), encode: identity }
+          {
+            decode: option_.filter(Predicate.isNotUndefined<A | undefined>),
+            encode: (t) => {
+              if ("onNoneEncoding" in options) {
+                return option_.orElse(t, () => option_.some(options.onNoneEncoding as undefined))
+              }
+              return t
+            }
+          }
         )
       }
     } else {
