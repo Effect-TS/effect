@@ -26,35 +26,35 @@ The `@effect/platform/Terminal` module exports a single `Terminal` tag, which se
 ## Writing to standard output
 
 ```ts
-import { Terminal } from "@effect/platform";
-import { NodeRuntime, NodeTerminal } from "@effect/platform-node";
-import { Effect } from "effect";
+import { Terminal } from "@effect/platform"
+import { NodeRuntime, NodeTerminal } from "@effect/platform-node"
+import { Effect } from "effect"
 
 // const displayMessage: Effect.Effect<void, PlatformError, Terminal.Terminal>
 const displayMessage = Effect.gen(function* (_) {
-  const terminal = yield* _(Terminal.Terminal);
-  yield* _(terminal.display("a message\n"));
-});
+  const terminal = yield* _(Terminal.Terminal)
+  yield* _(terminal.display("a message\n"))
+})
 
-NodeRuntime.runMain(displayMessage.pipe(Effect.provide(NodeTerminal.layer)));
+NodeRuntime.runMain(displayMessage.pipe(Effect.provide(NodeTerminal.layer)))
 // Output: "a message"
 ```
 
 ## Reading from standard input
 
 ```ts
-import { Terminal } from "@effect/platform";
-import { NodeRuntime, NodeTerminal } from "@effect/platform-node";
-import { Console, Effect } from "effect";
+import { Terminal } from "@effect/platform"
+import { NodeRuntime, NodeTerminal } from "@effect/platform-node"
+import { Console, Effect } from "effect"
 
 // const readLine: Effect.Effect<void, Terminal.QuitException, Terminal.Terminal>
 const readLine = Effect.gen(function* (_) {
-  const terminal = yield* _(Terminal.Terminal);
-  const input = yield* _(terminal.readLine);
-  yield* _(Console.log(`input: ${input}`));
-});
+  const terminal = yield* _(Terminal.Terminal)
+  const input = yield* _(terminal.readLine)
+  yield* _(Console.log(`input: ${input}`))
+})
 
-NodeRuntime.runMain(readLine.pipe(Effect.provide(NodeTerminal.layer)));
+NodeRuntime.runMain(readLine.pipe(Effect.provide(NodeTerminal.layer)))
 // Input: "hello"
 // Output: "input: hello"
 ```
@@ -62,42 +62,42 @@ NodeRuntime.runMain(readLine.pipe(Effect.provide(NodeTerminal.layer)));
 These simple examples illustrate how to utilize the `Terminal` module for handling standard input and output in your programs. Let's use this knowledge to build a number guessing game:
 
 ```ts
-import { Terminal } from "@effect/platform";
-import type { PlatformError } from "@effect/platform/Error";
-import { Effect, Option, Random } from "effect";
+import { Terminal } from "@effect/platform"
+import type { PlatformError } from "@effect/platform/Error"
+import { Effect, Option, Random } from "effect"
 
-export const secret = Random.nextIntBetween(1, 100);
+export const secret = Random.nextIntBetween(1, 100)
 
 const parseGuess = (input: string) => {
-  const n = parseInt(input, 10);
-  return isNaN(n) || n < 1 || n > 100 ? Option.none() : Option.some(n);
-};
+  const n = parseInt(input, 10)
+  return isNaN(n) || n < 1 || n > 100 ? Option.none() : Option.some(n)
+}
 
 const display = (message: string) =>
   Effect.gen(function* (_) {
-    const terminal = yield* _(Terminal.Terminal);
-    yield* _(terminal.display(`${message}\n`));
-  });
+    const terminal = yield* _(Terminal.Terminal)
+    yield* _(terminal.display(`${message}\n`))
+  })
 
 const prompt = Effect.gen(function* (_) {
-  const terminal = yield* _(Terminal.Terminal);
-  yield* _(terminal.display("Enter a guess: "));
-  return yield* _(terminal.readLine);
-});
+  const terminal = yield* _(Terminal.Terminal)
+  yield* _(terminal.display("Enter a guess: "))
+  return yield* _(terminal.readLine)
+})
 
 const answer: Effect.Effect<
   number,
   Terminal.QuitException | PlatformError,
   Terminal.Terminal
 > = Effect.gen(function* (_) {
-  const input = yield* _(prompt);
-  const guess = parseGuess(input);
+  const input = yield* _(prompt)
+  const guess = parseGuess(input)
   if (Option.isNone(guess)) {
-    yield* _(display("You must enter an integer from 1 to 100"));
-    return yield* _(answer);
+    yield* _(display("You must enter an integer from 1 to 100"))
+    return yield* _(answer)
   }
-  return guess.value;
-});
+  return guess.value
+})
 
 const check = <A, E, R>(
   secret: number,
@@ -107,17 +107,17 @@ const check = <A, E, R>(
 ): Effect.Effect<A, E | PlatformError, R | Terminal.Terminal> =>
   Effect.gen(function* (_) {
     if (guess > secret) {
-      yield* _(display("Too high"));
-      return yield* _(ko);
+      yield* _(display("Too high"))
+      return yield* _(ko)
     } else if (guess < secret) {
-      yield* _(display("Too low"));
-      return yield* _(ko);
+      yield* _(display("Too low"))
+      return yield* _(ko)
     } else {
-      return yield* _(ok);
+      return yield* _(ok)
     }
-  });
+  })
 
-const end = display("You guessed it!");
+const end = display("You guessed it!")
 
 const loop = (
   secret: number
@@ -127,7 +127,7 @@ const loop = (
   Terminal.Terminal
 > =>
   Effect.gen(function* (_) {
-    const guess = yield* _(answer);
+    const guess = yield* _(answer)
     return yield* _(
       check(
         secret,
@@ -135,37 +135,37 @@ const loop = (
         end,
         Effect.suspend(() => loop(secret))
       )
-    );
-  });
+    )
+  })
 
 export const game = Effect.gen(function* (_) {
   yield* _(
     display(
       "We have selected a random number between 1 and 100. See if you can guess it in 10 turns or fewer. We'll tell you if your guess was too high or too low."
     )
-  );
-  yield* _(loop(yield* _(secret)));
-});
+  )
+  yield* _(loop(yield* _(secret)))
+})
 ```
 
 Let's run the game in Node.js:
 
 ```ts
-import { NodeRuntime, NodeTerminal } from "@effect/platform-node";
-import * as Effect from "effect/Effect";
-import { game } from "./game.js";
+import { NodeRuntime, NodeTerminal } from "@effect/platform-node"
+import * as Effect from "effect/Effect"
+import { game } from "./game.js"
 
-NodeRuntime.runMain(game.pipe(Effect.provide(NodeTerminal.layer)));
+NodeRuntime.runMain(game.pipe(Effect.provide(NodeTerminal.layer)))
 ```
 
 Let's run the game in Bun:
 
 ```ts
-import { BunRuntime, BunTerminal } from "@effect/platform-bun";
-import * as Effect from "effect/Effect";
-import { game } from "./game.js";
+import { BunRuntime, BunTerminal } from "@effect/platform-bun"
+import * as Effect from "effect/Effect"
+import { game } from "./game.js"
 
-BunRuntime.runMain(game.pipe(Effect.provide(BunTerminal.layer)));
+BunRuntime.runMain(game.pipe(Effect.provide(BunTerminal.layer)))
 ```
 
 # Command
@@ -173,27 +173,27 @@ BunRuntime.runMain(game.pipe(Effect.provide(BunTerminal.layer)));
 As an example of using the `@effect/platform/Command` module, let's see how to run the TypeScript compiler `tsc`:
 
 ```ts
-import { Command, CommandExecutor } from "@effect/platform";
+import { Command, CommandExecutor } from "@effect/platform"
 import {
   NodeCommandExecutor,
   NodeFileSystem,
-  NodeRuntime,
-} from "@effect/platform-node";
-import { Effect } from "effect";
+  NodeRuntime
+} from "@effect/platform-node"
+import { Effect } from "effect"
 
 // const program: Effect.Effect<string, PlatformError, CommandExecutor.CommandExecutor>
 const program = Effect.gen(function* (_) {
-  const executor = yield* _(CommandExecutor.CommandExecutor);
+  const executor = yield* _(CommandExecutor.CommandExecutor)
 
   // Creating a command to run the TypeScript compiler
-  const command = Command.make("tsc", "--noEmit");
-  console.log("Running tsc...");
+  const command = Command.make("tsc", "--noEmit")
+  console.log("Running tsc...")
 
   // Executing the command and capturing the output
-  const output = yield* _(executor.string(command));
-  console.log(output);
-  return output;
-});
+  const output = yield* _(executor.string(command))
+  console.log(output)
+  return output
+})
 
 // Running the program with the necessary runtime and executor layers
 NodeRuntime.runMain(
@@ -201,7 +201,7 @@ NodeRuntime.runMain(
     Effect.provide(NodeCommandExecutor.layer),
     Effect.provide(NodeFileSystem.layer)
   )
-);
+)
 ```
 
 ## Obtaining Information About the Running Process
@@ -209,23 +209,23 @@ NodeRuntime.runMain(
 Here, we'll explore how to retrieve information about a running process.
 
 ```ts
-import { Command, CommandExecutor } from "@effect/platform";
+import { Command, CommandExecutor } from "@effect/platform"
 import {
   NodeCommandExecutor,
   NodeFileSystem,
-  NodeRuntime,
-} from "@effect/platform-node";
-import { Effect, Stream, String } from "effect";
+  NodeRuntime
+} from "@effect/platform-node"
+import { Effect, Stream, String } from "effect"
 
 const runString = <E, R>(
   stream: Stream.Stream<Uint8Array, E, R>
 ): Effect.Effect<string, E, R> =>
-  stream.pipe(Stream.decodeText(), Stream.runFold(String.empty, String.concat));
+  stream.pipe(Stream.decodeText(), Stream.runFold(String.empty, String.concat))
 
 const program = Effect.gen(function* (_) {
-  const executor = yield* _(CommandExecutor.CommandExecutor);
+  const executor = yield* _(CommandExecutor.CommandExecutor)
 
-  const command = Command.make("ls");
+  const command = Command.make("ls")
 
   const [exitCode, stdout, stderr] = yield* _(
     // Start running the command and return a handle to the running process.
@@ -238,21 +238,21 @@ const program = Effect.gen(function* (_) {
           // The standard output stream of the process.
           runString(process.stdout),
           // The standard error stream of the process.
-          runString(process.stderr),
+          runString(process.stderr)
         ],
         { concurrency: 3 }
       )
     )
-  );
-  console.log({ exitCode, stdout, stderr });
-});
+  )
+  console.log({ exitCode, stdout, stderr })
+})
 
 NodeRuntime.runMain(
   Effect.scoped(program).pipe(
     Effect.provide(NodeCommandExecutor.layer),
     Effect.provide(NodeFileSystem.layer)
   )
-);
+)
 ```
 
 # FileSystem
@@ -294,20 +294,20 @@ Here's a list of operations that can be performed using the `FileSystem` tag:
 Let's explore a simple example using `readFileString`:
 
 ```ts
-import { FileSystem } from "@effect/platform";
-import { NodeFileSystem, NodeRuntime } from "@effect/platform-node";
-import { Effect } from "effect";
+import { FileSystem } from "@effect/platform"
+import { NodeFileSystem, NodeRuntime } from "@effect/platform-node"
+import { Effect } from "effect"
 
 // const readFileString: Effect.Effect<void, PlatformError, FileSystem.FileSystem>
 const readFileString = Effect.gen(function* (_) {
-  const fs = yield* _(FileSystem.FileSystem);
+  const fs = yield* _(FileSystem.FileSystem)
 
   // Reading the content of the same file where this code is written
-  const content = yield* _(fs.readFileString("./index.ts", "utf8"));
-  console.log(content);
-});
+  const content = yield* _(fs.readFileString("./index.ts", "utf8"))
+  console.log(content)
+})
 
-NodeRuntime.runMain(readFileString.pipe(Effect.provide(NodeFileSystem.layer)));
+NodeRuntime.runMain(readFileString.pipe(Effect.provide(NodeFileSystem.layer)))
 ```
 
 # HTTP Client
@@ -317,17 +317,17 @@ NodeRuntime.runMain(readFileString.pipe(Effect.provide(NodeFileSystem.layer)));
 In this section, we'll explore how to retrieve data using the `HttpClient` module from `@effect/platform`.
 
 ```ts
-import { NodeRuntime } from "@effect/platform-node";
-import * as Http from "@effect/platform/HttpClient";
-import { Console, Effect } from "effect";
+import { NodeRuntime } from "@effect/platform-node"
+import * as Http from "@effect/platform/HttpClient"
+import { Console, Effect } from "effect"
 
 const getPostAsJson = Http.request
   .get("https://jsonplaceholder.typicode.com/posts/1")
-  .pipe(Http.client.fetch, Http.response.json);
+  .pipe(Http.client.fetch, Http.response.json)
 
 NodeRuntime.runMain(
   getPostAsJson.pipe(Effect.andThen((post) => Console.log(typeof post, post)))
-);
+)
 /*
 Output:
 object {
@@ -347,17 +347,17 @@ If you want a response in a different format other than JSON, you can utilize ot
 In the following example, we fetch the post as text:
 
 ```ts
-import { NodeRuntime } from "@effect/platform-node";
-import * as Http from "@effect/platform/HttpClient";
-import { Console, Effect } from "effect";
+import { NodeRuntime } from "@effect/platform-node"
+import * as Http from "@effect/platform/HttpClient"
+import { Console, Effect } from "effect"
 
 const getPostAsText = Http.request
   .get("https://jsonplaceholder.typicode.com/posts/1")
-  .pipe(Http.client.fetch, Http.response.text);
+  .pipe(Http.client.fetch, Http.response.text)
 
 NodeRuntime.runMain(
   getPostAsText.pipe(Effect.andThen((post) => Console.log(typeof post, post)))
-);
+)
 /*
 Output:
 string {
@@ -388,7 +388,7 @@ Here are some APIs you can use to convert the response:
 When making HTTP requests, sometimes you need to include additional information in the request headers. You can set headers using the `setHeader` function for a single header or `setHeaders` for multiple headers simultaneously.
 
 ```ts
-import * as Http from "@effect/platform/HttpClient";
+import * as Http from "@effect/platform/HttpClient"
 
 const getPost = Http.request
   .get("https://jsonplaceholder.typicode.com/posts/1")
@@ -398,10 +398,10 @@ const getPost = Http.request
     // Setting multiple headers
     Http.request.setHeaders({
       "Content-type": "application/json; charset=UTF-8",
-      Foo: "Bar",
+      Foo: "Bar"
     }),
     Http.client.fetch
-  );
+  )
 ```
 
 ### Decoding Data with Schemas
@@ -409,15 +409,15 @@ const getPost = Http.request
 A common use case when fetching data is to validate the received format. For this purpose, the `HttpClient` module is integrated with `@effect/schema`.
 
 ```ts
-import { NodeRuntime } from "@effect/platform-node";
-import * as Http from "@effect/platform/HttpClient";
-import { Schema } from "@effect/schema";
-import { Console, Effect } from "effect";
+import { NodeRuntime } from "@effect/platform-node"
+import * as Http from "@effect/platform/HttpClient"
+import { Schema } from "@effect/schema"
+import { Console, Effect } from "effect"
 
 const Post = Schema.struct({
   id: Schema.number,
-  title: Schema.string,
-});
+  title: Schema.string
+})
 
 /*
 const getPostAndValidate: Effect.Effect<{
@@ -431,9 +431,9 @@ const getPostAndValidate = Http.request
     Http.client.fetch,
     Effect.andThen(Http.response.schemaBodyJson(Post)),
     Effect.scoped
-  );
+  )
 
-NodeRuntime.runMain(getPostAndValidate.pipe(Effect.andThen(Console.log)));
+NodeRuntime.runMain(getPostAndValidate.pipe(Effect.andThen(Console.log)))
 /*
 Output:
 {
@@ -456,15 +456,15 @@ You can use `Http.client.filterStatusOk`, or `Http.client.fetchOk` to ensure onl
 In this example, we attempt to fetch a non-existent page and don't receive any error:
 
 ```ts
-import { NodeRuntime } from "@effect/platform-node";
-import * as Http from "@effect/platform/HttpClient";
-import { Console, Effect } from "effect";
+import { NodeRuntime } from "@effect/platform-node"
+import * as Http from "@effect/platform/HttpClient"
+import { Console, Effect } from "effect"
 
 const getText = Http.request
   .get("https://jsonplaceholder.typicode.com/non-existing-page")
-  .pipe(Http.client.fetch, Http.response.text);
+  .pipe(Http.client.fetch, Http.response.text)
 
-NodeRuntime.runMain(getText.pipe(Effect.andThen(Console.log)));
+NodeRuntime.runMain(getText.pipe(Effect.andThen(Console.log)))
 /*
 Output:
 {}
@@ -474,15 +474,15 @@ Output:
 However, if we use `Http.client.filterStatusOk`, an error is logged:
 
 ```ts
-import { NodeRuntime } from "@effect/platform-node";
-import * as Http from "@effect/platform/HttpClient";
-import { Console, Effect } from "effect";
+import { NodeRuntime } from "@effect/platform-node"
+import * as Http from "@effect/platform/HttpClient"
+import { Console, Effect } from "effect"
 
 const getText = Http.request
   .get("https://jsonplaceholder.typicode.com/non-existing-page")
-  .pipe(Http.client.filterStatusOk(Http.client.fetch), Http.response.text);
+  .pipe(Http.client.filterStatusOk(Http.client.fetch), Http.response.text)
 
-NodeRuntime.runMain(getText.pipe(Effect.andThen(Console.log)));
+NodeRuntime.runMain(getText.pipe(Effect.andThen(Console.log)))
 /*
 Output:
 timestamp=2024-03-25T10:21:16.972Z level=ERROR fiber=#0 cause="ResponseError: StatusCode error (404 GET https://jsonplaceholder.typicode.com/non-existing-page): non 2xx status code
@@ -494,7 +494,7 @@ Note that you can use `Http.client.fetchOk` as a shortcut for `Http.client.filte
 ```ts
 const getText = Http.request
   .get("https://jsonplaceholder.typicode.com/non-existing-page")
-  .pipe(Http.client.fetchOk, Http.response.text);
+  .pipe(Http.client.fetchOk, Http.response.text)
 ```
 
 You can also create your own status-based filters. In fact, `Http.client.filterStatusOk` is just a shortcut for the following filter:
@@ -508,7 +508,7 @@ const getText = Http.request
       (status) => status >= 200 && status < 300
     ),
     Http.response.text
-  );
+  )
 ```
 
 ## POST
@@ -516,9 +516,9 @@ const getText = Http.request
 To make a POST request, you can use the `Http.request.post` function provided by the `HttpClient` module. Here's an example of how to create and send a POST request:
 
 ```ts
-import { NodeRuntime } from "@effect/platform-node";
-import * as Http from "@effect/platform/HttpClient";
-import { Console, Effect } from "effect";
+import { NodeRuntime } from "@effect/platform-node"
+import * as Http from "@effect/platform/HttpClient"
+import { Console, Effect } from "effect"
 
 const addPost = Http.request
   .post("https://jsonplaceholder.typicode.com/posts")
@@ -526,13 +526,13 @@ const addPost = Http.request
     Http.request.jsonBody({
       title: "foo",
       body: "bar",
-      userId: 1,
+      userId: 1
     }),
     Effect.andThen(Http.client.fetch),
     Http.response.json
-  );
+  )
 
-NodeRuntime.runMain(addPost.pipe(Effect.andThen(Console.log)));
+NodeRuntime.runMain(addPost.pipe(Effect.andThen(Console.log)))
 /*
 Output:
 { title: 'foo', body: 'bar', userId: 1, id: 101 }
@@ -544,9 +544,9 @@ If you need to send data in a format other than JSON, such as plain text, you ca
 In the following example, we send the data as text:
 
 ```ts
-import { NodeRuntime } from "@effect/platform-node";
-import * as Http from "@effect/platform/HttpClient";
-import { Console, Effect } from "effect";
+import { NodeRuntime } from "@effect/platform-node"
+import * as Http from "@effect/platform/HttpClient"
+import { Console, Effect } from "effect"
 
 const addPost = Http.request
   .post("https://jsonplaceholder.typicode.com/posts")
@@ -555,15 +555,15 @@ const addPost = Http.request
       JSON.stringify({
         title: "foo",
         body: "bar",
-        userId: 1,
+        userId: 1
       }),
       "application/json; charset=UTF-8"
     ),
     Http.client.fetch,
     Http.response.json
-  );
+  )
 
-NodeRuntime.runMain(Effect.andThen(addPost, Console.log));
+NodeRuntime.runMain(Effect.andThen(addPost, Console.log))
 /*
 Output:
 { title: 'foo', body: 'bar', userId: 1, id: 101 }
@@ -575,15 +575,15 @@ Output:
 A common use case when fetching data is to validate the received format. For this purpose, the `HttpClient` module is integrated with `@effect/schema`.
 
 ```ts
-import { NodeRuntime } from "@effect/platform-node";
-import * as Http from "@effect/platform/HttpClient";
-import { Schema } from "@effect/schema";
-import { Console, Effect } from "effect";
+import { NodeRuntime } from "@effect/platform-node"
+import * as Http from "@effect/platform/HttpClient"
+import { Schema } from "@effect/schema"
+import { Console, Effect } from "effect"
 
 const Post = Schema.struct({
   id: Schema.number,
-  title: Schema.string,
-});
+  title: Schema.string
+})
 
 const addPost = Http.request
   .post("https://jsonplaceholder.typicode.com/posts")
@@ -591,16 +591,177 @@ const addPost = Http.request
     Http.request.jsonBody({
       title: "foo",
       body: "bar",
-      userId: 1,
+      userId: 1
     }),
     Effect.andThen(Http.client.fetch),
     Effect.andThen(Http.response.schemaBodyJson(Post)),
     Effect.scoped
-  );
+  )
 
-NodeRuntime.runMain(addPost.pipe(Effect.andThen(Console.log)));
+NodeRuntime.runMain(addPost.pipe(Effect.andThen(Console.log)))
 /*
 Output:
 { id: 101, title: 'foo' }
 */
+```
+
+# HTTP Server
+
+## Getting Started
+
+### Hello world example
+
+In this example, we will create a simple HTTP server that listens on port `3000`. The server will respond with "Hello World!" when a request is made to the root URL (/) and return a `500` error for all other paths.
+
+Node.js Example
+
+```ts
+import { HttpServer } from "@effect/platform"
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { Layer } from "effect"
+import { createServer } from "node:http"
+
+const router = HttpServer.router.empty.pipe(
+  HttpServer.router.get("/", HttpServer.response.text("Hello World"))
+)
+
+const app = router.pipe(
+  HttpServer.server.serve(),
+  HttpServer.server.withLogAddress
+)
+
+const port = 3000
+
+const ServerLive = NodeHttpServer.server.layer(() => createServer(), { port })
+
+NodeRuntime.runMain(Layer.launch(Layer.provide(app, ServerLive)))
+/*
+Output:
+timestamp=... level=INFO fiber=#0 message="Listening on http://localhost:3000"
+*/
+```
+
+Bun Example
+
+```ts
+import { HttpServer } from "@effect/platform"
+import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
+import { Layer } from "effect"
+
+const router = HttpServer.router.empty.pipe(
+  HttpServer.router.get("/", HttpServer.response.text("Hello World"))
+)
+
+const app = router.pipe(
+  HttpServer.server.serve(),
+  HttpServer.server.withLogAddress
+)
+
+const port = 3000
+
+const ServerLive = BunHttpServer.server.layer({ port })
+
+BunRuntime.runMain(Layer.launch(Layer.provide(app, ServerLive)))
+/*
+Output:
+timestamp=... level=INFO fiber=#0 message="Listening on http://localhost:3000"
+*/
+```
+
+### Basic routing
+
+Routing refers to determining how an application responds to a client request to a particular endpoint, which is a URI (or path) and a specific HTTP request method (GET, POST, and so on).
+
+Route definition takes the following structure:
+
+```
+router.pipe(HttpServer.router.METHOD(PATH, HANDLER))
+```
+
+Where:
+
+- **router** is an instance of `Router` (`import type { Router } from "@effect/platform/Http/Router"`).
+- **METHOD** is an HTTP request method, in lowercase (e.g., get, post, put, del).
+- **PATH** is the path on the server (e.g., "/", "/user").
+- **HANDLER** is the action that gets executed when the route is matched.
+
+The following examples illustrate defining simple routes.
+
+Respond with `"Hello World!"` on the homepage:
+
+```ts
+router.pipe(HttpServer.router.get("/", HttpServer.response.text("Hello World")))
+```
+
+Respond to POST request on the root route (/), the application’s home page:
+
+```ts
+router.pipe(
+  HttpServer.router.post("/", HttpServer.response.text("Got a POST request"))
+)
+```
+
+Respond to a PUT request to the `/user` route:
+
+```ts
+router.pipe(
+  HttpServer.router.put(
+    "/user",
+    HttpServer.response.text("Got a PUT request at /user")
+  )
+)
+```
+
+Respond to a DELETE request to the `/user` route:
+
+```ts
+router.pipe(
+  HttpServer.router.del(
+    "/user",
+    HttpServer.response.text("Got a DELETE request at /user")
+  )
+)
+```
+
+### Serving static files
+
+To serve static files such as images, CSS files, and JavaScript files, use the `HttpServer.response.file` built-in action.
+
+```ts
+import { HttpServer } from "@effect/platform"
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { Layer } from "effect"
+import { createServer } from "node:http"
+
+const router = HttpServer.router.empty.pipe(
+  HttpServer.router.get("/", HttpServer.response.file("index.html"))
+)
+
+const app = router.pipe(
+  HttpServer.server.serve(),
+  HttpServer.server.withLogAddress
+)
+
+const port = 3000
+
+const ServerLive = NodeHttpServer.server.layer(() => createServer(), { port })
+
+NodeRuntime.runMain(Layer.launch(Layer.provide(app, ServerLive)))
+```
+
+Create an `index.html` file in your project directory:
+
+```html filename="index.html"
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>index.html</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    index.html
+  </body>
+</html>
 ```
