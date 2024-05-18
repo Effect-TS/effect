@@ -212,10 +212,10 @@ describe("optional APIs", () => {
     })
   })
 
-  describe(`optionalToOption > { exact: true, nullable: true, as: "Option", onNoneEncoding: null }`, () => {
+  describe(`optionalToOption > { exact: true, nullable: true, as: "Option", onNoneEncoding: O.some(null) }`, () => {
     it("decoding / encoding", async () => {
       const schema = S.Struct({
-        a: S.optional(S.NumberFromString, { exact: true, nullable: true, as: "Option", onNoneEncoding: null })
+        a: S.optional(S.NumberFromString, { exact: true, nullable: true, as: "Option", onNoneEncoding: O.some(null) })
       })
       await Util.expectDecodeUnknownSuccess(schema, {}, { a: O.none() })
       await Util.expectDecodeUnknownSuccess(schema, { a: null }, { a: O.none() })
@@ -306,10 +306,10 @@ describe("optional APIs", () => {
     })
   })
 
-  describe(`optional > { as: "Option", onNoneEncoding: undefined }`, () => {
+  describe(`optional > { as: "Option", onNoneEncoding: O.some(undefined) }`, () => {
     it("decoding / encoding", async () => {
       const schema = S.Struct({
-        a: S.optional(S.NumberFromString, { as: "Option", onNoneEncoding: undefined })
+        a: S.optional(S.NumberFromString, { as: "Option", onNoneEncoding: O.some(undefined) })
       })
       await Util.expectDecodeUnknownSuccess(schema, {}, { a: O.none() })
       await Util.expectDecodeUnknownSuccess(schema, { a: undefined }, { a: O.none() })
@@ -352,10 +352,10 @@ describe("optional APIs", () => {
     })
   })
 
-  describe(`optional > { nullable: true, as: "Option", onNoneEncoding: undefined }`, () => {
+  describe(`optional > { nullable: true, as: "Option", onNoneEncoding: O.some(undefined) }`, () => {
     it("decoding / encoding", async () => {
       const schema = S.Struct({
-        a: S.optional(S.NumberFromString, { nullable: true, as: "Option", onNoneEncoding: undefined })
+        a: S.optional(S.NumberFromString, { nullable: true, as: "Option", onNoneEncoding: O.some(undefined) })
       })
       await Util.expectDecodeUnknownSuccess(schema, {}, { a: O.none() })
       await Util.expectDecodeUnknownSuccess(schema, { a: undefined }, { a: O.none() })
@@ -386,10 +386,10 @@ describe("optional APIs", () => {
     })
   })
 
-  describe(`optional > { nullable: true, as: "Option", onNoneEncoding: null }`, () => {
+  describe(`optional > { nullable: true, as: "Option", onNoneEncoding: O.some(null) }`, () => {
     it("decoding / encoding", async () => {
       const schema = S.Struct({
-        a: S.optional(S.NumberFromString, { nullable: true, as: "Option", onNoneEncoding: null })
+        a: S.optional(S.NumberFromString, { nullable: true, as: "Option", onNoneEncoding: O.some(null) })
       })
       await Util.expectDecodeUnknownSuccess(schema, {}, { a: O.none() })
       await Util.expectDecodeUnknownSuccess(schema, { a: undefined }, { a: O.none() })

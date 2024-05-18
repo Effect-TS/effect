@@ -1872,13 +1872,13 @@ export const optional: {
       readonly default?: never
       readonly exact?: never
       readonly nullable?: never
-      readonly onNoneEncoding?: undefined
+      readonly onNoneEncoding?: option_.Option<undefined>
     } | {
       readonly as: "Option"
       readonly default?: never
       readonly exact?: never
       readonly nullable: true
-      readonly onNoneEncoding?: null | undefined
+      readonly onNoneEncoding?: option_.Option<null | undefined>
     } | {
       readonly as: "Option"
       readonly default?: never
@@ -1890,7 +1890,7 @@ export const optional: {
       readonly default?: never
       readonly exact: true
       readonly nullable: true
-      readonly onNoneEncoding?: null
+      readonly onNoneEncoding?: option_.Option<null>
     } | undefined
   >(
     options?: Options
@@ -1934,13 +1934,13 @@ export const optional: {
       readonly default?: never
       readonly exact?: never
       readonly nullable?: never
-      readonly onNoneEncoding?: undefined
+      readonly onNoneEncoding?: option_.Option<undefined>
     } | {
       readonly as: "Option"
       readonly default?: never
       readonly exact?: never
       readonly nullable: true
-      readonly onNoneEncoding?: null | undefined
+      readonly onNoneEncoding?: option_.Option<null | undefined>
     } | {
       readonly as: "Option"
       readonly default?: never
@@ -1952,7 +1952,7 @@ export const optional: {
       readonly default?: never
       readonly exact: true
       readonly nullable: true
-      readonly onNoneEncoding?: null
+      readonly onNoneEncoding?: option_.Option<null>
     } | undefined
   >(
     schema: Schema<A, I, R>,
@@ -1985,13 +1985,14 @@ export const optional: {
     readonly default?: () => A
     readonly nullable?: true
     readonly as?: "Option"
-    readonly onNoneEncoding?: null | undefined
+    readonly onNoneEncoding?: option_.Option<null | undefined>
   }
 ): PropertySignature<any, any, never, any, any, boolean, any> => {
   const isExact = options?.exact
   const defaultValue = options?.default
   const isNullable = options?.nullable
   const asOption = options?.as == "Option"
+  const onNoneEncoding = options?.onNoneEncoding ?? option_.none()
 
   if (isExact) {
     if (defaultValue) {
@@ -2024,12 +2025,7 @@ export const optional: {
           OptionFromSelf(typeSchema(schema)),
           {
             decode: option_.filter(Predicate.isNotNull<A | null>),
-            encode: (t) => {
-              if ("onNoneEncoding" in options) {
-                return option_.orElse(t, () => option_.some(options.onNoneEncoding as null))
-              }
-              return t
-            }
+            encode: option_.orElse(() => onNoneEncoding as option_.Option<null>)
           }
         )
       } else {
@@ -2084,12 +2080,7 @@ export const optional: {
           OptionFromSelf(typeSchema(schema)),
           {
             decode: option_.filter<A | null | undefined, A>((a): a is A => a != null),
-            encode: (t) => {
-              if ("onNoneEncoding" in options) {
-                return option_.orElse(t, () => option_.some(options.onNoneEncoding))
-              }
-              return t
-            }
+            encode: option_.orElse(() => onNoneEncoding)
           }
         )
       } else {
@@ -2098,12 +2089,7 @@ export const optional: {
           OptionFromSelf(typeSchema(schema)),
           {
             decode: option_.filter(Predicate.isNotUndefined<A | undefined>),
-            encode: (t) => {
-              if ("onNoneEncoding" in options) {
-                return option_.orElse(t, () => option_.some(options.onNoneEncoding as undefined))
-              }
-              return t
-            }
+            encode: option_.orElse(() => onNoneEncoding as option_.Option<undefined>)
           }
         )
       }
