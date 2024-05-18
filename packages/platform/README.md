@@ -917,11 +917,11 @@ The methods on `HttpServer.response` object in the following table can send a re
 
 ### Router
 
-Use the `HttpServer.router` object to create modular, mountable route handlers. A `Router` instance is a complete middleware and routing system; for this reason, it is often referred to as a “mini-app”.
+Use the `HttpServer.router` object to create modular, mountable route handlers. A `Router` instance is a complete middleware and routing system, often referred to as a "mini-app."
 
-The following example creates a router as a module, loads a middleware function in it, defines some routes, and mounts the router module on a path in the main app.
+The following example shows how to create a router as a module, define some routes, and mount the router module on a path in the main app.
 
-Create a router file named `birds.ts` in the app directory, with the following content:
+Create a file named `birds.ts` in your app directory with the following content:
 
 ```ts
 import { HttpServer } from "@effect/platform"
@@ -932,7 +932,7 @@ export const birds = HttpServer.router.empty.pipe(
 )
 ```
 
-Then, load the router module in the app:
+In your main application file, load the router module and mount it.
 
 ```ts
 import { HttpServer } from "@effect/platform"
@@ -941,6 +941,7 @@ import { Layer } from "effect"
 import { createServer } from "node:http"
 import { birds } from "./birds"
 
+// Create the main router and mount the birds router
 const router = HttpServer.router.empty.pipe(
   HttpServer.router.mount("/birds", birds)
 )
@@ -957,4 +958,4 @@ const ServerLive = NodeHttpServer.server.layer(() => createServer(), { port })
 NodeRuntime.runMain(Layer.launch(Layer.provide(app, ServerLive)))
 ```
 
-The app will now be able to handle requests to `/birds` and `/birds/about`.
+When you run this code, your application will be able to handle requests to `/birds` and `/birds/about`, serving the respective responses defined in the `birds` router module.
