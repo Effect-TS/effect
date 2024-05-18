@@ -1870,15 +1870,27 @@ export const optional: {
     } | {
       readonly as: "Option"
       readonly default?: never
-      readonly exact?: true
+      readonly exact?: never
       readonly nullable?: never
       readonly onNoneEncoding?: undefined
     } | {
       readonly as: "Option"
       readonly default?: never
-      readonly exact?: true
+      readonly exact?: never
       readonly nullable: true
       readonly onNoneEncoding?: null | undefined
+    } | {
+      readonly as: "Option"
+      readonly default?: never
+      readonly exact: true
+      readonly nullable?: never
+      readonly onNoneEncoding?: never
+    } | {
+      readonly as: "Option"
+      readonly default?: never
+      readonly exact: true
+      readonly nullable: true
+      readonly onNoneEncoding?: null
     } | undefined
   >(
     options?: Options
@@ -1920,15 +1932,27 @@ export const optional: {
     } | {
       readonly as: "Option"
       readonly default?: never
-      readonly exact?: true
+      readonly exact?: never
       readonly nullable?: never
       readonly onNoneEncoding?: undefined
     } | {
       readonly as: "Option"
       readonly default?: never
-      readonly exact?: true
+      readonly exact?: never
       readonly nullable: true
       readonly onNoneEncoding?: null | undefined
+    } | {
+      readonly as: "Option"
+      readonly default?: never
+      readonly exact: true
+      readonly nullable?: never
+      readonly onNoneEncoding?: never
+    } | {
+      readonly as: "Option"
+      readonly default?: never
+      readonly exact: true
+      readonly nullable: true
+      readonly onNoneEncoding?: null
     } | undefined
   >(
     schema: Schema<A, I, R>,
@@ -1998,7 +2022,15 @@ export const optional: {
         return optionalToRequired(
           NullOr(schema),
           OptionFromSelf(typeSchema(schema)),
-          { decode: option_.filter(Predicate.isNotNull<A | null>), encode: identity }
+          {
+            decode: option_.filter(Predicate.isNotNull<A | null>),
+            encode: (t) => {
+              if ("onNoneEncoding" in options) {
+                return option_.orElse(t, () => option_.some(options.onNoneEncoding as null))
+              }
+              return t
+            }
+          }
         )
       } else {
         return optionalToRequired(

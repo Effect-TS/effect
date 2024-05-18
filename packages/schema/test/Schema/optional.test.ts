@@ -212,6 +212,37 @@ describe("optional APIs", () => {
     })
   })
 
+  describe(`optionalToOption > { exact: true, nullable: true, as: "Option", onNoneEncoding: null }`, () => {
+    it("decoding / encoding", async () => {
+      const schema = S.Struct({
+        a: S.optional(S.NumberFromString, { exact: true, nullable: true, as: "Option", onNoneEncoding: null })
+      })
+      await Util.expectDecodeUnknownSuccess(schema, {}, { a: O.none() })
+      await Util.expectDecodeUnknownSuccess(schema, { a: null }, { a: O.none() })
+      await Util.expectDecodeUnknownSuccess(schema, { a: "1" }, { a: O.some(1) })
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        {
+          a: "a"
+        },
+        `(Struct (Encoded side) <-> Struct (Type side))
+└─ Encoded side transformation failure
+   └─ Struct (Encoded side)
+      └─ ["a"]
+         └─ NumberFromString | null
+            ├─ Union member
+            │  └─ NumberFromString
+            │     └─ Transformation process failure
+            │        └─ Expected NumberFromString, actual "a"
+            └─ Union member
+               └─ Expected null, actual "a"`
+      )
+
+      await Util.expectEncodeSuccess(schema, { a: O.some(1) }, { a: "1" })
+      await Util.expectEncodeSuccess(schema, { a: O.none() }, { a: null })
+    })
+  })
+
   describe(`optional > { as: "Option" }`, () => {
     it("decoding / encoding", async () => {
       const schema = S.Struct({ a: S.optional(S.NumberFromString, { as: "Option" }) })
