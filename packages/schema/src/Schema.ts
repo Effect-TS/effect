@@ -1971,7 +1971,7 @@ export const optional: {
       | (Types.Has<Options, "as"> extends true ? option_.Option<A> : A)
       | (Types.Has<Options, "as" | "default" | "exact"> extends true ? never : undefined),
       never,
-      Types.Has<Options, "onNoneEncoding"> extends true ? ":" : "?:",
+      "?:",
       | I
       | (Types.Has<Options, "nullable"> extends true ? null : never)
       | (Types.Has<Options, "exact"> extends true ? never : undefined),
