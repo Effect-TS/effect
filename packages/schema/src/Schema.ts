@@ -1871,7 +1871,14 @@ export const optional: {
       readonly as: "Option"
       readonly default?: never
       readonly exact?: true
-      readonly nullable?: true
+      readonly nullable?: never
+      readonly onNoneEncoding?: undefined
+    } | {
+      readonly as: "Option"
+      readonly default?: never
+      readonly exact?: true
+      readonly nullable: true
+      readonly onNoneEncoding?: null | undefined
     } | undefined
   >(
     options?: Options
@@ -1889,7 +1896,7 @@ export const optional: {
       | (Types.Has<Options, "as"> extends true ? option_.Option<A> : A)
       | (Types.Has<Options, "as" | "default" | "exact"> extends true ? never : undefined),
       never,
-      "?:",
+      Types.Has<Options, "onNoneEncoding"> extends true ? ":" : "?:",
       | I
       | (Types.Has<Options, "nullable"> extends true ? null : never)
       | (Types.Has<Options, "exact"> extends true ? never : undefined),
@@ -1914,7 +1921,14 @@ export const optional: {
       readonly as: "Option"
       readonly default?: never
       readonly exact?: true
-      readonly nullable?: true
+      readonly nullable?: never
+      readonly onNoneEncoding?: undefined
+    } | {
+      readonly as: "Option"
+      readonly default?: never
+      readonly exact?: true
+      readonly nullable: true
+      readonly onNoneEncoding?: null | undefined
     } | undefined
   >(
     schema: Schema<A, I, R>,
@@ -1933,7 +1947,7 @@ export const optional: {
       | (Types.Has<Options, "as"> extends true ? option_.Option<A> : A)
       | (Types.Has<Options, "as" | "default" | "exact"> extends true ? never : undefined),
       never,
-      "?:",
+      Types.Has<Options, "onNoneEncoding"> extends true ? ":" : "?:",
       | I
       | (Types.Has<Options, "nullable"> extends true ? null : never)
       | (Types.Has<Options, "exact"> extends true ? never : undefined),
