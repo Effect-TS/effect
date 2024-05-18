@@ -2075,7 +2075,7 @@ assert.deepStrictEqual(
 )
 ```
 
-The previous solution works perfectly and shows how we can add and remove properties to our schema at will, making it easier to consume the result within our domain model. However, it requires a lot of boilerplate. Fortunately, there is an API called `attachPropertySignature` designed specifically for this use case, which allows us to achieve the same result with much less effort:
+The previous solution works perfectly and shows how we can add properties to our schema at will, making it easier to consume the result within our domain model. However, it requires a lot of boilerplate. Fortunately, there is an API called `attachPropertySignature` designed specifically for this use case, which allows us to achieve the same result with much less effort:
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -2106,6 +2106,9 @@ assert.deepStrictEqual(
   { radius: 10 }
 )
 ```
+
+> [!NOTE]
+> Please note that with `attachPropertySignature`, you can only add a property, it cannot override an existing one.
 
 ### Exposed Values
 
@@ -3122,7 +3125,7 @@ Schema.required(
 
 ## Extending Schemas
 
-The `extend` combinator allows you to add additional fields or index signatures to an existing `Schema`.
+The `extend` combinator allows you to add **additional** fields or index signatures to an existing `Schema`.
 
 Example
 
