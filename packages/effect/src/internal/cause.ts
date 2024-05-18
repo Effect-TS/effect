@@ -977,12 +977,25 @@ export const pretty = <E>(cause: Cause.Cause<E>): string => {
 }
 
 class PrettyError extends globalThis.Error implements Cause.PrettyError {
+  span: undefined | Span = undefined
   constructor(originalError: unknown) {
     const prevLimit = Error.stackTraceLimit
     Error.stackTraceLimit = 0
-    super(prettyErrorMessage(originalError), { cause: originalError })
+    super(prettyErrorMessage(originalError))
     Error.stackTraceLimit = prevLimit
+
     this.name = originalError instanceof Error ? originalError.name : "Error"
+    if (typeof originalError === "object" && originalError !== null) {
+      if (spanSymbol in originalError) {
+        this.span = originalError[spanSymbol] as Span
+      }
+      Object.keys(originalError).forEach((key) => {
+        if (!(key in this)) {
+          // @ts-expect-error
+          this[key] = originalError[key]
+        }
+      })
+    }
     this.stack = prettyErrorStack(
       this.message,
       originalError instanceof Error && originalError.stack
@@ -990,10 +1003,6 @@ class PrettyError extends globalThis.Error implements Cause.PrettyError {
         : "",
       this.span
     )
-  }
-
-  get span(): Span | undefined {
-    return hasProperty(this.cause, spanSymbol) ? this.cause[spanSymbol] as Span : undefined
   }
 
   toJSON() {
@@ -1048,7 +1057,7 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
   const lines = stack.split("\n")
 
   for (let i = 1; i < lines.length; i++) {
-    if (lines[i].includes("effect_cutpoint")) {
+    if (lines[i].includes("effect_cutpoint") || lines[i].includes("Generator.next")) {
       break
     }
     out.push(
