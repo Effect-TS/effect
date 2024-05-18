@@ -1335,7 +1335,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
             internalCause.sequential(internalCause.die(e), internalCause.interrupt(FiberId.none))
           )
         } else {
-          cur = core.exitFailCause(internalCause.die(e))
+          cur = core.die(e)
         }
       }
     }
