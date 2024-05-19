@@ -1,5 +1,16 @@
 # @effect/schema
 
+## 0.67.6
+
+### Patch Changes
+
+- [#2772](https://github.com/Effect-TS/effect/pull/2772) [`17da864`](https://github.com/Effect-TS/effect/commit/17da864e4a6f80becdb82db7dece2ba583bfdda3) Thanks [@vinassefranche](https://github.com/vinassefranche)! - Add onNoneEncoding for Schema.optional used with {as: "Option"}
+
+- [#2769](https://github.com/Effect-TS/effect/pull/2769) [`ff0efa0`](https://github.com/Effect-TS/effect/commit/ff0efa0a1415a41d4a4312a16cf7a63def86db3f) Thanks [@TylorS](https://github.com/TylorS)! - Point-free usage of Schema.make constructors
+
+- Updated dependencies [[`17fc22e`](https://github.com/Effect-TS/effect/commit/17fc22e132593c5caa563705a4748ba0f04a853c), [`810f222`](https://github.com/Effect-TS/effect/commit/810f222268792b13067c7a7bf317b93a9bb8917b), [`596aaea`](https://github.com/Effect-TS/effect/commit/596aaea022648b2e06fb1ec22f1652043d6fe64e)]:
+  - effect@3.1.6
+
 ## 0.67.5
 
 ### Patch Changes

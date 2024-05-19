@@ -1,5 +1,15 @@
 # effect
 
+## 3.1.6
+
+### Patch Changes
+
+- [#2761](https://github.com/Effect-TS/effect/pull/2761) [`17fc22e`](https://github.com/Effect-TS/effect/commit/17fc22e132593c5caa563705a4748ba0f04a853c) Thanks [@KhraksMamtsov](https://github.com/KhraksMamtsov)! - Add `{ once: true }` to all `"abort"` event listeners for `AbortController` to automatically remove handlers after execution
+
+- [#2762](https://github.com/Effect-TS/effect/pull/2762) [`810f222`](https://github.com/Effect-TS/effect/commit/810f222268792b13067c7a7bf317b93a9bb8917b) Thanks [@tim-smart](https://github.com/tim-smart)! - fix Config.Wrap incorrectly wrapping functions & arrays
+
+- [#2773](https://github.com/Effect-TS/effect/pull/2773) [`596aaea`](https://github.com/Effect-TS/effect/commit/596aaea022648b2e06fb1ec22f1652043d6fe64e) Thanks [@tim-smart](https://github.com/tim-smart)! - fix for Infinity delays in Schedule
+
 ## 3.1.5
 
 ### Patch Changes
