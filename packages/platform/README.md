@@ -621,20 +621,26 @@ import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import { Layer } from "effect"
 import { createServer } from "node:http"
 
+// Define the router with a single route for the root URL
 const router = HttpServer.router.empty.pipe(
   HttpServer.router.get("/", HttpServer.response.text("Hello World"))
 )
 
+// Set up the application server with logging
 const app = router.pipe(
   HttpServer.server.serve(),
   HttpServer.server.withLogAddress
 )
 
+// Specify the port
 const port = 3000
 
+// Create a server layer with the specified port
 const ServerLive = NodeHttpServer.server.layer(() => createServer(), { port })
 
+// Run the application
 NodeRuntime.runMain(Layer.launch(Layer.provide(app, ServerLive)))
+
 /*
 Output:
 timestamp=... level=INFO fiber=#0 message="Listening on http://localhost:3000"
@@ -648,24 +654,56 @@ import { HttpServer } from "@effect/platform"
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { Layer } from "effect"
 
+// Define the router with a single route for the root URL
 const router = HttpServer.router.empty.pipe(
   HttpServer.router.get("/", HttpServer.response.text("Hello World"))
 )
 
+// Set up the application server with logging
 const app = router.pipe(
   HttpServer.server.serve(),
   HttpServer.server.withLogAddress
 )
 
+// Specify the port
 const port = 3000
 
+// Create a server layer with the specified port
 const ServerLive = BunHttpServer.server.layer({ port })
 
+// Run the application
 BunRuntime.runMain(Layer.launch(Layer.provide(app, ServerLive)))
+
 /*
 Output:
 timestamp=... level=INFO fiber=#0 message="Listening on http://localhost:3000"
 */
+```
+
+To avoid boilerplate code for the final server setup, we'll use a helper function from the `listen.ts` file:
+
+```ts
+import type { HttpServer } from "@effect/platform"
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { Layer } from "effect"
+import { createServer } from "node:http"
+
+export const listen = (
+  app: Layer.Layer<
+    never,
+    never,
+    HttpServer.platform.Platform | HttpServer.server.Server
+  >,
+  port: number
+) =>
+  NodeRuntime.runMain(
+    Layer.launch(
+      Layer.provide(
+        app,
+        NodeHttpServer.server.layer(() => createServer(), { port })
+      )
+    )
+  )
 ```
 
 ### Basic routing
@@ -729,9 +767,7 @@ To serve static files such as images, CSS files, and JavaScript files, use the `
 
 ```ts
 import { HttpServer } from "@effect/platform"
-import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
-import { Layer } from "effect"
-import { createServer } from "node:http"
+import { listen } from "./listen.js"
 
 const router = HttpServer.router.empty.pipe(
   HttpServer.router.get("/", HttpServer.response.file("index.html"))
@@ -742,14 +778,7 @@ const app = router.pipe(
   HttpServer.server.withLogAddress
 )
 
-NodeRuntime.runMain(
-  Layer.launch(
-    Layer.provide(
-      app,
-      NodeHttpServer.server.layer(() => createServer(), { port: 3000 })
-    )
-  )
-)
+listen(app, 3000)
 ```
 
 Create an `index.html` file in your project directory:
@@ -871,10 +900,9 @@ To define routes with parameters, include the parameter names in the path and us
 
 ```ts
 import { HttpServer } from "@effect/platform"
-import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import { Schema } from "@effect/schema"
-import { Effect, Layer } from "effect"
-import { createServer } from "node:http"
+import { Effect } from "effect"
+import { listen } from "./listen.js"
 
 // Define the schema for route parameters
 const Params = Schema.Struct({
@@ -897,14 +925,7 @@ const app = router.pipe(
   HttpServer.server.withLogAddress
 )
 
-NodeRuntime.runMain(
-  Layer.launch(
-    Layer.provide(
-      app,
-      NodeHttpServer.server.layer(() => createServer(), { port: 3000 })
-    )
-  )
-)
+listen(app, 3000)
 ```
 
 ### Response methods
@@ -942,10 +963,8 @@ In your main application file, load the router module and mount it.
 
 ```ts
 import { HttpServer } from "@effect/platform"
-import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
-import { Layer } from "effect"
-import { createServer } from "node:http"
-import { birds } from "./birds"
+import { birds } from "./birds.js"
+import { listen } from "./listen.js"
 
 // Create the main router and mount the birds router
 const router = HttpServer.router.empty.pipe(
@@ -957,14 +976,7 @@ const app = router.pipe(
   HttpServer.server.withLogAddress
 )
 
-NodeRuntime.runMain(
-  Layer.launch(
-    Layer.provide(
-      app,
-      NodeHttpServer.server.layer(() => createServer(), { port: 3000 })
-    )
-  )
-)
+listen(app, 3000)
 ```
 
 When you run this code, your application will be able to handle requests to `/birds` and `/birds/about`, serving the respective responses defined in the `birds` router module.
@@ -994,9 +1006,8 @@ To use the middleware, add it to the router using `HttpServer.router.use()`:
 
 ```ts
 import { HttpServer } from "@effect/platform"
-import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
-import { Effect, Layer } from "effect"
-import { createServer } from "node:http"
+import { Effect } from "effect"
+import { listen } from "./listen.js"
 
 const myLogger = HttpServer.middleware.make((app) =>
   Effect.gen(function* () {
@@ -1015,14 +1026,7 @@ const app = router.pipe(
   HttpServer.server.withLogAddress
 )
 
-NodeRuntime.runMain(
-  Layer.launch(
-    Layer.provide(
-      app,
-      NodeHttpServer.server.layer(() => createServer(), { port: 3000 })
-    )
-  )
-)
+listen(app, 3000)
 ```
 
 With this setup, every request to the app will log "LOGGED" to the terminal. Middleware execute in the order they are loaded.
@@ -1045,9 +1049,8 @@ Update the app to use this middleware and display the timestamp in the response:
 
 ```ts
 import { HttpServer } from "@effect/platform"
-import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
-import { Context, Effect, Layer } from "effect"
-import { createServer } from "node:http"
+import { Context, Effect } from "effect"
+import { listen } from "./listen.js"
 
 class RequestTime extends Context.Tag("RequestTime")<RequestTime, number>() {}
 
@@ -1074,14 +1077,7 @@ const app = router.pipe(
   HttpServer.server.withLogAddress
 )
 
-NodeRuntime.runMain(
-  Layer.launch(
-    Layer.provide(
-      app,
-      NodeHttpServer.server.layer(() => createServer(), { port: 3000 })
-    )
-  )
-)
+listen(app, 3000)
 ```
 
 Now, when you make a request to the root path, the response will include the timestamp of the request.
@@ -1115,10 +1111,9 @@ Update the app to use the `cookieValidator` middleware:
 
 ```ts
 import { HttpServer } from "@effect/platform"
-import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import { Schema } from "@effect/schema"
-import { Effect, Layer } from "effect"
-import { createServer } from "node:http"
+import { Effect } from "effect"
+import { listen } from "./listen.js"
 
 const externallyValidateCookie = (testCookie: string) =>
   Effect.succeed(testCookie)
@@ -1147,14 +1142,7 @@ const app = router.pipe(
   HttpServer.server.withLogAddress
 )
 
-NodeRuntime.runMain(
-  Layer.launch(
-    Layer.provide(
-      app,
-      NodeHttpServer.server.layer(() => createServer(), { port: 3000 })
-    )
-  )
-)
+listen(app, 3000)
 ```
 
 Test the middleware with the following commands:
