@@ -39,7 +39,7 @@
     "paths": {
       "effect": ["./packages/effect/src/index.js"],
       "effect/*": ["./packages/effect/src/*.js"],
-      "effect-test/*": ["./packages/effect/test/*.js"],
+      "effect/test/*": ["./packages/effect/test/*.js"],
       "@effect/cli": ["./packages/cli/src/index.js"],
       "@effect/cli/*": ["./packages/cli/src/*.js"],
       "@effect/cli/test/*": ["./packages/cli/test/*.js"],

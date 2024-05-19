@@ -1,4 +1,3 @@
-import * as it from "effect-test/utils/extend"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
@@ -8,6 +7,7 @@ import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as STM from "effect/STM"
+import * as it from "effect/test/utils/extend"
 import * as TReentrantLock from "effect/TReentrantLock"
 import { assert, describe } from "vitest"
 

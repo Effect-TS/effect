@@ -1,6 +1,6 @@
-import * as it from "effect-test/utils/extend"
 import * as Cache from "effect/Cache"
 import * as Effect from "effect/Effect"
+import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
 import { describe, expect } from "vitest"
 

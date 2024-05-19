@@ -1,9 +1,9 @@
-import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
+import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 const sum = (n: number): number => {

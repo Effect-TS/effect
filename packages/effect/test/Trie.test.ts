@@ -1,7 +1,7 @@
-import { deepStrictEqual } from "effect-test/util"
 import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
+import { deepStrictEqual } from "effect/test/util"
 import * as Trie from "effect/Trie"
 import { assert, describe, expect, it } from "vitest"
 

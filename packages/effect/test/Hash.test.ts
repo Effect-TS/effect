@@ -50,8 +50,8 @@ describe("Hash", () => {
   })
 
   it("symbol", () => {
-    const a = Symbol.for("effect-test/Hash/a")
-    const b = Symbol.for("effect-test/Hash/b")
+    const a = Symbol.for("effect/test/Hash/a")
+    const b = Symbol.for("effect/test/Hash/b")
     const set: HashSet.HashSet<symbol> = HashSet.make(a)
     expect(HashSet.has(set, a)).toBe(true)
     expect(HashSet.has(set, b)).toBe(false)

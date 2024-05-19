@@ -1,5 +1,5 @@
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect-test/util"
 import * as MutableQueue from "effect/MutableQueue"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { describe, expect, it } from "vitest"
 
 describe("MutableQueue", () => {

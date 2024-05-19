@@ -1,5 +1,5 @@
 import { Array, Clock, Deferred, Effect, Either, Fiber, Function, Option, RateLimiter, Ref, TestClock } from "effect"
-import * as it from "effect-test/utils/extend"
+import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 describe("RateLimiter", () => {

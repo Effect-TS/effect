@@ -1,4 +1,3 @@
-import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -10,6 +9,7 @@ import * as HashMap from "effect/HashMap"
 import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
+import * as it from "effect/test/utils/extend"
 import { assert, describe, expect } from "vitest"
 
 describe("FiberRefs", () => {

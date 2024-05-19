@@ -1,4 +1,3 @@
-import * as it from "effect-test/utils/extend"
 import * as Array from "effect/Array"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
@@ -7,6 +6,7 @@ import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
+import * as it from "effect/test/utils/extend"
 import type * as Tracer from "effect/Tracer"
 import { assert, describe, expect } from "vitest"
 
