@@ -1111,22 +1111,25 @@ Update the app to use the `cookieValidator` middleware:
 
 ```ts
 import { HttpServer } from "@effect/platform"
-import { Schema } from "@effect/schema"
 import { Effect } from "effect"
 import { listen } from "./listen.js"
 
-const externallyValidateCookie = (testCookie: string) =>
-  Effect.succeed(testCookie)
+class CookieError {
+  readonly _tag = "CookieError"
+}
+
+const externallyValidateCookie = (testCookie: string | undefined) =>
+  testCookie && testCookie.length > 0
+    ? Effect.succeed(testCookie)
+    : Effect.fail(new CookieError())
 
 const cookieValidator = HttpServer.middleware.make((app) =>
   Effect.gen(function* () {
-    const cookies = yield* HttpServer.request.schemaCookies(
-      Schema.Struct({ testCookie: Schema.String })
-    )
-    yield* externallyValidateCookie(cookies.testCookie)
+    const req = yield* HttpServer.request.ServerRequest
+    yield* externallyValidateCookie(req.cookies.testCookie)
     return yield* app
   }).pipe(
-    Effect.catchTag("ParseError", () =>
+    Effect.catchTag("CookieError", () =>
       HttpServer.response.text("Invalid cookie")
     )
   )
@@ -1150,6 +1153,118 @@ Test the middleware with the following commands:
 ```sh
 curl -i http://localhost:3000
 curl -i GET http://localhost:3000 --cookie "testCookie=myvalue"
+curl -i GET http://localhost:3000 --cookie "testCookie="
 ```
 
 This setup validates the `testCookie` and returns "Invalid cookie" if the validation fails, or "Hello World" if it passes.
+
+## Built-in middleware
+
+### Middleware Summary
+
+| Middleware            | Description                                                                                                                       |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Logger**            | Provides detailed logging of all requests and responses, aiding in debugging and monitoring application activities.               |
+| **xForwardedHeaders** | Manages `X-Forwarded-*` headers to accurately maintain client information such as IP addresses and host names in proxy scenarios. |
+
+### logger
+
+The `HttpServer.middleware.logger` middleware enables logging for your entire application, providing insights into each request and response. Here’s how to set it up:
+
+```ts
+import { HttpServer } from "@effect/platform"
+import { listen } from "./listen.js"
+
+const router = HttpServer.router.empty.pipe(
+  HttpServer.router.get("/", HttpServer.response.text("Hello World"))
+)
+
+// Apply the logger middleware globally
+const app = router.pipe(
+  HttpServer.server.serve(HttpServer.middleware.logger),
+  HttpServer.server.withLogAddress
+)
+
+listen(app, 3000)
+/*
+curl -i http://localhost:3000
+timestamp=... level=INFO fiber=#0 message="Listening on http://0.0.0.0:3000"
+timestamp=... level=INFO fiber=#19 message="Sent HTTP response" http.span.1=8ms http.status=200 http.method=GET http.url=/
+timestamp=... level=INFO fiber=#20 cause="RouteNotFound: GET /favicon.ico not found
+    at ...
+    at http.server GET" http.span.2=4ms http.status=500 http.method=GET http.url=/favicon.ico
+*/
+```
+
+To disable the logger for specific routes, you can use `HttpServer.middleware.withLoggerDisabled`:
+
+```ts
+import { HttpServer } from "@effect/platform"
+import { listen } from "./listen.js"
+
+// Create the router with routes that will and will not have logging
+const router = HttpServer.router.empty.pipe(
+  HttpServer.router.get("/", HttpServer.response.text("Hello World")),
+  HttpServer.router.get(
+    "/no-logger",
+    HttpServer.response
+      .text("no-logger")
+      .pipe(HttpServer.middleware.withLoggerDisabled)
+  )
+)
+
+// Apply the logger middleware globally
+const app = router.pipe(
+  HttpServer.server.serve(HttpServer.middleware.logger),
+  HttpServer.server.withLogAddress
+)
+
+listen(app, 3000)
+/*
+curl -i http://localhost:3000/no-logger
+timestamp=2024-05-19T09:53:29.877Z level=INFO fiber=#0 message="Listening on http://0.0.0.0:3000"
+*/
+```
+
+### xForwardedHeaders
+
+This middleware handles `X-Forwarded-*` headers, useful when your app is behind a reverse proxy or load balancer and you need to retrieve the original client's IP and host information.
+
+```ts
+import { HttpServer } from "@effect/platform"
+import { Effect } from "effect"
+import { listen } from "./listen.js"
+
+// Create a router and a route that logs request headers and remote address
+const router = HttpServer.router.empty.pipe(
+  HttpServer.router.get(
+    "/",
+    Effect.gen(function* () {
+      const req = yield* HttpServer.request.ServerRequest
+      console.log(req.headers)
+      console.log(req.remoteAddress)
+      return yield* HttpServer.response.text("Hello World")
+    })
+  )
+)
+
+// Set up the server with xForwardedHeaders middleware
+const app = router.pipe(
+  HttpServer.server.serve(HttpServer.middleware.xForwardedHeaders),
+  HttpServer.server.withLogAddress
+)
+
+listen(app, 3000)
+/*
+curl -H "X-Forwarded-Host: 192.168.1.1" -H "X-Forwarded-For: 192.168.1.1" http://localhost:3000
+timestamp=... level=INFO fiber=#0 message="Listening on http://0.0.0.0:3000"
+{
+  host: '192.168.1.1',
+  'user-agent': 'curl/8.6.0',
+  accept: '*\/*',
+  'x-forwarded-host': '192.168.1.1',
+  'x-forwarded-for': '192.168.1.1'
+}
+{ _id: 'Option', _tag: 'Some', value: '192.168.1.1' }
+*/
+```
