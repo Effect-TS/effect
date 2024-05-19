@@ -1985,14 +1985,14 @@ export const optional: {
     readonly default?: () => A
     readonly nullable?: true
     readonly as?: "Option"
-    readonly onNoneEncoding?: () => option_.Option<null | undefined>
+    readonly onNoneEncoding?: () => option_.Option<never>
   }
 ): PropertySignature<any, any, never, any, any, boolean, any> => {
   const isExact = options?.exact
   const defaultValue = options?.default
   const isNullable = options?.nullable
   const asOption = options?.as == "Option"
-  const onNoneEncoding = options?.onNoneEncoding ?? option_.none
+  const asOptionEncode = options?.onNoneEncoding ? option_.orElse(options.onNoneEncoding) : identity
 
   if (isExact) {
     if (defaultValue) {
@@ -2025,7 +2025,7 @@ export const optional: {
           OptionFromSelf(typeSchema(schema)),
           {
             decode: option_.filter(Predicate.isNotNull<A | null>),
-            encode: option_.orElse(onNoneEncoding as () => option_.Option<null>)
+            encode: asOptionEncode
           }
         )
       } else {
@@ -2080,7 +2080,7 @@ export const optional: {
           OptionFromSelf(typeSchema(schema)),
           {
             decode: option_.filter<A | null | undefined, A>((a): a is A => a != null),
-            encode: option_.orElse(onNoneEncoding)
+            encode: asOptionEncode
           }
         )
       } else {
@@ -2089,7 +2089,7 @@ export const optional: {
           OptionFromSelf(typeSchema(schema)),
           {
             decode: option_.filter(Predicate.isNotUndefined<A | undefined>),
-            encode: option_.orElse(onNoneEncoding as () => option_.Option<undefined>)
+            encode: asOptionEncode
           }
         )
       }
