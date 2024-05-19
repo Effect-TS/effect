@@ -4,6 +4,7 @@ import * as S from "@effect/schema/Schema"
 import * as Brand from "effect/Brand"
 import { hole, identity, pipe } from "effect/Function"
 import * as N from "effect/Number"
+import * as Option from "effect/Option"
 import * as Str from "effect/String"
 import type { Simplify } from "effect/Types"
 
@@ -606,17 +607,45 @@ S.asSchema(S.Struct({ a: S.String.pipe(S.optional({ exact: true })) }))
 S.Struct({ a: S.String.pipe(S.optional({ exact: true })) })
 
 // ---------------------------------------------
-// optional()
+// optional - Errors
 // ---------------------------------------------
 
 // @ts-expect-error
 S.optional(S.String, { as: "Option", default: () => "" })
 
 // @ts-expect-error
+S.optional(S.String, { as: "Option", exact: true, onNoneEncoding: () => Option.some(null) })
+
+// @ts-expect-error
+S.String.pipe(S.optional({ as: "Option", exact: true, onNoneEncoding: () => Option.some(null) }))
+
+// @ts-expect-error
+S.optional(S.String, { as: "Option", exact: true, nullable: true, onNoneEncoding: () => Option.some(1) })
+
+// @ts-expect-error
+S.optional(S.String, { as: "Option", onNoneEncoding: () => Option.some(null) })
+
+// @ts-expect-error
+S.String.pipe(S.optional({ as: "Option", onNoneEncoding: () => Option.some(null) }))
+
+// @ts-expect-error
+S.String.pipe(S.optional({ as: "Option", exact: true, nullable: true, onNoneEncoding: () => Option.some(1) }))
+
+// @ts-expect-error
+S.optional(S.String, { as: "Option", nullable: true, onNoneEncoding: () => Option.some(1) })
+
+// @ts-expect-error
+S.String.pipe(S.optional({ as: "Option", nullable: true, onNoneEncoding: () => Option.some(1) }))
+
+// @ts-expect-error
 S.optional(S.String, { as: null })
 
 // @ts-expect-error
 S.optional(S.String, { default: null })
+
+// ---------------------------------------------
+// optional()
+// ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: boolean | undefined; }, { readonly a: string; readonly b: number; readonly c?: boolean | undefined; }, never>
 S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.Boolean) }))
