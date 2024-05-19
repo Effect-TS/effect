@@ -1,4 +1,3 @@
-import * as it from "effect-test/utils/extend"
 import * as Array from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
@@ -11,6 +10,7 @@ import { identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
+import * as it from "effect/test/utils/extend"
 import { assert, describe, expect } from "vitest"
 
 export const waitForValue = <A>(ref: Effect.Effect<A>, value: A): Effect.Effect<A> => {

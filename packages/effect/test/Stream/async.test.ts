@@ -1,4 +1,3 @@
-import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
@@ -10,6 +9,7 @@ import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 describe("Stream", () => {

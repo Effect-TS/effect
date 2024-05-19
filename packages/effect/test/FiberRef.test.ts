@@ -1,4 +1,3 @@
-import * as it from "effect-test/utils/extend"
 import * as Chunk from "effect/Chunk"
 import * as Clock from "effect/Clock"
 import * as Deferred from "effect/Deferred"
@@ -9,6 +8,7 @@ import * as FiberRef from "effect/FiberRef"
 import { constant, constTrue, identity } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Runtime from "effect/Runtime"
+import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 const initial = "initial"

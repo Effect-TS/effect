@@ -1,10 +1,10 @@
-import * as Util from "effect-test/util"
 import * as Chunk from "effect/Chunk"
 import * as Either from "effect/Either"
 import { flow, pipe } from "effect/Function"
 import * as Num from "effect/Number"
 import * as Option from "effect/Option"
 import * as Str from "effect/String"
+import * as Util from "effect/test/util"
 import { describe, expect, it } from "vitest"
 
 const expectRight = <R, L>(e: Either.Either<R, L>, expected: R) => {

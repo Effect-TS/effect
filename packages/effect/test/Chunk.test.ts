@@ -1,4 +1,3 @@
-import * as Util from "effect-test/util"
 import * as RA from "effect/Array"
 import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
@@ -9,6 +8,7 @@ import * as N from "effect/Number"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import type { Predicate } from "effect/Predicate"
+import * as Util from "effect/test/util"
 import * as fc from "fast-check"
 import { assert, describe, expect, it } from "vitest"
 
