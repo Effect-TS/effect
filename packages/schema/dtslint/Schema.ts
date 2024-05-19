@@ -623,6 +623,12 @@ S.String.pipe(S.optional({ as: "Option", exact: true, onNoneEncoding: () => Opti
 S.optional(S.String, { as: "Option", exact: true, nullable: true, onNoneEncoding: () => Option.some(1) })
 
 // @ts-expect-error
+S.optional(S.String, { as: "Option", onNoneEncoding: () => Option.some(null) })
+
+// @ts-expect-error
+S.String.pipe(S.optional({ as: "Option", onNoneEncoding: () => Option.some(null) }))
+
+// @ts-expect-error
 S.String.pipe(S.optional({ as: "Option", exact: true, nullable: true, onNoneEncoding: () => Option.some(1) }))
 
 // @ts-expect-error
