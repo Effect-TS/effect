@@ -693,7 +693,7 @@ Respond with `"Hello World!"` on the homepage:
 router.pipe(HttpServer.router.get("/", HttpServer.response.text("Hello World")))
 ```
 
-Respond to POST request on the root route (/), the application’s home page:
+Respond to POST request on the root route (/), the application's home page:
 
 ```ts
 router.pipe(
@@ -742,11 +742,14 @@ const app = router.pipe(
   HttpServer.server.withLogAddress
 )
 
-const port = 3000
-
-const ServerLive = NodeHttpServer.server.layer(() => createServer(), { port })
-
-NodeRuntime.runMain(Layer.launch(Layer.provide(app, ServerLive)))
+NodeRuntime.runMain(
+  Layer.launch(
+    Layer.provide(
+      app,
+      NodeHttpServer.server.layer(() => createServer(), { port: 3000 })
+    )
+  )
+)
 ```
 
 Create an `index.html` file in your project directory:
@@ -768,7 +771,7 @@ Create an `index.html` file in your project directory:
 
 ## Routing
 
-Routing refers to how an application’s endpoints (URIs) respond to client requests.
+Routing refers to how an application's endpoints (URIs) respond to client requests.
 
 You define routing using methods of the `HttpServer.router` object that correspond to HTTP methods; for example, `HttpServer.router.get()` to handle GET requests and `HttpServer.router.post` to handle POST requests. You can also use `HttpServer.router.all()` to handle all HTTP methods.
 
@@ -894,11 +897,14 @@ const app = router.pipe(
   HttpServer.server.withLogAddress
 )
 
-const port = 3000
-
-const ServerLive = NodeHttpServer.server.layer(() => createServer(), { port })
-
-NodeRuntime.runMain(Layer.launch(Layer.provide(app, ServerLive)))
+NodeRuntime.runMain(
+  Layer.launch(
+    Layer.provide(
+      app,
+      NodeHttpServer.server.layer(() => createServer(), { port: 3000 })
+    )
+  )
+)
 ```
 
 ### Response methods
@@ -951,11 +957,211 @@ const app = router.pipe(
   HttpServer.server.withLogAddress
 )
 
-const port = 3000
-
-const ServerLive = NodeHttpServer.server.layer(() => createServer(), { port })
-
-NodeRuntime.runMain(Layer.launch(Layer.provide(app, ServerLive)))
+NodeRuntime.runMain(
+  Layer.launch(
+    Layer.provide(
+      app,
+      NodeHttpServer.server.layer(() => createServer(), { port: 3000 })
+    )
+  )
+)
 ```
 
 When you run this code, your application will be able to handle requests to `/birds` and `/birds/about`, serving the respective responses defined in the `birds` router module.
+
+## Writing Middleware
+
+In this section, we'll build a simple "Hello World" application and demonstrate how to add three middleware functions: `myLogger` for logging, `requestTime` for displaying request timestamps, and `validateCookies` for validating incoming cookies.
+
+### Example Application
+
+Here is an example of a basic "Hello World" application with middleware.
+
+### Middleware `myLogger`
+
+This middleware logs "LOGGED" whenever a request passes through it.
+
+```ts
+const myLogger = HttpServer.middleware.make((app) =>
+  Effect.gen(function* () {
+    console.log("LOGGED")
+    return yield* app
+  })
+)
+```
+
+To use the middleware, add it to the router using `HttpServer.router.use()`:
+
+```ts
+import { HttpServer } from "@effect/platform"
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { Effect, Layer } from "effect"
+import { createServer } from "node:http"
+
+const myLogger = HttpServer.middleware.make((app) =>
+  Effect.gen(function* () {
+    console.log("LOGGED")
+    return yield* app
+  })
+)
+
+const router = HttpServer.router.empty.pipe(
+  HttpServer.router.get("/", HttpServer.response.text("Hello World"))
+)
+
+const app = router.pipe(
+  HttpServer.router.use(myLogger),
+  HttpServer.server.serve(),
+  HttpServer.server.withLogAddress
+)
+
+NodeRuntime.runMain(
+  Layer.launch(
+    Layer.provide(
+      app,
+      NodeHttpServer.server.layer(() => createServer(), { port: 3000 })
+    )
+  )
+)
+```
+
+With this setup, every request to the app will log "LOGGED" to the terminal. Middleware execute in the order they are loaded.
+
+### Middleware `requestTime`
+
+Next, we'll create a middleware that records the timestamp of each HTTP request and provides it via a service called `RequestTime`.
+
+```ts
+class RequestTime extends Context.Tag("RequestTime")<RequestTime, number>() {}
+
+const requestTime = HttpServer.middleware.make((app) =>
+  Effect.gen(function* () {
+    return yield* app.pipe(Effect.provideService(RequestTime, Date.now()))
+  })
+)
+```
+
+Update the app to use this middleware and display the timestamp in the response:
+
+```ts
+import { HttpServer } from "@effect/platform"
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { Context, Effect, Layer } from "effect"
+import { createServer } from "node:http"
+
+class RequestTime extends Context.Tag("RequestTime")<RequestTime, number>() {}
+
+const requestTime = HttpServer.middleware.make((app) =>
+  Effect.gen(function* () {
+    return yield* app.pipe(Effect.provideService(RequestTime, Date.now()))
+  })
+)
+
+const router = HttpServer.router.empty.pipe(
+  HttpServer.router.get(
+    "/",
+    Effect.gen(function* () {
+      const requestTime = yield* RequestTime
+      const responseText = `Hello World<br/><small>Requested at: ${requestTime}</small>`
+      return yield* HttpServer.response.html(responseText)
+    })
+  )
+)
+
+const app = router.pipe(
+  HttpServer.router.use(requestTime),
+  HttpServer.server.serve(),
+  HttpServer.server.withLogAddress
+)
+
+NodeRuntime.runMain(
+  Layer.launch(
+    Layer.provide(
+      app,
+      NodeHttpServer.server.layer(() => createServer(), { port: 3000 })
+    )
+  )
+)
+```
+
+Now, when you make a request to the root path, the response will include the timestamp of the request.
+
+### Middleware `validateCookies`
+
+Finally, we'll create a middleware that validates incoming cookies. If the cookies are invalid, it sends a 400 response.
+
+Here's an example that validates cookies using an external service:
+
+```ts
+const externallyValidateCookie = (testCookie: string) =>
+  Effect.succeed(testCookie)
+
+const cookieValidator = HttpServer.middleware.make((app) =>
+  Effect.gen(function* () {
+    const cookies = yield* HttpServer.request.schemaCookies(
+      Schema.Struct({ testCookie: Schema.String })
+    )
+    yield* externallyValidateCookie(cookies.testCookie)
+    return yield* app
+  }).pipe(
+    Effect.catchTag("ParseError", () =>
+      HttpServer.response.text("Invalid cookie")
+    )
+  )
+)
+```
+
+Update the app to use the `cookieValidator` middleware:
+
+```ts
+import { HttpServer } from "@effect/platform"
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+import { Schema } from "@effect/schema"
+import { Effect, Layer } from "effect"
+import { createServer } from "node:http"
+
+const externallyValidateCookie = (testCookie: string) =>
+  Effect.succeed(testCookie)
+
+const cookieValidator = HttpServer.middleware.make((app) =>
+  Effect.gen(function* () {
+    const cookies = yield* HttpServer.request.schemaCookies(
+      Schema.Struct({ testCookie: Schema.String })
+    )
+    yield* externallyValidateCookie(cookies.testCookie)
+    return yield* app
+  }).pipe(
+    Effect.catchTag("ParseError", () =>
+      HttpServer.response.text("Invalid cookie")
+    )
+  )
+)
+
+const router = HttpServer.router.empty.pipe(
+  HttpServer.router.get("/", HttpServer.response.text("Hello World"))
+)
+
+const app = router.pipe(
+  HttpServer.router.use(cookieValidator),
+  HttpServer.server.serve(),
+  HttpServer.server.withLogAddress
+)
+
+NodeRuntime.runMain(
+  Layer.launch(
+    Layer.provide(
+      app,
+      NodeHttpServer.server.layer(() => createServer(), { port: 3000 })
+    )
+  )
+)
+```
+
+Test the middleware with the following commands:
+
+```sh
+curl -i http://localhost:3000
+curl -i GET http://localhost:3000 --cookie "testCookie=myvalue"
+```
+
+This setup validates the `testCookie` and returns "Invalid cookie" if the validation fails, or "Hello World" if it passes.
