@@ -672,7 +672,7 @@ export const exponential = (
 ): Schedule.Schedule<Duration.Duration> => {
   const base = Duration.decode(baseInput)
   return delayedSchedule(
-    map(forever, (i) => Duration.times(base, Math.min(Number.MAX_SAFE_INTEGER, Math.pow(factor, i))))
+    map(forever, (i) => Duration.times(base, Math.pow(factor, i)))
   )
 }
 
@@ -1060,7 +1060,7 @@ export const modifyDelayEffect = dual<
           const oldStart = Intervals.start(intervals)
           const newStart = now + Duration.toMillis(duration)
           const delta = newStart - oldStart
-          const newEnd = Math.min(Math.max(0, Intervals.end(intervals) + delta), Number.MAX_SAFE_INTEGER)
+          const newEnd = Math.max(0, Intervals.end(intervals) + delta)
           const newInterval = Interval.make(newStart, newEnd)
           return [state, out, ScheduleDecision.continueWith(newInterval)] as const
         })
