@@ -86,6 +86,15 @@ Encoding from `unknown` involves two key steps:
 > [!NOTE]
 > As a general rule, schemas should be defined such that encode + decode return the original value.
 
+### Recap
+
+- **Decoding:** Used for parsing data from external sources where you have no control over the data format.
+- **Encoding:** Used when sending data out to external sources, converting it to a format that is expected by those sources.
+
+For instance, when working with forms in the frontend, you often receive untyped data in the form of strings. This data can be tampered with and does not natively support arrays or booleans. Decoding helps you validate and parse this data into more useful types like numbers, dates, and arrays. Encoding allows you to convert these types back into the string format expected by forms.
+
+By understanding these processes, you can ensure that your data handling is robust and reliable, converting data safely between different formats.
+
 ## The Rule of Schemas: Keeping Encode and Decode in Sync
 
 When working with schemas, there's an important rule to keep in mind: your schemas should be crafted in a way that when you perform both encoding and decoding operations, you should end up with the original value.
