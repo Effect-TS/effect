@@ -1884,7 +1884,7 @@ export const optional: {
       readonly default?: never
       readonly exact: true
       readonly nullable?: never
-      readonly onNoneEncoding?: () => never
+      readonly onNoneEncoding?: never
     } | {
       readonly as: "Option"
       readonly default?: never
@@ -1946,7 +1946,7 @@ export const optional: {
       readonly default?: never
       readonly exact: true
       readonly nullable?: never
-      readonly onNoneEncoding?: () => never
+      readonly onNoneEncoding?: never
     } | {
       readonly as: "Option"
       readonly default?: never
