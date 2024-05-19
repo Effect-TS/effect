@@ -3563,7 +3563,7 @@ export const trimmed =
       filter((a) => a === a.trim(), {
         typeId: TrimmedTypeId,
         description: "a string with no leading or trailing whitespace",
-        jsonSchema: { pattern: "^.*[a-zA-Z0-9]+.*$" },
+        jsonSchema: { pattern: "^\\S.*\\S$|^\\S$" },
         ...annotations
       })
     )
