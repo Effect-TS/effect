@@ -1268,3 +1268,54 @@ timestamp=... level=INFO fiber=#0 message="Listening on http://0.0.0.0:3000"
 { _id: 'Option', _tag: 'Some', value: '192.168.1.1' }
 */
 ```
+
+## Error Handling
+
+### Catching Errors
+
+Below is an example illustrating how to catch and manage errors that occur during the execution of route handlers:
+
+```ts
+import { HttpServer } from "@effect/platform"
+import { Effect } from "effect"
+import { listen } from "./listen.js"
+
+// Define routes that might throw errors or fail
+const router = HttpServer.router.empty.pipe(
+  HttpServer.router.get(
+    "/throw",
+    Effect.sync(() => {
+      throw new Error("BROKEN") // This will intentionally throw an error
+    })
+  ),
+  HttpServer.router.get("/fail", Effect.fail("Uh oh!")) // This will intentionally fail
+)
+
+// Configure the application to handle different types of errors
+const app = router.pipe(
+  Effect.catchTags({
+    RouteNotFound: () =>
+      HttpServer.response.text("Route Not Found", { status: 404 })
+  }),
+  Effect.catchAllCause((cause) =>
+    HttpServer.response.text(cause.toString(), { status: 500 })
+  ),
+  HttpServer.server.serve(),
+  HttpServer.server.withLogAddress
+)
+
+listen(app, 3000)
+```
+
+You can test the error handling setup with `curl` commands by trying to access routes that trigger errors:
+
+```sh
+# Accessing a route that does not exist
+curl -i http://localhost:3000/nonexistent
+
+# Accessing the route that throws an error
+curl -i http://localhost:3000/throw
+
+# Accessing the route that fails
+curl -i http://localhost:3000/fail
+```
