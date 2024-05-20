@@ -2,4 +2,4 @@
 "@effect/schema": patch
 ---
 
-change trimmed json-schema pattern
+fix `pattern` in JSONSchemaAnnotation of `Trimmed` schema
