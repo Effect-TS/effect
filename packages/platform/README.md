@@ -1121,18 +1121,22 @@ Finally, we'll create a middleware that validates incoming cookies. If the cooki
 Here's an example that validates cookies using an external service:
 
 ```ts
-const externallyValidateCookie = (testCookie: string) =>
-  Effect.succeed(testCookie)
+class CookieError {
+  readonly _tag = "CookieError"
+}
+
+const externallyValidateCookie = (testCookie: string | undefined) =>
+  testCookie && testCookie.length > 0
+    ? Effect.succeed(testCookie)
+    : Effect.fail(new CookieError())
 
 const cookieValidator = HttpServer.middleware.make((app) =>
   Effect.gen(function* () {
-    const cookies = yield* HttpServer.request.schemaCookies(
-      Schema.Struct({ testCookie: Schema.String })
-    )
-    yield* externallyValidateCookie(cookies.testCookie)
+    const req = yield* HttpServer.request.ServerRequest
+    yield* externallyValidateCookie(req.cookies.testCookie)
     return yield* app
   }).pipe(
-    Effect.catchTag("ParseError", () =>
+    Effect.catchTag("CookieError", () =>
       HttpServer.response.text("Invalid cookie")
     )
   )
@@ -1184,8 +1188,8 @@ Test the middleware with the following commands:
 
 ```sh
 curl -i http://localhost:3000
-curl -i GET http://localhost:3000 --cookie "testCookie=myvalue"
-curl -i GET http://localhost:3000 --cookie "testCookie="
+curl -i http://localhost:3000 --cookie "testCookie=myvalue"
+curl -i http://localhost:3000 --cookie "testCookie="
 ```
 
 This setup validates the `testCookie` and returns "Invalid cookie" if the validation fails, or "Hello World" if it passes.
@@ -1350,4 +1354,100 @@ curl -i http://localhost:3000/throw
 
 # Accessing the route that fails
 curl -i http://localhost:3000/fail
+```
+
+## Validations
+
+Validation is a critical aspect of handling HTTP requests to ensure that the data your server receives is as expected. We'll explore how to validate headers and cookies using the `@effect/platform` and `@effect/schema` libraries, which provide structured and robust methods for these tasks.
+
+### Headers
+
+Headers often contain important information needed by your application, such as content types, authentication tokens, or session data. Validating these headers ensures that your application can trust and correctly process the information it receives.
+
+```ts
+import { HttpServer } from "@effect/platform"
+import { Schema } from "@effect/schema"
+import { Effect } from "effect"
+import { listen } from "./listen.js"
+
+const router = HttpServer.router.empty.pipe(
+  HttpServer.router.get(
+    "/",
+    Effect.gen(function* () {
+      // Define the schema for expected headers and validate them
+      const headers = yield* HttpServer.request.schemaHeaders(
+        Schema.Struct({ test: Schema.String })
+      )
+      return yield* HttpServer.response.text("header: " + headers.test)
+    }).pipe(
+      // Handle parsing errors
+      Effect.catchTag("ParseError", (e) =>
+        HttpServer.response.text(`Invalid header: ${e.message}`)
+      )
+    )
+  )
+)
+
+const app = router.pipe(
+  HttpServer.server.serve(),
+  HttpServer.server.withLogAddress
+)
+
+listen(app, 3000)
+```
+
+You can test header validation using the following `curl` commands:
+
+```sh
+# Request without the required header
+curl -i http://localhost:3000
+
+# Request with the valid header
+curl -i -H "test: myvalue" http://localhost:3000
+```
+
+### Cookies
+
+Cookies are commonly used to maintain session state or user preferences. Validating cookies ensures that the data they carry is intact and as expected, enhancing security and application integrity.
+
+Here’s how you can validate cookies received in HTTP requests:
+
+```ts
+import { HttpServer } from "@effect/platform"
+import { Schema } from "@effect/schema"
+import { Effect } from "effect"
+import { listen } from "./listen.js"
+
+const router = HttpServer.router.empty.pipe(
+  HttpServer.router.get(
+    "/",
+    Effect.gen(function* () {
+      const cookies = yield* HttpServer.request.schemaCookies(
+        Schema.Struct({ test: Schema.String })
+      )
+      return yield* HttpServer.response.text("cookie: " + cookies.test)
+    }).pipe(
+      Effect.catchTag("ParseError", (e) =>
+        HttpServer.response.text(`Invalid cookie: ${e.message}`)
+      )
+    )
+  )
+)
+
+const app = router.pipe(
+  HttpServer.server.serve(),
+  HttpServer.server.withLogAddress
+)
+
+listen(app, 3000)
+```
+
+Validate the cookie handling with the following `curl` commands:
+
+```sh
+# Request without any cookies
+curl -i http://localhost:3000
+
+# Request with the valid cookie
+curl -i http://localhost:3000 --cookie "test=myvalue"
 ```
