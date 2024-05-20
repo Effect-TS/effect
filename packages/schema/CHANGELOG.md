@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.67.9
+
+### Patch Changes
+
+- [#2775](https://github.com/Effect-TS/effect/pull/2775) [`5432fff`](https://github.com/Effect-TS/effect/commit/5432fff7c9a69d43910426c1053ebfc3b73ebed6) Thanks [@KhraksMamtsov](https://github.com/KhraksMamtsov)! - fix `pattern` in JSONSchemaAnnotation of `Trimmed` schema
+
 ## 0.67.8
 
 ### Patch Changes
