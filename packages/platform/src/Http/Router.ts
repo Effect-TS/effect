@@ -16,7 +16,6 @@ import type * as App from "./App.js"
 import type * as Method from "./Method.js"
 import type * as Error from "./ServerError.js"
 import type * as ServerRequest from "./ServerRequest.js"
-import type * as ServerResponse from "./ServerResponse.js"
 
 /**
  * @since 1.0.0
@@ -99,11 +98,7 @@ export declare namespace Route {
   /**
    * @since 1.0.0
    */
-  export type Handler<E, R> = Effect.Effect<
-    ServerResponse.ServerResponse,
-    E,
-    R | RouteContext | ServerRequest.ServerRequest | ServerRequest.ParsedSearchParams
-  >
+  export type Handler<E, R> = App.Default<E, R | RouteContext | ServerRequest.ParsedSearchParams>
 }
 
 /**
