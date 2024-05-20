@@ -1850,6 +1850,42 @@ export const optionalToOptional = <FA, FI, FR, TA, TI, TR>(
     )
   )
 
+type OptionalOptions<A> = {
+  readonly default?: never
+  readonly as?: never
+  readonly exact?: true
+  readonly nullable?: true
+} | {
+  readonly default: () => A
+  readonly as?: never
+  readonly exact?: true
+  readonly nullable?: true
+} | {
+  readonly as: "Option"
+  readonly default?: never
+  readonly exact?: never
+  readonly nullable?: never
+  readonly onNoneEncoding?: () => option_.Option<undefined>
+} | {
+  readonly as: "Option"
+  readonly default?: never
+  readonly exact?: never
+  readonly nullable: true
+  readonly onNoneEncoding?: () => option_.Option<null | undefined>
+} | {
+  readonly as: "Option"
+  readonly default?: never
+  readonly exact: true
+  readonly nullable?: never
+  readonly onNoneEncoding?: never
+} | {
+  readonly as: "Option"
+  readonly default?: never
+  readonly exact: true
+  readonly nullable: true
+  readonly onNoneEncoding?: () => option_.Option<null>
+} | undefined
+
 /**
  * @category PropertySignature
  * @since 1.0.0
@@ -1857,41 +1893,7 @@ export const optionalToOptional = <FA, FI, FR, TA, TI, TR>(
 export const optional: {
   <
     A,
-    const Options extends {
-      readonly default?: never
-      readonly as?: never
-      readonly exact?: true
-      readonly nullable?: true
-    } | {
-      readonly default: () => A
-      readonly as?: never
-      readonly exact?: true
-      readonly nullable?: true
-    } | {
-      readonly as: "Option"
-      readonly default?: never
-      readonly exact?: never
-      readonly nullable?: never
-      readonly onNoneEncoding?: () => option_.Option<undefined>
-    } | {
-      readonly as: "Option"
-      readonly default?: never
-      readonly exact?: never
-      readonly nullable: true
-      readonly onNoneEncoding?: () => option_.Option<null | undefined>
-    } | {
-      readonly as: "Option"
-      readonly default?: never
-      readonly exact: true
-      readonly nullable?: never
-      readonly onNoneEncoding?: never
-    } | {
-      readonly as: "Option"
-      readonly default?: never
-      readonly exact: true
-      readonly nullable: true
-      readonly onNoneEncoding?: () => option_.Option<null>
-    } | undefined
+    const Options extends OptionalOptions<A>
   >(
     options?: Options
   ): <I, R>(schema: Schema<A, I, R>) => [undefined] extends [Options] ? PropertySignature<
@@ -1919,41 +1921,7 @@ export const optional: {
     A,
     I,
     R,
-    const Options extends {
-      readonly default?: never
-      readonly as?: never
-      readonly exact?: true
-      readonly nullable?: true
-    } | {
-      readonly default: () => A
-      readonly as?: never
-      readonly exact?: true
-      readonly nullable?: true
-    } | {
-      readonly as: "Option"
-      readonly default?: never
-      readonly exact?: never
-      readonly nullable?: never
-      readonly onNoneEncoding?: () => option_.Option<undefined>
-    } | {
-      readonly as: "Option"
-      readonly default?: never
-      readonly exact?: never
-      readonly nullable: true
-      readonly onNoneEncoding?: () => option_.Option<null | undefined>
-    } | {
-      readonly as: "Option"
-      readonly default?: never
-      readonly exact: true
-      readonly nullable?: never
-      readonly onNoneEncoding?: never
-    } | {
-      readonly as: "Option"
-      readonly default?: never
-      readonly exact: true
-      readonly nullable: true
-      readonly onNoneEncoding?: () => option_.Option<null>
-    } | undefined
+    const Options extends OptionalOptions<A>
   >(
     schema: Schema<A, I, R>,
     options?: Options
