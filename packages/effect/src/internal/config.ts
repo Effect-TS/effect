@@ -542,7 +542,7 @@ export const unwrap = <A>(wrapped: Config.Config.Wrap<A>): Config.Config<A> => {
   }
   return struct(
     Object.fromEntries(
-      Object.entries(wrapped).map(([k, a]) => [k, unwrap(a)])
+      Object.entries(wrapped).map(([k, a]) => [k, unwrap(a as any)])
     )
   ) as any
 }

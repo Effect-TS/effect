@@ -385,9 +385,11 @@ describe("Config", () => {
         _: Config.Config.Wrap<{
           key1: number
           list: ReadonlyArray<number>
-          nested: {
-            key2: string
-          }
+          nested?:
+            | Partial<{
+              key2: string
+            }>
+            | undefined
         }>
       ) => Config.unwrap(_)
 
