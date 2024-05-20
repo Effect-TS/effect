@@ -241,8 +241,8 @@ export const makeRoute: <E, R>(
  * @category combinators
  */
 export const prefixAll: {
-  (prefix: PathInput): <R, E>(self: Router<E, R>) => Router<E, R>
-  <R, E>(self: Router<E, R>, prefix: PathInput): Router<E, R>
+  (prefix: PathInput): <E, R>(self: Router<E, R>) => Router<E, R>
+  <E, R>(self: Router<E, R>, prefix: PathInput): Router<E, R>
 } = internal.prefixAll
 
 /**
@@ -250,10 +250,10 @@ export const prefixAll: {
  * @category combinators
  */
 export const concat: {
-  <R1, E1>(that: Router<E1, R1>): <R, E>(
+  <R1, E1>(that: Router<E1, R1>): <E, R>(
     self: Router<E, R>
   ) => Router<E1 | E, R1 | R>
-  <R, E, R1, E1>(self: Router<E, R>, that: Router<E1, R1>): Router<
+  <E, R, R1, E1>(self: Router<E, R>, that: Router<E1, R1>): Router<
     E | E1,
     R | R1
   >
@@ -264,8 +264,8 @@ export const concat: {
  * @category routing
  */
 export const mount: {
-  <R1, E1>(path: `/${string}`, that: Router<E1, R1>): <R, E>(self: Router<E, R>) => Router<E1 | E, R1 | R>
-  <R, E, R1, E1>(self: Router<E, R>, path: `/${string}`, that: Router<E1, R1>): Router<E | E1, R | R1>
+  <R1, E1>(path: `/${string}`, that: Router<E1, R1>): <E, R>(self: Router<E, R>) => Router<E1 | E, R1 | R>
+  <E, R, E1, R1>(self: Router<E, R>, path: `/${string}`, that: Router<E1, R1>): Router<E | E1, R | R1>
 } = internal.mount
 
 /**
@@ -277,14 +277,14 @@ export const mountApp: {
     path: `/${string}`,
     that: App.Default<E1, R1>,
     options?: { readonly includePrefix?: boolean | undefined } | undefined
-  ): <R, E>(
+  ): <E, R>(
     self: Router<E, R>
   ) => Router<
     E1 | E,
     | Router.ExcludeProvided<R1>
     | Router.ExcludeProvided<R>
   >
-  <R, E, R1, E1>(
+  <E, R, E1, R1>(
     self: Router<E, R>,
     path: `/${string}`,
     that: App.Default<E1, R1>,
@@ -307,10 +307,10 @@ export const route: (
     path: PathInput,
     handler: Route.Handler<E1, R1>,
     options?: { readonly uninterruptible?: boolean | undefined } | undefined
-  ): <R, E>(
+  ): <E, R>(
     self: Router<E, R>
   ) => Router<E1 | E, R | Exclude<R1, ServerRequest.ServerRequest | RouteContext | Scope.Scope>>
-  <R, E, R1, E1>(
+  <E, R, E1, R1>(
     self: Router<E, R>,
     path: PathInput,
     handler: Route.Handler<E1, R1>,
@@ -327,13 +327,13 @@ export const all: {
     path: PathInput,
     handler: Route.Handler<E1, R1>,
     options?: { readonly uninterruptible?: boolean | undefined } | undefined
-  ): <R, E>(
+  ): <E, R>(
     self: Router<E, R>
   ) => Router<
     E1 | E,
     R | Router.ExcludeProvided<R1>
   >
-  <R, E, R1, E1>(
+  <E, R, E1, R1>(
     self: Router<E, R>,
     path: PathInput,
     handler: Route.Handler<E1, R1>,
@@ -353,10 +353,10 @@ export const get: {
     path: PathInput,
     handler: Route.Handler<E1, R1>,
     options?: { readonly uninterruptible?: boolean | undefined } | undefined
-  ): <R, E>(
+  ): <E, R>(
     self: Router<E, R>
   ) => Router<E1 | E, R | Router.ExcludeProvided<R1>>
-  <R, E, R1, E1>(
+  <E, R, E1, R1>(
     self: Router<E, R>,
     path: PathInput,
     handler: Route.Handler<E1, R1>,
@@ -373,10 +373,10 @@ export const post: {
     path: PathInput,
     handler: Route.Handler<E1, R1>,
     options?: { readonly uninterruptible?: boolean | undefined } | undefined
-  ): <R, E>(
+  ): <E, R>(
     self: Router<E, R>
   ) => Router<E1 | E, R | Router.ExcludeProvided<R1>>
-  <R, E, R1, E1>(
+  <E, R, E1, R1>(
     self: Router<E, R>,
     path: PathInput,
     handler: Route.Handler<E1, R1>,
@@ -393,10 +393,10 @@ export const patch: {
     path: PathInput,
     handler: Route.Handler<E1, R1>,
     options?: { readonly uninterruptible?: boolean | undefined } | undefined
-  ): <R, E>(
+  ): <E, R>(
     self: Router<E, R>
   ) => Router<E1 | E, R | Router.ExcludeProvided<R1>>
-  <R, E, R1, E1>(
+  <E, R, E1, R1>(
     self: Router<E, R>,
     path: PathInput,
     handler: Route.Handler<E1, R1>,
@@ -413,10 +413,10 @@ export const put: {
     path: PathInput,
     handler: Route.Handler<E1, R1>,
     options?: { readonly uninterruptible?: boolean | undefined } | undefined
-  ): <R, E>(
+  ): <E, R>(
     self: Router<E, R>
   ) => Router<E1 | E, R | Router.ExcludeProvided<R1>>
-  <R, E, R1, E1>(
+  <E, R, E1, R1>(
     self: Router<E, R>,
     path: PathInput,
     handler: Route.Handler<E1, R1>,
@@ -433,10 +433,10 @@ export const del: {
     path: PathInput,
     handler: Route.Handler<E1, R1>,
     options?: { readonly uninterruptible?: boolean | undefined } | undefined
-  ): <R, E>(
+  ): <E, R>(
     self: Router<E, R>
   ) => Router<E1 | E, R | Router.ExcludeProvided<R1>>
-  <R, E, R1, E1>(
+  <E, R, E1, R1>(
     self: Router<E, R>,
     path: PathInput,
     handler: Route.Handler<E1, R1>,
@@ -453,10 +453,10 @@ export const head: {
     path: PathInput,
     handler: Route.Handler<E1, R1>,
     options?: { readonly uninterruptible?: boolean | undefined } | undefined
-  ): <R, E>(
+  ): <E, R>(
     self: Router<E, R>
   ) => Router<E1 | E, R | Router.ExcludeProvided<R1>>
-  <R, E, R1, E1>(
+  <E, R, E1, R1>(
     self: Router<E, R>,
     path: PathInput,
     handler: Route.Handler<E1, R1>,
@@ -473,10 +473,10 @@ export const options: {
     path: PathInput,
     handler: Route.Handler<E1, R1>,
     options?: { readonly uninterruptible?: boolean | undefined } | undefined
-  ): <R, E>(
+  ): <E, R>(
     self: Router<E, R>
   ) => Router<E1 | E, R | Router.ExcludeProvided<R1>>
-  <R, E, R1, E1>(
+  <E, R, E1, R1>(
     self: Router<E, R>,
     path: PathInput,
     handler: Route.Handler<E1, R1>,
@@ -506,7 +506,7 @@ export const catchAll: {
   <E, E2, R2>(
     f: (e: E) => Route.Handler<E2, R2>
   ): <R>(self: Router<E, R>) => Router<E2, R | Router.ExcludeProvided<R2>>
-  <R, E, E2, R2>(
+  <E, R, E2, R2>(
     self: Router<E, R>,
     f: (e: E) => Route.Handler<E2, R2>
   ): Router<E2, R | Router.ExcludeProvided<R2>>
@@ -520,7 +520,7 @@ export const catchAllCause: {
   <E, E2, R2>(
     f: (e: Cause.Cause<E>) => Route.Handler<E2, R2>
   ): <R>(self: Router<E, R>) => Router<E2, R | Router.ExcludeProvided<R2>>
-  <R, E, E2, R2>(
+  <E, R, E2, R2>(
     self: Router<E, R>,
     f: (e: Cause.Cause<E>) => Route.Handler<E2, R2>
   ): Router<E2, R | Router.ExcludeProvided<R2>>
@@ -537,7 +537,7 @@ export const catchTag: {
   ): <R>(
     self: Router<E, R>
   ) => Router<E1 | Exclude<E, { _tag: K }>, R | Router.ExcludeProvided<R1>>
-  <R, E, K extends E extends { _tag: string } ? E["_tag"] : never, E1, R1>(
+  <E, R, K extends E extends { _tag: string } ? E["_tag"] : never, E1, R1>(
     self: Router<E, R>,
     k: K,
     f: (e: Extract<E, { _tag: K }>) => Route.Handler<E1, R1>
@@ -601,8 +601,8 @@ export const provideService: {
   <T extends Context.Tag<any, any>>(
     tag: T,
     service: Context.Tag.Service<T>
-  ): <R, E>(self: Router<E, R>) => Router<E, Exclude<R, Context.Tag.Identifier<T>>>
-  <R, E, T extends Context.Tag<any, any>>(
+  ): <E, R>(self: Router<E, R>) => Router<E, Exclude<R, Context.Tag.Identifier<T>>>
+  <E, R, T extends Context.Tag<any, any>>(
     self: Router<E, R>,
     tag: T,
     service: Context.Tag.Service<T>
@@ -617,14 +617,14 @@ export const provideServiceEffect: {
   <T extends Context.Tag<any, any>, R1, E1>(
     tag: T,
     effect: Effect.Effect<Context.Tag.Service<T>, E1, R1>
-  ): <R, E>(
+  ): <E, R>(
     self: Router<E, R>
   ) => Router<
     E1 | E,
     | Exclude<R, Context.Tag.Identifier<T>>
     | Exclude<Router.ExcludeProvided<R1>, Context.Tag.Identifier<T>>
   >
-  <R, E, T extends Context.Tag<any, any>, R1, E1>(
+  <E, R, T extends Context.Tag<any, any>, R1, E1>(
     self: Router<E, R>,
     tag: T,
     effect: Effect.Effect<Context.Tag.Service<T>, E1, R1>

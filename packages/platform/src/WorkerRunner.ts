@@ -95,7 +95,7 @@ export declare namespace Runner {
  * @since 1.0.0
  * @category constructors
  */
-export const make: <I, R, E, O>(
+export const make: <I, E, R, O>(
   process: (request: I) => Stream.Stream<O, E, R> | Effect.Effect<O, E, R>,
   options?: Runner.Options<I, O, E> | undefined
 ) => Effect.Effect<void, WorkerError, Scope.Scope | R | PlatformRunner> = internal.make
@@ -104,7 +104,7 @@ export const make: <I, R, E, O>(
  * @since 1.0.0
  * @category layers
  */
-export const layer: <I, R, E, O>(
+export const layer: <I, E, R, O>(
   process: (request: I) => Stream.Stream<O, E, R> | Effect.Effect<O, E, R>,
   options?: Runner.Options<I, O, E> | undefined
 ) => Layer.Layer<never, WorkerError, R | PlatformRunner> = internal.layer

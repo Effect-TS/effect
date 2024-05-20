@@ -60,8 +60,8 @@ export const maxParts: FiberRef.FiberRef<Option.Option<number>> = globalValue(
 
 /** @internal */
 export const withMaxParts = dual<
-  (count: Option.Option<number>) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <R, E, A>(effect: Effect.Effect<A, E, R>, count: Option.Option<number>) => Effect.Effect<A, E, R>
+  (count: Option.Option<number>) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(effect: Effect.Effect<A, E, R>, count: Option.Option<number>) => Effect.Effect<A, E, R>
 >(2, (effect, count) => Effect.locally(effect, maxParts, count))
 
 /** @internal */
@@ -72,8 +72,8 @@ export const maxFieldSize: FiberRef.FiberRef<FileSystem.Size> = globalValue(
 
 /** @internal */
 export const withMaxFieldSize = dual<
-  (size: FileSystem.SizeInput) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <R, E, A>(effect: Effect.Effect<A, E, R>, size: FileSystem.SizeInput) => Effect.Effect<A, E, R>
+  (size: FileSystem.SizeInput) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(effect: Effect.Effect<A, E, R>, size: FileSystem.SizeInput) => Effect.Effect<A, E, R>
 >(2, (effect, size) => Effect.locally(effect, maxFieldSize, FileSystem.Size(size)))
 
 /** @internal */
@@ -84,8 +84,8 @@ export const maxFileSize: FiberRef.FiberRef<Option.Option<FileSystem.Size>> = gl
 
 /** @internal */
 export const withMaxFileSize = dual<
-  (size: Option.Option<FileSystem.SizeInput>) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <R, E, A>(effect: Effect.Effect<A, E, R>, size: Option.Option<FileSystem.SizeInput>) => Effect.Effect<A, E, R>
+  (size: Option.Option<FileSystem.SizeInput>) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(effect: Effect.Effect<A, E, R>, size: Option.Option<FileSystem.SizeInput>) => Effect.Effect<A, E, R>
 >(2, (effect, size) => Effect.locally(effect, maxFileSize, Option.map(size, FileSystem.Size)))
 
 /** @internal */
@@ -96,8 +96,8 @@ export const fieldMimeTypes: FiberRef.FiberRef<Chunk.Chunk<string>> = globalValu
 
 /** @internal */
 export const withFieldMimeTypes = dual<
-  (mimeTypes: ReadonlyArray<string>) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <R, E, A>(effect: Effect.Effect<A, E, R>, mimeTypes: ReadonlyArray<string>) => Effect.Effect<A, E, R>
+  (mimeTypes: ReadonlyArray<string>) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(effect: Effect.Effect<A, E, R>, mimeTypes: ReadonlyArray<string>) => Effect.Effect<A, E, R>
 >(2, (effect, mimeTypes) => Effect.locally(effect, fieldMimeTypes, Chunk.fromIterable(mimeTypes)))
 
 /** @internal */

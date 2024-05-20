@@ -24,7 +24,7 @@ export const loggerDisabled = globalValue(
 )
 
 /** @internal */
-export const withLoggerDisabled = <R, E, A>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+export const withLoggerDisabled = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   Effect.zipRight(
     FiberRef.set(loggerDisabled, true),
     self
@@ -40,8 +40,8 @@ export const currentTracerDisabledWhen = globalValue(
 export const withTracerDisabledWhen = dual<
   (
     predicate: Predicate.Predicate<ServerRequest.ServerRequest>
-  ) => <R, E, A>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>,
-  <R, E, A>(
+  ) => <A, E, R>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>,
+  <A, E, R>(
     layer: Layer.Layer<A, E, R>,
     predicate: Predicate.Predicate<ServerRequest.ServerRequest>
   ) => Layer.Layer<A, E, R>
@@ -51,8 +51,8 @@ export const withTracerDisabledWhen = dual<
 export const withTracerDisabledWhenEffect = dual<
   (
     predicate: Predicate.Predicate<ServerRequest.ServerRequest>
-  ) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <R, E, A>(
+  ) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(
     effect: Effect.Effect<A, E, R>,
     predicate: Predicate.Predicate<ServerRequest.ServerRequest>
   ) => Effect.Effect<A, E, R>
@@ -62,8 +62,8 @@ export const withTracerDisabledWhenEffect = dual<
 export const withTracerDisabledForUrls = dual<
   (
     urls: ReadonlyArray<string>
-  ) => <R, E, A>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>,
-  <R, E, A>(
+  ) => <A, E, R>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>,
+  <A, E, R>(
     layer: Layer.Layer<A, E, R>,
     urls: ReadonlyArray<string>
   ) => Layer.Layer<A, E, R>
