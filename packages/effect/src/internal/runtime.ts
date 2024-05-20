@@ -173,16 +173,12 @@ class FiberFailureImpl extends Error implements Runtime.FiberFailure {
     const prettyErrors = InternalCause.prettyErrors(cause)
     if (prettyErrors.length > 0) {
       const head = prettyErrors[0]
-      this.name = head.name
-      this.message = head.message
-      this.stack = head.stack!
+      this.name = head.message.split(":")[0]
+      this.message = head.message.substring(this.name.length + 2)
+      this.stack = InternalCause.pretty(cause)
     }
 
     this.name = `(FiberFailure) ${this.name}`
-
-    if (this.message === undefined || this.message.length === 0) {
-      this.message = "An error has occurred"
-    }
   }
 
   toJSON(): unknown {
@@ -191,9 +187,8 @@ class FiberFailureImpl extends Error implements Runtime.FiberFailure {
       cause: this[FiberFailureCauseId].toJSON()
     }
   }
-
   toString(): string {
-    return "(FiberFailure) " + (this.stack ?? this.message)
+    return "(FiberFailure) " + InternalCause.pretty(this[FiberFailureCauseId])
   }
   [Inspectable.NodeInspectSymbol](): unknown {
     return this.toString()

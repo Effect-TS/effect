@@ -329,8 +329,7 @@ export const request = <A extends Schema.TaggedRequest.Any>(
 ): Effect.Effect<Request<A>, never, Scope> =>
   pipe(
     Effect.makeSpanScoped(`${options?.spanPrefix ?? "Rpc.request "}${request._tag}`, {
-      kind: "client",
-      captureStackTrace: false
+      kind: "client"
     }),
     Effect.zip(FiberRef.get(currentHeaders)),
     Effect.map(([span, headers]) =>
