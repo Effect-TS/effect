@@ -56,58 +56,54 @@ export function make({
     effect: Effect.Effect<A, E, R>
   ): Effect.Effect<A, E | Error.SqlError, R> =>
     Effect.uninterruptibleMask((restore) =>
-      Effect.useSpan(
-        "sql.transaction",
-        { kind: "client", captureStackTrace: false },
-        (span) =>
-          Effect.withFiberRuntime<A, E | Error.SqlError, R>((fiber) => {
-            for (const [key, value] of spanAttributes) {
-              span.attribute(key, value)
-            }
-            const context = fiber.getFiberRef(FiberRef.currentContext)
-            const clock = Context.get(fiber.getFiberRef(DefaultServices.currentServices), Clock.Clock)
-            const connOption = Context.getOption(context, TransactionConnection)
-            const conn = connOption._tag === "Some"
-              ? Effect.succeed([undefined, connOption.value[0]] as const)
-              : getTxConn
-            const id = connOption._tag === "Some" ? connOption.value[1] + 1 : 0
-            return Effect.flatMap(
-              conn,
-              (
-                [scope, conn]
-              ) =>
-                conn.executeRaw(id === 0 ? beginTransaction : savepoint(`effect_sql_${id}`)).pipe(
-                  Effect.zipRight(Effect.locally(
-                    restore(effect),
-                    FiberRef.currentContext,
-                    Context.add(context, TransactionConnection, [conn, id]).pipe(
-                      Context.add(Tracer.ParentSpan, span)
-                    )
-                  )),
-                  Effect.exit,
-                  Effect.flatMap((exit) => {
-                    let effect: Effect.Effect<void>
-                    if (Exit.isSuccess(exit)) {
-                      if (id === 0) {
-                        span.event("db.transaction.commit", clock.unsafeCurrentTimeNanos())
-                        effect = Effect.orDie(conn.executeRaw(commit))
-                      } else {
-                        span.event("db.transaction.savepoint", clock.unsafeCurrentTimeNanos())
-                        effect = Effect.void
-                      }
+      Effect.useSpan("sql.transaction", (span) =>
+        Effect.withFiberRuntime<A, E | Error.SqlError, R>((fiber) => {
+          for (const [key, value] of spanAttributes) {
+            span.attribute(key, value)
+          }
+          const context = fiber.getFiberRef(FiberRef.currentContext)
+          const clock = Context.get(fiber.getFiberRef(DefaultServices.currentServices), Clock.Clock)
+          const connOption = Context.getOption(context, TransactionConnection)
+          const conn = connOption._tag === "Some"
+            ? Effect.succeed([undefined, connOption.value[0]] as const)
+            : getTxConn
+          const id = connOption._tag === "Some" ? connOption.value[1] + 1 : 0
+          return Effect.flatMap(
+            conn,
+            (
+              [scope, conn]
+            ) =>
+              conn.executeRaw(id === 0 ? beginTransaction : savepoint(`effect_sql_${id}`)).pipe(
+                Effect.zipRight(Effect.locally(
+                  restore(effect),
+                  FiberRef.currentContext,
+                  Context.add(context, TransactionConnection, [conn, id]).pipe(
+                    Context.add(Tracer.ParentSpan, span)
+                  )
+                )),
+                Effect.exit,
+                Effect.flatMap((exit) => {
+                  let effect: Effect.Effect<void>
+                  if (Exit.isSuccess(exit)) {
+                    if (id === 0) {
+                      span.event("db.transaction.commit", clock.unsafeCurrentTimeNanos())
+                      effect = Effect.orDie(conn.executeRaw(commit))
                     } else {
-                      span.event("db.transaction.rollback", clock.unsafeCurrentTimeNanos())
-                      effect = Effect.orDie(
-                        id > 0 ? conn.executeRaw(rollbackSavepoint(`effect_sql_${id}`)) : conn.executeRaw(rollback)
-                      )
+                      span.event("db.transaction.savepoint", clock.unsafeCurrentTimeNanos())
+                      effect = Effect.void
                     }
-                    const withScope = scope !== undefined ? Effect.ensuring(effect, Scope.close(scope, exit)) : effect
-                    return Effect.zipRight(withScope, exit)
-                  })
-                )
-            )
-          })
-      )
+                  } else {
+                    span.event("db.transaction.rollback", clock.unsafeCurrentTimeNanos())
+                    effect = Effect.orDie(
+                      id > 0 ? conn.executeRaw(rollbackSavepoint(`effect_sql_${id}`)) : conn.executeRaw(rollback)
+                    )
+                  }
+                  const withScope = scope !== undefined ? Effect.ensuring(effect, Scope.close(scope, exit)) : effect
+                  return Effect.zipRight(withScope, exit)
+                })
+              )
+          )
+        }))
     )
 
   const client: Client.Client = Object.assign(
