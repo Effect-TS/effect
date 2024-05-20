@@ -75,7 +75,6 @@ export class OtelSpan implements EffectTracer.Span {
   }
 
   end(endTime: bigint, exit: Exit<unknown, unknown>) {
-    const hrTime = nanosToHrTime(endTime)
     this.status = {
       _tag: "Ended",
       endTime,
@@ -84,7 +83,9 @@ export class OtelSpan implements EffectTracer.Span {
     }
 
     if (exit._tag === "Success") {
-      this.span.setStatus({ code: OtelApi.SpanStatusCode.OK })
+      this.span.setStatus({
+        code: OtelApi.SpanStatusCode.OK
+      })
     } else {
       if (Cause.isInterruptedOnly(exit.cause)) {
         this.span.setStatus({
@@ -94,22 +95,13 @@ export class OtelSpan implements EffectTracer.Span {
         this.span.setAttribute("span.label", "⚠︎ Interrupted")
         this.span.setAttribute("status.interrupted", true)
       } else {
-        const errors = Cause.prettyErrors(exit.cause)
-        if (errors.length > 0) {
-          for (const error of errors) {
-            this.span.recordException(error, hrTime)
-          }
-          this.span.setStatus({
-            code: OtelApi.SpanStatusCode.ERROR,
-            message: errors[0].message
-          })
-        } else {
-          // empty cause means no error
-          this.span.setStatus({ code: OtelApi.SpanStatusCode.OK })
-        }
+        this.span.setStatus({
+          code: OtelApi.SpanStatusCode.ERROR,
+          message: Cause.pretty(exit.cause)
+        })
       }
     }
-    this.span.end(hrTime)
+    this.span.end(nanosToHrTime(endTime))
   }
 
   event(name: string, startTime: bigint, attributes?: Record<string, unknown>) {

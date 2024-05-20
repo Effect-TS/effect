@@ -7,7 +7,6 @@ import * as internal from "./internal/data.js"
 import { StructuralPrototype } from "./internal/effectable.js"
 import * as Predicate from "./Predicate.js"
 import type * as Types from "./Types.js"
-import type { Unify } from "./Unify.js"
 
 /**
  * @since 2.0.0
@@ -337,63 +336,13 @@ export declare namespace TaggedEnum {
     }
     & {
       readonly $is: <Tag extends A["_tag"]>(tag: Tag) => (u: unknown) => u is Extract<A, { readonly _tag: Tag }>
-      readonly $match: {
-        <
-          Cases extends {
-            readonly [Tag in A["_tag"]]: (args: Extract<A, { readonly _tag: Tag }>) => any
-          }
-        >(cases: Cases): (value: A) => Unify<ReturnType<Cases[A["_tag"]]>>
-        <
-          Cases extends {
-            readonly [Tag in A["_tag"]]: (args: Extract<A, { readonly _tag: Tag }>) => any
-          }
-        >(value: A, cases: Cases): Unify<ReturnType<Cases[A["_tag"]]>>
-      }
+      readonly $match: <
+        Cases extends {
+          readonly [Tag in A["_tag"]]: (args: Extract<A, { readonly _tag: Tag }>) => any
+        }
+      >(cases: Cases) => (value: A) => ReturnType<Cases[A["_tag"]]>
     }
   >
-
-  /**
-   * @since 3.2.0
-   */
-  export interface GenericMatchers<Z extends WithGenerics<number>> {
-    readonly $is: <Tag extends Z["taggedEnum"]["_tag"]>(
-      tag: Tag
-    ) => {
-      <T extends TaggedEnum.Kind<Z, any, any, any, any>>(
-        u: T
-      ): u is T & { readonly _tag: Tag }
-      (u: unknown): u is Extract<TaggedEnum.Kind<Z>, { readonly _tag: Tag }>
-    }
-    readonly $match: {
-      <
-        A,
-        B,
-        C,
-        D,
-        Cases extends {
-          readonly [Tag in Z["taggedEnum"]["_tag"]]: (
-            args: Extract<TaggedEnum.Kind<Z, A, B, C, D>, { readonly _tag: Tag }>
-          ) => any
-        }
-      >(
-        cases: Cases
-      ): (self: TaggedEnum.Kind<Z, A, B, C, D>) => Unify<ReturnType<Cases[Z["taggedEnum"]["_tag"]]>>
-      <
-        A,
-        B,
-        C,
-        D,
-        Cases extends {
-          readonly [Tag in Z["taggedEnum"]["_tag"]]: (
-            args: Extract<TaggedEnum.Kind<Z, A, B, C, D>, { readonly _tag: Tag }>
-          ) => any
-        }
-      >(
-        self: TaggedEnum.Kind<Z, A, B, C, D>,
-        cases: Cases
-      ): Unify<ReturnType<Cases[Z["taggedEnum"]["_tag"]]>>
-    }
-  }
 }
 
 /**
@@ -430,60 +379,52 @@ export declare namespace TaggedEnum {
  * @since 2.0.0
  */
 export const taggedEnum: {
-  <Z extends TaggedEnum.WithGenerics<1>>(): Types.Simplify<
-    {
-      readonly [Tag in Z["taggedEnum"]["_tag"]]: <A>(
-        args: TaggedEnum.Args<
-          TaggedEnum.Kind<Z, A>,
-          Tag,
-          Extract<TaggedEnum.Kind<Z, A>, { readonly _tag: Tag }>
-        >
-      ) => TaggedEnum.Value<TaggedEnum.Kind<Z, A>, Tag>
-    } & TaggedEnum.GenericMatchers<Z>
-  >
+  <Z extends TaggedEnum.WithGenerics<1>>(): {
+    readonly [Tag in Z["taggedEnum"]["_tag"]]: <A>(
+      args: TaggedEnum.Args<
+        TaggedEnum.Kind<Z, A>,
+        Tag,
+        Extract<TaggedEnum.Kind<Z, A>, { readonly _tag: Tag }>
+      >
+    ) => TaggedEnum.Value<TaggedEnum.Kind<Z, A>, Tag>
+  }
 
-  <Z extends TaggedEnum.WithGenerics<2>>(): Types.Simplify<
-    {
-      readonly [Tag in Z["taggedEnum"]["_tag"]]: <A, B>(
-        args: TaggedEnum.Args<
-          TaggedEnum.Kind<Z, A, B>,
-          Tag,
-          Extract<TaggedEnum.Kind<Z, A, B>, { readonly _tag: Tag }>
-        >
-      ) => TaggedEnum.Value<TaggedEnum.Kind<Z, A, B>, Tag>
-    } & TaggedEnum.GenericMatchers<Z>
-  >
+  <Z extends TaggedEnum.WithGenerics<2>>(): {
+    readonly [Tag in Z["taggedEnum"]["_tag"]]: <A, B>(
+      args: TaggedEnum.Args<
+        TaggedEnum.Kind<Z, A, B>,
+        Tag,
+        Extract<TaggedEnum.Kind<Z, A, B>, { readonly _tag: Tag }>
+      >
+    ) => TaggedEnum.Value<TaggedEnum.Kind<Z, A, B>, Tag>
+  }
 
-  <Z extends TaggedEnum.WithGenerics<3>>(): Types.Simplify<
-    {
-      readonly [Tag in Z["taggedEnum"]["_tag"]]: <A, B, C>(
-        args: TaggedEnum.Args<
-          TaggedEnum.Kind<Z, A, B, C>,
-          Tag,
-          Extract<TaggedEnum.Kind<Z, A, B, C>, { readonly _tag: Tag }>
-        >
-      ) => TaggedEnum.Value<TaggedEnum.Kind<Z, A, B, C>, Tag>
-    } & TaggedEnum.GenericMatchers<Z>
-  >
+  <Z extends TaggedEnum.WithGenerics<3>>(): {
+    readonly [Tag in Z["taggedEnum"]["_tag"]]: <A, B, C>(
+      args: TaggedEnum.Args<
+        TaggedEnum.Kind<Z, A, B, C>,
+        Tag,
+        Extract<TaggedEnum.Kind<Z, A, B, C>, { readonly _tag: Tag }>
+      >
+    ) => TaggedEnum.Value<TaggedEnum.Kind<Z, A, B, C>, Tag>
+  }
 
-  <Z extends TaggedEnum.WithGenerics<4>>(): Types.Simplify<
-    {
-      readonly [Tag in Z["taggedEnum"]["_tag"]]: <A, B, C, D>(
-        args: TaggedEnum.Args<
-          TaggedEnum.Kind<Z, A, B, C, D>,
-          Tag,
-          Extract<TaggedEnum.Kind<Z, A, B, C, D>, { readonly _tag: Tag }>
-        >
-      ) => TaggedEnum.Value<TaggedEnum.Kind<Z, A, B, C, D>, Tag>
-    } & TaggedEnum.GenericMatchers<Z>
-  >
+  <Z extends TaggedEnum.WithGenerics<4>>(): {
+    readonly [Tag in Z["taggedEnum"]["_tag"]]: <A, B, C, D>(
+      args: TaggedEnum.Args<
+        TaggedEnum.Kind<Z, A, B, C, D>,
+        Tag,
+        Extract<TaggedEnum.Kind<Z, A, B, C, D>, { readonly _tag: Tag }>
+      >
+    ) => TaggedEnum.Value<TaggedEnum.Kind<Z, A, B, C, D>, Tag>
+  }
 
   <A extends { readonly _tag: string }>(): TaggedEnum.Constructor<A>
 } = () =>
   new Proxy({}, {
     get(_target, tag, _receiver) {
       if (tag === "$is") {
-        return Predicate.isTagged
+        return taggedIs
       } else if (tag === "$match") {
         return taggedMatch
       }
@@ -491,33 +432,19 @@ export const taggedEnum: {
     }
   }) as any
 
+function taggedIs<A extends { readonly _tag: string }, Tag extends A["_tag"]>(tag: Tag) {
+  return Predicate.isTagged(tag)
+}
+
 function taggedMatch<
   A extends { readonly _tag: string },
   Cases extends {
     readonly [K in A["_tag"]]: (args: Extract<A, { readonly _tag: K }>) => any
   }
->(self: A, cases: Cases): ReturnType<Cases[A["_tag"]]>
-function taggedMatch<
-  A extends { readonly _tag: string },
-  Cases extends {
-    readonly [K in A["_tag"]]: (args: Extract<A, { readonly _tag: K }>) => any
+>(cases: Cases) {
+  return function(value: A): ReturnType<Cases[A["_tag"]]> {
+    return cases[value._tag as A["_tag"]](value as any)
   }
->(cases: Cases): (value: A) => ReturnType<Cases[A["_tag"]]>
-function taggedMatch<
-  A extends { readonly _tag: string },
-  Cases extends {
-    readonly [K in A["_tag"]]: (args: Extract<A, { readonly _tag: K }>) => any
-  }
->(): any {
-  if (arguments.length === 1) {
-    const cases = arguments[0] as Cases
-    return function(value: A): ReturnType<Cases[A["_tag"]]> {
-      return cases[value._tag as A["_tag"]](value as any)
-    }
-  }
-  const value = arguments[0] as A
-  const cases = arguments[1] as Cases
-  return cases[value._tag as A["_tag"]](value as any)
 }
 
 /**

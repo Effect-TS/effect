@@ -223,13 +223,13 @@ describe("Cause", () => {
 
     it("Sequential", () => {
       expect(String(Cause.sequential(Cause.fail("failure 1"), Cause.fail("failure 2")))).toEqual(
-        `Error: failure 1\nError: failure 2`
+        `Error: failure 1\r\nError: failure 2`
       )
     })
 
     it("Parallel", () => {
       expect(String(Cause.parallel(Cause.fail("failure 1"), Cause.fail("failure 2")))).toEqual(
-        `Error: failure 1\nError: failure 2`
+        `Error: failure 1\r\nError: failure 2`
       )
     })
   })

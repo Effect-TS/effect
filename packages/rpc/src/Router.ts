@@ -244,8 +244,7 @@ export const toHandler = <R extends Router<any, any>>(router: R, options?: {
                     spanId: req.spanId,
                     sampled: req.sampled,
                     context: Context.empty()
-                  },
-                  captureStackTrace: false
+                  }
                 })
               )
             }
@@ -277,8 +276,7 @@ export const toHandler = <R extends Router<any, any>>(router: R, options?: {
                   spanId: req.spanId,
                   sampled: req.sampled,
                   context: Context.empty()
-                },
-                captureStackTrace: false
+                }
               })
             )
           }, { concurrency: "unbounded", discard: true }),
@@ -334,8 +332,7 @@ export const toHandlerEffect = <R extends Router<any, any>>(router: R, options?:
                 spanId: req.spanId,
                 sampled: req.sampled,
                 context: Context.empty()
-              },
-              captureStackTrace: false
+              }
             })
           )
         }
@@ -355,8 +352,7 @@ export const toHandlerEffect = <R extends Router<any, any>>(router: R, options?:
               spanId: req.spanId,
               sampled: req.sampled,
               context: Context.empty()
-            },
-            captureStackTrace: false
+            }
           })
         )
       }, { concurrency: "unbounded" })

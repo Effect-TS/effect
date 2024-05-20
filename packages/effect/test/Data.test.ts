@@ -1,7 +1,6 @@
 import * as Data from "effect/Data"
 import * as Equal from "effect/Equal"
-import { pipe } from "effect/Function"
-import { assert, describe, expect, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("Data", () => {
   it("struct", () => {
@@ -219,7 +218,7 @@ describe("Data", () => {
     interface ResultDefinition extends Data.TaggedEnum.WithGenerics<2> {
       readonly taggedEnum: Result<this["A"], this["B"]>
     }
-    const { $is, $match, Failure, Success } = Data.taggedEnum<ResultDefinition>()
+    const { Failure, Success } = Data.taggedEnum<ResultDefinition>()
 
     const a = Success({ value: 1 }) satisfies Result<unknown, number>
     const b = Failure({ error: "test" }) satisfies Result<string, unknown>
@@ -234,34 +233,6 @@ describe("Data", () => {
 
     expect(Equal.equals(a, b)).toBe(false)
     expect(Equal.equals(a, c)).toBe(true)
-
-    const aResult = Success({ value: 1 }) as Result<unknown, number>
-    const bResult = Failure({ error: "boom" }) as Result<string, number>
-
-    assert.strictEqual(
-      $match(aResult, {
-        Success: (_) => 1,
-        Failure: (_) => 2
-      }),
-      1
-    )
-    const result = pipe(
-      bResult,
-      $match({
-        Success: (_) => _.value,
-        Failure: (_) => _.error
-      })
-    )
-    result satisfies string | number
-    assert.strictEqual(result, "boom")
-
-    assert($is("Success")(aResult))
-    aResult satisfies { readonly _tag: "Success"; readonly value: number }
-    assert.strictEqual(aResult.value, 1)
-
-    assert($is("Failure")(bResult))
-    bResult satisfies { readonly _tag: "Failure"; readonly error: string }
-    assert.strictEqual(bResult.error, "boom")
   })
 
   describe("Error", () => {
