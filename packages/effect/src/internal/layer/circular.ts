@@ -196,9 +196,8 @@ export const span = (
       | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>)
       | undefined
   }
-): Layer.Layer<Tracer.ParentSpan> => {
-  options = tracer.addSpanStackTrace(options) as any
-  return layer.scoped(
+): Layer.Layer<Tracer.ParentSpan> =>
+  layer.scoped(
     tracer.spanTag,
     options?.onEnd
       ? core.tap(
@@ -207,7 +206,6 @@ export const span = (
       )
       : fiberRuntime.makeSpanScoped(name, options)
   )
-}
 
 /** @internal */
 export const setTracer = (tracer: Tracer.Tracer): Layer.Layer<never> =>
