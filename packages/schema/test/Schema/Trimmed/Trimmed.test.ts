@@ -24,6 +24,10 @@ describe("Trimmed", () => {
       expect(is("a b")).toBe(true)
       expect(is("a  b")).toBe(true)
       expect(is("")).toBe(true)
+      expect(is("\n")).toEqual(false)
+      expect(is("a\nb")).toEqual(true)
+      expect(is("a\nb ")).toEqual(false)
+      expect(is(" a\nb")).toEqual(false)
     }
   })
 
@@ -39,6 +43,7 @@ describe("Trimmed", () => {
     expect(is(" a")).toEqual(false)
     expect(is(" a ")).toEqual(false)
     expect(is(" ")).toEqual(false)
+    expect(is("\n")).toEqual(false)
     expect(is("a\nb")).toEqual(true)
     expect(is("a\nb ")).toEqual(false)
     expect(is(" a\nb")).toEqual(false)
