@@ -50,6 +50,7 @@ import * as SinkEndReason from "./stream/sinkEndReason.js"
 import * as ZipAllState from "./stream/zipAllState.js"
 import * as ZipChunksState from "./stream/zipChunksState.js"
 import * as InternalTake from "./take.js"
+import * as InternalTracer from "./tracer.js"
 
 /** @internal */
 const StreamSymbolKey = "effect/Stream"
@@ -6541,16 +6542,30 @@ export const toQueueOfElements = dual<
   ))
 
 /** @internal */
-export const toReadableStream = <A, E>(source: Stream.Stream<A, E>) => {
-  let pull: Effect.Effect<void>
+export const toReadableStream = <A, E>(self: Stream.Stream<A, E>) =>
+  toReadableStreamRuntime(self, Runtime.defaultRuntime)
+
+/** @internal */
+export const toReadableStreamEffect = <A, E, R>(self: Stream.Stream<A, E, R>) =>
+  Effect.map(Effect.runtime<R>(), (runtime) => toReadableStreamRuntime(self, runtime))
+
+/** @internal */
+export const toReadableStreamRuntime = dual<
+  <XR>(runtime: Runtime.Runtime<XR>) => <A, E, R extends XR>(self: Stream.Stream<A, E, R>) => ReadableStream<A>,
+  <A, E, XR, R extends XR>(self: Stream.Stream<A, E, R>, runtime: Runtime.Runtime<XR>) => ReadableStream<A>
+>(2, <A, E, XR, R extends XR>(self: Stream.Stream<A, E, R>, runtime: Runtime.Runtime<XR>): ReadableStream<A> => {
+  const runSync = Runtime.runSync(runtime)
+  const runPromise = Runtime.runPromise(runtime)
+
+  let pull: Effect.Effect<void, never, R>
   let scope: Scope.CloseableScope
   return new ReadableStream<A>({
     start(controller) {
-      scope = Effect.runSync(Scope.make())
+      scope = runSync(Scope.make())
       pull = pipe(
-        toPull(source),
-        Scope.use(scope),
-        Effect.runSync,
+        toPull(self),
+        Scope.extend(scope),
+        runSync,
         Effect.tap((chunk) =>
           Effect.sync(() => {
             Chunk.map(chunk, (a) => {
@@ -6573,13 +6588,13 @@ export const toReadableStream = <A, E>(source: Stream.Stream<A, E>) => {
       )
     },
     pull() {
-      return Effect.runPromise(pull)
+      return runPromise(pull)
     },
     cancel() {
-      return Effect.runPromise(Scope.close(scope, Exit.void))
+      return runPromise(Scope.close(scope, Exit.void))
     }
   })
-}
+})
 
 /** @internal */
 export const transduce = dual<
@@ -6801,17 +6816,26 @@ export const whenEffect = dual<
 )
 
 /** @internal */
-export const withSpan = dual<
+export const withSpan: {
   (
     name: string,
     options?: Tracer.SpanOptions
-  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, Exclude<R, Tracer.ParentSpan>>,
+  ): <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, Exclude<R, Tracer.ParentSpan>>
   <A, E, R>(
     self: Stream.Stream<A, E, R>,
     name: string,
     options?: Tracer.SpanOptions
-  ) => Stream.Stream<A, E, Exclude<R, Tracer.ParentSpan>>
->(3, (self, name, options) => new StreamImpl(channel.withSpan(toChannel(self), name, options)))
+  ): Stream.Stream<A, E, Exclude<R, Tracer.ParentSpan>>
+} = function() {
+  const dataFirst = typeof arguments[0] !== "string"
+  const name = dataFirst ? arguments[1] : arguments[0]
+  const options = InternalTracer.addSpanStackTrace(dataFirst ? arguments[2] : arguments[1])
+  if (dataFirst) {
+    const self = arguments[0]
+    return new StreamImpl(channel.withSpan(toChannel(self), name, options))
+  }
+  return (self: Stream.Stream<any, any, any>) => new StreamImpl(channel.withSpan(toChannel(self), name, options))
+} as any
 
 /** @internal */
 export const zip = dual<

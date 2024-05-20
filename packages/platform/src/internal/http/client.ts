@@ -14,7 +14,6 @@ import * as Ref from "effect/Ref"
 import type * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import type * as Body from "../../Http/Body.js"
 import type * as Client from "../../Http/Client.js"
 import * as Error from "../../Http/ClientError.js"
 import type * as ClientRequest from "../../Http/ClientRequest.js"
@@ -144,7 +143,7 @@ export const makeDefault = (
           addAbort,
           Effect.useSpan(
             `http.client ${request.method}`,
-            { kind: "client" },
+            { kind: "client", captureStackTrace: false },
             (span) => {
               span.attribute("http.request.method", request.method)
               span.attribute("server.address", url.origin)
@@ -222,25 +221,18 @@ export const fetch: Client.Client.Default = makeDefault((request, url, signal, f
       (response) => internalResponse.fromWeb(request, response)
     )
   if (Method.hasBody(request.method)) {
-    return send(convertBody(request.body))
+    switch (request.body._tag) {
+      case "Raw":
+      case "Uint8Array":
+        return send(request.body.body as any)
+      case "FormData":
+        return send(request.body.formData)
+      case "Stream":
+        return Effect.flatMap(Stream.toReadableStreamEffect(request.body.stream), send)
+    }
   }
   return send(undefined)
 })
-
-const convertBody = (body: Body.Body): BodyInit | undefined => {
-  switch (body._tag) {
-    case "Empty":
-      return undefined
-    case "Raw":
-      return body.body as any
-    case "Uint8Array":
-      return body.body
-    case "FormData":
-      return body.formData
-    case "Stream":
-      return Stream.toReadableStream(body.stream)
-  }
-}
 
 /** @internal */
 export const transform = dual<

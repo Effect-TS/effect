@@ -542,7 +542,8 @@ export const boot = <
               "effect.machine": runState.identifier,
               ...request
             },
-            kind: "client"
+            kind: "client",
+            captureStackTrace: false
           }, (span) =>
             Queue.offer(requests, [request, deferred, span, true]).pipe(
               Effect.zipRight(Deferred.await(deferred)),
@@ -565,7 +566,8 @@ export const boot = <
               "effect.machine": runState.identifier,
               ...request
             },
-            kind: "client"
+            kind: "client",
+            captureStackTrace: false
           }, (span) => Queue.offer(requests, [request, deferred, span, true]))
         }
       )
@@ -762,7 +764,8 @@ export const boot = <
                 parent: span,
                 attributes: {
                   "effect.machine": runState.identifier
-                }
+                },
+                captureStackTrace: false
               })
             } else if (span !== undefined) {
               handler = Effect.provideService(handler, Tracer.ParentSpan, span)
