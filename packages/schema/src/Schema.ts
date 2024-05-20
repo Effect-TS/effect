@@ -1886,6 +1886,29 @@ type OptionalOptions<A> = {
   readonly onNoneEncoding?: () => option_.Option<null>
 } | undefined
 
+type OptionalReturnType<A, Options extends OptionalOptions<A>, I, R> = [undefined] extends [Options] ?
+  PropertySignature<
+    "?:",
+    A | undefined,
+    never,
+    "?:",
+    I | undefined,
+    false,
+    R
+  > :
+  PropertySignature<
+    Types.Has<Options, "as" | "default"> extends true ? ":" : "?:",
+    | (Types.Has<Options, "as"> extends true ? option_.Option<A> : A)
+    | (Types.Has<Options, "as" | "default" | "exact"> extends true ? never : undefined),
+    never,
+    "?:",
+    | I
+    | (Types.Has<Options, "nullable"> extends true ? null : never)
+    | (Types.Has<Options, "exact"> extends true ? never : undefined),
+    Types.Has<Options, "default">,
+    R
+  >
+
 /**
  * @category PropertySignature
  * @since 1.0.0
@@ -1896,27 +1919,7 @@ export const optional: {
     const Options extends OptionalOptions<A>
   >(
     options?: Options
-  ): <I, R>(schema: Schema<A, I, R>) => [undefined] extends [Options] ? PropertySignature<
-      "?:",
-      A | undefined,
-      never,
-      "?:",
-      I | undefined,
-      false,
-      R
-    > :
-    PropertySignature<
-      Types.Has<Options, "as" | "default"> extends true ? ":" : "?:",
-      | (Types.Has<Options, "as"> extends true ? option_.Option<A> : A)
-      | (Types.Has<Options, "as" | "default" | "exact"> extends true ? never : undefined),
-      never,
-      "?:",
-      | I
-      | (Types.Has<Options, "nullable"> extends true ? null : never)
-      | (Types.Has<Options, "exact"> extends true ? never : undefined),
-      Types.Has<Options, "default">,
-      R
-    >
+  ): <I, R>(schema: Schema<A, I, R>) => OptionalReturnType<A, Options, I, R>
   <
     A,
     I,
@@ -1925,27 +1928,7 @@ export const optional: {
   >(
     schema: Schema<A, I, R>,
     options?: Options
-  ): [undefined] extends [Options] ? PropertySignature<
-      "?:",
-      A | undefined,
-      never,
-      "?:",
-      I | undefined,
-      false,
-      R
-    > :
-    PropertySignature<
-      Types.Has<Options, "as" | "default"> extends true ? ":" : "?:",
-      | (Types.Has<Options, "as"> extends true ? option_.Option<A> : A)
-      | (Types.Has<Options, "as" | "default" | "exact"> extends true ? never : undefined),
-      never,
-      "?:",
-      | I
-      | (Types.Has<Options, "nullable"> extends true ? null : never)
-      | (Types.Has<Options, "exact"> extends true ? never : undefined),
-      Types.Has<Options, "default">,
-      R
-    >
+  ): OptionalReturnType<A, Options, I, R>
 } = dual((args) => isSchema(args[0]), <A, I, R>(
   schema: Schema<A, I, R>,
   options?: {
