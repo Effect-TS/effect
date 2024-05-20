@@ -5532,9 +5532,37 @@ export const optionFromOptional: <A, E, R>(
 
 /**
  * @since 2.0.0
+ * @category models
+ */
+export declare namespace Tag {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface ProhibitedType {
+    _op?: "propety name _op is forbidden"
+    _tag?: "propety name _tag is forbidden"
+    of?: "propety name of is forbidden"
+    context?: "propety name context is forbidden"
+    key?: "propety name key is forbidden"
+    stack?: "propety name stack is forbidden"
+  }
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export type AllowedType = (Record<PropertyKey, any> & ProhibitedType) | string | number | symbol
+}
+
+/**
+ * @since 2.0.0
  * @category constructors
  */
-export const Tag: <const Id extends string>(id: Id) => <Self, Type>() =>
+export const Tag: <const Id extends string>(id: Id) => <
+  Self,
+  Type extends Tag.AllowedType
+>() =>
   & Context.TagClass<Self, Id, Type>
   & (Type extends Record<PropertyKey, any> ? {
       [
