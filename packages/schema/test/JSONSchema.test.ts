@@ -1067,6 +1067,18 @@ describe("JSONSchema", () => {
         "description": "an integer"
       })
     })
+
+    it("Trimmed", () => {
+      const schema = Schema.Trimmed
+      expectJSONSchema(schema, {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "a string with no leading or trailing whitespace",
+        "pattern": "^\\S.*\\S$|^\\S$|^$",
+        "title": "Trimmed",
+        "type": "string"
+      })
+      propertyType(schema)
+    })
   })
 
   it("TemplateLiteral", () => {
