@@ -1,5 +1,11 @@
 # effect
 
+## 3.2.1
+
+### Patch Changes
+
+- [#2779](https://github.com/Effect-TS/effect/pull/2779) [`c1e991d`](https://github.com/Effect-TS/effect/commit/c1e991dd5ba87901cd0e05697a8b4a267e7e954a) Thanks [@tim-smart](https://github.com/tim-smart)! - fix Config.Wrap for optional properties
+
 ## 3.2.0
 
 ### Minor Changes
