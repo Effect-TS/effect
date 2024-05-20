@@ -704,7 +704,7 @@ S.Struct({
 })
 
 // $ExpectType Struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b", true, never>; }>
-S.Struct({ a: S.optional(S.Literal("a", "b"), { default: () => "a", exact: true }) })
+S.Struct({ a: S.optional(S.Literal("a", "b"), { default: () => "a" as const, exact: true }) })
 
 // $ExpectType Schema<{ readonly a: "a" | "b"; }, { readonly a?: "a" | "b"; }, never>
 S.asSchema(S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a" as const, exact: true })) }))
@@ -729,7 +729,7 @@ S.asSchema(S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString
 S.Struct({ a: S.String, b: S.Number, c: S.optional(S.NumberFromString, { default: () => 0 }) })
 
 // $ExpectType Struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b" | undefined, true, never>; }>
-S.Struct({ a: S.optional(S.Literal("a", "b"), { default: () => "a" }) })
+S.Struct({ a: S.optional(S.Literal("a", "b"), { default: () => "a" as const }) })
 
 // $ExpectType Schema<{ readonly a: "a" | "b"; }, { readonly a?: "a" | "b" | undefined; }, never>
 S.asSchema(S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a" as const })) }))
@@ -764,7 +764,7 @@ S.asSchema(S.Struct({ a: S.optional(S.NumberFromString, { exact: true, nullable:
 S.Struct({ a: S.optional(S.NumberFromString, { exact: true, nullable: true, default: () => 0 }) })
 
 // $ExpectType Struct<{ a: PropertySignature<":", "a" | "b", never, "?:", "a" | "b" | null | undefined, true, never>; }>
-S.Struct({ a: S.optional(S.Literal("a", "b"), { default: () => "a", nullable: true }) })
+S.Struct({ a: S.optional(S.Literal("a", "b"), { default: () => "a" as const, nullable: true }) })
 
 // $ExpectType Schema<{ readonly a: "a" | "b"; }, { readonly a?: "a" | "b" | null | undefined; }, never>
 S.asSchema(S.Struct({ a: S.Literal("a", "b").pipe(S.optional({ default: () => "a" as const, nullable: true })) }))
