@@ -1,5 +1,13 @@
 # @effect/platform
 
+## 0.53.11
+
+### Patch Changes
+
+- Updated dependencies [[`c1e991d`](https://github.com/Effect-TS/effect/commit/c1e991dd5ba87901cd0e05697a8b4a267e7e954a)]:
+  - effect@3.2.1
+  - @effect/schema@0.67.8
+
 ## 0.53.10
 
 ### Patch Changes
