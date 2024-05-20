@@ -5681,12 +5681,13 @@ console.log(Equal.equals(person1, person2)) // true
 
 **Cheatsheet**
 
-| Combinator            | From                                   | To                                             |
-| --------------------- | -------------------------------------- | ---------------------------------------------- |
-| `Option`              | `Schema<A, I, R>`                      | `Schema<Option<A>, OptionFrom<I>, R>`          |
-| `OptionFromSelf`      | `Schema<A, I, R>`                      | `Schema<Option<A>, Option<I>, R>`              |
-| `OptionFromNullOr`    | `Schema<A, I, R>`                      | `Schema<Option<A>, I \| null, R>`              |
-| `OptionFromNullishOr` | `Schema<A, I, R>`, `null \| undefined` | `Schema<Option<A>, I \| null \| undefined, R>` |
+| Combinator              | From                                   | To                                             |
+| ----------------------- | -------------------------------------- | ---------------------------------------------- |
+| `Option`                | `Schema<A, I, R>`                      | `Schema<Option<A>, OptionFrom<I>, R>`          |
+| `OptionFromSelf`        | `Schema<A, I, R>`                      | `Schema<Option<A>, Option<I>, R>`              |
+| `OptionFromUndefinedOr` | `Schema<A, I, R>`                      | `Schema<Option<A>, I \| undefined, R>`         |
+| `OptionFromNullOr`      | `Schema<A, I, R>`                      | `Schema<Option<A>, I \| null, R>`              |
+| `OptionFromNullishOr`   | `Schema<A, I, R>`, `null \| undefined` | `Schema<Option<A>, I \| null \| undefined, R>` |
 
 where
 
@@ -5703,12 +5704,12 @@ type OptionFrom<I> =
 
 ### Option
 
-- decoding
-  - `{ _tag: "None" }` -> `Option.none()`
-  - `{ _tag: "Some", value: i }` -> `Option.some(a)`
-- encoding
-  - `Option.none()` -> `{ _tag: "None" }`
-  - `Option.some(a)` -> `{ _tag: "Some", value: i }`
+- **Decoding**
+  - `{ _tag: "None" }` is converted to `Option.none()`.
+  - `{ _tag: "Some", value: i }` is converted to `Option.some(a)`, where `i` is decoded into `a` using the inner schema.
+- **Encoding**
+  - `Option.none()` is converted to `{ _tag: "None" }`.
+  - `Option.some(a)` is converted to `{ _tag: "Some", value: i }`, where `a` is encoded into `i` using the inner schema.
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -5728,12 +5729,12 @@ console.log(encode(Option.some(1))) // { _tag: 'Some', value: '1' }
 
 ### OptionFromSelf
 
-- decoding
-  - `Option.none()` -> `Option.none()`
-  - `Option.some(i)` -> `Option.some(a)`
-- encoding
-  - `Option.none()` -> `Option.none()`
-  - `Option.some(a)` -> `Option.some(i)`
+- **Decoding**
+  - `Option.none()` remains as `Option.none()`.
+  - `Option.some(i)` is converted to `Option.some(a)`, where `i` is decoded into `a` using the inner schema.
+- **Encoding**
+  - `Option.none()` remains as `Option.none()`.
+  - `Option.some(a)` is converted to `Option.some(i)`, where `a` is encoded into `i` using the inner schema.
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -5751,14 +5752,39 @@ console.log(encode(Option.none())) // { _id: 'Option', _tag: 'None' }
 console.log(encode(Option.some(1))) // { _id: 'Option', _tag: 'Some', value: '1' }
 ```
 
+### OptionFromUndefinedOr
+
+- **Decoding**
+  - `undefined` is converted to `Option.none()`.
+  - `i` is converted to `Option.some(a)`, where `i` is decoded into `a` using the inner schema.
+- **Encoding**
+  - `Option.none()` is converted to `undefined`.
+  - `Option.some(a)` is converted to `i`, where `a` is encoded into `i` using the inner schema.
+
+```ts
+import { Schema } from "@effect/schema"
+import { Option } from "effect"
+
+const schema = Schema.OptionFromUndefinedOr(Schema.NumberFromString)
+
+const decode = Schema.decodeUnknownSync(schema)
+const encode = Schema.encodeSync(schema)
+
+console.log(decode(undefined)) // { _id: 'Option', _tag: 'None' }
+console.log(decode("1")) // { _id: 'Option', _tag: 'Some', value: 1 }
+
+console.log(encode(Option.none())) // undefined
+console.log(encode(Option.some(1))) // "1"
+```
+
 ### OptionFromNullOr
 
-- decoding
-  - `null` -> `Option.none()`
-  - `i` -> `Option.some(a)`
-- encoding
-  - `Option.none()` -> `null`
-  - `Option.some(a)` -> `i`
+- **Decoding**
+  - `null` is converted to `Option.none()`.
+  - `i` is converted to `Option.some(a)`, where `i` is decoded into `a` using the inner schema.
+- **Encoding**
+  - `Option.none()` is converted to `null`.
+  - `Option.some(a)` is converted to `i`, where `a` is encoded into `i` using the inner schema.
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -5778,13 +5804,15 @@ console.log(encode(Option.some(1))) // "1"
 
 ### OptionFromNullishOr
 
-- decoding
-  - `null` -> `Option.none()`
-  - `undefined` -> `Option.none()`
-  - `i` -> `Option.some(a)`
-- encoding
-  - `Option.none()` -> `<onNoneEncoding value>`
-  - `Option.some(a)` -> `i`
+- **Decoding**
+
+  - `null` is converted to `Option.none()`.
+  - `undefined` is converted to `Option.none()`.
+  - `i` is converted to `Option.some(a)`, where `i` is decoded into `a` using the inner schema.
+
+- **Encoding**
+  - `Option.none()` is converted to a specified value (`undefined` or `null` based on user choice).
+  - `Option.some(a)` is converted to `i`, where `a` is encoded into `i` using the inner schema.
 
 ```ts
 import { Schema } from "@effect/schema"
