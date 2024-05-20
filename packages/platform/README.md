@@ -607,6 +607,38 @@ Output:
 
 # HTTP Server
 
+## Overview
+
+This section provides a simplified explanation of key concepts within the `@effect/platform` TypeScript library, focusing on components used to build HTTP servers. Understanding these terms and their relationships helps in structuring and managing server applications effectively.
+
+### Core Concepts
+
+- **HttpApp**: This is an `Effect` which results in a value `A`. It can utilize `ServerRequest` to produce the outcome `A`. Essentially, an `HttpApp` represents an application component that handles HTTP requests and generates responses based on those requests.
+
+- **Default** (HttpApp): A special type of `HttpApp` that specifically produces a `ServerResponse` as its output `A`. This is the most common form of application where each interaction is expected to result in an HTTP response.
+
+- **Server**: A construct that takes a `Default` app and converts it into an `Effect`. This serves as the execution layer where the `Default` app is operated, handling incoming requests and serving responses.
+
+- **Router**: A type of `Default` app where the possible error outcome is `RouteNotFound`. Routers are used to direct incoming requests to appropriate handlers based on the request path and method.
+
+- **Handler**: Another form of `Default` app, which has access to both `RouteContext` and `ServerRequest.ParsedSearchParams`. Handlers are specific functions designed to process requests and generate responses.
+
+- **Middleware**: Functions that transform a `Default` app into another `Default` app. Middleware can be used to modify requests, responses, or handle tasks like logging, authentication, and more. Middleware can be applied in two ways:
+  - On a `Router` using `router.use: Handler -> Default` which applies the middleware to specific routes.
+  - On a `Server` using `server.serve: () -> Layer | Middleware -> Layer` which applies the middleware globally to all routes handled by the server.
+
+### Applying Concepts
+
+These components are designed to work together in a modular and flexible way, allowing developers to build complex server applications with reusable components. Here’s how you might typically use these components in a project:
+
+1. **Create Handlers**: Define functions that process specific types of requests (e.g., GET, POST) and return responses.
+
+2. **Set Up Routers**: Organize handlers into routers, where each router manages a subset of application routes.
+
+3. **Apply Middleware**: Enhance routers or entire servers with middleware to add extra functionality like error handling or request logging.
+
+4. **Initialize the Server**: Wrap the main router with server functionality, applying any server-wide middleware, and start listening for requests.
+
 ## Getting Started
 
 ### Hello world example
