@@ -1,5 +1,16 @@
 # @effect/platform-node
 
+## 0.49.13
+
+### Patch Changes
+
+- [#2796](https://github.com/Effect-TS/effect/pull/2796) [`7cc8020`](https://github.com/Effect-TS/effect/commit/7cc802018395804ae2fbce20f610bb7ff6081c00) Thanks @tim-smart! - wait for callback in node http server responses
+
+- Updated dependencies [[`5d9266e`](https://github.com/Effect-TS/effect/commit/5d9266e8c740746ac9e186c3df6090a1b57fbe2a), [`9f8122e`](https://github.com/Effect-TS/effect/commit/9f8122e78884ab47c5e5f364d86eee1d1543cc61), [`6a6f670`](https://github.com/Effect-TS/effect/commit/6a6f6706b8613c8c7c10971b8d81a0f9e440a6f2), [`c1eaef9`](https://github.com/Effect-TS/effect/commit/c1eaef910420dae416923d172ee58d219e921d0f)]:
+  - effect@3.2.2
+  - @effect/platform@0.53.13
+  - @effect/platform-node-shared@0.4.32
+
 ## 0.49.12
 
 ### Patch Changes
