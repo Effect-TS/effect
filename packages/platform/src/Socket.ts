@@ -46,10 +46,10 @@ export const Socket: Context.Tag<Socket, Socket> = Context.GenericTag<Socket>(
  */
 export interface Socket {
   readonly [TypeId]: TypeId
-  readonly run: <R, E, _>(
+  readonly run: <_, E, R>(
     handler: (_: Uint8Array) => Effect.Effect<_, E, R>
   ) => Effect.Effect<void, SocketError | E, R>
-  readonly runRaw: <R, E, _>(
+  readonly runRaw: <_, E, R>(
     handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>
   ) => Effect.Effect<void, SocketError | E, R>
   readonly writer: Effect.Effect<
@@ -337,7 +337,7 @@ export const fromWebSocket = <R>(
     ))
     const acquireContext = yield* Effect.context<Exclude<R, Scope.Scope>>()
 
-    const runRaw = <R, E, _>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>) =>
+    const runRaw = <_, E, R>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>) =>
       Effect.gen(function*(_) {
         const scope = yield* Effect.scope
         const ws = yield* (acquire.pipe(
@@ -433,7 +433,7 @@ export const fromWebSocket = <R>(
       )
 
     const encoder = new TextEncoder()
-    const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R>) =>
+    const run = <_, E, R>(handler: (_: Uint8Array) => Effect.Effect<_, E, R>) =>
       runRaw((data) =>
         typeof data === "string"
           ? handler(encoder.encode(data))

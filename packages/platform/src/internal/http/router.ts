@@ -180,7 +180,7 @@ class RouterImpl<E = never, R = never> extends Effectable.StructuralClass<
   }
 }
 
-const toHttpApp = <R, E>(
+const toHttpApp = <E, R>(
   self: Router.Router<E, R>
 ): App.Default<E | Error.RouteNotFound, R> => {
   const router = FindMyWay.make<Router.Route<E, R>>()
@@ -331,8 +331,8 @@ export const makeRoute = <E, R>(
 
 /** @internal */
 export const concat = dual<
-  <R1, E1>(that: Router.Router<E1, R1>) => <R, E>(self: Router.Router<E, R>) => Router.Router<E | E1, R | R1>,
-  <R, E, R1, E1>(self: Router.Router<E, R>, that: Router.Router<E1, R1>) => Router.Router<E | E1, R | R1>
+  <R1, E1>(that: Router.Router<E1, R1>) => <E, R>(self: Router.Router<E, R>) => Router.Router<E | E1, R | R1>,
+  <E, R, E1, R1>(self: Router.Router<E, R>, that: Router.Router<E1, R1>) => Router.Router<E | E1, R | R1>
 >(2, (self, that) => new RouterImpl(Chunk.appendAll(self.routes, that.routes) as any, self.mounts))
 
 const removeTrailingSlash = (
@@ -341,8 +341,8 @@ const removeTrailingSlash = (
 
 /** @internal */
 export const prefixAll = dual<
-  (prefix: Router.PathInput) => <R, E>(self: Router.Router<E, R>) => Router.Router<E, R>,
-  <R, E>(self: Router.Router<E, R>, prefix: Router.PathInput) => Router.Router<E, R>
+  (prefix: Router.PathInput) => <E, R>(self: Router.Router<E, R>) => Router.Router<E, R>,
+  <E, R>(self: Router.Router<E, R>, prefix: Router.PathInput) => Router.Router<E, R>
 >(
   2,
   (self, prefix) => {
@@ -369,8 +369,8 @@ export const mount = dual<
   <R1, E1>(
     path: `/${string}`,
     that: Router.Router<E1, R1>
-  ) => <R, E>(self: Router.Router<E, R>) => Router.Router<E | E1, R | R1>,
-  <R, E, R1, E1>(
+  ) => <E, R>(self: Router.Router<E, R>) => Router.Router<E | E1, R | R1>,
+  <E, R, E1, R1>(
     self: Router.Router<E, R>,
     path: `/${string}`,
     that: Router.Router<E1, R1>
@@ -388,10 +388,10 @@ export const mountApp = dual<
     options?: {
       readonly includePrefix?: boolean | undefined
     } | undefined
-  ) => <R, E>(
+  ) => <E, R>(
     self: Router.Router<E, R>
   ) => Router.Router<E | E1, R | Router.Router.ExcludeProvided<R1>>,
-  <R, E, R1, E1>(
+  <E, R, E1, R1>(
     self: Router.Router<E, R>,
     path: `/${string}`,
     that: App.Default<E1, R1>,
@@ -401,7 +401,7 @@ export const mountApp = dual<
   ) => Router.Router<E | E1, R | Router.Router.ExcludeProvided<R1>>
 >(
   (args) => Predicate.hasProperty(args[0], TypeId),
-  <R, E, R1, E1>(
+  <E, R, E1, R1>(
     self: Router.Router<E, R>,
     path: `/${string}`,
     that: App.Default<E1, R1>,
@@ -420,10 +420,10 @@ export const route = (method: Method.Method | "*"): {
     options?: {
       readonly uninterruptible?: boolean | undefined
     } | undefined
-  ): <R, E>(
+  ): <E, R>(
     self: Router.Router<E, R>
   ) => Router.Router<E1 | E, R | Router.Router.ExcludeProvided<R1>>
-  <R, E, R1, E1>(
+  <E, R, E1, R1>(
     self: Router.Router<E, R>,
     path: Router.PathInput,
     handler: Router.Route.Handler<E1, R1>,
@@ -436,10 +436,10 @@ export const route = (method: Method.Method | "*"): {
     <R1, E1>(
       path: Router.PathInput,
       handler: Router.Route.Handler<R1, E1>
-    ) => <R, E>(
+    ) => <E, R>(
       self: Router.Router<E, R>
     ) => Router.Router<E | E1, R | Router.Router.ExcludeProvided<R1>>,
-    <R, E, R1, E1>(
+    <E, R, E1, R1>(
       self: Router.Router<E, R>,
       path: Router.PathInput,
       handler: Router.Route.Handler<E1, R1>,
@@ -512,7 +512,7 @@ export const catchAll = dual<
   <E, E2, R2>(
     f: (e: E) => Router.Route.Handler<E2, R2>
   ) => <R>(self: Router.Router<E, R>) => Router.Router<E2, R | Router.Router.ExcludeProvided<R2>>,
-  <R, E, E2, R2>(
+  <E, R, E2, R2>(
     self: Router.Router<E, R>,
     f: (e: E) => Router.Route.Handler<E2, R2>
   ) => Router.Router<E2, R | Router.Router.ExcludeProvided<R2>>
@@ -523,7 +523,7 @@ export const catchAllCause = dual<
   <E, E2, R2>(
     f: (e: Cause.Cause<E>) => Router.Route.Handler<E2, R2>
   ) => <R>(self: Router.Router<E, R>) => Router.Router<E2, R | Router.Router.ExcludeProvided<R2>>,
-  <R, E, E2, R2>(
+  <E, R, E2, R2>(
     self: Router.Router<E, R>,
     f: (e: Cause.Cause<E>) => Router.Route.Handler<E2, R2>
   ) => Router.Router<E2, R | Router.Router.ExcludeProvided<R2>>
@@ -537,7 +537,7 @@ export const catchTag = dual<
   ) => <R>(
     self: Router.Router<E, R>
   ) => Router.Router<Exclude<E, { _tag: K }> | E1, R | Router.Router.ExcludeProvided<R1>>,
-  <R, E, K extends (E extends { _tag: string } ? E["_tag"] : never), E1, R1>(
+  <E, R, K extends (E extends { _tag: string } ? E["_tag"] : never), E1, R1>(
     self: Router.Router<E, R>,
     k: K,
     f: (e: Extract<E, { _tag: K }>) => Router.Route.Handler<E1, R1>
@@ -594,15 +594,15 @@ export const provideService = dual<
   <T extends Context.Tag<any, any>>(
     tag: T,
     service: Context.Tag.Service<T>
-  ) => <R, E>(
+  ) => <E, R>(
     self: Router.Router<E, R>
   ) => Router.Router<E, Exclude<R, Context.Tag.Identifier<T>>>,
-  <R, E, T extends Context.Tag<any, any>>(
+  <E, R, T extends Context.Tag<any, any>>(
     self: Router.Router<E, R>,
     tag: T,
     service: Context.Tag.Service<T>
   ) => Router.Router<E, Exclude<R, Context.Tag.Identifier<T>>>
->(3, <R, E, T extends Context.Tag<any, any>>(
+>(3, <E, R, T extends Context.Tag<any, any>>(
   self: Router.Router<E, R>,
   tag: T,
   service: Context.Tag.Service<T>
@@ -613,7 +613,7 @@ export const provideServiceEffect = dual<
   <T extends Context.Tag<any, any>, R1, E1>(
     tag: T,
     effect: Effect.Effect<Context.Tag.Service<T>, E1, R1>
-  ) => <R, E>(
+  ) => <E, R>(
     self: Router.Router<E, R>
   ) => Router.Router<
     E | E1,
@@ -622,7 +622,7 @@ export const provideServiceEffect = dual<
       Context.Tag.Identifier<T>
     >
   >,
-  <R, E, T extends Context.Tag<any, any>, R1, E1>(
+  <E, R, T extends Context.Tag<any, any>, R1, E1>(
     self: Router.Router<E, R>,
     tag: T,
     effect: Effect.Effect<Context.Tag.Service<T>, E1, R1>
@@ -633,7 +633,7 @@ export const provideServiceEffect = dual<
       Context.Tag.Identifier<T>
     >
   >
->(3, <R, E, T extends Context.Tag<any, any>, R1, E1>(
+>(3, <E, R, T extends Context.Tag<any, any>, R1, E1>(
   self: Router.Router<E, R>,
   tag: T,
   effect: Effect.Effect<Context.Tag.Service<T>, E1, R1>

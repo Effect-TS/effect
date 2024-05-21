@@ -30,7 +30,7 @@ export const PlatformRunner = Context.GenericTag<WorkerRunner.PlatformRunner>(
 )
 
 /** @internal */
-export const make = <I, R, E, O>(
+export const make = <I, E, R, O>(
   process: (request: I) => Stream.Stream<O, E, R> | Effect.Effect<O, E, R>,
   options?: WorkerRunner.Runner.Options<I, O, E>
 ) =>
@@ -172,7 +172,7 @@ export const make = <I, R, E, O>(
   })
 
 /** @internal */
-export const layer = <I, R, E, O>(
+export const layer = <I, E, R, O>(
   process: (request: I) => Stream.Stream<O, E, R> | Effect.Effect<O, E, R>,
   options?: WorkerRunner.Runner.Options<I, O, E>
 ): Layer.Layer<never, WorkerError, WorkerRunner.PlatformRunner | R> => Layer.scopedDiscard(make(process, options))
