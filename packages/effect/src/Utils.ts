@@ -796,11 +796,11 @@ const tracingFunction = (name: string) => {
  * @status experimental
  * @category tracing
  */
-export const internalCall = tracingFunction("effect_internal_function")
+export const effect_internal_function = tracingFunction("effect_internal_function")
 
 /**
  * @since 3.2.2
  * @status experimental
  * @category tracing
  */
-export const internalGeneratorCall = tracingFunction("effect_internal_generator")
+export const effect_internal_generator = tracingFunction("effect_internal_generator")

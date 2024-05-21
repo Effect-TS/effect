@@ -1,4 +1,4 @@
-import { internalCall } from "effect/Utils"
+import { effect_internal_function } from "effect/Utils"
 import * as RA from "../Array.js"
 import * as Boolean from "../Boolean.js"
 import type * as Cause from "../Cause.js"
@@ -147,7 +147,7 @@ const contOpSuccess = {
     cont: core.OnSuccess,
     value: unknown
   ) => {
-    return internalCall(() => cont.effect_instruction_i1(value))
+    return effect_internal_function(() => cont.effect_instruction_i1(value))
   },
   ["OnStep"]: (
     _: FiberRuntime<any, any>,
@@ -161,7 +161,7 @@ const contOpSuccess = {
     cont: core.OnSuccessAndFailure,
     value: unknown
   ) => {
-    return internalCall(() => cont.effect_instruction_i2(value))
+    return effect_internal_function(() => cont.effect_instruction_i2(value))
   },
   [OpCodes.OP_REVERT_FLAGS]: (
     self: FiberRuntime<any, any>,
@@ -180,10 +180,10 @@ const contOpSuccess = {
     cont: core.While,
     value: unknown
   ) => {
-    internalCall(() => cont.effect_instruction_i2(value))
-    if (internalCall(() => cont.effect_instruction_i0())) {
+    effect_internal_function(() => cont.effect_instruction_i2(value))
+    if (effect_internal_function(() => cont.effect_instruction_i0())) {
       self.pushStack(cont)
-      return internalCall(() => cont.effect_instruction_i1())
+      return effect_internal_function(() => cont.effect_instruction_i1())
     } else {
       return core.void
     }
@@ -1074,7 +1074,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   }
 
   [OpCodes.OP_SYNC](op: core.Primitive & { _op: OpCodes.OP_SYNC }) {
-    const value = internalCall(() => op.effect_instruction_i0())
+    const value = effect_internal_function(() => op.effect_instruction_i0())
     const cont = this.getNextSuccessCont()
     if (cont !== undefined) {
       if (!(cont._op in contOpSuccess)) {
@@ -1113,7 +1113,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
         case OpCodes.OP_ON_FAILURE:
         case OpCodes.OP_ON_SUCCESS_AND_FAILURE: {
           if (!(_runtimeFlags.interruptible(this._runtimeFlags) && this.isInterrupted())) {
-            return internalCall(() => cont.effect_instruction_i1(cause))
+            return effect_internal_function(() => cont.effect_instruction_i1(cause))
           } else {
             return core.exitFailCause(internalCause.stripFailures(cause))
           }
@@ -1144,7 +1144,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   }
 
   [OpCodes.OP_WITH_RUNTIME](op: core.Primitive & { _op: OpCodes.OP_WITH_RUNTIME }) {
-    return internalCall(() =>
+    return effect_internal_function(() =>
       op.effect_instruction_i0(
         this as FiberRuntime<unknown, unknown>,
         FiberStatus.running(this._runtimeFlags) as FiberStatus.Running
@@ -1210,7 +1210,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
         // Since we updated the flags, we need to revert them
         const revertFlags = _runtimeFlags.diff(newRuntimeFlags, oldRuntimeFlags)
         this.pushStack(new core.RevertFlags(revertFlags, op))
-        return internalCall(() => op.effect_instruction_i1!(oldRuntimeFlags))
+        return effect_internal_function(() => op.effect_instruction_i1!(oldRuntimeFlags))
       } else {
         return core.exitVoid
       }
@@ -1262,7 +1262,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   }
 
   [OpCodes.OP_COMMIT](op: core.Primitive & { _op: OpCodes.OP_COMMIT }) {
-    return internalCall(() => op.commit())
+    return effect_internal_function(() => op.commit())
   }
 
   /**
