@@ -112,7 +112,7 @@ export const schemaNoBody = <
 }
 
 /** @internal */
-export const schemaParams = <R, I extends Readonly<Record<string, string | Array<string> | undefined>>, A>(
+export const schemaParams = <A, I extends Readonly<Record<string, string | Array<string> | undefined>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {
@@ -128,7 +128,7 @@ export const schemaParams = <R, I extends Readonly<Record<string, string | Array
 }
 
 /** @internal */
-export const schemaPathParams = <R, I extends Readonly<Record<string, string | undefined>>, A>(
+export const schemaPathParams = <A, I extends Readonly<Record<string, string | undefined>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {

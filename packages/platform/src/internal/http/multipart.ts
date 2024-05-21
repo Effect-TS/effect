@@ -118,7 +118,7 @@ export const SingleFileSchema: Schema.transform<
 })
 
 /** @internal */
-export const schemaPersisted = <R, I extends Partial<Multipart.Persisted>, A>(
+export const schemaPersisted = <A, I extends Partial<Multipart.Persisted>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {

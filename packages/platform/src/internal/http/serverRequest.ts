@@ -61,7 +61,7 @@ export const searchParamsFromURL = (url: URL): ReadonlyRecord<string, string | A
 }
 
 /** @internal */
-export const schemaCookies = <R, I extends Readonly<Record<string, string>>, A>(
+export const schemaCookies = <A, I extends Readonly<Record<string, string>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {
@@ -70,7 +70,7 @@ export const schemaCookies = <R, I extends Readonly<Record<string, string>>, A>(
 }
 
 /** @internal */
-export const schemaHeaders = <R, I extends Readonly<Record<string, string>>, A>(
+export const schemaHeaders = <A, I extends Readonly<Record<string, string>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {
@@ -79,7 +79,7 @@ export const schemaHeaders = <R, I extends Readonly<Record<string, string>>, A>(
 }
 
 /** @internal */
-export const schemaSearchParams = <R, I extends Readonly<Record<string, string | Array<string> | undefined>>, A>(
+export const schemaSearchParams = <A, I extends Readonly<Record<string, string | Array<string> | undefined>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {
@@ -97,7 +97,7 @@ const isMultipart = (request: ServerRequest.ServerRequest) =>
   request.headers["content-type"]?.toLowerCase().includes("multipart/form-data")
 
 /** @internal */
-export const schemaBodyForm = <R, I extends Partial<Multipart.Persisted>, A>(
+export const schemaBodyForm = <A, I extends Partial<Multipart.Persisted>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {
@@ -116,7 +116,7 @@ export const schemaBodyForm = <R, I extends Partial<Multipart.Persisted>, A>(
 }
 
 /** @internal */
-export const schemaBodyUrlParams = <R, I extends Readonly<Record<string, string>>, A>(
+export const schemaBodyUrlParams = <A, I extends Readonly<Record<string, string>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {
@@ -125,7 +125,7 @@ export const schemaBodyUrlParams = <R, I extends Readonly<Record<string, string>
 }
 
 /** @internal */
-export const schemaBodyMultipart = <R, I extends Partial<Multipart.Persisted>, A>(
+export const schemaBodyMultipart = <A, I extends Partial<Multipart.Persisted>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {
