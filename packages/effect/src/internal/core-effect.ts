@@ -2054,8 +2054,8 @@ export const unsafeMakeSpan = <XA, XE>(
     options.kind ?? "internal"
   )
 
-  if (typeof options.captureStackTrace === "string") {
-    span.attribute("code.stacktrace", options.captureStackTrace)
+  if (typeof options.captureStackTrace === "function") {
+    internalCause.spanToTrace.set(span, options.captureStackTrace)
   }
 
   if (annotationsFromEnv._tag === "Some") {
@@ -2112,6 +2112,9 @@ export const useSpan: {
         if (span.status._tag === "Ended") {
           return
         }
+        if (core.exitIsFailure(exit) && internalCause.spanToTrace.has(span)) {
+          span.attribute("code.stacktrace", internalCause.spanToTrace.get(span)!())
+        }
         span.end(timingEnabled ? clock.unsafeCurrentTimeNanos() : bigint0, exit)
       }))
   })
@@ -2155,15 +2158,22 @@ export const functionWithSpan = <Args extends Array<any>, Ret extends Effect.Eff
   }
 ): (...args: Args) => Unify<Ret> =>
   (function(this: any) {
-    let captureStackTrace: string | boolean = options.captureStackTrace ?? false
+    let captureStackTrace: LazyArg<string | undefined> | boolean = options.captureStackTrace ?? false
     if (options.captureStackTrace !== false) {
       const limit = Error.stackTraceLimit
       Error.stackTraceLimit = 2
       const error = new Error()
       Error.stackTraceLimit = limit
-      if (error.stack !== undefined) {
-        const stack = error.stack.trim().split("\n")
-        captureStackTrace = stack.slice(2).join("\n").trim()
+      let cache: false | string = false
+      captureStackTrace = () => {
+        if (cache !== false) {
+          return cache
+        }
+        if (error.stack) {
+          const stack = error.stack.trim().split("\n")
+          cache = stack.slice(2).join("\n").trim()
+          return cache
+        }
       }
     }
     // eslint-disable-next-line @typescript-eslint/no-this-alias

@@ -118,12 +118,20 @@ export const addSpanStackTrace = (options: Tracer.SpanOptions | undefined): Trac
   Error.stackTraceLimit = 3
   const traceError = new Error()
   Error.stackTraceLimit = limit
-  if (traceError.stack === undefined) {
-    return { ...options, captureStackTrace: false }
+  let cache: false | string = false
+  return {
+    ...options,
+    captureStackTrace: () => {
+      if (cache !== false) {
+        return cache
+      }
+      if (traceError.stack !== undefined) {
+        const stack = traceError.stack.split("\n")
+        if (stack[3] !== undefined) {
+          cache = stack[3].trim()
+          return cache
+        }
+      }
+    }
   }
-  const stack = traceError.stack.split("\n")
-  if (!stack[3]) {
-    return { ...options, captureStackTrace: false }
-  }
-  return { ...options, captureStackTrace: stack[3].trim() }
 }
