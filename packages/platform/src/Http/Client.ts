@@ -133,7 +133,7 @@ export const catchTag: {
     tag: K,
     f: (e: Extract<E, { _tag: K }>) => Effect.Effect<A1, E1, R1>
   ): <A, R>(self: Client<A, E, R>) => Client<A1 | A, E1 | Exclude<E, { _tag: K }>, R1 | R>
-  <R, E extends { _tag: string }, A, K extends E["_tag"] & string, A1, E1, R1>(
+  <A, E extends { _tag: string }, R, K extends E["_tag"] & string, A1, E1, R1>(
     self: Client<A, E, R>,
     tag: K,
     f: (e: Extract<E, { _tag: K }>) => Effect.Effect<A1, E1, R1>

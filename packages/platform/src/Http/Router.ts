@@ -194,7 +194,7 @@ export const schemaNoBody: <
  * @since 1.0.0
  * @category route context
  */
-export const schemaParams: <R, I extends Readonly<Record<string, string | Array<string> | undefined>>, A>(
+export const schemaParams: <A, I extends Readonly<Record<string, string | Array<string> | undefined>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => Effect.Effect<A, ParseResult.ParseError, R | RouteContext | ServerRequest.ParsedSearchParams> =
@@ -204,7 +204,7 @@ export const schemaParams: <R, I extends Readonly<Record<string, string | Array<
  * @since 1.0.0
  * @category route context
  */
-export const schemaPathParams: <R, I extends Readonly<Record<string, string | undefined>>, A>(
+export const schemaPathParams: <A, I extends Readonly<Record<string, string | undefined>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => Effect.Effect<A, ParseResult.ParseError, R | RouteContext> = internal.schemaPathParams
