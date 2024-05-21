@@ -1057,15 +1057,20 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
   const lines = stack.split("\n")
 
   for (let i = 1; i < lines.length; i++) {
-    if (lines[i].includes("effect_cutpoint") || lines[i].includes("Generator.next")) {
+    if (lines[i].includes("effect_internal_function")) {
+      out.pop()
+      break
+    }
+    if (lines[i].includes("effect_internal_generator")) {
+      out.pop()
+      out.pop()
       break
     }
     out.push(
-      lines[i].replace(/at .*effect_instruction_i.*\((.*)\)/, "at $1").replace(/EffectPrimitive\.\w+/, "<anonymous>")
+      lines[i]
+        .replace(/at .*effect_instruction_i.*\((.*)\)/, "at $1")
+        .replace(/EffectPrimitive\.\w+/, "<anonymous>")
     )
-    if (lines[i].includes("effect_instruction_i")) {
-      break
-    }
   }
 
   if (span) {

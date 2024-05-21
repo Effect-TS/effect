@@ -1,3 +1,4 @@
+import { internalCall, internalGeneratorCall } from "effect/Utils"
 import * as Arr from "../Array.js"
 import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
@@ -771,13 +772,16 @@ export const gen: typeof Effect.gen = function() {
   }
   return core.suspend(() => {
     const iterator = f(pipe)
-    const state = iterator.next()
+    const state = internalGeneratorCall(() => iterator.next())
     const run = (
       state: IteratorYieldResult<any> | IteratorReturnResult<any>
     ): Effect.Effect<any, any, any> => {
       return (state.done
         ? core.succeed(state.value)
-        : core.flatMap(yieldWrapGet(state.value) as any, (val: any) => run(iterator.next(val))))
+        : core.flatMap(
+          yieldWrapGet(state.value) as any,
+          (val: any) => run(internalGeneratorCall(() => iterator.next(val)))
+        ))
     }
     return run(state)
   })
@@ -2166,18 +2170,12 @@ export const functionWithSpan = <Args extends Array<any>, Ret extends Effect.Eff
         captureStackTrace = stack.slice(2).join("\n").trim()
       }
     }
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
-    const self = this
-    const args = arguments
     return core.suspend(() => {
       const opts = typeof options.options === "function"
         ? options.options.apply(null, arguments as any)
         : options.options
-
       return withSpan(
-        core.custom(options.body, function() {
-          return this.effect_instruction_i0.apply(self, args as any)
-        }),
+        core.suspend(() => internalCall(() => options.body.apply(this, arguments as any))),
         opts.name,
         {
           ...opts,
