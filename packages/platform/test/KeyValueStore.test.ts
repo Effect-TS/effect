@@ -115,7 +115,7 @@ class User extends Schema.Class<User>("User")({
   age: Schema.Number
 }) {}
 const UserStore = KeyValueStore.layerSchema(User, "UserStore")
-const runUserStore = <E, A>(effect: Effect.Effect<A, E, KeyValueStore.SchemaStore<never, User>>) =>
+const runUserStore = <E, A>(effect: Effect.Effect<A, E, KeyValueStore.SchemaStore<User, never>>) =>
   Effect.runPromise(Effect.provide(effect, UserStore.layer.pipe(Layer.provide(KeyValueStore.layerMemory))))
 
 describe("KeyValueStore / SchemaStore", () => {

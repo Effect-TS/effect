@@ -71,7 +71,7 @@ export const SchemaStoreTypeId: KeyValueStore.SchemaStoreTypeId = Symbol.for(
 const makeSchemaStore = <A, I, R>(
   store: KeyValueStore.KeyValueStore,
   schema: Schema.Schema<A, I, R>
-): KeyValueStore.SchemaStore<R, A> => {
+): KeyValueStore.SchemaStore<A, R> => {
   const jsonSchema = Schema.parseJson(schema)
   const parse = Schema.decodeUnknown(jsonSchema)
   const encode = Schema.encode(jsonSchema)
@@ -170,7 +170,7 @@ export const layerSchema = <A, I, R>(
   schema: Schema.Schema<A, I, R>,
   tagIdentifier: string
 ) => {
-  const tag = Context.GenericTag<KeyValueStore.SchemaStore<R, A>>(tagIdentifier)
+  const tag = Context.GenericTag<KeyValueStore.SchemaStore<A, R>>(tagIdentifier)
   const layer = Layer.effect(tag, Effect.map(keyValueStoreTag, (store) => store.forSchema(schema)))
   return { tag, layer } as const
 }
