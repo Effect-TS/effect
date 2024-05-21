@@ -18,7 +18,7 @@ describe("Tracer", () => {
         const span = yield* Effect.withSpan("A")(Effect.currentSpan)
         assert.deepEqual(span.name, "A")
         assert.deepEqual(span.parent, Option.none())
-        assert.include(span.attributes.get("code.stacktrace"), "Tracer.test.ts:18")
+        assert.strictEqual(span.attributes.get("code.stacktrace"), undefined)
       }))
 
     it.effect("parent", () =>
@@ -139,7 +139,7 @@ describe("Tracer", () => {
     Effect.gen(function*() {
       const span = yield* Effect.scoped(Effect.makeSpanScoped("A"))
       assert.deepEqual(span.status._tag, "Ended")
-      assert.include(span.attributes.get("code.stacktrace"), "Tracer.test.ts:140")
+      assert.strictEqual(span.attributes.get("code.stacktrace"), undefined)
     }))
 
   it.effect("annotateCurrentSpan", () =>
@@ -176,8 +176,8 @@ describe("Tracer", () => {
       const span = yield* Effect.makeSpan("child")
       const parent = yield* Option.filter(span.parent, (span): span is Span => span._tag === "Span")
       assert.deepEqual(parent.name, "parent")
-      assert.include(span.attributes.get("code.stacktrace"), "Tracer.test.ts:176")
-      assert.include(parent.attributes.get("code.stacktrace"), "Tracer.test.ts:184")
+      assert.strictEqual(span.attributes.get("code.stacktrace"), undefined)
+      assert.strictEqual(parent.attributes.get("code.stacktrace"), undefined)
     }).pipe(
       Effect.provide(Layer.unwrapScoped(
         Effect.map(
@@ -195,7 +195,7 @@ describe("Tracer", () => {
         Option.getOrThrow
       )
       assert.strictEqual(parent.name, "parent")
-      assert.include(parent.attributes.get("code.stacktrace"), "Tracer.test.ts:200")
+      assert.strictEqual(parent.attributes.get("code.stacktrace"), undefined)
     }).pipe(
       Effect.provide(Layer.span("parent"))
     ))
@@ -238,7 +238,7 @@ describe("Tracer", () => {
       const layer = Layer.effectDiscard(Effect.gen(function*() {
         const span = yield* Effect.currentSpan
         assert.strictEqual(span.name, "span")
-        assert.include(span.attributes.get("code.stacktrace"), "Tracer.test.ts:243")
+        assert.strictEqual(span.attributes.get("code.stacktrace"), undefined)
       })).pipe(
         Layer.withSpan("span", {
           onEnd: (span, _exit) =>
@@ -274,6 +274,25 @@ it.effect("withTracerEnabled", () =>
     assert.deepEqual(spanB.name, "B")
   }))
 
+it.effect("includes trace when errored", () =>
+  Effect.gen(function*() {
+    let maybeSpan: undefined | Span
+    const getSpan = Effect.functionWithSpan({
+      body: (_id: string) =>
+        Effect.currentSpan.pipe(Effect.flatMap((span) => {
+          maybeSpan = span
+          return Effect.fail("error")
+        })),
+      options: (id) => ({
+        name: `span-${id}`,
+        attributes: { id }
+      })
+    })
+    yield* Effect.flip(getSpan("fail"))
+    assert.isDefined(maybeSpan)
+    assert.include(maybeSpan!.attributes.get("code.stacktrace"), "Tracer.test.ts:291:24")
+  }))
+
 describe("functionWithSpan", () => {
   const getSpan = Effect.functionWithSpan({
     body: (_id: string) => Effect.currentSpan,
@@ -288,7 +307,7 @@ describe("functionWithSpan", () => {
       const span = yield* getSpan("A")
       assert.deepEqual(span.name, "span-A")
       assert.deepEqual(span.parent, Option.none())
-      assert.include(span.attributes.get("code.stacktrace"), "Tracer.test.ts:288")
+      assert.strictEqual(span.attributes.get("code.stacktrace"), undefined)
     }))
 
   it.effect("parent", () =>

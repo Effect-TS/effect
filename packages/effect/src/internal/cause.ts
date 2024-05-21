@@ -5,6 +5,7 @@ import * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
 import type * as FiberId from "../FiberId.js"
 import { constFalse, constTrue, dual, identity, pipe } from "../Function.js"
+import { globalValue } from "../GlobalValue.js"
 import * as Hash from "../Hash.js"
 import * as HashSet from "../HashSet.js"
 import { NodeInspectSymbol, toJSON } from "../Inspectable.js"
@@ -1052,6 +1053,9 @@ export const prettyErrorMessage = (u: unknown): string => {
 
 const locationRegex = /\((.*)\)/
 
+/** @internal */
+export const spanToTrace = globalValue("effect/Tracer/spanToTrace", () => new WeakMap())
+
 const prettyErrorStack = (message: string, stack: string, span?: Span | undefined): string => {
   const out: Array<string> = [message]
   const lines = stack.split("\n")
@@ -1072,8 +1076,9 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
     let current: Span | AnySpan | undefined = span
     let i = 0
     while (current && current._tag === "Span" && i < 10) {
-      const stack = current.attributes.get("code.stacktrace")
-      if (typeof stack === "string") {
+      const stackFn = spanToTrace.get(current)
+      if (typeof stackFn === "function") {
+        const stack = stackFn()
         const locationMatch = stack.match(locationRegex)
         const location = locationMatch ? locationMatch[1] : stack.replace(/^at /, "")
         out.push(`    at ${current.name} (${location})`)
