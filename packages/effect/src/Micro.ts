@@ -373,7 +373,7 @@ export const as: {
  * @since 3.2.0
  */
 export const flatMap: {
-  <A, B, E2, R2>(f: (a: NoInfer<A>) => Micro<B, E2, R2>): <E, R>(self: Micro<A, E, R>) => Micro<B, E, R>
+  <A, B, E2, R2>(f: (a: NoInfer<A>) => Micro<B, E2, R2>): <E, R>(self: Micro<A, E, R>) => Micro<B, E | E2, R | R2>
   <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: NoInfer<A>) => Micro<B, E2, R2>): Micro<B, E | E2, R | R2>
 } = dual(
   2,
@@ -484,7 +484,169 @@ export const tap: {
 /**
  * @since 3.2.0
  */
+export const catchAllFailure: {
+  <E, B, E2, R2>(
+    f: (a: NoInfer<Failure<E>>) => Micro<B, E2, R2>
+  ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E2, R | R2>
+  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: NoInfer<Failure<E>>) => Micro<B, E2, R2>): Micro<A | B, E2, R | R2>
+} = dual(
+  2,
+  <A, E, R, B, E2, R2>(
+    self: Micro<A, E, R>,
+    f: (a: NoInfer<Failure<E>>) => Micro<B, E2, R2>
+  ): Micro<A | B, E2, R | R2> =>
+    make(function(env, onResult) {
+      self[runSymbol](env, function(result) {
+        if (result._tag === "Right") {
+          return onResult(result as any)
+        }
+        f(result.left)[runSymbol](env, onResult)
+      })
+    })
+)
+
+/**
+ * @since 3.2.0
+ */
+export const catchAll: {
+  <E, B, E2, R2>(
+    f: (a: NoInfer<E>) => Micro<B, E2, R2>
+  ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E2, R | R2>
+  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: NoInfer<E>) => Micro<B, E2, R2>): Micro<A | B, E2, R | R2>
+} = dual(
+  2,
+  <A, E, R, B, E2, R2>(
+    self: Micro<A, E, R>,
+    f: (a: NoInfer<E>) => Micro<B, E2, R2>
+  ): Micro<A | B, E2, R | R2> =>
+    catchAllFailure(self, (failure) => failure._tag === "Expected" ? f(failure.error) : failWith(failure))
+)
+
+/**
+ * @since 3.2.0
+ */
+export const matchFailureMicro: {
+  <E, A2, E2, R2, A, A3, E3, R3>(
+    options: {
+      readonly onFailure: (failure: Failure<E>) => Micro<A2, E2, R2>
+      readonly onSuccess: (a: A) => Micro<A3, E3, R3>
+    }
+  ): <R>(self: Micro<A, E, R>) => Micro<A2 | A3, E2 | E3, R2 | R3 | R>
+  <A, E, R, A2, E2, R2, A3, E3, R3>(
+    self: Micro<A, E, R>,
+    options: {
+      readonly onFailure: (failure: Failure<E>) => Micro<A2, E2, R2>
+      readonly onSuccess: (a: A) => Micro<A3, E3, R3>
+    }
+  ): Micro<A2 | A3, E2 | E3, R2 | R3 | R>
+} = dual(
+  2,
+  <A, E, R, A2, E2, R2, A3, E3, R3>(
+    self: Micro<A, E, R>,
+    options: {
+      readonly onFailure: (failure: Failure<E>) => Micro<A2, E2, R2>
+      readonly onSuccess: (a: A) => Micro<A3, E3, R3>
+    }
+  ): Micro<A2 | A3, E2 | E3, R2 | R3 | R> =>
+    make(function(env, onResult) {
+      self[runSymbol](env, function(result) {
+        try {
+          const next = result._tag === "Left" ? options.onFailure(result.left) : options.onSuccess(result.right)
+          next[runSymbol](env, onResult)
+        } catch (err) {
+          onResult(Either.left(FailureUnexpected(err)))
+        }
+      })
+    })
+)
+
+/**
+ * @since 3.2.0
+ */
+export const matchMicro: {
+  <E, A2, E2, R2, A, A3, E3, R3>(
+    options: {
+      readonly onFailure: (e: E) => Micro<A2, E2, R2>
+      readonly onSuccess: (a: A) => Micro<A3, E3, R3>
+    }
+  ): <R>(self: Micro<A, E, R>) => Micro<A2 | A3, E2 | E3, R2 | R3 | R>
+  <A, E, R, A2, E2, R2, A3, E3, R3>(
+    self: Micro<A, E, R>,
+    options: {
+      readonly onFailure: (e: E) => Micro<A2, E2, R2>
+      readonly onSuccess: (a: A) => Micro<A3, E3, R3>
+    }
+  ): Micro<A2 | A3, E2 | E3, R2 | R3 | R>
+} = dual(
+  2,
+  <A, E, R, A2, E2, R2, A3, E3, R3>(
+    self: Micro<A, E, R>,
+    options: {
+      readonly onFailure: (e: E) => Micro<A2, E2, R2>
+      readonly onSuccess: (a: A) => Micro<A3, E3, R3>
+    }
+  ): Micro<A2 | A3, E2 | E3, R2 | R3 | R> =>
+    matchFailureMicro(self, {
+      onFailure: (failure) => failure._tag === "Expected" ? options.onFailure(failure.error) : die(failure.defect),
+      onSuccess: options.onSuccess
+    })
+)
+
+/**
+ * @since 3.2.0
+ */
+export const match: {
+  <E, A2, A, A3>(
+    options: {
+      readonly onFailure: (error: E) => A2
+      readonly onSuccess: (value: A) => A3
+    }
+  ): <R>(self: Micro<A, E, R>) => Micro<A2 | A3, never, R>
+  <A, E, R, A2, A3>(
+    self: Micro<A, E, R>,
+    options: {
+      readonly onFailure: (error: E) => A2
+      readonly onSuccess: (value: A) => A3
+    }
+  ): Micro<A2 | A3, never, R>
+} = dual(
+  2,
+  <A, E, R, A2, A3>(
+    self: Micro<A, E, R>,
+    options: {
+      readonly onFailure: (error: E) => A2
+      readonly onSuccess: (value: A) => A3
+    }
+  ): Micro<A2 | A3, never, R> =>
+    matchMicro(self, {
+      onFailure: (error) => sync(() => options.onFailure(error)),
+      onSuccess: (value) => sync(() => options.onSuccess(value))
+    })
+)
+
+/**
+ * @since 3.2.0
+ */
 export const asVoid = <A, E, R>(self: Micro<A, E, R>): Micro<void, E, R> => map(self, (_) => undefined)
+
+/**
+ * @since 3.2.0
+ */
+export const orDie = <A, E, R>(self: Micro<A, E, R>): Micro<A, never, R> => catchAll(self, die)
+
+/**
+ * @since 3.2.0
+ */
+export const orElseSucceed: {
+  <B>(f: LazyArg<B>): <A, E, R>(self: Micro<A, E, R>) => Micro<A | B, never, R>
+  <A, E, R, B>(self: Micro<A, E, R>, f: LazyArg<B>): Micro<A | B, never, R>
+} = dual(2, <A, E, R, B>(self: Micro<A, E, R>, f: LazyArg<B>): Micro<A | B, never, R> => catchAll(self, (_) => sync(f)))
+
+/**
+ * @since 3.2.0
+ */
+export const ignore = <A, E, R>(self: Micro<A, E, R>): Micro<void, never, R> =>
+  matchMicro(self, { onFailure: die, onSuccess: () => void_ })
 
 /**
  * @since 3.2.0
@@ -514,27 +676,60 @@ export const async = <A, E = never, R = never>(
   flatten(
     make(function(env, onResult) {
       let resumed = false
-      let onAbort: LazyArg<void> | undefined = undefined
       const signal = Env.get(env, Env.currentAbortSignal)
+      let cleanup: Micro<void, never, R> | void = undefined
+      function onAbort() {
+        if (cleanup) {
+          resume(uninterruptible(zipRight(cleanup, failWith(FailureAborted))))
+        } else {
+          resume(failWith(FailureAborted))
+        }
+      }
       function resume(effect: Micro<A, E, R>) {
         if (resumed) {
           return
         }
         resumed = true
-        if (onAbort !== undefined) {
-          signal.removeEventListener("abort", onAbort)
-        }
+        signal.removeEventListener("abort", onAbort)
         onResult(Either.right(effect))
       }
-      const cleanup = register(resume, signal)
-      if (cleanup) {
-        onAbort = function() {
-          resume(uninterruptible(zipRight(cleanup, failWith(FailureAborted))))
-        }
-        signal.addEventListener("abort", onAbort)
-      }
+      cleanup = register(resume, signal)
+      if (resumed) return
+      signal.addEventListener("abort", onAbort)
     })
   )
+
+/**
+ * @since 3.2.0
+ */
+export const promise = <A>(evaluate: (signal: AbortSignal) => PromiseLike<A>): Micro<A> =>
+  async<A>(function(resume, signal) {
+    evaluate(signal).then(
+      (a) => resume(succeed(a)),
+      (e) => resume(die(e))
+    )
+  })
+
+/**
+ * @since 3.2.0
+ */
+export const tryPromise = <A, E>(options: {
+  readonly try: (signal: AbortSignal) => PromiseLike<A>
+  readonly catch: (error: unknown) => E
+}): Micro<A, E> =>
+  async<A, E>(function(resume, signal) {
+    options.try(signal).then(
+      (a) => resume(succeed(a)),
+      (e) => resume(fail(options.catch(e)))
+    )
+  })
+
+/**
+ * @since 3.2.0
+ */
+export const yieldNow: Micro<void> = make(function(_env, onResult) {
+  queueMicrotask(() => onResult(Either.right(void 0)))
+})
 
 /**
  * @since 3.2.0
@@ -1085,29 +1280,22 @@ export const runFork = <A, E>(effect: Micro<A, E>): Handle<A, E> => {
 /**
  * @since 3.2.0
  */
-export const runPromise = <A, E>(effect: Micro<A, E>): Promise<A> =>
-  new Promise((resolve, reject) => {
+export const runPromiseResult = <A, E>(effect: Micro<A, E>): Promise<Result<A, E>> =>
+  new Promise((resolve, _reject) => {
     const handle = runFork(effect)
-    handle.addObserver((result) => {
-      if (result._tag === "Left") {
-        reject(failureSquash(result.left))
-      } else {
-        resolve(result.right)
-      }
-    })
+    handle.addObserver(resolve)
   })
 
 /**
  * @since 3.2.0
  */
-export const runSyncResult = <A, E>(effect: Micro<A, E>): Result<A, E> => {
-  const handle = runFork(effect)
-  const result = handle.unsafePoll()
-  if (result) {
-    return result
-  }
-  throw handle
-}
+export const runPromise = <A, E>(effect: Micro<A, E>): Promise<A> =>
+  runPromiseResult(effect).then((result) => {
+    if (result._tag === "Left") {
+      throw result.left
+    }
+    return result.right
+  })
 
 /**
  * @since 3.2.0
