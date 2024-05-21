@@ -5606,7 +5606,7 @@ export interface OptionFromNullishOr<Value extends Schema.Any> extends
  */
 export const OptionFromNullishOr = <Value extends Schema.Any>(
   value: Value,
-  options: { onNoneEncoding: () => null | undefined }
+  options: { onNoneEncoding: LazyArg<null | undefined> }
 ): OptionFromNullishOr<Value> => {
   const value_ = asSchema(value)
   return transform(
