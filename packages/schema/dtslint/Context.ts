@@ -178,7 +178,7 @@ S.optionalToRequired(aContext, S.String, { decode: Option.getOrElse(() => ""), e
 // optional
 // ---------------------------------------------
 
-// $ExpectType PropertySignature<"?:", string | undefined, never, "?:", string | undefined, false, "aContext">
+// $ExpectType optional<aContext>
 S.optional(aContext)
 
 // ---------------------------------------------
