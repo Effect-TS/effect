@@ -207,7 +207,14 @@ export const make = (
       }),
       {
         [TypeId]: TypeId as TypeId,
-        config: options,
+        config: {
+          ...options,
+          host: client.options.host[0] ?? undefined,
+          port: client.options.port[0] ?? undefined,
+          username: client.options.user,
+          password: client.options.pass ? Secret.fromString(client.options.pass) : undefined,
+          database: client.options.database
+        },
         json: (_: unknown) => PgJson(_),
         array: (_: ReadonlyArray<Primitive>) => PgArray(_)
       }
