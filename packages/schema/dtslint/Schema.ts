@@ -1944,10 +1944,10 @@ S.OptionFromUndefinedOr(S.NumberFromString)
 // ---------------------------------------------
 
 // $ExpectType Schema<Option<number>, string | null | undefined, never>
-S.asSchema(S.OptionFromNullishOr(S.NumberFromString, null))
+S.asSchema(S.OptionFromNullishOr(S.NumberFromString, { onNoneEncoding: () => null }))
 
 // $ExpectType OptionFromNullishOr<typeof NumberFromString>
-S.OptionFromNullishOr(S.NumberFromString, undefined)
+S.OptionFromNullishOr(S.NumberFromString, { onNoneEncoding: () => undefined })
 
 // ---------------------------------------------
 // EitherFromSelf

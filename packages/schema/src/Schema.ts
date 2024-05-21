@@ -5606,13 +5606,13 @@ export interface OptionFromNullishOr<Value extends Schema.Any> extends
  */
 export const OptionFromNullishOr = <Value extends Schema.Any>(
   value: Value,
-  onNoneEncoding: null | undefined
+  options: { onNoneEncoding: () => null | undefined }
 ): OptionFromNullishOr<Value> => {
   const value_ = asSchema(value)
   return transform(
     NullishOr(value_),
     OptionFromSelf(typeSchema(value_)),
-    { decode: option_.fromNullable, encode: onNoneEncoding === null ? option_.getOrNull : option_.getOrUndefined }
+    { decode: option_.fromNullable, encode: option_.getOrElse(options.onNoneEncoding) }
   )
 }
 
