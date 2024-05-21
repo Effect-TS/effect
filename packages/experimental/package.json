@@ -39,7 +39,7 @@
     "coverage": "vitest --coverage"
   },
   "dependencies": {
-    "msgpackr": "^1.10.1"
+    "msgpackr": "^1.10.2"
   },
   "peerDependencies": {
     "@effect/platform": "workspace:^",

@@ -50,6 +50,6 @@
   },
   "dependencies": {
     "@opentelemetry/semantic-conventions": "^1.24.1",
-    "better-sqlite3": "^9.6.0"
+    "better-sqlite3": "^10.0.0"
   }
 }

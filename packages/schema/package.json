@@ -51,7 +51,7 @@
     "effect": "workspace:^"
   },
   "devDependencies": {
-    "ajv": "^8.12.0",
+    "ajv": "^8.13.0",
     "effect": "workspace:^",
     "fast-check": "workspace:^",
     "tinybench": "^2.8.0",
