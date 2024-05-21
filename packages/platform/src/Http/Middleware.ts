@@ -14,7 +14,7 @@ import type * as ServerRequest from "./ServerRequest.js"
  * @category models
  */
 export interface Middleware {
-  <R, E>(self: App.Default<E, R>): App.Default<any, any>
+  <E, R>(self: App.Default<E, R>): App.Default<any, any>
 }
 
 /**
@@ -39,7 +39,7 @@ export const make: <M extends Middleware>(middleware: M) => M = internal.make
  * @since 1.0.0
  * @category constructors
  */
-export const logger: <R, E>(httpApp: App.Default<E, R>) => App.Default<E, R> = internal.logger
+export const logger: <E, R>(httpApp: App.Default<E, R>) => App.Default<E, R> = internal.logger
 
 /**
  * @since 1.0.0
@@ -51,7 +51,7 @@ export const loggerDisabled: FiberRef.FiberRef<boolean> = internal.loggerDisable
  * @since 1.0.0
  * @category fiber refs
  */
-export const withLoggerDisabled: <R, E, A>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> =
+export const withLoggerDisabled: <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> =
   internal.withLoggerDisabled
 
 /**
@@ -68,8 +68,8 @@ export const currentTracerDisabledWhen: FiberRef.FiberRef<Predicate.Predicate<Se
 export const withTracerDisabledWhen: {
   (
     predicate: Predicate.Predicate<ServerRequest.ServerRequest>
-  ): <R, E, A>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>
-  <R, E, A>(
+  ): <A, E, R>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>
+  <A, E, R>(
     layer: Layer.Layer<A, E, R>,
     predicate: Predicate.Predicate<ServerRequest.ServerRequest>
   ): Layer.Layer<A, E, R>
@@ -82,8 +82,8 @@ export const withTracerDisabledWhen: {
 export const withTracerDisabledWhenEffect: {
   (
     predicate: Predicate.Predicate<ServerRequest.ServerRequest>
-  ): <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <R, E, A>(
+  ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(
     effect: Effect.Effect<A, E, R>,
     predicate: Predicate.Predicate<ServerRequest.ServerRequest>
   ): Effect.Effect<A, E, R>
@@ -94,15 +94,15 @@ export const withTracerDisabledWhenEffect: {
  * @category fiber refs
  */
 export const withTracerDisabledForUrls: {
-  (urls: ReadonlyArray<string>): <R, E, A>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>
-  <R, E, A>(layer: Layer.Layer<A, E, R>, urls: ReadonlyArray<string>): Layer.Layer<A, E, R>
+  (urls: ReadonlyArray<string>): <A, E, R>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>
+  <A, E, R>(layer: Layer.Layer<A, E, R>, urls: ReadonlyArray<string>): Layer.Layer<A, E, R>
 } = internal.withTracerDisabledForUrls
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const xForwardedHeaders: <R, E>(httpApp: App.Default<E, R>) => App.Default<E, R> = internal.xForwardedHeaders
+export const xForwardedHeaders: <E, R>(httpApp: App.Default<E, R>) => App.Default<E, R> = internal.xForwardedHeaders
 
 /**
  * @since 1.0.0

@@ -35,10 +35,10 @@ export const make = (
 /** @internal */
 export const serve = dual<
   {
-    (): <R, E>(
+    (): <E, R>(
       httpApp: App.Default<E, R>
     ) => Layer.Layer<never, never, Server.Server | Exclude<R, ServerRequest.ServerRequest | Scope.Scope>>
-    <R, E, App extends App.Default<any, any>>(middleware: Middleware.Middleware.Applied<App, E, R>): (
+    <E, R, App extends App.Default<any, any>>(middleware: Middleware.Middleware.Applied<App, E, R>): (
       httpApp: App.Default<E, R>
     ) => Layer.Layer<
       never,
@@ -47,10 +47,10 @@ export const serve = dual<
     >
   },
   {
-    <R, E>(
+    <E, R>(
       httpApp: App.Default<E, R>
     ): Layer.Layer<never, never, Server.Server | Exclude<R, ServerRequest.ServerRequest | Scope.Scope>>
-    <R, E, App extends App.Default<any, any>>(
+    <E, R, App extends App.Default<any, any>>(
       httpApp: App.Default<E, R>,
       middleware: Middleware.Middleware.Applied<App, E, R>
     ): Layer.Layer<
@@ -61,7 +61,7 @@ export const serve = dual<
   }
 >(
   (args) => Effect.isEffect(args[0]),
-  <R, E, App extends App.Default<any, any>>(
+  <E, R, App extends App.Default<any, any>>(
     httpApp: App.Default<E, R>,
     middleware?: Middleware.Middleware.Applied<App, E, R>
   ): Layer.Layer<
@@ -80,14 +80,14 @@ export const serve = dual<
 /** @internal */
 export const serveEffect = dual<
   {
-    (): <R, E>(
+    (): <E, R>(
       httpApp: App.Default<E, R>
     ) => Effect.Effect<
       void,
       never,
       Server.Server | Scope.Scope | Exclude<R, ServerRequest.ServerRequest>
     >
-    <R, E, App extends App.Default<any, any>>(middleware: Middleware.Middleware.Applied<App, E, R>): (
+    <E, R, App extends App.Default<any, any>>(middleware: Middleware.Middleware.Applied<App, E, R>): (
       httpApp: App.Default<E, R>
     ) => Effect.Effect<
       void,
@@ -96,10 +96,10 @@ export const serveEffect = dual<
     >
   },
   {
-    <R, E>(
+    <E, R>(
       httpApp: App.Default<E, R>
     ): Effect.Effect<void, never, Server.Server | Scope.Scope | Exclude<R, ServerRequest.ServerRequest>>
-    <R, E, App extends App.Default<any, any>>(
+    <E, R, App extends App.Default<any, any>>(
       httpApp: App.Default<E, R>,
       middleware: Middleware.Middleware.Applied<App, E, R>
     ): Effect.Effect<
@@ -110,7 +110,7 @@ export const serveEffect = dual<
   }
 >(
   (args) => Effect.isEffect(args[0]),
-  (<R, E, App extends App.Default<any, any>>(
+  (<E, R, App extends App.Default<any, any>>(
     httpApp: App.Default<E, R>,
     middleware: Middleware.Middleware.Applied<App, E, R>
   ): Effect.Effect<
@@ -135,7 +135,7 @@ export const formatAddress = (address: Server.Address): string => {
 }
 
 /** @internal */
-export const addressWith = <R, E, A>(
+export const addressWith = <A, E, R>(
   effect: (address: Server.Address) => Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, Server.Server | R> =>
   Effect.flatMap(
@@ -144,7 +144,7 @@ export const addressWith = <R, E, A>(
   )
 
 /** @internal */
-export const addressFormattedWith = <R, E, A>(
+export const addressFormattedWith = <A, E, R>(
   effect: (address: string) => Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, Server.Server | R> =>
   Effect.flatMap(
@@ -158,7 +158,7 @@ export const logAddress: Effect.Effect<void, never, Server.Server> = addressForm
 )
 
 /** @internal */
-export const withLogAddress = <R, E, A>(
+export const withLogAddress = <A, E, R>(
   layer: Layer.Layer<A, E, R>
 ): Layer.Layer<A, E, R | Exclude<Server.Server, A>> =>
   Layer.effectDiscard(logAddress).pipe(
