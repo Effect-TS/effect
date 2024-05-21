@@ -1,5 +1,26 @@
 # effect
 
+## 3.2.2
+
+### Patch Changes
+
+- [#2787](https://github.com/Effect-TS/effect/pull/2787) [`5d9266e`](https://github.com/Effect-TS/effect/commit/5d9266e8c740746ac9e186c3df6090a1b57fbe2a) Thanks @mikearnaldi! - Prohibit name clashes in Effect.Tag
+
+  The following now correctly flags a type error given that the property `context` exists already in `Tag`:
+
+  ```ts
+  import { Effect } from "effect";
+
+  class LoaderArgs extends Effect.Tag("@services/LoaderContext")<
+    LoaderArgs,
+    { context: number }
+  >() {}
+  ```
+
+- [#2797](https://github.com/Effect-TS/effect/pull/2797) [`9f8122e`](https://github.com/Effect-TS/effect/commit/9f8122e78884ab47c5e5f364d86eee1d1543cc61) Thanks @mikearnaldi! - Improve internalization of functions to clean stack traces
+
+- [#2798](https://github.com/Effect-TS/effect/pull/2798) [`6a6f670`](https://github.com/Effect-TS/effect/commit/6a6f6706b8613c8c7c10971b8d81a0f9e440a6f2) Thanks @mikearnaldi! - Avoid eager read of the stack when captured by a span
+
 ## 3.2.1
 
 ### Patch Changes
