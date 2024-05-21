@@ -76,7 +76,7 @@ export interface KeyValueStore {
   /**
    * Create a SchemaStore for the specified schema.
    */
-  readonly forSchema: <A, I, R>(schema: Schema.Schema<A, I, R>) => SchemaStore<R, A>
+  readonly forSchema: <A, I, R>(schema: Schema.Schema<A, I, R>) => SchemaStore<A, R>
 }
 
 /**
@@ -143,7 +143,7 @@ export type SchemaStoreTypeId = typeof SchemaStoreTypeId
  * @since 1.0.0
  * @category models
  */
-export interface SchemaStore<R, A> {
+export interface SchemaStore<A, R> {
   readonly [SchemaStoreTypeId]: SchemaStoreTypeId
   /**
    * Returns the value of the specified key if it exists.
@@ -202,6 +202,6 @@ export const layerSchema: <A, I, R>(
   schema: Schema.Schema<A, I, R>,
   tagIdentifier: string
 ) => {
-  readonly tag: Context.Tag<SchemaStore<R, A>, SchemaStore<R, A>>
-  readonly layer: Layer.Layer<SchemaStore<R, A>, never, KeyValueStore>
+  readonly tag: Context.Tag<SchemaStore<A, R>, SchemaStore<A, R>>
+  readonly layer: Layer.Layer<SchemaStore<A, R>, never, KeyValueStore>
 } = internal.layerSchema

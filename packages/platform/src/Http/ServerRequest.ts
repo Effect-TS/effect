@@ -133,7 +133,7 @@ export const upgradeChannel: <IE = never>() => Channel<
  * @since 1.0.0
  * @category schema
  */
-export const schemaCookies: <R, I extends Readonly<Record<string, string>>, A>(
+export const schemaCookies: <A, I extends Readonly<Record<string, string>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => Effect.Effect<A, ParseResult.ParseError, ServerRequest | R> = internal.schemaCookies
@@ -142,7 +142,7 @@ export const schemaCookies: <R, I extends Readonly<Record<string, string>>, A>(
  * @since 1.0.0
  * @category schema
  */
-export const schemaHeaders: <R, I extends Readonly<Record<string, string>>, A>(
+export const schemaHeaders: <A, I extends Readonly<Record<string, string>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => Effect.Effect<A, ParseResult.ParseError, ServerRequest | R> = internal.schemaHeaders
@@ -151,7 +151,7 @@ export const schemaHeaders: <R, I extends Readonly<Record<string, string>>, A>(
  * @since 1.0.0
  * @category schema
  */
-export const schemaSearchParams: <R, I extends Readonly<Record<string, string | Array<string> | undefined>>, A>(
+export const schemaSearchParams: <A, I extends Readonly<Record<string, string | Array<string> | undefined>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => Effect.Effect<A, ParseResult.ParseError, ParsedSearchParams | R> = internal.schemaSearchParams
@@ -169,7 +169,7 @@ export const schemaBodyJson: <A, I, R>(
  * @since 1.0.0
  * @category schema
  */
-export const schemaBodyForm: <R, I extends Partial<Multipart.Persisted>, A>(
+export const schemaBodyForm: <A, I extends Partial<Multipart.Persisted>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => Effect.Effect<
@@ -182,7 +182,7 @@ export const schemaBodyForm: <R, I extends Partial<Multipart.Persisted>, A>(
  * @since 1.0.0
  * @category schema
  */
-export const schemaBodyUrlParams: <R, I extends Readonly<Record<string, string>>, A>(
+export const schemaBodyUrlParams: <A, I extends Readonly<Record<string, string>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => Effect.Effect<A, ParseResult.ParseError | Error.RequestError, R | ServerRequest> = internal.schemaBodyUrlParams
@@ -191,7 +191,7 @@ export const schemaBodyUrlParams: <R, I extends Readonly<Record<string, string>>
  * @since 1.0.0
  * @category schema
  */
-export const schemaBodyMultipart: <R, I extends Partial<Multipart.Persisted>, A>(
+export const schemaBodyMultipart: <A, I extends Partial<Multipart.Persisted>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => Effect.Effect<
