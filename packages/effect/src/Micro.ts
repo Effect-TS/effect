@@ -239,7 +239,7 @@ export const make = <A, E, R>(
   run: (env: Env.MicroEnv<R>, onResult: (result: Result<A, E>) => void) => void
 ): Micro<A, E, R> =>
   unsafeMake(function(env: Env.MicroEnv<R>, onResult: (result: Result<A, E>) => void) {
-    if (Env.get(env, currentInterruptible) && Env.get(env, Env.currentAbortSignal).aborted) {
+    if (env.refs[currentInterruptible.key] !== false && (env.refs[Env.currentAbortSignal.key] as AbortSignal).aborted) {
       return onResult(ResultAborted)
     }
     try {
@@ -741,20 +741,42 @@ export const provideServiceEffect: {
 )
 
 export const gen = <Eff extends YieldWrap<Micro<any, any, any>>, AEff>(
-  f: (_: any) => Generator<Eff, AEff, never>
+  f: () => Generator<Eff, AEff, never>
 ): Micro<
   AEff,
   [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Micro<infer _A, infer E, infer _R>>] ? E : never,
   [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Micro<infer _A, infer _E, infer R>>] ? R : never
 > =>
-  suspend(function() {
-    const iterator = f(undefined) as any
-    function run(state: IteratorResult<any>): Micro<any, any, any> {
-      return state.done
-        ? succeed(state.value)
-        : flatMap(yieldWrapGet(state.value) as any, (val: any) => run(iterator.next(val)))
+  make(function(env, onResult) {
+    const iterator = f() as Iterator<YieldWrap<Micro<any, any, any>>, AEff, any>
+    let running = false
+    let value: any = undefined
+    function run() {
+      running = true
+      try {
+        let shouldContinue = true
+        while (shouldContinue) {
+          const result = iterator.next(value)
+          if (result.done) {
+            return onResult(Either.right(result.value))
+          }
+          shouldContinue = false
+          yieldWrapGet(result.value)[runSymbol](env, function(result) {
+            if (result._tag === "Left") {
+              onResult(result)
+            } else {
+              shouldContinue = true
+              value = result.right
+              if (!running) run()
+            }
+          })
+        }
+      } catch (err) {
+        onResult(Either.left(FailureUnexpected(err)))
+      }
+      running = false
     }
-    return run(iterator.next())
+    run()
   })
 
 // ========================================================================
@@ -1074,6 +1096,32 @@ export const runPromise = <A, E>(effect: Micro<A, E>): Promise<A> =>
       }
     })
   })
+
+/**
+ * @since 3.2.0
+ */
+export const runSyncResult = <A, E>(effect: Micro<A, E>): Result<A, E> => {
+  const handle = runFork(effect)
+  const result = handle.unsafePoll()
+  if (result) {
+    return result
+  }
+  throw handle
+}
+
+/**
+ * @since 3.2.0
+ */
+export const runSync = <A, E>(effect: Micro<A, E>): A => {
+  const handle = runFork(effect)
+  const result = handle.unsafePoll()
+  if (result === null) {
+    throw handle
+  } else if (result._tag === "Left") {
+    throw result.left
+  }
+  return result.right
+}
 
 // ========================================================================
 // Scope

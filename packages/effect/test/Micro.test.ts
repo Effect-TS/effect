@@ -86,7 +86,7 @@ describe("Smol", () => {
     ))
 
   it("gen", () =>
-    Micro.gen(function*(_) {
+    Micro.gen(function*() {
       const result = yield* Micro.succeed(1)
       assert.strictEqual(result, 1)
       return result
@@ -94,25 +94,25 @@ describe("Smol", () => {
 
   describe("forEach", () => {
     it("sequential", () =>
-      Micro.gen(function*(_) {
+      Micro.gen(function*() {
         const results = yield* Micro.forEach([1, 2, 3], (_) => Micro.succeed(_))
         assert.deepStrictEqual(results, [1, 2, 3])
       }).pipe(Micro.runPromise))
 
     it("unbounded", () =>
-      Micro.gen(function*(_) {
+      Micro.gen(function*() {
         const results = yield* Micro.forEach([1, 2, 3], (_) => Micro.succeed(_), { concurrency: "unbounded" })
         assert.deepStrictEqual(results, [1, 2, 3])
       }).pipe(Micro.runPromise))
 
     it("bounded", () =>
-      Micro.gen(function*(_) {
+      Micro.gen(function*() {
         const results = yield* Micro.forEach([1, 2, 3, 4, 5], (_) => Micro.succeed(_), { concurrency: 2 })
         assert.deepStrictEqual(results, [1, 2, 3, 4, 5])
       }).pipe(Micro.runPromise))
 
     it("inherit unbounded", () =>
-      Micro.gen(function*(_) {
+      Micro.gen(function*() {
         const handle = yield* Micro.forEach([1, 2, 3], (_) => Micro.succeed(_).pipe(Micro.delay(50)), {
           concurrency: "inherit"
         }).pipe(
@@ -124,7 +124,7 @@ describe("Smol", () => {
       }).pipe(Micro.runPromise))
 
     it("sequential interrupt", () =>
-      Micro.gen(function*(_) {
+      Micro.gen(function*() {
         const done: Array<number> = []
         const handle = yield* Micro.forEach([1, 2, 3, 4, 5, 6], (i) =>
           Micro.sync(() => {
@@ -139,7 +139,7 @@ describe("Smol", () => {
       }).pipe(Micro.runPromise))
 
     it("unbounded interrupt", () =>
-      Micro.gen(function*(_) {
+      Micro.gen(function*() {
         const done: Array<number> = []
         const handle = yield* Micro.forEach([1, 2, 3], (i) =>
           Micro.sync(() => {
@@ -154,7 +154,7 @@ describe("Smol", () => {
       }).pipe(Micro.runPromise))
 
     it("bounded interrupt", () =>
-      Micro.gen(function*(_) {
+      Micro.gen(function*() {
         const done: Array<number> = []
         const handle = yield* Micro.forEach([1, 2, 3, 4, 5, 6], (i) =>
           Micro.sync(() => {
@@ -169,7 +169,7 @@ describe("Smol", () => {
       }).pipe(Micro.runPromise))
 
     it("unbounded fail", () =>
-      Micro.gen(function*(_) {
+      Micro.gen(function*() {
         const done: Array<number> = []
         const handle = yield* Micro.forEach([1, 2, 3, 4, 5], (i) =>
           Micro.suspend(() => {
@@ -186,7 +186,7 @@ describe("Smol", () => {
 
   describe("acquireRelease", () => {
     it("releases on abort", () =>
-      Micro.gen(function*(_) {
+      Micro.gen(function*() {
         let release = false
         const handle = yield* Micro.acquireRelease(
           Micro.delay(Micro.succeed("foo"), 100),
