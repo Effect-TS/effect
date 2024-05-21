@@ -2391,15 +2391,34 @@ const value = schema.value // typeof Schema.Number
 
 ## Structs
 
+In `@effect/schema`, structs are used to define schemas for objects with specific properties. Here’s how you can create and use a struct schema:
+
 ```ts
 import { Schema } from "@effect/schema"
 
-// Schema.Struct<{ a: typeof Schema.String; b: typeof Schema.Number; }>
-const opaque = Schema.Struct({ a: Schema.String, b: Schema.Number })
-
-// Schema.Schema<{ readonly a: string; readonly b: number; }>
-const schema = Schema.asSchema(opaque)
+// Define a struct schema for an object with properties a (string) and b (number)
+const MyStruct = Schema.Struct({ a: Schema.String, b: Schema.Number })
 ```
+
+The `MyStruct` constant will have the type `Schema.Struct<{ a: typeof Schema.String; b: typeof Schema.Number; }>`, representing the structure of the object.
+
+To view the detailed type of `MyStruct`, you can use the `Schema.asSchema` function:
+
+```ts
+/*
+const schema: Schema.Schema<{
+    readonly a: string;
+    readonly b: number;
+}, {
+    readonly a: string;
+    readonly b: number;
+}, never>
+*/
+const schema = Schema.asSchema(MyStruct)
+```
+
+> [!NOTE]
+> Note that `Schema.Struct({})` models the TypeScript type `{}`, which is similar to `unknown`. This means that the schema will allow any type of data to pass through without validation.
 
 ### Index Signatures
 
