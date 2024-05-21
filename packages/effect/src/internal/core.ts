@@ -1,4 +1,4 @@
-import { internalCall } from "effect/Utils"
+import { effect_internal_function } from "effect/Utils"
 import * as Arr from "../Array.js"
 import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
@@ -534,9 +534,9 @@ export const async = <A, E = never, R = never>(
     let controllerRef: AbortController | void = undefined
     if (this.effect_instruction_i0.length !== 1) {
       controllerRef = new AbortController()
-      cancelerRef = internalCall(() => this.effect_instruction_i0(proxyResume, controllerRef!.signal))
+      cancelerRef = effect_internal_function(() => this.effect_instruction_i0(proxyResume, controllerRef!.signal))
     } else {
-      cancelerRef = internalCall(() => (this.effect_instruction_i0 as any)(proxyResume))
+      cancelerRef = effect_internal_function(() => (this.effect_instruction_i0 as any)(proxyResume))
     }
     return (cancelerRef || controllerRef) ?
       onInterrupt(effect, (_) => {
@@ -1007,8 +1007,8 @@ export const interruptibleMask = <A, E, R>(
     effect.effect_instruction_i0 = RuntimeFlagsPatch.enable(_runtimeFlags.Interruption)
     effect.effect_instruction_i1 = (oldFlags: RuntimeFlags.RuntimeFlags) =>
       _runtimeFlags.interruption(oldFlags)
-        ? internalCall(() => this.effect_instruction_i0(interruptible))
-        : internalCall(() => this.effect_instruction_i0(uninterruptible))
+        ? effect_internal_function(() => this.effect_instruction_i0(interruptible))
+        : effect_internal_function(() => this.effect_instruction_i0(uninterruptible))
     return effect
   })
 
@@ -1323,8 +1323,8 @@ export const uninterruptibleMask = <A, E, R>(
     effect.effect_instruction_i0 = RuntimeFlagsPatch.disable(_runtimeFlags.Interruption)
     effect.effect_instruction_i1 = (oldFlags: RuntimeFlags.RuntimeFlags) =>
       _runtimeFlags.interruption(oldFlags)
-        ? internalCall(() => this.effect_instruction_i0(interruptible))
-        : internalCall(() => this.effect_instruction_i0(uninterruptible))
+        ? effect_internal_function(() => this.effect_instruction_i0(interruptible))
+        : effect_internal_function(() => this.effect_instruction_i0(uninterruptible))
     return effect
   })
 
