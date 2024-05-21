@@ -399,15 +399,17 @@ const handleResponse = (request: ServerRequest.ServerRequest, response: ServerRe
 
     if (request.method === "HEAD") {
       nodeResponse.writeHead(response.status, headers)
-      nodeResponse.end()
-      return Effect.void
+      return Effect.async<void>((resume) => {
+        nodeResponse.end(() => resume(Effect.void))
+      })
     }
     const body = response.body
     switch (body._tag) {
       case "Empty": {
         nodeResponse.writeHead(response.status, headers)
-        nodeResponse.end()
-        return Effect.void
+        return Effect.async<void>((resume) => {
+          nodeResponse.end(() => resume(Effect.void))
+        })
       }
       case "Raw": {
         nodeResponse.writeHead(response.status, headers)
@@ -426,13 +428,15 @@ const handleResponse = (request: ServerRequest.ServerRequest, response: ServerRe
               })
           })
         }
-        nodeResponse.end(body.body)
-        return Effect.void
+        return Effect.async<void>((resume) => {
+          nodeResponse.end(body.body, () => resume(Effect.void))
+        })
       }
       case "Uint8Array": {
         nodeResponse.writeHead(response.status, headers)
-        nodeResponse.end(body.body)
-        return Effect.void
+        return Effect.async<void>((resume) => {
+          nodeResponse.end(body.body, () => resume(Effect.void))
+        })
       }
       case "FormData": {
         return Effect.suspend(() => {
