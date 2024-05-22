@@ -1,27 +1,38 @@
 import type { Branded } from "./Brand.js"
 import * as Duration from "./Duration.js"
 import * as Either from "./Either.js"
-import * as Equivalence from "./Equivalence.js"
+import * as eEquivalence from "./Equivalence.js"
 import { constant, dual, flow, pipe, unsafeCoerce } from "./Function.js"
 import { getUTCWeekNumBaseYear, getWeekNumBaseYear, isDateFirstArg, isDateFirstTwoArgs } from "./internal/date.js"
 import * as Option from "./Option.js"
-import * as Order from "./Order.js"
+import * as eOrder from "./Order.js"
+import * as Predicate from "./Predicate.js"
 import * as String from "./String.js"
 
 import type { LazyArg } from "./Function.js"
-import type * as Predicate from "./Predicate.js"
-/** @category instances */
-export { Date as Equivalence } from "./Equivalence.js"
 
-/** @category instances */
-export { Date as Order } from "./Order.js"
+/**
+ * @since 3.3.0
+ * @category instances
+ */
+export const Equivalence = eEquivalence.Date
 
-/** @category instances */
-export { isDate } from "./Predicate.js"
+/**
+ * @since 3.3.0
+ * @category instances
+ */
+export const Order = eOrder.Date
+
+/**
+ * @since 3.3.0
+ * @category instances
+ */
+export const isDate = Predicate.isDate
 
 /**
  * Branded type representing the number of milliseconds elapsed since midnight, January 1, 1970 Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category models
  */
 export type Milliseconds = Branded<number, "Milliseconds">
@@ -29,6 +40,7 @@ export type Milliseconds = Branded<number, "Milliseconds">
 /**
  * Branded type representing a date string that can be safely parsed to a `Date`.
  *
+ * @since 3.3.0
  * @category models
  */
 export type DateString = Branded<string, "DateString">
@@ -36,6 +48,7 @@ export type DateString = Branded<string, "DateString">
 /**
  * Convert a `number` to the `Milliseconds` branded type.
  *
+ * @since 3.3.0
  * @category conversions
  */
 export const mkMilliseconds = unsafeCoerce<number, Milliseconds>
@@ -43,6 +56,7 @@ export const mkMilliseconds = unsafeCoerce<number, Milliseconds>
 /**
  * Convert the `Milliseconds` branded type back to the underlying `number` type.
  *
+ * @since 3.3.0
  * @category conversions
  */
 export const unMilliseconds = unsafeCoerce<Milliseconds, number>
@@ -50,27 +64,44 @@ export const unMilliseconds = unsafeCoerce<Milliseconds, number>
 /**
  * Convert the `DateString` branded type back to the underlying `string` type.
  *
+ * @since 3.3.0
  * @category conversions */
 export const unDateString = unsafeCoerce<DateString, string>
 
-/** @category constants */
+/**
+ * @since 3.3.0
+ * @category constants
+ */
 export const MILLIS_PER_SECOND = 1_000 as const
 
-/** @category constants */
+/**
+ * @since 3.3.0
+ * @category constants
+ */
 export const MILLIS_PER_MINUTE = 60_000 as const
 
-/** @category constants */
+/**
+ * @since 3.3.0
+ * @category constants
+ */
 export const MILLIS_PER_HOUR = 3_600_000 as const
 
-/** @category constants */
+/**
+ * @since 3.3.0
+ * @category constants
+ */
 export const MILLIS_PER_DAY = 86_400_000 as const
 
-/** @category constants */
+/**
+ * @since 3.3.0
+ * @category constants
+ */
 export const MILLIS_PER_WEEK = 604_800_000 as const
 
 /**
  * Returns the number of milliseconds elapsed since midnight, January 1, 1970 Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category utils
  */
 export const now: LazyArg<Milliseconds> = Date.now as any
@@ -78,6 +109,7 @@ export const now: LazyArg<Milliseconds> = Date.now as any
 /**
  * Returns a date based on the number of milliseconds elapsed since midnight, January 1, 1970 Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category constructors
  */
 export const create: LazyArg<Date> = () => new Date(now())
@@ -87,6 +119,7 @@ export const create: LazyArg<Date> = () => new Date(now())
  *
  * Works based on the date of the input (and whether it's in daylight-savings-time or not), but with respect to local time.
  *
+ * @since 3.3.0
  * @category utils
  */
 export const getTimeZoneOffset = (self: Date): number => self.getTimezoneOffset()
@@ -96,6 +129,7 @@ export const getTimeZoneOffset = (self: Date): number => self.getTimezoneOffset(
  *
  * Not to be confused with {@link getTime}.
  *
+ * @since 3.3.0
  * @category getters
  */
 export const getMilliseconds = (self: Date): number => self.getMilliseconds()
@@ -105,6 +139,7 @@ export const getMilliseconds = (self: Date): number => self.getMilliseconds()
  *
  * Not to be confused with {@link getTime}.
  *
+ * @since 3.3.0
  * @category getters
  */
 export const getUTCMilliseconds = (self: Date): number => self.getUTCMilliseconds()
@@ -112,6 +147,7 @@ export const getUTCMilliseconds = (self: Date): number => self.getUTCMillisecond
 /**
  * Gets the seconds component of a date object, using local time.
  *
+ * @since 3.3.0
  * @category getters
  */
 export const getSeconds = (self: Date): number => self.getSeconds()
@@ -119,6 +155,7 @@ export const getSeconds = (self: Date): number => self.getSeconds()
 /**
  * Gets the seconds component of a date object, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category getters
  */
 export const getUTCSeconds = (self: Date): number => self.getUTCSeconds()
@@ -126,6 +163,7 @@ export const getUTCSeconds = (self: Date): number => self.getUTCSeconds()
 /**
  * Gets the minutes component of a date, using local time.
  *
+ * @since 3.3.0
  * @category getters
  */
 export const getMinutes = (self: Date): number => self.getMinutes()
@@ -133,6 +171,7 @@ export const getMinutes = (self: Date): number => self.getMinutes()
 /**
  * Gets the minutes component of a date, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category getters
  */
 export const getUTCMinutes = (self: Date): number => self.getUTCMinutes()
@@ -140,6 +179,7 @@ export const getUTCMinutes = (self: Date): number => self.getUTCMinutes()
 /**
  * Gets the hours component of a date, using local time.
  *
+ * @since 3.3.0
  * @category getters
  */
 export const getHours = (self: Date): number => self.getHours()
@@ -147,6 +187,7 @@ export const getHours = (self: Date): number => self.getHours()
 /**
  * Gets the hours component of a date, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category getters
  */
 export const getUTCHours = (self: Date): number => self.getUTCHours()
@@ -154,6 +195,7 @@ export const getUTCHours = (self: Date): number => self.getUTCHours()
 /**
  * Gets the day of the week, using local time, with 0 representing Sunday.
  *
+ * @since 3.3.0
  * @category getters
  */
 export const getDay = (self: Date): number => self.getDay()
@@ -161,6 +203,7 @@ export const getDay = (self: Date): number => self.getDay()
 /**
  * Gets the day of the week, using Universal Coordinated Time (UTC), with 0 representing Sunday.
  *
+ * @since 3.3.0
  * @category getters
  */
 export const getUTCDay = (self: Date): number => self.getUTCDay()
@@ -168,6 +211,7 @@ export const getUTCDay = (self: Date): number => self.getUTCDay()
 /**
  * Gets the day-of-the-month, using local time.
  *
+ * @since 3.3.0
  * @category getters
  */
 export const getDate = (self: Date): number => self.getDate()
@@ -175,6 +219,7 @@ export const getDate = (self: Date): number => self.getDate()
 /**
  * Gets the day-of-the-month, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category getters
  */
 export const getUTCDate = (self: Date): number => self.getUTCDate()
@@ -182,6 +227,7 @@ export const getUTCDate = (self: Date): number => self.getUTCDate()
 /**
  * Gets the month, using local time, with 0 representing January.
  *
+ * @since 3.3.0
  * @category getters
  */
 export const getMonth = (self: Date): number => self.getMonth()
@@ -189,6 +235,7 @@ export const getMonth = (self: Date): number => self.getMonth()
 /**
  * Gets the month, using Universal Coordinated Time (UTC), with 0 representing January.
  *
+ * @since 3.3.0
  * @category getters
  */
 export const getUTCMonth = (self: Date): number => self.getUTCMonth()
@@ -196,6 +243,7 @@ export const getUTCMonth = (self: Date): number => self.getUTCMonth()
 /**
  * Gets the year, using local time.
  *
+ * @since 3.3.0
  * @category getters
  */
 export const getYear = (self: Date): number => self.getFullYear()
@@ -203,6 +251,7 @@ export const getYear = (self: Date): number => self.getFullYear()
 /**
  * Gets the year, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category getters
  */
 export const getUTCYear = (self: Date): number => self.getUTCFullYear()
@@ -210,6 +259,7 @@ export const getUTCYear = (self: Date): number => self.getUTCFullYear()
 /**
  * Returns the stored time value in milliseconds since midnight, January 1, 1970 UTC.
  *
+ * @since 3.3.0
  * @category getters
  */
 export const getTime = (self: Date): Milliseconds => self.getTime() as Milliseconds
@@ -217,6 +267,7 @@ export const getTime = (self: Date): Milliseconds => self.getTime() as Milliseco
 /**
  * Sets the milliseconds component of a date object, using local time.
  *
+ * @since 3.3.0
  * @category setters
  */
 export const setMilliseconds: {
@@ -227,6 +278,7 @@ export const setMilliseconds: {
 /**
  * Sets the milliseconds component of a date object, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category setters
  */
 export const setUTCMilliseconds: {
@@ -237,6 +289,7 @@ export const setUTCMilliseconds: {
 /**
  * Sets the seconds component of a date object, using local time.
  *
+ * @since 3.3.0
  * @category setters
  */
 export const setSeconds: {
@@ -247,6 +300,7 @@ export const setSeconds: {
 /**
  * Sets the seconds component of a date object, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category setters
  */
 export const setUTCSeconds: {
@@ -257,6 +311,7 @@ export const setUTCSeconds: {
 /**
  * Sets the minutes component of a date object, using local time.
  *
+ * @since 3.3.0
  * @category setters
  */
 export const setMinutes: {
@@ -267,6 +322,7 @@ export const setMinutes: {
 /**
  * Sets the minutes component of a date object, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category setters
  */
 export const setUTCMinutes: {
@@ -277,6 +333,7 @@ export const setUTCMinutes: {
 /**
  * Sets the hours component of a date object, using local time.
  *
+ * @since 3.3.0
  * @category setters
  */
 export const setHours: {
@@ -287,6 +344,7 @@ export const setHours: {
 /**
  * Sets the hours component of a date object, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category setters
  */
 export const setUTCHours: {
@@ -299,6 +357,7 @@ export const setUTCHours: {
  *
  * Use the `dowOffset` argument to set the start of the week. Default is 0, for Sunday.
  *
+ * @since 3.3.0
  * @category setters
  */
 export const setDay: {
@@ -315,6 +374,7 @@ export const setDay: {
  *
  * Use the `dowOffset` argument to set the start of the week. Default is 0, for Sunday.
  *
+ * @since 3.3.0
  * @category setters
  */
 export const setUTCDay: {
@@ -329,6 +389,7 @@ export const setUTCDay: {
 /**
  * Sets the day-of-the-month component of a date object, using local time.
  *
+ * @since 3.3.0
  * @category setters
  */
 export const setDate: {
@@ -339,6 +400,7 @@ export const setDate: {
 /**
  * Sets the day-of-the-month component of a date object, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category setters
  */
 export const setUTCDate: {
@@ -349,6 +411,7 @@ export const setUTCDate: {
 /**
  * Sets the month component of a date object, using local time.
  *
+ * @since 3.3.0
  * @category setters
  */
 export const setMonth: {
@@ -359,6 +422,7 @@ export const setMonth: {
 /**
  * Sets the month component of a date object, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category setters
  */
 export const setUTCMonth: {
@@ -369,6 +433,7 @@ export const setUTCMonth: {
 /**
  * Sets the year component of a date object, using local time.
  *
+ * @since 3.3.0
  * @category setters
  */
 export const setYear: {
@@ -379,6 +444,7 @@ export const setYear: {
 /**
  * Sets the year component of a date object, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category setters
  */
 export const setUTCYear: {
@@ -389,6 +455,7 @@ export const setUTCYear: {
 /**
  * Add milliseconds to a date, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const addMilliseconds: {
@@ -402,6 +469,7 @@ export const addMilliseconds: {
 /**
  * Add milliseconds to a date, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const addUTCMilliseconds: {
@@ -416,6 +484,7 @@ export const addUTCMilliseconds: {
 /**
  * Add seconds to a date, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const addSeconds: {
@@ -429,6 +498,7 @@ export const addSeconds: {
 /**
  * Add seconds to a date, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const addUTCSeconds: {
@@ -442,6 +512,7 @@ export const addUTCSeconds: {
 /**
  * Add minutes to a date, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const addMinutes: {
@@ -455,6 +526,7 @@ export const addMinutes: {
 /**
  * Add minutes to a date, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const addUTCMinutes: {
@@ -468,6 +540,7 @@ export const addUTCMinutes: {
 /**
  * Add hours to a date, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const addHours: {
@@ -478,6 +551,7 @@ export const addHours: {
 /**
  * Add hours to a date, using Univeral Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const addUTCHours: {
@@ -488,6 +562,7 @@ export const addUTCHours: {
 /**
  * Add days to a date, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const addDays: {
@@ -498,6 +573,7 @@ export const addDays: {
 /**
  * Add days to a date, using Univeral Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const addUTCDays: {
@@ -508,6 +584,7 @@ export const addUTCDays: {
 /**
  * Add weeks to a date, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const addWeeks: {
@@ -518,6 +595,7 @@ export const addWeeks: {
 /**
  * Add weeks to a date, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const addUTCWeeks: {
@@ -530,6 +608,7 @@ export const addUTCWeeks: {
  *
  * May adjust the month more or less than expected if the day is the last of the month and the target month is short. See also {@link addMonthsStrict}.
  *
+ * @since 3.3.0
  * @category math
  *
  * @example
@@ -553,6 +632,7 @@ export const addMonths: {
  *
  * May adjust the month more or less than expected if the day is the last of the month and the target month is short. See also {@link addUTCMonthsStrict}.
  *
+ * @since 3.3.0
  * @category math
  *
  * @example
@@ -576,6 +656,7 @@ export const addUTCMonths: {
  *
  * If the day is the last of the month and the target month is short, the day will be set to zero to strictly add the desired number of months.
  *
+ * @since 3.3.0
  * @category math
  *
  * @example
@@ -603,6 +684,7 @@ export const addMonthsStrict: {
  *
  * If the day is the last of the month and the target month is short, the day will be set to zero to strictly add the desired number of months.
  *
+ * @since 3.3.0
  * @category math
  *
  * @example
@@ -628,6 +710,7 @@ export const addUTCMonthsStrict: {
 /**
  * Add years to a date, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const addYears: {
@@ -638,6 +721,7 @@ export const addYears: {
 /**
  * Add years to a date, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const addUTCYears: {
@@ -648,6 +732,7 @@ export const addUTCYears: {
 /**
  * Removes sub-second granularity from a date, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const floorSecond = setMilliseconds(0)
@@ -655,6 +740,7 @@ export const floorSecond = setMilliseconds(0)
 /**
  * Removes sub-second granularity from a date, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const floorUTCSecond = setUTCMilliseconds(0)
@@ -662,6 +748,7 @@ export const floorUTCSecond = setUTCMilliseconds(0)
 /**
  * Removes sub-minute granularity from a date, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const floorMinute = flow(setSeconds(0), floorSecond)
@@ -669,6 +756,7 @@ export const floorMinute = flow(setSeconds(0), floorSecond)
 /**
  * Removes sub-minute granularity from a date, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const floorUTCMinute = flow(setUTCSeconds(0), floorUTCSecond)
@@ -676,6 +764,7 @@ export const floorUTCMinute = flow(setUTCSeconds(0), floorUTCSecond)
 /**
  * Removes sub-hour granularity from a date, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const floorHour = flow(setMinutes(0), floorMinute)
@@ -683,6 +772,7 @@ export const floorHour = flow(setMinutes(0), floorMinute)
 /**
  * Removes sub-hour granularity from a date, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const floorUTCHour = flow(setUTCMinutes(0), floorUTCMinute)
@@ -690,6 +780,7 @@ export const floorUTCHour = flow(setUTCMinutes(0), floorUTCMinute)
 /**
  * Removes sub-day granularity from a date, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const floorDay = flow(setHours(0), floorHour)
@@ -697,6 +788,7 @@ export const floorDay = flow(setHours(0), floorHour)
 /**
  * Removes sub-day granularity from a date, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const floorUTCDay = flow(setUTCHours(0), floorUTCHour)
@@ -706,6 +798,7 @@ export const floorUTCDay = flow(setUTCHours(0), floorUTCHour)
  *
  * Use the `dowOffset` argument to set the start of the week. Default is 0, for Sunday.
  *
+ * @since 3.3.0
  * @category math
  */
 export const floorWeek: {
@@ -723,6 +816,7 @@ export const floorWeek: {
  *
  * Use the `dowOffset` argument to set the start of the week. Default is 0, for Sunday.
  *
+ * @since 3.3.0
  * @category math
  */
 export const floorUTCWeek: {
@@ -741,6 +835,7 @@ export const floorUTCWeek: {
 /**
  * Removes sub-month granularity from a date, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const floorMonth = flow(setDate(1), floorDay)
@@ -748,6 +843,7 @@ export const floorMonth = flow(setDate(1), floorDay)
 /**
  * Removes sub-month granularity from a date, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const floorUTCMonth = flow(setUTCDate(1), floorUTCDay)
@@ -755,6 +851,7 @@ export const floorUTCMonth = flow(setUTCDate(1), floorUTCDay)
 /**
  * Removes sub-year granularity from a date, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const floorYear = flow(setMonth(0), floorMonth)
@@ -762,6 +859,7 @@ export const floorYear = flow(setMonth(0), floorMonth)
 /**
  * Removes sub-year granularity from a date, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const floorUTCYear = flow(setUTCMonth(0), floorUTCMonth)
@@ -769,6 +867,7 @@ export const floorUTCYear = flow(setUTCMonth(0), floorUTCMonth)
 /**
  * Rounds a date to the nearest second, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const roundSecond = (self: Date): Date =>
@@ -780,6 +879,7 @@ export const roundSecond = (self: Date): Date =>
 /**
  * Rounds a date to the nearest second, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const roundUTCSecond = (self: Date): Date =>
@@ -791,6 +891,7 @@ export const roundUTCSecond = (self: Date): Date =>
 /**
  * Rounds a date to the nearest minute, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const roundMinute = (self: Date): Date => {
@@ -805,6 +906,7 @@ export const roundMinute = (self: Date): Date => {
 /**
  * Rounds a date to the nearest minute, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const roundUTCMinute = (self: Date): Date => {
@@ -819,6 +921,7 @@ export const roundUTCMinute = (self: Date): Date => {
 /**
  * Rounds a date to the nearest hour, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const roundHour = (self: Date): Date => {
@@ -833,6 +936,7 @@ export const roundHour = (self: Date): Date => {
 /**
  * Rounds a date to the nearest hour, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const roundUTCHour = (self: Date): Date => {
@@ -847,6 +951,7 @@ export const roundUTCHour = (self: Date): Date => {
 /**
  * Rounds a date to the nearest day, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const roundDay = (self: Date): Date => {
@@ -861,6 +966,7 @@ export const roundDay = (self: Date): Date => {
 /**
  * Rounds a date to the nearest day, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const roundUTCDay = (self: Date): Date => {
@@ -877,6 +983,7 @@ export const roundUTCDay = (self: Date): Date => {
  *
  * Use the `dowOffset` argument to set the start of the week. Default is 0, for Sunday.
  *
+ * @since 3.3.0
  * @category math
  */
 export const roundWeek: {
@@ -896,6 +1003,7 @@ export const roundWeek: {
  *
  * Use the `dowOffset` argument to set the start of the week. Default is 0, for Sunday.
  *
+ * @since 3.3.0
  * @category math
  */
 export const roundUTCWeek: {
@@ -913,6 +1021,7 @@ export const roundUTCWeek: {
 /**
  * Rounds a date to the nearest month, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const roundMonth = (self: Date): Date => {
@@ -925,6 +1034,7 @@ export const roundMonth = (self: Date): Date => {
 /**
  * Rounds a date to the nearest month, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const roundUTCMonth = (self: Date): Date => {
@@ -937,6 +1047,7 @@ export const roundUTCMonth = (self: Date): Date => {
 /**
  * Rounds a date to the nearest year, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const roundYear = (self: Date): Date => {
@@ -949,6 +1060,7 @@ export const roundYear = (self: Date): Date => {
 /**
  * Rounds a date to the nearest year, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const roundUTCYear = (self: Date): Date => {
@@ -961,6 +1073,7 @@ export const roundUTCYear = (self: Date): Date => {
 /**
  * Removes sub-second granularity from a date, then adds one second, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const ceilSecond = flow(floorSecond, addSeconds(1))
@@ -968,6 +1081,7 @@ export const ceilSecond = flow(floorSecond, addSeconds(1))
 /**
  * Removes sub-second granularity from a date, then adds one second, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const ceilUTCSecond = flow(floorUTCSecond, addUTCSeconds(1))
@@ -975,6 +1089,7 @@ export const ceilUTCSecond = flow(floorUTCSecond, addUTCSeconds(1))
 /**
  * Removes sub-minute granularity from a date, then adds one minute, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const ceilMinute = flow(floorMinute, addMinutes(1))
@@ -982,6 +1097,7 @@ export const ceilMinute = flow(floorMinute, addMinutes(1))
 /**
  * Removes sub-minute granularity from a date, then adds one minute, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const ceilUTCMinute = flow(floorUTCMinute, addUTCMinutes(1))
@@ -989,6 +1105,7 @@ export const ceilUTCMinute = flow(floorUTCMinute, addUTCMinutes(1))
 /**
  * Removes sub-hour granularity from a date, then adds one hour, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const ceilHour = flow(floorHour, addHours(1))
@@ -996,6 +1113,7 @@ export const ceilHour = flow(floorHour, addHours(1))
 /**
  * Removes sub-hour granularity from a date, then adds one hour, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const ceilUTCHour = flow(floorUTCHour, addUTCHours(1))
@@ -1003,6 +1121,7 @@ export const ceilUTCHour = flow(floorUTCHour, addUTCHours(1))
 /**
  * Removes sub-day granularity from a date, then adds one day, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const ceilDay = flow(floorDay, addDays(1))
@@ -1010,6 +1129,7 @@ export const ceilDay = flow(floorDay, addDays(1))
 /**
  * Removes sub-day granularity from a date, then adds one day, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const ceilUTCDay = flow(floorUTCDay, addUTCDays(1))
@@ -1017,6 +1137,7 @@ export const ceilUTCDay = flow(floorUTCDay, addUTCDays(1))
 /**
  * Removes sub-week granularity from a date, then adds one week, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const ceilWeek: {
@@ -1030,6 +1151,7 @@ export const ceilWeek: {
 /**
  * Removes sub-week granularity from a date, then adds one week, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const ceilUTCWeek: {
@@ -1043,6 +1165,7 @@ export const ceilUTCWeek: {
 /**
  * Removes sub-month granularity from a date, then adds one month, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const ceilMonth = flow(floorMonth, addMonths(1))
@@ -1050,6 +1173,7 @@ export const ceilMonth = flow(floorMonth, addMonths(1))
 /**
  * Removes sub-month granularity from a date, then adds one month, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const ceilUTCMonth = flow(floorUTCMonth, addUTCMonths(1))
@@ -1057,6 +1181,7 @@ export const ceilUTCMonth = flow(floorUTCMonth, addUTCMonths(1))
 /**
  * Removes sub-year granularity from a date, then adds one year, using local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const ceilYear = flow(floorYear, addYears(1))
@@ -1064,6 +1189,7 @@ export const ceilYear = flow(floorYear, addYears(1))
 /**
  * Removes sub-year granularity from a date, then adds one year, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const ceilUTCYear = flow(floorUTCYear, addUTCYears(1))
@@ -1073,6 +1199,7 @@ export const ceilUTCYear = flow(floorUTCYear, addUTCYears(1))
  *
  * This frees you from having to worry about manipulation of dates across daylight-savings-time boundaries resulting in unexpected date strings.
  *
+ * @since 3.3.0
  * @category utils
  *
  * @example
@@ -1091,6 +1218,7 @@ export const localToUTC = (self: Date) => addUTCMinutes(self, getTimeZoneOffset(
 /**
  * Gets the difference in milliseconds between `start` and `end`, returning a negative number if `end` is earlier than `start`.
  *
+ * @since 3.3.0
  * @category math
  */
 export const millisecondsDistance: {
@@ -1101,6 +1229,7 @@ export const millisecondsDistance: {
 /**
  * Gets the difference in seconds between `start` and `end`, returning a negative number if `end` is earlier than `start`. Does not perform rounding.
  *
+ * @since 3.3.0
  * @category math
  */
 export const secondsDistance: {
@@ -1111,6 +1240,7 @@ export const secondsDistance: {
 /**
  * Gets the surface-level difference in seconds between `start` and `end`, returning a negative number if `end` is earlier than `start`. Uses local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const secondsValueDistance: {
@@ -1121,6 +1251,7 @@ export const secondsValueDistance: {
 /**
  * Gets the surface-level difference in seconds between `start` and `end`, returning a negative number if `end` is earlier than `start`. Uses Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const utcSecondsValueDistance: {
@@ -1131,6 +1262,7 @@ export const utcSecondsValueDistance: {
 /**
  * Gets the difference in minutes between `start` and `end`, returning a negative number if `end` is earlier than `start`. Does not perform rounding.
  *
+ * @since 3.3.0
  * @category math
  */
 export const minutesDistance: {
@@ -1141,6 +1273,7 @@ export const minutesDistance: {
 /**
  * Gets the surface-level difference in minutes between `start` and `end`, returning a negative number if `end` is earlier than `start`. Uses local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const minutesValueDistance: {
@@ -1151,6 +1284,7 @@ export const minutesValueDistance: {
 /**
  * Gets the surface-level difference in minutes between `start` and `end`, returning a negative number if `end` is earlier than `start`. Uses Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const utcMinutesValueDistance: {
@@ -1161,6 +1295,7 @@ export const utcMinutesValueDistance: {
 /**
  * Gets the difference in hours between `start` and `end`, returning a negative number if `end` is earlier than `start`. Does not perform rounding.
  *
+ * @since 3.3.0
  * @category math
  */
 export const hoursDistance: {
@@ -1171,6 +1306,7 @@ export const hoursDistance: {
 /**
  * Gets the surface-level difference in hours between `start` and `end`, returning a negative number if `end` is earlier than `start`. Uses local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const hoursValueDistance: {
@@ -1181,6 +1317,7 @@ export const hoursValueDistance: {
 /**
  * Gets the surface-level difference in hours between `start` and `end`, returning a negative number if `end` is earlier than `start`. Uses Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const utcHoursValueDistance: {
@@ -1191,6 +1328,7 @@ export const utcHoursValueDistance: {
 /**
  * Gets the difference in days between `start` and `end`, returning a negative number if `end` is earlier than `start`. Does not perform rounding.
  *
+ * @since 3.3.0
  * @category math
  */
 export const daysDistance: {
@@ -1201,6 +1339,7 @@ export const daysDistance: {
 /**
  * Gets the surface-level difference in days between `start` and `end`, returning a negative number if `end` is earlier than `start`. Uses local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const daysValueDistance: {
@@ -1211,6 +1350,7 @@ export const daysValueDistance: {
 /**
  * Gets the surface-level difference in days between `start` and `end`, returning a negative number if `end` is earlier than `start`. Uses Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const utcDaysValueDistance: {
@@ -1221,6 +1361,7 @@ export const utcDaysValueDistance: {
 /**
  * Gets the difference in weeks between `start` and `end`, returning a negative number if `end` is earlier than `start`. Does not perform rounding.
  *
+ * @since 3.3.0
  * @category math
  */
 export const weeksDistance: {
@@ -1233,6 +1374,7 @@ export const weeksDistance: {
  *
  * Use the `dowOffset` argument to change the start of the week, with 0 representing Sunday.
  *
+ * @since 3.3.0
  * @category math
  */
 export const weeksValueDistance: {
@@ -1249,6 +1391,7 @@ export const weeksValueDistance: {
  *
  * Use the `dowOffset` argument to change the start of the week, with 0 representing Sunday.
  *
+ * @since 3.3.0
  * @category math
  */
 export const utcWeeksValueDistance: {
@@ -1263,6 +1406,7 @@ export const utcWeeksValueDistance: {
 /**
  * Gets the surface-level difference in months between `start` and `end`, returning a negative number if `end` is earlier than `start`. Uses local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const monthsValueDistance: {
@@ -1276,6 +1420,7 @@ export const monthsValueDistance: {
 /**
  * Gets the surface-level difference in months between `start` and `end`, returning a negative number if `end` is earlier than `start`. Uses Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const utcMonthsValueDistance: {
@@ -1290,6 +1435,7 @@ export const utcMonthsValueDistance: {
 /**
  * Gets the surface-level difference in years between `start` and `end`, returning a negative number if `end` is earlier than `start`. Uses local time.
  *
+ * @since 3.3.0
  * @category math
  */
 export const yearsValueDistance: {
@@ -1300,6 +1446,7 @@ export const yearsValueDistance: {
 /**
  * Gets the surface-level difference in years between `start` and `end`, returning a negative number if `end` is earlier than `start`. Uses Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category math
  */
 export const utcYearsValueDistance: {
@@ -1307,7 +1454,10 @@ export const utcYearsValueDistance: {
   (start: Date, end: Date): number
 } = dual(2, (start: Date, end: Date): number => getUTCYear(end) - getUTCYear(start))
 
-/** @category models */
+/**
+ * @since 3.3.0
+ * @category models
+ */
 export interface AddParams {
   readonly millis?: number
   readonly seconds?: number
@@ -1323,6 +1473,7 @@ export interface AddParams {
  *
  * `AddParams` keys are `millis`, `seconds`, `minutes`, `hours`, `weeks`, `months`, and `years`.
  *
+ * @since 3.3.0
  * @category math
  */
 export const add: {
@@ -1351,6 +1502,7 @@ export const add: {
  *
  * `AddParams` keys are `millis`, `seconds`, `minutes`, `hours`, `weeks`, `months`, and `years`.
  *
+ * @since 3.3.0
  * @category math
  */
 export const addUTC: {
@@ -1377,6 +1529,7 @@ export const addUTC: {
 /**
  * Add a `Duration` to a date, using local time.
  *
+ * @since 3.3.0
  * @category Duration
  */
 export const addDuration: {
@@ -1387,6 +1540,7 @@ export const addDuration: {
 /**
  * Add a `Duration` to a date, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category Duration
  */
 export const addUTCDuration: {
@@ -1397,6 +1551,7 @@ export const addUTCDuration: {
 /**
  * Pass a positive `Duration` value to subtract it from a date. Uses local time.
  *
+ * @since 3.3.0
  * @category Duration
  */
 export const subtractDuration: {
@@ -1407,6 +1562,7 @@ export const subtractDuration: {
 /**
  * Pass a positive `Duration` value to subtract it from a date. Uses Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category Duration
  */
 export const subtractUTCDuration: {
@@ -1417,6 +1573,7 @@ export const subtractUTCDuration: {
 /**
  * Get the number of days in the month, using local time.
  *
+ * @since 3.3.0
  * @category getters
  */
 export const getDaysInMonth = (self: Date): number =>
@@ -1428,6 +1585,7 @@ export const getDaysInMonth = (self: Date): number =>
 /**
  * Get the number of days in the month, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category getters
  */
 export const getDaysInUTCMonth = (self: Date): number =>
@@ -1439,6 +1597,7 @@ export const getDaysInUTCMonth = (self: Date): number =>
 /**
  * Get the number of days in the year, using local time.
  *
+ * @since 3.3.0
  * @category getters
  */
 export const getDaysInYear = (self: Date): number =>
@@ -1450,6 +1609,7 @@ export const getDaysInYear = (self: Date): number =>
 /**
  * Get the number of days in the year, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category getters
  */
 export const getDaysInUTCYear = (self: Date): number =>
@@ -1461,6 +1621,7 @@ export const getDaysInUTCYear = (self: Date): number =>
 /**
  * Get a string representation of a date, using local time.
  *
+ * @since 3.3.0
  * @category getters
  *
  * @example
@@ -1476,6 +1637,7 @@ export const toDateString = (self: Date): DateString => self.toDateString() as D
 /**
  * Get a string representation of a date in ISO 8601 format, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category getters
  *
  * @example
@@ -1491,6 +1653,7 @@ export const toISOString = (self: Date): DateString => self.toISOString() as Dat
 /**
  * Get the date portion of a string representation of a date in ISO 8601 format, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category getters
  *
  * @example
@@ -1503,7 +1666,9 @@ export const toISOString = (self: Date): DateString => self.toISOString() as Dat
  */
 export const toISODateString = (self: Date): DateString => String.takeLeft(self.toISOString(), 10) as DateString
 
-/** @category models */
+/**
+ * @since 3.3.0
+ * @category models */
 export type ToLocaleStringOptions = {
   readonly locale?: Intl.LocalesArgument
 } & Readonly<Intl.LocaleOptions>
@@ -1513,6 +1678,7 @@ export type ToLocaleStringOptions = {
  *
  * The `options` argument reflects the optional arguments of `Date.prototype.toLocaleString`, just consolidated with a `locale` key to capture the `locales` argument.
  *
+ * @since 3.3.0
  * @category getters
  */
 export const toLocaleString: {
@@ -1523,7 +1689,9 @@ export const toLocaleString: {
   (self: Date, { locale, ...options }: ToLocaleStringOptions = {}): string => self.toLocaleString(locale, options)
 )
 
-/** @category models */
+/**
+ * @since 3.3.0
+ * @category models */
 export type ToLocaleDateTimeStringOptions = {
   readonly locale?: Intl.LocalesArgument
 } & Readonly<Intl.DateTimeFormatOptions>
@@ -1533,6 +1701,7 @@ export type ToLocaleDateTimeStringOptions = {
  *
  * The `options` argument reflects the optional arguments of `Date.prototype.toLocaleDateString`, just consolidated with a `locale` key to capture the `locales` argument.
  *
+ * @since 3.3.0
  * @category getters
  */
 export const toLocaleDateString: {
@@ -1549,6 +1718,7 @@ export const toLocaleDateString: {
  *
  * The `options` argument reflects the optional arguments of `Date.prototype.toLocaleTimeString`, just consolidated with a `locale` key to capture the `locales` argument.
  *
+ * @since 3.3.0
  * @category getters
  */
 export const toLocaleTimeString: {
@@ -1563,6 +1733,7 @@ export const toLocaleTimeString: {
 /**
  * Get the string representation of a date, using local time.
  *
+ * @since 3.3.0
  * @category getters
  *
  * @example
@@ -1578,6 +1749,7 @@ export const toString = (self: Date): DateString => self.toString() as DateStrin
 /**
  * Get the string representation of the time portion of a date, using local time.
  *
+ * @since 3.3.0
  * @category getters
  *
  * @example
@@ -1593,6 +1765,7 @@ export const toTimeString = (self: Date): string => self.toTimeString()
 /**
  * Get the string representation of a date, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category getters
  *
  * @example
@@ -1605,19 +1778,34 @@ export const toTimeString = (self: Date): string => self.toTimeString()
  */
 export const toUTCString = (self: Date): DateString => self.toUTCString() as DateString
 
-/** @category predicates */
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
 export const isValid: Predicate.Predicate<Date> = (self) => toString(self) !== "Invalid Date"
 
-/** @category predicates */
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
 export const isValidOption = Option.liftPredicate(isValid)
 
-/** @category constructors */
+/**
+ * @since 3.3.0
+ * @category constructors
+ */
 export const unsafeParse = (date: string | number | Date): Date => new Date(date)
 
-/** @category constructors */
+/**
+ * @since 3.3.0
+ * @category constructors
+ */
 export const parse = (date: string | number): Option.Option<Date> => pipe(date, unsafeParse, isValidOption)
 
-/** @category constructors */
+/**
+ * @since 3.3.0
+ * @category constructors
+ */
 export const parseEither = <T extends string | number>(date: T) => Either.fromOption(parse(date), constant(date))
 
 /**
@@ -1630,6 +1818,7 @@ export const parseEither = <T extends string | number>(date: T) => Either.fromOp
  * 4. Adding `-01` to a string in the form `2024-01`
  * 5. Replacing dots used for time delimiters instead of colons
  *
+ * @since 3.3.0
  * @category constructors
  */
 export const parseDateString = (date: string) =>
@@ -1641,255 +1830,360 @@ export const parseDateString = (date: string) =>
     pipe(date, String.replaceAll(".", ":"), parse)
   ])
 
-/** @category getters */
+/**
+ * @since 3.3.0
+ * @category getters
+ */
 export const parseDateStringEither = <T extends string>(date: T) =>
   Either.fromOption(parseDateString(date), constant(date))
 
-/** @category constructors */
+/**
+ * @since 3.3.0
+ * @category constructors
+ */
 export const fromMilliseconds: (self: Milliseconds) => Date = unsafeParse
 
-/** @category constructors */
+/**
+ * @since 3.3.0
+ * @category constructors */
 export const fromDateString: (self: DateString) => Date = unsafeParse
 
-/** @category utils */
-export const clamp = Order.clamp(Order.Date)
+/**
+ * @since 3.3.0
+ * @category utils
+ */
+export const clamp = eOrder.clamp(eOrder.Date)
 
-/** @category utils */
-export const max = Order.max(Order.Date)
+/**
+ * @since 3.3.0
+ * @category utils
+ */
+export const max = eOrder.max(eOrder.Date)
 
-/** @category utils */
-export const min = Order.min(Order.Date)
+/**
+ * @since 3.3.0
+ * @category utils
+ */
+export const min = eOrder.min(eOrder.Date)
 
-/** @category predicates */
-export const between = Order.between(Order.Date)
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
+export const between = eOrder.between(eOrder.Date)
 
-/** @category predicates */
-export const greaterThan = Order.greaterThan(Order.Date)
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
+export const greaterThan = eOrder.greaterThan(eOrder.Date)
 
-/** @category predicates */
-export const greaterThanOrEqualTo = Order.greaterThanOrEqualTo(Order.Date)
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
+export const greaterThanOrEqualTo = eOrder.greaterThanOrEqualTo(eOrder.Date)
 
-/** @category predicates */
-export const lessThan = Order.lessThan(Order.Date)
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
+export const lessThan = eOrder.lessThan(eOrder.Date)
 
-/** @category predicates */
-export const lessThanOrEqualTo = Order.lessThanOrEqualTo(Order.Date)
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
+export const lessThanOrEqualTo = eOrder.lessThanOrEqualTo(eOrder.Date)
 
-/** @category predicates */
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
 export const isFuture: Predicate.Predicate<Date> = (self) => greaterThan(self, create())
 
-/** @category predicates */
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
 export const isPast: Predicate.Predicate<Date> = (self) => lessThan(self, create())
 
 /**
  * `Equivalence` for the millisecond component of a date, using local time.
  *
+ * @since 3.3.0
  * @category instances
  */
-export const EquivalenceMillisecond = Equivalence.mapInput(Equivalence.number, getMilliseconds)
+export const EquivalenceMillisecond = eEquivalence.mapInput(eEquivalence.number, getMilliseconds)
 
 /**
  * `Equivalence` for the millisecond component of a date, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category instances
  */
-export const EquivalenceUTCMillisecond = Equivalence.mapInput(Equivalence.number, getUTCMilliseconds)
+export const EquivalenceUTCMillisecond = eEquivalence.mapInput(eEquivalence.number, getUTCMilliseconds)
 
 /**
  * `Equivalence` for the second component of a date, using local time.
  *
+ * @since 3.3.0
  * @category instances
  */
-export const EquivalenceSecond = Equivalence.mapInput(Equivalence.number, getSeconds)
+export const EquivalenceSecond = eEquivalence.mapInput(eEquivalence.number, getSeconds)
 
 /**
  * `Equivalence` for the second component of a date, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category instances
  */
-export const EquivalenceUTCSecond = Equivalence.mapInput(Equivalence.number, getUTCSeconds)
+export const EquivalenceUTCSecond = eEquivalence.mapInput(eEquivalence.number, getUTCSeconds)
 
 /**
  * `Equivalence` for the hour component of a date, using local time.
  *
+ * @since 3.3.0
  * @category instances
  */
-export const EquivalenceHour = Equivalence.mapInput(Equivalence.number, getHours)
+export const EquivalenceHour = eEquivalence.mapInput(eEquivalence.number, getHours)
 
 /**
  * `Equivalence` for the hour component of a date, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category instances
  */
-export const EquivalenceUTCHour = Equivalence.mapInput(Equivalence.number, getUTCHours)
+export const EquivalenceUTCHour = eEquivalence.mapInput(eEquivalence.number, getUTCHours)
 
 /**
  * `Equivalence` for the day-of-the-week component of a date, using local time.
  *
+ * @since 3.3.0
  * @category instances
  */
-export const EquivalenceDay = Equivalence.mapInput(Equivalence.number, getDay)
+export const EquivalenceDay = eEquivalence.mapInput(eEquivalence.number, getDay)
 
 /**
  * `Equivalence` for the day-of-the-week component of a date, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category instances
  */
-export const EquivalenceUTCDay = Equivalence.mapInput(Equivalence.number, getUTCDay)
+export const EquivalenceUTCDay = eEquivalence.mapInput(eEquivalence.number, getUTCDay)
 
 /**
  * `Equivalence` for the day-of-the-month component of a date, using local time.
  *
+ * @since 3.3.0
  * @category instances
  */
-export const EquivalenceDate = Equivalence.mapInput(Equivalence.number, getDate)
+export const EquivalenceDate = eEquivalence.mapInput(eEquivalence.number, getDate)
 
 /**
  * `Equivalence` for the day-of-the-month component of a date, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category instances
  */
-export const EquivalenceUTCDate = Equivalence.mapInput(Equivalence.number, getUTCDate)
+export const EquivalenceUTCDate = eEquivalence.mapInput(eEquivalence.number, getUTCDate)
 
 /**
  * `Equivalence` for the month component of a date, using local time.
  *
+ * @since 3.3.0
  * @category instances
  */
-export const EquivalenceMonth = Equivalence.mapInput(Equivalence.number, getMonth)
+export const EquivalenceMonth = eEquivalence.mapInput(eEquivalence.number, getMonth)
 
 /**
  * `Equivalence` for the month component of a date, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category instances
  */
-export const EquivalenceUTCMonth = Equivalence.mapInput(Equivalence.number, getUTCMonth)
+export const EquivalenceUTCMonth = eEquivalence.mapInput(eEquivalence.number, getUTCMonth)
 
 /**
  * `Equivalence` for the month component of a date, using local time.
  *
+ * @since 3.3.0
  * @category instances
  */
-export const EquivalenceYear = Equivalence.mapInput(Equivalence.number, getYear)
+export const EquivalenceYear = eEquivalence.mapInput(eEquivalence.number, getYear)
 
 /**
  * `Equivalence` for the month component of a date, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category instances
  */
-export const EquivalenceUTCYear = Equivalence.mapInput(Equivalence.number, getUTCYear)
+export const EquivalenceUTCYear = eEquivalence.mapInput(eEquivalence.number, getUTCYear)
 
 /**
  * `Equivalence` for the month and year components of a date, using local time.
  *
+ * @since 3.3.0
  * @category instances
  */
-export const EquivalenceMonthYear = Equivalence.combine(EquivalenceMonth, EquivalenceYear)
+export const EquivalenceMonthYear = eEquivalence.combine(EquivalenceMonth, EquivalenceYear)
 
 /**
  * `Equivalence` for the month and year components of a date, using Universal Coordinated Time (UTC).
  *
+ * @since 3.3.0
  * @category instances
  */
-export const EquivalenceUTCMonthYear = Equivalence.combine(EquivalenceUTCMonth, EquivalenceUTCYear)
+export const EquivalenceUTCMonthYear = eEquivalence.combine(EquivalenceUTCMonth, EquivalenceUTCYear)
 
-/** @category predicates */
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
 export const equals: {
   (that: Date): (self: Date) => boolean
   (self: Date, that: Date): boolean
-} = dual(2, Equivalence.Date)
+} = dual(2, eEquivalence.Date)
 
-/** @category predicates */
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
 export const equalsMillisecond: {
   (that: Date): (self: Date) => boolean
   (self: Date, that: Date): boolean
 } = dual(2, EquivalenceMillisecond)
 
-/** @category predicates */
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
 export const equalsUTCMillisecond: {
   (that: Date): (self: Date) => boolean
   (self: Date, that: Date): boolean
 } = dual(2, EquivalenceUTCMillisecond)
 
-/** @category predicates */
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
 export const equalsSecond: {
   (that: Date): (self: Date) => boolean
   (self: Date, that: Date): boolean
 } = dual(2, EquivalenceSecond)
 
-/** @category predicates */
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
 export const equalsUTCSecond: {
   (that: Date): (self: Date) => boolean
   (self: Date, that: Date): boolean
 } = dual(2, EquivalenceUTCSecond)
 
-/** @category predicates */
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
 export const equalsHour: {
   (that: Date): (self: Date) => boolean
   (self: Date, that: Date): boolean
 } = dual(2, EquivalenceHour)
 
-/** @category predicates */
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
 export const equalsUTCHour: {
   (that: Date): (self: Date) => boolean
   (self: Date, that: Date): boolean
 } = dual(2, EquivalenceUTCHour)
 
-/** @category predicates */
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
 export const equalsDay: {
   (that: Date): (self: Date) => boolean
   (self: Date, that: Date): boolean
 } = dual(2, EquivalenceDay)
 
-/** @category predicates */
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
 export const equalsUTCDay: {
   (that: Date): (self: Date) => boolean
   (self: Date, that: Date): boolean
 } = dual(2, EquivalenceUTCDay)
 
-/** @category predicates */
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
 export const equalsDate: {
   (that: Date): (self: Date) => boolean
   (self: Date, that: Date): boolean
 } = dual(2, EquivalenceDate)
 
-/** @category predicates */
+/**
+ * @since 3.3.0
+ * @category predicates
+ * /
 export const equalsUTCDate: {
   (that: Date): (self: Date) => boolean
   (self: Date, that: Date): boolean
 } = dual(2, EquivalenceUTCDate)
 
-/** @category predicates */
+/**
+ * @since 3.3.0
+ * @category predicates
+ * */
 export const equalsMonth: {
   (that: Date): (self: Date) => boolean
   (self: Date, that: Date): boolean
 } = dual(2, EquivalenceMonth)
 
-/** @category predicates */
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
 export const equalsUTCMonth: {
   (that: Date): (self: Date) => boolean
   (self: Date, that: Date): boolean
 } = dual(2, EquivalenceUTCMonth)
 
-/** @category predicates */
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
 export const equalsYear: {
   (that: Date): (self: Date) => boolean
   (self: Date, that: Date): boolean
 } = dual(2, EquivalenceYear)
 
-/** @category predicates */
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
 export const equalsUTCYear: {
   (that: Date): (self: Date) => boolean
   (self: Date, that: Date): boolean
 } = dual(2, EquivalenceUTCYear)
 
-/** @category predicates */
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
 export const equalsMonthYear: {
   (that: Date): (self: Date) => boolean
   (self: Date, that: Date): boolean
 } = dual(2, EquivalenceMonthYear)
 
-/** @category predicates */
+/**
+ * @since 3.3.0
+ * @category predicates
+ */
 export const equalsUTCMonthYear: {
   (that: Date): (self: Date) => boolean
   (self: Date, that: Date): boolean
@@ -1902,6 +2196,7 @@ export const equalsUTCMonthYear: {
  *
  * To align with [ISO 8601 week numbers](https://en.wikipedia.org/wiki/ISO_week_date), the default is 1, for Monday.
  *
+ * @since 3.3.0
  * @category getters
  */
 export const toWeekNumber: {
@@ -1922,6 +2217,7 @@ export const toWeekNumber: {
  *
  * To align with ISO 8601 week numbers, the default is 1, for Monday.
  *
+ * @since 3.3.0
  * @category getters
  */
 export const toUTCWeekNumber: {
