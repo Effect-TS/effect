@@ -2005,6 +2005,12 @@ export const record = (key: AST, value: AST): {
           )
         }
         break
+      case "Enums": {
+        for (const [_, name] of key.enums) {
+          propertySignatures.push(new PropertySignature(name, value, false, true))
+        }
+        break
+      }
       case "UniqueSymbol":
         propertySignatures.push(new PropertySignature(key.symbol, value, false, true))
         break
