@@ -46,7 +46,7 @@
   "dependencies": {
     "@effect/platform-node-shared": "workspace:^",
     "mime": "^3.0.0",
-    "undici": "^6.15.0",
+    "undici": "^6.18.0",
     "ws": "^8.17.0"
   },
   "peerDependencies": {
