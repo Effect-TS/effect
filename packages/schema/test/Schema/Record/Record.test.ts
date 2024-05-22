@@ -46,13 +46,48 @@ describe("record", () => {
   })
 
   describe("decoding", () => {
-    it("record(never, number)", async () => {
+    it("Record(enum, number)", async () => {
+      enum Abc {
+        A = 1,
+        B = "b",
+        C = "c"
+      }
+      const AbcSchema = S.Enums(Abc)
+      const schema = S.Record(AbcSchema, S.String)
+      await Util.expectDecodeUnknownSuccess(schema, { [Abc.A]: "A", [Abc.B]: "B", [Abc.C]: "C" })
+      await Util.expectDecodeUnknownSuccess(schema, { [1]: "A", b: "B", c: "C" })
+      await Util.expectDecodeUnknownSuccess(schema, { "1": "A", b: "B", c: "C" })
+
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        { [Abc.B]: "B", [Abc.C]: "C" },
+        `{ readonly 1: string; readonly b: string; readonly c: string }
+└─ [1]
+   └─ is missing`
+      )
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        { [Abc.A]: "A", [Abc.B]: "B" },
+        `{ readonly 1: string; readonly b: string; readonly c: string }
+└─ ["c"]
+   └─ is missing`
+      )
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        { [Abc.A]: null, [Abc.B]: "B", [Abc.C]: "C" },
+        `{ readonly 1: string; readonly b: string; readonly c: string }
+└─ [1]
+   └─ Expected a string, actual null`
+      )
+    })
+
+    it("Record(never, number)", async () => {
       const schema = S.Record(S.Never, S.Number)
       await Util.expectDecodeUnknownSuccess(schema, {})
       await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
     })
 
-    it("record(string, number)", async () => {
+    it("Record(string, number)", async () => {
       const schema = S.Record(S.String, S.Number)
       await Util.expectDecodeUnknownSuccess(schema, {})
       await Util.expectDecodeUnknownSuccess(schema, { a: 1 })
@@ -81,7 +116,7 @@ describe("record", () => {
       )
     })
 
-    it("record(symbol, number)", async () => {
+    it("Record(symbol, number)", async () => {
       const a = Symbol.for("@effect/schema/test/a")
       const schema = S.Record(S.SymbolFromSelf, S.Number)
       await Util.expectDecodeUnknownSuccess(schema, {})
@@ -114,7 +149,7 @@ describe("record", () => {
       )
     })
 
-    it("record('a' | 'b', number)", async () => {
+    it("Record('a' | 'b', number)", async () => {
       const schema = S.Record(S.Union(S.Literal("a"), S.Literal("b")), S.Number)
       await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: 2 })
 
@@ -141,7 +176,7 @@ describe("record", () => {
       )
     })
 
-    it("record('a' | `prefix-${string}`, number)", async () => {
+    it("Record('a' | `prefix-${string}`, number)", async () => {
       const schema = S.Record(
         S.Union(S.Literal("a"), S.TemplateLiteral(S.Literal("prefix-"), S.String)),
         S.Number
@@ -165,7 +200,7 @@ describe("record", () => {
       )
     })
 
-    it("record(keyof struct({ a, b }), number)", async () => {
+    it("Record(keyof struct({ a, b }), number)", async () => {
       const schema = S.Record(S.keyof(S.Struct({ a: S.String, b: S.String })), S.Number)
       await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: 2 })
 
@@ -199,7 +234,7 @@ describe("record", () => {
       )
     })
 
-    it("record(Symbol('a') | Symbol('b'), number)", async () => {
+    it("Record(Symbol('a') | Symbol('b'), number)", async () => {
       const a = Symbol.for("@effect/schema/test/a")
       const b = Symbol.for("@effect/schema/test/b")
       const schema = S.Record(S.Union(S.UniqueSymbolFromSelf(a), S.UniqueSymbolFromSelf(b)), S.Number)
@@ -228,7 +263,7 @@ describe("record", () => {
       )
     })
 
-    it("record(${string}-${string}, number)", async () => {
+    it("Record(${string}-${string}, number)", async () => {
       const schema = S.Record(S.TemplateLiteral(S.String, S.Literal("-"), S.String), S.Number)
       await Util.expectDecodeUnknownSuccess(schema, {})
       await Util.expectDecodeUnknownSuccess(schema, { "-": 1 })
@@ -278,7 +313,7 @@ describe("record", () => {
       )
     })
 
-    it("record(minLength(2), number)", async () => {
+    it("Record(minLength(2), number)", async () => {
       const schema = S.Record(S.String.pipe(S.minLength(2)), S.Number)
       await Util.expectDecodeUnknownSuccess(schema, {})
       await Util.expectDecodeUnknownSuccess(schema, { "a": 1 }, {})
@@ -303,7 +338,7 @@ describe("record", () => {
       )
     })
 
-    it("record(${string}-${string}, number) & record(string, string | number)", async () => {
+    it("Record(${string}-${string}, number) & record(string, string | number)", async () => {
       const schema = S.Struct(
         {},
         S.Record(S.TemplateLiteral(S.String, S.Literal("-"), S.String), S.Number),
