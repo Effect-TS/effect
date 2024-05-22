@@ -18,8 +18,8 @@ declare const iterNumbers: Iterable<number>
 declare const iterStrings: Iterable<string>
 declare const numbersOrStrings: Array<number | string>
 
-declare const pimitiveNumber: number
-declare const pimitiveNumerOrString: string | number
+declare const primitiveNumber: number
+declare const primitiveNumberOrString: string | number
 declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
 
 declare const unknownValue: unknown
@@ -525,10 +525,10 @@ pipe(numbersOrStrings, Array.findLast(Predicate.isNumber))
 // -------------------------------------------------------------------------------------
 
 // $ExpectType string[]
-pipe(pimitiveNumerOrString, Array.liftPredicate(Predicate.isString))
+pipe(primitiveNumberOrString, Array.liftPredicate(Predicate.isString))
 
 pipe(
-  pimitiveNumerOrString,
+  primitiveNumberOrString,
   Array.liftPredicate(
     (
       n // $ExpectType string | number
@@ -537,14 +537,14 @@ pipe(
 )
 
 // $ExpectType (string | number)[]
-pipe(pimitiveNumerOrString, Array.liftPredicate(predicateNumbersOrStrings))
+pipe(primitiveNumberOrString, Array.liftPredicate(predicateNumbersOrStrings))
 
 // $ExpectType number[]
-pipe(pimitiveNumber, Array.liftPredicate(predicateNumbersOrStrings))
+pipe(primitiveNumber, Array.liftPredicate(predicateNumbersOrStrings))
 
 // $ExpectType number[]
 pipe(
-  pimitiveNumber,
+  primitiveNumber,
   Array.liftPredicate(
     (
       _n // $ExpectType number
