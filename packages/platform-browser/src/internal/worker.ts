@@ -1,5 +1,6 @@
 import * as Worker from "@effect/platform/Worker"
 import { WorkerError } from "@effect/platform/WorkerError"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Queue from "effect/Queue"
@@ -19,6 +20,7 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
       yield* _(Effect.addFinalizer(() => Effect.sync(() => port.postMessage([1]))))
 
       const queue = yield* _(Queue.unbounded<Worker.BackingWorker.Message<O>>())
+      const latch = yield* Deferred.make<void>()
 
       const fiber = yield* _(
         Effect.async<never, WorkerError, never>((resume) => {
@@ -30,6 +32,7 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
           }
           port.addEventListener("message", onMessage as any)
           port.addEventListener("error", onError as any)
+          Deferred.unsafeDone(latch, Effect.void)
           return Effect.sync(() => {
             port.removeEventListener("message", onMessage as any)
             port.removeEventListener("error", onError as any)
@@ -38,7 +41,7 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
         Effect.interruptible,
         Effect.forkScoped
       )
-      yield* _(Effect.yieldNow())
+      yield* Deferred.await(latch)
 
       if ("start" in port) {
         port.start()
