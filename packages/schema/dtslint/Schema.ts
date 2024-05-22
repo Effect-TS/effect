@@ -1596,16 +1596,16 @@ S.DurationFromNanos
 // Secret
 // ---------------------------------------------
 
-// $ExpectType Schema<Secret, string, never>
+// $ExpectType Schema<Secret<string>, string, never>
 S.asSchema(S.SecretFromString)
 
-// $ExpectType typeof Secret
+// $ExpectType typeof SecretFromString
 S.SecretFromString
 
 // $ExpectType Schema<Secret<number>, Secret<number>, never>
 S.asSchema(S.SecretFromSelf(S.Number))
 
-// $ExpectType S.SecretFromSelf<typeof S.Number>
+// $ExpectType SecretFromSelf<typeof Number$>
 S.SecretFromSelf(S.Number)
 
 // ---------------------------------------------
