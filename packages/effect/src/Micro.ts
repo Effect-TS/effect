@@ -16,6 +16,27 @@ import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import type { Concurrency, Covariant, NoInfer, NotFunction } from "./Types.js"
 import { YieldWrap, yieldWrapGet } from "./Utils.js"
 
+// TODO:
+// - timeout apis
+// - retry apis
+// - repeat apis
+// - .try
+// - .tapError
+// - .filter*
+// - flip
+// - mapError
+// - mapErrorFailure
+// - ensuring
+// - serviceOption
+// - either
+// - addFinalizer
+// - race
+// - raceAll
+// - all
+// - catchTag
+// - catchTags
+// - catchIf
+
 /**
  * @since 3.3.0
  * @category type ids
