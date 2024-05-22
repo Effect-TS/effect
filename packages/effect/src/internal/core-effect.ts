@@ -1,4 +1,4 @@
-import { effect_internal_function, effect_internal_generator } from "effect/Utils"
+import { internalCall, internalCallGenerator } from "effect/Utils"
 import * as Arr from "../Array.js"
 import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
@@ -772,7 +772,7 @@ export const gen: typeof Effect.gen = function() {
   }
   return core.suspend(() => {
     const iterator = f(pipe)
-    const state = effect_internal_generator(() => iterator.next())
+    const state = internalCallGenerator(() => iterator.next())
     const run = (
       state: IteratorYieldResult<any> | IteratorReturnResult<any>
     ): Effect.Effect<any, any, any> => {
@@ -780,7 +780,7 @@ export const gen: typeof Effect.gen = function() {
         ? core.succeed(state.value)
         : core.flatMap(
           yieldWrapGet(state.value) as any,
-          (val: any) => run(effect_internal_generator(() => iterator.next(val)))
+          (val: any) => run(internalCallGenerator(() => iterator.next(val)))
         ))
     }
     return run(state)
@@ -2185,7 +2185,7 @@ export const functionWithSpan = <Args extends Array<any>, Ret extends Effect.Eff
         ? options.options.apply(null, arguments as any)
         : options.options
       return withSpan(
-        core.suspend(() => effect_internal_function(() => options.body.apply(this, arguments as any))),
+        core.suspend(() => internalCall(() => options.body.apply(this, arguments as any))),
         opts.name,
         {
           ...opts,
