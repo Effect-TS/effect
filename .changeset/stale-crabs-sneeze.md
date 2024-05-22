@@ -25,4 +25,7 @@
 "@effect/sql": patch
 ---
 
-The secret has been generalized to work with any data
+The `Secret` has been generalized to work with any data
+Added the necessary schemas `SecretFromString` and `SecretFromSelf`
+Now the `Secret` implements `Pipeable`
+The tests were placed in a separate module
