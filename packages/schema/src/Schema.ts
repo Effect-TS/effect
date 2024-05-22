@@ -9,6 +9,8 @@ import * as boolean_ from "effect/Boolean"
 import type { Brand } from "effect/Brand"
 import * as cause_ from "effect/Cause"
 import * as chunk_ from "effect/Chunk"
+import * as config_ from "effect/Config"
+import * as configError_ from "effect/ConfigError"
 import * as data_ from "effect/Data"
 import * as duration_ from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -47,6 +49,7 @@ import * as util_ from "./internal/util.js"
 import * as ParseResult from "./ParseResult.js"
 import * as pretty_ from "./Pretty.js"
 import type * as Serializable from "./Serializable.js"
+import * as TreeFormatter from "./TreeFormatter.js"
 
 /**
  * @since 1.0.0
@@ -8055,4 +8058,19 @@ export class BooleanFromUnknown extends transform(
 ).annotations({ identifier: "BooleanFromUnknown" }) {
   static override annotations: (annotations: Annotations.Schema<boolean>) => typeof BooleanFromUnknown = super
     .annotations
+}
+
+/**
+ * @category Config validations
+ * @since 1.0.0
+ */
+export const Config = <A>(name: string, schema: Schema<A, string>): config_.Config<A> => {
+  const decodeEither_ = decodeEither(schema)
+  return config_.string(name).pipe(
+    config_.mapOrFail((a) =>
+      decodeEither_(a).pipe(
+        either_.mapLeft((error) => configError_.InvalidData([], TreeFormatter.formatErrorSync(error)))
+      )
+    )
+  )
 }
