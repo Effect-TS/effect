@@ -652,7 +652,9 @@ describe("ReadonlyArray", () => {
     const f = RA.flatMapNullable((n: number) => (n > 0 ? n : null))
     deepStrictEqual(pipe([], f), [])
     deepStrictEqual(pipe([1], f), [1])
+    deepStrictEqual(pipe([1, 2], f), [1, 2])
     deepStrictEqual(pipe([-1], f), [])
+    deepStrictEqual(pipe([-1, 2], f), [2])
   })
 
   it("liftPredicate", () => {
