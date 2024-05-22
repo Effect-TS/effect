@@ -9,18 +9,23 @@ export const isDateFirstTwoArgs: Predicate.Predicate<IArguments> = (args) =>
 
 /** @internal */
 const getWeekOneDayOne = (year: number, dowOffset: 0 | 1 | 2 | 3 | 4 | 5 | 6): Date => {
-  /** The week with the year's January 4 in it is w01, if weeks start on Monday (dowOffset 1). */
+  // The first week always has 4 January in it
   const weekOne = new Date(year, 0, 4)
-  const daysToShift = weekOne.getDay() - dowOffset
-  return new Date(weekOne.getTime() - daysToShift * 86_400_000)
-}
 
+  // Set to the start of the week, according to dowOffset
+  weekOne.setDate(weekOne.getDate() - weekOne.getDay() + dowOffset)
+
+  return weekOne
+}
 /** @internal */
 const getUTCWeekOneDayOne = (year: number, dowOffset: 0 | 1 | 2 | 3 | 4 | 5 | 6): Date => {
-  /** The week with the year's January 4 in it is w01, if weeks start on Monday (dowOffset 1). */
-  const weekOne = new Date(year, 0, 4)
-  const daysToShift = weekOne.getUTCDay() - dowOffset
-  return new Date(weekOne.getTime() - daysToShift * 86_400_000)
+  // The first week always has 4 January in it
+  const weekOne = new Date(Date.UTC(year, 0, 4))
+
+  // Set to the start of the week, according to dowOffset
+  weekOne.setUTCDate(weekOne.getUTCDate() - weekOne.getUTCDay() + dowOffset)
+
+  return weekOne
 }
 
 /** @internal */
