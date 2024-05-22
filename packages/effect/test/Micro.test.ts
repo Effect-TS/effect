@@ -1,5 +1,5 @@
 import { Cause, Context, Effect, Either, Micro, Option } from "effect"
-import { assert, describe, it } from "effect-test/utils/extend"
+import { assert, describe, it } from "effect/test/utils/extend"
 
 class ATag extends Context.Tag("ATag")<ATag, "A">() {}
 
@@ -200,6 +200,40 @@ describe("Smol", () => {
         assert.strictEqual(release, true)
       }).pipe(Micro.runPromise))
   })
+
+  it("raceAll", () =>
+    Micro.gen(function*() {
+      const interrupted: Array<number> = []
+      const result = yield* Micro.raceAll([100, 75, 50, 0, 25].map((ms) =>
+        (ms === 0 ? Micro.fail("boom") : Micro.succeed(ms)).pipe(
+          Micro.delay(ms),
+          Micro.onInterrupt(() =>
+            Micro.sync(() => {
+              interrupted.push(ms)
+            })
+          )
+        )
+      ))
+      assert.strictEqual(result, 25)
+      assert.deepStrictEqual(interrupted, [100, 75, 50])
+    }).pipe(Micro.runPromise))
+
+  it("raceAllFirst", () =>
+    Micro.gen(function*() {
+      const interrupted: Array<number> = []
+      const result = yield* Micro.raceAllFirst([100, 75, 50, 0, 25].map((ms) =>
+        (ms === 0 ? Micro.fail("boom") : Micro.succeed(ms)).pipe(
+          Micro.delay(ms),
+          Micro.onInterrupt(() =>
+            Micro.sync(() => {
+              interrupted.push(ms)
+            })
+          )
+        )
+      )).pipe(Micro.asResult)
+      assert.deepStrictEqual(result, Either.left(Micro.FailureExpected("boom")))
+      assert.deepStrictEqual(interrupted, [100, 75, 50, 25])
+    }).pipe(Micro.runPromise))
 
   describe("valid Effect", () => {
     it.effect("success", () =>

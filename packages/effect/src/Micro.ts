@@ -30,8 +30,6 @@ import { YieldWrap, yieldWrapGet } from "./Utils.js"
 // - serviceOption
 // - either
 // - addFinalizer
-// - race
-// - raceAll
 // - all
 // - catchTag
 // - catchTags
@@ -130,7 +128,7 @@ export type FailureTypeId = typeof FailureTypeId
  * @since 3.3.0
  * @category failure
  */
-export type Failure<E> = Failure.Unexpected | Failure.Expected<E>
+export type Failure<E> = Failure.Unexpected | Failure.Expected<E> | Failure.Aborted
 
 /**
  * @since 3.3.0
@@ -212,7 +210,8 @@ export const FailureAborted: Failure<never> = Object.assign(Object.create(Failur
  * @since 3.3.0
  * @category failure
  */
-export const failureSquash = <E>(self: Failure<E>): unknown => self._tag === "Expected" ? self.error : self.defect
+export const failureSquash = <E>(self: Failure<E>): unknown =>
+  self._tag === "Expected" ? self.error : self._tag === "Unexpected" ? self.defect : self
 
 // ----------------------------------------------------------------------------
 // Result
@@ -386,31 +385,29 @@ export {
 export const async = <A, E = never, R = never>(
   register: (resume: (effect: Micro<A, E, R>) => void, signal: AbortSignal) => void | Micro<void, never, R>
 ): Micro<A, E, R> =>
-  flatten(
-    make(function(env, onResult) {
-      let resumed = false
-      const signal = Env.get(env, Env.currentAbortSignal)
-      let cleanup: Micro<void, never, R> | void = undefined
-      function onAbort() {
-        if (cleanup) {
-          resume(uninterruptible(andThen(cleanup, failWith(FailureAborted))))
-        } else {
-          resume(failWith(FailureAborted))
-        }
+  make(function(env, onResult) {
+    let resumed = false
+    const signal = Env.get(env, Env.currentAbortSignal)
+    let cleanup: Micro<void, never, R> | void = undefined
+    function onAbort() {
+      if (cleanup) {
+        resume(uninterruptible(andThen(cleanup, failWith(FailureAborted))))
+      } else {
+        resume(failWith(FailureAborted))
       }
-      function resume(effect: Micro<A, E, R>) {
-        if (resumed) {
-          return
-        }
-        resumed = true
-        signal.removeEventListener("abort", onAbort)
-        onResult(Either.right(effect))
+    }
+    function resume(effect: Micro<A, E, R>) {
+      if (resumed) {
+        return
       }
-      cleanup = register(resume, signal)
-      if (resumed) return
-      signal.addEventListener("abort", onAbort)
-    })
-  )
+      resumed = true
+      signal.removeEventListener("abort", onAbort)
+      effect[runSymbol](env, onResult)
+    }
+    cleanup = register(resume, signal)
+    if (resumed) return
+    signal.addEventListener("abort", onAbort)
+  })
 
 /**
  * @since 3.3.0
@@ -670,6 +667,98 @@ export const asResult = <A, E, R>(self: Micro<A, E, R>): Micro<Result<A, E>, nev
     })
   })
 
+function forkSignal(env: Env.MicroEnv<any>) {
+  const controller = new AbortController()
+  const parentSignal = Env.get(env, Env.currentAbortSignal)
+  function onAbort() {
+    controller.abort()
+    parentSignal.removeEventListener("abort", onAbort)
+  }
+  parentSignal.addEventListener("abort", onAbort)
+  const envWithSignal = Env.mutate(env, function(refs) {
+    refs[Env.currentAbortController.key] = controller
+    refs[Env.currentAbortSignal.key] = controller.signal
+    return refs
+  })
+  return [envWithSignal, onAbort] as const
+}
+
+/**
+ * Returns an effect that races all the specified effects,
+ * yielding the value of the first effect to succeed with a value. Losers of
+ * the race will be interrupted immediately
+ *
+ * @since 3.3.0
+ * @category sequencing
+ */
+export const raceAll = <Eff extends Micro<any, any, any>>(
+  all: Iterable<Eff>
+): Micro<Micro.Success<Eff>, Micro.Error<Eff>, Micro.Context<Eff>> =>
+  make(function(env, onResult) {
+    const [envWithSignal, onAbort] = forkSignal(env)
+
+    const effects = Array.from(all)
+    let len = effects.length
+    let index = 0
+    let done = 0
+    let result: Result<any, any> | undefined = undefined
+    const failures: Array<Failure<any>> = []
+    function onDone(result_: Result<any, any>) {
+      done++
+      if (result_._tag === "Right" && result === undefined) {
+        len = index
+        result = result_
+        onAbort()
+      } else if (result_._tag === "Left") {
+        failures.push(result_.left)
+      }
+      if (done === len) {
+        onResult(result ?? Either.left(failures[0]))
+      }
+    }
+
+    for (; index < len; index++) {
+      effects[index][runSymbol](envWithSignal, onDone)
+    }
+  })
+
+/**
+ * Returns an effect that races all the specified effects,
+ * yielding the value of the first effect to succeed or fail. Losers of
+ * the race will be interrupted immediately
+ *
+ * @since 3.3.0
+ * @category sequencing
+ */
+export const raceAllFirst = <Eff extends Micro<any, any, any>>(
+  all: Iterable<Eff>
+): Micro<Micro.Success<Eff>, Micro.Error<Eff>, Micro.Context<Eff>> =>
+  make(function(env, onResult) {
+    const [envWithSignal, onAbort] = forkSignal(env)
+
+    const effects = Array.from(all)
+    let len = effects.length
+    let index = 0
+    let done = 0
+    let result: Result<any, any> | undefined = undefined
+    const failures: Array<Failure<any>> = []
+    function onDone(result_: Result<any, any>) {
+      done++
+      if (result === undefined) {
+        len = index
+        result = result_
+        onAbort()
+      }
+      if (done === len) {
+        onResult(result ?? Either.left(failures[0]))
+      }
+    }
+
+    for (; index < len; index++) {
+      effects[index][runSymbol](envWithSignal, onDone)
+    }
+  })
+
 // ----------------------------------------------------------------------------
 // error handling
 // ----------------------------------------------------------------------------
@@ -809,7 +898,7 @@ export const matchMicro: {
     }
   ): Micro<A2 | A3, E2 | E3, R2 | R3 | R> =>
     matchFailureMicro(self, {
-      onFailure: (failure) => failure._tag === "Expected" ? options.onFailure(failure.error) : die(failure.defect),
+      onFailure: (failure) => failure._tag === "Expected" ? options.onFailure(failure.error) : failWith(failure),
       onSuccess: options.onSuccess
     })
 )
@@ -1040,6 +1129,21 @@ export const onResult: {
     uninterruptibleMask((restore) =>
       flatMap(asResult(restore(self)), (result) => andThen(f(result), fromResult(result)))
     )
+)
+
+/**
+ * @since 3.3.0
+ * @category resources & finalization
+ */
+export const onInterrupt: {
+  <A, E, XE, XR>(
+    f: (result: Result<A, E>) => Micro<void, XE, XR>
+  ): <R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
+  <A, E, R, XE, XR>(self: Micro<A, E, R>, f: (result: Result<A, E>) => Micro<void, XE, XR>): Micro<A, E | XE, R | XR>
+} = dual(
+  2,
+  <A, E, R, XE, XR>(self: Micro<A, E, R>, f: (result: Result<A, E>) => Micro<void, XE, XR>): Micro<A, E | XE, R | XR> =>
+    onResult(self, (result) => (result._tag === "Left" && result.left._tag === "Aborted" ? f(result) : void_))
 )
 
 /**
@@ -1307,15 +1411,11 @@ const forEachConcurrent = <
 }): Micro<any, E, R> =>
   unsafeMake(function(env, onResult) {
     // abort
-    const controller = new AbortController()
-    const parentSignal = Env.get(env, Env.currentAbortSignal)
-    function onAbort() {
+    const [envWithSignal, onAbort] = forkSignal(env)
+    function onDone() {
       length = index
-      controller.abort()
-      parentSignal.removeEventListener("abort", onAbort)
+      onAbort()
     }
-    parentSignal.addEventListener("abort", onAbort)
-    const envWithSignal = Env.set(env, Env.currentAbortSignal, controller.signal)
 
     // iterate
     const concurrency = options.concurrency === "unbounded" ? Infinity : options.concurrency
@@ -1341,13 +1441,13 @@ const forEachConcurrent = <
             if (result._tag === "Left") {
               if (failure === undefined) {
                 failure = result
-                onAbort()
+                onDone()
               }
             } else if (out !== undefined) {
               out[currentIndex] = result.right
             }
             if (doneCount === length) {
-              parentSignal.removeEventListener("abort", onAbort)
+              onAbort()
               onResult(failure ?? Either.right(out))
             } else if (!pumping && inProgress < concurrency) {
               pump()
@@ -1355,7 +1455,7 @@ const forEachConcurrent = <
           })
         } catch (err) {
           failure = Either.left(FailureUnexpected(err))
-          onAbort()
+          onDone()
         }
       }
       pumping = false
