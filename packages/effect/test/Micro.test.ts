@@ -3,7 +3,7 @@ import { assert, describe, it } from "effect/test/utils/extend"
 
 class ATag extends Context.Tag("ATag")<ATag, "A">() {}
 
-describe("Smol", () => {
+describe("Micro", () => {
   it("runPromise", async () => {
     const result = await Micro.runPromise(Micro.succeed(1))
     assert.strictEqual(result, 1)
