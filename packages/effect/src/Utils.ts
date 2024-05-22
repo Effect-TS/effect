@@ -786,14 +786,13 @@ export const structuralRegion = <A>(body: () => A, tester?: (a: unknown, b: unkn
 }
 
 const tracingFunction = (name: string) => {
-  class Wrap {
+  const wrap = {
     [name]<A>(body: () => A) {
       return body()
     }
   }
-  const wrap = new Wrap()
   return function<A>(fn: () => A): A {
-    return (wrap as any)[name](fn)
+    return wrap[name](fn)
   }
 }
 
