@@ -218,12 +218,15 @@ class PoolImpl<in out A, in out E> implements Pool.Pool<A, E> {
     const release = (attempted: Attempted<A, E>): Effect.Effect<unknown> =>
       core.exitMatch(attempted.result, {
         onFailure: () =>
-          core.flatten(ref.modify(this.state, (state) => {
-            if (state.size <= this.min) {
-              return [allocateUinterruptible(this), { ...state, free: state.free + 1 }] as const
-            }
-            return [core.void, { ...state, size: state.size - 1 }] as const
-          })),
+          core.zipRight(
+            attempted.finalizer,
+            core.flatten(ref.modify(this.state, (state) => {
+              if (state.size <= this.min) {
+                return [allocateUinterruptible(this), { ...state, free: state.free + 1 }] as const
+              }
+              return [core.void, { ...state, size: state.size - 1 }] as const
+            }))
+          ),
         onSuccess: (item) =>
           core.flatMap(ref.get(this.invalidated), (set) => {
             if (pipe(set, HashSet.has(item))) {
