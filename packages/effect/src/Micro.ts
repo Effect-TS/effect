@@ -1,7 +1,7 @@
 /**
  * A lightweight alternative to the `Effect` data type, with a subset of the functionality.
  *
- * @since 3.2.0
+ * @since 3.3.0
  */
 import * as Context from "./Context.js"
 import * as Duration from "./Duration.js"
@@ -17,27 +17,34 @@ import type { Concurrency, Covariant, NoInfer, NotFunction } from "./Types.js"
 import { YieldWrap, yieldWrapGet } from "./Utils.js"
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category type ids
  */
 export const TypeId: unique symbol = Symbol.for("effect/Micro")
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category type ids
  */
 export type TypeId = typeof TypeId
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category symbols
  */
 export const runSymbol: unique symbol = Symbol.for("effect/Micro/runSymbol")
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category symbols
  */
 export type runSymbol = typeof runSymbol
 
 /**
- * @since 3.2.0
+ * A lightweight alternative to the `Effect` data type, with a subset of the functionality.
+ *
+ * @since 3.3.0
+ * @category models
  */
 export interface Micro<out A, out E = never, out R = never> extends Effect<A, E, R> {
   readonly [TypeId]: {
@@ -50,58 +57,75 @@ export interface Micro<out A, out E = never, out R = never> extends Effect<A, E,
 }
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
  */
 export declare namespace Micro {
   /**
-   * @since 3.2.0
+   * @since 3.3.0
    */
   export type Success<T> = T extends Micro<infer _A, infer _E, infer _R> ? _A : never
+
+  /**
+   * @since 3.3.0
+   */
+  export type Error<T> = T extends Micro<infer _A, infer _E, infer _R> ? _E : never
+
+  /**
+   * @since 3.3.0
+   */
+  export type Context<T> = T extends Micro<infer _A, infer _E, infer _R> ? _R : never
 }
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
  */
 export const isMicro = (u: unknown): u is Micro<any, any, any> => typeof u === "object" && u !== null && TypeId in u
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
  * @category models
  */
 export interface MicroIterator<T extends Micro<any, any, any>> {
   next(...args: ReadonlyArray<any>): IteratorResult<YieldWrap<T>, Micro.Success<T>>
 }
 
+// ----------------------------------------------------------------------------
 // Failures
+// ----------------------------------------------------------------------------
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category failure
  */
 export const FailureTypeId = Symbol.for("effect/Micro/Failure")
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category failure
  */
 export type FailureTypeId = typeof FailureTypeId
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category failure
  */
 export type Failure<E> = Failure.Unexpected | Failure.Expected<E>
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category failure
  */
 export declare namespace Failure {
   /**
-   * @since 3.2.0
+   * @since 3.3.0
    */
   export interface Proto extends Pipeable {
     readonly [FailureTypeId]: FailureTypeId
   }
 
   /**
-   * @since 3.2.0
+   * @since 3.3.0
+   * @category failure
    */
   export interface Unexpected extends Proto {
     readonly _tag: "Unexpected"
@@ -109,7 +133,8 @@ export declare namespace Failure {
   }
 
   /**
-   * @since 3.2.0
+   * @since 3.3.0
+   * @category failure
    */
   export interface Expected<E> extends Proto {
     readonly _tag: "Expected"
@@ -117,7 +142,8 @@ export declare namespace Failure {
   }
 
   /**
-   * @since 3.2.0
+   * @since 3.3.0
+   * @category failure
    */
   export interface Aborted extends Proto {
     readonly _tag: "Aborted"
@@ -132,7 +158,8 @@ const FailureProto: Failure.Proto = {
 }
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category failure
  */
 export const FailureExpected = <E>(error: E): Failure<E> => {
   const self = Object.create(FailureProto)
@@ -142,7 +169,8 @@ export const FailureExpected = <E>(error: E): Failure<E> => {
 }
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category failure
  */
 export const FailureUnexpected = (defect: unknown): Failure<never> => {
   const self = Object.create(FailureProto)
@@ -152,53 +180,34 @@ export const FailureUnexpected = (defect: unknown): Failure<never> => {
 }
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category failure
  */
 export const FailureAborted: Failure<never> = Object.assign(Object.create(FailureProto), {
   _tag: "Aborted"
 })
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category failure
  */
 export const failureSquash = <E>(self: Failure<E>): unknown => self._tag === "Expected" ? self.error : self.defect
 
+// ----------------------------------------------------------------------------
 // Result
+// ----------------------------------------------------------------------------
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category result
  */
 export type Result<A, E = never> = Either.Either<A, Failure<E>>
 
 const ResultAborted = Either.left(FailureAborted)
 
-// Handle
-
-/**
- * @since 3.2.0
- */
-export const HandleTypeId: unique symbol = Symbol.for("effect/Micro/Handle")
-
-/**
- * @since 3.2.0
- */
-export type HandleTypeId = typeof HandleTypeId
-
-/**
- * @since 3.2.0
- */
-export interface Handle<A, E = never> {
-  readonly [HandleTypeId]: HandleTypeId
-  readonly await: Micro<Result<A, E>>
-  readonly join: Micro<A, E>
-  readonly abort: Micro<void>
-  readonly unsafeAbort: () => void
-  readonly addObserver: (observer: (result: Result<A, E>) => void) => void
-  readonly removeObserver: (observer: (result: Result<A, E>) => void) => void
-  readonly unsafePoll: () => Result<A, E> | null
-}
-
-// Micro
+// ----------------------------------------------------------------------------
+// constructors
+// ----------------------------------------------------------------------------
 
 const MicroProto = {
   ...Effectable.EffectPrototype,
@@ -233,7 +242,8 @@ const unsafeMakeNoAbort = <A, E, R>(
   })
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category constructors
  */
 export const make = <A, E, R>(
   run: (env: Env.MicroEnv<R>, onResult: (result: Result<A, E>) => void) => void
@@ -250,7 +260,8 @@ export const make = <A, E, R>(
   })
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category constructors
  */
 export const succeed = <A>(a: A): Micro<A> =>
   make(function(_env, onResult) {
@@ -258,7 +269,8 @@ export const succeed = <A>(a: A): Micro<A> =>
   })
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category constructors
  */
 export const fail = <E>(e: E): Micro<never, E> =>
   make(function(_env, onResult) {
@@ -266,7 +278,8 @@ export const fail = <E>(e: E): Micro<never, E> =>
   })
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category constructors
  */
 export const die = (defect: unknown): Micro<never> =>
   make(function(_env, onResult) {
@@ -274,7 +287,8 @@ export const die = (defect: unknown): Micro<never> =>
   })
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category constructors
  */
 export const failWith = <E>(failure: Failure<E>): Micro<never, E> =>
   make(function(_env, onResult) {
@@ -282,7 +296,8 @@ export const failWith = <E>(failure: Failure<E>): Micro<never, E> =>
   })
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category constructors
  */
 export const sync = <A>(evaluate: LazyArg<A>): Micro<A> =>
   make(function(_env, onResult) {
@@ -290,7 +305,8 @@ export const sync = <A>(evaluate: LazyArg<A>): Micro<A> =>
   })
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category constructors
  */
 export const fromResult = <A, E>(self: Result<A, E>): Micro<A, E> =>
   make(function(_env, onResult) {
@@ -298,7 +314,8 @@ export const fromResult = <A, E>(self: Result<A, E>): Micro<A, E> =>
   })
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category constructors
  */
 export const service = <I, S>(tag: Context.Tag<I, S>): Micro<S, never, I> =>
   make(function(env, onResult) {
@@ -306,7 +323,8 @@ export const service = <I, S>(tag: Context.Tag<I, S>): Micro<S, never, I> =>
   })
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category constructors
  */
 export const fromOption = <A>(option: Option.Option<A>): Micro<A, Option.None<never>> =>
   make(function(_env, onResult) {
@@ -314,7 +332,8 @@ export const fromOption = <A>(option: Option.Option<A>): Micro<A, Option.None<ne
   })
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category constructors
  */
 export const fromEither = <R, L>(either: Either.Either<R, L>): Micro<R, L> =>
   make(function(_env, onResult) {
@@ -322,7 +341,150 @@ export const fromEither = <R, L>(either: Either.Either<R, L>): Micro<R, L> =>
   })
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category constructors
+ */
+export const suspend = <A, E, R>(evaluate: LazyArg<Micro<A, E, R>>): Micro<A, E, R> =>
+  make(function(env, onResult) {
+    evaluate()[runSymbol](env, onResult)
+  })
+
+const void_: Micro<void> = succeed(void 0)
+export {
+  /**
+   * @since 3.3.0
+   * @category constructors
+   */
+  void_ as void
+}
+
+/**
+ * @since 3.3.0
+ * @category constructors
+ */
+export const async = <A, E = never, R = never>(
+  register: (resume: (effect: Micro<A, E, R>) => void, signal: AbortSignal) => void | Micro<void, never, R>
+): Micro<A, E, R> =>
+  flatten(
+    make(function(env, onResult) {
+      let resumed = false
+      const signal = Env.get(env, Env.currentAbortSignal)
+      let cleanup: Micro<void, never, R> | void = undefined
+      function onAbort() {
+        if (cleanup) {
+          resume(uninterruptible(andThen(cleanup, failWith(FailureAborted))))
+        } else {
+          resume(failWith(FailureAborted))
+        }
+      }
+      function resume(effect: Micro<A, E, R>) {
+        if (resumed) {
+          return
+        }
+        resumed = true
+        signal.removeEventListener("abort", onAbort)
+        onResult(Either.right(effect))
+      }
+      cleanup = register(resume, signal)
+      if (resumed) return
+      signal.addEventListener("abort", onAbort)
+    })
+  )
+
+/**
+ * @since 3.3.0
+ * @category constructors
+ */
+export const promise = <A>(evaluate: (signal: AbortSignal) => PromiseLike<A>): Micro<A> =>
+  async<A>(function(resume, signal) {
+    evaluate(signal).then(
+      (a) => resume(succeed(a)),
+      (e) => resume(die(e))
+    )
+  })
+
+/**
+ * @since 3.3.0
+ * @category constructors
+ */
+export const tryPromise = <A, E>(options: {
+  readonly try: (signal: AbortSignal) => PromiseLike<A>
+  readonly catch: (error: unknown) => E
+}): Micro<A, E> =>
+  async<A, E>(function(resume, signal) {
+    options.try(signal).then(
+      (a) => resume(succeed(a)),
+      (e) => resume(fail(options.catch(e)))
+    )
+  })
+
+/**
+ * @since 3.3.0
+ * @category constructors
+ */
+export const yieldNow: Micro<void> = make(function(_env, onResult) {
+  queueMicrotask(() => onResult(Either.right(void 0)))
+})
+
+/**
+ * @since 3.3.0
+ * @category constructors
+ */
+export const never: Micro<never> = async<never>(function() {
+  const interval = setInterval(constVoid, 2147483646)
+  return sync(() => clearInterval(interval))
+})
+
+/**
+ * @since 3.3.0
+ * @category constructors
+ */
+export const gen = <Eff extends YieldWrap<Micro<any, any, any>>, AEff>(
+  f: () => Generator<Eff, AEff, never>
+): Micro<
+  AEff,
+  [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Micro<infer _A, infer E, infer _R>>] ? E : never,
+  [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Micro<infer _A, infer _E, infer R>>] ? R : never
+> =>
+  make(function(env, onResult) {
+    const iterator = f() as Iterator<YieldWrap<Micro<any, any, any>>, AEff, any>
+    let running = false
+    let value: any = undefined
+    function run() {
+      running = true
+      try {
+        let shouldContinue = true
+        while (shouldContinue) {
+          const result = iterator.next(value)
+          if (result.done) {
+            return onResult(Either.right(result.value))
+          }
+          shouldContinue = false
+          yieldWrapGet(result.value)[runSymbol](env, function(result) {
+            if (result._tag === "Left") {
+              onResult(result)
+            } else {
+              shouldContinue = true
+              value = result.right
+              if (!running) run()
+            }
+          })
+        }
+      } catch (err) {
+        onResult(Either.left(FailureUnexpected(err)))
+      }
+      running = false
+    }
+    run()
+  })
+
+// ----------------------------------------------------------------------------
+// mapping & sequencing
+// ----------------------------------------------------------------------------
+
+/**
+ * @since 3.3.0
+ * @category mapping & sequencing
  */
 export const flatten = <A, E, R, E2, R2>(self: Micro<Micro<A, E, R>, E2, R2>): Micro<A, E | E2, R | R2> =>
   make(function(env, onResult) {
@@ -333,23 +495,8 @@ export const flatten = <A, E, R, E2, R2>(self: Micro<Micro<A, E, R>, E2, R2>): M
   })
 
 /**
- * @since 3.2.0
- */
-export const suspend = <A, E, R>(evaluate: LazyArg<Micro<A, E, R>>): Micro<A, E, R> =>
-  make(function(env, onResult) {
-    evaluate()[runSymbol](env, onResult)
-  })
-
-const void_: Micro<void> = succeed(void 0)
-export {
-  /**
-   * @since 3.2.0
-   */
-  void_ as void
-}
-
-/**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category mapping & sequencing
  */
 export const map: {
   <A, B>(f: (a: NoInfer<A>) => B): <E, R>(self: Micro<A, E, R>) => Micro<B, E, R>
@@ -362,7 +509,8 @@ export const map: {
   }))
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category mapping & sequencing
  */
 export const as: {
   <A, B>(value: B): <E, R>(self: Micro<A, E, R>) => Micro<B, E, R>
@@ -370,7 +518,8 @@ export const as: {
 } = dual(2, <A, E, R, B>(self: Micro<A, E, R>, value: B): Micro<B, E, R> => map(self, (_) => value))
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category mapping & sequencing
  */
 export const flatMap: {
   <A, B, E2, R2>(f: (a: NoInfer<A>) => Micro<B, E2, R2>): <E, R>(self: Micro<A, E, R>) => Micro<B, E | E2, R | R2>
@@ -389,7 +538,8 @@ export const flatMap: {
 )
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category mapping & sequencing
  */
 export const andThen: {
   <A, X>(
@@ -433,7 +583,8 @@ export const andThen: {
 )
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category mapping & sequencing
  */
 export const tap: {
   <A, X>(
@@ -482,7 +633,29 @@ export const tap: {
 )
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category mapping & sequencing
+ */
+export const asVoid = <A, E, R>(self: Micro<A, E, R>): Micro<void, E, R> => map(self, (_) => undefined)
+
+/**
+ * @since 3.3.0
+ * @category mapping & sequencing
+ */
+export const asResult = <A, E, R>(self: Micro<A, E, R>): Micro<Result<A, E>, never, R> =>
+  make(function(env, onResult) {
+    self[runSymbol](env, function(result) {
+      onResult(Either.right(result))
+    })
+  })
+
+// ----------------------------------------------------------------------------
+// error handling
+// ----------------------------------------------------------------------------
+
+/**
+ * @since 3.3.0
+ * @category error handling
  */
 export const catchAllFailure: {
   <E, B, E2, R2>(
@@ -506,7 +679,8 @@ export const catchAllFailure: {
 )
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category error handling
  */
 export const catchAll: {
   <E, B, E2, R2>(
@@ -523,7 +697,33 @@ export const catchAll: {
 )
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category error handling
+ */
+export const orDie = <A, E, R>(self: Micro<A, E, R>): Micro<A, never, R> => catchAll(self, die)
+
+/**
+ * @since 3.3.0
+ * @category error handling
+ */
+export const orElseSucceed: {
+  <B>(f: LazyArg<B>): <A, E, R>(self: Micro<A, E, R>) => Micro<A | B, never, R>
+  <A, E, R, B>(self: Micro<A, E, R>, f: LazyArg<B>): Micro<A | B, never, R>
+} = dual(2, <A, E, R, B>(self: Micro<A, E, R>, f: LazyArg<B>): Micro<A | B, never, R> => catchAll(self, (_) => sync(f)))
+
+/**
+ * @since 3.3.0
+ */
+export const ignore = <A, E, R>(self: Micro<A, E, R>): Micro<void, never, R> =>
+  matchMicro(self, { onFailure: die, onSuccess: () => void_ })
+
+// ----------------------------------------------------------------------------
+// pattern matching
+// ----------------------------------------------------------------------------
+
+/**
+ * @since 3.3.0
+ * @category pattern matching
  */
 export const matchFailureMicro: {
   <E, A2, E2, R2, A, A3, E3, R3>(
@@ -561,7 +761,8 @@ export const matchFailureMicro: {
 )
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category pattern matching
  */
 export const matchMicro: {
   <E, A2, E2, R2, A, A3, E3, R3>(
@@ -593,7 +794,8 @@ export const matchMicro: {
 )
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category pattern matching
  */
 export const match: {
   <E, A2, A, A3>(
@@ -624,123 +826,13 @@ export const match: {
     })
 )
 
-/**
- * @since 3.2.0
- */
-export const asVoid = <A, E, R>(self: Micro<A, E, R>): Micro<void, E, R> => map(self, (_) => undefined)
+// ----------------------------------------------------------------------------
+// delays & timing
+// ----------------------------------------------------------------------------
 
 /**
- * @since 3.2.0
- */
-export const orDie = <A, E, R>(self: Micro<A, E, R>): Micro<A, never, R> => catchAll(self, die)
-
-/**
- * @since 3.2.0
- */
-export const orElseSucceed: {
-  <B>(f: LazyArg<B>): <A, E, R>(self: Micro<A, E, R>) => Micro<A | B, never, R>
-  <A, E, R, B>(self: Micro<A, E, R>, f: LazyArg<B>): Micro<A | B, never, R>
-} = dual(2, <A, E, R, B>(self: Micro<A, E, R>, f: LazyArg<B>): Micro<A | B, never, R> => catchAll(self, (_) => sync(f)))
-
-/**
- * @since 3.2.0
- */
-export const ignore = <A, E, R>(self: Micro<A, E, R>): Micro<void, never, R> =>
-  matchMicro(self, { onFailure: die, onSuccess: () => void_ })
-
-/**
- * @since 3.2.0
- */
-export const zipRight: {
-  <A, B, E2, R2>(that: Micro<B, E2, R2>): <E, R>(self: Micro<A, E, R>) => Micro<B, E, R>
-  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, that: Micro<B, E2, R2>): Micro<B, E | E2, R | R2>
-} = dual(
-  2,
-  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, that: Micro<B, E2, R2>): Micro<B, E | E2, R | R2> =>
-    make(function(env, onResult) {
-      self[runSymbol](env, function(result) {
-        if (result._tag === "Left") {
-          return onResult(result as any)
-        }
-        that[runSymbol](env, onResult)
-      })
-    })
-)
-
-/**
- * @since 3.2.0
- */
-export const async = <A, E = never, R = never>(
-  register: (resume: (effect: Micro<A, E, R>) => void, signal: AbortSignal) => void | Micro<void, never, R>
-): Micro<A, E, R> =>
-  flatten(
-    make(function(env, onResult) {
-      let resumed = false
-      const signal = Env.get(env, Env.currentAbortSignal)
-      let cleanup: Micro<void, never, R> | void = undefined
-      function onAbort() {
-        if (cleanup) {
-          resume(uninterruptible(zipRight(cleanup, failWith(FailureAborted))))
-        } else {
-          resume(failWith(FailureAborted))
-        }
-      }
-      function resume(effect: Micro<A, E, R>) {
-        if (resumed) {
-          return
-        }
-        resumed = true
-        signal.removeEventListener("abort", onAbort)
-        onResult(Either.right(effect))
-      }
-      cleanup = register(resume, signal)
-      if (resumed) return
-      signal.addEventListener("abort", onAbort)
-    })
-  )
-
-/**
- * @since 3.2.0
- */
-export const promise = <A>(evaluate: (signal: AbortSignal) => PromiseLike<A>): Micro<A> =>
-  async<A>(function(resume, signal) {
-    evaluate(signal).then(
-      (a) => resume(succeed(a)),
-      (e) => resume(die(e))
-    )
-  })
-
-/**
- * @since 3.2.0
- */
-export const tryPromise = <A, E>(options: {
-  readonly try: (signal: AbortSignal) => PromiseLike<A>
-  readonly catch: (error: unknown) => E
-}): Micro<A, E> =>
-  async<A, E>(function(resume, signal) {
-    options.try(signal).then(
-      (a) => resume(succeed(a)),
-      (e) => resume(fail(options.catch(e)))
-    )
-  })
-
-/**
- * @since 3.2.0
- */
-export const yieldNow: Micro<void> = make(function(_env, onResult) {
-  queueMicrotask(() => onResult(Either.right(void 0)))
-})
-
-/**
- * @since 3.2.0
- */
-export const never: Micro<never> = async<never>(function() {
-  const interval = setInterval(constVoid, 2147483646)
-  return sync(() => clearInterval(interval))
-})
-
-/**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category delays & timing
  */
 export const sleep = (duration: Duration.DurationInput): Micro<void> => {
   const millis = Duration.toMillis(duration)
@@ -753,28 +845,168 @@ export const sleep = (duration: Duration.DurationInput): Micro<void> => {
 }
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category delays & timing
  */
 export const delay: {
   (duration: Duration.DurationInput): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, R>
   <A, E, R>(self: Micro<A, E, R>, duration: Duration.DurationInput): Micro<A, E, R>
 } = dual(
   2,
-  <A, E, R>(self: Micro<A, E, R>, duration: Duration.DurationInput): Micro<A, E, R> => zipRight(sleep(duration), self)
+  <A, E, R>(self: Micro<A, E, R>, duration: Duration.DurationInput): Micro<A, E, R> => andThen(sleep(duration), self)
 )
 
+// ----------------------------------------------------------------------------
+// resources & finalization
+// ----------------------------------------------------------------------------
+
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category resources & finalization
  */
-export const asResult = <A, E, R>(self: Micro<A, E, R>): Micro<Result<A, E>, never, R> =>
-  make(function(env, onResult) {
-    self[runSymbol](env, function(result) {
-      onResult(Either.right(result))
+export const MicroScopeTypeId: unique symbol = Symbol.for("effect/Micro/MicroScope")
+
+/**
+ * @since 3.3.0
+ * @category resources & finalization
+ */
+export type MicroScopeTypeId = typeof MicroScopeTypeId
+
+/**
+ * @since 3.3.0
+ * @category resources & finalization
+ */
+export interface MicroScope {
+  readonly [MicroScopeTypeId]: MicroScopeTypeId
+  readonly addFinalizer: (finalizer: (result: Result<any, any>) => Micro<void>) => Micro<void>
+  readonly fork: Micro<MicroScope.Closeable>
+}
+
+/**
+ * @since 3.3.0
+ * @category resources & finalization
+ */
+export declare namespace MicroScope {
+  /**
+   * @since 3.3.0
+   * @category resources & finalization
+   */
+  export interface Closeable extends MicroScope {
+    readonly close: (result: Result<any, any>) => Micro<void>
+  }
+}
+
+/**
+ * @since 3.3.0
+ * @category resources & finalization
+ */
+export const MicroScope: Context.Tag<MicroScope, MicroScope> = Context.GenericTag<MicroScope>("effect/Micro/MicroScope")
+
+class ScopeImpl implements MicroScope.Closeable {
+  readonly [MicroScopeTypeId]: MicroScopeTypeId
+  state: {
+    readonly _tag: "Open"
+    readonly finalizers: Set<(result: Result<any, any>) => Micro<void>>
+  } | {
+    readonly _tag: "Closed"
+    readonly result: Result<any, any>
+  } = { _tag: "Open", finalizers: new Set() }
+
+  constructor() {
+    this[MicroScopeTypeId] = MicroScopeTypeId
+  }
+
+  unsafeAddFinalizer(finalizer: (result: Result<any, any>) => Micro<void>): void {
+    if (this.state._tag === "Open") {
+      this.state.finalizers.add(finalizer)
+    }
+  }
+  addFinalizer(finalizer: (result: Result<any, any>) => Micro<void>): Micro<void> {
+    return suspend(() => {
+      if (this.state._tag === "Open") {
+        this.state.finalizers.add(finalizer)
+        return void_
+      }
+      return finalizer(this.state.result)
     })
+  }
+  unsafeRemoveFinalizer(finalizer: (result: Result<any, any>) => Micro<void>): void {
+    if (this.state._tag === "Open") {
+      this.state.finalizers.delete(finalizer)
+    }
+  }
+  close(result: Result<any, any>): Micro<void> {
+    return suspend(() => {
+      if (this.state._tag === "Open") {
+        const finalizers = Array.from(this.state.finalizers).reverse()
+        this.state = { _tag: "Closed", result }
+        return flatMap(
+          forEach(finalizers, (finalizer) => asResult(finalizer(result))),
+          (results) => asVoid(fromResult(Either.all(results)))
+        )
+      }
+      return void_
+    })
+  }
+  get fork() {
+    return sync(() => {
+      const newScope = new ScopeImpl()
+      if (this.state._tag === "Closed") {
+        newScope.state = this.state
+        return newScope
+      }
+      function fin(result: Result<any, any>) {
+        return newScope.close(result)
+      }
+      this.state.finalizers.add(fin)
+      newScope.unsafeAddFinalizer((_) => sync(() => this.unsafeRemoveFinalizer(fin)))
+      return newScope
+    })
+  }
+}
+
+/**
+ * @since 3.3.0
+ * @category resources & finalization
+ */
+export const makeScope = (): Micro<MicroScope.Closeable> => sync(() => new ScopeImpl())
+
+/**
+ * @since 3.3.0
+ * @category resources & finalization
+ */
+export const scope: Micro<MicroScope, never, MicroScope> = service(MicroScope)
+
+/**
+ * @since 3.3.0
+ * @category resources & finalization
+ */
+export const scoped = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, Exclude<R, MicroScope>> =>
+  suspend(function() {
+    const scope = new ScopeImpl()
+    return onResult(provideService(self, MicroScope, scope), (result) => scope.close(result))
   })
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category resources & finalization
+ */
+export const acquireRelease = <A, E, R>(
+  acquire: Micro<A, E, R>,
+  release: (a: A, result: Result<any, any>) => Micro<void>
+): Micro<A, E, R | MicroScope> =>
+  uninterruptible(flatMap(
+    scope,
+    (scope) =>
+      tap(
+        acquire,
+        (a) => scope.addFinalizer((result) => release(a, result))
+      )
+  ))
+
+/**
+ * @since 3.3.0
+ * @category resources & finalization
  */
 export const onResult: {
   <A, E, XE, XR>(
@@ -785,12 +1017,13 @@ export const onResult: {
   2,
   <A, E, R, XE, XR>(self: Micro<A, E, R>, f: (result: Result<A, E>) => Micro<void, XE, XR>): Micro<A, E | XE, R | XR> =>
     uninterruptibleMask((restore) =>
-      flatMap(asResult(restore(self)), (result) => zipRight(f(result), fromResult(result)))
+      flatMap(asResult(restore(self)), (result) => andThen(f(result), fromResult(result)))
     )
 )
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category resources & finalization
  */
 export const acquireUseRelease = <Resource, E, R, A, E2, R2, R3>(
   acquire: Micro<Resource, E, R>,
@@ -803,19 +1036,25 @@ export const acquireUseRelease = <Resource, E, R, A, E2, R2, R3>(
       (a) =>
         flatMap(
           asResult(restore(use(a))),
-          (result) => zipRight(release(a, result), fromResult(result))
+          (result) => andThen(release(a, result), fromResult(result))
         )
     )
   )
 
+// ----------------------------------------------------------------------------
+// environment
+// ----------------------------------------------------------------------------
+
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category environment
  */
 export const envGet = <A>(fiberRef: Env.MicroEnvRef<A>): Micro<A> =>
   make((env, onResult) => onResult(Either.right(Env.get(env, fiberRef))))
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category environment
  */
 export const locally: {
   <A>(fiberRef: Env.MicroEnvRef<A>, value: A): <XA, E, R>(self: Micro<XA, E, R>) => Micro<XA, E, R>
@@ -827,62 +1066,14 @@ export const locally: {
 )
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category environment
  */
 export const context = <R>(): Micro<Context.Context<R>> => envGet(Env.currentContext) as any
 
 /**
- * @since 3.2.0
- */
-export const uninterruptible = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, R> =>
-  unsafeMakeNoAbort(function(env, onResult) {
-    const nextEnv = Env.mutate(env, function(env) {
-      env[currentInterruptible.key] = false
-      env[Env.currentAbortSignal.key] = new AbortController().signal
-      return env
-    })
-    self[runSymbol](nextEnv, onResult)
-  })
-
-/**
- * @since 3.2.0
- */
-export const uninterruptibleMask = <A, E, R>(
-  f: (restore: <A, E, R>(effect: Micro<A, E, R>) => Micro<A, E, R>) => Micro<A, E, R>
-): Micro<A, E, R> =>
-  unsafeMakeNoAbort((env, onResult) => {
-    const isInterruptible = Env.get(env, currentInterruptible)
-    const effect = isInterruptible ? f(interruptible) : f(identity)
-    const nextEnv = isInterruptible ?
-      Env.mutate(env, function(env) {
-        env[currentInterruptible.key] = false
-        env[Env.currentAbortSignal.key] = new AbortController().signal
-        return env
-      }) :
-      env
-    effect[runSymbol](nextEnv, onResult)
-  })
-
-/**
- * @since 3.2.0
- */
-export const interruptible = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, R> =>
-  make((env, onResult) => {
-    const isInterruptible = Env.get(env, currentInterruptible)
-    let newEnv = env
-    if (!isInterruptible) {
-      const controller = Env.get(env, Env.currentAbortController)
-      newEnv = Env.mutate(env, function(env) {
-        env[currentInterruptible.key] = true
-        env[Env.currentAbortSignal.key] = controller.signal
-        return env
-      })
-    }
-    self[runSymbol](newEnv, onResult)
-  })
-
-/**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category environment
  */
 export const provideContext: {
   <XR>(context: Context.Context<XR>): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, Exclude<R, XR>>
@@ -898,7 +1089,8 @@ export const provideContext: {
 )
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category environment
  */
 export const provideService: {
   <I, S>(tag: Context.Tag<I, S>, service: S): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, Exclude<R, I>>
@@ -914,9 +1106,10 @@ export const provideService: {
 )
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category environment
  */
-export const provideServiceEffect: {
+export const provideServiceMicro: {
   <I, S, E2, R2>(
     tag: Context.Tag<I, S>,
     acquire: Micro<S, E2, R2>
@@ -935,51 +1128,70 @@ export const provideServiceEffect: {
   ): Micro<A, E | E2, Exclude<R, I> | R2> => flatMap(acquire, (service) => provideService(self, tag, service))
 )
 
-export const gen = <Eff extends YieldWrap<Micro<any, any, any>>, AEff>(
-  f: () => Generator<Eff, AEff, never>
-): Micro<
-  AEff,
-  [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Micro<infer _A, infer E, infer _R>>] ? E : never,
-  [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Micro<infer _A, infer _E, infer R>>] ? R : never
-> =>
-  make(function(env, onResult) {
-    const iterator = f() as Iterator<YieldWrap<Micro<any, any, any>>, AEff, any>
-    let running = false
-    let value: any = undefined
-    function run() {
-      running = true
-      try {
-        let shouldContinue = true
-        while (shouldContinue) {
-          const result = iterator.next(value)
-          if (result.done) {
-            return onResult(Either.right(result.value))
-          }
-          shouldContinue = false
-          yieldWrapGet(result.value)[runSymbol](env, function(result) {
-            if (result._tag === "Left") {
-              onResult(result)
-            } else {
-              shouldContinue = true
-              value = result.right
-              if (!running) run()
-            }
-          })
-        }
-      } catch (err) {
-        onResult(Either.left(FailureUnexpected(err)))
-      }
-      running = false
+// ----------------------------------------------------------------------------
+// interruption
+// ----------------------------------------------------------------------------
+
+/**
+ * @since 3.3.0
+ * @category interruption
+ */
+export const uninterruptible = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, R> =>
+  unsafeMakeNoAbort(function(env, onResult) {
+    const nextEnv = Env.mutate(env, function(env) {
+      env[currentInterruptible.key] = false
+      env[Env.currentAbortSignal.key] = new AbortController().signal
+      return env
+    })
+    self[runSymbol](nextEnv, onResult)
+  })
+
+/**
+ * @since 3.3.0
+ * @category interruption
+ */
+export const uninterruptibleMask = <A, E, R>(
+  f: (restore: <A, E, R>(effect: Micro<A, E, R>) => Micro<A, E, R>) => Micro<A, E, R>
+): Micro<A, E, R> =>
+  unsafeMakeNoAbort((env, onResult) => {
+    const isInterruptible = Env.get(env, currentInterruptible)
+    const effect = isInterruptible ? f(interruptible) : f(identity)
+    const nextEnv = isInterruptible ?
+      Env.mutate(env, function(env) {
+        env[currentInterruptible.key] = false
+        env[Env.currentAbortSignal.key] = new AbortController().signal
+        return env
+      }) :
+      env
+    effect[runSymbol](nextEnv, onResult)
+  })
+
+/**
+ * @since 3.3.0
+ * @category interruption
+ */
+export const interruptible = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, R> =>
+  make((env, onResult) => {
+    const isInterruptible = Env.get(env, currentInterruptible)
+    let newEnv = env
+    if (!isInterruptible) {
+      const controller = Env.get(env, Env.currentAbortController)
+      newEnv = Env.mutate(env, function(env) {
+        env[currentInterruptible.key] = true
+        env[Env.currentAbortSignal.key] = controller.signal
+        return env
+      })
     }
-    run()
+    self[runSymbol](newEnv, onResult)
   })
 
 // ========================================================================
-// Collecting
+// traversal & collecting
 // ========================================================================
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category traversal & collecting
  */
 export const forEach: {
   <A, B, E, R>(iterable: Iterable<A>, f: (a: NoInfer<A>) => Micro<B, E, R>, options?: {
@@ -1130,6 +1342,37 @@ const forEachConcurrent = <
     pump()
   })
 
+// ----------------------------------------------------------------------------
+// handle & forking
+// ----------------------------------------------------------------------------
+
+/**
+ * @since 3.3.0
+ * @category handle & forking
+ */
+export const HandleTypeId: unique symbol = Symbol.for("effect/Micro/Handle")
+
+/**
+ * @since 3.3.0
+ * @category handle & forking
+ */
+export type HandleTypeId = typeof HandleTypeId
+
+/**
+ * @since 3.3.0
+ * @category handle & forking
+ */
+export interface Handle<A, E = never> {
+  readonly [HandleTypeId]: HandleTypeId
+  readonly await: Micro<Result<A, E>>
+  readonly join: Micro<A, E>
+  readonly abort: Micro<void>
+  readonly unsafeAbort: () => void
+  readonly addObserver: (observer: (result: Result<A, E>) => void) => void
+  readonly removeObserver: (observer: (result: Result<A, E>) => void) => void
+  readonly unsafePoll: () => Result<A, E> | null
+}
+
 class HandleImpl<A, E> implements Handle<A, E> {
   readonly [HandleTypeId]: HandleTypeId
 
@@ -1222,7 +1465,8 @@ class HandleImpl<A, E> implements Handle<A, E> {
 }
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category handle & forking
  */
 export const fork = <A, E, R>(self: Micro<A, E, R>): Micro<Handle<A, E>, never, R> =>
   make(function(env, onResult) {
@@ -1242,7 +1486,8 @@ export const fork = <A, E, R>(self: Micro<A, E, R>): Micro<Handle<A, E>, never, 
   })
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category handle & forking
  */
 export const forkDaemon = <A, E, R>(self: Micro<A, E, R>): Micro<Handle<A, E>, never, R> =>
   make(function(env, onResult) {
@@ -1261,8 +1506,13 @@ export const forkDaemon = <A, E, R>(self: Micro<A, E, R>): Micro<Handle<A, E>, n
     })
   })
 
+// ----------------------------------------------------------------------------
+// execution
+// ----------------------------------------------------------------------------
+
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category execution
  */
 export const runFork = <A, E>(effect: Micro<A, E>): Handle<A, E> => {
   const controller = new AbortController()
@@ -1278,7 +1528,8 @@ export const runFork = <A, E>(effect: Micro<A, E>): Handle<A, E> => {
 }
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category execution
  */
 export const runPromiseResult = <A, E>(effect: Micro<A, E>): Promise<Result<A, E>> =>
   new Promise((resolve, _reject) => {
@@ -1287,7 +1538,8 @@ export const runPromiseResult = <A, E>(effect: Micro<A, E>): Promise<Result<A, E
   })
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category execution
  */
 export const runPromise = <A, E>(effect: Micro<A, E>): Promise<A> =>
   runPromiseResult(effect).then((result) => {
@@ -1298,156 +1550,33 @@ export const runPromise = <A, E>(effect: Micro<A, E>): Promise<A> =>
   })
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category execution
  */
-export const runSync = <A, E>(effect: Micro<A, E>): A => {
+export const runSyncResult = <A, E>(effect: Micro<A, E>): Result<A, E> => {
   const handle = runFork(effect)
   const result = handle.unsafePoll()
   if (result === null) {
-    throw handle
-  } else if (result._tag === "Left") {
+    return Either.left(FailureUnexpected(handle))
+  }
+  return result
+}
+
+/**
+ * @since 3.3.0
+ * @category execution
+ */
+export const runSync = <A, E>(effect: Micro<A, E>): A => {
+  const result = runSyncResult(effect)
+  if (result._tag === "Left") {
     throw result.left
   }
   return result.right
 }
 
 // ========================================================================
-// Scope
+// env refs
 // ========================================================================
-
-/**
- * @since 3.2.0
- */
-export const MicroScopeTypeId: unique symbol = Symbol.for("effect/Micro/MicroScope")
-
-/**
- * @since 3.2.0
- */
-export type MicroScopeTypeId = typeof MicroScopeTypeId
-
-/**
- * @since 3.2.0
- */
-export interface MicroScope {
-  readonly [MicroScopeTypeId]: MicroScopeTypeId
-  readonly addFinalizer: (finalizer: (result: Result<any, any>) => Micro<void>) => Micro<void>
-  readonly fork: Micro<MicroScope.Closeable>
-}
-
-/**
- * @since 3.2.0
- */
-export declare namespace MicroScope {
-  /**
-   * @since 3.2.0
-   */
-  export interface Closeable extends MicroScope {
-    readonly close: (result: Result<any, any>) => Micro<void>
-  }
-}
-
-/**
- * @since 3.2.0
- */
-export const MicroScope: Context.Tag<MicroScope, MicroScope> = Context.GenericTag<MicroScope>("effect/Micro/MicroScope")
-
-class ScopeImpl implements MicroScope.Closeable {
-  readonly [MicroScopeTypeId]: MicroScopeTypeId
-  state: {
-    readonly _tag: "Open"
-    readonly finalizers: Set<(result: Result<any, any>) => Micro<void>>
-  } | {
-    readonly _tag: "Closed"
-    readonly result: Result<any, any>
-  } = { _tag: "Open", finalizers: new Set() }
-
-  constructor() {
-    this[MicroScopeTypeId] = MicroScopeTypeId
-  }
-
-  unsafeAddFinalizer(finalizer: (result: Result<any, any>) => Micro<void>): void {
-    if (this.state._tag === "Open") {
-      this.state.finalizers.add(finalizer)
-    }
-  }
-  addFinalizer(finalizer: (result: Result<any, any>) => Micro<void>): Micro<void> {
-    return suspend(() => {
-      if (this.state._tag === "Open") {
-        this.state.finalizers.add(finalizer)
-        return void_
-      }
-      return finalizer(this.state.result)
-    })
-  }
-  unsafeRemoveFinalizer(finalizer: (result: Result<any, any>) => Micro<void>): void {
-    if (this.state._tag === "Open") {
-      this.state.finalizers.delete(finalizer)
-    }
-  }
-  close(result: Result<any, any>): Micro<void> {
-    return suspend(() => {
-      if (this.state._tag === "Open") {
-        const finalizers = Array.from(this.state.finalizers).reverse()
-        this.state = { _tag: "Closed", result }
-        return flatMap(
-          forEach(finalizers, (finalizer) => asResult(finalizer(result))),
-          (results) => asVoid(fromResult(Either.all(results)))
-        )
-      }
-      return void_
-    })
-  }
-  get fork() {
-    return sync(() => {
-      const newScope = new ScopeImpl()
-      if (this.state._tag === "Closed") {
-        newScope.state = this.state
-        return newScope
-      }
-      function fin(result: Result<any, any>) {
-        return newScope.close(result)
-      }
-      this.state.finalizers.add(fin)
-      newScope.unsafeAddFinalizer((_) => sync(() => this.unsafeRemoveFinalizer(fin)))
-      return newScope
-    })
-  }
-}
-
-/**
- * @since 3.2.0
- */
-export const makeScope = (): Micro<MicroScope.Closeable> => sync(() => new ScopeImpl())
-
-/**
- * @since 3.2.0
- */
-export const scope: Micro<MicroScope, never, MicroScope> = service(MicroScope)
-
-/**
- * @since 3.2.0
- */
-export const scoped = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, Exclude<R, MicroScope>> =>
-  suspend(function() {
-    const scope = new ScopeImpl()
-    return onResult(provideService(self, MicroScope, scope), (result) => scope.close(result))
-  })
-
-/**
- * @since 3.2.0
- */
-export const acquireRelease = <A, E, R>(
-  acquire: Micro<A, E, R>,
-  release: (a: A, result: Result<any, any>) => Micro<void>
-): Micro<A, E, R | MicroScope> =>
-  uninterruptible(flatMap(
-    scope,
-    (scope) =>
-      tap(
-        acquire,
-        (a) => scope.addFinalizer((result) => release(a, result))
-      )
-  ))
 
 const currentInterruptible: Env.MicroEnvRef<boolean> = Env.makeRef(
   "effect/Micro/currentInterruptible",
@@ -1455,7 +1584,8 @@ const currentInterruptible: Env.MicroEnvRef<boolean> = Env.makeRef(
 )
 
 /**
- * @since 3.2.0
+ * @since 3.3.0
+ * @category env refs
  */
 export const withConcurrency: {
   (concurrency: "unbounded" | number): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, R>
