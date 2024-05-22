@@ -1061,12 +1061,10 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
   const lines = stack.split("\n")
 
   for (let i = 1; i < lines.length; i++) {
-    if (lines[i].includes("effect_internal_function")) {
-      out.pop()
+    if (lines[i].includes("Generator.next")) {
       break
     }
-    if (lines[i].includes("effect_internal_generator")) {
-      out.pop()
+    if (lines[i].includes("effect_internal_function")) {
       out.pop()
       break
     }

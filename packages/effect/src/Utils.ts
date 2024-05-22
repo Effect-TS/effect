@@ -786,9 +786,14 @@ export const structuralRegion = <A>(body: () => A, tester?: (a: unknown, b: unkn
 }
 
 const tracingFunction = (name: string) => {
-  const internalCall = <A>(body: () => A): A => body()
-  Object.defineProperty(internalCall, "name", { value: name })
-  return internalCall
+  const wrap = {
+    [name]<A>(body: () => A) {
+      return body()
+    }
+  }
+  return function<A>(fn: () => A): A {
+    return wrap[name](fn)
+  }
 }
 
 /**
@@ -796,11 +801,4 @@ const tracingFunction = (name: string) => {
  * @status experimental
  * @category tracing
  */
-export const effect_internal_function = tracingFunction("effect_internal_function")
-
-/**
- * @since 3.2.2
- * @status experimental
- * @category tracing
- */
-export const effect_internal_generator = tracingFunction("effect_internal_generator")
+export const internalCall = tracingFunction("effect_internal_function")
