@@ -613,11 +613,11 @@ export const addUTCWeeks: {
  *
  * @example
  * ```typescript
- * const baseDate1 = pipe("2024-01-31", Date.unsafeParse, Date.localToUTC)
+ * const baseDate1 = pipe("2024-01-31", Date.unsafeParse, Date.localAsUTC)
  * const result1 = pipe(baseDate1, Date.addUTCMonths(1), Date.toISODateString)
  * expect(result1).toEqual("2024-03-02")
  *
- * const baseDate2 = pipe("2024-03-31", Date.unsafeParse, Date.localToUTC)
+ * const baseDate2 = pipe("2024-03-31", Date.unsafeParse, Date.localAsUTC)
  * const result2 = pipe(baseDate2, Date.addUTCMonths(-1), Date.toISODateString)
  * expect(result2).toEqual("2024-03-02")
  * ```
@@ -637,11 +637,11 @@ export const addMonths: {
  *
  * @example
  * ```typescript
- * const baseDate1 = pipe("2024-01-31", Date.unsafeParse, Date.localToUTC)
+ * const baseDate1 = pipe("2024-01-31", Date.unsafeParse, Date.localAsUTC)
  * const result1 = pipe(baseDate1, Date.addUTCMonths(1), Date.toISODateString)
  * expect(result1).toEqual("2024-03-02")
  *
- * const baseDate2 = pipe("2024-03-31", Date.unsafeParse, Date.localToUTC)
+ * const baseDate2 = pipe("2024-03-31", Date.unsafeParse, Date.localAsUTC)
  * const result2 = pipe(baseDate2, Date.addUTCMonths(-1), Date.toISODateString)
  * expect(result2).toEqual("2024-03-02")
  * ```
@@ -661,11 +661,11 @@ export const addUTCMonths: {
  *
  * @example
  * ```typescript
- * const baseDate1 = pipe("2024-01-31", Date.unsafeParse, Date.localToUTC)
+ * const baseDate1 = pipe("2024-01-31", Date.unsafeParse, Date.localAsUTC)
  * const result1 = pipe(baseDate1, Date.addUTCMonthsStrict(1), Date.toISODateString)
  * expect(result1).toEqual("2024-02-29")
  *
- * const baseDate2 = pipe("2024-03-31", Date.unsafeParse, Date.localToUTC)
+ * const baseDate2 = pipe("2024-03-31", Date.unsafeParse, Date.localAsUTC)
  * const result2 = pipe(baseDate2, Date.addUTCMonthsStrict(-1), Date.toISODateString)
  * expect(result2).toEqual("2024-02-29")
  * ```
@@ -689,11 +689,11 @@ export const addMonthsStrict: {
  *
  * @example
  * ```typescript
- * const baseDate1 = pipe("2024-01-31", Date.unsafeParse, Date.localToUTC)
+ * const baseDate1 = pipe("2024-01-31", Date.unsafeParse, Date.localAsUTC)
  * const result1 = pipe(baseDate1, Date.addUTCMonthsStrict(1), Date.toISODateString)
  * expect(result1).toEqual("2024-02-29")
  *
- * const baseDate2 = pipe("2024-03-31", Date.unsafeParse, Date.localToUTC)
+ * const baseDate2 = pipe("2024-03-31", Date.unsafeParse, Date.localAsUTC)
  * const result2 = pipe(baseDate2, Date.addUTCMonthsStrict(-1), Date.toISODateString)
  * expect(result2).toEqual("2024-02-29")
  * ```
@@ -1204,16 +1204,16 @@ export const ceilUTCYear = flow(floorUTCYear, addUTCYears(1))
  *
  * @example
  * ```typescript
- * const baseDate1 = pipe("2024-01-01T00:00:00.000", Date.unsafeParse, Date.localToUTC)
+ * const baseDate1 = pipe("2024-01-01T00:00:00.000", Date.unsafeParse, Date.localAsUTC)
  * const result1 = pipe(baseDate1, Date.addUTCMonths(6), Date.toISOString)
  * expect(result1).toEqual("2024-07-01T00:00:00.000Z")
  *
- * const baseDate2 = pipe("2024-07-01T00:00:00.000", Date.unsafeParse, Date.localToUTC)
+ * const baseDate2 = pipe("2024-07-01T00:00:00.000", Date.unsafeParse, Date.localAsUTC)
  * const result2 = pipe(baseDate2, Date.addUTCMonths(6), Date.toISOString)
  * expect(result2).toEqual("2025-01-01T00:00:00.000Z")
  * ```
  */
-export const localToUTC = (self: Date) => addUTCMinutes(self, getTimeZoneOffset(self) * -1)
+export const localAsUTC = (self: Date) => addUTCMinutes(self, getTimeZoneOffset(self) * -1)
 
 /**
  * Gets the difference in milliseconds between `start` and `end`, returning a negative number if `end` is earlier than `start`.
