@@ -803,10 +803,3 @@ const tracingFunction = (name: string) => {
  * @category tracing
  */
 export const internalCall = tracingFunction("effect_internal_function")
-
-/**
- * @since 3.2.2
- * @status experimental
- * @category tracing
- */
-export const internalCallGenerator = tracingFunction("effect_internal_generator")
