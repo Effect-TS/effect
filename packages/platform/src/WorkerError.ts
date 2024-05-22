@@ -2,8 +2,7 @@
  * @since 1.0.0
  */
 import * as Schema from "@effect/schema/Schema"
-import * as Cause from "effect/Cause"
-import { identity } from "effect/Function"
+import type * as Cause from "effect/Cause"
 import * as Predicate from "effect/Predicate"
 import * as internal from "./internal/workerError.js"
 
@@ -25,27 +24,13 @@ export type WorkerErrorTypeId = typeof WorkerErrorTypeId
  */
 export const isWorkerError = (u: unknown): u is WorkerError => Predicate.hasProperty(u, WorkerErrorTypeId)
 
-const causeDefectPretty: Schema.Schema<unknown> = Schema.transform(
-  Schema.Unknown,
-  Schema.Unknown,
-  {
-    decode: identity,
-    encode: (defect) => {
-      if (Predicate.isObject(defect)) {
-        return Cause.pretty(Cause.die(defect))
-      }
-      return String(defect)
-    }
-  }
-)
-
 /**
  * @since 1.0.0
  * @category errors
  */
 export class WorkerError extends Schema.TaggedError<WorkerError>()("WorkerError", {
   reason: Schema.Literal("spawn", "decode", "send", "unknown", "encode"),
-  error: causeDefectPretty
+  error: Schema.CauseDefectUnknown
 }) {
   /**
    * @since 1.0.0
@@ -58,7 +43,7 @@ export class WorkerError extends Schema.TaggedError<WorkerError>()("WorkerError"
   static readonly Cause: Schema.Schema<
     Cause.Cause<WorkerError>,
     Schema.CauseEncoded<WorkerErrorFrom>
-  > = Schema.Cause({ defect: causeDefectPretty, error: this })
+  > = Schema.Cause({ error: this })
 
   /**
    * @since 1.0.0

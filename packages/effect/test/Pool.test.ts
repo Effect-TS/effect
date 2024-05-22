@@ -246,4 +246,25 @@ describe("Pool", () => {
       const result = yield* $(Fiber.interrupt(fiber))
       expect(result).toEqual(Exit.interrupt(fiberId))
     }))
+
+  it.scoped("finalizer is called for failed allocations", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const count = yield* Ref.make(0)
+      const get = Effect.acquireRelease(
+        Ref.updateAndGet(count, (n) => n + 1),
+        () => Ref.update(count, (n) => n - 1)
+      ).pipe(
+        Effect.andThen(Effect.fail("boom"))
+      )
+      const pool = yield* Pool.make({ acquire: get, size: 10 }).pipe(
+        Scope.extend(scope)
+      )
+      yield* Effect.scoped(pool.get).pipe(
+        Effect.ignore
+      )
+      expect(yield* Ref.get(count)).toBe(10)
+      yield* Scope.close(scope, Exit.void)
+      expect(yield* Ref.get(count)).toBe(0)
+    }))
 })
