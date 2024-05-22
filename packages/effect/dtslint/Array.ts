@@ -99,25 +99,37 @@ Option.liftPredicate(Array.isNonEmptyArray)
 Array.map(readonlyNumbers, (n) => n + 1)
 
 // $ExpectType number[]
-pipe(readonlyNumbers, Array.map((n) => n + 1))
+pipe(
+  readonlyNumbers,
+  Array.map((n) => n + 1)
+)
 
 // $ExpectType number[]
 Array.map(numbers, (n) => n + 1)
 
 // $ExpectType number[]
-pipe(numbers, Array.map((n) => n + 1))
+pipe(
+  numbers,
+  Array.map((n) => n + 1)
+)
 
 // $ExpectType [number, ...number[]]
 Array.map(nonEmptyReadonlyNumbers, (n) => n + 1)
 
 // $ExpectType [number, ...number[]]
-pipe(nonEmptyReadonlyNumbers, Array.map((n) => n + 1))
+pipe(
+  nonEmptyReadonlyNumbers,
+  Array.map((n) => n + 1)
+)
 
 // $ExpectType [number, ...number[]]
 Array.map(nonEmptyNumbers, (n) => n + 1)
 
 // $ExpectType [number, ...number[]]
-pipe(nonEmptyNumbers, Array.map((n) => n + 1))
+pipe(
+  nonEmptyNumbers,
+  Array.map((n) => n + 1)
+)
 
 // -------------------------------------------------------------------------------------
 // groupBy
@@ -127,13 +139,13 @@ pipe(nonEmptyNumbers, Array.map((n) => n + 1))
 Array.groupBy([1, 2, 3], String)
 
 // $ExpectType Record<string, [number, ...number[]]>
-Array.groupBy([1, 2, 3], (n) => n > 0 ? "positive" as const : "negative" as const)
+Array.groupBy([1, 2, 3], (n) => n > 0 ? ("positive" as const) : ("negative" as const))
 
 // $ExpectType Record<symbol, [string, ...string[]]>
 Array.groupBy(["a", "b"], Symbol.for)
 
 // $ExpectType Record<symbol, [string, ...string[]]>
-Array.groupBy(["a", "b"], (s) => s === "a" ? symA : s === "b" ? symB : symC)
+Array.groupBy(["a", "b"], (s) => (s === "a" ? symA : s === "b" ? symB : symC))
 
 // -------------------------------------------------------------------------------------
 // some
@@ -145,9 +157,11 @@ if (Array.some(numbersOrStrings, Predicate.isString)) {
 
 pipe(
   numbersOrStrings,
-  Array.some((
-    _item // $ExpectType string | number
-  ) => true)
+  Array.some(
+    (
+      _item // $ExpectType string | number
+    ) => true
+  )
 )
 
 // -------------------------------------------------------------------------------------
@@ -162,28 +176,38 @@ if (Array.every(Predicate.isString)(numbersOrStrings)) {
   numbersOrStrings // $ExpectType (string | number)[] & readonly string[]
 }
 
-Array.every(numbersOrStrings, (
-  _item // $ExpectType string | number
-) => true)
-
-Array.every(numbersOrStrings, (
-  _item, // $ExpectType string | number
-  _i // $ExpectType number
-) => true)
-
-pipe(
+Array.every(
   numbersOrStrings,
-  Array.every((
+  (
     _item // $ExpectType string | number
-  ) => true)
+  ) => true
+)
+
+Array.every(
+  numbersOrStrings,
+  (
+    _item, // $ExpectType string | number
+    _i // $ExpectType number
+  ) => true
 )
 
 pipe(
   numbersOrStrings,
-  Array.every((
-    _item, // $ExpectType string | number
-    _i // $ExpectType number
-  ) => true)
+  Array.every(
+    (
+      _item // $ExpectType string | number
+    ) => true
+  )
+)
+
+pipe(
+  numbersOrStrings,
+  Array.every(
+    (
+      _item, // $ExpectType string | number
+      _i // $ExpectType number
+    ) => true
+  )
 )
 
 // -------------------------------------------------------------------------------------
@@ -265,15 +289,20 @@ Array.sortWith(nonEmptyabs, identity, ordera)
 // partition
 // -------------------------------------------------------------------------------------
 
-Array.partition(numbersOrStrings, (
-  _item // $ExpectType string | number
-) => true)
+Array.partition(
+  numbersOrStrings,
+  (
+    _item // $ExpectType string | number
+  ) => true
+)
 
 pipe(
   numbersOrStrings,
-  Array.partition((
-    _item // $ExpectType string | number
-  ) => true)
+  Array.partition(
+    (
+      _item // $ExpectType string | number
+    ) => true
+  )
 )
 
 // $ExpectType [excluded: (string | number)[], satisfying: (string | number)[]]
@@ -292,28 +321,29 @@ pipe(numbersOrStrings, Array.partition(Predicate.isNumber))
 // filter
 // -------------------------------------------------------------------------------------
 
-Array.filter(numbersOrStrings, (
-  _item // $ExpectType string | number
-) => true)
+Array.filter(
+  numbersOrStrings,
+  (
+    _item // $ExpectType string | number
+  ) => true
+)
 
 // @ts-expect-error
-Array.filter(numbersOrStrings, (
-  _item: string
-) => true)
+Array.filter(numbersOrStrings, (_item: string) => true)
 
 pipe(
   numbersOrStrings,
-  Array.filter((
-    _item // $ExpectType string | number
-  ) => true)
+  Array.filter(
+    (
+      _item // $ExpectType string | number
+    ) => true
+  )
 )
 
 pipe(
   numbersOrStrings,
   // @ts-expect-error
-  Array.filter((
-    _item: string
-  ) => true)
+  Array.filter((_item: string) => true)
 )
 
 // $ExpectType (string | number)[]
@@ -338,28 +368,38 @@ pipe(numbersOrStrings, Array.filter(Predicate.isNumber))
 // takeWhile
 // -------------------------------------------------------------------------------------
 
-Array.takeWhile(numbersOrStrings, (
-  _item // $ExpectType string | number
-) => true)
-
-Array.takeWhile(numbersOrStrings, (
-  _item, // $ExpectType string | number
-  _i // $ExpectType number
-) => true)
-
-pipe(
+Array.takeWhile(
   numbersOrStrings,
-  Array.takeWhile((
+  (
     _item // $ExpectType string | number
-  ) => true)
+  ) => true
+)
+
+Array.takeWhile(
+  numbersOrStrings,
+  (
+    _item, // $ExpectType string | number
+    _i // $ExpectType number
+  ) => true
 )
 
 pipe(
   numbersOrStrings,
-  Array.takeWhile((
-    _item, // $ExpectType string | number
-    _i // $ExpectType number
-  ) => true)
+  Array.takeWhile(
+    (
+      _item // $ExpectType string | number
+    ) => true
+  )
+)
+
+pipe(
+  numbersOrStrings,
+  Array.takeWhile(
+    (
+      _item, // $ExpectType string | number
+      _i // $ExpectType number
+    ) => true
+  )
 )
 
 // $ExpectType (string | number)[]
@@ -384,58 +424,78 @@ pipe(numbersOrStrings, Array.takeWhile(Predicate.isNumber))
 // findFirst
 // -------------------------------------------------------------------------------------
 
-Array.findFirst(numbersOrStrings, (
-  _item // $ExpectType string | number
-) => true)
-
-Array.findFirst(numbersOrStrings, (
-  _item, // $ExpectType string | number
-  _i // $ExpectType number
-) => true)
-
-// $ExpectType Option<number>
-Array.findFirst(numbersOrStrings, (
-  _item, // $ExpectType string | number
-  _i // $ExpectType number
-): _item is number => true)
-
-// $ExpectType Option<boolean>
-Array.findFirst(numbersOrStrings, (
-  _item, // $ExpectType string | number
-  _i // $ExpectType number
-) => Option.some(true))
-
-pipe(
+Array.findFirst(
   numbersOrStrings,
-  Array.findFirst((
+  (
     _item // $ExpectType string | number
-  ) => true)
+  ) => true
+)
+
+Array.findFirst(
+  numbersOrStrings,
+  (
+    _item, // $ExpectType string | number
+    _i // $ExpectType number
+  ) => true
+)
+
+// $ExpectType Option<number>
+Array.findFirst(
+  numbersOrStrings,
+  (
+    _item, // $ExpectType string | number
+    _i // $ExpectType number
+  ): _item is number => true
+)
+
+// $ExpectType Option<boolean>
+Array.findFirst(
+  numbersOrStrings,
+  (
+    _item, // $ExpectType string | number
+    _i // $ExpectType number
+  ) => Option.some(true)
 )
 
 pipe(
   numbersOrStrings,
-  Array.findFirst((
-    _item, // $ExpectType string | number
-    _i // $ExpectType number
-  ) => true)
+  Array.findFirst(
+    (
+      _item // $ExpectType string | number
+    ) => true
+  )
+)
+
+pipe(
+  numbersOrStrings,
+  Array.findFirst(
+    (
+      _item, // $ExpectType string | number
+      _i // $ExpectType number
+    ) => true
+  )
 )
 
 // $ExpectType Option<number>
 pipe(
   numbersOrStrings,
-  Array.findFirst((
-    _item, // $ExpectType string | number
-    _i // $ExpectType number
-  ): _item is number => true)
+  Array.findFirst(
+    (
+      _item, // $ExpectType string | number
+      _i // $ExpectType number
+    ): _item is number => true
+  )
 )
 
 // $ExpectType Option<boolean>
 pipe(
   numbersOrStrings,
-  Array.findFirst((
-    _item, // $ExpectType string | number
-    _i // $ExpectType number
-  ) => Option.some(true))
+  Array.findFirst(
+    (
+      _item, // $ExpectType string | number
+      _i // $ExpectType number
+    ) => Option.some(true)
+  )
 )
 
 // $ExpectType Option<string | number>
@@ -454,58 +514,78 @@ pipe(numbersOrStrings, Array.findFirst(Predicate.isNumber))
 // findLast
 // -------------------------------------------------------------------------------------
 
-Array.findLast(numbersOrStrings, (
-  _item // $ExpectType string | number
-) => true)
-
-Array.findLast(numbersOrStrings, (
-  _item, // $ExpectType string | number
-  _i // $ExpectType number
-) => true)
-
-// $ExpectType Option<number>
-Array.findLast(numbersOrStrings, (
-  _item, // $ExpectType string | number
-  _i // $ExpectType number
-): _item is number => true)
-
-// $ExpectType Option<boolean>
-Array.findLast(numbersOrStrings, (
-  _item, // $ExpectType string | number
-  _i // $ExpectType number
-) => Option.some(true))
-
-pipe(
+Array.findLast(
   numbersOrStrings,
-  Array.findLast((
+  (
     _item // $ExpectType string | number
-  ) => true)
+  ) => true
+)
+
+Array.findLast(
+  numbersOrStrings,
+  (
+    _item, // $ExpectType string | number
+    _i // $ExpectType number
+  ) => true
+)
+
+// $ExpectType Option<number>
+Array.findLast(
+  numbersOrStrings,
+  (
+    _item, // $ExpectType string | number
+    _i // $ExpectType number
+  ): _item is number => true
+)
+
+// $ExpectType Option<boolean>
+Array.findLast(
+  numbersOrStrings,
+  (
+    _item, // $ExpectType string | number
+    _i // $ExpectType number
+  ) => Option.some(true)
 )
 
 pipe(
   numbersOrStrings,
-  Array.findLast((
-    _item, // $ExpectType string | number
-    _i // $ExpectType number
-  ) => true)
+  Array.findLast(
+    (
+      _item // $ExpectType string | number
+    ) => true
+  )
+)
+
+pipe(
+  numbersOrStrings,
+  Array.findLast(
+    (
+      _item, // $ExpectType string | number
+      _i // $ExpectType number
+    ) => true
+  )
 )
 
 // $ExpectType Option<number>
 pipe(
   numbersOrStrings,
-  Array.findLast((
-    _item, // $ExpectType string | number
-    _i // $ExpectType number
-  ): _item is number => true)
+  Array.findLast(
+    (
+      _item, // $ExpectType string | number
+      _i // $ExpectType number
+    ): _item is number => true
+  )
 )
 
 // $ExpectType Option<boolean>
 pipe(
   numbersOrStrings,
-  Array.findLast((
-    _item, // $ExpectType string | number
-    _i // $ExpectType number
-  ) => Option.some(true))
+  Array.findLast(
+    (
+      _item, // $ExpectType string | number
+      _i // $ExpectType number
+    ) => Option.some(true)
+  )
 )
 
 // $ExpectType Option<string | number>
@@ -553,31 +633,63 @@ pipe(
 )
 
 // -------------------------------------------------------------------------------------
+// cast
+// -------------------------------------------------------------------------------------
+
+// $ExpectType unknown[]
+Array.cast(unknownValue)
+
+// $ExpectType number[]
+Array.cast(primitiveNumber)
+
+// $ExpectType (string | number)[]
+Array.cast(primitiveNumberOrString)
+
+// $ExpectType number[]
+Array.cast(numbers)
+
+// $ExpectType string[]
+Array.cast(strings)
+
+// $ExpectType (string | number)[]
+Array.cast(numbersOrStrings)
+
+// -------------------------------------------------------------------------------------
 // span
 // -------------------------------------------------------------------------------------
 
-Array.span(numbersOrStrings, (
-  _item // $ExpectType string | number
-) => true)
-
-Array.span(numbersOrStrings, (
-  _item, // $ExpectType string | number
-  _i // $ExpectType number
-) => true)
-
-pipe(
+Array.span(
   numbersOrStrings,
-  Array.span((
+  (
     _item // $ExpectType string | number
-  ) => true)
+  ) => true
+)
+
+Array.span(
+  numbersOrStrings,
+  (
+    _item, // $ExpectType string | number
+    _i // $ExpectType number
+  ) => true
 )
 
 pipe(
   numbersOrStrings,
-  Array.span((
-    _item, // $ExpectType string | number
-    _i // $ExpectType number
-  ) => true)
+  Array.span(
+    (
+      _item // $ExpectType string | number
+    ) => true
+  )
+)
+
+pipe(
+  numbersOrStrings,
+  Array.span(
+    (
+      _item, // $ExpectType string | number
+      _i // $ExpectType number
+    ) => true
+  )
 )
 
 // $ExpectType [init: (string | number)[], rest: (string | number)[]]
@@ -619,63 +731,83 @@ pipe(numbersOrStrings, Array.dropWhile(Predicate.isNumber))
 // -------------------------------------------------------------------------------------
 
 // $ExpectType number[]
-Array.flatMap(strings, (
-  _s, // $ExpectType string
-  _i // $ExpectType number
-) => Array.empty<number>())
+Array.flatMap(
+  strings,
+  (
+    _s, // $ExpectType string
+    _i // $ExpectType number
+  ) => Array.empty<number>()
+)
 
 // $ExpectType number[]
 pipe(
   strings,
-  Array.flatMap((
-    _s, // $ExpectType string
-    _i // $ExpectType number
-  ) => Array.empty<number>())
+  Array.flatMap(
+    (
+      _s, // $ExpectType string
+      _i // $ExpectType number
+    ) => Array.empty<number>()
+  )
 )
 
 // $ExpectType number[]
-Array.flatMap(strings, (
-  s, // $ExpectType string
-  _i // $ExpectType number
-) => Array.of(s.length))
+Array.flatMap(
+  strings,
+  (
+    s, // $ExpectType string
+    _i // $ExpectType number
+  ) => Array.of(s.length)
+)
 
 // $ExpectType number[]
 pipe(
   strings,
-  Array.flatMap((
-    s, // $ExpectType string
-    _i // $ExpectType number
-  ) => Array.of(s.length))
+  Array.flatMap(
+    (
+      s, // $ExpectType string
+      _i // $ExpectType number
+    ) => Array.of(s.length)
+  )
 )
 
 // $ExpectType number[]
-Array.flatMap(nonEmptyReadonlyStrings, (
-  _s, // $ExpectType string
-  _i // $ExpectType number
-) => Array.empty<number>())
-
-// $ExpectType number[]
-pipe(
+Array.flatMap(
   nonEmptyReadonlyStrings,
-  Array.flatMap((
+  (
     _s, // $ExpectType string
     _i // $ExpectType number
-  ) => Array.empty<number>())
+  ) => Array.empty<number>()
+)
+
+// $ExpectType number[]
+pipe(
+  nonEmptyReadonlyStrings,
+  Array.flatMap(
+    (
+      _s, // $ExpectType string
+      _i // $ExpectType number
+    ) => Array.empty<number>()
+  )
 )
 
 // $ExpectType [number, ...number[]]
-Array.flatMap(nonEmptyReadonlyStrings, (
-  s, // $ExpectType string
-  _i // $ExpectType number
-) => Array.of(s.length))
+Array.flatMap(
+  nonEmptyReadonlyStrings,
+  (
+    s, // $ExpectType string
+    _i // $ExpectType number
+  ) => Array.of(s.length)
+)
 
 // $ExpectType [number, ...number[]]
 pipe(
   nonEmptyReadonlyStrings,
-  Array.flatMap((
-    s, // $ExpectType string
-    _i // $ExpectType number
-  ) => Array.of(s.length))
+  Array.flatMap(
+    (
+      s, // $ExpectType string
+      _i // $ExpectType number
+    ) => Array.of(s.length)
+  )
 )
 
 // -------------------------------------------------------------------------------------
@@ -692,7 +824,9 @@ Array.flatten(hole<Array<Array.NonEmptyArray<number>>>())
 Array.flatten(hole<Array.NonEmptyArray<Array<number>>>())
 
 // $ExpectType [number, ...number[]]
-Array.flatten(hole<Array.NonEmptyReadonlyArray<Array.NonEmptyReadonlyArray<number>>>())
+Array.flatten(
+  hole<Array.NonEmptyReadonlyArray<Array.NonEmptyReadonlyArray<number>>>()
+)
 
 declare const flattenArray: Effect.Effect<ReadonlyArray<ReadonlyArray<number>>>
 declare const flattenNonEmptyArray: Effect.Effect<
@@ -931,10 +1065,14 @@ Array.union(nonEmptyNumbers)(nonEmptyStrings)
 Array.unionWith(strings, numbers, Equal.equivalence<string | number>())
 
 // $ExpectType (string | number)[]
-Array.unionWith(strings, numbers, (
-  _a, // $ExpectType string
-  _b // $ExpectType number
-) => true)
+Array.unionWith(
+  strings,
+  numbers,
+  (
+    _a, // $ExpectType string
+    _b // $ExpectType number
+  ) => true
+)
 
 // $ExpectType (string | number)[]
 pipe(strings, Array.unionWith(numbers, Equal.equivalence<string | number>()))
@@ -942,73 +1080,110 @@ pipe(strings, Array.unionWith(numbers, Equal.equivalence<string | number>()))
 // $ExpectType (string | number)[]
 pipe(
   strings,
-  Array.unionWith(numbers, (
-    _a, // $ExpectType string
-    _b // $ExpectType number
-  ) => true)
+  Array.unionWith(
+    numbers,
+    (
+      _a, // $ExpectType string
+      _b // $ExpectType number
+    ) => true
+  )
 )
 
 // $ExpectType [string | number, ...(string | number)[]]
 Array.unionWith(nonEmptyStrings, numbers, Equal.equivalence<string | number>())
 
 // $ExpectType [string | number, ...(string | number)[]]
-Array.unionWith(nonEmptyStrings, numbers, (
-  _a, // $ExpectType string
-  _b // $ExpectType number
-) => true)
+Array.unionWith(
+  nonEmptyStrings,
+  numbers,
+  (
+    _a, // $ExpectType string
+    _b // $ExpectType number
+  ) => true
+)
 
 // $ExpectType [string | number, ...(string | number)[]]
 Array.unionWith(strings, nonEmptyNumbers, Equal.equivalence<string | number>())
 
 // $ExpectType [string | number, ...(string | number)[]]
-Array.unionWith(strings, nonEmptyNumbers, (
-  _a, // $ExpectType string
-  _b // $ExpectType number
-) => true)
+Array.unionWith(
+  strings,
+  nonEmptyNumbers,
+  (
+    _a, // $ExpectType string
+    _b // $ExpectType number
+  ) => true
+)
 
 // $ExpectType [string | number, ...(string | number)[]]
-Array.unionWith(nonEmptyStrings, nonEmptyNumbers, Equal.equivalence<string | number>())
+Array.unionWith(
+  nonEmptyStrings,
+  nonEmptyNumbers,
+  Equal.equivalence<string | number>()
+)
 
 // $ExpectType [string | number, ...(string | number)[]]
-Array.unionWith(nonEmptyStrings, nonEmptyNumbers, (
-  _a, // $ExpectType string
-  _b // $ExpectType number
-) => true)
-
-// $ExpectType [string | number, ...(string | number)[]]
-pipe(nonEmptyStrings, Array.unionWith(numbers, Equal.equivalence<string | number>()))
+Array.unionWith(
+  nonEmptyStrings,
+  nonEmptyNumbers,
+  (
+    _a, // $ExpectType string
+    _b // $ExpectType number
+  ) => true
+)
 
 // $ExpectType [string | number, ...(string | number)[]]
 pipe(
   nonEmptyStrings,
-  Array.unionWith(numbers, (
-    _a, // $ExpectType string
-    _b // $ExpectType number
-  ) => true)
+  Array.unionWith(numbers, Equal.equivalence<string | number>())
 )
 
 // $ExpectType [string | number, ...(string | number)[]]
-pipe(strings, Array.unionWith(nonEmptyNumbers, Equal.equivalence<string | number>()))
+pipe(
+  nonEmptyStrings,
+  Array.unionWith(
+    numbers,
+    (
+      _a, // $ExpectType string
+      _b // $ExpectType number
+    ) => true
+  )
+)
 
 // $ExpectType [string | number, ...(string | number)[]]
 pipe(
   strings,
-  Array.unionWith(nonEmptyNumbers, (
-    _a, // $ExpectType string
-    _b // $ExpectType number
-  ) => true)
+  Array.unionWith(nonEmptyNumbers, Equal.equivalence<string | number>())
 )
 
 // $ExpectType [string | number, ...(string | number)[]]
-pipe(nonEmptyStrings, Array.unionWith(nonEmptyNumbers, Equal.equivalence<string | number>()))
+pipe(
+  strings,
+  Array.unionWith(
+    nonEmptyNumbers,
+    (
+      _a, // $ExpectType string
+      _b // $ExpectType number
+    ) => true
+  )
+)
 
 // $ExpectType [string | number, ...(string | number)[]]
 pipe(
   nonEmptyStrings,
-  Array.unionWith(nonEmptyNumbers, (
-    _a, // $ExpectType string
-    _b // $ExpectType number
-  ) => true)
+  Array.unionWith(nonEmptyNumbers, Equal.equivalence<string | number>())
+)
+
+// $ExpectType [string | number, ...(string | number)[]]
+pipe(
+  nonEmptyStrings,
+  Array.unionWith(
+    nonEmptyNumbers,
+    (
+      _a, // $ExpectType string
+      _b // $ExpectType number
+    ) => true
+  )
 )
 
 // -------------------------------------------------------------------------------------
@@ -1035,10 +1210,13 @@ pipe(nonEmptyStrings, Array.dedupe)
 Array.dedupeWith(strings, Equal.equivalence())
 
 // $ExpectType string[]
-Array.dedupeWith(strings, (
-  _a, // $ExpectType string
-  _b // $ExpectType string
-) => true)
+Array.dedupeWith(
+  strings,
+  (
+    _a, // $ExpectType string
+    _b // $ExpectType string
+  ) => true
+)
 
 // $ExpectType string[]
 pipe(strings, Array.dedupeWith(Equal.equivalence()))
@@ -1046,20 +1224,25 @@ pipe(strings, Array.dedupeWith(Equal.equivalence()))
 // $ExpectType string[]
 pipe(
   strings,
-  Array.dedupeWith((
-    _a, // $ExpectType string
-    _b // $ExpectType string
-  ) => true)
+  Array.dedupeWith(
+    (
+      _a, // $ExpectType string
+      _b // $ExpectType string
+    ) => true
+  )
 )
 
 // $ExpectType [string, ...string[]]
 Array.dedupeWith(nonEmptyStrings, Equal.equivalence())
 
 // $ExpectType [string, ...string[]]
-Array.dedupeWith(nonEmptyStrings, (
-  _a, // $ExpectType string
-  _b // $ExpectType string
-) => true)
+Array.dedupeWith(
+  nonEmptyStrings,
+  (
+    _a, // $ExpectType string
+    _b // $ExpectType string
+  ) => true
+)
 
 // $ExpectType [string, ...string[]]
 pipe(nonEmptyStrings, Array.dedupeWith(Equal.equivalence()))
@@ -1067,10 +1250,12 @@ pipe(nonEmptyStrings, Array.dedupeWith(Equal.equivalence()))
 // $ExpectType [string, ...string[]]
 pipe(
   nonEmptyStrings,
-  Array.dedupeWith((
-    _a, // $ExpectType string
-    _b // $ExpectType string
-  ) => true)
+  Array.dedupeWith(
+    (
+      _a, // $ExpectType string
+      _b // $ExpectType string
+    ) => true
+  )
 )
 
 // -------------------------------------------------------------------------------------
@@ -1078,33 +1263,43 @@ pipe(
 // -------------------------------------------------------------------------------------
 
 // $ExpectType string[]
-Array.chop(strings, ([
-  head, // $ExpectType string
-  ...tail // $ExpectType string[]
-]) => [head, tail])
+Array.chop(
+  strings,
+  ([
+    head, // $ExpectType string
+    ...tail // $ExpectType string[]
+  ]) => [head, tail]
+)
 
 // $ExpectType string[]
 pipe(
   strings,
-  Array.chop(([
-    head, // $ExpectType string
-    ...tail // $ExpectType string[]
-  ]) => [head, tail])
+  Array.chop(
+    ([
+      head, // $ExpectType string
+      ...tail // $ExpectType string[]
+    ]) => [head, tail]
+  )
 )
 
 // $ExpectType [string, ...string[]]
-Array.chop(nonEmptyStrings, ([
-  head, // $ExpectType string
-  ...tail // $ExpectType string[]
-]) => [head, tail])
+Array.chop(
+  nonEmptyStrings,
+  ([
+    head, // $ExpectType string
+    ...tail // $ExpectType string[]
+  ]) => [head, tail]
+)
 
 // $ExpectType [string, ...string[]]
 pipe(
   nonEmptyStrings,
-  Array.chop(([
-    head, // $ExpectType string
-    ...tail // $ExpectType string[]
-  ]) => [head, tail])
+  Array.chop(
+    ([
+      head, // $ExpectType string
+      ...tail // $ExpectType string[]
+    ]) => [head, tail]
+  )
 )
 
 // -------------------------------------------------------------------------------------
@@ -1155,10 +1350,12 @@ pipe(abs, Array.sortBy(ordera))
 // $ExpectType AB[]
 pipe(
   abs,
-  Array.sortBy((
-    _a, // $ExpectType AB
-    _b // $ExpectType AB
-  ) => 0)
+  Array.sortBy(
+    (
+      _a, // $ExpectType AB
+      _b // $ExpectType AB
+    ) => 0
+  )
 )
 
 // $ExpectType [AB, ...AB[]]
@@ -1167,10 +1364,12 @@ pipe(nonEmptyabs, Array.sortBy(ordera))
 // $ExpectType [AB, ...AB[]]
 pipe(
   nonEmptyabs,
-  Array.sortBy((
-    _a, // $ExpectType AB
-    _b // $ExpectType AB
-  ) => 0)
+  Array.sortBy(
+    (
+      _a, // $ExpectType AB
+      _b // $ExpectType AB
+    ) => 0
+  )
 )
 
 // -------------------------------------------------------------------------------------
@@ -1194,33 +1393,47 @@ pipe(hole<Array.NonEmptyReadonlyArray<[string, number]>>(), Array.unzip)
 // -------------------------------------------------------------------------------------
 
 // $ExpectType [string, number][]
-Array.zipWith(strings, numbers, (
-  a, // $ExpectType string
-  b // $ExpectType number
-) => [a, b] as [string, number])
+Array.zipWith(
+  strings,
+  numbers,
+  (
+    a, // $ExpectType string
+    b // $ExpectType number
+  ) => [a, b] as [string, number]
+)
 
 // $ExpectType [string, number][]
 pipe(
   strings,
-  Array.zipWith(numbers, (
-    a, // $ExpectType string
-    b // $ExpectType number
-  ) => [a, b] as [string, number])
+  Array.zipWith(
+    numbers,
+    (
+      a, // $ExpectType string
+      b // $ExpectType number
+    ) => [a, b] as [string, number]
+  )
 )
 
 // $ExpectType [[string, number], ...[string, number][]]
-Array.zipWith(nonEmptyStrings, nonEmptyNumbers, (
-  a, // $ExpectType string
-  b // $ExpectType number
-) => [a, b] as [string, number])
+Array.zipWith(
+  nonEmptyStrings,
+  nonEmptyNumbers,
+  (
+    a, // $ExpectType string
+    b // $ExpectType number
+  ) => [a, b] as [string, number]
+)
 
 // $ExpectType [[string, number], ...[string, number][]]
 pipe(
   nonEmptyStrings,
-  Array.zipWith(nonEmptyNumbers, (
-    a, // $ExpectType string
-    b // $ExpectType number
-  ) => [a, b] as [string, number])
+  Array.zipWith(
+    nonEmptyNumbers,
+    (
+      a, // $ExpectType string
+      b // $ExpectType number
+    ) => [a, b] as [string, number]
+  )
 )
 
 // -------------------------------------------------------------------------------------
