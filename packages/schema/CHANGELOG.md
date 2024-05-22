@@ -1,5 +1,14 @@
 # @effect/schema
 
+## 0.67.11
+
+### Patch Changes
+
+- [#2803](https://github.com/Effect-TS/effect/pull/2803) [`5af633e`](https://github.com/Effect-TS/effect/commit/5af633eb5ff6560a64d87263d1692bb9c75f7b3c) Thanks @tim-smart! - update dependencies
+
+- Updated dependencies [[`45578e8`](https://github.com/Effect-TS/effect/commit/45578e8faa80ae33d23e08f6f19467f818b7788f)]:
+  - effect@3.2.3
+
 ## 0.67.10
 
 ### Patch Changes

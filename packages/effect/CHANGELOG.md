@@ -1,5 +1,11 @@
 # effect
 
+## 3.2.3
+
+### Patch Changes
+
+- [#2805](https://github.com/Effect-TS/effect/pull/2805) [`45578e8`](https://github.com/Effect-TS/effect/commit/45578e8faa80ae33d23e08f6f19467f818b7788f) Thanks @tim-smart! - fix internal cutpoint name preservation
+
 ## 3.2.2
 
 ### Patch Changes
