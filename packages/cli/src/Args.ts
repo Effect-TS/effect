@@ -384,7 +384,7 @@ export const repeated: <A>(self: Args<A>) => Args<Array<A>> = InternalArgs.repea
  * @since 1.0.0
  * @category constructors
  */
-export const secret: (config?: Args.BaseArgsConfig) => Args<Secret> = InternalArgs.secret
+export const secret: (config?: Args.BaseArgsConfig) => Args<Secret<string>> = InternalArgs.secret
 
 /**
  * Creates a text argument.

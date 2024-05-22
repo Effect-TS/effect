@@ -54,13 +54,13 @@ export interface MysqlClientConfig {
   /**
    * Connection URI. Setting this will override the other connection options
    */
-  readonly url?: Secret.Secret
+  readonly url?: Secret.Secret<string>
 
   readonly host?: string
   readonly port?: number
   readonly database?: string
   readonly username?: string
-  readonly password?: Secret.Secret
+  readonly password?: Secret.Secret<string>
 
   readonly maxConnections?: number
   readonly connectionTTL?: Duration.DurationInput

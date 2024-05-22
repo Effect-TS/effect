@@ -3,21 +3,21 @@ import * as Util from "@effect/schema/test/TestUtils"
 import { Secret } from "effect"
 import { describe, it } from "vitest"
 
-describe("Secret", () => {
-  const schema = S.Secret
+describe("SecretFromString", () => {
+  const schema = S.SecretFromString
 
   it("property tests", () => {
     Util.roundtrip(schema)
   })
 
   it("decoding", () => {
-    Util.expectDecodeUnknownSuccess(schema, "keep me safe", Secret.fromString("keep me safe"))
+    Util.expectDecodeUnknownSuccess(schema, "keep me safe", Secret.make("keep me safe"))
   })
 
   it("encoding", () => {
     Util.expectEncodeSuccess(
       schema,
-      Secret.fromString("keep me safe"),
+      Secret.make("keep me safe"),
       "keep me safe"
     )
   })

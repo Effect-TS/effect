@@ -1,12 +1,15 @@
-import * as Arr from "../Array.js"
 import * as Equal from "../Equal.js"
 import { pipe } from "../Function.js"
 import * as Hash from "../Hash.js"
+import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import type * as Secret from "../Secret.js"
 
 /** @internal */
 const SecretSymbolKey = "effect/Secret"
+
+/** @internal */
+const secretsRegistry = new WeakMap<Secret.Secret<any>, any>()
 
 /** @internal */
 export const SecretTypeId: Secret.SecretTypeId = Symbol.for(
@@ -15,25 +18,29 @@ export const SecretTypeId: Secret.SecretTypeId = Symbol.for(
 
 /** @internal */
 export const proto = {
-  [SecretTypeId]: SecretTypeId,
-  [Hash.symbol](this: Secret.Secret): number {
+  [SecretTypeId]: {
+    _A: (_: never) => _
+  },
+  pipe() {
+    return pipeArguments(this, arguments)
+  },
+  [Hash.symbol]<T>(this: Secret.Secret<T>): number {
     return pipe(
       Hash.hash(SecretSymbolKey),
-      Hash.combine(Hash.array(this.raw)),
+      Hash.combine(Hash.hash(secretsRegistry.get(this))),
       Hash.cached(this)
     )
   },
-  [Equal.symbol](this: Secret.Secret, that: unknown): boolean {
-    return isSecret(that) && this.raw.length === that.raw.length &&
-      this.raw.every((v, i) => Equal.equals(v, that.raw[i]))
+  [Equal.symbol]<T>(this: Secret.Secret<T>, that: unknown): boolean {
+    return isSecret(that) && Equal.equals(secretsRegistry.get(this), secretsRegistry.get(that))
   }
 }
 
 /** @internal */
-export const isSecret = (u: unknown): u is Secret.Secret => hasProperty(u, SecretTypeId)
+export const isSecret = (u: unknown): u is Secret.Secret<unknown> => hasProperty(u, SecretTypeId)
 
 /** @internal */
-export const make = (bytes: Array<number>): Secret.Secret => {
+export const make = <T>(value: T): Secret.Secret<T> => {
   const secret = Object.create(proto)
   Object.defineProperty(secret, "toString", {
     enumerable: false,
@@ -47,30 +54,14 @@ export const make = (bytes: Array<number>): Secret.Secret => {
       return "<redacted>"
     }
   })
-  Object.defineProperty(secret, "raw", {
-    enumerable: false,
-    value: bytes
-  })
+  secretsRegistry.set(secret, value)
   return secret
 }
 
 /** @internal */
-export const fromIterable = (iterable: Iterable<string>): Secret.Secret =>
-  make(Arr.fromIterable(iterable).map((char) => char.charCodeAt(0)))
+export const value = <T>(self: Secret.Secret<T>): T => secretsRegistry.get(self)
 
 /** @internal */
-export const fromString = (text: string): Secret.Secret => {
-  return make(text.split("").map((char) => char.charCodeAt(0)))
-}
-
-/** @internal */
-export const value = (self: Secret.Secret): string => {
-  return self.raw.map((byte) => String.fromCharCode(byte)).join("")
-}
-
-/** @internal */
-export const unsafeWipe = (self: Secret.Secret): void => {
-  for (let i = 0; i < self.raw.length; i++) {
-    self.raw[i] = 0
-  }
+export const unsafeWipe = <T>(self: Secret.Secret<T>): void => {
+  secretsRegistry.delete(self)
 }

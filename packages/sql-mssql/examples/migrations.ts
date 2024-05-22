@@ -89,7 +89,7 @@ const SqlLive = Mssql.migrator.layer({
       database: Config.succeed("msdb"),
       server: Config.succeed("localhost"),
       username: Config.succeed("sa"),
-      password: Config.succeed(Secret.fromString("Sq1Fx_password")),
+      password: Config.succeed(Secret.make("Sq1Fx_password")),
       transformQueryNames: Config.succeed(String.camelToSnake),
       transformResultNames: Config.succeed(String.snakeToCamel)
     })

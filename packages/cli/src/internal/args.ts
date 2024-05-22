@@ -269,7 +269,7 @@ export const path = (config?: Args.Args.PathArgsConfig): Args.Args<string> =>
 /** @internal */
 export const secret = (
   config?: Args.Args.BaseArgsConfig
-): Args.Args<Secret.Secret> => makeSingle(Option.fromNullable(config?.name), InternalPrimitive.secret)
+): Args.Args<Secret.Secret<string>> => makeSingle(Option.fromNullable(config?.name), InternalPrimitive.secret)
 
 /** @internal */
 export const text = (config?: Args.Args.BaseArgsConfig): Args.Args<string> =>

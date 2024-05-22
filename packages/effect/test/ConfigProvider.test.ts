@@ -799,7 +799,7 @@ describe("ConfigProvider", () => {
       const value = "Hello, World!"
       const configProvider = ConfigProvider.fromMap(new Map([["greeting", value]]))
       const result = yield* $(configProvider.load(Config.secret("greeting")))
-      assert.deepStrictEqual(result, Secret.make(value.split("").map((c) => c.charCodeAt(0))))
+      assert.deepStrictEqual(result, Secret.make(value))
     }))
 
   it.effect("snakeCase", () =>

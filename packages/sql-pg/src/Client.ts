@@ -54,7 +54,7 @@ export const PgClient = Context.GenericTag<PgClient>("@effect/sql-pg/Client")
  * @since 1.0.0
  */
 export interface PgClientConfig {
-  readonly url?: Secret.Secret | undefined
+  readonly url?: Secret.Secret<string> | undefined
 
   readonly host?: string | undefined
   readonly port?: number | undefined
@@ -62,7 +62,7 @@ export interface PgClientConfig {
   readonly ssl?: boolean | undefined
   readonly database?: string | undefined
   readonly username?: string | undefined
-  readonly password?: Secret.Secret | undefined
+  readonly password?: Secret.Secret<string> | undefined
 
   readonly idleTimeout?: Duration.DurationInput | undefined
   readonly connectTimeout?: Duration.DurationInput | undefined
@@ -212,7 +212,7 @@ export const make = (
           host: client.options.host[0] ?? undefined,
           port: client.options.port[0] ?? undefined,
           username: client.options.user,
-          password: client.options.pass ? Secret.fromString(client.options.pass) : undefined,
+          password: client.options.pass ? Secret.make(client.options.pass) : undefined,
           database: client.options.database
         },
         json: (_: unknown) => PgJson(_),

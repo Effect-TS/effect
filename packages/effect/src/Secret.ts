@@ -3,6 +3,8 @@
  */
 import type * as Equal from "./Equal.js"
 import * as InternalSecret from "./internal/secret.js"
+import type { Pipeable } from "./Pipeable.js"
+import type { Covariant } from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -20,9 +22,7 @@ export type SecretTypeId = typeof SecretTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Secret extends Secret.Proto, Equal.Equal {
-  /** @internal */
-  readonly raw: Array<number>
+export interface Secret<out A> extends Secret.Variance<A>, Equal.Equal, Pipeable {
 }
 
 /**
@@ -30,46 +30,42 @@ export interface Secret extends Secret.Proto, Equal.Equal {
  */
 export declare namespace Secret {
   /**
-   * @since 2.0.0
+   * @since 4.0.0
    * @category models
    */
-  export interface Proto {
-    readonly [SecretTypeId]: SecretTypeId
+  export interface Variance<out A> {
+    readonly [SecretTypeId]: {
+      readonly _A: Covariant<A>
+    }
   }
+
+  /**
+   * @since 4.0.0
+   * @category type-level
+   */
+  export type Value<T extends Secret<any>> = [T] extends [Secret<infer _A>] ? _A : never
 }
 
 /**
- * @since 2.0.0
+ * @since 4.0.0
  * @category refinements
  */
-export const isSecret: (u: unknown) => u is Secret = InternalSecret.isSecret
+export const isSecret: (u: unknown) => u is Secret<unknown> = InternalSecret.isSecret
 
 /**
- * @since 2.0.0
+ * @since 4.0.0
  * @category constructors
  */
-export const make: (bytes: Array<number>) => Secret = InternalSecret.make
+export const make: <T>(value: T) => Secret<T> = InternalSecret.make
 
 /**
- * @since 2.0.0
- * @category constructors
- */
-export const fromIterable: (iterable: Iterable<string>) => Secret = InternalSecret.fromIterable
-
-/**
- * @since 2.0.0
- * @category constructors
- */
-export const fromString: (text: string) => Secret = InternalSecret.fromString
-
-/**
- * @since 2.0.0
+ * @since 4.0.0
  * @category getters
  */
-export const value: (self: Secret) => string = InternalSecret.value
+export const value: <T>(self: Secret<T>) => T = InternalSecret.value
 
 /**
- * @since 2.0.0
+ * @since 4.0.0
  * @category unsafe
  */
-export const unsafeWipe: (self: Secret) => void = InternalSecret.unsafeWipe
+export const unsafeWipe: <T>(self: Secret<T>) => void = InternalSecret.unsafeWipe

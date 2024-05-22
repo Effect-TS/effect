@@ -311,7 +311,7 @@ export const none: Options<void> = InternalOptions.none
  * @since 1.0.0
  * @category constructors
  */
-export const secret: (name: string) => Options<Secret> = InternalOptions.secret
+export const secret: (name: string) => Options<Secret<string>> = InternalOptions.secret
 
 /**
  * @since 1.0.0

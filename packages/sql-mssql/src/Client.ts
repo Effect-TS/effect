@@ -81,7 +81,7 @@ export interface MssqlClientConfig {
   readonly authType?: string | undefined
   readonly database?: string | undefined
   readonly username?: string | undefined
-  readonly password?: Secret.Secret | undefined
+  readonly password?: Secret.Secret<string> | undefined
   readonly connectTimeout?: Duration.DurationInput | undefined
 
   readonly minConnections?: number | undefined

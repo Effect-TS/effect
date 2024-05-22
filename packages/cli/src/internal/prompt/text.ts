@@ -297,12 +297,12 @@ const basePrompt = (
 }
 
 /** @internal */
-export const hidden = (options: Prompt.Prompt.TextOptions): Prompt.Prompt<Secret.Secret> =>
-  basePrompt(options, "hidden").pipe(InternalPrompt.map(Secret.fromString))
+export const hidden = (options: Prompt.Prompt.TextOptions): Prompt.Prompt<Secret.Secret<string>> =>
+  basePrompt(options, "hidden").pipe(InternalPrompt.map(Secret.make))
 
 /** @internal */
-export const password = (options: Prompt.Prompt.TextOptions): Prompt.Prompt<Secret.Secret> =>
-  basePrompt(options, "password").pipe(InternalPrompt.map(Secret.fromString))
+export const password = (options: Prompt.Prompt.TextOptions): Prompt.Prompt<Secret.Secret<string>> =>
+  basePrompt(options, "password").pipe(InternalPrompt.map(Secret.make))
 
 /** @internal */
 export const text = (options: Prompt.Prompt.TextOptions): Prompt.Prompt<string> => basePrompt(options, "text")

@@ -5,7 +5,9 @@ import { Secret } from "effect"
 import { describe, expect, it } from "vitest"
 
 describe("SecretFromSelf", () => {
-  const schema = S.SecretFromSelf
+  const schema = S.SecretFromSelf(S.Struct({
+    coord: S.Tuple(S.Number, S.String)
+  }))
 
   it("property tests", () => {
     Util.roundtrip(schema)
@@ -14,21 +16,21 @@ describe("SecretFromSelf", () => {
   it("decoding", () => {
     Util.expectDecodeUnknownSuccess(
       schema,
-      Secret.fromString("keep me safe"),
-      Secret.fromString("keep me safe")
+      Secret.make({ coord: [23.33, "keep me safe"] as const }),
+      Secret.make({ coord: [23.33, "keep me safe"] as const })
     )
   })
 
   it("encoding", () => {
     Util.expectEncodeSuccess(
       schema,
-      Secret.fromString("keep me safe"),
-      Secret.fromString("keep me safe")
+      Secret.make({ coord: [23.33, "keep me safe"] as const }),
+      Secret.make({ coord: [23.33, "keep me safe"] as const })
     )
   })
 
   it("Pretty", () => {
     const pretty = Pretty.make(schema)
-    expect(pretty(Secret.fromString("keep me safe"))).toEqual(`Secret(<redacted>)`)
+    expect(pretty(Secret.make({ coord: [23.33, "keep me safe"] as const }))).toEqual(`Secret(<redacted>)`)
   })
 })

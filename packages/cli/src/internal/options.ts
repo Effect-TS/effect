@@ -376,7 +376,7 @@ export const none: Options.Options<void> = (() => {
 })()
 
 /** @internal */
-export const secret = (name: string): Options.Options<Secret.Secret> =>
+export const secret = (name: string): Options.Options<Secret.Secret<string>> =>
   makeSingle(name, Arr.empty(), InternalPrimitive.secret)
 
 /** @internal */

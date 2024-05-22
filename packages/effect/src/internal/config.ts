@@ -413,10 +413,10 @@ export const repeat = <A>(self: Config.Config<A>): Config.Config<Array<A>> => {
 }
 
 /** @internal */
-export const secret = (name?: string): Config.Config<Secret.Secret> => {
+export const secret = (name?: string): Config.Config<Secret.Secret<string>> => {
   const config = primitive(
     "a secret property",
-    (text) => Either.right(InternalSecret.fromString(text))
+    (text) => Either.right(InternalSecret.make(text))
   )
   return name === undefined ? config : nested(config, name)
 }

@@ -333,7 +333,7 @@ export const repeat: <A>(self: Config<A>) => Config<Array<A>> = internal.repeat
  * @since 2.0.0
  * @category constructors
  */
-export const secret: (name?: string) => Config<Secret.Secret> = internal.secret
+export const secret: (name?: string) => Config<Secret.Secret<string>> = internal.secret
 
 /**
  * Constructs a config for a sequence of values.

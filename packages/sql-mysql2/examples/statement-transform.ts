@@ -22,7 +22,7 @@ const SqlTracingLive = Sql.statement.setTransformer((prev, sql, refs, span) => {
 const EnvLive = Mysql.client.layer({
   database: Config.succeed("effect_dev"),
   username: Config.succeed("effect"),
-  password: Config.succeed(Secret.fromString("password")),
+  password: Config.succeed(Secret.make("password")),
   transformQueryNames: Config.succeed(String.camelToSnake),
   transformResultNames: Config.succeed(String.snakeToCamel)
 }).pipe(

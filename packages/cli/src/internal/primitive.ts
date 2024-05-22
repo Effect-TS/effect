@@ -193,7 +193,7 @@ export const path = (
 }
 
 /** @internal */
-export const secret: Primitive.Primitive<EffectSecret.Secret> = (() => {
+export const secret: Primitive.Primitive<EffectSecret.Secret<string>> = (() => {
   const op = Object.create(proto)
   op._tag = "Secret"
   return op
@@ -446,7 +446,7 @@ const validateInternal = (
     }
     case "Secret": {
       return attempt(value, getTypeNameInternal(self), Schema.decodeUnknown(Schema.String)).pipe(
-        Effect.map((value) => EffectSecret.fromString(value))
+        Effect.map((value) => EffectSecret.make(value))
       )
     }
     case "Text": {

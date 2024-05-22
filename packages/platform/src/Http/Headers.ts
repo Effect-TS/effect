@@ -205,22 +205,27 @@ export const remove: {
  * @category combinators
  */
 export const redact: {
-  (key: string | RegExp | ReadonlyArray<string | RegExp>): (self: Headers) => Record<string, string | Secret.Secret>
-  (self: Headers, key: string | RegExp | ReadonlyArray<string | RegExp>): Record<string, string | Secret.Secret>
+  (
+    key: string | RegExp | ReadonlyArray<string | RegExp>
+  ): (self: Headers) => Record<string, string | Secret.Secret<string>>
+  (self: Headers, key: string | RegExp | ReadonlyArray<string | RegExp>): Record<string, string | Secret.Secret<string>>
 } = dual(
   2,
-  (self: Headers, key: string | RegExp | ReadonlyArray<string | RegExp>): Record<string, string | Secret.Secret> => {
-    const out: Record<string, string | Secret.Secret> = { ...self }
+  (
+    self: Headers,
+    key: string | RegExp | ReadonlyArray<string | RegExp>
+  ): Record<string, string | Secret.Secret<string>> => {
+    const out: Record<string, string | Secret.Secret<string>> = { ...self }
     const modify = (key: string | RegExp) => {
       if (typeof key === "string") {
         const k = key.toLowerCase()
         if (k in self) {
-          out[k] = Secret.fromString(self[k])
+          out[k] = Secret.make(self[k])
         }
       } else {
         for (const name in self) {
           if (key.test(name)) {
-            out[name] = Secret.fromString(self[name])
+            out[name] = Secret.make(self[name])
           }
         }
       }

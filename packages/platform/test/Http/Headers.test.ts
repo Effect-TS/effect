@@ -15,10 +15,10 @@ describe("Headers", () => {
 
       assert.deepEqual(redacted, {
         "content-type": "application/json",
-        "authorization": Secret.fromString("some secret"),
+        "authorization": Secret.make("some secret"),
         "x-api-key": "some-key"
       })
-      assert.strictEqual(Secret.value(redacted.authorization as Secret.Secret), "Bearer some-token")
+      assert.strictEqual(Secret.value(redacted.authorization as Secret.Secret<string>), "Bearer some-token")
     })
 
     it("multiple keys", () => {
@@ -32,11 +32,11 @@ describe("Headers", () => {
 
       assert.deepEqual(redacted, {
         "content-type": "application/json",
-        "authorization": Secret.fromString("some secret"),
-        "x-api-key": Secret.fromString("some secret")
+        "authorization": Secret.make("some secret"),
+        "x-api-key": Secret.make("some secret")
       })
-      assert.strictEqual(Secret.value(redacted.authorization as Secret.Secret), "Bearer some-token")
-      assert.strictEqual(Secret.value(redacted["x-api-key"] as Secret.Secret), "some-key")
+      assert.strictEqual(Secret.value(redacted.authorization as Secret.Secret<string>), "Bearer some-token")
+      assert.strictEqual(Secret.value(redacted["x-api-key"] as Secret.Secret<string>), "some-key")
     })
 
     it("RegExp", () => {
@@ -50,8 +50,8 @@ describe("Headers", () => {
 
       assert.deepEqual(redacted, {
         "authorization": "Bearer some-token",
-        "sec-ret": Secret.fromString("some"),
-        "sec-ret-2": Secret.fromString("some")
+        "sec-ret": Secret.make("some"),
+        "sec-ret-2": Secret.make("some")
       })
     })
   })

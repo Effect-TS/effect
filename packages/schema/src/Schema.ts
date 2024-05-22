@@ -4798,20 +4798,55 @@ export class BigIntFromNumber extends transformOrFail(
   static override annotations: (annotations: Annotations.Schema<bigint>) => typeof BigIntFromNumber = super.annotations
 }
 
+const secretArbitrary = <A>(value: LazyArbitrary<A>): LazyArbitrary<secret_.Secret<A>> => (fc) =>
+  value(fc).map((x) => secret_.make(x))
+
+const secretParse =
+  <R, A>(decodeUnknown: ParseResult.DecodeUnknown<A, R>): ParseResult.DeclarationDecodeUnknown<secret_.Secret<A>, R> =>
+  (u, options, ast) => {
+    if (secret_.isSecret(u)) {
+      return ParseResult.map(
+        decodeUnknown(secret_.value(u), options),
+        (_) => secret_.make(_)
+      )
+    } else {
+      return ParseResult.fail(new ParseResult.Type(ast, secret_.make(u)))
+    }
+  }
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface SecretFromSelf<Value extends Schema.Any> extends
+  AnnotableClass<
+    SecretFromSelf<Value>,
+    secret_.Secret<Schema.Type<Value>>,
+    secret_.Secret<Schema.Encoded<Value>>,
+    Schema.Context<Value>
+  >
+{}
+
 /**
  * @category Secret constructors
  * @since 1.0.0
  */
-export class SecretFromSelf extends declare(
-  secret_.isSecret,
-  {
-    identifier: "SecretFromSelf",
-    pretty: (): pretty_.Pretty<secret_.Secret> => (secret) => String(secret),
-    arbitrary: (): LazyArbitrary<secret_.Secret> => (fc) => fc.string().map((_) => secret_.fromString(_))
-  }
-) {
-  static override annotations: (annotations: Annotations.Schema<secret_.Secret>) => typeof SecretFromSelf = super
-    .annotations
+export const SecretFromSelf = <Value extends Schema.Any>(
+  value: Value
+): SecretFromSelf<Value> => {
+  return declare(
+    [value],
+    {
+      decode: (value) => secretParse(ParseResult.decodeUnknown(value)),
+      encode: (value) => secretParse(ParseResult.encodeUnknown(value))
+    },
+    {
+      description: "Secret<redacted>",
+      pretty: () => () => "Secret(<redacted>)",
+      arbitrary: secretArbitrary
+      // equivalence: (x) => option_.getEquivalence
+    }
+  )
 }
 
 /**
@@ -4820,12 +4855,13 @@ export class SecretFromSelf extends declare(
  * @category Secret transformations
  * @since 1.0.0
  */
-export class Secret extends transform(
+export class SecretFromString extends transform(
   String$,
-  SecretFromSelf,
-  { strict: false, decode: (str) => secret_.fromString(str), encode: (secret) => secret_.value(secret) }
-).annotations({ identifier: "Secret" }) {
-  static override annotations: (annotations: Annotations.Schema<secret_.Secret>) => typeof Secret = super.annotations
+  SecretFromSelf(String$),
+  { decode: (str) => secret_.make(str), encode: (secret) => secret_.value(secret) }
+).annotations({ identifier: "SecretFromString" }) {
+  static override annotations: (annotations: Annotations.Schema<secret_.Secret<string>>) => typeof SecretFromString =
+    super.annotations
 }
 
 /**
