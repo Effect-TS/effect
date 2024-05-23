@@ -2254,8 +2254,14 @@ export const partitionMap: {
  * @category filtering
  * @since 2.0.0
  */
-export const getSomes: <T extends Iterable<Option<any>>>(self: T) => Array<Option.Value<ReadonlyArray.Infer<T>>> =
-  filterMap(identity)
+
+export const getSomes: <
+  T extends Iterable<Option<X>>,
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-constraint
+  X extends any = any
+>(
+  self: T
+) => Array<Option.Value<ReadonlyArray.Infer<T>>> = filterMap(identity as any) as any
 
 /**
  * Retrieves the `Left` values from an `Iterable` of `Either`s, collecting them into an array.
