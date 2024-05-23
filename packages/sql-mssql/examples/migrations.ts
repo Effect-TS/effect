@@ -1,6 +1,5 @@
 import * as DevTools from "@effect/experimental/DevTools"
 import { NodeFileSystem } from "@effect/platform-node"
-import * as Sql from "@effect/sql"
 import * as Mssql from "@effect/sql-mssql"
 import { Config, Effect, Layer, Logger, LogLevel, Secret, String } from "effect"
 import { pipe } from "effect/Function"
@@ -80,7 +79,7 @@ const program = Effect.gen(function*(_) {
 })
 
 const SqlLive = Mssql.migrator.layer({
-  loader: Sql.migrator.fromFileSystem(
+  loader: Mssql.migrator.fromFileSystem(
     fileURLToPath(new URL("./migrations", import.meta.url))
   )
 }).pipe(

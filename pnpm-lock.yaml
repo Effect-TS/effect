@@ -602,9 +602,6 @@ importers:
 
   packages/sql-sqlite-react-native:
     dependencies:
-      '@op-engineering/op-sqlite':
-        specifier: 6.0.1
-        version: 6.0.1(react-native@0.74.1(@babel/core@7.24.5)(@babel/preset-env@7.24.5(@babel/core@7.24.5))(react@18.3.1))(react@18.3.1)
       '@opentelemetry/semantic-conventions':
         specifier: ^1.24.1
         version: 1.24.1
@@ -612,6 +609,9 @@ importers:
       '@effect/sql':
         specifier: workspace:^
         version: link:../sql/dist
+      '@op-engineering/op-sqlite':
+        specifier: 6.0.2-beta1
+        version: 6.0.2-beta1(react-native@0.74.1(@babel/core@7.24.5)(@babel/preset-env@7.24.5(@babel/core@7.24.5))(react@18.3.1))(react@18.3.1)
       effect:
         specifier: workspace:^
         version: link:../effect/dist
@@ -2039,8 +2039,8 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
-  '@op-engineering/op-sqlite@6.0.1':
-    resolution: {integrity: sha512-rQ/kVT9O/LcdZijqlMAuDWUK04Wl3n1kUXy7zsWty3/HIb0b2U0ppOw2z/1AiBQqs/0vF3dYUajtamF7Hq7zwg==}
+  '@op-engineering/op-sqlite@6.0.2-beta1':
+    resolution: {integrity: sha512-PFr+W5xY7fH9+GWRyH57beFWYDELrZpzuDIU5xuy2Jf4gKlKItyO73PMeYPTu6vJ+Q9ski+Ezo1AvsHmjXpMQA==}
     peerDependencies:
       react: '*'
       react-native: '>0.73.0'
@@ -8011,7 +8011,7 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.17.1
 
-  '@op-engineering/op-sqlite@6.0.1(react-native@0.74.1(@babel/core@7.24.5)(@babel/preset-env@7.24.5(@babel/core@7.24.5))(react@18.3.1))(react@18.3.1)':
+  '@op-engineering/op-sqlite@6.0.2-beta1(react-native@0.74.1(@babel/core@7.24.5)(@babel/preset-env@7.24.5(@babel/core@7.24.5))(react@18.3.1))(react@18.3.1)':
     dependencies:
       react: 18.3.1
       react-native: 0.74.1(@babel/core@7.24.5)(@babel/preset-env@7.24.5(@babel/core@7.24.5))(react@18.3.1)
