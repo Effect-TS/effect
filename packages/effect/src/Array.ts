@@ -538,6 +538,36 @@ export const isNonEmptyReadonlyArray: <A>(self: ReadonlyArray<A>) => self is Non
   readonlyArray.isNonEmptyArray
 
 /**
+ * Determine if an `Array` is a tuple of a specified length, narrowing down the type to `TupleOf`.
+ *
+ * An `Array` is considered to be a `TupleOf` if its length matches the specified length `N`.
+ *
+ * @param self - The `Array` to check.
+ * @param n - The length that the `Array` should be to be considered a `TupleOf`.
+ *
+ * @example
+ * import { isTupleOf } from "effect/Array"
+ *
+ * assert.deepStrictEqual(isTupleOf([1, 2, 3], 3), true);
+ * assert.deepStrictEqual(isTupleOf([1, 2, 3], 2), false);
+ *
+ * const arrayOfRandomLength = Array(Math.round(Math.random() * 10)).fill('Hello world');
+ *
+ * if(isTupleOf(arrayOfRandomLength, 2)) {
+ *     arrayOfRandomLength
+ *     // ^? ['Hello world', 'Hello world']
+ * }
+ *
+ * @category guards
+ * @since 3.2.5
+ */
+
+export const isTupleOf: {
+  <N extends number>(n: N): <T>(self: Array<T>) => self is TupleOf<T, N>
+  <T, N extends number>(self: Array<T>, n: N): self is TupleOf<T, N>
+} = dual(2, <T, N extends number>(self: Array<T>, n: N): self is TupleOf<T, N> => self.length === n)
+
+/**
  * Return the number of elements in a `ReadonlyArray`.
  *
  * @category getters
