@@ -4081,84 +4081,6 @@ console.log(decode("0")) // { _id: 'BigDecimal', value: '0', scale: 0 }
 console.log(decode("3")) // { _id: 'BigDecimal', value: '1', scale: 0 }
 ```
 
-## Duration Transformations
-
-### Duration
-
-Converts an hrtime(i.e. `[seconds: number, nanos: number]`) into a `Duration`.
-
-```ts
-import { Schema } from "@effect/schema"
-
-const schema = Schema.Duration // Schema<Duration, number>
-const decode = Schema.decodeUnknownSync(schema)
-
-console.log(decode([0, 0])) // { _id: 'Duration', _tag: 'Millis', millis: 0 }
-console.log(decode([5000, 0])) // { _id: 'Duration', _tag: 'Nanos', hrtime: [ 5000, 0 ] }
-```
-
-#### DurationFromMillis
-
-Converts a `number` into a `Duration` where the number represents the number of milliseconds.
-
-```ts
-import { Schema } from "@effect/schema"
-
-const schema = Schema.DurationFromMillis // Schema<Duration, number>
-const decode = Schema.decodeUnknownSync(schema)
-
-console.log(decode(0)) // { _id: 'Duration', _tag: 'Millis', millis: 0 }
-console.log(decode(5000)) // { _id: 'Duration', _tag: 'Millis', millis: 5000 }
-```
-
-### DurationFromNanos
-
-Converts a `BigInt` into a `Duration` where the number represents the number of nanoseconds.
-
-```ts
-import { Schema } from "@effect/schema"
-
-const schema = Schema.DurationFromNanos // Schema<Duration, BigInt>
-const decode = Schema.decodeUnknownSync(schema)
-
-console.log(decode(0n)) // { _id: 'Duration', _tag: 'Millis', millis: 0 }
-console.log(decode(5000000000n)) // { _id: 'Duration', _tag: 'Nanos', hrtime: [ 5, 0 ] }
-```
-
-### clampDuration
-
-Clamps a `Duration` between a minimum and a maximum value.
-
-```ts
-import { Schema } from "@effect/schema"
-import { Duration } from "effect"
-
-const schema = Schema.DurationFromSelf.pipe(
-  Schema.clampDuration("5 seconds", "10 seconds")
-)
-
-const decode = Schema.decodeUnknownSync(schema)
-
-console.log(decode(Duration.decode("2 seconds"))) // { _id: 'Duration', _tag: 'Millis', millis: 5000 }
-console.log(decode(Duration.decode("6 seconds"))) // { _id: 'Duration', _tag: 'Millis', millis: 6000 }
-console.log(decode(Duration.decode("11 seconds"))) // { _id: 'Duration', _tag: 'Millis', millis: 10000 }
-```
-
-## Secret transformations
-
-### Secret
-
-Converts a `string` into a `Secret`.
-
-```ts
-import { Schema } from "@effect/schema"
-
-const schema = Schema.Secret // Schema<Secret, string>
-const decode = Schema.decodeUnknownSync(schema)
-
-console.log(decode("keep it secret, keep it safe")) // {}
-```
-
 # Advanced Usage
 
 ## Annotations
@@ -6283,6 +6205,208 @@ const encode = Schema.encodeSync(schema)
 console.log(decode(SortedSet.fromIterable(String.Order)(["1", "2", "3"]))) // { _id: 'SortedSet', values: [ 1, 2, 3 ] }
 console.log(encode(SortedSet.fromIterable(Number.Order)([1, 2, 3]))) // { _id: 'SortedSet', values: [ '1', '2', '3' ] }
 ```
+
+## Duration
+
+### Duration
+
+Converts an hrtime(i.e. `[seconds: number, nanos: number]`) into a `Duration`.
+
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.Duration // Schema<Duration, number>
+const decode = Schema.decodeUnknownSync(schema)
+
+console.log(decode([0, 0])) // { _id: 'Duration', _tag: 'Millis', millis: 0 }
+console.log(decode([5000, 0])) // { _id: 'Duration', _tag: 'Nanos', hrtime: [ 5000, 0 ] }
+```
+
+### DurationFromSelf
+
+The `DurationFromSelf` schema is designed to validate that a given value conforms to the `Duration` type from the `effect` library.
+
+```ts
+import { Schema } from "@effect/schema"
+import { Duration } from "effect"
+
+const schema = Schema.DurationFromSelf
+const decode = Schema.decodeUnknownSync(schema)
+
+console.log(decode(Duration.seconds(2))) // { _id: 'Duration', _tag: 'Millis', millis: 2000 }
+console.log(decode(null)) // throws Error: Expected DurationFromSelf, actual null
+```
+
+### DurationFromMillis
+
+Converts a `number` into a `Duration` where the number represents the number of milliseconds.
+
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.DurationFromMillis // Schema<Duration, number>
+const decode = Schema.decodeUnknownSync(schema)
+
+console.log(decode(0)) // { _id: 'Duration', _tag: 'Millis', millis: 0 }
+console.log(decode(5000)) // { _id: 'Duration', _tag: 'Millis', millis: 5000 }
+```
+
+### DurationFromNanos
+
+Converts a `BigInt` into a `Duration` where the number represents the number of nanoseconds.
+
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.DurationFromNanos // Schema<Duration, BigInt>
+const decode = Schema.decodeUnknownSync(schema)
+
+console.log(decode(0n)) // { _id: 'Duration', _tag: 'Millis', millis: 0 }
+console.log(decode(5000000000n)) // { _id: 'Duration', _tag: 'Nanos', hrtime: [ 5, 0 ] }
+```
+
+### clampDuration
+
+Clamps a `Duration` between a minimum and a maximum value.
+
+```ts
+import { Schema } from "@effect/schema"
+import { Duration } from "effect"
+
+const schema = Schema.DurationFromSelf.pipe(
+  Schema.clampDuration("5 seconds", "10 seconds")
+)
+
+const decode = Schema.decodeUnknownSync(schema)
+
+console.log(decode(Duration.decode("2 seconds"))) // { _id: 'Duration', _tag: 'Millis', millis: 5000 }
+console.log(decode(Duration.decode("6 seconds"))) // { _id: 'Duration', _tag: 'Millis', millis: 6000 }
+console.log(decode(Duration.decode("11 seconds"))) // { _id: 'Duration', _tag: 'Millis', millis: 10000 }
+```
+
+## Secret
+
+### Secret
+
+The `Secret` schema in `@effect/schema` is specifically designed to handle sensitive information by converting a `string` into a `Secret` object. This transformation ensures that the sensitive data is not exposed in the application's output.
+
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.Secret // Schema<Secret, string>
+const decode = Schema.decodeUnknownSync(schema)
+
+console.log(decode("keep it secret, keep it safe")) // {}
+```
+
+**Note on Logging**
+
+It's important to note that when successfully decoding a `Secret`, the output is intentionally obscured (`{}`) to prevent the actual secret from being revealed in logs or console outputs.
+
+#### Warning on Schema Composition
+
+When composing the `Secret` schema with other schemas, care must be taken as decoding or encoding errors could potentially expose sensitive information.
+
+**Practical Example Showing Potential Data Exposure**
+
+```ts
+import { Schema } from "@effect/schema"
+import { Secret } from "effect"
+
+const schema = Schema.Trimmed.pipe(Schema.compose(Schema.Secret))
+
+console.log(Schema.decodeUnknownEither(schema)(" 123"))
+/*
+{
+  _id: 'Either',
+  _tag: 'Left',
+  left: {
+    _id: 'ParseError',
+    message: '(Trimmed <-> Secret)\n' +
+      '└─ Encoded side transformation failure\n' +
+      '   └─ Trimmed\n' +
+      '      └─ Predicate refinement failure\n' +
+      '         └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " 123"'
+  }
+}
+*/
+console.log(Schema.encodeEither(schema)(Secret.fromString(" 123")))
+/*
+{
+  _id: 'Either',
+  _tag: 'Left',
+  left: {
+    _id: 'ParseError',
+    message: '(Trimmed <-> Secret)\n' +
+      '└─ Encoded side transformation failure\n' +
+      '   └─ Trimmed\n' +
+      '      └─ Predicate refinement failure\n' +
+      '         └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " 123"'
+  }
+}
+*/
+```
+
+In the example above, if the input string does not meet the criteria (e.g., contains spaces), the error message generated might inadvertently expose sensitive information included in the input.
+
+#### Mitigating Exposure Risks
+
+To reduce the risk of sensitive information leakage in error messages, you can customize the error messages to obscure sensitive details:
+
+```ts
+import { Schema } from "@effect/schema"
+import { Secret } from "effect"
+
+const schema = Schema.Trimmed.annotations({
+  message: () => "Expected Trimmed, actual <redacted>"
+}).pipe(Schema.compose(Schema.Secret))
+
+console.log(Schema.decodeUnknownEither(schema)(" 123"))
+/*
+{
+  _id: 'Either',
+  _tag: 'Left',
+  left: {
+    _id: 'ParseError',
+    message: '(Trimmed <-> Secret)\n' +
+      '└─ Encoded side transformation failure\n' +
+      '   └─ Expected Trimmed, actual <redacted>'
+  }
+}
+*/
+console.log(Schema.encodeEither(schema)(Secret.fromString(" 123")))
+/*
+{
+  _id: 'Either',
+  _tag: 'Left',
+  left: {
+    _id: 'ParseError',
+    message: '(Trimmed <-> Secret)\n' +
+      '└─ Encoded side transformation failure\n' +
+      '   └─ Expected Trimmed, actual <redacted>'
+  }
+}
+*/
+```
+
+### SecretFromSelf
+
+The `SecretFromSelf` schema is designed to validate that a given value conforms to the `Secret` type from the `effect` library.
+
+```ts
+import { Schema } from "@effect/schema"
+import { Secret } from "effect"
+
+const schema = Schema.SecretFromSelf
+const decode = Schema.decodeUnknownSync(schema)
+
+console.log(decode(Secret.fromString("mysecret"))) // {}
+console.log(decode(null)) // throws Error: Expected SecretFromSelf, actual null
+```
+
+**Note on Logging**
+
+It's important to note that when successfully decoding a `Secret`, the output is intentionally obscured (`{}`) to prevent the actual secret from being revealed in logs or console outputs.
 
 # Useful Examples
 
