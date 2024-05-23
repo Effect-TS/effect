@@ -1230,6 +1230,12 @@ pipe(
 // $ExpectType [unknown[], unknown[]]
 Array.separate([])
 
+// $ExpectType [never[], number[]]
+Array.separate([Either.right(1)])
+
+// $ExpectType [string[], never[]]
+Array.separate([Either.left("a")])
+
 // $ExpectType [string[], number[]]
 Array.separate([Either.left("a"), Either.right(1)])
 
@@ -1251,6 +1257,12 @@ Array.separate(hole<Iterable<Either.Either<number, string>> | Iterable<Either.Ei
 
 // $ExpectType unknown[]
 Array.getRights([])
+
+// $ExpectType never[]
+Array.getRights([Either.left("a")])
+
+// $ExpectType number[]
+Array.getRights([Either.right(1)])
 
 // $ExpectType number[]
 Array.getRights([Either.left("a"), Either.right(1)])
@@ -1275,6 +1287,12 @@ Array.getRights(hole<Iterable<Either.Either<number, string>> | Iterable<Either.E
 Array.getLefts([])
 
 // $ExpectType string[]
+Array.getLefts([Either.left("a")])
+
+// $ExpectType never[]
+Array.getLefts([Either.right(1)])
+
+// $ExpectType string[]
 Array.getLefts([Either.left("a"), Either.right(1)])
 
 // $ExpectType string[]
@@ -1295,6 +1313,12 @@ Array.getLefts(hole<Iterable<Either.Either<number, string>> | Iterable<Either.Ei
 
 // $ExpectType unknown[]
 Array.getSomes([])
+
+// $ExpectType never[]
+Array.getSomes([Option.none()])
+
+// $ExpectType number[]
+Array.getSomes([Option.some(1)])
 
 // $ExpectType number[]
 Array.getSomes([Option.none(), Option.some(1)])
