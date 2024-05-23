@@ -1239,6 +1239,12 @@ Array.separate(hole<Array<Either.Either<number, string>>>())
 // $ExpectType [string[], number[]]
 Array.separate(hole<Iterable<Either.Either<number, string>>>())
 
+// $ExpectType [(string | Date)[], (number | boolean)[]]
+Array.separate(hole<Iterable<Either.Either<number, string> | Either.Either<boolean, Date>>>())
+
+// $ExpectType [(string | Date)[], (number | boolean)[]]
+Array.separate(hole<Iterable<Either.Either<number, string>> | Iterable<Either.Either<boolean, Date>>>())
+
 // -------------------------------------------------------------------------------------
 // getRights
 // -------------------------------------------------------------------------------------
@@ -1254,6 +1260,12 @@ Array.getRights(hole<Array<Either.Either<number, string>>>())
 
 // $ExpectType number[]
 Array.getRights(hole<Iterable<Either.Either<number, string>>>())
+
+// $ExpectType (number | boolean)[]
+Array.getRights(hole<Iterable<Either.Either<number, string> | Either.Either<boolean, Date>>>())
+
+// $ExpectType (number | boolean)[]
+Array.getRights(hole<Iterable<Either.Either<number, string>> | Iterable<Either.Either<boolean, Date>>>())
 
 // -------------------------------------------------------------------------------------
 // getLefts
@@ -1271,6 +1283,12 @@ Array.getLefts(hole<Array<Either.Either<number, string>>>())
 // $ExpectType string[]
 Array.getLefts(hole<Iterable<Either.Either<number, string>>>())
 
+// $ExpectType (string | Date)[]
+Array.getLefts(hole<Iterable<Either.Either<number, string> | Either.Either<boolean, Date>>>())
+
+// $ExpectType (string | Date)[]
+Array.getLefts(hole<Iterable<Either.Either<number, string>> | Iterable<Either.Either<boolean, Date>>>())
+
 // -------------------------------------------------------------------------------------
 // getSomes
 // -------------------------------------------------------------------------------------
@@ -1286,3 +1304,9 @@ Array.getSomes(hole<Array<Option.Option<number>>>())
 
 // $ExpectType number[]
 Array.getSomes(hole<Iterable<Option.Option<number>>>())
+
+// $ExpectType (string | number)[]
+Array.getSomes(hole<Iterable<Option.Option<number> | Option.Option<string>>>())
+
+// $ExpectType (string | number)[]
+Array.getSomes(hole<Iterable<Option.Option<number>> | Iterable<Option.Option<string>>>())
