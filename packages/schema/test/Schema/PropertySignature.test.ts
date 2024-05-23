@@ -83,11 +83,11 @@ describe("PropertySignature", () => {
     })
   })
 
-  it("add a default to an optional field", async () => {
+  it("add a decoding default to an optional field", async () => {
     const ps: S.PropertySignature<":", number, never, "?:", string, never> = new S.PropertySignatureImpl(
       new S.PropertySignatureTransformation(
         new S.FromPropertySignature(S.NumberFromString.ast, true, true, {}, undefined),
-        new S.ToPropertySignature(S.Number.ast, false, true, {}),
+        new S.ToPropertySignature(S.Number.ast, false, true, {}, undefined),
         Option.orElse(() => Option.some(0)),
         identity
       )
@@ -112,11 +112,11 @@ describe("PropertySignature", () => {
     await Util.expectEncodeSuccess(schema, { a: 0 }, { a: "0" })
   })
 
-  it("add a bidirectional default to an optional field", async () => {
+  it("add a bidirectional (decoding/encoding) default to an optional field", async () => {
     const ps: S.PropertySignature<":", number, never, "?:", string, never> = new S.PropertySignatureImpl(
       new S.PropertySignatureTransformation(
         new S.FromPropertySignature(S.NumberFromString.ast, true, true, {}, undefined),
-        new S.ToPropertySignature(S.Number.ast, false, true, {}),
+        new S.ToPropertySignature(S.Number.ast, false, true, {}, undefined),
         Option.orElse(() => Option.some(0)),
         (o) => Option.flatMap(o, Option.liftPredicate((v) => v !== 0))
       )
@@ -145,7 +145,7 @@ describe("PropertySignature", () => {
     const ps: S.PropertySignature<"?:", string, never, ":", string, never> = new S.PropertySignatureImpl(
       new S.PropertySignatureTransformation(
         new S.FromPropertySignature(S.String.ast, false, true, {}, undefined),
-        new S.ToPropertySignature(S.String.ast, true, true, {}),
+        new S.ToPropertySignature(S.String.ast, true, true, {}, undefined),
         Option.flatMap(Option.liftPredicate((v) => v !== "")),
         identity
       )
@@ -158,11 +158,11 @@ describe("PropertySignature", () => {
     await Util.expectEncodeSuccess(schema, { a: "a" }, { a: "a" })
   })
 
-  it("reversed default", async () => {
+  it("encoding default", async () => {
     const ps: S.PropertySignature<"?:", number, never, ":", number, never> = new S.PropertySignatureImpl(
       new S.PropertySignatureTransformation(
         new S.FromPropertySignature(S.Number.ast, false, true, {}, undefined),
-        new S.ToPropertySignature(S.Number.ast, true, true, {}),
+        new S.ToPropertySignature(S.Number.ast, true, true, {}, undefined),
         identity,
         Option.orElse(() => Option.some(0))
       )

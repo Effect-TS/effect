@@ -1,5 +1,5 @@
 import { Effect, Stream } from "effect"
-import * as it from "effect-test/utils/extend"
+import * as it from "effect/test/utils/extend"
 import { describe } from "vitest"
 
 class TestTarget extends EventTarget {

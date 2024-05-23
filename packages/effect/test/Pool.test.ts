@@ -1,4 +1,3 @@
-import * as it from "effect-test/utils/extend"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -8,6 +7,7 @@ import * as Option from "effect/Option"
 import * as Pool from "effect/Pool"
 import * as Ref from "effect/Ref"
 import * as Scope from "effect/Scope"
+import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
 import * as TestServices from "effect/TestServices"
 import { describe, expect } from "vitest"
@@ -245,5 +245,26 @@ describe("Pool", () => {
       const fiber = yield* $(Effect.fork(Pool.get(pool)))
       const result = yield* $(Fiber.interrupt(fiber))
       expect(result).toEqual(Exit.interrupt(fiberId))
+    }))
+
+  it.scoped("finalizer is called for failed allocations", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const count = yield* Ref.make(0)
+      const get = Effect.acquireRelease(
+        Ref.updateAndGet(count, (n) => n + 1),
+        () => Ref.update(count, (n) => n - 1)
+      ).pipe(
+        Effect.andThen(Effect.fail("boom"))
+      )
+      const pool = yield* Pool.make({ acquire: get, size: 10 }).pipe(
+        Scope.extend(scope)
+      )
+      yield* Effect.scoped(pool.get).pipe(
+        Effect.ignore
+      )
+      expect(yield* Ref.get(count)).toBe(10)
+      yield* Scope.close(scope, Exit.void)
+      expect(yield* Ref.get(count)).toBe(0)
     }))
 })

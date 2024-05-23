@@ -1,6 +1,6 @@
 {
   "name": "@effect/opentelemetry",
-  "version": "0.34.0",
+  "version": "0.34.11",
   "type": "module",
   "license": "MIT",
   "description": "OpenTelemetry integration for Effect",
@@ -38,7 +38,7 @@
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",
-    "build": "pnpm codegen && pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
+    "build": "pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
     "build-esm": "tsc -b tsconfig.build.json",
     "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
     "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps",
@@ -53,7 +53,7 @@
     "@opentelemetry/sdk-trace-base": "^1.22",
     "@opentelemetry/sdk-trace-node": "^1.22",
     "@opentelemetry/sdk-trace-web": "^1.22",
-    "@opentelemetry/semantic-conventions": "^1.22",
+    "@opentelemetry/semantic-conventions": "^1.24.1",
     "effect": "workspace:^"
   },
   "peerDependenciesMeta": {
@@ -72,16 +72,16 @@
   },
   "devDependencies": {
     "@opentelemetry/api": "^1.8.0",
-    "@opentelemetry/context-async-hooks": "^1.24.0",
-    "@opentelemetry/exporter-metrics-otlp-http": "0.51.0",
-    "@opentelemetry/exporter-prometheus": "0.51.0",
-    "@opentelemetry/exporter-trace-otlp-http": "0.51.0",
-    "@opentelemetry/otlp-exporter-base": "0.51.0",
-    "@opentelemetry/resources": "^1.24.0",
-    "@opentelemetry/sdk-metrics": "^1.24.0",
-    "@opentelemetry/sdk-trace-base": "^1.24.0",
-    "@opentelemetry/sdk-trace-node": "^1.24.0",
-    "@opentelemetry/sdk-trace-web": "^1.24.0",
-    "@opentelemetry/semantic-conventions": "^1.24.0"
+    "@opentelemetry/context-async-hooks": "^1.24.1",
+    "@opentelemetry/exporter-metrics-otlp-http": "0.51.1",
+    "@opentelemetry/exporter-prometheus": "0.51.1",
+    "@opentelemetry/exporter-trace-otlp-http": "0.51.1",
+    "@opentelemetry/otlp-exporter-base": "0.51.1",
+    "@opentelemetry/resources": "^1.24.1",
+    "@opentelemetry/sdk-metrics": "^1.24.1",
+    "@opentelemetry/sdk-trace-base": "^1.24.1",
+    "@opentelemetry/sdk-trace-node": "^1.24.1",
+    "@opentelemetry/sdk-trace-web": "^1.24.1",
+    "@opentelemetry/semantic-conventions": "^1.24.1"
   }
 }

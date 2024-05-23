@@ -1,4 +1,3 @@
-import { deepStrictEqual, double, strictEqual } from "effect-test/util"
 import * as RA from "effect/Array"
 import * as E from "effect/Either"
 import { identity, pipe } from "effect/Function"
@@ -7,6 +6,8 @@ import * as O from "effect/Option"
 import * as Order from "effect/Order"
 import type { Predicate } from "effect/Predicate"
 import * as String from "effect/String"
+import { deepStrictEqual, double, strictEqual } from "effect/test/util"
+import * as Util from "effect/test/util"
 import * as fc from "fast-check"
 import { assert, describe, expect, it } from "vitest"
 
@@ -651,7 +652,9 @@ describe("ReadonlyArray", () => {
     const f = RA.flatMapNullable((n: number) => (n > 0 ? n : null))
     deepStrictEqual(pipe([], f), [])
     deepStrictEqual(pipe([1], f), [1])
+    deepStrictEqual(pipe([1, 2], f), [1, 2])
     deepStrictEqual(pipe([-1], f), [])
+    deepStrictEqual(pipe([-1, 2], f), [2])
   })
 
   it("liftPredicate", () => {
@@ -1221,5 +1224,27 @@ describe("ReadonlyArray", () => {
     }
     const arr: ReadonlyArray<X> = [{ a: "a", b: 2 }, { a: "b", b: 1 }]
     expect(RA.sortWith(arr, (x) => x.b, Order.number)).toEqual([{ a: "b", b: 1 }, { a: "a", b: 2 }])
+  })
+
+  it("Do notation", () => {
+    const _do = RA.Do
+    Util.deepStrictEqual(_do, RA.of({}))
+
+    const doA = RA.bind(_do, "a", () => ["a"])
+    Util.deepStrictEqual(doA, RA.of({ a: "a" }))
+
+    const doAB = RA.bind(doA, "b", (x) => ["b", x.a + "b"])
+    Util.deepStrictEqual(doAB, [
+      { a: "a", b: "b" },
+      { a: "a", b: "ab" }
+    ])
+    const doABC = RA.let(doAB, "c", (x) => [x.a, x.b, x.a + x.b])
+    Util.deepStrictEqual(doABC, [
+      { a: "a", b: "b", c: ["a", "b", "ab"] },
+      { a: "a", b: "ab", c: ["a", "ab", "aab"] }
+    ])
+
+    const doABCD = RA.bind(doABC, "d", () => RA.empty())
+    Util.deepStrictEqual(doABCD, [])
   })
 })

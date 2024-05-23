@@ -1,6 +1,6 @@
 import { Array, Effect, Exit, Ref, Scope } from "effect"
-import * as it from "effect-test/utils/extend"
 import * as FiberSet from "effect/FiberSet"
+import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 describe("FiberSet", () => {

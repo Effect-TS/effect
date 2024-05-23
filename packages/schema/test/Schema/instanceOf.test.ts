@@ -50,11 +50,4 @@ describe("instanceOf", () => {
       expect(pretty(new Set([1, 2, 3]))).toEqual("new Set([1,2,3])")
     })
   })
-
-  it("Custom message", async () => {
-    const schema = S.instanceOf(Set, {
-      message: () => "This is a custom message"
-    })
-    await Util.expectDecodeUnknownFailure(schema, 1, `This is a custom message`)
-  })
 })

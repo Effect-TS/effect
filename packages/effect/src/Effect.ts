@@ -56,7 +56,7 @@ import * as Scheduler from "./Scheduler.js"
 import type * as Scope from "./Scope.js"
 import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
-import type { Concurrency, Covariant, MergeRecord, NoInfer, NotFunction } from "./Types.js"
+import type { Concurrency, Covariant, NoInfer, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
 import type { YieldWrap } from "./Utils.js"
 
@@ -321,8 +321,7 @@ export const cachedFunction: <A, B, E, R>(
  * evaluated multiple times.
  *
  * @example
- * import * as Effect from "effect/Effect"
- * import * as Console from "effect/Console"
+ * import { Effect, Console } from "effect"
  *
  * const program = Effect.gen(function* (_) {
  *   const twice = Console.log("twice")
@@ -958,8 +957,7 @@ export const validateAll: {
  * If `elements` is empty then `Effect.fail([])` is returned.
  *
  * @example
- * import * as Effect from "effect/Effect"
- * import * as Exit from "effect/Exit"
+ * import { Effect, Exit } from "effect"
  *
  * const f = (n: number) => (n > 0 ? Effect.succeed(n) : Effect.fail(`${n} is negative`))
  *
@@ -1035,7 +1033,7 @@ export const asyncEffect: <A, E, R, R3, E2, R2>(
  * It is meant to be called with a bag of instructions that become available in the "this" of the effect.
  *
  * @example
- * import * as Effect from "effect/Effect"
+ * import { Effect } from "effect"
  *
  * const throwingFunction = () => { throw new Error() }
  * const blowUp = Effect.custom(throwingFunction, function() {
@@ -3263,56 +3261,148 @@ export const updateService: {
 // -------------------------------------------------------------------------------------
 
 /**
- * @since 2.0.0
+ * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
+ *
+ * Here's how the do simulation works:
+ *
+ * 1. Start the do simulation using the `Do` value
+ * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Effect` values
+ * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+ * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+ *
+ * @see {@link bind}
+ * @see {@link bindTo}
+ * @see {@link let_ let}
+ *
+ * @example
+ * import { Effect, pipe } from "effect"
+ *
+ * const result = pipe(
+ *   Effect.Do,
+ *   Effect.bind("x", () => Effect.succeed(2)),
+ *   Effect.bind("y", () => Effect.succeed(3)),
+ *   Effect.let("sum", ({ x, y }) => x + y)
+ * )
+ * assert.deepStrictEqual(Effect.runSync(result), { x: 2, y: 3, sum: 5 })
+ *
  * @category do notation
+ * @since 2.0.0
  */
 export const Do: Effect<{}> = effect.Do
 
 /**
- * Binds an effectful value in a `do` scope
+ * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
  *
- * @since 2.0.0
+ * Here's how the do simulation works:
+ *
+ * 1. Start the do simulation using the `Do` value
+ * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Effect` values
+ * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+ * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+ *
+ * @see {@link Do}
+ * @see {@link bindTo}
+ * @see {@link let_ let}
+ *
+ * @example
+ * import { Effect, pipe } from "effect"
+ *
+ * const result = pipe(
+ *   Effect.Do,
+ *   Effect.bind("x", () => Effect.succeed(2)),
+ *   Effect.bind("y", () => Effect.succeed(3)),
+ *   Effect.let("sum", ({ x, y }) => x + y)
+ * )
+ * assert.deepStrictEqual(Effect.runSync(result), { x: 2, y: 3, sum: 5 })
+ *
  * @category do notation
+ * @since 2.0.0
  */
 export const bind: {
-  <N extends string, K, A, E2, R2>(
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Effect<A, E2, R2>
-  ): <E, R>(self: Effect<K, E, R>) => Effect<MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
-  <K, E, R, N extends string, A, E2, R2>(
-    self: Effect<K, E, R>,
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Effect<A, E2, R2>
-  ): Effect<MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
+  <N extends string, A extends object, B, E2, R2>(
+    name: Exclude<N, keyof A>,
+    f: (a: A) => Effect<B, E2, R2>
+  ): <E1, R1>(self: Effect<A, E1, R1>) => Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E2 | E1, R2 | R1>
+  <A extends object, N extends string, E1, R1, B, E2, R2>(
+    self: Effect<A, E1, R1>,
+    name: Exclude<N, keyof A>,
+    f: (a: A) => Effect<B, E2, R2>
+  ): Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E1 | E2, R1 | R2>
 } = effect.bind
 
 /**
+ * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
+ *
+ * Here's how the do simulation works:
+ *
+ * 1. Start the do simulation using the `Do` value
+ * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Effect` values
+ * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+ * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+ *
+ * @see {@link Do}
+ * @see {@link bind}
+ * @see {@link let_ let}
+ *
+ * @example
+ * import { Effect, pipe } from "effect"
+ *
+ * const result = pipe(
+ *   Effect.Do,
+ *   Effect.bind("x", () => Effect.succeed(2)),
+ *   Effect.bind("y", () => Effect.succeed(3)),
+ *   Effect.let("sum", ({ x, y }) => x + y)
+ * )
+ * assert.deepStrictEqual(Effect.runSync(result), { x: 2, y: 3, sum: 5 })
+ *
  * @category do notation
  * @since 2.0.0
  */
 export const bindTo: {
-  <N extends string>(tag: N): <A, E, R>(self: Effect<A, E, R>) => Effect<Record<N, A>, E, R>
-  <A, E, R, N extends string>(self: Effect<A, E, R>, tag: N): Effect<Record<N, A>, E, R>
+  <N extends string>(name: N): <A, E, R>(self: Effect<A, E, R>) => Effect<{ [K in N]: A }, E, R>
+  <A, E, R, N extends string>(self: Effect<A, E, R>, name: N): Effect<{ [K in N]: A }, E, R>
 } = effect.bindTo
 
 const let_: {
-  <N extends string, K, A>(
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => A
-  ): <E, R>(self: Effect<K, E, R>) => Effect<MergeRecord<K, { [k in N]: A }>, E, R>
-  <K, E, R, N extends string, A>(
-    self: Effect<K, E, R>,
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => A
-  ): Effect<MergeRecord<K, { [k in N]: A }>, E, R>
+  <N extends string, A extends object, B>(
+    name: Exclude<N, keyof A>,
+    f: (a: A) => B
+  ): <E, R>(self: Effect<A, E, R>) => Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
+  <A extends object, N extends string, E, R, B>(
+    self: Effect<A, E, R>,
+    name: Exclude<N, keyof A>,
+    f: (a: A) => B
+  ): Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
 } = effect.let_
 
 export {
   /**
-   * Like bind for values
+   * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
    *
-   * @since 2.0.0
+   * Here's how the do simulation works:
+   *
+   * 1. Start the do simulation using the `Do` value
+   * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Effect` values
+   * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+   * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+   *
+   * @see {@link Do}
+   * @see {@link bind}
+   * @see {@link bindTo}
+   *
+   * @example
+   * import { Effect, pipe } from "effect"
+   *
+   * const result = pipe(
+   *   Effect.Do,
+   *   Effect.bind("x", () => Effect.succeed(2)),
+   *   Effect.bind("y", () => Effect.succeed(3)),
+   *   Effect.let("sum", ({ x, y }) => x + y)
+   * )
+   * assert.deepStrictEqual(Effect.runSync(result), { x: 2, y: 3, sum: 5 })
+   *
    * @category do notation
+   * @since 2.0.0
    */
   let_ as let
 }
@@ -3628,7 +3718,7 @@ export const flatMap: {
  * - a function returning an effect
  *
  * @example
- * import * as Effect from "effect/Effect"
+ * import { Effect } from "effect"
  *
  * assert.deepStrictEqual(Effect.runSync(Effect.succeed("aa").pipe(Effect.andThen(1))), 1)
  * assert.deepStrictEqual(Effect.runSync(Effect.succeed("aa").pipe(Effect.andThen((s) => s.length))), 2)
@@ -4040,11 +4130,44 @@ export declare namespace Repeat {
 }
 
 /**
- * Returns a new effect that repeats this effect according to the specified
- * schedule or until the first failure. Scheduled recurrences are in addition
- * to the first execution, so that `io.repeat(Schedule.once)` yields an effect
- * that executes `io`, and then if that succeeds, executes `io` an additional
- * time.
+ * The `repeat` function returns a new effect that repeats the given effect
+ * according to a specified schedule or until the first failure. The scheduled
+ * recurrences are in addition to the initial execution, so `Effect.repeat(action,
+ * Schedule.once)` executes `action` once initially, and if it succeeds, repeats it
+ * an additional time.
+ *
+ * @example
+ * // Success Example
+ * import { Effect, Schedule, Console } from "effect"
+ *
+ * const action = Console.log("success")
+ * const policy = Schedule.addDelay(Schedule.recurs(2), () => "100 millis")
+ * const program = Effect.repeat(action, policy)
+ *
+ * Effect.runPromise(program).then((n) => console.log(`repetitions: ${n}`))
+ *
+ * @example
+ * // Failure Example
+ * import { Effect, Schedule } from "effect"
+ *
+ * let count = 0
+ *
+ * // Define an async effect that simulates an action with possible failures
+ * const action = Effect.async<string, string>((resume) => {
+ *   if (count > 1) {
+ *     console.log("failure")
+ *     resume(Effect.fail("Uh oh!"))
+ *   } else {
+ *     count++
+ *     console.log("success")
+ *     resume(Effect.succeed("yay!"))
+ *   }
+ * })
+ *
+ * const policy = Schedule.addDelay(Schedule.recurs(2), () => "100 millis")
+ * const program = Effect.repeat(action, policy)
+ *
+ * Effect.runPromiseExit(program).then(console.log)
  *
  * @since 2.0.0
  * @category repetition / recursion
@@ -4066,10 +4189,18 @@ export const repeat: {
 } = _schedule.repeat_combined
 
 /**
- * Returns a new effect that repeats this effect the specified number of times
- * or until the first failure. Repeats are in addition to the first execution,
- * so that `io.repeatN(1)` yields an effect that executes `io`, and then if
- * that succeeds, executes `io` an additional time.
+ * The `repeatN` function returns a new effect that repeats the specified effect a
+ * given number of times or until the first failure. The repeats are in addition
+ * to the initial execution, so `Effect.repeatN(action, 1)` executes `action` once
+ * initially and then repeats it one additional time if it succeeds.
+ *
+ * @example
+ * import { Effect, Console } from "effect"
+ *
+ * const action = Console.log("success")
+ * const program = Effect.repeatN(action, 2)
+ *
+ * Effect.runPromise(program)
  *
  * @since 2.0.0
  * @category repetition / recursion
@@ -4080,13 +4211,43 @@ export const repeatN: {
 } = effect.repeatN
 
 /**
- * Returns a new effect that repeats this effect according to the specified
- * schedule or until the first failure, at which point, the failure value and
- * schedule output are passed to the specified handler.
+ * The `repeatOrElse` function returns a new effect that repeats the specified
+ * effect according to the given schedule or until the first failure. When a
+ * failure occurs, the failure value and schedule output are passed to a
+ * specified handler. Scheduled recurrences are in addition to the initial
+ * execution, so `Effect.repeat(action, Schedule.once)` executes `action` once
+ * initially and then repeats it an additional time if it succeeds.
  *
- * Scheduled recurrences are in addition to the first execution, so that
- * `pipe(effect, Effect.repeat(Schedule.once()))` yields an effect that executes
- * `effect`, and then if that succeeds, executes `effect` an additional time.
+ * @example
+ * import { Effect, Schedule } from "effect"
+ *
+ * let count = 0
+ *
+ * // Define an async effect that simulates an action with possible failures
+ * const action = Effect.async<string, string>((resume) => {
+ *   if (count > 1) {
+ *     console.log("failure")
+ *     resume(Effect.fail("Uh oh!"))
+ *   } else {
+ *     count++
+ *     console.log("success")
+ *     resume(Effect.succeed("yay!"))
+ *   }
+ * })
+ *
+ * const policy = Schedule.addDelay(
+ *   Schedule.recurs(2), // Repeat for a maximum of 2 times
+ *   () => "100 millis" // Add a delay of 100 milliseconds between repetitions
+ * )
+ *
+ * const program = Effect.repeatOrElse(action, policy, () =>
+ *   Effect.sync(() => {
+ *     console.log("orElse")
+ *     return count - 1
+ *   })
+ * )
+ *
+ * Effect.runPromise(program).then((n) => console.log(`repetitions: ${n}`))
  *
  * @since 2.0.0
  * @category repetition / recursion
@@ -5275,6 +5436,46 @@ export const withSpan: {
 } = effect.withSpan
 
 /**
+ * Wraps a function that returns an effect with a new span for tracing.
+ *
+ * @since 3.2.0
+ * @category models
+ */
+export interface FunctionWithSpanOptions {
+  readonly name: string
+  readonly attributes?: Record<string, unknown> | undefined
+  readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
+  readonly parent?: Tracer.AnySpan | undefined
+  readonly root?: boolean | undefined
+  readonly context?: Context.Context<never> | undefined
+  readonly kind?: Tracer.SpanKind | undefined
+}
+
+/**
+ * Wraps a function that returns an effect with a new span for tracing.
+ *
+ * @since 3.2.0
+ * @category tracing
+ * @example
+ * import { Effect } from "effect"
+ *
+ * const getTodo = Effect.functionWithSpan({
+ *   body: (id: number) => Effect.succeed(`Got todo ${id}!`),
+ *   options: (id) => ({
+ *     name: `getTodo-${id}`,
+ *     attributes: { id }
+ *   })
+ * })
+ */
+export const functionWithSpan: <Args extends Array<any>, Ret extends Effect<any, any, any>>(
+  options: {
+    readonly body: (...args: Args) => Ret
+    readonly options: FunctionWithSpanOptions | ((...args: Args) => FunctionWithSpanOptions)
+    readonly captureStackTrace?: boolean | undefined
+  }
+) => (...args: Args) => Unify.Unify<Ret> = effect.functionWithSpan
+
+/**
  * Wraps the effect with a new span for tracing.
  *
  * The span is ended when the Scope is finalized.
@@ -5331,9 +5532,37 @@ export const optionFromOptional: <A, E, R>(
 
 /**
  * @since 2.0.0
+ * @category models
+ */
+export declare namespace Tag {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface ProhibitedType {
+    _op?: "propety name _op is forbidden"
+    _tag?: "propety name _tag is forbidden"
+    of?: "propety name of is forbidden"
+    context?: "propety name context is forbidden"
+    key?: "propety name key is forbidden"
+    stack?: "propety name stack is forbidden"
+  }
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export type AllowedType = (Record<PropertyKey, any> & ProhibitedType) | string | number | symbol
+}
+
+/**
+ * @since 2.0.0
  * @category constructors
  */
-export const Tag: <const Id extends string>(id: Id) => <Self, Type>() =>
+export const Tag: <const Id extends string>(id: Id) => <
+  Self,
+  Type extends Tag.AllowedType
+>() =>
   & Context.TagClass<Self, Id, Type>
   & (Type extends Record<PropertyKey, any> ? {
       [

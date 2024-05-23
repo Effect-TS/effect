@@ -1,4 +1,3 @@
-import { causes, equalCauses, errorCauseFunctions, errors } from "effect-test/utils/cause"
 import * as Cause from "effect/Cause"
 import * as Equal from "effect/Equal"
 import * as FiberId from "effect/FiberId"
@@ -6,6 +5,7 @@ import * as Hash from "effect/Hash"
 import * as internal from "effect/internal/cause"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
+import { causes, equalCauses, errorCauseFunctions, errors } from "effect/test/utils/cause"
 import * as fc from "fast-check"
 import { assert, describe, expect, it } from "vitest"
 
@@ -223,13 +223,13 @@ describe("Cause", () => {
 
     it("Sequential", () => {
       expect(String(Cause.sequential(Cause.fail("failure 1"), Cause.fail("failure 2")))).toEqual(
-        `Error: failure 1\r\nError: failure 2`
+        `Error: failure 1\nError: failure 2`
       )
     })
 
     it("Parallel", () => {
       expect(String(Cause.parallel(Cause.fail("failure 1"), Cause.fail("failure 2")))).toEqual(
-        `Error: failure 1\r\nError: failure 2`
+        `Error: failure 1\nError: failure 2`
       )
     })
   })

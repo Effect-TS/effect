@@ -165,7 +165,7 @@ export const mapInput: {
  * - incremental - Set to 'true' for a counter that only increases. With this configuration, Effect ensures that non-incremental updates have no impact on the counter, making it exclusively suitable for counting upwards.
  *
  * @example
- * import * as Metric from "effect/Metric"
+ * import { Metric } from "effect"
  *
  * const numberCounter = Metric.counter("count", {
  *   description: "A number counter"
@@ -206,7 +206,7 @@ export const counter: {
  * @param description - An optional description of the Frequency metric.
  *
  * @example
- * import * as Metric from "effect/Metric"
+ * import { Metric } from "effect"
  *
  * const errorFrequency = Metric.frequency("error_frequency", {
  *    description: "Counts the occurrences of errors."
@@ -254,7 +254,7 @@ export const fromMetricKey: <Type extends MetricKeyType.MetricKeyType<any, any>>
  * - bigint - Indicates if the counter uses 'bigint' data type.
  *
  * @example
- * import * as Metric from "effect/Metric"
+ * import { Metric } from "effect"
  *
  * const numberGauge = Metric.gauge("memory_usage", {
  *   description: "A gauge for memory usage"
@@ -288,8 +288,7 @@ export const gauge: {
  * @param description - A description of the histogram metric.
  *
  * @example
- * import * as Metric from "effect/Metric"
- * import * as MetricBoundaries from "effect/MetricBoundaries"
+ * import { Metric, MetricBoundaries } from "effect"
  *
  * const latencyHistogram = Metric.histogram("latency_histogram",
  *   MetricBoundaries.linear({ start: 0, width: 10, count: 11 }),
@@ -393,8 +392,7 @@ export const sync: <Out>(evaluate: LazyArg<Out>) => Metric<void, unknown, Out> =
  * - description - An optional description of the Summary metric.
  *
  * @example
- * import * as Metric from "effect/Metric"
- * import * as Chunk from "effect/Chunk"
+ * import { Metric, Chunk } from "effect"
  *
  * const responseTimesSummary = Metric.summary({
  *   name: "response_times_summary",

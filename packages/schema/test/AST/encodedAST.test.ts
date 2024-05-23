@@ -2,7 +2,7 @@ import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import { describe, expect, it } from "vitest"
 
-describe("AST > encodedAST", () => {
+describe("encodedAST", () => {
   describe(`should return the same reference if the AST doesn't represent a transformation`, () => {
     it("declaration (true)", () => {
       const schema = S.OptionFromSelf(S.String)

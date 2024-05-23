@@ -1,4 +1,3 @@
-import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Deferred from "effect/Deferred"
@@ -7,6 +6,7 @@ import * as Exit from "effect/Exit"
 import { constTrue, pipe } from "effect/Function"
 import * as MergeDecision from "effect/MergeDecision"
 import * as Ref from "effect/Ref"
+import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 describe("Channel", () => {

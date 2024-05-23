@@ -3,6 +3,14 @@ import * as Util from "@effect/schema/test/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("decodeUnknownSync", () => {
+  it("the returned error should include a cause", () => {
+    try {
+      S.decodeUnknownSync(S.String)(1)
+    } catch (e: any) {
+      expect(e.cause).exist
+    }
+  })
+
   it("should throw on async", () => {
     expect(() => S.decodeUnknownSync(Util.AsyncString)("a")).toThrow(
       new Error(

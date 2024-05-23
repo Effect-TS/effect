@@ -17,14 +17,14 @@ describe("required", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       {},
-      `{ a: a positive number }
+      `{ readonly a: a positive number }
 └─ ["a"]
    └─ is missing`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       { a: "-1" },
-      `{ a: a positive number }
+      `{ readonly a: a positive number }
 └─ ["a"]
    └─ a positive number
       └─ Predicate refinement failure
@@ -145,13 +145,13 @@ describe("required", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       {},
-      `{ a: string } | { b: number }
+      `{ readonly a: string } | { readonly b: number }
 ├─ Union member
-│  └─ { a: string }
+│  └─ { readonly a: string }
 │     └─ ["a"]
 │        └─ is missing
 └─ Union member
-   └─ { b: number }
+   └─ { readonly b: number }
       └─ ["b"]
          └─ is missing`
     )
@@ -172,18 +172,18 @@ describe("required", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       {},
-      `{ a: <suspended schema> | null }
+      `{ readonly a: <suspended schema> | null }
 └─ ["a"]
    └─ is missing`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       { a: {} },
-      `{ a: <suspended schema> | null }
+      `{ readonly a: <suspended schema> | null }
 └─ ["a"]
    └─ <suspended schema> | null
       ├─ Union member
-      │  └─ { a: <suspended schema> | null }
+      │  └─ { readonly a: <suspended schema> | null }
       │     └─ ["a"]
       │        └─ is missing
       └─ Union member
@@ -212,7 +212,7 @@ describe("required", () => {
         })
         const schema = S.required(S.partial(original))
         expect(S.format(schema)).toBe(
-          "({ a: string | undefined; c: string | undefined } <-> { a: string | undefined; b: string | undefined })"
+          "({ readonly a: string | undefined; readonly c: string | undefined } <-> { readonly a: string | undefined; readonly b: string | undefined })"
         )
       })
 

@@ -37,7 +37,7 @@ export const equivalence =
  * @category Equivalence
  * @since 1.0.0
  */
-export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): Equivalence.Equivalence<A> => go(schema.ast)
+export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): Equivalence.Equivalence<A> => go(schema.ast, [])
 
 const getHook = AST.getAnnotation<
   (...args: ReadonlyArray<Equivalence.Equivalence<any>>) => Equivalence.Equivalence<any>
@@ -45,23 +45,26 @@ const getHook = AST.getAnnotation<
   EquivalenceHookId
 )
 
-const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
+const getEquivalenceErrorMessage = (message: string, path: ReadonlyArray<PropertyKey>) =>
+  errors_.getErrorMessageWithPath(`cannot build an Equivalence for ${message}`, path)
+
+const go = (ast: AST.AST, path: ReadonlyArray<PropertyKey>): Equivalence.Equivalence<any> => {
   const hook = getHook(ast)
   if (Option.isSome(hook)) {
     switch (ast._tag) {
       case "Declaration":
-        return hook.value(...ast.typeParameters.map(go))
+        return hook.value(...ast.typeParameters.map((tp) => go(tp, path)))
       case "Refinement":
-        return hook.value(go(ast.from))
+        return hook.value(go(ast.from, path))
       default:
         return hook.value()
     }
   }
   switch (ast._tag) {
     case "NeverKeyword":
-      throw new Error(errors_.getEquivalenceErrorMessage("`never`"))
+      throw new Error(getEquivalenceErrorMessage("`never`", path))
     case "Transformation":
-      return go(ast.to)
+      return go(ast.to, path)
     case "Declaration":
     case "Literal":
     case "StringKeyword":
@@ -79,14 +82,14 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
     case "ObjectKeyword":
       return Equal.equals
     case "Refinement":
-      return go(ast.from)
+      return go(ast.from, path)
     case "Suspend": {
-      const get = util_.memoizeThunk(() => go(ast.f()))
+      const get = util_.memoizeThunk(() => go(ast.f(), path))
       return (a, b) => get()(a, b)
     }
     case "TupleType": {
-      const elements = ast.elements.map((element) => go(element.type))
-      const rest = ast.rest.map(go)
+      const elements = ast.elements.map((element, i) => go(element.type, path.concat(i)))
+      const rest = ast.rest.map((ast) => go(ast, path))
       return Equivalence.make((a, b) => {
         const len = a.length
         if (len !== b.length) {
@@ -128,8 +131,8 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
       if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
         return Equal.equals
       }
-      const propertySignatures = ast.propertySignatures.map((ps) => go(ps.type))
-      const indexSignatures = ast.indexSignatures.map((is) => go(is.type))
+      const propertySignatures = ast.propertySignatures.map((ps) => go(ps.type, path.concat(ps.name)))
+      const indexSignatures = ast.indexSignatures.map((is) => go(is.type, path))
       return Equivalence.make((a, b) => {
         const aStringKeys = Object.keys(a)
         const aSymbolKeys = Object.getOwnPropertySymbols(a)
@@ -204,7 +207,7 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
         if (searchTree.otherwise.length > 0) {
           candidates = candidates.concat(searchTree.otherwise)
         }
-        const tuples = candidates.map((ast) => [go(ast), ParseResult.is({ ast } as any)] as const)
+        const tuples = candidates.map((ast) => [go(ast, path), ParseResult.is({ ast } as any)] as const)
         for (let i = 0; i < tuples.length; i++) {
           const [equivalence, is] = tuples[i]
           if (is(a) && is(b)) {

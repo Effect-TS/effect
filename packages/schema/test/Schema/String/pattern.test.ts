@@ -14,8 +14,8 @@ describe("pattern", () => {
   })
 
   it("should reset lastIndex to 0 before each `test` call (#88)", () => {
-    const regex = /^(A|B)$/g
-    const schema = S.String.pipe(S.pattern(regex))
+    const regexp = /^(A|B)$/g
+    const schema = S.String.pipe(S.pattern(regexp))
     expect(S.decodeSync(schema)("A")).toEqual("A")
     expect(S.decodeSync(schema)("A")).toEqual("A")
   })

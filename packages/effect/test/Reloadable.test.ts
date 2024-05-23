@@ -1,13 +1,13 @@
-import * as Counter from "effect-test/utils/counter"
-import * as it from "effect-test/utils/extend"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Reloadable from "effect/Reloadable"
+import * as Counter from "effect/test/utils/counter"
+import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
-const DummyServiceTypeId = Symbol.for("effect-test/Reloadable/DummyService")
+const DummyServiceTypeId = Symbol.for("effect/test/Reloadable/DummyService")
 type DummyServiceTypeId = typeof DummyServiceTypeId
 
 interface DummyService {

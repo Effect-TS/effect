@@ -9,7 +9,7 @@ describe("encodeEither", () => {
     Util.expectEitherRight(S.encodeEither(schema)({ a: 1 }), { a: "1" })
     Util.expectEitherLeft(
       S.encodeEither(schema)({ a: 10 }),
-      `{ a: NumberFromChar }
+      `{ readonly a: NumberFromChar }
 └─ ["a"]
    └─ NumberFromChar
       └─ Encoded side transformation failure
@@ -31,13 +31,13 @@ describe("encodeEither", () => {
     const input = { a: 1, b: "b" }
     Util.expectEitherLeft(
       S.encodeEither(schema)(input, { onExcessProperty: "error" }),
-      `{ a: NumberFromChar }
+      `{ readonly a: NumberFromChar }
 └─ ["b"]
    └─ is unexpected, expected "a"`
     )
     Util.expectEitherLeft(
       S.encodeEither(schema, { onExcessProperty: "error" })(input),
-      `{ a: NumberFromChar }
+      `{ readonly a: NumberFromChar }
 └─ ["b"]
    └─ is unexpected, expected "a"`
     )

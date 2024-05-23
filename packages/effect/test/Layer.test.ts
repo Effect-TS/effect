@@ -1,4 +1,3 @@
-import * as it from "effect-test/utils/extend"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
@@ -12,6 +11,7 @@ import * as Layer from "effect/Layer"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
+import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 export const acquire1 = "Acquiring Module 1"

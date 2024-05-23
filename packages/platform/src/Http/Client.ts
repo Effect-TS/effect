@@ -120,8 +120,8 @@ export const fetchOk: Client.Default = internal.fetchOk
  * @category error handling
  */
 export const catchAll: {
-  <E, R2, E2, A2>(f: (e: E) => Effect.Effect<A2, E2, R2>): <A, R>(self: Client<A, E, R>) => Client<A2 | A, E2, R2 | R>
-  <A, E, R, R2, E2, A2>(self: Client<A, E, R>, f: (e: E) => Effect.Effect<A2, E2, R2>): Client<A | A2, E2, R | R2>
+  <E, E2, R2, A2>(f: (e: E) => Effect.Effect<A2, E2, R2>): <A, R>(self: Client<A, E, R>) => Client<A2 | A, E2, R2 | R>
+  <A, E, R, A2, E2, R2>(self: Client<A, E, R>, f: (e: E) => Effect.Effect<A2, E2, R2>): Client<A | A2, E2, R | R2>
 } = internal.catchAll
 
 /**
@@ -129,11 +129,11 @@ export const catchAll: {
  * @category error handling
  */
 export const catchTag: {
-  <E extends { _tag: string }, K extends E["_tag"] & string, R1, E1, A1>(
+  <E extends { _tag: string }, K extends E["_tag"] & string, A1, E1, R1>(
     tag: K,
     f: (e: Extract<E, { _tag: K }>) => Effect.Effect<A1, E1, R1>
   ): <A, R>(self: Client<A, E, R>) => Client<A1 | A, E1 | Exclude<E, { _tag: K }>, R1 | R>
-  <R, E extends { _tag: string }, A, K extends E["_tag"] & string, E1, R1, A1>(
+  <A, E extends { _tag: string }, R, K extends E["_tag"] & string, A1, E1, R1>(
     self: Client<A, E, R>,
     tag: K,
     f: (e: Extract<E, { _tag: K }>) => Effect.Effect<A1, E1, R1>
@@ -195,11 +195,11 @@ export const catchTags: {
  * @category filters
  */
 export const filterOrElse: {
-  <A, R2, E2, B>(
+  <A, B, E2, R2>(
     f: Predicate.Predicate<A>,
     orElse: (a: A) => Effect.Effect<B, E2, R2>
   ): <E, R>(self: Client<A, E, R>) => Client<A | B, E2 | E, R2 | R>
-  <A, E, R, R2, E2, B>(
+  <A, E, R, B, E2, R2>(
     self: Client<A, E, R>,
     f: Predicate.Predicate<A>,
     orElse: (a: A) => Effect.Effect<B, E2, R2>
@@ -241,7 +241,7 @@ export const filterStatusOk: <E, R>(
  * @since 1.0.0
  * @category constructors
  */
-export const make: <A, E, R, R2, E2>(
+export const make: <A, E, R, E2, R2>(
   execute: (request: Effect.Effect<ClientRequest.ClientRequest, E2, R2>) => Effect.Effect<A, E, R>,
   preprocess: Client.Preprocess<E2, R2>
 ) => Client<A, E, R> = internal.make
@@ -264,10 +264,10 @@ export const makeDefault: (
  * @category mapping & sequencing
  */
 export const transform: {
-  <A, E, R, R1, E1, A1>(
+  <A, E, R, A1, E1, R1>(
     f: (effect: Effect.Effect<A, E, R>, request: ClientRequest.ClientRequest) => Effect.Effect<A1, E1, R1>
   ): (self: Client<A, E, R>) => Client<A1, E | E1, R | R1>
-  <A, E, R, R1, E1, A1>(
+  <A, E, R, A1, E1, R1>(
     self: Client<A, E, R>,
     f: (effect: Effect.Effect<A, E, R>, request: ClientRequest.ClientRequest) => Effect.Effect<A1, E1, R1>
   ): Client<A1, E | E1, R | R1>
@@ -278,10 +278,10 @@ export const transform: {
  * @category mapping & sequencing
  */
 export const transformResponse: {
-  <A, E, R, R1, E1, A1>(
+  <A, E, R, A1, E1, R1>(
     f: (effect: Effect.Effect<A, E, R>) => Effect.Effect<A1, E1, R1>
   ): (self: Client<A, E, R>) => Client<A1, E1, R1>
-  <A, E, R, R1, E1, A1>(
+  <A, E, R, A1, E1, R1>(
     self: Client<A, E, R>,
     f: (effect: Effect.Effect<A, E, R>) => Effect.Effect<A1, E1, R1>
   ): Client<A1, E1, R1>
@@ -301,8 +301,8 @@ export const map: {
  * @category mapping & sequencing
  */
 export const mapEffect: {
-  <A, R2, E2, B>(f: (a: A) => Effect.Effect<B, E2, R2>): <E, R>(self: Client<A, E, R>) => Client<B, E2 | E, R2 | R>
-  <A, E, R, R2, E2, B>(self: Client<A, E, R>, f: (a: A) => Effect.Effect<B, E2, R2>): Client<B, E | E2, R2 | R>
+  <A, B, E2, R2>(f: (a: A) => Effect.Effect<B, E2, R2>): <E, R>(self: Client<A, E, R>) => Client<B, E2 | E, R2 | R>
+  <A, E, R, B, E2, R2>(self: Client<A, E, R>, f: (a: A) => Effect.Effect<B, E2, R2>): Client<B, E | E2, R2 | R>
 } = internal.mapEffect
 
 /**
@@ -310,10 +310,10 @@ export const mapEffect: {
  * @category mapping & sequencing
  */
 export const mapEffectScoped: {
-  <A, R2, E2, B>(
+  <A, B, E2, R2>(
     f: (a: A) => Effect.Effect<B, E2, R2>
   ): <E, R>(self: Client<A, E, R>) => Client<B, E2 | E, Exclude<R2, Scope.Scope> | Exclude<R, Scope.Scope>>
-  <A, E, R, R2, E2, B>(
+  <A, E, R, B, E2, R2>(
     self: Client<A, E, R>,
     f: (a: A) => Effect.Effect<B, E2, R2>
   ): Client<B, E | E2, Exclude<R2, Scope.Scope> | Exclude<R, Scope.Scope>>
@@ -335,10 +335,10 @@ export const mapRequest: {
  * @category mapping & sequencing
  */
 export const mapRequestEffect: {
-  <R2, E2>(
+  <E2, R2>(
     f: (a: ClientRequest.ClientRequest) => Effect.Effect<ClientRequest.ClientRequest, E2, R2>
   ): <A, E, R>(self: Client<A, E, R>) => Client<A, E2 | E, R2 | R>
-  <A, E, R, R2, E2>(
+  <A, E, R, E2, R2>(
     self: Client<A, E, R>,
     f: (a: ClientRequest.ClientRequest) => Effect.Effect<ClientRequest.ClientRequest, E2, R2>
   ): Client<A, E | E2, R | R2>
@@ -360,10 +360,10 @@ export const mapInputRequest: {
  * @category mapping & sequencing
  */
 export const mapInputRequestEffect: {
-  <R2, E2>(
+  <E2, R2>(
     f: (a: ClientRequest.ClientRequest) => Effect.Effect<ClientRequest.ClientRequest, E2, R2>
   ): <A, E, R>(self: Client<A, E, R>) => Client<A, E2 | E, R2 | R>
-  <A, E, R, R2, E2>(
+  <A, E, R, E2, R2>(
     self: Client<A, E, R>,
     f: (a: ClientRequest.ClientRequest) => Effect.Effect<ClientRequest.ClientRequest, E2, R2>
   ): Client<A, E | E2, R2 | R>
@@ -411,8 +411,8 @@ export const schemaFunction: {
  * @category mapping & sequencing
  */
 export const tap: {
-  <A, R2, E2, _>(f: (a: A) => Effect.Effect<_, E2, R2>): <E, R>(self: Client<A, E, R>) => Client<A, E2 | E, R2 | R>
-  <A, E, R, R2, E2, _>(self: Client<A, E, R>, f: (a: A) => Effect.Effect<_, E2, R2>): Client<A, E | E2, R2 | R>
+  <A, _, E2, R2>(f: (a: A) => Effect.Effect<_, E2, R2>): <E, R>(self: Client<A, E, R>) => Client<A, E2 | E, R2 | R>
+  <A, E, R, _, E2, R2>(self: Client<A, E, R>, f: (a: A) => Effect.Effect<_, E2, R2>): Client<A, E | E2, R2 | R>
 } = internal.tap
 
 /**
@@ -420,10 +420,10 @@ export const tap: {
  * @category mapping & sequencing
  */
 export const tapRequest: {
-  <R2, E2, _>(
+  <_, E2, R2>(
     f: (a: ClientRequest.ClientRequest) => Effect.Effect<_, E2, R2>
   ): <A, E, R>(self: Client<A, E, R>) => Client<A, E2 | E, R2 | R>
-  <A, E, R, R2, E2, _>(
+  <A, E, R, _, E2, R2>(
     self: Client<A, E, R>,
     f: (a: ClientRequest.ClientRequest) => Effect.Effect<_, E2, R2>
   ): Client<A, E | E2, R | R2>
@@ -452,12 +452,27 @@ export const currentTracerDisabledWhen: FiberRef.FiberRef<Predicate.Predicate<Cl
 export const withTracerDisabledWhen: {
   (
     predicate: Predicate.Predicate<ClientRequest.ClientRequest>
-  ): <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <R, E, A>(
+  ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(
     effect: Effect.Effect<A, E, R>,
     predicate: Predicate.Predicate<ClientRequest.ClientRequest>
   ): Effect.Effect<A, E, R>
 } = internal.withTracerDisabledWhen
+
+/**
+ * @since 1.0.0
+ * @category fiber refs
+ */
+export const currentTracerPropagation: FiberRef.FiberRef<boolean> = internal.currentTracerPropagation
+
+/**
+ * @since 1.0.0
+ * @category fiber refs
+ */
+export const withTracerPropagation: {
+  (enabled: boolean): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(effect: Effect.Effect<A, E, R>, enabled: boolean): Effect.Effect<A, E, R>
+} = internal.withTracerPropagation
 
 /**
  * @since 1.0.0
@@ -470,6 +485,6 @@ export const currentFetchOptions: FiberRef.FiberRef<RequestInit> = internal.curr
  * @category fiber refs
  */
 export const withFetchOptions: {
-  (options: RequestInit): <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <R, E, A>(effect: Effect.Effect<A, E, R>, options: RequestInit): Effect.Effect<A, E, R>
+  (options: RequestInit): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(effect: Effect.Effect<A, E, R>, options: RequestInit): Effect.Effect<A, E, R>
 } = internal.withFetchOptions

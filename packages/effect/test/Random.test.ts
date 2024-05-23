@@ -1,5 +1,5 @@
 import { Array, Chunk, Effect, Random } from "effect"
-import * as it from "effect-test/utils/extend"
+import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 describe("Random", () => {

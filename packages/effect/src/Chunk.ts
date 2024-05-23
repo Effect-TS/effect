@@ -551,7 +551,7 @@ export const dropWhile: {
  * If either chunk is non-empty, the result is also a non-empty chunk.
  *
  * @example
- * import * as Chunk from "effect/Chunk"
+ * import { Chunk } from "effect"
  *
  * assert.deepStrictEqual(
  *   Chunk.make(1, 2).pipe(Chunk.prependAll(Chunk.make("a", "b")), Chunk.toArray),
@@ -575,7 +575,7 @@ export const prependAll: {
  * If either chunk is non-empty, the result is also a non-empty chunk.
  *
  * @example
- * import * as Chunk from "effect/Chunk"
+ * import { Chunk } from "effect"
  *
  * assert.deepStrictEqual(
  *   Chunk.make(1, 2).pipe(Chunk.appendAll(Chunk.make("a", "b")), Chunk.toArray),
@@ -866,7 +866,7 @@ export declare namespace Chunk {
  * If the input chunk is non-empty, the resulting chunk will also be non-empty.
  *
  * @example
- * import * as Chunk from "effect/Chunk"
+ * import { Chunk } from "effect"
  *
  * assert.deepStrictEqual(
  *   Chunk.map(Chunk.make(1, 2), (n) => n + 1),
@@ -1387,3 +1387,33 @@ export const reduceRight: {
   <B, A>(b: B, f: (b: B, a: A, i: number) => B): (self: Chunk<A>) => B
   <A, B>(self: Chunk<A>, b: B, f: (b: B, a: A, i: number) => B): B
 } = RA.reduceRight
+
+/**
+ * Creates a `Chunk` of values not included in the other given `Chunk` using the provided `isEquivalent` function.
+ * The order and references of result values are determined by the first `Chunk`.
+ *
+ * @since 3.2.0
+ */
+export const differenceWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
+  (that: Chunk<A>): (self: Chunk<A>) => Chunk<A>
+  (self: Chunk<A>, that: Chunk<A>): Chunk<A>
+} => {
+  return dual(
+    2,
+    (self: Chunk<A>, that: Chunk<A>): Chunk<A> => unsafeFromArray(RA.differenceWith(isEquivalent)(that, self))
+  )
+}
+
+/**
+ * Creates a `Chunk` of values not included in the other given `Chunk`.
+ * The order and references of result values are determined by the first `Chunk`.
+ *
+ * @since 3.2.0
+ */
+export const difference: {
+  <A>(that: Chunk<A>): (self: Chunk<A>) => Chunk<A>
+  <A>(self: Chunk<A>, that: Chunk<A>): Chunk<A>
+} = dual(
+  2,
+  <A>(self: Chunk<A>, that: Chunk<A>): Chunk<A> => unsafeFromArray(RA.difference(that, self))
+)

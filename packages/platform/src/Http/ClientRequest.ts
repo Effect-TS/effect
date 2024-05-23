@@ -22,7 +22,7 @@ import type * as UrlParams from "./UrlParams.js"
  * @since 1.0.0
  * @category type ids
  */
-export const TypeId = Symbol.for("@effect/platform/Http/ClientRequest")
+export const TypeId: unique symbol = Symbol.for("@effect/platform/Http/ClientRequest")
 
 /**
  * @since 1.0.0

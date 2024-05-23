@@ -5,6 +5,7 @@ import * as Client from "@effect/sql/Client"
 import type { Connection } from "@effect/sql/Connection"
 import { SqlError } from "@effect/sql/Error"
 import * as Statement from "@effect/sql/Statement"
+import * as Otel from "@opentelemetry/semantic-conventions"
 import { Database } from "bun:sqlite"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
@@ -15,22 +16,36 @@ import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
 
 /**
+ * @category type ids
+ * @since 1.0.0
+ */
+export const TypeId: unique symbol = Symbol.for("@effect/sql-sqlite-bun/Client")
+
+/**
+ * @category type ids
+ * @since 1.0.0
+ */
+export type TypeId = typeof TypeId
+
+/**
  * @category models
  * @since 1.0.0
  */
 export interface SqliteClient extends Client.Client {
+  readonly [TypeId]: TypeId
   readonly config: SqliteClientConfig
   readonly export: Effect.Effect<Uint8Array, SqlError>
   readonly loadExtension: (path: string) => Effect.Effect<void, SqlError>
+
+  /** Not supported in sqlite */
+  readonly updateValues: never
 }
 
 /**
  * @category tags
  * @since 1.0.0
  */
-export const SqliteClient: Context.Tag<SqliteClient, SqliteClient> = Context.GenericTag(
-  "@effect/sql-sqlite-bun/SqliteClient"
-)
+export const SqliteClient = Context.GenericTag<SqliteClient>("@effect/sql-sqlite-bun/Client")
 
 /**
  * @category models
@@ -60,8 +75,8 @@ export const make = (
   options: SqliteClientConfig
 ): Effect.Effect<SqliteClient, never, Scope.Scope> =>
   Effect.gen(function*(_) {
-    const compiler = makeCompiler(options.transformQueryNames)
-    const transformRows = Client.defaultTransforms(
+    const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
+    const transformRows = Statement.defaultTransforms(
       options.transformResultNames!
     ).array
 
@@ -149,9 +164,10 @@ export const make = (
         acquirer,
         compiler,
         transactionAcquirer,
-        spanAttributes: [["db.system", "sqlite"]]
-      }),
+        spanAttributes: [[Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_SQLITE]]
+      }) as SqliteClient,
       {
+        [TypeId]: TypeId as TypeId,
         config: options,
         export: Effect.flatMap(acquirer, (_) => _.export),
         loadExtension: (path: string) => Effect.flatMap(acquirer, (_) => _.loadExtension(path))
@@ -165,22 +181,14 @@ export const make = (
  */
 export const layer = (
   config: Config.Config.Wrap<SqliteClientConfig>
-): Layer.Layer<SqliteClient, ConfigError> =>
-  Layer.scoped(
-    SqliteClient,
-    Effect.flatMap(Config.unwrap(config), make)
+): Layer.Layer<SqliteClient | Client.Client, ConfigError> =>
+  Layer.scopedContext(
+    Config.unwrap(config).pipe(
+      Effect.flatMap(make),
+      Effect.map((client) =>
+        Context.make(SqliteClient, client).pipe(
+          Context.add(Client.Client, client)
+        )
+      )
+    )
   )
-
-const escape = Statement.defaultEscape("\"")
-
-/**
- * @category compiler
- * @since 1.0.0
- */
-export const makeCompiler = (transform?: (_: string) => string) =>
-  Statement.makeCompiler({
-    placeholder: (_) => `?`,
-    onIdentifier: transform ? (_) => escape(transform(_)) : escape,
-    onRecordUpdate: () => ["", []],
-    onCustom: () => ["", []]
-  })

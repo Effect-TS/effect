@@ -6,7 +6,7 @@ import * as Util from "@effect/schema/test/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe(".annotations()", () => {
-  it("annotations", () => {
+  it("should return a Schema", () => {
     const schema = S.String.annotations({
       [AST.TitleAnnotationId]: "MyString",
       [AST.DescriptionAnnotationId]: "a string"

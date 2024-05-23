@@ -8,7 +8,7 @@ describe("encodeSync", () => {
   it("should throw on invalid values", () => {
     expect(S.encodeSync(schema)({ a: 1 })).toEqual({ a: "1" })
     expect(() => S.encodeSync(schema)({ a: 10 })).toThrow(
-      new Error(`{ a: NumberFromChar }
+      new Error(`{ readonly a: NumberFromChar }
 └─ ["a"]
    └─ NumberFromChar
       └─ Encoded side transformation failure
@@ -30,12 +30,12 @@ describe("encodeSync", () => {
   it("should respect outer/inner options", () => {
     const input = { a: 1, b: "b" }
     expect(() => S.encodeSync(schema)(input, { onExcessProperty: "error" })).toThrow(
-      new Error(`{ a: NumberFromChar }
+      new Error(`{ readonly a: NumberFromChar }
 └─ ["b"]
    └─ is unexpected, expected "a"`)
     )
     expect(() => S.encodeSync(schema, { onExcessProperty: "error" })(input)).toThrow(
-      new Error(`{ a: NumberFromChar }
+      new Error(`{ readonly a: NumberFromChar }
 └─ ["b"]
    └─ is unexpected, expected "a"`)
     )

@@ -31,12 +31,13 @@ import * as HaltStrategy from "../StreamHaltStrategy.js"
 import type * as Take from "../Take.js"
 import type * as Tracer from "../Tracer.js"
 import * as Tuple from "../Tuple.js"
-import type { MergeRecord, NoInfer } from "../Types.js"
+import type { NoInfer } from "../Types.js"
 import * as channel from "./channel.js"
 import * as channelExecutor from "./channel/channelExecutor.js"
 import * as MergeStrategy from "./channel/mergeStrategy.js"
 import * as singleProducerAsyncInput from "./channel/singleProducerAsyncInput.js"
 import * as core from "./core-stream.js"
+import * as doNotation from "./doNotation.js"
 import { RingBuffer } from "./ringBuffer.js"
 import * as _sink from "./sink.js"
 import * as DebounceState from "./stream/debounceState.js"
@@ -49,6 +50,7 @@ import * as SinkEndReason from "./stream/sinkEndReason.js"
 import * as ZipAllState from "./stream/zipAllState.js"
 import * as ZipChunksState from "./stream/zipChunksState.js"
 import * as InternalTake from "./take.js"
+import * as InternalTracer from "./tracer.js"
 
 /** @internal */
 const StreamSymbolKey = "effect/Stream"
@@ -6540,16 +6542,30 @@ export const toQueueOfElements = dual<
   ))
 
 /** @internal */
-export const toReadableStream = <A, E>(source: Stream.Stream<A, E>) => {
-  let pull: Effect.Effect<void>
+export const toReadableStream = <A, E>(self: Stream.Stream<A, E>) =>
+  toReadableStreamRuntime(self, Runtime.defaultRuntime)
+
+/** @internal */
+export const toReadableStreamEffect = <A, E, R>(self: Stream.Stream<A, E, R>) =>
+  Effect.map(Effect.runtime<R>(), (runtime) => toReadableStreamRuntime(self, runtime))
+
+/** @internal */
+export const toReadableStreamRuntime = dual<
+  <XR>(runtime: Runtime.Runtime<XR>) => <A, E, R extends XR>(self: Stream.Stream<A, E, R>) => ReadableStream<A>,
+  <A, E, XR, R extends XR>(self: Stream.Stream<A, E, R>, runtime: Runtime.Runtime<XR>) => ReadableStream<A>
+>(2, <A, E, XR, R extends XR>(self: Stream.Stream<A, E, R>, runtime: Runtime.Runtime<XR>): ReadableStream<A> => {
+  const runSync = Runtime.runSync(runtime)
+  const runPromise = Runtime.runPromise(runtime)
+
+  let pull: Effect.Effect<void, never, R>
   let scope: Scope.CloseableScope
   return new ReadableStream<A>({
     start(controller) {
-      scope = Effect.runSync(Scope.make())
+      scope = runSync(Scope.make())
       pull = pipe(
-        toPull(source),
-        Scope.use(scope),
-        Effect.runSync,
+        toPull(self),
+        Scope.extend(scope),
+        runSync,
         Effect.tap((chunk) =>
           Effect.sync(() => {
             Chunk.map(chunk, (a) => {
@@ -6572,13 +6588,13 @@ export const toReadableStream = <A, E>(source: Stream.Stream<A, E>) => {
       )
     },
     pull() {
-      return Effect.runPromise(pull)
+      return runPromise(pull)
     },
     cancel() {
-      return Effect.runPromise(Scope.close(scope, Exit.void))
+      return runPromise(Scope.close(scope, Exit.void))
     }
   })
-}
+})
 
 /** @internal */
 export const transduce = dual<
@@ -6800,17 +6816,26 @@ export const whenEffect = dual<
 )
 
 /** @internal */
-export const withSpan = dual<
+export const withSpan: {
   (
     name: string,
     options?: Tracer.SpanOptions
-  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, Exclude<R, Tracer.ParentSpan>>,
+  ): <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, Exclude<R, Tracer.ParentSpan>>
   <A, E, R>(
     self: Stream.Stream<A, E, R>,
     name: string,
     options?: Tracer.SpanOptions
-  ) => Stream.Stream<A, E, Exclude<R, Tracer.ParentSpan>>
->(3, (self, name, options) => new StreamImpl(channel.withSpan(toChannel(self), name, options)))
+  ): Stream.Stream<A, E, Exclude<R, Tracer.ParentSpan>>
+} = function() {
+  const dataFirst = typeof arguments[0] !== "string"
+  const name = dataFirst ? arguments[1] : arguments[0]
+  const options = InternalTracer.addSpanStackTrace(dataFirst ? arguments[2] : arguments[1])
+  if (dataFirst) {
+    const self = arguments[0]
+    return new StreamImpl(channel.withSpan(toChannel(self), name, options))
+  }
+  return (self: Stream.Stream<any, any, any>) => new StreamImpl(channel.withSpan(toChannel(self), name, options))
+} as any
 
 /** @internal */
 export const zip = dual<
@@ -7921,35 +7946,35 @@ export const Do: Stream.Stream<{}> = succeed({})
 
 /** @internal */
 export const bind = dual<
-  <N extends string, K, A, E2, R2>(
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Stream.Stream<A, E2, R2>,
+  <N extends string, A, B, E2, R2>(
+    tag: Exclude<N, keyof A>,
+    f: (_: A) => Stream.Stream<B, E2, R2>,
     options?: {
       readonly concurrency?: number | "unbounded" | undefined
       readonly bufferSize?: number | undefined
     }
-  ) => <E, R>(self: Stream.Stream<K, E, R>) => Stream.Stream<
-    MergeRecord<K, { [k in N]: A }>,
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<
+    { [K in keyof A | N]: K extends keyof A ? A[K] : B },
     E | E2,
     R | R2
   >,
-  <K, E, R, N extends string, A, E2, R2>(
-    self: Stream.Stream<K, E, R>,
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Stream.Stream<A, E2, R2>,
+  <A, E, R, N extends string, B, E2, R2>(
+    self: Stream.Stream<A, E, R>,
+    tag: Exclude<N, keyof A>,
+    f: (_: A) => Stream.Stream<B, E2, R2>,
     options?: {
       readonly concurrency?: number | "unbounded" | undefined
       readonly bufferSize?: number | undefined
     }
   ) => Stream.Stream<
-    MergeRecord<K, { [k in N]: A }>,
+    { [K in keyof A | N]: K extends keyof A ? A[K] : B },
     E | E2,
     R | R2
   >
->((args) => typeof args[0] !== "string", <K, E, R, N extends string, A, E2, R2>(
-  self: Stream.Stream<K, E, R>,
-  tag: Exclude<N, keyof K>,
-  f: (_: K) => Stream.Stream<A, E2, R2>,
+>((args) => typeof args[0] !== "string", <A, E, R, N extends string, B, E2, R2>(
+  self: Stream.Stream<A, E, R>,
+  tag: Exclude<N, keyof A>,
+  f: (_: A) => Stream.Stream<B, E2, R2>,
   options?: {
     readonly concurrency?: number | "unbounded" | undefined
     readonly bufferSize?: number | undefined
@@ -7958,54 +7983,29 @@ export const bind = dual<
   flatMap(self, (k) =>
     map(
       f(k),
-      (a): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: a } as any)
+      (a) => ({ ...k, [tag]: a } as { [K in keyof A | N]: K extends keyof A ? A[K] : B })
     ), options))
 
 /* @internal */
-export const bindTo = dual<
-  <N extends string>(tag: N) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<
-    Record<N, A>,
-    E,
-    R
-  >,
-  <A, E, R, N extends string>(
-    self: Stream.Stream<A, E, R>,
-    tag: N
-  ) => Stream.Stream<
-    Record<N, A>,
-    E,
-    R
-  >
->(
-  2,
-  <A, E, R, N extends string>(self: Stream.Stream<A, E, R>, tag: N): Stream.Stream<Record<N, A>, E, R> =>
-    map(self, (a) => ({ [tag]: a } as Record<N, A>))
-)
+export const bindTo: {
+  <N extends string>(name: N): <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<{ [K in N]: A }, E, R>
+  <A, E, R, N extends string>(self: Stream.Stream<A, E, R>, name: N): Stream.Stream<{ [K in N]: A }, E, R>
+} = doNotation.bindTo<Stream.StreamTypeLambda>(map)
 
 /* @internal */
-export const let_ = dual<
-  <N extends string, K, A>(
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => A
-  ) => <E, R>(self: Stream.Stream<K, E, R>) => Stream.Stream<
-    MergeRecord<K, { [k in N]: A }>,
-    E,
-    R
-  >,
-  <K, E, R, N extends string, A>(
-    self: Stream.Stream<K, E, R>,
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => A
-  ) => Stream.Stream<
-    MergeRecord<K, { [k in N]: A }>,
-    E,
-    R
-  >
->(3, <K, E, R, N extends string, A>(self: Stream.Stream<K, E, R>, tag: Exclude<N, keyof K>, f: (_: K) => A) =>
-  map(
-    self,
-    (k): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: f(k) } as any)
-  ))
+export const let_: {
+  <N extends string, A extends object, B>(
+    name: Exclude<N, keyof A>,
+    f: (a: A) => B
+  ): <E, R>(
+    self: Stream.Stream<A, E, R>
+  ) => Stream.Stream<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
+  <A extends object, E, R, N extends string, B>(
+    self: Stream.Stream<A, E, R>,
+    name: Exclude<N, keyof A>,
+    f: (a: A) => B
+  ): Stream.Stream<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
+} = doNotation.let_<Stream.StreamTypeLambda>(map)
 
 // Circular with Channel
 

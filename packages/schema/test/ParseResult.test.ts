@@ -12,7 +12,7 @@ describe("ParseResult", () => {
   it("toString()", () => {
     const schema = S.Struct({ a: S.String })
     expect(S.decodeUnknownEither(schema)({}).pipe(Either.mapLeft((e) => e.toString()))).toStrictEqual(
-      Either.left(`{ a: string }
+      Either.left(`{ readonly a: string }
 └─ ["a"]
    └─ is missing`)
     )
@@ -24,7 +24,7 @@ describe("ParseResult", () => {
       .toStrictEqual(
         Either.left({
           _id: "ParseError",
-          message: `{ a: string }
+          message: `{ readonly a: string }
 └─ ["a"]
    └─ is missing`
         })
@@ -37,7 +37,7 @@ describe("ParseResult", () => {
       .toStrictEqual(
         Either.left(inspect({
           _id: "ParseError",
-          message: `{ a: string }
+          message: `{ readonly a: string }
 └─ ["a"]
    └─ is missing`
         }))

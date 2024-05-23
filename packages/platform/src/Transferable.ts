@@ -82,11 +82,11 @@ export const schema: {
   <I>(
     f: (_: I) => Iterable<globalThis.Transferable>
   ): <A, R>(self: Schema.Schema<A, I, R>) => Schema.Schema<A, I, R>
-  <R, I, A>(
+  <A, I, R>(
     self: Schema.Schema<A, I, R>,
     f: (_: I) => Iterable<globalThis.Transferable>
   ): Schema.Schema<A, I, R>
-} = dual(2, <R, I, A>(
+} = dual(2, <A, I, R>(
   self: Schema.Schema<A, I, R>,
   f: (_: I) => Iterable<globalThis.Transferable>
 ) =>

@@ -20,7 +20,10 @@ export interface UrlParams extends ReadonlyArray<readonly [string, string]> {}
  * @since 1.0.0
  * @category models
  */
-export type Input = Readonly<Record<string, string>> | Iterable<readonly [string, string]> | URLSearchParams
+export type Input =
+  | Readonly<Record<string, string | ReadonlyArray<string>>>
+  | Iterable<readonly [string, string]>
+  | URLSearchParams
 
 /**
  * @since 1.0.0
@@ -30,7 +33,17 @@ export const fromInput = (input: Input): UrlParams => {
   if (Symbol.iterator in input) {
     return Arr.fromIterable(input)
   }
-  return Arr.fromIterable(Object.entries(input))
+  const out: Array<readonly [string, string]> = []
+  for (const [key, value] of Object.entries(input)) {
+    if (Array.isArray(value)) {
+      for (let i = 0; i < value.length; i++) {
+        out.push([key, value[i]])
+      }
+    } else {
+      out.push([key, value as string])
+    }
+  }
+  return out
 }
 
 /**

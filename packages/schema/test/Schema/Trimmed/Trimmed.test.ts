@@ -1,11 +1,35 @@
+import * as AST from "@effect/schema/AST"
 import * as P from "@effect/schema/ParseResult"
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
+import { Option, Predicate } from "effect"
 import { describe, expect, it } from "vitest"
 
-describe("string/trimmed", () => {
+describe("Trimmed", () => {
   const schema = S.Trimmed
+
+  it("pattern in JSONSchemaAnnotation", () => {
+    const annotation = AST.getJSONSchemaAnnotation(schema.ast)
+    if (Option.isSome(annotation) && "pattern" in annotation.value && Predicate.isString(annotation.value.pattern)) {
+      const regexp = new RegExp(annotation.value.pattern)
+      const is = (s: string) => regexp.test(s)
+      expect(is("hello")).toBe(true)
+      expect(is(" hello")).toBe(false)
+      expect(is("hello ")).toBe(false)
+      expect(is(" hello ")).toBe(false)
+      expect(is("h")).toBe(true)
+      expect(is(" a b")).toBe(false)
+      expect(is("a b ")).toBe(false)
+      expect(is("a b")).toBe(true)
+      expect(is("a  b")).toBe(true)
+      expect(is("")).toBe(true)
+      expect(is("\n")).toEqual(false)
+      expect(is("a\nb")).toEqual(true)
+      expect(is("a\nb ")).toEqual(false)
+      expect(is(" a\nb")).toEqual(false)
+    }
+  })
 
   it("property tests", () => {
     Util.roundtrip(schema)
@@ -19,6 +43,7 @@ describe("string/trimmed", () => {
     expect(is(" a")).toEqual(false)
     expect(is(" a ")).toEqual(false)
     expect(is(" ")).toEqual(false)
+    expect(is("\n")).toEqual(false)
     expect(is("a\nb")).toEqual(true)
     expect(is("a\nb ")).toEqual(false)
     expect(is(" a\nb")).toEqual(false)

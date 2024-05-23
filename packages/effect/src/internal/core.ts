@@ -1,3 +1,4 @@
+import { internalCall } from "effect/Utils"
 import * as Arr from "../Array.js"
 import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
@@ -197,10 +198,18 @@ class EffectPrimitiveFailure {
     this._tag = _op
   }
   [Equal.symbol](this: {}, that: unknown) {
-    return this === that
+    return exitIsExit(that) && that._op === "Failure" &&
+      // @ts-expect-error
+      Equal.equals(this.effect_instruction_i0, that.effect_instruction_i0)
   }
   [Hash.symbol](this: {}) {
-    return Hash.cached(this, Hash.random(this))
+    return pipe(
+      // @ts-expect-error
+      Hash.string(this._tag),
+      // @ts-expect-error
+      Hash.combine(Hash.hash(this.effect_instruction_i0)),
+      Hash.cached(this)
+    )
   }
   get cause() {
     return this.effect_instruction_i0
@@ -238,10 +247,18 @@ class EffectPrimitiveSuccess {
     this._tag = _op
   }
   [Equal.symbol](this: {}, that: unknown) {
-    return this === that
+    return exitIsExit(that) && that._op === "Success" &&
+      // @ts-expect-error
+      Equal.equals(this.effect_instruction_i0, that.effect_instruction_i0)
   }
   [Hash.symbol](this: {}) {
-    return Hash.cached(this, Hash.random(this))
+    return pipe(
+      // @ts-expect-error
+      Hash.string(this._tag),
+      // @ts-expect-error
+      Hash.combine(Hash.hash(this.effect_instruction_i0)),
+      Hash.cached(this)
+    )
   }
   get value() {
     return this.effect_instruction_i0
@@ -517,9 +534,9 @@ export const async = <A, E = never, R = never>(
     let controllerRef: AbortController | void = undefined
     if (this.effect_instruction_i0.length !== 1) {
       controllerRef = new AbortController()
-      cancelerRef = this.effect_instruction_i0(proxyResume, controllerRef.signal)
+      cancelerRef = internalCall(() => this.effect_instruction_i0(proxyResume, controllerRef!.signal))
     } else {
-      cancelerRef = (this.effect_instruction_i0 as any)(proxyResume)
+      cancelerRef = internalCall(() => (this.effect_instruction_i0 as any)(proxyResume))
     }
     return (cancelerRef || controllerRef) ?
       onInterrupt(effect, (_) => {
@@ -990,8 +1007,8 @@ export const interruptibleMask = <A, E, R>(
     effect.effect_instruction_i0 = RuntimeFlagsPatch.enable(_runtimeFlags.Interruption)
     effect.effect_instruction_i1 = (oldFlags: RuntimeFlags.RuntimeFlags) =>
       _runtimeFlags.interruption(oldFlags)
-        ? this.effect_instruction_i0(interruptible)
-        : this.effect_instruction_i0(uninterruptible)
+        ? internalCall(() => this.effect_instruction_i0(interruptible))
+        : internalCall(() => this.effect_instruction_i0(uninterruptible))
     return effect
   })
 
@@ -1306,8 +1323,8 @@ export const uninterruptibleMask = <A, E, R>(
     effect.effect_instruction_i0 = RuntimeFlagsPatch.disable(_runtimeFlags.Interruption)
     effect.effect_instruction_i1 = (oldFlags: RuntimeFlags.RuntimeFlags) =>
       _runtimeFlags.interruption(oldFlags)
-        ? this.effect_instruction_i0(interruptible)
-        : this.effect_instruction_i0(uninterruptible)
+        ? internalCall(() => this.effect_instruction_i0(interruptible))
+        : internalCall(() => this.effect_instruction_i0(uninterruptible))
     return effect
   })
 

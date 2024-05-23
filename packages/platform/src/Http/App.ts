@@ -112,8 +112,8 @@ export const appendPreResponseHandler: (handler: PreResponseHandler) => Effect.E
  * @category fiber refs
  */
 export const withPreResponseHandler = dual<
-  (handler: PreResponseHandler) => <R, E, A>(self: HttpApp<A, E, R>) => HttpApp<A, E, R>,
-  <R, E, A>(self: HttpApp<A, E, R>, handler: PreResponseHandler) => HttpApp<A, E, R>
+  (handler: PreResponseHandler) => <A, E, R>(self: HttpApp<A, E, R>) => HttpApp<A, E, R>,
+  <A, E, R>(self: HttpApp<A, E, R>, handler: PreResponseHandler) => HttpApp<A, E, R>
 >(2, (self, handler) =>
   Effect.locallyWith(
     self,
@@ -152,12 +152,10 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
         const req = ServerRequest.fromWeb(request)
         ;(req as any)[resolveSymbol] = resolve
         ;(req as any)[rejectSymbol] = reject
-        const fiber = run(
-          Effect.provideService(handled, ServerRequest.ServerRequest, req)
-        )
+        const fiber = run(Effect.provideService(handled, ServerRequest.ServerRequest, req))
         request.signal.addEventListener("abort", () => {
           fiber.unsafeInterruptAsFork(ServerError.clientAbortFiberId)
-        })
+        }, { once: true })
       })
   }
 }
@@ -173,7 +171,7 @@ export const toWebHandler: <E>(self: Default<E, Scope.Scope>) => (request: Reque
  * @since 1.0.0
  * @category conversions
  */
-export const toWebHandlerLayer = <R, E, RE>(
+export const toWebHandlerLayer = <E, R, RE>(
   self: Default<E, R | Scope.Scope>,
   layer: Layer.Layer<R, RE>
 ): {

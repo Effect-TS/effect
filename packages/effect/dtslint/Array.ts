@@ -1,5 +1,6 @@
 import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
+import * as Either from "effect/Either"
 import * as Equal from "effect/Equal"
 import { hole, identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
@@ -13,6 +14,8 @@ declare const nonEmptyStrings: Array.NonEmptyArray<string>
 declare const readonlyNumbers: ReadonlyArray<number>
 declare const numbers: Array<number>
 declare const strings: Array<string>
+declare const iterNumbers: Iterable<number>
+declare const iterStrings: Iterable<string>
 declare const numbersOrStrings: Array<number | string>
 
 declare const pimitiveNumber: number
@@ -712,11 +715,15 @@ flattenNonEmptyArray.pipe(Effect.map(Array.flatten))
 // prependAll
 // -------------------------------------------------------------------------------------
 
+// Array + Array
+
 // $ExpectType (string | number)[]
 Array.prependAll(strings, numbers)
 
 // $ExpectType (string | number)[]
 pipe(strings, Array.prependAll(numbers))
+
+// NonEmptyArray + Array
 
 // $ExpectType [string | number, ...(string | number)[]]
 Array.prependAll(nonEmptyStrings, numbers)
@@ -724,17 +731,45 @@ Array.prependAll(nonEmptyStrings, numbers)
 // $ExpectType [string | number, ...(string | number)[]]
 pipe(nonEmptyStrings, Array.prependAll(numbers))
 
+// Array + NonEmptyArray
+
 // $ExpectType [string | number, ...(string | number)[]]
 Array.prependAll(strings, nonEmptyNumbers)
 
 // $ExpectType [string | number, ...(string | number)[]]
 pipe(strings, Array.prependAll(nonEmptyNumbers))
 
+// NonEmptyArray + NonEmptyArray
+
 // $ExpectType [string | number, ...(string | number)[]]
 Array.prependAll(nonEmptyStrings, nonEmptyNumbers)
 
 // $ExpectType [string | number, ...(string | number)[]]
 pipe(nonEmptyStrings, Array.prependAll(nonEmptyNumbers))
+
+// Iterable + Array
+
+// $ExpectType (string | number)[]
+Array.prependAll(iterStrings, numbers)
+
+// $ExpectType (string | number)[]
+pipe(iterStrings, Array.prependAll(numbers))
+
+// Iterable + NonEmptyArray
+
+// $ExpectType [string | number, ...(string | number)[]]
+Array.prependAll(iterStrings, nonEmptyNumbers)
+
+// $ExpectType [string | number, ...(string | number)[]]
+pipe(iterStrings, Array.prependAll(nonEmptyNumbers))
+
+// NonEmptyArray + Iterable
+
+// $ExpectType [string | number, ...(string | number)[]]
+Array.prependAll(nonEmptyStrings, iterNumbers)
+
+// $ExpectType [string | number, ...(string | number)[]]
+pipe(nonEmptyStrings, Array.prependAll(iterNumbers))
 
 // -------------------------------------------------------------------------------------
 // appendAll
@@ -1187,3 +1222,67 @@ pipe(
     b // $ExpectType number
   ) => [a, b] as [string, number])
 )
+
+// -------------------------------------------------------------------------------------
+// separate
+// -------------------------------------------------------------------------------------
+
+// $ExpectType [unknown[], unknown[]]
+Array.separate([])
+
+// $ExpectType [string[], number[]]
+Array.separate([Either.left("a"), Either.right(1)])
+
+// $ExpectType [string[], number[]]
+Array.separate(hole<Array<Either.Either<number, string>>>())
+
+// $ExpectType [string[], number[]]
+Array.separate(hole<Iterable<Either.Either<number, string>>>())
+
+// -------------------------------------------------------------------------------------
+// getRights
+// -------------------------------------------------------------------------------------
+
+// $ExpectType unknown[]
+Array.getRights([])
+
+// $ExpectType number[]
+Array.getRights([Either.left("a"), Either.right(1)])
+
+// $ExpectType number[]
+Array.getRights(hole<Array<Either.Either<number, string>>>())
+
+// $ExpectType number[]
+Array.getRights(hole<Iterable<Either.Either<number, string>>>())
+
+// -------------------------------------------------------------------------------------
+// getLefts
+// -------------------------------------------------------------------------------------
+
+// $ExpectType unknown[]
+Array.getLefts([])
+
+// $ExpectType string[]
+Array.getLefts([Either.left("a"), Either.right(1)])
+
+// $ExpectType string[]
+Array.getLefts(hole<Array<Either.Either<number, string>>>())
+
+// $ExpectType string[]
+Array.getLefts(hole<Iterable<Either.Either<number, string>>>())
+
+// -------------------------------------------------------------------------------------
+// getSomes
+// -------------------------------------------------------------------------------------
+
+// $ExpectType unknown[]
+Array.getSomes([])
+
+// $ExpectType number[]
+Array.getSomes([Option.none(), Option.some(1)])
+
+// $ExpectType number[]
+Array.getSomes(hole<Array<Option.Option<number>>>())
+
+// $ExpectType number[]
+Array.getSomes(hole<Iterable<Option.Option<number>>>())

@@ -471,18 +471,18 @@ export type DeclarationDecodeUnknown<Out, R> = (
 
 /** @internal */
 export const mergeParseOptions = (
-  a: AST.ParseOptions | undefined,
-  b: AST.ParseOptions | undefined
+  options: AST.ParseOptions | undefined,
+  overrideOptions: AST.ParseOptions | number | undefined
 ): AST.ParseOptions | undefined => {
-  if (a === undefined) {
-    return b
+  if (overrideOptions === undefined || Predicate.isNumber(overrideOptions)) {
+    return options
   }
-  if (b === undefined) {
-    return a
+  if (options === undefined) {
+    return overrideOptions
   }
   const out: Mutable<AST.ParseOptions> = {}
-  out.errors = b.errors ?? a.errors
-  out.onExcessProperty = b.onExcessProperty ?? a.onExcessProperty
+  out.errors = overrideOptions.errors ?? options.errors
+  out.onExcessProperty = overrideOptions.onExcessProperty ?? options.onExcessProperty
   return out
 }
 
@@ -495,7 +495,10 @@ const getEither = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions
 const getSync = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
   const parser = getEither(ast, isDecoding, options)
   return (input: unknown, overrideOptions?: AST.ParseOptions) =>
-    Either.getOrThrowWith(parser(input, overrideOptions), (e) => new Error(TreeFormatter.formatIssueSync(e)))
+    Either.getOrThrowWith(
+      parser(input, overrideOptions),
+      (issue) => new Error(TreeFormatter.formatIssueSync(issue), { cause: issue })
+    )
 }
 
 const getOption = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
@@ -712,7 +715,7 @@ export const validate = <A, I, R>(
  */
 export const is = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: AST.ParseOptions) => {
   const parser = goMemo(AST.typeAST(schema.ast), true)
-  return (u: unknown, overrideOptions?: AST.ParseOptions): u is A =>
+  return (u: unknown, overrideOptions?: AST.ParseOptions | number): u is A =>
     Either.isRight(parser(u, { ...mergeParseOptions(options, overrideOptions), isExact: true }) as any)
 }
 
@@ -728,7 +731,7 @@ export const asserts = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: AST.P
       isExact: true
     }) as any
     if (Either.isLeft(result)) {
-      throw new Error(TreeFormatter.formatIssueSync(result.left))
+      throw new Error(TreeFormatter.formatIssueSync(result.left), { cause: result.left })
     }
   }
 }

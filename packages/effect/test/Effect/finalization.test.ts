@@ -1,4 +1,3 @@
-import * as it from "effect-test/utils/extend"
 import * as Array from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
@@ -10,6 +9,7 @@ import * as Fiber from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
+import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 const ExampleError = new Error("Oh noes!")

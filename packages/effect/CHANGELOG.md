@@ -1,5 +1,128 @@
 # effect
 
+## 3.2.4
+
+### Patch Changes
+
+- [#2801](https://github.com/Effect-TS/effect/pull/2801) [`1af94df`](https://github.com/Effect-TS/effect/commit/1af94df6b74aeb4f6ebcbe80e074b4cb252e62e3) Thanks @tim-smart! - ensure pool calls finalizer for failed acquisitions
+
+- [#2808](https://github.com/Effect-TS/effect/pull/2808) [`e313a01`](https://github.com/Effect-TS/effect/commit/e313a01b7e80f6cb7704055a190e5623c9d22c6d) Thanks @gcanti! - Array: fix `flatMapNullable` implementation and add descriptions / examples
+
+## 3.2.3
+
+### Patch Changes
+
+- [#2805](https://github.com/Effect-TS/effect/pull/2805) [`45578e8`](https://github.com/Effect-TS/effect/commit/45578e8faa80ae33d23e08f6f19467f818b7788f) Thanks @tim-smart! - fix internal cutpoint name preservation
+
+## 3.2.2
+
+### Patch Changes
+
+- [#2787](https://github.com/Effect-TS/effect/pull/2787) [`5d9266e`](https://github.com/Effect-TS/effect/commit/5d9266e8c740746ac9e186c3df6090a1b57fbe2a) Thanks @mikearnaldi! - Prohibit name clashes in Effect.Tag
+
+  The following now correctly flags a type error given that the property `context` exists already in `Tag`:
+
+  ```ts
+  import { Effect } from "effect";
+
+  class LoaderArgs extends Effect.Tag("@services/LoaderContext")<
+    LoaderArgs,
+    { context: number }
+  >() {}
+  ```
+
+- [#2797](https://github.com/Effect-TS/effect/pull/2797) [`9f8122e`](https://github.com/Effect-TS/effect/commit/9f8122e78884ab47c5e5f364d86eee1d1543cc61) Thanks @mikearnaldi! - Improve internalization of functions to clean stack traces
+
+- [#2798](https://github.com/Effect-TS/effect/pull/2798) [`6a6f670`](https://github.com/Effect-TS/effect/commit/6a6f6706b8613c8c7c10971b8d81a0f9e440a6f2) Thanks @mikearnaldi! - Avoid eager read of the stack when captured by a span
+
+## 3.2.1
+
+### Patch Changes
+
+- [#2779](https://github.com/Effect-TS/effect/pull/2779) [`c1e991d`](https://github.com/Effect-TS/effect/commit/c1e991dd5ba87901cd0e05697a8b4a267e7e954a) Thanks [@tim-smart](https://github.com/tim-smart)! - fix Config.Wrap for optional properties
+
+## 3.2.0
+
+### Minor Changes
+
+- [#2778](https://github.com/Effect-TS/effect/pull/2778) [`146cadd`](https://github.com/Effect-TS/effect/commit/146cadd9d004634a3ff85c480bf92cf975c853e2) Thanks [@tim-smart](https://github.com/tim-smart)! - Add Stream.toReadableStreamEffect / .toReadableStreamRuntime
+
+- [#2778](https://github.com/Effect-TS/effect/pull/2778) [`7135748`](https://github.com/Effect-TS/effect/commit/713574813a0f64085db0b5240ba39e7a0a7c137e) Thanks [@tim-smart](https://github.com/tim-smart)! - add Cause.prettyErrors api
+
+  You can use this to extract `Error` instances from a `Cause`, that have clean stack traces and have had span information added to them.
+
+- [#2778](https://github.com/Effect-TS/effect/pull/2778) [`963b4e7`](https://github.com/Effect-TS/effect/commit/963b4e7ac87e2468feb6a344f7ab4ee4ad711198) Thanks [@tim-smart](https://github.com/tim-smart)! - add Chunk.difference & Chunk.differenceWith
+
+- [#2778](https://github.com/Effect-TS/effect/pull/2778) [`64c9414`](https://github.com/Effect-TS/effect/commit/64c9414e960e82058ca09bbb3976d6fbef303a8e) Thanks [@tim-smart](https://github.com/tim-smart)! - Improve causal rendering in vitest by rethrowing pretty errors
+
+- [#2778](https://github.com/Effect-TS/effect/pull/2778) [`7135748`](https://github.com/Effect-TS/effect/commit/713574813a0f64085db0b5240ba39e7a0a7c137e) Thanks [@tim-smart](https://github.com/tim-smart)! - add Effect.functionWithSpan
+
+  Allows you to define an effectful function that is wrapped with a span.
+
+  ```ts
+  import { Effect } from "effect";
+
+  const getTodo = Effect.functionWithSpan({
+    body: (id: number) => Effect.succeed(`Got todo ${id}!`),
+    options: (id) => ({
+      name: `getTodo-${id}`,
+      attributes: { id },
+    }),
+  });
+  ```
+
+- [#2778](https://github.com/Effect-TS/effect/pull/2778) [`2cbb76b`](https://github.com/Effect-TS/effect/commit/2cbb76bb52500a3f4bf27d1c91482518cbea56d7) Thanks [@tim-smart](https://github.com/tim-smart)! - Add do notation for Array
+
+- [#2778](https://github.com/Effect-TS/effect/pull/2778) [`870c5fa`](https://github.com/Effect-TS/effect/commit/870c5fa52cd61e745e8e828d38c3f09f00737553) Thanks [@tim-smart](https://github.com/tim-smart)! - support $is & $match for Data.TaggedEnum with generics
+
+- [#2778](https://github.com/Effect-TS/effect/pull/2778) [`7135748`](https://github.com/Effect-TS/effect/commit/713574813a0f64085db0b5240ba39e7a0a7c137e) Thanks [@tim-smart](https://github.com/tim-smart)! - capture stack trace for tracing spans
+
+### Patch Changes
+
+- [#2778](https://github.com/Effect-TS/effect/pull/2778) [`7135748`](https://github.com/Effect-TS/effect/commit/713574813a0f64085db0b5240ba39e7a0a7c137e) Thanks [@tim-smart](https://github.com/tim-smart)! - add span stack trace to rendered causes
+
+- [#2778](https://github.com/Effect-TS/effect/pull/2778) [`64c9414`](https://github.com/Effect-TS/effect/commit/64c9414e960e82058ca09bbb3976d6fbef303a8e) Thanks [@tim-smart](https://github.com/tim-smart)! - Consider Generator.next a cutpoint
+
+## 3.1.6
+
+### Patch Changes
+
+- [#2761](https://github.com/Effect-TS/effect/pull/2761) [`17fc22e`](https://github.com/Effect-TS/effect/commit/17fc22e132593c5caa563705a4748ba0f04a853c) Thanks [@KhraksMamtsov](https://github.com/KhraksMamtsov)! - Add `{ once: true }` to all `"abort"` event listeners for `AbortController` to automatically remove handlers after execution
+
+- [#2762](https://github.com/Effect-TS/effect/pull/2762) [`810f222`](https://github.com/Effect-TS/effect/commit/810f222268792b13067c7a7bf317b93a9bb8917b) Thanks [@tim-smart](https://github.com/tim-smart)! - fix Config.Wrap incorrectly wrapping functions & arrays
+
+- [#2773](https://github.com/Effect-TS/effect/pull/2773) [`596aaea`](https://github.com/Effect-TS/effect/commit/596aaea022648b2e06fb1ec22f1652043d6fe64e) Thanks [@tim-smart](https://github.com/tim-smart)! - fix for Infinity delays in Schedule
+
+## 3.1.5
+
+### Patch Changes
+
+- [#2750](https://github.com/Effect-TS/effect/pull/2750) [`6ac4847`](https://github.com/Effect-TS/effect/commit/6ac48479447c01a4f35d655552af93e47e562610) Thanks [@tim-smart](https://github.com/tim-smart)! - ensure exponential schedules don't reach Infinity
+
+## 3.1.4
+
+### Patch Changes
+
+- [#2732](https://github.com/Effect-TS/effect/pull/2732) [`e41e911`](https://github.com/Effect-TS/effect/commit/e41e91122fa6dd12fc81e50dcad0db891be67146) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Call Equal.equals internally in order inputs were passed.
+
+## 3.1.3
+
+### Patch Changes
+
+- [#2706](https://github.com/Effect-TS/effect/pull/2706) [`1f6dc96`](https://github.com/Effect-TS/effect/commit/1f6dc96f51c7bb9c8d11415358308604ba7c7c8e) Thanks [@sukovanej](https://github.com/sukovanej)! - rebuild packages
+
+## 3.1.2
+
+### Patch Changes
+
+- [#2679](https://github.com/Effect-TS/effect/pull/2679) [`2e1cdf6`](https://github.com/Effect-TS/effect/commit/2e1cdf67d141281288fffe9a5c10d1379a800513) Thanks [@tim-smart](https://github.com/tim-smart)! - ensure all type ids are annotated with `unique symbol`
+
+## 3.1.1
+
+### Patch Changes
+
+- [#2670](https://github.com/Effect-TS/effect/pull/2670) [`e5e56d1`](https://github.com/Effect-TS/effect/commit/e5e56d138dbed3204636f605229c6685f89659fc) Thanks [@tim-smart](https://github.com/tim-smart)! - Allow structural regions in equality for testing
+
 ## 3.1.0
 
 ### Minor Changes

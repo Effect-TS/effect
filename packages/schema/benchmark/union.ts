@@ -23,13 +23,13 @@ const bench = new Bench({ time: 1000 })
 
 const n = 100
 const members = RA.makeBy(n, (i) =>
-  S.struct({
-    kind: S.literal(i),
-    a: S.string,
-    b: S.number,
-    c: S.boolean
+  S.Struct({
+    kind: S.Literal(i),
+    a: S.String,
+    b: S.Number,
+    c: S.Boolean
   }))
-const schema = S.union(...members)
+const schema = S.Union(...members)
 
 const x = RA.makeBy(n, (i) =>
   z.object({

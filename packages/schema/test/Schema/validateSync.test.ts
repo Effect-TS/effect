@@ -8,7 +8,7 @@ describe("validateSync", () => {
   it("should throw on invalid values", () => {
     expect(S.validateSync(schema)({ a: 1 })).toEqual({ a: 1 })
     expect(() => S.validateSync(schema)({ a: null })).toThrow(
-      new Error(`{ a: number }
+      new Error(`{ readonly a: number }
 └─ ["a"]
    └─ Expected a number, actual null`)
     )
@@ -26,12 +26,12 @@ describe("validateSync", () => {
   it("should respect outer/inner options", () => {
     const input = { a: 1, b: "b" }
     expect(() => S.validateSync(schema)(input, { onExcessProperty: "error" })).toThrow(
-      new Error(`{ a: number }
+      new Error(`{ readonly a: number }
 └─ ["b"]
    └─ is unexpected, expected "a"`)
     )
     expect(() => S.validateSync(schema, { onExcessProperty: "error" })(input)).toThrow(
-      new Error(`{ a: number }
+      new Error(`{ readonly a: number }
 └─ ["b"]
    └─ is unexpected, expected "a"`)
     )

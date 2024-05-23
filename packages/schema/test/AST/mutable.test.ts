@@ -9,7 +9,7 @@ const expectSameReference = (schema: S.Schema.Any) => {
   expect(mutable === mutable2).toBe(true)
 }
 
-describe("AST > mutable", () => {
+describe("mutable", () => {
   it("tuple", () => {
     expectSameReference(S.Tuple(S.String, S.Number))
   })

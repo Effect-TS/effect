@@ -25,7 +25,7 @@ import * as Internal from "./internal/rpc.js"
  * @since 1.0.0
  * @category type ids
  */
-export const TypeId = Symbol.for("@effect/rpc/Rpc")
+export const TypeId: unique symbol = Symbol.for("@effect/rpc/Rpc")
 
 /**
  * @since 1.0.0
@@ -87,7 +87,7 @@ export declare namespace Rpc {
   export interface Proto<Req extends Schema.TaggedRequest.Any> extends Pipeable {
     readonly [TypeId]: TypeId
     readonly _tag: string
-    readonly schema: Schema.Schema<Req, unknown, any>
+    readonly schema: Schema.Schema<Req, any, unknown>
   }
 
   /**
@@ -127,13 +127,13 @@ export declare namespace Rpc {
  * @since 1.0.0
  * @category constructors
  */
-export const effect = <Req extends Schema.TaggedRequest.Any, SR, I, R>(
-  schema: Schema.Schema<Req, I, SR>,
+export const effect = <Req extends Schema.TaggedRequest.Any, R>(
+  schema: Schema.Schema<Req, any, unknown>,
   handler: (request: Req) => Effect.Effect<EffectRequest.Request.Success<Req>, EffectRequest.Request.Error<Req>, R>
 ): Rpc<Req, R> => ({
   [TypeId]: TypeId,
   _tag: "Effect",
-  schema: schema as any,
+  schema,
   handler,
   pipe() {
     return pipeArguments(this, arguments)
@@ -214,8 +214,8 @@ export const StreamRequest =
  * @since 1.0.0
  * @category constructors
  */
-export const stream = <Req extends StreamRequest.Any, I, SR, R>(
-  schema: Schema.Schema<Req, I, SR>,
+export const stream = <Req extends StreamRequest.Any, R>(
+  schema: Schema.Schema<Req, any, unknown>,
   handler: (
     request: Req
   ) => Stream.Stream<
@@ -329,7 +329,8 @@ export const request = <A extends Schema.TaggedRequest.Any>(
 ): Effect.Effect<Request<A>, never, Scope> =>
   pipe(
     Effect.makeSpanScoped(`${options?.spanPrefix ?? "Rpc.request "}${request._tag}`, {
-      kind: "client"
+      kind: "client",
+      captureStackTrace: false
     }),
     Effect.zip(FiberRef.get(currentHeaders)),
     Effect.map(([span, headers]) =>

@@ -22,6 +22,18 @@ type Eur = number & Brand.Brand<"Eur">
 const Eur = Brand.nominal<Eur>()
 
 describe("fromBrand", () => {
+  it("make", () => {
+    const schema = S.NumberFromString.pipe(S.fromBrand(PositiveInt)).annotations({ identifier: "PositiveInt" })
+    Util.expectConstructorSuccess(schema, 1)
+    Util.expectConstructorFailure(
+      schema,
+      -1,
+      `PositiveInt
+└─ Predicate refinement failure
+   └─ Expected -1 to be positive`
+    )
+  })
+
   it("property tests", () => {
     Util.roundtrip(S.Number.pipe(S.fromBrand(Int))) // refined
     Util.roundtrip(S.Number.pipe(S.fromBrand(Eur))) // nominal
@@ -33,26 +45,26 @@ describe("fromBrand", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       -0.5,
-      `<refinement schema>
+      `{ number | filter }
 └─ Predicate refinement failure
    └─ Expected -0.5 to be positive, Expected -0.5 to be an integer`
     )
     expect(() => S.decodeUnknownSync(schema)(-0.5)).toThrow(
-      new Error(`<refinement schema>
+      new Error(`{ number | filter }
 └─ Predicate refinement failure
    └─ Expected -0.5 to be positive, Expected -0.5 to be an integer`)
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       -1,
-      `<refinement schema>
+      `{ number | filter }
 └─ Predicate refinement failure
    └─ Expected -1 to be positive`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       0,
-      `<refinement schema>
+      `{ number | filter }
 └─ Predicate refinement failure
    └─ Expected 0 to be positive`
     )
@@ -60,7 +72,7 @@ describe("fromBrand", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       1.5,
-      `<refinement schema>
+      `{ number | filter }
 └─ Predicate refinement failure
    └─ Expected 1.5 to be an integer`
     )

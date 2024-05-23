@@ -9,9 +9,9 @@ describe("suspend", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: S.Schema<A> = S.Struct({
+      const schema = S.Struct({
         a: S.String,
-        as: S.Array(S.suspend(() => schema))
+        as: S.Array(S.suspend((): S.Schema<A> => schema))
       })
 
       await Util.expectDecodeUnknownSuccess(schema, { a: "a1", as: [] })
@@ -20,27 +20,27 @@ describe("suspend", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         null,
-        `Expected { a: string; as: ReadonlyArray<<suspended schema>> }, actual null`
+        `Expected { readonly a: string; readonly as: ReadonlyArray<<suspended schema>> }, actual null`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a1" },
-        `{ a: string; as: ReadonlyArray<<suspended schema>> }
+        `{ readonly a: string; readonly as: ReadonlyArray<<suspended schema>> }
 └─ ["as"]
    └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a1", as: [{ a: "a2", as: [1] }] },
-        `{ a: string; as: ReadonlyArray<<suspended schema>> }
+        `{ readonly a: string; readonly as: ReadonlyArray<<suspended schema>> }
 └─ ["as"]
    └─ ReadonlyArray<<suspended schema>>
       └─ [0]
-         └─ { a: string; as: ReadonlyArray<<suspended schema>> }
+         └─ { readonly a: string; readonly as: ReadonlyArray<<suspended schema>> }
             └─ ["as"]
                └─ ReadonlyArray<<suspended schema>>
                   └─ [0]
-                     └─ Expected { a: string; as: ReadonlyArray<<suspended schema>> }, actual 1`
+                     └─ Expected { readonly a: string; readonly as: ReadonlyArray<<suspended schema>> }, actual 1`
       )
     })
 
@@ -57,12 +57,12 @@ describe("suspend", () => {
         readonly right: Expression
       }
 
-      const Expression: S.Schema<Expression> = S.Struct({
+      const Expression = S.Struct({
         type: S.Literal("expression"),
-        value: S.Union(S.Number, S.suspend(() => Operation))
+        value: S.Union(S.Number, S.suspend((): S.Schema<Operation> => Operation))
       })
 
-      const Operation: S.Schema<Operation> = S.Struct({
+      const Operation = S.Struct({
         type: S.Literal("operation"),
         operator: S.Union(S.Literal("+"), S.Literal("-")),
         left: Expression,
@@ -107,9 +107,9 @@ describe("suspend", () => {
         readonly a: string
         readonly as: ReadonlyArray<FromA>
       }
-      const schema: S.Schema<A, FromA> = S.Struct({
+      const schema = S.Struct({
         a: Util.NumberFromChar,
-        as: S.Array(S.suspend(() => schema))
+        as: S.Array(S.suspend((): S.Schema<A, FromA> => schema))
       })
       await Util.expectEncodeSuccess(schema, { a: 1, as: [] }, { a: "1", as: [] })
       await Util.expectEncodeSuccess(schema, { a: 1, as: [{ a: 2, as: [] }] }, {

@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform-bun",
   "type": "module",
-  "version": "0.34.0",
+  "version": "0.35.0",
   "license": "MIT",
   "description": "Platform specific implementations for the Bun runtime",
   "homepage": "https://effect.website",
@@ -32,7 +32,7 @@
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",
-    "build": "pnpm codegen && pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
+    "build": "pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
     "build-esm": "tsc -b tsconfig.build.json",
     "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
     "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps",
@@ -50,7 +50,7 @@
   "devDependencies": {
     "@effect/platform": "workspace:^",
     "@effect/schema": "workspace:^",
-    "bun-types": "1.1.6",
+    "bun-types": "1.1.8",
     "effect": "workspace:^"
   },
   "effect": {

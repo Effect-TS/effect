@@ -1,11 +1,19 @@
-import * as Util from "effect-test/util"
 import * as Chunk from "effect/Chunk"
 import * as Either from "effect/Either"
 import { flow, pipe } from "effect/Function"
-import * as N from "effect/Number"
-import * as O from "effect/Option"
-import * as S from "effect/String"
+import * as Num from "effect/Number"
+import * as Option from "effect/Option"
+import * as Str from "effect/String"
+import * as Util from "effect/test/util"
 import { describe, expect, it } from "vitest"
+
+const expectRight = <R, L>(e: Either.Either<R, L>, expected: R) => {
+  Util.deepStrictEqual(e, Either.right(expected))
+}
+
+const expectLeft = <R, L>(e: Either.Either<R, L>, expected: L) => {
+  Util.deepStrictEqual(e, Either.left(expected))
+}
 
 describe("Either", () => {
   it("gen", () => {
@@ -104,28 +112,28 @@ describe("Either", () => {
   it("isEither", () => {
     Util.deepStrictEqual(pipe(Either.right(1), Either.isEither), true)
     Util.deepStrictEqual(pipe(Either.left("e"), Either.isEither), true)
-    Util.deepStrictEqual(pipe(O.some(1), Either.isEither), false)
+    Util.deepStrictEqual(pipe(Option.some(1), Either.isEither), false)
   })
 
   it("getRight", () => {
-    Util.deepStrictEqual(pipe(Either.right(1), Either.getRight), O.some(1))
-    Util.deepStrictEqual(pipe(Either.left("a"), Either.getRight), O.none())
+    Util.deepStrictEqual(pipe(Either.right(1), Either.getRight), Option.some(1))
+    Util.deepStrictEqual(pipe(Either.left("a"), Either.getRight), Option.none())
   })
 
   it("getLeft", () => {
-    Util.deepStrictEqual(pipe(Either.right(1), Either.getLeft), O.none())
-    Util.deepStrictEqual(pipe(Either.left("e"), Either.getLeft), O.some("e"))
+    Util.deepStrictEqual(pipe(Either.right(1), Either.getLeft), Option.none())
+    Util.deepStrictEqual(pipe(Either.left("e"), Either.getLeft), Option.some("e"))
   })
 
   it("map", () => {
-    const f = Either.map(S.length)
+    const f = Either.map(Str.length)
     Util.deepStrictEqual(pipe(Either.right("abc"), f), Either.right(3))
     Util.deepStrictEqual(pipe(Either.left("s"), f), Either.left("s"))
   })
 
   it("mapBoth", () => {
     const f = Either.mapBoth({
-      onLeft: S.length,
+      onLeft: Str.length,
       onRight: (n: number) => n > 2
     })
     Util.deepStrictEqual(pipe(Either.right(1), f), Either.right(false))
@@ -177,7 +185,7 @@ describe("Either", () => {
   })
 
   it("getEquivalence", () => {
-    const isEquivalent = Either.getEquivalence({ right: N.Equivalence, left: S.Equivalence })
+    const isEquivalent = Either.getEquivalence({ right: Num.Equivalence, left: Str.Equivalence })
     Util.deepStrictEqual(isEquivalent(Either.right(1), Either.right(1)), true)
     Util.deepStrictEqual(isEquivalent(Either.right(1), Either.right(2)), false)
     Util.deepStrictEqual(isEquivalent(Either.right(1), Either.left("foo")), false)
@@ -197,8 +205,8 @@ describe("Either", () => {
   })
 
   it("fromOption", () => {
-    Util.deepStrictEqual(Either.fromOption(O.none(), () => "none"), Either.left("none"))
-    Util.deepStrictEqual(Either.fromOption(O.some(1), () => "none"), Either.right(1))
+    Util.deepStrictEqual(Either.fromOption(Option.none(), () => "none"), Either.left("none"))
+    Util.deepStrictEqual(Either.fromOption(Option.some(1), () => "none"), Either.right(1))
   })
 
   it("try", () => {
@@ -252,7 +260,7 @@ describe("Either", () => {
   })
 
   it("flatMap", () => {
-    const f = Either.flatMap(flow(S.length, Either.right))
+    const f = Either.flatMap(flow(Str.length, Either.right))
     Util.deepStrictEqual(pipe(Either.right("abc"), f), Either.right(3))
     Util.deepStrictEqual(pipe(Either.left("maError"), f), Either.left("maError"))
   })
@@ -318,50 +326,37 @@ describe("Either", () => {
     Util.deepStrictEqual(pipe(Either.left("a"), Either.orElse(() => Either.left("b"))), Either.left("b"))
   })
 
-  it("Do", () => {
-    Util.deepStrictEqual(Either.Do, Either.right({}))
-  })
+  describe("do notation", () => {
+    it("Do", () => {
+      expectRight(Either.Do, {})
+    })
 
-  it("bindTo", () => {
-    Util.deepStrictEqual(
-      pipe(
-        Either.right(1),
-        Either.bindTo("a")
-      ),
-      Either.right({ a: 1 })
-    )
-    Util.deepStrictEqual(
-      pipe(
-        Either.left("b"),
-        Either.bindTo("a")
-      ),
-      Either.left("b")
-    )
-  })
+    it("bindTo", () => {
+      expectRight(pipe(Either.right(1), Either.bindTo("a")), { a: 1 })
+      expectLeft(pipe(Either.left("left"), Either.bindTo("a")), "left")
+    })
 
-  it("bind", () => {
-    Util.deepStrictEqual(
-      pipe(Either.right(1), Either.bindTo("a"), Either.bind("b", ({ a }) => Either.right(a + 1))),
-      Either.right({ a: 1, b: 2 })
-    )
-    Util.deepStrictEqual(
-      pipe(Either.right(1), Either.bindTo("a"), Either.bind("b", () => Either.left("c"))),
-      Either.left("c")
-    )
-    Util.deepStrictEqual(
-      pipe(Either.left("d"), Either.bindTo("a"), Either.bind("b", () => Either.right(2))),
-      Either.left("d")
-    )
-  })
+    it("bind", () => {
+      expectRight(pipe(Either.right(1), Either.bindTo("a"), Either.bind("b", ({ a }) => Either.right(a + 1))), {
+        a: 1,
+        b: 2
+      })
+      expectLeft(
+        pipe(Either.right(1), Either.bindTo("a"), Either.bind("b", () => Either.left("left"))),
+        "left"
+      )
+      expectLeft(
+        pipe(Either.left("left"), Either.bindTo("a"), Either.bind("b", () => Either.right(2))),
+        "left"
+      )
+    })
 
-  it("let", () => {
-    Util.deepStrictEqual(
-      pipe(Either.Do, Either.bind("a", () => Either.right(1)), Either.let("b", ({ a }) => a + 1)),
-      Either.right({ a: 1, b: 2 })
-    )
-    Util.deepStrictEqual(
-      pipe(Either.left("d"), Either.bindTo("a"), Either.let("b", () => Either.right(2))),
-      Either.left("d")
-    )
+    it("let", () => {
+      expectRight(pipe(Either.right(1), Either.bindTo("a"), Either.let("b", ({ a }) => a + 1)), { a: 1, b: 2 })
+      expectLeft(
+        pipe(Either.left("left"), Either.bindTo("a"), Either.let("b", () => 2)),
+        "left"
+      )
+    })
   })
 })

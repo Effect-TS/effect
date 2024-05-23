@@ -41,12 +41,14 @@ export const make = (
   options: Net.ListenOptions
 ): Effect.Effect<Server.Server, Error.ServeError, Scope.Scope> =>
   Effect.gen(function*(_) {
-    const scope = yield* _(Effect.scope)
-
-    const server = yield* _(Effect.acquireRelease(
+    const scope = yield* Effect.scope
+    const server = yield* Effect.acquireRelease(
       Effect.sync(evaluate),
       (server) =>
         Effect.async<void>((resume) => {
+          if (!server.listening) {
+            return resume(Effect.void)
+          }
           server.close((error) => {
             if (error) {
               resume(Effect.die(error))
@@ -55,16 +57,18 @@ export const make = (
             }
           })
         })
-    ))
+    )
 
-    yield* _(Effect.async<void, Error.ServeError>((resume) => {
-      server.on("error", (error) => {
+    yield* Effect.async<void, Error.ServeError>((resume) => {
+      function onError(error: Error) {
         resume(Effect.fail(new Error.ServeError({ error })))
-      })
+      }
+      server.on("error", onError)
       server.listen(options, () => {
+        server.off("error", onError)
         resume(Effect.void)
       })
-    }))
+    })
 
     const address = server.address()!
 
@@ -395,15 +399,17 @@ const handleResponse = (request: ServerRequest.ServerRequest, response: ServerRe
 
     if (request.method === "HEAD") {
       nodeResponse.writeHead(response.status, headers)
-      nodeResponse.end()
-      return Effect.void
+      return Effect.async<void>((resume) => {
+        nodeResponse.end(() => resume(Effect.void))
+      })
     }
     const body = response.body
     switch (body._tag) {
       case "Empty": {
         nodeResponse.writeHead(response.status, headers)
-        nodeResponse.end()
-        return Effect.void
+        return Effect.async<void>((resume) => {
+          nodeResponse.end(() => resume(Effect.void))
+        })
       }
       case "Raw": {
         nodeResponse.writeHead(response.status, headers)
@@ -422,36 +428,40 @@ const handleResponse = (request: ServerRequest.ServerRequest, response: ServerRe
               })
           })
         }
-        nodeResponse.end(body.body)
-        return Effect.void
+        return Effect.async<void>((resume) => {
+          nodeResponse.end(body.body, () => resume(Effect.void))
+        })
       }
       case "Uint8Array": {
         nodeResponse.writeHead(response.status, headers)
-        nodeResponse.end(body.body)
-        return Effect.void
+        return Effect.async<void>((resume) => {
+          nodeResponse.end(body.body, () => resume(Effect.void))
+        })
       }
       case "FormData": {
-        return Effect.async<void, Error.ResponseError>((resume) => {
+        return Effect.suspend(() => {
           const r = new Response(body.formData)
           nodeResponse.writeHead(response.status, {
             ...headers,
             ...Object.fromEntries(r.headers)
           })
-          Readable.fromWeb(r.body as any)
-            .pipe(nodeResponse)
-            .on("error", (error) => {
-              resume(Effect.fail(
-                new Error.ResponseError({
-                  request,
-                  response,
-                  reason: "Decode",
-                  error
-                })
-              ))
-            })
-            .once("finish", () => {
-              resume(Effect.void)
-            })
+          return Effect.async<void, Error.ResponseError>((resume, signal) => {
+            Readable.fromWeb(r.body as any, { signal })
+              .pipe(nodeResponse)
+              .on("error", (error) => {
+                resume(Effect.fail(
+                  new Error.ResponseError({
+                    request,
+                    response,
+                    reason: "Decode",
+                    error
+                  })
+                ))
+              })
+              .once("finish", () => {
+                resume(Effect.void)
+              })
+          }).pipe(Effect.interruptible)
         })
       }
       case "Stream": {
@@ -474,7 +484,7 @@ const handleResponse = (request: ServerRequest.ServerRequest, response: ServerRe
               reason: "Decode",
               error
             }))
-        )
+        ).pipe(Effect.interruptible)
       }
     }
   })

@@ -125,7 +125,7 @@ export const tagged: <R extends Request<any, any> & { _tag: string }>(
  * Provides a constructor for a Request Class.
  *
  * @example
- * import * as Request from "effect/Request"
+ * import { Request } from "effect"
  *
  * type Success = string
  * type Error = never
@@ -146,7 +146,7 @@ export const Class: new<Success, Error, A extends Record<string, any>>(
  * Provides a Tagged constructor for a Request Class.
  *
  * @example
- * import * as Request from "effect/Request"
+ * import { Request } from "effect"
  *
  * type Success = string
  * type Error = never
@@ -283,7 +283,7 @@ export const makeCache = (
  * @since 2.0.0
  * @category symbols
  */
-export const EntryTypeId = Symbol.for("effect/RequestBlock.Entry")
+export const EntryTypeId: unique symbol = Symbol.for("effect/RequestBlock.Entry")
 
 /**
  * @since 2.0.0

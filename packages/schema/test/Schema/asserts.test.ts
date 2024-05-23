@@ -11,16 +11,25 @@ const expectAssertsFailure = <A, I>(schema: S.Schema<A, I>, input: unknown, mess
 }
 
 describe("asserts", () => {
+  it("the returned error should include a cause", () => {
+    const asserts: (u: unknown) => asserts u is string = S.asserts(S.String)
+    try {
+      asserts(1)
+    } catch (e: any) {
+      expect(e.cause).exist
+    }
+  })
+
   it("should respect outer/inner options", () => {
     const schema = S.Struct({ a: Util.NumberFromChar })
     const input = { a: 1, b: "b" }
     expect(() => S.asserts(schema)(input, { onExcessProperty: "error" })).toThrow(
-      new Error(`{ a: number }
+      new Error(`{ readonly a: number }
 └─ ["b"]
    └─ is unexpected, expected "a"`)
     )
     expect(() => S.asserts(schema, { onExcessProperty: "error" })(input)).toThrow(
-      new Error(`{ a: number }
+      new Error(`{ readonly a: number }
 └─ ["b"]
    └─ is unexpected, expected "a"`)
     )
@@ -35,7 +44,7 @@ describe("asserts", () => {
       expectAssertsFailure(
         schema,
         { a: null },
-        `{ a: number }
+        `{ readonly a: number }
 └─ ["a"]
    └─ Expected a number, actual null`
       )
@@ -50,15 +59,15 @@ describe("asserts", () => {
       expectAssertsFailure(
         schema,
         {},
-        `{ a: number | undefined }
+        `{ readonly a: number | undefined }
 └─ ["a"]
    └─ is missing`
       )
-      expectAssertsFailure(schema, null, `Expected { a: number | undefined }, actual null`)
+      expectAssertsFailure(schema, null, `Expected { readonly a: number | undefined }, actual null`)
       expectAssertsFailure(
         schema,
         { a: "a" },
-        `{ a: number | undefined }
+        `{ readonly a: number | undefined }
 └─ ["a"]
    └─ number | undefined
       ├─ Union member

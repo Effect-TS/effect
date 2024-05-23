@@ -8,21 +8,23 @@ import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as ExecutionStrategy from "effect/ExecutionStrategy"
 import * as Exit from "effect/Exit"
+import * as FiberRef from "effect/FiberRef"
 import * as FiberSet from "effect/FiberSet"
+import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
 import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
 import type * as AsyncProducer from "effect/SingleProducerAsyncInput"
-import { WebSocket as IsoWS } from "isows"
 import { RefailError, TypeIdError } from "./Error.js"
 
 /**
  * @since 1.0.0
  * @category type ids
  */
-export const TypeId = Symbol.for("@effect/platform/Socket")
+export const TypeId: unique symbol = Symbol.for("@effect/platform/Socket")
 
 /**
  * @since 1.0.0
@@ -44,20 +46,24 @@ export const Socket: Context.Tag<Socket, Socket> = Context.GenericTag<Socket>(
  */
 export interface Socket {
   readonly [TypeId]: TypeId
-  readonly run: <R, E, _>(
+  readonly run: <_, E, R>(
     handler: (_: Uint8Array) => Effect.Effect<_, E, R>
   ) => Effect.Effect<void, SocketError | E, R>
-  readonly runRaw: <R, E, _>(
+  readonly runRaw: <_, E, R>(
     handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>
   ) => Effect.Effect<void, SocketError | E, R>
-  readonly writer: Effect.Effect<(chunk: Uint8Array | string | CloseEvent) => Effect.Effect<void>, never, Scope.Scope>
+  readonly writer: Effect.Effect<
+    (chunk: Uint8Array | string | CloseEvent) => Effect.Effect<boolean>,
+    never,
+    Scope.Scope
+  >
 }
 
 /**
  * @since 1.0.0
  * @category type ids
  */
-export const CloseEventTypeId = Symbol.for("@effect/platform/Socket/CloseEvent")
+export const CloseEventTypeId: unique symbol = Symbol.for("@effect/platform/Socket/CloseEvent")
 
 /**
  * @since 1.0.0
@@ -95,7 +101,7 @@ export const isCloseEvent = (u: unknown): u is CloseEvent => Predicate.hasProper
  * @since 1.0.0
  * @category type ids
  */
-export const SocketErrorTypeId = Symbol.for("@effect/platform/Socket/SocketError")
+export const SocketErrorTypeId: unique symbol = Symbol.for("@effect/platform/Socket/SocketError")
 
 /**
  * @since 1.0.0
@@ -174,9 +180,10 @@ export const toChannel = <IE>(
   void,
   unknown
 > =>
-  Channel.unwrap(
+  Channel.unwrapScoped(
     Effect.gen(function*(_) {
-      const writeScope = yield* _(Scope.make())
+      const parentScope = yield* Effect.scope
+      const writeScope = yield* _(Scope.fork(parentScope, ExecutionStrategy.sequential))
       const write = yield* _(Scope.extend(self.writer, writeScope))
       const exitQueue = yield* _(Queue.unbounded<Exit.Exit<Chunk.Chunk<Uint8Array>, SocketError | IE>>())
 
@@ -274,21 +281,40 @@ export const WebSocket: Context.Tag<WebSocket, globalThis.WebSocket> = Context.G
 
 /**
  * @since 1.0.0
+ * @category tags
+ */
+export interface WebSocketConstructor {
+  readonly _: unique symbol
+}
+
+/**
+ * @since 1.0.0
+ * @category tags
+ */
+export const WebSocketConstructor: Context.Tag<WebSocketConstructor, (url: string) => globalThis.WebSocket> = Context
+  .GenericTag("@effect/platform/Socket/WebSocketConstructor")
+
+/**
+ * @since 1.0.0
  * @category constructors
  */
 export const makeWebSocket = (url: string | Effect.Effect<string>, options?: {
   readonly closeCodeIsError?: (code: number) => boolean
   readonly openTimeout?: DurationInput
-}): Effect.Effect<Socket> =>
+}): Effect.Effect<Socket, never, WebSocketConstructor> =>
   fromWebSocket(
     Effect.acquireRelease(
-      Effect.map(typeof url === "string" ? Effect.succeed(url) : url, (url) => {
-        if ("WebSocket" in globalThis) {
-          return new globalThis.WebSocket(url)
-        }
-        return new IsoWS(url)
-      }),
-      (ws) => Effect.sync(() => ws.close())
+      (typeof url === "string" ? Effect.succeed(url) : url).pipe(
+        Effect.flatMap((url) => Effect.map(WebSocketConstructor, (f) => f(url)))
+      ),
+      (ws) =>
+        Effect.sync(() => {
+          ws.onclose = null
+          ws.onerror = null
+          ws.onmessage = null
+          ws.onopen = null
+          return ws.close()
+        })
     ),
     options
   )
@@ -297,20 +323,26 @@ export const makeWebSocket = (url: string | Effect.Effect<string>, options?: {
  * @since 1.0.0
  * @category constructors
  */
-export const fromWebSocket = (
-  acquire: Effect.Effect<globalThis.WebSocket, SocketError, Scope.Scope>,
+export const fromWebSocket = <R>(
+  acquire: Effect.Effect<globalThis.WebSocket, SocketError, R>,
   options?: {
     readonly closeCodeIsError?: (code: number) => boolean
     readonly openTimeout?: DurationInput
   }
-): Effect.Effect<Socket> =>
+): Effect.Effect<Socket, never, Exclude<R, Scope.Scope>> =>
   Effect.gen(function*(_) {
     const closeCodeIsError = options?.closeCodeIsError ?? defaultCloseCodeIsError
-    const sendQueue = yield* _(Queue.unbounded<Uint8Array | string | CloseEvent>())
+    const sendQueue = yield* _(Queue.dropping<Uint8Array | string | CloseEvent>(
+      yield* FiberRef.get(currentSendQueueCapacity)
+    ))
+    const acquireContext = yield* Effect.context<Exclude<R, Scope.Scope>>()
 
-    const runRaw = <R, E, _>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>) =>
+    const runRaw = <_, E, R>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R>) =>
       Effect.gen(function*(_) {
-        const ws = yield* _(acquire)
+        const scope = yield* Effect.scope
+        const ws = yield* (acquire.pipe(
+          Effect.provide(Context.add(acquireContext, Scope.Scope, scope))
+        ) as Effect.Effect<globalThis.WebSocket>)
         const fiberSet = yield* _(FiberSet.make<any, E | SocketError>())
         const run = yield* _(
           FiberSet.runtime(fiberSet)<R>(),
@@ -347,12 +379,16 @@ export const fromWebSocket = (
         }
 
         if (ws.readyState !== 1) {
-          yield* _(
-            Effect.async<void, SocketError, never>((resume) => {
-              ws.onopen = () => {
-                resume(Effect.void)
-              }
-            }),
+          yield* Effect.async<void, SocketError, never>((resume) => {
+            function onOpen() {
+              ws.removeEventListener("open", onOpen)
+              resume(Effect.void)
+            }
+            ws.addEventListener("open", onOpen)
+            return Effect.sync(() => {
+              ws.removeEventListener("open", onOpen)
+            })
+          }).pipe(
             Effect.timeoutFail({
               duration: options?.openTimeout ?? 10000,
               onTimeout: () => new SocketGenericError({ reason: "OpenTimeout", error: "timeout waiting for \"open\"" })
@@ -397,7 +433,7 @@ export const fromWebSocket = (
       )
 
     const encoder = new TextEncoder()
-    const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R>) =>
+    const run = <_, E, R>(handler: (_: Uint8Array) => Effect.Effect<_, E, R>) =>
       runRaw((data) =>
         typeof data === "string"
           ? handler(encoder.encode(data))
@@ -430,7 +466,8 @@ export const makeWebSocketChannel = <IE = never>(
   SocketError | IE,
   IE,
   void,
-  unknown
+  unknown,
+  WebSocketConstructor
 > =>
   Channel.unwrapScoped(
     Effect.map(makeWebSocket(url, options), toChannelWith<IE>())
@@ -442,4 +479,17 @@ export const makeWebSocketChannel = <IE = never>(
  */
 export const layerWebSocket = (url: string, options?: {
   readonly closeCodeIsError?: (code: number) => boolean
-}): Layer.Layer<Socket> => Layer.scoped(Socket, makeWebSocket(url, options))
+}): Layer.Layer<Socket, never, WebSocketConstructor> =>
+  Layer.effect(
+    Socket,
+    makeWebSocket(url, options)
+  )
+
+/**
+ * @since 1.0.0
+ * @category fiber refs
+ */
+export const currentSendQueueCapacity: FiberRef.FiberRef<number> = globalValue(
+  "@effect/platform/Socket/currentSendQueueCapacity",
+  () => FiberRef.unsafeMake(16)
+)

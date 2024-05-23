@@ -5,10 +5,6 @@ import { isUnknown } from "effect/Predicate"
 import { describe, expect, it } from "vitest"
 
 describe("Pretty", () => {
-  it("exports", () => {
-    expect(Pretty.PrettyHookId).exist
-  })
-
   it("make", () => {
     const schema = S.NumberFromString
     const pretty = Pretty.make(schema)
@@ -36,13 +32,22 @@ describe("Pretty", () => {
     )
   })
 
+  it("the errors should disply a path", () => {
+    expect(() => Pretty.make(S.Tuple(S.declare(isUnknown)))).toThrow(
+      new Error(`cannot build a Pretty for a declaration without annotations (<declaration schema>) (path [0])`)
+    )
+    expect(() => Pretty.make(S.Struct({ a: S.declare(isUnknown) }))).toThrow(
+      new Error(`cannot build a Pretty for a declaration without annotations (<declaration schema>) (path ["a"])`)
+    )
+  })
+
   it("should allow for custom compilers", () => {
     const match: typeof Pretty.match = {
       ...Pretty.match,
       "BooleanKeyword": () => (b: boolean) => b ? "True" : "False"
     }
     const go = AST.getCompiler(match)
-    const pretty = <A>(schema: S.Schema<A>) => (a: A): string => go(schema.ast)(a)
+    const pretty = <A>(schema: S.Schema<A>) => (a: A): string => go(schema.ast, [])(a)
     expect(pretty(S.Boolean)(true)).toEqual(`True`)
     const schema = S.Tuple(S.String, S.Boolean)
     expect(pretty(schema)(["a", true])).toEqual(`["a", True]`)
@@ -404,9 +409,9 @@ describe("Pretty", () => {
       readonly a: string
       readonly as: ReadonlyArray<A>
     }
-    const A: S.Schema<A> = S.Struct({
+    const A = S.Struct({
       a: S.String,
-      as: S.Array(S.suspend(() => A))
+      as: S.Array(S.suspend((): S.Schema<A> => A))
     })
     const pretty = Pretty.make(A)
     expect(pretty({ a: "a", as: [] })).toEqual(
@@ -507,9 +512,9 @@ describe("Pretty", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: S.Schema<A> = S.Struct({
+      const schema = S.Struct({
         a: S.String,
-        as: S.Array(S.suspend(() => schema))
+        as: S.Array(S.suspend((): S.Schema<A> => schema))
       })
       expectHook(schema)
     })

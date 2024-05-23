@@ -1,6 +1,6 @@
 {
   "name": "@effect/printer-ansi",
-  "version": "0.33.9",
+  "version": "0.33.20",
   "type": "module",
   "license": "MIT",
   "description": "An easy to use, extensible pretty-printer for rendering documents for the terminal",
@@ -34,7 +34,7 @@
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",
-    "build": "pnpm codegen && pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
+    "build": "pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
     "build-esm": "tsc -b tsconfig.build.json",
     "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
     "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps",

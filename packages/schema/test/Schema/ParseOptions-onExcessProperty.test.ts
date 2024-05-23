@@ -91,13 +91,13 @@ describe("`onExcessProperty` option", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, b: "b", c: true },
-        `{ a?: number; b?: string } | { a?: number }
+        `{ readonly a?: number; readonly b?: string } | { readonly a?: number }
 ├─ Union member
-│  └─ { a?: number; b?: string }
+│  └─ { readonly a?: number; readonly b?: string }
 │     └─ ["c"]
 │        └─ is unexpected, expected "a" | "b"
 └─ Union member
-   └─ { a?: number }
+   └─ { readonly a?: number }
       └─ ["b"]
          └─ is unexpected, expected "a"`,
         Util.onExcessPropertyError

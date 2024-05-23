@@ -1,6 +1,11 @@
 /**
  * @since 1.0.0
  */
+export * as BrowerSocket from "./BrowerSocket.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as BrowserHttpClient from "./BrowserHttpClient.js"
 
 /**
@@ -32,3 +37,8 @@ export * as BrowserWorkerRunner from "./BrowserWorkerRunner.js"
  * @since 1.0.0
  */
 export * as Clipboard from "./Clipboard.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as Geolocation from "./Geolocation.js"

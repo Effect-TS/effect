@@ -2310,29 +2310,47 @@ export const updateService = dual<
     )))
 
 /** @internal */
-export const withSpan = dual<
+export const withSpan: {
   (
     name: string,
     options?: Tracer.SpanOptions
-  ) => <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>(
+  ): <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>(
     self: Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>
-  ) => Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Exclude<Env, Tracer.ParentSpan>>,
+  ) => Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Exclude<Env, Tracer.ParentSpan>>
   <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>(
     self: Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>,
     name: string,
     options?: Tracer.SpanOptions
-  ) => Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Exclude<Env, Tracer.ParentSpan>>
->(3, (self, name, options) =>
-  unwrapScoped(
-    Effect.flatMap(
-      Effect.context(),
-      (context) =>
-        Effect.map(
-          Effect.makeSpanScoped(name, options),
-          (span) => core.provideContext(self, Context.add(context, tracer.spanTag, span))
-        )
+  ): Channel.Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Exclude<Env, Tracer.ParentSpan>>
+} = function() {
+  const dataFirst = typeof arguments[0] !== "string"
+  const name = dataFirst ? arguments[1] : arguments[0]
+  const options = tracer.addSpanStackTrace(dataFirst ? arguments[2] : arguments[1])
+  if (dataFirst) {
+    const self = arguments[0]
+    return unwrapScoped(
+      Effect.flatMap(
+        Effect.context(),
+        (context) =>
+          Effect.map(
+            Effect.makeSpanScoped(name, options),
+            (span) => core.provideContext(self, Context.add(context, tracer.spanTag, span))
+          )
+      )
     )
-  ) as any)
+  }
+  return (self: Effect.Effect<any, any, any>) =>
+    unwrapScoped(
+      Effect.flatMap(
+        Effect.context(),
+        (context) =>
+          Effect.map(
+            Effect.makeSpanScoped(name, options),
+            (span) => core.provideContext(self, Context.add(context, tracer.spanTag, span))
+          )
+      )
+    )
+} as any
 
 /** @internal */
 export const writeAll = <OutElem>(

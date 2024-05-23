@@ -20,7 +20,7 @@ const TestAnnotationSymbolKey = "effect/TestAnnotation"
 /**
  * @since 2.0.0
  */
-export const TestAnnotationTypeId = Symbol.for(TestAnnotationSymbolKey)
+export const TestAnnotationTypeId: unique symbol = Symbol.for(TestAnnotationSymbolKey)
 
 /**
  * @since 2.0.0

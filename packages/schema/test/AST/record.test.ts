@@ -1,7 +1,7 @@
 import * as AST from "@effect/schema/AST"
 import { describe, expect, it } from "vitest"
 
-describe("AST > record", () => {
+describe("record", () => {
   it("numeric literal", () => {
     expect(AST.record(new AST.Literal(1), AST.numberKeyword).propertySignatures).toEqual(
       [new AST.PropertySignature(1, AST.numberKeyword, false, true)]
@@ -10,13 +10,13 @@ describe("AST > record", () => {
 
   it("should throw on unsupported keys", () => {
     expect(() => AST.record(AST.undefinedKeyword, AST.numberKeyword)).toThrow(
-      new Error("Record: unsupported key schema (undefined)")
+      new Error("record: unsupported key schema (undefined)")
     )
   })
 
   it("should throw on unsupported literals", () => {
     expect(() => AST.record(new AST.Literal(true), AST.numberKeyword)).toThrow(
-      new Error("Record: unsupported literal (true)")
+      new Error("record: unsupported literal (true)")
     )
   })
 })

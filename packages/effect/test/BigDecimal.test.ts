@@ -1,7 +1,7 @@
-import { assertFalse, assertTrue, deepStrictEqual } from "effect-test/util"
 import * as BigDecimal from "effect/BigDecimal"
 import * as Equal from "effect/Equal"
 import * as Option from "effect/Option"
+import { assertFalse, assertTrue, deepStrictEqual } from "effect/test/util"
 import { assert, describe, expect, it } from "vitest"
 
 const _ = BigDecimal.unsafeFromString

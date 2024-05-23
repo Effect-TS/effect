@@ -5,6 +5,7 @@ import type * as Context from "./Context.js"
 import type * as Effect from "./Effect.js"
 import type * as Exit from "./Exit.js"
 import type * as Fiber from "./Fiber.js"
+import type { LazyArg } from "./Function.js"
 import * as defaultServices from "./internal/defaultServices.js"
 import * as internal from "./internal/tracer.js"
 import type * as Option from "./Option.js"
@@ -92,6 +93,7 @@ export interface SpanOptions {
   readonly root?: boolean | undefined
   readonly context?: Context.Context<never> | undefined
   readonly kind?: SpanKind | undefined
+  readonly captureStackTrace?: boolean | LazyArg<string | undefined> | undefined
 }
 
 /**

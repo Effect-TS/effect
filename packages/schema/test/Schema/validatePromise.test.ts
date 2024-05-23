@@ -9,7 +9,7 @@ describe("validatePromise", () => {
     await Util.expectPromiseSuccess(S.validatePromise(schema)({ a: 1 }), { a: 1 })
     await Util.expectPromiseFailure(
       S.validatePromise(schema)({ a: null }),
-      `{ a: number }
+      `{ readonly a: number }
 └─ ["a"]
    └─ Expected a number, actual null`
     )
@@ -19,13 +19,13 @@ describe("validatePromise", () => {
     const input = { a: 1, b: "b" }
     await Util.expectPromiseFailure(
       S.validatePromise(schema)(input, { onExcessProperty: "error" }),
-      `{ a: number }
+      `{ readonly a: number }
 └─ ["b"]
    └─ is unexpected, expected "a"`
     )
     await Util.expectPromiseFailure(
       S.validatePromise(schema, { onExcessProperty: "error" })(input),
-      `{ a: number }
+      `{ readonly a: number }
 └─ ["b"]
    └─ is unexpected, expected "a"`
     )

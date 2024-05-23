@@ -258,8 +258,8 @@ export const formData = (
   )
 
 /** @internal */
-export const stream = (
-  body: Stream.Stream<Uint8Array, unknown>,
+export const stream = <E>(
+  body: Stream.Stream<Uint8Array, E>,
   options?: ServerResponse.Options | undefined
 ): ServerResponse.ServerResponse =>
   new ServerResponseImpl(
@@ -321,7 +321,7 @@ export const setCookie = dual<
     options?: Cookies.Cookie["options"]
   ) => Effect.Effect<ServerResponse.ServerResponse, Cookies.CookiesError>
 >(
-  (args) => Cookies.isCookies(args[0]),
+  (args) => isServerResponse(args[0]),
   (self, name, value, options) =>
     Effect.map(Cookies.set(self.cookies, name, value, options), (cookies) =>
       new ServerResponseImpl(
@@ -347,7 +347,7 @@ export const unsafeSetCookie = dual<
     options?: Cookies.Cookie["options"]
   ) => ServerResponse.ServerResponse
 >(
-  (args) => Cookies.isCookies(args[0]),
+  (args) => isServerResponse(args[0]),
   (self, name, value, options) =>
     new ServerResponseImpl(
       self.status,

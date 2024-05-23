@@ -6,10 +6,12 @@ import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Predicate from "effect/Predicate"
+import type * as App from "../../Http/App.js"
 import * as Headers from "../../Http/Headers.js"
 import type * as Middleware from "../../Http/Middleware.js"
 import * as ServerError from "../../Http/ServerError.js"
 import * as ServerRequest from "../../Http/ServerRequest.js"
+import type { ServerResponse } from "../../Http/ServerResponse.js"
 import * as TraceContext from "../../Http/TraceContext.js"
 
 /** @internal */
@@ -22,7 +24,7 @@ export const loggerDisabled = globalValue(
 )
 
 /** @internal */
-export const withLoggerDisabled = <R, E, A>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+export const withLoggerDisabled = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   Effect.zipRight(
     FiberRef.set(loggerDisabled, true),
     self
@@ -38,8 +40,8 @@ export const currentTracerDisabledWhen = globalValue(
 export const withTracerDisabledWhen = dual<
   (
     predicate: Predicate.Predicate<ServerRequest.ServerRequest>
-  ) => <R, E, A>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>,
-  <R, E, A>(
+  ) => <A, E, R>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>,
+  <A, E, R>(
     layer: Layer.Layer<A, E, R>,
     predicate: Predicate.Predicate<ServerRequest.ServerRequest>
   ) => Layer.Layer<A, E, R>
@@ -49,8 +51,8 @@ export const withTracerDisabledWhen = dual<
 export const withTracerDisabledWhenEffect = dual<
   (
     predicate: Predicate.Predicate<ServerRequest.ServerRequest>
-  ) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <R, E, A>(
+  ) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(
     effect: Effect.Effect<A, E, R>,
     predicate: Predicate.Predicate<ServerRequest.ServerRequest>
   ) => Effect.Effect<A, E, R>
@@ -60,8 +62,8 @@ export const withTracerDisabledWhenEffect = dual<
 export const withTracerDisabledForUrls = dual<
   (
     urls: ReadonlyArray<string>
-  ) => <R, E, A>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>,
-  <R, E, A>(
+  ) => <A, E, R>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>,
+  <A, E, R>(
     layer: Layer.Layer<A, E, R>,
     urls: ReadonlyArray<string>
   ) => Layer.Layer<A, E, R>
@@ -123,7 +125,11 @@ export const tracer = make((httpApp) =>
     const redactedHeaders = Headers.redact(request.headers, redactedHeaderNames)
     return Effect.useSpan(
       `http.server ${request.method}`,
-      { parent: Option.getOrUndefined(TraceContext.fromHeaders(request.headers)), kind: "server" },
+      {
+        parent: Option.getOrUndefined(TraceContext.fromHeaders(request.headers)),
+        kind: "server",
+        captureStackTrace: false
+      },
       (span) => {
         span.attribute("http.request.method", request.method)
         if (url !== undefined) {
@@ -179,3 +185,20 @@ export const xForwardedHeaders = make((httpApp) =>
       })
       : request)
 )
+
+/** @internal */
+export const searchParamsParser = <E, R>(httpApp: App.Default<E, R>) =>
+  Effect.withFiberRuntime<
+    ServerResponse,
+    E,
+    ServerRequest.ServerRequest | Exclude<R, ServerRequest.ParsedSearchParams>
+  >((fiber) => {
+    const context = fiber.getFiberRef(FiberRef.currentContext)
+    const request = Context.unsafeGet(context, ServerRequest.ServerRequest)
+    const params = ServerRequest.searchParamsFromURL(new URL(request.url))
+    return Effect.locally(
+      httpApp,
+      FiberRef.currentContext,
+      Context.add(context, ServerRequest.ParsedSearchParams, params)
+    ) as any
+  })

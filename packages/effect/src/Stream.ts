@@ -22,6 +22,7 @@ import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import type * as PubSub from "./PubSub.js"
 import type * as Queue from "./Queue.js"
+import type { Runtime } from "./Runtime.js"
 import type * as Schedule from "./Schedule.js"
 import type * as Scope from "./Scope.js"
 import type * as Sink from "./Sink.js"
@@ -29,7 +30,7 @@ import type * as Emit from "./StreamEmit.js"
 import type * as HaltStrategy from "./StreamHaltStrategy.js"
 import type * as Take from "./Take.js"
 import type * as Tracer from "./Tracer.js"
-import type { Covariant, MergeRecord, NoInfer } from "./Types.js"
+import type { Covariant, NoInfer } from "./Types.js"
 import type * as Unify from "./Unify.js"
 
 /**
@@ -3859,7 +3860,36 @@ export const toQueueOfElements: {
  * @since 2.0.0
  * @category destructors
  */
-export const toReadableStream: <A, E>(source: Stream<A, E>) => ReadableStream<A> = internal.toReadableStream
+export const toReadableStream: <A, E>(self: Stream<A, E>) => ReadableStream<A> = internal.toReadableStream
+
+/**
+ * Converts the stream to a `Effect<ReadableStream>`.
+ *
+ * See https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream.
+ *
+ * @since 2.0.0
+ * @category destructors
+ */
+export const toReadableStreamEffect: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<ReadableStream<A>, never, R> =
+  internal.toReadableStreamEffect
+
+/**
+ * Converts the stream to a `ReadableStream` using the provided runtime.
+ *
+ * See https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream.
+ *
+ * @since 2.0.0
+ * @category destructors
+ */
+export const toReadableStreamRuntime: {
+  <XR>(
+    runtime: Runtime<XR>
+  ): <A, E, R extends XR>(self: Stream<A, E, R>) => ReadableStream<A>
+  <A, E, XR, R extends XR>(
+    self: Stream<A, E, R>,
+    runtime: Runtime<XR>
+  ): ReadableStream<A>
+} = internal.toReadableStreamRuntime
 
 /**
  * Applies the transducer to the stream and emits its outputs.
@@ -4440,86 +4470,187 @@ export const zipWithIndex: <A, E, R>(self: Stream<A, E, R>) => Stream<[A, number
 // -------------------------------------------------------------------------------------
 
 /**
- * @since 2.0.0
+ * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
+ *
+ * Here's how the do simulation works:
+ *
+ * 1. Start the do simulation using the `Do` value
+ * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Stream` values
+ * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+ * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+ *
+ * @see {@link bindTo}
+ * @see {@link bind}
+ * @see {@link bindEffect}
+ * @see {@link let_ let}
+ *
+ * @example
+ * import { Chunk, Effect, pipe, Stream } from "effect"
+ *
+ * const result = pipe(
+ *   Stream.Do,
+ *   Stream.bind("x", () => Stream.succeed(2)),
+ *   Stream.bind("y", () => Stream.succeed(3)),
+ *   Stream.let("sum", ({ x, y }) => x + y)
+ * )
+ * assert.deepStrictEqual(Effect.runSync(Stream.runCollect(result)), Chunk.of({ x: 2, y: 3, sum: 5 }))
+ *
  * @category do notation
+ * @since 2.0.0
  */
 export const Do: Stream<{}> = internal.Do
 
 /**
- * Binds a value from a stream in a `do` scope
+ * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
  *
- * @since 2.0.0
+ * Here's how the do simulation works:
+ *
+ * 1. Start the do simulation using the `Do` value
+ * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Stream` values
+ * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+ * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+ *
+ * @see {@link Do}
+ * @see {@link bindTo}
+ * @see {@link bindEffect}
+ * @see {@link let_ let}
+ *
+ * @example
+ * import { Chunk, Effect, pipe, Stream } from "effect"
+ *
+ * const result = pipe(
+ *   Stream.Do,
+ *   Stream.bind("x", () => Stream.succeed(2)),
+ *   Stream.bind("y", () => Stream.succeed(3)),
+ *   Stream.let("sum", ({ x, y }) => x + y)
+ * )
+ * assert.deepStrictEqual(Effect.runSync(Stream.runCollect(result)), Chunk.of({ x: 2, y: 3, sum: 5 }))
+ *
  * @category do notation
+ * @since 2.0.0
  */
 export const bind: {
-  <N extends string, K, A, E2, R2>(
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Stream<A, E2, R2>,
+  <N extends string, A, B, E2, R2>(
+    tag: Exclude<N, keyof A>,
+    f: (_: A) => Stream<B, E2, R2>,
     options?:
       | { readonly concurrency?: number | "unbounded" | undefined; readonly bufferSize?: number | undefined }
       | undefined
-  ): <E, R>(self: Stream<K, E, R>) => Stream<MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
-  <K, E, R, N extends string, A, E2, R2>(
-    self: Stream<K, E, R>,
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Stream<A, E2, R2>,
+  ): <E, R>(self: Stream<A, E, R>) => Stream<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E2 | E, R2 | R>
+  <A, E, R, N extends string, B, E2, R2>(
+    self: Stream<A, E, R>,
+    tag: Exclude<N, keyof A>,
+    f: (_: A) => Stream<B, E2, R2>,
     options?:
       | { readonly concurrency?: number | "unbounded" | undefined; readonly bufferSize?: number | undefined }
       | undefined
-  ): Stream<MergeRecord<K, { [k in N]: A }>, E | E2, R | R2>
+  ): Stream<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E | E2, R | R2>
 } = internal.bind
 
 /**
  * Binds an effectful value in a `do` scope
  *
+ * @see {@link Do}
+ * @see {@link bindTo}
+ * @see {@link bind}
+ * @see {@link let_ let}
+ *
  * @since 2.0.0
  * @category do notation
  */
 export const bindEffect: {
-  <N extends string, K, A, E2, R2>(
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Effect.Effect<A, E2, R2>,
+  <N extends string, A, B, E2, R2>(
+    tag: Exclude<N, keyof A>,
+    f: (_: A) => Effect.Effect<B, E2, R2>,
     options?:
       | { readonly concurrency?: number | "unbounded" | undefined; readonly bufferSize?: number | undefined }
       | undefined
-  ): <E, R>(self: Stream<K, E, R>) => Stream<MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
-  <K, E, R, N extends string, A, E2, R2>(
-    self: Stream<K, E, R>,
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Effect.Effect<A, E2, R2>,
+  ): <E, R>(self: Stream<A, E, R>) => Stream<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E2 | E, R2 | R>
+  <A, E, R, N extends string, B, E2, R2>(
+    self: Stream<A, E, R>,
+    tag: Exclude<N, keyof A>,
+    f: (_: A) => Effect.Effect<B, E2, R2>,
     options?:
       | { readonly concurrency?: number | "unbounded" | undefined; readonly unordered?: boolean | undefined }
       | undefined
-  ): Stream<MergeRecord<K, { [k in N]: A }>, E | E2, R | R2>
+  ): Stream<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E | E2, R | R2>
 } = _groupBy.bindEffect
 
 /**
- * @since 2.0.0
+ * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
+ *
+ * Here's how the do simulation works:
+ *
+ * 1. Start the do simulation using the `Do` value
+ * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Stream` values
+ * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+ * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+ *
+ * @see {@link Do}
+ * @see {@link bind}
+ * @see {@link bindEffect}
+ * @see {@link let_ let}
+ *
+ * @example
+ * import { Chunk, Effect, pipe, Stream } from "effect"
+ *
+ * const result = pipe(
+ *   Stream.Do,
+ *   Stream.bind("x", () => Stream.succeed(2)),
+ *   Stream.bind("y", () => Stream.succeed(3)),
+ *   Stream.let("sum", ({ x, y }) => x + y)
+ * )
+ * assert.deepStrictEqual(Effect.runSync(Stream.runCollect(result)), Chunk.of({ x: 2, y: 3, sum: 5 }))
+ *
  * @category do notation
+ * @since 2.0.0
  */
 export const bindTo: {
-  <N extends string>(tag: N): <A, E, R>(self: Stream<A, E, R>) => Stream<Record<N, A>, E, R>
-  <A, E, R, N extends string>(self: Stream<A, E, R>, tag: N): Stream<Record<N, A>, E, R>
+  <N extends string>(name: N): <A, E, R>(self: Stream<A, E, R>) => Stream<{ [K in N]: A }, E, R>
+  <A, E, R, N extends string>(self: Stream<A, E, R>, name: N): Stream<{ [K in N]: A }, E, R>
 } = internal.bindTo
 
 const let_: {
-  <N extends string, K, A>(
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => A
-  ): <E, R>(self: Stream<K, E, R>) => Stream<MergeRecord<K, { [k in N]: A }>, E, R>
-  <K, E, R, N extends string, A>(
-    self: Stream<K, E, R>,
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => A
-  ): Stream<MergeRecord<K, { [k in N]: A }>, E, R>
+  <N extends string, A extends object, B>(
+    name: Exclude<N, keyof A>,
+    f: (a: A) => B
+  ): <E, R>(self: Stream<A, E, R>) => Stream<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
+  <A extends object, E, R, N extends string, B>(
+    self: Stream<A, E, R>,
+    name: Exclude<N, keyof A>,
+    f: (a: A) => B
+  ): Stream<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
 } = internal.let_
 
 export {
   /**
-   * Bind a value in a `do` scope
+   * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
    *
-   * @since 2.0.0
+   * Here's how the do simulation works:
+   *
+   * 1. Start the do simulation using the `Do` value
+   * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Stream` values
+   * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+   * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+   *
+   * @see {@link Do}
+   * @see {@link bindTo}
+   * @see {@link bind}
+   * @see {@link bindEffect}
+   *
+   * @example
+   * import { Chunk, Effect, pipe, Stream } from "effect"
+   *
+   * const result = pipe(
+   *   Stream.Do,
+   *   Stream.bind("x", () => Stream.succeed(2)),
+   *   Stream.bind("y", () => Stream.succeed(3)),
+   *   Stream.let("sum", ({ x, y }) => x + y)
+   * )
+   * assert.deepStrictEqual(Effect.runSync(Stream.runCollect(result)), Chunk.of({ x: 2, y: 3, sum: 5 }))
+   *
    * @category do notation
+   * @since 2.0.0
    */
   let_ as let
 }

@@ -162,8 +162,8 @@ export const maxParts: FiberRef.FiberRef<Option.Option<number>> = internal.maxPa
  * @category fiber refs
  */
 export const withMaxParts: {
-  (count: Option.Option<number>): <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <R, E, A>(effect: Effect.Effect<A, E, R>, count: Option.Option<number>): Effect.Effect<A, E, R>
+  (count: Option.Option<number>): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(effect: Effect.Effect<A, E, R>, count: Option.Option<number>): Effect.Effect<A, E, R>
 } = internal.withMaxParts
 
 /**
@@ -177,8 +177,8 @@ export const maxFieldSize: FiberRef.FiberRef<FileSystem.Size> = internal.maxFiel
  * @category fiber refs
  */
 export const withMaxFieldSize: {
-  (size: FileSystem.SizeInput): <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <R, E, A>(effect: Effect.Effect<A, E, R>, size: FileSystem.SizeInput): Effect.Effect<A, E, R>
+  (size: FileSystem.SizeInput): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(effect: Effect.Effect<A, E, R>, size: FileSystem.SizeInput): Effect.Effect<A, E, R>
 } = internal.withMaxFieldSize
 
 /**
@@ -192,8 +192,8 @@ export const maxFileSize: FiberRef.FiberRef<Option.Option<FileSystem.Size>> = in
  * @category fiber refs
  */
 export const withMaxFileSize: {
-  (size: Option.Option<FileSystem.SizeInput>): <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <R, E, A>(effect: Effect.Effect<A, E, R>, size: Option.Option<FileSystem.SizeInput>): Effect.Effect<A, E, R>
+  (size: Option.Option<FileSystem.SizeInput>): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(effect: Effect.Effect<A, E, R>, size: Option.Option<FileSystem.SizeInput>): Effect.Effect<A, E, R>
 } = internal.withMaxFileSize
 
 /**
@@ -207,8 +207,8 @@ export const fieldMimeTypes: FiberRef.FiberRef<Chunk.Chunk<string>> = internal.f
  * @category fiber refs
  */
 export const withFieldMimeTypes: {
-  (mimeTypes: ReadonlyArray<string>): <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <R, E, A>(effect: Effect.Effect<A, E, R>, mimeTypes: ReadonlyArray<string>): Effect.Effect<A, E, R>
+  (mimeTypes: ReadonlyArray<string>): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R>(effect: Effect.Effect<A, E, R>, mimeTypes: ReadonlyArray<string>): Effect.Effect<A, E, R>
 } = internal.withFieldMimeTypes
 
 /**
@@ -248,7 +248,7 @@ export const schemaJson: <A, I, R>(
  * @since 1.0.0
  * @category schema
  */
-export const schemaPersisted: <R, I extends Partial<Persisted>, A>(
+export const schemaPersisted: <A, I extends Partial<Persisted>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => (persisted: Persisted) => Effect.Effect<A, ParseResult.ParseError, R> = internal.schemaPersisted

@@ -16,7 +16,7 @@ import { TypeIdError } from "../Error.js"
  * @since 1.0.0
  * @category type ids
  */
-export const TypeId = Symbol.for("@effect/platform/Http/Cookies")
+export const TypeId: unique symbol = Symbol.for("@effect/platform/Http/Cookies")
 
 /**
  * @since 1.0.0
@@ -43,7 +43,7 @@ export interface Cookies extends Pipeable, Inspectable.Inspectable {
  * @since 1.0.0
  * @category type ids
  */
-export const CookieTypeId = Symbol.for("@effect/platform/Http/Cookies/Cookie")
+export const CookieTypeId: unique symbol = Symbol.for("@effect/platform/Http/Cookies/Cookie")
 
 /**
  * @since 1.0.0
@@ -77,7 +77,7 @@ export interface Cookie extends Inspectable.Inspectable {
  * @since 1.0.0
  * @category type ids
  */
-export const ErrorTypeId = Symbol.for("@effect/platform/Http/Cookies/CookieError")
+export const ErrorTypeId: unique symbol = Symbol.for("@effect/platform/Http/Cookies/CookieError")
 
 /**
  * @since 1.0.0

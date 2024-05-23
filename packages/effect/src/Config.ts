@@ -69,12 +69,15 @@ export declare namespace Config {
    * @since 2.0.0
    * @category models
    */
-  export type Wrap<A> =
-    | (A extends Record<string, any> ? {
-        [K in keyof A]: Wrap<A[K]>
-      }
-      : never)
-    | Config<A>
+  export type Wrap<A> = [NonNullable<A>] extends [infer T] ? [T] extends [Function] ? Config<A> :
+    [T] extends [ReadonlyArray<infer _>] ? Config<A> :
+    [T] extends [Record<string, any>] ?
+        | {
+          [K in keyof A]: Wrap<A[K]>
+        }
+        | Config<A>
+    : Config<A>
+    : Config<A>
 }
 
 /**

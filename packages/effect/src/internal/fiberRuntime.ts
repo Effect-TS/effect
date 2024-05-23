@@ -1,3 +1,4 @@
+import { internalCall } from "effect/Utils"
 import * as RA from "../Array.js"
 import * as Boolean from "../Boolean.js"
 import type * as Cause from "../Cause.js"
@@ -146,7 +147,7 @@ const contOpSuccess = {
     cont: core.OnSuccess,
     value: unknown
   ) => {
-    return cont.effect_instruction_i1(value)
+    return internalCall(() => cont.effect_instruction_i1(value))
   },
   ["OnStep"]: (
     _: FiberRuntime<any, any>,
@@ -160,7 +161,7 @@ const contOpSuccess = {
     cont: core.OnSuccessAndFailure,
     value: unknown
   ) => {
-    return cont.effect_instruction_i2(value)
+    return internalCall(() => cont.effect_instruction_i2(value))
   },
   [OpCodes.OP_REVERT_FLAGS]: (
     self: FiberRuntime<any, any>,
@@ -179,10 +180,10 @@ const contOpSuccess = {
     cont: core.While,
     value: unknown
   ) => {
-    cont.effect_instruction_i2(value)
-    if (cont.effect_instruction_i0()) {
+    internalCall(() => cont.effect_instruction_i2(value))
+    if (internalCall(() => cont.effect_instruction_i0())) {
       self.pushStack(cont)
-      return cont.effect_instruction_i1()
+      return internalCall(() => cont.effect_instruction_i1())
     } else {
       return core.void
     }
@@ -1073,7 +1074,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   }
 
   [OpCodes.OP_SYNC](op: core.Primitive & { _op: OpCodes.OP_SYNC }) {
-    const value = op.effect_instruction_i0()
+    const value = internalCall(() => op.effect_instruction_i0())
     const cont = this.getNextSuccessCont()
     if (cont !== undefined) {
       if (!(cont._op in contOpSuccess)) {
@@ -1112,7 +1113,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
         case OpCodes.OP_ON_FAILURE:
         case OpCodes.OP_ON_SUCCESS_AND_FAILURE: {
           if (!(_runtimeFlags.interruptible(this._runtimeFlags) && this.isInterrupted())) {
-            return cont.effect_instruction_i1(cause)
+            return internalCall(() => cont.effect_instruction_i1(cause))
           } else {
             return core.exitFailCause(internalCause.stripFailures(cause))
           }
@@ -1143,9 +1144,11 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   }
 
   [OpCodes.OP_WITH_RUNTIME](op: core.Primitive & { _op: OpCodes.OP_WITH_RUNTIME }) {
-    return op.effect_instruction_i0(
-      this as FiberRuntime<unknown, unknown>,
-      FiberStatus.running(this._runtimeFlags) as FiberStatus.Running
+    return internalCall(() =>
+      op.effect_instruction_i0(
+        this as FiberRuntime<unknown, unknown>,
+        FiberStatus.running(this._runtimeFlags) as FiberStatus.Running
+      )
     )
   }
 
@@ -1207,7 +1210,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
         // Since we updated the flags, we need to revert them
         const revertFlags = _runtimeFlags.diff(newRuntimeFlags, oldRuntimeFlags)
         this.pushStack(new core.RevertFlags(revertFlags, op))
-        return op.effect_instruction_i1(oldRuntimeFlags)
+        return internalCall(() => op.effect_instruction_i1!(oldRuntimeFlags))
       } else {
         return core.exitVoid
       }
@@ -1259,7 +1262,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   }
 
   [OpCodes.OP_COMMIT](op: core.Primitive & { _op: OpCodes.OP_COMMIT }) {
-    return op.commit()
+    return internalCall(() => op.commit())
   }
 
   /**
@@ -1335,7 +1338,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
             internalCause.sequential(internalCause.die(e), internalCause.interrupt(FiberId.none))
           )
         } else {
-          cur = core.exitFailCause(internalCause.die(e))
+          cur = core.die(e)
         }
       }
     }
@@ -3622,8 +3625,9 @@ export const interruptWhenPossible = dual<
 export const makeSpanScoped = (
   name: string,
   options?: Tracer.SpanOptions | undefined
-): Effect.Effect<Tracer.Span, never, Scope.Scope> =>
-  core.uninterruptible(
+): Effect.Effect<Tracer.Span, never, Scope.Scope> => {
+  options = tracer.addSpanStackTrace(options)
+  return core.uninterruptible(
     core.withFiberRuntime((fiber) => {
       const scope = Context.unsafeGet(fiber.getFiberRef(core.currentContext), scopeTag)
       const span = internalEffect.unsafeMakeSpan(fiber, name, options)
@@ -3641,27 +3645,37 @@ export const makeSpanScoped = (
       )
     })
   )
+}
 
 /* @internal */
 export const withTracerScoped = (value: Tracer.Tracer): Effect.Effect<void, never, Scope.Scope> =>
   fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(tracer.tracerTag, value))
 
 /** @internal */
-export const withSpanScoped = dual<
+export const withSpanScoped: {
   (
     name: string,
     options?: Tracer.SpanOptions
-  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan> | Scope.Scope>,
+  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Scope.Scope | Exclude<R, Tracer.ParentSpan>>
   <A, E, R>(
     self: Effect.Effect<A, E, R>,
     name: string,
     options?: Tracer.SpanOptions
-  ) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan> | Scope.Scope>
->(
-  (args) => typeof args[0] !== "string",
-  (self, name, options) =>
-    core.flatMap(
-      makeSpanScoped(name, options),
+  ): Effect.Effect<A, E, Scope.Scope | Exclude<R, Tracer.ParentSpan>>
+} = function() {
+  const dataFirst = typeof arguments[0] !== "string"
+  const name = dataFirst ? arguments[1] : arguments[0]
+  const options = tracer.addSpanStackTrace(dataFirst ? arguments[2] : arguments[1])
+  if (dataFirst) {
+    const self = arguments[0]
+    return core.flatMap(
+      makeSpanScoped(name, tracer.addSpanStackTrace(options)),
       (span) => internalEffect.provideService(self, tracer.spanTag, span)
     )
-)
+  }
+  return (self: Effect.Effect<any, any, any>) =>
+    core.flatMap(
+      makeSpanScoped(name, tracer.addSpanStackTrace(options)),
+      (span) => internalEffect.provideService(self, tracer.spanTag, span)
+    )
+} as any

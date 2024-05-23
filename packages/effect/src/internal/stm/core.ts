@@ -1,3 +1,4 @@
+import { internalCall } from "effect/Utils"
 import * as Cause from "../../Cause.js"
 import * as Context from "../../Context.js"
 import * as Effect from "../../Effect.js"
@@ -504,15 +505,19 @@ export class STMDriver<in out R, out E, out A> {
             case "Commit": {
               switch (current.effect_instruction_i0) {
                 case OpCodes.OP_DIE: {
-                  exit = TExit.die(current.effect_instruction_i1())
+                  exit = TExit.die(internalCall(() => current.effect_instruction_i1()))
                   break
                 }
                 case OpCodes.OP_FAIL: {
                   const cont = this.nextFailure()
                   if (cont === undefined) {
-                    exit = TExit.fail(current.effect_instruction_i1())
+                    exit = TExit.fail(internalCall(() => current.effect_instruction_i1()))
                   } else {
-                    curr = cont.effect_instruction_i2(current.effect_instruction_i1()) as Primitive
+                    curr = internalCall(() =>
+                      cont.effect_instruction_i2(
+                        internalCall(() => current.effect_instruction_i1())
+                      ) as Primitive
+                    )
                   }
                   break
                 }
@@ -521,7 +526,7 @@ export class STMDriver<in out R, out E, out A> {
                   if (cont === undefined) {
                     exit = TExit.retry
                   } else {
-                    curr = cont.effect_instruction_i2() as Primitive
+                    curr = internalCall(() => cont.effect_instruction_i2() as Primitive)
                   }
                   break
                 }
@@ -530,7 +535,9 @@ export class STMDriver<in out R, out E, out A> {
                   break
                 }
                 case OpCodes.OP_WITH_STM_RUNTIME: {
-                  curr = current.effect_instruction_i1(this as STMDriver<unknown, unknown, unknown>) as Primitive
+                  curr = internalCall(() =>
+                    current.effect_instruction_i1(this as STMDriver<unknown, unknown, unknown>) as Primitive
+                  )
                   break
                 }
                 case OpCodes.OP_ON_SUCCESS:
@@ -542,7 +549,7 @@ export class STMDriver<in out R, out E, out A> {
                 }
                 case OpCodes.OP_PROVIDE: {
                   const env = this.env
-                  this.env = current.effect_instruction_i2(env)
+                  this.env = internalCall(() => current.effect_instruction_i2(env))
                   curr = pipe(
                     current.effect_instruction_i1,
                     ensuring(sync(() => (this.env = env)))
@@ -555,17 +562,17 @@ export class STMDriver<in out R, out E, out A> {
                   if (cont === undefined) {
                     exit = TExit.succeed(value)
                   } else {
-                    curr = cont.effect_instruction_i2(value) as Primitive
+                    curr = internalCall(() => cont.effect_instruction_i2(value) as Primitive)
                   }
                   break
                 }
                 case OpCodes.OP_SYNC: {
-                  const value = current.effect_instruction_i1()
+                  const value = internalCall(() => current.effect_instruction_i1())
                   const cont = this.nextSuccess()
                   if (cont === undefined) {
                     exit = TExit.succeed(value)
                   } else {
-                    curr = cont.effect_instruction_i2(value) as Primitive
+                    curr = internalCall(() => cont.effect_instruction_i2(value) as Primitive)
                   }
                   break
                 }

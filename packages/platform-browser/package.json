@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform-browser",
   "type": "module",
-  "version": "0.33.9",
+  "version": "0.34.0",
   "license": "MIT",
   "description": "Platform specific implementations for the browser",
   "homepage": "https://effect.website",
@@ -32,7 +32,7 @@
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",
-    "build": "pnpm codegen && pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
+    "build": "pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
     "build-esm": "tsc -b tsconfig.build.json",
     "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
     "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps",
@@ -60,6 +60,6 @@
     }
   },
   "dependencies": {
-    "multipasta": "^0.2.0"
+    "multipasta": "^0.2.1"
   }
 }

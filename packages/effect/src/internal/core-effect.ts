@@ -1,3 +1,4 @@
+import { internalCall } from "effect/Utils"
 import * as Arr from "../Array.js"
 import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
@@ -25,12 +26,14 @@ import type * as Random from "../Random.js"
 import * as Ref from "../Ref.js"
 import type * as runtimeFlagsPatch from "../RuntimeFlagsPatch.js"
 import * as Tracer from "../Tracer.js"
-import type { MergeRecord, NoInfer } from "../Types.js"
+import type { NoInfer } from "../Types.js"
+import type { Unify } from "../Unify.js"
 import { yieldWrapGet } from "../Utils.js"
 import * as internalCause from "./cause.js"
 import { clockTag } from "./clock.js"
 import * as core from "./core.js"
 import * as defaultServices from "./defaultServices.js"
+import * as doNotation from "./doNotation.js"
 import * as fiberRefsPatch from "./fiberRefs/patch.js"
 import type { FiberRuntime } from "./fiberRuntime.js"
 import * as metricLabel from "./metric/label.js"
@@ -369,56 +372,39 @@ export const Do: Effect.Effect<{}> = core.succeed({})
 
 /* @internal */
 export const bind: {
-  <N extends string, K, A, E2, R2>(
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Effect.Effect<A, E2, R2>
-  ): <E, R>(self: Effect.Effect<K, E, R>) => Effect.Effect<MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
-  <K, E, R, N extends string, A, E2, R2>(
-    self: Effect.Effect<K, E, R>,
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Effect.Effect<A, E2, R2>
-  ): Effect.Effect<MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R>
-} = dual(3, <K, E, R, N extends string, A, E2, R2>(
-  self: Effect.Effect<K, E, R>,
-  tag: Exclude<N, keyof K>,
-  f: (_: K) => Effect.Effect<A, E2, R2>
-): Effect.Effect<MergeRecord<K, { [k in N]: A }>, E2 | E, R2 | R> =>
-  core.flatMap(self, (k) =>
-    core.map(
-      f(k),
-      (a): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: a } as any)
-    )))
+  <N extends string, A extends object, B, E2, R2>(
+    name: Exclude<N, keyof A>,
+    f: (a: A) => Effect.Effect<B, E2, R2>
+  ): <E1, R1>(
+    self: Effect.Effect<A, E1, R1>
+  ) => Effect.Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E2 | E1, R2 | R1>
+  <A extends object, N extends string, E1, R1, B, E2, R2>(
+    self: Effect.Effect<A, E1, R1>,
+    name: Exclude<N, keyof A>,
+    f: (a: A) => Effect.Effect<B, E2, R2>
+  ): Effect.Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E1 | E2, R1 | R2>
+} = doNotation.bind<Effect.EffectTypeLambda>(core.map, core.flatMap)
 
 /* @internal */
 export const bindTo: {
-  <N extends string>(tag: N): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<Record<N, A>, E, R>
-  <A, E, R, N extends string>(self: Effect.Effect<A, E, R>, tag: N): Effect.Effect<Record<N, A>, E, R>
-} = dual(
-  2,
-  <A, E, R, N extends string>(self: Effect.Effect<A, E, R>, tag: N): Effect.Effect<Record<N, A>, E, R> =>
-    core.map(self, (a) => ({ [tag]: a } as Record<N, A>))
-)
+  <N extends string>(name: N): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<{ [K in N]: A }, E, R>
+  <A, E, R, N extends string>(self: Effect.Effect<A, E, R>, name: N): Effect.Effect<{ [K in N]: A }, E, R>
+} = doNotation.bindTo<Effect.EffectTypeLambda>(core.map)
 
 /* @internal */
 export const let_: {
-  <N extends string, K, A>(
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => A
-  ): <E, R>(self: Effect.Effect<K, E, R>) => Effect.Effect<MergeRecord<K, { [k in N]: A }>, E, R>
-  <K, E, R, N extends string, A>(
-    self: Effect.Effect<K, E, R>,
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => A
-  ): Effect.Effect<MergeRecord<K, { [k in N]: A }>, E, R>
-} = dual(3, <K, E, R, N extends string, A>(
-  self: Effect.Effect<K, E, R>,
-  tag: Exclude<N, keyof K>,
-  f: (_: K) => A
-): Effect.Effect<MergeRecord<K, { [k in N]: A }>, E, R> =>
-  core.map(
-    self,
-    (k): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: f(k) } as any)
-  ))
+  <N extends string, A extends object, B>(
+    name: Exclude<N, keyof A>,
+    f: (a: A) => B
+  ): <E, R>(
+    self: Effect.Effect<A, E, R>
+  ) => Effect.Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
+  <A extends object, N extends string, E, R, B>(
+    self: Effect.Effect<A, E, R>,
+    name: Exclude<N, keyof A>,
+    f: (a: A) => B
+  ): Effect.Effect<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, E, R>
+} = doNotation.let_<Effect.EffectTypeLambda>(core.map)
 
 /* @internal */
 export const dropUntil: {
@@ -786,13 +772,16 @@ export const gen: typeof Effect.gen = function() {
   }
   return core.suspend(() => {
     const iterator = f(pipe)
-    const state = iterator.next()
+    const state = internalCall(() => iterator.next())
     const run = (
       state: IteratorYieldResult<any> | IteratorReturnResult<any>
     ): Effect.Effect<any, any, any> => {
       return (state.done
         ? core.succeed(state.value)
-        : core.flatMap(yieldWrapGet(state.value) as any, (val: any) => run(iterator.next(val))))
+        : core.flatMap(
+          yieldWrapGet(state.value) as any,
+          (val: any) => run(internalCall(() => iterator.next(val)))
+        ))
     }
     return run(state)
   })
@@ -2027,7 +2016,7 @@ const bigint0 = BigInt(0)
 export const unsafeMakeSpan = <XA, XE>(
   fiber: FiberRuntime<XA, XE>,
   name: string,
-  options?: Tracer.SpanOptions
+  options: Tracer.SpanOptions
 ) => {
   const enabled = fiber.getFiberRef(core.currentTracerEnabled)
   if (enabled === false) {
@@ -2045,34 +2034,38 @@ export const unsafeMakeSpan = <XA, XE>(
   const annotationsFromEnv = FiberRefs.get(fiberRefs, core.currentTracerSpanAnnotations)
   const linksFromEnv = FiberRefs.get(fiberRefs, core.currentTracerSpanLinks)
 
-  const parent = options?.parent
+  const parent = options.parent
     ? Option.some(options.parent)
-    : options?.root
+    : options.root
     ? Option.none()
     : Context.getOption(context, internalTracer.spanTag)
 
   const links = linksFromEnv._tag === "Some" ?
-    options?.links !== undefined ?
+    options.links !== undefined ?
       [
         ...Chunk.toReadonlyArray(linksFromEnv.value),
-        ...(options?.links ?? [])
+        ...(options.links ?? [])
       ] :
       Chunk.toReadonlyArray(linksFromEnv.value) :
-    options?.links ?? Arr.empty()
+    options.links ?? Arr.empty()
 
   const span = tracer.span(
     name,
     parent,
-    options?.context ?? Context.empty(),
+    options.context ?? Context.empty(),
     links,
     timingEnabled ? clock.unsafeCurrentTimeNanos() : bigint0,
-    options?.kind ?? "internal"
+    options.kind ?? "internal"
   )
+
+  if (typeof options.captureStackTrace === "function") {
+    internalCause.spanToTrace.set(span, options.captureStackTrace)
+  }
 
   if (annotationsFromEnv._tag === "Some") {
     HashMap.forEach(annotationsFromEnv.value, (value, key) => span.attribute(key, value))
   }
-  if (options?.attributes !== undefined) {
+  if (options.attributes !== undefined) {
     Object.entries(options.attributes).forEach(([k, v]) => span.attribute(k, v))
   }
 
@@ -2083,7 +2076,10 @@ export const unsafeMakeSpan = <XA, XE>(
 export const makeSpan = (
   name: string,
   options?: Tracer.SpanOptions
-): Effect.Effect<Tracer.Span> => core.withFiberRuntime((fiber) => core.succeed(unsafeMakeSpan(fiber, name, options)))
+): Effect.Effect<Tracer.Span> => {
+  options = internalTracer.addSpanStackTrace(options)
+  return core.withFiberRuntime((fiber) => core.succeed(unsafeMakeSpan(fiber, name, options)))
+}
 
 /* @internal */
 export const spanAnnotations: Effect.Effect<HashMap.HashMap<string, unknown>> = core
@@ -2108,7 +2104,7 @@ export const useSpan: {
     evaluate: (span: Tracer.Span) => Effect.Effect<A, E, R>
   ]
 ) => {
-  const options: Tracer.SpanOptions | undefined = args.length === 1 ? undefined : args[0]
+  const options = internalTracer.addSpanStackTrace(args.length === 1 ? undefined : args[0])
   const evaluate: (span: Tracer.Span) => Effect.Effect<A, E, R> = args[args.length - 1]
 
   return core.withFiberRuntime<A, E, R>((fiber) => {
@@ -2119,6 +2115,9 @@ export const useSpan: {
       core.sync(() => {
         if (span.status._tag === "Ended") {
           return
+        }
+        if (core.exitIsFailure(exit) && internalCause.spanToTrace.has(span)) {
+          span.attribute("code.stacktrace", internalCause.spanToTrace.get(span)!())
         }
         span.end(timingEnabled ? clock.unsafeCurrentTimeNanos() : bigint0, exit)
       }))
@@ -2134,25 +2133,67 @@ export const withParentSpan = dual<
 >(2, (self, span) => provideService(self, internalTracer.spanTag, span))
 
 /** @internal */
-export const withSpan = dual<
+export const withSpan: {
   (
     name: string,
-    options?: Tracer.SpanOptions
-  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan>>,
+    options?: Tracer.SpanOptions | undefined
+  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan>>
   <A, E, R>(
     self: Effect.Effect<A, E, R>,
     name: string,
-    options?: Tracer.SpanOptions
-  ) => Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan>>
->(
-  (args) => typeof args[0] !== "string",
-  (self, name, options) =>
-    useSpan(
-      name,
-      options ?? {},
-      (span) => withParentSpan(self, span)
-    )
-)
+    options?: Tracer.SpanOptions | undefined
+  ): Effect.Effect<A, E, Exclude<R, Tracer.ParentSpan>>
+} = function() {
+  const dataFirst = typeof arguments[0] !== "string"
+  const name = dataFirst ? arguments[1] : arguments[0]
+  const options = internalTracer.addSpanStackTrace(dataFirst ? arguments[2] : arguments[1])
+  if (dataFirst) {
+    const self = arguments[0]
+    return useSpan(name, options, (span) => withParentSpan(self, span))
+  }
+  return (self: Effect.Effect<any, any, any>) => useSpan(name, options, (span) => withParentSpan(self, span))
+} as any
+
+export const functionWithSpan = <Args extends Array<any>, Ret extends Effect.Effect<any, any, any>>(
+  options: {
+    readonly body: (...args: Args) => Ret
+    readonly options: Effect.FunctionWithSpanOptions | ((...args: Args) => Effect.FunctionWithSpanOptions)
+    readonly captureStackTrace?: boolean | undefined
+  }
+): (...args: Args) => Unify<Ret> =>
+  (function(this: any) {
+    let captureStackTrace: LazyArg<string | undefined> | boolean = options.captureStackTrace ?? false
+    if (options.captureStackTrace !== false) {
+      const limit = Error.stackTraceLimit
+      Error.stackTraceLimit = 2
+      const error = new Error()
+      Error.stackTraceLimit = limit
+      let cache: false | string = false
+      captureStackTrace = () => {
+        if (cache !== false) {
+          return cache
+        }
+        if (error.stack) {
+          const stack = error.stack.trim().split("\n")
+          cache = stack.slice(2).join("\n").trim()
+          return cache
+        }
+      }
+    }
+    return core.suspend(() => {
+      const opts = typeof options.options === "function"
+        ? options.options.apply(null, arguments as any)
+        : options.options
+      return withSpan(
+        core.suspend(() => internalCall(() => options.body.apply(this, arguments as any))),
+        opts.name,
+        {
+          ...opts,
+          captureStackTrace
+        }
+      )
+    })
+  }) as any
 
 // -------------------------------------------------------------------------------------
 // optionality

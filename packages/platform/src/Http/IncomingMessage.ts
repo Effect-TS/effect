@@ -69,7 +69,7 @@ export const schemaBodyJsonScoped = <A, I, R>(schema: Schema.Schema<A, I, R>, op
  * @since 1.0.0
  * @category schema
  */
-export const schemaBodyUrlParams = <R, I extends Readonly<Record<string, string>>, A>(
+export const schemaBodyUrlParams = <A, I extends Readonly<Record<string, string>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {
@@ -82,7 +82,7 @@ export const schemaBodyUrlParams = <R, I extends Readonly<Record<string, string>
  * @since 1.0.0
  * @category schema
  */
-export const schemaBodyUrlParamsScoped = <R, I extends Readonly<Record<string, string>>, A>(
+export const schemaBodyUrlParamsScoped = <A, I extends Readonly<Record<string, string>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {
@@ -97,7 +97,7 @@ export const schemaBodyUrlParamsScoped = <R, I extends Readonly<Record<string, s
  * @since 1.0.0
  * @category schema
  */
-export const schemaHeaders = <R, I extends Readonly<Record<string, string | undefined>>, A>(
+export const schemaHeaders = <A, I extends Readonly<Record<string, string | undefined>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {
@@ -109,7 +109,7 @@ export const schemaHeaders = <R, I extends Readonly<Record<string, string | unde
  * @since 1.0.0
  * @category schema
  */
-export const schemaHeadersScoped = <R, I extends Readonly<Record<string, string>>, A>(
+export const schemaHeadersScoped = <A, I extends Readonly<Record<string, string>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {
@@ -134,8 +134,8 @@ export const maxBodySize: FiberRef.FiberRef<Option.Option<FileSystem.Size>> = Gl
  * @category fiber refs
  */
 export const withMaxBodySize = dual<
-  (size: Option.Option<FileSystem.SizeInput>) => <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <R, E, A>(effect: Effect.Effect<A, E, R>, size: Option.Option<FileSystem.SizeInput>) => Effect.Effect<A, E, R>
+  (size: Option.Option<FileSystem.SizeInput>) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  <A, E, R>(effect: Effect.Effect<A, E, R>, size: Option.Option<FileSystem.SizeInput>) => Effect.Effect<A, E, R>
 >(2, (effect, size) => Effect.locally(effect, maxBodySize, Option.map(size, FileSystem.Size)))
 
 /**

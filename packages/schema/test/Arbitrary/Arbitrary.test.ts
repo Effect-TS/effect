@@ -6,14 +6,19 @@ import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
 describe("Arbitrary > Arbitrary", () => {
-  it("exports", () => {
-    expect(Arbitrary.ArbitraryHookId).exist
-  })
-
   it("should throw on declarations without annotations", () => {
     const schema = S.declare(isUnknown)
     expect(() => Arbitrary.makeLazy(schema)).toThrow(
       new Error("cannot build an Arbitrary for a declaration without annotations (<declaration schema>)")
+    )
+  })
+
+  it("the errors should disply a path", () => {
+    expect(() => Arbitrary.makeLazy(S.Tuple(S.declare(isUnknown)))).toThrow(
+      new Error(`cannot build an Arbitrary for a declaration without annotations (<declaration schema>) (path [0])`)
+    )
+    expect(() => Arbitrary.makeLazy(S.Struct({ a: S.declare(isUnknown) }))).toThrow(
+      new Error(`cannot build an Arbitrary for a declaration without annotations (<declaration schema>) (path ["a"])`)
     )
   })
 
@@ -236,10 +241,10 @@ describe("Arbitrary > Arbitrary", () => {
           )
         })
       })).root
-      const schema: S.Schema<A> = S.Struct({
+      const schema = S.Struct({
         a: S.String,
         as: S.Array(
-          S.suspend(() => schema).pipe(Arbitrary.arbitrary(() => () => arb))
+          S.suspend((): S.Schema<A> => schema).pipe(Arbitrary.arbitrary(() => () => arb))
         )
       })
       expectValidArbitrary(schema)
@@ -250,9 +255,9 @@ describe("Arbitrary > Arbitrary", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: S.Schema<A> = S.Struct({
+      const schema = S.Struct({
         a: S.String,
-        as: S.Array(S.suspend(() => schema))
+        as: S.Array(S.suspend((): S.Schema<A> => schema))
       })
       expectValidArbitrary(schema)
     })
@@ -265,8 +270,8 @@ describe("Arbitrary > Arbitrary", () => {
       interface A {
         readonly a: number | A
       }
-      const schema: S.Schema<A, I> = S.Struct({
-        a: S.Union(NumberFromString, S.suspend(() => schema))
+      const schema = S.Struct({
+        a: S.Union(NumberFromString, S.suspend((): S.Schema<A, I> => schema))
       })
 
       expectValidArbitrary(S.encodedSchema(schema))
@@ -274,9 +279,9 @@ describe("Arbitrary > Arbitrary", () => {
 
     it("tuple", () => {
       type A = readonly [number, A | null]
-      const schema: S.Schema<A> = S.Tuple(
+      const schema = S.Tuple(
         S.Number,
-        S.Union(S.Literal(null), S.suspend(() => schema))
+        S.Union(S.Literal(null), S.suspend((): S.Schema<A> => schema))
       )
       expectValidArbitrary(schema)
     })
@@ -285,7 +290,7 @@ describe("Arbitrary > Arbitrary", () => {
       type A = {
         [_: string]: A
       }
-      const schema: S.Schema<A> = S.Record(S.String, S.suspend(() => schema))
+      const schema = S.Record(S.String, S.suspend((): S.Schema<A> => schema))
       expectValidArbitrary(schema)
     })
 
@@ -302,12 +307,12 @@ describe("Arbitrary > Arbitrary", () => {
         readonly right: Expression
       }
 
-      const Expression: S.Schema<Expression> = S.Struct({
+      const Expression = S.Struct({
         type: S.Literal("expression"),
-        value: S.Union(S.JsonNumber, S.suspend(() => Operation))
+        value: S.Union(S.JsonNumber, S.suspend((): S.Schema<Operation> => Operation))
       })
 
-      const Operation: S.Schema<Operation> = S.Struct({
+      const Operation = S.Struct({
         type: S.Literal("operation"),
         operator: S.Union(S.Literal("+"), S.Literal("-")),
         left: Expression,
@@ -597,9 +602,9 @@ describe("Arbitrary > Arbitrary", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: S.Schema<A> = S.Struct({
+      const schema = S.Struct({
         a: S.String,
-        as: S.Array(S.suspend(() => schema))
+        as: S.Array(S.suspend((): S.Schema<A> => schema))
       })
       expectHook(schema)
     })

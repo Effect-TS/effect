@@ -8,6 +8,7 @@ import type { LazyArg } from "./Function.js"
 import { constNull, constUndefined, dual, identity, isFunction } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 import type { Inspectable } from "./Inspectable.js"
+import * as doNotation from "./internal/doNotation.js"
 import * as either from "./internal/either.js"
 import * as option from "./internal/option.js"
 import type { Order } from "./Order.js"
@@ -28,7 +29,7 @@ export type Option<A> = None<A> | Some<A>
  * @category symbols
  * @since 2.0.0
  */
-export const TypeId = Symbol.for("effect/Option")
+export const TypeId: unique symbol = Symbol.for("effect/Option")
 
 /**
  * @category symbols
@@ -124,11 +125,11 @@ export const some: <A>(value: A) => Option<A> = option.some
  * @param input - The value to check.
  *
  * @example
- * import { some, none, isOption } from 'effect/Option'
+ * import { Option } from "effect"
  *
- * assert.deepStrictEqual(isOption(some(1)), true)
- * assert.deepStrictEqual(isOption(none()), true)
- * assert.deepStrictEqual(isOption({}), false)
+ * assert.deepStrictEqual(Option.isOption(Option.some(1)), true)
+ * assert.deepStrictEqual(Option.isOption(Option.none()), true)
+ * assert.deepStrictEqual(Option.isOption({}), false)
  *
  * @category guards
  * @since 2.0.0
@@ -141,10 +142,10 @@ export const isOption: (input: unknown) => input is Option<unknown> = option.isO
  * @param self - The `Option` to check.
  *
  * @example
- * import { some, none, isNone } from 'effect/Option'
+ * import { Option } from "effect"
  *
- * assert.deepStrictEqual(isNone(some(1)), false)
- * assert.deepStrictEqual(isNone(none()), true)
+ * assert.deepStrictEqual(Option.isNone(Option.some(1)), false)
+ * assert.deepStrictEqual(Option.isNone(Option.none()), true)
  *
  * @category guards
  * @since 2.0.0
@@ -157,10 +158,10 @@ export const isNone: <A>(self: Option<A>) => self is None<A> = option.isNone
  * @param self - The `Option` to check.
  *
  * @example
- * import { some, none, isSome } from 'effect/Option'
+ * import { Option } from "effect"
  *
- * assert.deepStrictEqual(isSome(some(1)), true)
- * assert.deepStrictEqual(isSome(none()), false)
+ * assert.deepStrictEqual(Option.isSome(Option.some(1)), true)
+ * assert.deepStrictEqual(Option.isSome(Option.none()), false)
  *
  * @category guards
  * @since 2.0.0
@@ -176,16 +177,15 @@ export const isSome: <A>(self: Option<A>) => self is Some<A> = option.isSome
  * @param onSome - The function to be called if the `Option` is `Some`, it will be passed the `Option`'s value and its result will be returned
  *
  * @example
- * import { some, none, match } from 'effect/Option'
- * import { pipe } from "effect/Function"
+ * import { pipe, Option } from "effect"
  *
  * assert.deepStrictEqual(
- *   pipe(some(1), match({ onNone: () => 'a none', onSome: (a) => `a some containing ${a}` })),
+ *   pipe(Option.some(1), Option.match({ onNone: () => 'a none', onSome: (a) => `a some containing ${a}` })),
  *   'a some containing 1'
  * )
  *
  * assert.deepStrictEqual(
- *   pipe(none(), match({ onNone: () => 'a none', onSome: (a) => `a some containing ${a}` })),
+ *   pipe(Option.none(), Option.match({ onNone: () => 'a none', onSome: (a) => `a some containing ${a}` })),
  *   'a none'
  * )
  *
@@ -214,12 +214,12 @@ export const match: {
  * This function ensures that a type guard definition is type-safe.
  *
  * @example
- * import * as O from "effect/Option"
+ * import { Option } from "effect"
  *
- * const parsePositive = (n: number): O.Option<number> =>
- *   n > 0 ? O.some(n) : O.none()
+ * const parsePositive = (n: number): Option.Option<number> =>
+ *   n > 0 ? Option.some(n) : Option.none()
  *
- * const isPositive = O.toRefinement(parsePositive)
+ * const isPositive = Option.toRefinement(parsePositive)
  *
  * assert.deepStrictEqual(isPositive(1), true)
  * assert.deepStrictEqual(isPositive(-1), false)
@@ -236,10 +236,10 @@ export const toRefinement = <A, B extends A>(f: (a: A) => Option<B>): (a: A) => 
  * @param collection - The `Iterable` to be converted to an `Option`.
  *
  * @example
- * import { fromIterable, some, none } from 'effect/Option'
+ * import { Option } from "effect"
  *
- * assert.deepStrictEqual(fromIterable([1, 2, 3]), some(1))
- * assert.deepStrictEqual(fromIterable([]), none())
+ * assert.deepStrictEqual(Option.fromIterable([1, 2, 3]), Option.some(1))
+ * assert.deepStrictEqual(Option.fromIterable([]), Option.none())
  *
  * @category constructors
  * @since 2.0.0
@@ -257,11 +257,10 @@ export const fromIterable = <A>(collection: Iterable<A>): Option<A> => {
  * Alias of {@link fromEither}.
  *
  * @example
- * import * as O from "effect/Option"
- * import * as E from "effect/Either"
+ * import { Option, Either } from "effect"
  *
- * assert.deepStrictEqual(O.getRight(E.right('ok')), O.some('ok'))
- * assert.deepStrictEqual(O.getRight(E.left('err')), O.none())
+ * assert.deepStrictEqual(Option.getRight(Either.right('ok')), Option.some('ok'))
+ * assert.deepStrictEqual(Option.getRight(Either.left('err')), Option.none())
  *
  * @category conversions
  * @since 2.0.0
@@ -272,11 +271,10 @@ export const getRight: <R, L>(self: Either<R, L>) => Option<R> = either.getRight
  * Converts a `Either` to an `Option` discarding the value.
  *
  * @example
- * import * as O from "effect/Option"
- * import * as E from "effect/Either"
+ * import { Option, Either } from "effect"
  *
- * assert.deepStrictEqual(O.getLeft(E.right("ok")), O.none())
- * assert.deepStrictEqual(O.getLeft(E.left("a")), O.some("a"))
+ * assert.deepStrictEqual(Option.getLeft(Either.right("ok")), Option.none())
+ * assert.deepStrictEqual(Option.getLeft(Either.left("a")), Option.some("a"))
  *
  * @category conversions
  * @since 2.0.0
@@ -290,11 +288,10 @@ export const getLeft: <R, L>(self: Either<R, L>) => Option<L> = either.getLeft
  * @param onNone - Function that returns the default value to return if the `Option` is `None`.
  *
  * @example
- * import { some, none, getOrElse } from 'effect/Option'
- * import { pipe } from "effect/Function"
+ * import { pipe, Option } from "effect"
  *
- * assert.deepStrictEqual(pipe(some(1), getOrElse(() => 0)), 1)
- * assert.deepStrictEqual(pipe(none(), getOrElse(() => 0)), 0)
+ * assert.deepStrictEqual(pipe(Option.some(1), Option.getOrElse(() => 0)), 1)
+ * assert.deepStrictEqual(pipe(Option.none(), Option.getOrElse(() => 0)), 0)
  *
  * @category getters
  * @since 2.0.0
@@ -314,36 +311,35 @@ export const getOrElse: {
  * @param that - The `Option` to return if `self` is `None`.
  *
  * @example
- * import * as O from "effect/Option"
- * import { pipe } from "effect/Function"
+ * import { pipe, Option } from "effect"
  *
  * assert.deepStrictEqual(
  *   pipe(
- *     O.none(),
- *     O.orElse(() => O.none())
+ *     Option.none(),
+ *     Option.orElse(() => Option.none())
  *   ),
- *   O.none()
+ *   Option.none()
  * )
  * assert.deepStrictEqual(
  *   pipe(
- *     O.some('a'),
- *     O.orElse(() => O.none())
+ *     Option.some('a'),
+ *     Option.orElse(() => Option.none())
  *   ),
- *   O.some('a')
+ *   Option.some('a')
  * )
  * assert.deepStrictEqual(
  *   pipe(
- *     O.none(),
- *     O.orElse(() => O.some('b'))
+ *     Option.none(),
+ *     Option.orElse(() => Option.some('b'))
  *   ),
- *   O.some('b')
+ *   Option.some('b')
  * )
  * assert.deepStrictEqual(
  *   pipe(
- *     O.some('a'),
- *     O.orElse(() => O.some('b'))
+ *     Option.some('a'),
+ *     Option.orElse(() => Option.some('b'))
  *   ),
- *   O.some('a')
+ *   Option.some('a')
  * )
  *
  * @category error handling
@@ -364,22 +360,21 @@ export const orElse: {
  * @param onNone - Function that returns the default value to return if the `Option` is `None`.
  *
  * @example
- * import * as O from "effect/Option"
- * import { pipe } from "effect/Function"
+ * import { pipe, Option } from "effect"
  *
  * assert.deepStrictEqual(
  *   pipe(
- *     O.none(),
- *     O.orElseSome(() => 'b')
+ *     Option.none(),
+ *     Option.orElseSome(() => 'b')
  *   ),
- *   O.some('b')
+ *   Option.some('b')
  * )
  * assert.deepStrictEqual(
  *   pipe(
- *     O.some('a'),
- *     O.orElseSome(() => 'b')
+ *     Option.some('a'),
+ *     Option.orElseSome(() => 'b')
  *   ),
- *   O.some('a')
+ *   Option.some('a')
  * )
  *
  * @category error handling
@@ -420,9 +415,9 @@ export const orElseEither: {
  * @param collection - An iterable collection of `Option` to be searched.
  *
  * @example
- * import * as O from "effect/Option"
+ * import { Option } from "effect"
  *
- * assert.deepStrictEqual(O.firstSomeOf([O.none(), O.some(1), O.some(2)]), O.some(1))
+ * assert.deepStrictEqual(Option.firstSomeOf([Option.none(), Option.some(1), Option.some(2)]), Option.some(1))
  *
  * @category error handling
  * @since 2.0.0
@@ -444,11 +439,11 @@ export const firstSomeOf = <A>(collection: Iterable<Option<A>>): Option<A> => {
  * @param nullableValue - The nullable value to be converted to an `Option`.
  *
  * @example
- * import * as O from "effect/Option"
+ * import { Option } from "effect"
  *
- * assert.deepStrictEqual(O.fromNullable(undefined), O.none())
- * assert.deepStrictEqual(O.fromNullable(null), O.none())
- * assert.deepStrictEqual(O.fromNullable(1), O.some(1))
+ * assert.deepStrictEqual(Option.fromNullable(undefined), Option.none())
+ * assert.deepStrictEqual(Option.fromNullable(null), Option.none())
+ * assert.deepStrictEqual(Option.fromNullable(1), Option.some(1))
  *
  * @category conversions
  * @since 2.0.0
@@ -463,17 +458,17 @@ export const fromNullable = <A>(
  * This API is useful for lifting a function that returns `null` or `undefined` into the `Option` context.
  *
  * @example
- * import * as O from "effect/Option"
+ * import { Option } from "effect"
  *
  * const parse = (s: string): number | undefined => {
  *   const n = parseFloat(s)
  *   return isNaN(n) ? undefined : n
  * }
  *
- * const parseOption = O.liftNullable(parse)
+ * const parseOption = Option.liftNullable(parse)
  *
- * assert.deepStrictEqual(parseOption('1'), O.some(1))
- * assert.deepStrictEqual(parseOption('not a number'), O.none())
+ * assert.deepStrictEqual(parseOption('1'), Option.some(1))
+ * assert.deepStrictEqual(parseOption('not a number'), Option.none())
  *
  * @category conversions
  * @since 2.0.0
@@ -489,10 +484,10 @@ export const liftNullable = <A extends ReadonlyArray<unknown>, B>(
  * @param self - The `Option` to extract the value from.
  *
  * @example
- * import * as O from "effect/Option"
+ * import { Option } from "effect"
  *
- * assert.deepStrictEqual(O.getOrNull(O.some(1)), 1)
- * assert.deepStrictEqual(O.getOrNull(O.none()), null)
+ * assert.deepStrictEqual(Option.getOrNull(Option.some(1)), 1)
+ * assert.deepStrictEqual(Option.getOrNull(Option.none()), null)
  *
  * @category getters
  * @since 2.0.0
@@ -505,10 +500,10 @@ export const getOrNull: <A>(self: Option<A>) => A | null = getOrElse(constNull)
  * @param self - The `Option` to extract the value from.
  *
  * @example
- * import * as O from "effect/Option"
+ * import { Option } from "effect"
  *
- * assert.deepStrictEqual(O.getOrUndefined(O.some(1)), 1)
- * assert.deepStrictEqual(O.getOrUndefined(O.none()), undefined)
+ * assert.deepStrictEqual(Option.getOrUndefined(Option.some(1)), 1)
+ * assert.deepStrictEqual(Option.getOrUndefined(Option.none()), undefined)
  *
  * @category getters
  * @since 2.0.0
@@ -524,12 +519,12 @@ export const getOrUndefined: <A>(self: Option<A>) => A | undefined = getOrElse(c
  * @param f - the function that can throw exceptions.
  *
  * @example
- * import * as O from "effect/Option"
+ * import { Option } from "effect"
  *
- * const parse = O.liftThrowable(JSON.parse)
+ * const parse = Option.liftThrowable(JSON.parse)
  *
- * assert.deepStrictEqual(parse("1"), O.some(1))
- * assert.deepStrictEqual(parse(""), O.none())
+ * assert.deepStrictEqual(parse("1"), Option.some(1))
+ * assert.deepStrictEqual(parse(""), Option.none())
  *
  * @category conversions
  * @since 2.0.0
@@ -554,13 +549,13 @@ export const liftThrowable = <A extends ReadonlyArray<unknown>, B>(
  * @param onNone - A function that will be called if the `Option` is `None`. It returns the error to be thrown.
  *
  * @example
- * import * as O from "effect/Option"
+ * import { Option } from "effect"
  *
  * assert.deepStrictEqual(
- *   O.getOrThrowWith(O.some(1), () => new Error('Unexpected None')),
+ *   Option.getOrThrowWith(Option.some(1), () => new Error('Unexpected None')),
  *   1
  * )
- * assert.throws(() => O.getOrThrowWith(O.none(), () => new Error('Unexpected None')))
+ * assert.throws(() => Option.getOrThrowWith(Option.none(), () => new Error('Unexpected None')))
  *
  * @category conversions
  * @since 2.0.0
@@ -584,10 +579,10 @@ export const getOrThrowWith: {
  * @throws `Error("getOrThrow called on a None")`
  *
  * @example
- * import * as O from "effect/Option"
+ * import { Option } from "effect"
  *
- * assert.deepStrictEqual(O.getOrThrow(O.some(1)), 1)
- * assert.throws(() => O.getOrThrow(O.none()))
+ * assert.deepStrictEqual(Option.getOrThrow(Option.some(1)), 1)
+ * assert.throws(() => Option.getOrThrow(Option.none()))
  *
  * @category conversions
  * @since 2.0.0
@@ -681,8 +676,7 @@ export const andThen: {
  * This is `flatMap` + `fromNullable`, useful when working with optional values.
  *
  * @example
- * import { some, none, flatMapNullable } from 'effect/Option'
- * import { pipe } from "effect/Function"
+ * import { pipe, Option } from "effect"
  *
  * interface Employee {
  *   company?: {
@@ -698,20 +692,20 @@ export const andThen: {
  *
  * assert.deepStrictEqual(
  *   pipe(
- *     some(employee1),
- *     flatMapNullable(employee => employee.company?.address?.street?.name),
+ *     Option.some(employee1),
+ *     Option.flatMapNullable(employee => employee.company?.address?.street?.name),
  *   ),
- *   some('high street')
+ *   Option.some('high street')
  * )
  *
  * const employee2: Employee = { company: { address: { street: {} } } }
  *
  * assert.deepStrictEqual(
  *   pipe(
- *     some(employee2),
- *     flatMapNullable(employee => employee.company?.address?.street?.name),
+ *     Option.some(employee2),
+ *     Option.flatMapNullable(employee => employee.company?.address?.street?.name),
  *   ),
- *   none()
+ *   Option.none()
  * )
  *
  * @category sequencing
@@ -776,13 +770,13 @@ export const zipLeft: {
  * @param self - The `Option` to apply the function to
  *
  * @example
- * import * as O from "effect/Option"
+ * import { Option } from "effect"
  *
- * const getInteger = (n: number) => Number.isInteger(n) ? O.some(n) : O.none()
+ * const getInteger = (n: number) => Number.isInteger(n) ? Option.some(n) : Option.none()
  *
- * assert.deepStrictEqual(O.tap(O.none(), getInteger), O.none())
- * assert.deepStrictEqual(O.tap(O.some(1), getInteger), O.some(1))
- * assert.deepStrictEqual(O.tap(O.some(1.14), getInteger), O.none())
+ * assert.deepStrictEqual(Option.tap(Option.none(), getInteger), Option.none())
+ * assert.deepStrictEqual(Option.tap(Option.some(1), getInteger), Option.some(1))
+ * assert.deepStrictEqual(Option.tap(Option.some(1.14), getInteger), Option.none())
  *
  * @category sequencing
  * @since 2.0.0
@@ -830,11 +824,11 @@ export const productMany = <A>(
  * @param fields - the struct of `Option`s to be sequenced.
  *
  * @example
- * import * as O from "effect/Option"
+ * import { Option } from "effect"
  *
- * assert.deepStrictEqual(O.all([O.some(1), O.some(2)]), O.some([1, 2]))
- * assert.deepStrictEqual(O.all({ a: O.some(1), b: O.some("hello") }), O.some({ a: 1, b: "hello" }))
- * assert.deepStrictEqual(O.all({ a: O.some(1), b: O.none() }), O.none())
+ * assert.deepStrictEqual(Option.all([Option.some(1), Option.some(2)]), Option.some([1, 2]))
+ * assert.deepStrictEqual(Option.all({ a: Option.some(1), b: Option.some("hello") }), Option.some({ a: 1, b: "hello" }))
+ * assert.deepStrictEqual(Option.all({ a: Option.some(1), b: Option.none() }), Option.none())
  *
  * @category combining
  * @since 2.0.0
@@ -879,18 +873,18 @@ export const all: <const I extends Iterable<Option<any>> | Record<string, Option
  * @param f - The function used to combine the values of the two `Option`s
  *
  * @example
- * import * as O from "effect/Option"
+ * import { Option } from "effect"
  *
  * type Complex = [real: number, imaginary: number]
  *
  * const complex = (real: number, imaginary: number): Complex => [real, imaginary]
  *
- * assert.deepStrictEqual(O.zipWith(O.none(), O.none(), complex), O.none())
- * assert.deepStrictEqual(O.zipWith(O.some(1), O.none(), complex), O.none())
- * assert.deepStrictEqual(O.zipWith(O.none(), O.some(1), complex), O.none())
- * assert.deepStrictEqual(O.zipWith(O.some(1), O.some(2), complex), O.some([1, 2]))
+ * assert.deepStrictEqual(Option.zipWith(Option.none(), Option.none(), complex), Option.none())
+ * assert.deepStrictEqual(Option.zipWith(Option.some(1), Option.none(), complex), Option.none())
+ * assert.deepStrictEqual(Option.zipWith(Option.none(), Option.some(1), complex), Option.none())
+ * assert.deepStrictEqual(Option.zipWith(Option.some(1), Option.some(2), complex), Option.some([1, 2]))
  *
- * assert.deepStrictEqual(O.zipWith(O.some(1), complex)(O.some(2)), O.some([2, 1]))
+ * assert.deepStrictEqual(Option.zipWith(Option.some(1), complex)(Option.some(2)), Option.some([2, 1]))
  *
  * @category zipping
  * @since 2.0.0
@@ -921,11 +915,10 @@ export const ap: {
  * @param f - The reducing function that takes the current accumulator value and the unwrapped value of an `Option<A>`.
  *
  * @example
- * import { some, none, reduceCompact } from 'effect/Option'
- * import { pipe } from "effect/Function"
+ * import { pipe, Option } from "effect"
  *
- * const iterable = [some(1), none(), some(2), none()]
- * assert.deepStrictEqual(pipe(iterable, reduceCompact(0, (b, a) => b + a)), 3)
+ * const iterable = [Option.some(1), Option.none(), Option.some(2), Option.none()]
+ * assert.deepStrictEqual(pipe(iterable, Option.reduceCompact(0, (b, a) => b + a)), 3)
  *
  * @category folding
  * @since 2.0.0
@@ -954,10 +947,10 @@ export const reduceCompact: {
  * @param self - The `Option` to convert to an array.
  *
  * @example
- * import * as O from "effect/Option"
+ * import { Option } from "effect"
  *
- * assert.deepStrictEqual(O.toArray(O.some(1)), [1])
- * assert.deepStrictEqual(O.toArray(O.none()), [])
+ * assert.deepStrictEqual(Option.toArray(Option.some(1)), [1])
+ * assert.deepStrictEqual(Option.toArray(Option.none()), [])
  *
  * @category conversions
  * @since 2.0.0
@@ -991,13 +984,13 @@ export const partitionMap: {
  * @param f - A function to apply to the value of the `Option`.
  *
  * @example
- * import * as O from "effect/Option"
+ * import { Option } from "effect"
  *
- * const evenNumber = (n: number) => n % 2 === 0 ? O.some(n) : O.none()
+ * const evenNumber = (n: number) => n % 2 === 0 ? Option.some(n) : Option.none()
  *
- * assert.deepStrictEqual(O.filterMap(O.none(), evenNumber), O.none())
- * assert.deepStrictEqual(O.filterMap(O.some(3), evenNumber), O.none())
- * assert.deepStrictEqual(O.filterMap(O.some(2), evenNumber), O.some(2))
+ * assert.deepStrictEqual(Option.filterMap(Option.none(), evenNumber), Option.none())
+ * assert.deepStrictEqual(Option.filterMap(Option.some(3), evenNumber), Option.none())
+ * assert.deepStrictEqual(Option.filterMap(Option.some(2), evenNumber), Option.some(2))
  *
  * @category filtering
  * @since 2.0.0
@@ -1019,21 +1012,21 @@ export const filterMap: {
  * @param fb - The `Option` to filter.
  *
  * @example
- * import * as O from "effect/Option"
+ * import { Option } from "effect"
  *
  * // predicate
  * const isEven = (n: number) => n % 2 === 0
  *
- * assert.deepStrictEqual(O.filter(O.none(), isEven), O.none())
- * assert.deepStrictEqual(O.filter(O.some(3), isEven), O.none())
- * assert.deepStrictEqual(O.filter(O.some(2), isEven), O.some(2))
+ * assert.deepStrictEqual(Option.filter(Option.none(), isEven), Option.none())
+ * assert.deepStrictEqual(Option.filter(Option.some(3), isEven), Option.none())
+ * assert.deepStrictEqual(Option.filter(Option.some(2), isEven), Option.some(2))
  *
  * // refinement
  * const isNumber = (v: unknown): v is number => typeof v === "number"
  *
- * assert.deepStrictEqual(O.filter(O.none(), isNumber), O.none())
- * assert.deepStrictEqual(O.filter(O.some('hello'), isNumber), O.none())
- * assert.deepStrictEqual(O.filter(O.some(2), isNumber), O.some(2))
+ * assert.deepStrictEqual(Option.filter(Option.none(), isNumber), Option.none())
+ * assert.deepStrictEqual(Option.filter(Option.some('hello'), isNumber), Option.none())
+ * assert.deepStrictEqual(Option.filter(Option.some(2), isNumber), Option.some(2))
  *
  * @category filtering
  * @since 2.0.0
@@ -1051,15 +1044,14 @@ export const filter: {
 
 /**
  * @example
- * import { none, some, getEquivalence } from 'effect/Option'
- * import * as N from 'effect/Number'
+ * import { Option, Number } from "effect"
  *
- * const isEquivalent = getEquivalence(N.Equivalence)
- * assert.deepStrictEqual(isEquivalent(none(), none()), true)
- * assert.deepStrictEqual(isEquivalent(none(), some(1)), false)
- * assert.deepStrictEqual(isEquivalent(some(1), none()), false)
- * assert.deepStrictEqual(isEquivalent(some(1), some(2)), false)
- * assert.deepStrictEqual(isEquivalent(some(1), some(1)), true)
+ * const isEquivalent = Option.getEquivalence(Number.Equivalence)
+ * assert.deepStrictEqual(isEquivalent(Option.none(), Option.none()), true)
+ * assert.deepStrictEqual(isEquivalent(Option.none(), Option.some(1)), false)
+ * assert.deepStrictEqual(isEquivalent(Option.some(1), Option.none()), false)
+ * assert.deepStrictEqual(isEquivalent(Option.some(1), Option.some(2)), false)
+ * assert.deepStrictEqual(isEquivalent(Option.some(1), Option.some(1)), true)
  *
  * @category equivalence
  * @since 2.0.0
@@ -1075,16 +1067,14 @@ export const getEquivalence = <A>(isEquivalent: Equivalence.Equivalence<A>): Equ
  * `None` is considered to be less than any `Some` value.
  *
  * @example
- * import { none, some, getOrder } from 'effect/Option'
- * import * as N from 'effect/Number'
- * import { pipe } from "effect/Function"
+ * import { pipe, Option, Number } from "effect"
  *
- * const O = getOrder(N.Order)
- * assert.deepStrictEqual(O(none(), none()), 0)
- * assert.deepStrictEqual(O(none(), some(1)), -1)
- * assert.deepStrictEqual(O(some(1), none()), 1)
- * assert.deepStrictEqual(O(some(1), some(2)), -1)
- * assert.deepStrictEqual(O(some(1), some(1)), 0)
+ * const O = Option.getOrder(Number.Order)
+ * assert.deepStrictEqual(O(Option.none(), Option.none()), 0)
+ * assert.deepStrictEqual(O(Option.none(), Option.some(1)), -1)
+ * assert.deepStrictEqual(O(Option.some(1), Option.none()), 1)
+ * assert.deepStrictEqual(O(Option.some(1), Option.some(2)), -1)
+ * assert.deepStrictEqual(O(Option.some(1), Option.some(1)), 0)
  *
  * @category sorting
  * @since 2.0.0
@@ -1112,12 +1102,12 @@ export const lift2 = <A, B, C>(f: (a: A, b: B) => C): {
  * @param predicate - A `Predicate` function that takes in a value of type `A` and returns a boolean.
  *
  * @example
- * import * as O from "effect/Option"
+ * import { Option } from "effect"
  *
- * const getOption = O.liftPredicate((n: number) => n >= 0)
+ * const getOption = Option.liftPredicate((n: number) => n >= 0)
  *
- * assert.deepStrictEqual(getOption(-1), O.none())
- * assert.deepStrictEqual(getOption(1), O.some(1))
+ * assert.deepStrictEqual(getOption(-1), Option.none())
+ * assert.deepStrictEqual(getOption(1), Option.some(1))
  *
  * @category lifting
  * @since 2.0.0
@@ -1135,13 +1125,11 @@ export const liftPredicate: { // Note: I intentionally avoid using the NoInfer p
  * @param a - The value to compare against the `Option`.
  *
  * @example
- * import { some, none, containsWith } from 'effect/Option'
- * import { Equivalence } from 'effect/Number'
- * import { pipe } from "effect/Function"
+ * import { pipe, Option, Number } from "effect"
  *
- * assert.deepStrictEqual(pipe(some(2), containsWith(Equivalence)(2)), true)
- * assert.deepStrictEqual(pipe(some(1), containsWith(Equivalence)(2)), false)
- * assert.deepStrictEqual(pipe(none(), containsWith(Equivalence)(2)), false)
+ * assert.deepStrictEqual(pipe(Option.some(2), Option.containsWith(Number.Equivalence)(2)), true)
+ * assert.deepStrictEqual(pipe(Option.some(1), Option.containsWith(Number.Equivalence)(2)), false)
+ * assert.deepStrictEqual(pipe(Option.none(), Option.containsWith(Number.Equivalence)(2)), false)
  *
  * @category elements
  * @since 2.0.0
@@ -1171,14 +1159,13 @@ export const contains: {
  * @param predicate - The condition to check.
  *
  * @example
- * import { some, none, exists } from 'effect/Option'
- * import { pipe } from "effect/Function"
+ * import { pipe, Option } from "effect"
  *
  * const isEven = (n: number) => n % 2 === 0
  *
- * assert.deepStrictEqual(pipe(some(2), exists(isEven)), true)
- * assert.deepStrictEqual(pipe(some(1), exists(isEven)), false)
- * assert.deepStrictEqual(pipe(none(), exists(isEven)), false)
+ * assert.deepStrictEqual(pipe(Option.some(2), Option.exists(isEven)), true)
+ * assert.deepStrictEqual(pipe(Option.some(1), Option.exists(isEven)), false)
+ * assert.deepStrictEqual(pipe(Option.none(), Option.exists(isEven)), false)
  *
  * @since 2.0.0
  */
@@ -1198,16 +1185,39 @@ export const exists: {
 // -------------------------------------------------------------------------------------
 
 /**
+ * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
+ *
+ * Here's how the do simulation works:
+ *
+ * 1. Start the do simulation using the `Do` value
+ * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Option` values
+ * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+ * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+ * 5. Regular `Option` functions like `map` and `filter` can still be used within the do simulation. These functions will receive the accumulated variables as arguments within the scope
+ *
+ * @see {@link Do}
+ * @see {@link bind}
+ * @see {@link let_ let}
+ *
+ * @example
+ * import { Option, pipe } from "effect"
+ *
+ * const result = pipe(
+ *   Option.Do,
+ *   Option.bind("x", () => Option.some(2)),
+ *   Option.bind("y", () => Option.some(3)),
+ *   Option.let("sum", ({ x, y }) => x + y),
+ *   Option.filter(({ x, y }) => x * y > 5)
+ * )
+ * assert.deepStrictEqual(result, Option.some({ x: 2, y: 3, sum: 5 }))
+ *
  * @category do notation
  * @since 2.0.0
  */
 export const bindTo: {
   <N extends string>(name: N): <A>(self: Option<A>) => Option<{ [K in N]: A }>
   <A, N extends string>(self: Option<A>, name: N): Option<{ [K in N]: A }>
-} = dual(
-  2,
-  <A, N extends string>(self: Option<A>, name: N): Option<{ [K in N]: A }> => map(self, (a) => ({ [name]: a } as any))
-)
+} = doNotation.bindTo<OptionTypeLambda>(map)
 
 const let_: {
   <N extends string, A extends object, B>(
@@ -1219,15 +1229,36 @@ const let_: {
     name: Exclude<N, keyof A>,
     f: (a: A) => B
   ): Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
-} = dual(3, <A extends object, N extends string, B>(
-  self: Option<A>,
-  name: Exclude<N, keyof A>,
-  f: (a: A) => B
-): Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }> =>
-  map(self, (a) => Object.assign({}, a, { [name]: f(a) }) as any))
+} = doNotation.let_<OptionTypeLambda>(map)
 
 export {
   /**
+   * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
+   *
+   * Here's how the do simulation works:
+   *
+   * 1. Start the do simulation using the `Do` value
+   * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Option` values
+   * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+   * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+   * 5. Regular `Option` functions like `map` and `filter` can still be used within the do simulation. These functions will receive the accumulated variables as arguments within the scope
+   *
+   * @see {@link Do}
+   * @see {@link bind}
+   * @see {@link bindTo}
+   *
+   * @example
+   * import { Option, pipe } from "effect"
+   *
+   * const result = pipe(
+   *   Option.Do,
+   *   Option.bind("x", () => Option.some(2)),
+   *   Option.bind("y", () => Option.some(3)),
+   *   Option.let("sum", ({ x, y }) => x + y),
+   *   Option.filter(({ x, y }) => x * y > 5)
+   * )
+   * assert.deepStrictEqual(result, Option.some({ x: 2, y: 3, sum: 5 }))
+   *
    * @category do notation
    * @since 2.0.0
    */
@@ -1235,6 +1266,32 @@ export {
 }
 
 /**
+ * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
+ *
+ * Here's how the do simulation works:
+ *
+ * 1. Start the do simulation using the `Do` value
+ * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Option` values
+ * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+ * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+ * 5. Regular `Option` functions like `map` and `filter` can still be used within the do simulation. These functions will receive the accumulated variables as arguments within the scope
+ *
+ * @see {@link Do}
+ * @see {@link bindTo}
+ * @see {@link let_ let}
+ *
+ * @example
+ * import { Option, pipe } from "effect"
+ *
+ * const result = pipe(
+ *   Option.Do,
+ *   Option.bind("x", () => Option.some(2)),
+ *   Option.bind("y", () => Option.some(3)),
+ *   Option.let("sum", ({ x, y }) => x + y),
+ *   Option.filter(({ x, y }) => x * y > 5)
+ * )
+ * assert.deepStrictEqual(result, Option.some({ x: 2, y: 3, sum: 5 }))
+ *
  * @category do notation
  * @since 2.0.0
  */
@@ -1248,14 +1305,35 @@ export const bind: {
     name: Exclude<N, keyof A>,
     f: (a: A) => Option<B>
   ): Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
-} = dual(3, <A, N extends string, B>(
-  self: Option<A>,
-  name: Exclude<N, keyof A>,
-  f: (a: A) => Option<B>
-): Option<{ [K in keyof A | N]: K extends keyof A ? A[K] : B }> =>
-  flatMap(self, (a) => map(f(a), (b) => Object.assign({}, a, { [name]: b }) as any)))
+} = doNotation.bind<OptionTypeLambda>(map, flatMap)
 
 /**
+ * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
+ *
+ * Here's how the do simulation works:
+ *
+ * 1. Start the do simulation using the `Do` value
+ * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Option` values
+ * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+ * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+ * 5. Regular `Option` functions like `map` and `filter` can still be used within the do simulation. These functions will receive the accumulated variables as arguments within the scope
+ *
+ * @see {@link bindTo}
+ * @see {@link bind}
+ * @see {@link let_ let}
+ *
+ * @example
+ * import { Option, pipe } from "effect"
+ *
+ * const result = pipe(
+ *   Option.Do,
+ *   Option.bind("x", () => Option.some(2)),
+ *   Option.bind("y", () => Option.some(3)),
+ *   Option.let("sum", ({ x, y }) => x + y),
+ *   Option.filter(({ x, y }) => x * y > 5)
+ * )
+ * assert.deepStrictEqual(result, Option.some({ x: 2, y: 3, sum: 5 }))
+ *
  * @category do notation
  * @since 2.0.0
  */

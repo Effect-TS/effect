@@ -8,7 +8,7 @@ import { GetUser, GetUserIds, User, UserId } from "./schema.js"
 
 // Implement the RPC server router
 const router = Router.make(
-  Rpc.stream(GetUserIds, () => Stream.fromIterable(Array.makeBy(1000, UserId))),
+  Rpc.stream(GetUserIds, () => Stream.fromIterable(Array.makeBy(1000, UserId.make))),
   Rpc.effect(GetUser, ({ id }) => Effect.succeed(new User({ id, name: "John Doe" })))
 )
 

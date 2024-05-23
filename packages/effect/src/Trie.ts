@@ -44,8 +44,7 @@ export interface Trie<in out Value> extends Iterable<[string, Value]>, Equal, Pi
  * Creates an empty `Trie`.
  *
  * @example
- * import * as Trie from "effect/Trie"
- * import * as Equal from "effect/Equal"
+ * import { Trie, Equal } from "effect"
  *
  * const trie = Trie.empty<string>()
  *
@@ -61,8 +60,7 @@ export const empty: <V = never>() => Trie<V> = TR.empty
  * Creates a new `Trie` from an iterable collection of key/value pairs (e.g. `Array<[string, V]>`).
  *
  * @example
- * import * as Trie from "effect/Trie"
- * import * as Equal from "effect/Equal"
+ * import { Trie, Equal } from "effect"
  *
  * const iterable: Array<readonly [string, number]> = [["call", 0], ["me", 1], ["mind", 2], ["mid", 3]]
  * const trie = Trie.fromIterable(iterable)
@@ -80,8 +78,7 @@ export const fromIterable: <V>(entries: Iterable<readonly [string, V]>) => Trie<
  * Constructs a new `Trie` from the specified entries (`[string, V]`).
  *
  * @example
- * import * as Trie from "effect/Trie"
- * import * as Equal from "effect/Equal"
+ * import { Trie, Equal } from "effect"
  *
  * const trie = Trie.make(["ca", 0], ["me", 1])
  *
@@ -99,7 +96,7 @@ export const make: <Entries extends Array<readonly [string, any]>>(
  * Insert a new entry in the `Trie`.
  *
  * @example
- * import * as Trie from "effect/Trie"
+ * import { Trie } from "effect"
  *
  * const trie1 = Trie.empty<number>().pipe(
  *   Trie.insert("call", 0)
@@ -127,7 +124,7 @@ export const insert: {
  * The keys are returned in alphabetical order, regardless of insertion order.
  *
  * @example
- * import * as Trie from "effect/Trie"
+ * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("cab", 0),
@@ -149,7 +146,7 @@ export const keys: <V>(self: Trie<V>) => IterableIterator<string> = TR.keys
  * Values are ordered based on their key in alphabetical order, regardless of insertion order.
  *
  * @example
- * import * as Trie from "effect/Trie"
+ * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("call", 0),
@@ -171,7 +168,7 @@ export const values: <V>(self: Trie<V>) => IterableIterator<V> = TR.values
  * The entries are returned by keys in alphabetical order, regardless of insertion order.
  *
  * @example
- * import * as Trie from "effect/Trie"
+ * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("call", 0),
@@ -192,7 +189,7 @@ export const entries: <V>(self: Trie<V>) => IterableIterator<[string, V]> = TR.e
  * Equivalent to `Array.from(Trie.entries(trie))`.
  *
  * @example
- * import * as Trie from "effect/Trie"
+ * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("call", 0),
@@ -212,7 +209,7 @@ export const toEntries = <V>(self: Trie<V>): Array<[string, V]> => Array.from(en
  * that have `prefix` as prefix (`prefix` included if it exists).
  *
  * @example
- * import * as Trie from "effect/Trie"
+ * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("she", 0),
@@ -237,7 +234,7 @@ export const keysWithPrefix: {
  * that have `prefix` as prefix (`prefix` included if it exists).
  *
  * @example
- * import * as Trie from "effect/Trie"
+ * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("she", 0),
@@ -264,7 +261,7 @@ export const valuesWithPrefix: {
  * that have `prefix` as prefix (`prefix` included if it exists).
  *
  * @example
- * import * as Trie from "effect/Trie"
+ * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("she", 0),
@@ -289,7 +286,7 @@ export const entriesWithPrefix: {
  * that have `prefix` as prefix (`prefix` included if it exists).
  *
  * @example
- * import * as Trie from "effect/Trie"
+ * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("shells", 0),
@@ -314,8 +311,7 @@ export const toEntriesWithPrefix: {
  * that is a prefix of that `key` if it exists, `None` otherwise.
  *
  * @example
- * import * as Trie from "effect/Trie"
- * import * as Option from "effect/Option"
+ * import { Trie, Option } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("shells", 0),
@@ -340,7 +336,7 @@ export const longestPrefixOf: {
  * Returns the size of the `Trie` (number of entries in the `Trie`).
  *
  * @example
- * import * as Trie from "effect/Trie"
+ * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("a", 0),
@@ -358,8 +354,7 @@ export const size: <V>(self: Trie<V>) => number = TR.size
  * Safely lookup the value for the specified key in the `Trie`.
  *
  * @example
- * import * as Trie from "effect/Trie"
- * import * as Option from "effect/Option"
+ * import { Trie, Option } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("call", 0),
@@ -389,7 +384,7 @@ export const get: {
  * Check if the given key exists in the `Trie`.
  *
  * @example
- * import * as Trie from "effect/Trie"
+ * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("call", 0),
@@ -419,7 +414,7 @@ export const has: {
  * Checks if the `Trie` contains any entries.
  *
  * @example
- * import * as Trie from "effect/Trie"
+ * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>()
  * const trie1 = trie.pipe(Trie.insert("ma", 0))
@@ -439,7 +434,7 @@ export const isEmpty: <V>(self: Trie<V>) => boolean = TR.isEmpty
  * get a value from the `Trie`.
  *
  * @example
- * import * as Trie from "effect/Trie"
+ * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("call", 0),
@@ -460,8 +455,7 @@ export const unsafeGet: {
  * Remove the entry for the specified key in the `Trie`.
  *
  * @example
- * import * as Trie from "effect/Trie"
- * import * as Option from "effect/Option"
+ * import { Trie, Option } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("call", 0),
@@ -489,7 +483,7 @@ export const remove: {
  * Reduce a state over the entries of the `Trie`.
  *
  * @example
- * import * as Trie from "effect/Trie"
+ * import { Trie } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("shells", 0),
@@ -528,8 +522,7 @@ export const reduce: {
  * Maps over the entries of the `Trie` using the specified function.
  *
  * @example
- * import * as Trie from "effect/Trie"
- * import * as Equal from "effect/Equal"
+ * import { Trie, Equal } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("shells", 0),
@@ -564,8 +557,7 @@ export const map: {
  * Filters entries out of a `Trie` using the specified predicate.
  *
  * @example
- * import * as Trie from "effect/Trie"
- * import * as Equal from "effect/Equal"
+ * import { Trie, Equal } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("shells", 0),
@@ -600,9 +592,7 @@ export const filter: {
  * and filters out `None` values.
  *
  * @example
- * import * as Trie from "effect/Trie"
- * import * as Equal from "effect/Equal"
- * import * as Option from "effect/Option"
+ * import { Trie, Equal, Option } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("shells", 0),
@@ -637,9 +627,7 @@ export const filterMap: {
  * Filters out `None` values from a `Trie` of `Options`s.
  *
  * @example
- * import * as Trie from "effect/Trie"
- * import * as Equal from "effect/Equal"
- * import * as Option from "effect/Option"
+ * import { Trie, Equal, Option } from "effect"
  *
  * const trie = Trie.empty<Option.Option<number>>().pipe(
  *   Trie.insert("shells", Option.some(0)),
@@ -663,7 +651,7 @@ export const compact: <A>(self: Trie<Option<A>>) => Trie<A> = TR.compact
  * Applies the specified function to the entries of the `Trie`.
  *
  * @example
- * import * as Trie from "effect/Trie"
+ * import { Trie } from "effect"
  *
  * let value = 0
  *
@@ -690,9 +678,7 @@ export const forEach: {
  * Updates the value of the specified key within the `Trie` if it exists.
  *
  * @example
- * import * as Trie from "effect/Trie"
- * import * as Equal from "effect/Equal"
- * import * as Option from "effect/Option"
+ * import { Trie, Equal, Option } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("shells", 0),
@@ -716,8 +702,7 @@ export const modify: {
  * Removes all entries in the `Trie` which have the specified keys.
  *
  * @example
- * import * as Trie from "effect/Trie"
- * import * as Equal from "effect/Equal"
+ * import { Trie, Equal } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("shells", 0),
@@ -742,8 +727,7 @@ export const removeMany: {
  * Insert multiple entries in the `Trie` at once.
  *
  * @example
- * import * as Trie from "effect/Trie"
- * import * as Equal from "effect/Equal"
+ * import { Trie, Equal } from "effect"
  *
  * const trie = Trie.empty<number>().pipe(
  *   Trie.insert("shells", 0),

@@ -7,12 +7,13 @@ import type { LazyArg } from "./Function.js"
 import { constNull, constUndefined, dual, identity } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 import type { Inspectable } from "./Inspectable.js"
+import * as doNotation from "./internal/doNotation.js"
 import * as either from "./internal/either.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import { isFunction } from "./Predicate.js"
-import type { Covariant, MergeRecord, NoInfer, NotFunction } from "./Types.js"
+import type { Covariant, NoInfer, NotFunction } from "./Types.js"
 import type * as Unify from "./Unify.js"
 import * as Gen from "./Utils.js"
 
@@ -129,7 +130,7 @@ export const left: <L>(left: L) => Either<never, L> = either.left
  * the provided default as a `Left`.
  *
  * @example
- * import * as Either from 'effect/Either'
+ * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.fromNullable(1, () => 'fallback'), Either.right(1))
  * assert.deepStrictEqual(Either.fromNullable(null, () => 'fallback'), Either.left('fallback'))
@@ -148,8 +149,7 @@ export const fromNullable: {
 
 /**
  * @example
- * import * as Either from 'effect/Either'
- * import * as Option from 'effect/Option'
+ * import { Either, Option } from "effect"
  *
  * assert.deepStrictEqual(Either.fromOption(Option.some(1), () => 'error'), Either.right(1))
  * assert.deepStrictEqual(Either.fromOption(Option.none(), () => 'error'), Either.left('error'))
@@ -208,11 +208,11 @@ export {
  * @param input - The value to test.
  *
  * @example
- * import { isEither, left, right } from 'effect/Either'
+ * import { Either } from "effect"
  *
- * assert.deepStrictEqual(isEither(right(1)), true)
- * assert.deepStrictEqual(isEither(left("a")), true)
- * assert.deepStrictEqual(isEither({ right: 1 }), false)
+ * assert.deepStrictEqual(Either.isEither(Either.right(1)), true)
+ * assert.deepStrictEqual(Either.isEither(Either.left("a")), true)
+ * assert.deepStrictEqual(Either.isEither({ right: 1 }), false)
  *
  * @category guards
  * @since 2.0.0
@@ -225,10 +225,10 @@ export const isEither: (input: unknown) => input is Either<unknown, unknown> = e
  * @param self - The `Either` to check.
  *
  * @example
- * import { isLeft, left, right } from 'effect/Either'
+ * import { Either } from "effect"
  *
- * assert.deepStrictEqual(isLeft(right(1)), false)
- * assert.deepStrictEqual(isLeft(left("a")), true)
+ * assert.deepStrictEqual(Either.isLeft(Either.right(1)), false)
+ * assert.deepStrictEqual(Either.isLeft(Either.left("a")), true)
  *
  * @category guards
  * @since 2.0.0
@@ -241,10 +241,10 @@ export const isLeft: <R, L>(self: Either<R, L>) => self is Left<L, R> = either.i
  * @param self - The `Either` to check.
  *
  * @example
- * import { isRight, left, right } from 'effect/Either'
+ * import { Either } from "effect"
  *
- * assert.deepStrictEqual(isRight(right(1)), true)
- * assert.deepStrictEqual(isRight(left("a")), false)
+ * assert.deepStrictEqual(Either.isRight(Either.right(1)), true)
+ * assert.deepStrictEqual(Either.isRight(Either.left("a")), false)
  *
  * @category guards
  * @since 2.0.0
@@ -257,11 +257,10 @@ export const isRight: <R, L>(self: Either<R, L>) => self is Right<L, R> = either
  * Alias of {@link toOption}.
  *
  * @example
- * import * as O from 'effect/Option'
- * import * as E from 'effect/Either'
+ * import { Either, Option } from "effect"
  *
- * assert.deepStrictEqual(E.getRight(E.right('ok')), O.some('ok'))
- * assert.deepStrictEqual(E.getRight(E.left('err')), O.none())
+ * assert.deepStrictEqual(Either.getRight(Either.right('ok')), Option.some('ok'))
+ * assert.deepStrictEqual(Either.getRight(Either.left('err')), Option.none())
  *
  * @category getters
  * @since 2.0.0
@@ -272,11 +271,10 @@ export const getRight: <R, L>(self: Either<R, L>) => Option<R> = either.getRight
  * Converts a `Either` to an `Option` discarding the value.
  *
  * @example
- * import * as O from 'effect/Option'
- * import * as E from 'effect/Either'
+ * import { Either, Option } from "effect"
  *
- * assert.deepStrictEqual(E.getLeft(E.right('ok')), O.none())
- * assert.deepStrictEqual(E.getLeft(E.left('err')), O.some('err'))
+ * assert.deepStrictEqual(Either.getLeft(Either.right('ok')), Option.none())
+ * assert.deepStrictEqual(Either.getLeft(Either.left('err')), Option.some('err'))
  *
  * @category getters
  * @since 2.0.0
@@ -360,16 +358,15 @@ export const map: {
  * if the value is a `Right` the inner value is applied to the `onRight` function.
  *
  * @example
- * import * as E from 'effect/Either'
- * import { pipe } from 'effect/Function'
+ * import { pipe, Either } from "effect"
  *
  * const onLeft  = (strings: ReadonlyArray<string>): string => `strings: ${strings.join(', ')}`
  *
  * const onRight = (value: number): string => `Ok: ${value}`
  *
- * assert.deepStrictEqual(pipe(E.right(1), E.match({ onLeft, onRight })), 'Ok: 1')
+ * assert.deepStrictEqual(pipe(Either.right(1), Either.match({ onLeft, onRight })), 'Ok: 1')
  * assert.deepStrictEqual(
- *   pipe(E.left(['string 1', 'string 2']), E.match({ onLeft, onRight })),
+ *   pipe(Either.left(['string 1', 'string 2']), Either.match({ onLeft, onRight })),
  *   'strings: string 1, string 2'
  * )
  *
@@ -398,24 +395,23 @@ export const match: {
  * If the predicate fails, set the left value with the result of the provided function.
  *
  * @example
- * import * as E from 'effect/Either'
- * import { pipe } from 'effect/Function'
+ * import { pipe, Either } from "effect"
  *
  * const isPositive = (n: number): boolean => n > 0
  *
  * assert.deepStrictEqual(
  *   pipe(
- *     E.right(1),
- *     E.filterOrLeft(isPositive, n => `${n} is not positive`)
+ *     Either.right(1),
+ *     Either.filterOrLeft(isPositive, n => `${n} is not positive`)
  *   ),
- *   E.right(1)
+ *   Either.right(1)
  * )
  * assert.deepStrictEqual(
  *   pipe(
- *     E.right(0),
- *     E.filterOrLeft(isPositive, n => `${n} is not positive`)
+ *     Either.right(0),
+ *     Either.filterOrLeft(isPositive, n => `${n} is not positive`)
  *   ),
- *   E.left("0 is not positive")
+ *   Either.left("0 is not positive")
  * )
  *
  * @since 2.0.0
@@ -455,7 +451,7 @@ export const merge: <R, L>(self: Either<R, L>) => L | R = match({
  * Returns the wrapped value if it's a `Right` or a default value if is a `Left`.
  *
  * @example
- * import * as Either from 'effect/Either'
+ * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.getOrElse(Either.right(1), (error) => error + "!"), 1)
  * assert.deepStrictEqual(Either.getOrElse(Either.left("not a number"), (error) => error + "!"), "not a number!")
@@ -473,7 +469,7 @@ export const getOrElse: {
 
 /**
  * @example
- * import * as Either from 'effect/Either'
+ * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.getOrNull(Either.right(1)), 1)
  * assert.deepStrictEqual(Either.getOrNull(Either.left("a")), null)
@@ -485,7 +481,7 @@ export const getOrNull: <R, L>(self: Either<R, L>) => R | null = getOrElse(const
 
 /**
  * @example
- * import * as Either from 'effect/Either'
+ * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.getOrUndefined(Either.right(1)), 1)
  * assert.deepStrictEqual(Either.getOrUndefined(Either.left("a")), undefined)
@@ -504,13 +500,13 @@ export const getOrUndefined: <R, L>(self: Either<R, L>) => R | undefined = getOr
  * @param onLeft - A function that will be called if the `Either` is `Left`. It returns the error to be thrown.
  *
  * @example
- * import * as E from "effect/Either"
+ * import { Either } from "effect"
  *
  * assert.deepStrictEqual(
- *   E.getOrThrowWith(E.right(1), () => new Error('Unexpected Left')),
+ *   Either.getOrThrowWith(Either.right(1), () => new Error('Unexpected Left')),
  *   1
  * )
- * assert.throws(() => E.getOrThrowWith(E.left("error"), () => new Error('Unexpected Left')))
+ * assert.throws(() => Either.getOrThrowWith(Either.left("error"), () => new Error('Unexpected Left')))
  *
  * @category getters
  * @since 2.0.0
@@ -534,10 +530,10 @@ export const getOrThrowWith: {
  * @throws `Error("getOrThrow called on a Left")`
  *
  * @example
- * import * as E from "effect/Either"
+ * import { Either } from "effect"
  *
- * assert.deepStrictEqual(E.getOrThrow(E.right(1)), 1)
- * assert.throws(() => E.getOrThrow(E.left("error")))
+ * assert.deepStrictEqual(Either.getOrThrow(Either.right(1)), 1)
+ * assert.throws(() => Either.getOrThrow(Either.left("error")))
  *
  * @category getters
  * @since 2.0.0
@@ -644,7 +640,7 @@ export const ap: {
  * @param fields - the struct of `Either`s to be sequenced.
  *
  * @example
- * import * as Either from "effect/Either"
+ * import { Either } from "effect"
  *
  * assert.deepStrictEqual(Either.all([Either.right(1), Either.right(2)]), Either.right([1, 2]))
  * assert.deepStrictEqual(Either.all({ right: Either.right(1), b: Either.right("hello") }), Either.right({ right: 1, b: "hello" }))
@@ -742,77 +738,148 @@ export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (f)
 // -------------------------------------------------------------------------------------
 
 /**
- * @since 2.4.0
+ * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
+ *
+ * Here's how the do simulation works:
+ *
+ * 1. Start the do simulation using the `Do` value
+ * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Either` values
+ * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+ * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+ *
+ * @see {@link bind}
+ * @see {@link bindTo}
+ * @see {@link let_ let}
+ *
+ * @example
+ * import { Either, pipe } from "effect"
+ *
+ * const result = pipe(
+ *   Either.Do,
+ *   Either.bind("x", () => Either.right(2)),
+ *   Either.bind("y", () => Either.right(3)),
+ *   Either.let("sum", ({ x, y }) => x + y)
+ * )
+ * assert.deepStrictEqual(result, Either.right({ x: 2, y: 3, sum: 5 }))
+ *
  * @category do notation
+ * @since 2.0.0
  */
 export const Do: Either<{}> = right({})
 
 /**
- * Binds an effectful value in a `do` scope
+ * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
  *
- * @since 2.4.0
+ * Here's how the do simulation works:
+ *
+ * 1. Start the do simulation using the `Do` value
+ * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Either` values
+ * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+ * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+ *
+ * @see {@link Do}
+ * @see {@link bindTo}
+ * @see {@link let_ let}
+ *
+ * @example
+ * import { Either, pipe } from "effect"
+ *
+ * const result = pipe(
+ *   Either.Do,
+ *   Either.bind("x", () => Either.right(2)),
+ *   Either.bind("y", () => Either.right(3)),
+ *   Either.let("sum", ({ x, y }) => x + y)
+ * )
+ * assert.deepStrictEqual(result, Either.right({ x: 2, y: 3, sum: 5 }))
+ *
  * @category do notation
+ * @since 2.0.0
  */
 export const bind: {
-  <N extends string, K, A, E2>(
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Either<A, E2>
-  ): <E>(self: Either<K, E>) => Either<MergeRecord<K, { [k in N]: A }>, E2 | E>
-  <K, E, N extends string, A, E2>(
-    self: Either<E, K>,
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => Either<A, E2>
-  ): Either<MergeRecord<K, { [k in N]: A }>, E2 | E>
-} = dual(3, <K, E, N extends string, A, E2>(
-  self: Either<K, E>,
-  tag: Exclude<N, keyof K>,
-  f: (_: K) => Either<A, E2>
-): Either<MergeRecord<K, { [k in N]: A }>, E2 | E> =>
-  flatMap(self, (k) =>
-    map(
-      f(k),
-      (a): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: a } as any)
-    )))
+  <N extends string, A extends object, B, L2>(
+    name: Exclude<N, keyof A>,
+    f: (a: A) => Either<B, L2>
+  ): <L1>(self: Either<A, L1>) => Either<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, L1 | L2>
+  <A extends object, L1, N extends string, B, L2>(
+    self: Either<A, L1>,
+    name: Exclude<N, keyof A>,
+    f: (a: A) => Either<B, L2>
+  ): Either<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }, L1 | L2>
+} = doNotation.bind<EitherTypeLambda>(map, flatMap)
 
 /**
+ * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
+ *
+ * Here's how the do simulation works:
+ *
+ * 1. Start the do simulation using the `Do` value
+ * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Either` values
+ * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+ * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+ *
+ * @see {@link Do}
+ * @see {@link bind}
+ * @see {@link let_ let}
+ *
+ * @example
+ * import { Either, pipe } from "effect"
+ *
+ * const result = pipe(
+ *   Either.Do,
+ *   Either.bind("x", () => Either.right(2)),
+ *   Either.bind("y", () => Either.right(3)),
+ *   Either.let("sum", ({ x, y }) => x + y)
+ * )
+ * assert.deepStrictEqual(result, Either.right({ x: 2, y: 3, sum: 5 }))
+ *
  * @category do notation
- * @since 2.4.0
+ * @since 2.0.0
  */
 export const bindTo: {
-  <N extends string>(tag: N): <A, E>(self: Either<A, E>) => Either<Record<N, A>, E>
-  <A, E, N extends string>(self: Either<A, E>, tag: N): Either<Record<N, A>, E>
-} = dual(
-  2,
-  <A, E, N extends string>(self: Either<A, E>, tag: N): Either<Record<N, A>, E> =>
-    map(self, (a) => ({ [tag]: a } as Record<N, A>))
-)
+  <N extends string>(name: N): <R, L>(self: Either<R, L>) => Either<{ [K in N]: R }, L>
+  <R, L, N extends string>(self: Either<R, L>, name: N): Either<{ [K in N]: R }, L>
+} = doNotation.bindTo<EitherTypeLambda>(map)
 
 const let_: {
-  <N extends string, K, A>(
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => A
-  ): <E>(self: Either<K, E>) => Either<MergeRecord<K, { [k in N]: A }>, E>
-  <K, E, N extends string, A>(
-    self: Either<K, E>,
-    tag: Exclude<N, keyof K>,
-    f: (_: K) => A
-  ): Either<MergeRecord<K, { [k in N]: A }>, E>
-} = dual(3, <K, E, N extends string, A>(
-  self: Either<K, E>,
-  tag: Exclude<N, keyof K>,
-  f: (_: K) => A
-): Either<MergeRecord<K, { [k in N]: A }>, E> =>
-  map(
-    self,
-    (k): MergeRecord<K, { [k in N]: A }> => ({ ...k, [tag]: f(k) } as any)
-  ))
+  <N extends string, R extends object, B>(
+    name: Exclude<N, keyof R>,
+    f: (r: R) => B
+  ): <L>(self: Either<R, L>) => Either<{ [K in N | keyof R]: K extends keyof R ? R[K] : B }, L>
+  <R extends object, L, N extends string, B>(
+    self: Either<R, L>,
+    name: Exclude<N, keyof R>,
+    f: (r: R) => B
+  ): Either<{ [K in N | keyof R]: K extends keyof R ? R[K] : B }, L>
+} = doNotation.let_<EitherTypeLambda>(map)
 
 export {
   /**
-   * Like bind for values
+   * The "do simulation" in allows you to write code in a more declarative style, similar to the "do notation" in other programming languages. It provides a way to define variables and perform operations on them using functions like `bind` and `let`.
    *
-   * @since 2.4.0
+   * Here's how the do simulation works:
+   *
+   * 1. Start the do simulation using the `Do` value
+   * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Either` values
+   * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
+   * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
+   *
+   * @see {@link Do}
+   * @see {@link bindTo}
+   * @see {@link bind}
+   *
+   * @example
+   * import { Either, pipe } from "effect"
+   *
+   * const result = pipe(
+   *   Either.Do,
+   *   Either.bind("x", () => Either.right(2)),
+   *   Either.bind("y", () => Either.right(3)),
+   *   Either.let("sum", ({ x, y }) => x + y)
+   * )
+   * assert.deepStrictEqual(result, Either.right({ x: 2, y: 3, sum: 5 }))
+   *
    * @category do notation
+   * @since 2.0.0
    */
   let_ as let
 }

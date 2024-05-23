@@ -10,7 +10,7 @@ import * as defaultServices from "./internal/defaultServices.js"
 /**
  * @since 2.0.0
  */
-export const TestLiveTypeId = Symbol.for("effect/TestLive")
+export const TestLiveTypeId: unique symbol = Symbol.for("effect/TestLive")
 
 /**
  * @since 2.0.0

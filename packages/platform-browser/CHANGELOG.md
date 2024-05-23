@@ -1,5 +1,170 @@
 # @effect/platform-browser
 
+## 0.34.0
+
+### Minor Changes
+
+- [#2801](https://github.com/Effect-TS/effect/pull/2801) [`1af94df`](https://github.com/Effect-TS/effect/commit/1af94df6b74aeb4f6ebcbe80e074b4cb252e62e3) Thanks @tim-smart! - remove `permits` from workers, to prevent issues with pool resizing
+
+### Patch Changes
+
+- Updated dependencies [[`1af94df`](https://github.com/Effect-TS/effect/commit/1af94df6b74aeb4f6ebcbe80e074b4cb252e62e3), [`1af94df`](https://github.com/Effect-TS/effect/commit/1af94df6b74aeb4f6ebcbe80e074b4cb252e62e3), [`c07e0ce`](https://github.com/Effect-TS/effect/commit/c07e0cea8ce165887e2c9dfa5d669eba9b2fb798), [`e313a01`](https://github.com/Effect-TS/effect/commit/e313a01b7e80f6cb7704055a190e5623c9d22c6d), [`1af94df`](https://github.com/Effect-TS/effect/commit/1af94df6b74aeb4f6ebcbe80e074b4cb252e62e3)]:
+  - effect@3.2.4
+  - @effect/platform@0.54.0
+
+## 0.33.29
+
+### Patch Changes
+
+- Updated dependencies [[`45578e8`](https://github.com/Effect-TS/effect/commit/45578e8faa80ae33d23e08f6f19467f818b7788f)]:
+  - effect@3.2.3
+  - @effect/platform@0.53.14
+
+## 0.33.28
+
+### Patch Changes
+
+- Updated dependencies [[`5d9266e`](https://github.com/Effect-TS/effect/commit/5d9266e8c740746ac9e186c3df6090a1b57fbe2a), [`9f8122e`](https://github.com/Effect-TS/effect/commit/9f8122e78884ab47c5e5f364d86eee1d1543cc61), [`6a6f670`](https://github.com/Effect-TS/effect/commit/6a6f6706b8613c8c7c10971b8d81a0f9e440a6f2), [`c1eaef9`](https://github.com/Effect-TS/effect/commit/c1eaef910420dae416923d172ee58d219e921d0f)]:
+  - effect@3.2.2
+  - @effect/platform@0.53.13
+
+## 0.33.27
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/platform@0.53.12
+
+## 0.33.26
+
+### Patch Changes
+
+- Updated dependencies [[`c1e991d`](https://github.com/Effect-TS/effect/commit/c1e991dd5ba87901cd0e05697a8b4a267e7e954a)]:
+  - effect@3.2.1
+  - @effect/platform@0.53.11
+
+## 0.33.25
+
+### Patch Changes
+
+- Updated dependencies [[`146cadd`](https://github.com/Effect-TS/effect/commit/146cadd9d004634a3ff85c480bf92cf975c853e2), [`7135748`](https://github.com/Effect-TS/effect/commit/713574813a0f64085db0b5240ba39e7a0a7c137e), [`7135748`](https://github.com/Effect-TS/effect/commit/713574813a0f64085db0b5240ba39e7a0a7c137e), [`963b4e7`](https://github.com/Effect-TS/effect/commit/963b4e7ac87e2468feb6a344f7ab4ee4ad711198), [`64c9414`](https://github.com/Effect-TS/effect/commit/64c9414e960e82058ca09bbb3976d6fbef303a8e), [`7135748`](https://github.com/Effect-TS/effect/commit/713574813a0f64085db0b5240ba39e7a0a7c137e), [`2cbb76b`](https://github.com/Effect-TS/effect/commit/2cbb76bb52500a3f4bf27d1c91482518cbea56d7), [`870c5fa`](https://github.com/Effect-TS/effect/commit/870c5fa52cd61e745e8e828d38c3f09f00737553), [`146cadd`](https://github.com/Effect-TS/effect/commit/146cadd9d004634a3ff85c480bf92cf975c853e2), [`7135748`](https://github.com/Effect-TS/effect/commit/713574813a0f64085db0b5240ba39e7a0a7c137e), [`64c9414`](https://github.com/Effect-TS/effect/commit/64c9414e960e82058ca09bbb3976d6fbef303a8e)]:
+  - effect@3.2.0
+  - @effect/platform@0.53.10
+
+## 0.33.24
+
+### Patch Changes
+
+- [#2761](https://github.com/Effect-TS/effect/pull/2761) [`17fc22e`](https://github.com/Effect-TS/effect/commit/17fc22e132593c5caa563705a4748ba0f04a853c) Thanks [@KhraksMamtsov](https://github.com/KhraksMamtsov)! - Add `{ once: true }` to all `"abort"` event listeners for `AbortController` to automatically remove handlers after execution
+
+- Updated dependencies [[`17fc22e`](https://github.com/Effect-TS/effect/commit/17fc22e132593c5caa563705a4748ba0f04a853c), [`810f222`](https://github.com/Effect-TS/effect/commit/810f222268792b13067c7a7bf317b93a9bb8917b), [`596aaea`](https://github.com/Effect-TS/effect/commit/596aaea022648b2e06fb1ec22f1652043d6fe64e)]:
+  - @effect/platform@0.53.9
+  - effect@3.1.6
+
+## 0.33.23
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/platform@0.53.8
+
+## 0.33.22
+
+### Patch Changes
+
+- [#2691](https://github.com/Effect-TS/effect/pull/2691) [`dc06f27`](https://github.com/Effect-TS/effect/commit/dc06f273fdcc9beeecef26f6e844fcce31b092a2) Thanks [@KhraksMamtsov](https://github.com/KhraksMamtsov)! - add Geolocation module to @effect/platform-browser
+
+- Updated dependencies []:
+  - @effect/platform@0.53.7
+
+## 0.33.21
+
+### Patch Changes
+
+- Updated dependencies [[`6ac4847`](https://github.com/Effect-TS/effect/commit/6ac48479447c01a4f35d655552af93e47e562610), [`6ac4847`](https://github.com/Effect-TS/effect/commit/6ac48479447c01a4f35d655552af93e47e562610)]:
+  - @effect/platform@0.53.6
+  - effect@3.1.5
+
+## 0.33.20
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/platform@0.53.5
+
+## 0.33.19
+
+### Patch Changes
+
+- Updated dependencies [[`e41e911`](https://github.com/Effect-TS/effect/commit/e41e91122fa6dd12fc81e50dcad0db891be67146)]:
+  - effect@3.1.4
+  - @effect/platform@0.53.4
+
+## 0.33.18
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/platform@0.53.3
+
+## 0.33.17
+
+### Patch Changes
+
+- [#2722](https://github.com/Effect-TS/effect/pull/2722) [`d4fb55d`](https://github.com/Effect-TS/effect/commit/d4fb55dc04d370c19a1176fa13ff7266c222e15e) Thanks [@tim-smart](https://github.com/tim-smart)! - run .close() when browser worker shuts down
+
+## 0.33.16
+
+### Patch Changes
+
+- Updated dependencies [[`1f6dc96`](https://github.com/Effect-TS/effect/commit/1f6dc96f51c7bb9c8d11415358308604ba7c7c8e)]:
+  - effect@3.1.3
+  - @effect/platform@0.53.2
+
+## 0.33.15
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/platform@0.53.1
+
+## 0.33.14
+
+### Patch Changes
+
+- Updated dependencies [[`d57fbbb`](https://github.com/Effect-TS/effect/commit/d57fbbbd6c466936213a671fc3cd2390064f864e)]:
+  - @effect/platform@0.53.0
+
+## 0.33.13
+
+### Patch Changes
+
+- Updated dependencies [[`5866c62`](https://github.com/Effect-TS/effect/commit/5866c621d7eb4cc84e4ba972bfdfd219734cd45d)]:
+  - @effect/platform@0.52.3
+
+## 0.33.12
+
+### Patch Changes
+
+- Updated dependencies [[`2e1cdf6`](https://github.com/Effect-TS/effect/commit/2e1cdf67d141281288fffe9a5c10d1379a800513)]:
+  - @effect/platform@0.52.2
+  - effect@3.1.2
+
+## 0.33.11
+
+### Patch Changes
+
+- Updated dependencies [[`e5e56d1`](https://github.com/Effect-TS/effect/commit/e5e56d138dbed3204636f605229c6685f89659fc)]:
+  - effect@3.1.1
+  - @effect/platform@0.52.1
+
+## 0.33.10
+
+### Patch Changes
+
+- Updated dependencies [[`9deab0a`](https://github.com/Effect-TS/effect/commit/9deab0aec9e99501f9441843e34df9afa10c5be9), [`7719b8a`](https://github.com/Effect-TS/effect/commit/7719b8a7350c14e952ffe685bfd5308773b3e271)]:
+  - @effect/platform@0.52.0
+
 ## 0.33.9
 
 ### Patch Changes

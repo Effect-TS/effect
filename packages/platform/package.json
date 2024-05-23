@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform",
   "type": "module",
-  "version": "0.51.0",
+  "version": "0.54.0",
   "license": "MIT",
   "description": "Unified interfaces for common platform-specific services",
   "homepage": "https://effect.website",
@@ -30,7 +30,7 @@
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",
-    "build": "pnpm codegen && pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
+    "build": "pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
     "build-esm": "tsc -b tsconfig.build.json",
     "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
     "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps",
@@ -39,9 +39,8 @@
     "coverage": "vitest --coverage"
   },
   "dependencies": {
-    "find-my-way-ts": "^0.1.1",
-    "isows": "^1.0.4",
-    "multipasta": "^0.2.0",
+    "find-my-way-ts": "^0.1.2",
+    "multipasta": "^0.2.1",
     "path-browserify": "^1.0.1"
   },
   "peerDependencies": {

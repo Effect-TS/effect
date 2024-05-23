@@ -1,4 +1,3 @@
-import * as it from "effect-test/utils/extend"
 import * as Array from "effect/Array"
 import * as Context from "effect/Context"
 import { seconds } from "effect/Duration"
@@ -6,6 +5,7 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
+import * as it from "effect/test/utils/extend"
 import { describe, expect } from "vitest"
 
 interface Counter {

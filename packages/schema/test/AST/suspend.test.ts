@@ -10,9 +10,9 @@ describe("AST.Suspend", () => {
       readonly a: string
       readonly as: ReadonlyArray<A>
     }
-    const schema: S.Schema<A> = S.Struct({
+    const schema = S.Struct({
       a: S.String,
-      as: S.Array(S.suspend(() => {
+      as: S.Array(S.suspend((): S.Schema<A> => {
         log++
         return schema
       }))

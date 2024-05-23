@@ -22,7 +22,7 @@ import * as Rpc from "./Rpc.js"
  * @since 1.0.0
  * @category type ids
  */
-export const TypeId = Symbol.for("@effect/rpc/Router")
+export const TypeId: unique symbol = Symbol.for("@effect/rpc/Router")
 
 /**
  * @since 1.0.0
@@ -198,7 +198,7 @@ export const toHandler = <R extends Router<any, any>>(router: R, options?: {
   readonly spanPrefix?: string
 }) => {
   const spanPrefix = options?.spanPrefix ?? "Rpc.router "
-  const schema: Schema.Schema<any, unknown, readonly [Schema.TaggedRequest.Any, Rpc.Rpc<any, any>]> = Schema
+  const schema = Schema
     .Union(
       ...[...router.rpcs].map((rpc) =>
         Schema.transform(
@@ -244,7 +244,8 @@ export const toHandler = <R extends Router<any, any>>(router: R, options?: {
                     spanId: req.spanId,
                     sampled: req.sampled,
                     context: Context.empty()
-                  }
+                  },
+                  captureStackTrace: false
                 })
               )
             }
@@ -276,7 +277,8 @@ export const toHandler = <R extends Router<any, any>>(router: R, options?: {
                   spanId: req.spanId,
                   sampled: req.sampled,
                   context: Context.empty()
-                }
+                },
+                captureStackTrace: false
               })
             )
           }, { concurrency: "unbounded", discard: true }),
@@ -297,7 +299,7 @@ export const toHandlerEffect = <R extends Router<any, any>>(router: R, options?:
   readonly spanPrefix?: string
 }) => {
   const spanPrefix = options?.spanPrefix ?? "Rpc.router "
-  const schema: Schema.Schema<any, unknown, readonly [Schema.TaggedRequest.Any, Rpc.Rpc<any, any>]> = Schema
+  const schema = Schema
     .Union(
       ...[...router.rpcs].map((rpc) =>
         Schema.transform(
@@ -332,7 +334,8 @@ export const toHandlerEffect = <R extends Router<any, any>>(router: R, options?:
                 spanId: req.spanId,
                 sampled: req.sampled,
                 context: Context.empty()
-              }
+              },
+              captureStackTrace: false
             })
           )
         }
@@ -352,7 +355,8 @@ export const toHandlerEffect = <R extends Router<any, any>>(router: R, options?:
               spanId: req.spanId,
               sampled: req.sampled,
               context: Context.empty()
-            }
+            },
+            captureStackTrace: false
           })
         )
       }, { concurrency: "unbounded" })
