@@ -95,19 +95,24 @@ export const make = (
   options: SqliteClientConfig
 ): Effect.Effect<SqliteClient, never, Scope.Scope> =>
   Effect.gen(function*(_) {
+    const clientOptions: Parameters<typeof Sqlite.open>[0] = {
+      name: options.filename
+    }
+    if (options.location) {
+      clientOptions.location = options.location
+    }
+    if (options.encryptionKey) {
+      clientOptions.encryptionKey = options.encryptionKey
+    }
+
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
     const transformRows = Statement.defaultTransforms(
       options.transformResultNames!
     ).array
-
     const handleError = (error: any) => new SqlError({ error })
 
     const makeConnection = Effect.gen(function*(_) {
-      const db = Sqlite.open({
-        name: options.filename,
-        location: options.location!,
-        encryptionKey: options.encryptionKey!
-      })
+      const db = Sqlite.open(clientOptions)
       yield* _(Effect.addFinalizer(() => Effect.sync(() => db.close())))
 
       const run = (
@@ -159,6 +164,11 @@ export const make = (
         reactive<A>(statement: Statement.Statement<A>, tables: ReadonlyArray<string>) {
           const [query, params] = statement.compile()
           return Queue.sliding<ReadonlyArray<A>>(1).pipe(
+            Effect.tap((queue) =>
+              this.execute(query, params).pipe(
+                Effect.flatMap((rows) => queue.offer(rows))
+              )
+            ),
             Effect.tap((queue) =>
               Effect.acquireRelease(
                 Effect.try({
