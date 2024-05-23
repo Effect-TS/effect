@@ -6555,7 +6555,7 @@ export const toReadableStreamRuntime = dual<
   <A, E, XR, R extends XR>(self: Stream.Stream<A, E, R>, runtime: Runtime.Runtime<XR>) => ReadableStream<A>
 >(2, <A, E, XR, R extends XR>(self: Stream.Stream<A, E, R>, runtime: Runtime.Runtime<XR>): ReadableStream<A> => {
   const runSync = Runtime.runSync(runtime)
-  const runPromise = Runtime.runPromise(runtime)
+  const runFork = Runtime.runFork(runtime)
 
   let pull: Effect.Effect<void, never, R>
   let scope: Scope.CloseableScope
@@ -6588,10 +6588,14 @@ export const toReadableStreamRuntime = dual<
       )
     },
     pull() {
-      return runPromise(pull)
+      return new Promise<void>((resolve) => {
+        runFork(pull, { scope }).addObserver((_) => resolve())
+      })
     },
     cancel() {
-      return runPromise(Scope.close(scope, Exit.void))
+      return new Promise<void>((resolve) => {
+        runFork(Scope.close(scope, Exit.void)).addObserver((_) => resolve())
+      })
     }
   })
 })
