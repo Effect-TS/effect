@@ -1157,7 +1157,7 @@ export const remove: {
  * @category elements
  * @since 2.0.0
  */
-export const reverse = <S extends ReadonlyArray.Input>(
+export const reverse = <S extends Iterable<any>>(
   self: S
 ): S extends NonEmptyReadonlyArray<infer A> ? NonEmptyArray<A> : S extends Iterable<infer A> ? Array<A> : never =>
   Array.from(self).reverse() as any
@@ -1202,7 +1202,7 @@ export const sort: {
  * @category elements
  */
 export const sortWith: {
-  <S extends ReadonlyArray.Input, B>(
+  <S extends Iterable<any>, B>(
     f: (a: ReadonlyArray.Infer<S>) => B,
     order: Order.Order<B>
   ): (self: S) => ReadonlyArray.With<S, ReadonlyArray.Infer<S>>
@@ -2733,7 +2733,7 @@ export const dedupeWith: {
  *
  * @since 2.0.0
  */
-export const dedupe = <S extends ReadonlyArray.Input>(
+export const dedupe = <S extends Iterable<any>>(
   self: S
 ): S extends NonEmptyReadonlyArray<infer A> ? NonEmptyArray<A> : S extends Iterable<infer A> ? Array<A> : never =>
   dedupeWith(self, Equal.equivalence()) as any
