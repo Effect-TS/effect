@@ -5696,6 +5696,72 @@ const person2 = decode({ name: "Alice", age: 30 })
 console.log(Equal.equals(person1, person2)) // true
 ```
 
+## Config
+
+The `Config` API in the `@effect/schema` library is specifically designed to enhance configuration validation in software applications. This feature empowers developers to seamlessly integrate structured schema validation with configuration settings, ensuring that the configuration data is consistent with predefined schemas and providing detailed feedback when discrepancies are found.
+
+The `Config` function is defined as follows:
+
+```ts
+Config: <A>(name: string, schema: Schema<A, string>) => Config<A>
+```
+
+This function requires two parameters:
+
+- **name**: The identifier for the configuration setting.
+- **schema**: A schema object that describes the expected data type and structure.
+
+The function returns a [`Config`](https://effect.website/docs/guides/configuration) object that is directly integrated with your application's configuration management system.
+
+The `Config` function operates through the following steps:
+
+1. **Fetching Configuration**: The configuration value is retrieved based on its name.
+2. **Validation**: The value is then validated against the schema. If the value does not conform to the schema, the function formats and returns detailed validation errors.
+3. **Error Formatting**: Errors are formatted using `TreeFormatter.formatErrorSync` to provide clear, actionable error messages.
+
+**Example**
+
+Below is a practical example illustrating how to use the `Config` API:
+
+```ts
+// config.ts
+import { Schema } from "@effect/schema"
+import { Effect } from "effect"
+
+// const myconfig: Config<string>
+const myconfig = Schema.Config("Foo", Schema.String.pipe(Schema.minLength(4)))
+
+const program = Effect.gen(function* () {
+  const foo = yield* myconfig
+  console.log(`ok: ${foo}`)
+})
+
+Effect.runSync(program)
+```
+
+To test the configuration, execute the following commands:
+
+- **Test with Missing Configuration Data**:
+  ```sh
+  npx tsx config.ts
+  # Output:
+  # [(Missing data at Foo: "Expected Foo to exist in the process context")]
+  ```
+- **Test with Invalid Data**:
+  ```sh
+  Foo=bar npx tsx config.ts
+  # Output:
+  # [(Invalid data at Foo: "a string at least 4 character(s) long
+  # └─ Predicate refinement failure
+  #    └─ Expected a string at least 4 character(s) long, actual "bar"")]
+  ```
+- **Test with Valid Data**:
+  ```sh
+  Foo=foobar npx tsx config.ts
+  # Output:
+  # ok: foobar
+  ```
+
 ## Option
 
 **Cheatsheet**
