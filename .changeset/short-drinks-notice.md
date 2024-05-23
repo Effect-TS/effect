@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-make Array.separate heterogeneous
+make `Array.separate`, `Array.getRights`, `Array.getLefts`, `Array.getSomes` heterogeneous
