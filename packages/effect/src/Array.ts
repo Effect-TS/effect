@@ -2254,7 +2254,10 @@ export const partitionMap: {
  * @category filtering
  * @since 2.0.0
  */
-export const getSomes: <A>(self: Iterable<Option<A>>) => Array<A> = filterMap(identity)
+
+export const getSomes: <T extends Iterable<Option<X>>, X = any>(
+  self: T
+) => Array<Option.Value<ReadonlyArray.Infer<T>>> = filterMap(identity as any)
 
 /**
  * Retrieves the `Left` values from an `Iterable` of `Either`s, collecting them into an array.
@@ -2270,8 +2273,8 @@ export const getSomes: <A>(self: Iterable<Option<A>>) => Array<A> = filterMap(id
  * @category filtering
  * @since 2.0.0
  */
-export const getLefts = <R, L>(self: Iterable<Either<R, L>>): Array<L> => {
-  const out: Array<L> = []
+export const getLefts = <T extends Iterable<Either<any, any>>>(self: T): Array<Either.Left<ReadonlyArray.Infer<T>>> => {
+  const out: Array<any> = []
   for (const a of self) {
     if (E.isLeft(a)) {
       out.push(a.left)
@@ -2295,8 +2298,10 @@ export const getLefts = <R, L>(self: Iterable<Either<R, L>>): Array<L> => {
  * @category filtering
  * @since 2.0.0
  */
-export const getRights = <R, L>(self: Iterable<Either<R, L>>): Array<R> => {
-  const out: Array<R> = []
+export const getRights = <T extends Iterable<Either<any, any>>>(
+  self: T
+): Array<Either.Right<ReadonlyArray.Infer<T>>> => {
+  const out: Array<any> = []
   for (const a of self) {
     if (E.isRight(a)) {
       out.push(a.right)
@@ -2377,7 +2382,9 @@ export const partition: {
  * @category filtering
  * @since 2.0.0
  */
-export const separate: <R, L>(self: Iterable<Either<R, L>>) => [Array<L>, Array<R>] = partitionMap(
+export const separate: <T extends Iterable<Either<any, any>>>(
+  self: T
+) => [Array<Either.Left<ReadonlyArray.Infer<T>>>, Array<Either.Right<ReadonlyArray.Infer<T>>>] = partitionMap(
   identity
 )
 
