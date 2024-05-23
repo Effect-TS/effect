@@ -84,7 +84,7 @@ export type TupleOf<N extends number, T> = readonlyArray.TupleOf<T, N>
  * @category tuples
  * @since 3.3.0
  */
-export type TupleOfAtLeast<N extends number, T> = [...readonlyArray.TupleOf<T, N>, ...Array<T>]
+export type TupleOfAtLeast<N extends number, T> = [...TupleOf<N, T>, ...Array<T>]
 
 /**
  * Builds a `NonEmptyArray` from an non-empty collection of elements.
