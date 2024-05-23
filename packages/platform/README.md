@@ -679,6 +679,9 @@ timestamp=... level=INFO fiber=#0 message="Listening on http://localhost:3000"
 */
 ```
 
+> [!NOTE]
+> The `HttpServer.server.withLogAddress` middleware logs the address and port where the server is listening, helping to confirm that the server is running correctly and accessible on the expected endpoint.
+
 Bun Example
 
 ```ts
@@ -805,10 +808,7 @@ const router = HttpServer.router.empty.pipe(
   HttpServer.router.get("/", HttpServer.response.file("index.html"))
 )
 
-const app = router.pipe(
-  HttpServer.server.serve(),
-  HttpServer.server.withLogAddress
-)
+const app = router.pipe(HttpServer.server.serve())
 
 listen(app, 3000)
 ```
@@ -952,10 +952,7 @@ const router = HttpServer.router.empty.pipe(
   )
 )
 
-const app = router.pipe(
-  HttpServer.server.serve(),
-  HttpServer.server.withLogAddress
-)
+const app = router.pipe(HttpServer.server.serve())
 
 listen(app, 3000)
 ```
@@ -1003,10 +1000,7 @@ const router = HttpServer.router.empty.pipe(
   HttpServer.router.mount("/birds", birds)
 )
 
-const app = router.pipe(
-  HttpServer.server.serve(),
-  HttpServer.server.withLogAddress
-)
+const app = router.pipe(HttpServer.server.serve())
 
 listen(app, 3000)
 ```
@@ -1054,8 +1048,7 @@ const router = HttpServer.router.empty.pipe(
 
 const app = router.pipe(
   HttpServer.router.use(myLogger),
-  HttpServer.server.serve(),
-  HttpServer.server.withLogAddress
+  HttpServer.server.serve()
 )
 
 listen(app, 3000)
@@ -1105,8 +1098,7 @@ const router = HttpServer.router.empty.pipe(
 
 const app = router.pipe(
   HttpServer.router.use(requestTime),
-  HttpServer.server.serve(),
-  HttpServer.server.withLogAddress
+  HttpServer.server.serve()
 )
 
 listen(app, 3000)
@@ -1177,8 +1169,7 @@ const router = HttpServer.router.empty.pipe(
 
 const app = router.pipe(
   HttpServer.router.use(cookieValidator),
-  HttpServer.server.serve(),
-  HttpServer.server.withLogAddress
+  HttpServer.server.serve()
 )
 
 listen(app, 3000)
@@ -1193,6 +1184,260 @@ curl -i http://localhost:3000 --cookie "testCookie="
 ```
 
 This setup validates the `testCookie` and returns "Invalid cookie" if the validation fails, or "Hello World" if it passes.
+
+## Applying Middleware in Your Application
+
+Middleware functions are powerful tools that allow you to modify the request-response cycle. Middlewares can be applied at various levels to achieve different scopes of influence:
+
+- **Route Level**: Apply middleware to individual routes.
+- **Router Level**: Apply middleware to a group of routes within a single router.
+- **Server Level**: Apply middleware across all routes managed by a server.
+
+### Applying Middleware at the Route Level
+
+At the route level, middlewares are applied to specific endpoints, allowing for targeted modifications or enhancements such as logging, authentication, or parameter validation for a particular route.
+
+**Example**
+
+Here’s a practical example showing how to apply middleware at the route level:
+
+```ts
+import { HttpServer } from "@effect/platform"
+import { Effect } from "effect"
+import { listen } from "./listen.js"
+
+// Middleware constructor that logs the name of the middleware
+const withMiddleware = (name: string) =>
+  HttpServer.middleware.make((app) =>
+    Effect.gen(function* () {
+      console.log(name) // Log the middleware name when the route is accessed
+      return yield* app // Continue with the original application flow
+    })
+  )
+
+const router = HttpServer.router.empty.pipe(
+  // Applying middleware to route "/a"
+  HttpServer.router.get(
+    "/a",
+    HttpServer.response.text("a").pipe(withMiddleware("M1"))
+  ),
+  // Applying middleware to route "/b"
+  HttpServer.router.get(
+    "/b",
+    HttpServer.response.text("b").pipe(withMiddleware("M2"))
+  )
+)
+
+const app = router.pipe(HttpServer.server.serve())
+
+listen(app, 3000)
+```
+
+**Testing the Middleware**
+
+You can test the middleware by making requests to the respective routes and observing the console output:
+
+```sh
+# Test route /a
+curl -i http://localhost:3000/a
+# Expected console output: M1
+
+# Test route /b
+curl -i http://localhost:3000/b
+# Expected console output: M2
+```
+
+### Applying Middleware at the Router Level
+
+Applying middleware at the router level is an efficient way to manage common functionalities across multiple routes within your application. Middleware can handle tasks such as logging, authentication, and response modifications before reaching the actual route handlers.
+
+**Example**
+
+Here’s how you can structure and apply middleware across different routers using the `@effect/platform` library:
+
+```ts
+import { HttpServer } from "@effect/platform"
+import { Effect } from "effect"
+import { listen } from "./listen.js"
+
+// Middleware constructor that logs the name of the middleware
+const withMiddleware = (name: string) =>
+  HttpServer.middleware.make((app) =>
+    Effect.gen(function* () {
+      console.log(name) // Log the middleware name when a route is accessed
+      return yield* app // Continue with the original application flow
+    })
+  )
+
+// Define Router1 with specific routes
+const router1 = HttpServer.router.empty.pipe(
+  HttpServer.router.get("/a", HttpServer.response.text("a")), // Middleware M4, M3, M1 will apply
+  HttpServer.router.get("/b", HttpServer.response.text("b")), // Middleware M4, M3, M1 will apply
+  // Apply Middleware at the router level
+  HttpServer.router.use(withMiddleware("M1")),
+  HttpServer.router.get("/c", HttpServer.response.text("c")) // Middleware M4, M3 will apply
+)
+
+// Define Router2 with specific routes
+const router2 = HttpServer.router.empty.pipe(
+  HttpServer.router.get("/d", HttpServer.response.text("d")), // Middleware M4, M2 will apply
+  HttpServer.router.get("/e", HttpServer.response.text("e")), // Middleware M4, M2 will apply
+  HttpServer.router.get("/f", HttpServer.response.text("f")), // Middleware M4, M2 will apply
+  // Apply Middleware at the router level
+  HttpServer.router.use(withMiddleware("M2"))
+)
+
+// Main router combining Router1 and Router2
+const router = HttpServer.router.empty.pipe(
+  HttpServer.router.mount("/r1", router1),
+  // Apply Middleware affecting all routes under /r1
+  HttpServer.router.use(withMiddleware("M3")),
+  HttpServer.router.get("/g", HttpServer.response.text("g")), // Only Middleware M4 will apply
+  HttpServer.router.mount("/r2", router2),
+  // Apply Middleware affecting all routes
+  HttpServer.router.use(withMiddleware("M4"))
+)
+
+// Configure the application with the server middleware
+const app = router.pipe(HttpServer.server.serve())
+
+listen(app, 3000)
+```
+
+**Testing the Middleware**
+
+To ensure that the middleware is working as expected, you can test it by making HTTP requests to the defined routes and checking the console output for middleware logs:
+
+```sh
+# Test route /a under router1
+curl -i http://localhost:3000/r1/a
+# Expected console output: M4 M3 M1
+
+# Test route /c under router1
+curl -i http://localhost:3000/r1/c
+# Expected console output: M4 M3
+
+# Test route /d under router2
+curl -i http://localhost:3000/r2/d
+# Expected console output: M4 M2
+
+# Test route /g under the main router
+curl -i http://localhost:3000/g
+# Expected console output: M4
+```
+
+### Applying Middleware at the Server Level
+
+Applying middleware at the server level allows you to introduce certain functionalities, such as logging, authentication, or general request processing, that affect every request handled by the server. This ensures that all incoming requests, regardless of the route, pass through the applied middleware, making it an essential feature for global error handling, logging, or authentication.
+
+**Example**
+
+```ts
+import { HttpServer } from "@effect/platform"
+import { Effect } from "effect"
+import { listen } from "./listen.js"
+
+// Middleware constructor that logs the name of the middleware
+const withMiddleware = (name: string) =>
+  HttpServer.middleware.make((app) =>
+    Effect.gen(function* () {
+      console.log(name) // Log the middleware name when the route is accessed
+      return yield* app // Continue with the original application flow
+    })
+  )
+
+const router = HttpServer.router.empty.pipe(
+  HttpServer.router.get(
+    "/a",
+    HttpServer.response.text("a").pipe(withMiddleware("M1"))
+  ),
+  HttpServer.router.get("/b", HttpServer.response.text("b")),
+  HttpServer.router.use(withMiddleware("M2")),
+  HttpServer.router.get("/", HttpServer.response.text("root"))
+)
+
+const app = router.pipe(HttpServer.server.serve(withMiddleware("M3")))
+
+listen(app, 3000)
+```
+
+**Testing the Middleware**
+
+To confirm the middleware is functioning as intended, you can send HTTP requests to the defined routes and check the console for middleware logs:
+
+```sh
+# Test route /a and observe the middleware logs
+curl -i http://localhost:3000/a
+# Expected console output: M3 M2 M1  - Middleware M3 (server-level), M2 (router-level), and M1 (route-level) apply.
+
+# Test route /b and observe the middleware logs
+curl -i http://localhost:3000/b
+# Expected console output: M3 M2  - Middleware M3 (server-level) and M2 (router-level) apply.
+
+# Test route / and observe the middleware logs
+curl -i http://localhost:3000/
+# Expected console output: M3 M2  - Middleware M3 (server-level) and M2 (router-level) apply.
+```
+
+### Applying Multiple Middlewares
+
+Middleware functions are simply functions that transform a `Default` app into another `Default` app. This flexibility allows for stacking multiple middleware functions, much like composing functions in functional programming. The `flow` function from the `Effect` library facilitates this by enabling function composition.
+
+**Example**
+
+```ts
+import { HttpServer } from "@effect/platform"
+import { Effect, flow } from "effect"
+import { listen } from "./listen.js"
+
+// Middleware constructor that logs the middleware's name when a route is accessed
+const withMiddleware = (name: string) =>
+  HttpServer.middleware.make((app) =>
+    Effect.gen(function* () {
+      console.log(name) // Log the middleware name
+      return yield* app // Continue with the original application flow
+    })
+  )
+
+// Setup routes and apply multiple middlewares using flow for function composition
+const router = HttpServer.router.empty.pipe(
+  HttpServer.router.get(
+    "/a",
+    HttpServer.response
+      .text("a")
+      .pipe(flow(withMiddleware("M1"), withMiddleware("M2")))
+  ),
+  HttpServer.router.get("/b", HttpServer.response.text("b")),
+  // Apply combined middlewares to the entire router
+  HttpServer.router.use(flow(withMiddleware("M3"), withMiddleware("M4"))),
+  HttpServer.router.get("/", HttpServer.response.text("root"))
+)
+
+// Apply combined middlewares at the server level
+const app = router.pipe(
+  HttpServer.server.serve(flow(withMiddleware("M5"), withMiddleware("M6")))
+)
+
+listen(app, 3000)
+```
+
+**Testing the Middleware Composition**
+
+To verify that the middleware is functioning as expected, you can send HTTP requests to the routes and check the console for the expected middleware log output:
+
+```sh
+# Test route /a to see the output from multiple middleware layers
+curl -i http://localhost:3000/a
+# Expected console output: M6 M5 M4 M3 M2 M1
+
+# Test route /b where fewer middleware are applied
+curl -i http://localhost:3000/b
+# Expected console output: M6 M5 M4 M3
+
+# Test the root route to confirm top-level middleware application
+curl -i http://localhost:3000/
+# Expected console output: M6 M5
+```
 
 ## Built-in middleware
 
@@ -1216,10 +1461,7 @@ const router = HttpServer.router.empty.pipe(
 )
 
 // Apply the logger middleware globally
-const app = router.pipe(
-  HttpServer.server.serve(HttpServer.middleware.logger),
-  HttpServer.server.withLogAddress
-)
+const app = router.pipe(HttpServer.server.serve(HttpServer.middleware.logger))
 
 listen(app, 3000)
 /*
@@ -1250,10 +1492,7 @@ const router = HttpServer.router.empty.pipe(
 )
 
 // Apply the logger middleware globally
-const app = router.pipe(
-  HttpServer.server.serve(HttpServer.middleware.logger),
-  HttpServer.server.withLogAddress
-)
+const app = router.pipe(HttpServer.server.serve(HttpServer.middleware.logger))
 
 listen(app, 3000)
 /*
@@ -1286,8 +1525,7 @@ const router = HttpServer.router.empty.pipe(
 
 // Set up the server with xForwardedHeaders middleware
 const app = router.pipe(
-  HttpServer.server.serve(HttpServer.middleware.xForwardedHeaders),
-  HttpServer.server.withLogAddress
+  HttpServer.server.serve(HttpServer.middleware.xForwardedHeaders)
 )
 
 listen(app, 3000)
@@ -1336,8 +1574,7 @@ const app = router.pipe(
   Effect.catchAllCause((cause) =>
     HttpServer.response.text(cause.toString(), { status: 500 })
   ),
-  HttpServer.server.serve(),
-  HttpServer.server.withLogAddress
+  HttpServer.server.serve()
 )
 
 listen(app, 3000)
@@ -1388,10 +1625,7 @@ const router = HttpServer.router.empty.pipe(
   )
 )
 
-const app = router.pipe(
-  HttpServer.server.serve(),
-  HttpServer.server.withLogAddress
-)
+const app = router.pipe(HttpServer.server.serve())
 
 listen(app, 3000)
 ```
@@ -1434,10 +1668,7 @@ const router = HttpServer.router.empty.pipe(
   )
 )
 
-const app = router.pipe(
-  HttpServer.server.serve(),
-  HttpServer.server.withLogAddress
-)
+const app = router.pipe(HttpServer.server.serve())
 
 listen(app, 3000)
 ```
