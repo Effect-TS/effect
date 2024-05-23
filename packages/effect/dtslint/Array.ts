@@ -1,5 +1,6 @@
 import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
+import * as Either from "effect/Either"
 import * as Equal from "effect/Equal"
 import { hole, identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
@@ -1221,3 +1222,67 @@ pipe(
     b // $ExpectType number
   ) => [a, b] as [string, number])
 )
+
+// -------------------------------------------------------------------------------------
+// separate
+// -------------------------------------------------------------------------------------
+
+// $ExpectType [unknown[], unknown[]]
+Array.separate([])
+
+// $ExpectType [string[], number[]]
+Array.separate([Either.left("a"), Either.right(1)])
+
+// $ExpectType [string[], number[]]
+Array.separate(hole<Array<Either.Either<number, string>>>())
+
+// $ExpectType [string[], number[]]
+Array.separate(hole<Iterable<Either.Either<number, string>>>())
+
+// -------------------------------------------------------------------------------------
+// getRights
+// -------------------------------------------------------------------------------------
+
+// $ExpectType unknown[]
+Array.getRights([])
+
+// $ExpectType number[]
+Array.getRights([Either.left("a"), Either.right(1)])
+
+// $ExpectType number[]
+Array.getRights(hole<Array<Either.Either<number, string>>>())
+
+// $ExpectType number[]
+Array.getRights(hole<Iterable<Either.Either<number, string>>>())
+
+// -------------------------------------------------------------------------------------
+// getLefts
+// -------------------------------------------------------------------------------------
+
+// $ExpectType unknown[]
+Array.getLefts([])
+
+// $ExpectType string[]
+Array.getLefts([Either.left("a"), Either.right(1)])
+
+// $ExpectType string[]
+Array.getLefts(hole<Array<Either.Either<number, string>>>())
+
+// $ExpectType string[]
+Array.getLefts(hole<Iterable<Either.Either<number, string>>>())
+
+// -------------------------------------------------------------------------------------
+// getSomes
+// -------------------------------------------------------------------------------------
+
+// $ExpectType unknown[]
+Array.getSomes([])
+
+// $ExpectType number[]
+Array.getSomes([Option.none(), Option.some(1)])
+
+// $ExpectType number[]
+Array.getSomes(hole<Array<Option.Option<number>>>())
+
+// $ExpectType number[]
+Array.getSomes(hole<Iterable<Option.Option<number>>>())
