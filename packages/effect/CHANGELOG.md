@@ -1,5 +1,15 @@
 # effect
 
+## 3.2.5
+
+### Patch Changes
+
+- [#2823](https://github.com/Effect-TS/effect/pull/2823) [`608b01f`](https://github.com/Effect-TS/effect/commit/608b01fc342dbae2a642b308a67b84ead530ecea) Thanks @gcanti! - Array: simplify signatures (`ReadonlyArray<any> | Iterable<any> = Iterable<any>`)
+
+- [#2834](https://github.com/Effect-TS/effect/pull/2834) [`031c712`](https://github.com/Effect-TS/effect/commit/031c7122a24ac42e48d6a434646b4f5d279d7442) Thanks @tim-smart! - attach Stream.toReadableStream fibers to scope
+
+- [#2744](https://github.com/Effect-TS/effect/pull/2744) [`a44e532`](https://github.com/Effect-TS/effect/commit/a44e532cf3a6a498b12a5aacf8124aa267e24ba0) Thanks @KhraksMamtsov! - make `Array.separate`, `Array.getRights`, `Array.getLefts`, `Array.getSomes` heterogeneous
+
 ## 3.2.4
 
 ### Patch Changes
