@@ -44,6 +44,19 @@ export type NonEmptyReadonlyArray<A> = readonly [A, ...Array<A>]
 export type NonEmptyArray<A> = [A, ...Array<A>]
 
 /**
+ * @example
+ *
+ * import { Array } from "effect"
+ *
+ * type TupleOfThreeStrings = Array.TupleOf<string, 3>
+ * // ^ [string, string, string]
+ *
+ * @category models
+ * @since 3.2.4
+ */
+export type TupleOf<T, N extends number> = readonlyArray.TupleOf<T, N>
+
+/**
  * Builds a `NonEmptyArray` from an non-empty collection of elements.
  *
  * @example
