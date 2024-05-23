@@ -104,10 +104,11 @@ export declare namespace Worker {
    * @category models
    */
   export interface Options<I> {
-    readonly encode?: (message: I) => Effect.Effect<unknown, WorkerError>
-    readonly transfers?: (message: I) => ReadonlyArray<unknown>
-    readonly queue?: WorkerQueue<I>
-    readonly initialMessage?: LazyArg<I>
+    readonly encode?: ((message: I) => Effect.Effect<unknown, WorkerError>) | undefined
+    readonly transfers?: ((message: I) => ReadonlyArray<unknown>) | undefined
+    readonly queue?: WorkerQueue<I> | undefined
+    readonly initialMessage?: LazyArg<I> | undefined
+    readonly permits?: number | undefined
   }
 
   /**
@@ -156,17 +157,10 @@ export declare namespace WorkerPool {
    * @since 1.0.0
    * @category models
    */
-  export type Options<I> =
-    & Worker.Options<I>
-    & ({
-      readonly onCreate?: (worker: Worker<I, unknown, unknown>) => Effect.Effect<void, WorkerError>
-      readonly size: number
-    } | {
-      readonly onCreate?: (worker: Worker<I, unknown, unknown>) => Effect.Effect<void, WorkerError>
-      readonly minSize: number
-      readonly maxSize: number
-      readonly timeToLive: Duration.DurationInput
-    })
+  export interface Options<I> extends Worker.Options<I> {
+    readonly onCreate?: (worker: Worker<I, unknown, unknown>) => Effect.Effect<void, WorkerError>
+    readonly size: number
+  }
 }
 
 /**
@@ -276,7 +270,8 @@ export declare namespace SerializedWorker {
    * @category models
    */
   export interface BaseOptions<I> {
-    readonly queue?: WorkerQueue<I>
+    readonly permits?: number | undefined
+    readonly queue?: WorkerQueue<I> | undefined
   }
 }
 
