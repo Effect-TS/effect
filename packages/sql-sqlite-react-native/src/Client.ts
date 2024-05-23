@@ -15,7 +15,9 @@ import * as FiberRef from "effect/FiberRef"
 import { identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
+import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
+import * as Stream from "effect/Stream"
 
 /**
  * @category type ids
@@ -36,6 +38,10 @@ export type TypeId = typeof TypeId
 export interface SqliteClient extends Client.Client {
   readonly [TypeId]: TypeId
   readonly config: SqliteClientConfig
+  readonly reactive: <A>(
+    statement: Statement.Statement<A>,
+    tables: ReadonlyArray<string>
+  ) => Stream.Stream<ReadonlyArray<A>, SqlError>
 
   /** Not supported in sqlite */
   readonly updateValues: never
@@ -74,6 +80,13 @@ export const asyncQuery: FiberRef.FiberRef<boolean> = globalValue(
  */
 export const withAsyncQuery = <R, E, A>(effect: Effect.Effect<A, E, R>) => Effect.locally(effect, asyncQuery, true)
 
+interface SqliteConnection extends Connection {
+  readonly reactive: <A>(
+    statement: Statement.Statement<A>,
+    tables: ReadonlyArray<string>
+  ) => Stream.Stream<ReadonlyArray<A>, SqlError>
+}
+
 /**
  * @category constructor
  * @since 1.0.0
@@ -82,19 +95,24 @@ export const make = (
   options: SqliteClientConfig
 ): Effect.Effect<SqliteClient, never, Scope.Scope> =>
   Effect.gen(function*(_) {
+    const clientOptions: Parameters<typeof Sqlite.open>[0] = {
+      name: options.filename
+    }
+    if (options.location) {
+      clientOptions.location = options.location
+    }
+    if (options.encryptionKey) {
+      clientOptions.encryptionKey = options.encryptionKey
+    }
+
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
     const transformRows = Statement.defaultTransforms(
       options.transformResultNames!
     ).array
-
     const handleError = (error: any) => new SqlError({ error })
 
     const makeConnection = Effect.gen(function*(_) {
-      const db = Sqlite.open({
-        name: options.filename,
-        location: options.location!,
-        encryptionKey: options.encryptionKey!
-      })
+      const db = Sqlite.open(clientOptions)
       yield* _(Effect.addFinalizer(() => Effect.sync(() => db.close())))
 
       const run = (
@@ -121,7 +139,7 @@ export const make = (
         ? (sql: string, params?: ReadonlyArray<Statement.Primitive>) => Effect.map(run(sql, params), transformRows)
         : run
 
-      return identity<Connection>({
+      return identity<SqliteConnection>({
         execute(sql, params) {
           return runTransform(sql, params)
         },
@@ -142,6 +160,35 @@ export const make = (
         },
         executeStream() {
           return Effect.dieMessage("executeStream not implemented")
+        },
+        reactive<A>(statement: Statement.Statement<A>, tables: ReadonlyArray<string>) {
+          const [query, params] = statement.compile()
+          return Queue.sliding<ReadonlyArray<A>>(1).pipe(
+            Effect.tap((queue) =>
+              this.execute(query, params).pipe(
+                Effect.flatMap((rows) => queue.offer(rows))
+              )
+            ),
+            Effect.tap((queue) =>
+              Effect.acquireRelease(
+                Effect.try({
+                  try: () =>
+                    db.reactiveExecute({
+                      query,
+                      arguments: params as any,
+                      tables: tables as Array<string>,
+                      callback(data) {
+                        queue.unsafeOffer(data.rows)
+                      }
+                    }),
+                  catch: handleError
+                }),
+                (cancel) => Effect.sync(cancel)
+              )
+            ),
+            Effect.map(Stream.fromQueue),
+            Stream.unwrapScoped
+          )
         }
       })
     })
@@ -170,7 +217,16 @@ export const make = (
         transactionAcquirer,
         spanAttributes: [[Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_SQLITE]]
       }) as SqliteClient,
-      { [TypeId]: TypeId, config: options }
+      {
+        [TypeId]: TypeId,
+        config: options,
+        reactive<A>(statement: Statement.Statement<A>, tables: ReadonlyArray<string>) {
+          return Stream.unwrap(Effect.map(
+            acquirer,
+            (connection) => connection.reactive(statement, tables)
+          ))
+        }
+      }
     )
   })
 

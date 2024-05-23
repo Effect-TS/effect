@@ -13,6 +13,11 @@ import * as Layer from "effect/Layer"
 export * from "@effect/sql/Migrator"
 
 /**
+ * @since 1.0.0
+ */
+export * from "@effect/sql/Migrator/FileSystem"
+
+/**
  * @category constructor
  * @since 1.0.0
  */
