@@ -39,14 +39,15 @@
   },
   "devDependencies": {
     "@effect/sql": "workspace:^",
+    "@op-engineering/op-sqlite": "6.0.2-beta1",
     "effect": "workspace:^"
   },
   "peerDependencies": {
     "@effect/sql": "workspace:^",
+    "@op-engineering/op-sqlite": "6.0.2-beta1",
     "effect": "workspace:^"
   },
   "dependencies": {
-    "@op-engineering/op-sqlite": "6.0.1",
     "@opentelemetry/semantic-conventions": "^1.24.1"
   }
 }

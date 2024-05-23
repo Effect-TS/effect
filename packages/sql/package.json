@@ -51,5 +51,13 @@
     "@effect/platform": "workspace:^",
     "@effect/schema": "workspace:^",
     "effect": "workspace:^"
+  },
+  "effect": {
+    "generateExports": {
+      "include": [
+        "*.ts",
+        "Migrator/*.ts"
+      ]
+    }
   }
 }
