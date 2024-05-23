@@ -1,3 +1,8 @@
+/**
+ * This module provides utility functions for working with dates in TypeScript.
+ *
+ * @since 3.3.0
+ */
 import type { Branded } from "./Brand.js"
 import * as Duration from "./Duration.js"
 import * as Either from "./Either.js"
@@ -608,19 +613,19 @@ export const addUTCWeeks: {
  *
  * May adjust the month more or less than expected if the day is the last of the month and the target month is short. See also {@link addMonthsStrict}.
  *
- * @since 3.3.0
- * @category math
- *
  * @example
- * ```typescript
+ * import { Date, pipe } from "effect"
+ *
  * const baseDate1 = pipe("2024-01-31", Date.unsafeParse, Date.localAsUTC)
  * const result1 = pipe(baseDate1, Date.addUTCMonths(1), Date.toISODateString)
- * expect(result1).toEqual("2024-03-02")
+ * assert.deepStrictEqual(result1, "2024-03-02")
  *
  * const baseDate2 = pipe("2024-03-31", Date.unsafeParse, Date.localAsUTC)
  * const result2 = pipe(baseDate2, Date.addUTCMonths(-1), Date.toISODateString)
- * expect(result2).toEqual("2024-03-02")
- * ```
+ * assert.deepStrictEqual(result2, "2024-03-02")
+ *
+ * @since 3.3.0
+ * @category math
  */
 export const addMonths: {
   (months: number): (self: Date) => Date
@@ -632,19 +637,19 @@ export const addMonths: {
  *
  * May adjust the month more or less than expected if the day is the last of the month and the target month is short. See also {@link addUTCMonthsStrict}.
  *
- * @since 3.3.0
- * @category math
- *
  * @example
- * ```typescript
+ * import { Date, pipe } from "effect"
+ *
  * const baseDate1 = pipe("2024-01-31", Date.unsafeParse, Date.localAsUTC)
  * const result1 = pipe(baseDate1, Date.addUTCMonths(1), Date.toISODateString)
- * expect(result1).toEqual("2024-03-02")
+ * assert.deepStrictEqual(result1, "2024-03-02")
  *
  * const baseDate2 = pipe("2024-03-31", Date.unsafeParse, Date.localAsUTC)
  * const result2 = pipe(baseDate2, Date.addUTCMonths(-1), Date.toISODateString)
- * expect(result2).toEqual("2024-03-02")
- * ```
+ * assert.deepStrictEqual(result2, "2024-03-02")
+ *
+ * @since 3.3.0
+ * @category math
  */
 export const addUTCMonths: {
   (months: number): (self: Date) => Date
@@ -656,19 +661,19 @@ export const addUTCMonths: {
  *
  * If the day is the last of the month and the target month is short, the day will be set to zero to strictly add the desired number of months.
  *
- * @since 3.3.0
- * @category math
- *
  * @example
- * ```typescript
+ * import { Date, pipe } from "effect"
+ *
  * const baseDate1 = pipe("2024-01-31", Date.unsafeParse, Date.localAsUTC)
  * const result1 = pipe(baseDate1, Date.addUTCMonthsStrict(1), Date.toISODateString)
- * expect(result1).toEqual("2024-02-29")
+ * assert.deepStrictEqual(result1, "2024-02-29")
  *
  * const baseDate2 = pipe("2024-03-31", Date.unsafeParse, Date.localAsUTC)
  * const result2 = pipe(baseDate2, Date.addUTCMonthsStrict(-1), Date.toISODateString)
- * expect(result2).toEqual("2024-02-29")
- * ```
+ * assert.deepStrictEqual(result2, "2024-02-29")
+ *
+ * @since 3.3.0
+ * @category math
  */
 export const addMonthsStrict: {
   (months: number): (self: Date) => Date
@@ -684,19 +689,19 @@ export const addMonthsStrict: {
  *
  * If the day is the last of the month and the target month is short, the day will be set to zero to strictly add the desired number of months.
  *
- * @since 3.3.0
- * @category math
- *
  * @example
- * ```typescript
+ * import { Date, pipe } from "effect"
+ *
  * const baseDate1 = pipe("2024-01-31", Date.unsafeParse, Date.localAsUTC)
  * const result1 = pipe(baseDate1, Date.addUTCMonthsStrict(1), Date.toISODateString)
- * expect(result1).toEqual("2024-02-29")
+ * assert.deepStrictEqual(result1, "2024-02-29")
  *
  * const baseDate2 = pipe("2024-03-31", Date.unsafeParse, Date.localAsUTC)
  * const result2 = pipe(baseDate2, Date.addUTCMonthsStrict(-1), Date.toISODateString)
- * expect(result2).toEqual("2024-02-29")
- * ```
+ * assert.deepStrictEqual(result2, "2024-02-29")
+ *
+ * @since 3.3.0
+ * @category math
  */
 export const addUTCMonthsStrict: {
   (months: number): (self: Date) => Date
@@ -1199,19 +1204,19 @@ export const ceilUTCYear = flow(floorUTCYear, addUTCYears(1))
  *
  * This frees you from having to worry about manipulation of dates across daylight-savings-time boundaries resulting in unexpected date strings.
  *
- * @since 3.3.0
- * @category utils
- *
  * @example
- * ```typescript
+ * import { Date, pipe } from "effect"
+ *
  * const baseDate1 = pipe("2024-01-01T00:00:00.000", Date.unsafeParse, Date.localAsUTC)
  * const result1 = pipe(baseDate1, Date.addUTCMonths(6), Date.toISOString)
- * expect(result1).toEqual("2024-07-01T00:00:00.000Z")
+ * assert.deepStrictEqual(result1, "2024-07-01T00:00:00.000Z")
  *
  * const baseDate2 = pipe("2024-07-01T00:00:00.000", Date.unsafeParse, Date.localAsUTC)
  * const result2 = pipe(baseDate2, Date.addUTCMonths(6), Date.toISOString)
- * expect(result2).toEqual("2025-01-01T00:00:00.000Z")
- * ```
+ * assert.deepStrictEqual(result2, "2025-01-01T00:00:00.000Z")
+ *
+ * @since 3.3.0
+ * @category utils
  */
 export const localAsUTC = (self: Date) => addUTCMinutes(self, getTimeZoneOffset(self) * -1)
 
@@ -1621,48 +1626,42 @@ export const getDaysInUTCYear = (self: Date): number =>
 /**
  * Get a string representation of a date, using local time.
  *
- * @since 3.3.0
- * @category getters
- *
  * @example
- * ```typescript
  * import { Date, pipe } from "effect"
  *
  * pipe(Date.create(), Date.toDateString, console.log)
  * // Expected output: "Fri May 17 2024", varies by locale
- * ```
+ *
+ * @since 3.3.0
+ * @category getters
  */
 export const toDateString = (self: Date): DateString => self.toDateString() as DateString
 
 /**
  * Get a string representation of a date in ISO 8601 format, using Universal Coordinated Time (UTC).
  *
- * @since 3.3.0
- * @category getters
- *
  * @example
- * ```typescript
  * import { Date, pipe } from "effect"
  *
  * pipe(Date.create(), Date.toISOString, console.log)
  * // Expected output: "2024-05-17T17:50:57.100Z"
- * ```
+ *
+ * @since 3.3.0
+ * @category getters
  */
 export const toISOString = (self: Date): DateString => self.toISOString() as DateString
 
 /**
  * Get the date portion of a string representation of a date in ISO 8601 format, using Universal Coordinated Time (UTC).
  *
- * @since 3.3.0
- * @category getters
- *
  * @example
- * ```typescript
  * import { Date, pipe } from "effect"
  *
- * pipe(Date.create(), Date.toISOStringShort, console.log)
+ * pipe(Date.create(), Date.toISODateString, console.log)
  * // Expected output: "2024-05-17"
- * ```
+ *
+ * @since 3.3.0
+ * @category getters
  */
 export const toISODateString = (self: Date): DateString => String.takeLeft(self.toISOString(), 10) as DateString
 
@@ -1733,48 +1732,42 @@ export const toLocaleTimeString: {
 /**
  * Get the string representation of a date, using local time.
  *
- * @since 3.3.0
- * @category getters
- *
  * @example
- * ```typescript
  * import { Date, pipe } from "effect"
  *
  * pipe(Date.create(), Date.toString, console.log)
  * // Expected output: "Sat May 18 2024 14:00:22 GMT+0100 (British Summer Time)", varies by locale
- * ```
+ *
+ * @since 3.3.0
+ * @category getters
  */
 export const toString = (self: Date): DateString => self.toString() as DateString
 
 /**
  * Get the string representation of the time portion of a date, using local time.
  *
- * @since 3.3.0
- * @category getters
- *
  * @example
- * ```typescript
  * import { Date, pipe } from "effect"
  *
  * pipe(Date.create(), Date.toDateString, console.log)
  * // Expected output: "14:03:24 GMT+0100 (British Summer Time)", varies by locale
- * ```
+ *
+ * @since 3.3.0
+ * @category getters
  */
 export const toTimeString = (self: Date): string => self.toTimeString()
 
 /**
  * Get the string representation of a date, using Universal Coordinated Time (UTC).
  *
- * @since 3.3.0
- * @category getters
- *
  * @example
- * ```typescript
  * import { Date, pipe } from "effect"
  *
  * pipe(Date.create(), Date.toUTCString, console.log)
  * // Expected output: "Sat, 18 May 2024 13:04:55 GMT"
- * ```
+ *
+ * @since 3.3.0
+ * @category getters
  */
 export const toUTCString = (self: Date): DateString => self.toUTCString() as DateString
 
