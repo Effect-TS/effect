@@ -13,6 +13,8 @@ declare const nonEmptyStrings: Array.NonEmptyArray<string>
 declare const readonlyNumbers: ReadonlyArray<number>
 declare const numbers: Array<number>
 declare const strings: Array<string>
+declare const iterNumbers: Iterable<number>
+declare const iterStrings: Iterable<string>
 declare const numbersOrStrings: Array<number | string>
 
 declare const pimitiveNumber: number
@@ -712,11 +714,15 @@ flattenNonEmptyArray.pipe(Effect.map(Array.flatten))
 // prependAll
 // -------------------------------------------------------------------------------------
 
+// Array + Array
+
 // $ExpectType (string | number)[]
 Array.prependAll(strings, numbers)
 
 // $ExpectType (string | number)[]
 pipe(strings, Array.prependAll(numbers))
+
+// NonEmptyArray + Array
 
 // $ExpectType [string | number, ...(string | number)[]]
 Array.prependAll(nonEmptyStrings, numbers)
@@ -724,17 +730,45 @@ Array.prependAll(nonEmptyStrings, numbers)
 // $ExpectType [string | number, ...(string | number)[]]
 pipe(nonEmptyStrings, Array.prependAll(numbers))
 
+// Array + NonEmptyArray
+
 // $ExpectType [string | number, ...(string | number)[]]
 Array.prependAll(strings, nonEmptyNumbers)
 
 // $ExpectType [string | number, ...(string | number)[]]
 pipe(strings, Array.prependAll(nonEmptyNumbers))
 
+// NonEmptyArray + NonEmptyArray
+
 // $ExpectType [string | number, ...(string | number)[]]
 Array.prependAll(nonEmptyStrings, nonEmptyNumbers)
 
 // $ExpectType [string | number, ...(string | number)[]]
 pipe(nonEmptyStrings, Array.prependAll(nonEmptyNumbers))
+
+// Iterable + Array
+
+// $ExpectType (string | number)[]
+Array.prependAll(iterStrings, numbers)
+
+// $ExpectType (string | number)[]
+pipe(iterStrings, Array.prependAll(numbers))
+
+// Iterable + NonEmptyArray
+
+// $ExpectType [string | number, ...(string | number)[]]
+Array.prependAll(iterStrings, nonEmptyNumbers)
+
+// $ExpectType [string | number, ...(string | number)[]]
+pipe(iterStrings, Array.prependAll(nonEmptyNumbers))
+
+// NonEmptyArray + Iterable
+
+// $ExpectType [string | number, ...(string | number)[]]
+Array.prependAll(nonEmptyStrings, iterNumbers)
+
+// $ExpectType [string | number, ...(string | number)[]]
+pipe(nonEmptyStrings, Array.prependAll(iterNumbers))
 
 // -------------------------------------------------------------------------------------
 // appendAll
