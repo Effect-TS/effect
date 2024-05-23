@@ -1,5 +1,16 @@
 # @effect/schema
 
+## 0.67.12
+
+### Patch Changes
+
+- [#2814](https://github.com/Effect-TS/effect/pull/2814) [`f8038ca`](https://github.com/Effect-TS/effect/commit/f8038cadd5f50d397469e5fdbc70dd8f69671f50) Thanks @gcanti! - Add support for Enums in Record, closes #2811
+
+- [#2816](https://github.com/Effect-TS/effect/pull/2816) [`e376641`](https://github.com/Effect-TS/effect/commit/e3766411b60ebb45d31e9c9d94efa099121d4d58) Thanks @gcanti! - Add support for `Config` module, closes #2346
+
+- Updated dependencies [[`1af94df`](https://github.com/Effect-TS/effect/commit/1af94df6b74aeb4f6ebcbe80e074b4cb252e62e3), [`e313a01`](https://github.com/Effect-TS/effect/commit/e313a01b7e80f6cb7704055a190e5623c9d22c6d)]:
+  - effect@3.2.4
+
 ## 0.67.11
 
 ### Patch Changes
