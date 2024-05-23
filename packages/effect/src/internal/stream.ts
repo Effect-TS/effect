@@ -1,3 +1,4 @@
+import * as Arr from "../Array.js"
 import * as Cause from "../Cause.js"
 import type * as Channel from "../Channel.js"
 import * as Chunk from "../Chunk.js"
@@ -7608,6 +7609,34 @@ export const zipLatest = dual<
     that: Stream.Stream<A2, E2, R2>
   ): Stream.Stream<[A, A2], E2 | E, R2 | R> => pipe(self, zipLatestWith(that, (a, a2) => [a, a2]))
 )
+
+/** @internal */
+export type ZipLatestAllValues<T extends Array<Stream.Stream<unknown, unknown, unknown>>> = {
+  [K in keyof T]: T[K] extends Stream.Stream<infer U> ? U : never
+}
+/** @internal */
+export type ZipLatestAllErrors<T extends Array<Stream.Stream<unknown, unknown, unknown>>> = T extends
+  Array<Stream.Stream<unknown, infer E, unknown>> ? E : never
+/** @internal */
+export type ZipLatestAllContext<T extends Array<Stream.Stream<unknown, unknown, unknown>>> = T extends
+  Array<Stream.Stream<unknown, unknown, infer R>> ? R : never
+
+export const zipLatestAll = <T extends Array<Stream.Stream<unknown>>>(
+  ...streams: T
+): Stream.Stream<ZipLatestAllValues<T>, ZipLatestAllErrors<T>, ZipLatestAllContext<T>> => {
+  if (Arr.isTupleOf(streams, 1)) {
+    return pipe(streams[0], map((x) => [x] as ZipLatestAllValues<T>))
+  }
+  if (Arr.isTupleOfAtLeast(streams, 2)) {
+    const [head, ...tail] = streams
+    return zipLatestWith(
+      head,
+      zipLatestAll(...tail),
+      (first, second) => [first, ...second] as ZipLatestAllValues<T>
+    )
+  }
+  return empty
+}
 
 /** @internal */
 export const zipLatestWith = dual<

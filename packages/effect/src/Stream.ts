@@ -4351,6 +4351,44 @@ export const zipLatest: {
 } = internal.zipLatest
 
 /**
+ * Zips multiple streams so that when a value is emitted by any of the streams,
+ * it is combined with the latest values from the other streams to produce a result.
+ *
+ * Note: tracking the latest value is done on a per-chunk basis. That means
+ * that emitted elements that are not the last value in chunks will never be
+ * used for zipping.
+ *
+ * @example
+ * import { Stream } from "effect"
+ *
+ * const stream = Stream.zipLatestAll(
+ *     Stream.fromSchedule(Schedule.spaced('500 millis')),
+ *     Stream.fromSchedule(Schedule.spaced('1000 millis')),
+ *     Stream.fromSchedule(Schedule.spaced('2000 millis')),
+ * ).pipe(Stream.tap(Console.log))
+ *
+ * Effect.runPromise(Stream.runDrain(stream))
+ * // Output:
+ * [ 0, 0, 0 ]
+ * [ 1, 0, 0 ]
+ * [ 1, 1, 0 ]
+ * [ 2, 1, 0 ]
+ * [ 3, 1, 0 ]
+ * [ 3, 1, 1 ]
+ * // .....
+ *
+ * @since 2.0.0
+ * @category zipping
+ */
+export const zipLatestAll: <T extends Array<Stream<unknown>>>(
+  ...streams: T
+) => Stream<
+  internal.ZipLatestAllValues<T>,
+  internal.ZipLatestAllErrors<T>,
+  internal.ZipLatestAllContext<T>
+> = internal.zipLatestAll
+
+/**
  * Zips the two streams so that when a value is emitted by either of the two
  * streams, it is combined with the latest value from the other stream to
  * produce a result.
