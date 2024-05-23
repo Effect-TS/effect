@@ -7,11 +7,7 @@ interface MyWorkerPool {
   readonly _: unique symbol
 }
 const Pool = Context.GenericTag<MyWorkerPool, Worker.WorkerPool<number, never, number>>("@app/MyWorkerPool")
-const PoolLive = Worker.makePoolLayer(Pool, {
-  minSize: 0,
-  maxSize: 3,
-  timeToLive: 30000
-}).pipe(
+const PoolLive = Worker.makePoolLayer(Pool, { size: 3 }).pipe(
   Layer.provide(NodeWorker.layer(() => new WT.Worker("./examples/worker/range.ts")))
 )
 

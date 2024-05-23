@@ -8,9 +8,7 @@ interface MyWorkerPool {
 }
 const Pool = Context.GenericTag<MyWorkerPool, Worker.WorkerPool<number, never, number>>("@app/MyWorkerPool")
 const PoolLive = Worker.makePoolLayer(Pool, {
-  minSize: 0,
-  maxSize: OS.availableParallelism(),
-  timeToLive: 10000
+  size: OS.availableParallelism()
 }).pipe(
   Layer.provide(BunWorker.layer(() => new globalThis.Worker("./examples/worker/range.ts")))
 )
