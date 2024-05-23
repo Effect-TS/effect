@@ -156,7 +156,7 @@ export const fromIterable = <A>(collection: Iterable<A>): Array<A> =>
  * assert.deepStrictEqual(cast(["a", "b", "c"]), ["a", "b", "c"])
  *
  * @category constructors
- * @since 2.0.0
+ * @since 3.3.0
  */
 export const cast = <A>(self: Array<A> | A): Array<A> => Array.isArray(self) ? self : [self]
 
