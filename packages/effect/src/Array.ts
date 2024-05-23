@@ -44,6 +44,49 @@ export type NonEmptyReadonlyArray<A> = readonly [A, ...Array<A>]
 export type NonEmptyArray<A> = [A, ...Array<A>]
 
 /**
+ * Represents a tuple with a fixed number of elements of type `T`.
+ *
+ * This type constructs a tuple that has exactly `N` elements of type `T`.
+ *
+ * @typeParam N - The number of elements in the tuple.
+ * @typeParam T - The type of elements in the tuple.
+ *
+ * @example
+ * import { TupleOf } from "effect/Array"
+ *
+ * // A tuple with exactly 3 numbers
+ * const example1: TupleOf<3, number> = [1, 2, 3]; // valid
+ * const example2: TupleOf<3, number> = [1, 2]; // invalid
+ * const example3: TupleOf<3, number> = [1, 2, 3, 4]; // invalid
+ *
+ * @category tuples
+ * @since 3.3.0
+ */
+export type TupleOf<N extends number, T> = readonlyArray.TupleOf<T, N>
+
+/**
+ * Represents a tuple with at least `N` elements of type `T`.
+ *
+ * This type constructs a tuple that has a fixed number of elements `N` of type `T` at the start,
+ * followed by any number (including zero) of additional elements of the same type `T`.
+ *
+ * @typeParam N - The minimum number of elements in the tuple.
+ * @typeParam T - The type of elements in the tuple.
+ *
+ * @example
+ * import { TupleOfAtLeast } from "effect/Array"
+ *
+ * // A tuple with at least 3 numbers
+ * const example1: TupleOfAtLeast<3, number> = [1, 2, 3]; // valid
+ * const example2: TupleOfAtLeast<3, number> = [1, 2, 3, 4, 5]; // valid
+ * const example3: TupleOfAtLeast<3, number> = [1, 2]; // invalid
+ *
+ * @category tuples
+ * @since 3.3.0
+ */
+export type TupleOfAtLeast<N extends number, T> = [...readonlyArray.TupleOf<T, N>, ...Array<T>]
+
+/**
  * Builds a `NonEmptyArray` from an non-empty collection of elements.
  *
  * @example
