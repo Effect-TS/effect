@@ -188,8 +188,7 @@ export * as Cron from "./Cron.js"
 export * as Data from "./Data.js"
 
 /**
- * Branded type representing the number of milliseconds elapsed since midnight, January 1, 1970 Universal Coordinated Time (UTC).
- *
+ * @since 3.3.0
  * @category models
  */
 export * as Date from "./Date.js"
