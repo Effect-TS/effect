@@ -1,5 +1,11 @@
 # @effect/sql-mysql2
 
+## 0.3.1
+
+### Patch Changes
+
+- [#2838](https://github.com/Effect-TS/effect/pull/2838) [`bf66289`](https://github.com/Effect-TS/effect/commit/bf662893dca07351b249e4ec1d1a9d0108d6f9e1) Thanks @tim-smart! - allow additional span attributes to be passed to sql clients
+
 ## 0.3.0
 
 ### Minor Changes
