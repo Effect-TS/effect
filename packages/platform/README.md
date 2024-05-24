@@ -310,6 +310,95 @@ const readFileString = Effect.gen(function* (_) {
 NodeRuntime.runMain(readFileString.pipe(Effect.provide(NodeFileSystem.layer)))
 ```
 
+# KeyValueStore
+
+## Overview
+
+The `KeyValueStore` module provides a robust and effectful interface for managing key-value pairs. It supports asynchronous operations, ensuring data integrity and consistency, and includes built-in implementations for in-memory, file system-based, and schema-validated stores.
+
+## Basic Usage
+
+The `KeyValueStore` interface includes the following operations:
+
+- **get**: Retrieve a value by key.
+- **set**: Store a key-value pair.
+- **remove**: Delete a key-value pair.
+- **clear**: Remove all key-value pairs.
+- **size**: Get the number of stored pairs.
+- **modify**: Atomically modify a value.
+- **has**: Check if a key exists.
+- **isEmpty**: Check if the store is empty.
+
+**Example**
+
+```ts
+import { KeyValueStore, layerMemory } from "@effect/platform/KeyValueStore"
+import { Effect } from "effect"
+
+const program = Effect.gen(function* () {
+  const store = yield* KeyValueStore
+  console.log(yield* store.size) // Outputs: 0
+
+  yield* store.set("key", "value")
+  console.log(yield* store.size) // Outputs: 1
+
+  const value = yield* store.get("key")
+  console.log(value) // Outputs: { _id: 'Option', _tag: 'Some', value: 'value' }
+
+  yield* store.remove("key")
+  console.log(yield* store.size) // Outputs: 0
+})
+
+Effect.runPromise(program.pipe(Effect.provide(layerMemory)))
+```
+
+## Built-in Implementations
+
+The module provides several built-in implementations to suit different needs:
+
+- **In-Memory Store**: `layerMemory` provides a simple, in-memory key-value store, ideal for lightweight or testing scenarios.
+- **File System Store**: `layerFileSystem` offers a file-based store for persistent storage needs.
+- **Schema Store**: `layerSchema` enables schema-based validation for stored values, ensuring data integrity and type safety.
+
+## Schema Store
+
+The `SchemaStore` implementation allows you to validate and parse values according to a defined schema. This ensures that all data stored in the key-value store adheres to the specified structure, enhancing data integrity and type safety.
+
+**Example**
+
+```ts
+import { KeyValueStore, layerMemory } from "@effect/platform/KeyValueStore"
+import { Schema } from "@effect/schema"
+import { Effect } from "effect"
+
+// Define a schema for the values
+const Person = Schema.Struct({
+  name: Schema.String,
+  age: Schema.Number
+})
+
+const program = Effect.gen(function* () {
+  const store = (yield* KeyValueStore).forSchema(Person)
+
+  // Create a value that adheres to the schema
+  const value = { name: "Alice", age: 30 }
+  yield* store.set("user1", value)
+  console.log(yield* store.size) // Outputs: 1
+
+  // Retrieve and validate the value
+  const retrievedValue = yield* store.get("user1")
+  console.log(retrievedValue) // Outputs: { _id: 'Option', _tag: 'Some', value: { name: 'Alice', age: 30 } }
+})
+
+Effect.runPromise(program.pipe(Effect.provide(layerMemory)))
+```
+
+In this example:
+
+- **Person**: Defines the structure for the values stored in the key-value store.
+- **store.set**: Stores a value adhering to `Person`.
+- **store.get**: Retrieves and validates the stored value against `Person`.
+
 # HTTP Client
 
 ## Retrieving Data (GET)
