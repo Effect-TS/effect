@@ -8,6 +8,7 @@ import type { FiberRef } from "../FiberRef.js"
 import * as FiberRefsPatch from "../FiberRefsPatch.js"
 import type { LazyArg } from "../Function.js"
 import { dual, pipe } from "../Function.js"
+import * as HashMap from "../HashMap.js"
 import type * as Layer from "../Layer.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
@@ -1109,8 +1110,70 @@ export const unwrapScoped = <A, E1, R1, E, R>(
 }
 
 // -----------------------------------------------------------------------------
+// logging
+// -----------------------------------------------------------------------------
+
+export const annotateLogs = dual<
+  {
+    (key: string, value: unknown): <A, E, R>(self: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>
+    (
+      values: Record<string, unknown>
+    ): <A, E, R>(self: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>
+  },
+  {
+    <A, E, R>(self: Layer.Layer<A, E, R>, key: string, value: unknown): Layer.Layer<A, E, R>
+    <A, E, R>(self: Layer.Layer<A, E, R>, values: Record<string, unknown>): Layer.Layer<A, E, R>
+  }
+>(
+  (args) => isLayer(args[0]),
+  function<A, E, R>() {
+    const args = arguments
+    return fiberRefLocallyWith(
+      args[0] as Layer.Layer<A, E, R>,
+      core.currentLogAnnotations,
+      typeof args[1] === "string"
+        ? HashMap.set(args[1], args[2])
+        : (annotations) =>
+          Object.entries(args[1] as Record<string, unknown>).reduce(
+            (acc, [key, value]) => HashMap.set(acc, key, value),
+            annotations
+          )
+    )
+  }
+)
+
+// -----------------------------------------------------------------------------
 // tracing
 // -----------------------------------------------------------------------------
+
+export const annotateSpans = dual<
+  {
+    (key: string, value: unknown): <A, E, R>(self: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>
+    (
+      values: Record<string, unknown>
+    ): <A, E, R>(self: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>
+  },
+  {
+    <A, E, R>(self: Layer.Layer<A, E, R>, key: string, value: unknown): Layer.Layer<A, E, R>
+    <A, E, R>(self: Layer.Layer<A, E, R>, values: Record<string, unknown>): Layer.Layer<A, E, R>
+  }
+>(
+  (args) => isLayer(args[0]),
+  function<A, E, R>() {
+    const args = arguments
+    return fiberRefLocallyWith(
+      args[0] as Layer.Layer<A, E, R>,
+      core.currentTracerSpanAnnotations,
+      typeof args[1] === "string"
+        ? HashMap.set(args[1], args[2])
+        : (annotations) =>
+          Object.entries(args[1] as Record<string, unknown>).reduce(
+            (acc, [key, value]) => HashMap.set(acc, key, value),
+            annotations
+          )
+    )
+  }
+)
 
 /** @internal */
 export const withSpan: {
