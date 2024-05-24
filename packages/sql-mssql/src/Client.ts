@@ -90,6 +90,8 @@ export interface MssqlClientConfig {
 
   readonly parameterTypes?: Record<Statement.PrimitiveKind, DataType> | undefined
 
+  readonly spanAttributes?: Record<string, unknown> | undefined
+
   readonly transformResultNames?: ((str: string) => string) | undefined
   readonly transformQueryNames?: ((str: string) => string) | undefined
 }
@@ -379,6 +381,7 @@ export const make = (
         compiler,
         transactionAcquirer: pool.get,
         spanAttributes: [
+          ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
           [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_MSSQL],
           [Otel.SEMATTRS_DB_NAME, options.database ?? "master"],
           ["server.address", options.server],

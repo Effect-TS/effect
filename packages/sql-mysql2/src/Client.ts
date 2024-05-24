@@ -54,21 +54,23 @@ export interface MysqlClientConfig {
   /**
    * Connection URI. Setting this will override the other connection options
    */
-  readonly url?: Secret.Secret
+  readonly url?: Secret.Secret | undefined
 
-  readonly host?: string
-  readonly port?: number
-  readonly database?: string
-  readonly username?: string
-  readonly password?: Secret.Secret
+  readonly host?: string | undefined
+  readonly port?: number | undefined
+  readonly database?: string | undefined
+  readonly username?: string | undefined
+  readonly password?: Secret.Secret | undefined
 
-  readonly maxConnections?: number
-  readonly connectionTTL?: Duration.DurationInput
+  readonly maxConnections?: number | undefined
+  readonly connectionTTL?: Duration.DurationInput | undefined
 
-  readonly poolConfig?: Mysql.PoolOptions
+  readonly poolConfig?: Mysql.PoolOptions | undefined
 
-  readonly transformResultNames?: (str: string) => string
-  readonly transformQueryNames?: (str: string) => string
+  readonly spanAttributes?: Record<string, unknown> | undefined
+
+  readonly transformResultNames?: ((str: string) => string) | undefined
+  readonly transformQueryNames?: ((str: string) => string) | undefined
 }
 
 /**
@@ -178,6 +180,7 @@ export const make = (
     )
 
     const spanAttributes: Array<[string, unknown]> = [
+      ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
       [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_MYSQL],
       ["server.address", options.host ?? "localhost"],
       ["server.port", options.port ?? 3306]
