@@ -56,6 +56,7 @@ export type SqliteClientConfig =
     readonly mode?: "vfs"
     readonly dbName?: string
     readonly openMode?: OpenMode
+    readonly spanAttributes?: Record<string, unknown>
     readonly transformResultNames?: (str: string) => string
     readonly transformQueryNames?: (str: string) => string
   }
@@ -63,6 +64,7 @@ export type SqliteClientConfig =
     readonly mode: "opfs"
     readonly dbName: string
     readonly openMode?: OpenMode
+    readonly spanAttributes?: Record<string, unknown>
     readonly transformResultNames?: (str: string) => string
     readonly transformQueryNames?: (str: string) => string
   }
@@ -171,7 +173,10 @@ export const make = (
         acquirer,
         compiler,
         transactionAcquirer,
-        spanAttributes: [[Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_SQLITE]]
+        spanAttributes: [
+          ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
+          [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_SQLITE]
+        ]
       }) as SqliteClient,
       {
         [TypeId]: TypeId as TypeId,

@@ -69,6 +69,7 @@ export interface SqliteClientConfig {
   readonly prepareCacheSize?: number | undefined
   readonly prepareCacheTTL?: Duration.DurationInput | undefined
   readonly disableWAL?: boolean | undefined
+  readonly spanAttributes?: Record<string, unknown> | undefined
 
   readonly transformResultNames?: ((str: string) => string) | undefined
   readonly transformQueryNames?: ((str: string) => string) | undefined
@@ -223,7 +224,10 @@ export const make = (
         acquirer,
         compiler,
         transactionAcquirer,
-        spanAttributes: [[Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_SQLITE]]
+        spanAttributes: [
+          ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
+          [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_SQLITE]
+        ]
       }) as SqliteClient,
       {
         [TypeId]: TypeId as TypeId,
