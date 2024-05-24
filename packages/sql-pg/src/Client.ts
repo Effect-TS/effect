@@ -70,6 +70,8 @@ export interface PgClientConfig {
   readonly maxConnections?: number | undefined
   readonly connectionTTL?: Duration.DurationInput | undefined
 
+  readonly spanAttributes: Record<string, unknown> | undefined
+
   readonly transformResultNames?: ((str: string) => string) | undefined
   readonly transformQueryNames?: ((str: string) => string) | undefined
   readonly transformJson?: boolean | undefined
@@ -199,6 +201,7 @@ export const make = (
         ),
         compiler,
         spanAttributes: [
+          ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
           [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_POSTGRESQL],
           [Otel.SEMATTRS_DB_NAME, opts.database ?? options.username ?? "postgres"],
           ["server.address", opts.host ?? "localhost"],
