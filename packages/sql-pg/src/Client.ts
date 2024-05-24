@@ -70,7 +70,7 @@ export interface PgClientConfig {
   readonly maxConnections?: number | undefined
   readonly connectionTTL?: Duration.DurationInput | undefined
 
-  readonly spanAttributes: Record<string, unknown> | undefined
+  readonly spanAttributes?: Record<string, unknown> | undefined
 
   readonly transformResultNames?: ((str: string) => string) | undefined
   readonly transformQueryNames?: ((str: string) => string) | undefined
