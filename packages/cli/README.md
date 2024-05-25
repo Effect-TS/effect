@@ -173,10 +173,7 @@ const cli = Command.run(command, {
 })
 
 // Prepare and run the CLI application
-Effect.suspend(() => cli(process.argv)).pipe(
-  Effect.provide(NodeContext.layer),
-  NodeRuntime.runMain
-)
+cli(process.argv).pipe(Effect.provide(NodeContext.layer), NodeRuntime.runMain)
 ```
 
 **Explanation of Code:**
@@ -196,7 +193,7 @@ Effect.suspend(() => cli(process.argv)).pipe(
   - The `Command.run` function initializes your CLI application with a specific name and version, preparing it for execution.
 
 - **Execution Setup**:
-  - The `Effect.suspend` function configures your application to delay execution until the CLI is actually invoked with command-line arguments.
+  - The `cli(process.argv)` call processes the command-line arguments.
   - It uses `Effect.provide` to inject the `NodeContext.layer`, which integrates the CLI with the Node.js environment, allowing your application to utilize Node-specific features and settings.
   - `NodeRuntime.runMain` ensures that your application is executed within the Node.js main runtime, handling any asynchronous tasks and managing the lifecycle of your CLI.
 
@@ -345,18 +342,15 @@ const cli = Command.run(command, {
 })
 
 // Prepare and run the CLI application, providing necessary context and runtime
-Effect.suspend(() => cli(process.argv)).pipe(
-  Effect.provide(NodeContext.layer),
-  NodeRuntime.runMain
-)
+cli(process.argv).pipe(Effect.provide(NodeContext.layer), NodeRuntime.runMain)
 ```
 
 **Understanding the Code:**
 
 - **Arguments**: The `text` declaration creates an input parameter that users need to provide when they run your CLI.
 - **Command Definition**: The `Command.make` function sets up your CLI command. It's designed to take the `text` argument and display it using `Console.log`.
-- **CLI Configuration**: The `cli` variable configures your CLI, setting its name and version, and initializes it with your command.
-- **Execution Setup**: The `Effect.suspend` line ensures that your CLI application doesn't run until it's explicitly invoked, and it properly handles the provided arguments.
+- **Command Execution:** By using `Command.run`, the CLI application is formally structured with a specified name and version, and is ready to execute based on the defined command structure.
+- **Execution Setup**: The `cli(process.argv)` call processes the command-line arguments and runs the CLI application. The `Effect.provide(NodeContext.layer)` injects the necessary Node.js context, and `NodeRuntime.runMain` ensures proper execution within the Node.js environment.
 
 ### Running the CLI
 
@@ -421,10 +415,7 @@ const cli = Command.run(command, {
   version: "v0.0.2"
 })
 
-Effect.suspend(() => cli(process.argv)).pipe(
-  Effect.provide(NodeContext.layer),
-  NodeRuntime.runMain
-)
+cli(process.argv).pipe(Effect.provide(NodeContext.layer), NodeRuntime.runMain)
 ```
 
 ### Explanation of the Changes
@@ -525,10 +516,7 @@ const cli = Command.run(command, {
   version: "v0.0.3"
 })
 
-Effect.suspend(() => cli(process.argv)).pipe(
-  Effect.provide(NodeContext.layer),
-  NodeRuntime.runMain
-)
+cli(process.argv).pipe(Effect.provide(NodeContext.layer), NodeRuntime.runMain)
 ```
 
 ### Explanation of the Changes
@@ -620,10 +608,7 @@ const cli = Command.run(command, {
   version: "v0.0.4"
 })
 
-Effect.suspend(() => cli(process.argv)).pipe(
-  Effect.provide(NodeContext.layer),
-  NodeRuntime.runMain
-)
+cli(process.argv).pipe(Effect.provide(NodeContext.layer), NodeRuntime.runMain)
 ```
 
 ### Explanation of the Changes
@@ -926,18 +911,15 @@ const cli = Command.run(command, {
   version: "v1.0.0"
 })
 
-Effect.suspend(() => cli(process.argv)).pipe(
-  Effect.provide(NodeContext.layer),
-  NodeRuntime.runMain
-)
+cli(process.argv).pipe(Effect.provide(NodeContext.layer), NodeRuntime.runMain)
 ```
 
 #### Key Features and Configuration:
 
-1. **Command Integration:** The `minigit` command integrates both `add` and `clone` as subcommands, enabling a structured approach to handle different functionalities within the same CLI application.
-2. **Environment Setup:** We've imported `NodeContext` and `NodeRuntime` to ensure that our CLI application correctly interacts with NodeJS's runtime environment, making full use of Node-specific features.
-3. **Effect Management:** The use of `Effect.suspend` allows for lazy evaluation of command-line inputs (`process.argv`), ensuring that the CLI only executes in response to user input.
-4. **Command Execution:** By using `Command.run`, the CLI application is formally structured with a specified name and version, and is ready to execute based on the defined command structure.
+- **Command Integration:** The `minigit` command integrates both `add` and `clone` as subcommands, enabling a structured approach to handle different functionalities within the same CLI application.
+- **Environment Setup:** We've imported `NodeContext` and `NodeRuntime` to ensure that our CLI application correctly interacts with NodeJS's runtime environment, making full use of Node-specific features.
+- **Command Execution:** By using `Command.run`, the CLI application is formally structured with a specified name and version, and is ready to execute based on the defined command structure.
+- **Execution Setup**: The `cli(process.argv)` call processes the command-line arguments and runs the CLI application. The `Effect.provide(NodeContext.layer)` injects the necessary Node.js context, and `NodeRuntime.runMain` ensures proper execution within the Node.js environment.
 
 ### Running the CLI Application
 
