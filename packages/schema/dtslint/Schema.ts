@@ -2434,3 +2434,23 @@ hole<Array<string | number>>().filter(S.is(S.String))
 
 // $ExpectType string | undefined
 hole<Array<string | number>>().find(S.is(S.String))
+
+// ---------------------------------------------
+// TaggedStruct
+// ---------------------------------------------
+
+// $ExpectType tag<"A">
+S.tag("A")
+
+// $ExpectType TaggedStruct<"Product", { category: tag<"Electronics">; name: typeof String$; price: typeof Number$; }>
+const MyTaggedStruct = S.TaggedStruct("Product", {
+  category: S.tag("Electronics"),
+  name: S.String,
+  price: S.Number
+})
+
+// $ExpectType Schema<{ readonly _tag: "Product"; readonly name: string; readonly category: "Electronics"; readonly price: number; }, { readonly _tag: "Product"; readonly name: string; readonly category: "Electronics"; readonly price: number; }, never>
+S.asSchema(MyTaggedStruct)
+
+// $ExpectType [props: { readonly _tag?: "Product"; readonly name: string; readonly category?: "Electronics"; readonly price: number; }]
+hole<Parameters<typeof MyTaggedStruct["make"]>>()

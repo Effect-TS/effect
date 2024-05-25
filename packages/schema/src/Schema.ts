@@ -2409,6 +2409,66 @@ export function Struct<Fields extends Struct.Fields, const Records extends Index
  * @category api interface
  * @since 1.0.0
  */
+export interface tag<Tag extends AST.LiteralValue> extends PropertySignature<":", Tag, never, ":", Tag, true, never> {}
+
+/**
+ * Returns a property signature that represents a tag.
+ * A tag is a literal value that is used to distinguish between different types of objects.
+ * The tag is optional when using the `make` method.
+ *
+ * @see {@link TaggedStruct}
+ *
+ * @example
+ * import { Schema } from "@effect/schema"
+ *
+ * const User = Schema.Struct({
+ *   _tag: Schema.tag("User"),
+ *   name: Schema.String,
+ *   age: Schema.Number
+ * })
+ *
+ * assert.deepStrictEqual(User.make({ name: "John", age: 44 }), { _tag: "User", name: "John", age: 44 })
+ *
+ * @since 1.0.0
+ */
+export const tag = <Tag extends AST.LiteralValue>(tag: Tag): tag<Tag> =>
+  Literal(tag).pipe(propertySignature, withConstructorDefault(() => tag))
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export type TaggedStruct<Tag extends AST.LiteralValue, Fields extends Struct.Fields> = Struct<
+  { _tag: tag<Tag> } & Fields
+>
+
+/**
+ * A tagged struct is a struct that has a tag property that is used to distinguish between different types of objects.
+ *
+ * The tag is optional when using the `make` method.
+ *
+ * @example
+ * import { Schema } from "@effect/schema"
+ *
+ * const User = Schema.TaggedStruct("User", {
+ *   name: Schema.String,
+ *   age: Schema.Number
+ * })
+ *
+ * assert.deepStrictEqual(User.make({ name: "John", age: 44 }), { _tag: "User", name: "John", age: 44 })
+ *
+ * @category constructors
+ * @since 1.0.0
+ */
+export const TaggedStruct = <Tag extends AST.LiteralValue, Fields extends Struct.Fields>(
+  value: Tag,
+  fields: Fields
+): TaggedStruct<Tag, Fields> => Struct({ _tag: tag(value), ...fields })
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
 export interface Record$<K extends Schema.All, V extends Schema.All> extends TypeLiteral<{}, [{ key: K; value: V }]> {
   readonly key: K
   readonly value: V
