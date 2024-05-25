@@ -1428,17 +1428,22 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
         getHelpInternal(self.options as Instruction),
         InternalHelpDoc.sequence(defaultHelp)
       )
-      const defaultChoice = Option.isOption(self.fallback)
-        ? Option.match(self.fallback, {
-          onNone: () => ({ title: "None", description: "It has no value as default", value: true }),
-          onSome: (a) => ({ title: `Default [${JSON.stringify(a)}]`, value: true })
-        })
-        : ({ title: `Default [${JSON.stringify(self.fallback)}]`, value: true })
       return InternalSelectPrompt.select({
         message: InternalHelpDoc.toAnsiText(message).trimEnd(),
         choices: [
-          defaultChoice,
-          { title: "Custom", value: false }
+          {
+            title: "Yes",
+            value: true,
+            description: `use the default ${
+              Option.isOption(self.fallback)
+                ? Option.match(self.fallback, {
+                  onNone: () => "",
+                  onSome: (a) => `(${JSON.stringify(a)})`
+                })
+                : `(${JSON.stringify(self.fallback)})`
+            }`
+          },
+          { title: "No", value: false, description: "use a custom value" }
         ]
       }).pipe(
         Effect.zipLeft(Console.log()),
