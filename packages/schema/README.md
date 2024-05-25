@@ -2391,7 +2391,7 @@ const value = schema.value // typeof Schema.Number
 
 ## Structs
 
-In `@effect/schema`, structs are used to define schemas for objects with specific properties. Here’s how you can create and use a struct schema:
+In `@effect/schema`, structs are used to define schemas for objects with specific properties. Here's how you can create and use a struct schema:
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -3447,140 +3447,209 @@ console.log(pretty(files[0])) // "File(C)"
 
 # Transformations
 
-In some cases, we may need to transform the output of a schema to a different type. For instance, we may want to parse a string into a number, or we may want to transform a date string into a `Date` object.
-
-To perform these kinds of transformations, the `@effect/schema` library provides the `transform` combinator.
+Transformations are a crucial aspect of working with schemas, especially when you need to convert data from one type to another, such as parsing a string into a number or converting a date string into a `Date` object.
 
 ## transform
 
-```ts
-declare const transform: <To extends Schema.Any, From extends Schema.Any>(
-    from: From,
-    to: To,
-    options: {
-      readonly decode: (fromA: Schema.Type<From>) => Schema.Encoded<To>
-      readonly encode: (toI: Schema.Encoded<To>) => Schema.Type<From>
-      readonly strict?: true
-    } | {
-      readonly decode: (fromA: Schema.Type<From>) => unknown
-      readonly encode: (toI: Schema.Encoded<To>) => unknown
-      readonly strict: false
-    }
-  ): transform<From, To>
-```
+The `transform` combinator is designed to facilitate these conversions by linking two schemas together: one for the input type and one for the output type.
+
+The `transform` combinator takes four key parameters:
+
+- **from**: This is the source schema, denoted as `Schema<B, A, R1>`, where `A` is the input type and `B` is the intermediate type after initial validation.
+- **to**: This is the target schema, denoted as `Schema<D, C, R2>`, where `C` is the transformed type from `B`, and `D` is the final output type.
+- **decode**: A function that transforms an intermediate value of type `B` into another value of type `C`.
+- **encode**: A function that reverses the transformation, converting type `C` back to type `B`.
+
+The resulting schema from using `transform` will be `Schema<D, A, R1 | R2>`, indicating it integrates the dependencies and transformations specified in both the `from` and `to` schemas.
+
+**Flowchart Explanation**
 
 ```mermaid
 flowchart TD
-  schema1["from: Schema&lt;B, A&gt;"]
-  schema2["to: Schema&lt;D, C&gt;"]
-  schema1--decode: B -> C-->schema2
-  schema2--encode: C -> B-->schema1
+  schema1["from: Schema<B, A>"]
+  schema2["to: Schema<D, C>"]
+  schema1--"decode: B -> C"-->schema2
+  schema2--"encode: C -> B"-->schema1
 ```
 
-The `transform` combinator takes a source schema, a target schema, a transformation function from the source type to the target type, and a reverse transformation function from the target type back to the source type. It returns a new schema that applies the transformation function to the output of the original schema before returning it. If the original schema fails to parse a value, the transformed schema will also fail.
+This flowchart illustrates how the data flows through the `transform` combinator, starting from the `from` schema, passing through the transformation functions, and finally through the `to` schema.
+
+**Practical Example: Doubling a Number**
+
+Here's how you might define a simple schema transformation that doubles an input number:
 
 ```ts
 import { Schema } from "@effect/schema"
 
-// use the transform combinator to convert the string schema into the tuple schema
-export const transformedSchema: Schema.Schema<readonly [string], string> =
-  Schema.transform(Schema.String, Schema.Tuple(Schema.String), {
-    // define a function that converts a string into a tuple with one element of type string
-    decode: (s) => [s] as const,
-    // define a function that converts a tuple with one element of type string into a string
-    encode: ([s]) => s
-  })
+// Define a transformation that doubles the input number
+export const transformedSchema = Schema.transform(
+  Schema.Number, // Source schema
+  Schema.Number, // Target schema
+  {
+    decode: (n) => n * 2, // Transformation function to double the number
+    encode: (n) => n / 2 // Reverse transformation to revert to the original number
+  }
+)
 ```
 
-In the example above, we defined a schema for the `string` type and a schema for the tuple type `[string]`. We also defined the functions `decode` and `encode` that convert a `string` into a tuple and a tuple into a `string`, respectively. Then, we used the `transform` combinator to convert the string schema into a schema for the tuple type `[string]`. The resulting schema can be used to parse values of type `string` into values of type `[string]`.
+In this example, if you provide the input value `2`, the transformation schema will decode it to `4` and encode it back to `2`.
+
+Here's a simple example of how you might use the `transform` combinator to trim whitespace from string inputs:
+
+```ts
+import { Schema } from "@effect/schema"
+
+export const transformedSchema = Schema.transform(
+  Schema.String, // Source schema: accepts any string
+  Schema.String, // Target schema: also accepts any string
+  {
+    decode: (s) => s.trim(), // Trim the string during decoding
+    encode: (s) => s // No change during encoding
+  }
+)
+```
+
+In this example, the `transform` function is used to create a schema that automatically trims leading and trailing whitespace from a string when decoding. During encoding, it simply returns the string as is, assuming it's already trimmed.
+
+### Improving the Transformation with a Filter
+
+While the basic example ensures that strings are trimmed during the decoding process, it doesn't enforce that only trimmed strings are accepted or returned by the schema. To enhance this, you can restrict the target schema to only accept strings that are already trimmed:
+
+```ts
+import { Schema } from "@effect/schema"
+
+export const transformedSchema = Schema.transform(
+  Schema.String, // Source schema: accepts any string
+  Schema.String.pipe(Schema.filter((s) => s === s.trim())), // Target schema now only accepts strings that are trimmed
+  {
+    decode: (s) => s.trim(), // Trim the string during decoding
+    encode: (s) => s // No change during encoding
+  }
+)
+```
+
+In this improved example, the target schema is piped through a `filter` function. This function checks that the string is equal to its trimmed version, effectively ensuring that only strings without leading or trailing whitespace are considered valid. This is particularly useful for maintaining data integrity and can help prevent errors or inconsistencies in data processing.
 
 ### Non-strict option
 
-If you need to be less restrictive in your `decode` and `encode` functions, you can make use of the `{ strict: false }` option:
+Sometimes the strict type checking can impede certain operations where types might slightly deviate during the transformation process. For such cases, `transform` provides an option, `strict: false`, to relax type constraints and allow for more flexible data manipulation.
+
+**Example: Clamping Constructor**
+
+Let's consider the scenario where you need to define a constructor `clamp` that ensures a number falls within a specific range. This function returns a schema that "clamps" a number to a specified minimum and maximum range:
 
 ```ts
-<To extends Schema.Any, From extends Schema.Any>(
-  from: From,
-  to: To,
-  options: {
-    readonly decode: (fromA: Schema.Type<From>) => Schema.Encoded<To>
-    readonly encode: (toI: Schema.Encoded<To>) => Schema.Type<From>
-    readonly strict?: true
-  } | {
-    readonly decode: (fromA: Schema.Type<From>) => unknown // Less strict constraint
-    readonly encode: (toI: Schema.Encoded<To>) => unknown // Less strict constraint
-    readonly strict: false
-  }
-): transform<From, To>
+import { Schema } from "@effect/schema"
+import { Number } from "effect"
+
+const clamp =
+  (minimum: number, maximum: number) =>
+  <A extends number, I, R>(self: Schema.Schema<A, I, R>) =>
+    Schema.transform(
+      self,
+      self.pipe(
+        Schema.typeSchema,
+        Schema.filter((a) => a <= minimum || a >= maximum)
+      ),
+      { decode: (a) => Number.clamp(a, { minimum, maximum }), encode: (a) => a }
+    )
 ```
 
-This is useful when you want to relax the type constraints imposed by the `decode` and `encode` functions, making them more permissive.
+In this code, `Number.clamp` is a function that adjusts the given number to stay within the specified range. However, the return type of `Number.clamp` may not strictly be of type `A` but just a `number`, which can lead to type mismatches according to TypeScript's strict type-checking.
+
+There are two ways to resolve the type mismatch:
+
+1. **Using Type Assertion**:
+   Adding a type cast can enforce the return type to be treated as type `A`:
+
+   ```ts
+   decode: (a) => Number.clamp(a, { minimum, maximum }) as A
+   ```
+
+2. **Using the Non-Strict Option**:
+   Setting `strict: false` in the transformation options allows the schema to bypass some of TypeScript's type-checking rules, accommodating the type discrepancy:
+
+   ```ts
+   import { Schema } from "@effect/schema"
+   import { Number } from "effect"
+
+   export const clamp =
+     (minimum: number, maximum: number) =>
+     <A extends number, I, R>(self: Schema.Schema<A, I, R>) =>
+       Schema.transform(
+         self,
+         self.pipe(
+           Schema.typeSchema,
+           Schema.filter((a) => a >= minimum && a <= maximum)
+         ),
+         {
+           strict: false,
+           decode: (a) => Number.clamp(a, { minimum, maximum }),
+           encode: (a) => a
+         }
+       )
+   ```
 
 ## transformOrFail
 
-The `transformOrFail` combinator works in a similar way, but allows the transformation function to return an `Effect<A, ParseError, R`, which can either be a success or a failure.
+In data transformation processes, handling transformations that may fail is crucial. While the `transform` combinator is suitable for error-free transformations, the `transformOrFail` combinator is designed for more complex scenarios where transformations can fail during the decoding or encoding stages.
 
-```ts
-<To extends Schema.Any, From extends Schema.Any, RD, RE>(
-  from: From,
-  to: To,
-  options: {
-    readonly decode: (
-      fromA: Schema.Type<From>,
-      options: ParseOptions,
-      ast: AST.Transformation
-    ) => Effect.Effect<Schema.Encoded<To>, ParseResult.ParseIssue, RD>
-    readonly encode: (
-      toI: Schema.Encoded<To>,
-      options: ParseOptions,
-      ast: AST.Transformation
-    ) => Effect.Effect<Schema.Type<From>, ParseResult.ParseIssue, RE>
-    readonly strict?: true
-  } | {
-    readonly decode: (
-      fromA: Schema.Type<From>,
-      options: ParseOptions,
-      ast: AST.Transformation
-    ) => Effect.Effect<unknown, ParseResult.ParseIssue, RD>
-    readonly encode: (
-      toI: Schema.Encoded<To>,
-      options: ParseOptions,
-      ast: AST.Transformation
-    ) => Effect.Effect<unknown, ParseResult.ParseIssue, RE>
-    readonly strict: false
-  }
-): transformOrFail<From, To, RD | RE>
-```
+The `transformOrFail` combinator extends the capabilities of the `transform` combinator by allowing for potential failures in the transformation functions. This combinator enables functions to return either a successful result or an error, making it particularly useful for validating and processing data that might not always conform to expected formats.
 
-Both `decode` and `encode` functions not only receive the value to transform (`fromA` and `toI`), but also the parse options that the user sets when using the resulting schema, and the `ast`, which represents the `AST` of the schema you're transforming.
+### Error Handling with ParseResult
 
-Example
+The `transformOrFail` combinator utilizes the `ParseResult` module to manage potential errors:
+
+- **`ParseResult.succeed`**: This function is used to indicate a successful transformation, where no errors occurred.
+- **`ParseResult.fail(issue)`**: This function signals a failed transformation, creating a new `ParseError` based on the provided `ParseIssue`.
+
+Additionally, the `ParseError` module provides APIs for dealing with various types of parse issues, such as `Declaration`, `Refinement`, `TupleType`, `TypeLiteral`, `Union`, `Transformation`, `Type`, and `Forbidden`. These tools allow for detailed and specific error handling, enhancing the reliability of data processing operations.
+
+**Example: Converting a String to a Number**
+
+A common use case for `transformOrFail` is converting string representations of numbers into actual numeric types. This scenario is typical when dealing with user inputs or data from external sources.
 
 ```ts
 import { ParseResult, Schema } from "@effect/schema"
 
-export const transformedSchema: Schema.Schema<boolean, string> =
-  Schema.transformOrFail(Schema.String, Schema.Boolean, {
-    // define a function that converts a string into a boolean
-    decode: (s) =>
-      s === "true"
-        ? ParseResult.succeed(true)
-        : s === "false"
-          ? ParseResult.succeed(false)
-          : ParseResult.fail(
-              new ParseResult.Type(Schema.Literal("true", "false").ast, s)
-            ),
-    // define a function that converts a boolean into a string
-    encode: (b) => ParseResult.succeed(String(b))
-  })
+export const NumberFromString = Schema.transformOrFail(
+  Schema.String, // Source schema: accepts any string
+  Schema.Number, // Target schema: expects a number
+  {
+    decode: (input, options, ast) => {
+      const parsed = parseFloat(input)
+      if (isNaN(parsed)) {
+        return ParseResult.fail(
+          new ParseResult.Type(ast, input, "Failed to convert string to number")
+        )
+      }
+      return ParseResult.succeed(parsed)
+    },
+    encode: (input, options, ast) => ParseResult.succeed(input.toString())
+  }
+)
 ```
 
-The transformation may also be async:
+In this example:
+
+- **Decoding:** Attempts to parse the input string into a number. If the parsing results in `NaN` (indicating that the string is not a valid number), it fails with a descriptive error.
+- **Encoding:** Converts the number back to a string, assuming that the input number is valid.
+
+Both `decode` and `encode` functions not only receive the value to transform (`input`), but also the parse `options` that the user sets when using the resulting schema, and the `ast`, which represents the `AST` of the schema you're transforming.
+
+### Async Operations
+
+In modern applications, especially those interacting with external APIs, you might need to transform data asynchronously
+
+**Example: Asynchronously Converting a String to a Number Using an API**
+
+Consider a situation where you need to validate a person's ID by fetching data from an external API. Here's how you can implement it:
 
 ```ts
 import { ParseResult, Schema, TreeFormatter } from "@effect/schema"
 import { Effect } from "effect"
 
+// Define an API call function
 const api = (url: string): Effect.Effect<unknown, Error> =>
   Effect.tryPromise({
     try: () =>
@@ -3595,6 +3664,7 @@ const api = (url: string): Effect.Effect<unknown, Error> =>
 
 const PeopleId = Schema.String.pipe(Schema.brand("PeopleId"))
 
+// Define a schema with async transformation
 const PeopleIdFromString = Schema.transformOrFail(Schema.String, PeopleId, {
   decode: (s, _, ast) =>
     Effect.mapBoth(api(`https://swapi.dev/api/people/${s}`), {
@@ -3630,7 +3700,13 @@ Output:
 */
 ```
 
-You can also declare dependencies:
+### Declaring Dependencies
+
+For more complex scenarios where your transformation might depend on external services like a fetching function, you can declare these dependencies explicitly. This approach ensures that your schema transformations are not only testable but also modular.
+
+**Example: Injecting Dependencies**
+
+Here's how to inject a fetch dependency into your transformation process:
 
 ```ts
 import { ParseResult, Schema, TreeFormatter } from "@effect/schema"
@@ -3638,6 +3714,7 @@ import { Context, Effect, Layer } from "effect"
 
 const Fetch = Context.GenericTag<"Fetch", typeof fetch>("Fetch")
 
+// API call function with dependency
 const api = (url: string): Effect.Effect<unknown, Error, "Fetch"> =>
   Fetch.pipe(
     Effect.flatMap((fetch) =>
