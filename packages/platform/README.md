@@ -1771,3 +1771,32 @@ curl -i http://localhost:3000
 # Request with the valid cookie
 curl -i http://localhost:3000 --cookie "test=myvalue"
 ```
+
+## ServerRequest
+
+### How do I get the raw request?
+
+The native request object depends on the platform you are using, and it is not directly modeled in `@effect/platform`. Instead, you need to refer to the specific platform package you are working with, such as `@effect/platform-node` or `@effect/platform-bun`.
+
+Here is an example using Node.js:
+
+```ts
+import { HttpServer } from "@effect/platform"
+import { NodeHttpServer } from "@effect/platform-node"
+import { Effect } from "effect"
+import { listen } from "./listen.js"
+
+const router = HttpServer.router.empty.pipe(
+  HttpServer.router.get(
+    "/",
+    Effect.gen(function* () {
+      const req = yield* HttpServer.request.ServerRequest
+      const raw = NodeHttpServer.request.toIncomingMessage(req)
+      console.log(raw)
+      return HttpServer.response.empty()
+    })
+  )
+)
+
+listen(HttpServer.server.serve(router), 3000)
+```
