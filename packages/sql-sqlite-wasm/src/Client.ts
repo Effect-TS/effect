@@ -20,7 +20,7 @@ import * as Scope from "effect/Scope"
  * @category type ids
  * @since 1.0.0
  */
-export const TypeId: unique symbol = Symbol.for("@effect/sql-mssql/Client")
+export const TypeId: unique symbol = Symbol.for("@effect/sql-sqlite-wasm/Client")
 
 /**
  * @category type ids
