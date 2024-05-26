@@ -10,9 +10,9 @@ import type { Config } from "effect/Config"
 import type { Effect } from "effect/Effect"
 import type { Either } from "effect/Either"
 import type { HashMap } from "effect/HashMap"
+import type { Hidden } from "effect/Hidden"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
-import type { Secret } from "effect/Secret"
 import type { CliConfig } from "./CliConfig.js"
 import type { HelpDoc } from "./HelpDoc.js"
 import * as InternalOptions from "./internal/options.js"
@@ -311,7 +311,7 @@ export const none: Options<void> = InternalOptions.none
  * @since 1.0.0
  * @category constructors
  */
-export const secret: (name: string) => Options<Secret> = InternalOptions.secret
+export const hidden: (name: string) => Options<Hidden<string>> = InternalOptions.hidden
 
 /**
  * @since 1.0.0

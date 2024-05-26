@@ -3,9 +3,9 @@ import * as Schema from "@effect/schema/Schema"
 import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
 import { dual, pipe } from "effect/Function"
+import * as EffectHidden from "effect/Hidden"
 import * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
-import * as EffectSecret from "effect/Secret"
 import type * as CliConfig from "../CliConfig.js"
 import type * as HelpDoc from "../HelpDoc.js"
 import type * as Span from "../HelpDoc/Span.js"
@@ -50,7 +50,7 @@ export type Instruction =
   | Float
   | Integer
   | Path
-  | Secret
+  | Hidden
   | Text
 
 /** @internal */
@@ -85,7 +85,7 @@ export interface Path extends
 {}
 
 /** @internal */
-export interface Secret extends Op<"Secret", {}> {}
+export interface Hidden extends Op<"Hidden", {}> {}
 
 /** @internal */
 export interface Text extends Op<"Text", {}> {}
@@ -193,9 +193,9 @@ export const path = (
 }
 
 /** @internal */
-export const secret: Primitive.Primitive<EffectSecret.Secret> = (() => {
+export const hidden: Primitive.Primitive<EffectHidden.Hidden<string>> = (() => {
   const op = Object.create(proto)
-  op._tag = "Secret"
+  op._tag = "Hidden"
   return op
 })()
 
@@ -269,7 +269,7 @@ const getChoicesInternal = (self: Instruction): Option.Option<string> => {
     case "Float":
     case "Integer":
     case "Path":
-    case "Secret":
+    case "Hidden":
     case "Text": {
       return Option.none()
     }
@@ -332,7 +332,7 @@ const getHelpInternal = (self: Instruction): Span.Span => {
           `('${self.pathType}') and path existence ('${self.pathExists}')`
       )
     }
-    case "Secret": {
+    case "Hidden": {
       return InternalSpan.text("A user-defined piece of text that is confidential.")
     }
     case "Text": {
@@ -364,8 +364,8 @@ const getTypeNameInternal = (self: Instruction): string => {
       }
       return self.pathType
     }
-    case "Secret": {
-      return "secret"
+    case "Hidden": {
+      return "hidden"
     }
     case "Text": {
       return "text"
@@ -444,9 +444,9 @@ const validateInternal = (
         )
       })
     }
-    case "Secret": {
+    case "Hidden": {
       return attempt(value, getTypeNameInternal(self), Schema.decodeUnknown(Schema.String)).pipe(
-        Effect.map((value) => EffectSecret.fromString(value))
+        Effect.map((value) => EffectHidden.make(value))
       )
     }
     case "Text": {
@@ -570,7 +570,7 @@ const wizardInternal = (self: Instruction, help: HelpDoc.HelpDoc): Prompt.Prompt
         message: InternalHelpDoc.toAnsiText(message).trimEnd()
       })
     }
-    case "Secret": {
+    case "Hidden": {
       const primitiveHelp = InternalHelpDoc.p("Enter some text (value will be hidden)")
       const message = InternalHelpDoc.sequence(help, primitiveHelp)
       return InternalTextPrompt.hidden({
@@ -600,7 +600,7 @@ export const getBashCompletions = (self: Instruction): string => {
     case "DateTime":
     case "Float":
     case "Integer":
-    case "Secret":
+    case "Hidden":
     case "Text": {
       return "$(compgen -f \"${cur}\")"
     }
@@ -642,7 +642,7 @@ export const getFishCompletions = (self: Instruction): Array<string> => {
     case "DateTime":
     case "Float":
     case "Integer":
-    case "Secret":
+    case "Hidden":
     case "Text": {
       return Arr.make("-r", "-f")
     }
@@ -721,7 +721,7 @@ export const getZshCompletions = (self: Instruction): string => {
         }
       }
     }
-    case "Secret":
+    case "Hidden":
     case "Text": {
       return ""
     }

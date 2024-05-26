@@ -7,6 +7,7 @@ import type { LazyArg } from "../Function.js"
 import { constTrue, dual, pipe } from "../Function.js"
 import type * as HashMap from "../HashMap.js"
 import * as HashSet from "../HashSet.js"
+import type * as Hidden from "../Hidden.js"
 import type * as LogLevel from "../LogLevel.js"
 import * as Option from "../Option.js"
 import { hasProperty, type Predicate, type Refinement } from "../Predicate.js"
@@ -15,6 +16,7 @@ import * as configError from "./configError.js"
 import * as core from "./core.js"
 import * as defaultServices from "./defaultServices.js"
 import * as effectable from "./effectable.js"
+import * as hidden_ from "./hidden.js"
 import * as OpCodes from "./opCodes/config.js"
 import * as InternalSecret from "./secret.js"
 
@@ -417,6 +419,15 @@ export const secret = (name?: string): Config.Config<Secret.Secret> => {
   const config = primitive(
     "a secret property",
     (text) => Either.right(InternalSecret.fromString(text))
+  )
+  return name === undefined ? config : nested(config, name)
+}
+
+/** @internal */
+export const hidden = (name?: string): Config.Config<Hidden.Hidden<string>> => {
+  const config = primitive(
+    "a hidden property",
+    (text) => Either.right(hidden_.make(text))
   )
   return name === undefined ? config : nested(config, name)
 }

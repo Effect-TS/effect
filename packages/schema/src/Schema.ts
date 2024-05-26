@@ -24,6 +24,7 @@ import type { LazyArg } from "effect/Function"
 import { dual, identity } from "effect/Function"
 import * as hashMap_ from "effect/HashMap"
 import * as hashSet_ from "effect/HashSet"
+import * as hidden_ from "effect/Hidden"
 import * as list_ from "effect/List"
 import * as number_ from "effect/Number"
 import * as option_ from "effect/Option"
@@ -32,7 +33,6 @@ import type { Pipeable } from "effect/Pipeable"
 import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Request from "effect/Request"
-import * as secret_ from "effect/Secret"
 import * as sortedSet_ from "effect/SortedSet"
 import * as string_ from "effect/String"
 import type * as Types from "effect/Types"
@@ -4801,34 +4801,86 @@ export class BigIntFromNumber extends transformOrFail(
   static override annotations: (annotations: Annotations.Schema<bigint>) => typeof BigIntFromNumber = super.annotations
 }
 
-/**
- * @category Secret constructors
- * @since 1.0.0
- */
-export class SecretFromSelf extends declare(
-  secret_.isSecret,
-  {
-    identifier: "SecretFromSelf",
-    pretty: (): pretty_.Pretty<secret_.Secret> => (secret) => String(secret),
-    arbitrary: (): LazyArbitrary<secret_.Secret> => (fc) => fc.string().map((_) => secret_.fromString(_))
+const hiddenArbitrary = <A>(value: LazyArbitrary<A>): LazyArbitrary<hidden_.Hidden<A>> => (fc) =>
+  value(fc).map((x) => hidden_.make(x))
+
+const hiddenParse =
+  <R, A>(decodeUnknown: ParseResult.DecodeUnknown<A, R>): ParseResult.DeclarationDecodeUnknown<hidden_.Hidden<A>, R> =>
+  (u, options, ast) => {
+    if (hidden_.isHidden(u)) {
+      return ParseResult.map(
+        decodeUnknown(hidden_.value(u), options),
+        (_) => hidden_.make(_)
+      )
+    } else {
+      return ParseResult.fail(new ParseResult.Type(ast, hidden_.make(u)))
+    }
   }
-) {
-  static override annotations: (annotations: Annotations.Schema<secret_.Secret>) => typeof SecretFromSelf = super
-    .annotations
-}
 
 /**
- * A schema that transforms a `string` into a `Secret`.
- *
- * @category Secret transformations
+ * @category api interface
  * @since 1.0.0
  */
-export class Secret extends transform(
-  String$,
-  SecretFromSelf,
-  { strict: false, decode: (str) => secret_.fromString(str), encode: (secret) => secret_.value(secret) }
-).annotations({ identifier: "Secret" }) {
-  static override annotations: (annotations: Annotations.Schema<secret_.Secret>) => typeof Secret = super.annotations
+export interface HiddenFromSelf<Value extends Schema.Any> extends
+  AnnotableClass<
+    HiddenFromSelf<Value>,
+    hidden_.Hidden<Schema.Type<Value>>,
+    hidden_.Hidden<Schema.Encoded<Value>>,
+    Schema.Context<Value>
+  >
+{}
+
+/**
+ * @category Hidden constructors
+ * @since 1.0.0
+ */
+export const HiddenFromSelf = <Value extends Schema.Any>(
+  value: Value
+): HiddenFromSelf<Value> =>
+  declare(
+    [value],
+    {
+      decode: (value) => hiddenParse(ParseResult.decodeUnknown(value)),
+      encode: (value) => hiddenParse(ParseResult.encodeUnknown(value))
+    },
+    {
+      description: "Hidden(<hidden>)",
+      pretty: () => () => "Hidden(<hidden>)",
+      arbitrary: hiddenArbitrary,
+      equivalence: hidden_.getEquivalence
+    }
+  )
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface Hidden<Value extends Schema.Any> extends
+  AnnotableClass<
+    Hidden<Value>,
+    hidden_.Hidden<Schema.Type<Value>>,
+    Schema.Encoded<Value>,
+    Schema.Context<Value>
+  >
+{}
+
+/**
+ * A schema that transforms any type `T` into a `Hidden<T>`.
+ *
+ * @category Hidden transformations
+ * @since 1.0.0
+ */
+export const Hidden = <Value extends Schema.Any>(
+  value: Value
+): Hidden<Value> => {
+  return transform(
+    value,
+    HiddenFromSelf(typeSchema(value)),
+    {
+      decode: (value) => hidden_.make(value),
+      encode: (value) => hidden_.value(value)
+    }
+  )
 }
 
 /**

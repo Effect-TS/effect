@@ -340,6 +340,11 @@ export * as HashSet from "./HashSet.js"
 /**
  * @since 2.0.0
  */
+export * as Hidden from "./Hidden.js"
+
+/**
+ * @since 2.0.0
+ */
 export * as Inspectable from "./Inspectable.js"
 
 /**

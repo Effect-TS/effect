@@ -1,5 +1,5 @@
 import * as Headers from "@effect/platform/Http/Headers"
-import * as Secret from "effect/Secret"
+import * as Hidden from "effect/Hidden"
 import { assert, describe, it } from "vitest"
 
 describe("Headers", () => {
@@ -15,10 +15,10 @@ describe("Headers", () => {
 
       assert.deepEqual(redacted, {
         "content-type": "application/json",
-        "authorization": Secret.fromString("some secret"),
+        "authorization": Hidden.make("some secret"),
         "x-api-key": "some-key"
       })
-      assert.strictEqual(Secret.value(redacted.authorization as Secret.Secret), "Bearer some-token")
+      assert.strictEqual(Hidden.value(redacted.authorization as Hidden.Hidden<string>), "Bearer some-token")
     })
 
     it("multiple keys", () => {
@@ -32,11 +32,11 @@ describe("Headers", () => {
 
       assert.deepEqual(redacted, {
         "content-type": "application/json",
-        "authorization": Secret.fromString("some secret"),
-        "x-api-key": Secret.fromString("some secret")
+        "authorization": Hidden.make("some secret"),
+        "x-api-key": Hidden.make("some secret")
       })
-      assert.strictEqual(Secret.value(redacted.authorization as Secret.Secret), "Bearer some-token")
-      assert.strictEqual(Secret.value(redacted["x-api-key"] as Secret.Secret), "some-key")
+      assert.strictEqual(Hidden.value(redacted.authorization as Hidden.Hidden<string>), "Bearer some-token")
+      assert.strictEqual(Hidden.value(redacted["x-api-key"] as Hidden.Hidden<string>), "some-key")
     })
 
     it("RegExp", () => {
@@ -50,8 +50,8 @@ describe("Headers", () => {
 
       assert.deepEqual(redacted, {
         "authorization": "Bearer some-token",
-        "sec-ret": Secret.fromString("some"),
-        "sec-ret-2": Secret.fromString("some")
+        "sec-ret": Hidden.make("some"),
+        "sec-ret-2": Hidden.make("some")
       })
     })
   })

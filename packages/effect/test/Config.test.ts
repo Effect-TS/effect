@@ -8,6 +8,7 @@ import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as HashSet from "effect/HashSet"
+import * as Hidden from "effect/Hidden"
 import * as LogLevel from "effect/LogLevel"
 import * as Option from "effect/Option"
 import * as Secret from "effect/Secret"
@@ -462,6 +463,18 @@ describe("Config", () => {
         [["NUMBER", "1"], ["BOOL", "value"]],
         ConfigError.InvalidData(["BOOL"], "Expected a boolean value but received value")
       )
+    })
+  })
+
+  describe("Config.hidden", () => {
+    it("name = undefined", () => {
+      const config = Config.array(Config.hidden(), "ITEMS")
+      assertSuccess(config, [["ITEMS", "a"]], [Hidden.make("a")])
+    })
+
+    it("name != undefined", () => {
+      const config = Config.hidden("SECRET")
+      assertSuccess(config, [["SECRET", "a"]], Hidden.make("a"))
     })
   })
 

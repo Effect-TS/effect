@@ -5,10 +5,10 @@ import * as Schema from "@effect/schema/Schema"
 import * as FiberRef from "effect/FiberRef"
 import { dual, identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
+import * as Hidden from "effect/Hidden"
 import type * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Record from "effect/Record"
-import * as Secret from "effect/Secret"
 import * as String from "effect/String"
 import type { Mutable } from "effect/Types"
 
@@ -205,22 +205,27 @@ export const remove: {
  * @category combinators
  */
 export const redact: {
-  (key: string | RegExp | ReadonlyArray<string | RegExp>): (self: Headers) => Record<string, string | Secret.Secret>
-  (self: Headers, key: string | RegExp | ReadonlyArray<string | RegExp>): Record<string, string | Secret.Secret>
+  (
+    key: string | RegExp | ReadonlyArray<string | RegExp>
+  ): (self: Headers) => Record<string, string | Hidden.Hidden<string>>
+  (self: Headers, key: string | RegExp | ReadonlyArray<string | RegExp>): Record<string, string | Hidden.Hidden<string>>
 } = dual(
   2,
-  (self: Headers, key: string | RegExp | ReadonlyArray<string | RegExp>): Record<string, string | Secret.Secret> => {
-    const out: Record<string, string | Secret.Secret> = { ...self }
+  (
+    self: Headers,
+    key: string | RegExp | ReadonlyArray<string | RegExp>
+  ): Record<string, string | Hidden.Hidden<string>> => {
+    const out: Record<string, string | Hidden.Hidden<string>> = { ...self }
     const modify = (key: string | RegExp) => {
       if (typeof key === "string") {
         const k = key.toLowerCase()
         if (k in self) {
-          out[k] = Secret.fromString(self[k])
+          out[k] = Hidden.make(self[k])
         }
       } else {
         for (const name in self) {
           if (key.test(name)) {
-            out[name] = Secret.fromString(self[name])
+            out[name] = Hidden.make(self[name])
           }
         }
       }

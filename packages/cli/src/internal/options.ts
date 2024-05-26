@@ -10,11 +10,11 @@ import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { dual, pipe } from "effect/Function"
 import * as HashMap from "effect/HashMap"
+import type * as Hidden from "effect/Hidden"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import { pipeArguments } from "effect/Pipeable"
 import * as Ref from "effect/Ref"
-import type * as Secret from "effect/Secret"
 import type * as CliConfig from "../CliConfig.js"
 import type * as HelpDoc from "../HelpDoc.js"
 import type * as Options from "../Options.js"
@@ -376,8 +376,8 @@ export const none: Options.Options<void> = (() => {
 })()
 
 /** @internal */
-export const secret = (name: string): Options.Options<Secret.Secret> =>
-  makeSingle(name, Arr.empty(), InternalPrimitive.secret)
+export const hidden = (name: string): Options.Options<Hidden.Hidden<string>> =>
+  makeSingle(name, Arr.empty(), InternalPrimitive.hidden)
 
 /** @internal */
 export const text = (name: string): Options.Options<string> => makeSingle(name, Arr.empty(), InternalPrimitive.text)
