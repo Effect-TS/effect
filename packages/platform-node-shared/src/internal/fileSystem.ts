@@ -380,11 +380,11 @@ const makeTempFile = makeTempFileFactory("makeTempFile")
 
 const makeTempFileScoped = (() => {
   const makeFile = makeTempFileFactory("makeTempFileScoped")
-  const removeFile = removeFactory("makeTempFileScoped")
+  const removeDirectory = removeFactory("makeTempFileScoped")
   return (options?: FileSystem.MakeTempFileOptions) =>
     Effect.acquireRelease(
       makeFile(options),
-      (file) => Effect.orDie(removeFile(file))
+      (file) => Effect.orDie(removeDirectory(Path.dirname(file), { recursive: true }))
     )
 })()
 
