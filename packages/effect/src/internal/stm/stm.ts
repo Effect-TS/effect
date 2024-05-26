@@ -618,8 +618,11 @@ export const fromOption = <A>(option: Option.Option<A>): STM.STM<A, Option.Optio
  * Inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  * @internal
  */
-export const gen: typeof STM.gen = (f) =>
+export const gen: typeof STM.gen = (...args) =>
   suspend(() => {
+    const f = (args.length === 1)
+      ? args[0]
+      : args[1].bind(args[0])
     const iterator = f(pipe)
     const state = iterator.next()
     const run = (
