@@ -42,12 +42,16 @@ describe("Either", () => {
     const f = Either.gen(function*($) {
       yield* $(Either.left("err"))
     })
+    const g = Either.gen({ context: "testContext" as const }, function*($) {
+      return yield* $(Either.right(this.context))
+    })
     expect(a).toEqual(Either.right(3))
     expect(b).toEqual(Either.right(10))
     expect(c).toEqual(Either.right(undefined))
     expect(d).toEqual(Either.right(2))
     expect(e).toEqual(Either.left("err"))
     expect(f).toEqual(Either.left("err"))
+    expect(g).toEqual(Either.right("testContext"))
   })
 
   it("exports", () => {
