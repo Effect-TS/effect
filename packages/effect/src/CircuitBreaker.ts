@@ -1,5 +1,5 @@
 /**
- * A `CircuitBreaker` protects external resources against becoming overload
+ * A `CircuitBreaker` protects external resources against becoming overloaded
  * under failure conditions.
  *
  * A `CircuitBreaker` operates in three states:
@@ -46,12 +46,12 @@
  * The `CircuitBreaker` will also record the following metrics, if a non-empty
  * iterable of `MetricLabel`s is provided:
  *
- *   - effect_circuit_breaker_state: current state (`0` = `Closed`, `1` =
+ *   - `effect_circuit_breaker_state`: current state (`0` = `Closed`, `1` =
  *     `HalfOpen`, `2` = `Open`)
- *   - effect_circuit_breaker_state_changes: number of state changes
- *   - effect_circuit_breaker_successful_calls: number of successful calls
- *   - effect_circuit_breaker_failed_calls: number of failed calls
- *   - effect_circuit_breaker_rejected_calls: number of calls rejected in the
+ *   - `effect_circuit_breaker_state_changes`: number of state changes
+ *   - `effect_circuit_breaker_successful_calls`: number of successful calls
+ *   - `effect_circuit_breaker_failed_calls`: number of failed calls
+ *   - `effect_circuit_breaker_rejected_calls`: number of calls rejected in the
  *     open state
  *
  * @since 3.3.0
