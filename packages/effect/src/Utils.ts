@@ -176,13 +176,16 @@ export interface Variance<in out F extends TypeLambda, in R, out O, out E> {
  * @category models
  * @since 2.0.0
  */
-/**
- * @category models
- * @since 2.0.0
- */
 export interface Gen<F extends TypeLambda, Z> {
-  <K extends Variance<F, any, any, any> | YieldWrap<Kind<F, any, any, any, any>>, A>(
-    body: (resume: Z) => Generator<K, A, never>
+  <Self, K extends Variance<F, any, any, any> | YieldWrap<Kind<F, any, any, any, any>>, A>(
+    ...args:
+      | [
+        self: Self,
+        body: (this: Self, resume: Z) => Generator<K, A, never>
+      ]
+      | [
+        body: (resume: Z) => Generator<K, A, never>
+      ]
   ): Kind<
     F,
     [K] extends [Variance<F, infer R, any, any>] ? R

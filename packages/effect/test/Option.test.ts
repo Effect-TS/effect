@@ -46,12 +46,17 @@ describe("Option", () => {
     const f = Option.gen(function*($) {
       yield* $(Option.none())
     })
+
+    const g = Option.gen({ ctx: "testContext" as const }, function*() {
+      return yield* Option.some(this.ctx)
+    })
     expect(a).toEqual(Option.some(3))
     expect(b).toEqual(Option.some(10))
     expect(c).toEqual(Option.some(undefined))
     expect(d).toEqual(Option.some(2))
     expect(e).toEqual(Option.none())
     expect(f).toEqual(Option.none())
+    expect(g).toEqual(Option.some("testContext"))
   })
 
   it("toString", () => {
