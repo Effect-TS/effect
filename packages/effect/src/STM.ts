@@ -1065,8 +1065,13 @@ export interface Adapter {
  * @since 2.0.0
  * @category constructors
  */
-export const gen: <Eff extends YieldWrap<STM<any, any, any>>, AEff>(
-  f: (resume: Adapter) => Generator<Eff, AEff, never>
+export const gen: <Self, Eff extends YieldWrap<STM<any, any, any>>, AEff>(
+  ...args:
+    | [
+      self: Self,
+      body: (this: Self, resume: Adapter) => Generator<Eff, AEff, never>
+    ]
+    | [body: (resume: Adapter) => Generator<Eff, AEff, never>]
 ) => STM<
   AEff,
   [Eff] extends [never] ? never : [Eff] extends [YieldWrap<STM<infer _A, infer E, infer _R>>] ? E : never,

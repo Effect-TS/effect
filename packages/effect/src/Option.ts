@@ -1345,7 +1345,13 @@ const adapter = Gen.adapter<OptionTypeLambda>()
  * @category generators
  * @since 2.0.0
  */
-export const gen: Gen.Gen<OptionTypeLambda, Gen.Adapter<OptionTypeLambda>> = (f) => {
+export const gen: Gen.Gen<OptionTypeLambda, Gen.Adapter<OptionTypeLambda>> = (...args) => {
+  let f: any
+  if (args.length === 1) {
+    f = args[0]
+  } else {
+    f = args[1].bind(args[0])
+  }
   const iterator = f(adapter)
   let state: IteratorYieldResult<any> | IteratorReturnResult<any> = iterator.next()
   if (state.done) {
