@@ -957,6 +957,12 @@ describe("STM", () => {
       assert.strictEqual(result, "test")
     }))
 
+  it.effect("gen with context", () =>
+    STM.gen({ context: "Context" as const }, function*() {
+      const result = yield* STM.succeed(this.context)
+      assert.strictEqual(result, "Context")
+    }))
+
   it.effect("summarized - returns summary and value", () =>
     Effect.gen(function*($) {
       const transaction = STM.gen(function*($) {
