@@ -700,7 +700,10 @@ const adapter = Gen.adapter<EitherTypeLambda>()
  * @category generators
  * @since 2.0.0
  */
-export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (f) => {
+export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (...args) => {
+  const f = (args.length === 1)
+    ? args[0]
+    : args[1].bind(args[0])
   const iterator = f(adapter)
   let state: IteratorYieldResult<any> | IteratorReturnResult<any> = iterator.next()
   if (state.done) {
