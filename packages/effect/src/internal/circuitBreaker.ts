@@ -180,10 +180,10 @@ export const make = <E>({
       Effect.asVoid
     )
 
-    function tapUserError<A, R, XF, XS>(effect: Effect.Effect<A, E, R>, options: {
-      readonly onFailure: Effect.Effect<XF, E, R>
-      readonly onSuccess: Effect.Effect<XS, E, R>
-    }): Effect.Effect<A, E, R> {
+    function tapUserError<A, E2 extends E, R, XF, XS>(effect: Effect.Effect<A, E2, R>, options: {
+      readonly onFailure: Effect.Effect<XF, E2, R>
+      readonly onSuccess: Effect.Effect<XS, E2, R>
+    }): Effect.Effect<A, E2, R> {
       return Effect.tapBoth(effect, {
         onFailure: (e) =>
           Unify.unify(
@@ -196,7 +196,9 @@ export const make = <E>({
     }
 
     const circuitBreaker: CircuitBreaker.CircuitBreaker<E> = Object.assign(
-      <A, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E | CircuitBreaker.CircuitBreaker.OpenError, R> =>
+      <A, E2 extends E, R>(
+        effect: Effect.Effect<A, E2, R>
+      ): Effect.Effect<A, E2 | CircuitBreaker.CircuitBreaker.OpenError, R> =>
         Ref.get(state).pipe(
           Effect.flatMap((currentState) => {
             switch (currentState) {
