@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 import type * as Client from "@effect/sql/Client"
-import type { SqlError } from "@effect/sql/Error"
 import { TypedQueryBuilder } from "drizzle-orm/query-builders/query-builder"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
@@ -31,9 +30,4 @@ export const registerDialect = (dialect: unknown, client: Client.Client) => {
     })
   }
   clientRegistry.set(dialect, client)
-}
-
-declare module "drizzle-orm/query-builders/query-builder" {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  export interface TypedQueryBuilder<TSelection, TResult = unknown> extends Effect.Effect<TResult, SqlError> {}
 }

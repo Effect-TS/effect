@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import * as Client from "@effect/sql/Client"
+import type { SqlError } from "@effect/sql/Error"
 import { QueryBuilder } from "drizzle-orm/mysql-core"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -33,3 +34,8 @@ export class MysqlDrizzle extends Context.Tag("@effect/sql-drizzle/Mysql")<
  * @category layers
  */
 export const layer: Layer.Layer<MysqlDrizzle, never, Client.Client> = Layer.effect(MysqlDrizzle, make)
+
+declare module "drizzle-orm/query-builders/query-builder" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  export interface TypedQueryBuilder<TSelection, TResult = unknown> extends Effect.Effect<TResult, SqlError> {}
+}
