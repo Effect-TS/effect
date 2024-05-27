@@ -1781,7 +1781,6 @@ export class RequestResolverImpl<in A, out R> implements RequestResolver.Request
     ) => Effect.Effect<void, never, R>,
     readonly target?: unknown
   ) {
-    this.runAll = runAll as any
   }
   [Hash.symbol](): number {
     return Hash.cached(this, this.target ? Hash.hash(this.target) : Hash.random(this))
