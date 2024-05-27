@@ -718,7 +718,9 @@ const Person = Schema.Struct({
   age: Schema.Number
 })
 
-const result = Schema.decodeUnknownEither(Person)({})
+const decode = Schema.decodeUnknownEither(Person)
+
+const result = decode({})
 if (Either.isLeft(result)) {
   console.error("Decoding failed:")
   console.error(TreeFormatter.formatErrorSync(result.left))
@@ -736,6 +738,38 @@ In this example, the tree error message is structured as follows:
 - `{ name: string; age: number }` represents the schema, providing a visual representation of the expected structure. This can be customized using annotations, such as setting the `identifier` annotation.
 - `["name"]` indicates the offending property, in this case, the `"name"` property.
 - `is missing` represents the specific error for the `"name"` property.
+
+**Handling Multiple Errors**
+
+By default, decoding functions like `decodeUnknownEither` return only the first encountered error. If you require a comprehensive list of all errors, you can modify the behavior by passing the `{ errors: "all" }` option:
+
+```ts
+import { Schema, TreeFormatter } from "@effect/schema"
+import { Either } from "effect"
+
+const Person = Schema.Struct({
+  name: Schema.String,
+  age: Schema.Number
+})
+
+const decode = Schema.decodeUnknownEither(Person, { errors: "all" })
+
+const result = decode({})
+if (Either.isLeft(result)) {
+  console.error("Decoding failed:")
+  console.error(TreeFormatter.formatErrorSync(result.left))
+}
+/*
+Decoding failed:
+{ readonly name: string; readonly age: number }
+├─ ["name"]
+│  └─ is missing
+└─ ["age"]
+   └─ is missing
+*/
+```
+
+This adjustment ensures that the formatter displays all errors related to the input, providing a more detailed diagnostic of what went wrong.
 
 #### ParseIssueTitle Annotation
 
@@ -839,44 +873,71 @@ In the examples above, we can see how the `parseIssueTitle` annotation helps pro
 
 ### ArrayFormatter
 
-The `ArrayFormatter` is an alternative way to format errors, presenting them as an array of issues. Each issue contains properties such as `_tag`, `path`, and `message`.
+The `ArrayFormatter` offers an alternative method for formatting errors within `@effect/schema`, organizing them into a more structured and easily navigable array format. This formatter is especially useful when you need a clear overview of all issues detected during the decoding or encoding processes.
+
+The `ArrayManager` formats errors as an array of objects, where each object represents a distinct issue and includes properties such as `_tag`, `path`, and `message`. This structured format can help developers quickly identify and address multiple issues in data processing.
 
 Here's an example of how it works:
 
 ```ts
 import { ArrayFormatter, Schema } from "@effect/schema"
-import * as Either from "effect/Either"
+import { Either } from "effect"
 
 const Person = Schema.Struct({
   name: Schema.String,
   age: Schema.Number
 })
 
-const result = Schema.decodeUnknownEither(Person)(
-  { name: 1, foo: 2 },
-  { errors: "all", onExcessProperty: "error" }
-)
+const decode = Schema.decodeUnknownEither(Person)
+
+const result = decode({})
 if (Either.isLeft(result)) {
-  console.error("Parsing failed:")
+  console.error("Decoding failed:")
   console.error(ArrayFormatter.formatErrorSync(result.left))
 }
 /*
-Parsing failed:
+Decoding failed:
+[ { _tag: 'Missing', path: [ 'name' ], message: 'is missing' } ]
+*/
+```
+
+Each error is formatted as an object in an array, making it clear what the error is (`is missing`), where it occurred (`name`), and its type (`Missing`).
+
+**Handling Multiple Errors**
+
+By default, decoding functions like `decodeUnknownEither` return only the first encountered error. If you require a comprehensive list of all errors, you can modify the behavior by passing the `{ errors: "all" }` option:
+
+```ts
+import { ArrayFormatter, Schema } from "@effect/schema"
+import { Either } from "effect"
+
+const Person = Schema.Struct({
+  name: Schema.String,
+  age: Schema.Number
+})
+
+const decode = Schema.decodeUnknownEither(Person, { errors: "all" })
+
+const result = decode({})
+if (Either.isLeft(result)) {
+  console.error("Decoding failed:")
+  console.error(ArrayFormatter.formatErrorSync(result.left))
+}
+/*
+Decoding failed:
 [
-  {
-    _tag: 'Unexpected',
-    path: [ 'foo' ],
-    message: 'is unexpected, expected "name" | "age"'
-  },
-  {
-    _tag: 'Type',
-    path: [ 'name' ],
-    message: 'Expected a string, actual 1'
-  },
+  { _tag: 'Missing', path: [ 'name' ], message: 'is missing' },
   { _tag: 'Missing', path: [ 'age' ], message: 'is missing' }
 ]
 */
 ```
+
+### React Hook Form
+
+If you are working with React and need form validation, `@hookform/resolvers` offers an adapter for `@effect/schema`, which can be integrated with React Hook Form for enhanced form validation processes. This integration allows you to leverage the powerful features of `@effect/schema` within your React applications.
+
+For more detailed instructions and examples on how to integrate `@effect/schema` with React Hook Form using `@hookform/resolvers`, you can visit the official npm package page:
+[React Hook Form Resolvers](https://www.npmjs.com/package/@hookform/resolvers#effect-ts)
 
 ## Assertions
 
