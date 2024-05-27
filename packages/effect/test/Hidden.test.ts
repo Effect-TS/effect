@@ -15,7 +15,6 @@ describe("Hidden", () => {
     const hidden = Hidden.make(Chunk.fromIterable("hidden".split("")))
     const value = Hidden.value(hidden)
     assert.isTrue(Equal.equals(value, Chunk.fromIterable("hidden".split(""))))
-    // assert.strictEqual(value, Chunk.fromIterable("hidden".split("")))
   })
 
   it("pipe", () => {
@@ -35,15 +34,10 @@ describe("Hidden", () => {
     assert.strictEqual(JSON.stringify(hidden), "\"<hidden>\"")
   })
 
-  it("wipe", () => {
+  it("unsafeWipe", () => {
     const hidden = Hidden.make("hidden")
-    Hidden.unsafeWipe(hidden)
-    assert.isTrue(
-      Equal.equals(
-        Hidden.value(hidden),
-        undefined
-      )
-    )
+    assert.isTrue(Hidden.unsafeWipe(hidden))
+    assert.throw(() => Hidden.value(hidden), "Unable to get hidden value")
   })
 
   it("Equal", () => {

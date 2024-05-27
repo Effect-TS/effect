@@ -59,7 +59,13 @@ export const make = <T>(value: T): Hidden.Hidden<T> => {
 }
 
 /** @internal */
-export const value = <T>(self: Hidden.Hidden<T>): T => hiddenRegistry.get(self)
+export const value = <T>(self: Hidden.Hidden<T>): T => {
+  if (hiddenRegistry.has(self)) {
+    return hiddenRegistry.get(self)
+  } else {
+    throw new Error("Unable to get hidden value")
+  }
+}
 
 /** @internal */
 export const unsafeWipe = <T>(self: Hidden.Hidden<T>): boolean => hiddenRegistry.delete(self)
