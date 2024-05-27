@@ -2882,7 +2882,7 @@ console.log(Product.make({ name: "Laptop", price: 999, quantity: 2 })) // { name
 
 ### Optional Fields Primitives
 
-The `optional` API is based on two primitives: `pptionalToOptional` and `optionalTorequired`. These primitives are incredibly useful for defining property signatures with more precision.
+The `optional` API is based on two primitives: `pptionalToOptional` and `optionalToRequired`. These primitives are incredibly useful for defining property signatures with more precision.
 
 #### optionalToOptional
 
@@ -2954,12 +2954,12 @@ console.log(encode({ a: "" })) // Output: { a: '' }
 console.log(encode({ a: "foo" })) // Output: { a: 'foo' }
 ```
 
-#### optionalTorequired
+#### optionalToRequired
 
-The `optionalTorequired` API allows us to transform an optional field into a required one, applying custom logic if the field is absent in the input.
+The `optionalToRequired` API allows us to transform an optional field into a required one, applying custom logic if the field is absent in the input.
 
 ```ts
-export const optionalTorequired = <FA, FI, FR, TA, TI, TR>(
+export const optionalToRequired = <FA, FI, FR, TA, TI, TR>(
   from: Schema<FA, FI, FR>,
   to: Schema<TA, TI, TR>,
   options: {
