@@ -1,5 +1,15 @@
 # @effect/cli
 
+## 0.36.36
+
+### Patch Changes
+
+- [#2847](https://github.com/Effect-TS/effect/pull/2847) [`7000173`](https://github.com/Effect-TS/effect/commit/70001732f4b04678772249377f06dbe448f15d6c) Thanks @ricardo-valero! - display a nicer message in the cli wizard when using Option
+
+- Updated dependencies [[`c5846e9`](https://github.com/Effect-TS/effect/commit/c5846e99137e9eb02efd31865e26f49f0d2c7c03)]:
+  - @effect/schema@0.67.14
+  - @effect/platform@0.55.1
+
 ## 0.36.35
 
 ### Patch Changes
