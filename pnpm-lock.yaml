@@ -497,6 +497,19 @@ importers:
         version: link:../effect/dist
     publishDirectory: dist
 
+  packages/sql-drizzle:
+    devDependencies:
+      '@effect/sql':
+        specifier: workspace:^
+        version: link:../sql/dist
+      drizzle-orm:
+        specifier: ^0.30.10
+        version: 0.30.10(@op-engineering/op-sqlite@6.0.2-beta1(react-native@0.74.1(@babel/core@7.24.5)(@babel/preset-env@7.24.5(@babel/core@7.24.5))(react@18.3.1))(react@18.3.1))(@opentelemetry/api@1.8.0)(@types/better-sqlite3@7.6.10)(better-sqlite3@10.0.0)(bun-types@1.1.8)(mysql2@3.9.7)(postgres@3.4.4)(react@18.3.1)
+      effect:
+        specifier: workspace:^
+        version: link:../effect/dist
+    publishDirectory: dist
+
   packages/sql-mssql:
     dependencies:
       '@opentelemetry/semantic-conventions':
@@ -3343,6 +3356,86 @@ packages:
   dotenv@8.6.0:
     resolution: {integrity: sha512-IrPdXQsk2BbzvCBGBOTmmSH5SodmqZNt4ERAZDmW4CT+tL8VtvinqywuANaFu4bOMWki16nqf0e4oC0QIaDr/g==}
     engines: {node: '>=10'}
+
+  drizzle-orm@0.30.10:
+    resolution: {integrity: sha512-IRy/QmMWw9lAQHpwbUh1b8fcn27S/a9zMIzqea1WNOxK9/4EB8gIo+FZWLiPXzl2n9ixGSv8BhsLZiOppWEwBw==}
+    peerDependencies:
+      '@aws-sdk/client-rds-data': '>=3'
+      '@cloudflare/workers-types': '>=3'
+      '@electric-sql/pglite': '>=0.1.1'
+      '@libsql/client': '*'
+      '@neondatabase/serverless': '>=0.1'
+      '@op-engineering/op-sqlite': '>=2'
+      '@opentelemetry/api': ^1.4.1
+      '@planetscale/database': '>=1'
+      '@types/better-sqlite3': '*'
+      '@types/pg': '*'
+      '@types/react': '>=18'
+      '@types/sql.js': '*'
+      '@vercel/postgres': '>=0.8.0'
+      '@xata.io/client': '*'
+      better-sqlite3: '>=7'
+      bun-types: '*'
+      expo-sqlite: '>=13.2.0'
+      knex: '*'
+      kysely: '*'
+      mysql2: '>=2'
+      pg: '>=8'
+      postgres: '>=3'
+      react: '>=18'
+      sql.js: '>=1'
+      sqlite3: '>=5'
+    peerDependenciesMeta:
+      '@aws-sdk/client-rds-data':
+        optional: true
+      '@cloudflare/workers-types':
+        optional: true
+      '@electric-sql/pglite':
+        optional: true
+      '@libsql/client':
+        optional: true
+      '@neondatabase/serverless':
+        optional: true
+      '@op-engineering/op-sqlite':
+        optional: true
+      '@opentelemetry/api':
+        optional: true
+      '@planetscale/database':
+        optional: true
+      '@types/better-sqlite3':
+        optional: true
+      '@types/pg':
+        optional: true
+      '@types/react':
+        optional: true
+      '@types/sql.js':
+        optional: true
+      '@vercel/postgres':
+        optional: true
+      '@xata.io/client':
+        optional: true
+      better-sqlite3:
+        optional: true
+      bun-types:
+        optional: true
+      expo-sqlite:
+        optional: true
+      knex:
+        optional: true
+      kysely:
+        optional: true
+      mysql2:
+        optional: true
+      pg:
+        optional: true
+      postgres:
+        optional: true
+      react:
+        optional: true
+      sql.js:
+        optional: true
+      sqlite3:
+        optional: true
 
   eastasianwidth@0.2.0:
     resolution: {integrity: sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==}
@@ -9546,6 +9639,17 @@ snapshots:
       esutils: 2.0.3
 
   dotenv@8.6.0: {}
+
+  drizzle-orm@0.30.10(@op-engineering/op-sqlite@6.0.2-beta1(react-native@0.74.1(@babel/core@7.24.5)(@babel/preset-env@7.24.5(@babel/core@7.24.5))(react@18.3.1))(react@18.3.1))(@opentelemetry/api@1.8.0)(@types/better-sqlite3@7.6.10)(better-sqlite3@10.0.0)(bun-types@1.1.8)(mysql2@3.9.7)(postgres@3.4.4)(react@18.3.1):
+    optionalDependencies:
+      '@op-engineering/op-sqlite': 6.0.2-beta1(react-native@0.74.1(@babel/core@7.24.5)(@babel/preset-env@7.24.5(@babel/core@7.24.5))(react@18.3.1))(react@18.3.1)
+      '@opentelemetry/api': 1.8.0
+      '@types/better-sqlite3': 7.6.10
+      better-sqlite3: 10.0.0
+      bun-types: 1.1.8
+      mysql2: 3.9.7
+      postgres: 3.4.4
+      react: 18.3.1
 
   eastasianwidth@0.2.0: {}
 

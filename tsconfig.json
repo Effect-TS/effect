@@ -18,6 +18,7 @@
     { "path": "packages/schema" },
     { "path": "packages/schema" },
     { "path": "packages/sql" },
+    { "path": "packages/sql-drizzle" },
     { "path": "packages/sql-mssql" },
     { "path": "packages/sql-mysql2" },
     { "path": "packages/sql-pg" },
