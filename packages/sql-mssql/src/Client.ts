@@ -13,10 +13,10 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { identity, pipe } from "effect/Function"
-import * as Hidden from "effect/Hidden"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Pool from "effect/Pool"
+import * as Redacted from "effect/Redacted"
 import * as Scope from "effect/Scope"
 import * as Tedious from "tedious"
 import type { ConnectionOptions } from "tedious/lib/connection.js"
@@ -81,7 +81,7 @@ export interface MssqlClientConfig {
   readonly authType?: string | undefined
   readonly database?: string | undefined
   readonly username?: string | undefined
-  readonly password?: Hidden.Hidden<string> | undefined
+  readonly password?: Redacted.Redacted<string> | undefined
   readonly connectTimeout?: Duration.DurationInput | undefined
 
   readonly minConnections?: number | undefined
@@ -150,7 +150,7 @@ export const make = (
           options: {
             userName: options.username,
             password: options.password
-              ? Hidden.value(options.password)
+              ? Redacted.value(options.password)
               : undefined
           }
         }

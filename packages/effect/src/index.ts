@@ -340,11 +340,6 @@ export * as HashSet from "./HashSet.js"
 /**
  * @since 2.0.0
  */
-export * as Hidden from "./Hidden.js"
-
-/**
- * @since 2.0.0
- */
 export * as Inspectable from "./Inspectable.js"
 
 /**
@@ -606,6 +601,11 @@ export * as RateLimiter from "./RateLimiter.js"
  * @since 2.0.0
  */
 export * as Readable from "./Readable.js"
+
+/**
+ * @since 2.0.0
+ */
+export * as Redacted from "./Redacted.js"
 
 /**
  * This module provides utility functions for working with records in TypeScript.

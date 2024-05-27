@@ -1,72 +1,72 @@
 import * as Chunk from "effect/Chunk"
 import * as Equal from "effect/Equal"
 import * as Hash from "effect/Hash"
-import * as Hidden from "effect/Hidden"
+import * as Redacted from "effect/Redacted"
 import * as Secret from "effect/Secret"
 import { assert, describe, it } from "vitest"
 
-describe("Hidden", () => {
+describe("Redacted", () => {
   it("chunk constructor", () => {
-    const hidden = Hidden.make(Chunk.fromIterable("hidden".split("")))
-    assert.isTrue(Equal.equals(hidden, Hidden.make(Chunk.fromIterable("hidden".split("")))))
+    const redacted = Redacted.make(Chunk.fromIterable("redacted".split("")))
+    assert.isTrue(Equal.equals(redacted, Redacted.make(Chunk.fromIterable("redacted".split("")))))
   })
 
   it("value", () => {
-    const hidden = Hidden.make(Chunk.fromIterable("hidden".split("")))
-    const value = Hidden.value(hidden)
-    assert.isTrue(Equal.equals(value, Chunk.fromIterable("hidden".split(""))))
+    const redacted = Redacted.make(Chunk.fromIterable("redacted".split("")))
+    const value = Redacted.value(redacted)
+    assert.isTrue(Equal.equals(value, Chunk.fromIterable("redacted".split(""))))
   })
 
   it("pipe", () => {
     const value = { asd: 123 }
-    const hidden = Hidden.make(value)
-    const extractedValue = hidden.pipe(Hidden.value)
+    const redacted = Redacted.make(value)
+    const extractedValue = redacted.pipe(Redacted.value)
     assert.strictEqual(value, extractedValue)
   })
 
   it("toString", () => {
-    const hidden = Hidden.make("hidden")
-    assert.strictEqual(`${hidden}`, "<hidden>")
+    const redacted = Redacted.make("redacted")
+    assert.strictEqual(`${redacted}`, "<redacted>")
   })
 
   it("toJSON", () => {
-    const hidden = Hidden.make("hidden")
-    assert.strictEqual(JSON.stringify(hidden), "\"<hidden>\"")
+    const redacted = Redacted.make("redacted")
+    assert.strictEqual(JSON.stringify(redacted), "\"<redacted>\"")
   })
 
   it("unsafeWipe", () => {
-    const hidden = Hidden.make("hidden")
-    assert.isTrue(Hidden.unsafeWipe(hidden))
-    assert.throw(() => Hidden.value(hidden), "Unable to get hidden value")
+    const redacted = Redacted.make("redacted")
+    assert.isTrue(Redacted.unsafeWipe(redacted))
+    assert.throw(() => Redacted.value(redacted), "Unable to get hidden value")
   })
 
   it("Equal", () => {
-    assert.isTrue(Equal.equals(Hidden.make(1), Hidden.make(1)))
-    assert.isFalse(Equal.equals(Hidden.make(1), Hidden.make(2)))
+    assert.isTrue(Equal.equals(Redacted.make(1), Redacted.make(1)))
+    assert.isFalse(Equal.equals(Redacted.make(1), Redacted.make(2)))
   })
 
   it("Hash", () => {
-    assert.strictEqual(Hash.hash(Hidden.make(1)), Hash.hash(Hidden.make(1)))
-    assert.notStrictEqual(Hash.hash(Hidden.make(1)), Hash.hash(Hidden.make(2)))
+    assert.strictEqual(Hash.hash(Redacted.make(1)), Hash.hash(Redacted.make(1)))
+    assert.notStrictEqual(Hash.hash(Redacted.make(1)), Hash.hash(Redacted.make(2)))
   })
 
-  describe("Secret extends Hidden<string>", () => {
-    it("Hidden.isHidden", () => {
+  describe("Secret extends Redacted<string>", () => {
+    it("Redacted.isRedacted", () => {
       const secret = Secret.fromString("test")
       assert.isTrue(
-        Hidden.isHidden(secret)
+        Redacted.isRedacted(secret)
       )
     })
-    it("Hidden.unsafeWipe", () => {
+    it("Redacted.unsafeWipe", () => {
       const secret = Secret.fromString("test")
       assert.isTrue(
-        Hidden.unsafeWipe(secret)
+        Redacted.unsafeWipe(secret)
       )
     })
-    it("Hidden.value", () => {
+    it("Redacted.value", () => {
       const value = "test"
       const secret = Secret.fromString(value)
-      assert.strictEqual(value, Hidden.value(secret))
+      assert.strictEqual(value, Redacted.value(secret))
     })
   })
 })

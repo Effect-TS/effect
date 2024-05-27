@@ -5,8 +5,8 @@ import * as Optimize from "@effect/printer/Optimize"
 import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
-import * as Hidden from "effect/Hidden"
 import * as Option from "effect/Option"
+import * as Redacted from "effect/Redacted"
 import type * as Prompt from "../../Prompt.js"
 import * as InternalPrompt from "../prompt.js"
 import * as InternalPromptAction from "./action.js"
@@ -297,12 +297,12 @@ const basePrompt = (
 }
 
 /** @internal */
-export const hidden = (options: Prompt.Prompt.TextOptions): Prompt.Prompt<Hidden.Hidden<string>> =>
-  basePrompt(options, "hidden").pipe(InternalPrompt.map(Hidden.make))
+export const hidden = (options: Prompt.Prompt.TextOptions): Prompt.Prompt<Redacted.Redacted<string>> =>
+  basePrompt(options, "hidden").pipe(InternalPrompt.map(Redacted.make))
 
 /** @internal */
-export const password = (options: Prompt.Prompt.TextOptions): Prompt.Prompt<Hidden.Hidden<string>> =>
-  basePrompt(options, "password").pipe(InternalPrompt.map(Hidden.make))
+export const password = (options: Prompt.Prompt.TextOptions): Prompt.Prompt<Redacted.Redacted<string>> =>
+  basePrompt(options, "password").pipe(InternalPrompt.map(Redacted.make))
 
 /** @internal */
 export const text = (options: Prompt.Prompt.TextOptions): Prompt.Prompt<string> => basePrompt(options, "text")

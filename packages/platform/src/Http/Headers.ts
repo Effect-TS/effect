@@ -5,10 +5,10 @@ import * as Schema from "@effect/schema/Schema"
 import * as FiberRef from "effect/FiberRef"
 import { dual, identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
-import * as Hidden from "effect/Hidden"
 import type * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Record from "effect/Record"
+import * as Redacted from "effect/Redacted"
 import * as String from "effect/String"
 import type { Mutable } from "effect/Types"
 
@@ -207,25 +207,28 @@ export const remove: {
 export const redact: {
   (
     key: string | RegExp | ReadonlyArray<string | RegExp>
-  ): (self: Headers) => Record<string, string | Hidden.Hidden<string>>
-  (self: Headers, key: string | RegExp | ReadonlyArray<string | RegExp>): Record<string, string | Hidden.Hidden<string>>
+  ): (self: Headers) => Record<string, string | Redacted.Redacted<string>>
+  (
+    self: Headers,
+    key: string | RegExp | ReadonlyArray<string | RegExp>
+  ): Record<string, string | Redacted.Redacted<string>>
 } = dual(
   2,
   (
     self: Headers,
     key: string | RegExp | ReadonlyArray<string | RegExp>
-  ): Record<string, string | Hidden.Hidden<string>> => {
-    const out: Record<string, string | Hidden.Hidden<string>> = { ...self }
+  ): Record<string, string | Redacted.Redacted<string>> => {
+    const out: Record<string, string | Redacted.Redacted<string>> = { ...self }
     const modify = (key: string | RegExp) => {
       if (typeof key === "string") {
         const k = key.toLowerCase()
         if (k in self) {
-          out[k] = Hidden.make(self[k])
+          out[k] = Redacted.make(self[k])
         }
       } else {
         for (const name in self) {
           if (key.test(name)) {
-            out[name] = Hidden.make(self[name])
+            out[name] = Redacted.make(self[name])
           }
         }
       }

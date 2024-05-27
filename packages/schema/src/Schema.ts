@@ -24,7 +24,6 @@ import type { LazyArg } from "effect/Function"
 import { dual, identity } from "effect/Function"
 import * as hashMap_ from "effect/HashMap"
 import * as hashSet_ from "effect/HashSet"
-import * as hidden_ from "effect/Hidden"
 import * as list_ from "effect/List"
 import * as number_ from "effect/Number"
 import * as option_ from "effect/Option"
@@ -32,6 +31,7 @@ import type * as Order from "effect/Order"
 import type { Pipeable } from "effect/Pipeable"
 import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import * as redacted_ from "effect/Redacted"
 import * as Request from "effect/Request"
 import * as sortedSet_ from "effect/SortedSet"
 import * as string_ from "effect/String"
@@ -4801,53 +4801,54 @@ export class BigIntFromNumber extends transformOrFail(
   static override annotations: (annotations: Annotations.Schema<bigint>) => typeof BigIntFromNumber = super.annotations
 }
 
-const hiddenArbitrary = <A>(value: LazyArbitrary<A>): LazyArbitrary<hidden_.Hidden<A>> => (fc) =>
-  value(fc).map((x) => hidden_.make(x))
+const redactedArbitrary = <A>(value: LazyArbitrary<A>): LazyArbitrary<redacted_.Redacted<A>> => (fc) =>
+  value(fc).map((x) => redacted_.make(x))
 
-const hiddenParse =
-  <R, A>(decodeUnknown: ParseResult.DecodeUnknown<A, R>): ParseResult.DeclarationDecodeUnknown<hidden_.Hidden<A>, R> =>
-  (u, options, ast) => {
-    if (hidden_.isHidden(u)) {
-      return ParseResult.map(
-        decodeUnknown(hidden_.value(u), options),
-        (_) => hidden_.make(_)
-      )
-    } else {
-      return ParseResult.fail(new ParseResult.Type(ast, hidden_.make(u)))
-    }
+const redactedParse = <R, A>(
+  decodeUnknown: ParseResult.DecodeUnknown<A, R>
+): ParseResult.DeclarationDecodeUnknown<redacted_.Redacted<A>, R> =>
+(u, options, ast) => {
+  if (redacted_.isRedacted(u)) {
+    return ParseResult.map(
+      decodeUnknown(redacted_.value(u), options),
+      (_) => redacted_.make(_)
+    )
+  } else {
+    return ParseResult.fail(new ParseResult.Type(ast, redacted_.make(u)))
   }
+}
 
 /**
  * @category api interface
  * @since 1.0.0
  */
-export interface HiddenFromSelf<Value extends Schema.Any> extends
+export interface RedactedFromSelf<Value extends Schema.Any> extends
   AnnotableClass<
-    HiddenFromSelf<Value>,
-    hidden_.Hidden<Schema.Type<Value>>,
-    hidden_.Hidden<Schema.Encoded<Value>>,
+    RedactedFromSelf<Value>,
+    redacted_.Redacted<Schema.Type<Value>>,
+    redacted_.Redacted<Schema.Encoded<Value>>,
     Schema.Context<Value>
   >
 {}
 
 /**
- * @category Hidden constructors
+ * @category Redacted constructors
  * @since 1.0.0
  */
-export const HiddenFromSelf = <Value extends Schema.Any>(
+export const RedactedFromSelf = <Value extends Schema.Any>(
   value: Value
-): HiddenFromSelf<Value> =>
+): RedactedFromSelf<Value> =>
   declare(
     [value],
     {
-      decode: (value) => hiddenParse(ParseResult.decodeUnknown(value)),
-      encode: (value) => hiddenParse(ParseResult.encodeUnknown(value))
+      decode: (value) => redactedParse(ParseResult.decodeUnknown(value)),
+      encode: (value) => redactedParse(ParseResult.encodeUnknown(value))
     },
     {
-      description: "Hidden(<hidden>)",
-      pretty: () => () => "Hidden(<hidden>)",
-      arbitrary: hiddenArbitrary,
-      equivalence: hidden_.getEquivalence
+      description: "Redacted(<redacted>)",
+      pretty: () => () => "Redacted(<redacted>)",
+      arbitrary: redactedArbitrary,
+      equivalence: redacted_.getEquivalence
     }
   )
 
@@ -4855,30 +4856,30 @@ export const HiddenFromSelf = <Value extends Schema.Any>(
  * @category api interface
  * @since 1.0.0
  */
-export interface Hidden<Value extends Schema.Any> extends
+export interface Redacted<Value extends Schema.Any> extends
   AnnotableClass<
-    Hidden<Value>,
-    hidden_.Hidden<Schema.Type<Value>>,
+    Redacted<Value>,
+    redacted_.Redacted<Schema.Type<Value>>,
     Schema.Encoded<Value>,
     Schema.Context<Value>
   >
 {}
 
 /**
- * A schema that transforms any type `T` into a `Hidden<T>`.
+ * A schema that transforms any type `T` into a `Redacted<T>`.
  *
- * @category Hidden transformations
+ * @category Redacted transformations
  * @since 1.0.0
  */
-export const Hidden = <Value extends Schema.Any>(
+export const Redacted = <Value extends Schema.Any>(
   value: Value
-): Hidden<Value> => {
+): Redacted<Value> => {
   return transform(
     value,
-    HiddenFromSelf(typeSchema(value)),
+    RedactedFromSelf(typeSchema(value)),
     {
-      decode: (value) => hidden_.make(value),
-      encode: (value) => hidden_.value(value)
+      decode: (value) => redacted_.make(value),
+      encode: (value) => redacted_.value(value)
     }
   )
 }

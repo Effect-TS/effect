@@ -25,7 +25,7 @@
 "@effect/sql": patch
 ---
 
-Introduced `Hidden<T>` module - `Secret` generalization
-`Secret extends Hidden<string>`
-Added two related schemas `Hidden` and `HiddenFromSelf`
-The use of the `Secret` has been replaced by the use of the `Hidden<string>` in packages with version `0.*.*`
+Introduced `Redacted<T>` module - `Secret` generalization
+`Secret extends Redacted<string>`
+Added two related schemas `Redacted` and `RedactedFromSelf`
+The use of the `Redacted` has been replaced by the use of the `Redacted<string>` in packages with version `0.*.*`

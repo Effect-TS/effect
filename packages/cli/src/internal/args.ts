@@ -9,9 +9,9 @@ import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { dual, pipe } from "effect/Function"
-import type * as Hidden from "effect/Hidden"
 import * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
+import type * as Redacted from "effect/Redacted"
 import * as Ref from "effect/Ref"
 import type * as Args from "../Args.js"
 import type * as CliConfig from "../CliConfig.js"
@@ -269,7 +269,7 @@ export const path = (config?: Args.Args.PathArgsConfig): Args.Args<string> =>
 /** @internal */
 export const hidden = (
   config?: Args.Args.BaseArgsConfig
-): Args.Args<Hidden.Hidden<string>> => makeSingle(Option.fromNullable(config?.name), InternalPrimitive.hidden)
+): Args.Args<Redacted.Redacted<string>> => makeSingle(Option.fromNullable(config?.name), InternalPrimitive.hidden)
 
 /** @internal */
 export const text = (config?: Args.Args.BaseArgsConfig): Args.Args<string> =>

@@ -3,8 +3,8 @@
  * @deprecated
  */
 import type * as Equal from "./Equal.js"
-import type * as Hidden from "./Hidden.js"
 import * as InternalSecret from "./internal/secret.js"
+import type * as Redacted from "./Redacted.js"
 
 /**
  * @since 2.0.0
@@ -25,7 +25,7 @@ export type SecretTypeId = typeof SecretTypeId
  * @category models
  * @deprecated
  */
-export interface Secret extends Hidden.Hidden<string>, Secret.Proto, Equal.Equal {
+export interface Secret extends Redacted.Redacted<string>, Secret.Proto, Equal.Equal {
   /** @internal */
   readonly raw: Array<number>
 }

@@ -1593,20 +1593,20 @@ S.asSchema(S.DurationFromNanos)
 S.DurationFromNanos
 
 // ---------------------------------------------
-// Secret
+// Redacted
 // ---------------------------------------------
 
-// $ExpectType Schema<Secret, string, never>
-S.asSchema(S.Secret)
+// $ExpectType Schema<Redacted<number>, string, never>
+S.asSchema(S.Redacted(S.NumberFromString))
 
-// $ExpectType typeof Secret
-S.Secret
+// $ExpectType Redacted<typeof NumberFromString>
+S.Redacted(S.NumberFromString)
 
-// $ExpectType Schema<Secret, Secret, never>
-S.asSchema(S.SecretFromSelf)
+// $ExpectType Schema<Redacted<number>, Redacted<string>, never>
+S.asSchema(S.RedactedFromSelf(S.NumberFromString))
 
-// $ExpectType typeof SecretFromSelf
-S.SecretFromSelf
+// $ExpectType RedactedFromSelf<typeof NumberFromString>
+S.RedactedFromSelf(S.NumberFromString)
 
 // ---------------------------------------------
 // propertySignature

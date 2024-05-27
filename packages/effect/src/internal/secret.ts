@@ -1,7 +1,7 @@
 import * as Arr from "../Array.js"
-import * as hidden_ from "../internal/hidden.js"
 import { hasProperty } from "../Predicate.js"
 import type * as Secret from "../Secret.js"
+import * as redacted_ from "./redacted.js"
 
 /**
  * @internal
@@ -29,7 +29,7 @@ export const isSecret = (u: unknown): u is Secret.Secret => hasProperty(u, Secre
  */
 export const make = (bytes: Array<number>): Secret.Secret => {
   const secret = Object.create({
-    ...hidden_.proto,
+    ...redacted_.proto,
     [SecretTypeId]: SecretTypeId
   })
   Object.defineProperty(secret, "toString", {
@@ -48,7 +48,7 @@ export const make = (bytes: Array<number>): Secret.Secret => {
     enumerable: false,
     value: bytes
   })
-  hidden_.hiddenRegistry.set(secret, bytes.map((byte) => String.fromCharCode(byte)).join(""))
+  redacted_.redactedRegistry.set(secret, bytes.map((byte) => String.fromCharCode(byte)).join(""))
   return secret
 }
 
@@ -83,5 +83,5 @@ export const unsafeWipe = (self: Secret.Secret): void => {
   for (let i = 0; i < self.raw.length; i++) {
     self.raw[i] = 0
   }
-  hidden_.hiddenRegistry.delete(self)
+  redacted_.redactedRegistry.delete(self)
 }
