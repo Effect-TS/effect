@@ -1,5 +1,14 @@
 # @effect/platform-node-shared
 
+## 0.6.1
+
+### Patch Changes
+
+- [#2859](https://github.com/Effect-TS/effect/pull/2859) [`c5c94ed`](https://github.com/Effect-TS/effect/commit/c5c94edf1ddb0abb5c0e2adbb4ec2578a98d8e07) Thanks @tim-smart! - remove temp directory for FileSystem makeTempFileScoped
+
+- Updated dependencies []:
+  - @effect/platform@0.55.1
+
 ## 0.6.0
 
 ### Minor Changes

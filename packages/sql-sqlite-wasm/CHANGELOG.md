@@ -1,5 +1,14 @@
 # @effect/sql-sqlite-wasm
 
+## 0.2.20
+
+### Patch Changes
+
+- [#2858](https://github.com/Effect-TS/effect/pull/2858) [`a0f989d`](https://github.com/Effect-TS/effect/commit/a0f989d382f3df432dd10f345ae0054d58545852) Thanks @tim-smart! - ensure sqlite wasm type id is unique
+
+- Updated dependencies []:
+  - @effect/sql@0.3.1
+
 ## 0.2.19
 
 ### Patch Changes
