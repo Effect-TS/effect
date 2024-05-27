@@ -1,7 +1,7 @@
 /**
  * @since 3.1.3
  */
-import type * as Redacted from "./Equal.js"
+import type * as Equal from "./Equal.js"
 import * as Equivalence from "./Equivalence.js"
 import * as redacted_ from "./internal/redacted.js"
 import type { Pipeable } from "./Pipeable.js"
@@ -23,7 +23,7 @@ export type RedactedTypeId = typeof RedactedTypeId
  * @since 3.1.3
  * @category models
  */
-export interface Redacted<out A> extends Redacted.Variance<A>, Redacted.Equal, Pipeable {
+export interface Redacted<out A> extends Redacted.Variance<A>, Equal.Equal, Pipeable {
 }
 
 /**

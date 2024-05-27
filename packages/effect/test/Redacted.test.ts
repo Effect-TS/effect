@@ -37,7 +37,7 @@ describe("Redacted", () => {
   it("unsafeWipe", () => {
     const redacted = Redacted.make("redacted")
     assert.isTrue(Redacted.unsafeWipe(redacted))
-    assert.throw(() => Redacted.value(redacted), "Unable to get hidden value")
+    assert.throw(() => Redacted.value(redacted), "Unable to get redacted value")
   })
 
   it("Equal", () => {
