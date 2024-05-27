@@ -81,6 +81,7 @@ export const make: <A, E, R>(
   options: {
     readonly acquire: Effect.Effect<A, E, R>
     readonly size: number
+    readonly permits?: number | undefined
   }
 ) => Effect.Effect<Pool<A, E>, never, Scope.Scope | R> = internal.make
 
@@ -115,12 +116,16 @@ export const make: <A, E, R>(
  * @since 2.0.0
  * @category constructors
  */
-export const makeWithTTL: <A, E, R>(options: {
-  readonly acquire: Effect.Effect<A, E, R>
-  readonly min: number
-  readonly max: number
-  readonly timeToLive: Duration.DurationInput
-}) => Effect.Effect<Pool<A, E>, never, Scope.Scope | R> = internal.makeWithTTL
+export const makeWithTTL: <A, E, R>(
+  options: {
+    readonly acquire: Effect.Effect<A, E, R>
+    readonly min: number
+    readonly max: number
+    readonly permits?: number | undefined
+    readonly timeToLive: Duration.DurationInput
+    readonly strategy?: "creation" | "access" | undefined
+  }
+) => Effect.Effect<Pool<A, E>, never, Scope.Scope | R> = internal.makeWithTTL
 
 /**
  * Retrieves an item from the pool in a scoped effect. Note that if
