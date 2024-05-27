@@ -6545,7 +6545,7 @@ export const toQueueOfElements = dual<
 export const toReadableStream = dual<
   <A>(
     options?: { readonly strategy?: QueuingStrategy<A> | undefined }
-  ) => <A, E>(self: Stream.Stream<A, E>) => ReadableStream<A>,
+  ) => <E>(self: Stream.Stream<A, E>) => ReadableStream<A>,
   <A, E>(
     self: Stream.Stream<A, E>,
     options?: { readonly strategy?: QueuingStrategy<A> | undefined }
@@ -6562,7 +6562,7 @@ export const toReadableStream = dual<
 export const toReadableStreamEffect = dual<
   <A>(
     options?: { readonly strategy?: QueuingStrategy<A> | undefined }
-  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<ReadableStream<A>, never, R>,
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<ReadableStream<A>, never, R>,
   <A, E, R>(
     self: Stream.Stream<A, E, R>,
     options?: { readonly strategy?: QueuingStrategy<A> | undefined }
@@ -6580,7 +6580,7 @@ export const toReadableStreamRuntime = dual<
   <A, XR>(
     runtime: Runtime.Runtime<XR>,
     options?: { readonly strategy?: QueuingStrategy<A> | undefined }
-  ) => <A, E, R extends XR>(self: Stream.Stream<A, E, R>) => ReadableStream<A>,
+  ) => <E, R extends XR>(self: Stream.Stream<A, E, R>) => ReadableStream<A>,
   <A, E, XR, R extends XR>(
     self: Stream.Stream<A, E, R>,
     runtime: Runtime.Runtime<XR>,

@@ -3863,7 +3863,7 @@ export const toQueueOfElements: {
 export const toReadableStream: {
   <A>(
     options?: { readonly strategy?: QueuingStrategy<A> | undefined }
-  ): <A, E>(
+  ): <E>(
     self: Stream<A, E>
   ) => ReadableStream<A>
   <A, E>(
@@ -3883,7 +3883,7 @@ export const toReadableStream: {
 export const toReadableStreamEffect: {
   <A>(
     options?: { readonly strategy?: QueuingStrategy<A> | undefined }
-  ): <A, E, R>(
+  ): <E, R>(
     self: Stream<A, E, R>
   ) => Effect.Effect<ReadableStream<A>, never, R>
   <A, E, R>(
@@ -3904,7 +3904,7 @@ export const toReadableStreamRuntime: {
   <A, XR>(
     runtime: Runtime<XR>,
     options?: { readonly strategy?: QueuingStrategy<A> | undefined }
-  ): <A, E, R extends XR>(self: Stream<A, E, R>) => ReadableStream<A>
+  ): <E, R extends XR>(self: Stream<A, E, R>) => ReadableStream<A>
   <A, E, XR, R extends XR>(
     self: Stream<A, E, R>,
     runtime: Runtime<XR>,
