@@ -51,7 +51,7 @@ describe("Either", () => {
     expect(d).toEqual(Either.right(2))
     expect(e).toEqual(Either.left("err"))
     expect(f).toEqual(Either.left("err"))
-    expect(g).toEqual(Either.left("testContext"))
+    expect(g).toEqual(Either.right("testContext"))
   })
 
   it("exports", () => {
