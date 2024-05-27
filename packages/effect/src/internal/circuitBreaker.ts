@@ -9,6 +9,7 @@ import * as Metric from "../Metric.js"
 import type * as MetricLabel from "../MetricLabel.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
+import * as Predicate from "../Predicate.js"
 import * as PubSub from "../PubSub.js"
 import * as Queue from "../Queue.js"
 import * as Ref from "../Ref.js"
@@ -27,7 +28,30 @@ export const CircuitBreakerTypeId: CircuitBreaker.CircuitBreakerTypeId = Symbol.
 
 const circuitBreakerVariance = {
   /* c8 ignore next */
-  _Error: (_: any) => _
+  _Error: (_: unknown) => _
+}
+
+class StateChange implements CircuitBreaker.CircuitBreaker.StateChange {
+  constructor(
+    readonly from: CircuitBreaker.CircuitBreaker.State,
+    readonly to: CircuitBreaker.CircuitBreaker.State,
+    readonly atNanos: BigInt
+  ) {}
+}
+
+class CircuitBreakerMetrics {
+  constructor(
+    readonly state: Metric.Metric.Gauge<number>,
+    readonly stateChanges: Metric.Metric.Counter<number>,
+    readonly successfulCalls: Metric.Metric.Counter<number>,
+    readonly failedCalls: Metric.Metric.Counter<number>,
+    readonly rejectedCalls: Metric.Metric.Counter<number>
+  ) {}
+}
+
+/** @internal */
+export const OpenError: CircuitBreaker.CircuitBreaker.OpenError = {
+  _tag: "OpenError"
 }
 
 const exponentialBackoff = Schedule.exponential("1 second", 2).pipe(
@@ -172,12 +196,12 @@ export const make = <E>({
     }
 
     const circuitBreaker: CircuitBreaker.CircuitBreaker<E> = Object.assign(
-      <A, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, CircuitBreaker.CircuitBreaker.Error<E>, R> =>
+      <A, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E | CircuitBreaker.CircuitBreaker.OpenError, R> =>
         Ref.get(state).pipe(
           Effect.flatMap((currentState) => {
             switch (currentState) {
               case "Open": {
-                return Effect.fail(openError)
+                return Effect.fail(OpenError)
               }
               case "Closed": {
                 // The state may have already changed to `Open` or even `HalfOpen` -
@@ -197,7 +221,7 @@ export const make = <E>({
                 return tapUserError(effect, {
                   onFailure: onComplete(false),
                   onSuccess: onComplete(true)
-                }).pipe(Effect.mapError(wrapError))
+                })
               }
               case "HalfOpen": {
                 return Ref.getAndUpdate(halfOpenSwitch, constFalse).pipe(
@@ -213,8 +237,8 @@ export const make = <E>({
                             Effect.zipRight(strategy.onReset),
                             Effect.uninterruptible
                           )
-                        }).pipe(Effect.mapError(wrapError))
-                        : Effect.fail(openError)
+                        })
+                        : Effect.fail(OpenError)
                     )
                   )
                 )
@@ -222,16 +246,10 @@ export const make = <E>({
             }
           }),
           Effect.tapBoth({
-            onFailure: (error) => {
-              switch (error._tag) {
-                case "OpenError": {
-                  return withMetrics((metrics) => Metric.increment(metrics.rejectedCalls))
-                }
-                case "WrappedError": {
-                  return withMetrics((metrics) => Metric.increment(metrics.failedCalls))
-                }
-              }
-            },
+            onFailure: (error) =>
+              Predicate.isTagged(error, "OpenError")
+                ? withMetrics((metrics) => Metric.increment(metrics.rejectedCalls))
+                : withMetrics((metrics) => Metric.increment(metrics.failedCalls)),
             onSuccess: () => withMetrics((metrics) => Metric.increment(metrics.successfulCalls))
           })
         ),
@@ -251,32 +269,9 @@ export const make = <E>({
     return circuitBreaker
   })
 
-const openError: CircuitBreaker.CircuitBreaker.OpenError = {
-  _tag: "OpenError"
-}
-
-const wrapError = <E>(error: E): CircuitBreaker.CircuitBreaker.WrappedError<E> => ({
-  _tag: "WrappedError",
-  error
-})
-
-class StateChange implements CircuitBreaker.CircuitBreaker.StateChange {
-  constructor(
-    readonly from: CircuitBreaker.CircuitBreaker.State,
-    readonly to: CircuitBreaker.CircuitBreaker.State,
-    readonly at: BigInt
-  ) {}
-}
-
-class CircuitBreakerMetrics {
-  constructor(
-    readonly state: Metric.Metric.Gauge<number>,
-    readonly stateChanges: Metric.Metric.Counter<number>,
-    readonly successfulCalls: Metric.Metric.Counter<number>,
-    readonly failedCalls: Metric.Metric.Counter<number>,
-    readonly rejectedCalls: Metric.Metric.Counter<number>
-  ) {}
-}
+// =============================================================================
+// Metrics
+// =============================================================================
 
 const stateToCode = (state: CircuitBreaker.CircuitBreaker.State): number => {
   switch (state) {
@@ -317,13 +312,10 @@ const makeMetrics = (labels: Iterable<MetricLabel.MetricLabel>) => {
   )
 }
 
-/**
- * For a CircuitBreaker that fails when a number of successive failures (no pun intended) has been counted
- *
- * @param maxFailures
- *   Maximum number of failures before tripping the circuit breaker
- * @return
- */
+// =============================================================================
+// Tripping Strategies
+// =============================================================================
+
 const failureCount = (
   maxFailures: number
 ): Effect.Effect<CircuitBreaker.CircuitBreaker.TrippingStrategy, never, Scope.Scope> =>
