@@ -191,7 +191,7 @@ export const make = <RD = never>({
     const run = Effect.gen(function*(_) {
       yield* sql.onDialect({
         mssql: () => Effect.void,
-        mysql: () => sql`LOCK TABLE ${sql(table)} IN ACCESS EXCLUSIVE MODE`,
+        mysql: () => Effect.void,
         pg: () => sql`LOCK TABLE ${sql(table)} IN ACCESS EXCLUSIVE MODE`,
         sqlite: () => Effect.void
       })
