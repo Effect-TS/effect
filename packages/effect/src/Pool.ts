@@ -74,6 +74,9 @@ export const isPool: (u: unknown) => u is Pool<unknown, unknown> = internal.isPo
  * because the `Scope` is closed, the individual items allocated by the pool
  * will be released in some unspecified order.
  *
+ * By setting the `permits` parameter, you can control the level of concurrent
+ * access per pool item. By default, the number of permits is set to `1`.
+ *
  * @since 2.0.0
  * @category constructors
  */
@@ -92,6 +95,15 @@ export const make: <A, E, R>(
  * the lifetime of the pool. When the pool is shutdown because the `Scope` is
  * used, the individual items allocated by the pool will be released in some
  * unspecified order.
+ *
+ * By setting the `permits` parameter, you can control the level of concurrent
+ * access per pool item. By default, the number of permits is set to `1`.
+ *
+ * The `timeToLiveStrategy` determines how items are invalidated. If set to
+ * "creation", then items are invalidated based on their creation time. If set
+ * to "usage", then items are invalidated based on pool usage.
+ *
+ * By default, the `timeToLiveStrategy` is set to "usage".
  *
  * ```ts
  * import { createConnection } from "mysql2";
@@ -123,7 +135,7 @@ export const makeWithTTL: <A, E, R>(
     readonly max: number
     readonly permits?: number | undefined
     readonly timeToLive: Duration.DurationInput
-    readonly timeToLiveStrategy?: "creation" | "access" | undefined
+    readonly timeToLiveStrategy?: "creation" | "usage" | undefined
   }
 ) => Effect.Effect<Pool<A, E>, never, Scope.Scope | R> = internal.makeWithTTL
 

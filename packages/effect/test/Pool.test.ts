@@ -238,6 +238,38 @@ describe("Pool", () => {
       expect(max).toBe(15)
     }))
 
+  it.scoped("scale to zero", () =>
+    Effect.gen(function*($) {
+      const deferred = yield* $(Deferred.make<void>())
+      const count = yield* $(Ref.make(0))
+      const acquire = Effect.acquireRelease(
+        Ref.updateAndGet(count, (n) => n + 1),
+        () => Ref.update(count, (n) => n - 1)
+      )
+      const pool = yield* $(Pool.makeWithTTL({
+        acquire,
+        min: 0,
+        max: 10,
+        permits: 3,
+        timeToLive: Duration.seconds(60)
+      }))
+      yield* $(
+        Effect.scoped(Effect.zipRight(
+          Pool.get(pool),
+          Deferred.await(deferred)
+        )),
+        Effect.fork,
+        Effect.repeatN(29)
+      )
+      yield* $(Effect.repeat(Ref.get(count), { until: (n) => n === 10 }))
+      yield* $(Deferred.succeed(deferred, void 0))
+      const max = yield* $(Ref.get(count))
+      yield* $(TestClock.adjust(Duration.seconds(60)))
+      const min = yield* $(Ref.get(count))
+      expect(min).toBe(0)
+      expect(max).toBe(10)
+    }))
+
   it.scoped("shutdown robustness", () =>
     Effect.gen(function*($) {
       const count = yield* $(Ref.make(0))

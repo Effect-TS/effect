@@ -91,12 +91,12 @@ export const makeWithTTL = <A, E, R>(options: {
   readonly max: number
   readonly permits?: number | undefined
   readonly timeToLive: Duration.DurationInput
-  readonly timeToLiveStrategy?: "creation" | "access" | undefined
+  readonly timeToLiveStrategy?: "creation" | "usage" | undefined
 }): Effect<Pool<A, E>, never, R | Scope> =>
   core.flatMap(
     options.timeToLiveStrategy === "creation" ?
       strategyCreationTTL<A, E>(options.timeToLive) :
-      strategyAccessTTL<A, E>(options.timeToLive),
+      strategyUsageTTL<A, E>(options.timeToLive),
     (strategy) => makeWith({ ...options, strategy })
   )
 
@@ -306,7 +306,7 @@ const strategyCreationTTL = <A, E>(ttl: Duration.DurationInput) =>
     })
   )
 
-const strategyAccessTTL = <A, E>(ttl: Duration.DurationInput) =>
+const strategyUsageTTL = <A, E>(ttl: Duration.DurationInput) =>
   core.map(internalQueue.unbounded<PoolItem<A, E>>(), (queue) => {
     return identity<Strategy<A, E>>({
       run: (pool) => {
