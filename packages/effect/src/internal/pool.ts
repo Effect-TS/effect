@@ -235,9 +235,7 @@ class PoolImpl<A, E> implements Pool<A, E> {
       if (poolItem.refCount === 0) {
         this.items.delete(poolItem)
         this.invalidated.delete(poolItem)
-        return this.waiters > 0
-          ? core.zipRight(poolItem.finalizer, this.reconcile)
-          : poolItem.finalizer
+        return core.zipRight(poolItem.finalizer, this.reconcile)
       }
       this.invalidated.add(poolItem)
       return core.void
@@ -246,21 +244,22 @@ class PoolImpl<A, E> implements Pool<A, E> {
 
   get shutdown(): Effect<void> {
     return core.suspend(() => {
+      if (this.isShuttingDown) return core.void
       this.isShuttingDown = true
       const size = this.items.size
       const semaphore = circular.unsafeMakeSemaphore(size)
-      return core.zipRight(
-        core.forEachSequentialDiscard(this.items, (item) => {
-          if (item.refCount > 0) {
-            item.finalizer = core.zipRight(item.finalizer, semaphore.release(1))
-            this.invalidated.add(item)
-            return semaphore.take(1)
-          }
-          this.items.delete(item)
-          this.invalidated.delete(item)
-          return item.finalizer
-        }),
-        semaphore.take(size)
+      return core.forEachSequentialDiscard(this.items, (item) => {
+        if (item.refCount > 0) {
+          item.finalizer = core.zipRight(item.finalizer, semaphore.release(1))
+          this.invalidated.add(item)
+          return semaphore.take(1)
+        }
+        this.items.delete(item)
+        this.invalidated.delete(item)
+        return item.finalizer
+      }).pipe(
+        core.zipRight(this.queue.shutdown),
+        core.zipRight(semaphore.take(size))
       )
     })
   }
