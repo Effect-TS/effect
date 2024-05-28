@@ -244,7 +244,7 @@ class PoolImpl<A, E> implements Pool<A, E> {
   }
 
   get shutdown(): Effect.Effect<void> {
-    return Effect.uninterruptible(Effect.suspend(() => {
+    return Effect.suspend(() => {
       this.isShuttingDown = true
       const size = this.items.size
       const semaphore = Effect.unsafeMakeSemaphore(size)
@@ -261,7 +261,7 @@ class PoolImpl<A, E> implements Pool<A, E> {
         }),
         semaphore.take(size)
       )
-    }))
+    })
   }
 
   pipe() {
@@ -308,27 +308,21 @@ const strategyCreationTTL = <A, E>(ttl: Duration.DurationInput) =>
 
 const strategyAccessTTL = <A, E>(ttl: Duration.DurationInput) =>
   Effect.gen(function*() {
-    const clock = yield* Effect.clock
     const queue = yield* Queue.unbounded<PoolItem<A, E>>()
-    const accessTimes = new WeakMap<PoolItem<A, E>, number>()
 
     return identity<Strategy<A, E>>({
-      run: (pool) => {
-        return Effect.suspend(() => {
+      run: (pool) =>
+        Effect.suspend(() => {
           const excess = pool.items.size - pool.targetSize
           if (excess <= 0) return Effect.void
-          return queue.takeUpTo(excess).pipe(
-            Effect.flatMap(Effect.forEach((item) => pool.invalidatePoolItem(item), { discard: true }))
+          return Effect.flatMap(
+            queue.takeUpTo(excess),
+            Effect.forEach((item) => pool.invalidatePoolItem(item), { discard: true })
           )
         }).pipe(
           Effect.delay(ttl),
           Effect.forever
-        )
-      },
-      onAcquire: (item) =>
-        Effect.suspend(() => {
-          accessTimes.set(item, clock.unsafeCurrentTimeMillis())
-          return queue.offer(item)
-        })
+        ),
+      onAcquire: (item) => queue.offer(item)
     })
   })
