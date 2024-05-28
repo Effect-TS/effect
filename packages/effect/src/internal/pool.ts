@@ -254,9 +254,11 @@ class PoolImpl<A, E> implements Pool<A, E> {
           if (item.refCount > 0) {
             item.finalizer = Effect.zipRight(item.finalizer, semaphore.release(1))
             this.invalidated.add(item)
-            return Effect.zipRight(semaphore.take(1), item.finalizer)
+            return semaphore.take(1)
           }
-          return this.invalidatePoolItem(item)
+          this.items.delete(item)
+          this.invalidated.delete(item)
+          return item.finalizer
         }),
         semaphore.take(size)
       )
