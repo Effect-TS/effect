@@ -88,10 +88,10 @@ export const makeWithTTL = <A, E, R>(options: {
   readonly max: number
   readonly permits?: number | undefined
   readonly timeToLive: Duration.DurationInput
-  readonly mode?: "creation" | "access" | undefined
+  readonly timeToLiveStrategy?: "creation" | "access" | undefined
 }): Effect.Effect<Pool<A, E>, never, R | Scope.Scope> =>
   Effect.flatMap(
-    options.mode === "creation" ?
+    options.timeToLiveStrategy === "creation" ?
       strategyCreationTTL<A, E>(options.timeToLive) :
       strategyAccessTTL<A, E>(options.timeToLive),
     (strategy) => makeWith({ ...options, strategy })

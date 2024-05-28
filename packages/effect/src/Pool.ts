@@ -123,7 +123,7 @@ export const makeWithTTL: <A, E, R>(
     readonly max: number
     readonly permits?: number | undefined
     readonly timeToLive: Duration.DurationInput
-    readonly strategy?: "creation" | "access" | undefined
+    readonly timeToLiveStrategy?: "creation" | "access" | undefined
   }
 ) => Effect.Effect<Pool<A, E>, never, Scope.Scope | R> = internal.makeWithTTL
 
