@@ -50,7 +50,7 @@ When using `it.effect`, the `TestContext` is automatically injected, which allow
 
 ## Testing Successful Operations
 
-To demonstrate, let's create a test for a function that divides two numbers but fails if the divisor is zero:
+Let's create a test for a function that divides two numbers but fails if the divisor is zero:
 
 ```ts
 import { expect } from "vitest"
