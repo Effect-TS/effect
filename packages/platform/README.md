@@ -255,6 +255,25 @@ NodeRuntime.runMain(
 )
 ```
 
+## Running a Platform Command with stdout Streamed to process.stdout
+
+To run a command (for example `cat`) and stream its `stdout` to `process.stdout` follow these steps:
+
+```ts
+import { Command } from "@effect/platform"
+import { NodeContext, NodeRuntime } from "@effect/platform-node"
+import { Effect } from "effect"
+
+// Create a command to run `cat` on a file and inherit stdout
+const program = Command.make("cat", "./some-file.txt").pipe(
+  Command.stdout("inherit"),
+  Command.exitCode
+)
+
+// Run the command using NodeRuntime with the NodeContext layer
+NodeRuntime.runMain(program.pipe(Effect.provide(NodeContext.layer)))
+```
+
 # FileSystem
 
 The `@effect/platform/FileSystem` module provides a single `FileSystem` tag, which acts as the gateway for interacting with the filesystem.
