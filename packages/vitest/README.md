@@ -1,6 +1,8 @@
 # Introduction
 
-Welcome to your guide on testing Effect applications using `vitest` and the `@effect/vitest` package. This guide is designed to help beginners efficiently set up their testing environment and create robust, maintainable tests. By integrating `vitest` with the Effect library, you enhance your testing capabilities, allowing for more expressive tests. Let’s start by setting up the necessary tools and then dive into crafting effective test cases.
+Welcome to your guide on testing Effect applications using `vitest` and the `@effect/vitest` package! `@effect/vitest` is designed to help simplify running Effect-based tests through `vitest`. 
+
+In the guide below, we will first start by setting up the required dependencies. Then, we will dive into a few examples of how to use `@effect/vitest` to create some Effect-based test cases.
 
 # Requirements
 
