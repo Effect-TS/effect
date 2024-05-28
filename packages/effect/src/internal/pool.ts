@@ -1,8 +1,9 @@
+import type { Cause } from "effect/Cause"
 import type { Queue } from "effect/Queue"
 import * as Context from "../Context.js"
 import * as Duration from "../Duration.js"
 import type { Effect } from "../Effect.js"
-import type * as Exit from "../Exit.js"
+import type { Exit } from "../Exit.js"
 import { dual, identity } from "../Function.js"
 import { pipeArguments } from "../Pipeable.js"
 import type { Pool, PoolTypeId as PoolTypeId_ } from "../Pool.js"
@@ -109,7 +110,7 @@ export const invalidate: {
 } = dual(2, <A, E>(self: Pool<A, E>, item: A): Effect<void> => self.invalidate(item))
 
 interface PoolItem<A, E> {
-  readonly exit: Exit.Exit<A, E>
+  readonly exit: Exit<A, E>
   finalizer: Effect<void>
   refCount: number
 }
@@ -144,7 +145,7 @@ class PoolImpl<A, E> implements Pool<A, E> {
     core.flatMap(({ exit, scope }) => {
       const item: PoolItem<A, E> = {
         exit,
-        finalizer: scope.close(exit),
+        finalizer: core.catchAllCause(scope.close(exit), reportUnhandledError),
         refCount: 0
       }
       this.items.add(item)
@@ -250,7 +251,7 @@ class PoolImpl<A, E> implements Pool<A, E> {
       const semaphore = circular.unsafeMakeSemaphore(size)
       return core.forEachSequentialDiscard(this.items, (item) => {
         if (item.refCount > 0) {
-          item.finalizer = core.zipRight(item.finalizer, semaphore.release(1))
+          item.finalizer = core.zipLeft(item.finalizer, semaphore.release(1))
           this.invalidated.add(item)
           return semaphore.take(1)
         }
@@ -308,18 +309,29 @@ const strategyCreationTTL = <A, E>(ttl: Duration.DurationInput) =>
 const strategyAccessTTL = <A, E>(ttl: Duration.DurationInput) =>
   core.map(internalQueue.unbounded<PoolItem<A, E>>(), (queue) => {
     return identity<Strategy<A, E>>({
-      run: (pool) =>
-        core.suspend(() => {
+      run: (pool) => {
+        const process: Effect<void> = core.suspend(() => {
           const excess = pool.items.size - pool.targetSize
           if (excess <= 0) return core.void
-          return core.flatMap(
-            queue.takeUpTo(excess),
-            core.forEachSequentialDiscard((item) => pool.invalidatePoolItem(item))
+          return queue.take.pipe(
+            core.tap((item) => pool.invalidatePoolItem(item)),
+            core.zipRight(process)
           )
-        }).pipe(
+        })
+        return process.pipe(
           coreEffect.delay(ttl),
           coreEffect.forever
-        ),
+        )
+      },
       onAcquire: (item) => queue.offer(item)
     })
+  })
+
+const reportUnhandledError = <E>(cause: Cause<E>) =>
+  core.withFiberRuntime<void>((fiber) => {
+    const unhandledLogLevel = fiber.getFiberRef(core.currentUnhandledErrorLogLevel)
+    if (unhandledLogLevel._tag === "Some") {
+      fiber.log("Unhandled error in pool finalizer", cause, unhandledLogLevel)
+    }
+    return core.void
   })

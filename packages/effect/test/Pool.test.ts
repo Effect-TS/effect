@@ -30,6 +30,21 @@ describe("Pool", () => {
       assert.strictEqual(result, 0)
     }))
 
+  it.scoped("defects don't prevent cleanup", () =>
+    Effect.gen(function*() {
+      const count = yield* Ref.make(0)
+      const get = Effect.acquireRelease(
+        Ref.updateAndGet(count, (n) => n + 1),
+        () => Effect.zipRight(Ref.update(count, (n) => n - 1), Effect.die("boom"))
+      )
+      const scope = yield* Scope.make()
+      yield* Scope.extend(Pool.make({ acquire: get, size: 10 }), scope)
+      yield* Effect.repeat(Ref.get(count), { until: (n) => n === 10 })
+      yield* Scope.close(scope, Exit.succeed(void 0))
+      const result = yield* Ref.get(count)
+      assert.strictEqual(result, 0)
+    }))
+
   it.scoped("acquire one item", () =>
     Effect.gen(function*($) {
       const count = yield* $(Ref.make(0))
