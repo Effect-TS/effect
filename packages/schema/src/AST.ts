@@ -2236,14 +2236,6 @@ export const getCompiler = <A>(match: Match<A>): Compiler<A> => {
   return compile
 }
 
-/** @internal */
-export const getToPropertySignatures = (ps: ReadonlyArray<PropertySignature>): Array<PropertySignature> =>
-  ps.map((p) => new PropertySignature(p.name, typeAST(p.type), p.isOptional, p.isReadonly, p.annotations))
-
-/** @internal */
-export const getToIndexSignatures = (ps: ReadonlyArray<IndexSignature>): Array<IndexSignature> =>
-  ps.map((is) => new IndexSignature(is.parameter, typeAST(is.type), is.isReadonly))
-
 /**
  * @since 1.0.0
  */
