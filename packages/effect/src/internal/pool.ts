@@ -188,6 +188,7 @@ class PoolImpl<A, E> implements Pool<A, E> {
             return this.getPoolItem
           } else if (poolItem.exit._tag === "Failure") {
             this.items.delete(poolItem)
+            this.invalidated.delete(poolItem)
             return core.succeed(poolItem)
           }
           poolItem.refCount++
@@ -311,7 +312,7 @@ const strategyUsageTTL = <A, E>(ttl: Duration.DurationInput) =>
     return identity<Strategy<A, E>>({
       run: (pool) => {
         const process: Effect<void> = core.suspend(() => {
-          const excess = pool.items.size - pool.targetSize
+          const excess = pool.items.size - pool.invalidated.size - pool.targetSize
           if (excess <= 0) return core.void
           return queue.take.pipe(
             core.tap((item) => pool.invalidatePoolItem(item)),
