@@ -46,7 +46,7 @@ import { it } from "@effect/vitest"
 it.effect("test name", () => EffectContainingAssertions, timeout: number | TestOptions = 5_000)
 ```
 
-When using `it.effect`, the `TestContext` is automatically injected, simplifying test setup and execution.
+When using `it.effect`, the `TestContext` is automatically injected, which allows tests to have access to services designed to facilitate testing (such as the [`TestClock`](#using-the-testclock)).
 
 ## Testing Successful Operations
 
