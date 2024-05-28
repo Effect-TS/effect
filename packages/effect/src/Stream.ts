@@ -3860,7 +3860,17 @@ export const toQueueOfElements: {
  * @since 2.0.0
  * @category destructors
  */
-export const toReadableStream: <A, E>(self: Stream<A, E>) => ReadableStream<A> = internal.toReadableStream
+export const toReadableStream: {
+  <A>(
+    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
+  ): <E>(
+    self: Stream<A, E>
+  ) => ReadableStream<A>
+  <A, E>(
+    self: Stream<A, E>,
+    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
+  ): ReadableStream<A>
+} = internal.toReadableStream
 
 /**
  * Converts the stream to a `Effect<ReadableStream>`.
@@ -3870,8 +3880,17 @@ export const toReadableStream: <A, E>(self: Stream<A, E>) => ReadableStream<A> =
  * @since 2.0.0
  * @category destructors
  */
-export const toReadableStreamEffect: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<ReadableStream<A>, never, R> =
-  internal.toReadableStreamEffect
+export const toReadableStreamEffect: {
+  <A>(
+    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
+  ): <E, R>(
+    self: Stream<A, E, R>
+  ) => Effect.Effect<ReadableStream<A>, never, R>
+  <A, E, R>(
+    self: Stream<A, E, R>,
+    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
+  ): Effect.Effect<ReadableStream<A>, never, R>
+} = internal.toReadableStreamEffect
 
 /**
  * Converts the stream to a `ReadableStream` using the provided runtime.
@@ -3882,12 +3901,14 @@ export const toReadableStreamEffect: <A, E, R>(self: Stream<A, E, R>) => Effect.
  * @category destructors
  */
 export const toReadableStreamRuntime: {
-  <XR>(
-    runtime: Runtime<XR>
-  ): <A, E, R extends XR>(self: Stream<A, E, R>) => ReadableStream<A>
+  <A, XR>(
+    runtime: Runtime<XR>,
+    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
+  ): <E, R extends XR>(self: Stream<A, E, R>) => ReadableStream<A>
   <A, E, XR, R extends XR>(
     self: Stream<A, E, R>,
-    runtime: Runtime<XR>
+    runtime: Runtime<XR>,
+    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
   ): ReadableStream<A>
 } = internal.toReadableStreamRuntime
 
