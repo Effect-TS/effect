@@ -1,6 +1,3 @@
-/**
- * @since 1.0.0
- */
 import * as Context from "../Context.js"
 import * as Duration from "../Duration.js"
 import * as Effect from "../Effect.js"
