@@ -237,7 +237,9 @@ class PoolImpl<A, E> implements Pool<A, E> {
       if (poolItem.refCount === 0) {
         this.items.delete(poolItem)
         this.invalidated.delete(poolItem)
-        return poolItem.finalizer
+        return this.waiters > 0
+          ? Effect.zipRight(poolItem.finalizer, this.reconcile)
+          : poolItem.finalizer
       }
       this.invalidated.add(poolItem)
       return Effect.void
