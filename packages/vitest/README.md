@@ -12,7 +12,7 @@ First, install [`vitest`](https://vitest.dev/guide/) (version `1.6.0` or newer)
 pnpm add -D vitest
 ```
 
-Next, install the `@effect/vitest` package. This package integrates the Effect framework with Vitest for enhanced testing capabilities.
+Next, install the `@effect/vitest` package which facilitates running Effect-based tests through `vitest`.
 
 ```sh
 pnpm add -D @effect/vitest
