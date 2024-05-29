@@ -33,6 +33,7 @@ import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as redacted_ from "effect/Redacted"
 import * as Request from "effect/Request"
+import * as secret_ from "effect/Secret"
 import * as sortedSet_ from "effect/SortedSet"
 import * as string_ from "effect/String"
 import type * as Types from "effect/Types"
@@ -4882,6 +4883,38 @@ export const Redacted = <Value extends Schema.Any>(
       encode: (value) => redacted_.value(value)
     }
   )
+}
+
+/**
+ * @category Secret constructors
+ * @deprecated
+ * @since 1.0.0
+ */
+export class SecretFromSelf extends declare(
+  secret_.isSecret,
+  {
+    identifier: "SecretFromSelf",
+    pretty: (): pretty_.Pretty<secret_.Secret> => (secret) => String(secret),
+    arbitrary: (): LazyArbitrary<secret_.Secret> => (fc) => fc.string().map((_) => secret_.fromString(_))
+  }
+) {
+  static override annotations: (annotations: Annotations.Schema<secret_.Secret>) => typeof SecretFromSelf = super
+    .annotations
+}
+
+/**
+ * A schema that transforms a `string` into a `Secret`.
+ *
+ * @category Secret transformations
+ * @deprecated
+ * @since 1.0.0
+ */
+export class Secret extends transform(
+  String$,
+  SecretFromSelf,
+  { strict: false, decode: (str) => secret_.fromString(str), encode: (secret) => secret_.value(secret) }
+).annotations({ identifier: "Secret" }) {
+  static override annotations: (annotations: Annotations.Schema<secret_.Secret>) => typeof Secret = super.annotations
 }
 
 /**
