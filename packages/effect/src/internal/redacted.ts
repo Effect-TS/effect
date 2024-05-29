@@ -1,5 +1,6 @@
 import * as Equal from "../Equal.js"
 import { pipe } from "../Function.js"
+import { globalValue } from "../GlobalValue.js"
 import * as Hash from "../Hash.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
@@ -9,7 +10,10 @@ import type * as Redacted from "../Redacted.js"
 const RedactedSymbolKey = "effect/Redacted"
 
 /** @internal */
-export const redactedRegistry = new WeakMap<Redacted.Redacted<any>, any>()
+export const redactedRegistry = globalValue(
+  "effect/Redacted/redactedRegistry",
+  () => new WeakMap<Redacted.Redacted<any>, any>()
+)
 
 /** @internal */
 export const RedactedTypeId: Redacted.RedactedTypeId = Symbol.for(
