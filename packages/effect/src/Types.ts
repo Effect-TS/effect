@@ -15,7 +15,7 @@ type _TupleOf<T, N extends number, R extends Array<unknown>> = R["length"] exten
  * @typeParam T - The type of elements in the tuple.
  *
  * @example
- * import { TupleOf } from "effect/Array"
+ * import { TupleOf } from "effect/Types"
  *
  * // A tuple with exactly 3 numbers
  * const example1: TupleOf<3, number> = [1, 2, 3]; // valid
@@ -39,7 +39,7 @@ export type TupleOf<N extends number, T> = N extends N ? number extends N ? Arra
  * @typeParam T - The type of elements in the tuple.
  *
  * @example
- * import { TupleOfAtLeast } from "effect/Array"
+ * import { TupleOfAtLeast } from "effect/Types"
  *
  * // A tuple with at least 3 numbers
  * const example1: TupleOfAtLeast<3, number> = [1, 2, 3]; // valid
