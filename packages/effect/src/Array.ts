@@ -44,49 +44,6 @@ export type NonEmptyReadonlyArray<A> = readonly [A, ...Array<A>]
 export type NonEmptyArray<A> = [A, ...Array<A>]
 
 /**
- * Represents a tuple with a fixed number of elements of type `T`.
- *
- * This type constructs a tuple that has exactly `N` elements of type `T`.
- *
- * @typeParam N - The number of elements in the tuple.
- * @typeParam T - The type of elements in the tuple.
- *
- * @example
- * import { TupleOf } from "effect/Array"
- *
- * // A tuple with exactly 3 numbers
- * const example1: TupleOf<3, number> = [1, 2, 3]; // valid
- * const example2: TupleOf<3, number> = [1, 2]; // invalid
- * const example3: TupleOf<3, number> = [1, 2, 3, 4]; // invalid
- *
- * @category tuples
- * @since 3.3.0
- */
-export type TupleOf<N extends number, T> = readonlyArray.TupleOf<T, N>
-
-/**
- * Represents a tuple with at least `N` elements of type `T`.
- *
- * This type constructs a tuple that has a fixed number of elements `N` of type `T` at the start,
- * followed by any number (including zero) of additional elements of the same type `T`.
- *
- * @typeParam N - The minimum number of elements in the tuple.
- * @typeParam T - The type of elements in the tuple.
- *
- * @example
- * import { TupleOfAtLeast } from "effect/Array"
- *
- * // A tuple with at least 3 numbers
- * const example1: TupleOfAtLeast<3, number> = [1, 2, 3]; // valid
- * const example2: TupleOfAtLeast<3, number> = [1, 2, 3, 4, 5]; // valid
- * const example3: TupleOfAtLeast<3, number> = [1, 2]; // invalid
- *
- * @category tuples
- * @since 3.3.0
- */
-export type TupleOfAtLeast<N extends number, T> = [...TupleOf<N, T>, ...Array<T>]
-
-/**
  * Builds a `NonEmptyArray` from an non-empty collection of elements.
  *
  * @example
@@ -566,64 +523,6 @@ export const isNonEmptyArray: <A>(self: Array<A>) => self is NonEmptyArray<A> = 
  */
 export const isNonEmptyReadonlyArray: <A>(self: ReadonlyArray<A>) => self is NonEmptyReadonlyArray<A> =
   readonlyArray.isNonEmptyArray
-
-/**
- * Determine if an `Array` is a tuple with exactly `N` elements, narrowing down the type to `TupleOf`.
- *
- * An `Array` is considered to be a `TupleOf` if its length is exactly `N`.
- *
- * @param self - The `Array` to check.
- * @param n - The exact number of elements that the `Array` should have to be considered a `TupleOf`.
- *
- * @example
- * import { isTupleOf } from "effect/Array"
- *
- * assert.deepStrictEqual(isTupleOf([1, 2, 3], 3), true);
- * assert.deepStrictEqual(isTupleOf([1, 2, 3], 2), false);
- * assert.deepStrictEqual(isTupleOf([1, 2, 3], 4), false);
- *
- * const arr: number[] = [1, 2, 3];
- * if (isTupleOf(arr, 3)) {
- *   console.log(arr);
- *   // ^? [number, number, number]
- * }
- *
- * @category guards
- * @since 3.3.0
- */
-export const isTupleOf: {
-  <N extends number>(n: N): <T>(self: Array<T>) => self is TupleOf<N, T>
-  <T, N extends number>(self: Array<T>, n: N): self is TupleOf<N, T>
-} = dual(2, <T, N extends number>(self: Array<T>, n: N): self is TupleOf<N, T> => self.length === n)
-
-/**
- * Determine if an `Array` is a tuple with at least `N` elements, narrowing down the type to `TupleOfAtLeast`.
- *
- * An `Array` is considered to be a `TupleOfAtLeast` if its length is at least `N`.
- *
- * @param self - The `Array` to check.
- * @param n - The minimum number of elements that the `Array` should have to be considered a `TupleOfAtLeast`.
- *
- * @example
- * import { isTupleOfAtLeast } from "effect/Array"
- *
- * assert.deepStrictEqual(isTupleOfAtLeast([1, 2, 3], 3), true);
- * assert.deepStrictEqual(isTupleOfAtLeast([1, 2, 3], 2), true);
- * assert.deepStrictEqual(isTupleOfAtLeast([1, 2, 3], 4), false);
- *
- * const arr: number[] = [1, 2, 3, 4];
- * if (isTupleOfAtLeast(arr, 3)) {
- *   console.log(arr);
- *   // ^? [number, number, number, ...number[]]
- * }
- *
- * @category guards
- * @since 3.3.0
- */
-export const isTupleOfAtLeast: {
-  <N extends number>(n: N): <T>(self: Array<T>) => self is TupleOfAtLeast<N, T>
-  <T, N extends number>(self: Array<T>, n: N): self is TupleOfAtLeast<N, T>
-} = dual(2, <T, N extends number>(self: Array<T>, n: N): self is TupleOfAtLeast<N, T> => self.length >= n)
 
 /**
  * Return the number of elements in a `ReadonlyArray`.
