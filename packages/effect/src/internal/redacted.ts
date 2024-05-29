@@ -24,6 +24,12 @@ export const proto = {
   pipe() {
     return pipeArguments(this, arguments)
   },
+  toString() {
+    return "<redacted>"
+  },
+  toJSON() {
+    return "<redacted>"
+  },
   [Hash.symbol]<T>(this: Redacted.Redacted<T>): number {
     return pipe(
       Hash.hash(RedactedSymbolKey),
@@ -42,18 +48,6 @@ export const isRedacted = (u: unknown): u is Redacted.Redacted<unknown> => hasPr
 /** @internal */
 export const make = <T>(value: T): Redacted.Redacted<T> => {
   const redacted = Object.create(proto)
-  Object.defineProperty(redacted, "toString", {
-    enumerable: false,
-    value() {
-      return "<redacted>"
-    }
-  })
-  Object.defineProperty(redacted, "toJSON", {
-    enumerable: false,
-    value() {
-      return "<redacted>"
-    }
-  })
   redactedRegistry.set(redacted, value)
   return redacted
 }
