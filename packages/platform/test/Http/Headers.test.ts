@@ -18,7 +18,7 @@ describe("Headers", () => {
         "authorization": Redacted.make("some secret"),
         "x-api-key": "some-key"
       })
-      assert.strictEqual(Redacted.value(redacted.authorization as Redacted.Redacted<string>), "Bearer some-token")
+      assert.strictEqual(Redacted.value(redacted.authorization as Redacted.Redacted), "Bearer some-token")
     })
 
     it("multiple keys", () => {
@@ -35,8 +35,8 @@ describe("Headers", () => {
         "authorization": Redacted.make("some secret"),
         "x-api-key": Redacted.make("some secret")
       })
-      assert.strictEqual(Redacted.value(redacted.authorization as Redacted.Redacted<string>), "Bearer some-token")
-      assert.strictEqual(Redacted.value(redacted["x-api-key"] as Redacted.Redacted<string>), "some-key")
+      assert.strictEqual(Redacted.value(redacted.authorization as Redacted.Redacted), "Bearer some-token")
+      assert.strictEqual(Redacted.value(redacted["x-api-key"] as Redacted.Redacted), "some-key")
     })
 
     it("RegExp", () => {

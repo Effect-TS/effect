@@ -25,7 +25,7 @@ export type SecretTypeId = typeof SecretTypeId
  * @category models
  * @deprecated
  */
-export interface Secret extends Redacted.Redacted<string>, Secret.Proto, Equal.Equal {
+export interface Secret extends Redacted.Redacted, Secret.Proto, Equal.Equal {
   /** @internal */
   readonly raw: Array<number>
 }

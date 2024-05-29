@@ -423,7 +423,7 @@ export const float: (options: Prompt.FloatOptions) => Prompt<number> = InternalN
  * @since 1.0.0
  * @category constructors
  */
-export const redacted: (options: Prompt.TextOptions) => Prompt<Redacted<string>> = InternalTextPrompt.redacted
+export const redacted: (options: Prompt.TextOptions) => Prompt<Redacted> = InternalTextPrompt.redacted
 
 /**
  * @since 1.0.0
@@ -450,7 +450,7 @@ export const map: {
  * @since 1.0.0
  * @category constructors
  */
-export const password: (options: Prompt.TextOptions) => Prompt<Redacted<string>> = InternalTextPrompt.password
+export const password: (options: Prompt.TextOptions) => Prompt<Redacted> = InternalTextPrompt.password
 
 /**
  * Executes the specified `Prompt`.

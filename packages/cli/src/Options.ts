@@ -311,7 +311,7 @@ export const none: Options<void> = InternalOptions.none
  * @since 1.0.0
  * @category constructors
  */
-export const redacted: (name: string) => Options<Redacted<string>> = InternalOptions.redacted
+export const redacted: (name: string) => Options<Redacted> = InternalOptions.redacted
 
 /**
  * @since 1.0.0

@@ -376,7 +376,7 @@ export const none: Options.Options<void> = (() => {
 })()
 
 /** @internal */
-export const redacted = (name: string): Options.Options<Redacted.Redacted<string>> =>
+export const redacted = (name: string): Options.Options<Redacted.Redacted> =>
   makeSingle(name, Arr.empty(), InternalPrimitive.redacted)
 
 /** @internal */

@@ -424,7 +424,7 @@ export const secret = (name?: string): Config.Config<Secret.Secret> => {
 }
 
 /** @internal */
-export const redacted = (name?: string): Config.Config<Redacted.Redacted<string>> => {
+export const redacted = (name?: string): Config.Config<Redacted.Redacted> => {
   const config = primitive(
     "a redacted property",
     (text) => Either.right(redacted_.make(text))

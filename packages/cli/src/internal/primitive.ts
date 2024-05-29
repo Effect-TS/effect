@@ -193,7 +193,7 @@ export const path = (
 }
 
 /** @internal */
-export const hidden: Primitive.Primitive<EffectRedacted.Redacted<string>> = (() => {
+export const hidden: Primitive.Primitive<EffectRedacted.Redacted> = (() => {
   const op = Object.create(proto)
   op._tag = "Redacted"
   return op

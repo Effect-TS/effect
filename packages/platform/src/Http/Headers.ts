@@ -207,18 +207,18 @@ export const remove: {
 export const redact: {
   (
     key: string | RegExp | ReadonlyArray<string | RegExp>
-  ): (self: Headers) => Record<string, string | Redacted.Redacted<string>>
+  ): (self: Headers) => Record<string, string | Redacted.Redacted>
   (
     self: Headers,
     key: string | RegExp | ReadonlyArray<string | RegExp>
-  ): Record<string, string | Redacted.Redacted<string>>
+  ): Record<string, string | Redacted.Redacted>
 } = dual(
   2,
   (
     self: Headers,
     key: string | RegExp | ReadonlyArray<string | RegExp>
-  ): Record<string, string | Redacted.Redacted<string>> => {
-    const out: Record<string, string | Redacted.Redacted<string>> = { ...self }
+  ): Record<string, string | Redacted.Redacted> => {
+    const out: Record<string, string | Redacted.Redacted> = { ...self }
     const modify = (key: string | RegExp) => {
       if (typeof key === "string") {
         const k = key.toLowerCase()

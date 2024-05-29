@@ -50,7 +50,7 @@ describe("Redacted", () => {
     assert.notStrictEqual(Hash.hash(Redacted.make(1)), Hash.hash(Redacted.make(2)))
   })
 
-  describe("Secret extends Redacted<string>", () => {
+  describe("Secret extends Redacted", () => {
     it("Redacted.isRedacted", () => {
       const secret = Secret.fromString("test")
       assert.isTrue(

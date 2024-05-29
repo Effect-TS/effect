@@ -54,7 +54,7 @@ export const PgClient = Context.GenericTag<PgClient>("@effect/sql-pg/Client")
  * @since 1.0.0
  */
 export interface PgClientConfig {
-  readonly url?: Redacted.Redacted<string> | undefined
+  readonly url?: Redacted.Redacted | undefined
 
   readonly host?: string | undefined
   readonly port?: number | undefined
@@ -62,7 +62,7 @@ export interface PgClientConfig {
   readonly ssl?: boolean | undefined
   readonly database?: string | undefined
   readonly username?: string | undefined
-  readonly password?: Redacted.Redacted<string> | undefined
+  readonly password?: Redacted.Redacted | undefined
 
   readonly idleTimeout?: Duration.DurationInput | undefined
   readonly connectTimeout?: Duration.DurationInput | undefined
