@@ -322,4 +322,16 @@ describe("Predicate", () => {
     assert.deepStrictEqual(_.isReadonlyRecord(null), false)
     assert.deepStrictEqual(_.isReadonlyRecord(undefined), false)
   })
+
+  it("isTupleOf", () => {
+    assert.deepStrictEqual(_.isTupleOf([1, 2, 3], 3), true)
+    assert.deepStrictEqual(_.isTupleOf([1, 2, 3], 4), false)
+    assert.deepStrictEqual(_.isTupleOf([1, 2, 3], 2), false)
+  })
+
+  it("isTupleOfAtLeast", () => {
+    assert.deepStrictEqual(_.isTupleOfAtLeast([1, 2, 3], 3), true)
+    assert.deepStrictEqual(_.isTupleOfAtLeast([1, 2, 3], 2), true)
+    assert.deepStrictEqual(_.isTupleOfAtLeast([1, 2, 3], 4), false)
+  })
 })
