@@ -1,5 +1,5 @@
 /**
- * @since 3.1.3
+ * @since 3.3.0
  */
 import type * as Equal from "./Equal.js"
 import * as Equivalence from "./Equivalence.js"
