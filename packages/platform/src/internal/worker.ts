@@ -307,7 +307,6 @@ export const makePool = <I, O, E>(
         size: options.size,
         permits: options.permits
       })
-    const get = Effect.scoped(backing.get)
     const pool: Worker.WorkerPool<I, O, E> = {
       backing,
       broadcast: (message: I) =>
@@ -315,12 +314,20 @@ export const makePool = <I, O, E>(
           concurrency: "unbounded",
           discard: true
         }),
-      execute: (message: I) => Stream.unwrap(Effect.map(get, (worker) => worker.execute(message))),
-      executeEffect: (message: I) => Effect.flatMap(get, (worker) => worker.executeEffect(message))
+      execute: (message: I) =>
+        Stream.unwrapScoped(Effect.map(
+          backing.get,
+          (worker) => worker.execute(message)
+        )),
+      executeEffect: (message: I) =>
+        Effect.scoped(Effect.flatMap(
+          backing.get,
+          (worker) => worker.executeEffect(message)
+        ))
     }
 
     // report any spawn errors
-    yield* get
+    yield* Effect.scoped(backing.get)
 
     return pool
   })
@@ -403,7 +410,6 @@ export const makePoolSerialized = <I extends Schema.TaggedRequest.Any>(
         size: options.size,
         permits: options.permits
       })
-    const get = Effect.scoped(backing.get)
     const pool: Worker.SerializedWorkerPool<I> = {
       backing,
       broadcast: <Req extends I>(message: Req) =>
@@ -412,13 +418,13 @@ export const makePoolSerialized = <I extends Schema.TaggedRequest.Any>(
           discard: true
         }) as any,
       execute: <Req extends I>(message: Req) =>
-        Stream.unwrap(Effect.map(get, (worker) => worker.execute(message))) as any,
+        Stream.unwrapScoped(Effect.map(backing.get, (worker) => worker.execute(message))) as any,
       executeEffect: <Req extends I>(message: Req) =>
-        Effect.flatMap(get, (worker) => worker.executeEffect(message)) as any
+        Effect.scoped(Effect.flatMap(backing.get, (worker) => worker.executeEffect(message))) as any
     }
 
     // report any spawn errors
-    yield* get
+    yield* Effect.scoped(backing.get)
 
     return pool
   })
