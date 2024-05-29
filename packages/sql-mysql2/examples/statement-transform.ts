@@ -1,7 +1,7 @@
 import * as DevTools from "@effect/experimental/DevTools"
 import * as Sql from "@effect/sql"
 import * as Mysql from "@effect/sql-mysql2"
-import { Config, Effect, FiberRef, FiberRefs, Layer, Option, Secret, String } from "effect"
+import { Config, Effect, FiberRef, FiberRefs, Layer, Option, Redacted, String } from "effect"
 
 const currentResourceName = FiberRef.unsafeMake("")
 
@@ -22,7 +22,7 @@ const SqlTracingLive = Sql.statement.setTransformer((prev, sql, refs, span) => {
 const EnvLive = Mysql.client.layer({
   database: Config.succeed("effect_dev"),
   username: Config.succeed("effect"),
-  password: Config.succeed(Secret.fromString("password")),
+  password: Config.succeed(Redacted.make("password")),
   transformQueryNames: Config.succeed(String.camelToSnake),
   transformResultNames: Config.succeed(String.snakeToCamel)
 }).pipe(
