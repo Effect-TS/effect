@@ -137,7 +137,7 @@ export const live = <E, A>(
  */
 export const flakyTest = <A, E, R>(
   self: Effect.Effect<A, E, R>,
-  timeout: Duration.Duration = Duration.seconds(30)
+  timeout: Duration.DurationInput = Duration.seconds(30)
 ) =>
   pipe(
     Effect.catchAllDefect(self, Effect.fail),
