@@ -1593,6 +1593,22 @@ S.asSchema(S.DurationFromNanos)
 S.DurationFromNanos
 
 // ---------------------------------------------
+// Redacted
+// ---------------------------------------------
+
+// $ExpectType Schema<Redacted<number>, string, never>
+S.asSchema(S.Redacted(S.NumberFromString))
+
+// $ExpectType Redacted<typeof NumberFromString>
+S.Redacted(S.NumberFromString)
+
+// $ExpectType Schema<Redacted<number>, Redacted<string>, never>
+S.asSchema(S.RedactedFromSelf(S.NumberFromString))
+
+// $ExpectType RedactedFromSelf<typeof NumberFromString>
+S.RedactedFromSelf(S.NumberFromString)
+
+// ---------------------------------------------
 // Secret
 // ---------------------------------------------
 

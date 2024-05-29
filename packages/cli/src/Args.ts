@@ -10,6 +10,7 @@ import type { Config } from "effect/Config"
 import type { Effect } from "effect/Effect"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
+import type { Redacted } from "effect/Redacted"
 import type { Secret } from "effect/Secret"
 import type { CliConfig } from "./CliConfig.js"
 import type { HelpDoc } from "./HelpDoc.js"
@@ -375,6 +376,16 @@ export const path: (config?: Args.PathArgsConfig) => Args<string> = InternalArgs
  * @category combinators
  */
 export const repeated: <A>(self: Args<A>) => Args<Array<A>> = InternalArgs.repeated
+
+/**
+ * Creates a text argument.
+ *
+ * Can optionally provide a custom argument name (defaults to `"redacted"`).
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const redacted: (config?: Args.BaseArgsConfig) => Args<Redacted> = InternalArgs.redacted
 
 /**
  * Creates a text argument.
