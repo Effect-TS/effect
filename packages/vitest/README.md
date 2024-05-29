@@ -1,6 +1,6 @@
 # Introduction
 
-Welcome to your guide on testing Effect applications using `vitest` and the `@effect/vitest` package! `@effect/vitest` is designed to help simplify running Effect-based tests through `vitest`. 
+Welcome to your guide on testing Effect applications using `vitest` and the `@effect/vitest` package! `@effect/vitest` is designed to help simplify running Effect-based tests through `vitest`.
 
 In the guide below, we will first start by setting up the required dependencies. Then, we will dive into a few examples of how to use `@effect/vitest` to create some Effect-based test cases.
 
@@ -101,7 +101,7 @@ it.effect("test failure as Exit", () =>
 
 ## Using the TestClock
 
-When using `it.effect`, a `TestContext` is provided to your program which provides access to several services designed to facilitate testing. One such service is the `[TestClock`](https://effect.website/docs/guides/testing/testclock) which is designed to simulate the passage of time. 
+When using `it.effect`, a `TestContext` is provided to your program which provides access to several services designed to facilitate testing. One such service is the `[TestClock`](https://effect.website/docs/guides/testing/testclock) which is designed to simulate the passage of time.
 
 **Note**: To utilize the default, non-testing services in your tests you can use `it.live`.
 
@@ -210,7 +210,7 @@ First, let’s set up a basic test scenario that could potentially fail randomly
 
 ```ts
 import { it } from "@effect/vitest"
-import { Effect, Duration, Random } from "effect"
+import { Effect, Random } from "effect"
 
 // Define a flaky test effect
 const flaky = Effect.gen(function* () {
@@ -229,6 +229,6 @@ To address the flakiness, we apply `it.flakyTest` which will retry the test unti
 ```ts
 // Retrying the flaky test with a timeout
 it.effect("retrying until success or timeout", () =>
-  it.flakyTest(flaky, Duration.seconds(5))
+  it.flakyTest(flaky, "5 seconds")
 )
 ```
