@@ -185,7 +185,7 @@ const storageError = (props: Omit<Parameters<typeof PlatformError.SystemError>[0
   })
 
 /** @internal */
-export const layerStorage = (pathOrDescriptor: string, storage: Storage) =>
+export const layerStorage = (storage: Storage) =>
   Layer.succeed(
     keyValueStoreTag,
     make({
@@ -194,7 +194,7 @@ export const layerStorage = (pathOrDescriptor: string, storage: Storage) =>
           try: () => Option.fromNullable(storage.getItem(key)),
           catch: () =>
             storageError({
-              pathOrDescriptor,
+              pathOrDescriptor: key,
               method: "get",
               message: `Unable to get item with key ${key}`
             })
@@ -205,7 +205,7 @@ export const layerStorage = (pathOrDescriptor: string, storage: Storage) =>
           try: () => storage.setItem(key, value),
           catch: () =>
             storageError({
-              pathOrDescriptor,
+              pathOrDescriptor: key,
               method: "set",
               message: `Unable to set item with key ${key}`
             })
@@ -216,7 +216,7 @@ export const layerStorage = (pathOrDescriptor: string, storage: Storage) =>
           try: () => storage.removeItem(key),
           catch: () =>
             storageError({
-              pathOrDescriptor,
+              pathOrDescriptor: key,
               method: "remove",
               message: `Unable to remove item with key ${key}`
             })
@@ -226,7 +226,7 @@ export const layerStorage = (pathOrDescriptor: string, storage: Storage) =>
         try: () => storage.clear(),
         catch: () =>
           storageError({
-            pathOrDescriptor,
+            pathOrDescriptor: "clear",
             method: "clear",
             message: `Unable to clear storage`
           })
@@ -236,7 +236,7 @@ export const layerStorage = (pathOrDescriptor: string, storage: Storage) =>
         try: () => storage.length,
         catch: () =>
           storageError({
-            pathOrDescriptor,
+            pathOrDescriptor: "size",
             method: "size",
             message: `Unable to get size`
           })
