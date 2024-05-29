@@ -4,6 +4,8 @@
  * @since 2.0.0
  */
 
+type _TupleOf<T, N extends number, R extends Array<unknown>> = R["length"] extends N ? R : _TupleOf<T, N, [T, ...R]>
+
 /**
  * Represents a tuple with a fixed number of elements of type `T`.
  *
@@ -25,7 +27,6 @@
  * @category tuples
  * @since 3.3.0
  */
-type _TupleOf<T, N extends number, R extends Array<unknown>> = R["length"] extends N ? R : _TupleOf<T, N, [T, ...R]>
 export type TupleOf<N extends number, T> = N extends N ? number extends N ? Array<T> : _TupleOf<T, N, []> : never
 
 /**
