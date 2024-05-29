@@ -53,9 +53,9 @@ When using `it.effect`, the `TestContext` is automatically injected, which allow
 Let's create a test for a function that divides two numbers but fails if the divisor is zero:
 
 ```ts
-import { expect } from "vitest"
-import { Effect } from "effect"
 import { it } from "@effect/vitest"
+import { Effect } from "effect"
+import { expect } from "vitest"
 
 function divide(a: number, b: number) {
   if (b === 0) return Effect.fail("Cannot divide by zero")
@@ -75,9 +75,9 @@ it.effect("test success", () =>
 To test both success and failure scenarios, convert the outcomes into an `Exit` object using `Effect.exit`:
 
 ```ts
-import { expect } from "vitest"
-import { Effect, Exit } from "effect"
 import { it } from "@effect/vitest"
+import { Effect, Exit } from "effect"
+import { expect } from "vitest"
 
 function divide(a: number, b: number) {
   if (b === 0) return Effect.fail("Cannot divide by zero")
@@ -114,8 +114,8 @@ Below, you'll find examples illustrating different ways to use time in your test
 3. **Using `it.effect` and adjusting time forward:** Here, we advance the clock by 1000 milliseconds to test scenarios that depend on the passing of time.
 
 ```ts
-import { Effect, Clock, TestClock } from "effect"
 import { it } from "@effect/vitest"
+import { Clock, Effect, TestClock } from "effect"
 
 const logNow = Effect.gen(function* () {
   const now = yield* Clock.currentTimeMillis
@@ -175,8 +175,8 @@ The `it.scoped` method allows you to run tests that involve Effect programs requ
 Here’s a simple example to demonstrate how `it.scoped` can be used in your tests:
 
 ```ts
-import { Effect, Console } from "effect"
 import { it } from "@effect/vitest"
+import { Console, Effect } from "effect"
 
 // Simulate acquiring and releasing a resource with console logging
 const acquire = Console.log("acquire resource")
