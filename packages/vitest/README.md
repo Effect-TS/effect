@@ -136,7 +136,7 @@ it.effect("run the test with the test environment", () =>
 
 it.effect("run the test with the test environment and the time adjusted", () =>
   Effect.gen(function* () {
-    yield* TestQlock.adjust("1000 millis")
+    yield* TestClock.adjust("1000 millis")
     yield* logNow // prints 1000
   })
 )
