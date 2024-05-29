@@ -1,5 +1,11 @@
 # @effect/sql
 
+## 0.3.2
+
+### Patch Changes
+
+- [#2867](https://github.com/Effect-TS/effect/pull/2867) [`3e86ced`](https://github.com/Effect-TS/effect/commit/3e86cedfa2507dbf5475c1cb10e0018d00e5593d) Thanks @jamiehodge! - fix sql mysql migrator
+
 ## 0.3.1
 
 ### Patch Changes
