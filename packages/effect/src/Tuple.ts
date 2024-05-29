@@ -213,7 +213,7 @@ export {
    * @param n - The exact number of elements that the `Array` should have to be considered a `TupleOf`.
    *
    * @example
-   * import { isTupleOf } from "effect/Array"
+   * import { isTupleOf } from "effect/Tuple"
    *
    * assert.deepStrictEqual(isTupleOf([1, 2, 3], 3), true);
    * assert.deepStrictEqual(isTupleOf([1, 2, 3], 2), false);
@@ -238,7 +238,7 @@ export {
    * @param n - The minimum number of elements that the `Array` should have to be considered a `TupleOfAtLeast`.
    *
    * @example
-   * import { isTupleOfAtLeast } from "effect/Array"
+   * import { isTupleOfAtLeast } from "effect/Tuple"
    *
    * assert.deepStrictEqual(isTupleOfAtLeast([1, 2, 3], 3), true);
    * assert.deepStrictEqual(isTupleOfAtLeast([1, 2, 3], 2), true);
