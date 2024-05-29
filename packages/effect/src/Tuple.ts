@@ -202,3 +202,5 @@ export const appendElement: {
   - swap
 
 */
+
+export { isTupleOf, isTupleOfAtLeast } from "./Predicate.js"
