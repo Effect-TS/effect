@@ -267,7 +267,7 @@ export const path = (config?: Args.Args.PathArgsConfig): Args.Args<string> =>
   )
 
 /** @internal */
-export const hidden = (
+export const redacted = (
   config?: Args.Args.BaseArgsConfig
 ): Args.Args<Redacted.Redacted<string>> => makeSingle(Option.fromNullable(config?.name), InternalPrimitive.hidden)
 
