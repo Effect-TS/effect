@@ -67,7 +67,6 @@ export const makeManager = Effect.gen(function*() {
     spawn<I, O, E>({
       encode,
       initialMessage,
-      permits = 1,
       queue,
       transfers = (_) => []
     }: Worker.Worker.Options<I>) {
@@ -75,7 +74,6 @@ export const makeManager = Effect.gen(function*() {
         const spawn = yield* _(Spawner)
         const id = idCounter++
         let requestIdCounter = 0
-        const semaphore = Effect.unsafeMakeSemaphore(permits)
         const requestMap = new Map<
           number,
           readonly [Queue.Queue<Exit.Exit<ReadonlyArray<O>, E | WorkerError>>, Deferred.Deferred<void>]
@@ -237,10 +235,9 @@ export const makeManager = Effect.gen(function*() {
             executeRelease
           )
 
-        yield* semaphore.take(1).pipe(
-          Effect.andThen(outbound.take),
+        yield* outbound.take.pipe(
           Effect.flatMap(([id, request, span]) =>
-            pipe(
+            Effect.fork(
               Effect.suspend(() => {
                 const result = requestMap.get(id)
                 if (!result) return Effect.void
@@ -260,14 +257,12 @@ export const makeManager = Effect.gen(function*() {
                   Effect.catchAllCause((cause) => Queue.offer(result[0], Exit.failCause(cause))),
                   Effect.zipRight(Deferred.await(result[1]))
                 )
-              }),
-              Effect.ensuring(semaphore.release(1)),
-              Effect.fork
+              })
             )
           ),
           Effect.forever,
-          Effect.interruptible,
-          Effect.forkScoped
+          Effect.forkScoped,
+          Effect.interruptible
         )
 
         if (initialMessage) {
@@ -299,10 +294,19 @@ export const makePool = <I, O, E>(
       Effect.tap((worker) => Effect.addFinalizer(() => Effect.sync(() => workers.delete(worker)))),
       options.onCreate ? Effect.tap(options.onCreate) : identity
     )
-    const backing = yield* Pool.make({
-      acquire,
-      size: options.size
-    })
+    const backing = "minSize" in options ?
+      yield* Pool.makeWithTTL({
+        acquire,
+        min: options.minSize,
+        max: options.maxSize,
+        permits: options.permits,
+        timeToLive: options.timeToLive
+      }) :
+      yield* Pool.make({
+        acquire,
+        size: options.size,
+        permits: options.permits
+      })
     const get = Effect.scoped(backing.get)
     const pool: Worker.WorkerPool<I, O, E> = {
       backing,
@@ -391,11 +395,13 @@ export const makePoolSerialized = <I extends Schema.TaggedRequest.Any>(
         acquire,
         min: options.minSize,
         max: options.maxSize,
+        permits: options.permits,
         timeToLive: options.timeToLive
       }) :
       Pool.make({
         acquire,
-        size: options.size
+        size: options.size,
+        permits: options.permits
       })
     const get = Effect.scoped(backing.get)
     const pool: Worker.SerializedWorkerPool<I> = {

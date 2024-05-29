@@ -108,7 +108,6 @@ export declare namespace Worker {
     readonly transfers?: ((message: I) => ReadonlyArray<unknown>) | undefined
     readonly queue?: WorkerQueue<I> | undefined
     readonly initialMessage?: LazyArg<I> | undefined
-    readonly permits?: number | undefined
   }
 
   /**
@@ -157,10 +156,19 @@ export declare namespace WorkerPool {
    * @since 1.0.0
    * @category models
    */
-  export interface Options<I> extends Worker.Options<I> {
-    readonly onCreate?: (worker: Worker<I, unknown, unknown>) => Effect.Effect<void, WorkerError>
-    readonly size: number
-  }
+  export type Options<I> =
+    & Worker.Options<I>
+    & ({
+      readonly onCreate?: (worker: Worker<I, unknown, unknown>) => Effect.Effect<void, WorkerError>
+      readonly size: number
+      readonly permits?: number | undefined
+    } | {
+      readonly onCreate?: (worker: Worker<I, unknown, unknown>) => Effect.Effect<void, WorkerError>
+      readonly minSize: number
+      readonly maxSize: number
+      readonly permits?: number | undefined
+      readonly timeToLive: Duration.DurationInput
+    })
 }
 
 /**
@@ -270,7 +278,6 @@ export declare namespace SerializedWorker {
    * @category models
    */
   export interface BaseOptions<I> {
-    readonly permits?: number | undefined
     readonly queue?: WorkerQueue<I> | undefined
   }
 }
@@ -312,10 +319,12 @@ export declare namespace SerializedWorkerPool {
     & ({
       readonly onCreate?: (worker: Worker<I, unknown, unknown>) => Effect.Effect<void, WorkerError>
       readonly size: number
+      readonly permits?: number | undefined
     } | {
       readonly onCreate?: (worker: Worker<I, unknown, unknown>) => Effect.Effect<void, WorkerError>
       readonly minSize: number
       readonly maxSize: number
+      readonly permits?: number | undefined
       readonly timeToLive: Duration.DurationInput
     })
 }
