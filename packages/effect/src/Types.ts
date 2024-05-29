@@ -4,6 +4,54 @@
  * @since 2.0.0
  */
 
+type _TupleOf<T, N extends number, R extends Array<unknown>> = R["length"] extends N ? R : _TupleOf<T, N, [T, ...R]>
+
+/**
+ * Represents a tuple with a fixed number of elements of type `T`.
+ *
+ * This type constructs a tuple that has exactly `N` elements of type `T`.
+ *
+ * @typeParam N - The number of elements in the tuple.
+ * @typeParam T - The type of elements in the tuple.
+ *
+ * @example
+ * import { TupleOf } from "effect/Types"
+ *
+ * // A tuple with exactly 3 numbers
+ * const example1: TupleOf<3, number> = [1, 2, 3]; // valid
+ * // @ts-expect-error
+ * const example2: TupleOf<3, number> = [1, 2]; // invalid
+ * // @ts-expect-error
+ * const example3: TupleOf<3, number> = [1, 2, 3, 4]; // invalid
+ *
+ * @category tuples
+ * @since 3.3.0
+ */
+export type TupleOf<N extends number, T> = N extends N ? number extends N ? Array<T> : _TupleOf<T, N, []> : never
+
+/**
+ * Represents a tuple with at least `N` elements of type `T`.
+ *
+ * This type constructs a tuple that has a fixed number of elements `N` of type `T` at the start,
+ * followed by any number (including zero) of additional elements of the same type `T`.
+ *
+ * @typeParam N - The minimum number of elements in the tuple.
+ * @typeParam T - The type of elements in the tuple.
+ *
+ * @example
+ * import { TupleOfAtLeast } from "effect/Types"
+ *
+ * // A tuple with at least 3 numbers
+ * const example1: TupleOfAtLeast<3, number> = [1, 2, 3]; // valid
+ * const example2: TupleOfAtLeast<3, number> = [1, 2, 3, 4, 5]; // valid
+ * // @ts-expect-error
+ * const example3: TupleOfAtLeast<3, number> = [1, 2]; // invalid
+ *
+ * @category tuples
+ * @since 3.3.0
+ */
+export type TupleOfAtLeast<N extends number, T> = [...TupleOf<N, T>, ...Array<T>]
+
 /**
  * Returns the tags in a type.
  * @example
