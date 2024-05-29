@@ -13,6 +13,7 @@ import * as HashMap from "effect/HashMap"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import { pipeArguments } from "effect/Pipeable"
+import type * as Redacted from "effect/Redacted"
 import * as Ref from "effect/Ref"
 import type * as Secret from "effect/Secret"
 import type * as CliConfig from "../CliConfig.js"
@@ -374,6 +375,10 @@ export const none: Options.Options<void> = (() => {
   op._tag = "Empty"
   return op
 })()
+
+/** @internal */
+export const redacted = (name: string): Options.Options<Redacted.Redacted> =>
+  makeSingle(name, Arr.empty(), InternalPrimitive.redacted)
 
 /** @internal */
 export const secret = (name: string): Options.Options<Secret.Secret> =>

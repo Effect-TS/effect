@@ -14,8 +14,8 @@ import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Redacted from "effect/Redacted"
 import type { Scope } from "effect/Scope"
-import * as Secret from "effect/Secret"
 import * as Stream from "effect/Stream"
 import type { PendingQuery, PendingValuesQuery } from "postgres"
 import postgres from "postgres"
@@ -54,7 +54,7 @@ export const PgClient = Context.GenericTag<PgClient>("@effect/sql-pg/Client")
  * @since 1.0.0
  */
 export interface PgClientConfig {
-  readonly url?: Secret.Secret | undefined
+  readonly url?: Redacted.Redacted | undefined
 
   readonly host?: string | undefined
   readonly port?: number | undefined
@@ -62,7 +62,7 @@ export interface PgClientConfig {
   readonly ssl?: boolean | undefined
   readonly database?: string | undefined
   readonly username?: string | undefined
-  readonly password?: Secret.Secret | undefined
+  readonly password?: Redacted.Redacted | undefined
 
   readonly idleTimeout?: Duration.DurationInput | undefined
   readonly connectTimeout?: Duration.DurationInput | undefined
@@ -125,7 +125,7 @@ export const make = (
       path: options.path,
       database: options.database,
       username: options.username,
-      password: options.password ? Secret.value(options.password) : undefined,
+      password: options.password ? Redacted.value(options.password) : undefined,
       fetch_types: options.fetchTypes ?? true,
       prepare: options.prepare ?? true,
       types: options.types,
@@ -133,7 +133,7 @@ export const make = (
     }
 
     const client = options.url
-      ? postgres(Secret.value(options.url), opts as any)
+      ? postgres(Redacted.value(options.url), opts as any)
       : postgres(opts as any)
 
     yield* _(Effect.addFinalizer(() => Effect.promise(() => client.end())))
@@ -215,7 +215,7 @@ export const make = (
           host: client.options.host[0] ?? undefined,
           port: client.options.port[0] ?? undefined,
           username: client.options.user,
-          password: client.options.pass ? Secret.fromString(client.options.pass) : undefined,
+          password: client.options.pass ? Redacted.make(client.options.pass) : undefined,
           database: client.options.database
         },
         json: (_: unknown) => PgJson(_),

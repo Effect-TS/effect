@@ -8,7 +8,7 @@ import { globalValue } from "effect/GlobalValue"
 import type * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Record from "effect/Record"
-import * as Secret from "effect/Secret"
+import * as Redacted from "effect/Redacted"
 import * as String from "effect/String"
 import type { Mutable } from "effect/Types"
 
@@ -205,22 +205,30 @@ export const remove: {
  * @category combinators
  */
 export const redact: {
-  (key: string | RegExp | ReadonlyArray<string | RegExp>): (self: Headers) => Record<string, string | Secret.Secret>
-  (self: Headers, key: string | RegExp | ReadonlyArray<string | RegExp>): Record<string, string | Secret.Secret>
+  (
+    key: string | RegExp | ReadonlyArray<string | RegExp>
+  ): (self: Headers) => Record<string, string | Redacted.Redacted>
+  (
+    self: Headers,
+    key: string | RegExp | ReadonlyArray<string | RegExp>
+  ): Record<string, string | Redacted.Redacted>
 } = dual(
   2,
-  (self: Headers, key: string | RegExp | ReadonlyArray<string | RegExp>): Record<string, string | Secret.Secret> => {
-    const out: Record<string, string | Secret.Secret> = { ...self }
+  (
+    self: Headers,
+    key: string | RegExp | ReadonlyArray<string | RegExp>
+  ): Record<string, string | Redacted.Redacted> => {
+    const out: Record<string, string | Redacted.Redacted> = { ...self }
     const modify = (key: string | RegExp) => {
       if (typeof key === "string") {
         const k = key.toLowerCase()
         if (k in self) {
-          out[k] = Secret.fromString(self[k])
+          out[k] = Redacted.make(self[k])
         }
       } else {
         for (const name in self) {
           if (key.test(name)) {
-            out[name] = Secret.fromString(self[name])
+            out[name] = Redacted.make(self[name])
           }
         }
       }
