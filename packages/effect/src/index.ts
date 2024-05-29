@@ -603,11 +603,6 @@ export * as RateLimiter from "./RateLimiter.js"
 export * as Readable from "./Readable.js"
 
 /**
- * @since 2.0.0
- */
-export * as Redacted from "./Redacted.js"
-
-/**
  * This module provides utility functions for working with records in TypeScript.
  *
  * @since 2.0.0
@@ -618,6 +613,11 @@ export * as Record from "./Record.js"
  * @since 2.0.0
  */
 export * as RedBlackTree from "./RedBlackTree.js"
+
+/**
+ * @since 3.3.0
+ */
+export * as Redacted from "./Redacted.js"
 
 /**
  * @since 2.0.0
@@ -718,6 +718,7 @@ export * as ScopedRef from "./ScopedRef.js"
 
 /**
  * @since 2.0.0
+ * @deprecated
  */
 export * as Secret from "./Secret.js"
 
