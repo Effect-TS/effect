@@ -6,6 +6,7 @@ import { dual, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
 import * as EffectRedacted from "effect/Redacted"
+import * as EffectSecret from "effect/Secret"
 import type * as CliConfig from "../CliConfig.js"
 import type * as HelpDoc from "../HelpDoc.js"
 import type * as Span from "../HelpDoc/Span.js"
@@ -50,6 +51,7 @@ export type Instruction =
   | Float
   | Integer
   | Path
+  | Secret
   | Redacted
   | Text
 
@@ -86,6 +88,9 @@ export interface Path extends
 
 /** @internal */
 export interface Redacted extends Op<"Redacted", {}> {}
+
+/** @internal */
+export interface Secret extends Op<"Secret", {}> {}
 
 /** @internal */
 export interface Text extends Op<"Text", {}> {}
@@ -193,9 +198,16 @@ export const path = (
 }
 
 /** @internal */
-export const hidden: Primitive.Primitive<EffectRedacted.Redacted> = (() => {
+export const redacted: Primitive.Primitive<EffectRedacted.Redacted> = (() => {
   const op = Object.create(proto)
   op._tag = "Redacted"
+  return op
+})()
+
+/** @internal */
+export const secret: Primitive.Primitive<EffectSecret.Secret> = (() => {
+  const op = Object.create(proto)
+  op._tag = "Secret"
   return op
 })()
 
@@ -270,6 +282,7 @@ const getChoicesInternal = (self: Instruction): Option.Option<string> => {
     case "Integer":
     case "Path":
     case "Redacted":
+    case "Secret":
     case "Text": {
       return Option.none()
     }
@@ -332,6 +345,7 @@ const getHelpInternal = (self: Instruction): Span.Span => {
           `('${self.pathType}') and path existence ('${self.pathExists}')`
       )
     }
+    case "Secret":
     case "Redacted": {
       return InternalSpan.text("A user-defined piece of text that is confidential.")
     }
@@ -366,6 +380,9 @@ const getTypeNameInternal = (self: Instruction): string => {
     }
     case "Redacted": {
       return "redacted"
+    }
+    case "Secret": {
+      return "secret"
     }
     case "Text": {
       return "text"
@@ -447,6 +464,11 @@ const validateInternal = (
     case "Redacted": {
       return attempt(value, getTypeNameInternal(self), Schema.decodeUnknown(Schema.String)).pipe(
         Effect.map((value) => EffectRedacted.make(value))
+      )
+    }
+    case "Secret": {
+      return attempt(value, getTypeNameInternal(self), Schema.decodeUnknown(Schema.String)).pipe(
+        Effect.map((value) => EffectSecret.fromString(value))
       )
     }
     case "Text": {
@@ -577,6 +599,13 @@ const wizardInternal = (self: Instruction, help: HelpDoc.HelpDoc): Prompt.Prompt
         message: InternalHelpDoc.toAnsiText(message).trimEnd()
       })
     }
+    case "Secret": {
+      const primitiveHelp = InternalHelpDoc.p("Enter some text (value will be redacted)")
+      const message = InternalHelpDoc.sequence(help, primitiveHelp)
+      return InternalTextPrompt.hidden({
+        message: InternalHelpDoc.toAnsiText(message).trimEnd()
+      })
+    }
     case "Text": {
       const primitiveHelp = InternalHelpDoc.p("Enter some text")
       const message = InternalHelpDoc.sequence(help, primitiveHelp)
@@ -600,6 +629,7 @@ export const getBashCompletions = (self: Instruction): string => {
     case "DateTime":
     case "Float":
     case "Integer":
+    case "Secret":
     case "Redacted":
     case "Text": {
       return "$(compgen -f \"${cur}\")"
@@ -643,6 +673,7 @@ export const getFishCompletions = (self: Instruction): Array<string> => {
     case "Float":
     case "Integer":
     case "Redacted":
+    case "Secret":
     case "Text": {
       return Arr.make("-r", "-f")
     }
@@ -722,6 +753,7 @@ export const getZshCompletions = (self: Instruction): string => {
       }
     }
     case "Redacted":
+    case "Secret":
     case "Text": {
       return ""
     }
