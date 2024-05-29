@@ -423,7 +423,7 @@ export const float: (options: Prompt.FloatOptions) => Prompt<number> = InternalN
  * @since 1.0.0
  * @category constructors
  */
-export const hidden: (options: Prompt.TextOptions) => Prompt<Redacted<string>> = InternalTextPrompt.hidden
+export const redacted: (options: Prompt.TextOptions) => Prompt<Redacted<string>> = InternalTextPrompt.redacted
 
 /**
  * @since 1.0.0
