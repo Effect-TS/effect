@@ -12,6 +12,7 @@ import type { Either } from "effect/Either"
 import type { HashMap } from "effect/HashMap"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
+import type { Redacted } from "effect/Redacted"
 import type { Secret } from "effect/Secret"
 import type { CliConfig } from "./CliConfig.js"
 import type { HelpDoc } from "./HelpDoc.js"
@@ -310,6 +311,13 @@ export const none: Options<void> = InternalOptions.none
 /**
  * @since 1.0.0
  * @category constructors
+ */
+export const redacted: (name: string) => Options<Redacted> = InternalOptions.redacted
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ * @deprecated
  */
 export const secret: (name: string) => Options<Secret> = InternalOptions.secret
 

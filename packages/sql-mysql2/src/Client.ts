@@ -14,8 +14,8 @@ import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Redacted from "effect/Redacted"
 import type { Scope } from "effect/Scope"
-import * as Secret from "effect/Secret"
 import * as Stream from "effect/Stream"
 import * as Mysql from "mysql2"
 
@@ -54,13 +54,13 @@ export interface MysqlClientConfig {
   /**
    * Connection URI. Setting this will override the other connection options
    */
-  readonly url?: Secret.Secret | undefined
+  readonly url?: Redacted.Redacted | undefined
 
   readonly host?: string | undefined
   readonly port?: number | undefined
   readonly database?: string | undefined
   readonly username?: string | undefined
-  readonly password?: Secret.Secret | undefined
+  readonly password?: Redacted.Redacted | undefined
 
   readonly maxConnections?: number | undefined
   readonly connectionTTL?: Duration.DurationInput | undefined
@@ -137,7 +137,7 @@ export const make = (
     }
 
     const pool = options.url
-      ? Mysql.createPool(Secret.value(options.url))
+      ? Mysql.createPool(Redacted.value(options.url))
       : Mysql.createPool({
         ...(options.poolConfig ?? {}),
         host: options.host,
@@ -145,7 +145,7 @@ export const make = (
         database: options.database,
         user: options.username,
         password: options.password
-          ? Secret.value(options.password)
+          ? Redacted.value(options.password)
           : undefined,
         connectionLimit: options.maxConnections,
         idleTimeout: options.connectionTTL

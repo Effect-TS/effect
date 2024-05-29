@@ -10,7 +10,7 @@ import type { SqlError } from "@effect/sql/Error"
 import * as Migrator from "@effect/sql/Migrator"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as Secret from "effect/Secret"
+import * as Redacted from "effect/Redacted"
 import { PgClient } from "./Client.js"
 
 /**
@@ -46,7 +46,7 @@ export const run: <R2 = never>(
             PGPORT: sql.config.port?.toString(),
             PGUSER: sql.config.username,
             PGPASSWORD: sql.config.password
-              ? Secret.value(sql.config.password)
+              ? Redacted.value(sql.config.password)
               : undefined,
             PGDATABASE: sql.config.database,
             PGSSLMODE: sql.config.ssl ? "require" : "prefer"
