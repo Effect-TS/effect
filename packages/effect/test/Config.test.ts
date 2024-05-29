@@ -10,6 +10,7 @@ import { pipe } from "effect/Function"
 import * as HashSet from "effect/HashSet"
 import * as LogLevel from "effect/LogLevel"
 import * as Option from "effect/Option"
+import * as Redacted from "effect/Redacted"
 import * as Secret from "effect/Secret"
 import { assert, describe, expect, it } from "vitest"
 
@@ -462,6 +463,18 @@ describe("Config", () => {
         [["NUMBER", "1"], ["BOOL", "value"]],
         ConfigError.InvalidData(["BOOL"], "Expected a boolean value but received value")
       )
+    })
+  })
+
+  describe("Config.redacted", () => {
+    it("name = undefined", () => {
+      const config = Config.array(Config.redacted(), "ITEMS")
+      assertSuccess(config, [["ITEMS", "a"]], [Redacted.make("a")])
+    })
+
+    it("name != undefined", () => {
+      const config = Config.redacted("SECRET")
+      assertSuccess(config, [["SECRET", "a"]], Redacted.make("a"))
     })
   })
 

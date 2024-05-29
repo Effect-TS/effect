@@ -13,6 +13,7 @@ import * as internal from "./internal/config.js"
 import type * as LogLevel from "./LogLevel.js"
 import type * as Option from "./Option.js"
 import type { Predicate, Refinement } from "./Predicate.js"
+import type * as Redacted from "./Redacted.js"
 import type * as Secret from "./Secret.js"
 import type * as Types from "./Types.js"
 
@@ -332,8 +333,17 @@ export const repeat: <A>(self: Config<A>) => Config<Array<A>> = internal.repeat
  *
  * @since 2.0.0
  * @category constructors
+ * @deprecated
  */
 export const secret: (name?: string) => Config<Secret.Secret> = internal.secret
+
+/**
+ * Constructs a config for a redacted value.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const redacted: (name?: string) => Config<Redacted.Redacted> = internal.redacted
 
 /**
  * Constructs a config for a sequence of values.

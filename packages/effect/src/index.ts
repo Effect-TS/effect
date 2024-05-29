@@ -615,6 +615,11 @@ export * as Record from "./Record.js"
 export * as RedBlackTree from "./RedBlackTree.js"
 
 /**
+ * @since 3.3.0
+ */
+export * as Redacted from "./Redacted.js"
+
+/**
  * @since 2.0.0
  */
 export * as Ref from "./Ref.js"
@@ -713,6 +718,7 @@ export * as ScopedRef from "./ScopedRef.js"
 
 /**
  * @since 2.0.0
+ * @deprecated
  */
 export * as Secret from "./Secret.js"
 

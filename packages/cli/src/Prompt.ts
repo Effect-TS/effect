@@ -5,7 +5,7 @@ import type { QuitException, Terminal, UserInput } from "@effect/platform/Termin
 import type { Effect } from "effect/Effect"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
-import type { Secret } from "effect/Secret"
+import type { Redacted } from "effect/Redacted"
 import * as InternalPrompt from "./internal/prompt.js"
 import * as InternalConfirmPrompt from "./internal/prompt/confirm.js"
 import * as InternalDatePrompt from "./internal/prompt/date.js"
@@ -423,7 +423,7 @@ export const float: (options: Prompt.FloatOptions) => Prompt<number> = InternalN
  * @since 1.0.0
  * @category constructors
  */
-export const hidden: (options: Prompt.TextOptions) => Prompt<Secret> = InternalTextPrompt.hidden
+export const hidden: (options: Prompt.TextOptions) => Prompt<Redacted> = InternalTextPrompt.hidden
 
 /**
  * @since 1.0.0
@@ -450,7 +450,7 @@ export const map: {
  * @since 1.0.0
  * @category constructors
  */
-export const password: (options: Prompt.TextOptions) => Prompt<Secret> = InternalTextPrompt.password
+export const password: (options: Prompt.TextOptions) => Prompt<Redacted> = InternalTextPrompt.password
 
 /**
  * Executes the specified `Prompt`.
