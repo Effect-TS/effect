@@ -187,7 +187,7 @@ export type Mutable<T> = {
  */
 export type DeepMutable<T> = T extends ReadonlyMap<infer K, infer V> ? Map<DeepMutable<K>, DeepMutable<V>>
   : T extends ReadonlySet<infer V> ? Set<DeepMutable<V>>
-  : T extends ReadonlyArray<infer V> ? Array<DeepMutable<V>>
+  : T extends ReadonlyArray<any> ? { -readonly [K in keyof T]: DeepMutable<T[K]> }
   : [keyof T] extends [never] ? T
   : { -readonly [K in keyof T]: DeepMutable<T[K]> }
 
