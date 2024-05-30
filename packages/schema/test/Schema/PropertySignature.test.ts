@@ -84,7 +84,7 @@ describe("PropertySignature", () => {
   })
 
   it("add a decoding default to an optional field", async () => {
-    const ps: S.PropertySignature<":", number, never, "?:", string, never> = new S.PropertySignatureImpl(
+    const ps: S.PropertySignature<":", number, never, "?:", string, never> = S.makePropertySignature(
       new S.PropertySignatureTransformation(
         new S.FromPropertySignature(S.NumberFromString.ast, true, true, {}, undefined),
         new S.ToPropertySignature(S.Number.ast, false, true, {}, undefined),
@@ -113,7 +113,7 @@ describe("PropertySignature", () => {
   })
 
   it("add a bidirectional (decoding/encoding) default to an optional field", async () => {
-    const ps: S.PropertySignature<":", number, never, "?:", string, never> = new S.PropertySignatureImpl(
+    const ps: S.PropertySignature<":", number, never, "?:", string, never> = S.makePropertySignature(
       new S.PropertySignatureTransformation(
         new S.FromPropertySignature(S.NumberFromString.ast, true, true, {}, undefined),
         new S.ToPropertySignature(S.Number.ast, false, true, {}, undefined),
@@ -142,7 +142,7 @@ describe("PropertySignature", () => {
   })
 
   it("empty string as optional", async () => {
-    const ps: S.PropertySignature<"?:", string, never, ":", string, never> = new S.PropertySignatureImpl(
+    const ps: S.PropertySignature<"?:", string, never, ":", string, never> = S.makePropertySignature(
       new S.PropertySignatureTransformation(
         new S.FromPropertySignature(S.String.ast, false, true, {}, undefined),
         new S.ToPropertySignature(S.String.ast, true, true, {}, undefined),
@@ -159,7 +159,7 @@ describe("PropertySignature", () => {
   })
 
   it("encoding default", async () => {
-    const ps: S.PropertySignature<"?:", number, never, ":", number, never> = new S.PropertySignatureImpl(
+    const ps: S.PropertySignature<"?:", number, never, ":", number, never> = S.makePropertySignature(
       new S.PropertySignatureTransformation(
         new S.FromPropertySignature(S.Number.ast, false, true, {}, undefined),
         new S.ToPropertySignature(S.Number.ast, true, true, {}, undefined),
