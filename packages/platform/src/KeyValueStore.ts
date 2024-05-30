@@ -213,5 +213,4 @@ export const layerSchema: <A, I, R>(
  * @category layers
  * @see https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API
  */
-export const layerStorage: (storage: Storage) => Layer.Layer<KeyValueStore> =
-  internal.layerStorage
+export const layerStorage: (storage: Storage) => Layer.Layer<KeyValueStore> = internal.layerStorage
