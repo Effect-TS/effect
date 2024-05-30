@@ -2882,15 +2882,15 @@ console.log(Product.make({ name: "Laptop", price: 999, quantity: 2 })) // { name
 
 ### Optional Fields Primitives
 
-The `optional` API is based on two primitives: `pptionalToOptional` and `optionalToRequired`. These primitives are incredibly useful for defining property signatures with more precision.
+The `optional` API is based on two primitives: `optionalToOptional` and `optionalToRequired`. These primitives are incredibly useful for defining property signatures with more precision.
 
 #### optionalToOptional
 
-The `pptionalToOptional` API is used to manage the transformation from an optional field to another optional field. With this, we can control both the output type and the presence or absence of the field.
+The `optionalToOptional` API is used to manage the transformation from an optional field to another optional field. With this, we can control both the output type and the presence or absence of the field.
 
 For example a common use case is to equate a specific value in the source field with the absence of value in the destination field.
 
-Here's the signature of the `pptionalToOptional` API:
+Here's the signature of the `optionalToOptional` API:
 
 ```ts
 export const optionalToOptional = <FA, FI, FR, TA, TI, TR>(
@@ -2998,6 +2998,51 @@ console.log(decode({ a: "foo" })) // Output: { a: 'foo' }
 const encode = Schema.encodeSync(schema)
 
 console.log(encode({ a: "foo" })) // Output: { a: 'foo' }
+```
+
+#### requiredToOptional
+
+This API allows developers to specify how a field that is normally required can be treated as optional based on custom logic.
+
+```ts
+export const requiredToOptional = <FA, FI, FR, TA, TI, TR>(
+  from: Schema<FA, FI, FR>,
+  to: Schema<TA, TI, TR>,
+  options: {
+    readonly decode: (fa: FA) => Option.Option<TI>
+    readonly encode: (o: Option.Option<TI>) => FA
+  }
+): PropertySignature<"?:", TA, never, ":", FI, false, FR | TR>
+```
+
+- **`from` and `to` Schemas**: Define the starting and ending schemas for the transformation.
+- **`decode`**: Custom logic for transforming the required input into an optional output.
+- **`encode`**: Defines how to handle the potentially optional input when encoding it back to a required output.
+
+**Example**
+
+Let's look at a practical example where a field `name` that is typically required can be considered optional if it's an empty string during decoding, and ensure there is always a value during encoding by providing a default.
+
+```ts
+import { Schema } from "@effect/schema"
+import { Option } from "effect"
+
+const schema = Schema.Struct({
+  name: Schema.requiredToOptional(Schema.String, Schema.String, {
+    decode: Option.liftPredicate((s) => s !== ""), // empty string is considered as absent
+    encode: Option.getOrElse(() => "")
+  })
+})
+
+const decode = Schema.decodeUnknownSync(schema)
+
+console.log(decode({ name: "John" })) // Output: { name: 'John' }
+console.log(decode({ name: "" })) // Output: {}
+
+const encode = Schema.encodeSync(schema)
+
+console.log(encode({ name: "John" })) // { name: 'John' }
+console.log(encode({})) // Output: { name: '' }
 ```
 
 ### Renaming Properties

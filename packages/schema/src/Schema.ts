@@ -1812,7 +1812,7 @@ export const fromKey: {
 })
 
 /**
- * Converts an optional property to a required one through a transformation `Option -> Option`.
+ * Converts an optional property to a required one through a transformation `Option -> Type`.
  *
  * - `decode`: `none` as argument means the value is missing in the input.
  * - `encode`: `none` as return value means the value will be missing in the output.
@@ -1834,6 +1834,32 @@ export const optionalToRequired = <FA, FI, FR, TA, TI, TR>(
       new ToPropertySignature(to.ast, false, true, {}, undefined),
       (o) => option_.some(options.decode(o)),
       option_.flatMap(options.encode)
+    )
+  )
+
+/**
+ * Converts an optional property to a required one through a transformation `Type -> Option`.
+ *
+ * - `decode`: `none` as return value means the value will be missing in the output.
+ * - `encode`: `none` as argument means the value is missing in the input.
+ *
+ * @category PropertySignature
+ * @since 1.0.0
+ */
+export const requiredToOptional = <FA, FI, FR, TA, TI, TR>(
+  from: Schema<FA, FI, FR>,
+  to: Schema<TA, TI, TR>,
+  options: {
+    readonly decode: (fa: FA) => option_.Option<TI>
+    readonly encode: (o: option_.Option<TI>) => FA
+  }
+): PropertySignature<"?:", TA, never, ":", FI, false, FR | TR> =>
+  makePropertySignature(
+    new PropertySignatureTransformation(
+      new FromPropertySignature(from.ast, false, true, {}, undefined),
+      new ToPropertySignature(to.ast, true, true, {}, undefined),
+      option_.flatMap(options.decode),
+      (o) => option_.some(options.encode(o))
     )
   )
 

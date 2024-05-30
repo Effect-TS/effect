@@ -2454,3 +2454,37 @@ S.asSchema(MyTaggedStruct)
 
 // $ExpectType [props: { readonly _tag?: "Product"; readonly name: string; readonly category?: "Electronics"; readonly price: number; }]
 hole<Parameters<typeof MyTaggedStruct["make"]>>()
+
+// ---------------------------------------------
+// optionalToOptional
+// ---------------------------------------------
+
+// $ExpectType Schema<{ readonly a?: string; }, { readonly a?: string; }, "a">
+S.asSchema(S.Struct({ a: S.optionalToOptional(aContext, S.String, { decode: (o) => o, encode: (o) => o }) }))
+
+// $ExpectType Struct<{ a: PropertySignature<"?:", string, never, "?:", string, false, "a">; }>
+S.Struct({ a: S.optionalToOptional(aContext, S.String, { decode: (o) => o, encode: (o) => o }) })
+
+// ---------------------------------------------
+// optionalToRequired
+// ---------------------------------------------
+
+// $ExpectType Schema<{ readonly a: string; }, { readonly a?: string; }, "a">
+S.asSchema(
+  S.Struct({ a: S.optionalToRequired(aContext, S.String, { decode: Option.getOrElse(() => ""), encode: Option.some }) })
+)
+
+// $ExpectType Struct<{ a: PropertySignature<":", string, never, "?:", string, false, "a">; }>
+S.Struct({ a: S.optionalToRequired(aContext, S.String, { decode: Option.getOrElse(() => ""), encode: Option.some }) })
+
+// ---------------------------------------------
+// requiredToOptional
+// ---------------------------------------------
+
+// $ExpectType Schema<{ readonly a?: string; }, { readonly a: string; }, "a">
+S.asSchema(
+  S.Struct({ a: S.requiredToOptional(aContext, S.String, { decode: Option.some, encode: Option.getOrElse(() => "") }) })
+)
+
+// $ExpectType Struct<{ a: PropertySignature<"?:", string, never, ":", string, false, "a">; }>
+S.Struct({ a: S.requiredToOptional(aContext, S.String, { decode: Option.some, encode: Option.getOrElse(() => "") }) })
