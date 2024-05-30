@@ -4377,10 +4377,10 @@ export const zipLatest: {
  * [ 3, 1, 1 ]
  * // .....
  *
- * @since 2.0.0
+ * @since 3.3.0
  * @category zipping
  */
-export const zipLatestAll: <T extends Array<Stream<unknown>>>(
+export const zipLatestAll: <T extends ReadonlyArray<Stream<any, any, any>>>(
   ...streams: T
 ) => Stream<
   internal.ZipLatestAllValues<T>,
