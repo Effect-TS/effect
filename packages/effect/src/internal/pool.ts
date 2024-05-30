@@ -131,24 +131,29 @@ class PoolImpl<A, E> implements Pool<A, E> {
     this.semaphore = circular.unsafeMakeSemaphore(permits * maxSize)
   }
 
-  allocate: Effect<PoolItem<A, E>> = fiberRuntime.scopeMake().pipe(
-    coreEffect.bindTo("scope"),
-    coreEffect.bind("exit", ({ scope }) => core.exit(fiberRuntime.scopeExtend(this.acquire, scope))),
-    core.flatMap(({ exit, scope }) => {
-      const item: PoolItem<A, E> = {
-        exit,
-        finalizer: core.catchAllCause(scope.close(exit), reportUnhandledError),
-        refCount: 0
-      }
-      this.items.add(item)
-      this.available.add(item)
-      return core.as(
-        exit._tag === "Success"
-          ? this.strategy.onAcquire(item)
-          : core.zipRight(item.finalizer, this.strategy.onAcquire(item)),
-        item
-      )
-    })
+  allocate: Effect<PoolItem<A, E>> = core.acquireUseRelease(
+    fiberRuntime.scopeMake(),
+    (scope) =>
+      this.acquire.pipe(
+        fiberRuntime.scopeExtend(scope),
+        core.exit,
+        core.flatMap((exit) => {
+          const item: PoolItem<A, E> = {
+            exit,
+            finalizer: core.catchAllCause(scope.close(exit), reportUnhandledError),
+            refCount: 0
+          }
+          this.items.add(item)
+          this.available.add(item)
+          return core.as(
+            exit._tag === "Success"
+              ? this.strategy.onAcquire(item)
+              : core.zipRight(item.finalizer, this.strategy.onAcquire(item)),
+            item
+          )
+        })
+      ),
+    (scope, exit) => exit._tag === "Failure" ? scope.close(exit) : core.void
   )
 
   get currentUsage() {
@@ -183,16 +188,21 @@ class PoolImpl<A, E> implements Pool<A, E> {
             if (this.isShuttingDown) {
               return core.interrupt
             }
-            return Option.match(Iterable.head(this.available), {
-              onNone: () => restore(this.allocate),
-              onSome: core.succeed
-            }).pipe(
-              core.tap((item) => {
+            return core.tap(
+              Option.match(Iterable.head(this.available), {
+                onNone: () =>
+                  core.onInterrupt(
+                    restore(this.allocate),
+                    (_) => this.semaphore.release(1)
+                  ),
+                onSome: core.succeed
+              }),
+              (item) => {
                 if (item.exit._tag === "Failure") {
                   this.items.delete(item)
                   this.invalidated.delete(item)
                   this.available.delete(item)
-                  return core.void
+                  return this.semaphore.release(1)
                 }
                 item.refCount++
                 this.available.delete(item)
@@ -212,15 +222,10 @@ class PoolImpl<A, E> implements Pool<A, E> {
                     this.semaphore.release(1)
                   )
                 )
-              })
+              }
             )
           })
         )
-      ),
-      core.onExit((exit) =>
-        exit._tag === "Failure" || exit.value.exit._tag === "Failure"
-          ? this.semaphore.release(1)
-          : core.void
       )
     )
   )
