@@ -168,11 +168,25 @@ S.NonEmptyArray(aContext)
 S.propertySignature(aContext)
 
 // ---------------------------------------------
+// optionalToOptional
+// ---------------------------------------------
+
+// $ExpectType PropertySignature<"?:", string, never, "?:", string, false, "aContext">
+S.optionalToOptional(aContext, S.String, { decode: (o) => o, encode: (o) => o })
+
+// ---------------------------------------------
 // optionalToRequired
 // ---------------------------------------------
 
 // $ExpectType PropertySignature<":", string, never, "?:", string, false, "aContext">
 S.optionalToRequired(aContext, S.String, { decode: Option.getOrElse(() => ""), encode: Option.some })
+
+// ---------------------------------------------
+// requiredToOptional
+// ---------------------------------------------
+
+// $ExpectType PropertySignature<"?:", string, never, ":", string, false, "aContext">
+S.requiredToOptional(aContext, S.String, { decode: Option.some, encode: Option.getOrElse(() => "") })
 
 // ---------------------------------------------
 // optional
