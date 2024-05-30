@@ -78,9 +78,9 @@ export const mapInput: {
  * @since 3.3.0
  */
 export const isTupleOf: {
-  <N extends number>(n: N): <T>(self: Array<T>) => self is TupleOf<N, T>
-  <T, N extends number>(self: Array<T>, n: N): self is TupleOf<N, T>
-} = dual(2, <T, N extends number>(self: Array<T>, n: N): self is TupleOf<N, T> => self.length === n)
+  <N extends number>(n: N): <T>(self: ReadonlyArray<T>) => self is TupleOf<N, T>
+  <T, N extends number>(self: ReadonlyArray<T>, n: N): self is TupleOf<N, T>
+} = dual(2, <T, N extends number>(self: ReadonlyArray<T>, n: N): self is TupleOf<N, T> => self.length === n)
 
 /**
  * Determine if an `Array` is a tuple with at least `N` elements, narrowing down the type to `TupleOfAtLeast`.
@@ -107,9 +107,9 @@ export const isTupleOf: {
  * @since 3.3.0
  */
 export const isTupleOfAtLeast: {
-  <N extends number>(n: N): <T>(self: Array<T>) => self is TupleOfAtLeast<N, T>
-  <T, N extends number>(self: Array<T>, n: N): self is TupleOfAtLeast<N, T>
-} = dual(2, <T, N extends number>(self: Array<T>, n: N): self is TupleOfAtLeast<N, T> => self.length >= n)
+  <N extends number>(n: N): <T>(self: ReadonlyArray<T>) => self is TupleOfAtLeast<N, T>
+  <T, N extends number>(self: ReadonlyArray<T>, n: N): self is TupleOfAtLeast<N, T>
+} = dual(2, <T, N extends number>(self: ReadonlyArray<T>, n: N): self is TupleOfAtLeast<N, T> => self.length >= n)
 
 /**
  * Tests if a value is `truthy`.
