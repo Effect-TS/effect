@@ -300,6 +300,26 @@ describe("Pool", () => {
       expect(result).toBe(0)
     }))
 
+  it.scoped("shutdown with pending takers", () =>
+    Effect.gen(function*($) {
+      const count = yield* $(Ref.make(0))
+      const get = Effect.acquireRelease(
+        Ref.updateAndGet(count, (n) => n + 1),
+        () => Ref.update(count, (n) => n - 1)
+      )
+      const scope = yield* $(Scope.make())
+      const pool = yield* $(Scope.extend(Pool.make({ acquire: get, size: 10 }), scope))
+      yield* $(
+        Pool.get(pool),
+        Scope.extend(scope),
+        Effect.fork,
+        Effect.repeatN(99)
+      )
+      yield* $(Scope.close(scope, Exit.succeed(void 0)))
+      const result = yield* $(Effect.repeat(Ref.get(count), { until: (n) => n === 0 }))
+      expect(result).toBe(0)
+    }))
+
   it.scoped("get is interruptible", () =>
     Effect.gen(function*($) {
       const count = yield* $(Ref.make(0))

@@ -113,12 +113,11 @@ interface Strategy<A, E> {
 class PoolImpl<A, E> implements Pool<A, E> {
   readonly [PoolTypeId]: Pool.Variance<A, E>[PoolTypeId_]
 
-  private isShuttingDown = false
+  isShuttingDown = false
+  readonly semaphore: Semaphore
   readonly items = new Set<PoolItem<A, E>>()
-  readonly invalidated = new Set<PoolItem<A, E>>()
-
-  private semaphore: Semaphore
   readonly available = new Set<PoolItem<A, E>>()
+  readonly invalidated = new Set<PoolItem<A, E>>()
 
   constructor(
     readonly acquire: Effect<A, E, Scope>,
@@ -131,7 +130,7 @@ class PoolImpl<A, E> implements Pool<A, E> {
     this.semaphore = circular.unsafeMakeSemaphore(permits * maxSize)
   }
 
-  allocate: Effect<PoolItem<A, E>> = core.acquireUseRelease(
+  readonly allocate: Effect<PoolItem<A, E>> = core.acquireUseRelease(
     fiberRuntime.scopeMake(),
     (scope) =>
       this.acquire.pipe(
@@ -170,67 +169,60 @@ class PoolImpl<A, E> implements Pool<A, E> {
     return Math.min(Math.max(this.minSize, target), this.maxSize)
   }
 
-  private resizeSemaphore = circular.unsafeMakeSemaphore(1)
-  resizeLoop: Effect<void> = core.suspend(() => {
+  readonly resizeLoop: Effect<void> = core.suspend(() => {
     if (this.items.size >= this.targetSize) {
       return core.void
     }
     return core.zipRight(this.allocate, this.resizeLoop)
   })
-  resize = this.resizeSemaphore.withPermits(1)(this.resizeLoop)
+  readonly resizeSemaphore = circular.unsafeMakeSemaphore(1)
+  readonly resize = this.resizeSemaphore.withPermits(1)(this.resizeLoop)
 
-  getPoolItem: Effect<PoolItem<A, E>, never, Scope> = core.uninterruptibleMask((restore) =>
+  readonly getPoolItem: Effect<PoolItem<A, E>, never, Scope> = core.uninterruptibleMask((restore) =>
     restore(this.semaphore.take(1)).pipe(
       core.zipRight(fiberRuntime.scopeTag),
       core.flatMap((scope) =>
-        this.resizeSemaphore.withPermits(1)(
-          core.suspend(() => {
-            if (this.isShuttingDown) {
-              return core.interrupt
-            }
-            return core.tap(
-              Option.match(Iterable.head(this.available), {
-                onNone: () =>
-                  core.onInterrupt(
-                    restore(this.allocate),
-                    (_) => this.semaphore.release(1)
-                  ),
-                onSome: core.succeed
-              }),
-              (item) => {
-                if (item.exit._tag === "Failure") {
-                  this.items.delete(item)
-                  this.invalidated.delete(item)
-                  this.available.delete(item)
-                  return this.semaphore.release(1)
-                }
-                item.refCount++
-                this.available.delete(item)
-                if (item.refCount < this.permits) {
-                  this.available.add(item)
-                }
-                return scope.addFinalizer(() =>
-                  core.zipRight(
-                    core.suspend(() => {
-                      item.refCount--
-                      if (this.invalidated.has(item)) {
-                        return this.invalidatePoolItem(item)
-                      }
-                      this.available.add(item)
-                      return core.void
-                    }),
-                    this.semaphore.release(1)
-                  )
-                )
-              }
-            )
+        core.suspend(() => {
+          if (this.isShuttingDown) return core.interrupt
+          return Option.match(Iterable.head(this.available), {
+            onNone: () => restore(this.allocate),
+            onSome: core.succeed
           })
+        }).pipe(
+          core.tap((item) => {
+            if (item.exit._tag === "Failure") {
+              this.items.delete(item)
+              this.invalidated.delete(item)
+              this.available.delete(item)
+              return this.semaphore.release(1)
+            }
+            item.refCount++
+            this.available.delete(item)
+            if (item.refCount < this.permits) {
+              this.available.add(item)
+            }
+            return scope.addFinalizer(() =>
+              core.zipRight(
+                core.suspend(() => {
+                  item.refCount--
+                  if (this.invalidated.has(item)) {
+                    return this.invalidatePoolItem(item)
+                  }
+                  this.available.add(item)
+                  return core.void
+                }),
+                this.semaphore.release(1)
+              )
+            )
+          }),
+          this.resizeSemaphore.withPermits(1),
+          core.onInterrupt(() => this.semaphore.release(1))
         )
       )
     )
   )
 
-  get: Effect<A, E, Scope> = core.flatMap(
+  readonly get: Effect<A, E, Scope> = core.flatMap(
     core.suspend(() => this.isShuttingDown ? core.interrupt : this.getPoolItem),
     (_) => _.exit
   )
