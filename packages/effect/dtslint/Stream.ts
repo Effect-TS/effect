@@ -236,3 +236,16 @@ pipe(
     _scope // $ExpectType { a: number; b: string; }
   ) => true)
 )
+
+// -------------------------------------------------------------------------------------
+// zipLatestAll
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Stream<never, never, never>
+Stream.zipLatestAll()
+
+// $ExpectType Stream<[number, string | number], never, never>
+Stream.zipLatestAll(numbers, numbersOrStrings)
+
+// $ExpectType Stream<[number, string | number, never], Error, never>
+Stream.zipLatestAll(numbers, numbersOrStrings, Stream.fail(new Error("")))

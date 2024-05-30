@@ -1,3 +1,4 @@
+import { NonEmptyReadonlyArray } from "effect/Array"
 import * as Cause from "../Cause.js"
 import type * as Channel from "../Channel.js"
 import * as Chunk from "../Chunk.js"
@@ -7609,27 +7610,25 @@ export const zipLatest = dual<
   ): Stream.Stream<[A, A2], E2 | E, R2 | R> => pipe(self, zipLatestWith(that, (a, a2) => [a, a2]))
 )
 
-export const zipLatestAll = <T extends Array<Stream.Stream<any, any, any>>>(
+export const zipLatestAll = <T extends ReadonlyArray<Stream.Stream<any, any, any>>>(
   ...streams: T
 ): Stream.Stream<
-  { [K in keyof T]: T[K] extends Stream.Stream<infer U, any, any> ? U : never },
-  T[number] extends Stream.Stream<any, infer E, any> ? E : never,
-  T[number] extends Stream.Stream<any, any, infer R> ? R : never
+  [T[number]] extends [never] ? never
+    : { [K in keyof T]: T[K] extends Stream.Stream<infer A, infer _E, infer _R> ? A : never },
+  [T[number]] extends [never] ? never : T[number] extends Stream.Stream<infer _A, infer _E, infer _R> ? _E : never,
+  [T[number]] extends [never] ? never : T[number] extends Stream.Stream<infer _A, infer _E, infer _R> ? _R : never
 > => {
-  type Values = { [K in keyof T]: T[K] extends Stream.Stream<infer U, any, any> ? U : never }
-
-  if (isTupleOf(streams, 1)) {
-    return pipe(streams[0], map((x) => [x] as Values))
+  if (streams.length === 0) {
+    return empty
+  } else if (streams.length === 1) {
+    return map(streams[0]!, (x) => [x]) as any
   }
-  if (isTupleOfAtLeast(streams, 2)) {
-    const [head, ...tail] = streams
-    return zipLatestWith(
-      head,
-      zipLatestAll(...tail),
-      (first, second) => [first, ...second] as Values
-    )
-  }
-  return empty
+  const [head, ...tail] = streams
+  return zipLatestWith(
+    head,
+    zipLatestAll(...tail),
+    (first, second) => [first, ...second]
+  ) as any
 }
 
 /** @internal */

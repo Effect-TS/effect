@@ -1,6 +1,7 @@
 /**
  * @since 2.0.0
  */
+import { NonEmptyReadonlyArray } from "./Array.js"
 import type * as Cause from "./Cause.js"
 import type * as Channel from "./Channel.js"
 import type * as Chunk from "./Chunk.js"
@@ -4380,12 +4381,13 @@ export const zipLatest: {
  * @since 3.3.0
  * @category zipping
  */
-export const zipLatestAll: <T extends Array<Stream<any, any, any>>>(
+export const zipLatestAll: <T extends ReadonlyArray<Stream<any, any, any>>>(
   ...streams: T
 ) => Stream<
-  { [K in keyof T]: T[K] extends Stream<infer U, any, any> ? U : never },
-  T[number] extends Stream<any, infer E, any> ? E : never,
-  T[number] extends Stream<any, any, infer R> ? R : never
+  [T[number]] extends [never] ? never
+    : { [K in keyof T]: T[K] extends Stream<infer A, infer _E, infer _R> ? A : never },
+  [T[number]] extends [never] ? never : T[number] extends Stream<infer _A, infer _E, infer _R> ? _E : never,
+  [T[number]] extends [never] ? never : T[number] extends Stream<infer _A, infer _E, infer _R> ? _R : never
 > = internal.zipLatestAll
 
 /**
