@@ -20,8 +20,6 @@ import { YieldWrap, yieldWrapGet } from "./Utils.js"
 
 // TODO:
 // - .filter*
-// - mapError
-// - mapFailure
 // - ensuring
 // - all
 
@@ -1111,6 +1109,32 @@ export const catchTag: {
   k: K,
   f: (e: Extract<E, { _tag: K }>) => Micro<A1, E1, R1>
 ): Micro<A | A1, E1 | Exclude<E, { _tag: K }>, R | R1> => catchIf(self, (error) => isTagged(error, k), f as any))
+
+/**
+ * @since 3.3.0
+ * @category error handling
+ */
+export const mapFailure: {
+  <E, E2>(f: (a: NoInfer<Failure<E>>) => Failure<E2>): <A, R>(self: Micro<A, E, R>) => Micro<A, E2, R>
+  <A, E, R, E2>(self: Micro<A, E, R>, f: (a: NoInfer<Failure<E>>) => Failure<E2>): Micro<A, E2, R>
+} = dual(
+  2,
+  <A, E, R, E2>(self: Micro<A, E, R>, f: (a: NoInfer<Failure<E>>) => Failure<E2>): Micro<A, E2, R> =>
+    catchAllFailure(self, (failure) => failWith(f(failure)))
+)
+
+/**
+ * @since 3.3.0
+ * @category error handling
+ */
+export const mapError: {
+  <E, E2>(f: (a: NoInfer<E>) => E2): <A, R>(self: Micro<A, E, R>) => Micro<A, E2, R>
+  <A, E, R, E2>(self: Micro<A, E, R>, f: (a: NoInfer<E>) => E2): Micro<A, E2, R>
+} = dual(
+  2,
+  <A, E, R, E2>(self: Micro<A, E, R>, f: (a: NoInfer<E>) => E2): Micro<A, E2, R> =>
+    catchAll(self, (error) => fail(f(error)))
+)
 
 /**
  * @since 3.3.0
