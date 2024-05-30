@@ -15,6 +15,17 @@ describe("Pool", () => {
       assert.strictEqual(result, 10)
     }))
 
+  // it.scoped("benchmark", () =>
+  //   Effect.gen(function*() {
+  //     const get = Effect.succeed("resource")
+  //     const pool = yield* Pool.make({ acquire: get, size: 10 })
+  //     yield* Pool.get(pool).pipe(
+  //       Effect.scoped,
+  //       Effect.repeatN(10000),
+  //       Console.withTime("Pool.get")
+  //     )
+  //   }))
+
   it.scoped("cleans up items when shut down", () =>
     Effect.gen(function*() {
       const count = yield* Ref.make(0)
@@ -304,7 +315,7 @@ describe("Pool", () => {
       expect(result).toEqual(Exit.interrupt(fiberId))
     }))
 
-  it.effect("get is interruptible with dynamic size", () =>
+  it.scoped("get is interruptible with dynamic size", () =>
     Effect.gen(function*($) {
       const get = Effect.never.pipe(Effect.forkScoped)
       const fiberId = yield* $(Effect.fiberId)
@@ -313,7 +324,7 @@ describe("Pool", () => {
       const fiber = yield* $(Effect.fork(Pool.get(pool)))
       const result = yield* $(Fiber.interrupt(fiber))
       expect(result).toEqual(Exit.interrupt(fiberId))
-    }).pipe(Effect.scoped))
+    }))
 
   it.scoped("finalizer is called for failed allocations", () =>
     Effect.gen(function*() {

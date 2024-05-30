@@ -1,10 +1,11 @@
 import type { Cause } from "effect/Cause"
-import type { Queue } from "effect/Queue"
 import * as Context from "../Context.js"
 import * as Duration from "../Duration.js"
-import type { Effect } from "../Effect.js"
+import type { Effect, Semaphore } from "../Effect.js"
 import type { Exit } from "../Exit.js"
 import { dual, identity } from "../Function.js"
+import * as Iterable from "../Iterable.js"
+import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import type { Pool, PoolTypeId as PoolTypeId_ } from "../Pool.js"
 import { hasProperty } from "../Predicate.js"
@@ -48,30 +49,19 @@ export const makeWith = <A, E, R>(options: {
         E,
         Scope
       >
-      return internalQueue.unbounded<PoolItem<A, E>>().pipe(
-        core.map((queue) =>
-          new PoolImpl<A, E>(
-            acquire,
-            options.permits ?? 1,
-            options.min,
-            options.max,
-            queue,
-            options.strategy
-          )
-        ),
-        core.tap((pool) =>
-          restore(pool.reconcile).pipe(
-            fiberRuntime.forkDaemon,
-            core.tap(scope.addFinalizer(() => pool.shutdown)),
-            core.tap((fiber) => scope.addFinalizer(() => core.interruptFiber(fiber)))
-          )
-        ),
-        core.tap((pool) =>
-          restore(options.strategy.run(pool)).pipe(
-            fiberRuntime.forkDaemon,
-            core.tap((fiber) => scope.addFinalizer(() => core.interruptFiber(fiber)))
-          )
-        )
+      const pool = new PoolImpl<A, E>(acquire, options.permits ?? 1, options.min, options.max, options.strategy)
+      const initialize = core.tap(fiberRuntime.forkDaemon(restore(pool.resize)), (fiber) =>
+        scope.addFinalizer(() => core.interruptFiber(fiber)))
+      const runStrategy = core.tap(fiberRuntime.forkDaemon(restore(options.strategy.run(pool))), (fiber) =>
+        scope.addFinalizer(() =>
+          core.interruptFiber(fiber)
+        ))
+      return core.succeed(pool).pipe(
+        core.zipLeft(scope.addFinalizer(() =>
+          pool.shutdown
+        )),
+        core.zipLeft(initialize),
+        core.zipLeft(runStrategy)
       )
     })
   )
@@ -126,20 +116,22 @@ class PoolImpl<A, E> implements Pool<A, E> {
   private isShuttingDown = false
   readonly items = new Set<PoolItem<A, E>>()
   readonly invalidated = new Set<PoolItem<A, E>>()
-  private waiters = 0
+
+  private semaphore: Semaphore
+  readonly available = new Set<PoolItem<A, E>>()
 
   constructor(
     readonly acquire: Effect<A, E, Scope>,
     readonly permits: number,
     readonly minSize: number,
     readonly maxSize: number,
-    readonly queue: Queue<PoolItem<A, E>>,
     readonly strategy: Strategy<A, E>
   ) {
     this[PoolTypeId] = poolVariance
+    this.semaphore = circular.unsafeMakeSemaphore(permits * maxSize)
   }
 
-  allocate: Effect<void> = fiberRuntime.scopeMake().pipe(
+  allocate: Effect<PoolItem<A, E>> = fiberRuntime.scopeMake().pipe(
     coreEffect.bindTo("scope"),
     coreEffect.bind("exit", ({ scope }) => core.exit(fiberRuntime.scopeExtend(this.acquire, scope))),
     core.flatMap(({ exit, scope }) => {
@@ -149,13 +141,18 @@ class PoolImpl<A, E> implements Pool<A, E> {
         refCount: 0
       }
       this.items.add(item)
-      const offer = core.zipRight(this.strategy.onAcquire(item), this.queue.offer(item))
-      return exit._tag === "Success" ? offer : core.zipRight(item.finalizer, offer)
+      this.available.add(item)
+      return core.as(
+        exit._tag === "Success"
+          ? this.strategy.onAcquire(item)
+          : core.zipRight(item.finalizer, this.strategy.onAcquire(item)),
+        item
+      )
     })
   )
 
   get currentUsage() {
-    let count = this.waiters
+    let count = 0
     for (const item of this.items) {
       count += item.refCount
     }
@@ -168,51 +165,64 @@ class PoolImpl<A, E> implements Pool<A, E> {
     return Math.min(Math.max(this.minSize, target), this.maxSize)
   }
 
-  private reconcileSemaphore = circular.unsafeMakeSemaphore(1)
-  reconcileLoop: Effect<void> = core.suspend(() => {
+  private resizeSemaphore = circular.unsafeMakeSemaphore(1)
+  resizeLoop: Effect<void> = core.suspend(() => {
     if (this.items.size >= this.targetSize) {
       return core.void
     }
-    return core.zipRight(this.allocate, this.reconcileLoop)
+    return core.zipRight(this.allocate, this.resizeLoop)
   })
-  reconcile = this.reconcileSemaphore.withPermits(1)(this.reconcileLoop)
+  resize = this.resizeSemaphore.withPermits(1)(this.resizeLoop)
 
   getPoolItem: Effect<PoolItem<A, E>, never, Scope> = core.uninterruptibleMask((restore) =>
-    core.flatMap(fiberRuntime.scopeTag, (scope) => {
-      this.waiters++
-      return restore(this.reconcile).pipe(
-        core.zipRight(restore(this.queue.take)),
-        core.onExit((_) => core.sync(() => this.waiters--)),
-        core.flatMap((poolItem) => {
-          if (!this.items.has(poolItem) || this.invalidated.has(poolItem)) {
-            return this.getPoolItem
-          } else if (poolItem.exit._tag === "Failure") {
-            this.items.delete(poolItem)
-            this.invalidated.delete(poolItem)
-            return core.succeed(poolItem)
-          }
-          poolItem.refCount++
-          const addFinalizer = scope.addFinalizer(
-            () =>
-              core.suspend(() => {
-                poolItem.refCount--
-                if (this.invalidated.has(poolItem)) {
-                  return this.invalidatePoolItem(poolItem)
+    restore(this.semaphore.take(1)).pipe(
+      core.zipRight(fiberRuntime.scopeTag),
+      core.flatMap((scope) =>
+        this.resizeSemaphore.withPermits(1)(
+          core.suspend(() => {
+            if (this.isShuttingDown) {
+              return core.interrupt
+            }
+            return Option.match(Iterable.head(this.available), {
+              onNone: () => restore(this.allocate),
+              onSome: core.succeed
+            }).pipe(
+              core.tap((item) => {
+                if (item.exit._tag === "Failure") {
+                  this.items.delete(item)
+                  this.invalidated.delete(item)
+                  this.available.delete(item)
+                  return core.void
                 }
-                return poolItem.refCount === (this.permits - 1) ?
-                  this.queue.offer(poolItem) :
-                  core.void
+                item.refCount++
+                this.available.delete(item)
+                if (item.refCount < this.permits) {
+                  this.available.add(item)
+                }
+                return scope.addFinalizer(() =>
+                  core.zipRight(
+                    core.suspend(() => {
+                      item.refCount--
+                      if (this.invalidated.has(item)) {
+                        return this.invalidatePoolItem(item)
+                      }
+                      this.available.add(item)
+                      return core.void
+                    }),
+                    this.semaphore.release(1)
+                  )
+                )
               })
-          )
-          return core.as(
-            poolItem.refCount < this.permits
-              ? core.zipRight(addFinalizer, this.queue.offer(poolItem))
-              : addFinalizer,
-            poolItem
-          )
-        })
+            )
+          })
+        )
+      ),
+      core.onExit((exit) =>
+        exit._tag === "Failure" || exit.value.exit._tag === "Failure"
+          ? this.semaphore.release(1)
+          : core.void
       )
-    })
+    )
   )
 
   get: Effect<A, E, Scope> = core.flatMap(
@@ -234,10 +244,13 @@ class PoolImpl<A, E> implements Pool<A, E> {
 
   invalidatePoolItem(poolItem: PoolItem<A, E>): Effect<void> {
     return core.suspend(() => {
-      if (poolItem.refCount === 0) {
+      if (!this.items.has(poolItem)) {
+        return core.void
+      } else if (poolItem.refCount === 0) {
         this.items.delete(poolItem)
+        this.available.delete(poolItem)
         this.invalidated.delete(poolItem)
-        return core.zipRight(poolItem.finalizer, this.reconcile)
+        return core.zipRight(poolItem.finalizer, this.resize)
       }
       this.invalidated.add(poolItem)
       return core.void
@@ -260,7 +273,7 @@ class PoolImpl<A, E> implements Pool<A, E> {
         this.invalidated.delete(item)
         return item.finalizer
       }).pipe(
-        core.zipRight(this.queue.shutdown),
+        core.zipRight(this.semaphore.releaseAll),
         core.zipRight(semaphore.take(size))
       )
     })
@@ -285,7 +298,9 @@ const strategyCreationTTL = <A, E>(ttl: Duration.DurationInput) =>
         run: (pool) => {
           const process = (item: PoolItem<A, E>): Effect<void> =>
             core.suspend(() => {
-              if (pool.invalidated.has(item)) return core.void
+              if (!pool.items.has(item) || pool.invalidated.has(item)) {
+                return core.void
+              }
               const now = clock.unsafeCurrentTimeMillis()
               const created = creationTimes.get(item)!
               const remaining = ttlMillis - (now - created)
