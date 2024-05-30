@@ -96,6 +96,9 @@ hole<Types.DeepMutable<ReadonlyMap<TaggedValues<string>, ReadonlySet<TaggedValue
 // $ExpectType { _tag: string; value: { _tag: string; value: { _tag: string; value: boolean[]; }[]; }[]; }[]
 hole<Types.DeepMutable<ReadonlyArray<TaggedValues<TaggedValues<TaggedValues<boolean>>>>>>()
 
+// $ExpectType [string, number, boolean]
+hole<Types.DeepMutable<readonly [string, number, boolean]>>()
+
 // -------------------------------------------------------------------------------------
 // MatchRecord
 // -------------------------------------------------------------------------------------
