@@ -1511,8 +1511,7 @@ export interface PropertySignature<
   ): PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, HasDefault, R>
 }
 
-/** @internal */
-export class PropertySignatureImpl<
+class PropertySignatureImpl<
   TypeToken extends PropertySignature.Token,
   Type,
   Key extends PropertyKey,
@@ -1539,13 +1538,28 @@ export class PropertySignatureImpl<
   annotations(
     annotations: PropertySignature.Annotations<Type>
   ): PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, HasDefault, R> {
-    return new PropertySignatureImpl(propertySignatureAnnotations_(this.ast, toASTAnnotations(annotations)))
+    return makePropertySignature(propertySignatureAnnotations_(this.ast, toASTAnnotations(annotations)))
   }
 
   toString() {
     return String(this.ast)
   }
 }
+
+/**
+ * @category PropertySignature
+ * @since 1.0.0
+ */
+export const makePropertySignature = <
+  TypeToken extends PropertySignature.Token,
+  Type,
+  Key extends PropertyKey,
+  EncodedToken extends PropertySignature.Token,
+  Encoded,
+  HasDefault extends boolean = false,
+  R = never
+>(ast: PropertySignature.AST) =>
+  new PropertySignatureImpl<TypeToken, Type, Key, EncodedToken, Encoded, HasDefault, R>(ast)
 
 /**
  * Lifts a `Schema` into a `PropertySignature`.
@@ -1556,7 +1570,7 @@ export class PropertySignatureImpl<
 export const propertySignature = <A, I, R>(
   self: Schema<A, I, R>
 ): PropertySignature<PropertySignature.GetToken<false>, A, never, PropertySignature.GetToken<false>, I, false, R> =>
-  new PropertySignatureImpl(new PropertySignatureDeclaration(self.ast, false, true, {}, undefined))
+  makePropertySignature(new PropertySignatureDeclaration(self.ast, false, true, {}, undefined))
 
 /**
  * Enhances a property signature with a default constructor value.
@@ -1599,11 +1613,11 @@ export const withConstructorDefault: {
   const ast = self.ast
   switch (ast._tag) {
     case "PropertySignatureDeclaration":
-      return new PropertySignatureImpl(
+      return makePropertySignature(
         new PropertySignatureDeclaration(ast.type, ast.isOptional, ast.isReadonly, ast.annotations, defaultValue)
       )
     case "PropertySignatureTransformation":
-      return new PropertySignatureImpl(
+      return makePropertySignature(
         new PropertySignatureTransformation(
           ast.from,
           new ToPropertySignature(ast.to.type, ast.to.isOptional, ast.to.isReadonly, ast.to.annotations, defaultValue),
@@ -1657,7 +1671,7 @@ export const withDecodingDefault: {
   const ast = self.ast
   switch (ast._tag) {
     case "PropertySignatureDeclaration":
-      return new PropertySignatureImpl(
+      return makePropertySignature(
         new PropertySignatureTransformation(
           ast,
           new ToPropertySignature(AST.typeAST(ast.type), false, true, {}, undefined),
@@ -1666,7 +1680,7 @@ export const withDecodingDefault: {
         )
       )
     case "PropertySignatureTransformation":
-      return new PropertySignatureImpl(
+      return makePropertySignature(
         new PropertySignatureTransformation(
           ast.from,
           new ToPropertySignature(ast.to.type, false, ast.to.isReadonly, ast.to.annotations, ast.to.defaultValue),
@@ -1764,7 +1778,7 @@ export const fromKey: {
   const ast = self.ast
   switch (ast._tag) {
     case "PropertySignatureDeclaration": {
-      return new PropertySignatureImpl(
+      return makePropertySignature(
         new PropertySignatureTransformation(
           new FromPropertySignature(
             ast.type,
@@ -1780,7 +1794,7 @@ export const fromKey: {
       )
     }
     case "PropertySignatureTransformation":
-      return new PropertySignatureImpl(
+      return makePropertySignature(
         new PropertySignatureTransformation(
           new FromPropertySignature(
             ast.from.type,
@@ -1814,7 +1828,7 @@ export const optionalToRequired = <FA, FI, FR, TA, TI, TR>(
     readonly encode: (ti: TI) => option_.Option<FA>
   }
 ): PropertySignature<":", TA, never, "?:", FI, false, FR | TR> =>
-  new PropertySignatureImpl(
+  makePropertySignature(
     new PropertySignatureTransformation(
       new FromPropertySignature(from.ast, true, true, {}, undefined),
       new ToPropertySignature(to.ast, false, true, {}, undefined),
@@ -1844,7 +1858,7 @@ export const optionalToOptional = <FA, FI, FR, TA, TI, TR>(
     readonly encode: (o: option_.Option<TI>) => option_.Option<FA>
   }
 ): PropertySignature<"?:", TA, never, "?:", FI, false, FR | TR> =>
-  new PropertySignatureImpl(
+  makePropertySignature(
     new PropertySignatureTransformation(
       new FromPropertySignature(from.ast, true, true, {}, undefined),
       new ToPropertySignature(to.ast, true, true, {}, undefined),
@@ -2004,7 +2018,7 @@ export const optional: {
           { decode: option_.filter(Predicate.isNotNull<A | null>), encode: identity }
         )
       } else {
-        return new PropertySignatureImpl(new PropertySignatureDeclaration(schema.ast, true, true, {}, undefined))
+        return makePropertySignature(new PropertySignatureDeclaration(schema.ast, true, true, {}, undefined))
       }
     }
   } else {
@@ -2062,7 +2076,7 @@ export const optional: {
           { decode: option_.filter(Predicate.isNotNull<A | null | undefined>), encode: identity }
         )
       } else {
-        return new PropertySignatureImpl(
+        return makePropertySignature(
           new PropertySignatureDeclaration(UndefinedOr(schema).ast, true, true, {}, undefined)
         )
       }
