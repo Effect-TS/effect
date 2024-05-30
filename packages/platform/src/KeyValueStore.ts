@@ -205,3 +205,12 @@ export const layerSchema: <A, I, R>(
   readonly tag: Context.Tag<SchemaStore<A, R>, SchemaStore<A, R>>
   readonly layer: Layer.Layer<SchemaStore<A, R>, never, KeyValueStore>
 } = internal.layerSchema
+
+/**
+ * Creates an KeyValueStorage from an instance of the `Storage` api.
+ *
+ * @since 1.0.0
+ * @category layers
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API
+ */
+export const layerStorage: (storage: Storage) => Layer.Layer<KeyValueStore> = internal.layerStorage
