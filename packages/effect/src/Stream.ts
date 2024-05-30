@@ -4380,12 +4380,12 @@ export const zipLatest: {
  * @since 3.3.0
  * @category zipping
  */
-export const zipLatestAll: <T extends ReadonlyArray<Stream<any, any, any>>>(
+export const zipLatestAll: <T extends Array<Stream<any, any, any>>>(
   ...streams: T
 ) => Stream<
-  internal.ZipLatestAllValues<T>,
-  internal.ZipLatestAllErrors<T>,
-  internal.ZipLatestAllContext<T>
+  { [K in keyof T]: T[K] extends Stream<infer U, any, any> ? U : never },
+  T[number] extends Stream<any, infer E, any> ? E : never,
+  T[number] extends Stream<any, any, infer R> ? R : never
 > = internal.zipLatestAll
 
 /**

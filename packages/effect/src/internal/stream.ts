@@ -1,4 +1,3 @@
-import * as Arr from "../Array.js"
 import * as Cause from "../Cause.js"
 import type * as Channel from "../Channel.js"
 import * as Chunk from "../Chunk.js"
@@ -18,7 +17,7 @@ import * as MergeDecision from "../MergeDecision.js"
 import * as Option from "../Option.js"
 import type * as Order from "../Order.js"
 import { pipeArguments } from "../Pipeable.js"
-import { hasProperty, isTagged, type Predicate, type Refinement } from "../Predicate.js"
+import { hasProperty, isTagged, isTupleOf, isTupleOfAtLeast, type Predicate, type Refinement } from "../Predicate.js"
 import * as PubSub from "../PubSub.js"
 import * as Queue from "../Queue.js"
 import * as Ref from "../Ref.js"
@@ -7610,29 +7609,24 @@ export const zipLatest = dual<
   ): Stream.Stream<[A, A2], E2 | E, R2 | R> => pipe(self, zipLatestWith(that, (a, a2) => [a, a2]))
 )
 
-/** @internal */
-export type ZipLatestAllValues<T extends Array<Stream.Stream<unknown, unknown, unknown>>> = {
-  [K in keyof T]: T[K] extends Stream.Stream<infer U> ? U : never
-}
-/** @internal */
-export type ZipLatestAllErrors<T extends Array<Stream.Stream<unknown, unknown, unknown>>> = T extends
-  Array<Stream.Stream<unknown, infer E, unknown>> ? E : never
-/** @internal */
-export type ZipLatestAllContext<T extends Array<Stream.Stream<unknown, unknown, unknown>>> = T extends
-  Array<Stream.Stream<unknown, unknown, infer R>> ? R : never
-
-export const zipLatestAll = <T extends Array<Stream.Stream<unknown>>>(
+export const zipLatestAll = <T extends Array<Stream.Stream<any, any, any>>>(
   ...streams: T
-): Stream.Stream<ZipLatestAllValues<T>, ZipLatestAllErrors<T>, ZipLatestAllContext<T>> => {
-  if (Arr.isTupleOf(streams, 1)) {
-    return pipe(streams[0], map((x) => [x] as ZipLatestAllValues<T>))
+): Stream.Stream<
+  { [K in keyof T]: T[K] extends Stream.Stream<infer U, any, any> ? U : never },
+  T[number] extends Stream.Stream<any, infer E, any> ? E : never,
+  T[number] extends Stream.Stream<any, any, infer R> ? R : never
+> => {
+  type Values = { [K in keyof T]: T[K] extends Stream.Stream<infer U, any, any> ? U : never }
+
+  if (isTupleOf(streams, 1)) {
+    return pipe(streams[0], map((x) => [x] as Values))
   }
-  if (Arr.isTupleOfAtLeast(streams, 2)) {
+  if (isTupleOfAtLeast(streams, 2)) {
     const [head, ...tail] = streams
     return zipLatestWith(
       head,
       zipLatestAll(...tail),
-      (first, second) => [first, ...second] as ZipLatestAllValues<T>
+      (first, second) => [first, ...second] as Values
     )
   }
   return empty
