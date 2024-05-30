@@ -270,6 +270,27 @@ describe("Micro", () => {
       }).pipe(Effect.provideService(ATag, "A")))
   })
 
+  describe("repeat", () => {
+    it.live("is stack safe", () =>
+      Micro.void.pipe(
+        Micro.repeat({ times: 10000 })
+      ))
+
+    it.live("is interruptible", () =>
+      Micro.void.pipe(
+        Micro.forever,
+        Micro.timeout(50)
+      ))
+
+    it("works with runSync", () => {
+      const result = Micro.succeed(123).pipe(
+        Micro.repeat({ times: 1000 }),
+        Micro.runSync
+      )
+      assert.deepStrictEqual(result, 123)
+    })
+  })
+
   describe("timeout", () => {
     it.live("timeout a long computation", () =>
       Micro.gen(function*() {
@@ -310,26 +331,5 @@ describe("Micro", () => {
         const result = yield* $(Effect.void, Effect.timeout(Duration.seconds(20)), Effect.uninterruptible)
         assert.deepStrictEqual(result, void 0)
       }))
-    // it("timeout - disconnect - returns with the produced value if the effect completes before the timeout elapses", () =>
-    //   Effect.gen(function*($) {
-    //     const result = yield* $(Effect.void, Effect.disconnect, Effect.timeout(Duration.millis(100)))
-    //     assert.deepStrictEqual(result, void 0)
-    //   }))
-    // it("timeout - disconnect - returns `NoSuchElementException` otherwise", () =>
-    //   Effect.gen(function*($) {
-    //     const fiber = yield* $(
-    //       pipe(
-    //         Effect.never,
-    //         Effect.uninterruptible,
-    //         Effect.disconnect,
-    //         Effect.timeout(Duration.millis(100)),
-    //         Effect.option,
-    //         Effect.fork
-    //       )
-    //     )
-    //     yield* $(TestClock.adjust(Duration.millis(100)))
-    //     const result = yield* $(Fiber.join(fiber))
-    //     assert.deepStrictEqual(result, Option.none())
-    //   }))
   })
 })

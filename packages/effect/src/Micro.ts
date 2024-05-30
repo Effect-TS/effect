@@ -9,31 +9,21 @@ import type { Effect } from "./Effect.js"
 import * as Effectable from "./Effectable.js"
 import * as Either from "./Either.js"
 import { constVoid, dual, identity, type LazyArg } from "./Function.js"
+import { globalValue } from "./GlobalValue.js"
 import { SingleShotGen } from "./internal/singleShotGen.js"
 import * as Env from "./MicroEnv.js"
 import * as Option from "./Option.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
+import { isTagged, type Predicate, type Refinement } from "./Predicate.js"
 import type { Concurrency, Covariant, NoInfer, NotFunction } from "./Types.js"
 import { YieldWrap, yieldWrapGet } from "./Utils.js"
 
 // TODO:
-// - timeout apis
-// - retry apis
-// - repeat apis
-// - .try
-// - .tapError
 // - .filter*
-// - flip
 // - mapError
-// - mapErrorFailure
+// - mapFailure
 // - ensuring
-// - serviceOption
-// - either
-// - addFinalizer
 // - all
-// - catchTag
-// - catchTags
-// - catchIf
 
 /**
  * @since 3.3.0
@@ -392,6 +382,15 @@ export const service = <I, S>(tag: Context.Tag<I, S>): Micro<S, never, I> =>
  * @since 3.3.0
  * @category constructors
  */
+export const serviceOption = <I, S>(tag: Context.Tag<I, S>): Micro<Option.Option<S>> =>
+  make(function(env, onResult) {
+    onResult(ResultSucceed(Context.getOption(Env.get(env, Env.currentContext) as Context.Context<I>, tag)))
+  })
+
+/**
+ * @since 3.3.0
+ * @category constructors
+ */
 export const fromOption = <A>(option: Option.Option<A>): Micro<A, Option.None<never>> =>
   make(function(_env, onResult) {
     onResult(option._tag === "Some" ? Either.right(option.value) : Either.left(FailureExpected(Option.none())) as any)
@@ -455,6 +454,25 @@ export const async = <A, E = never, R = never>(
     signal.addEventListener("abort", onAbort)
   })
 
+const try_ = <A, E>(options: {
+  try: LazyArg<A>
+  catch: (error: unknown) => E
+}): Micro<A, E> =>
+  make(function(_env, onResult) {
+    try {
+      onResult(ResultSucceed(options.try()))
+    } catch (err) {
+      onResult(ResultFail(options.catch(err)))
+    }
+  })
+export {
+  /**
+   * @since 3.3.0
+   * @category constructors
+   */
+  try_ as try
+}
+
 /**
  * @since 3.3.0
  * @category constructors
@@ -482,12 +500,41 @@ export const tryPromise = <A, E>(options: {
     )
   })
 
+const yieldState: {
+  tasks: Array<() => void>
+  working: boolean
+} = globalValue("effect/Micro/yieldState", () => ({
+  tasks: [],
+  working: false
+}))
+
+const yieldFlush = () => {
+  const tasks = yieldState.tasks
+  yieldState.tasks = []
+  for (let i = 0, len = tasks.length; i < len; i++) {
+    tasks[i]()
+  }
+}
+
+const setImmediate = "setImmediate" in globalThis ? globalThis.setImmediate : (f: () => void) => setTimeout(f, 0)
+
+const yieldAdd = (task: () => void) => {
+  yieldState.tasks.push(task)
+  if (!yieldState.working) {
+    yieldState.working = true
+    setImmediate(() => {
+      yieldState.working = false
+      yieldFlush()
+    })
+  }
+}
+
 /**
  * @since 3.3.0
  * @category constructors
  */
 export const yieldNow: Micro<void> = make(function(_env, onResult) {
-  queueMicrotask(() => onResult(Either.right(void 0)))
+  yieldAdd(() => onResult(Either.right(void 0)))
 })
 
 /**
@@ -656,7 +703,7 @@ export const andThen: {
         if (isMicro(value)) {
           value[runSymbol](env, onResult)
         } else {
-          onResult(Either.right(value))
+          onResult(ResultSucceed(value))
         }
       })
     })
@@ -868,8 +915,71 @@ export const raceFirst: {
  * @since 3.3.0
  * @category repetition
  */
-export const forever = <A, E, R>(self: Micro<A, E, R>): Micro<never, E, R> =>
-  andThen(self, andThen(sleep(0), () => forever(self)))
+export const repeatResult: {
+  <A, E>(options: {
+    while: Predicate<Result<A, E>>
+    times?: number | undefined
+    delay?: Duration.DurationInput | undefined
+  }): <R>(self: Micro<A, E, R>) => Micro<A, E, R>
+  <A, E, R>(self: Micro<A, E, R>, options: {
+    while: Predicate<Result<A, E>>
+    times?: number | undefined
+    delay?: Duration.DurationInput | undefined
+  }): Micro<A, E, R>
+} = dual(2, <A, E, R>(self: Micro<A, E, R>, options: {
+  while: Predicate<Result<A, E>>
+  times?: number | undefined
+  delay?: Duration.DurationInput | undefined
+}): Micro<A, E, R> =>
+  make(function(env, onResult) {
+    let count = 0
+    const delay = options.delay ? sleep(options.delay) : yieldNow
+    self[runSymbol](env, function loop(result) {
+      if (options.while !== undefined && !options.while(result)) {
+        return onResult(result)
+      } else if (options.times !== undefined && count >= options.times) {
+        return onResult(result)
+      }
+      count++
+      delay[runSymbol](env, function(result) {
+        if (result._tag === "Left") {
+          return onResult(result as any)
+        }
+        self[runSymbol](env, loop)
+      })
+    })
+  }))
+
+/**
+ * @since 3.3.0
+ * @category repetition
+ */
+export const repeat: {
+  <A, E>(options: {
+    while?: Predicate<A> | undefined
+    times?: number | undefined
+    delay?: Duration.DurationInput | undefined
+  }): <R>(self: Micro<A, E, R>) => Micro<A, E, R>
+  <A, E, R>(self: Micro<A, E, R>, options: {
+    while?: Predicate<A> | undefined
+    times?: number | undefined
+    delay?: Duration.DurationInput | undefined
+  }): Micro<A, E, R>
+} = dual(2, <A, E, R>(self: Micro<A, E, R>, options: {
+  while?: Predicate<A> | undefined
+  times?: number | undefined
+  delay?: Duration.DurationInput | undefined
+}): Micro<A, E, R> =>
+  repeatResult(self, {
+    ...options,
+    while: (result) => result._tag === "Right" && (options.while === undefined || options.while(result.right))
+  }))
+
+/**
+ * @since 3.3.0
+ * @category repetition
+ */
+export const forever = <A, E, R>(self: Micro<A, E, R>): Micro<never, E, R> => repeat(self, {}) as any
 
 // ----------------------------------------------------------------------------
 // error handling
@@ -922,6 +1032,90 @@ export const catchAll: {
  * @since 3.3.0
  * @category error handling
  */
+export const tapFailure: {
+  <E, B, E2, R2>(
+    f: (a: NoInfer<Failure<E>>) => Micro<B, E2, R2>
+  ): <A, R>(self: Micro<A, E, R>) => Micro<A, E | E2, R | R2>
+  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: NoInfer<Failure<E>>) => Micro<B, E2, R2>): Micro<A, E | E2, R | R2>
+} = dual(
+  2,
+  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: NoInfer<E>) => Micro<B, E2, R2>): Micro<A, E | E2, R | R2> =>
+    catchAllFailure(self, (failure) => andThen(f(failure as any), failWith(failure)))
+)
+
+/**
+ * @since 3.3.0
+ * @category error handling
+ */
+export const tapError: {
+  <E, B, E2, R2>(
+    f: (a: NoInfer<E>) => Micro<B, E2, R2>
+  ): <A, R>(self: Micro<A, E, R>) => Micro<A, E | E2, R | R2>
+  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: NoInfer<E>) => Micro<B, E2, R2>): Micro<A, E | E2, R | R2>
+} = dual(
+  2,
+  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: NoInfer<E>) => Micro<B, E2, R2>): Micro<A, E | E2, R | R2> =>
+    tapFailure(self, (failure) => failure._tag === "Expected" ? f(failure.error) : failWith(failure))
+)
+
+/**
+ * @since 3.3.0
+ * @category error handling
+ */
+export const catchIf: {
+  <E, EB extends E, B, E2, R2>(
+    pred: Refinement<E, EB>,
+    f: (a: NoInfer<EB>) => Micro<B, E2, R2>
+  ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E2, R | R2>
+  <E, B, E2, R2>(
+    pred: Predicate<NoInfer<E>>,
+    f: (a: NoInfer<E>) => Micro<B, E2, R2>
+  ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E2, R | R2>
+  <A, E, R, EB extends E, B, E2, R2>(
+    self: Micro<A, E, R>,
+    pred: Refinement<E, EB>,
+    f: (a: NoInfer<EB>) => Micro<B, E2, R2>
+  ): Micro<A | B, E2, R | R2>
+  <A, E, R, B, E2, R2>(
+    self: Micro<A, E, R>,
+    pred: Predicate<NoInfer<E>>,
+    f: (a: NoInfer<E>) => Micro<B, E2, R2>
+  ): Micro<A | B, E2, R | R2>
+} = dual(
+  3,
+  <A, E, R, EB extends E, B, E2, R2>(
+    self: Micro<A, E, R>,
+    pred: Refinement<E, EB>,
+    f: (a: NoInfer<EB>) => Micro<B, E2, R2>
+  ): Micro<A | B, E2, R | R2> => catchAll(self, (error) => pred(error) ? f(error) : fail(error) as any)
+)
+
+/**
+ * Recovers from the specified tagged error.
+ *
+ * @since 3.3.0
+ * @category error handling
+ */
+export const catchTag: {
+  <K extends E extends { _tag: string } ? E["_tag"] : never, E, A1, E1, R1>(
+    k: K,
+    f: (e: Extract<E, { _tag: K }>) => Micro<A1, E1, R1>
+  ): <A, R>(self: Micro<A, E, R>) => Micro<A1 | A, E1 | Exclude<E, { _tag: K }>, R1 | R>
+  <A, E, R, K extends E extends { _tag: string } ? E["_tag"] : never, R1, E1, A1>(
+    self: Micro<A, E, R>,
+    k: K,
+    f: (e: Extract<E, { _tag: K }>) => Micro<A1, E1, R1>
+  ): Micro<A | A1, E1 | Exclude<E, { _tag: K }>, R | R1>
+} = dual(3, <A, E, R, K extends E extends { _tag: string } ? E["_tag"] : never, R1, E1, A1>(
+  self: Micro<A, E, R>,
+  k: K,
+  f: (e: Extract<E, { _tag: K }>) => Micro<A1, E1, R1>
+): Micro<A | A1, E1 | Exclude<E, { _tag: K }>, R | R1> => catchIf(self, (error) => isTagged(error, k), f as any))
+
+/**
+ * @since 3.3.0
+ * @category error handling
+ */
 export const orDie = <A, E, R>(self: Micro<A, E, R>): Micro<A, never, R> => catchAll(self, die)
 
 /**
@@ -946,6 +1140,40 @@ export const ignore = <A, E, R>(self: Micro<A, E, R>): Micro<void, never, R> =>
  */
 export const option = <A, E, R>(self: Micro<A, E, R>): Micro<Option.Option<A>, never, R> =>
   match(self, { onFailure: () => Option.none(), onSuccess: Option.some })
+
+/**
+ * @since 3.3.0
+ * @category error handling
+ */
+export const either = <A, E, R>(self: Micro<A, E, R>): Micro<Either.Either<A, E>, never, R> =>
+  match(self, { onFailure: Either.left, onSuccess: Either.right })
+
+/**
+ * @since 3.3.0
+ * @category error handling
+ */
+export const retry: {
+  <A, E>(options: {
+    while?: Predicate<E> | undefined
+    times?: number | undefined
+    delay?: Duration.DurationInput | undefined
+  }): <R>(self: Micro<A, E, R>) => Micro<A, E, R>
+  <A, E, R>(self: Micro<A, E, R>, options: {
+    while?: Predicate<E> | undefined
+    times?: number | undefined
+    delay?: Duration.DurationInput | undefined
+  }): Micro<A, E, R>
+} = dual(2, <A, E, R>(self: Micro<A, E, R>, options: {
+  while?: Predicate<E> | undefined
+  times?: number | undefined
+  delay?: Duration.DurationInput | undefined
+}): Micro<A, E, R> =>
+  repeatResult(self, {
+    ...options,
+    while: (result) =>
+      result._tag === "Left" && result.left._tag === "Expected" &&
+      (options.while === undefined || options.while(result.left.error))
+  }))
 
 // ----------------------------------------------------------------------------
 // pattern matching
@@ -1276,7 +1504,7 @@ export const scoped = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, Exclude<R, Mi
  */
 export const acquireRelease = <A, E, R>(
   acquire: Micro<A, E, R>,
-  release: (a: A, result: Result<any, any>) => Micro<void>
+  release: (a: A, result: Result<unknown, unknown>) => Micro<void>
 ): Micro<A, E, R | MicroScope> =>
   uninterruptible(flatMap(
     scope,
@@ -1286,6 +1514,14 @@ export const acquireRelease = <A, E, R>(
         (a) => scope.addFinalizer((result) => release(a, result))
       )
   ))
+
+/**
+ * @since 3.3.0
+ * @category resources & finalization
+ */
+export const addFinalizer = (
+  finalizer: (result: Result<unknown, unknown>) => Micro<void>
+): Micro<void, never, MicroScope> => flatMap(scope, (scope) => scope.addFinalizer(finalizer))
 
 /**
  * @since 3.3.0
@@ -1849,6 +2085,9 @@ export const runPromise = <A, E>(effect: Micro<A, E>): Promise<A> =>
  */
 export const runSyncResult = <A, E>(effect: Micro<A, E>): Result<A, E> => {
   const handle = runFork(effect)
+  while (yieldState.tasks.length > 0) {
+    yieldFlush()
+  }
   const result = handle.unsafePoll()
   if (result === null) {
     return Either.left(FailureUnexpected(handle))
