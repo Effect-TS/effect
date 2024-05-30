@@ -3,18 +3,18 @@ import * as Util from "@effect/schema/test/TestUtils"
 import * as Option from "effect/Option"
 import { describe, it } from "vitest"
 
-describe("optionalToRequired", () => {
+describe("requiredToOptional", () => {
   it("two transformation schemas", async () => {
-    const ps = S.optionalToRequired(
+    const ps = S.requiredToOptional(
       S.NumberFromString,
       S.BigIntFromNumber,
-      { decode: Option.getOrElse(() => 0), encode: Option.liftPredicate((n) => n !== 0) }
+      { decode: Option.liftPredicate((n) => n !== 0), encode: Option.getOrElse(() => 0) }
     )
     const schema = S.Struct({ a: ps })
-    await Util.expectDecodeUnknownSuccess(schema, {}, { a: 0n })
+    await Util.expectDecodeUnknownSuccess(schema, { a: "0" }, {})
     await Util.expectDecodeUnknownSuccess(schema, { a: "1" }, { a: 1n })
 
-    await Util.expectEncodeSuccess(schema, { a: 0n }, {})
+    await Util.expectEncodeSuccess(schema, {}, { a: "0" })
     await Util.expectEncodeSuccess(schema, { a: 1n }, { a: "1" })
   })
 })
