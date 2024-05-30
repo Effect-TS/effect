@@ -223,7 +223,35 @@ export const failureSquash = <E>(self: Failure<E>): unknown =>
  */
 export type Result<A, E = never> = Either.Either<A, Failure<E>>
 
-const ResultAborted = Either.left(FailureAborted)
+/**
+ * @since 3.3.0
+ * @category result
+ */
+export const ResultAborted: Result<never> = Either.left(FailureAborted)
+
+/**
+ * @since 3.3.0
+ * @category result
+ */
+export const ResultSucceed = <A>(a: A): Result<A> => Either.right(a)
+
+/**
+ * @since 3.3.0
+ * @category result
+ */
+export const ResultFail = <E>(e: E): Result<never, E> => Either.left(FailureExpected(e))
+
+/**
+ * @since 3.3.0
+ * @category result
+ */
+export const ResultFailUnexpected = (defect: unknown): Result<never> => Either.left(FailureUnexpected(defect))
+
+/**
+ * @since 3.3.0
+ * @category result
+ */
+export const ResultFailWith = <E>(failure: Failure<E>): Result<never, E> => Either.left(failure)
 
 // ----------------------------------------------------------------------------
 // constructors
@@ -275,7 +303,7 @@ export const make = <A, E, R>(
     try {
       run(env, onResult)
     } catch (err) {
-      onResult(Either.left(FailureUnexpected(err)))
+      onResult(ResultFailUnexpected(err))
     }
   })
 
@@ -285,7 +313,7 @@ export const make = <A, E, R>(
  */
 export const succeed = <A>(a: A): Micro<A> =>
   make(function(_env, onResult) {
-    onResult(Either.right(a))
+    onResult(ResultSucceed(a))
   })
 
 /**
@@ -295,6 +323,15 @@ export const succeed = <A>(a: A): Micro<A> =>
 export const fail = <E>(e: E): Micro<never, E> =>
   make(function(_env, onResult) {
     onResult(Either.left(FailureExpected(e)))
+  })
+
+/**
+ * @since 3.3.0
+ * @category constructors
+ */
+export const failSync = <E>(e: LazyArg<E>): Micro<never, E> =>
+  make(function(_env, onResult) {
+    onResult(Either.left(FailureExpected(e())))
   })
 
 /**
@@ -313,6 +350,15 @@ export const die = (defect: unknown): Micro<never> =>
 export const failWith = <E>(failure: Failure<E>): Micro<never, E> =>
   make(function(_env, onResult) {
     onResult(Either.left(failure))
+  })
+
+/**
+ * @since 3.3.0
+ * @category constructors
+ */
+export const failWithSync = <E>(failure: LazyArg<Failure<E>>): Micro<never, E> =>
+  make(function(_env, onResult) {
+    onResult(Either.left(failure()))
   })
 
 /**
@@ -539,6 +585,12 @@ export const as: {
  * @since 3.3.0
  * @category mapping & sequencing
  */
+export const asSome = <A, E, R>(self: Micro<A, E, R>): Micro<Option.Some<A>, E, R> => map(self, Option.some) as any
+
+/**
+ * @since 3.3.0
+ * @category mapping & sequencing
+ */
 export const flatMap: {
   <A, B, E2, R2>(f: (a: NoInfer<A>) => Micro<B, E2, R2>): <E, R>(self: Micro<A, E, R>) => Micro<B, E | E2, R | R2>
   <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: NoInfer<A>) => Micro<B, E2, R2>): Micro<B, E | E2, R | R2>
@@ -554,6 +606,16 @@ export const flatMap: {
       })
     })
 )
+
+/**
+ * @since 3.3.0
+ * @category mapping & sequencing
+ */
+export const flip = <A, E, R>(self: Micro<A, E, R>): Micro<E, A, R> =>
+  matchMicro(self, {
+    onFailure: succeed,
+    onSuccess: fail
+  })
 
 /**
  * @since 3.3.0
@@ -667,6 +729,13 @@ export const asResult = <A, E, R>(self: Micro<A, E, R>): Micro<Result<A, E>, nev
     })
   })
 
+/**
+ * @since 3.3.0
+ * @category mapping & sequencing
+ */
+export const sandbox = <A, E, R>(self: Micro<A, E, R>): Micro<A, Failure<E>, R> =>
+  catchAllFailure(self, (failure) => fail(failure))
+
 function forkSignal(env: Env.MicroEnv<any>) {
   const controller = new AbortController()
   const parentSignal = Env.get(env, Env.currentAbortSignal)
@@ -712,7 +781,7 @@ export const raceAll = <Eff extends Micro<any, any, any>>(
       } else if (result_._tag === "Left") {
         failures.push(result_.left)
       }
-      if (done === len) {
+      if (done >= len) {
         onResult(result ?? Either.left(failures[0]))
       }
     }
@@ -749,7 +818,7 @@ export const raceAllFirst = <Eff extends Micro<any, any, any>>(
         result = result_
         onAbort()
       }
-      if (done === len) {
+      if (done >= len) {
         onResult(result ?? Either.left(failures[0]))
       }
     }
@@ -758,6 +827,49 @@ export const raceAllFirst = <Eff extends Micro<any, any, any>>(
       effects[index][runSymbol](envWithSignal, onDone)
     }
   })
+
+/**
+ * Returns an effect that races two effects, yielding the value of the first
+ * effect to succeed. Losers of the race will be interrupted immediately
+ *
+ * @since 3.3.0
+ * @category sequencing
+ */
+export const race: {
+  <A2, E2, R2>(that: Micro<A2, E2, R2>): <A, E, R>(self: Micro<A, E, R>) => Micro<A | A2, E | E2, R | R2>
+  <A, E, R, A2, E2, R2>(self: Micro<A, E, R>, that: Micro<A2, E2, R2>): Micro<A | A2, E | E2, R | R2>
+} = dual(
+  2,
+  <A, E, R, A2, E2, R2>(self: Micro<A, E, R>, that: Micro<A2, E2, R2>): Micro<A | A2, E | E2, R | R2> =>
+    raceAll([self, that])
+)
+
+/**
+ * Returns an effect that races two effects, yielding the value of the first
+ * effect to succeed *or* fail. Losers of the race will be interrupted immediately
+ *
+ * @since 3.3.0
+ * @category sequencing
+ */
+export const raceFirst: {
+  <A2, E2, R2>(that: Micro<A2, E2, R2>): <A, E, R>(self: Micro<A, E, R>) => Micro<A | A2, E | E2, R | R2>
+  <A, E, R, A2, E2, R2>(self: Micro<A, E, R>, that: Micro<A2, E2, R2>): Micro<A | A2, E | E2, R | R2>
+} = dual(
+  2,
+  <A, E, R, A2, E2, R2>(self: Micro<A, E, R>, that: Micro<A2, E2, R2>): Micro<A | A2, E | E2, R | R2> =>
+    raceAllFirst([self, that])
+)
+
+// ----------------------------------------------------------------------------
+// repetition
+// ----------------------------------------------------------------------------
+
+/**
+ * @since 3.3.0
+ * @category repetition
+ */
+export const forever = <A, E, R>(self: Micro<A, E, R>): Micro<never, E, R> =>
+  andThen(self, andThen(sleep(0), () => forever(self)))
 
 // ----------------------------------------------------------------------------
 // error handling
@@ -823,9 +935,17 @@ export const orElseSucceed: {
 
 /**
  * @since 3.3.0
+ * @category error handling
  */
 export const ignore = <A, E, R>(self: Micro<A, E, R>): Micro<void, never, R> =>
   matchMicro(self, { onFailure: die, onSuccess: () => void_ })
+
+/**
+ * @since 3.3.0
+ * @category error handling
+ */
+export const option = <A, E, R>(self: Micro<A, E, R>): Micro<Option.Option<A>, never, R> =>
+  match(self, { onFailure: () => Option.none(), onSuccess: Option.some })
 
 // ----------------------------------------------------------------------------
 // pattern matching
@@ -937,12 +1057,12 @@ export const match: {
 )
 
 // ----------------------------------------------------------------------------
-// delays & timing
+// delays & timeouts
 // ----------------------------------------------------------------------------
 
 /**
  * @since 3.3.0
- * @category delays & timing
+ * @category delays & timeouts
  */
 export const sleep = (duration: Duration.DurationInput): Micro<void> => {
   const millis = Duration.toMillis(duration)
@@ -950,13 +1070,15 @@ export const sleep = (duration: Duration.DurationInput): Micro<void> => {
     const timeout = setTimeout(function() {
       resume(void_)
     }, millis)
-    return sync(() => clearTimeout(timeout))
+    return sync(() => {
+      return clearTimeout(timeout)
+    })
   })
 }
 
 /**
  * @since 3.3.0
- * @category delays & timing
+ * @category delays & timeouts
  */
 export const delay: {
   (duration: Duration.DurationInput): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, R>
@@ -964,6 +1086,57 @@ export const delay: {
 } = dual(
   2,
   <A, E, R>(self: Micro<A, E, R>, duration: Duration.DurationInput): Micro<A, E, R> => andThen(sleep(duration), self)
+)
+
+/**
+ * Returns an effect that will timeout this effect, that will succeed with the
+ * fallback effect if the timeout elapses before the effect has produced a value.
+ *
+ * If the timeout elapses without producing a value, the running effect will
+ * be safely interrupted.
+ *
+ * @since 3.3.0
+ * @category delays & timeouts
+ */
+export const timeoutOrElse: {
+  <A2, E2, R2>(options: {
+    readonly duration: Duration.DurationInput
+    readonly onTimeout: LazyArg<Micro<A2, E2, R2>>
+  }): <A, E, R>(self: Micro<A, E, R>) => Micro<A | A2, E | E2, R | R2>
+  <A, E, R, A2, E2, R2>(self: Micro<A, E, R>, options: {
+    readonly duration: Duration.DurationInput
+    readonly onTimeout: LazyArg<Micro<A2, E2, R2>>
+  }): Micro<A | A2, E | E2, R | R2>
+} = dual(
+  2,
+  <A, E, R, A2, E2, R2>(self: Micro<A, E, R>, options: {
+    readonly duration: Duration.DurationInput
+    readonly onTimeout: LazyArg<Micro<A2, E2, R2>>
+  }): Micro<A | A2, E | E2, R | R2> =>
+    raceFirst(self, andThen(interruptible(sleep(options.duration)), options.onTimeout))
+)
+
+/**
+ * Returns an effect that will timeout this effect, succeeding with a `None`
+ * if the timeout elapses before the effect has produced a value; and `Some` of
+ * the produced value otherwise.
+ *
+ * If the timeout elapses without producing a value, the running effect will
+ * be safely interrupted.
+ *
+ * @since 3.3.0
+ * @category delays & timeouts
+ */
+export const timeout: {
+  (duration: Duration.DurationInput): <A, E, R>(self: Micro<A, E, R>) => Micro<Option.Option<A>, E, R>
+  <A, E, R>(self: Micro<A, E, R>, duration: Duration.DurationInput): Micro<Option.Option<A>, E, R>
+} = dual(
+  2,
+  <A, E, R>(self: Micro<A, E, R>, duration: Duration.DurationInput): Micro<Option.Option<A>, E, R> =>
+    raceFirst(
+      asSome(self),
+      as(interruptible(sleep(duration)), Option.none())
+    )
 )
 
 // ----------------------------------------------------------------------------

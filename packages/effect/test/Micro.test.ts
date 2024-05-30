@@ -1,4 +1,4 @@
-import { Cause, Context, Effect, Either, Micro, Option } from "effect"
+import { Cause, Context, Duration, Effect, Either, Micro, Option, pipe } from "effect"
 import { assert, describe, it } from "effect/test/utils/extend"
 
 class ATag extends Context.Tag("ATag")<ATag, "A">() {}
@@ -268,5 +268,68 @@ describe("Micro", () => {
         )
         assert.deepStrictEqual(result, "A")
       }).pipe(Effect.provideService(ATag, "A")))
+  })
+
+  describe("timeout", () => {
+    it.live("timeout a long computation", () =>
+      Micro.gen(function*() {
+        const result = yield* pipe(
+          Micro.sleep(Duration.seconds(60)),
+          Micro.andThen(Micro.succeed(true)),
+          Micro.timeout(10)
+        )
+        assert.deepStrictEqual(result, Option.none())
+      }))
+    it.live("timeout a long computation with a failure", () =>
+      Effect.gen(function*() {
+        const error = new Error("boom")
+        const result = yield* pipe(
+          Micro.sleep(Duration.seconds(5)),
+          Micro.andThen(Micro.succeed(true)),
+          Micro.timeoutOrElse({
+            onTimeout: () => Micro.die(error),
+            duration: Duration.millis(10)
+          }),
+          Micro.sandbox,
+          Micro.flip
+        )
+        assert.deepStrictEqual(result, Micro.FailureUnexpected(error))
+      }))
+    it.live("timeout repetition of uninterruptible effect", () =>
+      Micro.gen(function*() {
+        const result = yield* pipe(
+          Micro.void,
+          Micro.uninterruptible,
+          Micro.forever,
+          Micro.timeout(Duration.millis(10))
+        )
+        assert.deepStrictEqual(result, Option.none())
+      }))
+    it.live("timeout in uninterruptible region", () =>
+      Effect.gen(function*($) {
+        const result = yield* $(Effect.void, Effect.timeout(Duration.seconds(20)), Effect.uninterruptible)
+        assert.deepStrictEqual(result, void 0)
+      }))
+    // it("timeout - disconnect - returns with the produced value if the effect completes before the timeout elapses", () =>
+    //   Effect.gen(function*($) {
+    //     const result = yield* $(Effect.void, Effect.disconnect, Effect.timeout(Duration.millis(100)))
+    //     assert.deepStrictEqual(result, void 0)
+    //   }))
+    // it("timeout - disconnect - returns `NoSuchElementException` otherwise", () =>
+    //   Effect.gen(function*($) {
+    //     const fiber = yield* $(
+    //       pipe(
+    //         Effect.never,
+    //         Effect.uninterruptible,
+    //         Effect.disconnect,
+    //         Effect.timeout(Duration.millis(100)),
+    //         Effect.option,
+    //         Effect.fork
+    //       )
+    //     )
+    //     yield* $(TestClock.adjust(Duration.millis(100)))
+    //     const result = yield* $(Fiber.join(fiber))
+    //     assert.deepStrictEqual(result, Option.none())
+    //   }))
   })
 })
