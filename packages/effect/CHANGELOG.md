@@ -1,5 +1,11 @@
 # effect
 
+## 3.2.6
+
+### Patch Changes
+
+- [#2879](https://github.com/Effect-TS/effect/pull/2879) [`cc8ac50`](https://github.com/Effect-TS/effect/commit/cc8ac5080daba8622ca2ff5dab5c37ddfab732ba) Thanks @TylorS! - Support tuples in Types.DeepMutable
+
 ## 3.2.5
 
 ### Patch Changes

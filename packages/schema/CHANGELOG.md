@@ -1,5 +1,16 @@
 # @effect/schema
 
+## 0.67.15
+
+### Patch Changes
+
+- [#2882](https://github.com/Effect-TS/effect/pull/2882) [`e2740fc`](https://github.com/Effect-TS/effect/commit/e2740fc4e212ba85a90541e8c8d85b0bcd5c2e7c) Thanks @gcanti! - add `requiredToOptional` function to `Schema` module, closes #2881
+
+- [#2880](https://github.com/Effect-TS/effect/pull/2880) [`60fe3d5`](https://github.com/Effect-TS/effect/commit/60fe3d5fb2be168dd35c6d0cb8ac8f55deb30fc0) Thanks @gcanti! - add missing `makePropertySignature` constructor
+
+- Updated dependencies [[`cc8ac50`](https://github.com/Effect-TS/effect/commit/cc8ac5080daba8622ca2ff5dab5c37ddfab732ba)]:
+  - effect@3.2.6
+
 ## 0.67.14
 
 ### Patch Changes
