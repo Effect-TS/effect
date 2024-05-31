@@ -1612,17 +1612,17 @@ S.SecretFromSelf
 // propertySignature
 // ---------------------------------------------
 
-// $ExpectType PropertySignatureWithSchema<typeof String$, ":", string, never, ":", string, false, never>
+// $ExpectType propertySignature<typeof String$>
 S.propertySignature(S.String)
 
-// $ExpectType PropertySignatureWithSchema<typeof String$, ":", string, never, ":", string, false, never>
+// $ExpectType propertySignature<typeof String$>
 S.propertySignature(S.String).annotations({})
 
 // ---------------------------------------------
 // PropertySignature .annotations({}) method
 // ---------------------------------------------
 
-// $ExpectType PropertySignatureWithSchema<typeof String$, "?:", string | undefined, never, "?:", string | undefined, false, never>
+// $ExpectType optional<typeof String$>
 S.optional(S.String).annotations({})
 
 // ---------------------------------------------
