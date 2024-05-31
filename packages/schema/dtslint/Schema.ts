@@ -1622,7 +1622,7 @@ S.propertySignature(S.String).annotations({})
 // PropertySignature .annotations({}) method
 // ---------------------------------------------
 
-// $ExpectType PropertySignature<"?:", string | undefined, never, "?:", string | undefined, false, never>
+// $ExpectType PropertySignatureWithSchema<typeof String$, "?:", string | undefined, never, "?:", string | undefined, false, never>
 S.optional(S.String).annotations({})
 
 // ---------------------------------------------

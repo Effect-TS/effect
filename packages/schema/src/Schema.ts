@@ -1994,7 +1994,8 @@ export type OptionalOptions<A> = {
  * @since 1.0.0
  */
 export interface optional<S extends Schema.All> extends
-  PropertySignature<
+  PropertySignatureWithSchema<
+    S,
     "?:",
     Schema.Type<S> | undefined,
     never,
@@ -2159,8 +2160,9 @@ export const optional: {
           { decode: option_.filter(Predicate.isNotNull<A | null | undefined>), encode: identity }
         )
       } else {
-        return makePropertySignature(
-          new PropertySignatureDeclaration(UndefinedOr(schema).ast, true, true, {}, undefined)
+        return makePropertySignatureWithSchema(
+          new PropertySignatureDeclaration(UndefinedOr(schema).ast, true, true, {}, undefined),
+          schema
         )
       }
     }

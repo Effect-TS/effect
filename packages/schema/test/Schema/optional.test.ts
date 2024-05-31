@@ -51,6 +51,11 @@ describe("optional APIs", () => {
   })
 
   describe("optional", () => {
+    it("should expose the schema", () => {
+      const schema = S.optional(S.String)
+      expect(schema.schema).toStrictEqual(S.String)
+    })
+
     it("decoding / encoding", async () => {
       const schema = S.Struct({
         a: S.optional(S.NumberFromString)

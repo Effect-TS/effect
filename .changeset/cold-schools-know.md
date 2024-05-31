@@ -6,3 +6,4 @@ Schema
 
 - add `PropertySignatureWithSchema` interface (with a `schema` property exposed)
 - `propertySignature` now returns `PropertySignatureWithSchema`
+- `S.optional(schema)` now returns `PropertySignatureWithSchema`

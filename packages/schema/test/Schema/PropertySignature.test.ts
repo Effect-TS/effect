@@ -6,7 +6,7 @@ import * as Option from "effect/Option"
 import { describe, expect, it } from "vitest"
 
 describe("PropertySignature", () => {
-  it("should expose the schema", () => {
+  it("propertySignature should expose the schema", () => {
     const schema = S.propertySignature(S.String)
     expect(schema.schema).toStrictEqual(S.String)
   })
