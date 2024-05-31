@@ -4,7 +4,6 @@
 
 Schema
 
-- add `PropertySignatureFrom` interface extending `PropertySignature` with a `from` property
-- add `propertySignature` API interface extending `PropertySignatureFrom`
-- now `optional` extends `PropertySignatureFrom`
-- now `optionalWithOptions` extends `PropertySignatureFrom`
+- add `propertySignature` API interface with a `from` property
+- extend `optional` API interface with a `from` property
+- extend `optionalWithOptions` API interface with a `from` property
