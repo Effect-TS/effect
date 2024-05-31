@@ -4,7 +4,7 @@
 
 Schema
 
-- add `PropertySignatureFrom` interface (with a `from` property exposed)
-- add `propertySignature` API interface
-- now `optional` extends `PropertySignatureWithSchema`
-- now `optionalWithOptions` extends `PropertySignatureWithSchema`
+- add `PropertySignatureFrom` interface extending `PropertySignature` with a `from` property
+- add `propertySignature` API interface extending `PropertySignatureFrom`
+- now `optional` extends `PropertySignatureFrom`
+- now `optionalWithOptions` extends `PropertySignatureFrom`

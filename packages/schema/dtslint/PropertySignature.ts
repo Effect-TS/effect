@@ -1,18 +1,27 @@
 import { Schema } from "@effect/schema"
 
 // $ExpectType propertySignature<typeof String$>
-const A = Schema.propertySignature(Schema.String).annotations({})
+const A = Schema.propertySignature(Schema.String)
+
+// $ExpectType propertySignature<typeof String$>
+const AA = A.annotations({})
 
 // $ExpectType optional<typeof Number$>
-const B = Schema.optional(Schema.Number).annotations({})
+const B = Schema.optional(Schema.Number)
+
+// $ExpectType optional<typeof Number$>
+const BB = B.annotations({})
 
 // $ExpectType optionalWithOptions<typeof Boolean$, { exact: true; }>
-const C = Schema.optional(Schema.Boolean, { exact: true }).annotations({})
+const C = Schema.optional(Schema.Boolean, { exact: true })
+
+// $ExpectType optionalWithOptions<typeof Boolean$, { exact: true; }>
+const CC = C.annotations({})
 
 const schema = Schema.Struct({
-  a: A,
-  b: B,
-  c: C
+  a: AA,
+  b: BB,
+  c: CC
 })
 
 // $ExpectType typeof String$

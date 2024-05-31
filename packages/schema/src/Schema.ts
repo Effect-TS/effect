@@ -1606,7 +1606,7 @@ class PropertySignatureFromImpl<
   }
 }
 
-const makePropertySignatureWithSchema = <
+const makePropertySignatureFrom = <
   From extends Schema.All,
   TypeToken extends PropertySignature.Token,
   Type,
@@ -1622,17 +1622,8 @@ const makePropertySignatureWithSchema = <
  * @category API interface
  * @since 1.0.0
  */
-export interface propertySignature<S extends Schema.All> extends
-  PropertySignatureFrom<
-    S,
-    PropertySignature.GetToken<false>,
-    Schema.Type<S>,
-    never,
-    PropertySignature.GetToken<false>,
-    Schema.Encoded<S>,
-    false,
-    Schema.Context<S>
-  >
+export interface propertySignature<S extends Schema.All>
+  extends PropertySignatureFrom<S, ":", Schema.Type<S>, never, ":", Schema.Encoded<S>, false, Schema.Context<S>>
 {
   annotations(annotations: PropertySignature.Annotations<Schema.Type<S>>): propertySignature<S>
 }
@@ -1646,7 +1637,7 @@ export interface propertySignature<S extends Schema.All> extends
 export const propertySignature = <S extends Schema.All>(
   self: S
 ): propertySignature<S> =>
-  makePropertySignatureWithSchema(new PropertySignatureDeclaration(self.ast, false, true, {}, undefined), self)
+  makePropertySignatureFrom(new PropertySignatureDeclaration(self.ast, false, true, {}, undefined), self)
 
 /**
  * Enhances a property signature with a default constructor value.
@@ -2085,7 +2076,7 @@ export const optional: {
   if (isExact) {
     if (defaultValue) {
       if (isNullable) {
-        return makePropertySignatureWithSchema(
+        return makePropertySignatureFrom(
           withConstructorDefault(
             optionalToRequired(
               NullOr(schema),
@@ -2100,7 +2091,7 @@ export const optional: {
           schema
         )
       } else {
-        return makePropertySignatureWithSchema(
+        return makePropertySignatureFrom(
           withConstructorDefault(
             optionalToRequired(
               schema,
@@ -2114,7 +2105,7 @@ export const optional: {
       }
     } else if (asOption) {
       if (isNullable) {
-        return makePropertySignatureWithSchema(
+        return makePropertySignatureFrom(
           optionalToRequired(
             NullOr(schema),
             OptionFromSelf(typeSchema(schema)),
@@ -2126,7 +2117,7 @@ export const optional: {
           schema
         )
       } else {
-        return makePropertySignatureWithSchema(
+        return makePropertySignatureFrom(
           optionalToRequired(
             schema,
             OptionFromSelf(typeSchema(schema)),
@@ -2137,7 +2128,7 @@ export const optional: {
       }
     } else {
       if (isNullable) {
-        return makePropertySignatureWithSchema(
+        return makePropertySignatureFrom(
           optionalToOptional(
             NullOr(schema),
             typeSchema(schema),
@@ -2146,7 +2137,7 @@ export const optional: {
           schema
         )
       } else {
-        return makePropertySignatureWithSchema(
+        return makePropertySignatureFrom(
           new PropertySignatureDeclaration(schema.ast, true, true, {}, undefined),
           schema
         )
@@ -2155,7 +2146,7 @@ export const optional: {
   } else {
     if (defaultValue) {
       if (isNullable) {
-        return makePropertySignatureWithSchema(
+        return makePropertySignatureFrom(
           withConstructorDefault(
             optionalToRequired(
               NullishOr(schema),
@@ -2170,7 +2161,7 @@ export const optional: {
           schema
         )
       } else {
-        return makePropertySignatureWithSchema(
+        return makePropertySignatureFrom(
           withConstructorDefault(
             optionalToRequired(
               UndefinedOr(schema),
@@ -2187,7 +2178,7 @@ export const optional: {
       }
     } else if (asOption) {
       if (isNullable) {
-        return makePropertySignatureWithSchema(
+        return makePropertySignatureFrom(
           optionalToRequired(
             NullishOr(schema),
             OptionFromSelf(typeSchema(schema)),
@@ -2199,7 +2190,7 @@ export const optional: {
           schema
         )
       } else {
-        return makePropertySignatureWithSchema(
+        return makePropertySignatureFrom(
           optionalToRequired(
             UndefinedOr(schema),
             OptionFromSelf(typeSchema(schema)),
@@ -2213,7 +2204,7 @@ export const optional: {
       }
     } else {
       if (isNullable) {
-        return makePropertySignatureWithSchema(
+        return makePropertySignatureFrom(
           optionalToOptional(
             NullishOr(schema),
             UndefinedOr(typeSchema(schema)),
@@ -2222,7 +2213,7 @@ export const optional: {
           schema
         )
       } else {
-        return makePropertySignatureWithSchema(
+        return makePropertySignatureFrom(
           new PropertySignatureDeclaration(UndefinedOr(schema).ast, true, true, {}, undefined),
           schema
         )
