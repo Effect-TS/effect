@@ -164,8 +164,11 @@ S.NonEmptyArray(aContext)
 // propertySignatureDeclaration
 // ---------------------------------------------
 
-// $ExpectType PropertySignature<":", string, never, ":", string, false, "aContext">
+// $ExpectType PropertySignatureWithSchema<aContext, ":", string, never, ":", string, false, "aContext">
 S.propertySignature(aContext)
+
+// $ExpectType PropertySignatureWithSchema<aContext, ":", string, never, ":", string, false, "aContext">
+S.propertySignature(aContext).annotations({})
 
 // ---------------------------------------------
 // optionalToOptional

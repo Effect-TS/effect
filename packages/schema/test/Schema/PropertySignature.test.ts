@@ -6,7 +6,17 @@ import * as Option from "effect/Option"
 import { describe, expect, it } from "vitest"
 
 describe("PropertySignature", () => {
+  it("should expose the schema", () => {
+    const schema = S.propertySignature(S.String)
+    expect(schema.schema).toStrictEqual(S.String)
+  })
+
   describe("annotations", () => {
+    it("should expose the schema", () => {
+      const schema = S.propertySignature(S.String).annotations({})
+      expect(schema.schema).toStrictEqual(S.String)
+    })
+
     it("propertySignature(S.string)", () => {
       const schema = S.Struct({
         a: S.propertySignature(S.String).annotations({ description: "a description" }).annotations({ title: "a title" })
