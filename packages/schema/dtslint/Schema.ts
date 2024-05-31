@@ -2361,6 +2361,13 @@ const make2 = S.Struct({
 // $ExpectType { readonly a?: string; readonly b: number; readonly c?: boolean; }
 hole<Parameters<typeof make2>["0"]>()
 
+const make3 = S.Struct({
+  a: S.withConstructorDefault(S.propertySignature(S.String), () => "")
+}).make
+
+// $ExpectType { readonly a?: string; }
+hole<Parameters<typeof make3>["0"]>()
+
 class AA extends S.Class<AA>("AA")({
   a: S.propertySignature(S.String).pipe(S.withConstructorDefault(() => "")),
   b: S.Number,
@@ -2390,11 +2397,11 @@ S.asSchema(S.Struct({ a: S.optional(S.String).pipe(S.withDefaults({ decoding: ()
 // $ExpectType Struct<{ a: PropertySignature<":", string, never, "?:", string | undefined, true, never>; }>
 S.Struct({ a: S.optional(S.String).pipe(S.withDefaults({ decoding: () => "", constructor: () => "" })) })
 
-const make3 =
+const make4 =
   S.Struct({ a: S.optional(S.String).pipe(S.withDefaults({ decoding: () => "", constructor: () => "" })) }).make
 
 // $ExpectType { readonly a?: string; }
-hole<Parameters<typeof make3>["0"]>()
+hole<Parameters<typeof make4>["0"]>()
 
 // ---------------------------------------------
 // Schema.AsSchema

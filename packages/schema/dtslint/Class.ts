@@ -10,6 +10,10 @@ class NoFields extends S.Class<NoFields>("NoFields")({}) {}
 // $ExpectType [props?: void | {}, disableValidation?: boolean | undefined]
 hole<ConstructorParameters<typeof NoFields>>()
 
+new NoFields()
+
+new NoFields({})
+
 // ---------------------------------------------
 // A class with all fields with a default should permit an empty argument in the constructor.
 // ---------------------------------------------
@@ -18,8 +22,12 @@ class AllDefaultedFields extends S.Class<AllDefaultedFields>("AllDefaultedFields
   a: S.String.pipe(S.propertySignature, S.withConstructorDefault(() => ""))
 }) {}
 
-// $ExpectType [props?: void | {}, disableValidation?: boolean | undefined]
+// $ExpectType [props?: void | { readonly a?: string; }, disableValidation?: boolean | undefined]
 hole<ConstructorParameters<typeof AllDefaultedFields>>()
+
+new AllDefaultedFields()
+
+new AllDefaultedFields({})
 
 // ---------------------------------------------
 // test Context

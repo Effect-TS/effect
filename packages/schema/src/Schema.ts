@@ -6684,7 +6684,7 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
   extends Schema<Self, Types.Simplify<I>, R>
 {
   new(
-    props: RequiredKeys<C> extends never ? void | {} : Types.Simplify<C>,
+    props: RequiredKeys<C> extends never ? void | Types.Simplify<C> : Types.Simplify<C>,
     disableValidation?: boolean | undefined
   ): Struct.Type<Fields> & Omit<Inherited, keyof Fields> & Proto
 
