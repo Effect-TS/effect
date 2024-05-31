@@ -161,12 +161,14 @@ export declare namespace WorkerPool {
     & ({
       readonly onCreate?: (worker: Worker<I, unknown, unknown>) => Effect.Effect<void, WorkerError>
       readonly size: number
-      readonly permits?: number | undefined
+      readonly concurrency?: number | undefined
+      readonly targetUtilization?: number | undefined
     } | {
       readonly onCreate?: (worker: Worker<I, unknown, unknown>) => Effect.Effect<void, WorkerError>
       readonly minSize: number
       readonly maxSize: number
-      readonly permits?: number | undefined
+      readonly concurrency?: number | undefined
+      readonly targetUtilization?: number | undefined
       readonly timeToLive: Duration.DurationInput
     })
 }
@@ -319,12 +321,14 @@ export declare namespace SerializedWorkerPool {
     & ({
       readonly onCreate?: (worker: Worker<I, unknown, unknown>) => Effect.Effect<void, WorkerError>
       readonly size: number
-      readonly permits?: number | undefined
+      readonly concurrency?: number | undefined
+      readonly targetUtilization?: number | undefined
     } | {
       readonly onCreate?: (worker: Worker<I, unknown, unknown>) => Effect.Effect<void, WorkerError>
       readonly minSize: number
       readonly maxSize: number
-      readonly permits?: number | undefined
+      readonly concurrency?: number | undefined
+      readonly targetUtilization?: number | undefined
       readonly timeToLive: Duration.DurationInput
     })
 }

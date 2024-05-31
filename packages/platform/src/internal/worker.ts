@@ -299,13 +299,15 @@ export const makePool = <I, O, E>(
         acquire,
         min: options.minSize,
         max: options.maxSize,
-        permits: options.permits,
+        concurrency: options.concurrency,
+        targetUtilization: options.targetUtilization,
         timeToLive: options.timeToLive
       }) :
       yield* Pool.make({
         acquire,
         size: options.size,
-        permits: options.permits
+        concurrency: options.concurrency,
+        targetUtilization: options.targetUtilization
       })
     const pool: Worker.WorkerPool<I, O, E> = {
       backing,
@@ -402,13 +404,15 @@ export const makePoolSerialized = <I extends Schema.TaggedRequest.Any>(
         acquire,
         min: options.minSize,
         max: options.maxSize,
-        permits: options.permits,
+        concurrency: options.concurrency,
+        targetUtilization: options.targetUtilization,
         timeToLive: options.timeToLive
       }) :
       Pool.make({
         acquire,
         size: options.size,
-        permits: options.permits
+        concurrency: options.concurrency,
+        targetUtilization: options.targetUtilization
       })
     const pool: Worker.SerializedWorkerPool<I> = {
       backing,
