@@ -1565,8 +1565,8 @@ export const makePropertySignature = <
  * @category PropertySignature
  * @since 1.0.0
  */
-export interface PropertySignatureWithSchema<
-  S extends Schema.All,
+export interface PropertySignatureFrom<
+  From extends Schema.All,
   TypeToken extends PropertySignature.Token,
   Type,
   Key extends PropertyKey,
@@ -1575,14 +1575,14 @@ export interface PropertySignatureWithSchema<
   HasDefault extends boolean = false,
   R = never
 > extends PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, HasDefault, R> {
-  readonly schema: S
+  readonly from: From
   annotations(
     annotations: PropertySignature.Annotations<Type>
-  ): PropertySignatureWithSchema<S, TypeToken, Type, Key, EncodedToken, Encoded, HasDefault, R>
+  ): PropertySignatureFrom<From, TypeToken, Type, Key, EncodedToken, Encoded, HasDefault, R>
 }
 
-class PropertySignatureWithSchemaImpl<
-  S extends Schema.All,
+class PropertySignatureFromImpl<
+  From extends Schema.All,
   TypeToken extends PropertySignature.Token,
   Type,
   Key extends PropertyKey,
@@ -1591,23 +1591,23 @@ class PropertySignatureWithSchemaImpl<
   HasDefault extends boolean = false,
   R = never
 > extends PropertySignatureImpl<TypeToken, Type, Key, EncodedToken, Encoded, HasDefault, R>
-  implements PropertySignatureWithSchema<S, TypeToken, Type, Key, EncodedToken, Encoded, HasDefault, R>
+  implements PropertySignatureFrom<From, TypeToken, Type, Key, EncodedToken, Encoded, HasDefault, R>
 {
-  constructor(ast: PropertySignature.AST, readonly schema: S) {
+  constructor(ast: PropertySignature.AST, readonly from: From) {
     super(ast)
   }
   annotations(
     annotations: PropertySignature.Annotations<Type>
-  ): PropertySignatureWithSchema<S, TypeToken, Type, Key, EncodedToken, Encoded, HasDefault, R> {
-    return new PropertySignatureWithSchemaImpl(
+  ): PropertySignatureFrom<From, TypeToken, Type, Key, EncodedToken, Encoded, HasDefault, R> {
+    return new PropertySignatureFromImpl(
       propertySignatureAnnotations_(this.ast, toASTAnnotations(annotations)),
-      this.schema
+      this.from
     )
   }
 }
 
 const makePropertySignatureWithSchema = <
-  S extends Schema.All,
+  From extends Schema.All,
   TypeToken extends PropertySignature.Token,
   Type,
   Key extends PropertyKey,
@@ -1615,15 +1615,15 @@ const makePropertySignatureWithSchema = <
   Encoded,
   HasDefault extends boolean = false,
   R = never
->(ast: PropertySignature.AST, schema: S) =>
-  new PropertySignatureWithSchemaImpl<S, TypeToken, Type, Key, EncodedToken, Encoded, HasDefault, R>(ast, schema)
+>(ast: PropertySignature.AST, from: From) =>
+  new PropertySignatureFromImpl<From, TypeToken, Type, Key, EncodedToken, Encoded, HasDefault, R>(ast, from)
 
 /**
  * @category API interface
  * @since 1.0.0
  */
 export interface propertySignature<S extends Schema.All> extends
-  PropertySignatureWithSchema<
+  PropertySignatureFrom<
     S,
     PropertySignature.GetToken<false>,
     Schema.Type<S>,
@@ -2013,7 +2013,7 @@ export type OptionalOptions<A> = {
  * @since 1.0.0
  */
 export interface optional<S extends Schema.All> extends
-  PropertySignatureWithSchema<
+  PropertySignatureFrom<
     S,
     "?:",
     Schema.Type<S> | undefined,
@@ -2032,7 +2032,7 @@ export interface optional<S extends Schema.All> extends
  * @since 1.0.0
  */
 export interface optionalWithOptions<S extends Schema.All, Options> extends
-  PropertySignatureWithSchema<
+  PropertySignatureFrom<
     S,
     Types.Has<Options, "as" | "default"> extends true ? ":" : "?:",
     | (Types.Has<Options, "as"> extends true ? option_.Option<Schema.Type<S>> : Schema.Type<S>)

@@ -16,10 +16,10 @@ const schema = Schema.Struct({
 })
 
 // $ExpectType typeof String$
-schema.fields.a.schema
+schema.fields.a.from
 
 // $ExpectType typeof Number$
-schema.fields.b.schema
+schema.fields.b.from
 
 // $ExpectType typeof Boolean$
-schema.fields.c.schema
+schema.fields.c.from
