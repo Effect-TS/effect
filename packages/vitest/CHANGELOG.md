@@ -1,5 +1,14 @@
 # @effect/vitest
 
+## 0.5.6
+
+### Patch Changes
+
+- [#2869](https://github.com/Effect-TS/effect/pull/2869) [`7348505`](https://github.com/Effect-TS/effect/commit/73485053f9d1207432c3e1c5ac36b9a6e7002423) Thanks @gcanti! - Update `timeout` parameter type in `flakyTest` function to accept `DurationInput`
+
+- Updated dependencies [[`cc8ac50`](https://github.com/Effect-TS/effect/commit/cc8ac5080daba8622ca2ff5dab5c37ddfab732ba)]:
+  - effect@3.2.6
+
 ## 0.5.5
 
 ### Patch Changes
