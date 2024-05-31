@@ -1080,13 +1080,29 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
       (context) =>
         core.async<any, any>((resume) => {
           const handle = Micro.runFork(Micro.provideContext(op, context))
-          handle.addObserver(function(result) {
-            if (result._tag === "Right") {
-              resume(core.exitSucceed(result.right))
-            } else if (result.left._tag === "Expected") {
-              resume(core.fail(result.left.error))
-            } else {
-              resume(core.die(result.left.defect))
+          handle.addObserver((result) => {
+            switch (result._tag) {
+              case "Right": {
+                resume(core.exitSucceed(result.right))
+                break
+              }
+              case "Left": {
+                switch (result.left._tag) {
+                  case "Aborted": {
+                    resume(core.exitFailCause(internalCause.interrupt(this.id())))
+                    break
+                  }
+                  case "Expected": {
+                    resume(core.fail(result.left.error))
+                    break
+                  }
+                  case "Unexpected": {
+                    resume(core.die(result.left.defect))
+                    break
+                  }
+                }
+                break
+              }
             }
           })
           return handle.abort
