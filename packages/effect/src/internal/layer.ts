@@ -1204,6 +1204,7 @@ const provideSomeRuntime = dual<
   const patchFlags = runtimeFlags.diff(runtime.defaultRuntime.runtimeFlags, rt.runtimeFlags)
   return core.uninterruptibleMask((restore) =>
     core.withFiberRuntime((fiber) => {
+      const oldContext = fiber.getFiberRef(core.currentContext)
       const oldRefs = fiber.getFiberRefs()
       const newRefs = FiberRefsPatch.patch(fiber.id(), oldRefs)(patchRefs)
       const oldFlags = fiber._runtimeFlags
@@ -1213,7 +1214,7 @@ const provideSomeRuntime = dual<
       fiber.setFiberRefs(newRefs)
       fiber._runtimeFlags = newFlags
       return fiberRuntime.ensuring(
-        core.provideSomeContext(restore(self), rt.context),
+        core.provideSomeContext(restore(self), Context.merge(oldContext, rt.context)),
         core.withFiberRuntime((fiber) => {
           fiber.setFiberRefs(FiberRefsPatch.patch(fiber.id(), fiber.getFiberRefs())(rollbackRefs))
           fiber._runtimeFlags = runtimeFlags.patch(rollbackFlags)(fiber._runtimeFlags)
