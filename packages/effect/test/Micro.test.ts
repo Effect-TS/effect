@@ -3,7 +3,7 @@ import { assert, describe, it } from "effect/test/utils/extend"
 
 class ATag extends Context.Tag("ATag")<ATag, "A">() {}
 
-describe("Micro", () => {
+describe.sequential("Micro", () => {
   it("runPromise", async () => {
     const result = await Micro.runPromise(Micro.succeed(1))
     assert.strictEqual(result, 1)
@@ -271,7 +271,7 @@ describe("Micro", () => {
       }).pipe(Micro.runPromise))
   })
 
-  it("raceAll", () =>
+  it.effect("raceAll", () =>
     Micro.gen(function*() {
       const interrupted: Array<number> = []
       const result = yield* Micro.raceAll([100, 75, 50, 0, 25].map((ms) =>
@@ -286,7 +286,7 @@ describe("Micro", () => {
       ))
       assert.strictEqual(result, 25)
       assert.deepStrictEqual(interrupted, [100, 75, 50])
-    }).pipe(Micro.runPromise))
+    }))
 
   it("raceAllFirst", () =>
     Micro.gen(function*() {
@@ -341,12 +341,12 @@ describe("Micro", () => {
   })
 
   describe("repeat", () => {
-    it.live("is stack safe", () =>
+    it.effect("is stack safe", () =>
       Micro.void.pipe(
         Micro.repeat({ times: 10000 })
       ))
 
-    it.live("is interruptible", () =>
+    it.effect("is interruptible", () =>
       Micro.void.pipe(
         Micro.forever,
         Micro.timeout(50)

@@ -901,6 +901,41 @@ export const raceFirst: {
 )
 
 // ----------------------------------------------------------------------------
+// zipping
+// ----------------------------------------------------------------------------
+
+/**
+ * @since 3.3.0
+ * @category zipping
+ */
+export const zip: {
+  <A2, E2, R2>(
+    that: Micro<A2, E2, R2>,
+    options?:
+      | { readonly concurrent?: boolean | undefined }
+      | undefined
+  ): <A, E, R>(self: Micro<A, E, R>) => Micro<[A, A2], E2 | E, R2 | R>
+  <A, E, R, A2, E2, R2>(
+    self: Micro<A, E, R>,
+    that: Micro<A2, E2, R2>,
+    options?:
+      | { readonly concurrent?: boolean | undefined }
+      | undefined
+  ): Micro<[A, A2], E | E2, R | R2>
+} = dual((args) => isMicro(args[1]), <A, E, R, A2, E2, R2>(
+  self: Micro<A, E, R>,
+  that: Micro<A2, E2, R2>,
+  options?:
+    | { readonly concurrent?: boolean | undefined }
+    | undefined
+): Micro<[A, A2], E | E2, R | R2> => {
+  if (options?.concurrent) {
+    return all([self, that], { concurrency: "unbounded" })
+  }
+  return flatMap(self, (a) => map(that, (a2) => [a, a2]))
+})
+
+// ----------------------------------------------------------------------------
 // filtering & conditionals
 // ----------------------------------------------------------------------------
 
@@ -970,6 +1005,36 @@ export const filterOrFail: {
   orFailWith: (a: A) => E2
 ): Micro<B, E | E2, R> => flatMap(self, (a) => refinement(a) ? succeed(a as any) : fail(orFailWith(a))))
 
+/**
+ * The moral equivalent of `if (p) exp`.
+ *
+ * @since 3.3.0
+ * @category filtering & conditionals
+ */
+export const when: {
+  (condition: LazyArg<boolean>): <A, E, R>(self: Micro<A, E, R>) => Micro<Option.Option<A>, E, R>
+  <A, E, R>(self: Micro<A, E, R>, condition: LazyArg<boolean>): Micro<Option.Option<A>, E, R>
+} = dual(
+  2,
+  <A, E, R>(self: Micro<A, E, R>, condition: LazyArg<boolean>): Micro<Option.Option<A>, E, R> =>
+    suspend(() => condition() ? asSome(self) : succeed(Option.none()))
+)
+
+/**
+ * @since 3.3.0
+ * @category filtering & conditionals
+ */
+export const whenMicro: {
+  <E, R>(
+    condition: Micro<boolean, E, R>
+  ): <A, E2, R2>(effect: Micro<A, E2, R2>) => Micro<Option.Option<A>, E | E2, R | R2>
+  <A, E2, R2, E, R>(self: Micro<A, E2, R2>, condition: Micro<boolean, E, R>): Micro<Option.Option<A>, E2 | E, R2 | R>
+} = dual(
+  2,
+  <A, E2, R2, E, R>(self: Micro<A, E2, R2>, condition: Micro<boolean, E, R>): Micro<Option.Option<A>, E2 | E, R2 | R> =>
+    flatMap(condition, (pass) => pass ? asSome(self) : succeed(Option.none()))
+)
+
 // ----------------------------------------------------------------------------
 // repetition
 // ----------------------------------------------------------------------------
@@ -982,21 +1047,21 @@ export const repeatResult: {
   <A, E>(options: {
     while: Predicate<Result<A, E>>
     times?: number | undefined
-    delay?: ((attempt: number) => Duration.DurationInput) | undefined
+    delay?: DelayFn | undefined
   }): <R>(self: Micro<A, E, R>) => Micro<A, E, R>
   <A, E, R>(self: Micro<A, E, R>, options: {
     while: Predicate<Result<A, E>>
     times?: number | undefined
-    delay?: ((attempt: number) => Duration.DurationInput) | undefined
+    delay?: DelayFn | undefined
   }): Micro<A, E, R>
 } = dual(2, <A, E, R>(self: Micro<A, E, R>, options: {
   while: Predicate<Result<A, E>>
   times?: number | undefined
-  delay?: ((attempt: number) => Duration.DurationInput) | undefined
+  delay?: DelayFn | undefined
 }): Micro<A, E, R> =>
   make(function(env, onResult) {
+    const startedAt = options.delay ? Date.now() : 0
     let attempt = 0
-    const delay = options.delay ? ((attempt: number) => sleep(options.delay!(attempt))) : (_: number) => yieldNow
     self[runSymbol](env, function loop(result) {
       if (options.while !== undefined && !options.while(result)) {
         return onResult(result)
@@ -1004,7 +1069,16 @@ export const repeatResult: {
         return onResult(result)
       }
       attempt++
-      delay(attempt)[runSymbol](env, function(result) {
+      let delayEffect = yieldNow
+      if (options.delay !== undefined) {
+        const elapsed = Duration.millis(Date.now() - startedAt)
+        const duration = options.delay(attempt, elapsed)
+        if (Option.isNone(duration)) {
+          return onResult(result)
+        }
+        delayEffect = sleep(duration.value)
+      }
+      delayEffect[runSymbol](env, function(result) {
         if (result._tag === "Left") {
           return onResult(result as any)
         }
@@ -1021,17 +1095,17 @@ export const repeat: {
   <A, E>(options: {
     while?: Predicate<A> | undefined
     times?: number | undefined
-    delay?: ((attempt: number) => Duration.DurationInput) | undefined
+    delay?: DelayFn | undefined
   }): <R>(self: Micro<A, E, R>) => Micro<A, E, R>
   <A, E, R>(self: Micro<A, E, R>, options: {
     while?: Predicate<A> | undefined
     times?: number | undefined
-    delay?: ((attempt: number) => Duration.DurationInput) | undefined
+    delay?: DelayFn | undefined
   }): Micro<A, E, R>
 } = dual(2, <A, E, R>(self: Micro<A, E, R>, options: {
   while?: Predicate<A> | undefined
   times?: number | undefined
-  delay?: ((attempt: number) => Duration.DurationInput) | undefined
+  delay?: DelayFn | undefined
 }): Micro<A, E, R> =>
   repeatResult(self, {
     ...options,
@@ -1043,6 +1117,57 @@ export const repeat: {
  * @category repetition
  */
 export const forever = <A, E, R>(self: Micro<A, E, R>): Micro<never, E, R> => repeat(self, {}) as any
+
+// ----------------------------------------------------------------------------
+// delays
+// ----------------------------------------------------------------------------
+
+/**
+ * @since 3.3.0
+ * @category delays
+ */
+export type DelayFn = (attempt: number, elapsed: Duration.Duration) => Option.Option<Duration.DurationInput>
+
+/**
+ * @since 3.3.0
+ * @category delays
+ */
+export const delayExponential = (base: Duration.DurationInput, factor = 2): DelayFn => {
+  const baseMillis = Duration.toMillis(base)
+  return (attempt) => Option.some(attempt ** factor * baseMillis)
+}
+
+/**
+ * @since 3.3.0
+ * @category delays
+ */
+export const delaySpaced = (duration: Duration.DurationInput): DelayFn => (_) => Option.some(duration)
+
+/**
+ * @since 3.3.0
+ * @category delays
+ */
+export const delayWithMax: {
+  (max: Duration.DurationInput): (self: DelayFn) => DelayFn
+  (self: DelayFn, max: Duration.DurationInput): DelayFn
+} = dual(
+  2,
+  (self: DelayFn, max: Duration.DurationInput): DelayFn => (attempt, elapsed) =>
+    Option.map(self(attempt, elapsed), Duration.max(max))
+)
+
+/**
+ * @since 3.3.0
+ * @category delays
+ */
+export const delayWithMaxElapsed: {
+  (max: Duration.DurationInput): (self: DelayFn) => DelayFn
+  (self: DelayFn, max: Duration.DurationInput): DelayFn
+} = dual(
+  2,
+  (self: DelayFn, max: Duration.DurationInput): DelayFn => (attempt, elapsed) =>
+    Duration.lessThan(elapsed, max) ? self(attempt, elapsed) : Option.none()
+)
 
 // ----------------------------------------------------------------------------
 // error handling
@@ -1245,17 +1370,17 @@ export const retry: {
   <A, E>(options: {
     while?: Predicate<E> | undefined
     times?: number | undefined
-    delay?: ((attempt: number) => Duration.DurationInput) | undefined
+    delay?: DelayFn | undefined
   }): <R>(self: Micro<A, E, R>) => Micro<A, E, R>
   <A, E, R>(self: Micro<A, E, R>, options: {
     while?: Predicate<E> | undefined
     times?: number | undefined
-    delay?: ((attempt: number) => Duration.DurationInput) | undefined
+    delay?: DelayFn | undefined
   }): Micro<A, E, R>
 } = dual(2, <A, E, R>(self: Micro<A, E, R>, options: {
   while?: Predicate<E> | undefined
   times?: number | undefined
-  delay?: ((attempt: number) => Duration.DurationInput) | undefined
+  delay?: DelayFn | undefined
 }): Micro<A, E, R> =>
   repeatResult(self, {
     ...options,
@@ -1623,7 +1748,12 @@ export const onResult: {
     uninterruptibleMask((restore) =>
       make(function(env, onResult) {
         restore(self)[runSymbol](env, function(result) {
-          f(result)[runSymbol](env, (_) => onResult(result))
+          f(result)[runSymbol](env, function(finalizerResult) {
+            if (finalizerResult._tag === "Left") {
+              return onResult(finalizerResult as any)
+            }
+            onResult(result)
+          })
         })
       })
     )
@@ -1937,11 +2067,11 @@ export const all = <
  * @category collecting & elements
  */
 export const forEach: {
-  <A, B, E, R>(iterable: Iterable<A>, f: (a: NoInfer<A>) => Micro<B, E, R>, options?: {
+  <A, B, E, R>(iterable: Iterable<A>, f: (a: NoInfer<A>, index: number) => Micro<B, E, R>, options?: {
     readonly concurrency?: Concurrency | undefined
     readonly discard?: false | undefined
   }): Micro<Array<B>, E, R>
-  <A, B, E, R>(iterable: Iterable<A>, f: (a: NoInfer<A>) => Micro<B, E, R>, options: {
+  <A, B, E, R>(iterable: Iterable<A>, f: (a: NoInfer<A>, index: number) => Micro<B, E, R>, options: {
     readonly concurrency?: Concurrency | undefined
     readonly discard: true
   }): Micro<void, E, R>
@@ -1950,7 +2080,7 @@ export const forEach: {
   B,
   E,
   R
->(iterable: Iterable<A>, f: (a: NoInfer<A>) => Micro<B, E, R>, options?: {
+>(iterable: Iterable<A>, f: (a: NoInfer<A>, index: number) => Micro<B, E, R>, options?: {
   readonly concurrency?: Concurrency | undefined
   readonly discard?: boolean | undefined
 }): Micro<any, E, R> =>
@@ -1976,7 +2106,7 @@ const forEachSequential = <
   B,
   E,
   R
->(iterable: Iterable<A>, f: (a: NoInfer<A>) => Micro<B, E, R>, options?: {
+>(iterable: Iterable<A>, f: (a: NoInfer<A>, index: number) => Micro<B, E, R>, options?: {
   readonly discard?: boolean | undefined
 }): Micro<any, E, R> =>
   make(function(env, onResult) {
@@ -1991,7 +2121,7 @@ const forEachSequential = <
         let complete = false
         const current = index++
         try {
-          f(items[current])[runSymbol](env, function(result) {
+          f(items[current], current)[runSymbol](env, function(result) {
             complete = true
             if (result._tag === "Left") {
               index = length
@@ -2023,7 +2153,7 @@ const forEachConcurrent = <
   B,
   E,
   R
->(iterable: Iterable<A>, f: (a: NoInfer<A>) => Micro<B, E, R>, options: {
+>(iterable: Iterable<A>, f: (a: NoInfer<A>, index: number) => Micro<B, E, R>, options: {
   readonly concurrency: number | "unbounded"
   readonly discard?: boolean | undefined
 }): Micro<any, E, R> =>
@@ -2053,9 +2183,7 @@ const forEachConcurrent = <
         index++
         inProgress++
         try {
-          f(item)[runSymbol](envWithSignal, function(result) {
-            doneCount++
-            inProgress--
+          f(item, currentIndex)[runSymbol](envWithSignal, function(result) {
             if (result._tag === "Left") {
               if (failure === undefined) {
                 failure = result
@@ -2064,6 +2192,8 @@ const forEachConcurrent = <
             } else if (out !== undefined) {
               out[currentIndex] = result.right
             }
+            doneCount++
+            inProgress--
             if (doneCount === length) {
               onAbort()
               onResult(failure ?? Either.right(out))
