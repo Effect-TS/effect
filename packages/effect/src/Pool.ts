@@ -74,8 +74,15 @@ export const isPool: (u: unknown) => u is Pool<unknown, unknown> = internal.isPo
  * because the `Scope` is closed, the individual items allocated by the pool
  * will be released in some unspecified order.
  *
- * By setting the `permits` parameter, you can control the level of concurrent
+ * By setting the `concurrency` parameter, you can control the level of concurrent
  * access per pool item. By default, the number of permits is set to `1`.
+ *
+ * `targetUtilization` determines when to create new pool items. It is a value
+ * between 0 and 1, where 1 means only create new pool items when all the existing
+ * items are fully utilized.
+ *
+ * A `targetUtilization` of 0.5 will create new pool items when the existing items are
+ * 50% utilized.
  *
  * @since 2.0.0
  * @category constructors
@@ -84,7 +91,8 @@ export const make: <A, E, R>(
   options: {
     readonly acquire: Effect.Effect<A, E, R>
     readonly size: number
-    readonly permits?: number | undefined
+    readonly concurrency?: number | undefined
+    readonly targetUtilization?: number | undefined
   }
 ) => Effect.Effect<Pool<A, E>, never, Scope.Scope | R> = internal.make
 
@@ -96,8 +104,15 @@ export const make: <A, E, R>(
  * used, the individual items allocated by the pool will be released in some
  * unspecified order.
  *
- * By setting the `permits` parameter, you can control the level of concurrent
+ * By setting the `concurrency` parameter, you can control the level of concurrent
  * access per pool item. By default, the number of permits is set to `1`.
+ *
+ * `targetUtilization` determines when to create new pool items. It is a value
+ * between 0 and 1, where 1 means only create new pool items when all the existing
+ * items are fully utilized.
+ *
+ * A `targetUtilization` of 0.5 will create new pool items when the existing items are
+ * 50% utilized.
  *
  * The `timeToLiveStrategy` determines how items are invalidated. If set to
  * "creation", then items are invalidated based on their creation time. If set
@@ -133,7 +148,8 @@ export const makeWithTTL: <A, E, R>(
     readonly acquire: Effect.Effect<A, E, R>
     readonly min: number
     readonly max: number
-    readonly permits?: number | undefined
+    readonly concurrency?: number | undefined
+    readonly targetUtilization?: number | undefined
     readonly timeToLive: Duration.DurationInput
     readonly timeToLiveStrategy?: "creation" | "usage" | undefined
   }

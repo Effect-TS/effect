@@ -217,7 +217,7 @@ describe("Pool", () => {
       expect(max).toBe(15)
     }))
 
-  it.scoped("max pool size with permits: 3", () =>
+  it.scoped("max pool size with concurrency: 3", () =>
     Effect.gen(function*($) {
       const deferred = yield* $(Deferred.make<void>())
       const count = yield* $(Ref.make(0))
@@ -229,7 +229,7 @@ describe("Pool", () => {
         acquire,
         min: 10,
         max: 15,
-        permits: 3,
+        concurrency: 3,
         timeToLive: Duration.seconds(60)
       }))
       yield* $(
@@ -261,7 +261,7 @@ describe("Pool", () => {
         acquire,
         min: 0,
         max: 10,
-        permits: 3,
+        concurrency: 3,
         timeToLive: Duration.seconds(60)
       }))
       yield* $(

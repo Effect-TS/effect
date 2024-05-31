@@ -5,7 +5,6 @@ import type { Effect, Semaphore } from "../Effect.js"
 import type { Exit } from "../Exit.js"
 import { dual, identity } from "../Function.js"
 import * as Iterable from "../Iterable.js"
-import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import type { Pool, PoolTypeId as PoolTypeId_ } from "../Pool.js"
 import { hasProperty } from "../Predicate.js"
@@ -35,8 +34,9 @@ export const makeWith = <A, E, R>(options: {
   readonly acquire: Effect<A, E, R>
   readonly min: number
   readonly max: number
+  readonly concurrency?: number | undefined
+  readonly targetUtilization?: number | undefined
   readonly strategy: Strategy<A, E>
-  readonly permits?: number | undefined
 }): Effect<Pool<A, E>, never, Scope | R> =>
   core.uninterruptibleMask((restore) =>
     core.flatMap(core.context<R | Scope>(), (context) => {
@@ -49,7 +49,14 @@ export const makeWith = <A, E, R>(options: {
         E,
         Scope
       >
-      const pool = new PoolImpl<A, E>(acquire, options.permits ?? 1, options.min, options.max, options.strategy)
+      const pool = new PoolImpl<A, E>(
+        acquire,
+        options.concurrency ?? 1,
+        options.min,
+        options.max,
+        options.strategy,
+        Math.min(Math.max(options.targetUtilization ?? 1, 0.1), 1)
+      )
       const initialize = core.tap(fiberRuntime.forkDaemon(restore(pool.resize)), (fiber) =>
         scope.addFinalizer(() => core.interruptFiber(fiber)))
       const runStrategy = core.tap(fiberRuntime.forkDaemon(restore(options.strategy.run(pool))), (fiber) =>
@@ -70,7 +77,8 @@ export const makeWith = <A, E, R>(options: {
 export const make = <A, E, R>(options: {
   readonly acquire: Effect<A, E, R>
   readonly size: number
-  readonly permits?: number | undefined
+  readonly concurrency?: number | undefined
+  readonly targetUtilization?: number | undefined
 }): Effect<Pool<A, E>, never, R | Scope> =>
   makeWith({ ...options, min: options.size, max: options.size, strategy: strategyNoop() })
 
@@ -79,7 +87,8 @@ export const makeWithTTL = <A, E, R>(options: {
   readonly acquire: Effect<A, E, R>
   readonly min: number
   readonly max: number
-  readonly permits?: number | undefined
+  readonly concurrency?: number | undefined
+  readonly targetUtilization?: number | undefined
   readonly timeToLive: Duration.DurationInput
   readonly timeToLiveStrategy?: "creation" | "usage" | undefined
 }): Effect<Pool<A, E>, never, R | Scope> =>
@@ -118,16 +127,18 @@ class PoolImpl<A, E> implements Pool<A, E> {
   readonly items = new Set<PoolItem<A, E>>()
   readonly available = new Set<PoolItem<A, E>>()
   readonly invalidated = new Set<PoolItem<A, E>>()
+  waiters = 0
 
   constructor(
     readonly acquire: Effect<A, E, Scope>,
-    readonly permits: number,
+    readonly concurrency: number,
     readonly minSize: number,
     readonly maxSize: number,
-    readonly strategy: Strategy<A, E>
+    readonly strategy: Strategy<A, E>,
+    readonly targetUtilization: number
   ) {
     this[PoolTypeId] = poolVariance
-    this.semaphore = circular.unsafeMakeSemaphore(permits * maxSize)
+    this.semaphore = circular.unsafeMakeSemaphore(concurrency * maxSize)
   }
 
   readonly allocate: Effect<PoolItem<A, E>> = core.acquireUseRelease(
@@ -156,7 +167,7 @@ class PoolImpl<A, E> implements Pool<A, E> {
   )
 
   get currentUsage() {
-    let count = 0
+    let count = this.waiters
     for (const item of this.items) {
       count += item.refCount
     }
@@ -165,12 +176,17 @@ class PoolImpl<A, E> implements Pool<A, E> {
 
   get targetSize() {
     if (this.isShuttingDown) return 0
-    const target = Math.ceil(this.currentUsage / this.permits)
+    const utilization = this.currentUsage / this.targetUtilization
+    const target = Math.ceil(utilization / this.concurrency)
     return Math.min(Math.max(this.minSize, target), this.maxSize)
   }
 
+  get activeSize() {
+    return this.items.size - this.invalidated.size
+  }
+
   readonly resizeLoop: Effect<void> = core.suspend(() => {
-    if (this.items.size >= this.targetSize) {
+    if (this.activeSize >= this.targetSize) {
       return core.void
     }
     return core.zipRight(this.allocate, this.resizeLoop)
@@ -183,12 +199,18 @@ class PoolImpl<A, E> implements Pool<A, E> {
       core.zipRight(fiberRuntime.scopeTag),
       core.flatMap((scope) =>
         core.suspend(() => {
-          if (this.isShuttingDown) return core.interrupt
-          return Option.match(Iterable.head(this.available), {
-            onNone: () => restore(this.allocate),
-            onSome: core.succeed
-          })
+          this.waiters++
+          if (this.isShuttingDown) {
+            return core.interrupt
+          } else if (this.targetSize > this.activeSize) {
+            return core.zipRight(
+              restore(this.resize),
+              core.sync(() => Iterable.unsafeHead(this.available))
+            )
+          }
+          return core.succeed(Iterable.unsafeHead(this.available))
         }).pipe(
+          fiberRuntime.ensuring(core.sync(() => this.waiters--)),
           core.tap((item) => {
             if (item.exit._tag === "Failure") {
               this.items.delete(item)
@@ -198,7 +220,7 @@ class PoolImpl<A, E> implements Pool<A, E> {
             }
             item.refCount++
             this.available.delete(item)
-            if (item.refCount < this.permits) {
+            if (item.refCount < this.concurrency) {
               this.available.add(item)
             }
             return scope.addFinalizer(() =>
@@ -215,7 +237,6 @@ class PoolImpl<A, E> implements Pool<A, E> {
               )
             )
           }),
-          this.resizeSemaphore.withPermits(1),
           core.onInterrupt(() => this.semaphore.release(1))
         )
       )
@@ -250,6 +271,7 @@ class PoolImpl<A, E> implements Pool<A, E> {
         return core.zipRight(poolItem.finalizer, this.resize)
       }
       this.invalidated.add(poolItem)
+      this.available.delete(poolItem)
       return core.void
     })
   }
@@ -267,6 +289,7 @@ class PoolImpl<A, E> implements Pool<A, E> {
           return semaphore.take(1)
         }
         this.items.delete(item)
+        this.available.delete(item)
         this.invalidated.delete(item)
         return item.finalizer
       }).pipe(
@@ -324,7 +347,7 @@ const strategyUsageTTL = <A, E>(ttl: Duration.DurationInput) =>
     return identity<Strategy<A, E>>({
       run: (pool) => {
         const process: Effect<void> = core.suspend(() => {
-          const excess = pool.items.size - pool.invalidated.size - pool.targetSize
+          const excess = pool.activeSize - pool.targetSize
           if (excess <= 0) return core.void
           return queue.take.pipe(
             core.tap((item) => pool.invalidatePoolItem(item)),
