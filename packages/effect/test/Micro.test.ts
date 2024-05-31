@@ -184,6 +184,76 @@ describe("Micro", () => {
       }).pipe(Micro.runPromise))
   })
 
+  describe("all", () => {
+    it("tuple", () =>
+      Micro.gen(function*() {
+        const results = (yield* Micro.all([
+          Micro.succeed(1),
+          Micro.succeed(2),
+          Micro.succeed(3)
+        ])) satisfies [
+          number,
+          number,
+          number
+        ]
+        assert.deepStrictEqual(results, [1, 2, 3])
+      }).pipe(Micro.runPromise))
+
+    it("record", () =>
+      Micro.gen(function*() {
+        const results = (yield* Micro.all({
+          a: Micro.succeed(1),
+          b: Micro.succeed("2"),
+          c: Micro.succeed(true)
+        })) satisfies {
+          a: number
+          b: string
+          c: boolean
+        }
+        assert.deepStrictEqual(results, {
+          a: 1,
+          b: "2",
+          c: true
+        })
+      }).pipe(Micro.runPromise))
+
+    it("record discard", () =>
+      Micro.gen(function*() {
+        const results = (yield* Micro.all({
+          a: Micro.succeed(1),
+          b: Micro.succeed("2"),
+          c: Micro.succeed(true)
+        }, { discard: true })) satisfies void
+        assert.deepStrictEqual(results, void 0)
+      }).pipe(Micro.runPromise))
+
+    it("iterable", () =>
+      Micro.gen(function*() {
+        const results = (yield* Micro.all(
+          new Set([
+            Micro.succeed(1),
+            Micro.succeed(2),
+            Micro.succeed(3)
+          ])
+        )) satisfies Array<number>
+        assert.deepStrictEqual(results, [1, 2, 3])
+      }).pipe(Micro.runPromise))
+  })
+
+  describe("filter", () => {
+    it.live("odd numbers", () =>
+      Micro.gen(function*() {
+        const results = yield* Micro.filter([1, 2, 3, 4, 5], (_) => Micro.succeed(_ % 2 === 1))
+        assert.deepStrictEqual(results, [1, 3, 5])
+      }))
+
+    it.live("iterable", () =>
+      Micro.gen(function*() {
+        const results = yield* Micro.filter(new Set([1, 2, 3, 4, 5]), (_) => Micro.succeed(_ % 2 === 1))
+        assert.deepStrictEqual(results, [1, 3, 5])
+      }))
+  })
+
   describe("acquireRelease", () => {
     it("releases on abort", () =>
       Micro.gen(function*() {
@@ -289,6 +359,37 @@ describe("Micro", () => {
       )
       assert.deepStrictEqual(result, 123)
     })
+  })
+
+  describe("retry", () => {
+    it.live("nothing on success", () =>
+      Micro.gen(function*() {
+        let count = 0
+        yield* Micro.sync(() => count++).pipe(
+          Micro.retry({ times: 10000 })
+        )
+        assert.strictEqual(count, 1)
+      }))
+
+    it.effect("initial + retries", () =>
+      Micro.gen(function*() {
+        let count = 0
+        const error = yield* Micro.failSync(() => ++count).pipe(
+          Micro.retry({ times: 2 }),
+          Micro.flip
+        )
+        assert.strictEqual(error, 3)
+      }))
+
+    it.effect("predicate", () =>
+      Micro.gen(function*() {
+        let count = 0
+        const error = yield* Micro.failSync(() => ++count).pipe(
+          Micro.retry({ while: (i) => i < 3 }),
+          Micro.flip
+        )
+        assert.strictEqual(error, 3)
+      }))
   })
 
   describe("timeout", () => {

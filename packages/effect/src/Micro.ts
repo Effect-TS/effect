@@ -14,14 +14,9 @@ import { SingleShotGen } from "./internal/singleShotGen.js"
 import * as Env from "./MicroEnv.js"
 import * as Option from "./Option.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
-import { isTagged, type Predicate, type Refinement } from "./Predicate.js"
+import { isIterable, isTagged, type Predicate, type Refinement } from "./Predicate.js"
 import type { Concurrency, Covariant, NoInfer, NotFunction } from "./Types.js"
 import { YieldWrap, yieldWrapGet } from "./Utils.js"
-
-// TODO:
-// - .filter*
-// - ensuring
-// - all
 
 /**
  * @since 3.3.0
@@ -906,6 +901,76 @@ export const raceFirst: {
 )
 
 // ----------------------------------------------------------------------------
+// filtering & conditionals
+// ----------------------------------------------------------------------------
+
+/**
+ * Filter the specified effect with the provided function, failing with specified
+ * error if the predicate fails.
+ *
+ * In addition to the filtering capabilities discussed earlier, you have the option to further
+ * refine and narrow down the type of the success channel by providing a
+ * [user-defined type guard](https://www.typescriptlang.org/docs/handbook/2/narrowing.html#using-type-predicates).
+ * Let's explore this concept through an example:
+ *
+ * @since 3.3.0
+ * @category filtering & conditionals
+ */
+export const filterOrFailWith: {
+  <A, B extends A, E2>(
+    refinement: Refinement<NoInfer<A>, B>,
+    orFailWith: (a: NoInfer<A>) => Failure<E2>
+  ): <E, R>(self: Micro<A, E, R>) => Micro<B, E2 | E, R>
+  <A, E2>(
+    predicate: Predicate<NoInfer<A>>,
+    orFailWith: (a: NoInfer<A>) => Failure<E2>
+  ): <E, R>(self: Micro<A, E, R>) => Micro<A, E2 | E, R>
+  <A, E, R, B extends A, E2>(
+    self: Micro<A, E, R>,
+    refinement: Refinement<A, B>,
+    orFailWith: (a: A) => Failure<E2>
+  ): Micro<B, E | E2, R>
+  <A, E, R, E2>(self: Micro<A, E, R>, predicate: Predicate<A>, orFailWith: (a: A) => Failure<E2>): Micro<A, E | E2, R>
+} = dual((args) => isMicro(args[0]), <A, E, R, B extends A, E2>(
+  self: Micro<A, E, R>,
+  refinement: Refinement<A, B>,
+  orFailWith: (a: A) => Failure<E2>
+): Micro<B, E | E2, R> => flatMap(self, (a) => refinement(a) ? succeed(a as any) : failWith(orFailWith(a))))
+
+/**
+ * Filter the specified effect with the provided function, failing with specified
+ * error if the predicate fails.
+ *
+ * In addition to the filtering capabilities discussed earlier, you have the option to further
+ * refine and narrow down the type of the success channel by providing a
+ * [user-defined type guard](https://www.typescriptlang.org/docs/handbook/2/narrowing.html#using-type-predicates).
+ * Let's explore this concept through an example:
+ *
+ * @since 3.3.0
+ * @category filtering & conditionals
+ */
+export const filterOrFail: {
+  <A, B extends A, E2>(
+    refinement: Refinement<NoInfer<A>, B>,
+    orFailWith: (a: NoInfer<A>) => E2
+  ): <E, R>(self: Micro<A, E, R>) => Micro<B, E2 | E, R>
+  <A, E2>(
+    predicate: Predicate<NoInfer<A>>,
+    orFailWith: (a: NoInfer<A>) => E2
+  ): <E, R>(self: Micro<A, E, R>) => Micro<A, E2 | E, R>
+  <A, E, R, B extends A, E2>(
+    self: Micro<A, E, R>,
+    refinement: Refinement<A, B>,
+    orFailWith: (a: A) => E2
+  ): Micro<B, E | E2, R>
+  <A, E, R, E2>(self: Micro<A, E, R>, predicate: Predicate<A>, orFailWith: (a: A) => E2): Micro<A, E | E2, R>
+} = dual((args) => isMicro(args[0]), <A, E, R, B extends A, E2>(
+  self: Micro<A, E, R>,
+  refinement: Refinement<A, B>,
+  orFailWith: (a: A) => E2
+): Micro<B, E | E2, R> => flatMap(self, (a) => refinement(a) ? succeed(a as any) : fail(orFailWith(a))))
+
+// ----------------------------------------------------------------------------
 // repetition
 // ----------------------------------------------------------------------------
 
@@ -917,29 +982,29 @@ export const repeatResult: {
   <A, E>(options: {
     while: Predicate<Result<A, E>>
     times?: number | undefined
-    delay?: Duration.DurationInput | undefined
+    delay?: ((attempt: number) => Duration.DurationInput) | undefined
   }): <R>(self: Micro<A, E, R>) => Micro<A, E, R>
   <A, E, R>(self: Micro<A, E, R>, options: {
     while: Predicate<Result<A, E>>
     times?: number | undefined
-    delay?: Duration.DurationInput | undefined
+    delay?: ((attempt: number) => Duration.DurationInput) | undefined
   }): Micro<A, E, R>
 } = dual(2, <A, E, R>(self: Micro<A, E, R>, options: {
   while: Predicate<Result<A, E>>
   times?: number | undefined
-  delay?: Duration.DurationInput | undefined
+  delay?: ((attempt: number) => Duration.DurationInput) | undefined
 }): Micro<A, E, R> =>
   make(function(env, onResult) {
-    let count = 0
-    const delay = options.delay ? sleep(options.delay) : yieldNow
+    let attempt = 0
+    const delay = options.delay ? ((attempt: number) => sleep(options.delay!(attempt))) : (_: number) => yieldNow
     self[runSymbol](env, function loop(result) {
       if (options.while !== undefined && !options.while(result)) {
         return onResult(result)
-      } else if (options.times !== undefined && count >= options.times) {
+      } else if (options.times !== undefined && attempt >= options.times) {
         return onResult(result)
       }
-      count++
-      delay[runSymbol](env, function(result) {
+      attempt++
+      delay(attempt)[runSymbol](env, function(result) {
         if (result._tag === "Left") {
           return onResult(result as any)
         }
@@ -956,17 +1021,17 @@ export const repeat: {
   <A, E>(options: {
     while?: Predicate<A> | undefined
     times?: number | undefined
-    delay?: Duration.DurationInput | undefined
+    delay?: ((attempt: number) => Duration.DurationInput) | undefined
   }): <R>(self: Micro<A, E, R>) => Micro<A, E, R>
   <A, E, R>(self: Micro<A, E, R>, options: {
     while?: Predicate<A> | undefined
     times?: number | undefined
-    delay?: Duration.DurationInput | undefined
+    delay?: ((attempt: number) => Duration.DurationInput) | undefined
   }): Micro<A, E, R>
 } = dual(2, <A, E, R>(self: Micro<A, E, R>, options: {
   while?: Predicate<A> | undefined
   times?: number | undefined
-  delay?: Duration.DurationInput | undefined
+  delay?: ((attempt: number) => Duration.DurationInput) | undefined
 }): Micro<A, E, R> =>
   repeatResult(self, {
     ...options,
@@ -1180,17 +1245,17 @@ export const retry: {
   <A, E>(options: {
     while?: Predicate<E> | undefined
     times?: number | undefined
-    delay?: Duration.DurationInput | undefined
+    delay?: ((attempt: number) => Duration.DurationInput) | undefined
   }): <R>(self: Micro<A, E, R>) => Micro<A, E, R>
   <A, E, R>(self: Micro<A, E, R>, options: {
     while?: Predicate<E> | undefined
     times?: number | undefined
-    delay?: Duration.DurationInput | undefined
+    delay?: ((attempt: number) => Duration.DurationInput) | undefined
   }): Micro<A, E, R>
 } = dual(2, <A, E, R>(self: Micro<A, E, R>, options: {
   while?: Predicate<E> | undefined
   times?: number | undefined
-  delay?: Duration.DurationInput | undefined
+  delay?: ((attempt: number) => Duration.DurationInput) | undefined
 }): Micro<A, E, R> =>
   repeatResult(self, {
     ...options,
@@ -1413,7 +1478,7 @@ export type MicroScopeTypeId = typeof MicroScopeTypeId
  */
 export interface MicroScope {
   readonly [MicroScopeTypeId]: MicroScopeTypeId
-  readonly addFinalizer: (finalizer: (result: Result<any, any>) => Micro<void>) => Micro<void>
+  readonly addFinalizer: (finalizer: (result: Result<unknown, unknown>) => Micro<void>) => Micro<void>
   readonly fork: Micro<MicroScope.Closeable>
 }
 
@@ -1532,11 +1597,7 @@ export const acquireRelease = <A, E, R>(
 ): Micro<A, E, R | MicroScope> =>
   uninterruptible(flatMap(
     scope,
-    (scope) =>
-      tap(
-        acquire,
-        (a) => scope.addFinalizer((result) => release(a, result))
-      )
+    (scope) => tap(acquire, (a) => scope.addFinalizer((result) => release(a, result)))
   ))
 
 /**
@@ -1560,8 +1621,27 @@ export const onResult: {
   2,
   <A, E, R, XE, XR>(self: Micro<A, E, R>, f: (result: Result<A, E>) => Micro<void, XE, XR>): Micro<A, E | XE, R | XR> =>
     uninterruptibleMask((restore) =>
-      flatMap(asResult(restore(self)), (result) => andThen(f(result), fromResult(result)))
+      make(function(env, onResult) {
+        restore(self)[runSymbol](env, function(result) {
+          f(result)[runSymbol](env, (_) => onResult(result))
+        })
+      })
     )
+)
+
+/**
+ * @since 3.3.0
+ * @category resources & finalization
+ */
+export const ensuring: {
+  <XE, XR>(
+    finalizer: Micro<void, XE, XR>
+  ): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
+  <A, E, R, XE, XR>(self: Micro<A, E, R>, finalizer: Micro<void, XE, XR>): Micro<A, E | XE, R | XR>
+} = dual(
+  2,
+  <A, E, R, XE, XR>(self: Micro<A, E, R>, finalizer: Micro<void, XE, XR>): Micro<A, E | XE, R | XR> =>
+    onResult(self, (_) => finalizer)
 )
 
 /**
@@ -1744,12 +1824,117 @@ export const interruptible = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, R> =>
   })
 
 // ========================================================================
-// traversal & collecting
+// collecting & elements
 // ========================================================================
 
 /**
  * @since 3.3.0
- * @category traversal & collecting
+ */
+export declare namespace All {
+  /**
+   * @since 3.3.0
+   */
+  export type MicroAny = Micro<any, any, any>
+
+  /**
+   * @since 3.3.0
+   */
+  export type ReturnIterable<T extends Iterable<MicroAny>, Discard extends boolean> = [T] extends
+    [Iterable<Micro<infer A, infer E, infer R>>] ? Micro<
+      Discard extends true ? void : Array<A>,
+      E,
+      R
+    >
+    : never
+
+  /**
+   * @since 3.3.0
+   */
+  export type ReturnTuple<T extends ReadonlyArray<unknown>, Discard extends boolean> = Micro<
+    Discard extends true ? void
+      : T[number] extends never ? []
+      : { -readonly [K in keyof T]: T[K] extends Micro<infer _A, infer _E, infer _R> ? _A : never },
+    T[number] extends never ? never
+      : T[number] extends Micro<infer _A, infer _E, infer _R> ? _E
+      : never,
+    T[number] extends never ? never
+      : T[number] extends Micro<infer _A, infer _E, infer _R> ? _R
+      : never
+  > extends infer X ? X : never
+
+  /**
+   * @since 3.3.0
+   */
+  export type ReturnObject<T, Discard extends boolean> = [T] extends [{ [K: string]: MicroAny }] ? Micro<
+      Discard extends true ? void :
+        { -readonly [K in keyof T]: [T[K]] extends [Micro<infer _A, infer _E, infer _R>] ? _A : never },
+      keyof T extends never ? never
+        : T[keyof T] extends Micro<infer _A, infer _E, infer _R> ? _E
+        : never,
+      keyof T extends never ? never
+        : T[keyof T] extends Micro<infer _A, infer _E, infer _R> ? _R
+        : never
+    >
+    : never
+
+  /**
+   * @since 3.3.0
+   */
+  export type IsDiscard<A> = [Extract<A, { readonly discard: true }>] extends [never] ? false : true
+
+  /**
+   * @since 3.3.0
+   */
+  export type Return<
+    Arg extends Iterable<MicroAny> | Record<string, MicroAny>,
+    O extends {
+      readonly concurrency?: Concurrency | undefined
+      readonly discard?: boolean | undefined
+    }
+  > = [Arg] extends [ReadonlyArray<MicroAny>] ? ReturnTuple<Arg, IsDiscard<O>>
+    : [Arg] extends [Iterable<MicroAny>] ? ReturnIterable<Arg, IsDiscard<O>>
+    : [Arg] extends [Record<string, MicroAny>] ? ReturnObject<Arg, IsDiscard<O>>
+    : never
+}
+
+/**
+ * Runs all the provided effects in sequence respecting the structure provided in input.
+ *
+ * Supports multiple arguments, a single argument tuple / array or record / struct.
+ *
+ * @since 3.3.0
+ * @category collecting & elements
+ */
+export const all = <
+  const Arg extends Iterable<Micro<any, any, any>> | Record<string, Micro<any, any, any>>,
+  O extends {
+    readonly concurrency?: Concurrency | undefined
+    readonly discard?: boolean | undefined
+  }
+>(arg: Arg, options?: O): All.Return<Arg, O> => {
+  if (Array.isArray(arg) || isIterable(arg)) {
+    return (forEach as any)(arg, identity, options)
+  } else if (options?.discard) {
+    return (forEach as any)(Object.values(arg), identity, options)
+  }
+  return suspend(() => {
+    const out: Record<string, unknown> = {}
+    return as(
+      forEach(Object.entries(arg), ([key, effect]) =>
+        map(effect, (value) => {
+          out[key] = value
+        }), {
+        discard: true,
+        concurrency: options?.concurrency
+      }),
+      out
+    )
+  }) as any
+}
+
+/**
+ * @since 3.3.0
+ * @category collecting & elements
  */
 export const forEach: {
   <A, B, E, R>(iterable: Iterable<A>, f: (a: NoInfer<A>) => Micro<B, E, R>, options?: {
@@ -1894,6 +2079,33 @@ const forEachConcurrent = <
       pumping = false
     }
     pump()
+  })
+
+/**
+ * @since 3.3.0
+ * @category collecting & elements
+ */
+export const filter = <A, E, R>(iterable: Iterable<A>, f: (a: NoInfer<A>) => Micro<boolean, E, R>, options?: {
+  readonly concurrency?: Concurrency | undefined
+  readonly negate?: boolean | undefined
+}): Micro<Array<A>, E, R> =>
+  suspend(() => {
+    const out: Array<A> = []
+    return as(
+      forEach(iterable, (a) =>
+        map(f(a), (passed) => {
+          if (options?.negate === true) {
+            passed = !passed
+          }
+          if (passed) {
+            out.push(a)
+          }
+        }), {
+        discard: true,
+        concurrency: options?.concurrency
+      }),
+      out
+    )
   })
 
 // ----------------------------------------------------------------------------
