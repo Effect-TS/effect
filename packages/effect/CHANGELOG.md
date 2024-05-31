@@ -1,5 +1,11 @@
 # effect
 
+## 3.2.7
+
+### Patch Changes
+
+- [#2887](https://github.com/Effect-TS/effect/pull/2887) [`6801fca`](https://github.com/Effect-TS/effect/commit/6801fca44366be3ee1b6b99f54bd4f38a1b5e4f4) Thanks @mikearnaldi! - Ensure provide of runtime is additive on context
+
 ## 3.2.6
 
 ### Patch Changes

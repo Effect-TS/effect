@@ -1,5 +1,16 @@
 # @effect/schema
 
+## 0.67.16
+
+### Patch Changes
+
+- [#2890](https://github.com/Effect-TS/effect/pull/2890) [`5745886`](https://github.com/Effect-TS/effect/commit/57458869859943410221ccc87f8cecfba7c79d92) Thanks @gcanti! - Fix constructor type inference for classes with all optional fields, closes #2888
+
+  This fix addresses an issue where TypeScript incorrectly inferred the constructor parameter type as an empty object {} when all class fields were optional. Now, the constructor properly recognizes arguments as objects with optional fields (e.g., { abc?: number, xyz?: number }).
+
+- Updated dependencies [[`6801fca`](https://github.com/Effect-TS/effect/commit/6801fca44366be3ee1b6b99f54bd4f38a1b5e4f4)]:
+  - effect@3.2.7
+
 ## 0.67.15
 
 ### Patch Changes
