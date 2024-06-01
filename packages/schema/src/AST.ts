@@ -2317,36 +2317,33 @@ function changeMap<A>(as: ReadonlyArray<A>, f: (a: A) => A): ReadonlyArray<A> {
   return changed ? out : as
 }
 
-/**
- * @since 1.0.0
- */
-export const encodedAST = (ast: AST): AST => {
+const encodedAST_ = (ast: AST, bound: boolean): AST => {
   switch (ast._tag) {
     case "Declaration": {
-      const typeParameters = changeMap(ast.typeParameters, encodedAST)
+      const typeParameters = changeMap(ast.typeParameters, (ast) => encodedAST_(ast, bound))
       return typeParameters === ast.typeParameters ?
         ast :
         new Declaration(typeParameters, ast.decodeUnknown, ast.encodeUnknown, ast.annotations)
     }
     case "TupleType": {
       const elements = changeMap(ast.elements, (e) => {
-        const type = encodedAST(e.type)
+        const type = encodedAST_(e.type, bound)
         return type === e.type ? e : new Element(type, e.isOptional)
       })
-      const rest = changeMap(ast.rest, encodedAST)
+      const rest = changeMap(ast.rest, (ast) => encodedAST_(ast, bound))
       return elements === ast.elements && rest === ast.rest ?
         ast :
         new TupleType(elements, rest, ast.isReadonly, createJSONIdentifierAnnotation(ast))
     }
     case "TypeLiteral": {
       const propertySignatures = changeMap(ast.propertySignatures, (ps) => {
-        const type = encodedAST(ps.type)
+        const type = encodedAST_(ps.type, bound)
         return type === ps.type
           ? ps
           : new PropertySignature(ps.name, type, ps.isOptional, ps.isReadonly)
       })
       const indexSignatures = changeMap(ast.indexSignatures, (is) => {
-        const type = encodedAST(is.type)
+        const type = encodedAST_(is.type, bound)
         return type === is.type ? is : new IndexSignature(is.parameter, type, is.isReadonly)
       })
       return propertySignatures === ast.propertySignatures && indexSignatures === ast.indexSignatures ?
@@ -2354,17 +2351,32 @@ export const encodedAST = (ast: AST): AST => {
         new TypeLiteral(propertySignatures, indexSignatures, createJSONIdentifierAnnotation(ast))
     }
     case "Union": {
-      const types = changeMap(ast.types, encodedAST)
+      const types = changeMap(ast.types, (ast) => encodedAST_(ast, bound))
       return types === ast.types ? ast : Union.make(types, createJSONIdentifierAnnotation(ast))
     }
     case "Suspend":
-      return new Suspend(() => encodedAST(ast.f()), createJSONIdentifierAnnotation(ast))
-    case "Refinement":
+      return new Suspend(() => encodedAST_(ast.f(), bound), createJSONIdentifierAnnotation(ast))
+    case "Refinement": {
+      const from = encodedAST_(ast.from, bound)
+      if (bound) {
+        return from === ast.from ? ast : from
+      }
+      return from
+    }
     case "Transformation":
-      return encodedAST(ast.from)
+      return encodedAST_(ast.from, bound)
   }
   return ast
 }
+
+/**
+ * @since 1.0.0
+ */
+export const encodedAST = (ast: AST): AST => encodedAST_(ast, false)
+/**
+ * @since 1.0.0
+ */
+export const encodedBoundAST = (ast: AST): AST => encodedAST_(ast, true)
 
 const toJSONAnnotations = (annotations: Annotations): object => {
   const out: Record<string, unknown> = {}

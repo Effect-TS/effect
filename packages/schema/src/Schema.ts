@@ -298,6 +298,12 @@ export const encodedSchema = <A, I, R>(schema: Schema<A, I, R>): SchemaClass<I> 
 /**
  * @since 1.0.0
  */
+export const encodedBoundSchema = <A, I, R>(schema: Schema<A, I, R>): SchemaClass<I> =>
+  make(AST.encodedBoundAST(schema.ast))
+
+/**
+ * @since 1.0.0
+ */
 export const typeSchema = <A, I, R>(schema: Schema<A, I, R>): SchemaClass<A> => make(AST.typeAST(schema.ast))
 
 /* c8 ignore start */
