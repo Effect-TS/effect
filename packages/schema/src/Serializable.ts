@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.67.0
  *
  * Serializable represents an object that has self-contained Schema(s)
  */
@@ -12,13 +12,13 @@ import type * as ParseResult from "./ParseResult.js"
 import * as Schema from "./Schema.js"
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  * @category symbol
  */
 export const symbol: unique symbol = serializable_.symbol as any
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  * @category model
  */
 export interface Serializable<A, I, R> {
@@ -26,30 +26,30 @@ export interface Serializable<A, I, R> {
 }
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  * @category model
  */
 export declare namespace Serializable {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   export type Context<T> = T extends Serializable<infer _A, infer _I, infer R> ? R : never
 }
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  * @category accessor
  */
 export const selfSchema = <A, I, R>(self: Serializable<A, I, R>): Schema.Schema<A, I, R> => self[symbol]
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  * @category symbol
  */
 export const symbolResult: unique symbol = serializable_.symbolResult as any
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  * @category model
  */
 export interface WithResult<SuccessA, SuccessI, FailureA, FailureI, SuccessAndFailureR> {
@@ -60,18 +60,18 @@ export interface WithResult<SuccessA, SuccessI, FailureA, FailureI, SuccessAndFa
 }
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  * @category model
  */
 export declare namespace WithResult {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   export type Context<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer R> ? R : never
 }
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  * @category accessor
  */
 export const failureSchema = <A, I, E, EI, R>(
@@ -79,7 +79,7 @@ export const failureSchema = <A, I, E, EI, R>(
 ): Schema.Schema<E, EI, R> => self[symbolResult].Failure
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  * @category accessor
  */
 export const successSchema = <A, I, E, EI, R>(
@@ -92,7 +92,7 @@ const exitSchemaCache = globalValue(
 )
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  * @category accessor
  */
 export const exitSchema = <A, I, E, EI, R>(
@@ -111,7 +111,7 @@ export const exitSchema = <A, I, E, EI, R>(
 }
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  * @category model
  */
 export interface SerializableWithResult<
@@ -129,12 +129,12 @@ export interface SerializableWithResult<
 {}
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  * @category model
  */
 export declare namespace SerializableWithResult {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   export type Context<T> = T extends
     SerializableWithResult<infer _S, infer _SI, infer SR, infer _A, infer _AI, infer _E, infer _EI, infer RR> ? SR | RR
@@ -142,7 +142,7 @@ export declare namespace SerializableWithResult {
 }
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  * @category encoding
  */
 export const serialize = <A, I, R>(
@@ -150,7 +150,7 @@ export const serialize = <A, I, R>(
 ): Effect.Effect<I, ParseResult.ParseError, R> => Schema.encode(self[symbol])(self as A)
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  * @category decoding
  */
 export const deserialize: {
@@ -169,7 +169,7 @@ export const deserialize: {
 >(2, (self, value) => Schema.decodeUnknown(self[symbol])(value))
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  * @category encoding
  */
 export const serializeFailure: {
@@ -191,7 +191,7 @@ export const serializeFailure: {
 >(2, (self, value) => Schema.encode(self[symbolResult].Failure)(value))
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  * @category decoding
  */
 export const deserializeFailure: {
@@ -213,7 +213,7 @@ export const deserializeFailure: {
 >(2, (self, value) => Schema.decodeUnknown(self[symbolResult].Failure)(value))
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  * @category encoding
  */
 export const serializeSuccess: {
@@ -235,7 +235,7 @@ export const serializeSuccess: {
 >(2, (self, value) => Schema.encode(self[symbolResult].Success)(value))
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  * @category decoding
  */
 export const deserializeSuccess: {
@@ -259,7 +259,7 @@ export const deserializeSuccess: {
 >(2, (self, value) => Schema.decodeUnknown(self[symbolResult].Success)(value))
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  * @category encoding
  */
 export const serializeExit: {
@@ -278,7 +278,7 @@ export const serializeExit: {
 ): Effect.Effect<Schema.ExitEncoded<I, EI>, ParseResult.ParseError, R> => Schema.encode(exitSchema(self))(value))
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  * @category decoding
  */
 export const deserializeExit: {
