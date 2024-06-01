@@ -3439,6 +3439,113 @@ Schema.compose(
 )
 ```
 
+## Projections
+
+### typeSchema
+
+The `typeSchema` function allows you to extract the `Type` portion of a schema, creating a new schema that conforms to the properties defined in the original schema without considering the initial encoding or transformation processes.
+
+**Function Signature:**
+
+```ts
+export const typeSchema = <A, I, R>(schema: Schema<A, I, R>): Schema<A>
+```
+
+**Example Usage:**
+
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  foo: Schema.NumberFromString.pipe(Schema.greaterThanOrEqualTo(2))
+})
+
+// This creates a schema where 'foo' is strictly a number that must be greater than or equal to 2.
+const resultingTypeSchema = Schema.typeSchema(schema)
+
+// resultingTypeSchema is the same as:
+Schema.Struct({
+  foo: Schema.Number.pipe(Schema.greaterThanOrEqualTo(2))
+})
+```
+
+In this example:
+
+- **Original Schema**: The schema for `foo` is initially defined to accept a number from a string and enforce that it is greater than or equal to 2.
+- **Resulting Type Schema**: The `typeSchema` extracts only the type-related information from `foo`, simplifying it to just a number while still maintaining the constraint that it must be greater than or equal to 2.
+
+### encodedSchema
+
+The `encodedSchema` function allows you to extract the `Encoded` portion of a schema, creating a new schema that conforms to the properties defined in the original schema without retaining any refinements or transformations that were applied previously.
+
+**Function Signature:**
+
+```ts
+export const encodedSchema = <A, I, R>(schema: Schema<A, I, R>): Schema<I>
+```
+
+**Example Usage:**
+
+Attenzione che `encodedSchema` non preserva i refinements:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  foo: Schema.String.pipe(Schema.minLength(3))
+})
+
+// resultingEncodedSchema simplifies 'foo' to just a string, disregarding the minLength refinement.
+const resultingEncodedSchema = Schema.encodedSchema(schema)
+
+// resultingEncodedSchema is the same as:
+Schema.Struct({
+  foo: Schema.String
+})
+```
+
+In this example:
+
+- **Original Schema Definition**: The `foo` field in the schema is defined as a string with a minimum length of three characters.
+- **Resulting Encoded Schema**: The `encodedSchema` function simplifies the `foo` field to just a string type, effectively stripping away the `minLength` refinement.
+
+### encodedBoundSchema
+
+The `encodedBoundSchema` function is similar to `encodedSchema` but preserves the refinements up to the first transformation point in the
+original schema.
+
+**Function Signature:**
+
+```ts
+export const encodedBoundSchema = <A, I, R>(schema: Schema<A, I, R>): Schema<I>
+```
+
+The term "bound" in this context refers to the boundary up to which refinements are preserved when extracting the encoded form of a schema. It essentially marks the limit to which initial validations and structure are maintained before any transformations are applied.
+
+**Example Usage:**
+
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  foo: Schema.String.pipe(Schema.minLength(3), Schema.compose(Schema.Trim))
+})
+
+// The resultingEncodedBoundSchema preserves the minLength(3) refinement,
+// ensuring the string length condition is enforced but omits the Trim transformation.
+const resultingEncodedBoundSchema = Schema.encodedBoundSchema(schema)
+
+// resultingEncodedBoundSchema is the same as:
+Schema.Struct({
+  foo: Schema.String.pipe(Schema.minLength(3))
+})
+```
+
+In the provided example:
+
+- **Initial Schema**: The schema for `foo` includes a refinement to ensure strings have a minimum length of three characters and a transformation to trim the string.
+- **Resulting Schema**: `resultingEncodedBoundSchema` maintains the `minLength(3)` condition, ensuring that this validation persists. However, it excludes the trimming transformation, focusing solely on the length requirement without altering the string's formatting.
+
 # Declaring New Data Types
 
 Creating schemas for new data types is crucial to defining the expected structure of information in your application. This guide explores how to declare schemas for new data types. We'll cover two important concepts: declaring schemas for primitive data types and type constructors.
@@ -4942,58 +5049,39 @@ console.log(result) // => { _id: 'Either', _tag: 'Left', left: 'should be non em
 
 ## Classes
 
-When working with schemas, you have a choice beyond the `S.struct` constructor. You can leverage the power of classes through the `Class` utility, which comes with its own set of advantages tailored to common use cases.
-
-### The Benefits of Using Classes
+When working with schemas, you have a choice beyond the `S.Struct` constructor. You can leverage the power of classes through the `Class` utility, which comes with its own set of advantages tailored to common use cases:
 
 Classes offer several features that simplify the schema creation process:
 
 - **All-in-One Definition**: With classes, you can define both a schema and an opaque type simultaneously.
 - **Shared Functionality**: You can incorporate shared functionality using class methods or getters.
-- **Value Equality and Hashing**: Utilize the built-in capability for checking value equality and applying hashing (thanks to `Class` implementing `Data.Case`).
+- **Value Hashing and Equality**: Utilize the built-in capability for checking value equality and applying hashing (thanks to `Class` implementing [Data.Class](https://effect.website/docs/other/data-types/data#class)).
 
-Let's dive into an illustrative example to better understand how classes work:
+### Definition
+
+Per definire una `Class` devi fornire:
+
+To define a `Class` in `@effect/schema`, you need to provide:
+
+- The type of the class being created.
+- A unique identifier for the class.
+- The desired fields, or any schema that has an exposed `fields` property.
 
 ```ts
 import { Schema } from "@effect/schema"
 
-// Define your schema by providing the type to `Class` and the desired fields
+// Define your schema by providing the type, a unique identifier and the desired fields
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.Number,
   name: Schema.String.pipe(Schema.nonEmpty())
 }) {}
 ```
 
-### Validation and Instantiation
+In this setup, `Person` is a class where `id` is a number and `name` is a non-empty string. The constructor for the class creates instances with these specified properties.
 
-The class constructor serves as a validation and instantiation tool. It ensures that the provided properties meet the schema requirements:
+#### Classes Without Arguments
 
-```ts
-const tim = new Person({ id: 1, name: "Tim" })
-```
-
-Keep in mind that it throws an error for invalid properties...
-
-```ts
-new Person({ id: 1, name: "" })
-/* throws
-Error: Person (Constructor)
-└─ ["name"]
-   └─ a non empty string
-      └─ Predicate refinement failure
-         └─ Expected a non empty string, actual ""
-*/
-```
-
-...unless you explicitly disable validation:
-
-```ts
-new Person({ id: 1, name: "" }, true) // no error
-```
-
-### No Args
-
-If you don't want to have any arguments, you can use `{}`:
+If your schema does not require any fields, you can define a class with an empty object:
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -5003,30 +5091,9 @@ class NoArgs extends Schema.Class<NoArgs>("NoArgs")({}) {}
 const noargs = new NoArgs()
 ```
 
-### Custom Getters and Methods
+### Class Constructor as a Validator
 
-For more flexibility, you can also introduce custom getters and methods:
-
-```ts
-import { Schema } from "@effect/schema"
-
-class Person extends Schema.Class<Person>("Person")({
-  id: Schema.Number,
-  name: Schema.String.pipe(Schema.nonEmpty())
-}) {
-  get upperName() {
-    return this.name.toUpperCase()
-  }
-}
-
-const john = new Person({ id: 1, name: "John" })
-
-console.log(john.upperName) // "JOHN"
-```
-
-### Accessing Related Schemas
-
-The class constructor itself is a Schema, and can be assigned/provided anywhere a Schema is expected. There is also a `.fields` property, which can be used when the class prototype is not required.
+When you define a class using `Schema.Class`, the constructor automatically checks that the provided properties adhere to the schema's rules. Here's how you can define and instantiate a `Person` class:
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -5036,8 +5103,158 @@ class Person extends Schema.Class<Person>("Person")({
   name: Schema.String.pipe(Schema.nonEmpty())
 }) {}
 
-console.log(Schema.isSchema(Person)) // true
+const john = new Person({ id: 1, name: "John" })
 
+john.id
+john.name
+```
+
+This ensures that each property of the `Person` instance, like `id` and `name`, meets the conditions specified in the schema, such as `id` being a number and `name` being a non-empty string.
+
+If an instance is created with invalid properties, the constructor throws an error detailing what went wrong:
+
+```ts
+try {
+  new Person({ id: 1, name: "" }) // Attempting to instantiate with an invalid name
+} catch (error) {
+  console.error(error)
+}
+/*
+Error output:
+Error: Person (Constructor)
+└─ ["name"]
+   └─ a non empty string
+      └─ Predicate refinement failure
+         └─ Expected a non empty string, actual ""
+
+    ...stack...
+*/
+```
+
+This error message clearly states that the `name` field failed the non-empty string predicate, providing precise feedback on why the validation failed.
+
+There are scenarios where you might want to bypass validation during instantiation. Although not typically recommended, `@effect/schema` allows for this flexibility:
+
+```ts
+const john = new Person({ id: 1, name: "" }, true) // Bypasses validation and creates the instance without errors
+```
+
+### Hashing and Equality
+
+Thanks to the implementation of [`Data.Class`](https://effect.website/docs/other/data-types/data#class), instances of your classes automatically support the [`Equal`](https://effect.website/docs/other/trait/equal) trait, which allows for easy comparison:
+
+```ts
+import { Schema } from "@effect/schema"
+import { Equal } from "effect"
+
+class Person extends Schema.Class<Person>("Person")({
+  id: Schema.Number,
+  name: Schema.String.pipe(Schema.nonEmpty())
+}) {}
+
+const john1 = new Person({ id: 1, name: "John" })
+const john2 = new Person({ id: 1, name: "John" })
+
+console.log(Equal.equals(john1, john2)) // Output: true
+```
+
+However, be aware that the `Equal` trait checks for equality only at the first level. If, for instance, a field is an array, the returned instances will not be considered equal:
+
+```ts
+import { Schema } from "@effect/schema"
+import { Equal } from "effect"
+
+class Person extends Schema.Class<Person>("Person")({
+  id: Schema.Number,
+  name: Schema.String.pipe(Schema.nonEmpty()),
+  hobbies: Schema.Array(Schema.String)
+}) {}
+
+const john1 = new Person({
+  id: 1,
+  name: "John",
+  hobbies: ["reading", "coding"]
+})
+const john2 = new Person({
+  id: 1,
+  name: "John",
+  hobbies: ["reading", "coding"]
+})
+
+console.log(Equal.equals(john1, john2)) // Output: false
+```
+
+To ensure deep equality for arrays, use `Schema.Data` combined with `Data.array`:
+
+```ts
+import { Schema } from "@effect/schema"
+import { Data, Equal } from "effect"
+
+class Person extends Schema.Class<Person>("Person")({
+  id: Schema.Number,
+  name: Schema.String.pipe(Schema.nonEmpty()),
+  hobbies: Schema.Data(Schema.Array(Schema.String))
+}) {}
+
+const john1 = new Person({
+  id: 1,
+  name: "John",
+  hobbies: Data.array(["reading", "coding"])
+})
+const john2 = new Person({
+  id: 1,
+  name: "John",
+  hobbies: Data.array(["reading", "coding"])
+})
+
+console.log(Equal.equals(john1, john2)) // Output: true
+```
+
+### Custom Getters and Methods
+
+You have the flexibility to enhance schema classes with custom getters and methods.
+
+Let's look at how you can add a custom getter to a class:
+
+```ts
+import { Schema } from "@effect/schema"
+
+class Person extends Schema.Class<Person>("Person")({
+  id: Schema.Number,
+  name: Schema.String.pipe(Schema.nonEmpty())
+}) {
+  // Custom getter to return the name in uppercase
+  get upperName() {
+    return this.name.toUpperCase()
+  }
+}
+
+const john = new Person({ id: 1, name: "John" })
+
+console.log(john.upperName) // Output: "JOHN"
+```
+
+### Using Classes as Schemas
+
+When you define a class using `Schema.Class`, it not only creates a new class but also treats this class as a schema. This means the class can be utilized wherever a schema is expected.
+
+```ts
+import { Schema } from "@effect/schema"
+
+class Person extends Schema.Class<Person>("Person")({
+  id: Schema.Number,
+  name: Schema.String.pipe(Schema.nonEmpty())
+}) {}
+
+// Person can be used as a normal schema
+const Persons = Schema.Array(Person)
+```
+
+#### The `.fields` Property
+
+The class also includes a `.fields` static property, which outlines the fields defined during the class creation.
+
+```ts
 /*
 {
     readonly id: typeof Schema.Number;

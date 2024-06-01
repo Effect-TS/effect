@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.67.0
  */
 
 import * as Option from "effect/Option"
@@ -11,7 +11,7 @@ import type * as Schema from "./Schema.js"
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export interface JsonSchemaAnnotations {
   title?: string
@@ -22,7 +22,7 @@ export interface JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export interface JsonSchema7Any extends JsonSchemaAnnotations {
   $id: "/schemas/any"
@@ -30,7 +30,7 @@ export interface JsonSchema7Any extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export interface JsonSchema7Unknown extends JsonSchemaAnnotations {
   $id: "/schemas/unknown"
@@ -38,7 +38,7 @@ export interface JsonSchema7Unknown extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export interface JsonSchema7object extends JsonSchemaAnnotations {
   $id: "/schemas/object"
@@ -50,7 +50,7 @@ export interface JsonSchema7object extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export interface JsonSchema7empty extends JsonSchemaAnnotations {
   $id: "/schemas/{}"
@@ -62,7 +62,7 @@ export interface JsonSchema7empty extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export interface JsonSchema7Ref extends JsonSchemaAnnotations {
   $ref: string
@@ -70,7 +70,7 @@ export interface JsonSchema7Ref extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export interface JsonSchema7Const extends JsonSchemaAnnotations {
   const: AST.LiteralValue
@@ -78,7 +78,7 @@ export interface JsonSchema7Const extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export interface JsonSchema7String extends JsonSchemaAnnotations {
   type: "string"
@@ -89,7 +89,7 @@ export interface JsonSchema7String extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export interface JsonSchema7Numeric extends JsonSchemaAnnotations {
   minimum?: number
@@ -100,7 +100,7 @@ export interface JsonSchema7Numeric extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export interface JsonSchema7Number extends JsonSchema7Numeric {
   type: "number"
@@ -108,7 +108,7 @@ export interface JsonSchema7Number extends JsonSchema7Numeric {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export interface JsonSchema7Integer extends JsonSchema7Numeric {
   type: "integer"
@@ -116,7 +116,7 @@ export interface JsonSchema7Integer extends JsonSchema7Numeric {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export interface JsonSchema7Boolean extends JsonSchemaAnnotations {
   type: "boolean"
@@ -124,7 +124,7 @@ export interface JsonSchema7Boolean extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export interface JsonSchema7Array extends JsonSchemaAnnotations {
   type: "array"
@@ -136,7 +136,7 @@ export interface JsonSchema7Array extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export interface JsonSchema7OneOf extends JsonSchemaAnnotations {
   oneOf: Array<JsonSchema7>
@@ -144,7 +144,7 @@ export interface JsonSchema7OneOf extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export interface JsonSchema7Enum extends JsonSchemaAnnotations {
   enum: Array<AST.LiteralValue>
@@ -152,7 +152,7 @@ export interface JsonSchema7Enum extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export interface JsonSchema7Enums extends JsonSchemaAnnotations {
   $comment: "/schemas/enums"
@@ -164,7 +164,7 @@ export interface JsonSchema7Enums extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export interface JsonSchema7AnyOf extends JsonSchemaAnnotations {
   anyOf: Array<JsonSchema7>
@@ -172,7 +172,7 @@ export interface JsonSchema7AnyOf extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export interface JsonSchema7Object extends JsonSchemaAnnotations {
   type: "object"
@@ -184,7 +184,7 @@ export interface JsonSchema7Object extends JsonSchemaAnnotations {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type JsonSchema7 =
   | JsonSchema7Any
@@ -206,7 +206,7 @@ export type JsonSchema7 =
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type JsonSchema7Root = JsonSchema7 & {
   $schema?: string
@@ -215,7 +215,7 @@ export type JsonSchema7Root = JsonSchema7 & {
 
 /**
  * @category encoding
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root => {
   const $defs: Record<string, any> = {}

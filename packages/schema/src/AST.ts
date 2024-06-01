@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.67.0
  */
 
 import * as Arr from "effect/Array"
@@ -18,7 +18,7 @@ import type { ParseIssue } from "./ParseResult.js"
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type AST =
   | Declaration
@@ -52,31 +52,31 @@ export type AST =
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type BrandAnnotation = Arr.NonEmptyReadonlyArray<string | symbol>
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const BrandAnnotationId = Symbol.for("@effect/schema/annotation/Brand")
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type TypeAnnotation = symbol
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const TypeAnnotationId = Symbol.for("@effect/schema/annotation/Type")
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type MessageAnnotation = (
   issue: ParseIssue
@@ -87,115 +87,115 @@ export type MessageAnnotation = (
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const MessageAnnotationId = Symbol.for("@effect/schema/annotation/Message")
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type IdentifierAnnotation = string
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const IdentifierAnnotationId = Symbol.for("@effect/schema/annotation/Identifier")
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type TitleAnnotation = string
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const TitleAnnotationId = Symbol.for("@effect/schema/annotation/Title")
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type DescriptionAnnotation = string
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const DescriptionAnnotationId = Symbol.for("@effect/schema/annotation/Description")
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type ExamplesAnnotation<A> = Arr.NonEmptyReadonlyArray<A>
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const ExamplesAnnotationId = Symbol.for("@effect/schema/annotation/Examples")
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type DefaultAnnotation<A> = A
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const DefaultAnnotationId = Symbol.for("@effect/schema/annotation/Default")
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type JSONSchemaAnnotation = object
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const JSONSchemaAnnotationId = Symbol.for("@effect/schema/annotation/JSONSchema")
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type DocumentationAnnotation = string
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const DocumentationAnnotationId = Symbol.for("@effect/schema/annotation/Documentation")
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type ConcurrencyAnnotation = Concurrency | undefined
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const ConcurrencyAnnotationId = Symbol.for("@effect/schema/annotation/Concurrency")
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type BatchingAnnotation = boolean | "inherit" | undefined
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const BatchingAnnotationId = Symbol.for("@effect/schema/annotation/Batching")
 
@@ -204,13 +204,13 @@ export const SurrogateAnnotationId = Symbol.for("@effect/schema/annotation/Surro
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type ParseIssueTitleAnnotation = (issue: ParseIssue) => string | undefined
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const ParseIssueTitleAnnotationId = Symbol.for("@effect/schema/annotation/ParseIssueTitle")
 
@@ -230,7 +230,7 @@ export type SurrogateAnnotation = AST
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export interface Annotations {
   readonly [_: symbol]: unknown
@@ -238,7 +238,7 @@ export interface Annotations {
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export interface Annotated {
   readonly annotations: Annotations
@@ -246,7 +246,7 @@ export interface Annotated {
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const getAnnotation: {
   <A>(key: symbol): (annotated: Annotated) => Option.Option<A>
@@ -261,73 +261,73 @@ export const getAnnotation: {
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const getBrandAnnotation = getAnnotation<BrandAnnotation>(BrandAnnotationId)
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const getMessageAnnotation = getAnnotation<MessageAnnotation>(MessageAnnotationId)
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const getTitleAnnotation = getAnnotation<TitleAnnotation>(TitleAnnotationId)
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const getIdentifierAnnotation = getAnnotation<IdentifierAnnotation>(IdentifierAnnotationId)
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const getDescriptionAnnotation = getAnnotation<DescriptionAnnotation>(DescriptionAnnotationId)
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const getExamplesAnnotation = getAnnotation<ExamplesAnnotation<unknown>>(ExamplesAnnotationId)
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const getDefaultAnnotation = getAnnotation<DefaultAnnotation<unknown>>(DefaultAnnotationId)
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const getJSONSchemaAnnotation = getAnnotation<JSONSchemaAnnotation>(JSONSchemaAnnotationId)
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const getDocumentationAnnotation = getAnnotation<DocumentationAnnotation>(DocumentationAnnotationId)
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const getConcurrencyAnnotation = getAnnotation<ConcurrencyAnnotation>(ConcurrencyAnnotationId)
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const getBatchingAnnotation = getAnnotation<BatchingAnnotation>(BatchingAnnotationId)
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const getParseIssueTitleAnnotation = getAnnotation<ParseIssueTitleAnnotation>(ParseIssueTitleAnnotationId)
 
@@ -341,11 +341,11 @@ export const getJSONIdentifierAnnotation = getAnnotation<IdentifierAnnotation>(J
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class Declaration implements Annotated {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "Declaration"
   constructor(
@@ -359,13 +359,13 @@ export class Declaration implements Annotated {
     readonly annotations: Annotations = {}
   ) {}
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString(verbose: boolean = false) {
     return Option.getOrElse(getExpected(this, verbose), () => "<declaration schema>")
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -381,34 +381,34 @@ const createASTGuard = <T extends AST["_tag"]>(tag: T) => (ast: AST): ast is Ext
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isDeclaration: (ast: AST) => ast is Declaration = createASTGuard("Declaration")
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type LiteralValue = string | number | boolean | null | bigint
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class Literal implements Annotated {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "Literal"
   constructor(readonly literal: LiteralValue, readonly annotations: Annotations = {}) {}
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString(verbose: boolean = false) {
     return Option.getOrElse(getExpected(this, verbose), () => util_.formatUnknown(this.literal))
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -421,7 +421,7 @@ export class Literal implements Annotated {
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isLiteral: (ast: AST) => ast is Literal = createASTGuard("Literal")
 
@@ -432,29 +432,29 @@ const $null = new Literal(null, {
 export {
   /**
    * @category constructors
-   * @since 1.0.0
+   * @since 0.67.0
    */
   $null as null
 }
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class UniqueSymbol implements Annotated {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "UniqueSymbol"
   constructor(readonly symbol: symbol, readonly annotations: Annotations = {}) {}
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString(verbose: boolean = false) {
     return Option.getOrElse(getExpected(this, verbose), () => util_.formatUnknown(this.symbol))
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -467,28 +467,28 @@ export class UniqueSymbol implements Annotated {
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isUniqueSymbol: (ast: AST) => ast is UniqueSymbol = createASTGuard("UniqueSymbol")
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class UndefinedKeyword implements Annotated {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "UndefinedKeyword"
   constructor(readonly annotations: Annotations = {}) {}
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString(verbose: boolean = false) {
     return formatKeyword(this, verbose)
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -500,7 +500,7 @@ export class UndefinedKeyword implements Annotated {
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const undefinedKeyword: UndefinedKeyword = new UndefinedKeyword({
   [TitleAnnotationId]: "undefined"
@@ -508,28 +508,28 @@ export const undefinedKeyword: UndefinedKeyword = new UndefinedKeyword({
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isUndefinedKeyword: (ast: AST) => ast is UndefinedKeyword = createASTGuard("UndefinedKeyword")
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class VoidKeyword implements Annotated {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "VoidKeyword"
   constructor(readonly annotations: Annotations = {}) {}
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString(verbose: boolean = false) {
     return formatKeyword(this, verbose)
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -541,7 +541,7 @@ export class VoidKeyword implements Annotated {
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const voidKeyword: VoidKeyword = new VoidKeyword({
   [TitleAnnotationId]: "void"
@@ -549,28 +549,28 @@ export const voidKeyword: VoidKeyword = new VoidKeyword({
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isVoidKeyword: (ast: AST) => ast is VoidKeyword = createASTGuard("VoidKeyword")
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class NeverKeyword implements Annotated {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "NeverKeyword"
   constructor(readonly annotations: Annotations = {}) {}
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString(verbose: boolean = false) {
     return formatKeyword(this, verbose)
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -582,7 +582,7 @@ export class NeverKeyword implements Annotated {
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const neverKeyword: NeverKeyword = new NeverKeyword({
   [TitleAnnotationId]: "never"
@@ -590,28 +590,28 @@ export const neverKeyword: NeverKeyword = new NeverKeyword({
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isNeverKeyword: (ast: AST) => ast is NeverKeyword = createASTGuard("NeverKeyword")
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class UnknownKeyword implements Annotated {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "UnknownKeyword"
   constructor(readonly annotations: Annotations = {}) {}
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString(verbose: boolean = false) {
     return formatKeyword(this, verbose)
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -623,7 +623,7 @@ export class UnknownKeyword implements Annotated {
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const unknownKeyword: UnknownKeyword = new UnknownKeyword({
   [TitleAnnotationId]: "unknown"
@@ -631,28 +631,28 @@ export const unknownKeyword: UnknownKeyword = new UnknownKeyword({
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isUnknownKeyword: (ast: AST) => ast is UnknownKeyword = createASTGuard("UnknownKeyword")
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class AnyKeyword implements Annotated {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "AnyKeyword"
   constructor(readonly annotations: Annotations = {}) {}
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString(verbose: boolean = false) {
     return formatKeyword(this, verbose)
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -664,7 +664,7 @@ export class AnyKeyword implements Annotated {
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const anyKeyword: AnyKeyword = new AnyKeyword({
   [TitleAnnotationId]: "any"
@@ -672,28 +672,28 @@ export const anyKeyword: AnyKeyword = new AnyKeyword({
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isAnyKeyword: (ast: AST) => ast is AnyKeyword = createASTGuard("AnyKeyword")
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class StringKeyword implements Annotated {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "StringKeyword"
   constructor(readonly annotations: Annotations = {}) {}
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString(verbose: boolean = false) {
     return formatKeyword(this, verbose)
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -705,7 +705,7 @@ export class StringKeyword implements Annotated {
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const stringKeyword: StringKeyword = new StringKeyword({
   [TitleAnnotationId]: "string",
@@ -714,28 +714,28 @@ export const stringKeyword: StringKeyword = new StringKeyword({
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isStringKeyword: (ast: AST) => ast is StringKeyword = createASTGuard("StringKeyword")
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class NumberKeyword implements Annotated {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "NumberKeyword"
   constructor(readonly annotations: Annotations = {}) {}
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString(verbose: boolean = false) {
     return formatKeyword(this, verbose)
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -747,7 +747,7 @@ export class NumberKeyword implements Annotated {
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const numberKeyword: NumberKeyword = new NumberKeyword({
   [TitleAnnotationId]: "number",
@@ -756,28 +756,28 @@ export const numberKeyword: NumberKeyword = new NumberKeyword({
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isNumberKeyword: (ast: AST) => ast is NumberKeyword = createASTGuard("NumberKeyword")
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class BooleanKeyword implements Annotated {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "BooleanKeyword"
   constructor(readonly annotations: Annotations = {}) {}
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString(verbose: boolean = false) {
     return formatKeyword(this, verbose)
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -789,7 +789,7 @@ export class BooleanKeyword implements Annotated {
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const booleanKeyword: BooleanKeyword = new BooleanKeyword({
   [TitleAnnotationId]: "boolean",
@@ -798,28 +798,28 @@ export const booleanKeyword: BooleanKeyword = new BooleanKeyword({
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isBooleanKeyword: (ast: AST) => ast is BooleanKeyword = createASTGuard("BooleanKeyword")
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class BigIntKeyword implements Annotated {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "BigIntKeyword"
   constructor(readonly annotations: Annotations = {}) {}
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString(verbose: boolean = false) {
     return formatKeyword(this, verbose)
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -831,7 +831,7 @@ export class BigIntKeyword implements Annotated {
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const bigIntKeyword: BigIntKeyword = new BigIntKeyword({
   [TitleAnnotationId]: "bigint",
@@ -840,28 +840,28 @@ export const bigIntKeyword: BigIntKeyword = new BigIntKeyword({
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isBigIntKeyword: (ast: AST) => ast is BigIntKeyword = createASTGuard("BigIntKeyword")
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class SymbolKeyword implements Annotated {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "SymbolKeyword"
   constructor(readonly annotations: Annotations = {}) {}
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString(verbose: boolean = false) {
     return formatKeyword(this, verbose)
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -873,7 +873,7 @@ export class SymbolKeyword implements Annotated {
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const symbolKeyword: SymbolKeyword = new SymbolKeyword({
   [TitleAnnotationId]: "symbol",
@@ -882,28 +882,28 @@ export const symbolKeyword: SymbolKeyword = new SymbolKeyword({
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isSymbolKeyword: (ast: AST) => ast is SymbolKeyword = createASTGuard("SymbolKeyword")
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class ObjectKeyword implements Annotated {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "ObjectKeyword"
   constructor(readonly annotations: Annotations = {}) {}
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString(verbose: boolean = false) {
     return formatKeyword(this, verbose)
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -915,7 +915,7 @@ export class ObjectKeyword implements Annotated {
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const objectKeyword: ObjectKeyword = new ObjectKeyword({
   [IdentifierAnnotationId]: "object",
@@ -925,17 +925,17 @@ export const objectKeyword: ObjectKeyword = new ObjectKeyword({
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isObjectKeyword: (ast: AST) => ast is ObjectKeyword = createASTGuard("ObjectKeyword")
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class Enums implements Annotated {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "Enums"
   constructor(
@@ -943,7 +943,7 @@ export class Enums implements Annotated {
     readonly annotations: Annotations = {}
   ) {}
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString(verbose: boolean = false) {
     return Option.getOrElse(
@@ -952,7 +952,7 @@ export class Enums implements Annotated {
     )
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -965,18 +965,18 @@ export class Enums implements Annotated {
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isEnums: (ast: AST) => ast is Enums = createASTGuard("Enums")
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class TemplateLiteralSpan {
   constructor(readonly type: StringKeyword | NumberKeyword, readonly literal: string) {}
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString() {
     switch (this.type._tag) {
@@ -987,7 +987,7 @@ export class TemplateLiteralSpan {
     }
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -999,7 +999,7 @@ export class TemplateLiteralSpan {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class TemplateLiteral implements Annotated {
   static make = (
@@ -1012,7 +1012,7 @@ export class TemplateLiteral implements Annotated {
       new Literal(head)
 
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "TemplateLiteral"
   private constructor(
@@ -1021,13 +1021,13 @@ export class TemplateLiteral implements Annotated {
     readonly annotations: Annotations = {}
   ) {}
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString(verbose: boolean = false) {
     return Option.getOrElse(getExpected(this, verbose), () => formatTemplateLiteral(this))
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -1045,18 +1045,18 @@ const formatTemplateLiteral = (ast: TemplateLiteral): string =>
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isTemplateLiteral: (ast: AST) => ast is TemplateLiteral = createASTGuard("TemplateLiteral")
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class Element {
   constructor(readonly type: AST, readonly isOptional: boolean) {}
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -1065,7 +1065,7 @@ export class Element {
     }
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString() {
     return String(this.type) + (this.isOptional ? "?" : "")
@@ -1074,11 +1074,11 @@ export class Element {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class TupleType implements Annotated {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "TupleType"
   constructor(
@@ -1102,13 +1102,13 @@ export class TupleType implements Annotated {
     }
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString(verbose: boolean = false) {
     return Option.getOrElse(getExpected(this, verbose), () => formatTuple(this))
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -1150,13 +1150,13 @@ const formatTuple = (ast: TupleType): string => {
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isTupleType: (ast: AST) => ast is TupleType = createASTGuard("TupleType")
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class PropertySignature implements Annotated {
   constructor(
@@ -1167,7 +1167,7 @@ export class PropertySignature implements Annotated {
     readonly annotations: Annotations = {}
   ) {}
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -1181,12 +1181,12 @@ export class PropertySignature implements Annotated {
 }
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type Parameter = StringKeyword | SymbolKeyword | TemplateLiteral | Refinement<Parameter>
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isParameter = (ast: AST): ast is Parameter => {
   switch (ast._tag) {
@@ -1202,11 +1202,11 @@ export const isParameter = (ast: AST): ast is Parameter => {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class IndexSignature {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly parameter: Parameter
   constructor(
@@ -1221,7 +1221,7 @@ export class IndexSignature {
     }
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -1234,19 +1234,19 @@ export class IndexSignature {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class TypeLiteral implements Annotated {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "TypeLiteral"
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly propertySignatures: ReadonlyArray<PropertySignature>
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly indexSignatures: ReadonlyArray<IndexSignature>
   constructor(
@@ -1287,13 +1287,13 @@ export class TypeLiteral implements Annotated {
     this.indexSignatures = sortIndexSignatures(indexSignatures)
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString(verbose: boolean = false) {
     return Option.getOrElse(getExpected(this, verbose), () => formatTypeLiteral(this))
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -1329,12 +1329,12 @@ const formatTypeLiteral = (ast: TypeLiteral): string => {
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isTypeLiteral: (ast: AST) => ast is TypeLiteral = createASTGuard("TypeLiteral")
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type Members<A> = readonly [A, A, ...Array<A>]
 
@@ -1458,7 +1458,7 @@ export const unify = (candidates: ReadonlyArray<AST>): Array<AST> => {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class Union implements Annotated {
   static make = (candidates: ReadonlyArray<AST>, annotations?: Annotations): AST => {
@@ -1487,12 +1487,12 @@ export class Union implements Annotated {
     return isMembers(types) ? new Union(types, annotations) : types.length === 1 ? types[0] : neverKeyword
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "Union"
   private constructor(readonly types: Members<AST>, readonly annotations: Annotations = {}) {}
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString(verbose: boolean = false) {
     return Option.getOrElse(
@@ -1501,7 +1501,7 @@ export class Union implements Annotated {
     )
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -1520,7 +1520,7 @@ export const isMembers = <A>(as: ReadonlyArray<A>): as is readonly [A, A, ...Arr
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isUnion: (ast: AST) => ast is Union = createASTGuard("Union")
 
@@ -1531,18 +1531,18 @@ const toJSONMemoMap = globalValue(
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class Suspend implements Annotated {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "Suspend"
   constructor(readonly f: () => AST, readonly annotations: Annotations = {}) {
     this.f = util_.memoizeThunk(f)
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString(verbose: boolean = false) {
     return getExpected(this, verbose).pipe(
@@ -1556,7 +1556,7 @@ export class Suspend implements Annotated {
     )
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     const ast = this.f()
@@ -1577,17 +1577,17 @@ export class Suspend implements Annotated {
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isSuspend: (ast: AST) => ast is Suspend = createASTGuard("Suspend")
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class Refinement<From extends AST = AST> implements Annotated {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "Refinement"
   constructor(
@@ -1600,13 +1600,13 @@ export class Refinement<From extends AST = AST> implements Annotated {
     readonly annotations: Annotations = {}
   ) {}
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString(verbose: boolean = false) {
     return Option.getOrElse(getExpected(this, verbose), () => `{ ${this.from} | filter }`)
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -1619,13 +1619,13 @@ export class Refinement<From extends AST = AST> implements Annotated {
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isRefinement: (ast: AST) => ast is Refinement<AST> = createASTGuard("Refinement")
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export interface ParseOptions {
   /** default "first" */
@@ -1635,17 +1635,17 @@ export interface ParseOptions {
 }
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const defaultParseOption: ParseOptions = {}
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class Transformation implements Annotated {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "Transformation"
   constructor(
@@ -1655,7 +1655,7 @@ export class Transformation implements Annotated {
     readonly annotations: Annotations = {}
   ) {}
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString(verbose: boolean = false) {
     return Option.getOrElse(
@@ -1664,7 +1664,7 @@ export class Transformation implements Annotated {
     )
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON(): object {
     return {
@@ -1678,13 +1678,13 @@ export class Transformation implements Annotated {
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isTransformation: (ast: AST) => ast is Transformation = createASTGuard("Transformation")
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type TransformationKind =
   | FinalTransformation
@@ -1693,11 +1693,11 @@ export type TransformationKind =
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class FinalTransformation {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "FinalTransformation"
   constructor(
@@ -1712,7 +1712,7 @@ const createTransformationGuard =
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isFinalTransformation: (ast: TransformationKind) => ast is FinalTransformation = createTransformationGuard(
   "FinalTransformation"
@@ -1720,24 +1720,24 @@ export const isFinalTransformation: (ast: TransformationKind) => ast is FinalTra
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class ComposeTransformation {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "ComposeTransformation"
 }
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const composeTransformation: ComposeTransformation = new ComposeTransformation()
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isComposeTransformation: (ast: TransformationKind) => ast is ComposeTransformation =
   createTransformationGuard(
@@ -1756,7 +1756,7 @@ export const isComposeTransformation: (ast: TransformationKind) => ast is Compos
  * - `some(value)` you want to output the key/value pair
  *
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class PropertySignatureTransformation {
   constructor(
@@ -1772,11 +1772,11 @@ const isRenamingPropertySignatureTransformation = (t: PropertySignatureTransform
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class TypeLiteralTransformation {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "TypeLiteralTransformation"
   constructor(
@@ -1804,7 +1804,7 @@ export class TypeLiteralTransformation {
 
 /**
  * @category guards
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const isTypeLiteralTransformation: (ast: TransformationKind) => ast is TypeLiteralTransformation =
   createTransformationGuard("TypeLiteralTransformation")
@@ -1816,7 +1816,7 @@ export const isTypeLiteralTransformation: (ast: TransformationKind) => ast is Ty
 /**
  * Adds a group of annotations, potentially overwriting existing annotations.
  *
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const annotations = (ast: AST, annotations: Annotations): AST => {
   const d = Object.getOwnPropertyDescriptors(ast)
@@ -1827,7 +1827,7 @@ export const annotations = (ast: AST, annotations: Annotations): AST => {
 /**
  * Equivalent at runtime to the TypeScript type-level `keyof` operator.
  *
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const keyof = (ast: AST): AST => Union.unify(_keyof(ast))
 
@@ -1835,7 +1835,7 @@ const STRING_KEYWORD_PATTERN = ".*"
 const NUMBER_KEYWORD_PATTERN = "[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?"
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const getTemplateLiteralRegExp = (ast: TemplateLiteral): RegExp => {
   let pattern = `^${regexp.escape(ast.head)}`
@@ -1854,7 +1854,7 @@ export const getTemplateLiteralRegExp = (ast: TemplateLiteral): RegExp => {
 }
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const getPropertySignatures = (ast: AST): Array<PropertySignature> => {
   switch (ast._tag) {
@@ -2028,7 +2028,7 @@ export const record = (key: AST, value: AST): {
 /**
  * Equivalent at runtime to the built-in TypeScript utility type `Pick`.
  *
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral | Transformation => {
   if (isTransformation(ast)) {
@@ -2074,7 +2074,7 @@ export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral | 
 /**
  * Equivalent at runtime to the built-in TypeScript utility type `Omit`.
  *
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral | Transformation =>
   pick(ast, getPropertyKeys(ast).filter((name) => !keys.includes(name)))
@@ -2085,7 +2085,7 @@ export const orUndefined = (ast: AST): AST => Union.make([ast, undefinedKeyword]
 /**
  * Equivalent at runtime to the built-in TypeScript utility type `Partial`.
  *
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const partial = (ast: AST, options?: { readonly exact: true }): AST => {
   const exact = options?.exact === true
@@ -2130,7 +2130,7 @@ export const partial = (ast: AST, options?: { readonly exact: true }): AST => {
 /**
  * Equivalent at runtime to the built-in TypeScript utility type `Required`.
  *
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const required = (ast: AST): AST => {
   switch (ast._tag) {
@@ -2171,7 +2171,7 @@ export const required = (ast: AST): AST => {
  *
  * @param ast - The original AST to make properties mutable (shallowly).
  *
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const mutable = (ast: AST): AST => {
   switch (ast._tag) {
@@ -2217,19 +2217,19 @@ export const mutable = (ast: AST): AST => {
 // -------------------------------------------------------------------------------------
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type Compiler<A> = (ast: AST, path: ReadonlyArray<PropertyKey>) => A
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type Match<A> = {
   [K in AST["_tag"]]: (ast: Extract<AST, { _tag: K }>, compile: Compiler<A>, path: ReadonlyArray<PropertyKey>) => A
 }
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const getCompiler = <A>(match: Match<A>): Compiler<A> => {
   const compile = (ast: AST, path: ReadonlyArray<PropertyKey>): A => match[ast._tag](ast as any, compile, path)
@@ -2237,7 +2237,7 @@ export const getCompiler = <A>(match: Match<A>): Compiler<A> => {
 }
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const typeAST = (ast: AST): AST => {
   switch (ast._tag) {
@@ -2317,36 +2317,33 @@ function changeMap<A>(as: ReadonlyArray<A>, f: (a: A) => A): ReadonlyArray<A> {
   return changed ? out : as
 }
 
-/**
- * @since 1.0.0
- */
-export const encodedAST = (ast: AST): AST => {
+const encodedAST_ = (ast: AST, bound: boolean): AST => {
   switch (ast._tag) {
     case "Declaration": {
-      const typeParameters = changeMap(ast.typeParameters, encodedAST)
+      const typeParameters = changeMap(ast.typeParameters, (ast) => encodedAST_(ast, bound))
       return typeParameters === ast.typeParameters ?
         ast :
         new Declaration(typeParameters, ast.decodeUnknown, ast.encodeUnknown, ast.annotations)
     }
     case "TupleType": {
       const elements = changeMap(ast.elements, (e) => {
-        const type = encodedAST(e.type)
+        const type = encodedAST_(e.type, bound)
         return type === e.type ? e : new Element(type, e.isOptional)
       })
-      const rest = changeMap(ast.rest, encodedAST)
+      const rest = changeMap(ast.rest, (ast) => encodedAST_(ast, bound))
       return elements === ast.elements && rest === ast.rest ?
         ast :
         new TupleType(elements, rest, ast.isReadonly, createJSONIdentifierAnnotation(ast))
     }
     case "TypeLiteral": {
       const propertySignatures = changeMap(ast.propertySignatures, (ps) => {
-        const type = encodedAST(ps.type)
+        const type = encodedAST_(ps.type, bound)
         return type === ps.type
           ? ps
           : new PropertySignature(ps.name, type, ps.isOptional, ps.isReadonly)
       })
       const indexSignatures = changeMap(ast.indexSignatures, (is) => {
-        const type = encodedAST(is.type)
+        const type = encodedAST_(is.type, bound)
         return type === is.type ? is : new IndexSignature(is.parameter, type, is.isReadonly)
       })
       return propertySignatures === ast.propertySignatures && indexSignatures === ast.indexSignatures ?
@@ -2354,17 +2351,32 @@ export const encodedAST = (ast: AST): AST => {
         new TypeLiteral(propertySignatures, indexSignatures, createJSONIdentifierAnnotation(ast))
     }
     case "Union": {
-      const types = changeMap(ast.types, encodedAST)
+      const types = changeMap(ast.types, (ast) => encodedAST_(ast, bound))
       return types === ast.types ? ast : Union.make(types, createJSONIdentifierAnnotation(ast))
     }
     case "Suspend":
-      return new Suspend(() => encodedAST(ast.f()), createJSONIdentifierAnnotation(ast))
-    case "Refinement":
+      return new Suspend(() => encodedAST_(ast.f(), bound), createJSONIdentifierAnnotation(ast))
+    case "Refinement": {
+      const from = encodedAST_(ast.from, bound)
+      if (bound) {
+        return from === ast.from ? ast : from
+      }
+      return from
+    }
     case "Transformation":
-      return encodedAST(ast.from)
+      return encodedAST_(ast.from, bound)
   }
   return ast
 }
+
+/**
+ * @since 0.67.0
+ */
+export const encodedAST = (ast: AST): AST => encodedAST_(ast, false)
+/**
+ * @since 0.67.0
+ */
+export const encodedBoundAST = (ast: AST): AST => encodedAST_(ast, true)
 
 const toJSONAnnotations = (annotations: Annotations): object => {
   const out: Record<string, unknown> = {}
