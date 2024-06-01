@@ -119,6 +119,14 @@ describe("Data", () => {
     expect(Equal.equals(a, e)).toBe(false)
   })
 
+  it("date compares by value", () => {
+    const date = new Date()
+    const a = Data.struct({ date: new Date(date.toISOString()) })
+    const b = Data.struct({ date: new Date(date.toISOString()) })
+
+    expect(Equal.equals(a, b)).toBe(true)
+  })
+
   it("tagged class", () => {
     class Person extends Data.TaggedClass("Person")<{ name: string }> {}
     const a = new Person({ name: "Mike" })
