@@ -1,5 +1,5 @@
 import * as Sql from "@effect/sql"
-import * as SqliteDrizzle from "@effect/sql-drizzle/Sqlite"
+import * as SqliteDrizzle from "@effect/sql-drizzle/sqlite"
 import * as Sqlite from "@effect/sql-sqlite-node"
 import * as D from "drizzle-orm/sqlite-core"
 import { Config, Effect, Layer } from "effect"

@@ -38,7 +38,10 @@
     "coverage": "vitest --coverage"
   },
   "devDependencies": {
+    "@effect/sql-pg": "workspace:^",
+    "@effect/sql-sqlite-node": "workspace:^",
     "@effect/sql": "workspace:^",
+    "@testcontainers/postgresql": "^10.9.0",
     "drizzle-orm": "^0.30.10",
     "effect": "workspace:^"
   },
