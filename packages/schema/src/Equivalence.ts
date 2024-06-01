@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.67.0
  */
 
 import * as Arr from "effect/Array"
@@ -15,19 +15,19 @@ import type * as Schema from "./Schema.js"
 
 /**
  * @category hooks
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const EquivalenceHookId: unique symbol = Symbol.for("@effect/schema/EquivalenceHookId")
 
 /**
  * @category hooks
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type EquivalenceHookId = typeof EquivalenceHookId
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const equivalence =
   <A>(handler: (...args: ReadonlyArray<Equivalence.Equivalence<any>>) => Equivalence.Equivalence<A>) =>
@@ -35,7 +35,7 @@ export const equivalence =
 
 /**
  * @category Equivalence
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): Equivalence.Equivalence<A> => go(schema.ast, [])
 
