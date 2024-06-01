@@ -1,35 +1,31 @@
 /**
  * @since 1.0.0
  */
-import * as Client from "@effect/sql/Client"
+import type * as Client from "@effect/sql/Client"
+import type { SqlError } from "@effect/sql/Error"
+import type { QueryResultKind } from "drizzle-orm/mysql-core"
 import { MySqlDeleteBase, MySqlInsertBase, MySqlSelectBase, MySqlUpdateBase } from "drizzle-orm/mysql-core"
 import { drizzle } from "drizzle-orm/mysql2"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import { registerQueryBuilder } from "./internal/registry.js"
-import type { DrizzleDatabase } from "./internal/registry.types.js"
-
-export * from "./internal/drizzle-patch.types.js"
+import { patchQueryBuilder } from "./internal/patch-query-builders.js"
 
 export interface DrizzleMySqlDatabase
-  extends
-    DrizzleDatabase,
-    Omit<ReturnType<typeof drizzle>, "run" | "all" | "get" | "values" | "transaction" | "execute" | "query" | "_">
+  extends Omit<ReturnType<typeof drizzle>, "run" | "all" | "get" | "values" | "transaction" | "execute" | "query" | "_">
 {}
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect.Effect<DrizzleMySqlDatabase, never, Client.Client> = Effect.gen(function*() {
-  const client = yield* Client.Client
+export const make: Effect.Effect<DrizzleMySqlDatabase, never> = Effect.sync(() => {
   // instanciate the db without a client, since we are going to attach the client to the QueryBuilder
-  const db = drizzle({} as any) as unknown as DrizzleMySqlDatabase
-  registerQueryBuilder(db, client, MySqlSelectBase)
-  registerQueryBuilder(db, client, MySqlInsertBase)
-  registerQueryBuilder(db, client, MySqlUpdateBase)
-  registerQueryBuilder(db, client, MySqlDeleteBase)
+  const db = drizzle({} as any) as DrizzleMySqlDatabase
+  patchQueryBuilder(MySqlSelectBase)
+  patchQueryBuilder(MySqlInsertBase)
+  patchQueryBuilder(MySqlUpdateBase)
+  patchQueryBuilder(MySqlDeleteBase)
   return db
 })
 
@@ -47,3 +43,65 @@ export class MysqlDrizzle extends Context.Tag("@effect/sql-drizzle/Mysql")<
  * @category layers
  */
 export const layer: Layer.Layer<MysqlDrizzle, never, Client.Client> = Layer.effect(MysqlDrizzle, make)
+
+declare module "drizzle-orm/mysql-core" {
+  export interface MySqlSelectBase<
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    TTableName,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    TSelection,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    TSelectMode,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    TPreparedQueryHKT,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    TNullabilityMap,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    TDynamic,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    TExcludedMethods,
+    TResult,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    TSelectedFields
+  > extends Effect.Effect<TResult, SqlError> {
+  }
+
+  export interface MySqlInsertBase<
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    TTable,
+    TQueryResult,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    TPreparedQueryHKT,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    TDynamic,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    TExcludedMethods
+  > extends Effect.Effect<QueryResultKind<TQueryResult, never>, SqlError> {
+  }
+
+  export interface MySqlUpdateBase<
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    TTable,
+    TQueryResult,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    TPreparedQueryHKT,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    TDynamic,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    TExcludedMethods
+  > extends Effect.Effect<QueryResultKind<TQueryResult, never>, SqlError> {
+  }
+
+  export interface MySqlDeleteBase<
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    TTable,
+    TQueryResult,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    TPreparedQueryHKT,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    TDynamic,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    TExcludedMethods
+  > extends Effect.Effect<QueryResultKind<TQueryResult, never>, SqlError> {
+  }
+}

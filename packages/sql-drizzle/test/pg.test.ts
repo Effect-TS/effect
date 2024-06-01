@@ -6,9 +6,9 @@ import type { StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import { PostgreSqlContainer } from "@testcontainers/postgresql"
 import { gte } from "drizzle-orm"
 import * as D from "drizzle-orm/pg-core"
-import * as Effect from "effect/Effect"
-import type { Scope } from "effect/Scope"
-import * as Secret from "effect/Secret"
+import { Config, Effect, Layer } from "effect"
+import type { ConfigError } from "effect/ConfigError"
+import * as ConfigProvider from "effect/ConfigProvider"
 
 const users = D.pgTable("users", {
   id: D.serial("id").primaryKey(),
@@ -17,15 +17,27 @@ const users = D.pgTable("users", {
 
 describe("PgDrizzle", () => {
   let pgContainer: StartedPostgreSqlContainer
-  let makeClient: Effect.Effect<Pg.client.PgClient, never, Scope>
+  let Dependencies: Layer.Layer<
+    Sql.client.Client | PgDrizzle.PgDrizzle | Pg.client.PgClient,
+    ConfigError,
+    never
+  >
 
   beforeAll(async () => {
     pgContainer = await new PostgreSqlContainer("postgres:alpine").start()
-    makeClient = Effect.gen(function*(_) {
-      return yield* Pg.client.make({
-        url: Secret.fromString(pgContainer.getConnectionUri())
-      })
+    const pgLive = Pg.client.layer({
+      url: Config.secret("PG_URL")
     })
+    const config = Layer.setConfigProvider(ConfigProvider.fromMap(
+      new Map([
+        ["PG_URL", pgContainer.getConnectionUri()]
+      ])
+    ))
+
+    Dependencies = Layer.mergeAll(
+      pgLive.pipe(Layer.provide(config)),
+      PgDrizzle.layer
+    )
   }, 600000)
 
   afterAll(async () => {
@@ -34,10 +46,8 @@ describe("PgDrizzle", () => {
 
   it.scoped("query", () =>
     Effect.gen(function*(_) {
-      const sql = yield* makeClient
-      const db = yield* PgDrizzle.make.pipe(
-        Effect.provideService(Sql.client.Client, sql)
-      )
+      const sql = yield* Sql.client.Client
+      const db = yield* PgDrizzle.PgDrizzle
 
       yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT)`
 
@@ -49,5 +59,7 @@ describe("PgDrizzle", () => {
       assert.deepStrictEqual(updated, [{ id: 1, name: "Bob" }])
       const deleted = yield* db.delete(users).where(gte(users.id, 1)).returning()
       assert.deepStrictEqual(deleted, [{ id: 1, name: "Bob" }])
-    }))
+    }).pipe(
+      Effect.provide(Dependencies)
+    ))
 })

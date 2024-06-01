@@ -4,26 +4,25 @@ import * as Sqlite from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
 import { gte } from "drizzle-orm"
 import * as D from "drizzle-orm/sqlite-core"
-import { Effect } from "effect"
-
-const makeClient = Effect.gen(function*(_) {
-  return yield* Sqlite.client.make({
-    filename: ":memory:"
-  })
-})
+import { Config, Effect, Layer } from "effect"
 
 const users = D.sqliteTable("users", {
   id: D.integer("id").primaryKey(),
   name: D.text("name")
 })
 
+const SqlLive = Sqlite.client.layer({
+  filename: Config.succeed(":memory:")
+})
+const DrizzleLive = SqliteDrizzle.layer
+
+const DatabaseLive = Layer.mergeAll(SqlLive, DrizzleLive)
+
 describe("SqliteDrizzle", () => {
   it.scoped("query", () =>
     Effect.gen(function*(_) {
-      const sql = yield* makeClient
-      const db = yield* SqliteDrizzle.make.pipe(
-        Effect.provideService(Sql.client.Client, sql)
-      )
+      const sql = yield* Sql.client.Client
+      const db = yield* SqliteDrizzle.SqliteDrizzle
 
       yield* sql`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)`
 
@@ -35,5 +34,7 @@ describe("SqliteDrizzle", () => {
       assert.deepStrictEqual(updated, [{ id: 1, name: "Bob" }])
       const deleted = yield* db.delete(users).where(gte(users.id, 1)).returning()
       assert.deepStrictEqual(deleted, [{ id: 1, name: "Bob" }])
-    }))
+    }).pipe(
+      Effect.provide(DatabaseLive)
+    ))
 })
