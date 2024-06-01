@@ -150,7 +150,7 @@ export class RevertFlags {
 }
 
 /** @internal */
-class EffectPrimitive {
+export class EffectPrimitive {
   public effect_instruction_i0 = undefined
   public effect_instruction_i1 = undefined
   public effect_instruction_i2 = undefined

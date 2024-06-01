@@ -1075,39 +1075,31 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   }
 
   ["Micro"](op: Micro.Micro<any, any, never> & { _op: "Micro" }) {
-    return core.flatMap(
-      core.fiberRefGet(core.currentContext),
-      (context) =>
-        core.async<any, any>((resume) => {
-          const handle = Micro.runFork(Micro.provideContext(op, context))
-          handle.addObserver((result) => {
-            switch (result._tag) {
-              case "Right": {
-                resume(core.exitSucceed(result.right))
-                break
-              }
-              case "Left": {
-                switch (result.left._tag) {
-                  case "Aborted": {
-                    resume(core.exitFailCause(internalCause.interrupt(this.id())))
-                    break
-                  }
-                  case "Expected": {
-                    resume(core.fail(result.left.error))
-                    break
-                  }
-                  case "Unexpected": {
-                    resume(core.die(result.left.defect))
-                    break
-                  }
-                }
-                break
-              }
-            }
-          })
-          return handle.abort
-        })
-    )
+    const effect = new core.EffectPrimitive(OpCodes.OP_ASYNC) as any
+    let abort: Effect.Effect<any>
+    effect.effect_instruction_i0 = (resume: (_: Effect.Effect<unknown, unknown, unknown>) => void) => {
+      const context = this.getFiberRef(core.currentContext)
+      const handle = Micro.runFork(Micro.provideContext(op, context))
+      abort = handle.abort
+      handle.addObserver((result) => {
+        if (result._tag === "Right") {
+          return resume(core.exitSucceed(result.right))
+        }
+        switch (result.left._tag) {
+          case "Aborted": {
+            return resume(core.exitFailCause(internalCause.interrupt(FiberId.none)))
+          }
+          case "Expected": {
+            return resume(core.fail(result.left.error))
+          }
+          case "Unexpected": {
+            return resume(core.die(result.left.defect))
+          }
+        }
+      })
+    }
+    effect.effect_instruction_i1 = FiberId.none
+    return core.onInterrupt(effect, (_) => abort)
   }
 
   [OpCodes.OP_SYNC](op: core.Primitive & { _op: OpCodes.OP_SYNC }) {

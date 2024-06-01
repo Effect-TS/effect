@@ -3,19 +3,25 @@
  *
  * @since 3.3.0
  */
+import type * as Channel from "./Channel.js"
 import * as Context from "./Context.js"
 import * as Duration from "./Duration.js"
-import type { Effect } from "./Effect.js"
+import type { Effect, EffectTypeId } from "./Effect.js"
 import * as Effectable from "./Effectable.js"
 import * as Either from "./Either.js"
 import { constVoid, dual, identity, type LazyArg } from "./Function.js"
 import { globalValue } from "./GlobalValue.js"
+import type { Inspectable } from "./Inspectable.js"
+import { NodeInspectSymbol } from "./Inspectable.js"
+import { StructuralPrototype } from "./internal/effectable.js"
 import { SingleShotGen } from "./internal/singleShotGen.js"
 import * as Env from "./MicroEnv.js"
 import * as Option from "./Option.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import { isIterable, isTagged, type Predicate, type Refinement } from "./Predicate.js"
-import type { Concurrency, Covariant, NoInfer, NotFunction } from "./Types.js"
+import type * as Sink from "./Sink.js"
+import type * as Stream from "./Stream.js"
+import type { Concurrency, Covariant, Equals, NoInfer, NotFunction } from "./Types.js"
 import { YieldWrap, yieldWrapGet } from "./Utils.js"
 
 /**
@@ -49,11 +55,7 @@ export type runSymbol = typeof runSymbol
  * @category models
  */
 export interface Micro<out A, out E = never, out R = never> extends Effect<A, E, R> {
-  readonly [TypeId]: {
-    _A: Covariant<A>
-    _E: Covariant<E>
-    _R: Covariant<R>
-  }
+  readonly [TypeId]: Micro.Variance<A, E, R>
   readonly [runSymbol]: (env: Env.MicroEnv<any>, onResult: (result: Result<A, E>) => void) => void
   [Symbol.iterator](): MicroIterator<Micro<A, E, R>>
 }
@@ -62,6 +64,15 @@ export interface Micro<out A, out E = never, out R = never> extends Effect<A, E,
  * @since 3.3.0
  */
 export declare namespace Micro {
+  /**
+   * @since 3.3.0
+   */
+  export interface Variance<A, E, R> {
+    _A: Covariant<A>
+    _E: Covariant<E>
+    _R: Covariant<R>
+  }
+
   /**
    * @since 3.3.0
    */
@@ -2494,3 +2505,73 @@ export const withConcurrency: {
   <A, E, R>(self: Micro<A, E, R>, concurrency: "unbounded" | number): Micro<A, E, R> =>
     locally(self, Env.currentConcurrency, concurrency)
 )
+
+// ----------------------------------------------------------------------------
+// Errors
+// ----------------------------------------------------------------------------
+
+interface YieldableError extends Pipeable, Inspectable, Readonly<Error> {
+  readonly [EffectTypeId]: Effect.VarianceStruct<never, this, never>
+  readonly [Stream.StreamTypeId]: Effect.VarianceStruct<never, this, never>
+  readonly [Sink.SinkTypeId]: Sink.Sink.VarianceStruct<never, unknown, never, this, never>
+  readonly [Channel.ChannelTypeId]: Channel.Channel.VarianceStruct<never, unknown, this, unknown, never, unknown, never>
+  readonly [TypeId]: Micro.Variance<never, this, never>
+  readonly [runSymbol]: (env: Env.MicroEnv<any>, onResult: (result: Result<never, this>) => void) => void
+  [Symbol.iterator](): MicroIterator<Micro<never, this, never>>
+}
+
+const YieldableError: new(message?: string) => YieldableError = (function() {
+  class YieldableError extends globalThis.Error {
+    [runSymbol](_env: any, onResult: any) {
+      onResult(ResultFail(this))
+    }
+    toString() {
+      return this.message ? `${this.name}: ${this.message}` : this.name
+    }
+    toJSON() {
+      return { ...this }
+    }
+    [NodeInspectSymbol](): string {
+      const stack = this.stack
+      if (stack) {
+        return `${this.toString()}\n${stack.split("\n").slice(1).join("\n")}`
+      }
+      return this.toString()
+    }
+  }
+  Object.assign(YieldableError.prototype, MicroProto, StructuralPrototype)
+  return YieldableError as any
+})()
+
+/**
+ * @since 3.3.0
+ * @category errors
+ */
+export const Error: new<A extends Record<string, any> = {}>(
+  args: Equals<A, {}> extends true ? void
+    : { readonly [P in keyof A]: A[P] }
+) => YieldableError & Readonly<A> = (function() {
+  return class extends YieldableError {
+    constructor(args: any) {
+      super()
+      if (args) {
+        Object.assign(this, args)
+      }
+    }
+  } as any
+})()
+
+/**
+ * @since 3.3.0
+ * @category errors
+ */
+export const TaggedError = <Tag extends string>(tag: Tag): new<A extends Record<string, any> = {}>(
+  args: Equals<A, {}> extends true ? void
+    : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }
+) => YieldableError & { readonly _tag: Tag } & Readonly<A> => {
+  class Base extends Error<{}> {
+    readonly _tag = tag
+  }
+  ;(Base.prototype as any).name = tag
+  return Base as any
+}

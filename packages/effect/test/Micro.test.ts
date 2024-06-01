@@ -1,4 +1,4 @@
-import { Cause, Context, Duration, Effect, Either, Micro, Option, pipe } from "effect"
+import { Cause, Context, Duration, Effect, Either, Exit, Fiber, Micro, Option, pipe } from "effect"
 import { assert, describe, it } from "effect/test/utils/extend"
 
 class ATag extends Context.Tag("ATag")<ATag, "A">() {}
@@ -338,6 +338,17 @@ describe.sequential("Micro", () => {
         )
         assert.deepStrictEqual(result, "A")
       }).pipe(Effect.provideService(ATag, "A")))
+
+    it.effect("interruption", () =>
+      Effect.gen(function*(_) {
+        const fiber = yield* Micro.never.pipe(
+          Effect.fork
+        )
+        yield* Effect.yieldNow()
+        yield* Fiber.interrupt(fiber)
+        const exit = yield* fiber.await
+        assert.isTrue(Exit.isInterrupted(exit))
+      }))
   })
 
   describe("repeat", () => {
@@ -431,6 +442,48 @@ describe.sequential("Micro", () => {
       Effect.gen(function*($) {
         const result = yield* $(Effect.void, Effect.timeout(Duration.seconds(20)), Effect.uninterruptible)
         assert.deepStrictEqual(result, void 0)
+      }))
+  })
+
+  describe("Error", () => {
+    class TestError extends Micro.Error {}
+
+    it.effect("is yieldable", () =>
+      Micro.gen(function*() {
+        const error = yield* new TestError().pipe(Micro.flip)
+        assert.deepStrictEqual(error, new TestError())
+      }))
+
+    it.effect("is a valid Effect", () =>
+      Effect.gen(function*() {
+        const error = yield* new TestError().pipe(Effect.flip)
+        assert.deepStrictEqual(error, new TestError())
+      }))
+  })
+
+  describe("TaggedError", () => {
+    class TestError extends Micro.TaggedError("TestError") {}
+
+    it.effect("is yieldable", () =>
+      Micro.gen(function*() {
+        const error = yield* new TestError().pipe(Micro.flip)
+        assert.deepStrictEqual(error, new TestError())
+        assert.include(error.stack, "Micro.test.ts:469")
+        console.log(error.stack)
+      }))
+
+    it.effect("is a valid Effect", () =>
+      Effect.gen(function*() {
+        const error = yield* new TestError().pipe(Effect.flip)
+        assert.deepStrictEqual(error, new TestError())
+      }))
+
+    it.effect("has a _tag", () =>
+      Micro.gen(function*() {
+        const result = yield* new TestError().pipe(
+          Micro.catchTag("TestError", (_) => Micro.succeed(true))
+        )
+        assert.strictEqual(result, true)
       }))
   })
 })
