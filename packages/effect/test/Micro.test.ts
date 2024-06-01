@@ -265,6 +265,7 @@ describe.sequential("Micro", () => {
               release = true
             })
         ).pipe(Micro.scoped, Micro.fork)
+        yield* Micro.yieldNow
         handle.unsafeAbort()
         yield* handle.await
         assert.strictEqual(release, true)
@@ -468,8 +469,7 @@ describe.sequential("Micro", () => {
       Micro.gen(function*() {
         const error = yield* new TestError().pipe(Micro.flip)
         assert.deepStrictEqual(error, new TestError())
-        assert.include(error.stack, "Micro.test.ts:469")
-        console.log(error.stack)
+        assert.include(error.stack, "Micro.test.ts:470")
       }))
 
     it.effect("is a valid Effect", () =>

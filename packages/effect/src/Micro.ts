@@ -2543,12 +2543,12 @@ export const fork = <A, E, R>(self: Micro<A, E, R>): Micro<Handle<A, E>, never, 
       map[currentAbortSignal.key] = handle._controller.signal
       return map
     })
-    Promise.resolve().then(() => {
+    yieldAdd(() => {
       self[runSymbol](nextEnv, (result) => {
         handle.emit(result)
       })
-      onResult(Either.right(handle))
     })
+    onResult(Either.right(handle))
   })
 
 /**
@@ -2564,12 +2564,12 @@ export const forkDaemon = <A, E, R>(self: Micro<A, E, R>): Micro<Handle<A, E>, n
       map[currentAbortSignal.key] = controller.signal
       return map
     })
-    Promise.resolve().then(() => {
+    yieldAdd(() => {
       self[runSymbol](nextEnv, (result) => {
         handle.emit(result)
       })
-      onResult(Either.right(handle))
     })
+    onResult(Either.right(handle))
   })
 
 // ----------------------------------------------------------------------------
