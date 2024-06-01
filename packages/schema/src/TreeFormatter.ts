@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.67.0
  */
 
 import type * as Cause from "effect/Cause"
@@ -24,26 +24,26 @@ const make = <A>(value: A, forest: Forest<A> = []): Tree<A> => ({
 
 /**
  * @category formatting
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const formatIssue = (issue: ParseResult.ParseIssue): Effect.Effect<string> =>
   Effect.map(go(issue), (tree) => drawTree(tree))
 
 /**
  * @category formatting
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const formatIssueSync = (issue: ParseResult.ParseIssue): string => Effect.runSync(formatIssue(issue))
 
 /**
  * @category formatting
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const formatError = (error: ParseResult.ParseError): Effect.Effect<string> => formatIssue(error.error)
 
 /**
  * @category formatting
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const formatErrorSync = (error: ParseResult.ParseError): string => formatIssueSync(error.error)
 

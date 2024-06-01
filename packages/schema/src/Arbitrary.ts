@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.67.0
  */
 
 import * as Arr from "effect/Array"
@@ -14,7 +14,7 @@ import type * as Schema from "./Schema.js"
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export interface LazyArbitrary<A> {
   (fc: typeof FastCheck): FastCheck.Arbitrary<A>
@@ -22,19 +22,19 @@ export interface LazyArbitrary<A> {
 
 /**
  * @category hooks
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const ArbitraryHookId: unique symbol = Symbol.for("@effect/schema/ArbitraryHookId")
 
 /**
  * @category hooks
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type ArbitraryHookId = typeof ArbitraryHookId
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const arbitrary =
   <A>(handler: (...args: ReadonlyArray<LazyArbitrary<any>>) => LazyArbitrary<A>) =>
@@ -44,7 +44,7 @@ export const arbitrary =
  * Returns a LazyArbitrary for the `A` type of the provided schema.
  *
  * @category arbitrary
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const makeLazy = <A, I, R>(schema: Schema.Schema<A, I, R>): LazyArbitrary<A> => go(schema.ast, {}, [])
 
@@ -52,7 +52,7 @@ export const makeLazy = <A, I, R>(schema: Schema.Schema<A, I, R>): LazyArbitrary
  * Returns a fast-check Arbitrary for the `A` type of the provided schema.
  *
  * @category arbitrary
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): FastCheck.Arbitrary<A> => makeLazy(schema)(FastCheck)
 

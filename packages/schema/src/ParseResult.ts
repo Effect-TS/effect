@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.67.0
  */
 
 import * as Arr from "effect/Array"
@@ -22,7 +22,7 @@ import * as TreeFormatter from "./TreeFormatter.js"
  * `ParseIssue` is a type that represents the different types of errors that can occur when decoding/encoding a value.
  *
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type ParseIssue =
   | Declaration
@@ -38,11 +38,11 @@ export type ParseIssue =
  * Error that occurs when a declaration has an error.
  *
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class Declaration {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "Declaration"
   constructor(readonly ast: AST.Declaration, readonly actual: unknown, readonly error: ParseIssue) {}
@@ -52,11 +52,11 @@ export class Declaration {
  * Error that occurs when a refinement has an error.
  *
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class Refinement {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "Refinement"
   constructor(
@@ -71,11 +71,11 @@ export class Refinement {
  * Error that occurs when an array or tuple has an error.
  *
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class TupleType {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "TupleType"
   constructor(
@@ -90,11 +90,11 @@ export class TupleType {
  * The `Index` error indicates that there was an error at a specific index in an array or tuple.
  *
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class Index {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "Index"
   constructor(readonly index: number, readonly error: ParseIssue | Missing | Unexpected) {}
@@ -104,11 +104,11 @@ export class Index {
  * Error that occurs when a type literal or record has an error.
  *
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class TypeLiteral {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "TypeLiteral"
   constructor(
@@ -123,11 +123,11 @@ export class TypeLiteral {
  * The `Key` variant of the `ParseIssue` type represents an error that occurs when a key in a type literal or record is invalid.
  *
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class Key {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "Key"
   constructor(readonly key: PropertyKey, readonly error: ParseIssue | Missing | Unexpected) {}
@@ -137,11 +137,11 @@ export class Key {
  * Error that occurs when an unexpected key or index is present.
  *
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class Unexpected {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "Unexpected"
   constructor(readonly ast: AST.AST) {}
@@ -151,11 +151,11 @@ export class Unexpected {
  * Error that occurs when a transformation has an error.
  *
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class Transformation {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "Transformation"
   constructor(
@@ -171,15 +171,15 @@ export class Transformation {
  * The `ast` field specifies the expected type, and the `actual` field contains the value that caused the error.
  *
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class Type {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "Type"
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly message: Option.Option<string>
   constructor(readonly ast: AST.AST, readonly actual: unknown, message?: string) {
@@ -191,15 +191,15 @@ export class Type {
  * The `Forbidden` variant of the `ParseIssue` type represents a forbidden operation, such as when encountering an Effect that is not allowed to execute (e.g., using `runSync`).
  *
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class Forbidden {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "Forbidden"
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly message: Option.Option<string>
   constructor(readonly ast: AST.AST, readonly actual: unknown, message?: string) {
@@ -211,18 +211,18 @@ export class Forbidden {
  * Error that occurs when a required key or index is missing.
  *
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class Missing {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "Missing"
 }
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const missing: Missing = new Missing()
 
@@ -230,11 +230,11 @@ export const missing: Missing = new Missing()
  * Error that occurs when a member in a union has an error.
  *
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class Member {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "Member"
   constructor(readonly ast: AST.AST, readonly error: ParseIssue) {}
@@ -244,11 +244,11 @@ export class Member {
  * Error that occurs when a union has an error.
  *
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class Union {
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   readonly _tag = "Union"
   constructor(
@@ -259,20 +259,20 @@ export class Union {
 }
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  */
 export class ParseError extends TaggedError("ParseError")<{ readonly error: ParseIssue }> {
   get message() {
     return this.toString()
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toString() {
     return TreeFormatter.formatIssueSync(this.error)
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   toJSON() {
     return {
@@ -281,7 +281,7 @@ export class ParseError extends TaggedError("ParseError")<{ readonly error: Pars
     }
   }
   /**
-   * @since 1.0.0
+   * @since 0.67.0
    */
   [Inspectable.NodeInspectSymbol]() {
     return this.toJSON()
@@ -290,19 +290,19 @@ export class ParseError extends TaggedError("ParseError")<{ readonly error: Pars
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const parseError = (issue: ParseIssue): ParseError => new ParseError({ error: issue })
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const succeed: <A>(a: A) => Either.Either<A, ParseIssue> = Either.right
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const fail: (issue: ParseIssue) => Either.Either<never, ParseIssue> = Either.left
 
@@ -314,14 +314,14 @@ const _try: <A>(options: {
 export {
   /**
    * @category constructors
-   * @since 1.0.0
+   * @since 0.67.0
    */
   _try as try
 }
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const fromOption: {
   (onNone: () => ParseIssue): <A>(self: Option.Option<A>) => Either.Either<A, ParseIssue>
@@ -330,7 +330,7 @@ export const fromOption: {
 
 /**
  * @category optimisation
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const flatMap: {
   <A, B, E1, R1>(
@@ -356,7 +356,7 @@ export const flatMap: {
 
 /**
  * @category optimisation
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const map: {
   <A, B>(f: (a: A) => B): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<B, E, R>
@@ -374,7 +374,7 @@ export const map: {
 
 /**
  * @category optimisation
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const mapError: {
   <E, E2>(f: (e: E) => E2): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E2, R>
@@ -392,7 +392,7 @@ export const mapError: {
 
 /**
  * @category optimisation
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const eitherOrUndefined = <A, E, R>(
   self: Effect.Effect<A, E, R>
@@ -405,7 +405,7 @@ export const eitherOrUndefined = <A, E, R>(
 
 /**
  * @category optimisation
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const mapBoth: {
   <E, E2, A, A2>(
@@ -431,7 +431,7 @@ export const mapBoth: {
 
 /**
  * @category optimisation
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const orElse: {
   <E, A2, E2, R2>(
@@ -456,12 +456,12 @@ export const orElse: {
 })
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type DecodeUnknown<Out, R> = (u: unknown, options?: AST.ParseOptions) => Effect.Effect<Out, ParseIssue, R>
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type DeclarationDecodeUnknown<Out, R> = (
   u: unknown,
@@ -515,7 +515,7 @@ const getEffect = <R>(ast: AST.AST, isDecoding: boolean, options?: AST.ParseOpti
 
 /**
  * @category decoding
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const decodeUnknownSync = <A, I>(
   schema: Schema.Schema<A, I, never>,
@@ -524,7 +524,7 @@ export const decodeUnknownSync = <A, I>(
 
 /**
  * @category decoding
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const decodeUnknownOption = <A, I>(
   schema: Schema.Schema<A, I, never>,
@@ -533,7 +533,7 @@ export const decodeUnknownOption = <A, I>(
 
 /**
  * @category decoding
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const decodeUnknownEither = <A, I>(
   schema: Schema.Schema<A, I, never>,
@@ -543,7 +543,7 @@ export const decodeUnknownEither = <A, I>(
 
 /**
  * @category decoding
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const decodeUnknownPromise = <A, I>(
   schema: Schema.Schema<A, I, never>,
@@ -555,7 +555,7 @@ export const decodeUnknownPromise = <A, I>(
 
 /**
  * @category decoding
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const decodeUnknown = <A, I, R>(
   schema: Schema.Schema<A, I, R>,
@@ -565,7 +565,7 @@ export const decodeUnknown = <A, I, R>(
 
 /**
  * @category encoding
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const encodeUnknownSync = <A, I>(
   schema: Schema.Schema<A, I, never>,
@@ -574,7 +574,7 @@ export const encodeUnknownSync = <A, I>(
 
 /**
  * @category encoding
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const encodeUnknownOption = <A, I>(
   schema: Schema.Schema<A, I, never>,
@@ -583,7 +583,7 @@ export const encodeUnknownOption = <A, I>(
 
 /**
  * @category encoding
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const encodeUnknownEither = <A, I>(
   schema: Schema.Schema<A, I, never>,
@@ -593,7 +593,7 @@ export const encodeUnknownEither = <A, I>(
 
 /**
  * @category encoding
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const encodeUnknownPromise = <A, I>(
   schema: Schema.Schema<A, I, never>,
@@ -605,7 +605,7 @@ export const encodeUnknownPromise = <A, I>(
 
 /**
  * @category encoding
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const encodeUnknown = <A, I, R>(
   schema: Schema.Schema<A, I, R>,
@@ -615,7 +615,7 @@ export const encodeUnknown = <A, I, R>(
 
 /**
  * @category decoding
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const decodeSync: <A, I>(
   schema: Schema.Schema<A, I, never>,
@@ -624,7 +624,7 @@ export const decodeSync: <A, I>(
 
 /**
  * @category decoding
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const decodeOption: <A, I>(
   schema: Schema.Schema<A, I, never>,
@@ -633,7 +633,7 @@ export const decodeOption: <A, I>(
 
 /**
  * @category decoding
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const decodeEither: <A, I>(
   schema: Schema.Schema<A, I, never>,
@@ -642,7 +642,7 @@ export const decodeEither: <A, I>(
 
 /**
  * @category decoding
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const decodePromise: <A, I>(
   schema: Schema.Schema<A, I, never>,
@@ -651,7 +651,7 @@ export const decodePromise: <A, I>(
 
 /**
  * @category decoding
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const decode: <A, I, R>(
   schema: Schema.Schema<A, I, R>,
@@ -660,7 +660,7 @@ export const decode: <A, I, R>(
 
 /**
  * @category validation
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const validateSync = <A, I, R>(
   schema: Schema.Schema<A, I, R>,
@@ -669,7 +669,7 @@ export const validateSync = <A, I, R>(
 
 /**
  * @category validation
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const validateOption = <A, I, R>(
   schema: Schema.Schema<A, I, R>,
@@ -679,7 +679,7 @@ export const validateOption = <A, I, R>(
 
 /**
  * @category validation
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const validateEither = <A, I, R>(
   schema: Schema.Schema<A, I, R>,
@@ -689,7 +689,7 @@ export const validateEither = <A, I, R>(
 
 /**
  * @category validation
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const validatePromise = <A, I>(
   schema: Schema.Schema<A, I, never>,
@@ -701,7 +701,7 @@ export const validatePromise = <A, I>(
 
 /**
  * @category validation
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const validate = <A, I, R>(
   schema: Schema.Schema<A, I, R>,
@@ -711,7 +711,7 @@ export const validate = <A, I, R>(
 
 /**
  * @category validation
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const is = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: AST.ParseOptions) => {
   const parser = goMemo(AST.typeAST(schema.ast), true)
@@ -721,7 +721,7 @@ export const is = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: AST.ParseO
 
 /**
  * @category validation
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const asserts = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: AST.ParseOptions) => {
   const parser = goMemo(AST.typeAST(schema.ast), true)
@@ -738,7 +738,7 @@ export const asserts = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: AST.P
 
 /**
  * @category encoding
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const encodeSync: <A, I>(
   schema: Schema.Schema<A, I, never>,
@@ -747,7 +747,7 @@ export const encodeSync: <A, I>(
 
 /**
  * @category encoding
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const encodeOption: <A, I>(
   schema: Schema.Schema<A, I, never>,
@@ -756,7 +756,7 @@ export const encodeOption: <A, I>(
 
 /**
  * @category encoding
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const encodeEither: <A, I>(
   schema: Schema.Schema<A, I, never>,
@@ -765,7 +765,7 @@ export const encodeEither: <A, I>(
 
 /**
  * @category encoding
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const encodePromise: <A, I>(
   schema: Schema.Schema<A, I, never>,
@@ -774,7 +774,7 @@ export const encodePromise: <A, I>(
 
 /**
  * @category encoding
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const encode: <A, I, R>(
   schema: Schema.Schema<A, I, R>,

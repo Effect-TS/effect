@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.67.0
  */
 import * as Arr from "effect/Array"
 import * as Option from "effect/Option"
@@ -11,7 +11,7 @@ import type * as Schema from "./Schema.js"
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 0.67.0
  */
 export interface Pretty<To> {
   (a: To): string
@@ -19,19 +19,19 @@ export interface Pretty<To> {
 
 /**
  * @category hooks
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const PrettyHookId: unique symbol = Symbol.for("@effect/schema/PrettyHookId")
 
 /**
  * @category hooks
- * @since 1.0.0
+ * @since 0.67.0
  */
 export type PrettyHookId = typeof PrettyHookId
 
 /**
  * @category annotations
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const pretty =
   <A>(handler: (...args: ReadonlyArray<Pretty<any>>) => Pretty<A>) =>
@@ -39,7 +39,7 @@ export const pretty =
 
 /**
  * @category prettify
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): (a: A) => string => compile(schema.ast, [])
 
@@ -63,7 +63,7 @@ const getPrettyErrorMessage = (message: string, path: ReadonlyArray<PropertyKey>
   errors_.getErrorMessageWithPath(`cannot build a Pretty for ${message}`, path)
 
 /**
- * @since 1.0.0
+ * @since 0.67.0
  */
 export const match: AST.Match<Pretty<any>> = {
   "Declaration": (ast, go, path) => {
