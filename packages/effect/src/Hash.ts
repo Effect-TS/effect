@@ -57,8 +57,9 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
     case "object": {
       if (self === null) {
         return string("null")
-      }
-      if (isHash(self)) {
+      } else if (self instanceof Date) {
+        return hash(self.toISOString())
+      } else if (isHash(self)) {
         return self[symbol]()
       } else {
         return random(self)
