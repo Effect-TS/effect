@@ -10,6 +10,8 @@ import * as Layer from "effect/Layer"
 import { registerQueryBuilder } from "./internal/registry.js"
 import type { DrizzleDatabase } from "./internal/registry.types.js"
 
+export * from "./internal/drizzle-patch.types.js"
+
 export interface DrizzleMySqlDatabase
   extends
     DrizzleDatabase,
