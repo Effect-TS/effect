@@ -4942,58 +4942,39 @@ console.log(result) // => { _id: 'Either', _tag: 'Left', left: 'should be non em
 
 ## Classes
 
-When working with schemas, you have a choice beyond the `S.struct` constructor. You can leverage the power of classes through the `Class` utility, which comes with its own set of advantages tailored to common use cases.
-
-### The Benefits of Using Classes
+When working with schemas, you have a choice beyond the `S.Struct` constructor. You can leverage the power of classes through the `Class` utility, which comes with its own set of advantages tailored to common use cases:
 
 Classes offer several features that simplify the schema creation process:
 
 - **All-in-One Definition**: With classes, you can define both a schema and an opaque type simultaneously.
 - **Shared Functionality**: You can incorporate shared functionality using class methods or getters.
-- **Value Equality and Hashing**: Utilize the built-in capability for checking value equality and applying hashing (thanks to `Class` implementing `Data.Case`).
+- **Value Hashing and Equality**: Utilize the built-in capability for checking value equality and applying hashing (thanks to `Class` implementing [Data.Class](https://effect.website/docs/other/data-types/data#class)).
 
-Let's dive into an illustrative example to better understand how classes work:
+### Definition
+
+Per definire una `Class` devi fornire:
+
+To define a `Class` in `@effect/schema`, you need to provide:
+
+- The type of the class being created.
+- A unique identifier for the class.
+- The desired fields, or any schema that has an exposed `fields` property.
 
 ```ts
 import { Schema } from "@effect/schema"
 
-// Define your schema by providing the type to `Class` and the desired fields
+// Define your schema by providing the type, a unique identifier and the desired fields
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.Number,
   name: Schema.String.pipe(Schema.nonEmpty())
 }) {}
 ```
 
-### Validation and Instantiation
+In this setup, `Person` is a class where `id` is a number and `name` is a non-empty string. The constructor for the class creates instances with these specified properties.
 
-The class constructor serves as a validation and instantiation tool. It ensures that the provided properties meet the schema requirements:
+#### Classes Without Arguments
 
-```ts
-const tim = new Person({ id: 1, name: "Tim" })
-```
-
-Keep in mind that it throws an error for invalid properties...
-
-```ts
-new Person({ id: 1, name: "" })
-/* throws
-Error: Person (Constructor)
-└─ ["name"]
-   └─ a non empty string
-      └─ Predicate refinement failure
-         └─ Expected a non empty string, actual ""
-*/
-```
-
-...unless you explicitly disable validation:
-
-```ts
-new Person({ id: 1, name: "" }, true) // no error
-```
-
-### No Args
-
-If you don't want to have any arguments, you can use `{}`:
+If your schema does not require any fields, you can define a class with an empty object:
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -5003,30 +4984,9 @@ class NoArgs extends Schema.Class<NoArgs>("NoArgs")({}) {}
 const noargs = new NoArgs()
 ```
 
-### Custom Getters and Methods
+### Class Constructor as a Validator
 
-For more flexibility, you can also introduce custom getters and methods:
-
-```ts
-import { Schema } from "@effect/schema"
-
-class Person extends Schema.Class<Person>("Person")({
-  id: Schema.Number,
-  name: Schema.String.pipe(Schema.nonEmpty())
-}) {
-  get upperName() {
-    return this.name.toUpperCase()
-  }
-}
-
-const john = new Person({ id: 1, name: "John" })
-
-console.log(john.upperName) // "JOHN"
-```
-
-### Accessing Related Schemas
-
-The class constructor itself is a Schema, and can be assigned/provided anywhere a Schema is expected. There is also a `.fields` property, which can be used when the class prototype is not required.
+When you define a class using `Schema.Class`, the constructor automatically checks that the provided properties adhere to the schema's rules. Here's how you can define and instantiate a `Person` class:
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -5036,8 +4996,158 @@ class Person extends Schema.Class<Person>("Person")({
   name: Schema.String.pipe(Schema.nonEmpty())
 }) {}
 
-console.log(Schema.isSchema(Person)) // true
+const john = new Person({ id: 1, name: "John" })
 
+john.id
+john.name
+```
+
+This ensures that each property of the `Person` instance, like `id` and `name`, meets the conditions specified in the schema, such as `id` being a number and `name` being a non-empty string.
+
+If an instance is created with invalid properties, the constructor throws an error detailing what went wrong:
+
+```ts
+try {
+  new Person({ id: 1, name: "" }) // Attempting to instantiate with an invalid name
+} catch (error) {
+  console.error(error)
+}
+/*
+Error output:
+Error: Person (Constructor)
+└─ ["name"]
+   └─ a non empty string
+      └─ Predicate refinement failure
+         └─ Expected a non empty string, actual ""
+
+    ...stack...
+*/
+```
+
+This error message clearly states that the `name` field failed the non-empty string predicate, providing precise feedback on why the validation failed.
+
+There are scenarios where you might want to bypass validation during instantiation. Although not typically recommended, `@effect/schema` allows for this flexibility:
+
+```ts
+const john = new Person({ id: 1, name: "" }, true) // Bypasses validation and creates the instance without errors
+```
+
+### Hashing and Equality
+
+Thanks to the implementation of [`Data.Class`](https://effect.website/docs/other/data-types/data#class), instances of your classes automatically support the [`Equal`](https://effect.website/docs/other/trait/equal) trait, which allows for easy comparison:
+
+```ts
+import { Schema } from "@effect/schema"
+import { Equal } from "effect"
+
+class Person extends Schema.Class<Person>("Person")({
+  id: Schema.Number,
+  name: Schema.String.pipe(Schema.nonEmpty())
+}) {}
+
+const john1 = new Person({ id: 1, name: "John" })
+const john2 = new Person({ id: 1, name: "John" })
+
+console.log(Equal.equals(john1, john2)) // Output: true
+```
+
+However, be aware that the `Equal` trait checks for equality only at the first level. If, for instance, a field is an array, the returned instances will not be considered equal:
+
+```ts
+import { Schema } from "@effect/schema"
+import { Equal } from "effect"
+
+class Person extends Schema.Class<Person>("Person")({
+  id: Schema.Number,
+  name: Schema.String.pipe(Schema.nonEmpty()),
+  hobbies: Schema.Array(Schema.String)
+}) {}
+
+const john1 = new Person({
+  id: 1,
+  name: "John",
+  hobbies: ["reading", "coding"]
+})
+const john2 = new Person({
+  id: 1,
+  name: "John",
+  hobbies: ["reading", "coding"]
+})
+
+console.log(Equal.equals(john1, john2)) // Output: false
+```
+
+To ensure deep equality for arrays, use `Schema.Data` combined with `Data.array`:
+
+```ts
+import { Schema } from "@effect/schema"
+import { Data, Equal } from "effect"
+
+class Person extends Schema.Class<Person>("Person")({
+  id: Schema.Number,
+  name: Schema.String.pipe(Schema.nonEmpty()),
+  hobbies: Schema.Data(Schema.Array(Schema.String))
+}) {}
+
+const john1 = new Person({
+  id: 1,
+  name: "John",
+  hobbies: Data.array(["reading", "coding"])
+})
+const john2 = new Person({
+  id: 1,
+  name: "John",
+  hobbies: Data.array(["reading", "coding"])
+})
+
+console.log(Equal.equals(john1, john2)) // Output: true
+```
+
+### Custom Getters and Methods
+
+You have the flexibility to enhance schema classes with custom getters and methods.
+
+Let's look at how you can add a custom getter to a class:
+
+```ts
+import { Schema } from "@effect/schema"
+
+class Person extends Schema.Class<Person>("Person")({
+  id: Schema.Number,
+  name: Schema.String.pipe(Schema.nonEmpty())
+}) {
+  // Custom getter to return the name in uppercase
+  get upperName() {
+    return this.name.toUpperCase()
+  }
+}
+
+const john = new Person({ id: 1, name: "John" })
+
+console.log(john.upperName) // Output: "JOHN"
+```
+
+### Using Classes as Schemas
+
+When you define a class using `Schema.Class`, it not only creates a new class but also treats this class as a schema. This means the class can be utilized wherever a schema is expected.
+
+```ts
+import { Schema } from "@effect/schema"
+
+class Person extends Schema.Class<Person>("Person")({
+  id: Schema.Number,
+  name: Schema.String.pipe(Schema.nonEmpty())
+}) {}
+
+// Person can be used as a normal schema
+const Persons = Schema.Array(Person)
+```
+
+#### The `.fields` Property
+
+The class also includes a `.fields` static property, which outlines the fields defined during the class creation.
+
+```ts
 /*
 {
     readonly id: typeof Schema.Number;
