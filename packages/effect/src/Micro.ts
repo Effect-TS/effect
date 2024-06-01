@@ -363,12 +363,13 @@ const EnvRefProto = {
  * @since 3.3.0
  * @category environment refs
  */
-export const envRefMake = <A>(key: string, initial: A): EnvRef<A> => {
-  const self = Object.create(EnvRefProto)
-  self.key = key
-  self.initial = initial
-  return self
-}
+export const envRefMake = <A>(key: string, initial: LazyArg<A>): EnvRef<A> =>
+  globalValue(key, () => {
+    const self = Object.create(EnvRefProto)
+    self.key = key
+    self.initial = initial
+    return self
+  })
 
 /**
  * @since 3.3.0
@@ -376,7 +377,7 @@ export const envRefMake = <A>(key: string, initial: A): EnvRef<A> => {
  */
 export const currentAbortController: EnvRef<AbortController> = envRefMake(
   "effect/Micro/currentAbortController",
-  new AbortController()
+  () => new AbortController()
 )
 
 /**
@@ -385,7 +386,7 @@ export const currentAbortController: EnvRef<AbortController> = envRefMake(
  */
 export const currentAbortSignal: EnvRef<AbortSignal> = envRefMake(
   "effect/Micro/currentAbortSignal",
-  currentAbortController.initial.signal
+  () => currentAbortController.initial.signal
 )
 
 /**
@@ -394,7 +395,7 @@ export const currentAbortSignal: EnvRef<AbortSignal> = envRefMake(
  */
 export const currentContext: EnvRef<Context.Context<never>> = envRefMake(
   "effect/Micro/currentContext",
-  Context.empty()
+  () => Context.empty()
 )
 
 /**
@@ -403,7 +404,25 @@ export const currentContext: EnvRef<Context.Context<never>> = envRefMake(
  */
 export const currentConcurrency: EnvRef<"unbounded" | number> = envRefMake(
   "effect/Micro/currentConcurrency",
-  "unbounded"
+  () => "unbounded"
+)
+
+const currentInterruptible: EnvRef<boolean> = envRefMake(
+  "effect/Micro/currentInterruptible",
+  () => true
+)
+
+/**
+ * @since 3.3.0
+ * @category env refs
+ */
+export const withConcurrency: {
+  (concurrency: "unbounded" | number): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, R>
+  <A, E, R>(self: Micro<A, E, R>, concurrency: "unbounded" | number): Micro<A, E, R>
+} = dual(
+  2,
+  <A, E, R>(self: Micro<A, E, R>, concurrency: "unbounded" | number): Micro<A, E, R> =>
+    locally(self, currentConcurrency, concurrency)
 )
 
 // ----------------------------------------------------------------------------
@@ -2642,28 +2661,6 @@ export const runSync = <A, E>(effect: Micro<A, E>): A => {
   }
   return result.right
 }
-
-// ========================================================================
-// env refs
-// ========================================================================
-
-const currentInterruptible: EnvRef<boolean> = envRefMake(
-  "effect/Micro/currentInterruptible",
-  true
-)
-
-/**
- * @since 3.3.0
- * @category env refs
- */
-export const withConcurrency: {
-  (concurrency: "unbounded" | number): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, R>
-  <A, E, R>(self: Micro<A, E, R>, concurrency: "unbounded" | number): Micro<A, E, R>
-} = dual(
-  2,
-  <A, E, R>(self: Micro<A, E, R>, concurrency: "unbounded" | number): Micro<A, E, R> =>
-    locally(self, currentConcurrency, concurrency)
-)
 
 // ----------------------------------------------------------------------------
 // Errors
