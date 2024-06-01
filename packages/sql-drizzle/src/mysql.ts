@@ -10,7 +10,7 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import { patchQueryBuilder } from "./internal/patch-query-builders.js"
 
-export interface DrizzleMySqlDatabase
+export interface MySqlDrizzleDatabase
   extends Omit<ReturnType<typeof drizzle>, "run" | "all" | "get" | "values" | "transaction" | "execute" | "query" | "_">
 {}
 
@@ -18,9 +18,9 @@ export interface DrizzleMySqlDatabase
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect.Effect<DrizzleMySqlDatabase> = Effect.sync(() => {
+export const make: Effect.Effect<MySqlDrizzleDatabase> = Effect.sync(() => {
   // instanciate the db without a client, since we are going to attach the client to the QueryBuilder
-  const db = drizzle({} as any) as DrizzleMySqlDatabase
+  const db = drizzle({} as any) as MySqlDrizzleDatabase
   patchQueryBuilder(MySqlSelectBase)
   patchQueryBuilder(MySqlInsertBase)
   patchQueryBuilder(MySqlUpdateBase)
@@ -34,7 +34,7 @@ export const make: Effect.Effect<DrizzleMySqlDatabase> = Effect.sync(() => {
  */
 export class MysqlDrizzle extends Context.Tag("@effect/sql-drizzle/Mysql")<
   MysqlDrizzle,
-  DrizzleMySqlDatabase
+  MySqlDrizzleDatabase
 >() {}
 
 /**

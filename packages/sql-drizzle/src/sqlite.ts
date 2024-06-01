@@ -11,7 +11,7 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import { patchQueryBuilder } from "./internal/patch-query-builders.js"
 
-export interface DrizzleSQLiteDatabase
+export interface SQLiteDrizzleDatabase
   extends Omit<ReturnType<typeof drizzle>, "run" | "all" | "get" | "values" | "transaction" | "query" | "_">
 {}
 
@@ -19,9 +19,9 @@ export interface DrizzleSQLiteDatabase
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect.Effect<DrizzleSQLiteDatabase> = Effect.sync(() => {
+export const make: Effect.Effect<SQLiteDrizzleDatabase> = Effect.sync(() => {
   // instanciate the db without a client, since we are going to attach the client to the QueryBuilder
-  const db = drizzle({} as any) as DrizzleSQLiteDatabase
+  const db = drizzle({} as any) as SQLiteDrizzleDatabase
   patchQueryBuilder(SQLiteSelectBase)
   patchQueryBuilder(SQLiteInsertBase)
   patchQueryBuilder(SQLiteUpdateBase)
@@ -37,7 +37,7 @@ export const make: Effect.Effect<DrizzleSQLiteDatabase> = Effect.sync(() => {
  */
 export class SqliteDrizzle extends Context.Tag("@effect/sql-drizzle/Sqlite")<
   SqliteDrizzle,
-  DrizzleSQLiteDatabase
+  SQLiteDrizzleDatabase
 >() {}
 
 /**

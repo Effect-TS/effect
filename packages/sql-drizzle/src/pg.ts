@@ -12,7 +12,7 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import { patchQueryBuilder } from "./internal/patch-query-builders.js"
 
-export interface DrizzlePgDatabase extends
+export interface PgDrizzleDatabase extends
   Omit<
     ReturnType<typeof drizzle>,
     "run" | "all" | "get" | "values" | "transaction" | "execute" | "refreshMaterializedView" | "query" | "_"
@@ -23,14 +23,14 @@ export interface DrizzlePgDatabase extends
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect.Effect<DrizzlePgDatabase> = Effect.sync(() => {
+export const make: Effect.Effect<PgDrizzleDatabase> = Effect.sync(() => {
   // instanciate the db without a client, since we are going to attach the client to the QueryBuilder
   const db = drizzle({
     options: {
       parsers: [],
       serializers: []
     }
-  } as any) as DrizzlePgDatabase
+  } as any) as PgDrizzleDatabase
   patchQueryBuilder(PgSelectBase)
   patchQueryBuilder(PgInsertBase)
   patchQueryBuilder(PgUpdateBase)
@@ -46,7 +46,7 @@ export const make: Effect.Effect<DrizzlePgDatabase> = Effect.sync(() => {
  */
 export class PgDrizzle extends Context.Tag("@effect/sql-drizzle/Pg")<
   PgDrizzle,
-  DrizzlePgDatabase
+  PgDrizzleDatabase
 >() {}
 
 /**
