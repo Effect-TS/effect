@@ -18,13 +18,8 @@ export const patchQueryBuilder = (QueryBuilderClass: ClassType) => {
     Object.assign(QueryBuilderClass.prototype, {
       ...Effectable.CommitPrototype,
       commit(this: DrizzleQueryBuilderInstance) {
-        // eslint-disable-next-line @typescript-eslint/no-this-alias
-        const self = this
-        return Effect.gen(function*() {
-          const { params, sql } = self.toSQL()
-          const client = yield* Client.Client
-          return yield* client.unsafe(sql, params as any)
-        })
+        const { params, sql } = this.toSQL()
+        return Client.Client.pipe(Effect.flatMap((client) => client.unsafe(sql, params as any)))
       }
     })
   }
