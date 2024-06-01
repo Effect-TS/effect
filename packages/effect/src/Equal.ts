@@ -51,6 +51,8 @@ function compareBoth(self: unknown, that: unknown): boolean {
             ? structuralRegionState.tester(self, that)
             : false
         }
+      } else if (self instanceof Date && that instanceof Date) {
+        return self.toISOString() === that.toISOString()
       }
     }
     if (structuralRegionState.enabled) {
