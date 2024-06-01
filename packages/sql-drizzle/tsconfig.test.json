@@ -8,6 +8,7 @@
     { "path": "../sql" },
     { "path": "../sql-sqlite-node" },
     { "path": "../sql-pg" },
+    { "path": "../sql-mysql2" },
     { "path": "../vitest" }
   ],
   "compilerOptions": {

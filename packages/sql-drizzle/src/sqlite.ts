@@ -19,7 +19,7 @@ export interface DrizzleSQLiteDatabase
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect.Effect<DrizzleSQLiteDatabase, never, never> = Effect.sync(() => {
+export const make: Effect.Effect<DrizzleSQLiteDatabase> = Effect.sync(() => {
   // instanciate the db without a client, since we are going to attach the client to the QueryBuilder
   const db = drizzle({} as any) as DrizzleSQLiteDatabase
   patchQueryBuilder(SQLiteSelectBase)

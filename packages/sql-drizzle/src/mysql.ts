@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as Client from "@effect/sql/Client"
 import type { SqlError } from "@effect/sql/Error"
 import type { QueryResultKind } from "drizzle-orm/mysql-core"
 import { MySqlDeleteBase, MySqlInsertBase, MySqlSelectBase, MySqlUpdateBase } from "drizzle-orm/mysql-core"
@@ -19,7 +18,7 @@ export interface DrizzleMySqlDatabase
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect.Effect<DrizzleMySqlDatabase, never> = Effect.sync(() => {
+export const make: Effect.Effect<DrizzleMySqlDatabase> = Effect.sync(() => {
   // instanciate the db without a client, since we are going to attach the client to the QueryBuilder
   const db = drizzle({} as any) as DrizzleMySqlDatabase
   patchQueryBuilder(MySqlSelectBase)
@@ -42,7 +41,7 @@ export class MysqlDrizzle extends Context.Tag("@effect/sql-drizzle/Mysql")<
  * @since 1.0.0
  * @category layers
  */
-export const layer: Layer.Layer<MysqlDrizzle, never, Client.Client> = Layer.effect(MysqlDrizzle, make)
+export const layer: Layer.Layer<MysqlDrizzle, never, never> = Layer.effect(MysqlDrizzle, make)
 
 declare module "drizzle-orm/mysql-core" {
   export interface MySqlSelectBase<

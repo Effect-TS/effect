@@ -508,6 +508,9 @@ importers:
       '@effect/sql-sqlite-node':
         specifier: workspace:^
         version: link:../sql-sqlite-node/dist
+      '@testcontainers/mysql':
+        specifier: ^10.9.0
+        version: 10.9.0
       '@testcontainers/postgresql':
         specifier: ^10.9.0
         version: 10.9.0
@@ -2463,6 +2466,9 @@ packages:
   '@sqlite.org/sqlite-wasm@3.45.3-build3':
     resolution: {integrity: sha512-LZowRxDr6hipruNLmkLKyW+mnfWlRyynPbs+tDWJhBp305dE5wBIGtA31Gp1ZjlgLqusw7ePrdgLf6zaK1Dfzw==}
     hasBin: true
+
+  '@testcontainers/mysql@10.9.0':
+    resolution: {integrity: sha512-hhiazKTudr8kFkPX60fEdL4rmMIJB0GgrthhbrVTn2CZ0x2cYh+e4CWz81eQjAn5PC2lk5Jxx79qXtb47NQKKg==}
 
   '@testcontainers/postgresql@10.9.0':
     resolution: {integrity: sha512-Z3K/TFkl/PVE2v8A6yKqgF4pSFk9ilFG02yeGhPswUjmBlcig/rpVOjBQOkQ/yJCcQ/r2RrX3RR+7vr+UO4QlQ==}
@@ -8884,6 +8890,13 @@ snapshots:
       '@sinonjs/commons': 3.0.1
 
   '@sqlite.org/sqlite-wasm@3.45.3-build3': {}
+
+  '@testcontainers/mysql@10.9.0':
+    dependencies:
+      testcontainers: 10.9.0
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
 
   '@testcontainers/postgresql@10.9.0':
     dependencies:

@@ -23,7 +23,7 @@ export interface DrizzlePgDatabase extends
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect.Effect<DrizzlePgDatabase, never, never> = Effect.sync(() => {
+export const make: Effect.Effect<DrizzlePgDatabase> = Effect.sync(() => {
   // instanciate the db without a client, since we are going to attach the client to the QueryBuilder
   const db = drizzle({
     options: {
