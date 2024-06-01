@@ -3439,6 +3439,113 @@ Schema.compose(
 )
 ```
 
+## Projections
+
+### typeSchema
+
+The `typeSchema` function allows you to extract the `Type` portion of a schema, creating a new schema that conforms to the properties defined in the original schema without considering the initial encoding or transformation processes.
+
+**Function Signature:**
+
+```ts
+export const typeSchema = <A, I, R>(schema: Schema<A, I, R>): Schema<A>
+```
+
+**Example Usage:**
+
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  foo: Schema.NumberFromString.pipe(Schema.greaterThanOrEqualTo(2))
+})
+
+// This creates a schema where 'foo' is strictly a number that must be greater than or equal to 2.
+const resultingTypeSchema = Schema.typeSchema(schema)
+
+// resultingTypeSchema is the same as:
+Schema.Struct({
+  foo: Schema.Number.pipe(Schema.greaterThanOrEqualTo(2))
+})
+```
+
+In this example:
+
+- **Original Schema**: The schema for `foo` is initially defined to accept a number from a string and enforce that it is greater than or equal to 2.
+- **Resulting Type Schema**: The `typeSchema` extracts only the type-related information from `foo`, simplifying it to just a number while still maintaining the constraint that it must be greater than or equal to 2.
+
+### encodedSchema
+
+The `encodedSchema` function allows you to extract the `Encoded` portion of a schema, creating a new schema that conforms to the properties defined in the original schema without retaining any refinements or transformations that were applied previously.
+
+**Function Signature:**
+
+```ts
+export const encodedSchema = <A, I, R>(schema: Schema<A, I, R>): Schema<I>
+```
+
+**Example Usage:**
+
+Attenzione che `encodedSchema` non preserva i refinements:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  foo: Schema.String.pipe(Schema.minLength(3))
+})
+
+// resultingEncodedSchema simplifies 'foo' to just a string, disregarding the minLength refinement.
+const resultingEncodedSchema = Schema.encodedSchema(schema)
+
+// resultingEncodedSchema is the same as:
+Schema.Struct({
+  foo: Schema.String
+})
+```
+
+In this example:
+
+- **Original Schema Definition**: The `foo` field in the schema is defined as a string with a minimum length of three characters.
+- **Resulting Encoded Schema**: The `encodedSchema` function simplifies the `foo` field to just a string type, effectively stripping away the `minLength` refinement.
+
+### encodedBoundSchema
+
+The `encodedBoundSchema` function is similar to `encodedSchema` but preserves the refinements up to the first transformation point in the
+original schema.
+
+**Function Signature:**
+
+```ts
+export const encodedBoundSchema = <A, I, R>(schema: Schema<A, I, R>): Schema<I>
+```
+
+The term "bound" in this context refers to the boundary up to which refinements are preserved when extracting the encoded form of a schema. It essentially marks the limit to which initial validations and structure are maintained before any transformations are applied.
+
+**Example Usage:**
+
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  foo: Schema.String.pipe(Schema.minLength(3), Schema.compose(Schema.Trim))
+})
+
+// The resultingEncodedBoundSchema preserves the minLength(3) refinement,
+// ensuring the string length condition is enforced but omits the Trim transformation.
+const resultingEncodedBoundSchema = Schema.encodedBoundSchema(schema)
+
+// resultingEncodedBoundSchema is the same as:
+Schema.Struct({
+  foo: Schema.String.pipe(Schema.minLength(3))
+})
+```
+
+In the provided example:
+
+- **Initial Schema**: The schema for `foo` includes a refinement to ensure strings have a minimum length of three characters and a transformation to trim the string.
+- **Resulting Schema**: `resultingEncodedBoundSchema` maintains the `minLength(3)` condition, ensuring that this validation persists. However, it excludes the trimming transformation, focusing solely on the length requirement without altering the string's formatting.
+
 # Declaring New Data Types
 
 Creating schemas for new data types is crucial to defining the expected structure of information in your application. This guide explores how to declare schemas for new data types. We'll cover two important concepts: declaring schemas for primitive data types and type constructors.
