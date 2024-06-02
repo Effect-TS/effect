@@ -17,6 +17,16 @@ describe("optional APIs", () => {
   })
 
   describe("optional > { exact: true }", () => {
+    it("should expose a from property", () => {
+      const schema = S.optional(S.String, { exact: true })
+      expect(schema.from).toStrictEqual(S.String)
+    })
+
+    it("should expose a from property after an annotations call", () => {
+      const schema = S.optional(S.String, { exact: true }).annotations({})
+      expect(schema.from).toStrictEqual(S.String)
+    })
+
     it("decoding / encoding", async () => {
       const schema = S.Struct({
         a: S.optional(S.NumberFromString, { exact: true })
@@ -51,6 +61,16 @@ describe("optional APIs", () => {
   })
 
   describe("optional", () => {
+    it("should expose a from property", () => {
+      const schema = S.optional(S.String)
+      expect(schema.from).toStrictEqual(S.String)
+    })
+
+    it("should expose a from property after an annotations call", () => {
+      const schema = S.optional(S.String).annotations({})
+      expect(schema.from).toStrictEqual(S.String)
+    })
+
     it("decoding / encoding", async () => {
       const schema = S.Struct({
         a: S.optional(S.NumberFromString)

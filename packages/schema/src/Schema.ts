@@ -1557,7 +1557,7 @@ class PropertySignatureImpl<
   annotations(
     annotations: PropertySignature.Annotations<Type>
   ): PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, HasDefault, R> {
-    return makePropertySignature(propertySignatureAnnotations_(this.ast, toASTAnnotations(annotations)))
+    return new PropertySignatureImpl(propertySignatureAnnotations_(this.ast, toASTAnnotations(annotations)))
   }
 
   toString() {
@@ -1580,16 +1580,53 @@ export const makePropertySignature = <
 >(ast: PropertySignature.AST) =>
   new PropertySignatureImpl<TypeToken, Type, Key, EncodedToken, Encoded, HasDefault, R>(ast)
 
+class PropertySignatureWithFromImpl<
+  From extends Schema.All,
+  TypeToken extends PropertySignature.Token,
+  Type,
+  Key extends PropertyKey,
+  EncodedToken extends PropertySignature.Token,
+  Encoded,
+  HasDefault extends boolean = false,
+  R = never
+> extends PropertySignatureImpl<TypeToken, Type, Key, EncodedToken, Encoded, HasDefault, R> {
+  constructor(ast: PropertySignature.AST, readonly from: From) {
+    super(ast)
+  }
+  annotations(
+    annotations: PropertySignature.Annotations<Type>
+  ): PropertySignatureWithFromImpl<From, TypeToken, Type, Key, EncodedToken, Encoded, HasDefault, R> {
+    return new PropertySignatureWithFromImpl(
+      propertySignatureAnnotations_(this.ast, toASTAnnotations(annotations)),
+      this.from
+    )
+  }
+}
+
+/**
+ * @category API interface
+ * @since 1.0.0
+ */
+export interface propertySignature<S extends Schema.All>
+  extends PropertySignature<":", Schema.Type<S>, never, ":", Schema.Encoded<S>, false, Schema.Context<S>>
+{
+  readonly from: S
+  annotations(annotations: PropertySignature.Annotations<Schema.Type<S>>): propertySignature<S>
+}
+
 /**
  * Lifts a `Schema` into a `PropertySignature`.
  *
  * @category PropertySignature
  * @since 0.67.0
  */
-export const propertySignature = <A, I, R>(
-  self: Schema<A, I, R>
-): PropertySignature<PropertySignature.GetToken<false>, A, never, PropertySignature.GetToken<false>, I, false, R> =>
-  makePropertySignature(new PropertySignatureDeclaration(self.ast, false, true, {}, undefined))
+export const propertySignature = <S extends Schema.All>(
+  self: S
+): propertySignature<S> =>
+  new PropertySignatureWithFromImpl(
+    new PropertySignatureDeclaration(self.ast, false, true, {}, undefined),
+    self
+  )
 
 /**
  * Enhances a property signature with a default constructor value.
@@ -1965,7 +2002,10 @@ export interface optional<S extends Schema.All> extends
     false,
     Schema.Context<S>
   >
-{}
+{
+  readonly from: S
+  annotations(annotations: PropertySignature.Annotations<Schema.Type<S> | undefined>): optional<S>
+}
 
 /**
  * @category api interface
@@ -1984,22 +2024,18 @@ export interface optionalWithOptions<S extends Schema.All, Options> extends
     Types.Has<Options, "default">,
     Schema.Context<S>
   >
-{}
+{
+  readonly from: S
+  annotations(
+    annotations: PropertySignature.Annotations<
+      | (Types.Has<Options, "as"> extends true ? option_.Option<Schema.Type<S>> : Schema.Type<S>)
+      | (Types.Has<Options, "as" | "default" | "exact"> extends true ? never : undefined)
+    >
+  ): optionalWithOptions<S, Options>
+}
 
-/**
- * @category PropertySignature
- * @since 0.67.0
- */
-export const optional: {
-  <S extends Schema.All, Options extends OptionalOptions<Schema.Type<S>>>(
-    options?: Options
-  ): (schema: S) => [undefined] extends [Options] ? optional<S> : optionalWithOptions<S, Options>
-  <S extends Schema.All, Options extends OptionalOptions<Schema.Type<S>>>(
-    schema: S,
-    options?: Options
-  ): [undefined] extends [Options] ? optional<S> : optionalWithOptions<S, Options>
-} = dual((args) => isSchema(args[0]), <A, I, R>(
-  schema: Schema<A, I, R>,
+const optionalPropertySignatureAST = <A, I, R>(
+  from: Schema<A, I, R>,
   options?: {
     readonly exact?: true
     readonly default?: () => A
@@ -2007,7 +2043,7 @@ export const optional: {
     readonly as?: "Option"
     readonly onNoneEncoding?: () => option_.Option<never>
   }
-): PropertySignature<any, any, never, any, any, boolean, any> => {
+): PropertySignature.AST => {
   const isExact = options?.exact
   const defaultValue = options?.default
   const isNullable = options?.nullable
@@ -2019,51 +2055,51 @@ export const optional: {
       if (isNullable) {
         return withConstructorDefault(
           optionalToRequired(
-            NullOr(schema),
-            typeSchema(schema),
+            NullOr(from),
+            typeSchema(from),
             {
               decode: option_.match({ onNone: defaultValue, onSome: (a) => a === null ? defaultValue() : a }),
               encode: option_.some
             }
           ),
           defaultValue
-        )
+        ).ast
       } else {
         return withConstructorDefault(
           optionalToRequired(
-            schema,
-            typeSchema(schema),
+            from,
+            typeSchema(from),
             { decode: option_.match({ onNone: defaultValue, onSome: identity }), encode: option_.some }
           ),
           defaultValue
-        )
+        ).ast
       }
     } else if (asOption) {
       if (isNullable) {
         return optionalToRequired(
-          NullOr(schema),
-          OptionFromSelf(typeSchema(schema)),
+          NullOr(from),
+          OptionFromSelf(typeSchema(from)),
           {
             decode: option_.filter(Predicate.isNotNull<A | null>),
             encode: asOptionEncode
           }
-        )
+        ).ast
       } else {
         return optionalToRequired(
-          schema,
-          OptionFromSelf(typeSchema(schema)),
+          from,
+          OptionFromSelf(typeSchema(from)),
           { decode: identity, encode: identity }
-        )
+        ).ast
       }
     } else {
       if (isNullable) {
         return optionalToOptional(
-          NullOr(schema),
-          typeSchema(schema),
+          NullOr(from),
+          typeSchema(from),
           { decode: option_.filter(Predicate.isNotNull<A | null>), encode: identity }
-        )
+        ).ast
       } else {
-        return makePropertySignature(new PropertySignatureDeclaration(schema.ast, true, true, {}, undefined))
+        return new PropertySignatureDeclaration(from.ast, true, true, {}, undefined)
       }
     }
   } else {
@@ -2071,62 +2107,76 @@ export const optional: {
       if (isNullable) {
         return withConstructorDefault(
           optionalToRequired(
-            NullishOr(schema),
-            typeSchema(schema),
+            NullishOr(from),
+            typeSchema(from),
             {
               decode: option_.match({ onNone: defaultValue, onSome: (a) => (a == null ? defaultValue() : a) }),
               encode: option_.some
             }
           ),
           defaultValue
-        )
+        ).ast
       } else {
         return withConstructorDefault(
           optionalToRequired(
-            UndefinedOr(schema),
-            typeSchema(schema),
+            UndefinedOr(from),
+            typeSchema(from),
             {
               decode: option_.match({ onNone: defaultValue, onSome: (a) => (a === undefined ? defaultValue() : a) }),
               encode: option_.some
             }
           ),
           defaultValue
-        )
+        ).ast
       }
     } else if (asOption) {
       if (isNullable) {
         return optionalToRequired(
-          NullishOr(schema),
-          OptionFromSelf(typeSchema(schema)),
+          NullishOr(from),
+          OptionFromSelf(typeSchema(from)),
           {
             decode: option_.filter<A | null | undefined, A>((a): a is A => a != null),
             encode: asOptionEncode
           }
-        )
+        ).ast
       } else {
         return optionalToRequired(
-          UndefinedOr(schema),
-          OptionFromSelf(typeSchema(schema)),
+          UndefinedOr(from),
+          OptionFromSelf(typeSchema(from)),
           {
             decode: option_.filter(Predicate.isNotUndefined<A | undefined>),
             encode: asOptionEncode
           }
-        )
+        ).ast
       }
     } else {
       if (isNullable) {
         return optionalToOptional(
-          NullishOr(schema),
-          UndefinedOr(typeSchema(schema)),
+          NullishOr(from),
+          UndefinedOr(typeSchema(from)),
           { decode: option_.filter(Predicate.isNotNull<A | null | undefined>), encode: identity }
-        )
+        ).ast
       } else {
-        return makePropertySignature(
-          new PropertySignatureDeclaration(UndefinedOr(schema).ast, true, true, {}, undefined)
-        )
+        return new PropertySignatureDeclaration(UndefinedOr(from).ast, true, true, {}, undefined)
       }
     }
   }
+}
+
+/**
+ * @category PropertySignature
+ * @since 0.67.0
+ */
+export const optional: {
+  <S extends Schema.All, Options extends OptionalOptions<Schema.Type<S>>>(
+    options?: Options
+  ): (self: S) => [undefined] extends [Options] ? optional<S> : optionalWithOptions<S, Options>
+  <S extends Schema.All, Options extends OptionalOptions<Schema.Type<S>>>(
+    self: S,
+    options?: Options
+  ): [undefined] extends [Options] ? optional<S> : optionalWithOptions<S, Options>
+} = dual((args) => isSchema(args[0]), (from, options) => {
+  return new PropertySignatureWithFromImpl(optionalPropertySignatureAST(from, options), from)
 })
 
 /**
