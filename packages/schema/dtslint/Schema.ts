@@ -1039,7 +1039,7 @@ S.Record(S.SymbolFromSelf, S.String)
 // $ExpectType Schema<{ readonly [x: `a${string}`]: string; }, { readonly [x: `a${string}`]: string; }, never>
 S.asSchema(S.Record(S.TemplateLiteral(S.Literal("a"), S.String), S.String))
 
-// $ExpectType Record$<SchemaClass<`a${string}`, `a${string}`, never>, typeof String$>
+// $ExpectType Record$<TemplateLiteral<`a${string}`>, typeof String$>
 S.Record(S.TemplateLiteral(S.Literal("a"), S.String), S.String)
 
 // $ExpectType Schema<{ readonly [x: string & Brand<"UserId">]: string; }, { readonly [x: string]: string; }, never>
@@ -1185,15 +1185,24 @@ S.instanceOf(Test)
 // TemplateLiteral
 // ---------------------------------------------
 
-// $ExpectType SchemaClass<`a${string}`, `a${string}`, never>
+// @ts-expect-error
+S.TemplateLiteral(1, S.String)
+
+// TemplateLiteral<`a${string}`>
 S.TemplateLiteral(S.Literal("a"), S.String)
+
+// TemplateLiteral<`a${string}`>
+S.TemplateLiteral("a", S.String)
 
 // example from https://www.typescriptlang.org/docs/handbook/2/template-literal-types.html
 const EmailLocaleIDs = S.Literal("welcome_email", "email_heading")
 const FooterLocaleIDs = S.Literal("footer_title", "footer_sendoff")
 
-// $ExpectType SchemaClass<"welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id", "welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id", never>
+// $ExpectType TemplateLiteral<"welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id">
 S.TemplateLiteral(S.Union(EmailLocaleIDs, FooterLocaleIDs), S.Literal("_id"))
+
+// $ExpectType TemplateLiteral<"welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id">
+S.TemplateLiteral(S.Union(EmailLocaleIDs, FooterLocaleIDs), "_id")
 
 // ---------------------------------------------
 // attachPropertySignature

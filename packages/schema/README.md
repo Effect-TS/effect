@@ -1520,7 +1520,7 @@ console.log(Equivalence.make(schema)("aaa", "abb")) // Output: true
 | `object`                                     |                                          | `S.Object`                                                |
 | `unique symbol`                              |                                          | `S.UniqueSymbolFromSelf`                                  |
 | `"a"`, `1`, `true`                           | type literals                            | `S.Literal("a")`, `S.Literal(1)`, `S.Literal(true)`       |
-| `a${string}`                                 | template literals                        | `S.TemplateLiteral(S.Literal("a"), S.String)`             |
+| `a${string}`                                 | template literals                        | `S.TemplateLiteral("a", S.String)`                        |
 | `{ readonly a: string, readonly b: number }` | structs                                  | `S.Struct({ a: S.String, b: S.Number })`                  |
 | `{ readonly a?: string \| undefined }`       | optional fields                          | `S.Struct({ a: S.optional(S.String) })`                   |
 | `{ readonly a?: string }`                    | optional fields                          | `S.Struct({ a: S.optional(S.String, { exact: true }) })`  |
@@ -1628,18 +1628,23 @@ The `TemplateLiteral` constructor allows you to create a schema for a TypeScript
 ```ts
 import { Schema } from "@effect/schema"
 
-// Schema<`a${string}`>
-Schema.TemplateLiteral(Schema.Literal("a"), Schema.String)
+// TemplateLiteral<`a${string}`>
+Schema.TemplateLiteral("a", Schema.String)
+
+// TemplateLiteral<`https://${string}.com` | `https://${string}.net`>
+Schema.TemplateLiteral(
+  "https://",
+  Schema.String,
+  ".",
+  Schema.Literal("com", "net")
+)
 
 // example from https://www.typescriptlang.org/docs/handbook/2/template-literal-types.html
 const EmailLocaleIDs = Schema.Literal("welcome_email", "email_heading")
 const FooterLocaleIDs = Schema.Literal("footer_title", "footer_sendoff")
 
-// Schema<"welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id">
-Schema.TemplateLiteral(
-  Schema.Union(EmailLocaleIDs, FooterLocaleIDs),
-  Schema.Literal("_id")
-)
+// TemplateLiteral<"welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id">
+Schema.TemplateLiteral(Schema.Union(EmailLocaleIDs, FooterLocaleIDs), "_id")
 ```
 
 ## Unique Symbols
