@@ -12,7 +12,7 @@ import * as ConfigProvider from "effect/ConfigProvider"
 
 const users = D.mysqlTable("users", {
   id: D.serial("id").primaryKey(),
-  name: D.text("name")
+  name: D.text("name").notNull()
 })
 
 describe("MySqlDrizzle", () => {
@@ -48,7 +48,7 @@ describe("MySqlDrizzle", () => {
       const sql = yield* Sql.client.Client
       const db = yield* MysqlDrizzle.MysqlDrizzle
 
-      yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT)`
+      yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL)`
 
       yield* db.insert(users).values({ name: "Alice" })
       const selected = yield* db.select().from(users)

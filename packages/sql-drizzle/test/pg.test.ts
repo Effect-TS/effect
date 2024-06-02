@@ -12,7 +12,7 @@ import * as ConfigProvider from "effect/ConfigProvider"
 
 const users = D.pgTable("users", {
   id: D.serial("id").primaryKey(),
-  name: D.text("name")
+  name: D.text("name").notNull()
 })
 
 describe("PgDrizzle", () => {
@@ -49,7 +49,7 @@ describe("PgDrizzle", () => {
       const sql = yield* Sql.client.Client
       const db = yield* PgDrizzle.PgDrizzle
 
-      yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT)`
+      yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL)`
 
       const inserted = yield* db.insert(users).values({ name: "Alice" }).returning()
       assert.deepStrictEqual(inserted, [{ id: 1, name: "Alice" }])

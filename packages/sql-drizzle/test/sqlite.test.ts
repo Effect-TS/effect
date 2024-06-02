@@ -8,7 +8,7 @@ import { Config, Effect, Layer } from "effect"
 
 const users = D.sqliteTable("users", {
   id: D.integer("id").primaryKey(),
-  name: D.text("name")
+  name: D.text("name").notNull()
 })
 
 const SqlLive = Sqlite.client.layer({
@@ -24,7 +24,7 @@ describe("SqliteDrizzle", () => {
       const sql = yield* Sql.client.Client
       const db = yield* SqliteDrizzle.SqliteDrizzle
 
-      yield* sql`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)`
+      yield* sql`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL)`
 
       const inserted = yield* db.insert(users).values({ name: "Alice" }).returning()
       assert.deepStrictEqual(inserted, [{ id: 1, name: "Alice" }])
