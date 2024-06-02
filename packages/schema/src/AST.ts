@@ -1015,7 +1015,7 @@ export class TemplateLiteral implements Annotated {
    * @since 0.67.0
    */
   readonly _tag = "TemplateLiteral"
-  private constructor(
+  constructor(
     readonly head: string,
     readonly spans: Arr.NonEmptyReadonlyArray<TemplateLiteralSpan>,
     readonly annotations: Annotations = {}
