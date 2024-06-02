@@ -199,9 +199,6 @@ export type BatchingAnnotation = boolean | "inherit" | undefined
  */
 export const BatchingAnnotationId = Symbol.for("@effect/schema/annotation/Batching")
 
-/** @internal */
-export const SurrogateAnnotationId = Symbol.for("@effect/schema/annotation/Surrogate")
-
 /**
  * @category annotations
  * @since 0.67.0
@@ -213,6 +210,9 @@ export type ParseIssueTitleAnnotation = (issue: ParseIssue) => string | undefine
  * @since 0.67.0
  */
 export const ParseIssueTitleAnnotationId = Symbol.for("@effect/schema/annotation/ParseIssueTitle")
+
+/** @internal */
+export const SurrogateAnnotationId = Symbol.for("@effect/schema/annotation/Surrogate")
 
 /**
  * Used by:
@@ -227,6 +227,12 @@ export const ParseIssueTitleAnnotationId = Symbol.for("@effect/schema/annotation
  * @internal
  */
 export type SurrogateAnnotation = AST
+
+/** @internal */
+export const StableFilterAnnotationId = Symbol.for("@effect/schema/annotation/StableFilter")
+
+/** @internal */
+export type StableFilterAnnotation = boolean
 
 /**
  * @category annotations
@@ -333,6 +339,8 @@ export const getParseIssueTitleAnnotation = getAnnotation<ParseIssueTitleAnnotat
 
 /** @internal */
 export const getSurrogateAnnotation = getAnnotation<SurrogateAnnotation>(SurrogateAnnotationId)
+
+const getStableFilterAnnotation = getAnnotation<StableFilterAnnotation>(StableFilterAnnotationId)
 
 const JSONIdentifierAnnotationId = Symbol.for("@effect/schema/annotation/JSONIdentifier")
 
@@ -2317,33 +2325,33 @@ function changeMap<A>(as: ReadonlyArray<A>, f: (a: A) => A): ReadonlyArray<A> {
   return changed ? out : as
 }
 
-const encodedAST_ = (ast: AST, bound: boolean): AST => {
+const encodedAST_ = (ast: AST, isBound: boolean): AST => {
   switch (ast._tag) {
     case "Declaration": {
-      const typeParameters = changeMap(ast.typeParameters, (ast) => encodedAST_(ast, bound))
+      const typeParameters = changeMap(ast.typeParameters, (ast) => encodedAST_(ast, isBound))
       return typeParameters === ast.typeParameters ?
         ast :
         new Declaration(typeParameters, ast.decodeUnknown, ast.encodeUnknown, ast.annotations)
     }
     case "TupleType": {
       const elements = changeMap(ast.elements, (e) => {
-        const type = encodedAST_(e.type, bound)
+        const type = encodedAST_(e.type, isBound)
         return type === e.type ? e : new Element(type, e.isOptional)
       })
-      const rest = changeMap(ast.rest, (ast) => encodedAST_(ast, bound))
+      const rest = changeMap(ast.rest, (ast) => encodedAST_(ast, isBound))
       return elements === ast.elements && rest === ast.rest ?
         ast :
         new TupleType(elements, rest, ast.isReadonly, createJSONIdentifierAnnotation(ast))
     }
     case "TypeLiteral": {
       const propertySignatures = changeMap(ast.propertySignatures, (ps) => {
-        const type = encodedAST_(ps.type, bound)
+        const type = encodedAST_(ps.type, isBound)
         return type === ps.type
           ? ps
           : new PropertySignature(ps.name, type, ps.isOptional, ps.isReadonly)
       })
       const indexSignatures = changeMap(ast.indexSignatures, (is) => {
-        const type = encodedAST_(is.type, bound)
+        const type = encodedAST_(is.type, isBound)
         return type === is.type ? is : new IndexSignature(is.parameter, type, is.isReadonly)
       })
       return propertySignatures === ast.propertySignatures && indexSignatures === ast.indexSignatures ?
@@ -2351,20 +2359,28 @@ const encodedAST_ = (ast: AST, bound: boolean): AST => {
         new TypeLiteral(propertySignatures, indexSignatures, createJSONIdentifierAnnotation(ast))
     }
     case "Union": {
-      const types = changeMap(ast.types, (ast) => encodedAST_(ast, bound))
+      const types = changeMap(ast.types, (ast) => encodedAST_(ast, isBound))
       return types === ast.types ? ast : Union.make(types, createJSONIdentifierAnnotation(ast))
     }
     case "Suspend":
-      return new Suspend(() => encodedAST_(ast.f(), bound), createJSONIdentifierAnnotation(ast))
+      return new Suspend(() => encodedAST_(ast.f(), isBound), createJSONIdentifierAnnotation(ast))
     case "Refinement": {
-      const from = encodedAST_(ast.from, bound)
-      if (bound) {
-        return from === ast.from ? ast : from
+      const from = encodedAST_(ast.from, isBound)
+      if (isBound) {
+        if (from === ast.from) {
+          return ast
+        }
+        if (!isTransformation(ast.from)) {
+          const annotations = getStableFilterAnnotation(ast)
+          if (Option.isSome(annotations) && annotations.value === true) {
+            return new Refinement(from, ast.filter)
+          }
+        }
       }
       return from
     }
     case "Transformation":
-      return encodedAST_(ast.from, bound)
+      return encodedAST_(ast.from, isBound)
   }
   return ast
 }
