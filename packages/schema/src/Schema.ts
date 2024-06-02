@@ -670,47 +670,59 @@ const makeEnumsClass = <A extends EnumsDefinition>(
  */
 export const Enums = <A extends EnumsDefinition>(enums: A): Enums<A> => makeEnumsClass(enums)
 
-type Join<T> = T extends [infer Head, ...infer Tail]
-  ? `${Head & (string | number | bigint | boolean | null | undefined)}${Tail extends [] ? ""
-    : Join<Tail>}`
-  : never
+type Join<T> = T extends [infer Head, ...infer Tail] ?
+  `${(Head extends Schema<infer A> ? A : Head) & string}${Join<Tail>}`
+  : ""
+
+/**
+ * @category API interface
+ * @since 0.67.17
+ */
+export interface TemplateLiteral<A> extends SchemaClass<A> {}
 
 /**
  * @category constructors
  * @since 0.67.0
  */
-export const TemplateLiteral = <T extends [Schema.AnyNoContext, ...Array<Schema.AnyNoContext>]>(
+export const TemplateLiteral = <
+  T extends readonly [Schema.AnyNoContext | string, ...Array<Schema.AnyNoContext | string>]
+>(
   ...[head, ...tail]: T
-): SchemaClass<Join<{ [K in keyof T]: Schema.Type<T[K]> }>> => {
-  let types: ReadonlyArray<AST.TemplateLiteral | AST.Literal> = getTemplateLiterals(head.ast)
+): TemplateLiteral<Join<T>> => {
+  let astOrs: ReadonlyArray<AST.TemplateLiteral | string> = getTemplateLiterals(
+    getTemplateLiteralParameterAST(head)
+  )
   for (const span of tail) {
-    types = array_.flatMap(
-      types,
-      (a) => getTemplateLiterals(span.ast).map((b) => combineTemplateLiterals(a, b))
+    astOrs = array_.flatMap(
+      astOrs,
+      (a) => getTemplateLiterals(getTemplateLiteralParameterAST(span)).map((b) => combineTemplateLiterals(a, b))
     )
   }
-  return make(AST.Union.make(types))
+  return make(AST.Union.make(astOrs.map((astOr) => Predicate.isString(astOr) ? new AST.Literal(astOr) : astOr)))
 }
 
+const getTemplateLiteralParameterAST = (p: Schema.AnyNoContext | string): AST.AST =>
+  isSchema(p) ? p.ast : new AST.Literal(p)
+
 const combineTemplateLiterals = (
-  a: AST.TemplateLiteral | AST.Literal,
-  b: AST.TemplateLiteral | AST.Literal
-): AST.TemplateLiteral | AST.Literal => {
-  if (AST.isLiteral(a)) {
-    return AST.isLiteral(b) ?
-      new AST.Literal(String(a.literal) + String(b.literal)) :
-      AST.TemplateLiteral.make(String(a.literal) + b.head, b.spans)
+  a: AST.TemplateLiteral | string,
+  b: AST.TemplateLiteral | string
+): AST.TemplateLiteral | string => {
+  if (Predicate.isString(a)) {
+    return Predicate.isString(b) ?
+      a + b :
+      new AST.TemplateLiteral(a + b.head, b.spans)
   }
-  if (AST.isLiteral(b)) {
-    return AST.TemplateLiteral.make(
+  if (Predicate.isString(b)) {
+    return new AST.TemplateLiteral(
       a.head,
       array_.modifyNonEmptyLast(
         a.spans,
-        (span) => new AST.TemplateLiteralSpan(span.type, span.literal + String(b.literal))
+        (span) => new AST.TemplateLiteralSpan(span.type, span.literal + b)
       )
     )
   }
-  return AST.TemplateLiteral.make(
+  return new AST.TemplateLiteral(
     a.head,
     array_.appendAll(
       array_.modifyNonEmptyLast(
@@ -724,18 +736,20 @@ const combineTemplateLiterals = (
 
 const getTemplateLiterals = (
   ast: AST.AST
-): ReadonlyArray<AST.TemplateLiteral | AST.Literal> => {
+): ReadonlyArray<AST.TemplateLiteral | string> => {
   switch (ast._tag) {
     case "Literal":
-      return [ast]
+      if (Predicate.isString(ast.literal)) {
+        return [ast.literal]
+      }
+      break
     case "NumberKeyword":
     case "StringKeyword":
-      return [AST.TemplateLiteral.make("", [new AST.TemplateLiteralSpan(ast, "")])]
+      return [new AST.TemplateLiteral("", [new AST.TemplateLiteralSpan(ast, "")])]
     case "Union":
       return array_.flatMap(ast.types, getTemplateLiterals)
-    default:
-      throw new Error(`unsupported template literal span (${ast})`)
   }
+  throw new Error(`unsupported template literal span (${ast})`)
 }
 
 const declareConstructor = <
