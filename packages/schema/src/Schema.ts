@@ -5358,6 +5358,7 @@ export const minItems = <A>(
       typeId: MinItemsTypeId,
       description: `an array of at least ${n} items`,
       jsonSchema: { minItems: n },
+      [AST.StableFilterAnnotationId]: true,
       ...annotations
     })
   )
@@ -5388,6 +5389,7 @@ export const maxItems = <A>(
       typeId: MaxItemsTypeId,
       description: `an array of at most ${n} items`,
       jsonSchema: { maxItems: n },
+      [AST.StableFilterAnnotationId]: true,
       ...annotations
     })
   )
@@ -5418,6 +5420,7 @@ export const itemsCount = <A>(
       typeId: ItemsCountTypeId,
       description: `an array of exactly ${n} item(s)`,
       jsonSchema: { minItems: n, maxItems: n },
+      [AST.StableFilterAnnotationId]: true,
       ...annotations
     })
   )
