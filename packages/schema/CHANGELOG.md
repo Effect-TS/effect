@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.67.18
+
+### Patch Changes
+
+- [#2908](https://github.com/Effect-TS/effect/pull/2908) [`a0dd1c1`](https://github.com/Effect-TS/effect/commit/a0dd1c1ede2a1e856ecb0e67826ec992016fef97) Thanks @gcanti! - TemplateLiteral: fix bug related to ${number} span, closes #2907
+
 ## 0.67.17
 
 ### Patch Changes
