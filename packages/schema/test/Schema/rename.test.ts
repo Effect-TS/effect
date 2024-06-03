@@ -96,4 +96,25 @@ describe("rename", () => {
     await Util.expectDecodeUnknownSuccess(renamed, { a: "a", b: "1" }, { c: "a", b: 1 })
     await Util.expectEncodeSuccess(renamed, { c: "a", b: 1 }, { a: "a", b: "1" })
   })
+
+  it("union", async () => {
+    const A = S.Struct({
+      ab: S.Number
+    })
+
+    const B = S.Struct({
+      ab: S.Null
+    })
+
+    const schema = S.Union(
+      A.pipe(S.attachPropertySignature("kind", "A")),
+      B.pipe(S.attachPropertySignature("kind", "B"))
+    )
+    const renamed = schema.pipe(S.rename({ ab: "c" }))
+    await Util.expectDecodeUnknownSuccess(renamed, { ab: 1 }, { kind: "A", c: 1 })
+    await Util.expectDecodeUnknownSuccess(renamed, { ab: null }, { kind: "B", c: null })
+
+    await Util.expectEncodeSuccess(renamed, { kind: "A", c: 1 }, { ab: 1 })
+    await Util.expectEncodeSuccess(renamed, { kind: "B", c: null }, { ab: null })
+  })
 })

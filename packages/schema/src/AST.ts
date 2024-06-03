@@ -2624,6 +2624,8 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
         new TypeLiteralTransformation(propertySignatureTransformations)
       )
     }
+    case "Union":
+      return Union.make(ast.types.map((ast) => rename(ast, mapping)))
     case "Suspend":
       return new Suspend(() => rename(ast.f(), mapping))
     case "Transformation":
