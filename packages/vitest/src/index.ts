@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import type { Tester, TesterContext } from "@vitest/expect"
+import { type Tester, type TesterContext } from "@vitest/expect"
 import * as Cause from "effect/Cause"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -10,6 +10,7 @@ import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
+import { hasProperty } from "effect/Predicate"
 import * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
 import * as TestEnvironment from "effect/TestContext"
@@ -24,11 +25,16 @@ const runTest = <E, A>(effect: Effect.Effect<A, E>) =>
     if (Exit.isSuccess(exit)) {
       return () => {}
     } else {
+      const squashed = Cause.squash(exit.cause) as Error
       const errors = Cause.prettyErrors(exit.cause)
       for (let i = 1; i < errors.length; i++) {
         yield* Effect.logError(errors[i])
       }
       return () => {
+        if (hasProperty(squashed, "actual") && hasProperty(squashed, "expected")) {
+          squashed.stack = errors[0].stack!
+          throw squashed
+        }
         throw errors[0]
       }
     }
