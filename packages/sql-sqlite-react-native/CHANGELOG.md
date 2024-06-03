@@ -1,5 +1,13 @@
 # @effect/sql-sqlite-react-native
 
+## 0.4.6
+
+### Patch Changes
+
+- Updated dependencies [[`fb91f17`](https://github.com/Effect-TS/effect/commit/fb91f17098b48497feca9ec976feb87e4a82451b)]:
+  - effect@3.2.8
+  - @effect/sql@0.3.5
+
 ## 0.4.5
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # effect
 
+## 3.2.8
+
+### Patch Changes
+
+- [#2894](https://github.com/Effect-TS/effect/pull/2894) [`fb91f17`](https://github.com/Effect-TS/effect/commit/fb91f17098b48497feca9ec976feb87e4a82451b) Thanks @mikearnaldi! - ensure Equal considers Date by value
+
 ## 3.2.7
 
 ### Patch Changes

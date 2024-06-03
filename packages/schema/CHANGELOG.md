@@ -1,5 +1,89 @@
 # @effect/schema
 
+## 0.67.17
+
+### Patch Changes
+
+- [#2892](https://github.com/Effect-TS/effect/pull/2892) [`d9d22e7`](https://github.com/Effect-TS/effect/commit/d9d22e7c4d5e31d5b46644c729b027796e467c16) Thanks @gcanti! - Schema
+
+  - add `propertySignature` API interface (with a `from` property)
+  - extend `optional` API interface with a `from` property
+  - extend `optionalWithOptions` API interface with a `from` property
+
+- [#2901](https://github.com/Effect-TS/effect/pull/2901) [`3c080f7`](https://github.com/Effect-TS/effect/commit/3c080f74b2e2290edb6143c3aa01026e57f87a2a) Thanks @gcanti! - make the `AST.TemplateLiteral` constructor public
+
+- [#2901](https://github.com/Effect-TS/effect/pull/2901) [`3c080f7`](https://github.com/Effect-TS/effect/commit/3c080f74b2e2290edb6143c3aa01026e57f87a2a) Thanks @gcanti! - add support for string literals to `Schema.TemplateLiteral` and `TemplateLiteral` API interface.
+
+  Before
+
+  ```ts
+  import { Schema } from "@effect/schema";
+
+  // `https://${string}.com` | `https://${string}.net`
+  const MyUrl = Schema.TemplateLiteral(
+    Schema.Literal("https://"),
+    Schema.String,
+    Schema.Literal("."),
+    Schema.Literal("com", "net"),
+  );
+  ```
+
+  Now
+
+  ```ts
+  import { Schema } from "@effect/schema";
+
+  // `https://${string}.com` | `https://${string}.net`
+  const MyUrl = Schema.TemplateLiteral(
+    "https://",
+    Schema.String,
+    ".",
+    Schema.Literal("com", "net"),
+  );
+  ```
+
+- [#2905](https://github.com/Effect-TS/effect/pull/2905) [`7d6d875`](https://github.com/Effect-TS/effect/commit/7d6d8750077d9c8379f37240745240d7f3b7a4f8) Thanks @gcanti! - add support for unions to `rename`, closes #2904
+
+- [#2897](https://github.com/Effect-TS/effect/pull/2897) [`70cda70`](https://github.com/Effect-TS/effect/commit/70cda704e8e31c80737b95121c8199e726ea132f) Thanks @gcanti! - Add `encodedBoundSchema` API.
+
+  The `encodedBoundSchema` function is similar to `encodedSchema` but preserves the refinements up to the first transformation point in the
+  original schema.
+
+  **Function Signature:**
+
+  ```ts
+  export const encodedBoundSchema = <A, I, R>(schema: Schema<A, I, R>): Schema<I>
+  ```
+
+  The term "bound" in this context refers to the boundary up to which refinements are preserved when extracting the encoded form of a schema. It essentially marks the limit to which initial validations and structure are maintained before any transformations are applied.
+
+  **Example Usage:**
+
+  ```ts
+  import { Schema } from "@effect/schema";
+
+  const schema = Schema.Struct({
+    foo: Schema.String.pipe(Schema.minLength(3), Schema.compose(Schema.Trim)),
+  });
+
+  // The resultingEncodedBoundSchema preserves the minLength(3) refinement,
+  // ensuring the string length condition is enforced but omits the Trim transformation.
+  const resultingEncodedBoundSchema = Schema.encodedBoundSchema(schema);
+
+  // resultingEncodedBoundSchema is the same as:
+  Schema.Struct({
+    foo: Schema.String.pipe(Schema.minLength(3)),
+  });
+  ```
+
+  In the provided example:
+
+  - **Initial Schema**: The schema for `foo` includes a refinement to ensure strings have a minimum length of three characters and a transformation to trim the string.
+  - **Resulting Schema**: `resultingEncodedBoundSchema` maintains the `minLength(3)` condition, ensuring that this validation persists. However, it excludes the trimming transformation, focusing solely on the length requirement without altering the string's formatting.
+
+- Updated dependencies [[`fb91f17`](https://github.com/Effect-TS/effect/commit/fb91f17098b48497feca9ec976feb87e4a82451b)]:
+  - effect@3.2.8
+
 ## 0.67.16
 
 ### Patch Changes
