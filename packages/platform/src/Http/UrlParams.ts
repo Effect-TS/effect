@@ -224,7 +224,12 @@ export const makeUrl = (url: string, params: UrlParams): Either.Either<URL, Erro
 }
 
 const baseUrl = (): string | undefined => {
-  if ("location" in globalThis && globalThis.location !== undefined) {
+  if (
+    "location" in globalThis &&
+    globalThis.location !== undefined &&
+    globalThis.location.origin !== undefined &&
+    globalThis.location.pathname !== undefined
+  ) {
     return location.origin + location.pathname
   }
   return undefined
