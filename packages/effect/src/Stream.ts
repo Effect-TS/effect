@@ -1,7 +1,6 @@
 /**
  * @since 2.0.0
  */
-import { NonEmptyReadonlyArray } from "./Array.js"
 import type * as Cause from "./Cause.js"
 import type * as Channel from "./Channel.js"
 import type * as Chunk from "./Chunk.js"
@@ -4360,7 +4359,7 @@ export const zipLatest: {
  * used for zipping.
  *
  * @example
- * import { Stream } from "effect"
+ * import { Stream, Schedule, Console, Effect } from "effect"
  *
  * const stream = Stream.zipLatestAll(
  *     Stream.fromSchedule(Schedule.spaced('500 millis')),
@@ -4370,12 +4369,12 @@ export const zipLatest: {
  *
  * Effect.runPromise(Stream.runDrain(stream))
  * // Output:
- * [ 0, 0, 0 ]
- * [ 1, 0, 0 ]
- * [ 1, 1, 0 ]
- * [ 2, 1, 0 ]
- * [ 3, 1, 0 ]
- * [ 3, 1, 1 ]
+ * // [ 0, 0, 0 ]
+ * // [ 1, 0, 0 ]
+ * // [ 1, 1, 0 ]
+ * // [ 2, 1, 0 ]
+ * // [ 3, 1, 0 ]
+ * // [ 3, 1, 1 ]
  * // .....
  *
  * @since 3.3.0
