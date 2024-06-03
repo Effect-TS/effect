@@ -671,7 +671,7 @@ const makeEnumsClass = <A extends EnumsDefinition>(
 export const Enums = <A extends EnumsDefinition>(enums: A): Enums<A> => makeEnumsClass(enums)
 
 type Join<T> = T extends [infer Head, ...infer Tail] ?
-  `${(Head extends Schema<infer A> ? A : Head) & string}${Join<Tail>}`
+  `${(Head extends Schema<infer A> ? A : Head) & (string | number)}${Join<Tail>}`
   : ""
 
 /**

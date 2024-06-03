@@ -1188,11 +1188,23 @@ S.instanceOf(Test)
 // @ts-expect-error
 S.TemplateLiteral(1, S.String)
 
-// TemplateLiteral<`a${string}`>
+// $ExpectType TemplateLiteral<`a${string}`>
 S.TemplateLiteral(S.Literal("a"), S.String)
 
-// TemplateLiteral<`a${string}`>
+// $ExpectType TemplateLiteral<`a${string}`>
 S.TemplateLiteral("a", S.String)
+
+// $ExpectType TemplateLiteral<`${string}/`>
+S.TemplateLiteral(S.String, S.Literal("/"))
+
+// $ExpectType TemplateLiteral<`${string}/`>
+S.TemplateLiteral(S.String, "/")
+
+// $ExpectType TemplateLiteral<`${string}/${number}`>
+S.TemplateLiteral(S.String, S.Literal("/"), S.Number)
+
+// $ExpectType TemplateLiteral<`${string}/${number}`>
+S.TemplateLiteral(S.String, "/", S.Number)
 
 // example from https://www.typescriptlang.org/docs/handbook/2/template-literal-types.html
 const EmailLocaleIDs = S.Literal("welcome_email", "email_heading")
