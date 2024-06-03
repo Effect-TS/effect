@@ -144,7 +144,18 @@ export class Unexpected {
    * @since 0.67.0
    */
   readonly _tag = "Unexpected"
-  constructor(readonly ast: AST.AST) {}
+  /**
+   * @since 0.68.0
+   */
+  readonly message: Option.Option<string>
+  constructor(
+    /**
+     * @since 0.68.0
+     */
+    message?: string
+  ) {
+    this.message = Option.fromNullable(message)
+  }
 }
 
 /**
@@ -218,13 +229,23 @@ export class Missing {
    * @since 0.67.0
    */
   readonly _tag = "Missing"
+  /**
+   * @since 0.68.0
+   */
+  readonly message: Option.Option<string>
+  constructor(
+    /**
+     * @since 0.68.0
+     */
+    readonly ast: AST.Element | AST.PropertySignature,
+    /**
+     * @since 0.68.0
+     */
+    message?: string
+  ) {
+    this.message = Option.fromNullable(message)
+  }
 }
-
-/**
- * @category constructors
- * @since 0.67.0
- */
-export const missing: Missing = new Missing()
 
 /**
  * Error that occurs when a member in a union has an error.
@@ -939,7 +960,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         const len = input.length
         for (let i = len; i <= requiredLen - 1; i++) {
-          const e = new Index(i, missing)
+          const e = new Index(i, new Missing(ast.elements[i]))
           if (allErrors) {
             es.push([stepKey++, e])
             continue
@@ -953,7 +974,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         if (ast.rest.length === 0) {
           for (let i = ast.elements.length; i <= len - 1; i++) {
-            const e = new Index(i, new Unexpected(expectedAST))
+            const e = new Index(i, new Unexpected(`is unexpected, expected ${expectedAST.toString(true)}`))
             if (allErrors) {
               es.push([stepKey++, e])
               continue
@@ -1190,7 +1211,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
             if (Either.isLeft(eu)) {
               // key is unexpected
               if (onExcessPropertyError) {
-                const e = new Key(key, new Unexpected(expectedAST))
+                const e = new Key(key, new Unexpected(`is unexpected, expected ${expectedAST.toString(true)}`))
                 if (allErrors) {
                   es.push([stepKey++, e])
                   continue
@@ -1225,7 +1246,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
             if (ps.isOptional) {
               continue
             } else if (isExact) {
-              const e = new Key(name, missing)
+              const e = new Key(name, new Missing(ps))
               if (allErrors) {
                 es.push([stepKey++, e])
                 continue
@@ -1239,7 +1260,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           const eu = eitherOrUndefined(te)
           if (eu) {
             if (Either.isLeft(eu)) {
-              const e = new Key(name, hasKey ? eu.left : missing)
+              const e = new Key(name, hasKey ? eu.left : new Missing(ps))
               if (allErrors) {
                 es.push([stepKey++, e])
                 continue
@@ -1258,7 +1279,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
               ({ es, output }: State) =>
                 Effect.flatMap(Effect.either(te), (t) => {
                   if (Either.isLeft(t)) {
-                    const e = new Key(index, hasKey ? t.left : missing)
+                    const e = new Key(index, hasKey ? t.left : new Missing(ps))
                     if (allErrors) {
                       es.push([nk, e])
                       return Effect.void
@@ -1403,14 +1424,13 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                 }
               } else {
                 const literals = AST.Union.make(searchTree.keys[name].literals)
+                const ps = new AST.PropertySignature(name, literals, false, true) // TODO: inherit message annotation from the union?
                 es.push([
                   stepKey++,
                   new TypeLiteral(
-                    new AST.TypeLiteral([
-                      new AST.PropertySignature(name, literals, false, true)
-                    ], []),
+                    new AST.TypeLiteral([ps], []),
                     input,
-                    [new Key(name, missing)]
+                    [new Key(name, new Missing(ps))]
                   )
                 ])
               }
@@ -1479,7 +1499,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
               Either.left(es[0][1]) :
               Either.left(new Union(ast, input, sortByIndex(es))) :
             // this should never happen
-            Either.left(new Type(AST.neverKeyword, input))
+            Either.left(new Type(ast, input))
 
         if (queue && queue.length > 0) {
           const cqueue = queue

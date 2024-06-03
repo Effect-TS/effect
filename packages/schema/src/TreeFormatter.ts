@@ -159,6 +159,13 @@ const getParseIssueTitle = (issue: ParseResult.ParseIssue): string =>
 export const formatForbiddenMessage = (e: ParseResult.Forbidden): string =>
   Option.getOrElse(e.message, () => "is forbidden")
 
+/** @internal */
+export const formatUnexpectedMessage = (e: ParseResult.Unexpected): string =>
+  Option.getOrElse(e.message, () => "is unexpected")
+
+/** @internal */
+export const formatMissingMessage = (e: ParseResult.Missing): string => Option.getOrElse(e.message, () => "is missing")
+
 const getTree = (issue: ParseResult.ParseIssue, onFailure: () => Effect.Effect<Tree<string>>) =>
   Effect.matchEffect(getMessage(issue), {
     onFailure,
@@ -172,9 +179,9 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
     case "Forbidden":
       return Effect.succeed(make(getParseIssueTitle(e), [make(formatForbiddenMessage(e))]))
     case "Unexpected":
-      return Effect.succeed(make(`is unexpected, expected ${e.ast.toString(true)}`))
+      return Effect.succeed(make(formatUnexpectedMessage(e)))
     case "Missing":
-      return Effect.succeed(make("is missing"))
+      return Effect.succeed(make(formatMissingMessage(e)))
     case "Union":
       return getTree(e, () =>
         Effect.map(

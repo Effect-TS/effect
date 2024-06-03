@@ -76,9 +76,9 @@ const go = (
     case "Forbidden":
       return succeed({ _tag, path, message: TreeFormatter.formatForbiddenMessage(e) })
     case "Unexpected":
-      return succeed({ _tag, path, message: `is unexpected, expected ${e.ast.toString(true)}` })
+      return succeed({ _tag, path, message: TreeFormatter.formatUnexpectedMessage(e) })
     case "Missing":
-      return succeed({ _tag, path, message: "is missing" })
+      return succeed({ _tag, path, message: TreeFormatter.formatMissingMessage(e) })
     case "Union":
       return getArray(e, path, () =>
         flatten(
