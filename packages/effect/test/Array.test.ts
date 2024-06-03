@@ -34,6 +34,13 @@ describe("ReadonlyArray", () => {
     expect(RA.fromIterable(new Set([1, 2, 3]))).toEqual([1, 2, 3])
   })
 
+  it("ensure", () => {
+    expect(RA.ensure(1)).toEqual([1])
+    expect(RA.ensure(null)).toEqual([null])
+    expect(RA.ensure([1])).toEqual([1])
+    expect(RA.ensure([1, 2])).toEqual([1, 2])
+  })
+
   describe("iterable inputs", () => {
     it("prepend", () => {
       deepStrictEqual(pipe([1, 2, 3], RA.prepend(0)), [0, 1, 2, 3])

@@ -633,26 +633,26 @@ pipe(
 )
 
 // -------------------------------------------------------------------------------------
-// cast
+// ensure
 // -------------------------------------------------------------------------------------
 
 // $ExpectType unknown[]
-Array.cast(unknownValue)
+Array.ensure(unknownValue)
 
 // $ExpectType number[]
-Array.cast(primitiveNumber)
+Array.ensure(primitiveNumber)
 
 // $ExpectType (string | number)[]
-Array.cast(primitiveNumberOrString)
+Array.ensure(primitiveNumberOrString)
 
 // $ExpectType number[]
-Array.cast(numbers)
+Array.ensure(numbers)
 
 // $ExpectType string[]
-Array.cast(strings)
+Array.ensure(strings)
 
 // $ExpectType (string | number)[]
-Array.cast(numbersOrStrings)
+Array.ensure(numbersOrStrings)
 
 // -------------------------------------------------------------------------------------
 // span

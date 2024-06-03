@@ -146,19 +146,22 @@ export const fromIterable = <A>(collection: Iterable<A>): Array<A> =>
   Array.isArray(collection) ? collection : Array.from(collection)
 
 /**
- * Creates a new `Array` from a value that might be an array or a single member.
+ * Creates a new `Array` from a value that might not be an iterable.
  *
  * @example
- * import { cast } from "effect/Array"
+ * import { Array } from "effect"
  *
- * assert.deepStrictEqual(cast("a"), ["a"])
- * assert.deepStrictEqual(cast(["a"]), ["a"])
- * assert.deepStrictEqual(cast(["a", "b", "c"]), ["a", "b", "c"])
+ * assert.deepStrictEqual(Array.ensure("a"), ["a"])
+ * assert.deepStrictEqual(Array.ensure(["a"]), ["a"])
+ * assert.deepStrictEqual(Array.ensure(["a", "b", "c"]), ["a", "b", "c"])
+ *
+ * const set = new Set([1, 2, 3])
+ * assert.deepStrictEqual(Array.ensure(set), [1, 2, 3])
  *
  * @category constructors
  * @since 3.3.0
  */
-export const cast = <A>(self: Array<A> | A): Array<A> => Array.isArray(self) ? self : [self]
+export const ensure = <A>(self: ReadonlyArray<A> | A): Array<A> => Array.isArray(self) ? self : of(self)
 
 /**
  * Takes a record and returns an array of tuples containing its keys and values.
