@@ -1075,12 +1075,9 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   }
 
   ["Micro"](op: Micro.Micro<any, any, never> & { _op: "Micro" }) {
-    const effect = new core.EffectPrimitive(OpCodes.OP_ASYNC) as any
-    let abort: Effect.Effect<any>
-    effect.effect_instruction_i0 = (resume: (_: Effect.Effect<unknown, unknown, unknown>) => void) => {
+    return core.unsafeAsync<any, any>((resume) => {
       const context = this.getFiberRef(core.currentContext)
       const handle = Micro.runFork(Micro.provideContext(op, context))
-      abort = handle.abort
       handle.addObserver((result) => {
         if (result._tag === "Right") {
           return resume(core.exitSucceed(result.right))
@@ -1097,9 +1094,8 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
           }
         }
       })
-    }
-    effect.effect_instruction_i1 = FiberId.none
-    return core.onInterrupt(effect, (_) => abort)
+      return handle.abort
+    })
   }
 
   [OpCodes.OP_SYNC](op: core.Primitive & { _op: OpCodes.OP_SYNC }) {

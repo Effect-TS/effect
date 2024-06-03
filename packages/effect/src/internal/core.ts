@@ -149,8 +149,7 @@ export class RevertFlags {
   }
 }
 
-/** @internal */
-export class EffectPrimitive {
+class EffectPrimitive {
   public effect_instruction_i0 = undefined
   public effect_instruction_i1 = undefined
   public effect_instruction_i2 = undefined
@@ -502,6 +501,24 @@ export const custom: {
     }
   }
   return wrapper
+}
+
+/* @internal */
+export const unsafeAsync = <A, E = never, R = never>(
+  register: (
+    callback: (_: Effect.Effect<A, E, R>) => void
+  ) => void | Effect.Effect<void, never, R>,
+  blockingOn: FiberId.FiberId = FiberId.none
+): Effect.Effect<A, E, R> => {
+  const effect = new EffectPrimitive(OpCodes.OP_ASYNC) as any
+  let cancelerRef: Effect.Effect<void, never, R> | void = undefined
+  effect.effect_instruction_i0 = (resume: (_: Effect.Effect<A, E, R>) => void) => {
+    cancelerRef = register(resume)
+  }
+  effect.effect_instruction_i1 = blockingOn
+  return cancelerRef !== undefined ?
+    onInterrupt(effect, (_) => cancelerRef!) :
+    effect
 }
 
 /* @internal */
