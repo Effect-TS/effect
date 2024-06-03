@@ -2,13 +2,14 @@
 "effect": minor
 ---
 
-add `cast` util for Array, used to normalize `A | Array<A>`
+add `ensure` util for Array, used to normalize `A | ReadonlyArray<A>`
 
 ```ts
-import { cast } from "effect/Array"
+import { ensure } from "effect/Array"
 
+// lets say you are not 100% sure if it's a member or a collection
 declare const someValue: {foo: string} | Array<{foo: string}>
 
 // $ExpectType ({ foo: string })[]
-const normalized = cast(someValue)
+const normalized = ensure(someValue)
 ```
