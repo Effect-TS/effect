@@ -95,6 +95,18 @@ export const MessageAnnotationId = Symbol.for("@effect/schema/annotation/Message
  * @category annotations
  * @since 0.67.0
  */
+export type MissingMessageAnnotation = () => string | Effect<string>
+
+/**
+ * @category annotations
+ * @since 0.67.0
+ */
+export const MissingMessageAnnotationId = Symbol.for("@effect/schema/annotation/MissingMessage")
+
+/**
+ * @category annotations
+ * @since 0.67.0
+ */
 export type IdentifierAnnotation = string
 
 /**
@@ -276,6 +288,12 @@ export const getBrandAnnotation = getAnnotation<BrandAnnotation>(BrandAnnotation
  * @since 0.67.0
  */
 export const getMessageAnnotation = getAnnotation<MessageAnnotation>(MessageAnnotationId)
+
+/**
+ * @category annotations
+ * @since 0.67.0
+ */
+export const getMissingMessageAnnotation = getAnnotation<MissingMessageAnnotation>(MissingMessageAnnotationId)
 
 /**
  * @category annotations
@@ -1062,7 +1080,14 @@ export const isTemplateLiteral: (ast: AST) => ast is TemplateLiteral = createAST
  * @since 0.67.0
  */
 export class Element {
-  constructor(readonly type: AST, readonly isOptional: boolean) {}
+  constructor(
+    readonly type: AST,
+    readonly isOptional: boolean,
+    /**
+     * @since 0.68.0
+     */
+    readonly annotations: Annotations = {}
+  ) {}
   /**
    * @since 0.67.0
    */

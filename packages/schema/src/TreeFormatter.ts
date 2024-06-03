@@ -164,7 +164,15 @@ export const formatUnexpectedMessage = (e: ParseResult.Unexpected): string =>
   Option.getOrElse(e.message, () => "is unexpected")
 
 /** @internal */
-export const formatMissingMessage = (e: ParseResult.Missing): string => Option.getOrElse(e.message, () => "is missing")
+export const formatMissingMessage = (e: ParseResult.Missing): Effect.Effect<string> =>
+  AST.getMissingMessageAnnotation(e.ast).pipe(
+    Effect.flatMap((annotation) => {
+      const out = annotation()
+      return Predicate.isString(out) ? Effect.succeed(out) : out
+    }),
+    Effect.orElse(() => e.message),
+    Effect.catchAll(() => Effect.succeed("is missing"))
+  )
 
 const getTree = (issue: ParseResult.ParseIssue, onFailure: () => Effect.Effect<Tree<string>>) =>
   Effect.matchEffect(getMessage(issue), {
@@ -181,7 +189,7 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
     case "Unexpected":
       return Effect.succeed(make(formatUnexpectedMessage(e)))
     case "Missing":
-      return Effect.succeed(make(formatMissingMessage(e)))
+      return Effect.map(formatMissingMessage(e), make)
     case "Union":
       return getTree(e, () =>
         Effect.map(

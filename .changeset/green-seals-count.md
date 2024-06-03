@@ -1,6 +1,17 @@
 ---
-"@effect/schema": minor
+"@effect/schema": patch
 ---
+
+TODO: ^---- change `patch` to `minor`
+
+AST
+
+- add `annotations` field to `Element`
+- add `MissingMessageAnnotation`
+
+Schema
+
+- add `missingMessage` annotation to `PropertySignature`
 
 ParseResult
 

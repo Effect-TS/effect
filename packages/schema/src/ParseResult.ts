@@ -1424,13 +1424,13 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                 }
               } else {
                 const literals = AST.Union.make(searchTree.keys[name].literals)
-                const ps = new AST.PropertySignature(name, literals, false, true) // TODO: inherit message annotation from the union?
+                const fakeps = new AST.PropertySignature(name, literals, false, true) // TODO: inherit message annotation from the union?
                 es.push([
                   stepKey++,
                   new TypeLiteral(
-                    new AST.TypeLiteral([ps], []),
+                    new AST.TypeLiteral([fakeps], []),
                     input,
-                    [new Key(name, new Missing(ps))]
+                    [new Key(name, new Missing(fakeps))]
                   )
                 ])
               }

@@ -148,6 +148,7 @@ const toASTAnnotations = (
     }
   }
   move("message", AST.MessageAnnotationId)
+  move("missingMessage", AST.MissingMessageAnnotationId)
   move("identifier", AST.IdentifierAnnotationId)
   move("title", AST.TitleAnnotationId)
   move("description", AST.DescriptionAnnotationId)
@@ -1380,7 +1381,9 @@ export declare namespace PropertySignature {
   /**
    * @since 0.67.0
    */
-  export interface Annotations<A> extends Annotations.Doc<A> {}
+  export interface Annotations<A> extends Annotations.Doc<A> {
+    readonly missingMessage: AST.MissingMessageAnnotation
+  }
 }
 
 const formatToken = (isOptional: boolean): string => isOptional ? "\"?:\"" : "\":\""

@@ -1,5 +1,6 @@
 import * as ArrayFormatter from "@effect/schema/ArrayFormatter"
 import type { ParseOptions } from "@effect/schema/AST"
+import * as AST from "@effect/schema/AST"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
@@ -21,6 +22,53 @@ const expectIssues = <A, I>(schema: S.Schema<A, I>, input: unknown, issues: Arra
 }
 
 describe("Formatter", () => {
+  describe("missing message", () => {
+    it("Struct", async () => {
+      const schema = S.Struct({
+        a: S.propertySignature(S.String).annotations({
+          description: "my description",
+          missingMessage: () => "my missing message"
+        })
+      })
+      const input = {}
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        input,
+        `{ readonly a: string }
+└─ ["a"]
+   └─ my missing message`
+      )
+      expectIssues(schema, input, [{
+        _tag: "Missing",
+        path: ["a"],
+        message: "my missing message"
+      }])
+    })
+
+    it("Tuple", async () => {
+      const schema = S.make(
+        new AST.TupleType(
+          [new AST.Element(AST.stringKeyword, false, { [AST.MissingMessageAnnotationId]: () => "my missing message" })],
+          [],
+          true
+        )
+      )
+      const input: Array<string> = []
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        input,
+        `readonly [string]
+└─ [0]
+   └─ my missing message`
+      )
+      expectIssues(schema, input, [{
+        _tag: "Missing",
+        path: [0],
+        message: "my missing message"
+      }])
+    })
+  })
+
   describe("Forbidden", () => {
     it("default message", () => {
       const schema = Util.effectify(S.String)

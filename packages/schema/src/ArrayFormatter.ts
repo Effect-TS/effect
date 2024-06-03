@@ -78,7 +78,7 @@ const go = (
     case "Unexpected":
       return succeed({ _tag, path, message: TreeFormatter.formatUnexpectedMessage(e) })
     case "Missing":
-      return succeed({ _tag, path, message: TreeFormatter.formatMissingMessage(e) })
+      return Effect.map(TreeFormatter.formatMissingMessage(e), (message) => [{ _tag, path, message }])
     case "Union":
       return getArray(e, path, () =>
         flatten(
