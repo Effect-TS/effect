@@ -93,9 +93,6 @@ export interface StreamUnifyIgnore extends Effect.EffectUnifyIgnore {
  */
 declare module "./Effect.js" {
   interface Effect<A, E, R> extends Stream<A, E, R> {}
-  interface EffectUnifyIgnore {
-    Stream?: true
-  }
 }
 
 /**
