@@ -176,16 +176,16 @@ abstract class FailureImpl<Tag extends string, E> extends globalThis.Error imple
   }
   constructor(
     readonly _tag: Tag,
-    readonly cause: unknown,
+    readonly originalError: unknown,
     readonly traces: ReadonlyArray<string>
   ) {
     let message: string
     let stack: string
-    if (hasProperty(cause, "message")) {
-      message = `(Failure${_tag}) ${cause.message}`
-      stack = hasProperty(cause, "stack") ? `(Failure${_tag}) ${cause.stack}` : message
+    if (hasProperty(originalError, "message")) {
+      message = `(Failure${_tag}) ${originalError.message}`
+      stack = hasProperty(originalError, "stack") ? `(Failure${_tag}) ${originalError.stack}` : message
     } else {
-      message = `Failure${_tag}: ${cause}`
+      message = `Failure${_tag}: ${originalError}`
       stack = message
     }
     if (traces.length > 0) {
@@ -1090,6 +1090,7 @@ export const tap: {
         if (selfResult._tag === "Left") {
           return onResult(selfResult as any)
         }
+        console.log(env)
         const value = isMicro(f) ? f : typeof f === "function" ? f(selfResult.right) : f
         if (isMicro(value)) {
           value[runSymbol](env, function(tapResult) {
@@ -1898,12 +1899,16 @@ export const withTrace: {
     const lineMatch = line.match(/\((.*)\)$/)
     return failureWithTrace(failure, `at ${name} (${lineMatch ? lineMatch[1] : line})`)
   }
+  const f = (name: string) => (self: Micro<any, any, any>) =>
+    unsafeMakeNoAbort(function(env, onResult) {
+      self[runSymbol](env, function(result) {
+        onResult(result._tag === "Left" ? Either.left(generate(name, result.left)) : result)
+      })
+    })
   if (arguments.length === 2) {
-    const name: string = arguments[1]
-    return mapFailure(arguments[0], (failure) => generate(name, failure))
+    return f(arguments[1])(arguments[0])
   }
-  const name: string = arguments[0]
-  return (self: Micro<any, any, any>) => mapFailure(self, (failure) => generate(name, failure))
+  return f(arguments[0])
 } as any
 
 // ----------------------------------------------------------------------------
