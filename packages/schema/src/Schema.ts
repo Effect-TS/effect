@@ -1122,6 +1122,7 @@ export const NullishOr = <S extends Schema.Any>(self: S): NullishOr<S> => Union(
 export const keyof = <A, I, R>(self: Schema<A, I, R>): SchemaClass<keyof A> => make<keyof A>(AST.keyof(self.ast))
 
 /**
+ * @category API interface
  * @since 0.67.0
  */
 export interface OptionalElement<E extends Schema.Any>

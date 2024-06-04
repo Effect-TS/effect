@@ -941,11 +941,12 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
     case "TupleType": {
       const elements = ast.elements.map((e) => goMemo(e.type, isDecoding))
       const rest = ast.rest.map((ast) => goMemo(ast, isDecoding))
-      let requiredLen = ast.elements.filter((e) => !e.isOptional).length
+      let requiredElements = ast.elements.filter((e) => !e.isOptional)
       if (ast.rest.length > 0) {
-        requiredLen += ast.rest.length - 1
+        requiredElements = requiredElements.concat(ast.rest.slice(1).map((ast) => new AST.Element(ast, false)))
       }
-      const expectedAST = AST.Union.make(ast.elements.map((_, i) => new AST.Literal(i)))
+      const requiredLen = requiredElements.length
+      const expectedIndexes = ast.elements.length > 0 ? ast.elements.map((_, i) => i).join(" | ") : "never"
       const concurrency = getConcurrency(ast)
       const batching = getBatching(ast)
       return (input: unknown, options) => {
@@ -960,7 +961,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         const len = input.length
         for (let i = len; i <= requiredLen - 1; i++) {
-          const e = new Index(i, new Missing(ast.elements[i]))
+          const e = new Index(i, new Missing(requiredElements[i - len]))
           if (allErrors) {
             es.push([stepKey++, e])
             continue
@@ -974,7 +975,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         if (ast.rest.length === 0) {
           for (let i = ast.elements.length; i <= len - 1; i++) {
-            const e = new Index(i, new Unexpected(`is unexpected, expected ${expectedAST.toString(true)}`))
+            const e = new Index(i, new Unexpected(`is unexpected, expected ${expectedIndexes}`))
             if (allErrors) {
               es.push([stepKey++, e])
               continue

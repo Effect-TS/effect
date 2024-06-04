@@ -45,27 +45,56 @@ describe("Formatter", () => {
       }])
     })
 
-    it("Tuple", async () => {
-      const schema = S.make(
-        new AST.TupleType(
-          [new AST.Element(AST.stringKeyword, false, { [AST.MissingMessageAnnotationId]: () => "my missing message" })],
-          [],
-          true
+    describe("Tuple", () => {
+      it("e", async () => {
+        const schema = S.make(
+          new AST.TupleType(
+            [
+              new AST.Element(AST.stringKeyword, false, {
+                [AST.MissingMessageAnnotationId]: () => "my missing message"
+              })
+            ],
+            [],
+            true
+          )
         )
-      )
-      const input: Array<string> = []
-      await Util.expectDecodeUnknownFailure(
-        schema,
-        input,
-        `readonly [string]
+        const input: Array<string> = []
+        await Util.expectDecodeUnknownFailure(
+          schema,
+          input,
+          `readonly [string]
 └─ [0]
    └─ my missing message`
-      )
-      expectIssues(schema, input, [{
-        _tag: "Missing",
-        path: [0],
-        message: "my missing message"
-      }])
+        )
+        expectIssues(schema, input, [{
+          _tag: "Missing",
+          path: [0],
+          message: "my missing message"
+        }])
+      })
+
+      it("r + e", async () => {
+        const schema = S.make(
+          new AST.TupleType(
+            [],
+            [AST.stringKeyword, AST.stringKeyword],
+            true
+          )
+        )
+        const input: Array<string> = []
+        await Util.expectDecodeUnknownFailure(
+          schema,
+          input,
+          `readonly [...string[], string]
+└─ [0]
+   └─ is missing`
+        )
+        expectIssues(schema, input, [{
+          _tag: "Missing",
+          path: [0],
+          message: "is missing"
+        }])
+      })
     })
   })
 
