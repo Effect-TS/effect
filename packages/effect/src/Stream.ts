@@ -4362,10 +4362,10 @@ export const zipLatest: {
  * import { Stream, Schedule, Console, Effect } from "effect"
  *
  * const stream = Stream.zipLatestAll(
- *     Stream.fromSchedule(Schedule.spaced('500 millis')),
- *     Stream.fromSchedule(Schedule.spaced('1000 millis')),
- *     Stream.fromSchedule(Schedule.spaced('2000 millis')),
- * ).pipe(Stream.tap(Console.log))
+ *     Stream.fromSchedule(Schedule.spaced('1 millis')),
+ *     Stream.fromSchedule(Schedule.spaced('2 millis')),
+ *     Stream.fromSchedule(Schedule.spaced('4 millis')),
+ * ).pipe(Stream.take(6), Stream.tap(Console.log))
  *
  * Effect.runPromise(Stream.runDrain(stream))
  * // Output:
