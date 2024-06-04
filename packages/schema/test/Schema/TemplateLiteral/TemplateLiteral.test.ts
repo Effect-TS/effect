@@ -255,5 +255,25 @@ describe("TemplateLiteral", () => {
    └─ Expected \`\${string}0\`, actual "b"`
       )
     })
+
+    it("${string | 1}${Number | true}", async () => {
+      const schema = S.TemplateLiteral(S.Union(S.String, S.Literal(1)), S.Union(S.Number, S.Literal(true)))
+      await Util.expectDecodeUnknownSuccess(schema, "atrue")
+      await Util.expectDecodeUnknownSuccess(schema, "-2")
+      await Util.expectDecodeUnknownSuccess(schema, "10.1")
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        "",
+        `\`\${string}\${number}\` | \`\${string}true\` | \`1\${number}\` | "1true"
+├─ Union member
+│  └─ Expected \`\${string}\${number}\`, actual ""
+├─ Union member
+│  └─ Expected \`\${string}true\`, actual ""
+├─ Union member
+│  └─ Expected \`1\${number}\`, actual ""
+└─ Union member
+   └─ Expected "1true", actual ""`
+      )
+    })
   })
 })
