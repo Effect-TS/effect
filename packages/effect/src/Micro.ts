@@ -585,6 +585,18 @@ export const failSync = <E>(e: LazyArg<E>): Micro<never, E> =>
   })
 
 /**
+ * Abort the current `Micro` effect.
+ *
+ * @since 3.3.0
+ * @category constructors
+ */
+export const abort: Micro<never> = make(function(env, onResult) {
+  const controller = envGet(env, currentAbortController)
+  controller.abort()
+  onResult(ResultAborted)
+})
+
+/**
  * Creates a `Micro` effect that will die with the specified error.
  *
  * This will result in a `FailureUnexpected`, where the error is not tracked at
@@ -738,7 +750,7 @@ export const async = <A, E = never, R = never>(
     let cleanup: Micro<void, never, R> | void = undefined
     function onAbort() {
       if (cleanup) {
-        resume(uninterruptible(andThen(cleanup, failWith(new FailureAborted()))))
+        resume(uninterruptible(andThen(cleanup, abort)))
       } else {
         resume(failWith(new FailureAborted()))
       }
@@ -1040,6 +1052,8 @@ export const andThen: {
       self[runSymbol](env, function(result) {
         if (result._tag === "Left") {
           return onResult(result as any)
+        } else if (envGet(env, currentAbortSignal).aborted) {
+          return onResult(ResultAborted)
         }
         const value = isMicro(f) ? f : typeof f === "function" ? f(result.right) : f
         if (isMicro(value)) {
@@ -1089,8 +1103,9 @@ export const tap: {
       self[runSymbol](env, function(selfResult) {
         if (selfResult._tag === "Left") {
           return onResult(selfResult as any)
+        } else if (envGet(env, currentAbortSignal).aborted) {
+          return onResult(ResultAborted)
         }
-        console.log(env)
         const value = isMicro(f) ? f : typeof f === "function" ? f(selfResult.right) : f
         if (isMicro(value)) {
           value[runSymbol](env, function(tapResult) {
@@ -2496,7 +2511,7 @@ export const uninterruptible = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, R> =
  *
  * Micro.uninterruptibleMask((restore) =>
  *   Micro.sleep(1000).pipe( // uninterruptible
- *     Micro.andThen(restore(Micro.sleep(1000)) // interruptible
+ *     Micro.andThen(restore(Micro.sleep(1000))) // interruptible
  *   )
  * )
  */
