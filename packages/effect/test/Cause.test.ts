@@ -14,18 +14,18 @@ describe("Cause", () => {
     class Error1 {
       readonly _tag = "WithTag"
     }
-    expect(internal.prettyErrorMessage(new Error1())).toEqual(`Error: {"_tag":"WithTag"}`)
+    expect(internal.prettyErrorMessage(new Error1())).toEqual(`{"_tag":"WithTag"}`)
     class Error2 {
       readonly _tag = "WithMessage"
       readonly message = "my message"
     }
-    expect(internal.prettyErrorMessage(new Error2())).toEqual(`Error: {"_tag":"WithMessage","message":"my message"}`)
+    expect(internal.prettyErrorMessage(new Error2())).toEqual(`{"_tag":"WithMessage","message":"my message"}`)
     class Error3 {
       readonly _tag = "WithName"
       readonly name = "my name"
     }
     expect(internal.prettyErrorMessage(new Error3())).toEqual(
-      `Error: {"_tag":"WithName","name":"my name"}`
+      `{"_tag":"WithName","name":"my name"}`
     )
     class Error4 {
       readonly _tag = "WithName"
@@ -33,7 +33,7 @@ describe("Cause", () => {
       readonly message = "my message"
     }
     expect(internal.prettyErrorMessage(new Error4())).toEqual(
-      `Error: {"_tag":"WithName","name":"my name","message":"my message"}`
+      `{"_tag":"WithName","name":"my name","message":"my message"}`
     )
     class Error5 {
       readonly _tag = "WithToString"
@@ -77,7 +77,7 @@ describe("Cause", () => {
       class Error5 {
         readonly _tag = "WithToString"
         toString() {
-          return "Error: my string"
+          return "my string"
         }
       }
       expect(Cause.pretty(Cause.fail(new Error5()))).toEqual(`Error: my string`)

@@ -1025,7 +1025,7 @@ class PrettyError extends globalThis.Error implements Cause.PrettyError {
 export const prettyErrorMessage = (u: unknown): string => {
   // 1)
   if (typeof u === "string") {
-    return `Error: ${u}`
+    return u
   }
   // 2)
   if (typeof u === "object" && u !== null && u instanceof Error) {
