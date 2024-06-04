@@ -281,6 +281,35 @@ describe("Pool", () => {
       expect(max).toBe(10)
     }))
 
+  it.scoped("max pool size creation strategy", () =>
+    Effect.gen(function*($) {
+      const invalidated = yield* $(Ref.make(0))
+      const acquire = Effect.acquireRelease(
+        Effect.succeed("resource"),
+        () => Ref.update(invalidated, (n) => n + 1)
+      )
+      const pool = yield* $(Pool.makeWithTTL({
+        acquire,
+        min: 10,
+        max: 15,
+        timeToLive: Duration.seconds(60),
+        timeToLiveStrategy: "creation"
+      }))
+      const scope = yield* Scope.make()
+      yield* Pool.get(pool).pipe(
+        Effect.repeatN(14),
+        Scope.extend(scope)
+      )
+      const one = yield* $(Ref.get(invalidated))
+      yield* $(TestClock.adjust(Duration.seconds(60)))
+      const two = yield* $(Ref.get(invalidated))
+      yield* Scope.close(scope, Exit.void)
+      const three = yield* $(Ref.get(invalidated))
+      assert.strictEqual(one, 0)
+      assert.strictEqual(two, 0)
+      assert.strictEqual(three, 15)
+    }))
+
   it.scoped("shutdown robustness", () =>
     Effect.gen(function*($) {
       const count = yield* $(Ref.make(0))
