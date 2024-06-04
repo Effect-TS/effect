@@ -2124,7 +2124,7 @@ const decodeAST = (
         if (Array.isArray(schema.items)) {
           const minItems = schema.minItems ?? -1
           const rest: AST.TupleType["rest"] = schema.additionalItems && !Predicate.isBoolean(schema.additionalItems)
-            ? [decodeAST(schema.additionalItems, $defs)]
+            ? [new AST.AnnotatedAST(decodeAST(schema.additionalItems, $defs))]
             : []
           return new AST.TupleType(
             schema.items.map((item, i) => new AST.Element(decodeAST(item, $defs), i >= minItems)),
@@ -2132,7 +2132,7 @@ const decodeAST = (
             true
           )
         } else {
-          return new AST.TupleType([], [decodeAST(schema.items, $defs)], true)
+          return new AST.TupleType([], [new AST.AnnotatedAST(decodeAST(schema.items, $defs))], true)
         }
       } else {
         return new AST.TupleType([], [], true)

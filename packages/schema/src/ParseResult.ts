@@ -237,7 +237,7 @@ export class Missing {
     /**
      * @since 0.68.0
      */
-    readonly ast: AST.Element | AST.PropertySignature,
+    readonly ast: AST.AnnotatedAST,
     /**
      * @since 0.68.0
      */
@@ -940,10 +940,10 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
     }
     case "TupleType": {
       const elements = ast.elements.map((e) => goMemo(e.type, isDecoding))
-      const rest = ast.rest.map((ast) => goMemo(ast, isDecoding))
-      let requiredElements = ast.elements.filter((e) => !e.isOptional)
+      const rest = ast.rest.map((annotatedAST) => goMemo(annotatedAST.type, isDecoding))
+      let requiredElements: Array<AST.AnnotatedAST> = ast.elements.filter((e) => !e.isOptional)
       if (ast.rest.length > 0) {
-        requiredElements = requiredElements.concat(ast.rest.slice(1).map((ast) => new AST.Element(ast, false)))
+        requiredElements = requiredElements.concat(ast.rest.slice(1))
       }
       const requiredLen = requiredElements.length
       const expectedIndexes = ast.elements.length > 0 ? ast.elements.map((_, i) => i).join(" | ") : "never"

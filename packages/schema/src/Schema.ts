@@ -1231,7 +1231,7 @@ const getDefaultTupleTypeAST = <
     elements.map((schema) =>
       isSchema(schema) ? new AST.Element(schema.ast, false) : new AST.Element(schema.optionalElement.ast, true)
     ),
-    rest.map((e) => e.ast),
+    rest.map((e) => new AST.AnnotatedAST(e.ast)),
     true
   )
 

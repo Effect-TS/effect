@@ -100,7 +100,7 @@ export const match: AST.Match<Pretty<any>> = {
       return hook.value()
     }
     const elements = ast.elements.map((e, i) => go(e.type, path.concat(i)))
-    const rest = ast.rest.map((ast) => go(ast, path))
+    const rest = ast.rest.map((annotatedAST) => go(annotatedAST.type, path))
     return (input: ReadonlyArray<unknown>) => {
       const output: Array<string> = []
       let i = 0

@@ -18,7 +18,7 @@ describe("AST.Tuple", () => {
     expect(() =>
       new AST.TupleType(
         [new AST.Element(AST.stringKeyword, true)],
-        [AST.stringKeyword, AST.stringKeyword],
+        [new AST.AnnotatedAST(AST.stringKeyword), new AST.AnnotatedAST(AST.stringKeyword)],
         true
       )
     ).toThrow(

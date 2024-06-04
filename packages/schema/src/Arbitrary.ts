@@ -190,7 +190,7 @@ const go = (ast: AST.AST, options: Options, path: ReadonlyArray<PropertyKey>): L
           hasOptionals = true
         }
       }
-      const rest = ast.rest.map((e) => go(e, options, path))
+      const rest = ast.rest.map((annotatedAST) => go(annotatedAST.type, options, path))
       return (fc) => {
         // ---------------------------------------------
         // handle elements

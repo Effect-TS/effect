@@ -89,7 +89,7 @@ const go = (ast: AST.AST, path: ReadonlyArray<PropertyKey>): Equivalence.Equival
     }
     case "TupleType": {
       const elements = ast.elements.map((element, i) => go(element.type, path.concat(i)))
-      const rest = ast.rest.map((ast) => go(ast, path))
+      const rest = ast.rest.map((annotatedAST) => go(annotatedAST.type, path))
       return Equivalence.make((a, b) => {
         const len = a.length
         if (len !== b.length) {

@@ -8,6 +8,8 @@ AST
 
 - add `annotations` field to `Element`
 - add `MissingMessageAnnotation`
+- add `AnnotatedAST`
+- change `TupleType` definition: from `rest: ReadonlyArray<AST>` to `rest: ReadonlyArray<AnnotatedAST>`
 
 Schema
 
@@ -16,7 +18,7 @@ Schema
 ParseResult
 
 - `Missing`
-  - add `ast: AST.Element | AST.PropertySignature` field
+  - add `ast: AST.AnnotatedAST` field
   - add `message` field
 - remove `missing` export
 - `Unexpected`

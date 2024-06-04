@@ -77,7 +77,12 @@ describe("Formatter", () => {
         const schema = S.make(
           new AST.TupleType(
             [],
-            [AST.stringKeyword, AST.stringKeyword],
+            [
+              new AST.AnnotatedAST(AST.stringKeyword),
+              new AST.AnnotatedAST(AST.stringKeyword, {
+                [AST.MissingMessageAnnotationId]: () => "my missing message"
+              })
+            ],
             true
           )
         )
@@ -87,12 +92,12 @@ describe("Formatter", () => {
           input,
           `readonly [...string[], string]
 └─ [0]
-   └─ is missing`
+   └─ my missing message`
         )
         expectIssues(schema, input, [{
           _tag: "Missing",
           path: [0],
-          message: "is missing"
+          message: "my missing message"
         }])
       })
     })

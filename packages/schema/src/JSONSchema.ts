@@ -382,7 +382,7 @@ const go = (
     case "TupleType": {
       const len = ast.elements.length
       const elements = ast.elements.map((e, i) => go(e.type, $defs, true, path.concat(i)))
-      const rest = ast.rest.map((ast) => go(ast, $defs, true, path))
+      const rest = ast.rest.map((annotatedAST) => go(annotatedAST.type, $defs, true, path))
       const output: JsonSchema7Array = { type: "array" }
       // ---------------------------------------------
       // handle elements
