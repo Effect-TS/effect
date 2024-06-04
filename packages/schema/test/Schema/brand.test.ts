@@ -4,19 +4,22 @@ import * as Util from "@effect/schema/test/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("brand", () => {
-  it("make", () => {
-    const IntegerFromString = S.NumberFromString.pipe(
-      S.int({ identifier: "IntegerFromString" }),
-      S.brand("Int")
-    )
-    Util.expectConstructorSuccess(IntegerFromString, 1)
+  it("the constructor should validate the input by default", () => {
+    const schema = S.NonEmpty.pipe(S.brand("A"))
+    Util.expectConstructorSuccess(schema, "a")
     Util.expectConstructorFailure(
-      IntegerFromString,
-      1.1,
-      `IntegerFromString
+      schema,
+      "",
+      `NonEmpty
 └─ Predicate refinement failure
-   └─ Expected IntegerFromString (an integer), actual 1.1`
+   └─ Expected NonEmpty (a non empty string), actual ""`
     )
+  })
+
+  it("the constructor validation can be disabled", () => {
+    const schema = S.NonEmpty.pipe(S.brand("A"))
+    expect(schema.make("", true)).toStrictEqual("")
+    expect(schema.make("", { disableValidation: true })).toStrictEqual("")
   })
 
   describe("annotations", () => {
@@ -50,7 +53,6 @@ describe("brand", () => {
     })
 
     it("brand as string (1 brand)", () => {
-      // const Branded: S.BrandSchema<number & Brand<"A">, number, never>
       const schema = S.Number.pipe(
         S.int(),
         S.brand("A", {
@@ -68,7 +70,6 @@ describe("brand", () => {
     })
 
     it("brand as string (2 brands)", () => {
-      // const Branded: S.Schema<number, number & Brand<"A"> & Brand<"B">>
       const schema = S.Number.pipe(
         S.int(),
         S.brand("A"),
@@ -89,7 +90,6 @@ describe("brand", () => {
     it("brand as symbol", () => {
       const A = Symbol.for("A")
       const B = Symbol.for("B")
-      // const Branded: S.Schema<number, number & Brand<unique symbol> & Brand<unique symbol>>
       const schema = S.Number.pipe(
         S.int(),
         S.brand(A),

@@ -94,6 +94,7 @@ describe("Class", () => {
   it("the constructor validation can be disabled", () => {
     class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
     expect(new A({ a: "" }, true).a).toStrictEqual("")
+    expect(new A({ a: "" }, { disableValidation: true }).a).toStrictEqual("")
   })
 
   it("the constructor should support defaults", () => {

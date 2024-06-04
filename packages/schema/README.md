@@ -5142,6 +5142,8 @@ There are scenarios where you might want to bypass validation during instantiati
 
 ```ts
 const john = new Person({ id: 1, name: "" }, true) // Bypasses validation and creates the instance without errors
+// or more explicitly
+new Person({ id: 1, name: "" }, { disableValidation: true }) // Bypasses validation and creates the instance without errors
 ```
 
 ### Hashing and Equality
@@ -5552,6 +5554,14 @@ Error: { name: NonEmpty }
 */
 ```
 
+There are scenarios where you might want to bypass validation during instantiation. Although not typically recommended, `@effect/schema` allows for this flexibility:
+
+```ts
+Struct.make({ name: "" }, true) // Bypasses validation and creates the instance without errors
+// or more explicitly
+Struct.make({ name: "" }, { disableValidation: true }) // Bypasses validation and creates the instance without errors
+```
+
 Example (`Record`)
 
 ```ts
@@ -5569,6 +5579,7 @@ Error: { [x: string]: NonEmpty }
       └─ Predicate refinement failure
          └─ Expected NonEmpty (a non empty string), actual ""
 */
+Record.make({ a: "a", b: "" }, { disableValidation: true }) // no errors
 ```
 
 Example (`filter`)
@@ -5587,6 +5598,7 @@ Error: a number between 1 and 10
 └─ Predicate refinement failure
   └─ Expected a number between 1 and 10, actual 20
 */
+MyNumber.make(20, { disableValidation: true }) // no errors
 ```
 
 Example (`brand`)
@@ -5608,6 +5620,7 @@ Error: a number between 1 and 10
 └─ Predicate refinement failure
   └─ Expected a number between 1 and 10, actual 20
 */
+BrandedNumberSchema.make(20, { disableValidation: true }) // no errors
 ```
 
 When utilizing our default constructors, it's important to grasp the type of value they generate. In the `BrandedNumberSchema` example, the return type of the constructor is `number & Brand<"MyNumber">`, indicating that the resulting value is a number with the added branding "MyNumber".
