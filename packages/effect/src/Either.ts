@@ -391,6 +391,57 @@ export const match: {
 )
 
 /**
+ * Transforms a `Predicate` function into a `Right` of the input value if the predicate returns `true`
+ * or `Left` of the result of the provided function if the predicate returns false
+ *
+ * @param predicate - A `Predicate` function that takes in a value of type `A` and returns a boolean.
+ *
+ * @example
+ * import { pipe, Either } from "effect"
+ *
+ * const isPositive = (n: number): boolean => n > 0
+ *
+ * assert.deepStrictEqual(
+ *   pipe(
+ *     1,
+ *     Either.liftPredicate(isPositive, n => `${n} is not positive`)
+ *   ),
+ *   Either.right(1)
+ * )
+ * assert.deepStrictEqual(
+ *   pipe(
+ *     0,
+ *     Either.liftPredicate(isPositive, n => `${n} is not positive`)
+ *   ),
+ *   Either.left("0 is not positive")
+ * )
+ *
+ * @category lifting
+ * @since 2.0.0
+ */
+export const liftPredicate: {
+  <A, B extends A, E>(refinement: Refinement<NoInfer<A>, B>, orLeftWith: (a: NoInfer<A>) => E): (a: A) => Either<B, E>
+  <A, E, B = A>(
+    predicate: Predicate<NoInfer<A>>,
+    orLeftWith: (a: NoInfer<A>) => E
+  ): (x: A) => Either<B, E>
+  <A, E, B extends A>(
+    self: A,
+    refinement: Refinement<A, B>,
+    orLeftWith: (a: A) => E
+  ): Either<B, E>
+  <A, E, B = A>(
+    self: A,
+    predicate: Predicate<A>,
+    orLeftWith: (a: A) => E
+  ): Either<B, E>
+} = dual(
+  3,
+  <A, E, B extends A>(x: B, predicate: Predicate<A>, orLeftWith: (a: A) => E) =>
+    predicate(x) ? right(x) : left(orLeftWith(x))
+)
+
+/**
  * Filter the right value with the provided function.
  * If the predicate fails, set the left value with the result of the provided function.
  *
