@@ -757,7 +757,7 @@ export const async = <A, E = never, R = never>(
     let cleanup: Micro<void, never, R> | void = undefined
     function onAbort() {
       if (cleanup) {
-        resume(uninterruptible(andThen(cleanup, abort)))
+        resume(uninterruptible(andThen(cleanup, fromResult(ResultAborted))))
       } else {
         resume(failWith(FailureAborted()))
       }
