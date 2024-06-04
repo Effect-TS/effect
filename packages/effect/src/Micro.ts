@@ -3043,7 +3043,7 @@ export const forkDaemon = <A, E, R>(self: Micro<A, E, R>): Micro<Handle<A, E>, n
  * import * as Micro from "effect/Micro"
  *
  * const handle = Micro.succeed(42).pipe(
- *   Micro.delay("1 second"),
+ *   Micro.delay(1000),
  *   Micro.runFork
  * )
  *
