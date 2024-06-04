@@ -426,7 +426,7 @@ export const envRefMake = <A>(key: string, initial: LazyArg<A>): EnvRef<A> =>
   globalValue(key, () => {
     const self = Object.create(EnvRefProto)
     self.key = key
-    self.initial = initial
+    self.initial = initial()
     return self
   })
 
