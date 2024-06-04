@@ -8,6 +8,9 @@ describe("TemplateLiteral", () => {
     expect(() => S.TemplateLiteral(S.Boolean)).toThrow(
       new Error("unsupported template literal span (boolean)")
     )
+    expect(() => S.TemplateLiteral(S.SymbolFromSelf)).toThrow(
+      new Error("unsupported template literal span (symbol)")
+    )
   })
 
   describe("AST", () => {
@@ -211,6 +214,65 @@ describe("TemplateLiteral", () => {
 │  └─ Expected "footer_title_id", actual "_id"
 └─ Union member
    └─ Expected "footer_sendoff_id", actual "_id"`
+      )
+    })
+
+    it("${string}${0}", async () => {
+      const schema = S.TemplateLiteral(S.String, 0)
+      await Util.expectDecodeUnknownSuccess(schema, "a0")
+      await Util.expectDecodeUnknownFailure(schema, "a", "Expected `${string}0`, actual \"a\"")
+    })
+
+    it("${string}${true}", async () => {
+      const schema = S.TemplateLiteral(S.String, true)
+      await Util.expectDecodeUnknownSuccess(schema, "atrue")
+      await Util.expectDecodeUnknownFailure(schema, "a", "Expected `${string}true`, actual \"a\"")
+    })
+
+    it("${string}${null}", async () => {
+      const schema = S.TemplateLiteral(S.String, null)
+      await Util.expectDecodeUnknownSuccess(schema, "anull")
+      await Util.expectDecodeUnknownFailure(schema, "a", "Expected `${string}null`, actual \"a\"")
+    })
+
+    it("${string}${1n}", async () => {
+      const schema = S.TemplateLiteral(S.String, 1n)
+      await Util.expectDecodeUnknownSuccess(schema, "a1")
+      await Util.expectDecodeUnknownFailure(schema, "a", "Expected `${string}1`, actual \"a\"")
+    })
+
+    it("${string}${a | 0}", async () => {
+      const schema = S.TemplateLiteral(S.String, S.Literal("a", 0))
+      await Util.expectDecodeUnknownSuccess(schema, "a0")
+      await Util.expectDecodeUnknownSuccess(schema, "aa")
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        "b",
+        `\`\${string}a\` | \`\${string}0\`
+├─ Union member
+│  └─ Expected \`\${string}a\`, actual "b"
+└─ Union member
+   └─ Expected \`\${string}0\`, actual "b"`
+      )
+    })
+
+    it("${string | 1}${Number | true}", async () => {
+      const schema = S.TemplateLiteral(S.Union(S.String, S.Literal(1)), S.Union(S.Number, S.Literal(true)))
+      await Util.expectDecodeUnknownSuccess(schema, "atrue")
+      await Util.expectDecodeUnknownSuccess(schema, "-2")
+      await Util.expectDecodeUnknownSuccess(schema, "10.1")
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        "",
+        `\`\${string}\${number}\` | \`\${string}true\` | \`1\${number}\` | "1true"
+├─ Union member
+│  └─ Expected \`\${string}\${number}\`, actual ""
+├─ Union member
+│  └─ Expected \`\${string}true\`, actual ""
+├─ Union member
+│  └─ Expected \`1\${number}\`, actual ""
+└─ Union member
+   └─ Expected "1true", actual ""`
       )
     })
   })

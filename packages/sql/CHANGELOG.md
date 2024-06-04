@@ -1,5 +1,13 @@
 # @effect/sql
 
+## 0.3.6
+
+### Patch Changes
+
+- Updated dependencies [[`a0dd1c1`](https://github.com/Effect-TS/effect/commit/a0dd1c1ede2a1e856ecb0e67826ec992016fef97)]:
+  - @effect/schema@0.67.18
+  - @effect/platform@0.55.5
+
 ## 0.3.5
 
 ### Patch Changes

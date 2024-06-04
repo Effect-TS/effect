@@ -89,7 +89,7 @@ export declare namespace Tag {
    * @since 2.0.0
    */
   export type Identifier<T extends Tag<any, any> | TagClassShape<any, any>> = T extends Tag<infer A, any> ? A
-    : T extends TagClassShape<infer A, any> ? A
+    : T extends TagClassShape<any, any> ? T
     : never
 }
 

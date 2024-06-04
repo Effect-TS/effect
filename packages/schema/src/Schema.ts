@@ -672,7 +672,7 @@ const makeEnumsClass = <A extends EnumsDefinition>(
 export const Enums = <A extends EnumsDefinition>(enums: A): Enums<A> => makeEnumsClass(enums)
 
 type Join<T> = T extends [infer Head, ...infer Tail] ?
-  `${(Head extends Schema<infer A> ? A : Head) & string}${Join<Tail>}`
+  `${(Head extends Schema<infer A> ? A : Head) & (AST.LiteralValue)}${Join<Tail>}`
   : ""
 
 /**
@@ -681,12 +681,14 @@ type Join<T> = T extends [infer Head, ...infer Tail] ?
  */
 export interface TemplateLiteral<A> extends SchemaClass<A> {}
 
+type TemplateLiteralParameter = Schema.AnyNoContext | AST.LiteralValue
+
 /**
  * @category constructors
  * @since 0.67.0
  */
 export const TemplateLiteral = <
-  T extends readonly [Schema.AnyNoContext | string, ...Array<Schema.AnyNoContext | string>]
+  T extends readonly [TemplateLiteralParameter, ...Array<TemplateLiteralParameter>]
 >(
   ...[head, ...tail]: T
 ): TemplateLiteral<Join<T>> => {
@@ -702,8 +704,8 @@ export const TemplateLiteral = <
   return make(AST.Union.make(astOrs.map((astOr) => Predicate.isString(astOr) ? new AST.Literal(astOr) : astOr)))
 }
 
-const getTemplateLiteralParameterAST = (p: Schema.AnyNoContext | string): AST.AST =>
-  isSchema(p) ? p.ast : new AST.Literal(p)
+const getTemplateLiteralParameterAST = (span: TemplateLiteralParameter): AST.AST =>
+  isSchema(span) ? span.ast : new AST.Literal(String(span))
 
 const combineTemplateLiterals = (
   a: AST.TemplateLiteral | string,
@@ -740,10 +742,7 @@ const getTemplateLiterals = (
 ): ReadonlyArray<AST.TemplateLiteral | string> => {
   switch (ast._tag) {
     case "Literal":
-      if (Predicate.isString(ast.literal)) {
-        return [ast.literal]
-      }
-      break
+      return [String(ast.literal)]
     case "NumberKeyword":
     case "StringKeyword":
       return [new AST.TemplateLiteral("", [new AST.TemplateLiteralSpan(ast, "")])]
@@ -2373,7 +2372,8 @@ export interface TypeLiteral<
     annotations: Annotations.Schema<Types.Simplify<TypeLiteral.Type<Fields, Records>>>
   ): TypeLiteral<Fields, Records>
   make(
-    props: Types.Simplify<TypeLiteral.Constructor<Fields, Records>>
+    props: Types.Simplify<TypeLiteral.Constructor<Fields, Records>>,
+    options?: MakeOptions
   ): Types.Simplify<TypeLiteral.Type<Fields, Records>>
 }
 
@@ -2500,9 +2500,13 @@ const makeTypeLiteralClass = <
     static records = [...records] as Records
 
     static make = (
-      props: Types.Simplify<TypeLiteral.Constructor<Fields, Records>>
+      props: Types.Simplify<TypeLiteral.Constructor<Fields, Records>>,
+      options?: MakeOptions
     ): Types.Simplify<TypeLiteral.Type<Fields, Records>> => {
-      return ParseResult.validateSync(this)(lazilyMergeDefaults(fields, { ...props as any }))
+      const propsWithDefaults: any = lazilyMergeDefaults(fields, { ...props as any })
+      return getDisableValidationMakeOption(options)
+        ? propsWithDefaults
+        : ParseResult.validateSync(this)(propsWithDefaults)
     }
   }
 }
@@ -2705,7 +2709,7 @@ export const pluck: {
 export interface BrandSchema<A extends Brand<any>, I = A, R = never>
   extends AnnotableClass<BrandSchema<A, I, R>, A, I, R>
 {
-  make(a: Brand.Unbranded<A>): A
+  make(a: Brand.Unbranded<A>, options?: MakeOptions): A
 }
 
 /**
@@ -2724,8 +2728,8 @@ const makeBrandClass = <S extends Schema.Any, B extends string | symbol>(ast: AS
       return makeBrandClass(AST.annotations(this.ast, toASTAnnotations(annotations)))
     }
 
-    static make = (a: Brand.Unbranded<Schema.Type<S> & Brand<B>>): Schema.Type<S> & Brand<B> => {
-      return ParseResult.validateSync(this)(a)
+    static make = (a: Brand.Unbranded<Schema.Type<S> & Brand<B>>, options?: MakeOptions): Schema.Type<S> & Brand<B> => {
+      return getDisableValidationMakeOption(options) ? a : ParseResult.validateSync(this)(a)
     }
   }
 
@@ -3089,7 +3093,7 @@ export interface refine<A, From extends Schema.Any>
     options: ParseOptions,
     self: AST.Refinement
   ) => option_.Option<ParseResult.ParseIssue>
-  make(a: Schema.Type<From>): A
+  make(a: Schema.Type<From>, options?: MakeOptions): A
 }
 
 const makeRefineClass = <From extends Schema.Any, A>(
@@ -3110,8 +3114,8 @@ const makeRefineClass = <From extends Schema.Any, A>(
 
     static filter = filter
 
-    static make = (a: Schema.Type<From>): A => {
-      return ParseResult.validateSync(this)(a)
+    static make = (a: Schema.Type<From>, options?: MakeOptions): A => {
+      return getDisableValidationMakeOption(options) ? a : ParseResult.validateSync(this)(a)
     }
   }
 
@@ -6774,7 +6778,7 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
 {
   new(
     props: RequiredKeys<C> extends never ? void | Types.Simplify<C> : Types.Simplify<C>,
-    disableValidation?: boolean | undefined
+    options?: MakeOptions
   ): Struct.Type<Fields> & Omit<Inherited, keyof Fields> & Proto
 
   annotations(annotations: Annotations.Schema<Self>): SchemaClass<Self, Types.Simplify<I>, R>
@@ -7156,6 +7160,13 @@ const orElseTitleAnnotation = <A, I, R>(schema: Schema<A, I, R>, title: string):
   return schema
 }
 
+type MakeOptions = boolean | {
+  readonly disableValidation?: boolean
+}
+
+const getDisableValidationMakeOption = (options: MakeOptions | undefined): boolean =>
+  Predicate.isBoolean(options) ? options : options?.disableValidation ?? false
+
 const makeClass = ({ Base, annotations, fields, identifier, kind, schema, toStringOverride }: {
   kind: "Class" | "TaggedClass" | "TaggedError" | "TaggedRequest"
   identifier: string
@@ -7174,14 +7185,14 @@ const makeClass = ({ Base, annotations, fields, identifier, kind, schema, toStri
   return class extends Base {
     constructor(
       props: { [x: string | symbol]: unknown } = {},
-      disableValidation: boolean = false
+      options: MakeOptions = false
     ) {
       props = { ...props }
       if (kind !== "Class") {
         delete props["_tag"]
       }
       props = lazilyMergeDefaults(fields, props)
-      if (disableValidation !== true) {
+      if (!getDisableValidationMakeOption(options)) {
         props = ParseResult.validateSync(validateSchema)(props)
       }
       super(props, true)

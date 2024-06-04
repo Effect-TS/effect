@@ -1185,14 +1185,38 @@ S.instanceOf(Test)
 // TemplateLiteral
 // ---------------------------------------------
 
-// @ts-expect-error
-S.TemplateLiteral(1, S.String)
+// $ExpectType TemplateLiteral<`${string}0`>
+S.TemplateLiteral(S.String, 0)
 
-// TemplateLiteral<`a${string}`>
+// $ExpectType TemplateLiteral<`${string}true`>
+S.TemplateLiteral(S.String, true)
+
+// $ExpectType TemplateLiteral<`${string}null`>
+S.TemplateLiteral(S.String, null)
+
+// $ExpectType TemplateLiteral<`${string}1`>
+S.TemplateLiteral(S.String, 1n)
+
+// $ExpectType TemplateLiteral<`${string}0` | `${string}a`>
+S.TemplateLiteral(S.String, S.Literal("a", 0))
+
+// $ExpectType TemplateLiteral<`a${string}`>
 S.TemplateLiteral(S.Literal("a"), S.String)
 
-// TemplateLiteral<`a${string}`>
+// $ExpectType TemplateLiteral<`a${string}`>
 S.TemplateLiteral("a", S.String)
+
+// $ExpectType TemplateLiteral<`${string}/`>
+S.TemplateLiteral(S.String, S.Literal("/"))
+
+// $ExpectType TemplateLiteral<`${string}/`>
+S.TemplateLiteral(S.String, "/")
+
+// $ExpectType TemplateLiteral<`${string}/${number}`>
+S.TemplateLiteral(S.String, S.Literal("/"), S.Number)
+
+// $ExpectType TemplateLiteral<`${string}/${number}`>
+S.TemplateLiteral(S.String, "/", S.Number)
 
 // example from https://www.typescriptlang.org/docs/handbook/2/template-literal-types.html
 const EmailLocaleIDs = S.Literal("welcome_email", "email_heading")
@@ -1669,7 +1693,7 @@ class MyTaggedClass extends S.TaggedClass<MyTaggedClass>()("MyTaggedClass", {
   a: S.String
 }) {}
 
-// $ExpectType [props: { readonly a: string; }, disableValidation?: boolean | undefined]
+// $ExpectType [props: { readonly a: string; }, options?: MakeOptions | undefined]
 hole<ConstructorParameters<typeof MyTaggedClass>>()
 
 // $ExpectType { readonly a: string; readonly _tag: "MyTaggedClass"; }
@@ -1680,13 +1704,13 @@ hole<S.Schema.Type<typeof MyTaggedClass>>()
 
 class VoidTaggedClass extends S.TaggedClass<VoidTaggedClass>()("VoidTaggedClass", {}) {}
 
-// $ExpectType [props?: void | {}, disableValidation?: boolean | undefined]
+// $ExpectType [props?: void | {}, options?: MakeOptions | undefined]
 hole<ConstructorParameters<typeof VoidTaggedClass>>()
 
 // $ExpectType Schema<{ readonly a: string; readonly _tag: "MyTaggedClass"; }, { readonly a: string; readonly _tag: "MyTaggedClass"; }, never>
 S.asSchema(S.Struct(MyTaggedClass.fields))
 
-// $ExpectType [props: { readonly a: string; readonly _tag?: "MyTaggedClass"; }]
+// $ExpectType [props: { readonly a: string; readonly _tag?: "MyTaggedClass"; }, options?: MakeOptions | undefined]
 hole<Parameters<S.Struct<typeof MyTaggedClass.fields>["make"]>>()
 
 // ---------------------------------------------
@@ -1700,7 +1724,7 @@ class MyTaggedError extends S.TaggedError<MyTaggedError>()("MyTaggedError", {
 // $ExpectType Schema<{ readonly a: string; readonly _tag: "MyTaggedError"; }, { readonly a: string; readonly _tag: "MyTaggedError"; }, never>
 S.asSchema(S.Struct(MyTaggedError.fields))
 
-// $ExpectType [props: { readonly a: string; readonly _tag?: "MyTaggedError"; }]
+// $ExpectType [props: { readonly a: string; readonly _tag?: "MyTaggedError"; }, options?: MakeOptions | undefined]
 hole<Parameters<S.Struct<typeof MyTaggedError.fields>["make"]>>()
 
 // ---------------------------------------------
@@ -1714,7 +1738,7 @@ class MyTaggedRequest extends S.TaggedRequest<MyTaggedRequest>()("MyTaggedReques
 // $ExpectType Schema<{ readonly a: string; readonly _tag: "MyTaggedRequest"; }, { readonly a: string; readonly _tag: "MyTaggedRequest"; }, never>
 S.asSchema(S.Struct(MyTaggedRequest.fields))
 
-// $ExpectType [props: { readonly a: string; readonly _tag?: "MyTaggedRequest"; }]
+// $ExpectType [props: { readonly a: string; readonly _tag?: "MyTaggedRequest"; }, options?: MakeOptions | undefined]
 hole<Parameters<S.Struct<typeof MyTaggedRequest.fields>["make"]>>()
 
 // ---------------------------------------------
@@ -2386,7 +2410,7 @@ class AA extends S.Class<AA>("AA")({
   c: S.propertySignature(S.Boolean).pipe(S.withConstructorDefault(() => true))
 }) {}
 
-// $ExpectType [props: { readonly a?: string; readonly b: number; readonly c?: boolean; }, disableValidation?: boolean | undefined]
+// $ExpectType [props: { readonly a?: string; readonly b: number; readonly c?: boolean; }, options?: MakeOptions | undefined]
 hole<ConstructorParameters<typeof AA>>()
 
 // ---------------------------------------------
@@ -2471,7 +2495,7 @@ const MyTaggedStruct = S.TaggedStruct("Product", {
 // $ExpectType Schema<{ readonly _tag: "Product"; readonly name: string; readonly category: "Electronics"; readonly price: number; }, { readonly _tag: "Product"; readonly name: string; readonly category: "Electronics"; readonly price: number; }, never>
 S.asSchema(MyTaggedStruct)
 
-// $ExpectType [props: { readonly _tag?: "Product"; readonly name: string; readonly category?: "Electronics"; readonly price: number; }]
+// $ExpectType [props: { readonly _tag?: "Product"; readonly name: string; readonly category?: "Electronics"; readonly price: number; }, options?: MakeOptions | undefined]
 hole<Parameters<typeof MyTaggedStruct["make"]>>()
 
 // ---------------------------------------------
