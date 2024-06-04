@@ -1,4 +1,4 @@
-import { Cause, Context, Duration, Effect, Either, Exit, Fiber, Micro, Option, pipe } from "effect"
+import { Cause, Context, Effect, Either, Exit, Fiber, Micro, Option, pipe } from "effect"
 import { assert, describe, it } from "effect/test/utils/extend"
 
 class ATag extends Context.Tag("ATag")<ATag, "A">() {}
@@ -422,42 +422,41 @@ describe.sequential("Micro", () => {
     it.live("timeout a long computation", () =>
       Micro.gen(function*() {
         const result = yield* pipe(
-          Micro.sleep(Duration.seconds(60)),
+          Micro.sleep(60_000),
           Micro.andThen(Micro.succeed(true)),
           Micro.timeout(10)
         )
         assert.deepStrictEqual(result, Option.none())
       }))
     it.live("timeout a long computation with a failure", () =>
-      Effect.gen(function*() {
+      Micro.gen(function*() {
         const error = new Error("boom")
         const result = yield* pipe(
-          Micro.sleep(Duration.seconds(5)),
+          Micro.sleep(5000),
           Micro.andThen(Micro.succeed(true)),
           Micro.timeoutOrElse({
             onTimeout: () => Micro.die(error),
-            duration: Duration.millis(10)
+            duration: 10
           }),
           Micro.sandbox,
           Micro.flip
         )
         assert.deepStrictEqual(result, Micro.FailureUnexpected(error))
       }))
-    it.live("timeout repetition of uninterruptible effect", () =>
+    it.effect("timeout repetition of uninterruptible effect", () =>
       Micro.gen(function*() {
         const result = yield* pipe(
           Micro.void,
           Micro.uninterruptible,
           Micro.forever,
-          Micro.timeout(Duration.millis(10))
+          Micro.timeout(10)
         )
         assert.deepStrictEqual(result, Option.none())
       }))
-    it.live("timeout in uninterruptible region", () =>
-      Effect.gen(function*($) {
-        const result = yield* $(Effect.void, Effect.timeout(Duration.seconds(20)), Effect.uninterruptible)
-        assert.deepStrictEqual(result, void 0)
-      }))
+    it.effect("timeout in uninterruptible region", () =>
+      Micro.gen(function*() {
+        yield* Micro.void.pipe(Micro.timeout(20_000), Micro.uninterruptible)
+      }), { timeout: 1000 })
   })
 
   describe("Error", () => {
@@ -483,7 +482,7 @@ describe.sequential("Micro", () => {
       Micro.gen(function*() {
         const error = yield* new TestError().pipe(Micro.flip)
         assert.deepStrictEqual(error, new TestError())
-        assert.include(error.stack, "Micro.test.ts:484")
+        assert.include(error.stack, "Micro.test.ts:483")
       }))
 
     it.effect("is a valid Effect", () =>
@@ -511,7 +510,7 @@ describe.sequential("Micro", () => {
         )
         assert(error._tag === "Expected")
         assert.include(error.traces[0], "at test trace")
-        assert.include(error.traces[0], "Micro.test.ts:508")
+        assert.include(error.traces[0], "Micro.test.ts:507")
       }))
   })
 })
