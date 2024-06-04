@@ -6776,7 +6776,7 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
 {
   new(
     props: RequiredKeys<C> extends never ? void | Types.Simplify<C> : Types.Simplify<C>,
-    disableValidation?: MakeOptions
+    options?: MakeOptions
   ): Struct.Type<Fields> & Omit<Inherited, keyof Fields> & Proto
 
   annotations(annotations: Annotations.Schema<Self>): SchemaClass<Self, Types.Simplify<I>, R>
