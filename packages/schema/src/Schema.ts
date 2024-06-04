@@ -671,7 +671,7 @@ const makeEnumsClass = <A extends EnumsDefinition>(
 export const Enums = <A extends EnumsDefinition>(enums: A): Enums<A> => makeEnumsClass(enums)
 
 type Join<T> = T extends [infer Head, ...infer Tail] ?
-  `${(Head extends Schema<infer A> ? A : Head) & (string | number)}${Join<Tail>}`
+  `${(Head extends Schema<infer A> ? A : Head) & (AST.LiteralValue)}${Join<Tail>}`
   : ""
 
 /**
@@ -680,12 +680,14 @@ type Join<T> = T extends [infer Head, ...infer Tail] ?
  */
 export interface TemplateLiteral<A> extends SchemaClass<A> {}
 
+type TemplateLiteralParameter = Schema.AnyNoContext | AST.LiteralValue
+
 /**
  * @category constructors
  * @since 0.67.0
  */
 export const TemplateLiteral = <
-  T extends readonly [Schema.AnyNoContext | string, ...Array<Schema.AnyNoContext | string>]
+  T extends readonly [TemplateLiteralParameter, ...Array<TemplateLiteralParameter>]
 >(
   ...[head, ...tail]: T
 ): TemplateLiteral<Join<T>> => {
@@ -701,8 +703,8 @@ export const TemplateLiteral = <
   return make(AST.Union.make(astOrs.map((astOr) => Predicate.isString(astOr) ? new AST.Literal(astOr) : astOr)))
 }
 
-const getTemplateLiteralParameterAST = (p: Schema.AnyNoContext | string): AST.AST =>
-  isSchema(p) ? p.ast : new AST.Literal(p)
+const getTemplateLiteralParameterAST = (span: TemplateLiteralParameter): AST.AST =>
+  isSchema(span) ? span.ast : new AST.Literal(String(span))
 
 const combineTemplateLiterals = (
   a: AST.TemplateLiteral | string,
@@ -739,10 +741,7 @@ const getTemplateLiterals = (
 ): ReadonlyArray<AST.TemplateLiteral | string> => {
   switch (ast._tag) {
     case "Literal":
-      if (Predicate.isString(ast.literal)) {
-        return [ast.literal]
-      }
-      break
+      return [String(ast.literal)]
     case "NumberKeyword":
     case "StringKeyword":
       return [new AST.TemplateLiteral("", [new AST.TemplateLiteralSpan(ast, "")])]

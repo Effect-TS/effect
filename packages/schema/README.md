@@ -1623,29 +1623,46 @@ const literals = schema.literals // readonly ["a", "b"]
 
 ## Template literals
 
-The `TemplateLiteral` constructor allows you to create a schema for a TypeScript template literal type.
+In TypeScript, template literals allow you to embed expressions within string literals. The `@effect/schema` library provides a `TemplateLiteral` constructor that you can use to create a schema for these template literal types.
+
+Here's how you can use it:
 
 ```ts
 import { Schema } from "@effect/schema"
 
-// TemplateLiteral<`a${string}`>
+// This creates a TemplateLiteral of type `a${string}`
 Schema.TemplateLiteral("a", Schema.String)
 
-// TemplateLiteral<`https://${string}.com` | `https://${string}.net`>
+// This creates a TemplateLiteral of type `https://${string}.com` or `https://${string}.net`
 Schema.TemplateLiteral(
   "https://",
   Schema.String,
   ".",
   Schema.Literal("com", "net")
 )
+```
 
+Let's look at a more complex example. Suppose you have two sets of locale IDs for emails and footers:
+
+```ts
 // example from https://www.typescriptlang.org/docs/handbook/2/template-literal-types.html
 const EmailLocaleIDs = Schema.Literal("welcome_email", "email_heading")
 const FooterLocaleIDs = Schema.Literal("footer_title", "footer_sendoff")
+```
 
-// TemplateLiteral<"welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id">
+You can use the `TemplateLiteral` constructor to create a schema that combines these IDs:
+
+```ts
+// This creates a TemplateLiteral of type "welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id"
 Schema.TemplateLiteral(Schema.Union(EmailLocaleIDs, FooterLocaleIDs), "_id")
 ```
+
+The `TemplateLiteral` constructor supports the following types of spans:
+
+- `Schema.String`
+- `Schema.Number`
+- Literals: `string | number | boolean | null | bigint`. These can be either wrapped by `Schema.Literal` or used directly
+- Unions of the above types
 
 ## Unique Symbols
 
