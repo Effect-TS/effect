@@ -1084,12 +1084,18 @@ export class AnnotatedAST implements Annotated {
     readonly type: AST,
     readonly annotations: Annotations = {}
   ) {}
+  /**
+   * @since 0.68.0
+   */
   toJSON(): object {
     return {
       type: this.type.toJSON(),
       annotations: toJSONAnnotations(this.annotations)
     }
   }
+  /**
+   * @since 0.68.0
+   */
   toString() {
     return String(this.type)
   }
