@@ -17,7 +17,7 @@ import { StructuralPrototype } from "./internal/effectable.js"
 import { SingleShotGen } from "./internal/singleShotGen.js"
 import * as Option from "./Option.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
-import { isIterable, isTagged, type Predicate, type Refinement } from "./Predicate.js"
+import { hasProperty, isIterable, isTagged, type Predicate, type Refinement } from "./Predicate.js"
 import type { ReadonlyRecord } from "./Record.js"
 import type * as Sink from "./Sink.js"
 import type * as Stream from "./Stream.js"
@@ -135,41 +135,66 @@ export declare namespace Failure {
   /**
    * @since 3.3.0
    */
-  export interface Proto extends Pipeable {
-    readonly [FailureTypeId]: FailureTypeId
+  export interface Proto<Tag extends string, E> extends Pipeable, globalThis.Error {
+    readonly [FailureTypeId]: {
+      _E: Covariant<E>
+    }
+    readonly _tag: Tag
+    readonly traces: ReadonlyArray<string>
   }
 
   /**
    * @since 3.3.0
    * @category failure
    */
-  export interface Unexpected extends Proto {
-    readonly _tag: "Unexpected"
+  export interface Unexpected extends Proto<"Unexpected", never> {
     readonly defect: unknown
-    readonly traces: ReadonlyArray<string>
   }
 
   /**
    * @since 3.3.0
    * @category failure
    */
-  export interface Expected<E> extends Proto {
-    readonly _tag: "Expected"
+  export interface Expected<E> extends Proto<"Expected", E> {
     readonly error: E
-    readonly traces: ReadonlyArray<string>
   }
 
   /**
    * @since 3.3.0
    * @category failure
    */
-  export interface Aborted extends Proto {
-    readonly _tag: "Aborted"
-  }
+  export interface Aborted extends Proto<"Aborted", never> {}
 }
 
-const FailureProto: Failure.Proto = {
-  [FailureTypeId]: FailureTypeId,
+const failureVariance = {
+  _E: identity
+}
+
+abstract class FailureImpl<Tag extends string, E> extends globalThis.Error implements Failure.Proto<Tag, E> {
+  readonly [FailureTypeId]: {
+    _E: Covariant<E>
+  }
+  constructor(
+    readonly _tag: Tag,
+    readonly cause: unknown,
+    readonly traces: ReadonlyArray<string>
+  ) {
+    let message: string
+    let stack: string
+    if (hasProperty(cause, "message")) {
+      message = `(Failure${_tag}) ${cause.message}`
+      stack = hasProperty(cause, "stack") ? `(Failure${_tag}) ${cause.stack}` : message
+    } else {
+      message = `Failure${_tag}: ${cause}`
+      stack = message
+    }
+    if (traces.length > 0) {
+      stack += `\n    ${traces.join("\n    ")}`
+    }
+    super(message)
+    this[FailureTypeId] = failureVariance
+    this.stack = stack
+  }
   pipe() {
     return pipeArguments(this, arguments)
   }
@@ -179,33 +204,31 @@ const FailureProto: Failure.Proto = {
  * @since 3.3.0
  * @category failure
  */
-export const FailureExpected = <E>(error: E, traces?: Array<string> | undefined): Failure<E> => {
-  const self = Object.create(FailureProto)
-  self._tag = "Expected"
-  self.error = error
-  self.traces = traces ?? []
-  return self
+export class FailureExpected<E> extends FailureImpl<"Expected", E> implements Failure.Expected<E> {
+  constructor(readonly error: E, traces: ReadonlyArray<string> = []) {
+    super("Expected", error, traces)
+  }
 }
 
 /**
  * @since 3.3.0
  * @category failure
  */
-export const FailureUnexpected = (defect: unknown, traces?: Array<string> | undefined): Failure<never> => {
-  const self = Object.create(FailureProto)
-  self._tag = "Unexpected"
-  self.defect = defect
-  self.traces = traces ?? []
-  return self
+export class FailureUnexpected extends FailureImpl<"Unexpected", never> implements Failure.Unexpected {
+  constructor(readonly defect: unknown, traces: ReadonlyArray<string> = []) {
+    super("Unexpected", defect, traces)
+  }
 }
 
 /**
  * @since 3.3.0
  * @category failure
  */
-export const FailureAborted: Failure<never> = Object.assign(Object.create(FailureProto), {
-  _tag: "Aborted"
-})
+export class FailureAborted extends FailureImpl<"Aborted", never> implements Failure.Aborted {
+  constructor(traces: ReadonlyArray<string> = []) {
+    super("Aborted", "interrupted", traces)
+  }
+}
 
 /**
  * @since 3.3.0
@@ -223,11 +246,11 @@ export const failureWithTrace: {
   <E>(self: Failure<E>, trace: string): Failure<E>
 } = dual(2, <E>(self: Failure<E>, trace: string): Failure<E> => {
   if (self._tag === "Expected") {
-    return FailureExpected(self.error, [...self.traces, trace])
+    return new FailureExpected(self.error, [...self.traces, trace])
   } else if (self._tag === "Unexpected") {
-    return FailureUnexpected(self.defect, [...self.traces, trace])
+    return new FailureUnexpected(self.defect, [...self.traces, trace])
   }
-  return self
+  return new FailureAborted([...self.traces, trace])
 })
 
 // ----------------------------------------------------------------------------
@@ -249,7 +272,7 @@ export type Result<A, E = never> = Either.Either<A, Failure<E>>
  * @since 3.3.0
  * @category result
  */
-export const ResultAborted: Result<never> = Either.left(FailureAborted)
+export const ResultAborted: Result<never> = Either.left(new FailureAborted())
 
 /**
  * @since 3.3.0
@@ -261,13 +284,13 @@ export const ResultSucceed = <A>(a: A): Result<A> => Either.right(a)
  * @since 3.3.0
  * @category result
  */
-export const ResultFail = <E>(e: E): Result<never, E> => Either.left(FailureExpected(e))
+export const ResultFail = <E>(e: E): Result<never, E> => Either.left(new FailureExpected(e))
 
 /**
  * @since 3.3.0
  * @category result
  */
-export const ResultFailUnexpected = (defect: unknown): Result<never> => Either.left(FailureUnexpected(defect))
+export const ResultFailUnexpected = (defect: unknown): Result<never> => Either.left(new FailureUnexpected(defect))
 
 /**
  * @since 3.3.0
@@ -496,7 +519,7 @@ const unsafeMakeNoAbort = <A, E, R>(
     try {
       run(env, onResult)
     } catch (err) {
-      onResult(Either.left(FailureUnexpected(err)))
+      onResult(Either.left(new FailureUnexpected(err)))
     }
   })
 
@@ -544,7 +567,7 @@ export const succeed = <A>(a: A): Micro<A> =>
  */
 export const fail = <E>(e: E): Micro<never, E> =>
   make(function(_env, onResult) {
-    onResult(Either.left(FailureExpected(e)))
+    onResult(ResultFail(e))
   })
 
 /**
@@ -558,7 +581,7 @@ export const fail = <E>(e: E): Micro<never, E> =>
  */
 export const failSync = <E>(e: LazyArg<E>): Micro<never, E> =>
   make(function(_env, onResult) {
-    onResult(Either.left(FailureExpected(e())))
+    onResult(ResultFail(e()))
   })
 
 /**
@@ -572,7 +595,7 @@ export const failSync = <E>(e: LazyArg<E>): Micro<never, E> =>
  */
 export const die = (defect: unknown): Micro<never> =>
   make(function(_env, onResult) {
-    onResult(Either.left(FailureUnexpected(defect)))
+    onResult(ResultFailUnexpected(defect))
   })
 
 /**
@@ -658,7 +681,7 @@ export const serviceOption = <I, S>(tag: Context.Tag<I, S>): Micro<Option.Option
  */
 export const fromOption = <A>(option: Option.Option<A>): Micro<A, Option.None<never>> =>
   make(function(_env, onResult) {
-    onResult(option._tag === "Some" ? Either.right(option.value) : Either.left(FailureExpected(Option.none())) as any)
+    onResult(option._tag === "Some" ? Either.right(option.value) : ResultFail(Option.none()) as any)
   })
 
 /**
@@ -671,7 +694,7 @@ export const fromOption = <A>(option: Option.Option<A>): Micro<A, Option.None<ne
  */
 export const fromEither = <R, L>(either: Either.Either<R, L>): Micro<R, L> =>
   make(function(_env, onResult) {
-    onResult(either._tag === "Right" ? either : Either.left(FailureExpected(either.left)) as any)
+    onResult(either._tag === "Right" ? either : ResultFail(either.left) as any)
   })
 
 /**
@@ -715,9 +738,9 @@ export const async = <A, E = never, R = never>(
     let cleanup: Micro<void, never, R> | void = undefined
     function onAbort() {
       if (cleanup) {
-        resume(uninterruptible(andThen(cleanup, failWith(FailureAborted))))
+        resume(uninterruptible(andThen(cleanup, failWith(new FailureAborted()))))
       } else {
-        resume(failWith(FailureAborted))
+        resume(failWith(new FailureAborted()))
       }
     }
     function resume(effect: Micro<A, E, R>) {
@@ -880,7 +903,7 @@ export const gen = <Eff extends YieldWrap<Micro<any, any, any>>, AEff>(
           })
         }
       } catch (err) {
-        onResult(Either.left(FailureUnexpected(err)))
+        onResult(ResultFailUnexpected(err))
       }
       running = false
     }
@@ -1920,7 +1943,7 @@ export const matchFailureMicro: {
           const next = result._tag === "Left" ? options.onFailure(result.left) : options.onSuccess(result.right)
           next[runSymbol](env, onResult)
         } catch (err) {
-          onResult(Either.left(FailureUnexpected(err)))
+          onResult(ResultFailUnexpected(err))
         }
       })
     })
@@ -2701,7 +2724,7 @@ const forEachSequential = <
             }
           })
         } catch (err) {
-          onResult(Either.left(FailureUnexpected(err)))
+          onResult(ResultFailUnexpected(err))
           break
         }
         if (!complete) {
@@ -2767,7 +2790,7 @@ const forEachConcurrent = <
             }
           })
         } catch (err) {
-          failure = Either.left(FailureUnexpected(err))
+          failure = ResultFailUnexpected(err)
           onDone()
         }
       }
@@ -3085,7 +3108,7 @@ export const runSyncResult = <A, E>(effect: Micro<A, E>): Result<A, E> => {
   }
   const result = handle.unsafePoll()
   if (result === null) {
-    return Either.left(FailureUnexpected(handle))
+    return ResultFailUnexpected(handle)
   }
   return result
 }
