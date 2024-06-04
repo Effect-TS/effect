@@ -983,8 +983,10 @@ class PrettyError extends globalThis.Error implements Cause.PrettyError {
     const prevLimit = Error.stackTraceLimit
     Error.stackTraceLimit = 0
     super(prettyErrorMessage(originalError))
+    if (this.message === "") {
+      this.message = "An error has occurred"
+    }
     Error.stackTraceLimit = prevLimit
-
     this.name = originalError instanceof Error ? originalError.name : "Error"
     if (typeof originalError === "object" && originalError !== null) {
       if (spanSymbol in originalError) {
@@ -998,7 +1000,7 @@ class PrettyError extends globalThis.Error implements Cause.PrettyError {
       })
     }
     this.stack = prettyErrorStack(
-      this.message,
+      `${this.name}: ${this.message}`,
       originalError instanceof Error && originalError.stack
         ? originalError.stack
         : "",
