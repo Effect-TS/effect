@@ -466,4 +466,26 @@ describe("Stream", () => {
       )
       assert.deepStrictEqual(Array.from(result1), Array.from(result2))
     })))
+
+  it.effect("zipLatestAll", () =>
+    Effect.gen(function*($) {
+      const result = yield* $(
+        Stream.zipLatestAll(
+          Stream.make(1, 2, 3).pipe(Stream.rechunk(1)),
+          Stream.make("a", "b", "c").pipe(Stream.rechunk(1)),
+          Stream.make(true, false, true).pipe(Stream.rechunk(1))
+        ),
+        Stream.runCollect,
+        Effect.map(Chunk.toReadonlyArray)
+      )
+      assert.deepStrictEqual(result, [
+        [1, "a", true],
+        [2, "a", true],
+        [3, "a", true],
+        [3, "b", true],
+        [3, "c", true],
+        [3, "c", false],
+        [3, "c", true]
+      ])
+    }))
 })
