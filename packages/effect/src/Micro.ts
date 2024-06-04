@@ -200,11 +200,7 @@ abstract class FailureImpl<Tag extends string, E> extends globalThis.Error imple
   }
 }
 
-/**
- * @since 3.3.0
- * @category failure
- */
-export class FailureExpected<E> extends FailureImpl<"Expected", E> implements Failure.Expected<E> {
+class FailureExpectedImpl<E> extends FailureImpl<"Expected", E> implements Failure.Expected<E> {
   constructor(readonly error: E, traces: ReadonlyArray<string> = []) {
     super("Expected", error, traces)
   }
@@ -214,7 +210,10 @@ export class FailureExpected<E> extends FailureImpl<"Expected", E> implements Fa
  * @since 3.3.0
  * @category failure
  */
-export class FailureUnexpected extends FailureImpl<"Unexpected", never> implements Failure.Unexpected {
+export const FailureExpected = <E>(error: E, traces: ReadonlyArray<string> = []): Failure<E> =>
+  new FailureExpectedImpl(error, traces)
+
+class FailureUnexpectedImpl extends FailureImpl<"Unexpected", never> implements Failure.Unexpected {
   constructor(readonly defect: unknown, traces: ReadonlyArray<string> = []) {
     super("Unexpected", defect, traces)
   }
@@ -224,11 +223,20 @@ export class FailureUnexpected extends FailureImpl<"Unexpected", never> implemen
  * @since 3.3.0
  * @category failure
  */
-export class FailureAborted extends FailureImpl<"Aborted", never> implements Failure.Aborted {
+export const FailureUnexpected = (defect: unknown, traces: ReadonlyArray<string> = []): Failure<never> =>
+  new FailureUnexpectedImpl(defect, traces)
+
+class FailureAbortedImpl extends FailureImpl<"Aborted", never> implements Failure.Aborted {
   constructor(traces: ReadonlyArray<string> = []) {
     super("Aborted", "interrupted", traces)
   }
 }
+
+/**
+ * @since 3.3.0
+ * @category failure
+ */
+export const FailureAborted = (traces: ReadonlyArray<string> = []): Failure<never> => new FailureAbortedImpl(traces)
 
 /**
  * @since 3.3.0
@@ -246,11 +254,11 @@ export const failureWithTrace: {
   <E>(self: Failure<E>, trace: string): Failure<E>
 } = dual(2, <E>(self: Failure<E>, trace: string): Failure<E> => {
   if (self._tag === "Expected") {
-    return new FailureExpected(self.error, [...self.traces, trace])
+    return FailureExpected(self.error, [...self.traces, trace])
   } else if (self._tag === "Unexpected") {
-    return new FailureUnexpected(self.defect, [...self.traces, trace])
+    return FailureUnexpected(self.defect, [...self.traces, trace])
   }
-  return new FailureAborted([...self.traces, trace])
+  return FailureAborted([...self.traces, trace])
 })
 
 // ----------------------------------------------------------------------------
@@ -272,7 +280,7 @@ export type Result<A, E = never> = Either.Either<A, Failure<E>>
  * @since 3.3.0
  * @category result
  */
-export const ResultAborted: Result<never> = Either.left(new FailureAborted())
+export const ResultAborted: Result<never> = Either.left(FailureAborted())
 
 /**
  * @since 3.3.0
@@ -284,13 +292,13 @@ export const ResultSucceed = <A>(a: A): Result<A> => Either.right(a)
  * @since 3.3.0
  * @category result
  */
-export const ResultFail = <E>(e: E): Result<never, E> => Either.left(new FailureExpected(e))
+export const ResultFail = <E>(e: E): Result<never, E> => Either.left(FailureExpected(e))
 
 /**
  * @since 3.3.0
  * @category result
  */
-export const ResultFailUnexpected = (defect: unknown): Result<never> => Either.left(new FailureUnexpected(defect))
+export const ResultFailUnexpected = (defect: unknown): Result<never> => Either.left(FailureUnexpected(defect))
 
 /**
  * @since 3.3.0
@@ -519,7 +527,7 @@ const unsafeMakeNoAbort = <A, E, R>(
     try {
       run(env, onResult)
     } catch (err) {
-      onResult(Either.left(new FailureUnexpected(err)))
+      onResult(Either.left(FailureUnexpected(err)))
     }
   })
 
@@ -752,7 +760,7 @@ export const async = <A, E = never, R = never>(
       if (cleanup) {
         resume(uninterruptible(andThen(cleanup, abort)))
       } else {
-        resume(failWith(new FailureAborted()))
+        resume(failWith(FailureAborted()))
       }
     }
     function resume(effect: Micro<A, E, R>) {

@@ -441,7 +441,7 @@ describe.sequential("Micro", () => {
           Micro.sandbox,
           Micro.flip
         )
-        assert.deepStrictEqual(result, new Micro.FailureUnexpected(error))
+        assert.deepStrictEqual(result, Micro.FailureUnexpected(error))
       }))
     it.live("timeout repetition of uninterruptible effect", () =>
       Micro.gen(function*() {
