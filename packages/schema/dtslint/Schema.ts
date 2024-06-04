@@ -1185,8 +1185,20 @@ S.instanceOf(Test)
 // TemplateLiteral
 // ---------------------------------------------
 
-// @ts-expect-error
-S.TemplateLiteral(1, S.String)
+// $ExpectType TemplateLiteral<`${string}0`>
+S.TemplateLiteral(S.String, 0)
+
+// $ExpectType TemplateLiteral<`${string}true`>
+S.TemplateLiteral(S.String, true)
+
+// $ExpectType TemplateLiteral<`${string}null`>
+S.TemplateLiteral(S.String, null)
+
+// $ExpectType TemplateLiteral<`${string}1`>
+S.TemplateLiteral(S.String, 1n)
+
+// $ExpectType TemplateLiteral<`${string}0` | `${string}a`>
+S.TemplateLiteral(S.String, S.Literal("a", 0))
 
 // $ExpectType TemplateLiteral<`a${string}`>
 S.TemplateLiteral(S.Literal("a"), S.String)
