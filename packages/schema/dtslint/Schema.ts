@@ -452,13 +452,13 @@ S.Tuple([S.String], S.Number, S.Boolean).rest
 // $ExpectType Schema<readonly [string, number, boolean?], readonly [string, number, boolean?], never>
 S.asSchema(S.Tuple(S.String, S.Number, S.optionalElement(S.Boolean)))
 
-// $ExpectType Tuple<[typeof String$, typeof Number$, OptionalElement<typeof Boolean$>]>
+// $ExpectType Tuple<[typeof String$, typeof Number$, Element<typeof Boolean$, "?">]>
 S.Tuple(S.String, S.Number, S.optionalElement(S.Boolean))
 
 // $ExpectType Schema<readonly [string, number, number?], readonly [string, string, string?], never>
 S.asSchema(S.Tuple(S.String, S.NumberFromString, S.optionalElement(S.NumberFromString)))
 
-// $ExpectType Tuple<[typeof String$, typeof NumberFromString, OptionalElement<typeof NumberFromString>]>
+// $ExpectType Tuple<[typeof String$, typeof NumberFromString, Element<typeof NumberFromString, "?">]>
 S.Tuple(S.String, S.NumberFromString, S.optionalElement(S.NumberFromString))
 
 // ---------------------------------------------
@@ -2282,12 +2282,12 @@ hole<S.TupleType.Type<[typeof S.NumberFromString], [typeof S.NumberFromString]>>
 hole<S.TupleType.Type<[typeof S.NumberFromString], [typeof S.NumberFromString, typeof S.NumberFromString]>>()
 
 // $ExpectType readonly [number, number?]
-hole<S.TupleType.Type<[typeof S.NumberFromString, S.OptionalElement<typeof S.NumberFromString>], []>>()
+hole<S.TupleType.Type<[typeof S.NumberFromString, S.Element<typeof S.NumberFromString, "?">], []>>()
 
 // $ExpectType readonly [number, number?, ...number[]]
 hole<
   S.TupleType.Type<
-    [typeof S.NumberFromString, S.OptionalElement<typeof S.NumberFromString>],
+    [typeof S.NumberFromString, S.Element<typeof S.NumberFromString, "?">],
     [typeof S.NumberFromString]
   >
 >()
@@ -2312,12 +2312,12 @@ hole<S.TupleType.Encoded<[typeof S.NumberFromString], [typeof S.NumberFromString
 hole<S.TupleType.Encoded<[typeof S.NumberFromString], [typeof S.NumberFromString, typeof S.NumberFromString]>>()
 
 // $ExpectType readonly [string, string?]
-hole<S.TupleType.Encoded<[typeof S.NumberFromString, S.OptionalElement<typeof S.NumberFromString>], []>>()
+hole<S.TupleType.Encoded<[typeof S.NumberFromString, S.Element<typeof S.NumberFromString, "?">], []>>()
 
 // $ExpectType readonly [string, string?, ...string[]]
 hole<
   S.TupleType.Encoded<
-    [typeof S.NumberFromString, S.OptionalElement<typeof S.NumberFromString>],
+    [typeof S.NumberFromString, S.Element<typeof S.NumberFromString, "?">],
     [typeof S.NumberFromString]
   >
 >()

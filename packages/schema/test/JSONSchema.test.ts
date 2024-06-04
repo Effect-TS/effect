@@ -496,7 +496,10 @@ describe("JSONSchema", () => {
     })
 
     it("e + e?", () => {
-      const schema = Schema.Tuple(Schema.String, Schema.optionalElement(JsonNumber))
+      const schema = Schema.Tuple(
+        Schema.element(Schema.String).annotations({ description: "e" }),
+        Schema.optionalElement(JsonNumber).annotations({ description: "e?" })
+      )
       const jsonSchema: JSONSchema.JsonSchema7Root = {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "array",
@@ -505,12 +508,12 @@ describe("JSONSchema", () => {
           {
             "type": "string",
             "title": "string",
-            "description": "a string"
+            "description": "e"
           },
           {
             "type": "number",
             "title": "number",
-            "description": "a number"
+            "description": "e?"
           }
         ],
         "additionalItems": false
@@ -526,7 +529,10 @@ describe("JSONSchema", () => {
     })
 
     it("e? + r", () => {
-      const schema = Schema.Tuple([Schema.optionalElement(Schema.String)], JsonNumber)
+      const schema = Schema.Tuple(
+        [Schema.optionalElement(Schema.String)],
+        Schema.element(JsonNumber).annotations({ description: "r" })
+      )
       const jsonSchema: JSONSchema.JsonSchema7Root = {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "array",
@@ -541,7 +547,7 @@ describe("JSONSchema", () => {
         "additionalItems": {
           "type": "number",
           "title": "number",
-          "description": "a number"
+          "description": "r"
         }
       }
       expectJSONSchema(schema, jsonSchema)

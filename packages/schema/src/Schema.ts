@@ -1122,25 +1122,68 @@ export const NullishOr = <S extends Schema.Any>(self: S): NullishOr<S> => Union(
 export const keyof = <A, I, R>(self: Schema<A, I, R>): SchemaClass<keyof A> => make<keyof A>(AST.keyof(self.ast))
 
 /**
- * @category API interface
- * @since 0.67.0
+ * @since 0.68.0
  */
-export interface OptionalElement<E extends Schema.Any>
-  extends Schema.Variance<Schema.Type<E>, Schema.Encoded<E>, Schema.Context<E>>
-{
-  readonly optionalElement: E
+export declare namespace Element {
+  /**
+   * @since 0.68.0
+   */
+  export interface Annotations<A> extends Annotations.Doc<A> {
+    readonly missingMessage?: AST.MissingMessageAnnotation
+  }
+
+  /**
+   * @since 0.68.0
+   */
+  export type Token = "" | "?"
 }
+
+/**
+ * @category API interface
+ * @since 0.68.0
+ */
+export interface Element<S extends Schema.Any, Token extends Element.Token>
+  extends Schema.Variance<Schema.Type<S>, Schema.Encoded<S>, Schema.Context<S>>
+{
+  readonly _Token: Token
+  readonly ast: AST.OptionalType
+  readonly from: S
+  annotations(annotations: Element.Annotations<Schema.Type<S>>): Element<S, Token>
+}
+
+/**
+ * @since 0.68.0
+ */
+export const element = <S extends Schema.Any>(self: S): Element<S, ""> =>
+  new ElementImpl(new AST.OptionalType(self.ast, false), self)
 
 /**
  * @since 0.67.0
  */
-export const optionalElement = <E extends Schema.Any>(self: E): OptionalElement<E> => new OptionalElementImpl(self)
+export const optionalElement = <S extends Schema.Any>(self: S): Element<S, "?"> =>
+  new ElementImpl(new AST.OptionalType(self.ast, true), self)
 
-class OptionalElementImpl<E extends Schema.Any> implements OptionalElement<E> {
-  readonly [TypeId]!: Schema.Variance<Schema.Type<E>, Schema.Encoded<E>, Schema.Context<E>>[TypeId]
-  constructor(readonly optionalElement: E) {}
+class ElementImpl<S extends Schema.Any, Token extends Element.Token> implements Element<S, Token> {
+  readonly [TypeId]!: Schema.Variance<Schema.Type<S>, Schema.Encoded<S>, Schema.Context<S>>[TypeId]
+  readonly _Token!: Token
+  constructor(
+    readonly ast: AST.OptionalType,
+    readonly from: S
+  ) {}
+  annotations(
+    annotations: Annotations.Schema<Schema.Type<S>>
+  ): ElementImpl<S, Token> {
+    return new ElementImpl(
+      new AST.OptionalType(
+        this.ast.type,
+        this.ast.isOptional,
+        { ...this.ast.annotations, ...toASTAnnotations(annotations) }
+      ),
+      this.from
+    )
+  }
   toString() {
-    return `${this.optionalElement.ast}?`
+    return `${this.ast.type}${this.ast.isOptional ? "?" : ""}`
   }
 }
 
@@ -1152,7 +1195,7 @@ export declare namespace TupleType {
     Elements,
     Out extends ReadonlyArray<any> = readonly []
   > = Elements extends readonly [infer Head, ...infer Tail] ?
-    Head extends OptionalElement<infer T> ? ElementsType<Tail, readonly [...Out, Schema.Type<T>?]>
+    Head extends Element<infer T, "?"> ? ElementsType<Tail, readonly [...Out, Schema.Type<T>?]>
     : ElementsType<Tail, readonly [...Out, Schema.Type<Head>]>
     : Out
 
@@ -1160,27 +1203,25 @@ export declare namespace TupleType {
     Elements,
     Out extends ReadonlyArray<any> = readonly []
   > = Elements extends readonly [infer Head, ...infer Tail] ?
-    Head extends OptionalElement<infer T> ? ElementsEncoded<Tail, readonly [...Out, Schema.Encoded<T>?]>
+    Head extends Element<infer T, "?"> ? ElementsEncoded<Tail, readonly [...Out, Schema.Encoded<T>?]>
     : ElementsEncoded<Tail, readonly [...Out, Schema.Encoded<Head>]>
     : Out
 
   /**
    * @since 0.67.0
    */
-  export type Element = Schema.Any | OptionalElement<Schema.Any>
+  export type Elements = ReadonlyArray<Schema.Any | Element<Schema.Any, Element.Token>>
+
+  /**
+   * @since 0.68.0
+   */
+  export type Rest = ReadonlyArray<Schema.Any | Element<Schema.Any, "">>
 
   /**
    * @since 0.67.0
    */
-  export type Elements = ReadonlyArray<Element>
-
-  /**
-   * @since 0.67.0
-   */
-  export type Type<
-    Elements extends TupleType.Elements,
-    Rest extends ReadonlyArray<Schema.Any>
-  > = Rest extends [infer Head, ...infer Tail] ? Readonly<[
+  export type Type<Elements extends TupleType.Elements, Rest extends TupleType.Rest> = Rest extends
+    [infer Head, ...infer Tail] ? Readonly<[
       ...ElementsType<Elements>,
       ...ReadonlyArray<Schema.Type<Head>>,
       ...{ readonly [K in keyof Tail]: Schema.Type<Tail[K]> }
@@ -1190,10 +1231,8 @@ export declare namespace TupleType {
   /**
    * @since 0.67.0
    */
-  export type Encoded<
-    Elements extends TupleType.Elements,
-    Rest extends ReadonlyArray<Schema.Any>
-  > = Rest extends [infer Head, ...infer Tail] ? Readonly<[
+  export type Encoded<Elements extends TupleType.Elements, Rest extends TupleType.Rest> = Rest extends
+    [infer Head, ...infer Tail] ? Readonly<[
       ...ElementsEncoded<Elements>,
       ...ReadonlyArray<Schema.Encoded<Head>>,
       ...{ readonly [K in keyof Tail]: Schema.Encoded<Tail[K]> }
@@ -1205,42 +1244,29 @@ export declare namespace TupleType {
  * @category api interface
  * @since 0.67.0
  */
-export interface TupleType<
-  Elements extends TupleType.Elements,
-  Rest extends ReadonlyArray<Schema.Any>
-> extends
+export interface TupleType<Elements extends TupleType.Elements, R extends TupleType.Rest> extends
   AnnotableClass<
-    TupleType<Elements, Rest>,
-    TupleType.Type<Elements, Rest>,
-    TupleType.Encoded<Elements, Rest>,
-    Schema.Context<Elements[number]> | Schema.Context<Rest[number]>
+    TupleType<Elements, R>,
+    TupleType.Type<Elements, R>,
+    TupleType.Encoded<Elements, R>,
+    Schema.Context<Elements[number]> | Schema.Context<R[number]>
   >
 {
   readonly elements: Readonly<Elements>
-  readonly rest: Readonly<Rest>
+  readonly rest: Readonly<R>
 }
 
-const getDefaultTupleTypeAST = <
-  Elements extends TupleType.Elements,
-  Rest extends ReadonlyArray<Schema.Any>
->(
+const getDefaultTupleTypeAST = <Elements extends TupleType.Elements, Rest extends TupleType.Rest>(
   elements: Elements,
   rest: Rest
 ): AST.AST =>
   new AST.TupleType(
-    elements.map((schema) =>
-      isSchema(schema)
-        ? new AST.OptionalType(schema.ast, false)
-        : new AST.OptionalType(schema.optionalElement.ast, true)
-    ),
-    rest.map((e) => new AST.Type(e.ast)),
+    elements.map((el) => isSchema(el) ? new AST.OptionalType(el.ast, false) : el.ast),
+    rest.map((el) => isSchema(el) ? new AST.Type(el.ast) : el.ast),
     true
   )
 
-const makeTupleTypeClass = <
-  Elements extends TupleType.Elements,
-  Rest extends ReadonlyArray<Schema.Any>
->(
+const makeTupleTypeClass = <Elements extends TupleType.Elements, Rest extends TupleType.Rest>(
   elements: Elements,
   rest: Rest,
   ast: AST.AST = getDefaultTupleTypeAST(elements, rest)
@@ -1275,7 +1301,7 @@ export interface Tuple<Elements extends TupleType.Elements> extends TupleType<El
  */
 export function Tuple<
   const Elements extends TupleType.Elements,
-  Rest extends array_.NonEmptyReadonlyArray<Schema.Any>
+  Rest extends array_.NonEmptyReadonlyArray<Schema.Any | Element<Schema.Any, "">>
 >(elements: Elements, ...rest: Rest): TupleType<Elements, Rest>
 export function Tuple<Elements extends TupleType.Elements>(...elements: Elements): Tuple<Elements>
 export function Tuple(...args: ReadonlyArray<any>): any {
@@ -1349,11 +1375,6 @@ export declare namespace PropertySignature {
   /**
    * @since 0.67.0
    */
-  export type GetToken<B extends boolean> = B extends true ? "?:" : ":"
-
-  /**
-   * @since 0.67.0
-   */
   export type Any<Key extends PropertyKey = PropertyKey> = PropertySignature<
     Token,
     any,
@@ -1388,7 +1409,7 @@ export declare namespace PropertySignature {
   }
 }
 
-const formatToken = (isOptional: boolean): string => isOptional ? "\"?:\"" : "\":\""
+const formatPropertySignatureToken = (isOptional: boolean): string => isOptional ? "\"?:\"" : "\":\""
 
 /**
  * @category PropertySignature
@@ -1412,7 +1433,7 @@ export class PropertySignatureDeclaration extends AST.OptionalType {
    * @since 0.67.0
    */
   toString() {
-    const token = formatToken(this.isOptional)
+    const token = formatPropertySignatureToken(this.isOptional)
     const type = String(this.type)
     return `PropertySignature<${token}, ${type}, never, ${token}, ${type}>`
   }
@@ -1479,9 +1500,9 @@ export class PropertySignatureTransformation {
    * @since 0.67.0
    */
   toString() {
-    return `PropertySignature<${formatToken(this.to.isOptional)}, ${this.to.type}, ${
+    return `PropertySignature<${formatPropertySignatureToken(this.to.isOptional)}, ${this.to.type}, ${
       formatPropertyKey(this.from.fromKey)
-    }, ${formatToken(this.from.isOptional)}, ${this.from.type}>`
+    }, ${formatPropertySignatureToken(this.from.isOptional)}, ${this.from.type}>`
   }
 }
 

@@ -1109,7 +1109,7 @@ export class OptionalType extends Type {
   constructor(
     type: AST,
     readonly isOptional: boolean,
-    annotations?: Annotations
+    annotations: Annotations = {}
   ) {
     super(type, annotations)
   }

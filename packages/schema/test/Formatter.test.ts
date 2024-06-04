@@ -74,6 +74,7 @@ describe("Formatter", () => {
       })
 
       it("r + e", async () => {
+        // TODO: replace with S.element once it's implemented
         const schema = S.make(
           new AST.TupleType(
             [],

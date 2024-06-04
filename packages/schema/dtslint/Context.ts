@@ -137,7 +137,7 @@ S.Tuple([aContext], bContext)
 // $ExpectType Schema<readonly [string, number?], readonly [string, number?], "aContext" | "bContext">
 S.asSchema(S.Tuple(aContext, S.optionalElement(bContext)))
 
-// $ExpectType Tuple<[aContext, OptionalElement<bContext>]>
+// $ExpectType Tuple<[aContext, Element<bContext, "?">]>
 S.Tuple(aContext, S.optionalElement(bContext))
 
 // ---------------------------------------------

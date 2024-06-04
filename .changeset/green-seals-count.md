@@ -16,6 +16,9 @@ Schema
 
 - add `missingMessage` annotation to `PropertySignature`
 - rename `PropertySignatureTypeId` to `TypeTypeId`
+- remove `TupleType.Element` type
+- replace `OptionalElement` API interface with `Element` API interface
+- remove `PropertySignature.GetToken`
 
 ParseResult
 
