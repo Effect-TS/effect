@@ -266,6 +266,19 @@ export const head = <A>(self: Iterable<A>): Option<A> => {
 }
 
 /**
+ * Get the first element of a `Iterable`, or throw an error if the `Iterable` is empty.
+ *
+ * @category getters
+ * @since 3.3.0
+ */
+export const unsafeHead = <A>(self: Iterable<A>): A => {
+  const iterator = self[Symbol.iterator]()
+  const result = iterator.next()
+  if (result.done) throw new Error("unsafeHead: empty iterable")
+  return result.value
+}
+
+/**
  * Keep only a max number of elements from the start of an `Iterable`, creating a new `Iterable`.
  *
  * **Note**. `n` is normalized to a non negative integer.
