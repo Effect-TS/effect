@@ -7,7 +7,7 @@ import { hole } from "effect/Function"
 
 class NoFields extends S.Class<NoFields>("NoFields")({}) {}
 
-// $ExpectType [props?: void | {}, disableValidation?: boolean | undefined]
+// $ExpectType [props?: void | {}, options?: MakeOptions | undefined]
 hole<ConstructorParameters<typeof NoFields>>()
 
 new NoFields()
@@ -22,7 +22,7 @@ class AllDefaultedFields extends S.Class<AllDefaultedFields>("AllDefaultedFields
   a: S.String.pipe(S.propertySignature, S.withConstructorDefault(() => ""))
 }) {}
 
-// $ExpectType [props?: void | { readonly a?: string; }, disableValidation?: boolean | undefined]
+// $ExpectType [props?: void | { readonly a?: string; }, options?: MakeOptions | undefined]
 hole<ConstructorParameters<typeof AllDefaultedFields>>()
 
 new AllDefaultedFields()
@@ -52,7 +52,7 @@ hole<S.Schema.Context<typeof WithContext>>()
 // should be a constructor
 // ---------------------------------------------
 
-// $ExpectType [props: { readonly a: string; readonly b: number; }, disableValidation?: boolean | undefined]
+// $ExpectType [props: { readonly a: string; readonly b: number; }, options?: MakeOptions | undefined]
 hole<ConstructorParameters<typeof WithContext>>()
 
 // ---------------------------------------------
@@ -82,7 +82,7 @@ hole<S.Schema.Context<typeof Extended>>()
 // $ExpectType { readonly a: Schema<string, string, "a">; readonly b: Schema<number, number, "b">; readonly c: Schema<boolean, boolean, "c">; }
 Extended.fields
 
-// $ExpectType [props: { readonly a: string; readonly b: number; readonly c: boolean; }, disableValidation?: boolean | undefined]
+// $ExpectType [props: { readonly a: string; readonly b: number; readonly c: boolean; }, options?: MakeOptions | undefined]
 hole<ConstructorParameters<typeof Extended>>()
 
 // ---------------------------------------------
@@ -107,7 +107,7 @@ hole<S.Schema.Context<typeof ExtendedFromClassFields>>()
 // $ExpectType { readonly b: typeof String$; readonly c: Schema<boolean, boolean, "c">; readonly a: Schema<string, string, "a">; }
 ExtendedFromClassFields.fields
 
-// $ExpectType [props: { readonly a: string; readonly b: string; readonly c: boolean; }, disableValidation?: boolean | undefined]
+// $ExpectType [props: { readonly a: string; readonly b: string; readonly c: boolean; }, options?: MakeOptions | undefined]
 hole<ConstructorParameters<typeof ExtendedFromClassFields>>()
 
 // ---------------------------------------------
@@ -134,7 +134,7 @@ hole<S.Schema.Context<typeof ExtendedFromTaggedClassFields>>()
 // $ExpectType { readonly _tag: PropertySignature<":", "ExtendedFromTaggedClassFields", never, ":", "ExtendedFromTaggedClassFields", true, never>; readonly b: typeof String$; readonly c: Schema<boolean, boolean, "c">; readonly a: Schema<string, string, "a">; }
 ExtendedFromTaggedClassFields.fields
 
-// $ExpectType [props: { readonly a: string; readonly b: string; readonly c: boolean; }, disableValidation?: boolean | undefined]
+// $ExpectType [props: { readonly a: string; readonly b: string; readonly c: boolean; }, options?: MakeOptions | undefined]
 hole<ConstructorParameters<typeof ExtendedFromTaggedClassFields>>()
 
 // ---------------------------------------------

@@ -55,4 +55,22 @@ describe("filter", () => {
    └─ b should be equal to a's value ("a")`
     )
   })
+
+  it("the constructor should validate the input by default", () => {
+    const schema = S.NonEmpty
+    Util.expectConstructorSuccess(schema, "a")
+    Util.expectConstructorFailure(
+      schema,
+      "",
+      `NonEmpty
+└─ Predicate refinement failure
+   └─ Expected NonEmpty (a non empty string), actual ""`
+    )
+  })
+
+  it("the constructor validation can be disabled", () => {
+    const schema = S.NonEmpty
+    expect(schema.make("", true)).toStrictEqual("")
+    expect(schema.make("", { disableValidation: true })).toStrictEqual("")
+  })
 })

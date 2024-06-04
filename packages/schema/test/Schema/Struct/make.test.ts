@@ -60,4 +60,23 @@ describe("make", () => {
     Util.expectConstructorSuccess(schema, { [b]: 2 }, { a: "", [b]: 2 })
     Util.expectConstructorSuccess(schema, {}, { a: "", [b]: 0 })
   })
+
+  it("the constructor should validate the input by default", () => {
+    const schema = S.Struct({ a: S.NonEmpty })
+    Util.expectConstructorFailure(
+      schema,
+      { a: "" },
+      `{ readonly a: NonEmpty }
+└─ ["a"]
+   └─ NonEmpty
+      └─ Predicate refinement failure
+         └─ Expected NonEmpty (a non empty string), actual ""`
+    )
+  })
+
+  it("the constructor validation can be disabled", () => {
+    const schema = S.Struct({ a: S.NonEmpty })
+    expect(schema.make({ a: "" }, true)).toStrictEqual({ a: "" })
+    expect(schema.make({ a: "" }, { disableValidation: true })).toStrictEqual({ a: "" })
+  })
 })
