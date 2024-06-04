@@ -67,7 +67,6 @@ export const makeManager = Effect.gen(function*() {
     spawn<I, O, E>({
       encode,
       initialMessage,
-      permits = 1,
       queue,
       transfers = (_) => []
     }: Worker.Worker.Options<I>) {
@@ -75,7 +74,6 @@ export const makeManager = Effect.gen(function*() {
         const spawn = yield* _(Spawner)
         const id = idCounter++
         let requestIdCounter = 0
-        const semaphore = Effect.unsafeMakeSemaphore(permits)
         const requestMap = new Map<
           number,
           readonly [Queue.Queue<Exit.Exit<ReadonlyArray<O>, E | WorkerError>>, Deferred.Deferred<void>]
@@ -237,10 +235,9 @@ export const makeManager = Effect.gen(function*() {
             executeRelease
           )
 
-        yield* semaphore.take(1).pipe(
-          Effect.andThen(outbound.take),
+        yield* outbound.take.pipe(
           Effect.flatMap(([id, request, span]) =>
-            pipe(
+            Effect.fork(
               Effect.suspend(() => {
                 const result = requestMap.get(id)
                 if (!result) return Effect.void
@@ -260,14 +257,12 @@ export const makeManager = Effect.gen(function*() {
                   Effect.catchAllCause((cause) => Queue.offer(result[0], Exit.failCause(cause))),
                   Effect.zipRight(Deferred.await(result[1]))
                 )
-              }),
-              Effect.ensuring(semaphore.release(1)),
-              Effect.fork
+              })
             )
           ),
           Effect.forever,
-          Effect.interruptible,
-          Effect.forkScoped
+          Effect.forkScoped,
+          Effect.interruptible
         )
 
         if (initialMessage) {
@@ -299,11 +294,21 @@ export const makePool = <I, O, E>(
       Effect.tap((worker) => Effect.addFinalizer(() => Effect.sync(() => workers.delete(worker)))),
       options.onCreate ? Effect.tap(options.onCreate) : identity
     )
-    const backing = yield* Pool.make({
-      acquire,
-      size: options.size
-    })
-    const get = Effect.scoped(backing.get)
+    const backing = "minSize" in options ?
+      yield* Pool.makeWithTTL({
+        acquire,
+        min: options.minSize,
+        max: options.maxSize,
+        concurrency: options.concurrency,
+        targetUtilization: options.targetUtilization,
+        timeToLive: options.timeToLive
+      }) :
+      yield* Pool.make({
+        acquire,
+        size: options.size,
+        concurrency: options.concurrency,
+        targetUtilization: options.targetUtilization
+      })
     const pool: Worker.WorkerPool<I, O, E> = {
       backing,
       broadcast: (message: I) =>
@@ -311,12 +316,20 @@ export const makePool = <I, O, E>(
           concurrency: "unbounded",
           discard: true
         }),
-      execute: (message: I) => Stream.unwrap(Effect.map(get, (worker) => worker.execute(message))),
-      executeEffect: (message: I) => Effect.flatMap(get, (worker) => worker.executeEffect(message))
+      execute: (message: I) =>
+        Stream.unwrapScoped(Effect.map(
+          backing.get,
+          (worker) => worker.execute(message)
+        )),
+      executeEffect: (message: I) =>
+        Effect.scoped(Effect.flatMap(
+          backing.get,
+          (worker) => worker.executeEffect(message)
+        ))
     }
 
     // report any spawn errors
-    yield* get
+    yield* Effect.scoped(backing.get)
 
     return pool
   })
@@ -391,13 +404,16 @@ export const makePoolSerialized = <I extends Schema.TaggedRequest.Any>(
         acquire,
         min: options.minSize,
         max: options.maxSize,
+        concurrency: options.concurrency,
+        targetUtilization: options.targetUtilization,
         timeToLive: options.timeToLive
       }) :
       Pool.make({
         acquire,
-        size: options.size
+        size: options.size,
+        concurrency: options.concurrency,
+        targetUtilization: options.targetUtilization
       })
-    const get = Effect.scoped(backing.get)
     const pool: Worker.SerializedWorkerPool<I> = {
       backing,
       broadcast: <Req extends I>(message: Req) =>
@@ -406,13 +422,13 @@ export const makePoolSerialized = <I extends Schema.TaggedRequest.Any>(
           discard: true
         }) as any,
       execute: <Req extends I>(message: Req) =>
-        Stream.unwrap(Effect.map(get, (worker) => worker.execute(message))) as any,
+        Stream.unwrapScoped(Effect.map(backing.get, (worker) => worker.execute(message))) as any,
       executeEffect: <Req extends I>(message: Req) =>
-        Effect.flatMap(get, (worker) => worker.executeEffect(message)) as any
+        Effect.scoped(Effect.flatMap(backing.get, (worker) => worker.executeEffect(message))) as any
     }
 
     // report any spawn errors
-    yield* get
+    yield* Effect.scoped(backing.get)
 
     return pool
   })
