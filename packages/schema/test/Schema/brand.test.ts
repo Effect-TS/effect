@@ -4,7 +4,7 @@ import * as Util from "@effect/schema/test/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("brand", () => {
-  it.only("the constructor should validate the input by default", () => {
+  it("the constructor should validate the input by default", () => {
     const schema = S.NonEmpty.pipe(S.brand("A"))
     Util.expectConstructorSuccess(schema, "a")
     Util.expectConstructorFailure(
