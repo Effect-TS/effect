@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-Stream: Implemented `zipLatestAll` function
+add `Stream.zipLatestAll` api
