@@ -231,33 +231,29 @@ const drainQueueWhileRunningTable = {
  * Executes all requests, submitting requests to each data source in parallel.
  */
 const runBlockedRequests = (self: RequestBlock.RequestBlock) =>
-  core.forEachSequentialDiscard(
-    _RequestBlock.flatten(self),
-    (requestsByRequestResolver) =>
-      forEachConcurrentDiscard(
-        _RequestBlock.sequentialCollectionToChunk(requestsByRequestResolver),
-        ([dataSource, sequential]) => {
-          const map = new Map<Request<any, any>, Entry<any>>()
-          const arr: Array<Array<Entry<any>>> = []
-          for (const block of sequential) {
-            arr.push(Chunk.toReadonlyArray(block) as any)
-            for (const entry of block) {
-              map.set(entry.request as Request<any, any>, entry)
-            }
-          }
-          const flat = arr.flat()
-          return core.fiberRefLocally(
-            invokeWithInterrupt(dataSource.runAll(arr), flat, () =>
-              flat.forEach((entry) => {
-                entry.listeners.interrupted = true
-              })),
-            currentRequestMap,
-            map
-          )
-        },
-        false,
-        false
+  forEachConcurrentDiscard(
+    Array.from(_RequestBlock.flatten(self).map),
+    ([dataSource, sequential]) => {
+      const map = new Map<Request<any, any>, Entry<any>>()
+      const arr: Array<Array<Entry<any>>> = []
+      for (const block of sequential) {
+        arr.push(Chunk.toReadonlyArray(block) as any)
+        for (const entry of block) {
+          map.set(entry.request as Request<any, any>, entry)
+        }
+      }
+      const flat = arr.flat()
+      return core.fiberRefLocally(
+        invokeWithInterrupt(dataSource.runAll(arr), flat, () =>
+          flat.forEach((entry) => {
+            entry.listeners.interrupted = true
+          })),
+        currentRequestMap,
+        map
       )
+    },
+    false,
+    false
   )
 
 /** @internal */
