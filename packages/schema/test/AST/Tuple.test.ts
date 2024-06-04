@@ -5,7 +5,7 @@ describe("AST.Tuple", () => {
   it("A required element cannot follow an optional element", () => {
     expect(() =>
       new AST.TupleType(
-        [new AST.Element(AST.stringKeyword, true), new AST.Element(AST.stringKeyword, false)],
+        [new AST.OptionalType(AST.stringKeyword, true), new AST.OptionalType(AST.stringKeyword, false)],
         [],
         true
       )
@@ -17,8 +17,8 @@ describe("AST.Tuple", () => {
   it("A required rest element cannot follow an optional element", () => {
     expect(() =>
       new AST.TupleType(
-        [new AST.Element(AST.stringKeyword, true)],
-        [new AST.AnnotatedAST(AST.stringKeyword), new AST.AnnotatedAST(AST.stringKeyword)],
+        [new AST.OptionalType(AST.stringKeyword, true)],
+        [new AST.Type(AST.stringKeyword), new AST.Type(AST.stringKeyword)],
         true
       )
     ).toThrow(

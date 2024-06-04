@@ -237,7 +237,7 @@ export class Missing {
     /**
      * @since 0.68.0
      */
-    readonly ast: AST.AnnotatedAST,
+    readonly ast: AST.Type,
     /**
      * @since 0.68.0
      */
@@ -941,11 +941,11 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
     case "TupleType": {
       const elements = ast.elements.map((e) => goMemo(e.type, isDecoding))
       const rest = ast.rest.map((annotatedAST) => goMemo(annotatedAST.type, isDecoding))
-      let requiredElements: Array<AST.AnnotatedAST> = ast.elements.filter((e) => !e.isOptional)
+      let requiredTypes: Array<AST.Type> = ast.elements.filter((e) => !e.isOptional)
       if (ast.rest.length > 0) {
-        requiredElements = requiredElements.concat(ast.rest.slice(1))
+        requiredTypes = requiredTypes.concat(ast.rest.slice(1))
       }
-      const requiredLen = requiredElements.length
+      const requiredLen = requiredTypes.length
       const expectedIndexes = ast.elements.length > 0 ? ast.elements.map((_, i) => i).join(" | ") : "never"
       const concurrency = getConcurrency(ast)
       const batching = getBatching(ast)
@@ -961,7 +961,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         const len = input.length
         for (let i = len; i <= requiredLen - 1; i++) {
-          const e = new Index(i, new Missing(requiredElements[i - len]))
+          const e = new Index(i, new Missing(requiredTypes[i - len]))
           if (allErrors) {
             es.push([stepKey++, e])
             continue

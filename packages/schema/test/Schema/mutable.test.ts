@@ -27,7 +27,7 @@ describe("mutable", () => {
   it("array", () => {
     const schema = S.mutable(S.Array(S.String))
     expect(schema.ast).toEqual(
-      new AST.TupleType([], [new AST.AnnotatedAST(S.String.ast)], false)
+      new AST.TupleType([], [new AST.Type(S.String.ast)], false)
     )
   })
 
@@ -38,7 +38,7 @@ describe("mutable", () => {
         new AST.TypeLiteral([
           new AST.PropertySignature("a", S.Number.ast, false, false)
         ], []),
-        new AST.TupleType([], [new AST.AnnotatedAST(S.String.ast)], false)
+        new AST.TupleType([], [new AST.Type(S.String.ast)], false)
       ])
     )
   })
@@ -47,7 +47,7 @@ describe("mutable", () => {
     const schema = S.mutable(S.Array(S.String).pipe(S.maxItems(2)))
     if (AST.isRefinement(schema.ast)) {
       expect(schema.ast.from).toEqual(
-        new AST.TupleType([], [new AST.AnnotatedAST(S.String.ast)], false)
+        new AST.TupleType([], [new AST.Type(S.String.ast)], false)
       )
     }
   })
@@ -58,7 +58,7 @@ describe("mutable", () => {
     ))
     if (AST.isSuspend(schema.ast)) {
       expect(schema.ast.f()).toEqual(
-        new AST.TupleType([], [new AST.AnnotatedAST(S.String.ast)], false)
+        new AST.TupleType([], [new AST.Type(S.String.ast)], false)
       )
     }
   })
@@ -67,10 +67,10 @@ describe("mutable", () => {
     const schema = S.mutable(S.transform(S.Array(S.String), S.Array(S.String), { decode: identity, encode: identity }))
     if (AST.isTransformation(schema.ast)) {
       expect(schema.ast.from).toEqual(
-        new AST.TupleType([], [new AST.AnnotatedAST(S.String.ast)], false)
+        new AST.TupleType([], [new AST.Type(S.String.ast)], false)
       )
       expect(schema.ast.to).toEqual(
-        new AST.TupleType([], [new AST.AnnotatedAST(S.String.ast)], false)
+        new AST.TupleType([], [new AST.Type(S.String.ast)], false)
       )
     }
   })

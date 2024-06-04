@@ -28,8 +28,8 @@ const effectifyAST = (ast: AST.AST): AST.AST => {
   switch (ast._tag) {
     case "TupleType":
       return new AST.TupleType(
-        ast.elements.map((e) => new AST.Element(effectifyAST(e.type), e.isOptional, e.annotations)),
-        ast.rest.map((annotatedAST) => new AST.AnnotatedAST(effectifyAST(annotatedAST.type), annotatedAST.annotations)),
+        ast.elements.map((e) => new AST.OptionalType(effectifyAST(e.type), e.isOptional, e.annotations)),
+        ast.rest.map((annotatedAST) => new AST.Type(effectifyAST(annotatedAST.type), annotatedAST.annotations)),
         ast.isReadonly,
         ast.annotations
       )

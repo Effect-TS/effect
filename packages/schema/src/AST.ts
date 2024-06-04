@@ -1079,7 +1079,7 @@ export const isTemplateLiteral: (ast: AST) => ast is TemplateLiteral = createAST
  * @category model
  * @since 0.68.0
  */
-export class AnnotatedAST implements Annotated {
+export class Type implements Annotated {
   constructor(
     readonly type: AST,
     readonly annotations: Annotations = {}
@@ -1103,21 +1103,18 @@ export class AnnotatedAST implements Annotated {
 
 /**
  * @category model
- * @since 0.67.0
+ * @since 0.68.0
  */
-export class Element extends AnnotatedAST {
+export class OptionalType extends Type {
   constructor(
     type: AST,
     readonly isOptional: boolean,
-    /**
-     * @since 0.68.0
-     */
     annotations?: Annotations
   ) {
     super(type, annotations)
   }
   /**
-   * @since 0.67.0
+   * @since 0.68.0
    */
   toJSON(): object {
     return {
@@ -1127,15 +1124,14 @@ export class Element extends AnnotatedAST {
     }
   }
   /**
-   * @since 0.67.0
+   * @since 0.68.0
    */
   toString() {
     return String(this.type) + (this.isOptional ? "?" : "")
   }
 }
 
-const getRestASTs = (rest: ReadonlyArray<AnnotatedAST>): ReadonlyArray<AST> =>
-  rest.map((annotatedAST) => annotatedAST.type)
+const getRestASTs = (rest: ReadonlyArray<Type>): ReadonlyArray<AST> => rest.map((annotatedAST) => annotatedAST.type)
 
 /**
  * @category model
@@ -1147,8 +1143,8 @@ export class TupleType implements Annotated {
    */
   readonly _tag = "TupleType"
   constructor(
-    readonly elements: ReadonlyArray<Element>,
-    readonly rest: ReadonlyArray<AnnotatedAST>,
+    readonly elements: ReadonlyArray<OptionalType>,
+    readonly rest: ReadonlyArray<Type>,
     readonly isReadonly: boolean,
     readonly annotations: Annotations = {}
   ) {
@@ -1223,15 +1219,15 @@ export const isTupleType: (ast: AST) => ast is TupleType = createASTGuard("Tuple
  * @category model
  * @since 0.67.0
  */
-export class PropertySignature extends AnnotatedAST {
+export class PropertySignature extends OptionalType {
   constructor(
     readonly name: PropertyKey,
     type: AST,
-    readonly isOptional: boolean,
+    isOptional: boolean,
     readonly isReadonly: boolean,
     annotations?: Annotations
   ) {
-    super(type, annotations)
+    super(type, isOptional, annotations)
   }
   /**
    * @since 0.67.0
@@ -2159,10 +2155,10 @@ export const partial = (ast: AST, options?: { readonly exact: true }): AST => {
   switch (ast._tag) {
     case "TupleType":
       return new TupleType(
-        ast.elements.map((e) => new Element(exact ? e.type : orUndefined(e.type), true)),
+        ast.elements.map((e) => new OptionalType(exact ? e.type : orUndefined(e.type), true)),
         Arr.match(ast.rest, {
           onEmpty: () => ast.rest,
-          onNonEmpty: (rest) => [new AnnotatedAST(Union.make([...getRestASTs(rest), undefinedKeyword]))]
+          onNonEmpty: (rest) => [new Type(Union.make([...getRestASTs(rest), undefinedKeyword]))]
         }),
         ast.isReadonly
       )
@@ -2203,7 +2199,7 @@ export const required = (ast: AST): AST => {
   switch (ast._tag) {
     case "TupleType":
       return new TupleType(
-        ast.elements.map((e) => new Element(e.type, false)),
+        ast.elements.map((e) => new OptionalType(e.type, false)),
         ast.rest,
         ast.isReadonly
       )
@@ -2317,13 +2313,13 @@ export const typeAST = (ast: AST): AST => {
     case "TupleType": {
       const elements = changeMap(ast.elements, (e) => {
         const type = typeAST(e.type)
-        return type === e.type ? e : new Element(type, e.isOptional)
+        return type === e.type ? e : new OptionalType(type, e.isOptional)
       })
       const restASTs = getRestASTs(ast.rest)
       const rest = changeMap(restASTs, typeAST)
       return elements === ast.elements && rest === restASTs ?
         ast :
-        new TupleType(elements, rest.map((type) => new AnnotatedAST(type)), ast.isReadonly, ast.annotations)
+        new TupleType(elements, rest.map((type) => new Type(type)), ast.isReadonly, ast.annotations)
     }
     case "TypeLiteral": {
       const propertySignatures = changeMap(ast.propertySignatures, (p) => {
@@ -2396,7 +2392,7 @@ const encodedAST_ = (ast: AST, isBound: boolean): AST => {
     case "TupleType": {
       const elements = changeMap(ast.elements, (e) => {
         const type = encodedAST_(e.type, isBound)
-        return type === e.type ? e : new Element(type, e.isOptional)
+        return type === e.type ? e : new OptionalType(type, e.isOptional)
       })
       const restASTs = getRestASTs(ast.rest)
       const rest = changeMap(restASTs, (ast) => encodedAST_(ast, isBound))
@@ -2404,7 +2400,7 @@ const encodedAST_ = (ast: AST, isBound: boolean): AST => {
         ast :
         new TupleType(
           elements,
-          rest.map((ast) => new AnnotatedAST(ast)),
+          rest.map((ast) => new Type(ast)),
           ast.isReadonly,
           createJSONIdentifierAnnotation(ast)
         )

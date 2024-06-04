@@ -1229,9 +1229,11 @@ const getDefaultTupleTypeAST = <
 ): AST.AST =>
   new AST.TupleType(
     elements.map((schema) =>
-      isSchema(schema) ? new AST.Element(schema.ast, false) : new AST.Element(schema.optionalElement.ast, true)
+      isSchema(schema)
+        ? new AST.OptionalType(schema.ast, false)
+        : new AST.OptionalType(schema.optionalElement.ast, true)
     ),
-    rest.map((e) => new AST.AnnotatedAST(e.ast)),
+    rest.map((e) => new AST.Type(e.ast)),
     true
   )
 
@@ -1392,18 +1394,20 @@ const formatToken = (isOptional: boolean): string => isOptional ? "\"?:\"" : "\"
  * @category PropertySignature
  * @since 0.67.0
  */
-export class PropertySignatureDeclaration {
+export class PropertySignatureDeclaration extends AST.OptionalType {
   /**
    * @since 0.67.0
    */
   readonly _tag = "PropertySignatureDeclaration"
   constructor(
-    readonly type: AST.AST,
-    readonly isOptional: boolean,
+    type: AST.AST,
+    isOptional: boolean,
     readonly isReadonly: boolean,
-    readonly annotations: AST.Annotations,
+    annotations: AST.Annotations,
     readonly defaultValue: (() => unknown) | undefined
-  ) {}
+  ) {
+    super(type, isOptional, annotations)
+  }
   /**
    * @since 0.67.0
    */
@@ -1418,28 +1422,32 @@ export class PropertySignatureDeclaration {
  * @category PropertySignature
  * @since 0.67.0
  */
-export class FromPropertySignature implements AST.Annotated {
+export class FromPropertySignature extends AST.OptionalType {
   constructor(
-    readonly type: AST.AST,
-    readonly isOptional: boolean,
+    type: AST.AST,
+    isOptional: boolean,
     readonly isReadonly: boolean,
-    readonly annotations: AST.Annotations,
+    annotations: AST.Annotations,
     readonly fromKey?: PropertyKey | undefined
-  ) {}
+  ) {
+    super(type, isOptional, annotations)
+  }
 }
 
 /**
  * @category PropertySignature
  * @since 0.67.0
  */
-export class ToPropertySignature implements AST.Annotated {
+export class ToPropertySignature extends AST.OptionalType {
   constructor(
-    readonly type: AST.AST,
-    readonly isOptional: boolean,
+    type: AST.AST,
+    isOptional: boolean,
     readonly isReadonly: boolean,
-    readonly annotations: AST.Annotations,
+    annotations: AST.Annotations,
     readonly defaultValue: (() => unknown) | undefined
-  ) {}
+  ) {
+    super(type, isOptional, annotations)
+  }
 }
 
 const formatPropertyKey = (p: PropertyKey | undefined): string => {
@@ -1477,18 +1485,6 @@ export class PropertySignatureTransformation {
   }
 }
 
-/**
- * @since 0.67.0
- * @category symbol
- */
-export const PropertySignatureTypeId: unique symbol = Symbol.for("@effect/schema/PropertySignature")
-
-/**
- * @since 0.67.0
- * @category symbol
- */
-export type PropertySignatureTypeId = typeof PropertySignatureTypeId
-
 const propertySignatureAnnotations_ = (
   ast: PropertySignature.AST,
   annotations: AST.Annotations
@@ -1521,6 +1517,18 @@ const propertySignatureAnnotations_ = (
     }
   }
 }
+
+/**
+ * @since 0.68.0
+ * @category symbol
+ */
+export const PropertySignatureTypeId: unique symbol = Symbol.for("@effect/schema/PropertySignature")
+
+/**
+ * @since 0.68.0
+ * @category symbol
+ */
+export type PropertySignatureTypeId = typeof PropertySignatureTypeId
 
 /**
  * @category PropertySignature

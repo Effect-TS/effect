@@ -50,7 +50,7 @@ describe("Formatter", () => {
         const schema = S.make(
           new AST.TupleType(
             [
-              new AST.Element(AST.stringKeyword, false, {
+              new AST.OptionalType(AST.stringKeyword, false, {
                 [AST.MissingMessageAnnotationId]: () => "my missing message"
               })
             ],
@@ -78,8 +78,8 @@ describe("Formatter", () => {
           new AST.TupleType(
             [],
             [
-              new AST.AnnotatedAST(AST.stringKeyword),
-              new AST.AnnotatedAST(AST.stringKeyword, {
+              new AST.Type(AST.stringKeyword),
+              new AST.Type(AST.stringKeyword, {
                 [AST.MissingMessageAnnotationId]: () => "my missing message"
               })
             ],
