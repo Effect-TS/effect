@@ -5,7 +5,6 @@
  */
 import type * as Channel from "./Channel.js"
 import * as Context from "./Context.js"
-import * as Duration from "./Duration.js"
 import type { Effect, EffectTypeId } from "./Effect.js"
 import * as Effectable from "./Effectable.js"
 import * as Either from "./Either.js"
@@ -1464,7 +1463,7 @@ export const repeatResult: {
       attempt++
       let delayEffect = yieldNow
       if (options.delay !== undefined) {
-        const elapsed = Duration.millis(Date.now() - startedAt)
+        const elapsed = Date.now() - startedAt
         const duration = options.delay(attempt, elapsed)
         if (Option.isNone(duration)) {
           return onResult(result)
@@ -1539,7 +1538,7 @@ export const forever = <A, E, R>(self: Micro<A, E, R>): Micro<never, E, R> => re
  * @since 3.3.0
  * @category delays
  */
-export type DelayFn = (attempt: number, elapsed: Duration.Duration) => Option.Option<Duration.DurationInput>
+export type DelayFn = (attempt: number, elapsed: number) => Option.Option<number>
 
 /**
  * Create a `DelayFn` that will generate a duration with an exponential backoff.
@@ -1547,10 +1546,8 @@ export type DelayFn = (attempt: number, elapsed: Duration.Duration) => Option.Op
  * @since 3.3.0
  * @category delays
  */
-export const delayExponential = (base: Duration.DurationInput, factor = 2): DelayFn => {
-  const baseMillis = Duration.toMillis(base)
-  return (attempt) => Option.some(attempt ** factor * baseMillis)
-}
+export const delayExponential = (baseMillis: number, factor = 2): DelayFn => (attempt) =>
+  Option.some(attempt ** factor * baseMillis)
 
 /**
  * Create a `DelayFn` that will generate a duration with fixed intervals.
@@ -1558,7 +1555,7 @@ export const delayExponential = (base: Duration.DurationInput, factor = 2): Dela
  * @since 3.3.0
  * @category delays
  */
-export const delaySpaced = (duration: Duration.DurationInput): DelayFn => (_) => Option.some(duration)
+export const delaySpaced = (millis: number): DelayFn => (_) => Option.some(millis)
 
 /**
  * Transform a `DelayFn` to one that will have a duration that will never exceed
@@ -1568,12 +1565,12 @@ export const delaySpaced = (duration: Duration.DurationInput): DelayFn => (_) =>
  * @category delays
  */
 export const delayWithMax: {
-  (max: Duration.DurationInput): (self: DelayFn) => DelayFn
-  (self: DelayFn, max: Duration.DurationInput): DelayFn
+  (max: number): (self: DelayFn) => DelayFn
+  (self: DelayFn, max: number): DelayFn
 } = dual(
   2,
-  (self: DelayFn, max: Duration.DurationInput): DelayFn => (attempt, elapsed) =>
-    Option.map(self(attempt, elapsed), Duration.max(max))
+  (self: DelayFn, max: number): DelayFn => (attempt, elapsed) =>
+    Option.map(self(attempt, elapsed), (duration) => Math.min(duration, max))
 )
 
 /**
@@ -1584,12 +1581,11 @@ export const delayWithMax: {
  * @category delays
  */
 export const delayWithMaxElapsed: {
-  (max: Duration.DurationInput): (self: DelayFn) => DelayFn
-  (self: DelayFn, max: Duration.DurationInput): DelayFn
+  (max: number): (self: DelayFn) => DelayFn
+  (self: DelayFn, max: number): DelayFn
 } = dual(
   2,
-  (self: DelayFn, max: Duration.DurationInput): DelayFn => (attempt, elapsed) =>
-    Duration.lessThan(elapsed, max) ? self(attempt, elapsed) : Option.none()
+  (self: DelayFn, max: number): DelayFn => (attempt, elapsed) => elapsed < max ? self(attempt, elapsed) : Option.none()
 )
 
 /**
@@ -2053,9 +2049,8 @@ export const match: {
  * @since 3.3.0
  * @category delays & timeouts
  */
-export const sleep = (duration: Duration.DurationInput): Micro<void> => {
-  const millis = Duration.toMillis(duration)
-  return async(function(resume) {
+export const sleep = (millis: number): Micro<void> =>
+  async(function(resume) {
     const timeout = setTimeout(function() {
       resume(void_)
     }, millis)
@@ -2063,7 +2058,6 @@ export const sleep = (duration: Duration.DurationInput): Micro<void> => {
       return clearTimeout(timeout)
     })
   })
-}
 
 /**
  * Returns an effect that will delay the execution of this effect by the
@@ -2073,11 +2067,11 @@ export const sleep = (duration: Duration.DurationInput): Micro<void> => {
  * @category delays & timeouts
  */
 export const delay: {
-  (duration: Duration.DurationInput): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, R>
-  <A, E, R>(self: Micro<A, E, R>, duration: Duration.DurationInput): Micro<A, E, R>
+  (millis: number): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, R>
+  <A, E, R>(self: Micro<A, E, R>, millis: number): Micro<A, E, R>
 } = dual(
   2,
-  <A, E, R>(self: Micro<A, E, R>, duration: Duration.DurationInput): Micro<A, E, R> => andThen(sleep(duration), self)
+  <A, E, R>(self: Micro<A, E, R>, millis: number): Micro<A, E, R> => andThen(sleep(millis), self)
 )
 
 /**
@@ -2091,17 +2085,17 @@ export const delay: {
  */
 export const timeoutOrElse: {
   <A2, E2, R2>(options: {
-    readonly duration: Duration.DurationInput
+    readonly duration: number
     readonly onTimeout: LazyArg<Micro<A2, E2, R2>>
   }): <A, E, R>(self: Micro<A, E, R>) => Micro<A | A2, E | E2, R | R2>
   <A, E, R, A2, E2, R2>(self: Micro<A, E, R>, options: {
-    readonly duration: Duration.DurationInput
+    readonly duration: number
     readonly onTimeout: LazyArg<Micro<A2, E2, R2>>
   }): Micro<A | A2, E | E2, R | R2>
 } = dual(
   2,
   <A, E, R, A2, E2, R2>(self: Micro<A, E, R>, options: {
-    readonly duration: Duration.DurationInput
+    readonly duration: number
     readonly onTimeout: LazyArg<Micro<A2, E2, R2>>
   }): Micro<A | A2, E | E2, R | R2> =>
     raceFirst(self, andThen(interruptible(sleep(options.duration)), options.onTimeout))
@@ -2118,14 +2112,14 @@ export const timeoutOrElse: {
  * @category delays & timeouts
  */
 export const timeout: {
-  (duration: Duration.DurationInput): <A, E, R>(self: Micro<A, E, R>) => Micro<Option.Option<A>, E, R>
-  <A, E, R>(self: Micro<A, E, R>, duration: Duration.DurationInput): Micro<Option.Option<A>, E, R>
+  (millis: number): <A, E, R>(self: Micro<A, E, R>) => Micro<Option.Option<A>, E, R>
+  <A, E, R>(self: Micro<A, E, R>, millis: number): Micro<Option.Option<A>, E, R>
 } = dual(
   2,
-  <A, E, R>(self: Micro<A, E, R>, duration: Duration.DurationInput): Micro<Option.Option<A>, E, R> =>
+  <A, E, R>(self: Micro<A, E, R>, millis: number): Micro<Option.Option<A>, E, R> =>
     raceFirst(
       asSome(self),
-      as(interruptible(sleep(duration)), Option.none())
+      as(interruptible(sleep(millis)), Option.none())
     )
 )
 
