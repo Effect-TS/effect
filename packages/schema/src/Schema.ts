@@ -1381,7 +1381,7 @@ export declare namespace PropertySignature {
    * @since 0.67.0
    */
   export interface Annotations<A> extends Annotations.Doc<A> {
-    readonly missingMessage: AST.MissingMessageAnnotation
+    readonly missingMessage?: AST.MissingMessageAnnotation
   }
 }
 
