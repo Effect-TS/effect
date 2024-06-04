@@ -470,7 +470,7 @@ const currentInterruptible: EnvRef<boolean> = envRefMake(
  * @since 3.3.0
  * @category env refs
  * @example
- * import Micro from "effect/Micro"
+ * import * as Micro from "effect/Micro"
  *
  * Micro.forEach([1, 2, 3], (n) => Micro.succeed(n), {
  *   concurrency: "inherit"
