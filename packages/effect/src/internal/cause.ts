@@ -983,8 +983,10 @@ class PrettyError extends globalThis.Error implements Cause.PrettyError {
     const prevLimit = Error.stackTraceLimit
     Error.stackTraceLimit = 0
     super(prettyErrorMessage(originalError))
+    if (this.message === "") {
+      this.message = "An error has occurred"
+    }
     Error.stackTraceLimit = prevLimit
-
     this.name = originalError instanceof Error ? originalError.name : "Error"
     if (typeof originalError === "object" && originalError !== null) {
       if (spanSymbol in originalError) {
@@ -998,20 +1000,12 @@ class PrettyError extends globalThis.Error implements Cause.PrettyError {
       })
     }
     this.stack = prettyErrorStack(
-      this.message,
+      `${this.name}: ${this.message}`,
       originalError instanceof Error && originalError.stack
         ? originalError.stack
         : "",
       this.span
     )
-  }
-
-  toJSON() {
-    const out: any = { message: this.message, stack: this.stack }
-    if (this.span) {
-      out.span = this.span
-    }
-    return out
   }
 }
 
@@ -1020,10 +1014,9 @@ class PrettyError extends globalThis.Error implements Cause.PrettyError {
  *
  * Rules:
  *
- * 1) If the input `u` is already a string, it's considered a message, and "Error" is added as a prefix.
- * 2) If `u` has a user-defined `toString()` method, it uses that method and adds "Error" as a prefix.
- * 3) If `u` is an object and its only (optional) properties are "name", "message", or "_tag", it constructs
- *    an error message based on those properties.
+ * 1) If the input `u` is already a string, it's considered a message.
+ * 2) If `u` is an Error instance with a message defined, it uses the message.
+ * 3) If `u` has a user-defined `toString()` method, it uses that method.
  * 4) Otherwise, it uses `JSON.stringify` to produce a string representation and uses it as the error message,
  *   with "Error" added as a prefix.
  *
@@ -1032,9 +1025,13 @@ class PrettyError extends globalThis.Error implements Cause.PrettyError {
 export const prettyErrorMessage = (u: unknown): string => {
   // 1)
   if (typeof u === "string") {
-    return `Error: ${u}`
+    return u
   }
   // 2)
+  if (typeof u === "object" && u !== null && u instanceof Error) {
+    return u.message
+  }
+  // 3)
   try {
     if (
       hasProperty(u, "toString") &&
@@ -1047,8 +1044,8 @@ export const prettyErrorMessage = (u: unknown): string => {
   } catch {
     // something's off, rollback to json
   }
-  // 3)
-  return `Error: ${JSON.stringify(u)}`
+  // 4)
+  return JSON.stringify(u)
 }
 
 const locationRegex = /\((.*)\)/
