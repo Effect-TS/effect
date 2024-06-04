@@ -371,6 +371,20 @@ describe.sequential("Micro", () => {
       )
       assert.deepStrictEqual(result, 123)
     })
+
+    it.effect("delayWithRecurs", () =>
+      Micro.gen(function*() {
+        let count = 0
+        yield* Micro.sync(() => count++).pipe(
+          Micro.repeat({
+            delay: pipe(
+              Micro.delaySpaced(0),
+              Micro.delayWithRecurs(3)
+            )
+          })
+        )
+        assert.deepStrictEqual(count, 4)
+      }))
   })
 
   describe("retry", () => {
@@ -484,6 +498,20 @@ describe.sequential("Micro", () => {
           Micro.catchTag("TestError", (_) => Micro.succeed(true))
         )
         assert.strictEqual(result, true)
+      }))
+  })
+
+  describe("withTrace", () => {
+    it.effect("captures a stack", () =>
+      Micro.gen(function*() {
+        const error = yield* Micro.fail("boom").pipe(
+          Micro.withTrace("test trace"),
+          Micro.sandbox,
+          Micro.flip
+        )
+        assert(error._tag === "Expected")
+        assert.include(error.traces[0], "at test trace")
+        assert.include(error.traces[0], "Micro.test.ts:508")
       }))
   })
 })

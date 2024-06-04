@@ -91,6 +91,7 @@ export declare namespace Micro {
 
 /**
  * @since 3.3.0
+ * @category guards
  */
 export const isMicro = (u: unknown): u is Micro<any, any, any> => typeof u === "object" && u !== null && TypeId in u
 
@@ -119,6 +120,8 @@ export const FailureTypeId = Symbol.for("effect/Micro/Failure")
 export type FailureTypeId = typeof FailureTypeId
 
 /**
+ * A Micro Failure is a data type that represents the different ways a Micro can fail.
+ *
  * @since 3.3.0
  * @category failure
  */
@@ -143,6 +146,7 @@ export declare namespace Failure {
   export interface Unexpected extends Proto {
     readonly _tag: "Unexpected"
     readonly defect: unknown
+    readonly traces: ReadonlyArray<string>
   }
 
   /**
@@ -152,6 +156,7 @@ export declare namespace Failure {
   export interface Expected<E> extends Proto {
     readonly _tag: "Expected"
     readonly error: E
+    readonly traces: ReadonlyArray<string>
   }
 
   /**
@@ -174,10 +179,11 @@ const FailureProto: Failure.Proto = {
  * @since 3.3.0
  * @category failure
  */
-export const FailureExpected = <E>(error: E): Failure<E> => {
+export const FailureExpected = <E>(error: E, traces?: Array<string> | undefined): Failure<E> => {
   const self = Object.create(FailureProto)
   self._tag = "Expected"
   self.error = error
+  self.traces = traces ?? []
   return self
 }
 
@@ -185,10 +191,11 @@ export const FailureExpected = <E>(error: E): Failure<E> => {
  * @since 3.3.0
  * @category failure
  */
-export const FailureUnexpected = (defect: unknown): Failure<never> => {
+export const FailureUnexpected = (defect: unknown, traces?: Array<string> | undefined): Failure<never> => {
   const self = Object.create(FailureProto)
   self._tag = "Unexpected"
   self.defect = defect
+  self.traces = traces ?? []
   return self
 }
 
@@ -207,11 +214,32 @@ export const FailureAborted: Failure<never> = Object.assign(Object.create(Failur
 export const failureSquash = <E>(self: Failure<E>): unknown =>
   self._tag === "Expected" ? self.error : self._tag === "Unexpected" ? self.defect : self
 
+/**
+ * @since 3.3.0
+ * @category failure
+ */
+export const failureWithTrace: {
+  (trace: string): <E>(self: Failure<E>) => Failure<E>
+  <E>(self: Failure<E>, trace: string): Failure<E>
+} = dual(2, <E>(self: Failure<E>, trace: string): Failure<E> => {
+  if (self._tag === "Expected") {
+    return FailureExpected(self.error, [...self.traces, trace])
+  } else if (self._tag === "Unexpected") {
+    return FailureUnexpected(self.defect, [...self.traces, trace])
+  }
+  return self
+})
+
 // ----------------------------------------------------------------------------
 // Result
 // ----------------------------------------------------------------------------
 
 /**
+ * The Micro Result type is a data type that represents the result of a Micro
+ * computation.
+ *
+ * It uses the `Either` data type to represent the success and failure cases.
+ *
  * @since 3.3.0
  * @category result
  */
@@ -413,8 +441,19 @@ const currentInterruptible: EnvRef<boolean> = envRefMake(
 )
 
 /**
+ * If you have a `Micro` that uses `concurrency: "inherit"`, you can use this
+ * api to control the concurrency of that `Micro` when it is run.
+ *
  * @since 3.3.0
  * @category env refs
+ * @example
+ * import Micro from "effect/Micro"
+ *
+ * Micro.forEach([1, 2, 3], (n) => Micro.succeed(n), {
+ *   concurrency: "inherit"
+ * }).pipe(
+ *   Micro.withConcurrency(2) // use a concurrency of 2
+ * )
  */
 export const withConcurrency: {
   (concurrency: "unbounded" | number): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, R>
@@ -462,6 +501,10 @@ const unsafeMakeNoAbort = <A, E, R>(
   })
 
 /**
+ * A low-level constructor for creating a `Micro` effect. It takes a function
+ * that receives an environment and a callback which should be called with the
+ * result of the effect.
+ *
  * @since 3.3.0
  * @category constructors
  */
@@ -480,6 +523,8 @@ export const make = <A, E, R>(
   })
 
 /**
+ * Creates a `Micro` effect that will succeed with the specified constant value.
+ *
  * @since 3.3.0
  * @category constructors
  */
@@ -489,6 +534,11 @@ export const succeed = <A>(a: A): Micro<A> =>
   })
 
 /**
+ * Creates a `Micro` effect that will fail with the specified error.
+ *
+ * This will result in a `FailureExpected`, where the error is tracked at the
+ * type level.
+ *
  * @since 3.3.0
  * @category constructors
  */
@@ -498,6 +548,11 @@ export const fail = <E>(e: E): Micro<never, E> =>
   })
 
 /**
+ * Creates a `Micro` effect that will fail with lazily evaluated error.
+ *
+ * This will result in a `FailureExpected`, where the error is tracked at the
+ * type level.
+ *
  * @since 3.3.0
  * @category constructors
  */
@@ -507,6 +562,11 @@ export const failSync = <E>(e: LazyArg<E>): Micro<never, E> =>
   })
 
 /**
+ * Creates a `Micro` effect that will die with the specified error.
+ *
+ * This will result in a `FailureUnexpected`, where the error is not tracked at
+ * the type level.
+ *
  * @since 3.3.0
  * @category constructors
  */
@@ -516,6 +576,8 @@ export const die = (defect: unknown): Micro<never> =>
   })
 
 /**
+ * Creates a `Micro` effect that will fail with the specified `Failure`.
+ *
  * @since 3.3.0
  * @category constructors
  */
@@ -525,6 +587,8 @@ export const failWith = <E>(failure: Failure<E>): Micro<never, E> =>
   })
 
 /**
+ * Creates a `Micro` effect that will fail with the lazily evaluated `Failure`.
+ *
  * @since 3.3.0
  * @category constructors
  */
@@ -534,6 +598,11 @@ export const failWithSync = <E>(failure: LazyArg<Failure<E>>): Micro<never, E> =
   })
 
 /**
+ * Creates a `Micro` effect that will succeed with the lazily evaluated value.
+ *
+ * If the evaluation of the value throws an error, the effect will fail with
+ * `FailureUnexpected`.
+ *
  * @since 3.3.0
  * @category constructors
  */
@@ -543,6 +612,8 @@ export const sync = <A>(evaluate: LazyArg<A>): Micro<A> =>
   })
 
 /**
+ * Converts a `Result` into a `Micro` effect.
+ *
  * @since 3.3.0
  * @category constructors
  */
@@ -552,6 +623,8 @@ export const fromResult = <A, E>(self: Result<A, E>): Micro<A, E> =>
   })
 
 /**
+ * Access the given `Context.Tag` from the environment.
+ *
  * @since 3.3.0
  * @category constructors
  */
@@ -561,6 +634,12 @@ export const service = <I, S>(tag: Context.Tag<I, S>): Micro<S, never, I> =>
   })
 
 /**
+ * Access the given `Context.Tag` from the environment, without tracking the
+ * dependency at the type level.
+ *
+ * It will return an `Option` of the service, depending on whether it is
+ * available in the environment or not.
+ *
  * @since 3.3.0
  * @category constructors
  */
@@ -570,6 +649,10 @@ export const serviceOption = <I, S>(tag: Context.Tag<I, S>): Micro<Option.Option
   })
 
 /**
+ * Converts an `Option` into a `Micro` effect, that will fail with a
+ * `Option.None` if the option is `None`. Otherwise, it will succeed with the
+ * value of the option.
+ *
  * @since 3.3.0
  * @category constructors
  */
@@ -579,6 +662,10 @@ export const fromOption = <A>(option: Option.Option<A>): Micro<A, Option.None<ne
   })
 
 /**
+ * Converts an `Either` into a `Micro` effect, that will fail with the left side
+ * of the either if it is a `Left`. Otherwise, it will succeed with the right
+ * side of the either.
+ *
  * @since 3.3.0
  * @category constructors
  */
@@ -588,6 +675,8 @@ export const fromEither = <R, L>(either: Either.Either<R, L>): Micro<R, L> =>
   })
 
 /**
+ * Lazily creates a `Micro` effect from the given side-effect.
+ *
  * @since 3.3.0
  * @category constructors
  */
@@ -599,6 +688,8 @@ export const suspend = <A, E, R>(evaluate: LazyArg<Micro<A, E, R>>): Micro<A, E,
 const void_: Micro<void> = succeed(void 0)
 export {
   /**
+   * A `Micro` effect that will succeed with `void` (`undefined`).
+   *
    * @since 3.3.0
    * @category constructors
    */
@@ -606,6 +697,12 @@ export {
 }
 
 /**
+ * Create a `Micro` effect from an asynchronous computation.
+ *
+ * You can return a cleanup effect that will be run when the effect is aborted.
+ * It is also passed an `AbortSignal` that is triggered when the effect is
+ * aborted.
+ *
  * @since 3.3.0
  * @category constructors
  */
@@ -649,6 +746,9 @@ const try_ = <A, E>(options: {
   })
 export {
   /**
+   * The `Micro` equivalent of a try / catch block, which allows you to map
+   * thrown errors to a specific error type.
+   *
    * @since 3.3.0
    * @category constructors
    */
@@ -656,6 +756,9 @@ export {
 }
 
 /**
+ * Wrap a `Promise` into a `Micro` effect. Any errors will result in a
+ * `FailureUnexpected`.
+ *
  * @since 3.3.0
  * @category constructors
  */
@@ -668,6 +771,9 @@ export const promise = <A>(evaluate: (signal: AbortSignal) => PromiseLike<A>): M
   })
 
 /**
+ * Wrap a `Promise` into a `Micro` effect. Any errors will be caught and
+ * converted into a specific error type.
+ *
  * @since 3.3.0
  * @category constructors
  */
@@ -676,10 +782,14 @@ export const tryPromise = <A, E>(options: {
   readonly catch: (error: unknown) => E
 }): Micro<A, E> =>
   async<A, E>(function(resume, signal) {
-    options.try(signal).then(
-      (a) => resume(succeed(a)),
-      (e) => resume(fail(options.catch(e)))
-    )
+    try {
+      options.try(signal).then(
+        (a) => resume(succeed(a)),
+        (e) => resume(fail(options.catch(e)))
+      )
+    } catch (err) {
+      resume(fail(options.catch(err)))
+    }
   })
 
 const yieldState: {
@@ -712,6 +822,9 @@ const yieldAdd = (task: () => void) => {
 }
 
 /**
+ * Pause the execution of the current `Micro` effect, and resume it on the next
+ * iteration of the event loop.
+ *
  * @since 3.3.0
  * @category constructors
  */
@@ -720,6 +833,9 @@ export const yieldNow: Micro<void> = make(function(_env, onResult) {
 })
 
 /**
+ * A `Micro` that will never succeed or fail. It wraps `setInterval` to prevent
+ * the Javascript runtime from exiting.
+ *
  * @since 3.3.0
  * @category constructors
  */
@@ -776,6 +892,8 @@ export const gen = <Eff extends YieldWrap<Micro<any, any, any>>, AEff>(
 // ----------------------------------------------------------------------------
 
 /**
+ * Flattens any nested `Micro` effects, merging the error and requirement types.
+ *
  * @since 3.3.0
  * @category mapping & sequencing
  */
@@ -788,6 +906,9 @@ export const flatten = <A, E, R, E2, R2>(self: Micro<Micro<A, E, R>, E2, R2>): M
   })
 
 /**
+ * Transforms the success value of the `Micro` effect with the specified
+ * function.
+ *
  * @since 3.3.0
  * @category mapping & sequencing
  */
@@ -797,11 +918,14 @@ export const map: {
 } = dual(2, <A, E, R, B>(self: Micro<A, E, R>, f: (a: A) => B): Micro<B, E, R> =>
   make(function(env, onResult) {
     self[runSymbol](env, function(result) {
-      onResult(Either.map(result, f))
+      onResult(result._tag === "Left" ? result as any : ResultSucceed(f(result.right)))
     })
   }))
 
 /**
+ * Create a `Micro` effect that will replace the success value of the given
+ * effect.
+ *
  * @since 3.3.0
  * @category mapping & sequencing
  */
@@ -811,12 +935,17 @@ export const as: {
 } = dual(2, <A, E, R, B>(self: Micro<A, E, R>, value: B): Micro<B, E, R> => map(self, (_) => value))
 
 /**
+ * Wrap the success value of this `Micro` effect in an `Option.Some`.
+ *
  * @since 3.3.0
  * @category mapping & sequencing
  */
 export const asSome = <A, E, R>(self: Micro<A, E, R>): Micro<Option.Some<A>, E, R> => map(self, Option.some) as any
 
 /**
+ * Map the success value of this `Micro` effect to another `Micro` effect, then
+ * flatten the result.
+ *
  * @since 3.3.0
  * @category mapping & sequencing
  */
@@ -837,6 +966,8 @@ export const flatMap: {
 )
 
 /**
+ * Swap the error and success types of the `Micro` effect.
+ *
  * @since 3.3.0
  * @category mapping & sequencing
  */
@@ -847,6 +978,12 @@ export const flip = <A, E, R>(self: Micro<A, E, R>): Micro<E, A, R> =>
   })
 
 /**
+ * A more flexible version of `flatMap`, that combines `map` and `flatMap` into
+ * a single api.
+ *
+ * It also allows you to pass in a `Micro` effect directly, which will be
+ * executed after the current effect.
+ *
  * @since 3.3.0
  * @category mapping & sequencing
  */
@@ -892,6 +1029,10 @@ export const andThen: {
 )
 
 /**
+ * Execute a side effect from the success value of the `Micro` effect.
+ *
+ * It is similar to the `andThen` api, but the success value is ignored.
+ *
  * @since 3.3.0
  * @category mapping & sequencing
  */
@@ -942,23 +1083,29 @@ export const tap: {
 )
 
 /**
+ * Replace the success value of the `Micro` effect with `void`.
+ *
  * @since 3.3.0
  * @category mapping & sequencing
  */
 export const asVoid = <A, E, R>(self: Micro<A, E, R>): Micro<void, E, R> => map(self, (_) => undefined)
 
 /**
+ * Access the `Result` of the given `Micro` effect.
+ *
  * @since 3.3.0
  * @category mapping & sequencing
  */
 export const asResult = <A, E, R>(self: Micro<A, E, R>): Micro<Result<A, E>, never, R> =>
   make(function(env, onResult) {
     self[runSymbol](env, function(result) {
-      onResult(Either.right(result))
+      onResult(ResultSucceed(result))
     })
   })
 
 /**
+ * Replace the error type of the given `Micro` with the full `Failure` object.
+ *
  * @since 3.3.0
  * @category mapping & sequencing
  */
@@ -1094,6 +1241,9 @@ export const raceFirst: {
 // ----------------------------------------------------------------------------
 
 /**
+ * Combine two `Micro` effects into a single effect that produces a tuple of
+ * their results.
+ *
  * @since 3.3.0
  * @category zipping
  */
@@ -1210,6 +1360,8 @@ export const when: {
 )
 
 /**
+ * The moral equivalent of `if (p) exp`, that allows an effectful predicate.
+ *
  * @since 3.3.0
  * @category filtering & conditionals
  */
@@ -1229,6 +1381,11 @@ export const whenMicro: {
 // ----------------------------------------------------------------------------
 
 /**
+ * Repeat the given `Micro` using the provided options.
+ *
+ * The `while` predicate will be checked after each iteration, and can use the
+ * fall `Result` of the effect to determine if the repetition should continue.
+ *
  * @since 3.3.0
  * @category repetition
  */
@@ -1277,6 +1434,9 @@ export const repeatResult: {
   }))
 
 /**
+ * Repeat the given `Micro` effect using the provided options. Only successful
+ * results will be repeated.
+ *
  * @since 3.3.0
  * @category repetition
  */
@@ -1302,6 +1462,8 @@ export const repeat: {
   }))
 
 /**
+ * Repeat the given `Micro` effect forever, only stopping if the effect fails.
+ *
  * @since 3.3.0
  * @category repetition
  */
@@ -1312,12 +1474,21 @@ export const forever = <A, E, R>(self: Micro<A, E, R>): Micro<never, E, R> => re
 // ----------------------------------------------------------------------------
 
 /**
+ * Represents a function that can be used to calculate the delay between
+ * repeats.
+ *
+ * The function takes the current attempt number and the elapsed time since
+ * the first attempt, and returns the delay for the next attempt. If the
+ * function returns `None`, the repetition will stop.
+ *
  * @since 3.3.0
  * @category delays
  */
 export type DelayFn = (attempt: number, elapsed: Duration.Duration) => Option.Option<Duration.DurationInput>
 
 /**
+ * Create a `DelayFn` that will generate a duration with an exponential backoff.
+ *
  * @since 3.3.0
  * @category delays
  */
@@ -1327,12 +1498,17 @@ export const delayExponential = (base: Duration.DurationInput, factor = 2): Dela
 }
 
 /**
+ * Create a `DelayFn` that will generate a duration with fixed intervals.
+ *
  * @since 3.3.0
  * @category delays
  */
 export const delaySpaced = (duration: Duration.DurationInput): DelayFn => (_) => Option.some(duration)
 
 /**
+ * Transform a `DelayFn` to one that will have a duration that will never exceed
+ * the specified maximum.
+ *
  * @since 3.3.0
  * @category delays
  */
@@ -1346,6 +1522,9 @@ export const delayWithMax: {
 )
 
 /**
+ * Transform a `DelayFn` to one that will stop repeating after the specified
+ * amount of time.
+ *
  * @since 3.3.0
  * @category delays
  */
@@ -1358,11 +1537,29 @@ export const delayWithMaxElapsed: {
     Duration.lessThan(elapsed, max) ? self(attempt, elapsed) : Option.none()
 )
 
+/**
+ * Transform a `DelayFn` to one that will stop repeating after the specified
+ * number of attempts.
+ *
+ * @since 3.3.0
+ * @category delays
+ */
+export const delayWithRecurs: {
+  (n: number): (self: DelayFn) => DelayFn
+  (self: DelayFn, n: number): DelayFn
+} = dual(
+  2,
+  (self: DelayFn, n: number): DelayFn => (attempt, elapsed) => Option.filter(self(attempt, elapsed), () => attempt <= n)
+)
+
 // ----------------------------------------------------------------------------
 // error handling
 // ----------------------------------------------------------------------------
 
 /**
+ * Catch the full `Failure` object of the given `Micro` effect, allowing you to
+ * recover from any error.
+ *
  * @since 3.3.0
  * @category error handling
  */
@@ -1388,6 +1585,10 @@ export const catchAllFailure: {
 )
 
 /**
+ * Catch the error of the given `Micro` effect, allowing you to recover from it.
+ *
+ * It only catches expected (`FailureExpected`) errors.
+ *
  * @since 3.3.0
  * @category error handling
  */
@@ -1406,6 +1607,8 @@ export const catchAll: {
 )
 
 /**
+ * Perform a side effect using the full `Failure` object of the given `Micro`.
+ *
  * @since 3.3.0
  * @category error handling
  */
@@ -1421,6 +1624,8 @@ export const tapFailure: {
 )
 
 /**
+ * Perform a side effect from expected errors of the given `Micro`.
+ *
  * @since 3.3.0
  * @category error handling
  */
@@ -1436,6 +1641,8 @@ export const tapError: {
 )
 
 /**
+ * Catch any expected errors that match the specified predicate.
+ *
  * @since 3.3.0
  * @category error handling
  */
@@ -1490,6 +1697,8 @@ export const catchTag: {
 ): Micro<A | A1, E1 | Exclude<E, { _tag: K }>, R | R1> => catchIf(self, (error) => isTagged(error, k), f as any))
 
 /**
+ * Transform the full `Failure` object of the given `Micro` effect.
+ *
  * @since 3.3.0
  * @category error handling
  */
@@ -1503,6 +1712,8 @@ export const mapFailure: {
 )
 
 /**
+ * Transform any expected errors of the given `Micro` effect.
+ *
  * @since 3.3.0
  * @category error handling
  */
@@ -1516,12 +1727,17 @@ export const mapError: {
 )
 
 /**
+ * Elevate any expected errors of the given `Micro` effect to unexpected errors,
+ * resulting in an error type of `never`.
+ *
  * @since 3.3.0
  * @category error handling
  */
 export const orDie = <A, E, R>(self: Micro<A, E, R>): Micro<A, never, R> => catchAll(self, die)
 
 /**
+ * Recover from all errors by succeeding with the given value.
+ *
  * @since 3.3.0
  * @category error handling
  */
@@ -1577,6 +1793,40 @@ export const retry: {
       result._tag === "Left" && result.left._tag === "Expected" &&
       (options.while === undefined || options.while(result.left.error))
   }))
+
+/**
+ * Add a stack trace to any failures that occur in the effect.
+ *
+ * @since 3.3.0
+ * @category error handling
+ */
+export const withTrace: {
+  (name: string): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, R>
+  <A, E, R>(self: Micro<A, E, R>, name: string): Micro<A, E, R>
+} = function() {
+  const prevLimit = globalThis.Error.stackTraceLimit
+  globalThis.Error.stackTraceLimit = 2
+  const error = new globalThis.Error()
+  globalThis.Error.stackTraceLimit = prevLimit
+  function generate(name: string, failure: Failure<any>) {
+    const stack = error.stack
+    if (!stack) {
+      return failure
+    }
+    const line = stack.split("\n")[2]?.trim().replace(/^at /, "")
+    if (!line) {
+      return failure
+    }
+    const lineMatch = line.match(/\((.*)\)$/)
+    return failureWithTrace(failure, `at ${name} (${lineMatch ? lineMatch[1] : line})`)
+  }
+  if (arguments.length === 2) {
+    const name: string = arguments[1]
+    return mapFailure(arguments[0], (failure) => generate(name, failure))
+  }
+  const name: string = arguments[0]
+  return (self: Micro<any, any, any>) => mapFailure(self, (failure) => generate(name, failure))
+} as any
 
 // ----------------------------------------------------------------------------
 // pattern matching
