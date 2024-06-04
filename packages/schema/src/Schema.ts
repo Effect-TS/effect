@@ -2370,7 +2370,8 @@ export interface TypeLiteral<
     annotations: Annotations.Schema<Types.Simplify<TypeLiteral.Type<Fields, Records>>>
   ): TypeLiteral<Fields, Records>
   make(
-    props: Types.Simplify<TypeLiteral.Constructor<Fields, Records>>
+    props: Types.Simplify<TypeLiteral.Constructor<Fields, Records>>,
+    options?: MakeOptions
   ): Types.Simplify<TypeLiteral.Type<Fields, Records>>
 }
 
@@ -2497,9 +2498,13 @@ const makeTypeLiteralClass = <
     static records = [...records] as Records
 
     static make = (
-      props: Types.Simplify<TypeLiteral.Constructor<Fields, Records>>
+      props: Types.Simplify<TypeLiteral.Constructor<Fields, Records>>,
+      options?: MakeOptions
     ): Types.Simplify<TypeLiteral.Type<Fields, Records>> => {
-      return ParseResult.validateSync(this)(lazilyMergeDefaults(fields, { ...props as any }))
+      const propsWithDefaults: any = lazilyMergeDefaults(fields, { ...props as any })
+      return getDisableValidationMakeOption(options)
+        ? propsWithDefaults
+        : ParseResult.validateSync(this)(propsWithDefaults)
     }
   }
 }
@@ -2702,7 +2707,7 @@ export const pluck: {
 export interface BrandSchema<A extends Brand<any>, I = A, R = never>
   extends AnnotableClass<BrandSchema<A, I, R>, A, I, R>
 {
-  make(a: Brand.Unbranded<A>): A
+  make(a: Brand.Unbranded<A>, options?: MakeOptions): A
 }
 
 /**
@@ -2721,8 +2726,8 @@ const makeBrandClass = <S extends Schema.Any, B extends string | symbol>(ast: AS
       return makeBrandClass(AST.annotations(this.ast, toASTAnnotations(annotations)))
     }
 
-    static make = (a: Brand.Unbranded<Schema.Type<S> & Brand<B>>): Schema.Type<S> & Brand<B> => {
-      return ParseResult.validateSync(this)(a)
+    static make = (a: Brand.Unbranded<Schema.Type<S> & Brand<B>>, options?: MakeOptions): Schema.Type<S> & Brand<B> => {
+      return getDisableValidationMakeOption(options) ? a : ParseResult.validateSync(this)(a)
     }
   }
 
@@ -3086,7 +3091,7 @@ export interface refine<A, From extends Schema.Any>
     options: ParseOptions,
     self: AST.Refinement
   ) => option_.Option<ParseResult.ParseIssue>
-  make(a: Schema.Type<From>): A
+  make(a: Schema.Type<From>, options?: MakeOptions): A
 }
 
 const makeRefineClass = <From extends Schema.Any, A>(
@@ -3107,8 +3112,8 @@ const makeRefineClass = <From extends Schema.Any, A>(
 
     static filter = filter
 
-    static make = (a: Schema.Type<From>): A => {
-      return ParseResult.validateSync(this)(a)
+    static make = (a: Schema.Type<From>, options?: MakeOptions): A => {
+      return getDisableValidationMakeOption(options) ? a : ParseResult.validateSync(this)(a)
     }
   }
 
@@ -6771,7 +6776,7 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
 {
   new(
     props: RequiredKeys<C> extends never ? void | Types.Simplify<C> : Types.Simplify<C>,
-    disableValidation?: boolean | undefined
+    disableValidation?: MakeOptions
   ): Struct.Type<Fields> & Omit<Inherited, keyof Fields> & Proto
 
   annotations(annotations: Annotations.Schema<Self>): SchemaClass<Self, Types.Simplify<I>, R>
@@ -7153,6 +7158,13 @@ const orElseTitleAnnotation = <A, I, R>(schema: Schema<A, I, R>, title: string):
   return schema
 }
 
+type MakeOptions = boolean | {
+  readonly disableValidation?: boolean
+}
+
+const getDisableValidationMakeOption = (options: MakeOptions | undefined): boolean =>
+  Predicate.isBoolean(options) ? options : options?.disableValidation ?? false
+
 const makeClass = ({ Base, annotations, fields, identifier, kind, schema, toStringOverride }: {
   kind: "Class" | "TaggedClass" | "TaggedError" | "TaggedRequest"
   identifier: string
@@ -7171,14 +7183,14 @@ const makeClass = ({ Base, annotations, fields, identifier, kind, schema, toStri
   return class extends Base {
     constructor(
       props: { [x: string | symbol]: unknown } = {},
-      disableValidation: boolean = false
+      options: MakeOptions = false
     ) {
       props = { ...props }
       if (kind !== "Class") {
         delete props["_tag"]
       }
       props = lazilyMergeDefaults(fields, props)
-      if (disableValidation !== true) {
+      if (!getDisableValidationMakeOption(options)) {
         props = ParseResult.validateSync(validateSchema)(props)
       }
       super(props, true)
