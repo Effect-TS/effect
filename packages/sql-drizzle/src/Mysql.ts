@@ -20,8 +20,6 @@ export const make: Effect.Effect<MySqlRemoteDatabase, never, Client.Client> = Ef
   const client = yield* Client.Client
   const db = drizzle(yield* makeRemoteCallback)
   registerDialect((db as any).dialect, client)
-  patch(QueryPromise.prototype)
-  patch(MySqlSelectBase.prototype)
   return db
 })
 
@@ -40,6 +38,10 @@ export class MysqlDrizzle extends Context.Tag("@effect/sql-drizzle/Mysql")<
  */
 export const layer: Layer.Layer<MysqlDrizzle, never, Client.Client> = Layer.effect(MysqlDrizzle, make)
 
+// patch
+
 declare module "drizzle-orm" {
   export interface QueryPromise<T> extends Effect.Effect<T, SqlError> {}
 }
+patch(QueryPromise.prototype)
+patch(MySqlSelectBase.prototype)

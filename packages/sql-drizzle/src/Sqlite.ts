@@ -21,8 +21,6 @@ export const make: Effect.Effect<SqliteRemoteDatabase, never, Client.Client | Sc
   const client = yield* Client.Client
   const db = drizzle(yield* makeRemoteCallback)
   registerDialect((db as any).dialect, client)
-  patch(QueryPromise.prototype)
-  patch(SQLiteSelectBase.prototype)
   return db
 })
 
@@ -41,6 +39,10 @@ export class SqliteDrizzle extends Context.Tag("@effect/sql-drizzle/Sqlite")<
  */
 export const layer: Layer.Layer<SqliteDrizzle, never, Client.Client> = Layer.scoped(SqliteDrizzle, make)
 
+// patch
+
 declare module "drizzle-orm" {
   export interface QueryPromise<T> extends Effect.Effect<T, SqlError> {}
 }
+patch(QueryPromise.prototype)
+patch(SQLiteSelectBase.prototype)

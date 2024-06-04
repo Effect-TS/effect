@@ -20,8 +20,6 @@ export const make: Effect.Effect<PgRemoteDatabase, never, Client.Client> = Effec
   const client = yield* Client.Client
   const db = drizzle(yield* makeRemoteCallback)
   registerDialect((db as any).dialect, client)
-  patch(QueryPromise.prototype)
-  patch(PgSelectBase.prototype)
   return db
 })
 
@@ -40,6 +38,10 @@ export class PgDrizzle extends Context.Tag("@effect/sql-drizzle/Pg")<
  */
 export const layer: Layer.Layer<PgDrizzle, never, Client.Client> = Layer.effect(PgDrizzle, make)
 
+// patch
+
 declare module "drizzle-orm" {
   export interface QueryPromise<T> extends Effect.Effect<T, SqlError> {}
 }
+patch(QueryPromise.prototype)
+patch(PgSelectBase.prototype)
