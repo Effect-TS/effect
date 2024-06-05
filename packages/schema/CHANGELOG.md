@@ -1,5 +1,34 @@
 # @effect/schema
 
+## 0.67.19
+
+### Patch Changes
+
+- [#2916](https://github.com/Effect-TS/effect/pull/2916) [`cd7496b`](https://github.com/Effect-TS/effect/commit/cd7496ba214eabac2e3c297f513fcbd5b11f0e91) Thanks @gcanti! - Add support for `AST.Literal` in `Schema.TemplateLiteral`, closes #2913
+
+- [#2915](https://github.com/Effect-TS/effect/pull/2915) [`349a036`](https://github.com/Effect-TS/effect/commit/349a036ffb08351481c060655660a6ccf26473de) Thanks @gcanti! - Align constructors arguments:
+
+  - Refactor `Class` interface to accept options for disabling validation
+  - Refactor `TypeLiteral` interface to accept options for disabling validation
+  - Refactor `refine` interface to accept options for disabling validation
+  - Refactor `BrandSchema` interface to accept options for disabling validation
+
+  Example
+
+  ```ts
+  import { Schema } from "@effect/schema";
+
+  const BrandedNumberSchema = Schema.Number.pipe(
+    Schema.between(1, 10),
+    Schema.brand("MyNumber"),
+  );
+
+  BrandedNumberSchema.make(20, { disableValidation: true }); // Bypasses validation and creates the instance without errors
+  ```
+
+- Updated dependencies [[`8c5d280`](https://github.com/Effect-TS/effect/commit/8c5d280c0402284a4e58372867a15a431cb99461), [`6ba6d26`](https://github.com/Effect-TS/effect/commit/6ba6d269f5891e6b11aa35c5281dde4bf3273004), [`3f28bf2`](https://github.com/Effect-TS/effect/commit/3f28bf274333611906175446b772243f34f1b6d5), [`5817820`](https://github.com/Effect-TS/effect/commit/58178204a770d1a78c06945ef438f9fffbb50afa)]:
+  - effect@3.2.9
+
 ## 0.67.18
 
 ### Patch Changes
