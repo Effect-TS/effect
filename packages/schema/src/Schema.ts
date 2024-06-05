@@ -1244,16 +1244,16 @@ export declare namespace TupleType {
  * @category api interface
  * @since 0.67.0
  */
-export interface TupleType<Elements extends TupleType.Elements, R extends TupleType.Rest> extends
+export interface TupleType<Elements extends TupleType.Elements, Rest extends TupleType.Rest> extends
   AnnotableClass<
-    TupleType<Elements, R>,
-    TupleType.Type<Elements, R>,
-    TupleType.Encoded<Elements, R>,
-    Schema.Context<Elements[number]> | Schema.Context<R[number]>
+    TupleType<Elements, Rest>,
+    TupleType.Type<Elements, Rest>,
+    TupleType.Encoded<Elements, Rest>,
+    Schema.Context<Elements[number]> | Schema.Context<Rest[number]>
   >
 {
   readonly elements: Readonly<Elements>
-  readonly rest: Readonly<R>
+  readonly rest: Readonly<Rest>
 }
 
 const getDefaultTupleTypeAST = <Elements extends TupleType.Elements, Rest extends TupleType.Rest>(
@@ -1301,7 +1301,7 @@ export interface Tuple<Elements extends TupleType.Elements> extends TupleType<El
  */
 export function Tuple<
   const Elements extends TupleType.Elements,
-  Rest extends array_.NonEmptyReadonlyArray<Schema.Any | Element<Schema.Any, "">>
+  Rest extends array_.NonEmptyReadonlyArray<TupleType.Rest[number]>
 >(elements: Elements, ...rest: Rest): TupleType<Elements, Rest>
 export function Tuple<Elements extends TupleType.Elements>(...elements: Elements): Tuple<Elements>
 export function Tuple(...args: ReadonlyArray<any>): any {

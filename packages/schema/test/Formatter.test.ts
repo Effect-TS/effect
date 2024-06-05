@@ -74,18 +74,10 @@ describe("Formatter", () => {
       })
 
       it("r + e", async () => {
-        // TODO: replace with S.element once it's implemented
-        const schema = S.make(
-          new AST.TupleType(
-            [],
-            [
-              new AST.Type(AST.stringKeyword),
-              new AST.Type(AST.stringKeyword, {
-                [AST.MissingMessageAnnotationId]: () => "my missing message"
-              })
-            ],
-            true
-          )
+        const schema = S.Tuple(
+          [],
+          S.String,
+          S.element(S.String).annotations({ [AST.MissingMessageAnnotationId]: () => "my missing message" })
         )
         const input: Array<string> = []
         await Util.expectDecodeUnknownFailure(

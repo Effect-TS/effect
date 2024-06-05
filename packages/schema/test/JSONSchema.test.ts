@@ -497,8 +497,8 @@ describe("JSONSchema", () => {
 
     it("e + e?", () => {
       const schema = Schema.Tuple(
-        Schema.element(Schema.String).annotations({ description: "e" }),
-        Schema.optionalElement(JsonNumber).annotations({ description: "e?" })
+        Schema.element(Schema.String.annotations({ description: "inner-e" })).annotations({ description: "e" }),
+        Schema.optionalElement(JsonNumber.annotations({ description: "inner-e?" })).annotations({ description: "e?" })
       )
       const jsonSchema: JSONSchema.JsonSchema7Root = {
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -531,7 +531,7 @@ describe("JSONSchema", () => {
     it("e? + r", () => {
       const schema = Schema.Tuple(
         [Schema.optionalElement(Schema.String)],
-        Schema.element(JsonNumber).annotations({ description: "r" })
+        Schema.element(JsonNumber.annotations({ description: "inner-r" })).annotations({ description: "r" })
       )
       const jsonSchema: JSONSchema.JsonSchema7Root = {
         "$schema": "http://json-schema.org/draft-07/schema#",
