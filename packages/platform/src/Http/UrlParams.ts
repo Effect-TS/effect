@@ -207,7 +207,7 @@ export const toString = (self: UrlParams): string => new URLSearchParams(self as
  * @since 1.0.0
  * @category constructors
  */
-export const makeUrl = (url: string, params: UrlParams): Either.Either<URL, Error> => {
+export const makeUrl = (url: string, params: UrlParams, hash: Option.Option<string>): Either.Either<URL, Error> => {
   try {
     const urlInstance = new URL(url, baseUrl())
     for (let i = 0; i < params.length; i++) {
@@ -216,7 +216,9 @@ export const makeUrl = (url: string, params: UrlParams): Either.Either<URL, Erro
         urlInstance.searchParams.append(key, value)
       }
     }
-
+    if (hash._tag === "Some") {
+      urlInstance.hash = hash.value
+    }
     return Either.right(urlInstance)
   } catch (e) {
     return Either.left(e as Error)

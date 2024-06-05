@@ -5,6 +5,7 @@ import type { ParseOptions } from "@effect/schema/AST"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Effect from "effect/Effect"
 import type { Inspectable } from "effect/Inspectable"
+import type * as Option from "effect/Option"
 import type { Scope } from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import type * as PlatformError from "../Error.js"
@@ -41,6 +42,7 @@ export interface ClientRequest
   readonly method: Method
   readonly url: string
   readonly urlParams: UrlParams.UrlParams
+  readonly hash: Option.Option<string>
   readonly headers: Headers.Headers
   readonly body: Body.Body
 }
@@ -53,6 +55,7 @@ export interface Options {
   readonly method?: Method | undefined
   readonly url?: string | undefined
   readonly urlParams?: UrlParams.Input | undefined
+  readonly hash?: string | undefined
   readonly headers?: Headers.Input | undefined
   readonly body?: Body.Body | undefined
   readonly accept?: string | undefined
@@ -203,7 +206,7 @@ export const acceptJson: (self: ClientRequest) => ClientRequest = internal.accep
  * @category combinators
  */
 export const setUrl: {
-  (url: string | URL): (self: ClientRequest) => ClientRequest
+  (url: string): (self: ClientRequest) => ClientRequest
   (self: ClientRequest, url: string): ClientRequest
 } = internal.setUrl
 
@@ -212,7 +215,7 @@ export const setUrl: {
  * @category combinators
  */
 export const prependUrl: {
-  (path: string | URL): (self: ClientRequest) => ClientRequest
+  (path: string): (self: ClientRequest) => ClientRequest
   (self: ClientRequest, path: string): ClientRequest
 } = internal.prependUrl
 
@@ -238,25 +241,52 @@ export const updateUrl: {
  * @since 1.0.0
  * @category combinators
  */
-export const setUrlParam = internal.setUrlParam
+export const setUrlParam: {
+  (key: string, value: string): (self: ClientRequest) => ClientRequest
+  (self: ClientRequest, key: string, value: string): ClientRequest
+} = internal.setUrlParam
 
 /**
  * @since 1.0.0
  * @category combinators
  */
-export const setUrlParams = internal.setUrlParams
+export const setUrlParams: {
+  (input: UrlParams.Input): (self: ClientRequest) => ClientRequest
+  (self: ClientRequest, input: UrlParams.Input): ClientRequest
+} = internal.setUrlParams
 
 /**
  * @since 1.0.0
  * @category combinators
  */
-export const appendUrlParam = internal.appendUrlParam
+export const appendUrlParam: {
+  (key: string, value: string): (self: ClientRequest) => ClientRequest
+  (self: ClientRequest, key: string, value: string): ClientRequest
+} = internal.appendUrlParam
 
 /**
  * @since 1.0.0
  * @category combinators
  */
-export const appendUrlParams = internal.appendUrlParams
+export const appendUrlParams: {
+  (input: UrlParams.Input): (self: ClientRequest) => ClientRequest
+  (self: ClientRequest, input: UrlParams.Input): ClientRequest
+} = internal.appendUrlParams
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const setHash: {
+  (hash: string): (self: ClientRequest) => ClientRequest
+  (self: ClientRequest, hash: string): ClientRequest
+} = internal.setHash
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const removeHash: (self: ClientRequest) => ClientRequest = internal.removeHash
 
 /**
  * @since 1.0.0

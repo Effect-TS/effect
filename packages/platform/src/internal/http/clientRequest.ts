@@ -5,6 +5,7 @@ import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
+import * as Option from "effect/Option"
 import type * as Stream from "effect/Stream"
 import type * as PlatformError from "../../Error.js"
 import type * as FileSystem from "../../FileSystem.js"
@@ -35,6 +36,7 @@ const Proto = {
       method: this.method,
       url: this.url,
       urlParams: this.urlParams,
+      hash: this.hash,
       headers: this.headers,
       body: this.body.toJSON()
     }
@@ -45,6 +47,7 @@ function makeInternal(
   method: Method,
   url: string,
   urlParams: UrlParams.UrlParams,
+  hash: Option.Option<string>,
   headers: Headers.Headers,
   body: Body.Body
 ): ClientRequest.ClientRequest {
@@ -52,6 +55,7 @@ function makeInternal(
   self.method = method
   self.url = url
   self.urlParams = urlParams
+  self.hash = hash
   self.headers = headers
   self.body = body
   return self
@@ -66,6 +70,7 @@ export const empty: ClientRequest.ClientRequest = makeInternal(
   "GET",
   "",
   UrlParams.empty,
+  Option.none(),
   Headers.empty,
   internalBody.empty
 )
@@ -75,12 +80,27 @@ export const make = <M extends Method>(method: M) =>
 (
   url: string | URL,
   options?: M extends "GET" | "HEAD" ? ClientRequest.Options.NoBody : ClientRequest.Options.NoUrl
-) =>
-  modify(empty, {
+) => {
+  if (typeof url === "string") {
+    return modify(empty, {
+      method,
+      url,
+      ...(options ?? undefined)
+    })
+  }
+  const clone = new URL(url.toString())
+  const urlParams = UrlParams.fromInput(clone.searchParams)
+  const hash = clone.hash ? clone.hash.slice(1) : undefined
+  clone.search = ""
+  clone.hash = ""
+  return modify(empty, {
     method,
-    url: url.toString(),
+    url: clone.toString(),
+    urlParams,
+    hash,
     ...(options ?? undefined)
   })
+}
 
 /** @internal */
 export const get = make("GET")
@@ -122,6 +142,9 @@ export const modify = dual<
   if (options.urlParams) {
     result = setUrlParams(result, options.urlParams)
   }
+  if (options.hash) {
+    result = setHash(result, options.hash)
+  }
   if (options.body) {
     result = setBody(result, options.body)
   }
@@ -144,6 +167,7 @@ export const setHeader = dual<
     self.method,
     self.url,
     self.urlParams,
+    self.hash,
     Headers.set(self.headers, key, value),
     self.body
   ))
@@ -157,6 +181,7 @@ export const setHeaders = dual<
     self.method,
     self.url,
     self.urlParams,
+    self.hash,
     Headers.setAll(self.headers, input),
     self.body
   ))
@@ -191,19 +216,21 @@ export const setMethod = dual<
     method,
     self.url,
     self.urlParams,
+    self.hash,
     self.headers,
     self.body
   ))
 
 /** @internal */
 export const setUrl = dual<
-  (url: string | URL) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
+  (url: string) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
   (self: ClientRequest.ClientRequest, url: string) => ClientRequest.ClientRequest
 >(2, (self, url) =>
   makeInternal(
     self.method,
-    url.toString(),
+    url,
     self.urlParams,
+    self.hash,
     self.headers,
     self.body
   ))
@@ -215,21 +242,27 @@ export const appendUrl = dual<
 >(2, (self, url) =>
   makeInternal(
     self.method,
-    self.url + url,
+    self.url.endsWith("/") && url.startsWith("/") ?
+      self.url + url.slice(1) :
+      self.url + url,
     self.urlParams,
+    self.hash,
     self.headers,
     self.body
   ))
 
 /** @internal */
 export const prependUrl = dual<
-  (path: string | URL) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
+  (path: string) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
   (self: ClientRequest.ClientRequest, path: string) => ClientRequest.ClientRequest
 >(2, (self, url) =>
   makeInternal(
     self.method,
-    url.toString() + self.url,
+    url.endsWith("/") && self.url.startsWith("/") ?
+      url + self.url.slice(1) :
+      url + self.url,
     self.urlParams,
+    self.hash,
     self.headers,
     self.body
   ))
@@ -243,6 +276,7 @@ export const updateUrl = dual<
     self.method,
     f(self.url),
     self.urlParams,
+    self.hash,
     self.headers,
     self.body
   ))
@@ -256,6 +290,7 @@ export const appendUrlParam = dual<
     self.method,
     self.url,
     UrlParams.append(self.urlParams, key, value),
+    self.hash,
     self.headers,
     self.body
   ))
@@ -269,6 +304,7 @@ export const appendUrlParams = dual<
     self.method,
     self.url,
     UrlParams.appendAll(self.urlParams, input),
+    self.hash,
     self.headers,
     self.body
   ))
@@ -282,6 +318,7 @@ export const setUrlParam = dual<
     self.method,
     self.url,
     UrlParams.set(self.urlParams, key, value),
+    self.hash,
     self.headers,
     self.body
   ))
@@ -295,9 +332,35 @@ export const setUrlParams = dual<
     self.method,
     self.url,
     UrlParams.setAll(self.urlParams, input),
+    self.hash,
     self.headers,
     self.body
   ))
+
+/** @internal */
+export const setHash = dual<
+  (hash: string) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
+  (self: ClientRequest.ClientRequest, hash: string) => ClientRequest.ClientRequest
+>(2, (self, hash) =>
+  makeInternal(
+    self.method,
+    self.url,
+    self.urlParams,
+    Option.some(hash),
+    self.headers,
+    self.body
+  ))
+
+/** @internal */
+export const removeHash = (self: ClientRequest.ClientRequest): ClientRequest.ClientRequest =>
+  makeInternal(
+    self.method,
+    self.url,
+    self.urlParams,
+    Option.none(),
+    self.headers,
+    self.body
+  )
 
 /** @internal */
 export const setBody = dual<
@@ -322,6 +385,7 @@ export const setBody = dual<
     self.method,
     self.url,
     self.urlParams,
+    self.hash,
     headers,
     body
   )
