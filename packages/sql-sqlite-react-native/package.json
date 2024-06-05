@@ -39,12 +39,12 @@
   },
   "devDependencies": {
     "@effect/sql": "workspace:^",
-    "@op-engineering/op-sqlite": "6.0.2-beta1",
+    "@op-engineering/op-sqlite": "6.0.4",
     "effect": "workspace:^"
   },
   "peerDependencies": {
     "@effect/sql": "workspace:^",
-    "@op-engineering/op-sqlite": "6.0.2-beta1",
+    "@op-engineering/op-sqlite": "6.0.4",
     "effect": "workspace:^"
   },
   "dependencies": {
