@@ -30,6 +30,11 @@ const config: UserConfig = {
     alias: {
       ...alias("effect"),
       ...alias("cli"),
+      ...alias("cluster"),
+      ...alias("cluster-browser"),
+      ...alias("cluster-node"),
+      ...alias("cluster-pg"),
+      ...alias("cluster-workflow"),
       ...alias("experimental"),
       ...alias("opentelemetry"),
       ...alias("platform"),

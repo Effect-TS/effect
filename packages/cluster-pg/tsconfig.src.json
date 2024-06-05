@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": [
+    "src"
+  ],
+  "references": [
+    { "path": "../effect" },
+    { "path": "../cluster" },
+    { "path": "../cluster-workflow" },
+    { "path": "../sql" },
+    { "path": "../sql-pg" },
+    { "path": "../schema" }
+  ],
+  "compilerOptions": {
+    "tsBuildInfoFile": ".tsbuildinfo/src.tsbuildinfo",
+    "rootDir": "src",
+    "outDir": "build/src"
+  }
+}

@@ -1,5 +1,10 @@
 /packages/effect/                  @mikearnaldi
 /packages/cli/                     @IMax153
+/packages/cluster/                 @mattiamanzati
+/packages/cluster-browser/         @mattiamanzati
+/packages/cluster-node/            @mattiamanzati
+/packages/cluster-pg/              @mattiamanzati
+/packages/cluster-workflow/        @mattiamanzati
 /packages/experimental/            @tim-smart
 /packages/opentelemetry/           @tim-smart
 /packages/platform/                @tim-smart

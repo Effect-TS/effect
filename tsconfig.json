@@ -4,6 +4,11 @@
   "references": [
     { "path": "packages/effect" },
     { "path": "packages/cli" },
+    { "path": "packages/cluster" },
+    { "path": "packages/cluster-browser" },
+    { "path": "packages/cluster-node" },
+    { "path": "packages/cluster-pg" },
+    { "path": "packages/cluster-workflow" },
     { "path": "packages/experimental" },
     { "path": "packages/opentelemetry" },
     { "path": "packages/platform" },
