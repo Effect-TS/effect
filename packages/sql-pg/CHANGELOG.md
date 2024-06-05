@@ -1,5 +1,14 @@
 # @effect/sql-pg
 
+## 0.3.8
+
+### Patch Changes
+
+- Updated dependencies [[`8c5d280`](https://github.com/Effect-TS/effect/commit/8c5d280c0402284a4e58372867a15a431cb99461), [`6ba6d26`](https://github.com/Effect-TS/effect/commit/6ba6d269f5891e6b11aa35c5281dde4bf3273004), [`3f28bf2`](https://github.com/Effect-TS/effect/commit/3f28bf274333611906175446b772243f34f1b6d5), [`5817820`](https://github.com/Effect-TS/effect/commit/58178204a770d1a78c06945ef438f9fffbb50afa), [`799aa20`](https://github.com/Effect-TS/effect/commit/799aa20b4f618736ba33a5297fda90a75d4c26c6)]:
+  - effect@3.2.9
+  - @effect/platform@0.55.6
+  - @effect/sql@0.3.7
+
 ## 0.3.7
 
 ### Patch Changes
