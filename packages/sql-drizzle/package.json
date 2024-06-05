@@ -1,14 +1,14 @@
 {
-  "name": "@effect/sql-sqlite-node",
-  "version": "0.3.8",
+  "name": "@effect/sql-drizzle",
+  "version": "0.0.0",
   "type": "module",
   "license": "MIT",
-  "description": "A SQLite toolkit for Effect",
+  "description": "Drizzle integration for @effect/sql",
   "homepage": "https://effect.website",
   "repository": {
     "type": "git",
     "url": "https://github.com/Effect-TS/effect.git",
-    "directory": "packages/sql-sqlite-node"
+    "directory": "packages/sql-drizzle"
   },
   "bugs": {
     "url": "https://github.com/Effect-TS/effect/issues"
@@ -28,6 +28,11 @@
     "directory": "dist",
     "provenance": true
   },
+  "sideEffects": [
+    "./src/Mysql.ts",
+    "./src/Pg.ts",
+    "./src/Sqlite.ts"
+  ],
   "scripts": {
     "build": "pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
     "build-esm": "tsc -b tsconfig.build.json",
@@ -38,18 +43,15 @@
     "coverage": "vitest --coverage"
   },
   "devDependencies": {
-    "@effect/platform": "workspace:^",
     "@effect/sql": "workspace:^",
-    "@types/better-sqlite3": "^7.6.10",
+    "@testcontainers/mysql": "^10.9.0",
+    "@testcontainers/postgresql": "^10.9.0",
+    "drizzle-orm": "^0.30.10",
     "effect": "workspace:^"
   },
   "peerDependencies": {
-    "@effect/platform": "workspace:^",
     "@effect/sql": "workspace:^",
+    "drizzle-orm": "^0.30.10",
     "effect": "workspace:^"
-  },
-  "dependencies": {
-    "@opentelemetry/semantic-conventions": "^1.24.1",
-    "better-sqlite3": "^11.0.0"
   }
 }

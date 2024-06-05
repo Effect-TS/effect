@@ -107,7 +107,7 @@ export const make = (
             } else if (transform && !rowsAsArray && options.transformResultNames) {
               resume(Effect.succeed(transformRows(results)))
             } else {
-              resume(Effect.succeed(results))
+              resume(Effect.succeed(Array.isArray(results) ? results : []))
             }
           })
         })
