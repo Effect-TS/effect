@@ -1640,6 +1640,12 @@ export interface ParseOptions {
   readonly errors?: "first" | "all" | undefined
   /** default "ignore" */
   readonly onExcessProperty?: "ignore" | "error" | "preserve" | undefined
+  /**
+   * default "none"
+   *
+   * @since 0.67.20
+   */
+  readonly propertyOrder?: "none" | "original" | undefined
 }
 
 /**
