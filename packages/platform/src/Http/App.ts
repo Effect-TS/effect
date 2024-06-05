@@ -50,10 +50,10 @@ export const toHandled = <E, R, _, RH>(
     R | RH | ServerRequest.ServerRequest
   >((fiber) => {
     const request = Context.unsafeGet(fiber.getFiberRef(FiberRef.currentContext), ServerRequest.ServerRequest)
-    const handler = fiber.getFiberRef(currentPreResponseHandlers)
-    const preHandled = handler._tag === "Some"
-      ? Effect.flatMap(self, (response) => handler.value(request, response))
-      : self
+    const preHandled = Effect.flatMap(self, (response) => {
+      const handler = fiber.getFiberRef(currentPreResponseHandlers)
+      return handler._tag === "Some" ? handler.value(request, response) : Effect.succeed(response)
+    })
     return Effect.flatMap(
       Effect.exit(preHandled),
       (exit) => {
