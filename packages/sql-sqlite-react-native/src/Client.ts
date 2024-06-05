@@ -40,7 +40,10 @@ export interface SqliteClient extends Client.Client {
   readonly config: SqliteClientConfig
   readonly reactive: <A>(
     statement: Statement.Statement<A>,
-    tables: ReadonlyArray<string>
+    fireOn: ReadonlyArray<{
+      readonly table: string
+      readonly ids?: ReadonlyArray<number>
+    }>
   ) => Stream.Stream<ReadonlyArray<A>, SqlError>
 
   /** Not supported in sqlite */
@@ -84,7 +87,10 @@ export const withAsyncQuery = <R, E, A>(effect: Effect.Effect<A, E, R>) => Effec
 interface SqliteConnection extends Connection {
   readonly reactive: <A>(
     statement: Statement.Statement<A>,
-    tables: ReadonlyArray<string>
+    fireOn: ReadonlyArray<{
+      readonly table: string
+      readonly ids?: ReadonlyArray<number>
+    }>
   ) => Stream.Stream<ReadonlyArray<A>, SqlError>
 }
 
@@ -162,7 +168,13 @@ export const make = (
         executeStream() {
           return Effect.dieMessage("executeStream not implemented")
         },
-        reactive<A>(statement: Statement.Statement<A>, tables: ReadonlyArray<string>) {
+        reactive<A>(
+          statement: Statement.Statement<A>,
+          fireOn: ReadonlyArray<{
+            readonly table: string
+            readonly ids?: ReadonlyArray<number>
+          }>
+        ) {
           const [query, params] = statement.compile()
           return Queue.sliding<ReadonlyArray<A>>(1).pipe(
             Effect.tap((queue) =>
@@ -177,7 +189,7 @@ export const make = (
                     db.reactiveExecute({
                       query,
                       arguments: params as any,
-                      tables: tables as Array<string>,
+                      fireOn: fireOn as any,
                       callback(data) {
                         queue.unsafeOffer(data.rows)
                       }
@@ -224,10 +236,16 @@ export const make = (
       {
         [TypeId]: TypeId,
         config: options,
-        reactive<A>(statement: Statement.Statement<A>, tables: ReadonlyArray<string>) {
+        reactive<A>(
+          statement: Statement.Statement<A>,
+          fireOn: ReadonlyArray<{
+            readonly table: string
+            readonly ids?: ReadonlyArray<number>
+          }>
+        ) {
           return Stream.unwrap(Effect.map(
             acquirer,
-            (connection) => connection.reactive(statement, tables)
+            (connection) => connection.reactive(statement, fireOn)
           ))
         }
       }
