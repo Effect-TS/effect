@@ -25,7 +25,7 @@ Effect.gen(function*() {
   const sql = yield* Sql.client.Client
   const db = yield* SqliteDrizzle.SqliteDrizzle
   yield* sql`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)`
-  yield* sql`INSERT INTO users (name) VALUES ('Alice')`
+  yield* db.insert(users).values({ id: 1, name: "Alice" })
   const results = yield* db.select().from(users)
   console.log(results)
 }).pipe(
