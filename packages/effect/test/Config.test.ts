@@ -385,6 +385,8 @@ describe("Config", () => {
         _: Config.Config.Wrap<{
           key1: number
           list: ReadonlyArray<number>
+          option: Option.Option<number>
+          secret: Secret.Secret
           nested?:
             | Partial<{
               key2: string
@@ -396,20 +398,27 @@ describe("Config", () => {
       const config = wrapper({
         key1: Config.integer("key1"),
         list: Config.array(Config.integer(), "items"),
+        option: Config.option(Config.integer("option")),
+        secret: Config.secret("secret"),
         nested: {
           key2: Config.string("key2")
         }
       })
-      assertSuccess(config, [["key1", "123"], ["items", "1,2,3"], ["key2", "value"]], {
+      assertSuccess(config, [["key1", "123"], ["items", "1,2,3"], ["option", "123"], ["secret", "sauce"], [
+        "key2",
+        "value"
+      ]], {
         key1: 123,
         list: [1, 2, 3],
+        option: Option.some(123),
+        secret: Secret.fromString("sauce"),
         nested: {
           key2: "value"
         }
       })
       assertFailure(
         config,
-        [["key1", "123"], ["items", "1,value,3"], ["key2", "value"]],
+        [["key1", "123"], ["items", "1,value,3"], ["option", "123"], ["secret", "sauce"], ["key2", "value"]],
         ConfigError.InvalidData(["items"], "Expected an integer value but received value")
       )
     })
