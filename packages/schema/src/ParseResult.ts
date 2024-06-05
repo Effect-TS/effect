@@ -1357,7 +1357,9 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
             }
             const out: any = {}
             for (const key of keys) {
-              out[key] = output[key]
+              if (Object.prototype.hasOwnProperty.call(output, key)) {
+                out[key] = output[key]
+              }
             }
             return Either.right(out)
           }
