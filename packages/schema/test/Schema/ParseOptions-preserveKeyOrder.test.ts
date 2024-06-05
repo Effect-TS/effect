@@ -12,7 +12,8 @@ describe("`preserveKeyOrder` option", () => {
     c: S.Record(S.String, S.Number),
     d: S.NumberFromString,
     e: S.Boolean,
-    f: S.optional(S.String)
+    f: S.optional(S.String),
+    g: S.optional(S.String)
   })
 
   const effectify = (duration: Duration.DurationInput) =>
@@ -31,7 +32,7 @@ describe("`preserveKeyOrder` option", () => {
 
   describe("decoding", () => {
     it("should preserve the order of input properties (sync)", () => {
-      const input = { [b]: ["b"], c: { c: 1 }, d: "1", e: true, a: "a", other: 1 }
+      const input = { [b]: ["b"], c: { c: 1 }, d: "1", e: true, a: "a", other: 1, f: undefined }
       const output = S.decodeUnknownSync(Sync)(input, { propertyOrder: "original", onExcessProperty: "preserve" })
       const expectedOutput = { [b]: ["b"], c: { c: 1 }, d: 1, e: true, a: "a", other: 1, f: undefined }
       expect(output).toStrictEqual(expectedOutput)
@@ -51,7 +52,7 @@ describe("`preserveKeyOrder` option", () => {
 
   describe("encoding", () => {
     it("should preserve the order of input properties (sync)", () => {
-      const input = { [b]: ["b"], c: { c: 1 }, d: 1, e: true, a: "a", other: 1 }
+      const input = { [b]: ["b"], c: { c: 1 }, d: 1, e: true, a: "a", other: 1, f: undefined }
       const output = S.encodeUnknownSync(Sync)(input, { propertyOrder: "original", onExcessProperty: "preserve" })
       const expectedOutput = { [b]: ["b"], c: { c: 1 }, d: "1", e: true, a: "a", other: 1, f: undefined }
       expect(output).toStrictEqual(expectedOutput)
