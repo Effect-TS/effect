@@ -134,4 +134,11 @@ describe("Effect", () => {
       const prettyErrors = Cause.prettyErrors(cause)
       assert.include(prettyErrors[0].stack ?? "", "at fn-0 ")
     }))
+
+  // ENABLE TO TEST EXPECT OUTPUT
+  it.effect.skip("shows assertion message", () =>
+    Effect.gen(function*() {
+      yield* Effect.void
+      it.expect({ foo: "ok" }).toStrictEqual({ foo: "bar" })
+    }))
 })
