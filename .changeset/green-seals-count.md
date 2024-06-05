@@ -104,6 +104,7 @@ AST
 
 - rename `Element` to `OptionalType` and add an `annotations` field
 - change `TupleType` definition: from `rest: ReadonlyArray<AST>` to `rest: ReadonlyArray<Type>`
+- remove `TemplateLiteral.make`
 
 Schema
 

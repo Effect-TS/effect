@@ -1028,15 +1028,6 @@ export class TemplateLiteralSpan {
  * @since 0.67.0
  */
 export class TemplateLiteral implements Annotated {
-  static make = (
-    head: string,
-    spans: ReadonlyArray<TemplateLiteralSpan>,
-    annotations: Annotations = {}
-  ): TemplateLiteral | Literal =>
-    Arr.isNonEmptyReadonlyArray(spans) ?
-      new TemplateLiteral(head, spans, annotations) :
-      new Literal(head)
-
   /**
    * @since 0.67.0
    */

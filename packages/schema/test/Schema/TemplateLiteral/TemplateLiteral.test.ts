@@ -47,22 +47,22 @@ describe("TemplateLiteral", () => {
       const schema = S.TemplateLiteral(S.Literal("a", "b"), S.String, S.Literal("d", "e"))
       expect(schema.ast).toEqual(
         AST.Union.make([
-          AST.TemplateLiteral.make("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "d")]),
-          AST.TemplateLiteral.make("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "e")]),
-          AST.TemplateLiteral.make("b", [new AST.TemplateLiteralSpan(AST.stringKeyword, "d")]),
-          AST.TemplateLiteral.make("b", [new AST.TemplateLiteralSpan(AST.stringKeyword, "e")])
+          new AST.TemplateLiteral("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "d")]),
+          new AST.TemplateLiteral("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "e")]),
+          new AST.TemplateLiteral("b", [new AST.TemplateLiteralSpan(AST.stringKeyword, "d")]),
+          new AST.TemplateLiteral("b", [new AST.TemplateLiteralSpan(AST.stringKeyword, "e")])
         ])
       )
     })
 
     it("a${string}", () => {
-      const expected = AST.TemplateLiteral.make("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "")])
+      const expected = new AST.TemplateLiteral("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "")])
       expect(S.TemplateLiteral(S.Literal("a"), S.String).ast).toEqual(expected)
       expect(S.TemplateLiteral("a", S.String).ast).toEqual(expected)
     })
 
     it("a${string}b", () => {
-      const expected = AST.TemplateLiteral.make("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "b")])
+      const expected = new AST.TemplateLiteral("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "b")])
       expect(S.TemplateLiteral(S.Literal("a"), S.String, S.Literal("b")).ast).toEqual(expected)
       expect(S.TemplateLiteral("a", S.String, "b").ast).toEqual(expected)
     })
