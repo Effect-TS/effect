@@ -68,7 +68,7 @@ export const make = (dispatcher: Undici.Dispatcher): Client.Client.Default =>
               method: request.method,
               headers: request.headers,
               origin: url.origin,
-              path: url.pathname + url.search,
+              path: url.pathname + url.search + url.hash,
               body,
               // leave timeouts to Effect.timeout etc
               headersTimeout: 60 * 60 * 1000,
