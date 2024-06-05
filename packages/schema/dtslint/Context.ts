@@ -331,62 +331,6 @@ S.Struct({ a: aContext }).pipe(S.attachPropertySignature("_tag", "A"))
 aContext.annotations({})
 
 // ---------------------------------------------
-// message
-// ---------------------------------------------
-
-// $ExpectType Schema<string, string, "aContext">
-aContext.pipe(S.message(() => ""))
-
-// ---------------------------------------------
-// identifier
-// ---------------------------------------------
-
-// $ExpectType Schema<string, string, "aContext">
-aContext.pipe(S.identifier(""))
-
-// ---------------------------------------------
-// title
-// ---------------------------------------------
-
-// $ExpectType Schema<string, string, "aContext">
-aContext.pipe(S.title(""))
-
-// ---------------------------------------------
-// description
-// ---------------------------------------------
-
-// $ExpectType Schema<string, string, "aContext">
-aContext.pipe(S.description(""))
-
-// ---------------------------------------------
-// examples
-// ---------------------------------------------
-
-// $ExpectType Schema<string, string, "aContext">
-aContext.pipe(S.examples(["a"]))
-
-// ---------------------------------------------
-// documentation
-// ---------------------------------------------
-
-// $ExpectType Schema<string, string, "aContext">
-aContext.pipe(S.documentation(""))
-
-// ---------------------------------------------
-// jsonSchema
-// ---------------------------------------------
-
-// $ExpectType Schema<string, string, "aContext">
-aContext.pipe(S.jsonSchema({}))
-
-// ---------------------------------------------
-// equivalence
-// ---------------------------------------------
-
-// $ExpectType Schema<string, string, "aContext">
-aContext.pipe(S.equivalence(() => true))
-
-// ---------------------------------------------
 // rename
 // ---------------------------------------------
 
