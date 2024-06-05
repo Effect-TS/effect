@@ -700,7 +700,7 @@ export const serviceOption = <I, S>(tag: Context.Tag<I, S>): Micro<Option.Option
  */
 export const fromOption = <A>(option: Option.Option<A>): Micro<A, Option.None<never>> =>
   make(function(_env, onResult) {
-    onResult(option._tag === "Some" ? Either.right(option.value) : ResultFail(Option.none()) as any)
+    onResult(option._tag === "Some" ? ResultSucceed(option.value) : ResultFail(Option.none()) as any)
   })
 
 /**
@@ -982,7 +982,7 @@ export const as: {
  * @since 3.3.0
  * @category mapping & sequencing
  */
-export const asSome = <A, E, R>(self: Micro<A, E, R>): Micro<Option.Some<A>, E, R> => map(self, Option.some) as any
+export const asSome = <A, E, R>(self: Micro<A, E, R>): Micro<Option.Option<A>, E, R> => map(self, Option.some) as any
 
 /**
  * Map the success value of this `Micro` effect to another `Micro` effect, then
