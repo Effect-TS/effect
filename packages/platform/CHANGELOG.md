@@ -1,5 +1,38 @@
 # @effect/platform
 
+## 0.55.6
+
+### Patch Changes
+
+- [#2903](https://github.com/Effect-TS/effect/pull/2903) [`799aa20`](https://github.com/Effect-TS/effect/commit/799aa20b4f618736ba33a5297fda90a75d4c26c6) Thanks @rocwang! - # Make baseUrl() more defensive in @effect/platform
+
+  Sometimes, third party code may patch a missing global `location` to accommodate for non-browser JavaScript
+  runtimes, e.g. Cloudflare Workers,
+  Deno. [Such patch](https://github.com/jamsinclair/jSquash/pull/21/files#diff-322ca97cdcdd0d3b85c20a7d5cac703a2f9f3766fc762f98b9f6a9d4c5063ca3R21-R23)
+  might not yield a fully valid `location`. This could
+  break `baseUrl()`, which is called by `makeUrl()`.
+
+  For example, the following code would log `Invalid URL: '/api/v1/users' with base 'NaN'`.
+
+  ```js
+  import { makeUrl } from "@effect/platform/Http/UrlParams";
+
+  globalThis.location = { href: "" };
+
+  const url = makeUrl("/api/v1/users", []);
+
+  // This would log "Invalid URL: '/api/v1/users' with base 'NaN'",
+  // because location.origin + location.pathname return NaN in baseUrl()
+  console.log(url.left.message);
+  ```
+
+  Arguably, this is not an issue of Effect per se, but it's better to be defensive and handle such cases gracefully.
+  So this change does that by checking if `location.orign` and `location.pathname` are available before accessing them.
+
+- Updated dependencies [[`8c5d280`](https://github.com/Effect-TS/effect/commit/8c5d280c0402284a4e58372867a15a431cb99461), [`6ba6d26`](https://github.com/Effect-TS/effect/commit/6ba6d269f5891e6b11aa35c5281dde4bf3273004), [`cd7496b`](https://github.com/Effect-TS/effect/commit/cd7496ba214eabac2e3c297f513fcbd5b11f0e91), [`3f28bf2`](https://github.com/Effect-TS/effect/commit/3f28bf274333611906175446b772243f34f1b6d5), [`5817820`](https://github.com/Effect-TS/effect/commit/58178204a770d1a78c06945ef438f9fffbb50afa), [`349a036`](https://github.com/Effect-TS/effect/commit/349a036ffb08351481c060655660a6ccf26473de)]:
+  - effect@3.2.9
+  - @effect/schema@0.67.19
+
 ## 0.55.5
 
 ### Patch Changes
