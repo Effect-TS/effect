@@ -52,9 +52,7 @@ export const fromInput = (input: Input): UrlParams => {
  */
 export const schema: Schema.Schema<UrlParams, ReadonlyArray<readonly [string, string]>> = Schema.Array(
   Schema.Tuple(Schema.String, Schema.String)
-).pipe(
-  Schema.identifier("UrlParams")
-)
+).annotations({ identifier: "UrlParams" })
 
 /**
  * @since 1.0.0
