@@ -32,7 +32,7 @@ const program = Effect.gen(function*(_) {
       sql.insert({
         name: "Tim",
         createdAt: new Date()
-      })
+      }).returning("*")
     }`
   )
   console.log(inserted)
@@ -41,9 +41,9 @@ const program = Effect.gen(function*(_) {
     yield* _(
       Effect.all(
         [
-          sql`SELECT TOP 3 * FROM ${sql("people")}`,
-          sql`SELECT TOP 3 * FROM ${sql("people")}`.values,
-          sql`SELECT TOP 3 * FROM ${sql("people")}`.withoutTransform,
+          sql`SELECT TOP(3) * FROM ${sql("people")}`,
+          sql`SELECT TOP(3) * FROM ${sql("people")}`.values,
+          sql`SELECT TOP(3) * FROM ${sql("people")}`.withoutTransform,
           sql.call(peopleProcedure({ name: "Tim" }))
         ],
         { concurrency: "unbounded" }
@@ -52,18 +52,17 @@ const program = Effect.gen(function*(_) {
   )
 
   console.log(
-    yield* _(sql`
+    yield* sql`
       UPDATE people
       SET name = data.name
-      OUTPUT inserted.*
-      FROM ${sql.updateValues([{ ...inserted, name: "New name" }], "data")}
+      ${sql.updateValues([{ ...inserted, name: "New name" }], "data").returning("*")}
       WHERE people.id = data.id
-    `)
+    `
   )
 
   console.log(
     yield* _(
-      sql`SELECT TOP 3 * FROM ${sql("people")}`,
+      sql`SELECT TOP(3) * FROM ${sql("people")}`,
       Effect.zipRight(
         Effect.catchAllCause(
           sql.withTransaction(Effect.die("fail")),
@@ -71,7 +70,7 @@ const program = Effect.gen(function*(_) {
         )
       ),
       Effect.zipRight(
-        sql.withTransaction(sql`SELECT TOP 3 * FROM ${sql("people")}`)
+        sql.withTransaction(sql`SELECT TOP(3) * FROM ${sql("people")}`)
       ),
       sql.withTransaction
     )
