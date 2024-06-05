@@ -31,13 +31,13 @@
     "@effect/schema": "workspace:*",
     "@effect/sql-pg": "workspace:*",
     "@effect/sql": "workspace:*",
-    "@testcontainers/postgresql": "^10.4.0",
     "effect": "workspace:*"
   },
   "devDependencies": {
     "@effect/platform": "workspace:*",
     "@effect/platform-node": "workspace:*",
     "@effect/schema": "workspace:*",
+    "@testcontainers/postgresql": "^10.4.0",
     "effect": "workspace:*"
   }
 }

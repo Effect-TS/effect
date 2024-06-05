@@ -240,9 +240,6 @@ importers:
       '@effect/sql-pg':
         specifier: workspace:*
         version: link:../sql-pg/dist
-      '@testcontainers/postgresql':
-        specifier: ^10.4.0
-        version: 10.9.0
     devDependencies:
       '@effect/platform':
         specifier: workspace:*
@@ -253,6 +250,9 @@ importers:
       '@effect/schema':
         specifier: workspace:*
         version: link:../schema/dist
+      '@testcontainers/postgresql':
+        specifier: ^10.4.0
+        version: 10.9.0
       effect:
         specifier: workspace:*
         version: link:../effect/dist
