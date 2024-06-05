@@ -93,6 +93,33 @@ Error: readonly [number, number]
 */
 ```
 
+## Streamlining Annotations
+
+The individual APIs that were previously used to add annotations to schemas have been removed. This change was made because these individual annotation APIs did not provide significant value and were burdensome to maintain. Instead, you can now use the `annotations` method directly or the `Schema.annotations` API for a `pipe`-able approach.
+
+Before
+
+```ts
+import { Schema } from "@effect/schema"
+
+// Example of adding an identifier using a dedicated API
+const schema = Schema.String.pipe(Schema.identifier("myIdentitifer"))
+```
+
+Now
+
+```ts
+import { Schema } from "@effect/schema"
+
+// Directly using the annotations method
+const schema = Schema.String.annotations({ identifier: "myIdentitifer" })
+// or
+const schema2 = Schema.String.pipe(
+  // Using the annotations function in a pipe-able format
+  Schema.annotations({ identifier: "myIdentitifer" })
+)
+```
+
 ## Changes
 
 AST
@@ -115,6 +142,19 @@ Schema
 - remove `TupleType.Element` type
 - replace `OptionalElement` API interface with `Element` API interface
 - remove `PropertySignature.GetToken`
+- remove duplicated annotation APIs
+  - `message`
+  - `identifier`
+  - `title`
+  - `description`
+  - `examples`
+  - `default`
+  - `documentation`
+  - `jsonSchema`
+  - `equivalence`
+  - `concurrency`
+  - `concurrency`
+  - `parseIssueTitle`
 
 ParseResult
 

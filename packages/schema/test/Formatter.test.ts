@@ -880,8 +880,7 @@ describe("Formatter", () => {
           S.Array(
             S.Struct({
               b: pipe(
-                S.String,
-                S.message(() => "type"),
+                S.String.annotations({ message: () => "type" }),
                 S.minLength(1, { message: () => "minLength" }),
                 S.maxLength(2, { message: () => "maxLength" })
               )

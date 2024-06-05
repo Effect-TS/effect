@@ -1874,7 +1874,7 @@ describe("JSONSchema", () => {
     })
 
     it("refinement of a transformation", () => {
-      expectJSONSchema(Schema.Date.pipe(Schema.jsonSchema({ type: "string", format: "date-time" })), {
+      expectJSONSchema(Schema.Date.annotations({ jsonSchema: { type: "string", format: "date-time" } }), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "format": "date-time",
         "type": "string"
