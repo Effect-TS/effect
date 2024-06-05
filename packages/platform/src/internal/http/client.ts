@@ -126,7 +126,7 @@ export const makeDefault = (
         const scope = Context.unsafeGet(fiber.getFiberRef(FiberRef.currentContext), Scope.Scope)
         const controller = new AbortController()
         const addAbort = Scope.addFinalizer(scope, Effect.sync(() => controller.abort()))
-        const urlResult = UrlParams.makeUrl(request.url, request.urlParams)
+        const urlResult = UrlParams.makeUrl(request.url, request.urlParams, request.hash)
         if (urlResult._tag === "Left") {
           return Effect.fail(new Error.RequestError({ request, reason: "InvalidUrl", error: urlResult.left }))
         }

@@ -1,6 +1,6 @@
 import * as Http from "@effect/platform/HttpClient"
 import * as Schema from "@effect/schema/Schema"
-import { Ref } from "effect"
+import { Either, Ref } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -22,7 +22,7 @@ const OkTodo = Schema.Struct({
 const makeJsonPlaceholder = Effect.gen(function*(_) {
   const defaultClient = yield* _(Http.client.Client)
   const client = defaultClient.pipe(
-    Http.client.mapRequest(Http.request.prependUrl(new URL("https://jsonplaceholder.typicode.com")))
+    Http.client.mapRequest(Http.request.prependUrl("https://jsonplaceholder.typicode.com"))
   )
   const todoClient = client.pipe(
     Http.client.mapEffectScoped(Http.response.schemaBodyJson(Todo))
@@ -152,4 +152,15 @@ describe("HttpClient", () => {
 
       expect(logs).toEqual(["hello", "world"])
     }).pipe(Effect.provide(Http.client.layer), Effect.runPromise))
+
+  it("ClientRequest parses URL instances", () => {
+    const request = Http.request.get(new URL("https://example.com/?foo=bar#hash")).pipe(
+      Http.request.appendUrl("/foo"),
+      Http.request.setUrlParam("baz", "qux")
+    )
+    assert.deepStrictEqual(
+      Http.urlParams.makeUrl(request.url, request.urlParams, request.hash),
+      Either.right(new URL("https://example.com/foo?foo=bar&baz=qux#hash"))
+    )
+  })
 })
