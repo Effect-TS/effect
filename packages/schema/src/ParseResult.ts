@@ -1147,10 +1147,12 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
       }
 
       const propertySignatures: Array<readonly [Parser, AST.PropertySignature]> = []
-      const expectedKeys: Record<PropertyKey, null> = {}
+      const expectedKeysMap: Record<PropertyKey, null> = {}
+      const expectedKeys: Array<PropertyKey> = []
       for (const ps of ast.propertySignatures) {
         propertySignatures.push([goMemo(ps.type, isDecoding), ps])
-        expectedKeys[ps.name] = null
+        expectedKeysMap[ps.name] = null
+        expectedKeys.push(ps.name)
       }
 
       const indexSignatures = ast.indexSignatures.map((is) =>
@@ -1162,9 +1164,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
       )
       const expectedAST = AST.Union.make(
         ast.indexSignatures.map((is): AST.AST => is.parameter).concat(
-          util_.ownKeys(expectedKeys).map((key) =>
-            Predicate.isSymbol(key) ? new AST.UniqueSymbol(key) : new AST.Literal(key)
-          )
+          expectedKeys.map((key) => Predicate.isSymbol(key) ? new AST.UniqueSymbol(key) : new AST.Literal(key))
         )
       )
       const expected = goMemo(expectedAST, isDecoding)
@@ -1184,8 +1184,10 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         const onExcessPropertyError = options?.onExcessProperty === "error"
         const onExcessPropertyPreserve = options?.onExcessProperty === "preserve"
         const output: any = {}
+        let inputKeys: Array<PropertyKey> | undefined
         if (onExcessPropertyError || onExcessPropertyPreserve) {
-          for (const key of util_.ownKeys(input)) {
+          inputKeys = util_.ownKeys(input)
+          for (const key of inputKeys) {
             const eu = eitherOrUndefined(expected(key, options))!
             if (Either.isLeft(eu)) {
               // key is unexpected
@@ -1302,7 +1304,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                     return Either.left(new TypeLiteral(ast, input, [e], output))
                   }
                 } else {
-                  if (!Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
+                  if (!Object.prototype.hasOwnProperty.call(expectedKeysMap, key)) {
                     output[key] = veu.right
                   }
                 }
@@ -1326,7 +1328,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                             return Either.left(new TypeLiteral(ast, input, [e], output))
                           }
                         } else {
-                          if (!Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
+                          if (!Object.prototype.hasOwnProperty.call(expectedKeysMap, key)) {
                             output[key] = tv.right
                           }
                           return Effect.void
@@ -1341,10 +1343,26 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         // compute result
         // ---------------------------------------------
-        const computeResult = ({ es, output }: State) =>
-          Arr.isNonEmptyArray(es) ?
-            Either.left(new TypeLiteral(ast, input, sortByIndex(es), output)) :
-            Either.right(output)
+        const computeResult = ({ es, output }: State) => {
+          if (Arr.isNonEmptyArray(es)) {
+            return Either.left(new TypeLiteral(ast, input, sortByIndex(es), output))
+          }
+          if (options?.propertyOrder === "original") {
+            // preserve input keys order
+            const keys = inputKeys || util_.ownKeys(input)
+            for (const name of expectedKeys) {
+              if (keys.indexOf(name) === -1) {
+                keys.push(name)
+              }
+            }
+            const out: any = {}
+            for (const key of keys) {
+              out[key] = output[key]
+            }
+            return Either.right(out)
+          }
+          return Either.right(output)
+        }
         if (queue && queue.length > 0) {
           const cqueue = queue
           return Effect.suspend(() => {
