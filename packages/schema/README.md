@@ -2217,7 +2217,7 @@ const members = schema.members // [typeof Schema.String, typeof Schema.Number]
 
 ## Tuples
 
-### required Elements
+### Required Elements
 
 To define a tuple with required elements, you simply specify the list of elements:
 
@@ -2231,7 +2231,7 @@ const opaque = Schema.Tuple(Schema.String, Schema.Number)
 const nonOpaque = Schema.asSchema(opaque)
 ```
 
-### Append a required element
+### Append a Required Element
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -2311,6 +2311,46 @@ const tupleElements = schema.elements // readonly [typeof Schema.String, Schema.
 
 // Accesses the rest elements of the tuple
 const restElements = schema.rest // readonly [typeof Schema.Boolean, typeof Schema.Number]
+```
+
+### Annotations
+
+Annotations are used to add metadata to tuple elements, which can describe the purpose or requirements of each element more clearly. This can be particularly useful when generating documentation or JSON schemas from your schemas.
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+// Defining a tuple with annotations for each coordinate in a point
+const Point = Schema.Tuple(
+  Schema.element(Schema.Number).annotations({
+    title: "X",
+    description: "X coordinate"
+  }),
+  Schema.optionalElement(Schema.Number).annotations({
+    title: "Y",
+    description: "optional Y coordinate"
+  })
+)
+
+// Generating a JSON Schema from the tuple
+console.log(JSONSchema.make(Point))
+/*
+Output:
+{
+  '$schema': 'http://json-schema.org/draft-07/schema#',
+  type: 'array',
+  minItems: 1,
+  items: [
+    { type: 'number', description: 'X coordinate', title: 'X' },
+    {
+      type: 'number',
+      description: 'optional Y coordinate',
+      title: 'Y'
+    }
+  ],
+  additionalItems: false
+}
+*/
 ```
 
 ## Arrays
@@ -5067,6 +5107,55 @@ const result = Schema.decodeUnknownEither(Name)("").pipe(
 )
 
 console.log(result) // => { _id: 'Either', _tag: 'Left', left: 'should be non empty' }
+```
+
+#### Missing messages
+
+You can provide custom messages for missing fields or elements using the `missingMessage` annotation.
+
+Example (missing field)
+
+```ts
+import { Schema } from "@effect/schema"
+
+const Person = Schema.Struct({
+  name: Schema.propertySignature(Schema.String).annotations({
+    missingMessage: () => "Name is required"
+  })
+})
+
+Schema.decodeUnknownSync(Person)({})
+/*
+Output:
+Error: { readonly name: string }
+└─ ["name"]
+   └─ Name is required
+*/
+```
+
+Example (missing element)
+
+```ts
+import { Schema } from "@effect/schema"
+
+const Point = Schema.Tuple(
+  Schema.element(Schema.Number).annotations({
+    missingMessage: () => "X coordinate is required"
+  }),
+  Schema.element(Schema.Number).annotations({
+    missingMessage: () => "Y coordinate is required"
+  })
+)
+
+Schema.decodeUnknownSync(Point)([], { errors: "all" })
+/*
+Output:
+Error: readonly [number, number]
+├─ [0]
+│  └─ X coordinate is required
+└─ [1]
+   └─ Y coordinate is required
+*/
 ```
 
 ## Classes
