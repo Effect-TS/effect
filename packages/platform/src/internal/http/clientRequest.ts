@@ -80,27 +80,12 @@ export const make = <M extends Method>(method: M) =>
 (
   url: string | URL,
   options?: M extends "GET" | "HEAD" ? ClientRequest.Options.NoBody : ClientRequest.Options.NoUrl
-) => {
-  if (typeof url === "string") {
-    return modify(empty, {
-      method,
-      url,
-      ...(options ?? undefined)
-    })
-  }
-  const clone = new URL(url.toString())
-  const urlParams = UrlParams.fromInput(clone.searchParams)
-  const hash = clone.hash ? clone.hash.slice(1) : undefined
-  clone.search = ""
-  clone.hash = ""
-  return modify(empty, {
+) =>
+  modify(empty, {
     method,
-    url: clone.toString(),
-    urlParams,
-    hash,
+    url,
     ...(options ?? undefined)
   })
-}
 
 /** @internal */
 export const get = make("GET")
@@ -223,17 +208,33 @@ export const setMethod = dual<
 
 /** @internal */
 export const setUrl = dual<
-  (url: string) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
-  (self: ClientRequest.ClientRequest, url: string) => ClientRequest.ClientRequest
->(2, (self, url) =>
-  makeInternal(
+  (url: string | URL) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
+  (self: ClientRequest.ClientRequest, url: string | URL) => ClientRequest.ClientRequest
+>(2, (self, url) => {
+  if (typeof url === "string") {
+    return makeInternal(
+      self.method,
+      url,
+      self.urlParams,
+      self.hash,
+      self.headers,
+      self.body
+    )
+  }
+  const clone = new URL(url.toString())
+  const urlParams = UrlParams.fromInput(clone.searchParams)
+  const hash = clone.hash ? Option.some(clone.hash.slice(1)) : Option.none()
+  clone.search = ""
+  clone.hash = ""
+  return makeInternal(
     self.method,
-    url,
-    self.urlParams,
-    self.hash,
+    clone.toString(),
+    urlParams,
+    hash,
     self.headers,
     self.body
-  ))
+  )
+})
 
 /** @internal */
 export const appendUrl = dual<

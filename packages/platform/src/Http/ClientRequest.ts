@@ -53,7 +53,7 @@ export interface ClientRequest
  */
 export interface Options {
   readonly method?: Method | undefined
-  readonly url?: string | undefined
+  readonly url?: string | URL | undefined
   readonly urlParams?: UrlParams.Input | undefined
   readonly hash?: string | undefined
   readonly headers?: Headers.Input | undefined
@@ -206,8 +206,8 @@ export const acceptJson: (self: ClientRequest) => ClientRequest = internal.accep
  * @category combinators
  */
 export const setUrl: {
-  (url: string): (self: ClientRequest) => ClientRequest
-  (self: ClientRequest, url: string): ClientRequest
+  (url: string | URL): (self: ClientRequest) => ClientRequest
+  (self: ClientRequest, url: string | URL): ClientRequest
 } = internal.setUrl
 
 /**
