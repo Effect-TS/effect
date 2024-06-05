@@ -28,6 +28,11 @@
     "directory": "dist",
     "provenance": true
   },
+  "sideEffects": [
+    "./src/Mysql.ts",
+    "./src/Pg.ts",
+    "./src/Sqlite.ts"
+  ],
   "scripts": {
     "build": "pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
     "build-esm": "tsc -b tsconfig.build.json",
