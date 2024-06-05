@@ -1,5 +1,6 @@
 import * as Client from "@effect/sql/Client"
 import { SqlError } from "@effect/sql/Error"
+import type { Statement } from "@effect/sql/Statement"
 import type { QueryPromise } from "drizzle-orm/query-promise"
 import * as DUtils from "drizzle-orm/utils"
 import * as Effect from "effect/Effect"
@@ -36,9 +37,17 @@ const PatchProto = {
       })
     }
     const prepared = this.prepare()
-    const { params, sql } = this.toSQL()
+    let statement: Statement<any>
+    if ("query" in prepared) {
+      statement = client.unsafe(prepared.query.sql, prepared.query.params)
+    } else if ("queryString" in prepared) {
+      statement = client.unsafe(prepared.queryString, prepared.params)
+    } else {
+      const { params, sql } = this.toSQL()
+      statement = client.unsafe(sql, params)
+    }
     return Effect.map(
-      client.unsafe(sql, params).values,
+      statement.values,
       (rows) => rows.map((row) => mapResultRow(prepared.fields, row, prepared.joinsNotNullableMap))
     )
   }

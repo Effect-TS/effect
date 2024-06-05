@@ -24,7 +24,8 @@ const users = D.sqliteTable("users", {
 Effect.gen(function*() {
   const sql = yield* Sql.client.Client
   const db = yield* SqliteDrizzle.SqliteDrizzle
-  yield* sql`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)`
+  yield* sql`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT)`
+  yield* db.delete(users)
   yield* db.insert(users).values({ id: 1, name: "Alice" })
   const results = yield* db.select().from(users)
   console.log(results)
