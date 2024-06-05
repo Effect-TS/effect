@@ -4,7 +4,7 @@
 
 add @effect/sql-drizzle integration package
 
-This package allows you to use the drizzle's query builders with
+This package allows you to use drizzle's query builders with
 `@effect/sql`.
 
 ```ts
