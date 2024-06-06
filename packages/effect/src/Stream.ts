@@ -3379,6 +3379,60 @@ export const scoped: <A, E, R>(effect: Effect.Effect<A, E, R>) => Stream<A, E, E
   internal.scoped
 
 /**
+ * Creates a new stream that shares the elements of the original stream with multiple subscribers.
+ * This allows multiple consumers to subscribe to the same stream, ensuring each consumer sees
+ * all elements from the original stream.
+ *
+ * @param options.connector - The connector, which is an effect that provides either a PubSub
+ * or Queue to be used for sharing the stream elements.
+ *
+ * @example
+ * const intervalStream = (intervalMs: number) => Stream.async((emit: StreamEmit.Emit<never, never, number, void>) => {
+ *     let i = 0
+ *     const intervalPointer = setInterval(() => {
+ *         console.log('origin', i)
+ *         return emit(Effect.succeed(Chunk.of(i++)));
+ *     }, intervalMs)
+ *     return Effect.sync(() => clearInterval(intervalPointer))
+ * });
+ *
+ * const program = Effect.gen(function* () {
+ *     const sharedStream = yield* intervalStream(0).pipe(share({
+ *         connector: PubSub.unbounded()
+ *     }));
+ *     const streamMax3 = sharedStream.pipe(Stream.take(3))
+ *     return yield* Effect.all([
+ *         streamMax3.pipe(Stream.tap(x => Effect.sync(() => console.log('s1', x.toString()))), Stream.runDrain),
+ *         streamMax3.pipe(Stream.tap(x => Effect.sync(() => console.log('s2', x))), Stream.runDrain),
+ *     ], {concurrency: 'unbounded'})
+ * }).pipe(Effect.scoped)
+ *
+ * Effect.runPromise(program)
+ * // Output:
+ * // origin 0
+ * // s1 0
+ * // s2 0
+ * // origin 1
+ * // s1 1
+ * // s2 1
+ * // origin 2
+ * // s1 2
+ * // s2 2
+ */
+export const share: {
+  <A, E>(options: {
+    readonly connector: Effect.Effect<
+      PubSub.PubSub<Take.Take<A, E>> | Queue.Queue<Take.Take<A, E>>
+    >
+  }): <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<Stream.Stream<A, E>, never, Scope.Scope | R>
+  <A, E, R>(self: Stream.Stream<A, E, R>, options: {
+    readonly connector: Effect.Effect<
+      PubSub.PubSub<Take.Take<A, E>> | Queue.Queue<Take.Take<A, E>>
+    >
+  }): Effect.Effect<Stream.Stream<A, E>, never, Scope.Scope | R>
+} = internal.share
+
+/**
  * Emits a sliding window of `n` elements.
  *
  * ```ts

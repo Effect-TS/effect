@@ -5675,6 +5675,40 @@ export const someOrFail = dual<
 )
 
 /** @internal */
+export const share = dual<
+  <A, E>(options: {
+    readonly connector: Effect.Effect<
+      PubSub.PubSub<Take.Take<A, E>> | Queue.Queue<Take.Take<A, E>>
+    >
+  }) => <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<Stream.Stream<A, E>, never, Scope.Scope | R>,
+  <A, E, R>(self: Stream.Stream<A, E, R>, options: {
+    readonly connector: Effect.Effect<
+      PubSub.PubSub<Take.Take<A, E>> | Queue.Queue<Take.Take<A, E>>
+    >
+  }) => Effect.Effect<Stream.Stream<A, E>, never, Scope.Scope | R>
+>(2, <A, E, R>(self: Stream.Stream<A, E, R>, options: {
+  readonly connector: Effect.Effect<
+    PubSub.PubSub<Take.Take<A, E>> | Queue.Queue<Take.Take<A, E>>
+  >
+}) => {
+  return Effect.acquireRelease(options.connector, (queue) => Queue.shutdown(queue)).pipe(
+    Effect.tap((pubSubOrQueue) => {
+      if ("subscribe" in pubSubOrQueue) {
+        return Effect.forkScoped(Stream.runIntoPubSubScoped(self, pubSubOrQueue))
+      } else {
+        return Effect.forkScoped(Stream.runIntoQueueScoped(self, pubSubOrQueue))
+      }
+    }),
+    Effect.map((pubSubOrQueue) => {
+      if ("subscribe" in pubSubOrQueue) {
+        return Stream.flattenTake(Stream.fromPubSub(pubSubOrQueue))
+      }
+      return Stream.flattenTake(Stream.fromQueue(pubSubOrQueue))
+    })
+  )
+})
+
+/** @internal */
 export const sliding = dual<
   (
     chunkSize: number
