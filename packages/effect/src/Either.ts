@@ -421,24 +421,24 @@ export const match: {
  */
 export const liftPredicate: {
   <A, B extends A, E>(refinement: Refinement<NoInfer<A>, B>, orLeftWith: (a: NoInfer<A>) => E): (a: A) => Either<B, E>
-  <A, E, B = A>(
+  <A, E>(
     predicate: Predicate<NoInfer<A>>,
     orLeftWith: (a: NoInfer<A>) => E
-  ): (x: A) => Either<B, E>
+  ): (a: A) => Either<A, E>
   <A, E, B extends A>(
     self: A,
     refinement: Refinement<A, B>,
     orLeftWith: (a: A) => E
   ): Either<B, E>
-  <A, E, B = A>(
+  <A, E>(
     self: A,
     predicate: Predicate<A>,
     orLeftWith: (a: A) => E
-  ): Either<B, E>
+  ): Either<A, E>
 } = dual(
   3,
-  <A, E, B extends A>(x: B, predicate: Predicate<A>, orLeftWith: (a: A) => E) =>
-    predicate(x) ? right(x) : left(orLeftWith(x))
+  <A, E>(a: A, predicate: Predicate<A>, orLeftWith: (a: A) => E): Either<A, E> =>
+    predicate(a) ? right(a) : left(orLeftWith(a))
 )
 
 /**
