@@ -119,7 +119,7 @@ const TransactionConnection = Client.TransactionConnection as unknown as Context
 export const make = (
   options: MssqlClientConfig
 ): Effect.Effect<MssqlClient, never, Scope.Scope> =>
-  Effect.gen(function*(_) {
+  Effect.gen(function*() {
     const parameterTypes = options.parameterTypes ?? defaultParameterTypes
     const compiler = makeCompiler(options.transformQueryNames)
 
@@ -156,19 +156,17 @@ export const make = (
         }
       })
 
-      yield* _(Effect.addFinalizer(() => Effect.sync(() => conn.close())))
+      yield* Effect.addFinalizer(() => Effect.sync(() => conn.close()))
 
-      yield* _(
-        Effect.async<void, SqlError>((resume) => {
-          conn.connect((error) => {
-            if (error) {
-              resume(Effect.fail(new SqlError({ error })))
-            } else {
-              resume(Effect.void)
-            }
-          })
+      yield* Effect.async<void, SqlError>((resume) => {
+        conn.connect((error) => {
+          if (error) {
+            resume(Effect.fail(new SqlError({ error })))
+          } else {
+            resume(Effect.void)
+          }
         })
-      )
+      })
 
       const run = (
         sql: string,
@@ -329,14 +327,13 @@ export const make = (
       return connection
     })
 
-    pool = yield* _(
-      Pool.makeWithTTL({
-        acquire: makeConnection,
-        min: options.minConnections ?? 1,
-        max: options.maxConnections ?? 10,
-        timeToLive: options.connectionTTL ?? Duration.minutes(45)
-      })
-    )
+    pool = yield* Pool.makeWithTTL({
+      acquire: makeConnection,
+      min: options.minConnections ?? 1,
+      max: options.maxConnections ?? 10,
+      timeToLive: options.connectionTTL ?? Duration.minutes(45),
+      timeToLiveStrategy: "creation"
+    })
 
     const makeRootTx: Effect.Effect<
       readonly [Scope.CloseableScope | undefined, MssqlConnection, number],
