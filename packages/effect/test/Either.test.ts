@@ -173,6 +173,47 @@ describe("Either", () => {
     Util.deepStrictEqual(Either.flip(Either.left("b")), Either.right("b"))
   })
 
+  it("liftPredicate", () => {
+    const isPositivePredicate = (n: number) => n > 0
+    const onPositivePredicateError = (n: number) => `${n} is not positive`
+    const isNumberRefinement = (n: string | number): n is number => typeof n === "number"
+    const onNumberRefinementError = (n: string | number) => `${n} is not a number`
+
+    Util.deepStrictEqual(
+      pipe(1, Either.liftPredicate(isPositivePredicate, onPositivePredicateError)),
+      Either.right(1)
+    )
+    Util.deepStrictEqual(
+      pipe(-1, Either.liftPredicate(isPositivePredicate, onPositivePredicateError)),
+      Either.left(`-1 is not positive`)
+    )
+    Util.deepStrictEqual(
+      pipe(1, Either.liftPredicate(isNumberRefinement, onNumberRefinementError)),
+      Either.right(1)
+    )
+    Util.deepStrictEqual(
+      pipe("string", Either.liftPredicate(isNumberRefinement, onNumberRefinementError)),
+      Either.left(`string is not a number`)
+    )
+
+    Util.deepStrictEqual(
+      Either.liftPredicate(1, isPositivePredicate, onPositivePredicateError),
+      Either.right(1)
+    )
+    Util.deepStrictEqual(
+      Either.liftPredicate(-1, isPositivePredicate, onPositivePredicateError),
+      Either.left(`-1 is not positive`)
+    )
+    Util.deepStrictEqual(
+      Either.liftPredicate(1, isNumberRefinement, onNumberRefinementError),
+      Either.right(1)
+    )
+    Util.deepStrictEqual(
+      Either.liftPredicate("string", isNumberRefinement, onNumberRefinementError),
+      Either.left(`string is not a number`)
+    )
+  })
+
   it("filterOrLeft", () => {
     Util.deepStrictEqual(Either.filterOrLeft(Either.right(1), (n) => n > 0, () => "a"), Either.right(1))
     Util.deepStrictEqual(Either.filterOrLeft(Either.right(1), (n) => n > 1, () => "a"), Either.left("a"))

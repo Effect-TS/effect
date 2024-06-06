@@ -111,6 +111,80 @@ string$string.pipe(Either.andThen(string$number))
 string$string.pipe(Either.andThen(() => string$number))
 
 // -------------------------------------------------------------------------------------
+// liftPredicate
+// -------------------------------------------------------------------------------------
+
+declare const primitiveNumber: number
+declare const primitiveNumberOrString: string | number
+declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
+
+// $ExpectType Either<string, "b">
+pipe(
+  primitiveNumberOrString,
+  Either.liftPredicate(Predicate.isString, (
+    _s // $ExpectType string | number
+  ) => "b" as const)
+)
+
+// $ExpectType Either<string, "b">
+Either.liftPredicate(primitiveNumberOrString, Predicate.isString, (
+  _s // $ExpectType string | number
+) => "b" as const)
+
+// $ExpectType Either<number, "b">
+pipe(
+  primitiveNumberOrString,
+  Either.liftPredicate(
+    (
+      n // $ExpectType string | number
+    ): n is number => typeof n === "number",
+    (
+      _s // $ExpectType string | number
+    ) => "b" as const
+  )
+)
+
+// $ExpectType Either<number, "b">
+Either.liftPredicate(
+  primitiveNumberOrString,
+  (
+    n // $ExpectType string | number
+  ): n is number => typeof n === "number",
+  (
+    _s // $ExpectType string | number
+  ) => "b" as const
+)
+
+// $ExpectType Either<string | number, "b">
+pipe(
+  primitiveNumberOrString,
+  Either.liftPredicate(predicateNumbersOrStrings, (
+    _s // $ExpectType string | number
+  ) => "b" as const)
+)
+
+// $ExpectType Either<number, "b">
+pipe(
+  primitiveNumber,
+  Either.liftPredicate(predicateNumbersOrStrings, (
+    _s // $ExpectType number
+  ) => "b" as const)
+)
+
+// $ExpectType Either<number, "b">
+pipe(
+  primitiveNumber,
+  Either.liftPredicate(
+    (
+      _n // $ExpectType number
+    ) => true,
+    (
+      _s // $ExpectType number
+    ) => "b" as const
+  )
+)
+
+// -------------------------------------------------------------------------------------
 // filterOrLeft
 // -------------------------------------------------------------------------------------
 
