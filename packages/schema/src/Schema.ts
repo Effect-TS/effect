@@ -5008,7 +5008,7 @@ const redactedParse = <R, A>(
 
 /**
  * @category api interface
- * @since 1.0.0
+ * @since 0.67.21
  */
 export interface RedactedFromSelf<Value extends Schema.Any> extends
   AnnotableClass<
@@ -5021,7 +5021,7 @@ export interface RedactedFromSelf<Value extends Schema.Any> extends
 
 /**
  * @category Redacted constructors
- * @since 1.0.0
+ * @since 0.67.21
  */
 export const RedactedFromSelf = <Value extends Schema.Any>(
   value: Value
@@ -5042,7 +5042,7 @@ export const RedactedFromSelf = <Value extends Schema.Any>(
 
 /**
  * @category api interface
- * @since 1.0.0
+ * @since 0.67.21
  */
 export interface Redacted<Value extends Schema.Any> extends
   AnnotableClass<
@@ -5057,7 +5057,7 @@ export interface Redacted<Value extends Schema.Any> extends
  * A schema that transforms any type `T` into a `Redacted<T>`.
  *
  * @category Redacted transformations
- * @since 1.0.0
+ * @since 0.67.21
  */
 export const Redacted = <Value extends Schema.Any>(
   value: Value
