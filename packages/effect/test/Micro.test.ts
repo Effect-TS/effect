@@ -2,8 +2,29 @@ import { Cause, Context, Effect, Either, Exit, Fiber, Micro, Option, pipe } from
 import { assert, describe, it } from "effect/test/utils/extend"
 
 class ATag extends Context.Tag("ATag")<ATag, "A">() {}
+class TestError extends Micro.TaggedError("TestError") {}
 
-describe.sequential("Micro", () => {
+describe.concurrent("Micro", () => {
+  describe("tracing", () => {
+    it.effect("Micro.TaggedError", () =>
+      Micro.gen(function*() {
+        const error = yield* new TestError().pipe(Micro.flip)
+        assert.deepStrictEqual(error, new TestError())
+        assert.include(error.stack, "Micro.test.ts:11")
+      }))
+
+    it.effect("withTrace", () =>
+      Micro.gen(function*() {
+        const error = yield* Micro.fail("boom").pipe(
+          Micro.withTrace("test trace"),
+          Micro.sandbox,
+          Micro.flip
+        )
+        assert.include(error.stack, "at test trace")
+        assert.include(error.stack, "Micro.test.ts:19")
+      }))
+  })
+
   it("runPromise", async () => {
     const result = await Micro.runPromise(Micro.succeed(1))
     assert.strictEqual(result, 1)
@@ -476,15 +497,6 @@ describe.sequential("Micro", () => {
   })
 
   describe("TaggedError", () => {
-    class TestError extends Micro.TaggedError("TestError") {}
-
-    it.effect("is yieldable", () =>
-      Micro.gen(function*() {
-        const error = yield* new TestError().pipe(Micro.flip)
-        assert.deepStrictEqual(error, new TestError())
-        assert.include(error.stack, "Micro.test.ts:483")
-      }))
-
     it.effect("is a valid Effect", () =>
       Effect.gen(function*() {
         const error = yield* new TestError().pipe(Effect.flip)
@@ -500,17 +512,44 @@ describe.sequential("Micro", () => {
       }))
   })
 
-  describe("withTrace", () => {
-    it.effect("captures a stack", () =>
+  describe("failure rendering", () => {
+    it.effect("renders non-error defects", () =>
       Micro.gen(function*() {
-        const error = yield* Micro.fail("boom").pipe(
+        const failure = yield* Micro.die({ some: "error" }).pipe(
           Micro.withTrace("test trace"),
           Micro.sandbox,
           Micro.flip
         )
-        assert(error._tag === "Expected")
-        assert.include(error.traces[0], "at test trace")
-        assert.include(error.traces[0], "Micro.test.ts:507")
+        assert.strictEqual(failure.name, "FailureUnexpected")
+        assert.strictEqual(failure.message, JSON.stringify({ some: "error" }))
+        assert.include(failure.stack, `FailureUnexpected: ${JSON.stringify({ some: "error" })}`)
+        assert.include(failure.stack, "at test trace (")
+      }))
+
+    it.effect("renders non-errors", () =>
+      Micro.gen(function*() {
+        const failure = yield* Micro.fail({ some: "error" }).pipe(
+          Micro.withTrace("test trace"),
+          Micro.sandbox,
+          Micro.flip
+        )
+        assert.strictEqual(failure.name, "FailureExpected")
+        assert.strictEqual(failure.message, JSON.stringify({ some: "error" }))
+        assert.include(failure.stack, `FailureExpected: ${JSON.stringify({ some: "error" })}`)
+        assert.include(failure.stack, "at test trace (")
+      }))
+
+    it.effect("renders errors", () =>
+      Micro.gen(function*() {
+        const failure = yield* Micro.fail(new Error("boom")).pipe(
+          Micro.withTrace("test trace"),
+          Micro.sandbox,
+          Micro.flip
+        )
+        assert.strictEqual(failure.name, "(FailureExpected) Error")
+        assert.strictEqual(failure.message, "boom")
+        assert.include(failure.stack, `(FailureExpected) Error: boom`)
+        assert.include(failure.stack, "at test trace (")
       }))
   })
 })

@@ -11,12 +11,12 @@ import * as Either from "./Either.js"
 import { constVoid, dual, identity, type LazyArg } from "./Function.js"
 import { globalValue } from "./GlobalValue.js"
 import type { Inspectable } from "./Inspectable.js"
-import { NodeInspectSymbol } from "./Inspectable.js"
+import { NodeInspectSymbol, toStringUnknown } from "./Inspectable.js"
 import { StructuralPrototype } from "./internal/effectable.js"
 import { SingleShotGen } from "./internal/singleShotGen.js"
 import * as Option from "./Option.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
-import { hasProperty, isIterable, isTagged, type Predicate, type Refinement } from "./Predicate.js"
+import { isIterable, isTagged, type Predicate, type Refinement } from "./Predicate.js"
 import type { ReadonlyRecord } from "./Record.js"
 import type * as Sink from "./Sink.js"
 import type * as Stream from "./Stream.js"
@@ -178,19 +178,26 @@ abstract class FailureImpl<Tag extends string, E> extends globalThis.Error imple
     readonly originalError: unknown,
     readonly traces: ReadonlyArray<string>
   ) {
+    const failureName = `Failure${_tag}`
+    let name: string
     let message: string
     let stack: string
-    if (hasProperty(originalError, "message")) {
-      message = `(Failure${_tag}) ${originalError.message}`
-      stack = hasProperty(originalError, "stack") ? `(Failure${_tag}) ${originalError.stack}` : message
+    if (originalError instanceof globalThis.Error) {
+      name = `(${failureName}) ${originalError.name}`
+      message = originalError.message as string
+      stack = originalError.stack
+        ? `(${failureName}) ${originalError.stack.split("\n").slice(0, 2).join("\n")}`
+        : `${name}: ${message}`
     } else {
-      message = `Failure${_tag}: ${originalError}`
-      stack = message
+      name = failureName
+      message = toStringUnknown(originalError, 0)
+      stack = `${name}: ${message}`
     }
     if (traces.length > 0) {
       stack += `\n    ${traces.join("\n    ")}`
     }
     super(message)
+    this.name = name
     this[FailureTypeId] = failureVariance
     this.stack = stack
   }
@@ -285,7 +292,7 @@ export const ResultAborted: Result<never> = Either.left(FailureAborted())
  * @since 3.3.0
  * @category result
  */
-export const ResultSucceed = <A>(a: A): Result<A> => Either.right(a)
+export const ResultSucceed: <A>(a: A) => Result<A, never> = Either.right
 
 /**
  * @since 3.3.0
@@ -303,7 +310,7 @@ export const ResultFailUnexpected = (defect: unknown): Result<never> => Either.l
  * @since 3.3.0
  * @category result
  */
-export const ResultFailWith = <E>(failure: Failure<E>): Result<never, E> => Either.left(failure)
+export const ResultFailWith: <E>(failure: Failure<E>) => Result<never, E> = Either.left
 
 // ----------------------------------------------------------------------------
 // env
@@ -1609,7 +1616,7 @@ export const delayWithRecurs: {
 
 /**
  * Catch the full `Failure` object of the given `Micro` effect, allowing you to
- * recover from any error.
+ * recover from any kind of failure.
  *
  * @since 3.3.0
  * @category error handling
