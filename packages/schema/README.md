@@ -6867,9 +6867,139 @@ console.log(decode(Duration.decode("6 seconds"))) // { _id: 'Duration', _tag: 'M
 console.log(decode(Duration.decode("11 seconds"))) // { _id: 'Duration', _tag: 'Millis', millis: 10000 }
 ```
 
+## Redacted
+
+### Redacted
+
+The `Redacted` schema in `@effect/schema` is specifically designed to handle sensitive information by converting a `string` into a `Redacted` object. This transformation ensures that the sensitive data is not exposed in the application's output.
+
+```ts
+import { Schema } from "@effect/schema"
+
+// Schema.Redacted<typeof Schema.String>
+const schema = Schema.Redacted(Schema.String)
+const decode = Schema.decodeUnknownSync(schema)
+
+console.log(decode("keep it secret, keep it safe")) // {}
+```
+
+**Note on Logging**
+
+It's important to note that when successfully decoding a `Redacted`, the output is intentionally obscured (`{}`) to prevent the actual secret from being revealed in logs or console outputs.
+
+#### Warning on Schema Composition
+
+When composing the `Redacted` schema with other schemas, care must be taken as decoding or encoding errors could potentially expose sensitive information.
+
+**Practical Example Showing Potential Data Exposure**
+
+```ts
+import { Schema } from "@effect/schema"
+import { Redacted } from "effect"
+
+const schema = Schema.Trimmed.pipe(
+  Schema.compose(Schema.Redacted(Schema.String))
+)
+
+console.log(Schema.decodeUnknownEither(schema)(" 123"))
+/*
+{
+  _id: 'Either',
+  _tag: 'Left',
+  left: {
+    _id: 'ParseError',
+    message: '(Trimmed <-> (string <-> Redacted(<redacted>)))\n' +
+      '└─ Encoded side transformation failure\n' +
+      '   └─ Trimmed\n' +
+      '      └─ Predicate refinement failure\n' +
+      '         └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " 123"'
+  }
+}
+*/
+console.log(Schema.encodeEither(schema)(Redacted.make(" 123")))
+/*
+{
+  _id: 'Either',
+  _tag: 'Left',
+  left: {
+    _id: 'ParseError',
+    message: '(Trimmed <-> (string <-> Redacted(<redacted>)))\n' +
+      '└─ Encoded side transformation failure\n' +
+      '   └─ Trimmed\n' +
+      '      └─ Predicate refinement failure\n' +
+      '         └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " 123"'
+  }
+}
+*/
+```
+
+In the example above, if the input string does not meet the criteria (e.g., contains spaces), the error message generated might inadvertently expose sensitive information included in the input.
+
+#### Mitigating Exposure Risks
+
+To reduce the risk of sensitive information leakage in error messages, you can customize the error messages to obscure sensitive details:
+
+```ts
+import { Schema } from "@effect/schema"
+import { Redacted } from "effect"
+
+const schema = Schema.Trimmed.annotations({
+  message: () => "Expected Trimmed, actual <redacted>"
+}).pipe(Schema.compose(Schema.Redacted(Schema.String)))
+
+console.log(Schema.decodeUnknownEither(schema)(" 123"))
+/*
+{
+  _id: 'Either',
+  _tag: 'Left',
+  left: {
+    _id: 'ParseError',
+    message: '(Trimmed <-> (string <-> Redacted(<redacted>)))\n' +
+      '└─ Encoded side transformation failure\n' +
+      '   └─ Expected Trimmed, actual <redacted>'
+  }
+}
+*/
+console.log(Schema.encodeEither(schema)(Redacted.make(" 123")))
+/*
+{
+  _id: 'Either',
+  _tag: 'Left',
+  left: {
+    _id: 'ParseError',
+    message: '(Trimmed <-> (string <-> Redacted(<redacted>)))\n' +
+      '└─ Encoded side transformation failure\n' +
+      '   └─ Expected Trimmed, actual <redacted>'
+  }
+}
+*/
+```
+
+### RedactedFromSelf
+
+The `RedactedFromSelf` schema is designed to validate that a given value conforms to the `Redacted` type from the `effect` library.
+
+```ts
+import { Schema } from "@effect/schema"
+import { Redacted } from "effect"
+
+const schema = Schema.RedactedFromSelf(Schema.String)
+const decode = Schema.decodeUnknownSync(schema)
+
+console.log(decode(Redacted.make("mysecret"))) // {}
+console.log(decode(null)) // throws Error: Expected Redacted(<redacted>), actual <redacted>
+```
+
+**Note on Logging**
+
+It's important to note that when successfully decoding a `Redacted`, the output is intentionally obscured (`{}`) to prevent the actual secret from being revealed in logs or console outputs.
+
 ## Secret
 
 ### Secret
+
+> [!WARNING]
+> Deprecated: use `Redacted` instead.
 
 The `Secret` schema in `@effect/schema` is specifically designed to handle sensitive information by converting a `string` into a `Secret` object. This transformation ensures that the sensitive data is not exposed in the application's output.
 
@@ -6974,6 +7104,9 @@ console.log(Schema.encodeEither(schema)(Secret.fromString(" 123")))
 
 ### SecretFromSelf
 
+> [!WARNING]
+> Deprecated: use `RedactedFromSelf` instead.
+
 The `SecretFromSelf` schema is designed to validate that a given value conforms to the `Secret` type from the `effect` library.
 
 ```ts
@@ -6989,7 +7122,7 @@ console.log(decode(null)) // throws Error: Expected SecretFromSelf, actual null
 
 **Note on Logging**
 
-It's important to note that when successfully decoding a `Secret`, the output is intentionally obscured (`{}`) to prevent the actual secret from being revealed in logs or console outputs.
+It's important to note that when successfully decoding a `SecretFromSelf`, the output is intentionally obscured (`{}`) to prevent the actual secret from being revealed in logs or console outputs.
 
 # Useful Examples
 
