@@ -1,5 +1,17 @@
 # @effect/sql-mysql2
 
+## 0.3.9
+
+### Patch Changes
+
+- [#2860](https://github.com/Effect-TS/effect/pull/2860) [`e50e01d`](https://github.com/Effect-TS/effect/commit/e50e01db54958c74946ac0e7dbba8c461671ccae) Thanks @tim-smart! - ensure mysql client returns array when using .values
+
+- [#2932](https://github.com/Effect-TS/effect/pull/2932) [`fd8d860`](https://github.com/Effect-TS/effect/commit/fd8d8604320e69405226e47b62fc7d7656bd643a) Thanks @tim-smart! - update @effect/sql dependencies
+
+- Updated dependencies [[`a67d602`](https://github.com/Effect-TS/effect/commit/a67d60276f96cd20b76145b4cee13efca6c6158a)]:
+  - @effect/platform@0.55.7
+  - @effect/sql@0.3.8
+
 ## 0.3.8
 
 ### Patch Changes

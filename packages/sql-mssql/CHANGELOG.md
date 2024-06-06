@@ -1,5 +1,13 @@
 # @effect/sql-mssql
 
+## 0.3.9
+
+### Patch Changes
+
+- Updated dependencies [[`a67d602`](https://github.com/Effect-TS/effect/commit/a67d60276f96cd20b76145b4cee13efca6c6158a)]:
+  - @effect/platform@0.55.7
+  - @effect/sql@0.3.8
+
 ## 0.3.8
 
 ### Patch Changes

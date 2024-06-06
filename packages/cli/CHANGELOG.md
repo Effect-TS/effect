@@ -1,5 +1,15 @@
 # @effect/cli
 
+## 0.36.42
+
+### Patch Changes
+
+- [#2920](https://github.com/Effect-TS/effect/pull/2920) [`61e8edb`](https://github.com/Effect-TS/effect/commit/61e8edbf95ac9f1b2b0e9f4c2532bac42ac1f10b) Thanks @Iri-Hor! - in case of error let cli print to stderr instead of stdout (#1812)
+
+- Updated dependencies [[`4c6bc7f`](https://github.com/Effect-TS/effect/commit/4c6bc7f190c142dc9db70b365a2bf30715a98e62), [`a67d602`](https://github.com/Effect-TS/effect/commit/a67d60276f96cd20b76145b4cee13efca6c6158a)]:
+  - @effect/schema@0.67.20
+  - @effect/platform@0.55.7
+
 ## 0.36.41
 
 ### Patch Changes
