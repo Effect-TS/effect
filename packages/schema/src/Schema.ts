@@ -31,6 +31,7 @@ import type * as Order from "effect/Order"
 import type { Pipeable } from "effect/Pipeable"
 import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import * as redacted_ from "effect/Redacted"
 import * as Request from "effect/Request"
 import * as secret_ from "effect/Secret"
 import * as sortedSet_ from "effect/SortedSet"
@@ -4921,9 +4922,93 @@ export class BigIntFromNumber extends transformOrFail(
   static override annotations: (annotations: Annotations.Schema<bigint>) => typeof BigIntFromNumber = super.annotations
 }
 
+const redactedArbitrary = <A>(value: LazyArbitrary<A>): LazyArbitrary<redacted_.Redacted<A>> => (fc) =>
+  value(fc).map((x) => redacted_.make(x))
+
+const redactedParse = <R, A>(
+  decodeUnknown: ParseResult.DecodeUnknown<A, R>
+): ParseResult.DeclarationDecodeUnknown<redacted_.Redacted<A>, R> =>
+(u, options, ast) => {
+  if (redacted_.isRedacted(u)) {
+    return ParseResult.map(
+      decodeUnknown(redacted_.value(u), options),
+      (_) => redacted_.make(_)
+    )
+  } else {
+    return ParseResult.fail(new ParseResult.Type(ast, redacted_.make(u)))
+  }
+}
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface RedactedFromSelf<Value extends Schema.Any> extends
+  AnnotableClass<
+    RedactedFromSelf<Value>,
+    redacted_.Redacted<Schema.Type<Value>>,
+    redacted_.Redacted<Schema.Encoded<Value>>,
+    Schema.Context<Value>
+  >
+{}
+
+/**
+ * @category Redacted constructors
+ * @since 1.0.0
+ */
+export const RedactedFromSelf = <Value extends Schema.Any>(
+  value: Value
+): RedactedFromSelf<Value> =>
+  declare(
+    [value],
+    {
+      decode: (value) => redactedParse(ParseResult.decodeUnknown(value)),
+      encode: (value) => redactedParse(ParseResult.encodeUnknown(value))
+    },
+    {
+      description: "Redacted(<redacted>)",
+      pretty: () => () => "Redacted(<redacted>)",
+      arbitrary: redactedArbitrary,
+      equivalence: redacted_.getEquivalence
+    }
+  )
+
+/**
+ * @category api interface
+ * @since 1.0.0
+ */
+export interface Redacted<Value extends Schema.Any> extends
+  AnnotableClass<
+    Redacted<Value>,
+    redacted_.Redacted<Schema.Type<Value>>,
+    Schema.Encoded<Value>,
+    Schema.Context<Value>
+  >
+{}
+
+/**
+ * A schema that transforms any type `T` into a `Redacted<T>`.
+ *
+ * @category Redacted transformations
+ * @since 1.0.0
+ */
+export const Redacted = <Value extends Schema.Any>(
+  value: Value
+): Redacted<Value> => {
+  return transform(
+    value,
+    RedactedFromSelf(typeSchema(value)),
+    {
+      decode: (value) => redacted_.make(value),
+      encode: (value) => redacted_.value(value)
+    }
+  )
+}
+
 /**
  * @category Secret constructors
  * @since 0.67.0
+ * @deprecated
  */
 export class SecretFromSelf extends declare(
   secret_.isSecret,
@@ -4942,6 +5027,7 @@ export class SecretFromSelf extends declare(
  *
  * @category Secret transformations
  * @since 0.67.0
+ * @deprecated
  */
 export class Secret extends transform(
   String$,

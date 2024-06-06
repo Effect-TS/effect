@@ -2,11 +2,11 @@ import { pipe } from "effect/Function"
 import * as Predicate from "effect/Predicate"
 
 declare const u: unknown
-declare const anys: Array<any>
-declare const unknowns: Array<unknown>
-declare const numberOrNull: Array<number | null>
-declare const numberOrUndefined: Array<number | undefined>
-declare const numberOrNullOrUndefined: Array<number | null | undefined>
+declare const anys: ReadonlyArray<any>
+declare const unknowns: ReadonlyArray<unknown>
+declare const numberOrNull: ReadonlyArray<number | null>
+declare const numberOrUndefined: ReadonlyArray<number | undefined>
+declare const numberOrNullOrUndefined: ReadonlyArray<number | null | undefined>
 
 // -------------------------------------------------------------------------------------
 // isString
@@ -175,6 +175,24 @@ unknowns.filter(Predicate.isRecord)
 
 // $ExpectType { readonly [x: string]: unknown; readonly [x: symbol]: unknown; }[]
 unknowns.filter(Predicate.isReadonlyRecord)
+
+// -------------------------------------------------------------------------------------
+// isTupleOf
+// -------------------------------------------------------------------------------------
+
+if (Predicate.isTupleOf(unknowns, 3)) {
+  // $ExpectType [unknown, unknown, unknown]
+  unknowns
+}
+
+// -------------------------------------------------------------------------------------
+// isTupleOfAtLeast
+// -------------------------------------------------------------------------------------
+
+if (Predicate.isTupleOfAtLeast(unknowns, 3)) {
+  // $ExpectType [unknown, unknown, unknown, ...unknown[]]
+  unknowns
+}
 
 // -------------------------------------------------------------------------------------
 // compose

@@ -3860,7 +3860,17 @@ export const toQueueOfElements: {
  * @since 2.0.0
  * @category destructors
  */
-export const toReadableStream: <A, E>(self: Stream<A, E>) => ReadableStream<A> = internal.toReadableStream
+export const toReadableStream: {
+  <A>(
+    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
+  ): <E>(
+    self: Stream<A, E>
+  ) => ReadableStream<A>
+  <A, E>(
+    self: Stream<A, E>,
+    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
+  ): ReadableStream<A>
+} = internal.toReadableStream
 
 /**
  * Converts the stream to a `Effect<ReadableStream>`.
@@ -3870,8 +3880,17 @@ export const toReadableStream: <A, E>(self: Stream<A, E>) => ReadableStream<A> =
  * @since 2.0.0
  * @category destructors
  */
-export const toReadableStreamEffect: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<ReadableStream<A>, never, R> =
-  internal.toReadableStreamEffect
+export const toReadableStreamEffect: {
+  <A>(
+    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
+  ): <E, R>(
+    self: Stream<A, E, R>
+  ) => Effect.Effect<ReadableStream<A>, never, R>
+  <A, E, R>(
+    self: Stream<A, E, R>,
+    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
+  ): Effect.Effect<ReadableStream<A>, never, R>
+} = internal.toReadableStreamEffect
 
 /**
  * Converts the stream to a `ReadableStream` using the provided runtime.
@@ -3882,12 +3901,14 @@ export const toReadableStreamEffect: <A, E, R>(self: Stream<A, E, R>) => Effect.
  * @category destructors
  */
 export const toReadableStreamRuntime: {
-  <XR>(
-    runtime: Runtime<XR>
-  ): <A, E, R extends XR>(self: Stream<A, E, R>) => ReadableStream<A>
+  <A, XR>(
+    runtime: Runtime<XR>,
+    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
+  ): <E, R extends XR>(self: Stream<A, E, R>) => ReadableStream<A>
   <A, E, XR, R extends XR>(
     self: Stream<A, E, R>,
-    runtime: Runtime<XR>
+    runtime: Runtime<XR>,
+    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
   ): ReadableStream<A>
 } = internal.toReadableStreamRuntime
 
@@ -4328,6 +4349,45 @@ export const zipLatest: {
   <A2, E2, R2>(that: Stream<A2, E2, R2>): <A, E, R>(self: Stream<A, E, R>) => Stream<[A, A2], E2 | E, R2 | R>
   <A, E, R, A2, E2, R2>(self: Stream<A, E, R>, that: Stream<A2, E2, R2>): Stream<[A, A2], E | E2, R | R2>
 } = internal.zipLatest
+
+/**
+ * Zips multiple streams so that when a value is emitted by any of the streams,
+ * it is combined with the latest values from the other streams to produce a result.
+ *
+ * Note: tracking the latest value is done on a per-chunk basis. That means
+ * that emitted elements that are not the last value in chunks will never be
+ * used for zipping.
+ *
+ * @example
+ * import { Stream, Schedule, Console, Effect } from "effect"
+ *
+ * const stream = Stream.zipLatestAll(
+ *     Stream.fromSchedule(Schedule.spaced('1 millis')),
+ *     Stream.fromSchedule(Schedule.spaced('2 millis')),
+ *     Stream.fromSchedule(Schedule.spaced('4 millis')),
+ * ).pipe(Stream.take(6), Stream.tap(Console.log))
+ *
+ * Effect.runPromise(Stream.runDrain(stream))
+ * // Output:
+ * // [ 0, 0, 0 ]
+ * // [ 1, 0, 0 ]
+ * // [ 1, 1, 0 ]
+ * // [ 2, 1, 0 ]
+ * // [ 3, 1, 0 ]
+ * // [ 3, 1, 1 ]
+ * // .....
+ *
+ * @since 3.3.0
+ * @category zipping
+ */
+export const zipLatestAll: <T extends ReadonlyArray<Stream<any, any, any>>>(
+  ...streams: T
+) => Stream<
+  [T[number]] extends [never] ? never
+    : { [K in keyof T]: T[K] extends Stream<infer A, infer _E, infer _R> ? A : never },
+  [T[number]] extends [never] ? never : T[number] extends Stream<infer _A, infer _E, infer _R> ? _E : never,
+  [T[number]] extends [never] ? never : T[number] extends Stream<infer _A, infer _E, infer _R> ? _R : never
+> = internal.zipLatestAll
 
 /**
  * Zips the two streams so that when a value is emitted by either of the two

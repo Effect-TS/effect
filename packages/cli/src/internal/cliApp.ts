@@ -129,7 +129,7 @@ const splitExecutable = <A>(self: CliApp.CliApp<A>, args: ReadonlyArray<string>)
   return [`${runtime} ${script}`, optionsAndArgs]
 }
 
-const printDocs = (error: HelpDoc.HelpDoc): Effect.Effect<void> => Console.log(InternalHelpDoc.toAnsiText(error))
+const printDocs = (error: HelpDoc.HelpDoc): Effect.Effect<void> => Console.error(InternalHelpDoc.toAnsiText(error))
 
 // TODO: move to `/platform`
 const isQuitException = (u: unknown): u is Terminal.QuitException =>

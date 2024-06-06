@@ -150,11 +150,12 @@ export const make = (
         params: ReadonlyArray<Statement.Primitive>
       ) =>
         Effect.acquireUseRelease(
-          prepareCache.get(sql).pipe(Effect.map((_) => _.raw(true))),
+          prepareCache.get(sql),
           (statement) =>
             Effect.try({
               try: () => {
                 if (statement.reader) {
+                  statement.raw(true)
                   return statement.all(...params) as ReadonlyArray<
                     ReadonlyArray<Statement.Primitive>
                   >
@@ -164,7 +165,7 @@ export const make = (
               },
               catch: (error) => new SqlError({ error })
             }),
-          (statement) => Effect.sync(() => statement.raw(false))
+          (statement) => Effect.sync(() => statement.reader && statement.raw(false))
         )
 
       return identity<SqliteConnection>({

@@ -6542,63 +6542,103 @@ export const toQueueOfElements = dual<
   ))
 
 /** @internal */
-export const toReadableStream = <A, E>(self: Stream.Stream<A, E>) =>
-  toReadableStreamRuntime(self, Runtime.defaultRuntime)
+export const toReadableStream = dual<
+  <A>(
+    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
+  ) => <E>(self: Stream.Stream<A, E>) => ReadableStream<A>,
+  <A, E>(
+    self: Stream.Stream<A, E>,
+    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
+  ) => ReadableStream<A>
+>(
+  (args) => isStream(args[0]),
+  <A, E>(
+    self: Stream.Stream<A, E>,
+    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
+  ) => toReadableStreamRuntime(self, Runtime.defaultRuntime, options)
+)
 
 /** @internal */
-export const toReadableStreamEffect = <A, E, R>(self: Stream.Stream<A, E, R>) =>
-  Effect.map(Effect.runtime<R>(), (runtime) => toReadableStreamRuntime(self, runtime))
+export const toReadableStreamEffect = dual<
+  <A>(
+    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<ReadableStream<A>, never, R>,
+  <A, E, R>(
+    self: Stream.Stream<A, E, R>,
+    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
+  ) => Effect.Effect<ReadableStream<A>, never, R>
+>(
+  (args) => isStream(args[0]),
+  <A, E, R>(
+    self: Stream.Stream<A, E, R>,
+    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
+  ) => Effect.map(Effect.runtime<R>(), (runtime) => toReadableStreamRuntime(self, runtime, options))
+)
 
 /** @internal */
 export const toReadableStreamRuntime = dual<
-  <XR>(runtime: Runtime.Runtime<XR>) => <A, E, R extends XR>(self: Stream.Stream<A, E, R>) => ReadableStream<A>,
-  <A, E, XR, R extends XR>(self: Stream.Stream<A, E, R>, runtime: Runtime.Runtime<XR>) => ReadableStream<A>
->(2, <A, E, XR, R extends XR>(self: Stream.Stream<A, E, R>, runtime: Runtime.Runtime<XR>): ReadableStream<A> => {
-  const runSync = Runtime.runSync(runtime)
-  const runFork = Runtime.runFork(runtime)
+  <A, XR>(
+    runtime: Runtime.Runtime<XR>,
+    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
+  ) => <E, R extends XR>(self: Stream.Stream<A, E, R>) => ReadableStream<A>,
+  <A, E, XR, R extends XR>(
+    self: Stream.Stream<A, E, R>,
+    runtime: Runtime.Runtime<XR>,
+    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
+  ) => ReadableStream<A>
+>(
+  (args) => isStream(args[0]),
+  <A, E, XR, R extends XR>(
+    self: Stream.Stream<A, E, R>,
+    runtime: Runtime.Runtime<XR>,
+    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
+  ): ReadableStream<A> => {
+    const runSync = Runtime.runSync(runtime)
+    const runFork = Runtime.runFork(runtime)
 
-  let pull: Effect.Effect<void, never, R>
-  let scope: Scope.CloseableScope
-  return new ReadableStream<A>({
-    start(controller) {
-      scope = runSync(Scope.make())
-      pull = pipe(
-        toPull(self),
-        Scope.extend(scope),
-        runSync,
-        Effect.tap((chunk) =>
-          Effect.sync(() => {
-            Chunk.map(chunk, (a) => {
-              controller.enqueue(a)
-            })
-          })
-        ),
-        Effect.tapErrorCause(() => Scope.close(scope, Exit.void)),
-        Effect.catchTags({
-          "None": () =>
+    let pull: Effect.Effect<void, never, R>
+    let scope: Scope.CloseableScope
+    return new ReadableStream<A>({
+      start(controller) {
+        scope = runSync(Scope.make())
+        pull = pipe(
+          toPull(self),
+          Scope.extend(scope),
+          runSync,
+          Effect.tap((chunk) =>
             Effect.sync(() => {
-              controller.close()
-            }),
-          "Some": (error) =>
-            Effect.sync(() => {
-              controller.error(error.value)
+              Chunk.map(chunk, (a) => {
+                controller.enqueue(a)
+              })
             })
-        }),
-        Effect.asVoid
-      )
-    },
-    pull() {
-      return new Promise<void>((resolve) => {
-        runFork(pull, { scope }).addObserver((_) => resolve())
-      })
-    },
-    cancel() {
-      return new Promise<void>((resolve) => {
-        runFork(Scope.close(scope, Exit.void)).addObserver((_) => resolve())
-      })
-    }
-  })
-})
+          ),
+          Effect.tapErrorCause(() => Scope.close(scope, Exit.void)),
+          Effect.catchTags({
+            "None": () =>
+              Effect.sync(() => {
+                controller.close()
+              }),
+            "Some": (error) =>
+              Effect.sync(() => {
+                controller.error(error.value)
+              })
+          }),
+          Effect.asVoid
+        )
+      },
+      pull() {
+        return new Promise<void>((resolve) => {
+          runFork(pull, { scope }).addObserver((_) => resolve())
+        })
+      },
+      cancel() {
+        return new Promise<void>((resolve) => {
+          runFork(Scope.close(scope, Exit.void)).addObserver((_) => resolve())
+        })
+      }
+    }, options?.strategy)
+  }
+)
 
 /** @internal */
 export const transduce = dual<
@@ -7568,6 +7608,27 @@ export const zipLatest = dual<
     that: Stream.Stream<A2, E2, R2>
   ): Stream.Stream<[A, A2], E2 | E, R2 | R> => pipe(self, zipLatestWith(that, (a, a2) => [a, a2]))
 )
+
+export const zipLatestAll = <T extends ReadonlyArray<Stream.Stream<any, any, any>>>(
+  ...streams: T
+): Stream.Stream<
+  [T[number]] extends [never] ? never
+    : { [K in keyof T]: T[K] extends Stream.Stream<infer A, infer _E, infer _R> ? A : never },
+  [T[number]] extends [never] ? never : T[number] extends Stream.Stream<infer _A, infer _E, infer _R> ? _E : never,
+  [T[number]] extends [never] ? never : T[number] extends Stream.Stream<infer _A, infer _E, infer _R> ? _R : never
+> => {
+  if (streams.length === 0) {
+    return empty
+  } else if (streams.length === 1) {
+    return map(streams[0]!, (x) => [x]) as any
+  }
+  const [head, ...tail] = streams
+  return zipLatestWith(
+    head,
+    zipLatestAll(...tail),
+    (first, second) => [first, ...second]
+  ) as any
+}
 
 /** @internal */
 export const zipLatestWith = dual<

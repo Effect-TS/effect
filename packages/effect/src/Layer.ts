@@ -140,6 +140,28 @@ export const isLayer: (u: unknown) => u is Layer<unknown, unknown, unknown> = in
 export const isFresh: <RIn, E, ROut>(self: Layer<ROut, E, RIn>) => boolean = internal.isFresh
 
 /**
+ * @since 3.3.0
+ * @category tracing
+ */
+export const annotateLogs: {
+  (key: string, value: unknown): <A, E, R>(self: Layer<A, E, R>) => Layer<A, E, R>
+  (values: Record<string, unknown>): <A, E, R>(self: Layer<A, E, R>) => Layer<A, E, R>
+  <A, E, R>(self: Layer<A, E, R>, key: string, value: unknown): Layer<A, E, R>
+  <A, E, R>(self: Layer<A, E, R>, values: Record<string, unknown>): Layer<A, E, R>
+} = internal.annotateLogs
+
+/**
+ * @since 3.3.0
+ * @category tracing
+ */
+export const annotateSpans: {
+  (key: string, value: unknown): <A, E, R>(self: Layer<A, E, R>) => Layer<A, E, R>
+  (values: Record<string, unknown>): <A, E, R>(self: Layer<A, E, R>) => Layer<A, E, R>
+  <A, E, R>(self: Layer<A, E, R>, key: string, value: unknown): Layer<A, E, R>
+  <A, E, R>(self: Layer<A, E, R>, values: Record<string, unknown>): Layer<A, E, R>
+} = internal.annotateSpans
+
+/**
  * Builds a layer into a scoped value.
  *
  * @since 2.0.0

@@ -43,6 +43,7 @@ const config: UserConfig = {
       ...alias("rpc-http"),
       ...alias("schema"),
       ...alias("sql"),
+      ...alias("sql-drizzle"),
       ...alias("sql-mssql"),
       ...alias("sql-mysql2"),
       ...alias("sql-pg"),
