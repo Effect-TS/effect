@@ -432,8 +432,8 @@ export const liftPredicate: {
   ): Either<B, E>
   <A, E>(
     self: A,
-    predicate: Predicate<A>,
-    orLeftWith: (a: A) => E
+    predicate: Predicate<NoInfer<A>>,
+    orLeftWith: (a: NoInfer<A>) => E
   ): Either<A, E>
 } = dual(
   3,
