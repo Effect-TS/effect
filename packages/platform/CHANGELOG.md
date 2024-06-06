@@ -1,5 +1,14 @@
 # @effect/platform
 
+## 0.55.7
+
+### Patch Changes
+
+- [#2931](https://github.com/Effect-TS/effect/pull/2931) [`a67d602`](https://github.com/Effect-TS/effect/commit/a67d60276f96cd20b76145b4cee13efca6c6158a) Thanks @tim-smart! - ensure pre-response handler is checked after running the user-provided http app
+
+- Updated dependencies [[`4c6bc7f`](https://github.com/Effect-TS/effect/commit/4c6bc7f190c142dc9db70b365a2bf30715a98e62)]:
+  - @effect/schema@0.67.20
+
 ## 0.55.6
 
 ### Patch Changes
