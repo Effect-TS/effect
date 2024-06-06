@@ -108,18 +108,18 @@ export declare namespace Rpc {
    * @since 1.0.0
    * @category models
    */
-  export type Result<A extends Schema.TaggedRequest.Any, R = never> = EffectRequest.Request.Success<A> extends
-    Stream.Stream<infer A, infer E, infer _R> ? Stream.Stream<A, E, R>
-    : Effect.Effect<EffectRequest.Request.Success<A>, EffectRequest.Request.Error<A>, R>
+  export type Result<A extends Schema.TaggedRequest.Any, R = never> = StreamRequestTypeId extends keyof A ?
+    EffectRequest.Request.Success<A> :
+    Effect.Effect<EffectRequest.Request.Success<A>, EffectRequest.Request.Error<A>, R>
 
   /**
    * @since 1.0.0
    * @category models
    */
   export type ResultUndecoded<A extends Schema.TaggedRequest.Any, R = never> = A extends
-    Serializable.WithResult<infer _A, infer I, infer _E, infer _EI, infer _R>
-    ? EffectRequest.Request.Success<A> extends Stream.Stream<infer _A, infer E, infer _R> ? Stream.Stream<I, E, R>
-    : Effect.Effect<I, EffectRequest.Request.Error<A>, R>
+    Serializable.WithResult<infer _A, infer I, infer E, infer _EI, infer _R>
+    ? StreamRequestTypeId extends keyof A ? Stream.Stream<I, E, R>
+    : Effect.Effect<I, E, R>
     : never
 }
 
@@ -142,6 +142,18 @@ export const effect = <Req extends Schema.TaggedRequest.Any, R>(
 
 /**
  * @since 1.0.0
+ * @category type ids
+ */
+export const StreamRequestTypeId: unique symbol = Internal.StreamRequestTypeId
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export type StreamRequestTypeId = typeof StreamRequestTypeId
+
+/**
+ * @since 1.0.0
  * @category schemas
  */
 export interface StreamRequest<Tag extends string, SR, SI, S, RR, EI, E, AI, A>
@@ -149,6 +161,7 @@ export interface StreamRequest<Tag extends string, SR, SI, S, RR, EI, E, AI, A>
     EffectRequest.Request<Stream.Stream<A, E, never>>,
     Serializable.SerializableWithResult<S, SI, SR, A, AI, E, EI, RR>
 {
+  readonly [StreamRequestTypeId]: StreamRequestTypeId
   readonly _tag: Tag
 }
 

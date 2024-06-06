@@ -412,6 +412,6 @@ export const toHandlerUndecoded = <R extends Router<any, any>>(router: R) => {
       return Effect.flatMap(result, encode) as any
     }
     const encode = getEncodeChunk(request)
-    return Stream.mapChunksEffect(result, encode) as any
+    return Stream.mapChunksEffect(result as any, encode) as any
   }
 }
