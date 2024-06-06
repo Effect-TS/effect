@@ -26,7 +26,9 @@ export const withRequestTag = <A>(
 }
 
 /** @internal */
-export const StreamRequestTypeId = Symbol.for("@effect/rpc/Rpc/StreamRequest")
+export const StreamRequestTypeId: Rpc.StreamRequestTypeId = Symbol.for(
+  "@effect/rpc/Rpc/StreamRequest"
+) as Rpc.StreamRequestTypeId
 
 /** @internal */
 export const makeRequest = <A extends Schema.TaggedRequest.Any>(
