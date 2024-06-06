@@ -1,5 +1,57 @@
 # effect
 
+## 3.3.0
+
+### Minor Changes
+
+- [#2837](https://github.com/Effect-TS/effect/pull/2837) [`1f4ac00`](https://github.com/Effect-TS/effect/commit/1f4ac00a91c336c9c9c9b8c3ed9ceb9920ebc9bd) Thanks @dilame! - add `Stream.zipLatestAll` api
+
+- [#2837](https://github.com/Effect-TS/effect/pull/2837) [`9305b76`](https://github.com/Effect-TS/effect/commit/9305b764cceeae4f16564435ae7172f79c2bf822) Thanks @mattrossman! - Add queuing strategy option for Stream.toReadableStream
+
+- [#2837](https://github.com/Effect-TS/effect/pull/2837) [`0f40d98`](https://github.com/Effect-TS/effect/commit/0f40d989da10f68df3ecd72b36849401ad679bfb) Thanks @tim-smart! - add `timeToLiveStrategy` to `Pool` options
+
+  The `timeToLiveStrategy` determines how items are invalidated. If set to
+  "creation", then items are invalidated based on their creation time. If set
+  to "usage", then items are invalidated based on pool usage.
+
+  By default, the `timeToLiveStrategy` is set to "usage".
+
+- [#2837](https://github.com/Effect-TS/effect/pull/2837) [`b761ef0`](https://github.com/Effect-TS/effect/commit/b761ef00eaf6c67b7ffe34798b98aae5347ab376) Thanks @tim-smart! - add Layer.annotateLogs & Layer.annotateSpans
+
+  This allows you to add log & span annotation to a Layer.
+
+  ```ts
+  import { Effect, Layer } from "effect";
+
+  Layer.effectDiscard(Effect.log("hello")).pipe(
+    Layer.annotateLogs({
+      service: "my-service",
+    }),
+  );
+  ```
+
+- [#2837](https://github.com/Effect-TS/effect/pull/2837) [`b53f69b`](https://github.com/Effect-TS/effect/commit/b53f69bff1452a487b21198cd83961f844e02d36) Thanks @dilame! - Types: implement `TupleOf` and `TupleOfAtLeast` types
+
+  Predicate: implement `isTupleOf` and `isTupleOfAtLeast` type guards
+
+- [#2837](https://github.com/Effect-TS/effect/pull/2837) [`0f40d98`](https://github.com/Effect-TS/effect/commit/0f40d989da10f68df3ecd72b36849401ad679bfb) Thanks @tim-smart! - add `concurrency` & `targetUtilization` option to `Pool.make` & `Pool.makeWithTTL`
+
+  This option allows you to specify the level of concurrent access per pool item.
+  I.e. setting `concurrency: 2` will allow each pool item to be in use by 2 concurrent tasks.
+
+  `targetUtilization` determines when to create new pool items. It is a value
+  between 0 and 1, where 1 means only create new pool items when all the existing
+  items are fully utilized.
+
+  A `targetUtilization` of 0.5 will create new pool items when the existing items are
+  50% utilized.
+
+- [#2837](https://github.com/Effect-TS/effect/pull/2837) [`5bd549e`](https://github.com/Effect-TS/effect/commit/5bd549e4bd7144727db438ecca6b8dc9b3ef7e22) Thanks @KhraksMamtsov! - Support `this` argument for `{STM, Either, Option}.gen`
+
+- [#2837](https://github.com/Effect-TS/effect/pull/2837) [`67f160a`](https://github.com/Effect-TS/effect/commit/67f160a213de0219a565d4bf653b3cbf24f58e8f) Thanks @KhraksMamtsov! - Introduced `Redacted<out T = string>` module - `Secret` generalization
+  `Secret extends Redacted`
+  The use of the `Redacted` has been replaced by the use of the `Redacted` in packages with version `0.*.*`
+
 ## 3.2.9
 
 ### Patch Changes
