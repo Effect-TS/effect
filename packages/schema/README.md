@@ -3137,7 +3137,11 @@ console.log(encode({ name: "John" })) // { name: 'John' }
 console.log(encode({})) // Output: { name: '' }
 ```
 
-### Renaming Properties
+### Renaming a Property During Definition
+
+To rename a property directly during schema creation, you can utilize the `Schema.fromKey` function. This function is particularly useful when you want to map properties from the input object to different names in the resulting schema object.
+
+**Example: Renaming a Required Property**
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -3151,24 +3155,72 @@ console.log(Schema.decodeUnknownSync(schema)({ c: "c", b: 1 }))
 // Output: { a: "c", b: 1 }
 ```
 
-### Renaming Properties Of An Existing Schema
+**Example: Renaming an Optional Property**
 
-To rename one or more properties, you can utilize the `rename` API:
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  a: Schema.optional(Schema.String).pipe(Schema.fromKey("c")),
+  b: Schema.Number
+})
+
+console.log(Schema.decodeUnknownSync(schema)({ c: "c", b: 1 }))
+// Output: { b: 1, a: "c" }
+
+console.log(Schema.decodeUnknownSync(schema)({ b: 1 }))
+// Output: { b: 1 }
+```
+
+Note that `Schema.optional` returns a `PropertySignature`, which simplifies the process by eliminating the need for explicit `Schema.propertySignature` usage as required in previous versions.
+
+### Renaming Properties of an Existing Schema
+
+For existing schemas, the `rename` API offers a way to systematically change property names across a schema, even within complex structures like unions.
+
+**Example: Renaming Properties in a Struct Schema**
 
 ```ts
 import { Schema } from "@effect/schema"
 
 // Original Schema
-const originalSchema = Schema.Struct({ c: Schema.String, b: Schema.Number })
+const originalSchema = Schema.Struct({
+  c: Schema.String,
+  b: Schema.Number
+})
 
-// Renaming the "a" property to "c"
+// Renaming the "c" property to "a"
 const renamedSchema = Schema.rename(originalSchema, { c: "a" })
 
 console.log(Schema.decodeUnknownSync(renamedSchema)({ c: "c", b: 1 }))
 // Output: { a: "c", b: 1 }
 ```
 
-In the example above, we have an original schema with properties "a" and "b." Using the `rename` API, we create a new schema where we rename the "a" property to "c." The resulting schema, when used with `S.decodeUnknownSync`, transforms the input object by renaming the specified property.
+**Example: Renaming Properties in Union Schemas**
+
+```ts
+import { Schema } from "@effect/schema"
+
+const originalSchema = Schema.Union(
+  Schema.Struct({
+    c: Schema.String,
+    b: Schema.Number
+  }),
+  Schema.Struct({
+    c: Schema.String,
+    d: Schema.Boolean
+  })
+)
+
+// Renaming the "c" property to "a" for all members
+const renamedSchema = Schema.rename(originalSchema, { c: "a" })
+
+console.log(Schema.decodeUnknownSync(renamedSchema)({ c: "c", b: 1 }))
+// Output: { a: "c", b: 1 }
+
+console.log(Schema.decodeUnknownSync(renamedSchema)({ c: "c", d: false }))
+// Output: { d: false, a: 'c' }
+```
 
 ## Tagged Structs
 
