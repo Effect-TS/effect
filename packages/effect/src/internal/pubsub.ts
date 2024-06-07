@@ -718,9 +718,11 @@ class UnboundedPubSub<in out A> implements AtomicPubSub<A> {
   }
 
   slide(): void {
-    if (this.head !== this.tail && this.head.index <= this.replayStart.index) {
+    if (this.head !== this.tail) {
       this.head = this.head.next!
-      this.head.value = AbsentValue
+      if (this.head.index <= this.replayStart.index) {
+        this.head.value = AbsentValue
+      }
     }
   }
 
