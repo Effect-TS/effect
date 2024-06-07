@@ -152,6 +152,10 @@ export class Unexpected {
     /**
      * @since 0.68.0
      */
+    readonly actual: unknown,
+    /**
+     * @since 0.68.0
+     */
     message?: string
   ) {
     this.message = Option.fromNullable(message)
@@ -975,7 +979,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         if (ast.rest.length === 0) {
           for (let i = ast.elements.length; i <= len - 1; i++) {
-            const e = new Index(i, new Unexpected(`is unexpected, expected ${expectedIndexes}`))
+            const e = new Index(i, new Unexpected(input[i], `is unexpected, expected ${expectedIndexes}`))
             if (allErrors) {
               es.push([stepKey++, e])
               continue
@@ -1214,7 +1218,10 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
             if (Either.isLeft(eu)) {
               // key is unexpected
               if (onExcessPropertyError) {
-                const e = new Key(key, new Unexpected(`is unexpected, expected ${expectedAST.toString(true)}`))
+                const e = new Key(
+                  key,
+                  new Unexpected(input[key], `is unexpected, expected ${expectedAST.toString(true)}`)
+                )
                 if (allErrors) {
                   es.push([stepKey++, e])
                   continue

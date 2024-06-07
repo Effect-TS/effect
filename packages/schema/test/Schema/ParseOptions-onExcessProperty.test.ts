@@ -1,6 +1,9 @@
+import type * as AST from "@effect/schema/AST"
+import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import { describe, it } from "vitest"
+import * as Either from "effect/Either"
+import { describe, expect, it } from "vitest"
 
 describe("`onExcessProperty` option", () => {
   describe("`ignore` option", () => {
@@ -81,6 +84,30 @@ describe("`onExcessProperty` option", () => {
   })
 
   describe("`error` option", () => {
+    describe("should register the actual value", () => {
+      it("struct", () => {
+        const schema = S.Struct({ a: S.String })
+        const input = { a: "a", b: 1 }
+        const e = ParseResult.decodeUnknownEither(schema)(input, Util.onExcessPropertyError)
+        expect(e).toEqual(Either.left(
+          new ParseResult.TypeLiteral(schema.ast as AST.TypeLiteral, input, [
+            new ParseResult.Key("b", new ParseResult.Unexpected(1, `is unexpected, expected "a"`))
+          ])
+        ))
+      })
+
+      it("tuple", () => {
+        const schema = S.Tuple(S.String)
+        const input = ["a", 1]
+        const e = ParseResult.decodeUnknownEither(schema)(input, Util.onExcessPropertyError)
+        expect(e).toEqual(Either.left(
+          new ParseResult.TupleType(schema.ast as AST.TupleType, input, [
+            new ParseResult.Index(1, new ParseResult.Unexpected(1, `is unexpected, expected 0`))
+          ])
+        ))
+      })
+    })
+
     it("structs", async () => {
       const a = S.Struct({
         a: S.optional(S.Number, { exact: true }),
