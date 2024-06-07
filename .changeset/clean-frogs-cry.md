@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Changing the signature of a `Config.array`
+Change `Config.array` to return `Array<A>` instead of `ReadonlyArray<A>`
