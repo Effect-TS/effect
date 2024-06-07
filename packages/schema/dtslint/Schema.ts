@@ -1556,22 +1556,6 @@ S.asSchema(S.RedactedFromSelf(S.NumberFromString))
 S.RedactedFromSelf(S.NumberFromString)
 
 // ---------------------------------------------
-// Secret
-// ---------------------------------------------
-
-// $ExpectType Schema<Secret, string, never>
-S.asSchema(S.Secret)
-
-// $ExpectType typeof Secret
-S.Secret
-
-// $ExpectType Schema<Secret, Secret, never>
-S.asSchema(S.SecretFromSelf)
-
-// $ExpectType typeof SecretFromSelf
-S.SecretFromSelf
-
-// ---------------------------------------------
 // propertySignature
 // ---------------------------------------------
 

@@ -155,6 +155,7 @@ Schema
   - `concurrency`
   - `concurrency`
   - `parseIssueTitle`
+- remove `Secret` and `SecretFromSelf`
 
 ParseResult
 
