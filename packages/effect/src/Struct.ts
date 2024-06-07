@@ -119,14 +119,14 @@ export const getOrder: <R extends { readonly [x: string]: order.Order<any> }>(
   fields: R
 ) => order.Order<{ [K in keyof R]: [R[K]] extends [order.Order<infer A>] ? A : never }> = order.struct
 
-type PartialTransform<O> = Partial<{ [K in keyof O]: (a: O[K]) => unknown }>
-
-type Transformed<O, T extends PartialTransform<O>> =
+type Transformed<O, T> =
   & unknown
   & {
-    [K in keyof O]: K extends keyof T ? T[K] extends (...a: any) => any ? ReturnType<T[K]> : O[K] : O[K]
+    [K in keyof O]: K extends keyof T ? (T[K] extends (...a: any) => any ? ReturnType<T[K]> : O[K]) : O[K]
   }
-
+type PartialTransform<O, T> = {
+  [K in keyof T]: T[K] extends (a: O[K & keyof O]) => any ? T[K] : (a: O[K & keyof O]) => unknown
+}
 /**
  * Transforms the values of a Struct provided a transformation function for each key.
  * If no transformation function is provided for a key, it will return the origional value for that key.
@@ -148,13 +148,11 @@ type Transformed<O, T extends PartialTransform<O>> =
  * @since 2.0.0
  */
 export const evolve: {
-  <O, T extends PartialTransform<O>>(t: T): (
-    obj: O
-  ) => Transformed<O, T>
-  <O, T extends PartialTransform<O>>(obj: O, t: T): Transformed<O, T>
+  <O, T>(t: PartialTransform<O, T>): (obj: O) => Transformed<O, T>
+  <O, T>(obj: O, t: PartialTransform<O, T>): Transformed<O, T>
 } = dual(
   2,
-  <O, T extends PartialTransform<O>>(
+  <O, T extends PartialTransform<O, T>>(
     obj: O,
     t: T
   ): unknown & Transformed<O, T> => {
