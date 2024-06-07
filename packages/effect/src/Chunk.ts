@@ -333,6 +333,16 @@ const reverseChunk = <A>(self: Chunk<A>): Chunk<A> => {
 }
 
 /**
+ * Reverses the order of elements in a `Chunk`.
+ * Importantly, if the input chunk is a `NonEmptyChunk`, the reversed chunk will also be a `NonEmptyChunk`.
+ *
+ * @example
+ * import { Chunk } from "effect"
+ *
+ * const numbers = Chunk.make(1, 2, 3)
+ * const reversedNumbers = Chunk.reverse(numbers)
+ * assert.deepStrictEqual(reversedNumbers, Chunk.make(3, 2, 1))
+ *
  * @since 2.0.0
  * @category elements
  */
