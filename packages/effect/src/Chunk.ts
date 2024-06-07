@@ -819,6 +819,8 @@ export const head: <A>(self: Chunk<A>) => Option<A> = get(0)
 /**
  * Returns the first element of this chunk.
  *
+ * It will throw an error if the chunk is empty.
+ *
  * @since 2.0.0
  * @category unsafe
  */
@@ -843,10 +845,20 @@ export const last = <A>(self: Chunk<A>): Option<A> => get(self, self.length - 1)
 /**
  * Returns the last element of this chunk.
  *
+ * It will throw an error if the chunk is empty.
+ *
  * @since 2.0.0
  * @category unsafe
  */
 export const unsafeLast = <A>(self: Chunk<A>): A => unsafeGet(self, self.length - 1)
+
+/**
+ * Returns the last element of this non empty chunk.
+ *
+ * @since 3.4.0
+ * @category elements
+ */
+export const lastNonEmpty: <A>(self: NonEmptyChunk<A>) => A = unsafeLast
 
 /**
  * @since 2.0.0
