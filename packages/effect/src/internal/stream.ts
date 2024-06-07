@@ -5694,16 +5694,16 @@ export const share = dual<
   return Effect.acquireRelease(options.connector, (queue) => Queue.shutdown(queue)).pipe(
     Effect.tap((pubSubOrQueue) => {
       if ("subscribe" in pubSubOrQueue) {
-        return Effect.forkScoped(Stream.runIntoPubSubScoped(self, pubSubOrQueue))
+        return Effect.forkScoped(runIntoPubSubScoped(self, pubSubOrQueue))
       } else {
-        return Effect.forkScoped(Stream.runIntoQueueScoped(self, pubSubOrQueue))
+        return Effect.forkScoped(runIntoQueueScoped(self, pubSubOrQueue))
       }
     }),
     Effect.map((pubSubOrQueue) => {
       if ("subscribe" in pubSubOrQueue) {
-        return Stream.flattenTake(Stream.fromPubSub(pubSubOrQueue))
+        return flattenTake(fromPubSub(pubSubOrQueue))
       }
-      return Stream.flattenTake(Stream.fromQueue(pubSubOrQueue))
+      return flattenTake(fromQueue(pubSubOrQueue))
     })
   )
 })

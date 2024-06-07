@@ -3387,6 +3387,9 @@ export const scoped: <A, E, R>(effect: Effect.Effect<A, E, R>) => Stream<A, E, E
  * or Queue to be used for sharing the stream elements.
  *
  * @example
+ *
+ * import {Stream, Effect, StreamEmit, PubSub, Chunk} from 'effect';
+ *
  * const intervalStream = (intervalMs: number) => Stream.async((emit: StreamEmit.Emit<never, never, number, void>) => {
  *     let i = 0
  *     const intervalPointer = setInterval(() => {
@@ -3397,7 +3400,7 @@ export const scoped: <A, E, R>(effect: Effect.Effect<A, E, R>) => Stream<A, E, E
  * });
  *
  * const program = Effect.gen(function* () {
- *     const sharedStream = yield* intervalStream(0).pipe(share({
+ *     const sharedStream = yield* intervalStream(0).pipe(Stream.share({
  *         connector: PubSub.unbounded()
  *     }));
  *     const streamMax3 = sharedStream.pipe(Stream.take(3))
@@ -3418,18 +3421,21 @@ export const scoped: <A, E, R>(effect: Effect.Effect<A, E, R>) => Stream<A, E, E
  * // origin 2
  * // s1 2
  * // s2 2
+ *
+ * @since 3.4.0
+ * @category utils
  */
 export const share: {
   <A, E>(options: {
     readonly connector: Effect.Effect<
       PubSub.PubSub<Take.Take<A, E>> | Queue.Queue<Take.Take<A, E>>
     >
-  }): <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<Stream.Stream<A, E>, never, Scope.Scope | R>
-  <A, E, R>(self: Stream.Stream<A, E, R>, options: {
+  }): <R>(self: Stream<A, E, R>) => Effect.Effect<Stream<A, E>, never, Scope.Scope | R>
+  <A, E, R>(self: Stream<A, E, R>, options: {
     readonly connector: Effect.Effect<
       PubSub.PubSub<Take.Take<A, E>> | Queue.Queue<Take.Take<A, E>>
     >
-  }): Effect.Effect<Stream.Stream<A, E>, never, Scope.Scope | R>
+  }): Effect.Effect<Stream<A, E>, never, Scope.Scope | R>
 } = internal.share
 
 /**
