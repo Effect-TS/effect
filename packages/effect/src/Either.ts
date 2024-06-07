@@ -290,10 +290,9 @@ export const getEquivalence = <R, L>({ left, right }: {
   left: Equivalence.Equivalence<L>
 }): Equivalence.Equivalence<Either<R, L>> =>
   Equivalence.make((x, y) =>
-    x === y ||
-    (isLeft(x) ?
+    isLeft(x) ?
       isLeft(y) && left(x.left, y.left) :
-      isRight(y) && right(x.right, y.right))
+      isRight(y) && right(x.right, y.right)
   )
 
 /**

@@ -130,4 +130,4 @@ export const unsafeWipe: <A>(self: Redacted<A>) => boolean = redacted_.unsafeWip
  * @since 3.3.0
  */
 export const getEquivalence = <A>(isEquivalent: Equivalence.Equivalence<A>): Equivalence.Equivalence<Redacted<A>> =>
-  Equivalence.make((x, y) => x === y || (isEquivalent(value(x), value(y))))
+  Equivalence.make((x, y) => isEquivalent(value(x), value(y)))
