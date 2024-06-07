@@ -655,14 +655,23 @@ interface Node<out A> {
 
 /** @internal */
 class UnboundedPubSub<in out A> implements AtomicPubSub<A> {
-  publisherHead: Node<A> = {
+  /**
+   * The oldest value that was unhandled by at least 1 subscriber
+   */
+  head: Node<A> = {
     value: AbsentValue,
     subscribers: 0,
     index: 0,
     next: null
   }
-  publisherTail = this.publisherHead
-  publisherCurrent = this.publisherTail
+  /**
+   * The most recently published value
+   */
+  tail = this.head
+  /**
+   * The starting node for replaying values to new subscribers.
+   */
+  replayStart = this.tail
 
   constructor(readonly replayBufferSize: number = 0) {
   }
@@ -670,7 +679,7 @@ class UnboundedPubSub<in out A> implements AtomicPubSub<A> {
   readonly capacity = Number.MAX_SAFE_INTEGER
 
   isEmpty(): boolean {
-    return this.publisherHead === this.publisherTail
+    return this.head === this.tail
   }
 
   isFull(): boolean {
@@ -678,24 +687,25 @@ class UnboundedPubSub<in out A> implements AtomicPubSub<A> {
   }
 
   size(): number {
-    return this.publisherTail.index - this.publisherHead.index
+    return this.tail.index - this.head.index
   }
 
   publish(value: A): boolean {
-    const subscribers = this.publisherTail.subscribers
+    const subscribers = this.tail.subscribers
     if (subscribers === 0 && this.replayBufferSize === 0) {
       return true
     }
-    this.publisherTail.next = {
+    this.tail.next = {
       value,
       subscribers,
-      index: ++this.publisherTail.index,
+      index: ++this.tail.index,
       next: null
     }
-    if (this.publisherCurrent.index + this.replayBufferSize === this.publisherTail.index) {
-      this.publisherCurrent = this.publisherCurrent.next!
+    // Update replayStart if necessary
+    if (this.replayStart.index + this.replayBufferSize === this.tail.index) {
+      this.replayStart = this.replayStart.next!
     }
-    this.publisherTail = this.publisherTail.next
+    this.tail = this.tail.next
     this.cleanup()
     return true
   }
@@ -708,27 +718,28 @@ class UnboundedPubSub<in out A> implements AtomicPubSub<A> {
   }
 
   slide(): void {
-    if (this.publisherHead !== this.publisherTail && this.publisherHead.index <= this.publisherCurrent.index) {
-      this.publisherHead = this.publisherHead.next!
-      this.publisherHead.value = AbsentValue
+    if (this.head !== this.tail && this.head.index <= this.replayStart.index) {
+      this.head = this.head.next!
+      this.head.value = AbsentValue
     }
   }
 
   cleanup() {
     while (
-      this.publisherHead.next &&
-      (this.publisherHead.subscribers === 0 || this.publisherHead.next.value === AbsentValue)
+      this.head.next &&
+      (this.head.subscribers === 0 || this.head.next.value === AbsentValue)
     ) {
-      if (this.publisherHead.index <= this.publisherCurrent.index) {
-        this.publisherHead.value = AbsentValue
+      if (this.head.index <= this.replayStart.index) {
+        this.head.value = AbsentValue
       }
-      this.publisherHead = this.publisherHead.next
+      this.head = this.head.next
     }
   }
 
   subscribe(): Subscription<A> {
-    let node: Node<A> | null = this.publisherCurrent
+    let node: Node<A> | null = this.replayStart
 
+    // Increment subscriber count for all nodes from replayStart to tail
     while (node !== null) {
       node.subscribers += 1
       node = node.next
@@ -736,7 +747,7 @@ class UnboundedPubSub<in out A> implements AtomicPubSub<A> {
 
     return new UnboundedPubSubSubscription(
       this,
-      this.publisherCurrent,
+      this.replayStart,
       false
     )
   }
@@ -745,8 +756,11 @@ class UnboundedPubSub<in out A> implements AtomicPubSub<A> {
 /** @internal */
 class UnboundedPubSubSubscription<in out A> implements Subscription<A> {
   constructor(
-    private self: UnboundedPubSub<A>,
-    private subscriberHead: Node<A>,
+    private publisher: UnboundedPubSub<A>,
+    /**
+     * The current value being handled by this subscription.
+     */
+    private head: Node<A>,
     private unsubscribed: boolean
   ) {
   }
@@ -758,11 +772,11 @@ class UnboundedPubSubSubscription<in out A> implements Subscription<A> {
     let empty = true
     let loop = true
     while (loop) {
-      if (this.subscriberHead === this.self.publisherTail) {
+      if (this.head === this.publisher.tail) {
         loop = false
       } else {
-        if (this.subscriberHead.next!.value === AbsentValue) {
-          this.subscriberHead = this.subscriberHead.next!
+        if (this.head.next!.value === AbsentValue) {
+          this.head = this.head.next!
         } else {
           empty = false
           loop = false
@@ -776,7 +790,7 @@ class UnboundedPubSubSubscription<in out A> implements Subscription<A> {
     if (this.unsubscribed) {
       return 0
     }
-    return this.self.publisherTail.index - Math.max(this.subscriberHead.index, this.self.publisherHead.index)
+    return this.publisher.tail.index - Math.max(this.head.index, this.publisher.head.index)
   }
 
   poll<D>(default_: D): A | D {
@@ -786,20 +800,20 @@ class UnboundedPubSubSubscription<in out A> implements Subscription<A> {
     let loop = true
     let polled: A | D = default_
     while (loop) {
-      if (this.subscriberHead === this.self.publisherTail) {
+      if (this.head === this.publisher.tail) {
         loop = false
       } else {
-        const next = this.subscriberHead.next!
+        const next = this.head.next!
         const elem = next.value
         if (elem !== AbsentValue) {
           polled = elem
-          this.subscriberHead.subscribers -= 1
-          if (this.subscriberHead.subscribers === 0) {
-            this.self.cleanup()
+          this.head.subscribers -= 1
+          if (this.head.subscribers === 0) {
+            this.publisher.cleanup()
           }
           loop = false
         }
-        this.subscriberHead = next
+        this.head = next
       }
     }
     return polled
@@ -825,10 +839,10 @@ class UnboundedPubSubSubscription<in out A> implements Subscription<A> {
     if (!this.unsubscribed) {
       this.unsubscribed = true
       do {
-        this.subscriberHead.subscribers -= 1
-        this.subscriberHead = this.subscriberHead?.next ?? this.self.publisherTail
-      } while (this.subscriberHead !== this.self.publisherTail)
-      this.self.cleanup()
+        this.head.subscribers -= 1
+        this.head = this.head?.next ?? this.publisher.tail
+      } while (this.head !== this.publisher.tail)
+      this.publisher.cleanup()
     }
   }
 }
