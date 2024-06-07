@@ -471,3 +471,19 @@ flattenNonEmptyChunk.pipe(Effect.map((_) => Chunk.flatten(_)))
 
 // $ExpectType Effect<NonEmptyChunk<number>, never, never>
 flattenNonEmptyChunk.pipe(Effect.map(Chunk.flatten))
+
+// -------------------------------------------------------------------------------------
+// reverse
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Chunk<number>
+Chunk.reverse(numbers)
+
+// $ExpectType Chunk<number>
+pipe(numbers, Chunk.reverse)
+
+// $ExpectType NonEmptyChunk<number>
+Chunk.reverse(nonEmptyNumbers)
+
+// $ExpectType NonEmptyChunk<number>
+pipe(nonEmptyNumbers, Chunk.reverse)
