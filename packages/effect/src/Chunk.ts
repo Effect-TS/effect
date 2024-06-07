@@ -316,11 +316,7 @@ export const toReadonlyArray = <A>(self: Chunk<A>): ReadonlyArray<A> => {
   }
 }
 
-/**
- * @since 2.0.0
- * @category elements
- */
-export const reverse = <A>(self: Chunk<A>): Chunk<A> => {
+const reverseChunk = <A>(self: Chunk<A>): Chunk<A> => {
   switch (self.backing._tag) {
     case "IEmpty":
     case "ISingleton":
@@ -335,6 +331,12 @@ export const reverse = <A>(self: Chunk<A>): Chunk<A> => {
       return unsafeFromArray(RA.reverse(toReadonlyArray(self)))
   }
 }
+
+/**
+ * @since 2.0.0
+ * @category elements
+ */
+export const reverse: <S extends Chunk<any>>(self: S) => Chunk.With<S, Chunk.Infer<S>> = reverseChunk as any
 
 /**
  * This function provides a safe way to read a value at a particular index from a `Chunk`.
