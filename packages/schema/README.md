@@ -3177,7 +3177,11 @@ console.log(encode({ name: "John" })) // { name: 'John' }
 console.log(encode({})) // Output: { name: '' }
 ```
 
-### Renaming Properties
+### Renaming a Property During Definition
+
+To rename a property directly during schema creation, you can utilize the `Schema.fromKey` function. This function is particularly useful when you want to map properties from the input object to different names in the resulting schema object.
+
+**Example: Renaming a Required Property**
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -3191,24 +3195,72 @@ console.log(Schema.decodeUnknownSync(schema)({ c: "c", b: 1 }))
 // Output: { a: "c", b: 1 }
 ```
 
-### Renaming Properties Of An Existing Schema
+**Example: Renaming an Optional Property**
 
-To rename one or more properties, you can utilize the `rename` API:
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  a: Schema.optional(Schema.String).pipe(Schema.fromKey("c")),
+  b: Schema.Number
+})
+
+console.log(Schema.decodeUnknownSync(schema)({ c: "c", b: 1 }))
+// Output: { b: 1, a: "c" }
+
+console.log(Schema.decodeUnknownSync(schema)({ b: 1 }))
+// Output: { b: 1 }
+```
+
+Note that `Schema.optional` returns a `PropertySignature`, which simplifies the process by eliminating the need for explicit `Schema.propertySignature` usage as required in previous versions.
+
+### Renaming Properties of an Existing Schema
+
+For existing schemas, the `rename` API offers a way to systematically change property names across a schema, even within complex structures like unions.
+
+**Example: Renaming Properties in a Struct Schema**
 
 ```ts
 import { Schema } from "@effect/schema"
 
 // Original Schema
-const originalSchema = Schema.Struct({ c: Schema.String, b: Schema.Number })
+const originalSchema = Schema.Struct({
+  c: Schema.String,
+  b: Schema.Number
+})
 
-// Renaming the "a" property to "c"
+// Renaming the "c" property to "a"
 const renamedSchema = Schema.rename(originalSchema, { c: "a" })
 
 console.log(Schema.decodeUnknownSync(renamedSchema)({ c: "c", b: 1 }))
 // Output: { a: "c", b: 1 }
 ```
 
-In the example above, we have an original schema with properties "a" and "b." Using the `rename` API, we create a new schema where we rename the "a" property to "c." The resulting schema, when used with `S.decodeUnknownSync`, transforms the input object by renaming the specified property.
+**Example: Renaming Properties in Union Schemas**
+
+```ts
+import { Schema } from "@effect/schema"
+
+const originalSchema = Schema.Union(
+  Schema.Struct({
+    c: Schema.String,
+    b: Schema.Number
+  }),
+  Schema.Struct({
+    c: Schema.String,
+    d: Schema.Boolean
+  })
+)
+
+// Renaming the "c" property to "a" for all members
+const renamedSchema = Schema.rename(originalSchema, { c: "a" })
+
+console.log(Schema.decodeUnknownSync(renamedSchema)({ c: "c", b: 1 }))
+// Output: { a: "c", b: 1 }
+
+console.log(Schema.decodeUnknownSync(renamedSchema)({ c: "c", d: false }))
+// Output: { d: false, a: 'c' }
+```
 
 ## Tagged Structs
 
@@ -6956,9 +7008,139 @@ console.log(decode(Duration.decode("6 seconds"))) // { _id: 'Duration', _tag: 'M
 console.log(decode(Duration.decode("11 seconds"))) // { _id: 'Duration', _tag: 'Millis', millis: 10000 }
 ```
 
+## Redacted
+
+### Redacted
+
+The `Redacted` schema in `@effect/schema` is specifically designed to handle sensitive information by converting a `string` into a `Redacted` object. This transformation ensures that the sensitive data is not exposed in the application's output.
+
+```ts
+import { Schema } from "@effect/schema"
+
+// Schema.Redacted<typeof Schema.String>
+const schema = Schema.Redacted(Schema.String)
+const decode = Schema.decodeUnknownSync(schema)
+
+console.log(decode("keep it secret, keep it safe")) // {}
+```
+
+**Note on Logging**
+
+It's important to note that when successfully decoding a `Redacted`, the output is intentionally obscured (`{}`) to prevent the actual secret from being revealed in logs or console outputs.
+
+#### Warning on Schema Composition
+
+When composing the `Redacted` schema with other schemas, care must be taken as decoding or encoding errors could potentially expose sensitive information.
+
+**Practical Example Showing Potential Data Exposure**
+
+```ts
+import { Schema } from "@effect/schema"
+import { Redacted } from "effect"
+
+const schema = Schema.Trimmed.pipe(
+  Schema.compose(Schema.Redacted(Schema.String))
+)
+
+console.log(Schema.decodeUnknownEither(schema)(" 123"))
+/*
+{
+  _id: 'Either',
+  _tag: 'Left',
+  left: {
+    _id: 'ParseError',
+    message: '(Trimmed <-> (string <-> Redacted(<redacted>)))\n' +
+      '└─ Encoded side transformation failure\n' +
+      '   └─ Trimmed\n' +
+      '      └─ Predicate refinement failure\n' +
+      '         └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " 123"'
+  }
+}
+*/
+console.log(Schema.encodeEither(schema)(Redacted.make(" 123")))
+/*
+{
+  _id: 'Either',
+  _tag: 'Left',
+  left: {
+    _id: 'ParseError',
+    message: '(Trimmed <-> (string <-> Redacted(<redacted>)))\n' +
+      '└─ Encoded side transformation failure\n' +
+      '   └─ Trimmed\n' +
+      '      └─ Predicate refinement failure\n' +
+      '         └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " 123"'
+  }
+}
+*/
+```
+
+In the example above, if the input string does not meet the criteria (e.g., contains spaces), the error message generated might inadvertently expose sensitive information included in the input.
+
+#### Mitigating Exposure Risks
+
+To reduce the risk of sensitive information leakage in error messages, you can customize the error messages to obscure sensitive details:
+
+```ts
+import { Schema } from "@effect/schema"
+import { Redacted } from "effect"
+
+const schema = Schema.Trimmed.annotations({
+  message: () => "Expected Trimmed, actual <redacted>"
+}).pipe(Schema.compose(Schema.Redacted(Schema.String)))
+
+console.log(Schema.decodeUnknownEither(schema)(" 123"))
+/*
+{
+  _id: 'Either',
+  _tag: 'Left',
+  left: {
+    _id: 'ParseError',
+    message: '(Trimmed <-> (string <-> Redacted(<redacted>)))\n' +
+      '└─ Encoded side transformation failure\n' +
+      '   └─ Expected Trimmed, actual <redacted>'
+  }
+}
+*/
+console.log(Schema.encodeEither(schema)(Redacted.make(" 123")))
+/*
+{
+  _id: 'Either',
+  _tag: 'Left',
+  left: {
+    _id: 'ParseError',
+    message: '(Trimmed <-> (string <-> Redacted(<redacted>)))\n' +
+      '└─ Encoded side transformation failure\n' +
+      '   └─ Expected Trimmed, actual <redacted>'
+  }
+}
+*/
+```
+
+### RedactedFromSelf
+
+The `RedactedFromSelf` schema is designed to validate that a given value conforms to the `Redacted` type from the `effect` library.
+
+```ts
+import { Schema } from "@effect/schema"
+import { Redacted } from "effect"
+
+const schema = Schema.RedactedFromSelf(Schema.String)
+const decode = Schema.decodeUnknownSync(schema)
+
+console.log(decode(Redacted.make("mysecret"))) // {}
+console.log(decode(null)) // throws Error: Expected Redacted(<redacted>), actual <redacted>
+```
+
+**Note on Logging**
+
+It's important to note that when successfully decoding a `Redacted`, the output is intentionally obscured (`{}`) to prevent the actual secret from being revealed in logs or console outputs.
+
 ## Secret
 
 ### Secret
+
+> [!WARNING]
+> Deprecated: use `Redacted` instead.
 
 The `Secret` schema in `@effect/schema` is specifically designed to handle sensitive information by converting a `string` into a `Secret` object. This transformation ensures that the sensitive data is not exposed in the application's output.
 
@@ -7063,6 +7245,9 @@ console.log(Schema.encodeEither(schema)(Secret.fromString(" 123")))
 
 ### SecretFromSelf
 
+> [!WARNING]
+> Deprecated: use `RedactedFromSelf` instead.
+
 The `SecretFromSelf` schema is designed to validate that a given value conforms to the `Secret` type from the `effect` library.
 
 ```ts
@@ -7078,7 +7263,7 @@ console.log(decode(null)) // throws Error: Expected SecretFromSelf, actual null
 
 **Note on Logging**
 
-It's important to note that when successfully decoding a `Secret`, the output is intentionally obscured (`{}`) to prevent the actual secret from being revealed in logs or console outputs.
+It's important to note that when successfully decoding a `SecretFromSelf`, the output is intentionally obscured (`{}`) to prevent the actual secret from being revealed in logs or console outputs.
 
 # Useful Examples
 
