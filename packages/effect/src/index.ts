@@ -482,7 +482,7 @@ export * as MetricState from "./MetricState.js"
 /**
  * A lightweight alternative to the `Effect` data type, with a subset of the functionality.
  *
- * @since 3.3.0
+ * @since 3.4.0
  */
 export * as Micro from "./Micro.js"
 
