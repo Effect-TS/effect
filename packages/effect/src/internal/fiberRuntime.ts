@@ -1094,7 +1094,7 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
           }
         }
       })
-      return handle.abort
+      return handle.abort as any
     })
   }
 
