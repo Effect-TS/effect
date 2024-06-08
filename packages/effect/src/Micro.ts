@@ -2883,7 +2883,7 @@ export interface Handle<A, E = never> {
   readonly [HandleTypeId]: HandleTypeId
   readonly await: Micro<Result<A, E>>
   readonly join: Micro<A, E>
-  readonly abort: Micro<void>
+  readonly abort: Micro<Result<A, E>>
   readonly unsafeAbort: () => void
   readonly addObserver: (observer: (result: Result<A, E>) => void) => void
   readonly removeObserver: (observer: (result: Result<A, E>) => void) => void
@@ -2973,10 +2973,10 @@ class HandleImpl<A, E> implements Handle<A, E> {
     })
   }
 
-  get abort(): Micro<void> {
+  get abort(): Micro<Result<A, E>> {
     return suspend(() => {
       this.unsafeAbort()
-      return asVoid(this.await)
+      return this.await
     })
   }
 }
