@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-made Struct.evolve more strict
+Fix runtime error in `Struct.evolve` by enhancing compile-time checks, closes #2953
