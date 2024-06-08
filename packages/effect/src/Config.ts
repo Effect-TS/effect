@@ -110,7 +110,7 @@ export const all: <const Arg extends Iterable<Config<any>> | Record<string, Conf
  * @since 2.0.0
  * @category constructors
  */
-export const array: <A>(config: Config<A>, name?: string) => Config<ReadonlyArray<A>> = internal.array
+export const array: <A>(config: Config<A>, name?: string) => Config<Array<A>> = internal.array
 
 /**
  * Constructs a config for a boolean value.
