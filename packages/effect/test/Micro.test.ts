@@ -238,7 +238,7 @@ describe.concurrent("Micro", () => {
         })
       }).pipe(Micro.runPromise))
 
-    it("record discard", () =>
+    it.effect("record discard", () =>
       Micro.gen(function*() {
         const results = (yield* Micro.all({
           a: Micro.succeed(1),
@@ -246,9 +246,9 @@ describe.concurrent("Micro", () => {
           c: Micro.succeed(true)
         }, { discard: true })) satisfies void
         assert.deepStrictEqual(results, void 0)
-      }).pipe(Micro.runPromise))
+      }))
 
-    it("iterable", () =>
+    it.effect("iterable", () =>
       Micro.gen(function*() {
         const results = (yield* Micro.all(
           new Set([
@@ -258,7 +258,7 @@ describe.concurrent("Micro", () => {
           ])
         )) satisfies Array<number>
         assert.deepStrictEqual(results, [1, 2, 3])
-      }).pipe(Micro.runPromise))
+      }))
   })
 
   describe("filter", () => {
@@ -684,6 +684,54 @@ describe.concurrent("Micro", () => {
         yield* Micro.yieldNow
         yield* fiber.abort
         assert.strictEqual(signal!.aborted, true)
+      }))
+  })
+
+  describe("fork", () => {
+    it.effect("is aborted with parent", () =>
+      Micro.gen(function*() {
+        let child = false
+        let parent = false
+        const handle = yield* Micro.never.pipe(
+          Micro.onInterrupt(Micro.sync(() => {
+            child = true
+          })),
+          Micro.fork,
+          Micro.andThen(Micro.never),
+          Micro.onInterrupt(Micro.sync(() => {
+            parent = true
+          })),
+          Micro.fork
+        )
+        yield* Micro.yieldNow
+        yield* Micro.yieldNow
+        yield* handle.abort
+        assert.isTrue(child)
+        assert.isTrue(parent)
+      }))
+  })
+
+  describe("forkDaemon", () => {
+    it.effect("is not aborted with parent", () =>
+      Micro.gen(function*() {
+        let child = false
+        let parent = false
+        const handle = yield* Micro.never.pipe(
+          Micro.onInterrupt(Micro.sync(() => {
+            child = true
+          })),
+          Micro.forkDaemon,
+          Micro.andThen(Micro.never),
+          Micro.onInterrupt(Micro.sync(() => {
+            parent = true
+          })),
+          Micro.fork
+        )
+        yield* Micro.yieldNow
+        yield* Micro.yieldNow
+        yield* handle.abort
+        assert.isFalse(child)
+        assert.isTrue(parent)
       }))
   })
 })
