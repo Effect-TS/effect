@@ -5,6 +5,7 @@ import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
+import type { LazyArg } from "effect/Function"
 import type * as Layer from "effect/Layer"
 import type * as Option from "effect/Option"
 import type * as PlatformError from "./Error.js"
@@ -213,4 +214,6 @@ export const layerSchema: <A, I, R>(
  * @category layers
  * @see https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API
  */
-export const layerStorage: (storage: Storage) => Layer.Layer<KeyValueStore> = internal.layerStorage
+export const layerStorage: (
+  evaluate: LazyArg<Storage>
+) => Layer.Layer<KeyValueStore> = internal.layerStorage
