@@ -1,7 +1,7 @@
 import type { NonEmptyReadonlyArray } from "effect/Array"
 import type { Cause } from "effect/Cause"
 import * as Effect from "effect/Effect"
-import { pipe } from "effect/Function"
+import { hole, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Schedule from "effect/Schedule"
@@ -508,9 +508,15 @@ Effect.promise<string>(
     })
 )
 
+// -------------------------------------------------------------------------------------
+// tapErrorTag
+// -------------------------------------------------------------------------------------
+
 class TestError1 {
   readonly _tag = "TestError1"
-  constructor() {}
+}
+class TestError2 {
+  readonly _tag = "TestError2"
 }
 
 // $ExpectType Effect<never, TestError1, never>
@@ -525,17 +531,78 @@ pipe(
   Effect.tapErrorTag("TestError1", () => Effect.fail(new Error("")))
 )
 
-// $ExpectType Effect<number, Error, never>
-pipe(
-  Effect.fail<TestError1 | Error>(new TestError1()),
-  Effect.catchTag("TestError1", () => Effect.succeed(1))
-)
-
 // $ExpectType Effect<never, Error | TestError1, never>
 pipe(
   Effect.fail<TestError1 | Error>(new TestError1()),
   Effect.tapErrorTag("TestError1", () => Effect.succeed(1))
 )
+
+// -------------------------------------------------------------------------------------
+// catchTag
+// -------------------------------------------------------------------------------------
+
+// @ts-expect-error
+Effect.catchTag(hole<Effect.Effect<number, TestError1>>(), "wrong", () => Effect.succeed(1))
+
+// @ts-expect-error
+pipe(hole<Effect.Effect<number, TestError1>>(), Effect.catchTag("wrong", () => Effect.succeed(1)))
+
+// @ts-expect-error
+Effect.catchTag(hole<Effect.Effect<number, Error | TestError1>>(), "wrong", () => Effect.succeed(1))
+
+// @ts-expect-error
+pipe(hole<Effect.Effect<number, Error | TestError1>>(), Effect.catchTag("wrong", () => Effect.succeed(1)))
+
+Effect.catchTag(
+  hole<Effect.Effect<number, Error | TestError1 | TestError2>>(),
+  "TestError1",
+  (
+    _e // $ExpectType TestError1
+  ) => Effect.succeed(1)
+)
+
+// $ExpectType Effect<number, never, never>
+Effect.catchTag(hole<Effect.Effect<number, TestError1>>(), "TestError1", (
+  _e // $ExpectType TestError1
+) => Effect.succeed(1))
+
+// $ExpectType Effect<number, never, never>
+pipe(
+  hole<Effect.Effect<number, TestError1>>(),
+  Effect.catchTag("TestError1", (
+    _e // $ExpectType TestError1
+  ) => Effect.succeed(1))
+)
+
+// $ExpectType Effect<number, TestError2, never>
+Effect.catchTag(hole<Effect.Effect<number, TestError1 | TestError2>>(), "TestError1", (
+  _e // $ExpectType TestError1
+) => Effect.succeed(1))
+
+// $ExpectType Effect<number, TestError2, never>
+pipe(
+  hole<Effect.Effect<number, TestError1 | TestError2>>(),
+  Effect.catchTag("TestError1", (
+    _e // $ExpectType TestError1
+  ) => Effect.succeed(1))
+)
+
+// $ExpectType Effect<number, Error, never>
+Effect.catchTag(hole<Effect.Effect<number, TestError1 | Error>>(), "TestError1", (
+  _e // $ExpectType TestError1
+) => Effect.succeed(1))
+
+// $ExpectType Effect<number, Error, never>
+pipe(
+  hole<Effect.Effect<number, TestError1 | Error>>(),
+  Effect.catchTag("TestError1", (
+    _e // $ExpectType TestError1
+  ) => Effect.succeed(1))
+)
+
+// -------------------------------------------------------------------------------------
+// catchTags
+// -------------------------------------------------------------------------------------
 
 // $ExpectType Effect<number, Error, never>
 pipe(
