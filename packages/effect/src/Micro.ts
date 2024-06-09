@@ -3267,7 +3267,11 @@ export const runSync = <A, E>(effect: Micro<A, E>): A => {
 // Errors
 // ----------------------------------------------------------------------------
 
-interface YieldableError extends Pipeable, Inspectable, Readonly<Error> {
+/**
+ * @since 3.4.0
+ * @category errors
+ */
+export interface YieldableError extends Pipeable, Inspectable, Readonly<Error> {
   readonly [EffectTypeId]: Effect.VarianceStruct<never, this, never>
   readonly [Stream.StreamTypeId]: Effect.VarianceStruct<never, this, never>
   readonly [Sink.SinkTypeId]: Sink.Sink.VarianceStruct<never, unknown, never, this, never>
