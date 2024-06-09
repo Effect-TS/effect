@@ -1,6 +1,7 @@
 import * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import type { LazyArg } from "effect/Function"
 import { dual, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -185,10 +186,10 @@ const storageError = (props: Omit<Parameters<typeof PlatformError.SystemError>[0
   })
 
 /** @internal */
-export const layerStorage = (storage: Storage) =>
-  Layer.succeed(
-    keyValueStoreTag,
-    make({
+export const layerStorage = (evaluate: LazyArg<Storage>) =>
+  Layer.sync(keyValueStoreTag, () => {
+    const storage = evaluate()
+    return make({
       get: (key: string) =>
         Effect.try({
           try: () => Option.fromNullable(storage.getItem(key)),
@@ -242,4 +243,4 @@ export const layerStorage = (storage: Storage) =>
           })
       })
     })
-  )
+  })
