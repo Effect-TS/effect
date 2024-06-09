@@ -25,10 +25,59 @@ declare const optionalStringStruct: {
 // -------------------------------------------------------------------------------------
 
 // $ExpectType { a: boolean; }
-S.evolve({ a: 1 }, { a: (x) => x > 0 })
+S.evolve({ a: 1 }, {
+  a: (
+    n // $ExpectType number
+  ) => n > 0
+})
+
+// $ExpectType { a: boolean; }
+pipe(
+  { a: 1 },
+  S.evolve({
+    a: (
+      n // $ExpectType number
+    ) => n > 0
+  })
+)
 
 // $ExpectType { a: number; b: number; }
-pipe({ a: "a", b: 2 }, S.evolve({ a: (s) => s.length }))
+S.evolve(
+  { a: "a", b: 1 },
+  {
+    a: (
+      s // $ExpectType string
+    ) => s.length
+  }
+)
+
+// $ExpectType { a: number; b: number; }
+pipe(
+  { a: "a", b: 1 },
+  S.evolve({
+    a: (
+      s // $ExpectType string
+    ) => s.length
+  })
+)
+
+// @ts-expect-error
+S.evolve({ a: "a", b: 1 }, { a: (n: number) => n })
+
+// @ts-expect-error
+S.evolve(hole<{ a: "a"; b: 1 }>(), hole<Record<string, string>>())
+
+// @ts-expect-error
+S.evolve(hole<{ a: "a"; b: 1 }>(), hole<Record<string, (s: string) => null>>())
+
+// @ts-expect-error
+pipe({ a: "a", b: 1 }, S.evolve({ a: (n: number) => n }))
+
+// @ts-expect-error
+pipe(hole<{ a: "a"; b: 1 }>(), S.evolve(hole<Record<string, string>>()))
+
+// @ts-expect-error
+pipe(hole<{ a: "a"; b: 1 }>(), S.evolve(hole<Record<string, (s: string) => null>>()))
 
 // -------------------------------------------------------------------------------------
 // get
