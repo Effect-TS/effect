@@ -152,7 +152,7 @@ export const evolve: {
   <O, T>(obj: O, t: PartialTransform<O, T>): Transformed<O, T>
 } = dual(
   2,
-<O, T>(obj: O, t: PartialTransform<O, T>): Transformed<O, T> => {
+  <O, T>(obj: O, t: PartialTransform<O, T>): Transformed<O, T> => {
     const out = { ...obj }
     for (const k in t) {
       if (Object.prototype.hasOwnProperty.call(obj, k)) {
