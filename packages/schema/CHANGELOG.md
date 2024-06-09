@@ -1,5 +1,14 @@
 # @effect/schema
 
+## 0.67.22
+
+### Patch Changes
+
+- [#2955](https://github.com/Effect-TS/effect/pull/2955) [`d79ca17`](https://github.com/Effect-TS/effect/commit/d79ca17d9fa432571c69714776cab5cf8fef9c34) Thanks @gcanti! - The `minItems` filter now checks for an invalid argument (`n < 1`) and, when valid, refines the type to `NonEmptyReadonlyArray<A>`.
+
+- Updated dependencies [[`eb98c5b`](https://github.com/Effect-TS/effect/commit/eb98c5b79ab50aa0cde239bd4e660dd19dbab612), [`184fed8`](https://github.com/Effect-TS/effect/commit/184fed83ac36cba05a75a5a8013f740f9f696e3b), [`6068e07`](https://github.com/Effect-TS/effect/commit/6068e073d4cc8b3c8583583fd5eb3efe43f7d5ba), [`3a77e20`](https://github.com/Effect-TS/effect/commit/3a77e209783933bac3aaddba1b05ff6a9ac72b36)]:
+  - effect@3.3.1
+
 ## 0.67.21
 
 ### Patch Changes
