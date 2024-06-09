@@ -734,4 +734,39 @@ describe.concurrent("Micro", () => {
         assert.isTrue(parent)
       }))
   })
+
+  describe("forkIn", () => {
+    it.effect("is aborted when scope is closed", () =>
+      Micro.gen(function*() {
+        let aborted = false
+        const scope = yield* Micro.scopeMake
+        yield* Micro.never.pipe(
+          Micro.onInterrupt(Micro.sync(() => {
+            aborted = true
+          })),
+          Micro.forkIn(scope)
+        )
+        yield* Micro.yieldNow
+        yield* scope.close(Micro.resultVoid)
+        assert.isTrue(aborted)
+      }))
+  })
+
+  describe("forkScoped", () => {
+    it.effect("is aborted when scope is closed", () =>
+      Micro.gen(function*() {
+        let aborted = false
+        const scope = yield* Micro.scopeMake
+        yield* Micro.never.pipe(
+          Micro.onInterrupt(Micro.sync(() => {
+            aborted = true
+          })),
+          Micro.forkScoped,
+          Micro.provideScope(scope)
+        )
+        yield* Micro.yieldNow
+        yield* scope.close(Micro.resultVoid)
+        assert.isTrue(aborted)
+      }))
+  })
 })

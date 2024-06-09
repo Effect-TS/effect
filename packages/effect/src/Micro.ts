@@ -2298,7 +2298,7 @@ class ScopeImpl implements MicroScope.Closeable {
  * @since 3.4.0
  * @category resources & finalization
  */
-export const scopeMake = (): Micro<MicroScope.Closeable> => sync(() => new ScopeImpl())
+export const scopeMake: Micro<MicroScope.Closeable> = sync(() => new ScopeImpl())
 
 /**
  * @since 3.4.0
@@ -2313,6 +2313,21 @@ export const scopeUnsafeMake = (): MicroScope.Closeable => new ScopeImpl()
  * @category resources & finalization
  */
 export const scope: Micro<MicroScope, never, MicroScope> = service(MicroScope)
+
+/**
+ * Provide a `MicroScope` to an effect.
+ *
+ * @since 3.4.0
+ * @category resources & finalization
+ */
+export const provideScope: {
+  (scope: MicroScope): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, Exclude<R, MicroScope>>
+  <A, E, R>(self: Micro<A, E, R>, scope: MicroScope): Micro<A, E, Exclude<R, MicroScope>>
+} = dual(
+  2,
+  <A, E, R>(self: Micro<A, E, R>, scope: MicroScope): Micro<A, E, Exclude<R, MicroScope>> =>
+    provideService(self, MicroScope, scope)
+)
 
 /**
  * Provide a `MicroScope` to the given effect, closing it after the effect has
@@ -3087,6 +3102,42 @@ export const forkDaemon = <A, E, R>(self: Micro<A, E, R>): Micro<Handle<A, E>, n
     })
     onResult(Either.right(handle))
   })
+
+/**
+ * Run the `Micro` effect in a new `Handle` that can be awaited, joined, or
+ * aborted.
+ *
+ * The lifetime of the handle will be attached to the provided `MicroScope`.
+ *
+ * @since 3.4.0
+ * @category handle & forking
+ */
+export const forkIn: {
+  (scope: MicroScope): <A, E, R>(self: Micro<A, E, R>) => Micro<Handle<A, E>, never, R>
+  <A, E, R>(self: Micro<A, E, R>, scope: MicroScope): Micro<Handle<A, E>, never, R>
+} = dual(
+  2,
+  <A, E, R>(self: Micro<A, E, R>, scope: MicroScope): Micro<Handle<A, E>, never, R> =>
+    uninterruptibleMask((restore) =>
+      flatMap(scope.fork, (scope) =>
+        tap(
+          restore(forkDaemon(onResult(self, (result) => scope.close(result)))),
+          (fiber) => scope.addFinalizer((_) => asVoid(fiber.abort))
+        ))
+    )
+)
+
+/**
+ * Run the `Micro` effect in a new `Handle` that can be awaited, joined, or
+ * aborted.
+ *
+ * The lifetime of the handle will be attached to a `MicroScope`.
+ *
+ * @since 3.4.0
+ * @category handle & forking
+ */
+export const forkScoped = <A, E, R>(self: Micro<A, E, R>): Micro<Handle<A, E>, never, R | MicroScope> =>
+  flatMap(scope, (scope) => forkIn(self, scope))
 
 // ----------------------------------------------------------------------------
 // execution
