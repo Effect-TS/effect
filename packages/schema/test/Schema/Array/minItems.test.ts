@@ -1,10 +1,16 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("minItems", () => {
-  const schema = S.Array(S.Number).pipe(S.minItems(2))
+  it("should throw for invalid argument", () => {
+    expect(() => S.Array(S.Number).pipe(S.minItems(-1))).toThrowError(
+      new Error("minItems: Expected an integer greater than or equal to 1, actual -1")
+    )
+  })
+
   it("decoding", async () => {
+    const schema = S.Array(S.Number).pipe(S.minItems(2))
     await Util.expectDecodeUnknownFailure(
       schema,
       [1],

@@ -3131,6 +3131,10 @@ export function filter<C extends A, B extends A, A = C>(
   refinement: (a: A, options: ParseOptions, self: AST.Refinement) => a is B,
   annotations?: Annotations.Filter<C & B, C>
 ): <I, R>(self: Schema<C, I, R>) => refine<C & B, Schema<A, I, R>>
+export function filter<A, B extends A>(
+  refinement: (a: A, options: ParseOptions, self: AST.Refinement) => a is B,
+  annotations?: Annotations.Filter<B, A>
+): <I, R>(self: Schema<A, I, R>) => refine<B, Schema<A, I, R>>
 export function filter<S extends Schema.Any>(
   predicate: (
     a: Types.NoInfer<Schema.Type<S>>,
@@ -5440,18 +5444,28 @@ export type MinItemsTypeId = typeof MinItemsTypeId
  */
 export const minItems = <A>(
   n: number,
-  annotations?: Annotations.Filter<ReadonlyArray<A>>
+  annotations?: Annotations.Filter<array_.NonEmptyReadonlyArray<A>, ReadonlyArray<A>>
 ) =>
-<I, R>(self: Schema<ReadonlyArray<A>, I, R>): filter<Schema<ReadonlyArray<A>, I, R>> =>
-  self.pipe(
-    filter((a): a is ReadonlyArray<A> => a.length >= n, {
-      typeId: MinItemsTypeId,
-      description: `an array of at least ${n} items`,
-      jsonSchema: { minItems: n },
-      [AST.StableFilterAnnotationId]: true,
-      ...annotations
-    })
+<I, R>(
+  self: Schema<ReadonlyArray<A>, I, R>
+): refine<array_.NonEmptyReadonlyArray<A>, Schema<ReadonlyArray<A>, I, R>> => {
+  const minItems = Math.floor(n)
+  if (minItems < 1) {
+    throw new Error(`minItems: Expected an integer greater than or equal to 1, actual ${n}`)
+  }
+  return self.pipe(
+    filter(
+      (a): a is array_.NonEmptyReadonlyArray<A> => a.length >= minItems,
+      {
+        typeId: MinItemsTypeId,
+        description: `an array of at least ${minItems} items`,
+        jsonSchema: { minItems },
+        [AST.StableFilterAnnotationId]: true,
+        ...annotations
+      }
+    )
   )
+}
 
 /**
  * @category type id
