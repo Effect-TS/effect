@@ -1009,9 +1009,19 @@ If you are working with React and need form validation, `@hookform/resolvers` of
 For more detailed instructions and examples on how to integrate `@effect/schema` with React Hook Form using `@hookform/resolvers`, you can visit the official npm package page:
 [React Hook Form Resolvers](https://www.npmjs.com/package/@hookform/resolvers#effect-ts)
 
-## Assertions
+## Type Guards
 
-The `is` function provided by the `@effect/schema/Schema` module represents a way of verifying that a value conforms to a given `Schema`. `is` is a refinement that takes a value of type `unknown` as an argument and returns a `boolean` indicating whether or not the value conforms to the `Schema`.
+The `Schema.is` function provided by the `@effect/schema/Schema` module represents a way of verifying that a value conforms to a given `Schema`. It functions as a [type guard](https://www.typescriptlang.org/docs/handbook/2/narrowing.html#using-type-predicates), taking a value of type `unknown` and determining if it matches the structure and type constraints defined in the schema.
+
+Here's how the `Schema.is` function works
+
+1. **Schema Definition**: Define a schema to describe the structure and constraints of the data type you expect. For instance, `Schema<A, I, R>` where `A` is the desired type.
+
+2. **Type Guard Creation**: Convert the schema into a user-defined type guard `(u: unknown) => u is A`. This allows you to assert at runtime whether a value meets the specified schema.
+
+The type `I`, typically used in schema transformations, does not influence the generation of the type guard. The primary focus is on ensuring that the input conforms to the desired type `A`.
+
+**Example Usage**:
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -1022,7 +1032,7 @@ const Person = Schema.Struct({
 })
 
 /*
-const isPerson: (a: unknown, options?: ParseOptions | undefined) => a is {
+const isPerson: (a: unknown, options?: number | ParseOptions) => a is {
     readonly name: string;
     readonly age: number;
 }
@@ -1034,7 +1044,11 @@ console.log(isPerson(null)) // false
 console.log(isPerson({})) // false
 ```
 
-The `asserts` function takes a `Schema` and returns a function that takes an input value and checks if it matches the schema. If it does not match the schema, it throws an error with a comprehensive error message.
+## Assertions
+
+While type guards verify and inform about type conformity, the `Schema.asserts` function takes it a step further by asserting that an input matches the schema `A` type (from `Schema<A, I, R>`). If the input does not match, it throws a detailed error.
+
+**Example Usage**:
 
 ```ts
 import { Schema } from "@effect/schema"
