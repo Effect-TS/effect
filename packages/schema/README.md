@@ -617,7 +617,7 @@ The `propertyOrder` option provides control over the order of object fields in t
 
 By default, the `propertyOrder` option is set to `"none"`. This means that the internal system decides the order of keys to optimize parsing speed. The order of keys in this mode should not be considered stable, and it's recommended not to rely on key ordering as it may change in future updates without notice.
 
-Setting `propertyOrder` to `"input"` ensures that the keys are ordered as they appear in the input during the decoding/encoding process.
+Setting `propertyOrder` to `"original"` ensures that the keys are ordered as they appear in the input during the decoding/encoding process.
 
 **Example** (Synchronous Decoding)
 
