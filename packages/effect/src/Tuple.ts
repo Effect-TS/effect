@@ -194,14 +194,24 @@ export const appendElement: {
   <A extends ReadonlyArray<unknown>, B>(self: A, that: B): [...A, B]
 } = dual(2, <A extends ReadonlyArray<unknown>, B>(self: A, that: B): [...A, B] => [...self, that])
 
-/*
-
-  TODO:
-
-  - at
-  - swap
-
-*/
+/**
+ * Retrieves the element at a specified index from a tuple.
+ *
+ * @param self - A tuple from which to retrieve the element.
+ * @param index - The index of the element to retrieve.
+ *
+ * @example
+ * import { at } from "effect/Tuple"
+ *
+ * assert.deepStrictEqual(at([1, 'hello', true], 1), 'hello')
+ *
+ * @category getters
+ * @since 3.4.0
+ */
+export const at: {
+  <A extends ReadonlyArray<unknown>>(index: number): (self: A) => A[number]
+  <A extends ReadonlyArray<unknown>>(self: A, index: number): A[number]
+} = dual(2, <A extends ReadonlyArray<unknown>>(self: A, index: number): A[number] => self[index])
 
 export {
   /**
