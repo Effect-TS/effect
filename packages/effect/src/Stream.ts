@@ -3510,6 +3510,45 @@ export const sync: <A>(evaluate: LazyArg<A>) => Stream<A> = internal.sync
 export const suspend: <A, E, R>(stream: LazyArg<Stream<A, E, R>>) => Stream<A, E, R> = internal.suspend
 
 /**
+ * Projects each source value to a Stream which is merged in the output Stream,
+ * emitting values only from the most recently projected Stream.
+ * @param project A function that, when applied to an item emitted by the source Stream, returns a Stream.
+ * @returns A function that returns a Stream that emits the result of applying the projection function to each item emitted by the source Stream and taking only the values from the most recently projected inner Stream.
+ * @example
+ * import { Console, Effect, Schedule, Stream } from 'effect';
+ *
+ * const upstream = Stream.fromSchedule(Schedule.spaced('4 second')).pipe(
+ *   Stream.switchMap(
+ *     (i) => Stream.fromSchedule(Schedule.spaced('1 second')).pipe(Stream.as(i))
+ *   ),
+ *   Stream.tap(Console.log),
+ *   Stream.take(9),
+ * );
+ *
+ * Effect.runFork(upstream.pipe(Stream.runDrain));
+ * // 0
+ * // 0
+ * // 0
+ * // 1
+ * // 1
+ * // 1
+ * // 2
+ * // 2
+ * // 2
+ * @since 3.4.0
+ * @category sequencing
+ */
+export const switchMap: {
+  <A, A2, E2, R2>(
+    project: (a: A) => Stream<A2, E2, R2>
+  ): <E, R>(self: Stream<A, E, R>) => Stream<A2, E2 | E, R2 | R>
+  <A, E, R, A2, E2, R2>(
+    self: Stream<A, E, R>,
+    project: (a: A) => Stream<A2, E2, R2>
+  ): Stream<A2, E | E2, R | R2>
+} = internal.switchMap
+
+/**
  * Takes the specified number of elements from this stream.
  *
  * @since 2.0.0
