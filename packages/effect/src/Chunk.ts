@@ -279,21 +279,21 @@ const copyToArray = <A>(self: Chunk<A>, array: Array<any>, initial: number): voi
   }
 }
 
-/**
- * Converts the specified `Chunk` to a `Array`.
- *
- * @category conversions
- * @since 2.0.0
- */
-export const toArray = <A>(self: Chunk<A>): Array<A> => toReadonlyArray(self).slice()
+const toArray_ = <A>(self: Chunk<A>): Array<A> => toReadonlyArray(self).slice()
 
 /**
- * Converts the specified `Chunk` to a `ReadonlyArray`.
+ * Converts a `Chunk` into an `Array`. If the provided `Chunk` is non-empty
+ * (`NonEmptyChunk`), the function will return a `NonEmptyArray`, ensuring the
+ * non-empty property is preserved.
  *
  * @category conversions
  * @since 2.0.0
  */
-export const toReadonlyArray = <A>(self: Chunk<A>): ReadonlyArray<A> => {
+export const toArray: <S extends Chunk<any>>(
+  self: S
+) => S extends NonEmptyChunk<any> ? RA.NonEmptyArray<Chunk.Infer<S>> : Array<Chunk.Infer<S>> = toArray_ as any
+
+const toReadonlyArray_ = <A>(self: Chunk<A>): ReadonlyArray<A> => {
   switch (self.backing._tag) {
     case "IEmpty": {
       return emptyArray
@@ -315,6 +315,19 @@ export const toReadonlyArray = <A>(self: Chunk<A>): ReadonlyArray<A> => {
     }
   }
 }
+
+/**
+ * Converts a `Chunk` into a `ReadonlyArray`. If the provided `Chunk` is
+ * non-empty (`NonEmptyChunk`), the function will return a
+ * `NonEmptyReadonlyArray`, ensuring the non-empty property is preserved.
+ *
+ * @category conversions
+ * @since 2.0.0
+ */
+export const toReadonlyArray: <S extends Chunk<any>>(
+  self: S
+) => S extends NonEmptyChunk<any> ? RA.NonEmptyReadonlyArray<Chunk.Infer<S>> : ReadonlyArray<Chunk.Infer<S>> =
+  toReadonlyArray_ as any
 
 const reverseChunk = <A>(self: Chunk<A>): Chunk<A> => {
   switch (self.backing._tag) {
