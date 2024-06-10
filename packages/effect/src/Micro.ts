@@ -801,6 +801,7 @@ export const async = <A, E = never, R = never>(
 ): Micro<A, E, R> =>
   make(function(env, onResult) {
     let resumed = false
+    const controller = register.length > 1 ? new AbortController() : undefined
     const signal = envGet(env, currentAbortSignal)
     let cleanup: Micro<void, never, R> | void = undefined
     function onAbort() {
@@ -808,6 +809,9 @@ export const async = <A, E = never, R = never>(
         resume(uninterruptible(andThen(cleanup, fromResult(ResultAborted))))
       } else {
         resume(failWith(FailureAborted()))
+      }
+      if (controller !== undefined) {
+        controller.abort()
       }
     }
     function resume(effect: Micro<A, E, R>) {
@@ -818,7 +822,9 @@ export const async = <A, E = never, R = never>(
       signal.removeEventListener("abort", onAbort)
       effect[runSymbol](env, onResult)
     }
-    cleanup = register(resume, signal)
+    cleanup = controller === undefined
+      ? (register as any)(resume)
+      : register(resume, controller.signal)
     if (resumed) return
     signal.addEventListener("abort", onAbort)
   })
@@ -2847,10 +2853,6 @@ const forEachConcurrent = <
   unsafeMake(function(env, onResult) {
     // abort
     const [envWithSignal, onAbort] = forkSignal(env)
-    function onDone() {
-      length = index
-      onAbort()
-    }
 
     // iterate
     const concurrency = options.concurrency === "unbounded" ? Infinity : options.concurrency
@@ -2874,7 +2876,8 @@ const forEachConcurrent = <
             if (result._tag === "Left") {
               if (failure === undefined) {
                 failure = result
-                onDone()
+                length = index
+                onAbort()
               }
             } else if (out !== undefined) {
               out[currentIndex] = result.right
@@ -2882,7 +2885,6 @@ const forEachConcurrent = <
             doneCount++
             inProgress--
             if (doneCount === length) {
-              onAbort()
               onResult(failure ?? Either.right(out))
             } else if (!pumping && inProgress < concurrency) {
               pump()
@@ -2890,7 +2892,8 @@ const forEachConcurrent = <
           })
         } catch (err) {
           failure = ResultFailUnexpected(err)
-          onDone()
+          length = index
+          onAbort()
         }
       }
       pumping = false
@@ -2993,7 +2996,6 @@ class HandleImpl<A, E> implements Handle<A, E> {
     if (!this.isRoot) {
       this.parentSignal.removeEventListener("abort", this.unsafeAbort)
     }
-    this._controller.abort()
     this.observers.forEach((observer) => observer(result))
     this.observers.clear()
   }
