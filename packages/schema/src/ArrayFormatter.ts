@@ -80,11 +80,11 @@ const go = (
     case "Missing":
       return Effect.map(TreeFormatter.formatMissingMessage(e), (message) => [{ _tag, path, message }])
     case "Path":
-      return go(e.error, path.concat(e.name))
+      return go(e.issue, path.concat(e.name))
     case "And":
       return getArray(e, path, () => flatten(Effect.forEach(e.issues, (issue) => go(issue, path))))
     case "Refinement":
     case "Transformation":
-      return getArray(e, path, () => go(e.error, path))
+      return getArray(e, path, () => go(e.issue, path))
   }
 }

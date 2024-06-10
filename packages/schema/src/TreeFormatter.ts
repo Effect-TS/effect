@@ -88,12 +88,12 @@ const getInnerMessage = (
   switch (issue._tag) {
     case "Refinement": {
       if (issue.kind === "From") {
-        return getMessage(issue.error)
+        return getMessage(issue.issue)
       }
       break
     }
     case "Transformation": {
-      return getMessage(issue.error)
+      return getMessage(issue.issue)
     }
   }
   return Option.none()
@@ -195,17 +195,17 @@ const go = (
     case "Transformation":
       return getTree(e, () =>
         Effect.map(
-          go(e.error),
+          go(e.issue),
           (tree) => make(getParseIssueTitle(e), [make(formatTransformationKind(e.kind), [tree])])
         ))
     case "Refinement":
       return getTree(
         e,
         () =>
-          Effect.map(go(e.error), (tree) => make(getParseIssueTitle(e), [make(formatRefinementKind(e.kind), [tree])]))
+          Effect.map(go(e.issue), (tree) => make(getParseIssueTitle(e), [make(formatRefinementKind(e.kind), [tree])]))
       )
     case "Path":
-      return Effect.map(go(e.error), (tree) => make(`[${util_.formatPropertyKey(e.name)}]`, [tree]))
+      return Effect.map(go(e.issue), (tree) => make(`[${util_.formatPropertyKey(e.name)}]`, [tree]))
     case "And":
       return getTree(e, () => Effect.map(Effect.forEach(e.issues, go), (forest) => make(getParseIssueTitle(e), forest)))
   }

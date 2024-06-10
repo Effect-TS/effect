@@ -63,7 +63,7 @@ export class Refinement {
     readonly ast: AST.Refinement<AST.AST>,
     readonly actual: unknown,
     readonly kind: "From" | "Predicate",
-    readonly error: ParseIssue
+    readonly issue: ParseIssue
   ) {}
 }
 
@@ -78,7 +78,7 @@ export class Path {
    * @since 0.68.0
    */
   readonly _tag = "Path"
-  constructor(readonly name: PropertyKey, readonly error: ParseIssue | Missing | Unexpected) {}
+  constructor(readonly name: PropertyKey, readonly issue: ParseIssue | Missing | Unexpected) {}
 }
 
 /**
@@ -125,7 +125,7 @@ export class Transformation {
     readonly ast: AST.Transformation,
     readonly actual: unknown,
     readonly kind: "Encoded" | "Transformation" | "Type",
-    readonly error: ParseIssue
+    readonly issue: ParseIssue
   ) {}
 }
 

@@ -192,6 +192,8 @@ ParseResult
   - remove `TypeLiteral` in favour of `And`
   - remove `TupleType` in favour of `And`
   - merge `Key` and `Index` into `Path`
+  - `Refinement`: rename `error` field to `issue`
+  - `Transformation`: rename `error` field to `issue`
 - Standardize Error Handling for `*Either`, `*Sync` and `asserts` APIs, closes #2968
 - `ParseError`: rename `error` property to `issue`
 - `Missing`
