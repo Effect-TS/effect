@@ -345,7 +345,7 @@ describe("Formatter", () => {
         Util.onExcessPropertyError
       )
       expectIssues(schema, input, [{
-        _tag: "Declaration",
+        _tag: "Type",
         path: [],
         message: "custom message"
       }])
@@ -363,7 +363,7 @@ describe("Formatter", () => {
         Util.onExcessPropertyError
       )
       expectIssues(schema, input, [{
-        _tag: "Declaration",
+        _tag: "Type",
         path: [],
         message: "custom message"
       }])

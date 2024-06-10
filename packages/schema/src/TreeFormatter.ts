@@ -232,13 +232,7 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
         () =>
           Effect.map(go(e.error), (tree) => make(getParseIssueTitle(e), [make(formatRefinementKind(e.kind), [tree])]))
       )
-    case "Declaration":
-      return getTree(e, () => {
-        const error = e.error
-        const shouldSkipDefaultMessage = error._tag === "Type" && error.ast === e.ast
-        return shouldSkipDefaultMessage
-          ? go(error)
-          : Effect.map(go(error), (tree) => make(getParseIssueTitle(e), [tree]))
-      })
+    case "And":
+      return getTree(e, () => Effect.map(Effect.forEach(e.issues, go), (forest) => make(getParseIssueTitle(e), forest)))
   }
 }

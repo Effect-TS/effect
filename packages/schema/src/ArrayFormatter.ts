@@ -15,7 +15,7 @@ export interface Issue {
   readonly _tag:
     | "Transformation"
     | "Type"
-    | "Declaration"
+    | "And"
     | "Refinement"
     | "TupleType"
     | "TypeLiteral"
@@ -103,7 +103,8 @@ const go = (
         path,
         () => flatten(Effect.forEach(e.errors, (key) => go(key.error, path.concat(key.key))))
       )
-    case "Declaration":
+    case "And":
+      return getArray(e, path, () => flatten(Effect.forEach(e.issues, (issue) => go(issue, path))))
     case "Refinement":
     case "Transformation":
       return getArray(e, path, () => go(e.error, path))

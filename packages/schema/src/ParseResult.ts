@@ -25,7 +25,7 @@ import * as TreeFormatter from "./TreeFormatter.js"
  * @since 0.67.0
  */
 export type ParseIssue =
-  | Declaration
+  | And
   | Refinement
   | TupleType
   | TypeLiteral
@@ -35,17 +35,19 @@ export type ParseIssue =
   | Forbidden
 
 /**
- * Error that occurs when a declaration has an error.
- *
  * @category model
- * @since 0.67.0
+ * @since 0.68.0
  */
-export class Declaration {
+export class And {
   /**
-   * @since 0.67.0
+   * @since 0.68.0
    */
-  readonly _tag = "Declaration"
-  constructor(readonly ast: AST.Declaration, readonly actual: unknown, readonly error: ParseIssue) {}
+  readonly _tag = "And"
+  constructor(
+    readonly ast: AST.AST,
+    readonly actual: unknown,
+    readonly issues: Arr.NonEmptyReadonlyArray<ParseIssue>
+  ) {}
 }
 
 /**
@@ -928,7 +930,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         : ast.encodeUnknown(...ast.typeParameters)
       return (i, options) =>
         handleForbidden(
-          mapError(parse(i, options ?? AST.defaultParseOption, ast), (e) => new Declaration(ast, i, e)),
+          mapError(parse(i, options ?? AST.defaultParseOption, ast), (e) => e.ast === ast ? e : new And(ast, i, [e])),
           ast,
           i,
           options
