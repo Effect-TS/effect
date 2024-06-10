@@ -1,6 +1,7 @@
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import * as Either from "effect/Either"
+import * as Option from "effect/Option"
 import { assert, describe, expect, it } from "vitest"
 
 describe("Array", () => {
@@ -22,10 +23,10 @@ describe("Array", () => {
     const all = S.decodeUnknownEither(schema)([1, "a", 2, "b"], { errors: "all" })
     if (Either.isLeft(all)) {
       const issue = all.left.issue
-      if (issue._tag === "TupleType") {
-        expect(issue.output).toStrictEqual([1, 2])
+      if (issue._tag === "And") {
+        expect(issue.output).toStrictEqual(Option.some([1, 2]))
       } else {
-        assert.fail("expected a TupleType")
+        assert.fail("expected an And")
       }
     } else {
       assert.fail("expected a Left")
@@ -33,10 +34,10 @@ describe("Array", () => {
     const first = S.decodeUnknownEither(schema)([1, "a", 2, "b"], { errors: "first" })
     if (Either.isLeft(first)) {
       const issue = first.left.issue
-      if (issue._tag === "TupleType") {
-        expect(issue.output).toStrictEqual([1])
+      if (issue._tag === "And") {
+        expect(issue.output).toStrictEqual(Option.some([1]))
       } else {
-        assert.fail("expected a TupleType")
+        assert.fail("expected an And")
       }
     } else {
       assert.fail("expected a Left")

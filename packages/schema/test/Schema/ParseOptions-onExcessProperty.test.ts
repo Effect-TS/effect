@@ -102,7 +102,7 @@ describe("`onExcessProperty` option", () => {
         const input = ["a", 1]
         const e = ParseResult.decodeUnknownEither(schema)(input, Util.onExcessPropertyError)
         expect(e).toEqual(Either.left(
-          new ParseResult.TupleType(schema.ast as AST.TupleType, input, [
+          new ParseResult.And(schema.ast as AST.TupleType, input, [
             new ParseResult.Index(1, new ParseResult.Unexpected(1, `is unexpected, expected 0`))
           ])
         ))

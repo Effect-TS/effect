@@ -181,7 +181,7 @@ const getTree = (issue: ParseResult.ParseIssue, onFailure: () => Effect.Effect<T
   })
 
 const go = (
-  e: ParseResult.ParseIssue | ParseResult.Key | ParseResult.Missing | ParseResult.Unexpected
+  e: ParseResult.ParseIssue | ParseResult.Key | ParseResult.Index | ParseResult.Missing | ParseResult.Unexpected
 ): Effect.Effect<Tree<string>> => {
   switch (e._tag) {
     case "Type":
@@ -192,15 +192,6 @@ const go = (
       return Effect.succeed(make(formatUnexpectedMessage(e)))
     case "Missing":
       return Effect.map(formatMissingMessage(e), make)
-    case "TupleType":
-      return getTree(e, () =>
-        Effect.map(
-          Effect.forEach(
-            e.errors,
-            (index) => Effect.map(go(index.error), (tree) => make(`[${util_.formatPropertyKey(index.index)}]`, [tree]))
-          ),
-          (forest) => make(getParseIssueTitle(e), forest)
-        ))
     case "Transformation":
       return getTree(e, () =>
         Effect.map(
@@ -215,6 +206,8 @@ const go = (
       )
     case "Key":
       return Effect.map(go(e.error), (tree) => make(`[${util_.formatPropertyKey(e.key)}]`, [tree]))
+    case "Index":
+      return Effect.map(go(e.error), (tree) => make(`[${util_.formatPropertyKey(e.index)}]`, [tree]))
     case "And":
       return getTree(e, () => Effect.map(Effect.forEach(e.issues, go), (forest) => make(getParseIssueTitle(e), forest)))
   }
