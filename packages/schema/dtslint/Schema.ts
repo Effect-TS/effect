@@ -2445,3 +2445,16 @@ S.asSchema(
 
 // $ExpectType Struct<{ a: PropertySignature<"?:", string, never, ":", string, false, "a">; }>
 S.Struct({ a: S.requiredToOptional(aContext, S.String, { decode: Option.some, encode: Option.getOrElse(() => "") }) })
+
+// ---------------------------------------------
+// minItems
+// ---------------------------------------------
+
+// $ExpectType Schema<readonly [string, ...string[]], readonly string[], never>
+S.asSchema(S.Array(S.String).pipe(S.minItems(1)))
+
+// $ExpectType refine<readonly [string, ...string[]], Schema<readonly string[], readonly string[], never>>
+S.Array(S.String).pipe(S.minItems(1))
+
+// $ExpectType Schema<readonly string[], readonly string[], never>
+S.Array(S.String).pipe(S.minItems(1)).from

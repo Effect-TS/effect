@@ -180,8 +180,8 @@ export const boolean = (name?: string): Config.Config<boolean> => {
 }
 
 /** @internal */
-export const array = <A>(config: Config.Config<A>, name?: string): Config.Config<ReadonlyArray<A>> => {
-  return pipe(chunk(config, name), map(Chunk.toReadonlyArray))
+export const array = <A>(config: Config.Config<A>, name?: string): Config.Config<Array<A>> => {
+  return pipe(chunk(config, name), map(Chunk.toArray))
 }
 
 /** @internal */
