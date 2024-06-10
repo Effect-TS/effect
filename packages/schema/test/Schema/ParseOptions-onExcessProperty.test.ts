@@ -3,6 +3,7 @@ import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
 import * as Either from "effect/Either"
+import * as Option from "effect/Option"
 import { describe, expect, it } from "vitest"
 
 describe("`onExcessProperty` option", () => {
@@ -90,9 +91,9 @@ describe("`onExcessProperty` option", () => {
         const input = { a: "a", b: 1 }
         const e = ParseResult.decodeUnknownEither(schema)(input, Util.onExcessPropertyError)
         expect(e).toEqual(Either.left(
-          new ParseResult.TypeLiteral(schema.ast as AST.TypeLiteral, input, [
+          new ParseResult.And(schema.ast as AST.TypeLiteral, input, [
             new ParseResult.Key("b", new ParseResult.Unexpected(1, `is unexpected, expected "a"`))
-          ])
+          ], Option.some({}))
         ))
       })
 

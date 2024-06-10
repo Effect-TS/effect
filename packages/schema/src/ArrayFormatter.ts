@@ -66,7 +66,7 @@ const getArray = (
 const flatten = (eff: Effect.Effect<Array<Array<Issue>>>): Effect.Effect<Array<Issue>> => Effect.map(eff, Arr.flatten)
 
 const go = (
-  e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpected,
+  e: ParseResult.ParseIssue | ParseResult.Key | ParseResult.Missing | ParseResult.Unexpected,
   path: ReadonlyArray<PropertyKey> = []
 ): Effect.Effect<Array<Issue>> => {
   const _tag = e._tag
@@ -85,12 +85,8 @@ const go = (
         path,
         () => flatten(Effect.forEach(e.errors, (index) => go(index.error, path.concat(index.index))))
       )
-    case "TypeLiteral":
-      return getArray(
-        e,
-        path,
-        () => flatten(Effect.forEach(e.errors, (key) => go(key.error, path.concat(key.key))))
-      )
+    case "Key":
+      return go(e.error, path.concat(e.key))
     case "And":
       return getArray(e, path, () => flatten(Effect.forEach(e.issues, (issue) => go(issue, path))))
     case "Refinement":

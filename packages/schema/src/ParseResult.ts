@@ -28,7 +28,6 @@ export type ParseIssue =
   | And
   | Refinement
   | TupleType
-  | TypeLiteral
   | Transformation
   | Type
   | Forbidden
@@ -45,7 +44,8 @@ export class And {
   constructor(
     readonly ast: AST.AST,
     readonly actual: unknown,
-    readonly issues: Arr.NonEmptyReadonlyArray<ParseIssue>
+    readonly issues: Arr.NonEmptyReadonlyArray<ParseIssue | Key>,
+    readonly output: Option.Option<unknown> = Option.none()
   ) {}
 }
 
@@ -99,25 +99,6 @@ export class Index {
    */
   readonly _tag = "Index"
   constructor(readonly index: number, readonly error: ParseIssue | Missing | Unexpected) {}
-}
-
-/**
- * Error that occurs when a type literal or record has an error.
- *
- * @category model
- * @since 0.67.0
- */
-export class TypeLiteral {
-  /**
-   * @since 0.67.0
-   */
-  readonly _tag = "TypeLiteral"
-  constructor(
-    readonly ast: AST.TypeLiteral,
-    readonly actual: unknown,
-    readonly errors: Arr.NonEmptyReadonlyArray<Key>,
-    readonly output: { readonly [x: string]: unknown } = {}
-  ) {}
 }
 
 /**
@@ -1232,7 +1213,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   es.push([stepKey++, e])
                   continue
                 } else {
-                  return Either.left(new TypeLiteral(ast, input, [e], output))
+                  return Either.left(new And(ast, input, [e], Option.some(output)))
                 }
               } else {
                 // preserve key
@@ -1267,7 +1248,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                 es.push([stepKey++, e])
                 continue
               } else {
-                return Either.left(new TypeLiteral(ast, input, [e], output))
+                return Either.left(new And(ast, input, [e], Option.some(output)))
               }
             }
           }
@@ -1281,7 +1262,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                 es.push([stepKey++, e])
                 continue
               } else {
-                return Either.left(new TypeLiteral(ast, input, [e], output))
+                return Either.left(new And(ast, input, [e], Option.some(output)))
               }
             }
             output[name] = eu.right
@@ -1300,7 +1281,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                       es.push([nk, e])
                       return Effect.void
                     } else {
-                      return Either.left(new TypeLiteral(ast, input, [e], output))
+                      return Either.left(new And(ast, input, [e], Option.some(output)))
                     }
                   }
                   output[index] = t.right
@@ -1336,7 +1317,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                     es.push([stepKey++, e])
                     continue
                   } else {
-                    return Either.left(new TypeLiteral(ast, input, [e], output))
+                    return Either.left(new And(ast, input, [e], Option.some(output)))
                   }
                 } else {
                   if (!Object.prototype.hasOwnProperty.call(expectedKeysMap, key)) {
@@ -1360,7 +1341,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                             es.push([nk, e])
                             return Effect.void
                           } else {
-                            return Either.left(new TypeLiteral(ast, input, [e], output))
+                            return Either.left(new And(ast, input, [e], Option.some(output)))
                           }
                         } else {
                           if (!Object.prototype.hasOwnProperty.call(expectedKeysMap, key)) {
@@ -1380,7 +1361,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         const computeResult = ({ es, output }: State) => {
           if (Arr.isNonEmptyArray(es)) {
-            return Either.left(new TypeLiteral(ast, input, sortByIndex(es), output))
+            return Either.left(new And(ast, input, sortByIndex(es), Option.some(output)))
           }
           if (options?.propertyOrder === "original") {
             // preserve input keys order
@@ -1447,7 +1428,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   const literals = AST.Union.make(searchTree.keys[name].literals)
                   es.push([
                     stepKey++,
-                    new TypeLiteral(
+                    new And(
                       new AST.TypeLiteral([
                         new AST.PropertySignature(name, literals, false, true)
                       ], []),
@@ -1461,7 +1442,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                 const fakeps = new AST.PropertySignature(name, literals, false, true) // TODO: inherit message annotation from the union?
                 es.push([
                   stepKey++,
-                  new TypeLiteral(
+                  new And(
                     new AST.TypeLiteral([fakeps], []),
                     input,
                     [new Key(name, new Missing(fakeps))]
