@@ -266,6 +266,23 @@ export class Member {
 }
 
 /**
+ * @category type id
+ * @since 0.68.0
+ */
+export const ParseErrorTypeId: unique symbol = Symbol.for("@effect/schema/ParseErrorTypeId")
+
+/**
+ * @category type id
+ * @since 0.68.0
+ */
+export type ParseErrorTypeId = typeof ParseErrorTypeId
+
+/**
+ * @since 0.68.0
+ */
+export const isParseError = (u: unknown): u is ParseError => Predicate.hasProperty(u, ParseErrorTypeId)
+
+/**
  * Error that occurs when a union has an error.
  *
  * @category model
@@ -287,6 +304,11 @@ export class Union {
  * @since 0.67.0
  */
 export class ParseError extends TaggedError("ParseError")<{ readonly error: ParseIssue }> {
+  /**
+   * @since 0.68.0
+   */
+  readonly [ParseErrorTypeId] = ParseErrorTypeId
+
   get message() {
     return this.toString()
   }
@@ -520,10 +542,7 @@ const getEither = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions
 const getSync = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
   const parser = getEither(ast, isDecoding, options)
   return (input: unknown, overrideOptions?: AST.ParseOptions) =>
-    Either.getOrThrowWith(
-      parser(input, overrideOptions),
-      (issue) => new Error(TreeFormatter.formatIssueSync(issue), { cause: issue })
-    )
+    Either.getOrThrowWith(parser(input, overrideOptions), parseError)
 }
 
 const getOption = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
@@ -539,6 +558,7 @@ const getEffect = <R>(ast: AST.AST, isDecoding: boolean, options?: AST.ParseOpti
 }
 
 /**
+ * @throws `ParseError`
  * @category decoding
  * @since 0.67.0
  */
@@ -589,6 +609,7 @@ export const decodeUnknown = <A, I, R>(
   getEffect(schema.ast, true, options)
 
 /**
+ * @throws `ParseError`
  * @category encoding
  * @since 0.67.0
  */
@@ -684,6 +705,7 @@ export const decode: <A, I, R>(
 ) => (i: I, overrideOptions?: AST.ParseOptions) => Effect.Effect<A, ParseIssue, R> = decodeUnknown
 
 /**
+ * @throws `ParseError`
  * @category validation
  * @since 0.67.0
  */
@@ -745,6 +767,7 @@ export const is = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: AST.ParseO
 }
 
 /**
+ * @throws `ParseError`
  * @category validation
  * @since 0.67.0
  */
@@ -756,7 +779,7 @@ export const asserts = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: AST.P
       isExact: true
     }) as any
     if (Either.isLeft(result)) {
-      throw new Error(TreeFormatter.formatIssueSync(result.left), { cause: result.left })
+      throw parseError(result.left)
     }
   }
 }

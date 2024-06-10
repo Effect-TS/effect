@@ -120,6 +120,29 @@ const schema2 = Schema.String.pipe(
 )
 ```
 
+## Standardize Error Handling for `*Either`, `*Sync` and `asserts` APIs
+
+Now the `*Sync` and `asserts` APIs throw a `ParseError` while before they was throwing a simple `Error` with a `cause` containing a `ParseIssue`
+
+```ts
+import { ParseResult, Schema } from "@effect/schema"
+
+try {
+  Schema.decodeUnknownSync(Schema.String)(null)
+} catch (e) {
+  console.log(ParseResult.isParseError(e)) // true
+}
+
+const asserts: (u: unknown) => asserts u is string = Schema.asserts(
+  Schema.String
+)
+try {
+  asserts(null)
+} catch (e) {
+  console.log(ParseResult.isParseError(e)) // true
+}
+```
+
 ## Changes
 
 AST
@@ -159,8 +182,11 @@ Schema
 
 ParseResult
 
+- add `isParseError` type guard
+
 **Breaking**
 
+- Standardize Error Handling for `*Either`, `*Sync` and `asserts` APIs, closes #2968
 - `Missing`
   - add `ast: AST.Type` field
   - add `message` field

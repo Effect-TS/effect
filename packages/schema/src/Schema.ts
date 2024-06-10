@@ -323,6 +323,7 @@ export const typeSchema = <A, I, R>(schema: Schema<A, I, R>): SchemaClass<A> => 
 /* c8 ignore start */
 export {
   /**
+   * @throws `ParseError`
    * @category validation
    * @since 0.67.0
    */
@@ -333,6 +334,7 @@ export {
    */
   decodeOption,
   /**
+   * @throws `ParseError`
    * @category decoding
    * @since 0.67.0
    */
@@ -343,6 +345,7 @@ export {
    */
   decodeUnknownOption,
   /**
+   * @throws `ParseError`
    * @category decoding
    * @since 0.67.0
    */
@@ -353,6 +356,7 @@ export {
    */
   encodeOption,
   /**
+   * @throws `ParseError`
    * @category encoding
    * @since 0.67.0
    */
@@ -363,6 +367,7 @@ export {
    */
   encodeUnknownOption,
   /**
+   * @throws `ParseError`
    * @category encoding
    * @since 0.67.0
    */
@@ -378,6 +383,7 @@ export {
    */
   validateOption,
   /**
+   * @throws `ParseError`
    * @category validation
    * @since 0.67.0
    */

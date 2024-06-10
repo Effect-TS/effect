@@ -1,3 +1,4 @@
+import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
 import { describe, expect, it } from "vitest"
@@ -11,12 +12,12 @@ const expectAssertsFailure = <A, I>(schema: S.Schema<A, I>, input: unknown, mess
 }
 
 describe("asserts", () => {
-  it("the returned error should include a cause", () => {
+  it("the returned error should be a ParseError", () => {
     const asserts: (u: unknown) => asserts u is string = S.asserts(S.String)
     try {
       asserts(1)
-    } catch (e: any) {
-      expect(e.cause).exist
+    } catch (e) {
+      expect(ParseResult.isParseError(e)).toBe(true)
     }
   })
 
