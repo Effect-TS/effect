@@ -487,3 +487,23 @@ Chunk.reverse(nonEmptyNumbers)
 
 // $ExpectType NonEmptyChunk<number>
 pipe(nonEmptyNumbers, Chunk.reverse)
+
+// -------------------------------------------------------------------------------------
+// toArray
+// -------------------------------------------------------------------------------------
+
+// $ExpectType string[]
+Chunk.toArray(hole<Chunk.Chunk<string>>())
+
+// $ExpectType [string, ...string[]]
+Chunk.toArray(hole<Chunk.NonEmptyChunk<string>>())
+
+// -------------------------------------------------------------------------------------
+// toArray
+// -------------------------------------------------------------------------------------
+
+// $ExpectType readonly string[]
+Chunk.toReadonlyArray(hole<Chunk.Chunk<string>>())
+
+// $ExpectType readonly [string, ...string[]]
+Chunk.toReadonlyArray(hole<Chunk.NonEmptyChunk<string>>())
