@@ -191,6 +191,7 @@ ParseResult
   - remove `Union` in favour of `And`
   - remove `TypeLiteral` in favour of `And`
   - remove `TupleType` in favour of `And`
+  - merge `Key` and `Index` into `Path`
 - Standardize Error Handling for `*Either`, `*Sync` and `asserts` APIs, closes #2968
 - `ParseError`: rename `error` property to `issue`
 - `Missing`

@@ -66,7 +66,7 @@ const getArray = (
 const flatten = (eff: Effect.Effect<Array<Array<Issue>>>): Effect.Effect<Array<Issue>> => Effect.map(eff, Arr.flatten)
 
 const go = (
-  e: ParseResult.ParseIssue | ParseResult.Key | ParseResult.Index | ParseResult.Missing | ParseResult.Unexpected,
+  e: ParseResult.ParseIssue | ParseResult.Path | ParseResult.Missing | ParseResult.Unexpected,
   path: ReadonlyArray<PropertyKey> = []
 ): Effect.Effect<Array<Issue>> => {
   const _tag = e._tag
@@ -79,10 +79,8 @@ const go = (
       return succeed({ _tag, path, message: TreeFormatter.formatUnexpectedMessage(e) })
     case "Missing":
       return Effect.map(TreeFormatter.formatMissingMessage(e), (message) => [{ _tag, path, message }])
-    case "Key":
-      return go(e.error, path.concat(e.key))
-    case "Index":
-      return go(e.error, path.concat(e.index))
+    case "Path":
+      return go(e.error, path.concat(e.name))
     case "And":
       return getArray(e, path, () => flatten(Effect.forEach(e.issues, (issue) => go(issue, path))))
     case "Refinement":
