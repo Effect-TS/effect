@@ -23,7 +23,7 @@ describe("record", () => {
     const schema = S.Record(S.String, S.Number)
     const all = S.decodeUnknownEither(schema)({ a: 1, b: "b", c: 2, d: "d" }, { errors: "all" })
     if (Either.isLeft(all)) {
-      const issue = all.left.error
+      const issue = all.left.issue
       if (issue._tag === "TypeLiteral") {
         expect(issue.output).toStrictEqual({ a: 1, c: 2 })
       } else {
@@ -34,7 +34,7 @@ describe("record", () => {
     }
     const first = S.decodeUnknownEither(schema)({ a: 1, b: "b", c: 2, d: "d" }, { errors: "first" })
     if (Either.isLeft(first)) {
-      const issue = first.left.error
+      const issue = first.left.issue
       if (issue._tag === "TypeLiteral") {
         expect(issue.output).toStrictEqual({ a: 1 })
       } else {

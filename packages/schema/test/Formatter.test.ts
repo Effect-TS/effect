@@ -16,7 +16,7 @@ const options: ParseOptions = { errors: "all", onExcessProperty: "error" }
 
 const expectIssues = <A, I>(schema: S.Schema<A, I>, input: unknown, issues: Array<ArrayFormatter.Issue>) => {
   const result = S.decodeUnknownEither(schema)(input, options).pipe(
-    Either.mapLeft((e) => ArrayFormatter.formatIssueSync(e.error))
+    Either.mapLeft((e) => ArrayFormatter.formatIssueSync(e.issue))
   )
   expect(result).toStrictEqual(Either.left(issues))
 }

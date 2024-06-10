@@ -39,13 +39,13 @@ export const formatIssueSync = (issue: ParseResult.ParseIssue): string => Effect
  * @category formatting
  * @since 0.67.0
  */
-export const formatError = (error: ParseResult.ParseError): Effect.Effect<string> => formatIssue(error.error)
+export const formatError = (error: ParseResult.ParseError): Effect.Effect<string> => formatIssue(error.issue)
 
 /**
  * @category formatting
  * @since 0.67.0
  */
-export const formatErrorSync = (error: ParseResult.ParseError): string => formatIssueSync(error.error)
+export const formatErrorSync = (error: ParseResult.ParseError): string => formatIssueSync(error.issue)
 
 const drawTree = (tree: Tree<string>): string => tree.value + draw("\n", tree.forest)
 

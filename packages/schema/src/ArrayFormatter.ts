@@ -43,13 +43,13 @@ export const formatIssueSync = (issue: ParseResult.ParseIssue): Array<Issue> => 
  * @category formatting
  * @since 0.67.0
  */
-export const formatError = (error: ParseResult.ParseError): Effect.Effect<Array<Issue>> => formatIssue(error.error)
+export const formatError = (error: ParseResult.ParseError): Effect.Effect<Array<Issue>> => formatIssue(error.issue)
 
 /**
  * @category formatting
  * @since 0.67.0
  */
-export const formatErrorSync = (error: ParseResult.ParseError): Array<Issue> => formatIssueSync(error.error)
+export const formatErrorSync = (error: ParseResult.ParseError): Array<Issue> => formatIssueSync(error.issue)
 
 const succeed = (issue: Issue) => Effect.succeed([issue])
 

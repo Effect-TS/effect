@@ -187,6 +187,7 @@ ParseResult
 **Breaking**
 
 - Standardize Error Handling for `*Either`, `*Sync` and `asserts` APIs, closes #2968
+- `ParseError`: rename `error` property to `issue`
 - `Missing`
   - add `ast: AST.Type` field
   - add `message` field

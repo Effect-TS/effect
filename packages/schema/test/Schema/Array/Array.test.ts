@@ -21,7 +21,7 @@ describe("Array", () => {
     const schema = S.Array(S.Number)
     const all = S.decodeUnknownEither(schema)([1, "a", 2, "b"], { errors: "all" })
     if (Either.isLeft(all)) {
-      const issue = all.left.error
+      const issue = all.left.issue
       if (issue._tag === "TupleType") {
         expect(issue.output).toStrictEqual([1, 2])
       } else {
@@ -32,7 +32,7 @@ describe("Array", () => {
     }
     const first = S.decodeUnknownEither(schema)([1, "a", 2, "b"], { errors: "first" })
     if (Either.isLeft(first)) {
-      const issue = first.left.error
+      const issue = first.left.issue
       if (issue._tag === "TupleType") {
         expect(issue.output).toStrictEqual([1])
       } else {

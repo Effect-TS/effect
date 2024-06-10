@@ -71,8 +71,8 @@ const effectifyAST = (ast: AST.AST): AST.AST => {
     AST.encodedAST(ast),
     AST.typeAST(ast),
     new AST.FinalTransformation(
-      (a, options) => Effect.flatMap(sleep, () => ParseResult.mapError(decode(a, options), (e) => e.error)),
-      (a, options) => Effect.flatMap(sleep, () => ParseResult.mapError(encode(a, options), (e) => e.error))
+      (a, options) => Effect.flatMap(sleep, () => ParseResult.mapError(decode(a, options), (e) => e.issue)),
+      (a, options) => Effect.flatMap(sleep, () => ParseResult.mapError(encode(a, options), (e) => e.issue))
     )
   )
 }

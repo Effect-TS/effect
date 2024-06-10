@@ -303,7 +303,7 @@ export class Union {
 /**
  * @since 0.67.0
  */
-export class ParseError extends TaggedError("ParseError")<{ readonly error: ParseIssue }> {
+export class ParseError extends TaggedError("ParseError")<{ readonly issue: ParseIssue }> {
   /**
    * @since 0.68.0
    */
@@ -316,7 +316,7 @@ export class ParseError extends TaggedError("ParseError")<{ readonly error: Pars
    * @since 0.67.0
    */
   toString() {
-    return TreeFormatter.formatIssueSync(this.error)
+    return TreeFormatter.formatIssueSync(this.issue)
   }
   /**
    * @since 0.67.0
@@ -339,7 +339,7 @@ export class ParseError extends TaggedError("ParseError")<{ readonly error: Pars
  * @category constructors
  * @since 0.67.0
  */
-export const parseError = (issue: ParseIssue): ParseError => new ParseError({ error: issue })
+export const parseError = (issue: ParseIssue): ParseError => new ParseError({ issue })
 
 /**
  * @category constructors
