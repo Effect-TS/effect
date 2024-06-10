@@ -120,6 +120,24 @@ export declare namespace Stream {
   }
 
   /**
+   * @since 3.4.0
+   * @category type-level
+   */
+  export type Success<T extends Stream<any, any, any>> = [T] extends [Stream<infer _A, infer _E, infer _R>] ? _A : never
+
+  /**
+   * @since 3.4.0
+   * @category type-level
+   */
+  export type Error<T extends Stream<any, any, any>> = [T] extends [Stream<infer _A, infer _E, infer _R>] ? _E : never
+
+  /**
+   * @since 3.4.0
+   * @category type-level
+   */
+  export type Context<T extends Stream<any, any, any>> = [T] extends [Stream<infer _A, infer _E, infer _R>] ? _R : never
+
+  /**
    * @since 2.0.0
    * @category models
    */
