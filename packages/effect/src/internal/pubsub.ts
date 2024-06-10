@@ -94,7 +94,9 @@ export const sliding = <A>(requestedCapacity: number): Effect.Effect<PubSub.PubS
   )
 
 /** @internal */
-export const unbounded = <A>(replayBufferSize: number = 0): Effect.Effect<PubSub.PubSub<A>> =>
+export const unbounded = <A>(
+  { replayBufferSize }: { replayBufferSize: number } = { replayBufferSize: 0 }
+): Effect.Effect<PubSub.PubSub<A>> =>
   pipe(
     core.sync(() => makeUnboundedPubSub<A>(replayBufferSize)),
     core.flatMap((atomicPubSub) => makePubSub(atomicPubSub, new DroppingStrategy()))
