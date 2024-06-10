@@ -209,9 +209,9 @@ export const appendElement: {
  * @since 3.4.0
  */
 export const at: {
-  <A extends ReadonlyArray<unknown>>(index: number): (self: A) => A[number]
-  <A extends ReadonlyArray<unknown>>(self: A, index: number): A[number]
-} = dual(2, <A extends ReadonlyArray<unknown>>(self: A, index: number): A[number] => self[index])
+  <A extends ReadonlyArray<unknown>, N extends number>(index: N): (self: A) => A[N]
+  <A extends ReadonlyArray<unknown>, N extends number>(self: A, index: N): A[N]
+} = dual(2, <A extends ReadonlyArray<unknown>, N extends number>(self: A, index: N): A[N] => self[index])
 
 export {
   /**
