@@ -35,7 +35,7 @@ describe("Tuple", () => {
     expect(T.swap(T.make("a", 1))).toEqual([1, "a"])
   })
 
-  it("it", () => {
+  it("at", () => {
     expect(T.at([1, "hello", true], 1)).toEqual("hello")
   })
 })
