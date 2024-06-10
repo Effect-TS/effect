@@ -188,6 +188,7 @@ ParseResult
 
 - `ParseIssue` refactoring
   - replace `Declaration` with `And`
+  - remove `Union` in favour of `And`
 - Standardize Error Handling for `*Either`, `*Sync` and `asserts` APIs, closes #2968
 - `ParseError`: rename `error` property to `issue`
 - `Missing`

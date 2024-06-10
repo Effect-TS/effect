@@ -79,18 +79,6 @@ const go = (
       return succeed({ _tag, path, message: TreeFormatter.formatUnexpectedMessage(e) })
     case "Missing":
       return Effect.map(TreeFormatter.formatMissingMessage(e), (message) => [{ _tag, path, message }])
-    case "Union":
-      return getArray(e, path, () =>
-        flatten(
-          Effect.forEach(e.errors, (e) => {
-            switch (e._tag) {
-              case "Member":
-                return go(e.error, path)
-              default:
-                return go(e, path)
-            }
-          })
-        ))
     case "TupleType":
       return getArray(
         e,

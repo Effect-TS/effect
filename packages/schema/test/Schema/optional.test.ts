@@ -84,12 +84,10 @@ describe("optional APIs", () => {
         `{ readonly a?: NumberFromString | undefined }
 └─ ["a"]
    └─ NumberFromString | undefined
-      ├─ Union member
-      │  └─ NumberFromString
-      │     └─ Transformation process failure
-      │        └─ Expected NumberFromString, actual "a"
-      └─ Union member
-         └─ Expected undefined, actual "a"`
+      ├─ NumberFromString
+      │  └─ Transformation process failure
+      │     └─ Expected NumberFromString, actual "a"
+      └─ Expected undefined, actual "a"`
       )
 
       await Util.expectEncodeSuccess(schema, {}, {})
@@ -115,14 +113,11 @@ describe("optional APIs", () => {
    └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString | null | undefined
-            ├─ Union member
-            │  └─ NumberFromString
-            │     └─ Transformation process failure
-            │        └─ Expected NumberFromString, actual "a"
-            ├─ Union member
-            │  └─ Expected null, actual "a"
-            └─ Union member
-               └─ Expected undefined, actual "a"`
+            ├─ NumberFromString
+            │  └─ Transformation process failure
+            │     └─ Expected NumberFromString, actual "a"
+            ├─ Expected null, actual "a"
+            └─ Expected undefined, actual "a"`
       )
 
       await Util.expectEncodeSuccess(schema, {}, {})
@@ -147,12 +142,10 @@ describe("optional APIs", () => {
    └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString | null
-            ├─ Union member
-            │  └─ NumberFromString
-            │     └─ Encoded side transformation failure
-            │        └─ Expected a string, actual undefined
-            └─ Union member
-               └─ Expected null, actual undefined`
+            ├─ NumberFromString
+            │  └─ Encoded side transformation failure
+            │     └─ Expected a string, actual undefined
+            └─ Expected null, actual undefined`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -162,12 +155,10 @@ describe("optional APIs", () => {
    └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString | null
-            ├─ Union member
-            │  └─ NumberFromString
-            │     └─ Transformation process failure
-            │        └─ Expected NumberFromString, actual "a"
-            └─ Union member
-               └─ Expected null, actual "a"`
+            ├─ NumberFromString
+            │  └─ Transformation process failure
+            │     └─ Expected NumberFromString, actual "a"
+            └─ Expected null, actual "a"`
       )
 
       await Util.expectEncodeSuccess(schema, {}, {})
@@ -219,12 +210,10 @@ describe("optional APIs", () => {
    └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString | null
-            ├─ Union member
-            │  └─ NumberFromString
-            │     └─ Transformation process failure
-            │        └─ Expected NumberFromString, actual "a"
-            └─ Union member
-               └─ Expected null, actual "a"`
+            ├─ NumberFromString
+            │  └─ Transformation process failure
+            │     └─ Expected NumberFromString, actual "a"
+            └─ Expected null, actual "a"`
       )
 
       await Util.expectEncodeSuccess(schema, { a: O.some(1) }, { a: "1" })
@@ -255,12 +244,10 @@ describe("optional APIs", () => {
    └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString | null
-            ├─ Union member
-            │  └─ NumberFromString
-            │     └─ Transformation process failure
-            │        └─ Expected NumberFromString, actual "a"
-            └─ Union member
-               └─ Expected null, actual "a"`
+            ├─ NumberFromString
+            │  └─ Transformation process failure
+            │     └─ Expected NumberFromString, actual "a"
+            └─ Expected null, actual "a"`
       )
 
       await Util.expectEncodeSuccess(schema, { a: O.some(1) }, { a: "1" })
@@ -284,12 +271,10 @@ describe("optional APIs", () => {
    └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString | undefined
-            ├─ Union member
-            │  └─ NumberFromString
-            │     └─ Transformation process failure
-            │        └─ Expected NumberFromString, actual "a"
-            └─ Union member
-               └─ Expected undefined, actual "a"`
+            ├─ NumberFromString
+            │  └─ Transformation process failure
+            │     └─ Expected NumberFromString, actual "a"
+            └─ Expected undefined, actual "a"`
       )
 
       await Util.expectEncodeSuccess(schema, { a: O.some(1) }, { a: "1" })
@@ -316,14 +301,11 @@ describe("optional APIs", () => {
    └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString | null | undefined
-            ├─ Union member
-            │  └─ NumberFromString
-            │     └─ Transformation process failure
-            │        └─ Expected NumberFromString, actual "a"
-            ├─ Union member
-            │  └─ Expected null, actual "a"
-            └─ Union member
-               └─ Expected undefined, actual "a"`
+            ├─ NumberFromString
+            │  └─ Transformation process failure
+            │     └─ Expected NumberFromString, actual "a"
+            ├─ Expected null, actual "a"
+            └─ Expected undefined, actual "a"`
       )
 
       await Util.expectEncodeSuccess(schema, { a: O.some(1) }, { a: "1" })
@@ -347,12 +329,10 @@ describe("optional APIs", () => {
    └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString | undefined
-            ├─ Union member
-            │  └─ NumberFromString
-            │     └─ Encoded side transformation failure
-            │        └─ Expected a string, actual null
-            └─ Union member
-               └─ Expected undefined, actual null`
+            ├─ NumberFromString
+            │  └─ Encoded side transformation failure
+            │     └─ Expected a string, actual null
+            └─ Expected undefined, actual null`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -364,12 +344,10 @@ describe("optional APIs", () => {
    └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString | undefined
-            ├─ Union member
-            │  └─ NumberFromString
-            │     └─ Transformation process failure
-            │        └─ Expected NumberFromString, actual "a"
-            └─ Union member
-               └─ Expected undefined, actual "a"`
+            ├─ NumberFromString
+            │  └─ Transformation process failure
+            │     └─ Expected NumberFromString, actual "a"
+            └─ Expected undefined, actual "a"`
       )
 
       await Util.expectEncodeSuccess(schema, { a: O.some(1) }, { a: "1" })
@@ -396,14 +374,11 @@ describe("optional APIs", () => {
    └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString | null | undefined
-            ├─ Union member
-            │  └─ NumberFromString
-            │     └─ Transformation process failure
-            │        └─ Expected NumberFromString, actual "a"
-            ├─ Union member
-            │  └─ Expected null, actual "a"
-            └─ Union member
-               └─ Expected undefined, actual "a"`
+            ├─ NumberFromString
+            │  └─ Transformation process failure
+            │     └─ Expected NumberFromString, actual "a"
+            ├─ Expected null, actual "a"
+            └─ Expected undefined, actual "a"`
       )
 
       await Util.expectEncodeSuccess(schema, { a: O.some(1) }, { a: "1" })
@@ -430,14 +405,11 @@ describe("optional APIs", () => {
    └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString | null | undefined
-            ├─ Union member
-            │  └─ NumberFromString
-            │     └─ Transformation process failure
-            │        └─ Expected NumberFromString, actual "a"
-            ├─ Union member
-            │  └─ Expected null, actual "a"
-            └─ Union member
-               └─ Expected undefined, actual "a"`
+            ├─ NumberFromString
+            │  └─ Transformation process failure
+            │     └─ Expected NumberFromString, actual "a"
+            ├─ Expected null, actual "a"
+            └─ Expected undefined, actual "a"`
       )
 
       await Util.expectEncodeSuccess(schema, { a: O.some(1) }, { a: "1" })
@@ -492,12 +464,10 @@ describe("optional APIs", () => {
    └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString | undefined
-            ├─ Union member
-            │  └─ NumberFromString
-            │     └─ Transformation process failure
-            │        └─ Expected NumberFromString, actual "a"
-            └─ Union member
-               └─ Expected undefined, actual "a"`
+            ├─ NumberFromString
+            │  └─ Transformation process failure
+            │     └─ Expected NumberFromString, actual "a"
+            └─ Expected undefined, actual "a"`
       )
 
       await Util.expectEncodeSuccess(schema, { a: 1 }, { a: "1" })
@@ -529,14 +499,11 @@ describe("optional APIs", () => {
    └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString | null | undefined
-            ├─ Union member
-            │  └─ NumberFromString
-            │     └─ Transformation process failure
-            │        └─ Expected NumberFromString, actual "a"
-            ├─ Union member
-            │  └─ Expected null, actual "a"
-            └─ Union member
-               └─ Expected undefined, actual "a"`
+            ├─ NumberFromString
+            │  └─ Transformation process failure
+            │     └─ Expected NumberFromString, actual "a"
+            ├─ Expected null, actual "a"
+            └─ Expected undefined, actual "a"`
       )
 
       await Util.expectEncodeSuccess(schema, { a: 1 }, { a: "1" })
@@ -567,12 +534,10 @@ describe("optional APIs", () => {
    └─ Struct (Encoded side)
       └─ ["a"]
          └─ NumberFromString | null
-            ├─ Union member
-            │  └─ NumberFromString
-            │     └─ Transformation process failure
-            │        └─ Expected NumberFromString, actual "a"
-            └─ Union member
-               └─ Expected null, actual "a"`
+            ├─ NumberFromString
+            │  └─ Transformation process failure
+            │     └─ Expected NumberFromString, actual "a"
+            └─ Expected null, actual "a"`
       )
 
       await Util.expectEncodeSuccess(schema, { a: 1 }, { a: "1" })

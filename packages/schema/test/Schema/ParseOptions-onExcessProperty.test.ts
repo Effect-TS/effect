@@ -119,14 +119,12 @@ describe("`onExcessProperty` option", () => {
         schema,
         { a: 1, b: "b", c: true },
         `{ readonly a?: number; readonly b?: string } | { readonly a?: number }
-├─ Union member
-│  └─ { readonly a?: number; readonly b?: string }
-│     └─ ["c"]
-│        └─ is unexpected, expected "a" | "b"
-└─ Union member
-   └─ { readonly a?: number }
-      └─ ["b"]
-         └─ is unexpected, expected "a"`,
+├─ { readonly a?: number; readonly b?: string }
+│  └─ ["c"]
+│     └─ is unexpected, expected "a" | "b"
+└─ { readonly a?: number }
+   └─ ["b"]
+      └─ is unexpected, expected "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -139,27 +137,23 @@ describe("`onExcessProperty` option", () => {
         schema,
         [1, "b", true],
         `readonly [number, string?] | readonly [number]
-├─ Union member
-│  └─ readonly [number, string?]
-│     └─ [2]
-│        └─ is unexpected, expected 0 | 1
-└─ Union member
-   └─ readonly [number]
-      └─ [1]
-         └─ is unexpected, expected 0`
+├─ readonly [number, string?]
+│  └─ [2]
+│     └─ is unexpected, expected 0 | 1
+└─ readonly [number]
+   └─ [1]
+      └─ is unexpected, expected 0`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         [1, "b", true],
         `readonly [number, string?] | readonly [number]
-├─ Union member
-│  └─ readonly [number, string?]
-│     └─ [2]
-│        └─ is unexpected, expected 0 | 1
-└─ Union member
-   └─ readonly [number]
-      └─ [1]
-         └─ is unexpected, expected 0`,
+├─ readonly [number, string?]
+│  └─ [2]
+│     └─ is unexpected, expected 0 | 1
+└─ readonly [number]
+   └─ [1]
+      └─ is unexpected, expected 0`,
         Util.onExcessPropertyError
       )
     })

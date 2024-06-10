@@ -282,27 +282,23 @@ describe("extend", () => {
         schema,
         { a: "a", c: false },
         `{ { readonly c: boolean; readonly a: string } | filter } | { { readonly c: boolean; readonly b: number } | filter }
-├─ Union member
-│  └─ R filter
-└─ Union member
-   └─ { { readonly c: boolean; readonly b: number } | filter }
-      └─ From side refinement failure
-         └─ { readonly c: boolean; readonly b: number }
-            └─ ["b"]
-               └─ is missing`
+├─ R filter
+└─ { { readonly c: boolean; readonly b: number } | filter }
+   └─ From side refinement failure
+      └─ { readonly c: boolean; readonly b: number }
+         └─ ["b"]
+            └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { b: 1, c: false },
         `{ { readonly c: boolean; readonly a: string } | filter } | { { readonly c: boolean; readonly b: number } | filter }
-├─ Union member
-│  └─ { { readonly c: boolean; readonly a: string } | filter }
-│     └─ From side refinement failure
-│        └─ { readonly c: boolean; readonly a: string }
-│           └─ ["a"]
-│              └─ is missing
-└─ Union member
-   └─ R filter`
+├─ { { readonly c: boolean; readonly a: string } | filter }
+│  └─ From side refinement failure
+│     └─ { readonly c: boolean; readonly a: string }
+│        └─ ["a"]
+│           └─ is missing
+└─ R filter`
       )
     })
 
@@ -324,61 +320,53 @@ describe("extend", () => {
         schema,
         { a: "", c: true },
         `{ { { readonly c: boolean; readonly a: string } | filter } | filter } | { { { readonly c: boolean; readonly b: number } | filter } | filter }
-├─ Union member
-│  └─ R1 filter
-└─ Union member
-   └─ { { { readonly c: boolean; readonly b: number } | filter } | filter }
-      └─ From side refinement failure
-         └─ { { readonly c: boolean; readonly b: number } | filter }
-            └─ From side refinement failure
-               └─ { readonly c: boolean; readonly b: number }
-                  └─ ["b"]
-                     └─ is missing`
+├─ R1 filter
+└─ { { { readonly c: boolean; readonly b: number } | filter } | filter }
+   └─ From side refinement failure
+      └─ { { readonly c: boolean; readonly b: number } | filter }
+         └─ From side refinement failure
+            └─ { readonly c: boolean; readonly b: number }
+               └─ ["b"]
+                  └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { b: -1, c: true },
         `{ { { readonly c: boolean; readonly a: string } | filter } | filter } | { { { readonly c: boolean; readonly b: number } | filter } | filter }
-├─ Union member
-│  └─ { { { readonly c: boolean; readonly a: string } | filter } | filter }
-│     └─ From side refinement failure
-│        └─ { { readonly c: boolean; readonly a: string } | filter }
-│           └─ From side refinement failure
-│              └─ { readonly c: boolean; readonly a: string }
-│                 └─ ["a"]
-│                    └─ is missing
-└─ Union member
-   └─ R2 filter`
+├─ { { { readonly c: boolean; readonly a: string } | filter } | filter }
+│  └─ From side refinement failure
+│     └─ { { readonly c: boolean; readonly a: string } | filter }
+│        └─ From side refinement failure
+│           └─ { readonly c: boolean; readonly a: string }
+│              └─ ["a"]
+│                 └─ is missing
+└─ R2 filter`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a", c: false },
         `{ { { readonly c: boolean; readonly a: string } | filter } | filter } | { { { readonly c: boolean; readonly b: number } | filter } | filter }
-├─ Union member
-│  └─ R3 filter
-└─ Union member
-   └─ { { { readonly c: boolean; readonly b: number } | filter } | filter }
-      └─ From side refinement failure
-         └─ { { readonly c: boolean; readonly b: number } | filter }
-            └─ From side refinement failure
-               └─ { readonly c: boolean; readonly b: number }
-                  └─ ["b"]
-                     └─ is missing`
+├─ R3 filter
+└─ { { { readonly c: boolean; readonly b: number } | filter } | filter }
+   └─ From side refinement failure
+      └─ { { readonly c: boolean; readonly b: number } | filter }
+         └─ From side refinement failure
+            └─ { readonly c: boolean; readonly b: number }
+               └─ ["b"]
+                  └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { b: 1, c: false },
         `{ { { readonly c: boolean; readonly a: string } | filter } | filter } | { { { readonly c: boolean; readonly b: number } | filter } | filter }
-├─ Union member
-│  └─ { { { readonly c: boolean; readonly a: string } | filter } | filter }
-│     └─ From side refinement failure
-│        └─ { { readonly c: boolean; readonly a: string } | filter }
-│           └─ From side refinement failure
-│              └─ { readonly c: boolean; readonly a: string }
-│                 └─ ["a"]
-│                    └─ is missing
-└─ Union member
-   └─ R3 filter`
+├─ { { { readonly c: boolean; readonly a: string } | filter } | filter }
+│  └─ From side refinement failure
+│     └─ { { readonly c: boolean; readonly a: string } | filter }
+│        └─ From side refinement failure
+│           └─ { readonly c: boolean; readonly a: string }
+│              └─ ["a"]
+│                 └─ is missing
+└─ R3 filter`
       )
     })
   })

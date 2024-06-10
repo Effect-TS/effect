@@ -26,10 +26,9 @@ describe("Exit", () => {
       `(ExitEncoded<number, string> <-> Exit<number, string>)
 └─ Encoded side transformation failure
    └─ ExitEncoded<number, string>
-      └─ Union member
-         └─ SuccessEncoded<number>
-            └─ ["value"]
-               └─ Expected a number, actual null`
+      └─ SuccessEncoded<number>
+         └─ ["value"]
+            └─ Expected a number, actual null`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
@@ -37,10 +36,9 @@ describe("Exit", () => {
       `(ExitEncoded<number, string> <-> Exit<number, string>)
 └─ Encoded side transformation failure
    └─ ExitEncoded<number, string>
-      └─ Union member
-         └─ FailureEncoded<string>
-            └─ ["cause"]
-               └─ Expected CauseEncoded<string>, actual null`
+      └─ FailureEncoded<string>
+         └─ ["cause"]
+            └─ Expected CauseEncoded<string>, actual null`
     )
   })
 

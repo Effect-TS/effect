@@ -113,10 +113,8 @@ describe("Struct", () => {
         `{ readonly a: number | undefined }
 └─ ["a"]
    └─ number | undefined
-      ├─ Union member
-      │  └─ Expected a number, actual "a"
-      └─ Union member
-         └─ Expected undefined, actual "a"`
+      ├─ Expected a number, actual "a"
+      └─ Expected undefined, actual "a"`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -179,10 +177,8 @@ describe("Struct", () => {
         `{ readonly a?: number | undefined }
 └─ ["a"]
    └─ number | undefined
-      ├─ Union member
-      │  └─ Expected a number, actual "a"
-      └─ Union member
-         └─ Expected undefined, actual "a"`
+      ├─ Expected a number, actual "a"
+      └─ Expected undefined, actual "a"`
       )
       await Util.expectDecodeUnknownFailure(
         schema,

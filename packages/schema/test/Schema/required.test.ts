@@ -146,14 +146,12 @@ describe("required", () => {
       schema,
       {},
       `{ readonly a: string } | { readonly b: number }
-├─ Union member
-│  └─ { readonly a: string }
-│     └─ ["a"]
-│        └─ is missing
-└─ Union member
-   └─ { readonly b: number }
-      └─ ["b"]
-         └─ is missing`
+├─ { readonly a: string }
+│  └─ ["a"]
+│     └─ is missing
+└─ { readonly b: number }
+   └─ ["b"]
+      └─ is missing`
     )
   })
 
@@ -182,12 +180,10 @@ describe("required", () => {
       `{ readonly a: <suspended schema> | null }
 └─ ["a"]
    └─ <suspended schema> | null
-      ├─ Union member
-      │  └─ { readonly a: <suspended schema> | null }
-      │     └─ ["a"]
-      │        └─ is missing
-      └─ Union member
-         └─ Expected null, actual {}`
+      ├─ { readonly a: <suspended schema> | null }
+      │  └─ ["a"]
+      │     └─ is missing
+      └─ Expected null, actual {}`
     )
   })
 

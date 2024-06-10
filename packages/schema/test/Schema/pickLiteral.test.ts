@@ -33,10 +33,8 @@ describe("pickLiteral", () => {
         schema,
         null,
         `"a" | "b"
-├─ Union member
-│  └─ Expected "a", actual null
-└─ Union member
-   └─ Expected "b", actual null`
+├─ Expected "a", actual null
+└─ Expected "b", actual null`
       )
     })
   })

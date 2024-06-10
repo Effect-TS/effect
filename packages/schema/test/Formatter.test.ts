@@ -985,10 +985,8 @@ describe("Formatter", () => {
         schema,
         input,
         `string | number
-├─ Union member
-│  └─ Expected a string, actual null
-└─ Union member
-   └─ Expected a number, actual null`
+├─ Expected a string, actual null
+└─ Expected a number, actual null`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
@@ -1020,10 +1018,8 @@ describe("Formatter", () => {
         `readonly [number, <suspended schema> | null]
 └─ [1]
    └─ <suspended schema> | null
-      ├─ Union member
-      │  └─ Expected readonly [number, <suspended schema> | null], actual undefined
-      └─ Union member
-         └─ Expected null, actual undefined`
+      ├─ Expected readonly [number, <suspended schema> | null], actual undefined
+      └─ Expected null, actual undefined`
       )
     })
 
@@ -1045,10 +1041,8 @@ describe("Formatter", () => {
         `readonly [number, <suspended schema> | null]
 └─ [1]
    └─ <suspended schema> | null
-      ├─ Union member
-      │  └─ Expected readonly [number, <suspended schema> | null], actual undefined
-      └─ Union member
-         └─ Expected null, actual undefined`
+      ├─ Expected readonly [number, <suspended schema> | null], actual undefined
+      └─ Expected null, actual undefined`
       )
     })
   })
@@ -1061,10 +1055,8 @@ describe("Formatter", () => {
         schema,
         input,
         `string | number
-├─ Union member
-│  └─ Expected a string, actual null
-└─ Union member
-   └─ Expected a number, actual null`
+├─ Expected a string, actual null
+└─ Expected a number, actual null`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
@@ -1084,10 +1076,8 @@ describe("Formatter", () => {
         schema,
         input,
         `identifier
-├─ Union member
-│  └─ Expected a string, actual null
-└─ Union member
-   └─ Expected a number, actual null`
+├─ Expected a string, actual null
+└─ Expected a number, actual null`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
@@ -1109,7 +1099,7 @@ describe("Formatter", () => {
         "custom message"
       )
       expectIssues(schema, input, [{
-        _tag: "Union",
+        _tag: "And",
         path: [],
         message: "custom message"
       }])
@@ -1154,10 +1144,8 @@ describe("handle identifiers", () => {
         `A
 └─ [1]
    └─ A | null
-      ├─ Union member
-      │  └─ Expected A, actual undefined
-      └─ Union member
-         └─ Expected null, actual undefined`
+      ├─ Expected A, actual undefined
+      └─ Expected null, actual undefined`
       )
     })
 
@@ -1179,10 +1167,8 @@ describe("handle identifiers", () => {
         `A
 └─ [1]
    └─ A | null
-      ├─ Union member
-      │  └─ Expected A, actual undefined
-      └─ Union member
-         └─ Expected null, actual undefined`
+      ├─ Expected A, actual undefined
+      └─ Expected null, actual undefined`
       )
     })
 
@@ -1204,10 +1190,8 @@ describe("handle identifiers", () => {
         `readonly [number, A | null]
 └─ [1]
    └─ A | null
-      ├─ Union member
-      │  └─ Expected A, actual undefined
-      └─ Union member
-         └─ Expected null, actual undefined`
+      ├─ Expected A, actual undefined
+      └─ Expected null, actual undefined`
       )
     })
   })

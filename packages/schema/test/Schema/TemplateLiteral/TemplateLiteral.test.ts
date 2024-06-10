@@ -206,14 +206,10 @@ describe("TemplateLiteral", () => {
         schema,
         "_id",
         `"welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id"
-├─ Union member
-│  └─ Expected "welcome_email_id", actual "_id"
-├─ Union member
-│  └─ Expected "email_heading_id", actual "_id"
-├─ Union member
-│  └─ Expected "footer_title_id", actual "_id"
-└─ Union member
-   └─ Expected "footer_sendoff_id", actual "_id"`
+├─ Expected "welcome_email_id", actual "_id"
+├─ Expected "email_heading_id", actual "_id"
+├─ Expected "footer_title_id", actual "_id"
+└─ Expected "footer_sendoff_id", actual "_id"`
       )
     })
 
@@ -249,10 +245,8 @@ describe("TemplateLiteral", () => {
         schema,
         "b",
         `\`\${string}a\` | \`\${string}0\`
-├─ Union member
-│  └─ Expected \`\${string}a\`, actual "b"
-└─ Union member
-   └─ Expected \`\${string}0\`, actual "b"`
+├─ Expected \`\${string}a\`, actual "b"
+└─ Expected \`\${string}0\`, actual "b"`
       )
     })
 
@@ -265,14 +259,10 @@ describe("TemplateLiteral", () => {
         schema,
         "",
         `\`\${string}\${number}\` | \`\${string}true\` | \`1\${number}\` | "1true"
-├─ Union member
-│  └─ Expected \`\${string}\${number}\`, actual ""
-├─ Union member
-│  └─ Expected \`\${string}true\`, actual ""
-├─ Union member
-│  └─ Expected \`1\${number}\`, actual ""
-└─ Union member
-   └─ Expected "1true", actual ""`
+├─ Expected \`\${string}\${number}\`, actual ""
+├─ Expected \`\${string}true\`, actual ""
+├─ Expected \`1\${number}\`, actual ""
+└─ Expected "1true", actual ""`
       )
     })
   })

@@ -29,7 +29,6 @@ export type ParseIssue =
   | Refinement
   | TupleType
   | TypeLiteral
-  | Union
   | Transformation
   | Type
   | Forbidden
@@ -283,24 +282,6 @@ export type ParseErrorTypeId = typeof ParseErrorTypeId
  * @since 0.68.0
  */
 export const isParseError = (u: unknown): u is ParseError => Predicate.hasProperty(u, ParseErrorTypeId)
-
-/**
- * Error that occurs when a union has an error.
- *
- * @category model
- * @since 0.67.0
- */
-export class Union {
-  /**
-   * @since 0.67.0
-   */
-  readonly _tag = "Union"
-  constructor(
-    readonly ast: AST.Union,
-    readonly actual: unknown,
-    readonly errors: Arr.NonEmptyReadonlyArray<Type | TypeLiteral | Member>
-  ) {}
-}
 
 /**
  * @since 0.67.0
@@ -1446,7 +1427,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
       const concurrency = getConcurrency(ast) ?? 1
       const batching = getBatching(ast)
       return (input, options) => {
-        const es: Array<[number, Type | TypeLiteral | Member]> = []
+        const es: Array<[number, ParseIssue]> = []
         let stepKey = 0
         let candidates: Array<AST.AST> = []
         if (len > 0) {
@@ -1516,7 +1497,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
             if (Either.isRight(eu)) {
               return Either.right(eu.right)
             } else {
-              es.push([stepKey++, new Member(candidate, eu.left)])
+              es.push([stepKey++, eu.left])
             }
           } else {
             const nk = stepKey++
@@ -1533,7 +1514,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                       if (Either.isRight(t)) {
                         state.finalResult = Either.right(t.right)
                       } else {
-                        state.es.push([nk, new Member(candidate, t.left)])
+                        state.es.push([nk, t.left])
                       }
                       return Effect.void
                     })
@@ -1550,7 +1531,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           Arr.isNonEmptyArray(es) ?
             es.length === 1 && es[0][1]._tag === "Type" ?
               Either.left(es[0][1]) :
-              Either.left(new Union(ast, input, sortByIndex(es))) :
+              Either.left(new And(ast, input, sortByIndex(es))) :
             // this should never happen
             Either.left(new Type(ast, input))
 

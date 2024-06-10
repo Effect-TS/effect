@@ -119,10 +119,8 @@ describe("Tuple", () => {
         `readonly [number | undefined]
 └─ [0]
    └─ number | undefined
-      ├─ Union member
-      │  └─ Expected a number, actual "a"
-      └─ Union member
-         └─ Expected undefined, actual "a"`
+      ├─ Expected a number, actual "a"
+      └─ Expected undefined, actual "a"`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -176,10 +174,8 @@ describe("Tuple", () => {
         `readonly [number | undefined?]
 └─ [0]
    └─ number | undefined
-      ├─ Union member
-      │  └─ Expected a number, actual "a"
-      └─ Union member
-         └─ Expected undefined, actual "a"`
+      ├─ Expected a number, actual "a"
+      └─ Expected undefined, actual "a"`
       )
       await Util.expectDecodeUnknownFailure(
         schema,

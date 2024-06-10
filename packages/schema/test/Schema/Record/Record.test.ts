@@ -361,10 +361,8 @@ describe("record", () => {
         `{ readonly [x: \`\${string}-\${string}\`]: number; readonly [x: string]: string | number }
 └─ ["a"]
    └─ string | number
-      ├─ Union member
-      │  └─ Expected a string, actual true
-      └─ Union member
-         └─ Expected a number, actual true`
+      ├─ Expected a string, actual true
+      └─ Expected a number, actual true`
       )
     })
 

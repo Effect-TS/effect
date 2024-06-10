@@ -17,10 +17,8 @@ describe("partial", () => {
         `{ readonly a?: number | undefined }
 └─ ["a"]
    └─ number | undefined
-      ├─ Union member
-      │  └─ Expected a number, actual null
-      └─ Union member
-         └─ Expected undefined, actual null`
+      ├─ Expected a number, actual null
+      └─ Expected undefined, actual null`
       )
     })
 
@@ -61,10 +59,8 @@ describe("partial", () => {
         `ReadonlyArray<number | undefined>
 └─ [0]
    └─ number | undefined
-      ├─ Union member
-      │  └─ Expected a number, actual "a"
-      └─ Union member
-         └─ Expected undefined, actual "a"`
+      ├─ Expected a number, actual "a"
+      └─ Expected undefined, actual "a"`
       )
     })
   })
@@ -139,10 +135,8 @@ describe("partial", () => {
         `ReadonlyArray<number | undefined>
 └─ [0]
    └─ number | undefined
-      ├─ Union member
-      │  └─ Expected a number, actual "a"
-      └─ Union member
-         └─ Expected undefined, actual "a"`
+      ├─ Expected a number, actual "a"
+      └─ Expected undefined, actual "a"`
       )
     })
 
@@ -157,16 +151,12 @@ describe("partial", () => {
         schema,
         ["a"],
         `ReadonlyArray<number | undefined> | string
-├─ Union member
-│  └─ ReadonlyArray<number | undefined>
-│     └─ [0]
-│        └─ number | undefined
-│           ├─ Union member
-│           │  └─ Expected a number, actual "a"
-│           └─ Union member
-│              └─ Expected undefined, actual "a"
-└─ Union member
-   └─ Expected a string, actual ["a"]`
+├─ ReadonlyArray<number | undefined>
+│  └─ [0]
+│     └─ number | undefined
+│        ├─ Expected a number, actual "a"
+│        └─ Expected undefined, actual "a"
+└─ Expected a string, actual ["a"]`
       )
     })
 
@@ -193,10 +183,8 @@ describe("partial", () => {
         `{ readonly a?: <suspended schema> | null }
 └─ ["a"]
    └─ <suspended schema> | null
-      ├─ Union member
-      │  └─ Expected { readonly a?: <suspended schema> | null }, actual 1
-      └─ Union member
-         └─ Expected null, actual 1`
+      ├─ Expected { readonly a?: <suspended schema> | null }, actual 1
+      └─ Expected null, actual 1`
       )
     })
   })

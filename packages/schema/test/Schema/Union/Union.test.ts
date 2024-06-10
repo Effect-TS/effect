@@ -27,10 +27,8 @@ describe("Union", () => {
         schema,
         null,
         `MyDataType1 | MyDataType2
-├─ Union member
-│  └─ Expected MyDataType1, actual null
-└─ Union member
-   └─ Expected MyDataType2, actual null`
+├─ Expected MyDataType1, actual null
+└─ Expected MyDataType2, actual null`
       )
     })
 
@@ -146,19 +144,17 @@ describe("Union", () => {
         schema,
         {},
         `ab | AB
-├─ Union member
-│  └─ ab
-│     └─ { readonly _tag: "a" | "b" }
-│        └─ ["_tag"]
-│           └─ is missing
-└─ Union member
-   └─ AB
-      ├─ { readonly a: "A" }
-      │  └─ ["a"]
-      │     └─ is missing
-      └─ { readonly b: "B" }
-         └─ ["b"]
-            └─ is missing`
+├─ ab
+│  └─ { readonly _tag: "a" | "b" }
+│     └─ ["_tag"]
+│        └─ is missing
+└─ AB
+   ├─ { readonly a: "A" }
+   │  └─ ["a"]
+   │     └─ is missing
+   └─ { readonly b: "B" }
+      └─ ["b"]
+         └─ is missing`
       )
     })
   })

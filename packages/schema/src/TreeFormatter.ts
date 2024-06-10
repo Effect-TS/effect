@@ -190,19 +190,6 @@ const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpe
       return Effect.succeed(make(formatUnexpectedMessage(e)))
     case "Missing":
       return Effect.map(formatMissingMessage(e), make)
-    case "Union":
-      return getTree(e, () =>
-        Effect.map(
-          Effect.forEach(e.errors, (e) => {
-            switch (e._tag) {
-              case "Member":
-                return Effect.map(go(e.error), (tree) => make(`Union member`, [tree]))
-              default:
-                return go(e)
-            }
-          }),
-          (forest) => make(getParseIssueTitle(e), forest)
-        ))
     case "TupleType":
       return getTree(e, () =>
         Effect.map(
