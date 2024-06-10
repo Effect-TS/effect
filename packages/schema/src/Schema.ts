@@ -42,7 +42,7 @@ import * as arbitrary_ from "./Arbitrary.js"
 import type { ParseOptions } from "./AST.js"
 import * as AST from "./AST.js"
 import * as equivalence_ from "./Equivalence.js"
-import type * as fastCheck_ from "./FastCheck.js"
+import * as fastCheck_ from "./FastCheck.js"
 import * as errors_ from "./internal/errors.js"
 import * as filters_ from "./internal/filters.js"
 import * as serializable_ from "./internal/serializable.js"
@@ -6752,7 +6752,7 @@ export interface ChunkFromSelf<Value extends Schema.Any> extends
 {}
 
 /**
- * @category Chunk transformations
+ * @category Chunk
  * @since 0.67.0
  */
 export const ChunkFromSelf = <Value extends Schema.Any>(value: Value): ChunkFromSelf<Value> => {
@@ -6794,6 +6794,79 @@ export const Chunk = <Value extends Schema.Any>(value: Value): Chunk<Value> => {
     Array$(value_),
     ChunkFromSelf(typeSchema(value_)),
     { decode: (as) => as.length === 0 ? chunk_.empty() : chunk_.fromIterable(as), encode: chunk_.toReadonlyArray }
+  )
+}
+
+/**
+ * @category api interface
+ * @since 0.67.23
+ */
+export interface NonEmptyChunkFromSelf<Value extends Schema.Any> extends
+  AnnotableClass<
+    NonEmptyChunkFromSelf<Value>,
+    chunk_.NonEmptyChunk<Schema.Type<Value>>,
+    chunk_.NonEmptyChunk<Schema.Encoded<Value>>,
+    Schema.Context<Value>
+  >
+{}
+
+const nonEmptyChunkArbitrary = <A>(item: LazyArbitrary<A>): LazyArbitrary<chunk_.NonEmptyChunk<A>> => (fc) =>
+  fastCheck_.array(item(fc), { minLength: 1 }).map((as) => chunk_.unsafeFromNonEmptyArray(as as any))
+
+const nonEmptyChunkPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<chunk_.NonEmptyChunk<A>> => (c) =>
+  `NonEmptyChunk(${chunk_.toReadonlyArray(c).map(item).join(", ")})`
+
+const nonEmptyChunkParse = <R, A>(
+  decodeUnknown: ParseResult.DecodeUnknown<array_.NonEmptyReadonlyArray<A>, R>
+): ParseResult.DeclarationDecodeUnknown<chunk_.NonEmptyChunk<A>, R> =>
+(u, options, ast) =>
+  chunk_.isChunk(u) && chunk_.isNonEmpty(u)
+    ? ParseResult.map(decodeUnknown(chunk_.toReadonlyArray(u), options), chunk_.unsafeFromNonEmptyArray)
+    : ParseResult.fail(new ParseResult.Type(ast, u))
+
+/**
+ * @category Chunk
+ * @since 0.67.23
+ */
+export const NonEmptyChunkFromSelf = <Value extends Schema.Any>(value: Value): NonEmptyChunkFromSelf<Value> => {
+  return declare(
+    [value],
+    {
+      decode: (item) => nonEmptyChunkParse(ParseResult.decodeUnknown(NonEmptyArray(item))),
+      encode: (item) => nonEmptyChunkParse(ParseResult.encodeUnknown(NonEmptyArray(item)))
+    },
+    {
+      description: `NonEmptyChunk<${format(value)}>`,
+      pretty: nonEmptyChunkPretty,
+      arbitrary: nonEmptyChunkArbitrary,
+      equivalence: chunk_.getEquivalence
+    }
+  )
+}
+
+/**
+ * @category api interface
+ * @since 0.67.23
+ */
+export interface NonEmptyChunk<Value extends Schema.Any> extends
+  AnnotableClass<
+    NonEmptyChunk<Value>,
+    chunk_.NonEmptyChunk<Schema.Type<Value>>,
+    array_.NonEmptyReadonlyArray<Schema.Encoded<Value>>,
+    Schema.Context<Value>
+  >
+{}
+
+/**
+ * @category Chunk transformations
+ * @since 0.67.23
+ */
+export const NonEmptyChunk = <Value extends Schema.Any>(value: Value): NonEmptyChunk<Value> => {
+  const value_ = asSchema(value)
+  return transform(
+    NonEmptyArray(value_),
+    NonEmptyChunkFromSelf(typeSchema(value_)),
+    { decode: chunk_.unsafeFromNonEmptyArray, encode: chunk_.toReadonlyArray }
   )
 }
 
