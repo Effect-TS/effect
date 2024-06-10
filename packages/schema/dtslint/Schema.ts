@@ -2172,6 +2172,26 @@ S.asSchema(S.Chunk(S.NumberFromString))
 S.Chunk(S.NumberFromString)
 
 // ---------------------------------------------
+// NonEmptyChunkFromSelf
+// ---------------------------------------------
+
+// $ExpectType Schema<NonEmptyChunk<number>, NonEmptyChunk<string>, never>
+S.asSchema(S.NonEmptyChunkFromSelf(S.NumberFromString))
+
+// $ExpectType NonEmptyChunkFromSelf<typeof NumberFromString>
+S.NonEmptyChunkFromSelf(S.NumberFromString)
+
+// ---------------------------------------------
+// NonEmptyChunk
+// ---------------------------------------------
+
+// $ExpectType Schema<NonEmptyChunk<number>, readonly [string, ...string[]], never>
+S.asSchema(S.NonEmptyChunk(S.NumberFromString))
+
+// $ExpectType NonEmptyChunk<typeof NumberFromString>
+S.NonEmptyChunk(S.NumberFromString)
+
+// ---------------------------------------------
 // ListFromSelf
 // ---------------------------------------------
 
