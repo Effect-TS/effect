@@ -81,6 +81,9 @@ export class Missing {
    * @since 0.67.0
    */
   readonly _tag = "Missing"
+  /**
+   * @since 0.68.0
+   */
   readonly actual = undefined
   constructor(
     /**
