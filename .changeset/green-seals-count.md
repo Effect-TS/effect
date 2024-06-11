@@ -196,6 +196,7 @@ ParseResult
   - merge `Key` and `Index` into `Path`
   - `Type`
     - change `message` field from `Option<string>` to `string | undefined`
+    - add `path` field
   - `Refinement`
     - rename `error` field to `issue`
   - `Transformation`

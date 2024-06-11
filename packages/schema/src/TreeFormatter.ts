@@ -181,21 +181,22 @@ const getTree = (issue: ParseResult.ParseIssue, onFailure: () => Effect.Effect<T
 
 const formatPathItem = (name: PropertyKey): string => `[${util_.formatPropertyKey(name)}]`
 
-const isMany = <A>(
+/** @internal */
+export const isMany = <A>(
   path: undefined | ParseResult.Many<A>
 ): path is readonly [A, A, ...ReadonlyArray<A>] => Array.isArray(path)
 
-const addPath = (path: undefined | ParseResult.Many<PropertyKey>, tree: Tree<string>): Tree<string> =>
-  path === undefined
+const addPath = (maybePath: undefined | ParseResult.Many<PropertyKey>, tree: Tree<string>): Tree<string> =>
+  maybePath === undefined
     ? tree
-    : make(isMany(path) ? path.map(formatPathItem).join("") : formatPathItem(path), [tree])
+    : make(isMany(maybePath) ? maybePath.map(formatPathItem).join("") : formatPathItem(maybePath), [tree])
 
 const go = (
   e: ParseResult.ParseIssue | ParseResult.Path
 ): Effect.Effect<Tree<string>> => {
   switch (e._tag) {
     case "Type":
-      return Effect.map(formatTypeMessage(e), make)
+      return Effect.map(formatTypeMessage(e), (s) => addPath(e.path, make(s)))
     case "Forbidden":
       return Effect.succeed(make(getParseIssueTitle(e), [make(formatForbiddenMessage(e))]))
     case "Unexpected":

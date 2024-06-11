@@ -66,6 +66,11 @@ const getArray = (
 const flatten = (eff: Effect.Effect<Array<Array<Issue>>>): Effect.Effect<Array<Issue>> =>
   Effect.map(eff, array_.flatten)
 
+const addPath = (
+  maybePath: undefined | ParseResult.Many<PropertyKey>,
+  path: ReadonlyArray<PropertyKey>
+): ReadonlyArray<PropertyKey> => maybePath === undefined ? path : path.concat(maybePath)
+
 const go = (
   e: ParseResult.ParseIssue | ParseResult.Path,
   path: ReadonlyArray<PropertyKey> = []
@@ -73,15 +78,18 @@ const go = (
   const _tag = e._tag
   switch (_tag) {
     case "Type":
-      return Effect.map(TreeFormatter.formatTypeMessage(e), (message) => [{ _tag, path, message }])
+      return Effect.map(
+        TreeFormatter.formatTypeMessage(e),
+        (message) => [{ _tag, path: addPath(e.path, path), message }]
+      )
     case "Forbidden":
       return succeed({ _tag, path, message: TreeFormatter.formatForbiddenMessage(e) })
     case "Unexpected":
-      return succeed({ _tag, path: path.concat(e.path), message: TreeFormatter.formatUnexpectedMessage(e) })
+      return succeed({ _tag, path: addPath(e.path, path), message: TreeFormatter.formatUnexpectedMessage(e) })
     case "Missing":
       return Effect.map(
         TreeFormatter.formatMissingMessage(e),
-        (message) => [{ _tag, path: path.concat(e.path), message }]
+        (message) => [{ _tag, path: addPath(e.path, path), message }]
       )
     case "Path":
       return e.issue._tag === "Missing" || e.issue._tag === "Unexpected"

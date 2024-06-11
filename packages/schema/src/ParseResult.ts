@@ -170,7 +170,12 @@ export class Type {
    * @since 0.67.0
    */
   readonly _tag = "Type"
-  constructor(readonly ast: AST.AST, readonly actual: unknown, readonly message?: string) {}
+  constructor(
+    readonly ast: AST.AST,
+    readonly actual: unknown,
+    readonly message?: string,
+    readonly path?: Many<PropertyKey>
+  ) {}
 }
 
 /**
@@ -1370,7 +1375,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                         new AST.PropertySignature(name, literals, false, true)
                       ], []),
                       input,
-                      [new Path(name, new Type(literals, input[name]))]
+                      [new Type(literals, input[name], undefined, name)]
                     )
                   ])
                 }
