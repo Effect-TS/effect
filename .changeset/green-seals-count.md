@@ -194,16 +194,21 @@ ParseResult
   - remove `TupleType` in favour of `And`
   - remove `Member` class
   - merge `Key` and `Index` into `Path`
-  - `Refinement`: rename `error` field to `issue`
-  - `Transformation`: rename `error` field to `issue`
+  - `Type`
+    - change `message` field from `Option<string>` to `string | undefined`
+  - `Refinement`
+    - rename `error` field to `issue`
+  - `Transformation`
+    - rename `error` field to `issue`
   - `Missing`
     - add `path` field
     - add `ast: AST.Type` field
     - add `message` field
-  - remove `missing` export
   - `Unexpected`
     - add `path` field
     - replace `ast` field with a `message` field
     - add `actual` field
+- `ParseError`
+  - rename `error` property to `issue`
+- remove `missing` export
 - Standardize Error Handling for `*Either`, `*Sync` and `asserts` APIs, closes #2968
-- `ParseError`: rename `error` property to `issue`

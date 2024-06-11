@@ -170,13 +170,7 @@ export class Type {
    * @since 0.67.0
    */
   readonly _tag = "Type"
-  /**
-   * @since 0.67.0
-   */
-  readonly message: Option.Option<string>
-  constructor(readonly ast: AST.AST, readonly actual: unknown, message?: string) {
-    this.message = Option.fromNullable(message)
-  }
+  constructor(readonly ast: AST.AST, readonly actual: unknown, readonly message?: string) {}
 }
 
 /**

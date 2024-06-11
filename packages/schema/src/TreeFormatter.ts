@@ -148,8 +148,9 @@ const getParseIssueTitleAnnotation = (issue: ParseResult.ParseIssue): Option.Opt
 export const formatTypeMessage = (e: ParseResult.Type): Effect.Effect<string> =>
   getMessage(e).pipe(
     Effect.orElse(() => getParseIssueTitleAnnotation(e)),
-    Effect.orElse(() => e.message),
-    Effect.catchAll(() => Effect.succeed(`Expected ${e.ast.toString(true)}, actual ${util_.formatUnknown(e.actual)}`))
+    Effect.catchAll(() =>
+      Effect.succeed(e.message ?? `Expected ${e.ast.toString(true)}, actual ${util_.formatUnknown(e.actual)}`)
+    )
   )
 
 const getParseIssueTitle = (issue: ParseResult.ParseIssue): string =>
