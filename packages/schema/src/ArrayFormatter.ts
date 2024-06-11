@@ -57,7 +57,7 @@ const flatten = (eff: Effect.Effect<Array<Array<Issue>>>): Effect.Effect<Array<I
   Effect.map(eff, array_.flatten)
 
 const go = (
-  e: ParseResult.ParseIssue | ParseResult.Path,
+  e: ParseResult.ParseIssue | ParseResult.Pointer,
   path: ReadonlyArray<PropertyKey> = []
 ): Effect.Effect<Array<Issue>> => {
   const _tag = e._tag
@@ -76,8 +76,8 @@ const go = (
         TreeFormatter.formatMissingMessage(e),
         (message) => [{ _tag, path, message }]
       )
-    case "Path":
-      return go(e.issue, path.concat(e.name))
+    case "Pointer":
+      return go(e.issue, path.concat(e.path))
     case "And":
       return getArray(e, path, () => flatten(Effect.forEach(e.issues, (issue) => go(issue, path))))
     case "Refinement":

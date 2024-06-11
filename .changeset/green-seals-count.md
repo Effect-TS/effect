@@ -194,7 +194,7 @@ ParseResult
   - remove `TypeLiteral` in favour of `And`
   - remove `TupleType` in favour of `And`
   - remove `Member` class
-  - merge `Key` and `Index` into `Path`
+  - merge `Key` and `Index` into `Pointer`
   - `Type`
     - change `message` field from `Option<string>` to `string | undefined`
   - `Refinement`

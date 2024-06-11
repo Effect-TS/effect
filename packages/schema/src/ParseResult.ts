@@ -32,19 +32,19 @@ export type ParseIssue =
   | Forbidden
   | Missing
   | Unexpected
-  | Path
+  | Pointer
 
 /**
  * @category model
  * @since 0.68.0
  */
-export class Path {
+export class Pointer {
   /**
    * @since 0.68.0
    */
-  readonly _tag = "Path"
+  readonly _tag = "Pointer"
   constructor(
-    readonly name: PropertyKey,
+    readonly path: PropertyKey | array_.NonEmptyReadonlyArray<PropertyKey>,
     readonly actual: unknown,
     readonly issue: ParseIssue
   ) {}
@@ -886,7 +886,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         const len = input.length
         for (let i = len; i <= requiredLen - 1; i++) {
-          const e = new Path(i, input, new Missing(requiredTypes[i - len]))
+          const e = new Pointer(i, input, new Missing(requiredTypes[i - len]))
           if (allErrors) {
             es.push([stepKey++, e])
             continue
@@ -900,7 +900,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         if (ast.rest.length === 0) {
           for (let i = ast.elements.length; i <= len - 1; i++) {
-            const e = new Path(i, input, new Unexpected(input[i], `is unexpected, expected: ${expectedIndexes}`))
+            const e = new Pointer(i, input, new Unexpected(input[i], `is unexpected, expected: ${expectedIndexes}`))
             if (allErrors) {
               es.push([stepKey++, e])
               continue
@@ -935,7 +935,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
             if (eu) {
               if (Either.isLeft(eu)) {
                 // the input element is present but is not valid
-                const e = new Path(i, input, eu.left)
+                const e = new Pointer(i, input, eu.left)
                 if (allErrors) {
                   es.push([stepKey++, e])
                   continue
@@ -954,7 +954,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                 Effect.flatMap(Effect.either(te), (t) => {
                   if (Either.isLeft(t)) {
                     // the input element is present but is not valid
-                    const e = new Path(index, input, t.left)
+                    const e = new Pointer(index, input, t.left)
                     if (allErrors) {
                       es.push([nk, e])
                       return Effect.void
@@ -979,7 +979,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
             const eu = eitherOrUndefined(te)
             if (eu) {
               if (Either.isLeft(eu)) {
-                const e = new Path(i, input, eu.left)
+                const e = new Pointer(i, input, eu.left)
                 if (allErrors) {
                   es.push([stepKey++, e])
                   continue
@@ -999,7 +999,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                 ({ es, output }: State) =>
                   Effect.flatMap(Effect.either(te), (t) => {
                     if (Either.isLeft(t)) {
-                      const e = new Path(index, input, t.left)
+                      const e = new Pointer(index, input, t.left)
                       if (allErrors) {
                         es.push([nk, e])
                         return Effect.void
@@ -1027,7 +1027,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
               if (eu) {
                 if (Either.isLeft(eu)) {
                   // the input element is present but is not valid
-                  const e = new Path(i, input, eu.left)
+                  const e = new Pointer(i, input, eu.left)
                   if (allErrors) {
                     es.push([stepKey++, e])
                     continue
@@ -1047,7 +1047,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                     Effect.flatMap(Effect.either(te), (t) => {
                       if (Either.isLeft(t)) {
                         // the input element is present but is not valid
-                        const e = new Path(index, input, t.left)
+                        const e = new Pointer(index, input, t.left)
                         if (allErrors) {
                           es.push([nk, e])
                           return Effect.void
@@ -1138,7 +1138,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
             if (Either.isLeft(eu)) {
               // key is unexpected
               if (onExcessPropertyError) {
-                const e = new Path(
+                const e = new Pointer(
                   key,
                   input,
                   new Unexpected(input[key], `is unexpected, expected: ${String(expectedAST)}`)
@@ -1177,7 +1177,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
             if (ps.isOptional) {
               continue
             } else if (isExact) {
-              const e = new Path(name, input, new Missing(ps))
+              const e = new Pointer(name, input, new Missing(ps))
               if (allErrors) {
                 es.push([stepKey++, e])
                 continue
@@ -1191,7 +1191,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           const eu = eitherOrUndefined(te)
           if (eu) {
             if (Either.isLeft(eu)) {
-              const e = new Path(name, input, hasKey ? eu.left : new Missing(ps))
+              const e = new Pointer(name, input, hasKey ? eu.left : new Missing(ps))
               if (allErrors) {
                 es.push([stepKey++, e])
                 continue
@@ -1210,7 +1210,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
               ({ es, output }: State) =>
                 Effect.flatMap(Effect.either(te), (t) => {
                   if (Either.isLeft(t)) {
-                    const e = new Path(index, input, hasKey ? t.left : new Missing(ps))
+                    const e = new Pointer(index, input, hasKey ? t.left : new Missing(ps))
                     if (allErrors) {
                       es.push([nk, e])
                       return Effect.void
@@ -1246,7 +1246,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
               const veu = eitherOrUndefined(vpr)
               if (veu) {
                 if (Either.isLeft(veu)) {
-                  const e = new Path(key, input, veu.left)
+                  const e = new Pointer(key, input, veu.left)
                   if (allErrors) {
                     es.push([stepKey++, e])
                     continue
@@ -1270,7 +1270,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                       Effect.either(vpr),
                       (tv) => {
                         if (Either.isLeft(tv)) {
-                          const e = new Path(index, input, tv.left)
+                          const e = new Pointer(index, input, tv.left)
                           if (allErrors) {
                             es.push([nk, e])
                             return Effect.void
@@ -1367,7 +1367,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                         new AST.PropertySignature(name, literals, false, true)
                       ], []),
                       input,
-                      [new Path(name, input, new Type(literals, input[name]))]
+                      [new Pointer(name, input, new Type(literals, input[name]))]
                     )
                   ])
                 }
@@ -1379,7 +1379,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   new And(
                     new AST.TypeLiteral([fakeps], []),
                     input,
-                    [new Path(name, input, new Missing(fakeps))]
+                    [new Pointer(name, input, new Missing(fakeps))]
                   )
                 ])
               }
