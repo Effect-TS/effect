@@ -1826,7 +1826,7 @@ export const all = <
     return allEither(effects, reconcile, options) as any
   }
 
-  return reconcile._tag === "Some"
+  return options?.discard !== true && reconcile._tag === "Some"
     ? core.map(
       forEach(effects, identity, options as any),
       reconcile.value
