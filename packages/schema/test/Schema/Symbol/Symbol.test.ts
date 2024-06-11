@@ -16,7 +16,7 @@ describe("Symbol", () => {
       null,
       `symbol
 └─ Encoded side transformation failure
-   └─ Expected a string, actual null`
+   └─ Expected string, actual null`
     )
   })
 
@@ -27,7 +27,7 @@ describe("Symbol", () => {
       Symbol(),
       `symbol
 └─ Encoded side transformation failure
-   └─ Expected a string, actual undefined`
+   └─ Expected string, actual undefined`
     )
   })
 })

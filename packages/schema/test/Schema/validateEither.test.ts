@@ -11,7 +11,7 @@ describe("validateEither", () => {
       S.validateEither(schema)({ a: null }),
       `{ readonly a: number }
 └─ ["a"]
-   └─ Expected a number, actual null`
+   └─ Expected number, actual null`
     )
   })
 
@@ -29,13 +29,13 @@ describe("validateEither", () => {
       S.validateEither(schema)(input, { onExcessProperty: "error" }),
       `{ readonly a: number }
 └─ ["b"]
-   └─ is unexpected, expected "a"`
+   └─ is unexpected, expected: "a"`
     )
     Util.expectEitherLeft(
       S.validateEither(schema, { onExcessProperty: "error" })(input),
       `{ readonly a: number }
 └─ ["b"]
-   └─ is unexpected, expected "a"`
+   └─ is unexpected, expected: "a"`
     )
     Util.expectEitherRight(
       S.validateEither(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }),

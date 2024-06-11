@@ -26,7 +26,7 @@ describe("Redacted", () => {
       Redacted.make(123),
       `(string <-> Redacted(<redacted>))
 └─ Encoded side transformation failure
-   └─ Expected a string, actual <redacted>`
+   └─ Expected string, actual <redacted>`
     )
   })
 

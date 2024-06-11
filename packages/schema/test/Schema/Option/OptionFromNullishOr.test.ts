@@ -27,7 +27,7 @@ describe("OptionFromNullishOr", () => {
    └─ NumberFromString | null | undefined
       ├─ NumberFromString
       │  └─ Encoded side transformation failure
-      │     └─ Expected a string, actual {}
+      │     └─ Expected string, actual {}
       ├─ Expected null, actual {}
       └─ Expected undefined, actual {}`
     )

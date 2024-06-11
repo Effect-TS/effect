@@ -96,7 +96,7 @@ export class Missing {
     /**
      * @since 0.68.0
      */
-    readonly ast: AST.Type,
+    readonly ast: AST.Annotated,
     /**
      * @since 0.68.0
      */
@@ -114,7 +114,7 @@ export class And {
    */
   readonly _tag = "And"
   constructor(
-    readonly ast: AST.AST,
+    readonly ast: AST.Annotated,
     readonly actual: unknown,
     readonly issues: array_.NonEmptyReadonlyArray<ParseIssue | Path>,
     readonly path?: Many<PropertyKey>,
@@ -134,7 +134,7 @@ export class Refinement {
    */
   readonly _tag = "Refinement"
   constructor(
-    readonly ast: AST.Refinement<AST.AST>,
+    readonly ast: AST.Refinement,
     readonly actual: unknown,
     readonly kind: "From" | "Predicate",
     readonly issue: ParseIssue
@@ -173,7 +173,7 @@ export class Type {
    */
   readonly _tag = "Type"
   constructor(
-    readonly ast: AST.AST,
+    readonly ast: AST.Annotated,
     readonly actual: unknown,
     readonly message?: string,
     readonly path?: Many<PropertyKey>
@@ -191,7 +191,11 @@ export class Forbidden {
    * @since 0.67.0
    */
   readonly _tag = "Forbidden"
-  constructor(readonly ast: AST.AST, readonly actual: unknown, readonly message?: string) {}
+  constructor(
+    readonly ast: AST.Annotated,
+    readonly actual: unknown,
+    readonly message?: string
+  ) {}
 }
 
 /**
@@ -908,7 +912,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         if (ast.rest.length === 0) {
           for (let i = ast.elements.length; i <= len - 1; i++) {
-            const e = new Unexpected(i, input[i], `is unexpected, expected ${expectedIndexes}`)
+            const e = new Unexpected(i, input[i], `is unexpected, expected: ${expectedIndexes}`)
             if (allErrors) {
               es.push([stepKey++, e])
               continue
@@ -1146,7 +1150,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
             if (Either.isLeft(eu)) {
               // key is unexpected
               if (onExcessPropertyError) {
-                const e = new Unexpected(key, input[key], `is unexpected, expected ${expectedAST.toString(true)}`)
+                const e = new Unexpected(key, input[key], `is unexpected, expected: ${String(expectedAST)}`)
                 if (allErrors) {
                   es.push([stepKey++, e])
                   continue

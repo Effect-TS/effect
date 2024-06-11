@@ -27,12 +27,12 @@ describe("asserts", () => {
     expect(() => S.asserts(schema)(input, { onExcessProperty: "error" })).toThrow(
       new Error(`{ readonly a: number }
 └─ ["b"]
-   └─ is unexpected, expected "a"`)
+   └─ is unexpected, expected: "a"`)
     )
     expect(() => S.asserts(schema, { onExcessProperty: "error" })(input)).toThrow(
       new Error(`{ readonly a: number }
 └─ ["b"]
-   └─ is unexpected, expected "a"`)
+   └─ is unexpected, expected: "a"`)
     )
     expect(S.asserts(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }))
       .toEqual(undefined)
@@ -47,7 +47,7 @@ describe("asserts", () => {
         { a: null },
         `{ readonly a: number }
 └─ ["a"]
-   └─ Expected a number, actual null`
+   └─ Expected number, actual null`
       )
     })
 
@@ -71,7 +71,7 @@ describe("asserts", () => {
         `{ readonly a: number | undefined }
 └─ ["a"]
    └─ number | undefined
-      ├─ Expected a number, actual "a"
+      ├─ Expected number, actual "a"
       └─ Expected undefined, actual "a"`
       )
     })

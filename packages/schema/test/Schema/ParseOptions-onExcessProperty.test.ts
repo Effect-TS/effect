@@ -13,14 +13,14 @@ describe("`onExcessProperty` option", () => {
         [1, "b"],
         `readonly [number]
 └─ [1]
-   └─ is unexpected, expected 0`
+   └─ is unexpected, expected: 0`
       )
       await Util.expectEncodeFailure(
         schema,
         [1, "b"] as any,
         `readonly [number]
 └─ [1]
-   └─ is unexpected, expected 0`
+   └─ is unexpected, expected: 0`
       )
     })
 
@@ -92,7 +92,7 @@ describe("`onExcessProperty` option", () => {
           new ParseResult.And(
             schema.ast,
             input,
-            [new ParseResult.Unexpected("b", 1, `is unexpected, expected "a"`)],
+            [new ParseResult.Unexpected("b", 1, `is unexpected, expected: "a"`)],
             undefined,
             {}
           )
@@ -107,7 +107,7 @@ describe("`onExcessProperty` option", () => {
           new ParseResult.And(
             schema.ast,
             input,
-            [new ParseResult.Unexpected(1, 1, `is unexpected, expected 0`)],
+            [new ParseResult.Unexpected(1, 1, `is unexpected, expected: 0`)],
             undefined,
             []
           )
@@ -128,10 +128,10 @@ describe("`onExcessProperty` option", () => {
         `{ readonly a?: number; readonly b?: string } | { readonly a?: number }
 ├─ { readonly a?: number; readonly b?: string }
 │  └─ ["c"]
-│     └─ is unexpected, expected "a" | "b"
+│     └─ is unexpected, expected: "a" | "b"
 └─ { readonly a?: number }
    └─ ["b"]
-      └─ is unexpected, expected "a"`,
+      └─ is unexpected, expected: "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -146,10 +146,10 @@ describe("`onExcessProperty` option", () => {
         `readonly [number, string?] | readonly [number]
 ├─ readonly [number, string?]
 │  └─ [2]
-│     └─ is unexpected, expected 0 | 1
+│     └─ is unexpected, expected: 0 | 1
 └─ readonly [number]
    └─ [1]
-      └─ is unexpected, expected 0`
+      └─ is unexpected, expected: 0`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -157,10 +157,10 @@ describe("`onExcessProperty` option", () => {
         `readonly [number, string?] | readonly [number]
 ├─ readonly [number, string?]
 │  └─ [2]
-│     └─ is unexpected, expected 0 | 1
+│     └─ is unexpected, expected: 0 | 1
 └─ readonly [number]
    └─ [1]
-      └─ is unexpected, expected 0`,
+      └─ is unexpected, expected: 0`,
         Util.onExcessPropertyError
       )
     })
@@ -174,7 +174,7 @@ describe("`onExcessProperty` option", () => {
         [1, "b"],
         `readonly [number]
 └─ [1]
-   └─ is unexpected, expected 0`,
+   └─ is unexpected, expected: 0`,
         Util.onExcessPropertyPreserve
       )
       await Util.expectEncodeFailure(
@@ -182,7 +182,7 @@ describe("`onExcessProperty` option", () => {
         [1, "b"] as any,
         `readonly [number]
 └─ [1]
-   └─ is unexpected, expected 0`,
+   └─ is unexpected, expected: 0`,
         Util.onExcessPropertyPreserve
       )
     })

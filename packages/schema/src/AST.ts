@@ -387,8 +387,8 @@ export class Declaration implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return Option.getOrElse(getExpected(this, verbose), () => "<declaration schema>")
+  toString() {
+    return Option.getOrElse(getExpected(this), () => "<declaration schema>")
   }
   /**
    * @since 0.67.0
@@ -430,8 +430,8 @@ export class Literal implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return Option.getOrElse(getExpected(this, verbose), () => util_.formatUnknown(this.literal))
+  toString() {
+    return Option.getOrElse(getExpected(this), () => util_.formatUnknown(this.literal))
   }
   /**
    * @since 0.67.0
@@ -476,8 +476,8 @@ export class UniqueSymbol implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return Option.getOrElse(getExpected(this, verbose), () => util_.formatUnknown(this.symbol))
+  toString() {
+    return Option.getOrElse(getExpected(this), () => util_.formatUnknown(this.symbol))
   }
   /**
    * @since 0.67.0
@@ -510,8 +510,8 @@ export class UndefinedKeyword implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return formatKeyword(this, verbose)
+  toString() {
+    return formatKeyword(this)
   }
   /**
    * @since 0.67.0
@@ -551,8 +551,8 @@ export class VoidKeyword implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return formatKeyword(this, verbose)
+  toString() {
+    return formatKeyword(this)
   }
   /**
    * @since 0.67.0
@@ -592,8 +592,8 @@ export class NeverKeyword implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return formatKeyword(this, verbose)
+  toString() {
+    return formatKeyword(this)
   }
   /**
    * @since 0.67.0
@@ -633,8 +633,8 @@ export class UnknownKeyword implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return formatKeyword(this, verbose)
+  toString() {
+    return formatKeyword(this)
   }
   /**
    * @since 0.67.0
@@ -674,8 +674,8 @@ export class AnyKeyword implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return formatKeyword(this, verbose)
+  toString() {
+    return formatKeyword(this)
   }
   /**
    * @since 0.67.0
@@ -715,8 +715,8 @@ export class StringKeyword implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return formatKeyword(this, verbose)
+  toString() {
+    return formatKeyword(this)
   }
   /**
    * @since 0.67.0
@@ -757,8 +757,8 @@ export class NumberKeyword implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return formatKeyword(this, verbose)
+  toString() {
+    return formatKeyword(this)
   }
   /**
    * @since 0.67.0
@@ -799,8 +799,8 @@ export class BooleanKeyword implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return formatKeyword(this, verbose)
+  toString() {
+    return formatKeyword(this)
   }
   /**
    * @since 0.67.0
@@ -841,8 +841,8 @@ export class BigIntKeyword implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return formatKeyword(this, verbose)
+  toString() {
+    return formatKeyword(this)
   }
   /**
    * @since 0.67.0
@@ -883,8 +883,8 @@ export class SymbolKeyword implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return formatKeyword(this, verbose)
+  toString() {
+    return formatKeyword(this)
   }
   /**
    * @since 0.67.0
@@ -925,8 +925,8 @@ export class ObjectKeyword implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return formatKeyword(this, verbose)
+  toString() {
+    return formatKeyword(this)
   }
   /**
    * @since 0.67.0
@@ -971,9 +971,9 @@ export class Enums implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
+  toString() {
     return Option.getOrElse(
-      getExpected(this, verbose),
+      getExpected(this),
       () => `<enum ${this.enums.length} value(s): ${this.enums.map((_, value) => JSON.stringify(value)).join(" | ")}>`
     )
   }
@@ -1040,8 +1040,8 @@ export class TemplateLiteral implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return Option.getOrElse(getExpected(this, verbose), () => formatTemplateLiteral(this))
+  toString() {
+    return Option.getOrElse(getExpected(this), () => formatTemplateLiteral(this))
   }
   /**
    * @since 0.67.0
@@ -1156,8 +1156,8 @@ export class TupleType implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return Option.getOrElse(getExpected(this, verbose), () => formatTuple(this))
+  toString() {
+    return Option.getOrElse(getExpected(this), () => formatTuple(this))
   }
   /**
    * @since 0.67.0
@@ -1343,8 +1343,8 @@ export class TypeLiteral implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return Option.getOrElse(getExpected(this, verbose), () => formatTypeLiteral(this))
+  toString() {
+    return Option.getOrElse(getExpected(this), () => formatTypeLiteral(this))
   }
   /**
    * @since 0.67.0
@@ -1548,9 +1548,9 @@ export class Union implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
+  toString() {
     return Option.getOrElse(
-      getExpected(this, verbose),
+      getExpected(this),
       () => this.types.map(String).join(" | ")
     )
   }
@@ -1598,12 +1598,12 @@ export class Suspend implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return getExpected(this, verbose).pipe(
+  toString() {
+    return getExpected(this).pipe(
       Option.orElse(() =>
         Option.flatMap(
           Option.liftThrowable(this.f)(),
-          (ast) => getExpected(ast, verbose)
+          (ast) => getExpected(ast)
         )
       ),
       Option.getOrElse(() => "<suspended schema>")
@@ -1656,8 +1656,8 @@ export class Refinement<From extends AST = AST> implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return Option.getOrElse(getExpected(this, verbose), () => `{ ${this.from} | filter }`)
+  toString() {
+    return Option.getOrElse(getExpected(this), () => `{ ${this.from} | filter }`)
   }
   /**
    * @since 0.67.0
@@ -1717,9 +1717,9 @@ export class Transformation implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
+  toString() {
     return Option.getOrElse(
-      getExpected(this, verbose),
+      getExpected(this),
       () => `(${String(this.from)} <-> ${String(this.to)})`
     )
   }
@@ -2693,28 +2693,13 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
   throw new Error(`rename: cannot rename (${ast})`)
 }
 
-const formatKeyword = (ast: AST, verbose: boolean = false): string =>
-  Option.getOrElse(getExpected(ast, verbose), () => ast._tag)
+const formatKeyword = (ast: AST): string => Option.getOrElse(getExpected(ast), () => ast._tag)
 
-const getExpected = (ast: AST, verbose: boolean): Option.Option<string> => {
-  if (verbose) {
-    const description = getDescriptionAnnotation(ast).pipe(
-      Option.orElse(() => getTitleAnnotation(ast))
-    )
-    return Option.match(getIdentifierAnnotation(ast), {
-      onNone: () => description,
-      onSome: (identifier) =>
-        Option.match(description, {
-          onNone: () => Option.some(identifier),
-          onSome: (description) => Option.some(`${identifier} (${description})`)
-        })
-    })
-  } else {
-    return getIdentifierAnnotation(ast).pipe(
-      Option.orElse(() => getTitleAnnotation(ast)),
-      Option.orElse(() => getDescriptionAnnotation(ast))
-    )
-  }
+const getExpected = (ast: Annotated): Option.Option<string> => {
+  return getIdentifierAnnotation(ast).pipe(
+    Option.orElse(() => getTitleAnnotation(ast)),
+    Option.orElse(() => getDescriptionAnnotation(ast))
+  )
 }
 
 const getDuplicateIndexSignatureErrorMessage = (name: "string" | "symbol"): string =>

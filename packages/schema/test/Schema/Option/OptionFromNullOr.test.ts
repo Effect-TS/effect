@@ -24,7 +24,7 @@ describe("OptionFromNullOr", () => {
    └─ NumberFromString | null
       ├─ NumberFromString
       │  └─ Encoded side transformation failure
-      │     └─ Expected a string, actual undefined
+      │     └─ Expected string, actual undefined
       └─ Expected null, actual undefined`
     )
     await Util.expectDecodeUnknownFailure(
@@ -35,7 +35,7 @@ describe("OptionFromNullOr", () => {
    └─ NumberFromString | null
       ├─ NumberFromString
       │  └─ Encoded side transformation failure
-      │     └─ Expected a string, actual {}
+      │     └─ Expected string, actual {}
       └─ Expected null, actual {}`
     )
   })

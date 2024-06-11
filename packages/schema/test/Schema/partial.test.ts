@@ -17,7 +17,7 @@ describe("partial", () => {
         `{ readonly a?: number | undefined }
 └─ ["a"]
    └─ number | undefined
-      ├─ Expected a number, actual null
+      ├─ Expected number, actual null
       └─ Expected undefined, actual null`
       )
     })
@@ -59,7 +59,7 @@ describe("partial", () => {
         `ReadonlyArray<number | undefined>
 └─ [0]
    └─ number | undefined
-      ├─ Expected a number, actual "a"
+      ├─ Expected number, actual "a"
       └─ Expected undefined, actual "a"`
       )
     })
@@ -76,7 +76,7 @@ describe("partial", () => {
         { a: undefined },
         `{ readonly a?: number }
 └─ ["a"]
-   └─ Expected a number, actual undefined`
+   └─ Expected number, actual undefined`
       )
     })
 
@@ -100,7 +100,7 @@ describe("partial", () => {
 └─ [0]
    └─ NumberFromString
       └─ Encoded side transformation failure
-         └─ Expected a string, actual undefined`
+         └─ Expected string, actual undefined`
         )
       })
 
@@ -118,7 +118,7 @@ describe("partial", () => {
 └─ [0]
    └─ NumberFromString
       └─ Encoded side transformation failure
-         └─ Expected a string, actual undefined`
+         └─ Expected string, actual undefined`
         )
       })
     })
@@ -135,7 +135,7 @@ describe("partial", () => {
         `ReadonlyArray<number | undefined>
 └─ [0]
    └─ number | undefined
-      ├─ Expected a number, actual "a"
+      ├─ Expected number, actual "a"
       └─ Expected undefined, actual "a"`
       )
     })
@@ -154,9 +154,9 @@ describe("partial", () => {
 ├─ ReadonlyArray<number | undefined>
 │  └─ [0]
 │     └─ number | undefined
-│        ├─ Expected a number, actual "a"
+│        ├─ Expected number, actual "a"
 │        └─ Expected undefined, actual "a"
-└─ Expected a string, actual ["a"]`
+└─ Expected string, actual ["a"]`
       )
     })
 

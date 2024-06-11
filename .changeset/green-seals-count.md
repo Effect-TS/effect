@@ -149,6 +149,7 @@ AST
 
 - add `MissingMessageAnnotation` annotations
 - add `Type`
+- remove `verbose` option from `toString()` methods
 
 **Breaking**
 

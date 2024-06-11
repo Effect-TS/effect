@@ -15,7 +15,7 @@ describe("pluck", () => {
 └─ Encoded side transformation failure
    └─ { readonly a: string }
       └─ ["a"]
-         └─ Expected a string, actual 1`
+         └─ Expected string, actual 1`
       )
     })
 
@@ -32,7 +32,7 @@ describe("pluck", () => {
 └─ Encoded side transformation failure
    └─ { readonly Symbol(effect/schema/test/a): string }
       └─ [Symbol(effect/schema/test/a)]
-         └─ Expected a string, actual 1`
+         └─ Expected string, actual 1`
       )
     })
 
@@ -73,7 +73,7 @@ describe("pluck", () => {
 └─ Type side transformation failure
    └─ NonEmpty
       └─ Predicate refinement failure
-         └─ Expected NonEmpty (a non empty string), actual ""`
+         └─ Expected NonEmpty, actual ""`
       )
     })
 
@@ -89,7 +89,7 @@ describe("pluck", () => {
 └─ Type side transformation failure
    └─ NonEmpty
       └─ Predicate refinement failure
-         └─ Expected NonEmpty (a non empty string), actual ""`
+         └─ Expected NonEmpty, actual ""`
       )
     })
   })

@@ -64,7 +64,7 @@ describe("filter", () => {
       "",
       `NonEmpty
 └─ Predicate refinement failure
-   └─ Expected NonEmpty (a non empty string), actual ""`
+   └─ Expected NonEmpty, actual ""`
     )
   })
 

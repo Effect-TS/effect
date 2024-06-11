@@ -87,7 +87,7 @@ describe("Class", () => {
 └─ ["a"]
    └─ NonEmpty
       └─ Predicate refinement failure
-         └─ Expected NonEmpty (a non empty string), actual ""`)
+         └─ Expected NonEmpty, actual ""`)
     )
   })
 
@@ -195,7 +195,7 @@ describe("Class", () => {
       └─ ["a"]
          └─ NonEmpty
             └─ Predicate refinement failure
-               └─ Expected NonEmpty (a non empty string), actual ""`
+               └─ Expected NonEmpty, actual ""`
     )
   })
 
@@ -212,7 +212,7 @@ describe("Class", () => {
       └─ ["a"]
          └─ NonEmpty
             └─ Predicate refinement failure
-               └─ Expected NonEmpty (a non empty string), actual ""`
+               └─ Expected NonEmpty, actual ""`
     )
   })
 
@@ -268,7 +268,7 @@ describe("Class", () => {
     await Util.expectDecodeUnknownFailure(
       PersonFromSelf,
       { id: 1, name: "John" },
-      `Expected Person (an instance of Person), actual {"id":1,"name":"John"}`
+      `Expected Person, actual {"id":1,"name":"John"}`
     )
   })
 
@@ -295,7 +295,7 @@ describe("Class", () => {
     await Util.expectDecodeUnknownFailure(
       PersonFromSelf,
       { id: 1, name: "John" },
-      `Expected Person (an instance of Person), actual {"id":1,"name":"John"}`
+      `Expected Person, actual {"id":1,"name":"John"}`
     )
   })
 

@@ -144,7 +144,7 @@ describe("optional APIs", () => {
          └─ NumberFromString | null
             ├─ NumberFromString
             │  └─ Encoded side transformation failure
-            │     └─ Expected a string, actual undefined
+            │     └─ Expected string, actual undefined
             └─ Expected null, actual undefined`
       )
       await Util.expectDecodeUnknownFailure(
@@ -331,7 +331,7 @@ describe("optional APIs", () => {
          └─ NumberFromString | undefined
             ├─ NumberFromString
             │  └─ Encoded side transformation failure
-            │     └─ Expected a string, actual null
+            │     └─ Expected string, actual null
             └─ Expected undefined, actual null`
       )
       await Util.expectDecodeUnknownFailure(

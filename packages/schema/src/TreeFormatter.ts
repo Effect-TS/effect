@@ -149,7 +149,7 @@ export const formatTypeMessage = (e: ParseResult.Type): Effect.Effect<string> =>
   getMessage(e).pipe(
     Effect.orElse(() => getParseIssueTitleAnnotation(e)),
     Effect.catchAll(() =>
-      Effect.succeed(e.message ?? `Expected ${e.ast.toString(true)}, actual ${util_.formatUnknown(e.actual)}`)
+      Effect.succeed(e.message ?? `Expected ${String(e.ast)}, actual ${util_.formatUnknown(e.actual)}`)
     )
   )
 

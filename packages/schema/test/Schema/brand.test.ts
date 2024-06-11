@@ -12,7 +12,7 @@ describe("brand", () => {
       "",
       `NonEmpty
 └─ Predicate refinement failure
-   └─ Expected NonEmpty (a non empty string), actual ""`
+   └─ Expected NonEmpty, actual ""`
     )
   })
 
@@ -134,7 +134,7 @@ describe("brand", () => {
 └─ From side refinement failure
    └─ NumberFromString
       └─ Encoded side transformation failure
-         └─ Expected a string, actual null`
+         └─ Expected string, actual null`
       )
     })
 
@@ -152,7 +152,7 @@ describe("brand", () => {
 └─ From side refinement failure
    └─ NumberFromString
       └─ Encoded side transformation failure
-         └─ Expected a string, actual null`
+         └─ Expected string, actual null`
       )
     })
   })

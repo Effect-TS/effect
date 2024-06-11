@@ -13,14 +13,14 @@ describe("JsonNumber", () => {
       NaN,
       `JsonNumber
 └─ Predicate refinement failure
-   └─ Expected JsonNumber (a JSON-compatible number, excluding NaN, +Infinity, and -Infinity), actual NaN`
+   └─ Expected JsonNumber, actual NaN`
     )
     await Util.expectDecodeUnknownFailure(
       S.JsonNumber,
       Number.NaN,
       `JsonNumber
 └─ Predicate refinement failure
-   └─ Expected JsonNumber (a JSON-compatible number, excluding NaN, +Infinity, and -Infinity), actual NaN`
+   └─ Expected JsonNumber, actual NaN`
     )
   })
 
@@ -30,28 +30,28 @@ describe("JsonNumber", () => {
       Infinity,
       `JsonNumber
 └─ Predicate refinement failure
-   └─ Expected JsonNumber (a JSON-compatible number, excluding NaN, +Infinity, and -Infinity), actual Infinity`
+   └─ Expected JsonNumber, actual Infinity`
     )
     await Util.expectDecodeUnknownFailure(
       S.JsonNumber,
       -Infinity,
       `JsonNumber
 └─ Predicate refinement failure
-   └─ Expected JsonNumber (a JSON-compatible number, excluding NaN, +Infinity, and -Infinity), actual -Infinity`
+   └─ Expected JsonNumber, actual -Infinity`
     )
     await Util.expectDecodeUnknownFailure(
       S.JsonNumber,
       Number.POSITIVE_INFINITY,
       `JsonNumber
 └─ Predicate refinement failure
-   └─ Expected JsonNumber (a JSON-compatible number, excluding NaN, +Infinity, and -Infinity), actual Infinity`
+   └─ Expected JsonNumber, actual Infinity`
     )
     await Util.expectDecodeUnknownFailure(
       S.JsonNumber,
       Number.NEGATIVE_INFINITY,
       `JsonNumber
 └─ Predicate refinement failure
-   └─ Expected JsonNumber (a JSON-compatible number, excluding NaN, +Infinity, and -Infinity), actual -Infinity`
+   └─ Expected JsonNumber, actual -Infinity`
     )
   })
 })

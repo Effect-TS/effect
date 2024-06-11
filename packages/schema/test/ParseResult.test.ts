@@ -47,7 +47,7 @@ describe("ParseResult", () => {
   it("Error.stack", () => {
     expect(
       P.parseError(new P.Type(S.String.ast, 1)).stack?.startsWith(
-        `ParseError: Expected a string, actual 1`
+        `ParseError: Expected string, actual 1`
       )
     )
       .toEqual(true)
@@ -219,7 +219,7 @@ describe("ParseIssue.actual", () => {
     const schema = S.String
     expect(P.asserts(schema)("a")).toEqual(undefined)
     expect(() => P.asserts(schema)(1)).toThrow(
-      new Error(`Expected a string, actual 1`)
+      new Error(`Expected string, actual 1`)
     )
   })
 

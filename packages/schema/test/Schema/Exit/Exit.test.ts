@@ -28,7 +28,7 @@ describe("Exit", () => {
    └─ ExitEncoded<number, string>
       └─ SuccessEncoded<number>
          └─ ["value"]
-            └─ Expected a number, actual null`
+            └─ Expected number, actual null`
     )
     await Util.expectDecodeUnknownFailure(
       schema,

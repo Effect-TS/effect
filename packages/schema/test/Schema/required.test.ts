@@ -130,7 +130,7 @@ describe("required", () => {
         ["", 0, true],
         `readonly [string, ...number[], boolean, boolean]
 └─ [1]
-   └─ Expected a boolean, actual 0`
+   └─ Expected boolean, actual 0`
       )
     })
   })

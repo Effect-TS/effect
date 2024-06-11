@@ -27,10 +27,10 @@ describe("EitherFromUnion", () => {
    └─ (string <-> RightEncoded<string>) | (number <-> LeftEncoded<number>)
       ├─ (string <-> RightEncoded<string>)
       │  └─ Encoded side transformation failure
-      │     └─ Expected a string, actual undefined
+      │     └─ Expected string, actual undefined
       └─ (number <-> LeftEncoded<number>)
          └─ Encoded side transformation failure
-            └─ Expected a number, actual undefined`
+            └─ Expected number, actual undefined`
     )
   })
 
@@ -46,10 +46,10 @@ describe("EitherFromUnion", () => {
       │  └─ Encoded side transformation failure
       │     └─ (boolean <-> string)
       │        └─ Type side transformation failure
-      │           └─ Expected a string, actual true
+      │           └─ Expected string, actual true
       └─ (number <-> LeftEncoded<number>)
          └─ Encoded side transformation failure
-            └─ Expected a number, actual true`
+            └─ Expected number, actual true`
     )
   })
 
@@ -81,7 +81,7 @@ describe("EitherFromUnion", () => {
                └─ Encoded side transformation failure
                   └─ DateFromString
                      └─ Type side transformation failure
-                        └─ Expected DateFromSelf (a potentially invalid Date instance), actual undefined`
+                        └─ Expected DateFromSelf, actual undefined`
     )
     await Util.expectEncodeFailure(
       schema,
@@ -95,7 +95,7 @@ describe("EitherFromUnion", () => {
                └─ Encoded side transformation failure
                   └─ NumberFromString
                      └─ Type side transformation failure
-                        └─ Expected a number, actual undefined`
+                        └─ Expected number, actual undefined`
     )
   })
 
@@ -116,7 +116,7 @@ describe("EitherFromUnion", () => {
                └─ Encoded side transformation failure
                   └─ DateFromString
                      └─ Type side transformation failure
-                        └─ Expected DateFromSelf (a potentially invalid Date instance), actual 1`
+                        └─ Expected DateFromSelf, actual 1`
     )
     await Util.expectEncodeFailure(
       schema,
@@ -130,7 +130,7 @@ describe("EitherFromUnion", () => {
                └─ Encoded side transformation failure
                   └─ NumberFromString
                      └─ Type side transformation failure
-                        └─ Expected a number, actual ${new Date(0).toString()}`
+                        └─ Expected number, actual ${new Date(0).toString()}`
     )
   })
 })

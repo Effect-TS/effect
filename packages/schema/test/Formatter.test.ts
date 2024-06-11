@@ -241,13 +241,13 @@ describe("Formatter", () => {
         input,
         `{ readonly a: string }
 └─ ["b"]
-   └─ is unexpected, expected "a"`,
+   └─ is unexpected, expected: "a"`,
         Util.onExcessPropertyError
       )
       expectIssues(schema, input, [{
         _tag: "Unexpected",
         path: ["b"],
-        message: `is unexpected, expected "a"`
+        message: `is unexpected, expected: "a"`
       }])
     })
 
@@ -259,13 +259,13 @@ describe("Formatter", () => {
         input,
         `identifier
 └─ ["b"]
-   └─ is unexpected, expected "a"`,
+   └─ is unexpected, expected: "a"`,
         Util.onExcessPropertyError
       )
       expectIssues(schema, input, [{
         _tag: "Unexpected",
         path: ["b"],
-        message: `is unexpected, expected "a"`
+        message: `is unexpected, expected: "a"`
       }])
     })
 
@@ -311,12 +311,12 @@ describe("Formatter", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         input,
-        "Expected an instance of File, actual null"
+        "Expected File, actual null"
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: `Expected an instance of File, actual null`
+        message: `Expected File, actual null`
       }])
     })
 
@@ -326,12 +326,12 @@ describe("Formatter", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         input,
-        "Expected identifier (an instance of File), actual null"
+        "Expected identifier, actual null"
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected identifier (an instance of File), actual null"
+        message: "Expected identifier, actual null"
       }])
     })
 
@@ -374,22 +374,22 @@ describe("Formatter", () => {
     it("default message", async () => {
       const schema = S.String
       const input = null
-      await Util.expectDecodeUnknownFailure(schema, input, "Expected a string, actual null")
+      await Util.expectDecodeUnknownFailure(schema, input, "Expected string, actual null")
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected a string, actual null"
+        message: "Expected string, actual null"
       }])
     })
 
     it("default message with identifier", async () => {
-      const schema = S.String.annotations({ identifier: "identifier" })
+      const schema = S.String.annotations({ identifier: "ID" })
       const input = null
-      await Util.expectDecodeUnknownFailure(schema, input, "Expected identifier (a string), actual null")
+      await Util.expectDecodeUnknownFailure(schema, input, "Expected ID, actual null")
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected identifier (a string), actual null"
+        message: "Expected ID, actual null"
       }])
     })
 
@@ -421,12 +421,12 @@ describe("Formatter", () => {
         input,
         `(string <-> string)
 └─ Encoded side transformation failure
-   └─ Expected a string, actual null`
+   └─ Expected string, actual null`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected a string, actual null"
+        message: "Expected string, actual null"
       }])
     })
 
@@ -445,12 +445,12 @@ describe("Formatter", () => {
         input,
         `identifier
 └─ Encoded side transformation failure
-   └─ Expected a string, actual null`
+   └─ Expected string, actual null`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected a string, actual null"
+        message: "Expected string, actual null"
       }])
     })
 
@@ -493,12 +493,12 @@ describe("Formatter", () => {
         input,
         `(string <-> string)
 └─ Encoded side transformation failure
-   └─ Expected a string, actual null`
+   └─ Expected string, actual null`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected a string, actual null"
+        message: "Expected string, actual null"
       }])
     })
 
@@ -585,12 +585,12 @@ describe("Formatter", () => {
 └─ Type side transformation failure
    └─ NonEmpty
       └─ Predicate refinement failure
-         └─ Expected NonEmpty (a non empty string), actual ""`
+         └─ Expected NonEmpty, actual ""`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: `Expected NonEmpty (a non empty string), actual ""`
+        message: `Expected NonEmpty, actual ""`
       }])
     })
 
@@ -714,12 +714,12 @@ describe("Formatter", () => {
         input,
         `a string at least 1 character(s) long
 └─ From side refinement failure
-   └─ Expected a string, actual null`
+   └─ Expected string, actual null`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected a string, actual null"
+        message: "Expected string, actual null"
       }])
     })
 
@@ -731,12 +731,12 @@ describe("Formatter", () => {
         input,
         `identifier
 └─ From side refinement failure
-   └─ Expected a string, actual null`
+   └─ Expected string, actual null`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected a string, actual null"
+        message: "Expected string, actual null"
       }])
     })
 
@@ -765,12 +765,12 @@ describe("Formatter", () => {
         input,
         `identifier
 └─ Predicate refinement failure
-   └─ Expected identifier (a string at least 1 character(s) long), actual ""`
+   └─ Expected identifier, actual ""`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: `Expected identifier (a string at least 1 character(s) long), actual ""`
+        message: `Expected identifier, actual ""`
       }])
     })
 
@@ -782,12 +782,12 @@ describe("Formatter", () => {
         input,
         `a string at least 1 character(s) long
 └─ From side refinement failure
-   └─ Expected a string, actual null`
+   └─ Expected string, actual null`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected a string, actual null"
+        message: "Expected string, actual null"
       }])
     })
 
@@ -985,17 +985,17 @@ describe("Formatter", () => {
         schema,
         input,
         `string | number
-├─ Expected a string, actual null
-└─ Expected a number, actual null`
+├─ Expected string, actual null
+└─ Expected number, actual null`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected a string, actual null"
+        message: "Expected string, actual null"
       }, {
         _tag: "Type",
         path: [],
-        message: "Expected a number, actual null"
+        message: "Expected number, actual null"
       }])
     })
   })
@@ -1055,17 +1055,17 @@ describe("Formatter", () => {
         schema,
         input,
         `string | number
-├─ Expected a string, actual null
-└─ Expected a number, actual null`
+├─ Expected string, actual null
+└─ Expected number, actual null`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected a string, actual null"
+        message: "Expected string, actual null"
       }, {
         _tag: "Type",
         path: [],
-        message: "Expected a number, actual null"
+        message: "Expected number, actual null"
       }])
     })
 
@@ -1076,17 +1076,17 @@ describe("Formatter", () => {
         schema,
         input,
         `identifier
-├─ Expected a string, actual null
-└─ Expected a number, actual null`
+├─ Expected string, actual null
+└─ Expected number, actual null`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected a string, actual null"
+        message: "Expected string, actual null"
       }, {
         _tag: "Type",
         path: [],
-        message: "Expected a number, actual null"
+        message: "Expected number, actual null"
       }])
     })
 
@@ -1119,9 +1119,9 @@ describe("handle identifiers", () => {
       { a: 1, b: 2 },
       `MySchema
 ├─ ["a"]
-│  └─ Expected MyString1 (a string), actual 1
+│  └─ Expected MyString1, actual 1
 └─ ["b"]
-   └─ Expected MyString2 (a string), actual 2`,
+   └─ Expected MyString2, actual 2`,
       Util.allErrors
     )
   })

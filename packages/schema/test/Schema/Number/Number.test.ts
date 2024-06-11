@@ -9,7 +9,7 @@ describe("Number", () => {
     await Util.expectDecodeUnknownSuccess(schema, NaN, NaN)
     await Util.expectDecodeUnknownSuccess(schema, Infinity, Infinity)
     await Util.expectDecodeUnknownSuccess(schema, -Infinity, -Infinity)
-    await Util.expectDecodeUnknownFailure(schema, "a", `Expected a number, actual "a"`)
+    await Util.expectDecodeUnknownFailure(schema, "a", `Expected number, actual "a"`)
   })
 
   it("encoding", async () => {

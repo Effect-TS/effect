@@ -84,14 +84,14 @@ describe("Struct", () => {
         { a: undefined },
         `{ readonly a: number }
 └─ ["a"]
-   └─ Expected a number, actual undefined`
+   └─ Expected number, actual undefined`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, b: "b" },
         `{ readonly a: number }
 └─ ["b"]
-   └─ is unexpected, expected "a"`,
+   └─ is unexpected, expected: "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -113,7 +113,7 @@ describe("Struct", () => {
         `{ readonly a: number | undefined }
 └─ ["a"]
    └─ number | undefined
-      ├─ Expected a number, actual "a"
+      ├─ Expected number, actual "a"
       └─ Expected undefined, actual "a"`
       )
       await Util.expectDecodeUnknownFailure(
@@ -121,7 +121,7 @@ describe("Struct", () => {
         { a: 1, b: "b" },
         `{ readonly a: number | undefined }
 └─ ["b"]
-   └─ is unexpected, expected "a"`,
+   └─ is unexpected, expected: "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -141,21 +141,21 @@ describe("Struct", () => {
         { a: "a" },
         `{ readonly a?: number }
 └─ ["a"]
-   └─ Expected a number, actual "a"`
+   └─ Expected number, actual "a"`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: undefined },
         `{ readonly a?: number }
 └─ ["a"]
-   └─ Expected a number, actual undefined`
+   └─ Expected number, actual undefined`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, b: "b" },
         `{ readonly a?: number }
 └─ ["b"]
-   └─ is unexpected, expected "a"`,
+   └─ is unexpected, expected: "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -177,7 +177,7 @@ describe("Struct", () => {
         `{ readonly a?: number | undefined }
 └─ ["a"]
    └─ number | undefined
-      ├─ Expected a number, actual "a"
+      ├─ Expected number, actual "a"
       └─ Expected undefined, actual "a"`
       )
       await Util.expectDecodeUnknownFailure(
@@ -185,7 +185,7 @@ describe("Struct", () => {
         { a: 1, b: "b" },
         `{ readonly a?: number | undefined }
 └─ ["b"]
-   └─ is unexpected, expected "a"`,
+   └─ is unexpected, expected: "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -237,7 +237,7 @@ describe("Struct", () => {
         { a: 1, b: "b" } as any,
         `{ readonly a: number }
 └─ ["b"]
-   └─ is unexpected, expected "a"`,
+   └─ is unexpected, expected: "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -251,7 +251,7 @@ describe("Struct", () => {
         { a: 1, b: "b" } as any,
         `{ readonly a: number | undefined }
 └─ ["b"]
-   └─ is unexpected, expected "a"`,
+   └─ is unexpected, expected: "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -265,7 +265,7 @@ describe("Struct", () => {
         { a: 1, b: "b" } as any,
         `{ readonly a?: number }
 └─ ["b"]
-   └─ is unexpected, expected "a"`,
+   └─ is unexpected, expected: "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -280,7 +280,7 @@ describe("Struct", () => {
         { a: 1, b: "b" } as any,
         `{ readonly a?: number | undefined }
 └─ ["b"]
-   └─ is unexpected, expected "a"`,
+   └─ is unexpected, expected: "a"`,
         Util.onExcessPropertyError
       )
     })
