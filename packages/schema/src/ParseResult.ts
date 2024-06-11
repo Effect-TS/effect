@@ -109,7 +109,7 @@ export class And {
     readonly ast: AST.AST,
     readonly actual: unknown,
     readonly issues: array_.NonEmptyReadonlyArray<ParseIssue | Path>,
-    readonly output: Option.Option<unknown> = Option.none()
+    readonly output?: unknown
   ) {}
 }
 
@@ -886,6 +886,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         const allErrors = options?.errors === "all"
         const es: Array<[number, Path]> = []
         let stepKey = 0
+        const output: Array<[number, any]> = []
         // ---------------------------------------------
         // handle missing indexes
         // ---------------------------------------------
@@ -896,7 +897,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
             es.push([stepKey++, e])
             continue
           } else {
-            return Either.left(new And(ast, input, [e]))
+            return Either.left(new And(ast, input, [e], output))
           }
         }
 
@@ -910,12 +911,11 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
               es.push([stepKey++, e])
               continue
             } else {
-              return Either.left(new And(ast, input, [e]))
+              return Either.left(new And(ast, input, [e], output))
             }
           }
         }
 
-        const output: Array<[number, any]> = []
         let i = 0
         type State = {
           es: typeof es
@@ -946,7 +946,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   es.push([stepKey++, e])
                   continue
                 } else {
-                  return Either.left(new And(ast, input, [e], Option.some(sortByIndex(output))))
+                  return Either.left(new And(ast, input, [e], sortByIndex(output)))
                 }
               }
               output.push([stepKey++, eu.right])
@@ -965,7 +965,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                       es.push([nk, e])
                       return Effect.void
                     } else {
-                      return Either.left(new And(ast, input, [e], Option.some(sortByIndex(output))))
+                      return Either.left(new And(ast, input, [e], sortByIndex(output)))
                     }
                   }
                   output.push([nk, t.right])
@@ -990,7 +990,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   es.push([stepKey++, e])
                   continue
                 } else {
-                  return Either.left(new And(ast, input, [e], Option.some(sortByIndex(output))))
+                  return Either.left(new And(ast, input, [e], sortByIndex(output)))
                 }
               } else {
                 output.push([stepKey++, eu.right])
@@ -1010,7 +1010,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                         es.push([nk, e])
                         return Effect.void
                       } else {
-                        return Either.left(new And(ast, input, [e], Option.some(sortByIndex(output))))
+                        return Either.left(new And(ast, input, [e], sortByIndex(output)))
                       }
                     } else {
                       output.push([nk, t.right])
@@ -1038,7 +1038,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                     es.push([stepKey++, e])
                     continue
                   } else {
-                    return Either.left(new And(ast, input, [e], Option.some(sortByIndex(output))))
+                    return Either.left(new And(ast, input, [e], sortByIndex(output)))
                   }
                 }
                 output.push([stepKey++, eu.right])
@@ -1058,7 +1058,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                           es.push([nk, e])
                           return Effect.void
                         } else {
-                          return Either.left(new And(ast, input, [e], Option.some(sortByIndex(output))))
+                          return Either.left(new And(ast, input, [e], sortByIndex(output)))
                         }
                       }
                       output.push([nk, t.right])
@@ -1075,7 +1075,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         const computeResult = ({ es, output }: State) =>
           array_.isNonEmptyArray(es) ?
-            Either.left(new And(ast, input, sortByIndex(es), Option.some(sortByIndex(output)))) :
+            Either.left(new And(ast, input, sortByIndex(es), sortByIndex(output))) :
             Either.right(sortByIndex(output))
         if (queue && queue.length > 0) {
           const cqueue = queue
@@ -1152,7 +1152,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   es.push([stepKey++, e])
                   continue
                 } else {
-                  return Either.left(new And(ast, input, [e], Option.some(output)))
+                  return Either.left(new And(ast, input, [e], output))
                 }
               } else {
                 // preserve key
@@ -1187,7 +1187,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                 es.push([stepKey++, e])
                 continue
               } else {
-                return Either.left(new And(ast, input, [e], Option.some(output)))
+                return Either.left(new And(ast, input, [e], output))
               }
             }
           }
@@ -1201,7 +1201,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                 es.push([stepKey++, e])
                 continue
               } else {
-                return Either.left(new And(ast, input, [e], Option.some(output)))
+                return Either.left(new And(ast, input, [e], output))
               }
             }
             output[name] = eu.right
@@ -1220,7 +1220,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                       es.push([nk, e])
                       return Effect.void
                     } else {
-                      return Either.left(new And(ast, input, [e], Option.some(output)))
+                      return Either.left(new And(ast, input, [e], output))
                     }
                   }
                   output[index] = t.right
@@ -1256,7 +1256,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                     es.push([stepKey++, e])
                     continue
                   } else {
-                    return Either.left(new And(ast, input, [e], Option.some(output)))
+                    return Either.left(new And(ast, input, [e], output))
                   }
                 } else {
                   if (!Object.prototype.hasOwnProperty.call(expectedKeysMap, key)) {
@@ -1280,7 +1280,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                             es.push([nk, e])
                             return Effect.void
                           } else {
-                            return Either.left(new And(ast, input, [e], Option.some(output)))
+                            return Either.left(new And(ast, input, [e], output))
                           }
                         } else {
                           if (!Object.prototype.hasOwnProperty.call(expectedKeysMap, key)) {
@@ -1300,7 +1300,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         const computeResult = ({ es, output }: State) => {
           if (array_.isNonEmptyArray(es)) {
-            return Either.left(new And(ast, input, sortByIndex(es), Option.some(output)))
+            return Either.left(new And(ast, input, sortByIndex(es), output))
           }
           if (options?.propertyOrder === "original") {
             // preserve input keys order

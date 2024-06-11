@@ -2,7 +2,6 @@ import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
 import * as Either from "effect/Either"
-import * as Option from "effect/Option"
 import { assert, describe, expect, it } from "vitest"
 
 describe("record", () => {
@@ -26,7 +25,7 @@ describe("record", () => {
     if (Either.isLeft(all)) {
       const issue = all.left.issue
       if (issue._tag === "And") {
-        expect(issue.output).toStrictEqual(Option.some({ a: 1, c: 2 }))
+        expect(issue.output).toStrictEqual({ a: 1, c: 2 })
       } else {
         assert.fail("expected an And")
       }
@@ -37,7 +36,7 @@ describe("record", () => {
     if (Either.isLeft(first)) {
       const issue = first.left.issue
       if (issue._tag === "And") {
-        expect(issue.output).toStrictEqual(Option.some({ a: 1 }))
+        expect(issue.output).toStrictEqual({ a: 1 })
       } else {
         assert.fail("expected an And")
       }
