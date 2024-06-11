@@ -2,7 +2,7 @@
  * @since 0.67.0
  */
 
-import * as Arr from "effect/Array"
+import * as array_ from "effect/Array"
 import * as Effect from "effect/Effect"
 import type * as ParseResult from "./ParseResult.js"
 import * as TreeFormatter from "./TreeFormatter.js"
@@ -63,7 +63,8 @@ const getArray = (
     onSuccess: (message) => succeed({ _tag: issue._tag, path, message })
   })
 
-const flatten = (eff: Effect.Effect<Array<Array<Issue>>>): Effect.Effect<Array<Issue>> => Effect.map(eff, Arr.flatten)
+const flatten = (eff: Effect.Effect<Array<Array<Issue>>>): Effect.Effect<Array<Issue>> =>
+  Effect.map(eff, array_.flatten)
 
 const go = (
   e: ParseResult.ParseIssue | ParseResult.Path | ParseResult.Missing | ParseResult.Unexpected,

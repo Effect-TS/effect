@@ -2,7 +2,7 @@
  * @since 0.67.0
  */
 
-import * as Arr from "effect/Array"
+import * as array_ from "effect/Array"
 import { TaggedError } from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -43,6 +43,8 @@ export class Path {
   constructor(readonly name: PropertyKey, readonly issue: ParseIssue | Missing | Unexpected) {}
 }
 
+type Many<A> = A | readonly [A, A, ...ReadonlyArray<A>]
+
 /**
  * Error that occurs when an unexpected key or index is present.
  *
@@ -55,6 +57,10 @@ export class Unexpected {
    */
   readonly _tag = "Unexpected"
   constructor(
+    /**
+     * @since 0.68.0
+     */
+    readonly path: Many<PropertyKey>,
     readonly actual: unknown,
     /**
      * @since 0.68.0
@@ -78,6 +84,10 @@ export class Missing {
     /**
      * @since 0.68.0
      */
+    readonly path: Many<PropertyKey>,
+    /**
+     * @since 0.68.0
+     */
     readonly ast: AST.Type,
     /**
      * @since 0.68.0
@@ -98,7 +108,7 @@ export class And {
   constructor(
     readonly ast: AST.AST,
     readonly actual: unknown,
-    readonly issues: Arr.NonEmptyReadonlyArray<ParseIssue | Path>,
+    readonly issues: array_.NonEmptyReadonlyArray<ParseIssue | Path>,
     readonly output: Option.Option<unknown> = Option.none()
   ) {}
 }
@@ -870,7 +880,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
       const concurrency = getConcurrency(ast)
       const batching = getBatching(ast)
       return (input: unknown, options) => {
-        if (!Arr.isArray(input)) {
+        if (!array_.isArray(input)) {
           return Either.left(new Type(ast, input))
         }
         const allErrors = options?.errors === "all"
@@ -881,7 +891,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         const len = input.length
         for (let i = len; i <= requiredLen - 1; i++) {
-          const e = new Path(i, new Missing(requiredTypes[i - len]))
+          const e = new Path(i, new Missing(i, requiredTypes[i - len]))
           if (allErrors) {
             es.push([stepKey++, e])
             continue
@@ -895,7 +905,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         if (ast.rest.length === 0) {
           for (let i = ast.elements.length; i <= len - 1; i++) {
-            const e = new Path(i, new Unexpected(input[i], `is unexpected, expected ${expectedIndexes}`))
+            const e = new Path(i, new Unexpected(i, input[i], `is unexpected, expected ${expectedIndexes}`))
             if (allErrors) {
               es.push([stepKey++, e])
               continue
@@ -968,7 +978,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         // handle rest element
         // ---------------------------------------------
-        if (Arr.isNonEmptyReadonlyArray(rest)) {
+        if (array_.isNonEmptyReadonlyArray(rest)) {
           const [head, ...tail] = rest
           for (; i < len - tail.length; i++) {
             const te = head(input[i], options)
@@ -1064,15 +1074,15 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // compute result
         // ---------------------------------------------
         const computeResult = ({ es, output }: State) =>
-          Arr.isNonEmptyArray(es) ?
+          array_.isNonEmptyArray(es) ?
             Either.left(new And(ast, input, sortByIndex(es), Option.some(sortByIndex(output)))) :
             Either.right(sortByIndex(output))
         if (queue && queue.length > 0) {
           const cqueue = queue
           return Effect.suspend(() => {
             const state: State = {
-              es: Arr.copy(es),
-              output: Arr.copy(output)
+              es: array_.copy(es),
+              output: array_.copy(output)
             }
             return Effect.flatMap(
               Effect.forEach(cqueue, (f) => f(state), { concurrency, batching, discard: true }),
@@ -1136,7 +1146,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
               if (onExcessPropertyError) {
                 const e = new Path(
                   key,
-                  new Unexpected(input[key], `is unexpected, expected ${expectedAST.toString(true)}`)
+                  new Unexpected(key, input[key], `is unexpected, expected ${expectedAST.toString(true)}`)
                 )
                 if (allErrors) {
                   es.push([stepKey++, e])
@@ -1172,7 +1182,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
             if (ps.isOptional) {
               continue
             } else if (isExact) {
-              const e = new Path(name, new Missing(ps))
+              const e = new Path(name, new Missing(name, ps))
               if (allErrors) {
                 es.push([stepKey++, e])
                 continue
@@ -1186,7 +1196,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           const eu = eitherOrUndefined(te)
           if (eu) {
             if (Either.isLeft(eu)) {
-              const e = new Path(name, hasKey ? eu.left : new Missing(ps))
+              const e = new Path(name, hasKey ? eu.left : new Missing(name, ps))
               if (allErrors) {
                 es.push([stepKey++, e])
                 continue
@@ -1205,7 +1215,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
               ({ es, output }: State) =>
                 Effect.flatMap(Effect.either(te), (t) => {
                   if (Either.isLeft(t)) {
-                    const e = new Path(index, hasKey ? t.left : new Missing(ps))
+                    const e = new Path(index, hasKey ? t.left : new Missing(index, ps))
                     if (allErrors) {
                       es.push([nk, e])
                       return Effect.void
@@ -1289,7 +1299,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // compute result
         // ---------------------------------------------
         const computeResult = ({ es, output }: State) => {
-          if (Arr.isNonEmptyArray(es)) {
+          if (array_.isNonEmptyArray(es)) {
             return Either.left(new And(ast, input, sortByIndex(es), Option.some(output)))
           }
           if (options?.propertyOrder === "original") {
@@ -1314,7 +1324,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           const cqueue = queue
           return Effect.suspend(() => {
             const state: State = {
-              es: Arr.copy(es),
+              es: array_.copy(es),
               output: Object.assign({}, output)
             }
             return Effect.flatMap(
@@ -1374,7 +1384,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                   new And(
                     new AST.TypeLiteral([fakeps], []),
                     input,
-                    [new Path(name, new Missing(fakeps))]
+                    [new Path(name, new Missing(name, fakeps))]
                   )
                 ])
               }
@@ -1438,7 +1448,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // compute result
         // ---------------------------------------------
         const computeResult = (es: State["es"]) =>
-          Arr.isNonEmptyArray(es) ?
+          array_.isNonEmptyArray(es) ?
             es.length === 1 && es[0][1]._tag === "Type" ?
               Either.left(es[0][1]) :
               Either.left(new And(ast, input, sortByIndex(es))) :
@@ -1448,7 +1458,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         if (queue && queue.length > 0) {
           const cqueue = queue
           return Effect.suspend(() => {
-            const state: State = { es: Arr.copy(es) }
+            const state: State = { es: array_.copy(es) }
             return Effect.flatMap(
               Effect.forEach(cqueue, (f) => f(state), { concurrency, batching, discard: true }),
               () => {
@@ -1597,8 +1607,8 @@ const handleForbidden = <R, A>(
 }
 
 function sortByIndex<T>(
-  es: Arr.NonEmptyArray<[number, T]>
-): Arr.NonEmptyArray<T>
+  es: array_.NonEmptyArray<[number, T]>
+): array_.NonEmptyArray<T>
 function sortByIndex<T>(es: Array<[number, T]>): Array<T>
 function sortByIndex(es: Array<[number, any]>): any {
   return es.sort(([a], [b]) => a > b ? 1 : a < b ? -1 : 0).map(([_, a]) => a)
