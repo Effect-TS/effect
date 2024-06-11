@@ -6769,7 +6769,10 @@ const nonEmptyChunkParse = <R, A>(
 ): ParseResult.DeclarationDecodeUnknown<chunk_.NonEmptyChunk<A>, R> =>
 (u, options, ast) =>
   chunk_.isChunk(u) && chunk_.isNonEmpty(u)
-    ? ParseResult.map(decodeUnknown(chunk_.toReadonlyArray(u), options), chunk_.unsafeFromNonEmptyArray)
+    ? ParseResult.mapBoth(decodeUnknown(chunk_.toReadonlyArray(u), options), {
+      onFailure: (e) => new ParseResult.And(ast, u, [e]),
+      onSuccess: chunk_.unsafeFromNonEmptyArray
+    })
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
