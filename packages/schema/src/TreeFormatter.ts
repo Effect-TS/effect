@@ -157,8 +157,7 @@ const getParseIssueTitle = (issue: ParseResult.ParseIssue): string =>
   Option.getOrElse(getParseIssueTitleAnnotation(issue), () => String(issue.ast))
 
 /** @internal */
-export const formatForbiddenMessage = (e: ParseResult.Forbidden): string =>
-  Option.getOrElse(e.message, () => "is forbidden")
+export const formatForbiddenMessage = (e: ParseResult.Forbidden): string => e.message ?? "is forbidden"
 
 /** @internal */
 export const formatUnexpectedMessage = (e: ParseResult.Unexpected): string => e.message ?? "is unexpected"
