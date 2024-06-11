@@ -1135,7 +1135,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         // ---------------------------------------------
         const onExcessPropertyError = options?.onExcessProperty === "error"
         const onExcessPropertyPreserve = options?.onExcessProperty === "preserve"
-        const output: any = {}
+        const output: Record<PropertyKey, unknown> = {}
         let inputKeys: Array<PropertyKey> | undefined
         if (onExcessPropertyError || onExcessPropertyPreserve) {
           inputKeys = util_.ownKeys(input)
