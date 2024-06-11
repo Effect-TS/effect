@@ -424,8 +424,7 @@ describe("Class", () => {
         await Util.expectEncodeFailure(
           schema,
           null as any,
-          `A
-└─ Expected A (Type side), actual null`
+          `Expected A (Type side), actual null`
         )
       })
     })

@@ -856,13 +856,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
       const parse = isDecoding
         ? ast.decodeUnknown(...ast.typeParameters)
         : ast.encodeUnknown(...ast.typeParameters)
-      return (i, options) =>
-        handleForbidden(
-          mapError(parse(i, options ?? AST.defaultParseOption, ast), (e) => e.ast === ast ? e : new And(ast, i, [e])),
-          ast,
-          i,
-          options
-        )
+      return (i, options) => handleForbidden(parse(i, options ?? AST.defaultParseOption, ast), ast, i, options)
     }
     case "Literal":
       return fromRefinement(ast, (u): u is typeof ast.literal => u === ast.literal)
