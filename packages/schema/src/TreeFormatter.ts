@@ -178,8 +178,19 @@ const getTree = (issue: ParseResult.ParseIssue, onFailure: () => Effect.Effect<T
     onSuccess: (message) => Effect.succeed(make(message))
   })
 
+const formatPathItem = (name: PropertyKey): string => `[${util_.formatPropertyKey(name)}]`
+
+const isMany = <A>(
+  path: undefined | ParseResult.Many<A>
+): path is readonly [A, A, ...ReadonlyArray<A>] => Array.isArray(path)
+
+const addPath = (path: undefined | ParseResult.Many<PropertyKey>, tree: Tree<string>): Tree<string> =>
+  path === undefined
+    ? tree
+    : make(isMany(path) ? path.map(formatPathItem).join("") : formatPathItem(path), [tree])
+
 const go = (
-  e: ParseResult.ParseIssue | ParseResult.Path | ParseResult.Missing | ParseResult.Unexpected
+  e: ParseResult.ParseIssue | ParseResult.Path
 ): Effect.Effect<Tree<string>> => {
   switch (e._tag) {
     case "Type":
@@ -187,9 +198,9 @@ const go = (
     case "Forbidden":
       return Effect.succeed(make(getParseIssueTitle(e), [make(formatForbiddenMessage(e))]))
     case "Unexpected":
-      return Effect.succeed(make(formatUnexpectedMessage(e)))
+      return Effect.succeed(addPath(e.path, make(formatUnexpectedMessage(e))))
     case "Missing":
-      return Effect.map(formatMissingMessage(e), make)
+      return Effect.map(formatMissingMessage(e), (s) => addPath(e.path, make(s)))
     case "Transformation":
       return getTree(e, () =>
         Effect.map(
@@ -203,7 +214,9 @@ const go = (
           Effect.map(go(e.issue), (tree) => make(getParseIssueTitle(e), [make(formatRefinementKind(e.kind), [tree])]))
       )
     case "Path":
-      return Effect.map(go(e.issue), (tree) => make(`[${util_.formatPropertyKey(e.name)}]`, [tree]))
+      return e.issue._tag === "Missing" || e.issue._tag === "Unexpected"
+        ? go(e.issue)
+        : Effect.map(go(e.issue), (tree) => make(`[${util_.formatPropertyKey(e.name)}]`, [tree]))
     case "And":
       return getTree(e, () => Effect.map(Effect.forEach(e.issues, go), (forest) => make(getParseIssueTitle(e), forest)))
   }

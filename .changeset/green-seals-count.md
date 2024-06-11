@@ -187,6 +187,7 @@ ParseResult
 **Breaking**
 
 - `ParseIssue` refactoring
+  - make `Missing` and `Unexpected` parse issues
   - replace `Declaration` with `And`
   - remove `Union` in favour of `And`
   - remove `TypeLiteral` in favour of `And`

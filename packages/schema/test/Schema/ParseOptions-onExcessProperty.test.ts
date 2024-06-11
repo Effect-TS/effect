@@ -90,7 +90,7 @@ describe("`onExcessProperty` option", () => {
         const e = ParseResult.decodeUnknownEither(schema)(input, Util.onExcessPropertyError)
         expect(e).toEqual(Either.left(
           new ParseResult.And(schema.ast, input, [
-            new ParseResult.Path("b", new ParseResult.Unexpected("b", 1, `is unexpected, expected "a"`))
+            new ParseResult.Unexpected("b", 1, `is unexpected, expected "a"`)
           ], {})
         ))
       })
@@ -101,7 +101,7 @@ describe("`onExcessProperty` option", () => {
         const e = ParseResult.decodeUnknownEither(schema)(input, Util.onExcessPropertyError)
         expect(e).toEqual(Either.left(
           new ParseResult.And(schema.ast, input, [
-            new ParseResult.Path(1, new ParseResult.Unexpected(1, 1, `is unexpected, expected 0`))
+            new ParseResult.Unexpected(1, 1, `is unexpected, expected 0`)
           ], [])
         ))
       })
