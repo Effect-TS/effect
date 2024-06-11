@@ -35,44 +35,6 @@ export type ParseIssue =
  * @category model
  * @since 0.68.0
  */
-export class And {
-  /**
-   * @since 0.68.0
-   */
-  readonly _tag = "And"
-  constructor(
-    readonly ast: AST.AST,
-    readonly actual: unknown,
-    readonly issues: Arr.NonEmptyReadonlyArray<ParseIssue | Path>,
-    readonly output: Option.Option<unknown> = Option.none()
-  ) {}
-}
-
-/**
- * Error that occurs when a refinement has an error.
- *
- * @category model
- * @since 0.67.0
- */
-export class Refinement {
-  /**
-   * @since 0.67.0
-   */
-  readonly _tag = "Refinement"
-  constructor(
-    readonly ast: AST.Refinement<AST.AST>,
-    readonly actual: unknown,
-    readonly kind: "From" | "Predicate",
-    readonly issue: ParseIssue
-  ) {}
-}
-
-/**
- * The `Key` variant of the `ParseIssue` type represents an error that occurs when a key in a type literal or record is invalid.
- *
- * @category model
- * @since 0.68.0
- */
 export class Path {
   /**
    * @since 0.68.0
@@ -108,6 +70,71 @@ export class Unexpected {
   ) {
     this.message = Option.fromNullable(message)
   }
+}
+
+/**
+ * Error that occurs when a required key or index is missing.
+ *
+ * @category model
+ * @since 0.67.0
+ */
+export class Missing {
+  /**
+   * @since 0.67.0
+   */
+  readonly _tag = "Missing"
+  /**
+   * @since 0.68.0
+   */
+  readonly message: Option.Option<string>
+  constructor(
+    /**
+     * @since 0.68.0
+     */
+    readonly ast: AST.Type,
+    /**
+     * @since 0.68.0
+     */
+    message?: string
+  ) {
+    this.message = Option.fromNullable(message)
+  }
+}
+
+/**
+ * @category model
+ * @since 0.68.0
+ */
+export class And {
+  /**
+   * @since 0.68.0
+   */
+  readonly _tag = "And"
+  constructor(
+    readonly ast: AST.AST,
+    readonly actual: unknown,
+    readonly issues: Arr.NonEmptyReadonlyArray<ParseIssue | Path>,
+    readonly output: Option.Option<unknown> = Option.none()
+  ) {}
+}
+
+/**
+ * Error that occurs when a refinement has an error.
+ *
+ * @category model
+ * @since 0.67.0
+ */
+export class Refinement {
+  /**
+   * @since 0.67.0
+   */
+  readonly _tag = "Refinement"
+  constructor(
+    readonly ast: AST.Refinement<AST.AST>,
+    readonly actual: unknown,
+    readonly kind: "From" | "Predicate",
+    readonly issue: ParseIssue
+  ) {}
 }
 
 /**
@@ -168,49 +195,6 @@ export class Forbidden {
   constructor(readonly ast: AST.AST, readonly actual: unknown, message?: string) {
     this.message = Option.fromNullable(message)
   }
-}
-
-/**
- * Error that occurs when a required key or index is missing.
- *
- * @category model
- * @since 0.67.0
- */
-export class Missing {
-  /**
-   * @since 0.67.0
-   */
-  readonly _tag = "Missing"
-  /**
-   * @since 0.68.0
-   */
-  readonly message: Option.Option<string>
-  constructor(
-    /**
-     * @since 0.68.0
-     */
-    readonly ast: AST.Type,
-    /**
-     * @since 0.68.0
-     */
-    message?: string
-  ) {
-    this.message = Option.fromNullable(message)
-  }
-}
-
-/**
- * Error that occurs when a member in a union has an error.
- *
- * @category model
- * @since 0.67.0
- */
-export class Member {
-  /**
-   * @since 0.67.0
-   */
-  readonly _tag = "Member"
-  constructor(readonly ast: AST.AST, readonly error: ParseIssue) {}
 }
 
 /**

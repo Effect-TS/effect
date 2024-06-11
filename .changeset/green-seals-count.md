@@ -191,6 +191,7 @@ ParseResult
   - remove `Union` in favour of `And`
   - remove `TypeLiteral` in favour of `And`
   - remove `TupleType` in favour of `And`
+  - remove `Member` class
   - merge `Key` and `Index` into `Path`
   - `Refinement`: rename `error` field to `issue`
   - `Transformation`: rename `error` field to `issue`
