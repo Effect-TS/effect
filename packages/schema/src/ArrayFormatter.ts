@@ -92,11 +92,11 @@ const go = (
         (message) => [{ _tag, path: addPath(e.path, path), message }]
       )
     case "Path":
-      return e.issue._tag === "Missing" || e.issue._tag === "Unexpected"
-        ? go(e.issue, path)
-        : go(e.issue, path.concat(e.name))
-    case "And":
-      return getArray(e, path, () => flatten(Effect.forEach(e.issues, (issue) => go(issue, path))))
+      return go(e.issue, path.concat(e.name))
+    case "And": {
+      const path_ = addPath(e.path, path)
+      return getArray(e, path_, () => flatten(Effect.forEach(e.issues, (issue) => go(issue, path_))))
+    }
     case "Refinement":
     case "Transformation":
       return getArray(e, path, () => go(e.issue, path))

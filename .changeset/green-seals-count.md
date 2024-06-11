@@ -205,6 +205,7 @@ ParseResult
     - add `path` field
     - add `ast: AST.Type` field
     - add `message` field
+    - add `actual` field
   - `Unexpected`
     - add `path` field
     - replace `ast` field with a `message` field

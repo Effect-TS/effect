@@ -89,9 +89,13 @@ describe("`onExcessProperty` option", () => {
         const input = { a: "a", b: 1 }
         const e = ParseResult.decodeUnknownEither(schema)(input, Util.onExcessPropertyError)
         expect(e).toEqual(Either.left(
-          new ParseResult.And(schema.ast, input, [
-            new ParseResult.Unexpected("b", 1, `is unexpected, expected "a"`)
-          ], {})
+          new ParseResult.And(
+            schema.ast,
+            input,
+            [new ParseResult.Unexpected("b", 1, `is unexpected, expected "a"`)],
+            undefined,
+            {}
+          )
         ))
       })
 
@@ -100,9 +104,13 @@ describe("`onExcessProperty` option", () => {
         const input = ["a", 1]
         const e = ParseResult.decodeUnknownEither(schema)(input, Util.onExcessPropertyError)
         expect(e).toEqual(Either.left(
-          new ParseResult.And(schema.ast, input, [
-            new ParseResult.Unexpected(1, 1, `is unexpected, expected 0`)
-          ], [])
+          new ParseResult.And(
+            schema.ast,
+            input,
+            [new ParseResult.Unexpected(1, 1, `is unexpected, expected 0`)],
+            undefined,
+            []
+          )
         ))
       })
     })
