@@ -12,17 +12,7 @@ import * as TreeFormatter from "./TreeFormatter.js"
  * @since 0.67.0
  */
 export interface Issue {
-  readonly _tag:
-    | "Transformation"
-    | "Type"
-    | "And"
-    | "Refinement"
-    | "TupleType"
-    | "TypeLiteral"
-    | "Union"
-    | "Forbidden"
-    | "Missing"
-    | "Unexpected"
+  readonly _tag: ParseResult.ParseIssue["_tag"]
   readonly path: ReadonlyArray<PropertyKey>
   readonly message: string
 }
@@ -66,11 +56,6 @@ const getArray = (
 const flatten = (eff: Effect.Effect<Array<Array<Issue>>>): Effect.Effect<Array<Issue>> =>
   Effect.map(eff, array_.flatten)
 
-const addPath = (
-  maybePath: undefined | ParseResult.Many<PropertyKey>,
-  path: ReadonlyArray<PropertyKey>
-): ReadonlyArray<PropertyKey> => maybePath === undefined ? path : path.concat(maybePath)
-
 const go = (
   e: ParseResult.ParseIssue | ParseResult.Path,
   path: ReadonlyArray<PropertyKey> = []
@@ -80,23 +65,21 @@ const go = (
     case "Type":
       return Effect.map(
         TreeFormatter.formatTypeMessage(e),
-        (message) => [{ _tag, path: addPath(e.path, path), message }]
+        (message) => [{ _tag, path, message }]
       )
     case "Forbidden":
       return succeed({ _tag, path, message: TreeFormatter.formatForbiddenMessage(e) })
     case "Unexpected":
-      return succeed({ _tag, path: addPath(e.path, path), message: TreeFormatter.formatUnexpectedMessage(e) })
+      return succeed({ _tag, path, message: TreeFormatter.formatUnexpectedMessage(e) })
     case "Missing":
       return Effect.map(
         TreeFormatter.formatMissingMessage(e),
-        (message) => [{ _tag, path: addPath(e.path, path), message }]
+        (message) => [{ _tag, path, message }]
       )
     case "Path":
       return go(e.issue, path.concat(e.name))
-    case "And": {
-      const path_ = addPath(e.path, path)
-      return getArray(e, path_, () => flatten(Effect.forEach(e.issues, (issue) => go(issue, path_))))
-    }
+    case "And":
+      return getArray(e, path, () => flatten(Effect.forEach(e.issues, (issue) => go(issue, path))))
     case "Refinement":
     case "Transformation":
       return getArray(e, path, () => go(e.issue, path))

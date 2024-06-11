@@ -92,8 +92,7 @@ describe("`onExcessProperty` option", () => {
           new ParseResult.And(
             schema.ast,
             input,
-            [new ParseResult.Unexpected("b", 1, `is unexpected, expected: "a"`)],
-            undefined,
+            [new ParseResult.Path("b", input, new ParseResult.Unexpected(1, `is unexpected, expected: "a"`))],
             {}
           )
         ))
@@ -107,8 +106,7 @@ describe("`onExcessProperty` option", () => {
           new ParseResult.And(
             schema.ast,
             input,
-            [new ParseResult.Unexpected(1, 1, `is unexpected, expected: 0`)],
-            undefined,
+            [new ParseResult.Path(1, input, new ParseResult.Unexpected(1, `is unexpected, expected: 0`))],
             []
           )
         ))

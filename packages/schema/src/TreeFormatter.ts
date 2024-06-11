@@ -99,21 +99,31 @@ const getInnerMessage = (
   return Option.none()
 }
 
+const getAnnotated = (issue: ParseResult.ParseIssue): Option.Option<AST.Annotated> => {
+  if ("ast" in issue) {
+    return Option.some(issue.ast)
+  }
+  return Option.none()
+}
+
 const getCurrentMessage: (
   issue: ParseResult.ParseIssue
 ) => Effect.Effect<{ message: string; override: boolean }, Cause.NoSuchElementException> = (
   issue: ParseResult.ParseIssue
 ) =>
-  AST.getMessageAnnotation(issue.ast).pipe(Effect.flatMap((annotation) => {
-    const out = annotation(issue)
-    return Predicate.isString(out)
-      ? Effect.succeed({ message: out, override: false })
-      : Effect.isEffect(out)
-      ? Effect.map(out, (message) => ({ message, override: false }))
-      : Predicate.isString(out.message)
-      ? Effect.succeed({ message: out.message, override: out.override })
-      : Effect.map(out.message, (message) => ({ message, override: out.override }))
-  }))
+  getAnnotated(issue).pipe(
+    Option.flatMap(AST.getMessageAnnotation),
+    Effect.flatMap((annotation) => {
+      const out = annotation(issue)
+      return Predicate.isString(out)
+        ? Effect.succeed({ message: out, override: false })
+        : Effect.isEffect(out)
+        ? Effect.map(out, (message) => ({ message, override: false }))
+        : Predicate.isString(out.message)
+        ? Effect.succeed({ message: out.message, override: out.override })
+        : Effect.map(out.message, (message) => ({ message, override: out.override }))
+    })
+  )
 
 /** @internal */
 export const getMessage: (
@@ -139,9 +149,11 @@ export const getMessage: (
 }
 
 const getParseIssueTitleAnnotation = (issue: ParseResult.ParseIssue): Option.Option<string> =>
-  Option.filterMap(
-    AST.getParseIssueTitleAnnotation(issue.ast),
-    (annotation) => Option.fromNullable(annotation(issue))
+  getAnnotated(issue).pipe(
+    Option.flatMap(AST.getParseIssueTitleAnnotation),
+    Option.filterMap(
+      (annotation) => Option.fromNullable(annotation(issue))
+    )
   )
 
 /** @internal */
@@ -153,8 +165,9 @@ export const formatTypeMessage = (e: ParseResult.Type): Effect.Effect<string> =>
     )
   )
 
-const getParseIssueTitle = (issue: ParseResult.ParseIssue): string =>
-  Option.getOrElse(getParseIssueTitleAnnotation(issue), () => String(issue.ast))
+const getParseIssueTitle = (
+  issue: ParseResult.Forbidden | ParseResult.Transformation | ParseResult.Refinement | ParseResult.And
+): string => Option.getOrElse(getParseIssueTitleAnnotation(issue), () => String(issue.ast))
 
 /** @internal */
 export const formatForbiddenMessage = (e: ParseResult.Forbidden): string => e.message ?? "is forbidden"
@@ -180,26 +193,18 @@ const getTree = (issue: ParseResult.ParseIssue, onFailure: () => Effect.Effect<T
 
 const formatPathItem = (name: PropertyKey): string => `[${util_.formatPropertyKey(name)}]`
 
-/** @internal */
-export const isMany = <A>(
-  path: undefined | ParseResult.Many<A>
-): path is readonly [A, A, ...ReadonlyArray<A>] => Array.isArray(path)
-
-const addPath = (many: ParseResult.Many<PropertyKey>, tree: Tree<string>): Tree<string> =>
-  make(isMany(many) ? many.map(formatPathItem).join("") : formatPathItem(many), [tree])
-
 const go = (
   e: ParseResult.ParseIssue | ParseResult.Path
 ): Effect.Effect<Tree<string>> => {
   switch (e._tag) {
     case "Type":
-      return Effect.map(formatTypeMessage(e), (s) => e.path !== undefined ? addPath(e.path, make(s)) : make(s))
+      return Effect.map(formatTypeMessage(e), make)
     case "Forbidden":
       return Effect.succeed(make(getParseIssueTitle(e), [make(formatForbiddenMessage(e))]))
     case "Unexpected":
-      return Effect.succeed(addPath(e.path, make(formatUnexpectedMessage(e))))
+      return Effect.succeed(make(formatUnexpectedMessage(e)))
     case "Missing":
-      return Effect.map(formatMissingMessage(e), (s) => addPath(e.path, make(s)))
+      return Effect.map(formatMissingMessage(e), make)
     case "Transformation":
       return getTree(e, () =>
         Effect.map(
@@ -213,14 +218,11 @@ const go = (
           Effect.map(go(e.issue), (tree) => make(getParseIssueTitle(e), [make(formatRefinementKind(e.kind), [tree])]))
       )
     case "Path":
-      return Effect.map(go(e.issue), (tree) => make(`[${util_.formatPropertyKey(e.name)}]`, [tree]))
-    case "And": {
-      const out = getTree(
+      return Effect.map(go(e.issue), (tree) => make(formatPathItem(e.name), [tree]))
+    case "And":
+      return getTree(
         e,
         () => Effect.map(Effect.forEach(e.issues, go), (forest) => make(getParseIssueTitle(e), forest))
       )
-      const path = e.path
-      return path !== undefined ? Effect.map(out, (tree) => addPath(path, tree)) : out
-    }
   }
 }
