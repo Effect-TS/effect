@@ -5306,8 +5306,6 @@ Classes offer several features that simplify the schema creation process:
 
 ### Definition
 
-Per definire una `Class` devi fornire:
-
 To define a `Class` in `@effect/schema`, you need to provide:
 
 - The type of the class being created.

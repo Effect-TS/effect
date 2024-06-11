@@ -1,5 +1,6 @@
 import * as Either from "effect/Either"
 import type * as Option from "effect/Option"
+import type * as Stream from "effect/Stream"
 import * as Unify from "effect/Unify"
 
 // $ExpectType Option<string | number>
@@ -21,3 +22,8 @@ Unify.unify(<N>(n: N) => Math.random() > 0 ? Either.right(n) : Either.left("ok")
 
 // $ExpectType Either<number, string>
 Unify.unify(Math.random() > 0 ? Either.right(10) : Either.left("ok"))
+
+// $ExpectType Stream<0 | 1, never, never>
+export type SU = Unify.Unify<
+  Stream.Stream<0> | Stream.Stream<1>
+>
