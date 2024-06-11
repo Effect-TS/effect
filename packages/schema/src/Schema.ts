@@ -3161,6 +3161,51 @@ const makeRefineClass = <From extends Schema.Any, A>(
  */
 export interface filter<From extends Schema.Any> extends refine<Schema.Type<From>, From> {}
 
+const fromFilterPredicateReturnTypeItem = (
+  item: FilterPredicateReturnTypeItem,
+  ast: AST.Refinement,
+  input: unknown
+): option_.Option<ParseResult.ParseIssue> => {
+  if (Predicate.isBoolean(item)) {
+    return item
+      ? option_.none()
+      : option_.some(new ParseResult.Type(ast, input))
+  }
+  if (Predicate.isString(item)) {
+    return option_.some(new ParseResult.Type(ast, input, item))
+  }
+  if (item !== undefined) {
+    if ("_tag" in item) {
+      return option_.some(item)
+    }
+    const issue = Predicate.isString(item.issue) ? new ParseResult.Type(ast, input, item.issue) : item.issue
+    return option_.some(
+      array_.isNonEmptyReadonlyArray(item.path) ? new ParseResult.Pointer(item.path, input, issue) : issue
+    )
+  }
+  return option_.none()
+}
+
+const toFilterParseIssue = (
+  out: FilterPredicateReturnType,
+  ast: AST.Refinement,
+  input: unknown
+): option_.Option<ParseResult.ParseIssue> => {
+  const items: ReadonlyArray<FilterPredicateReturnTypeItem> = Array.isArray(out) ? out : [out]
+  const issues = array_.filterMap(items, (issue) => fromFilterPredicateReturnTypeItem(issue, ast, input))
+  if (array_.isNonEmptyReadonlyArray(issues)) {
+    return option_.some(issues.length === 1 ? issues[0] : new ParseResult.And(ast, input, issues))
+  }
+  return option_.none()
+}
+
+type FilterPredicateReturnTypeItem = undefined | boolean | string | ParseResult.ParseIssue | {
+  readonly path: ReadonlyArray<PropertyKey>
+  readonly issue: string | ParseResult.ParseIssue
+}
+
+type FilterPredicateReturnType = FilterPredicateReturnTypeItem | ReadonlyArray<FilterPredicateReturnTypeItem>
+
 /**
  * @category combinators
  * @since 0.67.0
@@ -3178,7 +3223,7 @@ export function filter<S extends Schema.Any>(
     a: Types.NoInfer<Schema.Type<S>>,
     options: ParseOptions,
     self: AST.Refinement
-  ) => undefined | boolean | string | ParseResult.ParseIssue,
+  ) => FilterPredicateReturnType,
   annotations?: Annotations.Filter<Types.NoInfer<Schema.Type<S>>>
 ): (self: S) => filter<S>
 export function filter<A>(
@@ -3186,21 +3231,12 @@ export function filter<A>(
     a: A,
     options: ParseOptions,
     self: AST.Refinement
-  ) => undefined | boolean | string | ParseResult.ParseIssue,
+  ) => FilterPredicateReturnType,
   annotations?: Annotations.Filter<A>
 ): <I, R>(self: Schema<A, I, R>) => refine<A, Schema<A, I, R>> {
   return <I, R>(self: Schema<A, I, R>) => {
-    function filter(a: any, options: AST.ParseOptions, ast: AST.Refinement) {
-      const out = predicate(a, options, ast)
-      if (Predicate.isBoolean(out)) {
-        return out
-          ? option_.none()
-          : option_.some(new ParseResult.Type(ast, a))
-      }
-      if (Predicate.isString(out)) {
-        return option_.some(new ParseResult.Type(ast, a, out))
-      }
-      return out === undefined ? option_.none() : option_.some(out)
+    function filter(input: A, options: AST.ParseOptions, ast: AST.Refinement) {
+      return toFilterParseIssue(predicate(input, options, ast), ast, input)
     }
     const ast = new AST.Refinement(
       self.ast,

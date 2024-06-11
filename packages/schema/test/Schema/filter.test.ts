@@ -52,17 +52,13 @@ describe("filter", () => {
   })
 
   describe("ParseIssue overloading", () => {
-    it("Type", async () => {
+    it("return a Type", async () => {
       const schema = S.Struct({ a: S.String, b: S.String }).pipe(
-        S.filter((o) =>
-          o.b === o.a
-            ? undefined
-            : new ParseResult.Type(
-              S.Literal(o.a).ast,
-              o.b,
-              `b should be equal to a's value ("${o.a}")`
-            )
-        )
+        S.filter((o) => {
+          if (o.b !== o.a) {
+            return new ParseResult.Type(S.Literal(o.a).ast, o.b, `b should be equal to a's value ("${o.a}")`)
+          }
+        })
       )
 
       await Util.expectDecodeUnknownSuccess(schema, { a: "x", b: "x" })
@@ -75,15 +71,17 @@ describe("filter", () => {
       )
     })
 
-    it("Pointer", async () => {
-      const ValidString = S.Trim.pipe(S.minLength(1, { message: () => "ERROR_MIN_LENGTH" }))
-      const schema = S.Struct({
-        a: S.Struct({
-          b: S.String,
-          c: ValidString
-        }),
-        d: S.Tuple(S.String, ValidString)
-      }).annotations({ identifier: "Test" }).pipe(S.filter((input) => {
+    const ValidString = S.Trim.pipe(S.minLength(1, { message: () => "ERROR_MIN_LENGTH" }))
+    const Test = S.Struct({
+      a: S.Struct({
+        b: S.String,
+        c: ValidString
+      }),
+      d: S.Tuple(S.String, ValidString)
+    }).annotations({ identifier: "Test" })
+
+    it("return a Pointer", async () => {
+      const schema = Test.pipe(S.filter((input) => {
         if (input.a.b !== input.a.c) {
           return new ParseResult.Pointer(
             ["a", "c"],
@@ -94,12 +92,22 @@ describe("filter", () => {
         if (input.d[0] !== input.d[1]) {
           return new ParseResult.Pointer(
             ["d", 1],
-            input.d,
+            input,
             new ParseResult.Type(S.Literal(input.d[0]).ast, input.d[1])
           )
         }
-        return true
       }))
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        { a: { b: "b", c: " " }, d: ["-", "-"] },
+        `{ Test | filter }
+└─ From side refinement failure
+   └─ Test
+      └─ ["a"]
+         └─ { readonly b: string; readonly c: a string at least 1 character(s) long }
+            └─ ["c"]
+               └─ ERROR_MIN_LENGTH`
+      )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: { b: "b", c: "c" }, d: ["-", "-"] },
@@ -115,6 +123,151 @@ describe("filter", () => {
 └─ Predicate refinement failure
    └─ ["d"][1]
       └─ Expected "item0", actual "item1"`
+      )
+    })
+
+    it("return a path and a message", async () => {
+      const schema = Test.pipe(S.filter((input) => {
+        if (input.a.b !== input.a.c) {
+          return {
+            path: ["a", "c"],
+            issue: "FILTER1"
+          }
+        }
+        if (input.d[0] !== input.d[1]) {
+          return {
+            path: ["d", 1],
+            issue: "FILTER2"
+          }
+        }
+      }))
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        { a: { b: "b", c: " " }, d: ["-", "-"] },
+        `{ Test | filter }
+└─ From side refinement failure
+   └─ Test
+      └─ ["a"]
+         └─ { readonly b: string; readonly c: a string at least 1 character(s) long }
+            └─ ["c"]
+               └─ ERROR_MIN_LENGTH`
+      )
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        { a: { b: "b", c: "c" }, d: ["-", "-"] },
+        `{ Test | filter }
+└─ Predicate refinement failure
+   └─ ["a"]["c"]
+      └─ FILTER1`
+      )
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        { a: { b: "-", c: "-" }, d: ["item0", "item1"] },
+        `{ Test | filter }
+└─ Predicate refinement failure
+   └─ ["d"][1]
+      └─ FILTER2`
+      )
+    })
+
+    it("return a path and a ParseIssue", async () => {
+      const schema = Test.pipe(S.filter((input) => {
+        if (input.a.b !== input.a.c) {
+          return {
+            path: ["a", "c"],
+            issue: new ParseResult.Type(S.Literal(input.a.b).ast, input.a.c)
+          }
+        }
+        if (input.d[0] !== input.d[1]) {
+          return {
+            path: ["d", 1],
+            issue: new ParseResult.Type(S.Literal(input.d[0]).ast, input.d[1])
+          }
+        }
+      }))
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        { a: { b: "b", c: " " }, d: ["-", "-"] },
+        `{ Test | filter }
+└─ From side refinement failure
+   └─ Test
+      └─ ["a"]
+         └─ { readonly b: string; readonly c: a string at least 1 character(s) long }
+            └─ ["c"]
+               └─ ERROR_MIN_LENGTH`
+      )
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        { a: { b: "b", c: "c" }, d: ["-", "-"] },
+        `{ Test | filter }
+└─ Predicate refinement failure
+   └─ ["a"]["c"]
+      └─ Expected "b", actual "c"`
+      )
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        { a: { b: "-", c: "-" }, d: ["item0", "item1"] },
+        `{ Test | filter }
+└─ Predicate refinement failure
+   └─ ["d"][1]
+      └─ Expected "item0", actual "item1"`
+      )
+    })
+
+    it("return many paths and messages", async () => {
+      const schema = Test.pipe(S.filter((input) => {
+        const issues = []
+        if (input.a.b !== input.a.c) {
+          issues.push({
+            path: ["a", "c"],
+            issue: "FILTER1"
+          })
+        }
+        if (input.d[0] !== input.d[1]) {
+          issues.push({
+            path: ["d", 1],
+            issue: "FILTER2"
+          })
+        }
+        return issues
+      }))
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        { a: { b: "b", c: " " }, d: ["-", "-"] },
+        `{ Test | filter }
+└─ From side refinement failure
+   └─ Test
+      └─ ["a"]
+         └─ { readonly b: string; readonly c: a string at least 1 character(s) long }
+            └─ ["c"]
+               └─ ERROR_MIN_LENGTH`
+      )
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        { a: { b: "b", c: "c" }, d: ["-", "-"] },
+        `{ Test | filter }
+└─ Predicate refinement failure
+   └─ ["a"]["c"]
+      └─ FILTER1`
+      )
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        { a: { b: "-", c: "-" }, d: ["item0", "item1"] },
+        `{ Test | filter }
+└─ Predicate refinement failure
+   └─ ["d"][1]
+      └─ FILTER2`
+      )
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        { a: { b: "b", c: "c" }, d: ["item0", "item1"] },
+        `{ Test | filter }
+└─ Predicate refinement failure
+   └─ { Test | filter }
+      ├─ ["a"]["c"]
+      │  └─ FILTER1
+      └─ ["d"][1]
+         └─ FILTER2`
       )
     })
   })
