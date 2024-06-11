@@ -54,22 +54,13 @@ export class Unexpected {
    * @since 0.67.0
    */
   readonly _tag = "Unexpected"
-  /**
-   * @since 0.68.0
-   */
-  readonly message: Option.Option<string>
   constructor(
-    /**
-     * @since 0.68.0
-     */
     readonly actual: unknown,
     /**
      * @since 0.68.0
      */
-    message?: string
-  ) {
-    this.message = Option.fromNullable(message)
-  }
+    readonly message?: string
+  ) {}
 }
 
 /**
@@ -83,10 +74,6 @@ export class Missing {
    * @since 0.67.0
    */
   readonly _tag = "Missing"
-  /**
-   * @since 0.68.0
-   */
-  readonly message: Option.Option<string>
   constructor(
     /**
      * @since 0.68.0
@@ -95,10 +82,8 @@ export class Missing {
     /**
      * @since 0.68.0
      */
-    message?: string
-  ) {
-    this.message = Option.fromNullable(message)
-  }
+    readonly message?: string
+  ) {}
 }
 
 /**

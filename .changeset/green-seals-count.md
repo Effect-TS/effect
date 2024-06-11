@@ -195,12 +195,12 @@ ParseResult
   - merge `Key` and `Index` into `Path`
   - `Refinement`: rename `error` field to `issue`
   - `Transformation`: rename `error` field to `issue`
+  - `Missing`
+    - add `ast: AST.Type` field
+    - add `message` field
+  - remove `missing` export
+  - `Unexpected`
+    - replace `ast` field with a `message` field
+    - add `actual` field
 - Standardize Error Handling for `*Either`, `*Sync` and `asserts` APIs, closes #2968
 - `ParseError`: rename `error` property to `issue`
-- `Missing`
-  - add `ast: AST.Type` field
-  - add `message` field
-- remove `missing` export
-- `Unexpected`
-  - replace `ast` field with a `message` field
-  - add `actual` field

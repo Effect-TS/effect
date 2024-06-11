@@ -160,8 +160,7 @@ export const formatForbiddenMessage = (e: ParseResult.Forbidden): string =>
   Option.getOrElse(e.message, () => "is forbidden")
 
 /** @internal */
-export const formatUnexpectedMessage = (e: ParseResult.Unexpected): string =>
-  Option.getOrElse(e.message, () => "is unexpected")
+export const formatUnexpectedMessage = (e: ParseResult.Unexpected): string => e.message ?? "is unexpected"
 
 /** @internal */
 export const formatMissingMessage = (e: ParseResult.Missing): Effect.Effect<string> =>
@@ -170,8 +169,7 @@ export const formatMissingMessage = (e: ParseResult.Missing): Effect.Effect<stri
       const out = annotation()
       return Predicate.isString(out) ? Effect.succeed(out) : out
     }),
-    Effect.orElse(() => e.message),
-    Effect.catchAll(() => Effect.succeed("is missing"))
+    Effect.catchAll(() => Effect.succeed(e.message ?? "is missing"))
   )
 
 const getTree = (issue: ParseResult.ParseIssue, onFailure: () => Effect.Effect<Tree<string>>) =>
