@@ -4983,7 +4983,7 @@ const redactedParse = <R, A>(
 (u, options, ast) =>
   redacted_.isRedacted(u) ?
     ParseResult.mapBoth(decodeUnknown(redacted_.value(u), options), {
-      onFailure: (e) => new ParseResult.And(ast, u, [e]),
+      onFailure: (e) => new ParseResult.And(ast, u, e),
       onSuccess: redacted_.make
     }) :
     ParseResult.fail(new ParseResult.Type(ast, u))
@@ -6069,7 +6069,7 @@ const readonlyMapParse = <R, K, V>(
 (u, options, ast) =>
   Predicate.isMap(u) ?
     ParseResult.mapBoth(decodeUnknown(Array.from(u.entries()), options), {
-      onFailure: (e) => new ParseResult.And(ast, u, [e]),
+      onFailure: (e) => new ParseResult.And(ast, u, e),
       onSuccess: (as) => new Map(as)
     })
     : ParseResult.fail(new ParseResult.Type(ast, u))
@@ -6220,7 +6220,7 @@ const readonlySetParse = <R, A>(
 (u, options, ast) =>
   Predicate.isSet(u) ?
     ParseResult.mapBoth(decodeUnknown(Array.from(u.values()), options), {
-      onFailure: (e) => new ParseResult.And(ast, u, [e]),
+      onFailure: (e) => new ParseResult.And(ast, u, e),
       onSuccess: (as) => new Set(as)
     })
     : ParseResult.fail(new ParseResult.Type(ast, u))
@@ -6688,7 +6688,7 @@ const chunkParse = <R, A>(
     chunk_.isEmpty(u) ?
       ParseResult.succeed(chunk_.empty())
       : ParseResult.mapBoth(decodeUnknown(chunk_.toReadonlyArray(u), options), {
-        onFailure: (e) => new ParseResult.And(ast, u, [e]),
+        onFailure: (e) => new ParseResult.And(ast, u, e),
         onSuccess: chunk_.fromIterable
       })
     : ParseResult.fail(new ParseResult.Type(ast, u))
@@ -6777,7 +6777,7 @@ const nonEmptyChunkParse = <R, A>(
 (u, options, ast) =>
   chunk_.isChunk(u) && chunk_.isNonEmpty(u)
     ? ParseResult.mapBoth(decodeUnknown(chunk_.toReadonlyArray(u), options), {
-      onFailure: (e) => new ParseResult.And(ast, u, [e]),
+      onFailure: (e) => new ParseResult.And(ast, u, e),
       onSuccess: chunk_.unsafeFromNonEmptyArray
     })
     : ParseResult.fail(new ParseResult.Type(ast, u))
@@ -6847,7 +6847,7 @@ const dataParse = <R, A extends Readonly<Record<string, any>> | ReadonlyArray<an
 (u, options, ast) =>
   Equal.isEqual(u) ?
     ParseResult.mapBoth(decodeUnknown(u, options), {
-      onFailure: (e) => new ParseResult.And(ast, u, [e]),
+      onFailure: (e) => new ParseResult.And(ast, u, e),
       onSuccess: toData
     })
     : ParseResult.fail(new ParseResult.Type(ast, u))
@@ -7715,7 +7715,7 @@ const causeParse = <R, A>(
 (u, options, ast) =>
   cause_.isCause(u) ?
     ParseResult.mapBoth(decodeUnknown(causeEncode(u), options), {
-      onFailure: (e) => new ParseResult.And(ast, u, [e]),
+      onFailure: (e) => new ParseResult.And(ast, u, e),
       onSuccess: causeDecode
     })
     : ParseResult.fail(new ParseResult.Type(ast, u))
@@ -8041,7 +8041,7 @@ const hashSetParse = <R, A>(
 (u, options, ast) =>
   hashSet_.isHashSet(u) ?
     ParseResult.mapBoth(decodeUnknown(Array.from(u), options), {
-      onFailure: (e) => new ParseResult.And(ast, u, [e]),
+      onFailure: (e) => new ParseResult.And(ast, u, e),
       onSuccess: hashSet_.fromIterable
     })
     : ParseResult.fail(new ParseResult.Type(ast, u))
@@ -8140,7 +8140,7 @@ const hashMapParse = <R, K, V>(
 (u, options, ast) =>
   hashMap_.isHashMap(u) ?
     ParseResult.mapBoth(decodeUnknown(Array.from(u), options), {
-      onFailure: (e) => new ParseResult.And(ast, u, [e]),
+      onFailure: (e) => new ParseResult.And(ast, u, e),
       onSuccess: hashMap_.fromIterable
     })
     : ParseResult.fail(new ParseResult.Type(ast, u))
@@ -8230,7 +8230,7 @@ const listParse = <R, A>(
 (u, options, ast) =>
   list_.isList(u) ?
     ParseResult.mapBoth(decodeUnknown(Array.from(u), options), {
-      onFailure: (e) => new ParseResult.And(ast, u, [e]),
+      onFailure: (e) => new ParseResult.And(ast, u, e),
       onSuccess: list_.fromIterable
     })
     : ParseResult.fail(new ParseResult.Type(ast, u))
@@ -8310,7 +8310,7 @@ const sortedSetParse = <R, A>(
 (u, options, ast) =>
   sortedSet_.isSortedSet(u) ?
     ParseResult.mapBoth(decodeUnknown(Array.from(sortedSet_.values(u)), options), {
-      onFailure: (e) => new ParseResult.And(ast, u, [e]),
+      onFailure: (e) => new ParseResult.And(ast, u, e),
       onSuccess: (as): sortedSet_.SortedSet<A> => sortedSet_.fromIterable(as, ord)
     })
     : ParseResult.fail(new ParseResult.Type(ast, u))

@@ -1,3 +1,4 @@
+import type * as array_ from "effect/Array"
 import * as Predicate from "effect/Predicate"
 import type * as AST from "../AST.js"
 
@@ -76,3 +77,7 @@ export const formatUnknown = (u: unknown): string => {
 /** @internal */
 export const formatPropertyKey = (name: PropertyKey): string =>
   typeof name === "string" ? JSON.stringify(name) : String(name)
+
+/** @internal */
+export const isArray = <A>(as: A | array_.NonEmptyReadonlyArray<A>): as is array_.NonEmptyReadonlyArray<A> =>
+  Array.isArray(as)

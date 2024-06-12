@@ -4,6 +4,7 @@
 
 import * as array_ from "effect/Array"
 import * as Effect from "effect/Effect"
+import * as util_ from "./internal/util.js"
 import type * as ParseResult from "./ParseResult.js"
 import * as TreeFormatter from "./TreeFormatter.js"
 
@@ -53,9 +54,6 @@ const getArray = (
     onSuccess: (message) => succeed({ _tag: issue._tag, path, message })
   })
 
-const flatten = (eff: Effect.Effect<Array<Array<Issue>>>): Effect.Effect<Array<Issue>> =>
-  Effect.map(eff, array_.flatten)
-
 const go = (
   e: ParseResult.ParseIssue | ParseResult.Pointer,
   path: ReadonlyArray<PropertyKey> = []
@@ -63,23 +61,20 @@ const go = (
   const _tag = e._tag
   switch (_tag) {
     case "Type":
-      return Effect.map(
-        TreeFormatter.formatTypeMessage(e),
-        (message) => [{ _tag, path, message }]
-      )
+      return Effect.map(TreeFormatter.formatTypeMessage(e), (message) => [{ _tag, path, message }])
     case "Forbidden":
       return succeed({ _tag, path, message: TreeFormatter.formatForbiddenMessage(e) })
     case "Unexpected":
       return succeed({ _tag, path, message: TreeFormatter.formatUnexpectedMessage(e) })
     case "Missing":
-      return Effect.map(
-        TreeFormatter.formatMissingMessage(e),
-        (message) => [{ _tag, path, message }]
-      )
+      return Effect.map(TreeFormatter.formatMissingMessage(e), (message) => [{ _tag, path, message }])
     case "Pointer":
       return go(e.issue, path.concat(e.path))
     case "And":
-      return getArray(e, path, () => flatten(Effect.forEach(e.issues, (issue) => go(issue, path))))
+      return getArray(e, path, () =>
+        util_.isArray(e.issues)
+          ? Effect.map(Effect.forEach(e.issues, (issue) => go(issue, path)), array_.flatten)
+          : go(e.issues, path))
     case "Refinement":
     case "Transformation":
       return getArray(e, path, () => go(e.issue, path))

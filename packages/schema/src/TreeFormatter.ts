@@ -227,10 +227,15 @@ const go = (
       )
     case "Pointer":
       return Effect.map(go(e.issue), (tree) => make(formatPath(e.path), [tree]))
-    case "And":
+    case "And": {
+      const parseIssueTitle = getParseIssueTitle(e)
       return getTree(
         e,
-        () => Effect.map(Effect.forEach(e.issues, go), (forest) => make(getParseIssueTitle(e), forest))
+        () =>
+          util_.isArray(e.issues)
+            ? Effect.map(Effect.forEach(e.issues, go), (forest) => make(parseIssueTitle, forest))
+            : Effect.map(go(e.issues), (tree) => make(parseIssueTitle, [tree]))
       )
+    }
   }
 }
