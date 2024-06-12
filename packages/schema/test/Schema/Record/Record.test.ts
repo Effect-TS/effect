@@ -1,4 +1,5 @@
 import * as AST from "@effect/schema/AST"
+import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
 import * as Either from "effect/Either"
@@ -24,7 +25,7 @@ describe("record", () => {
     const all = S.decodeUnknownEither(schema)({ a: 1, b: "b", c: 2, d: "d" }, { errors: "all" })
     if (Either.isLeft(all)) {
       const issue = all.left.issue
-      if (issue._tag === "And") {
+      if (ParseResult.isComposite(issue)) {
         expect(issue.output).toStrictEqual({ a: 1, c: 2 })
       } else {
         assert.fail("expected an And")
@@ -35,7 +36,7 @@ describe("record", () => {
     const first = S.decodeUnknownEither(schema)({ a: 1, b: "b", c: 2, d: "d" }, { errors: "first" })
     if (Either.isLeft(first)) {
       const issue = first.left.issue
-      if (issue._tag === "And") {
+      if (ParseResult.isComposite(issue)) {
         expect(issue.output).toStrictEqual({ a: 1 })
       } else {
         assert.fail("expected an And")

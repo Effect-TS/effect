@@ -70,7 +70,7 @@ const go = (
       return Effect.map(TreeFormatter.formatMissingMessage(e), (message) => [{ _tag, path, message }])
     case "Pointer":
       return go(e.issue, path.concat(e.path))
-    case "And":
+    case "Composite":
       return getArray(e, path, () =>
         util_.isArray(e.issues)
           ? Effect.map(Effect.forEach(e.issues, (issue) => go(issue, path)), array_.flatten)

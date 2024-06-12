@@ -447,7 +447,7 @@ The `decode` function returns an `Either<A, ParseError>`, where `ParseError` is 
 ```ts
 interface ParseError {
   readonly _tag: "ParseError"
-  readonly error: ParseIssue
+  readonly issue: ParseIssue
 }
 ```
 

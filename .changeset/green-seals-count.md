@@ -175,6 +175,52 @@ console.log(
 */
 ```
 
+### The new `ParseIssue` Model
+
+The `ParseIssue` type has undergone a significant restructuring to improve its expressiveness and simplicity. This new model categorizes issues into leaf and composite types, enhancing clarity and making error handling more systematic.
+
+**Structure of `ParseIsssue` Type:**
+
+```ts
+export type ParseIssue =
+  // leaf
+  | Type
+  | Missing
+  | Unexpected
+  | Forbidden
+  // composite
+  | Pointer
+  | Refinement
+  | Transformation
+  | Composite
+```
+
+**Key Changes in the Model:**
+
+1. **New Members:**
+
+   - `Composite`: A new class that aggregates multiple `ParseIssue` instances.
+   - `Missing`: Identifies when a required element or value is absent.
+   - `Unexpected`: Flags unexpected elements or values in the input.
+   - `Pointer`: Points to the part of the data structure where an issue occurs.
+
+2. **Removed Members:**
+   - Previous categories like `Declaration`, `TupleType`, `TypeLiteral`, `Union`, `Member`, `Key`, and `Index` have been consolidated under the `Composite` type for a more streamlined approach.
+
+**Definition of `Composite`:**
+
+```ts
+export class Composite {
+  readonly _tag = "Composite"
+  constructor(
+    readonly ast: AST.Annotated,
+    readonly actual: unknown,
+    readonly issues: ParseIssue | array_.NonEmptyReadonlyArray<ParseIssue>,
+    readonly output?: unknown
+  ) {}
+}
+```
+
 ## Enhancing Tuples with Element Annotations
 
 Annotations are used to add metadata to tuple elements, which can describe the purpose or requirements of each element more clearly. This can be particularly useful when generating documentation or JSON schemas from your schemas.
@@ -314,7 +360,7 @@ try {
 }
 ```
 
-## Changes List
+## List of Changes
 
 AST
 
@@ -361,10 +407,10 @@ ParseResult
 
 - `ParseIssue` refactoring
   - make `Missing` and `Unexpected` parse issues
-  - replace `Declaration` with `And`
-  - remove `Union` in favour of `And`
-  - remove `TypeLiteral` in favour of `And`
-  - remove `TupleType` in favour of `And`
+  - replace `Declaration` with `Composite`
+  - remove `Union` in favour of `Composite`
+  - remove `TypeLiteral` in favour of `Composite`
+  - remove `TupleType` in favour of `Composite`
   - remove `Member` class
   - merge `Key` and `Index` into `Pointer`
   - `Type`

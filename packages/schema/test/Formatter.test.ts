@@ -208,7 +208,7 @@ describe("Formatter", () => {
         "custom message"
       )
       expectIssues(schema, input, [{
-        _tag: "And",
+        _tag: "Composite",
         path: [],
         message: "custom message"
       }])
@@ -225,7 +225,7 @@ describe("Formatter", () => {
         "custom message"
       )
       expectIssues(schema, input, [{
-        _tag: "And",
+        _tag: "Composite",
         path: [],
         message: "custom message"
       }])
@@ -279,7 +279,7 @@ describe("Formatter", () => {
         Util.onExcessPropertyError
       )
       expectIssues(schema, input, [{
-        _tag: "And",
+        _tag: "Composite",
         path: [],
         message: "custom message"
       }])
@@ -297,7 +297,7 @@ describe("Formatter", () => {
         Util.onExcessPropertyError
       )
       expectIssues(schema, input, [{
-        _tag: "And",
+        _tag: "Composite",
         path: [],
         message: "custom message"
       }])
@@ -1099,7 +1099,7 @@ describe("Formatter", () => {
         "custom message"
       )
       expectIssues(schema, input, [{
-        _tag: "And",
+        _tag: "Composite",
         path: [],
         message: "custom message"
       }])

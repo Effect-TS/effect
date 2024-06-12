@@ -167,7 +167,7 @@ export const formatTypeMessage = (e: ParseResult.Type): Effect.Effect<string> =>
   )
 
 const getParseIssueTitle = (
-  issue: ParseResult.Forbidden | ParseResult.Transformation | ParseResult.Refinement | ParseResult.And
+  issue: ParseResult.Forbidden | ParseResult.Transformation | ParseResult.Refinement | ParseResult.Composite
 ): string => Option.getOrElse(getParseIssueTitleAnnotation(issue), () => String(issue.ast))
 
 /** @internal */
@@ -227,7 +227,7 @@ const go = (
       )
     case "Pointer":
       return Effect.map(go(e.issue), (tree) => make(formatPath(e.path), [tree]))
-    case "And": {
+    case "Composite": {
       const parseIssueTitle = getParseIssueTitle(e)
       return getTree(
         e,
