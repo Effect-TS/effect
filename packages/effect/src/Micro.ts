@@ -20,7 +20,7 @@ import { isIterable, isTagged, type Predicate, type Refinement } from "./Predica
 import type { ReadonlyRecord } from "./Record.js"
 import type * as Sink from "./Sink.js"
 import type * as Stream from "./Stream.js"
-import type { Concurrency, Covariant, Equals, NoInfer, NotFunction } from "./Types.js"
+import type { Concurrency, Covariant, Equals, NoInfer, NotFunction, Simplify } from "./Types.js"
 import { YieldWrap, yieldWrapGet } from "./Utils.js"
 
 /**
@@ -809,7 +809,7 @@ export const async = <A, E = never, R = never>(
       if (cleanup) {
         resume(uninterruptible(andThen(cleanup, fromResult(ResultAborted))))
       } else {
-        resume(failWith(FailureAborted()))
+        resume(fromResult(ResultAborted))
       }
       if (controller !== undefined) {
         controller.abort()
@@ -1024,8 +1024,8 @@ export const flatten = <A, E, R, E2, R2>(self: Micro<Micro<A, E, R>, E2, R2>): M
  * @category mapping & sequencing
  */
 export const map: {
-  <A, B>(f: (a: NoInfer<A>) => B): <E, R>(self: Micro<A, E, R>) => Micro<B, E, R>
-  <A, E, R, B>(self: Micro<A, E, R>, f: (a: NoInfer<A>) => B): Micro<B, E, R>
+  <A, B>(f: (a: A) => B): <E, R>(self: Micro<A, E, R>) => Micro<B, E, R>
+  <A, E, R, B>(self: Micro<A, E, R>, f: (a: A) => B): Micro<B, E, R>
 } = dual(2, <A, E, R, B>(self: Micro<A, E, R>, f: (a: A) => B): Micro<B, E, R> =>
   make(function(env, onResult) {
     self[runSymbol](env, function(result) {
@@ -1061,8 +1061,8 @@ export const asSome = <A, E, R>(self: Micro<A, E, R>): Micro<Option.Option<A>, E
  * @category mapping & sequencing
  */
 export const flatMap: {
-  <A, B, E2, R2>(f: (a: NoInfer<A>) => Micro<B, E2, R2>): <E, R>(self: Micro<A, E, R>) => Micro<B, E | E2, R | R2>
-  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: NoInfer<A>) => Micro<B, E2, R2>): Micro<B, E | E2, R | R2>
+  <A, B, E2, R2>(f: (a: A) => Micro<B, E2, R2>): <E, R>(self: Micro<A, E, R>) => Micro<B, E | E2, R | R2>
+  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: A) => Micro<B, E2, R2>): Micro<B, E | E2, R | R2>
 } = dual(
   2,
   <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: A) => Micro<B, E2, R2>): Micro<B, E | E2, R | R2> =>
@@ -1100,7 +1100,7 @@ export const flip = <A, E, R>(self: Micro<A, E, R>): Micro<E, A, R> =>
  */
 export const andThen: {
   <A, X>(
-    f: (a: NoInfer<A>) => X
+    f: (a: A) => X
   ): <E, R>(
     self: Micro<A, E, R>
   ) => [X] extends [Micro<infer A1, infer E1, infer R1>] ? Micro<A1, E | E1, R | R1>
@@ -1113,7 +1113,7 @@ export const andThen: {
     : Micro<X, E, R>
   <A, E, R, X>(
     self: Micro<A, E, R>,
-    f: (a: NoInfer<A>) => X
+    f: (a: A) => X
   ): [X] extends [Micro<infer A1, infer E1, infer R1>] ? Micro<A1, E | E1, R | R1>
     : Micro<X, E, R>
   <A, E, R, X>(
@@ -1407,7 +1407,7 @@ export const zip: {
  */
 export const filterOrFailWith: {
   <A, B extends A, E2>(
-    refinement: Refinement<NoInfer<A>, B>,
+    refinement: Refinement<A, B>,
     orFailWith: (a: NoInfer<A>) => Failure<E2>
   ): <E, R>(self: Micro<A, E, R>) => Micro<B, E2 | E, R>
   <A, E2>(
@@ -1440,7 +1440,7 @@ export const filterOrFailWith: {
  */
 export const filterOrFail: {
   <A, B extends A, E2>(
-    refinement: Refinement<NoInfer<A>, B>,
+    refinement: Refinement<A, B>,
     orFailWith: (a: NoInfer<A>) => E2
   ): <E, R>(self: Micro<A, E, R>) => Micro<B, E2 | E, R>
   <A, E2>(
@@ -1846,11 +1846,11 @@ export const catchTag: {
  * @category error handling
  */
 export const mapFailure: {
-  <E, E2>(f: (a: NoInfer<Failure<E>>) => Failure<E2>): <A, R>(self: Micro<A, E, R>) => Micro<A, E2, R>
-  <A, E, R, E2>(self: Micro<A, E, R>, f: (a: NoInfer<Failure<E>>) => Failure<E2>): Micro<A, E2, R>
+  <E, E2>(f: (a: Failure<E>) => Failure<E2>): <A, R>(self: Micro<A, E, R>) => Micro<A, E2, R>
+  <A, E, R, E2>(self: Micro<A, E, R>, f: (a: Failure<E>) => Failure<E2>): Micro<A, E2, R>
 } = dual(
   2,
-  <A, E, R, E2>(self: Micro<A, E, R>, f: (a: NoInfer<Failure<E>>) => Failure<E2>): Micro<A, E2, R> =>
+  <A, E, R, E2>(self: Micro<A, E, R>, f: (a: Failure<E>) => Failure<E2>): Micro<A, E2, R> =>
     catchFailure(self, (failure) => failWith(f(failure)))
 )
 
@@ -1861,11 +1861,11 @@ export const mapFailure: {
  * @category error handling
  */
 export const mapError: {
-  <E, E2>(f: (a: NoInfer<E>) => E2): <A, R>(self: Micro<A, E, R>) => Micro<A, E2, R>
-  <A, E, R, E2>(self: Micro<A, E, R>, f: (a: NoInfer<E>) => E2): Micro<A, E2, R>
+  <E, E2>(f: (a: E) => E2): <A, R>(self: Micro<A, E, R>) => Micro<A, E2, R>
+  <A, E, R, E2>(self: Micro<A, E, R>, f: (a: E) => E2): Micro<A, E2, R>
 } = dual(
   2,
-  <A, E, R, E2>(self: Micro<A, E, R>, f: (a: NoInfer<E>) => E2): Micro<A, E2, R> =>
+  <A, E, R, E2>(self: Micro<A, E, R>, f: (a: E) => E2): Micro<A, E2, R> =>
     catchExpected(self, (error) => fail(f(error)))
 )
 
@@ -2761,11 +2761,11 @@ export const all = <
  * @category collecting & elements
  */
 export const forEach: {
-  <A, B, E, R>(iterable: Iterable<A>, f: (a: NoInfer<A>, index: number) => Micro<B, E, R>, options?: {
+  <A, B, E, R>(iterable: Iterable<A>, f: (a: A, index: number) => Micro<B, E, R>, options?: {
     readonly concurrency?: Concurrency | undefined
     readonly discard?: false | undefined
   }): Micro<Array<B>, E, R>
-  <A, B, E, R>(iterable: Iterable<A>, f: (a: NoInfer<A>, index: number) => Micro<B, E, R>, options: {
+  <A, B, E, R>(iterable: Iterable<A>, f: (a: A, index: number) => Micro<B, E, R>, options: {
     readonly concurrency?: Concurrency | undefined
     readonly discard: true
   }): Micro<void, E, R>
@@ -2774,7 +2774,7 @@ export const forEach: {
   B,
   E,
   R
->(iterable: Iterable<A>, f: (a: NoInfer<A>, index: number) => Micro<B, E, R>, options?: {
+>(iterable: Iterable<A>, f: (a: A, index: number) => Micro<B, E, R>, options?: {
   readonly concurrency?: Concurrency | undefined
   readonly discard?: boolean | undefined
 }): Micro<any, E, R> =>
@@ -2800,7 +2800,7 @@ const forEachSequential = <
   B,
   E,
   R
->(iterable: Iterable<A>, f: (a: NoInfer<A>, index: number) => Micro<B, E, R>, options?: {
+>(iterable: Iterable<A>, f: (a: A, index: number) => Micro<B, E, R>, options?: {
   readonly discard?: boolean | undefined
 }): Micro<any, E, R> =>
   make(function(env, onResult) {
@@ -2847,7 +2847,7 @@ const forEachConcurrent = <
   B,
   E,
   R
->(iterable: Iterable<A>, f: (a: NoInfer<A>, index: number) => Micro<B, E, R>, options: {
+>(iterable: Iterable<A>, f: (a: A, index: number) => Micro<B, E, R>, options: {
   readonly concurrency: number | "unbounded"
   readonly discard?: boolean | undefined
 }): Micro<any, E, R> =>
@@ -2932,6 +2932,88 @@ export const filter = <A, E, R>(iterable: Iterable<A>, f: (a: NoInfer<A>) => Mic
       out
     )
   })
+
+// ----------------------------------------------------------------------------
+// do notation
+// ----------------------------------------------------------------------------
+
+/**
+ * Start a do notation block.
+ *
+ * @since 3.4.0
+ * @category do notation
+ */
+export const Do: Micro<{}> = succeed({})
+
+/**
+ * Bind the success value of this `Micro` effect to the provided name.
+ *
+ * @since 3.4.0
+ * @category do notation
+ */
+export const bindTo: {
+  <N extends string>(name: N): <A, E, R>(self: Micro<A, E, R>) => Micro<{ [K in N]: A }, E, R>
+  <A, E, R, N extends string>(self: Micro<A, E, R>, name: N): Micro<{ [K in N]: A }, E, R>
+} = dual(2, <A, E, R, N extends string>(self: Micro<A, E, R>, name: N): Micro<{ [K in N]: A }, E, R> =>
+  map(
+    self,
+    (f) => ({ [name]: f } as any)
+  ))
+
+/**
+ * Bind the success value of this `Micro` effect to the provided name.
+ *
+ * @since 3.4.0
+ * @category do notation
+ */
+export const bind: {
+  <N extends string, A extends Record<string, any>, B, E2, R2>(
+    name: N,
+    f: (a: A) => Micro<B, E2, R2>
+  ): <E, R>(self: Micro<A, E, R>) => Micro<Simplify<Omit<A, N> & { [K in N]: B }>, E | E2, R | R2>
+  <A extends Record<string, any>, E, R, B, E2, R2, N extends string>(
+    self: Micro<A, E, R>,
+    name: N,
+    f: (a: A) => Micro<B, E2, R2>
+  ): Micro<Simplify<Omit<A, N> & { [K in N]: B }>, E | E2, R | R2>
+} = dual(3, <A extends Record<string, any>, E, R, B, E2, R2, N extends string>(
+  self: Micro<A, E, R>,
+  name: N,
+  f: (a: A) => Micro<B, E2, R2>
+): Micro<Simplify<Omit<A, N> & { [K in N]: B }>, E | E2, R | R2> =>
+  flatMap(
+    self,
+    (a) => map(f(a), (b) => ({ ...a, [name]: b } as any))
+  ))
+
+const let_: {
+  <N extends string, A extends Record<string, any>, B>(
+    name: N,
+    f: (a: A) => B
+  ): <E, R>(self: Micro<A, E, R>) => Micro<Simplify<Omit<A, N> & { [K in N]: B }>, E, R>
+  <A extends Record<string, any>, E, R, B, N extends string>(
+    self: Micro<A, E, R>,
+    name: N,
+    f: (a: A) => B
+  ): Micro<Simplify<Omit<A, N> & { [K in N]: B }>, E, R>
+} = dual(3, <A extends Record<string, any>, E, R, B, N extends string>(
+  self: Micro<A, E, R>,
+  name: N,
+  f: (a: A) => B
+): Micro<Simplify<Omit<A, N> & { [K in N]: B }>, E, R> =>
+  map(
+    self,
+    (a) => ({ ...a, [name]: f(a) } as any)
+  ))
+export {
+  /**
+   * Bind the result of a synchronous computation to the given name.
+   *
+   * @since 3.4.0
+   * @category do notation
+   */
+  let_ as let
+}
 
 // ----------------------------------------------------------------------------
 // handle & forking

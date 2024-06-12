@@ -560,12 +560,14 @@ describe.concurrent("Micro", () => {
         const result = yield* fiber.abort
         assert.deepStrictEqual(result, Micro.ResultAborted)
       }))
+
     it.effect("interrupt of never is interrupted with cause", () =>
       Micro.gen(function*() {
         const fiber = yield* Micro.fork(Micro.never)
         const result = yield* fiber.abort
         assert.deepStrictEqual(result, Micro.ResultAborted)
       }))
+
     it.effect("catchAll + ensuring + interrupt", () =>
       Micro.gen(function*() {
         let catchFailure = false
@@ -586,6 +588,7 @@ describe.concurrent("Micro", () => {
         assert.isFalse(catchFailure)
         assert.isTrue(ensuring)
       }))
+
     it.effect("run of interruptible", () =>
       Micro.gen(function*() {
         let recovered = false
@@ -604,6 +607,7 @@ describe.concurrent("Micro", () => {
         yield* fiber.abort
         assert.isTrue(recovered)
       }))
+
     it.effect("alternating interruptibility", () =>
       Micro.gen(function*() {
         let counter = 0
@@ -625,6 +629,7 @@ describe.concurrent("Micro", () => {
         yield* fiber.abort
         assert.strictEqual(counter, 2)
       }))
+
     it.live("acquireUseRelease use inherits interrupt status", () =>
       Micro.gen(function*() {
         let ref = false
@@ -645,6 +650,7 @@ describe.concurrent("Micro", () => {
         yield* fiber.abort
         assert.isTrue(ref)
       }))
+
     it.live("async can be uninterruptible", () =>
       Micro.gen(function*() {
         let ref = false
@@ -659,6 +665,7 @@ describe.concurrent("Micro", () => {
         yield* fiber.abort
         assert.isTrue(ref)
       }))
+
     it.live("closing scope is uninterruptible", () =>
       Micro.gen(function*() {
         let ref = false
@@ -673,14 +680,13 @@ describe.concurrent("Micro", () => {
         yield* fiber.abort
         assert.isTrue(ref)
       }))
+
     it.effect("AbortSignal is aborted", () =>
       Micro.gen(function*() {
         let signal: AbortSignal
         const fiber = yield* Micro.async<void, never, never>((_cb, signal_) => {
           signal = signal_
-        }).pipe(
-          Micro.fork
-        )
+        }).pipe(Micro.fork)
         yield* Micro.yieldNow
         yield* fiber.abort
         assert.strictEqual(signal!.aborted, true)
@@ -768,5 +774,20 @@ describe.concurrent("Micro", () => {
         yield* scope.close(Micro.resultVoid)
         assert.isTrue(aborted)
       }))
+  })
+
+  describe("do notation", () => {
+    it.effect("works", () =>
+      Micro.succeed(1).pipe(
+        Micro.bindTo("a"),
+        Micro.let("b", ({ a }) => a + 1),
+        Micro.bind("b", ({ b }) => Micro.succeed(b.toString())),
+        Micro.tap((_) => {
+          assert.deepStrictEqual(_, {
+            a: 1,
+            b: "2"
+          })
+        })
+      ))
   })
 })
