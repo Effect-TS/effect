@@ -3186,15 +3186,22 @@ const fromFilterPredicateReturnTypeItem = (
   return option_.none()
 }
 
+const isFilterPredicateReturnTypeItem = (out: FilterPredicateReturnType): out is FilterPredicateReturnTypeItem =>
+  !Array.isArray(out)
+
 const toFilterParseIssue = (
   out: FilterPredicateReturnType,
   ast: AST.Refinement,
   input: unknown
 ): option_.Option<ParseResult.ParseIssue> => {
-  const items: ReadonlyArray<FilterPredicateReturnTypeItem> = Array.isArray(out) ? out : [out]
-  const issues = array_.filterMap(items, (issue) => fromFilterPredicateReturnTypeItem(issue, ast, input))
-  if (array_.isNonEmptyReadonlyArray(issues)) {
-    return option_.some(issues.length === 1 ? issues[0] : new ParseResult.And(ast, input, issues))
+  if (isFilterPredicateReturnTypeItem(out)) {
+    return fromFilterPredicateReturnTypeItem(out, ast, input)
+  }
+  if (array_.isNonEmptyReadonlyArray(out)) {
+    const issues = array_.filterMap(out, (issue) => fromFilterPredicateReturnTypeItem(issue, ast, input))
+    if (array_.isNonEmptyReadonlyArray(issues)) {
+      return option_.some(issues.length === 1 ? issues[0] : new ParseResult.And(ast, input, issues))
+    }
   }
   return option_.none()
 }
