@@ -1761,9 +1761,9 @@ const mySymbolSchema = Schema.UniqueSymbolFromSelf(mySymbol)
 
 ## Filters
 
-In the `@effect/schema/Schema` library, you can apply custom validation logic using _filters_.
+Using the `Schema.filter` function, developers can define custom validation logic that goes beyond basic type checks, allowing for in-depth control over the data conformity process. This function applies a predicate to data, and if the data fails the predicate's condition, a custom error message can be returned.
 
-You can define a custom validation check on any schema using the `filter` function. Here's a simple example:
+**Simple Validation Example**:
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -1783,21 +1783,52 @@ Error: { string | filter }
 */
 ```
 
-In the new signature of `filter`, the type of the predicate passed as an argument is as follows:
+> [!WARNING]
+> Please note that the use of filters do not alter the type of the `Schema`. They only serve to add additional constraints to the parsing process. If you intend to modify the `Type`, consider using [Branded types](#branded-types).
+
+### Predicate Function Structure
+
+The predicate for a filter is defined as follows:
 
 ```ts
-predicate: (a: A, options: ParseOptions, self: AST.Refinement) =>
-  undefined | boolean | string | ParseResult.ParseIssue
+type Predicate = (
+  a: A,
+  options: ParseOptions,
+  self: AST.Refinement
+) => FilterReturnType
 ```
 
-with the following semantics:
+where
 
-- `true` means the filter is successful.
-- `false` or `undefined` means the filter fails and no default message is set.
-- `string` means the filter fails and the returned string is used as the default message.
-- `ParseIssue` means the filter fails and the returned ParseIssue is used as an error.
+```ts
+export interface FilterIssue {
+  readonly path: ReadonlyArray<PropertyKey>
+  readonly issue: string | ParseResult.ParseIssue
+}
 
-It's also recommended to include as much metadata as possible for later introspection of the schema, such as an identifier, JSON schema representation, and a description:
+type FilterOutput =
+  | undefined
+  | boolean
+  | string
+  | ParseResult.ParseIssue
+  | FilterIssue
+
+type FilterReturnType = FilterOutput | ReadonlyArray<FilterOutput>
+```
+
+Filter predicates can return several types of values, each with specific implications:
+
+- `true`: The data satisfies the filter's condition.
+- `false` or `undefined`: The filter is not satisfied, and no specific error message is provided.
+- `string`: The filter fails, and the provided string is used as the **default** error message.
+- `ParseResult.ParseIssue`: The filter fails with a detailed error structure.
+- `FilterIssue`: Allows specifying detailed error paths and messages, enhancing error specificity.
+
+An array can be returned if multiple issues need to be reported, allowing for complex validations that may have multiple points of failure.
+
+### Schema Metadata
+
+It's beneficial to embed as much metadata as possible within the schema. This metadata can include identifiers, JSON schema specifications, and descriptive text to facilitate later analysis and understanding of the schema's purpose and constraints.
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -1824,34 +1855,117 @@ Error: LongString
 */
 ```
 
-For more complex scenarios, you can return a `ParseIssue`. Here's an example:
+### Specifying Error Paths
+
+It's possible to specify an error path along with the message, which enhances error specificity and is particularly beneficial for integration with tools like `react-hook-form`.
 
 ```ts
-import { ParseResult, Schema } from "@effect/schema"
+import { ArrayFormatter, Schema } from "@effect/schema"
+import { Either } from "effect"
 
-const schema = Schema.Struct({ a: Schema.String, b: Schema.String }).pipe(
-  Schema.filter((o) =>
-    o.b === o.a
-      ? undefined
-      : new ParseResult.Type(
-          Schema.Literal(o.a).ast,
-          o.b,
-          `b ("${o.b}") should be equal to a ("${o.a}")`
-        )
-  )
+const Password = Schema.Trim.pipe(Schema.minLength(1))
+
+const MyForm = Schema.Struct({
+  password: Password,
+  confirm_password: Password
+}).pipe(
+  Schema.filter((input) => {
+    if (input.password !== input.confirm_password) {
+      return {
+        path: ["confirm_password"],
+        issue: "Passwords do not match"
+      }
+    }
+  })
 )
 
-console.log(Schema.decodeUnknownSync(schema)({ a: "foo", b: "bar" }))
+console.log(
+  "%o",
+  Schema.decodeUnknownEither(MyForm)({
+    password: "abc",
+    confirm_password: "d"
+  }).pipe(Either.mapLeft((error) => ArrayFormatter.formatErrorSync(error)))
+)
 /*
-throws:
-Error: { { readonly a: string; readonly b: string } | filter }
-└─ Predicate refinement failure
-   └─ b ("bar") should be equal to a ("foo")
+{
+  _id: 'Either',
+  _tag: 'Left',
+  left: [
+    {
+      _tag: 'Type',
+      path: [ 'confirm_password' ],
+      message: 'Passwords do not match'
+    }
+  ]
+}
 */
 ```
 
-> [!WARNING]
-> Please note that the use of filters do not alter the type of the `Schema`. They only serve to add additional constraints to the parsing process. If you intend to modify the `Type`, consider using [Branded types](#branded-types).
+This allows the error to be directly associated with the `confirm_password` field, improving clarity for the end-user.
+
+### Multiple Error Reporting
+
+The `filter` API also supports reporting multiple issues at once, which is useful in forms where several validation checks might fail simultaneously.
+
+```ts
+import { ArrayFormatter, Schema } from "@effect/schema"
+import { Either } from "effect"
+
+const Password = Schema.Trim.pipe(Schema.minLength(1))
+const OptionalString = Schema.optional(Schema.String)
+
+const MyForm = Schema.Struct({
+  password: Password,
+  confirm_password: Password,
+  name: OptionalString,
+  surname: OptionalString
+}).pipe(
+  Schema.filter((input) => {
+    const issues: Array<Schema.FilterIssue> = []
+    // passwords must match
+    if (input.password !== input.confirm_password) {
+      issues.push({
+        path: ["confirm_password"],
+        issue: "Passwords do not match"
+      })
+    }
+    // either name or surname must be present
+    if (!input.name && !input.surname) {
+      issues.push({
+        path: ["surname"],
+        issue: "Surname must be present if name is not present"
+      })
+    }
+    return issues
+  })
+)
+
+console.log(
+  "%o",
+  Schema.decodeUnknownEither(MyForm)({
+    password: "abc",
+    confirm_password: "d"
+  }).pipe(Either.mapLeft((error) => ArrayFormatter.formatErrorSync(error)))
+)
+/*
+{
+  _id: 'Either',
+  _tag: 'Left',
+  left: [
+    {
+      _tag: 'Type',
+      path: [ 'confirm_password' ],
+      message: 'Passwords do not match'
+    },
+    {
+      _tag: 'Type',
+      path: [ 'surname' ],
+      message: 'Surname must be present if name is not present'
+    }
+  ]
+}
+*/
+```
 
 ### Exposed Values
 

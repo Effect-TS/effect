@@ -4,6 +4,177 @@
 
 TODO: ^---- change `patch` to `minor`
 
+## Refactoring of the `ParseIssue` Model
+
+The `ParseIssue` model in the `@effect/schema/ParseResult` module has undergone a comprehensive redesign and simplification that enhances its expressiveness without compromising functionality. This section explores the motivation and details of this refactoring.
+
+### Enhanced `Schema.filter` API
+
+The `Schema.filter` API has been improved to support more complex filtering that can involve multiple properties of a struct. This is especially useful for validations that compare two fields, such as ensuring that a `password` field matches a `confirm_password` field, a common requirement in form validations.
+
+**Previous Limitations:**
+
+Previously, while it was possible to implement a filter that compared two fields, there was no straightforward way to attach validation messages to a specific field. This posed challenges, especially in form validations where precise error reporting is crucial.
+
+**Example of Previous Implementation:**
+
+```ts
+import { ArrayFormatter, Schema } from "@effect/schema"
+import { Either } from "effect"
+
+const Password = Schema.Trim.pipe(Schema.minLength(1))
+
+const MyForm = Schema.Struct({
+  password: Password,
+  confirm_password: Password
+}).pipe(
+  Schema.filter((input) => {
+    if (input.password !== input.confirm_password) {
+      return "Passwords do not match"
+    }
+  })
+)
+
+console.log(
+  "%o",
+  Schema.decodeUnknownEither(MyForm)({
+    password: "abc",
+    confirm_password: "d"
+  }).pipe(Either.mapLeft((error) => ArrayFormatter.formatErrorSync(error)))
+)
+/*
+{
+  _id: 'Either',
+  _tag: 'Left',
+  left: [
+    {
+      _tag: 'Type',
+      path: [],
+      message: 'Passwords do not match'
+    }
+  ]
+}
+*/
+```
+
+In this scenario, while the filter functionally works, the lack of a specific error path means errors are not as descriptive or helpful as they could be.
+
+### Specifying Error Paths
+
+With the new improvements, it's now possible to specify an error path along with the message, which enhances error specificity and is particularly beneficial for integration with tools like `react-hook-form`.
+
+**Updated Implementation Example:**
+
+```ts
+import { ArrayFormatter, Schema } from "@effect/schema"
+import { Either } from "effect"
+
+const Password = Schema.Trim.pipe(Schema.minLength(1))
+
+const MyForm = Schema.Struct({
+  password: Password,
+  confirm_password: Password
+}).pipe(
+  Schema.filter((input) => {
+    if (input.password !== input.confirm_password) {
+      return {
+        path: ["confirm_password"],
+        issue: "Passwords do not match"
+      }
+    }
+  })
+)
+
+console.log(
+  "%o",
+  Schema.decodeUnknownEither(MyForm)({
+    password: "abc",
+    confirm_password: "d"
+  }).pipe(Either.mapLeft((error) => ArrayFormatter.formatErrorSync(error)))
+)
+/*
+{
+  _id: 'Either',
+  _tag: 'Left',
+  left: [
+    {
+      _tag: 'Type',
+      path: [ 'confirm_password' ],
+      message: 'Passwords do not match'
+    }
+  ]
+}
+*/
+```
+
+This modification allows the error to be directly associated with the `confirm_password` field, improving clarity for the end-user.
+
+### Multiple Error Reporting
+
+The refactored API also supports reporting multiple issues at once, which is useful in forms where several validation checks might fail simultaneously.
+
+**Example of Multiple Issues Reporting:**
+
+```ts
+import { ArrayFormatter, Schema } from "@effect/schema"
+import { Either } from "effect"
+
+const Password = Schema.Trim.pipe(Schema.minLength(1))
+const OptionalString = Schema.optional(Schema.String)
+
+const MyForm = Schema.Struct({
+  password: Password,
+  confirm_password: Password,
+  name: OptionalString,
+  surname: OptionalString
+}).pipe(
+  Schema.filter((input) => {
+    const issues: Array<Schema.FilterIssue> = []
+    // passwords must match
+    if (input.password !== input.confirm_password) {
+      issues.push({
+        path: ["confirm_password"],
+        issue: "Passwords do not match"
+      })
+    }
+    // either name or surname must be present
+    if (!input.name && !input.surname) {
+      issues.push({
+        path: ["surname"],
+        issue: "Surname must be present if name is not present"
+      })
+    }
+    return issues
+  })
+)
+
+console.log(
+  "%o",
+  Schema.decodeUnknownEither(MyForm)({
+    password: "abc",
+    confirm_password: "d"
+  }).pipe(Either.mapLeft((error) => ArrayFormatter.formatErrorSync(error)))
+)
+/*
+{
+  _id: 'Either',
+  _tag: 'Left',
+  left: [
+    {
+      _tag: 'Type',
+      path: [ 'confirm_password' ],
+      message: 'Passwords do not match'
+    },
+    {
+      _tag: 'Type',
+      path: [ 'surname' ],
+      message: 'Surname must be present if name is not present'
+    }
+  ]
+}
+*/
+```
+
 ## Enhancing Tuples with Element Annotations
 
 Annotations are used to add metadata to tuple elements, which can describe the purpose or requirements of each element more clearly. This can be particularly useful when generating documentation or JSON schemas from your schemas.
@@ -143,7 +314,7 @@ try {
 }
 ```
 
-## Changes
+## Changes List
 
 AST
 
@@ -160,6 +331,7 @@ AST
 Schema
 
 - add `missingMessage` annotation to `PropertySignature`
+- add `FilterIssue` helper interface
 
 **Breaking**
 

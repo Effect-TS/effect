@@ -3162,7 +3162,7 @@ const makeRefineClass = <From extends Schema.Any, A>(
 export interface filter<From extends Schema.Any> extends refine<Schema.Type<From>, From> {}
 
 const fromFilterPredicateReturnTypeItem = (
-  item: FilterPredicateReturnTypeItem,
+  item: FilterOutput,
   ast: AST.Refinement,
   input: unknown
 ): option_.Option<ParseResult.ParseIssue> => {
@@ -3186,11 +3186,10 @@ const fromFilterPredicateReturnTypeItem = (
   return option_.none()
 }
 
-const isFilterPredicateReturnTypeItem = (out: FilterPredicateReturnType): out is FilterPredicateReturnTypeItem =>
-  !Array.isArray(out)
+const isFilterPredicateReturnTypeItem = (out: FilterReturnType): out is FilterOutput => !Array.isArray(out)
 
 const toFilterParseIssue = (
-  out: FilterPredicateReturnType,
+  out: FilterReturnType,
   ast: AST.Refinement,
   input: unknown
 ): option_.Option<ParseResult.ParseIssue> => {
@@ -3206,15 +3205,21 @@ const toFilterParseIssue = (
   return option_.none()
 }
 
-type FilterPredicateReturnTypeItem = undefined | boolean | string | ParseResult.ParseIssue | {
+/**
+ * @category filtering
+ * @since 0.68.0
+ */
+export interface FilterIssue {
   readonly path: ReadonlyArray<PropertyKey>
   readonly issue: string | ParseResult.ParseIssue
 }
 
-type FilterPredicateReturnType = FilterPredicateReturnTypeItem | ReadonlyArray<FilterPredicateReturnTypeItem>
+type FilterOutput = undefined | boolean | string | ParseResult.ParseIssue | FilterIssue
+
+type FilterReturnType = FilterOutput | ReadonlyArray<FilterOutput>
 
 /**
- * @category combinators
+ * @category filtering
  * @since 0.67.0
  */
 export function filter<C extends A, B extends A, A = C>(
@@ -3230,7 +3235,7 @@ export function filter<S extends Schema.Any>(
     a: Types.NoInfer<Schema.Type<S>>,
     options: ParseOptions,
     self: AST.Refinement
-  ) => FilterPredicateReturnType,
+  ) => FilterReturnType,
   annotations?: Annotations.Filter<Types.NoInfer<Schema.Type<S>>>
 ): (self: S) => filter<S>
 export function filter<A>(
@@ -3238,7 +3243,7 @@ export function filter<A>(
     a: A,
     options: ParseOptions,
     self: AST.Refinement
-  ) => FilterPredicateReturnType,
+  ) => FilterReturnType,
   annotations?: Annotations.Filter<A>
 ): <I, R>(self: Schema<A, I, R>) => refine<A, Schema<A, I, R>> {
   return <I, R>(self: Schema<A, I, R>) => {
