@@ -5532,7 +5532,10 @@ export const headOrElse: {
 export const ValidDateTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/ValidDate")
 
 /**
- * A filter that **excludes invalid** dates (e.g., `new Date("Invalid Date")` is rejected).
+ * Defines a filter that specifically rejects invalid dates, such as `new
+ * Date("Invalid Date")`. This filter ensures that only properly formatted and
+ * valid date objects are accepted, enhancing data integrity by preventing
+ * erroneous date values from being processed.
  *
  * @category Date filters
  * @since 0.67.0
@@ -5548,7 +5551,8 @@ export const validDate =
     )
 
 /**
- * Represents a schema for handling potentially **invalid** `Date` instances (e.g., `new Date("Invalid Date")` is not rejected).
+ * Describes a schema that accommodates potentially invalid `Date` instances,
+ * such as `new Date("Invalid Date")`, without rejection.
  *
  * @category Date constructors
  * @since 0.67.0
@@ -5567,7 +5571,11 @@ export class DateFromSelf extends declare(
 }
 
 /**
- * Represents a schema for handling only **valid** dates. For example, `new Date("Invalid Date")` is rejected, even though it is an instance of `Date`.
+ * Defines a schema that ensures only valid dates are accepted. This schema
+ * rejects values like `new Date("Invalid Date")`, which, despite being a `Date`
+ * instance, represents an invalid date. Such stringent validation ensures that
+ * all date objects processed through this schema are properly formed and
+ * represent real dates.
  *
  * @category Date constructors
  * @since 0.67.0
@@ -5582,7 +5590,10 @@ export class ValidDateFromSelf extends DateFromSelf.pipe(
 }
 
 /**
- * Represents a schema that converts a `string` into a (potentially invalid) `Date` (e.g., `new Date("Invalid Date")` is not rejected).
+ * Defines a schema that attempts to convert a `string` to a `Date` object using
+ * the `new Date` constructor. This conversion is lenient, meaning it does not
+ * reject strings that do not form valid dates (e.g., using `new Date("Invalid
+ * Date")` results in a `Date` object, despite being invalid).
  *
  * @category Date transformations
  * @since 0.67.0
@@ -5604,7 +5615,10 @@ class Date$ extends DateFromString.pipe(
 
 export {
   /**
-   * A schema that transforms a `string` into a **valid** `Date`, ensuring that invalid dates, such as `new Date("Invalid Date")`, are rejected.
+   * This schema converts a `string` into a `Date` object using the `new Date`
+   * constructor. It ensures that only valid date strings are accepted,
+   * rejecting any strings that would result in an invalid date, such as `new
+   * Date("Invalid Date")`.
    *
    * @category Date transformations
    * @since 0.67.0
@@ -5613,8 +5627,11 @@ export {
 }
 
 /**
- * Represents a schema that converts a `number` into a (potentially invalid) `Date` (e.g., `NaN`, `Infinity` and `-Infinity` are not rejected).
- * Encoding will return `NaN` for invalid dates.
+ * Defines a schema that converts a `number` into a `Date` object using the `new
+ * Date` constructor. This schema does not validate the numerical input,
+ * allowing potentially invalid values such as `NaN`, `Infinity`, and
+ * `-Infinity` to be converted into `Date` objects. During the encoding process,
+ * any invalid `Date` object will be encoded to `NaN`.
  *
  * @category Date transformations
  * @since 0.67.0
