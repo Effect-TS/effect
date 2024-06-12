@@ -16,6 +16,7 @@ declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
 // $ExpectType Option<string>
 pipe(pimitiveNumerOrString, Option.liftPredicate(Predicate.isString))
 
+// $ExpectType Option<number>
 pipe(
   pimitiveNumerOrString,
   Option.liftPredicate(
@@ -39,6 +40,31 @@ pipe(
       _n // $ExpectType number
     ) => true
   )
+)
+
+// $ExpectType Option<string>
+Option.liftPredicate(pimitiveNumerOrString, Predicate.isString)
+
+// $ExpectType Option<number>
+Option.liftPredicate(
+  pimitiveNumerOrString,
+  (
+    n // $ExpectType string | number
+  ): n is number => typeof n === "number"
+)
+
+// $ExpectType Option<string | number>
+Option.liftPredicate(pimitiveNumerOrString, predicateNumbersOrStrings)
+
+// $ExpectType Option<number>
+Option.liftPredicate(pimitiveNumber, predicateNumbersOrStrings)
+
+// $ExpectType Option<number>
+Option.liftPredicate(
+  pimitiveNumber,
+  (
+    _n // $ExpectType number
+  ) => true
 )
 
 // -------------------------------------------------------------------------------------
