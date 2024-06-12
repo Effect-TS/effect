@@ -522,9 +522,9 @@ import * as Http from "@effect/platform/HttpClient"
 import { Schema } from "@effect/schema"
 import { Console, Effect } from "effect"
 
-const Post = Schema.struct({
-  id: Schema.number,
-  title: Schema.string
+const Post = Schema.Struct({
+  id: Schema.Number,
+  title: Schema.String
 })
 
 /*
@@ -688,9 +688,9 @@ import * as Http from "@effect/platform/HttpClient"
 import { Schema } from "@effect/schema"
 import { Console, Effect } from "effect"
 
-const Post = Schema.struct({
-  id: Schema.number,
-  title: Schema.string
+const Post = Schema.Struct({
+  id: Schema.Number,
+  title: Schema.String
 })
 
 const addPost = Http.request
