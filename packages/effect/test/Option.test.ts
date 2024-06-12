@@ -350,14 +350,17 @@ describe("Option", () => {
   })
 
   it("liftPredicate", () => {
-    const f = Option.liftPredicate(p)
-    Util.deepStrictEqual(f(1), Option.none())
-    Util.deepStrictEqual(f(3), Option.some(3))
+    Util.deepStrictEqual(pipe(1, Option.liftPredicate(p)), Option.none())
+    Util.deepStrictEqual(pipe(3, Option.liftPredicate(p)), Option.some(3))
+    Util.deepStrictEqual(Option.liftPredicate(1, p), Option.none())
+    Util.deepStrictEqual(Option.liftPredicate(3, p), Option.some(3))
 
     type Direction = "asc" | "desc"
-    const parseDirection = Option.liftPredicate((s: string): s is Direction => s === "asc" || s === "desc")
-    Util.deepStrictEqual(parseDirection("asc"), Option.some("asc"))
-    Util.deepStrictEqual(parseDirection("foo"), Option.none())
+    const isDirection = (s: string): s is Direction => s === "asc" || s === "desc"
+    Util.deepStrictEqual(pipe("asc", Option.liftPredicate(isDirection)), Option.some("asc"))
+    Util.deepStrictEqual(pipe("foo", Option.liftPredicate(isDirection)), Option.none())
+    Util.deepStrictEqual(Option.liftPredicate("asc", isDirection), Option.some("asc"))
+    Util.deepStrictEqual(Option.liftPredicate("foo", isDirection), Option.none())
   })
 
   it("containsWith", () => {
