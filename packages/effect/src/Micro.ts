@@ -185,8 +185,9 @@ abstract class FailureImpl<Tag extends string, E> extends globalThis.Error imple
     if (originalError instanceof globalThis.Error) {
       name = `(${failureName}) ${originalError.name}`
       message = originalError.message as string
+      const messageLines = message.split("\n").length
       stack = originalError.stack
-        ? `(${failureName}) ${originalError.stack.split("\n").slice(0, 2).join("\n")}`
+        ? `(${failureName}) ${originalError.stack.split("\n").slice(0, messageLines + 2).join("\n")}`
         : `${name}: ${message}`
     } else {
       name = failureName
