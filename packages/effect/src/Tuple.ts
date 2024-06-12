@@ -203,7 +203,7 @@ export const appendElement: {
  * @example
  * import { Tuple } from "effect"
  *
- * assert.deepStrictEqual(at([1, 'hello', true], 1), 'hello')
+ * assert.deepStrictEqual(Tuple.at([1, 'hello', true], 1), 'hello')
  *
  * @category getters
  * @since 3.4.0
