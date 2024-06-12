@@ -201,7 +201,7 @@ export const appendElement: {
  * @param index - The index of the element to retrieve.
  *
  * @example
- * import { at } from "effect/Tuple"
+ * import { Tuple } from "effect"
  *
  * assert.deepStrictEqual(at([1, 'hello', true], 1), 'hello')
  *
