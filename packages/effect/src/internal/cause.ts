@@ -1055,7 +1055,7 @@ export const spanToTrace = globalValue("effect/Tracer/spanToTrace", () => new We
 
 const prettyErrorStack = (message: string, stack: string, span?: Span | undefined): string => {
   const out: Array<string> = [message]
-  const lines = stack.split("\n")
+  const lines = stack.startsWith(message) ? stack.slice(message.length).split("\n") : stack.split("\n")
 
   for (let i = 1; i < lines.length; i++) {
     if (lines[i].includes("Generator.next")) {

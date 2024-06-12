@@ -141,4 +141,17 @@ describe("Effect", () => {
       yield* Effect.void
       it.expect({ foo: "ok" }).toStrictEqual({ foo: "bar" })
     }))
+
+  it.effect("multiline message", () =>
+    Effect.gen(function*() {
+      const cause = yield* Effect.fail(new Error("Multi-line\nerror\nmessage")).pipe(
+        Effect.sandbox,
+        Effect.flip
+      )
+      const pretty = Cause.pretty(cause)
+      assert.isTrue(pretty.startsWith(`Error: Multi-line
+error
+message
+    at`))
+    }))
 })
