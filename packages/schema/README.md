@@ -1469,6 +1469,50 @@ This ensures that the JSON Schema properly handles the recursive structure and c
 
 ### Custom JSON Schema Annotations
 
+When working with JSON Schema in the `@effect/schema` library, certain data types, such as `bigint`, lack a direct representation because JSON Schema does not natively support them. This absence typically leads to an error when the schema is generated:
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  a_bigint_field: Schema.BigIntFromSelf
+})
+
+// Attempt to generate JSON Schema throws an error due to unsupported type
+console.log("%o", JSONSchema.make(schema))
+/*
+throws:
+Error: cannot build a JSON Schema for `bigint` without a JSON Schema annotation (path ["a_bigint_field"])
+*/
+```
+
+To address this, you can enhance the schema with a custom annotation, defining how you intend to represent such types in JSON Schema:
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  a_bigint_field: Schema.BigIntFromSelf.annotations({
+    jsonSchema: { type: "some custom way to encode a bigint in JSON Schema" }
+  })
+})
+
+// Now the JSON Schema generation will include the custom representation
+console.log("%o", JSONSchema.make(schema))
+/*
+Output:
+{
+  '$schema': 'http://json-schema.org/draft-07/schema#',
+  type: 'object',
+  required: [ 'a_bigint_field', [length]: 1 ],
+  properties: {
+    a_bigint_field: { type: 'some custom way to encode a bigint in JSON Schema' }
+  },
+  additionalProperties: false
+}
+*/
+```
+
 When defining a **refinement** (e.g., through the `filter` function), you can attach a JSON Schema annotation to your schema containing a JSON Schema "fragment" related to this particular refinement. This fragment will be used to generate the corresponding JSON Schema. Note that if the schema consists of more than one refinement, the corresponding annotations will be merged.
 
 > Note:
