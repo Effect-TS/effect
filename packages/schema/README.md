@@ -1806,7 +1806,7 @@ export interface FilterIssue {
   readonly issue: string | ParseResult.ParseIssue
 }
 
-type FilterOutput =
+export type FilterOutput =
   | undefined
   | boolean
   | string
@@ -1873,7 +1873,7 @@ const MyForm = Schema.Struct({
     if (input.password !== input.confirm_password) {
       return {
         path: ["confirm_password"],
-        issue: "Passwords do not match"
+        message: "Passwords do not match"
       }
     }
   })
@@ -1926,14 +1926,14 @@ const MyForm = Schema.Struct({
     if (input.password !== input.confirm_password) {
       issues.push({
         path: ["confirm_password"],
-        issue: "Passwords do not match"
+        message: "Passwords do not match"
       })
     }
     // either name or surname must be present
     if (!input.name && !input.surname) {
       issues.push({
         path: ["surname"],
-        issue: "Surname must be present if name is not present"
+        message: "Surname must be present if name is not present"
       })
     }
     return issues

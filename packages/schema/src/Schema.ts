@@ -3178,7 +3178,7 @@ const fromFilterPredicateReturnTypeItem = (
     if ("_tag" in item) {
       return option_.some(item)
     }
-    const issue = Predicate.isString(item.issue) ? new ParseResult.Type(ast, input, item.issue) : item.issue
+    const issue = new ParseResult.Type(ast, input, item.message)
     return option_.some(
       array_.isNonEmptyReadonlyArray(item.path) ? new ParseResult.Pointer(item.path, input, issue) : issue
     )
@@ -3211,10 +3211,14 @@ const toFilterParseIssue = (
  */
 export interface FilterIssue {
   readonly path: ReadonlyArray<PropertyKey>
-  readonly issue: string | ParseResult.ParseIssue
+  readonly message: string
 }
 
-type FilterOutput = undefined | boolean | string | ParseResult.ParseIssue | FilterIssue
+/**
+ * @category filtering
+ * @since 0.68.0
+ */
+export type FilterOutput = undefined | boolean | string | ParseResult.ParseIssue | FilterIssue
 
 type FilterReturnType = FilterOutput | ReadonlyArray<FilterOutput>
 

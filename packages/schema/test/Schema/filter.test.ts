@@ -131,13 +131,13 @@ describe("filter", () => {
         if (input.a.b !== input.a.c) {
           return {
             path: ["a", "c"],
-            issue: "FILTER1"
+            message: "FILTER1"
           }
         }
         if (input.d[0] !== input.d[1]) {
           return {
             path: ["d", 1],
-            issue: "FILTER2"
+            message: "FILTER2"
           }
         }
       }))
@@ -170,63 +170,19 @@ describe("filter", () => {
       )
     })
 
-    it("return a path and a ParseIssue", async () => {
-      const schema = Test.pipe(S.filter((input) => {
-        if (input.a.b !== input.a.c) {
-          return {
-            path: ["a", "c"],
-            issue: new ParseResult.Type(S.Literal(input.a.b).ast, input.a.c)
-          }
-        }
-        if (input.d[0] !== input.d[1]) {
-          return {
-            path: ["d", 1],
-            issue: new ParseResult.Type(S.Literal(input.d[0]).ast, input.d[1])
-          }
-        }
-      }))
-      await Util.expectDecodeUnknownFailure(
-        schema,
-        { a: { b: "b", c: " " }, d: ["-", "-"] },
-        `{ Test | filter }
-└─ From side refinement failure
-   └─ Test
-      └─ ["a"]
-         └─ { readonly b: string; readonly c: a string at least 1 character(s) long }
-            └─ ["c"]
-               └─ ERROR_MIN_LENGTH`
-      )
-      await Util.expectDecodeUnknownFailure(
-        schema,
-        { a: { b: "b", c: "c" }, d: ["-", "-"] },
-        `{ Test | filter }
-└─ Predicate refinement failure
-   └─ ["a"]["c"]
-      └─ Expected "b", actual "c"`
-      )
-      await Util.expectDecodeUnknownFailure(
-        schema,
-        { a: { b: "-", c: "-" }, d: ["item0", "item1"] },
-        `{ Test | filter }
-└─ Predicate refinement failure
-   └─ ["d"][1]
-      └─ Expected "item0", actual "item1"`
-      )
-    })
-
     it("return many paths and messages", async () => {
       const schema = Test.pipe(S.filter((input) => {
-        const issues = []
+        const issues: Array<S.FilterIssue> = []
         if (input.a.b !== input.a.c) {
           issues.push({
             path: ["a", "c"],
-            issue: "FILTER1"
+            message: "FILTER1"
           })
         }
         if (input.d[0] !== input.d[1]) {
           issues.push({
             path: ["d", 1],
-            issue: "FILTER2"
+            message: "FILTER2"
           })
         }
         return issues
