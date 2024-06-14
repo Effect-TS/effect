@@ -1079,16 +1079,16 @@ Error: { readonly name: string; readonly age: number }
 assertsPerson({ name: "Alice", age: 30 })
 ```
 
-## Using [fast-check](https://github.com/dubzzz/fast-check) Arbitraries
+## Generating Arbitraries
 
-The `make` function provided by the `@effect/schema/Arbitrary` module represents a way of generating random values that conform to a given `Schema`. This can be useful for testing purposes, as it allows you to generate random test data that is guaranteed to be valid according to the `Schema`.
+The `make` function within the `@effect/schema/Arbitrary` module allows for the creation of random values that align with a specific `Schema<A, I, R>`. This utility returns an `Arbitrary<A>` from the [fast-check](https://github.com/dubzzz/fast-check) library, which is particularly useful for generating random test data that adheres to the defined schema constraints.
 
 ```ts
 import { Arbitrary, FastCheck, Schema } from "@effect/schema"
 
 const Person = Schema.Struct({
-  name: Schema.String,
-  age: Schema.String.pipe(Schema.compose(Schema.NumberFromString), Schema.int())
+  name: Schema.NonEmpty,
+  age: Schema.NumberFromString.pipe(Schema.int(), Schema.between(0, 200))
 })
 
 /*
@@ -1101,8 +1101,8 @@ const PersonArbitraryType = Arbitrary.make(Person)
 
 console.log(FastCheck.sample(PersonArbitraryType, 2))
 /*
-Output:
-[ { name: 'iP=!', age: -6 }, { name: '', age: 14 } ]
+Example Output:
+[ { name: 'q r', age: 1 }, { name: '&|', age: 133 } ]
 */
 
 /*
@@ -1116,9 +1116,70 @@ const PersonArbitraryEncoded = Arbitrary.make(Schema.encodedSchema(Person))
 
 console.log(FastCheck.sample(PersonArbitraryEncoded, 2))
 /*
-Output:
-[ { name: '{F', age: '$"{|' }, { name: 'nB}@BK', age: '^V+|W!Z' } ]
+Example Output:
+[ { name: 'key', age: '' }, { name: 'Gm', age: 'q' } ]
 */
+```
+
+### Understanding Schema Transformations and Arbitrary Generation
+
+The generation of arbitrary data requires a clear understanding of how transformations and filters are applied within a schema:
+
+- **Transformations and Filters**: Only the filters applied after the last transformation in the transformation chain are considered during arbitrary generation.
+
+```ts
+import { Arbitrary, FastCheck, Schema } from "@effect/schema"
+
+const schema1 = Schema.compose(Schema.NonEmpty, Schema.Trim).pipe(
+  Schema.maxLength(500)
+)
+// Might output empty strings despite `NonEmpty` due to filter order.
+console.log(FastCheck.sample(Arbitrary.make(schema1), 10))
+
+const schema2 = Schema.Trim.pipe(Schema.nonEmpty(), Schema.maxLength(500))
+// Ensures no empty strings, correctly applying `nonEmpty()`.
+console.log(FastCheck.sample(Arbitrary.make(schema2), 10))
+```
+
+**Explanation:**
+
+- **Schema 1**: Considers the `Schema.maxLength(500)` because it follows the `Schema.Trim` transformation but disregards `Schema.NonEmpty` as it comes before any transformations.
+- **Schema 2**: Properly adheres to all applied filters by ensuring they follow transformations, thus avoiding the generation of undesired data.
+
+**Best Practices**
+
+Organize transformations and filters to ensure clarity and effectiveness in data generation. Follow the pattern: `(I filters) -> (transformations) -> (A filters)` where "I" and "A" stand for the initial and transformed types in the schema.
+
+"I" and "A" represent the initial and final types in the schema, ensuring that each stage of data processing is clearly defined.
+
+Instead of indiscriminately combining transformations and filters:
+
+```ts
+import { Schema } from "@effect/schema"
+
+// Less optimal mixing of transformations and filters
+const schema = Schema.compose(
+  // transformation + filter
+  Schema.Lowercase,
+  // transformation + filter
+  Schema.Trim
+)
+```
+
+Prefer separating transformation steps from filter applications:
+
+```ts
+import { Schema } from "@effect/schema"
+
+// Recommended approach: Separate transformations from filters
+const schema = Schema.transform(
+  Schema.String,
+  Schema.String.pipe(Schema.trimmed(), Schema.lowercased()),
+  {
+    decode: (s) => s.trim().toLowerCase(),
+    encode: (s) => s
+  }
+)
 ```
 
 ### Customizations
@@ -1139,25 +1200,27 @@ console.log(FastCheck.sample(arb, 2))
 ```
 
 > [!WARNING]
-> Note that when customizing any schema, any filter **preceding** the customization will be lost, only filters **following** the customization will be respected.
+> Customizing a schema can disrupt previously applied filters. Filters set after the customization will remain effective, while those applied before will be disregarded.
 
 **Example**
 
 ```ts
 import { Arbitrary, FastCheck, Schema } from "@effect/schema"
 
-const bad = Schema.Number.pipe(Schema.positive()).annotations({
+// Here, the 'positive' filter is overridden by the custom arbitrary definition
+const problematic = Schema.Number.pipe(Schema.positive()).annotations({
   arbitrary: () => (fc) => fc.integer()
 })
 
-console.log(FastCheck.sample(Arbitrary.make(bad), 2))
+console.log(FastCheck.sample(Arbitrary.make(problematic), 2))
 // Example Output: [ -1600163302, -6 ]
 
-const good = Schema.Number.annotations({
+// Here, the 'positive' filter is applied after the arbitrary customization, ensuring it is considered
+const improved = Schema.Number.annotations({
   arbitrary: () => (fc) => fc.integer()
 }).pipe(Schema.positive())
 
-console.log(FastCheck.sample(Arbitrary.make(good), 2))
+console.log(FastCheck.sample(Arbitrary.make(improved), 2))
 // Example Output: [ 7, 1518247613 ]
 ```
 
@@ -1468,6 +1531,50 @@ In the example above, we define a schema for a "Category" that can contain a "na
 This ensures that the JSON Schema properly handles the recursive structure and creates distinct definitions for each annotated schema, improving readability and maintainability.
 
 ### Custom JSON Schema Annotations
+
+When working with JSON Schema in the `@effect/schema` library, certain data types, such as `bigint`, lack a direct representation because JSON Schema does not natively support them. This absence typically leads to an error when the schema is generated:
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  a_bigint_field: Schema.BigIntFromSelf
+})
+
+// Attempt to generate JSON Schema throws an error due to unsupported type
+console.log("%o", JSONSchema.make(schema))
+/*
+throws:
+Error: cannot build a JSON Schema for `bigint` without a JSON Schema annotation (path ["a_bigint_field"])
+*/
+```
+
+To address this, you can enhance the schema with a custom annotation, defining how you intend to represent such types in JSON Schema:
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  a_bigint_field: Schema.BigIntFromSelf.annotations({
+    jsonSchema: { type: "some custom way to encode a bigint in JSON Schema" }
+  })
+})
+
+// Now the JSON Schema generation will include the custom representation
+console.log("%o", JSONSchema.make(schema))
+/*
+Output:
+{
+  '$schema': 'http://json-schema.org/draft-07/schema#',
+  type: 'object',
+  required: [ 'a_bigint_field', [length]: 1 ],
+  properties: {
+    a_bigint_field: { type: 'some custom way to encode a bigint in JSON Schema' }
+  },
+  additionalProperties: false
+}
+*/
+```
 
 When defining a **refinement** (e.g., through the `filter` function), you can attach a JSON Schema annotation to your schema containing a JSON Schema "fragment" related to this particular refinement. This fragment will be used to generate the corresponding JSON Schema. Note that if the schema consists of more than one refinement, the corresponding annotations will be merged.
 
