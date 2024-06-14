@@ -1,5 +1,17 @@
 # @effect/experimental
 
+## 0.16.26
+
+### Patch Changes
+
+- [#2980](https://github.com/Effect-TS/effect/pull/2980) [`7f987a3`](https://github.com/Effect-TS/effect/commit/7f987a30f1e9332d44ca23e1b2b9aec102214e58) Thanks @tim-smart! - improve dataLoader concurrency when max batch size is hit
+
+- Updated dependencies [[`2ee4f2b`](https://github.com/Effect-TS/effect/commit/2ee4f2be7fd63074a9cbac6dcdfb533b6683533a), [`07e12ec`](https://github.com/Effect-TS/effect/commit/07e12ecdb0e20b9763bd9e9058e567a7c8862efc), [`3572646`](https://github.com/Effect-TS/effect/commit/3572646d5e0804f85bc7f64633fb95722533f9dd), [`1aed347`](https://github.com/Effect-TS/effect/commit/1aed347a125ed3847ec90863424810d6759cbc85), [`df4bf4b`](https://github.com/Effect-TS/effect/commit/df4bf4b62e7b316c6647da0271fc5544a84e7ba2), [`f085f92`](https://github.com/Effect-TS/effect/commit/f085f92dfa204afb41823ffc27d437225137643d), [`9b3b4ac`](https://github.com/Effect-TS/effect/commit/9b3b4ac639d98aae33883926bece1e31fa280d22)]:
+  - @effect/schema@0.67.23
+  - @effect/platform@0.57.1
+  - effect@3.3.2
+  - @effect/platform-node@0.51.10
+
 ## 0.16.25
 
 ### Patch Changes
