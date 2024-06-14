@@ -267,7 +267,7 @@ S.Record(aContext, bContext)
 // extend
 // ---------------------------------------------
 
-// $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: boolean; }, { readonly a: string; readonly b: number; readonly c: boolean; }, "aContext" | "bContext" | "cContext">
+// $ExpectType Schema<{ readonly a: string; readonly b: number; } & { readonly c: boolean; }, { readonly a: string; readonly b: number; } & { readonly c: boolean; }, "aContext" | "bContext" | "cContext">
 S.asSchema(S.Struct({ a: aContext, b: bContext }).pipe(S.extend(S.Struct({ c: cContext }))))
 
 // $ExpectType extend<Struct<{ a: aContext; b: bContext; }>, Struct<{ c: cContext; }>>
