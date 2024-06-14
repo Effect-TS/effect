@@ -2632,8 +2632,7 @@ export const Record = <K extends Schema.All, V extends Schema.All>(key: K, value
 export const pick = <A, I, Keys extends ReadonlyArray<keyof A & keyof I>>(...keys: Keys) =>
 <R>(
   self: Schema<A, I, R>
-): SchemaClass<Types.Simplify<Pick<A, Keys[number]>>, Types.Simplify<Pick<I, Keys[number]>>, R> =>
-  make(AST.pick(self.ast, keys))
+): SchemaClass<Pick<A, Keys[number]>, Pick<I, Keys[number]>, R> => make(AST.pick(self.ast, keys))
 
 /**
  * @category struct transformations
@@ -2642,8 +2641,7 @@ export const pick = <A, I, Keys extends ReadonlyArray<keyof A & keyof I>>(...key
 export const omit = <A, I, Keys extends ReadonlyArray<keyof A & keyof I>>(...keys: Keys) =>
 <R>(
   self: Schema<A, I, R>
-): SchemaClass<Types.Simplify<Omit<A, Keys[number]>>, Types.Simplify<Omit<I, Keys[number]>>, R> =>
-  make(AST.omit(self.ast, keys))
+): SchemaClass<Omit<A, Keys[number]>, Omit<I, Keys[number]>, R> => make(AST.omit(self.ast, keys))
 
 /**
  * Given a schema `Schema<A, I, R>` and a key `key: K`, this function extracts a specific field from the `A` type,
@@ -2686,7 +2684,7 @@ export const pluck: {
   <A, I, R, K extends keyof A & keyof I>(
     schema: Schema<A, I, R>,
     key: K
-  ): Schema<A[K], Types.Simplify<Pick<I, K>>, R> => {
+  ): Schema<A[K], Pick<I, K>, R> => {
     const ps = AST.getPropertyKeyIndexedAccess(AST.typeAST(schema.ast), key)
     const value = make<A[K], A[K], R>(ps.isOptional ? AST.orUndefined(ps.type) : ps.type)
     return transform(
@@ -2971,8 +2969,8 @@ const intersectUnionMembers = (
 export interface extend<Self extends Schema.Any, That extends Schema.Any> extends
   AnnotableClass<
     extend<Self, That>,
-    Types.Simplify<Schema.Type<Self> & Schema.Type<That>>,
-    Types.Simplify<Schema.Encoded<Self> & Schema.Encoded<That>>,
+    Schema.Type<Self> & Schema.Type<That>,
+    Schema.Encoded<Self> & Schema.Encoded<That>,
     Schema.Context<Self> | Schema.Context<That>
   >
 {}
@@ -3007,19 +3005,11 @@ export interface extend<Self extends Schema.Any, That extends Schema.Any> extend
  * @since 0.67.0
  */
 export const extend: {
-  <That extends Schema.Any>(
-    that: That
-  ): <Self extends Schema.Any>(self: Self) => extend<Self, That>
-  <Self extends Schema.Any, That extends Schema.Any>(
-    self: Self,
-    that: That
-  ): extend<Self, That>
+  <That extends Schema.Any>(that: That): <Self extends Schema.Any>(self: Self) => extend<Self, That>
+  <Self extends Schema.Any, That extends Schema.Any>(self: Self, that: That): extend<Self, That>
 } = dual(
   2,
-  <Self extends Schema.Any, That extends Schema.Any>(
-    self: Self,
-    that: That
-  ) => make(extendAST(self.ast, that.ast, []))
+  <Self extends Schema.Any, That extends Schema.Any>(self: Self, that: That) => make(extendAST(self.ast, that.ast, []))
 )
 
 /**
