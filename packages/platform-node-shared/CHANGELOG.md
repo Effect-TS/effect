@@ -1,5 +1,15 @@
 # @effect/platform-node-shared
 
+## 0.6.10
+
+### Patch Changes
+
+- [#2988](https://github.com/Effect-TS/effect/pull/2988) [`07e12ec`](https://github.com/Effect-TS/effect/commit/07e12ecdb0e20b9763bd9e9058e567a7c8862efc) Thanks @tim-smart! - refactor Socket to use do notation
+
+- Updated dependencies [[`07e12ec`](https://github.com/Effect-TS/effect/commit/07e12ecdb0e20b9763bd9e9058e567a7c8862efc), [`3572646`](https://github.com/Effect-TS/effect/commit/3572646d5e0804f85bc7f64633fb95722533f9dd), [`1aed347`](https://github.com/Effect-TS/effect/commit/1aed347a125ed3847ec90863424810d6759cbc85), [`df4bf4b`](https://github.com/Effect-TS/effect/commit/df4bf4b62e7b316c6647da0271fc5544a84e7ba2), [`f085f92`](https://github.com/Effect-TS/effect/commit/f085f92dfa204afb41823ffc27d437225137643d)]:
+  - @effect/platform@0.57.1
+  - effect@3.3.2
+
 ## 0.6.9
 
 ### Patch Changes

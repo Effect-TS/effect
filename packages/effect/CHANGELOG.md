@@ -1,5 +1,17 @@
 # effect
 
+## 3.3.2
+
+### Patch Changes
+
+- [#2981](https://github.com/Effect-TS/effect/pull/2981) [`3572646`](https://github.com/Effect-TS/effect/commit/3572646d5e0804f85bc7f64633fb95722533f9dd) Thanks @tim-smart! - ensure multiline error messages are preserved in cause rendering
+
+- [#2970](https://github.com/Effect-TS/effect/pull/2970) [`1aed347`](https://github.com/Effect-TS/effect/commit/1aed347a125ed3847ec90863424810d6759cbc85) Thanks @gcanti! - Updated `Chunk.toArray` and `Chunk.toReadonlyArray`. Improved function signatures to preserve non-empty status of chunks during conversion.
+
+- [#2977](https://github.com/Effect-TS/effect/pull/2977) [`df4bf4b`](https://github.com/Effect-TS/effect/commit/df4bf4b62e7b316c6647da0271fc5544a84e7ba2) Thanks @tim-smart! - fix discard option in Effect.all
+
+- [#2917](https://github.com/Effect-TS/effect/pull/2917) [`f085f92`](https://github.com/Effect-TS/effect/commit/f085f92dfa204afb41823ffc27d437225137643d) Thanks @mikearnaldi! - Fix Unify for Stream
+
 ## 3.3.1
 
 ### Patch Changes
