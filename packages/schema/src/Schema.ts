@@ -100,7 +100,7 @@ export const make = <A, I = A, R = never>(ast: AST.AST): SchemaClass<A, I, R> =>
     static [TypeId] = variance
     static ast = ast
     static annotations(annotations: Annotations.Schema<A>) {
-      return make<A, I, R>(AST.annotations(this.ast, toASTAnnotations(annotations)))
+      return make<A, I, R>(mergeSchemaAnnotations(this.ast, annotations))
     }
     static pipe() {
       return pipeArguments(this, arguments)
@@ -119,8 +119,8 @@ const variance = {
   _R: (_: never) => _
 }
 
-const toASTAnnotations = (
-  annotations?: Record<string | symbol, any> | undefined
+const toASTAnnotations = <A, TypeParameters extends ReadonlyArray<any>>(
+  annotations?: Annotations.Schema<A, TypeParameters>
 ): AST.Annotations => {
   if (!annotations) {
     return {}
@@ -165,6 +165,9 @@ const toASTAnnotations = (
 
   return out
 }
+
+const mergeSchemaAnnotations = <A>(ast: AST.AST, annotations: Annotations.Schema<A>): AST.AST =>
+  AST.annotations(ast, toASTAnnotations(annotations))
 
 /**
  * @category annotations
@@ -574,7 +577,7 @@ export interface Literal<Literals extends array_.NonEmptyReadonlyArray<AST.Liter
 
 const getDefaultLiteralAST = <Literals extends array_.NonEmptyReadonlyArray<AST.LiteralValue>>(
   literals: Literals
-): AST.AST =>
+) =>
   AST.isMembers(literals)
     ? AST.Union.make(AST.mapMembers(literals, (literal) => new AST.Literal(literal)))
     : new AST.Literal(literals[0])
@@ -585,7 +588,7 @@ const makeLiteralClass = <Literals extends array_.NonEmptyReadonlyArray<AST.Lite
 ): Literal<Literals> =>
   class LiteralClass extends make<Literals[number]>(ast) {
     static override annotations(annotations: Annotations.Schema<Literals[number]>): Literal<Literals> {
-      return makeLiteralClass(this.literals, AST.annotations(this.ast, toASTAnnotations(annotations)))
+      return makeLiteralClass(this.literals, mergeSchemaAnnotations(this.ast, annotations))
     }
     static literals = [...literals] as Literals
   }
@@ -646,7 +649,7 @@ export interface Enums<A extends EnumsDefinition> extends AnnotableClass<Enums<A
  */
 export type EnumsDefinition = { [x: string]: string | number }
 
-const getDefaultEnumsAST = <A extends EnumsDefinition>(enums: A): AST.AST =>
+const getDefaultEnumsAST = <A extends EnumsDefinition>(enums: A) =>
   new AST.Enums(
     Object.keys(enums).filter(
       (key) => typeof enums[enums[key]] !== "number"
@@ -659,7 +662,7 @@ const makeEnumsClass = <A extends EnumsDefinition>(
 ): Enums<A> =>
   class EnumsClass extends make<A[keyof A]>(ast) {
     static override annotations(annotations: Annotations.Schema<A[keyof A]>) {
-      return makeEnumsClass(this.enums, AST.annotations(this.ast, toASTAnnotations(annotations)))
+      return makeEnumsClass(this.enums, mergeSchemaAnnotations(this.ast, annotations))
     }
 
     static enums = { ...enums }
@@ -1033,7 +1036,7 @@ export interface Union<Members extends ReadonlyArray<Schema.Any>> extends
   annotations(annotations: Annotations.Schema<Schema.Type<Members[number]>>): Union<Members>
 }
 
-const getDefaultUnionAST = <Members extends ReadonlyArray<Schema.Any>>(members: Members): AST.AST =>
+const getDefaultUnionAST = <Members extends ReadonlyArray<Schema.Any>>(members: Members) =>
   AST.Union.members(members.map((m) => m.ast))
 
 const makeUnionClass = <Members extends ReadonlyArray<Schema.Any>>(
@@ -1044,7 +1047,7 @@ const makeUnionClass = <Members extends ReadonlyArray<Schema.Any>>(
     extends make<Schema.Type<Members[number]>, Schema.Encoded<Members[number]>, Schema.Context<Members[number]>>(ast)
   {
     static override annotations(annotations: Annotations.Schema<Schema.Type<Members[number]>>): Union<Members> {
-      return makeUnionClass(this.members, AST.annotations(this.ast, toASTAnnotations(annotations)))
+      return makeUnionClass(this.members, mergeSchemaAnnotations(this.ast, annotations))
     }
 
     static members = [...members] as any as Members
@@ -1219,13 +1222,10 @@ export interface TupleType<
   readonly rest: Readonly<Rest>
 }
 
-const getDefaultTupleTypeAST = <
-  Elements extends TupleType.Elements,
-  Rest extends ReadonlyArray<Schema.Any>
->(
+const getDefaultTupleTypeAST = <Elements extends TupleType.Elements, Rest extends ReadonlyArray<Schema.Any>>(
   elements: Elements,
   rest: Rest
-): AST.AST =>
+) =>
   new AST.TupleType(
     elements.map((schema) =>
       isSchema(schema) ? new AST.Element(schema.ast, false) : new AST.Element(schema.optionalElement.ast, true)
@@ -1250,7 +1250,7 @@ const makeTupleTypeClass = <
     static override annotations(
       annotations: Annotations.Schema<TupleType.Type<Elements, Rest>>
     ): TupleType<Elements, Rest> {
-      return makeTupleTypeClass(this.elements, this.rest, AST.annotations(this.ast, toASTAnnotations(annotations)))
+      return makeTupleTypeClass(this.elements, this.rest, mergeSchemaAnnotations(this.ast, annotations))
     }
 
     static elements = [...elements] as any as Elements
@@ -1293,7 +1293,7 @@ export interface Array$<Value extends Schema.Any> extends TupleType<[], [Value]>
 const makeArrayClass = <Value extends Schema.Any>(value: Value, ast?: AST.AST): Array$<Value> =>
   class ArrayClass extends makeTupleTypeClass<[], [Value]>([], [value], ast) {
     static override annotations(annotations: Annotations.Schema<TupleType.Type<[], [Value]>>) {
-      return makeArrayClass(this.value, AST.annotations(this.ast, toASTAnnotations(annotations)))
+      return makeArrayClass(this.value, mergeSchemaAnnotations(this.ast, annotations))
     }
 
     static value = value
@@ -1321,7 +1321,7 @@ export interface NonEmptyArray<Value extends Schema.Any> extends TupleType<[Valu
 const makeNonEmptyArrayClass = <Value extends Schema.Any>(value: Value, ast?: AST.AST): NonEmptyArray<Value> =>
   class NonEmptyArrayClass extends makeTupleTypeClass<[Value], [Value]>([value], [value], ast) {
     static override annotations(annotations: Annotations.Schema<TupleType.Type<[Value], [Value]>>) {
-      return makeNonEmptyArrayClass(this.value, AST.annotations(this.ast, toASTAnnotations(annotations)))
+      return makeNonEmptyArrayClass(this.value, mergeSchemaAnnotations(this.ast, annotations))
     }
 
     static value = value
@@ -1486,7 +1486,7 @@ export const PropertySignatureTypeId: unique symbol = Symbol.for("@effect/schema
  */
 export type PropertySignatureTypeId = typeof PropertySignatureTypeId
 
-const propertySignatureAnnotations_ = (
+const mergeSignatureAnnotations = (
   ast: PropertySignature.AST,
   annotations: AST.Annotations
 ): PropertySignature.AST => {
@@ -1571,7 +1571,7 @@ class PropertySignatureImpl<
   annotations(
     annotations: PropertySignature.Annotations<Type>
   ): PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, HasDefault, R> {
-    return new PropertySignatureImpl(propertySignatureAnnotations_(this.ast, toASTAnnotations(annotations)))
+    return new PropertySignatureImpl(mergeSignatureAnnotations(this.ast, toASTAnnotations(annotations)))
   }
 
   toString() {
@@ -1611,7 +1611,7 @@ class PropertySignatureWithFromImpl<
     annotations: PropertySignature.Annotations<Type>
   ): PropertySignatureWithFromImpl<From, TypeToken, Type, Key, EncodedToken, Encoded, HasDefault, R> {
     return new PropertySignatureWithFromImpl(
-      propertySignatureAnnotations_(this.ast, toASTAnnotations(annotations)),
+      mergeSignatureAnnotations(this.ast, toASTAnnotations(annotations)),
       this.from
     )
   }
@@ -2381,7 +2381,7 @@ const isPropertySignature = (u: unknown): u is PropertySignature.All =>
 const getDefaultTypeLiteralAST = <
   Fields extends Struct.Fields,
   const Records extends IndexSignature.Records
->(fields: Fields, records: Records): AST.AST => {
+>(fields: Fields, records: Records) => {
   const ownKeys = util_.ownKeys(fields)
   const pss: Array<AST.PropertySignature> = []
   if (ownKeys.length > 0) {
@@ -2490,7 +2490,7 @@ const makeTypeLiteralClass = <
     static override annotations(
       annotations: Annotations.Schema<Types.Simplify<TypeLiteral.Type<Fields, Records>>>
     ): TypeLiteral<Fields, Records> {
-      return makeTypeLiteralClass(this.fields, this.records, AST.annotations(this.ast, toASTAnnotations(annotations)))
+      return makeTypeLiteralClass(this.fields, this.records, mergeSchemaAnnotations(this.ast, annotations))
     }
 
     static fields = { ...fields }
@@ -2610,7 +2610,7 @@ const makeRecordClass = <K extends Schema.All, V extends Schema.All>(key: K, val
     static override annotations(
       annotations: Annotations.Schema<Types.Simplify<TypeLiteral.Type<{}, [{ key: K; value: V }]>>>
     ) {
-      return makeRecordClass(key, value, AST.annotations(this.ast, toASTAnnotations(annotations)))
+      return makeRecordClass(key, value, mergeSchemaAnnotations(this.ast, annotations))
     }
 
     static key = key
@@ -2721,7 +2721,7 @@ export interface brand<S extends Schema.Any, B extends string | symbol>
 const makeBrandClass = <S extends Schema.Any, B extends string | symbol>(ast: AST.AST): brand<S, B> =>
   class BrandClass extends make<Schema.Type<S> & Brand<B>, Schema.Encoded<S>, Schema.Context<S>>(ast) {
     static override annotations(annotations: Annotations.Schema<Schema.Type<S> & Brand<B>>): brand<S, B> {
-      return makeBrandClass(AST.annotations(this.ast, toASTAnnotations(annotations)))
+      return makeBrandClass(mergeSchemaAnnotations(this.ast, annotations))
     }
 
     static make = (a: Brand.Unbranded<Schema.Type<S> & Brand<B>>, options?: MakeOptions): Schema.Type<S> & Brand<B> => {
@@ -3095,7 +3095,7 @@ const makeRefineClass = <From extends Schema.Any, A>(
 ): refine<A, From> =>
   class RefineClass extends make<A, Schema.Encoded<From>, Schema.Context<From>>(ast) {
     static override annotations(annotations: Annotations.Schema<A>): refine<A, From> {
-      return makeRefineClass(this.from, this.filter, AST.annotations(this.ast, toASTAnnotations(annotations)))
+      return makeRefineClass(this.from, this.filter, mergeSchemaAnnotations(this.ast, annotations))
     }
 
     static from = from
@@ -3191,7 +3191,7 @@ const makeTransformationClass = <From extends Schema.Any, To extends Schema.Any,
       return makeTransformationClass<From, To, R>(
         this.from,
         this.to,
-        AST.annotations(this.ast, toASTAnnotations(annotations))
+        mergeSchemaAnnotations(this.ast, annotations)
       )
     }
 
@@ -3458,14 +3458,14 @@ export const attachPropertySignature: {
     value: V,
     annotations?: Annotations.Schema<Types.Simplify<A & { readonly [k in K]: V }>>
   ): SchemaClass<Types.Simplify<A & { readonly [k in K]: V }>, I, R> => {
-    const attached = extend(
+    const ast = extend(
       typeSchema(schema),
       Struct({ [key]: Predicate.isSymbol(value) ? UniqueSymbolFromSelf(value) : Literal(value) })
     ).ast
     return make(
       new AST.Transformation(
         schema.ast,
-        annotations ? AST.annotations(attached, toASTAnnotations(annotations)) : attached,
+        annotations ? mergeSchemaAnnotations(ast, annotations) : ast,
         new AST.TypeLiteralTransformation(
           [
             new AST.PropertySignatureTransformation(
