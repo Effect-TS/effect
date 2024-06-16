@@ -119,8 +119,12 @@ const variance = {
   _R: (_: never) => _
 }
 
+interface AllAnnotations<A, TypeParameters extends ReadonlyArray<any>>
+  extends Annotations.Schema<A, TypeParameters>, PropertySignature.Annotations<A>
+{}
+
 const toASTAnnotations = <A, TypeParameters extends ReadonlyArray<any>>(
-  annotations?: Annotations.Schema<A, TypeParameters>
+  annotations?: AllAnnotations<A, TypeParameters>
 ): AST.Annotations => {
   if (!annotations) {
     return {}
@@ -326,7 +330,7 @@ export const typeSchema = <A, I, R>(schema: Schema<A, I, R>): SchemaClass<A> => 
 /* c8 ignore start */
 export {
   /**
-   * By default the option `isExact` is set to `true`.
+   * By default the option `exact` is set to `true`.
    *
    * @category validation
    * @since 0.67.0
@@ -373,7 +377,7 @@ export {
    */
   encodeUnknownSync,
   /**
-   * By default the option `isExact` is set to `true`.
+   * By default the option `exact` is set to `true`.
    *
    * @category validation
    * @since 0.67.0
