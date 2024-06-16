@@ -681,6 +681,82 @@ Schema.decode(schema)({ a: 1, b: 2, c: 3 }, { propertyOrder: "original" })
 // Output preserving input order: { a: 1, b: 2, c: 3 }
 ```
 
+### Managing Missing Properties
+
+When using the `@effect/schema` library to handle data structures, it's important to understand how missing properties are processed. By default, if a property is not present in the input, it is treated as if it were present with an `undefined` value.
+
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.Struct({ a: Schema.Unknown })
+const input = {}
+
+console.log(Schema.decodeUnknownSync(schema)(input)) // Output: { a: undefined }
+```
+
+In this example, although the key `"a"` is not present in the input, it is treated as `{ a: undefined }` by default.
+
+If your validation logic needs to distinguish between truly missing properties and those that are explicitly undefined, you can enable the `exact` option:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.Struct({ a: Schema.Unknown })
+const input = {}
+
+console.log(Schema.decodeUnknownSync(schema)(input, { exact: true }))
+/*
+throws
+Error: { readonly a: unknown }
+└─ ["a"]
+   └─ is missing
+*/
+```
+
+For the APIs `is` and `asserts`, however, the default behavior is to treat missing properties strictly, where the default for `exact` is `true`:
+
+```ts
+import type { AST } from "@effect/schema"
+import { Schema } from "@effect/schema"
+
+const schema = Schema.Struct({ a: Schema.Unknown })
+const input = {}
+
+console.log(Schema.is(schema)(input)) // Output: false
+console.log(Schema.is(schema)(input, { exact: false })) // Output: true
+
+const asserts: (
+  u: unknown,
+  overrideOptions?: AST.ParseOptions
+) => asserts u is {
+  readonly a: unknown
+} = Schema.asserts(schema)
+
+try {
+  asserts(input)
+  console.log("asserts passed")
+} catch (e: any) {
+  console.error("asserts failed")
+  console.error(e.message)
+}
+/*
+Output:
+asserts failed
+{ readonly a: unknown }
+└─ ["a"]
+  └─ is missing
+*/
+
+try {
+  asserts(input, { exact: false })
+  console.log("asserts passed")
+} catch (e: any) {
+  console.error("asserts failed")
+  console.error(e.message)
+}
+// Output: asserts passed
+```
+
 ## Encoding
 
 The `@effect/schema/Schema` module provides several `encode*` functions to encode data according to a schema:

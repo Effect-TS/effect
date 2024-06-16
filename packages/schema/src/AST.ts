@@ -1636,16 +1636,69 @@ export const isRefinement: (ast: AST) => ast is Refinement<AST> = createASTGuard
  * @since 0.67.0
  */
 export interface ParseOptions {
-  /** default "first" */
+  /**
+   * The `errors` option allows you to receive all parsing errors when
+   * attempting to parse a value using a schema. By default only the first error
+   * is returned, but by setting the `errors` option to `"all"`, you can receive
+   * all errors that occurred during the parsing process. This can be useful for
+   * debugging or for providing more comprehensive error messages to the user.
+   *
+   * default: "first"
+   *
+   * @since 0.67.0
+   */
   readonly errors?: "first" | "all" | undefined
-  /** default "ignore" */
+  /**
+   * When using a `Schema` to parse a value, by default any properties that are
+   * not specified in the `Schema` will be stripped out from the output. This is
+   * because the `Schema` is expecting a specific shape for the parsed value,
+   * and any excess properties do not conform to that shape.
+   *
+   * However, you can use the `onExcessProperty` option (default value:
+   * `"ignore"`) to trigger a parsing error. This can be particularly useful in
+   * cases where you need to detect and handle potential errors or unexpected
+   * values.
+   *
+   * If you want to allow excess properties to remain, you can use
+   * `onExcessProperty` set to `"preserve"`.
+   *
+   * default: "ignore"
+   *
+   * @since 0.67.0
+   */
   readonly onExcessProperty?: "ignore" | "error" | "preserve" | undefined
   /**
-   * default "none"
+   * The `propertyOrder` option provides control over the order of object fields
+   * in the output. This feature is particularly useful when the sequence of
+   * keys is important for the consuming processes or when maintaining the input
+   * order enhances readability and usability.
+   *
+   * By default, the `propertyOrder` option is set to `"none"`. This means that
+   * the internal system decides the order of keys to optimize parsing speed.
+   * The order of keys in this mode should not be considered stable, and it's
+   * recommended not to rely on key ordering as it may change in future updates
+   * without notice.
+   *
+   * Setting `propertyOrder` to `"original"` ensures that the keys are ordered
+   * as they appear in the input during the decoding/encoding process.
+   *
+   * default: "none"
    *
    * @since 0.67.20
    */
   readonly propertyOrder?: "none" | "original" | undefined
+  /**
+   * Handles missing properties in data structures. By default, missing
+   * properties are treated as if present with an `undefined` value. To treat
+   * missing properties as errors, set the `exact` option to `true`. This
+   * setting is already enabled by default for `is` and `asserts` functions,
+   * treating absent properties strictly unless overridden.
+   *
+   * default: false
+   *
+   * @since 0.67.24
+   */
+  readonly exact?: boolean
 }
 
 /**

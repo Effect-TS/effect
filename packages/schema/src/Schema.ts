@@ -326,6 +326,8 @@ export const typeSchema = <A, I, R>(schema: Schema<A, I, R>): SchemaClass<A> => 
 /* c8 ignore start */
 export {
   /**
+   * By default the option `isExact` is set to `true`.
+   *
    * @category validation
    * @since 0.67.0
    */
@@ -371,6 +373,8 @@ export {
    */
   encodeUnknownSync,
   /**
+   * By default the option `isExact` is set to `true`.
+   *
    * @category validation
    * @since 0.67.0
    */
