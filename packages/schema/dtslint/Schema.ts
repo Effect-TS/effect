@@ -611,6 +611,9 @@ S.Struct({ a: S.String.pipe(S.optional({ exact: true })) })
 // ---------------------------------------------
 
 // @ts-expect-error
+S.Boolean.pipe(S.optional)
+
+// @ts-expect-error
 S.optional(S.String, { as: "Option", default: () => "" })
 
 // @ts-expect-error
