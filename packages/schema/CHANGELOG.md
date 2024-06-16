@@ -1,5 +1,16 @@
 # @effect/schema
 
+## 0.67.23
+
+### Patch Changes
+
+- [#2991](https://github.com/Effect-TS/effect/pull/2991) [`2ee4f2b`](https://github.com/Effect-TS/effect/commit/2ee4f2be7fd63074a9cbac6dcdfb533b6683533a) Thanks @gcanti! - Remove `Simplify` from `extend`, `pick`, `omit`, `pluck` APIs, closes #2989, #2990
+
+- [#2971](https://github.com/Effect-TS/effect/pull/2971) [`9b3b4ac`](https://github.com/Effect-TS/effect/commit/9b3b4ac639d98aae33883926bece1e31fa280d22) Thanks @gcanti! - Add `Schema.NonEmptyChunkFromSelf` and `Schema.NonEmptyChunk`, closes #2961
+
+- Updated dependencies [[`3572646`](https://github.com/Effect-TS/effect/commit/3572646d5e0804f85bc7f64633fb95722533f9dd), [`1aed347`](https://github.com/Effect-TS/effect/commit/1aed347a125ed3847ec90863424810d6759cbc85), [`df4bf4b`](https://github.com/Effect-TS/effect/commit/df4bf4b62e7b316c6647da0271fc5544a84e7ba2), [`f085f92`](https://github.com/Effect-TS/effect/commit/f085f92dfa204afb41823ffc27d437225137643d)]:
+  - effect@3.3.2
+
 ## 0.67.22
 
 ### Patch Changes

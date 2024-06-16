@@ -348,3 +348,16 @@ export const expectFields = (f1: S.Struct.Fields, f2: S.Struct.Fields) => {
   const ks2 = Reflect.ownKeys(f2).sort().map((k) => [k, f2[k].ast.toString()])
   expect(ks1).toStrictEqual(ks2)
 }
+
+export const expectAssertsSuccess = <A, I>(schema: S.Schema<A, I>, input: unknown, options?: ParseOptions) => {
+  expect(S.asserts(schema, options)(input)).toEqual(undefined)
+}
+
+export const expectAssertsFailure = <A, I>(
+  schema: S.Schema<A, I>,
+  input: unknown,
+  message: string,
+  options?: ParseOptions
+) => {
+  expect(() => S.asserts(schema, options)(input)).toThrow(new Error(message))
+}

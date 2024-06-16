@@ -675,16 +675,20 @@ export const validate = <A, I, R>(
   getEffect(AST.typeAST(schema.ast), true, options)
 
 /**
+ * By default the option `isExact` is set to `true`.
+ *
  * @category validation
  * @since 0.67.0
  */
 export const is = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: AST.ParseOptions) => {
   const parser = goMemo(AST.typeAST(schema.ast), true)
   return (u: unknown, overrideOptions?: AST.ParseOptions | number): u is A =>
-    Either.isRight(parser(u, { ...mergeParseOptions(options, overrideOptions), isExact: true }) as any)
+    Either.isRight(parser(u, { exact: true, ...mergeParseOptions(options, overrideOptions) }) as any)
 }
 
 /**
+ * By default the option `exact` is set to `true`.
+ *
  * @throws `ParseError`
  * @category validation
  * @since 0.67.0
@@ -693,8 +697,8 @@ export const asserts = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: AST.P
   const parser = goMemo(AST.typeAST(schema.ast), true)
   return (u: unknown, overrideOptions?: AST.ParseOptions): asserts u is A => {
     const result: Either.Either<any, ParseIssue> = parser(u, {
-      ...mergeParseOptions(options, overrideOptions),
-      isExact: true
+      exact: true,
+      ...mergeParseOptions(options, overrideOptions)
     }) as any
     if (Either.isLeft(result)) {
       throw parseError(result.left)
@@ -749,8 +753,6 @@ export const encode: <A, I, R>(
 
 interface InternalOptions extends AST.ParseOptions {
   readonly isEffectAllowed?: boolean
-  // `isExact = false` means that missing keys are treated as undefined values (`{ key: undefined }`)
-  readonly isExact?: boolean
 }
 
 interface Parser {
@@ -1183,7 +1185,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           | Array<(state: State) => Effect.Effect<void, ParseIssue, any>>
           | undefined = undefined
 
-        const isExact = options?.isExact === true
+        const isExact = options?.exact === true
         for (let i = 0; i < propertySignatures.length; i++) {
           const ps = propertySignatures[i][1]
           const name = ps.name

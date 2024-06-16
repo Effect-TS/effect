@@ -212,14 +212,14 @@ S.Struct({ a: aContext, b: bContext })
 // pick
 // ---------------------------------------------
 
-// $ExpectType SchemaClass<{ readonly a: string; }, { readonly a: string; }, "aContext" | "bContext">
+// $ExpectType SchemaClass<Pick<{ readonly a: string; readonly b: number; }, "a">, Pick<{ readonly a: string; readonly b: number; }, "a">, "aContext" | "bContext">
 S.Struct({ a: aContext, b: bContext }).pipe(S.pick("a"))
 
 // ---------------------------------------------
 // omit
 // ---------------------------------------------
 
-// $ExpectType SchemaClass<{ readonly a: string; }, { readonly a: string; }, "aContext" | "bContext">
+// $ExpectType SchemaClass<Omit<{ readonly a: string; readonly b: number; }, "b">, Omit<{ readonly a: string; readonly b: number; }, "b">, "aContext" | "bContext">
 S.Struct({ a: aContext, b: bContext }).pipe(S.omit("b"))
 
 // ---------------------------------------------
@@ -267,7 +267,7 @@ S.Record(aContext, bContext)
 // extend
 // ---------------------------------------------
 
-// $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c: boolean; }, { readonly a: string; readonly b: number; readonly c: boolean; }, "aContext" | "bContext" | "cContext">
+// $ExpectType Schema<{ readonly a: string; readonly b: number; } & { readonly c: boolean; }, { readonly a: string; readonly b: number; } & { readonly c: boolean; }, "aContext" | "bContext" | "cContext">
 S.asSchema(S.Struct({ a: aContext, b: bContext }).pipe(S.extend(S.Struct({ c: cContext }))))
 
 // $ExpectType extend<Struct<{ a: aContext; b: bContext; }>, Struct<{ c: cContext; }>>
