@@ -438,7 +438,8 @@ export const envUnsafeMakeEmpty = (): Env<never> => {
  * @since 3.4.0
  * @category environment
  */
-export const envGet = <R, A>(env: Env<R>, ref: EnvRef<A>): A => env.refs[ref.key] as A ?? ref.initial
+export const envGet = <R, A>(env: Env<R>, ref: EnvRef<A>): A =>
+  ref.key in env.refs ? (env.refs[ref.key] as A) : ref.initial
 
 /**
  * @since 3.4.0
@@ -519,7 +520,7 @@ export const currentConcurrency: EnvRef<"unbounded" | number> = envRefMake(
  * @since 3.4.0
  * @category environment refs
  */
-export const currentMaxOpsBeforeYield: EnvRef<number> = envRefMake(
+export const currentMaxDepthBeforeYield: EnvRef<number> = envRefMake(
   "effect/Micro/currentMaxDepthBeforeYield",
   () => 2048
 )
@@ -572,7 +573,7 @@ const MicroProto = {
 
 const stackDepthState = globalValue("effect/Micro/stackDepthState", () => ({
   depth: 0,
-  maxDepthBeforeYield: currentMaxOpsBeforeYield.initial
+  maxDepthBeforeYield: currentMaxDepthBeforeYield.initial
 }))
 
 const unsafeMake = <A, E, R>(
@@ -589,7 +590,7 @@ const unsafeMakeNoAbort = <A, E, R>(
   unsafeMake(function execute(env, onResult) {
     stackDepthState.depth++
     if (stackDepthState.depth === 1) {
-      stackDepthState.maxDepthBeforeYield = envGet(env, currentMaxOpsBeforeYield)
+      stackDepthState.maxDepthBeforeYield = envGet(env, currentMaxDepthBeforeYield)
     }
     if (stackDepthState.depth >= stackDepthState.maxDepthBeforeYield) {
       yieldAdd(() => execute(env, onResult))
@@ -620,7 +621,7 @@ export const make = <A, E, R>(
     }
     stackDepthState.depth++
     if (stackDepthState.depth === 1) {
-      stackDepthState.maxDepthBeforeYield = envGet(env, currentMaxOpsBeforeYield)
+      stackDepthState.maxDepthBeforeYield = envGet(env, currentMaxDepthBeforeYield)
     }
     if (stackDepthState.depth >= stackDepthState.maxDepthBeforeYield) {
       yieldAdd(() => execute(env, onResult))
