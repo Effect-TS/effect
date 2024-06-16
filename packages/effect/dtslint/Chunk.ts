@@ -501,7 +501,7 @@ pipe(hole<Chunk.Chunk<string>>(), Chunk.toArray)
 // $ExpectType [string, ...string[]]
 Chunk.toArray(hole<Chunk.NonEmptyChunk<string>>())
 
-// $ExpectType string[]
+// $ExpectType [string, ...string[]]
 pipe(hole<Chunk.NonEmptyChunk<string>>(), Chunk.toArray)
 
 // -------------------------------------------------------------------------------------
@@ -511,7 +511,7 @@ pipe(hole<Chunk.NonEmptyChunk<string>>(), Chunk.toArray)
 // $ExpectType readonly string[]
 Chunk.toReadonlyArray(hole<Chunk.Chunk<string>>())
 
-// $ExpectType string[]
+// $ExpectType readonly string[]
 pipe(hole<Chunk.Chunk<string>>(), Chunk.toReadonlyArray)
 
 // $ExpectType readonly [string, ...string[]]
