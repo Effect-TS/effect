@@ -2190,10 +2190,13 @@ export const optional: {
     options?: Options
   ): (self: S) => [undefined] extends [Options] ? optional<S> : optionalWithOptions<S, Options>
   <S extends Schema.All, Options extends OptionalOptions<Schema.Type<S>>>(
-    self: S,
+    self: Schema.All extends S ? "you can't apply optional implicitly, use optional() instead" : S,
     options?: Options
   ): [undefined] extends [Options] ? optional<S> : optionalWithOptions<S, Options>
 } = dual((args) => isSchema(args[0]), (from, options) => {
+  // Note: `Schema.All extends S ? "you can't...` is used to prevent the case where `optional` is implicitly applied.
+  // For example: `S.String.pipe(S.optional)` would result in `S.String` being inferred as `Schema.All`,
+  // which is not the intended behavior. This is mostly an aesthetic consideration, so if it causes issues, we can remove it.
   return new PropertySignatureWithFromImpl(optionalPropertySignatureAST(from, options), from)
 })
 
