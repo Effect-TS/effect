@@ -515,6 +515,15 @@ export const currentConcurrency: EnvRef<"unbounded" | number> = envRefMake(
   () => "unbounded"
 )
 
+/**
+ * @since 3.4.0
+ * @category environment refs
+ */
+export const currentMaxDepthBeforeYield: EnvRef<number> = envRefMake(
+  "effect/Micro/currentMaxDepthBeforeYield",
+  () => 2048
+)
+
 const currentInterruptible: EnvRef<boolean> = envRefMake(
   "effect/Micro/currentInterruptible",
   () => true
@@ -561,6 +570,11 @@ const MicroProto = {
   }
 }
 
+const stackDepthState = globalValue("effect/Micro/stackDepthState", () => ({
+  depth: 0,
+  maxDepthBeforeYield: 2048
+}))
+
 const unsafeMake = <A, E, R>(
   run: (env: Env<R>, onResult: (result: Result<A, E>) => void) => void
 ): Micro<A, E, R> => {
@@ -572,12 +586,21 @@ const unsafeMake = <A, E, R>(
 const unsafeMakeNoAbort = <A, E, R>(
   run: (env: Env<R>, onResult: (result: Result<A, E>) => void) => void
 ): Micro<A, E, R> =>
-  unsafeMake(function(env, onResult) {
-    try {
-      run(env, onResult)
-    } catch (err) {
-      onResult(Either.left(FailureUnexpected(err)))
+  unsafeMake(function execute(env, onResult) {
+    stackDepthState.depth++
+    if (stackDepthState.depth === 1) {
+      stackDepthState.maxDepthBeforeYield = envGet(env, currentMaxDepthBeforeYield)
     }
+    if (stackDepthState.depth >= stackDepthState.maxDepthBeforeYield) {
+      yieldAdd(() => execute(env, onResult))
+    } else {
+      try {
+        run(env, onResult)
+      } catch (err) {
+        onResult(ResultFailUnexpected(err))
+      }
+    }
+    stackDepthState.depth--
   })
 
 /**
@@ -591,15 +614,24 @@ const unsafeMakeNoAbort = <A, E, R>(
 export const make = <A, E, R>(
   run: (env: Env<R>, onResult: (result: Result<A, E>) => void) => void
 ): Micro<A, E, R> =>
-  unsafeMake(function(env: Env<R>, onResult: (result: Result<A, E>) => void) {
+  unsafeMake(function execute(env: Env<R>, onResult: (result: Result<A, E>) => void) {
     if (env.refs[currentInterruptible.key] !== false && (env.refs[currentAbortSignal.key] as AbortSignal).aborted) {
       return onResult(ResultAborted)
     }
-    try {
-      run(env, onResult)
-    } catch (err) {
-      onResult(ResultFailUnexpected(err))
+    stackDepthState.depth++
+    if (stackDepthState.depth === 1) {
+      stackDepthState.maxDepthBeforeYield = envGet(env, currentMaxDepthBeforeYield)
     }
+    if (stackDepthState.depth >= stackDepthState.maxDepthBeforeYield) {
+      yieldAdd(() => execute(env, onResult))
+    } else {
+      try {
+        run(env, onResult)
+      } catch (err) {
+        onResult(ResultFailUnexpected(err))
+      }
+    }
+    stackDepthState.depth--
   })
 
 /**

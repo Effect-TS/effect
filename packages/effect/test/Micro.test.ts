@@ -287,6 +287,7 @@ describe.concurrent("Micro", () => {
             })
         ).pipe(Micro.scoped, Micro.fork)
         yield* Micro.yieldNow
+        yield* Micro.yieldNow
         handle.unsafeAbort()
         yield* handle.await
         assert.strictEqual(release, true)
@@ -789,5 +790,16 @@ describe.concurrent("Micro", () => {
           })
         })
       ))
+  })
+
+  describe("stack safety", () => {
+    it.effect("recursion", () => {
+      const loop: Micro.Micro<void> = Micro.void.pipe(
+        Micro.flatMap((_) => loop)
+      )
+      return loop.pipe(
+        Micro.timeout(50)
+      )
+    })
   })
 })
