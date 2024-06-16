@@ -119,8 +119,12 @@ const variance = {
   _R: (_: never) => _
 }
 
+interface AllAnnotations<A, TypeParameters extends ReadonlyArray<any>>
+  extends Annotations.Schema<A, TypeParameters>, PropertySignature.Annotations<A>
+{}
+
 const toASTAnnotations = <A, TypeParameters extends ReadonlyArray<any>>(
-  annotations?: Annotations.Schema<A, TypeParameters>
+  annotations?: AllAnnotations<A, TypeParameters>
 ): AST.Annotations => {
   if (!annotations) {
     return {}
