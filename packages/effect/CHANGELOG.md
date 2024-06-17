@@ -1,5 +1,11 @@
 # effect
 
+## 3.3.4
+
+### Patch Changes
+
+- [#3001](https://github.com/Effect-TS/effect/pull/3001) [`a67b8fe`](https://github.com/Effect-TS/effect/commit/a67b8fe2ace08419424811b5f0d9a5378eaea352) Thanks @tim-smart! - use Math.random for Hash.random
+
 ## 3.3.3
 
 ### Patch Changes
