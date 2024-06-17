@@ -3190,14 +3190,12 @@ const fromFilterPredicateReturnTypeItem = (
   return option_.none()
 }
 
-const isFilterPredicateReturnTypeItem = (out: FilterReturnType): out is FilterOutput => !Array.isArray(out)
-
 const toFilterParseIssue = (
   out: FilterReturnType,
   ast: AST.Refinement,
   input: unknown
 ): option_.Option<ParseResult.ParseIssue> => {
-  if (isFilterPredicateReturnTypeItem(out)) {
+  if (util_.isSingle(out)) {
     return fromFilterPredicateReturnTypeItem(out, ast, input)
   }
   if (array_.isNonEmptyReadonlyArray(out)) {

@@ -40,13 +40,25 @@ export type ParseIssue =
  * @category model
  * @since 0.68.0
  */
+export type SingleOrNonEmpty<A> = A | array_.NonEmptyReadonlyArray<A>
+
+/**
+ * @category model
+ * @since 0.68.0
+ */
+export type Path = SingleOrNonEmpty<PropertyKey>
+
+/**
+ * @category model
+ * @since 0.68.0
+ */
 export class Pointer {
   /**
    * @since 0.68.0
    */
   readonly _tag = "Pointer"
   constructor(
-    readonly path: PropertyKey | array_.NonEmptyReadonlyArray<PropertyKey>,
+    readonly path: Path,
     readonly actual: unknown,
     readonly issue: ParseIssue
   ) {}
@@ -113,7 +125,7 @@ export class Composite {
   constructor(
     readonly ast: AST.Annotated,
     readonly actual: unknown,
-    readonly issues: ParseIssue | array_.NonEmptyReadonlyArray<ParseIssue>,
+    readonly issues: SingleOrNonEmpty<ParseIssue>,
     readonly output?: unknown
   ) {}
 }

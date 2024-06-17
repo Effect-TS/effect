@@ -72,7 +72,7 @@ const go = (
       return go(e.issue, path.concat(e.path))
     case "Composite":
       return getArray(e, path, () =>
-        util_.isArray(e.issues)
+        util_.isNonEmpty(e.issues)
           ? Effect.map(Effect.forEach(e.issues, (issue) => go(issue, path)), array_.flatten)
           : go(e.issues, path))
     case "Refinement":

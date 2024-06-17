@@ -2,7 +2,6 @@
  * @since 0.67.0
  */
 
-import type * as array_ from "effect/Array"
 import type * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
@@ -192,15 +191,6 @@ const getTree = (issue: ParseResult.ParseIssue, onFailure: () => Effect.Effect<T
     onSuccess: (message) => Effect.succeed(make(message))
   })
 
-const formatPathKey = (key: PropertyKey): string => `[${util_.formatPropertyKey(key)}]`
-
-const isArray = <A>(
-  as: A | array_.NonEmptyReadonlyArray<PropertyKey>
-): as is array_.NonEmptyReadonlyArray<PropertyKey> => Array.isArray(as)
-
-const formatPath = (path: PropertyKey | array_.NonEmptyReadonlyArray<PropertyKey>): string =>
-  isArray(path) ? path.map(formatPathKey).join("") : formatPathKey(path)
-
 const go = (
   e: ParseResult.ParseIssue | ParseResult.Pointer
 ): Effect.Effect<Tree<string>> => {
@@ -226,13 +216,13 @@ const go = (
           Effect.map(go(e.issue), (tree) => make(getParseIssueTitle(e), [make(formatRefinementKind(e.kind), [tree])]))
       )
     case "Pointer":
-      return Effect.map(go(e.issue), (tree) => make(formatPath(e.path), [tree]))
+      return Effect.map(go(e.issue), (tree) => make(util_.formatPath(e.path), [tree]))
     case "Composite": {
       const parseIssueTitle = getParseIssueTitle(e)
       return getTree(
         e,
         () =>
-          util_.isArray(e.issues)
+          util_.isNonEmpty(e.issues)
             ? Effect.map(Effect.forEach(e.issues, go), (forest) => make(parseIssueTitle, forest))
             : Effect.map(go(e.issues), (tree) => make(parseIssueTitle, [tree]))
       )
