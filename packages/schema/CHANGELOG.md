@@ -1,5 +1,31 @@
 # @effect/schema
 
+## 0.67.24
+
+### Patch Changes
+
+- [#2997](https://github.com/Effect-TS/effect/pull/2997) [`3b15e1b`](https://github.com/Effect-TS/effect/commit/3b15e1b505c0b0e62a03b4a3605d42a9932cc99c) Thanks @gcanti! - Improve error handling (type-level) for improper usage of `optional`, closes #2995
+
+  This commit addresses concerns raised by users about the confusing behavior when 'optional' is misused in a schema definition. Previously, users experienced unexpected results, such as a schema returning 'Schema.All' when 'optional' was used incorrectly, without clear guidance on the correct usage or error messages.
+
+  Changes:
+
+  - Enhanced the 'optional' method to return a descriptive type-level error when used incorrectly, helping users identify and correct their schema definitions.
+  - Updated the `Schema.optional()` implementation to check its context within a pipeline and ensure it is being used correctly.
+  - Added unit tests to verify that the new error handling works as expected and to ensure that correct usage does not affect existing functionality.
+
+- [#2994](https://github.com/Effect-TS/effect/pull/2994) [`3a750b2`](https://github.com/Effect-TS/effect/commit/3a750b25b1ed92094a7f7ebc332a6bcfb212871b) Thanks @gcanti! - Expose `exact` option for strict decoding on missing properties, closes #2993
+
+  This commit addresses an issue where users encountered unexpected decoding behaviors, specifically regarding how undefined values and missing properties are handled. The default behavior of the `@effect/schema` library treats missing properties as `undefined` during decoding, which can lead to confusion when stricter validation is expected.
+
+  Changes:
+
+  - Exposed an internal configuration option `exțact` (default: `false`), which when set to `true`, enforces strict decoding that will error on missing properties instead of treating them as `undefined`.
+  - Updated documentation to clearly outline the default and strict decoding behaviors, providing users with guidance on how to enable strict validation.
+
+- Updated dependencies [[`06ede85`](https://github.com/Effect-TS/effect/commit/06ede85d6e84710e6622463be95ff3927fb30dad), [`7204ca5`](https://github.com/Effect-TS/effect/commit/7204ca5761c2b1d27999a624db23aa10b6e0504d)]:
+  - effect@3.3.3
+
 ## 0.67.23
 
 ### Patch Changes
