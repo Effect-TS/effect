@@ -10,7 +10,7 @@ describe("validateSync", () => {
     expect(() => S.validateSync(schema)({ a: null })).toThrow(
       new Error(`{ readonly a: number }
 └─ ["a"]
-   └─ Expected a number, actual null`)
+   └─ Expected number, actual null`)
     )
   })
 
@@ -28,12 +28,12 @@ describe("validateSync", () => {
     expect(() => S.validateSync(schema)(input, { onExcessProperty: "error" })).toThrow(
       new Error(`{ readonly a: number }
 └─ ["b"]
-   └─ is unexpected, expected "a"`)
+   └─ is unexpected, expected: "a"`)
     )
     expect(() => S.validateSync(schema, { onExcessProperty: "error" })(input)).toThrow(
       new Error(`{ readonly a: number }
 └─ ["b"]
-   └─ is unexpected, expected "a"`)
+   └─ is unexpected, expected: "a"`)
     )
     expect(S.validateSync(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }))
       .toEqual({ a: 1 })

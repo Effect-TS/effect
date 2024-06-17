@@ -11,12 +11,12 @@ describe("BigIntFromSelf", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       null,
-      `Expected a bigint, actual null`
+      `Expected bigint, actual null`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       1.2,
-      `Expected a bigint, actual 1.2`
+      `Expected bigint, actual 1.2`
     )
   })
 

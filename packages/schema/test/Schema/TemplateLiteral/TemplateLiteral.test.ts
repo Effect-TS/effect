@@ -6,10 +6,12 @@ import { describe, expect, it } from "vitest"
 describe("TemplateLiteral", () => {
   it("should throw on unsupported template literal spans", () => {
     expect(() => S.TemplateLiteral(S.Boolean)).toThrow(
-      new Error("unsupported template literal span (boolean)")
+      new Error(`Unsupported template literal span
+schema (BooleanKeyword): boolean`)
     )
     expect(() => S.TemplateLiteral(S.SymbolFromSelf)).toThrow(
-      new Error("unsupported template literal span (symbol)")
+      new Error(`Unsupported template literal span
+schema (SymbolKeyword): symbol`)
     )
   })
 
@@ -47,22 +49,22 @@ describe("TemplateLiteral", () => {
       const schema = S.TemplateLiteral(S.Literal("a", "b"), S.String, S.Literal("d", "e"))
       expect(schema.ast).toEqual(
         AST.Union.make([
-          AST.TemplateLiteral.make("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "d")]),
-          AST.TemplateLiteral.make("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "e")]),
-          AST.TemplateLiteral.make("b", [new AST.TemplateLiteralSpan(AST.stringKeyword, "d")]),
-          AST.TemplateLiteral.make("b", [new AST.TemplateLiteralSpan(AST.stringKeyword, "e")])
+          new AST.TemplateLiteral("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "d")]),
+          new AST.TemplateLiteral("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "e")]),
+          new AST.TemplateLiteral("b", [new AST.TemplateLiteralSpan(AST.stringKeyword, "d")]),
+          new AST.TemplateLiteral("b", [new AST.TemplateLiteralSpan(AST.stringKeyword, "e")])
         ])
       )
     })
 
     it("a${string}", () => {
-      const expected = AST.TemplateLiteral.make("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "")])
+      const expected = new AST.TemplateLiteral("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "")])
       expect(S.TemplateLiteral(S.Literal("a"), S.String).ast).toEqual(expected)
       expect(S.TemplateLiteral("a", S.String).ast).toEqual(expected)
     })
 
     it("a${string}b", () => {
-      const expected = AST.TemplateLiteral.make("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "b")])
+      const expected = new AST.TemplateLiteral("a", [new AST.TemplateLiteralSpan(AST.stringKeyword, "b")])
       expect(S.TemplateLiteral(S.Literal("a"), S.String, S.Literal("b")).ast).toEqual(expected)
       expect(S.TemplateLiteral("a", S.String, "b").ast).toEqual(expected)
     })
@@ -206,14 +208,10 @@ describe("TemplateLiteral", () => {
         schema,
         "_id",
         `"welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id"
-├─ Union member
-│  └─ Expected "welcome_email_id", actual "_id"
-├─ Union member
-│  └─ Expected "email_heading_id", actual "_id"
-├─ Union member
-│  └─ Expected "footer_title_id", actual "_id"
-└─ Union member
-   └─ Expected "footer_sendoff_id", actual "_id"`
+├─ Expected "welcome_email_id", actual "_id"
+├─ Expected "email_heading_id", actual "_id"
+├─ Expected "footer_title_id", actual "_id"
+└─ Expected "footer_sendoff_id", actual "_id"`
       )
     })
 
@@ -249,10 +247,8 @@ describe("TemplateLiteral", () => {
         schema,
         "b",
         `\`\${string}a\` | \`\${string}0\`
-├─ Union member
-│  └─ Expected \`\${string}a\`, actual "b"
-└─ Union member
-   └─ Expected \`\${string}0\`, actual "b"`
+├─ Expected \`\${string}a\`, actual "b"
+└─ Expected \`\${string}0\`, actual "b"`
       )
     })
 
@@ -265,14 +261,10 @@ describe("TemplateLiteral", () => {
         schema,
         "",
         `\`\${string}\${number}\` | \`\${string}true\` | \`1\${number}\` | "1true"
-├─ Union member
-│  └─ Expected \`\${string}\${number}\`, actual ""
-├─ Union member
-│  └─ Expected \`\${string}true\`, actual ""
-├─ Union member
-│  └─ Expected \`1\${number}\`, actual ""
-└─ Union member
-   └─ Expected "1true", actual ""`
+├─ Expected \`\${string}\${number}\`, actual ""
+├─ Expected \`\${string}true\`, actual ""
+├─ Expected \`1\${number}\`, actual ""
+└─ Expected "1true", actual ""`
       )
     })
   })

@@ -42,12 +42,12 @@ export type PersistenceError = PersistenceParseError | PersistenceBackingError
 export class PersistenceParseError extends TypeIdError(ErrorTypeId, "PersistenceError")<{
   readonly reason: "ParseError"
   readonly method: string
-  readonly error: ParseResult.ParseError["error"]
+  readonly error: ParseResult.ParseError["issue"]
 }> {
   /**
    * @since 1.0.0
    */
-  static make(method: string, error: ParseResult.ParseError["error"]) {
+  static make(method: string, error: ParseResult.ParseError["issue"]) {
     return new PersistenceParseError({ reason: "ParseError", method, error })
   }
 
@@ -214,7 +214,7 @@ export const layerResult = Layer.effect(
           ) =>
             Effect.mapError(
               Serializable.deserializeExit(key, value),
-              (_) => PersistenceParseError.make(method, _.error)
+              (_) => PersistenceParseError.make(method, _.issue)
             )
           const encode = <R, IE, E, IA, A>(
             method: string,
@@ -223,7 +223,7 @@ export const layerResult = Layer.effect(
           ) =>
             Effect.mapError(
               Serializable.serializeExit(key, value),
-              (_) => PersistenceParseError.make(method, _.error)
+              (_) => PersistenceParseError.make(method, _.issue)
             )
           const makeKey = <R, IE, E, IA, A>(
             key: ResultPersistence.Key<R, IE, E, IA, A>

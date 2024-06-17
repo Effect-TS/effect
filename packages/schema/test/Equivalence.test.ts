@@ -74,10 +74,16 @@ const symbol = S.SymbolFromSelf.annotations({
 describe("Equivalence", () => {
   it("the errors should disply a path", () => {
     expect(() => E.make(S.Tuple(S.Never as any))).toThrow(
-      new Error(`cannot build an Equivalence for \`never\` (path [0])`)
+      new Error(`Unsupported schema
+at path: [0]
+details: Cannot build an Equivalence
+schema (NeverKeyword): never`)
     )
     expect(() => E.make(S.Struct({ a: S.Never as any }))).toThrow(
-      new Error(`cannot build an Equivalence for \`never\` (path ["a"])`)
+      new Error(`Unsupported schema
+at path: ["a"]
+details: Cannot build an Equivalence
+schema (NeverKeyword): never`)
     )
   })
 
@@ -101,7 +107,9 @@ describe("Equivalence", () => {
 
   it("never", () => {
     expect(() => E.make(S.Never)).toThrow(
-      new Error("cannot build an Equivalence for `never`")
+      new Error(`Unsupported schema
+details: Cannot build an Equivalence
+schema (NeverKeyword): never`)
     )
   })
 
@@ -330,7 +338,7 @@ describe("Equivalence", () => {
       // propertyType(schema)
     })
 
-    it("e + r", () => {
+    it("e r", () => {
       const schema = S.Tuple([S.String], S.Number)
       const equivalence = E.make(schema)
 
@@ -358,7 +366,7 @@ describe("Equivalence", () => {
       // propertyType(schema)
     })
 
-    it("r + e", () => {
+    it("r e", () => {
       const schema = S.Tuple([], string, number)
       const equivalence = E.make(schema)
 
@@ -388,7 +396,7 @@ describe("Equivalence", () => {
         // propertyType(schema)
       })
 
-      it("e? + e?", () => {
+      it("e? e?", () => {
         const schema = S.Tuple(S.optionalElement(string), S.optionalElement(number))
         const equivalence = E.make(schema)
 
@@ -406,7 +414,7 @@ describe("Equivalence", () => {
         // propertyType(schema)
       })
 
-      it("e + e?", () => {
+      it("e e?", () => {
         const schema = S.Tuple(string, S.optionalElement(number))
         const equivalence = E.make(schema)
 
@@ -420,7 +428,7 @@ describe("Equivalence", () => {
         // propertyType(schema)
       })
 
-      it("e? + r", () => {
+      it("e? r", () => {
         const schema = S.Tuple([S.optionalElement(S.String)], S.Number)
         const equivalence = E.make(schema)
 
@@ -564,7 +572,7 @@ describe("Equivalence", () => {
       // propertyType(schema)
     })
 
-    it("struct + record", () => {
+    it("struct record", () => {
       const schema = S.Struct({ a: string, b: string }, S.Record(string, string))
       const equivalence = E.make(schema)
 

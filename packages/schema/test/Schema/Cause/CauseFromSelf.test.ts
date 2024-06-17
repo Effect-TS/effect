@@ -29,28 +29,25 @@ describe("CauseFromSelf", () => {
       Cause.fail("a"),
       `Cause<NumberFromString>
 └─ CauseEncoded<NumberFromString>
-   └─ Union member
-      └─ { readonly _tag: "Fail"; readonly error: NumberFromString }
-         └─ ["error"]
-            └─ NumberFromString
-               └─ Transformation process failure
-                  └─ Expected NumberFromString, actual "a"`
+   └─ { readonly _tag: "Fail"; readonly error: NumberFromString }
+      └─ ["error"]
+         └─ NumberFromString
+            └─ Transformation process failure
+               └─ Expected NumberFromString, actual "a"`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       Cause.parallel(Cause.die("error"), Cause.fail("a")),
       `Cause<NumberFromString>
 └─ CauseEncoded<NumberFromString>
-   └─ Union member
-      └─ { readonly _tag: "Parallel"; readonly left: CauseEncoded<NumberFromString>; readonly right: CauseEncoded<NumberFromString> }
-         └─ ["right"]
-            └─ CauseEncoded<NumberFromString>
-               └─ Union member
-                  └─ { readonly _tag: "Fail"; readonly error: NumberFromString }
-                     └─ ["error"]
-                        └─ NumberFromString
-                           └─ Transformation process failure
-                              └─ Expected NumberFromString, actual "a"`
+   └─ { readonly _tag: "Parallel"; readonly left: CauseEncoded<NumberFromString>; readonly right: CauseEncoded<NumberFromString> }
+      └─ ["right"]
+         └─ CauseEncoded<NumberFromString>
+            └─ { readonly _tag: "Fail"; readonly error: NumberFromString }
+               └─ ["error"]
+                  └─ NumberFromString
+                     └─ Transformation process failure
+                        └─ Expected NumberFromString, actual "a"`
     )
   })
 

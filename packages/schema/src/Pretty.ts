@@ -59,9 +59,6 @@ const stringify = getMatcher((a) => JSON.stringify(a))
 
 const formatUnknown = getMatcher(util_.formatUnknown)
 
-const getPrettyErrorMessage = (message: string, path: ReadonlyArray<PropertyKey>) =>
-  errors_.getErrorMessageWithPath(`cannot build a Pretty for ${message}`, path)
-
 /**
  * @since 0.67.0
  */
@@ -71,11 +68,11 @@ export const match: AST.Match<Pretty<any>> = {
     if (Option.isSome(hook)) {
       return hook.value(...ast.typeParameters.map((tp) => go(tp, path)))
     }
-    throw new Error(getPrettyErrorMessage(`a declaration without annotations (${ast})`, path))
+    throw new Error(errors_.getPrettyMissingAnnotationErrorMessage(path, ast))
   },
   "VoidKeyword": getMatcher(() => "void(0)"),
   "NeverKeyword": getMatcher(() => {
-    throw new Error("cannot pretty print a `never` value")
+    throw new Error(errors_.getPrettyNeverErrorMessage)
   }),
   "Literal": getMatcher((literal: AST.LiteralValue): string =>
     typeof literal === "bigint" ?
@@ -100,7 +97,7 @@ export const match: AST.Match<Pretty<any>> = {
       return hook.value()
     }
     const elements = ast.elements.map((e, i) => go(e.type, path.concat(i)))
-    const rest = ast.rest.map((ast) => go(ast, path))
+    const rest = ast.rest.map((annotatedAST) => go(annotatedAST.type, path))
     return (input: ReadonlyArray<unknown>) => {
       const output: Array<string> = []
       let i = 0

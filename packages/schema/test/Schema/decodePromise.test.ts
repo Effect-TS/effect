@@ -15,7 +15,7 @@ describe("decodePromise", () => {
       └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
-               └─ Expected Char (a single character), actual "10"`
+               └─ Expected Char, actual "10"`
     )
   })
 
@@ -25,13 +25,13 @@ describe("decodePromise", () => {
       S.decodePromise(schema)(input, { onExcessProperty: "error" }),
       `{ readonly a: NumberFromChar }
 └─ ["b"]
-   └─ is unexpected, expected "a"`
+   └─ is unexpected, expected: "a"`
     )
     await Util.expectPromiseFailure(
       S.decodePromise(schema, { onExcessProperty: "error" })(input),
       `{ readonly a: NumberFromChar }
 └─ ["b"]
-   └─ is unexpected, expected "a"`
+   └─ is unexpected, expected: "a"`
     )
     await Util.expectPromiseSuccess(
       S.decodePromise(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }),

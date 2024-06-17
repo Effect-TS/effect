@@ -15,7 +15,7 @@ describe("DateFromSelf", () => {
     await Util.expectDecodeUnknownFailure(
       S.DateFromSelf,
       null,
-      `Expected DateFromSelf (a potentially invalid Date instance), actual null`
+      `Expected DateFromSelf, actual null`
     )
   })
 

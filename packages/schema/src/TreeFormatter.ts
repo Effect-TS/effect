@@ -39,13 +39,13 @@ export const formatIssueSync = (issue: ParseResult.ParseIssue): string => Effect
  * @category formatting
  * @since 0.67.0
  */
-export const formatError = (error: ParseResult.ParseError): Effect.Effect<string> => formatIssue(error.error)
+export const formatError = (error: ParseResult.ParseError): Effect.Effect<string> => formatIssue(error.issue)
 
 /**
  * @category formatting
  * @since 0.67.0
  */
-export const formatErrorSync = (error: ParseResult.ParseError): string => formatIssueSync(error.error)
+export const formatErrorSync = (error: ParseResult.ParseError): string => formatIssueSync(error.issue)
 
 const drawTree = (tree: Tree<string>): string => tree.value + draw("\n", tree.forest)
 
@@ -88,13 +88,20 @@ const getInnerMessage = (
   switch (issue._tag) {
     case "Refinement": {
       if (issue.kind === "From") {
-        return getMessage(issue.error)
+        return getMessage(issue.issue)
       }
       break
     }
     case "Transformation": {
-      return getMessage(issue.error)
+      return getMessage(issue.issue)
     }
+  }
+  return Option.none()
+}
+
+const getAnnotated = (issue: ParseResult.ParseIssue): Option.Option<AST.Annotated> => {
+  if ("ast" in issue) {
+    return Option.some(issue.ast)
   }
   return Option.none()
 }
@@ -104,16 +111,19 @@ const getCurrentMessage: (
 ) => Effect.Effect<{ message: string; override: boolean }, Cause.NoSuchElementException> = (
   issue: ParseResult.ParseIssue
 ) =>
-  AST.getMessageAnnotation(issue.ast).pipe(Effect.flatMap((annotation) => {
-    const out = annotation(issue)
-    return Predicate.isString(out)
-      ? Effect.succeed({ message: out, override: false })
-      : Effect.isEffect(out)
-      ? Effect.map(out, (message) => ({ message, override: false }))
-      : Predicate.isString(out.message)
-      ? Effect.succeed({ message: out.message, override: out.override })
-      : Effect.map(out.message, (message) => ({ message, override: out.override }))
-  }))
+  getAnnotated(issue).pipe(
+    Option.flatMap(AST.getMessageAnnotation),
+    Effect.flatMap((annotation) => {
+      const out = annotation(issue)
+      return Predicate.isString(out)
+        ? Effect.succeed({ message: out, override: false })
+        : Effect.isEffect(out)
+        ? Effect.map(out, (message) => ({ message, override: false }))
+        : Predicate.isString(out.message)
+        ? Effect.succeed({ message: out.message, override: out.override })
+        : Effect.map(out.message, (message) => ({ message, override: out.override }))
+    })
+  )
 
 /** @internal */
 export const getMessage: (
@@ -139,25 +149,41 @@ export const getMessage: (
 }
 
 const getParseIssueTitleAnnotation = (issue: ParseResult.ParseIssue): Option.Option<string> =>
-  Option.filterMap(
-    AST.getParseIssueTitleAnnotation(issue.ast),
-    (annotation) => Option.fromNullable(annotation(issue))
+  getAnnotated(issue).pipe(
+    Option.flatMap(AST.getParseIssueTitleAnnotation),
+    Option.filterMap(
+      (annotation) => Option.fromNullable(annotation(issue))
+    )
   )
 
 /** @internal */
 export const formatTypeMessage = (e: ParseResult.Type): Effect.Effect<string> =>
   getMessage(e).pipe(
     Effect.orElse(() => getParseIssueTitleAnnotation(e)),
-    Effect.orElse(() => e.message),
-    Effect.catchAll(() => Effect.succeed(`Expected ${e.ast.toString(true)}, actual ${util_.formatUnknown(e.actual)}`))
+    Effect.catchAll(() =>
+      Effect.succeed(e.message ?? `Expected ${String(e.ast)}, actual ${util_.formatUnknown(e.actual)}`)
+    )
   )
 
-const getParseIssueTitle = (issue: ParseResult.ParseIssue): string =>
-  Option.getOrElse(getParseIssueTitleAnnotation(issue), () => String(issue.ast))
+const getParseIssueTitle = (
+  issue: ParseResult.Forbidden | ParseResult.Transformation | ParseResult.Refinement | ParseResult.Composite
+): string => Option.getOrElse(getParseIssueTitleAnnotation(issue), () => String(issue.ast))
 
 /** @internal */
-export const formatForbiddenMessage = (e: ParseResult.Forbidden): string =>
-  Option.getOrElse(e.message, () => "is forbidden")
+export const formatForbiddenMessage = (e: ParseResult.Forbidden): string => e.message ?? "is forbidden"
+
+/** @internal */
+export const formatUnexpectedMessage = (e: ParseResult.Unexpected): string => e.message ?? "is unexpected"
+
+/** @internal */
+export const formatMissingMessage = (e: ParseResult.Missing): Effect.Effect<string> =>
+  AST.getMissingMessageAnnotation(e.ast).pipe(
+    Effect.flatMap((annotation) => {
+      const out = annotation()
+      return Predicate.isString(out) ? Effect.succeed(out) : out
+    }),
+    Effect.catchAll(() => Effect.succeed(e.message ?? "is missing"))
+  )
 
 const getTree = (issue: ParseResult.ParseIssue, onFailure: () => Effect.Effect<Tree<string>>) =>
   Effect.matchEffect(getMessage(issue), {
@@ -165,65 +191,41 @@ const getTree = (issue: ParseResult.ParseIssue, onFailure: () => Effect.Effect<T
     onSuccess: (message) => Effect.succeed(make(message))
   })
 
-const go = (e: ParseResult.ParseIssue | ParseResult.Missing | ParseResult.Unexpected): Effect.Effect<Tree<string>> => {
+const go = (
+  e: ParseResult.ParseIssue | ParseResult.Pointer
+): Effect.Effect<Tree<string>> => {
   switch (e._tag) {
     case "Type":
       return Effect.map(formatTypeMessage(e), make)
     case "Forbidden":
       return Effect.succeed(make(getParseIssueTitle(e), [make(formatForbiddenMessage(e))]))
     case "Unexpected":
-      return Effect.succeed(make(`is unexpected, expected ${e.ast.toString(true)}`))
+      return Effect.succeed(make(formatUnexpectedMessage(e)))
     case "Missing":
-      return Effect.succeed(make("is missing"))
-    case "Union":
-      return getTree(e, () =>
-        Effect.map(
-          Effect.forEach(e.errors, (e) => {
-            switch (e._tag) {
-              case "Member":
-                return Effect.map(go(e.error), (tree) => make(`Union member`, [tree]))
-              default:
-                return go(e)
-            }
-          }),
-          (forest) => make(getParseIssueTitle(e), forest)
-        ))
-    case "TupleType":
-      return getTree(e, () =>
-        Effect.map(
-          Effect.forEach(
-            e.errors,
-            (index) => Effect.map(go(index.error), (tree) => make(`[${util_.formatPropertyKey(index.index)}]`, [tree]))
-          ),
-          (forest) => make(getParseIssueTitle(e), forest)
-        ))
-    case "TypeLiteral":
-      return getTree(e, () =>
-        Effect.map(
-          Effect.forEach(e.errors, (key) =>
-            Effect.map(go(key.error), (tree) => make(`[${util_.formatPropertyKey(key.key)}]`, [tree]))),
-          (forest) =>
-            make(getParseIssueTitle(e), forest)
-        ))
+      return Effect.map(formatMissingMessage(e), make)
     case "Transformation":
       return getTree(e, () =>
         Effect.map(
-          go(e.error),
+          go(e.issue),
           (tree) => make(getParseIssueTitle(e), [make(formatTransformationKind(e.kind), [tree])])
         ))
     case "Refinement":
       return getTree(
         e,
         () =>
-          Effect.map(go(e.error), (tree) => make(getParseIssueTitle(e), [make(formatRefinementKind(e.kind), [tree])]))
+          Effect.map(go(e.issue), (tree) => make(getParseIssueTitle(e), [make(formatRefinementKind(e.kind), [tree])]))
       )
-    case "Declaration":
-      return getTree(e, () => {
-        const error = e.error
-        const shouldSkipDefaultMessage = error._tag === "Type" && error.ast === e.ast
-        return shouldSkipDefaultMessage
-          ? go(error)
-          : Effect.map(go(error), (tree) => make(getParseIssueTitle(e), [tree]))
-      })
+    case "Pointer":
+      return Effect.map(go(e.issue), (tree) => make(util_.formatPath(e.path), [tree]))
+    case "Composite": {
+      const parseIssueTitle = getParseIssueTitle(e)
+      return getTree(
+        e,
+        () =>
+          util_.isNonEmpty(e.issues)
+            ? Effect.map(Effect.forEach(e.issues, go), (forest) => make(parseIssueTitle, forest))
+            : Effect.map(go(e.issues), (tree) => make(parseIssueTitle, [tree]))
+      )
+    }
   }
 }

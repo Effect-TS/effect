@@ -10,7 +10,7 @@ describe("SymbolFromSelf", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       null,
-      `Expected a symbol, actual null`
+      `Expected symbol, actual null`
     )
   })
 

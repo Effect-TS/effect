@@ -88,14 +88,12 @@ describe("Cause", () => {
       `(CauseEncoded<NumberFromString> <-> Cause<number>)
 └─ Encoded side transformation failure
    └─ CauseEncoded<NumberFromString>
-      └─ Union member
-         └─ { readonly _tag: "Parallel"; readonly left: CauseEncoded<NumberFromString>; readonly right: CauseEncoded<NumberFromString> }
-            └─ ["left"]
-               └─ CauseEncoded<NumberFromString>
-                  └─ Union member
-                     └─ { readonly _tag: "Fail"; readonly error: NumberFromString }
-                        └─ ["error"]
-                           └─ is missing`
+      └─ { readonly _tag: "Parallel"; readonly left: CauseEncoded<NumberFromString>; readonly right: CauseEncoded<NumberFromString> }
+         └─ ["left"]
+            └─ CauseEncoded<NumberFromString>
+               └─ { readonly _tag: "Fail"; readonly error: NumberFromString }
+                  └─ ["error"]
+                     └─ is missing`
     )
   })
 

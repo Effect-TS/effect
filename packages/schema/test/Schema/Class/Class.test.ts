@@ -87,7 +87,7 @@ describe("Class", () => {
 └─ ["a"]
    └─ NonEmpty
       └─ Predicate refinement failure
-         └─ Expected NonEmpty (a non empty string), actual ""`)
+         └─ Expected NonEmpty, actual ""`)
     )
   })
 
@@ -195,7 +195,7 @@ describe("Class", () => {
       └─ ["a"]
          └─ NonEmpty
             └─ Predicate refinement failure
-               └─ Expected NonEmpty (a non empty string), actual ""`
+               └─ Expected NonEmpty, actual ""`
     )
   })
 
@@ -212,7 +212,7 @@ describe("Class", () => {
       └─ ["a"]
          └─ NonEmpty
             └─ Predicate refinement failure
-               └─ Expected NonEmpty (a non empty string), actual ""`
+               └─ Expected NonEmpty, actual ""`
     )
   })
 
@@ -228,7 +228,10 @@ describe("Class", () => {
     expect(() => {
       class A2 extends A.extend<A2>("A2")({ a: S.String }) {}
       console.log(A2)
-    }).toThrow(new Error(`Duplicate property signature "a"`))
+    }).toThrow(
+      new Error(`Duplicate property signature
+details: Duplicate key "a"`)
+    )
   })
 
   it("can be extended with Class fields", () => {
@@ -268,7 +271,7 @@ describe("Class", () => {
     await Util.expectDecodeUnknownFailure(
       PersonFromSelf,
       { id: 1, name: "John" },
-      `Expected Person (an instance of Person), actual {"id":1,"name":"John"}`
+      `Expected Person, actual {"id":1,"name":"John"}`
     )
   })
 
@@ -295,7 +298,7 @@ describe("Class", () => {
     await Util.expectDecodeUnknownFailure(
       PersonFromSelf,
       { id: 1, name: "John" },
-      `Expected Person (an instance of Person), actual {"id":1,"name":"John"}`
+      `Expected Person, actual {"id":1,"name":"John"}`
     )
   })
 
@@ -424,8 +427,7 @@ describe("Class", () => {
         await Util.expectEncodeFailure(
           schema,
           null as any,
-          `A
-└─ Expected A (Type side), actual null`
+          `Expected A (Type side), actual null`
         )
       })
     })

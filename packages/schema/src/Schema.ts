@@ -33,7 +33,6 @@ import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as redacted_ from "effect/Redacted"
 import * as Request from "effect/Request"
-import * as secret_ from "effect/Secret"
 import * as sortedSet_ from "effect/SortedSet"
 import * as string_ from "effect/String"
 import type * as Types from "effect/Types"
@@ -153,6 +152,7 @@ const toASTAnnotations = <A, TypeParameters extends ReadonlyArray<any>>(
     }
   }
   move("message", AST.MessageAnnotationId)
+  move("missingMessage", AST.MissingMessageAnnotationId)
   move("identifier", AST.IdentifierAnnotationId)
   move("title", AST.TitleAnnotationId)
   move("description", AST.DescriptionAnnotationId)
@@ -332,6 +332,7 @@ export {
   /**
    * By default the option `exact` is set to `true`.
    *
+   * @throws `ParseError`
    * @category validation
    * @since 0.67.0
    */
@@ -342,6 +343,7 @@ export {
    */
   decodeOption,
   /**
+   * @throws `ParseError`
    * @category decoding
    * @since 0.67.0
    */
@@ -352,6 +354,7 @@ export {
    */
   decodeUnknownOption,
   /**
+   * @throws `ParseError`
    * @category decoding
    * @since 0.67.0
    */
@@ -362,6 +365,7 @@ export {
    */
   encodeOption,
   /**
+   * @throws `ParseError`
    * @category encoding
    * @since 0.67.0
    */
@@ -372,6 +376,7 @@ export {
    */
   encodeUnknownOption,
   /**
+   * @throws `ParseError`
    * @category encoding
    * @since 0.67.0
    */
@@ -389,6 +394,7 @@ export {
    */
   validateOption,
   /**
+   * @throws `ParseError`
    * @category validation
    * @since 0.67.0
    */
@@ -760,7 +766,7 @@ const getTemplateLiterals = (
     case "Union":
       return array_.flatMap(ast.types, getTemplateLiterals)
   }
-  throw new Error(`unsupported template literal span (${ast})`)
+  throw new Error(errors_.getSchemaUnsupportedLiteralSpanErrorMessage(ast))
 }
 
 const declareConstructor = <
@@ -1133,24 +1139,68 @@ export const NullishOr = <S extends Schema.Any>(self: S): NullishOr<S> => Union(
 export const keyof = <A, I, R>(self: Schema<A, I, R>): SchemaClass<keyof A> => make<keyof A>(AST.keyof(self.ast))
 
 /**
- * @since 0.67.0
+ * @since 0.68.0
  */
-export interface OptionalElement<E extends Schema.Any>
-  extends Schema.Variance<Schema.Type<E>, Schema.Encoded<E>, Schema.Context<E>>
-{
-  readonly optionalElement: E
+export declare namespace Element {
+  /**
+   * @since 0.68.0
+   */
+  export interface Annotations<A> extends Annotations.Doc<A> {
+    readonly missingMessage?: AST.MissingMessageAnnotation
+  }
+
+  /**
+   * @since 0.68.0
+   */
+  export type Token = "" | "?"
 }
+
+/**
+ * @category API interface
+ * @since 0.68.0
+ */
+export interface Element<S extends Schema.Any, Token extends Element.Token>
+  extends Schema.Variance<Schema.Type<S>, Schema.Encoded<S>, Schema.Context<S>>
+{
+  readonly _Token: Token
+  readonly ast: AST.OptionalType
+  readonly from: S
+  annotations(annotations: Element.Annotations<Schema.Type<S>>): Element<S, Token>
+}
+
+/**
+ * @since 0.68.0
+ */
+export const element = <S extends Schema.Any>(self: S): Element<S, ""> =>
+  new ElementImpl(new AST.OptionalType(self.ast, false), self)
 
 /**
  * @since 0.67.0
  */
-export const optionalElement = <E extends Schema.Any>(self: E): OptionalElement<E> => new OptionalElementImpl(self)
+export const optionalElement = <S extends Schema.Any>(self: S): Element<S, "?"> =>
+  new ElementImpl(new AST.OptionalType(self.ast, true), self)
 
-class OptionalElementImpl<E extends Schema.Any> implements OptionalElement<E> {
-  readonly [TypeId]!: Schema.Variance<Schema.Type<E>, Schema.Encoded<E>, Schema.Context<E>>[TypeId]
-  constructor(readonly optionalElement: E) {}
+class ElementImpl<S extends Schema.Any, Token extends Element.Token> implements Element<S, Token> {
+  readonly [TypeId]!: Schema.Variance<Schema.Type<S>, Schema.Encoded<S>, Schema.Context<S>>[TypeId]
+  readonly _Token!: Token
+  constructor(
+    readonly ast: AST.OptionalType,
+    readonly from: S
+  ) {}
+  annotations(
+    annotations: Annotations.Schema<Schema.Type<S>>
+  ): ElementImpl<S, Token> {
+    return new ElementImpl(
+      new AST.OptionalType(
+        this.ast.type,
+        this.ast.isOptional,
+        { ...this.ast.annotations, ...toASTAnnotations(annotations) }
+      ),
+      this.from
+    )
+  }
   toString() {
-    return `${this.optionalElement.ast}?`
+    return `${this.ast.type}${this.ast.isOptional ? "?" : ""}`
   }
 }
 
@@ -1162,7 +1212,7 @@ export declare namespace TupleType {
     Elements,
     Out extends ReadonlyArray<any> = readonly []
   > = Elements extends readonly [infer Head, ...infer Tail] ?
-    Head extends OptionalElement<infer T> ? ElementsType<Tail, readonly [...Out, Schema.Type<T>?]>
+    Head extends Element<infer T, "?"> ? ElementsType<Tail, readonly [...Out, Schema.Type<T>?]>
     : ElementsType<Tail, readonly [...Out, Schema.Type<Head>]>
     : Out
 
@@ -1170,27 +1220,25 @@ export declare namespace TupleType {
     Elements,
     Out extends ReadonlyArray<any> = readonly []
   > = Elements extends readonly [infer Head, ...infer Tail] ?
-    Head extends OptionalElement<infer T> ? ElementsEncoded<Tail, readonly [...Out, Schema.Encoded<T>?]>
+    Head extends Element<infer T, "?"> ? ElementsEncoded<Tail, readonly [...Out, Schema.Encoded<T>?]>
     : ElementsEncoded<Tail, readonly [...Out, Schema.Encoded<Head>]>
     : Out
 
   /**
    * @since 0.67.0
    */
-  export type Element = Schema.Any | OptionalElement<Schema.Any>
+  export type Elements = ReadonlyArray<Schema.Any | Element<Schema.Any, Element.Token>>
+
+  /**
+   * @since 0.68.0
+   */
+  export type Rest = ReadonlyArray<Schema.Any | Element<Schema.Any, "">>
 
   /**
    * @since 0.67.0
    */
-  export type Elements = ReadonlyArray<Element>
-
-  /**
-   * @since 0.67.0
-   */
-  export type Type<
-    Elements extends TupleType.Elements,
-    Rest extends ReadonlyArray<Schema.Any>
-  > = Rest extends [infer Head, ...infer Tail] ? Readonly<[
+  export type Type<Elements extends TupleType.Elements, Rest extends TupleType.Rest> = Rest extends
+    [infer Head, ...infer Tail] ? Readonly<[
       ...ElementsType<Elements>,
       ...ReadonlyArray<Schema.Type<Head>>,
       ...{ readonly [K in keyof Tail]: Schema.Type<Tail[K]> }
@@ -1200,10 +1248,8 @@ export declare namespace TupleType {
   /**
    * @since 0.67.0
    */
-  export type Encoded<
-    Elements extends TupleType.Elements,
-    Rest extends ReadonlyArray<Schema.Any>
-  > = Rest extends [infer Head, ...infer Tail] ? Readonly<[
+  export type Encoded<Elements extends TupleType.Elements, Rest extends TupleType.Rest> = Rest extends
+    [infer Head, ...infer Tail] ? Readonly<[
       ...ElementsEncoded<Elements>,
       ...ReadonlyArray<Schema.Encoded<Head>>,
       ...{ readonly [K in keyof Tail]: Schema.Encoded<Tail[K]> }
@@ -1215,10 +1261,7 @@ export declare namespace TupleType {
  * @category api interface
  * @since 0.67.0
  */
-export interface TupleType<
-  Elements extends TupleType.Elements,
-  Rest extends ReadonlyArray<Schema.Any>
-> extends
+export interface TupleType<Elements extends TupleType.Elements, Rest extends TupleType.Rest> extends
   AnnotableClass<
     TupleType<Elements, Rest>,
     TupleType.Type<Elements, Rest>,
@@ -1230,22 +1273,17 @@ export interface TupleType<
   readonly rest: Readonly<Rest>
 }
 
-const getDefaultTupleTypeAST = <Elements extends TupleType.Elements, Rest extends ReadonlyArray<Schema.Any>>(
+const getDefaultTupleTypeAST = <Elements extends TupleType.Elements, Rest extends TupleType.Rest>(
   elements: Elements,
   rest: Rest
 ) =>
   new AST.TupleType(
-    elements.map((schema) =>
-      isSchema(schema) ? new AST.Element(schema.ast, false) : new AST.Element(schema.optionalElement.ast, true)
-    ),
-    rest.map((e) => e.ast),
+    elements.map((el) => isSchema(el) ? new AST.OptionalType(el.ast, false) : el.ast),
+    rest.map((el) => isSchema(el) ? new AST.Type(el.ast) : el.ast),
     true
   )
 
-const makeTupleTypeClass = <
-  Elements extends TupleType.Elements,
-  Rest extends ReadonlyArray<Schema.Any>
->(
+const makeTupleTypeClass = <Elements extends TupleType.Elements, Rest extends TupleType.Rest>(
   elements: Elements,
   rest: Rest,
   ast: AST.AST = getDefaultTupleTypeAST(elements, rest)
@@ -1280,7 +1318,7 @@ export interface Tuple<Elements extends TupleType.Elements> extends TupleType<El
  */
 export function Tuple<
   const Elements extends TupleType.Elements,
-  Rest extends array_.NonEmptyReadonlyArray<Schema.Any>
+  Rest extends array_.NonEmptyReadonlyArray<TupleType.Rest[number]>
 >(elements: Elements, ...rest: Rest): TupleType<Elements, Rest>
 export function Tuple<Elements extends TupleType.Elements>(...elements: Elements): Tuple<Elements>
 export function Tuple(...args: ReadonlyArray<any>): any {
@@ -1354,11 +1392,6 @@ export declare namespace PropertySignature {
   /**
    * @since 0.67.0
    */
-  export type GetToken<B extends boolean> = B extends true ? "?:" : ":"
-
-  /**
-   * @since 0.67.0
-   */
   export type Any<Key extends PropertyKey = PropertyKey> = PropertySignature<
     Token,
     any,
@@ -1388,32 +1421,36 @@ export declare namespace PropertySignature {
   /**
    * @since 0.67.0
    */
-  export interface Annotations<A> extends Annotations.Doc<A> {}
+  export interface Annotations<A> extends Annotations.Doc<A> {
+    readonly missingMessage?: AST.MissingMessageAnnotation
+  }
 }
 
-const formatToken = (isOptional: boolean): string => isOptional ? "\"?:\"" : "\":\""
+const formatPropertySignatureToken = (isOptional: boolean): string => isOptional ? "\"?:\"" : "\":\""
 
 /**
  * @category PropertySignature
  * @since 0.67.0
  */
-export class PropertySignatureDeclaration {
+export class PropertySignatureDeclaration extends AST.OptionalType {
   /**
    * @since 0.67.0
    */
   readonly _tag = "PropertySignatureDeclaration"
   constructor(
-    readonly type: AST.AST,
-    readonly isOptional: boolean,
+    type: AST.AST,
+    isOptional: boolean,
     readonly isReadonly: boolean,
-    readonly annotations: AST.Annotations,
+    annotations: AST.Annotations,
     readonly defaultValue: (() => unknown) | undefined
-  ) {}
+  ) {
+    super(type, isOptional, annotations)
+  }
   /**
    * @since 0.67.0
    */
   toString() {
-    const token = formatToken(this.isOptional)
+    const token = formatPropertySignatureToken(this.isOptional)
     const type = String(this.type)
     return `PropertySignature<${token}, ${type}, never, ${token}, ${type}>`
   }
@@ -1423,28 +1460,32 @@ export class PropertySignatureDeclaration {
  * @category PropertySignature
  * @since 0.67.0
  */
-export class FromPropertySignature implements AST.Annotated {
+export class FromPropertySignature extends AST.OptionalType {
   constructor(
-    readonly type: AST.AST,
-    readonly isOptional: boolean,
+    type: AST.AST,
+    isOptional: boolean,
     readonly isReadonly: boolean,
-    readonly annotations: AST.Annotations,
+    annotations: AST.Annotations,
     readonly fromKey?: PropertyKey | undefined
-  ) {}
+  ) {
+    super(type, isOptional, annotations)
+  }
 }
 
 /**
  * @category PropertySignature
  * @since 0.67.0
  */
-export class ToPropertySignature implements AST.Annotated {
+export class ToPropertySignature extends AST.OptionalType {
   constructor(
-    readonly type: AST.AST,
-    readonly isOptional: boolean,
+    type: AST.AST,
+    isOptional: boolean,
     readonly isReadonly: boolean,
-    readonly annotations: AST.Annotations,
+    annotations: AST.Annotations,
     readonly defaultValue: (() => unknown) | undefined
-  ) {}
+  ) {
+    super(type, isOptional, annotations)
+  }
 }
 
 const formatPropertyKey = (p: PropertyKey | undefined): string => {
@@ -1476,23 +1517,11 @@ export class PropertySignatureTransformation {
    * @since 0.67.0
    */
   toString() {
-    return `PropertySignature<${formatToken(this.to.isOptional)}, ${this.to.type}, ${
+    return `PropertySignature<${formatPropertySignatureToken(this.to.isOptional)}, ${this.to.type}, ${
       formatPropertyKey(this.from.fromKey)
-    }, ${formatToken(this.from.isOptional)}, ${this.from.type}>`
+    }, ${formatPropertySignatureToken(this.from.isOptional)}, ${this.from.type}>`
   }
 }
-
-/**
- * @since 0.67.0
- * @category symbol
- */
-export const PropertySignatureTypeId: unique symbol = Symbol.for("@effect/schema/PropertySignature")
-
-/**
- * @since 0.67.0
- * @category symbol
- */
-export type PropertySignatureTypeId = typeof PropertySignatureTypeId
 
 const mergeSignatureAnnotations = (
   ast: PropertySignature.AST,
@@ -1526,6 +1555,18 @@ const mergeSignatureAnnotations = (
     }
   }
 }
+
+/**
+ * @since 0.68.0
+ * @category symbol
+ */
+export const PropertySignatureTypeId: unique symbol = Symbol.for("@effect/schema/PropertySignature")
+
+/**
+ * @since 0.68.0
+ * @category symbol
+ */
+export type PropertySignatureTypeId = typeof PropertySignatureTypeId
 
 /**
  * @category PropertySignature
@@ -2838,11 +2879,6 @@ export interface mutable<S extends Schema.Any> extends
  */
 export const mutable = <S extends Schema.Any>(schema: S): mutable<S> => make(AST.mutable(schema.ast))
 
-const getExtendErrorMessage = (x: AST.AST, y: AST.AST, path: ReadonlyArray<PropertyKey>) => {
-  const message = `unsupported schema or overlapping types, cannot extend ${x} with ${y}`
-  return errors_.getErrorMessageWithPath(errors_.getErrorMessage("extend", message), path)
-}
-
 const intersectTypeLiterals = (
   x: AST.AST,
   y: AST.AST,
@@ -2870,7 +2906,7 @@ const intersectTypeLiterals = (
       x.indexSignatures.concat(y.indexSignatures)
     )
   }
-  throw new Error(getExtendErrorMessage(x, y, path))
+  throw new Error(errors_.getSchemaExtendErrorMessage(x, y, path))
 }
 
 const addRefinementToMembers = (refinement: AST.Refinement, asts: ReadonlyArray<AST.AST>): Array<AST.Refinement> =>
@@ -2970,7 +3006,7 @@ const intersectUnionMembers = (
           break
         }
       }
-      throw new Error(getExtendErrorMessage(x, y, path))
+      throw new Error(errors_.getSchemaExtendErrorMessage(x, y, path))
     }))
 
 /**
@@ -3124,8 +3160,67 @@ const makeRefineClass = <From extends Schema.Any, A>(
  */
 export interface filter<From extends Schema.Any> extends refine<Schema.Type<From>, From> {}
 
+const fromFilterPredicateReturnTypeItem = (
+  item: FilterOutput,
+  ast: AST.Refinement,
+  input: unknown
+): option_.Option<ParseResult.ParseIssue> => {
+  if (Predicate.isBoolean(item)) {
+    return item
+      ? option_.none()
+      : option_.some(new ParseResult.Type(ast, input))
+  }
+  if (Predicate.isString(item)) {
+    return option_.some(new ParseResult.Type(ast, input, item))
+  }
+  if (item !== undefined) {
+    if ("_tag" in item) {
+      return option_.some(item)
+    }
+    const issue = new ParseResult.Type(ast, input, item.message)
+    return option_.some(
+      array_.isNonEmptyReadonlyArray(item.path) ? new ParseResult.Pointer(item.path, input, issue) : issue
+    )
+  }
+  return option_.none()
+}
+
+const toFilterParseIssue = (
+  out: FilterReturnType,
+  ast: AST.Refinement,
+  input: unknown
+): option_.Option<ParseResult.ParseIssue> => {
+  if (util_.isSingle(out)) {
+    return fromFilterPredicateReturnTypeItem(out, ast, input)
+  }
+  if (array_.isNonEmptyReadonlyArray(out)) {
+    const issues = array_.filterMap(out, (issue) => fromFilterPredicateReturnTypeItem(issue, ast, input))
+    if (array_.isNonEmptyReadonlyArray(issues)) {
+      return option_.some(issues.length === 1 ? issues[0] : new ParseResult.Composite(ast, input, issues))
+    }
+  }
+  return option_.none()
+}
+
 /**
- * @category combinators
+ * @category filtering
+ * @since 0.68.0
+ */
+export interface FilterIssue {
+  readonly path: ReadonlyArray<PropertyKey>
+  readonly message: string
+}
+
+/**
+ * @category filtering
+ * @since 0.68.0
+ */
+export type FilterOutput = undefined | boolean | string | ParseResult.ParseIssue | FilterIssue
+
+type FilterReturnType = FilterOutput | ReadonlyArray<FilterOutput>
+
+/**
+ * @category filtering
  * @since 0.67.0
  */
 export function filter<C extends A, B extends A, A = C>(
@@ -3141,7 +3236,7 @@ export function filter<S extends Schema.Any>(
     a: Types.NoInfer<Schema.Type<S>>,
     options: ParseOptions,
     self: AST.Refinement
-  ) => undefined | boolean | string | ParseResult.ParseIssue,
+  ) => FilterReturnType,
   annotations?: Annotations.Filter<Types.NoInfer<Schema.Type<S>>>
 ): (self: S) => filter<S>
 export function filter<A>(
@@ -3149,21 +3244,12 @@ export function filter<A>(
     a: A,
     options: ParseOptions,
     self: AST.Refinement
-  ) => undefined | boolean | string | ParseResult.ParseIssue,
+  ) => FilterReturnType,
   annotations?: Annotations.Filter<A>
 ): <I, R>(self: Schema<A, I, R>) => refine<A, Schema<A, I, R>> {
   return <I, R>(self: Schema<A, I, R>) => {
-    function filter(a: any, options: AST.ParseOptions, ast: AST.Refinement) {
-      const out = predicate(a, options, ast)
-      if (Predicate.isBoolean(out)) {
-        return out
-          ? option_.none()
-          : option_.some(new ParseResult.Type(ast, a))
-      }
-      if (Predicate.isString(out)) {
-        return option_.some(new ParseResult.Type(ast, a, out))
-      }
-      return out === undefined ? option_.none() : option_.some(out)
+    function filter(input: A, options: AST.ParseOptions, ast: AST.Refinement) {
+      return toFilterParseIssue(predicate(input, options, ast), ast, input)
     }
     const ast = new AST.Refinement(
       self.ast,
@@ -3548,106 +3634,6 @@ export const annotations: {
   2,
   <A, I, R>(self: Schema<A, I, R>, annotations: Annotations.Schema<A>): Schema<A, I, R> => self.annotations(annotations)
 )
-
-/**
- * @category annotations
- * @since 0.67.0
- */
-export const message = (message: AST.MessageAnnotation) => <S extends Annotable.All>(self: S): Annotable.Self<S> =>
-  self.annotations({ [AST.MessageAnnotationId]: message })
-
-/**
- * @category annotations
- * @since 0.67.0
- */
-export const identifier =
-  (identifier: AST.IdentifierAnnotation) => <S extends Annotable.All>(self: S): Annotable.Self<S> =>
-    self.annotations({ [AST.IdentifierAnnotationId]: identifier })
-
-/**
- * @category annotations
- * @since 0.67.0
- */
-export const title = (title: AST.TitleAnnotation) => <S extends Annotable.All>(self: S): Annotable.Self<S> =>
-  self.annotations({ [AST.TitleAnnotationId]: title })
-
-/**
- * @category annotations
- * @since 0.67.0
- */
-export const description =
-  (description: AST.DescriptionAnnotation) => <S extends Annotable.All>(self: S): Annotable.Self<S> =>
-    self.annotations({ [AST.DescriptionAnnotationId]: description })
-
-/**
- * @category annotations
- * @since 0.67.0
- */
-export const examples =
-  <S extends Annotable.All>(examples: AST.ExamplesAnnotation<Schema.Type<S>>) => (self: S): Annotable.Self<S> =>
-    self.annotations({ [AST.ExamplesAnnotationId]: examples })
-
-const default$ = <S extends Annotable.All>(value: Schema.Type<S>) => (self: S): Annotable.Self<S> =>
-  self.annotations({ [AST.DefaultAnnotationId]: value })
-
-export {
-  /**
-   * @category annotations
-   * @since 0.67.0
-   */
-  default$ as default
-}
-
-/**
- * @category annotations
- * @since 0.67.0
- */
-export const documentation =
-  (documentation: AST.DocumentationAnnotation) => <S extends Annotable.All>(self: S): Annotable.Self<S> =>
-    self.annotations({ [AST.DocumentationAnnotationId]: documentation })
-
-/**
- * Attaches a JSON Schema annotation to a schema that represents a refinement.
- *
- * If the schema is composed of more than one refinement, the corresponding annotations will be merged.
- *
- * @category annotations
- * @since 0.67.0
- */
-export const jsonSchema =
-  (jsonSchema: AST.JSONSchemaAnnotation) => <S extends Annotable.All>(self: S): Annotable.Self<S> =>
-    self.annotations({ [AST.JSONSchemaAnnotationId]: jsonSchema })
-
-/**
- * @category annotations
- * @since 0.67.0
- */
-export const equivalence =
-  <S extends Annotable.All>(equivalence: Equivalence.Equivalence<Schema.Type<S>>) => (self: S): Annotable.Self<S> =>
-    self.annotations({ [equivalence_.EquivalenceHookId]: () => equivalence })
-
-/**
- * @category annotations
- * @since 0.67.0
- */
-export const concurrency =
-  (concurrency: AST.ConcurrencyAnnotation) => <S extends Annotable.All>(self: S): Annotable.Self<S> =>
-    self.annotations({ [AST.ConcurrencyAnnotationId]: concurrency })
-
-/**
- * @category annotations
- * @since 0.67.0
- */
-export const batching = (batching: AST.BatchingAnnotation) => <S extends Annotable.All>(self: S): Annotable.Self<S> =>
-  self.annotations({ [AST.BatchingAnnotationId]: batching })
-
-/**
- * @category annotations
- * @since 0.67.0
- */
-export const parseIssueTitle =
-  (f: AST.ParseIssueTitleAnnotation) => <S extends Annotable.All>(self: S): Annotable.Self<S> =>
-    self.annotations({ [AST.ParseIssueTitleAnnotationId]: f })
 
 type Rename<A, M> = {
   [
@@ -5000,16 +4986,13 @@ const redactedArbitrary = <A>(value: LazyArbitrary<A>): LazyArbitrary<redacted_.
 const redactedParse = <R, A>(
   decodeUnknown: ParseResult.DecodeUnknown<A, R>
 ): ParseResult.DeclarationDecodeUnknown<redacted_.Redacted<A>, R> =>
-(u, options, ast) => {
-  if (redacted_.isRedacted(u)) {
-    return ParseResult.map(
-      decodeUnknown(redacted_.value(u), options),
-      (_) => redacted_.make(_)
-    )
-  } else {
-    return ParseResult.fail(new ParseResult.Type(ast, redacted_.make(u)))
-  }
-}
+(u, options, ast) =>
+  redacted_.isRedacted(u) ?
+    ParseResult.mapBoth(decodeUnknown(redacted_.value(u), options), {
+      onFailure: (e) => new ParseResult.Composite(ast, u, e),
+      onSuccess: redacted_.make
+    }) :
+    ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
  * @category api interface
@@ -5059,7 +5042,7 @@ export interface Redacted<Value extends Schema.Any> extends
 {}
 
 /**
- * A schema that transforms any type `T` into a `Redacted<T>`.
+ * A schema that transforms any type `A` into a `Redacted<A>`.
  *
  * @category Redacted transformations
  * @since 0.67.21
@@ -5075,38 +5058,6 @@ export const Redacted = <Value extends Schema.Any>(
       encode: (value) => redacted_.value(value)
     }
   )
-}
-
-/**
- * @category Secret constructors
- * @since 0.67.0
- * @deprecated
- */
-export class SecretFromSelf extends declare(
-  secret_.isSecret,
-  {
-    identifier: "SecretFromSelf",
-    pretty: (): pretty_.Pretty<secret_.Secret> => (secret) => String(secret),
-    arbitrary: (): LazyArbitrary<secret_.Secret> => (fc) => fc.string().map((_) => secret_.fromString(_))
-  }
-) {
-  static override annotations: (annotations: Annotations.Schema<secret_.Secret>) => typeof SecretFromSelf = super
-    .annotations
-}
-
-/**
- * A schema that transforms a `string` into a `Secret`.
- *
- * @category Secret transformations
- * @since 0.67.0
- * @deprecated
- */
-export class Secret extends transform(
-  String$,
-  SecretFromSelf,
-  { strict: false, decode: (str) => secret_.fromString(str), encode: (secret) => secret_.value(secret) }
-).annotations({ identifier: "Secret" }) {
-  static override annotations: (annotations: Annotations.Schema<secret_.Secret>) => typeof Secret = super.annotations
 }
 
 /**
@@ -5452,7 +5403,9 @@ export const minItems = <A>(
 ): refine<array_.NonEmptyReadonlyArray<A>, Schema<ReadonlyArray<A>, I, R>> => {
   const minItems = Math.floor(n)
   if (minItems < 1) {
-    throw new Error(`minItems: Expected an integer greater than or equal to 1, actual ${n}`)
+    throw new Error(
+      errors_.getInvalidArgumentErrorMessage(`Expected an integer greater than or equal to 1, actual ${n}`)
+    )
   }
   return self.pipe(
     filter(
@@ -5587,7 +5540,10 @@ export const headOrElse: {
 export const ValidDateTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/ValidDate")
 
 /**
- * A filter that **excludes invalid** dates (e.g., `new Date("Invalid Date")` is rejected).
+ * Defines a filter that specifically rejects invalid dates, such as `new
+ * Date("Invalid Date")`. This filter ensures that only properly formatted and
+ * valid date objects are accepted, enhancing data integrity by preventing
+ * erroneous date values from being processed.
  *
  * @category Date filters
  * @since 0.67.0
@@ -5603,7 +5559,8 @@ export const validDate =
     )
 
 /**
- * Represents a schema for handling potentially **invalid** `Date` instances (e.g., `new Date("Invalid Date")` is not rejected).
+ * Describes a schema that accommodates potentially invalid `Date` instances,
+ * such as `new Date("Invalid Date")`, without rejection.
  *
  * @category Date constructors
  * @since 0.67.0
@@ -5622,7 +5579,11 @@ export class DateFromSelf extends declare(
 }
 
 /**
- * Represents a schema for handling only **valid** dates. For example, `new Date("Invalid Date")` is rejected, even though it is an instance of `Date`.
+ * Defines a schema that ensures only valid dates are accepted. This schema
+ * rejects values like `new Date("Invalid Date")`, which, despite being a `Date`
+ * instance, represents an invalid date. Such stringent validation ensures that
+ * all date objects processed through this schema are properly formed and
+ * represent real dates.
  *
  * @category Date constructors
  * @since 0.67.0
@@ -5637,7 +5598,10 @@ export class ValidDateFromSelf extends DateFromSelf.pipe(
 }
 
 /**
- * Represents a schema that converts a `string` into a (potentially invalid) `Date` (e.g., `new Date("Invalid Date")` is not rejected).
+ * Defines a schema that attempts to convert a `string` to a `Date` object using
+ * the `new Date` constructor. This conversion is lenient, meaning it does not
+ * reject strings that do not form valid dates (e.g., using `new Date("Invalid
+ * Date")` results in a `Date` object, despite being invalid).
  *
  * @category Date transformations
  * @since 0.67.0
@@ -5659,7 +5623,10 @@ class Date$ extends DateFromString.pipe(
 
 export {
   /**
-   * A schema that transforms a `string` into a **valid** `Date`, ensuring that invalid dates, such as `new Date("Invalid Date")`, are rejected.
+   * This schema converts a `string` into a `Date` object using the `new Date`
+   * constructor. It ensures that only valid date strings are accepted,
+   * rejecting any strings that would result in an invalid date, such as `new
+   * Date("Invalid Date")`.
    *
    * @category Date transformations
    * @since 0.67.0
@@ -5668,8 +5635,11 @@ export {
 }
 
 /**
- * Represents a schema that converts a `number` into a (potentially invalid) `Date` (e.g., `NaN`, `Infinity` and `-Infinity` are not rejected).
- * Encoding will return `NaN` for invalid dates.
+ * Defines a schema that converts a `number` into a `Date` object using the `new
+ * Date` constructor. This schema does not validate the numerical input,
+ * allowing potentially invalid values such as `NaN`, `Infinity`, and
+ * `-Infinity` to be converted into `Date` objects. During the encoding process,
+ * any invalid `Date` object will be encoded to `NaN`.
  *
  * @category Date transformations
  * @since 0.67.0
@@ -6123,7 +6093,10 @@ const readonlyMapParse = <R, K, V>(
 ): ParseResult.DeclarationDecodeUnknown<ReadonlyMap<K, V>, R> =>
 (u, options, ast) =>
   Predicate.isMap(u) ?
-    ParseResult.map(decodeUnknown(Array.from(u.entries()), options), (as): ReadonlyMap<K, V> => new Map(as))
+    ParseResult.mapBoth(decodeUnknown(Array.from(u.entries()), options), {
+      onFailure: (e) => new ParseResult.Composite(ast, u, e),
+      onSuccess: (as) => new Map(as)
+    })
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -6271,7 +6244,10 @@ const readonlySetParse = <R, A>(
 ): ParseResult.DeclarationDecodeUnknown<ReadonlySet<A>, R> =>
 (u, options, ast) =>
   Predicate.isSet(u) ?
-    ParseResult.map(decodeUnknown(Array.from(u.values()), options), (as): ReadonlySet<A> => new Set(as))
+    ParseResult.mapBoth(decodeUnknown(Array.from(u.values()), options), {
+      onFailure: (e) => new ParseResult.Composite(ast, u, e),
+      onSuccess: (as) => new Set(as)
+    })
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -6736,7 +6712,10 @@ const chunkParse = <R, A>(
   chunk_.isChunk(u) ?
     chunk_.isEmpty(u) ?
       ParseResult.succeed(chunk_.empty())
-      : ParseResult.map(decodeUnknown(chunk_.toReadonlyArray(u), options), chunk_.fromIterable)
+      : ParseResult.mapBoth(decodeUnknown(chunk_.toReadonlyArray(u), options), {
+        onFailure: (e) => new ParseResult.Composite(ast, u, e),
+        onSuccess: chunk_.fromIterable
+      })
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -6822,7 +6801,10 @@ const nonEmptyChunkParse = <R, A>(
 ): ParseResult.DeclarationDecodeUnknown<chunk_.NonEmptyChunk<A>, R> =>
 (u, options, ast) =>
   chunk_.isChunk(u) && chunk_.isNonEmpty(u)
-    ? ParseResult.map(decodeUnknown(chunk_.toReadonlyArray(u), options), chunk_.unsafeFromNonEmptyArray)
+    ? ParseResult.mapBoth(decodeUnknown(chunk_.toReadonlyArray(u), options), {
+      onFailure: (e) => new ParseResult.Composite(ast, u, e),
+      onSuccess: chunk_.unsafeFromNonEmptyArray
+    })
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -6889,7 +6871,10 @@ const dataParse = <R, A extends Readonly<Record<string, any>> | ReadonlyArray<an
 ): ParseResult.DeclarationDecodeUnknown<A, R> =>
 (u, options, ast) =>
   Equal.isEqual(u) ?
-    ParseResult.map(decodeUnknown(u, options), toData)
+    ParseResult.mapBoth(decodeUnknown(u, options), {
+      onFailure: (e) => new ParseResult.Composite(ast, u, e),
+      onSuccess: toData
+    })
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -7313,11 +7298,11 @@ export const TaggedRequest =
 
 const extendFields = (a: Struct.Fields, b: Struct.Fields): Struct.Fields => {
   const out = { ...a }
-  for (const name of util_.ownKeys(b)) {
-    if (name in a) {
-      throw new Error(errors_.getDuplicatePropertySignatureErrorMessage(name))
+  for (const key of util_.ownKeys(b)) {
+    if (key in a) {
+      throw new Error(errors_.getASTDuplicatePropertySignatureErrorMessage(key))
     }
-    out[name] = b[name]
+    out[key] = b[key]
   }
   return out
 }
@@ -7754,7 +7739,10 @@ const causeParse = <R, A>(
 ): ParseResult.DeclarationDecodeUnknown<cause_.Cause<A>, R> =>
 (u, options, ast) =>
   cause_.isCause(u) ?
-    ParseResult.map(decodeUnknown(causeEncode(u), options), causeDecode)
+    ParseResult.mapBoth(decodeUnknown(causeEncode(u), options), {
+      onFailure: (e) => new ParseResult.Composite(ast, u, e),
+      onSuccess: causeDecode
+    })
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -8077,10 +8065,10 @@ const hashSetParse = <R, A>(
 ): ParseResult.DeclarationDecodeUnknown<hashSet_.HashSet<A>, R> =>
 (u, options, ast) =>
   hashSet_.isHashSet(u) ?
-    ParseResult.map(
-      decodeUnknown(Array.from(u), options),
-      (as): hashSet_.HashSet<A> => hashSet_.fromIterable(as)
-    )
+    ParseResult.mapBoth(decodeUnknown(Array.from(u), options), {
+      onFailure: (e) => new ParseResult.Composite(ast, u, e),
+      onSuccess: hashSet_.fromIterable
+    })
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -8176,7 +8164,10 @@ const hashMapParse = <R, K, V>(
 ): ParseResult.DeclarationDecodeUnknown<hashMap_.HashMap<K, V>, R> =>
 (u, options, ast) =>
   hashMap_.isHashMap(u) ?
-    ParseResult.map(decodeUnknown(Array.from(u), options), (as): hashMap_.HashMap<K, V> => hashMap_.fromIterable(as))
+    ParseResult.mapBoth(decodeUnknown(Array.from(u), options), {
+      onFailure: (e) => new ParseResult.Composite(ast, u, e),
+      onSuccess: hashMap_.fromIterable
+    })
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -8263,10 +8254,10 @@ const listParse = <R, A>(
 ): ParseResult.DeclarationDecodeUnknown<list_.List<A>, R> =>
 (u, options, ast) =>
   list_.isList(u) ?
-    ParseResult.map(
-      decodeUnknown(Array.from(u), options),
-      (as): list_.List<A> => list_.fromIterable(as)
-    )
+    ParseResult.mapBoth(decodeUnknown(Array.from(u), options), {
+      onFailure: (e) => new ParseResult.Composite(ast, u, e),
+      onSuccess: list_.fromIterable
+    })
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -8343,8 +8334,10 @@ const sortedSetParse = <R, A>(
 ): ParseResult.DeclarationDecodeUnknown<sortedSet_.SortedSet<A>, R> =>
 (u, options, ast) =>
   sortedSet_.isSortedSet(u) ?
-    ParseResult.map(decodeUnknown(Array.from(sortedSet_.values(u)), options), (as): sortedSet_.SortedSet<A> =>
-      sortedSet_.fromIterable(as, ord))
+    ParseResult.mapBoth(decodeUnknown(Array.from(sortedSet_.values(u)), options), {
+      onFailure: (e) => new ParseResult.Composite(ast, u, e),
+      onSuccess: (as): sortedSet_.SortedSet<A> => sortedSet_.fromIterable(as, ord)
+    })
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**

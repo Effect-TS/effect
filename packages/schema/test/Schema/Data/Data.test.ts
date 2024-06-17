@@ -23,7 +23,7 @@ describe("Data", () => {
 └─ Encoded side transformation failure
    └─ { readonly a: string; readonly b: number }
       └─ ["b"]
-         └─ Expected a number, actual "0"`
+         └─ Expected number, actual "0"`
     )
   })
 

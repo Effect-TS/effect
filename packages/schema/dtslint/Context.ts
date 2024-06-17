@@ -137,7 +137,7 @@ S.Tuple([aContext], bContext)
 // $ExpectType Schema<readonly [string, number?], readonly [string, number?], "aContext" | "bContext">
 S.asSchema(S.Tuple(aContext, S.optionalElement(bContext)))
 
-// $ExpectType Tuple<[aContext, OptionalElement<bContext>]>
+// $ExpectType Tuple<[aContext, Element<bContext, "?">]>
 S.Tuple(aContext, S.optionalElement(bContext))
 
 // ---------------------------------------------
@@ -329,62 +329,6 @@ S.Struct({ a: aContext }).pipe(S.attachPropertySignature("_tag", "A"))
 
 // $ExpectType Schema<string, string, "aContext">
 aContext.annotations({})
-
-// ---------------------------------------------
-// message
-// ---------------------------------------------
-
-// $ExpectType Schema<string, string, "aContext">
-aContext.pipe(S.message(() => ""))
-
-// ---------------------------------------------
-// identifier
-// ---------------------------------------------
-
-// $ExpectType Schema<string, string, "aContext">
-aContext.pipe(S.identifier(""))
-
-// ---------------------------------------------
-// title
-// ---------------------------------------------
-
-// $ExpectType Schema<string, string, "aContext">
-aContext.pipe(S.title(""))
-
-// ---------------------------------------------
-// description
-// ---------------------------------------------
-
-// $ExpectType Schema<string, string, "aContext">
-aContext.pipe(S.description(""))
-
-// ---------------------------------------------
-// examples
-// ---------------------------------------------
-
-// $ExpectType Schema<string, string, "aContext">
-aContext.pipe(S.examples(["a"]))
-
-// ---------------------------------------------
-// documentation
-// ---------------------------------------------
-
-// $ExpectType Schema<string, string, "aContext">
-aContext.pipe(S.documentation(""))
-
-// ---------------------------------------------
-// jsonSchema
-// ---------------------------------------------
-
-// $ExpectType Schema<string, string, "aContext">
-aContext.pipe(S.jsonSchema({}))
-
-// ---------------------------------------------
-// equivalence
-// ---------------------------------------------
-
-// $ExpectType Schema<string, string, "aContext">
-aContext.pipe(S.equivalence(() => true))
 
 // ---------------------------------------------
 // rename

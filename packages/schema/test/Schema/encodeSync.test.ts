@@ -14,7 +14,7 @@ describe("encodeSync", () => {
       └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
-               └─ Expected Char (a single character), actual "10"`)
+               └─ Expected Char, actual "10"`)
     )
   })
 
@@ -32,12 +32,12 @@ describe("encodeSync", () => {
     expect(() => S.encodeSync(schema)(input, { onExcessProperty: "error" })).toThrow(
       new Error(`{ readonly a: NumberFromChar }
 └─ ["b"]
-   └─ is unexpected, expected "a"`)
+   └─ is unexpected, expected: "a"`)
     )
     expect(() => S.encodeSync(schema, { onExcessProperty: "error" })(input)).toThrow(
       new Error(`{ readonly a: NumberFromChar }
 └─ ["b"]
-   └─ is unexpected, expected "a"`)
+   └─ is unexpected, expected: "a"`)
     )
     expect(S.encodeSync(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }))
       .toEqual({ a: "1" })

@@ -84,14 +84,14 @@ describe("Struct", () => {
         { a: undefined },
         `{ readonly a: number }
 └─ ["a"]
-   └─ Expected a number, actual undefined`
+   └─ Expected number, actual undefined`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, b: "b" },
         `{ readonly a: number }
 └─ ["b"]
-   └─ is unexpected, expected "a"`,
+   └─ is unexpected, expected: "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -113,17 +113,15 @@ describe("Struct", () => {
         `{ readonly a: number | undefined }
 └─ ["a"]
    └─ number | undefined
-      ├─ Union member
-      │  └─ Expected a number, actual "a"
-      └─ Union member
-         └─ Expected undefined, actual "a"`
+      ├─ Expected number, actual "a"
+      └─ Expected undefined, actual "a"`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, b: "b" },
         `{ readonly a: number | undefined }
 └─ ["b"]
-   └─ is unexpected, expected "a"`,
+   └─ is unexpected, expected: "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -143,21 +141,21 @@ describe("Struct", () => {
         { a: "a" },
         `{ readonly a?: number }
 └─ ["a"]
-   └─ Expected a number, actual "a"`
+   └─ Expected number, actual "a"`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: undefined },
         `{ readonly a?: number }
 └─ ["a"]
-   └─ Expected a number, actual undefined`
+   └─ Expected number, actual undefined`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, b: "b" },
         `{ readonly a?: number }
 └─ ["b"]
-   └─ is unexpected, expected "a"`,
+   └─ is unexpected, expected: "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -179,17 +177,15 @@ describe("Struct", () => {
         `{ readonly a?: number | undefined }
 └─ ["a"]
    └─ number | undefined
-      ├─ Union member
-      │  └─ Expected a number, actual "a"
-      └─ Union member
-         └─ Expected undefined, actual "a"`
+      ├─ Expected number, actual "a"
+      └─ Expected undefined, actual "a"`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: 1, b: "b" },
         `{ readonly a?: number | undefined }
 └─ ["b"]
-   └─ is unexpected, expected "a"`,
+   └─ is unexpected, expected: "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -200,6 +196,22 @@ describe("Struct", () => {
         b: S.optional(S.Number, { exact: true })
       })
       await Util.expectDecodeUnknownSuccess(schema, {})
+    })
+
+    it.skip("should preserve the order of properties (sync)", () => {
+      const b = Symbol.for("@effect/schema/test/b")
+      const schema = S.Struct({
+        a: S.Literal("a"),
+        [b]: S.Array(S.String),
+        c: S.Record(S.String, S.Number),
+        d: S.NumberFromString,
+        e: S.Boolean
+      })
+      const input = { [b]: ["b"], c: { c: 1 }, d: "1", e: true, a: "a" }
+      const output = S.decodeUnknownSync(schema)(input)
+      const expectedOutput = { [b]: ["b"], c: { c: 1 }, d: 1, e: true, a: "a" }
+      expect(output).toStrictEqual(expectedOutput)
+      expect(Reflect.ownKeys(output)).toStrictEqual(Reflect.ownKeys(input))
     })
   })
 
@@ -225,7 +237,7 @@ describe("Struct", () => {
         { a: 1, b: "b" } as any,
         `{ readonly a: number }
 └─ ["b"]
-   └─ is unexpected, expected "a"`,
+   └─ is unexpected, expected: "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -239,7 +251,7 @@ describe("Struct", () => {
         { a: 1, b: "b" } as any,
         `{ readonly a: number | undefined }
 └─ ["b"]
-   └─ is unexpected, expected "a"`,
+   └─ is unexpected, expected: "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -253,7 +265,7 @@ describe("Struct", () => {
         { a: 1, b: "b" } as any,
         `{ readonly a?: number }
 └─ ["b"]
-   └─ is unexpected, expected "a"`,
+   └─ is unexpected, expected: "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -268,7 +280,7 @@ describe("Struct", () => {
         { a: 1, b: "b" } as any,
         `{ readonly a?: number | undefined }
 └─ ["b"]
-   └─ is unexpected, expected "a"`,
+   └─ is unexpected, expected: "a"`,
         Util.onExcessPropertyError
       )
     })

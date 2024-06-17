@@ -15,7 +15,7 @@ describe("string/UUID", () => {
       "",
       `UUID
 └─ Predicate refinement failure
-   └─ Expected UUID (a Universally Unique Identifier), actual ""`
+   └─ Expected UUID, actual ""`
     )
   })
 })

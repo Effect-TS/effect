@@ -29,7 +29,7 @@ describe("DataFromSelf", () => {
       `Data<{ readonly a: string; readonly b: number }>
 └─ { readonly a: string; readonly b: number }
    └─ ["b"]
-      └─ Expected a number, actual "0"`
+      └─ Expected number, actual "0"`
     )
   })
 

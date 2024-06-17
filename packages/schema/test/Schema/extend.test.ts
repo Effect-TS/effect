@@ -282,27 +282,23 @@ describe("extend", () => {
         schema,
         { a: "a", c: false },
         `{ { readonly c: boolean; readonly a: string } | filter } | { { readonly c: boolean; readonly b: number } | filter }
-├─ Union member
-│  └─ R filter
-└─ Union member
-   └─ { { readonly c: boolean; readonly b: number } | filter }
-      └─ From side refinement failure
-         └─ { readonly c: boolean; readonly b: number }
-            └─ ["b"]
-               └─ is missing`
+├─ R filter
+└─ { { readonly c: boolean; readonly b: number } | filter }
+   └─ From side refinement failure
+      └─ { readonly c: boolean; readonly b: number }
+         └─ ["b"]
+            └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { b: 1, c: false },
         `{ { readonly c: boolean; readonly a: string } | filter } | { { readonly c: boolean; readonly b: number } | filter }
-├─ Union member
-│  └─ { { readonly c: boolean; readonly a: string } | filter }
-│     └─ From side refinement failure
-│        └─ { readonly c: boolean; readonly a: string }
-│           └─ ["a"]
-│              └─ is missing
-└─ Union member
-   └─ R filter`
+├─ { { readonly c: boolean; readonly a: string } | filter }
+│  └─ From side refinement failure
+│     └─ { readonly c: boolean; readonly a: string }
+│        └─ ["a"]
+│           └─ is missing
+└─ R filter`
       )
     })
 
@@ -324,61 +320,53 @@ describe("extend", () => {
         schema,
         { a: "", c: true },
         `{ { { readonly c: boolean; readonly a: string } | filter } | filter } | { { { readonly c: boolean; readonly b: number } | filter } | filter }
-├─ Union member
-│  └─ R1 filter
-└─ Union member
-   └─ { { { readonly c: boolean; readonly b: number } | filter } | filter }
-      └─ From side refinement failure
-         └─ { { readonly c: boolean; readonly b: number } | filter }
-            └─ From side refinement failure
-               └─ { readonly c: boolean; readonly b: number }
-                  └─ ["b"]
-                     └─ is missing`
+├─ R1 filter
+└─ { { { readonly c: boolean; readonly b: number } | filter } | filter }
+   └─ From side refinement failure
+      └─ { { readonly c: boolean; readonly b: number } | filter }
+         └─ From side refinement failure
+            └─ { readonly c: boolean; readonly b: number }
+               └─ ["b"]
+                  └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { b: -1, c: true },
         `{ { { readonly c: boolean; readonly a: string } | filter } | filter } | { { { readonly c: boolean; readonly b: number } | filter } | filter }
-├─ Union member
-│  └─ { { { readonly c: boolean; readonly a: string } | filter } | filter }
-│     └─ From side refinement failure
-│        └─ { { readonly c: boolean; readonly a: string } | filter }
-│           └─ From side refinement failure
-│              └─ { readonly c: boolean; readonly a: string }
-│                 └─ ["a"]
-│                    └─ is missing
-└─ Union member
-   └─ R2 filter`
+├─ { { { readonly c: boolean; readonly a: string } | filter } | filter }
+│  └─ From side refinement failure
+│     └─ { { readonly c: boolean; readonly a: string } | filter }
+│        └─ From side refinement failure
+│           └─ { readonly c: boolean; readonly a: string }
+│              └─ ["a"]
+│                 └─ is missing
+└─ R2 filter`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { a: "a", c: false },
         `{ { { readonly c: boolean; readonly a: string } | filter } | filter } | { { { readonly c: boolean; readonly b: number } | filter } | filter }
-├─ Union member
-│  └─ R3 filter
-└─ Union member
-   └─ { { { readonly c: boolean; readonly b: number } | filter } | filter }
-      └─ From side refinement failure
-         └─ { { readonly c: boolean; readonly b: number } | filter }
-            └─ From side refinement failure
-               └─ { readonly c: boolean; readonly b: number }
-                  └─ ["b"]
-                     └─ is missing`
+├─ R3 filter
+└─ { { { readonly c: boolean; readonly b: number } | filter } | filter }
+   └─ From side refinement failure
+      └─ { { readonly c: boolean; readonly b: number } | filter }
+         └─ From side refinement failure
+            └─ { readonly c: boolean; readonly b: number }
+               └─ ["b"]
+                  └─ is missing`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { b: 1, c: false },
         `{ { { readonly c: boolean; readonly a: string } | filter } | filter } | { { { readonly c: boolean; readonly b: number } | filter } | filter }
-├─ Union member
-│  └─ { { { readonly c: boolean; readonly a: string } | filter } | filter }
-│     └─ From side refinement failure
-│        └─ { { readonly c: boolean; readonly a: string } | filter }
-│           └─ From side refinement failure
-│              └─ { readonly c: boolean; readonly a: string }
-│                 └─ ["a"]
-│                    └─ is missing
-└─ Union member
-   └─ R3 filter`
+├─ { { { readonly c: boolean; readonly a: string } | filter } | filter }
+│  └─ From side refinement failure
+│     └─ { { readonly c: boolean; readonly a: string } | filter }
+│        └─ From side refinement failure
+│           └─ { readonly c: boolean; readonly a: string }
+│              └─ ["a"]
+│                 └─ is missing
+└─ R3 filter`
       )
     })
   })
@@ -425,29 +413,41 @@ describe("extend", () => {
 
   it("errors", () => {
     expect(() => Schema.String.pipe(Schema.extend(Schema.Number))).toThrow(
-      new Error("extend: unsupported schema or overlapping types, cannot extend string with number")
+      new Error(`Unsupported schema or overlapping types
+details: cannot extend string with number`)
     )
     expect(() =>
       Schema.Record(Schema.String, Schema.Number).pipe(
         Schema.extend(Schema.Record(Schema.String, Schema.Boolean))
       )
-    ).toThrow(new Error("Duplicate index signature for type `string`"))
+    ).toThrow(
+      new Error(`Duplicate index signature
+details: string index signature`)
+    )
     expect(() =>
       Schema.Record(Schema.SymbolFromSelf, Schema.Number).pipe(
         Schema.extend(Schema.Record(Schema.SymbolFromSelf, Schema.Boolean))
       )
-    ).toThrow(new Error("Duplicate index signature for type `symbol`"))
+    ).toThrow(
+      new Error(`Duplicate index signature
+details: symbol index signature`)
+    )
     expect(() =>
       Schema.Record(Schema.String, Schema.Number).pipe(
         Schema.extend(Schema.Record(Schema.String.pipe(Schema.minLength(2)), Schema.Boolean))
       )
-    ).toThrow(new Error("Duplicate index signature for type `string`"))
+    ).toThrow(
+      new Error(`Duplicate index signature
+details: string index signature`)
+    )
     expect(() =>
       Schema.Struct({ a: Schema.Literal("a") }).pipe(
         Schema.extend(Schema.Struct({ a: Schema.String }))
       )
     ).toThrow(
-      new Error(`extend: unsupported schema or overlapping types, cannot extend "a" with string (path ["a"])`)
+      new Error(`Unsupported schema or overlapping types
+at path: ["a"]
+details: cannot extend "a" with string`)
     )
     expect(() =>
       Schema.Struct({ a: Schema.Literal("a") }).pipe(
@@ -459,7 +459,9 @@ describe("extend", () => {
         )
       )
     ).toThrow(
-      new Error(`extend: unsupported schema or overlapping types, cannot extend "a" with string (path ["a"])`)
+      new Error(`Unsupported schema or overlapping types
+at path: ["a"]
+details: cannot extend "a" with string`)
     )
     expect(() =>
       Schema.extend(
@@ -469,7 +471,9 @@ describe("extend", () => {
     )
       .toThrow(
         new Error(
-          `extend: unsupported schema or overlapping types, cannot extend string with number (path ["a", "b"])`
+          `Unsupported schema or overlapping types
+at path: ["a"]["b"]
+details: cannot extend string with number`
         )
       )
   })

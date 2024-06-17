@@ -20,7 +20,9 @@ describe("Pretty", () => {
   it("should throw on declarations without annotations", () => {
     const schema = S.declare(isUnknown)
     expect(() => Pretty.make(schema)).toThrow(
-      new Error("cannot build a Pretty for a declaration without annotations (<declaration schema>)")
+      new Error(`Missing annotation
+details: Generating a Pretty for this schema requires a "pretty" annotation
+schema (Declaration): <declaration schema>`)
     )
   })
 
@@ -28,16 +30,22 @@ describe("Pretty", () => {
     const schema = S.Never
     const pretty = Pretty.make(schema)
     expect(() => pretty("a" as any as never)).toThrow(
-      new Error("cannot pretty print a `never` value")
+      new Error("Cannot pretty print a `never` value")
     )
   })
 
   it("the errors should disply a path", () => {
     expect(() => Pretty.make(S.Tuple(S.declare(isUnknown)))).toThrow(
-      new Error(`cannot build a Pretty for a declaration without annotations (<declaration schema>) (path [0])`)
+      new Error(`Missing annotation
+at path: [0]
+details: Generating a Pretty for this schema requires a "pretty" annotation
+schema (Declaration): <declaration schema>`)
     )
     expect(() => Pretty.make(S.Struct({ a: S.declare(isUnknown) }))).toThrow(
-      new Error(`cannot build a Pretty for a declaration without annotations (<declaration schema>) (path ["a"])`)
+      new Error(`Missing annotation
+at path: ["a"]
+details: Generating a Pretty for this schema requires a "pretty" annotation
+schema (Declaration): <declaration schema>`)
     )
   })
 
@@ -230,7 +238,7 @@ describe("Pretty", () => {
       expect(pretty({ a: undefined })).toEqual(`{ "a": undefined }`)
     })
 
-    it("extend: struct + record", () => {
+    it("extend: struct and record", () => {
       const schema = S.Struct({ a: S.String }, S.Record(S.String, S.Union(S.String, S.Number)))
       const pretty = Pretty.make(schema)
       expect(pretty({ a: "a" })).toEqual(`{ "a": "a" }`)

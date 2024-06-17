@@ -130,7 +130,7 @@ describe("required", () => {
         ["", 0, true],
         `readonly [string, ...number[], boolean, boolean]
 └─ [1]
-   └─ Expected a boolean, actual 0`
+   └─ Expected boolean, actual 0`
       )
     })
   })
@@ -146,14 +146,12 @@ describe("required", () => {
       schema,
       {},
       `{ readonly a: string } | { readonly b: number }
-├─ Union member
-│  └─ { readonly a: string }
-│     └─ ["a"]
-│        └─ is missing
-└─ Union member
-   └─ { readonly b: number }
-      └─ ["b"]
-         └─ is missing`
+├─ { readonly a: string }
+│  └─ ["a"]
+│     └─ is missing
+└─ { readonly b: number }
+   └─ ["b"]
+      └─ is missing`
     )
   })
 
@@ -182,25 +180,25 @@ describe("required", () => {
       `{ readonly a: <suspended schema> | null }
 └─ ["a"]
    └─ <suspended schema> | null
-      ├─ Union member
-      │  └─ { readonly a: <suspended schema> | null }
-      │     └─ ["a"]
-      │        └─ is missing
-      └─ Union member
-         └─ Expected null, actual {}`
+      ├─ { readonly a: <suspended schema> | null }
+      │  └─ ["a"]
+      │     └─ is missing
+      └─ Expected null, actual {}`
     )
   })
 
   describe("unsupported schemas", () => {
     it("declarations should throw", async () => {
       expect(() => S.required(S.OptionFromSelf(S.String))).toThrow(
-        new Error("required: cannot handle declarations")
+        new Error(`Unsupported schema
+schema (Declaration): Option<string>`)
       )
     })
 
     it("refinements should throw", async () => {
       expect(() => S.required(S.String.pipe(S.minLength(2)))).toThrow(
-        new Error("required: cannot handle refinements")
+        new Error(`Unsupported schema
+schema (Refinement): a string at least 2 character(s) long`)
       )
     })
 
@@ -218,7 +216,8 @@ describe("required", () => {
 
       it("transformations should throw", async () => {
         expect(() => S.required(S.transform(S.String, S.String, { decode: identity, encode: identity }))).toThrow(
-          new Error("required: cannot handle transformations")
+          new Error(`Unsupported schema
+schema (Transformation): (string <-> string)`)
         )
       })
     })

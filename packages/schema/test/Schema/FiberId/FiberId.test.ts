@@ -29,13 +29,12 @@ describe("FiberId", () => {
       `FiberId
 └─ Encoded side transformation failure
    └─ FiberIdEncoded
-      └─ Union member
-         └─ FiberIdCompositeEncoded
-            └─ ["right"]
-               └─ FiberIdEncoded
-                  └─ { readonly _tag: "None" | "Runtime" | "Composite" }
-                     └─ ["_tag"]
-                        └─ Expected "None" | "Runtime" | "Composite", actual "-"`
+      └─ FiberIdCompositeEncoded
+         └─ ["right"]
+            └─ FiberIdEncoded
+               └─ { readonly _tag: "None" | "Runtime" | "Composite" }
+                  └─ ["_tag"]
+                     └─ Expected "None" | "Runtime" | "Composite", actual "-"`
     )
   })
 })

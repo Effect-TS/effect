@@ -1,6 +1,8 @@
+import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import { describe, it } from "vitest"
+import * as Either from "effect/Either"
+import { describe, expect, it } from "vitest"
 
 describe("`onExcessProperty` option", () => {
   describe("`ignore` option", () => {
@@ -11,14 +13,14 @@ describe("`onExcessProperty` option", () => {
         [1, "b"],
         `readonly [number]
 └─ [1]
-   └─ is unexpected, expected 0`
+   └─ is unexpected, expected: 0`
       )
       await Util.expectEncodeFailure(
         schema,
         [1, "b"] as any,
         `readonly [number]
 └─ [1]
-   └─ is unexpected, expected 0`
+   └─ is unexpected, expected: 0`
       )
     })
 
@@ -81,6 +83,36 @@ describe("`onExcessProperty` option", () => {
   })
 
   describe("`error` option", () => {
+    describe("should register the actual value", () => {
+      it("struct", () => {
+        const schema = S.Struct({ a: S.String })
+        const input = { a: "a", b: 1 }
+        const e = ParseResult.decodeUnknownEither(schema)(input, Util.onExcessPropertyError)
+        expect(e).toEqual(Either.left(
+          new ParseResult.Composite(
+            schema.ast,
+            input,
+            new ParseResult.Pointer("b", input, new ParseResult.Unexpected(1, `is unexpected, expected: "a"`)),
+            {}
+          )
+        ))
+      })
+
+      it("tuple", () => {
+        const schema = S.Tuple(S.String)
+        const input = ["a", 1]
+        const e = ParseResult.decodeUnknownEither(schema)(input, Util.onExcessPropertyError)
+        expect(e).toEqual(Either.left(
+          new ParseResult.Composite(
+            schema.ast,
+            input,
+            new ParseResult.Pointer(1, input, new ParseResult.Unexpected(1, `is unexpected, expected: 0`)),
+            []
+          )
+        ))
+      })
+    })
+
     it("structs", async () => {
       const a = S.Struct({
         a: S.optional(S.Number, { exact: true }),
@@ -92,14 +124,12 @@ describe("`onExcessProperty` option", () => {
         schema,
         { a: 1, b: "b", c: true },
         `{ readonly a?: number; readonly b?: string } | { readonly a?: number }
-├─ Union member
-│  └─ { readonly a?: number; readonly b?: string }
-│     └─ ["c"]
-│        └─ is unexpected, expected "a" | "b"
-└─ Union member
-   └─ { readonly a?: number }
-      └─ ["b"]
-         └─ is unexpected, expected "a"`,
+├─ { readonly a?: number; readonly b?: string }
+│  └─ ["c"]
+│     └─ is unexpected, expected: "a" | "b"
+└─ { readonly a?: number }
+   └─ ["b"]
+      └─ is unexpected, expected: "a"`,
         Util.onExcessPropertyError
       )
     })
@@ -112,27 +142,23 @@ describe("`onExcessProperty` option", () => {
         schema,
         [1, "b", true],
         `readonly [number, string?] | readonly [number]
-├─ Union member
-│  └─ readonly [number, string?]
-│     └─ [2]
-│        └─ is unexpected, expected 0 | 1
-└─ Union member
-   └─ readonly [number]
-      └─ [1]
-         └─ is unexpected, expected 0`
+├─ readonly [number, string?]
+│  └─ [2]
+│     └─ is unexpected, expected: 0 | 1
+└─ readonly [number]
+   └─ [1]
+      └─ is unexpected, expected: 0`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         [1, "b", true],
         `readonly [number, string?] | readonly [number]
-├─ Union member
-│  └─ readonly [number, string?]
-│     └─ [2]
-│        └─ is unexpected, expected 0 | 1
-└─ Union member
-   └─ readonly [number]
-      └─ [1]
-         └─ is unexpected, expected 0`,
+├─ readonly [number, string?]
+│  └─ [2]
+│     └─ is unexpected, expected: 0 | 1
+└─ readonly [number]
+   └─ [1]
+      └─ is unexpected, expected: 0`,
         Util.onExcessPropertyError
       )
     })
@@ -146,7 +172,7 @@ describe("`onExcessProperty` option", () => {
         [1, "b"],
         `readonly [number]
 └─ [1]
-   └─ is unexpected, expected 0`,
+   └─ is unexpected, expected: 0`,
         Util.onExcessPropertyPreserve
       )
       await Util.expectEncodeFailure(
@@ -154,7 +180,7 @@ describe("`onExcessProperty` option", () => {
         [1, "b"] as any,
         `readonly [number]
 └─ [1]
-   └─ is unexpected, expected 0`,
+   └─ is unexpected, expected: 0`,
         Util.onExcessPropertyPreserve
       )
     })

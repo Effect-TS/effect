@@ -111,7 +111,7 @@ describe("Args", () => {
       expect(result).toEqual(ValidationError.invalidArgument(HelpDoc.p(
         "Positive\n" +
           "└─ Predicate refinement failure\n" +
-          "   └─ Expected Positive (a positive number), actual -123"
+          "   └─ Expected Positive, actual -123"
       )))
     }).pipe(runEffect))
 

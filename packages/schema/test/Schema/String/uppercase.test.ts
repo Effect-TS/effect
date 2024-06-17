@@ -27,7 +27,7 @@ describe("Uppercase", () => {
 └─ Type side transformation failure
    └─ Uppercased
       └─ Predicate refinement failure
-         └─ Expected Uppercased (an uppercase string), actual "a"`
+         └─ Expected Uppercased, actual "a"`
     )
   })
 })
