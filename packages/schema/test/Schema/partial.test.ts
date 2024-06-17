@@ -17,10 +17,8 @@ describe("partial", () => {
         `{ readonly a?: number | undefined }
 └─ ["a"]
    └─ number | undefined
-      ├─ Union member
-      │  └─ Expected a number, actual null
-      └─ Union member
-         └─ Expected undefined, actual null`
+      ├─ Expected number, actual null
+      └─ Expected undefined, actual null`
       )
     })
 
@@ -61,10 +59,8 @@ describe("partial", () => {
         `ReadonlyArray<number | undefined>
 └─ [0]
    └─ number | undefined
-      ├─ Union member
-      │  └─ Expected a number, actual "a"
-      └─ Union member
-         └─ Expected undefined, actual "a"`
+      ├─ Expected number, actual "a"
+      └─ Expected undefined, actual "a"`
       )
     })
   })
@@ -80,7 +76,7 @@ describe("partial", () => {
         { a: undefined },
         `{ readonly a?: number }
 └─ ["a"]
-   └─ Expected a number, actual undefined`
+   └─ Expected number, actual undefined`
       )
     })
 
@@ -104,7 +100,7 @@ describe("partial", () => {
 └─ [0]
    └─ NumberFromString
       └─ Encoded side transformation failure
-         └─ Expected a string, actual undefined`
+         └─ Expected string, actual undefined`
         )
       })
 
@@ -122,7 +118,7 @@ describe("partial", () => {
 └─ [0]
    └─ NumberFromString
       └─ Encoded side transformation failure
-         └─ Expected a string, actual undefined`
+         └─ Expected string, actual undefined`
         )
       })
     })
@@ -139,10 +135,8 @@ describe("partial", () => {
         `ReadonlyArray<number | undefined>
 └─ [0]
    └─ number | undefined
-      ├─ Union member
-      │  └─ Expected a number, actual "a"
-      └─ Union member
-         └─ Expected undefined, actual "a"`
+      ├─ Expected number, actual "a"
+      └─ Expected undefined, actual "a"`
       )
     })
 
@@ -157,16 +151,12 @@ describe("partial", () => {
         schema,
         ["a"],
         `ReadonlyArray<number | undefined> | string
-├─ Union member
-│  └─ ReadonlyArray<number | undefined>
-│     └─ [0]
-│        └─ number | undefined
-│           ├─ Union member
-│           │  └─ Expected a number, actual "a"
-│           └─ Union member
-│              └─ Expected undefined, actual "a"
-└─ Union member
-   └─ Expected a string, actual ["a"]`
+├─ ReadonlyArray<number | undefined>
+│  └─ [0]
+│     └─ number | undefined
+│        ├─ Expected number, actual "a"
+│        └─ Expected undefined, actual "a"
+└─ Expected string, actual ["a"]`
       )
     })
 
@@ -193,10 +183,8 @@ describe("partial", () => {
         `{ readonly a?: <suspended schema> | null }
 └─ ["a"]
    └─ <suspended schema> | null
-      ├─ Union member
-      │  └─ Expected { readonly a?: <suspended schema> | null }, actual 1
-      └─ Union member
-         └─ Expected null, actual 1`
+      ├─ Expected { readonly a?: <suspended schema> | null }, actual 1
+      └─ Expected null, actual 1`
       )
     })
   })
@@ -204,19 +192,23 @@ describe("partial", () => {
   describe("unsupported schemas", () => {
     it("declarations should throw", () => {
       expect(() => S.partial(S.OptionFromSelf(S.String))).toThrow(
-        new Error("partial: cannot handle declarations")
+        new Error(`Unsupported schema
+schema (Declaration): Option<string>`)
       )
       expect(() => S.partial(S.OptionFromSelf(S.String), { exact: true })).toThrow(
-        new Error("partial: cannot handle declarations")
+        new Error(`Unsupported schema
+schema (Declaration): Option<string>`)
       )
     })
 
     it("refinements should throw", () => {
       expect(() => S.partial(S.String.pipe(S.minLength(2)))).toThrow(
-        new Error("partial: cannot handle refinements")
+        new Error(`Unsupported schema
+schema (Refinement): a string at least 2 character(s) long`)
       )
       expect(() => S.partial(S.String.pipe(S.minLength(2)), { exact: true })).toThrow(
-        new Error("partial: cannot handle refinements")
+        new Error(`Unsupported schema
+schema (Refinement): a string at least 2 character(s) long`)
       )
     })
 
@@ -260,11 +252,15 @@ describe("partial", () => {
 
       it("transformations should throw", () => {
         expect(() => S.partial(S.transform(S.String, S.String, { decode: identity, encode: identity }))).toThrow(
-          new Error("partial: cannot handle transformations")
+          new Error(`Unsupported schema
+schema (Transformation): (string <-> string)`)
         )
         expect(() =>
           S.partial(S.transform(S.String, S.String, { decode: identity, encode: identity }), { exact: true })
-        ).toThrow(new Error("partial: cannot handle transformations"))
+        ).toThrow(
+          new Error(`Unsupported schema
+schema (Transformation): (string <-> string)`)
+        )
       })
     })
   })

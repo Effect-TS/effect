@@ -51,10 +51,8 @@ describe("Literal", () => {
         schema,
         null,
         `1 | "a"
-├─ Union member
-│  └─ Expected 1, actual null
-└─ Union member
-   └─ Expected "a", actual null`
+├─ Expected 1, actual null
+└─ Expected "a", actual null`
       )
     })
   })

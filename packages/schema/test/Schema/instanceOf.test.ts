@@ -26,12 +26,12 @@ describe("instanceOf", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       1,
-      `Expected an instance of Set, actual 1`
+      `Expected Set, actual 1`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       {},
-      `Expected an instance of Set, actual {}`
+      `Expected Set, actual {}`
     )
   })
 

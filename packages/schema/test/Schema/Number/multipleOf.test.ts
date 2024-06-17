@@ -28,7 +28,7 @@ describe("multipleOf", () => {
       -3,
       `Even
 └─ Predicate refinement failure
-   └─ Expected Even (a number divisible by 2), actual -3`
+   └─ Expected Even, actual -3`
     )
     await Util.expectDecodeUnknownSuccess(schema, 0)
     await Util.expectDecodeUnknownSuccess(schema, 2)
@@ -37,14 +37,14 @@ describe("multipleOf", () => {
       2.5,
       `Even
 └─ Predicate refinement failure
-   └─ Expected Even (a number divisible by 2), actual 2.5`
+   └─ Expected Even, actual 2.5`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       "",
       `Even
 └─ From side refinement failure
-   └─ Expected a number, actual ""`
+   └─ Expected number, actual ""`
     )
   })
 })

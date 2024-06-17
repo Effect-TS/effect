@@ -26,7 +26,7 @@ describe("NonEmptyChunk", () => {
 └─ Encoded side transformation failure
    └─ readonly [number, ...number[]]
       └─ [1]
-         └─ Expected a number, actual "a"`
+         └─ Expected number, actual "a"`
     )
   })
 

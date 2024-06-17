@@ -5,24 +5,26 @@ describe("AST.Tuple", () => {
   it("A required element cannot follow an optional element", () => {
     expect(() =>
       new AST.TupleType(
-        [new AST.Element(AST.stringKeyword, true), new AST.Element(AST.stringKeyword, false)],
+        [new AST.OptionalType(AST.stringKeyword, true), new AST.OptionalType(AST.stringKeyword, false)],
         [],
         true
       )
     ).toThrow(
-      new Error("A required element cannot follow an optional element. ts(1257)")
+      new Error(`Invalid element
+details: A required element cannot follow an optional element. ts(1257)`)
     )
   })
 
   it("A required rest element cannot follow an optional element", () => {
     expect(() =>
       new AST.TupleType(
-        [new AST.Element(AST.stringKeyword, true)],
-        [AST.stringKeyword, AST.stringKeyword],
+        [new AST.OptionalType(AST.stringKeyword, true)],
+        [new AST.Type(AST.stringKeyword), new AST.Type(AST.stringKeyword)],
         true
       )
     ).toThrow(
-      new Error("A required element cannot follow an optional element. ts(1257)")
+      new Error(`Invalid element
+details: A required element cannot follow an optional element. ts(1257)`)
     )
   })
 })

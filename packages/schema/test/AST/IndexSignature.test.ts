@@ -6,7 +6,8 @@ describe("AST.IndexSignature", () => {
     expect(() => new AST.IndexSignature(AST.booleanKeyword, AST.stringKeyword, true))
       .toThrow(
         new Error(
-          "An index signature parameter type must be `string`, `symbol`, a template literal type or a refinement of the previous types"
+          `Unsupported index signature parameter
+details: An index signature parameter type must be \`string\`, \`symbol\`, a template literal type or a refinement of the previous types`
         )
       )
   })

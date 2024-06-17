@@ -23,7 +23,7 @@ describe("validate", () => {
       S.validate(schema)({ a: null }),
       `{ readonly a: number }
 └─ ["a"]
-   └─ Expected a number, actual null`
+   └─ Expected number, actual null`
     )
   })
 
@@ -33,13 +33,13 @@ describe("validate", () => {
       S.validate(schema)(input, { onExcessProperty: "error" }),
       `{ readonly a: number }
 └─ ["b"]
-   └─ is unexpected, expected "a"`
+   └─ is unexpected, expected: "a"`
     )
     await Util.expectEffectFailure(
       S.validate(schema, { onExcessProperty: "error" })(input),
       `{ readonly a: number }
 └─ ["b"]
-   └─ is unexpected, expected "a"`
+   └─ is unexpected, expected: "a"`
     )
     await Util.expectEffectSuccess(
       S.validate(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }),
@@ -58,7 +58,7 @@ describe("validate", () => {
         { a: null },
         `{ readonly a: number }
 └─ ["a"]
-   └─ Expected a number, actual null`
+   └─ Expected number, actual null`
       )
     })
 
@@ -75,10 +75,8 @@ describe("validate", () => {
         `{ readonly a: number | undefined }
 └─ ["a"]
    └─ number | undefined
-      ├─ Union member
-      │  └─ Expected a number, actual "a"
-      └─ Union member
-         └─ Expected undefined, actual "a"`
+      ├─ Expected number, actual "a"
+      └─ Expected undefined, actual "a"`
       )
     })
   })

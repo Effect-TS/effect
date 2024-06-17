@@ -106,14 +106,14 @@ describe("pick", () => {
       { a: "a", b: 2 },
       `{ readonly a: number; readonly b: number }
 └─ ["a"]
-   └─ Expected a number, actual "a"`
+   └─ Expected number, actual "a"`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       { a: 1, b: "b" },
       `{ readonly a: number; readonly b: number }
 └─ ["b"]
-   └─ Expected a number, actual "b"`
+   └─ Expected number, actual "b"`
     )
   })
 
@@ -127,14 +127,14 @@ describe("pick", () => {
       { [a]: "a", [b]: 2 },
       `{ readonly Symbol(@effect/schema/test/a): number; readonly Symbol(@effect/schema/test/b): number }
 └─ [Symbol(@effect/schema/test/a)]
-   └─ Expected a number, actual "a"`
+   └─ Expected number, actual "a"`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       { [a]: 1, [b]: "b" },
       `{ readonly Symbol(@effect/schema/test/a): number; readonly Symbol(@effect/schema/test/b): number }
 └─ [Symbol(@effect/schema/test/b)]
-   └─ Expected a number, actual "b"`
+   └─ Expected number, actual "b"`
     )
   })
 

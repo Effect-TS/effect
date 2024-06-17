@@ -27,7 +27,7 @@ describe("List", () => {
 └─ Encoded side transformation failure
    └─ ReadonlyArray<number>
       └─ [1]
-         └─ Expected a number, actual "a"`
+         └─ Expected number, actual "a"`
     )
   })
 

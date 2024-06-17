@@ -31,7 +31,7 @@ describe("encodedSchema", () => {
   it("decoding", async () => {
     const schema = S.encodedSchema(S.NumberFromString)
     await Util.expectDecodeUnknownSuccess(schema, "a")
-    await Util.expectDecodeUnknownFailure(schema, null, "Expected a string, actual null")
-    await Util.expectDecodeUnknownFailure(schema, 1, "Expected a string, actual 1")
+    await Util.expectDecodeUnknownFailure(schema, null, "Expected string, actual null")
+    await Util.expectDecodeUnknownFailure(schema, 1, "Expected string, actual 1")
   })
 })

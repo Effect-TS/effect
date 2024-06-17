@@ -25,14 +25,11 @@ describe("OptionFromNullishOr", () => {
       `(NumberFromString | null | undefined <-> Option<number>)
 └─ Encoded side transformation failure
    └─ NumberFromString | null | undefined
-      ├─ Union member
-      │  └─ NumberFromString
-      │     └─ Encoded side transformation failure
-      │        └─ Expected a string, actual {}
-      ├─ Union member
-      │  └─ Expected null, actual {}
-      └─ Union member
-         └─ Expected undefined, actual {}`
+      ├─ NumberFromString
+      │  └─ Encoded side transformation failure
+      │     └─ Expected string, actual {}
+      ├─ Expected null, actual {}
+      └─ Expected undefined, actual {}`
     )
   })
 

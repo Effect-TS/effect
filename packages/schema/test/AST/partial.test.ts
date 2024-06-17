@@ -17,12 +17,12 @@ describe("partial", () => {
         // type A = [string]
         // type B = Partial<A>
         const tuple = new AST.TupleType(
-          [new AST.Element(AST.stringKeyword, false)],
+          [new AST.OptionalType(AST.stringKeyword, false)],
           [],
           true
         )
         expect(AST.partial(tuple)).toEqual(
-          new AST.TupleType([new AST.Element(AST.orUndefined(AST.stringKeyword), true)], [], true)
+          new AST.TupleType([new AST.OptionalType(AST.orUndefined(AST.stringKeyword), true)], [], true)
         )
       })
 
@@ -30,14 +30,14 @@ describe("partial", () => {
         // type A = readonly [string, ...Array<number>]
         // type B = Partial<A>
         const tuple = new AST.TupleType(
-          [new AST.Element(AST.stringKeyword, false)],
-          [AST.numberKeyword],
+          [new AST.OptionalType(AST.stringKeyword, false)],
+          [new AST.Type(AST.numberKeyword)],
           true
         )
         expect(AST.partial(tuple)).toEqual(
           new AST.TupleType(
-            [new AST.Element(AST.orUndefined(AST.stringKeyword), true)],
-            [AST.orUndefined(AST.numberKeyword)],
+            [new AST.OptionalType(AST.orUndefined(AST.stringKeyword), true)],
+            [new AST.Type(AST.orUndefined(AST.numberKeyword))],
             true
           )
         )
@@ -47,15 +47,15 @@ describe("partial", () => {
         // type A = readonly [string, ...Array<number>, boolean]
         // type B = Partial<A>
         const tuple = new AST.TupleType(
-          [new AST.Element(AST.stringKeyword, false)],
-          [AST.numberKeyword, AST.booleanKeyword],
+          [new AST.OptionalType(AST.stringKeyword, false)],
+          [new AST.Type(AST.numberKeyword), new AST.Type(AST.booleanKeyword)],
           true
         )
         expect(AST.partial(tuple)).toEqual(
           new AST.TupleType(
-            [new AST.Element(AST.orUndefined(AST.stringKeyword), true)],
+            [new AST.OptionalType(AST.orUndefined(AST.stringKeyword), true)],
             [
-              AST.Union.make([AST.numberKeyword, AST.booleanKeyword, AST.undefinedKeyword])
+              new AST.Type(AST.Union.make([AST.numberKeyword, AST.booleanKeyword, AST.undefinedKeyword]))
             ],
             true
           )
@@ -78,12 +78,12 @@ describe("partial", () => {
         // type A = [string]
         // type B = Partial<A>
         const tuple = new AST.TupleType(
-          [new AST.Element(AST.stringKeyword, false)],
+          [new AST.OptionalType(AST.stringKeyword, false)],
           [],
           true
         )
         expect(AST.partial(tuple, { exact: true })).toEqual(
-          new AST.TupleType([new AST.Element(AST.stringKeyword, true)], [], true)
+          new AST.TupleType([new AST.OptionalType(AST.stringKeyword, true)], [], true)
         )
       })
 
@@ -91,14 +91,14 @@ describe("partial", () => {
         // type A = readonly [string, ...Array<number>]
         // type B = Partial<A>
         const tuple = new AST.TupleType(
-          [new AST.Element(AST.stringKeyword, false)],
-          [AST.numberKeyword],
+          [new AST.OptionalType(AST.stringKeyword, false)],
+          [new AST.Type(AST.numberKeyword)],
           true
         )
         expect(AST.partial(tuple, { exact: true })).toEqual(
           new AST.TupleType(
-            [new AST.Element(AST.stringKeyword, true)],
-            [AST.orUndefined(AST.numberKeyword)],
+            [new AST.OptionalType(AST.stringKeyword, true)],
+            [new AST.Type(AST.orUndefined(AST.numberKeyword))],
             true
           )
         )
@@ -108,15 +108,15 @@ describe("partial", () => {
         // type A = readonly [string, ...Array<number>, boolean]
         // type B = Partial<A>
         const tuple = new AST.TupleType(
-          [new AST.Element(AST.stringKeyword, false)],
-          [AST.numberKeyword, AST.booleanKeyword],
+          [new AST.OptionalType(AST.stringKeyword, false)],
+          [new AST.Type(AST.numberKeyword), new AST.Type(AST.booleanKeyword)],
           true
         )
         expect(AST.partial(tuple, { exact: true })).toEqual(
           new AST.TupleType(
-            [new AST.Element(AST.stringKeyword, true)],
+            [new AST.OptionalType(AST.stringKeyword, true)],
             [
-              AST.Union.make([AST.numberKeyword, AST.booleanKeyword, AST.undefinedKeyword])
+              new AST.Type(AST.Union.make([AST.numberKeyword, AST.booleanKeyword, AST.undefinedKeyword]))
             ],
             true
           )

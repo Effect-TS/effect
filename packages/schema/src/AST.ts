@@ -95,6 +95,18 @@ export const MessageAnnotationId = Symbol.for("@effect/schema/annotation/Message
  * @category annotations
  * @since 0.67.0
  */
+export type MissingMessageAnnotation = () => string | Effect<string>
+
+/**
+ * @category annotations
+ * @since 0.67.0
+ */
+export const MissingMessageAnnotationId = Symbol.for("@effect/schema/annotation/MissingMessage")
+
+/**
+ * @category annotations
+ * @since 0.67.0
+ */
 export type IdentifierAnnotation = string
 
 /**
@@ -281,6 +293,12 @@ export const getMessageAnnotation = getAnnotation<MessageAnnotation>(MessageAnno
  * @category annotations
  * @since 0.67.0
  */
+export const getMissingMessageAnnotation = getAnnotation<MissingMessageAnnotation>(MissingMessageAnnotationId)
+
+/**
+ * @category annotations
+ * @since 0.67.0
+ */
 export const getTitleAnnotation = getAnnotation<TitleAnnotation>(TitleAnnotationId)
 
 /**
@@ -369,8 +387,8 @@ export class Declaration implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return Option.getOrElse(getExpected(this, verbose), () => "<declaration schema>")
+  toString() {
+    return Option.getOrElse(getExpected(this), () => "<declaration schema>")
   }
   /**
    * @since 0.67.0
@@ -412,8 +430,8 @@ export class Literal implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return Option.getOrElse(getExpected(this, verbose), () => util_.formatUnknown(this.literal))
+  toString() {
+    return Option.getOrElse(getExpected(this), () => util_.formatUnknown(this.literal))
   }
   /**
    * @since 0.67.0
@@ -458,8 +476,8 @@ export class UniqueSymbol implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return Option.getOrElse(getExpected(this, verbose), () => util_.formatUnknown(this.symbol))
+  toString() {
+    return Option.getOrElse(getExpected(this), () => util_.formatUnknown(this.symbol))
   }
   /**
    * @since 0.67.0
@@ -492,8 +510,8 @@ export class UndefinedKeyword implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return formatKeyword(this, verbose)
+  toString() {
+    return formatKeyword(this)
   }
   /**
    * @since 0.67.0
@@ -533,8 +551,8 @@ export class VoidKeyword implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return formatKeyword(this, verbose)
+  toString() {
+    return formatKeyword(this)
   }
   /**
    * @since 0.67.0
@@ -574,8 +592,8 @@ export class NeverKeyword implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return formatKeyword(this, verbose)
+  toString() {
+    return formatKeyword(this)
   }
   /**
    * @since 0.67.0
@@ -615,8 +633,8 @@ export class UnknownKeyword implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return formatKeyword(this, verbose)
+  toString() {
+    return formatKeyword(this)
   }
   /**
    * @since 0.67.0
@@ -656,8 +674,8 @@ export class AnyKeyword implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return formatKeyword(this, verbose)
+  toString() {
+    return formatKeyword(this)
   }
   /**
    * @since 0.67.0
@@ -697,8 +715,8 @@ export class StringKeyword implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return formatKeyword(this, verbose)
+  toString() {
+    return formatKeyword(this)
   }
   /**
    * @since 0.67.0
@@ -739,8 +757,8 @@ export class NumberKeyword implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return formatKeyword(this, verbose)
+  toString() {
+    return formatKeyword(this)
   }
   /**
    * @since 0.67.0
@@ -781,8 +799,8 @@ export class BooleanKeyword implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return formatKeyword(this, verbose)
+  toString() {
+    return formatKeyword(this)
   }
   /**
    * @since 0.67.0
@@ -823,8 +841,8 @@ export class BigIntKeyword implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return formatKeyword(this, verbose)
+  toString() {
+    return formatKeyword(this)
   }
   /**
    * @since 0.67.0
@@ -865,8 +883,8 @@ export class SymbolKeyword implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return formatKeyword(this, verbose)
+  toString() {
+    return formatKeyword(this)
   }
   /**
    * @since 0.67.0
@@ -907,8 +925,8 @@ export class ObjectKeyword implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return formatKeyword(this, verbose)
+  toString() {
+    return formatKeyword(this)
   }
   /**
    * @since 0.67.0
@@ -953,9 +971,9 @@ export class Enums implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
+  toString() {
     return Option.getOrElse(
-      getExpected(this, verbose),
+      getExpected(this),
       () => `<enum ${this.enums.length} value(s): ${this.enums.map((_, value) => JSON.stringify(value)).join(" | ")}>`
     )
   }
@@ -1010,15 +1028,6 @@ export class TemplateLiteralSpan {
  * @since 0.67.0
  */
 export class TemplateLiteral implements Annotated {
-  static make = (
-    head: string,
-    spans: ReadonlyArray<TemplateLiteralSpan>,
-    annotations: Annotations = {}
-  ): TemplateLiteral | Literal =>
-    Arr.isNonEmptyReadonlyArray(spans) ?
-      new TemplateLiteral(head, spans, annotations) :
-      new Literal(head)
-
   /**
    * @since 0.67.0
    */
@@ -1031,8 +1040,8 @@ export class TemplateLiteral implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return Option.getOrElse(getExpected(this, verbose), () => formatTemplateLiteral(this))
+  toString() {
+    return Option.getOrElse(getExpected(this), () => formatTemplateLiteral(this))
   }
   /**
    * @since 0.67.0
@@ -1059,26 +1068,61 @@ export const isTemplateLiteral: (ast: AST) => ast is TemplateLiteral = createAST
 
 /**
  * @category model
- * @since 0.67.0
+ * @since 0.68.0
  */
-export class Element {
-  constructor(readonly type: AST, readonly isOptional: boolean) {}
+export class Type implements Annotated {
+  constructor(
+    readonly type: AST,
+    readonly annotations: Annotations = {}
+  ) {}
   /**
-   * @since 0.67.0
+   * @since 0.68.0
    */
   toJSON(): object {
     return {
       type: this.type.toJSON(),
-      isOptional: this.isOptional
+      annotations: toJSONAnnotations(this.annotations)
     }
   }
   /**
-   * @since 0.67.0
+   * @since 0.68.0
+   */
+  toString() {
+    return String(this.type)
+  }
+}
+
+/**
+ * @category model
+ * @since 0.68.0
+ */
+export class OptionalType extends Type {
+  constructor(
+    type: AST,
+    readonly isOptional: boolean,
+    annotations: Annotations = {}
+  ) {
+    super(type, annotations)
+  }
+  /**
+   * @since 0.68.0
+   */
+  toJSON(): object {
+    return {
+      type: this.type.toJSON(),
+      isOptional: this.isOptional,
+      annotations: toJSONAnnotations(this.annotations)
+    }
+  }
+  /**
+   * @since 0.68.0
    */
   toString() {
     return String(this.type) + (this.isOptional ? "?" : "")
   }
 }
+
+const getRestASTs = (rest: ReadonlyArray<Type>): ReadonlyArray<AST> => rest.map((annotatedAST) => annotatedAST.type)
 
 /**
  * @category model
@@ -1090,8 +1134,8 @@ export class TupleType implements Annotated {
    */
   readonly _tag = "TupleType"
   constructor(
-    readonly elements: ReadonlyArray<Element>,
-    readonly rest: ReadonlyArray<AST>,
+    readonly elements: ReadonlyArray<OptionalType>,
+    readonly rest: ReadonlyArray<Type>,
     readonly isReadonly: boolean,
     readonly annotations: Annotations = {}
   ) {
@@ -1106,14 +1150,14 @@ export class TupleType implements Annotated {
       }
     }
     if (hasIllegalRequiredElement || (hasOptionalElement && rest.length > 1)) {
-      throw new Error(getRequiredElementFollowinAnOptionalElementErrorMessage)
+      throw new Error(errors_.getASTRequiredElementFollowinAnOptionalElementErrorMessage)
     }
   }
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return Option.getOrElse(getExpected(this, verbose), () => formatTuple(this))
+  toString() {
+    return Option.getOrElse(getExpected(this), () => formatTuple(this))
   }
   /**
    * @since 0.67.0
@@ -1166,14 +1210,16 @@ export const isTupleType: (ast: AST) => ast is TupleType = createASTGuard("Tuple
  * @category model
  * @since 0.67.0
  */
-export class PropertySignature implements Annotated {
+export class PropertySignature extends OptionalType {
   constructor(
     readonly name: PropertyKey,
-    readonly type: AST,
-    readonly isOptional: boolean,
+    type: AST,
+    isOptional: boolean,
     readonly isReadonly: boolean,
-    readonly annotations: Annotations = {}
-  ) {}
+    annotations?: Annotations
+  ) {
+    super(type, isOptional, annotations)
+  }
   /**
    * @since 0.67.0
    */
@@ -1225,7 +1271,7 @@ export class IndexSignature {
     if (isParameter(parameter)) {
       this.parameter = parameter
     } else {
-      throw new Error(getIndexSignatureParameterErrorMessage)
+      throw new Error(errors_.getASTIndexSignatureParameterErrorMessage)
     }
   }
   /**
@@ -1267,7 +1313,7 @@ export class TypeLiteral implements Annotated {
     for (let i = 0; i < propertySignatures.length; i++) {
       const name = propertySignatures[i].name
       if (Object.prototype.hasOwnProperty.call(keys, name)) {
-        throw new Error(errors_.getDuplicatePropertySignatureErrorMessage(name))
+        throw new Error(errors_.getASTDuplicatePropertySignatureErrorMessage(name))
       }
       keys[name] = null
     }
@@ -1280,12 +1326,12 @@ export class TypeLiteral implements Annotated {
       const parameter = getParameterBase(indexSignatures[i].parameter)
       if (isStringKeyword(parameter)) {
         if (parameters.string) {
-          throw new Error(getDuplicateIndexSignatureErrorMessage("string"))
+          throw new Error(errors_.getASTDuplicateIndexSignatureErrorMessage("string"))
         }
         parameters.string = true
       } else if (isSymbolKeyword(parameter)) {
         if (parameters.symbol) {
-          throw new Error(getDuplicateIndexSignatureErrorMessage("symbol"))
+          throw new Error(errors_.getASTDuplicateIndexSignatureErrorMessage("symbol"))
         }
         parameters.symbol = true
       }
@@ -1297,8 +1343,8 @@ export class TypeLiteral implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return Option.getOrElse(getExpected(this, verbose), () => formatTypeLiteral(this))
+  toString() {
+    return Option.getOrElse(getExpected(this), () => formatTypeLiteral(this))
   }
   /**
    * @since 0.67.0
@@ -1502,9 +1548,9 @@ export class Union implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
+  toString() {
     return Option.getOrElse(
-      getExpected(this, verbose),
+      getExpected(this),
       () => this.types.map(String).join(" | ")
     )
   }
@@ -1524,7 +1570,7 @@ export class Union implements Annotated {
 export const mapMembers = <A, B>(members: Members<A>, f: (a: A) => B): Members<B> => members.map(f) as any
 
 /** @internal */
-export const isMembers = <A>(as: ReadonlyArray<A>): as is readonly [A, A, ...Array<A>] => as.length > 1
+export const isMembers = <A>(as: ReadonlyArray<A>): as is Members<A> => as.length > 1
 
 /**
  * @category guards
@@ -1552,12 +1598,12 @@ export class Suspend implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return getExpected(this, verbose).pipe(
+  toString() {
+    return getExpected(this).pipe(
       Option.orElse(() =>
         Option.flatMap(
           Option.liftThrowable(this.f)(),
-          (ast) => getExpected(ast, verbose)
+          (ast) => getExpected(ast)
         )
       ),
       Option.getOrElse(() => "<suspended schema>")
@@ -1610,8 +1656,8 @@ export class Refinement<From extends AST = AST> implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
-    return Option.getOrElse(getExpected(this, verbose), () => `{ ${this.from} | filter }`)
+  toString() {
+    return Option.getOrElse(getExpected(this), () => `{ ${this.from} | filter }`)
   }
   /**
    * @since 0.67.0
@@ -1724,9 +1770,9 @@ export class Transformation implements Annotated {
   /**
    * @since 0.67.0
    */
-  toString(verbose: boolean = false) {
+  toString() {
     return Option.getOrElse(
-      getExpected(this, verbose),
+      getExpected(this),
       () => `(${String(this.from)} <-> ${String(this.to)})`
     )
   }
@@ -1857,12 +1903,12 @@ export class TypeLiteralTransformation {
     for (const pst of propertySignatureTransformations) {
       const from = pst.from
       if (fromKeys[from]) {
-        throw new Error(getDuplicatePropertySignatureTransformationErrorMessage(from))
+        throw new Error(errors_.getASTDuplicatePropertySignatureTransformationErrorMessage(from))
       }
       fromKeys[from] = true
       const to = pst.to
       if (toKeys[to]) {
-        throw new Error(getDuplicatePropertySignatureTransformationErrorMessage(to))
+        throw new Error(errors_.getASTDuplicatePropertySignatureTransformationErrorMessage(to))
       }
       toKeys[to] = true
     }
@@ -1955,7 +2001,7 @@ export const getNumberIndexedAccess = (ast: AST): AST => {
       if (hasOptional) {
         out.push(undefinedKeyword)
       }
-      out = out.concat(ast.rest)
+      out = out.concat(getRestASTs(ast.rest))
       return Union.make(out)
     }
     case "Refinement":
@@ -1965,7 +2011,7 @@ export const getNumberIndexedAccess = (ast: AST): AST => {
     case "Suspend":
       return getNumberIndexedAccess(ast.f())
   }
-  throw new Error(errors_.getErrorMessage("getNumberIndexedAccess", `unsupported schema (${ast})`))
+  throw new Error(errors_.getASTUnsupportedSchema(ast))
 }
 
 /** @internal */
@@ -2067,9 +2113,7 @@ export const record = (key: AST, value: AST): {
         if (Predicate.isString(key.literal) || Predicate.isNumber(key.literal)) {
           propertySignatures.push(new PropertySignature(key.literal, value, false, true))
         } else {
-          throw new Error(
-            errors_.getErrorMessage("record", `unsupported literal (${util_.formatUnknown(key.literal)})`)
-          )
+          throw new Error(errors_.getASTUnsupportedLiteral(key.literal))
         }
         break
       case "Enums": {
@@ -2085,7 +2129,7 @@ export const record = (key: AST, value: AST): {
         key.types.forEach(go)
         break
       default:
-        throw new Error(errors_.getErrorMessage("record", `unsupported key schema (${key})`))
+        throw new Error(errors_.getASTUnsupportedKeySchema(key))
     }
   }
   go(key)
@@ -2131,7 +2175,7 @@ export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral | 
         if (Option.isSome(annotation)) {
           return pick(annotation.value, keys)
         }
-        throw new Error(errors_.getErrorMessage("pick", "cannot handle this kind of transformation"))
+        throw new Error(errors_.getASTUnsupportedSchema(ast))
       }
     }
   }
@@ -2159,10 +2203,10 @@ export const partial = (ast: AST, options?: { readonly exact: true }): AST => {
   switch (ast._tag) {
     case "TupleType":
       return new TupleType(
-        ast.elements.map((e) => new Element(exact ? e.type : orUndefined(e.type), true)),
+        ast.elements.map((e) => new OptionalType(exact ? e.type : orUndefined(e.type), true)),
         Arr.match(ast.rest, {
           onEmpty: () => ast.rest,
-          onNonEmpty: (rest) => [Union.make([...rest, undefinedKeyword])]
+          onNonEmpty: (rest) => [new Type(Union.make([...getRestASTs(rest), undefinedKeyword]))]
         }),
         ast.isReadonly
       )
@@ -2178,9 +2222,9 @@ export const partial = (ast: AST, options?: { readonly exact: true }): AST => {
     case "Suspend":
       return new Suspend(() => partial(ast.f(), options))
     case "Declaration":
-      throw new Error(errors_.getErrorMessage("partial", "cannot handle declarations"))
+      throw new Error(errors_.getASTUnsupportedSchema(ast))
     case "Refinement":
-      throw new Error(errors_.getErrorMessage("partial", "cannot handle refinements"))
+      throw new Error(errors_.getASTUnsupportedSchema(ast))
     case "Transformation": {
       if (
         isTypeLiteralTransformation(ast.transformation) &&
@@ -2188,7 +2232,7 @@ export const partial = (ast: AST, options?: { readonly exact: true }): AST => {
       ) {
         return new Transformation(partial(ast.from, options), partial(ast.to, options), ast.transformation)
       }
-      throw new Error(errors_.getErrorMessage("partial", "cannot handle transformations"))
+      throw new Error(errors_.getASTUnsupportedSchema(ast))
     }
   }
   return ast
@@ -2203,7 +2247,7 @@ export const required = (ast: AST): AST => {
   switch (ast._tag) {
     case "TupleType":
       return new TupleType(
-        ast.elements.map((e) => new Element(e.type, false)),
+        ast.elements.map((e) => new OptionalType(e.type, false)),
         ast.rest,
         ast.isReadonly
       )
@@ -2217,9 +2261,9 @@ export const required = (ast: AST): AST => {
     case "Suspend":
       return new Suspend(() => required(ast.f()))
     case "Declaration":
-      throw new Error(errors_.getErrorMessage("required", "cannot handle declarations"))
+      throw new Error(errors_.getASTUnsupportedSchema(ast))
     case "Refinement":
-      throw new Error(errors_.getErrorMessage("required", "cannot handle refinements"))
+      throw new Error(errors_.getASTUnsupportedSchema(ast))
     case "Transformation": {
       if (
         isTypeLiteralTransformation(ast.transformation) &&
@@ -2227,7 +2271,7 @@ export const required = (ast: AST): AST => {
       ) {
         return new Transformation(required(ast.from), required(ast.to), ast.transformation)
       }
-      throw new Error(errors_.getErrorMessage("required", "cannot handle transformations"))
+      throw new Error(errors_.getASTUnsupportedSchema(ast))
     }
   }
   return ast
@@ -2317,12 +2361,13 @@ export const typeAST = (ast: AST): AST => {
     case "TupleType": {
       const elements = changeMap(ast.elements, (e) => {
         const type = typeAST(e.type)
-        return type === e.type ? e : new Element(type, e.isOptional)
+        return type === e.type ? e : new OptionalType(type, e.isOptional)
       })
-      const rest = changeMap(ast.rest, typeAST)
-      return elements === ast.elements && rest === ast.rest ?
+      const restASTs = getRestASTs(ast.rest)
+      const rest = changeMap(restASTs, typeAST)
+      return elements === ast.elements && rest === restASTs ?
         ast :
-        new TupleType(elements, rest, ast.isReadonly, ast.annotations)
+        new TupleType(elements, rest.map((type) => new Type(type)), ast.isReadonly, ast.annotations)
     }
     case "TypeLiteral": {
       const propertySignatures = changeMap(ast.propertySignatures, (p) => {
@@ -2395,12 +2440,18 @@ const encodedAST_ = (ast: AST, isBound: boolean): AST => {
     case "TupleType": {
       const elements = changeMap(ast.elements, (e) => {
         const type = encodedAST_(e.type, isBound)
-        return type === e.type ? e : new Element(type, e.isOptional)
+        return type === e.type ? e : new OptionalType(type, e.isOptional)
       })
-      const rest = changeMap(ast.rest, (ast) => encodedAST_(ast, isBound))
-      return elements === ast.elements && rest === ast.rest ?
+      const restASTs = getRestASTs(ast.rest)
+      const rest = changeMap(restASTs, (ast) => encodedAST_(ast, isBound))
+      return elements === ast.elements && rest === restASTs ?
         ast :
-        new TupleType(elements, rest, ast.isReadonly, createJSONIdentifierAnnotation(ast))
+        new TupleType(
+          elements,
+          rest.map((ast) => new Type(ast)),
+          ast.isReadonly,
+          createJSONIdentifierAnnotation(ast)
+        )
     }
     case "TypeLiteral": {
       const propertySignatures = changeMap(ast.propertySignatures, (ps) => {
@@ -2638,7 +2689,7 @@ const _keyof = (ast: AST): Array<AST> => {
     case "Transformation":
       return _keyof(ast.to)
   }
-  throw new Error(errors_.getErrorMessage("keyof", `unsupported schema (${ast})`))
+  throw new Error(errors_.getASTUnsupportedSchema(ast))
 }
 
 /** @internal */
@@ -2690,41 +2741,14 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
     case "Transformation":
       return compose(ast, rename(typeAST(ast), mapping))
   }
-  throw new Error(`rename: cannot rename (${ast})`)
+  throw new Error(errors_.getASTUnsupportedRenameSchema(ast))
 }
 
-const formatKeyword = (ast: AST, verbose: boolean = false): string =>
-  Option.getOrElse(getExpected(ast, verbose), () => ast._tag)
+const formatKeyword = (ast: AST): string => Option.getOrElse(getExpected(ast), () => ast._tag)
 
-const getExpected = (ast: AST, verbose: boolean): Option.Option<string> => {
-  if (verbose) {
-    const description = getDescriptionAnnotation(ast).pipe(
-      Option.orElse(() => getTitleAnnotation(ast))
-    )
-    return Option.match(getIdentifierAnnotation(ast), {
-      onNone: () => description,
-      onSome: (identifier) =>
-        Option.match(description, {
-          onNone: () => Option.some(identifier),
-          onSome: (description) => Option.some(`${identifier} (${description})`)
-        })
-    })
-  } else {
-    return getIdentifierAnnotation(ast).pipe(
-      Option.orElse(() => getTitleAnnotation(ast)),
-      Option.orElse(() => getDescriptionAnnotation(ast))
-    )
-  }
+const getExpected = (ast: Annotated): Option.Option<string> => {
+  return getIdentifierAnnotation(ast).pipe(
+    Option.orElse(() => getTitleAnnotation(ast)),
+    Option.orElse(() => getDescriptionAnnotation(ast))
+  )
 }
-
-const getDuplicateIndexSignatureErrorMessage = (name: "string" | "symbol"): string =>
-  `Duplicate index signature for type \`${name}\``
-
-const getIndexSignatureParameterErrorMessage =
-  "An index signature parameter type must be `string`, `symbol`, a template literal type or a refinement of the previous types"
-
-const getRequiredElementFollowinAnOptionalElementErrorMessage =
-  "A required element cannot follow an optional element. ts(1257)"
-
-const getDuplicatePropertySignatureTransformationErrorMessage = (name: PropertyKey): string =>
-  `Duplicate property signature transformation ${util_.formatUnknown(name)}`

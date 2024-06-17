@@ -57,21 +57,21 @@ describe("Trimmed", () => {
       "a ",
       `Trimmed
 └─ Predicate refinement failure
-   └─ Expected Trimmed (a string with no leading or trailing whitespace), actual "a "`
+   └─ Expected Trimmed, actual "a "`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       " a",
       `Trimmed
 └─ Predicate refinement failure
-   └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " a"`
+   └─ Expected Trimmed, actual " a"`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       " a ",
       `Trimmed
 └─ Predicate refinement failure
-   └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " a "`
+   └─ Expected Trimmed, actual " a "`
     )
   })
 
@@ -83,21 +83,21 @@ describe("Trimmed", () => {
       "a ",
       `Trimmed
 └─ Predicate refinement failure
-   └─ Expected Trimmed (a string with no leading or trailing whitespace), actual "a "`
+   └─ Expected Trimmed, actual "a "`
     )
     await Util.expectEncodeFailure(
       schema,
       " a",
       `Trimmed
 └─ Predicate refinement failure
-   └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " a"`
+   └─ Expected Trimmed, actual " a"`
     )
     await Util.expectEncodeFailure(
       schema,
       " a ",
       `Trimmed
 └─ Predicate refinement failure
-   └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " a "`
+   └─ Expected Trimmed, actual " a "`
     )
   })
 

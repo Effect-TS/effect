@@ -10,7 +10,8 @@ describe("AST.TypeLiteralTransformation", () => {
         new AST.PropertySignatureTransformation("a", "c", identity, identity)
       ])
     ).toThrow(
-      new Error(`Duplicate property signature transformation "a"`)
+      new Error(`Duplicate property signature transformation
+details: Duplicate key "a"`)
     )
     expect(() =>
       new AST.TypeLiteralTransformation([
@@ -18,7 +19,8 @@ describe("AST.TypeLiteralTransformation", () => {
         new AST.PropertySignatureTransformation("b", "c", identity, identity)
       ])
     ).toThrow(
-      new Error(`Duplicate property signature transformation "c"`)
+      new Error(`Duplicate property signature transformation
+details: Duplicate key "c"`)
     )
   })
 })

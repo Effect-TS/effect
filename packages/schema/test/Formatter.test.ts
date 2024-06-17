@@ -1,5 +1,6 @@
 import * as ArrayFormatter from "@effect/schema/ArrayFormatter"
 import type { ParseOptions } from "@effect/schema/AST"
+import * as AST from "@effect/schema/AST"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
@@ -15,12 +16,86 @@ const options: ParseOptions = { errors: "all", onExcessProperty: "error" }
 
 const expectIssues = <A, I>(schema: S.Schema<A, I>, input: unknown, issues: Array<ArrayFormatter.Issue>) => {
   const result = S.decodeUnknownEither(schema)(input, options).pipe(
-    Either.mapLeft((e) => ArrayFormatter.formatIssueSync(e.error))
+    Either.mapLeft((e) => ArrayFormatter.formatIssueSync(e.issue))
   )
   expect(result).toStrictEqual(Either.left(issues))
 }
 
 describe("Formatter", () => {
+  describe("missing message", () => {
+    it("Struct", async () => {
+      const schema = S.Struct({
+        a: S.propertySignature(S.String).annotations({
+          description: "my description",
+          missingMessage: () => "my missing message"
+        })
+      })
+      const input = {}
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        input,
+        `{ readonly a: string }
+└─ ["a"]
+   └─ my missing message`
+      )
+      expectIssues(schema, input, [{
+        _tag: "Missing",
+        path: ["a"],
+        message: "my missing message"
+      }])
+    })
+
+    describe("Tuple", () => {
+      it("e", async () => {
+        const schema = S.make(
+          new AST.TupleType(
+            [
+              new AST.OptionalType(AST.stringKeyword, false, {
+                [AST.MissingMessageAnnotationId]: () => "my missing message"
+              })
+            ],
+            [],
+            true
+          )
+        )
+        const input: Array<string> = []
+        await Util.expectDecodeUnknownFailure(
+          schema,
+          input,
+          `readonly [string]
+└─ [0]
+   └─ my missing message`
+        )
+        expectIssues(schema, input, [{
+          _tag: "Missing",
+          path: [0],
+          message: "my missing message"
+        }])
+      })
+
+      it("r + e", async () => {
+        const schema = S.Tuple(
+          [],
+          S.String,
+          S.element(S.String).annotations({ [AST.MissingMessageAnnotationId]: () => "my missing message" })
+        )
+        const input: Array<string> = []
+        await Util.expectDecodeUnknownFailure(
+          schema,
+          input,
+          `readonly [...string[], string]
+└─ [0]
+   └─ my missing message`
+        )
+        expectIssues(schema, input, [{
+          _tag: "Missing",
+          path: [0],
+          message: "my missing message"
+        }])
+      })
+    })
+  })
+
   describe("Forbidden", () => {
     it("default message", () => {
       const schema = Util.effectify(S.String)
@@ -133,7 +208,7 @@ describe("Formatter", () => {
         "custom message"
       )
       expectIssues(schema, input, [{
-        _tag: "TypeLiteral",
+        _tag: "Composite",
         path: [],
         message: "custom message"
       }])
@@ -150,7 +225,7 @@ describe("Formatter", () => {
         "custom message"
       )
       expectIssues(schema, input, [{
-        _tag: "TypeLiteral",
+        _tag: "Composite",
         path: [],
         message: "custom message"
       }])
@@ -166,13 +241,13 @@ describe("Formatter", () => {
         input,
         `{ readonly a: string }
 └─ ["b"]
-   └─ is unexpected, expected "a"`,
+   └─ is unexpected, expected: "a"`,
         Util.onExcessPropertyError
       )
       expectIssues(schema, input, [{
         _tag: "Unexpected",
         path: ["b"],
-        message: `is unexpected, expected "a"`
+        message: `is unexpected, expected: "a"`
       }])
     })
 
@@ -184,13 +259,13 @@ describe("Formatter", () => {
         input,
         `identifier
 └─ ["b"]
-   └─ is unexpected, expected "a"`,
+   └─ is unexpected, expected: "a"`,
         Util.onExcessPropertyError
       )
       expectIssues(schema, input, [{
         _tag: "Unexpected",
         path: ["b"],
-        message: `is unexpected, expected "a"`
+        message: `is unexpected, expected: "a"`
       }])
     })
 
@@ -204,7 +279,7 @@ describe("Formatter", () => {
         Util.onExcessPropertyError
       )
       expectIssues(schema, input, [{
-        _tag: "TypeLiteral",
+        _tag: "Composite",
         path: [],
         message: "custom message"
       }])
@@ -222,7 +297,7 @@ describe("Formatter", () => {
         Util.onExcessPropertyError
       )
       expectIssues(schema, input, [{
-        _tag: "TypeLiteral",
+        _tag: "Composite",
         path: [],
         message: "custom message"
       }])
@@ -236,12 +311,12 @@ describe("Formatter", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         input,
-        "Expected an instance of File, actual null"
+        "Expected File, actual null"
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: `Expected an instance of File, actual null`
+        message: `Expected File, actual null`
       }])
     })
 
@@ -251,12 +326,12 @@ describe("Formatter", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         input,
-        "Expected identifier (an instance of File), actual null"
+        "Expected identifier, actual null"
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected identifier (an instance of File), actual null"
+        message: "Expected identifier, actual null"
       }])
     })
 
@@ -270,7 +345,7 @@ describe("Formatter", () => {
         Util.onExcessPropertyError
       )
       expectIssues(schema, input, [{
-        _tag: "Declaration",
+        _tag: "Type",
         path: [],
         message: "custom message"
       }])
@@ -288,7 +363,7 @@ describe("Formatter", () => {
         Util.onExcessPropertyError
       )
       expectIssues(schema, input, [{
-        _tag: "Declaration",
+        _tag: "Type",
         path: [],
         message: "custom message"
       }])
@@ -299,22 +374,22 @@ describe("Formatter", () => {
     it("default message", async () => {
       const schema = S.String
       const input = null
-      await Util.expectDecodeUnknownFailure(schema, input, "Expected a string, actual null")
+      await Util.expectDecodeUnknownFailure(schema, input, "Expected string, actual null")
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected a string, actual null"
+        message: "Expected string, actual null"
       }])
     })
 
     it("default message with identifier", async () => {
-      const schema = S.String.annotations({ identifier: "identifier" })
+      const schema = S.String.annotations({ identifier: "ID" })
       const input = null
-      await Util.expectDecodeUnknownFailure(schema, input, "Expected identifier (a string), actual null")
+      await Util.expectDecodeUnknownFailure(schema, input, "Expected ID, actual null")
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected identifier (a string), actual null"
+        message: "Expected ID, actual null"
       }])
     })
 
@@ -346,12 +421,12 @@ describe("Formatter", () => {
         input,
         `(string <-> string)
 └─ Encoded side transformation failure
-   └─ Expected a string, actual null`
+   └─ Expected string, actual null`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected a string, actual null"
+        message: "Expected string, actual null"
       }])
     })
 
@@ -370,12 +445,12 @@ describe("Formatter", () => {
         input,
         `identifier
 └─ Encoded side transformation failure
-   └─ Expected a string, actual null`
+   └─ Expected string, actual null`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected a string, actual null"
+        message: "Expected string, actual null"
       }])
     })
 
@@ -418,12 +493,12 @@ describe("Formatter", () => {
         input,
         `(string <-> string)
 └─ Encoded side transformation failure
-   └─ Expected a string, actual null`
+   └─ Expected string, actual null`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected a string, actual null"
+        message: "Expected string, actual null"
       }])
     })
 
@@ -510,12 +585,12 @@ describe("Formatter", () => {
 └─ Type side transformation failure
    └─ NonEmpty
       └─ Predicate refinement failure
-         └─ Expected NonEmpty (a non empty string), actual ""`
+         └─ Expected NonEmpty, actual ""`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: `Expected NonEmpty (a non empty string), actual ""`
+        message: `Expected NonEmpty, actual ""`
       }])
     })
 
@@ -639,12 +714,12 @@ describe("Formatter", () => {
         input,
         `a string at least 1 character(s) long
 └─ From side refinement failure
-   └─ Expected a string, actual null`
+   └─ Expected string, actual null`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected a string, actual null"
+        message: "Expected string, actual null"
       }])
     })
 
@@ -656,12 +731,12 @@ describe("Formatter", () => {
         input,
         `identifier
 └─ From side refinement failure
-   └─ Expected a string, actual null`
+   └─ Expected string, actual null`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected a string, actual null"
+        message: "Expected string, actual null"
       }])
     })
 
@@ -690,12 +765,12 @@ describe("Formatter", () => {
         input,
         `identifier
 └─ Predicate refinement failure
-   └─ Expected identifier (a string at least 1 character(s) long), actual ""`
+   └─ Expected identifier, actual ""`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: `Expected identifier (a string at least 1 character(s) long), actual ""`
+        message: `Expected identifier, actual ""`
       }])
     })
 
@@ -707,12 +782,12 @@ describe("Formatter", () => {
         input,
         `a string at least 1 character(s) long
 └─ From side refinement failure
-   └─ Expected a string, actual null`
+   └─ Expected string, actual null`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected a string, actual null"
+        message: "Expected string, actual null"
       }])
     })
 
@@ -805,8 +880,7 @@ describe("Formatter", () => {
           S.Array(
             S.Struct({
               b: pipe(
-                S.String,
-                S.message(() => "type"),
+                S.String.annotations({ message: () => "type" }),
                 S.minLength(1, { message: () => "minLength" }),
                 S.maxLength(2, { message: () => "maxLength" })
               )
@@ -911,19 +985,17 @@ describe("Formatter", () => {
         schema,
         input,
         `string | number
-├─ Union member
-│  └─ Expected a string, actual null
-└─ Union member
-   └─ Expected a number, actual null`
+├─ Expected string, actual null
+└─ Expected number, actual null`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected a string, actual null"
+        message: "Expected string, actual null"
       }, {
         _tag: "Type",
         path: [],
-        message: "Expected a number, actual null"
+        message: "Expected number, actual null"
       }])
     })
   })
@@ -946,10 +1018,8 @@ describe("Formatter", () => {
         `readonly [number, <suspended schema> | null]
 └─ [1]
    └─ <suspended schema> | null
-      ├─ Union member
-      │  └─ Expected readonly [number, <suspended schema> | null], actual undefined
-      └─ Union member
-         └─ Expected null, actual undefined`
+      ├─ Expected readonly [number, <suspended schema> | null], actual undefined
+      └─ Expected null, actual undefined`
       )
     })
 
@@ -971,10 +1041,8 @@ describe("Formatter", () => {
         `readonly [number, <suspended schema> | null]
 └─ [1]
    └─ <suspended schema> | null
-      ├─ Union member
-      │  └─ Expected readonly [number, <suspended schema> | null], actual undefined
-      └─ Union member
-         └─ Expected null, actual undefined`
+      ├─ Expected readonly [number, <suspended schema> | null], actual undefined
+      └─ Expected null, actual undefined`
       )
     })
   })
@@ -987,19 +1055,17 @@ describe("Formatter", () => {
         schema,
         input,
         `string | number
-├─ Union member
-│  └─ Expected a string, actual null
-└─ Union member
-   └─ Expected a number, actual null`
+├─ Expected string, actual null
+└─ Expected number, actual null`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected a string, actual null"
+        message: "Expected string, actual null"
       }, {
         _tag: "Type",
         path: [],
-        message: "Expected a number, actual null"
+        message: "Expected number, actual null"
       }])
     })
 
@@ -1010,19 +1076,17 @@ describe("Formatter", () => {
         schema,
         input,
         `identifier
-├─ Union member
-│  └─ Expected a string, actual null
-└─ Union member
-   └─ Expected a number, actual null`
+├─ Expected string, actual null
+└─ Expected number, actual null`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "Expected a string, actual null"
+        message: "Expected string, actual null"
       }, {
         _tag: "Type",
         path: [],
-        message: "Expected a number, actual null"
+        message: "Expected number, actual null"
       }])
     })
 
@@ -1035,7 +1099,7 @@ describe("Formatter", () => {
         "custom message"
       )
       expectIssues(schema, input, [{
-        _tag: "Union",
+        _tag: "Composite",
         path: [],
         message: "custom message"
       }])
@@ -1055,9 +1119,9 @@ describe("handle identifiers", () => {
       { a: 1, b: 2 },
       `MySchema
 ├─ ["a"]
-│  └─ Expected MyString1 (a string), actual 1
+│  └─ Expected MyString1, actual 1
 └─ ["b"]
-   └─ Expected MyString2 (a string), actual 2`,
+   └─ Expected MyString2, actual 2`,
       Util.allErrors
     )
   })
@@ -1080,10 +1144,8 @@ describe("handle identifiers", () => {
         `A
 └─ [1]
    └─ A | null
-      ├─ Union member
-      │  └─ Expected A, actual undefined
-      └─ Union member
-         └─ Expected null, actual undefined`
+      ├─ Expected A, actual undefined
+      └─ Expected null, actual undefined`
       )
     })
 
@@ -1105,10 +1167,8 @@ describe("handle identifiers", () => {
         `A
 └─ [1]
    └─ A | null
-      ├─ Union member
-      │  └─ Expected A, actual undefined
-      └─ Union member
-         └─ Expected null, actual undefined`
+      ├─ Expected A, actual undefined
+      └─ Expected null, actual undefined`
       )
     })
 
@@ -1130,10 +1190,8 @@ describe("handle identifiers", () => {
         `readonly [number, A | null]
 └─ [1]
    └─ A | null
-      ├─ Union member
-      │  └─ Expected A, actual undefined
-      └─ Union member
-         └─ Expected null, actual undefined`
+      ├─ Expected A, actual undefined
+      └─ Expected null, actual undefined`
       )
     })
   })

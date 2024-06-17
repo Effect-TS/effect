@@ -80,92 +80,6 @@ A.pipe(S.annotations({}))
 S.Number.pipe(S.int(), S.brand("Int")).make(1)
 
 // ---------------------------------------------
-// S.message
-// ---------------------------------------------
-
-// $ExpectType Schema<string, string, never>
-hole<S.Schema<string>>().pipe(S.message(() => ""))
-
-// $ExpectType AnnotatedString
-AnnotatedString.pipe(S.message(() => ""))
-
-// $ExpectType SchemaClass<A, { readonly a: string; }, never>
-A.pipe(S.message(() => ""))
-
-// ---------------------------------------------
-// S.identifier
-// ---------------------------------------------
-
-// $ExpectType AnnotatedString
-AnnotatedString.pipe(S.identifier(""))
-
-// ---------------------------------------------
-// S.title
-// ---------------------------------------------
-
-// $ExpectType AnnotatedString
-AnnotatedString.pipe(S.title(""))
-
-// ---------------------------------------------
-// S.description
-// ---------------------------------------------
-
-// $ExpectType AnnotatedString
-AnnotatedString.pipe(S.description(""))
-
-// ---------------------------------------------
-// S.examples
-// ---------------------------------------------
-
-// $ExpectType AnnotatedString
-AnnotatedString.pipe(S.examples([""]))
-
-// ---------------------------------------------
-// S.default
-// ---------------------------------------------
-
-// $ExpectType AnnotatedString
-AnnotatedString.pipe(S.default(""))
-
-// ---------------------------------------------
-// S.documentation
-// ---------------------------------------------
-
-// $ExpectType AnnotatedString
-AnnotatedString.pipe(S.documentation(""))
-
-// ---------------------------------------------
-// S.jsonSchema
-// ---------------------------------------------
-
-// $ExpectType AnnotatedString
-AnnotatedString.pipe(S.jsonSchema({}))
-
-// ---------------------------------------------
-// S.equivalence
-// ---------------------------------------------
-
-// $ExpectType AnnotatedString
-AnnotatedString.pipe(S.equivalence((
-  _a, // $ExpectType string
-  _b // $ExpectType string
-) => true))
-
-// ---------------------------------------------
-// S.concurrency
-// ---------------------------------------------
-
-// $ExpectType AnnotatedString
-AnnotatedString.pipe(S.concurrency(1))
-
-// ---------------------------------------------
-// S.batching
-// ---------------------------------------------
-
-// $ExpectType AnnotatedString
-AnnotatedString.pipe(S.batching(true))
-
-// ---------------------------------------------
 // Primitives
 // ---------------------------------------------
 
@@ -452,13 +366,13 @@ S.Tuple([S.String], S.Number, S.Boolean).rest
 // $ExpectType Schema<readonly [string, number, boolean?], readonly [string, number, boolean?], never>
 S.asSchema(S.Tuple(S.String, S.Number, S.optionalElement(S.Boolean)))
 
-// $ExpectType Tuple<[typeof String$, typeof Number$, OptionalElement<typeof Boolean$>]>
+// $ExpectType Tuple<[typeof String$, typeof Number$, Element<typeof Boolean$, "?">]>
 S.Tuple(S.String, S.Number, S.optionalElement(S.Boolean))
 
 // $ExpectType Schema<readonly [string, number, number?], readonly [string, string, string?], never>
 S.asSchema(S.Tuple(S.String, S.NumberFromString, S.optionalElement(S.NumberFromString)))
 
-// $ExpectType Tuple<[typeof String$, typeof NumberFromString, OptionalElement<typeof NumberFromString>]>
+// $ExpectType Tuple<[typeof String$, typeof NumberFromString, Element<typeof NumberFromString, "?">]>
 S.Tuple(S.String, S.NumberFromString, S.optionalElement(S.NumberFromString))
 
 // ---------------------------------------------
@@ -1645,22 +1559,6 @@ S.asSchema(S.RedactedFromSelf(S.NumberFromString))
 S.RedactedFromSelf(S.NumberFromString)
 
 // ---------------------------------------------
-// Secret
-// ---------------------------------------------
-
-// $ExpectType Schema<Secret, string, never>
-S.asSchema(S.Secret)
-
-// $ExpectType typeof Secret
-S.Secret
-
-// $ExpectType Schema<Secret, Secret, never>
-S.asSchema(S.SecretFromSelf)
-
-// $ExpectType typeof SecretFromSelf
-S.SecretFromSelf
-
-// ---------------------------------------------
 // propertySignature
 // ---------------------------------------------
 
@@ -2321,12 +2219,12 @@ hole<S.TupleType.Type<[typeof S.NumberFromString], [typeof S.NumberFromString]>>
 hole<S.TupleType.Type<[typeof S.NumberFromString], [typeof S.NumberFromString, typeof S.NumberFromString]>>()
 
 // $ExpectType readonly [number, number?]
-hole<S.TupleType.Type<[typeof S.NumberFromString, S.OptionalElement<typeof S.NumberFromString>], []>>()
+hole<S.TupleType.Type<[typeof S.NumberFromString, S.Element<typeof S.NumberFromString, "?">], []>>()
 
 // $ExpectType readonly [number, number?, ...number[]]
 hole<
   S.TupleType.Type<
-    [typeof S.NumberFromString, S.OptionalElement<typeof S.NumberFromString>],
+    [typeof S.NumberFromString, S.Element<typeof S.NumberFromString, "?">],
     [typeof S.NumberFromString]
   >
 >()
@@ -2351,12 +2249,12 @@ hole<S.TupleType.Encoded<[typeof S.NumberFromString], [typeof S.NumberFromString
 hole<S.TupleType.Encoded<[typeof S.NumberFromString], [typeof S.NumberFromString, typeof S.NumberFromString]>>()
 
 // $ExpectType readonly [string, string?]
-hole<S.TupleType.Encoded<[typeof S.NumberFromString, S.OptionalElement<typeof S.NumberFromString>], []>>()
+hole<S.TupleType.Encoded<[typeof S.NumberFromString, S.Element<typeof S.NumberFromString, "?">], []>>()
 
 // $ExpectType readonly [string, string?, ...string[]]
 hole<
   S.TupleType.Encoded<
-    [typeof S.NumberFromString, S.OptionalElement<typeof S.NumberFromString>],
+    [typeof S.NumberFromString, S.Element<typeof S.NumberFromString, "?">],
     [typeof S.NumberFromString]
   >
 >()

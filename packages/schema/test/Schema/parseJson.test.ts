@@ -94,7 +94,7 @@ describe("parseJson", () => {
 └─ Type side transformation failure
    └─ { readonly a: number }
       └─ ["a"]
-         └─ Expected a number, actual "b"`
+         └─ Expected number, actual "b"`
       )
     })
 

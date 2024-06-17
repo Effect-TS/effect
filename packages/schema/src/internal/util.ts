@@ -1,5 +1,7 @@
+import * as array_ from "effect/Array"
 import * as Predicate from "effect/Predicate"
 import type * as AST from "../AST.js"
+import type * as ParseResult from "../ParseResult.js"
 
 /** @internal */
 export const getKeysForIndexSignature = (
@@ -50,7 +52,7 @@ export const formatUnknown = (u: unknown): string => {
   } else if (Predicate.isBigInt(u)) {
     return String(u) + "n"
   } else if (
-    !Array.isArray(u)
+    !array_.isArray(u)
     && Predicate.hasProperty(u, "toString")
     && Predicate.isFunction(u["toString"])
     && u["toString"] !== Object.prototype.toString
@@ -59,7 +61,7 @@ export const formatUnknown = (u: unknown): string => {
   }
   try {
     JSON.stringify(u)
-    if (Array.isArray(u)) {
+    if (array_.isArray(u)) {
       return `[${u.map(formatUnknown).join(",")}]`
     } else {
       return `{${
@@ -76,3 +78,20 @@ export const formatUnknown = (u: unknown): string => {
 /** @internal */
 export const formatPropertyKey = (name: PropertyKey): string =>
   typeof name === "string" ? JSON.stringify(name) : String(name)
+
+/** @internal */
+export type SingleOrArray<A> = A | ReadonlyArray<A>
+
+/** @internal */
+export const isNonEmpty = <A>(x: ParseResult.SingleOrNonEmpty<A>): x is array_.NonEmptyReadonlyArray<A> =>
+  Array.isArray(x)
+
+/** @internal */
+export const isSingle = <A>(x: A | ReadonlyArray<A>): x is A => !Array.isArray(x)
+
+/** @internal */
+export const formatPathKey = (key: PropertyKey): string => `[${formatPropertyKey(key)}]`
+
+/** @internal */
+export const formatPath = (path: ParseResult.Path): string =>
+  isNonEmpty(path) ? path.map(formatPathKey).join("") : formatPathKey(path)

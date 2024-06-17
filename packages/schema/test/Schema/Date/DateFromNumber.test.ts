@@ -14,7 +14,7 @@ describe("DateFromNumber", () => {
       null,
       `DateFromNumber
 └─ Encoded side transformation failure
-   └─ Expected a number, actual null`
+   └─ Expected number, actual null`
     )
   })
 

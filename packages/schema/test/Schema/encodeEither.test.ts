@@ -15,7 +15,7 @@ describe("encodeEither", () => {
       └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
-               └─ Expected Char (a single character), actual "10"`
+               └─ Expected Char, actual "10"`
     )
   })
 
@@ -33,13 +33,13 @@ describe("encodeEither", () => {
       S.encodeEither(schema)(input, { onExcessProperty: "error" }),
       `{ readonly a: NumberFromChar }
 └─ ["b"]
-   └─ is unexpected, expected "a"`
+   └─ is unexpected, expected: "a"`
     )
     Util.expectEitherLeft(
       S.encodeEither(schema, { onExcessProperty: "error" })(input),
       `{ readonly a: NumberFromChar }
 └─ ["b"]
-   └─ is unexpected, expected "a"`
+   └─ is unexpected, expected: "a"`
     )
     Util.expectEitherRight(
       S.encodeEither(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }),

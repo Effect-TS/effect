@@ -28,8 +28,8 @@ const effectifyAST = (ast: AST.AST): AST.AST => {
   switch (ast._tag) {
     case "TupleType":
       return new AST.TupleType(
-        ast.elements.map((e) => new AST.Element(effectifyAST(e.type), e.isOptional)),
-        ast.rest.map((ast) => effectifyAST(ast)),
+        ast.elements.map((e) => new AST.OptionalType(effectifyAST(e.type), e.isOptional, e.annotations)),
+        ast.rest.map((annotatedAST) => new AST.Type(effectifyAST(annotatedAST.type), annotatedAST.annotations)),
         ast.isReadonly,
         ast.annotations
       )
@@ -71,8 +71,8 @@ const effectifyAST = (ast: AST.AST): AST.AST => {
     AST.encodedAST(ast),
     AST.typeAST(ast),
     new AST.FinalTransformation(
-      (a, options) => Effect.flatMap(sleep, () => ParseResult.mapError(decode(a, options), (e) => e.error)),
-      (a, options) => Effect.flatMap(sleep, () => ParseResult.mapError(encode(a, options), (e) => e.error))
+      (a, options) => Effect.flatMap(sleep, () => ParseResult.mapError(decode(a, options), (e) => e.issue)),
+      (a, options) => Effect.flatMap(sleep, () => ParseResult.mapError(encode(a, options), (e) => e.issue))
     )
   )
 }

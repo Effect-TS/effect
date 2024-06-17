@@ -25,7 +25,7 @@ describe("RedactedFromSelf", () => {
       schema,
       Redacted.make(123),
       `Redacted(<redacted>)
-└─ Expected a string, actual 123`
+└─ Expected string, actual 123`
     )
   })
 

@@ -7,7 +7,7 @@ describe("Boolean", () => {
   it("decoding", async () => {
     await Util.expectDecodeUnknownSuccess(schema, true, true)
     await Util.expectDecodeUnknownSuccess(schema, false, false)
-    await Util.expectDecodeUnknownFailure(schema, 1, `Expected a boolean, actual 1`)
+    await Util.expectDecodeUnknownFailure(schema, 1, `Expected boolean, actual 1`)
   })
 
   it("encoding", async () => {

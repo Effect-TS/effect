@@ -4,7 +4,7 @@ import { describe, it } from "vitest"
 
 describe("betweenBigInt", () => {
   const schema = S.BigIntFromSelf.pipe(S.betweenBigInt(-1n, 1n)).annotations({
-    title: "[-1n, -1n] interval"
+    title: "[-1n, 1n] interval"
   })
 
   it("decoding", async () => {
@@ -12,16 +12,16 @@ describe("betweenBigInt", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       -2n,
-      `[-1n, -1n] interval
+      `[-1n, 1n] interval
 └─ Predicate refinement failure
-   └─ Expected a bigint between -1n and 1n, actual -2n`
+   └─ Expected [-1n, 1n] interval, actual -2n`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       2n,
-      `[-1n, -1n] interval
+      `[-1n, 1n] interval
 └─ Predicate refinement failure
-   └─ Expected a bigint between -1n and 1n, actual 2n`
+   └─ Expected [-1n, 1n] interval, actual 2n`
     )
   })
 

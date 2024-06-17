@@ -29,7 +29,7 @@ describe("compose", async () => {
 └─ Type side transformation failure
    └─ NumberFromString
       └─ Encoded side transformation failure
-         └─ Expected a string, actual null`
+         └─ Expected string, actual null`
     )
     const schema2 = S.Union(S.String, S.Null).pipe(
       S.compose(S.NumberFromString, { strict: false })
@@ -51,7 +51,7 @@ describe("compose", async () => {
 └─ Type side transformation failure
    └─ NumberFromString
       └─ Encoded side transformation failure
-         └─ Expected a string, actual null`
+         └─ Expected string, actual null`
     )
   })
 
@@ -65,7 +65,7 @@ describe("compose", async () => {
 └─ Encoded side transformation failure
    └─ NumberFromString
       └─ Type side transformation failure
-         └─ Expected a number, actual null`
+         └─ Expected number, actual null`
     )
     const schema2 = S.NumberFromString.pipe(
       S.compose(S.Union(S.Number, S.Null), { strict: false })
@@ -78,7 +78,7 @@ describe("compose", async () => {
 └─ Encoded side transformation failure
    └─ NumberFromString
       └─ Type side transformation failure
-         └─ Expected a number, actual null`
+         └─ Expected number, actual null`
     )
   })
 })

@@ -22,12 +22,10 @@ describe("OptionFromNullOr", () => {
       `(NumberFromString | null <-> Option<number>)
 └─ Encoded side transformation failure
    └─ NumberFromString | null
-      ├─ Union member
-      │  └─ NumberFromString
-      │     └─ Encoded side transformation failure
-      │        └─ Expected a string, actual undefined
-      └─ Union member
-         └─ Expected null, actual undefined`
+      ├─ NumberFromString
+      │  └─ Encoded side transformation failure
+      │     └─ Expected string, actual undefined
+      └─ Expected null, actual undefined`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
@@ -35,12 +33,10 @@ describe("OptionFromNullOr", () => {
       `(NumberFromString | null <-> Option<number>)
 └─ Encoded side transformation failure
    └─ NumberFromString | null
-      ├─ Union member
-      │  └─ NumberFromString
-      │     └─ Encoded side transformation failure
-      │        └─ Expected a string, actual {}
-      └─ Union member
-         └─ Expected null, actual {}`
+      ├─ NumberFromString
+      │  └─ Encoded side transformation failure
+      │     └─ Expected string, actual {}
+      └─ Expected null, actual {}`
     )
   })
 

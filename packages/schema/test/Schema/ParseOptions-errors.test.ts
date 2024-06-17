@@ -14,7 +14,7 @@ describe("`errors` option", () => {
 ├─ [1]
 │  └─ is missing
 └─ [0]
-   └─ Expected a string, actual true`,
+   └─ Expected string, actual true`,
           Util.allErrors
         )
       })
@@ -40,9 +40,9 @@ describe("`errors` option", () => {
           ["a", "b"],
           `readonly []
 ├─ [0]
-│  └─ is unexpected, expected never
+│  └─ is unexpected, expected: never
 └─ [1]
-   └─ is unexpected, expected never`,
+   └─ is unexpected, expected: never`,
           Util.allErrors
         )
       })
@@ -54,9 +54,9 @@ describe("`errors` option", () => {
           [1, "b"],
           `readonly [string, number]
 ├─ [0]
-│  └─ Expected a string, actual 1
+│  └─ Expected string, actual 1
 └─ [1]
-   └─ Expected a number, actual "b"`,
+   └─ Expected number, actual "b"`,
           Util.allErrors
         )
       })
@@ -68,9 +68,9 @@ describe("`errors` option", () => {
           ["a", "b", "c"],
           `readonly [string, ...number[]]
 ├─ [1]
-│  └─ Expected a number, actual "b"
+│  └─ Expected number, actual "b"
 └─ [2]
-   └─ Expected a number, actual "c"`,
+   └─ Expected number, actual "c"`,
           Util.allErrors
         )
       })
@@ -82,9 +82,9 @@ describe("`errors` option", () => {
           ["a", "b"],
           `readonly [...boolean[], number, number]
 ├─ [0]
-│  └─ Expected a number, actual "a"
+│  └─ Expected number, actual "a"
 └─ [1]
-   └─ Expected a number, actual "b"`,
+   └─ Expected number, actual "b"`,
           Util.allErrors
         )
       })
@@ -112,9 +112,9 @@ describe("`errors` option", () => {
           { a: 1, b: "b" },
           `{ readonly a: string; readonly b: number }
 ├─ ["a"]
-│  └─ Expected a string, actual 1
+│  └─ Expected string, actual 1
 └─ ["b"]
-   └─ Expected a number, actual "b"`,
+   └─ Expected number, actual "b"`,
           Util.allErrors
         )
       })
@@ -126,9 +126,9 @@ describe("`errors` option", () => {
           { a: 1, b: "b", c: "c" },
           `{ readonly a: number }
 ├─ ["b"]
-│  └─ is unexpected, expected "a"
+│  └─ is unexpected, expected: "a"
 └─ ["c"]
-   └─ is unexpected, expected "a"`,
+   └─ is unexpected, expected: "a"`,
           { ...Util.allErrors, ...Util.onExcessPropertyError }
         )
       })
@@ -142,9 +142,9 @@ describe("`errors` option", () => {
           { a: 1, b: 2 },
           `{ readonly [x: string]: number }
 ├─ ["a"]
-│  └─ is unexpected, expected a string at least 2 character(s) long
+│  └─ is unexpected, expected: a string at least 2 character(s) long
 └─ ["b"]
-   └─ is unexpected, expected a string at least 2 character(s) long`,
+   └─ is unexpected, expected: a string at least 2 character(s) long`,
           { ...Util.allErrors, ...Util.onExcessPropertyError }
         )
       })
@@ -156,9 +156,9 @@ describe("`errors` option", () => {
           { a: "a", b: "b" },
           `{ readonly [x: string]: number }
 ├─ ["a"]
-│  └─ Expected a number, actual "a"
+│  └─ Expected number, actual "a"
 └─ ["b"]
-   └─ Expected a number, actual "b"`,
+   └─ Expected number, actual "b"`,
           Util.allErrors
         )
       })
@@ -174,9 +174,9 @@ describe("`errors` option", () => {
           [1, 1] as any,
           `readonly []
 ├─ [0]
-│  └─ is unexpected, expected never
+│  └─ is unexpected, expected: never
 └─ [1]
-   └─ is unexpected, expected never`,
+   └─ is unexpected, expected: never`,
           Util.allErrors
         )
       })
@@ -192,13 +192,13 @@ describe("`errors` option", () => {
 │     └─ Encoded side transformation failure
 │        └─ Char
 │           └─ Predicate refinement failure
-│              └─ Expected Char (a single character), actual "10"
+│              └─ Expected Char, actual "10"
 └─ [1]
    └─ NumberFromChar
       └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
-               └─ Expected Char (a single character), actual "10"`,
+               └─ Expected Char, actual "10"`,
           Util.allErrors
         )
       })
@@ -214,13 +214,13 @@ describe("`errors` option", () => {
 │     └─ Encoded side transformation failure
 │        └─ Char
 │           └─ Predicate refinement failure
-│              └─ Expected Char (a single character), actual "10"
+│              └─ Expected Char, actual "10"
 └─ [1]
    └─ NumberFromChar
       └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
-               └─ Expected Char (a single character), actual "10"`,
+               └─ Expected Char, actual "10"`,
           Util.allErrors
         )
       })
@@ -236,13 +236,13 @@ describe("`errors` option", () => {
 │     └─ Encoded side transformation failure
 │        └─ Char
 │           └─ Predicate refinement failure
-│              └─ Expected Char (a single character), actual "10"
+│              └─ Expected Char, actual "10"
 └─ [1]
    └─ NumberFromChar
       └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
-               └─ Expected Char (a single character), actual "10"`,
+               └─ Expected Char, actual "10"`,
           Util.allErrors
         )
       })
@@ -260,13 +260,13 @@ describe("`errors` option", () => {
 │     └─ Encoded side transformation failure
 │        └─ Char
 │           └─ Predicate refinement failure
-│              └─ Expected Char (a single character), actual "10"
+│              └─ Expected Char, actual "10"
 └─ ["b"]
    └─ NumberFromChar
       └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
-               └─ Expected Char (a single character), actual "10"`,
+               └─ Expected Char, actual "10"`,
           Util.allErrors
         )
       })
@@ -280,9 +280,9 @@ describe("`errors` option", () => {
           { aa: "a", bb: "bb" },
           `{ readonly [x: string]: string }
 ├─ ["aa"]
-│  └─ is unexpected, expected Char (a single character)
+│  └─ is unexpected, expected: Char
 └─ ["bb"]
-   └─ is unexpected, expected Char (a single character)`,
+   └─ is unexpected, expected: Char`,
           { ...Util.allErrors, ...Util.onExcessPropertyError }
         )
       })
@@ -296,11 +296,11 @@ describe("`errors` option", () => {
 ├─ ["a"]
 │  └─ Char
 │     └─ Predicate refinement failure
-│        └─ Expected Char (a single character), actual "aa"
+│        └─ Expected Char, actual "aa"
 └─ ["b"]
    └─ Char
       └─ Predicate refinement failure
-         └─ Expected Char (a single character), actual "bb"`,
+         └─ Expected Char, actual "bb"`,
           Util.allErrors
         )
       })

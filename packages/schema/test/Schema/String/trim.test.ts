@@ -48,7 +48,7 @@ describe("trim", () => {
       └─ Type side transformation failure
          └─ Trimmed
             └─ Predicate refinement failure
-               └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " a"`
+               └─ Expected Trimmed, actual " a"`
     )
     await Util.expectEncodeFailure(
       schema,
@@ -59,7 +59,7 @@ describe("trim", () => {
       └─ Type side transformation failure
          └─ Trimmed
             └─ Predicate refinement failure
-               └─ Expected Trimmed (a string with no leading or trailing whitespace), actual "a "`
+               └─ Expected Trimmed, actual "a "`
     )
     await Util.expectEncodeFailure(
       schema,
@@ -70,7 +70,7 @@ describe("trim", () => {
       └─ Type side transformation failure
          └─ Trimmed
             └─ Predicate refinement failure
-               └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " a "`
+               └─ Expected Trimmed, actual " a "`
     )
     await Util.expectEncodeFailure(
       schema,
@@ -81,7 +81,7 @@ describe("trim", () => {
       └─ Type side transformation failure
          └─ Trimmed
             └─ Predicate refinement failure
-               └─ Expected Trimmed (a string with no leading or trailing whitespace), actual " "`
+               └─ Expected Trimmed, actual " "`
     )
   })
 })

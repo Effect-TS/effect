@@ -10,22 +10,22 @@ describe("object", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       null,
-      `Expected object (an object in the TypeScript meaning, i.e. the \`object\` type), actual null`
+      `Expected object, actual null`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       "a",
-      `Expected object (an object in the TypeScript meaning, i.e. the \`object\` type), actual "a"`
+      `Expected object, actual "a"`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       1,
-      `Expected object (an object in the TypeScript meaning, i.e. the \`object\` type), actual 1`
+      `Expected object, actual 1`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       true,
-      `Expected object (an object in the TypeScript meaning, i.e. the \`object\` type), actual true`
+      `Expected object, actual true`
     )
   })
 

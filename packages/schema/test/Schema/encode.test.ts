@@ -15,7 +15,7 @@ describe("encode", () => {
       └─ Encoded side transformation failure
          └─ Char
             └─ Predicate refinement failure
-               └─ Expected Char (a single character), actual "10"`
+               └─ Expected Char, actual "10"`
     )
   })
 
@@ -25,13 +25,13 @@ describe("encode", () => {
       S.encode(schema)(input, { onExcessProperty: "error" }),
       `{ readonly a: NumberFromChar }
 └─ ["b"]
-   └─ is unexpected, expected "a"`
+   └─ is unexpected, expected: "a"`
     )
     await Util.expectEffectFailure(
       S.encode(schema, { onExcessProperty: "error" })(input),
       `{ readonly a: NumberFromChar }
 └─ ["b"]
-   └─ is unexpected, expected "a"`
+   └─ is unexpected, expected: "a"`
     )
     await Util.expectEffectSuccess(
       S.encode(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }),

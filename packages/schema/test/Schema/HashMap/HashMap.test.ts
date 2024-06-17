@@ -33,7 +33,7 @@ describe("HashMap", () => {
       └─ [1]
          └─ readonly [number, string]
             └─ [1]
-               └─ Expected a string, actual 1`
+               └─ Expected string, actual 1`
     )
   })
 

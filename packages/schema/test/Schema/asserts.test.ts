@@ -1,14 +1,15 @@
+import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("asserts", () => {
-  it("the returned error should include a cause", () => {
+  it("the returned error should be a ParseError", () => {
     const asserts: (u: unknown) => asserts u is string = S.asserts(S.String)
     try {
       asserts(1)
-    } catch (e: any) {
-      expect(e.cause).exist
+    } catch (e) {
+      expect(ParseResult.isParseError(e)).toBe(true)
     }
   })
 
@@ -18,12 +19,12 @@ describe("asserts", () => {
     expect(() => S.asserts(schema)(input, { onExcessProperty: "error" })).toThrow(
       new Error(`{ readonly a: number }
 └─ ["b"]
-   └─ is unexpected, expected "a"`)
+   └─ is unexpected, expected: "a"`)
     )
     expect(() => S.asserts(schema, { onExcessProperty: "error" })(input)).toThrow(
       new Error(`{ readonly a: number }
 └─ ["b"]
-   └─ is unexpected, expected "a"`)
+   └─ is unexpected, expected: "a"`)
     )
     expect(S.asserts(schema, { onExcessProperty: "error" })(input, { onExcessProperty: "ignore" }))
       .toEqual(undefined)
@@ -38,7 +39,7 @@ describe("asserts", () => {
         { a: null },
         `{ readonly a: number }
 └─ ["a"]
-   └─ Expected a number, actual null`
+   └─ Expected number, actual null`
       )
     })
 
@@ -62,10 +63,8 @@ describe("asserts", () => {
         `{ readonly a: number | undefined }
 └─ ["a"]
    └─ number | undefined
-      ├─ Union member
-      │  └─ Expected a number, actual "a"
-      └─ Union member
-         └─ Expected undefined, actual "a"`
+      ├─ Expected number, actual "a"
+      └─ Expected undefined, actual "a"`
       )
     })
   })

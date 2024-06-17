@@ -39,7 +39,7 @@ describe("encodedBoundSchema", () => {
       └─ [0]
          └─ String2
             └─ Predicate refinement failure
-               └─ Expected String2 (a string at least 2 character(s) long), actual "a"`
+               └─ Expected String2, actual "a"`
     )
 
     await Util.expectDecodeUnknownFailure(
@@ -52,7 +52,7 @@ describe("encodedBoundSchema", () => {
 └─ ["b"]
    └─ String3
       └─ Predicate refinement failure
-         └─ Expected String3 (a string at least 3 character(s) long), actual "ab"`
+         └─ Expected String3, actual "ab"`
     )
   })
 
@@ -71,7 +71,7 @@ describe("encodedBoundSchema", () => {
       └─ [0]
          └─ String2
             └─ Predicate refinement failure
-               └─ Expected String2 (a string at least 2 character(s) long), actual "a"`
+               └─ Expected String2, actual "a"`
       )
       await Util.expectDecodeUnknownFailure(
         bound,
@@ -96,7 +96,7 @@ describe("encodedBoundSchema", () => {
       └─ [0]
          └─ String2
             └─ Predicate refinement failure
-               └─ Expected String2 (a string at least 2 character(s) long), actual "a"`
+               └─ Expected String2, actual "a"`
       )
       await Util.expectDecodeUnknownFailure(
         bound,
@@ -121,7 +121,7 @@ describe("encodedBoundSchema", () => {
       └─ [0]
          └─ String2
             └─ Predicate refinement failure
-               └─ Expected String2 (a string at least 2 character(s) long), actual "a"`
+               └─ Expected String2, actual "a"`
       )
       await Util.expectDecodeUnknownFailure(
         bound,

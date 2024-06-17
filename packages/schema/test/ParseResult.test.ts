@@ -47,7 +47,7 @@ describe("ParseResult", () => {
   it("Error.stack", () => {
     expect(
       P.parseError(new P.Type(S.String.ast, 1)).stack?.startsWith(
-        `ParseError: Expected a string, actual 1`
+        `ParseError: Expected string, actual 1`
       )
     )
       .toEqual(true)
@@ -162,8 +162,8 @@ describe("ParseIssue.actual", () => {
       { decode: (n, _, ast) => P.fail(new P.Type(ast, n)), encode: (b, _, ast) => P.fail(new P.Type(ast, b)) }
     ))("1")
     if (Either.isRight(result)) throw new Error("Expected failure")
-    expect(result.left.error.actual).toEqual("1")
-    expect((result.left.error as P.Transformation).error.actual).toEqual(1)
+    expect(result.left.issue.actual).toEqual("1")
+    expect((result.left.issue as P.Transformation).issue.actual).toEqual(1)
   })
 
   it("transform encode", () => {
@@ -173,22 +173,22 @@ describe("ParseIssue.actual", () => {
       { decode: (n, _, ast) => P.fail(new P.Type(ast, n)), encode: (b, _, ast) => P.fail(new P.Type(ast, b)) }
     ))(1)
     if (Either.isRight(result)) throw new Error("Expected failure")
-    expect(result.left.error.actual).toEqual(1)
-    expect((result.left.error as P.Transformation).error.actual).toEqual("1")
+    expect(result.left.issue.actual).toEqual(1)
+    expect((result.left.issue as P.Transformation).issue.actual).toEqual("1")
   })
 
   it("compose decode", () => {
     const result = S.decodeEither(S.compose(S.NumberFromString, S.negative()(S.Number)))("1")
     if (Either.isRight(result)) throw new Error("Expected failure")
-    expect(result.left.error.actual).toEqual("1")
-    expect((result.left.error as P.Transformation).error.actual).toEqual(1)
+    expect(result.left.issue.actual).toEqual("1")
+    expect((result.left.issue as P.Transformation).issue.actual).toEqual(1)
   })
 
   it("compose encode", () => {
     const result = S.encodeEither(S.compose(S.length(5)(S.String), S.NumberFromString))(1)
     if (Either.isRight(result)) throw new Error("Expected failure")
-    expect(result.left.error.actual).toEqual(1)
-    expect((result.left.error as P.Transformation).error.actual).toEqual("1")
+    expect(result.left.issue.actual).toEqual(1)
+    expect((result.left.issue as P.Transformation).issue.actual).toEqual("1")
   })
 
   it("decode", () => {
@@ -219,7 +219,7 @@ describe("ParseIssue.actual", () => {
     const schema = S.String
     expect(P.asserts(schema)("a")).toEqual(undefined)
     expect(() => P.asserts(schema)(1)).toThrow(
-      new Error(`Expected a string, actual 1`)
+      new Error(`Expected string, actual 1`)
     )
   })
 
