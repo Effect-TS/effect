@@ -1,5 +1,13 @@
 # effect
 
+## 3.3.3
+
+### Patch Changes
+
+- [#2999](https://github.com/Effect-TS/effect/pull/2999) [`06ede85`](https://github.com/Effect-TS/effect/commit/06ede85d6e84710e6622463be95ff3927fb30dad) Thanks @KhraksMamtsov! - Added tests for `Chunk.toArray` and `Chunk.toReadonlyArray` with use cases in the `pipe`
+
+- [#3000](https://github.com/Effect-TS/effect/pull/3000) [`7204ca5`](https://github.com/Effect-TS/effect/commit/7204ca5761c2b1d27999a624db23aa10b6e0504d) Thanks @tim-smart! - fix support for Predicates in Predicate.compose
+
 ## 3.3.2
 
 ### Patch Changes
