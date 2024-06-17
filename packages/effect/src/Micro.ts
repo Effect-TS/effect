@@ -2057,7 +2057,20 @@ export const orElseSucceed: {
  * @category error handling
  */
 export const ignore = <A, E, R>(self: Micro<A, E, R>): Micro<void, never, R> =>
-  matchMicro(self, { onFailure: die, onSuccess: () => void_ })
+  matchMicro(self, { onFailure: (_) => void_, onSuccess: (_) => void_ })
+
+/**
+ * Ignore any expected errors of the given `Micro` effect, returning `void`.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category error handling
+ */
+export const ignoreLogged = <A, E, R>(self: Micro<A, E, R>): Micro<void, never, R> =>
+  matchMicro(self, {
+    onFailure: (failure) => sync(() => console.error(failure)),
+    onSuccess: (_) => void_
+  })
 
 /**
  * Replace the success value of the given `Micro` effect with an `Option`,
@@ -2069,7 +2082,7 @@ export const ignore = <A, E, R>(self: Micro<A, E, R>): Micro<void, never, R> =>
  * @category error handling
  */
 export const option = <A, E, R>(self: Micro<A, E, R>): Micro<Option.Option<A>, never, R> =>
-  match(self, { onFailure: () => Option.none(), onSuccess: Option.some })
+  match(self, { onFailure: (_) => Option.none(), onSuccess: Option.some })
 
 /**
  * Replace the success value of the given `Micro` effect with an `Either`,
@@ -2637,6 +2650,30 @@ export const ensuring: {
   2,
   <A, E, R, XE, XR>(self: Micro<A, E, R>, finalizer: Micro<void, XE, XR>): Micro<A, E | XE, R | XR> =>
     onResult(self, (_) => finalizer)
+)
+
+/**
+ * When the `Micro` effect fails, run the given finalizer effect with the
+ * `Failure` of the executed effect.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category resources & finalization
+ */
+export const onFailure: {
+  <A, E, XE, XR>(
+    f: (failure: Failure<NoInfer<E>>) => Micro<void, XE, XR>
+  ): <R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
+  <A, E, R, XE, XR>(
+    self: Micro<A, E, R>,
+    f: (failure: Failure<NoInfer<E>>) => Micro<void, XE, XR>
+  ): Micro<A, E | XE, R | XR>
+} = dual(
+  2,
+  <A, E, R, XE, XR>(
+    self: Micro<A, E, R>,
+    f: (failure: Failure<NoInfer<E>>) => Micro<void, XE, XR>
+  ): Micro<A, E | XE, R | XR> => onResult(self, (result) => result._tag === "Left" ? f(result.left) : void_)
 )
 
 /**

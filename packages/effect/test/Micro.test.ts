@@ -799,4 +799,172 @@ describe.concurrent("Micro", () => {
       )
     })
   })
+
+  describe("finalization", () => {
+    const ExampleError = new Error("Oh noes!")
+
+    it.effect("fail ensuring", () =>
+      Micro.gen(function*() {
+        let finalized = false
+        const result = yield* Micro.fail(ExampleError).pipe(
+          Micro.ensuring(Micro.sync(() => {
+            finalized = true
+          })),
+          Micro.asResult
+        )
+        assert.deepStrictEqual(result, Micro.ResultFail(ExampleError))
+        assert.isTrue(finalized)
+      }))
+
+    it.effect("fail on error", () =>
+      Micro.gen(function*() {
+        let finalized = false
+        const result = yield* Micro.fail(ExampleError).pipe(
+          Micro.onFailure(() =>
+            Micro.sync(() => {
+              finalized = true
+            })
+          ),
+          Micro.asResult
+        )
+        assert.deepStrictEqual(result, Micro.ResultFail(ExampleError))
+        assert.isTrue(finalized)
+      }))
+
+    it.effect("finalizer errors not caught", () =>
+      Micro.gen(function*() {
+        const e2 = new Error("e2")
+        const e3 = new Error("e3")
+        const result = yield* pipe(
+          Micro.fail(ExampleError),
+          Micro.ensuring(Micro.die(e2)),
+          Micro.ensuring(Micro.die(e3)),
+          Micro.sandbox,
+          Micro.flip,
+          Micro.map((cause) => cause)
+        )
+        assert.deepStrictEqual(result, Micro.FailureUnexpected(e3))
+      }))
+
+    it.effect("finalizer errors reported", () =>
+      Micro.gen(function*() {
+        let reported: Micro.Result<number> | undefined
+        const result = yield* pipe(
+          Micro.succeed(42),
+          Micro.ensuring(Micro.die(ExampleError)),
+          Micro.fork,
+          Micro.flatMap((handle) =>
+            pipe(
+              handle.await,
+              Micro.flatMap((e) =>
+                Micro.sync(() => {
+                  reported = e
+                })
+              )
+            )
+          )
+        )
+        assert.isUndefined(result)
+        assert.isFalse(reported !== undefined && Micro.resultIsSuccess(reported))
+      }))
+
+    it.effect("acquireUseRelease usage result", () =>
+      Micro.gen(function*() {
+        const result = yield* Micro.acquireUseRelease(
+          Micro.void,
+          () => Micro.succeed(42),
+          () => Micro.void
+        )
+        assert.strictEqual(result, 42)
+      }))
+
+    it.effect("error in just acquisition", () =>
+      Micro.gen(function*() {
+        const result = yield* pipe(
+          Micro.acquireUseRelease(
+            Micro.fail(ExampleError),
+            () => Micro.void,
+            () => Micro.void
+          ),
+          Micro.asResult
+        )
+        assert.deepStrictEqual(result, Micro.ResultFail(ExampleError))
+      }))
+
+    it.effect("error in just release", () =>
+      Micro.gen(function*() {
+        const result = yield* pipe(
+          Micro.acquireUseRelease(
+            Micro.void,
+            () => Micro.void,
+            () => Micro.die(ExampleError)
+          ),
+          Micro.asResult
+        )
+        assert.deepStrictEqual(result, Micro.ResultFailUnexpected(ExampleError))
+      }))
+
+    it.effect("error in just usage", () =>
+      Micro.gen(function*() {
+        const result = yield* pipe(
+          Micro.acquireUseRelease(
+            Micro.void,
+            () => Micro.fail(ExampleError),
+            () => Micro.void
+          ),
+          Micro.asResult
+        )
+        assert.deepStrictEqual(result, Micro.ResultFail(ExampleError))
+      }))
+
+    it.effect("rethrown caught error in acquisition", () =>
+      Micro.gen(function*() {
+        const result = yield* Micro.acquireUseRelease(
+          Micro.fail(ExampleError),
+          () => Micro.void,
+          () => Micro.void
+        ).pipe(Micro.flip)
+        assert.deepEqual(result, ExampleError)
+      }))
+
+    it.effect("rethrown caught error in release", () =>
+      Micro.gen(function*() {
+        const result = yield* pipe(
+          Micro.acquireUseRelease(
+            Micro.void,
+            () => Micro.void,
+            () => Micro.die(ExampleError)
+          ),
+          Micro.asResult
+        )
+        assert.deepStrictEqual(result, Micro.ResultFailUnexpected(ExampleError))
+      }))
+
+    it.effect("rethrown caught error in usage", () =>
+      Micro.gen(function*() {
+        const result = yield* Micro.acquireUseRelease(
+          Micro.void,
+          () => Micro.fail(ExampleError),
+          () => Micro.void
+        ).pipe(Micro.asResult)
+        assert.deepEqual(result, Micro.ResultFail(ExampleError))
+      }))
+
+    it.effect("onResult - ensures that a cleanup function runs when an effect fails", () =>
+      Micro.gen(function*() {
+        let ref = false
+        yield* Micro.die("boom").pipe(
+          Micro.onResult((result) =>
+            Micro.resultIsFailureUnexpected(result) ?
+              Micro.sync(() => {
+                ref = true
+              }) :
+              Micro.void
+          ),
+          Micro.sandbox,
+          Micro.ignoreLogged
+        )
+        assert.isTrue(ref)
+      }))
+  })
 })
