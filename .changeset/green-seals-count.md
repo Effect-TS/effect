@@ -1,8 +1,6 @@
 ---
-"@effect/schema": patch
+"@effect/schema": minor
 ---
-
-TODO: ^---- change `patch` to `minor`
 
 ## Refactoring of the `ParseIssue` Model
 
@@ -57,7 +55,7 @@ console.log(
 */
 ```
 
-In this scenario, while the filter functionally works, the lack of a specific error path means errors are not as descriptive or helpful as they could be.
+In this scenario, while the filter functionally works, the lack of a specific error path (`path: []`) means errors are not as descriptive or helpful as they could be.
 
 ### Specifying Error Paths
 
@@ -210,14 +208,12 @@ export type ParseIssue =
 **Definition of `Composite`:**
 
 ```ts
-export class Composite {
-  readonly _tag = "Composite"
-  constructor(
-    readonly ast: AST.Annotated,
-    readonly actual: unknown,
-    readonly issues: ParseIssue | array_.NonEmptyReadonlyArray<ParseIssue>,
-    readonly output?: unknown
-  ) {}
+interface Composite {
+  readonly _tag: "Composite"
+  readonly ast: AST.Annotated
+  readonly actual: unknown
+  readonly issues: ParseIssue | NonEmptyReadonlyArray<ParseIssue>
+  readonly output?: unknown
 }
 ```
 
