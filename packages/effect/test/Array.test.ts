@@ -39,6 +39,7 @@ describe("ReadonlyArray", () => {
     expect(RA.ensure(null)).toEqual([null])
     expect(RA.ensure([1])).toEqual([1])
     expect(RA.ensure([1, 2])).toEqual([1, 2])
+    expect(RA.ensure(new Set([1, 2]))).toEqual([new Set([1, 2])])
   })
 
   describe("iterable inputs", () => {

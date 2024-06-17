@@ -155,13 +155,10 @@ export const fromIterable = <A>(collection: Iterable<A>): Array<A> =>
  * assert.deepStrictEqual(Array.ensure(["a"]), ["a"])
  * assert.deepStrictEqual(Array.ensure(["a", "b", "c"]), ["a", "b", "c"])
  *
- * const set = new Set([1, 2, 3])
- * assert.deepStrictEqual(Array.ensure(set), [1, 2, 3])
- *
  * @category constructors
  * @since 3.3.0
  */
-export const ensure = <A>(self: ReadonlyArray<A> | A): Array<A> => Array.isArray(self) ? self : of(self)
+export const ensure = <A>(self: ReadonlyArray<A> | A): Array<A> => Array.isArray(self) ? self : [self as A]
 
 /**
  * Takes a record and returns an array of tuples containing its keys and values.
