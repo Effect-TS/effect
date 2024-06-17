@@ -1,6 +1,6 @@
 {
   "name": "@effect/typeclass",
-  "version": "0.24.29",
+  "version": "0.24.30",
   "type": "module",
   "license": "MIT",
   "description": "A collection of reusable typeclasses for the Effect ecosystem",
