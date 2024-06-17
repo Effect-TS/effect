@@ -1,5 +1,14 @@
 # @effect/rpc
 
+## 0.30.46
+
+### Patch Changes
+
+- Updated dependencies [[`3b15e1b`](https://github.com/Effect-TS/effect/commit/3b15e1b505c0b0e62a03b4a3605d42a9932cc99c), [`06ede85`](https://github.com/Effect-TS/effect/commit/06ede85d6e84710e6622463be95ff3927fb30dad), [`3a750b2`](https://github.com/Effect-TS/effect/commit/3a750b25b1ed92094a7f7ebc332a6bcfb212871b), [`7204ca5`](https://github.com/Effect-TS/effect/commit/7204ca5761c2b1d27999a624db23aa10b6e0504d)]:
+  - @effect/schema@0.67.24
+  - effect@3.3.3
+  - @effect/platform@0.57.2
+
 ## 0.30.45
 
 ### Patch Changes

@@ -225,6 +225,9 @@ Predicate.compose(Predicate.isString, (
   s // $ExpectType string
 ): s is NonEmptyString => s.length > 0)
 
+// $ExpectType Refinement<unknown, string>
+pipe(Predicate.isString, Predicate.compose((s) => /^a/.test(s)))
+
 // -------------------------------------------------------------------------------------
 // and
 // -------------------------------------------------------------------------------------

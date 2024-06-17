@@ -382,7 +382,7 @@ export {
    */
   encodeUnknownSync,
   /**
-   * By default the option `isExact` is set to `true`.
+   * By default the option `exact` is set to `true`.
    *
    * @category validation
    * @since 0.67.0
