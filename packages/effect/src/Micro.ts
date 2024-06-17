@@ -196,7 +196,7 @@ abstract class FailureImpl<Tag extends string, E> extends globalThis.Error imple
   }
   constructor(
     readonly _tag: Tag,
-    readonly originalError: unknown,
+    originalError: unknown,
     readonly traces: ReadonlyArray<string>
   ) {
     const failureName = `Failure${_tag}`
@@ -218,16 +218,19 @@ abstract class FailureImpl<Tag extends string, E> extends globalThis.Error imple
     if (traces.length > 0) {
       stack += `\n    ${traces.join("\n    ")}`
     }
-    const prevLimit = globalThis.Error.stackTraceLimit
-    globalThis.Error.stackTraceLimit = 0
     super(message)
-    globalThis.Error.stackTraceLimit = prevLimit
     this.name = name
     this[FailureTypeId] = failureVariance
     this.stack = stack
   }
   pipe() {
     return pipeArguments(this, arguments)
+  }
+  toString() {
+    return this.stack
+  }
+  [NodeInspectSymbol]() {
+    return this.stack
   }
 }
 
@@ -591,7 +594,7 @@ const currentInterruptible: EnvRef<boolean> = envRefMake(
  *
  * @since 3.4.0
  * @experimental
- * @category env refs
+ * @category environment refs
  * @example
  * import * as Micro from "effect/Micro"
  *
@@ -640,10 +643,17 @@ const unsafeMake = <A, E, R>(
   return self
 }
 
-const unsafeMakeNoAbort = <A, E, R>(
-  run: (env: Env<R>, onResult: (result: Result<A, E>) => void) => void
+const unsafeMakeOptions = <A, E, R>(
+  run: (env: Env<R>, onResult: (result: Result<A, E>) => void) => void,
+  checkAbort: boolean
 ): Micro<A, E, R> =>
   unsafeMake(function execute(env, onResult) {
+    if (
+      checkAbort && env.refs[currentInterruptible.key] !== false &&
+      (env.refs[currentAbortSignal.key] as AbortSignal).aborted
+    ) {
+      return onResult(ResultAborted)
+    }
     stackDepthState.depth++
     if (stackDepthState.depth === 1) {
       stackDepthState.maxDepthBeforeYield = envGet(env, currentMaxDepthBeforeYield)
@@ -671,26 +681,7 @@ const unsafeMakeNoAbort = <A, E, R>(
  */
 export const make = <A, E, R>(
   run: (env: Env<R>, onResult: (result: Result<A, E>) => void) => void
-): Micro<A, E, R> =>
-  unsafeMake(function execute(env: Env<R>, onResult: (result: Result<A, E>) => void) {
-    if (env.refs[currentInterruptible.key] !== false && (env.refs[currentAbortSignal.key] as AbortSignal).aborted) {
-      return onResult(ResultAborted)
-    }
-    stackDepthState.depth++
-    if (stackDepthState.depth === 1) {
-      stackDepthState.maxDepthBeforeYield = envGet(env, currentMaxDepthBeforeYield)
-    }
-    if (stackDepthState.depth >= stackDepthState.maxDepthBeforeYield) {
-      yieldAdd(() => execute(env, onResult))
-    } else {
-      try {
-        run(env, onResult)
-      } catch (err) {
-        onResult(ResultFailUnexpected(err))
-      }
-    }
-    stackDepthState.depth--
-  })
+): Micro<A, E, R> => unsafeMakeOptions(run, true)
 
 /**
  * Creates a `Micro` effect that will succeed with the specified constant value.
@@ -714,7 +705,7 @@ export const succeed = <A>(a: A): Micro<A> => fromResult(ResultSuccess(a))
 export const fail = <E>(e: E): Micro<never, E> => fromResult(ResultFail(e))
 
 /**
- * Creates a `Micro` effect that will fail with lazily evaluated error.
+ * Creates a `Micro` effect that will fail with the lazily evaluated error.
  *
  * This will result in a `FailureExpected`, where the error is tracked at the
  * type level.
@@ -1021,7 +1012,7 @@ const yieldState: {
   working: false
 }))
 
-const yieldFlush = () => {
+const yieldRunTasks = () => {
   const tasks = yieldState.tasks
   yieldState.tasks = []
   for (let i = 0, len = tasks.length; i < len; i++) {
@@ -1037,7 +1028,7 @@ const yieldAdd = (task: () => void) => {
     yieldState.working = true
     setImmediate(() => {
       yieldState.working = false
-      yieldFlush()
+      yieldRunTasks()
     })
   }
 }
@@ -1052,6 +1043,19 @@ const yieldAdd = (task: () => void) => {
  */
 export const yieldNow: Micro<void> = make(function(_env, onResult) {
   yieldAdd(() => onResult(resultVoid))
+})
+
+/**
+ * Flush any yielded effects that are waiting to be executed.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category constructors
+ */
+export const yieldFlush: Micro<void> = sync(() => {
+  while (yieldState.tasks.length > 0) {
+    yieldRunTasks()
+  }
 })
 
 /**
@@ -1729,7 +1733,7 @@ export const repeat: {
 export const forever = <A, E, R>(self: Micro<A, E, R>): Micro<never, E, R> => repeat(self) as any
 
 // ----------------------------------------------------------------------------
-// delays
+// delay fn
 // ----------------------------------------------------------------------------
 
 /**
@@ -1742,7 +1746,7 @@ export const forever = <A, E, R>(self: Micro<A, E, R>): Micro<never, E, R> => re
  *
  * @since 3.4.0
  * @experimental
- * @category delays
+ * @category delay fn
  */
 export type DelayFn = (attempt: number, elapsed: number) => Option.Option<number>
 
@@ -1751,7 +1755,7 @@ export type DelayFn = (attempt: number, elapsed: number) => Option.Option<number
  *
  * @since 3.4.0
  * @experimental
- * @category delays
+ * @category delay fn
  */
 export const delayExponential = (baseMillis: number, factor = 2): DelayFn => (attempt) =>
   Option.some(attempt ** factor * baseMillis)
@@ -1761,7 +1765,7 @@ export const delayExponential = (baseMillis: number, factor = 2): DelayFn => (at
  *
  * @since 3.4.0
  * @experimental
- * @category delays
+ * @category delay fn
  */
 export const delaySpaced = (millis: number): DelayFn => (_) => Option.some(millis)
 
@@ -1771,7 +1775,7 @@ export const delaySpaced = (millis: number): DelayFn => (_) => Option.some(milli
  *
  * @since 3.4.0
  * @experimental
- * @category delays
+ * @category delay fn
  */
 export const delayWithMax: {
   (max: number): (self: DelayFn) => DelayFn
@@ -1788,7 +1792,7 @@ export const delayWithMax: {
  *
  * @since 3.4.0
  * @experimental
- * @category delays
+ * @category delay fn
  */
 export const delayWithMaxElapsed: {
   (max: number): (self: DelayFn) => DelayFn
@@ -1804,7 +1808,7 @@ export const delayWithMaxElapsed: {
  *
  * @since 3.4.0
  * @experimental
- * @category delays
+ * @category delay fn
  */
 export const delayWithRecurs: {
   (n: number): (self: DelayFn) => DelayFn
@@ -2146,11 +2150,11 @@ export const withTrace: {
     return failureWithTrace(failure, `at ${name} (${lineMatch ? lineMatch[1] : line})`)
   }
   const f = (name: string) => (self: Micro<any, any, any>) =>
-    unsafeMakeNoAbort(function(env, onResult) {
+    unsafeMakeOptions(function(env, onResult) {
       self[runSymbol](env, function(result) {
         onResult(result._tag === "Left" ? Either.left(generate(name, result.left)) : result)
       })
-    })
+    }, false)
   if (arguments.length === 2) {
     return f(arguments[1])(arguments[0])
   }
@@ -2198,6 +2202,40 @@ export const matchFailureMicro: {
           onResult(ResultFailUnexpected(err))
         }
       })
+    })
+)
+
+/**
+ * @since 3.4.0
+ * @experimental
+ * @category pattern matching
+ */
+export const matchFailure: {
+  <E, A2, A, A3>(
+    options: {
+      readonly onFailure: (failure: Failure<E>) => A2
+      readonly onSuccess: (a: A) => A3
+    }
+  ): <R>(self: Micro<A, E, R>) => Micro<A2 | A3, never, R>
+  <A, E, R, A2, A3>(
+    self: Micro<A, E, R>,
+    options: {
+      readonly onFailure: (failure: Failure<E>) => A2
+      readonly onSuccess: (a: A) => A3
+    }
+  ): Micro<A2 | A3, never, R>
+} = dual(
+  2,
+  <A, E, R, A2, A3>(
+    self: Micro<A, E, R>,
+    options: {
+      readonly onFailure: (failure: Failure<E>) => A2
+      readonly onSuccess: (a: A) => A3
+    }
+  ): Micro<A2 | A3, never, R> =>
+    matchFailureMicro(self, {
+      onFailure: (failure) => sync(() => options.onFailure(failure)),
+      onSuccess: (value) => sync(() => options.onSuccess(value))
     })
 )
 
@@ -2762,14 +2800,14 @@ export const provideServiceMicro: {
  * @category interruption
  */
 export const uninterruptible = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, R> =>
-  unsafeMakeNoAbort(function(env, onResult) {
+  unsafeMakeOptions(function(env, onResult) {
     const nextEnv = envMutate(env, function(env) {
       env[currentInterruptible.key] = false
       env[currentAbortSignal.key] = new AbortController().signal
       return env
     })
     self[runSymbol](nextEnv, onResult)
-  })
+  }, false)
 
 /**
  * Wrap the given `Micro` effect in an uninterruptible region, preventing the
@@ -2794,7 +2832,7 @@ export const uninterruptible = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, R> =
 export const uninterruptibleMask = <A, E, R>(
   f: (restore: <A, E, R>(effect: Micro<A, E, R>) => Micro<A, E, R>) => Micro<A, E, R>
 ): Micro<A, E, R> =>
-  unsafeMakeNoAbort((env, onResult) => {
+  unsafeMakeOptions((env, onResult) => {
     const isInterruptible = envGet(env, currentInterruptible)
     const effect = isInterruptible ? f(interruptible) : f(identity)
     const nextEnv = isInterruptible ?
@@ -2805,7 +2843,7 @@ export const uninterruptibleMask = <A, E, R>(
       }) :
       env
     effect[runSymbol](nextEnv, onResult)
-  })
+  }, false)
 
 /**
  * Wrap the given `Micro` effect in an interruptible region, allowing the effect
@@ -2979,84 +3017,17 @@ export const forEach: {
   readonly discard?: boolean | undefined
 }): Micro<any, E, R> =>
   make(function(env, onResult) {
-    const concurrency = options?.concurrency === "inherit"
+    const concurrencyOption = options?.concurrency === "inherit"
       ? envGet(env, currentConcurrency)
       : options?.concurrency ?? 1
-    if (concurrency === "unbounded" || concurrency > 1) {
-      forEachConcurrent(iterable, f, {
-        discard: options?.discard,
-        concurrency
-      })[runSymbol](
-        env,
-        onResult
-      )
-    } else {
-      forEachSequential(iterable, f, options)[runSymbol](env, onResult)
-    }
-  })
+    const concurrency = concurrencyOption === "unbounded"
+      ? Number.POSITIVE_INFINITY
+      : Math.max(1, concurrencyOption)
 
-const forEachSequential = <
-  A,
-  B,
-  E,
-  R
->(iterable: Iterable<A>, f: (a: A, index: number) => Micro<B, E, R>, options?: {
-  readonly discard?: boolean | undefined
-}): Micro<any, E, R> =>
-  make(function(env, onResult) {
-    const items = Array.from(iterable)
-    const length = items.length
-    const out: Array<B> | undefined = options?.discard ? undefined : new Array(length)
-    let index = 0
-    let running = false
-    function tick(): void {
-      running = true
-      while (index < length) {
-        let complete = false
-        const current = index++
-        try {
-          f(items[current], current)[runSymbol](env, function(result) {
-            complete = true
-            if (result._tag === "Left") {
-              index = length
-              onResult(result)
-            } else if (out !== undefined) {
-              out[current] = result.right
-            }
-            if (current === length - 1) {
-              onResult(Either.right(out))
-            } else if (!running) {
-              tick()
-            }
-          })
-        } catch (err) {
-          onResult(ResultFailUnexpected(err))
-          break
-        }
-        if (!complete) {
-          break
-        }
-      }
-      running = false
-    }
-    tick()
-  })
-
-const forEachConcurrent = <
-  A,
-  B,
-  E,
-  R
->(iterable: Iterable<A>, f: (a: A, index: number) => Micro<B, E, R>, options: {
-  readonly concurrency: number | "unbounded"
-  readonly discard?: boolean | undefined
-}): Micro<any, E, R> =>
-  unsafeMake(function(env, onResult) {
     // abort
     const [envWithSignal, onAbort] = forkSignal(env)
 
     // iterate
-    const concurrency = options.concurrency === "unbounded" ? Infinity : options.concurrency
     let failure: Result<any, any> | undefined = undefined
     const items = Array.from(iterable)
     let length = items.length
@@ -3320,20 +3291,7 @@ class HandleImpl<A, E> implements Handle<A, E> {
   }
 
   get join(): Micro<A, E> {
-    return suspend(() => {
-      if (this._result) {
-        return fromResult(this._result)
-      }
-      return async((resume) => {
-        function observer(result: Result<A, E>) {
-          resume(fromResult(result))
-        }
-        this.addObserver(observer)
-        return sync(() => {
-          this.removeObserver(observer)
-        })
-      })
-    })
+    return flatMap(this.await, fromResult)
   }
 
   get abort(): Micro<Result<A, E>> {
@@ -3540,7 +3498,7 @@ export const runPromise = <A, E>(
 export const runSyncResult = <A, E>(effect: Micro<A, E>): Result<A, E> => {
   const handle = runFork(effect)
   while (yieldState.tasks.length > 0) {
-    yieldFlush()
+    yieldRunTasks()
   }
   const result = handle.unsafePoll()
   if (result === null) {

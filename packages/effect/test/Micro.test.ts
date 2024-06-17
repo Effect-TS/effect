@@ -286,8 +286,7 @@ describe.concurrent("Micro", () => {
               release = true
             })
         ).pipe(Micro.scoped, Micro.fork)
-        yield* Micro.yieldNow
-        yield* Micro.yieldNow
+        yield* Micro.yieldFlush
         handle.unsafeAbort()
         yield* handle.await
         assert.strictEqual(release, true)
@@ -584,7 +583,7 @@ describe.concurrent("Micro", () => {
           })),
           Micro.fork
         )
-        yield* Micro.yieldNow
+        yield* Micro.yieldFlush
         yield* handle.abort
         assert.isFalse(catchFailure)
         assert.isTrue(ensuring)
@@ -604,7 +603,7 @@ describe.concurrent("Micro", () => {
           Micro.uninterruptible,
           Micro.fork
         )
-        yield* Micro.yieldNow
+        yield* Micro.yieldFlush
         yield* fiber.abort
         assert.isTrue(recovered)
       }))
@@ -647,7 +646,7 @@ describe.concurrent("Micro", () => {
           Micro.uninterruptible,
           Micro.fork
         )
-        yield* Micro.yieldNow
+        yield* Micro.yieldFlush
         yield* fiber.abort
         assert.isTrue(ref)
       }))
@@ -662,7 +661,7 @@ describe.concurrent("Micro", () => {
           Micro.uninterruptible,
           Micro.fork
         )
-        yield* Micro.yieldNow
+        yield* Micro.yieldFlush
         yield* fiber.abort
         assert.isTrue(ref)
       }))
@@ -677,7 +676,7 @@ describe.concurrent("Micro", () => {
           })
         )
         const fiber = yield* child.pipe(Micro.uninterruptible, Micro.fork)
-        yield* Micro.yieldNow
+        yield* Micro.yieldFlush
         yield* fiber.abort
         assert.isTrue(ref)
       }))
@@ -688,7 +687,7 @@ describe.concurrent("Micro", () => {
         const fiber = yield* Micro.async<void, never, never>((_cb, signal_) => {
           signal = signal_
         }).pipe(Micro.fork)
-        yield* Micro.yieldNow
+        yield* Micro.yieldFlush
         yield* fiber.abort
         assert.strictEqual(signal!.aborted, true)
       }))
@@ -710,8 +709,7 @@ describe.concurrent("Micro", () => {
           })),
           Micro.fork
         )
-        yield* Micro.yieldNow
-        yield* Micro.yieldNow
+        yield* Micro.yieldFlush
         yield* handle.abort
         assert.isTrue(child)
         assert.isTrue(parent)
@@ -734,8 +732,7 @@ describe.concurrent("Micro", () => {
           })),
           Micro.fork
         )
-        yield* Micro.yieldNow
-        yield* Micro.yieldNow
+        yield* Micro.yieldFlush
         yield* handle.abort
         assert.isFalse(child)
         assert.isTrue(parent)
@@ -753,7 +750,7 @@ describe.concurrent("Micro", () => {
           })),
           Micro.forkIn(scope)
         )
-        yield* Micro.yieldNow
+        yield* Micro.yieldFlush
         yield* scope.close(Micro.resultVoid)
         assert.isTrue(aborted)
       }))
@@ -771,7 +768,7 @@ describe.concurrent("Micro", () => {
           Micro.forkScoped,
           Micro.provideScope(scope)
         )
-        yield* Micro.yieldNow
+        yield* Micro.yieldFlush
         yield* scope.close(Micro.resultVoid)
         assert.isTrue(aborted)
       }))
