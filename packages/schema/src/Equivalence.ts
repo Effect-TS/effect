@@ -45,9 +45,6 @@ const getHook = AST.getAnnotation<
   EquivalenceHookId
 )
 
-const getEquivalenceErrorMessage = (message: string, path: ReadonlyArray<PropertyKey>) =>
-  errors_.getErrorMessageWithPath(`cannot build an Equivalence for ${message}`, path)
-
 const go = (ast: AST.AST, path: ReadonlyArray<PropertyKey>): Equivalence.Equivalence<any> => {
   const hook = getHook(ast)
   if (Option.isSome(hook)) {
@@ -62,7 +59,7 @@ const go = (ast: AST.AST, path: ReadonlyArray<PropertyKey>): Equivalence.Equival
   }
   switch (ast._tag) {
     case "NeverKeyword":
-      throw new Error(getEquivalenceErrorMessage("`never`", path))
+      throw new Error(errors_.getEquivalenceUnsupportedErrorMessage(ast, path))
     case "Transformation":
       return go(ast.to, path)
     case "Declaration":

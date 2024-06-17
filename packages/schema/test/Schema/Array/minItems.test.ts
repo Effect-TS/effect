@@ -5,7 +5,8 @@ import { describe, expect, it } from "vitest"
 describe("minItems", () => {
   it("should throw for invalid argument", () => {
     expect(() => S.Array(S.Number).pipe(S.minItems(-1))).toThrowError(
-      new Error("minItems: Expected an integer greater than or equal to 1, actual -1")
+      new Error(`Invalid Argument
+details: Expected an integer greater than or equal to 1, actual -1`)
     )
   })
 

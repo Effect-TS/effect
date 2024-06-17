@@ -93,9 +93,6 @@ const getRefinementFromArbitrary = (ast: AST.Refinement, options: Options, path:
   return go(ast.from, constraints ? { ...options, constraints } : options, path)
 }
 
-const getArbitraryErrorMessage = (message: string, path: ReadonlyArray<PropertyKey>) =>
-  errors_.getErrorMessageWithPath(`cannot build an Arbitrary for ${message}`, path)
-
 const go = (ast: AST.AST, options: Options, path: ReadonlyArray<PropertyKey>): LazyArbitrary<any> => {
   const hook = getHook(ast)
   if (Option.isSome(hook)) {
@@ -110,7 +107,7 @@ const go = (ast: AST.AST, options: Options, path: ReadonlyArray<PropertyKey>): L
   }
   switch (ast._tag) {
     case "Declaration": {
-      throw new Error(getArbitraryErrorMessage(`a declaration without annotations (${ast})`, path))
+      throw new Error(errors_.getArbitraryMissingAnnotationErrorMessage(path, ast))
     }
     case "Literal":
       return (fc) => fc.constant(ast.literal)
@@ -121,7 +118,7 @@ const go = (ast: AST.AST, options: Options, path: ReadonlyArray<PropertyKey>): L
       return (fc) => fc.constant(undefined)
     case "NeverKeyword":
       return () => {
-        throw new Error(getArbitraryErrorMessage("`never`", path))
+        throw new Error(errors_.getArbitraryUnsupportedErrorMessage(path, ast))
       }
     case "UnknownKeyword":
     case "AnyKeyword":
@@ -283,7 +280,7 @@ const go = (ast: AST.AST, options: Options, path: ReadonlyArray<PropertyKey>): L
     }
     case "Enums": {
       if (ast.enums.length === 0) {
-        throw new Error(getArbitraryErrorMessage("an empty enum", path))
+        throw new Error(errors_.getArbitraryEmptyEnumErrorMessage(path))
       }
       return (fc) => fc.oneof(...ast.enums.map(([_, value]) => fc.constant(value)))
     }

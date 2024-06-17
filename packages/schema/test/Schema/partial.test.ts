@@ -192,19 +192,23 @@ describe("partial", () => {
   describe("unsupported schemas", () => {
     it("declarations should throw", () => {
       expect(() => S.partial(S.OptionFromSelf(S.String))).toThrow(
-        new Error("partial: cannot handle declarations")
+        new Error(`Unsupported schema
+schema (Declaration): Option<string>`)
       )
       expect(() => S.partial(S.OptionFromSelf(S.String), { exact: true })).toThrow(
-        new Error("partial: cannot handle declarations")
+        new Error(`Unsupported schema
+schema (Declaration): Option<string>`)
       )
     })
 
     it("refinements should throw", () => {
       expect(() => S.partial(S.String.pipe(S.minLength(2)))).toThrow(
-        new Error("partial: cannot handle refinements")
+        new Error(`Unsupported schema
+schema (Refinement): a string at least 2 character(s) long`)
       )
       expect(() => S.partial(S.String.pipe(S.minLength(2)), { exact: true })).toThrow(
-        new Error("partial: cannot handle refinements")
+        new Error(`Unsupported schema
+schema (Refinement): a string at least 2 character(s) long`)
       )
     })
 
@@ -248,11 +252,15 @@ describe("partial", () => {
 
       it("transformations should throw", () => {
         expect(() => S.partial(S.transform(S.String, S.String, { decode: identity, encode: identity }))).toThrow(
-          new Error("partial: cannot handle transformations")
+          new Error(`Unsupported schema
+schema (Transformation): (string <-> string)`)
         )
         expect(() =>
           S.partial(S.transform(S.String, S.String, { decode: identity, encode: identity }), { exact: true })
-        ).toThrow(new Error("partial: cannot handle transformations"))
+        ).toThrow(
+          new Error(`Unsupported schema
+schema (Transformation): (string <-> string)`)
+        )
       })
     })
   })

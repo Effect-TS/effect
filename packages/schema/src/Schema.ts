@@ -766,7 +766,7 @@ const getTemplateLiterals = (
     case "Union":
       return array_.flatMap(ast.types, getTemplateLiterals)
   }
-  throw new Error(`unsupported template literal span (${ast})`)
+  throw new Error(errors_.getSchemaUnsupportedLiteralSpanErrorMessage(ast))
 }
 
 const declareConstructor = <
@@ -2879,11 +2879,6 @@ export interface mutable<S extends Schema.Any> extends
  */
 export const mutable = <S extends Schema.Any>(schema: S): mutable<S> => make(AST.mutable(schema.ast))
 
-const getExtendErrorMessage = (x: AST.AST, y: AST.AST, path: ReadonlyArray<PropertyKey>) => {
-  const message = `unsupported schema or overlapping types, cannot extend ${x} with ${y}`
-  return errors_.getErrorMessageWithPath(errors_.getErrorMessage("extend", message), path)
-}
-
 const intersectTypeLiterals = (
   x: AST.AST,
   y: AST.AST,
@@ -2911,7 +2906,7 @@ const intersectTypeLiterals = (
       x.indexSignatures.concat(y.indexSignatures)
     )
   }
-  throw new Error(getExtendErrorMessage(x, y, path))
+  throw new Error(errors_.getSchemaExtendErrorMessage(x, y, path))
 }
 
 const addRefinementToMembers = (refinement: AST.Refinement, asts: ReadonlyArray<AST.AST>): Array<AST.Refinement> =>
@@ -3011,7 +3006,7 @@ const intersectUnionMembers = (
           break
         }
       }
-      throw new Error(getExtendErrorMessage(x, y, path))
+      throw new Error(errors_.getSchemaExtendErrorMessage(x, y, path))
     }))
 
 /**
@@ -5408,7 +5403,9 @@ export const minItems = <A>(
 ): refine<array_.NonEmptyReadonlyArray<A>, Schema<ReadonlyArray<A>, I, R>> => {
   const minItems = Math.floor(n)
   if (minItems < 1) {
-    throw new Error(`minItems: Expected an integer greater than or equal to 1, actual ${n}`)
+    throw new Error(
+      errors_.getInvalidArgumentErrorMessage(`Expected an integer greater than or equal to 1, actual ${n}`)
+    )
   }
   return self.pipe(
     filter(
@@ -7301,11 +7298,11 @@ export const TaggedRequest =
 
 const extendFields = (a: Struct.Fields, b: Struct.Fields): Struct.Fields => {
   const out = { ...a }
-  for (const name of util_.ownKeys(b)) {
-    if (name in a) {
-      throw new Error(errors_.getDuplicatePropertySignatureErrorMessage(name))
+  for (const key of util_.ownKeys(b)) {
+    if (key in a) {
+      throw new Error(errors_.getASTDuplicatePropertySignatureErrorMessage(key))
     }
-    out[name] = b[name]
+    out[key] = b[key]
   }
   return out
 }

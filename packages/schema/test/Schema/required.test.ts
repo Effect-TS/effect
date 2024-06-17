@@ -190,13 +190,15 @@ describe("required", () => {
   describe("unsupported schemas", () => {
     it("declarations should throw", async () => {
       expect(() => S.required(S.OptionFromSelf(S.String))).toThrow(
-        new Error("required: cannot handle declarations")
+        new Error(`Unsupported schema
+schema (Declaration): Option<string>`)
       )
     })
 
     it("refinements should throw", async () => {
       expect(() => S.required(S.String.pipe(S.minLength(2)))).toThrow(
-        new Error("required: cannot handle refinements")
+        new Error(`Unsupported schema
+schema (Refinement): a string at least 2 character(s) long`)
       )
     })
 
@@ -214,7 +216,8 @@ describe("required", () => {
 
       it("transformations should throw", async () => {
         expect(() => S.required(S.transform(S.String, S.String, { decode: identity, encode: identity }))).toThrow(
-          new Error("required: cannot handle transformations")
+          new Error(`Unsupported schema
+schema (Transformation): (string <-> string)`)
         )
       })
     })

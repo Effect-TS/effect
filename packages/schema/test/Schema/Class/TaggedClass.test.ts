@@ -43,7 +43,10 @@ describe("TaggedClass", () => {
     expect(() => {
       class _TA extends S.TaggedClass<_TA>()("TA", { _tag: S.Literal("X"), a: S.String }) {}
       console.log(_TA)
-    }).toThrow(new Error(`Duplicate property signature "_tag"`))
+    }).toThrow(
+      new Error(`Duplicate property signature
+details: Duplicate key "_tag"`)
+    )
   })
 
   it("should accept a simple object as argument", () => {

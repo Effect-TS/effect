@@ -274,14 +274,6 @@ const pruneUndefinedKeyword = (ps: AST.PropertySignature): AST.AST => {
   return type
 }
 
-const getMissingAnnotationErrorMessage = (name: string, path: ReadonlyArray<PropertyKey>): string =>
-  errors_.getErrorMessageWithPath(`cannot build a JSON Schema for ${name} without a JSON Schema annotation`, path)
-
-const getUnsupportedIndexSignatureParameterErrorMessage = (
-  parameter: AST.AST,
-  path: ReadonlyArray<PropertyKey>
-): string => errors_.getErrorMessageWithPath(`unsupported index signature parameter (${parameter})`, path)
-
 /** @internal */
 export const DEFINITION_PREFIX = "#/$defs/"
 
@@ -341,7 +333,7 @@ const go = (
   }
   switch (ast._tag) {
     case "Declaration":
-      throw new Error(getMissingAnnotationErrorMessage("a declaration", path))
+      throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     case "Literal": {
       const literal = ast.literal
       if (literal === null) {
@@ -353,16 +345,16 @@ const go = (
       } else if (Predicate.isBoolean(literal)) {
         return { const: literal, ...getJsonSchemaAnnotations(ast) }
       }
-      throw new Error(getMissingAnnotationErrorMessage("a bigint literal", path))
+      throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     }
     case "UniqueSymbol":
-      throw new Error(getMissingAnnotationErrorMessage("a unique symbol", path))
+      throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     case "UndefinedKeyword":
-      throw new Error(getMissingAnnotationErrorMessage("`undefined`", path))
+      throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     case "VoidKeyword":
-      throw new Error(getMissingAnnotationErrorMessage("`void`", path))
+      throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     case "NeverKeyword":
-      throw new Error(getMissingAnnotationErrorMessage("`never`", path))
+      throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     case "UnknownKeyword":
       return { ...unknownJsonSchema, ...getJsonSchemaAnnotations(ast) }
     case "AnyKeyword":
@@ -376,9 +368,9 @@ const go = (
     case "BooleanKeyword":
       return { type: "boolean", ...getJsonSchemaAnnotations(ast) }
     case "BigIntKeyword":
-      throw new Error(getMissingAnnotationErrorMessage("`bigint`", path))
+      throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     case "SymbolKeyword":
-      throw new Error(getMissingAnnotationErrorMessage("`symbol`", path))
+      throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     case "TupleType": {
       const len = ast.elements.length
       const elements = ast.elements.map((e, i) => ({
@@ -412,12 +404,7 @@ const go = (
         // handle post rest elements
         // ---------------------------------------------
         if (rest.length > 1) {
-          throw new Error(
-            errors_.getErrorMessageWithPath(
-              "Generating a JSON Schema for post-rest elements is not currently supported. You're welcome to contribute by submitting a Pull Request.",
-              path
-            )
-          )
+          throw new Error(errors_.getJSONSchemaUnsupportedPostRestElementsErrorMessage(path))
         }
       } else {
         if (len > 0) {
@@ -459,10 +446,10 @@ const go = (
               }
               break
             }
-            throw new Error(getUnsupportedIndexSignatureParameterErrorMessage(parameter, path))
+            throw new Error(errors_.getJSONSchemaUnsupportedParameterErrorMessage(path, parameter))
           }
           case "SymbolKeyword":
-            throw new Error(getUnsupportedIndexSignatureParameterErrorMessage(parameter, path))
+            throw new Error(errors_.getJSONSchemaUnsupportedParameterErrorMessage(path, parameter))
         }
       }
       const propertySignatures = ast.propertySignatures.map((ps) => {
@@ -491,7 +478,7 @@ const go = (
             output.required.push(name)
           }
         } else {
-          throw new Error(errors_.getErrorMessageWithPath(`cannot encode ${String(name)} key to JSON Schema`, path))
+          throw new Error(errors_.getJSONSchemaUnsupportedKeyErrorMessage(name, path))
         }
       }
       // ---------------------------------------------
@@ -544,12 +531,7 @@ const go = (
       }
     }
     case "Refinement": {
-      throw new Error(
-        errors_.getErrorMessageWithPath(
-          "cannot build a JSON Schema for a refinement without a JSON Schema annotation",
-          path
-        )
-      )
+      throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     }
     case "TemplateLiteral": {
       const regex = AST.getTemplateLiteralRegExp(ast)
@@ -563,12 +545,7 @@ const go = (
     case "Suspend": {
       const identifier = Option.orElse(AST.getJSONIdentifier(ast), () => AST.getJSONIdentifier(ast.f()))
       if (Option.isNone(identifier)) {
-        throw new Error(
-          errors_.getErrorMessageWithPath(
-            "Generating a JSON Schema for suspended schemas requires an identifier annotation",
-            path
-          )
-        )
+        throw new Error(errors_.getJSONSchemaMissingIdentifierAnnotationErrorMessage(path, ast))
       }
       return go(ast.f(), $defs, true, path)
     }

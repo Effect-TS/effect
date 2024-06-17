@@ -9,16 +9,24 @@ describe("Arbitrary > Arbitrary", () => {
   it("should throw on declarations without annotations", () => {
     const schema = S.declare(isUnknown)
     expect(() => Arbitrary.makeLazy(schema)).toThrow(
-      new Error("cannot build an Arbitrary for a declaration without annotations (<declaration schema>)")
+      new Error(`Missing annotation
+details: Generating an Arbitrary for this schema requires an "arbitrary" annotation
+schema (Declaration): <declaration schema>`)
     )
   })
 
   it("the errors should disply a path", () => {
     expect(() => Arbitrary.makeLazy(S.Tuple(S.declare(isUnknown)))).toThrow(
-      new Error(`cannot build an Arbitrary for a declaration without annotations (<declaration schema>) (path [0])`)
+      new Error(`Missing annotation
+at path: [0]
+details: Generating an Arbitrary for this schema requires an "arbitrary" annotation
+schema (Declaration): <declaration schema>`)
     )
     expect(() => Arbitrary.makeLazy(S.Struct({ a: S.declare(isUnknown) }))).toThrow(
-      new Error(`cannot build an Arbitrary for a declaration without annotations (<declaration schema>) (path ["a"])`)
+      new Error(`Missing annotation
+at path: ["a"]
+details: Generating an Arbitrary for this schema requires an "arbitrary" annotation
+schema (Declaration): <declaration schema>`)
     )
   })
 
@@ -77,7 +85,9 @@ describe("Arbitrary > Arbitrary", () => {
 
   it("never", () => {
     expect(() => Arbitrary.makeLazy(S.Never)(fc)).toThrow(
-      new Error("cannot build an Arbitrary for `never`")
+      new Error(`Unsupported schema
+details: Cannot build an Arbitrary for this schema
+schema (NeverKeyword): never`)
     )
   })
 
@@ -137,7 +147,8 @@ describe("Arbitrary > Arbitrary", () => {
     enum Fruits {}
     const schema = S.Enums(Fruits)
     expect(() => Arbitrary.makeLazy(schema)(fc)).toThrow(
-      new Error("cannot build an Arbitrary for an empty enum")
+      new Error(`Empty Enums schema
+details: Generating an Arbitrary for this schema requires at least one enum`)
     )
   })
 
@@ -195,17 +206,17 @@ describe("Arbitrary > Arbitrary", () => {
     expectValidArbitrary(schema)
   })
 
-  it("tuple. e + e?", () => {
+  it("tuple. e e?", () => {
     const schema = S.Tuple(S.String, S.optionalElement(S.Number))
     expectValidArbitrary(schema)
   })
 
-  it("tuple. e + r", () => {
+  it("tuple. e r", () => {
     const schema = S.Tuple([S.String], S.Number)
     expectValidArbitrary(schema)
   })
 
-  it("tuple. e? + r", () => {
+  it("tuple. e? r", () => {
     const schema = S.Tuple([S.optionalElement(S.String)], S.Number)
     expectValidArbitrary(schema)
   })
@@ -215,12 +226,12 @@ describe("Arbitrary > Arbitrary", () => {
     expectValidArbitrary(schema)
   })
 
-  it("tuple. r + e", () => {
+  it("tuple. r e", () => {
     const schema = S.Tuple([], S.String, S.Number)
     expectValidArbitrary(schema)
   })
 
-  it("tuple. e + r + e", () => {
+  it("tuple. e r e", () => {
     const schema = S.Tuple([S.String], S.Number, S.Boolean)
     expectValidArbitrary(schema)
   })
@@ -381,7 +392,7 @@ describe("Arbitrary > Arbitrary", () => {
     })
   })
 
-  it("extend/ struct + record", () => {
+  it("extend/ struct record", () => {
     const schema = S.Struct({ a: S.String }, S.Record(S.String, S.Union(S.String, S.Number)))
     expectValidArbitrary(schema)
   })
@@ -424,7 +435,7 @@ describe("Arbitrary > Arbitrary", () => {
     })
 
     // issue #2312
-    it.skip("nonEmpty + pattern", () => {
+    it.skip("nonEmpty pattern", () => {
       const schema = S.String.pipe(S.nonEmpty(), S.pattern(/^[-]*$/))
       expectValidArbitrary(schema)
     })
@@ -436,12 +447,12 @@ describe("Arbitrary > Arbitrary", () => {
       expectValidArbitrary(schema)
     })
 
-    it("between + int", () => {
+    it("between int", () => {
       const schema = S.Number.pipe(S.between(1, 10), S.int())
       expectValidArbitrary(schema)
     })
 
-    it("int + between", () => {
+    it("int between", () => {
       const schema = S.Number.pipe(S.int(), S.between(1, 10))
       expectValidArbitrary(schema)
     })

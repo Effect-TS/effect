@@ -10,7 +10,8 @@ describe("AST.Tuple", () => {
         true
       )
     ).toThrow(
-      new Error("A required element cannot follow an optional element. ts(1257)")
+      new Error(`Invalid element
+details: A required element cannot follow an optional element. ts(1257)`)
     )
   })
 
@@ -22,7 +23,8 @@ describe("AST.Tuple", () => {
         true
       )
     ).toThrow(
-      new Error("A required element cannot follow an optional element. ts(1257)")
+      new Error(`Invalid element
+details: A required element cannot follow an optional element. ts(1257)`)
     )
   })
 })

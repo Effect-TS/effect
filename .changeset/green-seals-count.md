@@ -221,6 +221,25 @@ export class Composite {
 }
 ```
 
+## Refined Error Messaging System
+
+We've updated our internal function `getErrorMessage` to enhance how error messages are formatted throughout our application. This function constructs an error message that includes the reason for the error, additional details, the path to where the error occurred, and the schema's AST representation if available.
+
+**Example**
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+JSONSchema.make(Schema.Struct({ a: Schema.Void }))
+/*
+throws:
+Error: Missing annotation
+at path: ["a"]
+details: Generating a JSON Schema for this schema requires a "jsonSchema" annotation
+schema (VoidKeyword): void
+*/
+```
+
 ## Enhancing Tuples with Element Annotations
 
 Annotations are used to add metadata to tuple elements, which can describe the purpose or requirements of each element more clearly. This can be particularly useful when generating documentation or JSON schemas from your schemas.

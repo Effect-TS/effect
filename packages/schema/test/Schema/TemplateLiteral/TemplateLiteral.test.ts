@@ -6,10 +6,12 @@ import { describe, expect, it } from "vitest"
 describe("TemplateLiteral", () => {
   it("should throw on unsupported template literal spans", () => {
     expect(() => S.TemplateLiteral(S.Boolean)).toThrow(
-      new Error("unsupported template literal span (boolean)")
+      new Error(`Unsupported template literal span
+schema (BooleanKeyword): boolean`)
     )
     expect(() => S.TemplateLiteral(S.SymbolFromSelf)).toThrow(
-      new Error("unsupported template literal span (symbol)")
+      new Error(`Unsupported template literal span
+schema (SymbolKeyword): symbol`)
     )
   })
 

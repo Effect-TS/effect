@@ -228,7 +228,10 @@ describe("Class", () => {
     expect(() => {
       class A2 extends A.extend<A2>("A2")({ a: S.String }) {}
       console.log(A2)
-    }).toThrow(new Error(`Duplicate property signature "a"`))
+    }).toThrow(
+      new Error(`Duplicate property signature
+details: Duplicate key "a"`)
+    )
   })
 
   it("can be extended with Class fields", () => {
