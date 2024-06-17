@@ -495,15 +495,27 @@ pipe(nonEmptyNumbers, Chunk.reverse)
 // $ExpectType string[]
 Chunk.toArray(hole<Chunk.Chunk<string>>())
 
+// $ExpectType string[]
+pipe(hole<Chunk.Chunk<string>>(), Chunk.toArray)
+
 // $ExpectType [string, ...string[]]
 Chunk.toArray(hole<Chunk.NonEmptyChunk<string>>())
 
+// $ExpectType [string, ...string[]]
+pipe(hole<Chunk.NonEmptyChunk<string>>(), Chunk.toArray)
+
 // -------------------------------------------------------------------------------------
-// toArray
+// toReadonlyArray
 // -------------------------------------------------------------------------------------
 
 // $ExpectType readonly string[]
 Chunk.toReadonlyArray(hole<Chunk.Chunk<string>>())
 
+// $ExpectType readonly string[]
+pipe(hole<Chunk.Chunk<string>>(), Chunk.toReadonlyArray)
+
 // $ExpectType readonly [string, ...string[]]
 Chunk.toReadonlyArray(hole<Chunk.NonEmptyChunk<string>>())
+
+// $ExpectType readonly [string, ...string[]]
+pipe(hole<Chunk.NonEmptyChunk<string>>(), Chunk.toReadonlyArray)
