@@ -1819,3 +1819,27 @@ const router = HttpServer.router.empty.pipe(
 
 listen(HttpServer.server.serve(router), 3000)
 ```
+
+## Conversions
+
+### toWebHandler
+
+The `toWebHandler` function converts a `Default` (i.e. a type of `HttpApp` that specifically produces a `ServerResponse` as its output) into a web handler that can process `Request` objects and return `Response` objects.
+
+```ts
+import * as HttpServer from "@effect/platform/HttpServer"
+
+// Define the router with some routes
+const router = HttpServer.router.empty.pipe(
+  HttpServer.router.get("/", HttpServer.response.text("content 1")),
+  HttpServer.router.get("/foo", HttpServer.response.text("content 2"))
+)
+
+// Convert the router to a web handler
+// const handler: (request: Request) => Promise<Response>
+const handler = HttpServer.app.toWebHandler(router)
+
+// Test the handler with a request
+const response = await handler(new Request("http://localhost:3000/foo"))
+console.log(await response.text()) // Output: content 2
+```
