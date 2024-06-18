@@ -419,7 +419,7 @@ export type EnvTypeId = typeof EnvTypeId
  * @experimental
  * @category environment
  */
-export interface Env<R> {
+export interface Env<R> extends Pipeable {
   readonly [EnvTypeId]: {
     _R: Covariant<R>
   }
@@ -454,6 +454,9 @@ export interface EnvRef<A> {
 const EnvProto = {
   [EnvTypeId]: {
     _R: identity
+  },
+  pipe() {
+    return pipeArguments(this, arguments)
   }
 }
 
@@ -488,29 +491,38 @@ export const envUnsafeMakeEmpty = (): Env<never> => {
  * @experimental
  * @category environment
  */
-export const envGet = <R, A>(env: Env<R>, ref: EnvRef<A>): A =>
-  ref.key in env.refs ? (env.refs[ref.key] as A) : ref.initial
+export const envGet: {
+  <A>(ref: EnvRef<A>): <R>(self: Env<R>) => A
+  <A, R>(self: Env<R>, ref: EnvRef<A>): A
+} = dual(2, <R, A>(self: Env<R>, ref: EnvRef<A>): A => ref.key in self.refs ? (self.refs[ref.key] as A) : ref.initial)
 
 /**
  * @since 3.4.0
  * @experimental
  * @category environment
  */
-export const envSet = <R, A>(env: Env<R>, ref: EnvRef<A>, value: A): Env<R> => {
-  const refs = Object.assign(Object.create(null), env.refs)
+export const envSet: {
+  <A>(ref: EnvRef<A>, value: A): <R>(self: Env<R>) => Env<R>
+  <A, R>(self: Env<R>, ref: EnvRef<A>, value: A): Env<R>
+} = dual(3, <R, A>(self: Env<R>, ref: EnvRef<A>, value: A): Env<R> => {
+  const refs = Object.assign(Object.create(null), self.refs)
   refs[ref.key] = value
   return envMake(refs)
-}
+})
 
 /**
  * @since 3.4.0
  * @experimental
  * @category environment
  */
-export const envMutate = <R>(
-  env: Env<R>,
-  f: (map: Record<string, unknown>) => ReadonlyRecord<string, unknown>
-): Env<R> => envMake(f(Object.assign(Object.create(null), env.refs)))
+export const envMutate: {
+  (f: (map: Record<string, unknown>) => void): <R>(self: Env<R>) => Env<R>
+  <R>(self: Env<R>, f: (map: Record<string, unknown>) => void): Env<R>
+} = dual(
+  2,
+  <R>(self: Env<R>, f: (map: Record<string, unknown>) => ReadonlyRecord<string, unknown>): Env<R> =>
+    envMake(f(Object.assign(Object.create(null), self.refs)))
+)
 
 // ========================================================================
 // Env refs

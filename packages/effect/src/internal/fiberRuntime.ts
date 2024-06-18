@@ -1075,10 +1075,12 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
   }
 
   ["Micro"](op: Micro.Micro<any, any, never> & { _op: "Micro" }) {
-    return core.unsafeAsync<any, any>((resume) => {
-      const context = this.getFiberRef(core.currentContext)
-      const handle = Micro.runFork(Micro.provideContext(op, context))
-      handle.addObserver((result) => {
+    return core.unsafeAsync<any, any>((microResume) => {
+      const env = Micro.envUnsafeMakeEmpty().pipe(
+        Micro.envSet(Micro.currentContext, this.getFiberRef(core.currentContext))
+      )
+      let resume = microResume
+      op[Micro.runSymbol](env, (result) => {
         if (result._tag === "Right") {
           return resume(core.exitSucceed(result.right))
         }
@@ -1094,7 +1096,12 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
           }
         }
       })
-      return handle.abort as any
+      return core.async<void>((abortResume) => {
+        resume = (_: any) => {
+          abortResume(core.void)
+        }
+        Micro.envGet(env, Micro.currentAbortController).abort()
+      })
     })
   }
 
