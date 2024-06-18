@@ -10,6 +10,22 @@ import type { Pipeable } from "./Pipeable.js"
 import type * as Runtime from "./Runtime.js"
 
 /**
+ * @since 3.4.0
+ */
+export declare namespace ManagedRuntime {
+  /**
+   * @category type-level
+   * @since 3.4.0
+   */
+  export type Context<T extends ManagedRuntime<any, any>> = [T] extends [ManagedRuntime<infer R, infer _E>] ? R : never
+  /**
+   * @category type-level
+   * @since 3.4.0
+   */
+  export type Error<T extends ManagedRuntime<any, any>> = [T] extends [ManagedRuntime<infer _R, infer E>] ? E : never
+}
+
+/**
  * @since 2.0.0
  * @category models
  */
