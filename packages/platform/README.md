@@ -713,6 +713,34 @@ Output:
 */
 ```
 
+## Testing
+
+### Injecting Fetch
+
+To test HTTP requests, you can inject a mock fetch implementation.
+
+```ts
+import * as Http from "@effect/platform/HttpClient"
+import { Effect, Layer } from "effect"
+import * as assert from "node:assert"
+
+// Mock fetch implementation
+const FetchTest = Layer.succeed(Http.client.Fetch, () =>
+  Promise.resolve(new Response("not found", { status: 404 }))
+)
+
+// Program to test
+const program = Http.request
+  .get("https://www.google.com/")
+  .pipe(Http.client.fetch, Http.response.text)
+
+// Test
+Effect.gen(function* () {
+  const response = yield* program
+  assert.equal(response, "not found")
+}).pipe(Effect.provide(FetchTest), Effect.runPromise)
+```
+
 # HTTP Server
 
 ## Overview
