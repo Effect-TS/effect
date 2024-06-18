@@ -146,6 +146,21 @@ export const fromIterable = <A>(collection: Iterable<A>): Array<A> =>
   Array.isArray(collection) ? collection : Array.from(collection)
 
 /**
+ * Creates a new `Array` from a value that might not be an iterable.
+ *
+ * @example
+ * import { Array } from "effect"
+ *
+ * assert.deepStrictEqual(Array.ensure("a"), ["a"])
+ * assert.deepStrictEqual(Array.ensure(["a"]), ["a"])
+ * assert.deepStrictEqual(Array.ensure(["a", "b", "c"]), ["a", "b", "c"])
+ *
+ * @category constructors
+ * @since 3.3.0
+ */
+export const ensure = <A>(self: ReadonlyArray<A> | A): Array<A> => Array.isArray(self) ? self : [self as A]
+
+/**
  * Takes a record and returns an array of tuples containing its keys and values.
  *
  * @param self - The record to transform.
