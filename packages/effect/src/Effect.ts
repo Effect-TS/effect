@@ -266,8 +266,38 @@ export const isEffect: (u: unknown) => u is Effect<unknown, unknown, unknown> = 
 // -------------------------------------------------------------------------------------
 
 /**
- * Returns an effect that, if evaluated, will return the cached result of this
- * effect. Cached results will expire after `timeToLive` duration.
+ * Returns an effect that caches its result for a specified duration, known as
+ * the `timeToLive`. When the cache expires after the duration, the effect will be
+ * recomputed upon next evaluation.
+ *
+ * @example
+ * import { Effect, Console } from "effect"
+ *
+ * let i = 1
+ * const expensiveTask = Effect.promise<string>(() => {
+ *   console.log("expensive task...")
+ *   return new Promise((resolve) => {
+ *     setTimeout(() => {
+ *       resolve(`result ${i++}`)
+ *     }, 100)
+ *   })
+ * })
+ *
+ * const program = Effect.gen(function* () {
+ *   const cached = yield* Effect.cachedWithTTL(expensiveTask, "150 millis")
+ *   yield* cached.pipe(Effect.andThen(Console.log))
+ *   yield* cached.pipe(Effect.andThen(Console.log))
+ *   yield* Effect.sleep("100 millis")
+ *   yield* cached.pipe(Effect.andThen(Console.log))
+ * })
+ *
+ * // Effect.runFork(program)
+ * // Output:
+ * // expensive task...
+ * // result 1
+ * // result 1
+ * // expensive task...
+ * // result 2
  *
  * @since 2.0.0
  * @category caching
@@ -278,10 +308,41 @@ export const cachedWithTTL: {
 } = circular.cached
 
 /**
- * Returns an effect that, if evaluated, will return the cached result of this
- * effect. Cached results will expire after `timeToLive` duration. In
- * addition, returns an effect that can be used to invalidate the current
- * cached value before the `timeToLive` duration expires.
+ * Similar to {@link cachedWithTTL}, this function caches an effect's result for a
+ * specified duration. It also includes an additional effect for manually
+ * invalidating the cached value before it naturally expires.
+ *
+ * @example
+ * import { Effect, Console } from "effect"
+ *
+ * let i = 1
+ * const expensiveTask = Effect.promise<string>(() => {
+ *   console.log("expensive task...")
+ *   return new Promise((resolve) => {
+ *     setTimeout(() => {
+ *       resolve(`result ${i++}`)
+ *     }, 100)
+ *   })
+ * })
+ *
+ * const program = Effect.gen(function* () {
+ *   const [cached, invalidate] = yield* Effect.cachedInvalidateWithTTL(
+ *     expensiveTask,
+ *     "1 hour"
+ *   )
+ *   yield* cached.pipe(Effect.andThen(Console.log))
+ *   yield* cached.pipe(Effect.andThen(Console.log))
+ *   yield* invalidate
+ *   yield* cached.pipe(Effect.andThen(Console.log))
+ * })
+ *
+ * // Effect.runFork(program)
+ * // Output:
+ * // expensive task...
+ * // result 1
+ * // result 1
+ * // expensive task...
+ * // result 2
  *
  * @since 2.0.0
  * @category caching
@@ -297,8 +358,44 @@ export const cachedInvalidateWithTTL: {
 } = circular.cachedInvalidateWithTTL
 
 /**
- * Returns an effect that, if evaluated, will return the lazily computed
- * result of this effect.
+ * Returns an effect that computes a result lazily and caches it. Subsequent
+ * evaluations of this effect will return the cached result without re-executing
+ * the logic.
+ *
+ * @example
+ * import { Effect, Console } from "effect"
+ *
+ * let i = 1
+ * const expensiveTask = Effect.promise<string>(() => {
+ *   console.log("expensive task...")
+ *   return new Promise((resolve) => {
+ *     setTimeout(() => {
+ *       resolve(`result ${i++}`)
+ *     }, 100)
+ *   })
+ * })
+ *
+ * const program = Effect.gen(function* () {
+ *   console.log("non-cached version:")
+ *   yield* expensiveTask.pipe(Effect.andThen(Console.log))
+ *   yield* expensiveTask.pipe(Effect.andThen(Console.log))
+ *   console.log("cached version:")
+ *   const cached = yield* Effect.cached(expensiveTask)
+ *   yield* cached.pipe(Effect.andThen(Console.log))
+ *   yield* cached.pipe(Effect.andThen(Console.log))
+ * })
+ *
+ * // Effect.runFork(program)
+ * // Output:
+ * // non-cached version:
+ * // expensive task...
+ * // result 1
+ * // expensive task...
+ * // result 2
+ * // cached version:
+ * // expensive task...
+ * // result 3
+ * // result 3
  *
  * @since 2.0.0
  * @category caching
@@ -306,7 +403,33 @@ export const cachedInvalidateWithTTL: {
 export const cached: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<A, E, R>> = effect.memoize
 
 /**
- * Returns a memoized version of the specified effectual function.
+ * Returns a memoized version of a function with effects. Memoization ensures
+ * that results are stored and reused for the same inputs, reducing the need to
+ * recompute them.
+ *
+ * @example
+ * import { Effect, Random } from "effect"
+ *
+ * const program = Effect.gen(function* () {
+ *   const randomNumber = (n: number) => Random.nextIntBetween(1, n)
+ *   console.log("non-memoized version:")
+ *   console.log(yield* randomNumber(10))
+ *   console.log(yield* randomNumber(10))
+ *
+ *   console.log("memoized version:")
+ *   const memoized = yield* Effect.cachedFunction(randomNumber)
+ *   console.log(yield* memoized(10))
+ *   console.log(yield* memoized(10))
+ * })
+ *
+ * // Effect.runFork(program)
+ * // Example Output:
+ * // non-memoized version:
+ * // 2
+ * // 8
+ * // memoized version:
+ * // 5
+ * // 5
  *
  * @since 2.0.0
  * @category caching
@@ -317,24 +440,25 @@ export const cachedFunction: <A, B, E, R>(
 ) => Effect<(a: A) => Effect<B, E, R>> = circular.cachedFunction
 
 /**
- * Returns an effect that will be executed at most once, even if it is
- * evaluated multiple times.
+ * Returns an effect that executes only once, regardless of how many times it's
+ * called.
  *
  * @example
  * import { Effect, Console } from "effect"
  *
- * const program = Effect.gen(function* (_) {
- *   const twice = Console.log("twice")
- *   yield* _(twice, Effect.repeatN(1))
- *   const once = yield* _(Console.log("once"), Effect.once)
- *   yield* _(once, Effect.repeatN(1))
+ * const program = Effect.gen(function* () {
+ *   const task1 = Console.log("task1")
+ *   yield* Effect.repeatN(task1, 2)
+ *   const task2 = yield* Effect.once(Console.log("task2"))
+ *   yield* Effect.repeatN(task2, 2)
  * })
  *
- * Effect.runFork(program)
+ * // Effect.runFork(program)
  * // Output:
- * // twice
- * // twice
- * // once
+ * // task1
+ * // task1
+ * // task1
+ * // task2
  *
  * @since 2.0.0
  * @category caching
