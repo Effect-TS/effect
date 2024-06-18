@@ -387,7 +387,7 @@ describe("Config", () => {
           key1: number
           list: ReadonlyArray<number>
           option: Option.Option<number>
-          secret: Secret.Secret
+          secret: Redacted.Redacted
           nested?:
             | Partial<{
               key2: string
@@ -400,7 +400,7 @@ describe("Config", () => {
         key1: Config.integer("key1"),
         list: Config.array(Config.integer(), "items"),
         option: Config.option(Config.integer("option")),
-        secret: Config.secret("secret"),
+        secret: Config.redacted("secret"),
         nested: {
           key2: Config.string("key2")
         }
@@ -412,7 +412,7 @@ describe("Config", () => {
         key1: 123,
         list: [1, 2, 3],
         option: Option.some(123),
-        secret: Secret.fromString("sauce"),
+        secret: Redacted.make("sauce"),
         nested: {
           key2: "value"
         }

@@ -70,13 +70,15 @@ export declare namespace Config {
    * @since 2.0.0
    * @category models
    */
-  export type Wrap<A> = [NonNullable<A>] extends [infer T] ?
-    [T] extends [Record<string, any>] ? [Exclude<keyof T, string>] extends [never] ?
-          | { readonly [K in keyof A]: Wrap<A[K]> }
-          | Config<A>
-      : Config<A>
+  export type Wrap<A> = [NonNullable<A>] extends [infer T] ? [IsPlainObject<T>] extends [true] ?
+        | { readonly [K in keyof A]: Wrap<A[K]> }
+        | Config<A>
     : Config<A>
     : Config<A>
+
+  type IsPlainObject<A> = [A] extends [Record<string, any>]
+    ? [keyof A] extends [never] ? false : [keyof A] extends [string] ? true : false
+    : false
 }
 
 /**
