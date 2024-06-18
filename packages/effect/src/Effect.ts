@@ -2581,7 +2581,7 @@ export const scopeWith: <A, E, R>(f: (scope: Scope.Scope) => Effect<A, E, R>) =>
   fiberRuntime.scopeWith
 
 /**
- * Scopes all resources uses in this workflow to the lifetime of the workflow,
+ * Scopes all resources used in this workflow to the lifetime of the workflow,
  * ensuring that their finalizers are run as soon as this workflow completes
  * execution, whether by success, failure, or interruption.
  *
