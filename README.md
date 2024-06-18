@@ -12,8 +12,8 @@ Welcome to Effect, a powerful TypeScript framework that provides a fully-fledged
   // ...
   "compilerOptions": {
     // ...
-    "strict": true
-  }
+    "strict": true,
+  },
 }
 ```
 
