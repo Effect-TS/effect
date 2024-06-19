@@ -4,7 +4,7 @@
  * @since 3.4.0
  * @experimental
  */
-import type * as Channel from "./Channel.js"
+import type { Channel, ChannelTypeId } from "./Channel.js"
 import * as Context from "./Context.js"
 import type { Effect, EffectTypeId } from "./Effect.js"
 import * as Effectable from "./Effectable.js"
@@ -19,8 +19,8 @@ import * as Option from "./Option.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import { isIterable, isTagged, type Predicate, type Refinement } from "./Predicate.js"
 import type { ReadonlyRecord } from "./Record.js"
-import type * as Sink from "./Sink.js"
-import type * as Stream from "./Stream.js"
+import type { Sink, SinkTypeId } from "./Sink.js"
+import type { Stream, StreamTypeId } from "./Stream.js"
 import type { Concurrency, Covariant, Equals, NoInfer, NotFunction, Simplify } from "./Types.js"
 import { YieldWrap, yieldWrapGet } from "./Utils.js"
 
@@ -3573,9 +3573,9 @@ export const runSync = <A, E>(effect: Micro<A, E>): A => {
  */
 export interface YieldableError extends Pipeable, Inspectable, Readonly<Error> {
   readonly [EffectTypeId]: Effect.VarianceStruct<never, this, never>
-  readonly [Stream.StreamTypeId]: Effect.VarianceStruct<never, this, never>
-  readonly [Sink.SinkTypeId]: Sink.Sink.VarianceStruct<never, unknown, never, this, never>
-  readonly [Channel.ChannelTypeId]: Channel.Channel.VarianceStruct<never, unknown, this, unknown, never, unknown, never>
+  readonly [StreamTypeId]: Stream.VarianceStruct<never, this, never>
+  readonly [SinkTypeId]: Sink.VarianceStruct<never, unknown, never, this, never>
+  readonly [ChannelTypeId]: Channel.VarianceStruct<never, unknown, this, unknown, never, unknown, never>
   readonly [TypeId]: Micro.Variance<never, this, never>
   readonly [runSymbol]: (env: Env<any>, onResult: (result: Result<never, this>) => void) => void
   [Symbol.iterator](): MicroIterator<Micro<never, this, never>>
