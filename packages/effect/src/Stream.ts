@@ -4736,11 +4736,39 @@ export const decodeText: {
 export const encodeText: <E, R>(self: Stream<string, E, R>) => Stream<Uint8Array, E, R> = internal.encodeText
 
 /**
+ * @since 3.4.0
+ * @category models
+ */
+export interface EventListener<A> {
+  addEventListener(
+    event: string,
+    f: (event: A) => void,
+    options?: {
+      readonly capture?: boolean
+      readonly passive?: boolean
+      readonly once?: boolean
+      readonly signal?: AbortSignal
+    } | boolean
+  ): void
+  removeEventListener(
+    event: string,
+    f: (event: A) => void,
+    options?: {
+      readonly capture?: boolean
+    } | boolean
+  ): void
+}
+
+/**
  * Creates a `Stream` using addEventListener.
  * @since 3.1.0
  */
-export const fromEventListener: <A = Event>(
-  target: EventTarget,
+export const fromEventListener: <A = unknown>(
+  target: EventListener<A>,
   type: string,
-  options?: boolean | Omit<AddEventListenerOptions, "signal">
+  options?: boolean | {
+    readonly capture?: boolean
+    readonly passive?: boolean
+    readonly once?: boolean
+  } | undefined
 ) => Stream<A> = internal.fromEventListener
