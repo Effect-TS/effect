@@ -1,5 +1,15 @@
 # @effect/schema
 
+## 0.68.1
+
+### Patch Changes
+
+- [#3015](https://github.com/Effect-TS/effect/pull/3015) [`b51e266`](https://github.com/Effect-TS/effect/commit/b51e26662b879b55d2c5164b7c97742739aa9446) Thanks @gcanti! - - Fix handling of `exact` option overrides in `AST.ParseOptions`
+  This commit resolves a bug affecting the `exact` option within `AST.ParseOptions`. Previously, the implementation failed to correctly incorporate overrides for the `exact` setting, resulting in the parser not respecting the specified behavior in extended configurations.
+  - Improve error messaging in `Pretty.make` for unmatched union schemas
+- Updated dependencies [[`6c89408`](https://github.com/Effect-TS/effect/commit/6c89408cd7b9204ec4c5828a46cd5312d8afb5e7)]:
+  - effect@3.3.5
+
 ## 0.68.0
 
 ### Minor Changes
