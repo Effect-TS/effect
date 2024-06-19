@@ -49,6 +49,8 @@ patch(WheneableMergeQueryBuilder.prototype)
 
 /**
  * @internal
+ * create a Kysely instance from a dialect
+ * and using an effect/sql client backend
  */
 export const makeFromSql = <DB>(dialect: Dialect) =>
   Effect.gen(function*() {
@@ -64,6 +66,11 @@ export const makeFromSql = <DB>(dialect: Dialect) =>
     return effectifyWithSql(db, client, ["withTransaction"])
   })
 
+/**
+ * @internal
+ * create a Kysely instance from a dialect
+ * and using the native kysely driver
+ */
 export const makeFromDialect = <DB>(dialect: Dialect) => {
   const db = new Kysely<DB>({ dialect })
   // SelectQueryBuilder is not exported from "kysely" so we patch the prototype from it's instance
