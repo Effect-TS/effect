@@ -1614,30 +1614,20 @@ export const filterOrFail: {
  * @category filtering & conditionals
  */
 export const when: {
-  (condition: LazyArg<boolean>): <A, E, R>(self: Micro<A, E, R>) => Micro<Option.Option<A>, E, R>
-  <A, E, R>(self: Micro<A, E, R>, condition: LazyArg<boolean>): Micro<Option.Option<A>, E, R>
+  <E2 = never, R2 = never>(
+    condition: LazyArg<boolean> | Micro<boolean, E2, R2>
+  ): <A, E, R>(self: Micro<A, E, R>) => Micro<Option.Option<A>, E | E2, R | R2>
+  <A, E, R, E2 = never, R2 = never>(
+    self: Micro<A, E, R>,
+    condition: LazyArg<boolean> | Micro<boolean, E2, R2>
+  ): Micro<Option.Option<A>, E | E2, R | R2>
 } = dual(
   2,
-  <A, E, R>(self: Micro<A, E, R>, condition: LazyArg<boolean>): Micro<Option.Option<A>, E, R> =>
-    suspend(() => condition() ? asSome(self) : succeed(Option.none()))
-)
-
-/**
- * The moral equivalent of `if (p) exp`, that allows an effectful predicate.
- *
- * @since 3.4.0
- * @experimental
- * @category filtering & conditionals
- */
-export const whenMicro: {
-  <E, R>(
-    condition: Micro<boolean, E, R>
-  ): <A, E2, R2>(effect: Micro<A, E2, R2>) => Micro<Option.Option<A>, E | E2, R | R2>
-  <A, E2, R2, E, R>(self: Micro<A, E2, R2>, condition: Micro<boolean, E, R>): Micro<Option.Option<A>, E2 | E, R2 | R>
-} = dual(
-  2,
-  <A, E2, R2, E, R>(self: Micro<A, E2, R2>, condition: Micro<boolean, E, R>): Micro<Option.Option<A>, E2 | E, R2 | R> =>
-    flatMap(condition, (pass) => pass ? asSome(self) : succeed(Option.none()))
+  <A, E, R, E2 = never, R2 = never>(
+    self: Micro<A, E, R>,
+    condition: LazyArg<boolean> | Micro<boolean, E2, R2>
+  ): Micro<Option.Option<A>, E | E2, R | R2> =>
+    flatMap(isMicro(condition) ? condition : sync(condition), (pass) => pass ? asSome(self) : succeed(Option.none()))
 )
 
 // ----------------------------------------------------------------------------
