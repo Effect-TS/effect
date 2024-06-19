@@ -60,14 +60,6 @@ export const make = <DB>() =>
   Effect.gen(function*() {
     const dialect = yield* KyselyDialect
     const db = new Kysely<DB>({ dialect })
-    // ;(db as unknown as EffectKysely<DB>).withTransaction = (callback) =>
-    //   Effect.tryPromise({
-    //     try: () =>
-    //       db.transaction().execute((trx) =>
-    //         Effect.runPromise(callback(effectifyWithKysely(trx as unknown as EffectKysely<DB>)))
-    //       ),
-    //     catch: (e) => new SqlError({ error: e })
-    //   })
     // SelectQueryBuilder is not exported from "kysely" so we patch the prototype from it's instance
     const selectPrototype = Object.getPrototypeOf(db.selectFrom("" as any))
     patch(selectPrototype)
