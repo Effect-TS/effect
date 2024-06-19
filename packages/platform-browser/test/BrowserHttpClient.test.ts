@@ -1,4 +1,4 @@
-import { HttpClient } from "@effect/platform"
+import { Cookies, HttpClientRequest, HttpClientResponse } from "@effect/platform"
 import { BrowserHttpClient } from "@effect/platform-browser"
 import { assert, describe, it } from "@effect/vitest"
 import { Chunk, Effect, Stream } from "effect"
@@ -14,7 +14,7 @@ describe("BrowserHttpClient", () => {
         }]
       })
       const body = yield* _(
-        HttpClient.request.get("http://localhost:8080/my/url"),
+        HttpClientRequest.get("http://localhost:8080/my/url"),
         BrowserHttpClient.xmlHttpRequest,
         Effect.flatMap((_) => _.json),
         Effect.scoped,
@@ -32,7 +32,7 @@ describe("BrowserHttpClient", () => {
         }]
       })
       const body = yield* _(
-        HttpClient.request.get("http://localhost:8080/my/url"),
+        HttpClientRequest.get("http://localhost:8080/my/url"),
         BrowserHttpClient.xmlHttpRequest,
         Effect.map((_) =>
           _.stream.pipe(
@@ -56,13 +56,13 @@ describe("BrowserHttpClient", () => {
         }]
       })
       const cookies = yield* _(
-        HttpClient.request.get("http://localhost:8080/my/url"),
+        HttpClientRequest.get("http://localhost:8080/my/url"),
         BrowserHttpClient.xmlHttpRequest,
         Effect.map((res) => res.cookies),
         Effect.scoped,
         Effect.locally(BrowserHttpClient.currentXMLHttpRequest, server.xhrFactory)
       )
-      assert.deepStrictEqual(HttpClient.cookies.toRecord(cookies), {
+      assert.deepStrictEqual(Cookies.toRecord(cookies), {
         foo: "bar"
       })
     }))
@@ -76,9 +76,9 @@ describe("BrowserHttpClient", () => {
         }]
       })
       const body = yield* _(
-        HttpClient.request.get("http://localhost:8080/my/url"),
+        HttpClientRequest.get("http://localhost:8080/my/url"),
         BrowserHttpClient.xmlHttpRequest,
-        HttpClient.response.arrayBuffer,
+        HttpClientResponse.arrayBuffer,
         BrowserHttpClient.withXHRArrayBuffer,
         Effect.locally(BrowserHttpClient.currentXMLHttpRequest, server.xhrFactory)
       )

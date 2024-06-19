@@ -1,4 +1,4 @@
-import type * as Headers from "@effect/platform/Http/Headers"
+import type * as Headers from "@effect/platform/Headers"
 import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
 import * as Equal from "effect/Equal"

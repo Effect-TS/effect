@@ -1,5 +1,6 @@
+import { HttpClient, HttpClientRequest, HttpClientResponse } from "@effect/platform"
+import type { HttpBody, HttpClientError } from "@effect/platform"
 import { BunRuntime } from "@effect/platform-bun"
-import * as Http from "@effect/platform/HttpClient"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import { Context, Effect, Layer } from "effect"
@@ -17,32 +18,32 @@ type TodoWithoutId = Schema.Schema.Type<typeof TodoWithoutId>
 interface TodoService {
   readonly create: (
     _: TodoWithoutId
-  ) => Effect.Effect<Todo, Http.error.HttpClientError | Http.body.BodyError | ParseResult.ParseError>
+  ) => Effect.Effect<Todo, HttpClientError.HttpClientError | HttpBody.HttpBodyError | ParseResult.ParseError>
 }
 const TodoService = Context.GenericTag<TodoService>("@effect/platform-bun/examples/TodoService")
 
 const makeTodoService = Effect.gen(function*(_) {
-  const defaultClient = yield* _(Http.client.Client)
+  const defaultClient = yield* _(HttpClient.HttpClient)
   const clientWithBaseUrl = defaultClient.pipe(
-    Http.client.filterStatusOk,
-    Http.client.mapRequest(Http.request.prependUrl("https://jsonplaceholder.typicode.com"))
+    HttpClient.filterStatusOk,
+    HttpClient.mapRequest(HttpClientRequest.prependUrl("https://jsonplaceholder.typicode.com"))
   )
 
-  const addTodoWithoutIdBody = Http.request.schemaBody(TodoWithoutId)
+  const addTodoWithoutIdBody = HttpClientRequest.schemaBody(TodoWithoutId)
   const create = (todo: TodoWithoutId) =>
     addTodoWithoutIdBody(
-      Http.request.post("/todos"),
+      HttpClientRequest.post("/todos"),
       todo
     ).pipe(
       Effect.flatMap(clientWithBaseUrl),
-      Http.response.schemaBodyJsonScoped(Todo)
+      HttpClientResponse.schemaBodyJsonScoped(Todo)
     )
 
   return TodoService.of({ create })
 })
 
 const TodoServiceLive = Layer.effect(TodoService, makeTodoService).pipe(
-  Layer.provide(Http.client.layer)
+  Layer.provide(HttpClient.layer)
 )
 
 Effect.flatMap(

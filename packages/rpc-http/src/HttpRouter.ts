@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import type * as App from "@effect/platform/Http/App"
-import type * as ServerError from "@effect/platform/Http/ServerError"
-import * as ServerRequest from "@effect/platform/Http/ServerRequest"
-import * as ServerResponse from "@effect/platform/Http/ServerResponse"
+import type * as App from "@effect/platform/HttpApp"
+import type * as ServerError from "@effect/platform/HttpServerError"
+import * as ServerRequest from "@effect/platform/HttpServerRequest"
+import * as ServerResponse from "@effect/platform/HttpServerResponse"
 import * as Router from "@effect/rpc/Router"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
@@ -23,7 +23,7 @@ export const toHttpApp = <R extends Router.Router<any, any>>(self: R): App.Defau
   const handler = Router.toHandler(self)
   return Effect.withFiberRuntime((fiber) => {
     const context = fiber.getFiberRef(FiberRef.currentContext)
-    const request = Context.unsafeGet(context, ServerRequest.ServerRequest)
+    const request = Context.unsafeGet(context, ServerRequest.HttpServerRequest)
     return Effect.map(request.json, (_) =>
       ServerResponse.stream(
         handler(_).pipe(
