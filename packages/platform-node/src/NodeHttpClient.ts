@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import type * as Client from "@effect/platform/Http/Client"
+import type * as Client from "@effect/platform/HttpClient"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as FiberRef from "effect/FiberRef"
@@ -10,8 +10,8 @@ import type * as Scope from "effect/Scope"
 import type * as Http from "node:http"
 import type * as Https from "node:https"
 import type * as Undici from "undici"
-import * as internal from "./internal/http/client.js"
-import * as internalUndici from "./internal/http/clientUndici.js"
+import * as internal from "./internal/httpClient.js"
+import * as internalUndici from "./internal/httpClientUndici.js"
 
 /**
  * @since 1.0.0
@@ -64,19 +64,19 @@ export const makeAgentLayer: (options?: Https.AgentOptions) => Layer.Layer<HttpA
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect.Effect<Client.Client.Default, never, HttpAgent> = internal.make
+export const make: Effect.Effect<Client.HttpClient.Default, never, HttpAgent> = internal.make
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layer: Layer.Layer<Client.Client.Default> = internal.layer
+export const layer: Layer.Layer<Client.HttpClient.Default> = internal.layer
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerWithoutAgent: Layer.Layer<Client.Client.Default, never, HttpAgent> = internal.layerWithoutAgent
+export const layerWithoutAgent: Layer.Layer<Client.HttpClient.Default, never, HttpAgent> = internal.layerWithoutAgent
 
 /**
  * @since 1.0.0
@@ -132,17 +132,17 @@ export const withUndiciOptions: {
  * @since 1.0.0
  * @category constructors
  */
-export const makeUndici: (dispatcher: Undici.Dispatcher) => Client.Client.Default = internalUndici.make
+export const makeUndici: (dispatcher: Undici.Dispatcher) => Client.HttpClient.Default = internalUndici.make
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerUndici: Layer.Layer<Client.Client.Default> = internalUndici.layer
+export const layerUndici: Layer.Layer<Client.HttpClient.Default> = internalUndici.layer
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerUndiciWithoutDispatcher: Layer.Layer<Client.Client.Default, never, Dispatcher> =
+export const layerUndiciWithoutDispatcher: Layer.Layer<Client.HttpClient.Default, never, Dispatcher> =
   internalUndici.layerWithoutDispatcher

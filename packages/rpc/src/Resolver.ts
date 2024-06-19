@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as Headers from "@effect/platform/Http/Headers"
+import * as Headers from "@effect/platform/Headers"
 import type { ParseError } from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"

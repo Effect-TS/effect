@@ -11,6 +11,11 @@ export * as NodeContext from "./NodeContext.js"
 /**
  * @since 1.0.0
  */
+export * as NodeEtag from "./NodeEtag.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as NodeFileSystem from "./NodeFileSystem.js"
 
 /**
@@ -21,12 +26,27 @@ export * as NodeHttpClient from "./NodeHttpClient.js"
 /**
  * @since 1.0.0
  */
+export * as NodeHttpPlatform from "./NodeHttpPlatform.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as NodeHttpServer from "./NodeHttpServer.js"
 
 /**
  * @since 1.0.0
  */
+export * as NodeHttpServerRequest from "./NodeHttpServerRequest.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as NodeKeyValueStore from "./NodeKeyValueStore.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as NodeMultipart from "./NodeMultipart.js"
 
 /**
  * @since 1.0.0
