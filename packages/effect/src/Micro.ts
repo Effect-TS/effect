@@ -264,7 +264,7 @@ export const FailureUnexpected = (defect: unknown, traces: ReadonlyArray<string>
 
 class FailureAbortedImpl extends FailureImpl<"Aborted", never> implements Failure.Aborted {
   constructor(traces: ReadonlyArray<string> = []) {
-    super("Aborted", "interrupted", traces)
+    super("Aborted", "aborted", traces)
   }
 }
 
@@ -642,7 +642,7 @@ const MicroProto = {
   }
 }
 
-const stackDepthState = globalValue("effect/Micro/stackDepthState", () => ({
+const microDepthState = globalValue("effect/Micro/microDepthState", () => ({
   depth: 0,
   maxDepthBeforeYield: currentMaxDepthBeforeYield.initial
 }))
@@ -666,11 +666,11 @@ const unsafeMakeOptions = <A, E, R>(
     ) {
       return onResult(ResultAborted)
     }
-    stackDepthState.depth++
-    if (stackDepthState.depth === 1) {
-      stackDepthState.maxDepthBeforeYield = envGet(env, currentMaxDepthBeforeYield)
+    microDepthState.depth++
+    if (microDepthState.depth === 1) {
+      microDepthState.maxDepthBeforeYield = envGet(env, currentMaxDepthBeforeYield)
     }
-    if (stackDepthState.depth >= stackDepthState.maxDepthBeforeYield) {
+    if (microDepthState.depth >= microDepthState.maxDepthBeforeYield) {
       yieldAdd(() => execute(env, onResult))
     } else {
       try {
@@ -679,7 +679,7 @@ const unsafeMakeOptions = <A, E, R>(
         onResult(ResultFailUnexpected(err))
       }
     }
-    stackDepthState.depth--
+    microDepthState.depth--
   })
 
 /**
@@ -773,9 +773,7 @@ export const failWith = <E>(failure: Failure<E>): Micro<never, E> => fromResult(
  * @category constructors
  */
 export const failWithSync = <E>(failure: LazyArg<Failure<E>>): Micro<never, E> =>
-  make(function(_env, onResult) {
-    onResult(ResultFailWith(failure()))
-  })
+  fromResultSync(() => ResultFailWith(failure()))
 
 /**
  * Creates a `Micro` effect that will succeed with the lazily evaluated value.
@@ -1064,7 +1062,7 @@ export const yieldNow: Micro<void> = make(function(_env, onResult) {
  * @experimental
  * @category constructors
  */
-export const yieldFlush: Micro<void> = sync(() => {
+export const yieldFlush: Micro<void> = sync(function() {
   while (yieldState.tasks.length > 0) {
     yieldRunTasks()
   }
