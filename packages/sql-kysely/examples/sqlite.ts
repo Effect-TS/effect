@@ -1,35 +1,50 @@
-import * as Sql from "@effect/sql"
-import * as SqliteDrizzle from "@effect/sql-kysely/Sqlite"
+import * as SqliteKysely from "@effect/sql-kysely/Sqlite"
 import * as Sqlite from "@effect/sql-sqlite-node"
-import * as D from "drizzle-orm/sqlite-core"
-import { Config, Effect, Layer } from "effect"
+import { Config, Console, Context, Effect, Exit, Layer } from "effect"
+import type { Generated } from "kysely"
 
-// setup
+export interface User {
+  id: Generated<number>
+  name: string
+}
 
-const SqlLive = Sqlite.client.layer({
-  filename: Config.succeed("test.db")
-})
-const DrizzleLive = SqliteDrizzle.layer.pipe(
-  Layer.provide(SqlLive)
-)
-const DatabaseLive = Layer.mergeAll(SqlLive, DrizzleLive)
+interface Database {
+  users: User
+}
 
-// usage
+class SqliteDB extends Context.Tag("SqliteDB")<SqliteDB, SqliteKysely.EffectKysely<Database>>() {}
 
-const users = D.sqliteTable("users", {
-  id: D.integer("id").primaryKey(),
-  name: D.text("name")
+const SqliteLive = Sqlite.client.layer({
+  filename: Config.succeed(":memory:")
 })
 
-Effect.gen(function*() {
-  const sql = yield* Sql.client.Client
-  const db = yield* SqliteDrizzle.SqliteDrizzle
-  yield* sql`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT)`
-  yield* db.delete(users)
-  yield* db.insert(users).values({ id: 1, name: "Alice" })
-  const results = yield* db.select().from(users)
-  console.log(results)
+const KyselyLive = Layer.effect(SqliteDB, SqliteKysely.make<Database>()).pipe(Layer.provide(SqliteLive))
+
+Effect.gen(function*(_) {
+  const db = yield* SqliteDB
+
+  yield* db.schema
+    .createTable("users")
+    .addColumn("id", "integer", (c) => c.primaryKey().autoIncrement())
+    .addColumn("name", "text", (c) => c.notNull())
+
+  const result = yield* db.withTransaction(
+    Effect.gen(function*() {
+      const inserted = yield* db.insertInto("users").values({ name: "Alice" }).returningAll()
+      yield* Console.log(inserted)
+      const selected = yield* db.selectFrom("users").selectAll()
+      yield* Console.log(selected)
+      const updated = yield* db.updateTable("users").set({ name: "Bob" }).returningAll()
+      yield* Console.log(updated)
+      return yield* Effect.fail(new Error("rollback"))
+    })
+  ).pipe(Effect.exit)
+  if (Exit.isSuccess(result)) {
+    return yield* Effect.fail("should not reach here")
+  }
+  const selected = yield* db.selectFrom("users").selectAll()
+  yield* Console.log(selected)
 }).pipe(
-  Effect.provide(DatabaseLive),
+  Effect.provide(KyselyLive),
   Effect.runPromise
 )
