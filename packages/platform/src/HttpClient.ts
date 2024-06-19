@@ -414,8 +414,21 @@ export const scoped: <A, E, R>(self: HttpClient<A, E, R>) => HttpClient<A, E, Ex
  * @category schema
  */
 export const schemaFunction: {
-  <SA, SI, SR>(schema: Schema.Schema<SA, SI, SR>, options?: ParseOptions | undefined): <A, E, R>(self: HttpClient<A, E, R>) => (request: ClientRequest.HttpClientRequest) => (a: SA) => Effect.Effect<A, Error.RequestError | E | ParseResult.ParseError, SR | R>
-  <A, E, R, SA, SI, SR>(self: HttpClient<A, E, R>, schema: Schema.Schema<SA, SI, SR>, options?: ParseOptions | undefined): (request: ClientRequest.HttpClientRequest) => (a: SA) => Effect.Effect<A, Error.RequestError | ParseResult.ParseError | E, R | SR>
+  <SA, SI, SR>(
+    schema: Schema.Schema<SA, SI, SR>,
+    options?: ParseOptions | undefined
+  ): <A, E, R>(
+    self: HttpClient<A, E, R>
+  ) => (
+    request: ClientRequest.HttpClientRequest
+  ) => (a: SA) => Effect.Effect<A, Error.RequestError | E | ParseResult.ParseError, SR | R>
+  <A, E, R, SA, SI, SR>(
+    self: HttpClient<A, E, R>,
+    schema: Schema.Schema<SA, SI, SR>,
+    options?: ParseOptions | undefined
+  ): (
+    request: ClientRequest.HttpClientRequest
+  ) => (a: SA) => Effect.Effect<A, Error.RequestError | ParseResult.ParseError | E, R | SR>
 } = internal.schemaFunction
 
 /**
