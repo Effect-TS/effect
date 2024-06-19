@@ -3125,16 +3125,35 @@ export const filter = <A, E, R>(iterable: Iterable<A>, f: (a: NoInfer<A>) => Mic
   readonly concurrency?: Concurrency | undefined
   readonly negate?: boolean | undefined
 }): Micro<Array<A>, E, R> =>
+  filterMap(iterable, (a) =>
+    map(f(a), (pass) => {
+      pass = options?.negate ? !pass : pass
+      return pass ? Option.some(a) : Option.none()
+    }))
+
+/**
+ * Effectfully filter the elements of the provided iterable.
+ *
+ * Use the `concurrency` option to control how many elements are processed in parallel.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category collecting & elements
+ */
+export const filterMap = <A, B, E, R>(
+  iterable: Iterable<A>,
+  f: (a: NoInfer<A>) => Micro<Option.Option<B>, E, R>,
+  options?: {
+    readonly concurrency?: Concurrency | undefined
+  }
+): Micro<Array<B>, E, R> =>
   suspend(() => {
-    const out: Array<A> = []
+    const out: Array<B> = []
     return as(
       forEach(iterable, (a) =>
-        map(f(a), (passed) => {
-          if (options?.negate === true) {
-            passed = !passed
-          }
-          if (passed) {
-            out.push(a)
+        map(f(a), (o) => {
+          if (o._tag === "Some") {
+            out.push(o.value)
           }
         }), {
         discard: true,
