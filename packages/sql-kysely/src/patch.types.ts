@@ -31,7 +31,3 @@ declare module "kysely" {
 export interface EffectKysely<DB> extends Omit<Kysely<DB>, "transaction"> {
   withTransaction: <R, E, A>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | SqlError, R>
 }
-
-// export interface EffectKysely<DB> extends Omit<Kysely<DB>, "transaction"> {
-//   withTransaction: <R, E, A>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | SqlError, R>
-// }
