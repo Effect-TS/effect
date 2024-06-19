@@ -291,7 +291,7 @@ export const isEffect: (u: unknown) => u is Effect<unknown, unknown, unknown> = 
  *   yield* cached.pipe(Effect.andThen(Console.log))
  * })
  *
- * // Effect.runFork(program)
+ * Effect.runFork(program)
  * // Output:
  * // expensive task...
  * // result 1
@@ -336,7 +336,7 @@ export const cachedWithTTL: {
  *   yield* cached.pipe(Effect.andThen(Console.log))
  * })
  *
- * // Effect.runFork(program)
+ * Effect.runFork(program)
  * // Output:
  * // expensive task...
  * // result 1
@@ -385,7 +385,7 @@ export const cachedInvalidateWithTTL: {
  *   yield* cached.pipe(Effect.andThen(Console.log))
  * })
  *
- * // Effect.runFork(program)
+ * Effect.runFork(program)
  * // Output:
  * // non-cached version:
  * // expensive task...
@@ -422,7 +422,7 @@ export const cached: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<A, E, R>>
  *   console.log(yield* memoized(10))
  * })
  *
- * // Effect.runFork(program)
+ * Effect.runFork(program)
  * // Example Output:
  * // non-memoized version:
  * // 2
@@ -453,7 +453,7 @@ export const cachedFunction: <A, B, E, R>(
  *   yield* Effect.repeatN(task2, 2)
  * })
  *
- * // Effect.runFork(program)
+ * Effect.runFork(program)
  * // Output:
  * // task1
  * // task1
@@ -5152,6 +5152,55 @@ export const validateWith: {
 } = fiberRuntime.validateWith
 
 /**
+ * The `Effect.zip` function allows you to combine two effects into a single
+ * effect. This combined effect yields a tuple containing the results of both
+ * input effects once they succeed.
+ *
+ * Note that `Effect.zip` processes effects sequentially: it first completes the
+ * effect on the left and then the effect on the right.
+ *
+ * If you want to run the effects concurrently, you can use the `concurrent` option.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * const task1 = Effect.succeed(1).pipe(
+ *   Effect.delay("200 millis"),
+ *   Effect.tap(Effect.log("task1 done"))
+ * )
+ * const task2 = Effect.succeed("hello").pipe(
+ *   Effect.delay("100 millis"),
+ *   Effect.tap(Effect.log("task2 done"))
+ * )
+ *
+ * const task3 = Effect.zip(task1, task2)
+ *
+ * Effect.runPromise(task3).then(console.log)
+ * // Output:
+ * // timestamp=... level=INFO fiber=#0 message="task1 done"
+ * // timestamp=... level=INFO fiber=#0 message="task2 done"
+ * // [ 1, 'hello' ]
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * const task1 = Effect.succeed(1).pipe(
+ *   Effect.delay("200 millis"),
+ *   Effect.tap(Effect.log("task1 done"))
+ * )
+ * const task2 = Effect.succeed("hello").pipe(
+ *   Effect.delay("100 millis"),
+ *   Effect.tap(Effect.log("task2 done"))
+ * )
+ *
+ * const task3 = Effect.zip(task1, task2, { concurrent: true })
+ *
+ * Effect.runPromise(task3).then(console.log)
+ * // Output:
+ * // timestamp=... level=INFO fiber=#0 message="task2 done"
+ * // timestamp=... level=INFO fiber=#0 message="task1 done"
+ * // [ 1, 'hello' ]
+ *
  * @since 2.0.0
  * @category zipping
  */
@@ -5246,6 +5295,35 @@ export const zipRight: {
 } = fiberRuntime.zipRightOptions
 
 /**
+ * The `Effect.zipWith` function operates similarly to {@link zip} by combining
+ * two effects. However, instead of returning a tuple, it allows you to apply a
+ * function to the results of the combined effects, transforming them into a
+ * single value
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * const task1 = Effect.succeed(1).pipe(
+ *   Effect.delay("200 millis"),
+ *   Effect.tap(Effect.log("task1 done"))
+ * )
+ * const task2 = Effect.succeed("hello").pipe(
+ *   Effect.delay("100 millis"),
+ *   Effect.tap(Effect.log("task2 done"))
+ * )
+ *
+ * const task3 = Effect.zipWith(
+ *   task1,
+ *   task2,
+ *   (number, string) => number + string.length
+ * )
+ *
+ * Effect.runPromise(task3).then(console.log)
+ * // Output:
+ * // timestamp=... level=INFO fiber=#3 message="task1 done"
+ * // timestamp=... level=INFO fiber=#2 message="task2 done"
+ * // 6
+ *
  * @since 2.0.0
  * @category zipping
  */
