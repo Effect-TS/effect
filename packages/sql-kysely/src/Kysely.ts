@@ -16,10 +16,6 @@ export class KyselyDialect extends Context.Tag("KyselyDialect")<KyselyDialect, D
  * @since 1.0.0
  * @category constructors
  */
-export const make = <DB>() =>
-  Effect.gen(function*() {
-    const dialect = yield* KyselyDialect
-    return makeFromDialect<DB>(dialect)
-  })
+export const make = <DB>() => Effect.map(KyselyDialect, (dialect) => makeFromDialect<DB>(dialect))
 
 export * from "./patch.types.js"
