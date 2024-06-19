@@ -1744,7 +1744,7 @@ export interface ParseOptions {
    *
    * @since 0.67.24
    */
-  readonly exact?: boolean
+  readonly exact?: boolean | undefined
 }
 
 /**
