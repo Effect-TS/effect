@@ -433,9 +433,9 @@ import {
 } from "@effect/platform"
 import { Console, Effect } from "effect"
 
-const getPostAsJson = Http.request
-  .get("https://jsonplaceholder.typicode.com/posts/1")
-  .pipe(HttpClient.fetch, HttpClientResponse.json)
+const getPostAsJson = HttpClientRequest.get(
+  "https://jsonplaceholder.typicode.com/posts/1"
+).pipe(HttpClient.fetch, HttpClientResponse.json)
 
 NodeRuntime.runMain(
   getPostAsJson.pipe(Effect.andThen((post) => Console.log(typeof post, post)))
@@ -644,7 +644,7 @@ const getText = HttpClientRequest.get(
 
 ## POST
 
-To make a POST request, you can use the `Http.request.post` function provided by the `HttpClient` module. Here's an example of how to create and send a POST request:
+To make a POST request, you can use the `HttpClientRequest.post` function provided by the `HttpClient` module. Here's an example of how to create and send a POST request:
 
 ```ts
 import { NodeRuntime } from "@effect/platform-node"
@@ -674,7 +674,7 @@ Output:
 */
 ```
 
-If you need to send data in a format other than JSON, such as plain text, you can use different APIs provided by `Http.request`.
+If you need to send data in a format other than JSON, such as plain text, you can use different APIs provided by `HttpClientRequest`.
 
 In the following example, we send the data as text:
 
