@@ -1,5 +1,7 @@
+import type { HttpBody, HttpClientError } from "@effect/platform"
+import { HttpClient, HttpClientRequest, HttpClientResponse } from "@effect/platform"
+import { NodeHttpClient } from "@effect/platform-node"
 import { runMain } from "@effect/platform-node/NodeRuntime"
-import * as Http from "@effect/platform/HttpClient"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
@@ -12,7 +14,7 @@ class Todo extends Schema.Class<Todo>("Todo")({
   title: Schema.String,
   completed: Schema.Boolean
 }) {
-  static decodeResponse = Http.response.schemaBodyJsonScoped(Todo)
+  static decodeResponse = HttpClientResponse.schemaBodyJsonScoped(Todo)
 }
 
 const TodoWithoutId = Schema.Struct(Todo.fields).pipe(Schema.omit("id"))
@@ -21,21 +23,21 @@ type TodoWithoutId = Schema.Schema.Type<typeof TodoWithoutId>
 interface TodoService {
   readonly create: (
     _: TodoWithoutId
-  ) => Effect.Effect<Todo, Http.error.HttpClientError | Http.body.BodyError | ParseResult.ParseError>
+  ) => Effect.Effect<Todo, HttpClientError.HttpClientError | HttpBody.HttpBodyError | ParseResult.ParseError>
 }
 const TodoService = Context.GenericTag<TodoService>("@effect/platform-node/examples/TodoService")
 
 const makeTodoService = Effect.gen(function*(_) {
-  const defaultClient = yield* _(Http.client.Client)
+  const defaultClient = yield* _(HttpClient.HttpClient)
   const clientWithBaseUrl = defaultClient.pipe(
-    Http.client.filterStatusOk,
-    Http.client.mapRequest(Http.request.prependUrl("https://jsonplaceholder.typicode.com"))
+    HttpClient.filterStatusOk,
+    HttpClient.mapRequest(HttpClientRequest.prependUrl("https://jsonplaceholder.typicode.com"))
   )
 
-  const addTodoWithoutIdBody = Http.request.schemaBody(TodoWithoutId)
+  const addTodoWithoutIdBody = HttpClientRequest.schemaBody(TodoWithoutId)
   const create = (todo: TodoWithoutId) =>
     addTodoWithoutIdBody(
-      Http.request.post("/todos"),
+      HttpClientRequest.post("/todos"),
       todo
     ).pipe(
       Effect.flatMap(clientWithBaseUrl),
@@ -46,7 +48,7 @@ const makeTodoService = Effect.gen(function*(_) {
 })
 
 const TodoServiceLive = Layer.effect(TodoService, makeTodoService).pipe(
-  Layer.provide(Http.client.layer)
+  Layer.provide(NodeHttpClient.layer)
 )
 
 Effect.flatMap(
