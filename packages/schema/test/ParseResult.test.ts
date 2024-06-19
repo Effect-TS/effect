@@ -206,13 +206,13 @@ describe("ParseIssue.actual", () => {
     expect(P.mergeParseOptions({ errors: undefined }, undefined)).toStrictEqual({ errors: undefined })
     expect(P.mergeParseOptions(undefined, { errors: undefined })).toStrictEqual({ errors: undefined })
     expect(P.mergeParseOptions({ errors: "all" }, { errors: "first" })).toStrictEqual({
-      errors: "first",
-      onExcessProperty: undefined
+      errors: "first"
     })
     expect(P.mergeParseOptions({ onExcessProperty: "ignore" }, { onExcessProperty: "error" })).toStrictEqual({
-      onExcessProperty: "error",
-      errors: undefined
+      onExcessProperty: "error"
     })
+    expect(P.mergeParseOptions({}, { exact: false })).toStrictEqual({ exact: false })
+    expect(P.mergeParseOptions({ exact: true }, { exact: false })).toStrictEqual({ exact: false })
   })
 
   it("asserts", () => {

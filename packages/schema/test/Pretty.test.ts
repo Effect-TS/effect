@@ -535,4 +535,16 @@ schema (Declaration): <declaration schema>`)
       expectHook(S.NumberFromString)
     })
   })
+
+  it("no matching schema error", () => {
+    const A = S.Struct({ a: S.optional(S.String, { exact: true }) })
+    const schema = S.Union(A, S.Number)
+    const x: {} = { a: undefined }
+    const input: typeof A.Type = x
+    expect(() => Pretty.make(schema)(input)).toThrow(
+      new Error(`Unexpected Error
+details: Cannot find a matching schema for {"a":undefined}
+schema (Union): { readonly a?: string } | number`)
+    )
+  })
 })

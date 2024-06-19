@@ -186,6 +186,9 @@ export const match: AST.Match<Pretty<any>> = {
     const types = ast.types.map((ast) => [ParseResult.is({ ast } as any), go(ast, path)] as const)
     return (a) => {
       const index = types.findIndex(([is]) => is(a))
+      if (index === -1) {
+        throw new Error(errors_.getPrettyNoMatchingSchemaErrorMessage(a, path, ast))
+      }
       return types[index][1](a)
     }
   },
