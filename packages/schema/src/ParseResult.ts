@@ -457,9 +457,16 @@ export const mergeParseOptions = (
   if (options === undefined) {
     return overrideOptions
   }
-  const out: Mutable<AST.ParseOptions> = {}
-  out.errors = overrideOptions.errors ?? options.errors
-  out.onExcessProperty = overrideOptions.onExcessProperty ?? options.onExcessProperty
+  const out: Mutable<AST.ParseOptions> = { ...options }
+  if (overrideOptions.errors !== undefined) {
+    out.errors = overrideOptions.errors
+  }
+  if (overrideOptions.onExcessProperty !== undefined) {
+    out.onExcessProperty = overrideOptions.onExcessProperty
+  }
+  if (overrideOptions.exact !== undefined) {
+    out.exact = overrideOptions.exact
+  }
   return out
 }
 

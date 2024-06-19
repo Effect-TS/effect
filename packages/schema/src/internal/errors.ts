@@ -126,6 +126,13 @@ export const getPrettyMissingAnnotationErrorMessage = (
 /** @internal */
 export const getPrettyNeverErrorMessage = "Cannot pretty print a `never` value"
 
+/** @internal */
+export const getPrettyNoMatchingSchemaErrorMessage = (
+  actual: unknown,
+  path: ReadonlyArray<PropertyKey>,
+  ast: AST.AST
+) => getErrorMessage("Unexpected Error", `Cannot find a matching schema for ${util_.formatUnknown(actual)}`, path, ast)
+
 // ---------------------------------------------
 // Schema
 // ---------------------------------------------
