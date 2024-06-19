@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import * as Body from "@effect/platform/Http/Body"
-import * as Client from "@effect/platform/Http/Client"
-import * as ClientRequest from "@effect/platform/Http/ClientRequest"
+import * as Body from "@effect/platform/HttpBody"
+import * as Client from "@effect/platform/HttpClient"
+import * as ClientRequest from "@effect/platform/HttpClientRequest"
 import * as Resolver from "@effect/rpc/Resolver"
 import type * as Router from "@effect/rpc/Router"
 import type * as Rpc from "@effect/rpc/Rpc"
@@ -19,7 +19,7 @@ import * as Stream from "effect/Stream"
  * @since 1.0.0
  */
 export const make = <R extends Router.Router<any, any>>(
-  client: Client.Client.Default
+  client: Client.HttpClient.Default
 ): RequestResolver.RequestResolver<
   Rpc.Request<Router.Router.Request<R>>,
   Serializable.SerializableWithResult.Context<Router.Router.Request<R>>

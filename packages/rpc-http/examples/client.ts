@@ -1,4 +1,4 @@
-import * as Http from "@effect/platform/HttpClient"
+import { HttpClient, HttpClientRequest } from "@effect/platform"
 import { Resolver } from "@effect/rpc"
 import { HttpResolver } from "@effect/rpc-http"
 import { Console, Effect, Stream } from "effect"
@@ -7,8 +7,8 @@ import { GetUser, GetUserIds } from "./schema.js"
 
 // Create the client
 const client = HttpResolver.make<UserRouter>(
-  Http.client.fetchOk.pipe(
-    Http.client.mapRequest(Http.request.prependUrl("http://localhost:3000/rpc"))
+  HttpClient.fetchOk.pipe(
+    HttpClient.mapRequest(HttpClientRequest.prependUrl("http://localhost:3000/rpc"))
   )
 ).pipe(Resolver.toClient)
 

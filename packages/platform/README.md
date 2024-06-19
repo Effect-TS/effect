@@ -426,12 +426,16 @@ In this section, we'll explore how to retrieve data using the `HttpClient` modul
 
 ```ts
 import { NodeRuntime } from "@effect/platform-node"
-import * as Http from "@effect/platform/HttpClient"
+import {
+  HttpClient,
+  HttpClientRequest,
+  HttpClientResponse
+} from "@effect/platform"
 import { Console, Effect } from "effect"
 
-const getPostAsJson = Http.request
-  .get("https://jsonplaceholder.typicode.com/posts/1")
-  .pipe(Http.client.fetch, Http.response.json)
+const getPostAsJson = HttpClientRequest.get(
+  "https://jsonplaceholder.typicode.com/posts/1"
+).pipe(HttpClient.fetch, HttpClientResponse.json)
 
 NodeRuntime.runMain(
   getPostAsJson.pipe(Effect.andThen((post) => Console.log(typeof post, post)))
@@ -450,18 +454,22 @@ object {
 */
 ```
 
-If you want a response in a different format other than JSON, you can utilize other APIs provided by `Http.response`.
+If you want a response in a different format other than JSON, you can utilize other APIs provided by `HttpClientResponse`.
 
 In the following example, we fetch the post as text:
 
 ```ts
 import { NodeRuntime } from "@effect/platform-node"
-import * as Http from "@effect/platform/HttpClient"
+import {
+  HttpClient,
+  HttpClientRequest,
+  HttpClientResponse
+} from "@effect/platform"
 import { Console, Effect } from "effect"
 
-const getPostAsText = Http.request
-  .get("https://jsonplaceholder.typicode.com/posts/1")
-  .pipe(Http.client.fetch, Http.response.text)
+const getPostAsText = HttpClientRequest.get(
+  "https://jsonplaceholder.typicode.com/posts/1"
+).pipe(HttpClient.fetch, HttpClientResponse.text)
 
 NodeRuntime.runMain(
   getPostAsText.pipe(Effect.andThen((post) => Console.log(typeof post, post)))
@@ -482,34 +490,37 @@ string {
 
 Here are some APIs you can use to convert the response:
 
-| **API**                       | **Description**                       |
-| ----------------------------- | ------------------------------------- |
-| `Http.response.arrayBuffer`   | Convert to `ArrayBuffer`              |
-| `Http.response.formData`      | Convert to `FormData`                 |
-| `Http.response.json`          | Convert to JSON                       |
-| `Http.response.stream`        | Convert to a `Stream` of `Uint8Array` |
-| `Http.response.text`          | Convert to text                       |
-| `Http.response.urlParamsBody` | Convert to `Http.urlParams.UrlParams` |
+| **API**                            | **Description**                       |
+| ---------------------------------- | ------------------------------------- |
+| `HttpClientResponse.arrayBuffer`   | Convert to `ArrayBuffer`              |
+| `HttpClientResponse.formData`      | Convert to `FormData`                 |
+| `HttpClientResponse.json`          | Convert to JSON                       |
+| `HttpClientResponse.stream`        | Convert to a `Stream` of `Uint8Array` |
+| `HttpClientResponse.text`          | Convert to text                       |
+| `HttpClientResponse.urlParamsBody` | Convert to `Http.urlParams.UrlParams` |
 
 ### Setting Headers
 
 When making HTTP requests, sometimes you need to include additional information in the request headers. You can set headers using the `setHeader` function for a single header or `setHeaders` for multiple headers simultaneously.
 
 ```ts
-import * as Http from "@effect/platform/HttpClient"
+import { HttpClient, HttpClientRequest } from "@effect/platform"
 
-const getPost = Http.request
-  .get("https://jsonplaceholder.typicode.com/posts/1")
-  .pipe(
-    // Setting a single header
-    Http.request.setHeader("Content-type", "application/json; charset=UTF-8"),
-    // Setting multiple headers
-    Http.request.setHeaders({
-      "Content-type": "application/json; charset=UTF-8",
-      Foo: "Bar"
-    }),
-    Http.client.fetch
-  )
+const getPost = HttpClientRequest.get(
+  "https://jsonplaceholder.typicode.com/posts/1"
+).pipe(
+  // Setting a single header
+  HttpClientRequest.setHeader(
+    "Content-type",
+    "application/json; charset=UTF-8"
+  ),
+  // Setting multiple headers
+  HttpClientRequest.setHeaders({
+    "Content-type": "application/json; charset=UTF-8",
+    Foo: "Bar"
+  }),
+  HttpClient.fetch
+)
 ```
 
 ### Decoding Data with Schemas
@@ -518,7 +529,11 @@ A common use case when fetching data is to validate the received format. For thi
 
 ```ts
 import { NodeRuntime } from "@effect/platform-node"
-import * as Http from "@effect/platform/HttpClient"
+import {
+  HttpClient,
+  HttpClientRequest,
+  HttpClientResponse
+} from "@effect/platform"
 import { Schema } from "@effect/schema"
 import { Console, Effect } from "effect"
 
@@ -533,13 +548,13 @@ const getPostAndValidate: Effect.Effect<{
     readonly title: string;
 }, Http.error.HttpClientError | ParseError, never>
 */
-const getPostAndValidate = Http.request
-  .get("https://jsonplaceholder.typicode.com/posts/1")
-  .pipe(
-    Http.client.fetch,
-    Effect.andThen(Http.response.schemaBodyJson(Post)),
-    Effect.scoped
-  )
+const getPostAndValidate = HttpClientRequest.get(
+  "https://jsonplaceholder.typicode.com/posts/1"
+).pipe(
+  HttpClient.fetch,
+  Effect.andThen(HttpClientResponse.schemaBodyJson(Post)),
+  Effect.scoped
+)
 
 NodeRuntime.runMain(getPostAndValidate.pipe(Effect.andThen(Console.log)))
 /*
@@ -551,26 +566,30 @@ Output:
 */
 ```
 
-In this example, we define a schema for a post object with properties `id` and `title`. Then, we fetch the data and validate it against this schema using `Http.response.schemaBodyJson`. Finally, we log the validated post object.
+In this example, we define a schema for a post object with properties `id` and `title`. Then, we fetch the data and validate it against this schema using `HttpClientResponse.schemaBodyJson`. Finally, we log the validated post object.
 
 Note that we use `Effect.scoped` after consuming the response. This ensures that any resources associated with the HTTP request are properly cleaned up once we're done processing the response.
 
 ### Filtering And Error Handling
 
-It's important to note that `Http.client.fetch` doesn't consider non-`200` status codes as errors by default. This design choice allows for flexibility in handling different response scenarios. For instance, you might have a schema union where the status code serves as the discriminator, enabling you to define a schema that encompasses all possible response cases.
+It's important to note that `HttpClient.fetch` doesn't consider non-`200` status codes as errors by default. This design choice allows for flexibility in handling different response scenarios. For instance, you might have a schema union where the status code serves as the discriminator, enabling you to define a schema that encompasses all possible response cases.
 
-You can use `Http.client.filterStatusOk`, or `Http.client.fetchOk` to ensure only `2xx` responses are treated as successes.
+You can use `HttpClient.filterStatusOk`, or `HttpClient.fetchOk` to ensure only `2xx` responses are treated as successes.
 
 In this example, we attempt to fetch a non-existent page and don't receive any error:
 
 ```ts
 import { NodeRuntime } from "@effect/platform-node"
-import * as Http from "@effect/platform/HttpClient"
+import {
+  HttpClient,
+  HttpClientRequest,
+  HttpClientResponse
+} from "@effect/platform"
 import { Console, Effect } from "effect"
 
-const getText = Http.request
-  .get("https://jsonplaceholder.typicode.com/non-existing-page")
-  .pipe(Http.client.fetch, Http.response.text)
+const getText = HttpClientRequest.get(
+  "https://jsonplaceholder.typicode.com/non-existing-page"
+).pipe(HttpClient.fetch, HttpClientResponse.text)
 
 NodeRuntime.runMain(getText.pipe(Effect.andThen(Console.log)))
 /*
@@ -579,16 +598,20 @@ Output:
 */
 ```
 
-However, if we use `Http.client.filterStatusOk`, an error is logged:
+However, if we use `HttpClient.filterStatusOk`, an error is logged:
 
 ```ts
 import { NodeRuntime } from "@effect/platform-node"
-import * as Http from "@effect/platform/HttpClient"
+import {
+  HttpClient,
+  HttpClientRequest,
+  HttpClientResponse
+} from "@effect/platform"
 import { Console, Effect } from "effect"
 
-const getText = Http.request
-  .get("https://jsonplaceholder.typicode.com/non-existing-page")
-  .pipe(Http.client.filterStatusOk(Http.client.fetch), Http.response.text)
+const getText = HttpClientRequest.get(
+  "https://jsonplaceholder.typicode.com/non-existing-page"
+).pipe(HttpClient.filterStatusOk(HttpClient.fetch), HttpClientResponse.text)
 
 NodeRuntime.runMain(getText.pipe(Effect.andThen(Console.log)))
 /*
@@ -597,48 +620,52 @@ timestamp=2024-03-25T10:21:16.972Z level=ERROR fiber=#0 cause="ResponseError: St
 */
 ```
 
-Note that you can use `Http.client.fetchOk` as a shortcut for `Http.client.filterStatusOk(Http.client.fetch)`:
+Note that you can use `HttpClient.fetchOk` as a shortcut for `HttpClient.filterStatusOk(HttpClient.fetch)`:
 
 ```ts
-const getText = Http.request
-  .get("https://jsonplaceholder.typicode.com/non-existing-page")
-  .pipe(Http.client.fetchOk, Http.response.text)
+const getText = HttpClientRequest.get(
+  "https://jsonplaceholder.typicode.com/non-existing-page"
+).pipe(HttpClient.fetchOk, HttpClientResponse.text)
 ```
 
-You can also create your own status-based filters. In fact, `Http.client.filterStatusOk` is just a shortcut for the following filter:
+You can also create your own status-based filters. In fact, `HttpClient.filterStatusOk` is just a shortcut for the following filter:
 
 ```ts
-const getText = Http.request
-  .get("https://jsonplaceholder.typicode.com/non-existing-page")
-  .pipe(
-    Http.client.filterStatus(
-      Http.client.fetch,
-      (status) => status >= 200 && status < 300
-    ),
-    Http.response.text
-  )
+const getText = HttpClientRequest.get(
+  "https://jsonplaceholder.typicode.com/non-existing-page"
+).pipe(
+  HttpClient.filterStatus(
+    HttpClient.fetch,
+    (status) => status >= 200 && status < 300
+  ),
+  HttpClientResponse.text
+)
 ```
 
 ## POST
 
-To make a POST request, you can use the `Http.request.post` function provided by the `HttpClient` module. Here's an example of how to create and send a POST request:
+To make a POST request, you can use the `HttpClientRequest.post` function provided by the `HttpClient` module. Here's an example of how to create and send a POST request:
 
 ```ts
 import { NodeRuntime } from "@effect/platform-node"
-import * as Http from "@effect/platform/HttpClient"
+import {
+  HttpClient,
+  HttpClientRequest,
+  HttpClientResponse
+} from "@effect/platform"
 import { Console, Effect } from "effect"
 
-const addPost = Http.request
-  .post("https://jsonplaceholder.typicode.com/posts")
-  .pipe(
-    Http.request.jsonBody({
-      title: "foo",
-      body: "bar",
-      userId: 1
-    }),
-    Effect.andThen(Http.client.fetch),
-    Http.response.json
-  )
+const addPost = HttpClientRequest.post(
+  "https://jsonplaceholder.typicode.com/posts"
+).pipe(
+  HttpClientRequest.jsonBody({
+    title: "foo",
+    body: "bar",
+    userId: 1
+  }),
+  Effect.andThen(HttpClient.fetch),
+  HttpClientResponse.json
+)
 
 NodeRuntime.runMain(addPost.pipe(Effect.andThen(Console.log)))
 /*
@@ -647,29 +674,33 @@ Output:
 */
 ```
 
-If you need to send data in a format other than JSON, such as plain text, you can use different APIs provided by `Http.request`.
+If you need to send data in a format other than JSON, such as plain text, you can use different APIs provided by `HttpClientRequest`.
 
 In the following example, we send the data as text:
 
 ```ts
 import { NodeRuntime } from "@effect/platform-node"
-import * as Http from "@effect/platform/HttpClient"
+import {
+  HttpClient,
+  HttpClientRequest,
+  HttpClientResponse
+} from "@effect/platform"
 import { Console, Effect } from "effect"
 
-const addPost = Http.request
-  .post("https://jsonplaceholder.typicode.com/posts")
-  .pipe(
-    Http.request.textBody(
-      JSON.stringify({
-        title: "foo",
-        body: "bar",
-        userId: 1
-      }),
-      "application/json; charset=UTF-8"
-    ),
-    Http.client.fetch,
-    Http.response.json
-  )
+const addPost = HttpClientRequest.post(
+  "https://jsonplaceholder.typicode.com/posts"
+).pipe(
+  HttpClientRequest.textBody(
+    JSON.stringify({
+      title: "foo",
+      body: "bar",
+      userId: 1
+    }),
+    "application/json; charset=UTF-8"
+  ),
+  HttpClient.fetch,
+  HttpClientResponse.json
+)
 
 NodeRuntime.runMain(Effect.andThen(addPost, Console.log))
 /*
@@ -684,7 +715,11 @@ A common use case when fetching data is to validate the received format. For thi
 
 ```ts
 import { NodeRuntime } from "@effect/platform-node"
-import * as Http from "@effect/platform/HttpClient"
+import {
+  HttpClient,
+  HttpClientRequest,
+  HttpClientResponse
+} from "@effect/platform"
 import { Schema } from "@effect/schema"
 import { Console, Effect } from "effect"
 
@@ -693,18 +728,18 @@ const Post = Schema.Struct({
   title: Schema.String
 })
 
-const addPost = Http.request
-  .post("https://jsonplaceholder.typicode.com/posts")
-  .pipe(
-    Http.request.jsonBody({
-      title: "foo",
-      body: "bar",
-      userId: 1
-    }),
-    Effect.andThen(Http.client.fetch),
-    Effect.andThen(Http.response.schemaBodyJson(Post)),
-    Effect.scoped
-  )
+const addPost = HttpClientRequest.post(
+  "https://jsonplaceholder.typicode.com/posts"
+).pipe(
+  HttpClientRequest.jsonBody({
+    title: "foo",
+    body: "bar",
+    userId: 1
+  }),
+  Effect.andThen(HttpClient.fetch),
+  Effect.andThen(HttpClientResponse.schemaBodyJson(Post)),
+  Effect.scoped
+)
 
 NodeRuntime.runMain(addPost.pipe(Effect.andThen(Console.log)))
 /*
@@ -756,27 +791,24 @@ In this example, we will create a simple HTTP server that listens on port `3000`
 Node.js Example
 
 ```ts
-import { HttpServer } from "@effect/platform"
+import { HttpRouter, HttpServer, HttpServerResponse } from "@effect/platform"
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import { Layer } from "effect"
 import { createServer } from "node:http"
 
 // Define the router with a single route for the root URL
-const router = HttpServer.router.empty.pipe(
-  HttpServer.router.get("/", HttpServer.response.text("Hello World"))
+const router = HttpRouter.empty.pipe(
+  HttpRouter.get("/", HttpServerResponse.text("Hello World"))
 )
 
 // Set up the application server with logging
-const app = router.pipe(
-  HttpServer.server.serve(),
-  HttpServer.server.withLogAddress
-)
+const app = router.pipe(HttpServer.serve(), HttpServer.withLogAddress)
 
 // Specify the port
 const port = 3000
 
 // Create a server layer with the specified port
-const ServerLive = NodeHttpServer.server.layer(() => createServer(), { port })
+const ServerLive = NodeHttpServer.layer(() => createServer(), { port })
 
 // Run the application
 NodeRuntime.runMain(Layer.launch(Layer.provide(app, ServerLive)))
@@ -788,31 +820,28 @@ timestamp=... level=INFO fiber=#0 message="Listening on http://localhost:3000"
 ```
 
 > [!NOTE]
-> The `HttpServer.server.withLogAddress` middleware logs the address and port where the server is listening, helping to confirm that the server is running correctly and accessible on the expected endpoint.
+> The `HttpServer.withLogAddress` middleware logs the address and port where the server is listening, helping to confirm that the server is running correctly and accessible on the expected endpoint.
 
 Bun Example
 
 ```ts
-import { HttpServer } from "@effect/platform"
+import { HttpRouter, HttpServer, HttpServerResponse } from "@effect/platform"
 import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
 import { Layer } from "effect"
 
 // Define the router with a single route for the root URL
-const router = HttpServer.router.empty.pipe(
-  HttpServer.router.get("/", HttpServer.response.text("Hello World"))
+const router = HttpRouter.empty.pipe(
+  HttpRouter.get("/", HttpServerResponse.text("Hello World"))
 )
 
 // Set up the application server with logging
-const app = router.pipe(
-  HttpServer.server.serve(),
-  HttpServer.server.withLogAddress
-)
+const app = router.pipe(HttpServer.serve(), HttpServer.withLogAddress)
 
 // Specify the port
 const port = 3000
 
 // Create a server layer with the specified port
-const ServerLive = BunHttpServer.server.layer({ port })
+const ServerLive = BunHttpServer.layer({ port })
 
 // Run the application
 BunRuntime.runMain(Layer.launch(Layer.provide(app, ServerLive)))
@@ -826,7 +855,7 @@ timestamp=... level=INFO fiber=#0 message="Listening on http://localhost:3000"
 To avoid boilerplate code for the final server setup, we'll use a helper function from the `listen.ts` file:
 
 ```ts
-import type { HttpServer } from "@effect/platform"
+import { HttpPlatform, HttpServer } from "@effect/platform"
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import { Layer } from "effect"
 import { createServer } from "node:http"
@@ -835,7 +864,7 @@ export const listen = (
   app: Layer.Layer<
     never,
     never,
-    HttpServer.platform.Platform | HttpServer.server.Server
+    HttpPlatform.HttpPlatform | HttpServer.HttpServer
   >,
   port: number
 ) =>
@@ -843,7 +872,7 @@ export const listen = (
     Layer.launch(
       Layer.provide(
         app,
-        NodeHttpServer.server.layer(() => createServer(), { port })
+        NodeHttpServer.layer(() => createServer(), { port })
       )
     )
   )
@@ -856,7 +885,7 @@ Routing refers to determining how an application responds to a client request to
 Route definition takes the following structure:
 
 ```
-router.pipe(HttpServer.router.METHOD(PATH, HANDLER))
+router.pipe(HttpRouter.METHOD(PATH, HANDLER))
 ```
 
 Where:
@@ -871,25 +900,20 @@ The following examples illustrate defining simple routes.
 Respond with `"Hello World!"` on the homepage:
 
 ```ts
-router.pipe(HttpServer.router.get("/", HttpServer.response.text("Hello World")))
+router.pipe(HttpRouter.get("/", HttpServerResponse.text("Hello World")))
 ```
 
 Respond to POST request on the root route (/), the application's home page:
 
 ```ts
-router.pipe(
-  HttpServer.router.post("/", HttpServer.response.text("Got a POST request"))
-)
+router.pipe(HttpRouter.post("/", HttpServerResponse.text("Got a POST request")))
 ```
 
 Respond to a PUT request to the `/user` route:
 
 ```ts
 router.pipe(
-  HttpServer.router.put(
-    "/user",
-    HttpServer.response.text("Got a PUT request at /user")
-  )
+  HttpRouter.put("/user", HttpServerResponse.text("Got a PUT request at /user"))
 )
 ```
 
@@ -897,26 +921,26 @@ Respond to a DELETE request to the `/user` route:
 
 ```ts
 router.pipe(
-  HttpServer.router.del(
+  HttpRouter.del(
     "/user",
-    HttpServer.response.text("Got a DELETE request at /user")
+    HttpServerResponse.text("Got a DELETE request at /user")
   )
 )
 ```
 
 ### Serving static files
 
-To serve static files such as images, CSS files, and JavaScript files, use the `HttpServer.response.file` built-in action.
+To serve static files such as images, CSS files, and JavaScript files, use the `HttpServerResponse.file` built-in action.
 
 ```ts
-import { HttpServer } from "@effect/platform"
+import { HttpRouter, HttpServer, HttpServerResponse } from "@effect/platform"
 import { listen } from "./listen.js"
 
-const router = HttpServer.router.empty.pipe(
-  HttpServer.router.get("/", HttpServer.response.file("index.html"))
+const router = HttpRouter.empty.pipe(
+  HttpRouter.get("/", HttpServerResponse.file("index.html"))
 )
 
-const app = router.pipe(HttpServer.server.serve())
+const app = router.pipe(HttpServer.serve())
 
 listen(app, 3000)
 ```
@@ -942,7 +966,7 @@ Create an `index.html` file in your project directory:
 
 Routing refers to how an application's endpoints (URIs) respond to client requests.
 
-You define routing using methods of the `HttpServer.router` object that correspond to HTTP methods; for example, `HttpServer.router.get()` to handle GET requests and `HttpServer.router.post` to handle POST requests. You can also use `HttpServer.router.all()` to handle all HTTP methods.
+You define routing using methods of the `HttpRouter` object that correspond to HTTP methods; for example, `HttpRouter.get()` to handle GET requests and `HttpRouter.post` to handle POST requests. You can also use `HttpRouter.all()` to handle all HTTP methods.
 
 These routing methods specify a `Route.Handler` called when the application receives a request to the specified route (endpoint) and HTTP method. In other words, the application “listens” for requests that match the specified route(s) and method(s), and when it detects a match, it calls the specified handler.
 
@@ -950,39 +974,33 @@ The following code is an example of a very basic route.
 
 ```ts
 // respond with "hello world" when a GET request is made to the homepage
-HttpServer.router.get("/", HttpServer.response.text("Hello World"))
+HttpRouter.get("/", HttpServerResponse.text("Hello World"))
 ```
 
 ### Route methods
 
-A route method is derived from one of the HTTP methods, and is attached to an instance of the `HttpServer.router` object.
+A route method is derived from one of the HTTP methods, and is attached to an instance of the `HttpRouter` object.
 
 The following code is an example of routes that are defined for the GET and the POST methods to the root of the app.
 
 ```ts
 // GET method route
-HttpServer.router.get(
-  "/",
-  HttpServer.response.text("GET request to the homepage")
-)
+HttpRouter.get("/", HttpServerResponse.text("GET request to the homepage"))
 
 // POST method route
-HttpServer.router.post(
-  "/",
-  HttpServer.response.text("POST request to the homepage")
-)
+HttpRouter.post("/", HttpServerResponse.text("POST request to the homepage"))
 ```
 
-`HttpServer.router` supports methods that correspond to all HTTP request methods: `get`, `post`, and so on.
+`HttpRouter` supports methods that correspond to all HTTP request methods: `get`, `post`, and so on.
 
-There is a special routing method, `HttpServer.router.all()`, used to load middleware functions at a path for **all** HTTP request methods. For example, the following handler is executed for requests to the route “/secret” whether using GET, POST, PUT, DELETE.
+There is a special routing method, `HttpRouter.all()`, used to load middleware functions at a path for **all** HTTP request methods. For example, the following handler is executed for requests to the route “/secret” whether using GET, POST, PUT, DELETE.
 
 ```ts
-HttpServer.router.all(
+HttpRouter.all(
   "/secret",
-  HttpServer.response
-    .empty()
-    .pipe(Effect.tap(Console.log("Accessing the secret section ...")))
+  HttpServerResponse.empty().pipe(
+    Effect.tap(Console.log("Accessing the secret section ..."))
+  )
 )
 ```
 
@@ -1002,22 +1020,22 @@ Here are some examples of route paths based on strings.
 This route path will match requests to the root route, /.
 
 ```ts
-HttpServer.router.get("/", HttpServer.response.text("root"))
+HttpRouter.get("/", HttpServerResponse.text("root"))
 ```
 
 This route path will match requests to `/user`.
 
 ```ts
-HttpServer.router.get("/user", HttpServer.response.text("user"))
+HttpRouter.get("/user", HttpServerResponse.text("user"))
 ```
 
 This route path matches requests to any path starting with `/user` (e.g., `/user`, `/users`, etc.)
 
 ```ts
-HttpServer.router.get(
+HttpRouter.get(
   "/user*",
-  Effect.map(HttpServer.request.ServerRequest, (req) =>
-    HttpServer.response.text(req.url)
+  Effect.map(HttpServerRequest.HttpServerRequest, (req) =>
+    HttpServerResponse.text(req.url)
   )
 )
 ```
@@ -1039,7 +1057,7 @@ params: { "userId": "34", "bookId": "8989" }
 To define routes with parameters, include the parameter names in the path and use a schema to validate and parse these parameters, as shown below.
 
 ```ts
-import { HttpServer } from "@effect/platform"
+import { HttpRouter, HttpServer, HttpServerResponse } from "@effect/platform"
 import { Schema } from "@effect/schema"
 import { Effect } from "effect"
 import { listen } from "./listen.js"
@@ -1051,23 +1069,23 @@ const Params = Schema.Struct({
 })
 
 // Create a router with a route that captures parameters
-const router = HttpServer.router.empty.pipe(
-  HttpServer.router.get(
+const router = HttpRouter.empty.pipe(
+  HttpRouter.get(
     "/users/:userId/books/:bookId",
-    HttpServer.router
-      .schemaPathParams(Params)
-      .pipe(Effect.flatMap((params) => HttpServer.response.json(params)))
+    HttpRouter.schemaPathParams(Params).pipe(
+      Effect.flatMap((params) => HttpServerResponse.json(params))
+    )
   )
 )
 
-const app = router.pipe(HttpServer.server.serve())
+const app = router.pipe(HttpServer.serve())
 
 listen(app, 3000)
 ```
 
 ### Response methods
 
-The methods on `HttpServer.response` object in the following table can send a response to the client, and terminate the request-response cycle. If none of these methods are called from a route handler, the client request will be left hanging.
+The methods on `HttpServerResponse` object in the following table can send a response to the client, and terminate the request-response cycle. If none of these methods are called from a route handler, the client request will be left hanging.
 
 | Method       | Description                    |
 | ------------ | ------------------------------ |
@@ -1081,34 +1099,32 @@ The methods on `HttpServer.response` object in the following table can send a re
 
 ### Router
 
-Use the `HttpServer.router` object to create modular, mountable route handlers. A `Router` instance is a complete middleware and routing system, often referred to as a "mini-app."
+Use the `HttpRouter` object to create modular, mountable route handlers. A `Router` instance is a complete middleware and routing system, often referred to as a "mini-app."
 
 The following example shows how to create a router as a module, define some routes, and mount the router module on a path in the main app.
 
 Create a file named `birds.ts` in your app directory with the following content:
 
 ```ts
-import { HttpServer } from "@effect/platform"
+import { HttpRouter, HttpServerResponse } from "@effect/platform"
 
-export const birds = HttpServer.router.empty.pipe(
-  HttpServer.router.get("/", HttpServer.response.text("Birds home page")),
-  HttpServer.router.get("/about", HttpServer.response.text("About birds"))
+export const birds = HttpRouter.empty.pipe(
+  HttpRouter.get("/", HttpServerResponse.text("Birds home page")),
+  HttpRouter.get("/about", HttpServerResponse.text("About birds"))
 )
 ```
 
 In your main application file, load the router module and mount it.
 
 ```ts
-import { HttpServer } from "@effect/platform"
+import { HttpRouter, HttpServer } from "@effect/platform"
 import { birds } from "./birds.js"
 import { listen } from "./listen.js"
 
 // Create the main router and mount the birds router
-const router = HttpServer.router.empty.pipe(
-  HttpServer.router.mount("/birds", birds)
-)
+const router = HttpRouter.empty.pipe(HttpRouter.mount("/birds", birds))
 
-const app = router.pipe(HttpServer.server.serve())
+const app = router.pipe(HttpServer.serve())
 
 listen(app, 3000)
 ```
@@ -1128,7 +1144,7 @@ Here is an example of a basic "Hello World" application with middleware.
 This middleware logs "LOGGED" whenever a request passes through it.
 
 ```ts
-const myLogger = HttpServer.middleware.make((app) =>
+const myLogger = HttpMiddleware.make((app) =>
   Effect.gen(function* () {
     console.log("LOGGED")
     return yield* app
@@ -1136,28 +1152,30 @@ const myLogger = HttpServer.middleware.make((app) =>
 )
 ```
 
-To use the middleware, add it to the router using `HttpServer.router.use()`:
+To use the middleware, add it to the router using `HttpRouter.use()`:
 
 ```ts
-import { HttpServer } from "@effect/platform"
+import {
+  HttpMiddleware,
+  HttpRouter,
+  HttpServer,
+  HttpServerResponse
+} from "@effect/platform"
 import { Effect } from "effect"
 import { listen } from "./listen.js"
 
-const myLogger = HttpServer.middleware.make((app) =>
+const myLogger = HttpMiddleware.make((app) =>
   Effect.gen(function* () {
     console.log("LOGGED")
     return yield* app
   })
 )
 
-const router = HttpServer.router.empty.pipe(
-  HttpServer.router.get("/", HttpServer.response.text("Hello World"))
+const router = HttpRouter.empty.pipe(
+  HttpRouter.get("/", HttpServerResponse.text("Hello World"))
 )
 
-const app = router.pipe(
-  HttpServer.router.use(myLogger),
-  HttpServer.server.serve()
-)
+const app = router.pipe(HttpRouter.use(myLogger), HttpServer.serve())
 
 listen(app, 3000)
 ```
@@ -1171,7 +1189,7 @@ Next, we'll create a middleware that records the timestamp of each HTTP request 
 ```ts
 class RequestTime extends Context.Tag("RequestTime")<RequestTime, number>() {}
 
-const requestTime = HttpServer.middleware.make((app) =>
+const requestTime = HttpMiddleware.make((app) =>
   Effect.gen(function* () {
     return yield* app.pipe(Effect.provideService(RequestTime, Date.now()))
   })
@@ -1181,33 +1199,35 @@ const requestTime = HttpServer.middleware.make((app) =>
 Update the app to use this middleware and display the timestamp in the response:
 
 ```ts
-import { HttpServer } from "@effect/platform"
+import {
+  HttpMiddleware,
+  HttpRouter,
+  HttpServer,
+  HttpServerResponse
+} from "@effect/platform"
 import { Context, Effect } from "effect"
 import { listen } from "./listen.js"
 
 class RequestTime extends Context.Tag("RequestTime")<RequestTime, number>() {}
 
-const requestTime = HttpServer.middleware.make((app) =>
+const requestTime = HttpMiddleware.make((app) =>
   Effect.gen(function* () {
     return yield* app.pipe(Effect.provideService(RequestTime, Date.now()))
   })
 )
 
-const router = HttpServer.router.empty.pipe(
-  HttpServer.router.get(
+const router = HttpRouter.empty.pipe(
+  HttpRouter.get(
     "/",
     Effect.gen(function* () {
       const requestTime = yield* RequestTime
       const responseText = `Hello World<br/><small>Requested at: ${requestTime}</small>`
-      return yield* HttpServer.response.html(responseText)
+      return yield* HttpServerResponse.html(responseText)
     })
   )
 )
 
-const app = router.pipe(
-  HttpServer.router.use(requestTime),
-  HttpServer.server.serve()
-)
+const app = router.pipe(HttpRouter.use(requestTime), HttpServer.serve())
 
 listen(app, 3000)
 ```
@@ -1230,14 +1250,14 @@ const externallyValidateCookie = (testCookie: string | undefined) =>
     ? Effect.succeed(testCookie)
     : Effect.fail(new CookieError())
 
-const cookieValidator = HttpServer.middleware.make((app) =>
+const cookieValidator = HttpMiddleware.make((app) =>
   Effect.gen(function* () {
-    const req = yield* HttpServer.request.ServerRequest
+    const req = yield* HttpServerRequest.HttpServerRequest
     yield* externallyValidateCookie(req.cookies.testCookie)
     return yield* app
   }).pipe(
     Effect.catchTag("CookieError", () =>
-      HttpServer.response.text("Invalid cookie")
+      HttpServerResponse.text("Invalid cookie")
     )
   )
 )
@@ -1246,7 +1266,13 @@ const cookieValidator = HttpServer.middleware.make((app) =>
 Update the app to use the `cookieValidator` middleware:
 
 ```ts
-import { HttpServer } from "@effect/platform"
+import {
+  HttpMiddleware,
+  HttpRouter,
+  HttpServer,
+  HttpServerRequest,
+  HttpServerResponse
+} from "@effect/platform"
 import { Effect } from "effect"
 import { listen } from "./listen.js"
 
@@ -1259,26 +1285,23 @@ const externallyValidateCookie = (testCookie: string | undefined) =>
     ? Effect.succeed(testCookie)
     : Effect.fail(new CookieError())
 
-const cookieValidator = HttpServer.middleware.make((app) =>
+const cookieValidator = HttpMiddleware.make((app) =>
   Effect.gen(function* () {
-    const req = yield* HttpServer.request.ServerRequest
+    const req = yield* HttpServerRequest.HttpServerRequest
     yield* externallyValidateCookie(req.cookies.testCookie)
     return yield* app
   }).pipe(
     Effect.catchTag("CookieError", () =>
-      HttpServer.response.text("Invalid cookie")
+      HttpServerResponse.text("Invalid cookie")
     )
   )
 )
 
-const router = HttpServer.router.empty.pipe(
-  HttpServer.router.get("/", HttpServer.response.text("Hello World"))
+const router = HttpRouter.empty.pipe(
+  HttpRouter.get("/", HttpServerResponse.text("Hello World"))
 )
 
-const app = router.pipe(
-  HttpServer.router.use(cookieValidator),
-  HttpServer.server.serve()
-)
+const app = router.pipe(HttpRouter.use(cookieValidator), HttpServer.serve())
 
 listen(app, 3000)
 ```
@@ -1310,33 +1333,32 @@ At the route level, middlewares are applied to specific endpoints, allowing for 
 Here’s a practical example showing how to apply middleware at the route level:
 
 ```ts
-import { HttpServer } from "@effect/platform"
+import {
+  HttpMiddleware,
+  HttpRouter,
+  HttpServer,
+  HttpServerResponse
+} from "@effect/platform"
 import { Effect } from "effect"
 import { listen } from "./listen.js"
 
 // Middleware constructor that logs the name of the middleware
 const withMiddleware = (name: string) =>
-  HttpServer.middleware.make((app) =>
+  HttpMiddleware.make((app) =>
     Effect.gen(function* () {
       console.log(name) // Log the middleware name when the route is accessed
       return yield* app // Continue with the original application flow
     })
   )
 
-const router = HttpServer.router.empty.pipe(
+const router = HttpRouter.empty.pipe(
   // Applying middleware to route "/a"
-  HttpServer.router.get(
-    "/a",
-    HttpServer.response.text("a").pipe(withMiddleware("M1"))
-  ),
+  HttpRouter.get("/a", HttpServerResponse.text("a").pipe(withMiddleware("M1"))),
   // Applying middleware to route "/b"
-  HttpServer.router.get(
-    "/b",
-    HttpServer.response.text("b").pipe(withMiddleware("M2"))
-  )
+  HttpRouter.get("/b", HttpServerResponse.text("b").pipe(withMiddleware("M2")))
 )
 
-const app = router.pipe(HttpServer.server.serve())
+const app = router.pipe(HttpServer.serve())
 
 listen(app, 3000)
 ```
@@ -1364,13 +1386,18 @@ Applying middleware at the router level is an efficient way to manage common fun
 Here’s how you can structure and apply middleware across different routers using the `@effect/platform` library:
 
 ```ts
-import { HttpServer } from "@effect/platform"
+import {
+  HttpMiddleware,
+  HttpRouter,
+  HttpServer,
+  HttpServerResponse
+} from "@effect/platform"
 import { Effect } from "effect"
 import { listen } from "./listen.js"
 
 // Middleware constructor that logs the name of the middleware
 const withMiddleware = (name: string) =>
-  HttpServer.middleware.make((app) =>
+  HttpMiddleware.make((app) =>
     Effect.gen(function* () {
       console.log(name) // Log the middleware name when a route is accessed
       return yield* app // Continue with the original application flow
@@ -1378,36 +1405,36 @@ const withMiddleware = (name: string) =>
   )
 
 // Define Router1 with specific routes
-const router1 = HttpServer.router.empty.pipe(
-  HttpServer.router.get("/a", HttpServer.response.text("a")), // Middleware M4, M3, M1 will apply
-  HttpServer.router.get("/b", HttpServer.response.text("b")), // Middleware M4, M3, M1 will apply
+const router1 = HttpRouter.empty.pipe(
+  HttpRouter.get("/a", HttpServerResponse.text("a")), // Middleware M4, M3, M1 will apply
+  HttpRouter.get("/b", HttpServerResponse.text("b")), // Middleware M4, M3, M1 will apply
   // Apply Middleware at the router level
-  HttpServer.router.use(withMiddleware("M1")),
-  HttpServer.router.get("/c", HttpServer.response.text("c")) // Middleware M4, M3 will apply
+  HttpRouter.use(withMiddleware("M1")),
+  HttpRouter.get("/c", HttpServerResponse.text("c")) // Middleware M4, M3 will apply
 )
 
 // Define Router2 with specific routes
-const router2 = HttpServer.router.empty.pipe(
-  HttpServer.router.get("/d", HttpServer.response.text("d")), // Middleware M4, M2 will apply
-  HttpServer.router.get("/e", HttpServer.response.text("e")), // Middleware M4, M2 will apply
-  HttpServer.router.get("/f", HttpServer.response.text("f")), // Middleware M4, M2 will apply
+const router2 = HttpRouter.empty.pipe(
+  HttpRouter.get("/d", HttpServerResponse.text("d")), // Middleware M4, M2 will apply
+  HttpRouter.get("/e", HttpServerResponse.text("e")), // Middleware M4, M2 will apply
+  HttpRouter.get("/f", HttpServerResponse.text("f")), // Middleware M4, M2 will apply
   // Apply Middleware at the router level
-  HttpServer.router.use(withMiddleware("M2"))
+  HttpRouter.use(withMiddleware("M2"))
 )
 
 // Main router combining Router1 and Router2
-const router = HttpServer.router.empty.pipe(
-  HttpServer.router.mount("/r1", router1),
+const router = HttpRouter.empty.pipe(
+  HttpRouter.mount("/r1", router1),
   // Apply Middleware affecting all routes under /r1
-  HttpServer.router.use(withMiddleware("M3")),
-  HttpServer.router.get("/g", HttpServer.response.text("g")), // Only Middleware M4 will apply
-  HttpServer.router.mount("/r2", router2),
+  HttpRouter.use(withMiddleware("M3")),
+  HttpRouter.get("/g", HttpServerResponse.text("g")), // Only Middleware M4 will apply
+  HttpRouter.mount("/r2", router2),
   // Apply Middleware affecting all routes
-  HttpServer.router.use(withMiddleware("M4"))
+  HttpRouter.use(withMiddleware("M4"))
 )
 
 // Configure the application with the server middleware
-const app = router.pipe(HttpServer.server.serve())
+const app = router.pipe(HttpServer.serve())
 
 listen(app, 3000)
 ```
@@ -1441,30 +1468,32 @@ Applying middleware at the server level allows you to introduce certain function
 **Example**
 
 ```ts
-import { HttpServer } from "@effect/platform"
+import {
+  HttpMiddleware,
+  HttpRouter,
+  HttpServer,
+  HttpServerResponse
+} from "@effect/platform"
 import { Effect } from "effect"
 import { listen } from "./listen.js"
 
 // Middleware constructor that logs the name of the middleware
 const withMiddleware = (name: string) =>
-  HttpServer.middleware.make((app) =>
+  HttpMiddleware.make((app) =>
     Effect.gen(function* () {
       console.log(name) // Log the middleware name when the route is accessed
       return yield* app // Continue with the original application flow
     })
   )
 
-const router = HttpServer.router.empty.pipe(
-  HttpServer.router.get(
-    "/a",
-    HttpServer.response.text("a").pipe(withMiddleware("M1"))
-  ),
-  HttpServer.router.get("/b", HttpServer.response.text("b")),
-  HttpServer.router.use(withMiddleware("M2")),
-  HttpServer.router.get("/", HttpServer.response.text("root"))
+const router = HttpRouter.empty.pipe(
+  HttpRouter.get("/a", HttpServerResponse.text("a").pipe(withMiddleware("M1"))),
+  HttpRouter.get("/b", HttpServerResponse.text("b")),
+  HttpRouter.use(withMiddleware("M2")),
+  HttpRouter.get("/", HttpServerResponse.text("root"))
 )
 
-const app = router.pipe(HttpServer.server.serve(withMiddleware("M3")))
+const app = router.pipe(HttpServer.serve(withMiddleware("M3")))
 
 listen(app, 3000)
 ```
@@ -1494,13 +1523,18 @@ Middleware functions are simply functions that transform a `Default` app into an
 **Example**
 
 ```ts
-import { HttpServer } from "@effect/platform"
+import {
+  HttpMiddleware,
+  HttpRouter,
+  HttpServer,
+  HttpServerResponse
+} from "@effect/platform"
 import { Effect, flow } from "effect"
 import { listen } from "./listen.js"
 
 // Middleware constructor that logs the middleware's name when a route is accessed
 const withMiddleware = (name: string) =>
-  HttpServer.middleware.make((app) =>
+  HttpMiddleware.make((app) =>
     Effect.gen(function* () {
       console.log(name) // Log the middleware name
       return yield* app // Continue with the original application flow
@@ -1508,22 +1542,22 @@ const withMiddleware = (name: string) =>
   )
 
 // Setup routes and apply multiple middlewares using flow for function composition
-const router = HttpServer.router.empty.pipe(
-  HttpServer.router.get(
+const router = HttpRouter.empty.pipe(
+  HttpRouter.get(
     "/a",
-    HttpServer.response
-      .text("a")
-      .pipe(flow(withMiddleware("M1"), withMiddleware("M2")))
+    HttpServerResponse.text("a").pipe(
+      flow(withMiddleware("M1"), withMiddleware("M2"))
+    )
   ),
-  HttpServer.router.get("/b", HttpServer.response.text("b")),
+  HttpRouter.get("/b", HttpServerResponse.text("b")),
   // Apply combined middlewares to the entire router
-  HttpServer.router.use(flow(withMiddleware("M3"), withMiddleware("M4"))),
-  HttpServer.router.get("/", HttpServer.response.text("root"))
+  HttpRouter.use(flow(withMiddleware("M3"), withMiddleware("M4"))),
+  HttpRouter.get("/", HttpServerResponse.text("root"))
 )
 
 // Apply combined middlewares at the server level
 const app = router.pipe(
-  HttpServer.server.serve(flow(withMiddleware("M5"), withMiddleware("M6")))
+  HttpServer.serve(flow(withMiddleware("M5"), withMiddleware("M6")))
 )
 
 listen(app, 3000)
@@ -1558,18 +1592,23 @@ curl -i http://localhost:3000/
 
 ### logger
 
-The `HttpServer.middleware.logger` middleware enables logging for your entire application, providing insights into each request and response. Here’s how to set it up:
+The `HttpMiddleware.logger` middleware enables logging for your entire application, providing insights into each request and response. Here’s how to set it up:
 
 ```ts
-import { HttpServer } from "@effect/platform"
+import {
+  HttpMiddleware,
+  HttpRouter,
+  HttpServer,
+  HttpServerResponse
+} from "@effect/platform"
 import { listen } from "./listen.js"
 
-const router = HttpServer.router.empty.pipe(
-  HttpServer.router.get("/", HttpServer.response.text("Hello World"))
+const router = HttpRouter.empty.pipe(
+  HttpRouter.get("/", HttpServerResponse.text("Hello World"))
 )
 
 // Apply the logger middleware globally
-const app = router.pipe(HttpServer.server.serve(HttpServer.middleware.logger))
+const app = router.pipe(HttpServer.serve(HttpMiddleware.logger))
 
 listen(app, 3000)
 /*
@@ -1582,25 +1621,28 @@ timestamp=... level=INFO fiber=#20 cause="RouteNotFound: GET /favicon.ico not fo
 */
 ```
 
-To disable the logger for specific routes, you can use `HttpServer.middleware.withLoggerDisabled`:
+To disable the logger for specific routes, you can use `HttpMiddleware.withLoggerDisabled`:
 
 ```ts
-import { HttpServer } from "@effect/platform"
+import {
+  HttpMiddleware,
+  HttpRouter,
+  HttpServer,
+  HttpServerResponse
+} from "@effect/platform"
 import { listen } from "./listen.js"
 
 // Create the router with routes that will and will not have logging
-const router = HttpServer.router.empty.pipe(
-  HttpServer.router.get("/", HttpServer.response.text("Hello World")),
-  HttpServer.router.get(
+const router = HttpRouter.empty.pipe(
+  HttpRouter.get("/", HttpServerResponse.text("Hello World")),
+  HttpRouter.get(
     "/no-logger",
-    HttpServer.response
-      .text("no-logger")
-      .pipe(HttpServer.middleware.withLoggerDisabled)
+    HttpServerResponse.text("no-logger").pipe(HttpMiddleware.withLoggerDisabled)
   )
 )
 
 // Apply the logger middleware globally
-const app = router.pipe(HttpServer.server.serve(HttpServer.middleware.logger))
+const app = router.pipe(HttpServer.serve(HttpMiddleware.logger))
 
 listen(app, 3000)
 /*
@@ -1614,27 +1656,31 @@ timestamp=2024-05-19T09:53:29.877Z level=INFO fiber=#0 message="Listening on htt
 This middleware handles `X-Forwarded-*` headers, useful when your app is behind a reverse proxy or load balancer and you need to retrieve the original client's IP and host information.
 
 ```ts
-import { HttpServer } from "@effect/platform"
+import {
+  HttpMiddleware,
+  HttpRouter,
+  HttpServer,
+  HttpServerRequest,
+  HttpServerResponse
+} from "@effect/platform"
 import { Effect } from "effect"
 import { listen } from "./listen.js"
 
 // Create a router and a route that logs request headers and remote address
-const router = HttpServer.router.empty.pipe(
-  HttpServer.router.get(
+const router = HttpRouter.empty.pipe(
+  HttpRouter.get(
     "/",
     Effect.gen(function* () {
-      const req = yield* HttpServer.request.ServerRequest
+      const req = yield* HttpServerRequest.HttpServerRequest
       console.log(req.headers)
       console.log(req.remoteAddress)
-      return yield* HttpServer.response.text("Hello World")
+      return yield* HttpServerResponse.text("Hello World")
     })
   )
 )
 
 // Set up the server with xForwardedHeaders middleware
-const app = router.pipe(
-  HttpServer.server.serve(HttpServer.middleware.xForwardedHeaders)
-)
+const app = router.pipe(HttpServer.serve(HttpMiddleware.xForwardedHeaders))
 
 listen(app, 3000)
 /*
@@ -1658,31 +1704,31 @@ timestamp=... level=INFO fiber=#0 message="Listening on http://0.0.0.0:3000"
 Below is an example illustrating how to catch and manage errors that occur during the execution of route handlers:
 
 ```ts
-import { HttpServer } from "@effect/platform"
+import { HttpRouter, HttpServer, HttpServerResponse } from "@effect/platform"
 import { Effect } from "effect"
 import { listen } from "./listen.js"
 
 // Define routes that might throw errors or fail
-const router = HttpServer.router.empty.pipe(
-  HttpServer.router.get(
+const router = HttpRouter.empty.pipe(
+  HttpRouter.get(
     "/throw",
     Effect.sync(() => {
       throw new Error("BROKEN") // This will intentionally throw an error
     })
   ),
-  HttpServer.router.get("/fail", Effect.fail("Uh oh!")) // This will intentionally fail
+  HttpRouter.get("/fail", Effect.fail("Uh oh!")) // This will intentionally fail
 )
 
 // Configure the application to handle different types of errors
 const app = router.pipe(
   Effect.catchTags({
     RouteNotFound: () =>
-      HttpServer.response.text("Route Not Found", { status: 404 })
+      HttpServerResponse.text("Route Not Found", { status: 404 })
   }),
   Effect.catchAllCause((cause) =>
-    HttpServer.response.text(cause.toString(), { status: 500 })
+    HttpServerResponse.text(cause.toString(), { status: 500 })
   ),
-  HttpServer.server.serve()
+  HttpServer.serve()
 )
 
 listen(app, 3000)
@@ -1710,30 +1756,35 @@ Validation is a critical aspect of handling HTTP requests to ensure that the dat
 Headers often contain important information needed by your application, such as content types, authentication tokens, or session data. Validating these headers ensures that your application can trust and correctly process the information it receives.
 
 ```ts
-import { HttpServer } from "@effect/platform"
+import {
+  HttpRouter,
+  HttpServer,
+  HttpServerRequest,
+  HttpServerResponse
+} from "@effect/platform"
 import { Schema } from "@effect/schema"
 import { Effect } from "effect"
 import { listen } from "./listen.js"
 
-const router = HttpServer.router.empty.pipe(
-  HttpServer.router.get(
+const router = HttpRouter.empty.pipe(
+  HttpRouter.get(
     "/",
     Effect.gen(function* () {
       // Define the schema for expected headers and validate them
-      const headers = yield* HttpServer.request.schemaHeaders(
+      const headers = yield* HttpServerRequest.schemaHeaders(
         Schema.Struct({ test: Schema.String })
       )
-      return yield* HttpServer.response.text("header: " + headers.test)
+      return yield* HttpServerResponse.text("header: " + headers.test)
     }).pipe(
       // Handle parsing errors
       Effect.catchTag("ParseError", (e) =>
-        HttpServer.response.text(`Invalid header: ${e.message}`)
+        HttpServerResponse.text(`Invalid header: ${e.message}`)
       )
     )
   )
 )
 
-const app = router.pipe(HttpServer.server.serve())
+const app = router.pipe(HttpServer.serve())
 
 listen(app, 3000)
 ```
@@ -1755,28 +1806,34 @@ Cookies are commonly used to maintain session state or user preferences. Validat
 Here’s how you can validate cookies received in HTTP requests:
 
 ```ts
-import { HttpServer } from "@effect/platform"
+import {
+  Cookies,
+  HttpRouter,
+  HttpServer,
+  HttpServerRequest,
+  HttpServerResponse
+} from "@effect/platform"
 import { Schema } from "@effect/schema"
 import { Effect } from "effect"
 import { listen } from "./listen.js"
 
-const router = HttpServer.router.empty.pipe(
-  HttpServer.router.get(
+const router = HttpRouter.empty.pipe(
+  HttpRouter.get(
     "/",
     Effect.gen(function* () {
-      const cookies = yield* HttpServer.request.schemaCookies(
+      const cookies = yield* HttpServerRequest.schemaCookies(
         Schema.Struct({ test: Schema.String })
       )
-      return yield* HttpServer.response.text("cookie: " + cookies.test)
+      return yield* HttpServerResponse.text("cookie: " + cookies.test)
     }).pipe(
       Effect.catchTag("ParseError", (e) =>
-        HttpServer.response.text(`Invalid cookie: ${e.message}`)
+        HttpServerResponse.text(`Invalid cookie: ${e.message}`)
       )
     )
   )
 )
 
-const app = router.pipe(HttpServer.server.serve())
+const app = router.pipe(HttpServer.serve())
 
 listen(app, 3000)
 ```
@@ -1800,24 +1857,29 @@ The native request object depends on the platform you are using, and it is not d
 Here is an example using Node.js:
 
 ```ts
-import { HttpServer } from "@effect/platform"
-import { NodeHttpServer } from "@effect/platform-node"
+import {
+  HttpRouter,
+  HttpServer,
+  HttpServerRequest,
+  HttpServerResponse
+} from "@effect/platform"
+import { NodeHttpServer, NodeHttpServerRequest } from "@effect/platform-node"
 import { Effect } from "effect"
 import { listen } from "./listen.js"
 
-const router = HttpServer.router.empty.pipe(
-  HttpServer.router.get(
+const router = HttpRouter.empty.pipe(
+  HttpRouter.get(
     "/",
     Effect.gen(function* () {
-      const req = yield* HttpServer.request.ServerRequest
-      const raw = NodeHttpServer.request.toIncomingMessage(req)
+      const req = yield* HttpServerRequest.HttpServerRequest
+      const raw = NodeHttpServerRequest.toIncomingMessage(req)
       console.log(raw)
-      return HttpServer.response.empty()
+      return HttpServerResponse.empty()
     })
   )
 )
 
-listen(HttpServer.server.serve(router), 3000)
+listen(HttpServer.serve(router), 3000)
 ```
 
 ## Conversions
@@ -1827,17 +1889,23 @@ listen(HttpServer.server.serve(router), 3000)
 The `toWebHandler` function converts a `Default` (i.e. a type of `HttpApp` that specifically produces a `ServerResponse` as its output) into a web handler that can process `Request` objects and return `Response` objects.
 
 ```ts
-import * as HttpServer from "@effect/platform/HttpServer"
+import {
+  HttpApp,
+  HttpRouter,
+  HttpServer,
+  HttpServerRequest,
+  HttpServerResponse
+} from "@effect/platform"
 
 // Define the router with some routes
-const router = HttpServer.router.empty.pipe(
-  HttpServer.router.get("/", HttpServer.response.text("content 1")),
-  HttpServer.router.get("/foo", HttpServer.response.text("content 2"))
+const router = HttpRouter.empty.pipe(
+  HttpRouter.get("/", HttpServerResponse.text("content 1")),
+  HttpRouter.get("/foo", HttpServerResponse.text("content 2"))
 )
 
 // Convert the router to a web handler
 // const handler: (request: Request) => Promise<Response>
-const handler = HttpServer.app.toWebHandler(router)
+const handler = HttpApp.toWebHandler(router)
 
 // Test the handler with a request
 const response = await handler(new Request("http://localhost:3000/foo"))

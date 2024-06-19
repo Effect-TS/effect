@@ -1,24 +1,25 @@
 /**
  * @since 1.0.0
  */
-import type * as Client from "@effect/platform/Http/Client"
+import type * as HttpClient from "@effect/platform/HttpClient"
 import type { Effect } from "effect/Effect"
 import type * as FiberRef from "effect/FiberRef"
 import type { LazyArg } from "effect/Function"
 import type * as Layer from "effect/Layer"
-import * as internal from "./internal/http/client.js"
+import * as internal from "./internal/httpClient.js"
 
 /**
  * @since 1.0.0
  * @category clients
  */
-export const xmlHttpRequest: Client.Client.Default = internal.makeXMLHttpRequest
+export const xmlHttpRequest: HttpClient.HttpClient.Default = internal.makeXMLHttpRequest
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerXMLHttpRequest: Layer.Layer<Client.Client.Default, never, never> = internal.layerXMLHttpRequest
+export const layerXMLHttpRequest: Layer.Layer<HttpClient.HttpClient.Default, never, never> =
+  internal.layerXMLHttpRequest
 
 /**
  * @since 1.0.0
