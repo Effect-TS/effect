@@ -1,0 +1,636 @@
+/**
+ * @since 1.0.0
+ */
+import type { ParseOptions } from "@effect/schema/AST"
+import type * as ParseResult from "@effect/schema/ParseResult"
+import type * as Schema from "@effect/schema/Schema"
+import type * as Cause from "effect/Cause"
+import type * as Chunk from "effect/Chunk"
+import type * as Context from "effect/Context"
+import type * as Effect from "effect/Effect"
+import type { Inspectable } from "effect/Inspectable"
+import type * as Option from "effect/Option"
+import type * as Scope from "effect/Scope"
+import type * as App from "./HttpApp.js"
+import type * as Method from "./HttpMethod.js"
+import type * as Error from "./HttpServerError.js"
+import type * as ServerRequest from "./HttpServerRequest.js"
+import * as internal from "./internal/httpRouter.js"
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export const TypeId: unique symbol = internal.TypeId
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export type TypeId = typeof TypeId
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface HttpRouter<E = never, R = never>
+  extends App.Default<E | Error.RouteNotFound, Exclude<R, RouteContext>>, Inspectable
+{
+  readonly [TypeId]: TypeId
+  readonly routes: Chunk.Chunk<Route<E, R>>
+  readonly mounts: Chunk.Chunk<
+    readonly [
+      prefix: string,
+      httpApp: App.Default<E, R>,
+      options?: { readonly includePrefix?: boolean | undefined } | undefined
+    ]
+  >
+}
+
+/**
+ * @since 1.0.0
+ */
+export declare namespace HttpRouter {
+  /**
+   * @since 1.0.0
+   */
+  export type ExcludeProvided<A> = Exclude<
+    A,
+    RouteContext | ServerRequest.HttpServerRequest | ServerRequest.ParsedSearchParams | Scope.Scope
+  >
+}
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export const RouteTypeId: unique symbol = internal.RouteTypeId
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export type RouteTypeId = typeof RouteTypeId
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type PathInput = `/${string}` | "*"
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface Route<E = never, R = never> extends Inspectable {
+  readonly [RouteTypeId]: RouteTypeId
+  readonly method: Method.HttpMethod | "*"
+  readonly path: PathInput
+  readonly handler: Route.Handler<E, R>
+  readonly prefix: Option.Option<string>
+  readonly uninterruptible: boolean
+}
+
+/**
+ * @since 1.0.0
+ */
+export declare namespace Route {
+  /**
+   * @since 1.0.0
+   */
+  export type Handler<E, R> = App.Default<E, R | RouteContext | ServerRequest.ParsedSearchParams>
+}
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export const RouteContextTypeId: unique symbol = internal.RouteContextTypeId
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export type RouteContextTypeId = typeof RouteContextTypeId
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface RouteContext {
+  readonly [RouteContextTypeId]: RouteContextTypeId
+  readonly params: Readonly<Record<string, string | undefined>>
+  readonly route: Route<unknown, unknown>
+}
+
+/**
+ * @since 1.0.0
+ * @category route context
+ */
+export const RouteContext: Context.Tag<RouteContext, RouteContext> = internal.RouteContext
+
+/**
+ * @since 1.0.0
+ * @category route context
+ */
+export const params: Effect.Effect<
+  Readonly<Record<string, string | undefined>>,
+  never,
+  RouteContext
+> = internal.params
+
+/**
+ * @since 1.0.0
+ * @category route context
+ */
+export const schemaJson: <
+  R,
+  I extends Partial<{
+    readonly method: Method.HttpMethod
+    readonly url: string
+    readonly cookies: Readonly<Record<string, string | undefined>>
+    readonly headers: Readonly<Record<string, string | undefined>>
+    readonly pathParams: Readonly<Record<string, string | undefined>>
+    readonly searchParams: Readonly<Record<string, string | Array<string> | undefined>>
+    readonly body: any
+  }>,
+  A
+>(
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
+) => Effect.Effect<
+  A,
+  Error.RequestError | ParseResult.ParseError,
+  RouteContext | R | ServerRequest.HttpServerRequest | ServerRequest.ParsedSearchParams
+> = internal.schemaJson
+
+/**
+ * @since 1.0.0
+ * @category route context
+ */
+export const schemaNoBody: <
+  R,
+  I extends Partial<
+    {
+      readonly method: Method.HttpMethod
+      readonly url: string
+      readonly cookies: Readonly<Record<string, string | undefined>>
+      readonly headers: Readonly<Record<string, string | undefined>>
+      readonly pathParams: Readonly<Record<string, string | undefined>>
+      readonly searchParams: Readonly<Record<string, string | Array<string> | undefined>>
+    }
+  >,
+  A
+>(
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
+) => Effect.Effect<
+  A,
+  ParseResult.ParseError,
+  R | RouteContext | ServerRequest.HttpServerRequest | ServerRequest.ParsedSearchParams
+> = internal.schemaNoBody
+
+/**
+ * @since 1.0.0
+ * @category route context
+ */
+export const schemaParams: <A, I extends Readonly<Record<string, string | Array<string> | undefined>>, R>(
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
+) => Effect.Effect<A, ParseResult.ParseError, R | RouteContext | ServerRequest.ParsedSearchParams> =
+  internal.schemaParams
+
+/**
+ * @since 1.0.0
+ * @category route context
+ */
+export const schemaPathParams: <A, I extends Readonly<Record<string, string | undefined>>, R>(
+  schema: Schema.Schema<A, I, R>,
+  options?: ParseOptions | undefined
+) => Effect.Effect<A, ParseResult.ParseError, R | RouteContext> = internal.schemaPathParams
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const empty: HttpRouter = internal.empty
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const fromIterable: <R extends Route<any, any>>(
+  routes: Iterable<R>
+) => HttpRouter<R extends Route<infer E, infer _> ? E : never, R extends Route<infer _, infer Env> ? Env : never> =
+  internal.fromIterable
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const makeRoute: <E, R>(
+  method: Method.HttpMethod,
+  path: PathInput,
+  handler: Route.Handler<E, R>,
+  prefix?: Option.Option<string>,
+  uninterruptible?: boolean
+) => Route<E, HttpRouter.ExcludeProvided<R>> = internal.makeRoute
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const prefixAll: {
+  (prefix: PathInput): <E, R>(self: HttpRouter<E, R>) => HttpRouter<E, R>
+  <E, R>(self: HttpRouter<E, R>, prefix: PathInput): HttpRouter<E, R>
+} = internal.prefixAll
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const concat: {
+  <R1, E1>(that: HttpRouter<E1, R1>): <E, R>(
+    self: HttpRouter<E, R>
+  ) => HttpRouter<E1 | E, R1 | R>
+  <E, R, R1, E1>(self: HttpRouter<E, R>, that: HttpRouter<E1, R1>): HttpRouter<
+    E | E1,
+    R | R1
+  >
+} = internal.concat
+
+/**
+ * @since 1.0.0
+ * @category routing
+ */
+export const mount: {
+  <R1, E1>(path: `/${string}`, that: HttpRouter<E1, R1>): <E, R>(self: HttpRouter<E, R>) => HttpRouter<E1 | E, R1 | R>
+  <E, R, E1, R1>(self: HttpRouter<E, R>, path: `/${string}`, that: HttpRouter<E1, R1>): HttpRouter<E | E1, R | R1>
+} = internal.mount
+
+/**
+ * @since 1.0.0
+ * @category routing
+ */
+export const mountApp: {
+  <R1, E1>(
+    path: `/${string}`,
+    that: App.Default<E1, R1>,
+    options?: { readonly includePrefix?: boolean | undefined } | undefined
+  ): <E, R>(
+    self: HttpRouter<E, R>
+  ) => HttpRouter<
+    E1 | E,
+    | HttpRouter.ExcludeProvided<R1>
+    | HttpRouter.ExcludeProvided<R>
+  >
+  <E, R, E1, R1>(
+    self: HttpRouter<E, R>,
+    path: `/${string}`,
+    that: App.Default<E1, R1>,
+    options?: { readonly includePrefix?: boolean | undefined } | undefined
+  ): HttpRouter<
+    E | E1,
+    | HttpRouter.ExcludeProvided<R>
+    | HttpRouter.ExcludeProvided<R1>
+  >
+} = internal.mountApp
+
+/**
+ * @since 1.0.0
+ * @category routing
+ */
+export const route: (
+  method: Method.HttpMethod | "*"
+) => {
+  <R1, E1>(
+    path: PathInput,
+    handler: Route.Handler<E1, R1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+  ): <E, R>(
+    self: HttpRouter<E, R>
+  ) => HttpRouter<E1 | E, R | Exclude<R1, ServerRequest.HttpServerRequest | RouteContext | Scope.Scope>>
+  <E, R, E1, R1>(
+    self: HttpRouter<E, R>,
+    path: PathInput,
+    handler: Route.Handler<E1, R1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+  ): HttpRouter<E | E1, R | Exclude<R1, ServerRequest.HttpServerRequest | RouteContext | Scope.Scope>>
+} = internal.route
+
+/**
+ * @since 1.0.0
+ * @category routing
+ */
+export const all: {
+  <R1, E1>(
+    path: PathInput,
+    handler: Route.Handler<E1, R1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+  ): <E, R>(
+    self: HttpRouter<E, R>
+  ) => HttpRouter<
+    E1 | E,
+    R | HttpRouter.ExcludeProvided<R1>
+  >
+  <E, R, E1, R1>(
+    self: HttpRouter<E, R>,
+    path: PathInput,
+    handler: Route.Handler<E1, R1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+  ): HttpRouter<
+    E | E1,
+    R | HttpRouter.ExcludeProvided<R1>
+  >
+} = internal.all
+
+/**
+ * @since 1.0.0
+ * @category routing
+ */
+export const get: {
+  <R1, E1>(
+    path: PathInput,
+    handler: Route.Handler<E1, R1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+  ): <E, R>(
+    self: HttpRouter<E, R>
+  ) => HttpRouter<E1 | E, R | HttpRouter.ExcludeProvided<R1>>
+  <E, R, E1, R1>(
+    self: HttpRouter<E, R>,
+    path: PathInput,
+    handler: Route.Handler<E1, R1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+  ): HttpRouter<E | E1, R | HttpRouter.ExcludeProvided<R1>>
+} = internal.get
+
+/**
+ * @since 1.0.0
+ * @category routing
+ */
+export const post: {
+  <R1, E1>(
+    path: PathInput,
+    handler: Route.Handler<E1, R1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+  ): <E, R>(
+    self: HttpRouter<E, R>
+  ) => HttpRouter<E1 | E, R | HttpRouter.ExcludeProvided<R1>>
+  <E, R, E1, R1>(
+    self: HttpRouter<E, R>,
+    path: PathInput,
+    handler: Route.Handler<E1, R1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+  ): HttpRouter<E | E1, R | HttpRouter.ExcludeProvided<R1>>
+} = internal.post
+
+/**
+ * @since 1.0.0
+ * @category routing
+ */
+export const patch: {
+  <R1, E1>(
+    path: PathInput,
+    handler: Route.Handler<E1, R1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+  ): <E, R>(
+    self: HttpRouter<E, R>
+  ) => HttpRouter<E1 | E, R | HttpRouter.ExcludeProvided<R1>>
+  <E, R, E1, R1>(
+    self: HttpRouter<E, R>,
+    path: PathInput,
+    handler: Route.Handler<E1, R1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+  ): HttpRouter<E | E1, R | HttpRouter.ExcludeProvided<R1>>
+} = internal.patch
+
+/**
+ * @since 1.0.0
+ * @category routing
+ */
+export const put: {
+  <R1, E1>(
+    path: PathInput,
+    handler: Route.Handler<E1, R1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+  ): <E, R>(
+    self: HttpRouter<E, R>
+  ) => HttpRouter<E1 | E, R | HttpRouter.ExcludeProvided<R1>>
+  <E, R, E1, R1>(
+    self: HttpRouter<E, R>,
+    path: PathInput,
+    handler: Route.Handler<E1, R1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+  ): HttpRouter<E | E1, R | HttpRouter.ExcludeProvided<R1>>
+} = internal.put
+
+/**
+ * @since 1.0.0
+ * @category routing
+ */
+export const del: {
+  <R1, E1>(
+    path: PathInput,
+    handler: Route.Handler<E1, R1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+  ): <E, R>(
+    self: HttpRouter<E, R>
+  ) => HttpRouter<E1 | E, R | HttpRouter.ExcludeProvided<R1>>
+  <E, R, E1, R1>(
+    self: HttpRouter<E, R>,
+    path: PathInput,
+    handler: Route.Handler<E1, R1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+  ): HttpRouter<E | E1, R | HttpRouter.ExcludeProvided<R1>>
+} = internal.del
+
+/**
+ * @since 1.0.0
+ * @category routing
+ */
+export const head: {
+  <R1, E1>(
+    path: PathInput,
+    handler: Route.Handler<E1, R1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+  ): <E, R>(
+    self: HttpRouter<E, R>
+  ) => HttpRouter<E1 | E, R | HttpRouter.ExcludeProvided<R1>>
+  <E, R, E1, R1>(
+    self: HttpRouter<E, R>,
+    path: PathInput,
+    handler: Route.Handler<E1, R1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+  ): HttpRouter<E | E1, R | HttpRouter.ExcludeProvided<R1>>
+} = internal.head
+
+/**
+ * @since 1.0.0
+ * @category routing
+ */
+export const options: {
+  <R1, E1>(
+    path: PathInput,
+    handler: Route.Handler<E1, R1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+  ): <E, R>(
+    self: HttpRouter<E, R>
+  ) => HttpRouter<E1 | E, R | HttpRouter.ExcludeProvided<R1>>
+  <E, R, E1, R1>(
+    self: HttpRouter<E, R>,
+    path: PathInput,
+    handler: Route.Handler<E1, R1>,
+    options?: { readonly uninterruptible?: boolean | undefined } | undefined
+  ): HttpRouter<E | E1, R | HttpRouter.ExcludeProvided<R1>>
+} = internal.options
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const use: {
+  <E, R, R1, E1>(
+    f: (self: Route.Handler<E, R>) => App.Default<E1, R1>
+  ): (self: HttpRouter<E, R>) => HttpRouter<E1, HttpRouter.ExcludeProvided<R1>>
+  <E, R, R1, E1>(
+    self: HttpRouter<E, R>,
+    f: (self: Route.Handler<E, R>) => App.Default<E1, R1>
+  ): HttpRouter<E1, HttpRouter.ExcludeProvided<R1>>
+} = internal.use
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const catchAll: {
+  <E, E2, R2>(
+    f: (e: E) => Route.Handler<E2, R2>
+  ): <R>(self: HttpRouter<E, R>) => HttpRouter<E2, R | HttpRouter.ExcludeProvided<R2>>
+  <E, R, E2, R2>(
+    self: HttpRouter<E, R>,
+    f: (e: E) => Route.Handler<E2, R2>
+  ): HttpRouter<E2, R | HttpRouter.ExcludeProvided<R2>>
+} = internal.catchAll
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const catchAllCause: {
+  <E, E2, R2>(
+    f: (e: Cause.Cause<E>) => Route.Handler<E2, R2>
+  ): <R>(self: HttpRouter<E, R>) => HttpRouter<E2, R | HttpRouter.ExcludeProvided<R2>>
+  <E, R, E2, R2>(
+    self: HttpRouter<E, R>,
+    f: (e: Cause.Cause<E>) => Route.Handler<E2, R2>
+  ): HttpRouter<E2, R | HttpRouter.ExcludeProvided<R2>>
+} = internal.catchAllCause
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const catchTag: {
+  <K extends E extends { _tag: string } ? E["_tag"] : never, E, E1, R1>(
+    k: K,
+    f: (e: Extract<E, { _tag: K }>) => Route.Handler<E1, R1>
+  ): <R>(
+    self: HttpRouter<E, R>
+  ) => HttpRouter<E1 | Exclude<E, { _tag: K }>, R | HttpRouter.ExcludeProvided<R1>>
+  <E, R, K extends E extends { _tag: string } ? E["_tag"] : never, E1, R1>(
+    self: HttpRouter<E, R>,
+    k: K,
+    f: (e: Extract<E, { _tag: K }>) => Route.Handler<E1, R1>
+  ): HttpRouter<E1 | Exclude<E, { _tag: K }>, R | HttpRouter.ExcludeProvided<R1>>
+} = internal.catchTag
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const catchTags: {
+  <
+    E,
+    Cases extends E extends { _tag: string }
+      ? { [K in E["_tag"]]+?: ((error: Extract<E, { _tag: K }>) => Route.Handler<any, any>) | undefined }
+      : {}
+  >(
+    cases: Cases
+  ): <R>(
+    self: HttpRouter<E, R>
+  ) => HttpRouter<
+    | Exclude<E, { _tag: keyof Cases }>
+    | {
+      [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect.Effect<any, infer E, any> ? E : never
+    }[keyof Cases],
+    | R
+    | HttpRouter.ExcludeProvided<
+      {
+        [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect.Effect<any, any, infer R> ? R : never
+      }[keyof Cases]
+    >
+  >
+  <
+    R,
+    E,
+    Cases extends E extends { _tag: string }
+      ? { [K in E["_tag"]]+?: ((error: Extract<E, { _tag: K }>) => Route.Handler<any, any>) | undefined } :
+      {}
+  >(
+    self: HttpRouter<E, R>,
+    cases: Cases
+  ): HttpRouter<
+    | Exclude<E, { _tag: keyof Cases }>
+    | {
+      [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect.Effect<any, infer E, any> ? E : never
+    }[keyof Cases],
+    | R
+    | HttpRouter.ExcludeProvided<
+      {
+        [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect.Effect<any, any, infer R> ? R : never
+      }[keyof Cases]
+    >
+  >
+} = internal.catchTags
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const provideService: {
+  <T extends Context.Tag<any, any>>(
+    tag: T,
+    service: Context.Tag.Service<T>
+  ): <E, R>(self: HttpRouter<E, R>) => HttpRouter<E, Exclude<R, Context.Tag.Identifier<T>>>
+  <E, R, T extends Context.Tag<any, any>>(
+    self: HttpRouter<E, R>,
+    tag: T,
+    service: Context.Tag.Service<T>
+  ): HttpRouter<E, Exclude<R, Context.Tag.Identifier<T>>>
+} = internal.provideService
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const provideServiceEffect: {
+  <T extends Context.Tag<any, any>, R1, E1>(
+    tag: T,
+    effect: Effect.Effect<Context.Tag.Service<T>, E1, R1>
+  ): <E, R>(
+    self: HttpRouter<E, R>
+  ) => HttpRouter<
+    E1 | E,
+    | Exclude<R, Context.Tag.Identifier<T>>
+    | Exclude<HttpRouter.ExcludeProvided<R1>, Context.Tag.Identifier<T>>
+  >
+  <E, R, T extends Context.Tag<any, any>, R1, E1>(
+    self: HttpRouter<E, R>,
+    tag: T,
+    effect: Effect.Effect<Context.Tag.Service<T>, E1, R1>
+  ): HttpRouter<
+    E | E1,
+    | Exclude<R, Context.Tag.Identifier<T>>
+    | Exclude<HttpRouter.ExcludeProvided<R1>, Context.Tag.Identifier<T>>
+  >
+} = internal.provideServiceEffect

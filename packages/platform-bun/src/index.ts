@@ -11,7 +11,17 @@ export * as BunContext from "./BunContext.js"
 /**
  * @since 1.0.0
  */
+export * as BunEtag from "./BunEtag.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as BunFileSystem from "./BunFileSystem.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as BunHttpPlatform from "./BunHttpPlatform.js"
 
 /**
  * @since 1.0.0
@@ -21,7 +31,17 @@ export * as BunHttpServer from "./BunHttpServer.js"
 /**
  * @since 1.0.0
  */
+export * as BunHttpServerRequest from "./BunHttpServerRequest.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as BunKeyValueStore from "./BunKeyValueStore.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as BunMultipart from "./BunMultipart.js"
 
 /**
  * @since 1.0.0

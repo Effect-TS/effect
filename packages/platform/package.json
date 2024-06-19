@@ -51,13 +51,5 @@
     "@effect/schema": "workspace:^",
     "@types/path-browserify": "^1.0.2",
     "effect": "workspace:^"
-  },
-  "effect": {
-    "generateExports": {
-      "include": [
-        "*.ts",
-        "Http/*.ts"
-      ]
-    }
   }
 }

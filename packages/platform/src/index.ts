@@ -11,6 +11,11 @@ export * as CommandExecutor from "./CommandExecutor.js"
 /**
  * @since 1.0.0
  */
+export * as Cookies from "./Cookies.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Effectify from "./Effectify.js"
 
 /**
@@ -21,7 +26,27 @@ export * as Error from "./Error.js"
 /**
  * @since 1.0.0
  */
+export * as Etag from "./Etag.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as FileSystem from "./FileSystem.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as Headers from "./Headers.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpApp from "./HttpApp.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpBody from "./HttpBody.js"
 
 /**
  * @since 1.0.0
@@ -31,12 +56,83 @@ export * as HttpClient from "./HttpClient.js"
 /**
  * @since 1.0.0
  */
+export * as HttpClientError from "./HttpClientError.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpClientRequest from "./HttpClientRequest.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpClientResponse from "./HttpClientResponse.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpIncomingMessage from "./HttpIncomingMessage.js"
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export * as HttpMethod from "./HttpMethod.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpMiddleware from "./HttpMiddleware.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpMultiplex from "./HttpMultiplex.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpPlatform from "./HttpPlatform.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpRouter from "./HttpRouter.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as HttpServer from "./HttpServer.js"
 
 /**
  * @since 1.0.0
  */
+export * as HttpServerError from "./HttpServerError.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpServerRequest from "./HttpServerRequest.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpServerResponse from "./HttpServerResponse.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as HttpTraceContext from "./HttpTraceContext.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as KeyValueStore from "./KeyValueStore.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as Multipart from "./Multipart.js"
 
 /**
  * @since 1.0.0
@@ -77,6 +173,11 @@ export * as Terminal from "./Terminal.js"
  * @since 1.0.0
  */
 export * as Transferable from "./Transferable.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as UrlParams from "./UrlParams.js"
 
 /**
  * @since 1.0.0

@@ -1,7 +1,7 @@
+import { HttpMiddleware, HttpRouter, HttpServer } from "@effect/platform"
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
-import * as Http from "@effect/platform/HttpServer"
 import { Router, Rpc } from "@effect/rpc"
-import { HttpRouter } from "@effect/rpc-http"
+import { HttpRouter as RpcHttpRouter } from "@effect/rpc-http"
 import { Array, Effect, Layer, Stream } from "effect"
 import { createServer } from "http"
 import { GetUser, GetUserIds, User, UserId } from "./schema.js"
@@ -15,11 +15,11 @@ const router = Router.make(
 export type UserRouter = typeof router
 
 // Create the http server
-const HttpLive = Http.router.empty.pipe(
-  Http.router.post("/rpc", HttpRouter.toHttpApp(router)),
-  Http.server.serve(Http.middleware.logger),
-  Http.server.withLogAddress,
-  Layer.provide(NodeHttpServer.server.layer(createServer, { port: 3000 }))
+const HttpLive = HttpRouter.empty.pipe(
+  HttpRouter.post("/rpc", RpcHttpRouter.toHttpApp(router)),
+  HttpServer.serve(HttpMiddleware.logger),
+  HttpServer.withLogAddress,
+  Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
 )
 
 Layer.launch(HttpLive).pipe(

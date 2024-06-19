@@ -1,126 +1,195 @@
 /**
  * @since 1.0.0
  */
-import * as app from "./Http/App.js"
-import * as body from "./Http/Body.js"
-import * as cookies from "./Http/Cookies.js"
-import * as etag from "./Http/Etag.js"
-import * as headers from "./Http/Headers.js"
-import * as middleware from "./Http/Middleware.js"
-import * as multipart from "./Http/Multipart.js"
-import * as multiplex from "./Http/Multiplex.js"
-import * as platform from "./Http/Platform.js"
-import * as router from "./Http/Router.js"
-import * as server from "./Http/Server.js"
-import * as error from "./Http/ServerError.js"
-import * as request from "./Http/ServerRequest.js"
-import * as response from "./Http/ServerResponse.js"
-import * as urlParams from "./Http/UrlParams.js"
+import type * as Context from "effect/Context"
+import type * as Effect from "effect/Effect"
+import type * as Layer from "effect/Layer"
+import type * as Scope from "effect/Scope"
+import type * as App from "./HttpApp.js"
+import type * as Middleware from "./HttpMiddleware.js"
+import type * as ServerRequest from "./HttpServerRequest.js"
+import * as internal from "./internal/httpServer.js"
 
-export {
-  /**
-   * @since 1.0.0
-   *
-   * - Docs: [Http/App](https://effect-ts.github.io/effect/platform/Http/App.ts.html)
-   * - Module: `@effect/platform/Http/App`
-   */
-  app,
-  /**
-   * @since 1.0.0
-   *
-   * - Docs: [Http/Body](https://effect-ts.github.io/effect/platform/Http/Body.ts.html)
-   * - Module: `@effect/platform/Http/Body`
-   */
-  body,
-  /**
-   * @since 1.0.0
-   *
-   * - Docs: [Http/Cookies](https://effect-ts.github.io/effect/platform/Http/Cookies.ts.html)
-   * - Module: `@effect/platform/Http/Cookies`
-   */
-  cookies,
-  /**
-   * @since 1.0.0
-   *
-   * - Docs: [Http/ServerError](https://effect-ts.github.io/effect/platform/Http/ServerError.ts.html)
-   * - Module: `@effect/platform/Http/ServerError`
-   */
-  error,
-  /**
-   * @since 1.0.0
-   *
-   * - Docs: [Http/Etag](https://effect-ts.github.io/effect/platform/Http/Etag.ts.html)
-   * - Module: `@effect/platform/Http/Etag`
-   */
-  etag,
-  /**
-   * @since 1.0.0
-   *
-   * - Docs: [Http/Headers](https://effect-ts.github.io/effect/platform/Http/Headers.ts.html)
-   * - Module: `@effect/platform/Http/Headers`
-   */
-  headers,
-  /**
-   * @since 1.0.0
-   *
-   * - Docs: [Http/Middleware](https://effect-ts.github.io/effect/platform/Http/Middleware.ts.html)
-   * - Module: `@effect/platform/Http/Middleware`
-   */
-  middleware,
-  /**
-   * @since 1.0.0
-   *
-   * - Docs: [Http/Multipart](https://effect-ts.github.io/effect/platform/Http/Multipart.ts.html)
-   * - Module: `@effect/platform/Http/Multipart`
-   */
-  multipart,
-  /**
-   * @since 1.0.0
-   *
-   * - Docs: [Http/Multiplex](https://effect-ts.github.io/effect/platform/Http/Multiplex.ts.html)
-   * - Module: `@effect/platform/Http/Multiplex`
-   */
-  multiplex,
-  /**
-   * @since 1.0.0
-   *
-   * - Docs: [Http/Platform](https://effect-ts.github.io/effect/platform/Http/Platform.ts.html)
-   * - Module: `@effect/platform/Http/Platform`
-   */
-  platform,
-  /**
-   * @since 1.0.0
-   *
-   * - Docs: [Http/ServerRequest](https://effect-ts.github.io/effect/platform/Http/ServerRequest.ts.html)
-   * - Module: `@effect/platform/Http/ServerRequest`
-   */
-  request,
-  /**
-   * @since 1.0.0
-   *
-   * - Docs: [Http/ServerResponse](https://effect-ts.github.io/effect/platform/Http/ServerResponse.ts.html)
-   * - Module: `@effect/platform/Http/ServerResponse`
-   */
-  response,
-  /**
-   * @since 1.0.0
-   *
-   * - Docs: [Http/Router](https://effect-ts.github.io/effect/platform/Http/Router.ts.html)
-   * - Module: `@effect/platform/Http/Router`
-   */
-  router,
-  /**
-   * @since 1.0.0
-   *
-   * - Docs: [Http/Server](https://effect-ts.github.io/effect/platform/Http/Server.ts.html)
-   * - Module: `@effect/platform/Http/Server`
-   */
-  server,
-  /**
-   * @since 1.0.0
-   *
-   * - Docs: [Http/UrlParams](https://effect-ts.github.io/effect/platform/Http/UrlParams.ts.html)
-   * - Module: `@effect/platform/Http/UrlParams`
-   */
-  urlParams
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export const TypeId: unique symbol = internal.TypeId
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export type TypeId = typeof TypeId
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface HttpServer {
+  readonly [TypeId]: TypeId
+  readonly serve: {
+    <E, R>(httpApp: App.Default<E, R>): Effect.Effect<
+      void,
+      never,
+      Exclude<R, ServerRequest.HttpServerRequest> | Scope.Scope
+    >
+    <E, R, App extends App.Default<any, any>>(
+      httpApp: App.Default<E, R>,
+      middleware: Middleware.HttpMiddleware.Applied<App, E, R>
+    ): Effect.Effect<
+      void,
+      never,
+      Exclude<R, ServerRequest.HttpServerRequest> | Scope.Scope
+    >
+  }
+  readonly address: Address
 }
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface ServeOptions {
+  readonly respond: boolean
+}
+
+/**
+ * @since 1.0.0
+ * @category address
+ */
+export type Address = UnixAddress | TcpAddress
+
+/**
+ * @since 1.0.0
+ * @category address
+ */
+export interface TcpAddress {
+  readonly _tag: "TcpAddress"
+  readonly hostname: string
+  readonly port: number
+}
+
+/**
+ * @since 1.0.0
+ * @category address
+ */
+export interface UnixAddress {
+  readonly _tag: "UnixAddress"
+  readonly path: string
+}
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const HttpServer: Context.Tag<HttpServer, HttpServer> = internal.serverTag
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const make: (
+  options: {
+    readonly serve: (
+      httpApp: App.Default<unknown>,
+      middleware?: Middleware.HttpMiddleware
+    ) => Effect.Effect<void, never, Scope.Scope>
+    readonly address: Address
+  }
+) => HttpServer = internal.make
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const serve: {
+  (): <E, R>(
+    httpApp: App.Default<E, R>
+  ) => Layer.Layer<never, never, HttpServer | Exclude<R, ServerRequest.HttpServerRequest | Scope.Scope>>
+  <E, R, App extends App.Default<any, any>>(
+    middleware: Middleware.HttpMiddleware.Applied<App, E, R>
+  ): (
+    httpApp: App.Default<E, R>
+  ) => Layer.Layer<
+    never,
+    never,
+    HttpServer | Exclude<Effect.Effect.Context<App>, ServerRequest.HttpServerRequest | Scope.Scope>
+  >
+  <E, R>(
+    httpApp: App.Default<E, R>
+  ): Layer.Layer<never, never, HttpServer | Exclude<R, ServerRequest.HttpServerRequest | Scope.Scope>>
+  <E, R, App extends App.Default<any, any>>(
+    httpApp: App.Default<E, R>,
+    middleware: Middleware.HttpMiddleware.Applied<App, E, R>
+  ): Layer.Layer<
+    never,
+    never,
+    HttpServer | Exclude<Effect.Effect.Context<App>, ServerRequest.HttpServerRequest | Scope.Scope>
+  >
+} = internal.serve
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const serveEffect: {
+  (): <E, R>(
+    httpApp: App.Default<E, R>
+  ) => Effect.Effect<void, never, Scope.Scope | HttpServer | Exclude<R, ServerRequest.HttpServerRequest>>
+  <E, R, App extends App.Default<any, any>>(
+    middleware: Middleware.HttpMiddleware.Applied<App, E, R>
+  ): (
+    httpApp: App.Default<E, R>
+  ) => Effect.Effect<
+    void,
+    never,
+    Scope.Scope | HttpServer | Exclude<Effect.Effect.Context<App>, ServerRequest.HttpServerRequest>
+  >
+  <E, R>(
+    httpApp: App.Default<E, R>
+  ): Effect.Effect<void, never, Scope.Scope | HttpServer | Exclude<R, ServerRequest.HttpServerRequest>>
+  <E, R, App extends App.Default<any, any>>(
+    httpApp: App.Default<E, R>,
+    middleware: Middleware.HttpMiddleware.Applied<App, E, R>
+  ): Effect.Effect<
+    void,
+    never,
+    Scope.Scope | HttpServer | Exclude<Effect.Effect.Context<App>, ServerRequest.HttpServerRequest>
+  >
+} = internal.serveEffect
+
+/**
+ * @since 1.0.0
+ * @category address
+ */
+export const formatAddress: (address: Address) => string = internal.formatAddress
+
+/**
+ * @since 1.0.0
+ * @category address
+ */
+export const addressWith: <A, E, R>(
+  effect: (address: Address) => Effect.Effect<A, E, R>
+) => Effect.Effect<A, E, HttpServer | R> = internal.addressWith
+
+/**
+ * @since 1.0.0
+ * @category address
+ */
+export const addressFormattedWith: <A, E, R>(
+  effect: (address: string) => Effect.Effect<A, E, R>
+) => Effect.Effect<A, E, HttpServer | R> = internal.addressFormattedWith
+
+/**
+ * @since 1.0.0
+ * @category address
+ */
+export const logAddress: Effect.Effect<void, never, HttpServer> = internal.logAddress
+
+/**
+ * @since 1.0.0
+ * @category address
+ */
+export const withLogAddress: <A, E, R>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R | Exclude<HttpServer, A>> =
+  internal.withLogAddress
