@@ -23,7 +23,7 @@ import {
 } from "kysely"
 import type { Dialect } from "kysely"
 import type { EffectKysely } from "../patch.types.js"
-import { effectifyWithSql, patch } from "./patch.js"
+import { effectifyWithExecute, effectifyWithSql, patch } from "./patch.js"
 
 /**
  * @internal
@@ -50,7 +50,7 @@ patch(WheneableMergeQueryBuilder.prototype)
 /**
  * @internal
  */
-export const make = <DB>(dialect: Dialect) =>
+export const makeFromSql = <DB>(dialect: Dialect) =>
   Effect.gen(function*() {
     const client = yield* Client.Client
 
@@ -63,3 +63,11 @@ export const make = <DB>(dialect: Dialect) =>
 
     return effectifyWithSql(db, client, ["withTransaction"])
   })
+
+export const makeFromDialect = <DB>(dialect: Dialect) => {
+  const db = new Kysely<DB>({ dialect })
+  // SelectQueryBuilder is not exported from "kysely" so we patch the prototype from it's instance
+  const selectPrototype = Object.getPrototypeOf(db.selectFrom("" as any))
+  patch(selectPrototype)
+  return effectifyWithExecute(db)
+}

@@ -64,7 +64,7 @@ const makeSqlCommit = (client: Client.Client) => {
 }
 
 /** @internal */
-function kyselyCommit(this: Executable) {
+function executeCommit(this: Executable) {
   return Effect.tryPromise({
     try: () => this.execute(),
     catch: (error) => new SqlError({ error })
@@ -86,5 +86,5 @@ export const effectifyWithSql = <T>(obj: T, client: Client.Client, whitelist: Ar
 /**
  *  @internal
  */
-export const effectifyWithKysely = <T>(obj: T, whitelist: Array<string> = []): T =>
-  effectifyWith(obj, kyselyCommit, whitelist)
+export const effectifyWithExecute = <T>(obj: T, whitelist: Array<string> = []): T =>
+  effectifyWith(obj, executeCommit, whitelist)
