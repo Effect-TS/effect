@@ -8103,10 +8103,14 @@ export const encodeText = <E, R>(self: Stream.Stream<string, E, R>): Stream.Stre
   })
 
 /** @internal */
-export const fromEventListener = <A = Event>(
-  target: EventTarget,
+export const fromEventListener = <A = unknown>(
+  target: Stream.EventListener<A>,
   type: string,
-  options?: boolean | Omit<AddEventListenerOptions, "signal">
+  options?: boolean | {
+    readonly capture?: boolean
+    readonly passive?: boolean
+    readonly once?: boolean
+  } | undefined
 ): Stream.Stream<A> =>
   _async<A>((emit) => {
     let batch: Array<A> = []
@@ -8124,5 +8128,5 @@ export const fromEventListener = <A = Event>(
       }
     }
     target.addEventListener(type, cb as any, options)
-    return Effect.sync(() => target.removeEventListener(type, cb as any, options))
+    return Effect.sync(() => target.removeEventListener(type, cb, options))
   })
