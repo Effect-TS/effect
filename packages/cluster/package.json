@@ -26,11 +26,16 @@
     "coverage": "vitest --coverage"
   },
   "peerDependencies": {
-    "@effect/schema": "workspace:*",
-    "effect": "workspace:*"
+    "@effect/schema": "workspace:^",
+    "@effect/sql": "workspace:^",
+    "effect": "workspace:^"
   },
   "devDependencies": {
-    "@effect/schema": "workspace:*",
-    "effect": "workspace:*"
+    "@effect/platform": "workspace:^",
+    "@effect/platform-node": "workspace:^",
+    "@effect/schema": "workspace:^",
+    "@effect/sql": "workspace:^",
+    "@effect/sql-sqlite-node": "workspace:^",
+    "effect": "workspace:^"
   }
 }

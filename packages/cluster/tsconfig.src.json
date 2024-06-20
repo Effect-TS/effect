@@ -4,12 +4,10 @@
     "src"
   ],
   "references": [
-    {
-      "path": "../effect"
-    },
-    {
-      "path": "../schema"
-    }
+    { "path": "../effect" },
+    { "path": "../platform" },
+    { "path": "../schema" },
+    { "path": "../sql" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/src.tsbuildinfo",

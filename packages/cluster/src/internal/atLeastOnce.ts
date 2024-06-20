@@ -14,7 +14,7 @@ import * as Sharding from "../Sharding.js"
 export function runPendingMessageSweeperScoped(
   interval: Duration.Duration
 ): Effect.Effect<void, never, AtLeastOnceStorage.AtLeastOnceStorage | Sharding.Sharding | Scope.Scope> {
-  return Effect.flatMap(AtLeastOnceStorage.Tag, (storage) =>
+  return Effect.flatMap(AtLeastOnceStorage.AtLeastOnceStorage, (storage) =>
     pipe(
       Sharding.getAssignedShardIds,
       Effect.flatMap((shardIds) =>
@@ -37,7 +37,7 @@ export function atLeastOnceRecipientBehaviour<Msg extends Message.Message.Any, R
   fa: RecipientBehaviour.RecipientBehaviour<Msg, R>
 ): RecipientBehaviour.RecipientBehaviour<Msg, R | AtLeastOnceStorage.AtLeastOnceStorage> {
   return Effect.gen(function*(_) {
-    const storage = yield* _(AtLeastOnceStorage.Tag)
+    const storage = yield* _(AtLeastOnceStorage.AtLeastOnceStorage)
     const entityId = yield* _(RecipientBehaviourContext.entityId)
     const shardId = yield* _(RecipientBehaviourContext.shardId)
     const recipientType = yield* _(RecipientBehaviourContext.recipientType)

@@ -1,70 +1,96 @@
 /**
  * @since 1.0.0
  */
-import type * as Context from "effect/Context"
-import type * as Effect from "effect/Effect"
-import type * as Stream from "effect/Stream"
-import * as internal from "./internal/atLeastOnceStorage.js"
-import type * as Message from "./Message.js"
-import type * as RecipientType from "./RecipientType.js"
-import type * as SerializedEnvelope from "./SerializedEnvelope.js"
-import type * as ShardId from "./ShardId.js"
+import type { Message } from "@effect/cluster/Message"
+import type { Client } from "@effect/sql/Client"
+import type { SqlError } from "@effect/sql/Error"
+import type { Tag } from "effect/Context"
+import type { Effect } from "effect/Effect"
+import type { Layer } from "effect/Layer"
+import type { Stream } from "effect/Stream"
+import * as Internal from "./internal/atLeastOnceStorage.js"
+import type { RecipientType } from "./RecipientType.js"
+import type { Serialization } from "./Serialization.js"
+import type { SerializedEnvelope } from "./SerializedEnvelope.js"
+import type { ShardId } from "./ShardId.js"
 
 /**
  * @since 1.0.0
  * @category symbols
  */
-export const AtLeastOnceStorageTypeId: unique symbol = internal.AtLeastOnceStorageTypeId
+export const TypeId: unique symbol = Internal.TypeId
 
 /**
  * @since 1.0.0
  * @category symbols
  */
-export type AtLeastOnceStorageTypeId = typeof AtLeastOnceStorageTypeId
-
-/**
- * @since 1.0.0
- * @category context
- */
-export const Tag: Context.Tag<AtLeastOnceStorage, AtLeastOnceStorage> = internal.atLeastOnceStorageTag
+export type TypeId = typeof TypeId
 
 /**
  * @since 1.0.0
  * @category models
  */
-export interface AtLeastOnceStorage {
-  readonly [AtLeastOnceStorageTypeId]: AtLeastOnceStorageTypeId
-
+export interface AtLeastOnceStorage extends AtLeastOnceStorage.Proto {
   /**
-   * Stores a message into the storage, eventually returning the already existing message state as result in the storage
+   * Upserts a message into the storage, eventually returning the already
+   * existing message state as result in the storage.
    */
-  upsert<Msg extends Message.Message.Any>(
-    recipientType: RecipientType.RecipientType<Msg>,
-    shardId: ShardId.ShardId,
+  upsert<Msg extends Message.Any>(
+    recipientType: RecipientType<Msg>,
+    shardId: ShardId,
     entityId: string,
     message: Msg
-  ): Effect.Effect<void>
+  ): Effect<void>
 
   /**
-   * Marks the message as processed, so no more send attempt will occur
+   * Marks the specified message as processed to prevent additional attempts to
+   * send the message.
    */
-  markAsProcessed<Msg extends Message.Message.Any>(
-    recipientType: RecipientType.RecipientType<Msg>,
-    shardId: ShardId.ShardId,
+  markAsProcessed<Msg extends Message.Any>(
+    recipientType: RecipientType<Msg>,
+    shardId: ShardId,
     entityId: string,
     message: Msg
-  ): Effect.Effect<void>
+  ): Effect<void>
 
   /**
-   * Gets a set of messages that will be sent to the local Pod as second attempt
+   * Returns a stream of messages that will be sent to the local pod as a second
+   * attempt.
    */
-  sweepPending(
-    shardIds: Iterable<ShardId.ShardId>
-  ): Stream.Stream<SerializedEnvelope.SerializedEnvelope>
+  sweepPending(shardIds: Iterable<ShardId>): Stream<SerializedEnvelope>
 }
 
 /**
  * @since 1.0.0
- * @category constructors
+ * @category context
  */
-export const make: (data: Omit<AtLeastOnceStorage, AtLeastOnceStorageTypeId>) => AtLeastOnceStorage = internal.make
+export const AtLeastOnceStorage: Tag<AtLeastOnceStorage, AtLeastOnceStorage> = Internal.atLeastOnceStorageTag
+
+/**
+ * @since 1.0.0
+ */
+export declare namespace AtLeastOnceStorage {
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Proto {
+    readonly [TypeId]: TypeId
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface MakeOptions {
+    readonly table: string
+  }
+}
+
+/**
+ * @since 1.0.0
+ * @category context
+ */
+export const layer: (
+  options: AtLeastOnceStorage.MakeOptions
+) => Layer<AtLeastOnceStorage, SqlError, Client | Serialization> = Internal.layer
