@@ -1,5 +1,13 @@
 # @effect/sql-mysql2
 
+## 0.3.18
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/platform@0.57.7
+  - @effect/sql@0.3.17
+
 ## 0.3.17
 
 ### Patch Changes
