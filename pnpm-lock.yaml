@@ -178,6 +178,85 @@ importers:
         version: link:../effect/dist
     publishDirectory: dist
 
+  packages/cluster:
+    devDependencies:
+      '@effect/platform':
+        specifier: workspace:^
+        version: link:../platform/dist
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../platform-node/dist
+      '@effect/schema':
+        specifier: workspace:^
+        version: link:../schema/dist
+      '@effect/sql':
+        specifier: workspace:^
+        version: link:../sql/dist
+      '@effect/sql-sqlite-node':
+        specifier: workspace:^
+        version: link:../sql-sqlite-node/dist
+      effect:
+        specifier: workspace:^
+        version: link:../effect/dist
+    publishDirectory: dist
+
+  packages/cluster-browser:
+    devDependencies:
+      '@effect/platform':
+        specifier: workspace:^
+        version: link:../platform/dist
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../platform-node/dist
+      '@effect/rpc':
+        specifier: workspace:^
+        version: link:../rpc/dist
+      '@effect/schema':
+        specifier: workspace:^
+        version: link:../schema/dist
+      effect:
+        specifier: workspace:^
+        version: link:../effect/dist
+    publishDirectory: dist
+
+  packages/cluster-node:
+    devDependencies:
+      '@effect/platform':
+        specifier: workspace:^
+        version: link:../platform/dist
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../platform-node/dist
+      '@effect/rpc':
+        specifier: workspace:^
+        version: link:../rpc/dist
+      '@effect/rpc-http':
+        specifier: workspace:^
+        version: link:../rpc-http/dist
+      '@effect/schema':
+        specifier: workspace:^
+        version: link:../schema/dist
+      '@types/node':
+        specifier: ^20.12.6
+        version: 20.12.12
+      effect:
+        specifier: workspace:^
+        version: link:../effect/dist
+    publishDirectory: dist
+
+  packages/cluster-workflow:
+    devDependencies:
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../platform-node/dist
+      '@effect/schema':
+        specifier: workspace:^
+        version: link:../schema/dist
+      effect:
+        specifier: workspace:^
+        version: link:../effect/dist
+    publishDirectory: dist
+
   packages/effect:
     devDependencies:
       '@types/jscodeshift':
