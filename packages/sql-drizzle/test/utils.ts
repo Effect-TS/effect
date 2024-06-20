@@ -5,7 +5,11 @@ import * as Pg from "@effect/sql-pg"
 import type { StartedMySqlContainer } from "@testcontainers/mysql"
 import { MySqlContainer } from "@testcontainers/mysql"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { Config, Context, Effect, Layer, Secret } from "effect"
+import { Config, Context, Data, Effect, Layer, Redacted } from "effect"
+
+export class ContainerError extends Data.TaggedError("ContainerError")<{
+  cause: unknown
+}> {}
 
 export class PgContainer extends Context.Tag("test/PgContainer")<
   PgContainer,
@@ -14,7 +18,10 @@ export class PgContainer extends Context.Tag("test/PgContainer")<
   static Live = Layer.scoped(
     this,
     Effect.acquireRelease(
-      Effect.promise(() => new PostgreSqlContainer("postgres:alpine").start()),
+      Effect.tryPromise({
+        try: () => new PostgreSqlContainer("postgres:alpine").start(),
+        catch: (cause) => new ContainerError({ cause })
+      }),
       (container) => Effect.promise(() => container.stop())
     )
   )
@@ -23,7 +30,7 @@ export class PgContainer extends Context.Tag("test/PgContainer")<
     Effect.gen(function*(_) {
       const container = yield* _(PgContainer)
       return Pg.client.layer({
-        url: Config.succeed(Secret.fromString(container.getConnectionUri()))
+        url: Config.succeed(Redacted.make(container.getConnectionUri()))
       })
     })
   ).pipe(Layer.provide(this.Live))
@@ -38,7 +45,10 @@ export class MysqlContainer extends Context.Tag("test/MysqlContainer")<
   static Live = Layer.scoped(
     this,
     Effect.acquireRelease(
-      Effect.promise(() => new MySqlContainer("mysql:lts").start()),
+      Effect.tryPromise({
+        try: () => new MySqlContainer("mysql:lts").start(),
+        catch: (cause) => new ContainerError({ cause })
+      }),
       (container) => Effect.promise(() => container.stop())
     )
   )
@@ -47,7 +57,7 @@ export class MysqlContainer extends Context.Tag("test/MysqlContainer")<
     Effect.gen(function*(_) {
       const container = yield* _(MysqlContainer)
       return Mysql.client.layer({
-        url: Config.succeed(Secret.fromString(container.getConnectionUri()))
+        url: Config.succeed(Redacted.make(container.getConnectionUri()))
       })
     })
   ).pipe(Layer.provide(this.Live))
