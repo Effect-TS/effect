@@ -2,11 +2,11 @@ import * as SqlKysely from "@effect/sql-kysely/Kysely"
 import { assert, describe, it } from "@effect/vitest"
 import SqliteDB from "better-sqlite3"
 import { Context, Effect, Layer } from "effect"
-import { type Generated, type Kysely, SqliteDialect } from "kysely"
+import { CamelCasePlugin, type Generated, type Kysely, SqliteDialect } from "kysely"
 
 export interface User {
   id: Generated<number>
-  name: string
+  userName: string
 }
 
 interface Database {
@@ -15,34 +15,40 @@ interface Database {
 
 class KyselyDB extends Context.Tag("KyselyDB")<KyselyDB, Kysely<Database>>() {}
 
-const SqlLive = Layer.effect(
-  SqlKysely.KyselyDialect,
-  Effect.sync(() =>
-    new SqliteDialect({
+const KyselyDBLive = Layer.sync(KyselyDB, () =>
+  SqlKysely.make({
+    dialect: new SqliteDialect({
       database: new SqliteDB(":memory:")
-    })
-  )
-)
-const KyselyLive = Layer.effect(KyselyDB, SqlKysely.make<Database>()).pipe(Layer.provide(SqlLive))
+    }),
+    plugins: [
+      new CamelCasePlugin()
+    ]
+  }))
 
 describe("Kysely", () => {
-  it.scoped("queries", () =>
+  it.effect("queries", () =>
     Effect.gen(function*(_) {
       const db = yield* KyselyDB
 
-      yield* db.schema
+      const createTableQuery = db.schema
         .createTable("users")
         .addColumn("id", "integer", (c) => c.primaryKey().autoIncrement())
-        .addColumn("name", "text", (c) => c.notNull())
+        .addColumn("userName", "text", (c) => c.notNull())
 
-      const inserted = yield* db.insertInto("users").values({ name: "Alice" }).returningAll()
+      yield* createTableQuery
+
+      const inserted = yield* db.insertInto("users").values({ userName: "Alice" }).returningAll()
       const selected = yield* db.selectFrom("users").selectAll()
-      const updated = yield* db.updateTable("users").set({ name: "Bob" }).returningAll()
+      const updated = yield* db.updateTable("users").set({ userName: "Bob" }).returningAll()
       const deleted = yield* db.deleteFrom("users").returningAll()
 
-      assert.deepStrictEqual(inserted, [{ id: 1, name: "Alice" }])
-      assert.deepStrictEqual(selected, [{ id: 1, name: "Alice" }])
-      assert.deepStrictEqual(updated, [{ id: 1, name: "Bob" }])
-      assert.deepStrictEqual(deleted, [{ id: 1, name: "Bob" }])
-    }).pipe(Effect.provide(KyselyLive)))
+      assert.equal(
+        createTableQuery.compile().sql,
+        "create table \"users\" (\"id\" integer primary key autoincrement, \"user_name\" text not null)"
+      )
+      assert.deepStrictEqual(inserted, [{ id: 1, userName: "Alice" }])
+      assert.deepStrictEqual(selected, [{ id: 1, userName: "Alice" }])
+      assert.deepStrictEqual(updated, [{ id: 1, userName: "Bob" }])
+      assert.deepStrictEqual(deleted, [{ id: 1, userName: "Bob" }])
+    }).pipe(Effect.provide(KyselyDBLive)))
 })
