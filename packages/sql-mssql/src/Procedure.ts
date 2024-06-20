@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import type { Row } from "@effect/sql/Connection"
+import type { Row } from "@effect/sql/SqlConnection"
 import { identity } from "effect/Function"
 import type { Pipeable } from "effect/Pipeable"
 import { pipeArguments } from "effect/Pipeable"

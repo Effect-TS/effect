@@ -3,7 +3,7 @@
  */
 import * as DurableExecutionEvent from "@effect/cluster-workflow/DurableExecutionEvent"
 import * as Schema from "@effect/schema/Schema"
-import * as SqlClient from "@effect/sql/Client"
+import * as SqlClient from "@effect/sql/SqlClient"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -66,7 +66,7 @@ export const DurableExecutionJournal = Context.GenericTag<DurableExecutionJourna
  */
 export const make = ({ table }: DurableExecutionJournal.MakeOptions) =>
   Effect.gen(function*() {
-    const sql = yield* SqlClient.Client
+    const sql = yield* SqlClient.SqlClient
 
     yield* sql.onDialect({
       mssql: () =>

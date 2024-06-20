@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import * as Client from "@effect/sql/Client"
-import type { Connection } from "@effect/sql/Connection"
-import { SqlError } from "@effect/sql/Error"
+import * as Client from "@effect/sql/SqlClient"
+import type { Connection } from "@effect/sql/SqlConnection"
+import { SqlError } from "@effect/sql/SqlError"
 import * as Statement from "@effect/sql/Statement"
 import * as Otel from "@opentelemetry/semantic-conventions"
 import Sqlite from "better-sqlite3"
@@ -21,7 +21,7 @@ import * as Scope from "effect/Scope"
  * @category type ids
  * @since 1.0.0
  */
-export const TypeId: unique symbol = Symbol.for("@effect/sql-sqlite-node/Client")
+export const TypeId: unique symbol = Symbol.for("@effect/sql-sqlite-node/SqliteClient")
 
 /**
  * @category type ids
@@ -33,7 +33,7 @@ export type TypeId = typeof TypeId
  * @category models
  * @since 1.0.0
  */
-export interface SqliteClient extends Client.Client {
+export interface SqliteClient extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: SqliteClientConfig
   readonly export: Effect.Effect<Uint8Array, SqlError>
@@ -57,7 +57,7 @@ export interface BackupMetadata {
  * @category tags
  * @since 1.0.0
  */
-export const SqliteClient = Context.GenericTag<SqliteClient>("@effect/sql-sqlite-node/Client")
+export const SqliteClient = Context.GenericTag<SqliteClient>("@effect/sql-sqlite-node/SqliteClient")
 
 /**
  * @category models
@@ -246,13 +246,13 @@ export const make = (
  */
 export const layer = (
   config: Config.Config.Wrap<SqliteClientConfig>
-): Layer.Layer<SqliteClient | Client.Client, ConfigError> =>
+): Layer.Layer<SqliteClient | Client.SqlClient, ConfigError> =>
   Layer.scopedContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(make),
       Effect.map((client) =>
         Context.make(SqliteClient, client).pipe(
-          Context.add(Client.Client, client)
+          Context.add(Client.SqlClient, client)
         )
       )
     )

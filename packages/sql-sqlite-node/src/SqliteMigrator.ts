@@ -5,12 +5,12 @@ import * as Command from "@effect/platform/Command"
 import type { CommandExecutor } from "@effect/platform/CommandExecutor"
 import { FileSystem } from "@effect/platform/FileSystem"
 import { Path } from "@effect/platform/Path"
-import type * as Client from "@effect/sql/Client"
-import type { SqlError } from "@effect/sql/Error"
 import * as Migrator from "@effect/sql/Migrator"
+import type * as Client from "@effect/sql/SqlClient"
+import type { SqlError } from "@effect/sql/SqlError"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import { SqliteClient } from "./Client.js"
+import { SqliteClient } from "./SqliteClient.js"
 
 /**
  * @since 1.0.0
@@ -31,14 +31,14 @@ export const run: <R2 = never>(
 ) => Effect.Effect<
   ReadonlyArray<readonly [id: number, name: string]>,
   Migrator.MigrationError | SqlError,
-  FileSystem | Path | SqliteClient | Client.Client | CommandExecutor | R2
+  FileSystem | Path | SqliteClient | Client.SqlClient | CommandExecutor | R2
 > = Migrator.make({
   dumpSchema(path, table) {
     const dump = (args: Array<string>) =>
       Effect.gen(function*(_) {
         const sql = yield* SqliteClient
         const dump = yield* _(
-          Command.make("sqlite3", (sql as SqliteClient).config.filename, ...args),
+          Command.make("sqlite3", sql.config.filename, ...args),
           Command.string
         )
         return dump.replace(/^create table sqlite_sequence\(.*$/im, "")
@@ -85,5 +85,5 @@ export const layer = <R>(
 ): Layer.Layer<
   never,
   SqlError | Migrator.MigrationError,
-  SqliteClient | Client.Client | CommandExecutor | FileSystem | Path | R
+  SqliteClient | Client.SqlClient | CommandExecutor | FileSystem | Path | R
 > => Layer.effectDiscard(run(options))

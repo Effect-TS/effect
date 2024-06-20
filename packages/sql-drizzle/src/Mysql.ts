@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import * as Client from "@effect/sql/Client"
-import type { SqlError } from "@effect/sql/Error"
+import * as Client from "@effect/sql/SqlClient"
+import type { SqlError } from "@effect/sql/SqlError"
 import { MySqlSelectBase } from "drizzle-orm/mysql-core"
 import type { MySqlRemoteDatabase } from "drizzle-orm/mysql-proxy"
 import { drizzle } from "drizzle-orm/mysql-proxy"
@@ -16,8 +16,8 @@ import { makeRemoteCallback, patch, registerDialect } from "./internal/patch.js"
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect.Effect<MySqlRemoteDatabase, never, Client.Client> = Effect.gen(function*() {
-  const client = yield* Client.Client
+export const make: Effect.Effect<MySqlRemoteDatabase, never, Client.SqlClient> = Effect.gen(function*() {
+  const client = yield* Client.SqlClient
   const db = drizzle(yield* makeRemoteCallback)
   registerDialect((db as any).dialect, client)
   return db
@@ -36,7 +36,7 @@ export class MysqlDrizzle extends Context.Tag("@effect/sql-drizzle/Mysql")<
  * @since 1.0.0
  * @category layers
  */
-export const layer: Layer.Layer<MysqlDrizzle, never, Client.Client> = Layer.effect(MysqlDrizzle, make)
+export const layer: Layer.Layer<MysqlDrizzle, never, Client.SqlClient> = Layer.effect(MysqlDrizzle, make)
 
 // patch
 

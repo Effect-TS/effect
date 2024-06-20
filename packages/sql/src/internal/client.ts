@@ -7,22 +7,22 @@ import * as FiberRef from "effect/FiberRef"
 import * as Option from "effect/Option"
 import * as Scope from "effect/Scope"
 import * as Tracer from "effect/Tracer"
-import type * as Client from "../Client.js"
-import type * as Connection from "../Connection.js"
-import type * as Error from "../Error.js"
+import type * as Client from "../SqlClient.js"
+import type * as Connection from "../SqlConnection.js"
+import type * as Error from "../SqlError.js"
 import * as Statement from "../Statement.js"
 
 /** @internal */
-export const TypeId: Client.TypeId = Symbol.for("@effect/sql/Client") as Client.TypeId
+export const TypeId: Client.TypeId = Symbol.for("@effect/sql/SqlClient") as Client.TypeId
 
 /** @internal */
-export const clientTag = Context.GenericTag<Client.Client>("@effect/sql/Client")
+export const clientTag = Context.GenericTag<Client.SqlClient>("@effect/sql/SqlClient")
 
 /** @internal */
 export const TransactionConnection = Context.GenericTag<
   Client.TransactionConnection,
   readonly [conn: Connection.Connection, counter: number]
->("@effect/sql/Client/TransactionConnection")
+>("@effect/sql/SqlClient/TransactionConnection")
 
 /** @internal */
 export function make({
@@ -35,7 +35,7 @@ export function make({
   savepoint = (id) => `SAVEPOINT ${id}`,
   spanAttributes,
   transactionAcquirer
-}: Client.Client.MakeOptions): Client.Client {
+}: Client.SqlClient.MakeOptions): Client.SqlClient {
   const getConnection = Effect.flatMap(
     Effect.serviceOption(TransactionConnection),
     Option.match({
@@ -110,7 +110,7 @@ export function make({
       )
     )
 
-  const client: Client.Client = Object.assign(
+  const client: Client.SqlClient = Object.assign(
     Statement.make(getConnection, compiler, spanAttributes),
     {
       [TypeId as Client.TypeId]: TypeId as Client.TypeId,

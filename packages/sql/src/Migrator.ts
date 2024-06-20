@@ -7,8 +7,8 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
-import * as Client from "./Client.js"
-import type { SqlError } from "./Error.js"
+import * as Client from "./SqlClient.js"
+import type { SqlError } from "./SqlError.js"
 
 /**
  * @category model
@@ -84,10 +84,10 @@ export const make = <RD = never>({
 }: MigratorOptions<R2>): Effect.Effect<
   ReadonlyArray<readonly [id: number, name: string]>,
   MigrationError | SqlError,
-  Client.Client | RD | R2
+  Client.SqlClient | RD | R2
 > =>
   Effect.gen(function*(_) {
-    const sql = yield* Client.Client
+    const sql = yield* Client.SqlClient
     const ensureMigrationsTable = sql.onDialect({
       mssql: () =>
         sql`IF OBJECT_ID(N'${sql.literal(table)}', N'U') IS NULL

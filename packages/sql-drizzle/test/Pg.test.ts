@@ -1,4 +1,4 @@
-import * as Sql from "@effect/sql"
+import { SqlClient } from "@effect/sql"
 import { PgDrizzle } from "@effect/sql-drizzle/Pg"
 import { assert, describe, it } from "@effect/vitest"
 import * as D from "drizzle-orm/pg-core"
@@ -14,7 +14,7 @@ const users = D.pgTable("users", {
 describe.sequential("Pg", () => {
   it.effect("works", () =>
     Effect.gen(function*() {
-      const sql = yield* Sql.client.Client
+      const sql = yield* SqlClient.SqlClient
       const db = yield* PgDrizzle
 
       yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, snake_case TEXT NOT NULL)`
@@ -30,7 +30,7 @@ describe.sequential("Pg", () => {
 
   it.effect("remote callback", () =>
     Effect.gen(function*(_) {
-      const sql = yield* Sql.client.Client
+      const sql = yield* SqlClient.SqlClient
       const db = yield* PgDrizzle
       yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, snake_case TEXT NOT NULL)`
       yield* Effect.promise(() => db.insert(users).values({ name: "Alice", snakeCase: "snake" }))

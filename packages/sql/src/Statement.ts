@@ -9,9 +9,9 @@ import type * as Option from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type * as Stream from "effect/Stream"
 import type * as Tracer from "effect/Tracer"
-import type { Connection, Row } from "./Connection.js"
-import type { SqlError } from "./Error.js"
 import * as internal from "./internal/statement.js"
+import type { Connection, Row } from "./SqlConnection.js"
+import type { SqlError } from "./SqlError.js"
 
 /**
  * @category type id
