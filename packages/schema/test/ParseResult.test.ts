@@ -199,20 +199,26 @@ describe("ParseIssue.actual", () => {
     expect(Either.isEither(P.encode(S.String)("a")))
   })
 
-  it("mergeParseOptions", () => {
-    expect(P.mergeParseOptions(undefined, undefined)).toStrictEqual(undefined)
-    expect(P.mergeParseOptions({}, undefined)).toStrictEqual({})
-    expect(P.mergeParseOptions(undefined, {})).toStrictEqual({})
-    expect(P.mergeParseOptions({ errors: undefined }, undefined)).toStrictEqual({ errors: undefined })
-    expect(P.mergeParseOptions(undefined, { errors: undefined })).toStrictEqual({ errors: undefined })
-    expect(P.mergeParseOptions({ errors: "all" }, { errors: "first" })).toStrictEqual({
+  it("mergeInternalOptions", () => {
+    expect(P.mergeInternalOptions(undefined, undefined)).toStrictEqual(undefined)
+    expect(P.mergeInternalOptions({}, undefined)).toStrictEqual({})
+    expect(P.mergeInternalOptions(undefined, {})).toStrictEqual({})
+    expect(P.mergeInternalOptions({ errors: undefined }, undefined)).toStrictEqual({ errors: undefined })
+    expect(P.mergeInternalOptions(undefined, { errors: undefined })).toStrictEqual({ errors: undefined })
+    expect(P.mergeInternalOptions({ errors: "all" }, { errors: "first" })).toStrictEqual({
       errors: "first"
     })
-    expect(P.mergeParseOptions({ onExcessProperty: "ignore" }, { onExcessProperty: "error" })).toStrictEqual({
+    expect(P.mergeInternalOptions({ onExcessProperty: "ignore" }, { onExcessProperty: "error" })).toStrictEqual({
       onExcessProperty: "error"
     })
-    expect(P.mergeParseOptions({}, { exact: false })).toStrictEqual({ exact: false })
-    expect(P.mergeParseOptions({ exact: true }, { exact: false })).toStrictEqual({ exact: false })
+    expect(P.mergeInternalOptions({}, { exact: false })).toStrictEqual({ exact: false })
+    expect(P.mergeInternalOptions({ exact: true }, { exact: false })).toStrictEqual({ exact: false })
+
+    expect(P.mergeInternalOptions({ isEffectAllowed: true }, {})).toStrictEqual({ isEffectAllowed: true })
+    expect(P.mergeInternalOptions({}, { isEffectAllowed: true })).toStrictEqual({ isEffectAllowed: true })
+    expect(P.mergeInternalOptions({ isEffectAllowed: false }, { isEffectAllowed: true })).toStrictEqual({
+      isEffectAllowed: true
+    })
   })
 
   it("asserts", () => {

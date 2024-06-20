@@ -12,7 +12,7 @@ import { globalValue } from "effect/GlobalValue"
 import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
-import type { Concurrency, Mutable } from "effect/Types"
+import type { Concurrency } from "effect/Types"
 import * as AST from "./AST.js"
 import * as util_ from "./internal/util.js"
 import type * as Schema from "./Schema.js"
@@ -447,33 +447,23 @@ export type DeclarationDecodeUnknown<Out, R> = (
 ) => Effect.Effect<Out, ParseIssue, R>
 
 /** @internal */
-export const mergeParseOptions = (
-  options: AST.ParseOptions | undefined,
-  overrideOptions: AST.ParseOptions | number | undefined
-): AST.ParseOptions | undefined => {
+export const mergeInternalOptions = (
+  options: InternalOptions | undefined,
+  overrideOptions: InternalOptions | number | undefined
+): InternalOptions | undefined => {
   if (overrideOptions === undefined || Predicate.isNumber(overrideOptions)) {
     return options
   }
   if (options === undefined) {
     return overrideOptions
   }
-  const out: Mutable<AST.ParseOptions> = { ...options }
-  if (overrideOptions.errors !== undefined) {
-    out.errors = overrideOptions.errors
-  }
-  if (overrideOptions.onExcessProperty !== undefined) {
-    out.onExcessProperty = overrideOptions.onExcessProperty
-  }
-  if (overrideOptions.exact !== undefined) {
-    out.exact = overrideOptions.exact
-  }
-  return out
+  return { ...options, ...overrideOptions }
 }
 
 const getEither = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
   const parser = goMemo(ast, isDecoding)
   return (u: unknown, overrideOptions?: AST.ParseOptions): Either.Either<any, ParseIssue> =>
-    parser(u, mergeParseOptions(options, overrideOptions)) as any
+    parser(u, mergeInternalOptions(options, overrideOptions)) as any
 }
 
 const getSync = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
@@ -491,7 +481,7 @@ const getOption = (ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions
 const getEffect = <R>(ast: AST.AST, isDecoding: boolean, options?: AST.ParseOptions) => {
   const parser = goMemo(ast, isDecoding)
   return (input: unknown, overrideOptions?: AST.ParseOptions): Effect.Effect<any, ParseIssue, R> =>
-    parser(input, { ...mergeParseOptions(options, overrideOptions), isEffectAllowed: true })
+    parser(input, { ...mergeInternalOptions(options, overrideOptions), isEffectAllowed: true })
 }
 
 /**
@@ -702,7 +692,7 @@ export const validate = <A, I, R>(
 export const is = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: AST.ParseOptions) => {
   const parser = goMemo(AST.typeAST(schema.ast), true)
   return (u: unknown, overrideOptions?: AST.ParseOptions | number): u is A =>
-    Either.isRight(parser(u, { exact: true, ...mergeParseOptions(options, overrideOptions) }) as any)
+    Either.isRight(parser(u, { exact: true, ...mergeInternalOptions(options, overrideOptions) }) as any)
 }
 
 /**
@@ -717,7 +707,7 @@ export const asserts = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: AST.P
   return (u: unknown, overrideOptions?: AST.ParseOptions): asserts u is A => {
     const result: Either.Either<any, ParseIssue> = parser(u, {
       exact: true,
-      ...mergeParseOptions(options, overrideOptions)
+      ...mergeInternalOptions(options, overrideOptions)
     }) as any
     if (Either.isLeft(result)) {
       throw parseError(result.left)
@@ -793,7 +783,11 @@ const goMemo = (ast: AST.AST, isDecoding: boolean): Parser => {
   if (memo) {
     return memo
   }
-  const parser = go(ast, isDecoding)
+  const raw = go(ast, isDecoding)
+  const parseOptionsAnnotation = AST.getParseOptionsAnnotation(ast)
+  const parser: Parser = Option.isSome(parseOptionsAnnotation)
+    ? (i, options) => raw(i, mergeInternalOptions(options, parseOptionsAnnotation.value))
+    : raw
   memoMap.set(ast, parser)
   return parser
 }
