@@ -717,6 +717,30 @@ export const make = <A, E, R>(
 ): Micro<A, E, R> => unsafeMakeOptions(run, true)
 
 /**
+ * Converts a `Result` into a `Micro` effect.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category constructors
+ */
+export const fromResult = <A, E>(self: Result<A, E>): Micro<A, E> =>
+  make(function(_env, onResult) {
+    onResult(self)
+  })
+
+/**
+ * Converts a lazy `Result` into a `Micro` effect.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category constructors
+ */
+export const fromResultSync = <A, E>(self: LazyArg<Result<A, E>>): Micro<A, E> =>
+  make(function(_env, onResult) {
+    onResult(self())
+  })
+
+/**
  * Creates a `Micro` effect that will succeed with the specified constant value.
  *
  * @since 3.4.0
@@ -724,6 +748,24 @@ export const make = <A, E, R>(
  * @category constructors
  */
 export const succeed = <A>(a: A): Micro<A> => fromResult(ResultSuccess(a))
+
+/**
+ * Creates a `Micro` effect that will succeed with `Option.Some` of the value.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category constructors
+ */
+export const succeedSome = <A>(a: A): Micro<Option.Option<A>> => succeed(Option.some(a))
+
+/**
+ * Creates a `Micro` effect that will succeed with `Option.None`.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category constructors
+ */
+export const succeedNone: Micro<Option.Option<never>> = succeed(Option.none())
 
 /**
  * Creates a `Micro` effect that will fail with the specified error.
@@ -809,30 +851,6 @@ export const failWithSync = <E>(failure: LazyArg<Failure<E>>): Micro<never, E> =
 export const sync = <A>(evaluate: LazyArg<A>): Micro<A> =>
   make(function(_env, onResult) {
     onResult(ResultSuccess(evaluate()))
-  })
-
-/**
- * Converts a `Result` into a `Micro` effect.
- *
- * @since 3.4.0
- * @experimental
- * @category constructors
- */
-export const fromResult = <A, E>(self: Result<A, E>): Micro<A, E> =>
-  make(function(_env, onResult) {
-    onResult(self)
-  })
-
-/**
- * Converts a lazy `Result` into a `Micro` effect.
- *
- * @since 3.4.0
- * @experimental
- * @category constructors
- */
-export const fromResultSync = <A, E>(self: LazyArg<Result<A, E>>): Micro<A, E> =>
-  make(function(_env, onResult) {
-    onResult(self())
   })
 
 /**
