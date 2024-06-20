@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.57.8
+
+### Patch Changes
+
+- [#3030](https://github.com/Effect-TS/effect/pull/3030) [`3ba7ea1`](https://github.com/Effect-TS/effect/commit/3ba7ea1c3c2923e85bf2f17e41176f8f8796d203) Thanks @tim-smart! - update find-my-way-ts & multipasta
+
 ## 0.57.7
 
 ### Patch Changes
