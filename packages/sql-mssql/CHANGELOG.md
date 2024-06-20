@@ -1,5 +1,13 @@
 # @effect/sql-mssql
 
+## 0.3.17
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/platform@0.57.6
+  - @effect/sql@0.3.16
+
 ## 0.3.16
 
 ### Patch Changes
