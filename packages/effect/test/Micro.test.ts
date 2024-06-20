@@ -962,7 +962,7 @@ describe.concurrent("Micro", () => {
               Micro.void
           ),
           Micro.sandbox,
-          Micro.ignoreLogged
+          Micro.ignore
         )
         assert.isTrue(ref)
       }))
