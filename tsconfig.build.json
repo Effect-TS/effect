@@ -7,7 +7,6 @@
     { "path": "packages/cluster/tsconfig.build.json" },
     { "path": "packages/cluster-browser/tsconfig.build.json" },
     { "path": "packages/cluster-node/tsconfig.build.json" },
-    { "path": "packages/cluster-pg/tsconfig.build.json" },
     { "path": "packages/cluster-workflow/tsconfig.build.json" },
     { "path": "packages/experimental/tsconfig.build.json" },
     { "path": "packages/opentelemetry/tsconfig.build.json" },
