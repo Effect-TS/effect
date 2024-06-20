@@ -28,6 +28,7 @@ import * as Inspectable from "../Inspectable.js"
 import type { Logger } from "../Logger.js"
 import * as LogLevel from "../LogLevel.js"
 import type * as MetricLabel from "../MetricLabel.js"
+import * as Micro from "../Micro.js"
 import * as MRef from "../MutableRef.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
@@ -1071,6 +1072,37 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
 
   ["Some"](op: core.Primitive & { _op: "Some" }) {
     return core.exitSucceed(op.value)
+  }
+
+  ["Micro"](op: Micro.Micro<any, any, never> & { _op: "Micro" }) {
+    return core.unsafeAsync<any, any>((microResume) => {
+      const env = Micro.envUnsafeMakeEmpty().pipe(
+        Micro.envSet(Micro.currentContext, this.getFiberRef(core.currentContext))
+      )
+      let resume = microResume
+      op[Micro.runSymbol](env, (result) => {
+        if (result._tag === "Right") {
+          return resume(core.exitSucceed(result.right))
+        }
+        switch (result.left._tag) {
+          case "Aborted": {
+            return resume(core.exitFailCause(internalCause.interrupt(FiberId.none)))
+          }
+          case "Expected": {
+            return resume(core.fail(result.left.error))
+          }
+          case "Unexpected": {
+            return resume(core.die(result.left.defect))
+          }
+        }
+      })
+      return core.async<void>((abortResume) => {
+        resume = (_: any) => {
+          abortResume(core.void)
+        }
+        Micro.envGet(env, Micro.currentAbortController).abort()
+      })
+    })
   }
 
   [OpCodes.OP_SYNC](op: core.Primitive & { _op: OpCodes.OP_SYNC }) {
