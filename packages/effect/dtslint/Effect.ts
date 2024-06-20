@@ -1171,3 +1171,77 @@ pipe(
     _scope // $ExpectType { a: number; b: string; }
   ) => true)
 )
+
+// -------------------------------------------------------------------------------------
+// liftPredicate
+// -------------------------------------------------------------------------------------
+
+declare const primitiveNumber: number
+declare const primitiveNumberOrString: string | number
+declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
+
+// $ExpectType Effect<string, "b", never>
+pipe(
+  primitiveNumberOrString,
+  Effect.liftPredicate(Predicate.isString, (
+    _s // $ExpectType string | number
+  ) => "b" as const)
+)
+
+// $ExpectType Effect<string, "b", never>
+Effect.liftPredicate(primitiveNumberOrString, Predicate.isString, (
+  _s // $ExpectType string | number
+) => "b" as const)
+
+// $ExpectType Effect<number, "b", never>
+pipe(
+  primitiveNumberOrString,
+  Effect.liftPredicate(
+    (
+      n // $ExpectType string | number
+    ): n is number => typeof n === "number",
+    (
+      _s // $ExpectType string | number
+    ) => "b" as const
+  )
+)
+
+// $ExpectType Effect<number, "b", never>
+Effect.liftPredicate(
+  primitiveNumberOrString,
+  (
+    n // $ExpectType string | number
+  ): n is number => typeof n === "number",
+  (
+    _s // $ExpectType string | number
+  ) => "b" as const
+)
+
+// $ExpectType Effect<string | number, "b", never>
+pipe(
+  primitiveNumberOrString,
+  Effect.liftPredicate(predicateNumbersOrStrings, (
+    _s // $ExpectType string | number
+  ) => "b" as const)
+)
+
+// $ExpectType Effect<number, "b", never>
+pipe(
+  primitiveNumber,
+  Effect.liftPredicate(predicateNumbersOrStrings, (
+    _s // $ExpectType number
+  ) => "b" as const)
+)
+
+// $ExpectType Effect<number, "b", never>
+pipe(
+  primitiveNumber,
+  Effect.liftPredicate(
+    (
+      _n // $ExpectType number
+    ) => true,
+    (
+      _s // $ExpectType number
+    ) => "b" as const
+  )
+)

@@ -582,6 +582,39 @@ export const filterOrElse: {
     (a) => predicate(a) ? core.succeed<A | B>(a) : orElse(a)
   ))
 
+/** @internal */
+export const liftPredicate = dual<
+  {
+    <A, B extends A, E>(
+      refinement: Predicate.Refinement<NoInfer<A>, B>,
+      orFailWith: (a: NoInfer<A>) => E
+    ): (a: A) => Effect.Effect<B, E>
+    <A, E>(
+      predicate: Predicate.Predicate<NoInfer<A>>,
+      orFailWith: (a: NoInfer<A>) => E
+    ): (a: A) => Effect.Effect<A, E>
+  },
+  {
+    <A, E, B extends A>(
+      self: A,
+      refinement: Predicate.Refinement<A, B>,
+      orFailWith: (a: A) => E
+    ): Effect.Effect<B, E>
+    <A, E>(
+      self: A,
+      predicate: Predicate.Predicate<NoInfer<A>>,
+      orFailWith: (a: NoInfer<A>) => E
+    ): Effect.Effect<A, E>
+  }
+>(
+  3,
+  <A, E>(
+    self: A,
+    predicate: Predicate.Predicate<NoInfer<A>>,
+    orFailWith: (a: NoInfer<A>) => E
+  ): Effect.Effect<A, E> => core.suspend(() => predicate(self) ? core.succeed(self) : core.fail(orFailWith(self)))
+)
+
 /* @internal */
 export const filterOrFail: {
   <A, B extends A, E2>(
