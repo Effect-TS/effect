@@ -1,5 +1,64 @@
 # effect
 
+## 3.4.0
+
+### Minor Changes
+
+- [#2938](https://github.com/Effect-TS/effect/pull/2938) [`c0ce180`](https://github.com/Effect-TS/effect/commit/c0ce180861ad0938053c0e6145e813fa6404df3b) Thanks @LaureRC! - Make Option.liftPredicate dual
+
+- [#2938](https://github.com/Effect-TS/effect/pull/2938) [`61707b6`](https://github.com/Effect-TS/effect/commit/61707b6ffc7397c2ba0dce22512b44955724f60f) Thanks @LaureRC! - Add Effect.liftPredicate
+
+  `Effect.liftPredicate` transforms a `Predicate` function into an `Effect` returning the input value if the predicate returns `true` or failing with specified error if the predicate fails.
+
+  ```ts
+  import { Effect } from "effect";
+
+  const isPositive = (n: number): boolean => n > 0;
+
+  // succeeds with `1`
+  Effect.liftPredicate(1, isPositive, (n) => `${n} is not positive`);
+
+  // fails with `"0 is not positive"`
+  Effect.liftPredicate(0, isPositive, (n) => `${n} is not positive`);
+  ```
+
+- [#2938](https://github.com/Effect-TS/effect/pull/2938) [`9c1b5b3`](https://github.com/Effect-TS/effect/commit/9c1b5b39e6c19604ce834f072a114ad392c50a06) Thanks @tim-smart! - add EventListener type to Stream to avoid use of dom lib
+
+- [#2938](https://github.com/Effect-TS/effect/pull/2938) [`a35faf8`](https://github.com/Effect-TS/effect/commit/a35faf8d116f94899bfc03feab33b004c8ddfdf7) Thanks @gcanti! - Add `lastNonEmpty` function to `Chunk` module, closes #2946
+
+- [#2938](https://github.com/Effect-TS/effect/pull/2938) [`ff73c0c`](https://github.com/Effect-TS/effect/commit/ff73c0cacd66132bfad2e5211b3eae347729c667) Thanks @dilame! - feat(Stream): implement Success, Error, Context type accessors
+
+- [#2938](https://github.com/Effect-TS/effect/pull/2938) [`984d516`](https://github.com/Effect-TS/effect/commit/984d516ccd9412dc41188f6a46b748dd20dd5848) Thanks @tim-smart! - add Micro module
+
+  A lightweight alternative to Effect, for when bundle size really matters.
+
+  At a minimum, Micro adds 5kb gzipped to your bundle, and scales with the amount
+  of features you use.
+
+- [#2938](https://github.com/Effect-TS/effect/pull/2938) [`8c3b8a2`](https://github.com/Effect-TS/effect/commit/8c3b8a2ce208eab753b6206a51605a424f104e98) Thanks @gcanti! - add `ManagedRuntime` type utils (`Context`, and `Error`)
+
+- [#2938](https://github.com/Effect-TS/effect/pull/2938) [`017e2f9`](https://github.com/Effect-TS/effect/commit/017e2f9b371ce24ea4945e5d7390c934ad3c39cf) Thanks @LaureRC! - Add Either.liftPredicate
+
+- [#2938](https://github.com/Effect-TS/effect/pull/2938) [`91bf8a2`](https://github.com/Effect-TS/effect/commit/91bf8a2e9d1959393b3cf7366cc1d584d3e666b7) Thanks @msensys! - Add `Tuple.at` api, to retrieve an element at a specified index from a tuple.
+
+  ```ts
+  import { Tuple } from "effect";
+
+  assert.deepStrictEqual(Tuple.at([1, "hello", true], 1), "hello");
+  ```
+
+- [#2938](https://github.com/Effect-TS/effect/pull/2938) [`c6a4a26`](https://github.com/Effect-TS/effect/commit/c6a4a266606575fd2c7165940c4072ad4c57d01f) Thanks @datner! - add `ensure` util for Array, used to normalize `A | ReadonlyArray<A>`
+
+  ```ts
+  import { ensure } from "effect/Array";
+
+  // lets say you are not 100% sure if it's a member or a collection
+  declare const someValue: { foo: string } | Array<{ foo: string }>;
+
+  // $ExpectType ({ foo: string })[]
+  const normalized = ensure(someValue);
+  ```
+
 ## 3.3.5
 
 ### Patch Changes
