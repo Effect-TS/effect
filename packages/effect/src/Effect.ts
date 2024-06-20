@@ -2193,26 +2193,14 @@ export const uninterruptibleMask: <A, E, R>(
  * @since 3.4.0
  */
 export const liftPredicate: {
-  <A, B extends A, E>(refinement: Refinement<NoInfer<A>, B>, orFailWith: (a: NoInfer<A>) => E): (a: A) => Effect<B, E>
-  <A, E>(
-    predicate: Predicate<NoInfer<A>>,
+  <A, B extends A, E>(
+    refinement: Refinement<NoInfer<A>, B>,
     orFailWith: (a: NoInfer<A>) => E
-  ): (a: A) => Effect<A, E>
-  <A, E, B extends A>(
-    self: A,
-    refinement: Refinement<A, B>,
-    orFailWith: (a: A) => E
-  ): Effect<B, E>
-  <A, E>(
-    self: A,
-    predicate: Predicate<NoInfer<A>>,
-    orFailWith: (a: NoInfer<A>) => E
-  ): Effect<A, E>
-} = dual(
-  3,
-  <A, E>(a: A, predicate: Predicate<A>, orFailWith: (a: A) => E): Effect<A, E> =>
-    predicate(a) ? succeed(a) : fail(orFailWith(a))
-)
+  ): (a: A) => Effect<B, E>
+  <A, E>(predicate: Predicate<NoInfer<A>>, orFailWith: (a: NoInfer<A>) => E): (a: A) => Effect<A, E>
+  <A, E, B extends A>(self: A, refinement: Refinement<A, B>, orFailWith: (a: A) => E): Effect<B, E>
+  <A, E>(self: A, predicate: Predicate<NoInfer<A>>, orFailWith: (a: NoInfer<A>) => E): Effect<A, E>
+} = effect.liftPredicate
 
 // -------------------------------------------------------------------------------------
 // mapping
