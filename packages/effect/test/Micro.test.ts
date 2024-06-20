@@ -967,4 +967,24 @@ describe.concurrent("Micro", () => {
         assert.isTrue(ref)
       }))
   })
+  describe("error handling", () => {
+    class ErrorA extends Micro.TaggedError("A") {}
+    class ErrorB extends Micro.TaggedError("B") {}
+    class ErrorC extends Micro.Error {}
+
+    it.effect("catchTag", () =>
+      Micro.gen(function*() {
+        let error: ErrorA | ErrorB | ErrorC = new ErrorA()
+        const effect = Micro.failSync(() => error).pipe(
+          Micro.catchTag("A", (_) => Micro.succeed(1)),
+          Micro.catchTag("B", (_) => Micro.succeed(2)),
+          Micro.orElseSucceed(() => 3)
+        )
+        assert.strictEqual(yield* effect, 1)
+        error = new ErrorB()
+        assert.strictEqual(yield* effect, 2)
+        error = new ErrorC()
+        assert.strictEqual(yield* effect, 3)
+      }))
+  })
 })

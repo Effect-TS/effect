@@ -9,7 +9,7 @@ import * as Context from "./Context.js"
 import type { Effect, EffectTypeId } from "./Effect.js"
 import * as Effectable from "./Effectable.js"
 import * as Either from "./Either.js"
-import { constVoid, dual, identity, type LazyArg } from "./Function.js"
+import { constTrue, constVoid, dual, identity, type LazyArg } from "./Function.js"
 import { globalValue } from "./GlobalValue.js"
 import type { Inspectable } from "./Inspectable.js"
 import { NodeInspectSymbol, toStringUnknown } from "./Inspectable.js"
@@ -274,6 +274,27 @@ class FailureAbortedImpl extends FailureImpl<"Aborted", never> implements Failur
  * @category failure
  */
 export const FailureAborted = (traces: ReadonlyArray<string> = []): Failure<never> => new FailureAbortedImpl(traces)
+
+/**
+ * @since 3.4.0
+ * @experimental
+ * @category failure
+ */
+export const failureIsExpected = <E>(self: Failure<E>): self is Failure.Expected<E> => self._tag === "Expected"
+
+/**
+ * @since 3.4.0
+ * @experimental
+ * @category failure
+ */
+export const failureIsUnexpected = <E>(self: Failure<E>): self is Failure.Unexpected => self._tag === "Unexpected"
+
+/**
+ * @since 3.4.0
+ * @experimental
+ * @category failure
+ */
+export const failureIsAborted = <E>(self: Failure<E>): self is Failure.Aborted => self._tag === "Aborted"
 
 /**
  * @since 3.4.0
@@ -1538,12 +1559,10 @@ export const zip: {
 
 /**
  * Filter the specified effect with the provided function, failing with specified
- * error if the predicate fails.
+ * `Failure` if the predicate fails.
  *
  * In addition to the filtering capabilities discussed earlier, you have the option to further
  * refine and narrow down the type of the success channel by providing a
- * [user-defined type guard](https://www.typescriptlang.org/docs/handbook/2/narrowing.html#using-type-predicates).
- * Let's explore this concept through an example:
  *
  * @since 3.4.0
  * @experimental
@@ -1576,8 +1595,6 @@ export const filterOrFailWith: {
  *
  * In addition to the filtering capabilities discussed earlier, you have the option to further
  * refine and narrow down the type of the success channel by providing a
- * [user-defined type guard](https://www.typescriptlang.org/docs/handbook/2/narrowing.html#using-type-predicates).
- * Let's explore this concept through an example:
  *
  * @since 3.4.0
  * @experimental
@@ -1843,16 +1860,49 @@ export const catchFailure: {
   <A, E, R, B, E2, R2>(
     self: Micro<A, E, R>,
     f: (failure: NoInfer<Failure<E>>) => Micro<B, E2, R2>
-  ): Micro<A | B, E2, R | R2> =>
-    make(function(env, onResult) {
-      self[runSymbol](env, function(result) {
-        if (result._tag === "Right") {
-          return onResult(result as any)
-        }
-        f(result.left)[runSymbol](env, onResult)
-      })
-    })
+  ): Micro<A | B, E2, R | R2> => catchFailureIf(self, constTrue, f)
 )
+
+/**
+ * Selectively catch the full `Failure` object of the given `Micro` effect,
+ * allowing you to recover from the specified failure.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category error handling
+ */
+export const catchFailureIf: {
+  <E, B, E2, R2, EB extends Failure<E>>(
+    refinement: Refinement<Failure<E>, EB>,
+    f: (failure: EB) => Micro<B, E2, R2>
+  ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E2, R | R2>
+  <E, B, E2, R2>(
+    predicate: Predicate<Failure<NoInfer<E>>>,
+    f: (failure: NoInfer<Failure<E>>) => Micro<B, E2, R2>
+  ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E2, R | R2>
+  <A, E, R, B, E2, R2, EB extends Failure<E>>(
+    self: Micro<A, E, R>,
+    refinement: Refinement<Failure<E>, EB>,
+    f: (failure: EB) => Micro<B, E2, R2>
+  ): Micro<A | B, E2, R | R2>
+  <A, E, R, B, E2, R2>(
+    self: Micro<A, E, R>,
+    predicate: Predicate<Failure<NoInfer<E>>>,
+    f: (failure: NoInfer<Failure<E>>) => Micro<B, E2, R2>
+  ): Micro<A | B, E2, R | R2>
+} = dual(3, <A, E, R, B, E2, R2, EB extends Failure<E>>(
+  self: Micro<A, E, R>,
+  refinement: Refinement<Failure<E>, EB>,
+  f: (failure: EB) => Micro<B, E2, R2>
+): Micro<A | B, E2, R | R2> =>
+  make(function(env, onResult) {
+    self[runSymbol](env, function(result) {
+      if (result._tag === "Right" || !refinement(result.left)) {
+        return onResult(result as any)
+      }
+      f(result.left)[runSymbol](env, onResult)
+    })
+  }))
 
 /**
  * Catch the error of the given `Micro` effect, allowing you to recover from it.
@@ -1873,8 +1923,7 @@ export const catchExpected: {
   <A, E, R, B, E2, R2>(
     self: Micro<A, E, R>,
     f: (a: NoInfer<E>) => Micro<B, E2, R2>
-  ): Micro<A | B, E2, R | R2> =>
-    catchFailure(self, (failure) => failure._tag === "Expected" ? f(failure.error) : failWith(failure))
+  ): Micro<A | B, E2, R | R2> => catchFailureIf(self, failureIsExpected, (failure) => f(failure.error))
 )
 
 /**
@@ -1887,15 +1936,12 @@ export const catchExpected: {
 export const catchUnexpected: {
   <E, B, E2, R2>(
     f: (defect: unknown) => Micro<B, E2, R2>
-  ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E2, R | R2>
-  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (defect: unknown) => Micro<B, E2, R2>): Micro<A | B, E2, R | R2>
+  ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E | E2, R | R2>
+  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (defect: unknown) => Micro<B, E2, R2>): Micro<A | B, E | E2, R | R2>
 } = dual(
   2,
-  <A, E, R, B, E2, R2>(
-    self: Micro<A, E, R>,
-    f: (a: NoInfer<E>) => Micro<B, E2, R2>
-  ): Micro<A | B, E2, R | R2> =>
-    catchFailure(self, (failure) => failure._tag === "Expected" ? f(failure.error) : failWith(failure))
+  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (defect: unknown) => Micro<B, E2, R2>): Micro<A | B, E | E2, R | R2> =>
+    catchFailureIf(self, failureIsUnexpected, (failure) => f(failure.defect))
 )
 
 /**
@@ -1912,8 +1958,46 @@ export const tapFailure: {
   <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: NoInfer<Failure<E>>) => Micro<B, E2, R2>): Micro<A, E | E2, R | R2>
 } = dual(
   2,
-  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: NoInfer<E>) => Micro<B, E2, R2>): Micro<A, E | E2, R | R2> =>
-    catchFailure(self, (failure) => andThen(f(failure as any), failWith(failure)))
+  <A, E, R, B, E2, R2>(
+    self: Micro<A, E, R>,
+    f: (a: NoInfer<Failure<E>>) => Micro<B, E2, R2>
+  ): Micro<A, E | E2, R | R2> => tapFailureIf(self, constTrue, f)
+)
+
+/**
+ * Perform a side effect using the full `Failure` object of the given `Micro`.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category error handling
+ */
+export const tapFailureIf: {
+  <E, B, E2, R2, EB extends Failure<E>>(
+    refinement: Refinement<Failure<E>, EB>,
+    f: (a: EB) => Micro<B, E2, R2>
+  ): <A, R>(self: Micro<A, E, R>) => Micro<A, E | E2, R | R2>
+  <E, B, E2, R2>(
+    predicate: (failure: NoInfer<Failure<E>>) => boolean,
+    f: (a: NoInfer<Failure<E>>) => Micro<B, E2, R2>
+  ): <A, R>(self: Micro<A, E, R>) => Micro<A, E | E2, R | R2>
+  <A, E, R, B, E2, R2, EB extends Failure<E>>(
+    self: Micro<A, E, R>,
+    refinement: Refinement<Failure<E>, EB>,
+    f: (a: EB) => Micro<B, E2, R2>
+  ): Micro<A, E | E2, R | R2>
+  <A, E, R, B, E2, R2>(
+    self: Micro<A, E, R>,
+    predicate: (failure: NoInfer<Failure<E>>) => boolean,
+    f: (a: NoInfer<Failure<E>>) => Micro<B, E2, R2>
+  ): Micro<A, E | E2, R | R2>
+} = dual(
+  3,
+  <A, E, R, B, E2, R2, EB extends Failure<E>>(
+    self: Micro<A, E, R>,
+    refinement: Refinement<Failure<E>, EB>,
+    f: (a: EB) => Micro<B, E2, R2>
+  ): Micro<A, E | E2, R | R2> =>
+    catchFailureIf(self, refinement, (failure) => andThen(f(failure as any), failWith(failure)))
 )
 
 /**
@@ -1923,7 +2007,7 @@ export const tapFailure: {
  * @experimental
  * @category error handling
  */
-export const tapError: {
+export const tapExpected: {
   <E, B, E2, R2>(
     f: (a: NoInfer<E>) => Micro<B, E2, R2>
   ): <A, R>(self: Micro<A, E, R>) => Micro<A, E | E2, R | R2>
@@ -1931,7 +2015,25 @@ export const tapError: {
 } = dual(
   2,
   <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: NoInfer<E>) => Micro<B, E2, R2>): Micro<A, E | E2, R | R2> =>
-    tapFailure(self, (failure) => failure._tag === "Expected" ? f(failure.error) : failWith(failure))
+    tapFailureIf(self, failureIsExpected, (failure) => f(failure.error))
+)
+
+/**
+ * Perform a side effect from unexpected errors of the given `Micro`.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category error handling
+ */
+export const tapUnexpected: {
+  <E, B, E2, R2>(
+    f: (defect: unknown) => Micro<B, E2, R2>
+  ): <A, R>(self: Micro<A, E, R>) => Micro<A, E | E2, R | R2>
+  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (defect: unknown) => Micro<B, E2, R2>): Micro<A, E | E2, R | R2>
+} = dual(
+  2,
+  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (defect: unknown) => Micro<B, E2, R2>): Micro<A, E | E2, R | R2> =>
+    tapFailureIf(self, failureIsUnexpected, (failure) => f(failure.defect))
 )
 
 /**
@@ -1966,7 +2068,12 @@ export const catchIf: {
     self: Micro<A, E, R>,
     pred: Refinement<E, EB>,
     f: (a: NoInfer<EB>) => Micro<B, E2, R2>
-  ): Micro<A | B, E2, R | R2> => catchExpected(self, (error) => pred(error) ? f(error) : fail(error) as any)
+  ): Micro<A | B, E2, R | R2> =>
+    catchFailureIf(
+      self,
+      (f): f is Failure.Expected<EB> => failureIsExpected(f) && pred(f.error),
+      (failure) => f(failure.error)
+    )
 )
 
 /**
