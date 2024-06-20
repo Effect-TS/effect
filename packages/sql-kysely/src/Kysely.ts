@@ -18,4 +18,4 @@ export class KyselyDialect extends Context.Tag("KyselyDialect")<KyselyDialect, D
  */
 export const make = <DB>() => Effect.map(KyselyDialect, makeFromDialect<DB>)
 
-export * from "./patch.types.js"
+export type * from "./patch.types.js"

@@ -16,4 +16,4 @@ export const make = <DB>() =>
     createQueryCompiler: () => new PostgresQueryCompiler()
   })
 
-export * from "./patch.types.js"
+export type * from "./patch.types.js"
