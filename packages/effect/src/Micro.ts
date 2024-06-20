@@ -2728,9 +2728,49 @@ export const onResult: {
 } = dual(
   2,
   <A, E, R, XE, XR>(self: Micro<A, E, R>, f: (result: Result<A, E>) => Micro<void, XE, XR>): Micro<A, E | XE, R | XR> =>
+    onResultIf(self, constTrue, f)
+)
+
+/**
+ * When the `Micro` effect is completed, run the given finalizer effect if it
+ * matches the specified predicate.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category resources & finalization
+ */
+export const onResultIf: {
+  <A, E, XE, XR, B extends Result<A, E>>(
+    refinement: Refinement<Result<A, E>, B>,
+    f: (result: B) => Micro<void, XE, XR>
+  ): <R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
+  <A, E, XE, XR>(
+    predicate: Predicate<Result<NoInfer<A>, NoInfer<E>>>,
+    f: (result: Result<NoInfer<A>, NoInfer<E>>) => Micro<void, XE, XR>
+  ): <R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
+  <A, E, R, XE, XR, B extends Result<A, E>>(
+    self: Micro<A, E, R>,
+    refinement: Refinement<Result<A, E>, B>,
+    f: (result: B) => Micro<void, XE, XR>
+  ): Micro<A, E | XE, R | XR>
+  <A, E, R, XE, XR>(
+    self: Micro<A, E, R>,
+    predicate: Predicate<Result<NoInfer<A>, NoInfer<E>>>,
+    f: (result: Result<NoInfer<A>, NoInfer<E>>) => Micro<void, XE, XR>
+  ): Micro<A, E | XE, R | XR>
+} = dual(
+  3,
+  <A, E, R, XE, XR, B extends Result<A, E>>(
+    self: Micro<A, E, R>,
+    refinement: Refinement<Result<A, E>, B>,
+    f: (result: B) => Micro<void, XE, XR>
+  ): Micro<A, E | XE, R | XR> =>
     uninterruptibleMask((restore) =>
       make(function(env, onResult) {
         restore(self)[runSymbol](env, function(result) {
+          if (!refinement(result)) {
+            return onResult(result)
+          }
           f(result)[runSymbol](env, function(finalizerResult) {
             if (finalizerResult._tag === "Left") {
               return onResult(finalizerResult as any)
@@ -2781,17 +2821,17 @@ export const onFailure: {
   <A, E, R, XE, XR>(
     self: Micro<A, E, R>,
     f: (failure: Failure<NoInfer<E>>) => Micro<void, XE, XR>
-  ): Micro<A, E | XE, R | XR> => onResult(self, (result) => result._tag === "Left" ? f(result.left) : void_)
+  ): Micro<A, E | XE, R | XR> => onResultIf(self, resultIsFailure, (result) => f(result.left))
 )
 
 /**
- * If this `Micro` effect is interrupted, run the finalizer effect.
+ * If this `Micro` effect is aborted, run the finalizer effect.
  *
  * @since 3.4.0
  * @experimental
  * @category resources & finalization
  */
-export const onInterrupt: {
+export const onAbort: {
   <XE, XR>(
     finalizer: Micro<void, XE, XR>
   ): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
@@ -2799,7 +2839,7 @@ export const onInterrupt: {
 } = dual(
   2,
   <A, E, R, XE, XR>(self: Micro<A, E, R>, finalizer: Micro<void, XE, XR>): Micro<A, E | XE, R | XR> =>
-    onResult(self, (result) => (result._tag === "Left" && result.left._tag === "Aborted" ? finalizer : void_))
+    onResultIf(self, resultIsAborted, (_) => finalizer)
 )
 
 /**
@@ -2938,7 +2978,7 @@ export const provideServiceMicro: {
 
 /**
  * Wrap the given `Micro` effect in an uninterruptible region, preventing the
- * effect from being interrupted.
+ * effect from being aborted.
  *
  * @since 3.4.0
  * @experimental
@@ -2956,11 +2996,10 @@ export const uninterruptible = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, R> =
 
 /**
  * Wrap the given `Micro` effect in an uninterruptible region, preventing the
- * effect from being interrupted.
+ * effect from being aborted.
  *
  * You can use the `restore` function to restore a `Micro` effect to the
- * interruptibility state that was present before the `uninterruptibleMask` was
- * applied.
+ * interruptibility state before the `uninterruptibleMask` was applied.
  *
  * @since 3.4.0
  * @experimental
@@ -2992,7 +3031,7 @@ export const uninterruptibleMask = <A, E, R>(
 
 /**
  * Wrap the given `Micro` effect in an interruptible region, allowing the effect
- * to be interrupted.
+ * to be aborted.
  *
  * @since 3.4.0
  * @experimental
@@ -3389,6 +3428,14 @@ export interface Handle<A, E = never> {
   readonly unsafePoll: () => Result<A, E> | null
 }
 
+/**
+ * @since 3.4.0
+ * @experimental
+ * @category handle & forking
+ */
+export const isHandle = (u: unknown): u is Handle<unknown, unknown> =>
+  typeof u === "object" && u !== null && HandleTypeId in u
+
 class HandleImpl<A, E> implements Handle<A, E> {
   readonly [HandleTypeId]: HandleTypeId
 
@@ -3549,7 +3596,7 @@ export const forkIn: {
  * Run the `Micro` effect in a new `Handle` that can be awaited, joined, or
  * aborted.
  *
- * The lifetime of the handle will be attached to a `MicroScope`.
+ * The lifetime of the handle will be attached to the current `MicroScope`.
  *
  * @since 3.4.0
  * @experimental
@@ -3630,7 +3677,7 @@ export const runPromiseResult = <A, E>(
 
 /**
  * Execute the `Micro` effect and return a `Promise` that resolves with the
- * successful result of the computation.
+ * successful value of the computation.
  *
  * @since 3.4.0
  * @experimental
@@ -3652,7 +3699,7 @@ export const runPromise = <A, E>(
 /**
  * Attempt to execute the `Micro` effect synchronously and return the `Result`.
  *
- * If any asynchronous effects are encountered, the function will return an
+ * If any asynchronous effects are encountered, the function will return a
  * FailureUnexpected containing the `Handle`.
  *
  * @since 3.4.0

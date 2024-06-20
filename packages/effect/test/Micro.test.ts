@@ -299,7 +299,7 @@ describe.concurrent("Micro", () => {
       const result = yield* Micro.raceAll([100, 75, 50, 0, 25].map((ms) =>
         (ms === 0 ? Micro.fail("boom") : Micro.succeed(ms)).pipe(
           Micro.delay(ms),
-          Micro.onInterrupt(
+          Micro.onAbort(
             Micro.sync(() => {
               interrupted.push(ms)
             })
@@ -316,7 +316,7 @@ describe.concurrent("Micro", () => {
       const result = yield* Micro.raceAllFirst([100, 75, 50, 0, 25].map((ms) =>
         (ms === 0 ? Micro.fail("boom") : Micro.succeed(ms)).pipe(
           Micro.delay(ms),
-          Micro.onInterrupt(
+          Micro.onAbort(
             Micro.sync(() => {
               interrupted.push(ms)
             })
@@ -699,12 +699,12 @@ describe.concurrent("Micro", () => {
         let child = false
         let parent = false
         const handle = yield* Micro.never.pipe(
-          Micro.onInterrupt(Micro.sync(() => {
+          Micro.onAbort(Micro.sync(() => {
             child = true
           })),
           Micro.fork,
           Micro.andThen(Micro.never),
-          Micro.onInterrupt(Micro.sync(() => {
+          Micro.onAbort(Micro.sync(() => {
             parent = true
           })),
           Micro.fork
@@ -722,12 +722,12 @@ describe.concurrent("Micro", () => {
         let child = false
         let parent = false
         const handle = yield* Micro.never.pipe(
-          Micro.onInterrupt(Micro.sync(() => {
+          Micro.onAbort(Micro.sync(() => {
             child = true
           })),
           Micro.forkDaemon,
           Micro.andThen(Micro.never),
-          Micro.onInterrupt(Micro.sync(() => {
+          Micro.onAbort(Micro.sync(() => {
             parent = true
           })),
           Micro.fork
@@ -745,7 +745,7 @@ describe.concurrent("Micro", () => {
         let aborted = false
         const scope = yield* Micro.scopeMake
         yield* Micro.never.pipe(
-          Micro.onInterrupt(Micro.sync(() => {
+          Micro.onAbort(Micro.sync(() => {
             aborted = true
           })),
           Micro.forkIn(scope)
@@ -762,7 +762,7 @@ describe.concurrent("Micro", () => {
         let aborted = false
         const scope = yield* Micro.scopeMake
         yield* Micro.never.pipe(
-          Micro.onInterrupt(Micro.sync(() => {
+          Micro.onAbort(Micro.sync(() => {
             aborted = true
           })),
           Micro.forkScoped,
