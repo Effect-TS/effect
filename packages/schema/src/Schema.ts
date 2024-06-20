@@ -52,6 +52,11 @@ import type * as Serializable from "./Serializable.js"
 import * as TreeFormatter from "./TreeFormatter.js"
 
 /**
+ * @since 0.68.2
+ */
+export type Simplify<A> = { [K in keyof A]: A[K] } & {}
+
+/**
  * @since 0.67.0
  */
 export type SimplifyMutable<A> = {
@@ -2410,8 +2415,8 @@ export interface TypeLiteral<
 > extends
   AnnotableClass<
     TypeLiteral<Fields, Records>,
-    Types.Simplify<TypeLiteral.Type<Fields, Records>>,
-    Types.Simplify<TypeLiteral.Encoded<Fields, Records>>,
+    Simplify<TypeLiteral.Type<Fields, Records>>,
+    Simplify<TypeLiteral.Encoded<Fields, Records>>,
     | Struct.Context<Fields>
     | IndexSignature.Context<Records>
   >
@@ -2419,12 +2424,12 @@ export interface TypeLiteral<
   readonly fields: { readonly [K in keyof Fields]: Fields[K] }
   readonly records: Readonly<Records>
   annotations(
-    annotations: Annotations.Schema<Types.Simplify<TypeLiteral.Type<Fields, Records>>>
+    annotations: Annotations.Schema<Simplify<TypeLiteral.Type<Fields, Records>>>
   ): TypeLiteral<Fields, Records>
   make(
-    props: Types.Simplify<TypeLiteral.Constructor<Fields, Records>>,
+    props: Simplify<TypeLiteral.Constructor<Fields, Records>>,
     options?: MakeOptions
-  ): Types.Simplify<TypeLiteral.Type<Fields, Records>>
+  ): Simplify<TypeLiteral.Type<Fields, Records>>
 }
 
 const isPropertySignature = (u: unknown): u is PropertySignature.All =>
@@ -2534,13 +2539,13 @@ const makeTypeLiteralClass = <
   ast: AST.AST = getDefaultTypeLiteralAST(fields, records)
 ): TypeLiteral<Fields, Records> => {
   return class TypeLiteralClass extends make<
-    Types.Simplify<TypeLiteral.Type<Fields, Records>>,
-    Types.Simplify<TypeLiteral.Encoded<Fields, Records>>,
+    Simplify<TypeLiteral.Type<Fields, Records>>,
+    Simplify<TypeLiteral.Encoded<Fields, Records>>,
     | Struct.Context<Fields>
     | IndexSignature.Context<Records>
   >(ast) {
     static override annotations(
-      annotations: Annotations.Schema<Types.Simplify<TypeLiteral.Type<Fields, Records>>>
+      annotations: Annotations.Schema<Simplify<TypeLiteral.Type<Fields, Records>>>
     ): TypeLiteral<Fields, Records> {
       return makeTypeLiteralClass(this.fields, this.records, mergeSchemaAnnotations(this.ast, annotations))
     }
@@ -2550,9 +2555,9 @@ const makeTypeLiteralClass = <
     static records = [...records] as Records
 
     static make = (
-      props: Types.Simplify<TypeLiteral.Constructor<Fields, Records>>,
+      props: Simplify<TypeLiteral.Constructor<Fields, Records>>,
       options?: MakeOptions
-    ): Types.Simplify<TypeLiteral.Type<Fields, Records>> => {
+    ): Simplify<TypeLiteral.Type<Fields, Records>> => {
       const propsWithDefaults: any = lazilyMergeDefaults(fields, { ...props as any })
       return getDisableValidationMakeOption(options)
         ? propsWithDefaults
@@ -2566,7 +2571,7 @@ const makeTypeLiteralClass = <
  * @since 0.67.0
  */
 export interface Struct<Fields extends Struct.Fields> extends TypeLiteral<Fields, []> {
-  annotations(annotations: Annotations.Schema<Types.Simplify<Struct.Type<Fields>>>): Struct<Fields>
+  annotations(annotations: Annotations.Schema<Simplify<Struct.Type<Fields>>>): Struct<Fields>
 }
 
 /**
@@ -2653,14 +2658,14 @@ export interface Record$<K extends Schema.All, V extends Schema.All> extends Typ
   readonly key: K
   readonly value: V
   annotations(
-    annotations: Annotations.Schema<Types.Simplify<TypeLiteral.Type<{}, [{ key: K; value: V }]>>>
+    annotations: Annotations.Schema<Simplify<TypeLiteral.Type<{}, [{ key: K; value: V }]>>>
   ): Record$<K, V>
 }
 
 const makeRecordClass = <K extends Schema.All, V extends Schema.All>(key: K, value: V, ast?: AST.AST): Record$<K, V> =>
   class RecordClass extends makeTypeLiteralClass({}, [{ key, value }], ast) {
     static override annotations(
-      annotations: Annotations.Schema<Types.Simplify<TypeLiteral.Type<{}, [{ key: K; value: V }]>>>
+      annotations: Annotations.Schema<Simplify<TypeLiteral.Type<{}, [{ key: K; value: V }]>>>
     ) {
       return makeRecordClass(key, value, mergeSchemaAnnotations(this.ast, annotations))
     }
@@ -2684,7 +2689,7 @@ export const Record = <K extends Schema.All, V extends Schema.All>(key: K, value
 export const pick = <A, I, Keys extends ReadonlyArray<keyof A & keyof I>>(...keys: Keys) =>
 <R>(
   self: Schema<A, I, R>
-): SchemaClass<Pick<A, Keys[number]>, Pick<I, Keys[number]>, R> => make(AST.pick(self.ast, keys))
+): SchemaClass<Simplify<Pick<A, Keys[number]>>, Simplify<Pick<I, Keys[number]>>, R> => make(AST.pick(self.ast, keys))
 
 /**
  * @category struct transformations
@@ -2693,7 +2698,7 @@ export const pick = <A, I, Keys extends ReadonlyArray<keyof A & keyof I>>(...key
 export const omit = <A, I, Keys extends ReadonlyArray<keyof A & keyof I>>(...keys: Keys) =>
 <R>(
   self: Schema<A, I, R>
-): SchemaClass<Omit<A, Keys[number]>, Omit<I, Keys[number]>, R> => make(AST.omit(self.ast, keys))
+): SchemaClass<Simplify<Omit<A, Keys[number]>>, Simplify<Omit<I, Keys[number]>>, R> => make(AST.omit(self.ast, keys))
 
 /**
  * Given a schema `Schema<A, I, R>` and a key `key: K`, this function extracts a specific field from the `A` type,
@@ -3537,24 +3542,24 @@ export const attachPropertySignature: {
   <K extends PropertyKey, V extends AST.LiteralValue | symbol, A>(
     key: K,
     value: V,
-    annotations?: Annotations.Schema<Types.Simplify<A & { readonly [k in K]: V }>>
+    annotations?: Annotations.Schema<Simplify<A & { readonly [k in K]: V }>>
   ): <I, R>(
     schema: SchemaClass<A, I, R>
-  ) => Schema<Types.Simplify<A & { readonly [k in K]: V }>, I, R>
+  ) => Schema<Simplify<A & { readonly [k in K]: V }>, I, R>
   <A, I, R, K extends PropertyKey, V extends AST.LiteralValue | symbol>(
     schema: Schema<A, I, R>,
     key: K,
     value: V,
-    annotations?: Annotations.Schema<Types.Simplify<A & { readonly [k in K]: V }>>
-  ): SchemaClass<Types.Simplify<A & { readonly [k in K]: V }>, I, R>
+    annotations?: Annotations.Schema<Simplify<A & { readonly [k in K]: V }>>
+  ): SchemaClass<Simplify<A & { readonly [k in K]: V }>, I, R>
 } = dual(
   (args) => isSchema(args[0]),
   <A, I, R, K extends PropertyKey, V extends AST.LiteralValue | symbol>(
     schema: Schema<A, I, R>,
     key: K,
     value: V,
-    annotations?: Annotations.Schema<Types.Simplify<A & { readonly [k in K]: V }>>
-  ): SchemaClass<Types.Simplify<A & { readonly [k in K]: V }>, I, R> => {
+    annotations?: Annotations.Schema<Simplify<A & { readonly [k in K]: V }>>
+  ): SchemaClass<Simplify<A & { readonly [k in K]: V }>, I, R> => {
     const ast = extend(
       typeSchema(schema),
       Struct({ [key]: Predicate.isSymbol(value) ? UniqueSymbolFromSelf(value) : Literal(value) })
@@ -3655,7 +3660,7 @@ export const rename: {
       & { readonly [K in Exclude<keyof M, keyof A>]: never }
   >(
     mapping: M
-  ): <I, R>(self: Schema<A, I, R>) => SchemaClass<Types.Simplify<Rename<A, M>>, I, R>
+  ): <I, R>(self: Schema<A, I, R>) => SchemaClass<Simplify<Rename<A, M>>, I, R>
   <
     A,
     I,
@@ -3666,7 +3671,7 @@ export const rename: {
   >(
     self: Schema<A, I, R>,
     mapping: M
-  ): SchemaClass<Types.Simplify<Rename<A, M>>, I, R>
+  ): SchemaClass<Simplify<Rename<A, M>>, I, R>
 } = dual(
   2,
   <
@@ -3679,7 +3684,7 @@ export const rename: {
   >(
     self: Schema<A, I, R>,
     mapping: M
-  ): SchemaClass<Types.Simplify<Rename<A, M>>, I, R> => make(AST.rename(self.ast, mapping))
+  ): SchemaClass<Simplify<Rename<A, M>>, I, R> => make(AST.rename(self.ast, mapping))
 )
 
 /**
@@ -6930,14 +6935,14 @@ type RequiredKeys<T> = {
  * @since 0.67.0
  */
 export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, Proto>
-  extends Schema<Self, Types.Simplify<I>, R>
+  extends Schema<Self, Simplify<I>, R>
 {
   new(
-    props: RequiredKeys<C> extends never ? void | Types.Simplify<C> : Types.Simplify<C>,
+    props: RequiredKeys<C> extends never ? void | Simplify<C> : Simplify<C>,
     options?: MakeOptions
   ): Struct.Type<Fields> & Omit<Inherited, keyof Fields> & Proto
 
-  annotations(annotations: Annotations.Schema<Self>): SchemaClass<Self, Types.Simplify<I>, R>
+  annotations(annotations: Annotations.Schema<Self>): SchemaClass<Self, Simplify<I>, R>
 
   readonly fields: { readonly [K in keyof Fields]: Fields[K] }
 
@@ -6965,12 +6970,12 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
     fields: newFields,
     options: {
       readonly decode: (
-        input: Types.Simplify<Struct.Type<Fields>>,
+        input: Simplify<Struct.Type<Fields>>,
         options: ParseOptions,
         ast: AST.Transformation
-      ) => Effect.Effect<Types.Simplify<Struct.Type<Fields & newFields>>, ParseResult.ParseIssue, R2>
+      ) => Effect.Effect<Simplify<Struct.Type<Fields & newFields>>, ParseResult.ParseIssue, R2>
       readonly encode: (
-        input: Types.Simplify<Struct.Type<Fields & newFields>>,
+        input: Simplify<Struct.Type<Fields & newFields>>,
         options: ParseOptions,
         ast: AST.Transformation
       ) => Effect.Effect<Struct.Type<Fields>, ParseResult.ParseIssue, R3>
@@ -6995,12 +7000,12 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
     fields: newFields,
     options: {
       readonly decode: (
-        input: Types.Simplify<I>,
+        input: Simplify<I>,
         options: ParseOptions,
         ast: AST.Transformation
-      ) => Effect.Effect<Types.Simplify<I & Struct.Encoded<newFields>>, ParseResult.ParseIssue, R2>
+      ) => Effect.Effect<Simplify<I & Struct.Encoded<newFields>>, ParseResult.ParseIssue, R2>
       readonly encode: (
-        input: Types.Simplify<I & Struct.Encoded<newFields>>,
+        input: Simplify<I & Struct.Encoded<newFields>>,
         options: ParseOptions,
         ast: AST.Transformation
       ) => Effect.Effect<I, ParseResult.ParseIssue, R3>
