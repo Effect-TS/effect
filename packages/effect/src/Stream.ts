@@ -2088,7 +2088,6 @@ export const mapEffect: {
  * and filters out `None` values
  *
  * @example
- * ```ts
  * import { Effect, Stream, Console } from 'effect';
  *
  * // returns `Some(number)` if the number is even, otherwise `None`
@@ -2100,7 +2099,6 @@ export const mapEffect: {
  *   Effect.runPromise,
  * )
  * // => [0, 2, 4]
- * ```
  *
  * @since 3.3.5
  * @category utils
