@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-sqlite-react-native",
-  "version": "0.5.9",
+  "version": "0.5.10",
   "type": "module",
   "license": "MIT",
   "description": "A SQLite toolkit for Effect",

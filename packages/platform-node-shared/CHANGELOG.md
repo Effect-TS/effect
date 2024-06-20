@@ -1,5 +1,14 @@
 # @effect/platform-node-shared
 
+## 0.6.17
+
+### Patch Changes
+
+- [#3030](https://github.com/Effect-TS/effect/pull/3030) [`3ba7ea1`](https://github.com/Effect-TS/effect/commit/3ba7ea1c3c2923e85bf2f17e41176f8f8796d203) Thanks @tim-smart! - update find-my-way-ts & multipasta
+
+- Updated dependencies [[`3ba7ea1`](https://github.com/Effect-TS/effect/commit/3ba7ea1c3c2923e85bf2f17e41176f8f8796d203)]:
+  - @effect/platform@0.57.8
+
 ## 0.6.16
 
 ### Patch Changes
