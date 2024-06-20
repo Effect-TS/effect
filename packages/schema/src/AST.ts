@@ -223,6 +223,12 @@ export type ParseIssueTitleAnnotation = (issue: ParseIssue) => string | undefine
  */
 export const ParseIssueTitleAnnotationId = Symbol.for("@effect/schema/annotation/ParseIssueTitle")
 
+/**
+ * @category annotations
+ * @since 0.68.3
+ */
+export const ParseOptionsAnnotationId = Symbol.for("@effect/schema/annotation/ParseOptions")
+
 /** @internal */
 export const SurrogateAnnotationId = Symbol.for("@effect/schema/annotation/Surrogate")
 
@@ -354,6 +360,12 @@ export const getBatchingAnnotation = getAnnotation<BatchingAnnotation>(BatchingA
  * @since 0.67.0
  */
 export const getParseIssueTitleAnnotation = getAnnotation<ParseIssueTitleAnnotation>(ParseIssueTitleAnnotationId)
+
+/**
+ * @category annotations
+ * @since 0.68.3
+ */
+export const getParseOptionsAnnotation = getAnnotation<ParseOptions>(ParseOptionsAnnotationId)
 
 /** @internal */
 export const getSurrogateAnnotation = getAnnotation<SurrogateAnnotation>(SurrogateAnnotationId)

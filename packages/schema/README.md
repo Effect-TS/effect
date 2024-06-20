@@ -504,7 +504,9 @@ Output:
 
 As shown in the code above, the first approach returns a `Forbidden` error, indicating that using `decodeUnknownEither` with an async transformation is not allowed. However, the second approach works as expected, allowing you to handle async transformations and return the desired result.
 
-### Excess properties
+### Parse Options
+
+#### Excess properties
 
 When using a `Schema` to parse a value, by default any properties that are not specified in the `Schema` will be stripped out from the output. This is because the `Schema` is expecting a specific shape for the parsed value, and any excess properties do not conform to that shape.
 
@@ -576,7 +578,7 @@ console.log(
 > [!NOTE]
 > The [`onExcessProperty`](#excess-properties) and [`error`](#all-errors) options also affect encoding.
 
-### All errors
+#### All errors
 
 The `errors` option allows you to receive all parsing errors when attempting to parse a value using a schema. By default only the first error is returned, but by setting the `errors` option to `"all"`, you can receive all errors that occurred during the parsing process. This can be useful for debugging or for providing more comprehensive error messages to the user.
 
@@ -611,7 +613,7 @@ Error: { readonly name: string; readonly age: number }
 > [!NOTE]
 > The [`onExcessProperty`](#excess-properties) and [`error`](#all-errors) options also affect encoding.
 
-### Managing Property Order
+#### Managing Property Order
 
 The `propertyOrder` option provides control over the order of object fields in the output. This feature is particularly useful when the sequence of keys is important for the consuming processes or when maintaining the input order enhances readability and usability.
 
@@ -680,6 +682,53 @@ Schema.decode(schema)({ a: 1, b: 2, c: 3 }, { propertyOrder: "original" })
   .then(console.log)
 // Output preserving input order: { a: 1, b: 2, c: 3 }
 ```
+
+#### Customizing Parsing Behavior at the Schema Level
+
+You can tailor parse options for each schema using the `parseOptions` annotation. These options allow for specific parsing behavior at various levels of the schema hierarchy, overriding any parent settings and cascading down to nested schemas.
+
+```ts
+import { Schema } from "@effect/schema"
+import { Either } from "effect"
+
+const schema = Schema.Struct({
+  a: Schema.Struct({
+    b: Schema.String,
+    c: Schema.String
+  }).annotations({
+    title: "first error only",
+    parseOptions: { errors: "first" } // Only the first error in this sub-schema is reported
+  }),
+  d: Schema.String
+}).annotations({
+  title: "all errors",
+  parseOptions: { errors: "all" } // All errors in the main schema are reported
+})
+
+const result = Schema.decodeUnknownEither(schema)(
+  { a: {} },
+  { errors: "first" }
+)
+if (Either.isLeft(result)) {
+  console.log(result.left.message)
+}
+/*
+all errors
+├─ ["d"]
+│  └─ is missing
+└─ ["a"]
+   └─ first error only
+      └─ ["b"]
+         └─ is missing
+*/
+```
+
+**Detailed Output Explanation:**
+
+In this example:
+
+- The main schema is configured to display all errors. Hence, you will see errors related to both the `d` field (since it's missing) and any errors from the `a` subschema.
+- The subschema (`a`) is set to display only the first error. Although both `b` and `c` fields are missing, only the first missing field (`b`) is reported.
 
 ### Managing Missing Properties
 
