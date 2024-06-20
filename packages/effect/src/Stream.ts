@@ -112,11 +112,17 @@ export declare namespace Stream {
    * @category models
    */
   export interface Variance<out A, out E, out R> {
-    readonly [StreamTypeId]: {
-      _A: Covariant<A>
-      _E: Covariant<E>
-      _R: Covariant<R>
-    }
+    readonly [StreamTypeId]: VarianceStruct<A, E, R>
+  }
+
+  /**
+   * @since 3.4.0
+   * @category models
+   */
+  export interface VarianceStruct<out A, out E, out R> {
+    readonly _A: Covariant<A>
+    readonly _E: Covariant<E>
+    readonly _R: Covariant<R>
   }
 
   /**

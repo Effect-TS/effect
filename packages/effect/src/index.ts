@@ -480,6 +480,14 @@ export * as MetricRegistry from "./MetricRegistry.js"
 export * as MetricState from "./MetricState.js"
 
 /**
+ * A lightweight alternative to the `Effect` data type, with a subset of the functionality.
+ *
+ * @since 3.4.0
+ * @experimental
+ */
+export * as Micro from "./Micro.js"
+
+/**
  * @since 2.0.0
  *
  * Enables low level framework authors to run on their own isolated effect version
