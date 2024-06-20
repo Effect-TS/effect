@@ -1,12 +1,12 @@
-import * as Sql from "@effect/sql"
+import { SqlClient } from "@effect/sql"
 import * as SqliteDrizzle from "@effect/sql-drizzle/Sqlite"
-import * as Sqlite from "@effect/sql-sqlite-node"
+import { SqliteClient } from "@effect/sql-sqlite-node"
 import * as D from "drizzle-orm/sqlite-core"
 import { Config, Effect, Layer } from "effect"
 
 // setup
 
-const SqlLive = Sqlite.client.layer({
+const SqlLive = SqliteClient.layer({
   filename: Config.succeed("test.db")
 })
 const DrizzleLive = SqliteDrizzle.layer.pipe(
@@ -22,7 +22,7 @@ const users = D.sqliteTable("users", {
 })
 
 Effect.gen(function*() {
-  const sql = yield* Sql.client.Client
+  const sql = yield* SqlClient.SqlClient
   const db = yield* SqliteDrizzle.SqliteDrizzle
   yield* sql`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT)`
   yield* db.delete(users)

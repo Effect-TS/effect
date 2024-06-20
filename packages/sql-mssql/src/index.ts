@@ -2,29 +2,29 @@
  * @since 1.0.0
  */
 
-/**
- * @since 1.0.0
- */
-export * as client from "./Client.js"
-
-/**
- * @since 1.0.0
- */
-export * as migrator from "./Migrator.js"
-
-/**
- * @since 1.0.0
- */
-export * as parameter from "./Parameter.js"
-
-/**
- * @since 1.0.0
- */
-export * as procedure from "./Procedure.js"
-
 export {
   /**
    * @since 1.0.0
    */
-  TYPES as types
+  TYPES as MssqlTypes
 } from "tedious"
+
+/**
+ * @since 1.0.0
+ */
+export * as MssqlClient from "./MssqlClient.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as MssqlMigrator from "./MssqlMigrator.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as Parameter from "./Parameter.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as Procedure from "./Procedure.js"

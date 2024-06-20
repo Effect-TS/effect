@@ -1,11 +1,11 @@
 /**
  * @since 1.0.0
  */
-import * as Client from "@effect/sql/Client"
-import type { Connection } from "@effect/sql/Connection"
-import { SqlError } from "@effect/sql/Error"
+import * as Client from "@effect/sql/SqlClient"
+import type { Connection } from "@effect/sql/SqlConnection"
+import { SqlError } from "@effect/sql/SqlError"
+import { asyncPauseResume } from "@effect/sql/SqlStream"
 import * as Statement from "@effect/sql/Statement"
-import { asyncPauseResume } from "@effect/sql/Stream"
 import * as Otel from "@opentelemetry/semantic-conventions"
 import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
@@ -23,7 +23,7 @@ import * as Mysql from "mysql2"
  * @category type ids
  * @since 1.0.0
  */
-export const TypeId: unique symbol = Symbol.for("@effect/sql-mysql2/Client")
+export const TypeId: unique symbol = Symbol.for("@effect/sql-mysql2/MysqlClient")
 
 /**
  * @category type ids
@@ -35,7 +35,7 @@ export type TypeId = typeof TypeId
  * @category models
  * @since 1.0.0
  */
-export interface MysqlClient extends Client.Client {
+export interface MysqlClient extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: MysqlClientConfig
 }
@@ -44,7 +44,7 @@ export interface MysqlClient extends Client.Client {
  * @category tags
  * @since 1.0.0
  */
-export const MysqlClient = Context.GenericTag<MysqlClient>("@effect/sql-mysql2/Client")
+export const MysqlClient = Context.GenericTag<MysqlClient>("@effect/sql-mysql2/MysqlClient")
 
 /**
  * @category models
@@ -207,13 +207,13 @@ export const make = (
  */
 export const layer = (
   config: Config.Config.Wrap<MysqlClientConfig>
-): Layer.Layer<MysqlClient | Client.Client, ConfigError> =>
+): Layer.Layer<MysqlClient | Client.SqlClient, ConfigError> =>
   Layer.scopedContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(make),
       Effect.map((client) =>
         Context.make(MysqlClient, client).pipe(
-          Context.add(Client.Client, client)
+          Context.add(Client.SqlClient, client)
         )
       )
     )

@@ -1,15 +1,15 @@
 import { FileSystem } from "@effect/platform"
 import { NodeFileSystem } from "@effect/platform-node"
 import * as Schema from "@effect/schema/Schema"
-import * as Sql from "@effect/sql"
-import * as Sqlite from "@effect/sql-sqlite-node"
+import { SqlError, SqlResolver } from "@effect/sql"
+import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Array, Effect, Option } from "effect"
 
 const makeClient = Effect.gen(function*(_) {
   const fs = yield* _(FileSystem.FileSystem)
   const dir = yield* _(fs.makeTempDirectoryScoped())
-  return yield* _(Sqlite.client.make({
+  return yield* _(SqliteClient.make({
     filename: dir + "/test.db"
   }))
 }).pipe(Effect.provide(NodeFileSystem.layer))
@@ -29,7 +29,7 @@ describe("Resolver", () => {
       Effect.gen(function*(_) {
         const batches: Array<Array<string>> = []
         const sql = yield* _(seededClient)
-        const Insert = yield* _(Sql.resolver.ordered("Insert", {
+        const Insert = yield* _(SqlResolver.ordered("Insert", {
           Request: Schema.String,
           Result: Schema.Struct({ id: Schema.Number, name: Schema.String }),
           execute: (names) => {
@@ -54,7 +54,7 @@ describe("Resolver", () => {
       Effect.gen(function*(_) {
         const batches: Array<Array<number>> = []
         const sql = yield* _(seededClient)
-        const Select = yield* _(Sql.resolver.ordered("Select", {
+        const Select = yield* _(SqlResolver.ordered("Select", {
           Request: Schema.Number,
           Result: Schema.Struct({ id: Schema.Number, name: Schema.String }),
           execute: (ids) => {
@@ -71,7 +71,7 @@ describe("Resolver", () => {
           ], { batching: true }),
           Effect.flip
         )
-        assert(error instanceof Sql.error.ResultLengthMismatch)
+        assert(error instanceof SqlError.ResultLengthMismatch)
         assert.strictEqual(error.actual, 3)
         assert.strictEqual(error.expected, 4)
         assert.deepStrictEqual(batches, [[1, 2, 3, 101]])
@@ -82,7 +82,7 @@ describe("Resolver", () => {
     it.scoped("find by name", () =>
       Effect.gen(function*(_) {
         const sql = yield* _(seededClient)
-        const FindByName = yield* _(Sql.resolver.grouped("FindByName", {
+        const FindByName = yield* _(SqlResolver.grouped("FindByName", {
           Request: Schema.String,
           RequestGroupKey: (name) => name,
           Result: Schema.Struct({ id: Schema.Number, name: Schema.String }),
@@ -107,7 +107,7 @@ describe("Resolver", () => {
     it.scoped("using raw rows", () =>
       Effect.gen(function*(_) {
         const sql = yield* _(seededClient)
-        const FindByName = yield* _(Sql.resolver.grouped("FindByName", {
+        const FindByName = yield* _(SqlResolver.grouped("FindByName", {
           Request: Schema.String,
           RequestGroupKey: (name) => name,
           Result: Schema.Struct({ id: Schema.Number, name: Schema.String }),
@@ -134,7 +134,7 @@ describe("Resolver", () => {
     it.scoped("find by id", () =>
       Effect.gen(function*(_) {
         const sql = yield* _(seededClient)
-        const FindById = yield* _(Sql.resolver.findById("FindById", {
+        const FindById = yield* _(SqlResolver.findById("FindById", {
           Id: Schema.Number,
           Result: Schema.Struct({ id: Schema.Number, name: Schema.String }),
           ResultId: (result) => result.id,
@@ -157,7 +157,7 @@ describe("Resolver", () => {
     it.scoped("using raw rows", () =>
       Effect.gen(function*(_) {
         const sql = yield* _(seededClient)
-        const FindById = yield* _(Sql.resolver.findById("FindById", {
+        const FindById = yield* _(SqlResolver.findById("FindById", {
           Id: Schema.Number,
           Result: Schema.Struct({ id: Schema.Number, name: Schema.String }),
           ResultId: (_, result: any) => result.id,

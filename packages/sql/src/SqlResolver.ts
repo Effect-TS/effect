@@ -15,8 +15,8 @@ import * as Request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"
 import * as Tracer from "effect/Tracer"
 import type * as Types from "effect/Types"
-import { ResultLengthMismatch } from "./Error.js"
 import * as internalClient from "./internal/client.js"
+import { ResultLengthMismatch } from "./SqlError.js"
 
 /**
  * @since 1.0.0
@@ -252,7 +252,7 @@ export const ordered = <T extends string, I, II, RI, A, IA, _, E, RA = never, R 
         })
       ) as Effect.Effect<void>
     }
-  ).identified(`@effect/sql/Resolver.ordered/${tag}`)
+  ).identified(`@effect/sql/SqlResolver.ordered/${tag}`)
   return makeResolver(resolver, tag, options.Request, options.withContext)
 }
 
@@ -332,7 +332,7 @@ export const grouped = <T extends string, I, II, K, RI, A, IA, Row, E, RA = neve
         })
       ) as Effect.Effect<void>
     }
-  ).identified(`@effect/sql/Resolver.grouped/${tag}`)
+  ).identified(`@effect/sql/SqlResolver.grouped/${tag}`)
   return makeResolver(resolver, tag, options.Request, options.withContext)
 }
 
@@ -411,7 +411,7 @@ export const findById = <T extends string, I, II, RI, A, IA, Row, E, RA = never,
         })
       ) as Effect.Effect<void>
     }
-  ).identified(`@effect/sql/Resolver.findById/${tag}`)
+  ).identified(`@effect/sql/SqlResolver.findById/${tag}`)
   return makeResolver(resolver, tag, options.Id, options.withContext)
 }
 const void_ = <T extends string, I, II, RI, E, R = never>(
@@ -458,7 +458,7 @@ const void_ = <T extends string, I, II, RI, E, R = never>(
         })
       ) as Effect.Effect<void>
     }
-  ).identified(`@effect/sql/Resolver.void/${tag}`)
+  ).identified(`@effect/sql/SqlResolver.void/${tag}`)
   return makeResolver(resolver, tag, options.Request, options.withContext)
 }
 

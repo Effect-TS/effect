@@ -1,39 +1,39 @@
 /**
  * @since 1.0.0
  */
-export * as client from "./Client.js"
+export * as Migrator from "./Migrator.js"
 
 /**
  * @since 1.0.0
  */
-export * as connection from "./Connection.js"
+export * as SqlClient from "./SqlClient.js"
 
 /**
  * @since 1.0.0
  */
-export * as error from "./Error.js"
+export * as SqlConnection from "./SqlConnection.js"
 
 /**
  * @since 1.0.0
  */
-export * as migrator from "./Migrator.js"
+export * as SqlError from "./SqlError.js"
 
 /**
  * @since 1.0.0
  */
-export * as resolver from "./Resolver.js"
+export * as SqlResolver from "./SqlResolver.js"
 
 /**
  * @since 1.0.0
  */
-export * as schema from "./Schema.js"
+export * as SqlSchema from "./SqlSchema.js"
 
 /**
  * @since 1.0.0
  */
-export * as statement from "./Statement.js"
+export * as SqlStream from "./SqlStream.js"
 
 /**
  * @since 1.0.0
  */
-export * as stream from "./Stream.js"
+export * as Statement from "./Statement.js"

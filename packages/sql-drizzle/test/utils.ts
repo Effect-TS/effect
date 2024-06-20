@@ -1,7 +1,7 @@
 import * as MysqlDrizzle from "@effect/sql-drizzle/Mysql"
 import * as PgDrizzle from "@effect/sql-drizzle/Pg"
-import * as Mysql from "@effect/sql-mysql2"
-import * as Pg from "@effect/sql-pg"
+import { MysqlClient } from "@effect/sql-mysql2"
+import { PgClient } from "@effect/sql-pg"
 import type { StartedMySqlContainer } from "@testcontainers/mysql"
 import { MySqlContainer } from "@testcontainers/mysql"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
@@ -29,7 +29,7 @@ export class PgContainer extends Context.Tag("test/PgContainer")<
   static ClientLive = Layer.unwrapEffect(
     Effect.gen(function*(_) {
       const container = yield* _(PgContainer)
-      return Pg.client.layer({
+      return PgClient.layer({
         url: Config.succeed(Redacted.make(container.getConnectionUri()))
       })
     })
@@ -56,7 +56,7 @@ export class MysqlContainer extends Context.Tag("test/MysqlContainer")<
   static ClientLive = Layer.unwrapEffect(
     Effect.gen(function*(_) {
       const container = yield* _(MysqlContainer)
-      return Mysql.client.layer({
+      return MysqlClient.layer({
         url: Config.succeed(Redacted.make(container.getConnectionUri()))
       })
     })

@@ -1,10 +1,10 @@
-import * as Sql from "@effect/sql-pg"
+import { PgClient } from "@effect/sql-pg"
 import { defaultTransforms } from "@effect/sql/Statement"
 import { Effect, Scope, String } from "effect"
 import { assert, describe, expect, it } from "vitest"
 
-const sql = Effect.runSync(Scope.extend(Sql.client.make({}), Effect.runSync(Scope.make())))
-const compilerTransform = Sql.client.makeCompiler(String.camelToSnake)
+const sql = Effect.runSync(Scope.extend(PgClient.make({}), Effect.runSync(Scope.make())))
+const compilerTransform = PgClient.makeCompiler(String.camelToSnake)
 const transformsNested = defaultTransforms(String.snakeToCamel)
 const transforms = defaultTransforms(String.snakeToCamel, false)
 

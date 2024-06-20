@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import * as Client from "@effect/sql/Client"
-import type { SqlError } from "@effect/sql/Error"
+import * as Client from "@effect/sql/SqlClient"
+import type { SqlError } from "@effect/sql/SqlError"
 import { QueryPromise } from "drizzle-orm/query-promise"
 import { SQLiteSelectBase } from "drizzle-orm/sqlite-core"
 import type { SqliteRemoteDatabase } from "drizzle-orm/sqlite-proxy"
@@ -17,8 +17,8 @@ import { makeRemoteCallback, patch, registerDialect } from "./internal/patch.js"
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect.Effect<SqliteRemoteDatabase, never, Client.Client | Scope> = Effect.gen(function*() {
-  const client = yield* Client.Client
+export const make: Effect.Effect<SqliteRemoteDatabase, never, Client.SqlClient | Scope> = Effect.gen(function*() {
+  const client = yield* Client.SqlClient
   const db = drizzle(yield* makeRemoteCallback)
   registerDialect((db as any).dialect, client)
   return db
@@ -37,7 +37,7 @@ export class SqliteDrizzle extends Context.Tag("@effect/sql-drizzle/Sqlite")<
  * @since 1.0.0
  * @category layers
  */
-export const layer: Layer.Layer<SqliteDrizzle, never, Client.Client> = Layer.scoped(SqliteDrizzle, make)
+export const layer: Layer.Layer<SqliteDrizzle, never, Client.SqlClient> = Layer.scoped(SqliteDrizzle, make)
 
 // patch
 

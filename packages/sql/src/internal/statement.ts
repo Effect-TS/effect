@@ -9,8 +9,8 @@ import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import type { Scope } from "effect/Scope"
 import * as Stream from "effect/Stream"
-import type * as Connection from "../Connection.js"
-import type * as Error from "../Error.js"
+import type * as Connection from "../SqlConnection.js"
+import type * as Error from "../SqlError.js"
 import type * as Statement from "../Statement.js"
 
 /** @internal */

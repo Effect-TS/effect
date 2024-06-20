@@ -1,8 +1,8 @@
 import { FileSystem } from "@effect/platform"
 import { NodeFileSystem } from "@effect/platform-node"
-import * as Sql from "@effect/sql"
+import { SqlClient } from "@effect/sql"
 import * as SqliteDrizzle from "@effect/sql-drizzle/Sqlite"
-import * as Sqlite from "@effect/sql-sqlite-node"
+import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
 import * as D from "drizzle-orm/sqlite-core"
 import { Effect } from "effect"
@@ -10,7 +10,7 @@ import { Effect } from "effect"
 const makeClient = Effect.gen(function*(_) {
   const fs = yield* _(FileSystem.FileSystem)
   const dir = yield* _(fs.makeTempDirectoryScoped())
-  return yield* _(Sqlite.client.make({
+  return yield* _(SqliteClient.make({
     filename: dir + "/test.db"
   }))
 }).pipe(Effect.provide(NodeFileSystem.layer))
@@ -26,7 +26,7 @@ describe("SqliteDrizzle", () => {
     Effect.gen(function*(_) {
       const sql = yield* _(makeClient)
       const db = yield* SqliteDrizzle.make.pipe(
-        Effect.provideService(Sql.client.Client, sql)
+        Effect.provideService(SqlClient.SqlClient, sql)
       )
       yield* sql`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, snake_case TEXT)`
       yield* db.insert(users).values({ name: "Alice", snakeCase: "snake" })
@@ -38,7 +38,7 @@ describe("SqliteDrizzle", () => {
     Effect.gen(function*(_) {
       const sql = yield* _(makeClient)
       const db = yield* SqliteDrizzle.make.pipe(
-        Effect.provideService(Sql.client.Client, sql)
+        Effect.provideService(SqlClient.SqlClient, sql)
       )
       yield* sql`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, snake_case TEXT)`
       yield* Effect.promise(() => db.insert(users).values({ name: "Alice", snakeCase: "snake" }))

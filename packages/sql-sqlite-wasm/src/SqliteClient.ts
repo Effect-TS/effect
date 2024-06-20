@@ -1,12 +1,13 @@
 /**
  * @since 1.0.0
  */
-import * as Client from "@effect/sql/Client"
-import type { Connection } from "@effect/sql/Connection"
-import { SqlError } from "@effect/sql/Error"
+import * as Client from "@effect/sql/SqlClient"
+import type { Connection } from "@effect/sql/SqlConnection"
+import { SqlError } from "@effect/sql/SqlError"
 import * as Statement from "@effect/sql/Statement"
 import * as Otel from "@opentelemetry/semantic-conventions"
-import { Database } from "bun:sqlite"
+import type { DB, OpenMode, RowMode } from "@sqlite.org/sqlite-wasm"
+import sqliteInit from "@sqlite.org/sqlite-wasm"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
@@ -19,7 +20,7 @@ import * as Scope from "effect/Scope"
  * @category type ids
  * @since 1.0.0
  */
-export const TypeId: unique symbol = Symbol.for("@effect/sql-sqlite-bun/Client")
+export const TypeId: unique symbol = Symbol.for("@effect/sql-sqlite-wasm/SqliteClient")
 
 /**
  * @category type ids
@@ -31,11 +32,10 @@ export type TypeId = typeof TypeId
  * @category models
  * @since 1.0.0
  */
-export interface SqliteClient extends Client.Client {
+export interface SqliteClient extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: SqliteClientConfig
   readonly export: Effect.Effect<Uint8Array, SqlError>
-  readonly loadExtension: (path: string) => Effect.Effect<void, SqlError>
 
   /** Not supported in sqlite */
   readonly updateValues: never
@@ -45,29 +45,37 @@ export interface SqliteClient extends Client.Client {
  * @category tags
  * @since 1.0.0
  */
-export const SqliteClient = Context.GenericTag<SqliteClient>("@effect/sql-sqlite-bun/Client")
+export const SqliteClient = Context.GenericTag<SqliteClient>("@effect/sql-sqlite-wasm/SqliteClient")
 
 /**
  * @category models
  * @since 1.0.0
  */
-export interface SqliteClientConfig {
-  readonly filename: string
-  readonly readonly?: boolean | undefined
-  readonly create?: boolean | undefined
-  readonly readwrite?: boolean | undefined
-  readonly disableWAL?: boolean | undefined
-
-  readonly spanAttributes?: Record<string, unknown> | undefined
-
-  readonly transformResultNames?: ((str: string) => string) | undefined
-  readonly transformQueryNames?: ((str: string) => string) | undefined
-}
+export type SqliteClientConfig =
+  | {
+    readonly mode?: "vfs"
+    readonly dbName?: string
+    readonly openMode?: OpenMode
+    readonly spanAttributes?: Record<string, unknown>
+    readonly transformResultNames?: (str: string) => string
+    readonly transformQueryNames?: (str: string) => string
+  }
+  | {
+    readonly mode: "opfs"
+    readonly dbName: string
+    readonly openMode?: OpenMode
+    readonly spanAttributes?: Record<string, unknown>
+    readonly transformResultNames?: (str: string) => string
+    readonly transformQueryNames?: (str: string) => string
+  }
 
 interface SqliteConnection extends Connection {
   readonly export: Effect.Effect<Uint8Array, SqlError>
-  readonly loadExtension: (path: string) => Effect.Effect<void, SqlError>
 }
+
+const initEffect = Effect.runSync(
+  Effect.cached(Effect.promise(() => sqliteInit()))
+)
 
 /**
  * @category constructor
@@ -83,23 +91,36 @@ export const make = (
     ).array
 
     const makeConnection = Effect.gen(function*(_) {
-      const db = new Database(options.filename, {
-        readonly: options.readonly,
-        readwrite: options.readwrite ?? true,
-        create: options.create ?? true
-      } as any)
-      yield* _(Effect.addFinalizer(() => Effect.sync(() => db.close())))
+      const sqlite3 = yield* _(initEffect)
 
-      if (options.disableWAL !== true) {
-        db.run("PRAGMA journal_mode = WAL;")
+      let db: DB
+      if (options.mode === "opfs") {
+        if (!sqlite3.oo1.OpfsDb) {
+          yield* _(Effect.dieMessage("opfs mode not available"))
+        }
+        db = new sqlite3.oo1.OpfsDb!(options.dbName, options.openMode ?? "c")
+      } else {
+        db = new sqlite3.oo1.DB(options.dbName, options.openMode)
       }
+
+      yield* _(Effect.addFinalizer(() => Effect.sync(() => db.close())))
 
       const run = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive> = []
+        params: ReadonlyArray<Statement.Primitive> = [],
+        rowMode: RowMode = "object"
       ) =>
         Effect.try({
-          try: () => db.query(sql).all(...(params as any)) as Array<any>,
+          try: () => {
+            const results: Array<any> = []
+            db.exec({
+              sql,
+              bind: params.length ? params : undefined,
+              rowMode,
+              resultRows: results
+            })
+            return results
+          },
           catch: (error) => new SqlError({ error })
         })
 
@@ -107,21 +128,12 @@ export const make = (
         ? (sql: string, params?: ReadonlyArray<Statement.Primitive>) => Effect.map(run(sql, params), transformRows)
         : run
 
-      const runValues = (
-        sql: string,
-        params: ReadonlyArray<Statement.Primitive> = []
-      ) =>
-        Effect.try({
-          try: () => db.query(sql).values(...(params as any)) as Array<any>,
-          catch: (error) => new SqlError({ error })
-        })
-
       return identity<SqliteConnection>({
         execute(sql, params) {
           return runTransform(sql, params)
         },
         executeValues(sql, params) {
-          return runValues(sql, params)
+          return run(sql, params, "array")
         },
         executeWithoutTransform(sql, params) {
           return run(sql, params)
@@ -129,18 +141,13 @@ export const make = (
         executeRaw(sql, params) {
           return runTransform(sql, params)
         },
-        executeStream(_sql, _params) {
+        executeStream() {
           return Effect.dieMessage("executeStream not implemented")
         },
         export: Effect.try({
-          try: () => db.serialize(),
+          try: () => sqlite3.capi.sqlite3_js_db_export(db.pointer),
           catch: (error) => new SqlError({ error })
-        }),
-        loadExtension: (path) =>
-          Effect.try({
-            try: () => db.loadExtension(path),
-            catch: (error) => new SqlError({ error })
-          })
+        })
       })
     })
 
@@ -174,8 +181,7 @@ export const make = (
       {
         [TypeId]: TypeId as TypeId,
         config: options,
-        export: Effect.flatMap(acquirer, (_) => _.export),
-        loadExtension: (path: string) => Effect.flatMap(acquirer, (_) => _.loadExtension(path))
+        export: Effect.flatMap(acquirer, (_) => _.export)
       }
     )
   })
@@ -186,13 +192,13 @@ export const make = (
  */
 export const layer = (
   config: Config.Config.Wrap<SqliteClientConfig>
-): Layer.Layer<SqliteClient | Client.Client, ConfigError> =>
+): Layer.Layer<SqliteClient | Client.SqlClient, ConfigError> =>
   Layer.scopedContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(make),
       Effect.map((client) =>
         Context.make(SqliteClient, client).pipe(
-          Context.add(Client.Client, client)
+          Context.add(Client.SqlClient, client)
         )
       )
     )

@@ -2,8 +2,8 @@
  * @since 1.0.0
  */
 import type { Message } from "@effect/cluster/Message"
-import type { Client } from "@effect/sql/Client"
-import type { SqlError } from "@effect/sql/Error"
+import type { SqlClient } from "@effect/sql/SqlClient"
+import type { SqlError } from "@effect/sql/SqlError"
 import type { Tag } from "effect/Context"
 import type { Effect } from "effect/Effect"
 import type { Layer } from "effect/Layer"
@@ -93,4 +93,4 @@ export declare namespace AtLeastOnceStorage {
  */
 export const layer: (
   options: AtLeastOnceStorage.MakeOptions
-) => Layer<AtLeastOnceStorage, SqlError, Client | Serialization> = Internal.layer
+) => Layer<AtLeastOnceStorage, SqlError, SqlClient | Serialization> = Internal.layer
