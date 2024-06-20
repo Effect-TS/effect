@@ -21,7 +21,10 @@ describe.sequential("Mysql", () => {
       yield* db.insert(users).values({ name: "Alice", snakeCase: "alice" })
       const results = yield* db.select().from(users)
       assert.deepStrictEqual(results, [{ id: 1, name: "Alice", snakeCase: "alice" }])
-    }).pipe(Effect.provide(MysqlContainer.DrizzleLive)), { timeout: 60000 })
+    }).pipe(
+      Effect.provide(MysqlContainer.DrizzleLive),
+      Effect.catchTag("ContainerError", () => Effect.void)
+    ), { timeout: 60000 })
 
   it.effect("remote callback", () =>
     Effect.gen(function*(_) {
@@ -31,5 +34,8 @@ describe.sequential("Mysql", () => {
       yield* Effect.promise(() => db.insert(users).values({ name: "Alice", snakeCase: "snake" }))
       const results = yield* Effect.promise(() => db.select().from(users))
       assert.deepStrictEqual(results, [{ id: 1, name: "Alice", snakeCase: "snake" }])
-    }).pipe(Effect.provide(MysqlContainer.DrizzleLive)), { timeout: 60000 })
+    }).pipe(
+      Effect.provide(MysqlContainer.DrizzleLive),
+      Effect.catchTag("ContainerError", () => Effect.void)
+    ), { timeout: 60000 })
 })
