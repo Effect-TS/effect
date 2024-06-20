@@ -46,4 +46,14 @@ describe("Stream", () => {
         [Either.right(1), Either.right(2), Either.left("boom")]
       )
     }))
+
+  it.effect("mapEffectFilter", () =>
+    Effect.gen(function*() {
+      const even = (a: number) => a % 2 === 0 ? Effect.succeedSome(a) : Effect.succeedNone
+      const result = yield* Stream.make(0, 1, 2, 4).pipe(
+        Stream.mapEffectFilter(even),
+        Stream.runCollect
+      )
+      assert.deepStrictEqual(Array.from(result), [0, 2, 4])
+    }))
 })

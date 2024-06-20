@@ -4,7 +4,7 @@ import * as Chunk from "../Chunk.js"
 import * as Deferred from "../Deferred.js"
 import * as Effect from "../Effect.js"
 import * as Exit from "../Exit.js"
-import { dual, pipe } from "../Function.js"
+import { dual, identity, pipe } from "../Function.js"
 import type * as GroupBy from "../GroupBy.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
@@ -205,6 +205,19 @@ export const groupBy = dual<
       )
     )
 )
+
+/** @internal */
+export const mapEffectFilter = dual<
+  <A, A2, E2, R2>(
+    fn: (a: A) => Effect.Effect<Option.Option<A2>, E2, R2>
+  ) => <E, R>(
+    stream: Stream.Stream<A, E, R>
+  ) => Stream.Stream<A2, E2 | E, R2 | R>,
+  <A, E, R, A2, E2, R2>(
+    stream: Stream.Stream<A, E, R>,
+    fn: (a: A) => Effect.Effect<Option.Option<A2>, E2, R2>
+  ) => Stream.Stream<A2, E2 | E, R2 | R>
+>(2, (s, fn) => stream.filterMap(mapEffectOptions(s, fn), identity))
 
 /** @internal */
 export const mapEffectOptions = dual<
