@@ -21,7 +21,7 @@ import {
   UpdateQueryBuilder,
   WheneableMergeQueryBuilder
 } from "kysely"
-import type { Dialect } from "kysely"
+import type { KyselyConfig } from "kysely"
 import type { EffectKysely } from "../patch.types.js"
 import { effectifyWithExecute, effectifyWithSql, patch } from "./patch.js"
 
@@ -52,11 +52,11 @@ patch(WheneableMergeQueryBuilder.prototype)
  * create a Kysely instance from a dialect
  * and using an effect/sql client backend
  */
-export const makeFromSql = <DB>(dialect: Dialect) =>
+export const makeWithSql = <DB>(config: KyselyConfig) =>
   Effect.gen(function*() {
     const client = yield* Client.Client
 
-    const db = new Kysely<DB>({ dialect }) as unknown as EffectKysely<DB>
+    const db = new Kysely<DB>(config) as unknown as EffectKysely<DB>
     db.withTransaction = client.withTransaction
 
     // SelectQueryBuilder is not exported from "kysely" so we patch the prototype from it's instance
@@ -71,8 +71,8 @@ export const makeFromSql = <DB>(dialect: Dialect) =>
  * create a Kysely instance from a dialect
  * and using the native kysely driver
  */
-export const makeFromDialect = <DB>(dialect: Dialect) => {
-  const db = new Kysely<DB>({ dialect })
+export const makeWithExecute = <DB>(config: KyselyConfig) => {
+  const db = new Kysely<DB>(config)
   // SelectQueryBuilder is not exported from "kysely" so we patch the prototype from it's instance
   const selectPrototype = Object.getPrototypeOf(db.selectFrom("" as any))
   patch(selectPrototype)
