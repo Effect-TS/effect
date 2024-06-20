@@ -1262,7 +1262,7 @@ export const upTo: {
 } = internal.upTo
 
 /**
- * Returns a new schedule that continues for as long the specified predicate
+ * Returns a new schedule that continues for as long as the specified predicate
  * on the input evaluates to true.
  *
  * @since 2.0.0
@@ -1274,7 +1274,7 @@ export const whileInput: {
 } = internal.whileInput
 
 /**
- * Returns a new schedule that continues for as long the specified effectful
+ * Returns a new schedule that continues for as long as the specified effectful
  * predicate on the input evaluates to true.
  *
  * @since 2.0.0
