@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.68.2
+
+### Patch Changes
+
+- [#3024](https://github.com/Effect-TS/effect/pull/3024) [`eb341b3`](https://github.com/Effect-TS/effect/commit/eb341b3eb34ad64499371bc08b7f59e429979d8a) Thanks @gcanti! - Replace `Types.Simplify` with a custom `Simplify` to restore nice types for `pick` and `omit`
+
 ## 0.68.1
 
 ### Patch Changes
