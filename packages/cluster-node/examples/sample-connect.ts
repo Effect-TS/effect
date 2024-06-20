@@ -5,16 +5,11 @@ import * as StorageFile from "@effect/cluster-node/StorageFile"
 import * as Serialization from "@effect/cluster/Serialization"
 import * as Sharding from "@effect/cluster/Sharding"
 import * as ShardingConfig from "@effect/cluster/ShardingConfig"
-import * as NodeClient from "@effect/platform-node/NodeHttpClient"
-import { runMain } from "@effect/platform-node/NodeRuntime"
-import * as HttpClient from "@effect/platform/HttpClient"
+import { HttpClient, HttpClientRequest } from "@effect/platform"
+import { NodeHttpClient, NodeRuntime } from "@effect/platform-node"
 import { Resolver } from "@effect/rpc"
 import { HttpResolver } from "@effect/rpc-http"
-import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
-import * as Logger from "effect/Logger"
-import * as LogLevel from "effect/LogLevel"
-import * as Ref from "effect/Ref"
+import { Effect, Layer, Logger, LogLevel, Ref } from "effect"
 import { CounterEntity, GetCurrent, Increment } from "./sample-common.js"
 
 const liveLayer = Effect.gen(function*(_) {
@@ -37,9 +32,9 @@ const liveLayer = Effect.gen(function*(_) {
   Layer.provide(StorageFile.storageFile),
   Layer.provide(PodsRpc.podsRpc<never>((podAddress) =>
     HttpResolver.make<ShardingServiceRpc.ShardingServiceRpc>(
-      HttpClient.client.fetchOk.pipe(
-        HttpClient.client.mapRequest(
-          HttpClient.request.prependUrl(`http://${podAddress.host}:${podAddress.port}/api/rest`)
+      HttpClient.fetchOk.pipe(
+        HttpClient.mapRequest(
+          HttpClientRequest.prependUrl(`http://${podAddress.host}:${podAddress.port}/api/rest`)
         )
       )
     ).pipe(Resolver.toClient)
@@ -47,20 +42,20 @@ const liveLayer = Effect.gen(function*(_) {
   Layer.provide(ShardManagerClientRpc.shardManagerClientRpc(
     (shardManagerUri) =>
       HttpResolver.make<ShardingServiceRpc.ShardingServiceRpc>(
-        HttpClient.client.fetchOk.pipe(
-          HttpClient.client.mapRequest(
-            HttpClient.request.prependUrl(shardManagerUri)
+        HttpClient.fetchOk.pipe(
+          HttpClient.mapRequest(
+            HttpClientRequest.prependUrl(shardManagerUri)
           )
         )
       ).pipe(Resolver.toClient)
   )),
   Layer.provide(ShardingConfig.withDefaults({ shardingPort: 54322 })),
   Layer.provide(Serialization.json),
-  Layer.provide(NodeClient.layer)
+  Layer.provide(NodeHttpClient.layerUndici)
 )
 
 Layer.launch(liveLayer).pipe(
   Logger.withMinimumLogLevel(LogLevel.All),
   Effect.tapErrorCause(Effect.logError),
-  runMain
+  NodeRuntime.runMain
 )
