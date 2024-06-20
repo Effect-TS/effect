@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": [
+    "src"
+  ],
+  "references": [
+    { "path": "../effect" },
+    { "path": "../cluster" },
+    { "path": "../rpc" },
+    { "path": "../schema" }
+  ],
+  "compilerOptions": {
+    "types": ["node"],
+    "tsBuildInfoFile": ".tsbuildinfo/src.tsbuildinfo",
+    "rootDir": "src",
+    "outDir": "build/src"
+  }
+}

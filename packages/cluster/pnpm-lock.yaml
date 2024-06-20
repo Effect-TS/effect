@@ -1,0 +1,49 @@
+lockfileVersion: '6.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+devDependencies:
+  '@effect/schema':
+    specifier: ^0.47.2
+    version: 0.47.7(effect@2.0.0-next.54)(fast-check@3.14.0)
+  '@types/path-browserify':
+    specifier: ^1.0.1
+    version: 1.0.2
+  effect:
+    specifier: 2.0.0-next.54
+    version: 2.0.0-next.54
+
+packages:
+
+  /@effect/schema@0.47.7(effect@2.0.0-next.54)(fast-check@3.14.0):
+    resolution: {integrity: sha512-rQpzxfGsv2C3HSpwBRYPt7p5eibekWbn+RrYCd6SWtNSF0YPClhZwzBLygQvqDMXHkk3rHuuSOnJvIdqu7o4Hw==}
+    peerDependencies:
+      effect: 2.0.0-next.54
+      fast-check: ^3.13.2
+    dependencies:
+      effect: 2.0.0-next.54
+      fast-check: 3.14.0
+    dev: true
+
+  /@types/path-browserify@1.0.2:
+    resolution: {integrity: sha512-ZkC5IUqqIFPXx3ASTTybTzmQdwHwe2C0u3eL75ldQ6T9E9IWFJodn6hIfbZGab73DfyiHN4Xw15gNxUq2FbvBA==}
+    dev: true
+
+  /effect@2.0.0-next.54:
+    resolution: {integrity: sha512-qROhKMxlm6fpa90YRfWSgKeelDfhaDq2igPK+pIKupGehiCnZH4vd2qrY71HVZ10qZgXxh0VXpGyDQxJC+EQqw==}
+    dev: true
+
+  /fast-check@3.14.0:
+    resolution: {integrity: sha512-9Z0zqASzDNjXBox/ileV/fd+4P+V/f3o4shM6QawvcdLFh8yjPG4h5BrHUZ8yzY6amKGDTAmRMyb/JZqe+dCgw==}
+    engines: {node: '>=8.0.0'}
+    dependencies:
+      pure-rand: 6.0.4
+    dev: true
+
+  /pure-rand@6.0.4:
+    resolution: {integrity: sha512-LA0Y9kxMYv47GIPJy6MI84fqTd2HmYZI83W/kM/SkKfDlajnZYfmXFTxkbY+xSBPkLJxltMa9hIkmdc29eguMA==}
+    dev: true
+
+publishDirectory: dist
