@@ -1,7 +1,7 @@
 import * as DevTools from "@effect/experimental/DevTools"
 import * as Schema from "@effect/schema/Schema"
-import * as Sql from "@effect/sql"
-import * as Pg from "@effect/sql-pg"
+import { SqlClient, SqlResolver } from "@effect/sql"
+import { PgClient } from "@effect/sql-pg"
 import { Config, Effect, Layer, String } from "effect"
 
 class Person extends Schema.Class<Person>("Person")({
@@ -15,24 +15,24 @@ const InsertPersonSchema = Schema.Struct(Person.fields).pipe(
 )
 
 const program = Effect.gen(function*(_) {
-  const sql = yield* Sql.client.Client
+  const sql = yield* SqlClient.SqlClient
 
   yield* sql`TRUNCATE TABLE people RESTART IDENTITY CASCADE`
 
-  const Insert = yield* Sql.resolver.ordered("InsertPerson", {
+  const Insert = yield* SqlResolver.ordered("InsertPerson", {
     Request: InsertPersonSchema,
     Result: Person,
     execute: (requests) => sql`INSERT INTO people ${sql.insert(requests)} RETURNING people.*`
   })
 
-  const GetById = yield* Sql.resolver.findById("GetPersonById", {
+  const GetById = yield* SqlResolver.findById("GetPersonById", {
     Id: Schema.Number,
     Result: Person,
     ResultId: (result) => result.id,
     execute: (ids) => sql`SELECT * FROM people WHERE id IN ${sql.in(ids)}`
   })
 
-  const GetByName = yield* Sql.resolver.grouped("GetPersonByName", {
+  const GetByName = yield* SqlResolver.grouped("GetPersonByName", {
     Request: Schema.String,
     RequestGroupKey: (_) => _,
     Result: Person,
@@ -72,7 +72,7 @@ const program = Effect.gen(function*(_) {
   )
 })
 
-const PgLive = Pg.client.layer({
+const PgLive = PgClient.layer({
   database: Config.succeed("effect_pg_dev"),
   transformQueryNames: Config.succeed(String.camelToSnake),
   transformResultNames: Config.succeed(String.snakeToCamel)

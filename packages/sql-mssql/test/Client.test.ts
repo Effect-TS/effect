@@ -1,4 +1,4 @@
-import * as Sql from "@effect/sql-mssql"
+import { MssqlClient, MssqlTypes } from "@effect/sql-mssql"
 import type { Custom } from "@effect/sql/Statement"
 import { isCustom } from "@effect/sql/Statement"
 import { Effect } from "effect"
@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 
 const sql = Effect.runSync(
   Effect.scoped(
-    Sql.client.make({
+    MssqlClient.make({
       server: ""
     })
   )
@@ -74,7 +74,7 @@ describe("mssql", () => {
   it("param types", () => {
     const [query, params] = sql`SELECT * FROM ${sql("people")} WHERE id = ${
       sql.param(
-        Sql.types.BigInt,
+        MssqlTypes.BigInt,
         1
       )
     }`.compile()
@@ -86,7 +86,7 @@ describe("mssql", () => {
       any,
       any
     >
-    expect(param.i0).toEqual(Sql.types.BigInt)
+    expect(param.i0).toEqual(MssqlTypes.BigInt)
     expect(param.i1).toEqual(1)
     expect(param.i2).toEqual({})
   })

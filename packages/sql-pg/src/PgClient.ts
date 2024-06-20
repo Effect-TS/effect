@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import * as Client from "@effect/sql/Client"
-import type { Connection } from "@effect/sql/Connection"
-import { SqlError } from "@effect/sql/Error"
+import * as Client from "@effect/sql/SqlClient"
+import type { Connection } from "@effect/sql/SqlConnection"
+import { SqlError } from "@effect/sql/SqlError"
 import type { Custom, Fragment, Primitive } from "@effect/sql/Statement"
 import * as Statement from "@effect/sql/Statement"
 import * as Otel from "@opentelemetry/semantic-conventions"
@@ -24,7 +24,7 @@ import postgres from "postgres"
  * @category type ids
  * @since 1.0.0
  */
-export const TypeId: unique symbol = Symbol.for("@effect/sql-pg/Client")
+export const TypeId: unique symbol = Symbol.for("@effect/sql-pg/PgClient")
 
 /**
  * @category type ids
@@ -36,7 +36,7 @@ export type TypeId = typeof TypeId
  * @category models
  * @since 1.0.0
  */
-export interface PgClient extends Client.Client {
+export interface PgClient extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: PgClientConfig
   readonly json: (_: unknown) => Fragment
@@ -47,7 +47,7 @@ export interface PgClient extends Client.Client {
  * @category tags
  * @since 1.0.0
  */
-export const PgClient = Context.GenericTag<PgClient>("@effect/sql-pg/Client")
+export const PgClient = Context.GenericTag<PgClient>("@effect/sql-pg/PgClient")
 
 /**
  * @category constructors
@@ -230,13 +230,13 @@ export const make = (
  */
 export const layer = (
   config: Config.Config.Wrap<PgClientConfig>
-): Layer.Layer<PgClient | Client.Client, ConfigError> =>
+): Layer.Layer<PgClient | Client.SqlClient, ConfigError> =>
   Layer.scopedContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(make),
       Effect.map((client) =>
         Context.make(PgClient, client).pipe(
-          Context.add(Client.Client, client)
+          Context.add(Client.SqlClient, client)
         )
       )
     )

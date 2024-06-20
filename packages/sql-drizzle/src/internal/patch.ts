@@ -1,5 +1,5 @@
-import * as Client from "@effect/sql/Client"
-import { SqlError } from "@effect/sql/Error"
+import * as Client from "@effect/sql/SqlClient"
+import { SqlError } from "@effect/sql/SqlError"
 import type { Statement } from "@effect/sql/Statement"
 import type { QueryPromise } from "drizzle-orm/query-promise"
 import * as DUtils from "drizzle-orm/utils"
@@ -10,11 +10,11 @@ import * as Runtime from "effect/Runtime"
 
 const clientRegistry = globalValue(
   "@effect/sql-drizzle/clientRegistry",
-  () => new WeakMap<any, Client.Client>()
+  () => new WeakMap<any, Client.SqlClient>()
 )
 
 /** @internal */
-export const registerDialect = (dialect: unknown, client: Client.Client) => {
+export const registerDialect = (dialect: unknown, client: Client.SqlClient) => {
   clientRegistry.set(dialect, client)
 }
 
@@ -63,7 +63,7 @@ export const patch = (prototype: any) => {
 
 /** @internal */
 export const makeRemoteCallback = Effect.gen(function*() {
-  const client = yield* Client.Client
+  const client = yield* Client.SqlClient
   const runtime = yield* Effect.runtime<never>()
   const runPromise = Runtime.runPromise(runtime)
   return (sql: string, params: Array<any>, method: "all" | "execute" | "get" | "values" | "run") => {

@@ -3,8 +3,8 @@ import * as DurableExecutionJournal from "@effect/cluster-workflow/DurableExecut
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as Schema from "@effect/schema/Schema"
-import * as Sqlite from "@effect/sql-sqlite-node/Client"
-import * as SqlClient from "@effect/sql/Client"
+import * as Sqlite from "@effect/sql-sqlite-node/SqliteClient"
+import * as SqlClient from "@effect/sql/SqlClient"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -25,7 +25,7 @@ const runTest =
     Effect.gen(function*() {
       const sqlClient = yield* makeSqlClient
       const TestLive = DurableExecutionJournal.layer(options).pipe(
-        Layer.provideMerge(Layer.succeed(SqlClient.Client, sqlClient))
+        Layer.provideMerge(Layer.succeed(SqlClient.SqlClient, sqlClient))
       )
       yield* program.pipe(Effect.provide(TestLive))
     }).pipe(
@@ -38,7 +38,7 @@ const runTest =
 describe("DurableExecutionJournal", () => {
   it("should create the execution table upon layer creation", () =>
     Effect.gen(function*() {
-      const sql = yield* SqlClient.Client
+      const sql = yield* SqlClient.SqlClient
 
       const rows = yield* sql<{ table_name: string }>`
         SELECT name AS table_name
@@ -51,7 +51,7 @@ describe("DurableExecutionJournal", () => {
 
   it("should store the execution in the table upon append", () =>
     Effect.gen(function*() {
-      const sql = yield* SqlClient.Client
+      const sql = yield* SqlClient.SqlClient
       const journal = yield* DurableExecutionJournal.DurableExecutionJournal
 
       yield* journal.append(

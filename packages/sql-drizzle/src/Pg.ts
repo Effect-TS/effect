@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import * as Client from "@effect/sql/Client"
-import type { SqlError } from "@effect/sql/Error"
+import * as Client from "@effect/sql/SqlClient"
+import type { SqlError } from "@effect/sql/SqlError"
 import { PgSelectBase } from "drizzle-orm/pg-core"
 import { drizzle } from "drizzle-orm/pg-proxy"
 import type { PgRemoteDatabase } from "drizzle-orm/pg-proxy"
@@ -16,8 +16,8 @@ import { makeRemoteCallback, patch, registerDialect } from "./internal/patch.js"
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect.Effect<PgRemoteDatabase, never, Client.Client> = Effect.gen(function*() {
-  const client = yield* Client.Client
+export const make: Effect.Effect<PgRemoteDatabase, never, Client.SqlClient> = Effect.gen(function*() {
+  const client = yield* Client.SqlClient
   const db = drizzle(yield* makeRemoteCallback)
   registerDialect((db as any).dialect, client)
   return db
@@ -36,7 +36,7 @@ export class PgDrizzle extends Context.Tag("@effect/sql-drizzle/Pg")<
  * @since 1.0.0
  * @category layers
  */
-export const layer: Layer.Layer<PgDrizzle, never, Client.Client> = Layer.effect(PgDrizzle, make)
+export const layer: Layer.Layer<PgDrizzle, never, Client.SqlClient> = Layer.effect(PgDrizzle, make)
 
 // patch
 

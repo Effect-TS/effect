@@ -4,9 +4,9 @@
 import type { Tag } from "effect/Context"
 import type { Effect } from "effect/Effect"
 import type { Scope } from "effect/Scope"
-import type { Connection } from "./Connection.js"
-import type { SqlError } from "./Error.js"
 import * as internal from "./internal/client.js"
+import type { Connection } from "./SqlConnection.js"
+import type { SqlError } from "./SqlError.js"
 import type { Compiler, Constructor } from "./Statement.js"
 
 /**
@@ -25,7 +25,7 @@ export type TypeId = typeof TypeId
  * @category models
  * @since 1.0.0
  */
-export interface Client extends Constructor {
+export interface SqlClient extends Constructor {
   readonly [TypeId]: TypeId
 
   /**
@@ -47,13 +47,13 @@ export interface Client extends Constructor {
  * @category models
  * @since 1.0.0
  */
-export const Client: Tag<Client, Client> = internal.clientTag
+export const SqlClient: Tag<SqlClient, SqlClient> = internal.clientTag
 
 /**
  * @category models
  * @since 1.0.0
  */
-export namespace Client {
+export namespace SqlClient {
   /**
    * @category models
    * @since 1.0.0
@@ -83,7 +83,7 @@ export const make: ({
   rollbackSavepoint,
   savepoint,
   transactionAcquirer
-}: Client.MakeOptions) => Client = internal.make
+}: SqlClient.MakeOptions) => SqlClient = internal.make
 
 /**
  * @since 1.0.0

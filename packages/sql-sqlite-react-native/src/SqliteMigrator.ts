@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import type * as Client from "@effect/sql/Client"
-import type { SqlError } from "@effect/sql/Error"
 import * as Migrator from "@effect/sql/Migrator"
+import type * as Client from "@effect/sql/SqlClient"
+import type { SqlError } from "@effect/sql/SqlError"
 import type * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 
@@ -21,7 +21,7 @@ export const run: <R>(
 ) => Effect.Effect<
   ReadonlyArray<readonly [id: number, name: string]>,
   SqlError | Migrator.MigrationError,
-  Client.Client | R
+  Client.SqlClient | R
 > = Migrator.make({})
 
 /**
@@ -30,4 +30,4 @@ export const run: <R>(
  */
 export const layer = <R>(
   options: Migrator.MigratorOptions<R>
-): Layer.Layer<never, SqlError | Migrator.MigrationError, R | Client.Client> => Layer.effectDiscard(run(options))
+): Layer.Layer<never, SqlError | Migrator.MigrationError, R | Client.SqlClient> => Layer.effectDiscard(run(options))

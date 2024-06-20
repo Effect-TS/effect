@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import * as Client from "@effect/sql/Client"
-import type { Connection } from "@effect/sql/Connection"
-import { SqlError } from "@effect/sql/Error"
+import * as Client from "@effect/sql/SqlClient"
+import type { Connection } from "@effect/sql/SqlConnection"
+import { SqlError } from "@effect/sql/SqlError"
 import * as Statement from "@effect/sql/Statement"
 import * as Otel from "@opentelemetry/semantic-conventions"
 import * as Config from "effect/Config"
@@ -29,7 +29,7 @@ import type * as Procedure from "./Procedure.js"
  * @category type ids
  * @since 1.0.0
  */
-export const TypeId: unique symbol = Symbol.for("@effect/sql-mssql/Client")
+export const TypeId: unique symbol = Symbol.for("@effect/sql-mssql/MssqlClient")
 
 /**
  * @category type ids
@@ -41,7 +41,7 @@ export type TypeId = typeof TypeId
  * @category models
  * @since 1.0.0
  */
-export interface MssqlClient extends Client.Client {
+export interface MssqlClient extends Client.SqlClient {
   readonly [TypeId]: TypeId
 
   readonly config: MssqlClientConfig
@@ -65,7 +65,7 @@ export interface MssqlClient extends Client.Client {
  * @category tags
  * @since 1.0.0
  */
-export const MssqlClient = Context.GenericTag<MssqlClient>("@effect/sql-mssql/Client")
+export const MssqlClient = Context.GenericTag<MssqlClient>("@effect/sql-mssql/MssqlClient")
 
 /**
  * @category models
@@ -411,13 +411,13 @@ export const make = (
  */
 export const layer = (
   config: Config.Config.Wrap<MssqlClientConfig>
-): Layer.Layer<Client.Client | MssqlClient, ConfigError> =>
+): Layer.Layer<Client.SqlClient | MssqlClient, ConfigError> =>
   Layer.scopedContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(make),
       Effect.map((client) =>
         Context.make(MssqlClient, client).pipe(
-          Context.add(Client.Client, client)
+          Context.add(Client.SqlClient, client)
         )
       )
     )

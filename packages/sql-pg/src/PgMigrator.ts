@@ -5,13 +5,13 @@ import * as Command from "@effect/platform/Command"
 import type { CommandExecutor } from "@effect/platform/CommandExecutor"
 import { FileSystem } from "@effect/platform/FileSystem"
 import { Path } from "@effect/platform/Path"
-import type * as Client from "@effect/sql/Client"
-import type { SqlError } from "@effect/sql/Error"
 import * as Migrator from "@effect/sql/Migrator"
+import type * as Client from "@effect/sql/SqlClient"
+import type { SqlError } from "@effect/sql/SqlError"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
-import { MysqlClient } from "./Client.js"
+import { PgClient } from "./PgClient.js"
 
 /**
  * @since 1.0.0
@@ -32,60 +32,62 @@ export const run: <R2 = never>(
 ) => Effect.Effect<
   ReadonlyArray<readonly [id: number, name: string]>,
   Migrator.MigrationError | SqlError,
-  FileSystem | Path | MysqlClient | Client.Client | CommandExecutor | R2
+  FileSystem | Path | PgClient | Client.SqlClient | CommandExecutor | R2
 > = Migrator.make({
   dumpSchema(path, table) {
-    const mysqlDump = (args: Array<string>) =>
+    const pgDump = (args: Array<string>) =>
       Effect.gen(function*(_) {
-        const sql = yield* MysqlClient
+        const sql = yield* PgClient
         const dump = yield* _(
-          Command.make(
-            "mysqldump",
-            ...(sql.config.username ? ["-u", sql.config.username] : []),
-            ...(sql.config.database ? [sql.config.database] : []),
-            "--skip-comments",
-            "--compact",
-            ...args
-          ),
+          Command.make("pg_dump", ...args, "--no-owner", "--no-privileges"),
           Command.env({
             PATH: (globalThis as any).process?.env.PATH,
-            MYSQL_HOST: sql.config.host,
-            MYSQL_TCP_PORT: sql.config.port?.toString(),
-            MYSQL_PWD: sql.config.password
+            PGHOST: sql.config.host,
+            PGPORT: sql.config.port?.toString(),
+            PGUSER: sql.config.username,
+            PGPASSWORD: sql.config.password
               ? Redacted.value(sql.config.password)
-              : undefined
+              : undefined,
+            PGDATABASE: sql.config.database,
+            PGSSLMODE: sql.config.ssl ? "require" : "prefer"
           }),
           Command.string
         )
 
-        return dump.replace(/^\/\*.*$/gm, "")
+        return dump.replace(/^--.*$/gm, "")
+          .replace(/^SET .*$/gm, "")
+          .replace(/^SELECT pg_catalog\..*$/gm, "")
           .replace(/\n{2,}/gm, "\n\n")
           .trim()
       }).pipe(
         Effect.mapError((error) => new Migrator.MigrationError({ reason: "failed", message: error.message }))
       )
 
-    const dumpSchema = mysqlDump(["--no-data"])
+    const pgDumpSchema = pgDump(["--schema-only"])
 
-    const dumpMigrations = mysqlDump(["--no-create-info", "--tables", table])
+    const pgDumpMigrations = pgDump([
+      "--column-inserts",
+      "--data-only",
+      `--table=${table}`
+    ])
 
-    const dumpAll = Effect.map(
-      Effect.all([dumpSchema, dumpMigrations], { concurrency: 2 }),
+    const pgDumpAll = Effect.map(
+      Effect.all([pgDumpSchema, pgDumpMigrations], { concurrency: 2 }),
       ([schema, migrations]) => schema + "\n\n" + migrations
     )
 
-    const dumpFile = (file: string) =>
+    const pgDumpFile = (path: string) =>
       Effect.gen(function*(_) {
         const fs = yield* _(FileSystem)
-        const path = yield* _(Path)
-        const dump = yield* _(dumpAll)
-        yield* _(fs.makeDirectory(path.dirname(file), { recursive: true }))
-        yield* _(fs.writeFileString(file, dump))
+        const path_ = yield* _(Path)
+        const dump = yield* _(pgDumpAll)
+        yield* _(fs.makeDirectory(path_.dirname(path), { recursive: true }))
+        yield* _(fs.writeFileString(path, dump))
       }).pipe(
         Effect.mapError((error) => new Migrator.MigrationError({ reason: "failed", message: error.message }))
       )
 
-    return dumpFile(path)
+    return pgDumpFile(path)
   }
 })
 
@@ -98,5 +100,5 @@ export const layer = <R>(
 ): Layer.Layer<
   never,
   Migrator.MigrationError | SqlError,
-  MysqlClient | Client.Client | CommandExecutor | FileSystem | Path | R
+  PgClient | Client.SqlClient | CommandExecutor | FileSystem | Path | R
 > => Layer.effectDiscard(run(options))

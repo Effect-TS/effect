@@ -1,7 +1,7 @@
 import * as Schema from "@effect/schema/Schema"
-import * as SqlClient from "@effect/sql/Client"
-import type * as SqlError from "@effect/sql/Error"
-import * as SqlResolver from "@effect/sql/Resolver"
+import * as SqlClient from "@effect/sql/SqlClient"
+import type * as SqlError from "@effect/sql/SqlError"
+import * as SqlResolver from "@effect/sql/SqlResolver"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -31,10 +31,10 @@ export const atLeastOnceStorageTag: Context.Tag<
 const make = ({ table }: AtLeastOnceStorage.AtLeastOnceStorage.MakeOptions): Effect.Effect<
   AtLeastOnceStorage.AtLeastOnceStorage,
   SqlError.SqlError,
-  SqlClient.Client | Serialization.Serialization
+  SqlClient.SqlClient | Serialization.Serialization
 > =>
   Effect.gen(function*() {
-    const sql = yield* SqlClient.Client
+    const sql = yield* SqlClient.SqlClient
     const serialization = yield* InternalSerialization.serializationTag
 
     yield* sql.onDialect({
@@ -214,5 +214,5 @@ const make = ({ table }: AtLeastOnceStorage.AtLeastOnceStorage.MakeOptions): Eff
 export const layer = (options: AtLeastOnceStorage.AtLeastOnceStorage.MakeOptions): Layer.Layer<
   AtLeastOnceStorage.AtLeastOnceStorage,
   SqlError.SqlError,
-  SqlClient.Client | Serialization.Serialization
+  SqlClient.SqlClient | Serialization.Serialization
 > => Layer.effect(atLeastOnceStorageTag, make(options))

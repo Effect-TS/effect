@@ -5,7 +5,7 @@ import * as Context from "effect/Context"
 import type { Effect } from "effect/Effect"
 import type { Scope } from "effect/Scope"
 import type { Stream } from "effect/Stream"
-import type { SqlError } from "./Error.js"
+import type { SqlError } from "./SqlError.js"
 import type { Primitive } from "./Statement.js"
 
 /**

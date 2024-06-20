@@ -13,8 +13,8 @@ import * as Storage from "@effect/cluster/Storage"
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as Schema from "@effect/schema/Schema"
-import * as Sqlite from "@effect/sql-sqlite-node/Client"
-import * as SqlClient from "@effect/sql/Client"
+import * as Sqlite from "@effect/sql-sqlite-node/SqliteClient"
+import * as SqlClient from "@effect/sql/SqlClient"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -62,7 +62,7 @@ const runTest =
         Layer.provideMerge(ShardingConfig.withDefaults({
           entityTerminationTimeout: Duration.seconds(4)
         })),
-        Layer.provideMerge(Layer.succeed(SqlClient.Client, sqlClient))
+        Layer.provideMerge(Layer.succeed(SqlClient.SqlClient, sqlClient))
       )
       yield* program.pipe(Effect.provide(TestLive))
     }).pipe(
@@ -75,7 +75,7 @@ const runTest =
 describe("AtLeastOnce", () => {
   it("should create the message table upon layer creation", () =>
     Effect.gen(function*() {
-      const sql = yield* SqlClient.Client
+      const sql = yield* SqlClient.SqlClient
 
       const rows = yield* sql<{ table_name: string }>`
         SELECT name AS table_name
@@ -90,7 +90,7 @@ describe("AtLeastOnce", () => {
 
   it("should store the message in the message table after sending", () =>
     Effect.gen(function*() {
-      const sql = yield* SqlClient.Client
+      const sql = yield* SqlClient.SqlClient
 
       yield* Sharding.registerScoped
 
@@ -115,7 +115,7 @@ describe("AtLeastOnce", () => {
 
   it("should mark a message as processed if the message state is processed", () =>
     Effect.gen(function*() {
-      const sql = yield* SqlClient.Client
+      const sql = yield* SqlClient.SqlClient
 
       yield* Sharding.registerScoped
 
@@ -143,7 +143,7 @@ describe("AtLeastOnce", () => {
 
   it("should not mark as processed if a message state is acknowledged", () =>
     Effect.gen(function*() {
-      const sql = yield* SqlClient.Client
+      const sql = yield* SqlClient.SqlClient
 
       yield* Sharding.registerScoped
 
