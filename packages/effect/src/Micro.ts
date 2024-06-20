@@ -1864,8 +1864,8 @@ export const catchFailure: {
 )
 
 /**
- * Selectively catch the full `Failure` object of the given `Micro` effect,
- * allowing you to recover from the specified failure.
+ * Selectively catch a `Failure` object of the given `Micro` effect,
+ * using the provided predicate to determine if the failure should be caught.
  *
  * @since 3.4.0
  * @experimental
@@ -1965,7 +1965,8 @@ export const tapFailure: {
 )
 
 /**
- * Perform a side effect using the full `Failure` object of the given `Micro`.
+ * Perform a side effect using if a `Failure` object matches the specified
+ * predicate.
  *
  * @since 3.4.0
  * @experimental
