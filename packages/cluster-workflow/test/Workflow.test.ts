@@ -302,16 +302,24 @@ describe.concurrent("Workflow", () => {
       )
 
       const workflowJournalEntryCount = yield* _(
-        DurableExecutionJournal.read("wf", Schema.Never, Schema.Number, 0, false),
-        Stream.runCollect,
-        Effect.map(Chunk.toReadonlyArray)
+        DurableExecutionJournal.DurableExecutionJournal,
+        Effect.flatMap((journal) =>
+          journal.read("wf", Schema.Never, Schema.Number, 0, false).pipe(
+            Stream.runCollect,
+            Effect.map(Chunk.toReadonlyArray)
+          )
+        )
       )
 
       const persistenceId = yield* _(Ref.get(persistenceIdRef))
       const activityJournalEntryCount = yield* _(
-        DurableExecutionJournal.read(persistenceId, Schema.Never, Schema.Number, 0, false),
-        Stream.runCollect,
-        Effect.map(Chunk.toReadonlyArray)
+        DurableExecutionJournal.DurableExecutionJournal,
+        Effect.flatMap((journal) =>
+          journal.read(persistenceId, Schema.Never, Schema.Number, 0, false).pipe(
+            Stream.runCollect,
+            Effect.map(Chunk.toReadonlyArray)
+          )
+        )
       )
 
       expect(mockedUse.spy).toHaveBeenCalled()

@@ -359,7 +359,11 @@ export function attempt<A extends Message.Message.Any, R>(workflow: Workflow.Wor
 
       const appendToJournal = (
         event: DurableExecutionEvent.DurableExecutionEvent<Message.Message.Success<A>, Message.Message.Error<A>>
-      ) => DurableExecutionJournal.append(persistenceId, successSchema, failureSchema, event)
+      ) =>
+        Effect.flatMap(
+          DurableExecutionJournal.DurableExecutionJournal,
+          (journal) => journal.append(persistenceId, successSchema, failureSchema, event)
+        )
 
       const mailbox = yield* $(
         Queue.unbounded<

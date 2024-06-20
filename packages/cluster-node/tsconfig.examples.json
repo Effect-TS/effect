@@ -4,18 +4,10 @@
     "examples"
   ],
   "references": [
-    {
-      "path": "tsconfig.src.json"
-    },
-    {
-      "path": "../rpc-http"
-    },
-    {
-      "path": "../platform"
-    },
-    {
-      "path": "../platform-node"
-    }
+    { "path": "tsconfig.src.json" },
+    { "path": "../rpc-http" },
+    { "path": "../platform" },
+    { "path": "../platform-node" }
   ],
   "compilerOptions": {
     "types": ["node"],

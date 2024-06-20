@@ -26,19 +26,19 @@
     "coverage": "vitest --coverage"
   },
   "peerDependencies": {
-    "@effect/platform": "workspace:*",
-    "@effect/platform-node": "workspace:*",
-    "@effect/rpc": "workspace:*",
-    "@effect/schema": "workspace:*",
-    "effect": "workspace:*"
+    "@effect/platform": "workspace:^",
+    "@effect/platform-node": "workspace:^",
+    "@effect/rpc": "workspace:^",
+    "@effect/schema": "workspace:^",
+    "effect": "workspace:^"
   },
   "devDependencies": {
-    "@effect/platform": "workspace:*",
-    "@effect/platform-node": "workspace:*",
-    "@effect/rpc": "workspace:*",
-    "@effect/rpc-http": "workspace:*",
-    "@effect/schema": "workspace:*",
+    "@effect/platform": "workspace:^",
+    "@effect/platform-node": "workspace:^",
+    "@effect/rpc": "workspace:^",
+    "@effect/rpc-http": "workspace:^",
+    "@effect/schema": "workspace:^",
     "@types/node": "^20.12.6",
-    "effect": "workspace:*"
+    "effect": "workspace:^"
   }
 }

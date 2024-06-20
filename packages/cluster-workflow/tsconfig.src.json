@@ -4,15 +4,9 @@
     "src"
   ],
   "references": [
-    {
-      "path": "../effect"
-    },
-    {
-      "path": "../cluster"
-    },
-    {
-      "path": "../schema"
-    }
+    { "path": "../effect" },
+    { "path": "../cluster" },
+    { "path": "../schema" }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/src.tsbuildinfo",
