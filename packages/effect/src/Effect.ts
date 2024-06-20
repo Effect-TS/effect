@@ -2170,24 +2170,15 @@ export const uninterruptibleMask: <A, E, R>(
  * @param predicate - A `Predicate` function that takes in a value of type `A` and returns a boolean.
  *
  * @example
- * import { pipe, Effect } from "effect"
+ * import { Effect } from "effect"
  *
  * const isPositive = (n: number): boolean => n > 0
  *
- * assert.deepStrictEqual(
- *   pipe(
- *     1,
- *     Effect.liftPredicate(isPositive, n => `${n} is not positive`)
- *   ),
- *   Effect.succeed(1)
- * )
- * assert.deepStrictEqual(
- *   pipe(
- *     0,
- *     Effect.liftPredicate(isPositive, n => `${n} is not positive`)
- *   ),
- *   Effect.fail("0 is not positive")
- * )
+ * // succeeds with `1`
+ * Effect.liftPredicate(1, isPositive, n => `${n} is not positive`)
+ *
+ * // fails with `"0 is not positive"`
+ * Effect.liftPredicate(0, isPositive, n => `${n} is not positive`)
  *
  * @category lifting
  * @since 3.4.0
