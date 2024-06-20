@@ -545,6 +545,136 @@ export const envMutate: {
     envMake(f(Object.assign(Object.create(null), self.refs)))
 )
 
+/**
+ * Access the given `Context.Tag` from the environment.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category environment
+ */
+export const service = <I, S>(tag: Context.Tag<I, S>): Micro<S, never, I> =>
+  make(function(env, onResult) {
+    onResult(ResultSuccess(Context.get(envGet(env, currentContext) as Context.Context<I>, tag as any) as S))
+  })
+
+/**
+ * Access the given `Context.Tag` from the environment, without tracking the
+ * dependency at the type level.
+ *
+ * It will return an `Option` of the service, depending on whether it is
+ * available in the environment or not.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category environment
+ */
+export const serviceOption = <I, S>(tag: Context.Tag<I, S>): Micro<Option.Option<S>> =>
+  make(function(env, onResult) {
+    onResult(ResultSuccess(Context.getOption(envGet(env, currentContext) as Context.Context<I>, tag)))
+  })
+
+/**
+ * Retrieve the current value of the given `EnvRef`.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category environment
+ */
+export const getEnvRef = <A>(envRef: EnvRef<A>): Micro<A> =>
+  make((env, onResult) => onResult(Either.right(envGet(env, envRef))))
+
+/**
+ * Set the value of the given `EnvRef` for the duration of the effect.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category environment
+ */
+export const locally: {
+  <A>(fiberRef: EnvRef<A>, value: A): <XA, E, R>(self: Micro<XA, E, R>) => Micro<XA, E, R>
+  <XA, E, R, A>(self: Micro<XA, E, R>, fiberRef: EnvRef<A>, value: A): Micro<XA, E, R>
+} = dual(
+  3,
+  <XA, E, R, A>(self: Micro<XA, E, R>, fiberRef: EnvRef<A>, value: A): Micro<XA, E, R> =>
+    make((env, onResult) => self[runSymbol](envSet(env, fiberRef, value), onResult))
+)
+
+/**
+ * Access the current `Context` from the environment.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category environment
+ */
+export const context = <R>(): Micro<Context.Context<R>> => getEnvRef(currentContext) as any
+
+/**
+ * Merge the given `Context` with the current context.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category environment
+ */
+export const provideContext: {
+  <XR>(context: Context.Context<XR>): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, Exclude<R, XR>>
+  <A, E, R, XR>(self: Micro<A, E, R>, context: Context.Context<XR>): Micro<A, E, Exclude<R, XR>>
+} = dual(
+  2,
+  <A, E, R, XR>(self: Micro<A, E, R>, provided: Context.Context<XR>): Micro<A, E, Exclude<R, XR>> =>
+    make(function(env, onResult) {
+      const context = envGet(env, currentContext)
+      const nextEnv = envSet(env, currentContext, Context.merge(context, provided))
+      self[runSymbol](nextEnv, onResult)
+    })
+)
+
+/**
+ * Add the provided service to the current context.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category environment
+ */
+export const provideService: {
+  <I, S>(tag: Context.Tag<I, S>, service: S): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, Exclude<R, I>>
+  <A, E, R, I, S>(self: Micro<A, E, R>, tag: Context.Tag<I, S>, service: S): Micro<A, E, Exclude<R, I>>
+} = dual(
+  3,
+  <A, E, R, I, S>(self: Micro<A, E, R>, tag: Context.Tag<I, S>, service: S): Micro<A, E, Exclude<R, I>> =>
+    make(function(env, onResult) {
+      const context = envGet(env, currentContext)
+      const nextEnv = envSet(env, currentContext, Context.add(context, tag, service))
+      self[runSymbol](nextEnv, onResult)
+    })
+)
+
+/**
+ * Create a service using the provided `Micro` effect, and add it to the
+ * current context.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category environment
+ */
+export const provideServiceMicro: {
+  <I, S, E2, R2>(
+    tag: Context.Tag<I, S>,
+    acquire: Micro<S, E2, R2>
+  ): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E | E2, Exclude<R, I> | R2>
+  <A, E, R, I, S, E2, R2>(
+    self: Micro<A, E, R>,
+    tag: Context.Tag<I, S>,
+    acquire: Micro<S, E2, R2>
+  ): Micro<A, E | E2, Exclude<R, I> | R2>
+} = dual(
+  3,
+  <A, E, R, I, S, E2, R2>(
+    self: Micro<A, E, R>,
+    tag: Context.Tag<I, S>,
+    acquire: Micro<S, E2, R2>
+  ): Micro<A, E | E2, Exclude<R, I> | R2> => flatMap(acquire, (service) => provideService(self, tag, service))
+)
+
 // ========================================================================
 // Env refs
 // ========================================================================
@@ -795,19 +925,6 @@ export const failSync = <E>(e: LazyArg<E>): Micro<never, E> =>
   })
 
 /**
- * Abort the current `Micro` effect.
- *
- * @since 3.4.0
- * @experimental
- * @category constructors
- */
-export const abort: Micro<never> = make(function(env, onResult) {
-  const controller = envGet(env, currentAbortController)
-  controller.abort()
-  onResult(ResultAborted)
-})
-
-/**
  * Creates a `Micro` effect that will die with the specified error.
  *
  * This will result in a `FailureUnexpected`, where the error is not tracked at
@@ -851,34 +968,6 @@ export const failWithSync = <E>(failure: LazyArg<Failure<E>>): Micro<never, E> =
 export const sync = <A>(evaluate: LazyArg<A>): Micro<A> =>
   make(function(_env, onResult) {
     onResult(ResultSuccess(evaluate()))
-  })
-
-/**
- * Access the given `Context.Tag` from the environment.
- *
- * @since 3.4.0
- * @experimental
- * @category constructors
- */
-export const service = <I, S>(tag: Context.Tag<I, S>): Micro<S, never, I> =>
-  make(function(env, onResult) {
-    onResult(ResultSuccess(Context.get(envGet(env, currentContext) as Context.Context<I>, tag as any) as S))
-  })
-
-/**
- * Access the given `Context.Tag` from the environment, without tracking the
- * dependency at the type level.
- *
- * It will return an `Option` of the service, depending on whether it is
- * available in the environment or not.
- *
- * @since 3.4.0
- * @experimental
- * @category constructors
- */
-export const serviceOption = <I, S>(tag: Context.Tag<I, S>): Micro<Option.Option<S>> =>
-  make(function(env, onResult) {
-    onResult(ResultSuccess(Context.getOption(envGet(env, currentContext) as Context.Context<I>, tag)))
   })
 
 /**
@@ -2885,114 +2974,21 @@ export const acquireUseRelease = <Resource, E, R, A, E2, R2, E3, R3>(
   )
 
 // ----------------------------------------------------------------------------
-// environment
-// ----------------------------------------------------------------------------
-
-/**
- * Retrieve the current value of the given `EnvRef`.
- *
- * @since 3.4.0
- * @experimental
- * @category environment
- */
-export const getEnvRef = <A>(envRef: EnvRef<A>): Micro<A> =>
-  make((env, onResult) => onResult(Either.right(envGet(env, envRef))))
-
-/**
- * Set the value of the given `EnvRef` for the duration of the effect.
- *
- * @since 3.4.0
- * @experimental
- * @category environment
- */
-export const locally: {
-  <A>(fiberRef: EnvRef<A>, value: A): <XA, E, R>(self: Micro<XA, E, R>) => Micro<XA, E, R>
-  <XA, E, R, A>(self: Micro<XA, E, R>, fiberRef: EnvRef<A>, value: A): Micro<XA, E, R>
-} = dual(
-  3,
-  <XA, E, R, A>(self: Micro<XA, E, R>, fiberRef: EnvRef<A>, value: A): Micro<XA, E, R> =>
-    make((env, onResult) => self[runSymbol](envSet(env, fiberRef, value), onResult))
-)
-
-/**
- * Access the current `Context` from the environment.
- *
- * @since 3.4.0
- * @experimental
- * @category environment
- */
-export const context = <R>(): Micro<Context.Context<R>> => getEnvRef(currentContext) as any
-
-/**
- * Merge the given `Context` with the current context.
- *
- * @since 3.4.0
- * @experimental
- * @category environment
- */
-export const provideContext: {
-  <XR>(context: Context.Context<XR>): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, Exclude<R, XR>>
-  <A, E, R, XR>(self: Micro<A, E, R>, context: Context.Context<XR>): Micro<A, E, Exclude<R, XR>>
-} = dual(
-  2,
-  <A, E, R, XR>(self: Micro<A, E, R>, provided: Context.Context<XR>): Micro<A, E, Exclude<R, XR>> =>
-    make(function(env, onResult) {
-      const context = envGet(env, currentContext)
-      const nextEnv = envSet(env, currentContext, Context.merge(context, provided))
-      self[runSymbol](nextEnv, onResult)
-    })
-)
-
-/**
- * Add the provided service to the current context.
- *
- * @since 3.4.0
- * @experimental
- * @category environment
- */
-export const provideService: {
-  <I, S>(tag: Context.Tag<I, S>, service: S): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, Exclude<R, I>>
-  <A, E, R, I, S>(self: Micro<A, E, R>, tag: Context.Tag<I, S>, service: S): Micro<A, E, Exclude<R, I>>
-} = dual(
-  3,
-  <A, E, R, I, S>(self: Micro<A, E, R>, tag: Context.Tag<I, S>, service: S): Micro<A, E, Exclude<R, I>> =>
-    make(function(env, onResult) {
-      const context = envGet(env, currentContext)
-      const nextEnv = envSet(env, currentContext, Context.add(context, tag, service))
-      self[runSymbol](nextEnv, onResult)
-    })
-)
-
-/**
- * Create a service using the provided `Micro` effect, and add it to the
- * current context.
- *
- * @since 3.4.0
- * @experimental
- * @category environment
- */
-export const provideServiceMicro: {
-  <I, S, E2, R2>(
-    tag: Context.Tag<I, S>,
-    acquire: Micro<S, E2, R2>
-  ): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E | E2, Exclude<R, I> | R2>
-  <A, E, R, I, S, E2, R2>(
-    self: Micro<A, E, R>,
-    tag: Context.Tag<I, S>,
-    acquire: Micro<S, E2, R2>
-  ): Micro<A, E | E2, Exclude<R, I> | R2>
-} = dual(
-  3,
-  <A, E, R, I, S, E2, R2>(
-    self: Micro<A, E, R>,
-    tag: Context.Tag<I, S>,
-    acquire: Micro<S, E2, R2>
-  ): Micro<A, E | E2, Exclude<R, I> | R2> => flatMap(acquire, (service) => provideService(self, tag, service))
-)
-
-// ----------------------------------------------------------------------------
 // interruption
 // ----------------------------------------------------------------------------
+
+/**
+ * Abort the current `Micro` effect.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category interruption
+ */
+export const abort: Micro<never> = make(function(env, onResult) {
+  const controller = envGet(env, currentAbortController)
+  controller.abort()
+  onResult(ResultAborted)
+})
 
 /**
  * Wrap the given `Micro` effect in an uninterruptible region, preventing the
