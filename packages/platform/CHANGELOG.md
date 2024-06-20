@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.57.5
+
+### Patch Changes
+
+- [#3021](https://github.com/Effect-TS/effect/pull/3021) [`b8ea6aa`](https://github.com/Effect-TS/effect/commit/b8ea6aa479006358042b4256ee0a1c5cfbe57acb) Thanks @tim-smart! - update find-my-way-ts to fix vercel edge support
+
 ## 0.57.4
 
 ### Patch Changes
