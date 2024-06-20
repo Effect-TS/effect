@@ -16,4 +16,4 @@ export const make = <DB>() =>
     createQueryCompiler: () => new MysqlQueryCompiler()
   })
 
-export * from "./patch.types.js"
+export type * from "./patch.types.js"
