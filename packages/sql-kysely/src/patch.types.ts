@@ -1,4 +1,4 @@
-import type { SqlError } from "@effect/sql/Error"
+import type { SqlError } from "@effect/sql/SqlError"
 import type { Effect } from "effect"
 import type { Kysely, Simplify } from "kysely"
 
