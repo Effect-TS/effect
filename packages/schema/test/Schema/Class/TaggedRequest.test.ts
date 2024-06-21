@@ -159,4 +159,18 @@ describe("TaggedRequest", () => {
       Exit.fail("fail")
     )
   })
+
+  it("should expose a make constructor", () => {
+    class TRA extends S.TaggedRequest<TRA>()("TRA", S.String, S.Number, {
+      n: S.NumberFromString
+    }) {
+      a() {
+        return this.n + "a"
+      }
+    }
+    const tra = TRA.make({ n: 1 })
+    expect(tra instanceof TRA).toEqual(true)
+    expect(tra._tag).toEqual("TRA")
+    expect(tra.a()).toEqual("1a")
+  })
 })

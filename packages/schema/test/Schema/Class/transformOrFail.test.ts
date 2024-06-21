@@ -32,7 +32,11 @@ class PersonWithTransform extends Person.transformOrFail<PersonWithTransform>("P
         ParseResult.fail(new ParseResult.Type(ast, input)) :
         ParseResult.succeed(input)
   }
-) {}
+) {
+  a() {
+    return this.id + "a"
+  }
+}
 
 describe("transformOrFail", () => {
   it("transformOrFail", async () => {
@@ -79,5 +83,11 @@ describe("transformOrFail", () => {
   }
 }}`
     )
+  })
+
+  it("should expose a make constructor", () => {
+    const instance = PersonWithTransform.make({ id: 2, name: "John", thing: Option.some({ id: 1 }) })
+    expect(instance instanceof PersonWithTransform).toEqual(true)
+    expect(instance.a()).toEqual("2a")
   })
 })

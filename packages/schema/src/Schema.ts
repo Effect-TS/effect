@@ -6944,6 +6944,8 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
     options?: MakeOptions
   ): Struct.Type<Fields> & Omit<Inherited, keyof Fields> & Proto
 
+  make<Args extends Array<any>, X>(this: { new(...args: Args): X }, ...args: Args): X
+
   annotations(annotations: Annotations.Schema<Self>): SchemaClass<Self, Simplify<I>, R>
 
   readonly fields: { readonly [K in keyof Fields]: Fields[K] }
@@ -7417,6 +7419,10 @@ const makeClass = ({ Base, annotations, fields, identifier, kind, schema, toStri
     // ----------------
     // Class interface
     // ----------------
+
+    static make(...args: Array<any>) {
+      return new this(...args)
+    }
 
     static fields = { ...fields }
 

@@ -107,4 +107,25 @@ describe("extend", () => {
          └─ is missing`
     )
   })
+
+  it("should expose a make constructor", () => {
+    class A extends S.Class<A>("A")({
+      n: S.NumberFromString
+    }) {
+      a() {
+        return this.n + "a"
+      }
+    }
+    class B extends A.extend<B>("B")({
+      c: S.String
+    }) {
+      b() {
+        return this.n + "b"
+      }
+    }
+    const b = B.make({ n: 1, c: "c" })
+    expect(b instanceof B).toEqual(true)
+    expect(b.a()).toEqual("1a")
+    expect(b.b()).toEqual("1b")
+  })
 })

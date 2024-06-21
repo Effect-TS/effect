@@ -89,12 +89,22 @@ describe("Class", () => {
       └─ Predicate refinement failure
          └─ Expected NonEmpty, actual ""`)
     )
+    expect(() => A.make({ a: "" })).toThrow(
+      new Error(`A (Constructor)
+└─ ["a"]
+   └─ NonEmpty
+      └─ Predicate refinement failure
+         └─ Expected NonEmpty, actual ""`)
+    )
   })
 
   it("the constructor validation can be disabled", () => {
     class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
     expect(new A({ a: "" }, true).a).toStrictEqual("")
     expect(new A({ a: "" }, { disableValidation: true }).a).toStrictEqual("")
+
+    expect(A.make({ a: "" }, true).a).toStrictEqual("")
+    expect(A.make({ a: "" }, { disableValidation: true }).a).toStrictEqual("")
   })
 
   it("the constructor should support defaults", () => {
@@ -107,6 +117,11 @@ describe("Class", () => {
     expect({ ...new A({ a: "a" }) }).toStrictEqual({ a: "a", [b]: 1 })
     expect({ ...new A({ [b]: 2 }) }).toStrictEqual({ a: "", [b]: 2 })
     expect({ ...new A({}) }).toStrictEqual({ a: "", [b]: 1 })
+
+    expect({ ...A.make({ a: "a", [b]: 2 }) }).toStrictEqual({ a: "a", [b]: 2 })
+    expect({ ...A.make({ a: "a" }) }).toStrictEqual({ a: "a", [b]: 1 })
+    expect({ ...A.make({ [b]: 2 }) }).toStrictEqual({ a: "", [b]: 2 })
+    expect({ ...A.make({}) }).toStrictEqual({ a: "", [b]: 1 })
   })
 
   it("the constructor should support lazy defaults", () => {
@@ -118,6 +133,11 @@ describe("Class", () => {
     expect({ ...new A({}) }).toStrictEqual({ a: 2 })
     new A({ a: 10 })
     expect({ ...new A({}) }).toStrictEqual({ a: 3 })
+
+    expect({ ...A.make({}) }).toStrictEqual({ a: 4 })
+    expect({ ...A.make({}) }).toStrictEqual({ a: 5 })
+    new A({ a: 10 })
+    expect({ ...A.make({}) }).toStrictEqual({ a: 6 })
   })
 
   it("a Class with no fields should have a void constructor", () => {
@@ -125,6 +145,10 @@ describe("Class", () => {
     expect({ ...new A() }).toStrictEqual({})
     expect({ ...new A(undefined, true) }).toStrictEqual({})
     expect({ ...new A({}) }).toStrictEqual({})
+
+    expect({ ...A.make() }).toStrictEqual({})
+    expect({ ...A.make(undefined, true) }).toStrictEqual({})
+    expect({ ...A.make({}) }).toStrictEqual({})
   })
 
   it("a Class with all defaulted fields should have a void constructor", () => {
@@ -134,6 +158,10 @@ describe("Class", () => {
     expect({ ...new A() }).toStrictEqual({ a: "" })
     expect({ ...new A(undefined) }).toStrictEqual({ a: "" })
     expect({ ...new A({}) }).toStrictEqual({ a: "" })
+
+    expect({ ...A.make() }).toStrictEqual({ a: "" })
+    expect({ ...A.make(undefined) }).toStrictEqual({ a: "" })
+    expect({ ...A.make({}) }).toStrictEqual({ a: "" })
   })
 
   it("should support methods", () => {
@@ -436,5 +464,18 @@ details: Duplicate key "a"`)
   it("arbitrary", () => {
     class A extends S.Class<A>("A")({ a: S.String }) {}
     Util.expectArbitrary(A)
+  })
+
+  it("should expose a make constructor", () => {
+    class A extends S.Class<A>("A")({
+      n: S.NumberFromString
+    }) {
+      a() {
+        return this.n + "a"
+      }
+    }
+    const a = A.make({ n: 1 })
+    expect(a instanceof A).toEqual(true)
+    expect(a.a()).toEqual("1a")
   })
 })
