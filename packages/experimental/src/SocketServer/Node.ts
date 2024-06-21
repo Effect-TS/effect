@@ -70,7 +70,7 @@ export const make = (
             })
             server.on("connection", (conn) => {
               pipe(
-                NodeSocket.fromNetSocket(
+                NodeSocket.fromDuplex(
                   Effect.acquireRelease(
                     Effect.succeed(conn),
                     (conn) =>
