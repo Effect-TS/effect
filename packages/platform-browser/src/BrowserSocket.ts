@@ -21,7 +21,5 @@ export const layerWebSocket = (url: string, options?: {
  * @since 1.0.0
  * @category layers
  */
-export const layerWebSocketConstructor: Layer.Layer<Socket.WebSocketConstructor> = Layer.succeed(
-  Socket.WebSocketConstructor,
-  (url) => new globalThis.WebSocket(url)
-)
+export const layerWebSocketConstructor: Layer.Layer<Socket.WebSocketConstructor> =
+  Socket.layerWebSocketConstructorGlobal

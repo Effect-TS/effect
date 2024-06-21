@@ -1,11 +1,6 @@
 /**
  * @since 1.0.0
  */
-export * as BrowerSocket from "./BrowerSocket.js"
-
-/**
- * @since 1.0.0
- */
 export * as BrowserHttpClient from "./BrowserHttpClient.js"
 
 /**
@@ -17,6 +12,11 @@ export * as BrowserKeyValueStore from "./BrowserKeyValueStore.js"
  * @since 1.0.0
  */
 export * as BrowserRuntime from "./BrowserRuntime.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as BrowserSocket from "./BrowserSocket.js"
 
 /**
  * @since 1.0.0
