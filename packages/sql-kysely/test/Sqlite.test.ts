@@ -15,7 +15,7 @@ interface Database {
 
 class SqliteDB extends Context.Tag("SqliteDB")<SqliteDB, SqliteKysely.EffectKysely<Database>>() {}
 
-const SqliteLive = Sqlite.client.layer({
+const SqliteLive = Sqlite.SqliteClient.layer({
   filename: Config.succeed(":memory:")
 })
 

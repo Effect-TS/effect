@@ -24,7 +24,7 @@ export class PgContainer extends Context.Tag("test/PgContainer")<
   static ClientLive = Layer.unwrapEffect(
     Effect.gen(function*(_) {
       const container = yield* _(PgContainer)
-      return Pg.client.layer({
+      return Pg.PgClient.layer({
         url: Config.succeed(Redacted.make(container.getConnectionUri()))
       })
     })
@@ -46,7 +46,7 @@ export class MssqlContainer extends Context.Tag("test/MssqlContainer")<
   static ClientLive = Layer.unwrapEffect(
     Effect.gen(function*(_) {
       const container = yield* _(MssqlContainer)
-      return Mssql.client.layer({
+      return Mssql.MssqlClient.layer({
         server: Config.succeed(container.getHost()),
         port: Config.succeed(container.getPort()),
         username: Config.succeed(container.getUsername()),
@@ -72,7 +72,7 @@ export class MysqlContainer extends Context.Tag("test/MysqlContainer")<
   static ClientLive = Layer.unwrapEffect(
     Effect.gen(function*(_) {
       const container = yield* _(MysqlContainer)
-      return Mysql.client.layer({
+      return Mysql.MysqlClient.layer({
         url: Config.succeed(Redacted.make(container.getConnectionUri()))
       })
     })
