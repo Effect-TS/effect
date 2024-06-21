@@ -527,10 +527,11 @@ export interface InputTransformStream {
  */
 export const fromTransformStream = <R>(acquire: Effect.Effect<InputTransformStream, SocketError, R>, options?: {
   readonly closeCodeIsError?: (code: number) => boolean
-}): Effect.Effect<Socket, never, Exclude<R, Scope.Scope>> =>
-  Effect.withFiberRuntime<Socket, never, Exclude<R, Scope.Scope>>((fiber) =>
+}): Effect.Effect<Socket, never, Exclude<R, Scope.Scope>> => {
+  const EOF = Symbol()
+  return Effect.withFiberRuntime<Socket, never, Exclude<R, Scope.Scope>>((fiber) =>
     Effect.map(
-      Queue.dropping<Uint8Array | string | CloseEvent>(fiber.getFiberRef(currentSendQueueCapacity)),
+      Queue.dropping<Uint8Array | string | CloseEvent | typeof EOF>(fiber.getFiberRef(currentSendQueueCapacity)),
       (sendQueue) => {
         const acquireContext = fiber.getFiberRef(FiberRef.currentContext) as Context.Context<Exclude<R, Scope.Scope>>
         const closeCodeIsError = options?.closeCodeIsError ?? defaultCloseCodeIsError
@@ -551,19 +552,29 @@ export const fromTransformStream = <R>(acquire: Effect.Effect<InputTransformStre
                     })
                   )
               )),
+            Effect.bind("writer", ({ stream }) =>
+              Effect.acquireRelease(
+                Effect.sync(() => stream.writable.getWriter()),
+                (reader) => Effect.sync(() => reader.releaseLock())
+              )),
             Effect.bind("fiberSet", () => FiberSet.make<any, E | SocketError>()),
-            Effect.tap(({ fiberSet, stream }) => {
-              const writer = stream.writable.getWriter()
+            Effect.tap(({ fiberSet, writer }) => {
               const encoder = new TextEncoder()
               return Queue.take(sendQueue).pipe(
                 Effect.tap((chunk) => {
-                  if (isCloseEvent(chunk)) {
-                    return Effect.fail(
-                      new SocketCloseError({
-                        reason: "Close",
-                        code: chunk.code,
-                        closeReason: chunk.reason
-                      })
+                  if (
+                    chunk === EOF ||
+                    isCloseEvent(chunk)
+                  ) {
+                    return Effect.zipRight(
+                      Effect.promise(() => writer.close()),
+                      chunk === EOF ? Effect.interrupt : Effect.fail(
+                        new SocketCloseError({
+                          reason: "Close",
+                          code: chunk.code,
+                          closeReason: chunk.reason
+                        })
+                      )
                     )
                   }
                   return Effect.try({
@@ -578,11 +589,6 @@ export const fromTransformStream = <R>(acquire: Effect.Effect<InputTransformStre
                   })
                 }),
                 Effect.forever,
-                Effect.ensuring(
-                  Effect.promise(() => writer.close()).pipe(
-                    Effect.tap(() => writer.releaseLock())
-                  )
-                ),
                 FiberSet.run(fiberSet)
               )
             }),
@@ -621,7 +627,10 @@ export const fromTransformStream = <R>(acquire: Effect.Effect<InputTransformStre
           )
 
         const write = (chunk: Uint8Array | string | CloseEvent) => Queue.offer(sendQueue, chunk)
-        const writer = Effect.succeed(write)
+        const writer = Effect.acquireRelease(
+          Effect.succeed(write),
+          () => Queue.offer(sendQueue, EOF)
+        )
 
         return Socket.of({
           [TypeId]: TypeId,
@@ -632,3 +641,4 @@ export const fromTransformStream = <R>(acquire: Effect.Effect<InputTransformStre
       }
     )
   )
+}
