@@ -1,5 +1,17 @@
 # @effect/experimental
 
+## 0.17.0
+
+### Minor Changes
+
+- [#3036](https://github.com/Effect-TS/effect/pull/3036) [`5a248aa`](https://github.com/Effect-TS/effect/commit/5a248aa5ab2db3f7131ebc79bb9871a76de57973) Thanks @tim-smart! - remove dependency on /platform-node from DevTools
+
+### Patch Changes
+
+- Updated dependencies [[`5a248aa`](https://github.com/Effect-TS/effect/commit/5a248aa5ab2db3f7131ebc79bb9871a76de57973), [`5a248aa`](https://github.com/Effect-TS/effect/commit/5a248aa5ab2db3f7131ebc79bb9871a76de57973)]:
+  - @effect/platform@0.58.1
+  - @effect/platform-node@0.53.0
+
 ## 0.16.34
 
 ### Patch Changes
