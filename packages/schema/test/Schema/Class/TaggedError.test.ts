@@ -87,4 +87,18 @@ describe("TaggedError", () => {
     expect(err._tag).toEqual("MyError")
     expect(err.id).toEqual(1)
   })
+
+  it("should expose a make constructor", () => {
+    class A extends S.TaggedError<A>()("A", {
+      n: S.NumberFromString
+    }) {
+      a() {
+        return this.n + "a"
+      }
+    }
+    const a = A.make({ n: 1 })
+    expect(a instanceof A).toEqual(true)
+    expect(a._tag).toEqual("A")
+    expect(a.a()).toEqual("1a")
+  })
 })

@@ -12,7 +12,11 @@ hole<ConstructorParameters<typeof NoFields>>()
 
 new NoFields()
 
+NoFields.make()
+
 new NoFields({})
+
+NoFields.make({})
 
 // ---------------------------------------------
 // A class with all fields with a default should permit an empty argument in the constructor.
@@ -27,7 +31,11 @@ hole<ConstructorParameters<typeof AllDefaultedFields>>()
 
 new AllDefaultedFields()
 
+AllDefaultedFields.make()
+
 new AllDefaultedFields({})
+
+AllDefaultedFields.make({})
 
 // ---------------------------------------------
 // test Context

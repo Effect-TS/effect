@@ -220,4 +220,18 @@ details: Duplicate key "_tag"`)
     expect(person._tag).toEqual("TaggedPerson")
     expect(person.upperName).toEqual("JOHN")
   })
+
+  it("should expose a make constructor", () => {
+    class TA extends S.TaggedClass<TA>()("TA", {
+      n: S.NumberFromString
+    }) {
+      a() {
+        return this.n + "a"
+      }
+    }
+    const ta = TA.make({ n: 1 })
+    expect(ta instanceof TA).toEqual(true)
+    expect(ta._tag).toEqual("TA")
+    expect(ta.a()).toEqual("1a")
+  })
 })
