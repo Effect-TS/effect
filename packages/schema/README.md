@@ -6620,10 +6620,10 @@ type MyStructReturnType<X extends Schema.Schema.All> = Schema.Schema.Type<
   ReturnType<typeof MyStruct<X>>
 >
 
-// In the function body, `obj` has type `Simplify<Schema.Struct.Type<{ x: X; }>>`
+// In the function body, `obj` has type `{ [K in keyof Schema.Struct.Type<{ x: X; }>]: Schema.Struct.Type<{ x: X; }>[K]; }`
 // so it's not possible to access the `x` field
 function test<X extends Schema.Schema.All>(obj: MyStructReturnType<X>) {
-  obj.x // error: Property 'x' does not exist on type 'Simplify<Type<{ x: X; }>>'.ts(2339)
+  obj.x // error: Property 'x' does not exist on type '{ [K in keyof Type<{ x: X; }>]: Type<{ x: X; }>[K]; }'.ts(2339)
 }
 ```
 
