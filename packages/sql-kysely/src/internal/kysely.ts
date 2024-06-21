@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as Client from "@effect/sql/Client"
+import * as Client from "@effect/sql/SqlClient"
 import * as Effect from "effect/Effect"
 import {
   AlterTableColumnAlteringBuilder,
@@ -54,7 +54,7 @@ patch(WheneableMergeQueryBuilder.prototype)
  */
 export const makeWithSql = <DB>(config: KyselyConfig) =>
   Effect.gen(function*() {
-    const client = yield* Client.Client
+    const client = yield* Client.SqlClient
 
     const db = new Kysely<DB>(config) as unknown as EffectKysely<DB>
     db.withTransaction = client.withTransaction

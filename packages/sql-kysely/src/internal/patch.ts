@@ -1,5 +1,5 @@
-import type * as Client from "@effect/sql/Client"
-import { SqlError } from "@effect/sql/Error"
+import type * as Client from "@effect/sql/SqlClient"
+import { SqlError } from "@effect/sql/SqlError"
 import * as Otel from "@opentelemetry/semantic-conventions"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
@@ -56,7 +56,7 @@ function effectifyWith(
 }
 
 /** @internal */
-const makeSqlCommit = (client: Client.Client) => {
+const makeSqlCommit = (client: Client.SqlClient) => {
   return function(this: Compilable) {
     const { parameters, sql } = this.compile()
     return client.unsafe(sql, parameters as any)
@@ -80,7 +80,7 @@ function executeCommit(this: Executable) {
 /**
  *  @internal
  */
-export const effectifyWithSql = <T>(obj: T, client: Client.Client, whitelist: Array<string> = []): T =>
+export const effectifyWithSql = <T>(obj: T, client: Client.SqlClient, whitelist: Array<string> = []): T =>
   effectifyWith(obj, makeSqlCommit(client), whitelist)
 
 /**
