@@ -12,19 +12,19 @@ import { HttpResolver } from "@effect/rpc-http"
 import { Effect, Layer, Logger, LogLevel, Ref } from "effect"
 import { CounterEntity, GetCurrent, Increment } from "./sample-common.js"
 
-const liveLayer = Effect.gen(function*(_) {
-  const messenger = yield* _(Sharding.messenger(CounterEntity))
-  const idRef = yield* _(Ref.make(0))
+const liveLayer = Effect.gen(function*() {
+  const messenger = yield* Sharding.messenger(CounterEntity)
+  const idRef = yield* Ref.make(0)
 
   while (true) {
-    const id = yield* _(Ref.getAndUpdate(idRef, (_) => _ + 1))
+    const id = yield* Ref.getAndUpdate(idRef, (_) => _ + 1)
     const entityId = `entity-${id % 10}`
 
-    yield* _(messenger.sendDiscard(entityId)(new Increment({ messageId: `increment-${id}` })))
-    const result = yield* _(messenger.send(entityId)(new GetCurrent({ messageId: `get-count-${id}` })))
-    yield* _(Effect.logInfo(`Counter ${entityId} is now: ${result}`))
+    yield* messenger.sendDiscard(entityId)(new Increment({ messageId: `increment-${id}` }))
+    const result = yield* messenger.send(entityId)(new GetCurrent({ messageId: `get-count-${id}` }))
+    yield* Effect.logInfo(`Counter ${entityId} is now: ${result}`)
 
-    yield* _(Effect.sleep(200))
+    yield* Effect.sleep(200)
   }
 }).pipe(
   Layer.effectDiscard,

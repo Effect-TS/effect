@@ -24,10 +24,10 @@ const HttpLive = HttpRouter.empty.pipe(
   HttpRouter.get("/sleep", Effect.as(Effect.sleep("10 seconds"), HttpServerResponse.empty())),
   HttpRouter.post(
     "/upload",
-    Effect.gen(function*(_) {
-      const data = yield* _(HttpServerRequest.schemaBodyForm(Schema.Struct({
+    Effect.gen(function*() {
+      const data = yield* HttpServerRequest.schemaBodyForm(Schema.Struct({
         files: Multipart.FilesSchema
-      })))
+      }))
       console.log("got files", data.files)
       return HttpServerResponse.empty()
     })

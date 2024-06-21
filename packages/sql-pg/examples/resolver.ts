@@ -14,7 +14,7 @@ const InsertPersonSchema = Schema.Struct(Person.fields).pipe(
   Schema.omit("id", "createdAt")
 )
 
-const program = Effect.gen(function*(_) {
+const program = Effect.gen(function*() {
   const sql = yield* SqlClient.SqlClient
 
   yield* sql`TRUNCATE TABLE people RESTART IDENTITY CASCADE`

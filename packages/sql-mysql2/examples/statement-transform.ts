@@ -1,7 +1,7 @@
 import * as DevTools from "@effect/experimental/DevTools"
 import { SqlClient, Statement } from "@effect/sql"
 import { MysqlClient } from "@effect/sql-mysql2"
-import { Config, Effect, FiberRef, FiberRefs, Layer, Option, Redacted, String } from "effect"
+import { Config, Effect, FiberRef, FiberRefs, Layer, Option, pipe, Redacted, String } from "effect"
 
 const currentResourceName = FiberRef.unsafeMake("")
 
@@ -30,9 +30,9 @@ const EnvLive = MysqlClient.layer({
   Layer.provide(DevTools.layer())
 )
 
-const program = Effect.gen(function*(_) {
-  const sql = yield* _(SqlClient.SqlClient)
-  yield* _(
+const program = Effect.gen(function*() {
+  const sql = yield* SqlClient.SqlClient
+  yield* pipe(
     sql`SELECT * FROM people`,
     Effect.replicateEffect(50),
     sql.withTransaction,
