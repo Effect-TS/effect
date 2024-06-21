@@ -76,13 +76,12 @@ const setMineCommand = Command.make("set", {
   Effect.gen(function*() {
     yield* setMine(x, y)
     yield* Console.log(`Set ${moored ? "moored" : "drifting"} mine at coordinates (${x}, ${y})`)
-
   })).pipe(Command.withDescription("Set a mine at specific coordinates"))
 
 const removeMineCommand = Command.make("remove", {
   ...coordinatesArg
 }, ({ x, y }) =>
-  Effect.gen(function* () {
+  Effect.gen(function*() {
     yield* removeMine(x, y)
     yield* Console.log(`Removing mine at coordinates (${x}, ${y}), if present`)
   })).pipe(Command.withDescription("Remove a mine at specific coordinates"))
