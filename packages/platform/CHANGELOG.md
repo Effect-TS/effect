@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.58.1
+
+### Patch Changes
+
+- [#3036](https://github.com/Effect-TS/effect/pull/3036) [`5a248aa`](https://github.com/Effect-TS/effect/commit/5a248aa5ab2db3f7131ebc79bb9871a76de57973) Thanks @tim-smart! - add Socket.fromTransformStream
+
 ## 0.58.0
 
 ### Minor Changes
