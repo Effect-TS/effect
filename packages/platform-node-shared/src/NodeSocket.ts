@@ -13,6 +13,7 @@ import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
 import * as Net from "node:net"
+import type { Duplex } from "node:stream"
 
 /**
  * @since 1.0.0
@@ -38,7 +39,7 @@ const EOF = Symbol.for("@effect/experimental/Socket/Node/EOF")
 export const makeNet = (
   options: Net.NetConnectOpts
 ): Effect.Effect<Socket.Socket, Socket.SocketError> =>
-  fromNetSocket(
+  fromDuplex(
     Effect.acquireRelease(
       Effect.async<Net.Socket, Socket.SocketError, never>((resume) => {
         const conn = Net.createConnection(options)
@@ -71,8 +72,8 @@ export const makeNet = (
  * @since 1.0.0
  * @category constructors
  */
-export const fromNetSocket = <RO>(
-  open: Effect.Effect<Net.Socket, Socket.SocketError, RO>
+export const fromDuplex = <RO>(
+  open: Effect.Effect<Duplex, Socket.SocketError, RO>
 ): Effect.Effect<Socket.Socket, never, Exclude<RO, Scope.Scope>> =>
   FiberRef.get(Socket.currentSendQueueCapacity).pipe(
     Effect.flatMap((sendQueueCapacity) =>
@@ -194,7 +195,4 @@ export const makeNetChannel = <IE = never>(
  * @category layers
  */
 export const layerNet = (options: Net.NetConnectOpts): Layer.Layer<Socket.Socket, Socket.SocketError> =>
-  Layer.effect(
-    Socket.Socket,
-    makeNet(options)
-  )
+  Layer.effect(Socket.Socket, makeNet(options))

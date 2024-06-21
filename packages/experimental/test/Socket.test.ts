@@ -1,8 +1,8 @@
 import * as SocketServer from "@effect/experimental/SocketServer/Node"
 import * as NodeSocket from "@effect/platform-node/NodeSocket"
 import * as Socket from "@effect/platform/Socket"
+import { assert, describe, expect, it } from "@effect/vitest"
 import { Chunk, Effect, Fiber, Queue, Stream } from "effect"
-import { assert, describe, expect, test } from "vitest"
 import WS from "vitest-websocket-mock"
 
 const makeServer = Effect.gen(function*(_) {
@@ -22,7 +22,7 @@ const makeServer = Effect.gen(function*(_) {
 })
 
 describe("Socket", () => {
-  test("open", () =>
+  it.scoped("open", () =>
     Effect.gen(function*(_) {
       const server = yield* _(makeServer)
       const address = yield* _(server.address)
@@ -38,7 +38,7 @@ describe("Socket", () => {
 
       const output = yield* _(outputEffect)
       assert.strictEqual(Chunk.join(output, ""), "HelloWorld")
-    }).pipe(Effect.scoped, Effect.runPromise))
+    }))
 
   describe("WebSocket", () => {
     const url = `ws://localhost:1234`
@@ -52,7 +52,7 @@ describe("Socket", () => {
         })
     )
 
-    test("messages", () =>
+    it.effect("messages", () =>
       Effect.gen(function*(_) {
         const server = yield* _(makeServer)
         const socket = yield* _(Socket.makeWebSocket(Effect.succeed(url)))
@@ -80,8 +80,46 @@ describe("Socket", () => {
         expect(exit._tag).toEqual("Success")
       }).pipe(
         Effect.scoped,
-        Effect.provideService(Socket.WebSocketConstructor, (url) => new globalThis.WebSocket(url)),
-        Effect.runPromise
+        Effect.provideService(Socket.WebSocketConstructor, (url) => new globalThis.WebSocket(url))
       ))
+  })
+
+  describe("TransformStream", () => {
+    it.effect("works", () =>
+      Effect.gen(function*() {
+        const readable = Stream.make("A", "B", "C").pipe(
+          Stream.tap(() => Effect.sleep(50)),
+          Stream.toReadableStream()
+        )
+        const decoder = new TextDecoder()
+        const chunks: Array<string> = []
+        const writable = new WritableStream<Uint8Array>({
+          write(chunk) {
+            chunks.push(decoder.decode(chunk))
+          }
+        })
+
+        const socket = yield* Socket.fromTransformStream(Effect.succeed({
+          readable,
+          writable
+        }))
+        yield* socket.writer.pipe(
+          Effect.tap((write) =>
+            write("Hello").pipe(
+              Effect.zipRight(write("World"))
+            )
+          ),
+          Effect.scoped
+        )
+        const received: Array<string> = []
+        yield* socket.run((chunk) =>
+          Effect.sync(() => {
+            received.push(decoder.decode(chunk))
+          })
+        ).pipe(Effect.scoped)
+
+        assert.deepStrictEqual(chunks, ["Hello", "World"])
+        assert.deepStrictEqual(received, ["A", "B", "C"])
+      }))
   })
 })
