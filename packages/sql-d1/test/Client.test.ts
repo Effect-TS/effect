@@ -36,6 +36,8 @@ describe("Client", () => {
         sql.withTransaction,
         Effect.catchAllDefect((defect) => Effect.succeed(defect))
       )
+      const rows = yield* sql`SELECT * FROM test`
+      assert.deepStrictEqual(rows, [])
       assert.equal(Cause.isRuntimeException(res), true)
     }).pipe(Effect.provide(D1Miniflare.ClientLive)))
 })
