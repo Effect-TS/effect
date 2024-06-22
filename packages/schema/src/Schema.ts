@@ -4990,15 +4990,23 @@ export class BigIntFromNumber extends transformOrFail(
 const redactedArbitrary = <A>(value: LazyArbitrary<A>): LazyArbitrary<redacted_.Redacted<A>> => (fc) =>
   value(fc).map((x) => redacted_.make(x))
 
+const toComposite = <A, R, B>(
+  eff: Effect.Effect<A, ParseResult.ParseIssue, R>,
+  onSuccess: (a: A) => B,
+  ast: AST.AST,
+  actual: unknown
+): Effect.Effect<B, ParseResult.Composite, R> =>
+  ParseResult.mapBoth(eff, {
+    onFailure: (e) => new ParseResult.Composite(ast, actual, e),
+    onSuccess
+  })
+
 const redactedParse = <A, R>(
   decodeUnknown: ParseResult.DecodeUnknown<A, R>
 ): ParseResult.DeclarationDecodeUnknown<redacted_.Redacted<A>, R> =>
 (u, options, ast) =>
   redacted_.isRedacted(u) ?
-    ParseResult.mapBoth(decodeUnknown(redacted_.value(u), options), {
-      onFailure: (e) => new ParseResult.Composite(ast, u, e),
-      onSuccess: redacted_.make
-    }) :
+    toComposite(decodeUnknown(redacted_.value(u), options), redacted_.make, ast, u) :
     ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -5711,10 +5719,7 @@ const optionParse =
     option_.isOption(u) ?
       option_.isNone(u) ?
         ParseResult.succeed(option_.none())
-        : ParseResult.mapBoth(decodeUnknown(u.value, options), {
-          onFailure: (e) => new ParseResult.Composite(ast, u, e),
-          onSuccess: option_.some
-        })
+        : toComposite(decodeUnknown(u.value, options), option_.some, ast, u)
       : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -5948,16 +5953,8 @@ const eitherParse = <RR, R, LR, L>(
 (u, options, ast) =>
   either_.isEither(u) ?
     either_.match(u, {
-      onLeft: (left) =>
-        ParseResult.mapBoth(decodeUnknownLeft(left, options), {
-          onFailure: (e) => new ParseResult.Composite(ast, u, e),
-          onSuccess: either_.left
-        }),
-      onRight: (right) =>
-        ParseResult.mapBoth(parseRight(right, options), {
-          onFailure: (e) => new ParseResult.Composite(ast, u, e),
-          onSuccess: either_.right
-        })
+      onLeft: (left) => toComposite(decodeUnknownLeft(left, options), either_.left, ast, u),
+      onRight: (right) => toComposite(parseRight(right, options), either_.right, ast, u)
     })
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
@@ -6111,10 +6108,7 @@ const readonlyMapParse = <R, K, V>(
 ): ParseResult.DeclarationDecodeUnknown<ReadonlyMap<K, V>, R> =>
 (u, options, ast) =>
   Predicate.isMap(u) ?
-    ParseResult.mapBoth(decodeUnknown(Array.from(u.entries()), options), {
-      onFailure: (e) => new ParseResult.Composite(ast, u, e),
-      onSuccess: (as) => new Map(as)
-    })
+    toComposite(decodeUnknown(Array.from(u.entries()), options), (as) => new Map(as), ast, u)
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -6262,10 +6256,7 @@ const readonlySetParse = <A, R>(
 ): ParseResult.DeclarationDecodeUnknown<ReadonlySet<A>, R> =>
 (u, options, ast) =>
   Predicate.isSet(u) ?
-    ParseResult.mapBoth(decodeUnknown(Array.from(u.values()), options), {
-      onFailure: (e) => new ParseResult.Composite(ast, u, e),
-      onSuccess: (as) => new Set(as)
-    })
+    toComposite(decodeUnknown(Array.from(u.values()), options), (as) => new Set(as), ast, u)
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -6730,10 +6721,7 @@ const chunkParse = <A, R>(
   chunk_.isChunk(u) ?
     chunk_.isEmpty(u) ?
       ParseResult.succeed(chunk_.empty())
-      : ParseResult.mapBoth(decodeUnknown(chunk_.toReadonlyArray(u), options), {
-        onFailure: (e) => new ParseResult.Composite(ast, u, e),
-        onSuccess: chunk_.fromIterable
-      })
+      : toComposite(decodeUnknown(chunk_.toReadonlyArray(u), options), chunk_.fromIterable, ast, u)
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -6819,10 +6807,7 @@ const nonEmptyChunkParse = <A, R>(
 ): ParseResult.DeclarationDecodeUnknown<chunk_.NonEmptyChunk<A>, R> =>
 (u, options, ast) =>
   chunk_.isChunk(u) && chunk_.isNonEmpty(u)
-    ? ParseResult.mapBoth(decodeUnknown(chunk_.toReadonlyArray(u), options), {
-      onFailure: (e) => new ParseResult.Composite(ast, u, e),
-      onSuccess: chunk_.unsafeFromNonEmptyArray
-    })
+    ? toComposite(decodeUnknown(chunk_.toReadonlyArray(u), options), chunk_.unsafeFromNonEmptyArray, ast, u)
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -6889,10 +6874,7 @@ const dataParse = <R, A extends Readonly<Record<string, any>> | ReadonlyArray<an
 ): ParseResult.DeclarationDecodeUnknown<A, R> =>
 (u, options, ast) =>
   Equal.isEqual(u) ?
-    ParseResult.mapBoth(decodeUnknown(u, options), {
-      onFailure: (e) => new ParseResult.Composite(ast, u, e),
-      onSuccess: toData
-    })
+    toComposite(decodeUnknown(u, options), toData, ast, u)
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -7763,10 +7745,7 @@ const causeParse = <A, R>(
 ): ParseResult.DeclarationDecodeUnknown<cause_.Cause<A>, R> =>
 (u, options, ast) =>
   cause_.isCause(u) ?
-    ParseResult.mapBoth(decodeUnknown(causeEncode(u), options), {
-      onFailure: (e) => new ParseResult.Composite(ast, u, e),
-      onSuccess: causeDecode
-    })
+    toComposite(decodeUnknown(causeEncode(u), options), causeDecode, ast, u)
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -7982,16 +7961,8 @@ const exitParse = <A, R, E, ER>(
 (u, options, ast) =>
   exit_.isExit(u) ?
     exit_.match(u, {
-      onFailure: (cause) =>
-        ParseResult.mapBoth(decodeUnknownCause(cause, options), {
-          onFailure: (e) => new ParseResult.Composite(ast, u, e),
-          onSuccess: exit_.failCause
-        }),
-      onSuccess: (value) =>
-        ParseResult.mapBoth(decodeUnknownValue(value, options), {
-          onFailure: (e) => new ParseResult.Composite(ast, u, e),
-          onSuccess: exit_.succeed
-        })
+      onFailure: (cause) => toComposite(decodeUnknownCause(cause, options), exit_.failCause, ast, u),
+      onSuccess: (value) => toComposite(decodeUnknownValue(value, options), exit_.succeed, ast, u)
     })
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
@@ -8097,10 +8068,7 @@ const hashSetParse = <A, R>(
 ): ParseResult.DeclarationDecodeUnknown<hashSet_.HashSet<A>, R> =>
 (u, options, ast) =>
   hashSet_.isHashSet(u) ?
-    ParseResult.mapBoth(decodeUnknown(Array.from(u), options), {
-      onFailure: (e) => new ParseResult.Composite(ast, u, e),
-      onSuccess: hashSet_.fromIterable
-    })
+    toComposite(decodeUnknown(Array.from(u), options), hashSet_.fromIterable, ast, u)
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -8196,10 +8164,7 @@ const hashMapParse = <R, K, V>(
 ): ParseResult.DeclarationDecodeUnknown<hashMap_.HashMap<K, V>, R> =>
 (u, options, ast) =>
   hashMap_.isHashMap(u) ?
-    ParseResult.mapBoth(decodeUnknown(Array.from(u), options), {
-      onFailure: (e) => new ParseResult.Composite(ast, u, e),
-      onSuccess: hashMap_.fromIterable
-    })
+    toComposite(decodeUnknown(Array.from(u), options), hashMap_.fromIterable, ast, u)
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -8286,10 +8251,7 @@ const listParse = <A, R>(
 ): ParseResult.DeclarationDecodeUnknown<list_.List<A>, R> =>
 (u, options, ast) =>
   list_.isList(u) ?
-    ParseResult.mapBoth(decodeUnknown(Array.from(u), options), {
-      onFailure: (e) => new ParseResult.Composite(ast, u, e),
-      onSuccess: list_.fromIterable
-    })
+    toComposite(decodeUnknown(Array.from(u), options), list_.fromIterable, ast, u)
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -8366,10 +8328,12 @@ const sortedSetParse = <A, R>(
 ): ParseResult.DeclarationDecodeUnknown<sortedSet_.SortedSet<A>, R> =>
 (u, options, ast) =>
   sortedSet_.isSortedSet(u) ?
-    ParseResult.mapBoth(decodeUnknown(Array.from(sortedSet_.values(u)), options), {
-      onFailure: (e) => new ParseResult.Composite(ast, u, e),
-      onSuccess: (as): sortedSet_.SortedSet<A> => sortedSet_.fromIterable(as, ord)
-    })
+    toComposite(
+      decodeUnknown(Array.from(sortedSet_.values(u)), options),
+      (as): sortedSet_.SortedSet<A> => sortedSet_.fromIterable(as, ord),
+      ast,
+      u
+    )
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
