@@ -52,6 +52,12 @@ export declare namespace Config {
   }
 
   /**
+   * @since 2.5.0
+   * @category models
+   */
+  export type Success<T extends Config<any>> = [T] extends [Config<infer _A>] ? _A : never
+
+  /**
    * @since 2.0.0
    * @category models
    */

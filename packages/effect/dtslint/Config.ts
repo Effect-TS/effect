@@ -1,5 +1,5 @@
 import * as Config from "effect/Config"
-import { pipe } from "effect/Function"
+import { hole, pipe } from "effect/Function"
 
 declare const string: Config.Config<string>
 declare const number: Config.Config<number>
@@ -45,3 +45,18 @@ Config.all(numberRecord)
 
 // $ExpectType Config<{ [x: string]: number; }>
 pipe(numberRecord, Config.all)
+
+// -------------------------------------------------------------------------------------
+// Success
+// -------------------------------------------------------------------------------------
+
+// $ExpectType string
+hole<Config.Config.Success<typeof string>>()
+
+// $ExpectType number
+hole<Config.Config.Success<typeof number>>()
+
+const object = Config.all({ a: string, b: number })
+
+// $ExpectType { a: string; b: number; }
+hole<Config.Config.Success<typeof object>>()
