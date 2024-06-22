@@ -15,7 +15,7 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Scope from "effect/Scope"
+import type * as Scope from "effect/Scope"
 
 /**
  * @category type ids
@@ -169,18 +169,7 @@ export const make = (
     const connection = yield* _(makeConnection)
 
     const acquirer = semaphore.withPermits(1)(Effect.succeed(connection))
-    const transactionAcquirer = Effect.uninterruptibleMask((restore) =>
-      Effect.as(
-        Effect.zipRight(
-          restore(semaphore.take(1)),
-          Effect.tap(
-            Effect.scope,
-            (scope) => Scope.addFinalizer(scope, semaphore.release(1))
-          )
-        ),
-        connection
-      )
-    )
+    const transactionAcquirer = Effect.dieMessage("transactions are not supported in D1")
 
     return Object.assign(
       Client.make({
