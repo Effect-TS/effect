@@ -77,26 +77,24 @@ export interface D1ClientConfig {
 export const make = (
   options: D1ClientConfig
 ): Effect.Effect<D1Client, never, Scope.Scope> =>
-  Effect.gen(function*(_) {
+  Effect.gen(function*() {
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
     const transformRows = Statement.defaultTransforms(
       options.transformResultNames!
     ).array
 
-    const makeConnection = Effect.gen(function*(_) {
+    const makeConnection = Effect.gen(function*() {
       const db = options.db
 
-      const prepareCache = yield* _(
-        Cache.make({
-          capacity: options.prepareCacheSize ?? 200,
-          timeToLive: options.prepareCacheTTL ?? Duration.minutes(10),
-          lookup: (sql: string) =>
-            Effect.try({
-              try: () => db.prepare(sql),
-              catch: (error) => new SqlError({ error })
-            })
-        })
-      )
+      const prepareCache = yield* Cache.make({
+        capacity: options.prepareCacheSize ?? 200,
+        timeToLive: options.prepareCacheTTL ?? Duration.minutes(10),
+        lookup: (sql: string) =>
+          Effect.try({
+            try: () => db.prepare(sql),
+            catch: (error) => new SqlError({ error })
+          })
+      })
 
       const runStatement = (
         statement: D1PreparedStatement,
@@ -165,8 +163,8 @@ export const make = (
       })
     })
 
-    const semaphore = yield* _(Effect.makeSemaphore(1))
-    const connection = yield* _(makeConnection)
+    const semaphore = yield* Effect.makeSemaphore(1)
+    const connection = yield* makeConnection
 
     const acquirer = semaphore.withPermits(1)(Effect.succeed(connection))
     const transactionAcquirer = Effect.dieMessage("transactions are not supported in D1")
