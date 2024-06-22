@@ -1,6 +1,6 @@
 import type { D1Database } from "@cloudflare/workers-types"
 import { D1Client } from "@effect/sql-d1"
-import { Context, Data, Effect, Layer } from "effect"
+import { Config, Context, Data, Effect, Layer } from "effect"
 import { Miniflare } from "miniflare"
 
 export class MiniflareError extends Data.TaggedError("MiniflareError")<{
@@ -34,7 +34,7 @@ export class D1Miniflare extends Context.Tag("test/D1Miniflare")<
       const miniflare = yield* D1Miniflare
       const db: D1Database = yield* Effect.tryPromise(() => miniflare.getD1Database("DB"))
       return D1Client.layer({
-        db
+        db: Config.succeed(db)
       })
     })
   ).pipe(Layer.provide(this.Live))

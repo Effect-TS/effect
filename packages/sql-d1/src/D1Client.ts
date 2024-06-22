@@ -8,6 +8,7 @@ import { SqlError } from "@effect/sql/SqlError"
 import * as Statement from "@effect/sql/Statement"
 import * as Otel from "@opentelemetry/semantic-conventions"
 import * as Cache from "effect/Cache"
+import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
@@ -203,10 +204,11 @@ export const make = (
  * @since 1.0.0
  */
 export const layer = (
-  config: D1ClientConfig
+  config: Config.Config.Wrap<D1ClientConfig>
 ): Layer.Layer<D1Client | Client.SqlClient, ConfigError> =>
   Layer.scopedContext(
-    make(config).pipe(
+    Config.unwrap(config).pipe(
+      Effect.flatMap(make),
       Effect.map((client) =>
         Context.make(D1Client, client).pipe(
           Context.add(Client.SqlClient, client)

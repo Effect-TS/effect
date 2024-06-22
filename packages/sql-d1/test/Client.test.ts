@@ -19,5 +19,3 @@ describe("Client", () => {
       ])
     }).pipe(Effect.provide(D1Miniflare.ClientLive)))
 })
-
-export {}
