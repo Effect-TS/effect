@@ -4990,7 +4990,7 @@ export class BigIntFromNumber extends transformOrFail(
 const redactedArbitrary = <A>(value: LazyArbitrary<A>): LazyArbitrary<redacted_.Redacted<A>> => (fc) =>
   value(fc).map((x) => redacted_.make(x))
 
-const redactedParse = <R, A>(
+const redactedParse = <A, R>(
   decodeUnknown: ParseResult.DecodeUnknown<A, R>
 ): ParseResult.DeclarationDecodeUnknown<redacted_.Redacted<A>, R> =>
 (u, options, ast) =>
@@ -5706,7 +5706,7 @@ const optionPretty = <A>(value: pretty_.Pretty<A>): pretty_.Pretty<option_.Optio
   })
 
 const optionParse =
-  <R, A>(decodeUnknown: ParseResult.DecodeUnknown<A, R>): ParseResult.DeclarationDecodeUnknown<option_.Option<A>, R> =>
+  <A, R>(decodeUnknown: ParseResult.DecodeUnknown<A, R>): ParseResult.DeclarationDecodeUnknown<option_.Option<A>, R> =>
   (u, options, ast) =>
     option_.isOption(u) ?
       option_.isNone(u) ?
@@ -6257,7 +6257,7 @@ const readonlySetEquivalence = <A>(
   return Equivalence.make((a, b) => arrayEquivalence(Array.from(a.values()), Array.from(b.values())))
 }
 
-const readonlySetParse = <R, A>(
+const readonlySetParse = <A, R>(
   decodeUnknown: ParseResult.DecodeUnknown<ReadonlyArray<A>, R>
 ): ParseResult.DeclarationDecodeUnknown<ReadonlySet<A>, R> =>
 (u, options, ast) =>
@@ -6723,7 +6723,7 @@ const chunkArbitrary = <A>(item: LazyArbitrary<A>): LazyArbitrary<chunk_.Chunk<A
 const chunkPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<chunk_.Chunk<A>> => (c) =>
   `Chunk(${chunk_.toReadonlyArray(c).map(item).join(", ")})`
 
-const chunkParse = <R, A>(
+const chunkParse = <A, R>(
   decodeUnknown: ParseResult.DecodeUnknown<ReadonlyArray<A>, R>
 ): ParseResult.DeclarationDecodeUnknown<chunk_.Chunk<A>, R> =>
 (u, options, ast) =>
@@ -6814,7 +6814,7 @@ const nonEmptyChunkArbitrary = <A>(item: LazyArbitrary<A>): LazyArbitrary<chunk_
 const nonEmptyChunkPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<chunk_.NonEmptyChunk<A>> => (c) =>
   `NonEmptyChunk(${chunk_.toReadonlyArray(c).map(item).join(", ")})`
 
-const nonEmptyChunkParse = <R, A>(
+const nonEmptyChunkParse = <A, R>(
   decodeUnknown: ParseResult.DecodeUnknown<array_.NonEmptyReadonlyArray<A>, R>
 ): ParseResult.DeclarationDecodeUnknown<chunk_.NonEmptyChunk<A>, R> =>
 (u, options, ast) =>
@@ -7758,7 +7758,7 @@ const causePretty = <E>(error: pretty_.Pretty<E>): pretty_.Pretty<cause_.Cause<E
   return f(cause)
 }
 
-const causeParse = <R, A>(
+const causeParse = <A, R>(
   decodeUnknown: ParseResult.DecodeUnknown<CauseEncoded<A>, R>
 ): ParseResult.DeclarationDecodeUnknown<cause_.Cause<A>, R> =>
 (u, options, ast) =>
@@ -8092,7 +8092,7 @@ const hashSetEquivalence = <A>(
   return Equivalence.make((a, b) => arrayEquivalence(Array.from(a), Array.from(b)))
 }
 
-const hashSetParse = <R, A>(
+const hashSetParse = <A, R>(
   decodeUnknown: ParseResult.DecodeUnknown<ReadonlyArray<A>, R>
 ): ParseResult.DeclarationDecodeUnknown<hashSet_.HashSet<A>, R> =>
 (u, options, ast) =>
@@ -8281,7 +8281,7 @@ const listEquivalence = <A>(
   return Equivalence.make((a, b) => arrayEquivalence(Array.from(a), Array.from(b)))
 }
 
-const listParse = <R, A>(
+const listParse = <A, R>(
   decodeUnknown: ParseResult.DecodeUnknown<ReadonlyArray<A>, R>
 ): ParseResult.DeclarationDecodeUnknown<list_.List<A>, R> =>
 (u, options, ast) =>
@@ -8360,7 +8360,7 @@ const sortedSetArbitrary =
 const sortedSetPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<sortedSet_.SortedSet<A>> => (set) =>
   `new SortedSet([${Array.from(sortedSet_.values(set)).map((a) => item(a)).join(", ")}])`
 
-const sortedSetParse = <R, A>(
+const sortedSetParse = <A, R>(
   decodeUnknown: ParseResult.DecodeUnknown<ReadonlyArray<A>, R>,
   ord: Order.Order<A>
 ): ParseResult.DeclarationDecodeUnknown<sortedSet_.SortedSet<A>, R> =>
