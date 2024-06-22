@@ -361,3 +361,8 @@ export const expectAssertsFailure = <A, I>(
 ) => {
   expect(() => S.asserts(schema, options)(input)).toThrow(new Error(message))
 }
+
+export const BooleanFromLiteral = S.transform(S.Literal("true", "false"), S.Boolean, {
+  decode: (l) => l === "true",
+  encode: (b) => b ? "true" : "false"
+})
