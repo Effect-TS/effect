@@ -78,9 +78,7 @@ export const TypeAnnotationId = Symbol.for("@effect/schema/annotation/Type")
  * @category annotations
  * @since 0.67.0
  */
-export type MessageAnnotation = (
-  issue: ParseIssue
-) => string | Effect<string> | {
+export type MessageAnnotation = (issue: ParseIssue) => string | Effect<string> | {
   readonly message: string | Effect<string>
   readonly override: boolean
 }

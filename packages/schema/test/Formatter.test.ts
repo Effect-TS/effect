@@ -22,80 +22,6 @@ const expectIssues = <A, I>(schema: S.Schema<A, I>, input: unknown, issues: Arra
 }
 
 describe("Formatter", () => {
-  describe("missing message", () => {
-    it("Struct", async () => {
-      const schema = S.Struct({
-        a: S.propertySignature(S.String).annotations({
-          description: "my description",
-          missingMessage: () => "my missing message"
-        })
-      })
-      const input = {}
-      await Util.expectDecodeUnknownFailure(
-        schema,
-        input,
-        `{ readonly a: string }
-└─ ["a"]
-   └─ my missing message`
-      )
-      expectIssues(schema, input, [{
-        _tag: "Missing",
-        path: ["a"],
-        message: "my missing message"
-      }])
-    })
-
-    describe("Tuple", () => {
-      it("e", async () => {
-        const schema = S.make(
-          new AST.TupleType(
-            [
-              new AST.OptionalType(AST.stringKeyword, false, {
-                [AST.MissingMessageAnnotationId]: () => "my missing message"
-              })
-            ],
-            [],
-            true
-          )
-        )
-        const input: Array<string> = []
-        await Util.expectDecodeUnknownFailure(
-          schema,
-          input,
-          `readonly [string]
-└─ [0]
-   └─ my missing message`
-        )
-        expectIssues(schema, input, [{
-          _tag: "Missing",
-          path: [0],
-          message: "my missing message"
-        }])
-      })
-
-      it("r + e", async () => {
-        const schema = S.Tuple(
-          [],
-          S.String,
-          S.element(S.String).annotations({ [AST.MissingMessageAnnotationId]: () => "my missing message" })
-        )
-        const input: Array<string> = []
-        await Util.expectDecodeUnknownFailure(
-          schema,
-          input,
-          `readonly [...string[], string]
-└─ [0]
-   └─ my missing message`
-        )
-        expectIssues(schema, input, [{
-          _tag: "Missing",
-          path: [0],
-          message: "my missing message"
-        }])
-      })
-    })
-  })
-
   describe("Forbidden", () => {
     it("default message", () => {
       const schema = Util.effectify(S.String)
@@ -182,7 +108,7 @@ describe("Formatter", () => {
       }])
     })
 
-    it("default message with identifier", async () => {
+    it("default message with parent identifier", async () => {
       const schema = S.Struct({ a: S.String }).annotations({ identifier: "identifier" })
       const input = {}
       await Util.expectDecodeUnknownFailure(
@@ -199,22 +125,7 @@ describe("Formatter", () => {
       }])
     })
 
-    it("custom message (override=false)", async () => {
-      const schema = S.Struct({ a: S.String }).annotations({ message: () => "custom message" })
-      const input = {}
-      await Util.expectDecodeUnknownFailure(
-        schema,
-        input,
-        "custom message"
-      )
-      expectIssues(schema, input, [{
-        _tag: "Composite",
-        path: [],
-        message: "custom message"
-      }])
-    })
-
-    it("custom message (override=true)", async () => {
+    it("parent custom message with override=true", async () => {
       const schema = S.Struct({ a: S.String }).annotations({
         message: () => ({ message: "custom message", override: true })
       })
@@ -229,6 +140,80 @@ describe("Formatter", () => {
         path: [],
         message: "custom message"
       }])
+    })
+
+    describe("missing message", () => {
+      it("Struct", async () => {
+        const schema = S.Struct({
+          a: S.propertySignature(S.String).annotations({
+            description: "my description",
+            missingMessage: () => "my missing message"
+          })
+        })
+        const input = {}
+        await Util.expectDecodeUnknownFailure(
+          schema,
+          input,
+          `{ readonly a: string }
+└─ ["a"]
+   └─ my missing message`
+        )
+        expectIssues(schema, input, [{
+          _tag: "Missing",
+          path: ["a"],
+          message: "my missing message"
+        }])
+      })
+
+      describe("Tuple", () => {
+        it("e", async () => {
+          const schema = S.make(
+            new AST.TupleType(
+              [
+                new AST.OptionalType(AST.stringKeyword, false, {
+                  [AST.MissingMessageAnnotationId]: () => "my missing message"
+                })
+              ],
+              [],
+              true
+            )
+          )
+          const input: Array<string> = []
+          await Util.expectDecodeUnknownFailure(
+            schema,
+            input,
+            `readonly [string]
+└─ [0]
+   └─ my missing message`
+          )
+          expectIssues(schema, input, [{
+            _tag: "Missing",
+            path: [0],
+            message: "my missing message"
+          }])
+        })
+
+        it("r + e", async () => {
+          const schema = S.Tuple(
+            [],
+            S.String,
+            S.element(S.String).annotations({ [AST.MissingMessageAnnotationId]: () => "my missing message" })
+          )
+          const input: Array<string> = []
+          await Util.expectDecodeUnknownFailure(
+            schema,
+            input,
+            `readonly [...string[], string]
+└─ [0]
+   └─ my missing message`
+          )
+          expectIssues(schema, input, [{
+            _tag: "Missing",
+            path: [0],
+            message: "my missing message"
+          }])
+        })
+      })
     })
   })
 
@@ -251,7 +236,7 @@ describe("Formatter", () => {
       }])
     })
 
-    it("default message with identifier", async () => {
+    it("default message with parent identifier", async () => {
       const schema = S.Struct({ a: S.String }).annotations({ identifier: "identifier" })
       const input = { a: "a", b: 1 }
       await Util.expectDecodeUnknownFailure(
@@ -269,23 +254,7 @@ describe("Formatter", () => {
       }])
     })
 
-    it("custom message (override=false)", async () => {
-      const schema = S.Struct({ a: S.String }).annotations({ message: () => "custom message" })
-      const input = { a: "a", b: 1 }
-      await Util.expectDecodeUnknownFailure(
-        schema,
-        input,
-        "custom message",
-        Util.onExcessPropertyError
-      )
-      expectIssues(schema, input, [{
-        _tag: "Composite",
-        path: [],
-        message: "custom message"
-      }])
-    })
-
-    it("custom message (override=true)", async () => {
+    it("parent custom message with override=true", async () => {
       const schema = S.Struct({ a: S.String }).annotations({
         message: () => ({ message: "custom message", override: true })
       })
@@ -306,22 +275,22 @@ describe("Formatter", () => {
 
   describe("Declaration", () => {
     it("default message", async () => {
-      const schema = S.instanceOf(File)
+      const schema = S.OptionFromSelf(S.String)
       const input = null
       await Util.expectDecodeUnknownFailure(
         schema,
         input,
-        "Expected File, actual null"
+        "Expected Option<string>, actual null"
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: `Expected File, actual null`
+        message: "Expected Option<string>, actual null"
       }])
     })
 
     it("default message with identifier", async () => {
-      const schema = S.instanceOf(File).annotations({ identifier: "identifier" })
+      const schema = S.OptionFromSelf(S.String).annotations({ identifier: "identifier" })
       const input = null
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -336,34 +305,33 @@ describe("Formatter", () => {
     })
 
     it("custom message (override=false)", async () => {
-      const schema = S.instanceOf(File).annotations({ message: () => "custom message" })
-      const input = null
+      const schema = S.OptionFromSelf(S.String).annotations({ message: () => "custom message" })
+      const input = Option.some(1)
       await Util.expectDecodeUnknownFailure(
         schema,
         input,
-        "custom message",
-        Util.onExcessPropertyError
+        `Option<string>
+└─ Expected string, actual 1`
       )
       expectIssues(schema, input, [{
         _tag: "Type",
         path: [],
-        message: "custom message"
+        message: "Expected string, actual 1"
       }])
     })
 
     it("custom message (override=true)", async () => {
-      const schema = S.instanceOf(File).annotations({
+      const schema = S.OptionFromSelf(S.String).annotations({
         message: () => ({ message: "custom message", override: true })
       })
-      const input = null
+      const input = Option.some(1)
       await Util.expectDecodeUnknownFailure(
         schema,
         input,
-        "custom message",
-        Util.onExcessPropertyError
+        "custom message"
       )
       expectIssues(schema, input, [{
-        _tag: "Type",
+        _tag: "Composite",
         path: [],
         message: "custom message"
       }])
@@ -873,134 +841,7 @@ describe("Formatter", () => {
     })
   })
 
-  describe("Struct", () => {
-    it("custom message (override=false)", async () => {
-      const schema = S.Struct({
-        as: pipe(
-          S.Array(
-            S.Struct({
-              b: pipe(
-                S.String.annotations({ message: () => "type" }),
-                S.minLength(1, { message: () => "minLength" }),
-                S.maxLength(2, { message: () => "maxLength" })
-              )
-            })
-          ).annotations({ identifier: "C" }),
-          S.minItems(1, { message: () => "minItems" })
-        ).annotations({ identifier: "B" })
-      }).annotations({ identifier: "A" })
-      const input1 = null
-      await Util.expectDecodeUnknownFailure(
-        schema,
-        input1,
-        "Expected A, actual null"
-      )
-      expectIssues(schema, input1, [{
-        _tag: "Type",
-        path: [],
-        message: "Expected A, actual null"
-      }])
-
-      const input2 = { as: [] }
-      await Util.expectDecodeUnknownFailure(
-        schema,
-        input2,
-        `A
-└─ ["as"]
-   └─ minItems`
-      )
-      expectIssues(schema, input2, [{
-        _tag: "Refinement",
-        path: ["as"],
-        message: "minItems"
-      }])
-
-      const input3 = { as: [{ b: null }] }
-      await Util.expectDecodeUnknownFailure(
-        schema,
-        input3,
-        `A
-└─ ["as"]
-   └─ B
-      └─ From side refinement failure
-         └─ C
-            └─ [0]
-               └─ { readonly b: a string at most 2 character(s) long }
-                  └─ ["b"]
-                     └─ type`
-      )
-      expectIssues(schema, input3, [{
-        _tag: "Refinement",
-        path: ["as", 0, "b"],
-        message: "type"
-      }])
-
-      const input4 = { as: [{ b: "" }] }
-      await Util.expectDecodeUnknownFailure(
-        schema,
-        input4,
-        `A
-└─ ["as"]
-   └─ B
-      └─ From side refinement failure
-         └─ C
-            └─ [0]
-               └─ { readonly b: a string at most 2 character(s) long }
-                  └─ ["b"]
-                     └─ minLength`
-      )
-      expectIssues(schema, input4, [{
-        _tag: "Refinement",
-        path: ["as", 0, "b"],
-        message: "minLength"
-      }])
-
-      const input5 = { as: [{ b: "---" }] }
-      await Util.expectDecodeUnknownFailure(
-        schema,
-        input5,
-        `A
-└─ ["as"]
-   └─ B
-      └─ From side refinement failure
-         └─ C
-            └─ [0]
-               └─ { readonly b: a string at most 2 character(s) long }
-                  └─ ["b"]
-                     └─ maxLength`
-      )
-      expectIssues(schema, input5, [{
-        _tag: "Refinement",
-        path: ["as", 0, "b"],
-        message: "maxLength"
-      }])
-    })
-  })
-
-  describe("Member", () => {
-    it("default message", async () => {
-      const schema = S.Union(S.String, S.Number)
-      const input = null
-      await Util.expectDecodeUnknownFailure(
-        schema,
-        input,
-        `string | number
-├─ Expected string, actual null
-└─ Expected number, actual null`
-      )
-      expectIssues(schema, input, [{
-        _tag: "Type",
-        path: [],
-        message: "Expected string, actual null"
-      }, {
-        _tag: "Type",
-        path: [],
-        message: "Expected number, actual null"
-      }])
-    })
-  })
-
-  describe("suspend", () => {
+  describe("Suspend", () => {
     it("outer", async () => {
       type A = readonly [number, A | null]
       const schema: S.Schema<A> = S.suspend( // intended outer suspend
@@ -1090,8 +931,33 @@ describe("Formatter", () => {
       }])
     })
 
-    it("custom message", async () => {
-      const schema = S.Union(S.String, S.Number).annotations({ message: () => "custom message" })
+    it("parent custom message with override=false", async () => {
+      const schema = S.Union(S.String, S.Number).annotations({
+        message: () => "custom message"
+      })
+      const input = null
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        input,
+        `string | number
+├─ Expected string, actual null
+└─ Expected number, actual null`
+      )
+      expectIssues(schema, input, [{
+        _tag: "Type",
+        path: [],
+        message: "Expected string, actual null"
+      }, {
+        _tag: "Type",
+        path: [],
+        message: "Expected number, actual null"
+      }])
+    })
+
+    it("parent custom message with override=true", async () => {
+      const schema = S.Union(S.String, S.Number).annotations({
+        message: () => ({ message: "custom message", override: true })
+      })
       const input = null
       await Util.expectDecodeUnknownFailure(
         schema,
@@ -1099,6 +965,183 @@ describe("Formatter", () => {
         "custom message"
       )
       expectIssues(schema, input, [{
+        _tag: "Composite",
+        path: [],
+        message: "custom message"
+      }])
+    })
+  })
+
+  describe("Tuple", () => {
+    it("parent custom message with override=false", async () => {
+      const schema = S.Tuple(S.String).annotations({ message: () => "custom message" })
+      const input1 = [1]
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        input1,
+        `readonly [string]
+└─ [0]
+   └─ Expected string, actual 1`
+      )
+      expectIssues(schema, input1, [{
+        _tag: "Type",
+        path: [0],
+        message: "Expected string, actual 1"
+      }])
+    })
+
+    it("parent custom message with override=true", async () => {
+      const schema = S.Tuple(S.String).annotations({ message: () => ({ message: "custom message", override: true }) })
+      const input1 = [1]
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        input1,
+        "custom message"
+      )
+      expectIssues(schema, input1, [{
+        _tag: "Composite",
+        path: [],
+        message: "custom message"
+      }])
+    })
+  })
+
+  describe("Struct", () => {
+    it("parent custom message with override=false", async () => {
+      const schema = S.Struct({
+        as: pipe(
+          S.Array(
+            S.Struct({
+              b: pipe(
+                S.String.annotations({ message: () => "type" }),
+                S.minLength(1, { message: () => "minLength" }),
+                S.maxLength(2, { message: () => "maxLength" })
+              )
+            })
+          ).annotations({ identifier: "C" }),
+          S.minItems(1, { message: () => "minItems" })
+        ).annotations({ identifier: "B" })
+      }).annotations({ identifier: "A", message: () => "custom message" })
+      const input1 = null
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        input1,
+        "custom message"
+      )
+      expectIssues(schema, input1, [{
+        _tag: "Type",
+        path: [],
+        message: "custom message"
+      }])
+
+      const input2 = { as: [] }
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        input2,
+        `A
+└─ ["as"]
+   └─ minItems`
+      )
+      expectIssues(schema, input2, [{
+        _tag: "Refinement",
+        path: ["as"],
+        message: "minItems"
+      }])
+
+      const input3 = { as: [{ b: null }] }
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        input3,
+        `A
+└─ ["as"]
+   └─ B
+      └─ From side refinement failure
+         └─ C
+            └─ [0]
+               └─ { readonly b: a string at most 2 character(s) long }
+                  └─ ["b"]
+                     └─ type`
+      )
+      expectIssues(schema, input3, [{
+        _tag: "Refinement",
+        path: ["as", 0, "b"],
+        message: "type"
+      }])
+
+      const input4 = { as: [{ b: "" }] }
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        input4,
+        `A
+└─ ["as"]
+   └─ B
+      └─ From side refinement failure
+         └─ C
+            └─ [0]
+               └─ { readonly b: a string at most 2 character(s) long }
+                  └─ ["b"]
+                     └─ minLength`
+      )
+      expectIssues(schema, input4, [{
+        _tag: "Refinement",
+        path: ["as", 0, "b"],
+        message: "minLength"
+      }])
+
+      const input5 = { as: [{ b: "---" }] }
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        input5,
+        `A
+└─ ["as"]
+   └─ B
+      └─ From side refinement failure
+         └─ C
+            └─ [0]
+               └─ { readonly b: a string at most 2 character(s) long }
+                  └─ ["b"]
+                     └─ maxLength`
+      )
+      expectIssues(schema, input5, [{
+        _tag: "Refinement",
+        path: ["as", 0, "b"],
+        message: "maxLength"
+      }])
+    })
+
+    it("parent custom message with override=true", async () => {
+      const schema = S.Struct({
+        as: pipe(
+          S.Array(
+            S.Struct({
+              b: pipe(
+                S.String.annotations({ message: () => "type" }),
+                S.minLength(1, { message: () => "minLength" }),
+                S.maxLength(2, { message: () => "maxLength" })
+              )
+            })
+          ).annotations({ identifier: "C" }),
+          S.minItems(1, { message: () => "minItems" })
+        ).annotations({ identifier: "B" })
+      }).annotations({ identifier: "A", message: () => ({ message: "custom message", override: true }) })
+      const input1 = null
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        input1,
+        "custom message"
+      )
+      expectIssues(schema, input1, [{
+        _tag: "Type",
+        path: [],
+        message: "custom message"
+      }])
+      const input2 = { as: [] }
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        input2,
+        "custom message"
+      )
+      expectIssues(schema, input2, [{
         _tag: "Composite",
         path: [],
         message: "custom message"
@@ -1126,7 +1169,7 @@ describe("handle identifiers", () => {
     )
   })
 
-  describe("suspend", () => {
+  describe("Suspend", () => {
     it("outer", async () => {
       type A = readonly [number, A | null]
       const schema: S.Schema<A> = S.suspend( // intended outer suspend

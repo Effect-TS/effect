@@ -5240,7 +5240,9 @@ const Category = Schema.Struct({
 
 ### Default Error Messages
 
-When a parsing, decoding, or encoding process encounters a failure, a default error message is automatically generated for you. Let's explore some examples:
+By default, when a parsing error occurs, the system automatically generates an informative message based on the schema's structure and the nature of the error. For example, if a required property is missing or a data type does not match, the error message will clearly state the expectation versus the actual input.
+
+**Type Mismatch Example**
 
 ```ts
 import { Schema } from "@effect/schema"
@@ -5255,6 +5257,17 @@ Schema.decodeUnknownSync(schema)(null)
 throws:
 Error: Expected { readonly name: string; readonly age: number }, actual null
 */
+```
+
+**Missing Properties Example**
+
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.Struct({
+  name: Schema.String,
+  age: Schema.Number
+})
 
 Schema.decodeUnknownSync(schema)({}, { errors: "all" })
 /*
@@ -5267,25 +5280,52 @@ Error: { readonly name: string; readonly age: number }
 */
 ```
 
-#### Identifiers in Error Messages
-
-When you include an identifier annotation, it will be incorporated into the default error message, followed by a description if provided:
+**Incorrect Property Type Example**
 
 ```ts
 import { Schema } from "@effect/schema"
 
 const schema = Schema.Struct({
-  name: Schema.String.annotations({ identifier: "Name" }),
-  age: Schema.Number.annotations({ identifier: "Age" })
+  name: Schema.String,
+  age: Schema.Number
+})
+
+Schema.decodeUnknownSync(schema)({ name: null, age: "age" }, { errors: "all" })
+/*
+throws:
+ParseError: { readonly name: string; readonly age: number }
+├─ ["name"]
+│  └─ Expected string, actual null
+└─ ["age"]
+   └─ Expected number, actual "age"
+*/
+```
+
+#### Enhancing Clarity in Error Messages with Identifiers
+
+In scenarios where a schema has multiple fields or nested structures, the default error messages can become overly complex and verbose. To address this, you can enhance the clarity and brevity of these messages by utilizing annotations such as `identifier`, `title`, and `description`.
+
+Incorporating an `identifier` annotation into your schema allows you to customize the error messages, making them more succinct and directly relevant to the specific part of the schema that triggered the error. Here's how you can apply this in practice:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const Name = Schema.String.annotations({ identifier: "Name" })
+
+const Age = Schema.Number.annotations({ identifier: "Age" })
+
+const Person = Schema.Struct({
+  name: Name,
+  age: Age
 }).annotations({ identifier: "Person" })
 
-Schema.decodeUnknownSync(schema)(null)
+Schema.decodeUnknownSync(Person)(null)
 /*
 throws:
 Error: Expected Person, actual null
 */
 
-Schema.decodeUnknownSync(schema)({}, { errors: "all" })
+Schema.decodeUnknownSync(Person)({}, { errors: "all" })
 /*
 throws:
 Error: Person
@@ -5295,7 +5335,7 @@ Error: Person
    └─ is missing
 */
 
-Schema.decodeUnknownSync(schema)({ name: null, age: null }, { errors: "all" })
+Schema.decodeUnknownSync(Person)({ name: null, age: null }, { errors: "all" })
 /*
 throws:
 Error: Person
@@ -5313,13 +5353,17 @@ When a refinement fails, the default error message indicates whether the failure
 ```ts
 import { Schema } from "@effect/schema"
 
-const schema = Schema.Struct({
-  name: Schema.NonEmpty.annotations({ identifier: "Name" }), // refinement
-  age: Schema.Positive.pipe(Schema.int({ identifier: "Age" })) // refinement
+const Name = Schema.NonEmpty.annotations({ identifier: "Name" }) // refinement
+
+const Age = Schema.Positive.pipe(Schema.int({ identifier: "Age" })) // refinement
+
+const Person = Schema.Struct({
+  name: Name,
+  age: Age
 }).annotations({ identifier: "Person" })
 
-// "from" failure
-Schema.decodeUnknownSync(schema)({ name: null, age: 18 })
+// From side failure
+Schema.decodeUnknownSync(Person)({ name: null, age: 18 })
 /*
 throws:
 Error: Person
@@ -5329,8 +5373,8 @@ Error: Person
          └─ Expected a string, actual null
 */
 
-// predicate failure
-Schema.decodeUnknownSync(schema)({ name: "", age: 18 })
+// Predicate refinement failure
+Schema.decodeUnknownSync(Person)({ name: "", age: 18 })
 /*
 throws:
 Error: Person
@@ -5341,11 +5385,64 @@ Error: Person
 */
 ```
 
-In the first example, the error message indicates a "from" side refinement failure in the "Name" property, specifying that a string was expected but received null. In the second example, a predicate refinement failure is reported, indicating that a non-empty string was expected for "Name," but an empty string was provided.
+In the first example, the error message indicates a "from side" refinement failure in the `name` property, specifying that a string was expected but received `null`. In the second example, a "predicate" refinement failure is reported, indicating that a non-empty string was expected for `name` but an empty string was provided.
+
+#### Transformations
+
+Transformations between different types or formats can occasionally result in errors. The system provides a structured error message to specify where the error occurred:
+
+- **Encoded Side Failure:** Errors on this side typically indicate that the input to the transformation does not match the expected initial type or format. For example, receiving a `null` when a `string` is expected.
+- **Transformation Process Failure:** This type of error arises when the transformation logic itself fails, such as when the input does not meet the criteria specified within the transformation functions.
+- **Type Side Failure:** Occurs when the output of a transformation does not meet the schema requirements on the decoded side. This can happen if the transformed value fails subsequent validations or conditions.
+
+```ts
+import { ParseResult, Schema } from "@effect/schema"
+
+const schema = Schema.transformOrFail(
+  Schema.String,
+  Schema.String.pipe(Schema.minLength(2)),
+  {
+    decode: (s, _, ast) =>
+      s.length > 0
+        ? ParseResult.succeed(s)
+        : ParseResult.fail(new ParseResult.Type(ast, s)),
+    encode: ParseResult.succeed
+  }
+)
+
+// Encoded side failure
+Schema.decodeUnknownSync(schema)(null)
+/*
+throws:
+ParseError: (string <-> string)
+└─ Encoded side transformation failure
+   └─ Expected string, actual null
+*/
+
+// transformation failure
+Schema.decodeUnknownSync(schema)("")
+/*
+throws:
+ParseError: (string <-> string)
+└─ Transformation process failure
+   └─ Expected (string <-> string), actual ""
+*/
+
+// Type side failure
+Schema.decodeUnknownSync(schema)("a")
+/*
+throws:
+ParseError: (string <-> a string at least 2 character(s) long)
+└─ Type side transformation failure
+   └─ a string at least 2 character(s) long
+      └─ Predicate refinement failure
+         └─ Expected a string at least 2 character(s) long, actual "a"
+*/
+```
 
 ### Custom Error Messages
 
-Custom messages can be set using the `message` annotation:
+You have the capability to define custom error messages specifically tailored for different parts of your schema using the `message` annotation. This allows developers to provide more context-specific feedback which can improve the debugging and validation processes.
 
 ```ts
 type MessageAnnotation = (issue: ParseIssue) =>
@@ -5357,6 +5454,10 @@ type MessageAnnotation = (issue: ParseIssue) =>
     }
 ```
 
+- **String**: A straightforward message that describes the error.
+- **Effect<string>**: Allows for dynamic error messages that might depend on **synchronous** processes or **optional** dependencies.
+- **Object with `message` and `override`**: Allows you to define a specific error message along with a boolean flag (`override`). This flag determines if the custom message should supersede any default or nested custom messages, providing precise control over the error output displayed to users.
+
 Here's a simple example of how to set a custom message for the built-in `String` schema:
 
 ```ts
@@ -5365,6 +5466,12 @@ import { Schema } from "@effect/schema"
 const MyString = Schema.String.annotations({
   message: () => "my custom message"
 })
+
+Schema.decodeUnknownSync(MyString)(null)
+/*
+throws:
+ParseError: my custom message
+*/
 ```
 
 #### General Guidelines for Messages
@@ -5388,9 +5495,13 @@ const MyString = Schema.String.annotations({
   message: () => "my custom message"
 })
 
-const decode = Schema.decodeUnknownEither(MyString)
+const decode = Schema.decodeUnknownSync(MyString)
 
-console.log(decode(null)) // "my custom message"
+try {
+  decode(null)
+} catch (e: any) {
+  console.log(e.message) // "my custom message"
+}
 ```
 
 #### Refinements
@@ -5408,11 +5519,40 @@ const MyString = Schema.String.pipe(
   message: () => "my custom message"
 })
 
-const decode = Schema.decodeUnknownEither(MyString)
+const decode = Schema.decodeUnknownSync(MyString)
 
-console.log(decode(null)) // "Expected a string, actual null"
-console.log(decode("")) // `Expected a string at least 1 character(s) long, actual ""`
-console.log(decode("abc")) // "my custom message"
+try {
+  decode(null)
+} catch (e: any) {
+  console.log(e.message)
+  /*
+  a string at most 2 character(s) long
+  └─ From side refinement failure
+    └─ a string at least 1 character(s) long
+        └─ From side refinement failure
+          └─ Expected string, actual null
+  */
+}
+
+try {
+  decode("")
+} catch (e: any) {
+  console.log(e.message)
+  /*
+  a string at most 2 character(s) long
+  └─ From side refinement failure
+    └─ a string at least 1 character(s) long
+        └─ Predicate refinement failure
+          └─ Expected a string at least 1 character(s) long, actual ""
+  */
+}
+
+try {
+  decode("abc")
+} catch (e: any) {
+  console.log(e.message)
+  // "my custom message"
+}
 ```
 
 When setting multiple override messages, the one corresponding to the **first** failed predicate is used, starting from the innermost refinement to the outermost:
@@ -5430,11 +5570,25 @@ const MyString = Schema.String
     Schema.maxLength(2, { message: () => "maxLength custom message" })
   )
 
-const decode = Schema.decodeUnknownEither(MyString)
+const decode = Schema.decodeUnknownSync(MyString)
 
-console.log(decode(null)) // "String custom message"
-console.log(decode("")) // "minLength custom message"
-console.log(decode("abc")) // "maxLength custom message"
+try {
+  decode(null)
+} catch (e: any) {
+  console.log(e.message) // String custom message
+}
+
+try {
+  decode("")
+} catch (e: any) {
+  console.log(e.message) // minLength custom message
+}
+
+try {
+  decode("abc")
+} catch (e: any) {
+  console.log(e.message) // maxLength custom message
+}
 ```
 
 You have the option to change the default behavior by setting the `override` flag to `true`. This is useful when you want to create a single comprehensive custom message that describes the required properties of a valid value without displaying default messages.
@@ -5450,11 +5604,25 @@ const MyString = Schema.String.pipe(
   message: () => ({ message: "my custom message", override: true })
 })
 
-const decode = Schema.decodeUnknownEither(MyString)
+const decode = Schema.decodeUnknownSync(MyString)
 
-console.log(decode(null)) // "my custom message"
-console.log(decode("")) // "my custom message"
-console.log(decode("abc")) // "my custom message"
+try {
+  decode(null)
+} catch (e: any) {
+  console.log(e.message) // my custom message
+}
+
+try {
+  decode("")
+} catch (e: any) {
+  console.log(e.message) // my custom message
+}
+
+try {
+  decode("abc")
+} catch (e: any) {
+  console.log(e.message) // my custom message
+}
 ```
 
 #### Transformations
@@ -5482,11 +5650,25 @@ const IntFromString = Schema.transformOrFail(
   // This message is displayed only if the input cannot be converted to a number
   .annotations({ message: () => "please enter a parseable string" })
 
-const decode = Schema.decodeUnknownEither(IntFromString)
+const decode = Schema.decodeUnknownSync(IntFromString)
 
-console.log(decode(null)) // "please enter a string"
-console.log(decode("1.2")) // "please enter an integer"
-console.log(decode("not a number")) // "please enter a parseable string"
+try {
+  decode(null)
+} catch (e: any) {
+  console.log(e.message) // please enter a string
+}
+
+try {
+  decode("1.2")
+} catch (e: any) {
+  console.log(e.message) // please enter an integer
+}
+
+try {
+  decode("not a number")
+} catch (e: any) {
+  console.log(e.message) // please enter a parseable string
+}
 ```
 
 #### Compound Schemas
@@ -5503,8 +5685,9 @@ const schema = Schema.Struct({
       Schema.Struct({
         id: Schema.String,
         text: pipe(
-          Schema.String,
-          Schema.message(() => "error_invalid_outcome_type"),
+          Schema.String.annotations({
+            message: () => "error_invalid_outcome_type"
+          }),
           Schema.minLength(1, { message: () => "error_required_field" }),
           Schema.maxLength(50, { message: () => "error_max_length_field" })
         )
@@ -5519,7 +5702,7 @@ Schema.decodeUnknownSync(schema, { errors: "all" })({
 })
 /*
 throws
-Error: { outcomes: an array of at least 1 items }
+ParseError: { readonly outcomes: an array of at least 1 items }
 └─ ["outcomes"]
    └─ error_min_length_field
 */
@@ -5533,17 +5716,17 @@ Schema.decodeUnknownSync(schema, { errors: "all" })({
 })
 /*
 throws
-Error: { outcomes: an array of at least 1 items }
+ParseError: { readonly outcomes: an array of at least 1 items }
 └─ ["outcomes"]
    └─ an array of at least 1 items
       └─ From side refinement failure
-         └─ ReadonlyArray<{ id: string; text: a string at most 50 character(s) long }>
+         └─ ReadonlyArray<{ readonly id: string; readonly text: a string at most 50 character(s) long }>
             ├─ [0]
-            │  └─ { id: string; text: a string at most 50 character(s) long }
+            │  └─ { readonly id: string; readonly text: a string at most 50 character(s) long }
             │     └─ ["text"]
             │        └─ error_required_field
             └─ [2]
-               └─ { id: string; text: a string at most 50 character(s) long }
+               └─ { readonly id: string; readonly text: a string at most 50 character(s) long }
                   └─ ["text"]
                      └─ error_max_length_field
 */

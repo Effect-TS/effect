@@ -28,9 +28,33 @@ describe("EitherFromSelf", () => {
   })
 
   it("decoding", async () => {
-    const schema = S.EitherFromSelf({ left: S.String, right: S.NumberFromString })
-    await Util.expectDecodeUnknownSuccess(schema, E.left("a"), E.left("a"))
-    await Util.expectDecodeUnknownSuccess(schema, E.right("1"), E.right(1))
+    const schema = S.EitherFromSelf({ left: S.NumberFromString, right: Util.BooleanFromLiteral })
+    await Util.expectDecodeUnknownSuccess(schema, E.left("1"), E.left(1))
+    await Util.expectDecodeUnknownSuccess(schema, E.right("true"), E.right(true))
+
+    await Util.expectDecodeUnknownFailure(
+      schema,
+      null,
+      `Expected Either<("true" | "false" <-> boolean), NumberFromString>, actual null`
+    )
+    await Util.expectDecodeUnknownFailure(
+      schema,
+      E.right(""),
+      `Either<("true" | "false" <-> boolean), NumberFromString>
+└─ ("true" | "false" <-> boolean)
+   └─ Encoded side transformation failure
+      └─ "true" | "false"
+         ├─ Expected "true", actual ""
+         └─ Expected "false", actual ""`
+    )
+    await Util.expectDecodeUnknownFailure(
+      schema,
+      E.left("a"),
+      `Either<("true" | "false" <-> boolean), NumberFromString>
+└─ NumberFromString
+   └─ Transformation process failure
+      └─ Expected NumberFromString, actual "a"`
+    )
   })
 
   it("pretty", () => {

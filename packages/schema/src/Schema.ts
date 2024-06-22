@@ -4990,15 +4990,23 @@ export class BigIntFromNumber extends transformOrFail(
 const redactedArbitrary = <A>(value: LazyArbitrary<A>): LazyArbitrary<redacted_.Redacted<A>> => (fc) =>
   value(fc).map((x) => redacted_.make(x))
 
-const redactedParse = <R, A>(
+const toComposite = <A, R, B>(
+  eff: Effect.Effect<A, ParseResult.ParseIssue, R>,
+  onSuccess: (a: A) => B,
+  ast: AST.AST,
+  actual: unknown
+): Effect.Effect<B, ParseResult.Composite, R> =>
+  ParseResult.mapBoth(eff, {
+    onFailure: (e) => new ParseResult.Composite(ast, actual, e),
+    onSuccess
+  })
+
+const redactedParse = <A, R>(
   decodeUnknown: ParseResult.DecodeUnknown<A, R>
 ): ParseResult.DeclarationDecodeUnknown<redacted_.Redacted<A>, R> =>
 (u, options, ast) =>
   redacted_.isRedacted(u) ?
-    ParseResult.mapBoth(decodeUnknown(redacted_.value(u), options), {
-      onFailure: (e) => new ParseResult.Composite(ast, u, e),
-      onSuccess: redacted_.make
-    }) :
+    toComposite(decodeUnknown(redacted_.value(u), options), redacted_.make, ast, u) :
     ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -5706,12 +5714,12 @@ const optionPretty = <A>(value: pretty_.Pretty<A>): pretty_.Pretty<option_.Optio
   })
 
 const optionParse =
-  <R, A>(decodeUnknown: ParseResult.DecodeUnknown<A, R>): ParseResult.DeclarationDecodeUnknown<option_.Option<A>, R> =>
+  <A, R>(decodeUnknown: ParseResult.DecodeUnknown<A, R>): ParseResult.DeclarationDecodeUnknown<option_.Option<A>, R> =>
   (u, options, ast) =>
     option_.isOption(u) ?
       option_.isNone(u) ?
         ParseResult.succeed(option_.none())
-        : ParseResult.map(decodeUnknown(u.value, options), option_.some)
+        : toComposite(decodeUnknown(u.value, options), option_.some, ast, u)
       : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -5945,8 +5953,8 @@ const eitherParse = <RR, R, LR, L>(
 (u, options, ast) =>
   either_.isEither(u) ?
     either_.match(u, {
-      onLeft: (left) => ParseResult.map(decodeUnknownLeft(left, options), either_.left),
-      onRight: (right) => ParseResult.map(parseRight(right, options), either_.right)
+      onLeft: (left) => toComposite(decodeUnknownLeft(left, options), either_.left, ast, u),
+      onRight: (right) => toComposite(parseRight(right, options), either_.right, ast, u)
     })
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
@@ -6100,10 +6108,7 @@ const readonlyMapParse = <R, K, V>(
 ): ParseResult.DeclarationDecodeUnknown<ReadonlyMap<K, V>, R> =>
 (u, options, ast) =>
   Predicate.isMap(u) ?
-    ParseResult.mapBoth(decodeUnknown(Array.from(u.entries()), options), {
-      onFailure: (e) => new ParseResult.Composite(ast, u, e),
-      onSuccess: (as) => new Map(as)
-    })
+    toComposite(decodeUnknown(Array.from(u.entries()), options), (as) => new Map(as), ast, u)
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -6246,15 +6251,12 @@ const readonlySetEquivalence = <A>(
   return Equivalence.make((a, b) => arrayEquivalence(Array.from(a.values()), Array.from(b.values())))
 }
 
-const readonlySetParse = <R, A>(
+const readonlySetParse = <A, R>(
   decodeUnknown: ParseResult.DecodeUnknown<ReadonlyArray<A>, R>
 ): ParseResult.DeclarationDecodeUnknown<ReadonlySet<A>, R> =>
 (u, options, ast) =>
   Predicate.isSet(u) ?
-    ParseResult.mapBoth(decodeUnknown(Array.from(u.values()), options), {
-      onFailure: (e) => new ParseResult.Composite(ast, u, e),
-      onSuccess: (as) => new Set(as)
-    })
+    toComposite(decodeUnknown(Array.from(u.values()), options), (as) => new Set(as), ast, u)
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -6712,17 +6714,14 @@ const chunkArbitrary = <A>(item: LazyArbitrary<A>): LazyArbitrary<chunk_.Chunk<A
 const chunkPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<chunk_.Chunk<A>> => (c) =>
   `Chunk(${chunk_.toReadonlyArray(c).map(item).join(", ")})`
 
-const chunkParse = <R, A>(
+const chunkParse = <A, R>(
   decodeUnknown: ParseResult.DecodeUnknown<ReadonlyArray<A>, R>
 ): ParseResult.DeclarationDecodeUnknown<chunk_.Chunk<A>, R> =>
 (u, options, ast) =>
   chunk_.isChunk(u) ?
     chunk_.isEmpty(u) ?
       ParseResult.succeed(chunk_.empty())
-      : ParseResult.mapBoth(decodeUnknown(chunk_.toReadonlyArray(u), options), {
-        onFailure: (e) => new ParseResult.Composite(ast, u, e),
-        onSuccess: chunk_.fromIterable
-      })
+      : toComposite(decodeUnknown(chunk_.toReadonlyArray(u), options), chunk_.fromIterable, ast, u)
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -6803,15 +6802,12 @@ const nonEmptyChunkArbitrary = <A>(item: LazyArbitrary<A>): LazyArbitrary<chunk_
 const nonEmptyChunkPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<chunk_.NonEmptyChunk<A>> => (c) =>
   `NonEmptyChunk(${chunk_.toReadonlyArray(c).map(item).join(", ")})`
 
-const nonEmptyChunkParse = <R, A>(
+const nonEmptyChunkParse = <A, R>(
   decodeUnknown: ParseResult.DecodeUnknown<array_.NonEmptyReadonlyArray<A>, R>
 ): ParseResult.DeclarationDecodeUnknown<chunk_.NonEmptyChunk<A>, R> =>
 (u, options, ast) =>
   chunk_.isChunk(u) && chunk_.isNonEmpty(u)
-    ? ParseResult.mapBoth(decodeUnknown(chunk_.toReadonlyArray(u), options), {
-      onFailure: (e) => new ParseResult.Composite(ast, u, e),
-      onSuccess: chunk_.unsafeFromNonEmptyArray
-    })
+    ? toComposite(decodeUnknown(chunk_.toReadonlyArray(u), options), chunk_.unsafeFromNonEmptyArray, ast, u)
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -6878,10 +6874,7 @@ const dataParse = <R, A extends Readonly<Record<string, any>> | ReadonlyArray<an
 ): ParseResult.DeclarationDecodeUnknown<A, R> =>
 (u, options, ast) =>
   Equal.isEqual(u) ?
-    ParseResult.mapBoth(decodeUnknown(u, options), {
-      onFailure: (e) => new ParseResult.Composite(ast, u, e),
-      onSuccess: toData
-    })
+    toComposite(decodeUnknown(u, options), toData, ast, u)
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -7747,15 +7740,12 @@ const causePretty = <E>(error: pretty_.Pretty<E>): pretty_.Pretty<cause_.Cause<E
   return f(cause)
 }
 
-const causeParse = <R, A>(
+const causeParse = <A, R>(
   decodeUnknown: ParseResult.DecodeUnknown<CauseEncoded<A>, R>
 ): ParseResult.DeclarationDecodeUnknown<cause_.Cause<A>, R> =>
 (u, options, ast) =>
   cause_.isCause(u) ?
-    ParseResult.mapBoth(decodeUnknown(causeEncode(u), options), {
-      onFailure: (e) => new ParseResult.Composite(ast, u, e),
-      onSuccess: causeDecode
-    })
+    toComposite(decodeUnknown(causeEncode(u), options), causeDecode, ast, u)
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -7971,8 +7961,8 @@ const exitParse = <A, R, E, ER>(
 (u, options, ast) =>
   exit_.isExit(u) ?
     exit_.match(u, {
-      onFailure: (cause) => ParseResult.map(decodeUnknownCause(cause, options), exit_.failCause),
-      onSuccess: (value) => ParseResult.map(decodeUnknownValue(value, options), exit_.succeed)
+      onFailure: (cause) => toComposite(decodeUnknownCause(cause, options), exit_.failCause, ast, u),
+      onSuccess: (value) => toComposite(decodeUnknownValue(value, options), exit_.succeed, ast, u)
     })
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
@@ -8073,15 +8063,12 @@ const hashSetEquivalence = <A>(
   return Equivalence.make((a, b) => arrayEquivalence(Array.from(a), Array.from(b)))
 }
 
-const hashSetParse = <R, A>(
+const hashSetParse = <A, R>(
   decodeUnknown: ParseResult.DecodeUnknown<ReadonlyArray<A>, R>
 ): ParseResult.DeclarationDecodeUnknown<hashSet_.HashSet<A>, R> =>
 (u, options, ast) =>
   hashSet_.isHashSet(u) ?
-    ParseResult.mapBoth(decodeUnknown(Array.from(u), options), {
-      onFailure: (e) => new ParseResult.Composite(ast, u, e),
-      onSuccess: hashSet_.fromIterable
-    })
+    toComposite(decodeUnknown(Array.from(u), options), hashSet_.fromIterable, ast, u)
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -8177,10 +8164,7 @@ const hashMapParse = <R, K, V>(
 ): ParseResult.DeclarationDecodeUnknown<hashMap_.HashMap<K, V>, R> =>
 (u, options, ast) =>
   hashMap_.isHashMap(u) ?
-    ParseResult.mapBoth(decodeUnknown(Array.from(u), options), {
-      onFailure: (e) => new ParseResult.Composite(ast, u, e),
-      onSuccess: hashMap_.fromIterable
-    })
+    toComposite(decodeUnknown(Array.from(u), options), hashMap_.fromIterable, ast, u)
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -8262,15 +8246,12 @@ const listEquivalence = <A>(
   return Equivalence.make((a, b) => arrayEquivalence(Array.from(a), Array.from(b)))
 }
 
-const listParse = <R, A>(
+const listParse = <A, R>(
   decodeUnknown: ParseResult.DecodeUnknown<ReadonlyArray<A>, R>
 ): ParseResult.DeclarationDecodeUnknown<list_.List<A>, R> =>
 (u, options, ast) =>
   list_.isList(u) ?
-    ParseResult.mapBoth(decodeUnknown(Array.from(u), options), {
-      onFailure: (e) => new ParseResult.Composite(ast, u, e),
-      onSuccess: list_.fromIterable
-    })
+    toComposite(decodeUnknown(Array.from(u), options), list_.fromIterable, ast, u)
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
@@ -8341,16 +8322,18 @@ const sortedSetArbitrary =
 const sortedSetPretty = <A>(item: pretty_.Pretty<A>): pretty_.Pretty<sortedSet_.SortedSet<A>> => (set) =>
   `new SortedSet([${Array.from(sortedSet_.values(set)).map((a) => item(a)).join(", ")}])`
 
-const sortedSetParse = <R, A>(
+const sortedSetParse = <A, R>(
   decodeUnknown: ParseResult.DecodeUnknown<ReadonlyArray<A>, R>,
   ord: Order.Order<A>
 ): ParseResult.DeclarationDecodeUnknown<sortedSet_.SortedSet<A>, R> =>
 (u, options, ast) =>
   sortedSet_.isSortedSet(u) ?
-    ParseResult.mapBoth(decodeUnknown(Array.from(sortedSet_.values(u)), options), {
-      onFailure: (e) => new ParseResult.Composite(ast, u, e),
-      onSuccess: (as): sortedSet_.SortedSet<A> => sortedSet_.fromIterable(as, ord)
-    })
+    toComposite(
+      decodeUnknown(Array.from(sortedSet_.values(u)), options),
+      (as): sortedSet_.SortedSet<A> => sortedSet_.fromIterable(as, ord),
+      ast,
+      u
+    )
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
