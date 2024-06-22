@@ -3881,55 +3881,163 @@ Schema.required(
 
 ## Extending Schemas
 
-The `extend` combinator allows you to add **additional** fields or index signatures to an existing `Schema`.
+### Spreading Struct fields
 
-Example
+Structs expose their fields through a `fields` property. This feature can be utilized to extend an existing struct with additional fields or to merge fields from another struct. Here's how you can enhance the functionality of your schemas by spreading fields:
+
+**Example: Adding Fields**
 
 ```ts
 import { Schema } from "@effect/schema"
 
-const schema = Schema.Struct({
+const Struct1 = Schema.Struct({
   a: Schema.String,
   b: Schema.String
 })
 
-/*
-const extended: S.Schema<{
-    readonly [x: string]: string;
-    readonly a: string;
-    readonly b: string;
-    readonly c: string;
-}>
-*/
-const extended = Schema.asSchema(
-  schema.pipe(
-    Schema.extend(Schema.Struct({ c: Schema.String })), // <= you can add more fields
-    Schema.extend(Schema.Record(Schema.String, Schema.String)) // <= you can add index signatures
-  )
-)
+const Extended = Schema.Struct({
+  ...Struct1.fields,
+  // ...other fields
+  c: Schema.String,
+  d: Schema.String
+})
 ```
 
-Alternatively, you can utilize the `fields` property of structs:
+**Example: Integrating Additional Property Signatures**
 
 ```ts
 import { Schema } from "@effect/schema"
 
-const schema = Schema.Struct({ a: Schema.String, b: Schema.String })
+const Struct = Schema.Struct({
+  a: Schema.String,
+  b: Schema.String
+})
 
-const extended = Schema.Struct(
+const Extended = Schema.Struct(
   {
-    ...schema.fields,
-    c: Schema.String
+    ...Struct.fields
   },
-  { key: Schema.String, value: Schema.String }
+  Schema.Record(Schema.String, Schema.String)
 )
 ```
+
+**Example: Merging Fields from Two Structs**
+
+```ts
+import { Schema } from "@effect/schema"
+
+const Struct1 = Schema.Struct({
+  a: Schema.String,
+  b: Schema.String
+})
+
+const Struct2 = Schema.Struct({
+  c: Schema.String,
+  d: Schema.String
+})
+
+const Extended = Schema.Struct({
+  ...Struct1.fields,
+  ...Struct2.fields
+})
+```
+
+**Example: Using Pick and Omit**
+
+The `fields` property being a plain object allows for flexible manipulations such as picking or omitting specific fields using utility functions like `pick` and `omit`.
+
+```ts
+import { Schema } from "@effect/schema"
+import { Struct } from "effect"
+
+const Struct1 = Schema.Struct({
+  a: Schema.String,
+  b: Schema.String
+})
+
+const Struct2 = Schema.Struct({
+  c: Schema.String,
+  d: Schema.String,
+  e: Schema.String
+})
+
+const Extended = Schema.Struct({
+  ...Struct.pick(Struct1.fields, "a"),
+  ...Struct.omit(Struct2.fields, "d")
+})
+```
+
+### The extend combinator
+
+The `extend` combinator offers a structured way to extend schemas, particularly useful when direct field spreading is insufficient—for instance, when you need to extend a struct with a union of structs.
 
 > [!NOTE]
 > Note that there are strict limitations on the schemas that can be handled by `extend`:
 
-1. It only supports **structs**, refinements of structs, unions of structs, suspensions of structs (informally `Supported = Struct | Refinement of Supported | Union of Supported | suspend(() => Supported)`)
-2. The arguments must represent disjoint types (e.g., `extend(Struct({ a: String }), Struct({ a: String })))` raises an error)
+1. It only supports structs, refinements of structs, unions of structs, suspensions of structs (informally `Supported = Struct | Refinement of Supported | Union of Supported | suspend(() => Supported)`)
+2. It requires that the combined schemas represent **disjoint types** to avoid type conflicts.
+
+**Example: Extending a Struct with a Union of Structs**
+
+```ts
+import { Schema } from "@effect/schema"
+
+const Struct = Schema.Struct({
+  a: Schema.String
+})
+
+const UnionOfStructs = Schema.Union(
+  Schema.Struct({ b: Schema.String }),
+  Schema.Struct({ c: Schema.String })
+)
+
+const Extended = Schema.extend(Struct, UnionOfStructs)
+```
+
+This example shows an attempt to extend a struct with another struct where field names overlap, leading to an error:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const Struct = Schema.Struct({
+  a: Schema.String
+})
+
+const OverlappingUnion = Schema.Union(
+  Schema.Struct({ a: Schema.Number }), // duplicate key
+  Schema.Struct({ d: Schema.String })
+)
+
+const Extended = Schema.extend(Struct, OverlappingUnion)
+/*
+throws:
+Error: Unsupported schema or overlapping types
+at path: ["a"]
+details: cannot extend string with number
+*/
+```
+
+**Example: Merging Compatible Structs**
+
+However, schemas can be merged if they are structurally disjoint, even if they share the same top-level key:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const Struct1 = Schema.Struct({
+  a: Schema.Struct({
+    b: Schema.String
+  })
+})
+
+const Struct2 = Schema.Struct({
+  a: Schema.Struct({
+    c: Schema.String // Different inner key under the same top-level 'a'
+  })
+})
+
+const Extended = Schema.extend(Struct1, Struct2)
+```
 
 ## Composition
 
