@@ -1,3 +1,6 @@
+/**
+ * @since 1.0.0
+ */
 import type { SqlError } from "@effect/sql/SqlError"
 import type { Effect } from "effect"
 import type { Kysely, Simplify } from "kysely"
@@ -28,6 +31,10 @@ declare module "kysely" {
   export interface WheneableMergeQueryBuilder<DB, TT, ST, O> extends Effect.Effect<Array<Simplify<O>>, SqlError> {}
 }
 
+/**
+ * @since 1.0.0
+ * @category types
+ */
 export interface EffectKysely<DB> extends Omit<Kysely<DB>, "transaction"> {
   withTransaction: <R, E, A>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | SqlError, R>
 }

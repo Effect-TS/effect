@@ -20,4 +20,8 @@ export const make = <DB>(config?: Omit<KyselyConfig, "dialect">) =>
     }
   })
 
+/**
+ * @since 1.0.0
+ * @category types
+ */
 export type * from "./patch.types.js"
