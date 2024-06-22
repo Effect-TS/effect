@@ -5948,8 +5948,16 @@ const eitherParse = <RR, R, LR, L>(
 (u, options, ast) =>
   either_.isEither(u) ?
     either_.match(u, {
-      onLeft: (left) => ParseResult.map(decodeUnknownLeft(left, options), either_.left),
-      onRight: (right) => ParseResult.map(parseRight(right, options), either_.right)
+      onLeft: (left) =>
+        ParseResult.mapBoth(decodeUnknownLeft(left, options), {
+          onFailure: (e) => new ParseResult.Composite(ast, u, e),
+          onSuccess: either_.left
+        }),
+      onRight: (right) =>
+        ParseResult.mapBoth(parseRight(right, options), {
+          onFailure: (e) => new ParseResult.Composite(ast, u, e),
+          onSuccess: either_.right
+        })
     })
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
@@ -7974,8 +7982,16 @@ const exitParse = <A, R, E, ER>(
 (u, options, ast) =>
   exit_.isExit(u) ?
     exit_.match(u, {
-      onFailure: (cause) => ParseResult.map(decodeUnknownCause(cause, options), exit_.failCause),
-      onSuccess: (value) => ParseResult.map(decodeUnknownValue(value, options), exit_.succeed)
+      onFailure: (cause) =>
+        ParseResult.mapBoth(decodeUnknownCause(cause, options), {
+          onFailure: (e) => new ParseResult.Composite(ast, u, e),
+          onSuccess: exit_.failCause
+        }),
+      onSuccess: (value) =>
+        ParseResult.mapBoth(decodeUnknownValue(value, options), {
+          onFailure: (e) => new ParseResult.Composite(ast, u, e),
+          onSuccess: exit_.succeed
+        })
     })
     : ParseResult.fail(new ParseResult.Type(ast, u))
 
