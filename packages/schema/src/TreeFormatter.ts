@@ -82,35 +82,17 @@ const formatRefinementKind = (kind: ParseResult.Refinement["kind"]): string => {
   }
 }
 
-const getInnerMessage = (
-  issue: ParseResult.ParseIssue
-): Effect.Effect<string, Cause.NoSuchElementException> => {
-  switch (issue._tag) {
-    case "Refinement": {
-      if (issue.kind === "From") {
-        return getMessage(issue.issue)
-      }
-      break
-    }
-    case "Transformation": {
-      return getMessage(issue.issue)
-    }
-  }
-  return Option.none()
+const getAnnotated = (issue: ParseResult.ParseIssue): Option.Option<AST.Annotated> =>
+  "ast" in issue ? Option.some(issue.ast) : Option.none()
+
+interface CurrentMessage {
+  readonly message: string
+  readonly override: boolean
 }
 
-const getAnnotated = (issue: ParseResult.ParseIssue): Option.Option<AST.Annotated> => {
-  if ("ast" in issue) {
-    return Option.some(issue.ast)
-  }
-  return Option.none()
-}
-
-const getCurrentMessage: (
+const getCurrentMessage = (
   issue: ParseResult.ParseIssue
-) => Effect.Effect<{ message: string; override: boolean }, Cause.NoSuchElementException> = (
-  issue: ParseResult.ParseIssue
-) =>
+): Effect.Effect<CurrentMessage, Cause.NoSuchElementException> =>
   getAnnotated(issue).pipe(
     Option.flatMap(AST.getMessageAnnotation),
     Effect.flatMap((annotation) => {
@@ -125,29 +107,30 @@ const getCurrentMessage: (
     })
   )
 
+const createParseIssueGuard =
+  <T extends ParseResult.ParseIssue["_tag"]>(tag: T) =>
+  (issue: ParseResult.ParseIssue): issue is Extract<ParseResult.ParseIssue, { _tag: T }> => issue._tag === tag
+
+const isComposite = createParseIssueGuard("Composite")
+const isRefinement = createParseIssueGuard("Refinement")
+const isTransformation = createParseIssueGuard("Transformation")
+
 /** @internal */
 export const getMessage: (
   issue: ParseResult.ParseIssue
-) => Effect.Effect<string, Cause.NoSuchElementException> = (issue: ParseResult.ParseIssue) => {
-  const current = getCurrentMessage(issue)
-  return getInnerMessage(issue).pipe(
-    Effect.flatMap((inner) => Effect.map(current, (current) => current.override ? current.message : inner)),
-    Effect.catchAll(() =>
-      Effect.flatMap(current, (current) => {
-        if (
-          current.override || (
-            (issue._tag !== "Composite") &&
-            (issue._tag !== "Refinement" || issue.kind === "Predicate") &&
-            (issue._tag !== "Transformation" || issue.kind === "Transformation")
-          )
-        ) {
-          return Effect.succeed(current.message)
-        }
-        return Option.none()
-      })
-    )
+) => Effect.Effect<string, Cause.NoSuchElementException> = (issue: ParseResult.ParseIssue) =>
+  getCurrentMessage(issue).pipe(
+    Effect.flatMap((currentMessage) => {
+      const useInnerMessage = !currentMessage.override && (
+        isComposite(issue) ||
+        (isRefinement(issue) && issue.kind === "From") ||
+        (isTransformation(issue) && issue.kind !== "Transformation")
+      )
+      return useInnerMessage
+        ? isTransformation(issue) || isRefinement(issue) ? getMessage(issue.issue) : Option.none()
+        : Effect.succeed(currentMessage.message)
+    })
   )
-}
 
 const getParseIssueTitleAnnotation = (issue: ParseResult.ParseIssue): Option.Option<string> =>
   getAnnotated(issue).pipe(
