@@ -135,14 +135,15 @@ export const getMessage: (
     Effect.catchAll(() =>
       Effect.flatMap(current, (current) => {
         if (
-          !current.override && (
-            (issue._tag === "Refinement" && issue.kind !== "Predicate") ||
-            (issue._tag === "Transformation" && issue.kind !== "Transformation")
+          current.override || (
+            (issue._tag !== "Composite") &&
+            (issue._tag !== "Refinement" || issue.kind === "Predicate") &&
+            (issue._tag !== "Transformation" || issue.kind === "Transformation")
           )
         ) {
-          return Option.none()
+          return Effect.succeed(current.message)
         }
-        return Effect.succeed(current.message)
+        return Option.none()
       })
     )
   )

@@ -5711,7 +5711,10 @@ const optionParse =
     option_.isOption(u) ?
       option_.isNone(u) ?
         ParseResult.succeed(option_.none())
-        : ParseResult.map(decodeUnknown(u.value, options), option_.some)
+        : ParseResult.mapBoth(decodeUnknown(u.value, options), {
+          onFailure: (e) => new ParseResult.Composite(ast, u, e),
+          onSuccess: option_.some
+        })
       : ParseResult.fail(new ParseResult.Type(ast, u))
 
 /**
