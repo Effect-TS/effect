@@ -1,3 +1,4 @@
+import type { HttpApp } from "@effect/platform"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
@@ -6,11 +7,13 @@ import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as Predicate from "effect/Predicate"
+import type { ReadonlyRecord } from "effect/Record"
 import * as Headers from "../Headers.js"
 import type * as App from "../HttpApp.js"
 import type * as Middleware from "../HttpMiddleware.js"
 import * as ServerError from "../HttpServerError.js"
 import * as ServerRequest from "../HttpServerRequest.js"
+import * as ServerResponse from "../HttpServerResponse.js"
 import type { HttpServerResponse } from "../HttpServerResponse.js"
 import * as TraceContext from "../HttpTraceContext.js"
 
@@ -202,3 +205,106 @@ export const searchParamsParser = <E, R>(httpApp: App.Default<E, R>) =>
       Context.add(context, ServerRequest.ParsedSearchParams, params)
     ) as any
   })
+
+/** @internal */
+export const cors = (options?: {
+  readonly allowedOrigins?: ReadonlyArray<string> | undefined
+  readonly allowedMethods?: ReadonlyArray<string> | undefined
+  readonly allowedHeaders?: ReadonlyArray<string> | undefined
+  readonly exposedHeaders?: ReadonlyArray<string> | undefined
+  readonly maxAge?: number | undefined
+  readonly credentials?: boolean | undefined
+}) => {
+  const opts = {
+    allowedOrigins: ["*"],
+    allowedMethods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
+    allowedHeaders: [],
+    exposedHeaders: [],
+    credentials: false,
+    ...options
+  }
+
+  const isAllowedOrigin = (origin: string) => opts.allowedOrigins.includes(origin)
+
+  const allowOrigin = (originHeader: string): ReadonlyRecord<string, string> | undefined => {
+    if (opts.allowedOrigins.length === 0) {
+      return { "access-control-allow-origin": "*" }
+    }
+
+    if (opts.allowedOrigins.length === 1) {
+      return {
+        "access-control-allow-origin": opts.allowedOrigins[0],
+        vary: "Origin"
+      }
+    }
+
+    if (isAllowedOrigin(originHeader)) {
+      return {
+        "access-control-allow-origin": originHeader,
+        vary: "Origin"
+      }
+    }
+
+    return undefined
+  }
+
+  const allowMethods = opts.allowedMethods.length > 0
+    ? { "access-control-allow-methods": opts.allowedMethods.join(", ") }
+    : undefined
+
+  const allowCredentials = opts.credentials
+    ? { "access-control-allow-credentials": "true" }
+    : undefined
+
+  const allowHeaders = (
+    accessControlRequestHeaders: string | undefined
+  ): ReadonlyRecord<string, string> | undefined => {
+    if (opts.allowedHeaders.length === 0 && accessControlRequestHeaders) {
+      return {
+        vary: "Access-Control-Request-Headers",
+        "access-control-allow-headers": accessControlRequestHeaders
+      }
+    }
+
+    if (opts.allowedHeaders) {
+      return {
+        "access-control-allow-headers": opts.allowedHeaders.join(",")
+      }
+    }
+
+    return undefined
+  }
+
+  const exposeHeaders = opts.exposedHeaders.length > 0
+    ? { "access-control-expose-headers": opts.exposedHeaders.join(",") }
+    : undefined
+
+  const maxAge = opts.maxAge
+    ? { "access-control-max-age": opts.maxAge.toString() }
+    : undefined
+
+  return <E, R>(httpApp: HttpApp.Default<E, R>): HttpApp.Default<E, R> =>
+    Effect.withFiberRuntime((fiber) => {
+      const context = fiber.getFiberRef(FiberRef.currentContext)
+      const request = Context.unsafeGet(
+        context,
+        ServerRequest.HttpServerRequest
+      )
+      const origin = request.headers["origin"]
+      const accessControlRequestHeaders = request.headers["access-control-request-headers"]
+      const corsHeaders = Headers.unsafeFromRecord({
+        ...allowOrigin(origin),
+        ...allowCredentials,
+        ...exposeHeaders
+      })
+      if (request.method === "OPTIONS") {
+        Object.assign(corsHeaders, {
+          ...allowMethods,
+          ...allowHeaders(accessControlRequestHeaders),
+          ...maxAge
+        })
+        return Effect.succeed(ServerResponse.empty({ status: 204, headers: corsHeaders }))
+      }
+      return Effect.map(httpApp, ServerResponse.setHeaders(corsHeaders))
+    })
+}

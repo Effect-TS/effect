@@ -114,3 +114,18 @@ export const searchParamsParser: <E, R>(
   E,
   Exclude<R, ServerRequest.ParsedSearchParams>
 > = internal.searchParamsParser
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const cors: (
+  options?: {
+    readonly allowedOrigins?: ReadonlyArray<string> | undefined
+    readonly allowedMethods?: ReadonlyArray<string> | undefined
+    readonly allowedHeaders?: ReadonlyArray<string> | undefined
+    readonly exposedHeaders?: ReadonlyArray<string> | undefined
+    readonly maxAge?: number | undefined
+    readonly credentials?: boolean | undefined
+  } | undefined
+) => <E, R>(httpApp: App.Default<E, R>) => App.Default<E, R> = internal.cors
