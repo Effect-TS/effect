@@ -4369,7 +4369,7 @@ export const suspend: <A, E, R>(stream: LazyArg<Stream<A, E, R>>) => Stream<A, E
  * // 2
  * // 2
  * // 2
- * @since 3.4.0
+ * @since 3.6.0
  * @category sequencing
  */
 export const switchMap: {
