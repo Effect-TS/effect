@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.58.4
+
+### Patch Changes
+
+- [#3051](https://github.com/Effect-TS/effect/pull/3051) [`b77fb0a`](https://github.com/Effect-TS/effect/commit/b77fb0a811ec1ad0e794917077c9a90824515db8) Thanks @tim-smart! - add HttpMiddleware.cors
+
 ## 0.58.3
 
 ### Patch Changes
