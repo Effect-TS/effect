@@ -4051,8 +4051,27 @@ export const tap: {
 } = core.tap
 
 /**
- * Returns an effect that effectfully "peeks" at the failure or success of
- * this effect.
+ * Inspects both success and failure outcomes of an effect, performing different actions based on the result.
+ *
+ * @example
+ * import { Effect, Random, Console } from "effect"
+ *
+ * // Simulate an effect that might fail
+ * const task = Effect.filterOrFail(
+ *   Random.nextRange(-1, 1),
+ *   (n) => n >= 0,
+ *   () => "random number is negative"
+ * )
+ *
+ * // Define an effect that logs both success and failure outcomes of the 'task'
+ * const tapping = Effect.tapBoth(task, {
+ *   onFailure: (error) => Console.log(`failure: ${error}`),
+ *   onSuccess: (randomNumber) => Console.log(`random number: ${randomNumber}`)
+ * })
+ *
+ * Effect.runFork(tapping)
+ * // Example Output:
+ * // failure: random number is negative
  *
  * @since 2.0.0
  * @category sequencing
@@ -4074,7 +4093,36 @@ export const tapBoth: {
 } = effect.tapBoth
 
 /**
- * Returns an effect that effectually "peeks" at the defect of this effect.
+ * Specifically inspects non-recoverable failures or defects in an effect (i.e., one or more `Die` causes).
+ *
+ * @example
+ * import { Effect, Console } from "effect"
+ *
+ * // Create an effect that is designed to fail, simulating an occurrence of a network error
+ * const task1: Effect.Effect<number, string> = Effect.fail("NetworkError")
+ *
+ * // this won't log anything because is not a defect
+ * const tapping1 = Effect.tapDefect(task1, (cause) =>
+ *   Console.log(`defect: ${cause}`)
+ * )
+ *
+ * Effect.runFork(tapping1)
+ * // No Output
+ *
+ * // Simulate a severe failure in the system by causing a defect with a specific message.
+ * const task2: Effect.Effect<number, string> = Effect.dieMessage(
+ *   "Something went wrong"
+ * )
+ *
+ * // This will only log defects, not errors
+ * const tapping2 = Effect.tapDefect(task2, (cause) =>
+ *   Console.log(`defect: ${cause}`)
+ * )
+ *
+ * Effect.runFork(tapping2)
+ * // Output:
+ * // defect: RuntimeException: Something went wrong
+ * //   ... stack trace ...
  *
  * @since 2.0.0
  * @category sequencing
@@ -4090,7 +4138,23 @@ export const tapDefect: {
 } = effect.tapDefect
 
 /**
- * Returns an effect that effectfully "peeks" at the failure of this effect.
+ * Executes an effectful operation to inspect the failure of an effect without altering it.
+ *
+ * @example
+ * import { Effect, Console } from "effect"
+ *
+ * // Create an effect that is designed to fail, simulating an occurrence of a network error
+ * const task: Effect.Effect<number, string> = Effect.fail("NetworkError")
+ *
+ * // Log the error message if the task fails. This function only executes if there is an error,
+ * // providing a method to handle or inspect errors without altering the outcome of the original effect.
+ * const tapping = Effect.tapError(task, (error) =>
+ *   Console.log(`expected error: ${error}`)
+ * )
+ *
+ * Effect.runFork(tapping)
+ * // Output:
+ * // expected error: NetworkError
  *
  * @since 2.0.0
  * @category sequencing
@@ -4103,7 +4167,33 @@ export const tapError: {
 } = effect.tapError
 
 /**
- * Returns an effect that effectfully "peeks" at the specific tagged failure of this effect.
+ * Specifically inspects a failure with a particular tag, allowing focused error handling.
+ *
+ * @example
+ * import { Effect, Console } from "effect"
+ *
+ * class NetworkError {
+ *   readonly _tag = "NetworkError"
+ *   constructor(readonly statusCode: number) {}
+ * }
+ * class ValidationError {
+ *   readonly _tag = "ValidationError"
+ *   constructor(readonly field: string) {}
+ * }
+ *
+ * // Create an effect that is designed to fail, simulating an occurrence of a network error
+ * const task: Effect.Effect<number, NetworkError | ValidationError> =
+ *   Effect.fail(new NetworkError(504))
+ *
+ * // Apply an error handling function only to errors tagged as "NetworkError",
+ * // and log the corresponding status code of the error.
+ * const tapping = Effect.tapErrorTag(task, "NetworkError", (error) =>
+ *   Console.log(`expected error: ${error.statusCode}`)
+ * )
+ *
+ * Effect.runFork(tapping)
+ * // Output:
+ * // expected error: 504
  *
  * @since 2.0.0
  * @category sequencing
@@ -4121,8 +4211,37 @@ export const tapErrorTag: {
 } = effect.tapErrorTag
 
 /**
- * Returns an effect that effectually "peeks" at the cause of the failure of
- * this effect.
+ * Inspects the underlying cause of an effect's failure.
+ *
+ * @example
+ * import { Effect, Console } from "effect"
+ *
+ * // Create an effect that is designed to fail, simulating an occurrence of a network error
+ * const task1: Effect.Effect<number, string> = Effect.fail("NetworkError")
+ *
+ * // This will log the cause of any expected error or defect
+ * const tapping1 = Effect.tapErrorCause(task1, (cause) =>
+ *   Console.log(`error cause: ${cause}`)
+ * )
+ *
+ * Effect.runFork(tapping1)
+ * // Output:
+ * // error cause: Error: NetworkError
+ *
+ * // Simulate a severe failure in the system by causing a defect with a specific message.
+ * const task2: Effect.Effect<number, string> = Effect.dieMessage(
+ *   "Something went wrong"
+ * )
+ *
+ * // This will log the cause of any expected error or defect
+ * const tapping2 = Effect.tapErrorCause(task2, (cause) =>
+ *   Console.log(`error cause: ${cause}`)
+ * )
+ *
+ * Effect.runFork(tapping2)
+ * // Output:
+ * // error cause: RuntimeException: Something went wrong
+ * //   ... stack trace ...
  *
  * @since 2.0.0
  * @category sequencing
