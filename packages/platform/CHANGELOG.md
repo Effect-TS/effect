@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.58.5
+
+### Patch Changes
+
+- [#3053](https://github.com/Effect-TS/effect/pull/3053) [`37a07a2`](https://github.com/Effect-TS/effect/commit/37a07a2d8d1ce09ab965c0ada84a3fae9a6aba05) Thanks @tim-smart! - coerce primitive types in UrlParams input
+
 ## 0.58.4
 
 ### Patch Changes
