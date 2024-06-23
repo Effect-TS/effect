@@ -172,8 +172,7 @@ class RouterImpl<E = never, R = never> extends Effectable.StructuralClass<
     }
   }
   toString() {
-    // TODO: remove any when fix lands
-    return (Inspectable as any).format(this)
+    return Inspectable.format(this)
   }
   [Inspectable.NodeInspectSymbol]() {
     return this.toJSON()
