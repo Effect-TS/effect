@@ -21,9 +21,15 @@ export interface UrlParams extends ReadonlyArray<readonly [string, string]> {}
  * @category models
  */
 export type Input =
-  | Readonly<Record<string, string | ReadonlyArray<string>>>
-  | Iterable<readonly [string, string]>
+  | Readonly<Record<string, Coercible | ReadonlyArray<Coercible>>>
+  | Iterable<readonly [string, Coercible]>
   | URLSearchParams
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type Coercible = string | number | bigint | boolean
 
 /**
  * @since 1.0.0
@@ -31,16 +37,16 @@ export type Input =
  */
 export const fromInput = (input: Input): UrlParams => {
   if (Symbol.iterator in input) {
-    return Arr.fromIterable(input)
+    return Arr.fromIterable(input).map(([key, value]) => [key, String(value)])
   }
   const out: Array<readonly [string, string]> = []
   for (const [key, value] of Object.entries(input)) {
     if (Array.isArray(value)) {
       for (let i = 0; i < value.length; i++) {
-        out.push([key, value[i]])
+        out.push([key, String(value[i])])
       }
     } else {
-      out.push([key, value as string])
+      out.push([key, String(value)])
     }
   }
   return out
@@ -67,16 +73,16 @@ export const empty: UrlParams = []
 export const getAll: {
   (key: string): (self: UrlParams) => ReadonlyArray<string>
   (self: UrlParams, key: string): ReadonlyArray<string>
-} = dual<
-  (key: string) => (self: UrlParams) => ReadonlyArray<string>,
-  (self: UrlParams, key: string) => ReadonlyArray<string>
->(2, (self, key) =>
-  Arr.reduce(self, [] as Array<string>, (acc, [k, value]) => {
-    if (k === key) {
-      acc.push(value)
-    }
-    return acc
-  }))
+} = dual(
+  2,
+  (self: UrlParams, key: string): ReadonlyArray<string> =>
+    Arr.reduce(self, [] as Array<string>, (acc, [k, value]) => {
+      if (k === key) {
+        acc.push(value)
+      }
+      return acc
+    })
+)
 
 /**
  * @since 1.0.0
@@ -85,15 +91,9 @@ export const getAll: {
 export const getFirst: {
   (key: string): (self: UrlParams) => Option.Option<string>
   (self: UrlParams, key: string): Option.Option<string>
-} = dual<
-  (key: string) => (self: UrlParams) => Option.Option<string>,
-  (self: UrlParams, key: string) => Option.Option<string>
->(2, (self, key) =>
+} = dual(2, (self: UrlParams, key: string): Option.Option<string> =>
   Option.map(
-    Arr.findFirst(
-      self,
-      ([k]) => k === key
-    ),
+    Arr.findFirst(self, ([k]) => k === key),
     ([, value]) => value
   ))
 
@@ -104,15 +104,9 @@ export const getFirst: {
 export const getLast: {
   (key: string): (self: UrlParams) => Option.Option<string>
   (self: UrlParams, key: string): Option.Option<string>
-} = dual<
-  (key: string) => (self: UrlParams) => Option.Option<string>,
-  (self: UrlParams, key: string) => Option.Option<string>
->(2, (self, key) =>
+} = dual(2, (self: UrlParams, key: string): Option.Option<string> =>
   Option.map(
-    Arr.findLast(
-      self,
-      ([k]) => k === key
-    ),
+    Arr.findLast(self, ([k]) => k === key),
     ([, value]) => value
   ))
 
@@ -121,15 +115,12 @@ export const getLast: {
  * @category combinators
  */
 export const set: {
-  (key: string, value: string): (self: UrlParams) => UrlParams
-  (self: UrlParams, key: string, value: string): UrlParams
-} = dual<
-  (key: string, value: string) => (self: UrlParams) => UrlParams,
-  (self: UrlParams, key: string, value: string) => UrlParams
->(3, (self, key, value) =>
+  (key: string, value: Coercible): (self: UrlParams) => UrlParams
+  (self: UrlParams, key: string, value: Coercible): UrlParams
+} = dual(3, (self: UrlParams, key: string, value: Coercible): UrlParams =>
   Arr.append(
     Arr.filter(self, ([k]) => k !== key),
-    [key, value]
+    [key, String(value)]
   ))
 
 /**
@@ -139,10 +130,7 @@ export const set: {
 export const setAll: {
   (input: Input): (self: UrlParams) => UrlParams
   (self: UrlParams, input: Input): UrlParams
-} = dual<
-  (input: Input) => (self: UrlParams) => UrlParams,
-  (self: UrlParams, input: Input) => UrlParams
->(2, (self, input) => {
+} = dual(2, (self: UrlParams, input: Input): UrlParams => {
   const toSet = fromInput(input)
   const keys = toSet.map(([k]) => k)
   return Arr.appendAll(
@@ -156,15 +144,12 @@ export const setAll: {
  * @category combinators
  */
 export const append: {
-  (key: string, value: string): (self: UrlParams) => UrlParams
-  (self: UrlParams, key: string, value: string): UrlParams
-} = dual<
-  (key: string, value: string) => (self: UrlParams) => UrlParams,
-  (self: UrlParams, key: string, value: string) => UrlParams
->(3, (self, key, value) =>
+  (key: string, value: Coercible): (self: UrlParams) => UrlParams
+  (self: UrlParams, key: string, value: Coercible): UrlParams
+} = dual(3, (self: UrlParams, key: string, value: Coercible): UrlParams =>
   Arr.append(
     self,
-    [key, value]
+    [key, String(value)]
   ))
 
 /**
@@ -174,14 +159,7 @@ export const append: {
 export const appendAll: {
   (input: Input): (self: UrlParams) => UrlParams
   (self: UrlParams, input: Input): UrlParams
-} = dual<
-  (input: Input) => (self: UrlParams) => UrlParams,
-  (self: UrlParams, input: Input) => UrlParams
->(2, (self, input) =>
-  Arr.appendAll(
-    self,
-    fromInput(input)
-  ))
+} = dual(2, (self: UrlParams, input: Input): UrlParams => Arr.appendAll(self, fromInput(input)))
 
 /**
  * @since 1.0.0
@@ -190,10 +168,7 @@ export const appendAll: {
 export const remove: {
   (key: string): (self: UrlParams) => UrlParams
   (self: UrlParams, key: string): UrlParams
-} = dual<
-  (key: string) => (self: UrlParams) => UrlParams,
-  (self: UrlParams, key: string) => UrlParams
->(2, (self, key) => Arr.filter(self, ([k]) => k !== key))
+} = dual(2, (self: UrlParams, key: string): UrlParams => Arr.filter(self, ([k]) => k !== key))
 
 /**
  * @since 1.0.0
