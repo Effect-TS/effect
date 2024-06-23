@@ -68,4 +68,20 @@ describe("UrlParams", () => {
         globalThis.location = originalLocation
       }))
   })
+
+  describe("fromInput", () => {
+    it("works with non-strings", () => {
+      assert.deepStrictEqual(
+        UrlParams.fromInput({ a: 1, b: true, c: "string", e: [1, 2, 3] }),
+        [
+          ["a", "1"],
+          ["b", "true"],
+          ["c", "string"],
+          ["e", "1"],
+          ["e", "2"],
+          ["e", "3"]
+        ]
+      )
+    })
+  })
 })
