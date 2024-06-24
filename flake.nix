@@ -21,7 +21,7 @@
             bun
             corepack
             deno
-            nodejs-slim_22
+            nodejs-slim # Node v20.12.2
           ];
         };
       }
