@@ -1,5 +1,60 @@
 # @effect/platform
 
+## 0.58.6
+
+### Patch Changes
+
+- [#3059](https://github.com/Effect-TS/effect/pull/3059) [`2e8e252`](https://github.com/Effect-TS/effect/commit/2e8e2520cac712f0eb644553bd476429ebd674e4) Thanks @tim-smart! - add Layer based api for creating HttpRouter's
+
+  ```ts
+  import {
+    HttpMiddleware,
+    HttpRouter,
+    HttpServer,
+    HttpServerResponse,
+  } from "@effect/platform";
+  import { BunHttpServer, BunRuntime } from "@effect/platform-bun";
+  import { Effect, Layer } from "effect";
+
+  // create your router Context.Tag
+  class UserRouter extends HttpRouter.Tag("UserRouter")<UserRouter>() {}
+
+  // create routes with the `.use` api.
+  // There is also `.useScoped`
+  const GetUsers = UserRouter.use((router) =>
+    Effect.gen(function* () {
+      yield* router.get("/", HttpServerResponse.text("got users"));
+    }),
+  );
+
+  const CreateUser = UserRouter.use((router) =>
+    Effect.gen(function* () {
+      yield* router.post("/", HttpServerResponse.text("created user"));
+    }),
+  );
+
+  const AllRoutes = Layer.mergeAll(GetUsers, CreateUser);
+
+  const ServerLive = BunHttpServer.layer({ port: 3000 });
+
+  // access the router with the `.router` api, to create your server
+  const HttpLive = Layer.unwrapEffect(
+    Effect.gen(function* () {
+      return HttpServer.serve(yield* UserRouter.router, HttpMiddleware.logger);
+    }),
+  ).pipe(
+    Layer.provide(UserRouter.Live),
+    Layer.provide(AllRoutes),
+    Layer.provide(ServerLive),
+  );
+
+  BunRuntime.runMain(Layer.launch(HttpLive));
+  ```
+
+- Updated dependencies [[`66a1910`](https://github.com/Effect-TS/effect/commit/66a19109ff90c4252123b8809b8c8a74681dba6a)]:
+  - effect@3.4.1
+  - @effect/schema@0.68.7
+
 ## 0.58.5
 
 ### Patch Changes
