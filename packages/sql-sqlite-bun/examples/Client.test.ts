@@ -2,7 +2,7 @@ import { BunFileSystem } from "@effect/platform-bun"
 import { FileSystem } from "@effect/platform/FileSystem"
 import { SqliteClient } from "@effect/sql-sqlite-bun"
 import { describe, expect, test } from "bun:test"
-import { Effect } from "effect"
+import { Effect, pipe } from "effect"
 
 const makeClient = Effect.gen(function*() {
   const fs = yield* FileSystem
@@ -20,7 +20,7 @@ describe("Client", () => {
       yield* sql`INSERT INTO test (name) VALUES ('hello')`
       let rows = yield* sql`SELECT * FROM test`
       expect(rows).toEqual([{ id: 1, name: "hello" }])
-      yield* sql`INSERT INTO test (name) VALUES ('world')`, sql.withTransaction
+      yield* pipe(sql`INSERT INTO test (name) VALUES ('world')`, sql.withTransaction)
       rows = yield* sql`SELECT * FROM test`
       expect(rows).toEqual([
         { id: 1, name: "hello" },

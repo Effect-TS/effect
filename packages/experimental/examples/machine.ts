@@ -44,7 +44,7 @@ const mailer = Machine.makeWith<List.List<SendEmail>>()((_, previous) =>
             return [void 0, state]
           }
           const req = state.head
-          yield* Effect.log(`Sending email to ${req.email}`), Effect.delay(500)
+          yield* pipe(Effect.log(`Sending email to ${req.email}`), Effect.delay(500))
           return [void 0, state.tail]
         })),
       Machine.procedures.add<SendEmail>()("SendEmail", (ctx) =>

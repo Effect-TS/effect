@@ -56,17 +56,19 @@ const program = Effect.gen(function*() {
   )
 
   console.log(
-    yield* sql`SELECT TOP(3) * FROM ${sql("people")}`,
-    Effect.zipRight(
-      Effect.catchAllCause(
-        sql.withTransaction(Effect.die("fail")),
-        (_) => Effect.void
-      )
-    ),
-    Effect.zipRight(
-      sql.withTransaction(sql`SELECT TOP(3) * FROM ${sql("people")}`)
-    ),
-    sql.withTransaction
+    yield* pipe(
+      sql`SELECT TOP(3) * FROM ${sql("people")}`,
+      Effect.zipRight(
+        Effect.catchAllCause(
+          sql.withTransaction(Effect.die("fail")),
+          (_) => Effect.void
+        )
+      ),
+      Effect.zipRight(
+        sql.withTransaction(sql`SELECT TOP(3) * FROM ${sql("people")}`)
+      ),
+      sql.withTransaction
+    )
   )
 })
 
