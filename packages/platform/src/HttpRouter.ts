@@ -123,6 +123,7 @@ export declare namespace HttpRouter {
     readonly useScoped: <XA, XE, XR>(
       f: (router: Service<E, R>) => Effect.Effect<XA, XE, XR>
     ) => Layer.Layer<never, XE, Exclude<XR, Scope.Scope>>
+    readonly unwrap: <XA, XE, XR>(f: (router: HttpRouter<E, R>) => Layer.Layer<XA, XE, XR>) => Layer.Layer<XA, XE, XR>
   }
 }
 
