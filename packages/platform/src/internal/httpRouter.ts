@@ -12,6 +12,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Tracer from "effect/Tracer"
+import type { Mutable } from "effect/Types"
 import * as FindMyWay from "find-my-way-ts"
 import type * as App from "../HttpApp.js"
 import type * as Method from "../HttpMethod.js"
@@ -723,6 +724,7 @@ export const Tag =
     Err.stackTraceLimit = limit
 
     function TagClass() {}
+    const TagClass_ = TagClass as any as Mutable<Router.HttpRouter.TagClass<Self, Name, E, R>>
     Object.setPrototypeOf(TagClass, Object.getPrototypeOf(Context.GenericTag<Self, any>(id)))
     TagClass.key = id
     Object.defineProperty(TagClass, "stack", {
@@ -730,15 +732,24 @@ export const Tag =
         return creationError.stack
       }
     })
-    TagClass.Live = Layer.sync(TagClass as any, makeService)
-    TagClass.router = Effect.flatMap(TagClass as any, (_: any) => _.router)
-    TagClass.use = (f: any) =>
-      Layer.effectDiscard(Effect.flatMap(TagClass as any, f)).pipe(
-        Layer.provide(TagClass.Live)
+    TagClass_.Live = Layer.sync(TagClass_, makeService)
+    TagClass_.router = Effect.flatMap(TagClass_, (_) => _.router)
+    TagClass_.use = (f) =>
+      Layer.effectDiscard(Effect.flatMap(TagClass_, f)).pipe(
+        Layer.provide(TagClass_.Live)
       )
-    TagClass.useScoped = (f: any) =>
-      Layer.scopedDiscard(Effect.flatMap(TagClass as any, f)).pipe(
-        Layer.provide(TagClass.Live)
+    TagClass_.useScoped = (f) =>
+      TagClass_.pipe(
+        Effect.flatMap(f),
+        Layer.scopedDiscard,
+        Layer.provide(TagClass_.Live)
+      )
+    TagClass_.unwrap = (f) =>
+      TagClass_.pipe(
+        Effect.flatMap((_) => _.router),
+        Effect.map(f),
+        Layer.unwrapEffect,
+        Layer.provide(TagClass_.Live)
       )
     return TagClass as any
   }

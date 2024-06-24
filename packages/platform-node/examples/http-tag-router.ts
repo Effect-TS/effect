@@ -1,6 +1,7 @@
 import { HttpMiddleware, HttpRouter, HttpServer, HttpServerResponse } from "@effect/platform"
-import { BunHttpServer, BunRuntime } from "@effect/platform-bun"
+import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import { Effect, Layer } from "effect"
+import { createServer } from "http"
 
 class UserRouter extends HttpRouter.Tag("UserRouter")<UserRouter>() {}
 
@@ -18,11 +19,11 @@ const CreateUser = UserRouter.use((router) =>
 
 const AllRoutes = Layer.mergeAll(GetUsers, CreateUser)
 
-const ServerLive = BunHttpServer.layer({ port: 3000 })
+const ServerLive = NodeHttpServer.layer(createServer, { port: 3000 })
 
 const HttpLive = UserRouter.unwrap(HttpServer.serve(HttpMiddleware.logger)).pipe(
   Layer.provide(AllRoutes),
   Layer.provide(ServerLive)
 )
 
-BunRuntime.runMain(Layer.launch(HttpLive))
+NodeRuntime.runMain(Layer.launch(HttpLive))
