@@ -1,5 +1,11 @@
 # effect
 
+## 3.4.1
+
+### Patch Changes
+
+- [#3056](https://github.com/Effect-TS/effect/pull/3056) [`66a1910`](https://github.com/Effect-TS/effect/commit/66a19109ff90c4252123b8809b8c8a74681dba6a) Thanks @gcanti! - add missing `TypeLambda` to `Micro` module
+
 ## 3.4.0
 
 ### Minor Changes
