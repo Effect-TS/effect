@@ -76,7 +76,7 @@ export const make = <R extends Router.Router<any, any>>(
   Serializable.SerializableWithResult.Context<Router.Router.Request<R>>
 > => {
   return Resolver.make((requests) => {
-    return Effect.gen(function*() {
+    return Effect.gen(function*(_) {
       const queue = yield* Queue.unbounded()
       yield* Effect.addFinalizer(() => Queue.shutdown(queue))
 

@@ -8,6 +8,6 @@ class Err extends Schema.TaggedError<Err>()("Err", {}) {}
 export type IdErr = Unify.Unify<Err>
 
 // $ExpectType Effect<never, Err, never>
-export const YieldErr = Effect.gen(function*($) {
-  return yield* $(new Err())
+export const YieldErr = Effect.gen(function*() {
+  return yield* new Err()
 })

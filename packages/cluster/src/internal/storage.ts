@@ -31,7 +31,7 @@ export function make(args: Omit<Storage.Storage, Storage.StorageTypeId>): Storag
 /** @internal */
 export const memory: Layer.Layer<Storage.Storage> = Layer.effect(
   storageTag,
-  Effect.gen(function*() {
+  Effect.gen(function*(_) {
     const assignmentsRef = yield* SubscriptionRef.make(
       HashMap.empty<ShardId.ShardId, Option.Option<PodAddress.PodAddress>>()
     )

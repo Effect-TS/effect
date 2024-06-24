@@ -1656,12 +1656,13 @@ export const raceWith = dual<
       readonly capacity?: number | undefined
     }
   ): Sink.Sink<A3 | A4, In & In2, L2 | L, E2 | E, R2 | R> => {
-    const scoped = Effect.gen(function*($) {
-      const pubsub = yield* $(
-        PubSub.bounded<Either.Either<Chunk.Chunk<In & In2>, Exit.Exit<unknown>>>(options?.capacity ?? 16)
+    const scoped = Effect.gen(function*() {
+      const pubsub = yield* PubSub.bounded<Either.Either<Chunk.Chunk<In & In2>, Exit.Exit<unknown>>>(
+        options?.capacity ?? 16
       )
-      const channel1 = yield* $(channel.fromPubSubScoped(pubsub))
-      const channel2 = yield* $(channel.fromPubSubScoped(pubsub))
+
+      const channel1 = yield* channel.fromPubSubScoped(pubsub)
+      const channel2 = yield* channel.fromPubSubScoped(pubsub)
       const reader = channel.toPubSub(pubsub)
       const writer = pipe(
         channel1,

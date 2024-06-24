@@ -1358,19 +1358,19 @@ export const combine = dual<
     )
   return new StreamImpl(
     channel.unwrapScoped(
-      Effect.gen(function*($) {
-        const left = yield* $(Handoff.make<Exit.Exit<A, Option.Option<E>>>())
-        const right = yield* $(Handoff.make<Exit.Exit<A2, Option.Option<E2>>>())
-        const latchL = yield* $(Handoff.make<void>())
-        const latchR = yield* $(Handoff.make<void>())
-        yield* $(
+      Effect.gen(function*() {
+        const left = yield* Handoff.make<Exit.Exit<A, Option.Option<E>>>()
+        const right = yield* Handoff.make<Exit.Exit<A2, Option.Option<E2>>>()
+        const latchL = yield* Handoff.make<void>()
+        const latchR = yield* Handoff.make<void>()
+        yield* pipe(
           toChannel(self),
           channel.concatMap(channel.writeChunk),
           core.pipeTo(producer(left, latchL)),
           channelExecutor.runScoped,
           Effect.forkScoped
         )
-        yield* $(
+        yield* pipe(
           toChannel(that),
           channel.concatMap(channel.writeChunk),
           core.pipeTo(producer(right, latchR)),
@@ -1925,7 +1925,7 @@ export const distributedWithDynamicCallback = dual<
       (ref, _) => pipe(Ref.get(ref), Effect.flatMap((queues) => pipe(queues.values(), Effect.forEach(Queue.shutdown))))
     ),
     Effect.flatMap((queuesRef) =>
-      Effect.gen(function*($) {
+      Effect.gen(function*() {
         const offer = (a: A): Effect.Effect<void> =>
           pipe(
             decide(a),
@@ -1971,19 +1971,17 @@ export const distributedWithDynamicCallback = dual<
             ),
             Effect.asVoid
           )
-        const queuesLock = yield* $(Effect.makeSemaphore(1))
-        const newQueue = yield* $(
-          Ref.make<Effect.Effect<[number, Queue.Queue<Exit.Exit<A, Option.Option<E>>>]>>(
-            pipe(
-              Queue.bounded<Exit.Exit<A, Option.Option<E>>>(maximumLag),
-              Effect.flatMap((queue) => {
-                const id = newDistributedWithDynamicId()
-                return pipe(
-                  Ref.update(queuesRef, (map) => map.set(id, queue)),
-                  Effect.as([id, queue])
-                )
-              })
-            )
+        const queuesLock = yield* Effect.makeSemaphore(1)
+        const newQueue = yield* Ref.make<Effect.Effect<[number, Queue.Queue<Exit.Exit<A, Option.Option<E>>>]>>(
+          pipe(
+            Queue.bounded<Exit.Exit<A, Option.Option<E>>>(maximumLag),
+            Effect.flatMap((queue) => {
+              const id = newDistributedWithDynamicId()
+              return pipe(
+                Ref.update(queuesRef, (map) => map.set(id, queue)),
+                Effect.as([id, queue])
+              )
+            })
           )
         )
         const finalize = (endTake: Exit.Exit<never, Option.Option<E>>): Effect.Effect<void> =>
@@ -2027,7 +2025,7 @@ export const distributedWithDynamicCallback = dual<
               Effect.asVoid
             )
           )
-        yield* $(
+        yield* pipe(
           self,
           runForEachScoped(offer),
           Effect.matchCauseEffect({

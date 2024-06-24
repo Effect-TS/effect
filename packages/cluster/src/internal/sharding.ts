@@ -698,7 +698,7 @@ function make(
     behavior: RecipientBehaviour.RecipientBehaviour<Msg, R>,
     options?: RecipientBehaviour.EntityBehaviourOptions
   ) {
-    return Effect.gen(function*() {
+    return Effect.gen(function*(_) {
       const entityManager = yield* EntityManager.make(
         recipientType,
         behavior,
