@@ -1929,13 +1929,7 @@ listen(HttpServer.serve(router), 3000)
 The `toWebHandler` function converts a `Default` (i.e. a type of `HttpApp` that specifically produces a `ServerResponse` as its output) into a web handler that can process `Request` objects and return `Response` objects.
 
 ```ts
-import {
-  HttpApp,
-  HttpRouter,
-  HttpServer,
-  HttpServerRequest,
-  HttpServerResponse
-} from "@effect/platform"
+import { HttpApp, HttpRouter, HttpServerResponse } from "@effect/platform"
 
 // Define the router with some routes
 const router = HttpRouter.empty.pipe(
