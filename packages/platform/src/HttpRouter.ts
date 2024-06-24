@@ -9,6 +9,7 @@ import type * as Chunk from "effect/Chunk"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type { Inspectable } from "effect/Inspectable"
+import type * as Layer from "effect/Layer"
 import type * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
 import type * as App from "./HttpApp.js"
@@ -54,10 +55,75 @@ export declare namespace HttpRouter {
   /**
    * @since 1.0.0
    */
-  export type ExcludeProvided<A> = Exclude<
-    A,
-    RouteContext | ServerRequest.HttpServerRequest | ServerRequest.ParsedSearchParams | Scope.Scope
-  >
+  export type Provided = RouteContext | ServerRequest.HttpServerRequest | ServerRequest.ParsedSearchParams | Scope.Scope
+
+  /**
+   * @since 1.0.0
+   */
+  export type ExcludeProvided<A> = Exclude<A, Provided>
+
+  /**
+   * @since 1.0.0
+   */
+  export interface Service<E, R> {
+    readonly router: Effect.Effect<HttpRouter<E, R>>
+
+    readonly addRoute: (route: Route<E, R>) => Effect.Effect<void>
+
+    readonly all: (
+      path: PathInput,
+      handler: Route.Handler<E, R | Provided>,
+      options?: { readonly uninterruptible?: boolean | undefined } | undefined
+    ) => Effect.Effect<void>
+    readonly get: (
+      path: PathInput,
+      handler: Route.Handler<E, R | Provided>,
+      options?: { readonly uninterruptible?: boolean | undefined } | undefined
+    ) => Effect.Effect<void>
+    readonly post: (
+      path: PathInput,
+      handler: Route.Handler<E, R | Provided>,
+      options?: { readonly uninterruptible?: boolean | undefined } | undefined
+    ) => Effect.Effect<void>
+    readonly put: (
+      path: PathInput,
+      handler: Route.Handler<E, R | Provided>,
+      options?: { readonly uninterruptible?: boolean | undefined } | undefined
+    ) => Effect.Effect<void>
+    readonly patch: (
+      path: PathInput,
+      handler: Route.Handler<E, R | Provided>,
+      options?: { readonly uninterruptible?: boolean | undefined } | undefined
+    ) => Effect.Effect<void>
+    readonly del: (
+      path: PathInput,
+      handler: Route.Handler<E, R | Provided>,
+      options?: { readonly uninterruptible?: boolean | undefined } | undefined
+    ) => Effect.Effect<void>
+    readonly head: (
+      path: PathInput,
+      handler: Route.Handler<E, R | Provided>,
+      options?: { readonly uninterruptible?: boolean | undefined } | undefined
+    ) => Effect.Effect<void>
+    readonly options: (
+      path: PathInput,
+      handler: Route.Handler<E, R | Provided>,
+      options?: { readonly uninterruptible?: boolean | undefined } | undefined
+    ) => Effect.Effect<void>
+  }
+
+  /**
+   * @since 1.0.0
+   */
+  export interface TagClass<Self, Name extends string, E, R> extends Context.Tag<Self, Service<E, R>> {
+    new(_: never): Context.TagClassShape<`@effect/platform/HttpRouter/${Name}`, Service<E, R>>
+    readonly Live: Layer.Layer<Self>
+    readonly router: Effect.Effect<HttpRouter<E, R>, never, Self>
+    readonly use: <XA, XE, XR>(f: (router: Service<E, R>) => Effect.Effect<XA, XE, XR>) => Layer.Layer<never, XE, XR>
+    readonly useScoped: <XA, XE, XR>(
+      f: (router: Service<E, R>) => Effect.Effect<XA, XE, XR>
+    ) => Layer.Layer<never, XE, Exclude<XR, Scope.Scope>>
+  }
 }
 
 /**
@@ -232,8 +298,7 @@ export const makeRoute: <E, R>(
   method: Method.HttpMethod,
   path: PathInput,
   handler: Route.Handler<E, R>,
-  prefix?: Option.Option<string>,
-  uninterruptible?: boolean
+  options?: { readonly prefix?: string | undefined; readonly uninterruptible?: boolean | undefined } | undefined
 ) => Route<E, HttpRouter.ExcludeProvided<R>> = internal.makeRoute
 
 /**
@@ -244,6 +309,28 @@ export const prefixAll: {
   (prefix: PathInput): <E, R>(self: HttpRouter<E, R>) => HttpRouter<E, R>
   <E, R>(self: HttpRouter<E, R>, prefix: PathInput): HttpRouter<E, R>
 } = internal.prefixAll
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const append: {
+  <R1, E1>(
+    route: Route<E1, R1>
+  ): <E, R>(
+    self: HttpRouter<E, R>
+  ) => HttpRouter<
+    E1 | E,
+    R | HttpRouter.ExcludeProvided<R1>
+  >
+  <E, R, E1, R1>(
+    self: HttpRouter<E, R>,
+    route: Route<E1, R1>
+  ): HttpRouter<
+    E | E1,
+    R | HttpRouter.ExcludeProvided<R1>
+  >
+} = internal.append
 
 /**
  * @since 1.0.0
@@ -634,3 +721,11 @@ export const provideServiceEffect: {
     | Exclude<HttpRouter.ExcludeProvided<R1>, Context.Tag.Identifier<T>>
   >
 } = internal.provideServiceEffect
+
+/**
+ * @since 1.0.0
+ * @category tags
+ */
+export const Tag: <const Name extends string>(
+  id: Name
+) => <Self, E = never, R = never>() => HttpRouter.TagClass<Self, Name, E, R> = internal.Tag
