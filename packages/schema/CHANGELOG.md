@@ -1,5 +1,14 @@
 # @effect/schema
 
+## 0.68.8
+
+### Patch Changes
+
+- [#3070](https://github.com/Effect-TS/effect/pull/3070) [`192261b`](https://github.com/Effect-TS/effect/commit/192261b2aec94e9913ceed83683fdcfbc9fca66f) Thanks @gcanti! - Add `refineTypeId` unique symbol to the `refine` interface to ensure correct inference of `Fields` in the Class APIs, closes #3063
+
+- Updated dependencies [[`3da1497`](https://github.com/Effect-TS/effect/commit/3da1497b5c9cc886d300258bc928fd68a4fefe6f)]:
+  - effect@3.4.2
+
 ## 0.68.7
 
 ### Patch Changes

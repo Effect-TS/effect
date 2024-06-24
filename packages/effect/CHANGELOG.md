@@ -1,5 +1,11 @@
 # effect
 
+## 3.4.2
+
+### Patch Changes
+
+- [#3062](https://github.com/Effect-TS/effect/pull/3062) [`3da1497`](https://github.com/Effect-TS/effect/commit/3da1497b5c9cc886d300258bc928fd68a4fefe6f) Thanks @KhraksMamtsov! - Reuse centralized do-notation code
+
 ## 3.4.1
 
 ### Patch Changes
