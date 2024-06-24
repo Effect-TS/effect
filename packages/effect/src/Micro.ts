@@ -3673,7 +3673,11 @@ export const runFork = <A, E>(
     if (options.signal.aborted) {
       handle.unsafeAbort()
     } else {
-      options.signal.addEventListener("abort", () => handle.unsafeAbort())
+      options.signal.addEventListener(
+        "abort",
+        () => handle.unsafeAbort(),
+        { once: true }
+      )
     }
   }
   return handle
