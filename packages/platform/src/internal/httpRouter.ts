@@ -8,6 +8,7 @@ import * as Effectable from "effect/Effectable"
 import * as FiberRef from "effect/FiberRef"
 import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Tracer from "effect/Tracer"
@@ -317,16 +318,29 @@ export const makeRoute = <E, R>(
   method: Method.HttpMethod,
   path: Router.PathInput,
   handler: Router.Route.Handler<E, R>,
-  prefix: Option.Option<string> = Option.none(),
-  uninterruptible = false
+  options?: {
+    readonly prefix?: string | undefined
+    readonly uninterruptible?: boolean | undefined
+  } | undefined
 ): Router.Route<E, Router.HttpRouter.ExcludeProvided<R>> =>
   new RouteImpl(
     method,
     path,
     handler,
-    prefix,
-    uninterruptible
+    options?.prefix ? Option.some(options.prefix) : Option.none(),
+    options?.uninterruptible ?? false
   ) as any
+
+/** @internal */
+export const append = dual<
+  <R1, E1>(
+    route: Router.Route<E1, R1>
+  ) => <E, R>(self: Router.HttpRouter<E, R>) => Router.HttpRouter<E | E1, R | Router.HttpRouter.ExcludeProvided<R1>>,
+  <E, R, E1, R1>(
+    self: Router.HttpRouter<E, R>,
+    route: Router.Route<E1, R1>
+  ) => Router.HttpRouter<E | E1, R | Router.HttpRouter.ExcludeProvided<R1>>
+>(2, (self, route) => new RouterImpl(Chunk.append(self.routes, route) as any, self.mounts))
 
 /** @internal */
 export const concat = dual<
@@ -645,3 +659,86 @@ export const provideServiceEffect = dual<
     Context.Tag.Identifier<T>
   >
 > => use(self, Effect.provideServiceEffect(tag, effect)) as any)
+
+const makeService = <E, R>(): Router.HttpRouter.Service<E, R> => {
+  let router = empty as Router.HttpRouter<E, R>
+  return {
+    addRoute(route) {
+      return Effect.sync(() => {
+        router = append(router, route)
+      })
+    },
+    all(path, handler, options) {
+      return Effect.sync(() => {
+        router = all(router, path, handler, options)
+      })
+    },
+    get(path, handler, options) {
+      return Effect.sync(() => {
+        router = get(router, path, handler, options)
+      })
+    },
+    post(path, handler, options) {
+      return Effect.sync(() => {
+        router = post(router, path, handler, options)
+      })
+    },
+    put(path, handler, options) {
+      return Effect.sync(() => {
+        router = put(router, path, handler, options)
+      })
+    },
+    patch(path, handler, options) {
+      return Effect.sync(() => {
+        router = patch(router, path, handler, options)
+      })
+    },
+    del(path, handler, options) {
+      return Effect.sync(() => {
+        router = del(router, path, handler, options)
+      })
+    },
+    head(path, handler, options) {
+      return Effect.sync(() => {
+        router = head(router, path, handler, options)
+      })
+    },
+    options(path, handler, opts) {
+      return Effect.sync(() => {
+        router = options(router, path, handler, opts)
+      })
+    },
+    router: Effect.sync(() => router)
+  }
+}
+
+/* @internal */
+export const Tag =
+  <const Name extends string>(id: Name) =>
+  <Self, E = never, R = never>(): Router.HttpRouter.TagClass<Self, Name, E, R> => {
+    const Err = globalThis.Error as any
+    const limit = Err.stackTraceLimit
+    Err.stackTraceLimit = 2
+    const creationError = new Err()
+    Err.stackTraceLimit = limit
+
+    function TagClass() {}
+    Object.setPrototypeOf(TagClass, Object.getPrototypeOf(Context.GenericTag<Self, any>(id)))
+    TagClass.key = id
+    Object.defineProperty(TagClass, "stack", {
+      get() {
+        return creationError.stack
+      }
+    })
+    TagClass.Live = Layer.sync(TagClass as any, makeService)
+    TagClass.router = Effect.flatMap(TagClass as any, (_: any) => _.router)
+    TagClass.use = (f: any) =>
+      Layer.effectDiscard(Effect.flatMap(TagClass as any, f)).pipe(
+        Layer.provide(TagClass.Live)
+      )
+    TagClass.useScoped = (f: any) =>
+      Layer.scopedDiscard(Effect.flatMap(TagClass as any, f)).pipe(
+        Layer.provide(TagClass.Live)
+      )
+    return TagClass as any
+  }
