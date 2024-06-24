@@ -11,14 +11,6 @@ describe("TaggedError", () => {
     expect(TE._tag).toBe("TE")
   })
 
-  it("should accept a simple object as argument", () => {
-    const fields = { a: S.String, b: S.Number }
-    class A extends S.TaggedError<A>()("A", { fields }) {}
-    Util.expectFields(A.fields, { _tag: S.getClassTag("A"), ...fields })
-    class B extends S.TaggedError<B>()("B", { from: { fields } }) {}
-    Util.expectFields(B.fields, { _tag: S.getClassTag("B"), ...fields })
-  })
-
   it("should accept a Struct as argument", () => {
     const fields = { a: S.String, b: S.Number }
     class A extends S.TaggedError<A>()("A", S.Struct(fields)) {}

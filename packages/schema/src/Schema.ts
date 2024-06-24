@@ -3122,12 +3122,25 @@ export interface suspend<A, I, R> extends AnnotableClass<suspend<A, I, R>, A, I,
 export const suspend = <A, I, R>(f: () => Schema<A, I, R>): suspend<A, I, R> => make(new AST.Suspend(() => f().ast))
 
 /**
+ * @since 0.68.8
+ * @category symbol
+ */
+export const refineTypeId: unique symbol = Symbol.for("@effect/schema/refine")
+
+/**
+ * @since 0.68.8
+ * @category symbol
+ */
+export type refineTypeId = typeof refineTypeId
+
+/**
  * @category api interface
  * @since 0.67.0
  */
 export interface refine<A, From extends Schema.Any>
   extends AnnotableClass<refine<A, From>, A, Schema.Encoded<From>, Schema.Context<From>>
 {
+  readonly [refineTypeId]: From
   readonly from: From
   readonly filter: (
     a: Schema.Type<From>,
@@ -3150,6 +3163,8 @@ const makeRefineClass = <From extends Schema.Any, A>(
     static override annotations(annotations: Annotations.Schema<A>): refine<A, From> {
       return makeRefineClass(this.from, this.filter, mergeSchemaAnnotations(this.ast, annotations))
     }
+
+    static [refineTypeId] = from
 
     static from = from
 
@@ -7020,10 +7035,8 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
     >
 }
 
-type HasFields<Fields extends Struct.Fields> = {
-  readonly fields: Fields
-} | {
-  readonly from: HasFields<Fields>
+type HasFields<Fields extends Struct.Fields> = Struct<Fields> | {
+  readonly [refineTypeId]: HasFields<Fields>
 }
 
 const isField = (u: unknown) => isSchema(u) || isPropertySignature(u)
@@ -7032,7 +7045,7 @@ const isFields = <Fields extends Struct.Fields>(fields: object): fields is Field
   util_.ownKeys(fields).every((key) => isField((fields as any)[key]))
 
 const getFields = <Fields extends Struct.Fields>(hasFields: HasFields<Fields>): Fields =>
-  "fields" in hasFields ? hasFields.fields : getFields(hasFields.from)
+  "fields" in hasFields ? hasFields.fields : getFields(hasFields[refineTypeId])
 
 const getSchemaFromFieldsOr = <Fields extends Struct.Fields>(fieldsOr: Fields | HasFields<Fields>): Schema.Any =>
   isFields(fieldsOr) ? Struct(fieldsOr) : isSchema(fieldsOr) ? fieldsOr : Struct(getFields(fieldsOr))
