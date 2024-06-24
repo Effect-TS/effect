@@ -49,7 +49,7 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "@opentelemetry/semantic-conventions": "^1.24.1",
-    "tedious": "^18.2.0"
+    "@opentelemetry/semantic-conventions": "^1.25.1",
+    "tedious": "^18.2.1"
   }
 }
