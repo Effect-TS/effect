@@ -425,12 +425,12 @@ In this example:
 In this section, we'll explore how to retrieve data using the `HttpClient` module from `@effect/platform`.
 
 ```ts
-import { NodeRuntime } from "@effect/platform-node"
 import {
   HttpClient,
   HttpClientRequest,
   HttpClientResponse
 } from "@effect/platform"
+import { NodeRuntime } from "@effect/platform-node"
 import { Console, Effect } from "effect"
 
 const getPostAsJson = HttpClientRequest.get(
@@ -459,12 +459,12 @@ If you want a response in a different format other than JSON, you can utilize ot
 In the following example, we fetch the post as text:
 
 ```ts
-import { NodeRuntime } from "@effect/platform-node"
 import {
   HttpClient,
   HttpClientRequest,
   HttpClientResponse
 } from "@effect/platform"
+import { NodeRuntime } from "@effect/platform-node"
 import { Console, Effect } from "effect"
 
 const getPostAsText = HttpClientRequest.get(
@@ -528,12 +528,12 @@ const getPost = HttpClientRequest.get(
 A common use case when fetching data is to validate the received format. For this purpose, the `HttpClient` module is integrated with `@effect/schema`.
 
 ```ts
-import { NodeRuntime } from "@effect/platform-node"
 import {
   HttpClient,
   HttpClientRequest,
   HttpClientResponse
 } from "@effect/platform"
+import { NodeRuntime } from "@effect/platform-node"
 import { Schema } from "@effect/schema"
 import { Console, Effect } from "effect"
 
@@ -579,12 +579,12 @@ You can use `HttpClient.filterStatusOk`, or `HttpClient.fetchOk` to ensure only 
 In this example, we attempt to fetch a non-existent page and don't receive any error:
 
 ```ts
-import { NodeRuntime } from "@effect/platform-node"
 import {
   HttpClient,
   HttpClientRequest,
   HttpClientResponse
 } from "@effect/platform"
+import { NodeRuntime } from "@effect/platform-node"
 import { Console, Effect } from "effect"
 
 const getText = HttpClientRequest.get(
@@ -601,12 +601,12 @@ Output:
 However, if we use `HttpClient.filterStatusOk`, an error is logged:
 
 ```ts
-import { NodeRuntime } from "@effect/platform-node"
 import {
   HttpClient,
   HttpClientRequest,
   HttpClientResponse
 } from "@effect/platform"
+import { NodeRuntime } from "@effect/platform-node"
 import { Console, Effect } from "effect"
 
 const getText = HttpClientRequest.get(
@@ -616,7 +616,8 @@ const getText = HttpClientRequest.get(
 NodeRuntime.runMain(getText.pipe(Effect.andThen(Console.log)))
 /*
 Output:
-timestamp=2024-03-25T10:21:16.972Z level=ERROR fiber=#0 cause="ResponseError: StatusCode error (404 GET https://jsonplaceholder.typicode.com/non-existing-page): non 2xx status code
+timestamp=... level=ERROR fiber=#0 cause="ResponseError: StatusCode error (404 GET https://jsonplaceholder.typicode.com/non-existing-page): non 2xx status code
+    ... stack trace ...
 */
 ```
 
@@ -640,6 +641,12 @@ const getText = HttpClientRequest.get(
   ),
   HttpClientResponse.text
 )
+
+/*
+Output:
+timestamp=... level=ERROR fiber=#0 cause="ResponseError: StatusCode error (404 GET https://jsonplaceholder.typicode.com/non-existing-page): invalid status code
+    ... stack trace ...
+*/
 ```
 
 ## POST
@@ -647,12 +654,12 @@ const getText = HttpClientRequest.get(
 To make a POST request, you can use the `HttpClientRequest.post` function provided by the `HttpClient` module. Here's an example of how to create and send a POST request:
 
 ```ts
-import { NodeRuntime } from "@effect/platform-node"
 import {
   HttpClient,
   HttpClientRequest,
   HttpClientResponse
 } from "@effect/platform"
+import { NodeRuntime } from "@effect/platform-node"
 import { Console, Effect } from "effect"
 
 const addPost = HttpClientRequest.post(
@@ -679,12 +686,12 @@ If you need to send data in a format other than JSON, such as plain text, you ca
 In the following example, we send the data as text:
 
 ```ts
-import { NodeRuntime } from "@effect/platform-node"
 import {
   HttpClient,
   HttpClientRequest,
   HttpClientResponse
 } from "@effect/platform"
+import { NodeRuntime } from "@effect/platform-node"
 import { Console, Effect } from "effect"
 
 const addPost = HttpClientRequest.post(
@@ -714,12 +721,12 @@ Output:
 A common use case when fetching data is to validate the received format. For this purpose, the `HttpClient` module is integrated with `@effect/schema`.
 
 ```ts
-import { NodeRuntime } from "@effect/platform-node"
 import {
   HttpClient,
   HttpClientRequest,
   HttpClientResponse
 } from "@effect/platform"
+import { NodeRuntime } from "@effect/platform-node"
 import { Schema } from "@effect/schema"
 import { Console, Effect } from "effect"
 
@@ -805,7 +812,7 @@ This section provides a simplified explanation of key concepts within the `@effe
 
 ### Applying Concepts
 
-These components are designed to work together in a modular and flexible way, allowing developers to build complex server applications with reusable components. Here’s how you might typically use these components in a project:
+These components are designed to work together in a modular and flexible way, allowing developers to build complex server applications with reusable components. Here's how you might typically use these components in a project:
 
 1. **Create Handlers**: Define functions that process specific types of requests (e.g., GET, POST) and return responses.
 
@@ -888,7 +895,7 @@ timestamp=... level=INFO fiber=#0 message="Listening on http://localhost:3000"
 To avoid boilerplate code for the final server setup, we'll use a helper function from the `listen.ts` file:
 
 ```ts
-import { HttpPlatform, HttpServer } from "@effect/platform"
+import type { HttpPlatform, HttpServer } from "@effect/platform"
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
 import { Layer } from "effect"
 import { createServer } from "node:http"
@@ -1363,7 +1370,7 @@ At the route level, middlewares are applied to specific endpoints, allowing for 
 
 **Example**
 
-Here’s a practical example showing how to apply middleware at the route level:
+Here's a practical example showing how to apply middleware at the route level:
 
 ```ts
 import {
@@ -1416,7 +1423,7 @@ Applying middleware at the router level is an efficient way to manage common fun
 
 **Example**
 
-Here’s how you can structure and apply middleware across different routers using the `@effect/platform` library:
+Here's how you can structure and apply middleware across different routers using the `@effect/platform` library:
 
 ```ts
 import {
@@ -1625,7 +1632,7 @@ curl -i http://localhost:3000/
 
 ### logger
 
-The `HttpMiddleware.logger` middleware enables logging for your entire application, providing insights into each request and response. Here’s how to set it up:
+The `HttpMiddleware.logger` middleware enables logging for your entire application, providing insights into each request and response. Here's how to set it up:
 
 ```ts
 import {
@@ -1836,7 +1843,7 @@ curl -i -H "test: myvalue" http://localhost:3000
 
 Cookies are commonly used to maintain session state or user preferences. Validating cookies ensures that the data they carry is intact and as expected, enhancing security and application integrity.
 
-Here’s how you can validate cookies received in HTTP requests:
+Here's how you can validate cookies received in HTTP requests:
 
 ```ts
 import {
