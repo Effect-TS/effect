@@ -14,6 +14,7 @@ import { globalValue } from "./GlobalValue.js"
 import type { TypeLambda } from "./HKT.js"
 import type { Inspectable } from "./Inspectable.js"
 import { NodeInspectSymbol, toStringUnknown } from "./Inspectable.js"
+import * as doNotation from "./internal/doNotation.js"
 import { StructuralPrototype } from "./internal/effectable.js"
 import { SingleShotGen } from "./internal/singleShotGen.js"
 import * as Option from "./Option.js"
@@ -3354,11 +3355,7 @@ export const Do: Micro<{}> = succeed({})
 export const bindTo: {
   <N extends string>(name: N): <A, E, R>(self: Micro<A, E, R>) => Micro<{ [K in N]: A }, E, R>
   <A, E, R, N extends string>(self: Micro<A, E, R>, name: N): Micro<{ [K in N]: A }, E, R>
-} = dual(2, <A, E, R, N extends string>(self: Micro<A, E, R>, name: N): Micro<{ [K in N]: A }, E, R> =>
-  map(
-    self,
-    (f) => ({ [name]: f } as any)
-  ))
+} = doNotation.bindTo<MicroTypeLambda>(map)
 
 /**
  * Bind the success value of this `Micro` effect to the provided name.
@@ -3377,15 +3374,7 @@ export const bind: {
     name: N,
     f: (a: A) => Micro<B, E2, R2>
   ): Micro<Simplify<Omit<A, N> & { [K in N]: B }>, E | E2, R | R2>
-} = dual(3, <A extends Record<string, any>, E, R, B, E2, R2, N extends string>(
-  self: Micro<A, E, R>,
-  name: N,
-  f: (a: A) => Micro<B, E2, R2>
-): Micro<Simplify<Omit<A, N> & { [K in N]: B }>, E | E2, R | R2> =>
-  flatMap(
-    self,
-    (a) => map(f(a), (b) => ({ ...a, [name]: b } as any))
-  ))
+} = doNotation.bind<MicroTypeLambda>(map, flatMap)
 
 const let_: {
   <N extends string, A extends Record<string, any>, B>(
@@ -3397,15 +3386,8 @@ const let_: {
     name: N,
     f: (a: A) => B
   ): Micro<Simplify<Omit<A, N> & { [K in N]: B }>, E, R>
-} = dual(3, <A extends Record<string, any>, E, R, B, N extends string>(
-  self: Micro<A, E, R>,
-  name: N,
-  f: (a: A) => B
-): Micro<Simplify<Omit<A, N> & { [K in N]: B }>, E, R> =>
-  map(
-    self,
-    (a) => ({ ...a, [name]: f(a) } as any)
-  ))
+} = doNotation.let_<MicroTypeLambda>(map)
+
 export {
   /**
    * Bind the result of a synchronous computation to the given name.
