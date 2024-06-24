@@ -2,6 +2,60 @@ import * as S from "@effect/schema/Schema"
 import { hole } from "effect/Function"
 
 // ---------------------------------------------
+// check that there are no conflicts with the `fields` and `from` fields
+// ---------------------------------------------
+
+type HasFields<Fields extends S.Struct.Fields> = S.Struct<Fields> | {
+  readonly [S.refineTypeId]: HasFields<Fields>
+}
+
+declare const checkForConflicts: <Fields extends S.Struct.Fields>(
+  fieldsOr: Fields | HasFields<Fields>
+) => S.Struct<Fields>
+
+// $ExpectType Struct<{ fields: typeof String$; }>
+checkForConflicts({ fields: S.String })
+
+// $ExpectType Struct<{ from: typeof String$; }>
+checkForConflicts({ from: S.String })
+
+// $ExpectType Struct<{ fields: typeof String$; }>
+checkForConflicts(S.Struct({ fields: S.String }))
+
+// $ExpectType Struct<{ from: typeof String$; }>
+checkForConflicts(S.Struct({ from: S.String }))
+
+// $ExpectType Struct<{ fields: typeof String$; }>
+checkForConflicts(S.Struct({ fields: S.String }).pipe(S.filter(() => true)))
+
+// $ExpectType Struct<{ from: typeof String$; }>
+checkForConflicts(S.Struct({ from: S.String }).pipe(S.filter(() => true)))
+
+// $ExpectType Struct<{ fields: typeof String$; }>
+checkForConflicts(S.Struct({ fields: S.String }).pipe(S.filter(() => true), S.filter(() => true)))
+
+// $ExpectType Struct<{ from: typeof String$; }>
+checkForConflicts(S.Struct({ from: S.String }).pipe(S.filter(() => true), S.filter(() => true)))
+
+// $ExpectType Struct<{ fields: Struct<{ a: typeof String$; }>; }>
+checkForConflicts({ fields: S.Struct({ a: S.String }) })
+
+// $ExpectType Struct<{ fields: filter<Struct<{ a: typeof String$; }>>; }>
+checkForConflicts({ fields: S.Struct({ a: S.String }).pipe(S.filter(() => true)) })
+
+// $ExpectType Struct<{ fields: filter<filter<Struct<{ a: typeof String$; }>>>; }>
+checkForConflicts({ fields: S.Struct({ a: S.String }).pipe(S.filter(() => true), S.filter(() => true)) })
+
+// $ExpectType Struct<{ from: Struct<{ a: typeof String$; }>; }>
+checkForConflicts({ from: S.Struct({ a: S.String }) })
+
+// $ExpectType Struct<{ from: filter<Struct<{ a: typeof String$; }>>; }>
+checkForConflicts({ from: S.Struct({ a: S.String }).pipe(S.filter(() => true)) })
+
+// $ExpectType Struct<{ from: filter<filter<Struct<{ a: typeof String$; }>>>; }>
+checkForConflicts({ from: S.Struct({ a: S.String }).pipe(S.filter(() => true), S.filter(() => true)) })
+
+// ---------------------------------------------
 // A class with no fields should permit an empty argument in the constructor.
 // ---------------------------------------------
 
@@ -148,8 +202,6 @@ hole<ConstructorParameters<typeof ExtendedFromTaggedClassFields>>()
 // ---------------------------------------------
 // should accept a HasFields as argument
 // ---------------------------------------------
-
-export class FromHasFields extends S.Class<FromHasFields>("FromHasFields")({ fields: { a: S.String } }) {}
 
 export class FromStruct extends S.Class<FromStruct>("FromStruct")(S.Struct({ a: S.String })) {}
 

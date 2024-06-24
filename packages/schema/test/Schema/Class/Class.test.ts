@@ -330,14 +330,6 @@ details: Duplicate key "a"`)
     )
   })
 
-  it("should accept a simple object as argument", () => {
-    const fields = { a: S.String, b: S.Number }
-    class A extends S.Class<A>("A")({ fields }) {}
-    Util.expectFields(A.fields, fields)
-    class B extends S.Class<B>("B")({ from: { fields } }) {}
-    Util.expectFields(B.fields, fields)
-  })
-
   it("should accept a Struct as argument", () => {
     const fields = { a: S.String, b: S.Number }
     class A extends S.Class<A>("A")(S.Struct(fields)) {}
