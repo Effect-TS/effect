@@ -11,6 +11,7 @@ import * as Effectable from "./Effectable.js"
 import * as Either from "./Either.js"
 import { constTrue, constVoid, dual, identity, type LazyArg } from "./Function.js"
 import { globalValue } from "./GlobalValue.js"
+import type { TypeLambda } from "./HKT.js"
 import type { Inspectable } from "./Inspectable.js"
 import { NodeInspectSymbol, toStringUnknown } from "./Inspectable.js"
 import { StructuralPrototype } from "./internal/effectable.js"
@@ -63,6 +64,14 @@ export interface Micro<out A, out E = never, out R = never> extends Effect<A, E,
   readonly [TypeId]: Micro.Variance<A, E, R>
   readonly [runSymbol]: (env: Env<any>, onResult: (result: Result<A, E>) => void) => void
   [Symbol.iterator](): MicroIterator<Micro<A, E, R>>
+}
+
+/**
+ * @category type lambdas
+ * @since 3.4.1
+ */
+export interface MicroTypeLambda extends TypeLambda {
+  readonly type: Micro<this["Target"], this["Out1"], this["Out2"]>
 }
 
 /**
