@@ -88,8 +88,6 @@ describe("DurableExecutionJournal", () => {
         false
       ).pipe(Stream.runCollect)
 
-      console.log(results)
-
       expect(results).toEqual(Chunk.of(DurableExecutionEvent.Attempted("")(0)))
     }).pipe(runTest({ table: "test_read" })))
 })
