@@ -1,5 +1,12 @@
 # @effect/cluster
 
+## 0.0.12
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/platform-node@0.53.6
+
 ## 0.0.11
 
 ### Patch Changes
