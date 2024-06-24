@@ -86,9 +86,15 @@ export const schema: {
     self: Schema.Schema<A, I, R>,
     f: (_: I) => Iterable<globalThis.Transferable>
   ): Schema.Schema<A, I, R>
-} = dual(2, <A, I, R>(
-  self: Schema.Schema<A, I, R>,
-  f: (_: I) => Iterable<globalThis.Transferable>
+} = dual<
+  typeof schema,
+  <A, I, R>(
+    self: Schema.Schema<A, I, R>,
+    f: (_: I) => Iterable<globalThis.Transferable>
+  ) => Schema.Schema<A, I, R>
+>(2, (
+  self,
+  f
 ) =>
   Schema.transformOrFail(
     Schema.encodedSchema(self),

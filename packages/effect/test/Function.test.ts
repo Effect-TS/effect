@@ -140,7 +140,7 @@ describe("Function", () => {
       deepStrictEqual(f(3, 2), 1)
       deepStrictEqual(Function.pipe(3, f(2)), 1)
       // should ignore excess arguments
-      deepStrictEqual(f.apply(null, [3, 2, 100] as any), 1)
+      deepStrictEqual((f as (self: number, that: number) => number).apply(null, [3, 2, 100] as any), 1)
     })
 
     it("arity: 0", () => {
@@ -169,7 +169,7 @@ describe("Function", () => {
       deepStrictEqual(f(3, 2), 1)
       deepStrictEqual(Function.pipe(3, f(2)), 1)
       // should ignore excess arguments
-      deepStrictEqual(f.apply(null, [3, 2, 100] as any), 1)
+      deepStrictEqual((f as (self: number, that: number) => number).apply(null, [3, 2, 100] as any), 1)
     })
 
     it("arity: 5", () => {
@@ -180,7 +180,13 @@ describe("Function", () => {
       deepStrictEqual(f("_", "a", "b", "c", "d"), "_abcd")
       deepStrictEqual(Function.pipe("_", f("a", "b", "c", "d")), "_abcd")
       // should ignore excess arguments
-      deepStrictEqual(f.apply(null, ["_", "a", "b", "c", "d", "e"] as any), "_abcd")
+      deepStrictEqual(
+        (f as ((self: string, a: string, b: string, c: string, d: string) => string)).apply(
+          null,
+          ["_", "a", "b", "c", "d", "e"] as any
+        ),
+        "_abcd"
+      )
     })
 
     it("arity > 5", () => {
@@ -191,7 +197,13 @@ describe("Function", () => {
       deepStrictEqual(f("_", "a", "b", "c", "d", "e"), "_abcde")
       deepStrictEqual(Function.pipe("_", f("a", "b", "c", "d", "e")), "_abcde")
       // should ignore excess arguments
-      deepStrictEqual(f.apply(null, ["_", "a", "b", "c", "d", "e", "f"] as any), "_abcde")
+      deepStrictEqual(
+        (f as (self: string, a: string, b: string, c: string, d: string, e: string) => string).apply(
+          null,
+          ["_", "a", "b", "c", "d", "e", "f"] as any
+        ),
+        "_abcde"
+      )
     })
   })
 })
