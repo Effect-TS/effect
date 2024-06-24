@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.58.7
+
+### Patch Changes
+
+- [#3064](https://github.com/Effect-TS/effect/pull/3064) [`027004a`](https://github.com/Effect-TS/effect/commit/027004a897f654791e75faa28eefb50dd0244b6e) Thanks @tim-smart! - add HttpRouter.Tag.unwrap api
+
 ## 0.58.6
 
 ### Patch Changes
