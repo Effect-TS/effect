@@ -42,15 +42,6 @@ export interface D1Client extends Client.SqlClient {
 }
 
 /**
- * @category models
- * @since 1.0.0
- */
-export interface BackupMetadata {
-  readonly totalPages: number
-  readonly remainingPages: number
-}
-
-/**
  * @category tags
  * @since 1.0.0
  */
@@ -163,10 +154,8 @@ export const make = (
       })
     })
 
-    const semaphore = yield* Effect.makeSemaphore(1)
     const connection = yield* makeConnection
-
-    const acquirer = semaphore.withPermits(1)(Effect.succeed(connection))
+    const acquirer = Effect.succeed(connection)
     const transactionAcquirer = Effect.dieMessage("transactions are not supported in D1")
 
     return Object.assign(
