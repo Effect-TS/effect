@@ -5426,11 +5426,9 @@ export type MinItemsTypeId = typeof MinItemsTypeId
  */
 export const minItems = <A>(
   n: number,
-  annotations?: Annotations.Filter<array_.NonEmptyReadonlyArray<A>, ReadonlyArray<A>>
+  annotations?: Annotations.Filter<ReadonlyArray<A>>
 ) =>
-<I, R>(
-  self: Schema<ReadonlyArray<A>, I, R>
-): refine<array_.NonEmptyReadonlyArray<A>, Schema<ReadonlyArray<A>, I, R>> => {
+<I, R>(self: Schema<ReadonlyArray<A>, I, R>): filter<Schema<ReadonlyArray<A>, I, R>> => {
   const minItems = Math.floor(n)
   if (minItems < 1) {
     throw new Error(
@@ -5439,7 +5437,7 @@ export const minItems = <A>(
   }
   return self.pipe(
     filter(
-      (a): a is array_.NonEmptyReadonlyArray<A> => a.length >= minItems,
+      (a) => a.length >= minItems,
       {
         typeId: MinItemsTypeId,
         description: `an array of at least ${minItems} items`,
@@ -5473,7 +5471,7 @@ export const maxItems = <A>(
 ) =>
 <I, R>(self: Schema<ReadonlyArray<A>, I, R>): filter<Schema<ReadonlyArray<A>, I, R>> =>
   self.pipe(
-    filter((a): a is ReadonlyArray<A> => a.length <= n, {
+    filter((a) => a.length <= n, {
       typeId: MaxItemsTypeId,
       description: `an array of at most ${n} items`,
       jsonSchema: { maxItems: n },
@@ -5504,7 +5502,7 @@ export const itemsCount = <A>(
 ) =>
 <I, R>(self: Schema<ReadonlyArray<A>, I, R>): filter<Schema<ReadonlyArray<A>, I, R>> =>
   self.pipe(
-    filter((a): a is ReadonlyArray<A> => a.length === n, {
+    filter((a) => a.length === n, {
       typeId: ItemsCountTypeId,
       description: `an array of exactly ${n} item(s)`,
       jsonSchema: { minItems: n, maxItems: n },

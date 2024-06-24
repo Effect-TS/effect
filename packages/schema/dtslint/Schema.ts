@@ -2473,11 +2473,17 @@ S.Struct({ a: S.requiredToOptional(aContext, S.String, { decode: Option.some, en
 // minItems
 // ---------------------------------------------
 
-// $ExpectType Schema<readonly [string, ...string[]], readonly string[], never>
-S.asSchema(S.Array(S.String).pipe(S.minItems(1)))
+// $ExpectType Schema<readonly string[], readonly string[], never>
+S.asSchema(S.Array(S.String).pipe(S.minItems(2)))
 
-// $ExpectType refine<readonly [string, ...string[]], Schema<readonly string[], readonly string[], never>>
-S.Array(S.String).pipe(S.minItems(1))
+// $ExpectType filter<Schema<readonly string[], readonly string[], never>>
+S.Array(S.String).pipe(S.minItems(2))
 
 // $ExpectType Schema<readonly string[], readonly string[], never>
-S.Array(S.String).pipe(S.minItems(1)).from
+S.Array(S.String).pipe(S.minItems(2)).from
+
+// $ExpectType Schema<readonly string[], readonly string[], never>
+S.asSchema(S.Array(S.String).pipe(S.minItems(2), S.maxItems(3)))
+
+// $ExpectType filter<Schema<readonly string[], readonly string[], never>>
+S.Array(S.String).pipe(S.minItems(1), S.maxItems(2))
