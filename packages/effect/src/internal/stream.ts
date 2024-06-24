@@ -5645,6 +5645,72 @@ export const scoped = <A, E, R>(
   new StreamImpl(channel.ensuring(channel.scoped(pipe(effect, Effect.map(Chunk.of))), Effect.void))
 
 /** @internal */
+export const share = dual<
+  <A, E>(options: {
+    readonly connector: Effect.Effect<
+      PubSub.PubSub<Take.Take<A, E>> | Queue.Queue<Take.Take<A, E>>
+    >
+  }) => <R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R>,
+  <A, E, R>(
+    self: Stream.Stream<A, E, R>,
+    options: {
+      readonly connector: Effect.Effect<
+        PubSub.PubSub<Take.Take<A, E>> | Queue.Queue<Take.Take<A, E>>
+      >
+    }
+  ) => Stream.Stream<A, E, R>
+>(
+  2,
+  <A, E, R>(
+    self: Stream.Stream<A, E, R>,
+    options: {
+      readonly connector: Effect.Effect<
+        PubSub.PubSub<Take.Take<A, E>> | Queue.Queue<Take.Take<A, E>>
+      >
+    }
+  ) => {
+    let consumersCount = 0
+    let fiber: Fiber.RuntimeFiber<void> | null = null
+    let connector:
+      | PubSub.PubSub<Take.Take<A, E>>
+      | Queue.Queue<Take.Take<A, E>>
+      | null = null
+
+    return unwrap(
+      Effect.gen(function*() {
+        consumersCount++
+        connector ??= yield* options.connector
+        fiber ??= yield* Effect.forkDaemon(
+          "subscribe" in connector
+            ? runIntoPubSub(self, connector)
+            : runIntoQueue(self, connector)
+        )
+        return flattenTake(
+          "subscribe" in connector
+            ? fromPubSub(connector)
+            : fromQueue(connector)
+        )
+      })
+    ).pipe(
+      ensuring(
+        Effect.gen(function*() {
+          consumersCount--
+          if (consumersCount === 0) {
+            const cleanup = Effect.all([
+              Queue.shutdown(connector!),
+              Fiber.interrupt(fiber!)
+            ])
+            connector = null
+            fiber = null
+            yield* cleanup
+          }
+        })
+      )
+    )
+  }
+)
+
+/** @internal */
 export const some = <A, E, R>(self: Stream.Stream<Option.Option<A>, E, R>): Stream.Stream<A, Option.Option<E>, R> =>
   pipe(self, mapError(Option.some), someOrFail(() => Option.none()))
 
