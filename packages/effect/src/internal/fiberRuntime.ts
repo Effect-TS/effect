@@ -1992,7 +1992,18 @@ export const forEach: {
       readonly discard: true
     }
   ): Effect.Effect<void, E, R>
-} = dual((args) => Predicate.isIterable(args[0]), <A, R, E, B>(
+} = dual<
+  typeof forEach,
+  <A, R, E, B>(
+    self: Iterable<A>,
+    f: (a: A, i: number) => Effect.Effect<B, E, R>,
+    options?: {
+      readonly concurrency?: Concurrency | undefined
+      readonly batching?: boolean | "inherit" | undefined
+      readonly discard?: boolean | undefined
+    }
+  ) => Effect.Effect<void, E, R> | Effect.Effect<RA.NonEmptyArray<B>, E, R> | Effect.Effect<Array<B>, E, R>
+>((args) => Predicate.isIterable(args[0]), <A, R, E, B>(
   self: Iterable<A>,
   f: (a: A, i: number) => Effect.Effect<B, E, R>,
   options?: {

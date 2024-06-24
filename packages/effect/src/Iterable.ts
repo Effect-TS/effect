@@ -376,9 +376,12 @@ export const findFirst: {
   <A, B>(self: Iterable<A>, f: (a: A, i: number) => Option<B>): Option<B>
   <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): Option<B>
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Option<A>
-} = dual(
+} = dual<
+  typeof findFirst,
+  <A>(self: Iterable<A>, f: ((a: A, i: number) => boolean) | ((a: A, i: number) => Option<A>)) => Option<A>
+>(
   2,
-  <A>(self: Iterable<A>, f: ((a: A, i: number) => boolean) | ((a: A, i: number) => Option<A>)): Option<A> => {
+  (self, f) => {
     let i = 0
     for (const a of self) {
       const o = f(a, i)
@@ -410,7 +413,10 @@ export const findLast: {
   <A, B>(self: Iterable<A>, f: (a: A, i: number) => Option<B>): Option<B>
   <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): Option<B>
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Option<A>
-} = dual(
+} = dual<
+  typeof findLast,
+  <A>(self: Iterable<A>, f: ((a: A, i: number) => boolean) | ((a: A, i: number) => Option<A>)) => Option<A>
+>(
   2,
   <A>(self: Iterable<A>, f: ((a: A, i: number) => boolean) | ((a: A, i: number) => Option<A>)): Option<A> => {
     let i = 0
@@ -795,7 +801,10 @@ export const filterMap: {
 export const filterMapWhile: {
   <A, B>(f: (a: A, i: number) => Option<B>): (self: Iterable<A>) => Iterable<B>
   <A, B>(self: Iterable<A>, f: (a: A, i: number) => Option<B>): Iterable<B>
-} = dual(2, <A, B>(self: Iterable<A>, f: (a: A, i: number) => Option<B>) => ({
+} = dual<
+  typeof filterMapWhile,
+  <A, B>(self: Iterable<A>, f: (a: A, i: number) => Option<B>) => Iterable<B>
+>(2, (self, f) => ({
   [Symbol.iterator]() {
     const iterator = self[Symbol.iterator]()
     let i = 0

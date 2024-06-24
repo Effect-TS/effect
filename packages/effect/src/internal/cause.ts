@@ -495,10 +495,12 @@ export const andThen: {
   <E2>(f: Cause.Cause<E2>): <E>(self: Cause.Cause<E>) => Cause.Cause<E2>
   <E, E2>(self: Cause.Cause<E>, f: (e: E) => Cause.Cause<E2>): Cause.Cause<E2>
   <E, E2>(self: Cause.Cause<E>, f: Cause.Cause<E2>): Cause.Cause<E2>
-} = dual(
+} = dual<
+  typeof andThen,
+  <E, E2>(self: Cause.Cause<E>, f: ((e: E) => Cause.Cause<E2>) | Cause.Cause<E2>) => Cause.Cause<E2>
+>(
   2,
-  <E, E2>(self: Cause.Cause<E>, f: ((e: E) => Cause.Cause<E2>) | Cause.Cause<E2>): Cause.Cause<E2> =>
-    isFunction(f) ? flatMap(self, f) : flatMap(self, () => f)
+  (self, f) => isFunction(f) ? flatMap(self, f) : flatMap(self, () => f)
 )
 
 // -----------------------------------------------------------------------------

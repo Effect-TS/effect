@@ -994,9 +994,12 @@ export const findLast: {
   <A, B>(self: Iterable<A>, f: (a: A, i: number) => Option<B>): Option<B>
   <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): Option<B>
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Option<A>
-} = dual(
+} = dual<
+  typeof findLast,
+  <A>(self: Iterable<A>, f: ((a: A, i: number) => boolean) | ((a: A, i: number) => Option<A>)) => Option<A>
+>(
   2,
-  <A>(self: Iterable<A>, f: ((a: A, i: number) => boolean) | ((a: A, i: number) => Option<A>)): Option<A> => {
+  (self, f) => {
     const input = fromIterable(self)
     for (let i = input.length - 1; i >= 0; i--) {
       const a = input[i]
@@ -1680,7 +1683,7 @@ export const splitNonEmptyAt: {
 export const split: {
   (n: number): <A>(self: Iterable<A>) => Array<Array<A>>
   <A>(self: Iterable<A>, n: number): Array<Array<A>>
-} = dual(2, <A>(self: Iterable<A>, n: number) => {
+} = dual<typeof split, <A>(self: Iterable<A>, n: number) => Array<Array<A>>>(2, (self, n) => {
   const input = fromIterable(self)
   return chunksOf(input, Math.ceil(input.length / Math.floor(n)))
 })

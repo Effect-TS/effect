@@ -280,18 +280,21 @@ export const filter: {
   <A>(predicate: Predicate<NoInfer<A>>): (self: HS.HashSet<A>) => HS.HashSet<A>
   <A, B extends A>(self: HS.HashSet<A>, refinement: Refinement<A, B>): HS.HashSet<B>
   <A>(self: HS.HashSet<A>, predicate: Predicate<A>): HS.HashSet<A>
-} = dual(2, <A>(self: HS.HashSet<A>, f: Predicate<A>) => {
-  return mutate(empty(), (set) => {
-    const iterator = values(self)
-    let next: IteratorResult<A, any>
-    while (!(next = iterator.next()).done) {
-      const value = next.value
-      if (f(value)) {
-        add(set, value)
+} = dual<typeof filter, <A>(self: HS.HashSet<A>, f: Predicate<A>) => HS.HashSet<A>>(
+  2,
+  <A>(self: HS.HashSet<A>, f: Predicate<A>): HS.HashSet<A> => {
+    return mutate(empty(), (set) => {
+      const iterator = values(self)
+      let next: IteratorResult<A, any>
+      while (!(next = iterator.next()).done) {
+        const value = next.value
+        if (f(value)) {
+          add(set, value)
+        }
       }
-    }
-  })
-})
+    })
+  }
+)
 
 /** @internal */
 export const partition: {
