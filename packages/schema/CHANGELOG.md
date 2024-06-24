@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.68.9
+
+### Patch Changes
+
+- [#3074](https://github.com/Effect-TS/effect/pull/3074) [`0b47fdf`](https://github.com/Effect-TS/effect/commit/0b47fdfe449f42de89e0e88b61ae5140f629e5c4) Thanks @gcanti! - Revert the 0.67.22 patch as it is causing issues with other array filters, closes #3073
+
 ## 0.68.8
 
 ### Patch Changes
