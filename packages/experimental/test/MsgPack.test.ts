@@ -30,7 +30,7 @@ describe("MsgPack", () => {
         Stream.pipeThroughChannel(socket),
         Stream.runCollect
       )
-      const output = yield* _(outputEffect)
+      const output = yield* outputEffect
 
       assert.deepStrictEqual(Chunk.toArray(output), [{ hello: "world" }, { test: 123 }])
     }).pipe(Effect.runPromise))
@@ -46,7 +46,7 @@ describe("MsgPack", () => {
         Stream.pipeThroughChannel(socket),
         Stream.runCollect
       )
-      const output = yield* _(outputEffect)
+      const output = yield* outputEffect
 
       assert.deepStrictEqual(Chunk.toArray(output), msgs)
     }).pipe(Effect.runPromise))

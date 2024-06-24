@@ -2,6 +2,7 @@ import * as Worker from "@effect/platform/Worker"
 import { WorkerError } from "@effect/platform/WorkerError"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Queue from "effect/Queue"
 
@@ -17,12 +18,12 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
         port = worker
       }
 
-      yield* _(Effect.addFinalizer(() => Effect.sync(() => port.postMessage([1]))))
+      yield* Effect.addFinalizer(() => Effect.sync(() => port.postMessage([1])))
 
-      const queue = yield* _(Queue.unbounded<Worker.BackingWorker.Message<O>>())
+      const queue = yield* Queue.unbounded<Worker.BackingWorker.Message<O>>()
       const latch = yield* Deferred.make<void>()
 
-      const fiber = yield* _(
+      const fiber = yield* pipe(
         Effect.async<never, WorkerError, never>((resume) => {
           function onMessage(event: MessageEvent) {
             queue.unsafeOffer((event as MessageEvent).data)

@@ -108,8 +108,8 @@ function remainingDuration(persistenceId: string, duration: Duration.Duration) {
  */
 export const sleep = (persistenceId: string, duration: Duration.Duration) =>
   Effect.gen(function*(_) {
-    const remaining = yield* _(remainingDuration(persistenceId, duration))
-    yield* _(Effect.sleep(remaining))
+    const remaining = yield* remainingDuration(persistenceId, duration)
+    yield* Effect.sleep(remaining)
   })
 
 /**
@@ -117,8 +117,8 @@ export const sleep = (persistenceId: string, duration: Duration.Duration) =>
  */
 export const timeout = (persistenceId: string, duration: Duration.Duration) => <R, E, A>(fa: Effect.Effect<R, E, A>) =>
   Effect.gen(function*(_) {
-    const remaining = yield* _(remainingDuration(persistenceId, duration))
-    yield* _(Effect.timeout(fa, remaining))
+    const remaining = yield* remainingDuration(persistenceId, duration)
+    yield* Effect.timeout(fa, remaining)
   })
 
 /**

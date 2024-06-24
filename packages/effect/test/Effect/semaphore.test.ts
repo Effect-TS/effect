@@ -37,9 +37,9 @@ describe("Effect", () => {
 
   it.effect("releaseAll", () =>
     Effect.gen(function*(_) {
-      const sem = yield* _(Effect.makeSemaphore(4))
-      yield* _(sem.take(4))
-      yield* _(sem.releaseAll)
-      yield* _(sem.take(1))
+      const sem = yield* Effect.makeSemaphore(4)
+      yield* sem.take(4)
+      yield* sem.releaseAll
+      yield* sem.take(1)
     }))
 })

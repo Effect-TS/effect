@@ -21,7 +21,7 @@ describe("CliApp", () => {
         version: "1.0.0"
       })
       const args = Array.make("node", "test.js", "--bar")
-      const result = yield* _(Effect.flip(cli(args)))
+      const result = yield* Effect.flip(cli(args))
       expect(result).toEqual(ValidationError.invalidValue(HelpDoc.p(
         "Received unknown argument: '--bar'"
       )))

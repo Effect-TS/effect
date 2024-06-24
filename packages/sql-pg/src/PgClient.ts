@@ -136,7 +136,7 @@ export const make = (
       ? postgres(Redacted.value(options.url), opts as any)
       : postgres(opts as any)
 
-    yield* _(Effect.addFinalizer(() => Effect.promise(() => client.end())))
+    yield* Effect.addFinalizer(() => Effect.promise(() => client.end()))
 
     class ConnectionImpl implements Connection {
       constructor(private readonly pg: postgres.Sql<{}>) {}

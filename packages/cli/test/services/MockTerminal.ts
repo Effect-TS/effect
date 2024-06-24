@@ -40,10 +40,10 @@ export const MockTerminal = Context.GenericTag<Terminal.Terminal, MockTerminal>(
 // =============================================================================
 
 export const make = Effect.gen(function*(_) {
-  const queue = yield* _(Effect.acquireRelease(
+  const queue = yield* Effect.acquireRelease(
     Queue.unbounded<Terminal.UserInput>(),
     Queue.shutdown
-  ))
+  )
 
   const inputText: MockTerminal["inputText"] = (text: string) => {
     const inputs = Array.map(text.split(""), (key) => toUserInput(key))

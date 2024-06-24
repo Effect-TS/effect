@@ -10,6 +10,7 @@ import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
 import type { Span } from "effect/Tracer"
 import { assert, describe } from "vitest"
+import { pipe } from "../src/Function.js"
 
 describe("Tracer", () => {
   describe("withSpan", () => {
@@ -144,8 +145,8 @@ describe("Tracer", () => {
 
   it.effect("annotateCurrentSpan", () =>
     Effect.gen(function*(_) {
-      yield* _(Effect.annotateCurrentSpan("key", "value"))
-      const span = yield* _(Effect.currentSpan)
+      yield* Effect.annotateCurrentSpan("key", "value")
+      const span = yield* Effect.currentSpan
       assert.deepEqual(span.attributes.get("key"), "value")
     }).pipe(
       Effect.withSpan("A")
@@ -153,7 +154,7 @@ describe("Tracer", () => {
 
   it.effect("withParentSpan", () =>
     Effect.gen(function*(_) {
-      const span = yield* _(Effect.currentSpan)
+      const span = yield* Effect.currentSpan
       assert.deepEqual(
         span.parent.pipe(
           Option.map((_) => _.spanId)
@@ -203,7 +204,7 @@ describe("Tracer", () => {
   it.effect("Layer.span onEnd", () =>
     Effect.gen(function*(_) {
       let onEndCalled = false
-      const span = yield* _(
+      const span = yield* pipe(
         Effect.currentSpan,
         Effect.provide(Layer.span("span", {
           onEnd: (span, _exit) =>
@@ -219,9 +220,9 @@ describe("Tracer", () => {
 
   it.effect("linkSpans", () =>
     Effect.gen(function*(_) {
-      const childA = yield* _(Effect.makeSpan("childA"))
-      const childB = yield* _(Effect.makeSpan("childB"))
-      const currentSpan = yield* _(
+      const childA = yield* Effect.makeSpan("childA")
+      const childB = yield* Effect.makeSpan("childB")
+      const currentSpan = yield* pipe(
         Effect.currentSpan,
         Effect.withSpan("A", { links: [{ _tag: "SpanLink", span: childB, attributes: {} }] }),
         Effect.linkSpans(childA)
@@ -249,7 +250,7 @@ describe("Tracer", () => {
         })
       )
 
-      const span = yield* _(Effect.currentSpan, Effect.provide(layer), Effect.option)
+      const span = yield* pipe(Effect.currentSpan, Effect.provide(layer), Effect.option)
 
       assert.deepEqual(span, Option.none())
       assert.strictEqual(onEndCalled, true)
@@ -290,7 +291,7 @@ it.effect("includes trace when errored", () =>
     })
     yield* Effect.flip(getSpan("fail"))
     assert.isDefined(maybeSpan)
-    assert.include(maybeSpan!.attributes.get("code.stacktrace"), "Tracer.test.ts:291:24")
+    assert.include(maybeSpan!.attributes.get("code.stacktrace"), "Tracer.test.ts:292:24")
   }))
 
 describe("functionWithSpan", () => {

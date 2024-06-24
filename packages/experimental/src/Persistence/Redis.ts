@@ -18,10 +18,10 @@ import * as Persistence from "../Persistence.js"
  */
 export const make = (options: RedisOptions) =>
   Effect.gen(function*(_) {
-    const redis = yield* _(Effect.acquireRelease(
+    const redis = yield* Effect.acquireRelease(
       Effect.sync(() => new Redis(options)),
       (redis) => Effect.promise(() => redis.quit())
-    ))
+    )
     return Persistence.BackingPersistence.of({
       [Persistence.BackingPersistenceTypeId]: Persistence.BackingPersistenceTypeId,
       make: (prefix) =>

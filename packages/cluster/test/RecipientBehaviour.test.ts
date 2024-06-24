@@ -46,7 +46,7 @@ describe.concurrent("RecipientBehaviour", () => {
 
   it("Handles a whole queue of messages", () => {
     return Effect.gen(function*(_) {
-      const received = yield* _(Deferred.make<boolean>())
+      const received = yield* Deferred.make<boolean>()
 
       const behaviour = RecipientBehaviour.fromInMemoryQueue<Sample, never>(
         (entityId, dequeue) =>
@@ -56,20 +56,20 @@ describe.concurrent("RecipientBehaviour", () => {
           )
       )
 
-      const scope = yield* _(Scope.make())
-      const offer = yield* _(makeTestActor(behaviour, scope))
+      const scope = yield* Scope.make()
+      const offer = yield* makeTestActor(behaviour, scope)
       const msg = new Sample({ id: "1" })
-      yield* _(offer(msg))
-      yield* _(Scope.close(scope, Exit.interrupt(FiberId.none)))
+      yield* offer(msg)
+      yield* Scope.close(scope, Exit.interrupt(FiberId.none))
 
-      expect(yield* _(Deferred.await(received))).toBe(true)
+      expect(yield* Deferred.await(received)).toBe(true)
     }).pipe(withTestEnv, Effect.runPromise)
   })
 
   it("Ensure cleanup is run upon closing the scope", () => {
     let interrupted = false
     return Effect.gen(function*(_) {
-      const started = yield* _(Deferred.make<boolean>())
+      const started = yield* Deferred.make<boolean>()
 
       const behaviour = RecipientBehaviour.fromInMemoryQueue<Sample, never>(
         (entityId, dequeue) =>
@@ -86,12 +86,12 @@ describe.concurrent("RecipientBehaviour", () => {
           )
       )
 
-      const scope = yield* _(Scope.make())
-      const offer = yield* _(makeTestActor(behaviour, scope))
+      const scope = yield* Scope.make()
+      const offer = yield* makeTestActor(behaviour, scope)
       const msg = new Sample({ id: "1" })
-      yield* _(offer(msg))
-      yield* _(Deferred.await(started))
-      yield* _(Scope.close(scope, Exit.interrupt(FiberId.none)))
+      yield* offer(msg)
+      yield* Deferred.await(started)
+      yield* Scope.close(scope, Exit.interrupt(FiberId.none))
     }).pipe(withTestEnv, Effect.runPromise).then(() => expect(interrupted).toBe(true))
   })
 })

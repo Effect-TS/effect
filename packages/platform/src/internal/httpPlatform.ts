@@ -34,8 +34,8 @@ export const make = (impl: {
   ) => ServerResponse.HttpServerResponse
 }): Effect.Effect<Platform.HttpPlatform, never, FileSystem.FileSystem | Etag.Generator> =>
   Effect.gen(function*(_) {
-    const fs = yield* _(FileSystem.FileSystem)
-    const etagGen = yield* _(Etag.Generator)
+    const fs = yield* FileSystem.FileSystem
+    const etagGen = yield* Etag.Generator
 
     return tag.of({
       [TypeId]: TypeId,

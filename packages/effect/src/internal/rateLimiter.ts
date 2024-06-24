@@ -2,6 +2,7 @@ import type { DurationInput } from "../Duration.js"
 import * as Duration from "../Duration.js"
 import * as Effect from "../Effect.js"
 import * as FiberRef from "../FiberRef.js"
+import { pipe } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
 import type * as RateLimiter from "../RateLimiter.js"
 import type * as Scope from "../Scope.js"
@@ -33,14 +34,14 @@ const tokenBucket = (limit: number, window: DurationInput): Effect.Effect<
 > =>
   Effect.gen(function*(_) {
     const millisPerToken = Math.ceil(Duration.toMillis(window) / limit)
-    const semaphore = yield* _(Effect.makeSemaphore(limit))
+    const semaphore = yield* Effect.makeSemaphore(limit)
     const latch = yield* Effect.makeSemaphore(0)
     const refill: Effect.Effect<void> = Effect.sleep(millisPerToken).pipe(
       Effect.zipRight(latch.releaseAll),
       Effect.zipRight(semaphore.release(1)),
       Effect.flatMap((free) => free === limit ? Effect.void : refill)
     )
-    yield* _(
+    yield* pipe(
       latch.take(1),
       Effect.zipRight(refill),
       Effect.forever,
@@ -62,9 +63,9 @@ const fixedWindow = (limit: number, window: DurationInput): Effect.Effect<
   Scope.Scope
 > =>
   Effect.gen(function*(_) {
-    const semaphore = yield* _(Effect.makeSemaphore(limit))
-    const latch = yield* _(Effect.makeSemaphore(0))
-    yield* _(
+    const semaphore = yield* Effect.makeSemaphore(limit)
+    const latch = yield* Effect.makeSemaphore(0)
+    yield* pipe(
       latch.take(1),
       Effect.zipRight(Effect.sleep(window)),
       Effect.zipRight(latch.releaseAll),

@@ -71,7 +71,7 @@ export const makeManager = Effect.gen(function*() {
       transfers = (_) => []
     }: Worker.Worker.Options<I>) {
       return Effect.gen(function*(_) {
-        const spawn = yield* _(Spawner)
+        const spawn = yield* Spawner
         const id = idCounter++
         let requestIdCounter = 0
         const requestMap = new Map<

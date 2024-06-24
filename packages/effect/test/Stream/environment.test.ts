@@ -194,7 +194,7 @@ describe("Stream", () => {
 
   it.effect("withSpan", () =>
     Effect.gen(function*(_) {
-      const spans = yield* _(
+      const spans = yield* pipe(
         Stream.make(1, 2, 3),
         Stream.mapEffect((i) =>
           Effect.withSpan(

@@ -81,7 +81,7 @@ describe("Channel", () => {
 
   it.effect("runScoped - in uninterruptible region", () =>
     Effect.gen(function*(_) {
-      const result = yield* _(Effect.uninterruptible(Channel.run(Channel.void)))
+      const result = yield* Effect.uninterruptible(Channel.run(Channel.void))
       assert.isUndefined(result)
     }))
 })

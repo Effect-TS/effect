@@ -13,8 +13,8 @@ export const make = (
   shouldQuit: (input: Terminal.UserInput) => boolean = defaultShouldQuit
 ) =>
   Effect.gen(function*(_) {
-    const input = yield* _(Effect.sync(() => globalThis.process.stdin))
-    const output = yield* _(Effect.sync(() => globalThis.process.stdout))
+    const input = yield* Effect.sync(() => globalThis.process.stdin)
+    const output = yield* Effect.sync(() => globalThis.process.stdout)
 
     // Acquire a readline interface
     const acquireReadlineInterface = Effect.sync(() =>

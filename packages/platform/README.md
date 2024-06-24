@@ -32,8 +32,8 @@ import { Effect } from "effect"
 
 // const displayMessage: Effect.Effect<void, PlatformError, Terminal.Terminal>
 const displayMessage = Effect.gen(function* (_) {
-  const terminal = yield* _(Terminal.Terminal)
-  yield* _(terminal.display("a message\n"))
+  const terminal = yield* Terminal.Terminal
+  yield* terminal.display("a message\n")
 })
 
 NodeRuntime.runMain(displayMessage.pipe(Effect.provide(NodeTerminal.layer)))
@@ -49,9 +49,9 @@ import { Console, Effect } from "effect"
 
 // const readLine: Effect.Effect<void, Terminal.QuitException, Terminal.Terminal>
 const readLine = Effect.gen(function* (_) {
-  const terminal = yield* _(Terminal.Terminal)
-  const input = yield* _(terminal.readLine)
-  yield* _(Console.log(`input: ${input}`))
+  const terminal = yield* Terminal.Terminal
+  const input = yield* terminal.readLine
+  yield* Console.log(`input: ${input}`)
 })
 
 NodeRuntime.runMain(readLine.pipe(Effect.provide(NodeTerminal.layer)))
@@ -75,14 +75,14 @@ const parseGuess = (input: string) => {
 
 const display = (message: string) =>
   Effect.gen(function* (_) {
-    const terminal = yield* _(Terminal.Terminal)
-    yield* _(terminal.display(`${message}\n`))
+    const terminal = yield* Terminal.Terminal
+    yield* terminal.display(`${message}\n`)
   })
 
 const prompt = Effect.gen(function* (_) {
-  const terminal = yield* _(Terminal.Terminal)
-  yield* _(terminal.display("Enter a guess: "))
-  return yield* _(terminal.readLine)
+  const terminal = yield* Terminal.Terminal
+  yield* terminal.display("Enter a guess: ")
+  return yield* terminal.readLine
 })
 
 const answer: Effect.Effect<
@@ -90,11 +90,11 @@ const answer: Effect.Effect<
   Terminal.QuitException | PlatformError,
   Terminal.Terminal
 > = Effect.gen(function* (_) {
-  const input = yield* _(prompt)
+  const input = yield* prompt
   const guess = parseGuess(input)
   if (Option.isNone(guess)) {
-    yield* _(display("You must enter an integer from 1 to 100"))
-    return yield* _(answer)
+    yield* display("You must enter an integer from 1 to 100")
+    return yield* answer
   }
   return guess.value
 })
@@ -107,13 +107,13 @@ const check = <A, E, R>(
 ): Effect.Effect<A, E | PlatformError, R | Terminal.Terminal> =>
   Effect.gen(function* (_) {
     if (guess > secret) {
-      yield* _(display("Too high"))
-      return yield* _(ko)
+      yield* display("Too high")
+      return yield* ko
     } else if (guess < secret) {
-      yield* _(display("Too low"))
-      return yield* _(ko)
+      yield* display("Too low")
+      return yield* ko
     } else {
-      return yield* _(ok)
+      return yield* ok
     }
   })
 
@@ -127,24 +127,20 @@ const loop = (
   Terminal.Terminal
 > =>
   Effect.gen(function* (_) {
-    const guess = yield* _(answer)
-    return yield* _(
-      check(
-        secret,
-        guess,
-        end,
-        Effect.suspend(() => loop(secret))
-      )
+    const guess = yield* answer
+    return yield* check(
+      secret,
+      guess,
+      end,
+      Effect.suspend(() => loop(secret))
     )
   })
 
 export const game = Effect.gen(function* (_) {
-  yield* _(
-    display(
-      "We have selected a random number between 1 and 100. See if you can guess it in 10 turns or fewer. We'll tell you if your guess was too high or too low."
-    )
+  yield* display(
+    "We have selected a random number between 1 and 100. See if you can guess it in 10 turns or fewer. We'll tell you if your guess was too high or too low."
   )
-  yield* _(loop(yield* _(secret)))
+  yield* loop(yield* secret)
 })
 ```
 
@@ -183,14 +179,14 @@ import { Effect } from "effect"
 
 // const program: Effect.Effect<string, PlatformError, CommandExecutor.CommandExecutor>
 const program = Effect.gen(function* (_) {
-  const executor = yield* _(CommandExecutor.CommandExecutor)
+  const executor = yield* CommandExecutor.CommandExecutor
 
   // Creating a command to run the TypeScript compiler
   const command = Command.make("tsc", "--noEmit")
   console.log("Running tsc...")
 
   // Executing the command and capturing the output
-  const output = yield* _(executor.string(command))
+  const output = yield* executor.string(command)
   console.log(output)
   return output
 })
@@ -215,7 +211,7 @@ import {
   NodeFileSystem,
   NodeRuntime
 } from "@effect/platform-node"
-import { Effect, Stream, String } from "effect"
+import { Effect, Stream, String, pipe } from "effect"
 
 const runString = <E, R>(
   stream: Stream.Stream<Uint8Array, E, R>
@@ -223,11 +219,11 @@ const runString = <E, R>(
   stream.pipe(Stream.decodeText(), Stream.runFold(String.empty, String.concat))
 
 const program = Effect.gen(function* (_) {
-  const executor = yield* _(CommandExecutor.CommandExecutor)
+  const executor = yield* CommandExecutor.CommandExecutor
 
   const command = Command.make("ls")
 
-  const [exitCode, stdout, stderr] = yield* _(
+  const [exitCode, stdout, stderr] = yield* pipe(
     // Start running the command and return a handle to the running process.
     executor.start(command),
     Effect.flatMap((process) =>
@@ -319,10 +315,10 @@ import { Effect } from "effect"
 
 // const readFileString: Effect.Effect<void, PlatformError, FileSystem.FileSystem>
 const readFileString = Effect.gen(function* (_) {
-  const fs = yield* _(FileSystem.FileSystem)
+  const fs = yield* FileSystem.FileSystem
 
   // Reading the content of the same file where this code is written
-  const content = yield* _(fs.readFileString("./index.ts", "utf8"))
+  const content = yield* fs.readFileString("./index.ts", "utf8")
   console.log(content)
 })
 

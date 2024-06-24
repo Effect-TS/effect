@@ -1,5 +1,5 @@
 import * as NodeStream from "@effect/platform-node-shared/NodeStream"
-import { Array, Channel, Chunk, Stream } from "effect"
+import { Array, Channel, Chunk, pipe, Stream } from "effect"
 import * as Effect from "effect/Effect"
 import { Duplex, Readable, Transform } from "stream"
 import { assert, describe, it } from "vitest"
@@ -9,7 +9,7 @@ describe("Stream", () => {
   it("should read a stream", () =>
     Effect.gen(function*(_) {
       const stream = NodeStream.fromReadable<"error", string>(() => Readable.from(["a", "b", "c"]), () => "error")
-      const items = yield* _(Stream.runCollect(stream))
+      const items = yield* Stream.runCollect(stream)
       assert.deepEqual(
         Chunk.toReadonlyArray(items),
         ["a", "b", "c"]
@@ -28,7 +28,7 @@ describe("Stream", () => {
         () => "error"
       )
 
-      const items = yield* _(
+      const items = yield* pipe(
         Stream.make("a", "b", "c"),
         Stream.pipeThroughChannelOrFail(channel),
         Stream.decodeText(),
@@ -54,7 +54,7 @@ describe("Stream", () => {
         () => "error"
       )
 
-      const result = yield* _(
+      const result = yield* pipe(
         Stream.make("a", "b", "c"),
         Stream.pipeThroughChannelOrFail(channel),
         Stream.runDrain,
@@ -66,7 +66,7 @@ describe("Stream", () => {
 
   it("pipeThroughDuplex", () =>
     Effect.gen(function*(_) {
-      const result = yield* _(
+      const result = yield* pipe(
         Stream.make("a", "b", "c"),
         NodeStream.pipeThroughDuplex(
           () =>
@@ -90,7 +90,7 @@ describe("Stream", () => {
 
   it("pipeThroughDuplex write error", () =>
     Effect.gen(function*(_) {
-      const result = yield* _(
+      const result = yield* pipe(
         Stream.make("a", "b", "c"),
         NodeStream.pipeThroughDuplex(
           () =>
@@ -111,7 +111,7 @@ describe("Stream", () => {
 
   it("pipeThroughSimple", () =>
     Effect.gen(function*(_) {
-      const result = yield* _(
+      const result = yield* pipe(
         Stream.make("a", Buffer.from("b"), "c"),
         NodeStream.pipeThroughSimple(
           () =>
@@ -141,7 +141,7 @@ describe("Stream", () => {
       const deflate = NodeStream.fromDuplex<"error", "error", Uint8Array>(() => createGzip(), () => "error")
       const inflate = NodeStream.fromDuplex<never, "error", Uint8Array>(() => createUnzip(), () => "error")
       const channel = Channel.pipeToOrFail(deflate, inflate)
-      const items = yield* _(
+      const items = yield* pipe(
         stream,
         Stream.pipeThroughChannelOrFail(channel),
         Stream.decodeText(),
@@ -156,9 +156,9 @@ describe("Stream", () => {
       const stream = Stream.range(0, 10000).pipe(
         Stream.map((n) => String(n))
       )
-      const readable = yield* _(NodeStream.toReadable(stream))
+      const readable = yield* NodeStream.toReadable(stream)
       const outStream = NodeStream.fromReadable<"error", Uint8Array>(() => readable, () => "error")
-      const items = yield* _(
+      const items = yield* pipe(
         outStream,
         Stream.decodeText(),
         Stream.runCollect

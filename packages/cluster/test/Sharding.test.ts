@@ -93,34 +93,30 @@ describe.concurrent("SampleTests", () => {
 
   it("Succefully delivers a message", () => {
     return Effect.gen(function*(_) {
-      yield* _(Sharding.registerScoped)
-      const received = yield* _(Ref.make(false))
+      yield* Sharding.registerScoped
+      const received = yield* Ref.make(false)
 
-      yield* _(
-        Sharding.registerEntity(
-          SampleEntity
-        )(
-          RecipientBehaviour.fromFunctionEffect(() =>
-            pipe(Ref.set(received, true), Effect.as(MessageState.Acknowledged))
-          )
-        )
+      yield* Sharding.registerEntity(
+        SampleEntity
+      )(
+        RecipientBehaviour.fromFunctionEffect(() => pipe(Ref.set(received, true), Effect.as(MessageState.Acknowledged)))
       )
 
-      const messenger = yield* _(Sharding.messenger(SampleEntity))
+      const messenger = yield* Sharding.messenger(SampleEntity)
       const msg = new SampleMessage({ id: "a", value: 42 })
-      yield* _(messenger.sendDiscard("entity1")(msg))
+      yield* messenger.sendDiscard("entity1")(msg)
 
-      expect(yield* _(Ref.get(received))).toBe(true)
+      expect(yield* Ref.get(received)).toBe(true)
     }).pipe(withTestEnv, Effect.runPromise)
   })
 
   it("Fails with if entity not registered", () => {
     return Effect.gen(function*(_) {
-      yield* _(Sharding.registerScoped)
+      yield* Sharding.registerScoped
 
-      const messenger = yield* _(Sharding.messenger(SampleEntity))
+      const messenger = yield* Sharding.messenger(SampleEntity)
       const msg = new SampleMessage({ id: "a", value: 42 })
-      const exit = yield* _(messenger.sendDiscard("entity1")(msg).pipe(Effect.exit))
+      const exit = yield* messenger.sendDiscard("entity1")(msg).pipe(Effect.exit)
 
       expect(Exit.isFailure(exit)).toBe(true)
 
@@ -136,51 +132,47 @@ describe.concurrent("SampleTests", () => {
 
   it("Succefully delivers a message to the correct entity", () => {
     return Effect.gen(function*(_) {
-      yield* _(Sharding.registerScoped)
-      const result1 = yield* _(Ref.make(0))
-      const result2 = yield* _(Ref.make(0))
+      yield* Sharding.registerScoped
+      const result1 = yield* Ref.make(0)
+      const result2 = yield* Ref.make(0)
 
-      yield* _(
-        Sharding.registerEntity(
-          SampleEntity
-        )(
-          RecipientBehaviour.fromFunctionEffect((entityId, msg) =>
-            pipe(
-              Ref.set(entityId === "entity1" ? result1 : result2, msg.value),
-              Effect.as(MessageState.Acknowledged)
-            )
+      yield* Sharding.registerEntity(
+        SampleEntity
+      )(
+        RecipientBehaviour.fromFunctionEffect((entityId, msg) =>
+          pipe(
+            Ref.set(entityId === "entity1" ? result1 : result2, msg.value),
+            Effect.as(MessageState.Acknowledged)
           )
         )
       )
 
-      const messenger = yield* _(Sharding.messenger(SampleEntity))
+      const messenger = yield* Sharding.messenger(SampleEntity)
 
       const msg1 = new SampleMessage({ id: "a", value: 1 })
-      yield* _(messenger.sendDiscard("entity1")(msg1))
+      yield* messenger.sendDiscard("entity1")(msg1)
 
       const msg2 = new SampleMessage({ id: "b", value: 2 })
-      yield* _(messenger.sendDiscard("entity2")(msg2))
+      yield* messenger.sendDiscard("entity2")(msg2)
 
-      expect(yield* _(Ref.get(result1))).toBe(1)
-      expect(yield* _(Ref.get(result2))).toBe(2)
+      expect(yield* Ref.get(result1)).toBe(1)
+      expect(yield* Ref.get(result2)).toBe(2)
     }).pipe(withTestEnv, Effect.runPromise)
   })
 
   it("Succefully delivers a message with a reply to an entity", () => {
     return Effect.gen(function*(_) {
-      yield* _(Sharding.registerScoped)
+      yield* Sharding.registerScoped
 
-      yield* _(
-        Sharding.registerEntity(
-          SampleEntity
-        )(
-          RecipientBehaviour.fromFunctionEffect(() => Effect.succeed(MessageState.Processed(Exit.succeed(42))))
-        )
+      yield* Sharding.registerEntity(
+        SampleEntity
+      )(
+        RecipientBehaviour.fromFunctionEffect(() => Effect.succeed(MessageState.Processed(Exit.succeed(42))))
       )
 
-      const messenger = yield* _(Sharding.messenger(SampleEntity))
+      const messenger = yield* Sharding.messenger(SampleEntity)
       const msg = new SampleMessageWithResult({ id: "a", value: 42 })
-      const result = yield* _(messenger.send("entity1")(msg))
+      const result = yield* messenger.send("entity1")(msg)
 
       expect(result).toEqual(42)
     }).pipe(withTestEnv, Effect.runPromise)
@@ -188,23 +180,21 @@ describe.concurrent("SampleTests", () => {
 
   it("Succefully delivers a message with a failure reply to an entity", () => {
     return Effect.gen(function*(_) {
-      yield* _(Sharding.registerScoped)
+      yield* Sharding.registerScoped
 
-      yield* _(
-        Sharding.registerEntity(
-          SampleEntity
-        )(
-          RecipientBehaviour.fromFunctionEffect((_, msg) =>
-            msg._tag === "FailableMessageWithResult"
-              ? Effect.succeed(MessageState.Processed(Exit.fail("custom-error")))
-              : Effect.succeed(MessageState.Processed(Exit.void))
-          )
+      yield* Sharding.registerEntity(
+        SampleEntity
+      )(
+        RecipientBehaviour.fromFunctionEffect((_, msg) =>
+          msg._tag === "FailableMessageWithResult"
+            ? Effect.succeed(MessageState.Processed(Exit.fail("custom-error")))
+            : Effect.succeed(MessageState.Processed(Exit.void))
         )
       )
 
-      const messenger = yield* _(Sharding.messenger(SampleEntity))
+      const messenger = yield* Sharding.messenger(SampleEntity)
       const msg = new FailableMessageWithResult({ id: "a", value: 42 })
-      const result = yield* _(messenger.send("entity1")(msg), Effect.exit)
+      const result = yield* pipe(messenger.send("entity1")(msg), Effect.exit)
 
       expect(result).toEqual(Exit.fail("custom-error"))
     }).pipe(withTestEnv, Effect.runPromise)
@@ -212,7 +202,7 @@ describe.concurrent("SampleTests", () => {
 
   it("Succefully broadcasts a message", () => {
     return Effect.gen(function*(_) {
-      yield* _(Sharding.registerScoped)
+      yield* Sharding.registerScoped
 
       class GetIncrement extends Schema.TaggedRequest<GetIncrement>()("GetIncrement", Schema.Never, Schema.Number, {
         id: Schema.String
@@ -239,32 +229,30 @@ describe.concurrent("SampleTests", () => {
 
       const SampleTopic = RecipientType.makeTopicType("Sample", SampleProtocol)
 
-      const ref = yield* _(Ref.make(0))
+      const ref = yield* Ref.make(0)
 
-      yield* _(
-        Sharding.registerTopic(
-          SampleTopic
-        )(
-          RecipientBehaviour.fromFunctionEffect((entityId, msg) => {
-            switch (msg._tag) {
-              case "BroadcastIncrement":
-                return pipe(Ref.update(ref, (_) => _ + 1), Effect.as(MessageState.Acknowledged))
-              case "GetIncrement":
-                return pipe(Ref.get(ref), Effect.map((_) => MessageState.Processed(Exit.succeed(_))))
-            }
-          })
-        )
+      yield* Sharding.registerTopic(
+        SampleTopic
+      )(
+        RecipientBehaviour.fromFunctionEffect((entityId, msg) => {
+          switch (msg._tag) {
+            case "BroadcastIncrement":
+              return pipe(Ref.update(ref, (_) => _ + 1), Effect.as(MessageState.Acknowledged))
+            case "GetIncrement":
+              return pipe(Ref.get(ref), Effect.map((_) => MessageState.Processed(Exit.succeed(_))))
+          }
+        })
       )
 
-      const broadcaster = yield* _(Sharding.broadcaster(SampleTopic))
+      const broadcaster = yield* Sharding.broadcaster(SampleTopic)
 
       const msg1 = new BroadcastIncrement({ id: "a" })
-      yield* _(broadcaster.broadcastDiscard("c1")(msg1))
+      yield* broadcaster.broadcastDiscard("c1")(msg1)
 
-      yield* _(Effect.sleep(Duration.seconds(2)))
+      yield* Effect.sleep(Duration.seconds(2))
 
       const msg2 = new GetIncrement({ id: "b" })
-      const c1 = yield* _(broadcaster.broadcast("c1")(msg2))
+      const c1 = yield* broadcaster.broadcast("c1")(msg2)
 
       expect(HashMap.size(c1)).toBe(1) // Here we have just one pod, so there will be just one incrementer
     }).pipe(withTestEnv, Effect.runPromise)
@@ -274,39 +262,37 @@ describe.concurrent("SampleTests", () => {
     let entityInterrupted = false
 
     return Effect.gen(function*(_) {
-      yield* _(Sharding.registerScoped)
-      const entityStarted = yield* _(Deferred.make<boolean>())
+      yield* Sharding.registerScoped
+      const entityStarted = yield* Deferred.make<boolean>()
 
-      yield* _(
-        Sharding.registerEntity(
-          SampleEntity
-        )(
-          RecipientBehaviour.fromInMemoryQueue((entityId, dequeue) =>
-            pipe(
-              Queue.take(dequeue),
-              Effect.flatMap((msg) => {
-                if (PoisonPill.isPoisonPill(msg)) {
-                  return pipe(
-                    Effect.sync(() => {
-                      entityInterrupted = true
-                    }),
-                    Effect.zipRight(Effect.interrupt)
-                  )
-                }
-                return Deferred.succeed(entityStarted, true)
-              }),
-              Effect.forever
-            )
-          ),
-          { entityMaxIdleTime: Option.some(Duration.minutes(10)) }
-        )
+      yield* Sharding.registerEntity(
+        SampleEntity
+      )(
+        RecipientBehaviour.fromInMemoryQueue((entityId, dequeue) =>
+          pipe(
+            Queue.take(dequeue),
+            Effect.flatMap((msg) => {
+              if (PoisonPill.isPoisonPill(msg)) {
+                return pipe(
+                  Effect.sync(() => {
+                    entityInterrupted = true
+                  }),
+                  Effect.zipRight(Effect.interrupt)
+                )
+              }
+              return Deferred.succeed(entityStarted, true)
+            }),
+            Effect.forever
+          )
+        ),
+        { entityMaxIdleTime: Option.some(Duration.minutes(10)) }
       )
 
-      const messenger = yield* _(Sharding.messenger(SampleEntity))
+      const messenger = yield* Sharding.messenger(SampleEntity)
 
       const msg1 = new SampleMessage({ id: "a", value: 1 })
-      yield* _(messenger.sendDiscard("entity1")(msg1))
-      yield* _(Deferred.await(entityStarted))
+      yield* messenger.sendDiscard("entity1")(msg1)
+      yield* Deferred.await(entityStarted)
     }).pipe(withTestEnv, Effect.runPromise).then(() => expect(entityInterrupted).toBe(true))
   })
 
@@ -314,44 +300,42 @@ describe.concurrent("SampleTests", () => {
     let shutdownCompleted = false
 
     return Effect.gen(function*(_) {
-      yield* _(Sharding.registerScoped)
-      const entityStarted = yield* _(Deferred.make<boolean>())
+      yield* Sharding.registerScoped
+      const entityStarted = yield* Deferred.make<boolean>()
 
-      yield* _(
-        Sharding.registerEntity(
-          SampleEntity
-        )(
-          RecipientBehaviour.fromInMemoryQueue((entityId, dequeue) =>
-            pipe(
-              Queue.take(dequeue),
-              Effect.flatMap((msg) => {
-                if (PoisonPill.isPoisonPill(msg)) {
-                  return pipe(
-                    Effect.sleep(Duration.seconds(3)),
-                    Effect.zipRight(Effect.logDebug("Shutting down...")),
-                    Effect.zipRight(
-                      Effect.sync(() => {
-                        shutdownCompleted = true
-                      })
-                    ),
-                    Effect.flatMap(() => Effect.interrupt)
-                  )
-                }
-                return Deferred.succeed(entityStarted, true)
-              }),
-              Effect.forever
-            )
-          ),
-          { entityMaxIdleTime: Option.some(Duration.minutes(10)) }
-        )
+      yield* Sharding.registerEntity(
+        SampleEntity
+      )(
+        RecipientBehaviour.fromInMemoryQueue((entityId, dequeue) =>
+          pipe(
+            Queue.take(dequeue),
+            Effect.flatMap((msg) => {
+              if (PoisonPill.isPoisonPill(msg)) {
+                return pipe(
+                  Effect.sleep(Duration.seconds(3)),
+                  Effect.zipRight(Effect.logDebug("Shutting down...")),
+                  Effect.zipRight(
+                    Effect.sync(() => {
+                      shutdownCompleted = true
+                    })
+                  ),
+                  Effect.flatMap(() => Effect.interrupt)
+                )
+              }
+              return Deferred.succeed(entityStarted, true)
+            }),
+            Effect.forever
+          )
+        ),
+        { entityMaxIdleTime: Option.some(Duration.minutes(10)) }
       )
 
-      const messenger = yield* _(Sharding.messenger(SampleEntity))
+      const messenger = yield* Sharding.messenger(SampleEntity)
 
       const msg1 = new SampleMessage({ id: "a", value: 1 })
-      yield* _(messenger.sendDiscard("entity1")(msg1))
+      yield* messenger.sendDiscard("entity1")(msg1)
 
-      yield* _(Deferred.await(entityStarted))
+      yield* Deferred.await(entityStarted)
     }).pipe(withTestEnv, Effect.runPromise).then(() => expect(shutdownCompleted).toBe(true))
   })
 
@@ -359,65 +343,61 @@ describe.concurrent("SampleTests", () => {
     let shutdownCompleted = false
 
     return Effect.gen(function*(_) {
-      yield* _(Sharding.registerScoped)
-      const shutdownReceived = yield* _(Deferred.make<boolean>())
-      const entityStarted = yield* _(Deferred.make<boolean>())
+      yield* Sharding.registerScoped
+      const shutdownReceived = yield* Deferred.make<boolean>()
+      const entityStarted = yield* Deferred.make<boolean>()
 
-      yield* _(
-        Sharding.registerEntity(
-          SampleEntity
-        )(
-          RecipientBehaviour.fromInMemoryQueue((entityId, dequeue) =>
-            pipe(
-              Queue.take(dequeue),
-              Effect.flatMap((msg) => {
-                if (PoisonPill.isPoisonPill(msg)) {
-                  return pipe(
-                    Deferred.succeed(shutdownReceived, true),
-                    Effect.zipRight(Effect.logDebug("PoisonPill received")),
-                    Effect.zipRight(Effect.sleep(Duration.seconds(3))),
-                    Effect.zipRight(Effect.sync(() => {
-                      shutdownCompleted = true
-                    })),
-                    Effect.flatMap(() => Effect.interrupt)
-                  )
-                }
-
+      yield* Sharding.registerEntity(
+        SampleEntity
+      )(
+        RecipientBehaviour.fromInMemoryQueue((entityId, dequeue) =>
+          pipe(
+            Queue.take(dequeue),
+            Effect.flatMap((msg) => {
+              if (PoisonPill.isPoisonPill(msg)) {
                 return pipe(
-                  Deferred.succeed(entityStarted, true),
-                  Effect.zipRight(Effect.logDebug("Entity Started"))
+                  Deferred.succeed(shutdownReceived, true),
+                  Effect.zipRight(Effect.logDebug("PoisonPill received")),
+                  Effect.zipRight(Effect.sleep(Duration.seconds(3))),
+                  Effect.zipRight(Effect.sync(() => {
+                    shutdownCompleted = true
+                  })),
+                  Effect.flatMap(() => Effect.interrupt)
                 )
-              }),
-              Effect.forever
-            )
-          ),
-          { entityMaxIdleTime: Option.some(Duration.millis(100)) }
-        )
+              }
+
+              return pipe(
+                Deferred.succeed(entityStarted, true),
+                Effect.zipRight(Effect.logDebug("Entity Started"))
+              )
+            }),
+            Effect.forever
+          )
+        ),
+        { entityMaxIdleTime: Option.some(Duration.millis(100)) }
       )
 
-      const messenger = yield* _(Sharding.messenger(SampleEntity))
+      const messenger = yield* Sharding.messenger(SampleEntity)
 
       const msg1 = new SampleMessage({ id: "a", value: 1 })
-      yield* _(messenger.sendDiscard("entity1")(msg1))
+      yield* messenger.sendDiscard("entity1")(msg1)
 
-      yield* _(Deferred.await(entityStarted))
-      yield* _(Deferred.await(shutdownReceived))
+      yield* Deferred.await(entityStarted)
+      yield* Deferred.await(shutdownReceived)
     }).pipe(withTestEnv, Effect.runPromise).then(() => expect(shutdownCompleted).toBe(true))
   })
 
   it("Singletons should start", () => {
     return Effect.gen(function*(_) {
-      yield* _(Sharding.registerScoped)
-      const received = yield* _(Deferred.make<boolean>())
+      yield* Sharding.registerScoped
+      const received = yield* Deferred.make<boolean>()
 
-      yield* _(
-        Sharding.registerSingleton(
-          "sample",
-          Deferred.succeed(received, true)
-        )
+      yield* Sharding.registerSingleton(
+        "sample",
+        Deferred.succeed(received, true)
       )
 
-      expect(yield* _(Deferred.await(received))).toBe(true)
+      expect(yield* Deferred.await(received)).toBe(true)
     }).pipe(
       Effect.provide(inMemorySharding),
       Effect.scoped,
@@ -427,20 +407,18 @@ describe.concurrent("SampleTests", () => {
 
   it("Singletons should be interrupted upon sharding stop", () => {
     return Effect.gen(function*(_) {
-      yield* _(Sharding.registerScoped)
-      const received = yield* _(Deferred.make<boolean>())
+      yield* Sharding.registerScoped
+      const received = yield* Deferred.make<boolean>()
 
-      yield* _(
-        Sharding.registerSingleton(
-          "sample",
-          pipe(
-            Deferred.succeed(received, true),
-            Effect.zipRight(Effect.never)
-          )
+      yield* Sharding.registerSingleton(
+        "sample",
+        pipe(
+          Deferred.succeed(received, true),
+          Effect.zipRight(Effect.never)
         )
       )
 
-      expect(yield* _(Deferred.await(received))).toBe(true)
+      expect(yield* Deferred.await(received)).toBe(true)
     }).pipe(
       Effect.provide(inMemorySharding),
       Effect.scoped,
@@ -450,34 +428,32 @@ describe.concurrent("SampleTests", () => {
 
   it("Upon entity termination, pending replies should get errored", () => {
     return Effect.gen(function*(_) {
-      const requestReceived = yield* _(Deferred.make<boolean>())
-      yield* _(Sharding.registerScoped)
+      const requestReceived = yield* Deferred.make<boolean>()
+      yield* Sharding.registerScoped
 
-      yield* _(
-        Sharding.registerEntity(
-          SampleEntity
-        )(
-          RecipientBehaviour.fromInMemoryQueue((entityId, dequeue) =>
-            pipe(
-              PoisonPill.takeOrInterrupt(dequeue),
-              Effect.flatMap(() => {
-                // ignored reply as part of test case
-                return pipe(
-                  Deferred.succeed(requestReceived, true),
-                  Effect.zipRight(Effect.logDebug("Request received, ignoring reply as part of test case..."))
-                )
-              }),
-              Effect.forever
-            )
-          ),
-          { entityMaxIdleTime: Option.some(Duration.millis(100)) }
-        )
+      yield* Sharding.registerEntity(
+        SampleEntity
+      )(
+        RecipientBehaviour.fromInMemoryQueue((entityId, dequeue) =>
+          pipe(
+            PoisonPill.takeOrInterrupt(dequeue),
+            Effect.flatMap(() => {
+              // ignored reply as part of test case
+              return pipe(
+                Deferred.succeed(requestReceived, true),
+                Effect.zipRight(Effect.logDebug("Request received, ignoring reply as part of test case..."))
+              )
+            }),
+            Effect.forever
+          )
+        ),
+        { entityMaxIdleTime: Option.some(Duration.millis(100)) }
       )
 
-      const messenger = yield* _(Sharding.messenger(SampleEntity))
+      const messenger = yield* Sharding.messenger(SampleEntity)
 
       const msg = new SampleMessageWithResult({ id: "a", value: 42 })
-      const replyFiber = yield* _(
+      const replyFiber = yield* pipe(
         messenger.send("entity1")(msg),
         Effect.timeoutFail({
           onTimeout: () => "timeout",
@@ -486,10 +462,10 @@ describe.concurrent("SampleTests", () => {
         Effect.fork
       )
 
-      yield* _(Deferred.await(requestReceived))
-      yield* _(Sharding.unregister)
+      yield* Deferred.await(requestReceived)
+      yield* Sharding.unregister
 
-      const exit = yield* _(Fiber.await(replyFiber))
+      const exit = yield* Fiber.await(replyFiber)
       const expectedExit = Exit.fail("timeout")
 
       expect(Exit.isFailure(exit)).toBe(true)

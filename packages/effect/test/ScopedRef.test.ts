@@ -76,7 +76,7 @@ describe("ScopedRef", () => {
     }))
   it.effect("full release", () =>
     Effect.gen(function*(_) {
-      const ref = yield* _(Effect.scoped(ScopedRef.make(() => 0)))
+      const ref = yield* Effect.scoped(ScopedRef.make(() => 0))
       expect(ref.pipe(identity)).toBe(ref)
     }))
 })

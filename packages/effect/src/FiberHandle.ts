@@ -91,14 +91,14 @@ const unsafeMake = <A = unknown, E = unknown>(
  * import { Effect, FiberHandle } from "effect"
  *
  * Effect.gen(function*(_) {
- *   const handle = yield* _(FiberHandle.make())
+ *   const handle = yield* FiberHandle.make()
  *
  *   // run some effects
- *   yield* _(FiberHandle.run(handle, Effect.never))
+ *   yield* FiberHandle.run(handle, Effect.never)
  *   // this will interrupt the previous fiber
- *   yield* _(FiberHandle.run(handle, Effect.never))
+ *   yield* FiberHandle.run(handle, Effect.never)
  *
- *   yield* _(Effect.sleep(1000))
+ *   yield* Effect.sleep(1000)
  * }).pipe(
  *   Effect.scoped // The fiber will be interrupted when the scope is closed
  * )
@@ -359,8 +359,8 @@ export const run: {
  * }>("Users")
  *
  * Effect.gen(function*(_) {
- *   const handle = yield* _(FiberHandle.make())
- *   const run = yield* _(FiberHandle.runtime(handle)<Users>())
+ *   const handle = yield* FiberHandle.make()
+ *   const run = yield* FiberHandle.runtime(handle)<Users>()
  *
  *   // run an effect and set the fiber in the handle
  *   run(Effect.andThen(Users, _ => _.getAll))
@@ -422,11 +422,11 @@ export const runtime: <A, E>(
  * import { Effect, FiberHandle } from "effect";
  *
  * Effect.gen(function* (_) {
- *   const handle = yield* _(FiberHandle.make());
- *   yield* _(FiberHandle.set(handle, Effect.runFork(Effect.fail("error"))));
+ *   const handle = yield* FiberHandle.make();
+ *   yield* FiberHandle.set(handle, Effect.runFork(Effect.fail("error")));
  *
  *   // parent fiber will fail with "error"
- *   yield* _(FiberHandle.join(handle));
+ *   yield* FiberHandle.join(handle);
  * });
  */
 export const join = <A, E>(self: FiberHandle<A, E>): Effect.Effect<void, E> =>

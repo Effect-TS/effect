@@ -9,14 +9,14 @@ const runPromise = <E, A>(effect: Effect.Effect<A, E, Path.Path>) =>
 describe("Path", () => {
   it("fromFileUrl", () =>
     runPromise(Effect.gen(function*(_) {
-      const path = yield* _(Path.Path)
-      expect(yield* _(path.fromFileUrl(new URL("file:///foo/bar")))).toBe("/foo/bar")
+      const path = yield* Path.Path
+      expect(yield* path.fromFileUrl(new URL("file:///foo/bar"))).toBe("/foo/bar")
     })))
 
   it("fromFileUrl - http", () =>
     runPromise(Effect.gen(function*(_) {
-      const path = yield* _(Path.Path)
-      expect(yield* _(Effect.flip(path.fromFileUrl(new URL("http://foo/bar"))))).toEqual(BadArgument({
+      const path = yield* Path.Path
+      expect(yield* Effect.flip(path.fromFileUrl(new URL("http://foo/bar")))).toEqual(BadArgument({
         module: "Path",
         method: "fromFileUrl",
         message: "URL must be of scheme file"
@@ -25,7 +25,7 @@ describe("Path", () => {
 
   it("toFileUrl", () =>
     runPromise(Effect.gen(function*(_) {
-      const path = yield* _(Path.Path)
-      expect(yield* _(path.toFileUrl("/foo/bar"))).toEqual(new URL("file:///foo/bar"))
+      const path = yield* Path.Path
+      expect(yield* path.toFileUrl("/foo/bar")).toEqual(new URL("file:///foo/bar"))
     })))
 })

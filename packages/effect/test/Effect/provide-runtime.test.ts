@@ -3,6 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import * as FiberRef from "effect/FiberRef"
+import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as RuntimeFlags from "effect/RuntimeFlags"
 import * as Scope from "effect/Scope"
@@ -31,10 +32,10 @@ describe("Effect", () => {
     }
     const SomeService = Context.GenericTag<SomeService, typeof someServiceImpl>("SomeService")
     return Effect.gen(function*(_) {
-      const rt = yield* _(Layer.succeedContext(Context.empty()), Layer.toRuntime)
-      const pre = yield* _(Effect.context<never>())
-      yield* _(Effect.provide(Effect.void, rt))
-      const post = yield* _(Effect.context<never>())
+      const rt = yield* pipe(Layer.succeedContext(Context.empty()), Layer.toRuntime)
+      const pre = yield* Effect.context<never>()
+      yield* Effect.provide(Effect.void, rt)
+      const post = yield* Effect.context<never>()
       assert.isTrue(Equal.equals(pre, post))
     }).pipe(
       Effect.scoped,

@@ -116,9 +116,9 @@ const renderNextFrame = (
   options: Required<Prompt.Prompt.IntegerOptions>
 ) =>
   Effect.gen(function*(_) {
-    const terminal = yield* _(Terminal.Terminal)
-    const figures = yield* _(InternalAnsiUtils.figures)
-    const columns = yield* _(terminal.columns)
+    const terminal = yield* Terminal.Terminal
+    const figures = yield* InternalAnsiUtils.figures
+    const columns = yield* terminal.columns
     const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyanBright)
     const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.blackBright)
     const clearScreen = renderClearScreen(prevState, options, columns)
@@ -138,9 +138,9 @@ const renderSubmission = (
   options: Required<Prompt.Prompt.IntegerOptions>
 ) =>
   Effect.gen(function*(_) {
-    const terminal = yield* _(Terminal.Terminal)
-    const figures = yield* _(InternalAnsiUtils.figures)
-    const columns = yield* _(terminal.columns)
+    const terminal = yield* Terminal.Terminal
+    const figures = yield* InternalAnsiUtils.figures
+    const columns = yield* terminal.columns
     const clearScreen = renderClearScreen(Option.some(nextState), options, columns)
     const leadingSymbol = Doc.annotate(figures.tick, Ansi.green)
     const trailingSymbol = Doc.annotate(figures.ellipsis, Ansi.blackBright)

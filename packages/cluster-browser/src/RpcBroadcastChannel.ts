@@ -30,20 +30,20 @@ const BroadcastMessage = Schema.Union(ClientRequest, ServerResponse)
 export const toBroadcastChannelRouter = <R extends Router.Router<any, any>>(self: R, channelId: string) => {
   const handler = Router.toHandlerEffect(self)
 
-  return Effect.gen(function*($) {
-    const queue = yield* $(Queue.unbounded())
-    yield* $(Effect.addFinalizer(() => Queue.shutdown(queue)))
+  return Effect.gen(function*() {
+    const queue = yield* Queue.unbounded()
+    yield* Effect.addFinalizer(() => Queue.shutdown(queue))
 
-    const channel = yield* $(Effect.acquireRelease(
+    const channel = yield* Effect.acquireRelease(
       Effect.sync(() => {
         const channel = new BroadcastChannel(channelId)
         channel.onmessage = (event) => Queue.unsafeOffer(queue, event.data)
         return channel
       }),
       (channel) => Effect.sync(() => channel.close())
-    ))
+    )
 
-    yield* $(
+    yield* pipe(
       Queue.take(queue),
       Effect.flatMap(Schema.decodeUnknown(BroadcastMessage)),
       Effect.flatMap((message) =>
@@ -76,11 +76,11 @@ export const make = <R extends Router.Router<any, any>>(
   Serializable.SerializableWithResult.Context<Router.Router.Request<R>>
 > => {
   return Resolver.make((requests) => {
-    return Effect.gen(function*($) {
-      const queue = yield* $(Queue.unbounded())
-      yield* $(Effect.addFinalizer(() => Queue.shutdown(queue)))
+    return Effect.gen(function*() {
+      const queue = yield* Queue.unbounded()
+      yield* Effect.addFinalizer(() => Queue.shutdown(queue))
 
-      const channel = yield* $(Effect.acquireRelease(
+      const channel = yield* Effect.acquireRelease(
         Effect.sync(() => {
           const channel = new BroadcastChannel(channelId)
           channel.onmessage = (event) => Queue.unsafeOffer(queue, event.data)
@@ -88,9 +88,9 @@ export const make = <R extends Router.Router<any, any>>(
           return channel
         }),
         (channel) => Effect.sync(() => channel.close())
-      ))
+      )
 
-      return yield* $(
+      return yield* pipe(
         Effect.sync(() => (Math.random() * 10000).toString(36)),
         Effect.flatMap((id) =>
           pipe(

@@ -91,19 +91,19 @@ export const make = (
     ).array
 
     const makeConnection = Effect.gen(function*(_) {
-      const sqlite3 = yield* _(initEffect)
+      const sqlite3 = yield* initEffect
 
       let db: DB
       if (options.mode === "opfs") {
         if (!sqlite3.oo1.OpfsDb) {
-          yield* _(Effect.dieMessage("opfs mode not available"))
+          yield* Effect.dieMessage("opfs mode not available")
         }
         db = new sqlite3.oo1.OpfsDb!(options.dbName, options.openMode ?? "c")
       } else {
         db = new sqlite3.oo1.DB(options.dbName, options.openMode)
       }
 
-      yield* _(Effect.addFinalizer(() => Effect.sync(() => db.close())))
+      yield* Effect.addFinalizer(() => Effect.sync(() => db.close()))
 
       const run = (
         sql: string,
@@ -151,8 +151,8 @@ export const make = (
       })
     })
 
-    const semaphore = yield* _(Effect.makeSemaphore(1))
-    const connection = yield* _(makeConnection)
+    const semaphore = yield* Effect.makeSemaphore(1)
+    const connection = yield* makeConnection
 
     const acquirer = semaphore.withPermits(1)(Effect.succeed(connection))
     const transactionAcquirer = Effect.uninterruptibleMask((restore) =>

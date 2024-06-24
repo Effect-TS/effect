@@ -16,20 +16,20 @@ import * as TimeToLive from "../TimeToLive.js"
  */
 export const make = (options: Lmdb.RootDatabaseOptionsWithPath) =>
   Effect.gen(function*(_) {
-    const lmdb = yield* _(Effect.acquireRelease(
+    const lmdb = yield* Effect.acquireRelease(
       Effect.sync(() => Lmdb.open(options)),
       (lmdb) => Effect.promise(() => lmdb.close())
-    ))
+    )
 
     return Persistence.BackingPersistence.of({
       [Persistence.BackingPersistenceTypeId]: Persistence.BackingPersistenceTypeId,
       make: (storeId) =>
         Effect.gen(function*(_) {
-          const clock = yield* _(Effect.clock)
-          const store = yield* _(Effect.acquireRelease(
+          const clock = yield* Effect.clock
+          const store = yield* Effect.acquireRelease(
             Effect.sync(() => lmdb.openDB({ name: storeId })),
             (store) => Effect.promise(() => store.close())
-          ))
+          )
           const valueToOption = (key: string, _: any) => {
             if (!Arr.isArray(_)) return Option.none()
             const [value, expires] = _ as [unknown, number | null]

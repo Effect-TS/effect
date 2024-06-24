@@ -8,11 +8,11 @@ import * as D from "drizzle-orm/sqlite-core"
 import { Effect } from "effect"
 
 const makeClient = Effect.gen(function*(_) {
-  const fs = yield* _(FileSystem.FileSystem)
-  const dir = yield* _(fs.makeTempDirectoryScoped())
-  return yield* _(SqliteClient.make({
+  const fs = yield* FileSystem.FileSystem
+  const dir = yield* fs.makeTempDirectoryScoped()
+  return yield* SqliteClient.make({
     filename: dir + "/test.db"
-  }))
+  })
 }).pipe(Effect.provide(NodeFileSystem.layer))
 
 const users = D.sqliteTable("users", {
@@ -24,7 +24,7 @@ const users = D.sqliteTable("users", {
 describe("SqliteDrizzle", () => {
   it.scoped("select", () =>
     Effect.gen(function*(_) {
-      const sql = yield* _(makeClient)
+      const sql = yield* makeClient
       const db = yield* SqliteDrizzle.make.pipe(
         Effect.provideService(SqlClient.SqlClient, sql)
       )
@@ -36,7 +36,7 @@ describe("SqliteDrizzle", () => {
 
   it.scoped("remote callback", () =>
     Effect.gen(function*(_) {
-      const sql = yield* _(makeClient)
+      const sql = yield* makeClient
       const db = yield* SqliteDrizzle.make.pipe(
         Effect.provideService(SqlClient.SqlClient, sql)
       )

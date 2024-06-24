@@ -4,6 +4,7 @@
 import * as Socket from "@effect/platform/Socket"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
 import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
 import * as Ndjson from "../Ndjson.js"
@@ -48,20 +49,20 @@ export const Server = Context.GenericTag<Server, ServerImpl>("@effect/experiment
  * @category constructors
  */
 export const make = Effect.gen(function*(_) {
-  const server = yield* _(SocketServer.SocketServer)
+  const server = yield* SocketServer.SocketServer
 
   const run = <R, E, _>(handle: (client: Client) => Effect.Effect<_, E, R>) =>
     server.run((socket) =>
       Effect.gen(function*(_) {
-        const responses = yield* _(Queue.unbounded<Domain.Response>())
-        const requests = yield* _(Queue.unbounded<Domain.Request.WithoutPing>())
+        const responses = yield* Queue.unbounded<Domain.Response>()
+        const requests = yield* Queue.unbounded<Domain.Request.WithoutPing>()
 
         const client: Client = {
           queue: requests,
           request: (res) => responses.offer(res)
         }
 
-        yield* _(
+        yield* pipe(
           Stream.fromQueue(responses),
           Stream.pipeThroughChannel(
             Ndjson.duplexSchema(Socket.toChannel(socket), {
@@ -81,7 +82,7 @@ export const make = Effect.gen(function*(_) {
           Effect.fork
         )
 
-        return yield* _(handle(client))
+        return yield* handle(client)
       })
     )
 

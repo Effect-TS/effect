@@ -4,6 +4,7 @@ import { Path } from "@effect/platform"
 import { NodeContext } from "@effect/platform-node"
 import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
 import { assert, describe, it } from "vitest"
 
 const runEffect = <E, A>(
@@ -13,8 +14,8 @@ const runEffect = <E, A>(
 describe("ConfigFile", () => {
   it("loads json files", () =>
     Effect.gen(function*(_) {
-      const path = yield* _(Path.Path)
-      const result = yield* _(
+      const path = yield* Path.Path
+      const result = yield* pipe(
         Config.all([
           Config.boolean("foo"),
           Config.string("bar")
@@ -29,8 +30,8 @@ describe("ConfigFile", () => {
 
   it("loads yaml", () =>
     Effect.gen(function*(_) {
-      const path = yield* _(Path.Path)
-      const result = yield* _(
+      const path = yield* Path.Path
+      const result = yield* pipe(
         Config.integer("foo"),
         Effect.provide(ConfigFile.layer("config-file", {
           searchPaths: [path.join(__dirname, "fixtures")]

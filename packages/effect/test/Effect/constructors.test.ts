@@ -16,12 +16,12 @@ describe("Effect", () => {
     }))
   it.effect("can use .pipe for composition", () =>
     Effect.gen(function*(_) {
-      return yield* _(Effect.succeed(1))
+      return yield* Effect.succeed(1)
     }).pipe(
       Effect.map((n) => n + 1),
       Effect.flatMap((n) =>
         Effect.gen(function*(_) {
-          return yield* _(Effect.succeed(n + 1))
+          return yield* Effect.succeed(n + 1)
         })
       ),
       Effect.tap((n) =>
@@ -34,7 +34,7 @@ describe("Effect", () => {
     class MyService {
       readonly local = 1
       compute = Effect.gen(this, function*(_) {
-        return yield* _(Effect.succeed(this.local + 1))
+        return yield* Effect.succeed(this.local + 1)
       })
     }
     const instance = new MyService()

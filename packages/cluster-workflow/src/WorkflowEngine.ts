@@ -31,8 +31,8 @@ export function makeScoped<T extends Message.Message.Any, R>(
   R | Scope.Scope | DurableExecutionJournal.DurableExecutionJournal
 > {
   return Effect.gen(function*(_) {
-    const fiberMap = yield* _(FiberMap.make())
-    const env = yield* _(Effect.context<R | DurableExecutionJournal.DurableExecutionJournal>())
+    const fiberMap = yield* FiberMap.make()
+    const env = yield* Effect.context<R | DurableExecutionJournal.DurableExecutionJournal>()
 
     const getOrStartFiber = <A extends T>(
       request: A

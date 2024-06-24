@@ -11,7 +11,7 @@ import * as Array from "effect/Array"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
-import { identity } from "effect/Function"
+import { identity, pipe } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import * as Option from "effect/Option"
 import { assert, describe, expect, it } from "vitest"
@@ -50,12 +50,10 @@ describe("Options", () => {
   it("should validate without ambiguity", () =>
     Effect.gen(function*(_) {
       const args = Array.make("--firstName", "--lastName", "--lastName", "--firstName")
-      const result1 = yield* _(
-        process(Options.all([firstName, lastName]), args, CliConfig.defaultConfig)
-      )
-      const result2 = yield* _(
-        process(Options.all([lastName, firstName]), args, CliConfig.defaultConfig)
-      )
+      const result1 = yield* process(Options.all([firstName, lastName]), args, CliConfig.defaultConfig)
+
+      const result2 = yield* process(Options.all([lastName, firstName]), args, CliConfig.defaultConfig)
+
       const expected1 = [Array.empty(), Array.make("--lastName", "--firstName")]
       const expected2 = [Array.empty(), Array.make("--firstName", "--lastName")]
       expect(result1).toEqual(expected1)
@@ -65,7 +63,7 @@ describe("Options", () => {
   it("should not uncluster values", () =>
     Effect.gen(function*(_) {
       const args = Array.make("--firstName", "-ab")
-      const result = yield* _(process(firstName, args, CliConfig.defaultConfig))
+      const result = yield* process(firstName, args, CliConfig.defaultConfig)
       const expected = [Array.empty(), "-ab"]
       expect(result).toEqual(expected)
     }).pipe(runEffect))
@@ -73,7 +71,7 @@ describe("Options", () => {
   it("should return a HelpDoc if an option is not an exact match and it's a short option", () =>
     Effect.gen(function*(_) {
       const args = Array.make("--ag", "20")
-      const result = yield* _(Effect.flip(process(age, args, CliConfig.defaultConfig)))
+      const result = yield* Effect.flip(process(age, args, CliConfig.defaultConfig))
       expect(result).toEqual(ValidationError.missingValue(HelpDoc.p(
         "Expected to find option: '--age'"
       )))
@@ -86,7 +84,7 @@ describe("Options", () => {
         Options.text("b").pipe(Options.map(identity))
       )
       const args = Array.make("-a", "a", "-b", "b")
-      const result = yield* _(Effect.flip(process(options, args, CliConfig.defaultConfig)))
+      const result = yield* Effect.flip(process(options, args, CliConfig.defaultConfig))
       expect(result).toEqual(ValidationError.invalidValue(HelpDoc.p(
         "Collision between two options detected - you can only " +
           "specify one of either: ['-a', '-b']"
@@ -96,7 +94,7 @@ describe("Options", () => {
   it("validates a boolean option without a value", () =>
     Effect.gen(function*(_) {
       const args = Array.make("--verbose")
-      const result = yield* _(process(verbose, args, CliConfig.defaultConfig))
+      const result = yield* process(verbose, args, CliConfig.defaultConfig)
       const expected = [Array.empty(), true]
       expect(result).toEqual(expected)
     }).pipe(runEffect))
@@ -107,9 +105,9 @@ describe("Options", () => {
       const args1 = Array.empty()
       const args2 = Array.make("--help")
       const args3 = Array.make("--help", "-v")
-      const result1 = yield* _(process(options, args1, CliConfig.defaultConfig))
-      const result2 = yield* _(process(options, args2, CliConfig.defaultConfig))
-      const result3 = yield* _(process(options, args3, CliConfig.defaultConfig))
+      const result1 = yield* process(options, args1, CliConfig.defaultConfig)
+      const result2 = yield* process(options, args2, CliConfig.defaultConfig)
+      const result3 = yield* process(options, args3, CliConfig.defaultConfig)
       const expected1 = [Array.empty(), [false, false]]
       const expected2 = [Array.empty(), [true, false]]
       const expected3 = [Array.empty(), [true, true]]
@@ -121,17 +119,15 @@ describe("Options", () => {
   it("validates a boolean option with negation", () =>
     Effect.gen(function*(_) {
       const option = Options.boolean("verbose", { aliases: ["v"], negationNames: ["silent", "s"] })
-      const result1 = yield* _(process(option, [], CliConfig.defaultConfig))
-      const result2 = yield* _(process(option, ["--verbose"], CliConfig.defaultConfig))
-      const result3 = yield* _(process(option, ["-v"], CliConfig.defaultConfig))
-      const result4 = yield* _(process(option, ["--silent"], CliConfig.defaultConfig))
-      const result5 = yield* _(process(option, ["-s"], CliConfig.defaultConfig))
-      const result6 = yield* _(
-        Effect.flip(process(option, ["--verbose", "--silent"], CliConfig.defaultConfig))
-      )
-      const result7 = yield* _(
-        Effect.flip(process(option, ["-v", "-s"], CliConfig.defaultConfig))
-      )
+      const result1 = yield* process(option, [], CliConfig.defaultConfig)
+      const result2 = yield* process(option, ["--verbose"], CliConfig.defaultConfig)
+      const result3 = yield* process(option, ["-v"], CliConfig.defaultConfig)
+      const result4 = yield* process(option, ["--silent"], CliConfig.defaultConfig)
+      const result5 = yield* process(option, ["-s"], CliConfig.defaultConfig)
+      const result6 = yield* Effect.flip(process(option, ["--verbose", "--silent"], CliConfig.defaultConfig))
+
+      const result7 = yield* Effect.flip(process(option, ["-v", "-s"], CliConfig.defaultConfig))
+
       expect(result1).toEqual([[], false])
       expect(result2).toEqual([[], true])
       expect(result3).toEqual([[], true])
@@ -151,7 +147,7 @@ describe("Options", () => {
     Effect.gen(function*(_) {
       const option = Options.boolean("v", { negationNames: ["s"] })
       const args = Array.make("-v", "-s")
-      const result = yield* _(Effect.flip(process(option, args, CliConfig.defaultConfig)))
+      const result = yield* Effect.flip(process(option, args, CliConfig.defaultConfig))
       expect(result).toEqual(ValidationError.invalidValue(HelpDoc.p(
         "Collision between two options detected - " +
           "you can only specify one of either: ['-v', '-s']"
@@ -190,41 +186,40 @@ describe("Options", () => {
 
   it("validates a text option", () =>
     Effect.gen(function*(_) {
-      const result = yield* _(
-        process(firstName, ["--firstName", "John"], CliConfig.defaultConfig)
-      )
+      const result = yield* process(firstName, ["--firstName", "John"], CliConfig.defaultConfig)
+
       expect(result).toEqual([[], "John"])
     }).pipe(runEffect))
 
   it("validates a text option with an alternative format", () =>
     Effect.gen(function*(_) {
-      const result = yield* _(process(firstName, ["--firstName=John"], CliConfig.defaultConfig))
+      const result = yield* process(firstName, ["--firstName=John"], CliConfig.defaultConfig)
       expect(result).toEqual([[], "John"])
     }).pipe(runEffect))
 
   it("validates a text option with an alias", () =>
     Effect.gen(function*(_) {
-      const result = yield* _(process(firstName, ["-f", "John"], CliConfig.defaultConfig))
+      const result = yield* process(firstName, ["-f", "John"], CliConfig.defaultConfig)
       expect(result).toEqual([[], "John"])
     }).pipe(runEffect))
 
   it("validates an integer option", () =>
     Effect.gen(function*(_) {
-      const result = yield* _(process(age, ["--age", "100"], CliConfig.defaultConfig))
+      const result = yield* process(age, ["--age", "100"], CliConfig.defaultConfig)
       expect(result).toEqual([[], 100])
     }).pipe(runEffect))
 
   it("validates an option and returns the remainder", () =>
     Effect.gen(function*(_) {
       const args = Array.make("--firstName", "John", "--lastName", "Doe")
-      const result = yield* _(process(firstName, args, CliConfig.defaultConfig))
+      const result = yield* process(firstName, args, CliConfig.defaultConfig)
       expect(result).toEqual([["--lastName", "Doe"], "John"])
     }).pipe(runEffect))
 
   it("does not validate when no valid values are passed", () =>
     Effect.gen(function*(_) {
       const args = Array.make("--lastName", "Doe")
-      const result = yield* _(Effect.either(process(firstName, args, CliConfig.defaultConfig)))
+      const result = yield* Effect.either(process(firstName, args, CliConfig.defaultConfig))
       expect(result).toEqual(Either.left(ValidationError.missingValue(HelpDoc.p(
         "Expected to find option: '--firstName'"
       ))))
@@ -233,7 +228,7 @@ describe("Options", () => {
   it("does not validate when an option is passed without a corresponding value", () =>
     Effect.gen(function*(_) {
       const args = Array.make("--firstName")
-      const result = yield* _(Effect.either(process(firstName, args, CliConfig.defaultConfig)))
+      const result = yield* Effect.either(process(firstName, args, CliConfig.defaultConfig))
       expect(result).toEqual(Either.left(ValidationError.missingValue(HelpDoc.p(
         "Expected a value following option: '--firstName'"
       ))))
@@ -243,7 +238,7 @@ describe("Options", () => {
     Effect.gen(function*(_) {
       const option = Options.integer("t")
       const args = Array.make("-t", "abc")
-      const result = yield* _(Effect.flip(process(option, args, CliConfig.defaultConfig)))
+      const result = yield* Effect.flip(process(option, args, CliConfig.defaultConfig))
       expect(result).toEqual(ValidationError.invalidValue(HelpDoc.p("'abc' is not a integer")))
     }).pipe(runEffect))
 
@@ -251,7 +246,7 @@ describe("Options", () => {
     Effect.gen(function*(_) {
       const option = Options.withDefault(Options.integer("t"), 0)
       const args = Array.make("-t", "abc")
-      const result = yield* _(Effect.flip(process(option, args, CliConfig.defaultConfig)))
+      const result = yield* Effect.flip(process(option, args, CliConfig.defaultConfig))
       expect(result).toEqual(ValidationError.invalidValue(HelpDoc.p("'abc' is not a integer")))
     }).pipe(runEffect))
 
@@ -263,10 +258,10 @@ describe("Options", () => {
       const args2 = Array.make("-F", "John")
       const args3 = Array.make("--firstname", "John")
       const args4 = Array.make("-f", "John")
-      const result1 = yield* _(process(option, args1, config))
-      const result2 = yield* _(process(option, args2, config))
-      const result3 = yield* _(Effect.flip(process(option, args3, config)))
-      const result4 = yield* _(Effect.flip(process(option, args4, config)))
+      const result1 = yield* process(option, args1, config)
+      const result2 = yield* process(option, args2, config)
+      const result3 = yield* Effect.flip(process(option, args3, config))
+      const result4 = yield* Effect.flip(process(option, args4, config))
       expect(result1).toEqual([[], "John"])
       expect(result2).toEqual([[], "John"])
       expect(result3).toEqual(ValidationError.correctedFlag(HelpDoc.p(
@@ -279,21 +274,21 @@ describe("Options", () => {
 
   it("validates an unsupplied optional option", () =>
     Effect.gen(function*(_) {
-      const result = yield* _(process(ageOptional, [], CliConfig.defaultConfig))
+      const result = yield* process(ageOptional, [], CliConfig.defaultConfig)
       expect(result).toEqual([[], Option.none()])
     }).pipe(runEffect))
 
   it("validates an unsupplied optional option with remainder", () =>
     Effect.gen(function*(_) {
       const args = Array.make("--bar", "baz")
-      const result = yield* _(process(ageOptional, args, CliConfig.defaultConfig))
+      const result = yield* process(ageOptional, args, CliConfig.defaultConfig)
       expect(result).toEqual([args, Option.none()])
     }).pipe(runEffect))
 
   it("validates a supplied optional option", () =>
     Effect.gen(function*(_) {
       const args = Array.make("--age", "20")
-      const result = yield* _(process(ageOptional, args, CliConfig.defaultConfig))
+      const result = yield* process(ageOptional, args, CliConfig.defaultConfig)
       expect(result).toEqual([[], Option.some(20)])
     }).pipe(runEffect))
 
@@ -305,8 +300,8 @@ describe("Options", () => {
       })
       const option2 = Options.all([Options.text("firstName"), Options.text("lastName")])
       const args = Array.make("--firstName", "John", "--lastName", "Doe")
-      const result1 = yield* _(process(option1, args, CliConfig.defaultConfig))
-      const result2 = yield* _(process(option2, args, CliConfig.defaultConfig))
+      const result1 = yield* process(option1, args, CliConfig.defaultConfig)
+      const result2 = yield* process(option2, args, CliConfig.defaultConfig)
       expect(result1).toEqual([[], { firstName: "John", lastName: "Doe" }])
       expect(result2).toEqual([[], ["John", "Doe"]])
     }).pipe(runEffect))
@@ -314,7 +309,7 @@ describe("Options", () => {
   it("validate provides a suggestion if a provided option is close to a specified option", () =>
     Effect.gen(function*(_) {
       const args = Array.make("--firstme", "Alice")
-      const result = yield* _(Effect.flip(process(firstName, args, CliConfig.defaultConfig)))
+      const result = yield* Effect.flip(process(firstName, args, CliConfig.defaultConfig))
       expect(result).toEqual(ValidationError.correctedFlag(HelpDoc.p(
         "The flag '--firstme' is not recognized. Did you mean '--firstName'?"
       )))
@@ -324,7 +319,7 @@ describe("Options", () => {
     Effect.gen(function*(_) {
       const option = firstName.pipe(Options.withDefault("Jack"))
       const args = Array.make("--firstme", "Alice")
-      const result = yield* _(Effect.flip(process(option, args, CliConfig.defaultConfig)))
+      const result = yield* Effect.flip(process(option, args, CliConfig.defaultConfig))
       expect(result).toEqual(ValidationError.invalidValue(HelpDoc.p(
         "The flag '--firstme' is not recognized. Did you mean '--firstName'?"
       )))
@@ -342,8 +337,8 @@ describe("Options", () => {
       )
       const args1 = Array.make("--integer", "2")
       const args2 = Array.make("--string", "two")
-      const result1 = yield* _(process(option, args1, CliConfig.defaultConfig))
-      const result2 = yield* _(process(option, args2, CliConfig.defaultConfig))
+      const result1 = yield* process(option, args1, CliConfig.defaultConfig)
+      const result2 = yield* process(option, args2, CliConfig.defaultConfig)
       expect(result1).toEqual([[], Either.right(2)])
       expect(result2).toEqual([[], Either.left("two")])
     }).pipe(runEffect))
@@ -352,7 +347,7 @@ describe("Options", () => {
     Effect.gen(function*(_) {
       const option = Options.orElse(Options.text("string"), Options.integer("integer"))
       const args = Array.make("--integer", "2", "--string", "two")
-      const result = yield* _(Effect.flip(process(option, args, CliConfig.defaultConfig)))
+      const result = yield* Effect.flip(process(option, args, CliConfig.defaultConfig))
       expect(result).toEqual(ValidationError.invalidValue(HelpDoc.p(
         "Collision between two options detected - " +
           "you can only specify one of either: ['--string', '--integer']"
@@ -362,7 +357,7 @@ describe("Options", () => {
   it("orElse - no options provided", () =>
     Effect.gen(function*(_) {
       const option = Options.orElse(Options.text("string"), Options.integer("integer"))
-      const result = yield* _(Effect.flip(process(option, [], CliConfig.defaultConfig)))
+      const result = yield* Effect.flip(process(option, [], CliConfig.defaultConfig))
       const error = ValidationError.missingValue(HelpDoc.sequence(
         HelpDoc.p("Expected to find option: '--string'"),
         HelpDoc.p("Expected to find option: '--integer'")
@@ -377,7 +372,7 @@ describe("Options", () => {
         Options.withDefault(0)
       )
       const args = Array.make("--min", "abc")
-      const result = yield* _(Effect.flip(process(option, args, CliConfig.defaultConfig)))
+      const result = yield* Effect.flip(process(option, args, CliConfig.defaultConfig))
       const error = ValidationError.invalidValue(HelpDoc.sequence(
         HelpDoc.p("'abc' is not a integer"),
         HelpDoc.p("Expected to find option: '--max'")
@@ -387,7 +382,7 @@ describe("Options", () => {
 
   it("keyValueMap - validates a missing option", () =>
     Effect.gen(function*(_) {
-      const result = yield* _(Effect.flip(process(defs, [], CliConfig.defaultConfig)))
+      const result = yield* Effect.flip(process(defs, [], CliConfig.defaultConfig))
       expect(result).toEqual(ValidationError.missingValue(HelpDoc.p(
         "Expected to find option: '--defs'"
       )))
@@ -396,21 +391,21 @@ describe("Options", () => {
   it("keyValueMap - validates repeated values", () =>
     Effect.gen(function*(_) {
       const args = Array.make("-d", "key1=v1", "-d", "key2=v2", "--verbose")
-      const result = yield* _(process(defs, args, CliConfig.defaultConfig))
+      const result = yield* process(defs, args, CliConfig.defaultConfig)
       expect(result).toEqual([["--verbose"], HashMap.make(["key1", "v1"], ["key2", "v2"])])
     }).pipe(runEffect))
 
   it("keyValueMap - validates different key/values", () =>
     Effect.gen(function*(_) {
       const args = Array.make("--defs", "key1=v1", "key2=v2", "--verbose")
-      const result = yield* _(process(defs, args, CliConfig.defaultConfig))
+      const result = yield* process(defs, args, CliConfig.defaultConfig)
       expect(result).toEqual([["--verbose"], HashMap.make(["key1", "v1"], ["key2", "v2"])])
     }).pipe(runEffect))
 
   it("keyValueMap - validates different key/values with alias", () =>
     Effect.gen(function*(_) {
       const args = Array.make("-d", "key1=v1", "key2=v2", "--verbose")
-      const result = yield* _(process(defs, args, CliConfig.defaultConfig))
+      const result = yield* process(defs, args, CliConfig.defaultConfig)
       expect(result).toEqual([["--verbose"], HashMap.make(["key1", "v1"], ["key2", "v2"])])
     }).pipe(runEffect))
 
@@ -427,7 +422,7 @@ describe("Options", () => {
         "arg2",
         "--verbose"
       )
-      const result = yield* _(process(defs, args, CliConfig.defaultConfig))
+      const result = yield* process(defs, args, CliConfig.defaultConfig)
       expect(result).toEqual([
         ["arg1", "arg2", "--verbose"],
         HashMap.make(["key1", "val1"], ["key2", "val2"], ["key3", "val3"])
@@ -445,7 +440,7 @@ describe("Options", () => {
         "arg2",
         "--verbose"
       )
-      const result = yield* _(process(defs, args, CliConfig.defaultConfig))
+      const result = yield* process(defs, args, CliConfig.defaultConfig)
       expect(result).toEqual([
         ["arg1", "arg2", "--verbose"],
         HashMap.make(["key1", "val1"], ["key2", "val2"], ["key3", "val3"])
@@ -465,7 +460,7 @@ describe("Options", () => {
         "arg2",
         "--verbose"
       )
-      const result = yield* _(process(defs, args, CliConfig.defaultConfig))
+      const result = yield* process(defs, args, CliConfig.defaultConfig)
       expect(result).toEqual([
         ["key4=", "arg1", "arg2", "--verbose"],
         HashMap.make(["key1", "val1"], ["key2", "val2"], ["key3", "val3"])
@@ -478,10 +473,10 @@ describe("Options", () => {
       const args2 = ["--foo", "1", "--foo", "2", "--foo", "3"]
       const args3 = ["--foo", "v2"]
       const args4 = ["--foo", "1", "--foo", "v2", "--foo", "3"]
-      const result1 = yield* _(process(option, [], CliConfig.defaultConfig))
-      const result2 = yield* _(process(option, args2, CliConfig.defaultConfig))
-      const result3 = yield* _(Effect.flip(process(option, args3, CliConfig.defaultConfig)))
-      const result4 = yield* _(Effect.flip(process(option, args4, CliConfig.defaultConfig)))
+      const result1 = yield* process(option, [], CliConfig.defaultConfig)
+      const result2 = yield* process(option, args2, CliConfig.defaultConfig)
+      const result3 = yield* Effect.flip(process(option, args3, CliConfig.defaultConfig))
+      const result4 = yield* Effect.flip(process(option, args4, CliConfig.defaultConfig))
       expect(result1).toEqual([Array.empty(), []])
       expect(result2).toEqual([Array.empty(), [1, 2, 3]])
       expect(result3).toEqual(ValidationError.invalidValue(HelpDoc.p("'v2' is not a integer")))
@@ -493,8 +488,8 @@ describe("Options", () => {
       const option = Options.integer("foo").pipe(Options.atLeast(2))
       const args1 = ["--foo", "1", "--foo", "2"]
       const args2 = ["--foo", "1"]
-      const result1 = yield* _(process(option, args1, CliConfig.defaultConfig))
-      const result2 = yield* _(Effect.flip(process(option, args2, CliConfig.defaultConfig)))
+      const result1 = yield* process(option, args1, CliConfig.defaultConfig)
+      const result2 = yield* Effect.flip(process(option, args2, CliConfig.defaultConfig))
       expect(result1).toEqual([Array.empty(), [1, 2]])
       expect(result2).toEqual(ValidationError.invalidValue(HelpDoc.p(
         "Expected at least 2 value(s) for option: '--foo'"
@@ -506,8 +501,8 @@ describe("Options", () => {
       const option = Options.integer("foo").pipe(Options.atMost(2))
       const args1 = ["--foo", "1", "--foo", "2"]
       const args2 = ["--foo", "1", "--foo", "2", "--foo", "3"]
-      const result1 = yield* _(process(option, args1, CliConfig.defaultConfig))
-      const result2 = yield* _(Effect.flip(process(option, args2, CliConfig.defaultConfig)))
+      const result1 = yield* process(option, args1, CliConfig.defaultConfig)
+      const result2 = yield* Effect.flip(process(option, args2, CliConfig.defaultConfig))
       expect(result1).toEqual([Array.empty(), [1, 2]])
       expect(result2).toEqual(ValidationError.invalidValue(HelpDoc.p(
         "Expected at most 2 value(s) for option: '--foo'"
@@ -521,10 +516,10 @@ describe("Options", () => {
       const args2 = ["--foo", "1", "--foo", "2"]
       const args3 = ["--foo", "1", "--foo", "2", "--foo", "3"]
       const args4 = ["--foo", "1", "--foo", "2", "--foo", "3", "--foo", "4"]
-      const result1 = yield* _(Effect.flip(process(option, args1, CliConfig.defaultConfig)))
-      const result2 = yield* _(process(option, args2, CliConfig.defaultConfig))
-      const result3 = yield* _(process(option, args3, CliConfig.defaultConfig))
-      const result4 = yield* _(Effect.flip(process(option, args4, CliConfig.defaultConfig)))
+      const result1 = yield* Effect.flip(process(option, args1, CliConfig.defaultConfig))
+      const result2 = yield* process(option, args2, CliConfig.defaultConfig)
+      const result3 = yield* process(option, args3, CliConfig.defaultConfig)
+      const result4 = yield* Effect.flip(process(option, args4, CliConfig.defaultConfig))
       expect(result1).toEqual(ValidationError.invalidValue(HelpDoc.p(
         "Expected at least 2 value(s) for option: '--foo'"
       )))
@@ -537,15 +532,14 @@ describe("Options", () => {
 
   it("validates with a Schema", () =>
     Effect.gen(function*(_) {
-      const result = yield* _(
-        process(balance, ["--balance", "100.50"], CliConfig.defaultConfig)
-      )
+      const result = yield* process(balance, ["--balance", "100.50"], CliConfig.defaultConfig)
+
       assert.deepStrictEqual(result, [[], BigDecimal.unsafeFromString("100.50").pipe(BigDecimal.normalize)])
     }).pipe(runEffect))
 
   it("failure with a Schema", () =>
     Effect.gen(function*(_) {
-      const result = yield* _(
+      const result = yield* pipe(
         process(balance, ["--balance", "abc"], CliConfig.defaultConfig),
         Effect.flip
       )
@@ -561,128 +555,120 @@ describe("Options", () => {
 
   it("fileContent", () =>
     Effect.gen(function*(_) {
-      const fs = yield* _(FileSystem.FileSystem)
-      const path = yield* _(Path.Path)
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* Path.Path
       const filePath = path.join(__dirname, "fixtures/config.json")
-      const result = yield* _(
-        process(Options.fileContent("config"), ["--config", filePath], CliConfig.defaultConfig)
-      )
-      const content = yield* _(fs.readFile(filePath))
+      const result = yield* process(Options.fileContent("config"), ["--config", filePath], CliConfig.defaultConfig)
+
+      const content = yield* fs.readFile(filePath)
       assert.deepStrictEqual(result, [[], [filePath, content]])
     }).pipe(runEffect))
 
   it("fileText", () =>
     Effect.gen(function*(_) {
-      const fs = yield* _(FileSystem.FileSystem)
-      const path = yield* _(Path.Path)
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* Path.Path
       const filePath = path.join(__dirname, "fixtures/config.json")
-      const result = yield* _(
-        process(Options.fileText("config"), ["--config", filePath], CliConfig.defaultConfig)
-      )
-      const content = yield* _(fs.readFileString(filePath))
+      const result = yield* process(Options.fileText("config"), ["--config", filePath], CliConfig.defaultConfig)
+
+      const content = yield* fs.readFileString(filePath)
       assert.deepStrictEqual(result, [[], [filePath, content]])
     }).pipe(runEffect))
 
   it("fileParse", () =>
     Effect.gen(function*(_) {
-      const fs = yield* _(FileSystem.FileSystem)
-      const path = yield* _(Path.Path)
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* Path.Path
       const filePath = path.join(__dirname, "fixtures/config.json")
-      const result = yield* _(
-        process(Options.fileParse("config"), ["--config", filePath], CliConfig.defaultConfig)
-      )
-      const content = yield* _(fs.readFileString(filePath), Effect.map(JSON.parse))
+      const result = yield* process(Options.fileParse("config"), ["--config", filePath], CliConfig.defaultConfig)
+
+      const content = yield* pipe(fs.readFileString(filePath), Effect.map(JSON.parse))
       assert.deepStrictEqual(result, [[], content])
     }).pipe(runEffect))
 
   it("fileSchema", () =>
     Effect.gen(function*(_) {
-      const fs = yield* _(FileSystem.FileSystem)
-      const path = yield* _(Path.Path)
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* Path.Path
       const filePath = path.join(__dirname, "fixtures/config.json")
-      const result = yield* _(
-        process(
-          Options.fileSchema(
-            "config",
-            Schema.Struct({
-              foo: Schema.Boolean,
-              bar: Schema.Literal("baz")
-            })
-          ),
-          ["--config", filePath],
-          CliConfig.defaultConfig
-        )
+      const result = yield* process(
+        Options.fileSchema(
+          "config",
+          Schema.Struct({
+            foo: Schema.Boolean,
+            bar: Schema.Literal("baz")
+          })
+        ),
+        ["--config", filePath],
+        CliConfig.defaultConfig
       )
-      const content = yield* _(fs.readFileString(filePath), Effect.map(JSON.parse))
+
+      const content = yield* pipe(fs.readFileString(filePath), Effect.map(JSON.parse))
       assert.deepStrictEqual(result, [[], content])
     }).pipe(runEffect))
 
   it("fileSchema yaml", () =>
     Effect.gen(function*(_) {
-      const fs = yield* _(FileSystem.FileSystem)
-      const path = yield* _(Path.Path)
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* Path.Path
       const filePath = path.join(__dirname, "fixtures/config.yaml")
       const jsonPath = path.join(__dirname, "fixtures/config.json")
-      const result = yield* _(
-        process(
-          Options.fileSchema(
-            "config",
-            Schema.Struct({
-              foo: Schema.Boolean,
-              bar: Schema.Literal("baz")
-            })
-          ),
-          ["--config", filePath],
-          CliConfig.defaultConfig
-        )
+      const result = yield* process(
+        Options.fileSchema(
+          "config",
+          Schema.Struct({
+            foo: Schema.Boolean,
+            bar: Schema.Literal("baz")
+          })
+        ),
+        ["--config", filePath],
+        CliConfig.defaultConfig
       )
-      const content = yield* _(fs.readFileString(jsonPath), Effect.map(JSON.parse))
+
+      const content = yield* pipe(fs.readFileString(jsonPath), Effect.map(JSON.parse))
       assert.deepStrictEqual(result, [[], content])
     }).pipe(runEffect))
 
   it("fileSchema ini", () =>
     Effect.gen(function*(_) {
-      const fs = yield* _(FileSystem.FileSystem)
-      const path = yield* _(Path.Path)
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* Path.Path
       const filePath = path.join(__dirname, "fixtures/config.ini")
       const jsonPath = path.join(__dirname, "fixtures/config.json")
-      const result = yield* _(
-        process(
-          Options.fileSchema(
-            "config",
-            Schema.Struct({
-              foo: Schema.Boolean,
-              bar: Schema.Literal("baz")
-            })
-          ),
-          ["--config", filePath],
-          CliConfig.defaultConfig
-        )
+      const result = yield* process(
+        Options.fileSchema(
+          "config",
+          Schema.Struct({
+            foo: Schema.Boolean,
+            bar: Schema.Literal("baz")
+          })
+        ),
+        ["--config", filePath],
+        CliConfig.defaultConfig
       )
-      const content = yield* _(fs.readFileString(jsonPath), Effect.map(JSON.parse))
+      const content = yield* pipe(fs.readFileString(jsonPath), Effect.map(JSON.parse))
       assert.deepStrictEqual(result, [[], content])
     }).pipe(runEffect))
 
   it("fileSchema toml", () =>
     Effect.gen(function*(_) {
-      const fs = yield* _(FileSystem.FileSystem)
-      const path = yield* _(Path.Path)
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* Path.Path
       const filePath = path.join(__dirname, "fixtures/config.toml")
       const jsonPath = path.join(__dirname, "fixtures/config.json")
-      const result = yield* _(
-        process(
-          Options.fileSchema(
-            "config",
-            Schema.Struct({
-              foo: Schema.Boolean,
-              bar: Schema.Literal("baz")
-            })
-          ),
-          ["--config", filePath],
-          CliConfig.defaultConfig
-        )
+      const result = yield* process(
+        Options.fileSchema(
+          "config",
+          Schema.Struct({
+            foo: Schema.Boolean,
+            bar: Schema.Literal("baz")
+          })
+        ),
+        ["--config", filePath],
+        CliConfig.defaultConfig
       )
-      const content = yield* _(fs.readFileString(jsonPath), Effect.map(JSON.parse))
+
+      const content = yield* pipe(fs.readFileString(jsonPath), Effect.map(JSON.parse))
       assert.deepStrictEqual(result, [[], content])
     }).pipe(runEffect))
 })

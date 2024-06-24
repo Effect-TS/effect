@@ -556,50 +556,50 @@ describe("ScopedCache", () => {
 
   it.effect("getOption - should return None if resource is not in cache", () =>
     Effect.scoped(Effect.gen(function*(_) {
-      const scopedCache = yield* _(ScopedCache.make({
+      const scopedCache = yield* pipe(ScopedCache.make({
         capacity: 1,
         timeToLive: Duration.infinity,
         lookup: (i: number) => Effect.succeed(i)
       }))
-      const option = yield* _(scopedCache.getOption(1))
+      const option = yield* scopedCache.getOption(1)
       expect(option._tag).toEqual("None")
     })))
 
   it.effect("getOption - should return Some if pending", () =>
     Effect.scoped(Effect.gen(function*(_) {
-      const scopedCache = yield* _(ScopedCache.make({
+      const scopedCache = yield* ScopedCache.make({
         capacity: 1,
         timeToLive: Duration.infinity,
         lookup: (i: number) => TestServices.provideLive(Effect.delay(Effect.succeed(i), Duration.millis(10)))
-      }))
-      yield* _(scopedCache.get(1), Effect.scoped, Effect.fork)
-      yield* _(TestServices.provideLive(Effect.sleep(Duration.millis(5))))
-      const option = yield* _(scopedCache.getOption(1), Effect.scoped)
+      })
+      yield* pipe(scopedCache.get(1), Effect.scoped, Effect.fork)
+      yield* TestServices.provideLive(Effect.sleep(Duration.millis(5)))
+      const option = yield* pipe(scopedCache.getOption(1), Effect.scoped)
       expect(option._tag).toEqual("Some")
     })))
 
   it.effect("getOptionComplete - should return None if pending", () =>
     Effect.scoped(Effect.gen(function*(_) {
-      const scopedCache = yield* _(ScopedCache.make({
+      const scopedCache = yield* ScopedCache.make({
         capacity: 1,
         timeToLive: Duration.infinity,
         lookup: (i: number) => Effect.delay(Effect.succeed(i), Duration.millis(10))
-      }))
-      yield* _(scopedCache.get(1), Effect.scoped, Effect.fork)
-      yield* _(TestClock.adjust(Duration.millis(9)))
-      const option = yield* _(scopedCache.getOptionComplete(1), Effect.scoped)
+      })
+      yield* pipe(scopedCache.get(1), Effect.scoped, Effect.fork)
+      yield* TestClock.adjust(Duration.millis(9))
+      const option = yield* pipe(scopedCache.getOptionComplete(1), Effect.scoped)
       expect(option._tag).toEqual("None")
     })))
 
   it.effect("getOptionComplete - should return Some if complete", () =>
     Effect.scoped(Effect.gen(function*(_) {
-      const scopedCache = yield* _(ScopedCache.make({
+      const scopedCache = yield* ScopedCache.make({
         capacity: 1,
         timeToLive: Duration.infinity,
         lookup: (i: number) => TestServices.provideLive(Effect.delay(Effect.succeed(i), Duration.millis(10)))
-      }))
-      yield* _(scopedCache.get(1), Effect.scoped)
-      const option = yield* _(scopedCache.getOptionComplete(1), Effect.scoped)
+      })
+      yield* pipe(scopedCache.get(1), Effect.scoped)
+      const option = yield* pipe(scopedCache.getOptionComplete(1), Effect.scoped)
       expect(option._tag).toEqual("Some")
     })))
 
@@ -837,7 +837,7 @@ describe("ScopedCache", () => {
     }))
   it.effect(".pipe", () =>
     Effect.gen(function*(_) {
-      const cache = yield* _(
+      const cache = yield* pipe(
         ScopedCache.make({
           capacity: 10,
           timeToLive: Duration.seconds(10),

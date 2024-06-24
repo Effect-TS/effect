@@ -5568,7 +5568,7 @@ class Messages extends Context.Tag("Messages")<
 const Name = Schema.NonEmpty.pipe(
   Schema.message(() =>
     Effect.gen(function* (_) {
-      const service = yield* _(Effect.serviceOption(Messages))
+      const service = yield* Effect.serviceOption(Messages)
       return Option.match(service, {
         onNone: () => "Invalid string",
         onSome: (messages) => messages.NonEmpty

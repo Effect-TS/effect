@@ -1,14 +1,14 @@
 import * as Transferable from "@effect/platform/Transferable"
 import { Schema } from "@effect/schema"
-import { Effect } from "effect"
+import { Effect, pipe } from "effect"
 import { assert, describe, test } from "vitest"
 
 describe("Transferable", () => {
   test("collects transferables", () =>
     Effect.gen(function*(_) {
-      const collector = yield* _(Transferable.makeCollector)
+      const collector = yield* Transferable.makeCollector
       const data = new Uint8Array([1, 2, 3])
-      yield* _(
+      yield* pipe(
         Schema.encode(Transferable.Uint8Array)(data),
         Effect.provideService(Transferable.Collector, collector)
       )

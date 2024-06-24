@@ -14,16 +14,14 @@ const SqlLive = Pg.client.layer({
 })
 
 const program = Effect.gen(function* (_) {
-  const sql = yield* _(Sql.client.Client)
+  const sql = yield* Sql.client.Client
 
-  const people = yield* _(
-    sql<{
-      readonly id: number
-      readonly name: string
-    }>`SELECT id, name FROM people`
-  )
+  const people = yield* sql<{
+    readonly id: number
+    readonly name: string
+  }>`SELECT id, name FROM people`
 
-  yield* _(Effect.log(`Got ${people.length} results!`))
+  yield* Effect.log(`Got ${people.length} results!`)
 })
 
 pipe(program, Effect.provide(SqlLive), Effect.runPromise)
@@ -113,20 +111,18 @@ const InsertPersonSchema = Schema.Struct(
 )
 
 export const makePersonService = Effect.gen(function* (_) {
-  const sql = yield* _(Sql.client.Client)
+  const sql = yield* Sql.client.Client
 
-  const InsertPerson = yield* _(
-    Sql.resolver.ordered("InsertPerson", {
-      Request: InsertPersonSchema,
-      Result: Person,
-      execute: (requests) =>
-        sql`
-        INSERT INTO people
-        ${sql.insert(requests)}
-        RETURNING people.*
-      `
-    })
-  )
+  const InsertPerson = yield* Sql.resolver.ordered("InsertPerson", {
+    Request: InsertPersonSchema,
+    Result: Person,
+    execute: (requests) =>
+      sql`
+      INSERT INTO people
+      ${sql.insert(requests)}
+      RETURNING people.*
+    `
+  })
   const insert = InsertPerson.execute
 
   return { insert }
@@ -148,16 +144,14 @@ class Person extends Schema.Class<Person>("Person")({
 }) {}
 
 export const makePersonService = Effect.gen(function* (_) {
-  const sql = yield* _(Sql.client.Client)
+  const sql = yield* Sql.client.Client
 
-  const GetById = yield* _(
-    Sql.resolver.findById("GetPersonById", {
-      Id: Schema.Number,
-      Result: Person,
-      ResultId: (_) => _.id,
-      execute: (ids) => sql`SELECT * FROM people WHERE ${sql.in("id", ids)}`
-    })
-  )
+  const GetById = yield* Sql.resolver.findById("GetPersonById", {
+    Id: Schema.Number,
+    Result: Person,
+    ResultId: (_) => _.id,
+    execute: (ids) => sql`SELECT * FROM people WHERE ${sql.in("id", ids)}`
+  })
 
   const getById = (id: number) =>
     Effect.withRequestCaching("on")(GetById.execute(id))
@@ -176,7 +170,7 @@ import * as Sql from "@effect/sql"
 
 export const make = (limit: number) =>
   Effect.gen(function* (_) {
-    const sql = yield* _(Sql.client.Client)
+    const sql = yield* Sql.client.Client
 
     const statement = sql`SELECT * FROM people LIMIT ${limit}`
     // e.g. SELECT * FROM people LIMIT ?
@@ -193,7 +187,7 @@ const table = "people"
 
 export const make = (limit: number) =>
   Effect.gen(function* (_) {
-    const sql = yield* _(Sql.client.Client)
+    const sql = yield* Sql.client.Client
 
     const statement = sql`SELECT * FROM ${sql(table)} LIMIT ${limit}`
     // e.g. SELECT * FROM "people" LIMIT ?
@@ -211,7 +205,7 @@ type SortOrder = "ASC" | "DESC"
 
 export const make = (orderBy: OrderBy, sortOrder: SortOrder) =>
   Effect.gen(function* (_) {
-    const sql = yield* _(Sql.client.Client)
+    const sql = yield* Sql.client.Client
 
     const statement = sql`SELECT * FROM people ORDER BY ${sql(orderBy)} ${sql.unsafe(sortOrder)}`
     // e.g. SELECT * FROM people ORDER BY `id` ASC
@@ -228,7 +222,7 @@ import * as Sql from "@effect/sql"
 
 export const make = (names: string[], cursor: string) =>
   Effect.gen(function* (_) {
-    const sql = yield* _(Sql.client.Client)
+    const sql = yield* Sql.client.Client
 
     const statement = sql`SELECT * FROM people WHERE ${sql.and([
       sql.in("name", names),
@@ -246,7 +240,7 @@ import * as Sql from "@effect/sql"
 
 export const make = (names: string[], cursor: Date) =>
   Effect.gen(function* (_) {
-    const sql = yield* _(Sql.client.Client)
+    const sql = yield* Sql.client.Client
 
     const statement = sql`SELECT * FROM people WHERE ${sql.or([
       sql.in("name", names),
@@ -264,7 +258,7 @@ import * as Sql from "@effect/sql"
 
 export const make = (names: string[], afterCursor: Date, beforeCursor: Date) =>
   Effect.gen(function* (_) {
-    const sql = yield* _(Sql.client.Client)
+    const sql = yield* Sql.client.Client
 
     const statement = sql`SELECT * FROM people WHERE ${sql.or([
       sql.in("name", names),

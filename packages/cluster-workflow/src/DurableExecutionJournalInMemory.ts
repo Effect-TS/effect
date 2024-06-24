@@ -22,7 +22,7 @@ class JournalEntry extends Data.Class<{
 export const activityJournalInMemory = Layer.effect(
   DurableExecutionJournal.DurableExecutionJournal,
   Effect.gen(function*(_) {
-    const memory = yield* _(Ref.make<Array<JournalEntry>>([]))
+    const memory = yield* Ref.make<Array<JournalEntry>>([])
     return ({
       append: (persistenceId, _, __, event) =>
         pipe(

@@ -225,12 +225,12 @@ export const make = <RD = never>({
         required.push([
           currentId,
           currentName,
-          yield* _(loadMigration(resolved))
+          yield* loadMigration(resolved)
         ])
       }
 
       if (required.length > 0) {
-        yield* _(
+        yield* pipe(
           insertMigrations(required.map(([id, name]) => [id, name])),
           Effect.mapError((_) =>
             new MigrationError({
@@ -241,7 +241,7 @@ export const make = <RD = never>({
         )
       }
 
-      yield* _(
+      yield* pipe(
         Effect.forEach(
           required,
           ([id, name, effect]) =>
@@ -254,7 +254,7 @@ export const make = <RD = never>({
         )
       )
 
-      yield* _(
+      yield* pipe(
         latestMigration,
         Effect.flatMap(
           Option.match({
@@ -271,9 +271,9 @@ export const make = <RD = never>({
       return required.map(([id, name]) => [id, name] as const)
     })
 
-    yield* _(ensureMigrationsTable)
+    yield* ensureMigrationsTable
 
-    const completed = yield* _(
+    const completed = yield* pipe(
       sql.withTransaction(run),
       Effect.catchTag("MigrationError", (_) =>
         _.reason === "locked"
@@ -282,7 +282,7 @@ export const make = <RD = never>({
     )
 
     if (schemaDirectory && completed.length > 0) {
-      yield* _(
+      yield* pipe(
         dumpSchema(`${schemaDirectory}/_schema.sql`, table),
         Effect.catchAllCause((cause) => Effect.logInfo("Could not dump schema", cause))
       )

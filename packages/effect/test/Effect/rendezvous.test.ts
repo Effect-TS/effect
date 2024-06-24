@@ -8,35 +8,31 @@ import { assert, describe } from "vitest"
 describe("Effect", () => {
   it.effect("bounded 0 is rendezvous", () =>
     Effect.gen(function*(_) {
-      const rendevous = yield* _(Queue.bounded<string>(0))
+      const rendevous = yield* Queue.bounded<string>(0)
       const logs: Array<string> = []
 
-      const fiber = yield* _(
-        Effect.fork(
-          Effect.gen(function*(_) {
-            yield* _(Effect.sleep("50 millis"))
-            logs.push("sending message")
-            yield* _(Queue.offer(rendevous, "Hello World"))
-            logs.push("sent message")
-          })
-        )
+      const fiber = yield* Effect.fork(
+        Effect.gen(function*(_) {
+          yield* Effect.sleep("50 millis")
+          logs.push("sending message")
+          yield* Queue.offer(rendevous, "Hello World")
+          logs.push("sent message")
+        })
       )
 
-      const fiber2 = yield* _(
-        Effect.fork(
-          Effect.gen(function*(_) {
-            yield* _(Effect.sleep("100 millis"))
-            logs.push("receiving message")
-            const message = yield* _(Queue.take(rendevous))
-            logs.push("received message")
-            logs.push(message)
-          })
-        )
+      const fiber2 = yield* Effect.fork(
+        Effect.gen(function*(_) {
+          yield* Effect.sleep("100 millis")
+          logs.push("receiving message")
+          const message = yield* Queue.take(rendevous)
+          logs.push("received message")
+          logs.push(message)
+        })
       )
 
-      yield* _(TestClock.adjust("200 millis"))
+      yield* TestClock.adjust("200 millis")
 
-      yield* _(Fiber.join(Fiber.zip(fiber, fiber2)))
+      yield* Fiber.join(Fiber.zip(fiber, fiber2))
 
       assert.deepEqual(logs, [
         "sending message",

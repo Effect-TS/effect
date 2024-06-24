@@ -130,9 +130,9 @@ const renderNextFrame = <A>(
   options: Required<Prompt.Prompt.SelectOptions<A>>
 ): Effect.Effect<string, never, Terminal.Terminal> =>
   Effect.gen(function*(_) {
-    const terminal = yield* _(Terminal.Terminal)
-    const figures = yield* _(InternalAnsiUtils.figures)
-    const columns = yield* _(terminal.columns)
+    const terminal = yield* Terminal.Terminal
+    const figures = yield* InternalAnsiUtils.figures
+    const columns = yield* terminal.columns
     const choices = renderChoices(nextState, options, figures)
     const clearScreen = renderClearScreen(prevState, options, columns)
     const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyanBright)
@@ -153,9 +153,9 @@ const renderSubmission = <A>(
   options: Required<Prompt.Prompt.SelectOptions<A>>
 ) =>
   Effect.gen(function*(_) {
-    const terminal = yield* _(Terminal.Terminal)
-    const figures = yield* _(InternalAnsiUtils.figures)
-    const columns = yield* _(terminal.columns)
+    const terminal = yield* Terminal.Terminal
+    const figures = yield* InternalAnsiUtils.figures
+    const columns = yield* terminal.columns
     const selected = Doc.text(options.choices[state.cursor].title)
     const clearScreen = renderClearScreen(Option.some(state), options, columns)
     const leadingSymbol = Doc.annotate(figures.tick, Ansi.green)

@@ -1,5 +1,5 @@
 import { FileSystem, PlatformLogger } from "@effect/platform"
-import { Effect, Logger } from "effect"
+import { Effect, Logger, pipe } from "effect"
 import { assert, describe, test } from "vitest"
 
 const fileLogger = Logger.simple((_: unknown) => String(_)).pipe(
@@ -11,14 +11,14 @@ describe("PlatformLogger", () => {
   test("toFile", () =>
     Effect.gen(function*(_) {
       const chunks: Array<string> = []
-      yield* _(
+      yield* pipe(
         Effect.gen(function*(_) {
-          yield* _(Effect.log("a"))
-          yield* _(Effect.log("b"))
-          yield* _(Effect.log("c"))
-          yield* _(Effect.sleep(0))
-          yield* _(Effect.log("d"))
-          yield* _(Effect.log("e"))
+          yield* Effect.log("a")
+          yield* Effect.log("b")
+          yield* Effect.log("c")
+          yield* Effect.sleep(0)
+          yield* Effect.log("d")
+          yield* Effect.log("e")
         }),
         Effect.scoped,
         Effect.provide(LoggerLive),

@@ -11,7 +11,7 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
   spawn<I, O>(worker_: unknown) {
     return Effect.gen(function*(_) {
       const worker = worker_ as WorkerThreads.Worker
-      yield* _(Effect.addFinalizer(() =>
+      yield* Effect.addFinalizer(() =>
         pipe(
           Effect.async<void>((resume) => {
             worker.once("exit", () => {
@@ -22,10 +22,10 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
           Effect.timeout(5000),
           Effect.orElse(() => Effect.sync(() => worker.terminate()))
         )
-      ))
-      const queue = yield* _(Queue.unbounded<Worker.BackingWorker.Message<O>>())
-      yield* _(Effect.addFinalizer(() => Queue.shutdown(queue)))
-      const fiber = yield* _(
+      )
+      const queue = yield* Queue.unbounded<Worker.BackingWorker.Message<O>>()
+      yield* Effect.addFinalizer(() => Queue.shutdown(queue))
+      const fiber = yield* pipe(
         Effect.async<never, WorkerError>((resume) => {
           worker.on("message", (message: Worker.BackingWorker.Message<O>) => {
             queue.unsafeOffer(message)

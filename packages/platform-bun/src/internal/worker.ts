@@ -11,7 +11,7 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
     return Effect.gen(function*(_) {
       const port = worker_ as globalThis.Worker
 
-      yield* _(Effect.addFinalizer(() =>
+      yield* Effect.addFinalizer(() =>
         pipe(
           Effect.async<void>((resume, signal) => {
             port.addEventListener("close", () => resume(Effect.void), { once: true, signal })
@@ -22,11 +22,11 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
           Effect.timeout(1000),
           Effect.orElse(() => Effect.sync(() => port.terminate()))
         )
-      ))
+      )
 
-      const queue = yield* _(Queue.unbounded<Worker.BackingWorker.Message<O>>())
+      const queue = yield* Queue.unbounded<Worker.BackingWorker.Message<O>>()
 
-      const fiber = yield* _(
+      const fiber = yield* pipe(
         Effect.async<never, WorkerError>((resume) => {
           function onMessage(event: MessageEvent) {
             queue.unsafeOffer((event as MessageEvent).data)

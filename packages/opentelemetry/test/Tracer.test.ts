@@ -5,6 +5,7 @@ import * as OtelApi from "@opentelemetry/api"
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks"
 import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base"
 import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
 import { assert, describe, expect } from "vitest"
 
 const TracingLive = NodeSdk.layer(Effect.sync(() => ({
@@ -24,7 +25,7 @@ describe("Tracer", () => {
       Effect.provide(
         Effect.withSpan("ok")(
           Effect.gen(function*(_) {
-            const span = yield* _(Effect.currentSpan)
+            const span = yield* Effect.currentSpan
             expect(span).instanceOf(OtelSpan)
           })
         ),
@@ -33,8 +34,8 @@ describe("Tracer", () => {
 
     it.effect("withSpan links", () =>
       Effect.gen(function*(_) {
-        const linkedSpan = yield* _(Effect.makeSpanScoped("B"))
-        const span = yield* _(
+        const linkedSpan = yield* Effect.makeSpanScoped("B")
+        const span = yield* pipe(
           Effect.currentSpan,
           Effect.withSpan("A"),
           Effect.linkSpans(linkedSpan)
@@ -58,7 +59,7 @@ describe("Tracer", () => {
 
     it.effect("supervisor sets context generator", () =>
       Effect.gen(function*(_) {
-        yield* _(Effect.yieldNow())
+        yield* Effect.yieldNow()
         expect(OtelApi.trace.getSpan(OtelApi.context.active())).toBeDefined()
       }).pipe(
         Effect.withSpan("ok"),
@@ -69,8 +70,8 @@ describe("Tracer", () => {
       Effect.provide(
         Effect.withSpan("ok")(
           Effect.gen(function*(_) {
-            const span = yield* _(Effect.currentSpan)
-            const otelSpan = yield* _(currentOtelSpan)
+            const span = yield* Effect.currentSpan
+            const otelSpan = yield* currentOtelSpan
             expect((span as OtelSpan).span).toBe(otelSpan)
           })
         ),
@@ -82,7 +83,7 @@ describe("Tracer", () => {
     it.effect("withSpan", () =>
       Effect.withSpan("ok")(
         Effect.gen(function*(_) {
-          const span = yield* _(Effect.currentSpan)
+          const span = yield* Effect.currentSpan
           expect(span).not.instanceOf(OtelSpan)
         })
       ))
