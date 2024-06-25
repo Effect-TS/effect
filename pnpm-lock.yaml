@@ -589,7 +589,7 @@ importers:
         version: 10.10.0
       drizzle-orm:
         specifier: ^0.31.2
-        version: 0.31.2(@op-engineering/op-sqlite@6.0.7(react-native@0.74.2(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))(react@18.3.1))(react@18.3.1))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.10)(better-sqlite3@11.0.0)(bun-types@1.1.16)(mysql2@3.10.1)(postgres@3.4.4)(react@18.3.1)
+        version: 0.31.2(@cloudflare/workers-types@4.20240620.0)(@op-engineering/op-sqlite@6.0.7(react@18.3.1))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.10)(better-sqlite3@11.0.0)(bun-types@1.1.16)(kysely@0.27.3)(mysql2@3.10.1)(postgres@3.4.4)(react@18.3.1)
       effect:
         specifier: workspace:^
         version: link:../effect/dist
@@ -599,20 +599,20 @@ importers:
     dependencies:
       '@opentelemetry/semantic-conventions':
         specifier: ^1.24.1
-        version: 1.24.1
+        version: 1.25.1
     devDependencies:
       '@effect/sql':
         specifier: workspace:^
         version: link:../sql/dist
       '@testcontainers/mssqlserver':
         specifier: ^10.9.0
-        version: 10.9.0
+        version: 10.10.0
       '@testcontainers/mysql':
         specifier: ^10.9.0
-        version: 10.9.0
+        version: 10.10.0
       '@testcontainers/postgresql':
         specifier: ^10.9.0
-        version: 10.9.0
+        version: 10.10.0
       '@types/better-sqlite3':
         specifier: ^7.6.10
         version: 7.6.10
@@ -1707,6 +1707,9 @@ packages:
   '@changesets/write@0.3.1':
     resolution: {integrity: sha512-SyGtMXzH3qFqlHKcvFY2eX+6b0NGiFcNav8AFsYwy5l8hejOeoeTDemu5Yjmke2V5jpzY+pBvM0vCCQ3gdZpfw==}
 
+  '@cloudflare/workers-types@4.20240620.0':
+    resolution: {integrity: sha512-CQD8YS6evRob7LChvIX3gE3zYo0KVgaLDOu1SwNP1BVIS2Sa0b+FC8S1e1hhrNN8/E4chYlVN+FDAgA4KRDUEQ==}
+
   '@dependents/detective-less@4.1.0':
     resolution: {integrity: sha512-KrkT6qO5NxqNfy68sBl6CTSoJ4SNDIS5iQArkibhlbGU4LaDukZ3q2HIkh8aUKDio6o4itU4xDR7t82Y2eP1Bg==}
     engines: {node: '>=14'}
@@ -2520,14 +2523,14 @@ packages:
     resolution: {integrity: sha512-10s/u/Main1RGO+jjzK+mgC/zh1ls1CEnq3Dujr03TwvzLg+j4FAohOmlYkQj8KQOj1vGR9cuB9F8tVBTwVGVA==}
     hasBin: true
 
+  '@testcontainers/mssqlserver@10.10.0':
+    resolution: {integrity: sha512-zuofGTErmJREWeznYZw//U8K4v5sR8irIlu/iNfso/m6ZXBIGW0COm1oaYd6GMjR9ypo54MsOXJX3lRRyaDzYg==}
+
   '@testcontainers/mysql@10.10.0':
     resolution: {integrity: sha512-D1GFS1ugM9nL1NPGO5A5t9MyBgs9/Vwy1MIk5xX1lTCNLzjtoudL+fb3yK4h7krFX/B3lbn9/uoDSWui3yn4QQ==}
 
   '@testcontainers/postgresql@10.10.0':
     resolution: {integrity: sha512-cgzYnhzsYPVwN370bjJCuyAkkjLhGD6EBoQi4j+xKomMU4e6FWu0SYDolP+tiFGKWaS95SsIY3CPp6bnuxBh/A==}
-
-  '@testcontainers/postgresql@10.9.0':
-    resolution: {integrity: sha512-Z3K/TFkl/PVE2v8A6yKqgF4pSFk9ilFG02yeGhPswUjmBlcig/rpVOjBQOkQ/yJCcQ/r2RrX3RR+7vr+UO4QlQ==}
 
   '@types/better-sqlite3@7.6.10':
     resolution: {integrity: sha512-TZBjD+yOsyrUJGmcUj6OS3JADk3+UZcNv3NOBqGkM09bZdi28fNZw8ODqbMOLfKCu7RYCO62/ldq1iHbzxqoPw==}
@@ -2547,11 +2550,11 @@ packages:
   '@types/estree@1.0.5':
     resolution: {integrity: sha512-/kYRxGDLWzHOB7q+wtSUQlFrtcdUccpfy+X+9iMBpHK8QLLhx2wIPYuS5DYtR9Wa/YlZAbIovy7qVdB1Aq6Lyw==}
 
+  '@types/glob@7.1.3':
+    resolution: {integrity: sha512-SEYeGAIQIQX8NN6LDKprLjbrd5dARM5EXsd8GI/A5l0apYI1fGMWgPHSe4ZKL4eozlAyI+doUE9XbYS4xCkQ1w==}
+
   '@types/ini@4.1.1':
     resolution: {integrity: sha512-MIyNUZipBTbyUNnhvuXJTY7B6qNI78meck9Jbv3wk0OgNwRyOOVEKDutAkOs1snB/tx0FafyR6/SN4Ps0hZPeg==}
-
-  '@types/ini@4.1.0':
-    resolution: {integrity: sha512-mTehMtc+xtnWBBvqizcqYCktKDBH2WChvx1GU3Sfe4PysFDXiNe+1YwtpVX1MDtCa4NQrSPw2+3HmvXHY3gt1w==}
 
   '@types/istanbul-lib-coverage@2.0.6':
     resolution: {integrity: sha512-2QF/t/auWm0lsy8XtKVPG19v3sSOQlJe/YHZgfjb/KBBHOGSV+J2q/S671rcq9uTBrLAXmZpqJiaQbMT+zNU1w==}
@@ -2583,11 +2586,14 @@ packages:
   '@types/mime@3.0.4':
     resolution: {integrity: sha512-iJt33IQnVRkqeqC7PzBHPTC6fDlRNRW8vjrgqtScAhrmMwe8c4Eo7+fUGTa+XdWrpEgpyKWMYmi2dIwMAYRzPw==}
 
-  '@types/node-forge@1.3.11':
-    resolution: {integrity: sha512-FQx220y22OKNTqaByeBGqHWYz4cl94tpcxeFdvBo3wjG6XPBuZ0BNgNZRV5J5TFmmcsJ4IzsLkmGRiQbnYsBEQ==}
+  '@types/minimatch@5.1.2':
+    resolution: {integrity: sha512-K0VQKziLUWkVKiRVrx4a40iPaxTUefQmjtkQofBkYRcoaaL/8rhwDWww9qWbrgicNOgnpIsMxyNIUM4+n6dUIA==}
 
   '@types/node-forge@1.3.11':
     resolution: {integrity: sha512-FQx220y22OKNTqaByeBGqHWYz4cl94tpcxeFdvBo3wjG6XPBuZ0BNgNZRV5J5TFmmcsJ4IzsLkmGRiQbnYsBEQ==}
+
+  '@types/node@12.20.55':
+    resolution: {integrity: sha512-J8xLz7q2OFulZ2cyGTLE1TbbZcjpno7FaN6zdJNrgAdrJ+DZzh/uFR6YrTb4C+nXakvud8Q4+rbhoIWlYQbUFQ==}
 
   '@types/node@18.19.39':
     resolution: {integrity: sha512-nPwTRDKUctxw3di5b4TfT3I0sWDiWoPQCZjXhvdkINntwr8lcoVCKsTgnXeRubKIlfnV+eN/HYk6Jb40tbcEAQ==}
@@ -2597,6 +2603,9 @@ packages:
 
   '@types/node@20.14.8':
     resolution: {integrity: sha512-DO+2/jZinXfROG7j7WKFn/3C6nFwxy2lLpgLjEXJz+0XKphZlTLJ14mo8Vfg8X5BWN6XjyESXq+LcYdT7tR3bA==}
+
+  '@types/normalize-package-data@2.4.4':
+    resolution: {integrity: sha512-37i+OaWTh9qeK4LSHPsyRC7NahnGotNuZvjLSgcPzblpHB3rrCJxAOgI5gCdKm7coonsaX1Of0ILiTcnZjbfxA==}
 
   '@types/path-browserify@1.0.2':
     resolution: {integrity: sha512-ZkC5IUqqIFPXx3ASTTybTzmQdwHwe2C0u3eL75ldQ6T9E9IWFJodn6hIfbZGab73DfyiHN4Xw15gNxUq2FbvBA==}
@@ -2636,12 +2645,6 @@ packages:
 
   '@types/yargs@17.0.32':
     resolution: {integrity: sha512-xQ67Yc/laOG5uMfX/093MRlGGCIBzZMarVa+gfNKJxWAIgykYpVGkBdbqEzGDDfCrVUj6Hiff4mTZ5BA6TmAog==}
-
-  "@types/yargs@15.0.19":
-    resolution:
-      {
-        integrity: sha512-2XUaGVmyQjgyAZldf0D0c14vvo/yv0MhQBSTJcejMMaitsn3nxCB6TmH4G0ZQf+uxROOa9mpanoSm8h6SG/1ZA==,
-      }
 
   '@typescript-eslint/eslint-plugin@7.14.1':
     resolution: {integrity: sha512-aAJd6bIf2vvQRjUG3ZkNXkmBpN+J7Wd0mfQiiVCJMu9Z5GcZZdcc0j8XwN/BM97Fl7e3SkTXODSk4VehUv7CGw==}
@@ -4695,6 +4698,10 @@ packages:
   kleur@3.0.3:
     resolution: {integrity: sha512-eTIzlVOSUR+JxdDFepEYcBMtZ9Qqdef+rnzWdRZuMbOywu5tO2w2N7rqjoANZ5k9vywhL6Br1VRjUIgTQx4E8w==}
     engines: {node: '>=6'}
+
+  kysely@0.27.3:
+    resolution: {integrity: sha512-lG03Ru+XyOJFsjH3OMY6R/9U38IjDPfnOfDgO3ynhbDr+Dz8fak+X6L62vqu3iybQnj+lG84OttBuU9KY3L9kA==}
+    engines: {node: '>=14.0.0'}
 
   lazy-cache@2.0.2:
     resolution: {integrity: sha512-7vp2Acd2+Kz4XkzxGxaB1FWOi8KjWIWsgdfD5MCb86DWvlLqhRPM+d6Pro3iNEL5VT9mstz5hKAlcd+QR6H3aA==}
@@ -8009,6 +8016,9 @@ snapshots:
       human-id: 1.0.2
       prettier: 2.8.8
 
+  '@cloudflare/workers-types@4.20240620.0':
+    optional: true
+
   '@dependents/detective-less@4.1.0':
     dependencies:
       gonzales-pe: 4.3.0
@@ -8909,6 +8919,13 @@ snapshots:
 
   '@sqlite.org/sqlite-wasm@3.46.0-build2': {}
 
+  '@testcontainers/mssqlserver@10.10.0':
+    dependencies:
+      testcontainers: 10.10.0
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
+
   '@testcontainers/mysql@10.10.0':
     dependencies:
       testcontainers: 10.10.0
@@ -8923,42 +8940,36 @@ snapshots:
       - encoding
       - supports-color
 
-  '@testcontainers/postgresql@10.9.0':
-    dependencies:
-      '@types/node': 20.14.8
-
   '@types/better-sqlite3@7.6.10':
     dependencies:
       '@types/node': 20.14.8
-      '@types/ssh2': 1.15.0
 
   '@types/dedent@0.7.0': {}
 
   '@types/docker-modem@3.0.6':
     dependencies:
-      '@types/docker-modem': 3.0.6
       '@types/node': 20.14.8
       '@types/ssh2': 1.15.0
 
   '@types/dockerode@3.3.29':
     dependencies:
       '@types/docker-modem': 3.0.6
-      '@types/node': 20.14.7
+      '@types/node': 20.14.8
       '@types/ssh2': 1.15.0
 
   '@types/eslint@8.56.3':
+    dependencies:
+      '@types/estree': 1.0.5
+      '@types/json-schema': 7.0.15
+
+  '@types/estree@1.0.5': {}
+
+  '@types/glob@7.1.3':
     dependencies:
       '@types/minimatch': 5.1.2
       '@types/node': 20.14.8
 
   '@types/ini@4.1.1': {}
-
-  '@types/glob@7.1.3':
-    dependencies:
-      '@types/minimatch': 5.1.2
-      '@types/node': 20.14.7
-
-  '@types/ini@4.1.0': {}
 
   '@types/istanbul-lib-coverage@2.0.6': {}
 
@@ -9001,7 +9012,7 @@ snapshots:
     dependencies:
       undici-types: 5.26.5
 
-  "@types/node@20.12.14":
+  '@types/node@20.12.14':
     dependencies:
       undici-types: 5.26.5
 
@@ -9009,11 +9020,11 @@ snapshots:
     dependencies:
       undici-types: 5.26.5
 
-  "@types/normalize-package-data@2.4.4": {}
+  '@types/normalize-package-data@2.4.4': {}
 
-  "@types/path-browserify@1.0.2": {}
+  '@types/path-browserify@1.0.2': {}
 
-  "@types/readable-stream@4.0.14":
+  '@types/readable-stream@4.0.14':
     dependencies:
       '@types/node': 20.14.8
       safe-buffer: 5.1.2
@@ -9171,8 +9182,8 @@ snapshots:
 
   '@vitest/coverage-v8@1.6.0(vitest@1.6.0(@edge-runtime/vm@3.2.0)(@types/node@20.14.8)(@vitest/browser@1.6.0)(happy-dom@14.12.3)(terser@5.31.1))':
     dependencies:
-      "@ampproject/remapping": 2.2.1
-      "@bcoe/v8-coverage": 0.2.3
+      '@ampproject/remapping': 2.2.1
+      '@bcoe/v8-coverage': 0.2.3
       debug: 4.3.4
       istanbul-lib-coverage: 3.2.2
       istanbul-lib-report: 3.0.1
@@ -10115,13 +10126,15 @@ snapshots:
 
   dotenv@8.6.0: {}
 
-  drizzle-orm@0.31.2(@op-engineering/op-sqlite@6.0.7(react-native@0.74.2(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))(react@18.3.1))(react@18.3.1))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.10)(better-sqlite3@11.0.0)(bun-types@1.1.16)(mysql2@3.10.1)(postgres@3.4.4)(react@18.3.1):
+  drizzle-orm@0.31.2(@cloudflare/workers-types@4.20240620.0)(@op-engineering/op-sqlite@6.0.7(react@18.3.1))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.10)(better-sqlite3@11.0.0)(bun-types@1.1.16)(kysely@0.27.3)(mysql2@3.10.1)(postgres@3.4.4)(react@18.3.1):
     optionalDependencies:
-      '@op-engineering/op-sqlite': 6.0.7(react@18.3.1)
+      '@cloudflare/workers-types': 4.20240620.0
+      '@op-engineering/op-sqlite': 6.0.7(react-native@0.74.2(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))(react@18.3.1))(react@18.3.1)
       '@opentelemetry/api': 1.9.0
       '@types/better-sqlite3': 7.6.10
       better-sqlite3: 11.0.0
       bun-types: 1.1.16
+      kysely: 0.27.3
       mysql2: 3.10.1
       postgres: 3.4.4
       react: 18.3.1
@@ -11413,6 +11426,8 @@ snapshots:
   kind-of@6.0.3: {}
 
   kleur@3.0.3: {}
+
+  kysely@0.27.3: {}
 
   lazy-cache@2.0.2:
     dependencies:
