@@ -987,4 +987,50 @@ describe.concurrent("Micro", () => {
         assert.strictEqual(yield* effect, 3)
       }))
   })
+
+  describe("zip", () => {
+    it.effect("concurrent: false", () => {
+      const executionOrder: Array<string> = []
+      const task1 = Micro.succeed("a").pipe(Micro.delay(5), Micro.tap(() => executionOrder.push("task1")))
+      const task2 = Micro.succeed(1).pipe(Micro.delay(1), Micro.tap(() => executionOrder.push("task2")))
+      return Micro.gen(function*() {
+        const result = yield* Micro.zip(task1, task2)
+        assert.deepStrictEqual(result, ["a", 1])
+        assert.deepStrictEqual(executionOrder, ["task1", "task2"])
+      })
+    })
+    it.effect("concurrent: true", () => {
+      const executionOrder: Array<string> = []
+      const task1 = Micro.succeed("a").pipe(Micro.delay(5), Micro.tap(() => executionOrder.push("task1")))
+      const task2 = Micro.succeed(1).pipe(Micro.delay(1), Micro.tap(() => executionOrder.push("task2")))
+      return Micro.gen(function*() {
+        const result = yield* Micro.zip(task1, task2, { concurrent: true })
+        assert.deepStrictEqual(result, ["a", 1])
+        assert.deepStrictEqual(executionOrder, ["task2", "task1"])
+      })
+    })
+  })
+
+  describe("zipWith", () => {
+    it.effect("concurrent: false", () => {
+      const executionOrder: Array<string> = []
+      const task1 = Micro.succeed("a").pipe(Micro.delay(5), Micro.tap(() => executionOrder.push("task1")))
+      const task2 = Micro.succeed(1).pipe(Micro.delay(1), Micro.tap(() => executionOrder.push("task2")))
+      return Micro.gen(function*() {
+        const result = yield* Micro.zipWith(task1, task2, (a, b) => a + b)
+        assert.deepStrictEqual(result, "a1")
+        assert.deepStrictEqual(executionOrder, ["task1", "task2"])
+      })
+    })
+    it.effect("concurrent: true", () => {
+      const executionOrder: Array<string> = []
+      const task1 = Micro.succeed("a").pipe(Micro.delay(5), Micro.tap(() => executionOrder.push("task1")))
+      const task2 = Micro.succeed(1).pipe(Micro.delay(1), Micro.tap(() => executionOrder.push("task2")))
+      return Micro.gen(function*() {
+        const result = yield* Micro.zipWith(task1, task2, (a, b) => a + b, { concurrent: true })
+        assert.deepStrictEqual(result, "a1")
+        assert.deepStrictEqual(executionOrder, ["task2", "task1"])
+      })
+    })
+  })
 })
