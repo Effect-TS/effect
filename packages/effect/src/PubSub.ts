@@ -79,6 +79,14 @@ export const sliding: <A>(requestedCapacity: number) => Effect.Effect<PubSub<A>>
 export const unbounded: <A>() => Effect.Effect<PubSub<A>> = internal.unbounded
 
 /**
+ * Creates a replay `PubSub`.
+ *
+ * @since 3.5.0
+ * @category constructors
+ */
+export const replay: <A>(bufferSize: number) => Effect.Effect<PubSub<A>> = internal.replay
+
+/**
  *  Returns the number of elements the queue can hold.
  *
  * @since 2.0.0
