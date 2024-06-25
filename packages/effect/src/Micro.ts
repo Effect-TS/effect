@@ -3672,12 +3672,15 @@ export const runFork = <A, E>(
   const handle = new HandleImpl<A, E>(controller.signal, controller)
   effect[runSymbol](envSet(env, currentAbortSignal, handle._controller.signal), (result) => {
     handle.emit(result)
+    if (options?.signal) {
+      options.signal.removeEventListener("abort", handle.unsafeAbort)
+    }
   })
   if (options?.signal) {
     if (options.signal.aborted) {
       handle.unsafeAbort()
     } else {
-      options.signal.addEventListener("abort", () => handle.unsafeAbort())
+      options.signal.addEventListener("abort", handle.unsafeAbort, { once: true })
     }
   }
   return handle
