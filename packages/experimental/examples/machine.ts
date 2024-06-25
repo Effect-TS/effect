@@ -1,6 +1,6 @@
 import { Machine } from "@effect/experimental"
 import { runMain } from "@effect/platform-node/NodeRuntime"
-import { Data, Effect, List, Request, Schedule } from "effect"
+import { Data, Effect, List, pipe, Request, Schedule } from "effect"
 
 class SendError extends Data.TaggedError("SendError")<{
   readonly email: string
@@ -29,22 +29,22 @@ class Shutdown extends Request.TaggedClass("Shutdown")<
 > {}
 
 const mailer = Machine.makeWith<List.List<SendEmail>>()((_, previous) =>
-  Effect.gen(function*(_) {
-    const ctx = yield* _(Machine.MachineContext)
+  Effect.gen(function*() {
+    const ctx = yield* Machine.MachineContext
     const state = previous ?? List.empty()
 
     if (List.isCons(state)) {
-      yield* _(ctx.unsafeSend(new ProcessEmail()), Effect.replicateEffect(List.size(state)))
+      yield* ctx.unsafeSend(new ProcessEmail()), Effect.replicateEffect(List.size(state))
     }
 
     return Machine.procedures.make(state).pipe(
       Machine.procedures.addPrivate<ProcessEmail>()("ProcessEmail", ({ state }) =>
-        Effect.gen(function*(_) {
+        Effect.gen(function*() {
           if (List.isNil(state)) {
             return [void 0, state]
           }
           const req = state.head
-          yield* _(Effect.log(`Sending email to ${req.email}`), Effect.delay(500))
+          yield* pipe(Effect.log(`Sending email to ${req.email}`), Effect.delay(500))
           return [void 0, state.tail]
         })),
       Machine.procedures.add<SendEmail>()("SendEmail", (ctx) =>
@@ -61,13 +61,16 @@ const mailer = Machine.makeWith<List.List<SendEmail>>()((_, previous) =>
   Machine.retry(Schedule.forever)
 )
 
-Effect.gen(function*(_) {
-  const actor = yield* _(Machine.boot(mailer))
-  yield* _(actor.send(new SendEmail({ email: "test@example.com", message: "Hello, World!" })))
-  yield* _(actor.send(new SendEmail({ email: "test@example.com", message: "Hello, World!" })))
-  yield* _(actor.send(new SendEmail({ email: "test@example.com", message: "Hello, World!" })))
-  yield* _(actor.send(new Shutdown()))
-}).pipe(
+const program = Effect.gen(function*() {
+  const actor = yield* Machine.boot(mailer)
+  yield* actor.send(new SendEmail({ email: "test@example.com", message: "Hello, World!" }))
+  yield* actor.send(new SendEmail({ email: "test@example.com", message: "Hello, World!" }))
+  yield* actor.send(new SendEmail({ email: "test@example.com", message: "Hello, World!" }))
+  yield* actor.send(new Shutdown())
+})
+
+pipe(
+  program,
   Effect.scoped,
   runMain
 )
