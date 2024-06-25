@@ -6,7 +6,7 @@
  */
 import type { Channel, ChannelTypeId } from "./Channel.js"
 import * as Context from "./Context.js"
-import type { Effect, EffectTypeId } from "./Effect.js"
+import type { Effect, EffectTypeId, EffectUnify, EffectUnifyIgnore } from "./Effect.js"
 import * as Effectable from "./Effectable.js"
 import * as Either from "./Either.js"
 import { constTrue, constVoid, dual, identity, type LazyArg } from "./Function.js"
@@ -24,6 +24,7 @@ import type { ReadonlyRecord } from "./Record.js"
 import type { Sink, SinkTypeId } from "./Sink.js"
 import type { Stream, StreamTypeId } from "./Stream.js"
 import type { Concurrency, Covariant, Equals, NoInfer, NotFunction, Simplify } from "./Types.js"
+import type * as Unify from "./Unify.js"
 import { YieldWrap, yieldWrapGet } from "./Utils.js"
 
 /**
@@ -64,9 +65,27 @@ export type runSymbol = typeof runSymbol
 export interface Micro<out A, out E = never, out R = never> extends Effect<A, E, R> {
   readonly [TypeId]: Micro.Variance<A, E, R>
   readonly [runSymbol]: (env: Env<any>, onResult: (result: Result<A, E>) => void) => void
+  [Unify.typeSymbol]?: unknown
+  [Unify.unifySymbol]?: MicroUnify<this>
+  [Unify.ignoreSymbol]?: MicroUnifyIgnore
   [Symbol.iterator](): MicroIterator<Micro<A, E, R>>
 }
 
+/**
+ * @category models
+ * @since 3.4.3
+ */
+export interface MicroUnify<A extends { [Unify.typeSymbol]?: any }> extends EffectUnify<A> {
+  Micro?: () => A[Unify.typeSymbol] extends Micro<infer A0, infer E0, infer R0> | infer _ ? Micro<A0, E0, R0> : never
+}
+
+/**
+ * @category models
+ * @since 3.4.3
+ */
+export interface MicroUnifyIgnore extends EffectUnifyIgnore {
+  Effect?: true
+}
 /**
  * @category type lambdas
  * @since 3.4.1
