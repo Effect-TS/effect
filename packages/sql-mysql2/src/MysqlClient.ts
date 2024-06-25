@@ -97,7 +97,7 @@ export const make = (
         method: "execute" | "query" = "execute"
       ) {
         return Effect.async<ReadonlyArray<any>, SqlError>((resume) => {
-          this.conn[method]({
+          ;(this.conn as any)[method]({
             sql,
             values,
             rowsAsArray
@@ -250,7 +250,7 @@ function queryStream(
   params?: ReadonlyArray<any>
 ) {
   return asyncPauseResume<any, SqlError>((emit) => {
-    const query = conn.query(sql, params).stream()
+    const query = (conn as any).query(sql, params).stream()
     let buffer: Array<any> = []
     let taskPending = false
     query.on("error", (error: unknown) => emit.fail(new SqlError({ error })))

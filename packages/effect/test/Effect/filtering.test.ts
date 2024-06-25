@@ -96,7 +96,7 @@ describe("Effect", () => {
         Effect.either,
         Effect.map(Either.mapLeft(Cause.failureOrCause))
       )
-      assert.deepStrictEqual(goodCase, Either.right(0))
+      assert.deepStrictEqual(goodCase, Either.right(0 as const))
       assert.deepStrictEqual(badCase, Either.left(Either.left("1 was not 0")))
     }))
   it.effect("filterOrElse - returns checked failure ignoring value", () =>
@@ -126,7 +126,7 @@ describe("Effect", () => {
         Effect.either,
         Effect.map(Either.mapLeft(Cause.failureOrCause))
       )
-      assert.deepStrictEqual(goodCase, Either.right(0))
+      assert.deepStrictEqual(goodCase, Either.right(0 as const))
       assert.deepStrictEqual(badCase, Either.left(Either.left("predicate failed!")))
     }))
   it.effect("filterOrFail - returns failure ignoring value", () =>
@@ -156,7 +156,7 @@ describe("Effect", () => {
         Effect.either,
         Effect.map(Either.mapLeft(Cause.failureOrCause))
       )
-      assert.deepStrictEqual(goodCase, Either.right(0))
+      assert.deepStrictEqual(goodCase, Either.right(0 as const))
       assert.deepStrictEqual(badCase, Either.left(Either.left("predicate failed!")))
     }))
   it.effect("filterOrFail - returns failure", () =>
@@ -186,7 +186,7 @@ describe("Effect", () => {
         Effect.either,
         Effect.map(Either.mapLeft(Cause.failureOrCause))
       )
-      assert.deepStrictEqual(goodCase, Either.right(0))
+      assert.deepStrictEqual(goodCase, Either.right(0 as const))
       assert.deepStrictEqual(badCase, Either.left(Either.left("predicate failed, got 1!")))
     }))
   it.effect("filterOrFail - without orFailWith", () =>

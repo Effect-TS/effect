@@ -50,7 +50,7 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "@opentelemetry/semantic-conventions": "^1.24.1",
+    "@opentelemetry/semantic-conventions": "^1.25.1",
     "better-sqlite3": "^11.0.0"
   }
 }
