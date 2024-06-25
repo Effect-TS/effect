@@ -35,20 +35,20 @@ export const make = <I, E, R, O>(
   options?: WorkerRunner.Runner.Options<I, O, E>
 ) =>
   Effect.gen(function*(_) {
-    const scope = yield* _(Scope.fork(yield* _(Effect.scope), ExecutionStrategy.parallel))
+    const scope = yield* Scope.fork(yield* Effect.scope, ExecutionStrategy.parallel)
     const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
     const shutdown = Effect.zipRight(
       Scope.close(scope, Exit.void),
       Fiber.interruptFork(fiber)
     )
-    const platform = yield* _(PlatformRunner)
-    const backing = yield* _(
+    const platform = yield* PlatformRunner
+    const backing = yield* pipe(
       platform.start<Worker.Worker.Request<I>, Worker.Worker.Response<E>>(shutdown),
       Scope.extend(scope)
     )
     const fiberMap = new Map<number, Fiber.Fiber<void>>()
 
-    yield* _(
+    yield* pipe(
       Queue.take(backing.queue),
       options?.decode ?
         Effect.flatMap((msg): Effect.Effect<readonly [portId: number, Worker.Worker.Request<I>], WorkerError> => {
@@ -195,11 +195,11 @@ export const makeSerialized = <
   | WorkerRunner.SerializedRunner.HandlersContext<Handlers>
 > =>
   Effect.gen(function*(_) {
-    const scope = yield* _(Effect.scope)
+    const scope = yield* Effect.scope
     let context = Context.empty() as Context.Context<any>
     const parseRequest = Schema.decodeUnknown(schema) as (_: unknown) => Effect.Effect<A>
 
-    return yield* _(make((request: A) => {
+    return yield* make((request: A) => {
       const result = (handlers as any)[request._tag](request)
       if (Layer.isLayer(result)) {
         return Effect.flatMap(Layer.buildWithScope(result, scope), (_) =>
@@ -229,7 +229,7 @@ export const makeSerialized = <
           (error) => new WorkerError({ reason: "encode", error })
         )
       }
-    }))
+    })
   }) as any
 
 /** @internal */

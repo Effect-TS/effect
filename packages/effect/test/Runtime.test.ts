@@ -1,4 +1,4 @@
-import { Effect, Exit, FiberRef, Layer, Runtime } from "effect"
+import { Effect, Exit, FiberRef, Layer, pipe, Runtime } from "effect"
 import { assert, describe } from "vitest"
 import * as it from "./utils/extend.js"
 
@@ -12,14 +12,14 @@ describe("Runtime", () => {
       let result = Runtime.runSync(runtime)(FiberRef.get(ref))
       assert.strictEqual(result, 1)
 
-      result = yield* _(FiberRef.get(ref), Effect.provide(runtime))
+      result = yield* pipe(FiberRef.get(ref), Effect.provide(runtime))
       assert.strictEqual(result, 1)
     }))
 
   it.scoped("deleteFiberRef", () =>
     Effect.gen(function*(_) {
       const ref = FiberRef.unsafeMake({ value: 0 })
-      const runtime = yield* _(Layer.toRuntime(Layer.effectDiscard(FiberRef.set(ref, { value: 1 }))))
+      const runtime = yield* Layer.toRuntime(Layer.effectDiscard(FiberRef.set(ref, { value: 1 })))
 
       let result = Runtime.runSync(runtime)(FiberRef.get(ref))
       assert.deepStrictEqual(result, { value: 1 })

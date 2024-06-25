@@ -1,6 +1,6 @@
 import { Cookies, HttpClient, HttpClientRequest, HttpClientResponse, UrlParams } from "@effect/platform"
 import * as Schema from "@effect/schema/Schema"
-import { Either, Ref } from "effect"
+import { Either, pipe, Ref } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -20,7 +20,7 @@ const OkTodo = Schema.Struct({
 })
 
 const makeJsonPlaceholder = Effect.gen(function*(_) {
-  const defaultClient = yield* _(HttpClient.HttpClient)
+  const defaultClient = yield* HttpClient.HttpClient
   const client = defaultClient.pipe(
     HttpClient.mapRequest(HttpClientRequest.prependUrl("https://jsonplaceholder.typicode.com"))
   )
@@ -45,7 +45,7 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
 describe("HttpClient", () => {
   it("google", () =>
     Effect.gen(function*(_) {
-      const response = yield* _(
+      const response = yield* pipe(
         HttpClientRequest.get("https://www.google.com/"),
         HttpClient.fetchOk,
         Effect.flatMap((_) => _.text),
@@ -56,15 +56,15 @@ describe("HttpClient", () => {
 
   it("google withCookiesRef", () =>
     Effect.gen(function*(_) {
-      const ref = yield* _(Ref.make(Cookies.empty))
+      const ref = yield* Ref.make(Cookies.empty)
       const client = HttpClient.withCookiesRef(HttpClient.fetchOk, ref)
-      yield* _(
+      yield* pipe(
         HttpClientRequest.get("https://www.google.com/"),
         client,
         Effect.scoped
       )
-      const cookieHeader = yield* _(Ref.get(ref), Effect.map(Cookies.toCookieHeader))
-      yield* _(
+      const cookieHeader = yield* pipe(Ref.get(ref), Effect.map(Cookies.toCookieHeader))
+      yield* pipe(
         HttpClientRequest.get("https://www.google.com/"),
         client.pipe(
           HttpClient.tapRequest((req) =>
@@ -79,7 +79,7 @@ describe("HttpClient", () => {
 
   it("google stream", () =>
     Effect.gen(function*(_) {
-      const response = yield* _(
+      const response = yield* pipe(
         HttpClientRequest.get(new URL("https://www.google.com/")),
         HttpClient.fetchOk,
         Effect.map((_) => _.stream),
@@ -91,35 +91,35 @@ describe("HttpClient", () => {
 
   it("jsonplaceholder", () =>
     Effect.gen(function*(_) {
-      const jp = yield* _(JsonPlaceholder)
-      const response = yield* _(HttpClientRequest.get("/todos/1"), jp.todoClient)
+      const jp = yield* JsonPlaceholder
+      const response = yield* pipe(HttpClientRequest.get("/todos/1"), jp.todoClient)
       expect(response.id).toBe(1)
     }).pipe(Effect.provide(JsonPlaceholderLive), Effect.runPromise))
 
   it("jsonplaceholder schemaFunction", () =>
     Effect.gen(function*(_) {
-      const jp = yield* _(JsonPlaceholder)
-      const response = yield* _(jp.createTodo({
+      const jp = yield* JsonPlaceholder
+      const response = yield* jp.createTodo({
         userId: 1,
         title: "test",
         completed: false
-      }))
+      })
       expect(response.title).toBe("test")
     }).pipe(Effect.provide(JsonPlaceholderLive), Effect.runPromise))
 
   it("jsonplaceholder schemaJson", () =>
     Effect.gen(function*(_) {
-      const jp = yield* _(JsonPlaceholder)
+      const jp = yield* JsonPlaceholder
       const client = HttpClient.mapEffectScoped(jp.client, HttpClientResponse.schemaJson(OkTodo)).pipe(
         HttpClient.map((_) => _.body)
       )
-      const response = yield* _(HttpClientRequest.get("/todos/1"), client)
+      const response = yield* pipe(HttpClientRequest.get("/todos/1"), client)
       expect(response.id).toBe(1)
     }).pipe(Effect.provide(JsonPlaceholderLive), Effect.runPromise))
 
   it("request processing order", () =>
     Effect.gen(function*(_) {
-      const defaultClient = yield* _(HttpClient.HttpClient)
+      const defaultClient = yield* HttpClient.HttpClient
       const client = defaultClient.pipe(
         HttpClient.mapRequest(HttpClientRequest.prependUrl("jsonplaceholder.typicode.com")),
         HttpClient.mapRequest(HttpClientRequest.prependUrl("https://"))
@@ -127,13 +127,13 @@ describe("HttpClient", () => {
       const todoClient = client.pipe(
         HttpClient.mapEffectScoped(HttpClientResponse.schemaBodyJson(Todo))
       )
-      const response = yield* _(HttpClientRequest.get("/todos/1"), todoClient)
+      const response = yield* pipe(HttpClientRequest.get("/todos/1"), todoClient)
       expect(response.id).toBe(1)
     }).pipe(Effect.provide(HttpClient.layer), Effect.runPromise))
 
   it("streamBody accesses the current runtime", () =>
     Effect.gen(function*(_) {
-      const defaultClient = yield* _(HttpClient.HttpClient)
+      const defaultClient = yield* HttpClient.HttpClient
 
       const requestStream = Stream.fromIterable(["hello", "world"]).pipe(
         Stream.tap((_) => Effect.log(_)),

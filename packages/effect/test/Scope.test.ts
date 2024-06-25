@@ -143,7 +143,7 @@ describe("Scope", () => {
     ".pipe",
     () =>
       Effect.gen(function*(_) {
-        const scope = yield* _(Scope.make())
+        const scope = yield* Scope.make()
         expect(scope.pipe(identity)).toBe(scope)
       })
   )

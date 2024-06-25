@@ -188,7 +188,7 @@ describe("Effect", () => {
     const { foo } = Effect.serviceFunctions(Service)
     return pipe(
       Effect.gen(function*(_) {
-        expect(yield* _(foo("a", 3))).toEqual("a3")
+        expect(yield* foo("a", 3)).toEqual("a3")
       }),
       Effect.provideService(
         Service,
@@ -207,7 +207,7 @@ describe("Effect", () => {
     const { baz } = Effect.serviceConstants(Service)
     return pipe(
       Effect.gen(function*(_) {
-        expect(yield* _(baz)).toEqual("42!")
+        expect(yield* baz).toEqual("42!")
       }),
       Effect.provideService(
         Service,
@@ -227,8 +227,8 @@ describe("Effect", () => {
     const { constants, functions } = Effect.serviceMembers(Service)
     return pipe(
       Effect.gen(function*(_) {
-        expect(yield* _(constants.baz)).toEqual("42!")
-        expect(yield* _(functions.foo("a", 3))).toEqual("a3")
+        expect(yield* constants.baz).toEqual("42!")
+        expect(yield* functions.foo("a", 3)).toEqual("a3")
       }),
       Effect.provideService(
         Service,

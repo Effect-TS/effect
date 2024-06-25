@@ -15,11 +15,9 @@ describe.concurrent("CrashableRuntime", () => {
 
   it("Should run as expected if not crashed", () => {
     return Effect.gen(function*(_) {
-      const runtime = yield* _(CrashableRuntime.make)
+      const runtime = yield* CrashableRuntime.make
 
-      const value = yield* _(
-        runtime.run(() => Effect.succeed(42))
-      )
+      const value = yield* runtime.run(() => Effect.succeed(42))
 
       expect(value).toEqual(42)
     }).pipe(withTestEnv, Effect.runPromise)
@@ -27,15 +25,15 @@ describe.concurrent("CrashableRuntime", () => {
 
   it("Should fail with CrashableRuntimeCrashed", () => {
     return Effect.gen(function*(_) {
-      const runtime = yield* _(CrashableRuntime.make)
-      const valueRef = yield* _(Ref.make<null | CrashableRuntime.CrashableRuntimeCrashedError>(null))
+      const runtime = yield* CrashableRuntime.make
+      const valueRef = yield* Ref.make<null | CrashableRuntime.CrashableRuntimeCrashedError>(null)
 
-      yield* _(
+      yield* pipe(
         runtime.run(() => runtime.crash),
         Effect.catchAll((error) => Ref.set(valueRef, error))
       )
 
-      const value = yield* _(Ref.get(valueRef))
+      const value = yield* Ref.get(valueRef)
 
       expect(value).toEqual(new CrashableRuntime.CrashableRuntimeCrashedError())
     }).pipe(withTestEnv, Effect.runPromise)
@@ -43,10 +41,10 @@ describe.concurrent("CrashableRuntime", () => {
 
   it("Upon crash, release should not happen", () => {
     return Effect.gen(function*(_) {
-      const runtime = yield* _(CrashableRuntime.make)
-      const valueRef = yield* _(Ref.make(0))
+      const runtime = yield* CrashableRuntime.make
+      const valueRef = yield* Ref.make(0)
 
-      yield* _(
+      yield* pipe(
         runtime.run(() =>
           Effect.acquireUseRelease(
             Ref.set(valueRef, 1),
@@ -57,7 +55,7 @@ describe.concurrent("CrashableRuntime", () => {
         Effect.catchAll(() => Effect.void)
       )
 
-      const value = yield* _(Ref.get(valueRef))
+      const value = yield* Ref.get(valueRef)
 
       expect(value).toEqual(2)
     }).pipe(withTestEnv, Effect.runPromise)
@@ -65,10 +63,10 @@ describe.concurrent("CrashableRuntime", () => {
 
   it("Effects in restore should run as regular effects", () => {
     return Effect.gen(function*(_) {
-      const runtime = yield* _(CrashableRuntime.make)
-      const valueRef = yield* _(Ref.make(0))
+      const runtime = yield* CrashableRuntime.make
+      const valueRef = yield* Ref.make(0)
 
-      yield* _(
+      yield* pipe(
         runtime.run((restore) =>
           restore(pipe(
             runtime.crash,
@@ -78,7 +76,7 @@ describe.concurrent("CrashableRuntime", () => {
         Effect.catchAll(() => Effect.void)
       )
 
-      const value = yield* _(Ref.get(valueRef))
+      const value = yield* Ref.get(valueRef)
 
       expect(value).toEqual(42)
     }).pipe(withTestEnv, Effect.runPromise)
@@ -96,7 +94,7 @@ describe.concurrent("CrashableRuntime", () => {
         })
       )
 
-      yield* _(test)
+      yield* test
 
       expect(exit).not.toEqual(null)
     }).pipe(withTestEnv, Effect.runPromise)
@@ -116,7 +114,7 @@ describe.concurrent("CrashableRuntime", () => {
         Effect.catchAllCause(() => Effect.void)
       )
 
-      yield* _(test)
+      yield* test
 
       expect(exit).toEqual(null)
     }).pipe(withTestEnv, Effect.runPromise)

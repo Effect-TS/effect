@@ -11,19 +11,17 @@ const PoolLive = Worker.makePoolLayer(Pool, { size: 3 }).pipe(
   Layer.provide(NodeWorker.layer(() => new WT.Worker("./examples/worker/range.ts")))
 )
 
-Effect.gen(function*(_) {
-  const pool = yield* _(Pool)
-  yield* _(
-    Effect.all([
-      pool.execute(5).pipe(
-        Stream.runForEach((_) => Console.log("worker 1", _))
-      ),
-      pool.execute(10).pipe(
-        Stream.runForEach((_) => Console.log("worker 2", _))
-      ),
-      pool.execute(15).pipe(
-        Stream.runForEach((_) => Console.log("worker 3", _))
-      )
-    ], { concurrency: "inherit" })
-  )
+Effect.gen(function*() {
+  const pool = yield* Pool
+  yield* Effect.all([
+    pool.execute(5).pipe(
+      Stream.runForEach((_) => Console.log("worker 1", _))
+    ),
+    pool.execute(10).pipe(
+      Stream.runForEach((_) => Console.log("worker 2", _))
+    ),
+    pool.execute(15).pipe(
+      Stream.runForEach((_) => Console.log("worker 3", _))
+    )
+  ], { concurrency: "inherit" })
 }).pipe(Effect.provide(PoolLive), NodeRuntime.runMain)

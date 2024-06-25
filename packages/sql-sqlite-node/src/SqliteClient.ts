@@ -98,23 +98,21 @@ export const make = (
       const db = new Sqlite(options.filename, {
         readonly: options.readonly ?? false
       })
-      yield* _(Effect.addFinalizer(() => Effect.sync(() => db.close())))
+      yield* Effect.addFinalizer(() => Effect.sync(() => db.close()))
 
       if (options.disableWAL !== true) {
         db.pragma("journal_mode = WAL")
       }
 
-      const prepareCache = yield* _(
-        Cache.make({
-          capacity: options.prepareCacheSize ?? 200,
-          timeToLive: options.prepareCacheTTL ?? Duration.minutes(10),
-          lookup: (sql: string) =>
-            Effect.try({
-              try: () => db.prepare(sql),
-              catch: (error) => new SqlError({ error })
-            })
-        })
-      )
+      const prepareCache = yield* Cache.make({
+        capacity: options.prepareCacheSize ?? 200,
+        timeToLive: options.prepareCacheTTL ?? Duration.minutes(10),
+        lookup: (sql: string) =>
+          Effect.try({
+            try: () => db.prepare(sql),
+            catch: (error) => new SqlError({ error })
+          })
+      })
 
       const runStatement = (
         statement: Sqlite.Statement,
@@ -203,8 +201,8 @@ export const make = (
       })
     })
 
-    const semaphore = yield* _(Effect.makeSemaphore(1))
-    const connection = yield* _(makeConnection)
+    const semaphore = yield* Effect.makeSemaphore(1)
+    const connection = yield* makeConnection
 
     const acquirer = semaphore.withPermits(1)(Effect.succeed(connection))
     const transactionAcquirer = Effect.uninterruptibleMask((restore) =>

@@ -59,12 +59,12 @@ const spawner = Effect.randomWith((_) => _.nextIntBetween(500, 1500)).pipe(
   Effect.forever
 )
 
-const program = Effect.gen(function*(_) {
-  yield* _(Effect.fork(incrementCounter))
-  yield* _(Effect.fork(timerLoop))
-  yield* _(Effect.fork(freqLoop))
-  yield* _(Effect.fork(summaryLoop))
-  yield* _(Effect.fork(spawner))
+const program = Effect.gen(function*() {
+  yield* Effect.fork(incrementCounter)
+  yield* Effect.fork(timerLoop)
+  yield* Effect.fork(freqLoop)
+  yield* Effect.fork(summaryLoop)
+  yield* Effect.fork(spawner)
 })
 
 const MetricsLive = NodeSdk.layer(() => ({

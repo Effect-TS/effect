@@ -130,8 +130,8 @@ describe("Effect", () => {
       assert.deepStrictEqual(badCase, Either.left(Either.left("predicate failed!")))
     }))
   it.effect("filterOrFail - returns failure ignoring value", () =>
-    Effect.gen(function*($) {
-      const goodCase = yield* $(
+    Effect.gen(function*() {
+      const goodCase = yield* pipe(
         exactlyOnce(0, (effect) =>
           pipe(
             effect,
@@ -143,7 +143,7 @@ describe("Effect", () => {
         Effect.sandbox,
         Effect.either
       )
-      const badCase = yield* $(
+      const badCase = yield* pipe(
         exactlyOnce(1, (effect) =>
           pipe(
             effect,

@@ -1,5 +1,5 @@
 import * as Multipart from "@effect/platform/Multipart"
-import { Chunk, Effect, identity, Stream, Unify } from "effect"
+import { Chunk, Effect, identity, pipe, Stream, Unify } from "effect"
 import { assert, describe, test } from "vitest"
 
 describe("Multipart", () => {
@@ -11,7 +11,7 @@ describe("Multipart", () => {
       data.append("file", new globalThis.File(["A".repeat(1024 * 1024)], "foo.txt", { type: "text/plain" }))
       const response = new Response(data)
 
-      const parts = yield* _(
+      const parts = yield* pipe(
         Stream.fromReadableStream(() => response.body!, identity),
         Stream.pipeThroughChannel(Multipart.makeChannel(Object.fromEntries(response.headers))),
         Stream.mapEffect((part) => {

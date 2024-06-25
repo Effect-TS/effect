@@ -153,11 +153,11 @@ export const make = (
           : undefined
       } as Mysql.PoolOptions)
 
-    yield* _(Effect.addFinalizer(() =>
+    yield* Effect.addFinalizer(() =>
       Effect.async<void>((resume) => {
         pool.end(() => resume(Effect.void))
       })
-    ))
+    )
 
     const poolConnection = new ConnectionImpl(pool)
 

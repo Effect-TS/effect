@@ -5,11 +5,10 @@ import { Console, Effect, Layer, Stream } from "effect"
 
 const EnvLive = NodeFileSystem.layer.pipe(Layer.provide(ParcelWatcher.layer))
 
-Effect.gen(function*(_) {
-  const fs = yield* _(FileSystem.FileSystem)
+Effect.gen(function*() {
+  const fs = yield* FileSystem.FileSystem
 
-  yield* _(
-    fs.watch("src"),
+  yield* fs.watch("src").pipe(
     Stream.runForEach(Console.log)
   )
 }).pipe(Effect.provide(EnvLive), NodeRuntime.runMain)

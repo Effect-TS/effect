@@ -33,9 +33,9 @@ const isClosed = (self: State): boolean => self._tag === "Closed"
 describe("Ref", () => {
   it.effect("implements Readable", () =>
     Effect.gen(function*(_) {
-      const ref = yield* _(Ref.make(123))
+      const ref = yield* Ref.make(123)
       assert.isTrue(Readable.isReadable(ref))
-      assert.strictEqual(yield* _(ref.get), 123)
+      assert.strictEqual(yield* ref.get, 123)
     }))
 
   it.effect("get", () =>

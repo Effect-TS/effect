@@ -7,15 +7,15 @@ import { describe, expect } from "vitest"
 describe("Cache", () => {
   it.effect("should not increment cache hits on expired entries", () =>
     Effect.gen(function*(_) {
-      const cache = yield* _(Cache.make({
+      const cache = yield* Cache.make({
         capacity: 100,
         timeToLive: "1 seconds",
         lookup: (n: number): Effect.Effect<number, 2> => Effect.succeed(n)
-      }))
-      yield* _(cache.get(42))
-      yield* _(TestClock.adjust("2 seconds"))
-      yield* _(cache.get(42))
-      const { hits, misses } = yield* _(cache.cacheStats)
+      })
+      yield* cache.get(42)
+      yield* TestClock.adjust("2 seconds")
+      yield* cache.get(42)
+      const { hits, misses } = yield* cache.cacheStats
       expect(hits).toBe(0)
       expect(misses).toBe(2)
     }))

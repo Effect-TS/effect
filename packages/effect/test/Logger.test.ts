@@ -3,7 +3,7 @@ import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as FiberId from "effect/FiberId"
 import * as FiberRefs from "effect/FiberRefs"
-import { identity } from "effect/Function"
+import { identity, pipe } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import { logLevelInfo } from "effect/internal/core"
 import * as List from "effect/List"
@@ -291,7 +291,7 @@ describe("logfmtLogger", () => {
       const chunks: Array<Array<string>> = []
       const date = new Date()
       vi.setSystemTime(date)
-      const logger = yield* _(
+      const logger = yield* pipe(
         Logger.logfmtLogger,
         Logger.batched("100 millis", (_) =>
           Effect.sync(() => {
@@ -313,10 +313,10 @@ describe("logfmtLogger", () => {
       log("a")
       log("b")
       log("c")
-      yield* _(Effect.promise(() => vi.advanceTimersByTimeAsync(100)))
+      yield* Effect.promise(() => vi.advanceTimersByTimeAsync(100))
       log("d")
       log("e")
-      yield* _(Effect.promise(() => vi.advanceTimersByTimeAsync(100)))
+      yield* Effect.promise(() => vi.advanceTimersByTimeAsync(100))
 
       assert.deepStrictEqual(chunks, [
         [

@@ -33,21 +33,21 @@ describe("Command", () => {
   it("should convert stdout to a string", () =>
     runPromise(Effect.gen(function*(_) {
       const command = Command.make("echo", "-n", "test")
-      const result = yield* _(Command.string(command))
+      const result = yield* Command.string(command)
       expect(result).toEqual("test")
     })))
 
   it("should convert stdout to a list of lines", () =>
     runPromise(Effect.gen(function*(_) {
       const command = Command.make("echo", "-n", "1\n2\n3")
-      const result = yield* _(Command.lines(command))
+      const result = yield* Command.lines(command)
       expect(result).toEqual(["1", "2", "3"])
     })))
 
   it("should stream lines of output", () =>
     runPromise(Effect.gen(function*(_) {
       const command = Command.make("echo", "-n", "1\n2\n3")
-      const result = yield* _(Stream.runCollect(Command.streamLines(command)))
+      const result = yield* Stream.runCollect(Command.streamLines(command))
       expect(Chunk.toReadonlyArray(result)).toEqual(["1", "2", "3"])
     })))
 
@@ -55,7 +55,7 @@ describe("Command", () => {
     runPromise(Effect.gen(function*(_) {
       const decoder = new TextDecoder("utf-8")
       const command = Command.make("echo", "-n", "1\n2\n3")
-      const result = yield* _(
+      const result = yield* pipe(
         Command.stream(command),
         Stream.mapChunks(Chunk.map((bytes) => decoder.decode(bytes))),
         Stream.splitLines,
@@ -67,7 +67,7 @@ describe("Command", () => {
   it("should fail when trying to run a command that does not exist", () =>
     runPromise(Effect.gen(function*(_) {
       const command = Command.make("some-invalid-command", "test")
-      const result = yield* _(Effect.exit(Command.string(command)))
+      const result = yield* Effect.exit(Command.string(command))
       expect(result).toEqual(Exit.fail(SystemError({
         reason: "NotFound",
         module: "Command",
@@ -84,7 +84,7 @@ describe("Command", () => {
         Command.make("bash", "-c", "echo -n \"var = $VAR\""),
         Command.env({ VAR: "myValue" })
       )
-      const result = yield* _(Command.string(command))
+      const result = yield* Command.string(command)
       expect(result).toBe("var = myValue")
     })))
 
@@ -92,7 +92,7 @@ describe("Command", () => {
     runPromise(Effect.gen(function*(_) {
       const stdin = Stream.make(Buffer.from("a b c", "utf-8"))
       const command = pipe(Command.make("cat"), Command.stdin(stdin))
-      const result = yield* _(Command.string(command))
+      const result = yield* Command.string(command)
       expect(result).toEqual("a b c")
     })))
 
@@ -100,25 +100,25 @@ describe("Command", () => {
     runPromise(Effect.gen(function*(_) {
       const stdin = "piped in"
       const command = pipe(Command.make("cat"), Command.feed(stdin))
-      const result = yield* _(Command.string(command))
+      const result = yield* Command.string(command)
       expect(result).toEqual("piped in")
     })))
 
   it("should set the working directory", () =>
     runPromise(Effect.gen(function*(_) {
-      const path = yield* _(Path.Path)
+      const path = yield* Path.Path
       const command = pipe(
         Command.make("ls"),
         Command.workingDirectory(path.join(__dirname, "..", "src"))
       )
-      const result = yield* _(Command.lines(command))
+      const result = yield* Command.lines(command)
       expect(result).toContain("NodeCommandExecutor.ts")
     })))
 
   it("should be able to fall back to a different program", () =>
     runPromise(Effect.gen(function*(_) {
       const command = Command.make("custom-echo", "-n", "test")
-      const result = yield* _(
+      const result = yield* pipe(
         Command.string(command),
         Effect.catchTag("SystemError", (error) => {
           if (error.reason === "NotFound") {
@@ -133,7 +133,7 @@ describe("Command", () => {
   it("should interrupt a process manually", () =>
     runPromise(Effect.gen(function*(_) {
       const command = Command.make("sleep", "20")
-      const result = yield* _(
+      const result = yield* pipe(
         Effect.fork(Command.exitCode(command)),
         Effect.flatMap((fiber) => Effect.fork(Fiber.interrupt(fiber))),
         Effect.flatMap(Fiber.join)
@@ -144,7 +144,7 @@ describe("Command", () => {
   // TODO: figure out how to get access to TestClock
   // it("should interrupt a process due to a timeout", () =>
   // T.gen(function* (_) {
-  //   const testClock = yield* _(TestClock)
+  //   const testClock = yield* TestClock
 
   //   const command = pipe(
   //     Command.make("sleep", "20"),
@@ -152,7 +152,7 @@ describe("Command", () => {
   //     T.timeout(5000)
   //   )
 
-  //   const output = yield* _(
+  //   const output = yield* pipe(
   //     pipe(
   //       T.do,
   //       T.bind("fiber", () => T.fork(command)),
@@ -177,8 +177,8 @@ describe("Command", () => {
   //       Command.make("./duplex.sh"),
   //       Command.workingDirectory(TEST_BASH_SCRIPTS_DIRECTORY)
   //     )
-  //     const process = yield* _(Command.start(command))
-  //     const result = yield* _(pipe(
+  //     const process = yield* Command.start(command)
+  //     const result = yield* pipe(pipe(
   //       process.stdout,
   //       Stream.zip(process.stderr),
   //       Stream.runCollect,
@@ -200,23 +200,23 @@ describe("Command", () => {
 
   it("should return non-zero exit code in success channel", () =>
     runPromise(Effect.gen(function*(_) {
-      const path = yield* _(Path.Path)
+      const path = yield* Path.Path
       const command = pipe(
         Command.make("./non-zero-exit.sh"),
         Command.workingDirectory(path.join(...TEST_BASH_SCRIPTS_PATH))
       )
-      const result = yield* _(Command.exitCode(command))
+      const result = yield* Command.exitCode(command)
       expect(result).toBe(1)
     })))
 
   it("should throw permission denied as a typed error", () =>
     runPromise(Effect.gen(function*(_) {
-      const path = yield* _(Path.Path)
+      const path = yield* Path.Path
       const command = pipe(
         Command.make("./no-permissions.sh"),
         Command.workingDirectory(path.join(...TEST_BASH_SCRIPTS_PATH))
       )
-      const result = yield* _(Effect.exit(Command.string(command)))
+      const result = yield* Effect.exit(Command.string(command))
       expect(result).toEqual(Exit.fail(SystemError({
         reason: "PermissionDenied",
         module: "Command",
@@ -233,7 +233,7 @@ describe("Command", () => {
         Command.make("ls"),
         Command.workingDirectory("/some/bad/path")
       )
-      const result = yield* _(Effect.exit(Command.lines(command)))
+      const result = yield* Effect.exit(Command.lines(command))
       expect(result).toEqual(Exit.fail(SystemError({
         reason: "NotFound",
         module: "FileSystem",
@@ -247,15 +247,15 @@ describe("Command", () => {
   it("should be able to kill a running process", () =>
     runPromise(
       Effect.gen(function*(_) {
-        const path = yield* _(Path.Path)
+        const path = yield* Path.Path
         const command = pipe(
           Command.make("./repeat.sh"),
           Command.workingDirectory(path.join(...TEST_BASH_SCRIPTS_PATH))
         )
-        const process = yield* _(Command.start(command))
-        const isRunningBeforeKill = yield* _(process.isRunning)
-        yield* _(process.kill())
-        const isRunningAfterKill = yield* _(process.isRunning)
+        const process = yield* Command.start(command)
+        const isRunningBeforeKill = yield* process.isRunning
+        yield* process.kill()
+        const isRunningAfterKill = yield* process.isRunning
         expect(isRunningBeforeKill).toBe(true)
         expect(isRunningAfterKill).toBe(false)
       }).pipe(Effect.scoped)
@@ -268,7 +268,7 @@ describe("Command", () => {
         Command.pipeTo(Command.make("cat")),
         Command.pipeTo(Command.make("sort"))
       )
-      const result = yield* _(Command.lines(command))
+      const result = yield* Command.lines(command)
       expect(result).toEqual(["1", "2", "3"])
     })))
 
@@ -280,8 +280,8 @@ describe("Command", () => {
         Command.pipeTo(Command.make("sort")),
         Command.pipeTo(Command.make("head", "-2"))
       )
-      const lines1 = yield* _(Command.lines(command))
-      const lines2 = yield* _(Command.lines(command))
+      const lines1 = yield* Command.lines(command)
+      const lines2 = yield* Command.lines(command)
       expect(lines1).toEqual(["1", "2"])
       expect(lines2).toEqual(["1", "2"])
     })))
@@ -295,7 +295,7 @@ describe("Command", () => {
         Command.pipeTo(Command.make("head", "-2")),
         Command.stdin(Stream.make(encoder.encode("2\n1\n3")))
       )
-      const result = yield* _(Command.lines(command))
+      const result = yield* Command.lines(command)
       expect(result).toEqual(["1", "2"])
     })))
 
@@ -353,9 +353,9 @@ describe("Command", () => {
     runPromise(
       Effect.gen(function*(_) {
         const command = Command.make("echo", "-n", "test")
-        const process = yield* _(Command.start(command))
-        yield* _(process.exitCode)
-        const code = yield* _(process.exitCode)
+        const process = yield* Command.start(command)
+        yield* process.exitCode
+        const code = yield* process.exitCode
         expect(code).toEqual(0)
       }).pipe(Effect.scoped)
     ))
@@ -364,19 +364,19 @@ describe("Command", () => {
     runPromise(
       Effect.gen(function*(_) {
         const files = ["foo.txt", "bar.txt", "baz.txt"]
-        const path = yield* _(Path.Path)
-        const fileSystem = yield* _(FileSystem.FileSystem)
-        const tempDir = yield* _(fileSystem.makeTempDirectoryScoped())
-        yield* _(Effect.forEach(
+        const path = yield* Path.Path
+        const fileSystem = yield* FileSystem.FileSystem
+        const tempDir = yield* fileSystem.makeTempDirectoryScoped()
+        yield* Effect.forEach(
           files,
           (file) => fileSystem.writeFile(path.join(tempDir, file), new Uint8Array()),
           { discard: true }
-        ))
+        )
         const command = Command.make("compgen", "-f").pipe(
           Command.workingDirectory(tempDir),
           Command.runInShell("/bin/bash")
         )
-        const lines = yield* _(Command.lines(command))
+        const lines = yield* Command.lines(command)
         expect(Array.sort(files, Order.string)).toEqual(Array.sort(lines, Order.string))
       }).pipe(Effect.scoped)
     ))

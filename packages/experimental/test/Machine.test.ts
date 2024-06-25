@@ -1,7 +1,7 @@
 import * as DevTools from "@effect/experimental/DevTools"
 import * as Machine from "@effect/experimental/Machine"
 import { Schema } from "@effect/schema"
-import { Cause, Chunk, Context, Deferred, Effect, Exit, Layer, Stream } from "effect"
+import { Cause, Chunk, Context, Deferred, Effect, Exit, Layer, pipe, Stream } from "effect"
 import { assert, describe, test } from "vitest"
 
 class Increment extends Schema.TaggedRequest<Increment>()("Increment", Schema.Never, Schema.Number, {}) {}
@@ -102,7 +102,7 @@ class Multiplier extends Context.Tag("Multiplier")<Multiplier, number>() {
 const withContext = Machine.make(
   (input: number, previous?: number) =>
     Effect.gen(function*(_) {
-      const multiplier = yield* _(Multiplier)
+      const multiplier = yield* Multiplier
       return Machine.procedures.make(previous ?? input).pipe(
         Machine.procedures.add<Multiply>()("Multiply", ({ state }) =>
           Effect.sync(() => {
@@ -115,10 +115,10 @@ const withContext = Machine.make(
 
 const timerLoop = Machine.make(
   Effect.gen(function*(_) {
-    const { unsafeSend } = yield* _(Machine.MachineContext)
+    const { unsafeSend } = yield* Machine.MachineContext
 
     // queue initial message
-    yield* _(unsafeSend(new Increment()))
+    yield* unsafeSend(new Increment())
 
     return Machine.procedures.make(0).pipe(
       Machine.procedures.addPrivate<Increment>()(
@@ -153,26 +153,26 @@ const deferReply = Machine.make(
 describe("Machine", () => {
   test("counter", () =>
     Effect.gen(function*(_) {
-      yield* _(Effect.sleep(500)) // wait for DevTools
+      yield* Effect.sleep(500) // wait for DevTools
 
-      const booted = yield* _(Machine.boot(counter, 0))
-      yield* _(Effect.sleep(10))
-      assert.strictEqual(yield* _(booted.get), 0)
-      assert.strictEqual(yield* _(booted.send(new Increment())), 1)
-      assert.strictEqual(yield* _(booted.send(new Increment())), 2)
-      assert.strictEqual(yield* _(booted.send(new IncrementBy({ number: 2 }))), 4)
-      assert.strictEqual(yield* _(booted.send(new Decrement())), 3)
-      assert.strictEqual(yield* _(booted.send(new FailBackground())), undefined)
-      const cause = yield* _(booted.join, Effect.sandbox, Effect.flip)
+      const booted = yield* Machine.boot(counter, 0)
+      yield* Effect.sleep(10)
+      assert.strictEqual(yield* booted.get, 0)
+      assert.strictEqual(yield* booted.send(new Increment()), 1)
+      assert.strictEqual(yield* booted.send(new Increment()), 2)
+      assert.strictEqual(yield* booted.send(new IncrementBy({ number: 2 })), 4)
+      assert.strictEqual(yield* booted.send(new Decrement()), 3)
+      assert.strictEqual(yield* booted.send(new FailBackground()), undefined)
+      const cause = yield* pipe(booted.join, Effect.sandbox, Effect.flip)
       const failure = Cause.failures(cause).pipe(Chunk.unsafeHead)
       assert.deepStrictEqual(failure.cause, Cause.die("error"))
     }).pipe(Effect.scoped, Machine.withTracingEnabled(true), Effect.provide(DevTools.layer()), Effect.runPromise))
 
   test("init context", () =>
     Effect.gen(function*(_) {
-      const booted = yield* _(Machine.boot(withContext, 20))
-      assert.strictEqual(yield* _(booted.get), 20)
-      assert.strictEqual(yield* _(booted.send(new Multiply())), 40)
+      const booted = yield* Machine.boot(withContext, 20)
+      assert.strictEqual(yield* booted.get, 20)
+      assert.strictEqual(yield* booted.send(new Multiply()), 40)
     }).pipe(
       Effect.scoped,
       Effect.provide(Multiplier.Live),
@@ -181,24 +181,24 @@ describe("Machine", () => {
 
   test("forkWithState", () =>
     Effect.gen(function*(_) {
-      const booted = yield* _(Machine.boot(delayedCounter, 2))
-      assert.strictEqual(yield* _(booted.get), 2)
+      const booted = yield* Machine.boot(delayedCounter, 2)
+      assert.strictEqual(yield* booted.get, 2)
       assert.deepStrictEqual(
         // @ts-expect-error
-        yield* _(booted.send(new IncrementBy({ number: 2 })), Effect.exit),
+        yield* pipe(booted.send(new IncrementBy({ number: 2 })), Effect.exit),
         Exit.die("Request IncrementBy marked as internal")
       )
-      assert.strictEqual(yield* _(booted.send(new DelayedIncrementBy({ number: 2, delay: 10 }))), undefined)
-      assert.strictEqual(yield* _(booted.get), 2)
-      yield* _(Effect.sleep(10))
-      assert.strictEqual(yield* _(booted.get), 4)
+      assert.strictEqual(yield* booted.send(new DelayedIncrementBy({ number: 2, delay: 10 })), undefined)
+      assert.strictEqual(yield* booted.get, 2)
+      yield* Effect.sleep(10)
+      assert.strictEqual(yield* booted.get, 4)
     }).pipe(Effect.scoped, Effect.runPromise))
 
   test("changes", () =>
     Effect.gen(function*(_) {
-      const booted = yield* _(Machine.boot(counter, 0))
+      const booted = yield* Machine.boot(counter, 0)
       const results: Array<number> = []
-      yield* _(
+      yield* pipe(
         booted.changes,
         Stream.runForEach((i) =>
           Effect.sync(() => {
@@ -207,18 +207,18 @@ describe("Machine", () => {
         ),
         Effect.fork
       )
-      yield* _(Effect.sleep(0))
-      assert.strictEqual(yield* _(booted.send(new Increment())), 1)
-      assert.strictEqual(yield* _(booted.send(new Increment())), 2)
-      assert.strictEqual(yield* _(booted.send(new Increment())), 3)
+      yield* Effect.sleep(0)
+      assert.strictEqual(yield* booted.send(new Increment()), 1)
+      assert.strictEqual(yield* booted.send(new Increment()), 2)
+      assert.strictEqual(yield* booted.send(new Increment()), 3)
 
       assert.deepStrictEqual(results, [0, 1, 2, 3])
     }).pipe(Effect.scoped, Effect.runPromise))
 
   test("unsafeSend initializer", () =>
     Effect.gen(function*(_) {
-      const actor = yield* _(Machine.boot(timerLoop))
-      const results = yield* _(
+      const actor = yield* Machine.boot(timerLoop)
+      const results = yield* pipe(
         actor.changes,
         Stream.take(5),
         Stream.runCollect
@@ -228,27 +228,27 @@ describe("Machine", () => {
 
   test("NoReply", () =>
     Effect.gen(function*(_) {
-      const actor = yield* _(Machine.boot(deferReply))
-      assert.strictEqual(yield* _(actor.send(new Increment())), 1)
+      const actor = yield* Machine.boot(deferReply)
+      assert.strictEqual(yield* actor.send(new Increment()), 1)
     }).pipe(Effect.scoped, Effect.runPromise))
 })
 
 describe("SerializableMachine", () => {
   test("counter", () =>
     Effect.gen(function*(_) {
-      const actor = yield* _(Machine.boot(counterSerializable, 10))
+      const actor = yield* Machine.boot(counterSerializable, 10)
 
-      assert.strictEqual(yield* _(actor.get), 10)
-      assert.strictEqual(yield* _(actor.send(new Increment())), 11)
-      assert.strictEqual(yield* _(actor.send(new Increment())), 12)
-      assert.deepStrictEqual(yield* _(actor.sendUnknown({ _tag: "Decrement" })), {
+      assert.strictEqual(yield* actor.get, 10)
+      assert.strictEqual(yield* actor.send(new Increment()), 11)
+      assert.strictEqual(yield* actor.send(new Increment()), 12)
+      assert.deepStrictEqual(yield* actor.sendUnknown({ _tag: "Decrement" }), {
         _tag: "Success",
         value: 11
       })
-      const snapshot = yield* _(Machine.snapshot(actor))
+      const snapshot = yield* Machine.snapshot(actor)
       assert.deepStrictEqual(snapshot, [10, "11"])
 
-      const restored = yield* _(Machine.restore(counterSerializable, snapshot))
-      assert.strictEqual(yield* _(restored.get), 11)
+      const restored = yield* Machine.restore(counterSerializable, snapshot)
+      assert.strictEqual(yield* restored.get, 11)
     }).pipe(Effect.scoped, Effect.runPromise))
 })

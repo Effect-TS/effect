@@ -12,7 +12,7 @@ import * as Layer from "effect/Layer"
 import { describe, expect, it } from "vitest"
 
 const MainLive = Effect.gen(function*(_) {
-  const console = yield* _(MockConsole.make)
+  const console = yield* MockConsole.make
   return Layer.mergeAll(
     Console.setConsole(console),
     NodeFileSystem.layer,
@@ -35,10 +35,10 @@ describe("Wizard", () => {
         })
       )
       const args = Array.make("node", "test", "--wizard")
-      const fiber = yield* _(Effect.fork(cli(args)))
-      yield* _(MockTerminal.inputKey("c", { ctrl: true }))
-      yield* _(Fiber.join(fiber))
-      const lines = yield* _(MockConsole.getLines({ stripAnsi: true }))
+      const fiber = yield* Effect.fork(cli(args))
+      yield* MockTerminal.inputKey("c", { ctrl: true })
+      yield* Fiber.join(fiber)
+      const lines = yield* MockConsole.getLines({ stripAnsi: true })
       const result = Array.some(lines, (line) => line.includes("Quitting wizard mode..."))
       expect(result).toBe(true)
     }).pipe(runEffect))

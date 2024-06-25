@@ -10,7 +10,7 @@ import {
   TELEMETRYSDKLANGUAGEVALUES_NODEJS,
   TELEMETRYSDKLANGUAGEVALUES_WEBJS
 } from "@opentelemetry/semantic-conventions"
-import { Config } from "effect"
+import { Config, pipe } from "effect"
 import * as Arr from "effect/Array"
 import { GenericTag } from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -68,8 +68,8 @@ export const layerFromEnv = (
   Layer.effect(
     Resource,
     Effect.gen(function*(_) {
-      const serviceName = yield* _(Config.string("OTEL_SERVICE_NAME"), Config.option, Effect.orDie)
-      const attributes = yield* _(
+      const serviceName = yield* pipe(Config.string("OTEL_SERVICE_NAME"), Config.option, Effect.orDie)
+      const attributes = yield* pipe(
         Config.string("OTEL_RESOURCE_ATTRIBUTES"),
         Config.withDefault(""),
         Config.map((s) => {

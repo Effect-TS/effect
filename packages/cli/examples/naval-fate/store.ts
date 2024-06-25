@@ -25,15 +25,15 @@ export interface NavalFateStore {
 
 export const NavalFateStore = Context.GenericTag<NavalFateStore>("NavalFateStore")
 
-export const make = Effect.gen(function*($) {
-  const shipsStore = yield* $(Effect.map(
+export const make = Effect.gen(function*() {
+  const shipsStore = yield* Effect.map(
     KeyValueStore.KeyValueStore,
     (store) => store.forSchema(Schema.ReadonlyMap({ key: Schema.String, value: Ship }))
-  ))
-  const minesStore = yield* $(Effect.map(
+  )
+  const minesStore = yield* Effect.map(
     KeyValueStore.KeyValueStore,
     (store) => store.forSchema(Schema.Array(Mine))
-  ))
+  )
 
   const getShips = shipsStore.get("ships").pipe(
     Effect.map(Option.getOrElse<ReadonlyMap<string, Ship>>(() => new Map())),
@@ -47,47 +47,47 @@ export const make = Effect.gen(function*($) {
   const setMines = (mines: ReadonlyArray<Mine>) => minesStore.set("mines", mines).pipe(Effect.orDie)
 
   const createShip: NavalFateStore["createShip"] = (name) =>
-    Effect.gen(function*($) {
-      const oldShips = yield* $(getShips)
+    Effect.gen(function*() {
+      const oldShips = yield* getShips
       const foundShip = Option.fromNullable(oldShips.get(name))
       if (Option.isSome(foundShip)) {
-        return yield* $(Effect.fail(new ShipExistsError({ name })))
+        return yield* Effect.fail(new ShipExistsError({ name }))
       }
       const ship = Ship.create(name)
       const newShips = new Map(oldShips).set(name, ship)
-      yield* $(setShips(newShips))
+      yield* setShips(newShips)
       return ship
     })
 
   const moveShip: NavalFateStore["moveShip"] = (name, x, y) =>
-    Effect.gen(function*($) {
-      const oldShips = yield* $(getShips)
+    Effect.gen(function*() {
+      const oldShips = yield* getShips
       const foundShip = Option.fromNullable(oldShips.get(name))
       if (Option.isNone(foundShip)) {
-        return yield* $(Effect.fail(new ShipNotFoundError({ name, x, y })))
+        return yield* Effect.fail(new ShipNotFoundError({ name, x, y }))
       }
       const shipAtCoords = pipe(
         Arr.fromIterable(oldShips.values()),
         Arr.findFirst((ship) => ship.hasCoordinates(x, y))
       )
       if (Option.isSome(shipAtCoords)) {
-        return yield* $(Effect.fail(
+        return yield* Effect.fail(
           new CoordinatesOccupiedError({ name: shipAtCoords.value.name, x, y })
-        ))
+        )
       }
-      const mines = yield* $(getMines)
+      const mines = yield* getMines
       const mineAtCoords = Arr.findFirst(mines, (mine) => mine.hasCoordinates(x, y))
       const ship = Option.isSome(mineAtCoords)
         ? foundShip.value.move(x, y).destroy()
         : foundShip.value.move(x, y)
       const newShips = new Map(oldShips).set(name, ship)
-      yield* $(setShips(newShips))
+      yield* setShips(newShips)
       return ship
     })
 
   const shoot: NavalFateStore["shoot"] = (x, y) =>
-    Effect.gen(function*($) {
-      const oldShips = yield* $(getShips)
+    Effect.gen(function*() {
+      const oldShips = yield* getShips
       const shipAtCoords = pipe(
         Arr.fromIterable(oldShips.values()),
         Arr.findFirst((ship) => ship.hasCoordinates(x, y))
@@ -95,28 +95,28 @@ export const make = Effect.gen(function*($) {
       if (Option.isSome(shipAtCoords)) {
         const ship = shipAtCoords.value.destroy()
         const newShips = new Map(oldShips).set(ship.name, ship)
-        yield* $(setShips(newShips))
+        yield* setShips(newShips)
       }
     })
 
   const setMine: NavalFateStore["setMine"] = (x, y) =>
-    Effect.gen(function*($) {
-      const mines = yield* $(getMines)
+    Effect.gen(function*() {
+      const mines = yield* getMines
       const mineAtCoords = Arr.findFirst(mines, (mine) => mine.hasCoordinates(x, y))
       if (Option.isNone(mineAtCoords)) {
         const mine = Mine.create(x, y)
         const newMines = Arr.append(mines, mine)
-        yield* $(setMines(newMines))
+        yield* setMines(newMines)
       }
     })
 
   const removeMine: NavalFateStore["removeMine"] = (x, y) =>
-    Effect.gen(function*($) {
-      const mines = yield* $(getMines)
+    Effect.gen(function*() {
+      const mines = yield* getMines
       const mineAtCoords = Arr.findFirstIndex(mines, (mine) => mine.hasCoordinates(x, y))
       if (Option.isSome(mineAtCoords)) {
         const newMines = Arr.remove(mines, mineAtCoords.value)
-        yield* $(setMines(newMines))
+        yield* setMines(newMines)
       }
     })
 

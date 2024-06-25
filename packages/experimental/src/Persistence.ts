@@ -201,12 +201,12 @@ export const ResultPersistence: Context.Tag<ResultPersistence, ResultPersistence
 export const layerResult = Layer.effect(
   ResultPersistence,
   Effect.gen(function*(_) {
-    const backing = yield* _(BackingPersistence)
+    const backing = yield* BackingPersistence
     return ResultPersistence.of({
       [ResultPersistenceTypeId]: ResultPersistenceTypeId,
       make: (storeId: string) =>
         Effect.gen(function*(_) {
-          const storage = yield* _(backing.make(storeId))
+          const storage = yield* backing.make(storeId)
           const parse = <R, IE, E, IA, A>(
             method: string,
             key: ResultPersistence.Key<R, IE, E, IA, A>,
@@ -320,7 +320,7 @@ export const layerMemory: Layer.Layer<BackingPersistence> = Layer.sync(
 export const layerKeyValueStore: Layer.Layer<BackingPersistence, never, KeyValueStore.KeyValueStore> = Layer.effect(
   BackingPersistence,
   Effect.gen(function*(_) {
-    const backing = yield* _(KeyValueStore.KeyValueStore)
+    const backing = yield* KeyValueStore.KeyValueStore
     return BackingPersistence.of({
       [BackingPersistenceTypeId]: BackingPersistenceTypeId,
       make: (storeId) =>

@@ -18,7 +18,7 @@ import * as Cause from "effect/Cause"
 import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
 import * as FiberSet from "effect/FiberSet"
-import { type LazyArg } from "effect/Function"
+import { type LazyArg, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type { ReadonlyRecord } from "effect/Record"
@@ -72,7 +72,7 @@ export const make = (
 
     const address = server.address()!
 
-    const wss = yield* _(
+    const wss = yield* pipe(
       Effect.acquireRelease(
         Effect.sync(() => new WS.WebSocketServer({ noServer: true })),
         (wss) =>
@@ -97,14 +97,14 @@ export const make = (
         },
       serve: (httpApp, middleware) =>
         Effect.gen(function*(_) {
-          const handler = yield* _(makeHandler(httpApp, middleware!))
-          const upgradeHandler = yield* _(makeUpgradeHandler(wss, httpApp, middleware!))
-          yield* _(Effect.addFinalizer(() =>
+          const handler = yield* makeHandler(httpApp, middleware!)
+          const upgradeHandler = yield* makeUpgradeHandler(wss, httpApp, middleware!)
+          yield* Effect.addFinalizer(() =>
             Effect.sync(() => {
               server.off("request", handler)
               server.off("upgrade", upgradeHandler)
             })
-          ))
+          )
           server.on("request", handler)
           server.on("upgrade", upgradeHandler)
         })

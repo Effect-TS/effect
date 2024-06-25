@@ -234,13 +234,13 @@ describe("Stream", () => {
         readonly _tag = "ErrorB"
       }
 
-      const result1 = yield* _(
+      const result1 = yield* pipe(
         Stream.fail(new ErrorA()),
         Stream.catchTag("ErrorA", () => Stream.make(1, 2)),
         Stream.runCollect
       )
 
-      const result2 = yield* _(
+      const result2 = yield* pipe(
         Stream.fail(new ErrorA()),
         Stream.flatMap(() => Stream.fail(new ErrorB())),
         Stream.catchTag("ErrorB", () => Stream.make(1, 2)),

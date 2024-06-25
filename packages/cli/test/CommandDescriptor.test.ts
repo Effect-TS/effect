@@ -11,7 +11,7 @@ import * as WordCount from "@effect/cli/test/utils/wc"
 import * as ValidationError from "@effect/cli/ValidationError"
 import * as NodeContext from "@effect/platform-node/NodeContext"
 import * as Doc from "@effect/printer/Doc"
-import { Array, Effect, Option, String } from "effect"
+import { Array, Effect, Option, pipe, String } from "effect"
 import { describe, expect, it } from "vitest"
 
 const runEffect = <E, A>(
@@ -27,8 +27,8 @@ describe("Command", () => {
       Effect.gen(function*(_) {
         const args1 = Array.make("tail", "-n", "100", "foo.log")
         const args2 = Array.make("grep", "--after", "2", "--before", "3", "fooBar")
-        const result1 = yield* _(Descriptor.parse(Tail.command, args1, CliConfig.defaultConfig))
-        const result2 = yield* _(Descriptor.parse(Grep.command, args2, CliConfig.defaultConfig))
+        const result1 = yield* Descriptor.parse(Tail.command, args1, CliConfig.defaultConfig)
+        const result2 = yield* Descriptor.parse(Grep.command, args2, CliConfig.defaultConfig)
         const expected1 = { name: "tail", options: 100, args: "foo.log" }
         const expected2 = { name: "grep", options: [2, 3], args: "fooBar" }
         expect(result1).toEqual(CommandDirective.userDefined(Array.empty(), expected1))
@@ -40,15 +40,12 @@ describe("Command", () => {
         const args1 = Array.make("grep", "--afte", "2", "--before", "3", "fooBar")
         const args2 = Array.make("grep", "--after", "2", "--efore", "3", "fooBar")
         const args3 = Array.make("grep", "--afte", "2", "--efore", "3", "fooBar")
-        const result1 = yield* _(
-          Effect.flip(Descriptor.parse(Grep.command, args1, CliConfig.defaultConfig))
-        )
-        const result2 = yield* _(
-          Effect.flip(Descriptor.parse(Grep.command, args2, CliConfig.defaultConfig))
-        )
-        const result3 = yield* _(
-          Effect.flip(Descriptor.parse(Grep.command, args3, CliConfig.defaultConfig))
-        )
+        const result1 = yield* Effect.flip(Descriptor.parse(Grep.command, args1, CliConfig.defaultConfig))
+
+        const result2 = yield* Effect.flip(Descriptor.parse(Grep.command, args2, CliConfig.defaultConfig))
+
+        const result3 = yield* Effect.flip(Descriptor.parse(Grep.command, args3, CliConfig.defaultConfig))
+
         expect(result1).toEqual(ValidationError.correctedFlag(HelpDoc.p(
           "The flag '--afte' is not recognized. Did you mean '--after'?"
         )))
@@ -63,9 +60,8 @@ describe("Command", () => {
     it("should return an error if an option is missing", () =>
       Effect.gen(function*(_) {
         const args = Array.make("grep", "--a", "2", "--before", "3", "fooBar")
-        const result = yield* _(
-          Effect.flip(Descriptor.parse(Grep.command, args, CliConfig.defaultConfig))
-        )
+        const result = yield* Effect.flip(Descriptor.parse(Grep.command, args, CliConfig.defaultConfig))
+
         expect(result).toEqual(ValidationError.missingValue(HelpDoc.sequence(
           HelpDoc.p("Expected to find option: '--after'"),
           HelpDoc.p("Expected to find option: '--before'")
@@ -78,12 +74,10 @@ describe("Command", () => {
       Effect.gen(function*(_) {
         const args1 = Array.make("wc", "-clw", "filename")
         const args2 = Array.make("wc", "-c", "-l", "-w", "filename")
-        const result1 = yield* _(
-          Descriptor.parse(WordCount.command, args1, CliConfig.defaultConfig)
-        )
-        const result2 = yield* _(
-          Descriptor.parse(WordCount.command, args2, CliConfig.defaultConfig)
-        )
+        const result1 = yield* Descriptor.parse(WordCount.command, args1, CliConfig.defaultConfig)
+
+        const result2 = yield* Descriptor.parse(WordCount.command, args2, CliConfig.defaultConfig)
+
         const expected = { name: "wc", options: [true, true, true, true], args: ["filename"] }
         expect(result1).toEqual(CommandDirective.userDefined(Array.empty(), expected))
         expect(result2).toEqual(CommandDirective.userDefined(Array.empty(), expected))
@@ -92,7 +86,7 @@ describe("Command", () => {
     it("should not uncluster wrong clusters", () =>
       Effect.gen(function*(_) {
         const args = Array.make("wc", "-clk")
-        const result = yield* _(Descriptor.parse(WordCount.command, args, CliConfig.defaultConfig))
+        const result = yield* Descriptor.parse(WordCount.command, args, CliConfig.defaultConfig)
         const expected = { name: "wc", options: [false, false, false, true], args: ["-clk"] }
         expect(result).toEqual(CommandDirective.userDefined(Array.empty(), expected))
       }).pipe(runEffect))
@@ -100,7 +94,7 @@ describe("Command", () => {
     it("should not alter '-'", () =>
       Effect.gen(function*(_) {
         const args = Array.make("wc", "-")
-        const result = yield* _(Descriptor.parse(WordCount.command, args, CliConfig.defaultConfig))
+        const result = yield* Descriptor.parse(WordCount.command, args, CliConfig.defaultConfig)
         const expected = { name: "wc", options: [false, false, false, true], args: ["-"] }
         expect(result).toEqual(CommandDirective.userDefined(Array.empty(), expected))
       }).pipe(runEffect))
@@ -117,7 +111,7 @@ describe("Command", () => {
     it("should match the top-level command if no subcommands are specified", () =>
       Effect.gen(function*(_) {
         const args = Array.make("git", "-v")
-        const result = yield* _(Descriptor.parse(git, args, CliConfig.defaultConfig))
+        const result = yield* Descriptor.parse(git, args, CliConfig.defaultConfig)
         const expected = { name: "git", options: true, args: void 0, subcommand: Option.none() }
         expect(result).toEqual(CommandDirective.userDefined([], expected))
       }).pipe(runEffect))
@@ -125,7 +119,7 @@ describe("Command", () => {
     it("should match the first subcommand without any surplus arguments", () =>
       Effect.gen(function*(_) {
         const args = Array.make("git", "remote")
-        const result = yield* _(Descriptor.parse(git, args, CliConfig.defaultConfig))
+        const result = yield* Descriptor.parse(git, args, CliConfig.defaultConfig)
         const expected = {
           name: "git",
           options: false,
@@ -138,7 +132,7 @@ describe("Command", () => {
     it("matches the first subcommand with a surplus option", () =>
       Effect.gen(function*(_) {
         const args = Array.make("git", "remote", "-v")
-        const result = yield* _(Descriptor.parse(git, args, CliConfig.defaultConfig))
+        const result = yield* Descriptor.parse(git, args, CliConfig.defaultConfig)
         const expected = {
           name: "git",
           options: false,
@@ -151,7 +145,7 @@ describe("Command", () => {
     it("matches the second subcommand without any surplus arguments", () =>
       Effect.gen(function*(_) {
         const args = Array.make("git", "log")
-        const result = yield* _(Descriptor.parse(git, args, CliConfig.defaultConfig))
+        const result = yield* Descriptor.parse(git, args, CliConfig.defaultConfig)
         const expected = {
           name: "git",
           options: false,
@@ -164,7 +158,7 @@ describe("Command", () => {
     it("should return an error message for an unknown subcommand", () =>
       Effect.gen(function*(_) {
         const args = Array.make("git", "abc")
-        const result = yield* _(Effect.flip(Descriptor.parse(git, args, CliConfig.defaultConfig)))
+        const result = yield* Effect.flip(Descriptor.parse(git, args, CliConfig.defaultConfig))
         expect(result).toEqual(ValidationError.commandMismatch(HelpDoc.p(
           "Invalid subcommand for git - use one of 'remote', 'log'"
         )))
@@ -186,7 +180,7 @@ describe("Command", () => {
     it("should parse a subcommand with required options and arguments", () =>
       Effect.gen(function*(_) {
         const args = Array.make("git", "rebase", "-i", "upstream", "branch")
-        const result = yield* _(Descriptor.parse(git, args, CliConfig.defaultConfig))
+        const result = yield* Descriptor.parse(git, args, CliConfig.defaultConfig)
         const expected = {
           name: "git",
           options: void 0,
@@ -211,7 +205,7 @@ describe("Command", () => {
           "upstream",
           "branch"
         )
-        const result = yield* _(Descriptor.parse(git, args, CliConfig.defaultConfig))
+        const result = yield* Descriptor.parse(git, args, CliConfig.defaultConfig)
         const expected = {
           name: "git",
           options: void 0,
@@ -239,7 +233,7 @@ describe("Command", () => {
     it("should properly parse deeply nested subcommands with options and arguments", () =>
       Effect.gen(function*(_) {
         const args = Array.make("command", "sub", "subsub", "-i", "text")
-        const result = yield* _(Descriptor.parse(command, args, CliConfig.defaultConfig))
+        const result = yield* Descriptor.parse(command, args, CliConfig.defaultConfig)
         const expected = {
           name: "command",
           options: void 0,
@@ -265,7 +259,7 @@ describe("Command", () => {
         const config = CliConfig.make({ showBuiltIns: false })
         const cmd = Descriptor.make("tldr").pipe(Descriptor.withDescription("this is some help"))
         const args = Array.of("tldr")
-        const result = yield* _(Descriptor.parse(cmd, args, CliConfig.defaultConfig))
+        const result = yield* Descriptor.parse(cmd, args, CliConfig.defaultConfig)
         const expectedValue = { name: "tldr", options: void 0, args: void 0 }
         const expectedDoc = HelpDoc.sequence(
           HelpDoc.h1("DESCRIPTION"),
@@ -339,19 +333,19 @@ describe("Command", () => {
 
     it("should trigger built-in options if they are alone", () =>
       Effect.gen(function*(_) {
-        const result1 = yield* _(
+        const result1 = yield* pipe(
           Descriptor.parse(command, params1, CliConfig.defaultConfig),
           Effect.map(directiveType)
         )
-        const result2 = yield* _(
+        const result2 = yield* pipe(
           Descriptor.parse(command, params2, CliConfig.defaultConfig),
           Effect.map(directiveType)
         )
-        const result3 = yield* _(
+        const result3 = yield* pipe(
           Descriptor.parse(command, params3, CliConfig.defaultConfig),
           Effect.map(directiveType)
         )
-        const result4 = yield* _(
+        const result4 = yield* pipe(
           Descriptor.parse(command, params4, CliConfig.defaultConfig),
           Effect.map(directiveType)
         )
@@ -363,7 +357,7 @@ describe("Command", () => {
 
     it("should not trigger help if an option matches", () =>
       Effect.gen(function*(_) {
-        const result = yield* _(
+        const result = yield* pipe(
           Descriptor.parse(command, params5, CliConfig.defaultConfig),
           Effect.map(directiveType)
         )
@@ -373,11 +367,11 @@ describe("Command", () => {
     it("should trigger help even if not alone", () =>
       Effect.gen(function*(_) {
         const config = CliConfig.make({ finalCheckBuiltIn: true })
-        const result1 = yield* _(
+        const result1 = yield* pipe(
           Descriptor.parse(command, params6, config),
           Effect.map(directiveType)
         )
-        const result2 = yield* _(
+        const result2 = yield* pipe(
           Descriptor.parse(command, params7, config),
           Effect.map(directiveType)
         )
@@ -388,7 +382,7 @@ describe("Command", () => {
     it("should trigger wizard even if not alone", () =>
       Effect.gen(function*(_) {
         const config = CliConfig.make({ finalCheckBuiltIn: true })
-        const result = yield* _(
+        const result = yield* pipe(
           Descriptor.parse(command, params8, config),
           Effect.map(directiveType)
         )
@@ -411,9 +405,9 @@ describe("Command", () => {
         const args1 = Array.make("cmd", "-v", "--something", "abc", "something")
         const args2 = Array.make("cmd", "-v", "--", "--something", "abc", "something")
         const args3 = Array.make("cmd", "--", "-v", "--something", "abc", "something")
-        const result1 = yield* _(Descriptor.parse(command, args1, CliConfig.defaultConfig))
-        const result2 = yield* _(Descriptor.parse(command, args2, CliConfig.defaultConfig))
-        const result3 = yield* _(Descriptor.parse(command, args3, CliConfig.defaultConfig))
+        const result1 = yield* Descriptor.parse(command, args1, CliConfig.defaultConfig)
+        const result2 = yield* Descriptor.parse(command, args2, CliConfig.defaultConfig)
+        const result3 = yield* Descriptor.parse(command, args3, CliConfig.defaultConfig)
         const expected1 = {
           name: "cmd",
           options: [Option.some("abc"), true],
@@ -456,26 +450,20 @@ describe("Command", () => {
 
     it("should create completions for the bash shell", () =>
       Effect.gen(function*(_) {
-        const result = yield* _(Descriptor.getBashCompletions(command, "forge"))
-        yield* _(
-          Effect.promise(() => expect(result).toMatchFileSnapshot("./snapshots/bash-completions"))
-        )
+        const result = yield* Descriptor.getBashCompletions(command, "forge")
+        yield* Effect.promise(() => expect(result).toMatchFileSnapshot("./snapshots/bash-completions"))
       }).pipe(runEffect))
 
     it("should create completions for the zsh shell", () =>
       Effect.gen(function*(_) {
-        const result = yield* _(Descriptor.getZshCompletions(command, "forge"))
-        yield* _(
-          Effect.promise(() => expect(result).toMatchFileSnapshot("./snapshots/zsh-completions"))
-        )
+        const result = yield* Descriptor.getZshCompletions(command, "forge")
+        yield* Effect.promise(() => expect(result).toMatchFileSnapshot("./snapshots/zsh-completions"))
       }).pipe(runEffect))
 
     it("should create completions for the fish shell", () =>
       Effect.gen(function*(_) {
-        const result = yield* _(Descriptor.getFishCompletions(command, "forge"))
-        yield* _(
-          Effect.promise(() => expect(result).toMatchFileSnapshot("./snapshots/fish-completions"))
-        )
+        const result = yield* Descriptor.getFishCompletions(command, "forge")
+        yield* Effect.promise(() => expect(result).toMatchFileSnapshot("./snapshots/fish-completions"))
       }).pipe(runEffect))
   })
 })

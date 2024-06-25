@@ -65,11 +65,11 @@ export const make = (
       }
     })
 
-    yield* _(Effect.addFinalizer(() =>
+    yield* Effect.addFinalizer(() =>
       Effect.sync(() => {
         server.stop()
       })
-    ))
+    )
 
     return Server.make({
       address: { _tag: "TcpAddress", port: server.port, hostname: server.hostname },

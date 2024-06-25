@@ -1,4 +1,4 @@
-import { Array, Effect, Exit, Ref, Scope } from "effect"
+import { Array, Effect, Exit, pipe, Ref, Scope } from "effect"
 import * as FiberSet from "effect/FiberSet"
 import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
@@ -6,11 +6,11 @@ import { assert, describe } from "vitest"
 describe("FiberSet", () => {
   it.effect("interrupts fibers", () =>
     Effect.gen(function*(_) {
-      const ref = yield* _(Ref.make(0))
-      yield* _(
+      const ref = yield* Ref.make(0)
+      yield* pipe(
         Effect.gen(function*(_) {
-          const set = yield* _(FiberSet.make())
-          yield* _(
+          const set = yield* FiberSet.make()
+          yield* pipe(
             Effect.onInterrupt(
               Effect.never,
               () => Ref.update(ref, (n) => n + 1)
@@ -19,21 +19,21 @@ describe("FiberSet", () => {
             ),
             Effect.replicateEffect(10)
           )
-          yield* _(Effect.yieldNow())
+          yield* Effect.yieldNow()
         }),
         Effect.scoped
       )
 
-      assert.strictEqual(yield* _(Ref.get(ref)), 10)
+      assert.strictEqual(yield* Ref.get(ref), 10)
     }))
 
   it.effect("runtime", () =>
     Effect.gen(function*(_) {
-      const ref = yield* _(Ref.make(0))
-      yield* _(
+      const ref = yield* Ref.make(0)
+      yield* pipe(
         Effect.gen(function*(_) {
-          const set = yield* _(FiberSet.make())
-          const run = yield* _(FiberSet.runtime(set)<never>())
+          const set = yield* FiberSet.make()
+          const run = yield* FiberSet.runtime(set)<never>()
           Array.range(1, 10).forEach(() =>
             run(
               Effect.onInterrupt(
@@ -42,32 +42,32 @@ describe("FiberSet", () => {
               )
             )
           )
-          yield* _(Effect.yieldNow())
+          yield* Effect.yieldNow()
         }),
         Effect.scoped
       )
 
-      assert.strictEqual(yield* _(Ref.get(ref)), 10)
+      assert.strictEqual(yield* Ref.get(ref), 10)
     }))
 
   it.scoped("join", () =>
     Effect.gen(function*(_) {
-      const set = yield* _(FiberSet.make())
+      const set = yield* FiberSet.make()
       FiberSet.unsafeAdd(set, Effect.runFork(Effect.void))
       FiberSet.unsafeAdd(set, Effect.runFork(Effect.void))
       FiberSet.unsafeAdd(set, Effect.runFork(Effect.fail("fail")))
-      const result = yield* _(FiberSet.join(set), Effect.flip)
+      const result = yield* pipe(FiberSet.join(set), Effect.flip)
       assert.strictEqual(result, "fail")
     }))
 
   it.effect("size", () =>
     Effect.gen(function*(_) {
-      const scope = yield* _(Scope.make())
-      const set = yield* _(FiberSet.make(), Scope.extend(scope))
+      const scope = yield* Scope.make()
+      const set = yield* pipe(FiberSet.make(), Scope.extend(scope))
       FiberSet.unsafeAdd(set, Effect.runFork(Effect.never))
       FiberSet.unsafeAdd(set, Effect.runFork(Effect.never))
-      assert.strictEqual(yield* _(FiberSet.size(set)), 2)
-      yield* _(Scope.close(scope, Exit.void))
-      assert.strictEqual(yield* _(FiberSet.size(set)), 0)
+      assert.strictEqual(yield* FiberSet.size(set), 2)
+      yield* Scope.close(scope, Exit.void)
+      assert.strictEqual(yield* FiberSet.size(set), 0)
     }))
 })

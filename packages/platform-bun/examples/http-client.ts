@@ -22,8 +22,8 @@ interface TodoService {
 }
 const TodoService = Context.GenericTag<TodoService>("@effect/platform-bun/examples/TodoService")
 
-const makeTodoService = Effect.gen(function*(_) {
-  const defaultClient = yield* _(HttpClient.HttpClient)
+const makeTodoService = Effect.gen(function*() {
+  const defaultClient = yield* HttpClient.HttpClient
   const clientWithBaseUrl = defaultClient.pipe(
     HttpClient.filterStatusOk,
     HttpClient.mapRequest(HttpClientRequest.prependUrl("https://jsonplaceholder.typicode.com"))

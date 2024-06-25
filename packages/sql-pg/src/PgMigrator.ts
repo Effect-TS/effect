@@ -9,6 +9,7 @@ import * as Migrator from "@effect/sql/Migrator"
 import type * as Client from "@effect/sql/SqlClient"
 import type { SqlError } from "@effect/sql/SqlError"
 import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
 import { PgClient } from "./PgClient.js"
@@ -38,7 +39,7 @@ export const run: <R2 = never>(
     const pgDump = (args: Array<string>) =>
       Effect.gen(function*(_) {
         const sql = yield* PgClient
-        const dump = yield* _(
+        const dump = yield* pipe(
           Command.make("pg_dump", ...args, "--no-owner", "--no-privileges"),
           Command.env({
             PATH: (globalThis as any).process?.env.PATH,
@@ -78,11 +79,11 @@ export const run: <R2 = never>(
 
     const pgDumpFile = (path: string) =>
       Effect.gen(function*(_) {
-        const fs = yield* _(FileSystem)
-        const path_ = yield* _(Path)
-        const dump = yield* _(pgDumpAll)
-        yield* _(fs.makeDirectory(path_.dirname(path), { recursive: true }))
-        yield* _(fs.writeFileString(path, dump))
+        const fs = yield* FileSystem
+        const path_ = yield* Path
+        const dump = yield* pgDumpAll
+        yield* fs.makeDirectory(path_.dirname(path), { recursive: true })
+        yield* fs.writeFileString(path, dump)
       }).pipe(
         Effect.mapError((error) => new Migrator.MigrationError({ reason: "failed", message: error.message }))
       )

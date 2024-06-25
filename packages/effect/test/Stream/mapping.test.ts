@@ -337,13 +337,13 @@ describe("Stream", () => {
 
   it.effect("mapEffect with key", () =>
     Effect.gen(function*(_) {
-      const fiber = yield* _(
+      const fiber = yield* pipe(
         Stream.make(10, 20, 30, 40),
         Stream.mapEffect((n) => Effect.delay(Effect.succeed(n), n), { key: identity }),
         Stream.runCollect,
         Effect.fork
       )
-      yield* _(TestClock.adjust(40))
+      yield* TestClock.adjust(40)
       const exit = fiber.unsafePoll()
       assert(Exit.isExit(exit))
       assert(Exit.isSuccess(exit))

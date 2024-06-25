@@ -747,9 +747,9 @@ describe("ConfigProvider", () => {
       const config2 = arrayConfig.pipe(Config.nested("child"), Config.nested("parent2"))
       const config3 = arrayConfig.pipe(Config.nested("child"), Config.nested("parent3"))
 
-      const result1 = yield* _(configProvider.load(config1))
-      const result2 = yield* _(configProvider.load(config2))
-      const result3 = yield* _(Effect.either(configProvider.load(config3)))
+      const result1 = yield* configProvider.load(config1)
+      const result2 = yield* configProvider.load(config2)
+      const result3 = yield* Effect.either(configProvider.load(config3))
 
       expect(result1).toEqual([[1, 2], [3, 4]])
       expect(result2).toEqual([[11, 21], [31, 41]])
@@ -789,7 +789,7 @@ describe("ConfigProvider", () => {
       const arrayConfig = Config.array(product, "employees")
       const config = arrayConfig.pipe(Config.nested("child"), Config.nested("parent1"))
 
-      const result = yield* _(configProvider.load(config))
+      const result = yield* configProvider.load(config)
 
       expect(result).toEqual([[1, 2], [3, 4]])
     }))

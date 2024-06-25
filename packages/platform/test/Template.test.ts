@@ -10,14 +10,14 @@ describe("Template", () => {
           Effect.delay(10)
         )
       }${Option.some(123)}${Option.none()}</html>`
-      const result = yield* _(t)
+      const result = yield* t
       assert.strictEqual(result, `<html><body>123</html>`)
     }).pipe(Effect.runPromise))
 
   test("streaming", () =>
     Effect.gen(function*(_) {
       const t = Template.stream`<html>${Effect.succeed("<body>")}${Stream.make("one", " ", "two")}</html>`
-      const result = yield* _(Stream.mkString(t))
+      const result = yield* Stream.mkString(t)
       assert.strictEqual(result, `<html><body>one two</html>`)
     }).pipe(Effect.runPromise))
 })

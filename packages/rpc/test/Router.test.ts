@@ -298,9 +298,8 @@ describe("Router", () => {
 
   test("handlerUndecoded", () =>
     Effect.gen(function*(_) {
-      const result = yield* _(
-        handlerUndecoded(new CreatePost({ body: "hello" }))
-      )
+      const result = yield* handlerUndecoded(new CreatePost({ body: "hello" }))
+
       assert.deepStrictEqual(result, {
         id: 1,
         body: "hello"
@@ -317,16 +316,16 @@ describe.each([{
 }])("$name", ({ resolver }) => {
   test("effect", () =>
     Effect.gen(function*(_) {
-      const name = yield* _(Rpc.call(new SpanName(), resolver))
+      const name = yield* Rpc.call(new SpanName(), resolver)
       assert.strictEqual(name, "Rpc.router SpanName")
 
-      const clientName = yield* _(client(new SpanName()))
+      const clientName = yield* client(new SpanName())
       assert.strictEqual(clientName, "Rpc.router SpanName")
     }).pipe(Effect.runPromise))
 
   test("headers", () =>
     Effect.gen(function*(_) {
-      const headers = yield* _(
+      const headers = yield* pipe(
         Rpc.call(new EchoHeaders(), resolver),
         Rpc.annotateHeaders({ FOO: "bar" })
       )
@@ -335,7 +334,7 @@ describe.each([{
 
   test("annotateHeadersEffect", () =>
     Effect.gen(function*(_) {
-      const headers = yield* _(
+      const headers = yield* pipe(
         Rpc.call(new EchoHeaders(), resolverWithHeaders),
         Rpc.annotateHeaders({ FOO: "bar" })
       )
@@ -344,7 +343,7 @@ describe.each([{
 
   test("stream", () =>
     Effect.gen(function*(_) {
-      const counts = yield* _(
+      const counts = yield* pipe(
         Rpc.call(new Counts(), resolver),
         Stream.runCollect,
         Effect.map(Chunk.toReadonlyArray)
@@ -361,7 +360,7 @@ describe.each([{
   test("stream fail", () =>
     Effect.gen(function*(_) {
       let n = 0
-      const result = yield* _(
+      const result = yield* pipe(
         Rpc.call(new FailStream(), resolver),
         Stream.tap((i) =>
           Effect.sync(() => {

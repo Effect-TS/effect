@@ -100,13 +100,13 @@ const unsafeMake = <A, E>(
  * import { Effect, FiberSet } from "effect"
  *
  * Effect.gen(function*(_) {
- *   const set = yield* _(FiberSet.make())
+ *   const set = yield* FiberSet.make()
  *
  *   // run some effects and add the fibers to the set
- *   yield* _(FiberSet.run(set, Effect.never))
- *   yield* _(FiberSet.run(set, Effect.never))
+ *   yield* FiberSet.run(set, Effect.never)
+ *   yield* FiberSet.run(set, Effect.never)
  *
- *   yield* _(Effect.sleep(1000))
+ *   yield* Effect.sleep(1000)
  * }).pipe(
  *   Effect.scoped // The fibers will be interrupted when the scope is closed
  * )
@@ -299,8 +299,8 @@ export const run: {
  * }>("Users")
  *
  * Effect.gen(function*(_) {
- *   const set = yield* _(FiberSet.make())
- *   const run = yield* _(FiberSet.runtime(set)<Users>())
+ *   const set = yield* FiberSet.make()
+ *   const run = yield* FiberSet.runtime(set)<Users>()
  *
  *   // run some effects and add the fibers to the set
  *   run(Effect.andThen(Users, _ => _.getAll))
@@ -353,11 +353,11 @@ export const size = <A, E>(self: FiberSet<A, E>): Effect.Effect<number> =>
  * import { Effect, FiberSet } from "effect";
  *
  * Effect.gen(function* (_) {
- *   const set = yield* _(FiberSet.make());
- *   yield* _(FiberSet.add(set, Effect.runFork(Effect.fail("error"))));
+ *   const set = yield* FiberSet.make();
+ *   yield* FiberSet.add(set, Effect.runFork(Effect.fail("error")));
  *
  *   // parent fiber will fail with "error"
- *   yield* _(FiberSet.join(set));
+ *   yield* FiberSet.join(set);
  * });
  */
 export const join = <A, E>(self: FiberSet<A, E>): Effect.Effect<void, E> =>

@@ -2,6 +2,7 @@ import { WorkerError } from "@effect/platform/WorkerError"
 import * as Runner from "@effect/platform/WorkerRunner"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Queue from "effect/Queue"
 import * as Schedule from "effect/Schedule"
@@ -12,11 +13,11 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
   start<I, O>(shutdown: Effect.Effect<void>) {
     return Effect.gen(function*(_) {
       if (!WorkerThreads.parentPort) {
-        return yield* _(new WorkerError({ reason: "spawn", error: new Error("not in worker") }))
+        return yield* new WorkerError({ reason: "spawn", error: new Error("not in worker") })
       }
       const port = WorkerThreads.parentPort
-      const queue = yield* _(Queue.unbounded<readonly [portId: number, message: I]>())
-      yield* _(
+      const queue = yield* Queue.unbounded<readonly [portId: number, message: I]>()
+      yield* pipe(
         Effect.async<never, WorkerError>((resume) => {
           port.on("message", (message: Runner.BackingRunner.Message<I>) => {
             if (message[0] === 0) {

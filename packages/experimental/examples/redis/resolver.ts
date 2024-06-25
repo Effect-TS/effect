@@ -3,7 +3,7 @@ import { persisted } from "@effect/experimental/RequestResolver"
 import * as TimeToLive from "@effect/experimental/TimeToLive"
 import { runMain } from "@effect/platform-node/NodeRuntime"
 import { Schema } from "@effect/schema"
-import { Array, Effect, Exit, PrimaryKey, RequestResolver } from "effect"
+import { Array, Effect, Exit, pipe, PrimaryKey, RequestResolver } from "effect"
 
 class User extends Schema.Class<User>("User")({
   id: Schema.Number,
@@ -21,25 +21,25 @@ class GetUserById extends Schema.TaggedRequest<GetUserById>()("GetUserById", Sch
   }
 }
 
-Effect.gen(function*(_) {
-  const resolver = yield* _(
-    RequestResolver.fromEffectTagged<GetUserById>()({
-      GetUserById: (reqs) => {
-        console.log("uncached requests", reqs.length)
-        return Effect.forEach(reqs, (req) => Effect.succeed(new User({ id: req.id, name: "John" })))
-      }
-    }),
+const program = Effect.gen(function*() {
+  const resolver = yield* RequestResolver.fromEffectTagged<GetUserById>()({
+    GetUserById: (reqs) => {
+      console.log("uncached requests", reqs.length)
+      return Effect.forEach(reqs, (req) => Effect.succeed(new User({ id: req.id, name: "John" })))
+    }
+  }).pipe(
     persisted("users")
   )
 
-  const users = yield* _(
-    Effect.forEach(Array.range(1, 5), (id) => Effect.request(new GetUserById({ id }), resolver), {
-      batching: true
-    })
-  )
+  const users = yield* Effect.forEach(Array.range(1, 5), (id) => Effect.request(new GetUserById({ id }), resolver), {
+    batching: true
+  })
 
   console.log(users)
-}).pipe(
+})
+
+pipe(
+  program,
   Effect.scoped,
   Effect.provide(Redis.layerResult({})),
   runMain

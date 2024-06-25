@@ -4,6 +4,7 @@ import * as Schema from "@effect/schema/Schema"
 import { describe, expect, it } from "@effect/vitest"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
 
@@ -15,7 +16,7 @@ const Todo = Schema.Struct({
 })
 
 const makeJsonPlaceholder = Effect.gen(function*(_) {
-  const defaultClient = yield* _(HttpClient.HttpClient)
+  const defaultClient = yield* HttpClient.HttpClient
   const client = defaultClient.pipe(
     HttpClient.mapRequest(HttpClientRequest.prependUrl("https://jsonplaceholder.typicode.com"))
   )
@@ -48,8 +49,8 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
   describe(`NodeHttpClient - ${name}`, () => {
     it.effect("google", () =>
       Effect.gen(function*(_) {
-        const client = yield* _(HttpClient.HttpClient)
-        const response = yield* _(
+        const client = yield* HttpClient.HttpClient
+        const response = yield* pipe(
           HttpClientRequest.get("https://www.google.com/"),
           client,
           Effect.flatMap((_) => _.text),
@@ -60,8 +61,8 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
 
     it.effect("google stream", () =>
       Effect.gen(function*(_) {
-        const client = yield* _(HttpClient.HttpClient)
-        const response = yield* _(
+        const client = yield* HttpClient.HttpClient
+        const response = yield* pipe(
           HttpClientRequest.get("https://www.google.com/"),
           client,
           Effect.map((_) => _.stream),
@@ -73,8 +74,8 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
 
     it.effect("jsonplaceholder", () =>
       Effect.gen(function*(_) {
-        const jp = yield* _(JsonPlaceholder)
-        const response = yield* _(HttpClientRequest.get("/todos/1"), jp.todoClient)
+        const jp = yield* JsonPlaceholder
+        const response = yield* pipe(HttpClientRequest.get("/todos/1"), jp.todoClient)
         expect(response.id).toBe(1)
       }).pipe(Effect.provide(JsonPlaceholderLive.pipe(
         Layer.provide(layer)
@@ -82,12 +83,12 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
 
     it.effect("jsonplaceholder schemaFunction", () =>
       Effect.gen(function*(_) {
-        const jp = yield* _(JsonPlaceholder)
-        const response = yield* _(jp.createTodo({
+        const jp = yield* JsonPlaceholder
+        const response = yield* jp.createTodo({
           userId: 1,
           title: "test",
           completed: false
-        }))
+        })
         expect(response.title).toBe("test")
       }).pipe(Effect.provide(JsonPlaceholderLive.pipe(
         Layer.provide(layer)
@@ -95,8 +96,8 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
 
     it.effect("head request with schemaJson", () =>
       Effect.gen(function*(_) {
-        const client = yield* _(HttpClient.HttpClient)
-        const response = yield* _(
+        const client = yield* HttpClient.HttpClient
+        const response = yield* pipe(
           HttpClientRequest.head("https://jsonplaceholder.typicode.com/todos"),
           client,
           HttpClientResponse.schemaJsonScoped(Schema.Struct({ status: Schema.Literal(200) }))
@@ -106,8 +107,8 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
 
     it.live("interrupt", () =>
       Effect.gen(function*(_) {
-        const client = yield* _(HttpClient.HttpClient)
-        const response = yield* _(
+        const client = yield* HttpClient.HttpClient
+        const response = yield* pipe(
           HttpClientRequest.get("https://www.google.com/"),
           client,
           HttpClientResponse.text,
@@ -120,7 +121,7 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
 
     it.effect("close early", () =>
       Effect.gen(function*(_) {
-        const response = yield* _(
+        const response = yield* pipe(
           HttpClientRequest.get("https://www.google.com/"),
           Effect.scoped
         )

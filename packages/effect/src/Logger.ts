@@ -175,9 +175,9 @@ export const map: {
  * );
  *
  * Effect.gen(function* (_) {
- *   yield* _(Effect.log("one"));
- *   yield* _(Effect.log("two"));
- *   yield* _(Effect.log("three"));
+ *   yield* Effect.log("one");
+ *   yield* Effect.log("two");
+ *   yield* Effect.log("three");
  * }).pipe(Effect.provide(LoggerLive), Effect.runFork);
  */
 export const batched: {

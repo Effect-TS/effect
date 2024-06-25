@@ -12,11 +12,11 @@ import * as Stream from "effect/Stream"
 import { describe, expect, it } from "vitest"
 
 const makeSqlClient = Effect.gen(function*(_) {
-  const fs = yield* _(FileSystem.FileSystem)
-  const dir = yield* _(fs.makeTempDirectoryScoped())
-  return yield* _(Sqlite.make({
+  const fs = yield* FileSystem.FileSystem
+  const dir = yield* fs.makeTempDirectoryScoped()
+  return yield* Sqlite.make({
     filename: dir + "/test.db"
-  }))
+  })
 }).pipe(Effect.provide(NodeFileSystem.layer))
 
 const runTest =

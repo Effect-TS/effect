@@ -154,9 +154,9 @@ export const persisted: {
   Persistence.ResultPersistence | Scope.Scope
 > =>
   Effect.gen(function*(_) {
-    const storage = yield* _(
-      (yield* _(Persistence.ResultPersistence)).make(storeId)
-    )
+    const storage = yield* (
+      yield* Persistence.ResultPersistence
+    ).make(storeId)
 
     const partition = (requests: ReadonlyArray<Req>) =>
       storage.getMany(requests as any).pipe(

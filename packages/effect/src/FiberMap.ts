@@ -102,13 +102,13 @@ const unsafeMake = <K, A = unknown, E = unknown>(
  * import { Effect, FiberMap } from "effect"
  *
  * Effect.gen(function*(_) {
- *   const map = yield* _(FiberMap.make<string>())
+ *   const map = yield* FiberMap.make<string>()
  *
  *   // run some effects and add the fibers to the map
- *   yield* _(FiberMap.run(map, "fiber a", Effect.never))
- *   yield* _(FiberMap.run(map, "fiber b", Effect.never))
+ *   yield* FiberMap.run(map, "fiber a", Effect.never)
+ *   yield* FiberMap.run(map, "fiber b", Effect.never)
  *
- *   yield* _(Effect.sleep(1000))
+ *   yield* Effect.sleep(1000)
  * }).pipe(
  *   Effect.scoped // The fibers will be interrupted when the scope is closed
  * )
@@ -464,8 +464,8 @@ export const run: {
  * }>("Users")
  *
  * Effect.gen(function*(_) {
- *   const map = yield* _(FiberMap.make<string>())
- *   const run = yield* _(FiberMap.runtime(map)<Users>())
+ *   const map = yield* FiberMap.make<string>()
+ *   const run = yield* FiberMap.runtime(map)<Users>()
  *
  *   // run some effects and add the fibers to the map
  *   run("effect-a", Effect.andThen(Users, _ => _.getAll))
@@ -534,11 +534,11 @@ export const size = <K, A, E>(self: FiberMap<K, A, E>): Effect.Effect<number> =>
  * import { Effect, FiberMap } from "effect";
  *
  * Effect.gen(function* (_) {
- *   const map = yield* _(FiberMap.make());
- *   yield* _(FiberMap.set(map, "a", Effect.runFork(Effect.fail("error"))));
+ *   const map = yield* FiberMap.make();
+ *   yield* FiberMap.set(map, "a", Effect.runFork(Effect.fail("error")));
  *
  *   // parent fiber will fail with "error"
- *   yield* _(FiberMap.join(map));
+ *   yield* FiberMap.join(map);
  * });
  */
 export const join = <K, A, E>(self: FiberMap<K, A, E>): Effect.Effect<void, E> =>

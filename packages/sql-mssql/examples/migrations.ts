@@ -12,11 +12,10 @@ const peopleProcedure = pipe(
   Procedure.compile
 )
 
-const program = Effect.gen(function*(_) {
-  const sql = yield* _(MssqlClient.MssqlClient)
+const program = Effect.gen(function*() {
+  const sql = yield* MssqlClient.MssqlClient
 
-  yield* _(
-    sql`
+  yield* sql`
       CREATE OR ALTER PROC people_proc
         @name VARCHAR(255)
       AS
@@ -24,30 +23,26 @@ const program = Effect.gen(function*(_) {
         SELECT * FROM people WHERE name = @name
       END
     `
-  )
 
   // Insert
-  const [inserted] = yield* _(
-    sql`INSERT INTO ${sql("people")} ${
-      sql.insert({
-        name: "Tim",
-        createdAt: new Date()
-      }).returning("*")
-    }`
-  )
+  const [inserted] = yield* sql`INSERT INTO ${sql("people")} ${
+    sql.insert({
+      name: "Tim",
+      createdAt: new Date()
+    }).returning("*")
+  }`
+
   console.log(inserted)
 
   console.log(
-    yield* _(
-      Effect.all(
-        [
-          sql`SELECT TOP(3) * FROM ${sql("people")}`,
-          sql`SELECT TOP(3) * FROM ${sql("people")}`.values,
-          sql`SELECT TOP(3) * FROM ${sql("people")}`.withoutTransform,
-          sql.call(peopleProcedure({ name: "Tim" }))
-        ],
-        { concurrency: "unbounded" }
-      )
+    yield* Effect.all(
+      [
+        sql`SELECT TOP(3) * FROM ${sql("people")}`,
+        sql`SELECT TOP(3) * FROM ${sql("people")}`.values,
+        sql`SELECT TOP(3) * FROM ${sql("people")}`.withoutTransform,
+        sql.call(peopleProcedure({ name: "Tim" }))
+      ],
+      { concurrency: "unbounded" }
     )
   )
 
@@ -61,19 +56,17 @@ const program = Effect.gen(function*(_) {
   )
 
   console.log(
-    yield* _(
-      sql`SELECT TOP(3) * FROM ${sql("people")}`,
-      Effect.zipRight(
-        Effect.catchAllCause(
-          sql.withTransaction(Effect.die("fail")),
-          (_) => Effect.void
-        )
-      ),
-      Effect.zipRight(
-        sql.withTransaction(sql`SELECT TOP(3) * FROM ${sql("people")}`)
-      ),
-      sql.withTransaction
-    )
+    yield* sql`SELECT TOP(3) * FROM ${sql("people")}`,
+    Effect.zipRight(
+      Effect.catchAllCause(
+        sql.withTransaction(Effect.die("fail")),
+        (_) => Effect.void
+      )
+    ),
+    Effect.zipRight(
+      sql.withTransaction(sql`SELECT TOP(3) * FROM ${sql("people")}`)
+    ),
+    sql.withTransaction
   )
 })
 

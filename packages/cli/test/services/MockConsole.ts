@@ -26,7 +26,7 @@ const pattern = new RegExp(
 const stripAnsi = (str: string) => str.replace(pattern, "")
 
 export const make = Effect.gen(function*(_) {
-  const lines = yield* _(Ref.make(Array.empty<string>()))
+  const lines = yield* Ref.make(Array.empty<string>())
 
   const getLines: MockConsole["getLines"] = (params = {}) =>
     Ref.get(lines).pipe(Effect.map((lines) =>

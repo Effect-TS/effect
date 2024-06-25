@@ -16,11 +16,11 @@ export interface ChunkCoordination<A> {
 export const chunkCoordination = <A>(
   _chunks: Iterable<Chunk.Chunk<A>>
 ): Effect.Effect<ChunkCoordination<A>> =>
-  Effect.gen(function*($) {
+  Effect.gen(function*() {
     const chunks = Chunk.fromIterable(_chunks)
-    const queue = yield* $(Queue.unbounded<Exit.Exit<Chunk.Chunk<A>, Option.Option<never>>>())
-    const ps = yield* $(Queue.unbounded<void>())
-    const ref = yield* $(Ref.make<Chunk.Chunk<Chunk.Chunk<Exit.Exit<Chunk.Chunk<A>, Option.Option<never>>>>>(
+    const queue = yield* Queue.unbounded<Exit.Exit<Chunk.Chunk<A>, Option.Option<never>>>()
+    const ps = yield* Queue.unbounded<void>()
+    const ref = yield* Ref.make<Chunk.Chunk<Chunk.Chunk<Exit.Exit<Chunk.Chunk<A>, Option.Option<never>>>>>(
       pipe(
         chunks,
         Chunk.dropRight(1),
@@ -41,7 +41,7 @@ export const chunkCoordination = <A>(
           )
         )
       )
-    ))
+    )
     return {
       queue,
       offer: pipe(

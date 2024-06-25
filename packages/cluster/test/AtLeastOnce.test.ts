@@ -41,11 +41,11 @@ const SampleEntity = RecipientType.makeEntityType("SampleEntity", SampleMessage)
 type SampleEntity = SampleMessage
 
 const makeSqlClient = Effect.gen(function*(_) {
-  const fs = yield* _(FileSystem.FileSystem)
-  const dir = yield* _(fs.makeTempDirectoryScoped())
-  return yield* _(Sqlite.make({
+  const fs = yield* FileSystem.FileSystem
+  const dir = yield* fs.makeTempDirectoryScoped()
+  return yield* Sqlite.make({
     filename: dir + "/test.db"
-  }))
+  })
 }).pipe(Effect.provide(NodeFileSystem.layer))
 
 const runTest =
@@ -89,7 +89,7 @@ describe("AtLeastOnce", () => {
     })))
 
   it("should store the message in the message table after sending", () =>
-    Effect.gen(function*() {
+    Effect.gen(function*(_) {
       const sql = yield* SqlClient.SqlClient
 
       yield* Sharding.registerScoped
@@ -114,7 +114,7 @@ describe("AtLeastOnce", () => {
     })))
 
   it("should mark a message as processed if the message state is processed", () =>
-    Effect.gen(function*() {
+    Effect.gen(function*(_) {
       const sql = yield* SqlClient.SqlClient
 
       yield* Sharding.registerScoped
@@ -142,7 +142,7 @@ describe("AtLeastOnce", () => {
     ))
 
   it("should not mark as processed if a message state is acknowledged", () =>
-    Effect.gen(function*() {
+    Effect.gen(function*(_) {
       const sql = yield* SqlClient.SqlClient
 
       yield* Sharding.registerScoped

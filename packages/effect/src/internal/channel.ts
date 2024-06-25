@@ -909,19 +909,18 @@ export const mapOutEffectPar = dual<
   n: number
 ): Channel.Channel<OutElem1, InElem, OutErr | OutErr1, InErr, OutDone, InDone, Env | Env1> =>
   pipe(
-    Effect.gen(function*($) {
-      const queue = yield* $(
-        Effect.acquireRelease(
-          Queue.bounded<Effect.Effect<Either.Either<OutElem1, OutDone>, OutErr | OutErr1, Env1>>(n),
-          (queue) => Queue.shutdown(queue)
-        )
+    Effect.gen(function*(_) {
+      const queue = yield* Effect.acquireRelease(
+        Queue.bounded<Effect.Effect<Either.Either<OutElem1, OutDone>, OutErr | OutErr1, Env1>>(n),
+        (queue) => Queue.shutdown(queue)
       )
-      const errorSignal = yield* $(Deferred.make<never, OutErr1>())
+
+      const errorSignal = yield* Deferred.make<never, OutErr1>()
       const withPermits = n === Number.POSITIVE_INFINITY ?
         ((_: number) => identity) :
-        (yield* $(Effect.makeSemaphore(n))).withPermits
-      const pull = yield* $(toPull(self))
-      yield* $(
+        (yield* Effect.makeSemaphore(n)).withPermits
+      const pull = yield* toPull(self)
+      yield* pipe(
         Effect.matchCauseEffect(pull, {
           onFailure: (cause) => Queue.offer(queue, Effect.failCause(cause)),
           onSuccess: (either) =>
@@ -939,14 +938,14 @@ export const mapOutEffectPar = dual<
                   )
                 },
                 onRight: (outElem) =>
-                  Effect.gen(function*($) {
-                    const deferred = yield* $(Deferred.make<OutElem1, OutErr1>())
-                    const latch = yield* $(Deferred.make<void>())
-                    yield* $(Effect.asVoid(Queue.offer(
+                  Effect.gen(function*() {
+                    const deferred = yield* (Deferred.make<OutElem1, OutErr1>())
+                    const latch = yield* (Deferred.make<void>())
+                    yield* (Effect.asVoid(Queue.offer(
                       queue,
                       Effect.map(Deferred.await(deferred), Either.right)
                     )))
-                    yield* $(
+                    yield* pipe(
                       Deferred.succeed(latch, void 0),
                       Effect.zipRight(
                         pipe(
@@ -965,7 +964,7 @@ export const mapOutEffectPar = dual<
                       withPermits(1),
                       Effect.forkScoped
                     )
-                    yield* $(Deferred.await(latch))
+                    yield* (Deferred.await(latch))
                   })
               }
             )
@@ -1133,31 +1132,29 @@ export const mergeAllWith = (
   Env | Env1
 > =>
   pipe(
-    Effect.gen(function*($) {
+    Effect.gen(function*(_) {
       const concurrencyN = concurrency === "unbounded" ? Number.MAX_SAFE_INTEGER : concurrency
-      const input = yield* $(singleProducerAsyncInput.make<
+      const input = yield* singleProducerAsyncInput.make<
         InErr & InErr1,
         InElem & InElem1,
         InDone & InDone1
-      >())
+      >()
       const queueReader = fromInput(input)
-      const queue = yield* $(
-        Effect.acquireRelease(
-          Queue.bounded<Effect.Effect<Either.Either<OutElem, OutDone>, OutErr | OutErr1, Env>>(bufferSize),
-          (queue) => Queue.shutdown(queue)
-        )
+      const queue = yield* Effect.acquireRelease(
+        Queue.bounded<Effect.Effect<Either.Either<OutElem, OutDone>, OutErr | OutErr1, Env>>(bufferSize),
+        (queue) => Queue.shutdown(queue)
       )
-      const cancelers = yield* $(
-        Effect.acquireRelease(
-          Queue.unbounded<Deferred.Deferred<void>>(),
-          (queue) => Queue.shutdown(queue)
-        )
+
+      const cancelers = yield* Effect.acquireRelease(
+        Queue.unbounded<Deferred.Deferred<void>>(),
+        (queue) => Queue.shutdown(queue)
       )
-      const lastDone = yield* $(Ref.make<Option.Option<OutDone>>(Option.none()))
-      const errorSignal = yield* $(Deferred.make<void>())
-      const withPermits = (yield* $(Effect.makeSemaphore(concurrencyN)))
+
+      const lastDone = yield* Ref.make<Option.Option<OutDone>>(Option.none())
+      const errorSignal = yield* Deferred.make<void>()
+      const withPermits = (yield* Effect.makeSemaphore(concurrencyN))
         .withPermits
-      const pull = yield* $(toPull(channels))
+      const pull = yield* toPull(channels)
       const evaluatePull = (
         pull: Effect.Effect<Either.Either<OutElem, OutDone>, OutErr | OutErr1, Env | Env1>
       ) =>
@@ -1193,7 +1190,7 @@ export const mergeAllWith = (
               )
           )
         )
-      yield* $(
+      yield* pipe(
         Effect.matchCauseEffect(pull, {
           onFailure: (cause) =>
             pipe(
@@ -1224,8 +1221,8 @@ export const mergeAllWith = (
             onRight: (channel) =>
               _mergeStrategy.match(mergeStrategy, {
                 onBackPressure: () =>
-                  Effect.gen(function*($) {
-                    const latch = yield* $(Deferred.make<void>())
+                  Effect.gen(function*() {
+                    const latch = yield* Deferred.make<void>()
                     const raceEffects: Effect.Effect<void, OutErr | OutErr1, Env | Env1> = pipe(
                       queueReader,
                       core.pipeTo(channel),
@@ -1238,27 +1235,27 @@ export const mergeAllWith = (
                       ),
                       Effect.scoped
                     )
-                    yield* $(
+                    yield* pipe(
                       Deferred.succeed(latch, void 0),
                       Effect.zipRight(raceEffects),
                       withPermits(1),
                       Effect.forkScoped
                     )
-                    yield* $(Deferred.await(latch))
-                    const errored = yield* $(Deferred.isDone(errorSignal))
+                    yield* Deferred.await(latch)
+                    const errored = yield* Deferred.isDone(errorSignal)
                     return !errored
                   }),
                 onBufferSliding: () =>
-                  Effect.gen(function*($) {
-                    const canceler = yield* $(Deferred.make<void>())
-                    const latch = yield* $(Deferred.make<void>())
-                    const size = yield* $(Queue.size(cancelers))
-                    yield* $(
+                  Effect.gen(function*() {
+                    const canceler = yield* Deferred.make<void>()
+                    const latch = yield* Deferred.make<void>()
+                    const size = yield* Queue.size(cancelers)
+                    yield* pipe(
                       Queue.take(cancelers),
                       Effect.flatMap((_) => Deferred.succeed(_, void 0)),
                       Effect.when(() => size >= concurrencyN)
                     )
-                    yield* $(Queue.offer(cancelers, canceler))
+                    yield* Queue.offer(cancelers, canceler)
                     const raceEffects: Effect.Effect<void, OutErr | OutErr1, Env | Env1> = pipe(
                       queueReader,
                       core.pipeTo(channel),
@@ -1272,14 +1269,14 @@ export const mergeAllWith = (
                       ),
                       Effect.scoped
                     )
-                    yield* $(
+                    yield* pipe(
                       Deferred.succeed(latch, void 0),
                       Effect.zipRight(raceEffects),
                       withPermits(1),
                       Effect.forkScoped
                     )
-                    yield* $(Deferred.await(latch))
-                    const errored = yield* $(Deferred.isDone(errorSignal))
+                    yield* Deferred.await(latch)
+                    const errored = yield* Deferred.isDone(errorSignal)
                     return !errored
                   })
               })

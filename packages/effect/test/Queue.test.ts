@@ -771,7 +771,7 @@ describe("Queue", () => {
     ".pipe",
     () =>
       Effect.gen(function*(_) {
-        const queue = yield* _(Queue.unbounded<number>())
+        const queue = yield* Queue.unbounded<number>()
         expect(queue.pipe(identity)).toBe(queue)
       })
   )

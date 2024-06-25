@@ -1,7 +1,7 @@
 import { Cookies, HttpClientRequest, HttpClientResponse } from "@effect/platform"
 import { BrowserHttpClient } from "@effect/platform-browser"
 import { assert, describe, it } from "@effect/vitest"
-import { Chunk, Effect, Stream } from "effect"
+import { Chunk, Effect, pipe, Stream } from "effect"
 import * as MXHR from "mock-xmlhttprequest"
 
 describe("BrowserHttpClient", () => {
@@ -13,7 +13,7 @@ describe("BrowserHttpClient", () => {
           body: "{ \"message\": \"Success!\" }"
         }]
       })
-      const body = yield* _(
+      const body = yield* pipe(
         HttpClientRequest.get("http://localhost:8080/my/url"),
         BrowserHttpClient.xmlHttpRequest,
         Effect.flatMap((_) => _.json),
@@ -31,7 +31,7 @@ describe("BrowserHttpClient", () => {
           body: "{ \"message\": \"Success!\" }"
         }]
       })
-      const body = yield* _(
+      const body = yield* pipe(
         HttpClientRequest.get("http://localhost:8080/my/url"),
         BrowserHttpClient.xmlHttpRequest,
         Effect.map((_) =>
@@ -55,7 +55,7 @@ describe("BrowserHttpClient", () => {
           body: "{ \"message\": \"Success!\" }"
         }]
       })
-      const cookies = yield* _(
+      const cookies = yield* pipe(
         HttpClientRequest.get("http://localhost:8080/my/url"),
         BrowserHttpClient.xmlHttpRequest,
         Effect.map((res) => res.cookies),
@@ -75,7 +75,7 @@ describe("BrowserHttpClient", () => {
           body: "{ \"message\": \"Success!\" }"
         }]
       })
-      const body = yield* _(
+      const body = yield* pipe(
         HttpClientRequest.get("http://localhost:8080/my/url"),
         BrowserHttpClient.xmlHttpRequest,
         HttpClientResponse.arrayBuffer,
