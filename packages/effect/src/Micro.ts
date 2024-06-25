@@ -1234,13 +1234,7 @@ export const gen = <Self, Eff extends YieldWrap<Micro<any, any, any>>, AEff>(
   [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Micro<infer _A, infer _E, infer R>>] ? R : never
 > =>
   make(function(env, onResult) {
-    let f: () => Generator<Eff, AEff, never>
-    if (args.length === 1) {
-      f = args[0]
-    } else {
-      f = args[1].bind(args[0])
-    }
-    const iterator = f() as Iterator<YieldWrap<Micro<any, any, any>>, AEff, any>
+    const iterator: Generator<Eff, AEff, any> = args.length === 1 ? args[0]() : args[1].call(args[0])
     let running = false
     let value: any = undefined
     function run() {
