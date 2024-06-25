@@ -44,14 +44,14 @@
   },
   "devDependencies": {
     "@effect/sql": "workspace:^",
-    "@testcontainers/mysql": "^10.9.0",
-    "@testcontainers/postgresql": "^10.9.0",
-    "drizzle-orm": "^0.30.10",
+    "@testcontainers/mysql": "^10.10.0",
+    "@testcontainers/postgresql": "^10.10.0",
+    "drizzle-orm": "^0.31.2",
     "effect": "workspace:^"
   },
   "peerDependencies": {
     "@effect/sql": "workspace:^",
-    "drizzle-orm": "^0.30.10",
+    "drizzle-orm": "^0.31",
     "effect": "workspace:^"
   }
 }

@@ -38,7 +38,7 @@
     "@effect/rpc": "workspace:^",
     "@effect/rpc-http": "workspace:^",
     "@effect/schema": "workspace:^",
-    "@types/node": "^20.12.6",
+    "@types/node": "^20.14.8",
     "effect": "workspace:^"
   }
 }

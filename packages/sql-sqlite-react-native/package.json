@@ -40,7 +40,7 @@
   },
   "devDependencies": {
     "@effect/sql": "workspace:^",
-    "@op-engineering/op-sqlite": "6.0.4",
+    "@op-engineering/op-sqlite": "6.0.7",
     "effect": "workspace:^"
   },
   "peerDependencies": {
@@ -49,6 +49,6 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "@opentelemetry/semantic-conventions": "^1.24.1"
+    "@opentelemetry/semantic-conventions": "^1.25.1"
   }
 }
