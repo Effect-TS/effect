@@ -100,6 +100,14 @@ export const unbounded = <A>(): Effect.Effect<PubSub.PubSub<A>> =>
     core.flatMap((atomicPubSub) => makePubSub(atomicPubSub, new DroppingStrategy()))
   )
 
+export const replay = <A>(
+  bufferSize: number = Infinity
+): Effect.Effect<PubSub.PubSub<A>> =>
+  pipe(
+    core.sync(() => makeReplayPubSub<A>(bufferSize)),
+    core.flatMap((atomicPubSub) => makePubSub(atomicPubSub, new DroppingStrategy()))
+  )
+
 /** @internal */
 export const capacity = <A>(self: PubSub.PubSub<A>): number => self.capacity()
 
@@ -152,6 +160,11 @@ const makeBoundedPubSub = <A>(requestedCapacity: number): AtomicPubSub<A> => {
 /** @internal */
 const makeUnboundedPubSub = <A>(): AtomicPubSub<A> => {
   return new UnboundedPubSub()
+}
+
+/** @internal */
+const makeReplayPubSub = <A>(bufferSize: number = 0): AtomicPubSub<A> => {
+  return new ReplayPubSub(bufferSize)
 }
 
 /** @internal */
@@ -815,6 +828,210 @@ class UnboundedPubSubSubscription<in out A> implements Subscription<A> {
         }
         this.subscriberHead = this.subscriberHead.next!
       }
+    }
+  }
+}
+
+/** @internal */
+interface ReplayPubSubNode<out A> {
+  value: A | AbsentValue
+  subscribers: number
+  index: number
+  next: ReplayPubSubNode<A> | null
+}
+
+/** @internal */
+class ReplayPubSub<in out A> implements AtomicPubSub<A> {
+  /**
+   * The oldest value that was unhandled by at least 1 subscriber
+   */
+  head: ReplayPubSubNode<A> = {
+    value: AbsentValue,
+    subscribers: 0,
+    index: 0,
+    next: null
+  }
+  /**
+   * The most recently published value
+   */
+  tail = this.head
+  /**
+   * The starting node for replaying values to new subscribers.
+   */
+  replayStart = this.tail
+
+  constructor(readonly replayBufferSize: number = 0) {
+  }
+
+  readonly capacity = Number.MAX_SAFE_INTEGER
+
+  isEmpty(): boolean {
+    return this.head === this.tail
+  }
+
+  isFull(): boolean {
+    return false
+  }
+
+  size(): number {
+    return this.tail.index - this.head.index
+  }
+
+  publish(value: A): boolean {
+    const subscribers = this.tail.subscribers
+    if (subscribers === 0 && this.replayBufferSize === 0) {
+      return true
+    }
+    this.tail.next = {
+      value,
+      subscribers,
+      index: ++this.tail.index,
+      next: null
+    }
+    // Update replayStart if necessary
+    if (this.replayStart.index + this.replayBufferSize === this.tail.index) {
+      this.replayStart = this.replayStart.next!
+    }
+    this.tail = this.tail.next
+    this.cleanup()
+    return true
+  }
+
+  publishAll(elements: Iterable<A>): Chunk.Chunk<A> {
+    for (const a of elements) {
+      this.publish(a)
+    }
+    return Chunk.empty()
+  }
+
+  slide(): void {
+    if (this.head !== this.tail) {
+      this.head = this.head.next!
+      if (this.head.index <= this.replayStart.index) {
+        this.head.value = AbsentValue
+      }
+    }
+  }
+
+  cleanup() {
+    while (
+      this.head.next &&
+      (this.head.subscribers === 0 || this.head.next.value === AbsentValue)
+    ) {
+      if (this.head.index <= this.replayStart.index) {
+        this.head.value = AbsentValue
+      }
+      this.head = this.head.next
+    }
+  }
+
+  subscribe(): Subscription<A> {
+    let node: ReplayPubSubNode<A> | null = this.replayStart
+
+    // Increment subscriber count for all nodes from replayStart to tail
+    while (node !== null) {
+      node.subscribers += 1
+      node = node.next
+    }
+
+    return new ReplayPubSubSubscription(
+      this,
+      this.replayStart,
+      false
+    )
+  }
+}
+
+/** @internal */
+class ReplayPubSubSubscription<in out A> implements Subscription<A> {
+  constructor(
+    private publisher: ReplayPubSub<A>,
+    /**
+     * The current value being handled by this subscription.
+     */
+    private head: ReplayPubSubNode<A>,
+    private unsubscribed: boolean
+  ) {
+  }
+
+  isEmpty(): boolean {
+    if (this.unsubscribed) {
+      return true
+    }
+    let empty = true
+    let loop = true
+    while (loop) {
+      if (this.head === this.publisher.tail) {
+        loop = false
+      } else {
+        if (this.head.next!.value === AbsentValue) {
+          this.head = this.head.next!
+        } else {
+          empty = false
+          loop = false
+        }
+      }
+    }
+    return empty
+  }
+
+  size() {
+    if (this.unsubscribed) {
+      return 0
+    }
+    return this.publisher.tail.index - Math.max(this.head.index, this.publisher.head.index)
+  }
+
+  poll<D>(default_: D): A | D {
+    if (this.unsubscribed) {
+      return default_
+    }
+    let loop = true
+    let polled: A | D = default_
+    while (loop) {
+      if (this.head === this.publisher.tail) {
+        loop = false
+      } else {
+        const next = this.head.next!
+        const elem = next.value
+        if (elem !== AbsentValue) {
+          polled = elem
+          this.head.subscribers -= 1
+          if (this.head.subscribers === 0) {
+            this.publisher.cleanup()
+          }
+          loop = false
+        }
+        this.head = next
+      }
+    }
+    return polled
+  }
+
+  pollUpTo(n: number): Chunk.Chunk<A> {
+    const builder: Array<A> = []
+    const default_ = AbsentValue
+    let i = 0
+    while (i !== n) {
+      const a = this.poll(default_ as unknown as A)
+      if (a === default_) {
+        i = n
+      } else {
+        builder.push(a)
+        i += 1
+      }
+    }
+    return Chunk.fromIterable(builder)
+  }
+
+  unsubscribe(): void {
+    if (!this.unsubscribed) {
+      this.unsubscribed = true
+      do {
+        this.head.subscribers -= 1
+        this.head = this.head?.next ?? this.publisher.tail
+      } while (this.head !== this.publisher.tail)
+      this.publisher.cleanup()
     }
   }
 }

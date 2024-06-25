@@ -645,4 +645,23 @@ describe("PubSub", () => {
       )
     )
   })
+  it.effect("replay", () => {
+    const messages = [1, 2, 3, 4, 5]
+    return PubSub.replay<number>(3).pipe(
+      Effect.flatMap((pubsub) =>
+        Effect.scoped(
+          Effect.gen(function*() {
+            yield* PubSub.publishAll(pubsub, messages)
+
+            const dequeue1 = yield* PubSub.subscribe(pubsub)
+            const dequeue2 = yield* PubSub.subscribe(pubsub)
+            const takes1 = yield* Queue.takeAll(dequeue1)
+            const takes2 = yield* Queue.takeAll(dequeue2)
+            assert.deepStrictEqual([...takes1], [3, 4, 5])
+            assert.deepStrictEqual([...takes2], [3, 4, 5])
+          })
+        )
+      )
+    )
+  })
 })
