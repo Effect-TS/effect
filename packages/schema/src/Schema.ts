@@ -4120,6 +4120,24 @@ const JsonString = String$.annotations({
   [AST.DescriptionAnnotationId]: "a JSON string"
 })
 
+const getParseJsonTransformation = (options?: ParseJsonOptions) =>
+  transformOrFail(
+    JsonString,
+    Unknown,
+    {
+      decode: (s, _, ast) =>
+        ParseResult.try({
+          try: () => JSON.parse(s, options?.reviver),
+          catch: (e: any) => new ParseResult.Type(ast, s, e.message)
+        }),
+      encode: (u, _, ast) =>
+        ParseResult.try({
+          try: () => JSON.stringify(u, options?.replacer, options?.space),
+          catch: (e: any) => new ParseResult.Type(ast, u, e.message)
+        })
+    }
+  ).annotations({ typeId: filters_.ParseJsonTypeId })
+
 /**
  * The `ParseJson` combinator provides a method to convert JSON strings into the `unknown` type using the underlying
  * functionality of `JSON.parse`. It also utilizes `JSON.stringify` for encoding.
@@ -4140,28 +4158,10 @@ const JsonString = String$.annotations({
 export const parseJson: {
   <A, I, R>(schema: Schema<A, I, R>, options?: ParseJsonOptions): SchemaClass<A, string, R>
   (options?: ParseJsonOptions): SchemaClass<unknown, string>
-} = <A, I, R>(schema?: Schema<A, I, R> | ParseJsonOptions, o?: ParseJsonOptions) => {
-  if (isSchema(schema)) {
-    return compose(parseJson(o), schema as any) as any
-  }
-  const options: ParseJsonOptions | undefined = schema as any
-  return transformOrFail(
-    JsonString,
-    Unknown,
-    {
-      decode: (s, _, ast) =>
-        ParseResult.try({
-          try: () => JSON.parse(s, options?.reviver),
-          catch: (e: any) => new ParseResult.Type(ast, s, e.message)
-        }),
-      encode: (u, _, ast) =>
-        ParseResult.try({
-          try: () => JSON.stringify(u, options?.replacer, options?.space),
-          catch: (e: any) => new ParseResult.Type(ast, u, e.message)
-        })
-    }
-  )
-}
+} = <A, I, R>(schema?: Schema<A, I, R> | ParseJsonOptions, o?: ParseJsonOptions) =>
+  isSchema(schema)
+    ? compose(parseJson(o), schema) as any
+    : getParseJsonTransformation(schema as ParseJsonOptions | undefined)
 
 /**
  * @category string constructors

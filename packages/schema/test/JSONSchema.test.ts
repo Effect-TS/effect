@@ -2142,6 +2142,21 @@ schema (Suspend): <suspended schema>`
       })
     })
   })
+
+  it(`should correctly generate JSON Schemas by targeting the "to" side of transformations from S.parseJson`, () => {
+    expectJSONSchema(
+      Schema.parseJson(Schema.Struct({
+        a: Schema.parseJson(Schema.NumberFromString)
+      })),
+      {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        type: "object",
+        required: ["a"],
+        properties: { a: { type: "string", description: "a string", title: "string" } },
+        additionalProperties: false
+      }
+    )
+  })
 })
 
 export const decode = <A>(schema: JSONSchema.JsonSchema7Root): Schema.Schema<A> =>
