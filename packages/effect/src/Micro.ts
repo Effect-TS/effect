@@ -2162,34 +2162,34 @@ export const tapUnexpected: {
  * @category error handling
  */
 export const catchIf: {
-  <E, EB extends E, B, E2, R2>(
-    pred: Refinement<E, EB>,
-    f: (a: NoInfer<EB>) => Micro<B, E2, R2>
-  ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E2, R | R2>
-  <E, B, E2, R2>(
-    pred: Predicate<NoInfer<E>>,
-    f: (a: NoInfer<E>) => Micro<B, E2, R2>
-  ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E2, R | R2>
-  <A, E, R, EB extends E, B, E2, R2>(
+  <E, EB extends E, A2, E2, R2>(
+    refinement: Refinement<NoInfer<E>, EB>,
+    f: (e: EB) => Micro<A2, E2, R2>
+  ): <A, R>(self: Micro<A, E, R>) => Micro<A2 | A, E2 | Exclude<E, EB>, R2 | R>
+  <E, A2, E2, R2>(
+    predicate: Predicate<NoInfer<E>>,
+    f: (e: NoInfer<E>) => Micro<A2, E2, R2>
+  ): <A, R>(self: Micro<A, E, R>) => Micro<A2 | A, E | E2, R2 | R>
+  <A, E, R, EB extends E, A2, E2, R2>(
     self: Micro<A, E, R>,
-    pred: Refinement<E, EB>,
-    f: (a: NoInfer<EB>) => Micro<B, E2, R2>
-  ): Micro<A | B, E2, R | R2>
-  <A, E, R, B, E2, R2>(
+    refinement: Refinement<E, EB>,
+    f: (e: EB) => Micro<A2, E2, R2>
+  ): Micro<A | A2, E2 | Exclude<E, EB>, R | R2>
+  <A, E, R, A2, E2, R2>(
     self: Micro<A, E, R>,
-    pred: Predicate<NoInfer<E>>,
-    f: (a: NoInfer<E>) => Micro<B, E2, R2>
-  ): Micro<A | B, E2, R | R2>
+    predicate: Predicate<E>,
+    f: (e: E) => Micro<A2, E2, R2>
+  ): Micro<A | A2, E | E2, R | R2>
 } = dual(
   3,
-  <A, E, R, EB extends E, B, E2, R2>(
+  <A, E, R, A2, E2, R2>(
     self: Micro<A, E, R>,
-    pred: Refinement<E, EB>,
-    f: (a: NoInfer<EB>) => Micro<B, E2, R2>
-  ): Micro<A | B, E2, R | R2> =>
+    predicate: Predicate<E>,
+    f: (e: E) => Micro<A2, E2, R2>
+  ): Micro<A | A2, E | E2, R | R2> =>
     catchFailureIf(
       self,
-      (f): f is Failure.Expected<EB> => failureIsExpected(f) && pred(f.error),
+      (f): f is Failure.Expected<E> => failureIsExpected(f) && predicate(f.error),
       (failure) => f(failure.error)
     )
 )
@@ -2215,7 +2215,8 @@ export const catchTag: {
   self: Micro<A, E, R>,
   k: K,
   f: (e: Extract<E, { _tag: K }>) => Micro<A1, E1, R1>
-): Micro<A | A1, E1 | Exclude<E, { _tag: K }>, R | R1> => catchIf(self, (error) => isTagged(error, k), f as any))
+): Micro<A | A1, E1 | Exclude<E, { _tag: K }>, R | R1> =>
+  catchIf(self, isTagged(k) as Refinement<E, Extract<E, { _tag: K }>>, f) as any)
 
 /**
  * Transform the full `Failure` object of the given `Micro` effect.
