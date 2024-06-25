@@ -37,12 +37,12 @@ const shipCommand = Command.make("ship", {
 const newShipCommand = Command.make("new", {
   name: nameArg
 }, ({ name }) =>
-  Effect.gen(function*(_) {
-    const { verbose } = yield* _(shipCommand)
-    yield* _(createShip(name))
-    yield* _(Console.log(`Created ship: '${name}'`))
+  Effect.gen(function*() {
+    const { verbose } = yield* shipCommand
+    yield* createShip(name)
+    yield* Console.log(`Created ship: '${name}'`)
     if (verbose) {
-      yield* _(Console.log(`Verbose mode enabled`))
+      yield* Console.log(`Verbose mode enabled`)
     }
   })).pipe(Command.withDescription("Create a new ship"))
 
@@ -50,18 +50,18 @@ const moveShipCommand = Command.make("move", {
   ...nameAndCoordinatesArg,
   speed: speedOption
 }, ({ name, speed, x, y }) =>
-  Effect.gen(function*(_) {
-    yield* _(moveShip(name, x, y))
-    yield* _(Console.log(`Moving ship '${name}' to coordinates (${x}, ${y}) at ${speed} knots`))
+  Effect.gen(function*() {
+    yield* moveShip(name, x, y)
+    yield* Console.log(`Moving ship '${name}' to coordinates (${x}, ${y}) at ${speed} knots`)
   })).pipe(Command.withDescription("Move a ship"))
 
 const shootShipCommand = Command.make(
   "shoot",
   { ...coordinatesArg },
   ({ x, y }) =>
-    Effect.gen(function*(_) {
-      yield* _(shoot(x, y))
-      yield* _(Console.log(`Shot cannons at coordinates (${x}, ${y})`))
+    Effect.gen(function*() {
+      yield* shoot(x, y)
+      yield* Console.log(`Shot cannons at coordinates (${x}, ${y})`)
     })
 ).pipe(Command.withDescription("Shoot from a ship"))
 
@@ -73,19 +73,17 @@ const setMineCommand = Command.make("set", {
   ...coordinatesArg,
   moored: mooredOption
 }, ({ moored, x, y }) =>
-  Effect.gen(function*(_) {
-    yield* _(setMine(x, y))
-    yield* _(
-      Console.log(`Set ${moored ? "moored" : "drifting"} mine at coordinates (${x}, ${y})`)
-    )
+  Effect.gen(function*() {
+    yield* setMine(x, y)
+    yield* Console.log(`Set ${moored ? "moored" : "drifting"} mine at coordinates (${x}, ${y})`)
   })).pipe(Command.withDescription("Set a mine at specific coordinates"))
 
 const removeMineCommand = Command.make("remove", {
   ...coordinatesArg
 }, ({ x, y }) =>
-  Effect.gen(function*(_) {
-    yield* _(removeMine(x, y))
-    yield* _(Console.log(`Removing mine at coordinates (${x}, ${y}), if present`))
+  Effect.gen(function*() {
+    yield* removeMine(x, y)
+    yield* Console.log(`Removing mine at coordinates (${x}, ${y}), if present`)
   })).pipe(Command.withDescription("Remove a mine at specific coordinates"))
 
 const command = Command.make("naval_fate").pipe(
