@@ -1243,15 +1243,17 @@ export const never: Micro<never> = async<never>(function() {
  * @experimental
  * @category constructors
  */
-export const gen = <Eff extends YieldWrap<Micro<any, any, any>>, AEff>(
-  f: () => Generator<Eff, AEff, never>
+export const gen = <Self, Eff extends YieldWrap<Micro<any, any, any>>, AEff>(
+  ...args:
+    | [self: Self, body: (this: Self) => Generator<Eff, AEff, never>]
+    | [body: () => Generator<Eff, AEff, never>]
 ): Micro<
   AEff,
   [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Micro<infer _A, infer E, infer _R>>] ? E : never,
   [Eff] extends [never] ? never : [Eff] extends [YieldWrap<Micro<infer _A, infer _E, infer R>>] ? R : never
 > =>
   make(function(env, onResult) {
-    const iterator = f() as Iterator<YieldWrap<Micro<any, any, any>>, AEff, any>
+    const iterator: Generator<Eff, AEff, any> = args.length === 1 ? args[0]() : args[1].call(args[0])
     let running = false
     let value: any = undefined
     function run() {
