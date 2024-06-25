@@ -146,6 +146,7 @@ export declare namespace Stream {
   /**
    * @since 2.0.0
    * @category models
+   * @deprecated use Types.TupleOf instead
    */
   export type DynamicTuple<T, N extends number> = N extends N ? number extends N ? Array<T> : DynamicTupleOf<T, N, []>
     : never
@@ -153,6 +154,7 @@ export declare namespace Stream {
   /**
    * @since 2.0.0
    * @category models
+   * @deprecated use Types.TupleOf instead
    */
   export type DynamicTupleOf<T, N extends number, R extends Array<unknown>> = R["length"] extends N ? R
     : DynamicTupleOf<T, N, [T, ...R]>
