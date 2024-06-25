@@ -981,17 +981,17 @@ export const sync = <A>(evaluate: LazyArg<A>): Micro<A> =>
   })
 
 /**
- * Converts an `Option` into a `Micro` effect, that will fail with a
- * `Option.None` if the option is `None`. Otherwise, it will succeed with the
+ * Converts an `Option` into a `Micro` effect, that will fail with
+ * `void` if the option is `None`. Otherwise, it will succeed with the
  * value of the option.
  *
  * @since 3.4.0
  * @experimental
  * @category constructors
  */
-export const fromOption = <A>(option: Option.Option<A>): Micro<A, Option.None<never>> =>
+export const fromOption = <A>(option: Option.Option<A>): Micro<A, void> =>
   make(function(_env, onResult) {
-    onResult(option._tag === "Some" ? ResultSuccess(option.value) : ResultFail(Option.none()) as any)
+    onResult(option._tag === "Some" ? ResultSuccess(option.value) : ResultFail(void 0))
   })
 
 /**
