@@ -81,7 +81,7 @@ export interface MicroUnify<A extends { [Unify.typeSymbol]?: any }> extends Effe
 
 /**
  * @category models
- * @since 2.0.0
+ * @since 3.4.3
  */
 export interface MicroUnifyIgnore extends EffectUnifyIgnore {
   Effect?: true
