@@ -106,12 +106,21 @@ describe.concurrent("Micro", () => {
       Micro.runPromise
     ))
 
-  it("gen", () =>
-    Micro.gen(function*() {
-      const result = yield* Micro.succeed(1)
-      assert.strictEqual(result, 1)
-      return result
-    }).pipe(Micro.runPromise).then((_) => assert.deepStrictEqual(_, 1)))
+  describe("gen", () => {
+    it("gen", () =>
+      Micro.gen(function*() {
+        const result = yield* Micro.succeed(1)
+        assert.strictEqual(result, 1)
+        return result
+      }).pipe(Micro.runPromise).then((_) => assert.deepStrictEqual(_, 1)))
+
+    it("gen with context", () =>
+      Micro.gen({ a: 1, b: 2 }, function*() {
+        const result = yield* Micro.succeed(this.a)
+        assert.strictEqual(result, 1)
+        return result + this.b
+      }).pipe(Micro.runPromise).then((_) => assert.deepStrictEqual(_, 3)))
+  })
 
   describe("forEach", () => {
     it("sequential", () =>
