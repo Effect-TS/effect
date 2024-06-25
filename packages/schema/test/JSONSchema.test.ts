@@ -2145,8 +2145,9 @@ schema (Suspend): <suspended schema>`
 
   it(`should correctly generate JSON Schemas by targeting the "to" side of transformations from S.parseJson`, () => {
     expectJSONSchema(
+      // Define a schema that parses a JSON string into a structured object
       Schema.parseJson(Schema.Struct({
-        a: Schema.parseJson(Schema.NumberFromString)
+        a: Schema.parseJson(Schema.NumberFromString) // Nested parsing from JSON string to number
       })),
       {
         "$schema": "http://json-schema.org/draft-07/schema#",

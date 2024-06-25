@@ -11,9 +11,10 @@ Before
 ```ts
 import { JSONSchema, Schema } from "@effect/schema"
 
+// Define a schema that parses a JSON string into a structured object
 const schema = Schema.parseJson(
   Schema.Struct({
-    a: Schema.parseJson(Schema.NumberFromString)
+    a: Schema.parseJson(Schema.NumberFromString) // Nested parsing from JSON string to number
   })
 )
 
@@ -38,9 +39,10 @@ Now
 ```ts
 import { JSONSchema, Schema } from "@effect/schema"
 
+// Define a schema that parses a JSON string into a structured object
 const schema = Schema.parseJson(
   Schema.Struct({
-    a: Schema.parseJson(Schema.NumberFromString)
+    a: Schema.parseJson(Schema.NumberFromString) // Nested parsing from JSON string to number
   })
 )
 
