@@ -411,7 +411,7 @@ describe.concurrent("Micro", () => {
     it.effect("is interruptible", () =>
       Micro.void.pipe(
         Micro.forever,
-        Micro.timeout(50)
+        Micro.timeoutOption(50)
       ))
 
     it("works with runSync", () => {
@@ -468,13 +468,13 @@ describe.concurrent("Micro", () => {
       }))
   })
 
-  describe("timeout", () => {
+  describe("timeoutOption", () => {
     it.live("timeout a long computation", () =>
       Micro.gen(function*() {
         const result = yield* pipe(
           Micro.sleep(60_000),
           Micro.andThen(Micro.succeed(true)),
-          Micro.timeout(10)
+          Micro.timeoutOption(10)
         )
         assert.deepStrictEqual(result, Option.none())
       }))
@@ -499,14 +499,27 @@ describe.concurrent("Micro", () => {
           Micro.void,
           Micro.uninterruptible,
           Micro.forever,
-          Micro.timeout(10)
+          Micro.timeoutOption(10)
         )
         assert.deepStrictEqual(result, Option.none())
       }))
     it.effect("timeout in uninterruptible region", () =>
       Micro.gen(function*() {
-        yield* Micro.void.pipe(Micro.timeout(20_000), Micro.uninterruptible)
+        yield* Micro.void.pipe(Micro.timeoutOption(20_000), Micro.uninterruptible)
       }), { timeout: 1000 })
+  })
+
+  describe("timeout", () => {
+    it.live("timeout a long computation", () =>
+      Micro.gen(function*() {
+        const result = yield* pipe(
+          Micro.sleep(60_000),
+          Micro.andThen(Micro.succeed(true)),
+          Micro.timeout(10),
+          Micro.flip
+        )
+        assert.deepStrictEqual(result, new Micro.TimeoutException())
+      }))
   })
 
   describe("Error", () => {
@@ -824,7 +837,7 @@ describe.concurrent("Micro", () => {
         Micro.flatMap((_) => loop)
       )
       return loop.pipe(
-        Micro.timeout(50)
+        Micro.timeoutOption(50)
       )
     })
   })

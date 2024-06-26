@@ -364,14 +364,21 @@ export const causeWithTrace: {
  * @experimental
  * @category MicroExit
  */
-export type MicroExitSuccess<A, E = never> = Either.Right<MicroCause<E>, A>
+export declare namespace MicroExit {
+  /**
+   * @since 3.4.5
+   * @experimental
+   * @category MicroExit
+   */
+  export type Success<A, E = never> = Either.Right<MicroCause<E>, A>
 
-/**
- * @since 3.4.5
- * @experimental
- * @category MicroExit
- */
-export type MicroExitFailure<A, E = never> = Either.Left<MicroCause<E>, A>
+  /**
+   * @since 3.4.5
+   * @experimental
+   * @category MicroExit
+   */
+  export type Failure<A, E = never> = Either.Left<MicroCause<E>, A>
+}
 
 /**
  * The MicroExit type is a data type that represents the result of a Micro
@@ -383,7 +390,7 @@ export type MicroExitFailure<A, E = never> = Either.Left<MicroCause<E>, A>
  * @experimental
  * @category MicroExit
  */
-export type MicroExit<A, E = never> = MicroExitSuccess<A, E> | MicroExitFailure<A, E>
+export type MicroExit<A, E = never> = MicroExit.Success<A, E> | MicroExit.Failure<A, E>
 
 /**
  * @since 3.4.5
@@ -425,14 +432,14 @@ export const ExitFailCause: <E>(cause: MicroCause<E>) => MicroExit<never, E> = E
  * @experimental
  * @category MicroExit
  */
-export const exitIsSuccess: <A, E>(self: MicroExit<A, E>) => self is MicroExitSuccess<A, E> = Either.isRight
+export const exitIsSuccess: <A, E>(self: MicroExit<A, E>) => self is MicroExit.Success<A, E> = Either.isRight
 
 /**
  * @since 3.4.5
  * @experimental
  * @category MicroExit
  */
-export const exitIsFailure: <A, E>(self: MicroExit<A, E>) => self is MicroExitFailure<A, E> = Either.isLeft
+export const exitIsFailure: <A, E>(self: MicroExit<A, E>) => self is MicroExit.Failure<A, E> = Either.isLeft
 
 /**
  * @since 3.4.5
@@ -2105,7 +2112,7 @@ export const catchCauseIf: {
 /**
  * Catch the error of the given `Micro` effect, allowing you to recover from it.
  *
- * It only catches expected (`CauseFail`) errors.
+ * It only catches expected (`MicroCause.Fail`) errors.
  *
  * @since 3.4.5
  * @experimental
@@ -2694,6 +2701,26 @@ export const timeoutOrElse: {
 )
 
 /**
+ * Returns an effect that will timeout this effect, that will fail with a
+ * `TimeoutException` if the timeout elapses before the effect has produced a
+ * value.
+ *
+ * If the timeout elapses, the running effect will be safely interrupted.
+ *
+ * @since 3.4.0
+ * @experimental
+ * @category delays & timeouts
+ */
+export const timeout: {
+  (millis: number): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E | TimeoutException, R>
+  <A, E, R>(self: Micro<A, E, R>, millis: number): Micro<A, E | TimeoutException, R>
+} = dual(
+  2,
+  <A, E, R>(self: Micro<A, E, R>, millis: number): Micro<A, E | TimeoutException, R> =>
+    timeoutOrElse(self, { duration: millis, onTimeout: () => fail(new TimeoutException()) })
+)
+
+/**
  * Returns an effect that will timeout this effect, succeeding with a `None`
  * if the timeout elapses before the effect has produced a value; and `Some` of
  * the produced value otherwise.
@@ -2704,7 +2731,7 @@ export const timeoutOrElse: {
  * @experimental
  * @category delays & timeouts
  */
-export const timeout: {
+export const timeoutOption: {
   (millis: number): <A, E, R>(self: Micro<A, E, R>) => Micro<Option.Option<A>, E, R>
   <A, E, R>(self: Micro<A, E, R>, millis: number): Micro<Option.Option<A>, E, R>
 } = dual(
@@ -3383,7 +3410,7 @@ export const filter = <A, E, R>(iterable: Iterable<A>, f: (a: NoInfer<A>) => Mic
     map(f(a), (pass) => {
       pass = options?.negate ? !pass : pass
       return pass ? Option.some(a) : Option.none()
-    }))
+    }), options)
 
 /**
  * Effectfully filter the elements of the provided iterable.
@@ -3913,3 +3940,12 @@ export const TaggedError = <Tag extends string>(tag: Tag): new<A extends Record<
  * @category errors
  */
 export class NoSuchElementException extends TaggedError("NoSuchElementException")<{ message?: string | undefined }> {}
+
+/**
+ * Represents a checked exception which occurs when a timeout occurs.
+ *
+ * @since 3.4.4
+ * @experimental
+ * @category errors
+ */
+export class TimeoutException extends TaggedError("TimeoutException") {}
