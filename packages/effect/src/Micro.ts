@@ -982,7 +982,7 @@ export const sync = <A>(evaluate: LazyArg<A>): Micro<A> =>
 
 /**
  * Converts an `Option` into a `Micro` effect, that will fail with
- * `void` if the option is `None`. Otherwise, it will succeed with the
+ * `NoSuchElementException` if the option is `None`. Otherwise, it will succeed with the
  * value of the option.
  *
  * @since 3.4.0
