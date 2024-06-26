@@ -1,5 +1,73 @@
 # @effect/platform
 
+## 0.58.10
+
+### Patch Changes
+
+- [#3088](https://github.com/Effect-TS/effect/pull/3088) [`a48ee84`](https://github.com/Effect-TS/effect/commit/a48ee845ac21bbde9baf938af9e97a98322211c9) Thanks @tim-smart! - add HttpServerRespondable trait
+
+  This trait allows you to define how a value should be responded to in an HTTP
+  server.
+
+  You can it for both errors and success values.
+
+  ```ts
+  import { Schema } from "@effect/schema";
+  import {
+    HttpRouter,
+    HttpServerRespondable,
+    HttpServerResponse,
+  } from "@effect/platform";
+
+  class User extends Schema.Class<User>("User")({
+    name: Schema.String,
+  }) {
+    [HttpServerRespondable.symbol]() {
+      return HttpServerResponse.schemaJson(User)(this);
+    }
+  }
+
+  class MyError extends Schema.TaggedError<MyError>()("MyError", {
+    message: Schema.String,
+  }) {
+    [HttpServerRespondable.symbol]() {
+      return HttpServerResponse.schemaJson(MyError)(this, { status: 403 });
+    }
+  }
+
+  HttpRouter.empty.pipe(
+    // responds with `{ "name": "test" }`
+    HttpRouter.get("/user", Effect.succeed(new User({ name: "test" }))),
+    // responds with a 403 status, and `{ "_tag": "MyError", "message": "boom" }`
+    HttpRouter.get("/fail", new MyError({ message: "boom" })),
+  );
+  ```
+
+- [#3088](https://github.com/Effect-TS/effect/pull/3088) [`a48ee84`](https://github.com/Effect-TS/effect/commit/a48ee845ac21bbde9baf938af9e97a98322211c9) Thanks @tim-smart! - swap type parameters for HttpRouter.Tag, so request context comes first
+
+- [#3088](https://github.com/Effect-TS/effect/pull/3088) [`a48ee84`](https://github.com/Effect-TS/effect/commit/a48ee845ac21bbde9baf938af9e97a98322211c9) Thanks @tim-smart! - add HttpRouter.Default, a default instance of HttpRouter.Tag
+
+- [#3089](https://github.com/Effect-TS/effect/pull/3089) [`ab3180f`](https://github.com/Effect-TS/effect/commit/ab3180f827041d0ea3b2d72254a1a8683e99e056) Thanks @tim-smart! - add HttpClientResponse.matchStatus\* apis
+
+  Which allows you to pattern match on the status code of a response.
+
+  ```ts
+  HttpClientRequest.get("/todos/1").pipe(
+    HttpClient.fetch,
+    HttpClientResponse.matchStatusScoped({
+      "2xx": (_response) => Effect.succeed("ok"),
+      404: (_response) => Effect.fail("not found"),
+      orElse: (_response) => Effect.fail("boom"),
+    }),
+  );
+  ```
+
+- [#3079](https://github.com/Effect-TS/effect/pull/3079) [`bbdd365`](https://github.com/Effect-TS/effect/commit/bbdd36567706c94cdec45bacea825941c347b6cd) Thanks @tim-smart! - update to typescript 5.5
+
+- Updated dependencies [[`c342739`](https://github.com/Effect-TS/effect/commit/c3427396226e1ad7b95b40595a23f9bdff3e3365), [`8898e5e`](https://github.com/Effect-TS/effect/commit/8898e5e238622f6337583d91ee23609c1f5ccdf7), [`ff78636`](https://github.com/Effect-TS/effect/commit/ff786367c522975f40f0f179a0ecdfcfab7ecbdb), [`c86bd4e`](https://github.com/Effect-TS/effect/commit/c86bd4e134c23146c216f9ff97e03781d55991b6), [`bbdd365`](https://github.com/Effect-TS/effect/commit/bbdd36567706c94cdec45bacea825941c347b6cd), [`bbdd365`](https://github.com/Effect-TS/effect/commit/bbdd36567706c94cdec45bacea825941c347b6cd)]:
+  - effect@3.4.3
+  - @effect/schema@0.68.10
+
 ## 0.58.9
 
 ### Patch Changes
