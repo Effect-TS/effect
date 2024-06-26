@@ -1,5 +1,17 @@
 # @effect/platform
 
+## 0.58.12
+
+### Patch Changes
+
+- [#3094](https://github.com/Effect-TS/effect/pull/3094) [`74e0ad2`](https://github.com/Effect-TS/effect/commit/74e0ad23b4c36f41b7fd10856b20f8b701bc4044) Thanks @tim-smart! - add mount apis to HttpRouter.Service
+
+- [#3094](https://github.com/Effect-TS/effect/pull/3094) [`74e0ad2`](https://github.com/Effect-TS/effect/commit/74e0ad23b4c36f41b7fd10856b20f8b701bc4044) Thanks @tim-smart! - add HttpRouter.DefaultServices to all HttpRouter.Tag's
+
+- Updated dependencies [[`72638e3`](https://github.com/Effect-TS/effect/commit/72638e3d99f0e93a24febf6c225256ce92d4a20b), [`d7dde2b`](https://github.com/Effect-TS/effect/commit/d7dde2b4af08b37af859d4c327c1f5c6f00cf9d9), [`9b2fc3b`](https://github.com/Effect-TS/effect/commit/9b2fc3b9dfd304a2bd0508ef2313cfc54357be0c), [`d71c192`](https://github.com/Effect-TS/effect/commit/d71c192b89fd1162423acddc5fd3d6270fbf2ef6)]:
+  - effect@3.4.4
+  - @effect/schema@0.68.11
+
 ## 0.58.11
 
 ### Patch Changes
