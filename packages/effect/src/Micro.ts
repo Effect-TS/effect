@@ -2042,7 +2042,15 @@ export const catchAllCause: {
   <A, E, R, B, E2, R2>(
     self: Micro<A, E, R>,
     f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
-  ): Micro<A | B, E2, R | R2> => catchCauseIf(self, constTrue, f)
+  ): Micro<A | B, E2, R | R2> => make(function(env, onExit) {
+    self[runSymbol](env, function(exit) {
+      if (exit._tag === "Left") {
+        f(exit.left)[runSymbol](env, onExit)
+      } else {
+        onExit(exit as MicroExit<A, never>)
+      }
+    })
+  })
 )
 
 /**
@@ -2057,32 +2065,33 @@ export const catchCauseIf: {
   <E, B, E2, R2, EB extends MicroCause<E>>(
     refinement: Refinement<MicroCause<E>, EB>,
     f: (cause: EB) => Micro<B, E2, R2>
-  ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E2, R | R2>
+  ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E | E2, R | R2>
   <E, B, E2, R2>(
     predicate: Predicate<MicroCause<NoInfer<E>>>,
     f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
-  ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E2, R | R2>
+  ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E | E2, R | R2>
   <A, E, R, B, E2, R2, EB extends MicroCause<E>>(
     self: Micro<A, E, R>,
     refinement: Refinement<MicroCause<E>, EB>,
     f: (cause: EB) => Micro<B, E2, R2>
-  ): Micro<A | B, E2, R | R2>
+  ): Micro<A | B, E | E2, R | R2>
   <A, E, R, B, E2, R2>(
     self: Micro<A, E, R>,
     predicate: Predicate<MicroCause<NoInfer<E>>>,
     f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
-  ): Micro<A | B, E2, R | R2>
-} = dual(3, <A, E, R, B, E2, R2, EB extends MicroCause<E>>(
+  ): Micro<A | B, E | E2, R | R2>
+} = dual(3, <A, E, R, B, E2, R2>(
   self: Micro<A, E, R>,
-  refinement: Refinement<MicroCause<E>, EB>,
-  f: (cause: EB) => Micro<B, E2, R2>
-): Micro<A | B, E2, R | R2> =>
+  predicate: Predicate<MicroCause<E>>,
+  f: (cause: MicroCause<E>) => Micro<B, E2, R2>
+): Micro<A | B, E | E2, R | R2> =>
   make(function(env, onExit) {
     self[runSymbol](env, function(exit) {
-      if (exit._tag === "Right" || !refinement(exit.left)) {
-        return onExit(exit as any)
+      if (exit._tag === "Right" || !predicate(exit.left)) {
+        onExit(exit)
+      } else {
+        f(exit.left)[runSymbol](env, onExit)
       }
-      f(exit.left)[runSymbol](env, onExit)
     })
   }))
 
@@ -2105,7 +2114,7 @@ export const catchAll: {
   <A, E, R, B, E2, R2>(
     self: Micro<A, E, R>,
     f: (a: NoInfer<E>) => Micro<B, E2, R2>
-  ): Micro<A | B, E2, R | R2> => catchCauseIf(self, causeIsFail, (cause) => f(cause.error))
+  ): Micro<A | B, E2, R | R2> => catchAllCause(self, cause => causeIsFail(cause) ? f(cause.error) : failCause(cause))
 )
 
 /**

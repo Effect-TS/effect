@@ -1062,4 +1062,48 @@ describe.concurrent("Micro", () => {
       })
     })
   })
+
+  describe("catchCauseIf", () => {
+    it.effect("first argument as success", () =>
+      Micro.gen(function*() {
+        const result = yield* Micro.catchCauseIf(Micro.succeed(1), () => false, () => Micro.fail("e2"))
+        assert.deepStrictEqual(result, 1)
+      }))
+    it.effect("first argument as failure and predicate return false", () =>
+      Micro.gen(function*() {
+        const result = yield* Micro.flip(Micro.catchCauseIf(Micro.fail("e1" as const), () => false, () => Micro.fail('e2'  as const)))
+        assert.deepStrictEqual(result, "e1")
+      }))
+      it.effect("first argument as failure and predicate return true", () =>
+        Micro.gen(function*() {
+          const result = yield* Micro.flip(Micro.catchCauseIf(Micro.fail("e1" as const), () => true, () => Micro.fail('e2'  as const)))
+          assert.deepStrictEqual(result, "e2")
+        }))
+    })
+
+  describe("catchAll", () => {
+    it.effect("first argument as success", () =>
+      Micro.gen(function*() {
+        const result = yield* Micro.catchAll(Micro.succeed(1), () => Micro.fail("e2" as const))
+        assert.deepStrictEqual(result, 1)
+      }))
+    it.effect("first argument as failure", () =>
+      Micro.gen(function*() {
+        const result = yield* Micro.flip(Micro.catchAll(Micro.fail("e1" as const), () => Micro.fail("e2" as const)))
+        assert.deepStrictEqual(result, "e2")
+      }))
+  })
+
+  describe("catchAllCause", () => {
+    it.effect("first argument as success", () =>
+      Micro.gen(function*() {
+        const result = yield* Micro.catchAllCause(Micro.succeed(1), () => Micro.fail("e2" as const))
+        assert.deepStrictEqual(result, 1)
+      }))
+    it.effect("first argument as failure", () =>
+      Micro.gen(function*() {
+        const result = yield* Micro.flip(Micro.catchAllCause(Micro.fail("e1" as const), () => Micro.fail("e2" as const)))
+        assert.deepStrictEqual(result, "e2")
+      }))
+  })
 })
