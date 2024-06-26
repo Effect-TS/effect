@@ -732,7 +732,7 @@ export const envRefMake = <A>(key: string, initial: LazyArg<A>): EnvRef<A> =>
  */
 export const currentAbortController: EnvRef<AbortController> = envRefMake(
   "effect/Micro/currentAbortController",
-  () => new AbortController()
+  () => undefined as any
 )
 
 /**
@@ -742,7 +742,7 @@ export const currentAbortController: EnvRef<AbortController> = envRefMake(
  */
 export const currentAbortSignal: EnvRef<AbortSignal> = envRefMake(
   "effect/Micro/currentAbortSignal",
-  () => currentAbortController.initial.signal
+  () => undefined as any
 )
 
 /**
