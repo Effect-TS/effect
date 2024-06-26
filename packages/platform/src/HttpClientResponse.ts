@@ -211,3 +211,80 @@ export const schemaNoBodyScoped: <
   effect: Effect.Effect<HttpClientResponse, E, R2>
 ) => Effect.Effect<A, E | ParseResult.ParseError, Exclude<R, Scope.Scope> | Exclude<R2, Scope.Scope>> =
   internal.schemaNoBodyScoped
+
+/**
+ * @since 1.0.0
+ * @category pattern matching
+ */
+export const matchStatus: {
+  <
+    const Cases extends {
+      readonly [status: number]: (_: HttpClientResponse) => any
+      readonly "2xx"?: (_: HttpClientResponse) => any
+      readonly "3xx"?: (_: HttpClientResponse) => any
+      readonly "4xx"?: (_: HttpClientResponse) => any
+      readonly "5xx"?: (_: HttpClientResponse) => any
+      readonly orElse: (_: HttpClientResponse) => any
+    }
+  >(cases: Cases): (self: HttpClientResponse) => Cases[keyof Cases] extends (_: any) => infer R ? R : never
+  <
+    const Cases extends {
+      readonly [status: number]: (_: HttpClientResponse) => any
+      readonly "2xx"?: (_: HttpClientResponse) => any
+      readonly "3xx"?: (_: HttpClientResponse) => any
+      readonly "4xx"?: (_: HttpClientResponse) => any
+      readonly "5xx"?: (_: HttpClientResponse) => any
+      readonly orElse: (_: HttpClientResponse) => any
+    }
+  >(self: HttpClientResponse, cases: Cases): Cases[keyof Cases] extends (_: any) => infer R ? R : never
+} = internal.matchStatus
+
+/**
+ * @since 1.0.0
+ * @category pattern matching
+ */
+export const matchStatusScoped: {
+  <
+    const Cases extends {
+      readonly [status: number]: (_: HttpClientResponse) => Effect.Effect<any, any, any>
+      readonly "2xx"?: (_: HttpClientResponse) => Effect.Effect<any, any, any>
+      readonly "3xx"?: (_: HttpClientResponse) => Effect.Effect<any, any, any>
+      readonly "4xx"?: (_: HttpClientResponse) => Effect.Effect<any, any, any>
+      readonly "5xx"?: (_: HttpClientResponse) => Effect.Effect<any, any, any>
+      readonly orElse: (_: HttpClientResponse) => Effect.Effect<any, any, any>
+    }
+  >(
+    cases: Cases
+  ): <E, R>(
+    self: Effect.Effect<HttpClientResponse, E, R>
+  ) => Effect.Effect<
+    Cases[keyof Cases] extends (_: any) => Effect.Effect<infer _A, infer _E, infer _R> ? _A : never,
+    E | (Cases[keyof Cases] extends (_: any) => Effect.Effect<infer _A, infer _E, infer _R> ? _E : never),
+    Exclude<
+      R | (Cases[keyof Cases] extends (_: any) => Effect.Effect<infer _A, infer _E, infer _R> ? _R : never),
+      Scope.Scope
+    >
+  >
+  <
+    E,
+    R,
+    const Cases extends {
+      readonly [status: number]: (_: HttpClientResponse) => Effect.Effect<any, any, any>
+      readonly "2xx"?: (_: HttpClientResponse) => Effect.Effect<any, any, any>
+      readonly "3xx"?: (_: HttpClientResponse) => Effect.Effect<any, any, any>
+      readonly "4xx"?: (_: HttpClientResponse) => Effect.Effect<any, any, any>
+      readonly "5xx"?: (_: HttpClientResponse) => Effect.Effect<any, any, any>
+      readonly orElse: (_: HttpClientResponse) => Effect.Effect<any, any, any>
+    }
+  >(
+    self: Effect.Effect<HttpClientResponse, E, R>,
+    cases: Cases
+  ): Effect.Effect<
+    Cases[keyof Cases] extends (_: any) => Effect.Effect<infer _A, infer _E, infer _R> ? _A : never,
+    E | (Cases[keyof Cases] extends (_: any) => Effect.Effect<infer _A, infer _E, infer _R> ? _E : never),
+    Exclude<
+      R | (Cases[keyof Cases] extends (_: any) => Effect.Effect<infer _A, infer _E, infer _R> ? _R : never),
+      Scope.Scope
+    >
+  >
+} = internal.matchStatusScoped

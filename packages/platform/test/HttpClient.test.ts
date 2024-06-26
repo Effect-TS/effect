@@ -1,12 +1,12 @@
 import { Cookies, HttpClient, HttpClientRequest, HttpClientResponse, UrlParams } from "@effect/platform"
 import * as Schema from "@effect/schema/Schema"
+import { assert, describe, expect, it } from "@effect/vitest"
 import { Either, Ref } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
 import * as Stream from "effect/Stream"
-import { assert, describe, expect, it } from "vitest"
 
 const Todo = Schema.Struct({
   userId: Schema.Number,
@@ -163,4 +163,18 @@ describe("HttpClient", () => {
       Either.right(new URL("https://example.com/foo?foo=bar&baz=qux#hash"))
     )
   })
+
+  it.effect("matchStatusScoped", () =>
+    Effect.gen(function*() {
+      const jp = yield* JsonPlaceholder
+      const response = yield* HttpClientRequest.get("/todos/1").pipe(
+        jp.client,
+        HttpClientResponse.matchStatusScoped({
+          "2xx": HttpClientResponse.schemaBodyJson(Todo),
+          404: () => Effect.fail("not found"),
+          orElse: () => Effect.fail("boom")
+        })
+      )
+      assert.deepStrictEqual(response, { id: 1, userId: 1, title: "delectus aut autem", completed: false })
+    }).pipe(Effect.provide(JsonPlaceholderLive)))
 })
