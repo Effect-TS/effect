@@ -178,6 +178,12 @@ export type MicroCause<E> = MicroCause.Die | MicroCause.Fail<E> | MicroCause.Int
  */
 export declare namespace MicroCause {
   /**
+   * @since 3.4.5
+   * @experimental
+   */
+  export type Error<T> = T extends MicroCause.Fail<infer E> ? E : never
+
+  /**
    * @since 3.4.0
    * @experimental
    */
@@ -2066,7 +2072,7 @@ export const catchCauseIf: {
   <E, B, E2, R2, EB extends MicroCause<E>>(
     refinement: Refinement<MicroCause<E>, EB>,
     f: (cause: EB) => Micro<B, E2, R2>
-  ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E | E2, R | R2>
+  ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, Exclude<E, MicroCause.Error<EB>> | E2, R | R2>
   <E, B, E2, R2>(
     predicate: Predicate<MicroCause<NoInfer<E>>>,
     f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
@@ -2075,7 +2081,7 @@ export const catchCauseIf: {
     self: Micro<A, E, R>,
     refinement: Refinement<MicroCause<E>, EB>,
     f: (cause: EB) => Micro<B, E2, R2>
-  ): Micro<A | B, E | E2, R | R2>
+  ): Micro<A | B, Exclude<E, MicroCause.Error<EB>> | E2, R | R2>
   <A, E, R, B, E2, R2>(
     self: Micro<A, E, R>,
     predicate: Predicate<MicroCause<NoInfer<E>>>,
