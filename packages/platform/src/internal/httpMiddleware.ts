@@ -116,17 +116,10 @@ export const tracer = make((httpApp) =>
     if (disabled) {
       return httpApp
     }
-    const host = request.headers["host"] ?? "localhost"
-    const protocol = request.headers["x-forwarded-proto"] === "https" ? "https" : "http"
-    let url: URL | undefined = undefined
-    try {
-      url = new URL(request.url, `${protocol}://${host}`)
-      if (url.username !== "" || url.password !== "") {
-        url.username = "REDACTED"
-        url.password = "REDACTED"
-      }
-    } catch (_) {
-      //
+    const url = Option.getOrUndefined(ServerRequest.toURL(request))
+    if (url !== undefined && (url.username !== "" || url.password !== "")) {
+      url.username = "REDACTED"
+      url.password = "REDACTED"
     }
     const redactedHeaderNames = fiber.getFiberRef(Headers.currentRedactedNames)
     const redactedHeaders = Headers.redact(request.headers, redactedHeaderNames)
