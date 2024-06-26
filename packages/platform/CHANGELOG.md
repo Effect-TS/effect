@@ -1,5 +1,15 @@
 # @effect/platform
 
+## 0.58.11
+
+### Patch Changes
+
+- [#3091](https://github.com/Effect-TS/effect/pull/3091) [`a5b95b5`](https://github.com/Effect-TS/effect/commit/a5b95b548284e4798654ae7ce6883fa49108f0ea) Thanks @tim-smart! - add some common services to HttpRouter.Default
+
+- [#3090](https://github.com/Effect-TS/effect/pull/3090) [`5e29579`](https://github.com/Effect-TS/effect/commit/5e29579187cb8420ea4930b3999fec984f8999f4) Thanks @tim-smart! - add HttpServerRequest.toURL api
+
+  To try retreive the full URL for the request.
+
 ## 0.58.10
 
 ### Patch Changes
