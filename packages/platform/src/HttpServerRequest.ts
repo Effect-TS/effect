@@ -8,6 +8,7 @@ import type { Channel } from "effect/Channel"
 import type { Chunk } from "effect/Chunk"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
+import type { Option } from "effect/Option"
 import type { ReadonlyRecord } from "effect/Record"
 import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
@@ -220,3 +221,9 @@ export const schemaBodyFormJson: <A, I, R>(
  * @category conversions
  */
 export const fromWeb: (request: Request) => HttpServerRequest = internal.fromWeb
+
+/**
+ * @since 1.0.0
+ * @category conversions
+ */
+export const toURL: (self: HttpServerRequest) => Option<URL> = internal.toURL
