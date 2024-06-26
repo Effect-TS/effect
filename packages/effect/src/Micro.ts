@@ -1674,21 +1674,46 @@ export const zip: {
   <A, E, R, A2, E2, R2>(
     self: Micro<A, E, R>,
     that: Micro<A2, E2, R2>,
-    options?:
-      | { readonly concurrent?: boolean | undefined }
-      | undefined
+    options?: { readonly concurrent?: boolean | undefined }
   ): Micro<[A, A2], E | E2, R | R2>
 } = dual((args) => isMicro(args[1]), <A, E, R, A2, E2, R2>(
   self: Micro<A, E, R>,
   that: Micro<A2, E2, R2>,
-  options?:
-    | { readonly concurrent?: boolean | undefined }
-    | undefined
-): Micro<[A, A2], E | E2, R | R2> => {
+  options?: { readonly concurrent?: boolean | undefined }
+): Micro<[A, A2], E | E2, R | R2> => zipWith(self, that, (a, a2) => [a, a2], options))
+
+/**
+ * The `Micro.zipWith` function combines two `Micro` effects and allows you to
+ * apply a function to the results of the combined effects, transforming them
+ * into a single value.
+ *
+ * @since 3.4.3
+ * @experimental
+ * @category zipping
+ */
+export const zipWith: {
+  <A2, E2, R2, A, B>(
+    that: Micro<A2, E2, R2>,
+    f: (a: A, b: A2) => B,
+    options?: { readonly concurrent?: boolean | undefined }
+  ): <E, R>(self: Micro<A, E, R>) => Micro<B, E2 | E, R2 | R>
+  <A, E, R, A2, E2, R2, B>(
+    self: Micro<A, E, R>,
+    that: Micro<A2, E2, R2>,
+    f: (a: A, b: A2) => B,
+    options?: { readonly concurrent?: boolean | undefined }
+  ): Micro<B, E2 | E, R2 | R>
+} = dual((args) => isMicro(args[1]), <A, E, R, A2, E2, R2, B>(
+  self: Micro<A, E, R>,
+  that: Micro<A2, E2, R2>,
+  f: (a: A, b: A2) => B,
+  options?: { readonly concurrent?: boolean | undefined }
+): Micro<B, E2 | E, R2 | R> => {
   if (options?.concurrent) {
-    return all([self, that], { concurrency: "unbounded" })
+    // Use `all` exclusively for concurrent cases, as it introduces additional overhead due to the management of concurrency
+    return map(all([self, that], { concurrency: "unbounded" }), ([a, a2]) => f(a, a2))
   }
-  return flatMap(self, (a) => map(that, (a2) => [a, a2]))
+  return flatMap(self, (a) => map(that, (a2) => f(a, a2)))
 })
 
 // ----------------------------------------------------------------------------
