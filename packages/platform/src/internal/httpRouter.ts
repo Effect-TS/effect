@@ -711,14 +711,34 @@ const makeService = <E, R>(): Router.HttpRouter.Service<E, R> => {
         router = options(router, path, handler, opts)
       })
     },
-    router: Effect.sync(() => router)
+    router: Effect.sync(() => router),
+    mount(path, that) {
+      return Effect.sync(() => {
+        router = mount(router, path, that)
+      })
+    },
+    mountApp(path, app, options) {
+      return Effect.sync(() => {
+        router = mountApp(router, path, app, options)
+      })
+    },
+    concat(that) {
+      return Effect.sync(() => {
+        router = concat(router, that)
+      })
+    }
   }
 }
 
 /* @internal */
 export const Tag =
   <const Name extends string>(id: Name) =>
-  <Self, R = never, E = unknown>(): Router.HttpRouter.TagClass<Self, Name, E, R> => {
+  <Self, R = never, E = unknown>(): Router.HttpRouter.TagClass<
+    Self,
+    Name,
+    E,
+    R | Router.HttpRouter.DefaultServices
+  > => {
     const Err = globalThis.Error as any
     const limit = Err.stackTraceLimit
     Err.stackTraceLimit = 2
