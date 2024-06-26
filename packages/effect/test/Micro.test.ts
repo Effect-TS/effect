@@ -1071,15 +1071,19 @@ describe.concurrent("Micro", () => {
       }))
     it.effect("first argument as failure and predicate return false", () =>
       Micro.gen(function*() {
-        const result = yield* Micro.flip(Micro.catchCauseIf(Micro.fail("e1" as const), () => false, () => Micro.fail('e2'  as const)))
+        const result = yield* Micro.flip(
+          Micro.catchCauseIf(Micro.fail("e1" as const), () => false, () => Micro.fail("e2" as const))
+        )
         assert.deepStrictEqual(result, "e1")
       }))
-      it.effect("first argument as failure and predicate return true", () =>
-        Micro.gen(function*() {
-          const result = yield* Micro.flip(Micro.catchCauseIf(Micro.fail("e1" as const), () => true, () => Micro.fail('e2'  as const)))
-          assert.deepStrictEqual(result, "e2")
-        }))
-    })
+    it.effect("first argument as failure and predicate return true", () =>
+      Micro.gen(function*() {
+        const result = yield* Micro.flip(
+          Micro.catchCauseIf(Micro.fail("e1" as const), () => true, () => Micro.fail("e2" as const))
+        )
+        assert.deepStrictEqual(result, "e2")
+      }))
+  })
 
   describe("catchAll", () => {
     it.effect("first argument as success", () =>
@@ -1102,7 +1106,9 @@ describe.concurrent("Micro", () => {
       }))
     it.effect("first argument as failure", () =>
       Micro.gen(function*() {
-        const result = yield* Micro.flip(Micro.catchAllCause(Micro.fail("e1" as const), () => Micro.fail("e2" as const)))
+        const result = yield* Micro.flip(
+          Micro.catchAllCause(Micro.fail("e1" as const), () => Micro.fail("e2" as const))
+        )
         assert.deepStrictEqual(result, "e2")
       }))
   })

@@ -1037,7 +1037,7 @@ export const fromOption = <A>(option: Option.Option<A>): Micro<A, NoSuchElementE
  */
 export const fromEither = <R, L>(either: Either.Either<R, L>): Micro<R, L> =>
   make(function(_env, onExit) {
-    onExit(either._tag === "Right" ? either as MicroExit<R, never>: ExitFail(either.left))
+    onExit(either._tag === "Right" ? either as MicroExit<R, never> : ExitFail(either.left))
   })
 
 /**
@@ -1330,7 +1330,7 @@ export const map: {
 } = dual(2, <A, E, R, B>(self: Micro<A, E, R>, f: (a: A) => B): Micro<B, E, R> =>
   make(function(env, onExit) {
     self[runSymbol](env, function(exit) {
-      onExit(exit._tag === "Left" ? exit as MicroExit<never, E>: ExitSucceed(f(exit.right)))
+      onExit(exit._tag === "Left" ? exit as MicroExit<never, E> : ExitSucceed(f(exit.right)))
     })
   }))
 
@@ -2042,15 +2042,16 @@ export const catchAllCause: {
   <A, E, R, B, E2, R2>(
     self: Micro<A, E, R>,
     f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
-  ): Micro<A | B, E2, R | R2> => make(function(env, onExit) {
-    self[runSymbol](env, function(exit) {
-      if (exit._tag === "Left") {
-        f(exit.left)[runSymbol](env, onExit)
-      } else {
-        onExit(exit as MicroExit<A, never>)
-      }
+  ): Micro<A | B, E2, R | R2> =>
+    make(function(env, onExit) {
+      self[runSymbol](env, function(exit) {
+        if (exit._tag === "Left") {
+          f(exit.left)[runSymbol](env, onExit)
+        } else {
+          onExit(exit as MicroExit<A, never>)
+        }
+      })
     })
-  })
 )
 
 /**
@@ -2114,7 +2115,7 @@ export const catchAll: {
   <A, E, R, B, E2, R2>(
     self: Micro<A, E, R>,
     f: (a: NoInfer<E>) => Micro<B, E2, R2>
-  ): Micro<A | B, E2, R | R2> => catchAllCause(self, cause => causeIsFail(cause) ? f(cause.error) : failCause(cause))
+  ): Micro<A | B, E2, R | R2> => catchAllCause(self, (cause) => causeIsFail(cause) ? f(cause.error) : failCause(cause))
 )
 
 /**
