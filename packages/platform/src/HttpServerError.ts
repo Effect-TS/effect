@@ -2,10 +2,13 @@
  * @since 1.0.0
  */
 import type * as Cause from "effect/Cause"
+import type * as Exit from "effect/Exit"
 import type * as FiberId from "effect/FiberId"
+import type * as Option from "effect/Option"
 import { RefailError, TypeIdError } from "./Error.js"
 import type * as ServerRequest from "./HttpServerRequest.js"
-import type * as ServerResponse from "./HttpServerResponse.js"
+import * as Respondable from "./HttpServerRespondable.js"
+import * as ServerResponse from "./HttpServerResponse.js"
 import * as internal from "./internal/httpServerError.js"
 
 /**
@@ -33,7 +36,14 @@ export type HttpServerError = RequestError | ResponseError | RouteNotFound | Ser
 export class RequestError extends RefailError(TypeId, "RequestError")<{
   readonly request: ServerRequest.HttpServerRequest
   readonly reason: "Transport" | "Decode"
-}> {
+}> implements Respondable.Respondable {
+  /**
+   * @since 1.0.0
+   */
+  [Respondable.symbol]() {
+    return ServerResponse.empty({ status: 400 })
+  }
+
   get methodAndUrl() {
     return `${this.request.method} ${this.request.url}`
   }
@@ -56,6 +66,13 @@ export const isServerError: (u: unknown) => u is HttpServerError = internal.isSe
 export class RouteNotFound extends TypeIdError(TypeId, "RouteNotFound")<{
   readonly request: ServerRequest.HttpServerRequest
 }> {
+  /**
+   * @since 1.0.0
+   */
+  [Respondable.symbol]() {
+    return ServerResponse.empty({ status: 404 })
+  }
+
   get message() {
     return `${this.request.method} ${this.request.url} not found`
   }
@@ -70,6 +87,13 @@ export class ResponseError extends RefailError(TypeId, "ResponseError")<{
   readonly response: ServerResponse.HttpServerResponse
   readonly reason: "Decode"
 }> {
+  /**
+   * @since 1.0.0
+   */
+  [Respondable.symbol]() {
+    return ServerResponse.empty({ status: 500 })
+  }
+
   get methodAndUrl() {
     return `${this.request.method} ${this.request.url}`
   }
@@ -83,8 +107,7 @@ export class ResponseError extends RefailError(TypeId, "ResponseError")<{
  * @since 1.0.0
  * @category error
  */
-export class ServeError extends RefailError(TypeId, "ServeError")<{}> {
-}
+export class ServeError extends RefailError(TypeId, "ServeError")<{}> {}
 
 /**
  * @since 1.0.0
@@ -99,4 +122,13 @@ export const isClientAbortCause: <E>(cause: Cause.Cause<E>) => boolean = interna
 /**
  * @since 1.0.0
  */
-export const causeStatusCode: <E>(cause: Cause.Cause<E>) => number = internal.causeStatusCode
+export const causeStatusStripped: <E>(
+  cause: Cause.Cause<E>
+) => readonly [status: number, cause: Option.Option<Cause.Cause<E>>] = internal.causeStatusStripped
+
+/**
+ * @since 1.0.0
+ */
+export const exitResponse: <E>(
+  exit: Exit.Exit<ServerResponse.HttpServerResponse, E>
+) => ServerResponse.HttpServerResponse = internal.exitResponse
