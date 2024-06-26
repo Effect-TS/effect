@@ -197,7 +197,7 @@ export const make = (
           if (values) {
             for (let i = 0, len = values.length; i < len; i++) {
               const value = values[i]
-              const name = numberToAlpha(i)
+              const name = numberToParamName(i)
 
               if (isMssqlParam(value)) {
                 req.addParameter(name, value.i0, value.i1, value.i2)
@@ -431,7 +431,7 @@ export const makeCompiler = (transform?: (_: string) => string) =>
   Statement.makeCompiler<MssqlCustom>({
     dialect: "mssql",
     placeholder(_) {
-      return `@${numberToAlpha(_ - 1)}`
+      return `@${numberToParamName(_ - 1)}`
     },
     onIdentifier: transform ?
       function(value, withoutTransform) {
@@ -469,14 +469,8 @@ export const makeCompiler = (transform?: (_: string) => string) =>
 
 const escape = (str: string) => "[" + str.replace(/\]/g, "]]").replace(/\./g, "].[") + "]"
 
-const charCodeA = "a".charCodeAt(0)
-function numberToAlpha(n: number) {
-  let s = ""
-  while (n >= 0) {
-    s = String.fromCharCode((n % 26) + charCodeA) + s
-    n = Math.floor(n / 26) - 1
-  }
-  return s
+function numberToParamName(n: number) {
+  return `${Math.ceil(n + 1)}`
 }
 
 /**

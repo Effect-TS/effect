@@ -589,10 +589,42 @@ importers:
         version: 10.10.0
       drizzle-orm:
         specifier: ^0.31.2
-        version: 0.31.2(@op-engineering/op-sqlite@6.0.7(react-native@0.74.2(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))(react@18.3.1))(react@18.3.1))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.10)(better-sqlite3@11.0.0)(bun-types@1.1.16)(mysql2@3.10.1)(postgres@3.4.4)(react@18.3.1)
+        version: 0.31.2(@cloudflare/workers-types@4.20240620.0)(@op-engineering/op-sqlite@6.0.7(react@18.3.1))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.10)(better-sqlite3@11.0.0)(bun-types@1.1.16)(kysely@0.27.3)(mysql2@3.10.1)(postgres@3.4.4)(react@18.3.1)
       effect:
         specifier: workspace:^
         version: link:../effect/dist
+    publishDirectory: dist
+
+  packages/sql-kysely:
+    dependencies:
+      '@opentelemetry/semantic-conventions':
+        specifier: ^1.24.1
+        version: 1.25.1
+    devDependencies:
+      '@effect/sql':
+        specifier: workspace:^
+        version: link:../sql/dist
+      '@testcontainers/mssqlserver':
+        specifier: ^10.9.0
+        version: 10.10.0
+      '@testcontainers/mysql':
+        specifier: ^10.9.0
+        version: 10.10.0
+      '@testcontainers/postgresql':
+        specifier: ^10.9.0
+        version: 10.10.0
+      '@types/better-sqlite3':
+        specifier: ^7.6.10
+        version: 7.6.10
+      better-sqlite3:
+        specifier: ^11.0.0
+        version: 11.0.0
+      effect:
+        specifier: workspace:^
+        version: link:../effect/dist
+      kysely:
+        specifier: ^0.27.3
+        version: 0.27.3
     publishDirectory: dist
 
   packages/sql-mssql:
@@ -1675,6 +1707,9 @@ packages:
   '@changesets/write@0.3.1':
     resolution: {integrity: sha512-SyGtMXzH3qFqlHKcvFY2eX+6b0NGiFcNav8AFsYwy5l8hejOeoeTDemu5Yjmke2V5jpzY+pBvM0vCCQ3gdZpfw==}
 
+  '@cloudflare/workers-types@4.20240620.0':
+    resolution: {integrity: sha512-CQD8YS6evRob7LChvIX3gE3zYo0KVgaLDOu1SwNP1BVIS2Sa0b+FC8S1e1hhrNN8/E4chYlVN+FDAgA4KRDUEQ==}
+
   '@dependents/detective-less@4.1.0':
     resolution: {integrity: sha512-KrkT6qO5NxqNfy68sBl6CTSoJ4SNDIS5iQArkibhlbGU4LaDukZ3q2HIkh8aUKDio6o4itU4xDR7t82Y2eP1Bg==}
     engines: {node: '>=14'}
@@ -2487,6 +2522,9 @@ packages:
   '@sqlite.org/sqlite-wasm@3.46.0-build2':
     resolution: {integrity: sha512-10s/u/Main1RGO+jjzK+mgC/zh1ls1CEnq3Dujr03TwvzLg+j4FAohOmlYkQj8KQOj1vGR9cuB9F8tVBTwVGVA==}
     hasBin: true
+
+  '@testcontainers/mssqlserver@10.10.0':
+    resolution: {integrity: sha512-zuofGTErmJREWeznYZw//U8K4v5sR8irIlu/iNfso/m6ZXBIGW0COm1oaYd6GMjR9ypo54MsOXJX3lRRyaDzYg==}
 
   '@testcontainers/mysql@10.10.0':
     resolution: {integrity: sha512-D1GFS1ugM9nL1NPGO5A5t9MyBgs9/Vwy1MIk5xX1lTCNLzjtoudL+fb3yK4h7krFX/B3lbn9/uoDSWui3yn4QQ==}
@@ -4660,6 +4698,10 @@ packages:
   kleur@3.0.3:
     resolution: {integrity: sha512-eTIzlVOSUR+JxdDFepEYcBMtZ9Qqdef+rnzWdRZuMbOywu5tO2w2N7rqjoANZ5k9vywhL6Br1VRjUIgTQx4E8w==}
     engines: {node: '>=6'}
+
+  kysely@0.27.3:
+    resolution: {integrity: sha512-lG03Ru+XyOJFsjH3OMY6R/9U38IjDPfnOfDgO3ynhbDr+Dz8fak+X6L62vqu3iybQnj+lG84OttBuU9KY3L9kA==}
+    engines: {node: '>=14.0.0'}
 
   lazy-cache@2.0.2:
     resolution: {integrity: sha512-7vp2Acd2+Kz4XkzxGxaB1FWOi8KjWIWsgdfD5MCb86DWvlLqhRPM+d6Pro3iNEL5VT9mstz5hKAlcd+QR6H3aA==}
@@ -7974,6 +8016,9 @@ snapshots:
       human-id: 1.0.2
       prettier: 2.8.8
 
+  '@cloudflare/workers-types@4.20240620.0':
+    optional: true
+
   '@dependents/detective-less@4.1.0':
     dependencies:
       gonzales-pe: 4.3.0
@@ -8873,6 +8918,13 @@ snapshots:
       '@sinonjs/commons': 3.0.1
 
   '@sqlite.org/sqlite-wasm@3.46.0-build2': {}
+
+  '@testcontainers/mssqlserver@10.10.0':
+    dependencies:
+      testcontainers: 10.10.0
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
 
   '@testcontainers/mysql@10.10.0':
     dependencies:
@@ -10074,13 +10126,15 @@ snapshots:
 
   dotenv@8.6.0: {}
 
-  drizzle-orm@0.31.2(@op-engineering/op-sqlite@6.0.7(react-native@0.74.2(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))(react@18.3.1))(react@18.3.1))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.10)(better-sqlite3@11.0.0)(bun-types@1.1.16)(mysql2@3.10.1)(postgres@3.4.4)(react@18.3.1):
+  drizzle-orm@0.31.2(@cloudflare/workers-types@4.20240620.0)(@op-engineering/op-sqlite@6.0.7(react@18.3.1))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.10)(better-sqlite3@11.0.0)(bun-types@1.1.16)(kysely@0.27.3)(mysql2@3.10.1)(postgres@3.4.4)(react@18.3.1):
     optionalDependencies:
+      '@cloudflare/workers-types': 4.20240620.0
       '@op-engineering/op-sqlite': 6.0.7(react-native@0.74.2(@babel/core@7.24.7)(@babel/preset-env@7.24.7(@babel/core@7.24.7))(react@18.3.1))(react@18.3.1)
       '@opentelemetry/api': 1.9.0
       '@types/better-sqlite3': 7.6.10
       better-sqlite3: 11.0.0
       bun-types: 1.1.16
+      kysely: 0.27.3
       mysql2: 3.10.1
       postgres: 3.4.4
       react: 18.3.1
@@ -11372,6 +11426,8 @@ snapshots:
   kind-of@6.0.3: {}
 
   kleur@3.0.3: {}
+
+  kysely@0.27.3: {}
 
   lazy-cache@2.0.2:
     dependencies:
