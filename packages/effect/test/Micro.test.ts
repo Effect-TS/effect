@@ -549,9 +549,9 @@ describe.concurrent("Micro", () => {
           Micro.sandbox,
           Micro.flip
         )
-        assert.strictEqual(failure.name, "FailureDie")
+        assert.strictEqual(failure.name, "MicroCause.Die")
         assert.strictEqual(failure.message, JSON.stringify({ some: "error" }))
-        assert.include(failure.stack, `FailureDie: ${JSON.stringify({ some: "error" })}`)
+        assert.include(failure.stack, `MicroCause.Die: ${JSON.stringify({ some: "error" })}`)
         assert.include(failure.stack, "at test trace (")
       }))
 
@@ -562,9 +562,9 @@ describe.concurrent("Micro", () => {
           Micro.sandbox,
           Micro.flip
         )
-        assert.strictEqual(failure.name, "FailureFail")
+        assert.strictEqual(failure.name, "MicroCause.Fail")
         assert.strictEqual(failure.message, JSON.stringify({ some: "error" }))
-        assert.include(failure.stack, `FailureFail: ${JSON.stringify({ some: "error" })}`)
+        assert.include(failure.stack, `MicroCause.Fail: ${JSON.stringify({ some: "error" })}`)
         assert.include(failure.stack, "at test trace (")
       }))
 
@@ -575,9 +575,9 @@ describe.concurrent("Micro", () => {
           Micro.sandbox,
           Micro.flip
         )
-        assert.strictEqual(failure.name, "(FailureFail) Error")
+        assert.strictEqual(failure.name, "(MicroCause.Fail) Error")
         assert.strictEqual(failure.message, "boom")
-        assert.include(failure.stack, `(FailureFail) Error: boom`)
+        assert.include(failure.stack, `(MicroCause.Fail) Error: boom`)
         assert.include(failure.stack, "at test trace (")
       }))
   })
