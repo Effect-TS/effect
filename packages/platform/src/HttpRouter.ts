@@ -72,9 +72,7 @@ export declare namespace HttpRouter {
    */
   export interface Service<E, R> {
     readonly router: Effect.Effect<HttpRouter<E, R>>
-
     readonly addRoute: (route: Route<E, R>) => Effect.Effect<void>
-
     readonly all: (
       path: PathInput,
       handler: Route.Handler<E, R | Provided>,
@@ -115,7 +113,22 @@ export declare namespace HttpRouter {
       handler: Route.Handler<E, R | Provided>,
       options?: { readonly uninterruptible?: boolean | undefined } | undefined
     ) => Effect.Effect<void>
+    readonly mount: (
+      path: `/${string}`,
+      router: HttpRouter<E, R>
+    ) => Effect.Effect<void>
+    readonly mountApp: (
+      path: `/${string}`,
+      router: App.Default<E, R>,
+      options?: { readonly includePrefix?: boolean | undefined } | undefined
+    ) => Effect.Effect<void>
+    readonly concat: (router: HttpRouter<E, R>) => Effect.Effect<void>
   }
+
+  /**
+   * @since 1.0.0
+   */
+  export type DefaultServices = Platform.HttpPlatform | Etag.Generator | FileSystem | Path
 
   /**
    * @since 1.0.0
@@ -738,13 +751,11 @@ export const provideServiceEffect: {
  */
 export const Tag: <const Name extends string>(
   id: Name
-) => <Self, R = never, E = unknown>() => HttpRouter.TagClass<Self, Name, E, R> = internal.Tag
+) => <Self, R = never, E = unknown>() => HttpRouter.TagClass<Self, Name, E, R | HttpRouter.DefaultServices> =
+  internal.Tag
 
 /**
  * @since 1.0.0
  * @category tags
  */
-export class Default extends Tag("@effect/platform/HttpRouter/Default")<
-  Default,
-  Platform.HttpPlatform | Etag.Generator | FileSystem | Path
->() {}
+export class Default extends Tag("@effect/platform/HttpRouter/Default")<Default>() {}
