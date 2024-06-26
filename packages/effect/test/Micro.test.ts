@@ -92,19 +92,39 @@ describe.concurrent("Micro", () => {
       Micro.runPromise
     ))
 
-  it("Option", () =>
-    Option.some("A").pipe(
-      Micro.fromOption,
-      Micro.tap((_) => assert.strictEqual(_, "A")),
-      Micro.runPromise
-    ))
+  describe("fromOption", () => {
+    it("from a some", () =>
+      Option.some("A").pipe(
+        Micro.fromOption,
+        Micro.tap((_) => assert.strictEqual(_, "A")),
+        Micro.runPromise
+      ))
 
-  it("Either", () =>
-    Either.right("A").pipe(
-      Micro.fromEither,
-      Micro.tap((_) => Micro.sync(() => assert.strictEqual(_, "A"))),
-      Micro.runPromise
-    ))
+    it("from a none", () =>
+      Option.none().pipe(
+        Micro.fromOption,
+        Micro.flip,
+        Micro.tap((error) => assert.ok(error instanceof Micro.NoSuchElementException)),
+        Micro.runPromise
+      ))
+  })
+
+  describe("fromEither", () => {
+    it("from a right", () =>
+      Either.right("A").pipe(
+        Micro.fromEither,
+        Micro.tap((_) => Micro.sync(() => assert.strictEqual(_, "A"))),
+        Micro.runPromise
+      ))
+
+    it("from a left", () =>
+      Either.left("error").pipe(
+        Micro.fromEither,
+        Micro.flip,
+        Micro.tap((error) => Micro.sync(() => assert.strictEqual(error, "error"))),
+        Micro.runPromise
+      ))
+  })
 
   describe("gen", () => {
     it("gen", () =>
