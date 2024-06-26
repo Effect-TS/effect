@@ -2,8 +2,10 @@ import type { ParseOptions } from "@effect/schema/AST"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
+import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
+import type { Scope } from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Cookies from "../Cookies.js"
 import * as Headers from "../Headers.js"
@@ -248,3 +250,83 @@ export const schemaNoBodyScoped = <
   return <E, R2>(effect: Effect.Effect<ClientResponse.HttpClientResponse, E, R2>) =>
     Effect.scoped(Effect.flatMap(effect, decode))
 }
+
+/** @internal */
+export const matchStatus = dual<
+  <
+    const Cases extends {
+      readonly [status: number]: (_: ClientResponse.HttpClientResponse) => any
+      readonly "2xx"?: (_: ClientResponse.HttpClientResponse) => any
+      readonly "3xx"?: (_: ClientResponse.HttpClientResponse) => any
+      readonly "4xx"?: (_: ClientResponse.HttpClientResponse) => any
+      readonly "5xx"?: (_: ClientResponse.HttpClientResponse) => any
+      readonly orElse: (_: ClientResponse.HttpClientResponse) => any
+    }
+  >(
+    cases: Cases
+  ) => (self: ClientResponse.HttpClientResponse) => Cases[keyof Cases] extends (_: any) => infer R ? R : never,
+  <
+    const Cases extends {
+      readonly [status: number]: (_: ClientResponse.HttpClientResponse) => any
+      readonly "2xx"?: (_: ClientResponse.HttpClientResponse) => any
+      readonly "3xx"?: (_: ClientResponse.HttpClientResponse) => any
+      readonly "4xx"?: (_: ClientResponse.HttpClientResponse) => any
+      readonly "5xx"?: (_: ClientResponse.HttpClientResponse) => any
+      readonly orElse: (_: ClientResponse.HttpClientResponse) => any
+    }
+  >(self: ClientResponse.HttpClientResponse, cases: Cases) => Cases[keyof Cases] extends (_: any) => infer R ? R : never
+>(2, (self, cases) => {
+  const status = self.status
+  if (cases[status]) {
+    return cases[status](self)
+  } else if (status >= 200 && status < 300 && cases["2xx"]) {
+    return cases["2xx"](self)
+  } else if (status >= 300 && status < 400 && cases["3xx"]) {
+    return cases["3xx"](self)
+  } else if (status >= 400 && status < 500 && cases["4xx"]) {
+    return cases["4xx"](self)
+  } else if (status >= 500 && status < 600 && cases["5xx"]) {
+    return cases["5xx"](self)
+  }
+  return cases.orElse(self)
+})
+
+/** @internal */
+export const matchStatusScoped = dual<
+  <
+    const Cases extends {
+      readonly [status: number]: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
+      readonly "2xx"?: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
+      readonly "3xx"?: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
+      readonly "4xx"?: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
+      readonly "5xx"?: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
+      readonly orElse: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
+    }
+  >(cases: Cases) => <E, R>(self: Effect.Effect<ClientResponse.HttpClientResponse, E, R>) => Effect.Effect<
+    Cases[keyof Cases] extends (_: any) => Effect.Effect<infer _A, infer _E, infer _R> ? _A : never,
+    E | (Cases[keyof Cases] extends (_: any) => Effect.Effect<infer _A, infer _E, infer _R> ? _E : never),
+    Exclude<
+      R | (Cases[keyof Cases] extends (_: any) => Effect.Effect<infer _A, infer _E, infer _R> ? _R : never),
+      Scope
+    >
+  >,
+  <
+    E,
+    R,
+    const Cases extends {
+      readonly [status: number]: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
+      readonly "2xx"?: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
+      readonly "3xx"?: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
+      readonly "4xx"?: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
+      readonly "5xx"?: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
+      readonly orElse: (_: ClientResponse.HttpClientResponse) => Effect.Effect<any, any, any>
+    }
+  >(self: Effect.Effect<ClientResponse.HttpClientResponse, E, R>, cases: Cases) => Effect.Effect<
+    Cases[keyof Cases] extends (_: any) => Effect.Effect<infer _A, infer _E, infer _R> ? _A : never,
+    E | (Cases[keyof Cases] extends (_: any) => Effect.Effect<infer _A, infer _E, infer _R> ? _E : never),
+    Exclude<
+      R | (Cases[keyof Cases] extends (_: any) => Effect.Effect<infer _A, infer _E, infer _R> ? _R : never),
+      Scope
+    >
+  >
+>(2, (self, cases) => Effect.scoped(Effect.flatMap(self, matchStatus(cases) as any)))
