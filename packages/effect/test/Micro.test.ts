@@ -328,7 +328,7 @@ describe.concurrent("Micro", () => {
       const result = yield* Micro.raceAll([100, 75, 50, 0, 25].map((ms) =>
         (ms === 0 ? Micro.fail("boom") : Micro.succeed(ms)).pipe(
           Micro.delay(ms),
-          Micro.onAbort(
+          Micro.onInterrupt(
             Micro.sync(() => {
               interrupted.push(ms)
             })
@@ -345,13 +345,13 @@ describe.concurrent("Micro", () => {
       const result = yield* Micro.raceAllFirst([100, 75, 50, 0, 25].map((ms) =>
         (ms === 0 ? Micro.fail("boom") : Micro.succeed(ms)).pipe(
           Micro.delay(ms),
-          Micro.onAbort(
+          Micro.onInterrupt(
             Micro.sync(() => {
               interrupted.push(ms)
             })
           )
         )
-      )).pipe(Micro.asResult)
+      )).pipe(Micro.exit)
       assert.deepStrictEqual(result, Micro.ExitFail("boom"))
       assert.deepStrictEqual(interrupted, [100, 75, 50, 25])
     }).pipe(Micro.runPromise))
@@ -427,9 +427,9 @@ describe.concurrent("Micro", () => {
         let count = 0
         yield* Micro.sync(() => count++).pipe(
           Micro.repeat({
-            delay: pipe(
-              Micro.delaySpaced(0),
-              Micro.delayWithRecurs(3)
+            schedule: pipe(
+              Micro.scheduleSpaced(0),
+              Micro.scheduleRecurs(3)
             )
           })
         )
@@ -549,9 +549,9 @@ describe.concurrent("Micro", () => {
           Micro.sandbox,
           Micro.flip
         )
-        assert.strictEqual(failure.name, "FailureUnexpected")
+        assert.strictEqual(failure.name, "FailureDie")
         assert.strictEqual(failure.message, JSON.stringify({ some: "error" }))
-        assert.include(failure.stack, `FailureUnexpected: ${JSON.stringify({ some: "error" })}`)
+        assert.include(failure.stack, `FailureDie: ${JSON.stringify({ some: "error" })}`)
         assert.include(failure.stack, "at test trace (")
       }))
 
@@ -562,9 +562,9 @@ describe.concurrent("Micro", () => {
           Micro.sandbox,
           Micro.flip
         )
-        assert.strictEqual(failure.name, "FailureExpected")
+        assert.strictEqual(failure.name, "FailureFail")
         assert.strictEqual(failure.message, JSON.stringify({ some: "error" }))
-        assert.include(failure.stack, `FailureExpected: ${JSON.stringify({ some: "error" })}`)
+        assert.include(failure.stack, `FailureFail: ${JSON.stringify({ some: "error" })}`)
         assert.include(failure.stack, "at test trace (")
       }))
 
@@ -575,9 +575,9 @@ describe.concurrent("Micro", () => {
           Micro.sandbox,
           Micro.flip
         )
-        assert.strictEqual(failure.name, "(FailureExpected) Error")
+        assert.strictEqual(failure.name, "(FailureFail) Error")
         assert.strictEqual(failure.message, "boom")
-        assert.include(failure.stack, `(FailureExpected) Error: boom`)
+        assert.include(failure.stack, `(FailureFail) Error: boom`)
         assert.include(failure.stack, "at test trace (")
       }))
   })
@@ -602,7 +602,7 @@ describe.concurrent("Micro", () => {
         let catchFailure = false
         let ensuring = false
         const handle = yield* Micro.never.pipe(
-          Micro.catchFailure((_) =>
+          Micro.catchAllCause((_) =>
             Micro.sync(() => {
               catchFailure = true
             })
@@ -623,7 +623,7 @@ describe.concurrent("Micro", () => {
         let recovered = false
         const fiber = yield* Micro.never.pipe(
           Micro.interruptible,
-          Micro.asResult,
+          Micro.exit,
           Micro.flatMap((result) =>
             Micro.sync(() => {
               recovered = result._tag === "Left" && result.left._tag === "Interrupt"
@@ -642,13 +642,13 @@ describe.concurrent("Micro", () => {
         let counter = 0
         const fiber = yield* Micro.never.pipe(
           Micro.interruptible,
-          Micro.asResult,
+          Micro.exit,
           Micro.andThen(Micro.sync(() => {
             counter++
           })),
           Micro.uninterruptible,
           Micro.interruptible,
-          Micro.asResult,
+          Micro.exit,
           Micro.andThen(Micro.sync(() => {
             counter++
           })),
@@ -728,12 +728,12 @@ describe.concurrent("Micro", () => {
         let child = false
         let parent = false
         const handle = yield* Micro.never.pipe(
-          Micro.onAbort(Micro.sync(() => {
+          Micro.onInterrupt(Micro.sync(() => {
             child = true
           })),
           Micro.fork,
           Micro.andThen(Micro.never),
-          Micro.onAbort(Micro.sync(() => {
+          Micro.onInterrupt(Micro.sync(() => {
             parent = true
           })),
           Micro.fork
@@ -751,12 +751,12 @@ describe.concurrent("Micro", () => {
         let child = false
         let parent = false
         const handle = yield* Micro.never.pipe(
-          Micro.onAbort(Micro.sync(() => {
+          Micro.onInterrupt(Micro.sync(() => {
             child = true
           })),
           Micro.forkDaemon,
           Micro.andThen(Micro.never),
-          Micro.onAbort(Micro.sync(() => {
+          Micro.onInterrupt(Micro.sync(() => {
             parent = true
           })),
           Micro.fork
@@ -774,7 +774,7 @@ describe.concurrent("Micro", () => {
         let aborted = false
         const scope = yield* Micro.scopeMake
         yield* Micro.never.pipe(
-          Micro.onAbort(Micro.sync(() => {
+          Micro.onInterrupt(Micro.sync(() => {
             aborted = true
           })),
           Micro.forkIn(scope)
@@ -791,7 +791,7 @@ describe.concurrent("Micro", () => {
         let aborted = false
         const scope = yield* Micro.scopeMake
         yield* Micro.never.pipe(
-          Micro.onAbort(Micro.sync(() => {
+          Micro.onInterrupt(Micro.sync(() => {
             aborted = true
           })),
           Micro.forkScoped,
@@ -839,7 +839,7 @@ describe.concurrent("Micro", () => {
           Micro.ensuring(Micro.sync(() => {
             finalized = true
           })),
-          Micro.asResult
+          Micro.exit
         )
         assert.deepStrictEqual(result, Micro.ExitFail(ExampleError))
         assert.isTrue(finalized)
@@ -849,12 +849,12 @@ describe.concurrent("Micro", () => {
       Micro.gen(function*() {
         let finalized = false
         const result = yield* Micro.fail(ExampleError).pipe(
-          Micro.onFailure(() =>
+          Micro.onError(() =>
             Micro.sync(() => {
               finalized = true
             })
           ),
-          Micro.asResult
+          Micro.exit
         )
         assert.deepStrictEqual(result, Micro.ExitFail(ExampleError))
         assert.isTrue(finalized)
@@ -915,7 +915,7 @@ describe.concurrent("Micro", () => {
             () => Micro.void,
             () => Micro.void
           ),
-          Micro.asResult
+          Micro.exit
         )
         assert.deepStrictEqual(result, Micro.ExitFail(ExampleError))
       }))
@@ -928,7 +928,7 @@ describe.concurrent("Micro", () => {
             () => Micro.void,
             () => Micro.die(ExampleError)
           ),
-          Micro.asResult
+          Micro.exit
         )
         assert.deepStrictEqual(result, Micro.ExitDie(ExampleError))
       }))
@@ -941,7 +941,7 @@ describe.concurrent("Micro", () => {
             () => Micro.fail(ExampleError),
             () => Micro.void
           ),
-          Micro.asResult
+          Micro.exit
         )
         assert.deepStrictEqual(result, Micro.ExitFail(ExampleError))
       }))
@@ -964,7 +964,7 @@ describe.concurrent("Micro", () => {
             () => Micro.void,
             () => Micro.die(ExampleError)
           ),
-          Micro.asResult
+          Micro.exit
         )
         assert.deepStrictEqual(result, Micro.ExitDie(ExampleError))
       }))
@@ -975,7 +975,7 @@ describe.concurrent("Micro", () => {
           Micro.void,
           () => Micro.fail(ExampleError),
           () => Micro.void
-        ).pipe(Micro.asResult)
+        ).pipe(Micro.exit)
         assert.deepEqual(result, Micro.ExitFail(ExampleError))
       }))
 
@@ -983,7 +983,7 @@ describe.concurrent("Micro", () => {
       Micro.gen(function*() {
         let ref = false
         yield* Micro.die("boom").pipe(
-          Micro.onResult((result) =>
+          Micro.onExit((result) =>
             Micro.exitIsDie(result) ?
               Micro.sync(() => {
                 ref = true

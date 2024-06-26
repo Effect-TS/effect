@@ -694,11 +694,11 @@ export const provideService: {
  * Create a service using the provided `Micro` effect, and add it to the
  * current context.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category environment
  */
-export const provideServiceMicro: {
+export const provideServiceEffect: {
   <I, S, E2, R2>(
     tag: Context.Tag<I, S>,
     acquire: Micro<S, E2, R2>
@@ -840,7 +840,7 @@ const microDepthState = globalValue("effect/Micro/microDepthState", () => ({
   maxDepthBeforeYield: currentMaxDepthBeforeYield.initial
 }))
 
-const unsafeMake = <A, E, R>(
+const unsafeMake = <R, A, E>(
   run: (env: Env<R>, onResult: (result: MicroExit<A, E>) => void) => void
 ): Micro<A, E, R> => {
   const self = Object.create(MicroProto)
@@ -848,7 +848,7 @@ const unsafeMake = <A, E, R>(
   return self
 }
 
-const unsafeMakeOptions = <A, E, R>(
+const unsafeMakeOptions = <R, A, E>(
   run: (env: Env<R>, onResult: (result: MicroExit<A, E>) => void) => void,
   checkAbort: boolean
 ): Micro<A, E, R> =>
@@ -884,30 +884,30 @@ const unsafeMakeOptions = <A, E, R>(
  * @experimental
  * @category constructors
  */
-export const make = <A, E, R>(
+export const make = <R, A, E>(
   run: (env: Env<R>, onResult: (result: MicroExit<A, E>) => void) => void
 ): Micro<A, E, R> => unsafeMakeOptions(run, true)
 
 /**
- * Converts a `Result` into a `Micro` effect.
+ * Converts a `MicroExit` into a `Micro` effect.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category constructors
  */
-export const fromResult = <A, E>(self: MicroExit<A, E>): Micro<A, E> =>
+export const fromExit = <A, E>(self: MicroExit<A, E>): Micro<A, E> =>
   make(function(_env, onResult) {
     onResult(self)
   })
 
 /**
- * Converts a lazy `Result` into a `Micro` effect.
+ * Converts a lazy `MicroExit` into a `Micro` effect.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category constructors
  */
-export const fromResultSync = <A, E>(self: LazyArg<MicroExit<A, E>>): Micro<A, E> =>
+export const fromExitSync = <A, E>(self: LazyArg<MicroExit<A, E>>): Micro<A, E> =>
   make(function(_env, onResult) {
     onResult(self())
   })
@@ -919,7 +919,7 @@ export const fromResultSync = <A, E>(self: LazyArg<MicroExit<A, E>>): Micro<A, E
  * @experimental
  * @category constructors
  */
-export const succeed = <A>(a: A): Micro<A> => fromResult(ExitSucceed(a))
+export const succeed = <A>(a: A): Micro<A> => fromExit(ExitSucceed(a))
 
 /**
  * Creates a `Micro` effect that will succeed with `Option.Some` of the value.
@@ -949,7 +949,7 @@ export const succeedNone: Micro<Option.Option<never>> = succeed(Option.none())
  * @experimental
  * @category constructors
  */
-export const fail = <E>(e: E): Micro<never, E> => fromResult(ExitFail(e))
+export const fail = <E>(e: E): Micro<never, E> => fromExit(ExitFail(e))
 
 /**
  * Creates a `Micro` effect that will fail with the lazily evaluated error.
@@ -976,26 +976,26 @@ export const failSync = <E>(e: LazyArg<E>): Micro<never, E> =>
  * @experimental
  * @category constructors
  */
-export const die = (defect: unknown): Micro<never> => fromResult(ExitDie(defect))
+export const die = (defect: unknown): Micro<never> => fromExit(ExitDie(defect))
 
 /**
  * Creates a `Micro` effect that will fail with the specified `MicroCause`.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category constructors
  */
-export const failWith = <E>(failure: MicroCause<E>): Micro<never, E> => fromResult(ExitFailCause(failure))
+export const failCause = <E>(failure: MicroCause<E>): Micro<never, E> => fromExit(ExitFailCause(failure))
 
 /**
  * Creates a `Micro` effect that will fail with the lazily evaluated `MicroCause`.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category constructors
  */
-export const failWithSync = <E>(failure: LazyArg<MicroCause<E>>): Micro<never, E> =>
-  fromResultSync(() => ExitFailCause(failure()))
+export const failCauseSync = <E>(failure: LazyArg<MicroCause<E>>): Micro<never, E> =>
+  fromExitSync(() => ExitFailCause(failure()))
 
 /**
  * Creates a `Micro` effect that will succeed with the lazily evaluated value.
@@ -1085,9 +1085,9 @@ export const async = <A, E = never, R = never>(
     let cleanup: Micro<void, never, R> | void = undefined
     function onAbort() {
       if (cleanup) {
-        resume(uninterruptible(andThen(cleanup, fromResult(ExitInterrupt))))
+        resume(uninterruptible(andThen(cleanup, fromExit(ExitInterrupt))))
       } else {
-        resume(fromResult(ExitInterrupt))
+        resume(fromExit(ExitInterrupt))
       }
       if (controller !== undefined) {
         controller.abort()
@@ -1388,7 +1388,7 @@ export const flatMap: {
  * @category mapping & sequencing
  */
 export const flip = <A, E, R>(self: Micro<A, E, R>): Micro<E, A, R> =>
-  matchMicro(self, {
+  matchEffect(self, {
     onFailure: succeed,
     onSuccess: fail
   })
@@ -1514,13 +1514,13 @@ export const tap: {
 export const asVoid = <A, E, R>(self: Micro<A, E, R>): Micro<void, E, R> => map(self, (_) => void 0)
 
 /**
- * Access the `Result` of the given `Micro` effect.
+ * Access the `MicroExit` of the given `Micro` effect.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category mapping & sequencing
  */
-export const asResult = <A, E, R>(self: Micro<A, E, R>): Micro<MicroExit<A, E>, never, R> =>
+export const exit = <A, E, R>(self: Micro<A, E, R>): Micro<MicroExit<A, E>, never, R> =>
   make(function(env, onResult) {
     self[runSymbol](env, function(result) {
       onResult(ExitSucceed(result))
@@ -1535,7 +1535,7 @@ export const asResult = <A, E, R>(self: Micro<A, E, R>): Micro<MicroExit<A, E>, 
  * @category mapping & sequencing
  */
 export const sandbox = <A, E, R>(self: Micro<A, E, R>): Micro<A, MicroCause<E>, R> =>
-  catchFailure(self, (failure) => fail(failure))
+  catchAllCause(self, (failure) => fail(failure))
 
 function forkSignal(env: Env<any>) {
   const controller = new AbortController()
@@ -1744,7 +1744,7 @@ export const zipWith: {
  * @experimental
  * @category filtering & conditionals
  */
-export const filterOrFailWith: {
+export const filterOrFailCause: {
   <A, B extends A, E2>(
     refinement: Refinement<A, B>,
     orFailWith: (a: NoInfer<A>) => MicroCause<E2>
@@ -1767,7 +1767,7 @@ export const filterOrFailWith: {
   self: Micro<A, E, R>,
   refinement: Refinement<A, B>,
   orFailWith: (a: A) => MicroCause<E2>
-): Micro<B, E | E2, R> => flatMap(self, (a) => refinement(a) ? succeed(a as any) : failWith(orFailWith(a))))
+): Micro<B, E | E2, R> => flatMap(self, (a) => refinement(a) ? succeed(a as any) : failCause(orFailWith(a))))
 
 /**
  * Filter the specified effect with the provided function, failing with specified
@@ -1833,30 +1833,30 @@ export const when: {
  * Repeat the given `Micro` using the provided options.
  *
  * The `while` predicate will be checked after each iteration, and can use the
- * fall `Result` of the effect to determine if the repetition should continue.
+ * fall `MicroExit` of the effect to determine if the repetition should continue.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category repetition
  */
-export const repeatResult: {
+export const repeatExit: {
   <A, E>(options: {
     while: Predicate<MicroExit<A, E>>
     times?: number | undefined
-    delay?: MicroSchedule | undefined
+    schedule?: MicroSchedule | undefined
   }): <R>(self: Micro<A, E, R>) => Micro<A, E, R>
   <A, E, R>(self: Micro<A, E, R>, options: {
     while: Predicate<MicroExit<A, E>>
     times?: number | undefined
-    delay?: MicroSchedule | undefined
+    schedule?: MicroSchedule | undefined
   }): Micro<A, E, R>
 } = dual(2, <A, E, R>(self: Micro<A, E, R>, options: {
   while: Predicate<MicroExit<A, E>>
   times?: number | undefined
-  delay?: MicroSchedule | undefined
+  schedule?: MicroSchedule | undefined
 }): Micro<A, E, R> =>
   make(function(env, onResult) {
-    const startedAt = options.delay ? Date.now() : 0
+    const startedAt = options.schedule ? Date.now() : 0
     let attempt = 0
     self[runSymbol](env, function loop(result) {
       if (options.while !== undefined && !options.while(result)) {
@@ -1866,9 +1866,9 @@ export const repeatResult: {
       }
       attempt++
       let delayEffect = yieldNow
-      if (options.delay !== undefined) {
+      if (options.schedule !== undefined) {
         const elapsed = Date.now() - startedAt
-        const duration = options.delay(attempt, elapsed)
+        const duration = options.schedule(attempt, elapsed)
         if (Option.isNone(duration)) {
           return onResult(result)
         }
@@ -1896,7 +1896,7 @@ export const repeat: {
     options?: {
       while?: Predicate<A> | undefined
       times?: number | undefined
-      delay?: MicroSchedule | undefined
+      schedule?: MicroSchedule | undefined
     } | undefined
   ): <R>(self: Micro<A, E, R>) => Micro<A, E, R>
   <A, E, R>(
@@ -1904,7 +1904,7 @@ export const repeat: {
     options?: {
       while?: Predicate<A> | undefined
       times?: number | undefined
-      delay?: MicroSchedule | undefined
+      schedule?: MicroSchedule | undefined
     } | undefined
   ): Micro<A, E, R>
 } = dual((args) => isMicro(args[0]), <A, E, R>(
@@ -1912,10 +1912,10 @@ export const repeat: {
   options?: {
     while?: Predicate<A> | undefined
     times?: number | undefined
-    delay?: MicroSchedule | undefined
+    schedule?: MicroSchedule | undefined
   } | undefined
 ): Micro<A, E, R> =>
-  repeatResult(self, {
+  repeatExit(self, {
     ...options,
     while: (result) => result._tag === "Right" && (options?.while === undefined || options.while(result.right))
   }))
@@ -1950,31 +1950,31 @@ export type MicroSchedule = (attempt: number, elapsed: number) => Option.Option<
 /**
  * Create a `MicroSchedule` that will generate a duration with an exponential backoff.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category scheduling
  */
-export const delayExponential = (baseMillis: number, factor = 2): MicroSchedule => (attempt) =>
+export const scheduleExponential = (baseMillis: number, factor = 2): MicroSchedule => (attempt) =>
   Option.some(attempt ** factor * baseMillis)
 
 /**
  * Create a `MicroSchedule` that will generate a duration with fixed intervals.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category scheduling
  */
-export const delaySpaced = (millis: number): MicroSchedule => (_) => Option.some(millis)
+export const scheduleSpaced = (millis: number): MicroSchedule => (_) => Option.some(millis)
 
 /**
  * Transform a `MicroSchedule` to one that will have a duration that will never exceed
  * the specified maximum.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category scheduling
  */
-export const delayWithMax: {
+export const scheduleWithMax: {
   (max: number): (self: MicroSchedule) => MicroSchedule
   (self: MicroSchedule, max: number): MicroSchedule
 } = dual(
@@ -1987,11 +1987,11 @@ export const delayWithMax: {
  * Transform a `MicroSchedule` to one that will stop repeating after the specified
  * amount of time.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category scheduling
  */
-export const delayWithMaxElapsed: {
+export const scheduleWithMaxElapsed: {
   (max: number): (self: MicroSchedule) => MicroSchedule
   (self: MicroSchedule, max: number): MicroSchedule
 } = dual(
@@ -2004,11 +2004,11 @@ export const delayWithMaxElapsed: {
  * Transform a `MicroSchedule` to one that will stop repeating after the specified
  * number of attempts.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category scheduling
  */
-export const delayWithRecurs: {
+export const scheduleRecurs: {
   (n: number): (self: MicroSchedule) => MicroSchedule
   (self: MicroSchedule, n: number): MicroSchedule
 } = dual(
@@ -2029,7 +2029,7 @@ export const delayWithRecurs: {
  * @experimental
  * @category error handling
  */
-export const catchFailure: {
+export const catchAllCause: {
   <E, B, E2, R2>(
     f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
   ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E2, R | R2>
@@ -2042,18 +2042,18 @@ export const catchFailure: {
   <A, E, R, B, E2, R2>(
     self: Micro<A, E, R>,
     f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
-  ): Micro<A | B, E2, R | R2> => catchFailureIf(self, constTrue, f)
+  ): Micro<A | B, E2, R | R2> => catchCauseIf(self, constTrue, f)
 )
 
 /**
  * Selectively catch a `MicroCause` object of the given `Micro` effect,
  * using the provided predicate to determine if the failure should be caught.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category error handling
  */
-export const catchFailureIf: {
+export const catchCauseIf: {
   <E, B, E2, R2, EB extends MicroCause<E>>(
     refinement: Refinement<MicroCause<E>, EB>,
     f: (cause: EB) => Micro<B, E2, R2>
@@ -2091,11 +2091,11 @@ export const catchFailureIf: {
  *
  * It only catches expected (`FailureExpected`) errors.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category error handling
  */
-export const catchExpected: {
+export const catchAll: {
   <E, B, E2, R2>(
     f: (e: NoInfer<E>) => Micro<B, E2, R2>
   ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E2, R | R2>
@@ -2105,17 +2105,17 @@ export const catchExpected: {
   <A, E, R, B, E2, R2>(
     self: Micro<A, E, R>,
     f: (a: NoInfer<E>) => Micro<B, E2, R2>
-  ): Micro<A | B, E2, R | R2> => catchFailureIf(self, causeIsFail, (failure) => f(failure.error))
+  ): Micro<A | B, E2, R | R2> => catchCauseIf(self, causeIsFail, (failure) => f(failure.error))
 )
 
 /**
  * Catch any unexpected errors of the given `Micro` effect, allowing you to recover from them.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category error handling
  */
-export const catchUnexpected: {
+export const catchAllDefect: {
   <E, B, E2, R2>(
     f: (defect: unknown) => Micro<B, E2, R2>
   ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E | E2, R | R2>
@@ -2123,17 +2123,17 @@ export const catchUnexpected: {
 } = dual(
   2,
   <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (defect: unknown) => Micro<B, E2, R2>): Micro<A | B, E | E2, R | R2> =>
-    catchFailureIf(self, causeIsDie, (die) => f(die.defect))
+    catchCauseIf(self, causeIsDie, (die) => f(die.defect))
 )
 
 /**
  * Perform a side effect using the full `MicroCause` object of the given `Micro`.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category error handling
  */
-export const tapFailure: {
+export const tapErrorCause: {
   <E, B, E2, R2>(
     f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
   ): <A, R>(self: Micro<A, E, R>) => Micro<A, E | E2, R | R2>
@@ -2146,7 +2146,7 @@ export const tapFailure: {
   <A, E, R, B, E2, R2>(
     self: Micro<A, E, R>,
     f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
-  ): Micro<A, E | E2, R | R2> => tapFailureIf(self, constTrue, f)
+  ): Micro<A, E | E2, R | R2> => tapErrorCauseIf(self, constTrue, f)
 )
 
 /**
@@ -2157,7 +2157,7 @@ export const tapFailure: {
  * @experimental
  * @category error handling
  */
-export const tapFailureIf: {
+export const tapErrorCauseIf: {
   <E, B, E2, R2, EB extends MicroCause<E>>(
     refinement: Refinement<MicroCause<E>, EB>,
     f: (a: EB) => Micro<B, E2, R2>
@@ -2182,17 +2182,17 @@ export const tapFailureIf: {
     self: Micro<A, E, R>,
     refinement: Refinement<MicroCause<E>, EB>,
     f: (a: EB) => Micro<B, E2, R2>
-  ): Micro<A, E | E2, R | R2> => catchFailureIf(self, refinement, (cause) => andThen(f(cause as any), failWith(cause)))
+  ): Micro<A, E | E2, R | R2> => catchCauseIf(self, refinement, (cause) => andThen(f(cause as any), failCause(cause)))
 )
 
 /**
  * Perform a side effect from expected errors of the given `Micro`.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category error handling
  */
-export const tapExpected: {
+export const tapError: {
   <E, B, E2, R2>(
     f: (e: NoInfer<E>) => Micro<B, E2, R2>
   ): <A, R>(self: Micro<A, E, R>) => Micro<A, E | E2, R | R2>
@@ -2200,17 +2200,17 @@ export const tapExpected: {
 } = dual(
   2,
   <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (e: NoInfer<E>) => Micro<B, E2, R2>): Micro<A, E | E2, R | R2> =>
-    tapFailureIf(self, causeIsFail, (fail) => f(fail.error))
+    tapErrorCauseIf(self, causeIsFail, (fail) => f(fail.error))
 )
 
 /**
  * Perform a side effect from unexpected errors of the given `Micro`.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category error handling
  */
-export const tapUnexpected: {
+export const tapDefect: {
   <E, B, E2, R2>(
     f: (defect: unknown) => Micro<B, E2, R2>
   ): <A, R>(self: Micro<A, E, R>) => Micro<A, E | E2, R | R2>
@@ -2218,7 +2218,7 @@ export const tapUnexpected: {
 } = dual(
   2,
   <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (defect: unknown) => Micro<B, E2, R2>): Micro<A, E | E2, R | R2> =>
-    tapFailureIf(self, causeIsDie, (die) => f(die.defect))
+    tapErrorCauseIf(self, causeIsDie, (die) => f(die.defect))
 )
 
 /**
@@ -2254,7 +2254,7 @@ export const catchIf: {
     predicate: Predicate<E>,
     f: (e: E) => Micro<A2, E2, R2>
   ): Micro<A | A2, E | E2, R | R2> =>
-    catchFailureIf(
+    catchCauseIf(
       self,
       (f): f is MicroCause.Fail<E> => causeIsFail(f) && predicate(f.error),
       (fail) => f(fail.error)
@@ -2288,17 +2288,17 @@ export const catchTag: {
 /**
  * Transform the full `MicroCause` object of the given `Micro` effect.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category error handling
  */
-export const mapFailure: {
+export const mapErrorCause: {
   <E, E2>(f: (e: MicroCause<E>) => MicroCause<E2>): <A, R>(self: Micro<A, E, R>) => Micro<A, E2, R>
   <A, E, R, E2>(self: Micro<A, E, R>, f: (e: MicroCause<E>) => MicroCause<E2>): Micro<A, E2, R>
 } = dual(
   2,
   <A, E, R, E2>(self: Micro<A, E, R>, f: (e: MicroCause<E>) => MicroCause<E2>): Micro<A, E2, R> =>
-    catchFailure(self, (cause) => failWith(f(cause)))
+    catchAllCause(self, (cause) => failCause(f(cause)))
 )
 
 /**
@@ -2313,8 +2313,7 @@ export const mapError: {
   <A, E, R, E2>(self: Micro<A, E, R>, f: (e: E) => E2): Micro<A, E2, R>
 } = dual(
   2,
-  <A, E, R, E2>(self: Micro<A, E, R>, f: (e: E) => E2): Micro<A, E2, R> =>
-    catchExpected(self, (error) => fail(f(error)))
+  <A, E, R, E2>(self: Micro<A, E, R>, f: (e: E) => E2): Micro<A, E2, R> => catchAll(self, (error) => fail(f(error)))
 )
 
 /**
@@ -2325,7 +2324,7 @@ export const mapError: {
  * @experimental
  * @category error handling
  */
-export const orDie = <A, E, R>(self: Micro<A, E, R>): Micro<A, never, R> => catchExpected(self, die)
+export const orDie = <A, E, R>(self: Micro<A, E, R>): Micro<A, never, R> => catchAll(self, die)
 
 /**
  * Recover from all errors by succeeding with the given value.
@@ -2339,7 +2338,7 @@ export const orElseSucceed: {
   <A, E, R, B>(self: Micro<A, E, R>, f: LazyArg<B>): Micro<A | B, never, R>
 } = dual(
   2,
-  <A, E, R, B>(self: Micro<A, E, R>, f: LazyArg<B>): Micro<A | B, never, R> => catchExpected(self, (_) => sync(f))
+  <A, E, R, B>(self: Micro<A, E, R>, f: LazyArg<B>): Micro<A | B, never, R> => catchAll(self, (_) => sync(f))
 )
 
 /**
@@ -2350,7 +2349,7 @@ export const orElseSucceed: {
  * @category error handling
  */
 export const ignore = <A, E, R>(self: Micro<A, E, R>): Micro<void, never, R> =>
-  matchMicro(self, { onFailure: (_) => void_, onSuccess: (_) => void_ })
+  matchEffect(self, { onFailure: (_) => void_, onSuccess: (_) => void_ })
 
 /**
  * Ignore any expected errors of the given `Micro` effect, returning `void`.
@@ -2360,7 +2359,7 @@ export const ignore = <A, E, R>(self: Micro<A, E, R>): Micro<void, never, R> =>
  * @category error handling
  */
 export const ignoreLogged = <A, E, R>(self: Micro<A, E, R>): Micro<void, never, R> =>
-  matchMicro(self, {
+  matchEffect(self, {
     onFailure: (failure) => sync(() => console.error(failure)),
     onSuccess: (_) => void_
   })
@@ -2401,7 +2400,7 @@ export const retry: {
     options?: {
       while?: Predicate<E> | undefined
       times?: number | undefined
-      delay?: MicroSchedule | undefined
+      schedule?: MicroSchedule | undefined
     } | undefined
   ): <R>(self: Micro<A, E, R>) => Micro<A, E, R>
   <A, E, R>(
@@ -2409,7 +2408,7 @@ export const retry: {
     options?: {
       while?: Predicate<E> | undefined
       times?: number | undefined
-      delay?: MicroSchedule | undefined
+      schedule?: MicroSchedule | undefined
     } | undefined
   ): Micro<A, E, R>
 } = dual((args) => isMicro(args[0]), <A, E, R>(
@@ -2417,10 +2416,10 @@ export const retry: {
   options?: {
     while?: Predicate<E> | undefined
     times?: number | undefined
-    delay?: MicroSchedule | undefined
+    schedule?: MicroSchedule | undefined
   } | undefined
 ): Micro<A, E, R> =>
-  repeatResult(self, {
+  repeatExit(self, {
     ...options,
     while: (result) =>
       result._tag === "Left" && result.left._tag === "Fail" &&
@@ -2472,11 +2471,11 @@ export const withTrace: {
 // ----------------------------------------------------------------------------
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category pattern matching
  */
-export const matchFailureMicro: {
+export const matchCauseEffect: {
   <E, A2, E2, R2, A, A3, E3, R3>(
     options: {
       readonly onFailure: (failure: MicroCause<E>) => Micro<A2, E2, R2>
@@ -2512,11 +2511,11 @@ export const matchFailureMicro: {
 )
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category pattern matching
  */
-export const matchFailure: {
+export const matchCause: {
   <E, A2, A, A3>(
     options: {
       readonly onFailure: (failure: MicroCause<E>) => A2
@@ -2539,18 +2538,18 @@ export const matchFailure: {
       readonly onSuccess: (a: A) => A3
     }
   ): Micro<A2 | A3, never, R> =>
-    matchFailureMicro(self, {
+    matchCauseEffect(self, {
       onFailure: (failure) => sync(() => options.onFailure(failure)),
       onSuccess: (value) => sync(() => options.onSuccess(value))
     })
 )
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category pattern matching
  */
-export const matchMicro: {
+export const matchEffect: {
   <E, A2, E2, R2, A, A3, E3, R3>(
     options: {
       readonly onFailure: (e: E) => Micro<A2, E2, R2>
@@ -2573,8 +2572,8 @@ export const matchMicro: {
       readonly onSuccess: (a: A) => Micro<A3, E3, R3>
     }
   ): Micro<A2 | A3, E2 | E3, R2 | R3 | R> =>
-    matchFailureMicro(self, {
-      onFailure: (failure) => failure._tag === "Fail" ? options.onFailure(failure.error) : failWith(failure),
+    matchCauseEffect(self, {
+      onFailure: (failure) => failure._tag === "Fail" ? options.onFailure(failure.error) : failCause(failure),
       onSuccess: options.onSuccess
     })
 )
@@ -2607,7 +2606,7 @@ export const match: {
       readonly onSuccess: (value: A) => A3
     }
   ): Micro<A2 | A3, never, R> =>
-    matchMicro(self, {
+    matchEffect(self, {
       onFailure: (error) => sync(() => options.onFailure(error)),
       onSuccess: (value) => sync(() => options.onSuccess(value))
     })
@@ -2753,7 +2752,7 @@ export declare namespace MicroScope {
  */
 export const MicroScope: Context.Tag<MicroScope, MicroScope> = Context.GenericTag<MicroScope>("effect/Micro/MicroScope")
 
-class ScopeImpl implements MicroScope.Closeable {
+class MicroScopeImpl implements MicroScope.Closeable {
   readonly [MicroScopeTypeId]: MicroScopeTypeId
   state: {
     readonly _tag: "Open"
@@ -2792,8 +2791,8 @@ class ScopeImpl implements MicroScope.Closeable {
         const finalizers = Array.from(this.state.finalizers).reverse()
         this.state = { _tag: "Closed", result }
         return flatMap(
-          forEach(finalizers, (finalizer) => asResult(finalizer(result))),
-          (results) => asVoid(fromResult(Either.all(results)))
+          forEach(finalizers, (finalizer) => exit(finalizer(result))),
+          (results) => asVoid(fromExit(Either.all(results)))
         )
       }
       return void_
@@ -2801,7 +2800,7 @@ class ScopeImpl implements MicroScope.Closeable {
   }
   get fork() {
     return sync(() => {
-      const newScope = new ScopeImpl()
+      const newScope = new MicroScopeImpl()
       if (this.state._tag === "Closed") {
         newScope.state = this.state
         return newScope
@@ -2821,14 +2820,14 @@ class ScopeImpl implements MicroScope.Closeable {
  * @experimental
  * @category resources & finalization
  */
-export const scopeMake: Micro<MicroScope.Closeable> = sync(() => new ScopeImpl())
+export const scopeMake: Micro<MicroScope.Closeable> = sync(() => new MicroScopeImpl())
 
 /**
  * @since 3.4.0
  * @experimental
  * @category resources & finalization
  */
-export const scopeUnsafeMake = (): MicroScope.Closeable => new ScopeImpl()
+export const scopeUnsafeMake = (): MicroScope.Closeable => new MicroScopeImpl()
 
 /**
  * Access the current `MicroScope`.
@@ -2865,8 +2864,8 @@ export const provideScope: {
  */
 export const scoped = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, Exclude<R, MicroScope>> =>
   suspend(function() {
-    const scope = new ScopeImpl()
-    return onResult(provideService(self, MicroScope, scope), (result) => scope.close(result))
+    const scope = new MicroScopeImpl()
+    return onExit(provideService(self, MicroScope, scope), (result) => scope.close(result))
   })
 
 /**
@@ -2899,13 +2898,13 @@ export const addFinalizer = (
 
 /**
  * When the `Micro` effect is completed, run the given finalizer effect with the
- * `Result` of the executed effect.
+ * `MicroExit` of the executed effect.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category resources & finalization
  */
-export const onResult: {
+export const onExit: {
   <A, E, XE, XR>(
     f: (result: MicroExit<A, E>) => Micro<void, XE, XR>
   ): <R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
@@ -2915,18 +2914,18 @@ export const onResult: {
   <A, E, R, XE, XR>(
     self: Micro<A, E, R>,
     f: (result: MicroExit<A, E>) => Micro<void, XE, XR>
-  ): Micro<A, E | XE, R | XR> => onResultIf(self, constTrue, f)
+  ): Micro<A, E | XE, R | XR> => onExitIf(self, constTrue, f)
 )
 
 /**
  * When the `Micro` effect is completed, run the given finalizer effect if it
  * matches the specified predicate.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category resources & finalization
  */
-export const onResultIf: {
+export const onExitIf: {
   <A, E, XE, XR, B extends MicroExit<A, E>>(
     refinement: Refinement<MicroExit<A, E>, B>,
     f: (result: B) => Micro<void, XE, XR>
@@ -2984,18 +2983,18 @@ export const ensuring: {
 } = dual(
   2,
   <A, E, R, XE, XR>(self: Micro<A, E, R>, finalizer: Micro<void, XE, XR>): Micro<A, E | XE, R | XR> =>
-    onResult(self, (_) => finalizer)
+    onExit(self, (_) => finalizer)
 )
 
 /**
  * When the `Micro` effect fails, run the given finalizer effect with the
  * `MicroCause` of the executed effect.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category resources & finalization
  */
-export const onFailure: {
+export const onError: {
   <A, E, XE, XR>(
     f: (failure: MicroCause<NoInfer<E>>) => Micro<void, XE, XR>
   ): <R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
@@ -3008,17 +3007,17 @@ export const onFailure: {
   <A, E, R, XE, XR>(
     self: Micro<A, E, R>,
     f: (failure: MicroCause<NoInfer<E>>) => Micro<void, XE, XR>
-  ): Micro<A, E | XE, R | XR> => onResultIf(self, exitIsFailure, (result) => f(result.left))
+  ): Micro<A, E | XE, R | XR> => onExitIf(self, exitIsFailure, (result) => f(result.left))
 )
 
 /**
  * If this `Micro` effect is aborted, run the finalizer effect.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category resources & finalization
  */
-export const onAbort: {
+export const onInterrupt: {
   <XE, XR>(
     finalizer: Micro<void, XE, XR>
   ): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
@@ -3026,7 +3025,7 @@ export const onAbort: {
 } = dual(
   2,
   <A, E, R, XE, XR>(self: Micro<A, E, R>, finalizer: Micro<void, XE, XR>): Micro<A, E | XE, R | XR> =>
-    onResultIf(self, exitIsInterrupt, (_) => finalizer)
+    onExitIf(self, exitIsInterrupt, (_) => finalizer)
 )
 
 /**
@@ -3047,8 +3046,8 @@ export const acquireUseRelease = <Resource, E, R, A, E2, R2, E3, R3>(
       acquire,
       (a) =>
         flatMap(
-          asResult(restore(use(a))),
-          (result) => andThen(release(a, result), fromResult(result))
+          exit(restore(use(a))),
+          (result) => andThen(release(a, result), fromExit(result))
         )
     )
   )
@@ -3060,11 +3059,11 @@ export const acquireUseRelease = <Resource, E, R, A, E2, R2, E3, R3>(
 /**
  * Abort the current `Micro` effect.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category interruption
  */
-export const abort: Micro<never> = make(function(env, onResult) {
+export const interrupt: Micro<never> = make(function(env, onResult) {
   const controller = envGet(env, currentAbortController)
   controller.abort()
   onResult(ExitInterrupt)
@@ -3577,7 +3576,7 @@ class HandleImpl<A, E> implements Handle<A, E> {
   }
 
   get join(): Micro<A, E> {
-    return flatMap(this.await, fromResult)
+    return flatMap(this.await, fromExit)
   }
 
   get abort(): Micro<MicroExit<A, E>> {
@@ -3661,7 +3660,7 @@ export const forkIn: {
     uninterruptibleMask((restore) =>
       flatMap(scope.fork, (scope) =>
         tap(
-          restore(forkDaemon(onResult(self, (result) => scope.close(result)))),
+          restore(forkDaemon(onExit(self, (result) => scope.close(result)))),
           (fiber) => scope.addFinalizer((_) => asVoid(fiber.abort))
         ))
     )
@@ -3736,13 +3735,13 @@ export const runFork = <A, E>(
 
 /**
  * Execute the `Micro` effect and return a `Promise` that resolves with the
- * `Result` of the computation.
+ * `MicroExit` of the computation.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category execution
  */
-export const runPromiseResult = <A, E>(
+export const runPromiseExit = <A, E>(
   effect: Micro<A, E>,
   options?: {
     readonly signal?: AbortSignal | undefined
@@ -3767,7 +3766,7 @@ export const runPromise = <A, E>(
     readonly signal?: AbortSignal | undefined
   } | undefined
 ): Promise<A> =>
-  runPromiseResult(effect, options).then((result) => {
+  runPromiseExit(effect, options).then((result) => {
     if (result._tag === "Left") {
       throw result.left
     }
@@ -3775,16 +3774,16 @@ export const runPromise = <A, E>(
   })
 
 /**
- * Attempt to execute the `Micro` effect synchronously and return the `Result`.
+ * Attempt to execute the `Micro` effect synchronously and return the `MicroExit`.
  *
  * If any asynchronous effects are encountered, the function will return a
  * FailureUnexpected containing the `Handle`.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category execution
  */
-export const runSyncResult = <A, E>(effect: Micro<A, E>): MicroExit<A, E> => {
+export const runSyncExit = <A, E>(effect: Micro<A, E>): MicroExit<A, E> => {
   const handle = runFork(effect)
   while (yieldState.tasks.length > 0) {
     yieldRunTasks()
@@ -3805,7 +3804,7 @@ export const runSyncResult = <A, E>(effect: Micro<A, E>): MicroExit<A, E> => {
  * @category execution
  */
 export const runSync = <A, E>(effect: Micro<A, E>): A => {
-  const result = runSyncResult(effect)
+  const result = runSyncExit(effect)
   if (result._tag === "Left") {
     throw result.left
   }

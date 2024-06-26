@@ -30,3 +30,36 @@ Micro: renaming to align with `Effect` module:
   - `resultIsFailureUnexpected` -> `exitIsDie`
   - `resultVoid` -> `exitVoid`
 - `DelayFn` -> `MicroSchedule`
+  - `delayExponential` -> `scheduleExponential`
+  - `delaySpaced` -> `scheduleSpaced`
+  - `delayWithMax` -> `scheduleWithMax`
+  - `delayWithMaxElapsed` -> `scheduleWithMaxElapsed`
+  - `delayWithRecurs` -> `scheduleRecurs`
+- `provideServiceMicro` -> `provideServiceEffect`
+- `fromResult` -> `fromExit`
+- `fromResultSync` -> `fromExitSync`
+- `failWith` -> `failCause`
+- `failWithSync` -> `failCauseSync`
+- `asResult` -> `exit`
+- `filterOrFailWith` -> `filterOrFailCause`
+- `repeatResult` -> `repeatExit`
+- `catchFailure` -> `catchAllCause`
+- `catchFailureIf` -> `catchCauseIf`
+- `catchExpected` -> `catchAll`
+- `catchUnexpected` -> `catchAllDefect`
+- `tapFailure` -> `tapErrorCause`
+- `tapFailureIf` -> `tapErrorCauseIf`
+- `tapExpected` -> `tapError`
+- `tapUnexpected` -> `tapDefect`
+- `mapFailure` -> `mapErrorCause`
+- `matchFailureMicro` -> `matchCauseEffect`
+- `matchFailure` -> `matchCause`
+- `matchMicro` -> `matchEffect`
+- `onResult` -> `onExit`
+- `onResultIf` -> `onExitIf`
+- `onFailure` -> `onError`
+- `onAbort` -> `onInterrupt`
+- `abort` -> `interrupt`
+- `runPromiseResult` -> `runPromiseExit`
+- `runSyncResult` -> `runSyncExit`
+- rename `delay` option to `schedule`
