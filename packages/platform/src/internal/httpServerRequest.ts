@@ -343,3 +343,14 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
     )
   }
 }
+
+/** @internal */
+export const toURL = (self: ServerRequest.HttpServerRequest): Option.Option<URL> => {
+  const host = self.headers.host ?? "localhost"
+  const protocol = self.headers["x-forwarded-proto"] === "https" ? "https" : "http"
+  try {
+    return Option.some(new URL(self.url, `${protocol}://${host}`))
+  } catch (_) {
+    return Option.none()
+  }
+}
