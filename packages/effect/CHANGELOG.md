@@ -1,5 +1,19 @@
 # effect
 
+## 3.4.3
+
+### Patch Changes
+
+- [#3065](https://github.com/Effect-TS/effect/pull/3065) [`c342739`](https://github.com/Effect-TS/effect/commit/c3427396226e1ad7b95b40595a23f9bdff3e3365) Thanks @KhraksMamtsov! - Support `this` argument for `Micro.gen`
+
+- [#3067](https://github.com/Effect-TS/effect/pull/3067) [`8898e5e`](https://github.com/Effect-TS/effect/commit/8898e5e238622f6337583d91ee23609c1f5ccdf7) Thanks @KhraksMamtsov! - Cleanup signal "abort" event handler in `Micro.runFork`
+
+- [#3082](https://github.com/Effect-TS/effect/pull/3082) [`ff78636`](https://github.com/Effect-TS/effect/commit/ff786367c522975f40f0f179a0ecdfcfab7ecbdb) Thanks @gcanti! - Align the `Micro.catchIf` signature with `Effect.catchIf`
+
+- [#3078](https://github.com/Effect-TS/effect/pull/3078) [`c86bd4e`](https://github.com/Effect-TS/effect/commit/c86bd4e134c23146c216f9ff97e03781d55991b6) Thanks @KhraksMamtsov! - Support unification for Micro module
+
+- [#3079](https://github.com/Effect-TS/effect/pull/3079) [`bbdd365`](https://github.com/Effect-TS/effect/commit/bbdd36567706c94cdec45bacea825941c347b6cd) Thanks @tim-smart! - update to typescript 5.5
+
 ## 3.4.2
 
 ### Patch Changes
