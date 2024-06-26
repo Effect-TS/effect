@@ -64,7 +64,7 @@ export type runSymbol = typeof runSymbol
  */
 export interface Micro<out A, out E = never, out R = never> extends Effect<A, E, R> {
   readonly [TypeId]: Micro.Variance<A, E, R>
-  readonly [runSymbol]: (env: Env<any>, onResult: (result: Result<A, E>) => void) => void
+  readonly [runSymbol]: (env: Env<any>, onResult: (result: MicroExit<A, E>) => void) => void
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: MicroUnify<this>
   [Unify.ignoreSymbol]?: MicroUnifyIgnore
@@ -145,44 +145,44 @@ export interface MicroIterator<T extends Micro<any, any, any>> {
 }
 
 // ----------------------------------------------------------------------------
-// Failures
+// MicroCause
 // ----------------------------------------------------------------------------
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category failure
+ * @category MicroCause
  */
-export const FailureTypeId = Symbol.for("effect/Micro/Failure")
+export const MicroCauseTypeId = Symbol.for("effect/Micro/MicroCause")
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category failure
+ * @category MicroCause
  */
-export type FailureTypeId = typeof FailureTypeId
+export type MicroCauseTypeId = typeof MicroCauseTypeId
 
 /**
- * A Micro Failure is a data type that represents the different ways a Micro can fail.
+ * A Micro Cause is a data type that represents the different ways a Micro can fail.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category failure
+ * @category MicroCause
  */
-export type Failure<E> = Failure.Unexpected | Failure.Expected<E> | Failure.Aborted
+export type MicroCause<E> = MicroCause.Die | MicroCause.Fail<E> | MicroCause.Interrupt
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category failure
+ * @category MicroCause
  */
-export declare namespace Failure {
+export declare namespace MicroCause {
   /**
    * @since 3.4.0
    * @experimental
    */
   export interface Proto<Tag extends string, E> extends Pipeable, globalThis.Error {
-    readonly [FailureTypeId]: {
+    readonly [MicroCauseTypeId]: {
       _E: Covariant<E>
     }
     readonly _tag: Tag
@@ -190,37 +190,37 @@ export declare namespace Failure {
   }
 
   /**
-   * @since 3.4.0
+   * @since 3.4.5
    * @experimental
-   * @category failure
+   * @category MicroCause
    */
-  export interface Unexpected extends Proto<"Unexpected", never> {
+  export interface Die extends Proto<"Die", never> {
     readonly defect: unknown
   }
 
   /**
-   * @since 3.4.0
+   * @since 3.4.5
    * @experimental
-   * @category failure
+   * @category MicroCause
    */
-  export interface Expected<E> extends Proto<"Expected", E> {
+  export interface Fail<E> extends Proto<"Fail", E> {
     readonly error: E
   }
 
   /**
-   * @since 3.4.0
+   * @since 3.4.5
    * @experimental
-   * @category failure
+   * @category MicroCause
    */
-  export interface Aborted extends Proto<"Aborted", never> {}
+  export interface Interrupt extends Proto<"Interrupt", never> {}
 }
 
 const failureVariance = {
   _E: identity
 }
 
-abstract class FailureImpl<Tag extends string, E> extends globalThis.Error implements Failure.Proto<Tag, E> {
-  readonly [FailureTypeId]: {
+abstract class MicroCauseImpl<Tag extends string, E> extends globalThis.Error implements MicroCause.Proto<Tag, E> {
+  readonly [MicroCauseTypeId]: {
     _E: Covariant<E>
   }
   constructor(
@@ -248,7 +248,7 @@ abstract class FailureImpl<Tag extends string, E> extends globalThis.Error imple
       stack += `\n    ${traces.join("\n    ")}`
     }
     super(message)
-    this[FailureTypeId] = failureVariance
+    this[MicroCauseTypeId] = failureVariance
     this.name = name
     this.stack = stack
   }
@@ -263,188 +263,201 @@ abstract class FailureImpl<Tag extends string, E> extends globalThis.Error imple
   }
 }
 
-class FailureExpectedImpl<E> extends FailureImpl<"Expected", E> implements Failure.Expected<E> {
+class FailImpl<E> extends MicroCauseImpl<"Fail", E> implements MicroCause.Fail<E> {
   constructor(readonly error: E, traces: ReadonlyArray<string> = []) {
-    super("Expected", error, traces)
+    super("Fail", error, traces)
   }
 }
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category failure
+ * @category MicroCause
  */
-export const FailureExpected = <E>(error: E, traces: ReadonlyArray<string> = []): Failure<E> =>
-  new FailureExpectedImpl(error, traces)
+export const CauseFail = <E>(error: E, traces: ReadonlyArray<string> = []): MicroCause<E> => new FailImpl(error, traces)
 
-class FailureUnexpectedImpl extends FailureImpl<"Unexpected", never> implements Failure.Unexpected {
+class DieImpl extends MicroCauseImpl<"Die", never> implements MicroCause.Die {
   constructor(readonly defect: unknown, traces: ReadonlyArray<string> = []) {
-    super("Unexpected", defect, traces)
+    super("Die", defect, traces)
   }
 }
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category failure
+ * @category MicroCause
  */
-export const FailureUnexpected = (defect: unknown, traces: ReadonlyArray<string> = []): Failure<never> =>
-  new FailureUnexpectedImpl(defect, traces)
+export const CauseDie = (defect: unknown, traces: ReadonlyArray<string> = []): MicroCause<never> =>
+  new DieImpl(defect, traces)
 
-class FailureAbortedImpl extends FailureImpl<"Aborted", never> implements Failure.Aborted {
+class InterruptImpl extends MicroCauseImpl<"Interrupt", never> implements MicroCause.Interrupt {
   constructor(traces: ReadonlyArray<string> = []) {
-    super("Aborted", "aborted", traces)
+    super("Interrupt", "interrupted", traces)
   }
 }
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category failure
+ * @category MicroCause
  */
-export const FailureAborted = (traces: ReadonlyArray<string> = []): Failure<never> => new FailureAbortedImpl(traces)
+export const CauseInterrupt = (traces: ReadonlyArray<string> = []): MicroCause<never> => new InterruptImpl(traces)
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category failure
+ * @category MicroCause
  */
-export const failureIsExpected = <E>(self: Failure<E>): self is Failure.Expected<E> => self._tag === "Expected"
+export const causeIsFail = <E>(self: MicroCause<E>): self is MicroCause.Fail<E> => self._tag === "Fail"
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category failure
+ * @category MicroCause
  */
-export const failureIsUnexpected = <E>(self: Failure<E>): self is Failure.Unexpected => self._tag === "Unexpected"
+export const causeIsDie = <E>(self: MicroCause<E>): self is MicroCause.Die => self._tag === "Die"
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category failure
+ * @category MicroCause
  */
-export const failureIsAborted = <E>(self: Failure<E>): self is Failure.Aborted => self._tag === "Aborted"
+export const causeIsInterrupt = <E>(self: MicroCause<E>): self is MicroCause.Interrupt => self._tag === "Interrupt"
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category failure
+ * @category MicroCause
  */
-export const failureSquash = <E>(self: Failure<E>): unknown =>
-  self._tag === "Expected" ? self.error : self._tag === "Unexpected" ? self.defect : self
+export const causeSquash = <E>(self: MicroCause<E>): unknown =>
+  self._tag === "Fail" ? self.error : self._tag === "Die" ? self.defect : self
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category failure
+ * @category MicroCause
  */
-export const failureWithTrace: {
-  (trace: string): <E>(self: Failure<E>) => Failure<E>
-  <E>(self: Failure<E>, trace: string): Failure<E>
-} = dual(2, <E>(self: Failure<E>, trace: string): Failure<E> => {
-  if (self._tag === "Expected") {
-    return FailureExpected(self.error, [...self.traces, trace])
-  } else if (self._tag === "Unexpected") {
-    return FailureUnexpected(self.defect, [...self.traces, trace])
+export const causeWithTrace: {
+  (trace: string): <E>(self: MicroCause<E>) => MicroCause<E>
+  <E>(self: MicroCause<E>, trace: string): MicroCause<E>
+} = dual(2, <E>(self: MicroCause<E>, trace: string): MicroCause<E> => {
+  if (self._tag === "Fail") {
+    return CauseFail(self.error, [...self.traces, trace])
+  } else if (self._tag === "Die") {
+    return CauseDie(self.defect, [...self.traces, trace])
   }
-  return FailureAborted([...self.traces, trace])
+  return CauseInterrupt([...self.traces, trace])
 })
 
 // ----------------------------------------------------------------------------
-// Result
+// MicroExit
 // ----------------------------------------------------------------------------
 
 /**
- * The Micro Result type is a data type that represents the result of a Micro
+ * @since 3.4.5
+ * @experimental
+ * @category MicroExit
+ */
+export type MicroExitSuccess<A, E = never> = Either.Right<MicroCause<E>, A>
+
+/**
+ * @since 3.4.5
+ * @experimental
+ * @category MicroExit
+ */
+export type MicroExitFailure<A, E = never> = Either.Left<MicroCause<E>, A>
+
+/**
+ * The MicroExit type is a data type that represents the result of a Micro
  * computation.
  *
  * It uses the `Either` data type to represent the success and failure cases.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category result
+ * @category MicroExit
  */
-export type Result<A, E = never> = Either.Either<A, Failure<E>>
+export type MicroExit<A, E = never> = MicroExitSuccess<A, E> | MicroExitFailure<A, E>
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category result
+ * @category MicroExit
  */
-export const ResultAborted: Result<never> = Either.left(FailureAborted())
+export const ExitInterrupt: MicroExit<never> = Either.left(CauseInterrupt())
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category result
+ * @category MicroExit
  */
-export const ResultSuccess: <A>(a: A) => Result<A, never> = Either.right
+export const ExitSucceed: <A>(a: A) => MicroExit<A, never> = Either.right
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category result
+ * @category MicroExit
  */
-export const ResultFail = <E>(e: E): Result<never, E> => Either.left(FailureExpected(e))
+export const ExitFail = <E>(e: E): MicroExit<never, E> => Either.left(CauseFail(e))
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category result
+ * @category MicroExit
  */
-export const ResultFailUnexpected = (defect: unknown): Result<never> => Either.left(FailureUnexpected(defect))
+export const ExitDie = (defect: unknown): MicroExit<never> => Either.left(CauseDie(defect))
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category result
+ * @category MicroExit
  */
-export const ResultFailWith: <E>(failure: Failure<E>) => Result<never, E> = Either.left
+export const ExitFailCause: <E>(cause: MicroCause<E>) => MicroExit<never, E> = Either.left
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category result
+ * @category MicroExit
  */
-export const resultIsSuccess: <A, E>(self: Result<A, E>) => self is Either.Right<Failure<E>, A> = Either.isRight
+export const exitIsSuccess: <A, E>(self: MicroExit<A, E>) => self is MicroExitSuccess<A, E> = Either.isRight
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category result
+ * @category MicroExit
  */
-export const resultIsFailure: <A, E>(self: Result<A, E>) => self is Either.Left<Failure<E>, A> = Either.isLeft
+export const exitIsFailure: <A, E>(self: MicroExit<A, E>) => self is MicroExitFailure<A, E> = Either.isLeft
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category result
+ * @category MicroExit
  */
-export const resultIsAborted = <A, E>(self: Result<A, E>): self is Either.Left<Failure.Aborted, A> =>
-  resultIsFailure(self) && self.left._tag === "Aborted"
+export const exitIsInterrupt = <A, E>(self: MicroExit<A, E>): self is Either.Left<MicroCause.Interrupt, A> =>
+  exitIsFailure(self) && self.left._tag === "Interrupt"
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category result
+ * @category MicroExit
  */
-export const resultIsFailureExpected = <A, E>(self: Result<A, E>): self is Either.Left<Failure.Expected<E>, A> =>
-  resultIsFailure(self) && self.left._tag === "Expected"
+export const exitIsFail = <A, E>(self: MicroExit<A, E>): self is Either.Left<MicroCause.Fail<E>, A> =>
+  exitIsFailure(self) && self.left._tag === "Fail"
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category result
+ * @category MicroExit
  */
-export const resultIsFailureUnexpected = <A, E>(self: Result<A, E>): self is Either.Left<Failure.Unexpected, A> =>
-  resultIsFailure(self) && self.left._tag === "Unexpected"
+export const exitIsDie = <A, E>(self: MicroExit<A, E>): self is Either.Left<MicroCause.Die, A> =>
+  exitIsFailure(self) && self.left._tag === "Die"
 
 /**
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category result
+ * @category MicroExit
  */
-export const resultVoid: Result<void> = ResultSuccess(void 0)
+export const exitVoid: MicroExit<void> = ExitSucceed(void 0)
 
 // ----------------------------------------------------------------------------
 // env
@@ -583,7 +596,7 @@ export const envMutate: {
  */
 export const service = <I, S>(tag: Context.Tag<I, S>): Micro<S, never, I> =>
   make(function(env, onResult) {
-    onResult(ResultSuccess(Context.get(envGet(env, currentContext) as Context.Context<I>, tag as any) as S))
+    onResult(ExitSucceed(Context.get(envGet(env, currentContext) as Context.Context<I>, tag as any) as S))
   })
 
 /**
@@ -599,7 +612,7 @@ export const service = <I, S>(tag: Context.Tag<I, S>): Micro<S, never, I> =>
  */
 export const serviceOption = <I, S>(tag: Context.Tag<I, S>): Micro<Option.Option<S>> =>
   make(function(env, onResult) {
-    onResult(ResultSuccess(Context.getOption(envGet(env, currentContext) as Context.Context<I>, tag)))
+    onResult(ExitSucceed(Context.getOption(envGet(env, currentContext) as Context.Context<I>, tag)))
   })
 
 /**
@@ -828,7 +841,7 @@ const microDepthState = globalValue("effect/Micro/microDepthState", () => ({
 }))
 
 const unsafeMake = <A, E, R>(
-  run: (env: Env<R>, onResult: (result: Result<A, E>) => void) => void
+  run: (env: Env<R>, onResult: (result: MicroExit<A, E>) => void) => void
 ): Micro<A, E, R> => {
   const self = Object.create(MicroProto)
   self[runSymbol] = run
@@ -836,7 +849,7 @@ const unsafeMake = <A, E, R>(
 }
 
 const unsafeMakeOptions = <A, E, R>(
-  run: (env: Env<R>, onResult: (result: Result<A, E>) => void) => void,
+  run: (env: Env<R>, onResult: (result: MicroExit<A, E>) => void) => void,
   checkAbort: boolean
 ): Micro<A, E, R> =>
   unsafeMake(function execute(env, onResult) {
@@ -844,7 +857,7 @@ const unsafeMakeOptions = <A, E, R>(
       checkAbort && env.refs[currentInterruptible.key] !== false &&
       (env.refs[currentAbortSignal.key] as AbortSignal).aborted
     ) {
-      return onResult(ResultAborted)
+      return onResult(ExitInterrupt)
     }
     microDepthState.depth++
     if (microDepthState.depth === 1) {
@@ -856,7 +869,7 @@ const unsafeMakeOptions = <A, E, R>(
       try {
         run(env, onResult)
       } catch (err) {
-        onResult(ResultFailUnexpected(err))
+        onResult(ExitDie(err))
       }
     }
     microDepthState.depth--
@@ -872,7 +885,7 @@ const unsafeMakeOptions = <A, E, R>(
  * @category constructors
  */
 export const make = <A, E, R>(
-  run: (env: Env<R>, onResult: (result: Result<A, E>) => void) => void
+  run: (env: Env<R>, onResult: (result: MicroExit<A, E>) => void) => void
 ): Micro<A, E, R> => unsafeMakeOptions(run, true)
 
 /**
@@ -882,7 +895,7 @@ export const make = <A, E, R>(
  * @experimental
  * @category constructors
  */
-export const fromResult = <A, E>(self: Result<A, E>): Micro<A, E> =>
+export const fromResult = <A, E>(self: MicroExit<A, E>): Micro<A, E> =>
   make(function(_env, onResult) {
     onResult(self)
   })
@@ -894,7 +907,7 @@ export const fromResult = <A, E>(self: Result<A, E>): Micro<A, E> =>
  * @experimental
  * @category constructors
  */
-export const fromResultSync = <A, E>(self: LazyArg<Result<A, E>>): Micro<A, E> =>
+export const fromResultSync = <A, E>(self: LazyArg<MicroExit<A, E>>): Micro<A, E> =>
   make(function(_env, onResult) {
     onResult(self())
   })
@@ -906,7 +919,7 @@ export const fromResultSync = <A, E>(self: LazyArg<Result<A, E>>): Micro<A, E> =
  * @experimental
  * @category constructors
  */
-export const succeed = <A>(a: A): Micro<A> => fromResult(ResultSuccess(a))
+export const succeed = <A>(a: A): Micro<A> => fromResult(ExitSucceed(a))
 
 /**
  * Creates a `Micro` effect that will succeed with `Option.Some` of the value.
@@ -936,7 +949,7 @@ export const succeedNone: Micro<Option.Option<never>> = succeed(Option.none())
  * @experimental
  * @category constructors
  */
-export const fail = <E>(e: E): Micro<never, E> => fromResult(ResultFail(e))
+export const fail = <E>(e: E): Micro<never, E> => fromResult(ExitFail(e))
 
 /**
  * Creates a `Micro` effect that will fail with the lazily evaluated error.
@@ -950,7 +963,7 @@ export const fail = <E>(e: E): Micro<never, E> => fromResult(ResultFail(e))
  */
 export const failSync = <E>(e: LazyArg<E>): Micro<never, E> =>
   make(function(_env, onResult) {
-    onResult(ResultFail(e()))
+    onResult(ExitFail(e()))
   })
 
 /**
@@ -963,26 +976,26 @@ export const failSync = <E>(e: LazyArg<E>): Micro<never, E> =>
  * @experimental
  * @category constructors
  */
-export const die = (defect: unknown): Micro<never> => fromResult(ResultFailUnexpected(defect))
+export const die = (defect: unknown): Micro<never> => fromResult(ExitDie(defect))
 
 /**
- * Creates a `Micro` effect that will fail with the specified `Failure`.
+ * Creates a `Micro` effect that will fail with the specified `MicroCause`.
  *
  * @since 3.4.0
  * @experimental
  * @category constructors
  */
-export const failWith = <E>(failure: Failure<E>): Micro<never, E> => fromResult(ResultFailWith(failure))
+export const failWith = <E>(failure: MicroCause<E>): Micro<never, E> => fromResult(ExitFailCause(failure))
 
 /**
- * Creates a `Micro` effect that will fail with the lazily evaluated `Failure`.
+ * Creates a `Micro` effect that will fail with the lazily evaluated `MicroCause`.
  *
  * @since 3.4.0
  * @experimental
  * @category constructors
  */
-export const failWithSync = <E>(failure: LazyArg<Failure<E>>): Micro<never, E> =>
-  fromResultSync(() => ResultFailWith(failure()))
+export const failWithSync = <E>(failure: LazyArg<MicroCause<E>>): Micro<never, E> =>
+  fromResultSync(() => ExitFailCause(failure()))
 
 /**
  * Creates a `Micro` effect that will succeed with the lazily evaluated value.
@@ -996,7 +1009,7 @@ export const failWithSync = <E>(failure: LazyArg<Failure<E>>): Micro<never, E> =
  */
 export const sync = <A>(evaluate: LazyArg<A>): Micro<A> =>
   make(function(_env, onResult) {
-    onResult(ResultSuccess(evaluate()))
+    onResult(ExitSucceed(evaluate()))
   })
 
 /**
@@ -1010,7 +1023,7 @@ export const sync = <A>(evaluate: LazyArg<A>): Micro<A> =>
  */
 export const fromOption = <A>(option: Option.Option<A>): Micro<A, NoSuchElementException> =>
   make(function(_env, onResult) {
-    onResult(option._tag === "Some" ? ResultSuccess(option.value) : ResultFail(new NoSuchElementException({})))
+    onResult(option._tag === "Some" ? ExitSucceed(option.value) : ExitFail(new NoSuchElementException({})))
   })
 
 /**
@@ -1024,7 +1037,7 @@ export const fromOption = <A>(option: Option.Option<A>): Micro<A, NoSuchElementE
  */
 export const fromEither = <R, L>(either: Either.Either<R, L>): Micro<R, L> =>
   make(function(_env, onResult) {
-    onResult(either._tag === "Right" ? either : ResultFail(either.left) as any)
+    onResult(either._tag === "Right" ? either : ExitFail(either.left) as any)
   })
 
 /**
@@ -1072,9 +1085,9 @@ export const async = <A, E = never, R = never>(
     let cleanup: Micro<void, never, R> | void = undefined
     function onAbort() {
       if (cleanup) {
-        resume(uninterruptible(andThen(cleanup, fromResult(ResultAborted))))
+        resume(uninterruptible(andThen(cleanup, fromResult(ExitInterrupt))))
       } else {
-        resume(fromResult(ResultAborted))
+        resume(fromResult(ExitInterrupt))
       }
       if (controller !== undefined) {
         controller.abort()
@@ -1101,9 +1114,9 @@ const try_ = <A, E>(options: {
 }): Micro<A, E> =>
   make(function(_env, onResult) {
     try {
-      onResult(ResultSuccess(options.try()))
+      onResult(ExitSucceed(options.try()))
     } catch (err) {
-      onResult(ResultFail(options.catch(err)))
+      onResult(ExitFail(options.catch(err)))
     }
   })
 export {
@@ -1209,7 +1222,7 @@ const yieldAdd = (task: () => void) => {
  * @category constructors
  */
 export const yieldNow: Micro<void> = make(function(_env, onResult) {
-  yieldAdd(() => onResult(resultVoid))
+  yieldAdd(() => onResult(exitVoid))
 })
 
 /**
@@ -1263,7 +1276,7 @@ export const gen = <Self, Eff extends YieldWrap<Micro<any, any, any>>, AEff>(
         while (shouldContinue) {
           const result = iterator.next(value)
           if (result.done) {
-            return onResult(ResultSuccess(result.value))
+            return onResult(ExitSucceed(result.value))
           }
           shouldContinue = false
           yieldWrapGet(result.value)[runSymbol](env, function(result) {
@@ -1277,7 +1290,7 @@ export const gen = <Self, Eff extends YieldWrap<Micro<any, any, any>>, AEff>(
           })
         }
       } catch (err) {
-        onResult(ResultFailUnexpected(err))
+        onResult(ExitDie(err))
       }
       running = false
     }
@@ -1317,7 +1330,7 @@ export const map: {
 } = dual(2, <A, E, R, B>(self: Micro<A, E, R>, f: (a: A) => B): Micro<B, E, R> =>
   make(function(env, onResult) {
     self[runSymbol](env, function(result) {
-      onResult(result._tag === "Left" ? result as any : ResultSuccess(f(result.right)))
+      onResult(result._tag === "Left" ? result as any : ExitSucceed(f(result.right)))
     })
   }))
 
@@ -1422,13 +1435,13 @@ export const andThen: {
         if (result._tag === "Left") {
           return onResult(result as any)
         } else if (envGet(env, currentAbortSignal).aborted) {
-          return onResult(ResultAborted)
+          return onResult(ExitInterrupt)
         }
         const value = isMicro(f) ? f : typeof f === "function" ? f(result.right) : f
         if (isMicro(value)) {
           value[runSymbol](env, onResult)
         } else {
-          onResult(ResultSuccess(value))
+          onResult(ExitSucceed(value))
         }
       })
     })
@@ -1474,7 +1487,7 @@ export const tap: {
         if (selfResult._tag === "Left") {
           return onResult(selfResult as any)
         } else if (envGet(env, currentAbortSignal).aborted) {
-          return onResult(ResultAborted)
+          return onResult(ExitInterrupt)
         }
         const value = isMicro(f) ? f : typeof f === "function" ? f(selfResult.right) : f
         if (isMicro(value)) {
@@ -1507,21 +1520,21 @@ export const asVoid = <A, E, R>(self: Micro<A, E, R>): Micro<void, E, R> => map(
  * @experimental
  * @category mapping & sequencing
  */
-export const asResult = <A, E, R>(self: Micro<A, E, R>): Micro<Result<A, E>, never, R> =>
+export const asResult = <A, E, R>(self: Micro<A, E, R>): Micro<MicroExit<A, E>, never, R> =>
   make(function(env, onResult) {
     self[runSymbol](env, function(result) {
-      onResult(ResultSuccess(result))
+      onResult(ExitSucceed(result))
     })
   })
 
 /**
- * Replace the error type of the given `Micro` with the full `Failure` object.
+ * Replace the error type of the given `Micro` with the full `MicroCause` object.
  *
  * @since 3.4.0
  * @experimental
  * @category mapping & sequencing
  */
-export const sandbox = <A, E, R>(self: Micro<A, E, R>): Micro<A, Failure<E>, R> =>
+export const sandbox = <A, E, R>(self: Micro<A, E, R>): Micro<A, MicroCause<E>, R> =>
   catchFailure(self, (failure) => fail(failure))
 
 function forkSignal(env: Env<any>) {
@@ -1559,9 +1572,9 @@ export const raceAll = <Eff extends Micro<any, any, any>>(
     let len = effects.length
     let index = 0
     let done = 0
-    let result: Result<any, any> | undefined = undefined
-    const failures: Array<Failure<any>> = []
-    function onDone(result_: Result<any, any>) {
+    let result: MicroExit<any, any> | undefined = undefined
+    const failures: Array<MicroCause<any>> = []
+    function onDone(result_: MicroExit<any, any>) {
       done++
       if (result_._tag === "Right" && result === undefined) {
         len = index
@@ -1599,9 +1612,9 @@ export const raceAllFirst = <Eff extends Micro<any, any, any>>(
     let len = effects.length
     let index = 0
     let done = 0
-    let result: Result<any, any> | undefined = undefined
-    const failures: Array<Failure<any>> = []
-    function onDone(result_: Result<any, any>) {
+    let result: MicroExit<any, any> | undefined = undefined
+    const failures: Array<MicroCause<any>> = []
+    function onDone(result_: MicroExit<any, any>) {
       done++
       if (result === undefined) {
         len = index
@@ -1722,7 +1735,7 @@ export const zipWith: {
 
 /**
  * Filter the specified effect with the provided function, failing with specified
- * `Failure` if the predicate fails.
+ * `MicroCause` if the predicate fails.
  *
  * In addition to the filtering capabilities discussed earlier, you have the option to further
  * refine and narrow down the type of the success channel by providing a
@@ -1734,22 +1747,26 @@ export const zipWith: {
 export const filterOrFailWith: {
   <A, B extends A, E2>(
     refinement: Refinement<A, B>,
-    orFailWith: (a: NoInfer<A>) => Failure<E2>
+    orFailWith: (a: NoInfer<A>) => MicroCause<E2>
   ): <E, R>(self: Micro<A, E, R>) => Micro<B, E2 | E, R>
   <A, E2>(
     predicate: Predicate<NoInfer<A>>,
-    orFailWith: (a: NoInfer<A>) => Failure<E2>
+    orFailWith: (a: NoInfer<A>) => MicroCause<E2>
   ): <E, R>(self: Micro<A, E, R>) => Micro<A, E2 | E, R>
   <A, E, R, B extends A, E2>(
     self: Micro<A, E, R>,
     refinement: Refinement<A, B>,
-    orFailWith: (a: A) => Failure<E2>
+    orFailWith: (a: A) => MicroCause<E2>
   ): Micro<B, E | E2, R>
-  <A, E, R, E2>(self: Micro<A, E, R>, predicate: Predicate<A>, orFailWith: (a: A) => Failure<E2>): Micro<A, E | E2, R>
+  <A, E, R, E2>(
+    self: Micro<A, E, R>,
+    predicate: Predicate<A>,
+    orFailWith: (a: A) => MicroCause<E2>
+  ): Micro<A, E | E2, R>
 } = dual((args) => isMicro(args[0]), <A, E, R, B extends A, E2>(
   self: Micro<A, E, R>,
   refinement: Refinement<A, B>,
-  orFailWith: (a: A) => Failure<E2>
+  orFailWith: (a: A) => MicroCause<E2>
 ): Micro<B, E | E2, R> => flatMap(self, (a) => refinement(a) ? succeed(a as any) : failWith(orFailWith(a))))
 
 /**
@@ -1824,19 +1841,19 @@ export const when: {
  */
 export const repeatResult: {
   <A, E>(options: {
-    while: Predicate<Result<A, E>>
+    while: Predicate<MicroExit<A, E>>
     times?: number | undefined
-    delay?: DelayFn | undefined
+    delay?: MicroSchedule | undefined
   }): <R>(self: Micro<A, E, R>) => Micro<A, E, R>
   <A, E, R>(self: Micro<A, E, R>, options: {
-    while: Predicate<Result<A, E>>
+    while: Predicate<MicroExit<A, E>>
     times?: number | undefined
-    delay?: DelayFn | undefined
+    delay?: MicroSchedule | undefined
   }): Micro<A, E, R>
 } = dual(2, <A, E, R>(self: Micro<A, E, R>, options: {
-  while: Predicate<Result<A, E>>
+  while: Predicate<MicroExit<A, E>>
   times?: number | undefined
-  delay?: DelayFn | undefined
+  delay?: MicroSchedule | undefined
 }): Micro<A, E, R> =>
   make(function(env, onResult) {
     const startedAt = options.delay ? Date.now() : 0
@@ -1879,7 +1896,7 @@ export const repeat: {
     options?: {
       while?: Predicate<A> | undefined
       times?: number | undefined
-      delay?: DelayFn | undefined
+      delay?: MicroSchedule | undefined
     } | undefined
   ): <R>(self: Micro<A, E, R>) => Micro<A, E, R>
   <A, E, R>(
@@ -1887,7 +1904,7 @@ export const repeat: {
     options?: {
       while?: Predicate<A> | undefined
       times?: number | undefined
-      delay?: DelayFn | undefined
+      delay?: MicroSchedule | undefined
     } | undefined
   ): Micro<A, E, R>
 } = dual((args) => isMicro(args[0]), <A, E, R>(
@@ -1895,7 +1912,7 @@ export const repeat: {
   options?: {
     while?: Predicate<A> | undefined
     times?: number | undefined
-    delay?: DelayFn | undefined
+    delay?: MicroSchedule | undefined
   } | undefined
 ): Micro<A, E, R> =>
   repeatResult(self, {
@@ -1913,89 +1930,91 @@ export const repeat: {
 export const forever = <A, E, R>(self: Micro<A, E, R>): Micro<never, E, R> => repeat(self) as any
 
 // ----------------------------------------------------------------------------
-// delay fn
+// scheduling
 // ----------------------------------------------------------------------------
 
 /**
- * Represents a function that can be used to calculate the delay between
- * repeats.
+ * The `MicroSchedule` type represents a function that can be used to calculate
+ * the delay between repeats.
  *
- * The function takes the current attempt number and the elapsed time since
- * the first attempt, and returns the delay for the next attempt. If the
- * function returns `None`, the repetition will stop.
+ * The function takes the current attempt number and the elapsed time since the
+ * first attempt, and returns the delay for the next attempt. If the function
+ * returns `None`, the repetition will stop.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
- * @category delay fn
+ * @category scheduling
  */
-export type DelayFn = (attempt: number, elapsed: number) => Option.Option<number>
+export type MicroSchedule = (attempt: number, elapsed: number) => Option.Option<number>
 
 /**
- * Create a `DelayFn` that will generate a duration with an exponential backoff.
+ * Create a `MicroSchedule` that will generate a duration with an exponential backoff.
  *
  * @since 3.4.0
  * @experimental
- * @category delay fn
+ * @category scheduling
  */
-export const delayExponential = (baseMillis: number, factor = 2): DelayFn => (attempt) =>
+export const delayExponential = (baseMillis: number, factor = 2): MicroSchedule => (attempt) =>
   Option.some(attempt ** factor * baseMillis)
 
 /**
- * Create a `DelayFn` that will generate a duration with fixed intervals.
+ * Create a `MicroSchedule` that will generate a duration with fixed intervals.
  *
  * @since 3.4.0
  * @experimental
- * @category delay fn
+ * @category scheduling
  */
-export const delaySpaced = (millis: number): DelayFn => (_) => Option.some(millis)
+export const delaySpaced = (millis: number): MicroSchedule => (_) => Option.some(millis)
 
 /**
- * Transform a `DelayFn` to one that will have a duration that will never exceed
+ * Transform a `MicroSchedule` to one that will have a duration that will never exceed
  * the specified maximum.
  *
  * @since 3.4.0
  * @experimental
- * @category delay fn
+ * @category scheduling
  */
 export const delayWithMax: {
-  (max: number): (self: DelayFn) => DelayFn
-  (self: DelayFn, max: number): DelayFn
+  (max: number): (self: MicroSchedule) => MicroSchedule
+  (self: MicroSchedule, max: number): MicroSchedule
 } = dual(
   2,
-  (self: DelayFn, max: number): DelayFn => (attempt, elapsed) =>
+  (self: MicroSchedule, max: number): MicroSchedule => (attempt, elapsed) =>
     Option.map(self(attempt, elapsed), (duration) => Math.min(duration, max))
 )
 
 /**
- * Transform a `DelayFn` to one that will stop repeating after the specified
+ * Transform a `MicroSchedule` to one that will stop repeating after the specified
  * amount of time.
  *
  * @since 3.4.0
  * @experimental
- * @category delay fn
+ * @category scheduling
  */
 export const delayWithMaxElapsed: {
-  (max: number): (self: DelayFn) => DelayFn
-  (self: DelayFn, max: number): DelayFn
+  (max: number): (self: MicroSchedule) => MicroSchedule
+  (self: MicroSchedule, max: number): MicroSchedule
 } = dual(
   2,
-  (self: DelayFn, max: number): DelayFn => (attempt, elapsed) => elapsed < max ? self(attempt, elapsed) : Option.none()
+  (self: MicroSchedule, max: number): MicroSchedule => (attempt, elapsed) =>
+    elapsed < max ? self(attempt, elapsed) : Option.none()
 )
 
 /**
- * Transform a `DelayFn` to one that will stop repeating after the specified
+ * Transform a `MicroSchedule` to one that will stop repeating after the specified
  * number of attempts.
  *
  * @since 3.4.0
  * @experimental
- * @category delay fn
+ * @category scheduling
  */
 export const delayWithRecurs: {
-  (n: number): (self: DelayFn) => DelayFn
-  (self: DelayFn, n: number): DelayFn
+  (n: number): (self: MicroSchedule) => MicroSchedule
+  (self: MicroSchedule, n: number): MicroSchedule
 } = dual(
   2,
-  (self: DelayFn, n: number): DelayFn => (attempt, elapsed) => Option.filter(self(attempt, elapsed), () => attempt <= n)
+  (self: MicroSchedule, n: number): MicroSchedule => (attempt, elapsed) =>
+    Option.filter(self(attempt, elapsed), () => attempt <= n)
 )
 
 // ----------------------------------------------------------------------------
@@ -2003,31 +2022,31 @@ export const delayWithRecurs: {
 // ----------------------------------------------------------------------------
 
 /**
- * Catch the full `Failure` object of the given `Micro` effect, allowing you to
- * recover from any kind of failure.
+ * Catch the full `MicroCause` object of the given `Micro` effect, allowing you to
+ * recover from any kind of cause.
  *
- * @since 3.4.0
+ * @since 3.4.5
  * @experimental
  * @category error handling
  */
 export const catchFailure: {
   <E, B, E2, R2>(
-    f: (failure: NoInfer<Failure<E>>) => Micro<B, E2, R2>
+    f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
   ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E2, R | R2>
   <A, E, R, B, E2, R2>(
     self: Micro<A, E, R>,
-    f: (failure: NoInfer<Failure<E>>) => Micro<B, E2, R2>
+    f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
   ): Micro<A | B, E2, R | R2>
 } = dual(
   2,
   <A, E, R, B, E2, R2>(
     self: Micro<A, E, R>,
-    f: (failure: NoInfer<Failure<E>>) => Micro<B, E2, R2>
+    f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
   ): Micro<A | B, E2, R | R2> => catchFailureIf(self, constTrue, f)
 )
 
 /**
- * Selectively catch a `Failure` object of the given `Micro` effect,
+ * Selectively catch a `MicroCause` object of the given `Micro` effect,
  * using the provided predicate to determine if the failure should be caught.
  *
  * @since 3.4.0
@@ -2035,28 +2054,28 @@ export const catchFailure: {
  * @category error handling
  */
 export const catchFailureIf: {
-  <E, B, E2, R2, EB extends Failure<E>>(
-    refinement: Refinement<Failure<E>, EB>,
-    f: (failure: EB) => Micro<B, E2, R2>
+  <E, B, E2, R2, EB extends MicroCause<E>>(
+    refinement: Refinement<MicroCause<E>, EB>,
+    f: (cause: EB) => Micro<B, E2, R2>
   ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E2, R | R2>
   <E, B, E2, R2>(
-    predicate: Predicate<Failure<NoInfer<E>>>,
-    f: (failure: NoInfer<Failure<E>>) => Micro<B, E2, R2>
+    predicate: Predicate<MicroCause<NoInfer<E>>>,
+    f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
   ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E2, R | R2>
-  <A, E, R, B, E2, R2, EB extends Failure<E>>(
+  <A, E, R, B, E2, R2, EB extends MicroCause<E>>(
     self: Micro<A, E, R>,
-    refinement: Refinement<Failure<E>, EB>,
-    f: (failure: EB) => Micro<B, E2, R2>
+    refinement: Refinement<MicroCause<E>, EB>,
+    f: (cause: EB) => Micro<B, E2, R2>
   ): Micro<A | B, E2, R | R2>
   <A, E, R, B, E2, R2>(
     self: Micro<A, E, R>,
-    predicate: Predicate<Failure<NoInfer<E>>>,
-    f: (failure: NoInfer<Failure<E>>) => Micro<B, E2, R2>
+    predicate: Predicate<MicroCause<NoInfer<E>>>,
+    f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
   ): Micro<A | B, E2, R | R2>
-} = dual(3, <A, E, R, B, E2, R2, EB extends Failure<E>>(
+} = dual(3, <A, E, R, B, E2, R2, EB extends MicroCause<E>>(
   self: Micro<A, E, R>,
-  refinement: Refinement<Failure<E>, EB>,
-  f: (failure: EB) => Micro<B, E2, R2>
+  refinement: Refinement<MicroCause<E>, EB>,
+  f: (cause: EB) => Micro<B, E2, R2>
 ): Micro<A | B, E2, R | R2> =>
   make(function(env, onResult) {
     self[runSymbol](env, function(result) {
@@ -2086,7 +2105,7 @@ export const catchExpected: {
   <A, E, R, B, E2, R2>(
     self: Micro<A, E, R>,
     f: (a: NoInfer<E>) => Micro<B, E2, R2>
-  ): Micro<A | B, E2, R | R2> => catchFailureIf(self, failureIsExpected, (failure) => f(failure.error))
+  ): Micro<A | B, E2, R | R2> => catchFailureIf(self, causeIsFail, (failure) => f(failure.error))
 )
 
 /**
@@ -2104,11 +2123,11 @@ export const catchUnexpected: {
 } = dual(
   2,
   <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (defect: unknown) => Micro<B, E2, R2>): Micro<A | B, E | E2, R | R2> =>
-    catchFailureIf(self, failureIsUnexpected, (failure) => f(failure.defect))
+    catchFailureIf(self, causeIsDie, (die) => f(die.defect))
 )
 
 /**
- * Perform a side effect using the full `Failure` object of the given `Micro`.
+ * Perform a side effect using the full `MicroCause` object of the given `Micro`.
  *
  * @since 3.4.0
  * @experimental
@@ -2116,19 +2135,22 @@ export const catchUnexpected: {
  */
 export const tapFailure: {
   <E, B, E2, R2>(
-    f: (a: NoInfer<Failure<E>>) => Micro<B, E2, R2>
+    f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
   ): <A, R>(self: Micro<A, E, R>) => Micro<A, E | E2, R | R2>
-  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: NoInfer<Failure<E>>) => Micro<B, E2, R2>): Micro<A, E | E2, R | R2>
+  <A, E, R, B, E2, R2>(
+    self: Micro<A, E, R>,
+    f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
+  ): Micro<A, E | E2, R | R2>
 } = dual(
   2,
   <A, E, R, B, E2, R2>(
     self: Micro<A, E, R>,
-    f: (a: NoInfer<Failure<E>>) => Micro<B, E2, R2>
+    f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
   ): Micro<A, E | E2, R | R2> => tapFailureIf(self, constTrue, f)
 )
 
 /**
- * Perform a side effect using if a `Failure` object matches the specified
+ * Perform a side effect using if a `MicroCause` object matches the specified
  * predicate.
  *
  * @since 3.4.0
@@ -2136,32 +2158,31 @@ export const tapFailure: {
  * @category error handling
  */
 export const tapFailureIf: {
-  <E, B, E2, R2, EB extends Failure<E>>(
-    refinement: Refinement<Failure<E>, EB>,
+  <E, B, E2, R2, EB extends MicroCause<E>>(
+    refinement: Refinement<MicroCause<E>, EB>,
     f: (a: EB) => Micro<B, E2, R2>
   ): <A, R>(self: Micro<A, E, R>) => Micro<A, E | E2, R | R2>
   <E, B, E2, R2>(
-    predicate: (failure: NoInfer<Failure<E>>) => boolean,
-    f: (a: NoInfer<Failure<E>>) => Micro<B, E2, R2>
+    predicate: (cause: NoInfer<MicroCause<E>>) => boolean,
+    f: (a: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
   ): <A, R>(self: Micro<A, E, R>) => Micro<A, E | E2, R | R2>
-  <A, E, R, B, E2, R2, EB extends Failure<E>>(
+  <A, E, R, B, E2, R2, EB extends MicroCause<E>>(
     self: Micro<A, E, R>,
-    refinement: Refinement<Failure<E>, EB>,
+    refinement: Refinement<MicroCause<E>, EB>,
     f: (a: EB) => Micro<B, E2, R2>
   ): Micro<A, E | E2, R | R2>
   <A, E, R, B, E2, R2>(
     self: Micro<A, E, R>,
-    predicate: (failure: NoInfer<Failure<E>>) => boolean,
-    f: (a: NoInfer<Failure<E>>) => Micro<B, E2, R2>
+    predicate: (cause: NoInfer<MicroCause<E>>) => boolean,
+    f: (a: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
   ): Micro<A, E | E2, R | R2>
 } = dual(
   3,
-  <A, E, R, B, E2, R2, EB extends Failure<E>>(
+  <A, E, R, B, E2, R2, EB extends MicroCause<E>>(
     self: Micro<A, E, R>,
-    refinement: Refinement<Failure<E>, EB>,
+    refinement: Refinement<MicroCause<E>, EB>,
     f: (a: EB) => Micro<B, E2, R2>
-  ): Micro<A, E | E2, R | R2> =>
-    catchFailureIf(self, refinement, (failure) => andThen(f(failure as any), failWith(failure)))
+  ): Micro<A, E | E2, R | R2> => catchFailureIf(self, refinement, (cause) => andThen(f(cause as any), failWith(cause)))
 )
 
 /**
@@ -2173,13 +2194,13 @@ export const tapFailureIf: {
  */
 export const tapExpected: {
   <E, B, E2, R2>(
-    f: (a: NoInfer<E>) => Micro<B, E2, R2>
+    f: (e: NoInfer<E>) => Micro<B, E2, R2>
   ): <A, R>(self: Micro<A, E, R>) => Micro<A, E | E2, R | R2>
-  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: NoInfer<E>) => Micro<B, E2, R2>): Micro<A, E | E2, R | R2>
+  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (e: NoInfer<E>) => Micro<B, E2, R2>): Micro<A, E | E2, R | R2>
 } = dual(
   2,
-  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: NoInfer<E>) => Micro<B, E2, R2>): Micro<A, E | E2, R | R2> =>
-    tapFailureIf(self, failureIsExpected, (failure) => f(failure.error))
+  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (e: NoInfer<E>) => Micro<B, E2, R2>): Micro<A, E | E2, R | R2> =>
+    tapFailureIf(self, causeIsFail, (fail) => f(fail.error))
 )
 
 /**
@@ -2197,7 +2218,7 @@ export const tapUnexpected: {
 } = dual(
   2,
   <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (defect: unknown) => Micro<B, E2, R2>): Micro<A, E | E2, R | R2> =>
-    tapFailureIf(self, failureIsUnexpected, (failure) => f(failure.defect))
+    tapFailureIf(self, causeIsDie, (die) => f(die.defect))
 )
 
 /**
@@ -2235,8 +2256,8 @@ export const catchIf: {
   ): Micro<A | A2, E | E2, R | R2> =>
     catchFailureIf(
       self,
-      (f): f is Failure.Expected<E> => failureIsExpected(f) && predicate(f.error),
-      (failure) => f(failure.error)
+      (f): f is MicroCause.Fail<E> => causeIsFail(f) && predicate(f.error),
+      (fail) => f(fail.error)
     )
 )
 
@@ -2265,19 +2286,19 @@ export const catchTag: {
   catchIf(self, isTagged(k) as Refinement<E, Extract<E, { _tag: K }>>, f) as any)
 
 /**
- * Transform the full `Failure` object of the given `Micro` effect.
+ * Transform the full `MicroCause` object of the given `Micro` effect.
  *
  * @since 3.4.0
  * @experimental
  * @category error handling
  */
 export const mapFailure: {
-  <E, E2>(f: (a: Failure<E>) => Failure<E2>): <A, R>(self: Micro<A, E, R>) => Micro<A, E2, R>
-  <A, E, R, E2>(self: Micro<A, E, R>, f: (a: Failure<E>) => Failure<E2>): Micro<A, E2, R>
+  <E, E2>(f: (e: MicroCause<E>) => MicroCause<E2>): <A, R>(self: Micro<A, E, R>) => Micro<A, E2, R>
+  <A, E, R, E2>(self: Micro<A, E, R>, f: (e: MicroCause<E>) => MicroCause<E2>): Micro<A, E2, R>
 } = dual(
   2,
-  <A, E, R, E2>(self: Micro<A, E, R>, f: (a: Failure<E>) => Failure<E2>): Micro<A, E2, R> =>
-    catchFailure(self, (failure) => failWith(f(failure)))
+  <A, E, R, E2>(self: Micro<A, E, R>, f: (e: MicroCause<E>) => MicroCause<E2>): Micro<A, E2, R> =>
+    catchFailure(self, (cause) => failWith(f(cause)))
 )
 
 /**
@@ -2288,11 +2309,11 @@ export const mapFailure: {
  * @category error handling
  */
 export const mapError: {
-  <E, E2>(f: (a: E) => E2): <A, R>(self: Micro<A, E, R>) => Micro<A, E2, R>
-  <A, E, R, E2>(self: Micro<A, E, R>, f: (a: E) => E2): Micro<A, E2, R>
+  <E, E2>(f: (e: E) => E2): <A, R>(self: Micro<A, E, R>) => Micro<A, E2, R>
+  <A, E, R, E2>(self: Micro<A, E, R>, f: (e: E) => E2): Micro<A, E2, R>
 } = dual(
   2,
-  <A, E, R, E2>(self: Micro<A, E, R>, f: (a: E) => E2): Micro<A, E2, R> =>
+  <A, E, R, E2>(self: Micro<A, E, R>, f: (e: E) => E2): Micro<A, E2, R> =>
     catchExpected(self, (error) => fail(f(error)))
 )
 
@@ -2380,7 +2401,7 @@ export const retry: {
     options?: {
       while?: Predicate<E> | undefined
       times?: number | undefined
-      delay?: DelayFn | undefined
+      delay?: MicroSchedule | undefined
     } | undefined
   ): <R>(self: Micro<A, E, R>) => Micro<A, E, R>
   <A, E, R>(
@@ -2388,7 +2409,7 @@ export const retry: {
     options?: {
       while?: Predicate<E> | undefined
       times?: number | undefined
-      delay?: DelayFn | undefined
+      delay?: MicroSchedule | undefined
     } | undefined
   ): Micro<A, E, R>
 } = dual((args) => isMicro(args[0]), <A, E, R>(
@@ -2396,19 +2417,19 @@ export const retry: {
   options?: {
     while?: Predicate<E> | undefined
     times?: number | undefined
-    delay?: DelayFn | undefined
+    delay?: MicroSchedule | undefined
   } | undefined
 ): Micro<A, E, R> =>
   repeatResult(self, {
     ...options,
     while: (result) =>
-      result._tag === "Left" && result.left._tag === "Expected" &&
+      result._tag === "Left" && result.left._tag === "Fail" &&
       (options?.while === undefined || options.while(result.left.error))
   }))
 
 /**
  * Add a stack trace to any failures that occur in the effect. The trace will be
- * added to the `traces` field of the `Failure` object.
+ * added to the `traces` field of the `MicroCause` object.
  *
  * @since 3.4.0
  * @experimental
@@ -2422,7 +2443,7 @@ export const withTrace: {
   globalThis.Error.stackTraceLimit = 2
   const error = new globalThis.Error()
   globalThis.Error.stackTraceLimit = prevLimit
-  function generate(name: string, failure: Failure<any>) {
+  function generate(name: string, failure: MicroCause<any>) {
     const stack = error.stack
     if (!stack) {
       return failure
@@ -2432,7 +2453,7 @@ export const withTrace: {
       return failure
     }
     const lineMatch = line.match(/\((.*)\)$/)
-    return failureWithTrace(failure, `at ${name} (${lineMatch ? lineMatch[1] : line})`)
+    return causeWithTrace(failure, `at ${name} (${lineMatch ? lineMatch[1] : line})`)
   }
   const f = (name: string) => (self: Micro<any, any, any>) =>
     unsafeMakeOptions(function(env, onResult) {
@@ -2458,14 +2479,14 @@ export const withTrace: {
 export const matchFailureMicro: {
   <E, A2, E2, R2, A, A3, E3, R3>(
     options: {
-      readonly onFailure: (failure: Failure<E>) => Micro<A2, E2, R2>
+      readonly onFailure: (failure: MicroCause<E>) => Micro<A2, E2, R2>
       readonly onSuccess: (a: A) => Micro<A3, E3, R3>
     }
   ): <R>(self: Micro<A, E, R>) => Micro<A2 | A3, E2 | E3, R2 | R3 | R>
   <A, E, R, A2, E2, R2, A3, E3, R3>(
     self: Micro<A, E, R>,
     options: {
-      readonly onFailure: (failure: Failure<E>) => Micro<A2, E2, R2>
+      readonly onFailure: (failure: MicroCause<E>) => Micro<A2, E2, R2>
       readonly onSuccess: (a: A) => Micro<A3, E3, R3>
     }
   ): Micro<A2 | A3, E2 | E3, R2 | R3 | R>
@@ -2474,7 +2495,7 @@ export const matchFailureMicro: {
   <A, E, R, A2, E2, R2, A3, E3, R3>(
     self: Micro<A, E, R>,
     options: {
-      readonly onFailure: (failure: Failure<E>) => Micro<A2, E2, R2>
+      readonly onFailure: (failure: MicroCause<E>) => Micro<A2, E2, R2>
       readonly onSuccess: (a: A) => Micro<A3, E3, R3>
     }
   ): Micro<A2 | A3, E2 | E3, R2 | R3 | R> =>
@@ -2484,7 +2505,7 @@ export const matchFailureMicro: {
           const next = result._tag === "Left" ? options.onFailure(result.left) : options.onSuccess(result.right)
           next[runSymbol](env, onResult)
         } catch (err) {
-          onResult(ResultFailUnexpected(err))
+          onResult(ExitDie(err))
         }
       })
     })
@@ -2498,14 +2519,14 @@ export const matchFailureMicro: {
 export const matchFailure: {
   <E, A2, A, A3>(
     options: {
-      readonly onFailure: (failure: Failure<E>) => A2
+      readonly onFailure: (failure: MicroCause<E>) => A2
       readonly onSuccess: (a: A) => A3
     }
   ): <R>(self: Micro<A, E, R>) => Micro<A2 | A3, never, R>
   <A, E, R, A2, A3>(
     self: Micro<A, E, R>,
     options: {
-      readonly onFailure: (failure: Failure<E>) => A2
+      readonly onFailure: (failure: MicroCause<E>) => A2
       readonly onSuccess: (a: A) => A3
     }
   ): Micro<A2 | A3, never, R>
@@ -2514,7 +2535,7 @@ export const matchFailure: {
   <A, E, R, A2, A3>(
     self: Micro<A, E, R>,
     options: {
-      readonly onFailure: (failure: Failure<E>) => A2
+      readonly onFailure: (failure: MicroCause<E>) => A2
       readonly onSuccess: (a: A) => A3
     }
   ): Micro<A2 | A3, never, R> =>
@@ -2553,7 +2574,7 @@ export const matchMicro: {
     }
   ): Micro<A2 | A3, E2 | E3, R2 | R3 | R> =>
     matchFailureMicro(self, {
-      onFailure: (failure) => failure._tag === "Expected" ? options.onFailure(failure.error) : failWith(failure),
+      onFailure: (failure) => failure._tag === "Fail" ? options.onFailure(failure.error) : failWith(failure),
       onSuccess: options.onSuccess
     })
 )
@@ -2705,7 +2726,7 @@ export type MicroScopeTypeId = typeof MicroScopeTypeId
  */
 export interface MicroScope {
   readonly [MicroScopeTypeId]: MicroScopeTypeId
-  readonly addFinalizer: (finalizer: (result: Result<unknown, unknown>) => Micro<void>) => Micro<void>
+  readonly addFinalizer: (finalizer: (result: MicroExit<unknown, unknown>) => Micro<void>) => Micro<void>
   readonly fork: Micro<MicroScope.Closeable>
 }
 
@@ -2721,7 +2742,7 @@ export declare namespace MicroScope {
    * @category resources & finalization
    */
   export interface Closeable extends MicroScope {
-    readonly close: (result: Result<any, any>) => Micro<void>
+    readonly close: (result: MicroExit<any, any>) => Micro<void>
   }
 }
 
@@ -2736,22 +2757,22 @@ class ScopeImpl implements MicroScope.Closeable {
   readonly [MicroScopeTypeId]: MicroScopeTypeId
   state: {
     readonly _tag: "Open"
-    readonly finalizers: Set<(result: Result<any, any>) => Micro<void>>
+    readonly finalizers: Set<(result: MicroExit<any, any>) => Micro<void>>
   } | {
     readonly _tag: "Closed"
-    readonly result: Result<any, any>
+    readonly result: MicroExit<any, any>
   } = { _tag: "Open", finalizers: new Set() }
 
   constructor() {
     this[MicroScopeTypeId] = MicroScopeTypeId
   }
 
-  unsafeAddFinalizer(finalizer: (result: Result<any, any>) => Micro<void>): void {
+  unsafeAddFinalizer(finalizer: (result: MicroExit<any, any>) => Micro<void>): void {
     if (this.state._tag === "Open") {
       this.state.finalizers.add(finalizer)
     }
   }
-  addFinalizer(finalizer: (result: Result<any, any>) => Micro<void>): Micro<void> {
+  addFinalizer(finalizer: (result: MicroExit<any, any>) => Micro<void>): Micro<void> {
     return suspend(() => {
       if (this.state._tag === "Open") {
         this.state.finalizers.add(finalizer)
@@ -2760,12 +2781,12 @@ class ScopeImpl implements MicroScope.Closeable {
       return finalizer(this.state.result)
     })
   }
-  unsafeRemoveFinalizer(finalizer: (result: Result<any, any>) => Micro<void>): void {
+  unsafeRemoveFinalizer(finalizer: (result: MicroExit<any, any>) => Micro<void>): void {
     if (this.state._tag === "Open") {
       this.state.finalizers.delete(finalizer)
     }
   }
-  close(result: Result<any, any>): Micro<void> {
+  close(result: MicroExit<any, any>): Micro<void> {
     return suspend(() => {
       if (this.state._tag === "Open") {
         const finalizers = Array.from(this.state.finalizers).reverse()
@@ -2785,7 +2806,7 @@ class ScopeImpl implements MicroScope.Closeable {
         newScope.state = this.state
         return newScope
       }
-      function fin(result: Result<any, any>) {
+      function fin(result: MicroExit<any, any>) {
         return newScope.close(result)
       }
       this.state.finalizers.add(fin)
@@ -2858,7 +2879,7 @@ export const scoped = <A, E, R>(self: Micro<A, E, R>): Micro<A, E, Exclude<R, Mi
  */
 export const acquireRelease = <A, E, R>(
   acquire: Micro<A, E, R>,
-  release: (a: A, result: Result<unknown, unknown>) => Micro<void>
+  release: (a: A, result: MicroExit<unknown, unknown>) => Micro<void>
 ): Micro<A, E, R | MicroScope> =>
   uninterruptible(flatMap(
     scope,
@@ -2873,7 +2894,7 @@ export const acquireRelease = <A, E, R>(
  * @category resources & finalization
  */
 export const addFinalizer = (
-  finalizer: (result: Result<unknown, unknown>) => Micro<void>
+  finalizer: (result: MicroExit<unknown, unknown>) => Micro<void>
 ): Micro<void, never, MicroScope> => flatMap(scope, (scope) => scope.addFinalizer(finalizer))
 
 /**
@@ -2886,13 +2907,15 @@ export const addFinalizer = (
  */
 export const onResult: {
   <A, E, XE, XR>(
-    f: (result: Result<A, E>) => Micro<void, XE, XR>
+    f: (result: MicroExit<A, E>) => Micro<void, XE, XR>
   ): <R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
-  <A, E, R, XE, XR>(self: Micro<A, E, R>, f: (result: Result<A, E>) => Micro<void, XE, XR>): Micro<A, E | XE, R | XR>
+  <A, E, R, XE, XR>(self: Micro<A, E, R>, f: (result: MicroExit<A, E>) => Micro<void, XE, XR>): Micro<A, E | XE, R | XR>
 } = dual(
   2,
-  <A, E, R, XE, XR>(self: Micro<A, E, R>, f: (result: Result<A, E>) => Micro<void, XE, XR>): Micro<A, E | XE, R | XR> =>
-    onResultIf(self, constTrue, f)
+  <A, E, R, XE, XR>(
+    self: Micro<A, E, R>,
+    f: (result: MicroExit<A, E>) => Micro<void, XE, XR>
+  ): Micro<A, E | XE, R | XR> => onResultIf(self, constTrue, f)
 )
 
 /**
@@ -2904,29 +2927,29 @@ export const onResult: {
  * @category resources & finalization
  */
 export const onResultIf: {
-  <A, E, XE, XR, B extends Result<A, E>>(
-    refinement: Refinement<Result<A, E>, B>,
+  <A, E, XE, XR, B extends MicroExit<A, E>>(
+    refinement: Refinement<MicroExit<A, E>, B>,
     f: (result: B) => Micro<void, XE, XR>
   ): <R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
   <A, E, XE, XR>(
-    predicate: Predicate<Result<NoInfer<A>, NoInfer<E>>>,
-    f: (result: Result<NoInfer<A>, NoInfer<E>>) => Micro<void, XE, XR>
+    predicate: Predicate<MicroExit<NoInfer<A>, NoInfer<E>>>,
+    f: (result: MicroExit<NoInfer<A>, NoInfer<E>>) => Micro<void, XE, XR>
   ): <R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
-  <A, E, R, XE, XR, B extends Result<A, E>>(
+  <A, E, R, XE, XR, B extends MicroExit<A, E>>(
     self: Micro<A, E, R>,
-    refinement: Refinement<Result<A, E>, B>,
+    refinement: Refinement<MicroExit<A, E>, B>,
     f: (result: B) => Micro<void, XE, XR>
   ): Micro<A, E | XE, R | XR>
   <A, E, R, XE, XR>(
     self: Micro<A, E, R>,
-    predicate: Predicate<Result<NoInfer<A>, NoInfer<E>>>,
-    f: (result: Result<NoInfer<A>, NoInfer<E>>) => Micro<void, XE, XR>
+    predicate: Predicate<MicroExit<NoInfer<A>, NoInfer<E>>>,
+    f: (result: MicroExit<NoInfer<A>, NoInfer<E>>) => Micro<void, XE, XR>
   ): Micro<A, E | XE, R | XR>
 } = dual(
   3,
-  <A, E, R, XE, XR, B extends Result<A, E>>(
+  <A, E, R, XE, XR, B extends MicroExit<A, E>>(
     self: Micro<A, E, R>,
-    refinement: Refinement<Result<A, E>, B>,
+    refinement: Refinement<MicroExit<A, E>, B>,
     f: (result: B) => Micro<void, XE, XR>
   ): Micro<A, E | XE, R | XR> =>
     uninterruptibleMask((restore) =>
@@ -2966,7 +2989,7 @@ export const ensuring: {
 
 /**
  * When the `Micro` effect fails, run the given finalizer effect with the
- * `Failure` of the executed effect.
+ * `MicroCause` of the executed effect.
  *
  * @since 3.4.0
  * @experimental
@@ -2974,18 +2997,18 @@ export const ensuring: {
  */
 export const onFailure: {
   <A, E, XE, XR>(
-    f: (failure: Failure<NoInfer<E>>) => Micro<void, XE, XR>
+    f: (failure: MicroCause<NoInfer<E>>) => Micro<void, XE, XR>
   ): <R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
   <A, E, R, XE, XR>(
     self: Micro<A, E, R>,
-    f: (failure: Failure<NoInfer<E>>) => Micro<void, XE, XR>
+    f: (failure: MicroCause<NoInfer<E>>) => Micro<void, XE, XR>
   ): Micro<A, E | XE, R | XR>
 } = dual(
   2,
   <A, E, R, XE, XR>(
     self: Micro<A, E, R>,
-    f: (failure: Failure<NoInfer<E>>) => Micro<void, XE, XR>
-  ): Micro<A, E | XE, R | XR> => onResultIf(self, resultIsFailure, (result) => f(result.left))
+    f: (failure: MicroCause<NoInfer<E>>) => Micro<void, XE, XR>
+  ): Micro<A, E | XE, R | XR> => onResultIf(self, exitIsFailure, (result) => f(result.left))
 )
 
 /**
@@ -3003,7 +3026,7 @@ export const onAbort: {
 } = dual(
   2,
   <A, E, R, XE, XR>(self: Micro<A, E, R>, finalizer: Micro<void, XE, XR>): Micro<A, E | XE, R | XR> =>
-    onResultIf(self, resultIsAborted, (_) => finalizer)
+    onResultIf(self, exitIsInterrupt, (_) => finalizer)
 )
 
 /**
@@ -3017,7 +3040,7 @@ export const onAbort: {
 export const acquireUseRelease = <Resource, E, R, A, E2, R2, E3, R3>(
   acquire: Micro<Resource, E, R>,
   use: (a: Resource) => Micro<A, E2, R2>,
-  release: (a: Resource, result: Result<A, E2>) => Micro<void, E3, R3>
+  release: (a: Resource, result: MicroExit<A, E2>) => Micro<void, E3, R3>
 ): Micro<A, E | E2 | E3, R | R2 | R3> =>
   uninterruptibleMask((restore) =>
     flatMap(
@@ -3044,7 +3067,7 @@ export const acquireUseRelease = <Resource, E, R, A, E2, R2, E3, R3>(
 export const abort: Micro<never> = make(function(env, onResult) {
   const controller = envGet(env, currentAbortController)
   controller.abort()
-  onResult(ResultAborted)
+  onResult(ExitInterrupt)
 })
 
 /**
@@ -3283,7 +3306,7 @@ export const forEach: {
     const [envWithSignal, onAbort] = forkSignal(env)
 
     // iterate
-    let failure: Result<any, any> | undefined = undefined
+    let failure: MicroExit<any, any> | undefined = undefined
     const items = Array.from(iterable)
     let length = items.length
     const out: Array<B> | undefined = options?.discard ? undefined : new Array(length)
@@ -3318,7 +3341,7 @@ export const forEach: {
             }
           })
         } catch (err) {
-          failure = ResultFailUnexpected(err)
+          failure = ExitDie(err)
           length = index
           onAbort()
         }
@@ -3471,13 +3494,13 @@ export type HandleTypeId = typeof HandleTypeId
  */
 export interface Handle<A, E = never> {
   readonly [HandleTypeId]: HandleTypeId
-  readonly await: Micro<Result<A, E>>
+  readonly await: Micro<MicroExit<A, E>>
   readonly join: Micro<A, E>
-  readonly abort: Micro<Result<A, E>>
+  readonly abort: Micro<MicroExit<A, E>>
   readonly unsafeAbort: () => void
-  readonly addObserver: (observer: (result: Result<A, E>) => void) => void
-  readonly removeObserver: (observer: (result: Result<A, E>) => void) => void
-  readonly unsafePoll: () => Result<A, E> | null
+  readonly addObserver: (observer: (result: MicroExit<A, E>) => void) => void
+  readonly removeObserver: (observer: (result: MicroExit<A, E>) => void) => void
+  readonly unsafePoll: () => MicroExit<A, E> | null
 }
 
 /**
@@ -3491,8 +3514,8 @@ export const isHandle = (u: unknown): u is Handle<unknown, unknown> =>
 class HandleImpl<A, E> implements Handle<A, E> {
   readonly [HandleTypeId]: HandleTypeId
 
-  readonly observers: Set<(result: Result<A, E>) => void> = new Set()
-  private _result: Result<A, E> | undefined = undefined
+  readonly observers: Set<(result: MicroExit<A, E>) => void> = new Set()
+  private _result: MicroExit<A, E> | undefined = undefined
   _controller: AbortController
   readonly isRoot: boolean
 
@@ -3505,7 +3528,7 @@ class HandleImpl<A, E> implements Handle<A, E> {
     }
   }
 
-  unsafePoll(): Result<A, E> | null {
+  unsafePoll(): MicroExit<A, E> | null {
     return this._result ?? null
   }
 
@@ -3513,7 +3536,7 @@ class HandleImpl<A, E> implements Handle<A, E> {
     this._controller.abort()
   }
 
-  emit(result: Result<A, E>): void {
+  emit(result: MicroExit<A, E>): void {
     if (this._result) {
       return
     }
@@ -3525,24 +3548,24 @@ class HandleImpl<A, E> implements Handle<A, E> {
     this.observers.clear()
   }
 
-  addObserver(observer: (result: Result<A, E>) => void): void {
+  addObserver(observer: (result: MicroExit<A, E>) => void): void {
     if (this._result) {
       return observer(this._result)
     }
     this.observers.add(observer)
   }
 
-  removeObserver(observer: (result: Result<A, E>) => void): void {
+  removeObserver(observer: (result: MicroExit<A, E>) => void): void {
     this.observers.delete(observer)
   }
 
-  get await(): Micro<Result<A, E>> {
+  get await(): Micro<MicroExit<A, E>> {
     return suspend(() => {
       if (this._result) {
         return succeed(this._result)
       }
       return async((resume) => {
-        function observer(result: Result<A, E>) {
+        function observer(result: MicroExit<A, E>) {
           resume(succeed(result))
         }
         this.addObserver(observer)
@@ -3557,7 +3580,7 @@ class HandleImpl<A, E> implements Handle<A, E> {
     return flatMap(this.await, fromResult)
   }
 
-  get abort(): Micro<Result<A, E>> {
+  get abort(): Micro<MicroExit<A, E>> {
     return suspend(() => {
       this.unsafeAbort()
       return this.await
@@ -3724,7 +3747,7 @@ export const runPromiseResult = <A, E>(
   options?: {
     readonly signal?: AbortSignal | undefined
   } | undefined
-): Promise<Result<A, E>> =>
+): Promise<MicroExit<A, E>> =>
   new Promise((resolve, _reject) => {
     const handle = runFork(effect, options)
     handle.addObserver(resolve)
@@ -3761,14 +3784,14 @@ export const runPromise = <A, E>(
  * @experimental
  * @category execution
  */
-export const runSyncResult = <A, E>(effect: Micro<A, E>): Result<A, E> => {
+export const runSyncResult = <A, E>(effect: Micro<A, E>): MicroExit<A, E> => {
   const handle = runFork(effect)
   while (yieldState.tasks.length > 0) {
     yieldRunTasks()
   }
   const result = handle.unsafePoll()
   if (result === null) {
-    return ResultFailUnexpected(handle)
+    return ExitDie(handle)
   }
   return result
 }
@@ -3804,14 +3827,14 @@ export interface YieldableError extends Pipeable, Inspectable, Readonly<Error> {
   readonly [SinkTypeId]: Sink.VarianceStruct<never, unknown, never, this, never>
   readonly [ChannelTypeId]: Channel.VarianceStruct<never, unknown, this, unknown, never, unknown, never>
   readonly [TypeId]: Micro.Variance<never, this, never>
-  readonly [runSymbol]: (env: Env<any>, onResult: (result: Result<never, this>) => void) => void
+  readonly [runSymbol]: (env: Env<any>, onResult: (result: MicroExit<never, this>) => void) => void
   [Symbol.iterator](): MicroIterator<Micro<never, this, never>>
 }
 
 const YieldableError: new(message?: string) => YieldableError = (function() {
   class YieldableError extends globalThis.Error {
     [runSymbol](_env: any, onResult: any) {
-      onResult(ResultFail(this))
+      onResult(ExitFail(this))
     }
     toString() {
       return this.message ? `${this.name}: ${this.message}` : this.name

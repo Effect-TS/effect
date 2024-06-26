@@ -51,7 +51,7 @@ describe.concurrent("Micro", () => {
     ).pipe(Micro.runFork)
     handle.unsafeAbort()
     const result = await Micro.runPromise(handle.await)
-    assert.deepStrictEqual(result, Micro.ResultAborted)
+    assert.deepStrictEqual(result, Micro.ExitInterrupt)
     assert.isTrue(acquire)
     assert.isFalse(use)
     assert.isTrue(release)
@@ -184,7 +184,7 @@ describe.concurrent("Micro", () => {
         yield* Micro.sleep(125)
         yield* handle.abort
         const result = yield* handle.await
-        assert.deepStrictEqual(result, Micro.ResultAborted)
+        assert.deepStrictEqual(result, Micro.ExitInterrupt)
         assert.deepStrictEqual(done, [1, 2])
       }).pipe(Micro.runPromise))
 
@@ -199,7 +199,7 @@ describe.concurrent("Micro", () => {
         yield* Micro.sleep(25)
         yield* handle.abort
         const result = yield* handle.await
-        assert.deepStrictEqual(result, Micro.ResultAborted)
+        assert.deepStrictEqual(result, Micro.ExitInterrupt)
         assert.deepStrictEqual(done, [])
       }).pipe(Micro.runPromise))
 
@@ -214,7 +214,7 @@ describe.concurrent("Micro", () => {
         yield* Micro.sleep(75)
         yield* handle.abort
         const result = yield* handle.await
-        assert.deepStrictEqual(result, Micro.ResultAborted)
+        assert.deepStrictEqual(result, Micro.ExitInterrupt)
         assert.deepStrictEqual(done, [1, 2])
       }).pipe(Micro.runPromise))
 
@@ -229,7 +229,7 @@ describe.concurrent("Micro", () => {
           concurrency: "unbounded"
         }).pipe(Micro.fork)
         const result = yield* handle.await
-        assert.deepStrictEqual(result, Micro.ResultFail("error"))
+        assert.deepStrictEqual(result, Micro.ExitFail("error"))
         assert.deepStrictEqual(done, [1, 2, 3])
       }).pipe(Micro.runPromise))
   })
@@ -352,7 +352,7 @@ describe.concurrent("Micro", () => {
           )
         )
       )).pipe(Micro.asResult)
-      assert.deepStrictEqual(result, Micro.ResultFail("boom"))
+      assert.deepStrictEqual(result, Micro.ExitFail("boom"))
       assert.deepStrictEqual(interrupted, [100, 75, 50, 25])
     }).pipe(Micro.runPromise))
 
@@ -491,7 +491,7 @@ describe.concurrent("Micro", () => {
           Micro.sandbox,
           Micro.flip
         )
-        assert.deepStrictEqual(result, Micro.FailureUnexpected(error))
+        assert.deepStrictEqual(result, Micro.CauseDie(error))
       }))
     it.effect("timeout repetition of uninterruptible effect", () =>
       Micro.gen(function*() {
@@ -587,14 +587,14 @@ describe.concurrent("Micro", () => {
       Micro.gen(function*() {
         const fiber = yield* pipe(Micro.succeed(1), Micro.forever, Micro.fork)
         const result = yield* fiber.abort
-        assert.deepStrictEqual(result, Micro.ResultAborted)
+        assert.deepStrictEqual(result, Micro.ExitInterrupt)
       }))
 
     it.effect("interrupt of never is interrupted with cause", () =>
       Micro.gen(function*() {
         const fiber = yield* Micro.fork(Micro.never)
         const result = yield* fiber.abort
-        assert.deepStrictEqual(result, Micro.ResultAborted)
+        assert.deepStrictEqual(result, Micro.ExitInterrupt)
       }))
 
     it.effect("catchAll + ensuring + interrupt", () =>
@@ -626,7 +626,7 @@ describe.concurrent("Micro", () => {
           Micro.asResult,
           Micro.flatMap((result) =>
             Micro.sync(() => {
-              recovered = result._tag === "Left" && result.left._tag === "Aborted"
+              recovered = result._tag === "Left" && result.left._tag === "Interrupt"
             })
           ),
           Micro.uninterruptible,
@@ -780,7 +780,7 @@ describe.concurrent("Micro", () => {
           Micro.forkIn(scope)
         )
         yield* Micro.yieldFlush
-        yield* scope.close(Micro.resultVoid)
+        yield* scope.close(Micro.exitVoid)
         assert.isTrue(aborted)
       }))
   })
@@ -798,7 +798,7 @@ describe.concurrent("Micro", () => {
           Micro.provideScope(scope)
         )
         yield* Micro.yieldFlush
-        yield* scope.close(Micro.resultVoid)
+        yield* scope.close(Micro.exitVoid)
         assert.isTrue(aborted)
       }))
   })
@@ -841,7 +841,7 @@ describe.concurrent("Micro", () => {
           })),
           Micro.asResult
         )
-        assert.deepStrictEqual(result, Micro.ResultFail(ExampleError))
+        assert.deepStrictEqual(result, Micro.ExitFail(ExampleError))
         assert.isTrue(finalized)
       }))
 
@@ -856,7 +856,7 @@ describe.concurrent("Micro", () => {
           ),
           Micro.asResult
         )
-        assert.deepStrictEqual(result, Micro.ResultFail(ExampleError))
+        assert.deepStrictEqual(result, Micro.ExitFail(ExampleError))
         assert.isTrue(finalized)
       }))
 
@@ -872,12 +872,12 @@ describe.concurrent("Micro", () => {
           Micro.flip,
           Micro.map((cause) => cause)
         )
-        assert.deepStrictEqual(result, Micro.FailureUnexpected(e3))
+        assert.deepStrictEqual(result, Micro.CauseDie(e3))
       }))
 
     it.effect("finalizer errors reported", () =>
       Micro.gen(function*() {
-        let reported: Micro.Result<number> | undefined
+        let reported: Micro.MicroExit<number> | undefined
         const result = yield* pipe(
           Micro.succeed(42),
           Micro.ensuring(Micro.die(ExampleError)),
@@ -894,7 +894,7 @@ describe.concurrent("Micro", () => {
           )
         )
         assert.isUndefined(result)
-        assert.isFalse(reported !== undefined && Micro.resultIsSuccess(reported))
+        assert.isFalse(reported !== undefined && Micro.exitIsSuccess(reported))
       }))
 
     it.effect("acquireUseRelease usage result", () =>
@@ -917,7 +917,7 @@ describe.concurrent("Micro", () => {
           ),
           Micro.asResult
         )
-        assert.deepStrictEqual(result, Micro.ResultFail(ExampleError))
+        assert.deepStrictEqual(result, Micro.ExitFail(ExampleError))
       }))
 
     it.effect("error in just release", () =>
@@ -930,7 +930,7 @@ describe.concurrent("Micro", () => {
           ),
           Micro.asResult
         )
-        assert.deepStrictEqual(result, Micro.ResultFailUnexpected(ExampleError))
+        assert.deepStrictEqual(result, Micro.ExitDie(ExampleError))
       }))
 
     it.effect("error in just usage", () =>
@@ -943,7 +943,7 @@ describe.concurrent("Micro", () => {
           ),
           Micro.asResult
         )
-        assert.deepStrictEqual(result, Micro.ResultFail(ExampleError))
+        assert.deepStrictEqual(result, Micro.ExitFail(ExampleError))
       }))
 
     it.effect("rethrown caught error in acquisition", () =>
@@ -966,7 +966,7 @@ describe.concurrent("Micro", () => {
           ),
           Micro.asResult
         )
-        assert.deepStrictEqual(result, Micro.ResultFailUnexpected(ExampleError))
+        assert.deepStrictEqual(result, Micro.ExitDie(ExampleError))
       }))
 
     it.effect("rethrown caught error in usage", () =>
@@ -976,7 +976,7 @@ describe.concurrent("Micro", () => {
           () => Micro.fail(ExampleError),
           () => Micro.void
         ).pipe(Micro.asResult)
-        assert.deepEqual(result, Micro.ResultFail(ExampleError))
+        assert.deepEqual(result, Micro.ExitFail(ExampleError))
       }))
 
     it.effect("onResult - ensures that a cleanup function runs when an effect fails", () =>
@@ -984,7 +984,7 @@ describe.concurrent("Micro", () => {
         let ref = false
         yield* Micro.die("boom").pipe(
           Micro.onResult((result) =>
-            Micro.resultIsFailureUnexpected(result) ?
+            Micro.exitIsDie(result) ?
               Micro.sync(() => {
                 ref = true
               }) :
