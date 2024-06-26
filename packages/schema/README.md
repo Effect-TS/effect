@@ -1781,6 +1781,34 @@ the default would be:
 */
 ```
 
+### Understanding `Schema.parseJson` in JSON Schema Generation
+
+When utilizing `Schema.parseJson` within the `@effect/schema` library, JSON Schema generation follows a specialized approach. Instead of merely generating a JSON Schema for a string—which would be the default output representing the "from" side of the transformation defined by `Schema.parseJson`—it specifically generates the JSON Schema for the actual schema provided as an argument.
+
+**Example of Generating JSON Schema with `Schema.parseJson`**
+
+```ts
+import { JSONSchema, Schema } from "@effect/schema"
+
+// Define a schema that parses a JSON string into a structured object
+const schema = Schema.parseJson(
+  Schema.Struct({
+    a: Schema.parseJson(Schema.NumberFromString) // Nested parsing from JSON string to number
+  })
+)
+
+console.log(JSONSchema.make(schema))
+/*
+{
+  '$schema': 'http://json-schema.org/draft-07/schema#',
+  type: 'object',
+  required: [ 'a' ],
+  properties: { a: { type: 'string', description: 'a string', title: 'string' } },
+  additionalProperties: false
+}
+*/
+```
+
 ## Generating Equivalences
 
 The `make` function, which is part of the `@effect/schema/Equivalence` module, allows you to generate an [Equivalence](https://effect-ts.github.io/effect/schema/Equivalence.ts.html) based on a schema definition:

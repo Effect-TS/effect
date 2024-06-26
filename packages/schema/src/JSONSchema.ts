@@ -7,6 +7,7 @@ import * as Predicate from "effect/Predicate"
 import * as Record from "effect/Record"
 import * as AST from "./AST.js"
 import * as errors_ from "./internal/errors.js"
+import * as filters_ from "./internal/filters.js"
 import type * as Schema from "./Schema.js"
 
 /**
@@ -297,6 +298,9 @@ const hasTransformation = (ast: AST.Refinement): boolean => {
   return false
 }
 
+const isParseJsonTransformation = (ast: AST.AST): boolean =>
+  ast.annotations[AST.TypeAnnotationId] === filters_.ParseJsonTypeId
+
 const go = (
   ast: AST.AST,
   $defs: Record<string, JsonSchema7>,
@@ -549,7 +553,13 @@ const go = (
       }
       return go(ast.f(), $defs, true, path)
     }
-    case "Transformation":
-      return go(ast.from, $defs, true, path)
+    case "Transformation": {
+      // Properly handle S.parseJson transformations by focusing on
+      // the 'to' side of the AST. This approach prevents the generation of useless schemas
+      // derived from the 'from' side (type: string), ensuring the output matches the intended
+      // complex schema type.
+      const next = isParseJsonTransformation(ast.from) ? ast.to : ast.from
+      return go(next, $defs, true, path)
+    }
   }
 }

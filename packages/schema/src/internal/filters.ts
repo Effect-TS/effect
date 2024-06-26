@@ -84,3 +84,6 @@ export const MaxItemsTypeId: Schema.MaxItemsTypeId = Symbol.for(
 export const ItemsCountTypeId: Schema.ItemsCountTypeId = Symbol.for(
   "@effect/schema/TypeId/ItemsCount"
 ) as Schema.ItemsCountTypeId
+
+/** @internal */
+export const ParseJsonTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/ParseJson")
