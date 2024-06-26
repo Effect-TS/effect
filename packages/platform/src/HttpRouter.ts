@@ -12,12 +12,16 @@ import type { Inspectable } from "effect/Inspectable"
 import type * as Layer from "effect/Layer"
 import type * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
+import type * as Etag from "./Etag.js"
+import type { FileSystem } from "./FileSystem.js"
 import type * as App from "./HttpApp.js"
 import type * as Method from "./HttpMethod.js"
+import type * as Platform from "./HttpPlatform.js"
 import type * as Error from "./HttpServerError.js"
 import type * as ServerRequest from "./HttpServerRequest.js"
 import type * as Respondable from "./HttpServerRespondable.js"
 import * as internal from "./internal/httpRouter.js"
+import type { Path } from "./Path.js"
 
 /**
  * @since 1.0.0
@@ -740,4 +744,7 @@ export const Tag: <const Name extends string>(
  * @since 1.0.0
  * @category tags
  */
-export class Default extends Tag("@effect/platform/HttpRouter/Default")<Default>() {}
+export class Default extends Tag("@effect/platform/HttpRouter/Default")<
+  Default,
+  Platform.HttpPlatform | Etag.Generator | FileSystem | Path
+>() {}
