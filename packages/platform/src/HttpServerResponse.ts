@@ -12,6 +12,7 @@ import type * as FileSystem from "./FileSystem.js"
 import type * as Headers from "./Headers.js"
 import type * as Body from "./HttpBody.js"
 import type * as Platform from "./HttpPlatform.js"
+import type { Respondable } from "./HttpServerRespondable.js"
 import * as internal from "./internal/httpServerResponse.js"
 import type * as Template from "./Template.js"
 import type * as UrlParams from "./UrlParams.js"
@@ -32,7 +33,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface HttpServerResponse extends Effect.Effect<HttpServerResponse>, Inspectable {
+export interface HttpServerResponse extends Effect.Effect<HttpServerResponse>, Inspectable, Respondable {
   readonly [TypeId]: TypeId
   readonly status: number
   readonly statusText?: string | undefined

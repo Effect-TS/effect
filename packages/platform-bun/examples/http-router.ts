@@ -3,6 +3,7 @@ import {
   HttpRouter,
   HttpServer,
   HttpServerRequest,
+  HttpServerRespondable,
   HttpServerResponse,
   Multipart
 } from "@effect/platform"
@@ -11,6 +12,14 @@ import { Schema } from "@effect/schema"
 import { Effect, Layer, Schedule, Stream } from "effect"
 
 const ServerLive = BunHttpServer.layer({ port: 3000 })
+
+class MyError extends Schema.TaggedError<MyError>()("MyError", {
+  message: Schema.String
+}) {
+  [HttpServerRespondable.symbol]() {
+    return HttpServerResponse.schemaJson(MyError)(this, { status: 403 })
+  }
+}
 
 const HttpLive = HttpRouter.empty.pipe(
   HttpRouter.get(
@@ -21,6 +30,7 @@ const HttpLive = HttpRouter.empty.pipe(
     )
   ),
   HttpRouter.get("/package", HttpServerResponse.file("./package.json")),
+  HttpRouter.get("/fail", new MyError({ message: "failed" })),
   HttpRouter.get("/sleep", Effect.as(Effect.sleep("10 seconds"), HttpServerResponse.empty())),
   HttpRouter.post(
     "/upload",

@@ -16,6 +16,7 @@ import type * as App from "./HttpApp.js"
 import type * as Method from "./HttpMethod.js"
 import type * as Error from "./HttpServerError.js"
 import type * as ServerRequest from "./HttpServerRequest.js"
+import type * as Respondable from "./HttpServerRespondable.js"
 import * as internal from "./internal/httpRouter.js"
 
 /**
@@ -42,7 +43,7 @@ export interface HttpRouter<E = never, R = never>
   readonly mounts: Chunk.Chunk<
     readonly [
       prefix: string,
-      httpApp: App.Default<E, R>,
+      httpApp: App.HttpApp<Respondable.Respondable, E, R>,
       options?: { readonly includePrefix?: boolean | undefined } | undefined
     ]
   >
@@ -116,7 +117,7 @@ export declare namespace HttpRouter {
    * @since 1.0.0
    */
   export interface TagClass<Self, Name extends string, E, R> extends Context.Tag<Self, Service<E, R>> {
-    new(_: never): Context.TagClassShape<`@effect/platform/HttpRouter/${Name}`, Service<E, R>>
+    new(_: never): Context.TagClassShape<Name, Service<E, R>>
     readonly Live: Layer.Layer<Self>
     readonly router: Effect.Effect<HttpRouter<E, R>, never, Self>
     readonly use: <XA, XE, XR>(f: (router: Service<E, R>) => Effect.Effect<XA, XE, XR>) => Layer.Layer<never, XE, XR>
@@ -165,7 +166,11 @@ export declare namespace Route {
   /**
    * @since 1.0.0
    */
-  export type Handler<E, R> = App.Default<E, R | RouteContext | ServerRequest.ParsedSearchParams>
+  export type Handler<E, R> = App.HttpApp<
+    Respondable.Respondable,
+    E,
+    R | RouteContext | ServerRequest.ParsedSearchParams
+  >
 }
 
 /**
@@ -729,4 +734,10 @@ export const provideServiceEffect: {
  */
 export const Tag: <const Name extends string>(
   id: Name
-) => <Self, E = never, R = never>() => HttpRouter.TagClass<Self, Name, E, R> = internal.Tag
+) => <Self, R = never, E = unknown>() => HttpRouter.TagClass<Self, Name, E, R> = internal.Tag
+
+/**
+ * @since 1.0.0
+ * @category tags
+ */
+export class Default extends Tag("@effect/platform/HttpRouter/Default")<Default>() {}

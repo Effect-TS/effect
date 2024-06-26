@@ -11,6 +11,7 @@ import type * as FileSystem from "../FileSystem.js"
 import * as Headers from "../Headers.js"
 import type * as Body from "../HttpBody.js"
 import * as Platform from "../HttpPlatform.js"
+import type * as Respondable from "../HttpServerRespondable.js"
 import type * as ServerResponse from "../HttpServerResponse.js"
 import * as Template from "../Template.js"
 import * as UrlParams from "../UrlParams.js"
@@ -18,6 +19,10 @@ import * as internalBody from "./httpBody.js"
 
 /** @internal */
 export const TypeId: ServerResponse.TypeId = Symbol.for("@effect/platform/HttpServerResponse") as ServerResponse.TypeId
+
+const respondableSymbol: typeof Respondable.symbol = Symbol.for(
+  "@effect/platform/HttpServerRespondable"
+) as typeof Respondable.symbol
 
 class ServerResponseImpl extends Effectable.StructuralClass<ServerResponse.HttpServerResponse>
   implements ServerResponse.HttpServerResponse
@@ -48,6 +53,10 @@ class ServerResponseImpl extends Effectable.StructuralClass<ServerResponse.HttpS
   }
 
   commit(): Effect.Effect<ServerResponse.HttpServerResponse> {
+    return Effect.succeed(this)
+  }
+
+  [respondableSymbol](): Effect.Effect<ServerResponse.HttpServerResponse, unknown> {
     return Effect.succeed(this)
   }
 

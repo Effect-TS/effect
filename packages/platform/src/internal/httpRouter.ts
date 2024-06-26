@@ -19,6 +19,7 @@ import type * as Method from "../HttpMethod.js"
 import type * as Router from "../HttpRouter.js"
 import * as Error from "../HttpServerError.js"
 import * as ServerRequest from "../HttpServerRequest.js"
+import * as Respondable from "../HttpServerRespondable.js"
 import type * as ServerResponse from "../HttpServerResponse.js"
 
 /** @internal */
@@ -149,7 +150,7 @@ class RouterImpl<E = never, R = never> extends Effectable.StructuralClass<
     readonly mounts: Chunk.Chunk<
       readonly [
         prefix: string,
-        httpApp: App.Default<E, R>,
+        httpApp: App.HttpApp<Respondable.Respondable, E, R>,
         options?: { readonly includePrefix?: boolean | undefined } | undefined
       ]
     >
@@ -225,7 +226,7 @@ const toHttpApp = <E, R>(
             context.unsafeMap.set(ServerRequest.HttpServerRequest.key, sliceRequestUrl(request, path))
           }
           return Effect.locally(
-            routeContext.route.handler as App.Default<E, R>,
+            Effect.flatMap(routeContext.route.handler, Respondable.toResponse) as App.Default<E, R>,
             FiberRef.currentContext,
             context
           )
@@ -252,10 +253,11 @@ const toHttpApp = <E, R>(
       span.value.attribute("http.route", route.path)
     }
 
+    const handlerResponse = Effect.flatMap(route.handler, Respondable.toResponse)
     return Effect.locally(
       (route.uninterruptible ?
-        route.handler :
-        Effect.interruptible(route.handler)) as Effect.Effect<
+        handlerResponse :
+        Effect.interruptible(handlerResponse)) as Effect.Effect<
           ServerResponse.HttpServerResponse,
           E,
           Router.HttpRouter.ExcludeProvided<R>
@@ -505,11 +507,11 @@ export const options = route("OPTIONS")
 /** @internal */
 export const use = dual<
   <E, R, R1, E1>(
-    f: (self: Router.Route.Handler<E, R>) => App.Default<E1, R1>
+    f: (self: Router.Route.Handler<E, R>) => App.HttpApp<Respondable.Respondable, E1, R1>
   ) => (self: Router.HttpRouter<E, R>) => Router.HttpRouter<E1, Router.HttpRouter.ExcludeProvided<R1>>,
   <E, R, R1, E1>(
     self: Router.HttpRouter<E, R>,
-    f: (self: Router.Route.Handler<E, R>) => App.Default<E1, R1>
+    f: (self: Router.Route.Handler<E, R>) => App.HttpApp<Respondable.Respondable, E1, R1>
   ) => Router.HttpRouter<E1, Router.HttpRouter.ExcludeProvided<R1>>
 >(2, (self, f) =>
   new RouterImpl<any, any>(
@@ -716,7 +718,7 @@ const makeService = <E, R>(): Router.HttpRouter.Service<E, R> => {
 /* @internal */
 export const Tag =
   <const Name extends string>(id: Name) =>
-  <Self, E = never, R = never>(): Router.HttpRouter.TagClass<Self, Name, E, R> => {
+  <Self, R = never, E = unknown>(): Router.HttpRouter.TagClass<Self, Name, E, R> => {
     const Err = globalThis.Error as any
     const limit = Err.stackTraceLimit
     Err.stackTraceLimit = 2
