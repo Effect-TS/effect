@@ -1037,7 +1037,7 @@ export const fromOption = <A>(option: Option.Option<A>): Micro<A, NoSuchElementE
  */
 export const fromEither = <R, L>(either: Either.Either<R, L>): Micro<R, L> =>
   make(function(_env, onExit) {
-    onExit(either._tag === "Right" ? either : ExitFail(either.left) as any)
+    onExit(either._tag === "Right" ? either as MicroExit<R, never>: ExitFail(either.left))
   })
 
 /**
@@ -1312,7 +1312,7 @@ export const flatten = <A, E, R, E2, R2>(self: Micro<Micro<A, E, R>, E2, R2>): M
   make(function(env, onExit) {
     self[runSymbol](
       env,
-      (exit) => exit._tag === "Left" ? onExit(exit as any) : exit.right[runSymbol](env, onExit)
+      (exit) => exit._tag === "Left" ? onExit(exit as MicroExit<never, E2>) : exit.right[runSymbol](env, onExit)
     )
   })
 
@@ -1330,7 +1330,7 @@ export const map: {
 } = dual(2, <A, E, R, B>(self: Micro<A, E, R>, f: (a: A) => B): Micro<B, E, R> =>
   make(function(env, onExit) {
     self[runSymbol](env, function(exit) {
-      onExit(exit._tag === "Left" ? exit as any : ExitSucceed(f(exit.right)))
+      onExit(exit._tag === "Left" ? exit as MicroExit<never, E>: ExitSucceed(f(exit.right)))
     })
   }))
 
@@ -1354,7 +1354,7 @@ export const as: {
  * @experimental
  * @category mapping & sequencing
  */
-export const asSome = <A, E, R>(self: Micro<A, E, R>): Micro<Option.Option<A>, E, R> => map(self, Option.some) as any
+export const asSome = <A, E, R>(self: Micro<A, E, R>): Micro<Option.Option<A>, E, R> => map(self, Option.some)
 
 /**
  * Map the success value of this `Micro` effect to another `Micro` effect, then
@@ -1373,7 +1373,7 @@ export const flatMap: {
     make(function(env, onExit) {
       self[runSymbol](env, function(exit) {
         if (exit._tag === "Left") {
-          return onExit(exit as any)
+          return onExit(exit as MicroExit<never, E>)
         }
         f(exit.right)[runSymbol](env, onExit)
       })
@@ -1433,7 +1433,7 @@ export const andThen: {
     make(function(env, onExit) {
       self[runSymbol](env, function(exit) {
         if (exit._tag === "Left") {
-          return onExit(exit as any)
+          return onExit(exit as MicroExit<never, E>)
         } else if (envGet(env, currentAbortSignal).aborted) {
           return onExit(ExitInterrupt)
         }
@@ -1485,7 +1485,7 @@ export const tap: {
     make(function(env, onExit) {
       self[runSymbol](env, function(selfExit) {
         if (selfExit._tag === "Left") {
-          return onExit(selfExit as any)
+          return onExit(selfExit as MicroExit<never, E>)
         } else if (envGet(env, currentAbortSignal).aborted) {
           return onExit(ExitInterrupt)
         }
@@ -1767,7 +1767,7 @@ export const filterOrFailCause: {
   self: Micro<A, E, R>,
   refinement: Refinement<A, B>,
   orFailWith: (a: A) => MicroCause<E2>
-): Micro<B, E | E2, R> => flatMap(self, (a) => refinement(a) ? succeed(a as any) : failCause(orFailWith(a))))
+): Micro<B, E | E2, R> => flatMap(self, (a) => refinement(a) ? succeed(a) : failCause(orFailWith(a))))
 
 /**
  * Filter the specified effect with the provided function, failing with specified
@@ -1799,7 +1799,7 @@ export const filterOrFail: {
   self: Micro<A, E, R>,
   refinement: Refinement<A, B>,
   orFailWith: (a: A) => E2
-): Micro<B, E | E2, R> => flatMap(self, (a) => refinement(a) ? succeed(a as any) : fail(orFailWith(a))))
+): Micro<B, E | E2, R> => flatMap(self, (a) => refinement(a) ? succeed(a) : fail(orFailWith(a))))
 
 /**
  * The moral equivalent of `if (p) exp`.
@@ -1876,7 +1876,7 @@ export const repeatExit: {
       }
       delayEffect[runSymbol](env, function(exit) {
         if (exit._tag === "Left") {
-          return onExit(exit as any)
+          return onExit(exit as MicroExit<never, never>)
         }
         self[runSymbol](env, loop)
       })
@@ -2191,7 +2191,7 @@ export const tapErrorCauseIf: {
     self: Micro<A, E, R>,
     refinement: Refinement<MicroCause<E>, EB>,
     f: (a: EB) => Micro<B, E2, R2>
-  ): Micro<A, E | E2, R | R2> => catchCauseIf(self, refinement, (cause) => andThen(f(cause as any), failCause(cause)))
+  ): Micro<A, E | E2, R | R2> => catchCauseIf(self, refinement, (cause) => andThen(f(cause), failCause(cause)))
 )
 
 /**
@@ -2968,7 +2968,7 @@ export const onExitIf: {
           }
           f(exit)[runSymbol](env, function(finalizerExit) {
             if (finalizerExit._tag === "Left") {
-              return onExit(finalizerExit as any)
+              return onExit(finalizerExit as MicroExit<never, XE>)
             }
             onExit(exit)
           })
