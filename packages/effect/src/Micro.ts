@@ -989,9 +989,9 @@ export const sync = <A>(evaluate: LazyArg<A>): Micro<A> =>
  * @experimental
  * @category constructors
  */
-export const fromOption = <A>(option: Option.Option<A>): Micro<A, void> =>
+export const fromOption = <A>(option: Option.Option<A>): Micro<A, NoSuchElementException> =>
   make(function(_env, onResult) {
-    onResult(option._tag === "Some" ? ResultSuccess(option.value) : ResultFail(void 0))
+    onResult(option._tag === "Some" ? ResultSuccess(option.value) : ResultFail(new NoSuchElementException({})))
   })
 
 /**
@@ -3816,3 +3816,13 @@ export const TaggedError = <Tag extends string>(tag: Tag): new<A extends Record<
   ;(Base.prototype as any).name = tag
   return Base as any
 }
+
+/**
+ * Represents a checked exception which occurs when an expected element was
+ * unable to be found.
+ *
+ * @since 3.4.4
+ * @experimental
+ * @category errors
+ */
+export class NoSuchElementException extends TaggedError("NoSuchElementException")<{ message?: string | undefined }> {}
