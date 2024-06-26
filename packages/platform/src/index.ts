@@ -117,6 +117,11 @@ export * as HttpServerRequest from "./HttpServerRequest.js"
 /**
  * @since 1.0.0
  */
+export * as HttpServerRespondable from "./HttpServerRespondable.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as HttpServerResponse from "./HttpServerResponse.js"
 
 /**

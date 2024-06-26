@@ -15,6 +15,7 @@ import * as Scope from "effect/Scope"
 import type { HttpMiddleware } from "./HttpMiddleware.js"
 import * as ServerError from "./HttpServerError.js"
 import * as ServerRequest from "./HttpServerRequest.js"
+import * as Respondable from "./HttpServerRespondable.js"
 import * as ServerResponse from "./HttpServerResponse.js"
 import * as internalMiddleware from "./internal/httpMiddleware.js"
 
@@ -58,9 +59,19 @@ export const toHandled = <E, R, _, RH>(
       Effect.exit(preHandled),
       (exit) => {
         if (exit._tag === "Failure") {
-          const dieOption = Cause.dieOption(exit.cause)
-          if (dieOption._tag === "Some" && ServerResponse.isServerResponse(dieOption.value)) {
-            exit = Exit.succeed(dieOption.value)
+          const cause = exit.cause
+          const thing = Cause.squash(exit.cause)
+          if (ServerResponse.isServerResponse(thing)) {
+            exit = Exit.succeed(thing)
+          } else {
+            return Effect.matchCauseEffect(Respondable.toResponseError(thing), {
+              onFailure: (_) => Effect.zipRight(handleResponse(request, exit), exit),
+              onSuccess: (response) =>
+                Effect.zipRight(
+                  handleResponse(request, Exit.succeed(response)),
+                  Effect.failCause(Cause.sequential(cause, Cause.die(response)))
+                )
+            })
           }
         }
         return Effect.zipRight(handleResponse(request, exit), exit)

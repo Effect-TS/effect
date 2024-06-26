@@ -11,6 +11,7 @@ import {
   HttpServer,
   HttpServerError,
   HttpServerRequest,
+  HttpServerRespondable,
   HttpServerResponse,
   Multipart,
   UrlParams
@@ -672,4 +673,52 @@ describe("HttpServer", () => {
       const res = yield* _(HttpClientRequest.get("/home"), client, Effect.scoped)
       assert.strictEqual(res.status, 204)
     }).pipe(Effect.scoped, runPromise))
+
+  describe("HttpServerRespondable", () => {
+    it("error/RouteNotFound", () =>
+      Effect.gen(function*() {
+        yield* HttpRouter.empty.pipe(HttpServer.serveEffect())
+        const client = yield* makeClient
+        const res = yield* HttpClientRequest.get("/home").pipe(client, Effect.scoped)
+        assert.strictEqual(res.status, 404)
+      }).pipe(Effect.scoped, runPromise))
+
+    it("error/schema", () =>
+      Effect.gen(function*() {
+        class CustomError extends Schema.TaggedError<CustomError>()("CustomError", {
+          name: Schema.String
+        }) {
+          [HttpServerRespondable.symbol]() {
+            return HttpServerResponse.schemaJson(CustomError)(this, { status: 599 })
+          }
+        }
+        yield* HttpRouter.empty.pipe(
+          HttpRouter.get("/home", new CustomError({ name: "test" })),
+          HttpServer.serveEffect()
+        )
+        const client = yield* makeClient
+        const res = yield* HttpClientRequest.get("/home").pipe(client)
+        assert.strictEqual(res.status, 599)
+        const err = yield* HttpClientResponse.schemaBodyJson(CustomError)(res)
+        assert.deepStrictEqual(err, new CustomError({ name: "test" }))
+      }).pipe(Effect.scoped, runPromise))
+
+    it("respondable schema", () =>
+      Effect.gen(function*() {
+        class User extends Schema.Class<User>("User")({
+          name: Schema.String
+        }) {
+          [HttpServerRespondable.symbol]() {
+            return HttpServerResponse.schemaJson(User)(this)
+          }
+        }
+        yield* HttpRouter.empty.pipe(
+          HttpRouter.get("/user", Effect.succeed(new User({ name: "test" }))),
+          HttpServer.serveEffect()
+        )
+        const client = yield* makeClient
+        const res = yield* HttpClientRequest.get("/user").pipe(client, HttpClientResponse.schemaBodyJsonScoped(User))
+        assert.deepStrictEqual(res, new User({ name: "test" }))
+      }).pipe(Effect.scoped, runPromise))
+  })
 })

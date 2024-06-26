@@ -82,19 +82,23 @@ export const logger = make((httpApp) => {
       Effect.flatMap(Effect.exit(httpApp), (exit) => {
         if (fiber.getFiberRef(loggerDisabled)) {
           return exit
+        } else if (exit._tag === "Failure") {
+          const [status, cause] = ServerError.causeStatusStripped(exit.cause)
+          return Effect.zipRight(
+            Effect.annotateLogs(Effect.log(cause._tag === "Some" ? cause.value : "Sent HTTP Response"), {
+              "http.method": request.method,
+              "http.url": request.url,
+              "http.status": status
+            }),
+            exit
+          )
         }
         return Effect.zipRight(
-          exit._tag === "Failure" ?
-            Effect.annotateLogs(Effect.log(exit.cause), {
-              "http.method": request.method,
-              "http.url": request.url,
-              "http.status": ServerError.causeStatusCode(exit.cause)
-            }) :
-            Effect.annotateLogs(Effect.log("Sent HTTP response"), {
-              "http.method": request.method,
-              "http.url": request.url,
-              "http.status": exit.value.status
-            }),
+          Effect.annotateLogs(Effect.log("Sent HTTP response"), {
+            "http.method": request.method,
+            "http.url": request.url,
+            "http.status": exit.value.status
+          }),
           exit
         )
       }),
@@ -156,15 +160,11 @@ export const tracer = make((httpApp) =>
         return Effect.flatMap(
           Effect.exit(Effect.withParentSpan(httpApp, span)),
           (exit) => {
-            if (exit._tag === "Failure") {
-              span.attribute("http.response.status_code", ServerError.causeStatusCode(exit.cause))
-            } else {
-              const response = exit.value
-              span.attribute("http.response.status_code", response.status)
-              const redactedHeaders = Headers.redact(response.headers, redactedHeaderNames)
-              for (const name in redactedHeaders) {
-                span.attribute(`http.response.header.${name}`, String(redactedHeaders[name]))
-              }
+            const response = ServerError.exitResponse(exit)
+            span.attribute("http.response.status_code", response.status)
+            const redactedHeaders = Headers.redact(response.headers, redactedHeaderNames)
+            for (const name in redactedHeaders) {
+              span.attribute(`http.response.header.${name}`, String(redactedHeaders[name]))
             }
             return exit
           }
