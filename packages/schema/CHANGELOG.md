@@ -1,5 +1,68 @@
 # @effect/schema
 
+## 0.68.11
+
+### Patch Changes
+
+- [#3087](https://github.com/Effect-TS/effect/pull/3087) [`d71c192`](https://github.com/Effect-TS/effect/commit/d71c192b89fd1162423acddc5fd3d6270fbf2ef6) Thanks @gcanti! - Special case `S.parseJson` to generate JSON Schemas by targeting the "to" side of transformations, closes #3086
+
+  Resolved an issue where `JSONSchema.make` improperly generated JSON Schemas for schemas defined with `S.parseJson(<real schema>)`. Previously, invoking `JSONSchema.make` on these transformed schemas produced a JSON Schema corresponding to a string type rather than the underlying real schema.
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "@effect/schema";
+
+  // Define a schema that parses a JSON string into a structured object
+  const schema = Schema.parseJson(
+    Schema.Struct({
+      a: Schema.parseJson(Schema.NumberFromString), // Nested parsing from JSON string to number
+    }),
+  );
+
+  console.log(JSONSchema.make(schema));
+  /*
+  {
+    '$schema': 'http://json-schema.org/draft-07/schema#',
+    '$ref': '#/$defs/JsonString',
+    '$defs': {
+      JsonString: {
+        type: 'string',
+        description: 'a JSON string',
+        title: 'JsonString'
+      }
+    }
+  }
+  */
+  ```
+
+  Now
+
+  ```ts
+  import { JSONSchema, Schema } from "@effect/schema";
+
+  // Define a schema that parses a JSON string into a structured object
+  const schema = Schema.parseJson(
+    Schema.Struct({
+      a: Schema.parseJson(Schema.NumberFromString), // Nested parsing from JSON string to number
+    }),
+  );
+
+  console.log(JSONSchema.make(schema));
+  /*
+  {
+    '$schema': 'http://json-schema.org/draft-07/schema#',
+    type: 'object',
+    required: [ 'a' ],
+    properties: { a: { type: 'string', description: 'a string', title: 'string' } },
+    additionalProperties: false
+  }
+  */
+  ```
+
+- Updated dependencies [[`72638e3`](https://github.com/Effect-TS/effect/commit/72638e3d99f0e93a24febf6c225256ce92d4a20b), [`d7dde2b`](https://github.com/Effect-TS/effect/commit/d7dde2b4af08b37af859d4c327c1f5c6f00cf9d9), [`9b2fc3b`](https://github.com/Effect-TS/effect/commit/9b2fc3b9dfd304a2bd0508ef2313cfc54357be0c)]:
+  - effect@3.4.4
+
 ## 0.68.10
 
 ### Patch Changes
