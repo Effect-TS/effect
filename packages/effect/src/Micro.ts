@@ -1659,9 +1659,7 @@ export const zip: {
   self: Micro<A, E, R>,
   that: Micro<A2, E2, R2>,
   options?: { readonly concurrent?: boolean | undefined }
-): Micro<[A, A2], E | E2, R | R2> => {
-  return zipWith(self, that, (a, a2) => [a, a2], options)
-})
+): Micro<[A, A2], E | E2, R | R2> => zipWith(self, that, (a, a2) => [a, a2], options))
 
 /**
  * The `Micro.zipWith` function combines two `Micro` effects and allows you to
@@ -1689,11 +1687,13 @@ export const zipWith: {
   that: Micro<A2, E2, R2>,
   f: (a: A, b: A2) => B,
   options?: { readonly concurrent?: boolean | undefined }
-): Micro<B, E2 | E, R2 | R> =>
-  map(
-    all([self, that], { concurrency: options?.concurrent ? 2 : 1 }),
-    ([a, a2]) => f(a, a2)
-  ))
+): Micro<B, E2 | E, R2 | R> => {
+  if (options?.concurrent) {
+    // Use `all` exclusively for concurrent cases, as it introduces additional overhead due to the management of concurrency
+    return map(all([self, that], { concurrency: "unbounded" }), ([a, a2]) => f(a, a2))
+  }
+  return flatMap(self, (a) => map(that, (a2) => f(a, a2)))
+})
 
 // ----------------------------------------------------------------------------
 // filtering & conditionals
