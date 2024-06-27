@@ -21,6 +21,10 @@ export type BuiltInOptions =
   | ShowWizard
   | ShowVersion
 
+/**
+ * @since 1.0.0
+ * @category models
+ */
 export interface SetLogLevel {
   readonly _tag: "SetLogLevel"
   readonly level: LogLevel
