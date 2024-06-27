@@ -1367,9 +1367,10 @@ export const helpRequestedError = <A>(
   const op = Object.create(InternalValidationError.proto)
   op._tag = "HelpRequested"
   op.error = InternalHelpDoc.empty
-  op.showHelp = InternalBuiltInOptions.showHelp(
-    getUsageInternal(command as Instruction),
-    getHelpInternal(command as Instruction, InternalCliConfig.defaultConfig)
-  )
+  op.command = command
+  // op.showHelp = InternalBuiltInOptions.showHelp(
+  //   getUsageInternal(command as Instruction),
+  //   getHelpInternal(command as Instruction, config)
+  // )
   return op
 }
