@@ -1368,9 +1368,5 @@ export const helpRequestedError = <A>(
   op._tag = "HelpRequested"
   op.error = InternalHelpDoc.empty
   op.command = command
-  // op.showHelp = InternalBuiltInOptions.showHelp(
-  //   getUsageInternal(command as Instruction),
-  //   getHelpInternal(command as Instruction, config)
-  // )
   return op
 }

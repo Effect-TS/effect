@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-// import type { BuiltInOptions } from "./BuiltInOptions.js"
 import type { Command } from "./CommandDescriptor.js"
 import type { HelpDoc } from "./HelpDoc.js"
 import type { CommandDescriptor } from "./index.js"
@@ -63,7 +62,6 @@ export interface HelpRequested extends ValidationError.Proto {
   readonly _tag: "HelpRequested"
   readonly error: HelpDoc
   readonly command: CommandDescriptor.Command<unknown>
-  // readonly showHelp: BuiltInOptions
 }
 
 /**
