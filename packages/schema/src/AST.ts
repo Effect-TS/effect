@@ -2411,9 +2411,28 @@ export const typeAST = (ast: AST): AST => {
 }
 
 /** @internal */
+export const preserveAnnotations =
+  (annotationIds: ReadonlyArray<symbol>) => (annotated: Annotated): Annotations | undefined => {
+    let out: { [_: symbol]: unknown } | undefined = undefined
+    for (const id of annotationIds) {
+      if (Object.prototype.hasOwnProperty.call(annotated.annotations, id)) {
+        if (out === undefined) {
+          out = {}
+        }
+        out[id] = annotated.annotations[id]
+      }
+    }
+    return out
+  }
+
+/** @internal */
 export const getJSONIdentifier = (annotated: Annotated) =>
   Option.orElse(getJSONIdentifierAnnotation(annotated), () => getIdentifierAnnotation(annotated))
 
+// To generate a JSON Schema from a recursive schema, an `identifier` annotation
+// is required. So, when we calculate the encodedAST, we need to preserve the
+// annotation in the form of an internal custom annotation that acts as a
+// surrogate for the identifier, which the JSON Schema compiler can then read.
 const createJSONIdentifierAnnotation = (annotated: Annotated): Annotations | undefined =>
   Option.match(getJSONIdentifier(annotated), {
     onNone: () => undefined,
@@ -2509,6 +2528,7 @@ const encodedAST_ = (ast: AST, isBound: boolean): AST => {
  * @since 0.67.0
  */
 export const encodedAST = (ast: AST): AST => encodedAST_(ast, false)
+
 /**
  * @since 0.67.0
  */

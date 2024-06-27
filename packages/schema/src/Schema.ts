@@ -2915,18 +2915,10 @@ const intersectTypeLiterals = (
   throw new Error(errors_.getSchemaExtendErrorMessage(x, y, path))
 }
 
+const preserveRefinementAnnotations = AST.preserveAnnotations([AST.MessageAnnotationId, AST.JSONSchemaAnnotationId])
+
 const addRefinementToMembers = (refinement: AST.Refinement, asts: ReadonlyArray<AST.AST>): Array<AST.Refinement> =>
-  asts.map((ast) =>
-    new AST.Refinement(
-      ast,
-      refinement.filter,
-      // preserve message annotation
-      option_.match(AST.getMessageAnnotation(refinement), {
-        onNone: () => undefined,
-        onSome: (message) => ({ [AST.MessageAnnotationId]: message })
-      })
-    )
-  )
+  asts.map((ast) => new AST.Refinement(ast, refinement.filter, preserveRefinementAnnotations(refinement)))
 
 const extendAST = (
   x: AST.AST,
