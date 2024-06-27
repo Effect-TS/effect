@@ -35,6 +35,9 @@ Micro: renaming to align with `Effect` module:
   - `delayWithMax` -> `scheduleWithMax`
   - `delayWithMaxElapsed` -> `scheduleWithMaxElapsed`
   - `delayWithRecurs` -> `scheduleRecurs`
+- `Handle`
+  - `abort` -> `interrupt`
+  - `unsafeAbort` -> `unsafeInterrupt`
 - `provideServiceMicro` -> `provideServiceEffect`
 - `fromResult` -> `fromExit`
 - `fromResultSync` -> `fromExitSync`

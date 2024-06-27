@@ -3538,8 +3538,8 @@ export interface Handle<A, E = never> {
   readonly [HandleTypeId]: HandleTypeId
   readonly await: Micro<MicroExit<A, E>>
   readonly join: Micro<A, E>
-  readonly abort: Micro<MicroExit<A, E>>
-  readonly unsafeAbort: () => void
+  readonly interrupt: Micro<MicroExit<A, E>>
+  readonly unsafeInterrupt: () => void
   readonly addObserver: (observer: (exit: MicroExit<A, E>) => void) => void
   readonly removeObserver: (observer: (exit: MicroExit<A, E>) => void) => void
   readonly unsafePoll: () => MicroExit<A, E> | null
@@ -3566,7 +3566,7 @@ class HandleImpl<A, E> implements Handle<A, E> {
     this.isRoot = controller !== undefined
     this._controller = controller ?? new AbortController()
     if (!this.isRoot) {
-      parentSignal.addEventListener("abort", this.unsafeAbort)
+      parentSignal.addEventListener("abort", this.unsafeInterrupt)
     }
   }
 
@@ -3574,7 +3574,7 @@ class HandleImpl<A, E> implements Handle<A, E> {
     return this._exit ?? null
   }
 
-  unsafeAbort = () => {
+  unsafeInterrupt = () => {
     this._controller.abort()
   }
 
@@ -3584,7 +3584,7 @@ class HandleImpl<A, E> implements Handle<A, E> {
     }
     this._exit = exit
     if (!this.isRoot) {
-      this.parentSignal.removeEventListener("abort", this.unsafeAbort)
+      this.parentSignal.removeEventListener("abort", this.unsafeInterrupt)
     }
     this.observers.forEach((observer) => observer(exit))
     this.observers.clear()
@@ -3622,9 +3622,9 @@ class HandleImpl<A, E> implements Handle<A, E> {
     return flatMap(this.await, fromExit)
   }
 
-  get abort(): Micro<MicroExit<A, E>> {
+  get interrupt(): Micro<MicroExit<A, E>> {
     return suspend(() => {
-      this.unsafeAbort()
+      this.unsafeInterrupt()
       return this.await
     })
   }
@@ -3704,7 +3704,7 @@ export const forkIn: {
       flatMap(scope.fork, (scope) =>
         tap(
           restore(forkDaemon(onExit(self, (exit) => scope.close(exit)))),
-          (fiber) => scope.addFinalizer((_) => asVoid(fiber.abort))
+          (fiber) => scope.addFinalizer((_) => asVoid(fiber.interrupt))
         ))
     )
 )
@@ -3763,14 +3763,14 @@ export const runFork = <A, E>(
   effect[runSymbol](envSet(env, currentAbortSignal, handle._controller.signal), (exit) => {
     handle.emit(exit)
     if (options?.signal) {
-      options.signal.removeEventListener("abort", handle.unsafeAbort)
+      options.signal.removeEventListener("abort", handle.unsafeInterrupt)
     }
   })
   if (options?.signal) {
     if (options.signal.aborted) {
-      handle.unsafeAbort()
+      handle.unsafeInterrupt()
     } else {
-      options.signal.addEventListener("abort", handle.unsafeAbort, { once: true })
+      options.signal.addEventListener("abort", handle.unsafeInterrupt, { once: true })
     }
   }
   return handle

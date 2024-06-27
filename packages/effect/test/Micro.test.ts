@@ -30,7 +30,7 @@ describe.concurrent("Micro", () => {
     assert.strictEqual(result, 1)
   })
 
-  it("acquireUseRelease abort", async () => {
+  it("acquireUseRelease interrupt", async () => {
     let acquire = false
     let use = false
     let release = false
@@ -49,7 +49,7 @@ describe.concurrent("Micro", () => {
           release = true
         })
     ).pipe(Micro.runFork)
-    handle.unsafeAbort()
+    handle.unsafeInterrupt()
     const result = await Micro.runPromise(handle.await)
     assert.deepStrictEqual(result, Micro.ExitInterrupt)
     assert.isTrue(acquire)
@@ -77,7 +77,7 @@ describe.concurrent("Micro", () => {
           release = true
         })
     ).pipe(Micro.uninterruptible, Micro.runFork)
-    handle.unsafeAbort()
+    handle.unsafeInterrupt()
     const result = await Micro.runPromise(handle.await)
     assert.deepStrictEqual(result, Either.right(123))
     assert.isTrue(acquire)
@@ -182,7 +182,7 @@ describe.concurrent("Micro", () => {
             return i
           }).pipe(Micro.delay(50))).pipe(Micro.fork)
         yield* Micro.sleep(125)
-        yield* handle.abort
+        yield* handle.interrupt
         const result = yield* handle.await
         assert.deepStrictEqual(result, Micro.ExitInterrupt)
         assert.deepStrictEqual(done, [1, 2])
@@ -197,7 +197,7 @@ describe.concurrent("Micro", () => {
             return i
           }).pipe(Micro.delay(50)), { concurrency: "unbounded" }).pipe(Micro.fork)
         yield* Micro.sleep(25)
-        yield* handle.abort
+        yield* handle.interrupt
         const result = yield* handle.await
         assert.deepStrictEqual(result, Micro.ExitInterrupt)
         assert.deepStrictEqual(done, [])
@@ -212,7 +212,7 @@ describe.concurrent("Micro", () => {
             return i
           }).pipe(Micro.delay(50)), { concurrency: 2 }).pipe(Micro.fork)
         yield* Micro.sleep(75)
-        yield* handle.abort
+        yield* handle.interrupt
         const result = yield* handle.await
         assert.deepStrictEqual(result, Micro.ExitInterrupt)
         assert.deepStrictEqual(done, [1, 2])
@@ -305,7 +305,7 @@ describe.concurrent("Micro", () => {
   })
 
   describe("acquireRelease", () => {
-    it("releases on abort", () =>
+    it("releases on interrupt", () =>
       Micro.gen(function*() {
         let release = false
         const handle = yield* Micro.acquireRelease(
@@ -316,7 +316,7 @@ describe.concurrent("Micro", () => {
             })
         ).pipe(Micro.scoped, Micro.fork)
         yield* Micro.yieldFlush
-        handle.unsafeAbort()
+        handle.unsafeInterrupt()
         yield* handle.await
         assert.strictEqual(release, true)
       }).pipe(Micro.runPromise))
@@ -599,14 +599,14 @@ describe.concurrent("Micro", () => {
     it.effect("sync forever is interruptible", () =>
       Micro.gen(function*() {
         const fiber = yield* pipe(Micro.succeed(1), Micro.forever, Micro.fork)
-        const result = yield* fiber.abort
+        const result = yield* fiber.interrupt
         assert.deepStrictEqual(result, Micro.ExitInterrupt)
       }))
 
     it.effect("interrupt of never is interrupted with cause", () =>
       Micro.gen(function*() {
         const fiber = yield* Micro.fork(Micro.never)
-        const result = yield* fiber.abort
+        const result = yield* fiber.interrupt
         assert.deepStrictEqual(result, Micro.ExitInterrupt)
       }))
 
@@ -626,7 +626,7 @@ describe.concurrent("Micro", () => {
           Micro.fork
         )
         yield* Micro.yieldFlush
-        yield* handle.abort
+        yield* handle.interrupt
         assert.isFalse(catchFailure)
         assert.isTrue(ensuring)
       }))
@@ -646,7 +646,7 @@ describe.concurrent("Micro", () => {
           Micro.fork
         )
         yield* Micro.yieldFlush
-        yield* fiber.abort
+        yield* fiber.interrupt
         assert.isTrue(recovered)
       }))
 
@@ -668,7 +668,7 @@ describe.concurrent("Micro", () => {
           Micro.uninterruptible,
           Micro.fork
         )
-        yield* fiber.abort
+        yield* fiber.interrupt
         assert.strictEqual(counter, 2)
       }))
 
@@ -689,7 +689,7 @@ describe.concurrent("Micro", () => {
           Micro.fork
         )
         yield* Micro.yieldFlush
-        yield* fiber.abort
+        yield* fiber.interrupt
         assert.isTrue(ref)
       }))
 
@@ -704,7 +704,7 @@ describe.concurrent("Micro", () => {
           Micro.fork
         )
         yield* Micro.yieldFlush
-        yield* fiber.abort
+        yield* fiber.interrupt
         assert.isTrue(ref)
       }))
 
@@ -719,7 +719,7 @@ describe.concurrent("Micro", () => {
         )
         const fiber = yield* child.pipe(Micro.uninterruptible, Micro.fork)
         yield* Micro.yieldFlush
-        yield* fiber.abort
+        yield* fiber.interrupt
         assert.isTrue(ref)
       }))
 
@@ -730,13 +730,13 @@ describe.concurrent("Micro", () => {
           signal = signal_
         }).pipe(Micro.fork)
         yield* Micro.yieldFlush
-        yield* fiber.abort
+        yield* fiber.interrupt
         assert.strictEqual(signal!.aborted, true)
       }))
   })
 
   describe("fork", () => {
-    it.effect("is aborted with parent", () =>
+    it.effect("is interrupted with parent", () =>
       Micro.gen(function*() {
         let child = false
         let parent = false
@@ -752,14 +752,14 @@ describe.concurrent("Micro", () => {
           Micro.fork
         )
         yield* Micro.yieldFlush
-        yield* handle.abort
+        yield* handle.interrupt
         assert.isTrue(child)
         assert.isTrue(parent)
       }))
   })
 
   describe("forkDaemon", () => {
-    it.effect("is not aborted with parent", () =>
+    it.effect("is not interrupted with parent", () =>
       Micro.gen(function*() {
         let child = false
         let parent = false
@@ -775,44 +775,44 @@ describe.concurrent("Micro", () => {
           Micro.fork
         )
         yield* Micro.yieldFlush
-        yield* handle.abort
+        yield* handle.interrupt
         assert.isFalse(child)
         assert.isTrue(parent)
       }))
   })
 
   describe("forkIn", () => {
-    it.effect("is aborted when scope is closed", () =>
+    it.effect("is interrupted when scope is closed", () =>
       Micro.gen(function*() {
-        let aborted = false
+        let interrupted = false
         const scope = yield* Micro.scopeMake
         yield* Micro.never.pipe(
           Micro.onInterrupt(Micro.sync(() => {
-            aborted = true
+            interrupted = true
           })),
           Micro.forkIn(scope)
         )
         yield* Micro.yieldFlush
         yield* scope.close(Micro.exitVoid)
-        assert.isTrue(aborted)
+        assert.isTrue(interrupted)
       }))
   })
 
   describe("forkScoped", () => {
-    it.effect("is aborted when scope is closed", () =>
+    it.effect("is interrupted when scope is closed", () =>
       Micro.gen(function*() {
-        let aborted = false
+        let interrupted = false
         const scope = yield* Micro.scopeMake
         yield* Micro.never.pipe(
           Micro.onInterrupt(Micro.sync(() => {
-            aborted = true
+            interrupted = true
           })),
           Micro.forkScoped,
           Micro.provideScope(scope)
         )
         yield* Micro.yieldFlush
         yield* scope.close(Micro.exitVoid)
-        assert.isTrue(aborted)
+        assert.isTrue(interrupted)
       }))
   })
 
