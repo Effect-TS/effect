@@ -1968,7 +1968,7 @@ export type MicroSchedule = (attempt: number, elapsed: number) => Option.Option<
  * @category scheduling
  */
 export const scheduleExponential = (baseMillis: number, factor = 2): MicroSchedule => (attempt) =>
-  Option.some(attempt ** factor * baseMillis)
+  Option.some(Math.pow(factor, attempt) * baseMillis)
 
 /**
  * Create a `MicroSchedule` that will generate a duration with fixed intervals.

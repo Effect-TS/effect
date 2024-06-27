@@ -1125,4 +1125,25 @@ describe.concurrent("Micro", () => {
         assert.deepStrictEqual(result, "e2")
       }))
   })
+
+  describe("schedules", () => {
+    const dryRun = (schedule: Micro.MicroSchedule, maxAttempt: number = 7): Array<number> => {
+      let attempt = 1
+      let elapsed = 0
+      let result = schedule(attempt, elapsed)
+      const out: Array<number> = []
+      while (result._tag === "Some" && attempt <= maxAttempt) {
+        attempt++
+        elapsed += result.value
+        out.push(elapsed)
+        result = schedule(attempt, elapsed)
+      }
+      return out
+    }
+
+    it("scheduleExponential", () => {
+      const out = dryRun(Micro.scheduleExponential(10))
+      assert.deepStrictEqual(out, [20, 60, 140, 300, 620, 1260, 2540])
+    })
+  })
 })
