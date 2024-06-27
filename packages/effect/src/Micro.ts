@@ -149,14 +149,14 @@ export interface MicroIterator<T extends Micro<any, any, any>> {
 // ----------------------------------------------------------------------------
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroCause
  */
 export const MicroCauseTypeId = Symbol.for("effect/Micro/MicroCause")
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroCause
  */
@@ -165,20 +165,20 @@ export type MicroCauseTypeId = typeof MicroCauseTypeId
 /**
  * A Micro Cause is a data type that represents the different ways a Micro can fail.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroCause
  */
 export type MicroCause<E> = MicroCause.Die | MicroCause.Fail<E> | MicroCause.Interrupt
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroCause
  */
 export declare namespace MicroCause {
   /**
-   * @since 3.4.5
+   * @since 3.4.6
    * @experimental
    */
   export type Error<T> = T extends MicroCause.Fail<infer E> ? E : never
@@ -196,7 +196,7 @@ export declare namespace MicroCause {
   }
 
   /**
-   * @since 3.4.5
+   * @since 3.4.6
    * @experimental
    * @category MicroCause
    */
@@ -205,7 +205,7 @@ export declare namespace MicroCause {
   }
 
   /**
-   * @since 3.4.5
+   * @since 3.4.6
    * @experimental
    * @category MicroCause
    */
@@ -214,7 +214,7 @@ export declare namespace MicroCause {
   }
 
   /**
-   * @since 3.4.5
+   * @since 3.4.6
    * @experimental
    * @category MicroCause
    */
@@ -276,7 +276,7 @@ class FailImpl<E> extends MicroCauseImpl<"Fail", E> implements MicroCause.Fail<E
 }
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroCause
  */
@@ -289,7 +289,7 @@ class DieImpl extends MicroCauseImpl<"Die", never> implements MicroCause.Die {
 }
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroCause
  */
@@ -303,35 +303,35 @@ class InterruptImpl extends MicroCauseImpl<"Interrupt", never> implements MicroC
 }
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroCause
  */
 export const CauseInterrupt = (traces: ReadonlyArray<string> = []): MicroCause<never> => new InterruptImpl(traces)
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroCause
  */
 export const causeIsFail = <E>(self: MicroCause<E>): self is MicroCause.Fail<E> => self._tag === "Fail"
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroCause
  */
 export const causeIsDie = <E>(self: MicroCause<E>): self is MicroCause.Die => self._tag === "Die"
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroCause
  */
 export const causeIsInterrupt = <E>(self: MicroCause<E>): self is MicroCause.Interrupt => self._tag === "Interrupt"
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroCause
  */
@@ -339,7 +339,7 @@ export const causeSquash = <E>(self: MicroCause<E>): unknown =>
   self._tag === "Fail" ? self.error : self._tag === "Die" ? self.defect : self
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroCause
  */
@@ -360,20 +360,20 @@ export const causeWithTrace: {
 // ----------------------------------------------------------------------------
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroExit
  */
 export declare namespace MicroExit {
   /**
-   * @since 3.4.5
+   * @since 3.4.6
    * @experimental
    * @category MicroExit
    */
   export type Success<A, E = never> = Either.Right<MicroCause<E>, A>
 
   /**
-   * @since 3.4.5
+   * @since 3.4.6
    * @experimental
    * @category MicroExit
    */
@@ -386,63 +386,63 @@ export declare namespace MicroExit {
  *
  * It uses the `Either` data type to represent the success and failure cases.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroExit
  */
 export type MicroExit<A, E = never> = MicroExit.Success<A, E> | MicroExit.Failure<A, E>
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroExit
  */
 export const ExitInterrupt: MicroExit<never> = Either.left(CauseInterrupt())
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroExit
  */
 export const ExitSucceed: <A>(a: A) => MicroExit<A, never> = Either.right
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroExit
  */
 export const ExitFail = <E>(e: E): MicroExit<never, E> => Either.left(CauseFail(e))
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroExit
  */
 export const ExitDie = (defect: unknown): MicroExit<never> => Either.left(CauseDie(defect))
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroExit
  */
 export const ExitFailCause: <E>(cause: MicroCause<E>) => MicroExit<never, E> = Either.left
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroExit
  */
 export const exitIsSuccess: <A, E>(self: MicroExit<A, E>) => self is MicroExit.Success<A, E> = Either.isRight
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroExit
  */
 export const exitIsFailure: <A, E>(self: MicroExit<A, E>) => self is MicroExit.Failure<A, E> = Either.isLeft
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroExit
  */
@@ -450,7 +450,7 @@ export const exitIsInterrupt = <A, E>(self: MicroExit<A, E>): self is Either.Lef
   exitIsFailure(self) && self.left._tag === "Interrupt"
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroExit
  */
@@ -458,7 +458,7 @@ export const exitIsFail = <A, E>(self: MicroExit<A, E>): self is Either.Left<Mic
   exitIsFailure(self) && self.left._tag === "Fail"
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroExit
  */
@@ -466,7 +466,7 @@ export const exitIsDie = <A, E>(self: MicroExit<A, E>): self is Either.Left<Micr
   exitIsFailure(self) && self.left._tag === "Die"
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category MicroExit
  */
@@ -707,7 +707,7 @@ export const provideService: {
  * Create a service using the provided `Micro` effect, and add it to the
  * current context.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category environment
  */
@@ -904,7 +904,7 @@ export const make = <R, A, E>(
 /**
  * Converts a `MicroExit` into a `Micro` effect.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category constructors
  */
@@ -916,7 +916,7 @@ export const fromExit = <A, E>(self: MicroExit<A, E>): Micro<A, E> =>
 /**
  * Converts a lazy `MicroExit` into a `Micro` effect.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category constructors
  */
@@ -994,7 +994,7 @@ export const die = (defect: unknown): Micro<never> => fromExit(ExitDie(defect))
 /**
  * Creates a `Micro` effect that will fail with the specified `MicroCause`.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category constructors
  */
@@ -1003,7 +1003,7 @@ export const failCause = <E>(cause: MicroCause<E>): Micro<never, E> => fromExit(
 /**
  * Creates a `Micro` effect that will fail with the lazily evaluated `MicroCause`.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category constructors
  */
@@ -1529,7 +1529,7 @@ export const asVoid = <A, E, R>(self: Micro<A, E, R>): Micro<void, E, R> => map(
 /**
  * Access the `MicroExit` of the given `Micro` effect.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category mapping & sequencing
  */
@@ -1848,7 +1848,7 @@ export const when: {
  * The `while` predicate will be checked after each iteration, and can use the
  * fall `MicroExit` of the effect to determine if the repetition should continue.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category repetition
  */
@@ -1954,7 +1954,7 @@ export const forever = <A, E, R>(self: Micro<A, E, R>): Micro<never, E, R> => re
  * first attempt, and returns the delay for the next attempt. If the function
  * returns `None`, the repetition will stop.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category scheduling
  */
@@ -1963,7 +1963,7 @@ export type MicroSchedule = (attempt: number, elapsed: number) => Option.Option<
 /**
  * Create a `MicroSchedule` that will generate a duration with an exponential backoff.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category scheduling
  */
@@ -1973,7 +1973,7 @@ export const scheduleExponential = (baseMillis: number, factor = 2): MicroSchedu
 /**
  * Create a `MicroSchedule` that will generate a duration with fixed intervals.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category scheduling
  */
@@ -1983,7 +1983,7 @@ export const scheduleSpaced = (millis: number): MicroSchedule => (_) => Option.s
  * Transform a `MicroSchedule` to one that will have a duration that will never exceed
  * the specified maximum.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category scheduling
  */
@@ -2000,7 +2000,7 @@ export const scheduleWithMax: {
  * Transform a `MicroSchedule` to one that will stop repeating after the specified
  * amount of time.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category scheduling
  */
@@ -2017,7 +2017,7 @@ export const scheduleWithMaxElapsed: {
  * Transform a `MicroSchedule` to one that will stop repeating after the specified
  * number of attempts.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category scheduling
  */
@@ -2038,7 +2038,7 @@ export const scheduleRecurs: {
  * Catch the full `MicroCause` object of the given `Micro` effect, allowing you to
  * recover from any kind of cause.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category error handling
  */
@@ -2071,7 +2071,7 @@ export const catchAllCause: {
  * Selectively catch a `MicroCause` object of the given `Micro` effect,
  * using the provided predicate to determine if the failure should be caught.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category error handling
  */
@@ -2114,7 +2114,7 @@ export const catchCauseIf: {
  *
  * It only catches expected (`MicroCause.Fail`) errors.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category error handling
  */
@@ -2134,7 +2134,7 @@ export const catchAll: {
 /**
  * Catch any unexpected errors of the given `Micro` effect, allowing you to recover from them.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category error handling
  */
@@ -2152,7 +2152,7 @@ export const catchAllDefect: {
 /**
  * Perform a side effect using the full `MicroCause` object of the given `Micro`.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category error handling
  */
@@ -2211,7 +2211,7 @@ export const tapErrorCauseIf: {
 /**
  * Perform a side effect from expected errors of the given `Micro`.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category error handling
  */
@@ -2229,7 +2229,7 @@ export const tapError: {
 /**
  * Perform a side effect from unexpected errors of the given `Micro`.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category error handling
  */
@@ -2311,7 +2311,7 @@ export const catchTag: {
 /**
  * Transform the full `MicroCause` object of the given `Micro` effect.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category error handling
  */
@@ -2494,7 +2494,7 @@ export const withTrace: {
 // ----------------------------------------------------------------------------
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category pattern matching
  */
@@ -2534,7 +2534,7 @@ export const matchCauseEffect: {
 )
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category pattern matching
  */
@@ -2568,7 +2568,7 @@ export const matchCause: {
 )
 
 /**
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category pattern matching
  */
@@ -2943,7 +2943,7 @@ export const addFinalizer = (
  * When the `Micro` effect is completed, run the given finalizer effect with the
  * `MicroExit` of the executed effect.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category resources & finalization
  */
@@ -2964,7 +2964,7 @@ export const onExit: {
  * When the `Micro` effect is completed, run the given finalizer effect if it
  * matches the specified predicate.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category resources & finalization
  */
@@ -3033,7 +3033,7 @@ export const ensuring: {
  * When the `Micro` effect fails, run the given finalizer effect with the
  * `MicroCause` of the executed effect.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category resources & finalization
  */
@@ -3056,7 +3056,7 @@ export const onError: {
 /**
  * If this `Micro` effect is aborted, run the finalizer effect.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category resources & finalization
  */
@@ -3102,7 +3102,7 @@ export const acquireUseRelease = <Resource, E, R, A, E2, R2, E3, R3>(
 /**
  * Abort the current `Micro` effect.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category interruption
  */
@@ -3780,7 +3780,7 @@ export const runFork = <A, E>(
  * Execute the `Micro` effect and return a `Promise` that resolves with the
  * `MicroExit` of the computation.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category execution
  */
@@ -3822,7 +3822,7 @@ export const runPromise = <A, E>(
  * If any asynchronous effects are encountered, the function will return a
  * `CauseDie` containing the `Handle`.
  *
- * @since 3.4.5
+ * @since 3.4.6
  * @experimental
  * @category execution
  */
