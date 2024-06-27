@@ -140,7 +140,7 @@ export const typeTags: <I>() => <
  */
 export const withReturnType: <Ret>() => <I, F, R, A, Pr, _>(
   self: Matcher<I, F, R, A, Pr, _>
-) => Ret extends ([A] extends [never] ? any : A) ? Matcher<I, F, R, A, Pr, Ret>
+) => [Ret] extends [[A] extends [never] ? any : A] ? Matcher<I, F, R, A, Pr, Ret>
   : "withReturnType constraint does not extend Result type" = internal.withReturnType
 
 /**
@@ -496,11 +496,11 @@ export const instanceOfUnsafe: <A extends abstract new(...args: any) => any>(
  * @category conversions
  * @since 1.0.0
  */
-export const orElse: <RA, Ret, B extends Ret>(
-  f: (b: RA) => B
+export const orElse: <RA, Ret, F extends (_: RA) => Ret>(
+  f: F
 ) => <I, R, A, Pr>(
   self: Matcher<I, R, RA, A, Pr, Ret>
-) => [Pr] extends [never] ? (input: I) => Unify<B | A> : Unify<B | A> = internal.orElse
+) => [Pr] extends [never] ? (input: I) => Unify<ReturnType<F> | A> : Unify<ReturnType<F> | A> = internal.orElse
 
 /**
  * @category conversions
