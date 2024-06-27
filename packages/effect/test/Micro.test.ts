@@ -358,13 +358,13 @@ describe.concurrent("Micro", () => {
 
   describe("valid Effect", () => {
     it.effect("success", () =>
-      Effect.gen(function*(_) {
+      Effect.gen(function*() {
         const result = yield* Micro.succeed(123)
         assert.strictEqual(result, 123)
       }))
 
     it.effect("failure", () =>
-      Effect.gen(function*(_) {
+      Effect.gen(function*() {
         const result = yield* Micro.fail("boom").pipe(
           Effect.sandbox,
           Effect.flip
@@ -373,7 +373,7 @@ describe.concurrent("Micro", () => {
       }))
 
     it.effect("defects", () =>
-      Effect.gen(function*(_) {
+      Effect.gen(function*() {
         const result = yield* Micro.die("boom").pipe(
           Effect.sandbox,
           Effect.flip
@@ -382,7 +382,7 @@ describe.concurrent("Micro", () => {
       }))
 
     it.effect("context", () =>
-      Effect.gen(function*(_) {
+      Effect.gen(function*() {
         const result = yield* ATag.pipe(
           Micro.service,
           Micro.map((_) => _)
@@ -391,7 +391,7 @@ describe.concurrent("Micro", () => {
       }).pipe(Effect.provideService(ATag, "A")))
 
     it.effect("interruption", () =>
-      Effect.gen(function*(_) {
+      Effect.gen(function*() {
         const fiber = yield* Micro.never.pipe(
           Effect.fork
         )
