@@ -143,7 +143,7 @@ export const getPods: Effect.Effect<HashSet.HashSet<PodAddress.PodAddress>, neve
 export const sendMessageToLocalEntityManagerWithoutRetries: (
   message: SerializedEnvelope.SerializedEnvelope
 ) => Effect.Effect<
-  MessageState.MessageState<SerializedMessage.SerializedMessage>,
+  MessageState.MessageState.FromMessage<SerializedMessage.SerializedMessage>,
   ShardingException.ShardingException,
   Sharding.Sharding
 > = (message) => Effect.flatMap(shardingTag, (_) => _.sendMessageToLocalEntityManagerWithoutRetries(message))
@@ -423,7 +423,7 @@ function make(
   function sendMessageToLocalEntityManagerWithoutRetries(
     envelope: SerializedEnvelope.SerializedEnvelope
   ): Effect.Effect<
-    MessageState.MessageState<SerializedMessage.SerializedMessage>,
+    MessageState.MessageState.FromMessage<SerializedMessage.SerializedMessage>,
     ShardingException.ShardingException
   > {
     return pipe(
@@ -437,7 +437,7 @@ function make(
     pod: PodAddress.PodAddress,
     envelope: SerializedEnvelope.SerializedEnvelope
   ): Effect.Effect<
-    MessageState.MessageState<SerializedMessage.SerializedMessage>,
+    MessageState.MessageState.FromMessage<SerializedMessage.SerializedMessage>,
     ShardingException.ShardingException
   > {
     return pipe(
@@ -477,7 +477,7 @@ function make(
     pod: PodAddress.PodAddress,
     envelope: SerializedEnvelope.SerializedEnvelope
   ): Effect.Effect<
-    MessageState.MessageState<SerializedMessage.SerializedMessage>,
+    MessageState.MessageState.FromMessage<SerializedMessage.SerializedMessage>,
     ShardingException.ShardingException
   > {
     return equals(pod, address)
@@ -526,7 +526,7 @@ function make(
       entityId: string,
       message: A
     ): Effect.Effect<
-      MessageState.MessageState<SerializedMessage.SerializedMessage>,
+      MessageState.MessageState.FromMessage<SerializedMessage.SerializedMessage>,
       ShardingException.ShardingException
     > {
       const recipientAddress = RecipientAddress.makeRecipientAddress(entityType.name, entityId)
@@ -573,7 +573,7 @@ function make(
       HashMap.HashMap<
         PodAddress.PodAddress,
         Either.Either<
-          MessageState.MessageState<SerializedMessage.SerializedMessage>,
+          MessageState.MessageState.FromMessage<SerializedMessage.SerializedMessage>,
           ShardingException.ShardingException
         >
       >,

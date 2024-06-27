@@ -26,7 +26,7 @@ export interface EntityState {
   readonly sendAndGetState: (
     envelope: SerializedEnvelope.SerializedEnvelope
   ) => Effect.Effect<
-    MessageState.MessageState<SerializedMessage.SerializedMessage>,
+    MessageState.MessageState.FromMessage<SerializedMessage.SerializedMessage>,
     ShardingException.ExceptionWhileOfferingMessageException | ShardingException.SerializationException
   >
   readonly expirationFiber: Fiber.RuntimeFiber<void, never>

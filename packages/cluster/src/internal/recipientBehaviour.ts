@@ -17,7 +17,7 @@ export function fromFunctionEffect<Msg extends Message.Message.Any, R>(
   handler: (
     entityId: string,
     message: Msg
-  ) => Effect.Effect<MessageState.MessageState<Message.Message.Exit<Msg>>, never, R>
+  ) => Effect.Effect<MessageState.MessageState.FromMessage<Msg>, never, R>
 ): RecipientBehaviour.RecipientBehaviour<Msg, R> {
   return Effect.flatMap(RecipientBehaviourContext.entityId, (entityId) =>
     pipe(
@@ -38,7 +38,7 @@ export function fromFunctionEffectStateful<S, R, Msg extends Message.Message.Any
     entityId: string,
     message: Msg,
     stateRef: Ref.Ref<S>
-  ) => Effect.Effect<MessageState.MessageState<Message.Message.Exit<Msg>>, never, R2>
+  ) => Effect.Effect<MessageState.MessageState.FromMessage<Msg>, never, R2>
 ): RecipientBehaviour.RecipientBehaviour<Msg, R | R2> {
   return Effect.flatMap(RecipientBehaviourContext.entityId, (entityId) =>
     pipe(
@@ -65,15 +65,15 @@ export function fromInMemoryQueue<Msg extends Message.Message.Any, R>(
     dequeue: Queue.Dequeue<Msg | PoisonPill.PoisonPill>,
     processed: <A extends Msg>(
       message: A,
-      value: Option.Option<Message.Message.Exit<A>>
+      value: Message.Message.Exit<A>
     ) => Effect.Effect<void>
   ) => Effect.Effect<void, never, R>
 ): RecipientBehaviour.RecipientBehaviour<Msg, R> {
   return Effect.gen(function*(_) {
     const entityId = yield* _(RecipientBehaviourContext.entityId)
-    const messageStates = yield* _(Ref.make(HashMap.empty<string, MessageState.MessageState<any>>()))
+    const messageStates = yield* _(Ref.make(HashMap.empty<string, MessageState.MessageState<any, any>>()))
 
-    function updateMessageState(message: Msg, state: MessageState.MessageState<any>) {
+    function updateMessageState(message: Msg, state: MessageState.MessageState<any, any>) {
       return pipe(Ref.update(messageStates, HashMap.set(PrimaryKey.value(message), state)), Effect.as(state))
     }
 
@@ -84,7 +84,7 @@ export function fromInMemoryQueue<Msg extends Message.Message.Any, R>(
       )
     }
 
-    function reply<A extends Msg>(message: A, reply: Option.Option<Message.Message.Exit<A>>) {
+    function reply<A extends Msg>(message: A, reply: Message.Message.Exit<A>) {
       return updateMessageState(message, MessageState.Processed(reply))
     }
 

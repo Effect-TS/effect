@@ -43,7 +43,7 @@ export interface EntityManager {
   readonly sendAndGetState: (
     envelope: SerializedEnvelope.SerializedEnvelope
   ) => Effect.Effect<
-    MessageState.MessageState<SerializedMessage.SerializedMessage>,
+    MessageState.MessageState.FromMessage<SerializedMessage.SerializedMessage>,
     | ShardingException.EntityNotManagedByThisPodException
     | ShardingException.PodUnavailableException
     | ShardingException.ExceptionWhileOfferingMessageException
@@ -289,7 +289,7 @@ export function make<Msg extends Message.Message.Any, R>(
     function sendAndGetState(
       envelope: SerializedEnvelope.SerializedEnvelope
     ): Effect.Effect<
-      MessageState.MessageState<SerializedMessage.SerializedMessage>,
+      MessageState.MessageState.FromMessage<SerializedMessage.SerializedMessage>,
       | ShardingException.EntityNotManagedByThisPodException
       | ShardingException.PodUnavailableException
       | ShardingException.ExceptionWhileOfferingMessageException

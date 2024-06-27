@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import type * as Serialization from "../Serialization.js"
-import * as SerializedMessage from "../SerializedMessage.js"
+import * as SerializedValue from "../SerializedValue.js"
 import * as ShardingException from "../ShardingException.js"
 
 /** @internal */
@@ -52,7 +52,7 @@ export const json: Layer.Layer<Serialization.Serialization> = Layer.succeed(
     encode: (schema, message) =>
       pipe(
         jsonStringify(message, schema),
-        Effect.map(SerializedMessage.make)
+        Effect.map(SerializedValue.make)
       ),
     decode: (schema, body) => jsonParse(body.value, schema)
   })

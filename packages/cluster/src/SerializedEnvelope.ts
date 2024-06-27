@@ -38,7 +38,6 @@ export class SerializedEnvelope extends Schema.Class<SerializedEnvelope>(Seriali
     Schema.fromKey(SerializedEnvelopeSymbolKey)
   ),
   recipientAddress: RecipientAddress.RecipientAddress,
-  messageId: Schema.String,
   body: SerializedMessage.schema
 }) {
   get [Serializable.symbol]() {
@@ -48,7 +47,7 @@ export class SerializedEnvelope extends Schema.Class<SerializedEnvelope>(Seriali
     return { Success: Schema.Void, Failure: Schema.Never }
   }
   get [PrimaryKey.symbol]() {
-    return this.messageId + "@" + this.recipientAddress.recipientTypeName + "#" + this.recipientAddress.entityId
+    return this.body.messageId + "@" + this.recipientAddress.recipientTypeName + "#" + this.recipientAddress.entityId
   }
 }
 

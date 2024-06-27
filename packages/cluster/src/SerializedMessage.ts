@@ -2,7 +2,9 @@
  * @since 1.0.0
  */
 import * as Schema from "@effect/schema/Schema"
+import * as Message from "./Message.js"
 import { TypeIdSchema } from "./internal/utils.js"
+import * as SerializedValue from "./SerializedValue.js"
 
 /** @internal */
 const SerializedMessageSymbolKey = "@effect/cluster/SerializedMessage"
@@ -28,12 +30,13 @@ const SerializedMessageTypeIdSchema = TypeIdSchema(SerializedMessageSymbolKey, S
  * @since 1.0.0
  * @category models
  */
-export class SerializedMessage extends Schema.Class<SerializedMessage>(SerializedMessageSymbolKey)({
+export class SerializedMessage extends Message.TaggedMessage<SerializedMessage>()(SerializedMessageSymbolKey, SerializedValue.SerializedValue, SerializedValue.SerializedValue, {
   [SerializedMessageTypeId]: Schema.propertySignature(SerializedMessageTypeIdSchema).pipe(
     Schema.fromKey(SerializedMessageSymbolKey)
   ),
-  value: Schema.String
-}) {}
+  messageId: Schema.String,
+  value: SerializedValue.SerializedValue
+}, _ => _.messageId){}
 
 /**
  * @since 1.0.0
@@ -53,8 +56,8 @@ export namespace SerializedMessage {
  * @since 1.0.0
  * @category constructors
  */
-export function make(value: string): SerializedMessage {
-  return new SerializedMessage({ [SerializedMessageTypeId]: SerializedMessageTypeId, value })
+export function make(messageId: string, value: SerializedValue.SerializedValue): SerializedMessage {
+  return new SerializedMessage({ [SerializedMessageTypeId]: SerializedMessageTypeId, messageId, value })
 }
 
 /**

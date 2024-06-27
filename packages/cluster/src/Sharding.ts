@@ -72,7 +72,7 @@ export interface Sharding {
   readonly sendMessageToLocalEntityManagerWithoutRetries: (
     message: SerializedEnvelope.SerializedEnvelope
   ) => Effect.Effect<
-    MessageState.MessageState<SerializedMessage.SerializedMessage>,
+    MessageState.MessageState.FromMessage<SerializedMessage.SerializedMessage>,
     ShardingException.ShardingException
   >
   readonly getPods: Effect.Effect<HashSet.HashSet<PodAddress.PodAddress>>
@@ -199,7 +199,7 @@ export const getPods: Effect.Effect<HashSet.HashSet<PodAddress.PodAddress>, neve
 export const sendMessageToLocalEntityManagerWithoutRetries: (
   message: SerializedEnvelope.SerializedEnvelope
 ) => Effect.Effect<
-  MessageState.MessageState<SerializedMessage.SerializedMessage>,
+  MessageState.MessageState.FromMessage<SerializedMessage.SerializedMessage>,
   ShardingException.ShardingException,
   Sharding
 > = internal.sendMessageToLocalEntityManagerWithoutRetries

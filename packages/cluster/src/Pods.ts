@@ -71,7 +71,7 @@ export interface Pods {
     pod: PodAddress.PodAddress,
     envelope: SerializedEnvelope.SerializedEnvelope
   ) => Effect.Effect<
-    MessageState.MessageState<SerializedMessage.SerializedMessage>,
+    MessageState.MessageState.FromMessage<SerializedMessage.SerializedMessage>,
     ShardingException.ShardingException
   >
 }

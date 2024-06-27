@@ -30,12 +30,12 @@ import type * as ShardingException from "./ShardingException.js"
  * @since 1.0.0
  * @category models
  */
-export interface RecipientBehaviour<Msg, R> extends
+export interface RecipientBehaviour<Msg extends Message.Message.Any, R> extends
   Effect.Effect<
     <A extends Msg>(
       message: A
     ) => Effect.Effect<
-      MessageState.MessageState<Message.Message.Exit<A>>,
+      MessageState.MessageState.FromMessage<A>,
       ShardingException.ExceptionWhileOfferingMessageException
     >,
     never,
@@ -68,7 +68,7 @@ export const fromFunctionEffect: <Msg extends Message.Message.Any, R>(
   handler: (
     entityId: string,
     message: Msg
-  ) => Effect.Effect<MessageState.MessageState<Message.Message.Exit<Msg>>, never, R>
+  ) => Effect.Effect<MessageState.MessageState.FromMessage<Msg>, never, R>
 ) => RecipientBehaviour<Msg, R> = internal.fromFunctionEffect
 
 /**
@@ -85,7 +85,7 @@ export const fromFunctionEffectStateful: <S, R, Msg extends Message.Message.Any,
     entityId: string,
     message: Msg,
     stateRef: Ref.Ref<S>
-  ) => Effect.Effect<MessageState.MessageState<Message.Message.Exit<Msg>>, never, R2>
+  ) => Effect.Effect<MessageState.MessageState.FromMessage<Msg>, never, R2>
 ) => RecipientBehaviour<Msg, R | R2> = internal.fromFunctionEffectStateful
 
 /**

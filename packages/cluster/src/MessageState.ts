@@ -2,7 +2,8 @@
  * @since 1.0.0
  */
 import type * as Schema from "@effect/schema/Schema"
-import type * as Effect from "effect/Effect"
+import type * as Exit from "effect/Exit"
+import type * as Message from "./Message.js"
 import * as internal from "./internal/messageState.js"
 
 /**
@@ -37,10 +38,10 @@ export interface MessageStateAcknowledged {
  * @since 1.0.0
  * @category models
  */
-export interface MessageStateProcessed<A> {
+export interface MessageStateProcessed<A, E> {
   readonly [MessageStateTypeId]: MessageStateTypeId
   readonly _tag: "@effect/cluster/MessageState/Processed"
-  readonly result: A
+  readonly result: Exit.Exit<A, E>
 }
 
 /**
@@ -50,7 +51,7 @@ export interface MessageStateProcessed<A> {
  * @since 1.0.0
  * @category models
  */
-export type MessageState<A> = MessageStateAcknowledged | MessageStateProcessed<A>
+export type MessageState<A, E> = MessageStateAcknowledged | MessageStateProcessed<A, E>
 
 /**
  * @since 1.0.0
@@ -61,14 +62,19 @@ export namespace MessageState {
    * @since 1.0.0
    * @category models
    */
-  export type Encoded<I> = {
+  export type Encoded<IA, IE> = {
     readonly "@effect/cluster/MessageState": "@effect/cluster/MessageState"
     readonly _tag: "@effect/cluster/MessageState/Acknowledged"
   } | {
-    readonly result: I
+    readonly result: Schema.ExitEncoded<IA, IE>
     readonly "@effect/cluster/MessageState": "@effect/cluster/MessageState"
     readonly _tag: "@effect/cluster/MessageState/Processed"
   }
+    /**
+   * @since 1.0.0
+   * @category models
+   */
+    export type FromMessage<A extends Message.Message.Any> = MessageState<Message.Message.Success<A>, Message.Message.Error<A>>
 }
 
 /**
@@ -101,26 +107,16 @@ export const Acknowledged: MessageStateAcknowledged = internal.Acknowledged
  * @since 1.0.0
  * @category constructors
  */
-export const Processed: <A>(result: A) => MessageStateProcessed<A> = internal.Processed
-
-/**
- * Effectfully transform the <A> type of the MessageState<A>.
- *
- * @since 1.0.0
- * @category utils
- */
-export const mapEffect: <A, B, R, E>(
-  value: MessageState<A>,
-  fn: (value: A) => Effect.Effect<B, E, R>
-) => Effect.Effect<MessageState<B>, E, R> = internal.mapEffect
+export const Processed: <A, E>(result: Exit.Exit<A, E>) => MessageStateProcessed<A, E> = internal.Processed
 
 /**
  * @since 1.0.0
  * @category schema
  */
-export const schema: <A, I>(
-  result: Schema.Schema<A, I>
+export const schema: <A, IA, E, IE>(
+  success: Schema.Schema<A, IA>,
+  failure: Schema.Schema<E, IE>
 ) => Schema.Schema<
-  MessageState<A>,
-  MessageState.Encoded<I>
+  MessageState<A, E>,
+  MessageState.Encoded<IA, IE>
 > = internal.schema

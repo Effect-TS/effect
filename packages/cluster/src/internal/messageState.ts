@@ -1,6 +1,5 @@
 import * as Schema from "@effect/schema/Schema"
-import * as Effect from "effect/Effect"
-import { pipe } from "effect/Function"
+import * as Exit from "effect/Exit"
 import type * as MessageState from "../MessageState.js"
 
 /** @internal */
@@ -12,7 +11,7 @@ export const MessageStateTypeId: MessageState.MessageStateTypeId = Symbol.for(
 ) as MessageState.MessageStateTypeId
 
 /** @internal */
-export function isMessageState(value: unknown): value is MessageState.MessageState<unknown> {
+export function isMessageState(value: unknown): value is MessageState.MessageState<unknown, unknown> {
   return typeof value === "object" && value !== null && MessageStateTypeId in value
 }
 
@@ -23,7 +22,7 @@ export const Acknowledged: MessageState.MessageStateAcknowledged = {
 }
 
 /** @internal */
-export function Processed<A>(result: A): MessageState.MessageStateProcessed<A> {
+export function Processed<A, E>(result: Exit.Exit<A, E>): MessageState.MessageStateProcessed<A, E> {
   return ({
     [MessageStateTypeId]: MessageStateTypeId,
     _tag: "@effect/cluster/MessageState/Processed",
@@ -32,13 +31,13 @@ export function Processed<A>(result: A): MessageState.MessageStateProcessed<A> {
 }
 
 /** @internal */
-export function match<A, B, C = B>(
+export function match<A, E, B, C = B>(
   cases: {
     onAcknowledged: (value: MessageState.MessageStateAcknowledged) => B
-    onProcessed: (exit: MessageState.MessageStateProcessed<A>) => C
+    onProcessed: (exit: MessageState.MessageStateProcessed<A, E>) => C
   }
 ) {
-  return (value: MessageState.MessageState<A>) => {
+  return (value: MessageState.MessageState<A, E>) => {
     switch (value._tag) {
       case "@effect/cluster/MessageState/Acknowledged":
         return cases.onAcknowledged(value)
@@ -49,26 +48,12 @@ export function match<A, B, C = B>(
 }
 
 /** @internal */
-export function mapEffect<A, B, R, E>(
-  value: MessageState.MessageState<A>,
-  fn: (value: A) => Effect.Effect<B, E, R>
-): Effect.Effect<MessageState.MessageState<B>, E, R> {
-  return pipe(
-    value,
-    match({
-      onAcknowledged: Effect.succeed,
-      onProcessed: (_) =>
-        Effect.map(fn(_.result), (_) => Processed(_)) as Effect.Effect<MessageState.MessageState<B>, E, R>
-    })
-  )
-}
-
-/** @internal */
-export function schema<A, I>(
-  result: Schema.Schema<A, I>
+export function schema<A, IA, E, IE>(
+  success: Schema.Schema<A, IA>,
+  failure: Schema.Schema<E, IE>
 ): Schema.Schema<
-  MessageState.MessageState<A>,
-  MessageState.MessageState.Encoded<I>
+  MessageState.MessageState<A, E>,
+  MessageState.MessageState.Encoded<IA, IE>
 > {
   return Schema.Union(
     Schema.rename(
@@ -90,7 +75,7 @@ export function schema<A, I>(
           { strict: false }
         ),
         _tag: Schema.Literal("@effect/cluster/MessageState/Processed"),
-        result
+        result: Schema.Exit<Schema.Schema<A, IA, never>, Schema.Schema<E, IE, never>, never>({success, failure})
       }),
       { [MessageStateSymbolKey]: MessageStateTypeId }
     )
