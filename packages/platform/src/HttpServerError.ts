@@ -66,13 +66,16 @@ export const isServerError: (u: unknown) => u is HttpServerError = internal.isSe
 export class RouteNotFound extends TypeIdError(TypeId, "RouteNotFound")<{
   readonly request: ServerRequest.HttpServerRequest
 }> {
+  constructor(options: { request: ServerRequest.HttpServerRequest }) {
+    super(options)
+    ;(this as any).stack = `${this.name}: ${this.message}`
+  }
   /**
    * @since 1.0.0
    */
   [Respondable.symbol]() {
     return ServerResponse.empty({ status: 404 })
   }
-
   get message() {
     return `${this.request.method} ${this.request.url} not found`
   }
