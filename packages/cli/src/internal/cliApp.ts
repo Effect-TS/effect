@@ -15,6 +15,7 @@ import type * as CliConfig from "../CliConfig.js"
 import type * as Command from "../CommandDescriptor.js"
 import type * as HelpDoc from "../HelpDoc.js"
 import type * as ValidationError from "../ValidationError.js"
+import * as InternalBuiltInOptions from "./builtInOptions.js"
 import * as InternalCliConfig from "./cliConfig.js"
 import * as InternalCommand from "./commandDescriptor.js"
 import * as InternalHelpDoc from "./helpDoc.js"
@@ -90,7 +91,19 @@ export const run = dual<
                   Effect.catchSome((e) =>
                     InternalValidationError.isValidationError(e) &&
                       InternalValidationError.isHelpRequested(e)
-                      ? Option.some(handleBuiltInOption(self, executable, filteredArgs, e.showHelp, execute, config))
+                      ? Option.some(
+                        handleBuiltInOption(
+                          self,
+                          executable,
+                          filteredArgs,
+                          InternalBuiltInOptions.showHelp(
+                            InternalCommand.getUsage(e.command),
+                            InternalCommand.getHelp(e.command, config)
+                          ),
+                          execute,
+                          config
+                        )
+                      )
                       : Option.none()
                   )
                 ),
