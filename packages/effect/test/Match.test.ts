@@ -819,4 +819,25 @@ describe("Match", () => {
       M.orElse(() => "else")
     )
   })
+
+  it("withReturnType union", () => {
+    const match = pipe(
+      M.type<string>(),
+      M.withReturnType<"a" | "b">(),
+      M.when("A", (_) => "a"),
+      M.orElse((_) => "b")
+    )
+    expect(match("A")).toEqual("a")
+    expect(match("a")).toEqual("b")
+  })
+
+  it("withReturnType union mismatch", () => {
+    pipe(
+      M.type<string>(),
+      M.withReturnType<"a" | "b">(),
+      M.when("A", (_) => "a"),
+      // @ts-expect-error
+      M.orElse((_) => "c")
+    )
+  })
 })

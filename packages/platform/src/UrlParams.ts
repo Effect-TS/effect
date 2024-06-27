@@ -29,23 +29,23 @@ export type Input =
  * @since 1.0.0
  * @category models
  */
-export type Coercible = string | number | bigint | boolean
+export type Coercible = string | number | bigint | boolean | null | undefined
 
 /**
  * @since 1.0.0
  * @category constructors
  */
 export const fromInput = (input: Input): UrlParams => {
-  if (Symbol.iterator in input) {
-    return Arr.fromIterable(input).map(([key, value]) => [key, String(value)])
-  }
+  const entries = Symbol.iterator in input ? Arr.fromIterable(input) : Object.entries(input)
   const out: Array<readonly [string, string]> = []
-  for (const [key, value] of Object.entries(input)) {
+  for (const [key, value] of entries) {
     if (Array.isArray(value)) {
       for (let i = 0; i < value.length; i++) {
-        out.push([key, String(value[i])])
+        if (value[i] !== undefined) {
+          out.push([key, String(value[i])])
+        }
       }
-    } else {
+    } else if (value !== undefined) {
       out.push([key, String(value)])
     }
   }

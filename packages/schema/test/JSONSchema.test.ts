@@ -2158,6 +2158,30 @@ schema (Suspend): <suspended schema>`
       }
     )
   })
+
+  it("should correctly generate JSON Schemas for a schema created by extending two refinements using the `extend` API", () => {
+    expectJSONSchema(
+      Schema.Struct({
+        a: Schema.String
+      }).pipe(Schema.filter(() => true, { jsonSchema: { a: 1 } })).pipe(Schema.extend(
+        Schema.Struct({
+          b: Schema.Number
+        }).pipe(Schema.filter(() => true, { jsonSchema: { b: 2 } }))
+      )),
+      {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        type: "object",
+        required: ["a", "b"],
+        properties: {
+          a: { type: "string", description: "a string", title: "string" },
+          b: { type: "number", description: "a number", title: "number" }
+        },
+        additionalProperties: false,
+        b: 2,
+        a: 1
+      }
+    )
+  })
 })
 
 export const decode = <A>(schema: JSONSchema.JsonSchema7Root): Schema.Schema<A> =>
