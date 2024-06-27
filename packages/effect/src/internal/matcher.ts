@@ -239,11 +239,11 @@ export const typeTags = <I>() =>
 }
 
 /** @internal */
-export const withReturnType =
-  <Ret>() =>
-  <I, F, R, A, Pr, _>(self: Matcher<I, F, R, A, Pr, _>): Ret extends ([A] extends [never] ? any
-    : A) ? Matcher<I, F, R, A, Pr, Ret>
-    : "withReturnType constraint does not extend Result type" => self as any
+export const withReturnType = <Ret>() =>
+<I, F, R, A, Pr, _>(self: Matcher<I, F, R, A, Pr, _>): [Ret] extends [
+  [A] extends [never] ? any : A
+] ? Matcher<I, F, R, A, Pr, Ret>
+  : "withReturnType constraint does not extend Result type" => self as any
 
 /** @internal */
 export const when = <
@@ -512,23 +512,24 @@ export const instanceOfUnsafe: <A extends abstract new(...args: any) => any>(
 ) => SafeRefinement<InstanceType<A>, InstanceType<A>> = instanceOf
 
 /** @internal */
-export const orElse = <RA, Ret, B extends Ret>(f: (b: RA) => B) =>
-<I, R, A, Pr>(
-  self: Matcher<I, R, RA, A, Pr, Ret>
-): [Pr] extends [never] ? (input: I) => Unify<A | B> : Unify<A | B> => {
-  const result = either(self)
+export const orElse =
+  <RA, Ret, F extends (_: RA) => Ret>(f: F) =>
+  <I, R, A, Pr>(self: Matcher<I, R, RA, A, Pr, Ret>): [Pr] extends [never] ? (input: I) => Unify<ReturnType<F> | A>
+    : Unify<ReturnType<F> | A> =>
+  {
+    const result = either(self)
 
-  if (Either.isEither(result)) {
+    if (Either.isEither(result)) {
+      // @ts-expect-error
+      return result._tag === "Right" ? result.right : f(result.left)
+    }
+
     // @ts-expect-error
-    return result._tag === "Right" ? result.right : f(result.left)
+    return (input: I) => {
+      const a = result(input)
+      return a._tag === "Right" ? a.right : f(a.left)
+    }
   }
-
-  // @ts-expect-error
-  return (input: I) => {
-    const a = result(input)
-    return a._tag === "Right" ? a.right : f(a.left)
-  }
-}
 
 /** @internal */
 export const orElseAbsurd = <I, R, RA, A, Pr, Ret>(
