@@ -1,5 +1,11 @@
 # effect
 
+## 3.4.5
+
+### Patch Changes
+
+- [#3099](https://github.com/Effect-TS/effect/pull/3099) [`a047af9`](https://github.com/Effect-TS/effect/commit/a047af99447dfffc729e9c8ef0ca143537927e91) Thanks @tim-smart! - fix using unions with Match.withReturnType
+
 ## 3.4.4
 
 ### Patch Changes

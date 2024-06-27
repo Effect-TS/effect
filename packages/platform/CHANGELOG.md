@@ -1,5 +1,15 @@
 # @effect/platform
 
+## 0.58.13
+
+### Patch Changes
+
+- [#3102](https://github.com/Effect-TS/effect/pull/3102) [`dbd53ea`](https://github.com/Effect-TS/effect/commit/dbd53ea363c71a24449cb068251054c3a1acf864) Thanks @tim-smart! - filter undefined from UrlParams Input
+
+- Updated dependencies [[`a047af9`](https://github.com/Effect-TS/effect/commit/a047af99447dfffc729e9c8ef0ca143537927e91), [`d990544`](https://github.com/Effect-TS/effect/commit/d9905444b9e800850cb65899114ca0e502e68fe8)]:
+  - effect@3.4.5
+  - @effect/schema@0.68.12
+
 ## 0.58.12
 
 ### Patch Changes
