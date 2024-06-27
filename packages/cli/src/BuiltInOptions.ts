@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+import type { LogLevel } from "effect/LogLevel"
 import type { Option } from "effect/Option"
 import type { Command } from "./CommandDescriptor.js"
 import type { HelpDoc } from "./HelpDoc.js"
@@ -14,10 +15,16 @@ import type { Usage } from "./Usage.js"
  * @category models
  */
 export type BuiltInOptions =
+  | SetLogLevel
   | ShowHelp
   | ShowCompletions
   | ShowWizard
   | ShowVersion
+
+export interface SetLogLevel {
+  readonly _tag: "SetLogLevel"
+  readonly level: LogLevel
+}
 
 /**
  * @since 1.0.0
