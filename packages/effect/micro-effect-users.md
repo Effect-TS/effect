@@ -114,7 +114,7 @@ Below, you'll find a series of comparisons between the functionalities of `Effec
 
 The `Micro.runSyncExit` function is used to execute an Effect synchronously, which means it runs immediately and returns the result as a [MicroExit](#microexit).
 
-```ts twoslash
+```ts
 import * as Micro from "effect/Micro"
 
 const result1 = Micro.runSyncExit(Micro.succeed(1))
@@ -136,7 +136,7 @@ Output:
 
 The `Micro.runPromiseExit` function is used to execute an Effect and obtain the result as a `Promise` that resolves to a [MicroExit](#microexit).
 
-```ts twoslash
+```ts
 import * as Micro from "effect/Micro"
 
 Micro.runPromiseExit(Micro.succeed(1)).then(console.log)
@@ -158,7 +158,7 @@ The `Micro.runFork` function executes the effect and return a `Handle` that can 
 
 You can listen for the result by adding an observer using the handle's `addObserver` method.
 
-```ts twoslash
+```ts
 import * as Micro from "effect/Micro"
 
 const handle = Micro.succeed(42).pipe(Micro.delay(1000), Micro.runFork)
@@ -207,7 +207,7 @@ observing...
 
 To access a service while using `Micro.gen`, you need to wrap the service tag using the `Micro.service` function:
 
-```ts twoslash
+```ts
 import * as Context from "effect/Context"
 import * as Micro from "effect/Micro"
 
@@ -240,7 +240,7 @@ random number: 0.8241872233134417
 | ------------ | -------------------- | ------------------------------------------- |
 | `Scope.make` | ⚠️ `Micro.scopeMake` | returns a `MicroScope` instead of a `Scope` |
 
-```ts twoslash
+```ts
 import * as Micro from "effect/Micro"
 
 const consoleLog = (message: string) => Micro.sync(() => console.log(message))
