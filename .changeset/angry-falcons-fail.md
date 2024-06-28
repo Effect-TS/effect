@@ -2,15 +2,17 @@
 "effect": patch
 ---
 
-Micro: renaming to align with `Effect` module:
+Micro: renaming to align with `Effect` module.
+
+General naming convention rule: `<reference module (start with lowercase)><api (start with Uppercase)>`.
 
 - `Failure` -> `MicroCause`
   - `Failure.Expected<E>` -> `MicroCause.Fail<E>`
   - `Failure.Unexpected` -> `MicroCause.Die`
   - `Failure.Aborted` -> `MicroCause.Interrupt`
-  - `FailureExpected` -> `CauseFail`
-  - `FailureUnexpected` -> `CauseDie`
-  - `FailureAborted` -> `CauseInterrupt`
+  - `FailureExpected` -> `causeFail`
+  - `FailureUnexpected` -> `causeDie`
+  - `FailureAborted` -> `causeInterrupt`
   - `failureIsExpected` -> `causeIsFail`
   - `failureIsExpected` -> `causeIsFail`
   - `failureIsUnexpected` -> `causeIsDie`
@@ -18,11 +20,11 @@ Micro: renaming to align with `Effect` module:
   - `failureSquash` -> `causeSquash`
   - `failureWithTrace` -> `causeWithTrace`
 - `Result` -> `MicroExit`
-  - `ResultAborted` -> `ExitInterrupt`
-  - `ResultSuccess` -> `ExitSucceed`
-  - `ResultFail` -> `ExitFail`
-  - `ResultFailUnexpected` -> `ExitDie`
-  - `ResultFailWith` -> `ExitFailCause`
+  - `ResultAborted` -> `exitInterrupt`
+  - `ResultSuccess` -> `exitSucceed`
+  - `ResultFail` -> `exitFail`
+  - `ResultFailUnexpected` -> `exitDie`
+  - `ResultFailWith` -> `exitFailCause`
   - `resultIsSuccess` -> `exitIsSuccess`
   - `resultIsFailure` -> `exitIsFailure`
   - `resultIsAborted` -> `exitIsInterrupt`

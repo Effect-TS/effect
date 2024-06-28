@@ -238,6 +238,7 @@ random number: 0.8241872233134417
 
 | Effect       | Micro                |                                             |
 | ------------ | -------------------- | ------------------------------------------- |
+| `Scope`      | ⚠️ `MicroScope`      | returns a `MicroScope` instead of a `Scope` |
 | `Scope.make` | ⚠️ `Micro.scopeMake` | returns a `MicroScope` instead of a `Scope` |
 
 ```ts

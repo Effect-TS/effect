@@ -781,7 +781,7 @@ const program =
     Micro.tap((scope) => scope.addFinalizer(() => consoleLog("finalizer 2"))),
     // close the scope
     Micro.andThen((scope) =>
-      scope.close(Micro.ExitSucceed("scope closed successfully"))
+      scope.close(Micro.exitSucceed("scope closed successfully"))
     )
   )
 
