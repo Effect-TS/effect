@@ -1130,10 +1130,11 @@ describe.concurrent("Micro", () => {
       let elapsed = 0
       let duration = schedule(attempt, elapsed)
       const out: Array<number> = []
-      while (duration._tag === "Some" && attempt <= maxAttempt) {
+      while (Option.isSome(duration) && attempt <= maxAttempt) {
+        const value = duration.value
         attempt++
-        elapsed += duration.value
-        out.push(duration.value)
+        elapsed += value
+        out.push(value)
         duration = schedule(attempt, elapsed)
       }
       return out
@@ -1167,6 +1168,30 @@ describe.concurrent("Micro", () => {
     it("scheduleWithMaxElapsed", () => {
       const out = dryRun(Micro.scheduleWithMaxElapsed(Micro.scheduleExponential(10), 400))
       assert.deepStrictEqual(out, [20, 40, 80, 160, 320])
+    })
+
+    it("scheduleUnion", () => {
+      const out = dryRun(Micro.scheduleUnion(
+        Micro.scheduleExponential(10),
+        Micro.scheduleSpaced(100)
+      ))
+      assert.deepStrictEqual(out, [20, 40, 80, 100, 100, 100, 100])
+    })
+
+    it("scheduleIntersect", () => {
+      const out = dryRun(Micro.scheduleIntersect(
+        Micro.scheduleExponential(10),
+        Micro.scheduleSpaced(100)
+      ))
+      assert.deepStrictEqual(out, [100, 100, 100, 160, 320, 640, 1280])
+    })
+
+    it("scheduleAndThen", () => {
+      const out = dryRun(Micro.scheduleAndThen(
+        Micro.scheduleRecurs(4),
+        Micro.scheduleSpaced(100)
+      ))
+      assert.deepStrictEqual(out, [0, 0, 0, 0, 100, 100, 100])
     })
   })
 })

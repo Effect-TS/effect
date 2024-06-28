@@ -37,7 +37,10 @@ General naming convention rule: `<reference module (start with lowercase)><api (
   - `delayWithMax` -> `scheduleWithMaxDelay`
   - `delayWithMaxElapsed` -> `scheduleWithMaxElapsed`
   - `delayWithRecurs` -> `scheduleRecurs` and make it a constructor
-  - add `addDelay` combinator
+  - add `scheduleAddDelay` combinator
+  - add `scheduleUnion` combinator
+  - add `scheduleIntersect` combinator
+  - add `scheduleAndThen` combinator
 - `Handle`
   - `abort` -> `interrupt`
   - `unsafeAbort` -> `unsafeInterrupt`

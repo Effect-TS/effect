@@ -1974,7 +1974,7 @@ export type MicroSchedule = (attempt: number, elapsed: number) => Option.Option<
 export const scheduleRecurs = (n: number): MicroSchedule => (attempt) => attempt <= n ? Option.some(0) : Option.none()
 
 /**
- * Create a `MicroSchedule` that will generate a duration with fixed intervals.
+ * Create a `MicroSchedule` that will generate a constant delay.
  *
  * @since 3.4.6
  * @experimental
@@ -1983,7 +1983,7 @@ export const scheduleRecurs = (n: number): MicroSchedule => (attempt) => attempt
 export const scheduleSpaced = (millis: number): MicroSchedule => () => Option.some(millis)
 
 /**
- * Create a `MicroSchedule` that will generate a duration with an exponential backoff.
+ * Create a `MicroSchedule` that will generate a delay with an exponential backoff.
  *
  * @since 3.4.6
  * @experimental
@@ -1993,8 +1993,8 @@ export const scheduleExponential = (baseMillis: number, factor = 2): MicroSchedu
   Option.some(Math.pow(factor, attempt) * baseMillis)
 
 /**
- * Returns a new `MicroSchedule` with an added calculated delay to each interval
- * specified in this schedule.
+ * Returns a new `MicroSchedule` with an added calculated delay to each delay
+ * returned by this schedule.
  *
  * @since 3.4.6
  * @experimental
@@ -2010,7 +2010,7 @@ export const scheduleAddDelay: {
 )
 
 /**
- * Transform a `MicroSchedule` to one that will have a duration that will never exceed
+ * Transform a `MicroSchedule` to one that will have a delay that will never exceed
  * the specified maximum.
  *
  * @since 3.4.6
@@ -2041,6 +2041,69 @@ export const scheduleWithMaxElapsed: {
   2,
   (self: MicroSchedule, max: number): MicroSchedule => (attempt, elapsed) =>
     elapsed < max ? self(attempt, elapsed) : Option.none()
+)
+
+/**
+ * Combines two `MicroSchedule`s, by recurring if either schedule wants to
+ * recur, using the minimum of the two durations between recurrences.
+ *
+ * @since 3.4.6
+ * @experimental
+ * @category scheduling
+ */
+export const scheduleUnion: {
+  (that: MicroSchedule): (self: MicroSchedule) => MicroSchedule
+  (self: MicroSchedule, that: MicroSchedule): MicroSchedule
+} = dual(
+  2,
+  (self: MicroSchedule, that: MicroSchedule): MicroSchedule => (attempt, elapsed) =>
+    Option.zipWith(self(attempt, elapsed), that(attempt, elapsed), (d1, d2) => Math.min(d1, d2))
+)
+
+/**
+ * Combines two `MicroSchedule`s, by recurring only if both schedules want to
+ * recur, using the maximum of the two durations between recurrences.
+ *
+ * @since 3.4.6
+ * @experimental
+ * @category scheduling
+ */
+export const scheduleIntersect: {
+  (that: MicroSchedule): (self: MicroSchedule) => MicroSchedule
+  (self: MicroSchedule, that: MicroSchedule): MicroSchedule
+} = dual(
+  2,
+  (self: MicroSchedule, that: MicroSchedule): MicroSchedule => (attempt, elapsed) =>
+    Option.zipWith(self(attempt, elapsed), that(attempt, elapsed), (d1, d2) => Math.max(d1, d2))
+)
+
+/**
+ * Combines two `MicroSchedule`s sequentially, by following the first policy
+ * until it ends, and then following the second policy.
+ *
+ * @since 3.4.6
+ * @experimental
+ * @category scheduling
+ */
+export const scheduleAndThen: {
+  (that: MicroSchedule): (self: MicroSchedule) => MicroSchedule
+  (self: MicroSchedule, that: MicroSchedule): MicroSchedule
+} = dual(
+  2,
+  (self: MicroSchedule, that: MicroSchedule): MicroSchedule =>
+    (function() {
+      let done = false
+      return (attempt, elapsed) => {
+        if (!done) {
+          const out = self(attempt, elapsed)
+          if (Option.isSome(out)) {
+            return out
+          }
+          done = true
+        }
+        return that(attempt, elapsed)
+      }
+    })()
 )
 
 // ----------------------------------------------------------------------------

@@ -1001,36 +1001,111 @@ failure
 */
 ```
 
+### helper
+
+```ts
+import type * as Micro from "effect/Micro"
+import * as Option from "effect/Option"
+
+export const dryRun = (
+  schedule: Micro.MicroSchedule,
+  maxAttempt: number = 7
+): Array<number> => {
+  let attempt = 1
+  let elapsed = 0
+  let duration = schedule(attempt, elapsed)
+  const out: Array<number> = []
+  while (Option.isSome(duration) && attempt <= maxAttempt) {
+    const value = duration.value
+    attempt++
+    elapsed += value
+    out.push(value)
+    duration = schedule(attempt, elapsed)
+  }
+  return out
+}
+```
+
 ### scheduleExponential
 
 ```ts
 import * as Micro from "effect/Micro"
+import { dryRun } from "./dryRun.js"
 
-const schedule = Micro.scheduleExponential(10)
+const policy = Micro.scheduleExponential(10)
 
-let start = Date.now()
-
-const action = Micro.sync(() => {
-  const now = Date.now()
-  console.log(`delay: ${now - start}`)
-  start = now
-})
-
-const program = Micro.repeat(action, { schedule })
-
-Micro.runFork(program)
+console.log(dryRun(policy))
 /*
-Example Output:
-delay: 0
-delay: 22
-delay: 41
-delay: 82
-delay: 161
-delay: 322
-delay: 642
-delay: 1282
-delay: 2629
-...
+Output:
+[
+    20,  40,  80,
+   160, 320, 640,
+  1280
+]
+*/
+```
+
+### scheduleUnion
+
+```ts
+import * as Micro from "effect/Micro"
+import { dryRun } from "./dryRun.js"
+
+const policy = Micro.scheduleUnion(
+  Micro.scheduleExponential(10),
+  Micro.scheduleSpaced(300)
+)
+
+console.log(dryRun(policy))
+/*
+Output:
+[
+   20,  40,  80, 160,
+  300, 300, 300
+]
+*/
+```
+
+### scheduleIntersect
+
+```ts
+import * as Micro from "effect/Micro"
+import { dryRun } from "./dryRun.js"
+
+const policy = Micro.scheduleIntersect(
+  Micro.scheduleExponential(10),
+  Micro.scheduleSpaced(300)
+)
+
+console.log(dryRun(policy))
+/*
+Output:
+[
+   300, 300, 300,
+   300, 320, 640,
+  1280
+]
+*/
+```
+
+### scheduleAndThen
+
+```ts
+import * as Micro from "effect/Micro"
+import { dryRun } from "./dryRun.js"
+
+const policy = Micro.scheduleAndThen(
+  Micro.scheduleRecurs(4),
+  Micro.scheduleSpaced(100)
+)
+
+console.log(dryRun(policy))
+/*
+Output:
+[
+    0,   0,   0, 0,
+  100, 100, 100
+]
 */
 ```
 
