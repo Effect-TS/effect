@@ -150,7 +150,7 @@ class RouterImpl<E = never, R = never> extends Effectable.StructuralClass<
     readonly mounts: Chunk.Chunk<
       readonly [
         prefix: string,
-        httpApp: App.HttpApp<Respondable.Respondable, E, R>,
+        httpApp: App.Default<E, R>,
         options?: { readonly includePrefix?: boolean | undefined } | undefined
       ]
     >
@@ -507,6 +507,34 @@ export const options = route("OPTIONS")
 /** @internal */
 export const use = dual<
   <E, R, R1, E1>(
+    f: (self: Router.Route.Middleware<E, R>) => App.Default<E1, R1>
+  ) => (self: Router.HttpRouter<E, R>) => Router.HttpRouter<E1, Router.HttpRouter.ExcludeProvided<R1>>,
+  <E, R, R1, E1>(
+    self: Router.HttpRouter<E, R>,
+    f: (self: Router.Route.Middleware<E, R>) => App.Default<E1, R1>
+  ) => Router.HttpRouter<E1, Router.HttpRouter.ExcludeProvided<R1>>
+>(2, (self, f) =>
+  new RouterImpl<any, any>(
+    Chunk.map(
+      self.routes,
+      (route) =>
+        new RouteImpl(
+          route.method,
+          route.path,
+          f(Effect.flatMap(route.handler, Respondable.toResponse)) as any,
+          route.prefix,
+          route.uninterruptible
+        )
+    ),
+    Chunk.map(
+      self.mounts,
+      ([path, app]) => [path, f(app as any)]
+    )
+  ))
+
+/** @internal */
+export const transform = dual<
+  <E, R, R1, E1>(
     f: (self: Router.Route.Handler<E, R>) => App.HttpApp<Respondable.Respondable, E1, R1>
   ) => (self: Router.HttpRouter<E, R>) => Router.HttpRouter<E1, Router.HttpRouter.ExcludeProvided<R1>>,
   <E, R, R1, E1>(
@@ -517,11 +545,18 @@ export const use = dual<
   new RouterImpl<any, any>(
     Chunk.map(
       self.routes,
-      (route) => new RouteImpl(route.method, route.path, f(route.handler) as any, route.prefix, route.uninterruptible)
+      (route) =>
+        new RouteImpl(
+          route.method,
+          route.path,
+          f(route.handler) as any,
+          route.prefix,
+          route.uninterruptible
+        )
     ),
     Chunk.map(
       self.mounts,
-      ([path, app]) => [path, f(app as any)]
+      ([path, app]) => [path, Effect.flatMap(f(app as any), Respondable.toResponse)]
     )
   ))
 
@@ -534,7 +569,7 @@ export const catchAll = dual<
     self: Router.HttpRouter<E, R>,
     f: (e: E) => Router.Route.Handler<E2, R2>
   ) => Router.HttpRouter<E2, R | Router.HttpRouter.ExcludeProvided<R2>>
->(2, (self, f) => use(self, Effect.catchAll(f)))
+>(2, (self, f) => transform(self, Effect.catchAll(f)))
 
 /** @internal */
 export const catchAllCause = dual<
@@ -545,7 +580,7 @@ export const catchAllCause = dual<
     self: Router.HttpRouter<E, R>,
     f: (e: Cause.Cause<E>) => Router.Route.Handler<E2, R2>
   ) => Router.HttpRouter<E2, R | Router.HttpRouter.ExcludeProvided<R2>>
->(2, (self, f) => use(self, Effect.catchAllCause(f)))
+>(2, (self, f) => transform(self, Effect.catchAllCause(f)))
 
 /** @internal */
 export const catchTag = dual<
@@ -560,7 +595,7 @@ export const catchTag = dual<
     k: K,
     f: (e: Extract<E, { _tag: K }>) => Router.Route.Handler<E1, R1>
   ) => Router.HttpRouter<Exclude<E, { _tag: K }> | E1, R | Router.HttpRouter.ExcludeProvided<R1>>
->(3, (self, k, f) => use(self, Effect.catchTag(k, f)))
+>(3, (self, k, f) => transform(self, Effect.catchTag(k, f)))
 
 /** @internal */
 export const catchTags: {
