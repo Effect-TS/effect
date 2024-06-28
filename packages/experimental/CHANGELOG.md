@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.17.14
+
+### Patch Changes
+
+- [#3110](https://github.com/Effect-TS/effect/pull/3110) [`296a9e2`](https://github.com/Effect-TS/effect/commit/296a9e24b536678c0623016b1f51653f2f2c4fe8) Thanks @tim-smart! - fix deadlock in @effect/experimental dataLoader
+
 ## 0.17.13
 
 ### Patch Changes
