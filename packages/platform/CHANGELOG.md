@@ -1,5 +1,13 @@
 # @effect/platform
 
+## 0.58.14
+
+### Patch Changes
+
+- [#3104](https://github.com/Effect-TS/effect/pull/3104) [`52a87c7`](https://github.com/Effect-TS/effect/commit/52a87c7a0b9536398deaf8ec507e53a82c607219) Thanks @tim-smart! - remove the stack from HttpServerError.RouteNotFound
+
+- [#3109](https://github.com/Effect-TS/effect/pull/3109) [`6d2280e`](https://github.com/Effect-TS/effect/commit/6d2280e9497c95cb0e965ca462c825345074eedf) Thanks @tim-smart! - fix assignability of HttpMiddleware in HttpRouter.use
+
 ## 0.58.13
 
 ### Patch Changes
