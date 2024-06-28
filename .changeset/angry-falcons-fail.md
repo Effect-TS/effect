@@ -2,7 +2,7 @@
 "effect": patch
 ---
 
-Micro: renaming to align with `Effect` module.
+Micro: align with `Effect` module (renamings and new combinators).
 
 General naming convention rule: `<reference module (start with lowercase)><api (start with Uppercase)>`.
 
@@ -34,9 +34,10 @@ General naming convention rule: `<reference module (start with lowercase)><api (
 - `DelayFn` -> `MicroSchedule`
   - `delayExponential` -> `scheduleExponential`
   - `delaySpaced` -> `scheduleSpaced`
-  - `delayWithMax` -> `scheduleWithMax`
+  - `delayWithMax` -> `scheduleWithMaxDelay`
   - `delayWithMaxElapsed` -> `scheduleWithMaxElapsed`
-  - `delayWithRecurs` -> `scheduleRecurs`
+  - `delayWithRecurs` -> `scheduleRecurs` and make it a constructor
+  - add `addDelay` combinator
 - `Handle`
   - `abort` -> `interrupt`
   - `unsafeAbort` -> `unsafeInterrupt`

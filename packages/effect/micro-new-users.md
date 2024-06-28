@@ -955,7 +955,7 @@ import * as Micro from "effect/Micro"
 
 const action = Micro.sync(() => console.log("success"))
 
-const policy = Micro.scheduleRecurs(Micro.scheduleSpaced(100), 2)
+const policy = Micro.scheduleAddDelay(Micro.scheduleRecurs(2), () => 100)
 
 const program = Micro.repeat(action, { schedule: policy })
 
@@ -987,7 +987,7 @@ const action = Micro.async<string, string>((resume) => {
   }
 })
 
-const policy = Micro.scheduleRecurs(Micro.scheduleSpaced(100), 2)
+const policy = Micro.scheduleAddDelay(Micro.scheduleRecurs(2), () => 100)
 
 const program = Micro.repeat(action, { schedule: policy })
 

@@ -1964,6 +1964,25 @@ export const forever = <A, E, R>(self: Micro<A, E, R>): Micro<never, E, R> => re
 export type MicroSchedule = (attempt: number, elapsed: number) => Option.Option<number>
 
 /**
+ * Create a `MicroSchedule` that will stop repeating after the specified number
+ * of attempts.
+ *
+ * @since 3.4.6
+ * @experimental
+ * @category scheduling
+ */
+export const scheduleRecurs = (n: number): MicroSchedule => (attempt) => attempt <= n ? Option.some(0) : Option.none()
+
+/**
+ * Create a `MicroSchedule` that will generate a duration with fixed intervals.
+ *
+ * @since 3.4.6
+ * @experimental
+ * @category scheduling
+ */
+export const scheduleSpaced = (millis: number): MicroSchedule => () => Option.some(millis)
+
+/**
  * Create a `MicroSchedule` that will generate a duration with an exponential backoff.
  *
  * @since 3.4.6
@@ -1974,13 +1993,21 @@ export const scheduleExponential = (baseMillis: number, factor = 2): MicroSchedu
   Option.some(Math.pow(factor, attempt) * baseMillis)
 
 /**
- * Create a `MicroSchedule` that will generate a duration with fixed intervals.
+ * Returns a new `MicroSchedule` with an added calculated delay to each interval
+ * specified in this schedule.
  *
  * @since 3.4.6
  * @experimental
  * @category scheduling
  */
-export const scheduleSpaced = (millis: number): MicroSchedule => (_) => Option.some(millis)
+export const scheduleAddDelay: {
+  (f: () => number): (self: MicroSchedule) => MicroSchedule
+  (self: MicroSchedule, f: () => number): MicroSchedule
+} = dual(
+  2,
+  (self: MicroSchedule, f: () => number): MicroSchedule => (attempt, elapsed) =>
+    Option.map(self(attempt, elapsed), (duration) => duration + f())
+)
 
 /**
  * Transform a `MicroSchedule` to one that will have a duration that will never exceed
@@ -1990,7 +2017,7 @@ export const scheduleSpaced = (millis: number): MicroSchedule => (_) => Option.s
  * @experimental
  * @category scheduling
  */
-export const scheduleWithMax: {
+export const scheduleWithMaxDelay: {
   (max: number): (self: MicroSchedule) => MicroSchedule
   (self: MicroSchedule, max: number): MicroSchedule
 } = dual(
@@ -2014,23 +2041,6 @@ export const scheduleWithMaxElapsed: {
   2,
   (self: MicroSchedule, max: number): MicroSchedule => (attempt, elapsed) =>
     elapsed < max ? self(attempt, elapsed) : Option.none()
-)
-
-/**
- * Transform a `MicroSchedule` to one that will stop repeating after the specified
- * number of attempts.
- *
- * @since 3.4.6
- * @experimental
- * @category scheduling
- */
-export const scheduleRecurs: {
-  (n: number): (self: MicroSchedule) => MicroSchedule
-  (self: MicroSchedule, n: number): MicroSchedule
-} = dual(
-  2,
-  (self: MicroSchedule, n: number): MicroSchedule => (attempt, elapsed) =>
-    Option.filter(self(attempt, elapsed), () => attempt <= n)
 )
 
 // ----------------------------------------------------------------------------

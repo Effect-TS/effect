@@ -422,15 +422,12 @@ describe.concurrent("Micro", () => {
       assert.deepStrictEqual(result, 123)
     })
 
-    it.effect("delayWithRecurs", () =>
+    it.effect("scheduleRecurs", () =>
       Micro.gen(function*() {
         let count = 0
         yield* Micro.sync(() => count++).pipe(
           Micro.repeat({
-            schedule: pipe(
-              Micro.scheduleSpaced(0),
-              Micro.scheduleRecurs(3)
-            )
+            schedule: Micro.scheduleRecurs(3)
           })
         )
         assert.deepStrictEqual(count, 4)
@@ -1127,23 +1124,49 @@ describe.concurrent("Micro", () => {
   })
 
   describe("schedules", () => {
+    // returns an array of delays, an item for each attempt
     const dryRun = (schedule: Micro.MicroSchedule, maxAttempt: number = 7): Array<number> => {
       let attempt = 1
       let elapsed = 0
-      let result = schedule(attempt, elapsed)
+      let duration = schedule(attempt, elapsed)
       const out: Array<number> = []
-      while (result._tag === "Some" && attempt <= maxAttempt) {
+      while (duration._tag === "Some" && attempt <= maxAttempt) {
         attempt++
-        elapsed += result.value
-        out.push(elapsed)
-        result = schedule(attempt, elapsed)
+        elapsed += duration.value
+        out.push(duration.value)
+        duration = schedule(attempt, elapsed)
       }
       return out
     }
 
+    it("scheduleRecurs", () => {
+      const out = dryRun(Micro.scheduleRecurs(5))
+      assert.deepStrictEqual(out, [0, 0, 0, 0, 0])
+    })
+
+    it("scheduleSpaced", () => {
+      const out = dryRun(Micro.scheduleSpaced(10))
+      assert.deepStrictEqual(out, [10, 10, 10, 10, 10, 10, 10])
+    })
+
     it("scheduleExponential", () => {
       const out = dryRun(Micro.scheduleExponential(10))
-      assert.deepStrictEqual(out, [20, 60, 140, 300, 620, 1260, 2540])
+      assert.deepStrictEqual(out, [20, 40, 80, 160, 320, 640, 1280])
+    })
+
+    it("scheduleAddDelay", () => {
+      const out = dryRun(Micro.scheduleAddDelay(Micro.scheduleRecurs(5), () => 10))
+      assert.deepStrictEqual(out, [10, 10, 10, 10, 10])
+    })
+
+    it("scheduleWithMaxDelay", () => {
+      const out = dryRun(Micro.scheduleWithMaxDelay(Micro.scheduleExponential(10), 400))
+      assert.deepStrictEqual(out, [20, 40, 80, 160, 320, 400, 400])
+    })
+
+    it("scheduleWithMaxElapsed", () => {
+      const out = dryRun(Micro.scheduleWithMaxElapsed(Micro.scheduleExponential(10), 400))
+      assert.deepStrictEqual(out, [20, 40, 80, 160, 320])
     })
   })
 })
