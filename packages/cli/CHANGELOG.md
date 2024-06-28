@@ -1,5 +1,14 @@
 # @effect/cli
 
+## 0.36.67
+
+### Patch Changes
+
+- [#3106](https://github.com/Effect-TS/effect/pull/3106) [`0cb3e9d`](https://github.com/Effect-TS/effect/commit/0cb3e9de39f9e381a122939b32af4a59b84ea8e7) Thanks @IMax153! - ensure that the built-in option for displaying the CLI's help documentation always respects `CliConfig.showBuiltIns`
+
+- Updated dependencies [[`52a87c7`](https://github.com/Effect-TS/effect/commit/52a87c7a0b9536398deaf8ec507e53a82c607219), [`6d2280e`](https://github.com/Effect-TS/effect/commit/6d2280e9497c95cb0e965ca462c825345074eedf)]:
+  - @effect/platform@0.58.14
+
 ## 0.36.66
 
 ### Patch Changes
