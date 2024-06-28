@@ -209,6 +209,10 @@ schema (VoidKeyword): void`
   it("String", () => {
     expectJSONSchema(Schema.String, {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      type: "string"
+    })
+    expectJSONSchema(Schema.String.annotations({}), {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       type: "string",
       description: "a string",
       title: "string"
@@ -218,6 +222,10 @@ schema (VoidKeyword): void`
   it("Number", () => {
     expectJSONSchema(Schema.Number, {
       "$schema": "http://json-schema.org/draft-07/schema#",
+      type: "number"
+    })
+    expectJSONSchema(Schema.Number.annotations({}), {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       type: "number",
       description: "a number",
       title: "number"
@@ -226,6 +234,10 @@ schema (VoidKeyword): void`
 
   it("Boolean", () => {
     expectJSONSchema(Schema.Boolean, {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      type: "boolean"
+    })
+    expectJSONSchema(Schema.Boolean.annotations({}), {
       "$schema": "http://json-schema.org/draft-07/schema#",
       type: "boolean",
       description: "a boolean",
@@ -370,14 +382,10 @@ schema (VoidKeyword): void`
         "$schema": "http://json-schema.org/draft-07/schema#",
         "anyOf": [
           {
-            "type": "string",
-            "description": "a string",
-            "title": "string"
+            "type": "string"
           },
           {
-            "type": "number",
-            "description": "a number",
-            "title": "number"
+            "type": "number"
           }
         ]
       })
@@ -396,9 +404,7 @@ schema (VoidKeyword): void`
         "anyOf": [
           { "enum": [1, true] },
           {
-            "type": "string",
-            "description": "a string",
-            "title": "string"
+            "type": "string"
           }
         ]
       })
@@ -416,9 +422,7 @@ schema (VoidKeyword): void`
           "anyOf": [
             { "const": true, "description": "description" },
             {
-              "type": "string",
-              "description": "a string",
-              "title": "string"
+              "type": "string"
             },
             { "const": 1 }
           ]
@@ -439,9 +443,7 @@ schema (VoidKeyword): void`
             { "enum": [1, 2] },
             { "const": true, "description": "description" },
             {
-              "type": "string",
-              "description": "a string",
-              "title": "string"
+              "type": "string"
             }
           ]
         }
@@ -516,9 +518,7 @@ schema (VoidKeyword): void`
         "minItems": 0,
         "items": [
           {
-            "type": "number",
-            "title": "number",
-            "description": "a number"
+            "type": "number"
           }
         ],
         "additionalItems": false
@@ -549,7 +549,6 @@ schema (VoidKeyword): void`
           },
           {
             "type": "number",
-            "title": "number",
             "description": "e?"
           }
         ],
@@ -576,14 +575,11 @@ schema (VoidKeyword): void`
         "minItems": 0,
         "items": [
           {
-            "type": "string",
-            "title": "string",
-            "description": "a string"
+            "type": "string"
           }
         ],
         "additionalItems": {
           "type": "number",
-          "title": "number",
           "description": "r"
         }
       }
@@ -624,9 +620,7 @@ schema (VoidKeyword): void`
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "array",
         "items": [{
-          "type": "number",
-          "title": "number",
-          "description": "a number"
+          "type": "number"
         }],
         "minItems": 1,
         "additionalItems": false
@@ -646,15 +640,11 @@ schema (VoidKeyword): void`
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "array",
         "items": [{
-          "type": "string",
-          "title": "string",
-          "description": "a string"
+          "type": "string"
         }],
         "minItems": 1,
         "additionalItems": {
-          "type": "number",
-          "title": "number",
-          "description": "a number"
+          "type": "number"
         }
       }
       expectJSONSchema(schema, jsonSchema)
@@ -663,16 +653,12 @@ schema (VoidKeyword): void`
         "type": "array",
         "items": [
           {
-            "type": "string",
-            "title": "string",
-            "description": "a string"
+            "type": "string"
           }
         ],
         "minItems": 1,
         "additionalItems": {
-          "type": "number",
-          "title": "number",
-          "description": "a number"
+          "type": "number"
         }
       })
       expect(validate(["a"])).toEqual(true)
@@ -691,9 +677,7 @@ schema (VoidKeyword): void`
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "array",
         "items": {
-          "type": "number",
-          "title": "number",
-          "description": "a number"
+          "type": "number"
         }
       }
       expectJSONSchema(schema, jsonSchema)
@@ -738,14 +722,10 @@ schema (VoidKeyword): void`
         "type": "object",
         "properties": {
           "a": {
-            "type": "string",
-            "title": "string",
-            "description": "a string"
+            "type": "string"
           },
           "b": {
-            "type": "number",
-            "title": "number",
-            "description": "a number"
+            "type": "number"
           }
         },
         "required": ["a", "b"],
@@ -771,14 +751,10 @@ schema (VoidKeyword): void`
         "type": "object",
         "properties": {
           "a": {
-            "type": "string",
-            "title": "string",
-            "description": "a string"
+            "type": "string"
           },
           "b": {
-            "type": "number",
-            "title": "number",
-            "description": "a number"
+            "type": "number"
           }
         },
         "required": ["a"],
@@ -806,8 +782,7 @@ schema (VoidKeyword): void`
           properties: {
             a: {
               type: "string",
-              "description": "an optional string",
-              title: "string"
+              "description": "an optional string"
             }
           },
           additionalProperties: false
@@ -834,9 +809,7 @@ details: Cannot encode Symbol(@effect/schema/test/a) key to JSON Schema`
           "type": "object",
           "properties": {
             "a": {
-              "type": "string",
-              "title": "string",
-              "description": "a string"
+              "type": "string"
             }
           },
           "required": [],
@@ -882,9 +855,7 @@ schema (Refinement): a string at least 1 character(s) long`
         "properties": {},
         "required": [],
         "additionalProperties": {
-          "type": "number",
-          "title": "number",
-          "description": "a number"
+          "type": "number"
         }
       })
     })
@@ -900,14 +871,10 @@ schema (Refinement): a string at least 1 character(s) long`
           "type": "object",
           "properties": {
             "a": {
-              "type": "number",
-              "title": "number",
-              "description": "a number"
+              "type": "number"
             },
             "b": {
-              "type": "number",
-              "title": "number",
-              "description": "a number"
+              "type": "number"
             }
           },
           "required": ["a", "b"],
@@ -929,9 +896,7 @@ schema (Refinement): a string at least 1 character(s) long`
         "additionalProperties": false,
         "patternProperties": {
           "^.*-.*$": {
-            "type": "number",
-            "description": "a number",
-            "title": "number"
+            "type": "number"
           }
         }
       }
@@ -960,9 +925,7 @@ schema (Refinement): a string at least 1 character(s) long`
         "additionalProperties": false,
         "patternProperties": {
           "^.*-.*$": {
-            "type": "number",
-            "description": "a number",
-            "title": "number"
+            "type": "number"
           }
         }
       }
@@ -989,15 +952,11 @@ schema (Refinement): a string at least 1 character(s) long`
       ],
       "properties": {
         "a": {
-          "type": "string",
-          "title": "string",
-          "description": "a string"
+          "type": "string"
         }
       },
       "additionalProperties": {
-        "type": "string",
-        "title": "string",
-        "description": "a string"
+        "type": "string"
       }
     }
     expect(jsonSchema).toStrictEqual(jsonSchema)
@@ -1025,7 +984,6 @@ schema (Refinement): { string | filter }`
       expectJSONSchema(Schema.String.pipe(Schema.minLength(1)), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "string",
-        "title": "string",
         "description": "a string at least 1 character(s) long",
         "minLength": 1
       })
@@ -1035,7 +993,6 @@ schema (Refinement): { string | filter }`
       expectJSONSchema(Schema.String.pipe(Schema.maxLength(1)), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "string",
-        "title": "string",
         "description": "a string at most 1 character(s) long",
         "maxLength": 1
       })
@@ -1045,7 +1002,6 @@ schema (Refinement): { string | filter }`
       expectJSONSchema(Schema.String.pipe(Schema.length(1)), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "string",
-        "title": "string",
         "description": "a single character",
         "maxLength": 1,
         "minLength": 1
@@ -1056,7 +1012,6 @@ schema (Refinement): { string | filter }`
       expectJSONSchema(Schema.String.pipe(Schema.length({ min: 2, max: 4 })), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "string",
-        "title": "string",
         "description": "a string at least 2 character(s) and at most 4 character(s) long",
         "maxLength": 4,
         "minLength": 2
@@ -1067,7 +1022,6 @@ schema (Refinement): { string | filter }`
       expectJSONSchema(JsonNumber.pipe(Schema.greaterThan(1)), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "number",
-        "title": "number",
         "description": "a number greater than 1",
         "exclusiveMinimum": 1
       })
@@ -1077,7 +1031,6 @@ schema (Refinement): { string | filter }`
       expectJSONSchema(JsonNumber.pipe(Schema.greaterThanOrEqualTo(1)), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "number",
-        "title": "number",
         "description": "a number greater than or equal to 1",
         "minimum": 1
       })
@@ -1087,7 +1040,6 @@ schema (Refinement): { string | filter }`
       expectJSONSchema(JsonNumber.pipe(Schema.lessThan(1)), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "number",
-        "title": "number",
         "description": "a number less than 1",
         "exclusiveMaximum": 1
       })
@@ -1097,7 +1049,6 @@ schema (Refinement): { string | filter }`
       expectJSONSchema(JsonNumber.pipe(Schema.lessThanOrEqualTo(1)), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "number",
-        "title": "number",
         "description": "a number less than or equal to 1",
         "maximum": 1
       })
@@ -1107,7 +1058,6 @@ schema (Refinement): { string | filter }`
       expectJSONSchema(Schema.String.pipe(Schema.pattern(/^abb+$/)), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "string",
-        "title": "string",
         "description": "a string matching the pattern ^abb+$",
         "pattern": "^abb+$"
       })
@@ -1194,9 +1144,7 @@ schema (Suspend): <suspended schema>`
             ],
             "properties": {
               "a": {
-                "type": "string",
-                "description": "a string",
-                "title": "string"
+                "type": "string"
               },
               "as": {
                 "type": "array",
@@ -1241,9 +1189,7 @@ schema (Suspend): <suspended schema>`
         ],
         "properties": {
           "a": {
-            "type": "string",
-            "description": "a string",
-            "title": "string"
+            "type": "string"
           },
           "as": {
             "type": "array",
@@ -1262,9 +1208,7 @@ schema (Suspend): <suspended schema>`
             ],
             "properties": {
               "a": {
-                "type": "string",
-                "description": "a string",
-                "title": "string"
+                "type": "string"
               },
               "as": {
                 "type": "array",
@@ -1312,9 +1256,7 @@ schema (Suspend): <suspended schema>`
             ],
             "properties": {
               "name": {
-                "type": "string",
-                "description": "a string",
-                "title": "string"
+                "type": "string"
               },
               "categories": {
                 "type": "array",
@@ -1420,9 +1362,7 @@ schema (Suspend): <suspended schema>`
               "value": {
                 "anyOf": [
                   {
-                    "type": "number",
-                    "description": "a number",
-                    "title": "number"
+                    "type": "number"
                   },
                   {
                     "$ref": "#/$defs/Operation"
@@ -1538,9 +1478,7 @@ schema (Suspend): <suspended schema>`
         ],
         "properties": {
           "a": {
-            "type": "string",
-            "description": "a string",
-            "title": "string"
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -1557,9 +1495,7 @@ schema (Suspend): <suspended schema>`
         ],
         "properties": {
           "a": {
-            "type": "string",
-            "description": "a string",
-            "title": "string"
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -1586,9 +1522,7 @@ schema (Suspend): <suspended schema>`
         ],
         "properties": {
           "a": {
-            "type": "string",
-            "description": "a string",
-            "title": "string"
+            "type": "string"
           }
         },
         "additionalProperties": false,
@@ -1675,9 +1609,7 @@ schema (Suspend): <suspended schema>`
         ],
         "properties": {
           "name": {
-            "type": "string",
-            "description": "a string",
-            "title": "string"
+            "type": "string"
           },
           "categories": {
             "type": "array",
@@ -1696,9 +1628,7 @@ schema (Suspend): <suspended schema>`
             ],
             "properties": {
               "name": {
-                "type": "string",
-                "description": "a string",
-                "title": "string"
+                "type": "string"
               },
               "categories": {
                 "type": "array",
@@ -1893,9 +1823,7 @@ schema (Suspend): <suspended schema>`
         ],
         "properties": {
           "a": {
-            "type": "string",
-            "description": "a string",
-            "title": "string"
+            "type": "string"
           },
           "as": {
             "type": "array",
@@ -1947,9 +1875,7 @@ schema (Suspend): <suspended schema>`
           ],
           "properties": {
             "a": {
-              "type": "string",
-              "description": "a string",
-              "title": "string"
+              "type": "string"
             }
           },
           "additionalProperties": false
@@ -2025,9 +1951,7 @@ schema (Suspend): <suspended schema>`
           "required": [],
           "properties": {
             "a": {
-              "type": "string",
-              "description": "a string",
-              "title": "string"
+              "type": "string"
             }
           },
           "additionalProperties": false
@@ -2153,7 +2077,7 @@ schema (Suspend): <suspended schema>`
         "$schema": "http://json-schema.org/draft-07/schema#",
         type: "object",
         required: ["a"],
-        properties: { a: { type: "string", description: "a string", title: "string" } },
+        properties: { a: { type: "string" } },
         additionalProperties: false
       }
     )
@@ -2173,8 +2097,8 @@ schema (Suspend): <suspended schema>`
         type: "object",
         required: ["a", "b"],
         properties: {
-          a: { type: "string", description: "a string", title: "string" },
-          b: { type: "number", description: "a number", title: "number" }
+          a: { type: "string" },
+          b: { type: "number" }
         },
         additionalProperties: false,
         b: 2,
