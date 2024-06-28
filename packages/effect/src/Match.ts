@@ -6,7 +6,7 @@ import * as internal from "./internal/matcher.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import * as Predicate from "./Predicate.js"
-import type { Contravariant, Covariant, UnionToIntersection } from "./Types.js"
+import type * as T from "./Types.js"
 import type { Unify } from "./Unify.js"
 
 /**
@@ -36,11 +36,11 @@ export type Matcher<Input, Filters, RemainingApplied, Result, Provided, Return =
 export interface TypeMatcher<in Input, out Filters, out Remaining, out Result, out Return = any> extends Pipeable {
   readonly _tag: "TypeMatcher"
   readonly [MatcherTypeId]: {
-    readonly _input: Contravariant<Input>
-    readonly _filters: Covariant<Filters>
-    readonly _remaining: Covariant<Remaining>
-    readonly _result: Covariant<Result>
-    readonly _return: Covariant<Return>
+    readonly _input: T.Contravariant<Input>
+    readonly _filters: T.Covariant<Filters>
+    readonly _remaining: T.Covariant<Remaining>
+    readonly _result: T.Covariant<Result>
+    readonly _return: T.Covariant<Return>
   }
   readonly cases: ReadonlyArray<Case>
   add<I, R, RA, A>(_case: Case): TypeMatcher<I, R, RA, A>
@@ -55,10 +55,10 @@ export interface ValueMatcher<in Input, Filters, out Remaining, out Result, Prov
 {
   readonly _tag: "ValueMatcher"
   readonly [MatcherTypeId]: {
-    readonly _input: Contravariant<Input>
-    readonly _filters: Covariant<Filters>
-    readonly _result: Covariant<Result>
-    readonly _return: Covariant<Return>
+    readonly _input: T.Contravariant<Input>
+    readonly _filters: T.Covariant<Filters>
+    readonly _result: T.Covariant<Result>
+    readonly _return: T.Covariant<Return>
   }
   readonly provided: Provided
   readonly value: Either.Either<Provided, Remaining>
@@ -196,15 +196,15 @@ export const whenAnd: <
   R,
   const P extends ReadonlyArray<Types.PatternPrimitive<R> | Types.PatternBase<R>>,
   Ret,
-  Fn extends (_: Types.WhenMatch<R, UnionToIntersection<P[number]>>) => Ret
+  Fn extends (_: Types.WhenMatch<R, T.UnionToIntersection<P[number]>>) => Ret
 >(
   ...args: [...patterns: P, f: Fn]
 ) => <I, F, A, Pr>(
   self: Matcher<I, F, R, A, Pr, Ret>
 ) => Matcher<
   I,
-  Types.AddWithout<F, Types.PForExclude<UnionToIntersection<P[number]>>>,
-  Types.ApplyFilters<I, Types.AddWithout<F, Types.PForExclude<UnionToIntersection<P[number]>>>>,
+  Types.AddWithout<F, Types.PForExclude<T.UnionToIntersection<P[number]>>>,
+  Types.ApplyFilters<I, Types.AddWithout<F, Types.PForExclude<T.UnionToIntersection<P[number]>>>>,
   A | ReturnType<Fn>,
   Pr
 > = internal.whenAnd
@@ -297,7 +297,7 @@ export const discriminatorsExhaustive: <D extends string>(
  * @since 1.0.0
  */
 export const tag: <R, P extends Types.Tags<"_tag", R> & string, Ret, B extends Ret>(
-  ...pattern: [first: P, ...values: Array<P>, f: (_: Extract<R, Record<"_tag", P>>) => B]
+  ...pattern: [first: P, ...values: Array<P>, f: (_: Extract<T.NoInfer<R>, Record<"_tag", P>>) => B]
 ) => <I, F, A, Pr>(
   self: Matcher<I, F, R, A, Pr, Ret>
 ) => Matcher<
@@ -315,7 +315,7 @@ export const tag: <R, P extends Types.Tags<"_tag", R> & string, Ret, B extends R
  */
 export const tagStartsWith: <R, P extends string, Ret, B extends Ret>(
   pattern: P,
-  f: (_: Extract<R, Record<"_tag", `${P}${string}`>>) => B
+  f: (_: Extract<T.NoInfer<R>, Record<"_tag", `${P}${string}`>>) => B
 ) => <I, F, A, Pr>(
   self: Matcher<I, F, R, A, Pr, Ret>
 ) => Matcher<
@@ -692,7 +692,7 @@ export declare namespace Types {
   /**
    * @since 1.0.0
    */
-  export type ArrayToIntersection<A extends ReadonlyArray<any>> = UnionToIntersection<
+  export type ArrayToIntersection<A extends ReadonlyArray<any>> = T.UnionToIntersection<
     A[number]
   >
 
