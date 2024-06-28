@@ -55,7 +55,11 @@ export const dataLoader = dual<
       Effect.forEach(
         items,
         ({ deferred, request }) =>
-          Effect.flatMap(Effect.exit(Effect.request(request, self)), (exit) => Deferred.done(deferred, exit)),
+          Effect.request(request, self).pipe(
+            Effect.withRequestCaching(false),
+            Effect.exit,
+            Effect.flatMap((exit) => Deferred.done(deferred, exit))
+          ),
         { batching: true, discard: true }
       )
     const loop: Effect.Effect<void> = Effect.suspend(() => {
