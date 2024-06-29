@@ -1,5 +1,14 @@
 # @effect/platform
 
+## 0.58.15
+
+### Patch Changes
+
+- [#3123](https://github.com/Effect-TS/effect/pull/3123) [`baa90df`](https://github.com/Effect-TS/effect/commit/baa90df9663f5f37d7b6814dad25142d53dbc720) Thanks @tim-smart! - add HttpClient.followRedirects api
+
+- Updated dependencies [[`cb76bcb`](https://github.com/Effect-TS/effect/commit/cb76bcb2f8858a90db4f785efee262cea1b9844e)]:
+  - @effect/schema@0.68.13
+
 ## 0.58.14
 
 ### Patch Changes

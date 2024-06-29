@@ -1,5 +1,15 @@
 # @effect/cli
 
+## 0.36.68
+
+### Patch Changes
+
+- [#3107](https://github.com/Effect-TS/effect/pull/3107) [`fcb7411`](https://github.com/Effect-TS/effect/commit/fcb7411be7ccc8b62da7c5e2b2044365ae879a0e) Thanks @IMax153! - Adds a `--log-level` built-in option to all commands which can be used to control the minimum `LogLevel` of the command's associated handler
+
+- Updated dependencies [[`cb76bcb`](https://github.com/Effect-TS/effect/commit/cb76bcb2f8858a90db4f785efee262cea1b9844e), [`baa90df`](https://github.com/Effect-TS/effect/commit/baa90df9663f5f37d7b6814dad25142d53dbc720)]:
+  - @effect/schema@0.68.13
+  - @effect/platform@0.58.15
+
 ## 0.36.67
 
 ### Patch Changes
