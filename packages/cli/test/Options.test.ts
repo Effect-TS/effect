@@ -425,7 +425,6 @@ describe("Options", () => {
     Effect.gen(function*(_) {
       const args = Array.make("-d", "key1=v1", "key2=v2=1+1", "--verbose")
       const result = yield* _(process(defs, args, CliConfig.defaultConfig))
-      console.log(result)
       expect(result).toEqual([["--verbose"], HashMap.make(["key1", "v1"], ["key2", "v2=1+1"])])
     }).pipe(runEffect))
 
