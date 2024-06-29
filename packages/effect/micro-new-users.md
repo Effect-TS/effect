@@ -1088,27 +1088,6 @@ Output:
 */
 ```
 
-### scheduleAndThen
-
-```ts
-import * as Micro from "effect/Micro"
-import { dryRun } from "./dryRun.js"
-
-const policy = Micro.scheduleAndThen(
-  Micro.scheduleRecurs(4),
-  Micro.scheduleSpaced(100)
-)
-
-console.log(dryRun(policy))
-/*
-Output:
-[
-    0,   0,   0, 0,
-  100, 100, 100
-]
-*/
-```
-
 ## Concurrency
 
 ### Forking Effects

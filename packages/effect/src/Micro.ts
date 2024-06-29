@@ -2077,35 +2077,6 @@ export const scheduleIntersect: {
     Option.zipWith(self(attempt, elapsed), that(attempt, elapsed), (d1, d2) => Math.max(d1, d2))
 )
 
-/**
- * Combines two `MicroSchedule`s sequentially, by following the first policy
- * until it ends, and then following the second policy.
- *
- * @since 3.4.6
- * @experimental
- * @category scheduling
- */
-export const scheduleAndThen: {
-  (that: MicroSchedule): (self: MicroSchedule) => MicroSchedule
-  (self: MicroSchedule, that: MicroSchedule): MicroSchedule
-} = dual(
-  2,
-  (self: MicroSchedule, that: MicroSchedule): MicroSchedule =>
-    (function() {
-      let done = false
-      return (attempt, elapsed) => {
-        if (!done) {
-          const out = self(attempt, elapsed)
-          if (Option.isSome(out)) {
-            return out
-          }
-          done = true
-        }
-        return that(attempt, elapsed)
-      }
-    })()
-)
-
 // ----------------------------------------------------------------------------
 // error handling
 // ----------------------------------------------------------------------------

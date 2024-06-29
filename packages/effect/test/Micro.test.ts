@@ -1185,13 +1185,5 @@ describe.concurrent("Micro", () => {
       ))
       assert.deepStrictEqual(out, [100, 100, 100, 160, 320, 640, 1280])
     })
-
-    it("scheduleAndThen", () => {
-      const out = dryRun(Micro.scheduleAndThen(
-        Micro.scheduleRecurs(4),
-        Micro.scheduleSpaced(100)
-      ))
-      assert.deepStrictEqual(out, [0, 0, 0, 0, 100, 100, 100])
-    })
   })
 })

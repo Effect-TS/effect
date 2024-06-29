@@ -40,7 +40,6 @@ General naming convention rule: `<reference module (start with lowercase)><api (
   - add `scheduleAddDelay` combinator
   - add `scheduleUnion` combinator
   - add `scheduleIntersect` combinator
-  - add `scheduleAndThen` combinator
 - `Handle`
   - `abort` -> `interrupt`
   - `unsafeAbort` -> `unsafeInterrupt`
