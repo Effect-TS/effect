@@ -28,7 +28,7 @@ export const Dispatcher = Context.GenericTag<NodeClient.Dispatcher, Undici.Dispa
 
 /** @internal */
 export const makeDispatcher: Effect.Effect<Undici.Dispatcher, never, Scope.Scope> = Effect.acquireRelease(
-  Effect.sync(() => new Undici.Dispatcher()),
+  Effect.sync(() => new Undici.Agent()),
   (dispatcher) => Effect.promise(() => dispatcher.close())
 )
 

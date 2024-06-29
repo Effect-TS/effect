@@ -1,5 +1,28 @@
 # @effect/experimental
 
+## 0.17.15
+
+### Patch Changes
+
+- Updated dependencies [[`cb76bcb`](https://github.com/Effect-TS/effect/commit/cb76bcb2f8858a90db4f785efee262cea1b9844e), [`baa90df`](https://github.com/Effect-TS/effect/commit/baa90df9663f5f37d7b6814dad25142d53dbc720)]:
+  - @effect/schema@0.68.13
+  - @effect/platform@0.58.15
+  - @effect/platform-node@0.53.14
+
+## 0.17.14
+
+### Patch Changes
+
+- [#3110](https://github.com/Effect-TS/effect/pull/3110) [`296a9e2`](https://github.com/Effect-TS/effect/commit/296a9e24b536678c0623016b1f51653f2f2c4fe8) Thanks @tim-smart! - fix deadlock in @effect/experimental dataLoader
+
+## 0.17.13
+
+### Patch Changes
+
+- Updated dependencies [[`52a87c7`](https://github.com/Effect-TS/effect/commit/52a87c7a0b9536398deaf8ec507e53a82c607219), [`6d2280e`](https://github.com/Effect-TS/effect/commit/6d2280e9497c95cb0e965ca462c825345074eedf)]:
+  - @effect/platform@0.58.14
+  - @effect/platform-node@0.53.13
+
 ## 0.17.12
 
 ### Patch Changes

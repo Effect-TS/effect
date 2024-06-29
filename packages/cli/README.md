@@ -73,6 +73,12 @@ For a more detailed walkthrough, take a read through the [Tutorial](#tutorial) b
 
 Here's a breakdown of the key built-in options available in `@effect/cli`:
 
+- **Log Level (`[--log-level]`)**:
+
+  - **Description**: Sets the **minimum** log level for a `Command`'s handler method
+  - **Usage**: `--log-level (all | trace | debug | info | warning | error | fatal | none)`
+  - **Functionality**: Allows you to specify the **minimum** log level for a `Command`'s handler method. By setting this option, you can control the verbosity of the log output, ensuring that only logs of a certain priority or higher are output by your program.
+
 - **Shell Completions (`[--completions]`)**:
 
   - **Description**: Automatically generates shell completion scripts to enhance user experience. Shell completions suggest possible command options when you type a command and hit the tab key.

@@ -1,4 +1,4 @@
-import { Args, Command, Options } from "@effect/cli"
+import { Args, CliConfig, Command, Options } from "@effect/cli"
 import { NodeContext, NodeKeyValueStore, NodeRuntime } from "@effect/platform-node"
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
@@ -101,9 +101,18 @@ const command = Command.make("naval_fate").pipe(
   ])
 )
 
-const MainLayer = NavalFateStore.layer.pipe(
-  Layer.provide(NodeKeyValueStore.layerFileSystem("naval-fate-store")),
-  Layer.merge(NodeContext.layer)
+const ConfigLive = CliConfig.layer({
+  showBuiltIns: false
+})
+
+const NavalFateLive = NavalFateStore.layer.pipe(
+  Layer.provide(NodeKeyValueStore.layerFileSystem("naval-fate-store"))
+)
+
+const MainLayer = Layer.mergeAll(
+  ConfigLive,
+  NavalFateLive,
+  NodeContext.layer
 )
 
 const cli = Command.run(command, {

@@ -20,6 +20,7 @@ import type * as Platform from "./HttpPlatform.js"
 import type * as Error from "./HttpServerError.js"
 import type * as ServerRequest from "./HttpServerRequest.js"
 import type * as Respondable from "./HttpServerRespondable.js"
+import type * as ServerResponse from "./HttpServerResponse.js"
 import * as internal from "./internal/httpRouter.js"
 import type { Path } from "./Path.js"
 
@@ -47,7 +48,7 @@ export interface HttpRouter<E = never, R = never>
   readonly mounts: Chunk.Chunk<
     readonly [
       prefix: string,
-      httpApp: App.HttpApp<Respondable.Respondable, E, R>,
+      httpApp: App.Default<E, R>,
       options?: { readonly includePrefix?: boolean | undefined } | undefined
     ]
   >
@@ -185,6 +186,15 @@ export declare namespace Route {
    */
   export type Handler<E, R> = App.HttpApp<
     Respondable.Respondable,
+    E,
+    R | RouteContext | ServerRequest.ParsedSearchParams
+  >
+
+  /**
+   * @since 1.0.0
+   */
+  export type Middleware<E, R> = App.HttpApp<
+    ServerResponse.HttpServerResponse,
     E,
     R | RouteContext | ServerRequest.ParsedSearchParams
   >
@@ -600,13 +610,27 @@ export const options: {
  */
 export const use: {
   <E, R, R1, E1>(
-    f: (self: Route.Handler<E, R>) => App.Default<E1, R1>
+    f: (self: Route.Middleware<E, R>) => App.Default<E1, R1>
   ): (self: HttpRouter<E, R>) => HttpRouter<E1, HttpRouter.ExcludeProvided<R1>>
   <E, R, R1, E1>(
     self: HttpRouter<E, R>,
-    f: (self: Route.Handler<E, R>) => App.Default<E1, R1>
+    f: (self: Route.Middleware<E, R>) => App.Default<E1, R1>
   ): HttpRouter<E1, HttpRouter.ExcludeProvided<R1>>
 } = internal.use
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const transform: {
+  <E, R, R1, E1>(
+    f: (self: Route.Handler<E, R>) => App.HttpApp<Respondable.Respondable, E1, R1>
+  ): (self: HttpRouter<E, R>) => HttpRouter<E1, HttpRouter.ExcludeProvided<R1>>
+  <E, R, R1, E1>(
+    self: HttpRouter<E, R>,
+    f: (self: Route.Handler<E, R>) => App.HttpApp<Respondable.Respondable, E1, R1>
+  ): HttpRouter<E1, HttpRouter.ExcludeProvided<R1>>
+} = internal.transform
 
 /**
  * @since 1.0.0
