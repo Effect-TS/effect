@@ -2972,6 +2972,12 @@ const intersectUnionMembers = (
         case "Transformation": {
           if (AST.isTypeLiteralTransformation(x.transformation)) {
             switch (y._tag) {
+              case "Union":
+                return intersectUnionMembers([x], y.types, path)
+              case "Suspend":
+                return [new AST.Suspend(() => extendAST(x, y.f(), path))]
+              case "Refinement":
+                return addRefinementToMembers(y, intersectUnionMembers([x], getTypes(y.from), path))
               case "TypeLiteral":
                 return [
                   new AST.Transformation(

@@ -1,215 +1,224 @@
 import * as Arbitrary from "@effect/schema/Arbitrary"
+import type * as AST from "@effect/schema/AST"
 import * as FastCheck from "@effect/schema/FastCheck"
 import * as Schema from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("extend", () => {
-  it(`struct extend struct (dual)`, async () => {
-    const schema = Schema.extend(Schema.Struct({ a: Schema.String }), Schema.Struct({ b: Schema.Number }))
-    expect(String(schema)).toBe("{ readonly a: string; readonly b: number }")
-  })
+  describe("struct", () => {
+    it("extend struct", async () => {
+      const schema = Schema.extend(Schema.Struct({ a: Schema.String }), Schema.Struct({ b: Schema.Number }))
+      expect(String(schema)).toBe("{ readonly a: string; readonly b: number }")
+    })
 
-  it(`struct with defaults extend struct`, async () => {
-    const schema = Schema.Struct({
-      a: Schema.optional(Schema.String, { exact: true, default: () => "" }),
-      b: Schema.String
-    }).pipe(Schema.extend(Schema.Struct({ c: Schema.Number })))
-    expect(String(schema)).toBe(
-      "({ readonly a?: string; readonly b: string; readonly c: number } <-> { readonly a: string; readonly b: string; readonly c: number })"
-    )
-  })
-
-  it(`struct extend struct with defaults`, async () => {
-    const schema = Schema.Struct({ a: Schema.Number }).pipe(
-      Schema.extend(
-        Schema.Struct({ b: Schema.String, c: Schema.optional(Schema.String, { exact: true, default: () => "" }) })
+    it(`extend TypeLiteralTransformation`, async () => {
+      const schema = Schema.Struct({ a: Schema.Number }).pipe(
+        Schema.extend(
+          Schema.Struct({ b: Schema.String, c: Schema.optional(Schema.String, { exact: true, default: () => "" }) })
+        )
       )
-    )
-    expect(String(schema)).toBe(
-      "({ readonly a: number; readonly b: string; readonly c?: string } <-> { readonly a: number; readonly b: string; readonly c: string })"
-    )
-  })
-
-  it(`struct with defaults extend struct with defaults `, async () => {
-    const schema = Schema.Struct({
-      a: Schema.optional(Schema.String, { exact: true, default: () => "" }),
-      b: Schema.String
-    }).pipe(
-      Schema.extend(
-        Schema.Struct({
-          c: Schema.optional(Schema.Number, { exact: true, default: () => 0 }),
-          d: Schema.Boolean
-        })
+      expect(String(schema)).toBe(
+        "({ readonly a: number; readonly b: string; readonly c?: string } <-> { readonly a: number; readonly b: string; readonly c: string })"
       )
-    )
-    expect(String(schema)).toBe(
-      "({ readonly d: boolean; readonly a?: string; readonly b: string; readonly c?: number } <-> { readonly d: boolean; readonly a: string; readonly b: string; readonly c: number })"
-    )
+    })
+
+    it("extend union", () => {
+      const schema = Schema.Struct({ b: Schema.Boolean }).pipe(
+        Schema.extend(Schema.Union(
+          Schema.Struct({ a: Schema.Literal("a") }),
+          Schema.Struct({ a: Schema.Literal("b") })
+        ))
+      )
+      expect(String(schema)).toBe(`{ readonly a: "a"; readonly b: boolean } | { readonly a: "b"; readonly b: boolean }`)
+    })
+
+    it("extend record(string, string)", async () => {
+      const schema = Schema.Struct({ a: Schema.String }).pipe(
+        Schema.extend(Schema.Record(Schema.String, Schema.String))
+      )
+      expect(String(schema)).toBe(`{ readonly a: string; readonly [x: string]: string }`)
+    })
+
+    it("extend record(templateLiteral, string)", async () => {
+      const schema = Schema.Struct({ a: Schema.String }).pipe(
+        Schema.extend(Schema.Record(
+          Schema.TemplateLiteral(
+            Schema.String,
+            Schema.Literal("-"),
+            Schema.Number
+          ),
+          Schema.String
+        ))
+      )
+      // type A = {
+      //   [x: `${string}-${number}`]: string
+      //   readonly a: string
+      // }
+      // const a: A = { a: "a" } // OK
+      expect(String(schema)).toBe("{ readonly a: string; readonly [x: `${string}-${number}`]: string }")
+    })
+
+    it("extend record(string, NumberFromChar)", async () => {
+      const schema = Schema.Struct({ a: Schema.Number }).pipe(
+        Schema.extend(Schema.Record(Schema.String, Util.NumberFromChar))
+      )
+      expect(String(schema)).toBe(`{ readonly a: number; readonly [x: string]: NumberFromChar }`)
+    })
+
+    it("extend record(symbol, NumberFromChar)", async () => {
+      const schema = Schema.Struct({ a: Schema.Number }).pipe(
+        Schema.extend(Schema.Record(Schema.SymbolFromSelf, Util.NumberFromChar))
+      )
+      expect(String(schema)).toBe(`{ readonly a: number; readonly [x: symbol]: NumberFromChar }`)
+    })
+
+    it(`nested extend nested struct`, async () => {
+      const A = Schema.Struct({ a: Schema.Struct({ b: Schema.String }) })
+      const B = Schema.Struct({ a: Schema.Struct({ c: Schema.Number }) })
+      const schema = Schema.extend(A, B)
+      expect(String(schema)).toBe(`{ readonly a: { readonly b: string; readonly c: number } }`)
+    })
   })
 
-  it(`union with defaults extend union with defaults `, async () => {
-    const schema = Schema.Union(
-      Schema.Struct({
-        a: Schema.optional(Schema.String, { exact: true, default: () => "a" }),
+  describe("TypeLiteralTransformation", () => {
+    it("extend struct", async () => {
+      const schema = Schema.Struct({
+        a: Schema.optional(Schema.String, { exact: true, default: () => "" }),
         b: Schema.String
-      }),
-      Schema.Struct({
-        c: Schema.optional(Schema.String, { exact: true, default: () => "c" }),
-        d: Schema.String
-      })
-    ).pipe(
-      Schema.extend(
+      }).pipe(Schema.extend(Schema.Struct({ c: Schema.Number })))
+      expect(String(schema)).toBe(
+        "({ readonly a?: string; readonly b: string; readonly c: number } <-> { readonly a: string; readonly b: string; readonly c: number })"
+      )
+    })
+
+    it("extend union", async () => {
+      const schema = Schema.extend(
+        Schema.Struct({
+          a: Schema.optional(Schema.String, { default: () => "default" })
+        }),
         Schema.Union(
+          Schema.Struct({ b: Schema.String }),
+          Schema.Struct({ c: Schema.String })
+        )
+      )
+      expect(String(schema)).toBe(
+        "({ readonly b: string; readonly a?: string | undefined } <-> { readonly a: string; readonly b: string }) | ({ readonly c: string; readonly a?: string | undefined } <-> { readonly a: string; readonly c: string })"
+      )
+    })
+
+    it("extend refinement", async () => {
+      const schema = Schema.extend(
+        Schema.Struct({
+          a: Schema.optional(Schema.String, { default: () => "default" })
+        }),
+        Schema.Struct({ b: Schema.String }).pipe(Schema.filter(() => true))
+      )
+      expect(String(schema)).toBe(
+        "{ ({ readonly b: string; readonly a?: string | undefined } <-> { readonly a: string; readonly b: string }) | filter }"
+      )
+    })
+
+    it("extend suspend", async () => {
+      const suspend = Schema.suspend(() => Schema.Struct({ b: Schema.String }))
+      const schema = Schema.extend(
+        Schema.Struct({
+          a: Schema.optional(Schema.String, { default: () => "default" })
+        }),
+        suspend
+      )
+      expect(String((schema.ast as AST.Suspend).f())).toBe(
+        "({ readonly b: string; readonly a?: string | undefined } <-> { readonly a: string; readonly b: string })"
+      )
+    })
+
+    it("extend TypeLiteralTransformation", async () => {
+      const schema = Schema.Struct({
+        a: Schema.optional(Schema.String, { exact: true, default: () => "" }),
+        b: Schema.String
+      }).pipe(
+        Schema.extend(
           Schema.Struct({
-            e: Schema.optional(Schema.String, { exact: true, default: () => "e" }),
-            f: Schema.String
-          }),
-          Schema.Struct({
-            g: Schema.optional(Schema.String, { exact: true, default: () => "g" }),
-            h: Schema.String
+            c: Schema.optional(Schema.Number, { exact: true, default: () => 0 }),
+            d: Schema.Boolean
           })
         )
       )
-    )
-    expect(String(schema)).toBe(
-      "({ readonly a?: string; readonly b: string; readonly e?: string; readonly f: string } <-> { readonly a: string; readonly b: string; readonly e: string; readonly f: string }) | ({ readonly a?: string; readonly b: string; readonly g?: string; readonly h: string } <-> { readonly a: string; readonly b: string; readonly g: string; readonly h: string }) | ({ readonly c?: string; readonly d: string; readonly e?: string; readonly f: string } <-> { readonly c: string; readonly d: string; readonly e: string; readonly f: string }) | ({ readonly c?: string; readonly d: string; readonly g?: string; readonly h: string } <-> { readonly c: string; readonly d: string; readonly g: string; readonly h: string })"
-    )
+      expect(String(schema)).toBe(
+        "({ readonly d: boolean; readonly a?: string; readonly b: string; readonly c?: number } <-> { readonly d: boolean; readonly a: string; readonly b: string; readonly c: number })"
+      )
+    })
   })
 
-  it(`struct extend union`, () => {
-    const schema = Schema.Struct({ b: Schema.Boolean }).pipe(
-      Schema.extend(Schema.Union(
+  describe("union", () => {
+    it("extend struct", () => {
+      const schema = Schema.Union(
         Schema.Struct({ a: Schema.Literal("a") }),
-        Schema.Struct({ a: Schema.Literal("b") })
-      ))
-    )
-    expect(String(schema)).toBe(`{ readonly a: "a"; readonly b: boolean } | { readonly a: "b"; readonly b: boolean }`)
-  })
+        Schema.Struct({ b: Schema.Literal("b") })
+      ).pipe(Schema.extend(Schema.Struct({ c: Schema.Boolean })))
+      expect(String(schema)).toBe(`{ readonly a: "a"; readonly c: boolean } | { readonly b: "b"; readonly c: boolean }`)
+    })
 
-  it(`union extend struct`, () => {
-    const schema = Schema.Union(
-      Schema.Struct({ a: Schema.Literal("a") }),
-      Schema.Struct({ b: Schema.Literal("b") })
-    ).pipe(Schema.extend(Schema.Struct({ c: Schema.Boolean })))
-    expect(String(schema)).toBe(`{ readonly a: "a"; readonly c: boolean } | { readonly b: "b"; readonly c: boolean }`)
-  })
-
-  it(`nested union extends struct`, () => {
-    const schema = Schema.Union(
-      Schema.Union(
-        Schema.Struct({ a: Schema.Literal("a") }),
-        Schema.Struct({ a: Schema.Literal("b") })
-      ),
-      Schema.Struct({ b: Schema.Literal("b") })
-    ).pipe(
-      Schema.extend(Schema.Struct({ c: Schema.Boolean }))
-    )
-    expect(String(schema)).toBe(
-      `{ readonly a: "a"; readonly c: boolean } | { readonly a: "b"; readonly c: boolean } | { readonly b: "b"; readonly c: boolean }`
-    )
-  })
-
-  it(`union extend union`, () => {
-    const schema = Schema.Union(
-      Schema.Struct({ a: Schema.Literal("a") }),
-      Schema.Struct({ a: Schema.Literal("b") })
-    ).pipe(
-      Schema.extend(
-        Schema.Union(
-          Schema.Struct({ c: Schema.Boolean }),
-          Schema.Struct({ d: Schema.Number })
+    it("with defaults extend union with defaults", async () => {
+      const schema = Schema.Union(
+        Schema.Struct({
+          a: Schema.optional(Schema.String, { exact: true, default: () => "a" }),
+          b: Schema.String
+        }),
+        Schema.Struct({
+          c: Schema.optional(Schema.String, { exact: true, default: () => "c" }),
+          d: Schema.String
+        })
+      ).pipe(
+        Schema.extend(
+          Schema.Union(
+            Schema.Struct({
+              e: Schema.optional(Schema.String, { exact: true, default: () => "e" }),
+              f: Schema.String
+            }),
+            Schema.Struct({
+              g: Schema.optional(Schema.String, { exact: true, default: () => "g" }),
+              h: Schema.String
+            })
+          )
         )
       )
-    )
-    expect(String(schema)).toBe(
-      `{ readonly a: "a"; readonly c: boolean } | { readonly a: "a"; readonly d: number } | { readonly a: "b"; readonly c: boolean } | { readonly a: "b"; readonly d: number }`
-    )
-  })
+      expect(String(schema)).toBe(
+        "({ readonly a?: string; readonly b: string; readonly e?: string; readonly f: string } <-> { readonly a: string; readonly b: string; readonly e: string; readonly f: string }) | ({ readonly a?: string; readonly b: string; readonly g?: string; readonly h: string } <-> { readonly a: string; readonly b: string; readonly g: string; readonly h: string }) | ({ readonly c?: string; readonly d: string; readonly e?: string; readonly f: string } <-> { readonly c: string; readonly d: string; readonly e: string; readonly f: string }) | ({ readonly c?: string; readonly d: string; readonly g?: string; readonly h: string } <-> { readonly c: string; readonly d: string; readonly g: string; readonly h: string })"
+      )
+    })
 
-  it("struct extend record(string, string)", async () => {
-    const schema = Schema.Struct({ a: Schema.String }).pipe(
-      Schema.extend(Schema.Record(Schema.String, Schema.String))
-    )
-    expect(String(schema)).toBe(`{ readonly a: string; readonly [x: string]: string }`)
-  })
+    it("extend union", () => {
+      const schema = Schema.Union(
+        Schema.Struct({ a: Schema.Literal("a") }),
+        Schema.Struct({ a: Schema.Literal("b") })
+      ).pipe(
+        Schema.extend(
+          Schema.Union(
+            Schema.Struct({ c: Schema.Boolean }),
+            Schema.Struct({ d: Schema.Number })
+          )
+        )
+      )
+      expect(String(schema)).toBe(
+        `{ readonly a: "a"; readonly c: boolean } | { readonly a: "a"; readonly d: number } | { readonly a: "b"; readonly c: boolean } | { readonly a: "b"; readonly d: number }`
+      )
+    })
 
-  it("struct extend record(templateLiteral, string)", async () => {
-    const schema = Schema.Struct({ a: Schema.String }).pipe(
-      Schema.extend(Schema.Record(
-        Schema.TemplateLiteral(
-          Schema.String,
-          Schema.Literal("-"),
-          Schema.Number
+    it("nested extends struct", () => {
+      const schema = Schema.Union(
+        Schema.Union(
+          Schema.Struct({ a: Schema.Literal("a") }),
+          Schema.Struct({ a: Schema.Literal("b") })
         ),
-        Schema.String
-      ))
-    )
-    // type A = {
-    //   [x: `${string}-${number}`]: string
-    //   readonly a: string
-    // }
-    // const a: A = { a: "a" } // OK
-    expect(String(schema)).toBe("{ readonly a: string; readonly [x: `${string}-${number}`]: string }")
-  })
-
-  describe("both operands are transformations", () => {
-    const BoolFromString = Schema.transform(
-      Schema.String,
-      Schema.Boolean,
-      { decode: (x) => !!x, encode: (x) => "" + x }
-    )
-
-    it("optional, transformation", async () => {
-      const schema = Schema.Struct({
-        a: Schema.optional(Schema.Boolean, { exact: true, default: () => true })
-      }).pipe(
-        Schema.extend(
-          Schema.Struct({
-            b: Schema.Array(BoolFromString)
-          })
-        )
+        Schema.Struct({ b: Schema.Literal("b") })
+      ).pipe(
+        Schema.extend(Schema.Struct({ c: Schema.Boolean }))
       )
       expect(String(schema)).toBe(
-        `({ readonly a?: boolean; readonly b: ReadonlyArray<(string <-> boolean)> } <-> { readonly a: boolean; readonly b: ReadonlyArray<boolean> })`
+        `{ readonly a: "a"; readonly c: boolean } | { readonly a: "b"; readonly c: boolean } | { readonly b: "b"; readonly c: boolean }`
       )
     })
-
-    it("transformation, optional", async () => {
-      const schema = Schema.Struct({
-        b: Schema.Array(BoolFromString)
-      }).pipe(
-        Schema.extend(
-          Schema.Struct({
-            a: Schema.optional(Schema.Boolean, { exact: true, default: () => true })
-          })
-        )
-      )
-      expect(String(schema)).toBe(
-        `({ readonly a?: boolean; readonly b: ReadonlyArray<(string <-> boolean)> } <-> { readonly a: boolean; readonly b: ReadonlyArray<boolean> })`
-      )
-    })
-  })
-
-  it(`nested struct extend nested struct`, async () => {
-    const A = Schema.Struct({ a: Schema.Struct({ b: Schema.String }) })
-    const B = Schema.Struct({ a: Schema.Struct({ c: Schema.Number }) })
-    const schema = Schema.extend(A, B)
-    expect(String(schema)).toBe(`{ readonly a: { readonly b: string; readonly c: number } }`)
-  })
-
-  it("struct + record(string, NumberFromChar)", async () => {
-    const schema = Schema.Struct({ a: Schema.Number }).pipe(
-      Schema.extend(Schema.Record(Schema.String, Util.NumberFromChar))
-    )
-    expect(String(schema)).toBe(`{ readonly a: number; readonly [x: string]: NumberFromChar }`)
-  })
-
-  it("struct + record(symbol, NumberFromChar)", async () => {
-    const schema = Schema.Struct({ a: Schema.Number }).pipe(
-      Schema.extend(Schema.Record(Schema.SymbolFromSelf, Util.NumberFromChar))
-    )
-    expect(String(schema)).toBe(`{ readonly a: number; readonly [x: symbol]: NumberFromChar }`)
   })
 
   describe("refinements", () => {
