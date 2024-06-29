@@ -748,3 +748,41 @@ export const withCookiesRef = dual<
           ))
     )
 )
+
+/** @internal */
+export const followRedirects = dual<
+  (
+    maxRedirects?: number | undefined
+  ) => <E, R>(self: Client.HttpClient.WithResponse<E, R>) => Client.HttpClient.WithResponse<E, R>,
+  <E, R>(
+    self: Client.HttpClient.WithResponse<E, R>,
+    maxRedirects?: number | undefined
+  ) => Client.HttpClient.WithResponse<E, R>
+>((args) => isClient(args[0]), <E, R>(
+  self: Client.HttpClient.WithResponse<E, R>,
+  maxRedirects?: number | undefined
+): Client.HttpClient.WithResponse<E, R> =>
+  make(
+    (request) => {
+      const loop = (
+        request: ClientRequest.HttpClientRequest,
+        redirects: number
+      ): Effect.Effect<ClientResponse.HttpClientResponse, E, R> =>
+        Effect.flatMap(
+          self.execute(Effect.succeed(request)),
+          (response) =>
+            response.status >= 300 && response.status < 400 && response.headers.location &&
+              redirects < (maxRedirects ?? 10)
+              ? loop(
+                internalRequest.setUrl(
+                  request,
+                  response.headers.location
+                ),
+                redirects + 1
+              )
+              : Effect.succeed(response)
+        )
+      return Effect.flatMap(request, (request) => loop(request, 0))
+    },
+    self.preprocess
+  ))

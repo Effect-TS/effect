@@ -467,6 +467,15 @@ export const withCookiesRef: {
 
 /**
  * @since 1.0.0
+ * @category redirects
+ */
+export const followRedirects: {
+  (maxRedirects?: number | undefined): <E, R>(self: HttpClient.WithResponse<E, R>) => HttpClient.WithResponse<E, R>
+  <E, R>(self: HttpClient.WithResponse<E, R>, maxRedirects?: number | undefined): HttpClient.WithResponse<E, R>
+} = internal.followRedirects
+
+/**
+ * @since 1.0.0
  * @category fiber refs
  */
 export const currentTracerDisabledWhen: FiberRef.FiberRef<Predicate.Predicate<ClientRequest.HttpClientRequest>> =
