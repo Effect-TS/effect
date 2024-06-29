@@ -6,6 +6,7 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { dual, pipe } from "effect/Function"
 import * as HashMap from "effect/HashMap"
+import * as Logger from "effect/Logger"
 import * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
 import * as Unify from "effect/Unify"
@@ -161,6 +162,19 @@ const handleBuiltInOption = <R, E, A>(
   R | CliApp.CliApp.Environment | Terminal.Terminal
 > => {
   switch (builtIn._tag) {
+    case "SetLogLevel": {
+      const nextArgs = executable.split(/\s+/)
+      // Filter out the log level option before re-executing the command
+      for (let i = 0; i < args.length; i++) {
+        if (args[i] === "--log-level" || args[i - 1] === "--log-level") {
+          continue
+        }
+        nextArgs.push(args[i])
+      }
+      return run(self, nextArgs, execute).pipe(
+        Logger.withMinimumLogLevel(builtIn.level)
+      )
+    }
     case "ShowHelp": {
       const banner = InternalHelpDoc.h1(InternalSpan.code(self.name))
       const header = InternalHelpDoc.p(InternalSpan.spans([
