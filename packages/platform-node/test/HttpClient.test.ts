@@ -58,6 +58,20 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
         expect(response).toContain("Google")
       }).pipe(Effect.provide(layer)))
 
+    it.effect("google followRedirects", () =>
+      Effect.gen(function*(_) {
+        const client = (yield* HttpClient.HttpClient).pipe(
+          HttpClient.followRedirects()
+        )
+        const response = yield* _(
+          HttpClientRequest.get("http://google.com/"),
+          client,
+          Effect.flatMap((_) => _.text),
+          Effect.scoped
+        )
+        expect(response).toContain("Google")
+      }).pipe(Effect.provide(layer)))
+
     it.effect("google stream", () =>
       Effect.gen(function*(_) {
         const client = yield* _(HttpClient.HttpClient)
