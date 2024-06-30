@@ -64,7 +64,9 @@ describe("mutable", () => {
   })
 
   it("transformation", () => {
-    const schema = S.mutable(S.transform(S.Array(S.String), S.Array(S.String), { decode: identity, encode: identity }))
+    const schema = S.mutable(
+      S.transform(S.Array(S.String), S.Array(S.String), { strict: true, decode: identity, encode: identity })
+    )
     if (AST.isTransformation(schema.ast)) {
       expect(schema.ast.from).toEqual(
         new AST.TupleType([], [new AST.Type(S.String.ast)], false)

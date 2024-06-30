@@ -30,6 +30,7 @@ const IdNumber = S.Number.pipe(
   S.transformOrFail(
     S.Number,
     {
+      strict: true,
       decode: (_, _opts, ast) =>
         Effect.filterOrFail(
           Id,

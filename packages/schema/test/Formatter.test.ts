@@ -379,6 +379,7 @@ describe("Formatter", () => {
         S.String,
         S.String,
         {
+          strict: true,
           decode: (s, _, ast) => ParseResult.fail(new ParseResult.Type(ast, s)),
           encode: ParseResult.succeed
         }
@@ -403,6 +404,7 @@ describe("Formatter", () => {
         S.String,
         S.String,
         {
+          strict: true,
           decode: (s, _, ast) => ParseResult.fail(new ParseResult.Type(ast, s)),
           encode: ParseResult.succeed
         }
@@ -427,6 +429,7 @@ describe("Formatter", () => {
         S.String,
         S.String,
         {
+          strict: true,
           decode: (s, _, ast) => ParseResult.fail(new ParseResult.Type(ast, s, "message field")),
           encode: ParseResult.succeed
         }
@@ -451,6 +454,7 @@ describe("Formatter", () => {
         S.String,
         S.String,
         {
+          strict: true,
           decode: identity,
           encode: identity
         }
@@ -475,6 +479,7 @@ describe("Formatter", () => {
         S.String,
         S.String,
         {
+          strict: true,
           decode: identity,
           encode: identity
         }
@@ -497,6 +502,7 @@ describe("Formatter", () => {
         S.String.annotations({ message: () => "inner custom message" }),
         S.String,
         {
+          strict: true,
           decode: identity,
           encode: identity
         }
@@ -519,6 +525,7 @@ describe("Formatter", () => {
         S.String.annotations({ message: () => "inner custom message" }),
         S.String,
         {
+          strict: true,
           decode: identity,
           encode: identity
         }
@@ -541,6 +548,7 @@ describe("Formatter", () => {
         S.String,
         S.NonEmpty,
         {
+          strict: true,
           decode: identity,
           encode: identity
         }
@@ -567,6 +575,7 @@ describe("Formatter", () => {
         S.String,
         S.NonEmpty,
         {
+          strict: true,
           decode: identity,
           encode: identity
         }
@@ -589,6 +598,7 @@ describe("Formatter", () => {
         S.String,
         S.NonEmpty.annotations({ message: () => "inner custom message" }),
         {
+          strict: true,
           decode: identity,
           encode: identity
         }
@@ -611,6 +621,7 @@ describe("Formatter", () => {
         S.String,
         S.NonEmpty.annotations({ message: () => "inner custom message" }),
         {
+          strict: true,
           decode: identity,
           encode: identity
         }
@@ -633,6 +644,7 @@ describe("Formatter", () => {
         S.String,
         S.String,
         {
+          strict: true,
           decode: (s, _, ast) => ParseResult.fail(new ParseResult.Type(ast, s, "message field")),
           encode: ParseResult.succeed
         }
@@ -655,6 +667,7 @@ describe("Formatter", () => {
         S.String,
         S.String,
         {
+          strict: true,
           decode: (s, _, ast) => ParseResult.fail(new ParseResult.Type(ast, s, "message field")),
           encode: ParseResult.succeed
         }

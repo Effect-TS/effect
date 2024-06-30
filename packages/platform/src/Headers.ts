@@ -63,7 +63,7 @@ export const schema: Schema.Schema<Headers, Record.ReadonlyRecord<string, string
   .transform(
     Schema.Record(Schema.String, Schema.Union(Schema.String, Schema.Array(Schema.String))),
     schemaFromSelf,
-    { decode: (record) => fromInput(record), encode: identity }
+    { strict: true, decode: (record) => fromInput(record), encode: identity }
   )
 
 /**
