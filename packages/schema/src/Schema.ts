@@ -31,6 +31,7 @@ import type * as Order from "effect/Order"
 import type { Pipeable } from "effect/Pipeable"
 import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
+import * as record_ from "effect/Record"
 import * as redacted_ from "effect/Redacted"
 import * as Request from "effect/Request"
 import * as sortedSet_ from "effect/SortedSet"
@@ -6248,6 +6249,32 @@ export {
    */
   map as Map
 }
+
+/**
+ * @category ReadonlyMap transformations
+ * @since 0.68.15
+ */
+export const ReadonlyMapFromRecord = <KA, KR, VA, VI, VR>({ key, value }: {
+  key: Schema<KA, string, KR>
+  value: Schema<VA, VI, VR>
+}): Schema<ReadonlyMap<KA, VA>, { readonly [x: string]: VI }, KR | VR> =>
+  transform(Record(encodedBoundSchema(key), value), ReadonlyMapFromSelf({ key, value: typeSchema(value) }), {
+    decode: (record) => new Map(Object.entries(record)),
+    encode: record_.fromEntries
+  })
+
+/**
+ * @category Map transformations
+ * @since 0.68.15
+ */
+export const MapFromRecord = <KA, KR, VA, VI, VR>({ key, value }: {
+  key: Schema<KA, string, KR>
+  value: Schema<VA, VI, VR>
+}): Schema<Map<KA, VA>, { readonly [x: string]: VI }, KR | VR> =>
+  transform(Record(encodedBoundSchema(key), value), MapFromSelf({ key, value: typeSchema(value) }), {
+    decode: (record) => new Map(Object.entries(record)),
+    encode: record_.fromEntries
+  })
 
 const setArbitrary = <A>(item: LazyArbitrary<A>): LazyArbitrary<ReadonlySet<A>> => (fc) =>
   fc.array(item(fc)).map((as) => new Set(as))
