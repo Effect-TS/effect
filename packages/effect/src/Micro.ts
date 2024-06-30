@@ -2102,16 +2102,7 @@ export const catchAllCause: {
   <A, E, R, B, E2, R2>(
     self: Micro<A, E, R>,
     f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
-  ): Micro<A | B, E2, R | R2> =>
-    make(function(env, onExit) {
-      self[runSymbol](env, function(exit) {
-        if (exit._tag === "Left") {
-          f(exit.left)[runSymbol](env, onExit)
-        } else {
-          onExit(exit as MicroExit<A, never>)
-        }
-      })
-    })
+  ): Micro<A | B, E2, R | R2> => catchCauseIf(self, constTrue, f) as Micro<A | B, E2, R | R2>
 )
 
 /**
@@ -3916,7 +3907,7 @@ export interface YieldableError extends Pipeable, Inspectable, Readonly<Error> {
   readonly [SinkTypeId]: Sink.VarianceStruct<never, unknown, never, this, never>
   readonly [ChannelTypeId]: Channel.VarianceStruct<never, unknown, this, unknown, never, unknown, never>
   readonly [TypeId]: Micro.Variance<never, this, never>
-  readonly [runSymbol]: (env: Env<any>, onExit: (ecit: MicroExit<never, this>) => void) => void
+  readonly [runSymbol]: (env: Env<any>, onExit: (exit: MicroExit<never, this>) => void) => void
   [Symbol.iterator](): MicroIterator<Micro<never, this, never>>
 }
 
