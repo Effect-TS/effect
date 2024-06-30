@@ -1085,13 +1085,13 @@ export class FiberRuntime<in out A, in out E = never> implements Fiber.RuntimeFi
           return resume(core.exitSucceed(result.right))
         }
         switch (result.left._tag) {
-          case "Aborted": {
+          case "Interrupt": {
             return resume(core.exitFailCause(internalCause.interrupt(FiberId.none)))
           }
-          case "Expected": {
+          case "Fail": {
             return resume(core.fail(result.left.error))
           }
-          case "Unexpected": {
+          case "Die": {
             return resume(core.die(result.left.defect))
           }
         }
