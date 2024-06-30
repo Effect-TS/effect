@@ -2665,6 +2665,36 @@ export const provideSomeLayer: {
 } = internal.provideSomeLayer
 
 /**
+ * Returns a stream that mirrors the first source stream to emit an item.
+ * @example
+ * import { Stream, Schedule, Console, Effect } from "effect"
+ *
+ * const stream = Stream.raceAll(
+ *     Stream.fromSchedule(Schedule.spaced('1 millis')),
+ *     Stream.fromSchedule(Schedule.spaced('2 millis')),
+ *     Stream.fromSchedule(Schedule.spaced('4 millis')),
+ * ).pipe(Stream.take(6), Stream.tap(Console.log))
+ *
+ * Effect.runPromise(Stream.runDrain(stream))
+ * // Output each millisecond from the first stream, the rest streams are interrupted
+ * // 0
+ * // 1
+ * // 2
+ * // 3
+ * // 4
+ * // 5
+ * @since 3.5.0
+ * @category utils
+ */
+export const raceAll: <T extends ReadonlyArray<Stream<any, any, any>>>(
+  ...streams: T
+) => Stream<
+  [T[number]] extends [never] ? never : T[number] extends Stream<infer A, any, any> ? A : never,
+  [T[number]] extends [never] ? never : T[number] extends Stream<any, infer E, any> ? E : never,
+  [T[number]] extends [never] ? never : T[number] extends Stream<any, any, infer R> ? R : never
+> = internal.raceAll
+
+/**
  * Constructs a stream from a range of integers, including both endpoints.
  *
  * @since 2.0.0
