@@ -93,7 +93,7 @@ export const schema: {
   Schema.transformOrFail(
     Schema.encodedSchema(self),
     self,
-    { decode: ParseResult.succeed, encode: (i) => Effect.as(addAll(f(i)), i) }
+    { strict: true, decode: ParseResult.succeed, encode: (i) => Effect.as(addAll(f(i)), i) }
   ))
 
 /**

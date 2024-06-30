@@ -23,6 +23,7 @@ const NameString = S.String.pipe(
   S.transformOrFail(
     S.String,
     {
+      strict: true,
       decode: (_, _opts, ast) =>
         Name.pipe(
           Effect.filterOrFail(

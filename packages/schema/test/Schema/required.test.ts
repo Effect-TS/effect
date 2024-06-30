@@ -215,10 +215,11 @@ schema (Refinement): a string at least 2 character(s) long`)
       })
 
       it("transformations should throw", async () => {
-        expect(() => S.required(S.transform(S.String, S.String, { decode: identity, encode: identity }))).toThrow(
-          new Error(`Unsupported schema
+        expect(() => S.required(S.transform(S.String, S.String, { strict: true, decode: identity, encode: identity })))
+          .toThrow(
+            new Error(`Unsupported schema
 schema (Transformation): (string <-> string)`)
-        )
+          )
       })
     })
   })

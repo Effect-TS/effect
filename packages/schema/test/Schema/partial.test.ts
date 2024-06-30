@@ -251,12 +251,15 @@ schema (Refinement): a string at least 2 character(s) long`)
       })
 
       it("transformations should throw", () => {
-        expect(() => S.partial(S.transform(S.String, S.String, { decode: identity, encode: identity }))).toThrow(
-          new Error(`Unsupported schema
+        expect(() => S.partial(S.transform(S.String, S.String, { strict: true, decode: identity, encode: identity })))
+          .toThrow(
+            new Error(`Unsupported schema
 schema (Transformation): (string <-> string)`)
-        )
+          )
         expect(() =>
-          S.partial(S.transform(S.String, S.String, { decode: identity, encode: identity }), { exact: true })
+          S.partial(S.transform(S.String, S.String, { strict: true, decode: identity, encode: identity }), {
+            exact: true
+          })
         ).toThrow(
           new Error(`Unsupported schema
 schema (Transformation): (string <-> string)`)

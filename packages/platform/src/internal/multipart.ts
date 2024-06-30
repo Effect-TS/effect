@@ -113,6 +113,7 @@ export const SingleFileSchema: Schema.transform<
   Schema.Schema<ReadonlyArray<Multipart.PersistedFile>>,
   Schema.Schema<Multipart.PersistedFile>
 > = Schema.transform(FilesSchema.pipe(Schema.itemsCount(1)), FileSchema, {
+  strict: true,
   decode: ([file]) => file,
   encode: (file) => [file]
 })

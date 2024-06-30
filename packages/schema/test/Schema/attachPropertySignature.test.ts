@@ -83,6 +83,7 @@ describe("attachPropertySignature", () => {
       From,
       To,
       {
+        strict: true,
         decode: (input) => ParseResult.mapError(S.decodeUnknown(To)(input), (e) => e.issue),
         encode: ({ _isVisible, ...rest }) => ParseResult.succeed(rest)
       }

@@ -19,6 +19,7 @@ describe("`preserveKeyOrder` option", () => {
   const effectify = (duration: Duration.DurationInput) =>
     S.NumberFromString.pipe(
       S.transformOrFail(S.Number, {
+        strict: true,
         decode: (x) => Effect.sleep(duration).pipe(Effect.andThen(ParseResult.succeed(x))),
         encode: ParseResult.succeed
       })
