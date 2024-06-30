@@ -1,0 +1,73 @@
+---
+"effect": patch
+---
+
+Micro: align with `Effect` module (renamings and new combinators).
+
+General naming convention rule: `<reference module (start with lowercase)><api (start with Uppercase)>`.
+
+- `Failure` -> `MicroCause`
+  - `Failure.Expected<E>` -> `MicroCause.Fail<E>`
+  - `Failure.Unexpected` -> `MicroCause.Die`
+  - `Failure.Aborted` -> `MicroCause.Interrupt`
+  - `FailureExpected` -> `causeFail`
+  - `FailureUnexpected` -> `causeDie`
+  - `FailureAborted` -> `causeInterrupt`
+  - `failureIsExpected` -> `causeIsFail`
+  - `failureIsExpected` -> `causeIsFail`
+  - `failureIsUnexpected` -> `causeIsDie`
+  - `failureIsAborted` -> `causeIsInterrupt`
+  - `failureSquash` -> `causeSquash`
+  - `failureWithTrace` -> `causeWithTrace`
+- `Result` -> `MicroExit`
+  - `ResultAborted` -> `exitInterrupt`
+  - `ResultSuccess` -> `exitSucceed`
+  - `ResultFail` -> `exitFail`
+  - `ResultFailUnexpected` -> `exitDie`
+  - `ResultFailWith` -> `exitFailCause`
+  - `resultIsSuccess` -> `exitIsSuccess`
+  - `resultIsFailure` -> `exitIsFailure`
+  - `resultIsAborted` -> `exitIsInterrupt`
+  - `resultIsFailureExpected` -> `exitIsFail`
+  - `resultIsFailureUnexpected` -> `exitIsDie`
+  - `resultVoid` -> `exitVoid`
+- `DelayFn` -> `MicroSchedule`
+  - `delayExponential` -> `scheduleExponential`
+  - `delaySpaced` -> `scheduleSpaced`
+  - `delayWithMax` -> `scheduleWithMaxDelay`
+  - `delayWithMaxElapsed` -> `scheduleWithMaxElapsed`
+  - `delayWithRecurs` -> `scheduleRecurs` and make it a constructor
+  - add `scheduleAddDelay` combinator
+  - add `scheduleUnion` combinator
+  - add `scheduleIntersect` combinator
+- `Handle`
+  - `abort` -> `interrupt`
+  - `unsafeAbort` -> `unsafeInterrupt`
+- `provideServiceMicro` -> `provideServiceEffect`
+- `fromResult` -> `fromExit`
+- `fromResultSync` -> `fromExitSync`
+- `failWith` -> `failCause`
+- `failWithSync` -> `failCauseSync`
+- `asResult` -> `exit`
+- `filterOrFailWith` -> `filterOrFailCause`
+- `repeatResult` -> `repeatExit`
+- `catchFailure` -> `catchAllCause`
+- `catchFailureIf` -> `catchCauseIf`
+- `catchExpected` -> `catchAll`
+- `catchUnexpected` -> `catchAllDefect`
+- `tapFailure` -> `tapErrorCause`
+- `tapFailureIf` -> `tapErrorCauseIf`
+- `tapExpected` -> `tapError`
+- `tapUnexpected` -> `tapDefect`
+- `mapFailure` -> `mapErrorCause`
+- `matchFailureMicro` -> `matchCauseEffect`
+- `matchFailure` -> `matchCause`
+- `matchMicro` -> `matchEffect`
+- `onResult` -> `onExit`
+- `onResultIf` -> `onExitIf`
+- `onFailure` -> `onError`
+- `onAbort` -> `onInterrupt`
+- `abort` -> `interrupt`
+- `runPromiseResult` -> `runPromiseExit`
+- `runSyncResult` -> `runSyncExit`
+- rename `delay` option to `schedule`
