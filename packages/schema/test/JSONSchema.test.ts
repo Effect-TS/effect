@@ -2106,6 +2106,40 @@ schema (Suspend): <suspended schema>`
       }
     )
   })
+
+  it("ReadonlyMapFromRecord", () => {
+    expectJSONSchema(
+      Schema.ReadonlyMapFromRecord({
+        key: Schema.String.pipe(Schema.minLength(2, { jsonSchema: { pattern: ".{2,}" } })),
+        value: Schema.NumberFromString
+      }),
+      {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        type: "object",
+        required: [],
+        properties: {},
+        additionalProperties: false,
+        patternProperties: { ".{2,}": { type: "string" } }
+      }
+    )
+  })
+
+  it("MapFromRecord", () => {
+    expectJSONSchema(
+      Schema.MapFromRecord({
+        key: Schema.String.pipe(Schema.minLength(2, { jsonSchema: { pattern: ".{2,}" } })),
+        value: Schema.NumberFromString
+      }),
+      {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        type: "object",
+        required: [],
+        properties: {},
+        additionalProperties: false,
+        patternProperties: { ".{2,}": { type: "string" } }
+      }
+    )
+  })
 })
 
 export const decode = <A>(schema: JSONSchema.JsonSchema7Root): Schema.Schema<A> =>

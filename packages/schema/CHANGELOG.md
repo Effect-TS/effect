@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.68.14
+
+### Patch Changes
+
+- [#3125](https://github.com/Effect-TS/effect/pull/3125) [`61e5964`](https://github.com/Effect-TS/effect/commit/61e59640fd993216cca8ace0ac8abd9104e213ce) Thanks @gcanti! - Add support for Union, Suspend, and Refinement as the second argument of extend, closes #3124
+
 ## 0.68.13
 
 ### Patch Changes

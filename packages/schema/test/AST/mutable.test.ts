@@ -31,6 +31,8 @@ describe("mutable", () => {
   })
 
   it("transformation", () => {
-    expectSameReference(S.transform(S.Array(S.String), S.Array(S.String), { decode: identity, encode: identity }))
+    expectSameReference(
+      S.transform(S.Array(S.String), S.Array(S.String), { strict: true, decode: identity, encode: identity })
+    )
   })
 })

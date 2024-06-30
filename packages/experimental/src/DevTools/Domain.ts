@@ -247,7 +247,11 @@ export const Gauge = metric(
 const numberOrInfinity = Schema.transform(
   Schema.Union(Schema.Number, Schema.Null),
   Schema.Number,
-  { decode: (i) => i === null ? Number.POSITIVE_INFINITY : i, encode: (i) => Number.isFinite(i) ? i : null }
+  {
+    strict: true,
+    decode: (i) => i === null ? Number.POSITIVE_INFINITY : i,
+    encode: (i) => Number.isFinite(i) ? i : null
+  }
 )
 
 /**

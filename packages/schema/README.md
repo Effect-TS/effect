@@ -470,6 +470,7 @@ const Person = Schema.Struct({
 })
 
 const asyncSchema = Schema.transformOrFail(PersonId, Person, {
+  strict: true,
   // Simulate an async transformation
   decode: (id) =>
     Effect.succeed({ id, name: "name", age: 18 }).pipe(
@@ -657,6 +658,7 @@ import { Effect } from "effect"
 const effectify = (duration: Duration.DurationInput) =>
   Schema.Number.pipe(
     Schema.transformOrFail(Schema.Number, {
+      strict: true,
       decode: (x) =>
         Effect.sleep(duration).pipe(Effect.andThen(ParseResult.succeed(x))),
       encode: ParseResult.succeed
@@ -1301,6 +1303,7 @@ const schema = Schema.transform(
   Schema.String,
   Schema.String.pipe(Schema.trimmed(), Schema.lowercased()),
   {
+    strict: true,
     decode: (s) => s.trim().toLowerCase(),
     encode: (s) => s
   }
@@ -2592,6 +2595,7 @@ const DiscriminatedShape = Schema.Union(
     Schema.transform(
       Schema.Struct({ ...Circle.fields, kind: Schema.Literal("circle") }), // Add a "kind" property with the literal value "circle" to Circle
       {
+        strict: true,
         decode: (circle) => ({ ...circle, kind: "circle" as const }), // Add the discriminant property to Circle
         encode: ({ kind: _kind, ...rest }) => rest // Remove the discriminant property
       }
@@ -2601,6 +2605,7 @@ const DiscriminatedShape = Schema.Union(
     Schema.transform(
       Schema.Struct({ ...Square.fields, kind: Schema.Literal("square") }), // Add a "kind" property with the literal value "square" to Square
       {
+        strict: true,
         decode: (square) => ({ ...square, kind: "square" as const }), // Add the discriminant property to Square
         encode: ({ kind: _kind, ...rest }) => rest // Remove the discriminant property
       }
@@ -4457,6 +4462,7 @@ export const transformedSchema = Schema.transform(
   Schema.Number, // Source schema
   Schema.Number, // Target schema
   {
+    strict: true, // optional but you get better error messages from TypeScript
     decode: (n) => n * 2, // Transformation function to double the number
     encode: (n) => n / 2 // Reverse transformation to revert to the original number
   }
@@ -4474,6 +4480,7 @@ export const transformedSchema = Schema.transform(
   Schema.String, // Source schema: accepts any string
   Schema.String, // Target schema: also accepts any string
   {
+    strict: true,
     decode: (s) => s.trim(), // Trim the string during decoding
     encode: (s) => s // No change during encoding
   }
@@ -4493,6 +4500,7 @@ export const transformedSchema = Schema.transform(
   Schema.String, // Source schema: accepts any string
   Schema.String.pipe(Schema.filter((s) => s === s.trim())), // Target schema now only accepts strings that are trimmed
   {
+    strict: true,
     decode: (s) => s.trim(), // Trim the string during decoding
     encode: (s) => s // No change during encoding
   }
@@ -4522,7 +4530,11 @@ const clamp =
         Schema.typeSchema,
         Schema.filter((a) => a <= minimum || a >= maximum)
       ),
-      { decode: (a) => Number.clamp(a, { minimum, maximum }), encode: (a) => a }
+      {
+        strict: true,
+        decode: (a) => Number.clamp(a, { minimum, maximum }),
+        encode: (a) => a
+      }
     )
 ```
 
@@ -4587,6 +4599,7 @@ export const NumberFromString = Schema.transformOrFail(
   Schema.String, // Source schema: accepts any string
   Schema.Number, // Target schema: expects a number
   {
+    strict: true, // optional but you get better error messages from TypeScript
     decode: (input, options, ast) => {
       const parsed = parseFloat(input)
       if (isNaN(parsed)) {
@@ -4637,6 +4650,7 @@ const PeopleId = Schema.String.pipe(Schema.brand("PeopleId"))
 
 // Define a schema with async transformation
 const PeopleIdFromString = Schema.transformOrFail(Schema.String, PeopleId, {
+  strict: true,
   decode: (s, _, ast) =>
     Effect.mapBoth(api(`https://swapi.dev/api/people/${s}`), {
       onFailure: (e) => new ParseResult.Type(ast, s, e.message),
@@ -4705,6 +4719,7 @@ const api = (url: string): Effect.Effect<unknown, Error, "Fetch"> =>
 const PeopleId = Schema.String.pipe(Schema.brand("PeopleId"))
 
 const PeopleIdFromString = Schema.transformOrFail(Schema.String, PeopleId, {
+  strict: true,
   decode: (s, _, ast) =>
     Effect.mapBoth(api(`https://swapi.dev/api/people/${s}`), {
       onFailure: (e) => new ParseResult.Type(ast, s, e.message),
@@ -5538,6 +5553,7 @@ const schema = Schema.transformOrFail(
   Schema.String,
   Schema.String.pipe(Schema.minLength(2)),
   {
+    strict: true,
     decode: (s, _, ast) =>
       s.length > 0
         ? ParseResult.succeed(s)
@@ -5774,6 +5790,7 @@ const IntFromString = Schema.transformOrFail(
   // This message is displayed only if the input can be converted to a number but it's not an integer
   Schema.Int.annotations({ message: () => "please enter an integer" }),
   {
+    strict: true,
     decode: (s, _, ast) => {
       const n = Number(s)
       return Number.isNaN(n)
@@ -7441,6 +7458,42 @@ console.log(
 ) // Map(3) { 'a' => '1', 'b' => '2', 'c' => '3' }
 ```
 
+### ReadonlyMapFromRecord
+
+- decoding
+  - `{ readonly [x: string]: VI }` -> `ReadonlyMap<KA, VA>`
+- encoding
+  - `ReadonlyMap<KA, VA>` -> `{ readonly [x: string]: VI }`
+
+```ts
+import { Schema } from "@effect/schema"
+
+const schema = Schema.ReadonlyMapFromRecord({
+  key: Schema.BigInt,
+  value: Schema.NumberFromString
+})
+
+const decode = Schema.decodeUnknownSync(schema)
+const encode = Schema.encodeSync(schema)
+
+console.log(
+  decode({
+    "1": "4",
+    "2": "5",
+    "3": "6"
+  })
+) // Map(3) { 1n => 4, 2n => 5, 3n => 6 }
+console.log(
+  encode(
+    new Map([
+      [1n, 4],
+      [2n, 5],
+      [3n, 6]
+    ])
+  )
+) // { '1': '4', '2': '5', '3': '6' }
+```
+
 ## HashSet
 
 ### HashSet
@@ -7869,6 +7922,7 @@ const NormalizeUrlString = Schema.transformOrFail(
   Schema.String,
   NormalizedUrlString,
   {
+    strict: true,
     decode: (value, _, ast) =>
       ParseResult.try({
         try: () => new URL(value).toString(),

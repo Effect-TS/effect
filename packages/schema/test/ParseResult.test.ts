@@ -159,7 +159,11 @@ describe("ParseIssue.actual", () => {
     const result = S.decodeEither(S.transformOrFail(
       S.NumberFromString,
       S.Boolean,
-      { decode: (n, _, ast) => P.fail(new P.Type(ast, n)), encode: (b, _, ast) => P.fail(new P.Type(ast, b)) }
+      {
+        strict: true,
+        decode: (n, _, ast) => P.fail(new P.Type(ast, n)),
+        encode: (b, _, ast) => P.fail(new P.Type(ast, b))
+      }
     ))("1")
     if (Either.isRight(result)) throw new Error("Expected failure")
     expect(result.left.issue.actual).toEqual("1")
@@ -170,7 +174,11 @@ describe("ParseIssue.actual", () => {
     const result = S.encodeEither(S.transformOrFail(
       S.Boolean,
       S.NumberFromString,
-      { decode: (n, _, ast) => P.fail(new P.Type(ast, n)), encode: (b, _, ast) => P.fail(new P.Type(ast, b)) }
+      {
+        strict: true,
+        decode: (n, _, ast) => P.fail(new P.Type(ast, n)),
+        encode: (b, _, ast) => P.fail(new P.Type(ast, b))
+      }
     ))(1)
     if (Either.isRight(result)) throw new Error("Expected failure")
     expect(result.left.issue.actual).toEqual(1)
@@ -275,7 +283,7 @@ describe("ParseIssue.actual", () => {
             _tag: S.transform(
               S.Literal("a"),
               S.Literal("b"),
-              { decode: () => "b" as const, encode: () => "a" as const }
+              { strict: true, decode: () => "b" as const, encode: () => "a" as const }
             )
           })
             .ast,

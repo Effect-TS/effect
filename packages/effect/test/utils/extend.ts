@@ -1,1 +1,1 @@
-../../../vitest/src/index.ts
+export * from "./effect-vitest-link/index.js"
