@@ -205,13 +205,13 @@ export const identityTransform = <A>(schema: S.Schema<A>): S.Schema<A> => schema
 export const X2 = S.transform(
   S.String,
   S.String,
-  { decode: (s) => s + s, encode: (s) => s.substring(0, s.length / 2) }
+  { strict: true, decode: (s) => s + s, encode: (s) => s.substring(0, s.length / 2) }
 )
 
 export const X3 = S.transform(
   S.String,
   S.String,
-  { decode: (s) => s + s + s, encode: (s) => s.substring(0, s.length / 3) }
+  { strict: true, decode: (s) => s + s + s, encode: (s) => s.substring(0, s.length / 3) }
 )
 
 const doProperty = true
@@ -340,7 +340,7 @@ const Name = Context.GenericTag<"Name", string>("Name")
 export const DependencyString = S.transformOrFail(
   S.String,
   S.String,
-  { decode: (s) => Effect.andThen(Name, s), encode: (s) => Effect.andThen(Name, s) }
+  { strict: true, decode: (s) => Effect.andThen(Name, s), encode: (s) => Effect.andThen(Name, s) }
 ).annotations({ identifier: "DependencyString" })
 
 export const expectFields = (f1: S.Struct.Fields, f2: S.Struct.Fields) => {
@@ -363,6 +363,7 @@ export const expectAssertsFailure = <A, I>(
 }
 
 export const BooleanFromLiteral = S.transform(S.Literal("true", "false"), S.Boolean, {
+  strict: true,
   decode: (l) => l === "true",
   encode: (b) => b ? "true" : "false"
 })

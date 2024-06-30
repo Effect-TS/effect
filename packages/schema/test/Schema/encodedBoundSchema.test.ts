@@ -7,6 +7,7 @@ describe("encodedBoundSchema", () => {
     S.String.pipe(S.minLength(2)).annotations({ identifier: "String2" }),
     S.String,
     {
+      strict: true,
       encode: (s) => s,
       decode: (s) => s
     }
