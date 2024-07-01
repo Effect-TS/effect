@@ -173,3 +173,15 @@ export const publishAll: {
  * @category utils
  */
 export const subscribe: <A>(self: PubSub<A>) => Effect.Effect<Queue.Dequeue<A>, never, Scope.Scope> = internal.subscribe
+
+/**
+ * Add a replay buffer to the `PubSub`. The replay buffer will replay the last
+ * `n` messages to new subscribers.
+ *
+ * @since 3.5.0
+ * @category utils
+ */
+export const withReplay: {
+  (n: number): <A>(self: PubSub<A>) => PubSub<A>
+  <A>(self: PubSub<A>, n: number): PubSub<A>
+} = internal.withReplay
