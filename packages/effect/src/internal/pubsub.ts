@@ -138,6 +138,12 @@ export const subscribe = <A>(self: PubSub.PubSub<A>): Effect.Effect<Queue.Dequeu
   self.subscribe
 
 /** @internal */
+export const withReplay = dual<
+  (n: number) => <A>(self: PubSub.PubSub<A>) => PubSub.PubSub<A>,
+  <A>(self: PubSub.PubSub<A>, n: number) => PubSub.PubSub<A>
+>(2, <A>(self: PubSub.PubSub<A>, n: number) => new ReplayPubSubImpl(self as PubSubImpl<A>, n))
+
+/** @internal */
 const makeBoundedPubSub = <A>(requestedCapacity: number): AtomicPubSub<A> => {
   ensureCapacity(requestedCapacity)
   if (requestedCapacity === 1) {
@@ -158,7 +164,8 @@ const makeUnboundedPubSub = <A>(): AtomicPubSub<A> => {
 const makeSubscription = <A>(
   pubsub: AtomicPubSub<A>,
   subscribers: Subscribers<A>,
-  strategy: PubSubStrategy<A>
+  strategy: PubSubStrategy<A>,
+  replayBuffer: Chunk.Chunk<A>
 ): Effect.Effect<Queue.Dequeue<A>> =>
   core.map(core.deferredMake<void>(), (deferred) =>
     unsafeMakeSubscription(
@@ -168,7 +175,8 @@ const makeSubscription = <A>(
       MutableQueue.unbounded<Deferred.Deferred<A>>(),
       deferred,
       MutableRef.make(false),
-      strategy
+      strategy,
+      replayBuffer
     ))
 
 /** @internal */
@@ -179,18 +187,19 @@ export const unsafeMakeSubscription = <A>(
   pollers: MutableQueue.MutableQueue<Deferred.Deferred<A>>,
   shutdownHook: Deferred.Deferred<void>,
   shutdownFlag: MutableRef.MutableRef<boolean>,
-  strategy: PubSubStrategy<A>
-): Queue.Dequeue<A> => {
-  return new SubscriptionImpl(
+  strategy: PubSubStrategy<A>,
+  replayBuffer: Chunk.Chunk<A>
+): Queue.Dequeue<A> =>
+  new SubscriptionImpl(
     pubsub,
     subscribers,
     subscription,
     pollers,
     shutdownHook,
     shutdownFlag,
-    strategy
+    strategy,
+    replayBuffer
   )
-}
 
 /** @internal */
 class BoundedPubSubArb<in out A> implements AtomicPubSub<A> {
@@ -841,7 +850,8 @@ class SubscriptionImpl<in out A> implements Queue.Dequeue<A> {
     readonly pollers: MutableQueue.MutableQueue<Deferred.Deferred<A>>,
     readonly shutdownHook: Deferred.Deferred<void>,
     readonly shutdownFlag: MutableRef.MutableRef<boolean>,
-    readonly strategy: PubSubStrategy<A>
+    readonly strategy: PubSubStrategy<A>,
+    public replayBuffer: Chunk.Chunk<A>
   ) {
   }
 
@@ -861,7 +871,7 @@ class SubscriptionImpl<in out A> implements Queue.Dequeue<A> {
     return core.suspend(() =>
       MutableRef.get(this.shutdownFlag)
         ? core.interrupt
-        : core.succeed(this.subscription.size())
+        : core.succeed(this.subscription.size() + this.replayBuffer.length)
     )
   }
 
@@ -869,11 +879,15 @@ class SubscriptionImpl<in out A> implements Queue.Dequeue<A> {
     if (MutableRef.get(this.shutdownFlag)) {
       return Option.none()
     }
-    return Option.some(this.subscription.size())
+    return Option.some(this.subscription.size() + this.replayBuffer.length)
   }
 
   get isFull(): Effect.Effect<boolean> {
-    return core.map(this.size, (size) => size === this.capacity())
+    return core.suspend(() =>
+      MutableRef.get(this.shutdownFlag)
+        ? core.interrupt
+        : core.succeed(this.subscription.size() === this.capacity())
+    )
   }
 
   get isEmpty(): Effect.Effect<boolean> {
@@ -915,6 +929,11 @@ class SubscriptionImpl<in out A> implements Queue.Dequeue<A> {
       if (MutableRef.get(this.shutdownFlag)) {
         return core.interrupt
       }
+      if (Chunk.isNonEmpty(this.replayBuffer)) {
+        const message = Chunk.headNonEmpty(this.replayBuffer)
+        this.replayBuffer = Chunk.drop(this.replayBuffer, 1)
+        return core.succeed(message)
+      }
       const message = MutableQueue.isEmpty(this.pollers)
         ? this.subscription.poll(MutableQueue.EmptyMutableQueue)
         : MutableQueue.EmptyMutableQueue
@@ -950,6 +969,11 @@ class SubscriptionImpl<in out A> implements Queue.Dequeue<A> {
         ? unsafePollAllSubscription(this.subscription)
         : Chunk.empty()
       this.strategy.unsafeOnPubSubEmptySpace(this.pubsub, this.subscribers)
+      if (Chunk.isNonEmpty(this.replayBuffer)) {
+        const replay = this.replayBuffer
+        this.replayBuffer = Chunk.empty()
+        return core.succeed(Chunk.appendAll(replay, as))
+      }
       return core.succeed(as)
     })
   }
@@ -959,11 +983,22 @@ class SubscriptionImpl<in out A> implements Queue.Dequeue<A> {
       if (MutableRef.get(this.shutdownFlag)) {
         return core.interrupt
       }
+      const replayLen = this.replayBuffer.length
+      let replay: Chunk.Chunk<A> | undefined = undefined
+      if (replayLen >= max) {
+        const as = Chunk.take(this.replayBuffer, max)
+        this.replayBuffer = Chunk.drop(this.replayBuffer, max)
+        return core.succeed(as)
+      } else if (replayLen > 0) {
+        replay = this.replayBuffer
+        max = max - replayLen
+        this.replayBuffer = Chunk.empty()
+      }
       const as = MutableQueue.isEmpty(this.pollers)
         ? unsafePollN(this.subscription, max)
         : Chunk.empty()
       this.strategy.unsafeOnPubSubEmptySpace(this.pubsub, this.subscribers)
-      return core.succeed(as)
+      return replay ? core.succeed(Chunk.appendAll(replay, as)) : core.succeed(as)
     })
   }
 
@@ -1129,7 +1164,7 @@ class PubSubImpl<in out A> implements PubSub.PubSub<A> {
     const acquire = core.tap(
       fiberRuntime.all([
         this.scope.fork(executionStrategy.sequential),
-        makeSubscription(this.pubsub, this.subscribers, this.strategy)
+        makeSubscription(this.pubsub, this.subscribers, this.strategy, Chunk.empty())
       ]),
       (tuple) => tuple[0].addFinalizer(() => tuple[1].shutdown)
     )
@@ -1149,6 +1184,105 @@ class PubSubImpl<in out A> implements PubSub.PubSub<A> {
 
   pipe() {
     return pipeArguments(this, arguments)
+  }
+}
+
+/** @internal */
+class ReplayPubSubImpl<in out A> implements PubSub.PubSub<A> {
+  readonly [queue.EnqueueTypeId] = queue.enqueueVariance
+  readonly [queue.DequeueTypeId] = queue.dequeueVariance
+
+  constructor(
+    readonly backing: PubSubImpl<A>,
+    readonly replayBufferSize: number
+  ) {}
+
+  replayBuffer = Chunk.empty<A>()
+  offerReplay(value: A): void {
+    this.replayBuffer = Chunk.append(this.replayBuffer, value)
+    if (this.replayBuffer.length > this.replayBufferSize) {
+      this.replayBuffer = Chunk.drop(this.replayBuffer, 1)
+    }
+  }
+  offerAllReplay(value: Chunk.Chunk<A>): void {
+    this.replayBuffer = Chunk.appendAll(this.replayBuffer, value)
+    if (this.replayBuffer.length > this.replayBufferSize) {
+      this.replayBuffer = Chunk.drop(this.replayBuffer, this.replayBuffer.length - this.replayBufferSize)
+    }
+  }
+
+  capacity(): number {
+    return this.backing.capacity()
+  }
+  get size(): Effect.Effect<number> {
+    return this.backing.size
+  }
+  unsafeSize(): Option.Option<number> {
+    return this.backing.unsafeSize()
+  }
+  get isFull(): Effect.Effect<boolean> {
+    return this.backing.isFull
+  }
+  get isEmpty(): Effect.Effect<boolean> {
+    return this.backing.isEmpty
+  }
+  get awaitShutdown(): Effect.Effect<void> {
+    return this.backing.awaitShutdown
+  }
+  get isShutdown(): Effect.Effect<boolean> {
+    return this.backing.isShutdown
+  }
+  get shutdown(): Effect.Effect<void> {
+    return this.backing.shutdown
+  }
+  publish(value: A): Effect.Effect<boolean> {
+    return core.suspend(() => {
+      this.offerReplay(value)
+      return this.backing.publish(value)
+    })
+  }
+  isActive(): boolean {
+    return this.backing.isActive()
+  }
+  unsafeOffer(value: A): boolean {
+    this.offerReplay(value)
+    return this.backing.unsafeOffer(value)
+  }
+  publishAll(elements: Iterable<A>): Effect.Effect<boolean> {
+    return core.suspend(() => {
+      this.offerAllReplay(Chunk.fromIterable(elements))
+      return this.backing.publishAll(elements)
+    })
+  }
+  offer(value: A): Effect.Effect<boolean> {
+    return core.suspend(() => {
+      this.offerReplay(value)
+      return this.backing.offer(value)
+    })
+  }
+  offerAll(elements: Iterable<A>): Effect.Effect<boolean> {
+    return core.suspend(() => {
+      this.offerAllReplay(Chunk.fromIterable(elements))
+      return this.backing.offerAll(elements)
+    })
+  }
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+
+  get subscribe(): Effect.Effect<Queue.Dequeue<A>, never, Scope.Scope> {
+    const acquire = this.backing.scope.fork(executionStrategy.sequential).pipe(
+      core.zip(
+        core.suspend(() =>
+          makeSubscription(this.backing.pubsub, this.backing.subscribers, this.backing.strategy, this.replayBuffer)
+        )
+      ),
+      core.tap(([scope, sub]) => scope.addFinalizer(() => sub.shutdown))
+    )
+    return core.map(
+      fiberRuntime.acquireRelease(acquire, ([scope], exit) => scope.close(exit)),
+      ([, sub]) => sub
+    )
   }
 }
 

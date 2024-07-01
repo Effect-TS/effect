@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import { Chunk, Option } from "effect"
 import * as Array from "effect/Array"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -661,4 +661,39 @@ describe("PubSub", () => {
       yield* PubSub.publishAll(pubsub, [1, 2])
       assert.deepStrictEqual(pubsub.unsafeSize(), Option.some(0))
     }))
+
+  it.scoped("withReplay", () =>
+    Effect.gen(function*() {
+      const messages = [1, 2, 3, 4, 5]
+      const pubsub = yield* PubSub.unbounded<number>().pipe(
+        Effect.map(PubSub.withReplay(3))
+      )
+      yield* PubSub.publishAll(pubsub, messages)
+      const sub = yield* PubSub.subscribe(pubsub)
+      assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [3, 4, 5])
+    }))
+
+  it.effect("withReplay takeUpTo", () => {
+    const messages = [1, 2, 3, 4, 5]
+    return PubSub.unbounded<number>().pipe(
+      Effect.map(PubSub.withReplay(3)),
+      Effect.flatMap((pubsub) =>
+        Effect.scoped(
+          Effect.gen(function*() {
+            yield* PubSub.publishAll(pubsub, messages)
+
+            const dequeue1 = yield* PubSub.subscribe(pubsub)
+            yield* PubSub.publish(pubsub, 6)
+            const dequeue2 = yield* PubSub.subscribe(pubsub)
+
+            assert.strictEqual(yield* Queue.size(dequeue1), 4)
+            assert.strictEqual(yield* Queue.size(dequeue2), 3)
+            assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeUpTo(dequeue1, 2)), [3, 4])
+            assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeUpTo(dequeue1, 2)), [5, 6])
+            assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeUpTo(dequeue2, 3)), [4, 5, 6])
+          })
+        )
+      )
+    )
+  })
 })
