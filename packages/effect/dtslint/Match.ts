@@ -3,6 +3,7 @@ import * as M from "effect/Match"
 
 type Value = { _tag: "A"; a: number } | { _tag: "B"; b: number }
 const value = { _tag: "A", a: 123 } as Value
+const handlerA = (_: { _tag: "A"; a: number }) => _.a.toString()
 
 // -------------------------------------------------------------------------------------
 // valueTags
@@ -138,4 +139,28 @@ pipe(
     // @ts-expect-error
     C: () => false
   })
+)(value)
+
+// -------------------------------------------------------------------------------------
+// tag
+// -------------------------------------------------------------------------------------
+
+// tacit usage of external handler
+// $ExpectType string | number
+pipe(
+  M.type<Value>(),
+  M.tag("A", handlerA),
+  M.orElse((_) => _.b)
+)(value)
+
+// -------------------------------------------------------------------------------------
+// tagStartsWith
+// -------------------------------------------------------------------------------------
+
+// tacit usage of external handler
+// $ExpectType string | number
+pipe(
+  M.type<Value>(),
+  M.tagStartsWith("A", handlerA),
+  M.orElse((_) => _.b)
 )(value)
