@@ -1,5 +1,48 @@
 # @effect/schema
 
+## 0.68.15
+
+### Patch Changes
+
+- [#3130](https://github.com/Effect-TS/effect/pull/3130) [`34faeb6`](https://github.com/Effect-TS/effect/commit/34faeb6305ba52af4d6f8bdd2e633bb6a5a7a35b) Thanks @gcanti! - Add `ReadonlyMapFromRecord` and `MapFromRecord`, closes #3119
+
+  - decoding
+    - `{ readonly [x: string]: VI }` -> `ReadonlyMap<KA, VA>`
+  - encoding
+    - `ReadonlyMap<KA, VA>` -> `{ readonly [x: string]: VI }`
+
+  ```ts
+  import { Schema } from "@effect/schema";
+
+  const schema = Schema.ReadonlyMapFromRecord({
+    key: Schema.BigInt,
+    value: Schema.NumberFromString,
+  });
+
+  const decode = Schema.decodeUnknownSync(schema);
+  const encode = Schema.encodeSync(schema);
+
+  console.log(
+    decode({
+      "1": "4",
+      "2": "5",
+      "3": "6",
+    }),
+  ); // Map(3) { 1n => 4, 2n => 5, 3n => 6 }
+  console.log(
+    encode(
+      new Map([
+        [1n, 4],
+        [2n, 5],
+        [3n, 6],
+      ]),
+    ),
+  ); // { '1': '4', '2': '5', '3': '6' }
+  ```
+
+- Updated dependencies [[`5c0ceb0`](https://github.com/Effect-TS/effect/commit/5c0ceb00826cce9e50bf9d41d83e191d5352c030), [`5c0ceb0`](https://github.com/Effect-TS/effect/commit/5c0ceb00826cce9e50bf9d41d83e191d5352c030), [`33735b1`](https://github.com/Effect-TS/effect/commit/33735b16b41bd26929d8f4754c190925db6323b7), [`5c0ceb0`](https://github.com/Effect-TS/effect/commit/5c0ceb00826cce9e50bf9d41d83e191d5352c030), [`139d4b3`](https://github.com/Effect-TS/effect/commit/139d4b39fb3bff2eeaa7c0c809c581da42425a83)]:
+  - effect@3.4.6
+
 ## 0.68.14
 
 ### Patch Changes
