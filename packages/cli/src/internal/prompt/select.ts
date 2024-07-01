@@ -1,43 +1,43 @@
 import * as Terminal from "@effect/platform/Terminal"
+import { Optimize } from "@effect/printer"
 import * as Ansi from "@effect/printer-ansi/Ansi"
 import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
-import { pipe } from "effect/Function"
-import * as Option from "effect/Option"
 import type * as Prompt from "../../Prompt.js"
 import * as InternalPrompt from "../prompt.js"
-import * as InternalPromptAction from "./action.js"
+import { Action } from "./action.js"
 import * as InternalAnsiUtils from "./ansi-utils.js"
 import { entriesToDisplay } from "./utils.js"
 
-interface State {
-  readonly cursor: number
-}
+interface SelectOptions<A> extends Required<Prompt.Prompt.SelectOptions<A>> {}
+
+type State = number
 
 const renderBeep = Doc.render(Doc.beep, { style: "pretty" })
 
-const renderClearScreen = <A>(
-  prevState: Option.Option<State>,
-  options: Required<Prompt.Prompt.SelectOptions<A>>,
-  columns: number
-): Doc.AnsiDoc => {
-  const clearPrompt = Doc.cat(Doc.eraseLine, Doc.cursorLeft)
-  if (Option.isNone(prevState)) {
-    return clearPrompt
-  }
-  const text = "\n".repeat(Math.min(options.choices.length, options.maxPerPage)) + options.message
-  const clearOutput = InternalAnsiUtils.eraseText(text, columns)
-  return Doc.cat(clearOutput, clearPrompt)
+function handleClear<A>(options: SelectOptions<A>) {
+  return Effect.gen(function*() {
+    const terminal = yield* Terminal.Terminal
+    const columns = yield* terminal.columns
+    const clearPrompt = Doc.cat(Doc.eraseLine, Doc.cursorLeft)
+    const text = "\n".repeat(Math.min(options.choices.length, options.maxPerPage)) + options.message
+    const clearOutput = InternalAnsiUtils.eraseText(text, columns)
+    return clearOutput.pipe(
+      Doc.cat(clearPrompt),
+      Optimize.optimize(Optimize.Deep),
+      Doc.render({ style: "pretty", options: { lineWidth: columns } })
+    )
+  })
 }
 
-const renderChoicePrefix = <A>(
-  nextState: State,
-  choices: Prompt.Prompt.SelectOptions<A>["choices"],
+function renderChoicePrefix<A>(
+  state: State,
+  choices: SelectOptions<A>["choices"],
   toDisplay: { readonly startIndex: number; readonly endIndex: number },
   currentIndex: number,
   figures: Effect.Effect.Success<typeof InternalAnsiUtils.figures>
-): Doc.AnsiDoc => {
+) {
   let prefix: Doc.AnsiDoc = Doc.space
   if (currentIndex === toDisplay.startIndex && toDisplay.startIndex > 0) {
     prefix = figures.arrowUp
@@ -46,19 +46,19 @@ const renderChoicePrefix = <A>(
   }
   if (choices[currentIndex].disabled) {
     const annotation = Ansi.combine(Ansi.bold, Ansi.blackBright)
-    return nextState.cursor === currentIndex
-      ? pipe(figures.pointer, Doc.annotate(annotation), Doc.cat(prefix))
-      : pipe(prefix, Doc.cat(Doc.space))
+    return state === currentIndex
+      ? figures.pointer.pipe(Doc.annotate(annotation), Doc.cat(prefix))
+      : prefix.pipe(Doc.cat(Doc.space))
   }
-  return nextState.cursor === currentIndex
-    ? pipe(figures.pointer, Doc.annotate(Ansi.cyanBright), Doc.cat(prefix))
-    : pipe(prefix, Doc.cat(Doc.space))
+  return state === currentIndex
+    ? figures.pointer.pipe(Doc.annotate(Ansi.cyanBright), Doc.cat(prefix))
+    : prefix.pipe(Doc.cat(Doc.space))
 }
 
-const renderChoiceTitle = <A>(
+function renderChoiceTitle<A>(
   choice: Prompt.Prompt.SelectChoice<A>,
   isSelected: boolean
-): Doc.AnsiDoc => {
+) {
   const title = Doc.text(choice.title)
   if (isSelected) {
     return choice.disabled
@@ -70,13 +70,12 @@ const renderChoiceTitle = <A>(
     : title
 }
 
-const renderChoiceDescription = <A>(
+function renderChoiceDescription<A>(
   choice: Prompt.Prompt.SelectChoice<A>,
   isSelected: boolean
-): Doc.AnsiDoc => {
+) {
   if (!choice.disabled && choice.description && isSelected) {
-    return pipe(
-      Doc.char("-"),
+    return Doc.char("-").pipe(
       Doc.cat(Doc.space),
       Doc.cat(Doc.text(choice.description)),
       Doc.annotate(Ansi.blackBright)
@@ -85,36 +84,37 @@ const renderChoiceDescription = <A>(
   return Doc.empty
 }
 
-const renderChoices = <A>(
-  nextState: State,
-  options: Prompt.Prompt.SelectOptions<A>,
+function renderChoices<A>(
+  state: State,
+  options: SelectOptions<A>,
   figures: Effect.Effect.Success<typeof InternalAnsiUtils.figures>
-): Doc.AnsiDoc => {
+) {
   const choices = options.choices
-  const toDisplay = entriesToDisplay(nextState.cursor, choices.length, options.maxPerPage)
+  const toDisplay = entriesToDisplay(state, choices.length, options.maxPerPage)
   const choicesToRender = choices.slice(toDisplay.startIndex, toDisplay.endIndex)
   const docs = Arr.map(choicesToRender, (choice, currentIndex) => {
-    const prefix = renderChoicePrefix(nextState, choicesToRender, toDisplay, currentIndex, figures)
-    const title = renderChoiceTitle(choice, nextState.cursor === currentIndex)
-    const description = renderChoiceDescription(choice, nextState.cursor === currentIndex)
-    return pipe(prefix, Doc.cat(title), Doc.cat(Doc.space), Doc.cat(description))
+    const prefix = renderChoicePrefix(state, choicesToRender, toDisplay, currentIndex, figures)
+    const title = renderChoiceTitle(choice, state === currentIndex)
+    const description = renderChoiceDescription(choice, state === currentIndex)
+    return prefix.pipe(Doc.cat(title), Doc.cat(Doc.space), Doc.cat(description))
   })
   return Doc.vsep(docs)
 }
 
-const renderOutput = <A>(
+const NEWLINE_REGEX = /\r?\n/
+
+function renderOutput<A>(
   leadingSymbol: Doc.AnsiDoc,
   trailingSymbol: Doc.AnsiDoc,
-  options: Required<Prompt.Prompt.SelectOptions<A>>
-): Doc.AnsiDoc => {
+  options: SelectOptions<A>
+) {
   const annotateLine = (line: string): Doc.AnsiDoc => Doc.annotate(Doc.text(line), Ansi.bold)
   const prefix = Doc.cat(leadingSymbol, Doc.space)
-  return Arr.match(options.message.split(/\r?\n/), {
+  return Arr.match(options.message.split(NEWLINE_REGEX), {
     onEmpty: () => Doc.hsep([prefix, trailingSymbol]),
     onNonEmpty: (promptLines) => {
       const lines = Arr.map(promptLines, (line) => annotateLine(line))
-      return pipe(
-        prefix,
+      return prefix.pipe(
         Doc.cat(Doc.nest(Doc.vsep(lines), 2)),
         Doc.cat(Doc.space),
         Doc.cat(trailingSymbol),
@@ -124,118 +124,111 @@ const renderOutput = <A>(
   })
 }
 
-const renderNextFrame = <A>(
-  prevState: Option.Option<State>,
-  nextState: State,
-  options: Required<Prompt.Prompt.SelectOptions<A>>
-): Effect.Effect<string, never, Terminal.Terminal> =>
-  Effect.gen(function*(_) {
+function renderNextFrame<A>(state: State, options: SelectOptions<A>) {
+  return Effect.gen(function*(_) {
     const terminal = yield* _(Terminal.Terminal)
-    const figures = yield* _(InternalAnsiUtils.figures)
     const columns = yield* _(terminal.columns)
-    const choices = renderChoices(nextState, options, figures)
-    const clearScreen = renderClearScreen(prevState, options, columns)
+    const figures = yield* _(InternalAnsiUtils.figures)
+    const choices = renderChoices(state, options, figures)
     const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyanBright)
     const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.blackBright)
     const promptMsg = renderOutput(leadingSymbol, trailingSymbol, options)
-    return pipe(
-      clearScreen,
-      Doc.cat(Doc.cursorHide),
+    return Doc.cursorHide.pipe(
       Doc.cat(promptMsg),
       Doc.cat(Doc.hardLine),
       Doc.cat(choices),
-      Doc.render({ style: "pretty" })
+      Doc.render({ style: "pretty", options: { lineWidth: columns } })
     )
   })
+}
 
-const renderSubmission = <A>(
+function renderSubmission<A>(
   state: State,
-  options: Required<Prompt.Prompt.SelectOptions<A>>
-) =>
-  Effect.gen(function*(_) {
+  options: SelectOptions<A>
+) {
+  return Effect.gen(function*(_) {
     const terminal = yield* _(Terminal.Terminal)
-    const figures = yield* _(InternalAnsiUtils.figures)
     const columns = yield* _(terminal.columns)
-    const selected = Doc.text(options.choices[state.cursor].title)
-    const clearScreen = renderClearScreen(Option.some(state), options, columns)
+    const figures = yield* _(InternalAnsiUtils.figures)
+    const selected = Doc.text(options.choices[state].title)
     const leadingSymbol = Doc.annotate(figures.tick, Ansi.green)
     const trailingSymbol = Doc.annotate(figures.ellipsis, Ansi.blackBright)
     const promptMsg = renderOutput(leadingSymbol, trailingSymbol, options)
-    return pipe(
-      clearScreen,
-      Doc.cat(promptMsg),
+    return promptMsg.pipe(
       Doc.cat(Doc.space),
       Doc.cat(Doc.annotate(selected, Ansi.white)),
       Doc.cat(Doc.hardLine),
-      Doc.render({ style: "pretty" })
+      Doc.render({ style: "pretty", options: { lineWidth: columns } })
     )
   })
-
-const initialState: State = { cursor: 0 }
-
-const processCursorUp = <A>(state: State, choices: Prompt.Prompt.SelectOptions<A>["choices"]) => {
-  if (state.cursor === 0) {
-    return Effect.succeed(InternalPromptAction.nextFrame({ cursor: choices.length - 1 }))
-  }
-  return Effect.succeed(InternalPromptAction.nextFrame({ cursor: state.cursor - 1 }))
 }
 
-const processCursorDown = <A>(state: State, choices: Prompt.Prompt.SelectOptions<A>["choices"]) => {
-  if (state.cursor === choices.length - 1) {
-    return Effect.succeed(InternalPromptAction.nextFrame({ cursor: 0 }))
+function processCursorUp<A>(state: State, choices: Prompt.Prompt.SelectOptions<A>["choices"]) {
+  if (state === 0) {
+    return Effect.succeed(Action.NextFrame({ state: choices.length - 1 }))
   }
-  return Effect.succeed(InternalPromptAction.nextFrame({ cursor: state.cursor + 1 }))
+  return Effect.succeed(Action.NextFrame({ state: state - 1 }))
 }
 
-const processNext = <A>(state: State, choices: Prompt.Prompt.SelectOptions<A>["choices"]) =>
-  Effect.succeed(InternalPromptAction.nextFrame({ cursor: (state.cursor + 1) % choices.length }))
+function processCursorDown<A>(state: State, choices: Prompt.Prompt.SelectOptions<A>["choices"]) {
+  if (state === choices.length - 1) {
+    return Effect.succeed(Action.NextFrame({ state: 0 }))
+  }
+  return Effect.succeed(Action.NextFrame({ state: state + 1 }))
+}
+
+function processNext<A>(state: State, choices: Prompt.Prompt.SelectOptions<A>["choices"]) {
+  return Effect.succeed(Action.NextFrame({ state: (state + 1) % choices.length }))
+}
+
+function handleRender<A>(options: SelectOptions<A>) {
+  return (state: State, action: Prompt.Prompt.Action<State, A>) => {
+    return Action.$match(action, {
+      Beep: () => Effect.succeed(renderBeep),
+      NextFrame: ({ state }) => renderNextFrame(state, options),
+      Submit: () => renderSubmission(state, options)
+    })
+  }
+}
+
+function handleProcess<A>(options: SelectOptions<A>) {
+  return (input: Terminal.UserInput, state: State) => {
+    switch (input.key.name) {
+      case "k":
+      case "up": {
+        return processCursorUp(state, options.choices)
+      }
+      case "j":
+      case "down": {
+        return processCursorDown(state, options.choices)
+      }
+      case "tab": {
+        return processNext(state, options.choices)
+      }
+      case "enter":
+      case "return": {
+        const selected = options.choices[state]
+        if (selected.disabled) {
+          return Effect.succeed(Action.Beep())
+        }
+        return Effect.succeed(Action.Submit({ value: selected.value }))
+      }
+      default: {
+        return Effect.succeed(Action.Beep())
+      }
+    }
+  }
+}
 
 /** @internal */
 export const select = <A>(options: Prompt.Prompt.SelectOptions<A>): Prompt.Prompt<A> => {
-  const opts: Required<Prompt.Prompt.SelectOptions<A>> = {
+  const opts: SelectOptions<A> = {
     maxPerPage: 10,
     ...options
   }
-  return InternalPrompt.custom(
-    initialState,
-    (prevState, nextState, action) => {
-      switch (action._tag) {
-        case "Beep": {
-          return Effect.succeed(renderBeep)
-        }
-        case "NextFrame": {
-          return renderNextFrame(prevState, nextState, opts)
-        }
-        case "Submit": {
-          return renderSubmission(nextState, opts)
-        }
-      }
-    },
-    (input, state) => {
-      switch (input.key.name) {
-        case "k":
-        case "up": {
-          return processCursorUp(state, opts.choices)
-        }
-        case "j":
-        case "down": {
-          return processCursorDown(state, opts.choices)
-        }
-        case "tab": {
-          return processNext(state, opts.choices)
-        }
-        case "enter":
-        case "return": {
-          const selected = opts.choices[state.cursor]
-          if (selected.disabled) {
-            return Effect.succeed(InternalPromptAction.beep)
-          }
-          return Effect.succeed(InternalPromptAction.submit(selected.value))
-        }
-        default: {
-          return Effect.succeed(InternalPromptAction.beep)
-        }
-      }
-    }
-  )
+  return InternalPrompt.custom(0, {
+    render: handleRender(opts),
+    process: handleProcess(opts),
+    clear: () => handleClear(opts)
+  })
 }

@@ -4,13 +4,13 @@ import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Optimize from "@effect/printer/Optimize"
 import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
-import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import type * as Prompt from "../../Prompt.js"
-import type * as PromptAction from "../../Prompt/Action.js"
 import * as InternalPrompt from "../prompt.js"
-import * as InternalPromptAction from "./action.js"
+import { Action } from "./action.js"
 import * as InternalAnsiUtils from "./ansi-utils.js"
+
+interface Options extends Required<Prompt.Prompt.ConfirmOptions> {}
 
 interface State {
   readonly value: boolean
@@ -18,33 +18,33 @@ interface State {
 
 const renderBeep = Doc.render(Doc.beep, { style: "pretty" })
 
-const renderClearScreen = (
-  prevState: Option.Option<State>,
-  options: Required<Prompt.Prompt.ConfirmOptions>,
-  columns: number
-): Doc.AnsiDoc => {
-  const resetCurrentLine = Doc.cat(Doc.eraseLine, Doc.cursorLeft)
-  if (Option.isNone(prevState)) {
-    return resetCurrentLine
-  }
-  const clearOutput = InternalAnsiUtils.eraseText(options.message, columns)
-  return Doc.cat(clearOutput, resetCurrentLine)
+function handleClear(options: Options) {
+  return Effect.gen(function*() {
+    const terminal = yield* Terminal.Terminal
+    const columns = yield* terminal.columns
+    const clearOutput = InternalAnsiUtils.eraseText(options.message, columns)
+    const resetCurrentLine = Doc.cat(Doc.eraseLine, Doc.cursorLeft)
+    return clearOutput.pipe(
+      Doc.cat(resetCurrentLine),
+      Optimize.optimize(Optimize.Deep),
+      Doc.render({ style: "pretty", options: { lineWidth: columns } })
+    )
+  })
 }
 
-const renderOutput = (
+function renderOutput(
   confirm: Doc.AnsiDoc,
   leadingSymbol: Doc.AnsiDoc,
   trailingSymbol: Doc.AnsiDoc,
-  options: Required<Prompt.Prompt.ConfirmOptions>
-): Doc.AnsiDoc => {
-  const annotateLine = (line: string): Doc.AnsiDoc => pipe(Doc.text(line), Doc.annotate(Ansi.bold))
+  options: Options
+) {
+  const annotateLine = (line: string): Doc.AnsiDoc => Doc.text(line).pipe(Doc.annotate(Ansi.bold))
   const prefix = Doc.cat(leadingSymbol, Doc.space)
   return Arr.match(options.message.split(/\r?\n/), {
     onEmpty: () => Doc.hsep([prefix, trailingSymbol, confirm]),
     onNonEmpty: (promptLines) => {
       const lines = Arr.map(promptLines, (line) => annotateLine(line))
-      return pipe(
-        prefix,
+      return prefix.pipe(
         Doc.cat(Doc.nest(Doc.vsep(lines), 2)),
         Doc.cat(Doc.space),
         Doc.cat(trailingSymbol),
@@ -55,73 +55,70 @@ const renderOutput = (
   })
 }
 
-const renderNextFrame = (
-  prevState: Option.Option<State>,
-  nextState: State,
-  options: Required<Prompt.Prompt.ConfirmOptions>
-): Effect.Effect<string, never, Terminal.Terminal> =>
-  Effect.gen(function*(_) {
-    const terminal = yield* _(Terminal.Terminal)
-    const figures = yield* _(InternalAnsiUtils.figures)
-    const columns = yield* _(terminal.columns)
-    const clearScreen = renderClearScreen(prevState, options, columns)
+function renderNextFrame(state: State, options: Options) {
+  return Effect.gen(function*() {
+    const terminal = yield* Terminal.Terminal
+    const columns = yield* terminal.columns
+    const figures = yield* InternalAnsiUtils.figures
     const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyanBright)
     const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.blackBright)
     const confirmAnnotation = Ansi.blackBright
     // Marking these explicitly as present with `!` because they always will be
     // and there is really no value in adding a `DeepRequired` type helper just
     // for these internal cases
-    const confirmMessage = nextState.value
+    const confirmMessage = state.value
       ? options.placeholder.defaultConfirm!
       : options.placeholder.defaultDeny!
     const confirm = Doc.annotate(Doc.text(confirmMessage), confirmAnnotation)
     const promptMsg = renderOutput(confirm, leadingSymbol, trailingSymbol, options)
-    return pipe(
-      clearScreen,
-      Doc.cat(Doc.cursorHide),
+    return Doc.cursorHide.pipe(
       Doc.cat(promptMsg),
       Optimize.optimize(Optimize.Deep),
-      Doc.render({ style: "pretty" })
+      Doc.render({ style: "pretty", options: { lineWidth: columns } })
     )
   })
+}
 
-const renderSubmission = (
-  nextState: State,
-  value: boolean,
-  options: Required<Prompt.Prompt.ConfirmOptions>
-) =>
-  Effect.gen(function*(_) {
-    const terminal = yield* _(Terminal.Terminal)
-    const figures = yield* _(InternalAnsiUtils.figures)
-    const columns = yield* _(terminal.columns)
-    const clearScreen = renderClearScreen(Option.some(nextState), options, columns)
+function renderSubmission(value: boolean, options: Options) {
+  return Effect.gen(function*() {
+    const terminal = yield* Terminal.Terminal
+    const columns = yield* terminal.columns
+    const figures = yield* InternalAnsiUtils.figures
     const leadingSymbol = Doc.annotate(figures.tick, Ansi.green)
     const trailingSymbol = Doc.annotate(figures.ellipsis, Ansi.blackBright)
     const confirmMessage = value ? options.label.confirm : options.label.deny
     const confirm = Doc.text(confirmMessage)
     const promptMsg = renderOutput(confirm, leadingSymbol, trailingSymbol, options)
-    return pipe(
-      clearScreen,
-      Doc.cat(promptMsg),
+    return promptMsg.pipe(
       Doc.cat(Doc.hardLine),
       Optimize.optimize(Optimize.Deep),
-      Doc.render({ style: "pretty" })
+      Doc.render({ style: "pretty", options: { lineWidth: columns } })
     )
   })
+}
+
+function handleRender(options: Options) {
+  return (state: State, action: Prompt.Prompt.Action<State, boolean>) => {
+    return Action.$match(action, {
+      Beep: () => Effect.succeed(renderBeep),
+      NextFrame: ({ state }) => renderNextFrame(state, options),
+      Submit: ({ value }) => renderSubmission(value, options)
+    })
+  }
+}
 
 const TRUE_VALUE_REGEX = /^y|t$/
 const FALSE_VALUE_REGEX = /^n|f$/
 
-const processInputValue = (
-  value: string
-): Effect.Effect<PromptAction.PromptAction<State, boolean>> => {
+function handleProcess(input: Terminal.UserInput) {
+  const value = Option.getOrElse(input.input, () => "")
   if (TRUE_VALUE_REGEX.test(value.toLowerCase())) {
-    return Effect.succeed(InternalPromptAction.submit(true))
+    return Effect.succeed(Action.Submit({ value: true }))
   }
   if (FALSE_VALUE_REGEX.test(value.toLowerCase())) {
-    return Effect.succeed(InternalPromptAction.submit(false))
+    return Effect.succeed(Action.Submit({ value: false }))
   }
-  return Effect.succeed(InternalPromptAction.beep)
+  return Effect.succeed(Action.Beep())
 }
 
 /** @internal */
@@ -140,24 +137,10 @@ export const confirm = (options: Prompt.Prompt.ConfirmOptions): Prompt.Prompt<bo
       ...options.placeholder
     }
   }
-  return InternalPrompt.custom(
-    { value: opts.initial } as State,
-    (prevState, nextState, action) => {
-      switch (action._tag) {
-        case "Beep": {
-          return Effect.succeed(renderBeep)
-        }
-        case "NextFrame": {
-          return renderNextFrame(prevState, nextState, opts)
-        }
-        case "Submit": {
-          return renderSubmission(nextState, action.value, opts)
-        }
-      }
-    },
-    (input, _) => {
-      const value = Option.getOrElse(input.input, () => "")
-      return processInputValue(value)
-    }
-  )
+  const initialState: State = { value: opts.initial }
+  return InternalPrompt.custom(initialState, {
+    render: handleRender(opts),
+    process: (input) => handleProcess(input),
+    clear: () => handleClear(opts)
+  })
 }

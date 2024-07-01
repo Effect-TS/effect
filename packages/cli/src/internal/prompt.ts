@@ -3,11 +3,9 @@ import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
-import * as Option from "effect/Option"
 import * as Pipeable from "effect/Pipeable"
 import * as Ref from "effect/Ref"
 import type * as Prompt from "../Prompt.js"
-import type * as PromptAction from "../Prompt/Action.js"
 
 /** @internal */
 const PromptSymbolKey = "@effect/cli/Prompt"
@@ -43,15 +41,9 @@ export type Primitive = Loop | OnSuccess | Succeed
 export interface Loop extends
   Op<"Loop", {
     readonly initialState: unknown
-    readonly render: (
-      prevState: Option.Option<unknown>,
-      nextState: unknown,
-      action: Prompt.Prompt.Action<unknown, unknown>
-    ) => Effect.Effect<string>
-    readonly process: (
-      input: Terminal.UserInput,
-      state: unknown
-    ) => Effect.Effect<Prompt.Prompt.Action<unknown, unknown>>
+    readonly render: Prompt.Prompt.Handlers<unknown, unknown>["render"]
+    readonly process: Prompt.Prompt.Handlers<unknown, unknown>["process"]
+    readonly clear: Prompt.Prompt.Handlers<unknown, unknown>["clear"]
   }>
 {}
 
@@ -110,21 +102,14 @@ export const all: <
 /** @internal */
 export const custom = <State, Output>(
   initialState: State,
-  render: (
-    prevState: Option.Option<State>,
-    nextState: State,
-    action: Prompt.Prompt.Action<State, Output>
-  ) => Effect.Effect<string, never, Terminal.Terminal>,
-  process: (
-    input: Terminal.UserInput,
-    state: State
-  ) => Effect.Effect<Prompt.Prompt.Action<State, Output>, never, Terminal.Terminal>
+  handlers: Prompt.Prompt.Handlers<State, Output>
 ): Prompt.Prompt<Output> => {
   const op = Object.create(proto)
   op._tag = "Loop"
   op.initialState = initialState
-  op.render = render
-  op.process = process
+  op.render = handlers.render
+  op.process = handlers.process
+  op.clear = handlers.clear
   return op
 }
 
@@ -163,38 +148,38 @@ export const flatMap = dual<
 /** @internal */
 export const run = <Output>(
   self: Prompt.Prompt<Output>
-): Effect.Effect<Output, Terminal.QuitException, Terminal.Terminal> =>
+): Effect.Effect<Output, Terminal.QuitException, Prompt.Prompt.Environment> =>
   Effect.flatMap(Terminal.Terminal, (terminal) => {
     const op = self as Primitive
     switch (op._tag) {
       case "Loop": {
-        return Effect.all([
-          Ref.make(Option.none<unknown>()),
-          Ref.make(op.initialState)
-        ]).pipe(
-          Effect.flatMap(([prevStateRef, nextStateRef]) => {
+        return Ref.make(op.initialState).pipe(
+          Effect.flatMap((ref) => {
             const loop = (
-              action: Exclude<PromptAction.PromptAction<unknown, unknown>, { _tag: "Submit" }>
-            ): Effect.Effect<any, Terminal.QuitException> =>
-              Effect.all([Ref.get(prevStateRef), Ref.get(nextStateRef)]).pipe(
-                Effect.flatMap(([prevState, nextState]) =>
-                  op.render(prevState, nextState, action).pipe(
+              action: Exclude<Prompt.Prompt.Action<unknown, unknown>, { _tag: "Submit" }>
+            ): Effect.Effect<any, Terminal.QuitException, Prompt.Prompt.Environment> =>
+              Ref.get(ref).pipe(
+                Effect.flatMap((state) =>
+                  op.render(state, action).pipe(
                     Effect.flatMap((msg) => Effect.orDie(terminal.display(msg))),
                     Effect.zipRight(terminal.readInput),
-                    Effect.flatMap((input) => op.process(input, nextState)),
+                    Effect.flatMap((input) => op.process(input, state)),
                     Effect.flatMap((action) => {
                       switch (action._tag) {
                         case "Beep": {
                           return loop(action)
                         }
                         case "NextFrame": {
-                          return Ref.set(prevStateRef, Option.some(nextState)).pipe(
-                            Effect.zipRight(Ref.set(nextStateRef, action.state)),
+                          return op.clear(state, action).pipe(
+                            Effect.flatMap((clear) => Effect.orDie(terminal.display(clear))),
+                            Effect.zipRight(Ref.set(ref, action.state)),
                             Effect.zipRight(loop(action))
                           )
                         }
                         case "Submit": {
-                          return op.render(prevState, nextState, action).pipe(
+                          return op.clear(state, action).pipe(
+                            Effect.flatMap((clear) => Effect.orDie(terminal.display(clear))),
+                            Effect.zipRight(op.render(state, action)),
                             Effect.flatMap((msg) => Effect.orDie(terminal.display(msg))),
                             Effect.zipRight(Effect.succeed(action.value))
                           )

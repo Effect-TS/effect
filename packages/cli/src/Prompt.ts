@@ -1,9 +1,11 @@
 /**
  * @since 1.0.0
  */
+import type { FileSystem } from "@effect/platform/FileSystem"
+import type { Path } from "@effect/platform/Path"
 import type { QuitException, Terminal, UserInput } from "@effect/platform/Terminal"
+import type { TaggedEnum } from "effect/Data"
 import type { Effect } from "effect/Effect"
-import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type { Redacted } from "effect/Redacted"
 import * as InternalPrompt from "./internal/prompt.js"
@@ -14,7 +16,6 @@ import * as InternalNumberPrompt from "./internal/prompt/number.js"
 import * as InternalSelectPrompt from "./internal/prompt/select.js"
 import * as InternalTextPrompt from "./internal/prompt/text.js"
 import * as InternalTogglePrompt from "./internal/prompt/toggle.js"
-import type { PromptAction } from "./Prompt/Action.js"
 
 /**
  * @since 1.0.0
@@ -55,10 +56,85 @@ export declare namespace Prompt {
   }
 
   /**
+   * Represents the services available to a custom `Prompt`.
+   *
    * @since 1.0.0
    * @category models
    */
-  export type Action<State, Output> = PromptAction<State, Output>
+  export type Environment = FileSystem | Path | Terminal
+
+  /**
+   * Represents the action that should be taken by a `Prompt` based upon the
+   * user input received during the current frame.
+   *
+   * @since 1.0.0
+   * @category models
+   */
+  export type Action<State, Output> = TaggedEnum<{
+    readonly Beep: {}
+    readonly NextFrame: { readonly state: State }
+    readonly Submit: { readonly value: Output }
+  }>
+
+  /**
+   * Represents the definition of an `Action`.
+   *
+   * Required to create a `Data.TaggedEnum` with generic type arguments.
+   *
+   * @since 1.0.0
+   * @category models
+   */
+  export interface ActionDefinition extends TaggedEnum.WithGenerics<2> {
+    readonly taggedEnum: Action<this["A"], this["B"]>
+  }
+
+  /**
+   * Represents the set of handlers used by a `Prompt` to:
+   *
+   *   - Render the current frame of the prompt
+   *   - Process user input and determine the next `Prompt.Action` to take
+   *   - Clear the terminal screen before the next frame
+   *
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Handlers<State, Output> {
+    /**
+     * A function that is called to render the current frame of the `Prompt`.
+     *
+     * @param state The current state of the prompt.
+     * @param action The `Prompt.Action` for the current frame.
+     * @returns An ANSI escape code sequence to display in the terminal screen.
+     */
+    readonly render: (
+      state: State,
+      action: Action<State, Output>
+    ) => Effect<string, never, Environment>
+    /**
+     * A function that is called to process user input and determine the next
+     * `Prompt.Action` that should be taken.
+     *
+     * @param input The input the user provided for the current frame.
+     * @param state The current state of the prompt.
+     * @returns The next `Prompt.Action` that should be taken.
+     */
+    readonly process: (
+      input: UserInput,
+      state: State
+    ) => Effect<Action<State, Output>, never, Environment>
+    /**
+     * A function that is called to clear the terminal screen before rendering
+     * the next frame of the `Prompt`.
+     *
+     * @param action The `Prompt.Action` for the current frame.
+     * @param columns The current number of columns available in the `Terminal`.
+     * @returns An ANSI escape code sequence used to clear the terminal screen.
+     */
+    readonly clear: (
+      state: State,
+      action: Action<State, Output>
+    ) => Effect<string, never, Environment>
+  }
 
   /**
    * @since 1.0.0
@@ -385,15 +461,7 @@ export const confirm: (options: Prompt.ConfirmOptions) => Prompt<boolean> = Inte
  */
 export const custom: <State, Output>(
   initialState: State,
-  render: (
-    prevState: Option<State>,
-    nextState: State,
-    action: Prompt.Action<State, Output>
-  ) => Effect<string, never, Terminal>,
-  process: (
-    input: UserInput,
-    state: State
-  ) => Effect<Prompt.Action<State, Output>, never, Terminal>
+  handlers: Prompt.Handlers<State, Output>
 ) => Prompt<Output> = InternalPrompt.custom
 
 /**
@@ -458,7 +526,8 @@ export const password: (options: Prompt.TextOptions) => Prompt<Redacted> = Inter
  * @since 1.0.0
  * @category execution
  */
-export const run: <Output>(self: Prompt<Output>) => Effect<Output, QuitException, Terminal> = InternalPrompt.run
+export const run: <Output>(self: Prompt<Output>) => Effect<Output, QuitException, Prompt.Environment> =
+  InternalPrompt.run
 
 /**
  * @since 1.0.0
