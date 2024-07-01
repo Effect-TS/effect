@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import * as Socket from "@effect/platform/Socket"
-import type { Scope } from "effect"
+import { type Scope } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
@@ -122,6 +122,7 @@ export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket>
       }
     }),
     Effect.retry(Schedule.spaced("3 seconds")),
+    Effect.catchAllCause(Effect.logDebug),
     Effect.forkScoped,
     Effect.interruptible
   )
@@ -141,7 +142,13 @@ export const make: Effect.Effect<ClientImpl, never, Scope.Scope | Socket.Socket>
   return Client.of({
     unsafeAddSpan: (request) => Queue.unsafeOffer(requests, request)
   })
-})
+}).pipe(
+  Effect.annotateLogs({
+    package: "@effect/experimental",
+    module: "DevTools",
+    service: "Client"
+  })
+)
 
 /**
  * @since 1.0.0
