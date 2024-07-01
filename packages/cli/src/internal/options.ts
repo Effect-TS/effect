@@ -1193,9 +1193,8 @@ const parseInternal = (
       const extractKeyValue = (
         value: string
       ): Effect.Effect<[string, string], ValidationError.ValidationError> => {
-        const splits = Arr.splitWhere(value.trim(), s => s === "=").map(s => s.join(''))
-        if (Arr.isNonEmptyReadonlyArray(splits) && splits.length === 2 && splits[1] !== "=") {
-          const split = [splits[0], splits[1].slice(1)]
+        const split = value.trim().split(/=(.*)/, 2)
+        if (Arr.isNonEmptyReadonlyArray(split) && split.length === 2 && split[1] !== "") {
           return Effect.succeed(split as unknown as [string, string])
         }
         const error = InternalHelpDoc.p(`Expected a key/value pair but received '${value}'`)
