@@ -1,5 +1,15 @@
 # @effect/experimental
 
+## 0.17.18
+
+### Patch Changes
+
+- [#3138](https://github.com/Effect-TS/effect/pull/3138) [`422a2ee`](https://github.com/Effect-TS/effect/commit/422a2ee597320cd8ce4b53fe449a1b73806ebf1a) Thanks @tim-smart! - log DevTool's errors at debug level
+
+- Updated dependencies [[`7f8900a`](https://github.com/Effect-TS/effect/commit/7f8900a1de9addeb0d371103a2c5c2aa3e4ff95e)]:
+  - @effect/platform@0.58.18
+  - @effect/platform-node@0.53.17
+
 ## 0.17.17
 
 ### Patch Changes
