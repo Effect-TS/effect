@@ -1,3 +1,4 @@
+import * as Arr from "../Array.js"
 import type { LazyArg } from "../Function.js"
 import { constVoid, dual, pipe } from "../Function.js"
 import * as HashMap from "../HashMap.js"
@@ -157,7 +158,7 @@ export const zipRight = dual<
 >(2, (self, that) => map(zip(self, that), (tuple) => tuple[1]))
 
 /** @internal */
-export const stringLogger: Logger.Logger<unknown, string> = makeLogger<unknown, string>(
+export const stringLogger: Logger.Logger<unknown, string> = makeLogger(
   ({ annotations, cause, date, fiberId, logLevel, message, spans }) => {
     const nowMillis = date.getTime()
 
@@ -169,16 +170,9 @@ export const stringLogger: Logger.Logger<unknown, string> = makeLogger<unknown, 
 
     let output = outputArray.join(" ")
 
-    if (Array.isArray(message)) {
-      for (let i = 0; i < message.length; i++) {
-        const stringMessage = Inspectable.toStringUnknown(message[i])
-        if (stringMessage.length > 0) {
-          output = output + " message="
-          output = appendQuoted(stringMessage, output)
-        }
-      }
-    } else {
-      const stringMessage = Inspectable.toStringUnknown(message)
+    const messageArr = Arr.ensure(message)
+    for (let i = 0; i < messageArr.length; i++) {
+      const stringMessage = Inspectable.toStringUnknown(messageArr[i])
       if (stringMessage.length > 0) {
         output = output + " message="
         output = appendQuoted(stringMessage, output)
@@ -204,7 +198,7 @@ export const stringLogger: Logger.Logger<unknown, string> = makeLogger<unknown, 
       }
     }
 
-    if (pipe(annotations, HashMap.size) > 0) {
+    if (HashMap.size(annotations) > 0) {
       output = output + " "
 
       let first = true
@@ -246,16 +240,9 @@ export const logfmtLogger = makeLogger<unknown, string>(
 
     let output = outputArray.join(" ")
 
-    if (Array.isArray(message)) {
-      for (let i = 0; i < message.length; i++) {
-        const stringMessage = Inspectable.toStringUnknown(message[i], 0)
-        if (stringMessage.length > 0) {
-          output = output + " message="
-          output = appendQuotedLogfmt(stringMessage, output)
-        }
-      }
-    } else {
-      const stringMessage = Inspectable.toStringUnknown(message, 0)
+    const messageArr = Arr.ensure(message)
+    for (let i = 0; i < messageArr.length; i++) {
+      const stringMessage = Inspectable.toStringUnknown(messageArr[i], 0)
       if (stringMessage.length > 0) {
         output = output + " message="
         output = appendQuotedLogfmt(stringMessage, output)
@@ -281,7 +268,7 @@ export const logfmtLogger = makeLogger<unknown, string>(
       }
     }
 
-    if (pipe(annotations, HashMap.size) > 0) {
+    if (HashMap.size(annotations) > 0) {
       output = output + " "
 
       let first = true
@@ -328,8 +315,9 @@ export const structuredLogger = makeLogger<unknown, {
       }
     }
 
+    const messageArr = Arr.ensure(message)
     return {
-      message: structuredMessage(message),
+      message: messageArr.length === 1 ? structuredMessage(messageArr[0]) : messageArr.map(structuredMessage),
       logLevel: logLevel.label,
       timestamp: date.toISOString(),
       cause: Cause.isEmpty(cause) ? undefined : Cause.pretty(cause),
@@ -376,3 +364,109 @@ const renderLogSpanLogfmt = (now: number) => (self: LogSpan.LogSpan): string => 
 export const isLogger = (u: unknown): u is Logger.Logger<unknown, unknown> => {
   return typeof u === "object" && u != null && LoggerTypeId in u
 }
+
+const processStdoutIsTTY = typeof process === "object" && "stdout" in process && process.stdout.isTTY === true
+
+const withColor = (text: string, ...colors: ReadonlyArray<string>) => {
+  let out = ""
+  for (let i = 0; i < colors.length; i++) {
+    out += `\x1b[${colors[i]}m`
+  }
+  return out + text + "\x1b[0m"
+}
+const withColorNoop = (text: string, ..._colors: ReadonlyArray<string>) => text
+const colors = {
+  bright: "1",
+
+  red: "31",
+  green: "32",
+  yellow: "33",
+  blue: "34",
+  magenta: "35",
+  cyan: "36",
+  white: "37",
+  gray: "90"
+} as const
+
+const logLevelColors: Record<LogLevel.LogLevel["_tag"], ReadonlyArray<string>> = {
+  None: [],
+  All: [],
+  Trace: [colors.gray],
+  Debug: [colors.blue],
+  Info: [colors.green],
+  Warning: [colors.yellow],
+  Error: [colors.red],
+  Fatal: [colors.bright, colors.red]
+}
+
+/** @internal */
+export const prettyLogger = (options?: {
+  readonly colors?: "auto" | boolean
+}) =>
+  makeLogger<unknown, string>(
+    ({ annotations, cause, date, fiberId, logLevel, message: message_, spans }) => {
+      const showColors = typeof options?.colors === "boolean" ? options.colors : processStdoutIsTTY
+      const color = showColors ? withColor : withColorNoop
+
+      const message = Arr.ensure(message_)
+
+      let logMessage = color(
+        `[${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}:${
+          date.getSeconds().toString().padStart(2, "0")
+        }.${date.getMilliseconds().toString().padStart(3, "0")}]`,
+        colors.white
+      )
+        + ` ${color(logLevel.label, ...logLevelColors[logLevel._tag])} (${_fiberId.threadName(fiberId)})`
+
+      if (List.isCons(spans)) {
+        const now = date.getTime()
+        const render = renderLogSpanLogfmt(now)
+        for (const span of spans) {
+          logMessage += " " + render(span)
+        }
+      }
+
+      logMessage += ":"
+      let messageIndex = 0
+      if (message.length > 0) {
+        const firstMaybeString = structuredMessage(message[0])
+        if (typeof firstMaybeString === "string") {
+          logMessage += " " + color(firstMaybeString, colors.bright, colors.cyan)
+          messageIndex++
+        }
+      }
+
+      logMessage += "\n"
+
+      if (!Cause.isEmpty(cause)) {
+        const lines = Cause.pretty(cause).split("\n")
+        for (let i = 0; i < lines.length; i++) {
+          logMessage += "  " + lines[i] + "\n"
+        }
+      }
+
+      if (messageIndex < message.length) {
+        for (; messageIndex < message.length; messageIndex++) {
+          const lines = Inspectable.stringifyCircular(message[messageIndex], 2).split("\n")
+          for (let i = 0; i < lines.length; i++) {
+            logMessage += "  " + lines[i] + "\n"
+          }
+        }
+      }
+
+      if (HashMap.size(annotations) > 0) {
+        for (const [key, value] of annotations) {
+          logMessage += "  " + color(`${key}:`, colors.bright, colors.white) + " "
+          const lines = Inspectable.stringifyCircular(value, 2).split("\n")
+          for (let i = 0; i < lines.length; i++) {
+            if (i > 0) {
+              logMessage += "  "
+            }
+            logMessage += lines[i] + "\n"
+          }
+        }
+      }
+
+      return logMessage
+    }
+  )

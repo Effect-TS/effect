@@ -1406,7 +1406,7 @@ export const loggerWithConsoleError = <M, O>(self: Logger<M, O>): Logger<M, void
 /** @internal */
 export const defaultLogger: Logger<unknown, void> = globalValue(
   Symbol.for("effect/Logger/defaultLogger"),
-  () => loggerWithConsoleLog(internalLogger.stringLogger)
+  () => loggerWithConsoleLog(internalLogger.prettyLogger())
 )
 
 /** @internal */
@@ -1419,6 +1419,12 @@ export const jsonLogger: Logger<unknown, void> = globalValue(
 export const logFmtLogger: Logger<unknown, void> = globalValue(
   Symbol.for("effect/Logger/logFmtLogger"),
   () => loggerWithConsoleLog(internalLogger.logfmtLogger)
+)
+
+/** @internal */
+export const stringLogger: Logger<unknown, void> = globalValue(
+  Symbol.for("effect/Logger/stringLogger"),
+  () => loggerWithConsoleLog(internalLogger.stringLogger)
 )
 
 /** @internal */
