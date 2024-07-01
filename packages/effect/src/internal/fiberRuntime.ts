@@ -3666,13 +3666,7 @@ export const makeSpanScoped = (
       const timingEnabled = fiber.getFiberRef(core.currentTracerTimingEnabled)
       const clock_ = Context.get(fiber.getFiberRef(defaultServices.currentServices), clock.clockTag)
       return core.as(
-        core.scopeAddFinalizerExit(scope, (exit) =>
-          core.sync(() => {
-            if (span.status._tag === "Ended") {
-              return
-            }
-            span.end(timingEnabled ? clock_.unsafeCurrentTimeNanos() : BigInt(0), exit)
-          })),
+        core.scopeAddFinalizerExit(scope, (exit) => internalEffect.endSpan(span, exit, clock_, timingEnabled)),
         span
       )
     })

@@ -1,3 +1,4 @@
+import type { Exit } from "effect/Exit"
 import { internalCall } from "effect/Utils"
 import * as Arr from "../Array.js"
 import type * as Cause from "../Cause.js"
@@ -2123,6 +2124,18 @@ export const spanLinks: Effect.Effect<Chunk.Chunk<Tracer.SpanLink>> = core
   .fiberRefGet(core.currentTracerSpanLinks)
 
 /** @internal */
+export const endSpan = <A, E>(span: Tracer.Span, exit: Exit<A, E>, clock: Clock.Clock, timingEnabled: boolean) =>
+  core.sync(() => {
+    if (span.status._tag === "Ended") {
+      return
+    }
+    if (core.exitIsFailure(exit) && internalCause.spanToTrace.has(span)) {
+      span.attribute("code.stacktrace", internalCause.spanToTrace.get(span)!())
+    }
+    span.end(timingEnabled ? clock.unsafeCurrentTimeNanos() : bigint0, exit)
+  })
+
+/** @internal */
 export const useSpan: {
   <A, E, R>(name: string, evaluate: (span: Tracer.Span) => Effect.Effect<A, E, R>): Effect.Effect<A, E, R>
   <A, E, R>(
@@ -2144,16 +2157,7 @@ export const useSpan: {
     const span = unsafeMakeSpan(fiber, name, options)
     const timingEnabled = fiber.getFiberRef(core.currentTracerTimingEnabled)
     const clock = Context.get(fiber.getFiberRef(defaultServices.currentServices), clockTag)
-    return core.onExit(evaluate(span), (exit) =>
-      core.sync(() => {
-        if (span.status._tag === "Ended") {
-          return
-        }
-        if (core.exitIsFailure(exit) && internalCause.spanToTrace.has(span)) {
-          span.attribute("code.stacktrace", internalCause.spanToTrace.get(span)!())
-        }
-        span.end(timingEnabled ? clock.unsafeCurrentTimeNanos() : bigint0, exit)
-      }))
+    return core.onExit(evaluate(span), (exit) => endSpan(span, exit, clock, timingEnabled))
   })
 }
 
