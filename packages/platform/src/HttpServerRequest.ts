@@ -134,7 +134,7 @@ export const upgradeChannel: <IE = never>() => Channel<
  * @since 1.0.0
  * @category schema
  */
-export const schemaCookies: <A, I extends Readonly<Record<string, string>>, R>(
+export const schemaCookies: <A, I extends Readonly<Record<string, string | undefined>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => Effect.Effect<A, ParseResult.ParseError, HttpServerRequest | R> = internal.schemaCookies
@@ -143,7 +143,7 @@ export const schemaCookies: <A, I extends Readonly<Record<string, string>>, R>(
  * @since 1.0.0
  * @category schema
  */
-export const schemaHeaders: <A, I extends Readonly<Record<string, string>>, R>(
+export const schemaHeaders: <A, I extends Readonly<Record<string, string | undefined>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => Effect.Effect<A, ParseResult.ParseError, HttpServerRequest | R> = internal.schemaHeaders
@@ -183,7 +183,7 @@ export const schemaBodyForm: <A, I extends Partial<Multipart.Persisted>, R>(
  * @since 1.0.0
  * @category schema
  */
-export const schemaBodyUrlParams: <A, I extends Readonly<Record<string, string>>, R>(
+export const schemaBodyUrlParams: <A, I extends Readonly<Record<string, string | undefined>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => Effect.Effect<A, ParseResult.ParseError | Error.RequestError, R | HttpServerRequest> = internal.schemaBodyUrlParams
