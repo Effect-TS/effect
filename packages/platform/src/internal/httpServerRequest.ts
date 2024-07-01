@@ -63,7 +63,7 @@ export const searchParamsFromURL = (url: URL): ReadonlyRecord<string, string | A
 }
 
 /** @internal */
-export const schemaCookies = <A, I extends Readonly<Record<string, string>>, R>(
+export const schemaCookies = <A, I extends Readonly<Record<string, string | undefined>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {
@@ -72,7 +72,7 @@ export const schemaCookies = <A, I extends Readonly<Record<string, string>>, R>(
 }
 
 /** @internal */
-export const schemaHeaders = <A, I extends Readonly<Record<string, string>>, R>(
+export const schemaHeaders = <A, I extends Readonly<Record<string, string | undefined>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {
@@ -118,7 +118,7 @@ export const schemaBodyForm = <A, I extends Partial<Multipart.Persisted>, R>(
 }
 
 /** @internal */
-export const schemaBodyUrlParams = <A, I extends Readonly<Record<string, string>>, R>(
+export const schemaBodyUrlParams = <A, I extends Readonly<Record<string, string | undefined>>, R>(
   schema: Schema.Schema<A, I, R>,
   options?: ParseOptions | undefined
 ) => {
