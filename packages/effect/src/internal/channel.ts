@@ -8,6 +8,7 @@ import * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
 import * as Exit from "../Exit.js"
 import * as Fiber from "../Fiber.js"
+import * as FiberRef from "../FiberRef.js"
 import { constVoid, dual, identity, pipe } from "../Function.js"
 import type { LazyArg } from "../Function.js"
 import * as Layer from "../Layer.js"
@@ -28,6 +29,7 @@ import * as mergeDecision from "./channel/mergeDecision.js"
 import * as mergeState from "./channel/mergeState.js"
 import * as _mergeStrategy from "./channel/mergeStrategy.js"
 import * as singleProducerAsyncInput from "./channel/singleProducerAsyncInput.js"
+import * as coreEffect from "./core-effect.js"
 import * as core from "./core-stream.js"
 import * as MergeDecisionOpCodes from "./opCodes/channelMergeDecision.js"
 import * as MergeStateOpCodes from "./opCodes/channelMergeState.js"
@@ -2326,29 +2328,25 @@ export const withSpan: {
   const dataFirst = typeof arguments[0] !== "string"
   const name = dataFirst ? arguments[1] : arguments[0]
   const options = tracer.addSpanStackTrace(dataFirst ? arguments[2] : arguments[1])
+  const acquire = Effect.all([
+    Effect.makeSpan(name, options),
+    Effect.context(),
+    Effect.clock,
+    FiberRef.get(FiberRef.currentTracerTimingEnabled)
+  ])
   if (dataFirst) {
     const self = arguments[0]
-    return unwrapScoped(
-      Effect.flatMap(
-        Effect.context(),
-        (context) =>
-          Effect.map(
-            Effect.makeSpanScoped(name, options),
-            (span) => core.provideContext(self, Context.add(context, tracer.spanTag, span))
-          )
-      )
+    return acquireUseRelease(
+      acquire,
+      ([span, context]) => core.provideContext(self, Context.add(context, tracer.spanTag, span)),
+      ([span, , clock, timingEnabled], exit) => coreEffect.endSpan(span, exit, clock, timingEnabled)
     )
   }
-  return (self: Effect.Effect<any, any, any>) =>
-    unwrapScoped(
-      Effect.flatMap(
-        Effect.context(),
-        (context) =>
-          Effect.map(
-            Effect.makeSpanScoped(name, options),
-            (span) => core.provideContext(self, Context.add(context, tracer.spanTag, span))
-          )
-      )
+  return (self: Channel.Channel<any>) =>
+    acquireUseRelease(
+      acquire,
+      ([span, context]) => core.provideContext(self, Context.add(context, tracer.spanTag, span)),
+      ([span, , clock, timingEnabled], exit) => coreEffect.endSpan(span, exit, clock, timingEnabled)
     )
 } as any
 
