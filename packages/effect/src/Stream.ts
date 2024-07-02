@@ -2094,7 +2094,7 @@ export const mapEffect: {
  * const even = (a: number) => a % 2 === 0 ? Effect.succeedSome(a) : Effect.succeedNone
  *
  * const result = Stream.make(0, 1, 2, 4).pipe(
- *   Stream.mapEffectFilter(even),
+ *   Stream.filterMapEffectOption(even),
  *   Stream.runCollect,
  *   Effect.runPromise,
  * )
@@ -2103,7 +2103,7 @@ export const mapEffect: {
  * @since 3.3.5
  * @category utils
  */
-export const mapEffectFilter: {
+export const filterMapEffectOption: {
   <A, A2, E2, R2>(
     fn: (a: A) => Effect.Effect<Option.Option<A2>, E2, R2>
   ): <E, R>(stream: Stream<A, E, R>) => Stream<A2, E2 | E, R2 | R>
@@ -2111,7 +2111,7 @@ export const mapEffectFilter: {
     stream: Stream<A, E, R>,
     fn: (a: A) => Effect.Effect<Option.Option<A2>, E2, R2>
   ): Stream<A2, E2 | E, R2 | R>
-} = _groupBy.mapEffectFilter
+} = _groupBy.filterMapEffectOption
 
 /**
  * Transforms the errors emitted by this stream using `f`.

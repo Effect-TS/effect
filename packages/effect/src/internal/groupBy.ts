@@ -207,7 +207,7 @@ export const groupBy = dual<
 )
 
 /** @internal */
-export const mapEffectFilter = dual<
+export const filterMapEffectOption = dual<
   <A, A2, E2, R2>(
     fn: (a: A) => Effect.Effect<Option.Option<A2>, E2, R2>
   ) => <E, R>(

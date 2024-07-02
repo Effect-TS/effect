@@ -47,11 +47,11 @@ describe("Stream", () => {
       )
     }))
 
-  it.effect("mapEffectFilter", () =>
+  it.effect("filterMapEffectOption", () =>
     Effect.gen(function*() {
       const even = (a: number) => a % 2 === 0 ? Effect.succeedSome(a) : Effect.succeedNone
       const result = yield* Stream.make(0, 1, 2, 4).pipe(
-        Stream.mapEffectFilter(even),
+        Stream.filterMapEffectOption(even),
         Stream.runCollect
       )
       assert.deepStrictEqual(Array.from(result), [0, 2, 4])
