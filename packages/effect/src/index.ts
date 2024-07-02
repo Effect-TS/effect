@@ -188,6 +188,12 @@ export * as Cron from "./Cron.js"
 export * as Data from "./Data.js"
 
 /**
+ * @since 3.3.0
+ * @category models
+ */
+export * as Date from "./Date.js"
+
+/**
  * @since 2.0.0
  */
 export * as DefaultServices from "./DefaultServices.js"
