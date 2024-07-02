@@ -5851,6 +5851,25 @@ export const splitLines = <E, R>(self: Stream.Stream<string, E, R>): Stream.Stre
   pipeThroughChannel(self, channel.splitLines())
 
 /** @internal */
+export const switchMap = dual<
+  <A, A2, E2, R2>(
+    project: (a: A) => Stream.Stream<A2, E2, R2>
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A2, E2 | E, R2 | R>,
+  <A, E, R, A2, E2, R2>(
+    self: Stream.Stream<A, E, R>,
+    project: (a: A) => Stream.Stream<A2, E2, R2>
+  ) => Stream.Stream<A2, E2 | E, R2 | R>
+>(
+  (args) => isStream(args[0]),
+  <A, E, R, A2, E2, R2>(
+    self: Stream.Stream<A, E, R>,
+    project: (a: A) => Stream.Stream<A2, E2, R2>
+  ): Stream.Stream<A2, E | E2, R | R2> => {
+    return flatMap(self, project, { switch: true, concurrency: 1 })
+  }
+)
+
+/** @internal */
 export const succeed = <A>(value: A): Stream.Stream<A> => fromChunk(Chunk.of(value))
 
 /** @internal */
