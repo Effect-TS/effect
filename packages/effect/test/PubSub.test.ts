@@ -662,21 +662,18 @@ describe("PubSub", () => {
       assert.deepStrictEqual(pubsub.unsafeSize(), Option.some(0))
     }))
 
-  it.scoped("withReplay", () =>
+  it.scoped("replayCapacity", () =>
     Effect.gen(function*() {
       const messages = [1, 2, 3, 4, 5]
-      const pubsub = yield* PubSub.unbounded<number>().pipe(
-        Effect.map(PubSub.withReplay(3))
-      )
+      const pubsub = yield* PubSub.unbounded<number>({ replayCapacity: 3 })
       yield* PubSub.publishAll(pubsub, messages)
       const sub = yield* PubSub.subscribe(pubsub)
       assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [3, 4, 5])
     }))
 
-  it.effect("withReplay takeUpTo", () => {
+  it.effect("replayCapacity takeUpTo", () => {
     const messages = [1, 2, 3, 4, 5]
-    return PubSub.unbounded<number>().pipe(
-      Effect.map(PubSub.withReplay(3)),
+    return PubSub.unbounded<number>({ replayCapacity: 3 }).pipe(
       Effect.flatMap((pubsub) =>
         Effect.scoped(
           Effect.gen(function*() {

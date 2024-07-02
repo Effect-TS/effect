@@ -46,7 +46,10 @@ export interface PubSub<in out A> extends Queue.Enqueue<A>, Pipeable {
  * @since 2.0.0
  * @category constructors
  */
-export const bounded: <A>(requestedCapacity: number) => Effect.Effect<PubSub<A>> = internal.bounded
+export const bounded: <A>(
+  requestedCapacity: number,
+  options?: { readonly replayCapacity?: number }
+) => Effect.Effect<PubSub<A>> = internal.bounded
 
 /**
  * Creates a bounded `PubSub` with the dropping strategy. The `PubSub` will drop new
@@ -57,7 +60,10 @@ export const bounded: <A>(requestedCapacity: number) => Effect.Effect<PubSub<A>>
  * @since 2.0.0
  * @category constructors
  */
-export const dropping: <A>(requestedCapacity: number) => Effect.Effect<PubSub<A>> = internal.dropping
+export const dropping: <A>(
+  requestedCapacity: number,
+  options?: { readonly replayCapacity?: number }
+) => Effect.Effect<PubSub<A>> = internal.dropping
 
 /**
  * Creates a bounded `PubSub` with the sliding strategy. The `PubSub` will add new
@@ -68,7 +74,10 @@ export const dropping: <A>(requestedCapacity: number) => Effect.Effect<PubSub<A>
  * @since 2.0.0
  * @category constructors
  */
-export const sliding: <A>(requestedCapacity: number) => Effect.Effect<PubSub<A>> = internal.sliding
+export const sliding: <A>(
+  requestedCapacity: number,
+  options?: { readonly replayCapacity?: number }
+) => Effect.Effect<PubSub<A>> = internal.sliding
 
 /**
  * Creates an unbounded `PubSub`.
@@ -76,7 +85,8 @@ export const sliding: <A>(requestedCapacity: number) => Effect.Effect<PubSub<A>>
  * @since 2.0.0
  * @category constructors
  */
-export const unbounded: <A>() => Effect.Effect<PubSub<A>> = internal.unbounded
+export const unbounded: <A>(options?: { readonly replayCapacity?: number }) => Effect.Effect<PubSub<A>> =
+  internal.unbounded
 
 /**
  *  Returns the number of elements the queue can hold.
@@ -173,15 +183,3 @@ export const publishAll: {
  * @category utils
  */
 export const subscribe: <A>(self: PubSub<A>) => Effect.Effect<Queue.Dequeue<A>, never, Scope.Scope> = internal.subscribe
-
-/**
- * Add a replay buffer to the `PubSub`. The replay buffer will replay the last
- * `n` messages to new subscribers.
- *
- * @since 3.5.0
- * @category utils
- */
-export const withReplay: {
-  (n: number): <A>(self: PubSub<A>) => PubSub<A>
-  <A>(self: PubSub<A>, n: number): PubSub<A>
-} = internal.withReplay

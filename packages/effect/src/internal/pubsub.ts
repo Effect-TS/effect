@@ -75,31 +75,39 @@ const removeSubscribers = <A>(
 }
 
 /** @internal */
-export const bounded = <A>(requestedCapacity: number): Effect.Effect<PubSub.PubSub<A>> =>
+export const bounded = <A>(requestedCapacity: number, options?: {
+  readonly replayCapacity?: number
+}): Effect.Effect<PubSub.PubSub<A>> =>
   pipe(
     core.sync(() => makeBoundedPubSub<A>(requestedCapacity)),
-    core.flatMap((atomicPubSub) => makePubSub(atomicPubSub, new BackPressureStrategy()))
+    core.flatMap((atomicPubSub) => makePubSub(atomicPubSub, new BackPressureStrategy(), options))
   )
 
 /** @internal */
-export const dropping = <A>(requestedCapacity: number): Effect.Effect<PubSub.PubSub<A>> =>
+export const dropping = <A>(requestedCapacity: number, options?: {
+  readonly replayCapacity?: number
+}): Effect.Effect<PubSub.PubSub<A>> =>
   pipe(
     core.sync(() => makeBoundedPubSub<A>(requestedCapacity)),
-    core.flatMap((atomicPubSub) => makePubSub(atomicPubSub, new DroppingStrategy()))
+    core.flatMap((atomicPubSub) => makePubSub(atomicPubSub, new DroppingStrategy(), options))
   )
 
 /** @internal */
-export const sliding = <A>(requestedCapacity: number): Effect.Effect<PubSub.PubSub<A>> =>
+export const sliding = <A>(requestedCapacity: number, options?: {
+  readonly replayCapacity?: number
+}): Effect.Effect<PubSub.PubSub<A>> =>
   pipe(
     core.sync(() => makeBoundedPubSub<A>(requestedCapacity)),
-    core.flatMap((atomicPubSub) => makePubSub(atomicPubSub, new SlidingStrategy()))
+    core.flatMap((atomicPubSub) => makePubSub(atomicPubSub, new SlidingStrategy(), options))
   )
 
 /** @internal */
-export const unbounded = <A>(): Effect.Effect<PubSub.PubSub<A>> =>
+export const unbounded = <A>(options?: {
+  readonly replayCapacity?: number
+}): Effect.Effect<PubSub.PubSub<A>> =>
   pipe(
     core.sync(() => makeUnboundedPubSub<A>()),
-    core.flatMap((atomicPubSub) => makePubSub(atomicPubSub, new DroppingStrategy()))
+    core.flatMap((atomicPubSub) => makePubSub(atomicPubSub, new DroppingStrategy(), options))
   )
 
 /** @internal */
@@ -138,12 +146,6 @@ export const publishAll = dual<
 /** @internal */
 export const subscribe = <A>(self: PubSub.PubSub<A>): Effect.Effect<Queue.Dequeue<A>, never, Scope.Scope> =>
   self.subscribe
-
-/** @internal */
-export const withReplay = dual<
-  (n: number) => <A>(self: PubSub.PubSub<A>) => PubSub.PubSub<A>,
-  <A>(self: PubSub.PubSub<A>, n: number) => PubSub.PubSub<A>
->(2, <A>(self: PubSub.PubSub<A>, n: number) => new ReplayPubSubImpl(self as PubSubImpl<A>, n))
 
 /** @internal */
 const makeBoundedPubSub = <A>(requestedCapacity: number): AtomicPubSub<A> => {
@@ -1313,7 +1315,10 @@ class ReplayPubSubImpl<in out A> implements PubSub.PubSub<A> {
 /** @internal */
 export const makePubSub = <A>(
   pubsub: AtomicPubSub<A>,
-  strategy: PubSubStrategy<A>
+  strategy: PubSubStrategy<A>,
+  options?: {
+    readonly replayCapacity?: number
+  }
 ): Effect.Effect<PubSub.PubSub<A>> =>
   core.flatMap(
     fiberRuntime.scopeMake(),
@@ -1325,7 +1330,8 @@ export const makePubSub = <A>(
           scope,
           deferred,
           MutableRef.make(false),
-          strategy
+          strategy,
+          options?.replayCapacity
         ))
   )
 
@@ -1336,9 +1342,11 @@ export const unsafeMakePubSub = <A>(
   scope: Scope.Scope.Closeable,
   shutdownHook: Deferred.Deferred<void>,
   shutdownFlag: MutableRef.MutableRef<boolean>,
-  strategy: PubSubStrategy<A>
+  strategy: PubSubStrategy<A>,
+  replayCapacity: number | undefined
 ): PubSub.PubSub<A> => {
-  return new PubSubImpl(pubsub, subscribers, scope, shutdownHook, shutdownFlag, strategy)
+  const backing = new PubSubImpl(pubsub, subscribers, scope, shutdownHook, shutdownFlag, strategy)
+  return replayCapacity && replayCapacity > 0 ? new ReplayPubSubImpl(backing, replayCapacity) : backing
 }
 
 /** @internal */
