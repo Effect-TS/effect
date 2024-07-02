@@ -4697,7 +4697,6 @@ export const raceAll = <T extends ReadonlyArray<Stream.Stream<any, any, any>>>(
   return unwrap(
     Effect.gen(function*() {
       const halts = yield* Effect.all(streams.map(() => Deferred.make<void>()))
-      let finishes = streams.map(() => false)
       return mergeAll(
         streams.map((s, index) =>
           s.pipe(
@@ -4706,13 +4705,12 @@ export const raceAll = <T extends ReadonlyArray<Stream.Stream<any, any, any>>>(
                 return Effect.void
               }
               finished = true
-              finishes = finishes.map((_, i) => !(i === index))
               return Effect.all(
                 halts.map((def, i) => i === index ? Effect.void : Deferred.succeed(def, void 0))
               )
             }),
-            takeWhile(() => !finishes[index]),
-            interruptWhenDeferred(halts[index]!)
+            interruptWhenDeferred(halts[index]!),
+            haltWhenDeferred(halts[index]!)
           )
         ),
         { concurrency: "unbounded" }
