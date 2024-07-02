@@ -4489,6 +4489,28 @@ export const transformedSchema = Schema.transform(
 
 In this example, the `transform` function is used to create a schema that automatically trims leading and trailing whitespace from a string when decoding. During encoding, it simply returns the string as is, assuming it's already trimmed.
 
+**Example: Converting an array to a ReadonlySet**
+
+```ts
+import { Schema } from "@effect/schema"
+
+export const ReadonlySetFromArray = <A, I, R>(
+  itemSchema: Schema.Schema<A, I, R>
+): Schema.Schema<ReadonlySet<A>, ReadonlyArray<I>, R> =>
+  Schema.transform(
+    Schema.Array(itemSchema),
+    Schema.ReadonlySetFromSelf(Schema.typeSchema(itemSchema)),
+    {
+      strict: true,
+      decode: (as) => new Set(as),
+      encode: (set) => Array.from(set.values())
+    }
+  )
+```
+
+> [!WARNING]
+> Please note that to define the target schema, we used `Schema.typeSchema(itemSchema)`. This is because the decoding/encoding of the elements is already handled by the `from` schema, `Schema.Array(itemSchema)`.
+
 ### Improving the Transformation with a Filter
 
 While the basic example ensures that strings are trimmed during the decoding process, it doesn't enforce that only trimmed strings are accepted or returned by the schema. To enhance this, you can restrict the target schema to only accept strings that are already trimmed:
