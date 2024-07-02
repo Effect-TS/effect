@@ -89,4 +89,14 @@ describe("Effect", () => {
     class MessageError extends Data.TaggedError("MessageError")<{}> {}
     assert.deepStrictEqual(new MessageError().toJSON(), { _tag: "MessageError" })
   })
+
+  it.it("withDefaults", () => {
+    class TestError extends Data.addDefaults(
+      Data.TaggedError("TestError")<{ a: string; b: number }>,
+      { b: () => 1 }
+    ) {}
+
+    assert.deepStrictEqual(new TestError({ a: "hello" }).toJSON(), { _tag: "TestError", a: "hello", b: 1 })
+    assert.deepStrictEqual(new TestError({ a: "hello", b: 2 }).toJSON(), { _tag: "TestError", a: "hello", b: 2 })
+  })
 })
