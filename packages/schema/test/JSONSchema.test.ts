@@ -2140,6 +2140,18 @@ schema (Suspend): <suspended schema>`
       }
     )
   })
+
+  it("NonEmptyArray", () => {
+    expectJSONSchema(
+      Schema.NonEmptyArray(Schema.String),
+      {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        type: "array",
+        minItems: 1,
+        items: { type: "string" }
+      }
+    )
+  })
 })
 
 export const decode = <A>(schema: JSONSchema.JsonSchema7Root): Schema.Schema<A> =>
