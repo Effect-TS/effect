@@ -1,6 +1,6 @@
 {
   "name": "@effect/cli",
-  "version": "0.36.70",
+  "version": "0.36.71",
   "type": "module",
   "license": "MIT",
   "description": "A library for building command-line interfaces with Effect",

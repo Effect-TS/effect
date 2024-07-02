@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.58.18
+
+### Patch Changes
+
+- [#3136](https://github.com/Effect-TS/effect/pull/3136) [`7f8900a`](https://github.com/Effect-TS/effect/commit/7f8900a1de9addeb0d371103a2c5c2aa3e4ff95e) Thanks @tim-smart! - support undefined in http request schema apis
+
 ## 0.58.17
 
 ### Patch Changes
