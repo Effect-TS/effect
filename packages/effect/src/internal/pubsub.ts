@@ -1,3 +1,4 @@
+import * as Arr from "../Array.js"
 import * as Chunk from "../Chunk.js"
 import type * as Deferred from "../Deferred.js"
 import type * as Effect from "../Effect.js"
@@ -852,8 +853,7 @@ class SubscriptionImpl<in out A> implements Queue.Dequeue<A> {
     readonly shutdownFlag: MutableRef.MutableRef<boolean>,
     readonly strategy: PubSubStrategy<A>,
     public replayBuffer: Chunk.Chunk<A>
-  ) {
-  }
+  ) {}
 
   pipe() {
     return pipeArguments(this, arguments)
@@ -1054,8 +1054,7 @@ class PubSubImpl<in out A> implements PubSub.PubSub<A> {
     readonly shutdownHook: Deferred.Deferred<void>,
     readonly shutdownFlag: MutableRef.MutableRef<boolean>,
     readonly strategy: PubSubStrategy<A>
-  ) {
-  }
+  ) {}
 
   capacity(): number {
     return this.pubsub.capacity
@@ -1235,36 +1234,35 @@ class ReplayPubSubImpl<in out A> implements PubSub.PubSub<A> {
   get shutdown(): Effect.Effect<void> {
     return this.backing.shutdown
   }
-  publish(value: A): Effect.Effect<boolean> {
-    return core.suspend(() => {
-      this.offerReplay(value)
-      return this.backing.publish(value)
-    })
-  }
   isActive(): boolean {
     return this.backing.isActive()
   }
   unsafeOffer(value: A): boolean {
-    this.offerReplay(value)
-    return this.backing.unsafeOffer(value)
+    if (this.backing.publish(value)) {
+      this.offerReplay(value)
+      return true
+    }
+    return false
+  }
+  publish(value: A): Effect.Effect<boolean> {
+    return core.uninterruptibleMask((restore) =>
+      core.tap(restore(this.backing.publish(value)), (_) => {
+        this.offerReplay(value)
+      })
+    )
   }
   publishAll(elements: Iterable<A>): Effect.Effect<boolean> {
-    return core.suspend(() => {
-      this.offerAllReplay(Chunk.fromIterable(elements))
-      return this.backing.publishAll(elements)
-    })
+    return core.uninterruptibleMask((restore) =>
+      core.tap(restore(this.backing.publishAll(elements)), (_) => {
+        this.offerAllReplay(Chunk.unsafeFromArray(Arr.fromIterable(elements)))
+      })
+    )
   }
   offer(value: A): Effect.Effect<boolean> {
-    return core.suspend(() => {
-      this.offerReplay(value)
-      return this.backing.offer(value)
-    })
+    return this.publish(value)
   }
   offerAll(elements: Iterable<A>): Effect.Effect<boolean> {
-    return core.suspend(() => {
-      this.offerAllReplay(Chunk.fromIterable(elements))
-      return this.backing.offerAll(elements)
-    })
+    return this.publishAll(elements)
   }
   pipe() {
     return pipeArguments(this, arguments)
