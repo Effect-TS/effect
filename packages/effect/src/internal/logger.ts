@@ -166,19 +166,25 @@ export const stringLogger: Logger.Logger<unknown, string> = makeLogger<unknown, 
       `level=${logLevel.label}`,
       `fiber=${_fiberId.threadName(fiberId)}`
     ]
-
+    
+    if(message instanceof Error) {
+      outputArray.push(`name=${message.name}`)
+    }
+    
     let output = outputArray.join(" ")
-
+    
+    const fmtMessage = (msg: unknown) => msg instanceof Error ? msg.message : Inspectable.toStringUnknown(msg);
+    
     if (Array.isArray(message)) {
       for (let i = 0; i < message.length; i++) {
-        const stringMessage = Inspectable.toStringUnknown(message[i])
+        const stringMessage = fmtMessage(message[i])
         if (stringMessage.length > 0) {
           output = output + " message="
           output = appendQuoted(stringMessage, output)
         }
       }
     } else {
-      const stringMessage = Inspectable.toStringUnknown(message)
+      const stringMessage = fmtMessage(message);
       if (stringMessage.length > 0) {
         output = output + " message="
         output = appendQuoted(stringMessage, output)
@@ -243,19 +249,25 @@ export const logfmtLogger = makeLogger<unknown, string>(
       `level=${logLevel.label}`,
       `fiber=${_fiberId.threadName(fiberId)}`
     ]
+    
+    if(message instanceof Error) {
+      outputArray.push(`name=${message.name}`)
+    }
+    
+    const fmtMessage = (msg: unknown) => msg instanceof Error ? msg.message : Inspectable.toStringUnknown(msg, 0);
 
     let output = outputArray.join(" ")
-
+    
     if (Array.isArray(message)) {
       for (let i = 0; i < message.length; i++) {
-        const stringMessage = Inspectable.toStringUnknown(message[i], 0)
+        const stringMessage = fmtMessage(message[i])
         if (stringMessage.length > 0) {
           output = output + " message="
           output = appendQuotedLogfmt(stringMessage, output)
         }
       }
     } else {
-      const stringMessage = Inspectable.toStringUnknown(message, 0)
+      const stringMessage = fmtMessage(message)
       if (stringMessage.length > 0) {
         output = output + " message="
         output = appendQuotedLogfmt(stringMessage, output)
