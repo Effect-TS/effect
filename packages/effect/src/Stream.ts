@@ -3379,6 +3379,27 @@ export const scoped: <A, E, R>(effect: Effect.Effect<A, E, R>) => Stream<A, E, E
   internal.scoped
 
 /**
+ * Returns a new Stream that multicasts (shares) the original Stream by forking `runIntoQueue` or `runIntoPubSub` process in `forkDaemon` mode.
+ * As long as there is at least one consumer, this Stream will be run and emitting data.
+ * When all consumers have exited, it will kill forked daemon.
+ *
+ * @since 3.5.0
+ * @category utils
+ */
+export const share: {
+  <A, E>(options: {
+    readonly connector: Effect.Effect<
+      PubSub.PubSub<Take.Take<A, E>> | Queue.Queue<Take.Take<A, E>>
+    >
+  }): <R>(self: Stream<A, E, R>) => Stream<A, E, R>
+  <A, E, R>(self: Stream<A, E, R>, options: {
+    readonly connector: Effect.Effect<
+      PubSub.PubSub<Take.Take<A, E>> | Queue.Queue<Take.Take<A, E>>
+    >
+  }): Stream<A, E, R>
+} = internal.share
+
+/**
  * Emits a sliding window of `n` elements.
  *
  * ```ts
