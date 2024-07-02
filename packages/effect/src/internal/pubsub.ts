@@ -3,6 +3,7 @@ import * as Chunk from "../Chunk.js"
 import type * as Deferred from "../Deferred.js"
 import type * as Effect from "../Effect.js"
 import { dual, pipe } from "../Function.js"
+import * as MutableList from "../MutableList.js"
 import * as MutableQueue from "../MutableQueue.js"
 import * as MutableRef from "../MutableRef.js"
 import { nextPow2 } from "../Number.js"
@@ -929,8 +930,8 @@ class SubscriptionImpl<in out A> implements Queue.Dequeue<A> {
       if (MutableRef.get(this.shutdownFlag)) {
         return core.interrupt
       }
-      if (Chunk.isNonEmpty(this.replayBuffer)) {
-        const message = Chunk.headNonEmpty(this.replayBuffer)
+      if (this.replayBuffer.length > 0) {
+        const message = Chunk.unsafeHead(this.replayBuffer)
         this.replayBuffer = Chunk.drop(this.replayBuffer, 1)
         return core.succeed(message)
       }
@@ -969,7 +970,7 @@ class SubscriptionImpl<in out A> implements Queue.Dequeue<A> {
         ? unsafePollAllSubscription(this.subscription)
         : Chunk.empty()
       this.strategy.unsafeOnPubSubEmptySpace(this.pubsub, this.subscribers)
-      if (Chunk.isNonEmpty(this.replayBuffer)) {
+      if (this.replayBuffer.length > 0) {
         const replay = this.replayBuffer
         this.replayBuffer = Chunk.empty()
         return core.succeed(Chunk.appendAll(replay, as))
@@ -1193,20 +1194,19 @@ class ReplayPubSubImpl<in out A> implements PubSub.PubSub<A> {
 
   constructor(
     readonly backing: PubSubImpl<A>,
-    readonly replayBufferSize: number
+    readonly replayBufferCapacity: number
   ) {}
 
-  replayBuffer = Chunk.empty<A>()
+  readonly replayBuffer = MutableList.empty<A>()
   offerReplay(value: A): void {
-    this.replayBuffer = Chunk.append(this.replayBuffer, value)
-    if (this.replayBuffer.length > this.replayBufferSize) {
-      this.replayBuffer = Chunk.drop(this.replayBuffer, 1)
+    MutableList.append(this.replayBuffer, value)
+    if (MutableList.length(this.replayBuffer) > this.replayBufferCapacity) {
+      MutableList.shift(this.replayBuffer)
     }
   }
   offerAllReplay(value: Chunk.Chunk<A>): void {
-    this.replayBuffer = Chunk.appendAll(this.replayBuffer, value)
-    if (this.replayBuffer.length > this.replayBufferSize) {
-      this.replayBuffer = Chunk.drop(this.replayBuffer, this.replayBuffer.length - this.replayBufferSize)
+    for (const a of value) {
+      this.offerReplay(a)
     }
   }
 
@@ -1272,7 +1272,12 @@ class ReplayPubSubImpl<in out A> implements PubSub.PubSub<A> {
     const acquire = this.backing.scope.fork(executionStrategy.sequential).pipe(
       core.zip(
         core.suspend(() =>
-          makeSubscription(this.backing.pubsub, this.backing.subscribers, this.backing.strategy, this.replayBuffer)
+          makeSubscription(
+            this.backing.pubsub,
+            this.backing.subscribers,
+            this.backing.strategy,
+            Chunk.fromIterable(this.replayBuffer)
+          )
         )
       ),
       core.tap(([scope, sub]) => scope.addFinalizer(() => sub.shutdown))
