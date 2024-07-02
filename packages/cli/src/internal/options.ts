@@ -1198,7 +1198,7 @@ const parseInternal = (
       const extractKeyValue = (
         value: string
       ): Effect.Effect<[string, string], ValidationError.ValidationError> => {
-        const split = value.trim().split("=")
+        const split = value.trim().split(/=(.*)/, 2)
         if (Arr.isNonEmptyReadonlyArray(split) && split.length === 2 && split[1] !== "") {
           return Effect.succeed(split as unknown as [string, string])
         }
