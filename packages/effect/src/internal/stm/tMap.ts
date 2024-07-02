@@ -362,7 +362,16 @@ export const removeIf: {
       readonly discard: false
     }
   ): STM.STM<Array<[K, V]>>
-} = dual((args) => isTMap(args[0]), <K, V>(
+} = dual<
+  typeof removeIf,
+  <K, V>(
+    self: TMap.TMap<K, V>,
+    predicate: (key: K, value: V) => boolean,
+    options?: {
+      readonly discard: boolean
+    }
+  ) => STM.STM<Array<[K, V]> | void>
+>((args) => isTMap(args[0]), <K, V>(
   self: TMap.TMap<K, V>,
   predicate: (key: K, value: V) => boolean,
   options?: {
