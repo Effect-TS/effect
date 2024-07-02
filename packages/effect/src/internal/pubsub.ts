@@ -1245,16 +1245,37 @@ class ReplayPubSubImpl<in out A> implements PubSub.PubSub<A> {
     return false
   }
   publish(value: A): Effect.Effect<boolean> {
-    return core.uninterruptibleMask((restore) =>
-      core.tap(restore(this.backing.publish(value)), (_) => {
+    return core.suspend(() => {
+      if (MutableRef.get(this.backing.shutdownFlag)) {
+        return core.interrupt
+      }
+      if ((this.backing.pubsub as AtomicPubSub<unknown>).publish(value)) {
+        this.backing.strategy.unsafeCompleteSubscribers(this.backing.pubsub, this.backing.subscribers)
         this.offerReplay(value)
-      })
-    )
+        return core.succeed(true)
+      }
+      return core.uninterruptibleMask((restore) =>
+        restore(this.backing.strategy.handleSurplus(
+          this.backing.pubsub,
+          this.backing.subscribers,
+          Chunk.of(value),
+          this.backing.shutdownFlag
+        )).pipe(
+          core.tap((success) => {
+            if (success) {
+              this.offerReplay(value)
+            }
+          })
+        )
+      )
+    })
   }
   publishAll(elements: Iterable<A>): Effect.Effect<boolean> {
     return core.uninterruptibleMask((restore) =>
-      core.tap(restore(this.backing.publishAll(elements)), (_) => {
-        this.offerAllReplay(Chunk.unsafeFromArray(Arr.fromIterable(elements)))
+      core.tap(restore(this.backing.publishAll(elements)), (success) => {
+        if (success) {
+          this.offerAllReplay(Chunk.unsafeFromArray(Arr.fromIterable(elements)))
+        }
       })
     )
   }
