@@ -385,7 +385,6 @@ const go = (
     case "SymbolKeyword":
       throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     case "TupleType": {
-      const len = ast.elements.length
       const elements = ast.elements.map((e, i) =>
         merge(
           go(e.type, $defs, true, path.concat(i)),
@@ -402,6 +401,7 @@ const go = (
       // ---------------------------------------------
       // handle elements
       // ---------------------------------------------
+      const len = ast.elements.length
       if (len > 0) {
         output.minItems = len - ast.elements.filter((element) => element.isOptional).length
         output.items = elements
@@ -409,18 +409,20 @@ const go = (
       // ---------------------------------------------
       // handle rest element
       // ---------------------------------------------
-      if (rest.length > 0) {
+      const restLength = rest.length
+      if (restLength > 0) {
         const head = rest[0]
-        if (len > 0) {
-          output.additionalItems = head
-        } else {
+        const isHomogeneous = restLength === 1 && ast.elements.every((e) => e.type === ast.rest[0].type)
+        if (len === 0 || isHomogeneous) {
           output.items = head
+        } else {
+          output.additionalItems = head
         }
 
         // ---------------------------------------------
         // handle post rest elements
         // ---------------------------------------------
-        if (rest.length > 1) {
+        if (restLength > 1) {
           throw new Error(errors_.getJSONSchemaUnsupportedPostRestElementsErrorMessage(path))
         }
       } else {
