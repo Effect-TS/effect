@@ -181,6 +181,7 @@ export interface JsonSchema7Object extends JsonSchemaAnnotations {
   properties: Record<string, JsonSchema7>
   additionalProperties?: boolean | JsonSchema7
   patternProperties?: Record<string, JsonSchema7>
+  propertyNames?: JsonSchema7
 }
 
 /**
@@ -439,33 +440,27 @@ const go = (
       if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
         return merge(empty(), getJsonSchemaAnnotations(ast))
       }
-      let additionalProperties: JsonSchema7 | undefined = undefined
-      let patternProperties: Record<string, JsonSchema7> | undefined = undefined
+      let patternProperties: JsonSchema7 | undefined = undefined
+      let propertyNames: JsonSchema7 | undefined = undefined
       for (const is of ast.indexSignatures) {
         const parameter = is.parameter
         switch (parameter._tag) {
           case "StringKeyword": {
-            additionalProperties = go(is.type, $defs, true, path)
+            patternProperties = go(is.type, $defs, true, path)
             break
           }
           case "TemplateLiteral": {
-            patternProperties = {
-              [AST.getTemplateLiteralRegExp(parameter).source]: go(is.type, $defs, true, path)
+            patternProperties = go(is.type, $defs, true, path)
+            propertyNames = {
+              type: "string",
+              pattern: AST.getTemplateLiteralRegExp(parameter).source
             }
             break
           }
           case "Refinement": {
-            const hook = AST.getJSONSchemaAnnotation(parameter)
-            if (
-              Option.isSome(hook) && "pattern" in hook.value &&
-              Predicate.isString(hook.value.pattern)
-            ) {
-              patternProperties = {
-                [hook.value.pattern]: go(is.type, $defs, true, path)
-              }
-              break
-            }
-            throw new Error(errors_.getJSONSchemaUnsupportedParameterErrorMessage(path, parameter))
+            patternProperties = go(is.type, $defs, true, path)
+            propertyNames = go(parameter, $defs, true, path)
+            break
           }
           case "SymbolKeyword":
             throw new Error(errors_.getJSONSchemaUnsupportedParameterErrorMessage(path, parameter))
@@ -503,11 +498,12 @@ const go = (
       // ---------------------------------------------
       // handle index signatures
       // ---------------------------------------------
-      if (additionalProperties !== undefined) {
-        output.additionalProperties = additionalProperties
-      }
       if (patternProperties !== undefined) {
-        output.patternProperties = patternProperties
+        delete output.additionalProperties
+        output.patternProperties = { "": patternProperties }
+      }
+      if (propertyNames !== undefined) {
+        output.propertyNames = propertyNames
       }
 
       return merge(output, getJsonSchemaAnnotations(ast))

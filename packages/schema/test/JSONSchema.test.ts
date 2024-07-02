@@ -23,41 +23,42 @@ type Json =
 
 const doProperty = false
 
+const ajvOptions = { strictTuples: false, allowUnionTypes: true, allowMatchingProperties: true }
+
 const propertyType = <A, I>(schema: Schema.Schema<A, I>, options?: {
-  params?: fc.Parameters<[A]>
+  params?: fc.Parameters<[I]>
 }) => {
   if (!doProperty) {
     return
   }
-  const arbitrary = A.makeLazy(schema)
-  const is = Schema.is(schema)
+  const encodedBoundSchema = Schema.encodedBoundSchema(schema)
+  const arb = A.makeLazy(encodedBoundSchema)
+  const is = Schema.is(encodedBoundSchema)
   const jsonSchema = JSONSchema.make(schema)
-  // console.log(JSON.stringify(jsonSchema, null, 2))
-  // const decodedSchema = JSONSchema.decode<A>(jsonSchema)
-  // console.log(decodedSchema)
-  // const decodedIs = S.is(decodedSchema)
-  const validate = new Ajv({ strictTuples: false, allowUnionTypes: true }).compile(
+  const validate = new Ajv(ajvOptions).compile(
     jsonSchema
   )
-  const arb = arbitrary(fc)
-  // console.log(JSON.stringify(fc.sample(arb, 10), null, 2))
   fc.assert(
     fc.property(
-      arb,
-      (a) =>
-        is(a)
-        && validate(a)
-      // && decodedIs(a)
+      arb(fc),
+      (i) => is(i) && validate(i)
     ),
     options?.params
   )
 }
 
-const expectJSONSchema = <A, I>(schema: Schema.Schema<A, I>, expected: object) => {
+const expectJSONSchema = <A, I>(
+  schema: Schema.Schema<A, I>,
+  expected: object,
+  options: boolean | {
+    params?: fc.Parameters<[I]>
+  } = true
+) => {
   const jsonSchema = JSONSchema.make(schema)
-  // console.log(JSON.stringify(jsonSchema, null, 2))
   expect(jsonSchema).toEqual(expected)
-  propertyType(Schema.Null)
+  if (options !== false) {
+    propertyType(schema, options === true ? undefined : options)
+  }
 }
 
 const expectError = <A, I>(schema: Schema.Schema<A, I>, message: string) => {
@@ -197,7 +198,7 @@ schema (VoidKeyword): void`
       }
     }
     expectJSONSchema(Schema.Object, jsonSchema)
-    const validate = new Ajv().compile(jsonSchema)
+    const validate = new Ajv(ajvOptions).compile(jsonSchema)
     expect(validate({})).toEqual(true)
     expect(validate({ a: 1 })).toEqual(true)
     expect(validate([])).toEqual(true)
@@ -223,13 +224,13 @@ schema (VoidKeyword): void`
     expectJSONSchema(Schema.Number, {
       "$schema": "http://json-schema.org/draft-07/schema#",
       type: "number"
-    })
+    }, false)
     expectJSONSchema(Schema.Number.annotations({}), {
       "$schema": "http://json-schema.org/draft-07/schema#",
       type: "number",
       description: "a number",
       title: "number"
-    })
+    }, false)
   })
 
   it("Boolean", () => {
@@ -529,7 +530,6 @@ schema (VoidKeyword): void`
       expect(validate([1])).toEqual(true)
       expect(validate(["a"])).toEqual(false)
       expect(validate([1, 2])).toEqual(false)
-      propertyType(schema)
     })
 
     it("e e?", () => {
@@ -561,7 +561,6 @@ schema (VoidKeyword): void`
       expect(validate([])).toEqual(false)
       expect(validate([1])).toEqual(false)
       expect(validate([1, 2])).toEqual(false)
-      propertyType(schema)
     })
 
     it("e? r", () => {
@@ -591,7 +590,6 @@ schema (VoidKeyword): void`
       expect(validate([1])).toEqual(false)
       expect(validate([1, 2])).toEqual(false)
       expect(validate(["a", "b", 1])).toEqual(false)
-      propertyType(schema)
     })
 
     it("r e should raise an error", () => {
@@ -609,7 +607,7 @@ schema (VoidKeyword): void`
         "maxItems": 0
       }
       expectJSONSchema(schema, jsonSchema)
-      const validate = new Ajv().compile(jsonSchema)
+      const validate = new Ajv(ajvOptions).compile(jsonSchema)
       expect(validate([])).toEqual(true)
       expect(validate([1])).toEqual(false)
     })
@@ -626,12 +624,11 @@ schema (VoidKeyword): void`
         "additionalItems": false
       }
       expectJSONSchema(schema, jsonSchema)
-      const validate = new Ajv().compile(jsonSchema)
+      const validate = new Ajv(ajvOptions).compile(jsonSchema)
       expect(validate([1])).toEqual(true)
       expect(validate([])).toEqual(false)
       expect(validate(["a"])).toEqual(false)
       expect(validate([1, "a"])).toEqual(false)
-      propertyType(schema)
     })
 
     it("e r", () => {
@@ -668,7 +665,6 @@ schema (VoidKeyword): void`
       expect(validate([])).toEqual(false)
       expect(validate([1])).toEqual(false)
       expect(validate(["a", "b"])).toEqual(false)
-      propertyType(schema)
     })
 
     it("r", () => {
@@ -681,14 +677,13 @@ schema (VoidKeyword): void`
         }
       }
       expectJSONSchema(schema, jsonSchema)
-      const validate = new Ajv().compile(jsonSchema)
+      const validate = new Ajv(ajvOptions).compile(jsonSchema)
       expect(validate([])).toEqual(true)
       expect(validate([1])).toEqual(true)
       expect(validate([1, 2])).toEqual(true)
       expect(validate([1, 2, 3])).toEqual(true)
       expect(validate(["a"])).toEqual(false)
       expect(validate([1, 2, 3, "a"])).toEqual(false)
-      propertyType(schema)
     })
   })
 
@@ -705,14 +700,13 @@ schema (VoidKeyword): void`
         }]
       }
       expectJSONSchema(schema, jsonSchema)
-      const validate = new Ajv().compile(jsonSchema)
+      const validate = new Ajv(ajvOptions).compile(jsonSchema)
       expect(validate({})).toEqual(true)
       expect(validate({ a: 1 })).toEqual(true)
       expect(validate([])).toEqual(true)
       expect(validate(null)).toEqual(false)
       expect(validate(1)).toEqual(false)
       expect(validate(true)).toEqual(false)
-      propertyType(schema)
     })
 
     it("struct", () => {
@@ -732,13 +726,12 @@ schema (VoidKeyword): void`
         "additionalProperties": false
       }
       expectJSONSchema(schema, jsonSchema)
-      const validate = new Ajv().compile(jsonSchema)
+      const validate = new Ajv(ajvOptions).compile(jsonSchema)
       expect(validate({ a: "a", b: 1 })).toEqual(true)
       expect(validate({})).toEqual(false)
       expect(validate({ a: "a" })).toEqual(false)
       expect(validate({ b: 1 })).toEqual(false)
       expect(validate({ a: "a", b: 1, c: true })).toEqual(false)
-      propertyType(schema)
     })
 
     it("optional property signature", () => {
@@ -761,13 +754,12 @@ schema (VoidKeyword): void`
         "additionalProperties": false
       }
       expectJSONSchema(schema, jsonSchema)
-      const validate = new Ajv().compile(jsonSchema)
+      const validate = new Ajv(ajvOptions).compile(jsonSchema)
       expect(validate({ a: "a", b: 1 })).toEqual(true)
       expect(validate({ a: "a" })).toEqual(true)
       expect(validate({})).toEqual(false)
       expect(validate({ b: 1 })).toEqual(false)
       expect(validate({ a: "a", b: 1, c: true })).toEqual(false)
-      propertyType(schema)
     })
 
     it("should respect annotations", () => {
@@ -841,10 +833,24 @@ schema (SymbolKeyword): symbol`
     })
 
     it("record(refinement, number)", () => {
-      expectError(
+      expectJSONSchema(
         Schema.Record(Schema.String.pipe(Schema.minLength(1)), JsonNumber),
-        `Unsupported index signature parameter
-schema (Refinement): a string at least 1 character(s) long`
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          type: "object",
+          required: [],
+          properties: {},
+          patternProperties: {
+            "": {
+              type: "number"
+            }
+          },
+          propertyNames: {
+            type: "string",
+            description: "a string at least 1 character(s) long",
+            minLength: 1
+          }
+        }
       )
     })
 
@@ -854,8 +860,10 @@ schema (Refinement): a string at least 1 character(s) long`
         "type": "object",
         "properties": {},
         "required": [],
-        "additionalProperties": {
-          "type": "number"
+        "patternProperties": {
+          "": {
+            "type": "number"
+          }
         }
       })
     })
@@ -893,15 +901,16 @@ schema (Refinement): a string at least 1 character(s) long`
         "type": "object",
         "required": [],
         "properties": {},
-        "additionalProperties": false,
         "patternProperties": {
-          "^.*-.*$": {
-            "type": "number"
-          }
+          "": { type: "number" }
+        },
+        "propertyNames": {
+          "pattern": "^.*-.*$",
+          "type": "string"
         }
       }
-      expect(jsonSchema).toStrictEqual(jsonSchema)
-      const validate = new Ajv().compile(jsonSchema)
+      expectJSONSchema(schema, jsonSchema)
+      const validate = new Ajv(ajvOptions).compile(jsonSchema)
       expect(validate({})).toEqual(true)
       expect(validate({ "-": 1 })).toEqual(true)
       expect(validate({ "a-": 1 })).toEqual(true)
@@ -909,7 +918,6 @@ schema (Refinement): a string at least 1 character(s) long`
       expect(validate({ "a-b": 1 })).toEqual(true)
       expect(validate({ "": 1 })).toEqual(false)
       expect(validate({ "-": "a" })).toEqual(false)
-      propertyType(schema)
     })
 
     it("Record(pattern, number)", () => {
@@ -922,15 +930,20 @@ schema (Refinement): a string at least 1 character(s) long`
         "type": "object",
         "required": [],
         "properties": {},
-        "additionalProperties": false,
         "patternProperties": {
-          "^.*-.*$": {
+          "": {
             "type": "number"
           }
+        },
+        "propertyNames": {
+          "description": "a string matching the pattern ^.*-.*$",
+          "pattern": "^.*-.*$",
+          "type": "string"
         }
       }
+      expectJSONSchema(schema, jsonSchema)
       expect(jsonSchema).toStrictEqual(jsonSchema)
-      const validate = new Ajv().compile(jsonSchema)
+      const validate = new Ajv(ajvOptions).compile(jsonSchema)
       expect(validate({})).toEqual(true)
       expect(validate({ "-": 1 })).toEqual(true)
       expect(validate({ "a-": 1 })).toEqual(true)
@@ -938,7 +951,6 @@ schema (Refinement): a string at least 1 character(s) long`
       expect(validate({ "a-b": 1 })).toEqual(true)
       expect(validate({ "": 1 })).toEqual(false)
       expect(validate({ "-": "a" })).toEqual(false)
-      propertyType(schema)
     })
   })
 
@@ -955,19 +967,20 @@ schema (Refinement): a string at least 1 character(s) long`
           "type": "string"
         }
       },
-      "additionalProperties": {
-        "type": "string"
+      "patternProperties": {
+        "": {
+          "type": "string"
+        }
       }
     }
-    expect(jsonSchema).toStrictEqual(jsonSchema)
-    const validate = new Ajv().compile(jsonSchema)
+    expectJSONSchema(schema, jsonSchema)
+    const validate = new Ajv(ajvOptions).compile(jsonSchema)
     expect(validate({ a: "a" })).toEqual(true)
     expect(validate({ a: "a", b: "b" })).toEqual(true)
     expect(validate({})).toEqual(false)
     expect(validate({ b: "b" })).toEqual(false)
     expect(validate({ a: 1 })).toEqual(false)
     expect(validate({ a: "a", b: 1 })).toEqual(false)
-    propertyType(schema)
   })
 
   describe("refinements", () => {
@@ -1081,7 +1094,6 @@ schema (Refinement): { string | filter }`
         "title": "Trimmed",
         "type": "string"
       })
-      propertyType(schema)
     })
   })
 
@@ -1094,7 +1106,7 @@ schema (Refinement): { string | filter }`
       "description": "a template literal"
     }
     expectJSONSchema(schema, jsonSchema)
-    const validate = new Ajv().compile(jsonSchema)
+    const validate = new Ajv(ajvOptions).compile(jsonSchema)
     expect(validate("a1")).toEqual(true)
     expect(validate("a12")).toEqual(true)
     expect(validate("a")).toEqual(false)
@@ -1158,7 +1170,7 @@ schema (Suspend): <suspended schema>`
         }
       }
       expectJSONSchema(schema, jsonSchema)
-      const validate = new Ajv().compile(jsonSchema)
+      const validate = new Ajv(ajvOptions).compile(jsonSchema)
       expect(validate({ a: "a1", as: [] })).toEqual(true)
       expect(validate({ a: "a1", as: [{ a: "a2", as: [] }] })).toEqual(true)
       expect(validate({ a: "a1", as: [{ a: "a2", as: [] }, { a: "a3", as: [] }] })).toEqual(true)
@@ -1168,7 +1180,6 @@ schema (Suspend): <suspended schema>`
       expect(
         validate({ a: "a1", as: [{ a: "a2", as: [] }, { a: "a3", as: [{ a: "a4", as: [1] }] }] })
       ).toEqual(false)
-      propertyType(schema)
     })
 
     it("should support inner suspended schemas with inner identifier annotation", () => {
@@ -1222,7 +1233,7 @@ schema (Suspend): <suspended schema>`
         }
       }
       expectJSONSchema(schema, jsonSchema)
-      const validate = new Ajv().compile(jsonSchema)
+      const validate = new Ajv(ajvOptions).compile(jsonSchema)
       expect(validate({ a: "a1", as: [] })).toEqual(true)
       expect(validate({ a: "a1", as: [{ a: "a2", as: [] }] })).toEqual(true)
       expect(validate({ a: "a1", as: [{ a: "a2", as: [] }, { a: "a3", as: [] }] })).toEqual(true)
@@ -1232,7 +1243,6 @@ schema (Suspend): <suspended schema>`
       expect(
         validate({ a: "a1", as: [{ a: "a2", as: [] }, { a: "a3", as: [{ a: "a4", as: [1] }] }] })
       ).toEqual(false)
-      propertyType(schema)
     })
 
     it("should support inner suspended schemas with outer identifier annotation", () => {
@@ -1270,7 +1280,7 @@ schema (Suspend): <suspended schema>`
         }
       }
       expectJSONSchema(schema, jsonSchema)
-      const validate = new Ajv().compile(jsonSchema)
+      const validate = new Ajv(ajvOptions).compile(jsonSchema)
       expect(validate({ name: "a1", categories: [] })).toEqual(true)
       expect(validate({ name: "a1", categories: [{ name: "a2", categories: [] }] })).toEqual(true)
       expect(validate({ name: "a1", categories: [{ name: "a2", categories: [] }, { name: "a3", categories: [] }] }))
@@ -1287,7 +1297,6 @@ schema (Suspend): <suspended schema>`
           categories: [{ name: "a2", categories: [] }, { name: "a3", categories: [{ name: "a4", categories: [1] }] }]
         })
       ).toEqual(false)
-      propertyType(schema)
     })
 
     it("should support mutually suspended schemas", () => {
@@ -1374,8 +1383,8 @@ schema (Suspend): <suspended schema>`
           }
         }
       }
-      expectJSONSchema(Operation, jsonSchema)
-      const validate = new Ajv().compile(jsonSchema)
+      expectJSONSchema(Operation, jsonSchema, { params: { numRuns: 5 } })
+      const validate = new Ajv(ajvOptions).compile(jsonSchema)
       expect(validate({
         type: "operation",
         operator: "+",
@@ -1399,7 +1408,6 @@ schema (Suspend): <suspended schema>`
           }
         }
       })).toEqual(true)
-      propertyType(Operation, { params: { numRuns: 5 } })
     })
   })
 
@@ -1509,7 +1517,7 @@ schema (Suspend): <suspended schema>`
       expectJSONSchema(Schema.typeSchema(A), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "custom JSON Schema"
-      })
+      }, false)
     })
 
     it("should support make(S.encodedSchema(Class))", () => {
@@ -1649,28 +1657,28 @@ schema (Suspend): <suspended schema>`
       expectJSONSchema(Schema.Void.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "custom JSON Schema"
-      })
+      }, false)
     })
 
     it("Never", () => {
       expectJSONSchema(Schema.Never.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "custom JSON Schema"
-      })
+      }, false)
     })
 
     it("Literal", () => {
       expectJSONSchema(Schema.Literal("a").annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "custom JSON Schema"
-      })
+      }, false)
     })
 
     it("SymbolFromSelf", () => {
       expectJSONSchema(Schema.SymbolFromSelf.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "custom JSON Schema"
-      })
+      }, false)
     })
 
     it("UniqueSymbolFromSelf", () => {
@@ -1681,7 +1689,8 @@ schema (Suspend): <suspended schema>`
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "custom JSON Schema"
-        }
+        },
+        false
       )
     })
 
@@ -1693,7 +1702,8 @@ schema (Suspend): <suspended schema>`
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "custom JSON Schema"
-        }
+        },
+        false
       )
     })
 
@@ -1701,28 +1711,28 @@ schema (Suspend): <suspended schema>`
       expectJSONSchema(Schema.Undefined.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "custom JSON Schema"
-      })
+      }, false)
     })
 
     it("Unknown", () => {
       expectJSONSchema(Schema.Unknown.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "custom JSON Schema"
-      })
+      }, false)
     })
 
     it("Any", () => {
       expectJSONSchema(Schema.Any.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "custom JSON Schema"
-      })
+      }, false)
     })
 
     it("Object", () => {
       expectJSONSchema(Schema.Object.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "custom JSON Schema"
-      })
+      }, false)
     })
 
     it("String", () => {
@@ -1734,7 +1744,8 @@ schema (Suspend): <suspended schema>`
           "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "custom JSON Schema",
           "description": "description"
-        }
+        },
+        false
       )
     })
 
@@ -1742,21 +1753,21 @@ schema (Suspend): <suspended schema>`
       expectJSONSchema(Schema.Number.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "custom JSON Schema"
-      })
+      }, false)
     })
 
     it("BigintFromSelf", () => {
       expectJSONSchema(Schema.BigIntFromSelf.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "custom JSON Schema"
-      })
+      }, false)
     })
 
     it("Boolean", () => {
       expectJSONSchema(Schema.Boolean.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "custom JSON Schema"
-      })
+      }, false)
     })
 
     it("Enums", () => {
@@ -1767,7 +1778,7 @@ schema (Suspend): <suspended schema>`
       expectJSONSchema(Schema.Enums(Fruits).annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "custom JSON Schema"
-      })
+      }, false)
     })
 
     it("Tuple", () => {
@@ -1776,7 +1787,8 @@ schema (Suspend): <suspended schema>`
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "custom JSON Schema"
-        }
+        },
+        false
       )
     })
 
@@ -1788,7 +1800,8 @@ schema (Suspend): <suspended schema>`
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "custom JSON Schema"
-        }
+        },
+        false
       )
     })
 
@@ -1798,7 +1811,8 @@ schema (Suspend): <suspended schema>`
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "custom JSON Schema"
-        }
+        },
+        false
       )
     })
 
@@ -1833,7 +1847,7 @@ schema (Suspend): <suspended schema>`
           }
         },
         "additionalProperties": false
-      })
+      }, false)
     })
 
     it("refinement", () => {
@@ -1842,14 +1856,14 @@ schema (Suspend): <suspended schema>`
         "description": "an integer",
         "title": "Int",
         "type": "custom JSON Schema"
-      })
+      }, false)
     })
 
     it("transformation", () => {
       expectJSONSchema(Schema.NumberFromString.annotations({ jsonSchema: { "type": "custom JSON Schema" } }), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "custom JSON Schema"
-      })
+      }, false)
     })
 
     it("refinement of a transformation", () => {
@@ -1857,7 +1871,7 @@ schema (Suspend): <suspended schema>`
         "$schema": "http://json-schema.org/draft-07/schema#",
         "format": "date-time",
         "type": "string"
-      })
+      }, false)
     })
   })
 
@@ -2079,7 +2093,8 @@ schema (Suspend): <suspended schema>`
         required: ["a"],
         properties: { a: { type: "string" } },
         additionalProperties: false
-      }
+      },
+      false
     )
   })
 
@@ -2087,10 +2102,10 @@ schema (Suspend): <suspended schema>`
     expectJSONSchema(
       Schema.Struct({
         a: Schema.String
-      }).pipe(Schema.filter(() => true, { jsonSchema: { a: 1 } })).pipe(Schema.extend(
+      }).pipe(Schema.filter(() => true, { jsonSchema: { description: "a" } })).pipe(Schema.extend(
         Schema.Struct({
-          b: Schema.Number
-        }).pipe(Schema.filter(() => true, { jsonSchema: { b: 2 } }))
+          b: JsonNumber
+        }).pipe(Schema.filter(() => true, { jsonSchema: { title: "b" } }))
       )),
       {
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -2101,8 +2116,8 @@ schema (Suspend): <suspended schema>`
           b: { type: "number" }
         },
         additionalProperties: false,
-        b: 2,
-        a: 1
+        description: "a",
+        title: "b"
       }
     )
   })
@@ -2110,7 +2125,7 @@ schema (Suspend): <suspended schema>`
   it("ReadonlyMapFromRecord", () => {
     expectJSONSchema(
       Schema.ReadonlyMapFromRecord({
-        key: Schema.String.pipe(Schema.minLength(2, { jsonSchema: { pattern: ".{2,}" } })),
+        key: Schema.String.pipe(Schema.minLength(2)),
         value: Schema.NumberFromString
       }),
       {
@@ -2118,8 +2133,14 @@ schema (Suspend): <suspended schema>`
         type: "object",
         required: [],
         properties: {},
-        additionalProperties: false,
-        patternProperties: { ".{2,}": { type: "string" } }
+        "patternProperties": {
+          "": { type: "string" }
+        },
+        "propertyNames": {
+          "description": "a string at least 2 character(s) long",
+          "minLength": 2,
+          "type": "string"
+        }
       }
     )
   })
@@ -2127,7 +2148,7 @@ schema (Suspend): <suspended schema>`
   it("MapFromRecord", () => {
     expectJSONSchema(
       Schema.MapFromRecord({
-        key: Schema.String.pipe(Schema.minLength(2, { jsonSchema: { pattern: ".{2,}" } })),
+        key: Schema.String.pipe(Schema.minLength(2)),
         value: Schema.NumberFromString
       }),
       {
@@ -2135,8 +2156,14 @@ schema (Suspend): <suspended schema>`
         type: "object",
         required: [],
         properties: {},
-        additionalProperties: false,
-        patternProperties: { ".{2,}": { type: "string" } }
+        "patternProperties": {
+          "": { type: "string" }
+        },
+        "propertyNames": {
+          "description": "a string at least 2 character(s) long",
+          "minLength": 2,
+          "type": "string"
+        }
       }
     )
   })
