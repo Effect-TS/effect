@@ -413,7 +413,7 @@ const go = (
       if (restLength > 0) {
         const head = rest[0]
         const isHomogeneous = restLength === 1 && ast.elements.every((e) => e.type === ast.rest[0].type)
-        if (len === 0 || isHomogeneous) {
+        if (isHomogeneous) {
           output.items = head
         } else {
           output.additionalItems = head
