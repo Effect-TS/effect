@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.17.20
+
+### Patch Changes
+
+- [#3150](https://github.com/Effect-TS/effect/pull/3150) [`271ec23`](https://github.com/Effect-TS/effect/commit/271ec23adb09169a054040d2b47cf54564c8283a) Thanks @tim-smart! - remove console.log from Redis persistence
+
 ## 0.17.19
 
 ### Patch Changes
