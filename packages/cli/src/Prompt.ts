@@ -11,11 +11,13 @@ import type { Redacted } from "effect/Redacted"
 import * as InternalPrompt from "./internal/prompt.js"
 import * as InternalConfirmPrompt from "./internal/prompt/confirm.js"
 import * as InternalDatePrompt from "./internal/prompt/date.js"
+import * as InternalFilePrompt from "./internal/prompt/file.js"
 import * as InternalListPrompt from "./internal/prompt/list.js"
 import * as InternalNumberPrompt from "./internal/prompt/number.js"
 import * as InternalSelectPrompt from "./internal/prompt/select.js"
 import * as InternalTextPrompt from "./internal/prompt/text.js"
 import * as InternalTogglePrompt from "./internal/prompt/toggle.js"
+import type { Primitive } from "./Primitive.js"
 
 /**
  * @since 1.0.0
@@ -311,6 +313,44 @@ export declare namespace Prompt {
    * @since 1.0.0
    * @category models
    */
+  export interface FileOptions {
+    /**
+     * The path type that will be selected.
+     *
+     * Defaults to `"file"`.
+     */
+    readonly type?: Primitive.PathType
+    /**
+     * The message to display in the prompt.
+     *
+     * Defaults to `"Choose a file"`.
+     */
+    readonly message?: string
+    /**
+     * Where the user will initially be prompted to select files from.
+     *
+     * Defaults to the current working directory.
+     */
+    readonly startingPath?: string
+    /**
+     * The number of choices to display at one time
+     *
+     * Defaults to `10`.
+     */
+    readonly maxPerPage?: number
+    /**
+     * A function which removes any file from the prompt display where the
+     * specified predicate returns `true`.
+     *
+     * Defaults to returning all files.
+     */
+    readonly filter?: (file: string) => boolean | Effect<boolean, never, Environment>
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
   export interface SelectOptions<A> {
     /**
      * The message to display in the prompt.
@@ -449,18 +489,34 @@ export const all: <
 export const confirm: (options: Prompt.ConfirmOptions) => Prompt<boolean> = InternalConfirmPrompt.confirm
 
 /**
- * Creates a custom `Prompt` from the provided `render` and `process` functions
- * with the specified initial state.
+ * Creates a custom `Prompt` from the specified initial state and handlers.
  *
- * The `render` function will be used to render the terminal prompt to a user
- * and is invoked at the beginning of each terminal render frame. The `process`
- * function is invoked immediately after a user presses a key.
+ * The initial state can either be a pure value or an `Effect`. This is
+ * particularly useful when the initial state of the `Prompt` must be computed
+ * by performing some effectful computation, such as reading data from the file
+ * system.
+ *
+ * A `Prompt` is essentially a render loop where user input triggers a new frame
+ * to be rendered to the `Terminal`. The `handlers` of a custom prompt are used
+ * to control what is rendered to the `Terminal` each frame. During each frame,
+ * the following occurs:
+ *
+ *   1. The `render` handler is called with this frame's prompt state and prompt
+ *      action and returns an ANSI escape string to be rendered to the
+ *      `Terminal`
+ *   2. The `Terminal` obtains input from the user
+ *   3. The `process` handler is called with the input obtained from the user
+ *      and this frame's prompt state and returns the next prompt action that
+ *      should be performed
+ *   4. The `clear` handler is called with this frame's prompt state and prompt
+ *      action and returns an ANSI escape string used to clear the screen of
+ *      the `Terminal`
  *
  * @since 1.0.0
  * @category constructors
  */
 export const custom: <State, Output>(
-  initialState: State,
+  initialState: State | Effect<State, never, Prompt.Environment>,
   handlers: Prompt.Handlers<State, Output>
 ) => Prompt<Output> = InternalPrompt.custom
 
@@ -469,6 +525,12 @@ export const custom: <State, Output>(
  * @category constructors
  */
 export const date: (options: Prompt.DateOptions) => Prompt<Date> = InternalDatePrompt.date
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const file: (options?: Prompt.FileOptions) => Prompt<string> = InternalFilePrompt.file
 
 /**
  * @since 1.0.0

@@ -6,6 +6,7 @@ import { dual } from "effect/Function"
 import * as Pipeable from "effect/Pipeable"
 import * as Ref from "effect/Ref"
 import type * as Prompt from "../Prompt.js"
+import { Action } from "./prompt/action.js"
 
 /** @internal */
 const PromptSymbolKey = "@effect/cli/Prompt"
@@ -40,7 +41,7 @@ export type Primitive = Loop | OnSuccess | Succeed
 /** @internal */
 export interface Loop extends
   Op<"Loop", {
-    readonly initialState: unknown
+    readonly initialState: unknown | Effect.Effect<unknown, never, Prompt.Prompt.Environment>
     readonly render: Prompt.Prompt.Handlers<unknown, unknown>["render"]
     readonly process: Prompt.Prompt.Handlers<unknown, unknown>["process"]
     readonly clear: Prompt.Prompt.Handlers<unknown, unknown>["clear"]
@@ -101,7 +102,7 @@ export const all: <
 
 /** @internal */
 export const custom = <State, Output>(
-  initialState: State,
+  initialState: State | Effect.Effect<State, never, Prompt.Prompt.Environment>,
   handlers: Prompt.Prompt.Handlers<State, Output>
 ): Prompt.Prompt<Output> => {
   const op = Object.create(proto)
@@ -153,7 +154,10 @@ export const run = <Output>(
     const op = self as Primitive
     switch (op._tag) {
       case "Loop": {
-        return Ref.make(op.initialState).pipe(
+        const makeStateRef = Effect.isEffect(op.initialState)
+          ? op.initialState.pipe(Effect.flatMap(Ref.make))
+          : Ref.make(op.initialState)
+        return makeStateRef.pipe(
           Effect.flatMap((ref) => {
             const loop = (
               action: Exclude<Prompt.Prompt.Action<unknown, unknown>, { _tag: "Submit" }>
@@ -189,7 +193,9 @@ export const run = <Output>(
                   )
                 )
               )
-            return loop({ _tag: "NextFrame", state: op.initialState })
+            return Ref.get(ref).pipe(
+              Effect.flatMap((state) => loop(Action.NextFrame({ state })))
+            )
           }),
           // Always make sure to restore the display of the cursor
           Effect.ensuring(Effect.orDie(

@@ -32,15 +32,17 @@ function handleClear(options: Options) {
   })
 }
 
+const NEWLINE_REGEX = /\r?\n/
+
 function renderOutput(
   confirm: Doc.AnsiDoc,
   leadingSymbol: Doc.AnsiDoc,
   trailingSymbol: Doc.AnsiDoc,
   options: Options
 ) {
-  const annotateLine = (line: string): Doc.AnsiDoc => Doc.text(line).pipe(Doc.annotate(Ansi.bold))
+  const annotateLine = (line: string): Doc.AnsiDoc => Doc.annotate(Doc.text(line), Ansi.bold)
   const prefix = Doc.cat(leadingSymbol, Doc.space)
-  return Arr.match(options.message.split(/\r?\n/), {
+  return Arr.match(options.message.split(NEWLINE_REGEX), {
     onEmpty: () => Doc.hsep([prefix, trailingSymbol, confirm]),
     onNonEmpty: (promptLines) => {
       const lines = Arr.map(promptLines, (line) => annotateLine(line))
@@ -62,14 +64,13 @@ function renderNextFrame(state: State, options: Options) {
     const figures = yield* InternalAnsiUtils.figures
     const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyanBright)
     const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.blackBright)
-    const confirmAnnotation = Ansi.blackBright
     // Marking these explicitly as present with `!` because they always will be
     // and there is really no value in adding a `DeepRequired` type helper just
     // for these internal cases
     const confirmMessage = state.value
       ? options.placeholder.defaultConfirm!
       : options.placeholder.defaultDeny!
-    const confirm = Doc.annotate(Doc.text(confirmMessage), confirmAnnotation)
+    const confirm = Doc.annotate(Doc.text(confirmMessage), Ansi.blackBright)
     const promptMsg = renderOutput(confirm, leadingSymbol, trailingSymbol, options)
     return Doc.cursorHide.pipe(
       Doc.cat(promptMsg),
@@ -98,7 +99,7 @@ function renderSubmission(value: boolean, options: Options) {
 }
 
 function handleRender(options: Options) {
-  return (state: State, action: Prompt.Prompt.Action<State, boolean>) => {
+  return (_: State, action: Prompt.Prompt.Action<State, boolean>) => {
     return Action.$match(action, {
       Beep: () => Effect.succeed(renderBeep),
       NextFrame: ({ state }) => renderNextFrame(state, options),

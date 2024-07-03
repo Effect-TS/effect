@@ -91,14 +91,16 @@ function renderChoices<A>(
 ) {
   const choices = options.choices
   const toDisplay = entriesToDisplay(state, choices.length, options.maxPerPage)
-  const choicesToRender = choices.slice(toDisplay.startIndex, toDisplay.endIndex)
-  const docs = Arr.map(choicesToRender, (choice, currentIndex) => {
-    const prefix = renderChoicePrefix(state, choicesToRender, toDisplay, currentIndex, figures)
-    const title = renderChoiceTitle(choice, state === currentIndex)
-    const description = renderChoiceDescription(choice, state === currentIndex)
-    return prefix.pipe(Doc.cat(title), Doc.cat(Doc.space), Doc.cat(description))
-  })
-  return Doc.vsep(docs)
+  const documents: Array<Doc.AnsiDoc> = []
+  for (let index = toDisplay.startIndex; index < toDisplay.endIndex; index++) {
+    const choice = choices[index]
+    const isSelected = state === index
+    const prefix = renderChoicePrefix(state, choices, toDisplay, index, figures)
+    const title = renderChoiceTitle(choice, isSelected)
+    const description = renderChoiceDescription(choice, isSelected)
+    documents.push(prefix.pipe(Doc.cat(title), Doc.cat(Doc.space), Doc.cat(description)))
+  }
+  return Doc.vsep(documents)
 }
 
 const NEWLINE_REGEX = /\r?\n/
@@ -125,10 +127,10 @@ function renderOutput<A>(
 }
 
 function renderNextFrame<A>(state: State, options: SelectOptions<A>) {
-  return Effect.gen(function*(_) {
-    const terminal = yield* _(Terminal.Terminal)
-    const columns = yield* _(terminal.columns)
-    const figures = yield* _(InternalAnsiUtils.figures)
+  return Effect.gen(function*() {
+    const terminal = yield* Terminal.Terminal
+    const columns = yield* terminal.columns
+    const figures = yield* InternalAnsiUtils.figures
     const choices = renderChoices(state, options, figures)
     const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyanBright)
     const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.blackBright)
@@ -142,14 +144,11 @@ function renderNextFrame<A>(state: State, options: SelectOptions<A>) {
   })
 }
 
-function renderSubmission<A>(
-  state: State,
-  options: SelectOptions<A>
-) {
-  return Effect.gen(function*(_) {
-    const terminal = yield* _(Terminal.Terminal)
-    const columns = yield* _(terminal.columns)
-    const figures = yield* _(InternalAnsiUtils.figures)
+function renderSubmission<A>(state: State, options: SelectOptions<A>) {
+  return Effect.gen(function*() {
+    const terminal = yield* Terminal.Terminal
+    const columns = yield* terminal.columns
+    const figures = yield* InternalAnsiUtils.figures
     const selected = Doc.text(options.choices[state].title)
     const leadingSymbol = Doc.annotate(figures.tick, Ansi.green)
     const trailingSymbol = Doc.annotate(figures.ellipsis, Ansi.blackBright)
