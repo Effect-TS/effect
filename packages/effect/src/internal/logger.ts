@@ -436,12 +436,10 @@ export const prettyLogger = (options?: {
         }
       }
 
-      logMessage += "\n"
-
       if (!Cause.isEmpty(cause)) {
         const lines = Cause.pretty(cause).split("\n")
         for (let i = 0; i < lines.length; i++) {
-          logMessage += "  " + lines[i] + "\n"
+          logMessage += "\n  " + lines[i]
         }
       }
 
@@ -449,20 +447,17 @@ export const prettyLogger = (options?: {
         for (; messageIndex < message.length; messageIndex++) {
           const lines = Inspectable.stringifyCircular(message[messageIndex], 2).split("\n")
           for (let i = 0; i < lines.length; i++) {
-            logMessage += "  " + lines[i] + "\n"
+            logMessage += "\n  " + lines[i]
           }
         }
       }
 
       if (HashMap.size(annotations) > 0) {
         for (const [key, value] of annotations) {
-          logMessage += "  " + color(`${key}:`, colors.bright, colors.white) + " "
+          logMessage += "\n  " + color(`${key}:`, colors.bright, colors.white) + " "
           const lines = Inspectable.stringifyCircular(value, 2).split("\n")
           for (let i = 0; i < lines.length; i++) {
-            if (i > 0) {
-              logMessage += "  "
-            }
-            logMessage += lines[i] + "\n"
+            logMessage += (i > 0 ? "\n  " : "") + lines[i]
           }
         }
       }
