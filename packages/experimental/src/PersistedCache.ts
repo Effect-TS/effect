@@ -62,7 +62,7 @@ export const make = <K extends Persistence.ResultPersistence.KeyAny, R>(options:
         lookup: (request: CacheRequest<K>) => {
           const effect: Effect.Effect<
             Serializable.WithResult.Success<K>,
-            Serializable.WithResult.Error<K>,
+            Serializable.WithResult.Error<K> | Persistence.PersistenceError,
             Serializable.SerializableWithResult.Context<K> | R
           > = pipe(
             store.get(request.key as any),
