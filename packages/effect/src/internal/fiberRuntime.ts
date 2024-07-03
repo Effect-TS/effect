@@ -1406,7 +1406,7 @@ export const loggerWithConsoleError = <M, O>(self: Logger<M, O>): Logger<M, void
 /** @internal */
 export const defaultLogger: Logger<unknown, void> = globalValue(
   Symbol.for("effect/Logger/defaultLogger"),
-  () => loggerWithConsoleLog(internalLogger.prettyLogger())
+  () => loggerWithConsoleLog(internalLogger.stringLogger)
 )
 
 /** @internal */
@@ -1422,9 +1422,23 @@ export const logFmtLogger: Logger<unknown, void> = globalValue(
 )
 
 /** @internal */
-export const stringLogger: Logger<unknown, void> = globalValue(
-  Symbol.for("effect/Logger/stringLogger"),
-  () => loggerWithConsoleLog(internalLogger.stringLogger)
+export const prettyLogger: Logger<unknown, void> = globalValue(
+  Symbol.for("effect/Logger/prettyLogger"),
+  () => {
+    const logger = internalLogger.prettyLogger()
+    return internalLogger.makeLogger((opts) => {
+      const services = FiberRefs.getOrDefault(opts.context, defaultServices.currentServices)
+      const console = Context.get(services, consoleTag).unsafe
+      const groups = logger.log(opts)
+      console.log(...groups[0])
+      if (groups.length <= 1) return
+      for (let i = 1; i < groups.length; i++) {
+        console.group()
+        console.log(...groups[i])
+        console.groupEnd()
+      }
+    })
+  }
 )
 
 /** @internal */
