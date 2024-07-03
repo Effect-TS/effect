@@ -4,38 +4,37 @@ import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Optimize from "@effect/printer/Optimize"
 import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
-import { pipe } from "effect/Function"
-import * as Option from "effect/Option"
 import type * as Prompt from "../../Prompt.js"
 import * as InternalPrompt from "../prompt.js"
-import * as InternalPromptAction from "./action.js"
+import { Action } from "./action.js"
 import * as InternalAnsiUtils from "./ansi-utils.js"
 
-interface State {
-  readonly value: boolean
-}
+interface ToggleOptions extends Required<Prompt.Prompt.ToggleOptions> {}
+
+type State = boolean
 
 const renderBeep = Doc.render(Doc.beep, { style: "pretty" })
 
-const renderClearScreen = (
-  prevState: Option.Option<State>,
-  options: Required<Prompt.Prompt.ToggleOptions>,
-  columns: number
-): Doc.AnsiDoc => {
-  const clearPrompt = Doc.cat(Doc.eraseLine, Doc.cursorLeft)
-  if (Option.isNone(prevState)) {
-    return clearPrompt
-  }
-  const clearOutput = InternalAnsiUtils.eraseText(options.message, columns)
-  return Doc.cat(clearOutput, clearPrompt)
+function handleClear(options: ToggleOptions) {
+  return Effect.gen(function*() {
+    const terminal = yield* Terminal.Terminal
+    const columns = yield* terminal.columns
+    const clearPrompt = Doc.cat(Doc.eraseLine, Doc.cursorLeft)
+    const clearOutput = InternalAnsiUtils.eraseText(options.message, columns)
+    return clearOutput.pipe(
+      Doc.cat(clearPrompt),
+      Optimize.optimize(Optimize.Deep),
+      Doc.render({ style: "pretty", options: { lineWidth: columns } })
+    )
+  })
 }
 
-const renderToggle = (
+function renderToggle(
   value: boolean,
-  options: Required<Prompt.Prompt.ToggleOptions>,
+  options: ToggleOptions,
   submitted: boolean = false
-) => {
-  const separator = pipe(Doc.char("/"), Doc.annotate(Ansi.blackBright))
+) {
+  const separator = Doc.annotate(Doc.char("/"), Ansi.blackBright)
   const selectedAnnotation = Ansi.combine(Ansi.underlined, submitted ? Ansi.white : Ansi.cyanBright)
   const inactive = value
     ? Doc.text(options.inactive)
@@ -46,19 +45,18 @@ const renderToggle = (
   return Doc.hsep([active, separator, inactive])
 }
 
-const renderOutput = (
+function renderOutput(
   toggle: Doc.AnsiDoc,
   leadingSymbol: Doc.AnsiDoc,
   trailingSymbol: Doc.AnsiDoc,
-  options: Required<Prompt.Prompt.ToggleOptions>
-): Doc.AnsiDoc => {
-  const annotateLine = (line: string): Doc.AnsiDoc => pipe(Doc.text(line), Doc.annotate(Ansi.bold))
+  options: ToggleOptions
+) {
+  const annotateLine = (line: string): Doc.AnsiDoc => Doc.annotate(Doc.text(line), Ansi.bold)
   const promptLines = options.message.split(/\r?\n/)
   const prefix = Doc.cat(leadingSymbol, Doc.space)
   if (Arr.isNonEmptyReadonlyArray(promptLines)) {
     const lines = Arr.map(promptLines, (line) => annotateLine(line))
-    return pipe(
-      prefix,
+    return prefix.pipe(
       Doc.cat(Doc.nest(Doc.vsep(lines), 2)),
       Doc.cat(Doc.space),
       Doc.cat(trailingSymbol),
@@ -69,105 +67,99 @@ const renderOutput = (
   return Doc.hsep([prefix, trailingSymbol, toggle])
 }
 
-const renderNextFrame = (
-  prevState: Option.Option<State>,
-  nextState: State,
-  options: Required<Prompt.Prompt.ToggleOptions>
-): Effect.Effect<string, never, Terminal.Terminal> =>
-  Effect.gen(function*(_) {
-    const terminal = yield* _(Terminal.Terminal)
-    const figures = yield* _(InternalAnsiUtils.figures)
-    const columns = yield* _(terminal.columns)
-    const clearScreen = renderClearScreen(prevState, options, columns)
+function renderNextFrame(state: State, options: ToggleOptions) {
+  return Effect.gen(function*() {
+    const terminal = yield* Terminal.Terminal
+    const figures = yield* InternalAnsiUtils.figures
+    const columns = yield* terminal.columns
     const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyanBright)
     const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.blackBright)
-    const toggle = renderToggle(nextState.value, options)
+    const toggle = renderToggle(state, options)
     const promptMsg = renderOutput(toggle, leadingSymbol, trailingSymbol, options)
-    return pipe(
-      clearScreen,
-      Doc.cat(Doc.cursorHide),
+    return Doc.cursorHide.pipe(
       Doc.cat(promptMsg),
       Optimize.optimize(Optimize.Deep),
-      Doc.render({ style: "pretty" })
+      Doc.render({ style: "pretty", options: { lineWidth: columns } })
     )
   })
+}
 
-const renderSubmission = (
-  nextState: State,
-  value: boolean,
-  options: Required<Prompt.Prompt.ToggleOptions>
-) =>
-  Effect.gen(function*(_) {
-    const terminal = yield* _(Terminal.Terminal)
-    const figures = yield* _(InternalAnsiUtils.figures)
-    const columns = yield* _(terminal.columns)
-    const clearScreen = renderClearScreen(Option.some(nextState), options, columns)
+function renderSubmission(value: boolean, options: ToggleOptions) {
+  return Effect.gen(function*() {
+    const terminal = yield* Terminal.Terminal
+    const figures = yield* InternalAnsiUtils.figures
+    const columns = yield* terminal.columns
     const leadingSymbol = Doc.annotate(figures.tick, Ansi.green)
     const trailingSymbol = Doc.annotate(figures.ellipsis, Ansi.blackBright)
     const toggle = renderToggle(value, options, true)
     const promptMsg = renderOutput(toggle, leadingSymbol, trailingSymbol, options)
-    return pipe(
-      clearScreen,
-      Doc.cat(promptMsg),
+    return promptMsg.pipe(
       Doc.cat(Doc.hardLine),
       Optimize.optimize(Optimize.Deep),
-      Doc.render({ style: "pretty" })
+      Doc.render({ style: "pretty", options: { lineWidth: columns } })
     )
   })
+}
 
-const activate = Effect.succeed(InternalPromptAction.nextFrame({ value: true }))
-const deactivate = Effect.succeed(InternalPromptAction.nextFrame({ value: false }))
+const activate = Effect.succeed(Action.NextFrame({ state: true }))
+const deactivate = Effect.succeed(Action.NextFrame({ state: false }))
+
+function handleRender(options: ToggleOptions) {
+  return (state: State, action: Prompt.Prompt.Action<State, boolean>) => {
+    switch (action._tag) {
+      case "Beep": {
+        return Effect.succeed(renderBeep)
+      }
+      case "NextFrame": {
+        return renderNextFrame(state, options)
+      }
+      case "Submit": {
+        return renderSubmission(state, options)
+      }
+    }
+  }
+}
+
+function handleProcess(input: Terminal.UserInput, state: State) {
+  switch (input.key.name) {
+    case "0":
+    case "j":
+    case "delete":
+    case "right":
+    case "down": {
+      return deactivate
+    }
+    case "1":
+    case "k":
+    case "left":
+    case "up": {
+      return activate
+    }
+    case " ":
+    case "tab": {
+      return state ? deactivate : activate
+    }
+    case "enter":
+    case "return": {
+      return Effect.succeed(Action.Submit({ value: state }))
+    }
+    default: {
+      return Effect.succeed(Action.Beep())
+    }
+  }
+}
 
 /** @internal */
 export const toggle = (options: Prompt.Prompt.ToggleOptions): Prompt.Prompt<boolean> => {
-  const opts: Required<Prompt.Prompt.ToggleOptions> = {
+  const opts: ToggleOptions = {
     initial: false,
     active: "on",
     inactive: "off",
     ...options
   }
-  return InternalPrompt.custom(
-    { value: opts.initial } as State,
-    (prevState, nextState, action) => {
-      switch (action._tag) {
-        case "Beep": {
-          return Effect.succeed(renderBeep)
-        }
-        case "NextFrame": {
-          return renderNextFrame(prevState, nextState, opts)
-        }
-        case "Submit": {
-          return renderSubmission(nextState, action.value, opts)
-        }
-      }
-    },
-    (input, state) => {
-      switch (input.key.name) {
-        case "0":
-        case "j":
-        case "delete":
-        case "right":
-        case "down": {
-          return deactivate
-        }
-        case "1":
-        case "k":
-        case "left":
-        case "up": {
-          return activate
-        }
-        case " ":
-        case "tab": {
-          return state.value ? deactivate : activate
-        }
-        case "enter":
-        case "return": {
-          return Effect.succeed(InternalPromptAction.submit(state.value))
-        }
-        default: {
-          return Effect.succeed(InternalPromptAction.beep)
-        }
-      }
-    }
-  )
+  return InternalPrompt.custom(opts.initial, {
+    render: handleRender(opts),
+    process: handleProcess,
+    clear: () => handleClear(opts)
+  })
 }

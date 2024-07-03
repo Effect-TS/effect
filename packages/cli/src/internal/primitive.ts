@@ -17,6 +17,7 @@ import * as InternalHelpDoc from "./helpDoc.js"
 import * as InternalSpan from "./helpDoc/span.js"
 import * as InternalPrompt from "./prompt.js"
 import * as InternalDatePrompt from "./prompt/date.js"
+import * as InternalFilePrompt from "./prompt/file.js"
 import * as InternalNumberPrompt from "./prompt/number.js"
 import * as InternalSelectPrompt from "./prompt/select.js"
 import * as InternalTextPrompt from "./prompt/text.js"
@@ -586,9 +587,10 @@ const wizardInternal = (self: Instruction, help: HelpDoc.HelpDoc): Prompt.Prompt
       }).pipe(InternalPrompt.map((value) => `${value}`))
     }
     case "Path": {
-      const primitiveHelp = InternalHelpDoc.p("Enter a file system path")
+      const primitiveHelp = InternalHelpDoc.p("Select a file system path")
       const message = InternalHelpDoc.sequence(help, primitiveHelp)
-      return InternalTextPrompt.text({
+      return InternalFilePrompt.file({
+        type: self.pathType,
         message: InternalHelpDoc.toAnsiText(message).trimEnd()
       })
     }
