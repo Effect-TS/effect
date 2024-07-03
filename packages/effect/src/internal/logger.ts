@@ -1,4 +1,6 @@
 import * as Arr from "../Array.js"
+import * as Context from "../Context.js"
+import * as FiberRefs from "../FiberRefs.js"
 import type { LazyArg } from "../Function.js"
 import { constVoid, dual, pipe } from "../Function.js"
 import * as HashMap from "../HashMap.js"
@@ -10,6 +12,8 @@ import * as LogSpan from "../LogSpan.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import * as Cause from "./cause.js"
+import * as defaultServices from "./defaultServices.js"
+import { consoleTag } from "./defaultServices/console.js"
 import * as _fiberId from "./fiberId.js"
 
 /** @internal */
@@ -377,7 +381,7 @@ const withColor = (text: string, ...colors: ReadonlyArray<string>) => {
 }
 const withColorNoop = (text: string, ..._colors: ReadonlyArray<string>) => text
 const colors = {
-  bright: "1",
+  bold: "1",
 
   red: "31",
   green: "32",
@@ -406,16 +410,18 @@ const logLevelColors: Record<LogLevel.LogLevel["_tag"], ReadonlyArray<string>> =
 
 /** @internal */
 export const prettyLogger = (options?: {
-  readonly colors?: "auto" | boolean
+  readonly colors?: "auto" | boolean | undefined
+  readonly stderr?: boolean | undefined
 }) =>
-  makeLogger<unknown, Array<Array<unknown>>>(
-    ({ annotations, cause, date, fiberId, logLevel, message: message_, spans }) => {
+  makeLogger<unknown, void>(
+    ({ annotations, cause, context, date, fiberId, logLevel, message: message_, spans }) => {
+      const services = FiberRefs.getOrDefault(context, defaultServices.currentServices)
+      const console = Context.get(services, consoleTag).unsafe
+      const log = options?.stderr === true ? console.error : console.log
       const showColors = typeof options?.colors === "boolean" ? options.colors : processStdoutIsTTY || hasWindow
       const color = showColors ? withColor : withColorNoop
 
       const message = Arr.ensure(message_)
-      const groups: Array<Array<unknown>> = []
-      const firstParams: Array<unknown> = []
 
       let firstLine = color(
         `[${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}:${
@@ -438,31 +444,49 @@ export const prettyLogger = (options?: {
       if (message.length > 0) {
         const firstMaybeString = structuredMessage(message[0])
         if (typeof firstMaybeString === "string") {
-          firstLine += " " + color(firstMaybeString, colors.bright, colors.cyan)
+          firstLine += " " + color(firstMaybeString, colors.bold, colors.cyan)
           messageIndex++
         }
       }
-      groups.push([firstLine, ...firstParams])
+
+      if (hasWindow) {
+        console.group(firstLine)
+      } else {
+        log(firstLine)
+        console.group()
+      }
+      let currentMessage = ""
+      const params: Array<unknown> = []
 
       if (!Cause.isEmpty(cause)) {
         const errors = Cause.prettyErrors(cause)
         for (let i = 0; i < errors.length; i++) {
-          groups.push(hasWindow ? [errors[i]] : [errors[i].stack])
+          if (hasWindow) {
+            console.error(errors[i].stack)
+          } else {
+            currentMessage += "\n%s"
+            params.push(errors[i].stack)
+          }
         }
       }
 
       if (messageIndex < message.length) {
         for (; messageIndex < message.length; messageIndex++) {
-          groups.push([message[messageIndex]])
+          currentMessage += "\n%O"
+          params.push(message[messageIndex])
         }
       }
 
       if (HashMap.size(annotations) > 0) {
         for (const [key, value] of annotations) {
-          groups.push([color(`${key}:`, colors.bright, colors.white) + " %O", value])
+          currentMessage += "\n" + color(`${key}:`, colors.bold, colors.white) + " %O"
+          params.push(value)
         }
       }
 
-      return groups
+      if (currentMessage.length > 0) {
+        log(currentMessage.slice(1), ...params)
+      }
+      console.groupEnd()
     }
   )
