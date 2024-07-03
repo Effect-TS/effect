@@ -4,12 +4,11 @@ import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Optimize from "@effect/printer/Optimize"
 import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
-import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Redacted from "effect/Redacted"
 import type * as Prompt from "../../Prompt.js"
 import * as InternalPrompt from "../prompt.js"
-import * as InternalPromptAction from "./action.js"
+import { Action } from "./action.js"
 import * as InternalAnsiUtils from "./ansi-utils.js"
 
 interface Options extends Required<Prompt.Prompt.TextOptions> {
@@ -28,43 +27,37 @@ interface State {
 
 const renderBeep = Doc.render(Doc.beep, { style: "pretty" })
 
-const renderClearScreen = (
-  prevState: Option.Option<State>,
-  options: Options,
-  columns: number
-): Doc.AnsiDoc => {
-  // Erase the current line and place the cursor in column one
-  const resetCurrentLine = Doc.cat(Doc.eraseLine, Doc.cursorLeft)
-  // If there is no previous state, then this is the first render, so there is
-  // no need to clear the error output or any previous prompt output - we can
-  // just clear the current line for the prompt
-  if (Option.isNone(prevState)) {
-    return resetCurrentLine
-  }
-  // If there was a previous state, check for any error output
-  const clearError = Option.match(prevState.value.error, {
-    onNone: () => Doc.empty,
-    onSome: (error) =>
-      // If there was an error, move the cursor down to the final error line and
-      // then clear all lines of error output
-      pipe(
-        Doc.cursorDown(InternalAnsiUtils.lines(error, columns)),
-        // Add a leading newline to the error message to ensure that the corrrect
-        // number of error lines are erased
-        Doc.cat(InternalAnsiUtils.eraseText(`\n${error}`, columns))
-      )
+function renderClearScreen(state: State, options: Options) {
+  return Effect.gen(function*() {
+    const terminal = yield* Terminal.Terminal
+    const columns = yield* terminal.columns
+    // Erase the current line and place the cursor in column one
+    const resetCurrentLine = Doc.cat(Doc.eraseLine, Doc.cursorLeft)
+    // Check for any error output
+    const clearError = Option.match(state.error, {
+      onNone: () => Doc.empty,
+      onSome: (error) =>
+        // If there was an error, move the cursor down to the final error line and
+        // then clear all lines of error output
+        Doc.cursorDown(InternalAnsiUtils.lines(error, columns)).pipe(
+          // Add a leading newline to the error message to ensure that the corrrect
+          // number of error lines are erased
+          Doc.cat(InternalAnsiUtils.eraseText(`\n${error}`, columns))
+        )
+    })
+    // Ensure that the prior prompt output is cleaned up
+    const clearOutput = InternalAnsiUtils.eraseText(options.message, columns)
+    // Concatenate and render all documents
+    return clearError.pipe(
+      Doc.cat(clearOutput),
+      Doc.cat(resetCurrentLine),
+      Optimize.optimize(Optimize.Deep),
+      Doc.render({ style: "pretty", options: { lineWidth: columns } })
+    )
   })
-  // Ensure that the prior prompt output is cleaned up
-  const clearOutput = InternalAnsiUtils.eraseText(options.message, columns)
-  // Concatenate and return all documents
-  return Doc.cat(clearError, Doc.cat(clearOutput, resetCurrentLine))
 }
 
-const renderInput = (
-  nextState: State,
-  options: Options,
-  submitted: boolean
-): Doc.AnsiDoc => {
+function renderInput(nextState: State, options: Options, submitted: boolean) {
   const annotation = Option.match(nextState.error, {
     onNone: () => submitted ? Ansi.white : Ansi.combine(Ansi.underlined, Ansi.cyanBright),
     onSome: () => Ansi.red
@@ -82,22 +75,20 @@ const renderInput = (
   }
 }
 
-const renderError = (nextState: State, pointer: Doc.AnsiDoc): Doc.AnsiDoc =>
-  Option.match(nextState.error, {
+function renderError(nextState: State, pointer: Doc.AnsiDoc) {
+  return Option.match(nextState.error, {
     onNone: () => Doc.empty,
     onSome: (error) =>
       Arr.match(error.split(/\r?\n/), {
         onEmpty: () => Doc.empty,
         onNonEmpty: (errorLines) => {
           const annotateLine = (line: string): Doc.AnsiDoc =>
-            pipe(
-              Doc.text(line),
+            Doc.text(line).pipe(
               Doc.annotate(Ansi.combine(Ansi.italicized, Ansi.red))
             )
           const prefix = Doc.cat(Doc.annotate(pointer, Ansi.red), Doc.space)
           const lines = Arr.map(errorLines, (str) => annotateLine(str))
-          return pipe(
-            Doc.cursorSavePosition,
+          return Doc.cursorSavePosition.pipe(
             Doc.cat(Doc.hardLine),
             Doc.cat(prefix),
             Doc.cat(Doc.align(Doc.vsep(lines))),
@@ -106,21 +97,21 @@ const renderError = (nextState: State, pointer: Doc.AnsiDoc): Doc.AnsiDoc =>
         }
       })
   })
+}
 
-const renderOutput = (
+function renderOutput(
   nextState: State,
   leadingSymbol: Doc.AnsiDoc,
   trailingSymbol: Doc.AnsiDoc,
   options: Options,
   submitted: boolean = false
-): Doc.AnsiDoc => {
-  const annotateLine = (line: string): Doc.AnsiDoc => pipe(Doc.text(line), Doc.annotate(Ansi.bold))
+) {
+  const annotateLine = (line: string): Doc.AnsiDoc => Doc.annotate(Doc.text(line), Ansi.bold)
   const promptLines = options.message.split(/\r?\n/)
   const prefix = Doc.cat(leadingSymbol, Doc.space)
   if (Arr.isNonEmptyReadonlyArray(promptLines)) {
     const lines = Arr.map(promptLines, (line) => annotateLine(line))
-    return pipe(
-      prefix,
+    return prefix.pipe(
       Doc.cat(Doc.nest(Doc.vsep(lines), 2)),
       Doc.cat(Doc.space),
       Doc.cat(trailingSymbol),
@@ -131,105 +122,82 @@ const renderOutput = (
   return Doc.hsep([prefix, trailingSymbol, renderInput(nextState, options, submitted)])
 }
 
-const renderNextFrame = (
-  prevState: Option.Option<State>,
-  nextState: State,
-  options: Options
-): Effect.Effect<string, never, Terminal.Terminal> =>
-  Effect.gen(function*(_) {
-    const terminal = yield* _(Terminal.Terminal)
-    const figures = yield* _(InternalAnsiUtils.figures)
-    const columns = yield* _(terminal.columns)
-    const clearScreen = renderClearScreen(prevState, options, columns)
+function renderNextFrame(state: State, options: Options) {
+  return Effect.gen(function*() {
+    const terminal = yield* Terminal.Terminal
+    const columns = yield* terminal.columns
+    const figures = yield* InternalAnsiUtils.figures
     const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyanBright)
     const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.blackBright)
-    const promptMsg = renderOutput(nextState, leadingSymbol, trailingSymbol, options)
-    const errorMsg = renderError(nextState, figures.pointerSmall)
-    return pipe(
-      clearScreen,
-      Doc.cat(promptMsg),
+    const promptMsg = renderOutput(state, leadingSymbol, trailingSymbol, options)
+    const errorMsg = renderError(state, figures.pointerSmall)
+    return promptMsg.pipe(
       Doc.cat(errorMsg),
-      Doc.cat(Doc.cursorMove(nextState.offset)),
+      Doc.cat(Doc.cursorMove(state.offset)),
       Optimize.optimize(Optimize.Deep),
-      Doc.render({ style: "pretty" })
+      Doc.render({ style: "pretty", options: { lineWidth: columns } })
     )
   })
+}
 
-const renderSubmission = (
-  nextState: State,
-  options: Options
-) =>
-  Effect.gen(function*(_) {
-    const terminal = yield* _(Terminal.Terminal)
-    const figures = yield* _(InternalAnsiUtils.figures)
-    const columns = yield* _(terminal.columns)
-    const clearScreen = renderClearScreen(Option.some(nextState), options, columns)
+function renderSubmission(state: State, options: Options) {
+  return Effect.gen(function*() {
+    const terminal = yield* Terminal.Terminal
+    const columns = yield* terminal.columns
+    const figures = yield* InternalAnsiUtils.figures
     const leadingSymbol = Doc.annotate(figures.tick, Ansi.green)
     const trailingSymbol = Doc.annotate(figures.ellipsis, Ansi.blackBright)
-    const promptMsg = renderOutput(nextState, leadingSymbol, trailingSymbol, options, true)
-    return pipe(
-      clearScreen,
-      Doc.cat(promptMsg),
+    const promptMsg = renderOutput(state, leadingSymbol, trailingSymbol, options, true)
+    return promptMsg.pipe(
       Doc.cat(Doc.hardLine),
       Optimize.optimize(Optimize.Deep),
-      Doc.render({ style: "pretty" })
+      Doc.render({ style: "pretty", options: { lineWidth: columns } })
     )
   })
+}
 
-const processBackspace = (currentState: State) => {
-  if (currentState.cursor <= 0) {
-    return Effect.succeed(InternalPromptAction.beep)
+function processBackspace(state: State) {
+  if (state.cursor <= 0) {
+    return Effect.succeed(Action.Beep())
   }
-  const beforeCursor = currentState.value.slice(0, currentState.cursor - 1)
-  const afterCursor = currentState.value.slice(currentState.cursor)
-  const cursor = currentState.cursor - 1
+  const beforeCursor = state.value.slice(0, state.cursor - 1)
+  const afterCursor = state.value.slice(state.cursor)
+  const cursor = state.cursor - 1
   const value = `${beforeCursor}${afterCursor}`
-  return Effect.succeed(InternalPromptAction.nextFrame({
-    ...currentState,
-    cursor,
-    value,
-    error: Option.none()
+  return Effect.succeed(Action.NextFrame({
+    state: { ...state, cursor, value, error: Option.none() }
   }))
 }
 
-const processCursorLeft = (currentState: State) => {
-  if (currentState.cursor <= 0) {
-    return Effect.succeed(InternalPromptAction.beep)
+function processCursorLeft(state: State) {
+  if (state.cursor <= 0) {
+    return Effect.succeed(Action.Beep())
   }
-  const cursor = currentState.cursor - 1
-  const offset = currentState.offset - 1
-  return Effect.succeed(InternalPromptAction.nextFrame({
-    ...currentState,
-    cursor,
-    offset,
-    error: Option.none()
+  const cursor = state.cursor - 1
+  const offset = state.offset - 1
+  return Effect.succeed(Action.NextFrame({
+    state: { ...state, cursor, offset, error: Option.none() }
   }))
 }
 
-const processCursorRight = (currentState: State) => {
-  if (currentState.cursor >= currentState.value.length) {
-    return Effect.succeed(InternalPromptAction.beep)
+function processCursorRight(state: State) {
+  if (state.cursor >= state.value.length) {
+    return Effect.succeed(Action.Beep())
   }
-  const cursor = Math.min(currentState.cursor + 1, currentState.value.length)
-  const offset = Math.min(currentState.offset + 1, currentState.value.length)
-  return Effect.succeed(InternalPromptAction.nextFrame({
-    ...currentState,
-    cursor,
-    offset,
-    error: Option.none()
+  const cursor = Math.min(state.cursor + 1, state.value.length)
+  const offset = Math.min(state.offset + 1, state.value.length)
+  return Effect.succeed(Action.NextFrame({
+    state: { ...state, cursor, offset, error: Option.none() }
   }))
 }
 
-const defaultProcessor = (input: string, currentState: State) => {
-  const beforeCursor = currentState.value.slice(0, currentState.cursor)
-  const afterCursor = currentState.value.slice(currentState.cursor)
+function defaultProcessor(input: string, state: State) {
+  const beforeCursor = state.value.slice(0, state.cursor)
+  const afterCursor = state.value.slice(state.cursor)
   const value = `${beforeCursor}${input}${afterCursor}`
   const cursor = beforeCursor.length + 1
-  return Effect.succeed(InternalPromptAction.nextFrame({
-    ...currentState,
-    cursor,
-    value,
-    error: Option.none()
+  return Effect.succeed(Action.NextFrame({
+    state: { ...state, cursor, value, error: Option.none() }
   }))
 }
 
@@ -240,60 +208,67 @@ const initialState: State = {
   error: Option.none()
 }
 
-const basePrompt = (
+function handleRender(options: Options) {
+  return (state: State, action: Prompt.Prompt.Action<State, string>) => {
+    return Action.$match(action, {
+      Beep: () => Effect.succeed(renderBeep),
+      NextFrame: ({ state }) => renderNextFrame(state, options),
+      Submit: () => renderSubmission(state, options)
+    })
+  }
+}
+
+function handleProcess(options: Options) {
+  return (input: Terminal.UserInput, state: State) => {
+    switch (input.key.name) {
+      case "backspace": {
+        return processBackspace(state)
+      }
+      case "left": {
+        return processCursorLeft(state)
+      }
+      case "right": {
+        return processCursorRight(state)
+      }
+      case "enter":
+      case "return": {
+        return Effect.match(options.validate(state.value), {
+          onFailure: (error) =>
+            Action.NextFrame({
+              state: { ...state, error: Option.some(error) }
+            }),
+          onSuccess: (value) => Action.Submit({ value })
+        })
+      }
+      default: {
+        const value = Option.getOrElse(input.input, () => "")
+        return defaultProcessor(value, state)
+      }
+    }
+  }
+}
+
+function handleClear(options: Options) {
+  return (state: State, _: Prompt.Prompt.Action<State, string>) => {
+    return renderClearScreen(state, options)
+  }
+}
+
+function basePrompt(
   options: Prompt.Prompt.TextOptions,
   type: Options["type"]
-): Prompt.Prompt<string> => {
+): Prompt.Prompt<string> {
   const opts: Options = {
     default: "",
     type,
     validate: Effect.succeed,
     ...options
   }
-  return InternalPrompt.custom(
-    initialState,
-    (prevState, nextState, action) => {
-      switch (action._tag) {
-        case "Beep": {
-          return Effect.succeed(renderBeep)
-        }
-        case "NextFrame": {
-          return renderNextFrame(prevState, nextState, opts)
-        }
-        case "Submit": {
-          return renderSubmission(nextState, opts)
-        }
-      }
-    },
-    (input, state) => {
-      switch (input.key.name) {
-        case "backspace": {
-          return processBackspace(state)
-        }
-        case "left": {
-          return processCursorLeft(state)
-        }
-        case "right": {
-          return processCursorRight(state)
-        }
-        case "enter":
-        case "return": {
-          return Effect.match(opts.validate(state.value), {
-            onFailure: (error) =>
-              InternalPromptAction.nextFrame({
-                ...state,
-                error: Option.some(error)
-              }),
-            onSuccess: InternalPromptAction.submit
-          })
-        }
-        default: {
-          const value = Option.getOrElse(input.input, () => "")
-          return defaultProcessor(value, state)
-        }
-      }
-    }
-  )
+  return InternalPrompt.custom(initialState, {
+    render: handleRender(opts),
+    process: handleProcess(opts),
+    clear: handleClear(opts)
+  })
 }
 
 /** @internal */

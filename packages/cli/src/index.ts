@@ -71,11 +71,6 @@ export * as Prompt from "./Prompt.js"
 /**
  * @since 1.0.0
  */
-export * as Action from "./Prompt/Action.js"
-
-/**
- * @since 1.0.0
- */
 export * as Usage from "./Usage.js"
 
 /**

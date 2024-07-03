@@ -4,13 +4,14 @@ import * as Doc from "@effect/printer-ansi/AnsiDoc"
 import * as Optimize from "@effect/printer/Optimize"
 import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
-import { pipe } from "effect/Function"
 import * as Match from "effect/Match"
 import * as Option from "effect/Option"
 import type * as Prompt from "../../Prompt.js"
 import * as InternalPrompt from "../prompt.js"
-import * as InternalPromptAction from "./action.js"
+import { Action } from "./action.js"
 import * as InternalAnsiUtils from "./ansi-utils.js"
+
+interface DateOptions extends Required<Prompt.Prompt.DateOptions> {}
 
 interface State {
   readonly typed: string
@@ -22,39 +23,43 @@ interface State {
 
 const renderBeep = Doc.render(Doc.beep, { style: "pretty" })
 
-const renderClearScreen = (
-  prevState: Option.Option<State>,
-  options: Required<Prompt.Prompt.DateOptions>,
-  columns: number
-): Doc.AnsiDoc => {
-  const resetCurrentLine = Doc.cat(Doc.eraseLine, Doc.cursorLeft)
-  if (Option.isNone(prevState)) {
-    return resetCurrentLine
-  }
-  const clearError = Option.match(prevState.value.error, {
-    onNone: () => Doc.empty,
-    onSome: (error) =>
-      pipe(
-        Doc.cursorDown(InternalAnsiUtils.lines(error, columns)),
-        Doc.cat(InternalAnsiUtils.eraseText(`\n${error}`, columns))
+function handleClear(options: DateOptions) {
+  return (state: State, _: Prompt.Prompt.Action<State, globalThis.Date>) => {
+    return Effect.gen(function*() {
+      const terminal = yield* Terminal.Terminal
+      const columns = yield* terminal.columns
+      const resetCurrentLine = Doc.cat(Doc.eraseLine, Doc.cursorLeft)
+      const clearError = Option.match(state.error, {
+        onNone: () => Doc.empty,
+        onSome: (error) =>
+          Doc.cursorDown(InternalAnsiUtils.lines(error, columns)).pipe(
+            Doc.cat(InternalAnsiUtils.eraseText(`\n${error}`, columns))
+          )
+      })
+      const clearOutput = InternalAnsiUtils.eraseText(options.message, columns)
+      return clearError.pipe(
+        Doc.cat(clearOutput),
+        Doc.cat(resetCurrentLine),
+        Optimize.optimize(Optimize.Deep),
+        Doc.render({ style: "pretty", options: { lineWidth: columns } })
       )
-  })
-  const clearOutput = InternalAnsiUtils.eraseText(options.message, columns)
-  return Doc.cat(clearError, Doc.cat(clearOutput, resetCurrentLine))
+    })
+  }
 }
 
-const renderError = (nextState: State, pointer: Doc.AnsiDoc): Doc.AnsiDoc =>
-  Option.match(nextState.error, {
+const NEWLINE_REGEX = /\r?\n/
+
+function renderError(state: State, pointer: Doc.AnsiDoc) {
+  return Option.match(state.error, {
     onNone: () => Doc.empty,
     onSome: (error) => {
-      const errorLines = error.split(/\r?\n/)
+      const errorLines = error.split(NEWLINE_REGEX)
       if (Arr.isNonEmptyReadonlyArray(errorLines)) {
         const annotateLine = (line: string): Doc.AnsiDoc =>
           Doc.annotate(Doc.text(line), Ansi.combine(Ansi.italicized, Ansi.red))
         const prefix = Doc.cat(Doc.annotate(pointer, Ansi.red), Doc.space)
         const lines = Arr.map(errorLines, (str) => annotateLine(str))
-        return pipe(
-          Doc.cursorSavePosition,
+        return Doc.cursorSavePosition.pipe(
           Doc.cat(Doc.hardLine),
           Doc.cat(prefix),
           Doc.cat(Doc.align(Doc.vsep(lines))),
@@ -64,35 +69,36 @@ const renderError = (nextState: State, pointer: Doc.AnsiDoc): Doc.AnsiDoc =>
       return Doc.empty
     }
   })
+}
 
-const renderParts = (nextState: State, submitted: boolean = false) =>
-  Arr.reduce(
-    nextState.dateParts,
+function renderParts(state: State, submitted: boolean = false) {
+  return Arr.reduce(
+    state.dateParts,
     Doc.empty as Doc.AnsiDoc,
     (doc, part, currentIndex) => {
       const partDoc = Doc.text(part.toString())
-      if (currentIndex === nextState.cursor && !submitted) {
+      if (currentIndex === state.cursor && !submitted) {
         const annotation = Ansi.combine(Ansi.underlined, Ansi.cyanBright)
         return Doc.cat(doc, Doc.annotate(partDoc, annotation))
       }
       return Doc.cat(doc, partDoc)
     }
   )
+}
 
-const renderOutput = (
+function renderOutput(
   leadingSymbol: Doc.AnsiDoc,
   trailingSymbol: Doc.AnsiDoc,
   parts: Doc.AnsiDoc,
-  options: Required<Prompt.Prompt.DateOptions>
-): Doc.AnsiDoc => {
+  options: DateOptions
+) {
   const annotateLine = (line: string): Doc.AnsiDoc => Doc.annotate(Doc.text(line), Ansi.bold)
   const prefix = Doc.cat(leadingSymbol, Doc.space)
   return Arr.match(options.message.split(/\r?\n/), {
     onEmpty: () => Doc.hsep([prefix, trailingSymbol, parts]),
     onNonEmpty: (promptLines) => {
       const lines = Arr.map(promptLines, (line) => annotateLine(line))
-      return pipe(
-        prefix,
+      return prefix.pipe(
         Doc.cat(Doc.nest(Doc.vsep(lines), 2)),
         Doc.cat(Doc.space),
         Doc.cat(trailingSymbol),
@@ -103,114 +109,106 @@ const renderOutput = (
   })
 }
 
-const renderNextFrame = (
-  prevState: Option.Option<State>,
-  nextState: State,
-  options: Required<Prompt.Prompt.DateOptions>
-): Effect.Effect<string, never, Terminal.Terminal> =>
-  Effect.gen(function*(_) {
-    const terminal = yield* _(Terminal.Terminal)
-    const figures = yield* _(InternalAnsiUtils.figures)
-    const columns = yield* _(terminal.columns)
-    const clearScreen = renderClearScreen(prevState, options, columns)
+function renderNextFrame(state: State, options: DateOptions) {
+  return Effect.gen(function*() {
+    const terminal = yield* Terminal.Terminal
+    const columns = yield* terminal.columns
+    const figures = yield* InternalAnsiUtils.figures
     const leadingSymbol = Doc.annotate(Doc.text("?"), Ansi.cyanBright)
     const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.blackBright)
-    const parts = renderParts(nextState)
+    const parts = renderParts(state)
     const promptMsg = renderOutput(leadingSymbol, trailingSymbol, parts, options)
-    const errorMsg = renderError(nextState, figures.pointerSmall)
-    return pipe(
-      clearScreen,
-      Doc.cat(Doc.cursorHide),
+    const errorMsg = renderError(state, figures.pointerSmall)
+    return Doc.cursorHide.pipe(
       Doc.cat(promptMsg),
       Doc.cat(errorMsg),
       Optimize.optimize(Optimize.Deep),
-      Doc.render({ style: "pretty" })
+      Doc.render({ style: "pretty", options: { lineWidth: columns } })
     )
   })
+}
 
-const renderSubmission = (nextState: State, options: Required<Prompt.Prompt.DateOptions>) =>
-  Effect.gen(function*(_) {
-    const terminal = yield* _(Terminal.Terminal)
-    const figures = yield* _(InternalAnsiUtils.figures)
-    const columns = yield* _(terminal.columns)
-    const clearScreen = renderClearScreen(Option.some(nextState), options, columns)
+function renderSubmission(state: State, options: DateOptions) {
+  return Effect.gen(function*() {
+    const terminal = yield* Terminal.Terminal
+    const columns = yield* terminal.columns
+    const figures = yield* InternalAnsiUtils.figures
     const leadingSymbol = Doc.annotate(figures.tick, Ansi.green)
     const trailingSymbol = Doc.annotate(figures.ellipsis, Ansi.blackBright)
-    const parts = renderParts(nextState, true)
+    const parts = renderParts(state, true)
     const promptMsg = renderOutput(leadingSymbol, trailingSymbol, parts, options)
-    return pipe(
-      clearScreen,
-      Doc.cat(promptMsg),
+    return promptMsg.pipe(
       Doc.cat(Doc.hardLine),
       Optimize.optimize(Optimize.Deep),
-      Doc.render({ style: "pretty" })
+      Doc.render({ style: "pretty", options: { lineWidth: columns } })
     )
   })
+}
 
-const processUp = (currentState: State) => {
-  currentState.dateParts[currentState.cursor].increment()
-  return InternalPromptAction.nextFrame({
-    ...currentState,
-    typed: ""
+function processUp(state: State) {
+  state.dateParts[state.cursor].increment()
+  return Action.NextFrame({
+    state: { ...state, typed: "" }
   })
 }
 
-const processDown = (currentState: State) => {
-  currentState.dateParts[currentState.cursor].decrement()
-  return InternalPromptAction.nextFrame({
-    ...currentState,
-    typed: ""
+function processDown(state: State) {
+  state.dateParts[state.cursor].decrement()
+  return Action.NextFrame({
+    state: { ...state, typed: "" }
   })
 }
 
-const processCursorLeft = (currentState: State) => {
-  const previousPart = currentState.dateParts[currentState.cursor].previousPart()
+function processCursorLeft(state: State) {
+  const previousPart = state.dateParts[state.cursor].previousPart()
   return Option.match(previousPart, {
-    onNone: () => InternalPromptAction.beep,
+    onNone: () => Action.Beep(),
     onSome: (previous) =>
-      InternalPromptAction.nextFrame({
-        ...currentState,
-        typed: "",
-        cursor: currentState.dateParts.indexOf(previous)
+      Action.NextFrame({
+        state: {
+          ...state,
+          typed: "",
+          cursor: state.dateParts.indexOf(previous)
+        }
       })
   })
 }
 
-const processCursorRight = (currentState: State) => {
-  const nextPart = currentState.dateParts[currentState.cursor].nextPart()
+function processCursorRight(state: State) {
+  const nextPart = state.dateParts[state.cursor].nextPart()
   return Option.match(nextPart, {
-    onNone: () => InternalPromptAction.beep,
+    onNone: () => Action.Beep(),
     onSome: (next) =>
-      InternalPromptAction.nextFrame({
-        ...currentState,
-        typed: "",
-        cursor: currentState.dateParts.indexOf(next)
+      Action.NextFrame({
+        state: {
+          ...state,
+          typed: "",
+          cursor: state.dateParts.indexOf(next)
+        }
       })
   })
 }
 
-const processNext = (currentState: State) => {
-  const nextPart = currentState.dateParts[currentState.cursor].nextPart()
+function processNext(state: State) {
+  const nextPart = state.dateParts[state.cursor].nextPart()
   const cursor = Option.match(nextPart, {
-    onNone: () => currentState.dateParts.findIndex((part) => !part.isToken()),
-    onSome: (next) => currentState.dateParts.indexOf(next)
+    onNone: () => state.dateParts.findIndex((part) => !part.isToken()),
+    onSome: (next) => state.dateParts.indexOf(next)
   })
-  return InternalPromptAction.nextFrame({
-    ...currentState,
-    cursor
+  return Action.NextFrame({
+    state: { ...state, cursor }
   })
 }
 
-const defaultProcessor = (value: string, currentState: State) => {
+function defaultProcessor(value: string, state: State) {
   if (/\d/.test(value)) {
-    const typed = currentState.typed + value
-    currentState.dateParts[currentState.cursor].setValue(typed)
-    return InternalPromptAction.nextFrame({
-      ...currentState,
-      typed
+    const typed = state.typed + value
+    state.dateParts[state.cursor].setValue(typed)
+    return Action.NextFrame({
+      state: { ...state, typed }
     })
   }
-  return InternalPromptAction.beep
+  return Action.Beep()
 }
 
 const defaultLocales: Prompt.Prompt.DateOptions["locales"] = {
@@ -233,6 +231,57 @@ const defaultLocales: Prompt.Prompt.DateOptions["locales"] = {
   weekdaysShort: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 }
 
+function handleRender(options: DateOptions) {
+  return (state: State, action: Prompt.Prompt.Action<State, globalThis.Date>) => {
+    return Action.$match(action, {
+      Beep: () => Effect.succeed(renderBeep),
+      NextFrame: ({ state }) => renderNextFrame(state, options),
+      Submit: () => renderSubmission(state, options)
+    })
+  }
+}
+
+function handleProcess(options: DateOptions) {
+  return (input: Terminal.UserInput, state: State) => {
+    switch (input.key.name) {
+      case "left": {
+        return Effect.succeed(processCursorLeft(state))
+      }
+      case "right": {
+        return Effect.succeed(processCursorRight(state))
+      }
+      case "k":
+      case "up": {
+        return Effect.succeed(processUp(state))
+      }
+      case "j":
+      case "down": {
+        return Effect.succeed(processDown(state))
+      }
+      case "tab": {
+        return Effect.succeed(processNext(state))
+      }
+      case "enter":
+      case "return": {
+        return Effect.match(options.validate(state.value), {
+          onFailure: (error) =>
+            Action.NextFrame({
+              state: {
+                ...state,
+                error: Option.some(error)
+              }
+            }),
+          onSuccess: (value) => Action.Submit({ value })
+        })
+      }
+      default: {
+        const value = Option.getOrElse(input.input, () => "")
+        return Effect.succeed(defaultProcessor(value, state))
+      }
+    }
+  }
+}
+
 /** @internal */
 export const date = (options: Prompt.Prompt.DateOptions): Prompt.Prompt<globalThis.Date> => {
   const opts: Required<Prompt.Prompt.DateOptions> = {
@@ -247,64 +296,18 @@ export const date = (options: Prompt.Prompt.DateOptions): Prompt.Prompt<globalTh
   }
   const dateParts = makeDateParts(opts.dateMask, opts.initial, opts.locales)
   const initialCursorPosition = dateParts.findIndex((part) => !part.isToken())
-  return InternalPrompt.custom(
-    {
-      dateParts,
-      typed: "",
-      cursor: initialCursorPosition,
-      value: opts.initial,
-      error: Option.none()
-    } as State,
-    (prevState, nextState, action) => {
-      switch (action._tag) {
-        case "Beep": {
-          return Effect.succeed(renderBeep)
-        }
-        case "NextFrame": {
-          return renderNextFrame(prevState, nextState, opts)
-        }
-        case "Submit": {
-          return renderSubmission(nextState, opts)
-        }
-      }
-    },
-    (input, state) => {
-      switch (input.key.name) {
-        case "left": {
-          return Effect.succeed(processCursorLeft(state))
-        }
-        case "right": {
-          return Effect.succeed(processCursorRight(state))
-        }
-        case "k":
-        case "up": {
-          return Effect.succeed(processUp(state))
-        }
-        case "j":
-        case "down": {
-          return Effect.succeed(processDown(state))
-        }
-        case "tab": {
-          return Effect.succeed(processNext(state))
-        }
-        case "enter":
-        case "return": {
-          return Effect.match(opts.validate(state.value), {
-            onFailure: (error) =>
-              InternalPromptAction.nextFrame({
-                ...state,
-                error: Option.some(error)
-              }),
-            onSuccess: InternalPromptAction.submit
-          })
-        }
-        default: {
-          const value = Option.getOrElse(input.input, () => "")
-          return Effect.succeed(defaultProcessor(value, state))
-        }
-      }
-    }
-  )
+  const initialState: State = {
+    dateParts,
+    typed: "",
+    cursor: initialCursorPosition,
+    value: opts.initial,
+    error: Option.none()
+  }
+  return InternalPrompt.custom(initialState, {
+    render: handleRender(opts),
+    process: handleProcess(opts),
+    clear: handleClear(opts)
+  })
 }
 
 const DATE_PART_REGEX =
@@ -399,8 +402,7 @@ abstract class DatePart {
    * Retrieves the next date part in the list of parts.
    */
   nextPart(): Option.Option<DatePart> {
-    return pipe(
-      Arr.findFirstIndex(this.parts, (part) => part === this),
+    return Arr.findFirstIndex(this.parts, (part) => part === this).pipe(
       Option.flatMap((currentPartIndex) =>
         Arr.findFirst(this.parts.slice(currentPartIndex + 1), (part) => !part.isToken())
       )
@@ -411,8 +413,7 @@ abstract class DatePart {
    * Retrieves the previous date part in the list of parts.
    */
   previousPart(): Option.Option<DatePart> {
-    return pipe(
-      Arr.findFirstIndex(this.parts, (part) => part === this),
+    return Arr.findFirstIndex(this.parts, (part) => part === this).pipe(
       Option.flatMap((currentPartIndex) =>
         Arr.findLast(this.parts.slice(0, currentPartIndex), (part) => !part.isToken())
       )
@@ -542,8 +543,7 @@ class Day extends DatePart {
   toString() {
     const date = this.date.getDate()
     const day = this.date.getDay()
-    return pipe(
-      Match.value(this.token),
+    return Match.value(this.token).pipe(
       Match.when("DD", () => `${date}`.padStart(2, "0")),
       Match.when("Do", () => `${date}${this.ordinalIndicator(date)}`),
       Match.when("d", () => `${day + 1}`),
@@ -554,8 +554,7 @@ class Day extends DatePart {
   }
 
   private ordinalIndicator(day: number): string {
-    return pipe(
-      Match.value(day % 10),
+    return Match.value(day % 10).pipe(
       Match.when(1, () => "st"),
       Match.when(2, () => "nd"),
       Match.when(3, () => "rd"),
@@ -580,8 +579,7 @@ class Month extends DatePart {
 
   toString() {
     const month = this.date.getMonth()
-    return pipe(
-      Match.value(this.token.length),
+    return Match.value(this.token.length).pipe(
       Match.when(2, () => `${month + 1}`.padStart(2, "0")),
       Match.when(3, () => this.locales!.monthsShort[month]!),
       Match.when(4, () => this.locales!.months[month]!),

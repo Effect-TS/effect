@@ -26,6 +26,7 @@ export declare namespace AnsiDoc {
    * @category model
    */
   export type RenderConfig = Compact | Pretty | Smart
+
   /**
    * @since 1.0.0
    * @category model
