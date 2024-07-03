@@ -88,8 +88,8 @@ export const make = <K extends Persistence.ResultPersistence.KeyAny, R>(options:
             Effect.flatMap((span) => inMemoryCache.get(new CacheRequest({ key, span })))
           ),
         invalidate: (key) =>
-          inMemoryCache.invalidate(new CacheRequest({ key, span: Option.none() })).pipe(
-            Effect.zipRight(store.remove(key as any))
+          store.remove(key as any).pipe(
+            Effect.zipRight(inMemoryCache.invalidate(new CacheRequest({ key, span: Option.none() })))
           )
       })
     )
