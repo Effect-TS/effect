@@ -3288,8 +3288,8 @@ export const currentSupervisor: FiberRef.FiberRef<Supervisor.Supervisor<any>> = 
 // circular with Fiber
 
 /* @internal */
-export const fiberAwaitAll = <A, E>(fibers: Iterable<Fiber.Fiber<A, E>>): Effect.Effect<Exit.Exit<Array<A>, E>> =>
-  internalFiber._await(fiberAll(fibers))
+export const fiberAwaitAll = <A, E>(fibers: Iterable<Fiber.Fiber<A, E>>): Effect.Effect<Array<Exit.Exit<A, E>>> =>
+  forEach(fibers, internalFiber._await)
 
 /** @internal */
 export const fiberAll = <A, E>(fibers: Iterable<Fiber.Fiber<A, E>>): Fiber.Fiber<Array<A>, E> => ({

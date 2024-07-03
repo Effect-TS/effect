@@ -210,7 +210,9 @@ describe("Fiber", () => {
   it.effect("awaitAll - stack safety", () =>
     Effect.gen(function*($) {
       const result = yield* $(Fiber.awaitAll(fibers))
-      assert.isUndefined(result)
+      assert.isArray(result)
+      assert(result.length === fibers.length)
+      result.forEach((_) => assert.isTrue(Exit.isSuccess(_) && _.value === undefined))
     }), 10000)
   it.effect("joinAll - stack safety", () =>
     Effect.gen(function*($) {

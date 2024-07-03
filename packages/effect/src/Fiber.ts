@@ -275,7 +275,7 @@ export {
  * @since 2.0.0
  * @category destructors
  */
-export const awaitAll: <A, E>(fibers: Iterable<Fiber<A, E>>) => Effect.Effect<Exit.Exit<Array<A>, E>> =
+export const awaitAll: <A, E>(fibers: Iterable<Fiber<A, E>>) => Effect.Effect<Array<Exit.Exit<A, E>>> =
   fiberRuntime.fiberAwaitAll
 
 /**
