@@ -1144,6 +1144,9 @@ const toParseableInstruction = (self: Instruction): Array<ParseableInstruction> 
   }
 }
 
+/** @internal */
+const keyValueSplitter = new RegExp('=(.*)')
+
 const parseInternal = (
   self: Instruction,
   args: HashMap.HashMap<string, ReadonlyArray<string>>,
@@ -1193,7 +1196,7 @@ const parseInternal = (
       const extractKeyValue = (
         value: string
       ): Effect.Effect<[string, string], ValidationError.ValidationError> => {
-        const split = value.trim().split(/=(.*)/, 2)
+        const split = value.trim().split(keyValueSplitter, 2)
         if (Arr.isNonEmptyReadonlyArray(split) && split.length === 2 && split[1] !== "") {
           return Effect.succeed(split as unknown as [string, string])
         }
