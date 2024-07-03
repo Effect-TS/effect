@@ -5,8 +5,8 @@
 Refactors the `Prompt.custom` constructor to make it easier to create custom
 `Prompt`s.
 
-The `Prompt.custom` constructor reates a custom `Prompt` from the specified
-initial state and handlers.
+The `Prompt.custom` constructor allows for creation of a custom `Prompt` from
+the provided initial state and handlers.
 
 ```ts
 export const custom: <State, Output>(
