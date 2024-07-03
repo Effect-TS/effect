@@ -7259,24 +7259,24 @@ export const TaggedError = <Self = never>(identifier?: string) =>
  */
 export interface TaggedRequest<
   Tag extends string,
-  Self,
-  FieldsI,
-  FieldsR,
-  SuccessA,
-  SuccessI,
-  FailureA,
-  FailureI,
+  A,
+  I,
+  R,
+  SuccessType,
+  SuccessEncoded,
+  FailureType,
+  FailureEncoded,
   SuccessAndFailureR
 > extends
-  Request.Request<SuccessA, FailureA>,
+  Request.Request<SuccessType, FailureType>,
   Serializable.SerializableWithResult<
-    Self,
-    FieldsI,
-    FieldsR,
-    SuccessA,
-    SuccessI,
-    FailureA,
-    FailureI,
+    A,
+    I,
+    R,
+    SuccessType,
+    SuccessEncoded,
+    FailureType,
+    FailureEncoded,
     SuccessAndFailureR
   >
 {
@@ -7352,24 +7352,22 @@ export const TaggedRequest =
       Success
     > =>
   {
-    class SerializableRequest extends Request.Class<any, any, { readonly _tag: string }> {
-      get [serializable_.symbol]() {
-        return this.constructor
-      }
-      get [serializable_.symbolResult]() {
-        return { Failure, Success }
-      }
-    }
     const taggedFields = extendFields({ _tag: getClassTag(tag) }, fields)
     return class TaggedRequestClass extends makeClass({
       kind: "TaggedRequest",
       identifier: identifier ?? tag,
       schema: Struct(taggedFields),
       fields: taggedFields,
-      Base: SerializableRequest,
+      Base: Request.Class<any, any, { readonly _tag: string }>,
       annotations
     }) {
       static _tag = tag
+      get [serializable_.symbol]() {
+        return this.constructor
+      }
+      get [serializable_.symbolResult]() {
+        return { Failure, Success }
+      }
     } as any
   }
 

@@ -7887,6 +7887,209 @@ console.log(decode(null)) // throws Error: Expected Redacted(<redacted>), actual
 
 It's important to note that when successfully decoding a `Redacted`, the output is intentionally obscured (`{}`) to prevent the actual secret from being revealed in logs or console outputs.
 
+# Serializable
+
+## Serializable trait
+
+The `Serializable` trait, part of the `@effect/schema/Serializable` module, enables objects to have self-contained schema(s) for serialization. This functionality is particularly beneficial in scenarios where objects need to be consistently serialized and deserialized across various runtime environments or sent over network communications.
+
+**Example: Implementing the Serializable Trait**
+
+```ts
+import { Schema, Serializable } from "@effect/schema"
+import { Effect } from "effect"
+
+class Person {
+  constructor(
+    readonly id: number,
+    readonly name: string,
+    readonly createdAt: Date
+  ) {}
+
+  static FromEncoded = Schema.transform(
+    Schema.Struct({
+      id: Schema.Number,
+      name: Schema.String,
+      createdAt: Schema.Date
+    }),
+    Schema.instanceOf(Person),
+    {
+      decode: ({ createdAt, id, name }) => new Person(id, name, createdAt),
+      encode: ({ createdAt, id, name }) => ({ id, name, createdAt })
+    }
+  )
+
+  get [Serializable.symbol]() {
+    return Person.FromEncoded
+  }
+}
+
+const person = new Person(1, "John", new Date(0))
+
+// ----------------
+// serialization
+// ----------------
+
+const serialized = Effect.runSync(Serializable.serialize(person))
+console.log(serialized)
+// { id: 1, name: 'John', createdAt: '1970-01-01T00:00:00.000Z' }
+
+// ----------------
+// deserialization
+// ----------------
+
+const deserialized = Schema.decodeUnknownSync(Person.FromEncoded)(serialized)
+console.log(deserialized)
+// Person { id: 1, name: 'John', createdAt: 1970-01-01T00:00:00.000Z }
+
+// if you have access to a Person instance you can use `Serializable.deserialize` to deserialize
+const deserializedUsingAnInstance = Effect.runSync(
+  Serializable.deserialize(person, serialized)
+)
+console.log(deserializedUsingAnInstance)
+// Person { id: 1, name: 'John', createdAt: 1970-01-01T00:00:00.000Z }
+```
+
+## WithResult trait
+
+The `WithResult` trait is designed to encapsulate the outcome of an operation, distinguishing between success and failure cases. Each case is associated with a schema that defines the structure and types of the success or failure data.
+
+The primary aim of this trait is to model and serialize the function signature:
+
+```ts
+;(a: A) => Exit<Success, Failure>
+```
+
+To achieve this, schemas need to be defined for the following:
+
+- **The Argument**: Represented as `Schema<A, I, R>`, this schema handles the input data type `A`, its serialized form `I`, and the associated context `R`.
+- **The Success Case**: This is defined by `Schema<Success, SuccessEncoded, SuccessAndFailureR>`, specifying the structure for a successful outcome along with its encoded form for serialization.
+- **The Failure Case**: Similar to the success schema but for failures, represented by `Schema<Failure, FailureEncoded, SuccessAndFailureR>`.
+
+The process for using `WithResult` in a practical scenario involves a series of steps, encapsulating a full roundtrip communication:
+
+1. **Start with a Value of Type `A`**: Begin with your initial value which is of type `A`.
+2. **Serialize to `I`**: Convert the initial value `A` into its serialized form `I`.
+3. **Send Over the Wire**: The serialized value `I` is sent to a receiving end through network communication.
+4. **Deserialization to `A`**: Upon receipt, the value `I` is deserialized back to type `A`.
+5. **Process and Determine Outcome**: The receiver processes the deserialized value `A` and determines the result as either a success or failure, represented as `Exit<Success, Failure>`.
+6. **Serialize the Result**: The outcome is then serialized into `Exit<SuccessEncoded, FailureEncoded>` for transmission.
+7. **Send Back Over the Wire**: This serialized result is sent back to the original sender.
+8. **Final Deserialization**: The sender deserializes the received result back into its original detailed types `Exit<Success, Failure>`.
+
+```mermaid
+sequenceDiagram
+    Sender->>SenderBound: encodes A to I
+    SenderBound-->>ReceiverBound: send I
+    ReceiverBound->>Receiver: decodes I to A
+    Receiver->>ReceiverBound: encodes Exit<Success, Failure><br/>to Exit<SuccessEncoded, FailureEncoded>
+    ReceiverBound-->>SenderBound: send back<br/>Exit<SuccessEncoded, FailureEncoded>
+    SenderBound->>Sender: decodes Exit<SuccessEncoded, FailureEncoded><br/>to Exit<Success, Failure>
+```
+
+**Example**
+
+```ts
+import type { ParseResult } from "@effect/schema"
+import { Schema, Serializable } from "@effect/schema"
+import { Effect, Exit } from "effect"
+
+class Person {
+  constructor(
+    readonly id: number,
+    readonly name: string,
+    readonly createdAt: Date
+  ) {}
+
+  static FromEncoded = Schema.transform(
+    Schema.Struct({
+      id: Schema.Number,
+      name: Schema.String,
+      createdAt: Schema.Date
+    }),
+    Schema.instanceOf(Person),
+    {
+      decode: ({ createdAt, id, name }) => new Person(id, name, createdAt),
+      encode: ({ createdAt, id, name }) => ({ id, name, createdAt })
+    }
+  )
+
+  get [Serializable.symbol]() {
+    return Person.FromEncoded
+  }
+}
+
+class GetPersonById {
+  constructor(readonly id: number) {}
+
+  static FromEncoded = Schema.transform(
+    Schema.Number,
+    Schema.instanceOf(GetPersonById),
+    {
+      decode: (id) => new GetPersonById(id),
+      encode: ({ id }) => id
+    }
+  )
+
+  get [Serializable.symbol]() {
+    return GetPersonById.FromEncoded
+  }
+
+  // WithResult implementation
+  get [Serializable.symbolResult]() {
+    return {
+      Success: Person.FromEncoded,
+      Failure: Schema.String
+    }
+  }
+}
+
+function handleGetPersonById(
+  serializedReq: typeof GetPersonById.FromEncoded.Encoded
+) {
+  return Effect.gen(function* () {
+    const req = yield* Schema.decodeUnknown(GetPersonById.FromEncoded)(
+      serializedReq
+    )
+    return yield* Serializable.serializeExit(
+      req,
+      req.id === 0
+        ? Exit.fail("User not found")
+        : Exit.succeed(new Person(req.id, "John", new Date()))
+    )
+  })
+}
+
+const roundtrip = (
+  req: GetPersonById
+): Effect.Effect<Exit.Exit<Person, string>, ParseResult.ParseError> =>
+  Effect.gen(function* () {
+    const serializedReq = yield* Serializable.serialize(req)
+    const exit = yield* handleGetPersonById(serializedReq)
+    return yield* Serializable.deserializeExit(req, exit)
+  })
+
+console.log(Effect.runSync(roundtrip(new GetPersonById(1))))
+/*
+Output:
+{
+  _id: 'Exit',
+  _tag: 'Success',
+  value: Person { id: 1, name: 'John', createdAt: 2024-07-02T17:40:59.666Z }
+}
+*/
+
+console.log(Effect.runSync(roundtrip(new GetPersonById(0))))
+/*
+Output:
+{
+  _id: 'Exit',
+  _tag: 'Failure',
+  cause: { _id: 'Cause', _tag: 'Fail', failure: 'User not found' }
+}
+*/
+```
+
 # Useful Examples
 
 ## Email
