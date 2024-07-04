@@ -1201,11 +1201,7 @@ class PubSubImpl<in out A> implements PubSub.PubSub<A> {
     const acquire = core.tap(
       fiberRuntime.all([
         this.scope.fork(executionStrategy.sequential),
-        makeSubscription(
-          this.pubsub,
-          this.subscribers,
-          this.strategy
-        )
+        makeSubscription(this.pubsub, this.subscribers, this.strategy)
       ]),
       (tuple) => tuple[0].addFinalizer(() => tuple[1].shutdown)
     )
