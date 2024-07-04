@@ -21,12 +21,13 @@ export const DurableExecutionJournalTypeId: unique symbol = Symbol.for(SymbolKey
  * @since 1.0.0
  * @category symbols
  */
-export type DurableExecutionJournalTypeId = typeof DurableExecutionJournal
+export type DurableExecutionJournalTypeId = typeof DurableExecutionJournalTypeId
 
 /**
  * @since 1.0.0
  */
 export interface DurableExecutionJournal {
+  readonly [DurableExecutionJournalTypeId]: DurableExecutionJournalTypeId
   read<A, IA, E, IE>(
     persistenceId: string,
     success: Schema.Schema<A, IA>,
