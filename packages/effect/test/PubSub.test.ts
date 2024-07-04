@@ -1,3 +1,4 @@
+import { Option } from "effect"
 import * as Array from "effect/Array"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -632,12 +633,12 @@ describe("PubSub", () => {
     return PubSub.unbounded<number | null>().pipe(
       Effect.flatMap((pubsub) =>
         Effect.scoped(
-          Effect.gen(function*(_) {
-            const dequeue1 = yield* _(PubSub.subscribe(pubsub))
-            const dequeue2 = yield* _(PubSub.subscribe(pubsub))
-            yield* _(PubSub.publishAll(pubsub, messages))
-            const takes1 = yield* _(Queue.takeAll(dequeue1))
-            const takes2 = yield* _(Queue.takeAll(dequeue2))
+          Effect.gen(function*() {
+            const dequeue1 = yield* PubSub.subscribe(pubsub)
+            const dequeue2 = yield* PubSub.subscribe(pubsub)
+            yield* PubSub.publishAll(pubsub, messages)
+            const takes1 = yield* Queue.takeAll(dequeue1)
+            const takes2 = yield* Queue.takeAll(dequeue2)
             assert.deepStrictEqual([...takes1], messages)
             assert.deepStrictEqual([...takes2], messages)
           })
@@ -645,4 +646,19 @@ describe("PubSub", () => {
       )
     )
   })
+
+  it.scoped("publish does not increase size while no subscribers", () =>
+    Effect.gen(function*() {
+      const pubsub = yield* PubSub.dropping<number>(2)
+      yield* PubSub.publish(pubsub, 1)
+      yield* PubSub.publish(pubsub, 2)
+      assert.deepStrictEqual(pubsub.unsafeSize(), Option.some(0))
+    }))
+
+  it.scoped("publishAll does not increase size while no subscribers", () =>
+    Effect.gen(function*() {
+      const pubsub = yield* PubSub.dropping<number>(2)
+      yield* PubSub.publishAll(pubsub, [1, 2])
+      assert.deepStrictEqual(pubsub.unsafeSize(), Option.some(0))
+    }))
 })

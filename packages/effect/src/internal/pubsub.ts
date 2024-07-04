@@ -234,6 +234,9 @@ class BoundedPubSubArb<in out A> implements AtomicPubSub<A> {
   }
 
   publishAll(elements: Iterable<A>): Chunk.Chunk<A> {
+    if (this.subscriberCount === 0) {
+      return Chunk.empty()
+    }
     const chunk = Chunk.fromIterable(elements)
     const n = chunk.length
     const size = this.publisherIndex - this.subscribersIndex
@@ -400,6 +403,9 @@ class BoundedPubSubPow2<in out A> implements AtomicPubSub<A> {
   }
 
   publishAll(elements: Iterable<A>): Chunk.Chunk<A> {
+    if (this.subscriberCount === 0) {
+      return Chunk.empty()
+    }
     const chunk = Chunk.fromIterable(elements)
     const n = chunk.length
     const size = this.publisherIndex - this.subscribersIndex
@@ -560,6 +566,9 @@ class BoundedPubSubSingle<in out A> implements AtomicPubSub<A> {
   }
 
   publishAll(elements: Iterable<A>): Chunk.Chunk<A> {
+    if (this.subscriberCount === 0) {
+      return Chunk.empty()
+    }
     const chunk = Chunk.fromIterable(elements)
     if (Chunk.isEmpty(chunk)) {
       return chunk
@@ -692,8 +701,10 @@ class UnboundedPubSub<in out A> implements AtomicPubSub<A> {
   }
 
   publishAll(elements: Iterable<A>): Chunk.Chunk<A> {
-    for (const a of elements) {
-      this.publish(a)
+    if (this.publisherTail.subscribers !== 0) {
+      for (const a of elements) {
+        this.publish(a)
+      }
     }
     return Chunk.empty()
   }
