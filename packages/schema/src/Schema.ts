@@ -3196,7 +3196,7 @@ export interface filter<From extends Schema.Any> extends refine<Schema.Type<From
 
 const fromFilterPredicateReturnTypeItem = (
   item: FilterOutput,
-  ast: AST.Refinement,
+  ast: AST.Refinement | AST.Transformation,
   input: unknown
 ): option_.Option<ParseResult.ParseIssue> => {
   if (Predicate.isBoolean(item)) {
@@ -3221,7 +3221,7 @@ const fromFilterPredicateReturnTypeItem = (
 
 const toFilterParseIssue = (
   out: FilterReturnType,
-  ast: AST.Refinement,
+  ast: AST.Refinement | AST.Transformation,
   input: unknown
 ): option_.Option<ParseResult.ParseIssue> => {
   if (util_.isSingle(out)) {
@@ -3296,6 +3296,60 @@ export function filter<A>(
 
 /**
  * @category api interface
+ * @since 0.68.17
+ */
+export interface filterEffect<S extends Schema.Any, FD = never>
+  extends transformOrFail<S, SchemaClass<Schema.Type<S>>, FD>
+{}
+
+/**
+ * @category transformations
+ * @since 0.68.17
+ */
+export const filterEffect: {
+  <S extends Schema.Any, FD>(
+    f: (
+      a: Types.NoInfer<Schema.Type<S>>,
+      options: ParseOptions,
+      self: AST.Transformation
+    ) => Effect.Effect<FilterReturnType, never, FD>
+  ): (self: S) => filterEffect<S, FD>
+  <S extends Schema.Any, RD>(
+    self: S,
+    f: (
+      a: Types.NoInfer<Schema.Type<S>>,
+      options: ParseOptions,
+      self: AST.Transformation
+    ) => Effect.Effect<FilterReturnType, never, RD>
+  ): filterEffect<S, RD>
+} = dual(2, <S extends Schema.Any, FD>(
+  self: S,
+  f: (
+    a: Types.NoInfer<Schema.Type<S>>,
+    options: ParseOptions,
+    self: AST.Transformation
+  ) => Effect.Effect<FilterReturnType, never, FD>
+): filterEffect<S, FD> =>
+  transformOrFail(
+    self,
+    typeSchema(self),
+    {
+      strict: true,
+      decode: (a, options, ast) =>
+        ParseResult.flatMap(
+          f(a, options, ast),
+          (filterReturnType) =>
+            option_.match(toFilterParseIssue(filterReturnType, ast, a), {
+              onNone: () => ParseResult.succeed(a),
+              onSome: ParseResult.fail
+            })
+        ),
+      encode: ParseResult.succeed
+    }
+  ))
+
+/**
+ * @category api interface
  * @since 0.67.0
  */
 export interface transformOrFail<From extends Schema.Any, To extends Schema.Any, R = never> extends
@@ -3335,7 +3389,7 @@ const makeTransformationClass = <From extends Schema.Any, To extends Schema.Any,
  * Create a new `Schema` by transforming the input and output of an existing `Schema`
  * using the provided decoding functions.
  *
- * @category combinators
+ * @category transformations
  * @since 0.67.0
  */
 export const transformOrFail: {
@@ -3434,7 +3488,7 @@ export interface transform<From extends Schema.Any, To extends Schema.Any> exten
  * Create a new `Schema` by transforming the input and output of an existing `Schema`
  * using the provided mapping functions.
  *
- * @category combinators
+ * @category transformations
  * @since 0.67.0
  */
 export const transform: {

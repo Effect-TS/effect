@@ -1,11 +1,8 @@
 import type * as AST from "@effect/schema/AST"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
-import * as Brand from "effect/Brand"
+import { Brand, Context, Effect, Number as N, Option, String as Str } from "effect"
 import { hole, identity, pipe } from "effect/Function"
-import * as N from "effect/Number"
-import * as Option from "effect/Option"
-import * as Str from "effect/String"
 import type { Simplify } from "effect/Types"
 
 declare const anyNever: S.Schema<any, never>
@@ -18,6 +15,8 @@ declare const bContext: S.Schema<number, number, "b">
 declare const cContext: S.Schema<boolean, boolean, "c">
 
 class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
+
+const ServiceA = Context.GenericTag<"ServiceA", string>("ServiceA")
 
 // ---------------------------------------------
 // SchemaClass
@@ -1280,6 +1279,35 @@ pipe(
     }
   )
 )
+
+// ---------------------------------------------
+// filterEffect
+// ---------------------------------------------
+
+// $ExpectType filterEffect<typeof String$, never>
+S.String.pipe(S.filterEffect((
+  _s // $ExpectType string
+) => Effect.succeed(undefined)))
+
+// $ExpectType filterEffect<typeof String$, "ServiceA">
+S.String.pipe(S.filterEffect((s) =>
+  Effect.gen(function*() {
+    const str = yield* ServiceA
+    return str === s
+  })
+))
+
+// $ExpectType filterEffect<typeof String$, never>
+S.filterEffect(S.String, (
+  _s // $ExpectType string
+) => Effect.succeed(undefined))
+
+// $ExpectType filterEffect<typeof String$, "ServiceA">
+S.filterEffect(S.String, (s) =>
+  Effect.gen(function*() {
+    const str = yield* ServiceA
+    return str === s
+  }))
 
 // ---------------------------------------------
 // compose
