@@ -21,6 +21,7 @@ type AbsentValue = typeof AbsentValue
 /** @internal */
 export interface AtomicPubSub<in out A> {
   readonly capacity: number
+  readonly replayBuffer: ReplayBuffer<A> | undefined
   isEmpty(): boolean
   isFull(): boolean
   size(): number
@@ -77,9 +78,8 @@ export const bounded = <A>(requestedCapacity: number, options?: {
   readonly replayCapacity?: number
 }): Effect.Effect<PubSub.PubSub<A>> =>
   core.suspend(() => {
-    const replayBuffer = options?.replayCapacity ? new ReplayBuffer<A>(options.replayCapacity) : undefined
-    const pubsub = makeBoundedPubSub(requestedCapacity, replayBuffer)
-    return makePubSub(pubsub, new BackPressureStrategy(), replayBuffer)
+    const pubsub = makeBoundedPubSub<A>(requestedCapacity, options)
+    return makePubSub(pubsub, new BackPressureStrategy())
   })
 
 /** @internal */
@@ -87,9 +87,8 @@ export const dropping = <A>(requestedCapacity: number, options?: {
   readonly replayCapacity?: number
 }): Effect.Effect<PubSub.PubSub<A>> =>
   core.suspend(() => {
-    const replayBuffer = options?.replayCapacity ? new ReplayBuffer<A>(options.replayCapacity) : undefined
-    const pubsub = makeBoundedPubSub(requestedCapacity, replayBuffer)
-    return makePubSub(pubsub, new DroppingStrategy(), replayBuffer)
+    const pubsub = makeBoundedPubSub<A>(requestedCapacity, options)
+    return makePubSub(pubsub, new DroppingStrategy())
   })
 
 /** @internal */
@@ -97,9 +96,8 @@ export const sliding = <A>(requestedCapacity: number, options?: {
   readonly replayCapacity?: number
 }): Effect.Effect<PubSub.PubSub<A>> =>
   core.suspend(() => {
-    const replayBuffer = options?.replayCapacity ? new ReplayBuffer<A>(options.replayCapacity) : undefined
-    const pubsub = makeBoundedPubSub(requestedCapacity, replayBuffer)
-    return makePubSub(pubsub, new SlidingStrategy(), replayBuffer)
+    const pubsub = makeBoundedPubSub<A>(requestedCapacity, options)
+    return makePubSub(pubsub, new SlidingStrategy())
   })
 
 /** @internal */
@@ -107,9 +105,8 @@ export const unbounded = <A>(options?: {
   readonly replayCapacity?: number
 }): Effect.Effect<PubSub.PubSub<A>> =>
   core.suspend(() => {
-    const replayBuffer = options?.replayCapacity ? new ReplayBuffer<A>(options.replayCapacity) : undefined
-    const pubsub = makeUnboundedPubSub(replayBuffer)
-    return makePubSub(pubsub, new DroppingStrategy(), replayBuffer)
+    const pubsub = makeUnboundedPubSub<A>(options)
+    return makePubSub(pubsub, new DroppingStrategy())
   })
 
 /** @internal */
@@ -152,9 +149,12 @@ export const subscribe = <A>(self: PubSub.PubSub<A>): Effect.Effect<Queue.Dequeu
 /** @internal */
 const makeBoundedPubSub = <A>(
   requestedCapacity: number,
-  replayBuffer: ReplayBuffer<A> | undefined
+  options?: {
+    readonly replayCapacity?: number
+  }
 ): AtomicPubSub<A> => {
   ensureCapacity(requestedCapacity)
+  const replayBuffer = options?.replayCapacity ? new ReplayBuffer<A>(options.replayCapacity) : undefined
   if (requestedCapacity === 1) {
     return new BoundedPubSubSingle(replayBuffer)
   } else if (nextPow2(requestedCapacity) === requestedCapacity) {
@@ -165,15 +165,16 @@ const makeBoundedPubSub = <A>(
 }
 
 /** @internal */
-const makeUnboundedPubSub = <A>(replayBuffer: ReplayBuffer<A> | undefined): AtomicPubSub<A> =>
-  new UnboundedPubSub(replayBuffer)
+const makeUnboundedPubSub = <A>(options?: {
+  readonly replayCapacity?: number
+}): AtomicPubSub<A> =>
+  new UnboundedPubSub(options?.replayCapacity ? new ReplayBuffer(options.replayCapacity) : undefined)
 
 /** @internal */
 const makeSubscription = <A>(
   pubsub: AtomicPubSub<A>,
   subscribers: Subscribers<A>,
-  strategy: PubSubStrategy<A>,
-  replayBuffer: ReplayWindow<A>
+  strategy: PubSubStrategy<A>
 ): Effect.Effect<Queue.Dequeue<A>> =>
   core.map(core.deferredMake<void>(), (deferred) =>
     unsafeMakeSubscription(
@@ -183,8 +184,7 @@ const makeSubscription = <A>(
       MutableQueue.unbounded<Deferred.Deferred<A>>(),
       deferred,
       MutableRef.make(false),
-      strategy,
-      replayBuffer
+      strategy
     ))
 
 /** @internal */
@@ -195,8 +195,7 @@ export const unsafeMakeSubscription = <A>(
   pollers: MutableQueue.MutableQueue<Deferred.Deferred<A>>,
   shutdownHook: Deferred.Deferred<void>,
   shutdownFlag: MutableRef.MutableRef<boolean>,
-  strategy: PubSubStrategy<A>,
-  replayBuffer: ReplayWindow<A>
+  strategy: PubSubStrategy<A>
 ): Queue.Dequeue<A> =>
   new SubscriptionImpl(
     pubsub,
@@ -206,7 +205,7 @@ export const unsafeMakeSubscription = <A>(
     shutdownHook,
     shutdownFlag,
     strategy,
-    replayBuffer
+    pubsub.replayBuffer ? pubsub.replayBuffer.capture() : emptyReplayWindow
   )
 
 /** @internal */
@@ -1093,8 +1092,7 @@ class PubSubImpl<in out A> implements PubSub.PubSub<A> {
     readonly scope: Scope.Scope.Closeable,
     readonly shutdownHook: Deferred.Deferred<void>,
     readonly shutdownFlag: MutableRef.MutableRef<boolean>,
-    readonly strategy: PubSubStrategy<A>,
-    readonly replayBuffer: ReplayBuffer<A> | undefined
+    readonly strategy: PubSubStrategy<A>
   ) {}
 
   capacity(): number {
@@ -1207,8 +1205,7 @@ class PubSubImpl<in out A> implements PubSub.PubSub<A> {
         makeSubscription(
           this.pubsub,
           this.subscribers,
-          this.strategy,
-          this.replayBuffer ? this.replayBuffer.capture() : emptyReplayWindow
+          this.strategy
         )
       ]),
       (tuple) => tuple[0].addFinalizer(() => tuple[1].shutdown)
@@ -1235,8 +1232,7 @@ class PubSubImpl<in out A> implements PubSub.PubSub<A> {
 /** @internal */
 export const makePubSub = <A>(
   pubsub: AtomicPubSub<A>,
-  strategy: PubSubStrategy<A>,
-  replayBuffer: ReplayBuffer<A> | undefined
+  strategy: PubSubStrategy<A>
 ): Effect.Effect<PubSub.PubSub<A>> =>
   core.flatMap(
     fiberRuntime.scopeMake(),
@@ -1248,8 +1244,7 @@ export const makePubSub = <A>(
           scope,
           deferred,
           MutableRef.make(false),
-          strategy,
-          replayBuffer
+          strategy
         ))
   )
 
@@ -1260,9 +1255,8 @@ export const unsafeMakePubSub = <A>(
   scope: Scope.Scope.Closeable,
   shutdownHook: Deferred.Deferred<void>,
   shutdownFlag: MutableRef.MutableRef<boolean>,
-  strategy: PubSubStrategy<A>,
-  replayBuffer: ReplayBuffer<A> | undefined
-): PubSub.PubSub<A> => new PubSubImpl(pubsub, subscribers, scope, shutdownHook, shutdownFlag, strategy, replayBuffer)
+  strategy: PubSubStrategy<A>
+): PubSub.PubSub<A> => new PubSubImpl(pubsub, subscribers, scope, shutdownHook, shutdownFlag, strategy)
 
 /** @internal */
 const ensureCapacity = (capacity: number): void => {
