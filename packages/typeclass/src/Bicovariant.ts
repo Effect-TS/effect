@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 import { dual, identity } from "effect/Function"
 import type { Kind, TypeClass, TypeLambda } from "effect/HKT"
@@ -7,7 +7,7 @@ import type { Covariant } from "./Covariant.js"
 
 /**
  * @category type class
- * @since 1.0.0
+ * @since 0.24.0
  */
 export interface Bicovariant<F extends TypeLambda> extends TypeClass<F> {
   readonly bimap: {
@@ -26,7 +26,7 @@ export interface Bicovariant<F extends TypeLambda> extends TypeClass<F> {
 /**
  * Returns a default ternary `bimap` composition.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const bimapComposition = <F extends TypeLambda, G extends TypeLambda>(
   CovariantF: Covariant<F>,
@@ -41,7 +41,7 @@ export const bimapComposition = <F extends TypeLambda, G extends TypeLambda>(
 /**
  * Returns a default `mapLeft` implementation.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const mapLeft = <F extends TypeLambda>(
   F: Bicovariant<F>
@@ -57,7 +57,7 @@ export const mapLeft = <F extends TypeLambda>(
 /**
  * Returns a default `map` implementation.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const map = <F extends TypeLambda>(
   F: Bicovariant<F>

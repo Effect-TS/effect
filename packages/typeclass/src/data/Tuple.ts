@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 import { dual } from "effect/Function"
 import * as Tuple from "effect/Tuple"
@@ -19,7 +19,7 @@ const bimap: {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Bicovariant: bicovariant.Bicovariant<Tuple.TupleTypeLambda> = {
   bimap

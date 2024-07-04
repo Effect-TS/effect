@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 import * as Number from "effect/Number"
 import * as bounded from "../Bounded.js"
@@ -8,7 +8,7 @@ import * as semigroup from "../Semigroup.js"
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Bounded: bounded.Bounded<number> = {
   compare: Number.Order,
@@ -25,7 +25,7 @@ export const Bounded: bounded.Bounded<number> = {
  * assert.deepStrictEqual(SemigroupSum.combine(2, 3), 5)
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemigroupSum: semigroup.Semigroup<number> = semigroup.make((self, that) => self + that)
 
@@ -38,7 +38,7 @@ export const SemigroupSum: semigroup.Semigroup<number> = semigroup.make((self, t
  * assert.deepStrictEqual(SemigroupMultiply.combine(2, 3), 6)
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemigroupMultiply: semigroup.Semigroup<number> = semigroup.make(
   (self, that) => self * that,
@@ -66,7 +66,7 @@ export const SemigroupMultiply: semigroup.Semigroup<number> = semigroup.make(
  * assert.deepStrictEqual(SemigroupMin.combine(2, 3), 2)
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemigroupMin: semigroup.Semigroup<number> = semigroup.min(Number.Order)
 
@@ -79,7 +79,7 @@ export const SemigroupMin: semigroup.Semigroup<number> = semigroup.min(Number.Or
  * assert.deepStrictEqual(SemigroupMax.combine(2, 3), 3)
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemigroupMax: semigroup.Semigroup<number> = semigroup.max(Number.Order)
 
@@ -95,7 +95,7 @@ export const SemigroupMax: semigroup.Semigroup<number> = semigroup.max(Number.Or
  * assert.deepStrictEqual(MonoidSum.combine(2, MonoidSum.empty), 2)
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const MonoidSum: monoid.Monoid<number> = monoid.fromSemigroup(SemigroupSum, 0)
 
@@ -111,7 +111,7 @@ export const MonoidSum: monoid.Monoid<number> = monoid.fromSemigroup(SemigroupSu
  * assert.deepStrictEqual(MonoidMultiply.combine(2, MonoidMultiply.empty), 2)
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const MonoidMultiply: monoid.Monoid<number> = monoid.fromSemigroup(SemigroupMultiply, 1)
 
@@ -127,7 +127,7 @@ export const MonoidMultiply: monoid.Monoid<number> = monoid.fromSemigroup(Semigr
  * assert.deepStrictEqual(MonoidMin.combine(2, MonoidMin.empty), 2)
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const MonoidMin: monoid.Monoid<number> = bounded.min(Bounded)
 
@@ -143,6 +143,6 @@ export const MonoidMin: monoid.Monoid<number> = bounded.min(Bounded)
  * assert.deepStrictEqual(MonoidMax.combine(2, MonoidMax.empty), 2)
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const MonoidMax: monoid.Monoid<number> = bounded.max(Bounded)

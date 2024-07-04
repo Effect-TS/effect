@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 import { dual } from "effect/Function"
 import type { Kind, TypeLambda } from "effect/HKT"
@@ -8,7 +8,7 @@ import type { FlatMap } from "./FlatMap.js"
 
 /**
  * @category type class
- * @since 1.0.0
+ * @since 0.24.0
  */
 export interface Chainable<F extends TypeLambda> extends FlatMap<F>, Covariant<F> {}
 
@@ -17,7 +17,7 @@ export interface Chainable<F extends TypeLambda> extends FlatMap<F>, Covariant<F
  * produced by the effect.
  *
  * @category combining
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const zipLeft = <F extends TypeLambda>(F: Chainable<F>): {
   <R2, O2, E2, _>(
@@ -36,7 +36,7 @@ export const zipLeft = <F extends TypeLambda>(F: Chainable<F>): {
 /**
  * Returns an effect that effectfully "peeks" at the success of this effect.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const tap = <F extends TypeLambda>(F: Chainable<F>): {
   <A, R2, O2, E2, _>(
@@ -57,7 +57,7 @@ export const tap = <F extends TypeLambda>(F: Chainable<F>): {
 
 /**
  * @category do notation
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const bind = <F extends TypeLambda>(F: Chainable<F>): {
   <N extends string, A extends object, R2, O2, E2, B>(

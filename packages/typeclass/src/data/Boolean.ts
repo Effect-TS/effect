@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 import * as monoid from "../Monoid.js"
 import * as semigroup from "../Semigroup.js"
@@ -16,7 +16,7 @@ import * as semigroup from "../Semigroup.js"
  * assert.deepStrictEqual(SemigroupEvery.combine(false, false), false)
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemigroupEvery: semigroup.Semigroup<boolean> = semigroup.make(
   (self, that) => self && that,
@@ -45,7 +45,7 @@ export const SemigroupEvery: semigroup.Semigroup<boolean> = semigroup.make(
  * assert.deepStrictEqual(SemigroupSome.combine(false, false), false)
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemigroupSome: semigroup.Semigroup<boolean> = semigroup.make(
   (self, that) => self || that,
@@ -74,7 +74,7 @@ export const SemigroupSome: semigroup.Semigroup<boolean> = semigroup.make(
  * assert.deepStrictEqual(SemigroupXor.combine(false, false), false)
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemigroupXor: semigroup.Semigroup<boolean> = semigroup.make((self, that) => self !== that)
 
@@ -90,7 +90,7 @@ export const SemigroupXor: semigroup.Semigroup<boolean> = semigroup.make((self, 
  * assert.deepStrictEqual(SemigroupEqv.combine(false, false), true)
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemigroupEqv: semigroup.Semigroup<boolean> = semigroup.make((self, that) => self === that)
 
@@ -100,7 +100,7 @@ export const SemigroupEqv: semigroup.Semigroup<boolean> = semigroup.make((self, 
  * The `empty` value is `true`.
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const MonoidEvery: monoid.Monoid<boolean> = monoid.fromSemigroup(SemigroupEvery, true)
 
@@ -110,7 +110,7 @@ export const MonoidEvery: monoid.Monoid<boolean> = monoid.fromSemigroup(Semigrou
  * The `empty` value is `false`.
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const MonoidSome: monoid.Monoid<boolean> = monoid.fromSemigroup(SemigroupSome, false)
 
@@ -120,7 +120,7 @@ export const MonoidSome: monoid.Monoid<boolean> = monoid.fromSemigroup(Semigroup
  * The `empty` value is `false`.
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const MonoidXor: monoid.Monoid<boolean> = monoid.fromSemigroup(SemigroupXor, false)
 
@@ -130,6 +130,6 @@ export const MonoidXor: monoid.Monoid<boolean> = monoid.fromSemigroup(SemigroupX
  * The `empty` value is `true`.
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const MonoidEqv: monoid.Monoid<boolean> = monoid.fromSemigroup(SemigroupEqv, true)

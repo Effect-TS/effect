@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 import type { TypeLambda } from "effect/HKT"
 import * as order from "effect/Order"
@@ -10,7 +10,7 @@ import * as semigroup from "./Semigroup.js"
 
 /**
  * @category type class
- * @since 1.0.0
+ * @since 0.24.0
  */
 export interface Bounded<A> {
   readonly compare: Order<A>
@@ -20,7 +20,7 @@ export interface Bounded<A> {
 
 /**
  * @category type lambdas
- * @since 1.0.0
+ * @since 0.24.0
  */
 export interface BoundedTypeLambda extends TypeLambda {
   readonly type: Bounded<this["Target"]>
@@ -30,7 +30,7 @@ export interface BoundedTypeLambda extends TypeLambda {
  * `Monoid` that returns last minimum of elements.
  *
  * @category constructors
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const min = <A>(B: Bounded<A>): Monoid<A> => monoid.fromSemigroup(semigroup.min(B.compare), B.maxBound)
 
@@ -38,7 +38,7 @@ export const min = <A>(B: Bounded<A>): Monoid<A> => monoid.fromSemigroup(semigro
  * `Monoid` that returns last maximum of elements.
  *
  * @category constructors
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const max = <A>(B: Bounded<A>): Monoid<A> => monoid.fromSemigroup(semigroup.max(B.compare), B.minBound)
 
@@ -46,7 +46,7 @@ export const max = <A>(B: Bounded<A>): Monoid<A> => monoid.fromSemigroup(semigro
  * Checks if a value is between the lower and upper limit of a bound.
  *
  * @category predicates
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const between = <A>(B: Bounded<A>): (a: A) => boolean =>
   order.between(B.compare)({ minimum: B.minBound, maximum: B.maxBound })
@@ -55,7 +55,7 @@ export const between = <A>(B: Bounded<A>): (a: A) => boolean =>
  * Clamp a value between `minBound` and `maxBound` values.
  *
  * @category utils
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const clamp = <A>(B: Bounded<A>): (a: A) => A =>
   order.clamp(B.compare)({ minimum: B.minBound, maximum: B.maxBound })
@@ -64,7 +64,7 @@ export const clamp = <A>(B: Bounded<A>): (a: A) => A =>
  * Reverses the `Order` of a `Bounded` and flips `maxBound` and `minBound` values.
  *
  * @category utils
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const reverse = <A>(B: Bounded<A>): Bounded<A> => ({
   compare: order.reverse(B.compare),

@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 import { dual } from "effect/Function"
 import type { TypeLambda } from "effect/HKT"
@@ -11,7 +11,7 @@ import type * as semiProduct from "./SemiProduct.js"
 
 /**
  * @category type class
- * @since 1.0.0
+ * @since 0.24.0
  */
 export interface Semigroup<A> {
   readonly combine: (self: A, that: A) => A
@@ -20,7 +20,7 @@ export interface Semigroup<A> {
 
 /**
  * @category type lambdas
- * @since 1.0.0
+ * @since 0.24.0
  */
 export interface SemigroupTypeLambda extends TypeLambda {
   readonly type: Semigroup<this["Target"]>
@@ -30,7 +30,7 @@ export interface SemigroupTypeLambda extends TypeLambda {
  * @param combineMany - Useful when `combineMany` can be optimised
  *
  * @category constructors
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const make = <A>(
   combine: Semigroup<A>["combine"],
@@ -44,7 +44,7 @@ export const make = <A>(
  * `Semigroup` that returns last minimum of elements.
  *
  * @category constructors
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const min = <A>(O: Order<A>): Semigroup<A> => make((self, that) => O(self, that) === -1 ? self : that)
 
@@ -52,20 +52,20 @@ export const min = <A>(O: Order<A>): Semigroup<A> => make((self, that) => O(self
  * `Semigroup` that returns last maximum of elements.
  *
  * @category constructors
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const max = <A>(O: Order<A>): Semigroup<A> => make((self, that) => O(self, that) === 1 ? self : that)
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const constant = <A>(a: A): Semigroup<A> => make(() => a, () => a)
 
 /**
  * The dual of a `Semigroup`, obtained by flipping the arguments of `combine`.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const reverse = <A>(S: Semigroup<A>): Semigroup<A> =>
   make(
@@ -91,7 +91,7 @@ export const reverse = <A>(S: Semigroup<A>): Semigroup<A> =>
  * @param S - The `Semigroup` instance.
  * @param separator - The separator value.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const intercalate: {
   <A>(separator: A): (S: Semigroup<A>) => Semigroup<A>
@@ -105,7 +105,7 @@ export const intercalate: {
  * Always return the first argument.
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const first = <A = never>(): Semigroup<A> => make((a) => a, (a) => a)
 
@@ -113,7 +113,7 @@ export const first = <A = never>(): Semigroup<A> => make((a) => a, (a) => a)
  * Always return the last argument.
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const last = <A = never>(): Semigroup<A> =>
   make(
@@ -127,7 +127,7 @@ export const last = <A = never>(): Semigroup<A> =>
   )
 
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const imap: {
   <A, B>(to: (a: A) => B, from: (b: B) => A): (self: Semigroup<A>) => Semigroup<B>
@@ -140,7 +140,7 @@ export const imap: {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Invariant: invariant.Invariant<SemigroupTypeLambda> = {
   imap
@@ -175,7 +175,7 @@ const productMany = <A>(
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemiProduct: semiProduct.SemiProduct<SemigroupTypeLambda> = {
   imap,
@@ -187,7 +187,7 @@ const of: <A>(a: A) => Semigroup<A> = constant
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Product: product_.Product<SemigroupTypeLambda> = {
   of,
@@ -210,7 +210,7 @@ export const Product: product_.Product<SemigroupTypeLambda> = {
  * It is useful when you need to combine two tuples of the same type and you have a specific way of combining each element of the tuple.
  *
  * @category combinators
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const tuple: <T extends ReadonlyArray<Semigroup<any>>>(
   ...elements: T
@@ -221,7 +221,7 @@ export const tuple: <T extends ReadonlyArray<Semigroup<any>>>(
  * The returned `Semigroup` combines two arrays by concatenating them.
  *
  * @category combinators
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const array = <A>(): Semigroup<ReadonlyArray<A>> => make((self, that) => self.concat(that))
 
@@ -232,7 +232,7 @@ export const array = <A>(): Semigroup<ReadonlyArray<A>> => make((self, that) => 
  * It is useful when you need to combine two structs of the same type and you have a specific way of combining each property of the struct.
  *
  * @category combinators
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const struct: <R extends { readonly [x: string]: Semigroup<any> }>(
   fields: R
