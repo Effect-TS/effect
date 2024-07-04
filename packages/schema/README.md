@@ -2026,6 +2026,8 @@ const mySymbolSchema = Schema.UniqueSymbolFromSelf(mySymbol)
 
 Using the `Schema.filter` function, developers can define custom validation logic that goes beyond basic type checks, allowing for in-depth control over the data conformity process. This function applies a predicate to data, and if the data fails the predicate's condition, a custom error message can be returned.
 
+**Note**. For effectful filters, see `filterEffect`.
+
 **Simple Validation Example**:
 
 ```ts
@@ -4807,6 +4809,36 @@ Output:
     failure: '(string <-> string)\n└─ Transformation process failure\n   └─ Error: 404'
   }
 }
+*/
+```
+
+## Effectful Filters
+
+The `filterEffect` function enhances the `filter` functionality by allowing the integration of effects, thus enabling asynchronous or dynamic validation scenarios. This is particularly useful when validations need to perform operations that require side effects, such as network requests or database queries.
+
+**Example: Validating Usernames Asynchronously**
+
+```ts
+import { Schema } from "@effect/schema"
+import { Effect } from "effect"
+
+async function validateUsername(username: string) {
+  return Promise.resolve(username === "gcanti")
+}
+
+const ValidUsername = Schema.String.pipe(
+  Schema.filterEffect((username) =>
+    Effect.promise(() =>
+      validateUsername(username).then((valid) => valid || "Invalid username")
+    )
+  )
+).annotations({ identifier: "ValidUsername" })
+
+Effect.runPromise(Schema.decodeUnknown(ValidUsername)("xxx")).then(console.log)
+/*
+ParseError: ValidUsername
+└─ Transformation process failure
+   └─ Invalid username
 */
 ```
 
