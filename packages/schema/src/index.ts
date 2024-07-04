@@ -45,8 +45,6 @@ export * as Schema from "./Schema.js"
 
 /**
  * @since 0.67.0
- *
- * Serializable represents an object that has self-contained Schema(s)
  */
 export * as Serializable from "./Serializable.js"
 
