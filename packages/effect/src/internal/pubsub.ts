@@ -1545,11 +1545,10 @@ export class SlidingStrategy<in out A> implements PubSubStrategy<A> {
     pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     elements: Iterable<A>,
-    _isShutdown: MutableRef.MutableRef<boolean>,
-    replayBuffer?: ReplayBuffer<A>
+    _isShutdown: MutableRef.MutableRef<boolean>
   ): Effect.Effect<boolean> {
     return core.sync(() => {
-      this.unsafeSlidingPublish(pubsub, elements, replayBuffer)
+      this.unsafeSlidingPublish(pubsub, elements)
       this.unsafeCompleteSubscribers(pubsub, subscribers)
       return true
     })
@@ -1575,7 +1574,7 @@ export class SlidingStrategy<in out A> implements PubSubStrategy<A> {
     return unsafeStrategyCompleteSubscribers(this, pubsub, subscribers)
   }
 
-  unsafeSlidingPublish(pubsub: AtomicPubSub<A>, elements: Iterable<A>, replayBuffer?: ReplayBuffer<A>): void {
+  unsafeSlidingPublish(pubsub: AtomicPubSub<A>, elements: Iterable<A>): void {
     const it = elements[Symbol.iterator]()
     let next = it.next()
     if (!next.done && pubsub.capacity > 0) {
@@ -1583,7 +1582,6 @@ export class SlidingStrategy<in out A> implements PubSubStrategy<A> {
       let loop = true
       while (loop) {
         pubsub.slide()
-        if (replayBuffer) replayBuffer.slide()
         const pub = pubsub.publish(a)
         if (pub && (next = it.next()) && !next.done) {
           a = next.value
