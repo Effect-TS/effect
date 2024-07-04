@@ -60,14 +60,14 @@ function resolveCurrentPath(
   })
 }
 
-function getFileList(directory: string, options: FileOptions, withParent: boolean = true) {
+function getFileList(directory: string, options: FileOptions) {
   return Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
     const path = yield* Path.Path
     const files = yield* Effect.orDie(fs.readDirectory(directory)).pipe(
       // Always prepend the `".."` option to the file list but allow it
       // to be filtered out if the user so desires
-      Effect.map((files) => withParent ? ["..", ...files] : files)
+      Effect.map((files) => ["..", ...files])
     )
     return yield* Effect.filter(files, (file) => {
       const result = options.filter(file)
@@ -264,14 +264,15 @@ function processSelection(state: State, options: FileOptions) {
     const selectedPath = state.files[state.cursor]
     const resolvedPath = path.resolve(currentPath, selectedPath)
     const info = yield* Effect.orDie(fs.stat(resolvedPath))
-    // If the user selected a directory AND the prompt type can result with
-    // a directory, we must confirm:
-    //  - If the selected directory has any files
-    //  - Whether or not the user wants to traverse those files
-    if (info.type === "Directory" && (options.type === "directory" || options.type === "either")) {
+    if (info.type === "Directory") {
+      const files = yield* getFileList(resolvedPath, options)
+      const filesWithoutParent = files.filter((file) => file !== "..")
+      // If the user selected a directory AND the prompt type can result with
+      // a directory, we must confirm:
+      //  - If the selected directory has any files
+      //  - Confirm whether or not the user wants to traverse those files
       if (options.type === "directory" || options.type === "either") {
-        const files = yield* getFileList(resolvedPath, options, false)
-        return files.length === 0
+        return filesWithoutParent.length === 0
           // Directory is empty so it's safe to select it
           ? Action.Submit({ value: resolvedPath })
           // Directory has contents - show confirmation to user
@@ -279,6 +280,14 @@ function processSelection(state: State, options: FileOptions) {
             state: { ...state, confirm: Confirm.Show() }
           })
       }
+      return Action.NextFrame({
+        state: {
+          cursor: 0,
+          files,
+          path: Option.some(resolvedPath),
+          confirm: Confirm.Hide()
+        }
+      })
     }
     return Action.Submit({ value: resolvedPath })
   })
