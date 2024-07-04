@@ -708,6 +708,13 @@ describe("PubSub", () => {
 
         const sub2 = yield* PubSub.subscribe(pubsub)
         assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub2)), [5, 6, 7])
+
+        yield* PubSub.publishAll(pubsub, [8, 9, 10, 11])
+        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [8, 9])
+        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub2)), [8, 9])
+
+        const sub3 = yield* PubSub.subscribe(pubsub)
+        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub3)), [7, 8, 9])
       }))
 
     it.scoped("sliding", () =>
@@ -723,6 +730,13 @@ describe("PubSub", () => {
 
         const sub2 = yield* PubSub.subscribe(pubsub)
         assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub2)), [8, 9, 10])
+
+        yield* PubSub.publishAll(pubsub, [11, 12, 13, 14, 15, 16])
+        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [13, 14, 15, 16])
+        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub2)), [13, 14, 15, 16])
+
+        const sub3 = yield* PubSub.subscribe(pubsub)
+        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub3)), [14, 15, 16])
       }))
   })
 })
