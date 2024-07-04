@@ -76,6 +76,127 @@ export const selfSchema = <A, I, R>(self: Serializable<A, I, R>): Schema.Schema<
 
 /**
  * @since 0.67.0
+ * @category symbol
+ */
+export const symbolResult: unique symbol = serializable_.symbolResult as any
+
+/**
+ * The `WithResult` trait is designed to encapsulate the outcome of an
+ * operation, distinguishing between success and failure cases. Each case is
+ * associated with a schema that defines the structure and types of the success
+ * or failure data.
+ *
+ * @since 0.67.0
+ * @category model
+ */
+export interface WithResult<Success, SuccessEncoded, Failure, FailureEncoded, SuccessAndFailureR> {
+  readonly [symbolResult]: {
+    readonly Success: Schema.Schema<Success, SuccessEncoded, SuccessAndFailureR>
+    readonly Failure: Schema.Schema<Failure, FailureEncoded, SuccessAndFailureR>
+  }
+}
+
+/**
+ * @since 0.67.0
+ * @category model
+ */
+export declare namespace WithResult {
+  /**
+   * @since 0.68.16
+   */
+  export type Success<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _A : never
+
+  /**
+   * @since 0.68.17
+   */
+  export type SuccessEncoded<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _I : never
+
+  /**
+   * @since 0.68.16
+   */
+  export type Error<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _E : never
+
+  /**
+   * @since 0.68.17
+   */
+  export type ErrorEncoded<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _EI : never
+
+  /**
+   * @since 0.67.0
+   */
+  export type Context<T> = T extends WithResult<infer _SA, infer _SI, infer _FA, infer _FI, infer R> ? R : never
+}
+
+/**
+ * @since 0.67.0
+ * @category accessor
+ */
+export const failureSchema = <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>): Schema.Schema<FA, FI, R> =>
+  self[symbolResult].Failure
+
+/**
+ * @since 0.67.0
+ * @category accessor
+ */
+export const successSchema = <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>): Schema.Schema<SA, SI, R> =>
+  self[symbolResult].Success
+
+const exitSchemaCache = globalValue(
+  "@effect/schema/Serializable/exitSchemaCache",
+  () => new WeakMap<object, Schema.Schema<any, any, any>>()
+)
+
+/**
+ * @since 0.67.0
+ * @category accessor
+ */
+export const exitSchema = <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>): Schema.Schema<
+  Exit.Exit<SA, FA>,
+  Schema.ExitEncoded<SI, FI>,
+  R
+> => {
+  const proto = Object.getPrototypeOf(self)
+  if (!(symbolResult in proto)) {
+    return Schema.Exit({ failure: failureSchema(self), success: successSchema(self) })
+  }
+  let schema = exitSchemaCache.get(proto)
+  if (schema === undefined) {
+    schema = Schema.Exit({ failure: failureSchema(self), success: successSchema(self) })
+    exitSchemaCache.set(proto, schema)
+  }
+  return schema
+}
+
+/**
+ * @since 0.67.0
+ * @category model
+ */
+export interface SerializableWithResult<
+  A,
+  I,
+  R,
+  Success,
+  SuccessEncoded,
+  Failure,
+  FailureEncoded,
+  SuccessAndFailureR
+> extends Serializable<A, I, R>, WithResult<Success, SuccessEncoded, Failure, FailureEncoded, SuccessAndFailureR> {}
+
+/**
+ * @since 0.67.0
+ * @category model
+ */
+export declare namespace SerializableWithResult {
+  /**
+   * @since 0.67.0
+   */
+  export type Context<T> = T extends
+    SerializableWithResult<infer _S, infer _SI, infer SR, infer _A, infer _AI, infer _E, infer _EI, infer RR> ? SR | RR
+    : never
+}
+
+/**
+ * @since 0.67.0
  * @category encoding
  */
 export const serialize = <A, I, R>(self: Serializable<A, I, R>): Effect.Effect<I, ParseResult.ParseError, R> =>
