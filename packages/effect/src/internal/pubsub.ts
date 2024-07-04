@@ -1,4 +1,3 @@
-import * as Arr from "../Array.js"
 import * as Chunk from "../Chunk.js"
 import type * as Deferred from "../Deferred.js"
 import type * as Effect from "../Effect.js"
@@ -77,61 +76,41 @@ const removeSubscribers = <A>(
 export const bounded = <A>(requestedCapacity: number, options?: {
   readonly replayCapacity?: number
 }): Effect.Effect<PubSub.PubSub<A>> =>
-  pipe(
-    core.sync(() => makeBoundedPubSub<A>(requestedCapacity)),
-    core.flatMap((atomicPubSub) =>
-      makePubSub(
-        atomicPubSub,
-        new BackPressureStrategy(),
-        options?.replayCapacity ? new ReplayBuffer(options.replayCapacity) : undefined
-      )
-    )
-  )
+  core.suspend(() => {
+    const replayBuffer = options?.replayCapacity ? new ReplayBuffer<A>(options.replayCapacity) : undefined
+    const pubsub = makeBoundedPubSub(requestedCapacity, replayBuffer)
+    return makePubSub(pubsub, new BackPressureStrategy(), replayBuffer)
+  })
 
 /** @internal */
 export const dropping = <A>(requestedCapacity: number, options?: {
   readonly replayCapacity?: number
 }): Effect.Effect<PubSub.PubSub<A>> =>
-  pipe(
-    core.sync(() => makeBoundedPubSub<A>(requestedCapacity)),
-    core.flatMap((atomicPubSub) =>
-      makePubSub(
-        atomicPubSub,
-        new DroppingStrategy(),
-        options?.replayCapacity ? new ReplayBuffer(options.replayCapacity) : undefined
-      )
-    )
-  )
+  core.suspend(() => {
+    const replayBuffer = options?.replayCapacity ? new ReplayBuffer<A>(options.replayCapacity) : undefined
+    const pubsub = makeBoundedPubSub(requestedCapacity, replayBuffer)
+    return makePubSub(pubsub, new DroppingStrategy(), replayBuffer)
+  })
 
 /** @internal */
 export const sliding = <A>(requestedCapacity: number, options?: {
   readonly replayCapacity?: number
 }): Effect.Effect<PubSub.PubSub<A>> =>
-  pipe(
-    core.sync(() => makeBoundedPubSub<A>(requestedCapacity)),
-    core.flatMap((atomicPubSub) =>
-      makePubSub(
-        atomicPubSub,
-        new SlidingStrategy(),
-        options?.replayCapacity ? new ReplayBuffer(options.replayCapacity) : undefined
-      )
-    )
-  )
+  core.suspend(() => {
+    const replayBuffer = options?.replayCapacity ? new ReplayBuffer<A>(options.replayCapacity) : undefined
+    const pubsub = makeBoundedPubSub(requestedCapacity, replayBuffer)
+    return makePubSub(pubsub, new SlidingStrategy(), replayBuffer)
+  })
 
 /** @internal */
 export const unbounded = <A>(options?: {
   readonly replayCapacity?: number
 }): Effect.Effect<PubSub.PubSub<A>> =>
-  pipe(
-    core.sync(() => makeUnboundedPubSub<A>()),
-    core.flatMap((atomicPubSub) =>
-      makePubSub(
-        atomicPubSub,
-        new DroppingStrategy(),
-        options?.replayCapacity ? new ReplayBuffer(options.replayCapacity) : undefined
-      )
-    )
-  )
+  core.suspend(() => {
+    const replayBuffer = options?.replayCapacity ? new ReplayBuffer<A>(options.replayCapacity) : undefined
+    const pubsub = makeUnboundedPubSub(replayBuffer)
+    return makePubSub(pubsub, new DroppingStrategy(), replayBuffer)
+  })
 
 /** @internal */
 export const capacity = <A>(self: PubSub.PubSub<A>): number => self.capacity()
@@ -171,21 +150,23 @@ export const subscribe = <A>(self: PubSub.PubSub<A>): Effect.Effect<Queue.Dequeu
   self.subscribe
 
 /** @internal */
-const makeBoundedPubSub = <A>(requestedCapacity: number): AtomicPubSub<A> => {
+const makeBoundedPubSub = <A>(
+  requestedCapacity: number,
+  replayBuffer: ReplayBuffer<A> | undefined
+): AtomicPubSub<A> => {
   ensureCapacity(requestedCapacity)
   if (requestedCapacity === 1) {
-    return new BoundedPubSubSingle()
+    return new BoundedPubSubSingle(replayBuffer)
   } else if (nextPow2(requestedCapacity) === requestedCapacity) {
-    return new BoundedPubSubPow2(requestedCapacity)
+    return new BoundedPubSubPow2(requestedCapacity, replayBuffer)
   } else {
-    return new BoundedPubSubArb(requestedCapacity)
+    return new BoundedPubSubArb(requestedCapacity, replayBuffer)
   }
 }
 
 /** @internal */
-const makeUnboundedPubSub = <A>(): AtomicPubSub<A> => {
-  return new UnboundedPubSub()
-}
+const makeUnboundedPubSub = <A>(replayBuffer: ReplayBuffer<A> | undefined): AtomicPubSub<A> =>
+  new UnboundedPubSub(replayBuffer)
 
 /** @internal */
 const makeSubscription = <A>(
@@ -236,12 +217,9 @@ class BoundedPubSubArb<in out A> implements AtomicPubSub<A> {
   subscriberCount = 0
   subscribersIndex = 0
 
-  readonly capacity: number
-
-  constructor(requestedCapacity: number) {
-    this.array = Array.from({ length: requestedCapacity })
-    this.subscribers = Array.from({ length: requestedCapacity })
-    this.capacity = requestedCapacity
+  constructor(readonly capacity: number, readonly replayBuffer: ReplayBuffer<A> | undefined) {
+    this.array = Array.from({ length: capacity })
+    this.subscribers = Array.from({ length: capacity })
   }
 
   isEmpty(): boolean {
@@ -266,11 +244,17 @@ class BoundedPubSubArb<in out A> implements AtomicPubSub<A> {
       this.subscribers[index] = this.subscriberCount
       this.publisherIndex += 1
     }
+    if (this.replayBuffer) {
+      this.replayBuffer.offer(value)
+    }
     return true
   }
 
   publishAll(elements: Iterable<A>): Chunk.Chunk<A> {
     if (this.subscriberCount === 0) {
+      if (this.replayBuffer) {
+        this.replayBuffer.offerAll(elements)
+      }
       return Chunk.empty()
     }
     const chunk = Chunk.fromIterable(elements)
@@ -289,6 +273,9 @@ class BoundedPubSubArb<in out A> implements AtomicPubSub<A> {
       this.array[index] = a
       this.subscribers[index] = this.subscriberCount
       this.publisherIndex += 1
+      if (this.replayBuffer) {
+        this.replayBuffer.offer(a)
+      }
     }
     return Chunk.drop(chunk, iteratorIndex)
   }
@@ -299,6 +286,9 @@ class BoundedPubSubArb<in out A> implements AtomicPubSub<A> {
       this.array[index] = AbsentValue as unknown as A
       this.subscribers[index] = 0
       this.subscribersIndex += 1
+    }
+    if (this.replayBuffer) {
+      this.replayBuffer.slide()
     }
   }
 
@@ -404,13 +394,11 @@ class BoundedPubSubPow2<in out A> implements AtomicPubSub<A> {
   subscriberCount = 0
   subscribersIndex = 0
 
-  readonly capacity: number
-
-  constructor(requestedCapacity: number) {
-    this.array = Array.from({ length: requestedCapacity })
-    this.mask = requestedCapacity - 1
-    this.subscribers = Array.from({ length: requestedCapacity })
-    this.capacity = requestedCapacity
+  constructor(readonly capacity: number, readonly replayBuffer: ReplayBuffer<A> | undefined) {
+    this.array = Array.from({ length: capacity })
+    this.mask = capacity - 1
+    this.subscribers = Array.from({ length: capacity })
+    this.capacity = capacity
   }
 
   isEmpty(): boolean {
@@ -435,11 +423,17 @@ class BoundedPubSubPow2<in out A> implements AtomicPubSub<A> {
       this.subscribers[index] = this.subscriberCount
       this.publisherIndex += 1
     }
+    if (this.replayBuffer) {
+      this.replayBuffer.offer(value)
+    }
     return true
   }
 
   publishAll(elements: Iterable<A>): Chunk.Chunk<A> {
     if (this.subscriberCount === 0) {
+      if (this.replayBuffer) {
+        this.replayBuffer.offerAll(elements)
+      }
       return Chunk.empty()
     }
     const chunk = Chunk.fromIterable(elements)
@@ -458,6 +452,9 @@ class BoundedPubSubPow2<in out A> implements AtomicPubSub<A> {
       this.array[index] = elem
       this.subscribers[index] = this.subscriberCount
       this.publisherIndex += 1
+      if (this.replayBuffer) {
+        this.replayBuffer.offer(elem)
+      }
     }
     return Chunk.drop(chunk, iteratorIndex)
   }
@@ -468,6 +465,9 @@ class BoundedPubSubPow2<in out A> implements AtomicPubSub<A> {
       this.array[index] = AbsentValue as unknown as A
       this.subscribers[index] = 0
       this.subscribersIndex += 1
+    }
+    if (this.replayBuffer) {
+      this.replayBuffer.slide()
     }
   }
 
@@ -572,6 +572,7 @@ class BoundedPubSubSingle<in out A> implements AtomicPubSub<A> {
   value: A = AbsentValue as unknown as A
 
   readonly capacity = 1
+  constructor(readonly replayBuffer: ReplayBuffer<A> | undefined) {}
 
   pipe() {
     return pipeArguments(this, arguments)
@@ -598,11 +599,17 @@ class BoundedPubSubSingle<in out A> implements AtomicPubSub<A> {
       this.subscribers = this.subscriberCount
       this.publisherIndex += 1
     }
+    if (this.replayBuffer) {
+      this.replayBuffer.offer(value)
+    }
     return true
   }
 
   publishAll(elements: Iterable<A>): Chunk.Chunk<A> {
     if (this.subscriberCount === 0) {
+      if (this.replayBuffer) {
+        this.replayBuffer.offerAll(elements)
+      }
       return Chunk.empty()
     }
     const chunk = Chunk.fromIterable(elements)
@@ -620,6 +627,9 @@ class BoundedPubSubSingle<in out A> implements AtomicPubSub<A> {
     if (this.isFull()) {
       this.subscribers = 0
       this.value = AbsentValue as unknown as A
+    }
+    if (this.replayBuffer) {
+      this.replayBuffer.slide()
     }
   }
 
@@ -709,6 +719,7 @@ class UnboundedPubSub<in out A> implements AtomicPubSub<A> {
   subscribersIndex = 0
 
   readonly capacity = Number.MAX_SAFE_INTEGER
+  constructor(readonly replayBuffer: ReplayBuffer<A> | undefined) {}
 
   isEmpty(): boolean {
     return this.publisherHead === this.publisherTail
@@ -733,6 +744,9 @@ class UnboundedPubSub<in out A> implements AtomicPubSub<A> {
       this.publisherTail = this.publisherTail.next
       this.publisherIndex += 1
     }
+    if (this.replayBuffer) {
+      this.replayBuffer.offer(value)
+    }
     return true
   }
 
@@ -741,6 +755,8 @@ class UnboundedPubSub<in out A> implements AtomicPubSub<A> {
       for (const a of elements) {
         this.publish(a)
       }
+    } else if (this.replayBuffer) {
+      this.replayBuffer.offerAll(elements)
     }
     return Chunk.empty()
   }
@@ -750,6 +766,9 @@ class UnboundedPubSub<in out A> implements AtomicPubSub<A> {
       this.publisherHead = this.publisherHead.next!
       this.publisherHead.value = AbsentValue
       this.subscribersIndex += 1
+    }
+    if (this.replayBuffer) {
+      this.replayBuffer.slide()
     }
   }
 
@@ -878,7 +897,7 @@ class SubscriptionImpl<in out A> implements Queue.Dequeue<A> {
     readonly shutdownHook: Deferred.Deferred<void>,
     readonly shutdownFlag: MutableRef.MutableRef<boolean>,
     readonly strategy: PubSubStrategy<A>,
-    readonly replayBuffer: ReplayWindow<A>
+    readonly replayWindow: ReplayWindow<A>
   ) {}
 
   pipe() {
@@ -897,7 +916,7 @@ class SubscriptionImpl<in out A> implements Queue.Dequeue<A> {
     return core.suspend(() =>
       MutableRef.get(this.shutdownFlag)
         ? core.interrupt
-        : core.succeed(this.subscription.size() + this.replayBuffer.remaining)
+        : core.succeed(this.subscription.size() + this.replayWindow.remaining)
     )
   }
 
@@ -905,7 +924,7 @@ class SubscriptionImpl<in out A> implements Queue.Dequeue<A> {
     if (MutableRef.get(this.shutdownFlag)) {
       return Option.none()
     }
-    return Option.some(this.subscription.size() + this.replayBuffer.remaining)
+    return Option.some(this.subscription.size() + this.replayWindow.remaining)
   }
 
   get isFull(): Effect.Effect<boolean> {
@@ -955,8 +974,8 @@ class SubscriptionImpl<in out A> implements Queue.Dequeue<A> {
       if (MutableRef.get(this.shutdownFlag)) {
         return core.interrupt
       }
-      if (this.replayBuffer.remaining > 0) {
-        const message = this.replayBuffer.take()!
+      if (this.replayWindow.remaining > 0) {
+        const message = this.replayWindow.take()!
         return core.succeed(message)
       }
       const message = MutableQueue.isEmpty(this.pollers)
@@ -994,8 +1013,8 @@ class SubscriptionImpl<in out A> implements Queue.Dequeue<A> {
         ? unsafePollAllSubscription(this.subscription)
         : Chunk.empty()
       this.strategy.unsafeOnPubSubEmptySpace(this.pubsub, this.subscribers)
-      if (this.replayBuffer.remaining > 0) {
-        return core.succeed(Chunk.appendAll(this.replayBuffer.takeAll(), as))
+      if (this.replayWindow.remaining > 0) {
+        return core.succeed(Chunk.appendAll(this.replayWindow.takeAll(), as))
       }
       return core.succeed(as)
     })
@@ -1006,13 +1025,13 @@ class SubscriptionImpl<in out A> implements Queue.Dequeue<A> {
       if (MutableRef.get(this.shutdownFlag)) {
         return core.interrupt
       }
-      const replayLen = this.replayBuffer.remaining
+      const replayLen = this.replayWindow.remaining
       let replay: Chunk.Chunk<A> | undefined = undefined
       if (replayLen >= max) {
-        const as = this.replayBuffer.takeN(max)
+        const as = this.replayWindow.takeN(max)
         return core.succeed(as)
       } else if (replayLen > 0) {
-        replay = this.replayBuffer.takeAll()
+        replay = this.replayWindow.takeAll()
         max = max - replayLen
       }
       const as = MutableQueue.isEmpty(this.pollers)
@@ -1074,7 +1093,8 @@ class PubSubImpl<in out A> implements PubSub.PubSub<A> {
     readonly scope: Scope.Scope.Closeable,
     readonly shutdownHook: Deferred.Deferred<void>,
     readonly shutdownFlag: MutableRef.MutableRef<boolean>,
-    readonly strategy: PubSubStrategy<A>
+    readonly strategy: PubSubStrategy<A>,
+    readonly replayBuffer: ReplayBuffer<A> | undefined
   ) {}
 
   capacity(): number {
@@ -1139,8 +1159,7 @@ class PubSubImpl<in out A> implements PubSub.PubSub<A> {
         this.pubsub,
         this.subscribers,
         Chunk.of(value),
-        this.shutdownFlag,
-        undefined
+        this.shutdownFlag
       )
     })
   }
@@ -1176,8 +1195,7 @@ class PubSubImpl<in out A> implements PubSub.PubSub<A> {
         this.pubsub,
         this.subscribers,
         surplus,
-        this.shutdownFlag,
-        undefined
+        this.shutdownFlag
       )
     })
   }
@@ -1186,7 +1204,12 @@ class PubSubImpl<in out A> implements PubSub.PubSub<A> {
     const acquire = core.tap(
       fiberRuntime.all([
         this.scope.fork(executionStrategy.sequential),
-        makeSubscription(this.pubsub, this.subscribers, this.strategy, emptyReplayWindow)
+        makeSubscription(
+          this.pubsub,
+          this.subscribers,
+          this.strategy,
+          this.replayBuffer ? this.replayBuffer.capture() : emptyReplayWindow
+        )
       ]),
       (tuple) => tuple[0].addFinalizer(() => tuple[1].shutdown)
     )
@@ -1206,141 +1229,6 @@ class PubSubImpl<in out A> implements PubSub.PubSub<A> {
 
   pipe() {
     return pipeArguments(this, arguments)
-  }
-}
-
-/** @internal */
-class ReplayPubSubImpl<in out A> implements PubSub.PubSub<A> {
-  readonly [queue.EnqueueTypeId] = queue.enqueueVariance
-  readonly [queue.DequeueTypeId] = queue.dequeueVariance
-
-  constructor(
-    readonly backing: PubSubImpl<A>,
-    readonly replayBuffer: ReplayBuffer<A>
-  ) {}
-
-  capacity(): number {
-    return this.backing.capacity()
-  }
-  get size(): Effect.Effect<number> {
-    return this.backing.size
-  }
-  unsafeSize(): Option.Option<number> {
-    return this.backing.unsafeSize()
-  }
-  get isFull(): Effect.Effect<boolean> {
-    return this.backing.isFull
-  }
-  get isEmpty(): Effect.Effect<boolean> {
-    return this.backing.isEmpty
-  }
-  get awaitShutdown(): Effect.Effect<void> {
-    return this.backing.awaitShutdown
-  }
-  get isShutdown(): Effect.Effect<boolean> {
-    return this.backing.isShutdown
-  }
-  get shutdown(): Effect.Effect<void> {
-    return this.backing.shutdown
-  }
-  isActive(): boolean {
-    return this.backing.isActive()
-  }
-  unsafeOffer(value: A): boolean {
-    if (this.backing.unsafeOffer(value)) {
-      this.replayBuffer.offer(value)
-      return true
-    }
-    return false
-  }
-  publish(value: A): Effect.Effect<boolean> {
-    return core.suspend(() => {
-      if (MutableRef.get(this.backing.shutdownFlag)) {
-        return core.interrupt
-      }
-      if (this.backing.pubsub.publish(value)) {
-        this.backing.strategy.unsafeCompleteSubscribers(this.backing.pubsub, this.backing.subscribers)
-        this.replayBuffer.offer(value)
-        return core.succeed(true)
-      }
-      return core.uninterruptibleMask((restore) =>
-        restore(this.backing.strategy.handleSurplus(
-          this.backing.pubsub,
-          this.backing.subscribers,
-          Chunk.of(value),
-          this.backing.shutdownFlag,
-          this.replayBuffer
-        )).pipe(
-          core.tap((success) => {
-            if (success) {
-              this.replayBuffer.offer(value)
-            }
-          })
-        )
-      )
-    })
-  }
-  publishAll(elements: Iterable<A>): Effect.Effect<boolean> {
-    return core.suspend(() => {
-      if (MutableRef.get(this.backing.shutdownFlag)) {
-        return core.interrupt
-      }
-      const surplus = unsafePublishAll(this.backing.pubsub, elements)
-      this.backing.strategy.unsafeCompleteSubscribers(this.backing.pubsub, this.backing.subscribers)
-      if (Chunk.isEmpty(surplus)) {
-        this.replayBuffer.offerAll(elements)
-        return core.succeed(true)
-      }
-      const array = Arr.fromIterable(elements)
-      const added = array.length - surplus.length
-      for (let i = 0; i < added; i++) {
-        this.replayBuffer.offer(array[i])
-      }
-      return core.uninterruptibleMask((restore) =>
-        restore(this.backing.strategy.handleSurplus(
-          this.backing.pubsub,
-          this.backing.subscribers,
-          surplus,
-          this.backing.shutdownFlag,
-          this.replayBuffer
-        )).pipe(
-          core.tap((success) => {
-            if (success) {
-              this.replayBuffer.offerAll(surplus)
-            }
-          })
-        )
-      )
-    })
-  }
-  offer(value: A): Effect.Effect<boolean> {
-    return this.publish(value)
-  }
-  offerAll(elements: Iterable<A>): Effect.Effect<boolean> {
-    return this.publishAll(elements)
-  }
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-
-  get subscribe(): Effect.Effect<Queue.Dequeue<A>, never, Scope.Scope> {
-    const acquire = this.backing.scope.fork(executionStrategy.sequential).pipe(
-      core.zip(
-        core.suspend(() =>
-          makeSubscription(
-            this.backing.pubsub,
-            this.backing.subscribers,
-            this.backing.strategy,
-            this.replayBuffer.capture()
-          )
-        )
-      ),
-      core.tap(([scope, sub]) => scope.addFinalizer(() => sub.shutdown))
-    )
-    return core.map(
-      fiberRuntime.acquireRelease(acquire, ([scope], exit) => scope.close(exit)),
-      ([, sub]) => sub
-    )
   }
 }
 
@@ -1373,13 +1261,8 @@ export const unsafeMakePubSub = <A>(
   shutdownHook: Deferred.Deferred<void>,
   shutdownFlag: MutableRef.MutableRef<boolean>,
   strategy: PubSubStrategy<A>,
-  replayBuffer?: ReplayBuffer<A>
-): PubSub.PubSub<A> => {
-  const backing = new PubSubImpl(pubsub, subscribers, scope, shutdownHook, shutdownFlag, strategy)
-  return replayBuffer
-    ? new ReplayPubSubImpl(backing, replayBuffer)
-    : backing
-}
+  replayBuffer: ReplayBuffer<A> | undefined
+): PubSub.PubSub<A> => new PubSubImpl(pubsub, subscribers, scope, shutdownHook, shutdownFlag, strategy, replayBuffer)
 
 /** @internal */
 const ensureCapacity = (capacity: number): void => {
@@ -1450,8 +1333,7 @@ export interface PubSubStrategy<in out A> {
     pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     elements: Iterable<A>,
-    isShutdown: MutableRef.MutableRef<boolean>,
-    replayBuffer: ReplayBuffer<A> | undefined
+    isShutdown: MutableRef.MutableRef<boolean>
   ): Effect.Effect<boolean>
 
   /**
