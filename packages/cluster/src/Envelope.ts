@@ -6,6 +6,7 @@ import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
 import * as Data from "effect/Data"
 import type * as Equal from "effect/Equal"
+import * as Predicate from "effect/Predicate"
 import * as PrimaryKey from "effect/PrimaryKey"
 
 /**
@@ -42,10 +43,10 @@ export interface Envelope<Req extends Schema.TaggedRequest.Any & PrimaryKey.Prim
         readonly message: Schema.Simplify<Schema.Schema.Encoded<Req[typeof Serializable.symbol]>>
       },
       Serializable.Serializable.Context<Req>,
-      Schema.Schema.Type<Serializable.WithResult.Success<Req>>,
-      Schema.Schema.Encoded<Serializable.WithResult.Success<Req>>,
-      Schema.Schema.Type<Serializable.WithResult.Error<Req>>,
-      Schema.Schema.Encoded<Serializable.WithResult.Error<Req>>,
+      Serializable.WithResult.Success<Req>,
+      Serializable.WithResult.SuccessEncoded<Req>,
+      Serializable.WithResult.Error<Req>,
+      Serializable.WithResult.ErrorEncoded<Req>,
       Serializable.WithResult.Context<Req>
     >,
     Envelope.Proto<Req>
@@ -105,3 +106,11 @@ export const make = <Req extends Schema.TaggedRequest.Any & PrimaryKey.PrimaryKe
   envelope.message = message
   return envelope
 }
+
+/**
+ * @since 1.0.0
+ * @category refinements
+ */
+export const isEnvelope = (u: unknown): u is Envelope<
+  Schema.TaggedRequest.Any & PrimaryKey.PrimaryKey
+> => Predicate.isObject(u) && Predicate.hasProperty(u, TypeId)
