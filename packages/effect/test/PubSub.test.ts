@@ -662,35 +662,52 @@ describe("PubSub", () => {
       assert.deepStrictEqual(pubsub.unsafeSize(), Option.some(0))
     }))
 
-  it.scoped("replayCapacity", () =>
-    Effect.gen(function*() {
+  describe("replayCapacity", () => {
+    it.scoped("unbounded", () =>
+      Effect.gen(function*() {
+        const messages = [1, 2, 3, 4, 5]
+        const pubsub = yield* PubSub.unbounded<number>({ replayCapacity: 3 })
+        yield* PubSub.publishAll(pubsub, messages)
+        const sub = yield* PubSub.subscribe(pubsub)
+        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [3, 4, 5])
+      }))
+
+    it.effect("unbounded takeUpTo", () => {
       const messages = [1, 2, 3, 4, 5]
-      const pubsub = yield* PubSub.unbounded<number>({ replayCapacity: 3 })
-      yield* PubSub.publishAll(pubsub, messages)
-      const sub = yield* PubSub.subscribe(pubsub)
-      assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [3, 4, 5])
-    }))
+      return PubSub.unbounded<number>({ replayCapacity: 3 }).pipe(
+        Effect.flatMap((pubsub) =>
+          Effect.scoped(
+            Effect.gen(function*() {
+              yield* PubSub.publishAll(pubsub, messages)
 
-  it.effect("replayCapacity takeUpTo", () => {
-    const messages = [1, 2, 3, 4, 5]
-    return PubSub.unbounded<number>({ replayCapacity: 3 }).pipe(
-      Effect.flatMap((pubsub) =>
-        Effect.scoped(
-          Effect.gen(function*() {
-            yield* PubSub.publishAll(pubsub, messages)
+              const dequeue1 = yield* PubSub.subscribe(pubsub)
+              yield* PubSub.publish(pubsub, 6)
+              const dequeue2 = yield* PubSub.subscribe(pubsub)
 
-            const dequeue1 = yield* PubSub.subscribe(pubsub)
-            yield* PubSub.publish(pubsub, 6)
-            const dequeue2 = yield* PubSub.subscribe(pubsub)
-
-            assert.strictEqual(yield* Queue.size(dequeue1), 4)
-            assert.strictEqual(yield* Queue.size(dequeue2), 3)
-            assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeUpTo(dequeue1, 2)), [3, 4])
-            assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeUpTo(dequeue1, 2)), [5, 6])
-            assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeUpTo(dequeue2, 3)), [4, 5, 6])
-          })
+              assert.strictEqual(yield* Queue.size(dequeue1), 4)
+              assert.strictEqual(yield* Queue.size(dequeue2), 3)
+              assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeUpTo(dequeue1, 2)), [3, 4])
+              assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeUpTo(dequeue1, 2)), [5, 6])
+              assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeUpTo(dequeue2, 3)), [4, 5, 6])
+            })
+          )
         )
       )
-    )
+    })
+
+    it.scoped("dropping", () =>
+      Effect.gen(function*() {
+        const messages = [1, 2, 3, 4, 5]
+        const pubsub = yield* PubSub.dropping<number>(2, { replayCapacity: 3 })
+
+        yield* PubSub.publishAll(pubsub, messages)
+        const sub = yield* PubSub.subscribe(pubsub)
+        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [3, 4, 5])
+        yield* PubSub.publishAll(pubsub, [6, 7])
+        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [6, 7])
+
+        const sub2 = yield* PubSub.subscribe(pubsub)
+        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub2)), [5, 6, 7])
+      }))
   })
 })
