@@ -1141,7 +1141,12 @@ export const runScoped = <Env, InErr, InDone, OutErr, OutDone>(
             Effect.forkScoped(restore(run(channelDeferred, scopeDeferred, child))),
             Effect.flatMap((fiber) =>
               pipe(
-                Effect.addFinalizer(() => Deferred.succeed(scopeDeferred, void 0)),
+                Scope.addFinalizer(
+                  parent,
+                  Deferred.succeed(scopeDeferred, void 0).pipe(
+                    Effect.zipRight(Effect.yieldNow())
+                  )
+                ),
                 Effect.zipRight(restore(Deferred.await(channelDeferred))),
                 Effect.zipLeft(Fiber.inheritAll(fiber))
               )
