@@ -51,4 +51,17 @@ describe("Stream", () => {
       )
       assert.deepStrictEqual(result, [0, 1, 2, 3])
     }))
+
+  it.effect("raceAll combined sync + async", () =>
+    Effect.gen(function*($) {
+      const result = yield* $(
+        Stream.raceAll(
+          Stream.make(0, 1, 2, 3),
+          Stream.fromSchedule(Schedule.spaced("1 second"))
+        ),
+        Stream.runCollect,
+        Effect.map(Chunk.toReadonlyArray)
+      )
+      assert.deepStrictEqual(result, [0, 1, 2, 3])
+    }))
 })
