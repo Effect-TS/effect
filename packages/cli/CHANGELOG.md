@@ -1,5 +1,93 @@
 # @effect/cli
 
+## 0.37.3
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/printer@0.33.40
+  - @effect/printer-ansi@0.33.40
+
+## 0.37.2
+
+### Patch Changes
+
+- [#3167](https://github.com/Effect-TS/effect/pull/3167) [`749b903`](https://github.com/Effect-TS/effect/commit/749b90345f38d8e61a2f1d6861e55d632daa169e) Thanks @IMax153! - ensure that file selector properly traverses up directories
+
+## 0.37.1
+
+### Patch Changes
+
+- Updated dependencies [[`15967cf`](https://github.com/Effect-TS/effect/commit/15967cf18931fb6ede3083eb687a8dfff371cc56), [`2328e17`](https://github.com/Effect-TS/effect/commit/2328e17577112db17c29b7756942a0ff64a70ee0), [`a5737d6`](https://github.com/Effect-TS/effect/commit/a5737d6db2b921605c332eabbc5402ee3d17357b)]:
+  - @effect/schema@0.68.17
+  - effect@3.4.7
+  - @effect/platform@0.58.20
+  - @effect/printer@0.33.39
+  - @effect/printer-ansi@0.33.39
+
+## 0.37.0
+
+### Minor Changes
+
+- [#3153](https://github.com/Effect-TS/effect/pull/3153) [`51bb7d5`](https://github.com/Effect-TS/effect/commit/51bb7d5677069e51f0c9b0f7e57c4ea2f41401b7) Thanks @IMax153! - Refactors the `Prompt.custom` constructor to make it easier to create custom
+  `Prompt`s.
+
+  The `Prompt.custom` constructor allows for creation of a custom `Prompt` from
+  the provided initial state and handlers.
+
+  ```ts
+  export const custom: <State, Output>(
+    initialState: State | Effect<State, never, Prompt.Environment>,
+    handlers: {
+      readonly render: (
+        state: State,
+        action: Action<State, Output>,
+      ) => Effect<string, never, Environment>;
+      readonly process: (
+        input: UserInput,
+        state: State,
+      ) => Effect<Action<State, Output>, never, Environment>;
+      readonly clear: (
+        state: State,
+        action: Action<State, Output>,
+      ) => Effect<string, never, Environment>;
+    },
+  ) => Prompt<Output> = InternalPrompt.custom;
+  ```
+
+  The initial state of a `Prompt` can either be a pure value or an `Effect`. This
+  is particularly useful when the initial state of the `Prompt` must be computed
+  by performing some effectful computation, such as reading data from the file
+  system.
+
+  A `Prompt` is essentially a render loop where user input triggers a new frame
+  to be rendered to the `Terminal`. The `handlers` of a custom prompt are used
+  to control what is rendered to the `Terminal` each frame. During each frame,
+  the following occurs:
+
+  1. The `render` handler is called with this frame's prompt state and prompt
+     action and returns an ANSI escape string to be rendered to the
+     `Terminal`
+  2. The `Terminal` obtains input from the user
+  3. The `process` handler is called with the input obtained from the user
+     and this frame's prompt state and returns the next prompt action that
+     should be performed
+  4. The `clear` handler is called with this frame's prompt state and prompt
+     action and returns an ANSI escape string used to clear the screen of
+     the `Terminal`
+
+- [#3153](https://github.com/Effect-TS/effect/pull/3153) [`51bb7d5`](https://github.com/Effect-TS/effect/commit/51bb7d5677069e51f0c9b0f7e57c4ea2f41401b7) Thanks @IMax153! - Utilize the `Prompt.file` constructor in Effect CLI's wizard mode for file and directory `Options`
+
+- [#3153](https://github.com/Effect-TS/effect/pull/3153) [`51bb7d5`](https://github.com/Effect-TS/effect/commit/51bb7d5677069e51f0c9b0f7e57c4ea2f41401b7) Thanks @IMax153! - Adds a `Prompt.file` constructor to the `Prompt` module which allows the user to select a file
+
+## 0.36.72
+
+### Patch Changes
+
+- Updated dependencies [[`d006cec`](https://github.com/Effect-TS/effect/commit/d006cec022e8524dbfd6dc6df751fe4c86b10042), [`cb22726`](https://github.com/Effect-TS/effect/commit/cb2272656881aa5878a1c3fc0b12d8fbc66eb63c), [`e911cfd`](https://github.com/Effect-TS/effect/commit/e911cfdc79418462d7e9000976fded15ea6b738d)]:
+  - @effect/schema@0.68.16
+  - @effect/platform@0.58.19
+
 ## 0.36.71
 
 ### Patch Changes

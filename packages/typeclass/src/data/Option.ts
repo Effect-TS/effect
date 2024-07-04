@@ -1,6 +1,6 @@
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 import { dual } from "effect/Function"
 import type { Kind, TypeLambda } from "effect/HKT"
@@ -76,7 +76,7 @@ const traverse = <F extends TypeLambda>(
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Covariant: covariant.Covariant<Option.OptionTypeLambda> = {
   imap,
@@ -85,7 +85,7 @@ export const Covariant: covariant.Covariant<Option.OptionTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Invariant: invariant.Invariant<Option.OptionTypeLambda> = {
   imap
@@ -93,7 +93,7 @@ export const Invariant: invariant.Invariant<Option.OptionTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Of: of_.Of<Option.OptionTypeLambda> = {
   of
@@ -101,7 +101,7 @@ export const Of: of_.Of<Option.OptionTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Pointed: pointed.Pointed<Option.OptionTypeLambda> = {
   of,
@@ -111,7 +111,7 @@ export const Pointed: pointed.Pointed<Option.OptionTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const FlatMap: flatMap_.FlatMap<Option.OptionTypeLambda> = {
   flatMap
@@ -119,7 +119,7 @@ export const FlatMap: flatMap_.FlatMap<Option.OptionTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Chainable: chainable.Chainable<Option.OptionTypeLambda> = {
   imap,
@@ -129,7 +129,7 @@ export const Chainable: chainable.Chainable<Option.OptionTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Monad: monad.Monad<Option.OptionTypeLambda> = {
   imap,
@@ -140,7 +140,7 @@ export const Monad: monad.Monad<Option.OptionTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemiProduct: semiProduct.SemiProduct<Option.OptionTypeLambda> = {
   imap,
@@ -150,7 +150,7 @@ export const SemiProduct: semiProduct.SemiProduct<Option.OptionTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Product: product_.Product<Option.OptionTypeLambda> = {
   of,
@@ -162,7 +162,7 @@ export const Product: product_.Product<Option.OptionTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemiApplicative: semiApplicative.SemiApplicative<Option.OptionTypeLambda> = {
   imap,
@@ -173,7 +173,7 @@ export const SemiApplicative: semiApplicative.SemiApplicative<Option.OptionTypeL
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Applicative: applicative.Applicative<Option.OptionTypeLambda> = {
   imap,
@@ -186,7 +186,7 @@ export const Applicative: applicative.Applicative<Option.OptionTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemiCoproduct: semiCoproduct.SemiCoproduct<Option.OptionTypeLambda> = {
   imap,
@@ -196,7 +196,7 @@ export const SemiCoproduct: semiCoproduct.SemiCoproduct<Option.OptionTypeLambda>
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Coproduct: coproduct_.Coproduct<Option.OptionTypeLambda> = {
   imap,
@@ -208,7 +208,7 @@ export const Coproduct: coproduct_.Coproduct<Option.OptionTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemiAlternative: semiAlternative.SemiAlternative<Option.OptionTypeLambda> = {
   map,
@@ -219,7 +219,7 @@ export const SemiAlternative: semiAlternative.SemiAlternative<Option.OptionTypeL
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Alternative: alternative.Alternative<Option.OptionTypeLambda> = {
   map,
@@ -232,7 +232,7 @@ export const Alternative: alternative.Alternative<Option.OptionTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Foldable: foldable.Foldable<Option.OptionTypeLambda> = {
   reduce: dual(
@@ -243,7 +243,7 @@ export const Foldable: foldable.Foldable<Option.OptionTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Filterable: filterable.Filterable<Option.OptionTypeLambda> = {
   partitionMap: Option.partitionMap,
@@ -252,7 +252,7 @@ export const Filterable: filterable.Filterable<Option.OptionTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Traversable: traversable.Traversable<Option.OptionTypeLambda> = {
   traverse
@@ -260,7 +260,7 @@ export const Traversable: traversable.Traversable<Option.OptionTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const getOptionalMonoid = <A>(
   Semigroup: Semigroup<A>

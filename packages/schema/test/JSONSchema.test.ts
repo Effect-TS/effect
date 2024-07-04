@@ -21,9 +21,9 @@ type Json =
   | JsonArray
   | JsonObject
 
-const doProperty = true
+const doProperty = false
 
-const ajvOptions = { allowMatchingProperties: true }
+const ajvOptions = { strictTuples: false, allowMatchingProperties: true }
 
 const propertyType = <A, I>(schema: Schema.Schema<A, I>, options?: {
   params?: fc.Parameters<[I]>

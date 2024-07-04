@@ -4,14 +4,14 @@
  * This typeclass is useful when dealing with data types that can be converted to and from some other types.
  * The `imap` operation provides a way to convert such data types to other types that they can interact with while preserving their invariants.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 import { dual } from "effect/Function"
 import type { Kind, TypeClass, TypeLambda } from "effect/HKT"
 
 /**
  * @category type class
- * @since 1.0.0
+ * @since 0.24.0
  */
 export interface Invariant<F extends TypeLambda> extends TypeClass<F> {
   readonly imap: {
@@ -30,7 +30,7 @@ export interface Invariant<F extends TypeLambda> extends TypeClass<F> {
 /**
  * Returns a default ternary `imap` composition.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const imapComposition = <F extends TypeLambda, G extends TypeLambda>(
   F: Invariant<F>,
@@ -44,7 +44,7 @@ export const imapComposition = <F extends TypeLambda, G extends TypeLambda>(
 
 /**
  * @category do notation
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const bindTo = <F extends TypeLambda>(F: Invariant<F>): {
   <N extends string>(
@@ -63,7 +63,7 @@ export const bindTo = <F extends TypeLambda>(F: Invariant<F>): {
 /**
  * Convert a value in a singleton array in a given effect.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const tupled = <F extends TypeLambda>(
   F: Invariant<F>

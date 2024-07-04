@@ -44,7 +44,7 @@ export const figures = Effect.map(
  *
  * @internal
  */
-export const eraseText = (text: string, columns: number): Doc.AnsiDoc => {
+export function eraseText(text: string, columns: number): Doc.AnsiDoc {
   if (columns === 0) {
     return Doc.cat(Doc.eraseLine, Doc.cursorTo(0))
   }
@@ -57,7 +57,7 @@ export const eraseText = (text: string, columns: number): Doc.AnsiDoc => {
 }
 
 /** @internal */
-export const lines = (prompt: string, columns: number): number => {
+export function lines(prompt: string, columns: number): number {
   const lines = prompt.split(/\r?\n/)
   return columns === 0
     ? lines.length

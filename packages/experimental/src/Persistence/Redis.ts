@@ -28,7 +28,6 @@ export const make = (options: RedisOptions) =>
         Effect.sync(() => {
           const prefixed = (key: string) => `${prefix}:${key}`
           const parse = (method: string) => (str: string | null) => {
-            console.log("parse", method, str)
             if (str === null) {
               return Effect.succeedNone
             }

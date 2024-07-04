@@ -1,7 +1,7 @@
 /**
  * `Filterable` represents data structures which can be _partitioned_/_filtered_.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 import * as Either from "effect/Either"
 import { dual, identity } from "effect/Function"
@@ -11,7 +11,7 @@ import type { Covariant } from "./Covariant.js"
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 0.24.0
  */
 export interface Filterable<F extends TypeLambda> extends TypeClass<F> {
   readonly partitionMap: {
@@ -35,7 +35,7 @@ export interface Filterable<F extends TypeLambda> extends TypeClass<F> {
 /**
  * Returns a default binary `partitionMap` composition.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const partitionMapComposition = <F extends TypeLambda, G extends TypeLambda>(
   F: Covariant<F>,
@@ -55,7 +55,7 @@ export const partitionMapComposition = <F extends TypeLambda, G extends TypeLamb
 /**
  * Returns a default binary `filterMap` composition.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const filterMapComposition = <F extends TypeLambda, G extends TypeLambda>(
   F: Covariant<F>,
@@ -67,14 +67,14 @@ export const filterMapComposition = <F extends TypeLambda, G extends TypeLambda>
 ): Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, B>> => F.map(self, G.filterMap(f))
 
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const compact = <F extends TypeLambda>(
   F: Filterable<F>
 ): <R, O, E, A>(self: Kind<F, R, O, E, Option.Option<A>>) => Kind<F, R, O, E, A> => F.filterMap(identity)
 
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const separate = <F extends TypeLambda>(
   F: Filterable<F>
@@ -83,7 +83,7 @@ export const separate = <F extends TypeLambda>(
 ) => [Kind<F, R, O, E, A>, Kind<F, R, O, E, B>] => F.partitionMap(identity)
 
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const filter: <F extends TypeLambda>(
   F: Filterable<F>
@@ -110,7 +110,7 @@ export const filter: <F extends TypeLambda>(
   )
 
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const partition = <F extends TypeLambda>(
   F: Filterable<F>

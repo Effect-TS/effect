@@ -1,5 +1,38 @@
 # @effect/experimental
 
+## 0.17.22
+
+### Patch Changes
+
+- Updated dependencies [[`15967cf`](https://github.com/Effect-TS/effect/commit/15967cf18931fb6ede3083eb687a8dfff371cc56), [`2328e17`](https://github.com/Effect-TS/effect/commit/2328e17577112db17c29b7756942a0ff64a70ee0), [`a5737d6`](https://github.com/Effect-TS/effect/commit/a5737d6db2b921605c332eabbc5402ee3d17357b)]:
+  - @effect/schema@0.68.17
+  - effect@3.4.7
+  - @effect/platform@0.58.20
+  - @effect/platform-node@0.53.19
+
+## 0.17.21
+
+### Patch Changes
+
+- [#3158](https://github.com/Effect-TS/effect/pull/3158) [`c3e3ed6`](https://github.com/Effect-TS/effect/commit/c3e3ed64911385fdcfb734c5756bcb2f865df147) Thanks @tim-smart! - drop requirement of PrimaryKey in /experimental Persistence
+
+## 0.17.20
+
+### Patch Changes
+
+- [#3150](https://github.com/Effect-TS/effect/pull/3150) [`271ec23`](https://github.com/Effect-TS/effect/commit/271ec23adb09169a054040d2b47cf54564c8283a) Thanks @tim-smart! - remove console.log from Redis persistence
+
+## 0.17.19
+
+### Patch Changes
+
+- [#3149](https://github.com/Effect-TS/effect/pull/3149) [`cb22726`](https://github.com/Effect-TS/effect/commit/cb2272656881aa5878a1c3fc0b12d8fbc66eb63c) Thanks @tim-smart! - add PersistedCache module to /experimental
+
+- Updated dependencies [[`d006cec`](https://github.com/Effect-TS/effect/commit/d006cec022e8524dbfd6dc6df751fe4c86b10042), [`cb22726`](https://github.com/Effect-TS/effect/commit/cb2272656881aa5878a1c3fc0b12d8fbc66eb63c), [`e911cfd`](https://github.com/Effect-TS/effect/commit/e911cfdc79418462d7e9000976fded15ea6b738d)]:
+  - @effect/schema@0.68.16
+  - @effect/platform@0.58.19
+  - @effect/platform-node@0.53.18
+
 ## 0.17.18
 
 ### Patch Changes

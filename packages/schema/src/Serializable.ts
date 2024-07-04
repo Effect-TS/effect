@@ -82,6 +82,16 @@ export interface WithResult<Success, SuccessEncoded, Failure, FailureEncoded, Su
  */
 export declare namespace WithResult {
   /**
+   * @since 0.68.16
+   */
+  export type Success<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _A : never
+
+  /**
+   * @since 0.68.16
+   */
+  export type Error<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _E : never
+
+  /**
    * @since 0.67.0
    */
   export type Context<T> = T extends WithResult<infer _SA, infer _SI, infer _FA, infer _FI, infer R> ? R : never

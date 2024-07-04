@@ -36,6 +36,7 @@ import * as redacted_ from "effect/Redacted"
 import * as Request from "effect/Request"
 import * as sortedSet_ from "effect/SortedSet"
 import * as string_ from "effect/String"
+import * as struct_ from "effect/Struct"
 import type * as Types from "effect/Types"
 import type { LazyArbitrary } from "./Arbitrary.js"
 import * as arbitrary_ from "./Arbitrary.js"
@@ -2565,6 +2566,14 @@ const makeTypeLiteralClass = <
         ? propsWithDefaults
         : ParseResult.validateSync(this)(propsWithDefaults)
     }
+
+    static pick(...keys: Array<keyof Fields>): Struct<Simplify<Pick<Fields, typeof keys[number]>>> {
+      return Struct(struct_.pick(fields, ...keys) as any)
+    }
+
+    static omit(...keys: Array<keyof Fields>): Struct<Simplify<Omit<Fields, typeof keys[number]>>> {
+      return Struct(struct_.omit(fields, ...keys) as any)
+    }
   }
 }
 
@@ -2574,6 +2583,10 @@ const makeTypeLiteralClass = <
  */
 export interface Struct<Fields extends Struct.Fields> extends TypeLiteral<Fields, []> {
   annotations(annotations: Annotations.Schema<Simplify<Struct.Type<Fields>>>): Struct<Fields>
+  /** @since 0.68.17 */
+  pick<Keys extends ReadonlyArray<keyof Fields>>(...keys: Keys): Struct<Simplify<Pick<Fields, Keys[number]>>>
+  /** @since 0.68.17 */
+  omit<Keys extends ReadonlyArray<keyof Fields>>(...keys: Keys): Struct<Simplify<Omit<Fields, Keys[number]>>>
 }
 
 /**
@@ -3183,7 +3196,7 @@ export interface filter<From extends Schema.Any> extends refine<Schema.Type<From
 
 const fromFilterPredicateReturnTypeItem = (
   item: FilterOutput,
-  ast: AST.Refinement,
+  ast: AST.Refinement | AST.Transformation,
   input: unknown
 ): option_.Option<ParseResult.ParseIssue> => {
   if (Predicate.isBoolean(item)) {
@@ -3208,7 +3221,7 @@ const fromFilterPredicateReturnTypeItem = (
 
 const toFilterParseIssue = (
   out: FilterReturnType,
-  ast: AST.Refinement,
+  ast: AST.Refinement | AST.Transformation,
   input: unknown
 ): option_.Option<ParseResult.ParseIssue> => {
   if (util_.isSingle(out)) {
@@ -3283,6 +3296,60 @@ export function filter<A>(
 
 /**
  * @category api interface
+ * @since 0.68.17
+ */
+export interface filterEffect<S extends Schema.Any, FD = never>
+  extends transformOrFail<S, SchemaClass<Schema.Type<S>>, FD>
+{}
+
+/**
+ * @category transformations
+ * @since 0.68.17
+ */
+export const filterEffect: {
+  <S extends Schema.Any, FD>(
+    f: (
+      a: Types.NoInfer<Schema.Type<S>>,
+      options: ParseOptions,
+      self: AST.Transformation
+    ) => Effect.Effect<FilterReturnType, never, FD>
+  ): (self: S) => filterEffect<S, FD>
+  <S extends Schema.Any, RD>(
+    self: S,
+    f: (
+      a: Types.NoInfer<Schema.Type<S>>,
+      options: ParseOptions,
+      self: AST.Transformation
+    ) => Effect.Effect<FilterReturnType, never, RD>
+  ): filterEffect<S, RD>
+} = dual(2, <S extends Schema.Any, FD>(
+  self: S,
+  f: (
+    a: Types.NoInfer<Schema.Type<S>>,
+    options: ParseOptions,
+    self: AST.Transformation
+  ) => Effect.Effect<FilterReturnType, never, FD>
+): filterEffect<S, FD> =>
+  transformOrFail(
+    self,
+    typeSchema(self),
+    {
+      strict: true,
+      decode: (a, options, ast) =>
+        ParseResult.flatMap(
+          f(a, options, ast),
+          (filterReturnType) =>
+            option_.match(toFilterParseIssue(filterReturnType, ast, a), {
+              onNone: () => ParseResult.succeed(a),
+              onSome: ParseResult.fail
+            })
+        ),
+      encode: ParseResult.succeed
+    }
+  ))
+
+/**
+ * @category api interface
  * @since 0.67.0
  */
 export interface transformOrFail<From extends Schema.Any, To extends Schema.Any, R = never> extends
@@ -3322,7 +3389,7 @@ const makeTransformationClass = <From extends Schema.Any, To extends Schema.Any,
  * Create a new `Schema` by transforming the input and output of an existing `Schema`
  * using the provided decoding functions.
  *
- * @category combinators
+ * @category transformations
  * @since 0.67.0
  */
 export const transformOrFail: {
@@ -3421,7 +3488,7 @@ export interface transform<From extends Schema.Any, To extends Schema.Any> exten
  * Create a new `Schema` by transforming the input and output of an existing `Schema`
  * using the provided mapping functions.
  *
- * @category combinators
+ * @category transformations
  * @since 0.67.0
  */
 export const transform: {

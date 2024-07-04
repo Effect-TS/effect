@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 import * as readonlyArray from "effect/Array"
 import { dual, identity } from "effect/Function"
@@ -55,13 +55,13 @@ const traverse = <F extends TypeLambda>(
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 0.24.0
  */
 export type Identity<A> = A
 
 /**
  * @category type lambdas
- * @since 1.0.0
+ * @since 0.24.0
  */
 export interface IdentityTypeLambda extends TypeLambda {
   readonly type: Identity<this["Target"]>
@@ -69,7 +69,7 @@ export interface IdentityTypeLambda extends TypeLambda {
 
 /**
  * @category type lambdas
- * @since 1.0.0
+ * @since 0.24.0
  */
 export interface IdentityTypeLambdaFix<A> extends TypeLambda {
   readonly type: Identity<A>
@@ -77,7 +77,7 @@ export interface IdentityTypeLambdaFix<A> extends TypeLambda {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Covariant: covariant.Covariant<IdentityTypeLambda> = {
   imap,
@@ -86,7 +86,7 @@ export const Covariant: covariant.Covariant<IdentityTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Invariant: invariant.Invariant<IdentityTypeLambda> = {
   imap
@@ -94,7 +94,7 @@ export const Invariant: invariant.Invariant<IdentityTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Of: of_.Of<IdentityTypeLambda> = {
   of
@@ -102,7 +102,7 @@ export const Of: of_.Of<IdentityTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Pointed: pointed.Pointed<IdentityTypeLambda> = {
   of,
@@ -112,7 +112,7 @@ export const Pointed: pointed.Pointed<IdentityTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const FlatMap: flatMap_.FlatMap<IdentityTypeLambda> = {
   flatMap
@@ -120,7 +120,7 @@ export const FlatMap: flatMap_.FlatMap<IdentityTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Chainable: chainable.Chainable<IdentityTypeLambda> = {
   imap,
@@ -130,7 +130,7 @@ export const Chainable: chainable.Chainable<IdentityTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Monad: monad.Monad<IdentityTypeLambda> = {
   imap,
@@ -141,7 +141,7 @@ export const Monad: monad.Monad<IdentityTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemiProduct: semiProduct.SemiProduct<IdentityTypeLambda> = {
   imap,
@@ -151,7 +151,7 @@ export const SemiProduct: semiProduct.SemiProduct<IdentityTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Product: product_.Product<IdentityTypeLambda> = {
   of,
@@ -163,7 +163,7 @@ export const Product: product_.Product<IdentityTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemiApplicative: semiApplicative.SemiApplicative<IdentityTypeLambda> = {
   imap,
@@ -174,7 +174,7 @@ export const SemiApplicative: semiApplicative.SemiApplicative<IdentityTypeLambda
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Applicative: applicative.Applicative<IdentityTypeLambda> = {
   imap,
@@ -187,7 +187,7 @@ export const Applicative: applicative.Applicative<IdentityTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const getSemiCoproduct = <A>(
   S: Semigroup<A>
@@ -199,7 +199,7 @@ export const getSemiCoproduct = <A>(
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const getSemiAlternative = <A>(
   S: Semigroup<A>
@@ -210,7 +210,7 @@ export const getSemiAlternative = <A>(
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Foldable: foldable.Foldable<IdentityTypeLambda> = {
   reduce: dual(3, <A, B>(self: Identity<A>, b: B, f: (b: B, a: A) => B): B => f(b, self))
@@ -218,7 +218,7 @@ export const Foldable: foldable.Foldable<IdentityTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Traversable: traversable.Traversable<IdentityTypeLambda> = {
   traverse

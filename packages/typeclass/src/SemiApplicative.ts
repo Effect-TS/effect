@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 import { dual, identity, SK } from "effect/Function"
 import type { Kind, TypeLambda } from "effect/HKT"
@@ -10,7 +10,7 @@ import type { SemiProduct } from "./SemiProduct.js"
 
 /**
  * @category type class
- * @since 1.0.0
+ * @since 0.24.0
  */
 export interface SemiApplicative<F extends TypeLambda> extends SemiProduct<F>, Covariant<F> {}
 
@@ -18,7 +18,7 @@ export interface SemiApplicative<F extends TypeLambda> extends SemiProduct<F>, C
  * Lift a `Semigroup` into 'F', the inner values are combined using the provided `Semigroup`.
  *
  * @category lifting
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const getSemigroup =
   <F extends TypeLambda>(F: SemiApplicative<F>) => <A, R, O, E>(S: Semigroup<A>): Semigroup<Kind<F, R, O, E, A>> =>
@@ -34,7 +34,7 @@ export const getSemigroup =
  * @param that - The right-hand side of the zip operation
  * @param f - The function used to combine the values of the two `Option`s
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const zipWith = <F extends TypeLambda>(F: SemiApplicative<F>): {
   <R2, O2, E2, B, A, C>(
@@ -57,7 +57,7 @@ export const zipWith = <F extends TypeLambda>(F: SemiApplicative<F>): {
   )
 
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const ap = <F extends TypeLambda>(F: SemiApplicative<F>): {
   <R2, O2, E2, A>(
@@ -76,7 +76,7 @@ export const ap = <F extends TypeLambda>(F: SemiApplicative<F>): {
   ): Kind<F, R1 & R2, O1 | O2, E1 | E2, B> => zipWith(F)(self, that, (f, a) => f(a)))
 
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const zipLeft = <F extends TypeLambda>(F: SemiApplicative<F>): {
   <R2, O2, E2, _>(
@@ -93,7 +93,7 @@ export const zipLeft = <F extends TypeLambda>(F: SemiApplicative<F>): {
   ): Kind<F, R1 & R2, O1 | O2, E1 | E2, A> => zipWith(F)(self, that, identity))
 
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const zipRight = <F extends TypeLambda>(F: SemiApplicative<F>): {
   <R2, O2, E2, B>(
@@ -115,7 +115,7 @@ export const zipRight = <F extends TypeLambda>(F: SemiApplicative<F>): {
  * @param f - The function to lift.
  *
  * @category lifting
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const lift2 = <F extends TypeLambda>(F: SemiApplicative<F>) =>
 <A, B, C>(f: (a: A, b: B) => C): {

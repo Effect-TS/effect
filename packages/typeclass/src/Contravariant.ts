@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 import { dual } from "effect/Function"
 import type { Kind, TypeLambda } from "effect/HKT"
@@ -7,7 +7,7 @@ import type { Invariant } from "./Invariant.js"
 
 /**
  * @category type class
- * @since 1.0.0
+ * @since 0.24.0
  */
 export interface Contravariant<F extends TypeLambda> extends Invariant<F> {
   readonly contramap: {
@@ -21,7 +21,7 @@ export interface Contravariant<F extends TypeLambda> extends Invariant<F> {
  *
  * Returns a default binary `map` composition.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const contramapComposition = <F extends TypeLambda, G extends TypeLambda>(
   F: Contravariant<F>,
@@ -35,7 +35,7 @@ export const contramapComposition = <F extends TypeLambda, G extends TypeLambda>
 /**
  * Returns a default `imap` implementation.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const imap = <F extends TypeLambda>(
   contramap: <R, O, E, A, B>(

@@ -1,5 +1,140 @@
 # @effect/schema
 
+## 0.68.17
+
+### Patch Changes
+
+- [#3166](https://github.com/Effect-TS/effect/pull/3166) [`15967cf`](https://github.com/Effect-TS/effect/commit/15967cf18931fb6ede3083eb687a8dfff371cc56) Thanks @gcanti! - Add `filterEffect` API, closes #3165
+
+  The `filterEffect` function enhances the `filter` functionality by allowing the integration of effects, thus enabling asynchronous or dynamic validation scenarios. This is particularly useful when validations need to perform operations that require side effects, such as network requests or database queries.
+
+  **Example: Validating Usernames Asynchronously**
+
+  ```ts
+  import { Schema } from "@effect/schema";
+  import { Effect } from "effect";
+
+  async function validateUsername(username: string) {
+    return Promise.resolve(username === "gcanti");
+  }
+
+  const ValidUsername = Schema.String.pipe(
+    Schema.filterEffect((username) =>
+      Effect.promise(() =>
+        validateUsername(username).then((valid) => valid || "Invalid username"),
+      ),
+    ),
+  ).annotations({ identifier: "ValidUsername" });
+
+  Effect.runPromise(Schema.decodeUnknown(ValidUsername)("xxx")).then(
+    console.log,
+  );
+  /*
+  ParseError: ValidUsername
+  └─ Transformation process failure
+     └─ Invalid username
+  */
+  ```
+
+- [#3163](https://github.com/Effect-TS/effect/pull/3163) [`2328e17`](https://github.com/Effect-TS/effect/commit/2328e17577112db17c29b7756942a0ff64a70ee0) Thanks @gcanti! - Add `pick` and `omit` static functions to `Struct` interface, closes #3152.
+
+  **pick**
+
+  The `pick` static function available in each struct schema can be used to create a new `Struct` by selecting particular properties from an existing `Struct`.
+
+  ```ts
+  import { Schema } from "@effect/schema";
+
+  const MyStruct = Schema.Struct({
+    a: Schema.String,
+    b: Schema.Number,
+    c: Schema.Boolean,
+  });
+
+  // Schema.Struct<{ a: typeof Schema.String; c: typeof Schema.Boolean; }>
+  const PickedSchema = MyStruct.pick("a", "c");
+  ```
+
+  **omit**
+
+  The `omit` static function available in each struct schema can be used to create a new `Struct` by excluding particular properties from an existing `Struct`.
+
+  ```ts
+  import { Schema } from "@effect/schema";
+
+  const MyStruct = Schema.Struct({
+    a: Schema.String,
+    b: Schema.Number,
+    c: Schema.Boolean,
+  });
+
+  // Schema.Struct<{ a: typeof Schema.String; c: typeof Schema.Boolean; }>
+  const PickedSchema = MyStruct.omit("b");
+  ```
+
+- Updated dependencies [[`a5737d6`](https://github.com/Effect-TS/effect/commit/a5737d6db2b921605c332eabbc5402ee3d17357b)]:
+  - effect@3.4.7
+
+## 0.68.16
+
+### Patch Changes
+
+- [#3143](https://github.com/Effect-TS/effect/pull/3143) [`d006cec`](https://github.com/Effect-TS/effect/commit/d006cec022e8524dbfd6dc6df751fe4c86b10042) Thanks @gcanti! - Enhance JSON Schema Support for Refinements in Record Parameters.
+
+  Enhanced `JSONSchema.make` to properly support refinements as record parameters. Previously, using refinements with `Schema.Record` resulted in errors when generating JSON schemas.
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "@effect/schema";
+
+  const schema = Schema.Record(
+    Schema.String.pipe(Schema.minLength(1)),
+    Schema.Number,
+  );
+
+  console.log(JSONSchema.make(schema));
+  /*
+  throws
+  Error: Unsupported index signature parameter
+  schema (Refinement): a string at least 1 character(s) long
+  */
+  ```
+
+  Now
+
+  ```ts
+  import { JSONSchema, Schema } from "@effect/schema";
+
+  const schema = Schema.Record(
+    Schema.String.pipe(Schema.minLength(1)),
+    Schema.Number,
+  );
+
+  console.log(JSONSchema.make(schema));
+  /*
+  Output:
+  {
+    '$schema': 'http://json-schema.org/draft-07/schema#',
+    type: 'object',
+    required: [],
+    properties: {},
+    patternProperties: { '': { type: 'number' } },
+    propertyNames: {
+      type: 'string',
+      description: 'a string at least 1 character(s) long',
+      minLength: 1
+    }
+  }
+  */
+  ```
+
+- [#3149](https://github.com/Effect-TS/effect/pull/3149) [`cb22726`](https://github.com/Effect-TS/effect/commit/cb2272656881aa5878a1c3fc0b12d8fbc66eb63c) Thanks @tim-smart! - add Serializable.WithResult.Success/Error inference helpers
+
+- [#3139](https://github.com/Effect-TS/effect/pull/3139) [`e911cfd`](https://github.com/Effect-TS/effect/commit/e911cfdc79418462d7e9000976fded15ea6b738d) Thanks @gcanti! - Optimize JSON Schema output for homogeneous tuples (such as non empty arrays).
+
+  This change corrects the JSON Schema generation for `S.NonEmptyArray` to eliminate redundant schema definitions. Previously, the element schema was unnecessarily duplicated under both `items` and `additionalItems`.
+
 ## 0.68.15
 
 ### Patch Changes

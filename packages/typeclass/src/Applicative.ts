@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 import type { Kind, TypeLambda } from "effect/HKT"
 import type { Monoid } from "./Monoid.js"
@@ -10,7 +10,7 @@ import * as semiApplicative from "./SemiApplicative.js"
 
 /**
  * @category type class
- * @since 1.0.0
+ * @since 0.24.0
  */
 export interface Applicative<F extends TypeLambda> extends SemiApplicative<F>, Product<F> {}
 
@@ -23,7 +23,7 @@ export interface Applicative<F extends TypeLambda> extends SemiApplicative<F>, P
  * @param F - The `Applicative` instance for `F`.
  * @param M - The `Monoid` instance for `A`.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const getMonoid =
   <F extends TypeLambda>(F: Applicative<F>) => <A, R, O, E>(M: Monoid<A>): Monoid<Kind<F, R, O, E, A>> =>

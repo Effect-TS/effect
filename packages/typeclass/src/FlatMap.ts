@@ -1,12 +1,12 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 import { dual, identity } from "effect/Function"
 import type { Kind, TypeClass, TypeLambda } from "effect/HKT"
 
 /**
  * @category type class
- * @since 1.0.0
+ * @since 0.24.0
  */
 export interface FlatMap<F extends TypeLambda> extends TypeClass<F> {
   readonly flatMap: {
@@ -21,7 +21,7 @@ export interface FlatMap<F extends TypeLambda> extends TypeClass<F> {
 }
 
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const flatten = <F extends TypeLambda>(F: FlatMap<F>) =>
 <R2, O2, E2, R1, O1, E1, A>(
@@ -31,7 +31,7 @@ export const flatten = <F extends TypeLambda>(F: FlatMap<F>) =>
 /**
  * A variant of `flatMap` that ignores the value produced by this effect.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const zipRight = <F extends TypeLambda>(F: FlatMap<F>): {
   <R2, O2, E2, B>(
@@ -48,7 +48,7 @@ export const zipRight = <F extends TypeLambda>(F: FlatMap<F>): {
   ): Kind<F, R1 & R2, O1 | O2, E1 | E2, B> => F.flatMap(self, () => that))
 
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const composeK = <F extends TypeLambda>(
   F: FlatMap<F>

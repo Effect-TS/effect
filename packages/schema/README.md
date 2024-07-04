@@ -2026,6 +2026,8 @@ const mySymbolSchema = Schema.UniqueSymbolFromSelf(mySymbol)
 
 Using the `Schema.filter` function, developers can define custom validation logic that goes beyond basic type checks, allowing for in-depth control over the data conformity process. This function applies a predicate to data, and if the data fails the predicate's condition, a custom error message can be returned.
 
+**Note**. For effectful filters, see `filterEffect`.
+
 **Simple Validation Example**:
 
 ```ts
@@ -3818,38 +3820,66 @@ Error: Expected MyData (an instance of MyData), actual {"name":"name"}
 
 ## pick
 
-The `pick` operation is used to select specific properties from a schema.
+The `pick` static function available in each struct schema can be used to create a new `Struct` by selecting particular properties from an existing `Struct`.
 
 ```ts
 import { Schema } from "@effect/schema"
 
-// Schema<{ readonly a: string; }>
-Schema.Struct({ a: Schema.String, b: Schema.Number, c: Schema.Boolean }).pipe(
-  Schema.pick("a")
+const MyStruct = Schema.Struct({
+  a: Schema.String,
+  b: Schema.Number,
+  c: Schema.Boolean
+})
+
+// Schema.Struct<{ a: typeof Schema.String; c: typeof Schema.Boolean; }>
+const PickedSchema = MyStruct.pick("a", "c")
+```
+
+The `Schema.pick` function can be applied more broadly beyond just `Struct` types, such as with unions of schemas. However it returns a generic `SchemaClass`.
+
+**Example: Picking from a Union**
+
+```ts
+import { Schema } from "@effect/schema"
+
+const MyUnion = Schema.Union(
+  Schema.Struct({ a: Schema.String, b: Schema.String, c: Schema.String }),
+  Schema.Struct({ a: Schema.Number, b: Schema.Number, d: Schema.Number })
 )
 
-// Schema<{ readonly a: string; readonly c: boolean; }>
-Schema.Struct({ a: Schema.String, b: Schema.Number, c: Schema.Boolean }).pipe(
-  Schema.pick("a", "c")
-)
+// Schema.SchemaClass<{ readonly a: string | number; readonly b: string | number }>
+const PickedSchema = MyUnion.pipe(Schema.pick("a", "b"))
 ```
 
 ## omit
 
-The `omit` operation is employed to exclude certain properties from a schema.
+The `omit` static function available in each struct schema can be used to create a new `Struct` by excluding particular properties from an existing `Struct`.
 
 ```ts
 import { Schema } from "@effect/schema"
 
-// Schema<{ readonly b: number; readonly c: boolean; }>
-Schema.Struct({ a: Schema.String, b: Schema.Number, c: Schema.Boolean }).pipe(
-  Schema.omit("a")
+const MyStruct = Schema.Struct({
+  a: Schema.String,
+  b: Schema.Number,
+  c: Schema.Boolean
+})
+
+// Schema.Struct<{ a: typeof Schema.String; c: typeof Schema.Boolean; }>
+const PickedSchema = MyStruct.omit("b")
+```
+
+The `Schema.omit` function can be applied more broadly beyond just `Struct` types, such as with unions of schemas. However it returns a generic `SchemaClass`.
+
+```ts
+import { Schema } from "@effect/schema"
+
+const MyUnion = Schema.Union(
+  Schema.Struct({ a: Schema.String, b: Schema.String, c: Schema.String }),
+  Schema.Struct({ a: Schema.Number, b: Schema.Number, d: Schema.Number })
 )
 
-// Schema<{ readonly b: number; }>
-Schema.Struct({ a: Schema.String, b: Schema.Number, c: Schema.Boolean }).pipe(
-  Schema.omit("a", "c")
-)
+// Schema.SchemaClass<{ readonly a: string | number }>
+const PickedSchema = MyUnion.pipe(Schema.omit("b"))
 ```
 
 ## partial
@@ -4779,6 +4809,36 @@ Output:
     failure: '(string <-> string)\n└─ Transformation process failure\n   └─ Error: 404'
   }
 }
+*/
+```
+
+## Effectful Filters
+
+The `filterEffect` function enhances the `filter` functionality by allowing the integration of effects, thus enabling asynchronous or dynamic validation scenarios. This is particularly useful when validations need to perform operations that require side effects, such as network requests or database queries.
+
+**Example: Validating Usernames Asynchronously**
+
+```ts
+import { Schema } from "@effect/schema"
+import { Effect } from "effect"
+
+async function validateUsername(username: string) {
+  return Promise.resolve(username === "gcanti")
+}
+
+const ValidUsername = Schema.String.pipe(
+  Schema.filterEffect((username) =>
+    Effect.promise(() =>
+      validateUsername(username).then((valid) => valid || "Invalid username")
+    )
+  )
+).annotations({ identifier: "ValidUsername" })
+
+Effect.runPromise(Schema.decodeUnknown(ValidUsername)("xxx")).then(console.log)
+/*
+ParseError: ValidUsername
+└─ Transformation process failure
+   └─ Invalid username
 */
 ```
 
