@@ -1,3 +1,4 @@
+import { Schedule } from "effect"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
@@ -163,5 +164,28 @@ describe("Stream", () => {
       yield* $(Queue.offer(queue, 1))
       const result = yield* $(Fiber.join(fiber))
       assert.deepStrictEqual(Array.from(result), [])
+    }))
+
+  it.effect("interruptWhen - interrupts the effect", () =>
+    Effect.gen(function*() {
+      let interrupted = false
+      const effect = Effect.never.pipe(
+        Effect.onInterrupt(() =>
+          Effect.sync(() => {
+            interrupted = true
+          })
+        )
+      )
+
+      const fiber = yield* Stream.fromSchedule(Schedule.spaced("1 second")).pipe(
+        Stream.interruptWhen(effect),
+        Stream.take(1),
+        Stream.runDrain,
+        Effect.fork
+      )
+      yield* TestClock.adjust("1 seconds")
+      yield* fiber.await
+
+      assert.strictEqual(interrupted, true)
     }))
 })

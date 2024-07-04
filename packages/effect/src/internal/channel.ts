@@ -1607,11 +1607,12 @@ export const mergeWith = dual<
       (input) => {
         const queueReader = fromInput(input)
         return Effect.map(
-          Effect.zip(
+          Effect.all([
             toPull(core.pipeTo(queueReader, self)),
-            toPull(core.pipeTo(queueReader, options.other))
-          ),
-          ([pullL, pullR]) => {
+            toPull(core.pipeTo(queueReader, options.other)),
+            Effect.scope
+          ]),
+          ([pullL, pullR, scope]) => {
             type State = MergeState.MergeState<
               Env | Env1,
               OutErr,
@@ -1806,8 +1807,8 @@ export const mergeWith = dual<
             return pipe(
               core.fromEffect(
                 Effect.zipWith(
-                  Effect.forkDaemon(pullL),
-                  Effect.forkDaemon(pullR),
+                  Effect.forkIn(pullL, scope),
+                  Effect.forkIn(pullR, scope),
                   (left, right): State =>
                     mergeState.BothRunning<
                       Env | Env1,
