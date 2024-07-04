@@ -813,6 +813,19 @@ pipe(
 )
 
 // ---------------------------------------------
+// Struct.pick
+// ---------------------------------------------
+
+// @ts-expect-error
+S.Struct({ a: S.String }).pick("c")
+
+// @ts-expect-error
+S.Struct({ a: S.propertySignature(S.String).pipe(S.fromKey("c")) }).pick("c")
+
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; }>
+S.Struct({ a: S.String, b: S.Number, c: S.Boolean }).pick("a", "b")
+
+// ---------------------------------------------
 // omit
 // ---------------------------------------------
 
@@ -847,6 +860,22 @@ pipe(
   }),
   S.omit("c")
 )
+
+// ---------------------------------------------
+// Struct.omit
+// ---------------------------------------------
+
+// @ts-expect-error
+S.Struct({ a: S.String }).omit("c")
+
+// @ts-expect-error
+S.Struct({ a: S.propertySignature(S.String).pipe(S.fromKey("c")) }).omit("c")
+
+// $ExpectType Struct<{ a: typeof String$; b: typeof Number$; }>
+S.Struct({ a: S.String, b: S.Number, c: S.Boolean }).omit("c")
+
+// $ExpectType Struct<{ a: typeof Number$; }>
+S.Struct({ a: S.Number, b: S.Number.pipe(S.propertySignature, S.fromKey("c")) }).omit("b")
 
 // ---------------------------------------------
 // brand

@@ -36,6 +36,7 @@ import * as redacted_ from "effect/Redacted"
 import * as Request from "effect/Request"
 import * as sortedSet_ from "effect/SortedSet"
 import * as string_ from "effect/String"
+import * as struct_ from "effect/Struct"
 import type * as Types from "effect/Types"
 import type { LazyArbitrary } from "./Arbitrary.js"
 import * as arbitrary_ from "./Arbitrary.js"
@@ -2565,6 +2566,14 @@ const makeTypeLiteralClass = <
         ? propsWithDefaults
         : ParseResult.validateSync(this)(propsWithDefaults)
     }
+
+    static pick(...keys: Array<keyof Fields>): Struct<Simplify<Pick<Fields, typeof keys[number]>>> {
+      return Struct(struct_.pick(fields, ...keys) as any)
+    }
+
+    static omit(...keys: Array<keyof Fields>): Struct<Simplify<Omit<Fields, typeof keys[number]>>> {
+      return Struct(struct_.omit(fields, ...keys) as any)
+    }
   }
 }
 
@@ -2574,6 +2583,10 @@ const makeTypeLiteralClass = <
  */
 export interface Struct<Fields extends Struct.Fields> extends TypeLiteral<Fields, []> {
   annotations(annotations: Annotations.Schema<Simplify<Struct.Type<Fields>>>): Struct<Fields>
+  /** @since 0.68.17 */
+  pick<Keys extends ReadonlyArray<keyof Fields>>(...keys: Keys): Struct<Simplify<Pick<Fields, Keys[number]>>>
+  /** @since 0.68.17 */
+  omit<Keys extends ReadonlyArray<keyof Fields>>(...keys: Keys): Struct<Simplify<Omit<Fields, Keys[number]>>>
 }
 
 /**
