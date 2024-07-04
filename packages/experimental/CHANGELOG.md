@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.17.21
+
+### Patch Changes
+
+- [#3158](https://github.com/Effect-TS/effect/pull/3158) [`c3e3ed6`](https://github.com/Effect-TS/effect/commit/c3e3ed64911385fdcfb734c5756bcb2f865df147) Thanks @tim-smart! - drop requirement of PrimaryKey in /experimental Persistence
+
 ## 0.17.20
 
 ### Patch Changes
