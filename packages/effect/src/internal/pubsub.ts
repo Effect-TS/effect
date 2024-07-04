@@ -1024,14 +1024,13 @@ class SubscriptionImpl<in out A> implements Queue.Dequeue<A> {
       if (MutableRef.get(this.shutdownFlag)) {
         return core.interrupt
       }
-      const replayLen = this.replayWindow.remaining
       let replay: Chunk.Chunk<A> | undefined = undefined
-      if (replayLen >= max) {
+      if (this.replayWindow.remaining >= max) {
         const as = this.replayWindow.takeN(max)
         return core.succeed(as)
-      } else if (replayLen > 0) {
+      } else if (this.replayWindow.remaining > 0) {
         replay = this.replayWindow.takeAll()
-        max = max - replayLen
+        max = max - replay.length
       }
       const as = MutableQueue.isEmpty(this.pollers)
         ? unsafePollN(this.subscription, max)
