@@ -4686,38 +4686,43 @@ export const range = (min: number, max: number, chunkSize = DefaultChunkSize): S
     return new StreamImpl(go(min, max, chunkSize))
   })
 
-export const raceAll = <T extends ReadonlyArray<Stream.Stream<any, any, any>>>(
-  ...streams: T
+export const raceAll = <S extends ReadonlyArray<Stream.Stream<any, any, any>>>(
+  ...streams: S
 ): Stream.Stream<
-  [T[number]] extends [never] ? never : T[number] extends Stream.Stream<infer A, any, any> ? A : never,
-  [T[number]] extends [never] ? never : T[number] extends Stream.Stream<any, infer E, any> ? E : never,
-  [T[number]] extends [never] ? never : T[number] extends Stream.Stream<any, any, infer R> ? R : never
-> => {
-  let finished = false
-  return unwrap(
-    Effect.gen(function*() {
-      const halts = yield* Effect.all(streams.map(() => Deferred.make<void>()))
+  Stream.Stream.Success<S[number]>,
+  Stream.Stream.Error<S[number]>,
+  Stream.Stream.Context<S[number]>
+> =>
+  Deferred.make<void>().pipe(
+    Effect.map((halt) => {
+      let winner: number | null = null;
       return mergeAll(
-        streams.map((s, index) =>
-          s.pipe(
-            tap(() => {
-              if (finished) {
-                return Effect.void
+        streams.map((stream, index) =>
+          stream.pipe(
+            takeWhile(() => {
+              if (winner === index) {
+                return true;
+              } else if (winner === null) {
+                winner = index;
+                Deferred.unsafeDone(halt, Exit.void);
+                return true;
               }
-              finished = true
-              return Effect.all(
-                halts.map((def, i) => i === index ? Effect.void : Deferred.succeed(def, void 0))
-              )
+              return false;
             }),
-            interruptWhenDeferred(halts[index]!),
-            haltWhenDeferred(halts[index]!)
-          )
+            interruptWhen(
+              Deferred.await(halt).pipe(
+                Effect.flatMap(() =>
+                  winner === index ? Effect.never : Effect.void,
+                ),
+              ),
+            ),
+          ),
         ),
-        { concurrency: "unbounded" }
-      )
-    })
-  )
-}
+        { concurrency: streams.length },
+      );
+    }),
+    unwrap,
+  );
 
 /** @internal */
 export const rechunk = dual<

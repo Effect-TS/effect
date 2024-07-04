@@ -2716,12 +2716,12 @@ export const provideSomeLayer: {
  * @since 3.5.0
  * @category utils
  */
-export const raceAll: <T extends ReadonlyArray<Stream<any, any, any>>>(
-  ...streams: T
+export const raceAll: <S extends ReadonlyArray<Stream<any, any, any>>>(
+  ...streams: S
 ) => Stream<
-  [T[number]] extends [never] ? never : T[number] extends Stream<infer A, any, any> ? A : never,
-  [T[number]] extends [never] ? never : T[number] extends Stream<any, infer E, any> ? E : never,
-  [T[number]] extends [never] ? never : T[number] extends Stream<any, any, infer R> ? R : never
+  Stream.Success<S[number]>,
+  Stream.Error<S[number]>,
+  Stream.Context<S[number]>
 > = internal.raceAll
 
 /**
