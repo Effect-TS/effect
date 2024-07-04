@@ -1,5 +1,11 @@
 # @effect/cli
 
+## 0.37.2
+
+### Patch Changes
+
+- [#3167](https://github.com/Effect-TS/effect/pull/3167) [`749b903`](https://github.com/Effect-TS/effect/commit/749b90345f38d8e61a2f1d6861e55d632daa169e) Thanks @IMax153! - ensure that file selector properly traverses up directories
+
 ## 0.37.1
 
 ### Patch Changes
