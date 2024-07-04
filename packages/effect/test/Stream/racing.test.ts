@@ -39,19 +39,16 @@ describe("Stream", () => {
       assert.deepStrictEqual(result, [0, 1, 2, 3, 4])
     }))
 
-  it.effect("raceAll combined sync + async", () =>
+  it.effect("raceAll combined async + sync", () =>
     Effect.gen(function*($) {
-      const fiber = yield* $(
+      const result = yield* $(
         Stream.raceAll(
           Stream.fromSchedule(Schedule.spaced("1 second")),
-          Stream.make(1, 2, 3)
+          Stream.make(0, 1, 2, 3)
         ),
         Stream.runCollect,
-        Effect.map(Chunk.toReadonlyArray),
-        Effect.fork
+        Effect.map(Chunk.toReadonlyArray)
       )
-      yield* TestClock.adjust("0 millis")
-      const result = yield* Fiber.join(fiber)
-      assert.deepStrictEqual(result, [1, 2, 3])
+      assert.deepStrictEqual(result, [0, 1, 2, 3])
     }))
 })
