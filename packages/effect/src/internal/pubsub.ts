@@ -993,6 +993,7 @@ class SubscriptionImpl<in out A> implements Queue.Dequeue<A> {
         return core.succeed(as)
       } else if (replayLen > 0) {
         replay = this.replayBuffer.takeAll()
+        max = max - replayLen
       }
       const as = MutableQueue.isEmpty(this.pollers)
         ? unsafePollN(this.subscription, max)
@@ -1236,12 +1237,9 @@ class ReplayPubSubImpl<in out A> implements PubSub.PubSub<A> {
       if (MutableRef.get(this.backing.shutdownFlag)) {
         return core.interrupt
       }
-      const success = this.backing.publish(value)
-      if (success || this.backing.isEmpty) {
-        this.replayBuffer.offer(value)
-      }
-      if (success) {
+      if (this.backing.pubsub.publish(value)) {
         this.backing.strategy.unsafeCompleteSubscribers(this.backing.pubsub, this.backing.subscribers)
+        this.replayBuffer.offer(value)
         return core.succeed(true)
       }
       return core.uninterruptibleMask((restore) =>
@@ -1252,7 +1250,7 @@ class ReplayPubSubImpl<in out A> implements PubSub.PubSub<A> {
           this.backing.shutdownFlag
         )).pipe(
           core.tap((success) => {
-            if (success || this.backing.isEmpty) {
+            if (success) {
               this.replayBuffer.offer(value)
             }
           })
@@ -1263,7 +1261,7 @@ class ReplayPubSubImpl<in out A> implements PubSub.PubSub<A> {
   publishAll(elements: Iterable<A>): Effect.Effect<boolean> {
     return core.uninterruptibleMask((restore) =>
       core.tap(restore(this.backing.publishAll(elements)), (success) => {
-        if (success || this.backing.isEmpty) {
+        if (success) {
           this.replayBuffer.offerAll(elements)
         }
       })
@@ -1780,7 +1778,7 @@ class ReplayWindowImpl<A> implements ReplayWindow<A> {
     this.head = buffer.head
   }
   fastForward() {
-    const skip = this.buffer.index - this.startIndex
+    const skip = this.buffer.index - (this.startIndex + this.remaining)
     for (let i = 0; i < skip; i++) {
       this.head = this.head.next!
       this.startIndex++
