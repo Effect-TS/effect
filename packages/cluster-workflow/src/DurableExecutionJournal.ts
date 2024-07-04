@@ -159,10 +159,13 @@ export const make = ({ table }: DurableExecutionJournal.MakeOptions) =>
       )
     }
 
-    return {
+    const self: DurableExecutionJournal = {
+      [DurableExecutionJournalTypeId]: DurableExecutionJournalTypeId,
       append,
       read
-    } as const
+    }
+
+    return self
   })
 
 /**
