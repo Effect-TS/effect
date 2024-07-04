@@ -1,5 +1,80 @@
 # @effect/schema
 
+## 0.68.17
+
+### Patch Changes
+
+- [#3166](https://github.com/Effect-TS/effect/pull/3166) [`15967cf`](https://github.com/Effect-TS/effect/commit/15967cf18931fb6ede3083eb687a8dfff371cc56) Thanks @gcanti! - Add `filterEffect` API, closes #3165
+
+  The `filterEffect` function enhances the `filter` functionality by allowing the integration of effects, thus enabling asynchronous or dynamic validation scenarios. This is particularly useful when validations need to perform operations that require side effects, such as network requests or database queries.
+
+  **Example: Validating Usernames Asynchronously**
+
+  ```ts
+  import { Schema } from "@effect/schema";
+  import { Effect } from "effect";
+
+  async function validateUsername(username: string) {
+    return Promise.resolve(username === "gcanti");
+  }
+
+  const ValidUsername = Schema.String.pipe(
+    Schema.filterEffect((username) =>
+      Effect.promise(() =>
+        validateUsername(username).then((valid) => valid || "Invalid username"),
+      ),
+    ),
+  ).annotations({ identifier: "ValidUsername" });
+
+  Effect.runPromise(Schema.decodeUnknown(ValidUsername)("xxx")).then(
+    console.log,
+  );
+  /*
+  ParseError: ValidUsername
+  └─ Transformation process failure
+     └─ Invalid username
+  */
+  ```
+
+- [#3163](https://github.com/Effect-TS/effect/pull/3163) [`2328e17`](https://github.com/Effect-TS/effect/commit/2328e17577112db17c29b7756942a0ff64a70ee0) Thanks @gcanti! - Add `pick` and `omit` static functions to `Struct` interface, closes #3152.
+
+  **pick**
+
+  The `pick` static function available in each struct schema can be used to create a new `Struct` by selecting particular properties from an existing `Struct`.
+
+  ```ts
+  import { Schema } from "@effect/schema";
+
+  const MyStruct = Schema.Struct({
+    a: Schema.String,
+    b: Schema.Number,
+    c: Schema.Boolean,
+  });
+
+  // Schema.Struct<{ a: typeof Schema.String; c: typeof Schema.Boolean; }>
+  const PickedSchema = MyStruct.pick("a", "c");
+  ```
+
+  **omit**
+
+  The `omit` static function available in each struct schema can be used to create a new `Struct` by excluding particular properties from an existing `Struct`.
+
+  ```ts
+  import { Schema } from "@effect/schema";
+
+  const MyStruct = Schema.Struct({
+    a: Schema.String,
+    b: Schema.Number,
+    c: Schema.Boolean,
+  });
+
+  // Schema.Struct<{ a: typeof Schema.String; c: typeof Schema.Boolean; }>
+  const PickedSchema = MyStruct.omit("b");
+  ```
+
+- Updated dependencies [[`a5737d6`](https://github.com/Effect-TS/effect/commit/a5737d6db2b921605c332eabbc5402ee3d17357b)]:
+  - effect@3.4.7
+
 ## 0.68.16
 
 ### Patch Changes
