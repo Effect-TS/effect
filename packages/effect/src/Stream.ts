@@ -2695,7 +2695,11 @@ export const provideSomeLayer: {
 } = internal.provideSomeLayer
 
 /**
- * Returns a stream that mirrors the first source stream to emit an item.
+ * Returns a stream that mirrors the first upstream to emit an item.
+ * As soon as one of the upstream emits a first value, all the others are being interrupted.
+ * The resulting stream will forward all items from the "winning" source stream.
+ * Any upstream failures will cause the returned stream to fail.
+ *
  * @example
  * import { Stream, Schedule, Console, Effect } from "effect"
  *
