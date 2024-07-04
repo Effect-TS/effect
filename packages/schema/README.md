@@ -8017,7 +8017,7 @@ The `WithResult` trait is designed to encapsulate the outcome of an operation, d
 The primary aim of this trait is to model and serialize the function signature:
 
 ```ts
-;(a: A) => Exit<Success, Failure>
+(arg: A): Exit<Success, Failure>
 ```
 
 To achieve this, schemas need to be defined for the following:
@@ -8140,6 +8140,73 @@ Output:
 */
 
 console.log(Effect.runSync(roundtrip(new GetPersonById(0))))
+/*
+Output:
+{
+  _id: 'Exit',
+  _tag: 'Failure',
+  cause: { _id: 'Cause', _tag: 'Fail', failure: 'User not found' }
+}
+*/
+```
+
+## Streamlining Code with Schema.Class and Schema.TaggedRequest
+
+The previous example, although illustrative of the underlying mechanisms, involves considerable boilerplate code. To simplify development, we can utilize two specifically designed APIs: `Schema.Class` for modeling the `Person` class and `Schema.TaggedRequest` for modeling the `GetPersonById` operation.
+
+```ts
+import type { ParseResult } from "@effect/schema"
+import { Schema, Serializable } from "@effect/schema"
+import { Effect, Exit } from "effect"
+
+class Person extends Schema.Class<Person>("Person")({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.Date
+}) {}
+
+// Represents the serializable function: `(arg: { readonly id: number }) => Exit<Person, string>`
+class GetPersonById extends Schema.TaggedRequest<GetPersonById>()(
+  "GetPersonById",
+  Schema.String, // Failure schema
+  Person, // Success schema
+  { id: Schema.Number } // Argument schema
+) {}
+
+function handleGetPersonById(serializedReq: typeof GetPersonById.Encoded) {
+  return Effect.gen(function* () {
+    const req = yield* Schema.decodeUnknown(GetPersonById)(serializedReq)
+    return yield* Serializable.serializeExit(
+      req,
+      req.id === 0
+        ? Exit.fail("User not found")
+        : Exit.succeed(
+            new Person({ id: req.id, name: "John", createdAt: new Date() })
+          )
+    )
+  })
+}
+
+const roundtrip = (
+  req: GetPersonById
+): Effect.Effect<Exit.Exit<Person, string>, ParseResult.ParseError> =>
+  Effect.gen(function* () {
+    const serializedReq = yield* Serializable.serialize(req)
+    const exit = yield* handleGetPersonById(serializedReq)
+    return yield* Serializable.deserializeExit(req, exit)
+  })
+
+console.log(Effect.runSync(roundtrip(new GetPersonById({ id: 1 }))))
+/*
+Output:
+{
+  _id: 'Exit',
+  _tag: 'Success',
+  value: Person { id: 1, name: 'John', createdAt: 2024-07-02T17:40:59.666Z }
+}
+*/
+
+console.log(Effect.runSync(roundtrip(new GetPersonById({ id: 0 }))))
 /*
 Output:
 {
