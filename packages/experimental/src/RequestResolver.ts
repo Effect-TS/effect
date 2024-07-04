@@ -10,7 +10,6 @@ import * as Either from "effect/Either"
 import * as FiberHandle from "effect/FiberHandle"
 import { dual, pipe } from "effect/Function"
 import * as Option from "effect/Option"
-import type * as PrimaryKey from "effect/PrimaryKey"
 import * as Request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"
 import type * as Scope from "effect/Scope"
@@ -112,7 +111,7 @@ export const dataLoader = dual<
  * @category model
  */
 export interface PersistedRequest<R, IE, E, IA, A>
-  extends Request.Request<A, E>, PrimaryKey.PrimaryKey, Serializable.WithResult<A, IA, E, IE, R>
+  extends Request.Request<A, E>, Serializable.WithResult<A, IA, E, IE, R>
 {}
 
 /**
