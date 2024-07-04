@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 
 import { Order } from "effect/BigInt"
@@ -15,7 +15,7 @@ import * as semigroup from "../Semigroup.js"
  * assert.deepStrictEqual(SemigroupSum.combine(2n, 3n), 5n)
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemigroupSum: semigroup.Semigroup<bigint> = semigroup.make(
   (self, that) => self + that
@@ -25,7 +25,7 @@ export const SemigroupSum: semigroup.Semigroup<bigint> = semigroup.make(
  * `bigint` semigroup under multiplication.
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemigroupMultiply: semigroup.Semigroup<bigint> = semigroup.make(
   (self, that) => self * that,
@@ -53,7 +53,7 @@ export const SemigroupMultiply: semigroup.Semigroup<bigint> = semigroup.make(
  * assert.deepStrictEqual(SemigroupMin.combine(2n, 3n), 2n)
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemigroupMin: semigroup.Semigroup<bigint> = semigroup.min(Order)
 
@@ -66,7 +66,7 @@ export const SemigroupMin: semigroup.Semigroup<bigint> = semigroup.min(Order)
  * assert.deepStrictEqual(SemigroupMax.combine(2n, 3n), 3n)
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemigroupMax: semigroup.Semigroup<bigint> = semigroup.max(Order)
 
@@ -82,7 +82,7 @@ export const SemigroupMax: semigroup.Semigroup<bigint> = semigroup.max(Order)
  * assert.deepStrictEqual(MonoidSum.combine(2n, MonoidSum.empty), 2n)
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const MonoidSum: monoid.Monoid<bigint> = monoid.fromSemigroup(
   SemigroupSum,
@@ -101,7 +101,7 @@ export const MonoidSum: monoid.Monoid<bigint> = monoid.fromSemigroup(
  * assert.deepStrictEqual(MonoidMultiply.combine(2n, MonoidMultiply.empty), 2n)
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const MonoidMultiply: monoid.Monoid<bigint> = monoid.fromSemigroup(
   SemigroupMultiply,

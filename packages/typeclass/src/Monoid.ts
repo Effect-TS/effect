@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 import type { Bounded } from "./Bounded.js"
 import type { Semigroup } from "./Semigroup.js"
@@ -7,7 +7,7 @@ import * as semigroup from "./Semigroup.js"
 
 /**
  * @category type class
- * @since 1.0.0
+ * @since 0.24.0
  */
 export interface Monoid<A> extends Semigroup<A> {
   readonly empty: A
@@ -16,7 +16,7 @@ export interface Monoid<A> extends Semigroup<A> {
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const fromSemigroup = <A>(S: Semigroup<A>, empty: Monoid<A>["empty"]): Monoid<A> => ({
   combine: S.combine,
@@ -31,7 +31,7 @@ export const fromSemigroup = <A>(S: Semigroup<A>, empty: Monoid<A>["empty"]): Mo
  * The `empty` value is the `maxBound` value.
  *
  * @category constructors
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const min = <A>(B: Bounded<A>): Monoid<A> => fromSemigroup(semigroup.min(B.compare), B.maxBound)
 
@@ -41,7 +41,7 @@ export const min = <A>(B: Bounded<A>): Monoid<A> => fromSemigroup(semigroup.min(
  * The `empty` value is the `minimum` value.
  *
  * @category constructors
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const max = <A>(B: Bounded<A>): Monoid<A> => fromSemigroup(semigroup.max(B.compare), B.minBound)
 
@@ -49,7 +49,7 @@ export const max = <A>(B: Bounded<A>): Monoid<A> => fromSemigroup(semigroup.max(
  * The dual of a `Monoid`, obtained by swapping the arguments of `combine`.
  *
  * @category combinators
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const reverse = <A>(M: Monoid<A>): Monoid<A> => fromSemigroup(semigroup.reverse(M), M.empty)
 
@@ -68,7 +68,7 @@ export const reverse = <A>(M: Monoid<A>): Monoid<A> => fromSemigroup(semigroup.r
  * It is useful when you need to combine two tuples of the same type and you have a specific way of combining each element of the tuple.
  *
  * @category combinators
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const tuple = <T extends ReadonlyArray<Monoid<any>>>(
   ...elements: T
@@ -83,7 +83,7 @@ export const tuple = <T extends ReadonlyArray<Monoid<any>>>(
  * The `empty` value is the empty array.
  *
  * @category combinators
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const array = <A>(): Monoid<ReadonlyArray<A>> => fromSemigroup(semigroup.array<A>(), [])
 
@@ -96,7 +96,7 @@ export const array = <A>(): Monoid<ReadonlyArray<A>> => fromSemigroup(semigroup.
  * It is useful when you need to combine two structs of the same type and you have a specific way of combining each property of the struct.
  *
  * @category combinators
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const struct = <R extends { readonly [x: string]: Monoid<any> }>(
   fields: R

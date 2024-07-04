@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 import { dual } from "effect/Function"
 import type { Kind, TypeLambda } from "effect/HKT"
@@ -9,7 +9,7 @@ import type { SemiApplicative } from "./SemiApplicative.js"
 
 /**
  * @category type class
- * @since 1.0.0
+ * @since 0.24.0
  */
 export interface SemiProduct<F extends TypeLambda> extends Invariant<F> {
   readonly product: <R1, O1, E1, A, R2, O2, E2, B>(
@@ -27,7 +27,7 @@ export interface SemiProduct<F extends TypeLambda> extends Invariant<F> {
  * Returns a default `productMany` implementation.
  *
  * @category constructors
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const productMany = <F extends TypeLambda>(
   map: Covariant<F>["map"],
@@ -50,7 +50,7 @@ export const productMany = <F extends TypeLambda>(
 /**
  * Returns a default `product` composition.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const productComposition = <F extends TypeLambda, G extends TypeLambda>(
   F: SemiApplicative<F>,
@@ -70,7 +70,7 @@ export const productComposition = <F extends TypeLambda, G extends TypeLambda>(
 /**
  * Returns a default `productMany` composition.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const productManyComposition = <F extends TypeLambda, G extends TypeLambda>(
   F: SemiApplicative<F>,
@@ -84,7 +84,7 @@ export const productManyComposition = <F extends TypeLambda, G extends TypeLambd
 
 /**
  * @category do notation
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const andThenBind = <F extends TypeLambda>(F: SemiProduct<F>): {
   <N extends string, A extends object, R2, O2, E2, B>(
@@ -113,7 +113,7 @@ export const andThenBind = <F extends TypeLambda>(F: SemiProduct<F>): {
 /**
  * Appends an element to the end of a tuple.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const appendElement = <F extends TypeLambda>(F: SemiProduct<F>): {
   <R2, O2, E2, B>(
@@ -133,7 +133,7 @@ export const appendElement = <F extends TypeLambda>(F: SemiProduct<F>): {
     F.imap(F.product(self, that), ([a, b]) => [...a, b], (ab) => [ab.slice(0, -1), ab[ab.length - 1]] as any))
 
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const nonEmptyTuple =
   <F extends TypeLambda>(F: SemiProduct<F>) =>
@@ -156,7 +156,7 @@ export const nonEmptyTuple =
 type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R
 
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const nonEmptyStruct =
   <F extends TypeLambda>(F: SemiProduct<F>) =>

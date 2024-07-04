@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 
 import type { Kind, TypeLambda } from "effect/HKT"
@@ -8,7 +8,7 @@ import type { SemiProduct } from "./SemiProduct.js"
 
 /**
  * @category type class
- * @since 1.0.0
+ * @since 0.24.0
  */
 export interface Product<F extends TypeLambda> extends SemiProduct<F>, Of<F> {
   readonly productAll: <R, O, E, A>(
@@ -17,7 +17,7 @@ export interface Product<F extends TypeLambda> extends SemiProduct<F>, Of<F> {
 }
 
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const tuple =
   <F extends TypeLambda>(F: Product<F>) =>
@@ -38,7 +38,7 @@ export const tuple =
   > => F.productAll(elements) as any
 
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const struct =
   <F extends TypeLambda>(F: Product<F>) =>

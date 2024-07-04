@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 import { dual, identity } from "effect/Function"
 import type { Kind, TypeClass, TypeLambda } from "effect/HKT"
@@ -7,7 +7,7 @@ import type { Applicative } from "./Applicative.js"
 
 /**
  * @category type class
- * @since 1.0.0
+ * @since 0.24.0
  */
 export interface Traversable<T extends TypeLambda> extends TypeClass<T> {
   readonly traverse: <F extends TypeLambda>(
@@ -26,7 +26,7 @@ export interface Traversable<T extends TypeLambda> extends TypeClass<T> {
 /**
  * Returns a default binary `traverse` composition.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const traverseComposition = <T extends TypeLambda, G extends TypeLambda>(
   T: Traversable<T>,
@@ -41,7 +41,7 @@ export const traverseComposition = <T extends TypeLambda, G extends TypeLambda>(
 /**
  * Returns a default `sequence` implementation.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const sequence =
   <T extends TypeLambda>(T: Traversable<T>) =>
@@ -56,7 +56,7 @@ export const sequence =
  * returning an `T<A>` in a `F` context, ignoring the values
  * returned by the provided function.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const traverseTap = <T extends TypeLambda>(T: Traversable<T>) =>
 <F extends TypeLambda>(F: Applicative<F>): {

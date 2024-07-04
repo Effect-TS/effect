@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 import type { Either as RecordInstances } from "effect/Either"
 import { dual } from "effect/Function"
@@ -121,7 +121,7 @@ const _traverseFilterMap: traversableFilterable.TraversableFilterable<
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const getCovariant = <K extends string>(): covariant.Covariant<
   Record.ReadonlyRecordTypeLambda<K>
@@ -132,13 +132,13 @@ export const getCovariant = <K extends string>(): covariant.Covariant<
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Covariant = getCovariant()
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const getInvariant = <K extends string>(): invariant.Invariant<
   Record.ReadonlyRecordTypeLambda<K>
@@ -148,13 +148,13 @@ export const getInvariant = <K extends string>(): invariant.Invariant<
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Invariant = getInvariant()
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const getFilterable = <K extends string>(): filterable.Filterable<
   Record.ReadonlyRecordTypeLambda<K>
@@ -165,13 +165,13 @@ export const getFilterable = <K extends string>(): filterable.Filterable<
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Filterable = getFilterable()
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const getTraversable = <K extends string>(): traversable.Traversable<
   Record.ReadonlyRecordTypeLambda<K>
@@ -181,13 +181,13 @@ export const getTraversable = <K extends string>(): traversable.Traversable<
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Traversable = getTraversable()
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const getTraversableFilterable = <K extends string>(): traversableFilterable.TraversableFilterable<
   Record.ReadonlyRecordTypeLambda<K>
@@ -198,6 +198,6 @@ export const getTraversableFilterable = <K extends string>(): traversableFiltera
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const TraversableFilterable = getTraversableFilterable()

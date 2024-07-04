@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 import { dual } from "effect/Function"
 import type { Kind, TypeLambda } from "effect/HKT"
@@ -7,7 +7,7 @@ import type { Invariant } from "./Invariant.js"
 
 /**
  * @category type class
- * @since 1.0.0
+ * @since 0.24.0
  */
 export interface Covariant<F extends TypeLambda> extends Invariant<F> {
   readonly map: {
@@ -19,7 +19,7 @@ export interface Covariant<F extends TypeLambda> extends Invariant<F> {
 /**
  * Returns a default `map` composition.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const mapComposition = <F extends TypeLambda, G extends TypeLambda>(
   F: Covariant<F>,
@@ -33,7 +33,7 @@ export const mapComposition = <F extends TypeLambda, G extends TypeLambda>(
 /**
  * Returns a default `imap` implementation.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const imap = <F extends TypeLambda>(
   map: <R, O, E, A, B>(self: Kind<F, R, O, E, A>, f: (a: A) => B) => Kind<F, R, O, E, B>
@@ -41,7 +41,7 @@ export const imap = <F extends TypeLambda>(
 
 /**
  * @category mapping
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const flap = <F extends TypeLambda>(F: Covariant<F>): {
   <R, O, E, A, B>(self: Kind<F, R, O, E, (a: A) => B>): (a: A) => Kind<F, R, O, E, B>
@@ -54,7 +54,7 @@ export const flap = <F extends TypeLambda>(F: Covariant<F>): {
 
 /**
  * @category mapping
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const as = <F extends TypeLambda>(F: Covariant<F>): {
   <B>(b: B): <R, O, E, _>(self: Kind<F, R, O, E, _>) => Kind<F, R, O, E, B>
@@ -67,7 +67,7 @@ export const as = <F extends TypeLambda>(F: Covariant<F>): {
 
 /**
  * @category mapping
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const asVoid = <F extends TypeLambda>(
   F: Covariant<F>
@@ -98,7 +98,7 @@ const let_ = <F extends TypeLambda>(
 export {
   /**
    * @category do notation
-   * @since 1.0.0
+   * @since 0.24.0
    */
   let_ as let
 }

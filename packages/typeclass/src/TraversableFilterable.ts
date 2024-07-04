@@ -1,7 +1,7 @@
 /**
  * `TraversableFilterable` represents data structures which can be _partitioned_ with effects in some `Applicative` functor.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 import type { Either } from "effect/Either"
 import * as E from "effect/Either"
@@ -17,7 +17,7 @@ import type { Traversable } from "./Traversable.js"
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 0.24.0
  */
 export interface TraversableFilterable<T extends TypeLambda> extends TypeClass<T> {
   readonly traversePartitionMap: <F extends TypeLambda>(
@@ -50,7 +50,7 @@ export interface TraversableFilterable<T extends TypeLambda> extends TypeClass<T
 /**
  * Returns a default binary `traversePartitionMap` implementation.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const traversePartitionMap = <T extends TypeLambda>(
   T: Traversable<T> & Covariant<T> & Filterable<T>
@@ -66,7 +66,7 @@ export const traversePartitionMap = <T extends TypeLambda>(
 /**
  * Returns a default binary `traverseFilterMap` implementation.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const traverseFilterMap = <T extends TypeLambda>(
   T: Traversable<T> & Filterable<T>
@@ -80,7 +80,7 @@ export const traverseFilterMap = <T extends TypeLambda>(
 (self, f) => F.map(T.traverse(F)(self, f), filterable.compact(T))
 
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const traverseFilter = <T extends TypeLambda>(
   T: TraversableFilterable<T>
@@ -108,7 +108,7 @@ export const traverseFilter = <T extends TypeLambda>(
     ))
 
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const traversePartition = <T extends TypeLambda>(
   T: TraversableFilterable<T>
