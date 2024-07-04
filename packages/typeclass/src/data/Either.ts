@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 
 import * as Either from "effect/Either"
@@ -47,21 +47,7 @@ const bimap: {
   ): Either.Either<B, E2> => Either.mapBoth(self, { onLeft, onRight })
 )
 
-const flatMap: {
-  <A, E2, B>(
-    f: (a: A) => Either.Either<B, E2>
-  ): <E1>(self: Either.Either<A, E1>) => Either.Either<B, E1 | E2>
-  <E1, A, E2, B>(
-    self: Either.Either<A, E1>,
-    f: (a: A) => Either.Either<B, E2>
-  ): Either.Either<B, E1 | E2>
-} = dual(
-  2,
-  <E1, A, E2, B>(
-    self: Either.Either<A, E1>,
-    f: (a: A) => Either.Either<B, E2>
-  ): Either.Either<B, E1 | E2> => Either.isLeft(self) ? Either.left(self.left) : f(self.right)
-)
+const flatMap = Either.flatMap
 
 const product = <E1, A, E2, B>(
   self: Either.Either<A, E1>,
@@ -143,7 +129,7 @@ const traverse = <F extends TypeLambda>(
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Bicovariant: bicovariant.Bicovariant<Either.EitherTypeLambda> = {
   bimap
@@ -151,7 +137,7 @@ export const Bicovariant: bicovariant.Bicovariant<Either.EitherTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Covariant: covariant.Covariant<Either.EitherTypeLambda> = {
   imap,
@@ -160,7 +146,7 @@ export const Covariant: covariant.Covariant<Either.EitherTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Invariant: invariant.Invariant<Either.EitherTypeLambda> = {
   imap
@@ -168,7 +154,7 @@ export const Invariant: invariant.Invariant<Either.EitherTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Of: of_.Of<Either.EitherTypeLambda> = {
   of
@@ -176,7 +162,7 @@ export const Of: of_.Of<Either.EitherTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Pointed: pointed.Pointed<Either.EitherTypeLambda> = {
   of,
@@ -186,7 +172,7 @@ export const Pointed: pointed.Pointed<Either.EitherTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const FlatMap: flatMap_.FlatMap<Either.EitherTypeLambda> = {
   flatMap
@@ -194,7 +180,7 @@ export const FlatMap: flatMap_.FlatMap<Either.EitherTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Chainable: chainable.Chainable<Either.EitherTypeLambda> = {
   imap,
@@ -204,7 +190,7 @@ export const Chainable: chainable.Chainable<Either.EitherTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Monad: monad.Monad<Either.EitherTypeLambda> = {
   imap,
@@ -215,7 +201,7 @@ export const Monad: monad.Monad<Either.EitherTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemiProduct: semiProduct.SemiProduct<Either.EitherTypeLambda> = {
   imap,
@@ -225,7 +211,7 @@ export const SemiProduct: semiProduct.SemiProduct<Either.EitherTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Product: product_.Product<Either.EitherTypeLambda> = {
   of,
@@ -237,7 +223,7 @@ export const Product: product_.Product<Either.EitherTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemiApplicative: semiApplicative.SemiApplicative<Either.EitherTypeLambda> = {
   imap,
@@ -248,7 +234,7 @@ export const SemiApplicative: semiApplicative.SemiApplicative<Either.EitherTypeL
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Applicative: applicative.Applicative<Either.EitherTypeLambda> = {
   imap,
@@ -261,7 +247,7 @@ export const Applicative: applicative.Applicative<Either.EitherTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemiCoproduct: semiCoproduct.SemiCoproduct<Either.EitherTypeLambda> = {
   imap,
@@ -271,7 +257,7 @@ export const SemiCoproduct: semiCoproduct.SemiCoproduct<Either.EitherTypeLambda>
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemiAlternative: semiAlternative.SemiAlternative<Either.EitherTypeLambda> = {
   map,
@@ -282,7 +268,7 @@ export const SemiAlternative: semiAlternative.SemiAlternative<Either.EitherTypeL
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Foldable: foldable.Foldable<Either.EitherTypeLambda> = {
   reduce: dual(
@@ -293,7 +279,7 @@ export const Foldable: foldable.Foldable<Either.EitherTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Traversable: traversable.Traversable<Either.EitherTypeLambda> = {
   traverse

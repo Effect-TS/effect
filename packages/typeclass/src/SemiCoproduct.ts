@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 
 import type { Kind, TypeLambda } from "effect/HKT"
@@ -8,7 +8,7 @@ import type { Semigroup } from "./Semigroup.js"
 
 /**
  * @category type class
- * @since 1.0.0
+ * @since 0.24.0
  */
 export interface SemiCoproduct<F extends TypeLambda> extends Invariant<F> {
   readonly coproduct: <R1, O1, E1, A, R2, O2, E2, B>(
@@ -23,7 +23,7 @@ export interface SemiCoproduct<F extends TypeLambda> extends Invariant<F> {
 }
 
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const getSemigroup = <F extends TypeLambda>(F: SemiCoproduct<F>) =>
 <R, O, E, A>(): Semigroup<

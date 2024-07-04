@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 import type { Ordering } from "effect/Ordering"
 import * as monoid from "../Monoid.js"
@@ -16,7 +16,7 @@ import * as semigroup from "../Semigroup.js"
  * assert.deepStrictEqual(Semigroup.combine(1, -1), 1)
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Semigroup: semigroup.Semigroup<Ordering> = semigroup.make(
   (self, that) => self !== 0 ? self : that,
@@ -47,6 +47,6 @@ export const Semigroup: semigroup.Semigroup<Ordering> = semigroup.make(
  * assert.deepStrictEqual(Monoid.combine(1, -1), 1)
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Monoid: monoid.Monoid<Ordering> = monoid.fromSemigroup(Semigroup, 0)

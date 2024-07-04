@@ -1,7 +1,7 @@
 /**
  * This module provides utility functions for working with arrays in TypeScript.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 
 import * as ArrayInstances from "effect/Array"
@@ -104,7 +104,7 @@ const traverseFilterMap = <F extends TypeLambda>(
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Of: of_.Of<ArrayInstances.ReadonlyArrayTypeLambda> = {
   of
@@ -112,7 +112,7 @@ export const Of: of_.Of<ArrayInstances.ReadonlyArrayTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Covariant: covariant.Covariant<ArrayInstances.ReadonlyArrayTypeLambda> = {
   imap,
@@ -121,7 +121,7 @@ export const Covariant: covariant.Covariant<ArrayInstances.ReadonlyArrayTypeLamb
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Invariant: invariant.Invariant<ArrayInstances.ReadonlyArrayTypeLambda> = {
   imap
@@ -129,7 +129,7 @@ export const Invariant: invariant.Invariant<ArrayInstances.ReadonlyArrayTypeLamb
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Pointed: pointed.Pointed<ArrayInstances.ReadonlyArrayTypeLambda> = {
   of,
@@ -139,7 +139,7 @@ export const Pointed: pointed.Pointed<ArrayInstances.ReadonlyArrayTypeLambda> = 
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const FlatMap: flatMap_.FlatMap<ArrayInstances.ReadonlyArrayTypeLambda> = {
   flatMap
@@ -147,7 +147,7 @@ export const FlatMap: flatMap_.FlatMap<ArrayInstances.ReadonlyArrayTypeLambda> =
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Chainable: chainable.Chainable<ArrayInstances.ReadonlyArrayTypeLambda> = {
   imap,
@@ -157,7 +157,7 @@ export const Chainable: chainable.Chainable<ArrayInstances.ReadonlyArrayTypeLamb
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Filterable: filterable.Filterable<ArrayInstances.ReadonlyArrayTypeLambda> = {
   partitionMap: ArrayInstances.partitionMap,
@@ -166,7 +166,7 @@ export const Filterable: filterable.Filterable<ArrayInstances.ReadonlyArrayTypeL
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Traversable: traversable.Traversable<ArrayInstances.ReadonlyArrayTypeLambda> = {
   traverse: traverse as any
@@ -174,7 +174,7 @@ export const Traversable: traversable.Traversable<ArrayInstances.ReadonlyArrayTy
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemiProduct: semiProduct.SemiProduct<ArrayInstances.ReadonlyArrayTypeLambda> = {
   imap,
@@ -184,7 +184,7 @@ export const SemiProduct: semiProduct.SemiProduct<ArrayInstances.ReadonlyArrayTy
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemiApplicative: semiApplicative.SemiApplicative<
   ArrayInstances.ReadonlyArrayTypeLambda
@@ -197,7 +197,7 @@ export const SemiApplicative: semiApplicative.SemiApplicative<
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Product: product_.Product<ArrayInstances.ReadonlyArrayTypeLambda> = {
   of,
@@ -214,7 +214,7 @@ export const Product: product_.Product<ArrayInstances.ReadonlyArrayTypeLambda> =
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Applicative: applicative.Applicative<ArrayInstances.ReadonlyArrayTypeLambda> = {
   imap,
@@ -227,7 +227,7 @@ export const Applicative: applicative.Applicative<ArrayInstances.ReadonlyArrayTy
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Monad: monad.Monad<ArrayInstances.ReadonlyArrayTypeLambda> = {
   imap,
@@ -238,7 +238,7 @@ export const Monad: monad.Monad<ArrayInstances.ReadonlyArrayTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Foldable: foldable.Foldable<ArrayInstances.ReadonlyArrayTypeLambda> = {
   reduce: ArrayInstances.reduce
@@ -246,7 +246,7 @@ export const Foldable: foldable.Foldable<ArrayInstances.ReadonlyArrayTypeLambda>
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const TraversableFilterable: traversableFilterable.TraversableFilterable<
   ArrayInstances.ReadonlyArrayTypeLambda
@@ -257,12 +257,12 @@ export const TraversableFilterable: traversableFilterable.TraversableFilterable<
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const getSemigroup: <A>() => Semigroup<ReadonlyArray<A>> = semigroup.array
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const getMonoid: <A>() => Monoid<ReadonlyArray<A>> = monoid.array

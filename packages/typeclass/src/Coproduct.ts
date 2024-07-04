@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 import type { Kind, TypeLambda } from "effect/HKT"
 import type { Monoid } from "./Monoid.js"
@@ -8,7 +8,7 @@ import * as semiCoproduct from "./SemiCoproduct.js"
 
 /**
  * @category type class
- * @since 1.0.0
+ * @since 0.24.0
  */
 export interface Coproduct<F extends TypeLambda> extends SemiCoproduct<F> {
   readonly zero: <A>() => Kind<F, unknown, never, never, A>
@@ -19,7 +19,7 @@ export interface Coproduct<F extends TypeLambda> extends SemiCoproduct<F> {
 }
 
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const getMonoid = <F extends TypeLambda>(F: Coproduct<F>) =>
 <R, O, E, A>(): Monoid<

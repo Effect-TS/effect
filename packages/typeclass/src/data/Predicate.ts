@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 import { constFalse, constTrue } from "effect/Function"
 import * as Predicate from "effect/Predicate"
@@ -52,7 +52,7 @@ const productMany = <A>(
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Contravariant: contravariant.Contravariant<Predicate.PredicateTypeLambda> = {
   imap,
@@ -61,7 +61,7 @@ export const Contravariant: contravariant.Contravariant<Predicate.PredicateTypeL
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Invariant: invariant.Invariant<Predicate.PredicateTypeLambda> = {
   imap
@@ -69,7 +69,7 @@ export const Invariant: invariant.Invariant<Predicate.PredicateTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Of: of_.Of<Predicate.PredicateTypeLambda> = {
   of
@@ -77,7 +77,7 @@ export const Of: of_.Of<Predicate.PredicateTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const SemiProduct: semiProduct.SemiProduct<Predicate.PredicateTypeLambda> = {
   imap,
@@ -87,7 +87,7 @@ export const SemiProduct: semiProduct.SemiProduct<Predicate.PredicateTypeLambda>
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Product: product_.Product<Predicate.PredicateTypeLambda> = {
   of,
@@ -99,35 +99,35 @@ export const Product: product_.Product<Predicate.PredicateTypeLambda> = {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const getSemigroupEqv = <A>(): Semigroup<Predicate.Predicate<A>> =>
   semigroup.make<Predicate.Predicate<A>>(Predicate.eqv)
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const getMonoidEqv = <A>(): monoid.Monoid<Predicate.Predicate<A>> =>
   monoid.fromSemigroup(getSemigroupEqv<A>(), constTrue)
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const getSemigroupXor = <A>(): Semigroup<Predicate.Predicate<A>> =>
   semigroup.make<Predicate.Predicate<A>>(Predicate.xor)
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const getMonoidXor = <A>(): monoid.Monoid<Predicate.Predicate<A>> =>
   monoid.fromSemigroup(getSemigroupXor<A>(), constFalse)
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const getSemigroupSome = <A>(): Semigroup<Predicate.Predicate<A>> =>
   semigroup.make<Predicate.Predicate<A>>(
@@ -147,14 +147,14 @@ export const getSemigroupSome = <A>(): Semigroup<Predicate.Predicate<A>> =>
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const getMonoidSome = <A>(): monoid.Monoid<Predicate.Predicate<A>> =>
   monoid.fromSemigroup(getSemigroupSome<A>(), constFalse)
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const getSemigroupEvery = <A>(): Semigroup<Predicate.Predicate<A>> =>
   semigroup.make<Predicate.Predicate<A>>(
@@ -174,7 +174,7 @@ export const getSemigroupEvery = <A>(): Semigroup<Predicate.Predicate<A>> =>
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const getMonoidEvery = <A>(): monoid.Monoid<Predicate.Predicate<A>> =>
   monoid.fromSemigroup(getSemigroupEvery<A>(), constTrue)

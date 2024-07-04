@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 
 import { dual, identity } from "effect/Function"
@@ -10,7 +10,7 @@ import type { Monoid } from "./Monoid.js"
 
 /**
  * @category type class
- * @since 1.0.0
+ * @since 0.24.0
  */
 export interface Foldable<F extends TypeLambda> extends TypeClass<F> {
   readonly reduce: {
@@ -22,7 +22,7 @@ export interface Foldable<F extends TypeLambda> extends TypeClass<F> {
 /**
  * Returns a default ternary `reduce` composition.
  *
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const reduceComposition = <F extends TypeLambda, G extends TypeLambda>(
   F: Foldable<F>,
@@ -35,7 +35,7 @@ export const reduceComposition = <F extends TypeLambda, G extends TypeLambda>(
 ): B => F.reduce(self, b, (b, ga) => G.reduce(ga, b, f))
 
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const toArrayMap = <F extends TypeLambda>(
   F: Foldable<F>
@@ -50,14 +50,14 @@ export const toArrayMap = <F extends TypeLambda>(
   )
 
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const toArray = <F extends TypeLambda>(
   F: Foldable<F>
 ): <R, O, E, A>(self: Kind<F, R, O, E, A>) => Array<A> => toArrayMap(F)(identity)
 
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const combineMap = <F extends TypeLambda>(F: Foldable<F>) =>
 <M>(M: Monoid<M>): {
@@ -70,7 +70,7 @@ export const combineMap = <F extends TypeLambda>(F: Foldable<F>) =>
   )
 
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const reduceKind = <F extends TypeLambda>(F: Foldable<F>) =>
 <G extends TypeLambda>(G: Monad<G>): {
@@ -96,7 +96,7 @@ export const reduceKind = <F extends TypeLambda>(F: Foldable<F>) =>
     ))
 
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const coproductMapKind = <F extends TypeLambda>(F: Foldable<F>) =>
 <G extends TypeLambda>(G: Coproduct<G>): {

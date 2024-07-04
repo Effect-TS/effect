@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 0.24.0
  */
 import * as monoid from "../Monoid.js"
 import * as semigroup from "../Semigroup.js"
@@ -8,7 +8,7 @@ import * as semigroup from "../Semigroup.js"
  * `string` semigroup under concatenation.
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Semigroup: semigroup.Semigroup<string> = semigroup.make((self, that) => self + that)
 
@@ -18,6 +18,6 @@ export const Semigroup: semigroup.Semigroup<string> = semigroup.make((self, that
  * The `empty` value is `''`.
  *
  * @category instances
- * @since 1.0.0
+ * @since 0.24.0
  */
 export const Monoid: monoid.Monoid<string> = monoid.fromSemigroup(Semigroup, "")
