@@ -5,7 +5,7 @@ import { assert, describe, test } from "vitest"
 
 class Person extends S.Class<Person>("Person")({
   id: S.Number,
-  name: S.String.pipe(S.nonEmpty())
+  name: S.String
 }) {}
 
 class GetPersonById extends S.Class<GetPersonById>("GetPersonById")({
@@ -18,7 +18,7 @@ class GetPersonById extends S.Class<GetPersonById>("GetPersonById")({
     return {
       Success: Person,
       Failure: S.String
-    } as const
+    }
   }
 }
 
