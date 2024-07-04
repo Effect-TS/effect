@@ -713,16 +713,16 @@ describe("PubSub", () => {
     it.scoped("sliding", () =>
       Effect.gen(function*() {
         const messages = [1, 2, 3, 4, 5]
-        const pubsub = yield* PubSub.sliding<number>(2, { replayCapacity: 3 })
+        const pubsub = yield* PubSub.sliding<number>(4, { replayCapacity: 3 })
 
         yield* PubSub.publishAll(pubsub, messages)
         const sub = yield* PubSub.subscribe(pubsub)
         assert.deepStrictEqual(yield* Queue.take(sub), 3)
-        yield* PubSub.publishAll(pubsub, [6, 7, 8, 9])
-        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [6, 7, 8, 9])
+        yield* PubSub.publishAll(pubsub, [6, 7, 8, 9, 10])
+        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [5, 6, 7, 8, 9, 10])
 
         const sub2 = yield* PubSub.subscribe(pubsub)
-        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub2)), [7, 8, 9])
+        assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub2)), [8, 9, 10])
       }))
   })
 })
