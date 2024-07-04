@@ -1,3 +1,4 @@
+import * as Arr from "../Array.js"
 import * as Chunk from "../Chunk.js"
 import type * as Deferred from "../Deferred.js"
 import type * as Effect from "../Effect.js"
@@ -1259,13 +1260,36 @@ class ReplayPubSubImpl<in out A> implements PubSub.PubSub<A> {
     })
   }
   publishAll(elements: Iterable<A>): Effect.Effect<boolean> {
-    return core.uninterruptibleMask((restore) =>
-      core.tap(restore(this.backing.publishAll(elements)), (success) => {
-        if (success) {
-          this.replayBuffer.offerAll(elements)
-        }
-      })
-    )
+    return core.suspend(() => {
+      if (MutableRef.get(this.backing.shutdownFlag)) {
+        return core.interrupt
+      }
+      const surplus = unsafePublishAll(this.backing.pubsub, elements)
+      this.backing.strategy.unsafeCompleteSubscribers(this.backing.pubsub, this.backing.subscribers)
+      if (Chunk.isEmpty(surplus)) {
+        this.replayBuffer.offerAll(elements)
+        return core.succeed(true)
+      }
+      const array = Arr.fromIterable(elements)
+      const added = array.length - surplus.length
+      for (let i = 0; i < added; i++) {
+        this.replayBuffer.offer(array[i])
+      }
+      return core.uninterruptibleMask((restore) =>
+        restore(this.backing.strategy.handleSurplus(
+          this.backing.pubsub,
+          this.backing.subscribers,
+          surplus,
+          this.backing.shutdownFlag
+        )).pipe(
+          core.tap((success) => {
+            if (success) {
+              this.replayBuffer.offerAll(surplus)
+            }
+          })
+        )
+      )
+    })
   }
   offer(value: A): Effect.Effect<boolean> {
     return this.publish(value)
