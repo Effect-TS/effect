@@ -4695,34 +4695,30 @@ export const raceAll = <S extends ReadonlyArray<Stream.Stream<any, any, any>>>(
 > =>
   Deferred.make<void>().pipe(
     Effect.map((halt) => {
-      let winner: number | null = null;
+      let winner: number | null = null
       return mergeAll(
         streams.map((stream, index) =>
           stream.pipe(
             takeWhile(() => {
-              if (winner === index) {
-                return true;
-              } else if (winner === null) {
-                winner = index;
-                Deferred.unsafeDone(halt, Exit.void);
-                return true;
+              if (winner === null) {
+                winner = index
+                Deferred.unsafeDone(halt, Exit.void)
+                return true
               }
-              return false;
+              return winner === index
             }),
             interruptWhen(
               Deferred.await(halt).pipe(
-                Effect.flatMap(() =>
-                  winner === index ? Effect.never : Effect.void,
-                ),
-              ),
-            ),
-          ),
+                Effect.flatMap(() => winner === index ? Effect.never : Effect.void)
+              )
+            )
+          )
         ),
-        { concurrency: streams.length },
-      );
+        { concurrency: streams.length }
+      )
     }),
-    unwrap,
-  );
+    unwrap
+  )
 
 /** @internal */
 export const rechunk = dual<
