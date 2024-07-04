@@ -367,8 +367,8 @@ export const stringLogger: Logger<unknown, string> = internal.stringLogger
  * @category constructors
  */
 export const prettyLogger: (
-  options?: { readonly colors?: "auto" | boolean }
-) => Logger<unknown, Array<Array<unknown>>> = internal.prettyLogger
+  options?: { readonly colors?: "auto" | boolean | undefined; readonly stderr?: boolean | undefined }
+) => Logger<unknown, void> = internal.prettyLogger
 
 /**
  * @since 2.0.0
