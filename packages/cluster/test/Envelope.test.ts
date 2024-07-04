@@ -1,6 +1,7 @@
 import * as Envelope from "@effect/cluster/Envelope"
-import * as Address from "@effect/cluster/RecipientAddress"
+import { RecipientAddress } from "@effect/cluster/RecipientAddress"
 import * as Schema from "@effect/schema/Schema"
+import * as Serializable from "@effect/schema/Serializable"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
@@ -20,8 +21,8 @@ class Sample extends Schema.TaggedRequest<Sample>("Sample")(
 describe("Envelope", () => {
   describe("Equality", () => {
     it("should determine if two envelopes are equal", () => {
-      const address1 = Address.makeRecipientAddress("User", "1")
-      const address2 = Address.makeRecipientAddress("User", "1")
+      const address1 = new RecipientAddress({ recipientType: "User", entityId: "1" })
+      const address2 = new RecipientAddress({ recipientType: "User", entityId: "1" })
       const sample1 = new Sample({ id: 1, name: "sample-1" })
       const sample2 = new Sample({ id: 1, name: "sample-1" })
       const a = Envelope.make(address1, sample1)
@@ -30,8 +31,8 @@ describe("Envelope", () => {
     })
 
     it("should determine if two envelopes are not equal", () => {
-      const address1 = Address.makeRecipientAddress("User", "1")
-      const address2 = Address.makeRecipientAddress("User", "1")
+      const address1 = new RecipientAddress({ recipientType: "User", entityId: "1" })
+      const address2 = new RecipientAddress({ recipientType: "User", entityId: "1" })
       const sample1 = new Sample({ id: 1, name: "sample-1" })
       const sample2 = new Sample({ id: 2, name: "sample-1" })
       const a = Envelope.make(address1, sample1)
@@ -43,6 +44,21 @@ describe("Envelope", () => {
   describe("Serialization and Deserialization", () => {
     it.effect("should serialize an envelope", () =>
       Effect.gen(function*() {
+        const address = new RecipientAddress({ recipientType: "User", entityId: "1" })
+        const sample = new Sample({ id: 1, name: "sample-1" })
+        const envelope = Envelope.make(address, sample)
+        const serialized = yield* Serializable.serialize(envelope)
+        assert.deepStrictEqual(serialized, {
+          address: {
+            entityId: "1",
+            recipientType: "User"
+          },
+          message: {
+            _tag: "Sample",
+            id: 1,
+            name: "sample-1"
+          }
+        })
       }))
 
     it.effect("should deserialize an envelope", () =>

@@ -8,7 +8,7 @@ import * as Layer from "effect/Layer"
 import * as PrimaryKey from "effect/PrimaryKey"
 import * as Stream from "effect/Stream"
 import type * as AtLeastOnceStorage from "../AtLeastOnceStorage.js"
-import * as RecipientAddress from "../RecipientAddress.js"
+import { RecipientAddress } from "../RecipientAddress.js"
 import type * as Serialization from "../Serialization.js"
 import * as SerializedEnvelope from "../SerializedEnvelope.js"
 import * as SerializedMessage from "../SerializedMessage.js"
@@ -201,7 +201,10 @@ const make = ({ table }: AtLeastOnceStorage.AtLeastOnceStorage.MakeOptions): Eff
           Stream.fromIterableEffect,
           Stream.map((entry) =>
             SerializedEnvelope.make(
-              RecipientAddress.makeRecipientAddress(entry.recipient_name, entry.entity_id),
+              new RecipientAddress({
+                recipientType: entry.recipient_name,
+                entityId: entry.entity_id
+              }),
               entry.message_id,
               SerializedMessage.make(entry.message_body)
             )

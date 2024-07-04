@@ -5,7 +5,7 @@ import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
 import * as PrimaryKey from "effect/PrimaryKey"
 import { TypeIdSchema } from "./internal/utils.js"
-import * as RecipientAddress from "./RecipientAddress.js"
+import { RecipientAddress } from "./RecipientAddress.js"
 import * as SerializedMessage from "./SerializedMessage.js"
 
 /** @internal */
@@ -37,7 +37,7 @@ export class SerializedEnvelope extends Schema.Class<SerializedEnvelope>(Seriali
   [SerializedEnvelopeTypeId]: Schema.propertySignature(SerializedEnvelopeTypeIdSchema).pipe(
     Schema.fromKey(SerializedEnvelopeSymbolKey)
   ),
-  recipientAddress: RecipientAddress.RecipientAddress,
+  recipientAddress: RecipientAddress,
   messageId: Schema.String,
   body: SerializedMessage.schema
 }) {
@@ -48,7 +48,7 @@ export class SerializedEnvelope extends Schema.Class<SerializedEnvelope>(Seriali
     return { Success: Schema.Void, Failure: Schema.Never }
   }
   get [PrimaryKey.symbol]() {
-    return this.messageId + "@" + this.recipientAddress.recipientTypeName + "#" + this.recipientAddress.entityId
+    return this.messageId + "@" + this.recipientAddress.recipientType + "#" + this.recipientAddress.entityId
   }
 }
 
@@ -71,7 +71,7 @@ export namespace SerializedEnvelope {
  * @category constructors
  */
 export function make(
-  recipientAddress: RecipientAddress.RecipientAddress,
+  recipientAddress: RecipientAddress,
   messageId: string,
   body: SerializedMessage.SerializedMessage
 ): SerializedEnvelope {

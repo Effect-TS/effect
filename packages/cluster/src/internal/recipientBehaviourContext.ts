@@ -1,7 +1,7 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as Message from "../Message.js"
-import type * as RecipientAddress from "../RecipientAddress.js"
+import type { RecipientAddress } from "../RecipientAddress.js"
 import type * as RecipientBehaviourContext from "../RecipientBehaviourContext.js"
 import type * as RecipientType from "../RecipientType.js"
 import type * as ShardId from "../ShardId.js"
@@ -31,7 +31,7 @@ export function make(
 
 /** @internal */
 export const recipientAddress: Effect.Effect<
-  RecipientAddress.RecipientAddress,
+  RecipientAddress,
   never,
   RecipientBehaviourContext.RecipientBehaviourContext
 > = Effect.map(

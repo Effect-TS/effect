@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as RecipientAddress from "@effect/cluster/RecipientAddress"
+import { RecipientAddress } from "@effect/cluster/RecipientAddress"
 import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
 import * as Data from "effect/Data"
@@ -39,7 +39,7 @@ export interface Envelope<Req extends Schema.TaggedRequest.Any & PrimaryKey.Prim
     Serializable.SerializableWithResult<
       Envelope<Req>,
       {
-        readonly address: Schema.Schema.Encoded<RecipientAddress.RecipientAddress>
+        readonly address: Schema.Schema.Encoded<RecipientAddress>
         readonly message: Schema.Simplify<Schema.Schema.Encoded<Req[typeof Serializable.symbol]>>
       },
       Serializable.Serializable.Context<Req>,
@@ -62,7 +62,7 @@ export declare namespace Envelope {
    */
   export interface Proto<Req extends Schema.TaggedRequest.Any & PrimaryKey.PrimaryKey> {
     readonly [TypeId]: TypeId
-    readonly address: RecipientAddress.RecipientAddress
+    readonly address: RecipientAddress
     readonly message: Req
   }
 }
@@ -74,14 +74,14 @@ const EnvelopeProto = Data.unsafeStruct({
     return (
       PrimaryKey.value(this.message) +
       "@" +
-      this.address.recipientTypeName +
+      this.address.recipientType +
       "#" +
       this.address.entityId
     )
   },
   get [Serializable.symbol]() {
     return Schema.Struct({
-      address: RecipientAddress.RecipientAddress,
+      address: RecipientAddress,
       message: Serializable.selfSchema((this as any).message)
     })
   },
@@ -98,7 +98,7 @@ const EnvelopeProto = Data.unsafeStruct({
  * @category constructors
  */
 export const make = <Req extends Schema.TaggedRequest.Any & PrimaryKey.PrimaryKey>(
-  address: RecipientAddress.RecipientAddress,
+  address: RecipientAddress,
   message: Req
 ): Envelope<Req> => {
   const envelope = Object.create(EnvelopeProto)

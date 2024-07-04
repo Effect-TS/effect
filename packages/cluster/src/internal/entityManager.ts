@@ -11,7 +11,7 @@ import * as Scope from "effect/Scope"
 import * as RefSynchronized from "effect/SynchronizedRef"
 import * as Message from "../Message.js"
 import * as MessageState from "../MessageState.js"
-import type * as RecipientAddress from "../RecipientAddress.js"
+import type { RecipientAddress } from "../RecipientAddress.js"
 import type * as RecipientBehaviour from "../RecipientBehaviour.js"
 import * as RecipientBehaviourContext from "../RecipientBehaviourContext.js"
 import type * as RecipientType from "../RecipientType.js"
@@ -73,14 +73,11 @@ export function make<Msg extends Message.Message.Any, R>(
     const env = yield* _(Effect.context<Exclude<R, RecipientBehaviourContext.RecipientBehaviourContext>>())
     const entityStates = yield* _(
       RefSynchronized.make<
-        HashMap.HashMap<
-          RecipientAddress.RecipientAddress,
-          EntityState.EntityState
-        >
+        HashMap.HashMap<RecipientAddress, EntityState.EntityState>
       >(HashMap.empty())
     )
 
-    function startExpirationFiber(recipientAddress: RecipientAddress.RecipientAddress) {
+    function startExpirationFiber(recipientAddress: RecipientAddress) {
       const maxIdleMillis = pipe(
         entityMaxIdle,
         Option.getOrElse(() => config.entityMaxIdleTime),
@@ -118,7 +115,7 @@ export function make<Msg extends Message.Message.Any, R>(
     /**
      * Performs proper termination of the entity, interrupting the expiration timer, closing the scope and failing pending replies
      */
-    function terminateEntity(recipientAddress: RecipientAddress.RecipientAddress) {
+    function terminateEntity(recipientAddress: RecipientAddress) {
       return pipe(
         // get the things to cleanup
         RefSynchronized.get(
@@ -141,7 +138,7 @@ export function make<Msg extends Message.Message.Any, R>(
               Effect.catchAllCause(Effect.logError),
               Effect.asVoid,
               Effect.annotateLogs("entityId", recipientAddress.entityId),
-              Effect.annotateLogs("recipientType", recipientAddress.recipientTypeName)
+              Effect.annotateLogs("recipientType", recipientAddress.recipientType)
             )
         }))
       )
@@ -151,7 +148,7 @@ export function make<Msg extends Message.Message.Any, R>(
      * Begins entity termination (if needed) and return the fiber to wait for completed termination (if any)
      */
     function forkEntityTermination(
-      recipientAddress: RecipientAddress.RecipientAddress
+      recipientAddress: RecipientAddress
     ): Effect.Effect<Option.Option<Fiber.RuntimeFiber<void, never>>> {
       return RefSynchronized.modifyEffect(entityStates, (entityStatesMap) =>
         pipe(
@@ -189,7 +186,7 @@ export function make<Msg extends Message.Message.Any, R>(
     }
 
     function getOrCreateEntityState(
-      recipientAddress: RecipientAddress.RecipientAddress
+      recipientAddress: RecipientAddress
     ): Effect.Effect<
       Option.Option<EntityState.EntityState>,
       ShardingException.EntityNotManagedByThisPodException
@@ -338,11 +335,7 @@ export function make<Msg extends Message.Message.Any, R>(
       Effect.flatMap(terminateEntities)
     )
 
-    function terminateEntities(
-      entitiesToTerminate: HashSet.HashSet<
-        RecipientAddress.RecipientAddress
-      >
-    ) {
+    function terminateEntities(entitiesToTerminate: HashSet.HashSet<RecipientAddress>) {
       return pipe(
         entitiesToTerminate,
         Effect.forEach(
