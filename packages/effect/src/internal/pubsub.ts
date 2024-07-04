@@ -1691,8 +1691,7 @@ class ReplayWindowImpl<A> implements ReplayWindow<A> {
     this.head = buffer.head
   }
   fastForward() {
-    const skip = this.buffer.index - this.index
-    for (let i = 0; i < skip; i++) {
+    while (this.index < this.buffer.index) {
       this.head = this.head.next!
       this.index++
     }
@@ -1703,7 +1702,7 @@ class ReplayWindowImpl<A> implements ReplayWindow<A> {
     } else if (this.index < this.buffer.index) {
       this.fastForward()
     }
-    this.remaining -= 1
+    this.remaining--
     const value = this.head.value
     this.head = this.head.next!
     return value as A
