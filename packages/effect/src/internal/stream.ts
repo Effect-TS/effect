@@ -3921,36 +3921,36 @@ export const mergeEither = dual<
 
 /** @internal */
 export const mergeLeft = dual<
-  <A2, E2, R2>(
-    that: Stream.Stream<A2, E2, R2>
-  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E2 | E, R2 | R>,
-  <A, E, R, A2, E2, R2>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>
-  ) => Stream.Stream<A, E2 | E, R2 | R>
+  <AR, ER, RR>(
+    right: Stream.Stream<AR, ER, RR>
+  ) => <AL, EL, RL>(left: Stream.Stream<AL, EL, RL>) => Stream.Stream<AL, ER | EL, RR | RL>,
+  <AL, EL, RL, AR, ER, RR>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>
+  ) => Stream.Stream<AL, ER | EL, RR | RL>
 >(
   2,
-  <A, E, R, A2, E2, R2>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>
-  ): Stream.Stream<A, E | E2, R | R2> => pipe(self, merge(drain(that)))
+  <AL, EL, RL, AR, ER, RR>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>
+  ): Stream.Stream<AL, EL | ER, RL | RR> => pipe(left, merge(drain(right)))
 )
 
 /** @internal */
 export const mergeRight = dual<
-  <A2, E2, R2>(
-    that: Stream.Stream<A2, E2, R2>
-  ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A2, E2 | E, R2 | R>,
-  <A, E, R, A2, E2, R2>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>
-  ) => Stream.Stream<A2, E2 | E, R2 | R>
+  <AR, ER, RR>(
+    right: Stream.Stream<AR, ER, RR>
+  ) => <AL, EL, RL>(left: Stream.Stream<AL, EL, RL>) => Stream.Stream<AR, ER | EL, RR | RL>,
+  <AL, EL, RL, AR, ER, RR>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>
+  ) => Stream.Stream<AR, ER | EL, RR | RL>
 >(
   2,
-  <A, E, R, A2, E2, R2>(
-    self: Stream.Stream<A, E, R>,
-    that: Stream.Stream<A2, E2, R2>
-  ): Stream.Stream<A2, E | E2, R | R2> => pipe(drain(self), merge(that))
+  <AL, EL, RL, AR, ER, RR>(
+    left: Stream.Stream<AL, EL, RL>,
+    right: Stream.Stream<AR, ER, RR>
+  ): Stream.Stream<AR, EL | ER, RL | RR> => pipe(drain(left), merge(right))
 )
 
 /** @internal */
