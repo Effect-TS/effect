@@ -1,5 +1,13 @@
 # @effect/cli
 
+## 0.37.3
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/printer@0.33.40
+  - @effect/printer-ansi@0.33.40
+
 ## 0.37.2
 
 ### Patch Changes
