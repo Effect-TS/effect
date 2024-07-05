@@ -8355,6 +8355,85 @@ const pair = <A, I, R>(
   Schema.Tuple(schema, schema)
 ```
 
+# FAQ
+
+## Is it Possible to Extend Functionality Beyond Built-in APIs?
+
+Se ciò che si vuole ottenere non è già coperto da qualche API built-in puoi sempre definire una tua nuova API sfruttando le API built-in, e se non dovesse essere sufficiente, scendere as utilizzare le API low-lvele del modulo `@effect/schema/AST`.
+
+To develop a robust custom API, you need to address two primary challenges:
+
+1. **Type-level challenge**: Can you define the TypeScript signature for your API?
+2. **Runtime-level challenge**: Can you implement your API at runtime using either the `Schema` or `AST` module APIs?
+
+Let's explore a practical example: "Is it possible to make all fields of a struct nullable?"
+
+**Defining the API Signature in TypeScript**
+
+First, let's determine if we can define the API's TypeScript signature:
+
+```ts
+import { Schema } from "@effect/schema"
+
+const nullableFields = <Fields extends { readonly [x: string]: Schema.Schema.Any }>(
+  schema: Schema.Struct<Fields>
+): Schema.Struct<{ [K in keyof Fields]: Schema.NullOr<Fields[K]> }>
+
+// Example use
+
+/*
+const schema: Schema.Struct<{
+    name: Schema.NullOr<typeof Schema.String>;
+    age: Schema.NullOr<typeof Schema.Number>;
+}>
+*/
+const schema = nullableFields(Schema.Struct({
+  name: Schema.String,
+  age: Schema.Number
+}))
+```
+
+You can preliminarily define the signature of `nullableFields` using TypeScript's `declare` keyword, allowing you to immediately test its validity (at the type-level, initially). The example above confirms that the API behaves as expected by inspecting a schema that utilizes this new API.
+
+```ts
+const schema: Schema.Struct<{
+  name: Schema.NullOr<typeof Schema.String>
+  age: Schema.NullOr<typeof Schema.Number>
+}>
+```
+
+**Implementing the API at Runtime**
+
+```ts
+import { Schema } from "@effect/schema"
+import { Record } from "effect"
+
+const nullableFields = <
+  Fields extends { readonly [x: string]: Schema.Schema.Any }
+>(
+  schema: Schema.Struct<Fields>
+): Schema.Struct<{ [K in keyof Fields]: Schema.NullOr<Fields[K]> }> => {
+  return Schema.Struct(
+    Record.map(schema.fields, (schema) => Schema.NullOr(schema)) as any as {
+      [K in keyof Fields]: Schema.NullOr<Fields[K]>
+    }
+  )
+}
+
+const schema = nullableFields(
+  Schema.Struct({
+    name: Schema.String,
+    age: Schema.Number
+  })
+)
+
+console.log(Schema.decodeUnknownSync(schema)({ name: "a", age: null }))
+/*
+Output:
+{ name: 'a', age: null }
+*/
+```
+
 # Comparisons
 
 ## Zod
