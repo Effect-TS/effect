@@ -21,7 +21,6 @@ type AbsentValue = typeof AbsentValue
 /** @internal */
 export interface AtomicPubSub<in out A> {
   readonly capacity: number
-  readonly replayBuffer: ReplayBuffer<A> | undefined
   isEmpty(): boolean
   isFull(): boolean
   size(): number
@@ -29,6 +28,7 @@ export interface AtomicPubSub<in out A> {
   publishAll(elements: Iterable<A>): Chunk.Chunk<A>
   slide(): void
   subscribe(): Subscription<A>
+  replayWindow(): ReplayWindow<A>
 }
 
 /** @internal */
@@ -205,7 +205,7 @@ export const unsafeMakeSubscription = <A>(
     shutdownHook,
     shutdownFlag,
     strategy,
-    pubsub.replayBuffer ? pubsub.replayBuffer.capture() : emptyReplayWindow
+    pubsub.replayWindow()
   )
 
 /** @internal */
@@ -219,6 +219,10 @@ class BoundedPubSubArb<in out A> implements AtomicPubSub<A> {
   constructor(readonly capacity: number, readonly replayBuffer: ReplayBuffer<A> | undefined) {
     this.array = Array.from({ length: capacity })
     this.subscribers = Array.from({ length: capacity })
+  }
+
+  replayWindow(): ReplayWindow<A> {
+    return this.replayBuffer ? new ReplayWindowImpl(this.replayBuffer) : emptyReplayWindow
   }
 
   isEmpty(): boolean {
@@ -400,6 +404,10 @@ class BoundedPubSubPow2<in out A> implements AtomicPubSub<A> {
     this.capacity = capacity
   }
 
+  replayWindow(): ReplayWindow<A> {
+    return this.replayBuffer ? new ReplayWindowImpl(this.replayBuffer) : emptyReplayWindow
+  }
+
   isEmpty(): boolean {
     return this.publisherIndex === this.subscribersIndex
   }
@@ -573,6 +581,10 @@ class BoundedPubSubSingle<in out A> implements AtomicPubSub<A> {
   readonly capacity = 1
   constructor(readonly replayBuffer: ReplayBuffer<A> | undefined) {}
 
+  replayWindow(): ReplayWindow<A> {
+    return this.replayBuffer ? new ReplayWindowImpl(this.replayBuffer) : emptyReplayWindow
+  }
+
   pipe() {
     return pipeArguments(this, arguments)
   }
@@ -719,6 +731,10 @@ class UnboundedPubSub<in out A> implements AtomicPubSub<A> {
 
   readonly capacity = Number.MAX_SAFE_INTEGER
   constructor(readonly replayBuffer: ReplayBuffer<A> | undefined) {}
+
+  replayWindow(): ReplayWindow<A> {
+    return this.replayBuffer ? new ReplayWindowImpl(this.replayBuffer) : emptyReplayWindow
+  }
 
   isEmpty(): boolean {
     return this.publisherHead === this.publisherTail
@@ -1666,9 +1682,6 @@ class ReplayBuffer<A> {
     for (const a of as) {
       this.offer(a)
     }
-  }
-  capture(): ReplayWindow<A> {
-    return new ReplayWindowImpl(this)
   }
 }
 
