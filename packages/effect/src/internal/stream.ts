@@ -4686,6 +4686,40 @@ export const range = (min: number, max: number, chunkSize = DefaultChunkSize): S
     return new StreamImpl(go(min, max, chunkSize))
   })
 
+export const raceAll = <S extends ReadonlyArray<Stream.Stream<any, any, any>>>(
+  ...streams: S
+): Stream.Stream<
+  Stream.Stream.Success<S[number]>,
+  Stream.Stream.Error<S[number]>,
+  Stream.Stream.Context<S[number]>
+> =>
+  Deferred.make<void>().pipe(
+    Effect.map((halt) => {
+      let winner: number | null = null
+      return mergeAll(
+        streams.map((stream, index) =>
+          stream.pipe(
+            takeWhile(() => {
+              if (winner === null) {
+                winner = index
+                Deferred.unsafeDone(halt, Exit.void)
+                return true
+              }
+              return winner === index
+            }),
+            interruptWhen(
+              Deferred.await(halt).pipe(
+                Effect.flatMap(() => winner === index ? Effect.never : Effect.void)
+              )
+            )
+          )
+        ),
+        { concurrency: streams.length }
+      )
+    }),
+    unwrap
+  )
+
 /** @internal */
 export const rechunk = dual<
   (n: number) => <A, E, R>(self: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R>,
