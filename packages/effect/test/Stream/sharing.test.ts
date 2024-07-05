@@ -27,7 +27,7 @@ describe("Stream", () => {
       assert.deepStrictEqual(Array.from(result2), source)
     }))
 
-  it.effect("share - resetOnRefCountZero: false", () =>
+  it.scoped("share - resetOnRefCountZero: false", () =>
     Effect.gen(function*() {
       const sharedStream = Stream.fromSchedule(
         Schedule.spaced("1 seconds")
@@ -57,6 +57,5 @@ describe("Stream", () => {
       yield* TestClock.adjust("1 second")
       const second = yield* Fiber.join(secondFiber)
       assert.deepStrictEqual(second, [1])
-    })
-      .pipe(Effect.scoped))
+    }))
 })
