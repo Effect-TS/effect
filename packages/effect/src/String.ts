@@ -164,7 +164,11 @@ export const trim = <A extends string>(self: A): Trim<A> => self.trim() as Trim<
 /**
  * @since 2.0.0
  */
-export type TrimStart<A extends string> = A extends `${" " | "\n" | "\t" | "\r"}${infer B}` ? TrimStart<B> : A
+export type TrimStart<A extends string> = A extends ` ${infer B}` ? TrimStart<B>
+  : A extends `\n${infer B}` ? TrimStart<B>
+  : A extends `\t${infer B}` ? TrimStart<B>
+  : A extends `\r${infer B}` ? TrimStart<B>
+  : A
 
 /**
  * @example
@@ -179,8 +183,11 @@ export const trimStart = <A extends string>(self: A): TrimStart<A> => self.trimS
 /**
  * @since 2.0.0
  */
-export type TrimEnd<A extends string> = A extends `${infer B}${" " | "\n" | "\t" | "\r"}` ? TrimEnd<B> : A
-
+export type TrimEnd<A extends string> = A extends `${infer B} ` ? TrimEnd<B>
+  : A extends `${infer B}\n` ? TrimEnd<B>
+  : A extends `${infer B}\t` ? TrimEnd<B>
+  : A extends `${infer B}\r` ? TrimEnd<B>
+  : A
 /**
  * @example
  * import { String } from "effect"
@@ -618,9 +625,6 @@ export const stripMargin = (self: string): string => stripMarginWith(self, "|")
  * @since 2.0.0
  */
 export const snakeToCamel = <S extends string>(self: S): MatchNonEmpty<S, EmptyString, NonEmptyString> => {
-  if (self === empty) {
-    return empty as any
-  }
   let str = self[0]
   for (let i = 1; i < self.length; i++) {
     str += self[i] === "_" ? self[++i].toUpperCase() : self[i]
@@ -632,12 +636,9 @@ export const snakeToCamel = <S extends string>(self: S): MatchNonEmpty<S, EmptyS
  * @since 2.0.0
  */
 export const snakeToPascal = <S extends string>(self: S): MatchNonEmpty<S, EmptyString, NonEmptyString> => {
-  if (self === empty) {
-    return empty as any
-  }
   let str = self[0].toUpperCase()
   for (let i = 1; i < self.length; i++) {
-    str += self[i] === "_" ? self[++i]?.toUpperCase() ?? "_" : self[i]
+    str += self[i] === "_" ? self[++i].toUpperCase() : self[i]
   }
   return str as any
 }
