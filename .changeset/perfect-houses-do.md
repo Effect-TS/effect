@@ -1,0 +1,5 @@
+---
+"effect": minor
+---
+
+Introduce `NonEmptyString`
