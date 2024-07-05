@@ -18,6 +18,24 @@ import type { Refinement } from "./Predicate.js"
 import * as predicate from "./Predicate.js"
 
 /**
+ * @category models
+ * @since 2.0.0
+ */
+export type NonEmptyString = `${any}${string}`
+
+/**
+ * @category models
+ * @since 2.0.0
+ */
+export type MatchNonEmpty<S extends String, OnEmpty, OnNonEmpty> = S extends NonEmptyString ? OnNonEmpty : OnEmpty
+
+/**
+ * @category models
+ * @since 2.0.0
+ */
+export type EmptyString = ""
+
+/**
  * Tests if a value is a `string`.
  *
  * @param input - The value to test.
@@ -50,7 +68,7 @@ export const Order: order.Order<string> = order.string
  *
  * @since 2.0.0
  */
-export const empty: "" = "" as const
+export const empty: EmptyString = "" as const
 
 /**
  * Concatenates two strings at the type level.
@@ -194,14 +212,14 @@ export const slice = (start?: number, end?: number) => (self: string): string =>
  *
  * @since 2.0.0
  */
-export const isEmpty = (self: string): self is "" => self.length === 0
+export const isEmpty = (self: string): self is EmptyString => self.length === 0
 
 /**
  * Test whether a `string` is non empty.
  *
  * @since 2.0.0
  */
-export const isNonEmpty = (self: string): boolean => self.length > 0
+export const isNonEmpty = (self: string): self is NonEmptyString => self.length > 0
 
 /**
  * Calculate the number of characters in a `string`.
@@ -292,9 +310,13 @@ export const substring = (start: number, end?: number) => (self: string): string
  * @since 2.0.0
  */
 export const at: {
-  (index: number): (self: string) => Option.Option<string>
-  (self: string, index: number): Option.Option<string>
-} = dual(2, (self: string, index: number): Option.Option<string> => Option.fromNullable(self.at(index)))
+  (index: number): (self: string) => Option.Option<NonEmptyString>
+  (self: string, index: number): Option.Option<NonEmptyString>
+} = dual(
+  2,
+  (self: string, index: number): Option.Option<NonEmptyString> =>
+    Option.fromNullable(self.at(index) as NonEmptyString | undefined)
+)
 
 /**
  * @example
@@ -306,11 +328,12 @@ export const at: {
  * @since 2.0.0
  */
 export const charAt: {
-  (index: number): (self: string) => Option.Option<string>
-  (self: string, index: number): Option.Option<string>
+  (index: number): (self: string) => Option.Option<NonEmptyString>
+  (self: string, index: number): Option.Option<NonEmptyString>
 } = dual(
   2,
-  (self: string, index: number): Option.Option<string> => Option.filter(Option.some(self.charAt(index)), isNonEmpty)
+  (self: string, index: number): Option.Option<NonEmptyString> =>
+    Option.filter(Option.some(self.charAt(index)), isNonEmpty)
 )
 
 /**
@@ -402,8 +425,9 @@ export const normalize = (form?: "NFC" | "NFD" | "NFKC" | "NFKD") => (self: stri
  *
  * @since 2.0.0
  */
-export const padEnd = (maxLength: number, fillString?: string) => (self: string): string =>
-  self.padEnd(maxLength, fillString)
+export const padEnd: {
+  (maxLength: number, fillString?: string): <S extends string>(self: S) => MatchNonEmpty<S, string, NonEmptyString>
+} = (maxLength, fillString) => (self) => self.padEnd(maxLength, fillString) as any
 
 /**
  * @example
@@ -414,8 +438,9 @@ export const padEnd = (maxLength: number, fillString?: string) => (self: string)
  *
  * @since 2.0.0
  */
-export const padStart = (maxLength: number, fillString?: string) => (self: string): string =>
-  self.padStart(maxLength, fillString)
+export const padStart: {
+  (maxLength: number, fillString?: string): <S extends string>(self: S) => MatchNonEmpty<S, string, NonEmptyString>
+} = (maxLength, fillString) => (self) => self.padStart(maxLength, fillString) as any
 
 /**
  * @example
@@ -425,7 +450,8 @@ export const padStart = (maxLength: number, fillString?: string) => (self: strin
  *
  * @since 2.0.0
  */
-export const repeat = (count: number) => (self: string): string => self.repeat(count)
+export const repeat = (count: number) => <S extends string>(self: S): MatchNonEmpty<S, EmptyString, NonEmptyString> =>
+  self.repeat(count) as any
 
 /**
  * @example
@@ -467,8 +493,9 @@ export const search: {
  *
  * @since 2.0.0
  */
-export const toLocaleLowerCase = (locale?: string | Array<string>) => (self: string): string =>
-  self.toLocaleLowerCase(locale)
+export const toLocaleLowerCase =
+  (locale?: string | Array<string>) => <S extends string>(self: S): MatchNonEmpty<S, string, NonEmptyString> =>
+    self.toLocaleLowerCase(locale) as any
 
 /**
  * @example
@@ -479,8 +506,9 @@ export const toLocaleLowerCase = (locale?: string | Array<string>) => (self: str
  *
  * @since 2.0.0
  */
-export const toLocaleUpperCase = (locale?: string | Array<string>) => (self: string): string =>
-  self.toLocaleUpperCase(locale)
+export const toLocaleUpperCase =
+  (locale?: string | Array<string>) => <S extends string>(self: S): MatchNonEmpty<S, string, NonEmptyString> =>
+    self.toLocaleUpperCase(locale) as any
 
 /**
  * Keep the specified number of characters from the start of a string.
@@ -559,7 +587,7 @@ export const stripMarginWith: {
   (marginChar: string): (self: string) => string
   (self: string, marginChar: string): string
 } = dual(2, (self: string, marginChar: string): string => {
-  let out = ""
+  let out = empty
 
   for (const line of linesWithSeparators(self)) {
     let index = 0
@@ -589,45 +617,54 @@ export const stripMargin = (self: string): string => stripMarginWith(self, "|")
 /**
  * @since 2.0.0
  */
-export const snakeToCamel = (self: string): string => {
+export const snakeToCamel = <S extends string>(self: S): MatchNonEmpty<S, EmptyString, NonEmptyString> => {
+  if (self === empty) {
+    return empty as any
+  }
   let str = self[0]
   for (let i = 1; i < self.length; i++) {
     str += self[i] === "_" ? self[++i].toUpperCase() : self[i]
   }
-  return str
+  return str as any
 }
 
 /**
  * @since 2.0.0
  */
-export const snakeToPascal = (self: string): string => {
+export const snakeToPascal = <S extends string>(self: S): MatchNonEmpty<S, EmptyString, NonEmptyString> => {
+  if (self === empty) {
+    return empty as any
+  }
   let str = self[0].toUpperCase()
   for (let i = 1; i < self.length; i++) {
-    str += self[i] === "_" ? self[++i].toUpperCase() : self[i]
+    str += self[i] === "_" ? self[++i]?.toUpperCase() ?? "_" : self[i]
   }
-  return str
+  return str as any
 }
 
 /**
  * @since 2.0.0
  */
-export const snakeToKebab = (self: string): string => self.replace(/_/g, "-")
+export const snakeToKebab = <S extends string>(self: S): MatchNonEmpty<S, EmptyString, NonEmptyString> =>
+  self.replace(/_/g, "-") as any
 
 /**
  * @since 2.0.0
  */
-export const camelToSnake = (self: string): string => self.replace(/([A-Z])/g, "_$1").toLowerCase()
+export const camelToSnake = <S extends string>(self: S): MatchNonEmpty<S, EmptyString, NonEmptyString> =>
+  self.replace(/([A-Z])/g, "_$1").toLowerCase() as any
 
 /**
  * @since 2.0.0
  */
-export const pascalToSnake = (self: string): string =>
-  (self.slice(0, 1) + self.slice(1).replace(/([A-Z])/g, "_$1")).toLowerCase()
+export const pascalToSnake = <S extends string>(self: S): MatchNonEmpty<S, EmptyString, NonEmptyString> =>
+  (self.slice(0, 1) + self.slice(1).replace(/([A-Z])/g, "_$1")).toLowerCase() as any
 
 /**
  * @since 2.0.0
  */
-export const kebabToSnake = (self: string): string => self.replace(/-/g, "_")
+export const kebabToSnake = <S extends string>(self: S): MatchNonEmpty<S, EmptyString, NonEmptyString> =>
+  self.replace(/-/g, "_") as any
 
 class LinesIterator implements IterableIterator<string> {
   private index: number
