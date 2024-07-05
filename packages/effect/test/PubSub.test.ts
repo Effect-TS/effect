@@ -662,11 +662,11 @@ describe("PubSub", () => {
       assert.deepStrictEqual(pubsub.unsafeSize(), Option.some(0))
     }))
 
-  describe("replayCapacity", () => {
+  describe("replay", () => {
     it.scoped("unbounded", () =>
       Effect.gen(function*() {
         const messages = [1, 2, 3, 4, 5]
-        const pubsub = yield* PubSub.unbounded<number>({ replayCapacity: 3 })
+        const pubsub = yield* PubSub.unbounded<number>({ replay: 3 })
         yield* PubSub.publishAll(pubsub, messages)
         const sub = yield* PubSub.subscribe(pubsub)
         assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [3, 4, 5])
@@ -674,7 +674,7 @@ describe("PubSub", () => {
 
     it.effect("unbounded takeUpTo", () => {
       const messages = [1, 2, 3, 4, 5]
-      return PubSub.unbounded<number>({ replayCapacity: 3 }).pipe(
+      return PubSub.unbounded<number>({ replay: 3 }).pipe(
         Effect.flatMap((pubsub) =>
           Effect.scoped(
             Effect.gen(function*() {
@@ -698,7 +698,7 @@ describe("PubSub", () => {
     it.scoped("dropping", () =>
       Effect.gen(function*() {
         const messages = [1, 2, 3, 4, 5]
-        const pubsub = yield* PubSub.dropping<number>(2, { replayCapacity: 3 })
+        const pubsub = yield* PubSub.dropping<number>({ capacity: 2, replay: 3 })
 
         yield* PubSub.publishAll(pubsub, messages)
         const sub = yield* PubSub.subscribe(pubsub)
@@ -720,7 +720,7 @@ describe("PubSub", () => {
     it.scoped("sliding", () =>
       Effect.gen(function*() {
         const messages = [1, 2, 3, 4, 5]
-        const pubsub = yield* PubSub.sliding<number>(4, { replayCapacity: 3 })
+        const pubsub = yield* PubSub.sliding<number>({ capacity: 4, replay: 3 })
 
         yield* PubSub.publishAll(pubsub, messages)
         const sub = yield* PubSub.subscribe(pubsub)

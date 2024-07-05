@@ -47,8 +47,7 @@ export interface PubSub<in out A> extends Queue.Enqueue<A>, Pipeable {
  * @category constructors
  */
 export const bounded: <A>(
-  requestedCapacity: number,
-  options?: { readonly replayCapacity?: number }
+  capacity: number | { readonly capacity: number; readonly replay?: number | undefined }
 ) => Effect.Effect<PubSub<A>> = internal.bounded
 
 /**
@@ -61,8 +60,7 @@ export const bounded: <A>(
  * @category constructors
  */
 export const dropping: <A>(
-  requestedCapacity: number,
-  options?: { readonly replayCapacity?: number }
+  capacity: number | { readonly capacity: number; readonly replay?: number | undefined }
 ) => Effect.Effect<PubSub<A>> = internal.dropping
 
 /**
@@ -75,8 +73,7 @@ export const dropping: <A>(
  * @category constructors
  */
 export const sliding: <A>(
-  requestedCapacity: number,
-  options?: { readonly replayCapacity?: number }
+  capacity: number | { readonly capacity: number; readonly replay?: number | undefined }
 ) => Effect.Effect<PubSub<A>> = internal.sliding
 
 /**
@@ -85,7 +82,7 @@ export const sliding: <A>(
  * @since 2.0.0
  * @category constructors
  */
-export const unbounded: <A>(options?: { readonly replayCapacity?: number }) => Effect.Effect<PubSub<A>> =
+export const unbounded: <A>(options?: { readonly replay?: number | undefined }) => Effect.Effect<PubSub<A>> =
   internal.unbounded
 
 /**

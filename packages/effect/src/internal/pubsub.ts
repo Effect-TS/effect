@@ -74,35 +74,44 @@ const removeSubscribers = <A>(
 }
 
 /** @internal */
-export const bounded = <A>(requestedCapacity: number, options?: {
-  readonly replayCapacity?: number
-}): Effect.Effect<PubSub.PubSub<A>> =>
+export const bounded = <A>(
+  capacity: number | {
+    readonly capacity: number
+    readonly replay?: number | undefined
+  }
+): Effect.Effect<PubSub.PubSub<A>> =>
   core.suspend(() => {
-    const pubsub = makeBoundedPubSub<A>(requestedCapacity, options)
+    const pubsub = makeBoundedPubSub<A>(capacity)
     return makePubSub(pubsub, new BackPressureStrategy())
   })
 
 /** @internal */
-export const dropping = <A>(requestedCapacity: number, options?: {
-  readonly replayCapacity?: number
-}): Effect.Effect<PubSub.PubSub<A>> =>
+export const dropping = <A>(
+  capacity: number | {
+    readonly capacity: number
+    readonly replay?: number | undefined
+  }
+): Effect.Effect<PubSub.PubSub<A>> =>
   core.suspend(() => {
-    const pubsub = makeBoundedPubSub<A>(requestedCapacity, options)
+    const pubsub = makeBoundedPubSub<A>(capacity)
     return makePubSub(pubsub, new DroppingStrategy())
   })
 
 /** @internal */
-export const sliding = <A>(requestedCapacity: number, options?: {
-  readonly replayCapacity?: number
-}): Effect.Effect<PubSub.PubSub<A>> =>
+export const sliding = <A>(
+  capacity: number | {
+    readonly capacity: number
+    readonly replay?: number | undefined
+  }
+): Effect.Effect<PubSub.PubSub<A>> =>
   core.suspend(() => {
-    const pubsub = makeBoundedPubSub<A>(requestedCapacity, options)
+    const pubsub = makeBoundedPubSub<A>(capacity)
     return makePubSub(pubsub, new SlidingStrategy())
   })
 
 /** @internal */
 export const unbounded = <A>(options?: {
-  readonly replayCapacity?: number
+  readonly replay?: number | undefined
 }): Effect.Effect<PubSub.PubSub<A>> =>
   core.suspend(() => {
     const pubsub = makeUnboundedPubSub<A>(options)
@@ -148,27 +157,27 @@ export const subscribe = <A>(self: PubSub.PubSub<A>): Effect.Effect<Queue.Dequeu
 
 /** @internal */
 const makeBoundedPubSub = <A>(
-  requestedCapacity: number,
-  options?: {
-    readonly replayCapacity?: number
+  capacity: number | {
+    readonly capacity: number
+    readonly replay?: number | undefined
   }
 ): AtomicPubSub<A> => {
-  ensureCapacity(requestedCapacity)
-  const replayBuffer = options?.replayCapacity ? new ReplayBuffer<A>(options.replayCapacity) : undefined
-  if (requestedCapacity === 1) {
+  const options = typeof capacity === "number" ? { capacity } : capacity
+  ensureCapacity(options.capacity)
+  const replayBuffer = options.replay ? new ReplayBuffer<A>(options.replay) : undefined
+  if (options.capacity === 1) {
     return new BoundedPubSubSingle(replayBuffer)
-  } else if (nextPow2(requestedCapacity) === requestedCapacity) {
-    return new BoundedPubSubPow2(requestedCapacity, replayBuffer)
+  } else if (nextPow2(options.capacity) === options.capacity) {
+    return new BoundedPubSubPow2(options.capacity, replayBuffer)
   } else {
-    return new BoundedPubSubArb(requestedCapacity, replayBuffer)
+    return new BoundedPubSubArb(options.capacity, replayBuffer)
   }
 }
 
 /** @internal */
 const makeUnboundedPubSub = <A>(options?: {
-  readonly replayCapacity?: number
-}): AtomicPubSub<A> =>
-  new UnboundedPubSub(options?.replayCapacity ? new ReplayBuffer(options.replayCapacity) : undefined)
+  readonly replay?: number | undefined
+}): AtomicPubSub<A> => new UnboundedPubSub(options?.replay ? new ReplayBuffer(options.replay) : undefined)
 
 /** @internal */
 const makeSubscription = <A>(
