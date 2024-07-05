@@ -2,6 +2,7 @@
  * @since 3.5.0
  */
 import * as Context from "./Context.js"
+import * as Deferred from "./Deferred.js"
 import * as Effect from "./Effect.js"
 import * as Exit from "./Exit.js"
 import * as FiberRef from "./FiberRef.js"
@@ -35,23 +36,23 @@ export interface RcMap<in out K, in out A, in out E> extends Pipeable {
   /** @internal */
   readonly context: Context.Context<never>
   /** @internal */
-  state: State<K, A>
+  state: State<K, A, E>
   /** @internal */
   readonly semaphore: Effect.Semaphore
 }
 
-type State<K, A> = State.Open<K, A> | State.Closed
+type State<K, A, E> = State.Open<K, A, E> | State.Closed
 
 declare namespace State {
-  interface Open<K, A> {
+  interface Open<K, A, E> {
     readonly _tag: "Open"
-    readonly map: MutableHashMap.MutableHashMap<K, Entry<A>>
+    readonly map: MutableHashMap.MutableHashMap<K, Entry<A, E>>
   }
   interface Closed {
     readonly _tag: "Closed"
   }
-  interface Entry<A> {
-    readonly value: A
+  interface Entry<A, E> {
+    readonly deferred: Deferred.Deferred<A, E>
     readonly scope: Scope.CloseableScope
     refCount: number
   }
@@ -144,29 +145,34 @@ export const get: {
           return Effect.succeed(o.value)
         }
         const acquire = self.lookup(key)
-        return Effect.flatMap(Scope.make(), (scope) =>
-          Effect.map(
-            restore(Effect.locally(
-              acquire as Effect.Effect<A, E>,
-              FiberRef.currentContext,
-              Context.add(self.context, Scope.Scope, scope)
-            )),
-            (value) => {
-              const entry: State.Entry<A> = {
-                value,
-                scope,
-                refCount: 1
-              }
-              MutableHashMap.set(state.map, key, entry)
-              return entry
+        return Scope.make().pipe(
+          Effect.bindTo("scope"),
+          Effect.bind("deferred", () => Deferred.make<A, E>()),
+          Effect.tap(({ deferred, scope }) =>
+            (acquire as Effect.Effect<A, E>).pipe(
+              Effect.locally(FiberRef.currentContext, Context.add(self.context, Scope.Scope, scope)),
+              restore,
+              Effect.exit,
+              Effect.flatMap((exit) => Deferred.done(deferred, exit)),
+              Effect.forkIn(scope)
+            )
+          ),
+          Effect.map(({ deferred, scope }) => {
+            const entry: State.Entry<A, E> = {
+              deferred,
+              scope,
+              refCount: 1
             }
-          ))
+            MutableHashMap.set(state.map, key, entry)
+            return entry
+          })
+        )
       }).pipe(
         self.semaphore.withPermits(1),
         Effect.bindTo("entry"),
         Effect.bind("scope", () => Effect.scope),
         Effect.flatMap(({ entry, scope }) =>
-          Effect.as(
+          Effect.zipRight(
             Scope.addFinalizer(
               scope,
               self.semaphore.withPermits(1)(Effect.suspend(() => {
@@ -180,7 +186,7 @@ export const get: {
                 return Scope.close(entry.scope, Exit.void)
               }))
             ),
-            entry.value
+            restore(Deferred.await(entry.deferred))
           )
         )
       )
