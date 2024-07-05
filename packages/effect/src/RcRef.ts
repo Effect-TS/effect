@@ -113,7 +113,7 @@ export const make = <A, E, R>(
 
 /**
  * @since 3.5.0
- * @category models
+ * @category combinators
  */
 export const get = <A, E>(
   self: RcRef<A, E>

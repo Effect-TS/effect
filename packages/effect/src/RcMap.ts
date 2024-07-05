@@ -124,7 +124,7 @@ export const make = <K, A, E, R>(
 
 /**
  * @since 3.5.0
- * @category models
+ * @category combinators
  */
 export const get: {
   <K>(key: K): <A, E>(self: RcMap<K, A, E>) => Effect.Effect<A, E, Scope.Scope>
