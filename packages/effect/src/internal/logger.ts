@@ -382,18 +382,14 @@ const withColor = (text: string, ...colors: ReadonlyArray<string>) => {
 const withColorNoop = (text: string, ..._colors: ReadonlyArray<string>) => text
 const colors = {
   bold: "1",
-
   red: "31",
   green: "32",
   yellow: "33",
   blue: "34",
-  magenta: "95",
   cyan: "36",
   white: "37",
   gray: "90",
   black: "30",
-
-  bgRed: "41",
   bgBrightRed: "101"
 } as const
 
@@ -408,28 +404,36 @@ const logLevelColors: Record<LogLevel.LogLevel["_tag"], ReadonlyArray<string>> =
   Fatal: [colors.bgBrightRed, colors.black]
 }
 
+const defaultDateFormat = (date: Date): string =>
+  `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}:${
+    date.getSeconds().toString().padStart(2, "0")
+  }.${date.getMilliseconds().toString().padStart(3, "0")}`
+
 /** @internal */
 export const prettyLogger = (options?: {
   readonly colors?: "auto" | boolean | undefined
   readonly stderr?: boolean | undefined
-}) =>
-  makeLogger<unknown, void>(
+  readonly formatDate?: ((date: Date) => string) | undefined
+  readonly mode?: "browser" | "tty" | "auto" | undefined
+}) => {
+  const mode_ = options?.mode ?? "auto"
+  const mode = mode_ === "auto" ? (hasWindow ? "browser" : "tty") : mode_
+  const isBrowser = mode === "browser"
+  const showColors = typeof options?.colors === "boolean" ? options.colors : processStdoutIsTTY || isBrowser
+  const color = showColors ? withColor : withColorNoop
+  const formatDate = options?.formatDate ?? defaultDateFormat
+
+  return makeLogger<unknown, void>(
     ({ annotations, cause, context, date, fiberId, logLevel, message: message_, spans }) => {
       const services = FiberRefs.getOrDefault(context, defaultServices.currentServices)
       const console = Context.get(services, consoleTag).unsafe
       const log = options?.stderr === true ? console.error : console.log
-      const showColors = typeof options?.colors === "boolean" ? options.colors : processStdoutIsTTY || hasWindow
-      const color = showColors ? withColor : withColorNoop
 
       const message = Arr.ensure(message_)
 
-      let firstLine = color(
-        `[${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}:${
-          date.getSeconds().toString().padStart(2, "0")
-        }.${date.getMilliseconds().toString().padStart(3, "0")}]`,
-        colors.white
-      )
-        + ` ${color(logLevel.label, ...logLevelColors[logLevel._tag])} (${_fiberId.threadName(fiberId)})`
+      let firstLine = color(`[${formatDate(date)}]`, colors.white)
+        + ` ${color(logLevel.label, ...logLevelColors[logLevel._tag])}`
+        + ` (${_fiberId.threadName(fiberId)})`
 
       if (List.isCons(spans)) {
         const now = date.getTime()
@@ -449,7 +453,7 @@ export const prettyLogger = (options?: {
         }
       }
 
-      if (hasWindow) {
+      if (isBrowser) {
         console.group(firstLine)
       } else {
         log(firstLine)
@@ -461,7 +465,7 @@ export const prettyLogger = (options?: {
       if (!Cause.isEmpty(cause)) {
         const errors = Cause.prettyErrors(cause)
         for (let i = 0; i < errors.length; i++) {
-          if (hasWindow) {
+          if (isBrowser) {
             console.error(errors[i].stack)
           } else {
             currentMessage += "\n%s"
@@ -490,3 +494,4 @@ export const prettyLogger = (options?: {
       console.groupEnd()
     }
   )
+}

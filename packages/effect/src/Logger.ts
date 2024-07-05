@@ -367,7 +367,12 @@ export const stringLogger: Logger<unknown, string> = internal.stringLogger
  * @category constructors
  */
 export const prettyLogger: (
-  options?: { readonly colors?: "auto" | boolean | undefined; readonly stderr?: boolean | undefined }
+  options?: {
+    readonly colors?: "auto" | boolean | undefined
+    readonly stderr?: boolean | undefined
+    readonly formatDate?: ((date: Date) => string) | undefined
+    readonly mode?: "browser" | "tty" | "auto" | undefined
+  }
 ) => Logger<unknown, void> = internal.prettyLogger
 
 /**
