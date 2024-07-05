@@ -93,3 +93,15 @@ export type TrimNewLinesAndTabs = S.Trim<NewLinesAndTabs>
 
 // $ExpectType "foo"
 export type TrimCarriageReturns = S.Trim<CarriageReturns>
+
+// -----------------------------------------------------------------------------
+// NonEmptyString
+// -----------------------------------------------------------------------------
+
+function testNonEmptyString(_nes: S.NonEmptyString) {}
+
+// @ts-expect-error
+testNonEmptyString("")
+testNonEmptyString(" ")
+testNonEmptyString("1")
+testNonEmptyString("s")
