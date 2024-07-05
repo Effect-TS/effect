@@ -2696,7 +2696,7 @@ export const provideSomeLayer: {
 
 /**
  * Returns a stream that mirrors the first upstream to emit an item.
- * As soon as one of the upstream emits a first value, all the others are being interrupted.
+ * As soon as one of the upstream emits a first value, all the others are interrupted.
  * The resulting stream will forward all items from the "winning" source stream.
  * Any upstream failures will cause the returned stream to fail.
  *
@@ -2704,9 +2704,9 @@ export const provideSomeLayer: {
  * import { Stream, Schedule, Console, Effect } from "effect"
  *
  * const stream = Stream.raceAll(
- *     Stream.fromSchedule(Schedule.spaced('1 millis')),
- *     Stream.fromSchedule(Schedule.spaced('2 millis')),
- *     Stream.fromSchedule(Schedule.spaced('4 millis')),
+ *   Stream.fromSchedule(Schedule.spaced('1 millis')),
+ *   Stream.fromSchedule(Schedule.spaced('2 millis')),
+ *   Stream.fromSchedule(Schedule.spaced('4 millis')),
  * ).pipe(Stream.take(6), Stream.tap(Console.log))
  *
  * Effect.runPromise(Stream.runDrain(stream))
@@ -2718,7 +2718,7 @@ export const provideSomeLayer: {
  * // 4
  * // 5
  * @since 3.5.0
- * @category utils
+ * @category racing
  */
 export const raceAll: <S extends ReadonlyArray<Stream<any, any, any>>>(
   ...streams: S
