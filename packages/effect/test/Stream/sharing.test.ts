@@ -44,8 +44,7 @@ describe("Stream", () => {
         Effect.map(Chunk.toReadonlyArray),
         Effect.fork
       )
-      yield* TestClock.adjust("999 millis")
-      yield* TestClock.adjust("1 millis")
+      yield* TestClock.adjust("1 second")
       const first = yield* Fiber.join(firstFiber)
       assert.deepStrictEqual(first, [0])
 
