@@ -15,7 +15,6 @@ import type * as pointed from "../Pointed.js"
 import type * as product_ from "../Product.js"
 import type * as semiApplicative from "../SemiApplicative.js"
 import type * as semiProduct from "../SemiProduct.js"
-import { toZipConcurrencyOptions } from "./Effect.js"
 
 const of = Micro.succeed
 
@@ -25,9 +24,6 @@ const flatMap = Micro.flatMap
 
 const imap = covariant.imap<Micro.MicroTypeLambda>(map)
 
-const product = (options?: ConcurrencyOptions): product_.Product<Micro.MicroTypeLambda>["product"] => (self, that) =>
-  Micro.zip(self, that, toZipConcurrencyOptions(options))
-
 /**
  * @category instances
  * @since 0.24.40
@@ -36,6 +32,9 @@ export type ConcurrencyOptions = {
   readonly concurrency?: Concurrency | undefined
   readonly batching?: boolean | "inherit" | undefined
 }
+
+const product = (options?: ConcurrencyOptions): product_.Product<Micro.MicroTypeLambda>["product"] => (self, that) =>
+  Micro.all([self, that], options)
 
 const productMany =
   (options?: ConcurrencyOptions): product_.Product<Micro.MicroTypeLambda>["productMany"] => (self, collection) =>

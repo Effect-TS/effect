@@ -24,38 +24,6 @@ const flatMap = Effect.flatMap
 
 const imap = covariant.imap<Effect.EffectTypeLambda>(map)
 
-const concurrencyToBoolean = (concurrency: Concurrency): boolean => {
-  switch (concurrency) {
-    case "unbounded":
-    case "inherit":
-      return true
-    default:
-      return concurrency <= 1 ? false : true
-  }
-}
-
-type ZipConcurrencyOptions = {
-  concurrent?: boolean | undefined
-  batching?: boolean | "inherit" | undefined
-}
-
-/** @internal */
-export const toZipConcurrencyOptions = (options?: ConcurrencyOptions): ZipConcurrencyOptions | undefined => {
-  if (options) {
-    const out: ZipConcurrencyOptions = {}
-    if ("concurrency" in options && options.concurrency !== undefined) {
-      out.concurrent = concurrencyToBoolean(options.concurrency)
-    }
-    if ("batching" in options && options.batching !== undefined) {
-      out.batching = options.batching
-    }
-    return out
-  }
-}
-
-const product = (options?: ConcurrencyOptions): product_.Product<Effect.EffectTypeLambda>["product"] => (self, that) =>
-  Effect.zip(self, that, toZipConcurrencyOptions(options))
-
 /**
  * @category instances
  * @since 0.24.40
@@ -64,6 +32,9 @@ export type ConcurrencyOptions = {
   readonly concurrency?: Concurrency | undefined
   readonly batching?: boolean | "inherit" | undefined
 }
+
+const product = (options?: ConcurrencyOptions): product_.Product<Effect.EffectTypeLambda>["product"] => (self, that) =>
+  Effect.all([self, that], options)
 
 const productMany =
   (options?: ConcurrencyOptions): product_.Product<Effect.EffectTypeLambda>["productMany"] => (self, collection) =>
