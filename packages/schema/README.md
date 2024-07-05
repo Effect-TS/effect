@@ -2026,7 +2026,7 @@ const mySymbolSchema = Schema.UniqueSymbolFromSelf(mySymbol)
 
 Using the `Schema.filter` function, developers can define custom validation logic that goes beyond basic type checks, allowing for in-depth control over the data conformity process. This function applies a predicate to data, and if the data fails the predicate's condition, a custom error message can be returned.
 
-**Note**. For effectful filters, see `filterEffect`.
+**Note**. For effectful filters, see [`filterEffect`](#effectful-filters).
 
 **Simple Validation Example**:
 
@@ -8436,7 +8436,7 @@ Output:
 
 # Comparisons
 
-## Zod
+## Zod (v3)
 
 Feature-wise, `schema` can do practically everything that `zod` can do.
 
@@ -9034,7 +9034,7 @@ const DogWithBreed = Dog.pipe(
   )
 )
 
-// or simply
+// or (recommended)
 
 const DogWithBreed = S.Struct({
   ...Dog.fields,
@@ -9067,9 +9067,9 @@ const Recipe = S.Struct({
   ingredients: S.Array(S.String)
 })
 
-const JustTheName = Recipe.pipe(S.pick("name"))
+const JustTheName = Recipe.pick("name")
 
-const NoIDRecipe = Recipe.pipe(S.omit("id"))
+const NoIDRecipe = Recipe.omit("id")
 ```
 
 #### partial
@@ -9550,9 +9550,7 @@ z.custom
 
 Schema
 
-```ts
-S.declare
-```
+[`S.declare`](#declaring-new-data-types) function
 
 ### refine / superRefine
 
@@ -9562,7 +9560,7 @@ Zod
 
 Schema
 
-`S.filter` / `S.filteEffect` functions
+[`S.filter`](#filters) / [`S.filterEffect`](#effectful-filters) functions
 
 ### transform
 
@@ -9572,7 +9570,7 @@ Zod
 
 Schema
 
-`S.transform` function
+[`S.transform`](#transform) / [`S.transformOrFail`](#transformorfail) functions
 
 ### describe
 
