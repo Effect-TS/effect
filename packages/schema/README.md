@@ -8359,7 +8359,7 @@ const pair = <A, I, R>(
 
 ## Is it Possible to Extend Functionality Beyond Built-in APIs?
 
-Se ciò che si vuole ottenere non è già coperto da qualche API built-in puoi sempre definire una tua nuova API sfruttando le API built-in, e se non dovesse essere sufficiente, scendere as utilizzare le API low-lvele del modulo `@effect/schema/AST`.
+If your needs aren't addressed by the existing built-in APIs, you have the option to craft your own API using the built-in APIs as a foundation. If these still don't suffice, you can delve into the lower-level APIs provided by the `@effect/schema/AST` module.
 
 To develop a robust custom API, you need to address two primary challenges:
 
@@ -9562,7 +9562,7 @@ Zod
 
 Schema
 
-`S.filter` / `S.transformOrFail` functions
+`S.filter` / `S.filteEffect` functions
 
 ### transform
 
