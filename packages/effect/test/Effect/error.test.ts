@@ -83,6 +83,13 @@ describe("Effect", () => {
       expect(inspect(new MessageError()).startsWith("fail\n")).toBe(true)
       assert.deepStrictEqual(new MessageError().toJSON(), { _tag: "MessageError" })
     })
+
+    it.it("cause", () => {
+      class MessageError extends Data.TaggedError("MessageError")<{
+        cause: unknown
+      }> {}
+      expect(inspect(new MessageError({ cause: new Error("boom") }))).includes("[cause]: Error: boom")
+    })
   }
 
   it.it("toJSON", () => {
