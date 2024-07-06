@@ -175,16 +175,19 @@ export const get: {
           Effect.zipRight(
             Scope.addFinalizer(
               scope,
-              self.semaphore.withPermits(1)(Effect.suspend(() => {
+              Effect.sync(() => {
                 entry.refCount--
                 if (entry.refCount > 0) {
-                  return Effect.void
+                  return false
                 }
                 if (self.state._tag === "Open") {
                   MutableHashMap.remove(self.state.map, key)
                 }
-                return Scope.close(entry.scope, Exit.void)
-              }))
+                return true
+              }).pipe(
+                self.semaphore.withPermits(1),
+                Effect.flatMap((removed) => removed ? Scope.close(entry.scope, Exit.void) : Effect.void)
+              )
             ),
             restore(Deferred.await(entry.deferred))
           )
