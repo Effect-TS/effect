@@ -115,10 +115,15 @@ export const make = <K, A, E, R>(
         }
         const map = self.state.map
         self.state = { _tag: "Closed" }
-        return Effect.forEach(map, ([_key, entry]) => Scope.close(entry.scope, Exit.void), { discard: true }).pipe(
+        return Effect.forEach(
+          map,
+          ([, entry]) => Scope.close(entry.scope, Exit.void),
+          { discard: true }
+        ).pipe(
           Effect.tap(() => {
             MutableHashMap.clear(map)
-          })
+          }),
+          self.semaphore.withPermits(1)
         )
       })
   )
@@ -186,7 +191,11 @@ export const get: {
                 return true
               }).pipe(
                 self.semaphore.withPermits(1),
-                Effect.flatMap((removed) => removed ? Scope.close(entry.scope, Exit.void) : Effect.void)
+                Effect.flatMap((removed) =>
+                  removed
+                    ? Scope.close(entry.scope, Exit.void)
+                    : Effect.void
+                )
               )
             ),
             restore(Deferred.await(entry.deferred))

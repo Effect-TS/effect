@@ -104,11 +104,15 @@ export const make = <A, E, R>(
         state: stateEmpty
       })),
     (self) =>
-      Effect.suspend(() => {
-        const close = self.state._tag === "Acquired" ? Scope.close(self.state.scope, Exit.void) : Effect.void
-        self.state = stateClosed
-        return close
-      })
+      self.semaphore.withPermits(1)(
+        Effect.suspend(() => {
+          const close = self.state._tag === "Acquired"
+            ? Scope.close(self.state.scope, Exit.void)
+            : Effect.void
+          self.state = stateClosed
+          return close
+        })
+      )
   )
 
 /**
@@ -148,14 +152,21 @@ export const get = <A, E>(
     Effect.tap(({ scope, state }) =>
       Scope.addFinalizer(
         scope,
-        self.semaphore.withPermits(1)(Effect.suspend(() => {
+        Effect.sync(() => {
           state.refCount--
           if (state.refCount > 0) {
-            return Effect.succeed(state)
+            return false
           }
           self.state = stateEmpty
-          return Scope.close(state.scope, Exit.void)
-        }))
+          return true
+        }).pipe(
+          self.semaphore.withPermits(1),
+          Effect.flatMap((removed) =>
+            removed
+              ? Scope.close(state.scope, Exit.void)
+              : Effect.void
+          )
+        )
       )
     ),
     Effect.map(({ state }) => state.value)
