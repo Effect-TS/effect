@@ -1916,7 +1916,7 @@ export const repeated: <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>(
  */
 export const run: <OutErr, InErr, OutDone, InDone, Env>(
   self: Channel<never, unknown, OutErr, InErr, OutDone, InDone, Env>
-) => Effect.Effect<OutDone, OutErr, Env> = channel.run
+) => Effect.Effect<OutDone, OutErr, Exclude<Env, Scope.Scope>> = channel.run
 
 /**
  * Run the channel until it finishes with a done value or fails with an error
@@ -1929,7 +1929,7 @@ export const run: <OutErr, InErr, OutDone, InDone, Env>(
  */
 export const runCollect: <OutElem, OutErr, InErr, OutDone, InDone, Env>(
   self: Channel<OutElem, unknown, OutErr, InErr, OutDone, InDone, Env>
-) => Effect.Effect<[Chunk.Chunk<OutElem>, OutDone], OutErr, Env> = channel.runCollect
+) => Effect.Effect<[Chunk.Chunk<OutElem>, OutDone], OutErr, Exclude<Env, Scope.Scope>> = channel.runCollect
 
 /**
  * Runs a channel until the end is received.
@@ -1939,7 +1939,7 @@ export const runCollect: <OutElem, OutErr, InErr, OutDone, InDone, Env>(
  */
 export const runDrain: <OutElem, OutErr, InErr, OutDone, InDone, Env>(
   self: Channel<OutElem, unknown, OutErr, InErr, OutDone, InDone, Env>
-) => Effect.Effect<OutDone, OutErr, Env> = channel.runDrain
+) => Effect.Effect<OutDone, OutErr, Exclude<Env, Scope.Scope>> = channel.runDrain
 
 /**
  * Use a scoped effect to emit an output element.

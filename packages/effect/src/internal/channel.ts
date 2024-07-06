@@ -2052,17 +2052,17 @@ export const repeated = <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env>(
 /** @internal */
 export const run = <OutErr, InErr, OutDone, InDone, Env>(
   self: Channel.Channel<never, unknown, OutErr, InErr, OutDone, InDone, Env>
-): Effect.Effect<OutDone, OutErr, Env> => Effect.scoped(executor.runScoped(self))
+): Effect.Effect<OutDone, OutErr, Exclude<Env, Scope.Scope>> => Effect.scoped(executor.runScoped(self))
 
 /** @internal */
 export const runCollect = <OutElem, OutErr, InErr, OutDone, InDone, Env>(
   self: Channel.Channel<OutElem, unknown, OutErr, InErr, OutDone, InDone, Env>
-): Effect.Effect<[Chunk.Chunk<OutElem>, OutDone], OutErr, Env> => executor.run(core.collectElements(self))
+): Effect.Effect<[Chunk.Chunk<OutElem>, OutDone], OutErr, Exclude<Env, Scope.Scope>> => executor.run(core.collectElements(self))
 
 /** @internal */
 export const runDrain = <OutElem, OutErr, InErr, OutDone, InDone, Env>(
   self: Channel.Channel<OutElem, unknown, OutErr, InErr, OutDone, InDone, Env>
-): Effect.Effect<OutDone, OutErr, Env> => executor.run(drain(self))
+): Effect.Effect<OutDone, OutErr, Exclude<Env, Scope.Scope>> => executor.run(drain(self))
 
 /** @internal */
 export const scoped = <A, E, R>(

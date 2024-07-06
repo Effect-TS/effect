@@ -5128,36 +5128,36 @@ export const retry = dual<
 export const run = dual<
   <A2, A, E2, R2>(
     sink: Sink.Sink<A2, A, unknown, E2, R2>
-  ) => <E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<A2, E2 | E, R2 | R>,
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<A2, E2 | E, Exclude<R | R2, Scope.Scope>>,
   <A, E, R, A2, E2, R2>(
     self: Stream.Stream<A, E, R>,
     sink: Sink.Sink<A2, A, unknown, E2, R2>
-  ) => Effect.Effect<A2, E2 | E, R2 | R>
+  ) => Effect.Effect<A2, E2 | E, Exclude<R | R2, Scope.Scope>>
 >(2, <A, E, R, A2, E2, R2>(
   self: Stream.Stream<A, E, R>,
   sink: Sink.Sink<A2, A, unknown, E2, R2>
-): Effect.Effect<A2, E2 | E, R2 | R> =>
+): Effect.Effect<A2, E2 | E, Exclude<R | R2, Scope.Scope>> =>
   pipe(toChannel(self), channel.pipeToOrFail(_sink.toChannel(sink)), channel.runDrain))
 
 /** @internal */
-export const runCollect = <A, E, R>(self: Stream.Stream<A, E, R>): Effect.Effect<Chunk.Chunk<A>, E, R> =>
+export const runCollect = <A, E, R>(self: Stream.Stream<A, E, R>): Effect.Effect<Chunk.Chunk<A>, E, Exclude<R, Scope.Scope>> =>
   pipe(self, run(_sink.collectAll()))
 
 /** @internal */
-export const runCount = <A, E, R>(self: Stream.Stream<A, E, R>): Effect.Effect<number, E, R> =>
+export const runCount = <A, E, R>(self: Stream.Stream<A, E, R>): Effect.Effect<number, E, Exclude<R, Scope.Scope>> =>
   pipe(self, run(_sink.count))
 
 /** @internal */
-export const runDrain = <A, E, R>(self: Stream.Stream<A, E, R>): Effect.Effect<void, E, R> =>
+export const runDrain = <A, E, R>(self: Stream.Stream<A, E, R>): Effect.Effect<void, E, Exclude<R, Scope.Scope>> =>
   pipe(self, run(_sink.drain))
 
 /** @internal */
 export const runFold = dual<
-  <S, A>(s: S, f: (s: S, a: A) => S) => <E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<S, E, R>,
-  <A, E, R, S>(self: Stream.Stream<A, E, R>, s: S, f: (s: S, a: A) => S) => Effect.Effect<S, E, R>
+  <S, A>(s: S, f: (s: S, a: A) => S) => <E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<S, E, Exclude<R, Scope.Scope>>,
+  <A, E, R, S>(self: Stream.Stream<A, E, R>, s: S, f: (s: S, a: A) => S) => Effect.Effect<S, E, Exclude<R, Scope.Scope>>
 >(
   3,
-  <A, E, R, S>(self: Stream.Stream<A, E, R>, s: S, f: (s: S, a: A) => S): Effect.Effect<S, E, R> =>
+  <A, E, R, S>(self: Stream.Stream<A, E, R>, s: S, f: (s: S, a: A) => S): Effect.Effect<S, E, Exclude<R, Scope.Scope>> =>
     pipe(self, runFoldWhileScoped(s, constTrue, f), Effect.scoped)
 )
 
@@ -5166,17 +5166,17 @@ export const runFoldEffect = dual<
   <S, A, E2, R2>(
     s: S,
     f: (s: S, a: A) => Effect.Effect<S, E2, R2>
-  ) => <E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<S, E2 | E, R2 | R>,
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<S, E2 | E, Exclude<R | R2, Scope.Scope>>,
   <A, E, R, S, E2, R2>(
     self: Stream.Stream<A, E, R>,
     s: S,
     f: (s: S, a: A) => Effect.Effect<S, E2, R2>
-  ) => Effect.Effect<S, E2 | E, R2 | R>
+  ) => Effect.Effect<S, E2 | E, Exclude<R | R2, Scope.Scope>>
 >(3, <A, E, R, S, E2, R2>(
   self: Stream.Stream<A, E, R>,
   s: S,
   f: (s: S, a: A) => Effect.Effect<S, E2, R2>
-): Effect.Effect<S, E2 | E, R2 | R> => pipe(self, runFoldWhileScopedEffect(s, constTrue, f), Effect.scoped))
+): Effect.Effect<S, E2 | E, Exclude<R | R2, Scope.Scope>> => pipe(self, runFoldWhileScopedEffect(s, constTrue, f), Effect.scoped))
 
 /** @internal */
 export const runFoldScoped = dual<
@@ -5211,14 +5211,14 @@ export const runFoldWhile = dual<
     s: S,
     cont: Predicate<S>,
     f: (s: S, a: A) => S
-  ) => <E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<S, E, R>,
-  <A, E, R, S>(self: Stream.Stream<A, E, R>, s: S, cont: Predicate<S>, f: (s: S, a: A) => S) => Effect.Effect<S, E, R>
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<S, E, Exclude<R, Scope.Scope>>,
+  <A, E, R, S>(self: Stream.Stream<A, E, R>, s: S, cont: Predicate<S>, f: (s: S, a: A) => S) => Effect.Effect<S, E, Exclude<R, Scope.Scope>>
 >(4, <A, E, R, S>(
   self: Stream.Stream<A, E, R>,
   s: S,
   cont: Predicate<S>,
   f: (s: S, a: A) => S
-): Effect.Effect<S, E, R> => pipe(self, runFoldWhileScoped(s, cont, f), Effect.scoped))
+): Effect.Effect<S, E, Exclude<R, Scope.Scope>> => pipe(self, runFoldWhileScoped(s, cont, f), Effect.scoped))
 
 /** @internal */
 export const runFoldWhileEffect = dual<
@@ -5226,19 +5226,19 @@ export const runFoldWhileEffect = dual<
     s: S,
     cont: Predicate<S>,
     f: (s: S, a: A) => Effect.Effect<S, E2, R2>
-  ) => <E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<S, E2 | E, R2 | R>,
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<S, E2 | E, Exclude<R | R2, Scope.Scope>>,
   <A, E, R, S, E2, R2>(
     self: Stream.Stream<A, E, R>,
     s: S,
     cont: Predicate<S>,
     f: (s: S, a: A) => Effect.Effect<S, E2, R2>
-  ) => Effect.Effect<S, E2 | E, R2 | R>
+  ) => Effect.Effect<S, E2 | E, Exclude<R | R2, Scope.Scope>>
 >(4, <A, E, R, S, E2, R2>(
   self: Stream.Stream<A, E, R>,
   s: S,
   cont: Predicate<S>,
   f: (s: S, a: A) => Effect.Effect<S, E2, R2>
-): Effect.Effect<S, E2 | E, R2 | R> => pipe(self, runFoldWhileScopedEffect(s, cont, f), Effect.scoped))
+): Effect.Effect<S, E2 | E, Exclude<R | R2, Scope.Scope>> => pipe(self, runFoldWhileScopedEffect(s, cont, f), Effect.scoped))
 
 /** @internal */
 export const runFoldWhileScoped = dual<
@@ -5284,29 +5284,29 @@ export const runFoldWhileScopedEffect = dual<
 export const runForEach = dual<
   <A, X, E2, R2>(
     f: (a: A) => Effect.Effect<X, E2, R2>
-  ) => <E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, E2 | E, R2 | R>,
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, E2 | E, Exclude<R | R2, Scope.Scope>>,
   <A, E, R, X, E2, R2>(
     self: Stream.Stream<A, E, R>,
     f: (a: A) => Effect.Effect<X, E2, R2>
-  ) => Effect.Effect<void, E2 | E, R2 | R>
+  ) => Effect.Effect<void, E2 | E, Exclude<R | R2, Scope.Scope>>
 >(2, <A, E, R, X, E2, R2>(
   self: Stream.Stream<A, E, R>,
   f: (a: A) => Effect.Effect<X, E2, R2>
-): Effect.Effect<void, E2 | E, R2 | R> => pipe(self, run(_sink.forEach(f))))
+): Effect.Effect<void, E2 | E, Exclude<R | R2, Scope.Scope>> => pipe(self, run(_sink.forEach(f))))
 
 /** @internal */
 export const runForEachChunk = dual<
   <A, X, E2, R2>(
     f: (a: Chunk.Chunk<A>) => Effect.Effect<X, E2, R2>
-  ) => <E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, E2 | E, R2 | R>,
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, E2 | E, Exclude<R | R2, Scope.Scope>>,
   <A, E, R, X, E2, R2>(
     self: Stream.Stream<A, E, R>,
     f: (a: Chunk.Chunk<A>) => Effect.Effect<X, E2, R2>
-  ) => Effect.Effect<void, E2 | E, R2 | R>
+  ) => Effect.Effect<void, E2 | E, Exclude<R | R2, Scope.Scope>>
 >(2, <A, E, R, X, E2, R2>(
   self: Stream.Stream<A, E, R>,
   f: (a: Chunk.Chunk<A>) => Effect.Effect<X, E2, R2>
-): Effect.Effect<void, E2 | E, R2 | R> => pipe(self, run(_sink.forEachChunk(f))))
+): Effect.Effect<void, E2 | E, Exclude<R | R2, Scope.Scope>> => pipe(self, run(_sink.forEachChunk(f))))
 
 /** @internal */
 export const runForEachChunkScoped = dual<
@@ -5340,15 +5340,15 @@ export const runForEachScoped = dual<
 export const runForEachWhile = dual<
   <A, E2, R2>(
     f: (a: A) => Effect.Effect<boolean, E2, R2>
-  ) => <E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, E2 | E, R2 | R>,
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, E2 | E, Exclude<R | R2, Scope.Scope>>,
   <A, E, R, E2, R2>(
     self: Stream.Stream<A, E, R>,
     f: (a: A) => Effect.Effect<boolean, E2, R2>
-  ) => Effect.Effect<void, E2 | E, R2 | R>
+  ) => Effect.Effect<void, E2 | E, Exclude<R | R2, Scope.Scope>>
 >(2, <A, E, R, E2, R2>(
   self: Stream.Stream<A, E, R>,
   f: (a: A) => Effect.Effect<boolean, E2, R2>
-): Effect.Effect<void, E2 | E, R2 | R> => pipe(self, run(_sink.forEachWhile(f))))
+): Effect.Effect<void, E2 | E, Exclude<R | R2, Scope.Scope>> => pipe(self, run(_sink.forEachWhile(f))))
 
 /** @internal */
 export const runForEachWhileScoped = dual<
@@ -5365,16 +5365,16 @@ export const runForEachWhileScoped = dual<
 ): Effect.Effect<void, E2 | E, R2 | R | Scope.Scope> => pipe(self, runScoped(_sink.forEachWhile(f))))
 
 /** @internal */
-export const runHead = <A, E, R>(self: Stream.Stream<A, E, R>): Effect.Effect<Option.Option<A>, E, R> =>
+export const runHead = <A, E, R>(self: Stream.Stream<A, E, R>): Effect.Effect<Option.Option<A>, E, Exclude<R, Scope.Scope>> =>
   pipe(self, run(_sink.head<A>()))
 
 /** @internal */
 export const runIntoPubSub = dual<
-  <A, E>(pubsub: PubSub.PubSub<Take.Take<A, E>>) => <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, never, R>,
-  <A, E, R>(self: Stream.Stream<A, E, R>, pubsub: PubSub.PubSub<Take.Take<A, E>>) => Effect.Effect<void, never, R>
+  <A, E>(pubsub: PubSub.PubSub<Take.Take<A, E>>) => <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, never, Exclude<R, Scope.Scope>>,
+  <A, E, R>(self: Stream.Stream<A, E, R>, pubsub: PubSub.PubSub<Take.Take<A, E>>) => Effect.Effect<void, never, Exclude<R, Scope.Scope>>
 >(
   2,
-  <A, E, R>(self: Stream.Stream<A, E, R>, pubsub: PubSub.PubSub<Take.Take<A, E>>): Effect.Effect<void, never, R> =>
+  <A, E, R>(self: Stream.Stream<A, E, R>, pubsub: PubSub.PubSub<Take.Take<A, E>>): Effect.Effect<void, never, Exclude<R, Scope.Scope>> =>
     pipe(self, runIntoQueue(pubsub))
 )
 
@@ -5394,11 +5394,11 @@ export const runIntoPubSubScoped = dual<
 
 /** @internal */
 export const runIntoQueue = dual<
-  <A, E>(queue: Queue.Enqueue<Take.Take<A, E>>) => <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, never, R>,
-  <A, E, R>(self: Stream.Stream<A, E, R>, queue: Queue.Enqueue<Take.Take<A, E>>) => Effect.Effect<void, never, R>
+  <A, E>(queue: Queue.Enqueue<Take.Take<A, E>>) => <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, never, Exclude<R, Scope.Scope>>,
+  <A, E, R>(self: Stream.Stream<A, E, R>, queue: Queue.Enqueue<Take.Take<A, E>>) => Effect.Effect<void, never, Exclude<R, Scope.Scope>>
 >(
   2,
-  <A, E, R>(self: Stream.Stream<A, E, R>, queue: Queue.Enqueue<Take.Take<A, E>>): Effect.Effect<void, never, R> =>
+  <A, E, R>(self: Stream.Stream<A, E, R>, queue: Queue.Enqueue<Take.Take<A, E>>): Effect.Effect<void, never, Exclude<R, Scope.Scope>> =>
     pipe(self, runIntoQueueScoped(queue), Effect.scoped)
 )
 
@@ -5462,7 +5462,7 @@ export const runIntoQueueScoped = dual<
 })
 
 /** @internal */
-export const runLast = <A, E, R>(self: Stream.Stream<A, E, R>): Effect.Effect<Option.Option<A>, E, R> =>
+export const runLast = <A, E, R>(self: Stream.Stream<A, E, R>): Effect.Effect<Option.Option<A>, E, Exclude<R, Scope.Scope>> =>
   pipe(self, run(_sink.last()))
 
 /** @internal */
@@ -5486,7 +5486,7 @@ export const runScoped = dual<
   ))
 
 /** @internal */
-export const runSum = <E, R>(self: Stream.Stream<number, E, R>): Effect.Effect<number, E, R> =>
+export const runSum = <E, R>(self: Stream.Stream<number, E, R>): Effect.Effect<number, E, Exclude<R, Scope.Scope>> =>
   pipe(self, run(_sink.sum))
 
 /** @internal */
