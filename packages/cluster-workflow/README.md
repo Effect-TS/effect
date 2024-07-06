@@ -46,6 +46,7 @@ Behind the scenes, a persistent log tracks all activities, which is why it's nec
 - **Identification**: Uniquely identified inside Workflow.
 - **Schema Requirements**: Requires schemas for success and failure.
 - **Interaction**: Capable of engaging with external systems through the execution of effects.
+- **Idempotency**: Ensures that multiple executions of the same activity result in a single state change, maintaining state consistency and reliability.
 
 **Example of Defining an Activity**
 
@@ -71,7 +72,27 @@ const getTotalAmountActivity = (orderId: string) =>
   )
 ```
 
-With the concept of an Activity clearly defined, we can now proceed to construct a complete workflow.
+## Idempotency in Workflow Activities
+
+When a workflow engine initiates an Activity, which serves as the foundational unit of a workflow, it lacks visibility into the internal operations of that Activity. To illustrate the importance of idempotency, consider a scenario involving an HTTP payment API. Suppose the API triggers a payment request, the server processes it successfully, but the network fails right before the response is sent back. From the workflow's perspective, the request appears as if it never occurred.
+
+This lack of confirmation may lead the workflow to retry the activity, potentially resulting in the same payment being processed multiple times.
+
+### Understanding Idempotency
+
+Idempotency ensures that performing the same operation multiple times results in a single change the first time, with no additional changes in subsequent attempts. For instance, consider an orders table with an auto-incrementing primary key where you perform an insert query. Repeating this insert is not idempotent as it creates multiple records. Conversely, deleting an entry by primary key is idempotent after its first execution since repeated deletions will not change the database further.
+
+### Effect Cluster Workflow and Idempotency Keys
+
+The Effect Cluster Workflow aids in maintaining idempotency through the use of idempotency keys. These keys are included in requests to help the server recognize and handle repeated requests by returning the original outcome without performing the action again. Effect Cluster supports this mechanism with a persistent ID that serves as an idempotency key, ensuring activities are executed once, even if they are called multiple times.
+
+This functionality is crucial when activities may need to be retried due to errors or other issues. The deterministic nature of workflows with idempotent activities allows them to handle inconsistencies like network failures or timeouts without data corruption.
+
+### Handling Infinite Retries and Errors
+
+Should an activity face an issue leading to potential infinite retries, the idempotent nature of the activity allows developers to halt the workflow engine, correct the problem (for instance, a misconfigured API key), and restart. The workflow engine will then proceed using the revised activity definition, ensuring the workflow completes as intended.
+
+Idempotency in workflows ensures that operations are robust, reliable, and maintain integrity, even under conditions of failure or repeated execution attempts. This stability is indispensable for maintaining consistent data states and reliable operation across distributed systems.
 
 ## Defining a Message
 
@@ -109,9 +130,15 @@ class ProcessPaymentMessage extends Message.TaggedMessage<ProcessPaymentMessage>
 
 ## Defining a workflow
 
-- Coordinator of activities
-- Durable execution
-- Requires deterministic code
+Our workflow operates as a coordinator of multiple Activities. To ensure the workflow executes reliably, it must adhere to certain constraints. All steps within the workflow should be encapsulated within an Activity, and the workflow itself must be deterministic.
+
+### Determinism in Workflows:
+
+Determinism within workflows ensures that regardless of the system's state, the output remains predictable and consistent. Any activities that incorporate non-deterministic elements such as time checks, file system reads, or database queries are influenced by the state of external systems. To maintain the integrity of the workflow, these elements must be encapsulated within a specifically defined `Activity`. This approach ensures that each part of the workflow can be controlled and predictable, contributing to the overall reliability of the system.
+
+### Persistence in Workflows:
+
+Workflows need reliable data persistence, especially for scenarios like a server restart where activities might need to resume based on the last known state. This is achieved through a durable log that records the successful results of activities, allowing them to be replayed or resumed as necessary. In Effect Cluster, the persistence layer is adaptable; for instance, you can use PostgreSQL for server-based applications or SQLite for local-first applications, and other suitable storage solutions for browser-based applications.
 
 ```ts
 import { Message } from "@effect/cluster"
@@ -183,6 +210,7 @@ const createShippingTrackingCodeActivity = (deliveryAddress: string) =>
 // workflow
 // ---------------------------------------------
 
+// Define the workflow that coordinates the activities
 const processPaymentWorkflow = Workflow.make(ProcessPaymentMessage, (message) =>
   Effect.gen(function* () {
     const totalAmount = yield* getTotalAmountActivity(message.orderId)
@@ -196,6 +224,8 @@ const processPaymentWorkflow = Workflow.make(ProcessPaymentMessage, (message) =>
 ```
 
 ## Running a Workflow
+
+To run the workflow, start by initializing the workflow engine, which tracks and manages workflow instances. To initiate a workflow, use methods like `send` to await results, or `sendDiscard` if the outcome is not immediately needed. The choice of method depends on whether the result of the workflow needs to be tracked or not.
 
 ```ts
 import { Message } from "@effect/cluster"
