@@ -410,7 +410,6 @@ class BoundedPubSubPow2<in out A> implements AtomicPubSub<A> {
     this.array = Array.from({ length: capacity })
     this.mask = capacity - 1
     this.subscribers = Array.from({ length: capacity })
-    this.capacity = capacity
   }
 
   replayWindow(): ReplayWindow<A> {
@@ -1702,13 +1701,11 @@ interface ReplayWindow<A> {
 }
 
 class ReplayWindowImpl<A> implements ReplayWindow<A> {
-  readonly size: number
   head: ReplayNode<A>
   index: number
   remaining: number
   constructor(readonly buffer: ReplayBuffer<A>) {
     this.index = buffer.index
-    this.size = buffer.size
     this.remaining = buffer.size
     this.head = buffer.head
   }
