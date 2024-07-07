@@ -5962,11 +5962,11 @@ export const shareRefCount = dual<
       readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
     }
   ): Stream.Stream<A, E, R> => {
-    let consumersCount = 0
+    let refCount = 0
     let connector: PubSub.PubSub<Take.Take<A, E>> | null = null
     let fiber: Fiber.RuntimeFiber<void> | null = null
     return Effect.gen(function*() {
-      consumersCount++
+      refCount++
       connector ??= yield* (config.connector ?? PubSub.unbounded<Take.Take<A, E>>())
       fiber ??= yield* Effect.forkDaemon(runIntoPubSub(self, connector))
       return flattenTake(fromPubSub(connector))
@@ -5974,10 +5974,10 @@ export const shareRefCount = dual<
       unwrap,
       ensuring(
         Effect.suspend(() => {
-          consumersCount--
+          refCount--
           const cleanup = fiber
           fiber = null
-          return consumersCount === 0 && cleanup
+          return refCount === 0 && cleanup
             ? Fiber.interrupt(cleanup)
             : Effect.void
         })
