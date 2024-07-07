@@ -1,22 +1,18 @@
 /**
  * @since 3.5.0
  */
-import * as Context from "./Context.js"
-import * as Deferred from "./Deferred.js"
-import * as Effect from "./Effect.js"
-import * as Exit from "./Exit.js"
-import * as FiberRef from "./FiberRef.js"
-import { dual } from "./Function.js"
-import * as MutableHashMap from "./MutableHashMap.js"
-import * as Option from "./Option.js"
-import { type Pipeable, pipeArguments } from "./Pipeable.js"
-import * as Scope from "./Scope.js"
+import type * as Duration from "./Duration.js"
+import type * as Effect from "./Effect.js"
+import * as internal from "./internal/rcMap.js"
+import { type Pipeable } from "./Pipeable.js"
+import type * as Scope from "./Scope.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 3.5.0
  * @category type ids
  */
-export const TypeId: unique symbol = Symbol.for("effect/RcMap")
+export const TypeId: unique symbol = internal.TypeId
 
 /**
  * @since 3.5.0
@@ -28,40 +24,23 @@ export type TypeId = typeof TypeId
  * @since 3.5.0
  * @category models
  */
-export interface RcMap<in out K, in out A, in out E> extends Pipeable {
-  readonly [TypeId]: TypeId
-
-  /** @internal */
-  readonly lookup: (key: K) => Effect.Effect<A, E, Scope.Scope>
-  /** @internal */
-  readonly context: Context.Context<never>
-  /** @internal */
-  state: State<K, A, E>
-  /** @internal */
-  readonly semaphore: Effect.Semaphore
+export interface RcMap<in K, out A, out E> extends Pipeable {
+  readonly [TypeId]: RcMap.Variance<K, A, E>
 }
 
-type State<K, A, E> = State.Open<K, A, E> | State.Closed
-
-declare namespace State {
-  interface Open<K, A, E> {
-    readonly _tag: "Open"
-    readonly map: MutableHashMap.MutableHashMap<K, Entry<A, E>>
-  }
-  interface Closed {
-    readonly _tag: "Closed"
-  }
-  interface Entry<A, E> {
-    readonly deferred: Deferred.Deferred<A, E>
-    readonly scope: Scope.CloseableScope
-    refCount: number
-  }
-}
-
-const RcMapProto = {
-  [TypeId]: TypeId,
-  pipe() {
-    return pipeArguments(this, arguments)
+/**
+ * @since 3.5.0
+ * @category models
+ */
+export declare namespace RcMap {
+  /**
+   * @since 3.5.0
+   * @category models
+   */
+  export interface Variance<K, A, E> {
+    readonly _K: Types.Contravariant<K>
+    readonly _A: Types.Covariant<A>
+    readonly _E: Types.Covariant<E>
   }
 }
 
@@ -91,42 +70,12 @@ const RcMapProto = {
  *   )
  * })
  */
-export const make = <K, A, E, R>(
-  lookup: (key: K) => Effect.Effect<A, E, R>
-) =>
-  Effect.acquireRelease(
-    Effect.context<R>().pipe(
-      Effect.map((context): RcMap<K, A, E> =>
-        Object.assign(Object.create(RcMapProto), {
-          lookup,
-          context,
-          state: {
-            _tag: "Open",
-            map: MutableHashMap.empty()
-          },
-          semaphore: Effect.unsafeMakeSemaphore(1)
-        })
-      )
-    ),
-    (self) =>
-      Effect.suspend(() => {
-        if (self.state._tag === "Closed") {
-          return Effect.void
-        }
-        const map = self.state.map
-        self.state = { _tag: "Closed" }
-        return Effect.forEach(
-          map,
-          ([, entry]) => Scope.close(entry.scope, Exit.void),
-          { discard: true }
-        ).pipe(
-          Effect.tap(() => {
-            MutableHashMap.clear(map)
-          }),
-          self.semaphore.withPermits(1)
-        )
-      })
-  )
+export const make: <K, A, E, R>(
+  options: {
+    readonly lookup: (key: K) => Effect.Effect<A, E, R>
+    readonly idleTimeToLive?: Duration.DurationInput | undefined
+  }
+) => Effect.Effect<RcMap<K, A, E>, never, R | Scope.Scope> = internal.make
 
 /**
  * @since 3.5.0
@@ -135,72 +84,4 @@ export const make = <K, A, E, R>(
 export const get: {
   <K>(key: K): <A, E>(self: RcMap<K, A, E>) => Effect.Effect<A, E, Scope.Scope>
   <K, A, E>(self: RcMap<K, A, E>, key: K): Effect.Effect<A, E, Scope.Scope>
-} = dual(
-  2,
-  <K, A, E>(self: RcMap<K, A, E>, key: K): Effect.Effect<A, E, Scope.Scope> =>
-    Effect.uninterruptibleMask((restore) =>
-      Effect.suspend(() => {
-        if (self.state._tag === "Closed") {
-          return Effect.interrupt
-        }
-        const state = self.state
-        const o = MutableHashMap.get(state.map, key)
-        if (Option.isSome(o)) {
-          o.value.refCount++
-          return Effect.succeed(o.value)
-        }
-        const acquire = self.lookup(key)
-        return Scope.make().pipe(
-          Effect.bindTo("scope"),
-          Effect.bind("deferred", () => Deferred.make<A, E>()),
-          Effect.tap(({ deferred, scope }) =>
-            (acquire as Effect.Effect<A, E>).pipe(
-              Effect.locally(FiberRef.currentContext, Context.add(self.context, Scope.Scope, scope)),
-              restore,
-              Effect.exit,
-              Effect.flatMap((exit) => Deferred.done(deferred, exit)),
-              Effect.forkIn(scope)
-            )
-          ),
-          Effect.map(({ deferred, scope }) => {
-            const entry: State.Entry<A, E> = {
-              deferred,
-              scope,
-              refCount: 1
-            }
-            MutableHashMap.set(state.map, key, entry)
-            return entry
-          })
-        )
-      }).pipe(
-        self.semaphore.withPermits(1),
-        Effect.bindTo("entry"),
-        Effect.bind("scope", () => Effect.scope),
-        Effect.flatMap(({ entry, scope }) =>
-          Effect.zipRight(
-            Scope.addFinalizer(
-              scope,
-              Effect.sync(() => {
-                entry.refCount--
-                if (entry.refCount > 0) {
-                  return false
-                }
-                if (self.state._tag === "Open") {
-                  MutableHashMap.remove(self.state.map, key)
-                }
-                return true
-              }).pipe(
-                self.semaphore.withPermits(1),
-                Effect.flatMap((removed) =>
-                  removed
-                    ? Scope.close(entry.scope, Exit.void)
-                    : Effect.void
-                )
-              )
-            ),
-            restore(Deferred.await(entry.deferred))
-          )
-        )
-      )
-    )
-)
+} = internal.get
