@@ -1422,6 +1422,12 @@ export const logFmtLogger: Logger<unknown, void> = globalValue(
 )
 
 /** @internal */
+export const prettyLogger: Logger<unknown, void> = globalValue(
+  Symbol.for("effect/Logger/prettyLogger"),
+  () => internalLogger.prettyLogger()
+)
+
+/** @internal */
 export const structuredLogger: Logger<unknown, void> = globalValue(
   Symbol.for("effect/Logger/structuredLogger"),
   () => loggerWithConsoleLog(internalLogger.structuredLogger)
