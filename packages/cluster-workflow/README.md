@@ -38,7 +38,7 @@ Let's explore how we can effectively implement this using the Effect Cluster Wor
 
 An Activity is a core component within a workflow. It serves a versatile role, enabling you to interact with databases, make HTTP requests, or write to the file system, among other actions. Each Activity must be distinctly identified by a unique string within the workflow's execution process.
 
-Behind the scenes, a persistent log tracks all activities, which is why it's necessary to define schemas for both successful outcomes and potential errors associated with an Activity. You'll also need to provide the actual code, or "body," of the Activity, which can perform any operation you require.
+Behind the scenes, a persistent log tracks all activities, which is why it's necessary to define schemas for both successful outcomes and potential errors associated with an Activity. You'll also need to provide the actual code, or "body", of the Activity, which can perform any operation you require.
 
 **Key Aspects of an Activity**:
 
