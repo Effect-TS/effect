@@ -46,8 +46,8 @@ describe("Effect", () => {
       )
 
       assert.deepStrictEqual(messages, [
-        "1 | acquire | A > INNER > OUTER > EXTERN",
-        "1 | release | R > INNER > OUTER > EXTERN"
+        ["1 | acquire | A > INNER > OUTER > EXTERN"],
+        ["1 | release | R > INNER > OUTER > EXTERN"]
       ])
     }))
 })
