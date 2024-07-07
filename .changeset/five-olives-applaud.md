@@ -12,11 +12,11 @@ The resource is lazily acquired on the first call to `get` and released when the
 import { Effect, RcRef } from "effect";
 
 Effect.gen(function* () {
-  const ref = yield* RcRef.make(
-    Effect.acquireRelease(Effect.succeed("foo"), () =>
+  const ref = yield* RcRef.make({
+    acquire: Effect.acquireRelease(Effect.succeed("foo"), () =>
       Effect.log("release foo"),
     ),
-  );
+  });
 
   // will only acquire the resource once, and release it
   // when the scope is closed

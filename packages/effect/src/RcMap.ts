@@ -55,12 +55,13 @@ export declare namespace RcMap {
  * import { Effect, RcMap } from "effect"
  *
  * Effect.gen(function*() {
- *   const map = yield* RcMap.make((key: string) =>
- *     Effect.acquireRelease(
- *       Effect.succeed(`acquired ${key}`),
- *       () => Effect.log(`releasing ${key}`)
- *     )
- *   )
+ *   const map = yield* RcMap.make({
+ *     lookup: (key: string) =>
+ *       Effect.acquireRelease(
+ *         Effect.succeed(`acquired ${key}`),
+ *         () => Effect.log(`releasing ${key}`)
+ *       )
+ *   })
  *
  *   // Get "foo" from the map twice, which will only acquire it once.
  *   // It will then be released once the scope closes.
@@ -73,6 +74,10 @@ export declare namespace RcMap {
 export const make: <K, A, E, R>(
   options: {
     readonly lookup: (key: K) => Effect.Effect<A, E, R>
+    /**
+     * When the reference count reaches zero, the resource will be released
+     * after this duration.
+     */
     readonly idleTimeToLive?: Duration.DurationInput | undefined
   }
 ) => Effect.Effect<RcMap<K, A, E>, never, R | Scope.Scope> = internal.make

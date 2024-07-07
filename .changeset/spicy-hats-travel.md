@@ -12,11 +12,12 @@ released when the last reference is released.
 import { Effect, RcMap } from "effect";
 
 Effect.gen(function* () {
-  const map = yield* RcMap.make((key: string) =>
-    Effect.acquireRelease(Effect.succeed(`acquired ${key}`), () =>
-      Effect.log(`releasing ${key}`),
-    ),
-  );
+  const map = yield* RcMap.make({
+    lookup: (key: string) =>
+      Effect.acquireRelease(Effect.succeed(`acquired ${key}`), () =>
+        Effect.log(`releasing ${key}`),
+      ),
+  });
 
   // Get "foo" from the map twice, which will only acquire it once
   // It will then be released once the scope closes.

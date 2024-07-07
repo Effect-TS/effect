@@ -58,10 +58,12 @@ export declare namespace RcRef {
  * import { Effect, RcRef } from "effect"
  *
  * Effect.gen(function*() {
- *   const ref = yield* RcRef.make(Effect.acquireRelease(
- *     Effect.succeed("foo"),
- *     () => Effect.log("release foo")
- *   ))
+ *   const ref = yield* RcRef.make({
+ *     acquire: Effect.acquireRelease(
+ *       Effect.succeed("foo"),
+ *       () => Effect.log("release foo")
+ *     )
+ *   })
  *
  *   // will only acquire the resource once, and release it
  *   // when the scope is closed
@@ -72,7 +74,14 @@ export declare namespace RcRef {
  * })
  */
 export const make: <A, E, R>(
-  options: { readonly acquire: Effect.Effect<A, E, R>; readonly idleTimeToLive?: Duration.DurationInput | undefined }
+  options: {
+    readonly acquire: Effect.Effect<A, E, R>
+    /**
+     * When the reference count reaches zero, the resource will be released
+     * after this duration.
+     */
+    readonly idleTimeToLive?: Duration.DurationInput | undefined
+  }
 ) => Effect.Effect<RcRef<A, E>, never, R | Scope.Scope> = internal.make
 
 /**
