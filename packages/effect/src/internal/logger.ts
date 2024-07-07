@@ -1,3 +1,6 @@
+import * as Arr from "../Array.js"
+import * as Context from "../Context.js"
+import * as FiberRefs from "../FiberRefs.js"
 import type { LazyArg } from "../Function.js"
 import { constVoid, dual, pipe } from "../Function.js"
 import * as HashMap from "../HashMap.js"
@@ -9,6 +12,8 @@ import * as LogSpan from "../LogSpan.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import * as Cause from "./cause.js"
+import * as defaultServices from "./defaultServices.js"
+import { consoleTag } from "./defaultServices/console.js"
 import * as _fiberId from "./fiberId.js"
 
 /** @internal */
@@ -157,7 +162,7 @@ export const zipRight = dual<
 >(2, (self, that) => map(zip(self, that), (tuple) => tuple[1]))
 
 /** @internal */
-export const stringLogger: Logger.Logger<unknown, string> = makeLogger<unknown, string>(
+export const stringLogger: Logger.Logger<unknown, string> = makeLogger(
   ({ annotations, cause, date, fiberId, logLevel, message, spans }) => {
     const nowMillis = date.getTime()
 
@@ -169,16 +174,9 @@ export const stringLogger: Logger.Logger<unknown, string> = makeLogger<unknown, 
 
     let output = outputArray.join(" ")
 
-    if (Array.isArray(message)) {
-      for (let i = 0; i < message.length; i++) {
-        const stringMessage = Inspectable.toStringUnknown(message[i])
-        if (stringMessage.length > 0) {
-          output = output + " message="
-          output = appendQuoted(stringMessage, output)
-        }
-      }
-    } else {
-      const stringMessage = Inspectable.toStringUnknown(message)
+    const messageArr = Arr.ensure(message)
+    for (let i = 0; i < messageArr.length; i++) {
+      const stringMessage = Inspectable.toStringUnknown(messageArr[i])
       if (stringMessage.length > 0) {
         output = output + " message="
         output = appendQuoted(stringMessage, output)
@@ -204,7 +202,7 @@ export const stringLogger: Logger.Logger<unknown, string> = makeLogger<unknown, 
       }
     }
 
-    if (pipe(annotations, HashMap.size) > 0) {
+    if (HashMap.size(annotations) > 0) {
       output = output + " "
 
       let first = true
@@ -246,16 +244,9 @@ export const logfmtLogger = makeLogger<unknown, string>(
 
     let output = outputArray.join(" ")
 
-    if (Array.isArray(message)) {
-      for (let i = 0; i < message.length; i++) {
-        const stringMessage = Inspectable.toStringUnknown(message[i], 0)
-        if (stringMessage.length > 0) {
-          output = output + " message="
-          output = appendQuotedLogfmt(stringMessage, output)
-        }
-      }
-    } else {
-      const stringMessage = Inspectable.toStringUnknown(message, 0)
+    const messageArr = Arr.ensure(message)
+    for (let i = 0; i < messageArr.length; i++) {
+      const stringMessage = Inspectable.toStringUnknown(messageArr[i], 0)
       if (stringMessage.length > 0) {
         output = output + " message="
         output = appendQuotedLogfmt(stringMessage, output)
@@ -281,7 +272,7 @@ export const logfmtLogger = makeLogger<unknown, string>(
       }
     }
 
-    if (pipe(annotations, HashMap.size) > 0) {
+    if (HashMap.size(annotations) > 0) {
       output = output + " "
 
       let first = true
@@ -328,8 +319,9 @@ export const structuredLogger = makeLogger<unknown, {
       }
     }
 
+    const messageArr = Arr.ensure(message)
     return {
-      message: structuredMessage(message),
+      message: messageArr.length === 1 ? structuredMessage(messageArr[0]) : messageArr.map(structuredMessage),
       logLevel: logLevel.label,
       timestamp: date.toISOString(),
       cause: Cause.isEmpty(cause) ? undefined : Cause.pretty(cause),
@@ -375,4 +367,131 @@ const renderLogSpanLogfmt = (now: number) => (self: LogSpan.LogSpan): string => 
 /** @internal */
 export const isLogger = (u: unknown): u is Logger.Logger<unknown, unknown> => {
   return typeof u === "object" && u != null && LoggerTypeId in u
+}
+
+const processStdoutIsTTY = typeof process === "object" && "stdout" in process && process.stdout.isTTY === true
+const hasWindow = typeof window === "object"
+
+const withColor = (text: string, ...colors: ReadonlyArray<string>) => {
+  let out = ""
+  for (let i = 0; i < colors.length; i++) {
+    out += `\x1b[${colors[i]}m`
+  }
+  return out + text + "\x1b[0m"
+}
+const withColorNoop = (text: string, ..._colors: ReadonlyArray<string>) => text
+const colors = {
+  bold: "1",
+  red: "31",
+  green: "32",
+  yellow: "33",
+  blue: "34",
+  cyan: "36",
+  white: "37",
+  gray: "90",
+  black: "30",
+  bgBrightRed: "101"
+} as const
+
+const logLevelColors: Record<LogLevel.LogLevel["_tag"], ReadonlyArray<string>> = {
+  None: [],
+  All: [],
+  Trace: [colors.gray],
+  Debug: [colors.blue],
+  Info: [colors.green],
+  Warning: [colors.yellow],
+  Error: [colors.red],
+  Fatal: [colors.bgBrightRed, colors.black]
+}
+
+const defaultDateFormat = (date: Date): string =>
+  `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}:${
+    date.getSeconds().toString().padStart(2, "0")
+  }.${date.getMilliseconds().toString().padStart(3, "0")}`
+
+/** @internal */
+export const prettyLogger = (options?: {
+  readonly colors?: "auto" | boolean | undefined
+  readonly stderr?: boolean | undefined
+  readonly formatDate?: ((date: Date) => string) | undefined
+  readonly mode?: "browser" | "tty" | "auto" | undefined
+}) => {
+  const mode_ = options?.mode ?? "auto"
+  const mode = mode_ === "auto" ? (hasWindow ? "browser" : "tty") : mode_
+  const isBrowser = mode === "browser"
+  const showColors = typeof options?.colors === "boolean" ? options.colors : processStdoutIsTTY || isBrowser
+  const color = showColors ? withColor : withColorNoop
+  const formatDate = options?.formatDate ?? defaultDateFormat
+
+  return makeLogger<unknown, void>(
+    ({ annotations, cause, context, date, fiberId, logLevel, message: message_, spans }) => {
+      const services = FiberRefs.getOrDefault(context, defaultServices.currentServices)
+      const console = Context.get(services, consoleTag).unsafe
+      const log = options?.stderr === true ? console.error : console.log
+
+      const message = Arr.ensure(message_)
+
+      let firstLine = color(`[${formatDate(date)}]`, colors.white)
+        + ` ${color(logLevel.label, ...logLevelColors[logLevel._tag])}`
+        + ` (${_fiberId.threadName(fiberId)})`
+
+      if (List.isCons(spans)) {
+        const now = date.getTime()
+        const render = renderLogSpanLogfmt(now)
+        for (const span of spans) {
+          firstLine += " " + render(span)
+        }
+      }
+
+      firstLine += ":"
+      let messageIndex = 0
+      if (message.length > 0) {
+        const firstMaybeString = structuredMessage(message[0])
+        if (typeof firstMaybeString === "string") {
+          firstLine += " " + color(firstMaybeString, colors.bold, colors.cyan)
+          messageIndex++
+        }
+      }
+
+      if (isBrowser) {
+        console.group(firstLine)
+      } else {
+        log(firstLine)
+        console.group()
+      }
+      let currentMessage = ""
+      const params: Array<unknown> = []
+
+      if (!Cause.isEmpty(cause)) {
+        const errors = Cause.prettyErrors(cause)
+        for (let i = 0; i < errors.length; i++) {
+          if (isBrowser) {
+            console.error(errors[i].stack)
+          } else {
+            currentMessage += "\n%s"
+            params.push(errors[i].stack)
+          }
+        }
+      }
+
+      if (messageIndex < message.length) {
+        for (; messageIndex < message.length; messageIndex++) {
+          currentMessage += "\n%O"
+          params.push(message[messageIndex])
+        }
+      }
+
+      if (HashMap.size(annotations) > 0) {
+        for (const [key, value] of annotations) {
+          currentMessage += "\n" + color(`${key}:`, colors.bold, colors.white) + " %O"
+          params.push(value)
+        }
+      }
+
+      if (currentMessage.length > 0) {
+        log(currentMessage.slice(1), ...params)
+      }
+      console.groupEnd()
+    }
+  )
 }

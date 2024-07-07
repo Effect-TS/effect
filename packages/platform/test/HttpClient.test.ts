@@ -150,7 +150,7 @@ describe("HttpClient", () => {
         Effect.scoped
       )
 
-      expect(logs).toEqual(["hello", "world"])
+      expect(logs).toEqual([["hello"], ["world"]])
     }).pipe(Effect.provide(HttpClient.layer), Effect.runPromise))
 
   it("ClientRequest parses URL instances", () => {
