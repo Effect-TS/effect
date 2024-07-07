@@ -63,10 +63,7 @@ export interface UnsafeConsole {
   dir(item: any, options?: any): void
   dirxml(...args: ReadonlyArray<any>): void
   error(...args: ReadonlyArray<any>): void
-  group(options?: {
-    readonly label?: string | undefined
-    readonly collapsed?: boolean | undefined
-  }): void
+  group(label?: string | undefined): void
   groupEnd(): void
   info(...args: ReadonlyArray<any>): void
   log(...args: ReadonlyArray<any>): void
