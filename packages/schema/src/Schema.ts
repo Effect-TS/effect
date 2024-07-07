@@ -4014,7 +4014,7 @@ export class Lowercased extends String$.pipe(
 
 /**
  * @category type id
- * @since 0.67.0
+ * @since 0.68.18
  */
 export const CapitalizedTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/Capitalized")
 
@@ -4022,7 +4022,7 @@ export const CapitalizedTypeId: unique symbol = Symbol.for("@effect/schema/TypeI
  * Verifies that a string is capitalized.
  *
  * @category string filters
- * @since 0.67.0
+ * @since 0.68.18
  */
 export const capitalized =
   <A extends string>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
@@ -4036,7 +4036,7 @@ export const capitalized =
 
 /**
  * @category string constructors
- * @since 0.67.0
+ * @since 0.68.18
  */
 export class Capitalized extends String$.pipe(
   capitalized({ identifier: "Capitalized", title: "Capitalized" })
@@ -4046,7 +4046,7 @@ export class Capitalized extends String$.pipe(
 
 /**
  * @category type id
- * @since 0.67.0
+ * @since 0.68.18
  */
 export const UncapitalizedTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/Uncapitalized")
 
@@ -4054,7 +4054,7 @@ export const UncapitalizedTypeId: unique symbol = Symbol.for("@effect/schema/Typ
  * Verifies that a string is uncapitalized.
  *
  * @category string filters
- * @since 0.67.0
+ * @since 0.68.18
  */
 export const uncapitalized =
   <A extends string>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
@@ -4068,7 +4068,7 @@ export const uncapitalized =
 
 /**
  * @category string constructors
- * @since 0.67.0
+ * @since 0.68.18
  */
 export class Uncapitalized extends String$.pipe(
   uncapitalized({ identifier: "Uncapitalized", title: "Uncapitalized" })
@@ -4205,7 +4205,7 @@ export class Uppercase extends transform(
  * This schema converts a string to capitalized one.
  *
  * @category string transformations
- * @since 0.67.0
+ * @since 0.68.18
  */
 export class Capitalize extends transform(
   String$,
@@ -4219,7 +4219,7 @@ export class Capitalize extends transform(
  * This schema converts a string to uncapitalized one.
  *
  * @category string transformations
- * @since 0.67.0
+ * @since 0.68.18
  */
 export class Uncapitalize extends transform(
   String$,
