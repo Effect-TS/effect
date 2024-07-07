@@ -142,23 +142,16 @@ export const get = <A, E>(
           if (state.refCount > 0) {
             return core.void
           }
-          const reset = core.flatMap(
-            self.semaphore.withPermits(1)(core.sync(() => {
-              if (state.refCount > 0) {
-                return false
-              } else if (self.state._tag === "Acquired") {
-                self.state = stateEmpty
-              }
-              return true
-            })),
-            (removed) => removed ? core.scopeClose(state.scope, core.exitVoid) : core.void
-          )
           if (Duration.isZero(self.idleTimeToLive)) {
-            return reset
+            self.state = stateEmpty
+            return core.scopeClose(state.scope, core.exitVoid)
           }
           return coreEffect.sleep(self.idleTimeToLive).pipe(
             core.interruptible,
-            core.zipRight(reset),
+            core.zipRight(core.suspend(() => {
+              self.state = stateEmpty
+              return core.scopeClose(state.scope, core.exitVoid)
+            })),
             fiberRuntime.ensuring(core.sync(() => {
               state.fiber = undefined
             })),

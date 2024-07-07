@@ -160,25 +160,20 @@ export const get: {
               entry.refCount--
               if (entry.refCount > 0) {
                 return core.void
-              }
-              const remove = core.flatMap(
-                self.semaphore.withPermits(1)(core.sync(() => {
-                  if (entry.refCount > 0) {
-                    return false
-                  }
-                  if (self.state._tag === "Open") {
-                    MutableHashMap.remove(self.state.map, key)
-                  }
-                  return true
-                })),
-                (removed) => removed ? core.scopeClose(entry.scope, core.exitVoid) : core.void
-              )
-              if (Duration.isZero(self.idleTimeToLive)) {
-                return remove
+              } else if (Duration.isZero(self.idleTimeToLive)) {
+                if (self.state._tag === "Open") {
+                  MutableHashMap.remove(self.state.map, key)
+                }
+                return core.scopeClose(entry.scope, core.exitVoid)
               }
               return coreEffect.sleep(self.idleTimeToLive).pipe(
                 core.interruptible,
-                core.zipRight(remove),
+                core.zipRight(core.suspend(() => {
+                  if (self.state._tag === "Open") {
+                    MutableHashMap.remove(self.state.map, key)
+                  }
+                  return core.scopeClose(entry.scope, core.exitVoid)
+                })),
                 fiberRuntime.ensuring(core.sync(() => {
                   entry.fiber = undefined
                 })),
