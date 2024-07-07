@@ -363,6 +363,19 @@ export const logfmtLogger: Logger<unknown, string> = internal.logfmtLogger
 export const stringLogger: Logger<unknown, string> = internal.stringLogger
 
 /**
+ * @since 3.5.0
+ * @category constructors
+ */
+export const prettyLogger: (
+  options?: {
+    readonly colors?: "auto" | boolean | undefined
+    readonly stderr?: boolean | undefined
+    readonly formatDate?: ((date: Date) => string) | undefined
+    readonly mode?: "browser" | "tty" | "auto" | undefined
+  }
+) => Logger<unknown, void> = internal.prettyLogger
+
+/**
  * @since 2.0.0
  * @category constructors
  */
@@ -396,6 +409,12 @@ export const json: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fibe
  * @category constructors
  */
 export const logFmt: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fiberRuntime.logFmtLogger)
+
+/**
+ * @since 3.5.0
+ * @category constructors
+ */
+export const pretty: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fiberRuntime.prettyLogger)
 
 /**
  * @since 2.0.0
