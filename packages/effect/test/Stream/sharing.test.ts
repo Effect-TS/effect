@@ -1,3 +1,4 @@
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as Schedule from "effect/Schedule"
@@ -12,9 +13,7 @@ describe("Stream", () => {
     Effect.gen(function*() {
       const sharedStream = yield* Stream.fromSchedule(
         Schedule.spaced("1 seconds")
-      ).pipe(
-        Stream.share({})
-      )
+      ).pipe(Stream.share({}))
       // Adjust 1 second to make sure the stream has started
       yield* TestClock.adjust("1 second")
 
@@ -39,7 +38,7 @@ describe("Stream", () => {
       assert.deepStrictEqual(second, [2])
     }))
 
-  it.effect("shareRefCount", () =>
+  it.effect("shareRefCount sequenced", () =>
     Effect.gen(function*() {
       const sharedStream = Stream.fromSchedule(
         Schedule.spaced("1 seconds")
@@ -73,5 +72,31 @@ describe("Stream", () => {
 
       const second = yield* Fiber.join(secondFiber)
       assert.deepStrictEqual(second, [0])
+    }))
+
+  it.effect("shareRefCount parallel", () =>
+    Effect.gen(function*() {
+      const sharedStream = Stream.fromSchedule(
+        Schedule.spaced("1 seconds")
+      ).pipe(Stream.shareRefCount({}))
+
+      const fiber1 = yield* sharedStream.pipe(
+        Stream.take(1),
+        Stream.run(Sink.collectAll()),
+        Effect.map((x) => Array.from(x)),
+        Effect.fork
+      )
+      const fiber2 = yield* sharedStream.pipe(
+        Stream.take(2),
+        Stream.run(Sink.collectAll()),
+        Effect.map((x) => Array.from(x)),
+        Effect.fork
+      )
+
+      yield* TestClock.adjust("2 second")
+      const [result1, result2] = yield* Fiber.joinAll([fiber1, fiber2])
+
+      assert.deepStrictEqual(result1, [0])
+      assert.deepStrictEqual(result2, [0, 1])
     }))
 })
