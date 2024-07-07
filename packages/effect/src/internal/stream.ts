@@ -5915,63 +5915,71 @@ export const scoped = <A, E, R>(
 
 /** @internal */
 export const share = dual<
-  <A, E>(
-    config: Stream.ShareConfig<A, E>
-  ) => <R>(
+  <A, E>(config: {
+    readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
+  }) => <R>(
     self: Stream.Stream<A, E, R>
-  ) => Stream.Stream<A, E, R | Scope.Scope>,
+  ) => Effect.Effect<Stream.Stream<A, E>, never, R | Scope.Scope>,
   <A, E, R>(
     self: Stream.Stream<A, E, R>,
-    config: Stream.ShareConfig<A, E>
-  ) => Stream.Stream<A, E, R | Scope.Scope>
+    config: {
+      readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
+    }
+  ) => Effect.Effect<Stream.Stream<A, E>, never, R | Scope.Scope>
 >(
   2,
-  <A, E, R>(self: Stream.Stream<A, E, R>, config: Stream.ShareConfig<A, E>) => {
+  <A, E, R>(
+    self: Stream.Stream<A, E, R>,
+    config: {
+      readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
+    }
+  ) =>
+    Effect.gen(function*() {
+      const connector = yield* (config.connector ?? PubSub.bounded<Take.Take<A, E>>(16))
+      yield* Effect.forkScoped(runIntoPubSub(self, connector))
+      return flattenTake(fromPubSub(connector))
+    })
+)
+
+/** @internal */
+export const shareRefCount = dual<
+  <A, E>(config: {
+    readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
+  }) => <R>(
+    self: Stream.Stream<A, E, R>
+  ) => Stream.Stream<A, E, R>,
+  <A, E, R>(
+    self: Stream.Stream<A, E, R>,
+    config: {
+      readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
+    }
+  ) => Stream.Stream<A, E, R>
+>(
+  2,
+  <A, E, R>(
+    self: Stream.Stream<A, E, R>,
+    config: {
+      readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
+    }
+  ): Stream.Stream<A, E, R> => {
     let consumersCount = 0
-    let fiber: Fiber.RuntimeFiber<void> | null = null
     let connector: PubSub.PubSub<Take.Take<A, E>> | null = null
-
-    function resetConnector() {
-      const cleanup = connector ? connector.shutdown : Effect.void
-      connector = null
-      return cleanup
-    }
-
-    function resetUpstream() {
-      const cleanup = fiber ? Fiber.interrupt(fiber) : Effect.void
-      fiber = null
-      return cleanup
-    }
-
-    const upstream = self.pipe(
-      ensuringWith((exit) =>
-        Effect.zip(
-          resetUpstream(),
-          Exit.matchEffect(exit, {
-            onFailure: () => config.resetOnFailure ? resetConnector() : Effect.void,
-            onSuccess: () => config.resetOnSuccess ? resetConnector() : Effect.void
-          }),
-          { concurrent: true }
-        )
-      )
-    )
-
+    let fiber: Fiber.RuntimeFiber<void> | null = null
     return Effect.gen(function*() {
       consumersCount++
-      connector ??= yield* config.connector
-      fiber ??= yield* Effect.forkScoped(runIntoPubSubScoped(upstream, connector))
+      connector ??= yield* (config.connector ?? PubSub.bounded<Take.Take<A, E>>(16))
+      fiber ??= yield* Effect.forkDaemon(runIntoPubSub(self, connector))
       return flattenTake(fromPubSub(connector))
     }).pipe(
       unwrap,
       ensuring(
         Effect.suspend(() => {
           consumersCount--
-          if (config.resetOnRefCountZero && consumersCount === 0) {
-            return Effect.zip(resetConnector(), resetUpstream(), {
-              concurrent: true
-            })
-          }
-          return Effect.void
+          const cleanup = fiber
+          fiber = null
+          return consumersCount === 0 && cleanup
+            ? Fiber.interrupt(cleanup)
+            : Effect.void
         })
       )
     )

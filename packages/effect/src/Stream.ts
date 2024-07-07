@@ -4379,51 +4379,39 @@ export const scoped: <A, E, R>(effect: Effect.Effect<A, E, R>) => Stream<A, E, E
   internal.scoped
 
 /**
- * @since 3.5.0
- * @category models
- */
-export interface ShareConfig<A, E> {
-  /**
-   * The factory used to create the PubSub that will connect the source stream to multicast consumers.
-   */
-  readonly connector: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
-  /**
-   * If true, when the number of consumers of the resulting stream reaches zero (due to exiting), the internal state
-   * will be reset and the resulting stream will return to a "cold" state. This means that the next time the stream
-   * is consumed, a new PubSub will be created, and the source will be subscribed to again.
-   * @default false.
-   */
-  readonly resetOnRefCountZero?: boolean
-  /**
-   * If `true`, the stream will reset its internal state and return to a "cold" state when the source completes.
-   * This is useful only with a replayable `PubSub`.
-   * When the upstream completes, the replayable `PubSub` will replay all elements and the completion signal for new subscriptions.
-   * Set this to `true` if you want to create a new PubSub for each new subscription after the previous one finishes.
-   * @default false
-   */
-  readonly resetOnSuccess?: boolean
-  /**
-   * If `true`, the stream will reset its internal state and return to a "cold" state when the source completes.
-   * This is useful if you want to retry a failed shared stream using a replayable `PubSub` connector.
-   * By default, if the upstream fails, the replayable PubSub will replay all elements and the failure signal for new subscriptions.
-   * Set this to `true` if you want a new `PubSub` to be created for new subscriptions after the previous one fails.
-   * @default false
-   */
-  readonly resetOnFailure?: boolean
-}
-
-/**
- * Returns a new Stream that multicasts (shares) the original Stream by forking `runIntoQueue` or `runIntoPubSub` process in `forkDaemon` mode.
- * As long as there is at least one consumer, this Stream will be run and emitting data.
- * When all consumers have exited, it will kill forked daemon.
+ * Returns a new Stream that multicasts (shares) the original Stream by forking `runIntoPubSub` process in `forkScoped` mode at the initialization stage.
+ *
+ * Accepts the factory used to create the PubSub that will connect the source stream to multicast consumers.
  *
  * @since 3.5.0
  * @category sharing
  */
 export const share: {
-  <A, E>(config: ShareConfig<A, E>): <R>(self: Stream<A, E, R>) => Stream<A, E, R | Scope.Scope>
-  <A, E, R>(self: Stream<A, E, R>, config: ShareConfig<A, E>): Stream<A, E, R | Scope.Scope>
+  <A, E>(config: {
+    readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
+  }): <R>(self: Stream<A, E, R>) => Effect.Effect<Stream<A, E>, never, R | Scope.Scope>
+  <A, E, R>(self: Stream<A, E, R>, config: {
+    readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
+  }): Effect.Effect<Stream<A, E>, never, R | Scope.Scope>
 } = internal.share
+
+/**
+ * Returns a new Stream that multicasts (shares) the original Stream by forking `runIntoPubSub` process in `forkDaemon` mode as soon as the first consumer subscribes.
+ * As long as there is at least one consumer, this Stream will be run and emitting data.
+ * When all consumers have exited, it will kill forked daemon.
+ *
+ * Accepts the factory used to create the PubSub that will connect the source stream to multicast consumers.
+ * @since 3.5.0
+ * @category sharing
+ */
+export const shareRefCount: {
+  <A, E>(config: {
+    readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
+  }): <R>(self: Stream<A, E, R>) => Effect.Effect<Stream<A, E>, never, R>
+  <A, E, R>(self: Stream<A, E, R>, config: {
+    readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
+  }): Effect.Effect<Stream<A, E>, never, R>
+} = internal.shareRefCount
 
 /**
  * Emits a sliding window of `n` elements.
