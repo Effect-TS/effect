@@ -932,9 +932,33 @@ Decoding failed:
 
 In this example, the tree error message is structured as follows:
 
-- `{ name: string; age: number }` represents the schema, providing a visual representation of the expected structure. This can be customized using annotations, such as setting the `identifier` annotation.
-- `["name"]` indicates the offending property, in this case, the `"name"` property.
-- `is missing` represents the specific error for the `"name"` property.
+- `{ readonly name: string; readonly age: number }` represents the schema, providing a visual representation of the expected structure. This can be customized by using annotations like `identifier`, `title`, or `description`.
+- `["name"]` points to the problematic property, in this case, the `"name"` property.
+- `is missing` details the specific error for the `"name"` property.
+
+**Example of customizing the type output**
+
+```ts
+import { Schema, TreeFormatter } from "@effect/schema"
+import { Either } from "effect"
+
+const Person = Schema.Struct({
+  name: Schema.String,
+  age: Schema.Number
+}).annotations({ title: "Person" }) // Adding a title annotation
+
+const result = Schema.decodeUnknownEither(Person)({})
+if (Either.isLeft(result)) {
+  console.error(TreeFormatter.formatErrorSync(result.left))
+}
+/*
+Person
+└─ ["name"]
+   └─ is missing
+*/
+```
+
+In this adjusted example, adding the `title` annotation changes how the schema is represented in the error message.
 
 **Handling Multiple Errors**
 
