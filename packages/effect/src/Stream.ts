@@ -30,7 +30,7 @@ import type * as Emit from "./StreamEmit.js"
 import type * as HaltStrategy from "./StreamHaltStrategy.js"
 import type * as Take from "./Take.js"
 import type * as Tracer from "./Tracer.js"
-import type { Covariant, NoInfer } from "./Types.js"
+import type { Covariant, NoInfer, TupleOf } from "./Types.js"
 import type * as Unify from "./Unify.js"
 
 /**
@@ -146,6 +146,7 @@ export declare namespace Stream {
   /**
    * @since 2.0.0
    * @category models
+   * @deprecated use Types.TupleOf instead
    */
   export type DynamicTuple<T, N extends number> = N extends N ? number extends N ? Array<T> : DynamicTupleOf<T, N, []>
     : never
@@ -153,6 +154,7 @@ export declare namespace Stream {
   /**
    * @since 2.0.0
    * @category models
+   * @deprecated use Types.TupleOf instead
    */
   export type DynamicTupleOf<T, N extends number, R extends Array<unknown>> = R["length"] extends N ? R
     : DynamicTupleOf<T, N, [T, ...R]>
@@ -484,12 +486,12 @@ export const broadcast: {
     maximumLag: number
   ): <A, E, R>(
     self: Stream<A, E, R>
-  ) => Effect.Effect<Stream.DynamicTuple<Stream<A, E>, N>, never, Scope.Scope | R>
+  ) => Effect.Effect<TupleOf<N, Stream<A, E>>, never, Scope.Scope | R>
   <A, E, R, N extends number>(
     self: Stream<A, E, R>,
     n: N,
     maximumLag: number
-  ): Effect.Effect<Stream.DynamicTuple<Stream<A, E>, N>, never, Scope.Scope | R>
+  ): Effect.Effect<TupleOf<N, Stream<A, E>>, never, Scope.Scope | R>
 } = internal.broadcast
 
 /**
@@ -521,12 +523,12 @@ export const broadcastedQueues: {
     maximumLag: number
   ): <A, E, R>(
     self: Stream<A, E, R>
-  ) => Effect.Effect<Stream.DynamicTuple<Queue.Dequeue<Take.Take<A, E>>, N>, never, R | Scope.Scope>
+  ) => Effect.Effect<TupleOf<N, Queue.Dequeue<Take.Take<A, E>>>, never, R | Scope.Scope>
   <A, E, R, N extends number>(
     self: Stream<A, E, R>,
     n: N,
     maximumLag: number
-  ): Effect.Effect<Stream.DynamicTuple<Queue.Dequeue<Take.Take<A, E>>, N>, never, Scope.Scope | R>
+  ): Effect.Effect<TupleOf<N, Queue.Dequeue<Take.Take<A, E>>>, never, Scope.Scope | R>
 } = internal.broadcastedQueues
 
 /**
@@ -1139,7 +1141,7 @@ export const distributedWith: {
     }
   ): <E, R>(
     self: Stream<A, E, R>
-  ) => Effect.Effect<Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>, N>, never, Scope.Scope | R>
+  ) => Effect.Effect<TupleOf<N, Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>>, never, Scope.Scope | R>
   <A, E, R, N extends number>(
     self: Stream<A, E, R>,
     options: {
@@ -1147,7 +1149,7 @@ export const distributedWith: {
       readonly maximumLag: number
       readonly decide: (a: A) => Effect.Effect<Predicate<number>>
     }
-  ): Effect.Effect<Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>, N>, never, Scope.Scope | R>
+  ): Effect.Effect<TupleOf<N, Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>>, never, Scope.Scope | R>
 } = internal.distributedWith
 
 /**
