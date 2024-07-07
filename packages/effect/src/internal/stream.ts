@@ -31,7 +31,7 @@ import * as HaltStrategy from "../StreamHaltStrategy.js"
 import type * as Take from "../Take.js"
 import type * as Tracer from "../Tracer.js"
 import * as Tuple from "../Tuple.js"
-import type { NoInfer } from "../Types.js"
+import type { NoInfer, TupleOf } from "../Types.js"
 import * as channel from "./channel.js"
 import * as channelExecutor from "./channel/channelExecutor.js"
 import * as MergeStrategy from "./channel/mergeStrategy.js"
@@ -685,25 +685,22 @@ export const broadcast = dual<
     maximumLag: number
   ) => <A, E, R>(
     self: Stream.Stream<A, E, R>
-  ) => Effect.Effect<Stream.Stream.DynamicTuple<Stream.Stream<A, E>, N>, never, Scope.Scope | R>,
+  ) => Effect.Effect<TupleOf<N, Stream.Stream<A, E>>, never, Scope.Scope | R>,
   <A, E, R, N extends number>(
     self: Stream.Stream<A, E, R>,
     n: N,
     maximumLag: number
-  ) => Effect.Effect<Stream.Stream.DynamicTuple<Stream.Stream<A, E>, N>, never, Scope.Scope | R>
+  ) => Effect.Effect<TupleOf<N, Stream.Stream<A, E>>, never, Scope.Scope | R>
 >(3, <A, E, R, N extends number>(
   self: Stream.Stream<A, E, R>,
   n: N,
   maximumLag: number
-): Effect.Effect<Stream.Stream.DynamicTuple<Stream.Stream<A, E>, N>, never, Scope.Scope | R> =>
+): Effect.Effect<TupleOf<N, Stream.Stream<A, E>>, never, Scope.Scope | R> =>
   pipe(
     self,
     broadcastedQueues(n, maximumLag),
     Effect.map((tuple) =>
-      tuple.map((queue) => flattenTake(fromQueue(queue, { shutdown: true }))) as Stream.Stream.DynamicTuple<
-        Stream.Stream<A, E>,
-        N
-      >
+      tuple.map((queue) => flattenTake(fromQueue(queue, { shutdown: true }))) as TupleOf<N, Stream.Stream<A, E>>
     )
   ))
 
@@ -733,21 +730,21 @@ export const broadcastedQueues = dual<
     maximumLag: number
   ) => <A, E, R>(
     self: Stream.Stream<A, E, R>
-  ) => Effect.Effect<Stream.Stream.DynamicTuple<Queue.Dequeue<Take.Take<A, E>>, N>, never, Scope.Scope | R>,
+  ) => Effect.Effect<TupleOf<N, Queue.Dequeue<Take.Take<A, E>>>, never, Scope.Scope | R>,
   <A, E, R, N extends number>(
     self: Stream.Stream<A, E, R>,
     n: N,
     maximumLag: number
-  ) => Effect.Effect<Stream.Stream.DynamicTuple<Queue.Dequeue<Take.Take<A, E>>, N>, never, Scope.Scope | R>
+  ) => Effect.Effect<TupleOf<N, Queue.Dequeue<Take.Take<A, E>>>, never, Scope.Scope | R>
 >(3, <A, E, R, N extends number>(
   self: Stream.Stream<A, E, R>,
   n: N,
   maximumLag: number
-): Effect.Effect<Stream.Stream.DynamicTuple<Queue.Dequeue<Take.Take<A, E>>, N>, never, Scope.Scope | R> =>
+): Effect.Effect<TupleOf<N, Queue.Dequeue<Take.Take<A, E>>>, never, Scope.Scope | R> =>
   Effect.flatMap(PubSub.bounded<Take.Take<A, E>>(maximumLag), (pubsub) =>
     pipe(
       Effect.all(Array.from({ length: n }, () => PubSub.subscribe(pubsub))) as Effect.Effect<
-        Stream.Stream.DynamicTuple<Queue.Dequeue<Take.Take<A, E>>, N>,
+        TupleOf<N, Queue.Dequeue<Take.Take<A, E>>>,
         never,
         R
       >,
@@ -1764,7 +1761,7 @@ export const distributedWith = dual<
   ) => <E, R>(
     self: Stream.Stream<A, E, R>
   ) => Effect.Effect<
-    Stream.Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>, N>,
+    TupleOf<N, Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>>,
     never,
     Scope.Scope | R
   >,
@@ -1776,7 +1773,7 @@ export const distributedWith = dual<
       readonly decide: (a: A) => Effect.Effect<Predicate<number>>
     }
   ) => Effect.Effect<
-    Stream.Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>, N>,
+    TupleOf<N, Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>>,
     never,
     Scope.Scope | R
   >
@@ -1790,7 +1787,7 @@ export const distributedWith = dual<
       readonly decide: (a: A) => Effect.Effect<Predicate<number>>
     }
   ): Effect.Effect<
-    Stream.Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>, N>,
+    TupleOf<N, Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>>,
     never,
     Scope.Scope | R
   > =>
@@ -1829,7 +1826,7 @@ export const distributedWith = dual<
                   Deferred.succeed(deferred, (a: A) =>
                     Effect.map(options.decide(a), (f) => (key: number) => pipe(f(mappings.get(key)!)))),
                   Effect.as(
-                    Array.from(queues) as Stream.Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>, N>
+                    Array.from(queues) as TupleOf<N, Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>>
                   )
                 )
               })
