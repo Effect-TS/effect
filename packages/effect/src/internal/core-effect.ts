@@ -911,11 +911,6 @@ export const logWithLevel = (level?: LogLevel.LogLevel) =>
       i--
     }
   }
-  if (message.length === 0) {
-    message = "" as any
-  } else if (message.length === 1) {
-    message = message[0]
-  }
   if (cause === undefined) {
     cause = internalCause.empty
   }
