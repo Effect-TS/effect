@@ -2174,23 +2174,19 @@ export const causeSquashWith = dual<
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const YieldableError: new(message?: string) => Cause.YieldableError = (function() {
+export const YieldableError: new(message?: string, options?: ErrorOptions) => Cause.YieldableError = (function() {
   class YieldableError extends globalThis.Error {
     commit() {
       return fail(this)
     }
-    toString() {
-      return this.message ? `${this.name}: ${this.message}` : this.name
-    }
     toJSON() {
       return { ...this }
     }
-    [NodeInspectSymbol](): string {
-      const stack = this.stack
-      if (stack) {
-        return `${this.toString()}\n${stack.split("\n").slice(1).join("\n")}`
+    [NodeInspectSymbol]() {
+      if (this.toString !== globalThis.Error.prototype.toString) {
+        return this.stack ? `${this.toString()}\n${this.stack.split("\n").slice(1).join("\n")}` : this.toString()
       }
-      return this.toString()
+      return this
     }
   }
   Object.assign(YieldableError.prototype, StructuralCommitPrototype)
