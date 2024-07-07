@@ -4914,6 +4914,40 @@ console.log(decode(" abC ")) // " ABC "
 
 **Note**. If you were looking for a combinator to check if a string is uppercased, check out the `Uppercased` schema or the `uppercased` filter.
 
+### Capitalize
+
+The `Capitalize` schema converts a string to capitalized one.
+
+```ts
+import { Schema } from "@effect/schema"
+
+const decode = Schema.decodeUnknownSync(Schema.Capitalize)
+
+console.log(decode("aa")) // "Aa"
+console.log(decode(" ab")) // " ab"
+console.log(decode("aB ")) // "AB "
+console.log(decode(" abC ")) // " abC "
+```
+
+**Note**. If you were looking for a combinator to check if a string is capitalized, check out the `Capitalized` schema or the `capitalized` filter.
+
+### Uncapitalize
+
+The `Uncapitalize` schema converts a string to uncapitalized one.
+
+```ts
+import { Schema } from "@effect/schema"
+
+const decode = Schema.decodeUnknownSync(Schema.Uncapitalize)
+
+console.log(decode("AA")) // "aA"
+console.log(decode(" AB")) // " AB"
+console.log(decode("Ab ")) // "ab "
+console.log(decode(" AbC ")) // " AbC "
+```
+
+**Note**. If you were looking for a combinator to check if a string is uncapitalized, check out the `Uncapitalized` schema or the `uncapitalized` filter.
+
 ### parseJson
 
 The `parseJson` constructor offers a method to convert JSON strings into the `unknown` type using the underlying functionality of `JSON.parse`. It also employs `JSON.stringify` for encoding.
