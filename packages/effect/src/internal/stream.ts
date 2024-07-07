@@ -5935,7 +5935,7 @@ export const share = dual<
     }
   ) =>
     Effect.gen(function*() {
-      const connector = yield* (config.connector ?? PubSub.unbounded<Take.Take<A, E>>())
+      const connector = yield* (config.connector ?? PubSub.bounded<Take.Take<A, E>>(16))
       yield* Effect.forkScoped(runIntoPubSub(self, connector))
       return flattenTake(fromPubSub(connector))
     })
@@ -5967,7 +5967,7 @@ export const shareRefCount = dual<
     let fiber: Fiber.RuntimeFiber<void> | null = null
     return Effect.gen(function*() {
       refCount++
-      connector ??= yield* (config.connector ?? PubSub.unbounded<Take.Take<A, E>>())
+      connector ??= yield* (config.connector ?? PubSub.bounded<Take.Take<A, E>>(16))
       fiber ??= yield* Effect.forkDaemon(runIntoPubSub(self, connector))
       return flattenTake(fromPubSub(connector))
     }).pipe(
