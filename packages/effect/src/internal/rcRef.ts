@@ -149,8 +149,11 @@ export const get = <A, E>(
           return coreEffect.sleep(self.idleTimeToLive).pipe(
             core.interruptible,
             core.zipRight(core.suspend(() => {
-              self.state = stateEmpty
-              return core.scopeClose(state.scope, core.exitVoid)
+              if (self.state._tag === "Acquired" && self.state.refCount === 0) {
+                self.state = stateEmpty
+                return core.scopeClose(state.scope, core.exitVoid)
+              }
+              return core.void
             })),
             fiberRuntime.ensuring(core.sync(() => {
               state.fiber = undefined

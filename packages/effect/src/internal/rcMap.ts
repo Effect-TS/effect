@@ -169,10 +169,11 @@ export const get: {
               return coreEffect.sleep(self.idleTimeToLive).pipe(
                 core.interruptible,
                 core.zipRight(core.suspend(() => {
-                  if (self.state._tag === "Open") {
+                  if (self.state._tag === "Open" && entry.refCount === 0) {
                     MutableHashMap.remove(self.state.map, key)
+                    return core.scopeClose(entry.scope, core.exitVoid)
                   }
-                  return core.scopeClose(entry.scope, core.exitVoid)
+                  return core.void
                 })),
                 fiberRuntime.ensuring(core.sync(() => {
                   entry.fiber = undefined
