@@ -33,7 +33,7 @@ type Confirm = Data.TaggedEnum<{
 }>
 const Confirm = Data.taggedEnum<Confirm>()
 
-const showConfirmation = Confirm.$is("Show")
+const showConfirmation = Confirm.is("Show")
 
 const renderBeep = Doc.render(Doc.beep, { style: "pretty" })
 
@@ -235,7 +235,7 @@ function renderSubmission(value: string, options: FileOptions) {
 
 function handleRender(options: FileOptions) {
   return (_: State, action: Prompt.Prompt.Action<State, string>) => {
-    return Action.$match(action, {
+    return Action.match(action, {
       Beep: () => Effect.succeed(renderBeep),
       NextFrame: ({ state }) => renderNextFrame(state, options),
       Submit: ({ value }) => renderSubmission(value, options)
