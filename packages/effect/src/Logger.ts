@@ -411,10 +411,10 @@ export const json: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fibe
 export const logFmt: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fiberRuntime.logFmtLogger)
 
 /**
- * @since 3.5.0
+ * @since 4.0.0
  * @category constructors
  */
-export const pretty: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fiberRuntime.prettyLogger)
+export const string: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fiberRuntime.stringLogger)
 
 /**
  * @since 2.0.0
