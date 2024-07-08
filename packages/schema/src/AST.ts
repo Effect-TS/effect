@@ -1231,6 +1231,13 @@ export class PropertySignature extends OptionalType {
     super(type, isOptional, annotations)
   }
   /**
+   * @since 0.68.18
+   */
+  toString(): string {
+    return (this.isReadonly ? "readonly " : "") + String(this.name) + (this.isOptional ? "?" : "") + ": " +
+      this.type
+  }
+  /**
    * @since 0.67.0
    */
   toJSON(): object {
@@ -1283,6 +1290,12 @@ export class IndexSignature {
     } else {
       throw new Error(errors_.getASTIndexSignatureParameterErrorMessage)
     }
+  }
+  /**
+   * @since 0.68.18
+   */
+  toString(): string {
+    return (this.isReadonly ? "readonly " : "") + `[x: ${this.parameter}]: ${this.type}`
   }
   /**
    * @since 0.67.0
@@ -1369,22 +1382,19 @@ export class TypeLiteral implements Annotated {
   }
 }
 
+const formatIndexSignatures = (iss: ReadonlyArray<IndexSignature>): string => iss.map(String).join("; ")
+
 const formatTypeLiteral = (ast: TypeLiteral): string => {
-  const formattedPropertySignatures = ast.propertySignatures.map((ps) =>
-    (ps.isReadonly ? "readonly " : "") + String(ps.name) + (ps.isOptional ? "?" : "") + ": " + ps.type
-  ).join("; ")
-  if (ast.indexSignatures.length > 0) {
-    const formattedIndexSignatures = ast.indexSignatures.map((is) =>
-      (is.isReadonly ? "readonly " : "") + `[x: ${getParameterBase(is.parameter)}]: ${is.type}`
-    ).join("; ")
-    if (ast.propertySignatures.length > 0) {
-      return `{ ${formattedPropertySignatures}; ${formattedIndexSignatures} }`
+  if (ast.propertySignatures.length > 0) {
+    const pss = ast.propertySignatures.map(String).join("; ")
+    if (ast.indexSignatures.length > 0) {
+      return `{ ${pss}; ${formatIndexSignatures(ast.indexSignatures)} }`
     } else {
-      return `{ ${formattedIndexSignatures} }`
+      return `{ ${pss} }`
     }
   } else {
-    if (ast.propertySignatures.length > 0) {
-      return `{ ${formattedPropertySignatures} }`
+    if (ast.indexSignatures.length > 0) {
+      return `{ ${formatIndexSignatures(ast.indexSignatures)} }`
     } else {
       return "{}"
     }
