@@ -79,6 +79,10 @@ export const make: <K, A, E, R>(
      * after this duration.
      */
     readonly idleTimeToLive?: Duration.DurationInput | undefined
+    /**
+     * The maximum number of resources that can be held in the map.
+     */
+    readonly capacity?: number | undefined
   }
 ) => Effect.Effect<RcMap<K, A, E>, never, R | Scope.Scope> = internal.make
 

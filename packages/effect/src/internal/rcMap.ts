@@ -8,6 +8,7 @@ import * as MutableHashMap from "../MutableHashMap.js"
 import { pipeArguments } from "../Pipeable.js"
 import type * as RcMap from "../RcMap.js"
 import type * as Scope from "../Scope.js"
+import * as cause from "./cause.js"
 import * as coreEffect from "./core-effect.js"
 import * as core from "./core.js"
 import * as circular from "./effect/circular.js"
@@ -55,7 +56,8 @@ class RcMapImpl<K, A, E> implements RcMap.RcMap<K, A, E> {
     readonly lookup: (key: K) => Effect<A, E, Scope.Scope>,
     readonly context: Context.Context<never>,
     readonly scope: Scope.Scope,
-    readonly idleTimeToLive: Duration.Duration
+    readonly idleTimeToLive: Duration.Duration,
+    readonly capacity: number
   ) {
     this[TypeId] = variance
   }
@@ -69,6 +71,7 @@ class RcMapImpl<K, A, E> implements RcMap.RcMap<K, A, E> {
 export const make = <K, A, E, R>(options: {
   readonly lookup: (key: K) => Effect<A, E, R>
   readonly idleTimeToLive?: Duration.DurationInput | undefined
+  readonly capacity?: number | undefined
 }) =>
   core.withFiberRuntime<RcMap.RcMap<K, A, E>, never, R | Scope.Scope>((fiber) => {
     const context = fiber.getFiberRef(core.currentContext) as Context.Context<R | Scope.Scope>
@@ -77,7 +80,8 @@ export const make = <K, A, E, R>(options: {
       options.lookup as any,
       context,
       scope,
-      options.idleTimeToLive ? Duration.decode(options.idleTimeToLive) : Duration.zero
+      options.idleTimeToLive ? Duration.decode(options.idleTimeToLive) : Duration.zero,
+      Math.max(options.capacity ?? Number.POSITIVE_INFINITY, 0)
     )
     return core.as(
       scope.addFinalizer(() =>
@@ -114,6 +118,8 @@ export const get: {
       core.suspend(() => {
         if (self.state._tag === "Closed") {
           return core.interrupt
+        } else if (Number.isFinite(self.capacity) && MutableHashMap.size(self.state.map) >= self.capacity) {
+          return core.die(new core.ExceededCapacityException(`RcMap attempted to exceed capacity of ${self.capacity}`))
         }
         const state = self.state
         const o = MutableHashMap.get(state.map, key)
