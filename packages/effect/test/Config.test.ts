@@ -1,17 +1,15 @@
-import * as Chunk from "effect/Chunk"
+import { Equal } from "effect"
 import * as Config from "effect/Config"
 import * as ConfigError from "effect/ConfigError"
 import * as ConfigProvider from "effect/ConfigProvider"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as HashSet from "effect/HashSet"
 import * as LogLevel from "effect/LogLevel"
 import * as Option from "effect/Option"
 import * as Redacted from "effect/Redacted"
-import * as Secret from "effect/Secret"
 import { assert, describe, expect, it } from "vitest"
 
 const assertFailure = <A>(
@@ -550,52 +548,6 @@ describe("Config", () => {
     it("can wrap generic Config", () => {
       const config = Config.redacted(Config.integer("NUM"))
       assertEqualSuccess(config, [["NUM", "2"]], Redacted.make(2))
-    })
-  })
-
-  describe("Secret", () => {
-    describe("Config.secret", () => {
-      it("name = undefined", () => {
-        const config = Config.array(Config.secret(), "ITEMS")
-        assertSuccess(config, [["ITEMS", "a"]], [Secret.fromString("a")])
-      })
-
-      it("name != undefined", () => {
-        const config = Config.secret("SECRET")
-        assertEqualSuccess(config, [["SECRET", "a"]], Secret.fromString("a"))
-      })
-    })
-
-    it("chunk constructor", () => {
-      const secret = Secret.fromIterable(Chunk.fromIterable("secret".split("")))
-      assert.isTrue(Equal.equals(secret, Secret.fromString("secret")))
-    })
-
-    it("value", () => {
-      const secret = Secret.fromIterable(Chunk.fromIterable("secret".split("")))
-      const value = Secret.value(secret)
-      assert.strictEqual(value, "secret")
-    })
-
-    it("toString", () => {
-      const secret = Secret.fromString("secret")
-      assert.strictEqual(`${secret}`, "Secret(<redacted>)")
-    })
-
-    it("toJSON", () => {
-      const secret = Secret.fromString("secret")
-      assert.strictEqual(JSON.stringify(secret), "\"<redacted>\"")
-    })
-
-    it("wipe", () => {
-      const secret = Secret.fromString("secret")
-      Secret.unsafeWipe(secret)
-      assert.isTrue(
-        Equal.equals(
-          Secret.value(secret),
-          Array.from({ length: "secret".length }, () => String.fromCharCode(0)).join("")
-        )
-      )
     })
   })
 

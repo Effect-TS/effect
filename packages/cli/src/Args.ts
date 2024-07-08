@@ -11,7 +11,6 @@ import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type { Redacted } from "effect/Redacted"
 import type { Schema } from "effect/Schema"
-import type { Secret } from "effect/Secret"
 import type { CliConfig } from "./CliConfig.js"
 import type { HelpDoc } from "./HelpDoc.js"
 import * as InternalArgs from "./internal/args.js"
@@ -386,16 +385,6 @@ export const repeated: <A>(self: Args<A>) => Args<Array<A>> = InternalArgs.repea
  * @category constructors
  */
 export const redacted: (config?: Args.BaseArgsConfig) => Args<Redacted> = InternalArgs.redacted
-
-/**
- * Creates a text argument.
- *
- * Can optionally provide a custom argument name (defaults to `"secret"`).
- *
- * @since 1.0.0
- * @category constructors
- */
-export const secret: (config?: Args.BaseArgsConfig) => Args<Secret> = InternalArgs.secret
 
 /**
  * Creates a text argument.
