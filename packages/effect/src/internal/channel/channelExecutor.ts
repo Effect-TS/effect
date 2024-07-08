@@ -1095,7 +1095,7 @@ export const readUpstream = <A, E2, R, E>(
 /** @internal */
 export const run = <Env, InErr, InDone, OutErr, OutDone>(
   self: Channel.Channel<never, unknown, OutErr, InErr, OutDone, InDone, Env>
-): Effect.Effect<OutDone, OutErr, Env> => pipe(runScoped(self), Effect.scoped)
+): Effect.Effect<OutDone, OutErr, Exclude<Env, Scope.Scope>> => pipe(runScoped(self), Effect.scoped)
 
 /** @internal */
 export const runScoped = <Env, InErr, InDone, OutErr, OutDone>(
