@@ -129,10 +129,6 @@ export const get: {
       core.suspend(() => {
         if (self.state._tag === "Closed") {
           return core.interrupt
-        } else if (Number.isFinite(self.capacity) && MutableHashMap.size(self.state.map) >= self.capacity) {
-          return core.fail(
-            new core.ExceededCapacityException(`RcMap attempted to exceed capacity of ${self.capacity}`)
-          ) as Effect<never>
         }
         const state = self.state
         const o = MutableHashMap.get(state.map, key)
@@ -142,6 +138,10 @@ export const get: {
           return entry.fiber
             ? core.as(core.interruptFiber(entry.fiber), entry)
             : core.succeed(entry)
+        } else if (Number.isFinite(self.capacity) && MutableHashMap.size(self.state.map) >= self.capacity) {
+          return core.fail(
+            new core.ExceededCapacityException(`RcMap attempted to exceed capacity of ${self.capacity}`)
+          ) as Effect<never>
         }
         const acquire = self.lookup(key)
         return fiberRuntime.scopeMake().pipe(

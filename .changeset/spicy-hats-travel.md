@@ -8,6 +8,8 @@ An `RcMap` can contain multiple reference counted resources that can be indexed
 by a key. The resources are lazily acquired on the first call to `get` and
 released when the last reference is released.
 
+Complex keys can extend `Equal` and `Hash` to allow lookups by value.
+
 ```ts
 import { Effect, RcMap } from "effect";
 

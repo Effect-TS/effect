@@ -50,6 +50,8 @@ export declare namespace RcMap {
  * by a key. The resources are lazily acquired on the first call to `get` and
  * released when the last reference is released.
  *
+ * Complex keys can extend `Equal` and `Hash` to allow lookups by value.
+ *
  * @since 3.5.0
  * @category models
  * @param capacity The maximum number of resources that can be held in the map.

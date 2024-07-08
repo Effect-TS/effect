@@ -1,4 +1,4 @@
-import { Cause, Effect, Exit, RcMap, Scope, TestClock } from "effect"
+import { Cause, Data, Effect, Exit, RcMap, Scope, TestClock } from "effect"
 import { assert, describe, it } from "effect/test/utils/extend"
 
 describe("RcMap", () => {
@@ -110,5 +110,18 @@ describe("RcMap", () => {
 
       yield* TestClock.adjust(1000)
       assert.strictEqual(yield* Effect.scoped(RcMap.get(map, "baz")), "baz")
+    }))
+
+  it.scoped("complex key", () =>
+    Effect.gen(function*() {
+      class Key extends Data.Class<{ readonly id: number }> {}
+      const map = yield* RcMap.make({
+        lookup: (key: Key) => Effect.succeed(key.id),
+        capacity: 1
+      })
+
+      assert.strictEqual(yield* RcMap.get(map, new Key({ id: 1 })), 1)
+      // no failure means a hit
+      assert.strictEqual(yield* RcMap.get(map, new Key({ id: 1 })), 1)
     }))
 })
