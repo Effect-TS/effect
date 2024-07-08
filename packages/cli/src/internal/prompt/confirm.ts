@@ -100,7 +100,7 @@ function renderSubmission(value: boolean, options: Options) {
 
 function handleRender(options: Options) {
   return (_: State, action: Prompt.Prompt.Action<State, boolean>) => {
-    return Action.$match(action, {
+    return Action.match(action, {
       Beep: () => Effect.succeed(renderBeep),
       NextFrame: ({ state }) => renderNextFrame(state, options),
       Submit: ({ value }) => renderSubmission(value, options)

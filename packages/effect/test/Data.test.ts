@@ -187,10 +187,10 @@ describe("Data", () => {
       InternalServerError: { reason: string }
     }>
     const {
-      $is,
-      $match,
       InternalServerError,
-      NotFound
+      NotFound,
+      is,
+      match
     } = Data.taggedEnum<HttpError>()
 
     const a = NotFound()
@@ -206,9 +206,9 @@ describe("Data", () => {
     expect(Equal.equals(a, b)).toBe(false)
     expect(Equal.equals(b, c)).toBe(true)
 
-    expect($is("NotFound")(a)).toBe(true)
-    expect($is("InternalServerError")(a)).toBe(false)
-    const matcher = $match({
+    expect(is("NotFound")(a)).toBe(true)
+    expect(is("InternalServerError")(a)).toBe(false)
+    const matcher = match({
       NotFound: () => 0,
       InternalServerError: () => 1
     })
@@ -227,7 +227,7 @@ describe("Data", () => {
     interface ResultDefinition extends Data.TaggedEnum.WithGenerics<2> {
       readonly taggedEnum: Result<this["A"], this["B"]>
     }
-    const { $is, $match, Failure, Success } = Data.taggedEnum<ResultDefinition>()
+    const { Failure, Success, is, match } = Data.taggedEnum<ResultDefinition>()
 
     const a = Success({ value: 1 }) satisfies Result<unknown, number>
     const b = Failure({ error: "test" }) satisfies Result<string, unknown>
@@ -247,7 +247,7 @@ describe("Data", () => {
     const bResult = Failure({ error: "boom" }) as Result<string, number>
 
     assert.strictEqual(
-      $match(aResult, {
+      match(aResult, {
         Success: (_) => 1,
         Failure: (_) => 2
       }),
@@ -255,7 +255,7 @@ describe("Data", () => {
     )
     const result = pipe(
       bResult,
-      $match({
+      match({
         Success: (_) => _.value,
         Failure: (_) => _.error
       })
@@ -263,11 +263,11 @@ describe("Data", () => {
     result satisfies string | number
     assert.strictEqual(result, "boom")
 
-    assert($is("Success")(aResult))
+    assert(is("Success")(aResult))
     aResult satisfies { readonly _tag: "Success"; readonly value: number }
     assert.strictEqual(aResult.value, 1)
 
-    assert($is("Failure")(bResult))
+    assert(is("Failure")(bResult))
     bResult satisfies { readonly _tag: "Failure"; readonly error: string }
     assert.strictEqual(bResult.error, "boom")
   })
