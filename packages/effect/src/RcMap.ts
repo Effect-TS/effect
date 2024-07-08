@@ -25,7 +25,7 @@ export type TypeId = typeof TypeId
  * @since 3.5.0
  * @category models
  */
-export interface RcMap<in K, out A, out E> extends Pipeable {
+export interface RcMap<in K, out A, out E = never> extends Pipeable {
   readonly [TypeId]: RcMap.Variance<K, A, E>
 }
 
