@@ -5804,11 +5804,12 @@ export const shareRefCount = dual<
         ensuring(
           Effect.suspend(() => {
             refCount--
-            const cleanup = fiber
-            fiber = null
-            return refCount === 0 && cleanup
-              ? Fiber.interrupt(cleanup)
-              : Effect.void
+            if (refCount === 0 && fiber) {
+              const cleanup = fiber
+              fiber = null
+              return Fiber.interrupt(cleanup)
+            }
+            return Effect.void;
           })
         )
       )
