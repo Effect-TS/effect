@@ -606,6 +606,16 @@ export * as Random from "./Random.js"
 export * as RateLimiter from "./RateLimiter.js"
 
 /**
+ * @since 3.5.0
+ */
+export * as RcMap from "./RcMap.js"
+
+/**
+ * @since 3.5.0
+ */
+export * as RcRef from "./RcRef.js"
+
+/**
  * @since 2.0.0
  */
 export * as Readable from "./Readable.js"

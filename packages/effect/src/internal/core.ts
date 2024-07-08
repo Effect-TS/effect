@@ -2271,6 +2271,20 @@ export const InvalidPubSubCapacityException = makeException<Cause.InvalidPubSubC
 }, "InvalidPubSubCapacityException")
 
 /** @internal */
+export const ExceededCapacityExceptionTypeId: Cause.ExceededCapacityExceptionTypeId = Symbol.for(
+  "effect/Cause/errors/ExceededCapacityException"
+) as Cause.ExceededCapacityExceptionTypeId
+
+/** @internal */
+export const ExceededCapacityException = makeException<Cause.ExceededCapacityException>({
+  [ExceededCapacityExceptionTypeId]: ExceededCapacityExceptionTypeId
+}, "ExceededCapacityException")
+
+/** @internal */
+export const isExceededCapacityException = (u: unknown): u is Cause.ExceededCapacityException =>
+  hasProperty(u, ExceededCapacityExceptionTypeId)
+
+/** @internal */
 export const isInvalidCapacityError = (u: unknown): u is Cause.InvalidPubSubCapacityException =>
   hasProperty(u, InvalidPubSubCapacityExceptionTypeId)
 
