@@ -1,5 +1,58 @@
 # @effect/schema
 
+## 0.68.18
+
+### Patch Changes
+
+- [#3192](https://github.com/Effect-TS/effect/pull/3192) [`5d5cc6c`](https://github.com/Effect-TS/effect/commit/5d5cc6cfd7d63b07081290fb189b364999201fc5) Thanks @KhraksMamtsov! - Support `Capitalize` `Uncapitalize` filters and schemas
+
+- [#3148](https://github.com/Effect-TS/effect/pull/3148) [`359ff8a`](https://github.com/Effect-TS/effect/commit/359ff8aa2e4e6389bf56d759baa804e2a7674a16) Thanks @gcanti! - add `Serializable.Serializable.Type` and `Serializable.Serializable.Encoded`
+
+- [#3198](https://github.com/Effect-TS/effect/pull/3198) [`f7534b9`](https://github.com/Effect-TS/effect/commit/f7534b94cba06b143a3d4f29275d92874a939559) Thanks @gcanti! - Add `toString` to `AST.PropertySignature` and `AST.IndexSignature` and fix type display for IndexSignature.
+
+  **Before the Change**
+
+  Previously, when a type mismatch occurred in `Schema.decodeUnknownSync`, the error message displayed for `IndexSignature` was not accurately representing the type used. For example:
+
+  ```typescript
+  import { Schema } from "@effect/schema";
+
+  const schema = Schema.Record(Schema.Char, Schema.String);
+
+  Schema.decodeUnknownSync(schema)({ a: 1 });
+  /*
+  throws
+  ParseError: { readonly [x: string]: string }
+  └─ ["a"]
+     └─ Expected string, actual 1
+  */
+  ```
+
+  This output incorrectly indicated `[x: string]` when the actual index type was `Char`.
+
+  **After the Change**
+
+  The `toString` implementation now correctly reflects the type used in `IndexSignature`, providing more accurate and informative error messages:
+
+  ```ts
+  import { Schema } from "@effect/schema";
+
+  const schema = Schema.Record(Schema.Char, Schema.String);
+
+  Schema.decodeUnknownSync(schema)({ a: 1 });
+  /*
+  throws
+  ParseError: { readonly [x: Char]: string }
+  └─ ["a"]
+     └─ Expected string, actual 1
+  */
+  ```
+
+  The updated output now correctly displays `{ readonly [x: Char]: string }`, aligning the error messages with the actual data types used in the schema.
+
+- Updated dependencies [[`a435e0f`](https://github.com/Effect-TS/effect/commit/a435e0fc5378b33a49bcec92ee235df6f16a2419), [`b5554db`](https://github.com/Effect-TS/effect/commit/b5554db36c4dd6f64fa5e6a62a29b2759c54217a), [`a9c4fb3`](https://github.com/Effect-TS/effect/commit/a9c4fb3bf3c6e92cd1c142b0605fddf7eb3c697c)]:
+  - effect@3.4.8
+
 ## 0.68.17
 
 ### Patch Changes
