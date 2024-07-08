@@ -274,11 +274,21 @@ export const Structural: new<A>(
  * @category models
  */
 export type TaggedEnum<
-  A extends Record<string, Record<string, any>> & UntaggedChildren<A>
+  A extends
+    & Record<string, Record<string, any>>
+    & CapitalConstructorNames<A>
+    & UntaggedChildren<A>
 > = keyof A extends infer Tag ?
   Tag extends keyof A ? Types.Simplify<{ readonly _tag: Tag } & { readonly [K in keyof A[Tag]]: A[Tag][K] }>
   : never
   : never
+
+type CapitalConstructorNames<A> = Record<
+  Uncapitalize<string>,
+  keyof A extends infer X extends string
+    ? X extends Uncapitalize<X> ? `Use capitalized constructor name. Did you mean "${Capitalize<X>}"?` : never
+    : never
+>
 
 type ChildrenAreTagged<A> = keyof A extends infer K ? K extends keyof A ? "_tag" extends keyof A[K] ? true
     : false
@@ -350,8 +360,8 @@ export declare namespace TaggedEnum {
       readonly [Tag in A["_tag"]]: Case.Constructor<Extract<A, { readonly _tag: Tag }>, "_tag">
     }
     & {
-      readonly $is: <Tag extends A["_tag"]>(tag: Tag) => (u: unknown) => u is Extract<A, { readonly _tag: Tag }>
-      readonly $match: {
+      readonly is: <Tag extends A["_tag"]>(tag: Tag) => (u: unknown) => u is Extract<A, { readonly _tag: Tag }>
+      readonly match: {
         <
           Cases extends {
             readonly [Tag in A["_tag"]]: (args: Extract<A, { readonly _tag: Tag }>) => any
@@ -370,7 +380,7 @@ export declare namespace TaggedEnum {
    * @since 3.2.0
    */
   export interface GenericMatchers<Z extends WithGenerics<number>> {
-    readonly $is: <Tag extends Z["taggedEnum"]["_tag"]>(
+    readonly is: <Tag extends Z["taggedEnum"]["_tag"]>(
       tag: Tag
     ) => {
       <T extends TaggedEnum.Kind<Z, any, any, any, any>>(
@@ -378,7 +388,7 @@ export declare namespace TaggedEnum {
       ): u is T & { readonly _tag: Tag }
       (u: unknown): u is Extract<TaggedEnum.Kind<Z>, { readonly _tag: Tag }>
     }
-    readonly $match: {
+    readonly match: {
       <
         A,
         B,
@@ -498,9 +508,9 @@ export const taggedEnum: {
 } = () =>
   new Proxy({}, {
     get(_target, tag, _receiver) {
-      if (tag === "$is") {
+      if (tag === "is") {
         return Predicate.isTagged
-      } else if (tag === "$match") {
+      } else if (tag === "match") {
         return taggedMatch
       }
       return tagged(tag as string)
