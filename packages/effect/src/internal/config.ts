@@ -11,14 +11,12 @@ import type * as LogLevel from "../LogLevel.js"
 import * as Option from "../Option.js"
 import { hasProperty, type Predicate, type Refinement } from "../Predicate.js"
 import type * as Redacted from "../Redacted.js"
-import type * as Secret from "../Secret.js"
 import * as configError from "./configError.js"
 import * as core from "./core.js"
 import * as defaultServices from "./defaultServices.js"
 import * as effectable from "./effectable.js"
 import * as OpCodes from "./opCodes/config.js"
 import * as redacted_ from "./redacted.js"
-import * as InternalSecret from "./secret.js"
 
 const ConfigSymbolKey = "effect/Config"
 
@@ -428,20 +426,12 @@ export const repeat = <A>(self: Config.Config<A>): Config.Config<Array<A>> => {
 }
 
 /** @internal */
-export const secret = (name?: string): Config.Config<Secret.Secret> => {
+export const redacted = (name?: string): Config.Config<Redacted.Redacted> => {
   const config = primitive(
-    "a secret property",
-    (text) => Either.right(InternalSecret.fromString(text))
+    "a redacted property",
+    (text) => Either.right(redacted_.make(text))
   )
   return name === undefined ? config : nested(config, name)
-}
-
-/** @internal */
-export const redacted = <A>(
-  nameOrConfig?: string | Config.Config<A>
-): Config.Config<Redacted.Redacted<A | string>> => {
-  const config: Config.Config<A | string> = isConfig(nameOrConfig) ? nameOrConfig : string(nameOrConfig)
-  return map(config, redacted_.make)
 }
 
 /** @internal */

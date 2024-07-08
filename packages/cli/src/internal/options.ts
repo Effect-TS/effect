@@ -16,7 +16,6 @@ import * as Predicate from "effect/Predicate"
 import type * as Redacted from "effect/Redacted"
 import * as Ref from "effect/Ref"
 import type * as Schema from "effect/Schema"
-import type * as Secret from "effect/Secret"
 import type * as CliConfig from "../CliConfig.js"
 import type * as HelpDoc from "../HelpDoc.js"
 import type * as Options from "../Options.js"
@@ -385,10 +384,6 @@ export const none: Options.Options<void> = (() => {
 /** @internal */
 export const redacted = (name: string): Options.Options<Redacted.Redacted> =>
   makeSingle(name, Arr.empty(), InternalPrimitive.redacted)
-
-/** @internal */
-export const secret = (name: string): Options.Options<Secret.Secret> =>
-  makeSingle(name, Arr.empty(), InternalPrimitive.secret)
 
 /** @internal */
 export const text = (name: string): Options.Options<string> => makeSingle(name, Arr.empty(), InternalPrimitive.text)

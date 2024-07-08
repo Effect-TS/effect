@@ -13,7 +13,6 @@ import { pipeArguments } from "effect/Pipeable"
 import type * as Redacted from "effect/Redacted"
 import * as Ref from "effect/Ref"
 import type * as Schema from "effect/Schema"
-import type * as Secret from "effect/Secret"
 import type * as Args from "../Args.js"
 import type * as CliConfig from "../CliConfig.js"
 import type * as HelpDoc from "../HelpDoc.js"
@@ -271,11 +270,6 @@ export const path = (config?: Args.Args.PathArgsConfig): Args.Args<string> =>
 export const redacted = (
   config?: Args.Args.BaseArgsConfig
 ): Args.Args<Redacted.Redacted> => makeSingle(Option.fromNullable(config?.name), InternalPrimitive.redacted)
-
-/** @internal */
-export const secret = (
-  config?: Args.Args.BaseArgsConfig
-): Args.Args<Secret.Secret> => makeSingle(Option.fromNullable(config?.name), InternalPrimitive.secret)
 
 /** @internal */
 export const text = (config?: Args.Args.BaseArgsConfig): Args.Args<string> =>
