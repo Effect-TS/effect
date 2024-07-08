@@ -1,5 +1,14 @@
 # @effect/typeclass
 
+## 0.24.41
+
+### Patch Changes
+
+- [#3177](https://github.com/Effect-TS/effect/pull/3177) [`dc20a10`](https://github.com/Effect-TS/effect/commit/dc20a10ef67f942284609daa152a04e86c062d3b) Thanks @gcanti! - Internal: simplify product implementation
+
+- Updated dependencies [[`a435e0f`](https://github.com/Effect-TS/effect/commit/a435e0fc5378b33a49bcec92ee235df6f16a2419), [`b5554db`](https://github.com/Effect-TS/effect/commit/b5554db36c4dd6f64fa5e6a62a29b2759c54217a), [`a9c4fb3`](https://github.com/Effect-TS/effect/commit/a9c4fb3bf3c6e92cd1c142b0605fddf7eb3c697c)]:
+  - effect@3.4.8
+
 ## 0.24.40
 
 ### Patch Changes
