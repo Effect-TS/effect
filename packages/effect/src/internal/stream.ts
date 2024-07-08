@@ -5791,6 +5791,8 @@ export const shareRefCount = dual<
       let fiber: Fiber.RuntimeFiber<void> | null = null
       const scope = yield* Effect.scope
       const context = yield* Effect.context<R>()
+      const sem = yield* Effect.makeSemaphore(1)
+
       return Effect.gen(function*() {
         refCount++
         connector ??= yield* (config.connector ?? PubSub.bounded<Take.Take<A, E>>(16))
@@ -5800,6 +5802,7 @@ export const shareRefCount = dual<
         )
         return flattenTake(fromPubSub(connector))
       }).pipe(
+        sem.withPermits(1),
         unwrap,
         ensuring(
           Effect.suspend(() => {
