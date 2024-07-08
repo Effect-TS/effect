@@ -201,6 +201,24 @@ export const isDuration = (u: unknown): u is Duration => hasProperty(u, TypeId)
 export const isFinite = (self: Duration): boolean => self.value._tag !== "Infinity"
 
 /**
+ * @since 3.5.0
+ * @category guards
+ */
+export const isZero = (self: Duration): boolean => {
+  switch (self.value._tag) {
+    case "Millis": {
+      return self.value.millis === 0
+    }
+    case "Nanos": {
+      return self.value.nanos === bigint0
+    }
+    case "Infinity": {
+      return false
+    }
+  }
+}
+
+/**
  * @since 2.0.0
  * @category constructors
  */
