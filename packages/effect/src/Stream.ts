@@ -2932,7 +2932,7 @@ export const run: {
   <A, E, R, A2, E2, R2>(
     self: Stream<A, E, R>,
     sink: Sink.Sink<A2, A, unknown, E2, R2>
-  ): Effect.Effect<A2, E | E2, R | R2>
+  ): Effect.Effect<A2, E | E2, Exclude<R | R2, Scope.Scope>>
 } = internal.run
 
 /**
@@ -2941,7 +2941,8 @@ export const run: {
  * @since 2.0.0
  * @category destructors
  */
-export const runCollect: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<Chunk.Chunk<A>, E, R> = internal.runCollect
+export const runCollect: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<Chunk.Chunk<A>, E, Exclude<R, Scope.Scope>> =
+  internal.runCollect
 
 /**
  * Runs the stream and emits the number of elements processed
@@ -2949,7 +2950,8 @@ export const runCollect: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<Chunk
  * @since 2.0.0
  * @category destructors
  */
-export const runCount: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<number, E, R> = internal.runCount
+export const runCount: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<number, E, Exclude<R, Scope.Scope>> =
+  internal.runCount
 
 /**
  * Runs the stream only for its effects. The emitted elements are discarded.
@@ -2957,7 +2959,8 @@ export const runCount: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<number,
  * @since 2.0.0
  * @category destructors
  */
-export const runDrain: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<void, E, R> = internal.runDrain
+export const runDrain: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<void, E, Exclude<R, Scope.Scope>> =
+  internal.runDrain
 
 /**
  * Executes a pure fold over the stream of values - reduces all elements in
@@ -2967,8 +2970,8 @@ export const runDrain: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<void, E
  * @category destructors
  */
 export const runFold: {
-  <S, A>(s: S, f: (s: S, a: A) => S): <E, R>(self: Stream<A, E, R>) => Effect.Effect<S, E, R>
-  <A, E, R, S>(self: Stream<A, E, R>, s: S, f: (s: S, a: A) => S): Effect.Effect<S, E, R>
+  <S, A>(s: S, f: (s: S, a: A) => S): <E, R>(self: Stream<A, E, R>) => Effect.Effect<S, E, Exclude<R, Scope.Scope>>
+  <A, E, R, S>(self: Stream<A, E, R>, s: S, f: (s: S, a: A) => S): Effect.Effect<S, E, Exclude<R, Scope.Scope>>
 } = internal.runFold
 
 /**
@@ -2981,12 +2984,12 @@ export const runFoldEffect: {
   <S, A, E2, R2>(
     s: S,
     f: (s: S, a: A) => Effect.Effect<S, E2, R2>
-  ): <E, R>(self: Stream<A, E, R>) => Effect.Effect<S, E2 | E, R2 | R>
+  ): <E, R>(self: Stream<A, E, R>) => Effect.Effect<S, E2 | E, Exclude<R | R2, Scope.Scope>>
   <A, E, R, S, E2, R2>(
     self: Stream<A, E, R>,
     s: S,
     f: (s: S, a: A) => Effect.Effect<S, E2, R2>
-  ): Effect.Effect<S, E | E2, R | R2>
+  ): Effect.Effect<S, E | E2, Exclude<R | R2, Scope.Scope>>
 } = internal.runFoldEffect
 
 /**
@@ -3028,8 +3031,17 @@ export const runFoldScopedEffect: {
  * @category destructors
  */
 export const runFoldWhile: {
-  <S, A>(s: S, cont: Predicate<S>, f: (s: S, a: A) => S): <E, R>(self: Stream<A, E, R>) => Effect.Effect<S, E, R>
-  <A, E, R, S>(self: Stream<A, E, R>, s: S, cont: Predicate<S>, f: (s: S, a: A) => S): Effect.Effect<S, E, R>
+  <S, A>(
+    s: S,
+    cont: Predicate<S>,
+    f: (s: S, a: A) => S
+  ): <E, R>(self: Stream<A, E, R>) => Effect.Effect<S, E, Exclude<R, Scope.Scope>>
+  <A, E, R, S>(
+    self: Stream<A, E, R>,
+    s: S,
+    cont: Predicate<S>,
+    f: (s: S, a: A) => S
+  ): Effect.Effect<S, E, Exclude<R, Scope.Scope>>
 } = internal.runFoldWhile
 
 /**
@@ -3044,13 +3056,13 @@ export const runFoldWhileEffect: {
     s: S,
     cont: Predicate<S>,
     f: (s: S, a: A) => Effect.Effect<S, E2, R2>
-  ): <E, R>(self: Stream<A, E, R>) => Effect.Effect<S, E2 | E, R2 | R>
+  ): <E, R>(self: Stream<A, E, R>) => Effect.Effect<S, E2 | E, Exclude<R | R2, Scope.Scope>>
   <A, E, R, S, E2, R2>(
     self: Stream<A, E, R>,
     s: S,
     cont: Predicate<S>,
     f: (s: S, a: A) => Effect.Effect<S, E2, R2>
-  ): Effect.Effect<S, E | E2, R | R2>
+  ): Effect.Effect<S, E | E2, Exclude<R | R2, Scope.Scope>>
 } = internal.runFoldWhileEffect
 
 /**
