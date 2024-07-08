@@ -1,4 +1,3 @@
-import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as Schedule from "effect/Schedule"
@@ -38,14 +37,11 @@ describe("Stream", () => {
       assert.deepStrictEqual(second, [2])
     }))
 
-  it.effect("shareRefCount sequenced", () =>
+  it.scoped("shareRefCount sequenced", () =>
     Effect.gen(function*() {
-      const sharedStream = Stream.fromSchedule(
+      const sharedStream = yield* Stream.fromSchedule(
         Schedule.spaced("1 seconds")
       ).pipe(
-        Stream.ensuringWith(() => {
-          return Effect.void
-        }),
         Stream.shareRefCount({})
       )
 
@@ -74,9 +70,9 @@ describe("Stream", () => {
       assert.deepStrictEqual(second, [0])
     }))
 
-  it.effect("shareRefCount parallel", () =>
+  it.scoped("shareRefCount parallel", () =>
     Effect.gen(function*() {
-      const sharedStream = Stream.fromSchedule(
+      const sharedStream = yield* Stream.fromSchedule(
         Schedule.spaced("1 seconds")
       ).pipe(Stream.shareRefCount({}))
 
