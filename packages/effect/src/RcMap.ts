@@ -1,6 +1,7 @@
 /**
  * @since 3.5.0
  */
+import type * as Cause from "./Cause.js"
 import type * as Duration from "./Duration.js"
 import type * as Effect from "./Effect.js"
 import * as internal from "./internal/rcMap.js"
@@ -91,6 +92,6 @@ export const make: <K, A, E, R>(
  * @category combinators
  */
 export const get: {
-  <K>(key: K): <A, E>(self: RcMap<K, A, E>) => Effect.Effect<A, E, Scope.Scope>
-  <K, A, E>(self: RcMap<K, A, E>, key: K): Effect.Effect<A, E, Scope.Scope>
+  <K>(key: K): <A, E>(self: RcMap<K, A, E>) => Effect.Effect<A, E | Cause.ExceededCapacityException, Scope.Scope>
+  <K, A, E>(self: RcMap<K, A, E>, key: K): Effect.Effect<A, E | Cause.ExceededCapacityException, Scope.Scope>
 } = internal.get

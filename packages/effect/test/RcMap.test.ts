@@ -105,7 +105,7 @@ describe("RcMap", () => {
       const exit = yield* RcMap.get(map, "baz").pipe(Effect.scoped, Effect.exit)
       assert.deepStrictEqual(
         exit,
-        Exit.die(new Cause.ExceededCapacityException(`RcMap attempted to exceed capacity of 2`))
+        Exit.fail(new Cause.ExceededCapacityException(`RcMap attempted to exceed capacity of 2`))
       )
 
       yield* TestClock.adjust(1000)

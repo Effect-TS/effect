@@ -1,3 +1,4 @@
+import type * as Cause from "../Cause.js"
 import * as Context from "../Context.js"
 import type * as Deferred from "../Deferred.js"
 import * as Duration from "../Duration.js"
@@ -107,18 +108,18 @@ export const make = <K, A, E, R>(options: {
 
 /** @internal */
 export const get: {
-  <K>(key: K): <A, E>(self: RcMap.RcMap<K, A, E>) => Effect<A, E, Scope.Scope>
-  <K, A, E>(self: RcMap.RcMap<K, A, E>, key: K): Effect<A, E, Scope.Scope>
+  <K>(key: K): <A, E>(self: RcMap.RcMap<K, A, E>) => Effect<A, E | Cause.ExceededCapacityException, Scope.Scope>
+  <K, A, E>(self: RcMap.RcMap<K, A, E>, key: K): Effect<A, E | Cause.ExceededCapacityException, Scope.Scope>
 } = dual(
   2,
-  <K, A, E>(self_: RcMap.RcMap<K, A, E>, key: K): Effect<A, E, Scope.Scope> => {
+  <K, A, E>(self_: RcMap.RcMap<K, A, E>, key: K): Effect<A, E | Cause.ExceededCapacityException, Scope.Scope> => {
     const self = self_ as RcMapImpl<K, A, E>
     return core.uninterruptibleMask((restore) =>
       core.suspend(() => {
         if (self.state._tag === "Closed") {
           return core.interrupt
         } else if (Number.isFinite(self.capacity) && MutableHashMap.size(self.state.map) >= self.capacity) {
-          return core.die(new core.ExceededCapacityException(`RcMap attempted to exceed capacity of ${self.capacity}`))
+          return core.fail(new core.ExceededCapacityException(`RcMap attempted to exceed capacity of ${self.capacity}`))
         }
         const state = self.state
         const o = MutableHashMap.get(state.map, key)
