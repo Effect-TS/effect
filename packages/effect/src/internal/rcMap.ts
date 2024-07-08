@@ -68,7 +68,18 @@ class RcMapImpl<K, A, E> implements RcMap.RcMap<K, A, E> {
 }
 
 /** @internal */
-export const make = <K, A, E, R>(options: {
+export const make: {
+  <K, A, E, R>(options: {
+    readonly lookup: (key: K) => Effect<A, E, R>
+    readonly idleTimeToLive?: Duration.DurationInput | undefined
+    readonly capacity?: undefined
+  }): Effect<RcMap.RcMap<K, A, E>, never, Scope.Scope | R>
+  <K, A, E, R>(options: {
+    readonly lookup: (key: K) => Effect<A, E, R>
+    readonly idleTimeToLive?: Duration.DurationInput | undefined
+    readonly capacity: number
+  }): Effect<RcMap.RcMap<K, A, E | Cause.ExceededCapacityException>, never, Scope.Scope | R>
+} = <K, A, E, R>(options: {
   readonly lookup: (key: K) => Effect<A, E, R>
   readonly idleTimeToLive?: Duration.DurationInput | undefined
   readonly capacity?: number | undefined
@@ -108,18 +119,20 @@ export const make = <K, A, E, R>(options: {
 
 /** @internal */
 export const get: {
-  <K>(key: K): <A, E>(self: RcMap.RcMap<K, A, E>) => Effect<A, E | Cause.ExceededCapacityException, Scope.Scope>
-  <K, A, E>(self: RcMap.RcMap<K, A, E>, key: K): Effect<A, E | Cause.ExceededCapacityException, Scope.Scope>
+  <K>(key: K): <A, E>(self: RcMap.RcMap<K, A, E>) => Effect<A, E, Scope.Scope>
+  <K, A, E>(self: RcMap.RcMap<K, A, E>, key: K): Effect<A, E, Scope.Scope>
 } = dual(
   2,
-  <K, A, E>(self_: RcMap.RcMap<K, A, E>, key: K): Effect<A, E | Cause.ExceededCapacityException, Scope.Scope> => {
+  <K, A, E>(self_: RcMap.RcMap<K, A, E>, key: K): Effect<A, E, Scope.Scope> => {
     const self = self_ as RcMapImpl<K, A, E>
     return core.uninterruptibleMask((restore) =>
       core.suspend(() => {
         if (self.state._tag === "Closed") {
           return core.interrupt
         } else if (Number.isFinite(self.capacity) && MutableHashMap.size(self.state.map) >= self.capacity) {
-          return core.fail(new core.ExceededCapacityException(`RcMap attempted to exceed capacity of ${self.capacity}`))
+          return core.fail(
+            new core.ExceededCapacityException(`RcMap attempted to exceed capacity of ${self.capacity}`)
+          ) as Effect<never>
         }
         const state = self.state
         const o = MutableHashMap.get(state.map, key)

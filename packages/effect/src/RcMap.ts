@@ -52,6 +52,8 @@ export declare namespace RcMap {
  *
  * @since 3.5.0
  * @category models
+ * @param capacity The maximum number of resources that can be held in the map.
+ * @param idleTimeToLive When the reference count reaches zero, the resource will be released after this duration.
  * @example
  * import { Effect, RcMap } from "effect"
  *
@@ -72,26 +74,28 @@ export declare namespace RcMap {
  *   )
  * })
  */
-export const make: <K, A, E, R>(
-  options: {
-    readonly lookup: (key: K) => Effect.Effect<A, E, R>
-    /**
-     * When the reference count reaches zero, the resource will be released
-     * after this duration.
-     */
-    readonly idleTimeToLive?: Duration.DurationInput | undefined
-    /**
-     * The maximum number of resources that can be held in the map.
-     */
-    readonly capacity?: number | undefined
-  }
-) => Effect.Effect<RcMap<K, A, E>, never, R | Scope.Scope> = internal.make
+export const make: {
+  <K, A, E, R>(
+    options: {
+      readonly lookup: (key: K) => Effect.Effect<A, E, R>
+      readonly idleTimeToLive?: Duration.DurationInput | undefined
+      readonly capacity?: undefined
+    }
+  ): Effect.Effect<RcMap<K, A, E>, never, Scope.Scope | R>
+  <K, A, E, R>(
+    options: {
+      readonly lookup: (key: K) => Effect.Effect<A, E, R>
+      readonly idleTimeToLive?: Duration.DurationInput | undefined
+      readonly capacity: number
+    }
+  ): Effect.Effect<RcMap<K, A, E | Cause.ExceededCapacityException>, never, Scope.Scope | R>
+} = internal.make
 
 /**
  * @since 3.5.0
  * @category combinators
  */
 export const get: {
-  <K>(key: K): <A, E>(self: RcMap<K, A, E>) => Effect.Effect<A, E | Cause.ExceededCapacityException, Scope.Scope>
-  <K, A, E>(self: RcMap<K, A, E>, key: K): Effect.Effect<A, E | Cause.ExceededCapacityException, Scope.Scope>
+  <K>(key: K): <A, E>(self: RcMap<K, A, E>) => Effect.Effect<A, E, Scope.Scope>
+  <K, A, E>(self: RcMap<K, A, E>, key: K): Effect.Effect<A, E, Scope.Scope>
 } = internal.get
