@@ -112,6 +112,18 @@ export const InvalidPubSubCapacityExceptionTypeId: unique symbol = core.InvalidP
 export type InvalidPubSubCapacityExceptionTypeId = typeof InvalidPubSubCapacityExceptionTypeId
 
 /**
+ * @since 3.5.0
+ * @category symbols
+ */
+export const ExceededCapacityExceptionTypeId: unique symbol = core.ExceededCapacityExceptionTypeId
+
+/**
+ * @since 3.5.0
+ * @category symbols
+ */
+export type ExceededCapacityExceptionTypeId = typeof ExceededCapacityExceptionTypeId
+
+/**
  * @since 2.0.0
  * @category symbols
  */
@@ -262,6 +274,18 @@ export interface NoSuchElementException extends YieldableError {
 export interface InvalidPubSubCapacityException extends YieldableError {
   readonly _tag: "InvalidPubSubCapacityException"
   readonly [InvalidPubSubCapacityExceptionTypeId]: InvalidPubSubCapacityExceptionTypeId
+}
+
+/**
+ * Represents a checked exception which occurs when a resources capacity has
+ * been exceeded.
+ *
+ * @since 3.5.0
+ * @category models
+ */
+export interface ExceededCapacityException extends YieldableError {
+  readonly _tag: "ExceededCapacityException"
+  readonly [ExceededCapacityExceptionTypeId]: ExceededCapacityExceptionTypeId
 }
 
 /**
@@ -906,6 +930,26 @@ export const UnknownException: new(error: unknown, message?: string | undefined)
  * @category refinements
  */
 export const isUnknownException: (u: unknown) => u is UnknownException = core.isUnknownException
+
+/**
+ * Represents a checked exception which occurs when a resources capacity has
+ * been exceeded.
+ *
+ * @since 3.5.0
+ * @category errors
+ */
+export const ExceededCapacityException: new(message?: string | undefined) => ExceededCapacityException =
+  core.ExceededCapacityException
+
+/**
+ * Returns `true` if the specified value is an `ExceededCapacityException`, `false`
+ * otherwise.
+ *
+ * @since 3.5.0
+ * @category refinements
+ */
+export const isExceededCapacityException: (u: unknown) => u is ExceededCapacityException =
+  core.isExceededCapacityException
 
 /**
  * Returns the specified `Cause` as a pretty-printed string.
