@@ -164,7 +164,7 @@ const makeBoundedPubSub = <A>(
 ): AtomicPubSub<A> => {
   const options = typeof capacity === "number" ? { capacity } : capacity
   ensureCapacity(options.capacity)
-  const replayBuffer = options.replay ? new ReplayBuffer<A>(options.replay) : undefined
+  const replayBuffer = options.replay && options.replay > 0 ? new ReplayBuffer<A>(Math.ceil(options.replay)) : undefined
   if (options.capacity === 1) {
     return new BoundedPubSubSingle(replayBuffer)
   } else if (nextPow2(options.capacity) === options.capacity) {
