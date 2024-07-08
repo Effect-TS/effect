@@ -325,14 +325,14 @@ describe("record", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { "aa": "aa" },
-        `{ readonly [x: string]: number }
+        `{ readonly [x: a string at least 2 character(s) long]: number }
 └─ ["aa"]
    └─ Expected number, actual "aa"`
       )
       await Util.expectDecodeUnknownFailure(
         schema,
         { "a": 1 },
-        `{ readonly [x: string]: number }
+        `{ readonly [x: a string at least 2 character(s) long]: number }
 └─ ["a"]
    └─ is unexpected, expected: a string at least 2 character(s) long`,
         Util.onExcessPropertyError
@@ -377,7 +377,7 @@ describe("record", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { "": 1 },
-        `{ readonly [x: string]: number }
+        `{ readonly [x: NonEmpty]: number }
 └─ [""]
    └─ is unexpected, expected: NonEmpty`,
         Util.onExcessPropertyError
@@ -391,7 +391,7 @@ describe("record", () => {
       await Util.expectEncodeFailure(
         schema,
         { aa: "a" },
-        `{ readonly [x: string]: string }
+        `{ readonly [x: Char]: string }
 └─ ["aa"]
    └─ is unexpected, expected: Char`,
         Util.onExcessPropertyError
