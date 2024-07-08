@@ -206,7 +206,7 @@ const initialState: State = {
 
 function handleRenderInteger(options: IntegerOptions) {
   return (state: State, action: Prompt.Prompt.Action<State, Number>) => {
-    return Action.$match(action, {
+    return Action.match(action, {
       Beep: () => Effect.succeed(renderBeep),
       NextFrame: ({ state }) => renderNextFrame(state, options),
       Submit: () => renderSubmission(state, options)
@@ -302,7 +302,7 @@ export const integer = (options: Prompt.Prompt.IntegerOptions): Prompt.Prompt<nu
 
 function handleRenderFloat(options: FloatOptions) {
   return (state: State, action: Prompt.Prompt.Action<State, number>) => {
-    return Action.$match(action, {
+    return Action.match(action, {
       Beep: () => Effect.succeed(renderBeep),
       NextFrame: ({ state }) => renderNextFrame(state, options),
       Submit: () => renderSubmission(state, options)
