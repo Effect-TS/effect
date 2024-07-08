@@ -233,7 +233,7 @@ const defaultLocales: Prompt.Prompt.DateOptions["locales"] = {
 
 function handleRender(options: DateOptions) {
   return (state: State, action: Prompt.Prompt.Action<State, globalThis.Date>) => {
-    return Action.$match(action, {
+    return Action.match(action, {
       Beep: () => Effect.succeed(renderBeep),
       NextFrame: ({ state }) => renderNextFrame(state, options),
       Submit: () => renderSubmission(state, options)
