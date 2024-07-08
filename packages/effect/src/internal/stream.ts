@@ -5140,8 +5140,9 @@ export const run = dual<
   pipe(toChannel(self), channel.pipeToOrFail(_sink.toChannel(sink)), channel.runDrain))
 
 /** @internal */
-export const runCollect = <A, E, R>(self: Stream.Stream<A, E, R>): Effect.Effect<Chunk.Chunk<A>, E, Exclude<R, Scope.Scope>> =>
-  pipe(self, run(_sink.collectAll()))
+export const runCollect = <A, E, R>(
+  self: Stream.Stream<A, E, R>
+): Effect.Effect<Chunk.Chunk<A>, E, Exclude<R, Scope.Scope>> => pipe(self, run(_sink.collectAll()))
 
 /** @internal */
 export const runCount = <A, E, R>(self: Stream.Stream<A, E, R>): Effect.Effect<number, E, Exclude<R, Scope.Scope>> =>
@@ -5153,12 +5154,18 @@ export const runDrain = <A, E, R>(self: Stream.Stream<A, E, R>): Effect.Effect<v
 
 /** @internal */
 export const runFold = dual<
-  <S, A>(s: S, f: (s: S, a: A) => S) => <E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<S, E, Exclude<R, Scope.Scope>>,
+  <S, A>(
+    s: S,
+    f: (s: S, a: A) => S
+  ) => <E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<S, E, Exclude<R, Scope.Scope>>,
   <A, E, R, S>(self: Stream.Stream<A, E, R>, s: S, f: (s: S, a: A) => S) => Effect.Effect<S, E, Exclude<R, Scope.Scope>>
 >(
   3,
-  <A, E, R, S>(self: Stream.Stream<A, E, R>, s: S, f: (s: S, a: A) => S): Effect.Effect<S, E, Exclude<R, Scope.Scope>> =>
-    pipe(self, runFoldWhileScoped(s, constTrue, f), Effect.scoped)
+  <A, E, R, S>(
+    self: Stream.Stream<A, E, R>,
+    s: S,
+    f: (s: S, a: A) => S
+  ): Effect.Effect<S, E, Exclude<R, Scope.Scope>> => pipe(self, runFoldWhileScoped(s, constTrue, f), Effect.scoped)
 )
 
 /** @internal */
@@ -5176,7 +5183,8 @@ export const runFoldEffect = dual<
   self: Stream.Stream<A, E, R>,
   s: S,
   f: (s: S, a: A) => Effect.Effect<S, E2, R2>
-): Effect.Effect<S, E2 | E, Exclude<R | R2, Scope.Scope>> => pipe(self, runFoldWhileScopedEffect(s, constTrue, f), Effect.scoped))
+): Effect.Effect<S, E2 | E, Exclude<R | R2, Scope.Scope>> =>
+  pipe(self, runFoldWhileScopedEffect(s, constTrue, f), Effect.scoped))
 
 /** @internal */
 export const runFoldScoped = dual<
@@ -5212,7 +5220,12 @@ export const runFoldWhile = dual<
     cont: Predicate<S>,
     f: (s: S, a: A) => S
   ) => <E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<S, E, Exclude<R, Scope.Scope>>,
-  <A, E, R, S>(self: Stream.Stream<A, E, R>, s: S, cont: Predicate<S>, f: (s: S, a: A) => S) => Effect.Effect<S, E, Exclude<R, Scope.Scope>>
+  <A, E, R, S>(
+    self: Stream.Stream<A, E, R>,
+    s: S,
+    cont: Predicate<S>,
+    f: (s: S, a: A) => S
+  ) => Effect.Effect<S, E, Exclude<R, Scope.Scope>>
 >(4, <A, E, R, S>(
   self: Stream.Stream<A, E, R>,
   s: S,
@@ -5238,7 +5251,8 @@ export const runFoldWhileEffect = dual<
   s: S,
   cont: Predicate<S>,
   f: (s: S, a: A) => Effect.Effect<S, E2, R2>
-): Effect.Effect<S, E2 | E, Exclude<R | R2, Scope.Scope>> => pipe(self, runFoldWhileScopedEffect(s, cont, f), Effect.scoped))
+): Effect.Effect<S, E2 | E, Exclude<R | R2, Scope.Scope>> =>
+  pipe(self, runFoldWhileScopedEffect(s, cont, f), Effect.scoped))
 
 /** @internal */
 export const runFoldWhileScoped = dual<
@@ -5365,17 +5379,25 @@ export const runForEachWhileScoped = dual<
 ): Effect.Effect<void, E2 | E, R2 | R | Scope.Scope> => pipe(self, runScoped(_sink.forEachWhile(f))))
 
 /** @internal */
-export const runHead = <A, E, R>(self: Stream.Stream<A, E, R>): Effect.Effect<Option.Option<A>, E, Exclude<R, Scope.Scope>> =>
-  pipe(self, run(_sink.head<A>()))
+export const runHead = <A, E, R>(
+  self: Stream.Stream<A, E, R>
+): Effect.Effect<Option.Option<A>, E, Exclude<R, Scope.Scope>> => pipe(self, run(_sink.head<A>()))
 
 /** @internal */
 export const runIntoPubSub = dual<
-  <A, E>(pubsub: PubSub.PubSub<Take.Take<A, E>>) => <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, never, Exclude<R, Scope.Scope>>,
-  <A, E, R>(self: Stream.Stream<A, E, R>, pubsub: PubSub.PubSub<Take.Take<A, E>>) => Effect.Effect<void, never, Exclude<R, Scope.Scope>>
+  <A, E>(
+    pubsub: PubSub.PubSub<Take.Take<A, E>>
+  ) => <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, never, Exclude<R, Scope.Scope>>,
+  <A, E, R>(
+    self: Stream.Stream<A, E, R>,
+    pubsub: PubSub.PubSub<Take.Take<A, E>>
+  ) => Effect.Effect<void, never, Exclude<R, Scope.Scope>>
 >(
   2,
-  <A, E, R>(self: Stream.Stream<A, E, R>, pubsub: PubSub.PubSub<Take.Take<A, E>>): Effect.Effect<void, never, Exclude<R, Scope.Scope>> =>
-    pipe(self, runIntoQueue(pubsub))
+  <A, E, R>(
+    self: Stream.Stream<A, E, R>,
+    pubsub: PubSub.PubSub<Take.Take<A, E>>
+  ): Effect.Effect<void, never, Exclude<R, Scope.Scope>> => pipe(self, runIntoQueue(pubsub))
 )
 
 /** @internal */
@@ -5394,12 +5416,19 @@ export const runIntoPubSubScoped = dual<
 
 /** @internal */
 export const runIntoQueue = dual<
-  <A, E>(queue: Queue.Enqueue<Take.Take<A, E>>) => <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, never, Exclude<R, Scope.Scope>>,
-  <A, E, R>(self: Stream.Stream<A, E, R>, queue: Queue.Enqueue<Take.Take<A, E>>) => Effect.Effect<void, never, Exclude<R, Scope.Scope>>
+  <A, E>(
+    queue: Queue.Enqueue<Take.Take<A, E>>
+  ) => <R>(self: Stream.Stream<A, E, R>) => Effect.Effect<void, never, Exclude<R, Scope.Scope>>,
+  <A, E, R>(
+    self: Stream.Stream<A, E, R>,
+    queue: Queue.Enqueue<Take.Take<A, E>>
+  ) => Effect.Effect<void, never, Exclude<R, Scope.Scope>>
 >(
   2,
-  <A, E, R>(self: Stream.Stream<A, E, R>, queue: Queue.Enqueue<Take.Take<A, E>>): Effect.Effect<void, never, Exclude<R, Scope.Scope>> =>
-    pipe(self, runIntoQueueScoped(queue), Effect.scoped)
+  <A, E, R>(
+    self: Stream.Stream<A, E, R>,
+    queue: Queue.Enqueue<Take.Take<A, E>>
+  ): Effect.Effect<void, never, Exclude<R, Scope.Scope>> => pipe(self, runIntoQueueScoped(queue), Effect.scoped)
 )
 
 /** @internal */
@@ -5462,8 +5491,9 @@ export const runIntoQueueScoped = dual<
 })
 
 /** @internal */
-export const runLast = <A, E, R>(self: Stream.Stream<A, E, R>): Effect.Effect<Option.Option<A>, E, Exclude<R, Scope.Scope>> =>
-  pipe(self, run(_sink.last()))
+export const runLast = <A, E, R>(
+  self: Stream.Stream<A, E, R>
+): Effect.Effect<Option.Option<A>, E, Exclude<R, Scope.Scope>> => pipe(self, run(_sink.last()))
 
 /** @internal */
 export const runScoped = dual<

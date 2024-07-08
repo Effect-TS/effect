@@ -2971,7 +2971,8 @@ export const run: {
  * @since 2.0.0
  * @category destructors
  */
-export const runCollect: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<Chunk.Chunk<A>, E, Exclude<R, Scope.Scope>> = internal.runCollect
+export const runCollect: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<Chunk.Chunk<A>, E, Exclude<R, Scope.Scope>> =
+  internal.runCollect
 
 /**
  * Runs the stream and emits the number of elements processed
@@ -2979,7 +2980,8 @@ export const runCollect: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<Chunk
  * @since 2.0.0
  * @category destructors
  */
-export const runCount: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<number, E, Exclude<R, Scope.Scope>> = internal.runCount
+export const runCount: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<number, E, Exclude<R, Scope.Scope>> =
+  internal.runCount
 
 /**
  * Runs the stream only for its effects. The emitted elements are discarded.
@@ -2987,7 +2989,8 @@ export const runCount: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<number,
  * @since 2.0.0
  * @category destructors
  */
-export const runDrain: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<void, E, Exclude<R, Scope.Scope>> = internal.runDrain
+export const runDrain: <A, E, R>(self: Stream<A, E, R>) => Effect.Effect<void, E, Exclude<R, Scope.Scope>> =
+  internal.runDrain
 
 /**
  * Executes a pure fold over the stream of values - reduces all elements in
@@ -3058,8 +3061,17 @@ export const runFoldScopedEffect: {
  * @category destructors
  */
 export const runFoldWhile: {
-  <S, A>(s: S, cont: Predicate<S>, f: (s: S, a: A) => S): <E, R>(self: Stream<A, E, R>) => Effect.Effect<S, E, Exclude<R, Scope.Scope>>
-  <A, E, R, S>(self: Stream<A, E, R>, s: S, cont: Predicate<S>, f: (s: S, a: A) => S): Effect.Effect<S, E, Exclude<R, Scope.Scope>>
+  <S, A>(
+    s: S,
+    cont: Predicate<S>,
+    f: (s: S, a: A) => S
+  ): <E, R>(self: Stream<A, E, R>) => Effect.Effect<S, E, Exclude<R, Scope.Scope>>
+  <A, E, R, S>(
+    self: Stream<A, E, R>,
+    s: S,
+    cont: Predicate<S>,
+    f: (s: S, a: A) => S
+  ): Effect.Effect<S, E, Exclude<R, Scope.Scope>>
 } = internal.runFoldWhile
 
 /**

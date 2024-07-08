@@ -2057,7 +2057,8 @@ export const run = <OutErr, InErr, OutDone, InDone, Env>(
 /** @internal */
 export const runCollect = <OutElem, OutErr, InErr, OutDone, InDone, Env>(
   self: Channel.Channel<OutElem, unknown, OutErr, InErr, OutDone, InDone, Env>
-): Effect.Effect<[Chunk.Chunk<OutElem>, OutDone], OutErr, Exclude<Env, Scope.Scope>> => executor.run(core.collectElements(self))
+): Effect.Effect<[Chunk.Chunk<OutElem>, OutDone], OutErr, Exclude<Env, Scope.Scope>> =>
+  executor.run(core.collectElements(self))
 
 /** @internal */
 export const runDrain = <OutElem, OutErr, InErr, OutDone, InDone, Env>(
