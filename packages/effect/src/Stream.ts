@@ -4407,10 +4407,10 @@ export const share: {
 export const shareRefCount: {
   <A, E>(config: {
     readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
-  }): <R>(self: Stream<A, E, R>) => Stream<A, E, R>
+  }): <R>(self: Stream<A, E, R>) => Effect.Effect<Stream<A, E, R>, never, R | Scope.Scope>
   <A, E, R>(self: Stream<A, E, R>, config: {
     readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
-  }): Stream<A, E, R>
+  }): Effect.Effect<Stream<A, E, R>, never, R | Scope.Scope>
 } = internal.shareRefCount
 
 /**

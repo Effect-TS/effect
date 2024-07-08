@@ -5947,13 +5947,13 @@ export const shareRefCount = dual<
     readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
   }) => <R>(
     self: Stream.Stream<A, E, R>
-  ) => Stream.Stream<A, E, R>,
+  ) => Effect.Effect<Stream.Stream<A, E, R>, never, R | Scope.Scope>,
   <A, E, R>(
     self: Stream.Stream<A, E, R>,
     config: {
       readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
     }
-  ) => Stream.Stream<A, E, R>
+  ) => Effect.Effect<Stream.Stream<A, E, R>, never, R | Scope.Scope>
 >(
   2,
   <A, E, R>(
@@ -5961,28 +5961,35 @@ export const shareRefCount = dual<
     config: {
       readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
     }
-  ): Stream.Stream<A, E, R> => {
-    let refCount = 0
-    let connector: PubSub.PubSub<Take.Take<A, E>> | null = null
-    let fiber: Fiber.RuntimeFiber<void> | null = null
+  ): Effect.Effect<Stream.Stream<A, E, R>, never, R | Scope.Scope> => {
     return Effect.gen(function*() {
-      refCount++
-      connector ??= yield* (config.connector ?? PubSub.bounded<Take.Take<A, E>>(16))
-      fiber ??= yield* Effect.forkDaemon(runIntoPubSub(self, connector))
-      return flattenTake(fromPubSub(connector))
-    }).pipe(
-      unwrap,
-      ensuring(
-        Effect.suspend(() => {
-          refCount--
-          const cleanup = fiber
-          fiber = null
-          return refCount === 0 && cleanup
-            ? Fiber.interrupt(cleanup)
-            : Effect.void
-        })
+      let refCount = 0
+      let connector: PubSub.PubSub<Take.Take<A, E>> | null = null
+      let fiber: Fiber.RuntimeFiber<void> | null = null
+      const scope = yield* Effect.scope
+      const context = yield* Effect.context<R>()
+      return Effect.gen(function*() {
+        refCount++
+        connector ??= yield* (config.connector ?? PubSub.bounded<Take.Take<A, E>>(16))
+        fiber ??= yield* runIntoPubSub(self, connector).pipe(
+          Effect.locally(FiberRef.currentContext, context),
+          Effect.forkIn(scope)
+        )
+        return flattenTake(fromPubSub(connector))
+      }).pipe(
+        unwrap,
+        ensuring(
+          Effect.suspend(() => {
+            refCount--
+            const cleanup = fiber
+            fiber = null
+            return refCount === 0 && cleanup
+              ? Fiber.interrupt(cleanup)
+              : Effect.void
+          })
+        )
       )
-    )
+    })
   }
 )
 
