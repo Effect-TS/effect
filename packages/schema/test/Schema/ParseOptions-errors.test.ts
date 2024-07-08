@@ -140,7 +140,7 @@ describe("`errors` option", () => {
         await Util.expectDecodeUnknownFailure(
           schema,
           { a: 1, b: 2 },
-          `{ readonly [x: string]: number }
+          `{ readonly [x: a string at least 2 character(s) long]: number }
 ├─ ["a"]
 │  └─ is unexpected, expected: a string at least 2 character(s) long
 └─ ["b"]
@@ -278,7 +278,7 @@ describe("`errors` option", () => {
         await Util.expectEncodeFailure(
           schema,
           { aa: "a", bb: "bb" },
-          `{ readonly [x: string]: string }
+          `{ readonly [x: Char]: string }
 ├─ ["aa"]
 │  └─ is unexpected, expected: Char
 └─ ["bb"]
