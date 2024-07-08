@@ -8,7 +8,6 @@ import * as MutableHashMap from "../MutableHashMap.js"
 import { pipeArguments } from "../Pipeable.js"
 import type * as RcMap from "../RcMap.js"
 import type * as Scope from "../Scope.js"
-import * as cause from "./cause.js"
 import * as coreEffect from "./core-effect.js"
 import * as core from "./core.js"
 import * as circular from "./effect/circular.js"
@@ -56,7 +55,7 @@ class RcMapImpl<K, A, E> implements RcMap.RcMap<K, A, E> {
     readonly lookup: (key: K) => Effect<A, E, Scope.Scope>,
     readonly context: Context.Context<never>,
     readonly scope: Scope.Scope,
-    readonly idleTimeToLive: Duration.Duration,
+    readonly idleTimeToLive: Duration.Duration | undefined,
     readonly capacity: number
   ) {
     this[TypeId] = variance
@@ -80,7 +79,7 @@ export const make = <K, A, E, R>(options: {
       options.lookup as any,
       context,
       scope,
-      options.idleTimeToLive ? Duration.decode(options.idleTimeToLive) : Duration.zero,
+      options.idleTimeToLive ? Duration.decode(options.idleTimeToLive) : undefined,
       Math.max(options.capacity ?? Number.POSITIVE_INFINITY, 0)
     )
     return core.as(
@@ -166,7 +165,7 @@ export const get: {
               entry.refCount--
               if (entry.refCount > 0) {
                 return core.void
-              } else if (Duration.isZero(self.idleTimeToLive)) {
+              } else if (self.idleTimeToLive === undefined) {
                 if (self.state._tag === "Open") {
                   MutableHashMap.remove(self.state.map, key)
                 }

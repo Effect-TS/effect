@@ -52,7 +52,7 @@ class RcRefImpl<A, E> implements RcRef.RcRef<A, E> {
     readonly acquire: Effect<A, E, Scope.Scope>,
     readonly context: Context.Context<never>,
     readonly scope: Scope.Scope,
-    readonly idleTimeToLive: Duration.Duration
+    readonly idleTimeToLive: Duration.Duration | undefined
   ) {
     this[TypeId] = variance
   }
@@ -74,7 +74,7 @@ export const make = <A, E, R>(options: {
       options.acquire as Effect<A, E, Scope.Scope>,
       context,
       scope,
-      options.idleTimeToLive ? Duration.decode(options.idleTimeToLive) : Duration.zero
+      options.idleTimeToLive ? Duration.decode(options.idleTimeToLive) : undefined
     )
     return core.as(
       scope.addFinalizer(() =>
@@ -142,7 +142,7 @@ export const get = <A, E>(
           if (state.refCount > 0) {
             return core.void
           }
-          if (Duration.isZero(self.idleTimeToLive)) {
+          if (self.idleTimeToLive === undefined) {
             self.state = stateEmpty
             return core.scopeClose(state.scope, core.exitVoid)
           }
