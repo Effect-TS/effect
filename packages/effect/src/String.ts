@@ -146,11 +146,7 @@ export const trim = <A extends string>(self: A): Trim<A> => self.trim() as Trim<
 /**
  * @since 2.0.0
  */
-export type TrimStart<A extends string> = A extends ` ${infer B}` ? TrimStart<B>
-  : A extends `\n${infer B}` ? TrimStart<B>
-  : A extends `\t${infer B}` ? TrimStart<B>
-  : A extends `\r${infer B}` ? TrimStart<B>
-  : A
+export type TrimStart<A extends string> = A extends `${" " | "\n" | "\t" | "\r"}${infer B}` ? TrimStart<B> : A
 
 /**
  * @example
@@ -165,11 +161,7 @@ export const trimStart = <A extends string>(self: A): TrimStart<A> => self.trimS
 /**
  * @since 2.0.0
  */
-export type TrimEnd<A extends string> = A extends `${infer B} ` ? TrimEnd<B>
-  : A extends `${infer B}\n` ? TrimEnd<B>
-  : A extends `${infer B}\t` ? TrimEnd<B>
-  : A extends `${infer B}\r` ? TrimEnd<B>
-  : A
+export type TrimEnd<A extends string> = A extends `${infer B}${" " | "\n" | "\t" | "\r"}` ? TrimEnd<B> : A
 
 /**
  * @example
