@@ -11,7 +11,6 @@ import * as HashMap from "effect/HashMap"
 import * as HashSet from "effect/HashSet"
 import * as LogLevel from "effect/LogLevel"
 import * as Option from "effect/Option"
-import * as Secret from "effect/Secret"
 import * as it from "effect/test/utils/extend"
 import { assert, describe, expect } from "vitest"
 
@@ -792,14 +791,6 @@ describe("ConfigProvider", () => {
       const result = yield* _(configProvider.load(config))
 
       expect(result).toEqual([[1, 2], [3, 4]])
-    }))
-
-  it.effect("secret", () =>
-    Effect.gen(function*($) {
-      const value = "Hello, World!"
-      const configProvider = ConfigProvider.fromMap(new Map([["greeting", value]]))
-      const result = yield* $(configProvider.load(Config.secret("greeting")))
-      assert.deepStrictEqual(result, Secret.make(value.split("").map((c) => c.charCodeAt(0))))
     }))
 
   it.effect("snakeCase", () =>
