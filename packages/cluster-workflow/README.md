@@ -18,7 +18,7 @@ For more detailed information, you can visit the [README](https://github.com/Eff
 
 `@effect/cluster-workflow` is designed to define and manage long-running and persistent workflows. It focuses on implementing durable execution through the use of sagas and a persistent event journal. Should a workflow need to be resumed, its execution state is reconstructed using an event-sourced approach from the journal data.
 
-How do `@effect/cluster` and `@effect/cluster-workflow` are connected? When there are multiple workflows involving various systems or processes, it becomes challenging to manage them with a single process. The clustering component ensures that each workflow is executed consistently and exclusively once.
+How are `@effect/cluster` and `@effect/cluster-workflow` connected? When there are multiple workflows involving various systems or processes, it becomes challenging to manage them with a single process. The clustering component ensures that each workflow is executed consistently and exclusively once.
 
 It is possible to use `@effect/cluster-workflow` independently of `@effect/cluster`. This approach works well for workflows that are developed to execute simultaneously across multiple machines while producing consistent results, or in environments where no additional machines are involved, such as applications running in a browser.
 
