@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type * as Message from "@effect/cluster/Message"
 import { RecipientAddress } from "@effect/cluster/RecipientAddress"
 import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
@@ -32,24 +33,19 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface Envelope<Req extends Schema.TaggedRequest.Any & PrimaryKey.PrimaryKey>
-  extends
-    Equal.Equal,
-    PrimaryKey.PrimaryKey,
-    Serializable.SerializableWithResult<
-      Envelope<Req>,
-      {
-        readonly address: Schema.Schema.Encoded<RecipientAddress>
-        readonly message: Schema.Simplify<Schema.Schema.Encoded<Req[typeof Serializable.symbol]>>
-      },
-      Serializable.Serializable.Context<Req>,
-      Serializable.WithResult.Success<Req>,
-      Serializable.WithResult.SuccessEncoded<Req>,
-      Serializable.WithResult.Error<Req>,
-      Serializable.WithResult.ErrorEncoded<Req>,
-      Serializable.WithResult.Context<Req>
-    >,
-    Envelope.Proto<Req>
+export interface Envelope<Req extends Message.Message.Any> extends
+  Equal.Equal,
+  Serializable.SerializableWithResult<
+    Envelope<Req>,
+    Envelope.Encoded<Serializable.Serializable.Encoded<Req>>,
+    Serializable.Serializable.Context<Req>,
+    Serializable.WithResult.Success<Req>,
+    Serializable.WithResult.SuccessEncoded<Req>,
+    Serializable.WithResult.Error<Req>,
+    Serializable.WithResult.ErrorEncoded<Req>,
+    Serializable.WithResult.Context<Req>
+  >,
+  Envelope.Proto<Req>
 {}
 
 /**
@@ -60,10 +56,19 @@ export declare namespace Envelope {
    * @since 1.0.0
    * @category models
    */
-  export interface Proto<Req extends Schema.TaggedRequest.Any & PrimaryKey.PrimaryKey> {
+  export interface Proto<Req extends Message.Message.Any> {
     readonly [TypeId]: TypeId
     readonly address: RecipientAddress
     readonly message: Req
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Encoded<IA> {
+    readonly address: Schema.Schema.Encoded<RecipientAddress>
+    readonly message: Schema.Simplify<IA>
   }
 }
 
@@ -97,7 +102,7 @@ const EnvelopeProto = Data.unsafeStruct({
  * @since 1.0.0
  * @category constructors
  */
-export const make = <Req extends Schema.TaggedRequest.Any & PrimaryKey.PrimaryKey>(
+export const make = <Req extends Message.Message.Any>(
   address: RecipientAddress,
   message: Req
 ): Envelope<Req> => {
@@ -112,5 +117,5 @@ export const make = <Req extends Schema.TaggedRequest.Any & PrimaryKey.PrimaryKe
  * @category refinements
  */
 export const isEnvelope = (u: unknown): u is Envelope<
-  Schema.TaggedRequest.Any & PrimaryKey.PrimaryKey
+  Message.Message.Any
 > => Predicate.isObject(u) && Predicate.hasProperty(u, TypeId)

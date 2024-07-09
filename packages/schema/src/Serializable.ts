@@ -36,11 +36,11 @@ export interface Serializable<A, I, R> {
  */
 export declare namespace Serializable {
   /**
-   * @since 0.68.15
+   * @since 0.68.17
    */
   export type Type<T> = T extends Serializable<infer A, infer _I, infer _R> ? A : never
   /**
-   * @since 0.68.15
+   * @since 0.68.17
    */
   export type Encoded<T> = T extends Serializable<infer _A, infer I, infer _R> ? I : never
   /**
