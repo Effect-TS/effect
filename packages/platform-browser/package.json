@@ -51,14 +51,6 @@
     "happy-dom": "^14.12.3",
     "mock-xmlhttprequest": "^8.3.0"
   },
-  "effect": {
-    "generateExports": {
-      "include": [
-        "*.ts",
-        "Http/*.ts"
-      ]
-    }
-  },
   "dependencies": {
     "multipasta": "^0.2.2"
   }

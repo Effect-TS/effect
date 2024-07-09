@@ -52,13 +52,5 @@
     "@effect/schema": "workspace:^",
     "bun-types": "1.1.16",
     "effect": "workspace:^"
-  },
-  "effect": {
-    "generateExports": {
-      "include": [
-        "*.ts",
-        "Http/*.ts"
-      ]
-    }
   }
 }
