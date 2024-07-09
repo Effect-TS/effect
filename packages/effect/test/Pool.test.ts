@@ -249,6 +249,33 @@ describe("Pool", () => {
       expect(max).toBe(15)
     }))
 
+  it.scoped("concurrency reclaim", () =>
+    Effect.gen(function*() {
+      const count = yield* Ref.make(0)
+      const acquire = Effect.acquireRelease(
+        Ref.updateAndGet(count, (n) => n + 1),
+        () => Ref.update(count, (n) => n - 1)
+      )
+      const pool = yield* Pool.makeWithTTL({
+        acquire,
+        min: 0,
+        max: 2,
+        concurrency: 2,
+        timeToLive: Duration.seconds(60)
+      })
+
+      const scope1 = yield* Scope.make()
+      yield* Scope.extend(Pool.get(pool), scope1)
+      yield* Pool.get(pool)
+      yield* Effect.scoped(Pool.get(pool))
+      yield* TestClock.adjust(Duration.seconds(60))
+      yield* Scope.close(scope1, Exit.void)
+      yield* Pool.get(pool)
+      yield* Pool.get(pool)
+      assert.strictEqual(yield* Pool.get(pool), 1)
+      assert.strictEqual(yield* Ref.get(count), 2)
+    }))
+
   it.scoped("scale to zero", () =>
     Effect.gen(function*($) {
       const deferred = yield* $(Deferred.make<void>())
