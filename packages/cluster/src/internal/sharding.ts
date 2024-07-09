@@ -1,3 +1,7 @@
+import * as Envelope from "@effect/cluster/Envelope"
+import type * as SerializedEnvelope from "@effect/cluster/SerializedEnvelope"
+import * as SerializedMessage from "@effect/cluster/SerializedMessage"
+import type * as SerializedValue from "@effect/cluster/SerializedValue"
 import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
@@ -30,8 +34,6 @@ import type * as RecipientBehaviour from "../RecipientBehaviour.js"
 import type * as RecipientBehaviourContext from "../RecipientBehaviourContext.js"
 import * as RecipientType from "../RecipientType.js"
 import * as Serialization from "../Serialization.js"
-import * as SerializedEnvelope from "../SerializedEnvelope.js"
-import type * as SerializedMessage from "../SerializedMessage.js"
 import * as ShardId from "../ShardId.js"
 import type * as Sharding from "../Sharding.js"
 import * as ShardingConfig from "../ShardingConfig.js"
@@ -143,7 +145,7 @@ export const getPods: Effect.Effect<HashSet.HashSet<PodAddress.PodAddress>, neve
 export const sendMessageToLocalEntityManagerWithoutRetries: (
   message: SerializedEnvelope.SerializedEnvelope
 ) => Effect.Effect<
-  MessageState.MessageState<SerializedMessage.SerializedMessage>,
+  MessageState.MessageState<SerializedValue.SerializedValue>,
   ShardingException.ShardingException,
   Sharding.Sharding
 > = (message) => Effect.flatMap(shardingTag, (_) => _.sendMessageToLocalEntityManagerWithoutRetries(message))
@@ -421,11 +423,11 @@ function make(
   function sendMessageToLocalEntityManagerWithoutRetries(
     envelope: SerializedEnvelope.SerializedEnvelope
   ): Effect.Effect<
-    MessageState.MessageState<SerializedMessage.SerializedMessage>,
+    MessageState.MessageState<SerializedValue.SerializedValue>,
     ShardingException.ShardingException
   > {
     return pipe(
-      getEntityManagerByEntityTypeName(envelope.recipientAddress.recipientType),
+      getEntityManagerByEntityTypeName(envelope.address.recipientType),
       Effect.flatMap((entityManager) => entityManager.sendAndGetState(envelope)),
       Effect.annotateLogs("envelope", envelope)
     )
@@ -435,7 +437,7 @@ function make(
     pod: PodAddress.PodAddress,
     envelope: SerializedEnvelope.SerializedEnvelope
   ): Effect.Effect<
-    MessageState.MessageState<SerializedMessage.SerializedMessage>,
+    MessageState.MessageState<SerializedValue.SerializedValue>,
     ShardingException.ShardingException
   > {
     return pipe(
@@ -475,7 +477,7 @@ function make(
     pod: PodAddress.PodAddress,
     envelope: SerializedEnvelope.SerializedEnvelope
   ): Effect.Effect<
-    MessageState.MessageState<SerializedMessage.SerializedMessage>,
+    MessageState.MessageState<SerializedValue.SerializedValue>,
     ShardingException.ShardingException
   > {
     return equals(pod, address)
@@ -524,7 +526,7 @@ function make(
       entityId: string,
       message: A
     ): Effect.Effect<
-      MessageState.MessageState<SerializedMessage.SerializedMessage>,
+      MessageState.MessageState<SerializedValue.SerializedValue>,
       ShardingException.ShardingException
     > {
       const recipientAddress = new RecipientAddress({ recipientType: entityType.name, entityId })
@@ -541,10 +543,12 @@ function make(
           Effect.flatMap((pod) =>
             sendMessageToPodWithoutRetries(
               pod,
-              SerializedEnvelope.make(
+              Envelope.make(
                 recipientAddress,
-                PrimaryKey.value(message),
-                body
+                SerializedMessage.make(
+                  PrimaryKey.value(message),
+                  body
+                )
               )
             )
           ),
@@ -571,7 +575,7 @@ function make(
       HashMap.HashMap<
         PodAddress.PodAddress,
         Either.Either<
-          MessageState.MessageState<SerializedMessage.SerializedMessage>,
+          MessageState.MessageState<SerializedValue.SerializedValue>,
           ShardingException.ShardingException
         >
       >,
@@ -587,10 +591,9 @@ function make(
                 pipe(
                   sendMessageToPodWithoutRetries(
                     pod,
-                    SerializedEnvelope.make(
+                    Envelope.make(
                       new RecipientAddress({ recipientType: topicType.name, entityId: topicId }),
-                      PrimaryKey.value(message),
-                      body
+                      SerializedMessage.make(PrimaryKey.value(message), body)
                     )
                   ),
                   Effect.retry(pipe(

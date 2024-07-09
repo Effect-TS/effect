@@ -146,7 +146,7 @@ describe.concurrent("SampleTests", () => {
         )(
           RecipientBehaviour.fromFunctionEffect((entityId, msg) =>
             pipe(
-              Ref.set(entityId === "entity1" ? result1 : result2, msg.value),
+              Ref.set(entityId === "entity1" ? result1 : result2, msg.message.value),
               Effect.as(MessageState.Acknowledged)
             )
           )
@@ -195,7 +195,7 @@ describe.concurrent("SampleTests", () => {
           SampleEntity
         )(
           RecipientBehaviour.fromFunctionEffect((_, msg) =>
-            msg._tag === "FailableMessageWithResult"
+            msg.message._tag === "FailableMessageWithResult"
               ? Effect.succeed(MessageState.Processed(Exit.fail("custom-error")))
               : Effect.succeed(MessageState.Processed(Exit.void))
           )
@@ -252,7 +252,7 @@ describe.concurrent("SampleTests", () => {
           SampleTopic
         )(
           RecipientBehaviour.fromFunctionEffect((entityId, msg) => {
-            switch (msg._tag) {
+            switch (msg.message._tag) {
               case "BroadcastIncrement":
                 return pipe(Ref.update(ref, (_) => _ + 1), Effect.as(MessageState.Acknowledged))
               case "GetIncrement":

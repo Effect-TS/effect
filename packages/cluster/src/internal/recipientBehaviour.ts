@@ -1,3 +1,4 @@
+import type * as Envelope from "@effect/cluster/Envelope"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
@@ -14,15 +15,15 @@ import * as RecipientBehaviourContext from "../RecipientBehaviourContext.js"
 
 /** @internal  */
 export function fromFunctionEffect<Msg extends Message.Message.Any, R>(
-  handler: (
+  handler: <A extends Msg>(
     entityId: string,
-    message: Msg
-  ) => Effect.Effect<MessageState.MessageState<Message.Message.Exit<Msg>>, never, R>
+    envelope: Envelope.Envelope<A>
+  ) => Effect.Effect<MessageState.MessageState<Message.Message.Exit<A>>, never, R>
 ): RecipientBehaviour.RecipientBehaviour<Msg, R> {
   return Effect.flatMap(RecipientBehaviourContext.entityId, (entityId) =>
     pipe(
       Effect.context<R>(),
-      Effect.map((context) => (message: Msg) =>
+      Effect.map((context) => (message) =>
         pipe(
           handler(entityId, message),
           Effect.provide(context)
@@ -34,11 +35,11 @@ export function fromFunctionEffect<Msg extends Message.Message.Any, R>(
 /** @internal  */
 export function fromFunctionEffectStateful<S, R, Msg extends Message.Message.Any, R2>(
   initialState: (entityId: string) => Effect.Effect<S, never, R>,
-  handler: (
+  handler: <A extends Msg>(
     entityId: string,
-    message: Msg,
+    envelope: Envelope.Envelope<A>,
     stateRef: Ref.Ref<S>
-  ) => Effect.Effect<MessageState.MessageState<Message.Message.Exit<Msg>>, never, R2>
+  ) => Effect.Effect<MessageState.MessageState<Message.Message.Exit<A>>, never, R2>
 ): RecipientBehaviour.RecipientBehaviour<Msg, R | R2> {
   return Effect.flatMap(RecipientBehaviourContext.entityId, (entityId) =>
     pipe(
@@ -47,7 +48,7 @@ export function fromFunctionEffectStateful<S, R, Msg extends Message.Message.Any
       Effect.flatMap((stateRef) =>
         pipe(
           Effect.context<R2>(),
-          Effect.map((context) => (message: Msg) =>
+          Effect.map((context) => <A extends Msg>(message: Envelope.Envelope<A>) =>
             pipe(
               handler(entityId, message, stateRef),
               Effect.provide(context)
@@ -62,30 +63,33 @@ export function fromFunctionEffectStateful<S, R, Msg extends Message.Message.Any
 export function fromInMemoryQueue<Msg extends Message.Message.Any, R>(
   handler: (
     entityId: string,
-    dequeue: Queue.Dequeue<Msg | PoisonPill.PoisonPill>,
+    dequeue: Queue.Dequeue<Envelope.Envelope<Msg> | PoisonPill.PoisonPill>,
     processed: <A extends Msg>(
-      message: A,
+      envelope: Envelope.Envelope<A>,
       value: Option.Option<Message.Message.Exit<A>>
     ) => Effect.Effect<void>
   ) => Effect.Effect<void, never, R>
 ): RecipientBehaviour.RecipientBehaviour<Msg, R> {
   return Effect.gen(function*(_) {
     const entityId = yield* _(RecipientBehaviourContext.entityId)
-    const messageStates = yield* _(Ref.make(HashMap.empty<string, MessageState.MessageState<any>>()))
+    const envelopeStates = yield* _(Ref.make(HashMap.empty<string, MessageState.MessageState<any>>()))
 
-    function updateMessageState(message: Msg, state: MessageState.MessageState<any>) {
-      return pipe(Ref.update(messageStates, HashMap.set(PrimaryKey.value(message), state)), Effect.as(state))
+    function updateEnvelopeState<A extends Msg>(message: Envelope.Envelope<A>, state: MessageState.MessageState<any>) {
+      return pipe(Ref.update(envelopeStates, HashMap.set(PrimaryKey.value(message), state)), Effect.as(state))
     }
 
-    function getMessageState(message: Msg) {
+    function getMessageState(message: Envelope.Envelope<Msg>) {
       return pipe(
-        Ref.get(messageStates),
+        Ref.get(envelopeStates),
         Effect.map(HashMap.get(PrimaryKey.value(message)))
       )
     }
 
-    function reply<A extends Msg>(message: A, reply: Option.Option<Message.Message.Exit<A>>) {
-      return updateMessageState(message, MessageState.Processed(reply))
+    function reply<A extends Msg>(
+      message: Envelope.Envelope<A>,
+      reply: Option.Option<Message.Message.Exit<A>>
+    ) {
+      return updateEnvelopeState(message, MessageState.Processed(reply))
     }
 
     return yield* _(pipe(
@@ -93,7 +97,7 @@ export function fromInMemoryQueue<Msg extends Message.Message.Any, R>(
       Effect.flatMap((shutdownCompleted) =>
         pipe(
           Effect.acquireRelease(
-            Queue.unbounded<Msg | PoisonPill.PoisonPill>(),
+            Queue.unbounded<Envelope.Envelope<Msg> | PoisonPill.PoisonPill>(),
             (queue) =>
               pipe(
                 PoisonPill.make,
@@ -112,14 +116,14 @@ export function fromInMemoryQueue<Msg extends Message.Message.Any, R>(
               Effect.forkDaemon
             )
           ),
-          Effect.map((queue) => (message: Msg) => {
+          Effect.map((queue) => (envelope: Envelope.Envelope<Msg>) => {
             return pipe(
-              getMessageState(message),
+              getMessageState(envelope),
               Effect.flatMap(Option.match({
                 onNone: () =>
                   pipe(
-                    Queue.offer(queue, message),
-                    Effect.zipRight(updateMessageState(message, MessageState.Acknowledged))
+                    Queue.offer(queue, envelope),
+                    Effect.zipRight(updateEnvelopeState(envelope, MessageState.Acknowledged))
                   ),
                 onSome: (state) => Effect.succeed(state)
               }))

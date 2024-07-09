@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type * as Envelope from "@effect/cluster/Envelope"
 import type * as Message from "@effect/cluster/Message"
 import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
@@ -30,10 +31,10 @@ import type * as ShardingException from "./ShardingException.js"
  * @since 1.0.0
  * @category models
  */
-export interface RecipientBehaviour<Msg, R> extends
+export interface RecipientBehaviour<Msg extends Message.Message.Any, R> extends
   Effect.Effect<
     <A extends Msg>(
-      message: A
+      envelope: Envelope.Envelope<A>
     ) => Effect.Effect<
       MessageState.MessageState<Message.Message.Exit<A>>,
       ShardingException.ExceptionWhileOfferingMessageException
@@ -65,10 +66,10 @@ export type EntityBehaviourOptions = {
  * @category utils
  */
 export const fromFunctionEffect: <Msg extends Message.Message.Any, R>(
-  handler: (
+  handler: <A extends Msg>(
     entityId: string,
-    message: Msg
-  ) => Effect.Effect<MessageState.MessageState<Message.Message.Exit<Msg>>, never, R>
+    envelope: Envelope.Envelope<A>
+  ) => Effect.Effect<MessageState.MessageState<Message.Message.Exit<A>>, never, R>
 ) => RecipientBehaviour<Msg, R> = internal.fromFunctionEffect
 
 /**
@@ -81,11 +82,11 @@ export const fromFunctionEffect: <Msg extends Message.Message.Any, R>(
  */
 export const fromFunctionEffectStateful: <S, R, Msg extends Message.Message.Any, R2>(
   initialState: (entityId: string) => Effect.Effect<S, never, R>,
-  handler: (
+  handler: <A extends Envelope.Envelope<Msg>>(
     entityId: string,
-    message: Msg,
+    message: A,
     stateRef: Ref.Ref<S>
-  ) => Effect.Effect<MessageState.MessageState<Message.Message.Exit<Msg>>, never, R2>
+  ) => Effect.Effect<MessageState.MessageState<Message.Message.Exit<A>>, never, R2>
 ) => RecipientBehaviour<Msg, R | R2> = internal.fromFunctionEffectStateful
 
 /**
@@ -99,10 +100,10 @@ export const fromFunctionEffectStateful: <S, R, Msg extends Message.Message.Any,
 export const fromInMemoryQueue: <Msg extends Message.Message.Any, R>(
   handler: (
     entityId: string,
-    dequeue: Queue.Dequeue<Msg | PoisonPill.PoisonPill>,
-    processed: <A extends Msg>(
+    dequeue: Queue.Dequeue<Envelope.Envelope<Msg> | PoisonPill.PoisonPill>,
+    processed: <A extends Envelope.Envelope<Msg>>(
       message: A,
       value: Option.Option<Message.Message.Exit<A>>
-    ) => Effect.Effect<void, never, never>
+    ) => Effect.Effect<void>
   ) => Effect.Effect<void, never, R>
 ) => RecipientBehaviour<Msg, R> = internal.fromInMemoryQueue

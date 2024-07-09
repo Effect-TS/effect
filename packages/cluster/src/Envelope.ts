@@ -33,19 +33,21 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface Envelope<Req extends Message.Message.Any> extends
-  Equal.Equal,
-  Serializable.SerializableWithResult<
-    Envelope<Req>,
-    Envelope.Encoded<Serializable.Serializable.Encoded<Req>>,
-    Serializable.Serializable.Context<Req>,
-    Serializable.WithResult.Success<Req>,
-    Serializable.WithResult.SuccessEncoded<Req>,
-    Serializable.WithResult.Error<Req>,
-    Serializable.WithResult.ErrorEncoded<Req>,
-    Serializable.WithResult.Context<Req>
-  >,
-  Envelope.Proto<Req>
+export interface Envelope<Req extends Message.Message.Any>
+  extends
+    Equal.Equal,
+    PrimaryKey.PrimaryKey,
+    Serializable.SerializableWithResult<
+      Envelope<Req>,
+      Envelope.Encoded<Serializable.Serializable.Encoded<Req>>,
+      Serializable.Serializable.Context<Req>,
+      Serializable.WithResult.Success<Req>,
+      Serializable.WithResult.SuccessEncoded<Req>,
+      Serializable.WithResult.Error<Req>,
+      Serializable.WithResult.ErrorEncoded<Req>,
+      Serializable.WithResult.Context<Req>
+    >,
+    Envelope.Proto<Req>
 {}
 
 /**

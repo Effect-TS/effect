@@ -1,6 +1,8 @@
 /**
  * @since 1.0.0
  */
+import type * as SerializedEnvelope from "@effect/cluster/SerializedEnvelope"
+import type * as SerializedValue from "@effect/cluster/SerializedValue"
 import type * as Effect from "effect/Effect"
 import type * as HashSet from "effect/HashSet"
 import type * as Scope from "effect/Scope"
@@ -15,8 +17,6 @@ import type * as RecipientAddress from "./RecipientAddress.js"
 import type * as RecipientBehaviour from "./RecipientBehaviour.js"
 import type * as RecipientBehaviourContext from "./RecipientBehaviourContext.js"
 import type * as RecipentType from "./RecipientType.js"
-import type * as SerializedEnvelope from "./SerializedEnvelope.js"
-import type * as SerializedMessage from "./SerializedMessage.js"
 import type * as ShardId from "./ShardId.js"
 import type * as ShardingException from "./ShardingException.js"
 import type * as ShardingRegistrationEvent from "./ShardingRegistrationEvent.js"
@@ -72,7 +72,7 @@ export interface Sharding {
   readonly sendMessageToLocalEntityManagerWithoutRetries: (
     message: SerializedEnvelope.SerializedEnvelope
   ) => Effect.Effect<
-    MessageState.MessageState<SerializedMessage.SerializedMessage>,
+    MessageState.MessageState<SerializedValue.SerializedValue>,
     ShardingException.ShardingException
   >
   readonly getPods: Effect.Effect<HashSet.HashSet<PodAddress.PodAddress>>
@@ -199,7 +199,7 @@ export const getPods: Effect.Effect<HashSet.HashSet<PodAddress.PodAddress>, neve
 export const sendMessageToLocalEntityManagerWithoutRetries: (
   message: SerializedEnvelope.SerializedEnvelope
 ) => Effect.Effect<
-  MessageState.MessageState<SerializedMessage.SerializedMessage>,
+  MessageState.MessageState<SerializedValue.SerializedValue>,
   ShardingException.ShardingException,
   Sharding
 > = internal.sendMessageToLocalEntityManagerWithoutRetries

@@ -1,7 +1,9 @@
 /**
  * @since 1.0.0
  */
+import type { Envelope } from "@effect/cluster/Envelope"
 import type { Message } from "@effect/cluster/Message"
+import type { SerializedEnvelope } from "@effect/cluster/SerializedEnvelope"
 import type { SqlClient } from "@effect/sql/SqlClient"
 import type { SqlError } from "@effect/sql/SqlError"
 import type { Tag } from "effect/Context"
@@ -11,7 +13,6 @@ import type { Stream } from "effect/Stream"
 import * as Internal from "./internal/atLeastOnceStorage.js"
 import type { RecipientType } from "./RecipientType.js"
 import type { Serialization } from "./Serialization.js"
-import type { SerializedEnvelope } from "./SerializedEnvelope.js"
 import type { ShardId } from "./ShardId.js"
 
 /**
@@ -39,7 +40,7 @@ export interface AtLeastOnceStorage extends AtLeastOnceStorage.Proto {
     recipientType: RecipientType<Msg>,
     shardId: ShardId,
     entityId: string,
-    message: Msg
+    message: Envelope<Msg>
   ): Effect<void>
 
   /**
@@ -50,7 +51,7 @@ export interface AtLeastOnceStorage extends AtLeastOnceStorage.Proto {
     recipientType: RecipientType<Msg>,
     shardId: ShardId,
     entityId: string,
-    message: Msg
+    message: Envelope<Msg>
   ): Effect<void>
 
   /**

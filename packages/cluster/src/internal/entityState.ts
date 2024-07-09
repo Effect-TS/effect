@@ -1,11 +1,11 @@
+import type * as SerializedEnvelope from "@effect/cluster/SerializedEnvelope"
+import type * as SerializedValue from "@effect/cluster/SerializedValue"
 import * as Data from "effect/Data"
 import type * as Effect from "effect/Effect"
 import type * as Fiber from "effect/Fiber"
 import * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
 import type * as MessageState from "../MessageState.js"
-import type * as SerializedEnvelope from "../SerializedEnvelope.js"
-import type * as SerializedMessage from "../SerializedMessage.js"
 import type * as ShardingException from "../ShardingException.js"
 
 /** @internal */
@@ -26,7 +26,7 @@ export interface EntityState {
   readonly sendAndGetState: (
     envelope: SerializedEnvelope.SerializedEnvelope
   ) => Effect.Effect<
-    MessageState.MessageState<SerializedMessage.SerializedMessage>,
+    MessageState.MessageState<SerializedValue.SerializedValue>,
     ShardingException.ExceptionWhileOfferingMessageException | ShardingException.SerializationException
   >
   readonly expirationFiber: Fiber.RuntimeFiber<void, never>

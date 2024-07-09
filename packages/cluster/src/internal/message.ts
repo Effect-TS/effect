@@ -33,10 +33,7 @@ export function failureSchema<A extends Message.Message.Any>(
   return Serializable.failureSchema(message as any) as any
 }
 
-/**
- * @since 1.0.0
- * @category schemas
- */
+/** @internal */
 export const TaggedMessage_ = <Self>() =>
 <Tag extends string, E, IE, A, IA, Fields extends Schema.Struct.Fields>(
   tag: Tag,

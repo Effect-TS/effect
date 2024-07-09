@@ -6,7 +6,7 @@ import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import * as internal from "./internal/serialization.js"
-import type * as SerializedMessage from "./SerializedMessage.js"
+import type * as SerializedValue from "./SerializedValue.js"
 import type * as ShardingException from "./ShardingException.js"
 
 /**
@@ -39,7 +39,7 @@ export interface Serialization {
   readonly encode: <A, I>(
     schema: Schema.Schema<A, I>,
     message: A
-  ) => Effect.Effect<SerializedMessage.SerializedMessage, ShardingException.SerializationException>
+  ) => Effect.Effect<SerializedValue.SerializedValue, ShardingException.SerializationException>
 
   /**
    * Transform binary back into the given type
@@ -47,7 +47,7 @@ export interface Serialization {
    */
   readonly decode: <A, I>(
     schema: Schema.Schema<A, I>,
-    bytes: SerializedMessage.SerializedMessage
+    bytes: SerializedValue.SerializedValue
   ) => Effect.Effect<A, ShardingException.SerializationException>
 }
 

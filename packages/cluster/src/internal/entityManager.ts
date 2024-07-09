@@ -1,3 +1,5 @@
+import type * as SerializedEnvelope from "@effect/cluster/SerializedEnvelope"
+import type * as SerializedValue from "@effect/cluster/SerializedValue"
 import * as Clock from "effect/Clock"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -16,8 +18,6 @@ import type * as RecipientBehaviour from "../RecipientBehaviour.js"
 import * as RecipientBehaviourContext from "../RecipientBehaviourContext.js"
 import type * as RecipientType from "../RecipientType.js"
 import type * as Serialization from "../Serialization.js"
-import type * as SerializedEnvelope from "../SerializedEnvelope.js"
-import type * as SerializedMessage from "../SerializedMessage.js"
 import type * as ShardId from "../ShardId.js"
 import type * as Sharding from "../Sharding.js"
 import type * as ShardingConfig from "../ShardingConfig.js"
@@ -43,7 +43,7 @@ export interface EntityManager {
   readonly sendAndGetState: (
     envelope: SerializedEnvelope.SerializedEnvelope
   ) => Effect.Effect<
-    MessageState.MessageState<SerializedMessage.SerializedMessage>,
+    MessageState.MessageState<SerializedValue.SerializedValue>,
     | ShardingException.EntityNotManagedByThisPodException
     | ShardingException.PodUnavailableException
     | ShardingException.ExceptionWhileOfferingMessageException
@@ -233,7 +233,7 @@ export function make<Msg extends Message.Message.Any, R>(
                       recipientBehaviour,
                       Effect.map((offer) => (envelope: SerializedEnvelope.SerializedEnvelope) =>
                         pipe(
-                          serialization.decode(recipientType.schema, envelope.body),
+                          serialization.decode(recipientType.schema, envelope.message.body),
                           Effect.flatMap((message) =>
                             pipe(
                               offer(message),
@@ -286,7 +286,7 @@ export function make<Msg extends Message.Message.Any, R>(
     function sendAndGetState(
       envelope: SerializedEnvelope.SerializedEnvelope
     ): Effect.Effect<
-      MessageState.MessageState<SerializedMessage.SerializedMessage>,
+      MessageState.MessageState<SerializedValue.SerializedValue>,
       | ShardingException.EntityNotManagedByThisPodException
       | ShardingException.PodUnavailableException
       | ShardingException.ExceptionWhileOfferingMessageException
@@ -300,17 +300,17 @@ export function make<Msg extends Message.Message.Any, R>(
             return Effect.asVoid(Effect.unlessEffect(
               Effect.fail(
                 new ShardingException.EntityNotManagedByThisPodException({
-                  recipientAddress: envelope.recipientAddress
+                  recipientAddress: envelope.address
                 })
               ),
-              sharding.isEntityOnLocalShards(envelope.recipientAddress)
+              sharding.isEntityOnLocalShards(envelope.address)
             ))
           } else if (recipientType._tag === "TopicType") {
             return Effect.void
           }
           return Effect.die("Unhandled recipientType")
         }),
-        Effect.bind("maybeEntityState", () => getOrCreateEntityState(envelope.recipientAddress)),
+        Effect.bind("maybeEntityState", () => getOrCreateEntityState(envelope.address)),
         Effect.flatMap((_) =>
           pipe(
             _.maybeEntityState,
