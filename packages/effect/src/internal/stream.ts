@@ -10,7 +10,6 @@ import * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
 import * as Exit from "../Exit.js"
 import * as Fiber from "../Fiber.js"
-import * as FiberRef from "../FiberRef.js"
 import type { LazyArg } from "../Function.js"
 import { constTrue, dual, identity, pipe } from "../Function.js"
 import * as Layer from "../Layer.js"
@@ -21,6 +20,7 @@ import { pipeArguments } from "../Pipeable.js"
 import { hasProperty, isTagged, type Predicate, type Refinement } from "../Predicate.js"
 import * as PubSub from "../PubSub.js"
 import * as Queue from "../Queue.js"
+import * as RcRef from "../RcRef.js"
 import * as Ref from "../Ref.js"
 import * as Runtime from "../Runtime.js"
 import * as Schedule from "../Schedule.js"
@@ -836,6 +836,33 @@ export const broadcastDynamic = dual<
   }
 ): Effect.Effect<Stream.Stream<A, E>, never, Scope.Scope | R> =>
   Effect.map(toPubSub(self, maximumLag), (pubsub) => flattenTake(fromPubSub(pubsub))))
+
+export const broadcastDynamicRefCount = dual<
+  <A, E>(
+    bounded:
+      | number
+      | { readonly capacity: number; readonly replay?: number | undefined }
+  ) => <R>(
+    self: Stream.Stream<A, E, R>
+  ) => Effect.Effect<Stream.Stream<A, E, Scope.Scope>, never, R | Scope.Scope>,
+  <A, E, R>(
+    self: Stream.Stream<A, E, R>,
+    bounded:
+      | number
+      | { readonly capacity: number; readonly replay?: number | undefined }
+  ) => Effect.Effect<Stream.Stream<A, E, Scope.Scope>, never, R | Scope.Scope>
+>(
+  2,
+  <A, E, R>(
+    self: Stream.Stream<A, E, R>,
+    bounded:
+      | number
+      | { readonly capacity: number; readonly replay?: number | undefined }
+  ): Effect.Effect<Stream.Stream<A, E, Scope.Scope>, never, R | Scope.Scope> =>
+    RcRef.make({
+      acquire: broadcastDynamic(self, bounded)
+    }).pipe(Effect.map((rcRef) => unwrap(RcRef.get(rcRef))))
+)
 
 /** @internal */
 export const broadcastedQueues = dual<
@@ -5912,90 +5939,6 @@ export const scoped = <A, E, R>(
   effect: Effect.Effect<A, E, R>
 ): Stream.Stream<A, E, Exclude<R, Scope.Scope>> =>
   new StreamImpl(channel.ensuring(channel.scoped(pipe(effect, Effect.map(Chunk.of))), Effect.void))
-
-/** @internal */
-export const share = dual<
-  <A, E>(config: {
-    readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
-  }) => <R>(
-    self: Stream.Stream<A, E, R>
-  ) => Effect.Effect<Stream.Stream<A, E>, never, R | Scope.Scope>,
-  <A, E, R>(
-    self: Stream.Stream<A, E, R>,
-    config: {
-      readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
-    }
-  ) => Effect.Effect<Stream.Stream<A, E>, never, R | Scope.Scope>
->(
-  2,
-  <A, E, R>(
-    self: Stream.Stream<A, E, R>,
-    config: {
-      readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
-    }
-  ) =>
-    Effect.gen(function*() {
-      const connector = yield* (config.connector ?? PubSub.bounded<Take.Take<A, E>>(16))
-      yield* Effect.forkScoped(runIntoPubSub(self, connector))
-      return flattenTake(fromPubSub(connector))
-    })
-)
-
-/** @internal */
-export const shareRefCount = dual<
-  <A, E>(config: {
-    readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
-  }) => <R>(
-    self: Stream.Stream<A, E, R>
-  ) => Effect.Effect<Stream.Stream<A, E, R>, never, R | Scope.Scope>,
-  <A, E, R>(
-    self: Stream.Stream<A, E, R>,
-    config: {
-      readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
-    }
-  ) => Effect.Effect<Stream.Stream<A, E, R>, never, R | Scope.Scope>
->(
-  2,
-  <A, E, R>(
-    self: Stream.Stream<A, E, R>,
-    config: {
-      readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
-    }
-  ): Effect.Effect<Stream.Stream<A, E, R>, never, R | Scope.Scope> => {
-    return Effect.gen(function*() {
-      let refCount = 0
-      let connector: PubSub.PubSub<Take.Take<A, E>> | null = null
-      let fiber: Fiber.RuntimeFiber<void> | null = null
-      const scope = yield* Effect.scope
-      const context = yield* Effect.context<R>()
-      const sem = yield* Effect.makeSemaphore(1)
-
-      return Effect.gen(function*() {
-        refCount++
-        connector ??= yield* (config.connector ?? PubSub.bounded<Take.Take<A, E>>(16))
-        fiber ??= yield* runIntoPubSub(self, connector).pipe(
-          Effect.locally(FiberRef.currentContext, context),
-          Effect.forkIn(scope)
-        )
-        return flattenTake(fromPubSub(connector))
-      }).pipe(
-        sem.withPermits(1),
-        unwrap,
-        ensuring(
-          Effect.suspend(() => {
-            refCount--
-            if (refCount === 0 && fiber) {
-              const cleanup = fiber
-              fiber = null
-              return Fiber.interrupt(cleanup)
-            }
-            return Effect.void;
-          })
-        )
-      )
-    })
-  }
-)
 
 /** @internal */
 export const some = <A, E, R>(self: Stream.Stream<Option.Option<A>, E, R>): Stream.Stream<A, Option.Option<E>, R> =>

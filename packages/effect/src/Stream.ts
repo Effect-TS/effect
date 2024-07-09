@@ -550,6 +550,26 @@ export const broadcast: {
 } = internal.broadcast
 
 /**
+ * Returns a new Stream that multicasts the original Stream, subscribing to it as soon as the first consumer subscribes.
+ * As long as there is at least one consumer, the upstream will continue running and emitting data.
+ * When all consumers have exited, the upstream will be finalized.
+ *
+ * The downstreams connect to the upstream through `PubSub.bounded`, allowing custom configuration for the connection.
+ *
+ * @since 3.5.0
+ * @category sharing
+ */
+export const broadcastDynamicRefCount: {
+  <A, E>(
+    bounded: number | { readonly capacity: number; readonly replay?: number | undefined }
+  ): <R>(self: Stream<A, E, R>) => Effect.Effect<Stream<A, E, Scope.Scope>, never, R | Scope.Scope>
+  <A, E, R>(
+    self: Stream<A, E, R>,
+    bounded: number | { readonly capacity: number; readonly replay?: number | undefined }
+  ): Effect.Effect<Stream<A, E, Scope.Scope>, never, R | Scope.Scope>
+} = internal.broadcastDynamicRefCount
+
+/**
  * Fan out the stream, producing a dynamic number of streams that have the
  * same elements as this stream. The driver stream will only ever advance the
  * `maximumLag` chunks before the slowest downstream stream.
@@ -4377,41 +4397,6 @@ export const scheduleWith: {
  */
 export const scoped: <A, E, R>(effect: Effect.Effect<A, E, R>) => Stream<A, E, Exclude<R, Scope.Scope>> =
   internal.scoped
-
-/**
- * Returns a new Stream that multicasts (shares) the original Stream by forking `runIntoPubSub` process in `forkScoped` mode at the initialization stage.
- *
- * Accepts the factory used to create the PubSub that will connect the source stream to multicast consumers.
- *
- * @since 3.5.0
- * @category sharing
- */
-export const share: {
-  <A, E>(config: {
-    readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
-  }): <R>(self: Stream<A, E, R>) => Effect.Effect<Stream<A, E>, never, R | Scope.Scope>
-  <A, E, R>(self: Stream<A, E, R>, config: {
-    readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
-  }): Effect.Effect<Stream<A, E>, never, R | Scope.Scope>
-} = internal.share
-
-/**
- * Returns a new Stream that multicasts (shares) the original Stream by forking `runIntoPubSub` process in `forkDaemon` mode as soon as the first consumer subscribes.
- * As long as there is at least one consumer, this Stream will be run and emitting data.
- * When all consumers have exited, it will kill forked daemon.
- *
- * Accepts the factory used to create the PubSub that will connect the source stream to multicast consumers.
- * @since 3.5.0
- * @category sharing
- */
-export const shareRefCount: {
-  <A, E>(config: {
-    readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
-  }): <R>(self: Stream<A, E, R>) => Effect.Effect<Stream<A, E, R>, never, R | Scope.Scope>
-  <A, E, R>(self: Stream<A, E, R>, config: {
-    readonly connector?: Effect.Effect<PubSub.PubSub<Take.Take<A, E>>>
-  }): Effect.Effect<Stream<A, E, R>, never, R | Scope.Scope>
-} = internal.shareRefCount
 
 /**
  * Emits a sliding window of `n` elements.
