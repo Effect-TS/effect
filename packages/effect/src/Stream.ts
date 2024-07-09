@@ -561,11 +561,19 @@ export const broadcast: {
  */
 export const broadcastDynamicRefCount: {
   <A, E>(
-    bounded: number | { readonly capacity: number; readonly replay?: number | undefined }
+    config: {
+      readonly capacity: number
+      readonly replay?: number | undefined
+      readonly idleTimeToLive?: Duration.DurationInput | undefined
+    }
   ): <R>(self: Stream<A, E, R>) => Effect.Effect<Stream<A, E, Scope.Scope>, never, R | Scope.Scope>
   <A, E, R>(
     self: Stream<A, E, R>,
-    bounded: number | { readonly capacity: number; readonly replay?: number | undefined }
+    config: {
+      readonly capacity: number
+      readonly replay?: number | undefined
+      readonly idleTimeToLive?: Duration.DurationInput | undefined
+    }
   ): Effect.Effect<Stream<A, E, Scope.Scope>, never, R | Scope.Scope>
 } = internal.broadcastDynamicRefCount
 

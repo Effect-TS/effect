@@ -839,28 +839,39 @@ export const broadcastDynamic = dual<
 
 export const broadcastDynamicRefCount = dual<
   <A, E>(
-    bounded:
-      | number
-      | { readonly capacity: number; readonly replay?: number | undefined }
+    config: {
+      readonly capacity: number
+      readonly replay?: number | undefined
+      readonly idleTimeToLive?: Duration.DurationInput | undefined
+    }
   ) => <R>(
     self: Stream.Stream<A, E, R>
   ) => Effect.Effect<Stream.Stream<A, E, Scope.Scope>, never, R | Scope.Scope>,
   <A, E, R>(
     self: Stream.Stream<A, E, R>,
-    bounded:
-      | number
-      | { readonly capacity: number; readonly replay?: number | undefined }
+    config: {
+      readonly capacity: number
+      readonly replay?: number | undefined
+      readonly idleTimeToLive?: Duration.DurationInput | undefined
+    }
   ) => Effect.Effect<Stream.Stream<A, E, Scope.Scope>, never, R | Scope.Scope>
 >(
   2,
   <A, E, R>(
     self: Stream.Stream<A, E, R>,
-    bounded:
-      | number
-      | { readonly capacity: number; readonly replay?: number | undefined }
+    {
+      capacity,
+      idleTimeToLive,
+      replay
+    }: {
+      readonly capacity: number
+      readonly replay?: number | undefined
+      readonly idleTimeToLive?: Duration.DurationInput | undefined
+    }
   ): Effect.Effect<Stream.Stream<A, E, Scope.Scope>, never, R | Scope.Scope> =>
     RcRef.make({
-      acquire: broadcastDynamic(self, bounded)
+      acquire: broadcastDynamic(self, { capacity, replay }),
+      idleTimeToLive
     }).pipe(Effect.map((rcRef) => unwrap(RcRef.get(rcRef))))
 )
 
