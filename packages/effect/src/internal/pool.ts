@@ -5,6 +5,7 @@ import type { Effect, Semaphore } from "../Effect.js"
 import type { Exit } from "../Exit.js"
 import { dual, identity } from "../Function.js"
 import * as Iterable from "../Iterable.js"
+import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import type { Pool, PoolTypeId as PoolTypeId_ } from "../Pool.js"
 import { hasProperty } from "../Predicate.js"
@@ -117,6 +118,7 @@ interface PoolItem<A, E> {
 interface Strategy<A, E> {
   readonly run: (pool: PoolImpl<A, E>) => Effect<void>
   readonly onAcquire: (item: PoolItem<A, E>) => Effect<void>
+  readonly reclaim: (pool: PoolImpl<A, E>) => Effect<Option.Option<PoolItem<A, E>>>
 }
 
 class PoolImpl<A, E> implements Pool<A, E> {
@@ -189,7 +191,13 @@ class PoolImpl<A, E> implements Pool<A, E> {
     if (this.activeSize >= this.targetSize) {
       return core.void
     }
-    return core.zipRight(this.allocate, this.resizeLoop)
+    return this.strategy.reclaim(this).pipe(
+      core.flatMap(Option.match({
+        onNone: () => this.allocate,
+        onSome: core.succeed
+      })),
+      core.zipRight(this.resizeLoop)
+    )
   })
   readonly resizeSemaphore = circular.unsafeMakeSemaphore(1)
   readonly resize = this.resizeSemaphore.withPermits(1)(this.resizeLoop)
@@ -306,7 +314,8 @@ class PoolImpl<A, E> implements Pool<A, E> {
 
 const strategyNoop = <A, E>(): Strategy<A, E> => ({
   run: (_) => core.void,
-  onAcquire: (_) => core.void
+  onAcquire: (_) => core.void,
+  reclaim: (_) => coreEffect.succeedNone
 })
 
 const strategyCreationTTL = <A, E>(ttl: Duration.DurationInput) =>
@@ -337,7 +346,8 @@ const strategyCreationTTL = <A, E>(ttl: Duration.DurationInput) =>
           core.suspend(() => {
             creationTimes.set(item, clock.unsafeCurrentTimeMillis())
             return queue.offer(item)
-          })
+          }),
+        reclaim: (_) => coreEffect.succeedNone
       })
     })
   )
@@ -359,7 +369,20 @@ const strategyUsageTTL = <A, E>(ttl: Duration.DurationInput) =>
           coreEffect.forever
         )
       },
-      onAcquire: (item) => queue.offer(item)
+      onAcquire: (item) => queue.offer(item),
+      reclaim(pool) {
+        return core.suspend(() => {
+          if (pool.invalidated.size === 0) {
+            return coreEffect.succeedNone
+          }
+          const item = Iterable.unsafeHead(pool.invalidated)
+          pool.invalidated.delete(item)
+          if (item.refCount < pool.concurrency) {
+            pool.available.add(item)
+          }
+          return core.as(queue.offer(item), Option.some(item))
+        })
+      }
     })
   })
 
