@@ -4014,6 +4014,70 @@ export class Lowercased extends String$.pipe(
 
 /**
  * @category type id
+ * @since 0.68.18
+ */
+export const CapitalizedTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/Capitalized")
+
+/**
+ * Verifies that a string is capitalized.
+ *
+ * @category string filters
+ * @since 0.68.18
+ */
+export const capitalized =
+  <A extends string>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+    self.pipe(
+      filter((a) => a[0]?.toUpperCase() === a[0], {
+        typeId: CapitalizedTypeId,
+        description: "a capitalized string",
+        ...annotations
+      })
+    )
+
+/**
+ * @category string constructors
+ * @since 0.68.18
+ */
+export class Capitalized extends String$.pipe(
+  capitalized({ identifier: "Capitalized", title: "Capitalized" })
+) {
+  static override annotations: (annotations: Annotations.Schema<string>) => typeof Capitalized = super.annotations
+}
+
+/**
+ * @category type id
+ * @since 0.68.18
+ */
+export const UncapitalizedTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/Uncapitalized")
+
+/**
+ * Verifies that a string is uncapitalized.
+ *
+ * @category string filters
+ * @since 0.68.18
+ */
+export const uncapitalized =
+  <A extends string>(annotations?: Annotations.Filter<A>) => <I, R>(self: Schema<A, I, R>): filter<Schema<A, I, R>> =>
+    self.pipe(
+      filter((a) => a[0]?.toLowerCase() === a[0], {
+        typeId: UncapitalizedTypeId,
+        description: "a uncapitalized string",
+        ...annotations
+      })
+    )
+
+/**
+ * @category string constructors
+ * @since 0.68.18
+ */
+export class Uncapitalized extends String$.pipe(
+  uncapitalized({ identifier: "Uncapitalized", title: "Uncapitalized" })
+) {
+  static override annotations: (annotations: Annotations.Schema<string>) => typeof Uncapitalized = super.annotations
+}
+
+/**
+ * @category type id
  * @since 0.67.0
  */
 export const UppercasedTypeId: unique symbol = Symbol.for("@effect/schema/TypeId/Uppercased")
@@ -4135,6 +4199,34 @@ export class Uppercase extends transform(
   { strict: true, decode: (s) => s.toUpperCase(), encode: identity }
 ).annotations({ identifier: "Uppercase" }) {
   static override annotations: (annotations: Annotations.Schema<string>) => typeof Uppercase = super.annotations
+}
+
+/**
+ * This schema converts a string to capitalized one.
+ *
+ * @category string transformations
+ * @since 0.68.18
+ */
+export class Capitalize extends transform(
+  String$,
+  Capitalized,
+  { strict: true, decode: (s) => string_.capitalize(s), encode: identity }
+).annotations({ identifier: "Capitalize" }) {
+  static override annotations: (annotations: Annotations.Schema<string>) => typeof Capitalize = super.annotations
+}
+
+/**
+ * This schema converts a string to uncapitalized one.
+ *
+ * @category string transformations
+ * @since 0.68.18
+ */
+export class Uncapitalize extends transform(
+  String$,
+  Uncapitalized,
+  { strict: true, decode: (s) => string_.uncapitalize(s), encode: identity }
+).annotations({ identifier: "Uncapitalize" }) {
+  static override annotations: (annotations: Annotations.Schema<string>) => typeof Uncapitalize = super.annotations
 }
 
 /**

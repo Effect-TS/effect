@@ -932,9 +932,33 @@ Decoding failed:
 
 In this example, the tree error message is structured as follows:
 
-- `{ name: string; age: number }` represents the schema, providing a visual representation of the expected structure. This can be customized using annotations, such as setting the `identifier` annotation.
-- `["name"]` indicates the offending property, in this case, the `"name"` property.
-- `is missing` represents the specific error for the `"name"` property.
+- `{ readonly name: string; readonly age: number }` represents the schema, providing a visual representation of the expected structure. This can be customized by using annotations like `identifier`, `title`, or `description`.
+- `["name"]` points to the problematic property, in this case, the `"name"` property.
+- `is missing` details the specific error for the `"name"` property.
+
+**Example of customizing the type output**
+
+```ts
+import { Schema, TreeFormatter } from "@effect/schema"
+import { Either } from "effect"
+
+const Person = Schema.Struct({
+  name: Schema.String,
+  age: Schema.Number
+}).annotations({ title: "Person" }) // Adding a title annotation
+
+const result = Schema.decodeUnknownEither(Person)({})
+if (Either.isLeft(result)) {
+  console.error(TreeFormatter.formatErrorSync(result.left))
+}
+/*
+Person
+└─ ["name"]
+   └─ is missing
+*/
+```
+
+In this adjusted example, adding the `title` annotation changes how the schema is represented in the error message.
 
 **Handling Multiple Errors**
 
@@ -4913,6 +4937,40 @@ console.log(decode(" abC ")) // " ABC "
 ```
 
 **Note**. If you were looking for a combinator to check if a string is uppercased, check out the `Uppercased` schema or the `uppercased` filter.
+
+### Capitalize
+
+The `Capitalize` schema converts a string to capitalized one.
+
+```ts
+import { Schema } from "@effect/schema"
+
+const decode = Schema.decodeUnknownSync(Schema.Capitalize)
+
+console.log(decode("aa")) // "Aa"
+console.log(decode(" ab")) // " ab"
+console.log(decode("aB ")) // "AB "
+console.log(decode(" abC ")) // " abC "
+```
+
+**Note**. If you were looking for a combinator to check if a string is capitalized, check out the `Capitalized` schema or the `capitalized` filter.
+
+### Uncapitalize
+
+The `Uncapitalize` schema converts a string to uncapitalized one.
+
+```ts
+import { Schema } from "@effect/schema"
+
+const decode = Schema.decodeUnknownSync(Schema.Uncapitalize)
+
+console.log(decode("AA")) // "aA"
+console.log(decode(" AB")) // " AB"
+console.log(decode("Ab ")) // "ab "
+console.log(decode(" AbC ")) // " AbC "
+```
+
+**Note**. If you were looking for a combinator to check if a string is uncapitalized, check out the `Uncapitalized` schema or the `uncapitalized` filter.
 
 ### parseJson
 

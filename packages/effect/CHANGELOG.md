@@ -1,5 +1,15 @@
 # effect
 
+## 3.4.8
+
+### Patch Changes
+
+- [#3181](https://github.com/Effect-TS/effect/pull/3181) [`a435e0f`](https://github.com/Effect-TS/effect/commit/a435e0fc5378b33a49bcec92ee235df6f16a2419) Thanks @KhraksMamtsov! - refactor `TrimEnd` & `TrimStart`
+
+- [#3176](https://github.com/Effect-TS/effect/pull/3176) [`b5554db`](https://github.com/Effect-TS/effect/commit/b5554db36c4dd6f64fa5e6a62a29b2759c54217a) Thanks @tim-smart! - allow Stream run fiber to close before trying to interrupt it
+
+- [#3175](https://github.com/Effect-TS/effect/pull/3175) [`a9c4fb3`](https://github.com/Effect-TS/effect/commit/a9c4fb3bf3c6e92cd1c142b0605fddf7eb3c697c) Thanks @tim-smart! - ensure fibers are interrupted in Stream.mergeWith
+
 ## 3.4.7
 
 ### Patch Changes
