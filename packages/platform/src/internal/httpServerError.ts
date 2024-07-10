@@ -1,10 +1,12 @@
 import * as Cause from "effect/Cause"
+import * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
 import * as FiberId from "effect/FiberId"
 import { globalValue } from "effect/GlobalValue"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import type * as Error from "../HttpServerError.js"
+import * as Respondable from "../HttpServerRespondable.js"
 import type { HttpServerResponse } from "../HttpServerResponse.js"
 import * as internalServerResponse from "./httpServerResponse.js"
 
@@ -23,44 +25,67 @@ export const clientAbortFiberId = globalValue(
 )
 
 /** @internal */
-export const isClientAbortCause = <E>(cause: Cause.Cause<E>): boolean =>
-  Cause.reduce(
+export const causeResponse = <E>(
+  cause: Cause.Cause<E>
+): Effect.Effect<readonly [HttpServerResponse, Cause.Cause<E>]> => {
+  const [effect, stripped] = Cause.reduce(
     cause,
-    false,
-    (_, cause) => cause._tag === "Interrupt" && cause.fiberId === clientAbortFiberId ? Option.some(true) : Option.none()
+    [Effect.succeed(internalServerError), Cause.empty as Cause.Cause<E>] as const,
+    (acc, cause) => {
+      switch (cause._tag) {
+        case "Empty": {
+          return Option.some(acc)
+        }
+        case "Fail": {
+          return Option.some([Respondable.toResponseOrElse(cause.error, internalServerError), cause] as const)
+        }
+        case "Die": {
+          return Option.some([Respondable.toResponseOrElse(cause.defect, internalServerError), cause] as const)
+        }
+        case "Interrupt": {
+          if (acc[1]._tag !== "Empty") {
+            return Option.none()
+          }
+          const response = cause.fiberId === clientAbortFiberId ? clientAbortError : serverAbortError
+          return Option.some([Effect.succeed(response), cause] as const)
+        }
+        default: {
+          return Option.none()
+        }
+      }
+    }
   )
+  return Effect.map(effect, (response) => {
+    if (Cause.isEmptyType(stripped)) {
+      return [response, Cause.die(response)] as const
+    }
+    return [response, Cause.sequential(stripped, Cause.die(response))] as const
+  })
+}
 
 /** @internal */
-export const causeStatusStripped = <E>(
+export const causeResponseStripped = <E>(
   cause: Cause.Cause<E>
-): readonly [status: number, cause: Option.Option<Cause.Cause<E>>] => {
-  if (Cause.isInterruptedOnly(cause)) {
-    return [isClientAbortCause(cause) ? 499 : 503, Option.some(cause)]
-  }
+): readonly [response: HttpServerResponse, cause: Option.Option<Cause.Cause<E>>] => {
   let response: HttpServerResponse | undefined
   const stripped = Cause.stripSomeDefects(cause, (defect) => {
     if (internalServerResponse.isServerResponse(defect)) {
       response = defect
-      return Option.some(Cause.die(defect))
+      return Option.some(Cause.empty)
     }
     return Option.none()
   })
-  return [response?.status ?? 500, stripped]
+  return [response ?? internalServerError, stripped]
 }
 
 const internalServerError = internalServerResponse.empty({ status: 500 })
+const clientAbortError = internalServerResponse.empty({ status: 499 })
+const serverAbortError = internalServerResponse.empty({ status: 503 })
 
 /** @internal */
 export const exitResponse = <E>(exit: Exit.Exit<HttpServerResponse, E>): HttpServerResponse => {
   if (exit._tag === "Success") {
     return exit.value
   }
-  return Cause.reduce(
-    exit.cause,
-    internalServerError,
-    (_, cause) =>
-      cause._tag === "Die" && internalServerResponse.isServerResponse(cause.defect)
-        ? Option.some(cause.defect)
-        : Option.none()
-  )
+  return causeResponseStripped(exit.cause)[0]
 }

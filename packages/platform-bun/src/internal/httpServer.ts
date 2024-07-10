@@ -16,7 +16,6 @@ import type * as Path from "@effect/platform/Path"
 import * as Socket from "@effect/platform/Socket"
 import * as UrlParams from "@effect/platform/UrlParams"
 import type { ServeOptions, Server as BunServer, ServerWebSocket } from "bun"
-import * as Cause from "effect/Cause"
 import * as Config from "effect/Config"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -79,29 +78,19 @@ export const make = (
           Effect.bindTo("runFork"),
           Effect.bind("runtime", () => Effect.runtime<never>()),
           Effect.let("app", ({ runtime }) =>
-            App.toHandled(httpApp, (request, exit) =>
+            App.toHandled(httpApp, (request, response) =>
               Effect.sync(() => {
                 const impl = request as ServerRequestImpl
-                if (exit._tag === "Success") {
-                  impl.resolve(makeResponse(request, exit.value, runtime))
-                } else if (Cause.isInterruptedOnly(exit.cause)) {
-                  impl.resolve(
-                    new Response(undefined, {
-                      status: impl.source.signal.aborted ? 499 : 503
-                    })
-                  )
-                } else {
-                  impl.reject(Cause.pretty(exit.cause))
-                }
+                impl.resolve(makeResponse(request, response, runtime))
               }), middleware)),
           Effect.flatMap(({ app, runFork }) =>
             Effect.async<never>((_) => {
               function handler(request: Request, server: BunServer) {
-                return new Promise<Response>((resolve, reject) => {
+                return new Promise<Response>((resolve, _reject) => {
                   const fiber = runFork(Effect.provideService(
                     app,
                     ServerRequest.HttpServerRequest,
-                    new ServerRequestImpl(request, resolve, reject, removeHost(request.url), server)
+                    new ServerRequestImpl(request, resolve, removeHost(request.url), server)
                   ))
                   request.signal.addEventListener("abort", () => {
                     runFork(fiber.interruptAsFork(Error.clientAbortFiberId))
@@ -216,7 +205,6 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
   constructor(
     readonly source: Request,
     public resolve: (response: Response) => void,
-    public reject: (reason: any) => void,
     readonly url: string,
     private bunServer: BunServer,
     public headersOverride?: Headers.Headers,
@@ -243,7 +231,6 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
     return new ServerRequestImpl(
       this.source,
       this.resolve,
-      this.reject,
       options.url ?? this.url,
       this.bunServer,
       options.headers ?? this.headersOverride,

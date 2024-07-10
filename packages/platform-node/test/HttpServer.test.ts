@@ -533,7 +533,8 @@ describe("HttpServer", () => {
       yield* _(Effect.sleep(100))
       yield* _(Fiber.interrupt(fiber))
       const cause = yield* _(Deferred.await(latch), Effect.sandbox, Effect.flip)
-      expect(HttpServerError.isClientAbortCause(cause)).toEqual(true)
+      const [response] = HttpServerError.causeResponseStripped(cause)
+      expect(response.status).toEqual(499)
     }).pipe(Effect.scoped, runPromise))
 
   it("multiplex", () =>
