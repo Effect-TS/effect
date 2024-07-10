@@ -14,12 +14,13 @@ import type * as ServerResponse from "@effect/platform/HttpServerResponse"
 import type * as Multipart from "@effect/platform/Multipart"
 import type * as Path from "@effect/platform/Path"
 import * as Socket from "@effect/platform/Socket"
+import type * as Cause from "effect/Cause"
 import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
 import * as FiberSet from "effect/FiberSet"
 import { type LazyArg } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
+import type * as Option from "effect/Option"
 import type { ReadonlyRecord } from "effect/Record"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
@@ -379,18 +380,18 @@ const handleResponse = (request: ServerRequest.HttpServerRequest, response: Serv
           typeof body.body === "object" && body.body !== null && "pipe" in body.body &&
           typeof body.body.pipe === "function"
         ) {
-          return Effect.tapErrorCause(
-            Effect.tryPromise({
-              try: (signal) => pipeline(body.body as any, nodeResponse, { signal, end: true }),
-              catch: (error) =>
-                new Error.ResponseError({
-                  request,
-                  response,
-                  reason: "Decode",
-                  error
-                })
-            }),
-            () => sendInternalError(nodeResponse)
+          return Effect.tryPromise({
+            try: (signal) => pipeline(body.body as any, nodeResponse, { signal, end: true }),
+            catch: (error) =>
+              new Error.ResponseError({
+                request,
+                response,
+                reason: "Decode",
+                error
+              })
+          }).pipe(
+            Effect.interruptible,
+            Effect.tapErrorCause(handleCause(nodeResponse))
           )
         }
         return Effect.async<void>((resume) => {
@@ -428,7 +429,7 @@ const handleResponse = (request: ServerRequest.HttpServerRequest, response: Serv
               })
           }).pipe(
             Effect.interruptible,
-            Effect.tapErrorCause(() => sendInternalError(nodeResponse))
+            Effect.tapErrorCause(handleCause(nodeResponse))
           )
         })
       }
@@ -454,21 +455,24 @@ const handleResponse = (request: ServerRequest.HttpServerRequest, response: Serv
             }))
         ).pipe(
           Effect.interruptible,
-          Effect.tapErrorCause(() => sendInternalError(nodeResponse))
+          Effect.tapErrorCause(handleCause(nodeResponse))
         )
       }
     }
   })
 
-const sendInternalError = (response: Http.ServerResponse) =>
-  Effect.sync(() => {
-    if (!response.headersSent) {
-      response.writeHead(500)
-    }
-    if (!response.writableEnded) {
-      response.end()
-    }
-  })
+const handleCause = (nodeResponse: Http.ServerResponse) => <E>(cause: Cause.Cause<E>) =>
+  Error.causeResponse(cause).pipe(
+    Effect.flatMap(([response, cause]) => {
+      if (!nodeResponse.headersSent) {
+        nodeResponse.writeHead(response.status)
+      }
+      if (!nodeResponse.writableEnded) {
+        nodeResponse.end()
+      }
+      return Effect.failCause(cause)
+    })
+  )
 
 /** @internal */
 export const requestSource = (self: ServerRequest.HttpServerRequest): Http.IncomingMessage =>
