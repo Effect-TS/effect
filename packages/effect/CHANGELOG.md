@@ -1,5 +1,15 @@
 # effect
 
+## 3.4.9
+
+### Patch Changes
+
+- [#3210](https://github.com/Effect-TS/effect/pull/3210) [`7af137c`](https://github.com/Effect-TS/effect/commit/7af137c9433f6e74959b3887561ec1e6f12e10ee) Thanks @tim-smart! - prevent reclaim of manually invalidated pool items
+
+- [#3204](https://github.com/Effect-TS/effect/pull/3204) [`ee4b3dc`](https://github.com/Effect-TS/effect/commit/ee4b3dc5f68d19dc3ae1c2d12901c5b8ffbebabb) Thanks @gcanti! - Updated the JSDocs for the `Stream` module by adding examples to key functions.
+
+- [#3202](https://github.com/Effect-TS/effect/pull/3202) [`097d25c`](https://github.com/Effect-TS/effect/commit/097d25cb5d13c049e01789651be56b09620186ef) Thanks @tim-smart! - allow invalidated Pool items to be reclaimed with usage strategy
+
 ## 3.4.8
 
 ### Patch Changes
