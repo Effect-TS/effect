@@ -2,6 +2,7 @@ import * as Chunk from "../Chunk.js"
 import * as Context from "../Context.js"
 import type * as Effect from "../Effect.js"
 import { pipe } from "../Function.js"
+import * as Hash from "../Hash.js"
 import type * as Random from "../Random.js"
 import * as PCGRandom from "../Utils.js"
 import * as core from "./core.js"
@@ -85,4 +86,4 @@ const swap = <A>(buffer: Array<A>, index1: number, index2: number): Array<A> => 
   return buffer
 }
 
-export const make = (seed: number): Random.Random => new RandomImpl(seed)
+export const make = <A>(seed: A): Random.Random => new RandomImpl(Hash.hash(seed))
