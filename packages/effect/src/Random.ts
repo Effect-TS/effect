@@ -123,7 +123,7 @@ export const Random: Context.Tag<Random, Random> = internal.randomTag
  * Constructs the `Random` service, seeding the pseudo-random number generator
  * with an hash of the specified seed.
  *
- * @since 3.4.9
+ * @since 3.5.0
  * @category constructors
  */
 export const make: <A>(seed: A) => Random = internal.make
