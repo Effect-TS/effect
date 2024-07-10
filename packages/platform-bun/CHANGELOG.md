@@ -1,5 +1,16 @@
 # @effect/platform-bun
 
+## 0.38.21
+
+### Patch Changes
+
+- [#3209](https://github.com/Effect-TS/effect/pull/3209) [`366f2ee`](https://github.com/Effect-TS/effect/commit/366f2ee3fb6f712a44e8f84fc188612e5ecc016d) Thanks @tim-smart! - simplify /platform http response handling
+
+- Updated dependencies [[`7af137c`](https://github.com/Effect-TS/effect/commit/7af137c9433f6e74959b3887561ec1e6f12e10ee), [`ee4b3dc`](https://github.com/Effect-TS/effect/commit/ee4b3dc5f68d19dc3ae1c2d12901c5b8ffbebabb), [`366f2ee`](https://github.com/Effect-TS/effect/commit/366f2ee3fb6f712a44e8f84fc188612e5ecc016d), [`366f2ee`](https://github.com/Effect-TS/effect/commit/366f2ee3fb6f712a44e8f84fc188612e5ecc016d), [`097d25c`](https://github.com/Effect-TS/effect/commit/097d25cb5d13c049e01789651be56b09620186ef)]:
+  - effect@3.4.9
+  - @effect/platform@0.58.22
+  - @effect/platform-node-shared@0.8.21
+
 ## 0.38.20
 
 ### Patch Changes
