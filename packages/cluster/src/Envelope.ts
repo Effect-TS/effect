@@ -155,6 +155,18 @@ const envelopeParse = <A extends Message.Message.Any, R>(
  * @since 1.0.0
  * @category models
  */
+export interface Envelope$<A extends Schema.Schema.Any> extends
+  Schema.Schema<
+    Envelope<Schema.Schema.Type<A>>,
+    Envelope.Encoded<Schema.Schema.Encoded<A>>,
+    Schema.Schema.Context<A>
+  >
+{}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
 export interface EnvelopeFromSelf<Value extends Schema.Schema.Any> extends
   Schema.Schema<
     Envelope<Schema.Schema.Type<Value>>,
@@ -183,18 +195,6 @@ export const EnvelopeFromSelf = <Value extends Schema.Schema.Any>(value: Value):
     {}
   )
 }
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface Envelope$<A extends Schema.Schema.Any> extends
-  Schema.Schema<
-    Envelope<Schema.Schema.Type<A>>,
-    Envelope.Encoded<Schema.Schema.Encoded<A>>,
-    Schema.Schema.Context<A>
-  >
-{}
 
 /**
  * @since 1.0.0

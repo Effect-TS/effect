@@ -54,18 +54,6 @@ describe("Envelope", () => {
         })
       }))
 
-      it.effect("should perform a serialization roundtrip", () =>
-        Effect.gen(function*() {
-          const address = new RecipientAddress({ recipientType: "User", entityId: "1" })
-          const sample = new SampleMessage({ id: 1, name: "sample-1" })
-          const envelope = Envelope.make(address, sample)
-          const serialized = yield* Serializable.serialize(envelope)
-
-          const deserialized = yield* Schema.decode(Envelope.schema(SampleMessage))(serialized)
-          assert.isTrue(Equal.equals(envelope, deserialized))
-          assert.isTrue(PrimaryKey.symbol in deserialized)
-        }))
-
     it.effect("should deserialize an envelope", () =>
       Effect.gen(function*() {
         const address = new RecipientAddress({ recipientType: "User", entityId: "1" })
@@ -104,15 +92,26 @@ describe("Envelope", () => {
         assert.strictEqual(deserialized, 1)
       }))
 
-      it.effect("should deserialize the error value of an envelope's request", () =>
-        Effect.gen(function*() {
-          const address = new RecipientAddress({ recipientType: "User", entityId: "1" })
-          const sample = new SampleMessage({ id: 1, name: "sample-1" })
-          const envelope = Envelope.make(address, sample)
-          const serialized = yield* Serializable.serializeFailure(envelope, "fail")
-          const deserialized = yield* Serializable.deserializeFailure(envelope, serialized)
-          assert.strictEqual(deserialized, "fail")
-        }))
+    it.effect("should deserialize the error value of an envelope's request", () =>
+      Effect.gen(function*() {
+        const address = new RecipientAddress({ recipientType: "User", entityId: "1" })
+        const sample = new SampleMessage({ id: 1, name: "sample-1" })
+        const envelope = Envelope.make(address, sample)
+        const serialized = yield* Serializable.serializeFailure(envelope, "fail")
+        const deserialized = yield* Serializable.deserializeFailure(envelope, serialized)
+        assert.strictEqual(deserialized, "fail")
+      }))
 
+    it.effect("should perform a serialization roundtrip", () =>
+      Effect.gen(function*() {
+        const address = new RecipientAddress({ recipientType: "User", entityId: "1" })
+        const sample = new SampleMessage({ id: 1, name: "sample-1" })
+        const envelope = Envelope.make(address, sample)
+        const serialized = yield* Serializable.serialize(envelope)
+
+        const deserialized = yield* Schema.decode(Envelope.schema(SampleMessage))(serialized)
+        assert.isTrue(Equal.equals(envelope, deserialized))
+        assert.isTrue(PrimaryKey.symbol in deserialized)
+      }))
   })
 })
