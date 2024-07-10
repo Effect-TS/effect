@@ -14,7 +14,7 @@ import type * as ServerResponse from "@effect/platform/HttpServerResponse"
 import type * as Multipart from "@effect/platform/Multipart"
 import type * as Path from "@effect/platform/Path"
 import * as Socket from "@effect/platform/Socket"
-import * as Cause from "effect/Cause"
+import type * as Cause from "effect/Cause"
 import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
 import * as FiberSet from "effect/FiberSet"
@@ -132,15 +132,7 @@ export const makeHandler: {
     Exclude<Effect.Effect.Context<App>, ServerRequest.HttpServerRequest | Scope.Scope>
   >
 } = <E, R>(httpApp: App.Default<E, R>, middleware?: Middleware.HttpMiddleware) => {
-  const handledApp = App.toHandled(httpApp, (request, exit) => {
-    if (exit._tag === "Success") {
-      return Effect.catchAllCause(
-        handleResponse(request, exit.value),
-        (cause) => handleCause(request, cause)
-      )
-    }
-    return handleCause(request, exit.cause)
-  }, middleware)
+  const handledApp = App.toHandled(httpApp, handleResponse, middleware)
   return Effect.map(FiberSet.makeRuntime<R>(), (runFork) =>
     function handler(
       nodeRequest: Http.IncomingMessage,
@@ -155,10 +147,6 @@ export const makeHandler: {
       )
       nodeResponse.on("close", () => {
         if (!nodeResponse.writableEnded) {
-          if (!nodeResponse.headersSent) {
-            nodeResponse.writeHead(499)
-          }
-          nodeResponse.end()
           fiber.unsafeInterruptAsFork(Error.clientAbortFiberId)
         }
       })
@@ -171,15 +159,7 @@ export const makeUpgradeHandler = <R, E>(
   httpApp: App.Default<E, R>,
   middleware?: Middleware.HttpMiddleware
 ) => {
-  const handledApp = App.toHandled(httpApp, (request, exit) => {
-    if (exit._tag === "Success") {
-      return Effect.catchAllCause(
-        handleResponse(request, exit.value),
-        (cause) => handleCause(request, cause)
-      )
-    }
-    return handleCause(request, exit.cause)
-  }, middleware)
+  const handledApp = App.toHandled(httpApp, handleResponse, middleware)
   return Effect.map(FiberSet.makeRuntime<R>(), (runFork) =>
     function handler(
       nodeRequest: Http.IncomingMessage,
@@ -214,28 +194,12 @@ export const makeUpgradeHandler = <R, E>(
         )
       )
       socket.on("close", () => {
-        const res = nodeResponse()
         if (!socket.writableEnded) {
-          if (!res.headersSent) {
-            res.writeHead(499)
-          }
-          res.end()
           fiber.unsafeInterruptAsFork(Error.clientAbortFiberId)
         }
       })
     })
 }
-
-const handleCause = <E>(request: ServerRequest.HttpServerRequest, cause: Cause.Cause<E>) =>
-  Effect.sync(() => {
-    const nodeResponse = (request as ServerRequestImpl).resolvedResponse
-    if (!nodeResponse.headersSent) {
-      nodeResponse.writeHead(Cause.isInterruptedOnly(cause) ? 503 : 500)
-    }
-    if (!nodeResponse.writableEnded) {
-      nodeResponse.end()
-    }
-  })
 
 class ServerRequestImpl extends HttpIncomingMessageImpl<Error.RequestError> implements ServerRequest.HttpServerRequest {
   readonly [ServerRequest.TypeId]: ServerRequest.TypeId
@@ -407,9 +371,8 @@ const handleResponse = (request: ServerRequest.HttpServerRequest, response: Serv
     switch (body._tag) {
       case "Empty": {
         nodeResponse.writeHead(response.status, headers)
-        return Effect.async<void>((resume) => {
-          nodeResponse.end(() => resume(Effect.void))
-        })
+        nodeResponse.end()
+        return Effect.void
       }
       case "Raw": {
         nodeResponse.writeHead(response.status, headers)
@@ -426,7 +389,10 @@ const handleResponse = (request: ServerRequest.HttpServerRequest, response: Serv
                 reason: "Decode",
                 error
               })
-          })
+          }).pipe(
+            Effect.interruptible,
+            Effect.tapErrorCause(handleCause(nodeResponse))
+          )
         }
         return Effect.async<void>((resume) => {
           nodeResponse.end(body.body, () => resume(Effect.void))
@@ -461,7 +427,10 @@ const handleResponse = (request: ServerRequest.HttpServerRequest, response: Serv
               .once("finish", () => {
                 resume(Effect.void)
               })
-          }).pipe(Effect.interruptible)
+          }).pipe(
+            Effect.interruptible,
+            Effect.tapErrorCause(handleCause(nodeResponse))
+          )
         })
       }
       case "Stream": {
@@ -484,10 +453,26 @@ const handleResponse = (request: ServerRequest.HttpServerRequest, response: Serv
               reason: "Decode",
               error
             }))
-        ).pipe(Effect.interruptible)
+        ).pipe(
+          Effect.interruptible,
+          Effect.tapErrorCause(handleCause(nodeResponse))
+        )
       }
     }
   })
+
+const handleCause = (nodeResponse: Http.ServerResponse) => <E>(cause: Cause.Cause<E>) =>
+  Error.causeResponse(cause).pipe(
+    Effect.flatMap(([response, cause]) => {
+      if (!nodeResponse.headersSent) {
+        nodeResponse.writeHead(response.status)
+      }
+      if (!nodeResponse.writableEnded) {
+        nodeResponse.end()
+      }
+      return Effect.failCause(cause)
+    })
+  )
 
 /** @internal */
 export const requestSource = (self: ServerRequest.HttpServerRequest): Http.IncomingMessage =>

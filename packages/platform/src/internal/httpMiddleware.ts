@@ -83,12 +83,12 @@ export const logger = make((httpApp) => {
         if (fiber.getFiberRef(loggerDisabled)) {
           return exit
         } else if (exit._tag === "Failure") {
-          const [status, cause] = ServerError.causeStatusStripped(exit.cause)
+          const [response, cause] = ServerError.causeResponseStripped(exit.cause)
           return Effect.zipRight(
             Effect.annotateLogs(Effect.log(cause._tag === "Some" ? cause.value : "Sent HTTP Response"), {
               "http.method": request.method,
               "http.url": request.url,
-              "http.status": status
+              "http.status": response.status
             }),
             exit
           )

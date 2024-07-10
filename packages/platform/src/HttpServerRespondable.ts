@@ -28,7 +28,6 @@ export interface Respondable {
 export const isRespondable = (u: unknown): u is Respondable => hasProperty(u, symbol)
 
 const badRequest = ServerResponse.empty({ status: 400 })
-const internalServerError = () => ServerResponse.empty({ status: 500 })
 
 /**
  * @since 1.0.0
@@ -45,22 +44,14 @@ export const toResponse = (self: Respondable): Effect.Effect<HttpServerResponse>
  * @since 1.0.0
  * @category accessors
  */
-export const toResponseOrElse = (
-  u: unknown,
-  orElse: () => Effect.Effect<HttpServerResponse, unknown>
-): Effect.Effect<HttpServerResponse, unknown> => {
-  if (isRespondable(u)) {
-    return u[symbol]()
+export const toResponseOrElse = (u: unknown, orElse: HttpServerResponse): Effect.Effect<HttpServerResponse> => {
+  if (ServerResponse.isServerResponse(u)) {
+    return Effect.succeed(u)
+  } else if (isRespondable(u)) {
+    return Effect.catchAllCause(u[symbol](), () => Effect.succeed(orElse))
     // add support for some commmon types
   } else if (ParseResult.isParseError(u)) {
     return Effect.succeed(badRequest)
   }
-  return orElse()
+  return Effect.succeed(orElse)
 }
-
-/**
- * @since 1.0.0
- * @category accessors
- */
-export const toResponseError = (u: unknown): Effect.Effect<HttpServerResponse, unknown> =>
-  toResponseOrElse(u, internalServerError)
