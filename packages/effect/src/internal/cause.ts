@@ -970,25 +970,46 @@ export const reduceWithContext = dual<
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const pretty = <E>(cause: Cause.Cause<E>): string => {
+export const pretty = <E>(cause: Cause.Cause<E>, options?: {
+  readonly renderErrorCause?: boolean | undefined
+}): string => {
   if (isInterruptedOnly(cause)) {
     return "All fibers interrupted without errors."
   }
-  return prettyErrors<E>(cause).map((e) => e.stack).join("\n")
+  return prettyErrors<E>(cause).map(function(e) {
+    if (options?.renderErrorCause !== true || e.cause === undefined) {
+      return e.stack
+    }
+    return `${e.stack} {\n${renderErrorCause(e.cause as PrettyError, "  ")}\n}`
+  }).join("\n")
+}
+
+const renderErrorCause = (cause: PrettyError, prefix: string) => {
+  const lines = cause.stack!.split("\n")
+  let stack = `${prefix}[cause]: ${lines[0]}`
+  for (let i = 1, len = lines.length; i < len; i++) {
+    stack += `\n${prefix}${lines[i]}`
+  }
+  return stack
 }
 
 class PrettyError extends globalThis.Error implements Cause.PrettyError {
   span: undefined | Span = undefined
   constructor(originalError: unknown) {
+    const originalErrorIsObject = typeof originalError === "object" && originalError !== null
     const prevLimit = Error.stackTraceLimit
-    Error.stackTraceLimit = 0
-    super(prettyErrorMessage(originalError))
+    Error.stackTraceLimit = 1
+    super(prettyErrorMessage(originalError), {
+      cause: originalErrorIsObject && "cause" in originalError && typeof originalError.cause !== "undefined"
+        ? new PrettyError(originalError.cause)
+        : undefined
+    })
     if (this.message === "") {
       this.message = "An error has occurred"
     }
     Error.stackTraceLimit = prevLimit
     this.name = originalError instanceof Error ? originalError.name : "Error"
-    if (typeof originalError === "object" && originalError !== null) {
+    if (originalErrorIsObject) {
       if (spanSymbol in originalError) {
         this.span = originalError[spanSymbol] as Span
       }

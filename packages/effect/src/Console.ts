@@ -64,6 +64,7 @@ export interface UnsafeConsole {
   dirxml(...args: ReadonlyArray<any>): void
   error(...args: ReadonlyArray<any>): void
   group(label?: string | undefined): void
+  groupCollapsed(label?: string | undefined): void
   groupEnd(): void
   info(...args: ReadonlyArray<any>): void
   log(...args: ReadonlyArray<any>): void
