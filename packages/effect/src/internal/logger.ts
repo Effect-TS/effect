@@ -454,39 +454,29 @@ export const prettyLogger = (options?: {
       }
 
       if (isBrowser) {
-        console.group(firstLine)
+        console.groupCollapsed(firstLine)
       } else {
         log(firstLine)
         console.group()
       }
-      let currentMessage = ""
-      const params: Array<unknown> = []
-
       if (!Cause.isEmpty(cause)) {
         if (isBrowser) {
           console.error(Cause.pretty(cause, { renderErrorCause: true }))
         } else {
-          currentMessage += "\n%s"
-          params.push(Cause.pretty(cause, { renderErrorCause: true }))
+          log(Cause.pretty(cause, { renderErrorCause: true }))
         }
       }
 
       if (messageIndex < message.length) {
         for (; messageIndex < message.length; messageIndex++) {
-          currentMessage += "\n%O"
-          params.push(message[messageIndex])
+          log(message[messageIndex])
         }
       }
 
       if (HashMap.size(annotations) > 0) {
         for (const [key, value] of annotations) {
-          currentMessage += "\n" + color(`${key}:`, colors.bold, colors.white) + " %O"
-          params.push(value)
+          log(color(`${key}:`, colors.bold, colors.white), value)
         }
-      }
-
-      if (currentMessage.length > 0) {
-        log(currentMessage.slice(1), ...params)
       }
       console.groupEnd()
     }
