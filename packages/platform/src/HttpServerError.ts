@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type * as Cause from "effect/Cause"
+import type * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
 import type * as FiberId from "effect/FiberId"
 import type * as Option from "effect/Option"
@@ -120,14 +121,17 @@ export const clientAbortFiberId: FiberId.FiberId = internal.clientAbortFiberId
 /**
  * @since 1.0.0
  */
-export const isClientAbortCause: <E>(cause: Cause.Cause<E>) => boolean = internal.isClientAbortCause
+export const causeResponse: <E>(
+  cause: Cause.Cause<E>
+) => Effect.Effect<readonly [ServerResponse.HttpServerResponse, Cause.Cause<E>]> = internal.causeResponse
 
 /**
  * @since 1.0.0
  */
-export const causeStatusStripped: <E>(
+export const causeResponseStripped: <E>(
   cause: Cause.Cause<E>
-) => readonly [status: number, cause: Option.Option<Cause.Cause<E>>] = internal.causeStatusStripped
+) => readonly [response: ServerResponse.HttpServerResponse, cause: Option.Option<Cause.Cause<E>>] =
+  internal.causeResponseStripped
 
 /**
  * @since 1.0.0

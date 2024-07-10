@@ -14,7 +14,6 @@ import type * as ServerResponse from "@effect/platform/HttpServerResponse"
 import type * as Multipart from "@effect/platform/Multipart"
 import type * as Path from "@effect/platform/Path"
 import * as Socket from "@effect/platform/Socket"
-import * as Cause from "effect/Cause"
 import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
 import * as FiberSet from "effect/FiberSet"
@@ -132,15 +131,7 @@ export const makeHandler: {
     Exclude<Effect.Effect.Context<App>, ServerRequest.HttpServerRequest | Scope.Scope>
   >
 } = <E, R>(httpApp: App.Default<E, R>, middleware?: Middleware.HttpMiddleware) => {
-  const handledApp = App.toHandled(httpApp, (request, exit) => {
-    if (exit._tag === "Success") {
-      return Effect.catchAllCause(
-        handleResponse(request, exit.value),
-        (cause) => handleCause(request, cause)
-      )
-    }
-    return handleCause(request, exit.cause)
-  }, middleware)
+  const handledApp = App.toHandled(httpApp, handleResponse, middleware)
   return Effect.map(FiberSet.makeRuntime<R>(), (runFork) =>
     function handler(
       nodeRequest: Http.IncomingMessage,
@@ -171,15 +162,7 @@ export const makeUpgradeHandler = <R, E>(
   httpApp: App.Default<E, R>,
   middleware?: Middleware.HttpMiddleware
 ) => {
-  const handledApp = App.toHandled(httpApp, (request, exit) => {
-    if (exit._tag === "Success") {
-      return Effect.catchAllCause(
-        handleResponse(request, exit.value),
-        (cause) => handleCause(request, cause)
-      )
-    }
-    return handleCause(request, exit.cause)
-  }, middleware)
+  const handledApp = App.toHandled(httpApp, handleResponse, middleware)
   return Effect.map(FiberSet.makeRuntime<R>(), (runFork) =>
     function handler(
       nodeRequest: Http.IncomingMessage,
@@ -225,17 +208,6 @@ export const makeUpgradeHandler = <R, E>(
       })
     })
 }
-
-const handleCause = <E>(request: ServerRequest.HttpServerRequest, cause: Cause.Cause<E>) =>
-  Effect.sync(() => {
-    const nodeResponse = (request as ServerRequestImpl).resolvedResponse
-    if (!nodeResponse.headersSent) {
-      nodeResponse.writeHead(Cause.isInterruptedOnly(cause) ? 503 : 500)
-    }
-    if (!nodeResponse.writableEnded) {
-      nodeResponse.end()
-    }
-  })
 
 class ServerRequestImpl extends HttpIncomingMessageImpl<Error.RequestError> implements ServerRequest.HttpServerRequest {
   readonly [ServerRequest.TypeId]: ServerRequest.TypeId
@@ -417,16 +389,19 @@ const handleResponse = (request: ServerRequest.HttpServerRequest, response: Serv
           typeof body.body === "object" && body.body !== null && "pipe" in body.body &&
           typeof body.body.pipe === "function"
         ) {
-          return Effect.tryPromise({
-            try: (signal) => pipeline(body.body as any, nodeResponse, { signal, end: true }),
-            catch: (error) =>
-              new Error.ResponseError({
-                request,
-                response,
-                reason: "Decode",
-                error
-              })
-          })
+          return Effect.tapErrorCause(
+            Effect.tryPromise({
+              try: (signal) => pipeline(body.body as any, nodeResponse, { signal, end: true }),
+              catch: (error) =>
+                new Error.ResponseError({
+                  request,
+                  response,
+                  reason: "Decode",
+                  error
+                })
+            }),
+            () => sendInternalError(nodeResponse)
+          )
         }
         return Effect.async<void>((resume) => {
           nodeResponse.end(body.body, () => resume(Effect.void))
@@ -461,7 +436,10 @@ const handleResponse = (request: ServerRequest.HttpServerRequest, response: Serv
               .once("finish", () => {
                 resume(Effect.void)
               })
-          }).pipe(Effect.interruptible)
+          }).pipe(
+            Effect.interruptible,
+            Effect.tapErrorCause(() => sendInternalError(nodeResponse))
+          )
         })
       }
       case "Stream": {
@@ -484,8 +462,21 @@ const handleResponse = (request: ServerRequest.HttpServerRequest, response: Serv
               reason: "Decode",
               error
             }))
-        ).pipe(Effect.interruptible)
+        ).pipe(
+          Effect.interruptible,
+          Effect.tapErrorCause(() => sendInternalError(nodeResponse))
+        )
       }
+    }
+  })
+
+const sendInternalError = (response: Http.ServerResponse) =>
+  Effect.sync(() => {
+    if (!response.headersSent) {
+      response.writeHead(500)
+    }
+    if (!response.writableEnded) {
+      response.end()
     }
   })
 
