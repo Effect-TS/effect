@@ -113,6 +113,7 @@ interface PoolItem<A, E> {
   readonly exit: Exit<A, E>
   finalizer: Effect<void>
   refCount: number
+  disableReclaim: boolean
 }
 
 interface Strategy<A, E> {
@@ -153,7 +154,8 @@ class PoolImpl<A, E> implements Pool<A, E> {
           const item: PoolItem<A, E> = {
             exit,
             finalizer: core.catchAllCause(scope.close(exit), reportUnhandledError),
-            refCount: 0
+            refCount: 0,
+            disableReclaim: false
           }
           this.items.add(item)
           this.available.add(item)
@@ -261,6 +263,7 @@ class PoolImpl<A, E> implements Pool<A, E> {
       if (this.isShuttingDown) return core.void
       for (const poolItem of this.items) {
         if (poolItem.exit._tag === "Success" && poolItem.exit.value === item) {
+          poolItem.disableReclaim = true
           return core.uninterruptible(this.invalidatePoolItem(poolItem))
         }
       }
@@ -371,16 +374,21 @@ const strategyUsageTTL = <A, E>(ttl: Duration.DurationInput) =>
       },
       onAcquire: (item) => queue.offer(item),
       reclaim(pool) {
-        return core.suspend(() => {
+        return core.suspend((): Effect<Option.Option<PoolItem<A, E>>> => {
           if (pool.invalidated.size === 0) {
             return coreEffect.succeedNone
           }
-          const item = Iterable.unsafeHead(pool.invalidated)
-          pool.invalidated.delete(item)
-          if (item.refCount < pool.concurrency) {
-            pool.available.add(item)
+          const item = Iterable.head(
+            Iterable.filter(pool.invalidated, (item) => !item.disableReclaim)
+          )
+          if (item._tag === "None") {
+            return coreEffect.succeedNone
           }
-          return core.as(queue.offer(item), Option.some(item))
+          pool.invalidated.delete(item.value)
+          if (item.value.refCount < pool.concurrency) {
+            pool.available.add(item.value)
+          }
+          return core.as(queue.offer(item.value), item)
         })
       }
     })
