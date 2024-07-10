@@ -31,3 +31,7 @@ export class RecipientAddress extends Schema.Class<RecipientAddress>(TypeIdKey)(
   entityId: Schema.NonEmpty,
   recipientType: Schema.NonEmpty
 }) {}
+
+export namespace RecipientAddress {
+  export type Encoded = Schema.Schema.Encoded<typeof RecipientAddress>
+}

@@ -86,7 +86,7 @@ export const fromFunctionEffectStateful: <S, R, Msg extends Message.Message.Any,
     entityId: string,
     message: Envelope.Envelope<A>,
     stateRef: Ref.Ref<S>
-  ) => Effect.Effect<MessageState.MessageState<Message.Message.Exit<A>>, never, R2>
+  ) => Effect.Effect<MessageState.MessageState<Message.Message.Exit<Msg>>, never, R2>
 ) => RecipientBehaviour<Msg, R | R2> = internal.fromFunctionEffectStateful
 
 /**

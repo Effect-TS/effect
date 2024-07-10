@@ -16,6 +16,7 @@ import * as LogLevel from "effect/LogLevel"
 import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
 import { describe, expect, it } from "vitest"
+import * as Envelope from "@effect/cluster/Envelope"
 
 class Sample extends Message.TaggedMessage<Sample>()("Sample", Schema.Never, Schema.Number, {
   id: Schema.String
@@ -26,7 +27,7 @@ describe.concurrent("RecipientBehaviour", () => {
   const withTestEnv = <R, E, A>(fa: Effect.Effect<R, E, A>) =>
     pipe(fa, Effect.scoped, Logger.withMinimumLogLevel(LogLevel.Info))
 
-  const makeTestActor = <Msg, R>(
+  const makeTestActor = <Msg extends Message.Message.Any, R>(
     fa: RecipientBehaviour.RecipientBehaviour<Msg, R>,
     scope: Scope.Scope
   ) =>
@@ -62,7 +63,7 @@ describe.concurrent("RecipientBehaviour", () => {
       const scope = yield* _(Scope.make())
       const offer = yield* _(makeTestActor(behaviour, scope))
       const msg = new Sample({ id: "1" })
-      yield* _(offer(msg))
+      yield* _(offer(Envelope.make(RecipientAddress.make({ entityId: "a", recipientType: "a"}), msg)))
       yield* _(Scope.close(scope, Exit.interrupt(FiberId.none)))
 
       expect(yield* _(Deferred.await(received))).toBe(true)
@@ -92,7 +93,7 @@ describe.concurrent("RecipientBehaviour", () => {
       const scope = yield* _(Scope.make())
       const offer = yield* _(makeTestActor(behaviour, scope))
       const msg = new Sample({ id: "1" })
-      yield* _(offer(msg))
+      yield* _(offer(Envelope.make(RecipientAddress.make({ entityId: "a", recipientType: "a"}), msg)))
       yield* _(Deferred.await(started))
       yield* _(Scope.close(scope, Exit.interrupt(FiberId.none)))
     }).pipe(withTestEnv, Effect.runPromise).then(() => expect(interrupted).toBe(true))

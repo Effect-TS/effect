@@ -1,5 +1,5 @@
 import * as Envelope from "@effect/cluster/Envelope"
-import type * as SerializedMessage from "@effect/cluster/SerializedMessage"
+import * as SerializedMessage from "@effect/cluster/SerializedMessage"
 
 /**
  * A special kind of Envelope that uses SerializedMessage, so can return either a SerializedValue success or a SerializedValue failure.
@@ -9,3 +9,4 @@ import type * as SerializedMessage from "@effect/cluster/SerializedMessage"
  */
 export interface SerializedEnvelope extends Envelope.Envelope<SerializedMessage.SerializedMessage> {}
 
+export const schema = Envelope.schema(SerializedMessage.schema)

@@ -3,7 +3,7 @@
  */
 import * as MessageState from "@effect/cluster/MessageState"
 import * as SerializedEnvelope from "@effect/cluster/SerializedEnvelope"
-import * as SerializedMessage from "@effect/cluster/SerializedMessage"
+import * as SerializedValue from "@effect/cluster/SerializedValue"
 import * as ShardId from "@effect/cluster/ShardId"
 import * as ShardingException from "@effect/cluster/ShardingException"
 import * as Schema from "@effect/schema/Schema"

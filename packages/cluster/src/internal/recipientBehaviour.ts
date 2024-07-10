@@ -39,7 +39,7 @@ export function fromFunctionEffectStateful<S, R, Msg extends Message.Message.Any
     entityId: string,
     envelope: Envelope.Envelope<A>,
     stateRef: Ref.Ref<S>
-  ) => Effect.Effect<MessageState.MessageState<Message.Message.Exit<A>>, never, R2>
+  ) => Effect.Effect<MessageState.MessageState<Message.Message.Exit<Msg>>, never, R2>
 ): RecipientBehaviour.RecipientBehaviour<Msg, R | R2> {
   return Effect.flatMap(RecipientBehaviourContext.entityId, (entityId) =>
     pipe(
