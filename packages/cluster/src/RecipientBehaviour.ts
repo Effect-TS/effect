@@ -36,7 +36,7 @@ export interface RecipientBehaviour<Msg extends Message.Message.Any, R> extends
     <A extends Msg>(
       envelope: Envelope.Envelope<A>
     ) => Effect.Effect<
-      MessageState.MessageState<Message.Message.Exit<A>>,
+      MessageState.MessageState<Message.Message.Exit<Msg>>,
       ShardingException.ExceptionWhileOfferingMessageException
     >,
     never,
@@ -69,7 +69,7 @@ export const fromFunctionEffect: <Msg extends Message.Message.Any, R>(
   handler: <A extends Msg>(
     entityId: string,
     envelope: Envelope.Envelope<A>
-  ) => Effect.Effect<MessageState.MessageState<Message.Message.Exit<A>>, never, R>
+  ) => Effect.Effect<MessageState.MessageState<Message.Message.Exit<Msg>>, never, R>
 ) => RecipientBehaviour<Msg, R> = internal.fromFunctionEffect
 
 /**
@@ -82,9 +82,9 @@ export const fromFunctionEffect: <Msg extends Message.Message.Any, R>(
  */
 export const fromFunctionEffectStateful: <S, R, Msg extends Message.Message.Any, R2>(
   initialState: (entityId: string) => Effect.Effect<S, never, R>,
-  handler: <A extends Envelope.Envelope<Msg>>(
+  handler: <A extends Msg>(
     entityId: string,
-    message: A,
+    message: Envelope.Envelope<A>,
     stateRef: Ref.Ref<S>
   ) => Effect.Effect<MessageState.MessageState<Message.Message.Exit<A>>, never, R2>
 ) => RecipientBehaviour<Msg, R | R2> = internal.fromFunctionEffectStateful
@@ -101,8 +101,8 @@ export const fromInMemoryQueue: <Msg extends Message.Message.Any, R>(
   handler: (
     entityId: string,
     dequeue: Queue.Dequeue<Envelope.Envelope<Msg> | PoisonPill.PoisonPill>,
-    processed: <A extends Envelope.Envelope<Msg>>(
-      message: A,
+    processed: <A extends Msg>(
+      message: Envelope.Envelope<A>,
       value: Option.Option<Message.Message.Exit<A>>
     ) => Effect.Effect<void>
   ) => Effect.Effect<void, never, R>

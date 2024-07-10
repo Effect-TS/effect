@@ -23,6 +23,7 @@ import type * as Sharding from "../Sharding.js"
 import type * as ShardingConfig from "../ShardingConfig.js"
 import * as ShardingException from "../ShardingException.js"
 import * as EntityState from "./entityState.js"
+import * as Envelope from "@effect/cluster/Envelope"
 
 /** @internal */
 const EntityManagerSymbolKey = "@effect/cluster/EntityManager"
@@ -236,7 +237,7 @@ export function make<Msg extends Message.Message.Any, R>(
                           serialization.decode(recipientType.schema, envelope.message.body),
                           Effect.flatMap((message) =>
                             pipe(
-                              offer(message),
+                              offer(Envelope.map(envelope, () => message)),
                               Effect.flatMap((_) =>
                                 MessageState.mapEffect(
                                   _,

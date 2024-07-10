@@ -66,7 +66,7 @@ export function fromInMemoryQueue<Msg extends Message.Message.Any, R>(
     dequeue: Queue.Dequeue<Envelope.Envelope<Msg> | PoisonPill.PoisonPill>,
     processed: <A extends Msg>(
       envelope: Envelope.Envelope<A>,
-      value: Option.Option<Message.Message.Exit<A>>
+      value: Option.Option<Message.Message.Exit<Msg>>
     ) => Effect.Effect<void>
   ) => Effect.Effect<void, never, R>
 ): RecipientBehaviour.RecipientBehaviour<Msg, R> {
@@ -78,7 +78,7 @@ export function fromInMemoryQueue<Msg extends Message.Message.Any, R>(
       return pipe(Ref.update(envelopeStates, HashMap.set(PrimaryKey.value(message), state)), Effect.as(state))
     }
 
-    function getMessageState(message: Envelope.Envelope<Msg>) {
+    function getMessageState<A extends Msg>(message: Envelope.Envelope<A>) {
       return pipe(
         Ref.get(envelopeStates),
         Effect.map(HashMap.get(PrimaryKey.value(message)))
@@ -87,7 +87,7 @@ export function fromInMemoryQueue<Msg extends Message.Message.Any, R>(
 
     function reply<A extends Msg>(
       message: Envelope.Envelope<A>,
-      reply: Option.Option<Message.Message.Exit<A>>
+      reply: Option.Option<Message.Message.Exit<Msg>>
     ) {
       return updateEnvelopeState(message, MessageState.Processed(reply))
     }
@@ -116,13 +116,13 @@ export function fromInMemoryQueue<Msg extends Message.Message.Any, R>(
               Effect.forkDaemon
             )
           ),
-          Effect.map((queue) => (envelope: Envelope.Envelope<Msg>) => {
+          Effect.map((queue) => <A extends Msg>(envelope: Envelope.Envelope<A>) => {
             return pipe(
               getMessageState(envelope),
               Effect.flatMap(Option.match({
                 onNone: () =>
                   pipe(
-                    Queue.offer(queue, envelope),
+                    Queue.offer(queue, envelope as any),
                     Effect.zipRight(updateEnvelopeState(envelope, MessageState.Acknowledged))
                   ),
                 onSome: (state) => Effect.succeed(state)

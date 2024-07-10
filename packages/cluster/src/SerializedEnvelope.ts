@@ -1,4 +1,4 @@
-import type * as Envelope from "@effect/cluster/Envelope"
+import * as Envelope from "@effect/cluster/Envelope"
 import type * as SerializedMessage from "@effect/cluster/SerializedMessage"
 
 /**
@@ -8,3 +8,4 @@ import type * as SerializedMessage from "@effect/cluster/SerializedMessage"
  * @category models
  */
 export interface SerializedEnvelope extends Envelope.Envelope<SerializedMessage.SerializedMessage> {}
+

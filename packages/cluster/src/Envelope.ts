@@ -121,3 +121,12 @@ export const make = <Req extends Message.Message.Any>(
 export const isEnvelope = (u: unknown): u is Envelope<
   Message.Message.Any
 > => Predicate.isObject(u) && Predicate.hasProperty(u, TypeId)
+
+/**
+ * @since 1.0.0
+ * @category mapping
+ */
+export const map = <A extends Message.Message.Any, B extends Message.Message.Any>(
+  fa: Envelope<A>,
+  fn: (value: A) => B
+): Envelope<B> => make(fa.address, fn(fa.message))
