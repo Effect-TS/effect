@@ -3,7 +3,6 @@
  */
 import type * as Message from "@effect/cluster/Message"
 import { RecipientAddress } from "@effect/cluster/RecipientAddress"
-import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
 import * as Data from "effect/Data"
@@ -74,6 +73,23 @@ export declare namespace Envelope {
     readonly address: RecipientAddress.Encoded
     readonly message: IA
   }
+
+  export type Fields$<A extends Schema.Schema.Any> = {
+    address: typeof RecipientAddress
+    message: A
+  }
+
+  export interface Envelope$<A extends Schema.Schema.Any> extends
+    Schema.Class<
+      Envelope$<A>,
+      Fields$<A>,
+      Schema.Struct.Encoded<Fields$<A>>,
+      Schema.Struct.Context<Fields$<A>>,
+      Schema.Struct.Constructor<Fields$<A>>,
+      {},
+      {}
+    >
+  {}
 }
 
 const EnvelopeProto = Data.unsafeStruct({
@@ -89,10 +105,7 @@ const EnvelopeProto = Data.unsafeStruct({
     )
   },
   get [Serializable.symbol]() {
-    return Schema.Struct({
-      address: RecipientAddress,
-      message: Serializable.selfSchema((this as any).message)
-    })
+    return schema(Serializable.selfSchema((this as any).message))
   },
   get [Serializable.symbolResult]() {
     return {
@@ -140,74 +153,28 @@ export const map = dual<
   ) => Envelope<B>
 >(2, (self, f) => make(self.address, f(self.message)))
 
-const envelopeParse = <A extends Message.Message.Any, R>(
-  decodeUnknown: ParseResult.DecodeUnknown<Envelope.Encoded<A>, R>
-): ParseResult.DeclarationDecodeUnknown<Envelope<A>, R> =>
-(u, options, ast) =>
-  isEnvelope(u) ?
-    ParseResult.mapBoth(decodeUnknown(u, options), {
-      onFailure: (e) => new ParseResult.Composite(ast, u, e),
-      onSuccess: (e) => make(e.address, e.message)
-    })
-    : ParseResult.fail(new ParseResult.Type(ast, u))
-
 /**
  * @since 1.0.0
- * @category models
+ * @category schemas
  */
-export interface Envelope$<A extends Schema.Schema.Any> extends
-  Schema.Schema<
-    Envelope<Schema.Schema.Type<A>>,
-    Envelope.Encoded<Schema.Schema.Encoded<A>>,
-    Schema.Schema.Context<A>
-  >
-{}
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface EnvelopeFromSelf<Value extends Schema.Schema.Any> extends
-  Schema.Schema<
-    Envelope<Schema.Schema.Type<Value>>,
-    Envelope<Schema.Schema.Encoded<Value>>,
-    Schema.Schema.Context<Value>
-  >
-{}
-
-const Envelope$ = <A extends Schema.Schema.Any>(message: A) =>
-  Schema.Struct({
+export const schema = <A extends Schema.Schema.Any>(message: A): Envelope.Envelope$<A> =>
+  class LocalEnvelope$ extends Schema.Class<LocalEnvelope$>("@effect/cluster/Envelope")({
     address: RecipientAddress,
-    message
-  })
-
-/**
- * @since 1.0.0
- * @category schemas
- */
-export const EnvelopeFromSelf = <Value extends Schema.Schema.Any>(value: Value): EnvelopeFromSelf<Value> => {
-  return Schema.declare(
-    [value],
-    {
-      decode: (item) => envelopeParse(ParseResult.decodeUnknown(Envelope$(item))),
-      encode: (item) => envelopeParse(ParseResult.encodeUnknown(Envelope$(item)))
-    },
-    {}
-  )
-}
-
-/**
- * @since 1.0.0
- * @category schemas
- */
-export const schema = <A extends Schema.Schema.Any>(message: A): Envelope$<A> => {
-  return Schema.transform(
-    Envelope$(Schema.asSchema(message)),
-    EnvelopeFromSelf(Schema.typeSchema(message)),
-    {
-      strict: true,
-      decode: (_) => make(_.address, _.message),
-      encode: (_) => ({ address: _.address, message: _.message })
+    message: message as any
+  }) {
+    [PrimaryKey.symbol](this: Envelope<any>) {
+      return (
+        PrimaryKey.value(this.message) +
+        "@" +
+        this.address.recipientType +
+        "#" +
+        this.address.entityId
+      )
     }
-  )
-}
+    get [Serializable.symbol]() {
+      return this.constructor
+    }
+    get [Serializable.symbolResult]() {
+      return (this as any).message[Serializable.symbolResult]()
+    }
+  } as any
