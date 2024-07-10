@@ -712,19 +712,40 @@ export const branchAfter = dual<
 export const broadcast = dual<
   <N extends number>(
     n: N,
-    maximumLag: number
+    maximumLag: number | {
+      readonly capacity: "unbounded"
+      readonly replay?: number | undefined
+    } | {
+      readonly capacity: number
+      readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
+      readonly replay?: number | undefined
+    }
   ) => <A, E, R>(
     self: Stream.Stream<A, E, R>
   ) => Effect.Effect<TupleOf<N, Stream.Stream<A, E>>, never, Scope.Scope | R>,
   <A, E, R, N extends number>(
     self: Stream.Stream<A, E, R>,
     n: N,
-    maximumLag: number
+    maximumLag: number | {
+      readonly capacity: "unbounded"
+      readonly replay?: number | undefined
+    } | {
+      readonly capacity: number
+      readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
+      readonly replay?: number | undefined
+    }
   ) => Effect.Effect<TupleOf<N, Stream.Stream<A, E>>, never, Scope.Scope | R>
 >(3, <A, E, R, N extends number>(
   self: Stream.Stream<A, E, R>,
   n: N,
-  maximumLag: number
+  maximumLag: number | {
+    readonly capacity: "unbounded"
+    readonly replay?: number | undefined
+  } | {
+    readonly capacity: number
+    readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
+    readonly replay?: number | undefined
+  }
 ): Effect.Effect<TupleOf<N, Stream.Stream<A, E>>, never, Scope.Scope | R> =>
   pipe(
     self,
@@ -737,41 +758,79 @@ export const broadcast = dual<
 /** @internal */
 export const broadcastDynamic = dual<
   (
-    maximumLag: number
+    maximumLag: number | {
+      readonly capacity: "unbounded"
+      readonly replay?: number | undefined
+    } | {
+      readonly capacity: number
+      readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
+      readonly replay?: number | undefined
+    }
   ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<Stream.Stream<A, E>, never, Scope.Scope | R>,
   <A, E, R>(
     self: Stream.Stream<A, E, R>,
-    maximumLag: number
+    maximumLag: number | {
+      readonly capacity: "unbounded"
+      readonly replay?: number | undefined
+    } | {
+      readonly capacity: number
+      readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
+      readonly replay?: number | undefined
+    }
   ) => Effect.Effect<Stream.Stream<A, E>, never, Scope.Scope | R>
 >(2, <A, E, R>(
   self: Stream.Stream<A, E, R>,
-  maximumLag: number
+  maximumLag: number | {
+    readonly capacity: "unbounded"
+    readonly replay?: number | undefined
+  } | {
+    readonly capacity: number
+    readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
+    readonly replay?: number | undefined
+  }
 ): Effect.Effect<Stream.Stream<A, E>, never, Scope.Scope | R> =>
-  pipe(
-    self,
-    broadcastedQueuesDynamic(maximumLag),
-    Effect.map((effect) => flattenTake(flatMap(scoped(effect), fromQueue)))
-  ))
+  Effect.map(toPubSub(self, maximumLag), (pubsub) => flattenTake(fromPubSub(pubsub))))
 
 /** @internal */
 export const broadcastedQueues = dual<
   <N extends number>(
     n: N,
-    maximumLag: number
+    maximumLag: number | {
+      readonly capacity: "unbounded"
+      readonly replay?: number | undefined
+    } | {
+      readonly capacity: number
+      readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
+      readonly replay?: number | undefined
+    }
   ) => <A, E, R>(
     self: Stream.Stream<A, E, R>
   ) => Effect.Effect<TupleOf<N, Queue.Dequeue<Take.Take<A, E>>>, never, Scope.Scope | R>,
   <A, E, R, N extends number>(
     self: Stream.Stream<A, E, R>,
     n: N,
-    maximumLag: number
+    maximumLag: number | {
+      readonly capacity: "unbounded"
+      readonly replay?: number | undefined
+    } | {
+      readonly capacity: number
+      readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
+      readonly replay?: number | undefined
+    }
   ) => Effect.Effect<TupleOf<N, Queue.Dequeue<Take.Take<A, E>>>, never, Scope.Scope | R>
 >(3, <A, E, R, N extends number>(
   self: Stream.Stream<A, E, R>,
   n: N,
-  maximumLag: number
+  maximumLag: number | {
+    readonly capacity: "unbounded"
+    readonly replay?: number | undefined
+  } | {
+    readonly capacity: number
+    readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
+    readonly replay?: number | undefined
+  }
 ): Effect.Effect<TupleOf<N, Queue.Dequeue<Take.Take<A, E>>>, never, Scope.Scope | R> =>
-  Effect.flatMap(PubSub.bounded<Take.Take<A, E>>(maximumLag), (pubsub) =>
+  Effect.flatMap(pubsubFromOptions(maximumLag), (pubsub) =>
     pipe(
       Effect.all(Array.from({ length: n }, () => PubSub.subscribe(pubsub))) as Effect.Effect<
         TupleOf<N, Queue.Dequeue<Take.Take<A, E>>>,
@@ -784,17 +843,38 @@ export const broadcastedQueues = dual<
 /** @internal */
 export const broadcastedQueuesDynamic = dual<
   (
-    maximumLag: number
+    maximumLag: number | {
+      readonly capacity: "unbounded"
+      readonly replay?: number | undefined
+    } | {
+      readonly capacity: number
+      readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
+      readonly replay?: number | undefined
+    }
   ) => <A, E, R>(
     self: Stream.Stream<A, E, R>
   ) => Effect.Effect<Effect.Effect<Queue.Dequeue<Take.Take<A, E>>, never, Scope.Scope>, never, Scope.Scope | R>,
   <A, E, R>(
     self: Stream.Stream<A, E, R>,
-    maximumLag: number
+    maximumLag: number | {
+      readonly capacity: "unbounded"
+      readonly replay?: number | undefined
+    } | {
+      readonly capacity: number
+      readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
+      readonly replay?: number | undefined
+    }
   ) => Effect.Effect<Effect.Effect<Queue.Dequeue<Take.Take<A, E>>, never, Scope.Scope>, never, Scope.Scope | R>
 >(2, <A, E, R>(
   self: Stream.Stream<A, E, R>,
-  maximumLag: number
+  maximumLag: number | {
+    readonly capacity: "unbounded"
+    readonly replay?: number | undefined
+  } | {
+    readonly capacity: number
+    readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
+    readonly replay?: number | undefined
+  }
 ): Effect.Effect<Effect.Effect<Queue.Dequeue<Take.Take<A, E>>, never, Scope.Scope>, never, Scope.Scope | R> =>
   Effect.map(toPubSub(self, maximumLag), PubSub.subscribe))
 
@@ -6526,24 +6606,67 @@ export const timeoutTo = dual<
   }
 )
 
+const pubsubFromOptions = <A, E>(
+  options: number | {
+    readonly capacity: "unbounded"
+    readonly replay?: number | undefined
+  } | {
+    readonly capacity: number
+    readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
+    readonly replay?: number | undefined
+  }
+): Effect.Effect<PubSub.PubSub<Take.Take<A, E>>> => {
+  if (typeof options === "number") {
+    return PubSub.bounded(options)
+  } else if (options.capacity === "unbounded") {
+    return PubSub.unbounded({ replay: options.replay })
+  }
+  switch (options.strategy) {
+    case "dropping":
+      return PubSub.dropping(options)
+    case "sliding":
+      return PubSub.sliding(options)
+    default:
+      return PubSub.bounded(options)
+  }
+}
+
 /** @internal */
 export const toPubSub = dual<
   (
-    capacity: number
+    capacity: number | {
+      readonly capacity: "unbounded"
+      readonly replay?: number | undefined
+    } | {
+      readonly capacity: number
+      readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
+      readonly replay?: number | undefined
+    }
   ) => <A, E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<PubSub.PubSub<Take.Take<A, E>>, never, Scope.Scope | R>,
   <A, E, R>(
     self: Stream.Stream<A, E, R>,
-    capacity: number
+    capacity: number | {
+      readonly capacity: "unbounded"
+      readonly replay?: number | undefined
+    } | {
+      readonly capacity: number
+      readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
+      readonly replay?: number | undefined
+    }
   ) => Effect.Effect<PubSub.PubSub<Take.Take<A, E>>, never, Scope.Scope | R>
 >(2, <A, E, R>(
   self: Stream.Stream<A, E, R>,
-  capacity: number
+  capacity: number | {
+    readonly capacity: "unbounded"
+    readonly replay?: number | undefined
+  } | {
+    readonly capacity: number
+    readonly strategy?: "sliding" | "dropping" | "suspend" | undefined
+    readonly replay?: number | undefined
+  }
 ): Effect.Effect<PubSub.PubSub<Take.Take<A, E>>, never, Scope.Scope | R> =>
   pipe(
-    Effect.acquireRelease(
-      PubSub.bounded<Take.Take<A, E>>(capacity),
-      (pubsub) => PubSub.shutdown(pubsub)
-    ),
+    Effect.acquireRelease(pubsubFromOptions<A, E>(capacity), (pubsub) => PubSub.shutdown(pubsub)),
     Effect.tap((pubsub) => pipe(self, runIntoPubSubScoped(pubsub), Effect.forkScoped))
   ))
 
