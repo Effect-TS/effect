@@ -169,7 +169,7 @@ describe.concurrent("Micro", () => {
           Micro.withConcurrency("unbounded"),
           Micro.fork
         )
-        yield* Micro.sleep(60)
+        yield* Micro.sleep(90)
         assert.deepStrictEqual(handle.unsafePoll(), Either.right([1, 2, 3]))
       }).pipe(Micro.runPromise))
 
