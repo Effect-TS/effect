@@ -42,7 +42,7 @@ export const toHandled = <E, R, _, EH, RH>(
     response: ServerResponse.HttpServerResponse
   ) => Effect.Effect<_, EH, RH>,
   middleware?: HttpMiddleware | undefined
-): Default<E | EH | ServerError.ResponseError, Exclude<R | RH, Scope.Scope>> => {
+): Effect.Effect<void, never, Exclude<R | RH, Scope.Scope>> => {
   const responded = Effect.withFiberRuntime<
     ServerResponse.HttpServerResponse,
     E | EH | ServerError.ResponseError,
@@ -68,7 +68,12 @@ export const toHandled = <E, R, _, EH, RH>(
     })
   })
   const withTracer = internalMiddleware.tracer(responded)
-  return Effect.uninterruptible(Effect.scoped(middleware === undefined ? withTracer : middleware(withTracer)))
+  return Effect.uninterruptible(
+    Effect.catchAllCause(
+      Effect.scoped(middleware === undefined ? withTracer : middleware(withTracer)),
+      (_) => Effect.void
+    )
+  )
 }
 
 /**
@@ -133,16 +138,17 @@ export const withPreResponseHandler = dual<
  */
 export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
   const run = Runtime.runFork(runtime)
-  return <E>(self: Default<E, R | Scope.Scope>) => (request: Request): Promise<Response> =>
+  return <E>(self: Default<E, R | Scope.Scope>, middleware: HttpMiddleware | undefined) =>
+  (request: Request): Promise<Response> =>
     new Promise((resolve) => {
-      const fiber = toHandled(self, (request, response) => {
-        resolve(ServerResponse.toWeb(response, request.method === "HEAD"))
-        return Effect.void
-      }).pipe(
-        Effect.catchAllCause(Effect.log),
-        Effect.provideService(ServerRequest.HttpServerRequest, ServerRequest.fromWeb(request)),
-        run
-      )
+      const fiber = run(Effect.provideService(
+        toHandled(self, (request, response) => {
+          resolve(ServerResponse.toWeb(response, request.method === "HEAD"))
+          return Effect.void
+        }, middleware),
+        ServerRequest.HttpServerRequest,
+        ServerRequest.fromWeb(request)
+      ))
       request.signal.addEventListener("abort", () => {
         fiber.unsafeInterruptAsFork(ServerError.clientAbortFiberId)
       }, { once: true })
@@ -153,8 +159,10 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
  * @since 1.0.0
  * @category conversions
  */
-export const toWebHandler: <E>(self: Default<E, Scope.Scope>) => (request: Request) => Promise<Response> =
-  toWebHandlerRuntime(Runtime.defaultRuntime)
+export const toWebHandler: <E>(
+  self: Default<E, Scope.Scope>,
+  middleware?: HttpMiddleware | undefined
+) => (request: Request) => Promise<Response> = toWebHandlerRuntime(Runtime.defaultRuntime)
 
 /**
  * @since 1.0.0
@@ -162,14 +170,15 @@ export const toWebHandler: <E>(self: Default<E, Scope.Scope>) => (request: Reque
  */
 export const toWebHandlerLayer = <E, R, RE>(
   self: Default<E, R | Scope.Scope>,
-  layer: Layer.Layer<R, RE>
+  layer: Layer.Layer<R, RE>,
+  middleware?: HttpMiddleware | undefined
 ): {
   readonly close: () => Promise<void>
   readonly handler: (request: Request) => Promise<Response>
 } => {
   const scope = Effect.runSync(Scope.make())
   const close = () => Effect.runPromise(Scope.close(scope, Exit.void))
-  const build = Effect.map(Layer.toRuntime(layer), (_) => toWebHandlerRuntime(_)(self))
+  const build = Effect.map(Layer.toRuntime(layer), (_) => toWebHandlerRuntime(_)(self, middleware))
   const runner = Effect.runPromise(Scope.extend(build, scope))
   const handler = (request: Request): Promise<Response> => runner.then((handler) => handler(request))
   return { close, handler } as const

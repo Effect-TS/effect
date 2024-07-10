@@ -146,10 +146,6 @@ export const makeHandler: {
       )
       nodeResponse.on("close", () => {
         if (!nodeResponse.writableEnded) {
-          if (!nodeResponse.headersSent) {
-            nodeResponse.writeHead(499)
-          }
-          nodeResponse.end()
           fiber.unsafeInterruptAsFork(Error.clientAbortFiberId)
         }
       })
@@ -197,12 +193,7 @@ export const makeUpgradeHandler = <R, E>(
         )
       )
       socket.on("close", () => {
-        const res = nodeResponse()
         if (!socket.writableEnded) {
-          if (!res.headersSent) {
-            res.writeHead(499)
-          }
-          res.end()
           fiber.unsafeInterruptAsFork(Error.clientAbortFiberId)
         }
       })
@@ -379,9 +370,8 @@ const handleResponse = (request: ServerRequest.HttpServerRequest, response: Serv
     switch (body._tag) {
       case "Empty": {
         nodeResponse.writeHead(response.status, headers)
-        return Effect.async<void>((resume) => {
-          nodeResponse.end(() => resume(Effect.void))
-        })
+        nodeResponse.end()
+        return Effect.void
       }
       case "Raw": {
         nodeResponse.writeHead(response.status, headers)
