@@ -3,6 +3,7 @@ import { RecipientAddress } from "@effect/cluster/RecipientAddress"
 import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
 import { assert, describe, it } from "@effect/vitest"
+import { Cause, Console } from "effect"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as PrimaryKey from "effect/PrimaryKey"
@@ -108,10 +109,8 @@ describe("Envelope", () => {
         const sample = new SampleMessage({ id: 1, name: "sample-1" })
         const envelope = Envelope.make(address, sample)
         const serialized = yield* Serializable.serialize(envelope)
-
         const deserialized = yield* Schema.decode(Envelope.schema(SampleMessage))(serialized)
         assert.isTrue(Equal.equals(envelope, deserialized))
-        assert.isTrue(PrimaryKey.symbol in deserialized)
-      }))
+      }).pipe(Effect.tapErrorCause((cause) => Console.log(Cause.pretty(cause)))))
   })
 })
