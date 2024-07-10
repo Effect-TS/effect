@@ -110,7 +110,7 @@ describe("Stream", () => {
           )
         )
         return Effect.void
-      }, 5)
+      }, { bufferSize: 5 })
       const sink = pipe(Sink.take<number>(1), Sink.zipRight(Sink.never))
       const fiber = yield* $(stream, Stream.run(sink), Effect.fork)
       yield* $(Ref.get(refCount), Effect.repeat({ while: (n) => n !== 7 }))
@@ -205,7 +205,7 @@ describe("Stream", () => {
           )
         )
         return Effect.void
-      }, 5)
+      }, { bufferSize: 5 })
       const sink = pipe(Sink.take<number>(1), Sink.zipRight(Sink.never))
       const fiber = yield* $(stream, Stream.run(sink), Effect.fork)
       yield* $(Ref.get(refCount), Effect.repeat({ while: (n) => n !== 7 }))
@@ -398,7 +398,7 @@ describe("Stream", () => {
           )
         )
         return Effect.void
-      }, 5)
+      }, { bufferSize: 5 })
       const sink = pipe(Sink.take<number>(1), Sink.zipRight(Sink.never))
       const fiber = yield* $(stream, Stream.run(sink), Effect.fork)
       yield* $(Ref.get(refCount), Effect.repeat({ while: (n) => n !== 7 }))
