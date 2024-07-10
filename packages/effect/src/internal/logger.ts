@@ -185,7 +185,7 @@ export const stringLogger: Logger.Logger<unknown, string> = makeLogger(
 
     if (cause != null && cause._tag !== "Empty") {
       output = output + " cause="
-      output = appendQuoted(Cause.pretty(cause), output)
+      output = appendQuoted(Cause.pretty(cause, { renderErrorCause: true }), output)
     }
 
     if (List.isCons(spans)) {
@@ -255,7 +255,7 @@ export const logfmtLogger = makeLogger<unknown, string>(
 
     if (cause != null && cause._tag !== "Empty") {
       output = output + " cause="
-      output = appendQuotedLogfmt(Cause.pretty(cause), output)
+      output = appendQuotedLogfmt(Cause.pretty(cause, { renderErrorCause: true }), output)
     }
 
     if (List.isCons(spans)) {
@@ -324,7 +324,7 @@ export const structuredLogger = makeLogger<unknown, {
       message: messageArr.length === 1 ? structuredMessage(messageArr[0]) : messageArr.map(structuredMessage),
       logLevel: logLevel.label,
       timestamp: date.toISOString(),
-      cause: Cause.isEmpty(cause) ? undefined : Cause.pretty(cause),
+      cause: Cause.isEmpty(cause) ? undefined : Cause.pretty(cause, { renderErrorCause: true }),
       annotations: annotationsObj,
       spans: spansObj,
       fiberId: _fiberId.threadName(fiberId)
@@ -454,42 +454,29 @@ export const prettyLogger = (options?: {
       }
 
       if (isBrowser) {
-        console.group(firstLine)
+        console.groupCollapsed(firstLine)
       } else {
         log(firstLine)
         console.group()
       }
-      let currentMessage = ""
-      const params: Array<unknown> = []
-
       if (!Cause.isEmpty(cause)) {
-        const errors = Cause.prettyErrors(cause)
-        for (let i = 0; i < errors.length; i++) {
-          if (isBrowser) {
-            console.error(errors[i].stack)
-          } else {
-            currentMessage += "\n%s"
-            params.push(errors[i].stack)
-          }
+        if (isBrowser) {
+          console.error(Cause.pretty(cause, { renderErrorCause: true }))
+        } else {
+          log(Cause.pretty(cause, { renderErrorCause: true }))
         }
       }
 
       if (messageIndex < message.length) {
         for (; messageIndex < message.length; messageIndex++) {
-          currentMessage += "\n%O"
-          params.push(message[messageIndex])
+          log(message[messageIndex])
         }
       }
 
       if (HashMap.size(annotations) > 0) {
         for (const [key, value] of annotations) {
-          currentMessage += "\n" + color(`${key}:`, colors.bold, colors.white) + " %O"
-          params.push(value)
+          log(color(`${key}:`, colors.bold, colors.white), value)
         }
-      }
-
-      if (currentMessage.length > 0) {
-        log(currentMessage.slice(1), ...params)
       }
       console.groupEnd()
     }

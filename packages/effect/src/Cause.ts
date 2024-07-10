@@ -957,7 +957,9 @@ export const isExceededCapacityException: (u: unknown) => u is ExceededCapacityE
  * @since 2.0.0
  * @category rendering
  */
-export const pretty: <E>(cause: Cause<E>) => string = internal.pretty
+export const pretty: <E>(cause: Cause<E>, options?: {
+  readonly renderErrorCause?: boolean | undefined
+}) => string = internal.pretty
 
 /**
  * @since 3.2.0

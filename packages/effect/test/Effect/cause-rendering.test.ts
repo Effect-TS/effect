@@ -154,4 +154,14 @@ error
 message
     at`))
     }))
+
+  it.effect("pretty includes error.cause with renderErrorCause: true", () =>
+    Effect.gen(function*() {
+      const cause = yield* Effect.fail(new Error("parent", { cause: new Error("child") })).pipe(
+        Effect.sandbox,
+        Effect.flip
+      )
+      const pretty = Cause.pretty(cause, { renderErrorCause: true })
+      assert.include(pretty, "[cause]: Error: child")
+    }))
 })
