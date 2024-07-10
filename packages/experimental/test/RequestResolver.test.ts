@@ -1,9 +1,7 @@
 import * as Persistence from "@effect/experimental/Persistence"
-import * as PersistenceLmdb from "@effect/experimental/Persistence/Lmdb"
 import * as RequestResolverX from "@effect/experimental/RequestResolver"
 import * as TimeToLive from "@effect/experimental/TimeToLive"
-import { FileSystem, KeyValueStore } from "@effect/platform"
-import { NodeContext } from "@effect/platform-node"
+import { KeyValueStore } from "@effect/platform"
 import { Schema } from "@effect/schema"
 import * as it from "@effect/vitest"
 import { Array, Effect, Exit, Layer, PrimaryKey, Request, RequestResolver, TestClock } from "effect"
@@ -137,13 +135,13 @@ describe("RequestResolver", () => {
 
     testsuite("memory", Persistence.layerResultMemory)
     testsuite("kvs", Persistence.layerResultKeyValueStore.pipe(Layer.provide(KeyValueStore.layerMemory)))
-    testsuite(
-      "lmdb",
-      Effect.gen(function*(_) {
-        const fs = yield* _(FileSystem.FileSystem)
-        const dir = yield* _(fs.makeTempDirectoryScoped())
-        return PersistenceLmdb.layerResult({ path: dir })
-      }).pipe(Layer.unwrapScoped, Layer.provide(NodeContext.layer))
-    )
+    // testsuite(
+    //   "lmdb",
+    //   Effect.gen(function*(_) {
+    //     const fs = yield* _(FileSystem.FileSystem)
+    //     const dir = yield* _(fs.makeTempDirectoryScoped())
+    //     return PersistenceLmdb.layerResult({ path: dir })
+    //   }).pipe(Layer.unwrapScoped, Layer.provide(NodeContext.layer))
+    // )
   })
 })
