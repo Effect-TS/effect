@@ -312,7 +312,10 @@ export const as: {
 
 const _async: <A, E = never, R = never>(
   register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<void, never, R> | void,
-  outputBuffer?: number
+  bufferSize?: number | "unbounded" | {
+    readonly bufferSize?: number | undefined
+    readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
+  } | undefined
 ) => Stream<A, E, R> = internal._async
 
 export {
@@ -364,7 +367,10 @@ export {
  */
 export const asyncEffect: <A, E = never, R = never>(
   register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<unknown, E, R>,
-  outputBuffer?: number
+  bufferSize?: number | "unbounded" | {
+    readonly bufferSize?: number | undefined
+    readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
+  } | undefined
 ) => Stream<A, E, R> = internal.asyncEffect
 
 /**
@@ -378,7 +384,10 @@ export const asyncEffect: <A, E = never, R = never>(
  */
 export const asyncScoped: <A, E = never, R = never>(
   register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<unknown, E, R | Scope.Scope>,
-  outputBuffer?: number
+  bufferSize?: number | "unbounded" | {
+    readonly bufferSize?: number | undefined
+    readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
+  } | undefined
 ) => Stream<A, E, Exclude<R, Scope.Scope>> = internal.asyncScoped
 
 /**
