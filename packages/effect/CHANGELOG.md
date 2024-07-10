@@ -1,5 +1,179 @@
 # effect
 
+## 3.5.0
+
+### Minor Changes
+
+- [#3048](https://github.com/Effect-TS/effect/pull/3048) [`a1f5b83`](https://github.com/Effect-TS/effect/commit/a1f5b831a1bc7535988b370d68d0b3eb1123e0ce) Thanks @tim-smart! - add renderErrorCause option to Cause.pretty
+
+- [#3048](https://github.com/Effect-TS/effect/pull/3048) [`60bc3d0`](https://github.com/Effect-TS/effect/commit/60bc3d0867b13e48b24dc22604b4dd2e7b2c1ca4) Thanks @tim-smart! - add RcRef module
+
+  An `RcRef` wraps a reference counted resource that can be acquired and released multiple times.
+
+  The resource is lazily acquired on the first call to `get` and released when the last reference is released.
+
+  ```ts
+  import { Effect, RcRef } from "effect";
+
+  Effect.gen(function* () {
+    const ref = yield* RcRef.make({
+      acquire: Effect.acquireRelease(Effect.succeed("foo"), () =>
+        Effect.log("release foo"),
+      ),
+    });
+
+    // will only acquire the resource once, and release it
+    // when the scope is closed
+    yield* RcRef.get(ref).pipe(Effect.andThen(RcRef.get(ref)), Effect.scoped);
+  });
+  ```
+
+- [#3048](https://github.com/Effect-TS/effect/pull/3048) [`5ab348f`](https://github.com/Effect-TS/effect/commit/5ab348f265db3d283aa091ddca6d2d49137c16f2) Thanks @tim-smart! - allowing customizing Stream pubsub strategy
+
+  ```ts
+  import { Schedule, Stream } from "effect";
+
+  // toPubSub
+  Stream.fromSchedule(Schedule.spaced(1000)).pipe(
+    Stream.toPubSub({
+      capacity: 16, // or "unbounded"
+      strategy: "dropping", // or "sliding" / "suspend"
+    }),
+  );
+
+  // also for the broadcast apis
+  Stream.fromSchedule(Schedule.spaced(1000)).pipe(
+    Stream.broadcastDynamic({
+      capacity: 16,
+      strategy: "dropping",
+    }),
+  );
+  ```
+
+- [#3048](https://github.com/Effect-TS/effect/pull/3048) [`60bc3d0`](https://github.com/Effect-TS/effect/commit/60bc3d0867b13e48b24dc22604b4dd2e7b2c1ca4) Thanks @tim-smart! - add Duration.isZero, for checking if a Duration is zero
+
+- [#3048](https://github.com/Effect-TS/effect/pull/3048) [`3e04bf8`](https://github.com/Effect-TS/effect/commit/3e04bf8a7127e956cadb7684a8f4c661df57663b) Thanks @sukovanej! - Add `Success` type util for `Config`.
+
+- [#3048](https://github.com/Effect-TS/effect/pull/3048) [`e7fc45f`](https://github.com/Effect-TS/effect/commit/e7fc45f0c7002aafdaec7878149ac064cd104ea3) Thanks @tim-smart! - add Logger.prettyLogger and Logger.pretty
+
+  `Logger.pretty` is a new logger that leverages the features of the `console` APIs to provide a more visually appealing output.
+
+  To try it out, provide it to your program:
+
+  ```ts
+  import { Effect, Logger } from "effect";
+
+  Effect.log("Hello, World!").pipe(Effect.provide(Logger.pretty));
+  ```
+
+- [#3048](https://github.com/Effect-TS/effect/pull/3048) [`a1f5b83`](https://github.com/Effect-TS/effect/commit/a1f5b831a1bc7535988b370d68d0b3eb1123e0ce) Thanks @tim-smart! - add .groupCollapsed to UnsafeConsole
+
+- [#3048](https://github.com/Effect-TS/effect/pull/3048) [`4626de5`](https://github.com/Effect-TS/effect/commit/4626de59c25b384216faa0be87bf0b8cd36357d0) Thanks @giacomoran! - export Random.make taking hashable values as seed
+
+- [#3048](https://github.com/Effect-TS/effect/pull/3048) [`f01e7db`](https://github.com/Effect-TS/effect/commit/f01e7db317827255d7901f523f2e28b43298e8df) Thanks @tim-smart! - add `replay` option to PubSub constructors
+
+  This option adds a replay buffer in front of the given PubSub. The buffer will
+  replay the last `n` messages to any new subscriber.
+
+  ```ts
+  Effect.gen(function*() {
+    const messages = [1, 2, 3, 4, 5]
+    const pubsub = yield* PubSub.bounded<number>({ capacity: 16, replay: 3 })
+    yield* PubSub.publishAll(pubsub, messages)
+    const sub = yield* PubSub.subscribe(pubsub)
+    assert.deepStrictEqual(Chunk.toReadonlyArray(yield* Queue.takeAll(sub)), [3, 4, 5])
+  }))
+  ```
+
+- [#3048](https://github.com/Effect-TS/effect/pull/3048) [`60bc3d0`](https://github.com/Effect-TS/effect/commit/60bc3d0867b13e48b24dc22604b4dd2e7b2c1ca4) Thanks @tim-smart! - add RcMap module
+
+  An `RcMap` can contain multiple reference counted resources that can be indexed
+  by a key. The resources are lazily acquired on the first call to `get` and
+  released when the last reference is released.
+
+  Complex keys can extend `Equal` and `Hash` to allow lookups by value.
+
+  ```ts
+  import { Effect, RcMap } from "effect";
+
+  Effect.gen(function* () {
+    const map = yield* RcMap.make({
+      lookup: (key: string) =>
+        Effect.acquireRelease(Effect.succeed(`acquired ${key}`), () =>
+          Effect.log(`releasing ${key}`),
+        ),
+    });
+
+    // Get "foo" from the map twice, which will only acquire it once
+    // It will then be released once the scope closes.
+    yield* RcMap.get(map, "foo").pipe(
+      Effect.andThen(RcMap.get(map, "foo")),
+      Effect.scoped,
+    );
+  });
+  ```
+
+- [#3048](https://github.com/Effect-TS/effect/pull/3048) [`ac71f37`](https://github.com/Effect-TS/effect/commit/ac71f378f2413e5aa91c95f649ffe898d6a26114) Thanks @dilame! - Ensure `Scope` is excluded from `R` in the `Channel` / `Stream` `run*` functions.
+
+  This fix ensures that `Scope` is now properly excluded from the resulting effect environment.
+  The affected functions include `run`, `runCollect`, `runCount`, `runDrain` and other non-scoped `run*` in both `Stream` and `Channel` modules.
+  This fix brings the type declaration in line with the runtime implementation.
+
+- [#3048](https://github.com/Effect-TS/effect/pull/3048) [`8432360`](https://github.com/Effect-TS/effect/commit/8432360ce68614a419bb328083a4109d0fc8aa93) Thanks @dilame! - refactor(Stream/mergeLeft): rename `self`/`that` argument names to `left`/`right` for clarity
+
+  refactor(Stream/mergeRight): rename `self`/`that` argument names to `left`/`right` for clarity
+
+- [#3048](https://github.com/Effect-TS/effect/pull/3048) [`e4bf1bf`](https://github.com/Effect-TS/effect/commit/e4bf1bf2b4a970eacd77c9b77b5ea8c68bc84498) Thanks @dilame! - feat(Stream): implement "raceAll" operator, which returns a stream that mirrors the first source stream to emit an item.
+
+  ```ts
+  import { Stream, Schedule, Console, Effect } from "effect";
+
+  const stream = Stream.raceAll(
+    Stream.fromSchedule(Schedule.spaced("1 millis")),
+    Stream.fromSchedule(Schedule.spaced("2 millis")),
+    Stream.fromSchedule(Schedule.spaced("4 millis")),
+  ).pipe(Stream.take(6), Stream.tap(Console.log));
+
+  Effect.runPromise(Stream.runDrain(stream));
+  // Output only from the first stream, the rest streams are interrupted
+  // 0
+  // 1
+  // 2
+  // 3
+  // 4
+  // 5
+  ```
+
+- [#3048](https://github.com/Effect-TS/effect/pull/3048) [`13cb861`](https://github.com/Effect-TS/effect/commit/13cb861a5eded15c55c6cdcf6a8acde8320367a6) Thanks @dilame! - refactor(Stream): use new built-in `Types.TupleOf` instead of `Stream.DynamicTuple` and deprecate it
+
+- [#3048](https://github.com/Effect-TS/effect/pull/3048) [`79d2d91`](https://github.com/Effect-TS/effect/commit/79d2d91464d95dde0e9444d43e7a7f309f05d6e6) Thanks @tim-smart! - support ErrorOptions in YieldableError constructor
+
+- [#3048](https://github.com/Effect-TS/effect/pull/3048) [`9f66825`](https://github.com/Effect-TS/effect/commit/9f66825f1fce0fe8d10420c285f7dc4c71e8af8d) Thanks @tim-smart! - allow customizing the output buffer for the Stream.async\* apis
+
+  ```ts
+  import { Stream } from "effect";
+
+  Stream.async<string>(
+    (emit) => {
+      // ...
+    },
+    {
+      bufferSize: 16,
+      strategy: "dropping", // you can also use "sliding" or "suspend"
+    },
+  );
+  ```
+
+### Patch Changes
+
+- [#3048](https://github.com/Effect-TS/effect/pull/3048) [`a1f5b83`](https://github.com/Effect-TS/effect/commit/a1f5b831a1bc7535988b370d68d0b3eb1123e0ce) Thanks @tim-smart! - include Error.cause stack in log output
+
+- [#3048](https://github.com/Effect-TS/effect/pull/3048) [`a1f5b83`](https://github.com/Effect-TS/effect/commit/a1f5b831a1bc7535988b370d68d0b3eb1123e0ce) Thanks @tim-smart! - set stackTraceLimit to 1 in PrettyError to address performance issues
+
+- [#3048](https://github.com/Effect-TS/effect/pull/3048) [`79d2d91`](https://github.com/Effect-TS/effect/commit/79d2d91464d95dde0e9444d43e7a7f309f05d6e6) Thanks @tim-smart! - ensure "cause" is rendered in Data.Error output
+
+- [#3048](https://github.com/Effect-TS/effect/pull/3048) [`e7fc45f`](https://github.com/Effect-TS/effect/commit/e7fc45f0c7002aafdaec7878149ac064cd104ea3) Thanks @tim-smart! - fix types of UnsafeConsole.group
+
 ## 3.4.9
 
 ### Patch Changes
