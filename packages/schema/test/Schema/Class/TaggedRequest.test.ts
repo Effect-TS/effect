@@ -44,8 +44,12 @@ const IdNumber = S.Number.pipe(
 
 describe("TaggedRequest", () => {
   it("should expose the fields and the tag", () => {
-    class TRA extends S.TaggedRequest<TRA>()("TRA", S.String, S.Number, {
-      id: S.Number
+    class TRA extends S.TaggedRequest<TRA>()("TRA", {
+      failure: S.String,
+      success: S.Number,
+      payload: {
+        id: S.Number
+      }
     }) {}
     Util.expectFields(TRA.fields, {
       _tag: S.getClassTag("TRA"),
@@ -55,19 +59,31 @@ describe("TaggedRequest", () => {
   })
 
   it("should expose the identifier", () => {
-    class TRA extends S.TaggedRequest<TRA>()("TRA", S.String, S.Number, {
-      id: S.Number
+    class TRA extends S.TaggedRequest<TRA>()("TRA", {
+      failure: S.String,
+      success: S.Number,
+      payload: {
+        id: S.Number
+      }
     }) {}
     expect(TRA.identifier).toEqual("TRA")
-    class TRB extends S.TaggedRequest<TRB>("id")("TRB", S.String, S.Number, {
-      id: S.Number
+    class TRB extends S.TaggedRequest<TRB>("id")("TRB", {
+      failure: S.String,
+      success: S.Number,
+      payload: {
+        id: S.Number
+      }
     }) {}
     expect(TRB.identifier).toEqual("id")
   })
 
   it("baseline", () => {
-    class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", S.String, S.Number, {
-      id: S.Number
+    class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", {
+      failure: S.String,
+      success: S.Number,
+      payload: {
+        id: S.Number
+      }
     }) {}
 
     let req = new MyRequest({ id: 1 })
@@ -84,8 +100,12 @@ describe("TaggedRequest", () => {
   })
 
   it("TaggedRequest extends SerializableWithExit", () => {
-    class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", S.String, S.NumberFromString, {
-      id: S.Number
+    class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", {
+      failure: S.String,
+      success: S.NumberFromString,
+      payload: {
+        id: S.Number
+      }
     }) {}
 
     const req = new MyRequest({ id: 1 })
@@ -117,8 +137,12 @@ describe("TaggedRequest", () => {
   })
 
   it("TaggedRequest context", () => {
-    class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", NameString, S.Number, {
-      id: IdNumber
+    class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", {
+      failure: NameString,
+      success: S.Number,
+      payload: {
+        id: IdNumber
+      }
     }) {}
 
     let req = new MyRequest({ id: 1 }, true)
@@ -162,8 +186,12 @@ describe("TaggedRequest", () => {
   })
 
   it("should expose a make constructor", () => {
-    class TRA extends S.TaggedRequest<TRA>()("TRA", S.String, S.Number, {
-      n: S.NumberFromString
+    class TRA extends S.TaggedRequest<TRA>()("TRA", {
+      failure: S.String,
+      success: S.Number,
+      payload: {
+        n: S.NumberFromString
+      }
     }) {
       a() {
         return this.n + "a"

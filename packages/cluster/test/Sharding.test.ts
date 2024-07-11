@@ -214,19 +214,25 @@ describe.concurrent("SampleTests", () => {
     return Effect.gen(function*(_) {
       yield* _(Sharding.registerScoped)
 
-      class GetIncrement extends Schema.TaggedRequest<GetIncrement>()("GetIncrement", Schema.Never, Schema.Number, {
-        id: Schema.String
+      class GetIncrement extends Schema.TaggedRequest<GetIncrement>()("GetIncrement", {
+        failure: Schema.Never,
+        success: Schema.Number,
+        payload: {
+          id: Schema.String
+        }
       }) {
         [PrimaryKey.symbol]() {
           return this.id
         }
       }
 
-      class BroadcastIncrement
-        extends Schema.TaggedRequest<BroadcastIncrement>()("BroadcastIncrement", Schema.Never, Schema.Void, {
+      class BroadcastIncrement extends Schema.TaggedRequest<BroadcastIncrement>()("BroadcastIncrement", {
+        failure: Schema.Never,
+        success: Schema.Void,
+        payload: {
           id: Schema.String
-        })
-      {
+        }
+      }) {
         [PrimaryKey.symbol]() {
           return this.id
         }

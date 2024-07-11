@@ -1705,8 +1705,12 @@ hole<Parameters<S.Struct<typeof MyTaggedError.fields>["make"]>>()
 // TaggedRequest
 // ---------------------------------------------
 
-class MyTaggedRequest extends S.TaggedRequest<MyTaggedRequest>()("MyTaggedRequest", S.String, S.Number, {
-  a: S.String
+class MyTaggedRequest extends S.TaggedRequest<MyTaggedRequest>()("MyTaggedRequest", {
+  failure: S.String,
+  success: S.Number,
+  payload: {
+    a: S.String
+  }
 }) {}
 
 // $ExpectType Schema<{ readonly a: string; readonly _tag: "MyTaggedRequest"; }, { readonly a: string; readonly _tag: "MyTaggedRequest"; }, never>

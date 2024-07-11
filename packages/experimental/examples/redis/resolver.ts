@@ -10,8 +10,12 @@ class User extends Schema.Class<User>("User")({
   name: Schema.String
 }) {}
 
-class GetUserById extends Schema.TaggedRequest<GetUserById>()("GetUserById", Schema.String, User, {
-  id: Schema.Number
+class GetUserById extends Schema.TaggedRequest<GetUserById>()("GetUserById", {
+  failure: Schema.String,
+  success: User,
+  payload: {
+    id: Schema.Number
+  }
 }) {
   [PrimaryKey.symbol]() {
     return `GetUserById:${this.id}`

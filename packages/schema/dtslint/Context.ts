@@ -394,8 +394,12 @@ MyClassWithTransformFrom.fields
 // TaggedRequest
 // ---------------------------------------------
 
-class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", bContext, cContext, {
-  a: aContext
+class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", {
+  failure: bContext,
+  success: cContext,
+  payload: {
+    a: aContext
+  }
 }) {}
 
 // $ExpectType "aContext"

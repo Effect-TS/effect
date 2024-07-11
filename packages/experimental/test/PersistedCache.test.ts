@@ -12,8 +12,12 @@ class User extends Schema.Class<User>("User")({
   name: Schema.String
 }) {}
 
-class TTLRequest extends Schema.TaggedRequest<TTLRequest>()("TTLRequest", Schema.String, User, {
-  id: Schema.Number
+class TTLRequest extends Schema.TaggedRequest<TTLRequest>()("TTLRequest", {
+  failure: Schema.String,
+  success: User,
+  payload: {
+    id: Schema.Number
+  }
 }) {
   [PrimaryKey.symbol]() {
     return `TTLRequest:${this.id}`

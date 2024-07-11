@@ -4,20 +4,36 @@ import { Schema } from "@effect/schema"
 import { Cause, Chunk, Context, Deferred, Effect, Exit, Layer, Stream } from "effect"
 import { assert, describe, test } from "vitest"
 
-class Increment extends Schema.TaggedRequest<Increment>()("Increment", Schema.Never, Schema.Number, {}) {}
-class Decrement extends Schema.TaggedRequest<Decrement>()("Decrement", Schema.Never, Schema.Number, {}) {}
-class IncrementBy extends Schema.TaggedRequest<IncrementBy>()("IncrementBy", Schema.Never, Schema.Number, {
-  number: Schema.Number
+class Increment
+  extends Schema.TaggedRequest<Increment>()("Increment", { failure: Schema.Never, success: Schema.Number, payload: {} })
+{}
+class Decrement
+  extends Schema.TaggedRequest<Decrement>()("Decrement", { failure: Schema.Never, success: Schema.Number, payload: {} })
+{}
+class IncrementBy extends Schema.TaggedRequest<IncrementBy>()("IncrementBy", {
+  failure: Schema.Never,
+  success: Schema.Number,
+  payload: {
+    number: Schema.Number
+  }
 }) {}
-class DelayedIncrementBy
-  extends Schema.TaggedRequest<DelayedIncrementBy>()("DelayedIncrementBy", Schema.Never, Schema.Void, {
+class DelayedIncrementBy extends Schema.TaggedRequest<DelayedIncrementBy>()("DelayedIncrementBy", {
+  failure: Schema.Never,
+  success: Schema.Void,
+  payload: {
     delay: Schema.Positive,
     number: Schema.Number
-  })
+  }
+}) {}
+class Multiply
+  extends Schema.TaggedRequest<Multiply>()("Multiply", { failure: Schema.Never, success: Schema.Number, payload: {} })
 {}
-class Multiply extends Schema.TaggedRequest<Multiply>()("Multiply", Schema.Never, Schema.Number, {}) {}
 
-class FailBackground extends Schema.TaggedRequest<FailBackground>()("FailBackground", Schema.Never, Schema.Void, {}) {}
+class FailBackground extends Schema.TaggedRequest<FailBackground>()("FailBackground", {
+  failure: Schema.Never,
+  success: Schema.Void,
+  payload: {}
+}) {}
 
 const counter = Machine.makeWith<number, number>()(
   (input, previous) =>

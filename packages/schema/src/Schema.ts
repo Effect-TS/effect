@@ -7463,21 +7463,21 @@ export declare namespace TaggedRequest {
 export interface TaggedRequestClass<
   Self,
   Tag extends string,
-  Fields extends Struct.Fields,
-  Failure extends Schema.All,
-  Success extends Schema.All
+  Payload extends Struct.Fields,
+  Success extends Schema.All,
+  Failure extends Schema.All
 > extends
   Class<
     Self,
-    Fields,
-    Struct.Encoded<Fields>,
-    Struct.Context<Fields>,
-    Struct.Constructor<Omit<Fields, "_tag">>,
+    Payload,
+    Struct.Encoded<Payload>,
+    Struct.Context<Payload>,
+    Struct.Constructor<Omit<Payload, "_tag">>,
     TaggedRequest<
       Tag,
       Self,
-      Struct.Encoded<Fields>,
-      Struct.Context<Fields>,
+      Struct.Encoded<Payload>,
+      Struct.Context<Payload>,
       Schema.Type<Success>,
       Schema.Encoded<Success>,
       Schema.Type<Failure>,
@@ -7496,22 +7496,24 @@ export interface TaggedRequestClass<
  */
 export const TaggedRequest =
   <Self = never>(identifier?: string) =>
-  <Tag extends string, Fields extends Struct.Fields, Failure extends Schema.All, Success extends Schema.All>(
+  <Tag extends string, Payload extends Struct.Fields, Success extends Schema.All, Failure extends Schema.All>(
     tag: Tag,
-    Failure: Failure,
-    Success: Success,
-    fields: Fields,
+    options: {
+      failure: Failure
+      success: Success
+      payload: Payload
+    },
     annotations?: Annotations.Schema<Self>
   ): [Self] extends [never] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
     : TaggedRequestClass<
       Self,
       Tag,
-      { readonly _tag: PropertySignature<":", Tag, never, ":", Tag, true, never> } & Fields,
-      Failure,
-      Success
+      { readonly _tag: PropertySignature<":", Tag, never, ":", Tag, true, never> } & Payload,
+      Success,
+      Failure
     > =>
   {
-    const taggedFields = extendFields({ _tag: getClassTag(tag) }, fields)
+    const taggedFields = extendFields({ _tag: getClassTag(tag) }, options.payload)
     return class TaggedRequestClass extends makeClass({
       kind: "TaggedRequest",
       identifier: identifier ?? tag,
@@ -7525,7 +7527,10 @@ export const TaggedRequest =
         return this.constructor
       }
       get [serializable_.symbolResult]() {
-        return { Failure, Success }
+        return {
+          Failure: options.failure,
+          Success: options.success
+        }
       }
     } as any
   }
