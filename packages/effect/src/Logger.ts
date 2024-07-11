@@ -73,6 +73,35 @@ export declare namespace Logger {
 }
 
 /**
+ * Creates a custom logger that formats log messages according to the provided
+ * function.
+ *
+ * @example
+ * import { Effect, Logger, LogLevel } from "effect"
+ *
+ * const logger = Logger.make(({ logLevel, message }) => {
+ *   globalThis.console.log(`[${logLevel.label}] ${message}`)
+ * })
+ *
+ * const task1 = Effect.logDebug("task1 done")
+ * const task2 = Effect.logDebug("task2 done")
+ *
+ * const program = Effect.gen(function*() {
+ *   yield* Effect.log("start")
+ *   yield* task1
+ *   yield* task2
+ *   yield* Effect.log("done")
+ * }).pipe(
+ *   Logger.withMinimumLogLevel(LogLevel.Debug),
+ *   Effect.provide(Logger.replace(Logger.defaultLogger, logger))
+ * )
+ *
+ * // Effect.runFork(program)
+ * // [INFO] start
+ * // [DEBUG] task1 done
+ * // [DEBUG] task2 done
+ * // [INFO] done
+ *
  * @category constructors
  * @since 2.0.0
  */
@@ -160,25 +189,36 @@ export const map: {
 } = internal.map
 
 /**
- * @since 2.0.0
- * @category mapping
+ * Creates a batched logger that groups log messages together and processes them
+ * in intervals.
+ *
+ * @param window - The time window in which to batch log messages.
+ *
  * @example
- * import { Console, Effect, Logger } from "effect";
+ * import { Console, Effect, Logger } from "effect"
  *
  * const LoggerLive = Logger.replaceScoped(
  *   Logger.defaultLogger,
  *   Logger.logfmtLogger.pipe(
- *     Logger.batched("500 millis", (messages) =>
- *       Console.log("BATCH", messages.join("\n"))
- *     )
+ *     Logger.batched("500 millis", (messages) => Console.log("BATCH", `[\n${messages.join("\n")}\n]`))
  *   )
- * );
+ * )
  *
- * Effect.gen(function* (_) {
- *   yield* _(Effect.log("one"));
- *   yield* _(Effect.log("two"));
- *   yield* _(Effect.log("three"));
- * }).pipe(Effect.provide(LoggerLive), Effect.runFork);
+ * const program = Effect.gen(function*() {
+ *   yield* Effect.log("one")
+ *   yield* Effect.log("two")
+ *   yield* Effect.log("three")
+ * }).pipe(Effect.provide(LoggerLive))
+ *
+ * // Effect.runFork(program)
+ * // BATCH [
+ * // timestamp=... level=INFO fiber=#0 message=one
+ * // timestamp=... level=INFO fiber=#0 message=two
+ * // timestamp=... level=INFO fiber=#0 message=three
+ * // ]
+ *
+ * @since 2.0.0
+ * @category mapping
  */
 export const batched: {
   <Output, R>(
@@ -278,6 +318,17 @@ export const test: {
 } = internalCircular.test
 
 /**
+ * Sets the minimum log level for subsequent logging operations, allowing
+ * control over which log messages are displayed based on their severity.
+ *
+ * @example
+ * import { Effect, Logger, LogLevel } from "effect"
+ *
+ * const program = Effect.logDebug("message1").pipe(Logger.withMinimumLogLevel(LogLevel.Debug))
+ *
+ * // Effect.runFork(program)
+ * // timestamp=... level=DEBUG fiber=#0 message=message1
+ *
  * @since 2.0.0
  * @category context
  */
@@ -345,12 +396,40 @@ export const zipRight: {
 export const defaultLogger: Logger<unknown, void> = fiberRuntime.defaultLogger
 
 /**
+ * The `jsonLogger` logger formats log entries as JSON objects, making them easy to
+ * integrate with logging systems that consume JSON data.
+ *
+ * @example
+ * import { Effect, Logger } from "effect"
+ *
+ * const program = Effect.log("message1", "message2").pipe(
+ *   Effect.annotateLogs({ key1: "value1", key2: "value2" }),
+ *   Effect.withLogSpan("myspan")
+ * )
+ *
+ * // Effect.runFork(program.pipe(Effect.provide(Logger.json)))
+ * // {"message":["message1","message2"],"logLevel":"INFO","timestamp":"...","annotations":{"key2":"value2","key1":"value1"},"spans":{"myspan":0},"fiberId":"#0"}
+ *
  * @since 2.0.0
  * @category constructors
  */
 export const jsonLogger: Logger<unknown, string> = internal.jsonLogger
 
 /**
+ * This logger outputs logs in a human-readable format that is easy to read
+ * during development or in a production console.
+ *
+ * @example
+ * import { Effect, Logger } from "effect"
+ *
+ * const program = Effect.log("message1", "message2").pipe(
+ *   Effect.annotateLogs({ key1: "value1", key2: "value2" }),
+ *   Effect.withLogSpan("myspan")
+ * )
+ *
+ * // Effect.runFork(program.pipe(Effect.provide(Logger.logFmt)))
+ * // timestamp=... level=INFO fiber=#0 message=message1 message=message2 myspan=0ms key2=value2 key1=value1
+ *
  * @since 2.0.0
  * @category constructors
  */
@@ -363,6 +442,27 @@ export const logfmtLogger: Logger<unknown, string> = internal.logfmtLogger
 export const stringLogger: Logger<unknown, string> = internal.stringLogger
 
 /**
+ * The pretty logger utilizes the capabilities of the console API to generate
+ * visually engaging and color-enhanced log outputs. This feature is
+ * particularly useful for improving the readability of log messages during
+ * development and debugging processes.
+ *
+ * @example
+ * import { Effect, Logger } from "effect"
+ *
+ * const program = Effect.log("message1", "message2").pipe(
+ *   Effect.annotateLogs({ key1: "value1", key2: "value2" }),
+ *   Effect.withLogSpan("myspan")
+ * )
+ *
+ * // Effect.runFork(program.pipe(Effect.provide(Logger.pretty)))
+ * //         green --v                      v-- bold and cyan
+ * // [07:51:54.434] INFO (#0) myspan=1ms: message1
+ * //   message2
+ * //    v-- bold
+ * //   key2: value2
+ * //   key1: value1
+ *
  * @since 3.5.0
  * @category constructors
  */
@@ -376,6 +476,29 @@ export const prettyLogger: (
 ) => Logger<unknown, void> = internal.prettyLogger
 
 /**
+ * The structured logger provides detailed log outputs, structured in a way that
+ * retains comprehensive traceability of the events, suitable for deeper
+ * analysis and troubleshooting.
+ *
+ * @example
+ * import { Effect, Logger } from "effect"
+ *
+ * const program = Effect.log("message1", "message2").pipe(
+ *   Effect.annotateLogs({ key1: "value1", key2: "value2" }),
+ *   Effect.withLogSpan("myspan")
+ * )
+ *
+ * // Effect.runFork(program.pipe(Effect.provide(Logger.structured)))
+ * // {
+ * //   message: [ 'message1', 'message2' ],
+ * //   logLevel: 'INFO',
+ * //   timestamp: '2024-07-09T14:05:41.623Z',
+ * //   cause: undefined,
+ * //   annotations: { key2: 'value2', key1: 'value1' },
+ * //   spans: { myspan: 0 },
+ * //   fiberId: '#0'
+ * // }
+ *
  * @since 2.0.0
  * @category constructors
  */
@@ -399,30 +522,118 @@ export const structuredLogger: Logger<
 export const tracerLogger: Logger<unknown, void> = fiberRuntime.tracerLogger
 
 /**
+ * The `json` logger formats log entries as JSON objects, making them easy to
+ * integrate with logging systems that consume JSON data.
+ *
+ * @example
+ * import { Effect, Logger } from "effect"
+ *
+ * const program = Effect.log("message1", "message2").pipe(
+ *   Effect.annotateLogs({ key1: "value1", key2: "value2" }),
+ *   Effect.withLogSpan("myspan")
+ * )
+ *
+ * // Effect.runFork(program.pipe(Effect.provide(Logger.json)))
+ * // {"message":["message1","message2"],"logLevel":"INFO","timestamp":"...","annotations":{"key2":"value2","key1":"value1"},"spans":{"myspan":0},"fiberId":"#0"}
+ *
  * @since 2.0.0
  * @category constructors
  */
 export const json: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fiberRuntime.jsonLogger)
 
 /**
+ * This logger outputs logs in a human-readable format that is easy to read
+ * during development or in a production console.
+ *
+ * @example
+ * import { Effect, Logger } from "effect"
+ *
+ * const program = Effect.log("message1", "message2").pipe(
+ *   Effect.annotateLogs({ key1: "value1", key2: "value2" }),
+ *   Effect.withLogSpan("myspan")
+ * )
+ *
+ * // Effect.runFork(program.pipe(Effect.provide(Logger.logFmt)))
+ * // timestamp=... level=INFO fiber=#0 message=message1 message=message2 myspan=0ms key2=value2 key1=value1
+ *
  * @since 2.0.0
  * @category constructors
  */
 export const logFmt: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fiberRuntime.logFmtLogger)
 
 /**
+ * The pretty logger utilizes the capabilities of the console API to generate
+ * visually engaging and color-enhanced log outputs. This feature is
+ * particularly useful for improving the readability of log messages during
+ * development and debugging processes.
+ *
+ * @example
+ * import { Effect, Logger } from "effect"
+ *
+ * const program = Effect.log("message1", "message2").pipe(
+ *   Effect.annotateLogs({ key1: "value1", key2: "value2" }),
+ *   Effect.withLogSpan("myspan")
+ * )
+ *
+ * // Effect.runFork(program.pipe(Effect.provide(Logger.pretty)))
+ * //         green --v                      v-- bold and cyan
+ * // [07:51:54.434] INFO (#0) myspan=1ms: message1
+ * //   message2
+ * //    v-- bold
+ * //   key2: value2
+ * //   key1: value1
+ *
  * @since 3.5.0
  * @category constructors
  */
 export const pretty: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fiberRuntime.prettyLogger)
 
 /**
+ * The structured logger provides detailed log outputs, structured in a way that
+ * retains comprehensive traceability of the events, suitable for deeper
+ * analysis and troubleshooting.
+ *
+ * @example
+ * import { Effect, Logger } from "effect"
+ *
+ * const program = Effect.log("message1", "message2").pipe(
+ *   Effect.annotateLogs({ key1: "value1", key2: "value2" }),
+ *   Effect.withLogSpan("myspan")
+ * )
+ *
+ * // Effect.runFork(program.pipe(Effect.provide(Logger.structured)))
+ * // {
+ * //   message: [ 'message1', 'message2' ],
+ * //   logLevel: 'INFO',
+ * //   timestamp: '2024-07-09T14:05:41.623Z',
+ * //   cause: undefined,
+ * //   annotations: { key2: 'value2', key1: 'value1' },
+ * //   spans: { myspan: 0 },
+ * //   fiberId: '#0'
+ * // }
+ *
  * @since 2.0.0
  * @category constructors
  */
 export const structured: Layer.Layer<never> = replace(fiberRuntime.defaultLogger, fiberRuntime.structuredLogger)
 
 /**
+ * Sets the minimum log level for logging operations, allowing control over
+ * which log messages are displayed based on their severity.
+ *
+ * @example
+ * import { Effect, Logger, LogLevel } from "effect"
+ *
+ * const program = Effect.gen(function*() {
+ *   yield* Effect.log("Executing task...")
+ *   yield* Effect.sleep("100 millis")
+ *   console.log("task done")
+ * })
+ *
+ * // Logging disabled using a layer
+ * // Effect.runFork(program.pipe(Effect.provide(Logger.minimumLogLevel(LogLevel.None))))
+ * // task done
+ *
  * @since 2.0.0
  * @category context
  */
