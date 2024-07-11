@@ -1,5 +1,19 @@
 # @effect/experimental
 
+## 0.18.0
+
+### Minor Changes
+
+- [#3233](https://github.com/Effect-TS/effect/pull/3233) [`cb9f8a1`](https://github.com/Effect-TS/effect/commit/cb9f8a1ef656170a79bccdb73e4588ab4243b287) Thanks @tim-smart! - revert PrimaryKey fallback in /experimental Persistence
+
+### Patch Changes
+
+- Updated dependencies [[`639208e`](https://github.com/Effect-TS/effect/commit/639208eeb8a44622994f832bc2d45d06ab636bc8), [`6684b4c`](https://github.com/Effect-TS/effect/commit/6684b4c27d77a7fcc7af2e261a450edf971b62b5), [`6684b4c`](https://github.com/Effect-TS/effect/commit/6684b4c27d77a7fcc7af2e261a450edf971b62b5), [`6684b4c`](https://github.com/Effect-TS/effect/commit/6684b4c27d77a7fcc7af2e261a450edf971b62b5)]:
+  - effect@3.5.2
+  - @effect/platform@0.58.26
+  - @effect/platform-node@0.53.25
+  - @effect/schema@0.68.22
+
 ## 0.17.27
 
 ### Patch Changes
