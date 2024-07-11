@@ -1,8 +1,9 @@
-import { pipe } from "effect/Function"
+import { hole, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 
 declare const number: Option.Option<number>
+declare const string: Option.Option<string>
 declare const numberOrString: Option.Option<string | number>
 
 declare const pimitiveNumber: number
@@ -242,4 +243,38 @@ pipe(
   Option.let("c", (
     _scope // $ExpectType { a: number; b: string; }
   ) => true)
+)
+
+// -------------------------------------------------------------------------------------
+// firstSomeOf
+// -------------------------------------------------------------------------------------
+
+// heterogenous usage
+// $ExpectType Option<string | number>
+Option.firstSomeOf([number, string])
+
+// heterogenous tacit usage
+// $ExpectType Option<string | number>
+pipe(
+  [number, string],
+  Option.firstSomeOf
+)
+
+// heterogenous usage of iterable's union
+// $ExpectType Option<string | number>
+Option.firstSomeOf(
+  hole<
+    | Iterable<Option.Option<number>>
+    | [Option.Option<string>]
+  >()
+)
+
+// heterogenous tacit usage of iterable's union
+// $ExpectType Option<string | number>
+pipe(
+  hole<
+    | Iterable<Option.Option<number>>
+    | [Option.Option<string>]
+  >(),
+  Option.firstSomeOf
 )
