@@ -1,5 +1,11 @@
 # effect
 
+## 3.5.1
+
+### Patch Changes
+
+- [#3220](https://github.com/Effect-TS/effect/pull/3220) [`55fdd76`](https://github.com/Effect-TS/effect/commit/55fdd761ee95afd73b6a892c13fee92b36c02837) Thanks @tim-smart! - fix Logger.pretty on bun
+
 ## 3.5.0
 
 ### Minor Changes
