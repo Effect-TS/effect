@@ -124,21 +124,30 @@ export declare namespace WithResult {
   /**
    * @since 0.67.0
    */
-  export type Context<T> = T extends WithResult<infer _SA, infer _SI, infer _FA, infer _FI, infer R> ? R : never
+  export type Context<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _R : never
+
+  /**
+   * @since 0.67.0
+   */
+  export type Any = WithResult<any, any, any, any, any> | WithResult<any, any, never, never, any>
 }
 
 /**
  * @since 0.67.0
  * @category accessor
  */
-export const failureSchema = <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>): Schema.Schema<FA, FI, R> =>
-  self[symbolResult].Failure
+export const failureSchema = <A extends WithResult.Any>(
+  self: A
+): Schema.Schema<WithResult.Error<A>, WithResult.ErrorEncoded<A>, WithResult.Context<A>> =>
+  self[symbolResult].Failure as any
 
 /**
  * @since 0.67.0
  * @category accessor
  */
-export const successSchema = <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>): Schema.Schema<SA, SI, R> =>
+export const successSchema = <A extends WithResult.Any>(
+  self: A
+): Schema.Schema<WithResult.Success<A>, WithResult.SuccessEncoded<A>, WithResult.Context<A>> =>
   self[symbolResult].Success
 
 const exitSchemaCache = globalValue(
@@ -150,10 +159,12 @@ const exitSchemaCache = globalValue(
  * @since 0.67.0
  * @category accessor
  */
-export const exitSchema = <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>): Schema.Schema<
-  Exit.Exit<SA, FA>,
-  Schema.ExitEncoded<SI, FI>,
-  R
+export const exitSchema = <A extends WithResult.Any>(
+  self: A
+): Schema.Schema<
+  Exit.Exit<WithResult.Success<A>, WithResult.Error<A>>,
+  Schema.ExitEncoded<WithResult.SuccessEncoded<A>, WithResult.ErrorEncoded<A>>,
+  WithResult.Context<A>
 > => {
   const proto = Object.getPrototypeOf(self)
   if (!(symbolResult in proto)) {
