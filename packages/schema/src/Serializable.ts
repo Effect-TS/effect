@@ -87,14 +87,36 @@ export declare namespace WithResult {
   export type Success<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _A : never
 
   /**
-   * @since 0.68.16
+   * @since 0.69.0
    */
-  export type Error<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _E : never
+  export type SuccessEncoded<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _I : never
+
+  /**
+   * @since 0.69.0
+   */
+  export type Failure<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _E : never
+
+  /**
+   * @since 0.69.0
+   */
+  export type FailureEncoded<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _EI : never
 
   /**
    * @since 0.67.0
    */
   export type Context<T> = T extends WithResult<infer _SA, infer _SI, infer _FA, infer _FI, infer R> ? R : never
+
+  /**
+   * @since 0.69.0
+   */
+  export type Any = WithResult<any, any, any, any, unknown>
+
+  /**
+   * @since 0.69.0
+   */
+  export type All =
+    | Any
+    | WithResult<any, any, never, never, unknown>
 }
 
 /**

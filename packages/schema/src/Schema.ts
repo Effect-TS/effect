@@ -7452,8 +7452,16 @@ export declare namespace TaggedRequest {
    * @since 0.67.0
    */
   export type Any =
-    | TaggedRequest<string, any, any, any, any, any, any, any, any>
-    | TaggedRequest<string, any, any, any, any, any, never, never, any>
+    | TaggedRequest<string, any, any, any, any, any, any, any, unknown>
+    | TaggedRequest<string, any, any, any, any, any, never, never, unknown>
+
+  /**
+   * @category classes
+   * @since 0.69.0
+   */
+  export type All =
+    | Any
+    | TaggedRequest<string, any, any, any, any, any, never, never, unknown>
 }
 
 /**

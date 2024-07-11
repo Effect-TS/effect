@@ -35,7 +35,7 @@ export interface PersistedCache<K extends Persistence.ResultPersistence.KeyAny> 
     key: K
   ) => Effect.Effect<
     Serializable.WithResult.Success<K>,
-    Serializable.WithResult.Error<K> | Persistence.PersistenceError
+    Serializable.WithResult.Failure<K> | Persistence.PersistenceError
   >
   readonly invalidate: (key: K) => Effect.Effect<void, Persistence.PersistenceError>
 }
@@ -46,7 +46,7 @@ export interface PersistedCache<K extends Persistence.ResultPersistence.KeyAny> 
  */
 export const make = <K extends Persistence.ResultPersistence.KeyAny, R>(options: {
   readonly storeId: string
-  readonly lookup: (key: K) => Effect.Effect<Serializable.WithResult.Success<K>, Serializable.WithResult.Error<K>, R>
+  readonly lookup: (key: K) => Effect.Effect<Serializable.WithResult.Success<K>, Serializable.WithResult.Failure<K>, R>
   readonly inMemoryCapacity?: number | undefined
   readonly inMemoryTTL?: Duration.DurationInput | undefined
 }): Effect.Effect<
@@ -62,7 +62,7 @@ export const make = <K extends Persistence.ResultPersistence.KeyAny, R>(options:
         lookup: (request: CacheRequest<K>) => {
           const effect: Effect.Effect<
             Serializable.WithResult.Success<K>,
-            Serializable.WithResult.Error<K> | Persistence.PersistenceError,
+            Serializable.WithResult.Failure<K> | Persistence.PersistenceError,
             Serializable.SerializableWithResult.Context<K> | R
           > = pipe(
             store.get(request.key as any),
