@@ -369,9 +369,6 @@ export const isLogger = (u: unknown): u is Logger.Logger<unknown, unknown> => {
   return typeof u === "object" && u != null && LoggerTypeId in u
 }
 
-const processStdoutIsTTY = typeof process === "object" && "stdout" in process && process.stdout.isTTY === true
-const hasWindow = typeof window === "object"
-
 const withColor = (text: string, ...colors: ReadonlyArray<string>) => {
   let out = ""
   for (let i = 0; i < colors.length; i++) {
@@ -408,6 +405,10 @@ const defaultDateFormat = (date: Date): string =>
   `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}:${
     date.getSeconds().toString().padStart(2, "0")
   }.${date.getMilliseconds().toString().padStart(3, "0")}`
+
+const processStdoutIsTTY = typeof process === "object" && "stdout" in process && process.stdout.isTTY === true
+const processIsBun = typeof process === "object" && "isBun" in process && process.isBun === true
+const hasWindow = typeof window === "object"
 
 /** @internal */
 export const prettyLogger = (options?: {
@@ -457,7 +458,7 @@ export const prettyLogger = (options?: {
         console.groupCollapsed(firstLine)
       } else {
         log(firstLine)
-        console.group()
+        if (!processIsBun) console.group()
       }
       if (!Cause.isEmpty(cause)) {
         if (isBrowser) {
@@ -478,7 +479,8 @@ export const prettyLogger = (options?: {
           log(color(`${key}:`, colors.bold, colors.white), value)
         }
       }
-      console.groupEnd()
+
+      if (!processIsBun) console.groupEnd()
     }
   )
 }
