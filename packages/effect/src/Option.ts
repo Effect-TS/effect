@@ -422,9 +422,9 @@ export const orElseEither: {
  * @category error handling
  * @since 2.0.0
  */
-export const firstSomeOf = <T extends Iterable<Option<any>>>(
-  collection: T
-): [T] extends [Iterable<Option<infer A>>] ? Option<A> : never => {
+export const firstSomeOf = <T, C extends Iterable<Option<T>> = Iterable<Option<T>>>(
+  collection: C
+): [C] extends [Iterable<Option<infer A>>] ? Option<A> : never => {
   let out: Option<unknown> = none()
   for (out of collection) {
     if (isSome(out)) {

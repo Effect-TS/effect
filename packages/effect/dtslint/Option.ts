@@ -249,6 +249,9 @@ pipe(
 // firstSomeOf
 // -------------------------------------------------------------------------------------
 
+// @ts-expect-error
+Option.firstSomeOf<number>([number, string])
+
 // heterogenous usage
 // $ExpectType Option<string | number>
 Option.firstSomeOf([number, string])
