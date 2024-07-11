@@ -1100,9 +1100,13 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
       const stackFn = spanToTrace.get(current)
       if (typeof stackFn === "function") {
         const stack = stackFn()
-        const locationMatch = stack.match(locationRegex)
-        const location = locationMatch ? locationMatch[1] : stack.replace(/^at /, "")
-        out.push(`    at ${current.name} (${location})`)
+        if (typeof stack === "string") {
+          const locationMatch = stack.match(locationRegex)
+          const location = locationMatch ? locationMatch[1] : stack.replace(/^at /, "")
+          out.push(`    at ${current.name} (${location})`)
+        } else {
+          out.push(`    at ${current.name}`)
+        }
       } else {
         out.push(`    at ${current.name}`)
       }
