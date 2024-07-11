@@ -80,6 +80,21 @@ describe("TaggedError", () => {
     expect(err.id).toEqual(1)
   })
 
+  it("message field", () => {
+    class MyError extends S.TaggedError<MyError>()("MyError", {
+      id: S.Number,
+      message: S.String
+    }) {
+    }
+
+    const err = new MyError({ id: 1, message: "boom" })
+
+    expect(String(err).includes(`MyError: boom`)).toBe(true)
+    expect(err.stack).toContain("TaggedError.test.ts:")
+    expect(err._tag).toEqual("MyError")
+    expect(err.id).toEqual(1)
+  })
+
   it("should expose a make constructor", () => {
     class A extends S.TaggedError<A>()("A", {
       n: S.NumberFromString
