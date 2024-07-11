@@ -1,5 +1,4 @@
-import type * as SerializedEnvelope from "@effect/cluster/SerializedEnvelope"
-import type * as SerializedValue from "@effect/cluster/SerializedValue"
+import * as Serializable from "@effect/schema/Serializable"
 import * as Clock from "effect/Clock"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -11,19 +10,20 @@ import * as HashSet from "effect/HashSet"
 import * as Option from "effect/Option"
 import * as Scope from "effect/Scope"
 import * as RefSynchronized from "effect/SynchronizedRef"
-import * as Message from "../Message.js"
+import * as Envelope from "../Envelope.js"
 import * as MessageState from "../MessageState.js"
 import type { RecipientAddress } from "../RecipientAddress.js"
 import type * as RecipientBehaviour from "../RecipientBehaviour.js"
 import * as RecipientBehaviourContext from "../RecipientBehaviourContext.js"
 import type * as RecipientType from "../RecipientType.js"
 import type * as Serialization from "../Serialization.js"
+import type * as SerializedEnvelope from "../SerializedEnvelope.js"
+import type * as SerializedValue from "../SerializedValue.js"
 import type * as ShardId from "../ShardId.js"
 import type * as Sharding from "../Sharding.js"
 import type * as ShardingConfig from "../ShardingConfig.js"
 import * as ShardingException from "../ShardingException.js"
 import * as EntityState from "./entityState.js"
-import * as Envelope from "@effect/cluster/Envelope"
 
 /** @internal */
 const EntityManagerSymbolKey = "@effect/cluster/EntityManager"
@@ -61,7 +61,7 @@ export interface EntityManager {
 }
 
 /** @internal */
-export function make<Msg extends Message.Message.Any, R>(
+export function make<Msg extends Envelope.Envelope.AnyMessage, R>(
   recipientType: RecipientType.RecipientType<Msg>,
   recipientBehaviour: RecipientBehaviour.RecipientBehaviour<Msg, R>,
   sharding: Sharding.Sharding,
@@ -241,7 +241,7 @@ export function make<Msg extends Message.Message.Any, R>(
                               Effect.flatMap((_) =>
                                 MessageState.mapEffect(
                                   _,
-                                  (value) => serialization.encode(Message.exitSchema(message), value)
+                                  (value) => serialization.encode(Serializable.exitSchema(message as any), value)
                                 )
                               )
                             )

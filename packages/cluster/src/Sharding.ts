@@ -1,15 +1,14 @@
 /**
  * @since 1.0.0
  */
-import type * as SerializedEnvelope from "@effect/cluster/SerializedEnvelope"
-import type * as SerializedValue from "@effect/cluster/SerializedValue"
+import type * as SerializedEnvelope from "./SerializedEnvelope.js"
+import type * as SerializedValue from "./SerializedValue.js"
 import type * as Effect from "effect/Effect"
 import type * as HashSet from "effect/HashSet"
 import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import type { Broadcaster } from "./Broadcaster.js"
 import * as internal from "./internal/sharding.js"
-import type * as Message from "./Message.js"
 import type * as MessageState from "./MessageState.js"
 import type { Messenger } from "./Messenger.js"
 import type * as PodAddress from "./PodAddress.js"
@@ -18,6 +17,7 @@ import type * as RecipientBehaviour from "./RecipientBehaviour.js"
 import type * as RecipientBehaviourContext from "./RecipientBehaviourContext.js"
 import type * as RecipentType from "./RecipientType.js"
 import type * as ShardId from "./ShardId.js"
+import type { Envelope } from "./Envelope.js"
 import type * as ShardingException from "./ShardingException.js"
 import type * as ShardingRegistrationEvent from "./ShardingRegistrationEvent.js"
 
@@ -41,10 +41,10 @@ export interface Sharding {
   readonly [ShardingTypeId]: ShardingTypeId
   readonly register: Effect.Effect<void>
   readonly unregister: Effect.Effect<void>
-  readonly messenger: <Msg extends Message.Message.Any>(
+  readonly messenger: <Msg extends Envelope.AnyMessage>(
     entityType: RecipentType.EntityType<Msg>
   ) => Messenger<Msg>
-  readonly broadcaster: <Msg extends Message.Message.Any>(
+  readonly broadcaster: <Msg extends Envelope.AnyMessage>(
     topicType: RecipentType.TopicType<Msg>
   ) => Broadcaster<Msg>
   readonly isEntityOnLocalShards: (
@@ -53,13 +53,13 @@ export interface Sharding {
   readonly isShuttingDown: Effect.Effect<boolean>
 
   readonly registerScoped: Effect.Effect<void, never, Scope.Scope>
-  readonly registerEntity: <Msg extends Message.Message.Any>(
+  readonly registerEntity: <Msg extends Envelope.AnyMessage>(
     entityType: RecipentType.EntityType<Msg>
   ) => <R>(
     behaviour: RecipientBehaviour.RecipientBehaviour<Msg, R>,
     options?: RecipientBehaviour.EntityBehaviourOptions
   ) => Effect.Effect<void, never, Exclude<R, RecipientBehaviourContext.RecipientBehaviourContext>>
-  readonly registerTopic: <Msg extends Message.Message.Any>(
+  readonly registerTopic: <Msg extends Envelope.AnyMessage>(
     topicType: RecipentType.TopicType<Msg>
   ) => <R>(
     behaviour: RecipientBehaviour.RecipientBehaviour<Msg, R>,
@@ -137,7 +137,7 @@ export const registerSingleton: <R>(
  * @since 1.0.0
  * @category utils
  */
-export const registerEntity: <Msg extends Message.Message.Any>(
+export const registerEntity: <Msg extends Envelope.AnyMessage>(
   entityType: RecipentType.EntityType<Msg>
 ) => <R>(
   behavior: RecipientBehaviour.RecipientBehaviour<Msg, R>,
@@ -151,7 +151,7 @@ export const registerEntity: <Msg extends Message.Message.Any>(
  * @since 1.0.0
  * @category utils
  */
-export const registerTopic: <Msg extends Message.Message.Any>(
+export const registerTopic: <Msg extends Envelope.AnyMessage>(
   topicType: RecipentType.TopicType<Msg>
 ) => <R>(
   behavior: RecipientBehaviour.RecipientBehaviour<Msg, R>,
@@ -166,7 +166,7 @@ export const registerTopic: <Msg extends Message.Message.Any>(
  * @since 1.0.0
  * @category utils
  */
-export const messenger: <Msg extends Message.Message.Any>(
+export const messenger: <Msg extends Envelope.AnyMessage>(
   entityType: RecipentType.EntityType<Msg>
 ) => Effect.Effect<Messenger<Msg>, never, Sharding> = internal.messenger
 
@@ -177,7 +177,7 @@ export const messenger: <Msg extends Message.Message.Any>(
  * @since 1.0.0
  * @category utils
  */
-export const broadcaster: <Msg extends Message.Message.Any>(
+export const broadcaster: <Msg extends Envelope.AnyMessage>(
   topicType: RecipentType.TopicType<Msg>
 ) => Effect.Effect<Broadcaster<Msg>, never, Sharding> = internal.broadcaster
 

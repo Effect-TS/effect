@@ -26,11 +26,6 @@ export * as ManagerConfig from "./ManagerConfig.js"
 /**
  * @since 1.0.0
  */
-export * as Message from "./Message.js"
-
-/**
- * @since 1.0.0
- */
 export * as MessageState from "./MessageState.js"
 
 /**

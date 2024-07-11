@@ -1,12 +1,12 @@
 /**
  * @since 1.0.0
  */
-import type * as Message from "./Message.js"
-import type * as RecipientType from "./RecipientType.js"
+import type { Envelope } from "./Envelope.js"
+import type { EntityType, TopicType } from "./RecipientType.js"
 
-interface EntityRegistered<Msg extends Message.Message.Any> {
-  _tag: "EntityRegistered"
-  entityType: RecipientType.EntityType<Msg>
+interface EntityRegistered<Msg extends Envelope.AnyMessage> {
+  readonly _tag: "EntityRegistered"
+  readonly entityType: EntityType<Msg>
 }
 
 /**
@@ -15,8 +15,8 @@ interface EntityRegistered<Msg extends Message.Message.Any> {
  * @since 1.0.0
  * @category constructors
  */
-export function EntityRegistered<Msg extends Message.Message.Any>(
-  entityType: RecipientType.EntityType<Msg>
+export function EntityRegistered<Msg extends Envelope.AnyMessage>(
+  entityType: EntityType<Msg>
 ): ShardingRegistrationEvent {
   return ({ _tag: "EntityRegistered", entityType })
 }
@@ -36,9 +36,9 @@ export function SingletonRegistered(name: string): ShardingRegistrationEvent {
   return ({ _tag: "SingletonRegistered", name })
 }
 
-interface TopicRegistered<Msg extends Message.Message.Any> {
+interface TopicRegistered<Msg extends Envelope.AnyMessage> {
   _tag: "TopicRegistered"
-  topicType: RecipientType.TopicType<Msg>
+  topicType: TopicType<Msg>
 }
 
 /**
@@ -46,8 +46,8 @@ interface TopicRegistered<Msg extends Message.Message.Any> {
  * @since 1.0.0
  * @category constructors
  */
-export function TopicRegistered<Msg extends Message.Message.Any>(
-  topicType: RecipientType.TopicType<Msg>
+export function TopicRegistered<Msg extends Envelope.AnyMessage>(
+  topicType: TopicType<Msg>
 ): ShardingRegistrationEvent {
   return ({ _tag: "TopicRegistered", topicType })
 }

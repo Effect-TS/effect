@@ -1,6 +1,6 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import type * as Message from "../Message.js"
+import type { Envelope } from "../Envelope.js"
 import type { RecipientAddress } from "../RecipientAddress.js"
 import type * as RecipientBehaviourContext from "../RecipientBehaviourContext.js"
 import type * as RecipientType from "../RecipientType.js"
@@ -54,7 +54,7 @@ export const shardId: Effect.Effect<ShardId.ShardId, never, RecipientBehaviourCo
 
 /** @internal */
 export const recipientType: Effect.Effect<
-  RecipientType.RecipientType<Message.Message.Any>,
+  RecipientType.RecipientType<Envelope.AnyMessage>,
   never,
   RecipientBehaviourContext.RecipientBehaviourContext
 > = Effect.map(

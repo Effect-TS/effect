@@ -1,7 +1,4 @@
-import * as Envelope from "@effect/cluster/Envelope"
-import type * as SerializedEnvelope from "@effect/cluster/SerializedEnvelope"
-import * as SerializedMessage from "@effect/cluster/SerializedMessage"
-import type * as SerializedValue from "@effect/cluster/SerializedValue"
+import * as Serializable from "@effect/schema/Serializable"
 import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
@@ -24,7 +21,7 @@ import * as Stream from "effect/Stream"
 import * as Synchronized from "effect/SynchronizedRef"
 import * as Unify from "effect/Unify"
 import type * as Broadcaster from "../Broadcaster.js"
-import * as Message from "../Message.js"
+import * as Envelope from "../Envelope.js"
 import * as MessageState from "../MessageState.js"
 import type { Messenger } from "../Messenger.js"
 import * as PodAddress from "../PodAddress.js"
@@ -34,6 +31,9 @@ import type * as RecipientBehaviour from "../RecipientBehaviour.js"
 import type * as RecipientBehaviourContext from "../RecipientBehaviourContext.js"
 import * as RecipientType from "../RecipientType.js"
 import * as Serialization from "../Serialization.js"
+import type * as SerializedEnvelope from "../SerializedEnvelope.js"
+import * as SerializedMessage from "../SerializedMessage.js"
+import type * as SerializedValue from "../SerializedValue.js"
 import * as ShardId from "../ShardId.js"
 import type * as Sharding from "../Sharding.js"
 import * as ShardingConfig from "../ShardingConfig.js"
@@ -90,7 +90,7 @@ export function registerSingleton<R>(
 /**
  * @internal
  */
-export function registerEntity<Msg extends Message.Message.Any>(
+export function registerEntity<Msg extends Envelope.Envelope.AnyMessage>(
   entityType: RecipientType.EntityType<Msg>
 ) {
   return <R>(
@@ -103,7 +103,7 @@ export function registerEntity<Msg extends Message.Message.Any>(
 /**
  * @internal
  */
-export function registerTopic<Msg extends Message.Message.Any>(
+export function registerTopic<Msg extends Envelope.Envelope.AnyMessage>(
   topicType: RecipientType.TopicType<Msg>
 ) {
   return <R>(
@@ -116,7 +116,7 @@ export function registerTopic<Msg extends Message.Message.Any>(
 /**
  * @internal
  */
-export function messenger<Msg extends Message.Message.Any>(
+export function messenger<Msg extends Envelope.Envelope.AnyMessage>(
   entityType: RecipientType.EntityType<Msg>
 ): Effect.Effect<Messenger<Msg>, never, Sharding.Sharding> {
   return Effect.map(shardingTag, (_) => _.messenger(entityType))
@@ -125,7 +125,7 @@ export function messenger<Msg extends Message.Message.Any>(
 /**
  * @internal
  */
-export function broadcaster<Msg extends Message.Message.Any>(
+export function broadcaster<Msg extends Envelope.Envelope.AnyMessage>(
   topicType: RecipientType.TopicType<Msg>
 ): Effect.Effect<Broadcaster.Broadcaster<Msg>, never, Sharding.Sharding> {
   return Effect.map(shardingTag, (_) => _.broadcaster(topicType))
@@ -485,7 +485,7 @@ function make(
       : sendMessageToRemotePodWithoutRetries(pod, envelope)
   }
 
-  function messenger<Msg extends Message.Message.Any>(
+  function messenger<Msg extends Envelope.Envelope.AnyMessage>(
     entityType: RecipientType.EntityType<Msg>
   ): Messenger<Msg> {
     function sendDiscard(entityId: string) {
@@ -497,11 +497,11 @@ function make(
     }
 
     function send(entityId: string) {
-      return <A extends Msg & Message.Message.Any>(message: A) => {
+      return <A extends Msg & Envelope.Envelope.AnyMessage>(message: A) => {
         return pipe(
           sendMessage(entityId, message),
           Effect.flatMap((state) =>
-            MessageState.mapEffect(state, (body) => serialization.decode(Message.exitSchema(message), body))
+            MessageState.mapEffect(state, (body) => serialization.decode(Serializable.exitSchema(message), body))
           ),
           Effect.flatMap((state) =>
             Unify.unify(pipe(
@@ -565,7 +565,7 @@ function make(
     return { sendDiscard, send }
   }
 
-  function broadcaster<Msg extends Message.Message.Any>(
+  function broadcaster<Msg extends Envelope.Envelope.AnyMessage>(
     topicType: RecipientType.TopicType<Msg>
   ): Broadcaster.Broadcaster<Msg> {
     function sendMessage<A extends Msg>(
@@ -622,7 +622,7 @@ function make(
     }
 
     function broadcast(topicId: string) {
-      return <A extends Msg & Message.Message.Any>(message: A) => {
+      return <A extends Msg & Envelope.Envelope.AnyMessage>(message: A) => {
         return pipe(
           sendMessage(topicId, message),
           Effect.flatMap((results) =>
@@ -663,7 +663,7 @@ function make(
     return { broadcast, broadcastDiscard }
   }
 
-  function registerEntity<Msg extends Message.Message.Any>(
+  function registerEntity<Msg extends Envelope.Envelope.AnyMessage>(
     entityType: RecipientType.EntityType<Msg>
   ) {
     return <R>(
@@ -677,7 +677,7 @@ function make(
       )
   }
 
-  function registerTopic<Msg extends Message.Message.Any>(
+  function registerTopic<Msg extends Envelope.Envelope.AnyMessage>(
     topicType: RecipientType.TopicType<Msg>
   ) {
     return <R>(
@@ -694,7 +694,7 @@ function make(
   const getShardingRegistrationEvents: Stream.Stream<ShardingRegistrationEvent.ShardingRegistrationEvent> = Stream
     .fromPubSub(eventsHub)
 
-  function registerRecipient<Msg extends Message.Message.Any, R>(
+  function registerRecipient<Msg extends Envelope.Envelope.AnyMessage, R>(
     recipientType: RecipientType.RecipientType<Msg>,
     behavior: RecipientBehaviour.RecipientBehaviour<Msg, R>,
     options?: RecipientBehaviour.EntityBehaviourOptions

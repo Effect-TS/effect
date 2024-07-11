@@ -1,14 +1,15 @@
 /**
  * @since 1.0.0
  */
-import type * as Envelope from "@effect/cluster/Envelope"
-import type * as Message from "@effect/cluster/Message"
+import type { WithResult } from "@effect/schema/Serializable"
 import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
+import type * as Exit from "effect/Exit"
 import type * as Option from "effect/Option"
 import type * as Queue from "effect/Queue"
 import type * as Ref from "effect/Ref"
 import type * as Scope from "effect/Scope"
+import type { Envelope } from "./Envelope.js"
 import * as internal from "./internal/recipientBehaviour.js"
 import type * as MessageState from "./MessageState.js"
 import type * as PoisonPill from "./PoisonPill.js"
@@ -31,12 +32,17 @@ import type * as ShardingException from "./ShardingException.js"
  * @since 1.0.0
  * @category models
  */
-export interface RecipientBehaviour<Msg extends Message.Message.Any, R> extends
+export interface RecipientBehaviour<Msg extends Envelope.AnyMessage, R> extends
   Effect.Effect<
     <A extends Msg>(
-      envelope: Envelope.Envelope<A>
+      envelope: Envelope<A>
     ) => Effect.Effect<
-      MessageState.MessageState<Message.Message.Exit<Msg>>,
+      MessageState.MessageState<
+        Exit.Exit<
+          WithResult.Error<Msg>,
+          WithResult.Success<Msg>
+        >
+      >,
       ShardingException.ExceptionWhileOfferingMessageException
     >,
     never,
@@ -65,11 +71,20 @@ export type EntityBehaviourOptions = {
  * @since 1.0.0
  * @category utils
  */
-export const fromFunctionEffect: <Msg extends Message.Message.Any, R>(
+export const fromFunctionEffect: <Msg extends Envelope.AnyMessage, R>(
   handler: <A extends Msg>(
     entityId: string,
-    envelope: Envelope.Envelope<A>
-  ) => Effect.Effect<MessageState.MessageState<Message.Message.Exit<Msg>>, never, R>
+    envelope: Envelope<A>
+  ) => Effect.Effect<
+    MessageState.MessageState<
+      Exit.Exit<
+        WithResult.Error<Msg>,
+        WithResult.Success<Msg>
+      >
+    >,
+    never,
+    R
+  >
 ) => RecipientBehaviour<Msg, R> = internal.fromFunctionEffect
 
 /**
@@ -80,13 +95,22 @@ export const fromFunctionEffect: <Msg extends Message.Message.Any, R>(
  * @since 1.0.0
  * @category utils
  */
-export const fromFunctionEffectStateful: <S, R, Msg extends Message.Message.Any, R2>(
+export const fromFunctionEffectStateful: <S, R, Msg extends Envelope.AnyMessage, R2>(
   initialState: (entityId: string) => Effect.Effect<S, never, R>,
   handler: <A extends Msg>(
     entityId: string,
-    message: Envelope.Envelope<A>,
+    message: Envelope<A>,
     stateRef: Ref.Ref<S>
-  ) => Effect.Effect<MessageState.MessageState<Message.Message.Exit<Msg>>, never, R2>
+  ) => Effect.Effect<
+    MessageState.MessageState<
+      Exit.Exit<
+        WithResult.Error<Msg>,
+        WithResult.Success<Msg>
+      >
+    >,
+    never,
+    R2
+  >
 ) => RecipientBehaviour<Msg, R | R2> = internal.fromFunctionEffectStateful
 
 /**
@@ -97,13 +121,18 @@ export const fromFunctionEffectStateful: <S, R, Msg extends Message.Message.Any,
  * @since 1.0.0
  * @category utils
  */
-export const fromInMemoryQueue: <Msg extends Message.Message.Any, R>(
+export const fromInMemoryQueue: <Msg extends Envelope.AnyMessage, R>(
   handler: (
     entityId: string,
-    dequeue: Queue.Dequeue<Envelope.Envelope<Msg> | PoisonPill.PoisonPill>,
+    dequeue: Queue.Dequeue<Envelope<Msg> | PoisonPill.PoisonPill>,
     processed: <A extends Msg>(
-      message: Envelope.Envelope<A>,
-      value: Option.Option<Message.Message.Exit<A>>
+      message: Envelope<A>,
+      value: Option.Option<
+        Exit.Exit<
+          WithResult.Error<Msg>,
+          WithResult.Success<Msg>
+        >
+      >
     ) => Effect.Effect<void>
   ) => Effect.Effect<void, never, R>
 ) => RecipientBehaviour<Msg, R> = internal.fromInMemoryQueue

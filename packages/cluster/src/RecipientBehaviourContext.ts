@@ -3,8 +3,8 @@
  */
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
+import type { Envelope } from "./Envelope.js"
 import * as internal from "./internal/recipientBehaviourContext.js"
-import type * as Message from "./Message.js"
 import type { RecipientAddress } from "./RecipientAddress.js"
 import type * as RecipientType from "./RecipientType.js"
 import type * as ShardId from "./ShardId.js"
@@ -32,7 +32,7 @@ export interface RecipientBehaviourContext {
   readonly [RecipientBehaviourContextTypeId]: RecipientBehaviourContextTypeId
   readonly recipientAddress: RecipientAddress
   readonly shardId: ShardId.ShardId
-  readonly recipientType: RecipientType.RecipientType<Message.Message.Any>
+  readonly recipientType: RecipientType.RecipientType<Envelope.AnyMessage>
   readonly forkShutdown: Effect.Effect<void>
 }
 
@@ -87,7 +87,7 @@ export const shardId: Effect.Effect<ShardId.ShardId, never, RecipientBehaviourCo
  * @category utils
  */
 export const recipientType: Effect.Effect<
-  RecipientType.RecipientType<Message.Message.Any>,
+  RecipientType.RecipientType<Envelope.AnyMessage>,
   never,
   RecipientBehaviourContext
 > = internal.recipientType

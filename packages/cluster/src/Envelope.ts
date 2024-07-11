@@ -9,7 +9,6 @@ import type * as Equal from "effect/Equal"
 import { dual } from "effect/Function"
 import * as Predicate from "effect/Predicate"
 import * as PrimaryKey from "effect/PrimaryKey"
-import type { Message } from "./Message.js"
 import { RecipientAddress } from "./RecipientAddress.js"
 
 /**
@@ -35,21 +34,21 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface Envelope<Req extends Message.Any>
+export interface Envelope<Msg extends Envelope.AnyMessage>
   extends
     Equal.Equal,
     PrimaryKey.PrimaryKey,
     Serializable.SerializableWithResult<
-      Envelope<Req>,
-      Envelope.Encoded<Serializable.Serializable.Encoded<Req>>,
-      Serializable.Serializable.Context<Req>,
-      Serializable.WithResult.Success<Req>,
-      Serializable.WithResult.SuccessEncoded<Req>,
-      Serializable.WithResult.Error<Req>,
-      Serializable.WithResult.ErrorEncoded<Req>,
-      Serializable.WithResult.Context<Req>
+      Envelope<Msg>,
+      Envelope.Encoded<Serializable.Serializable.Encoded<Msg>>,
+      Serializable.Serializable.Context<Msg>,
+      Serializable.WithResult.Success<Msg>,
+      Serializable.WithResult.SuccessEncoded<Msg>,
+      Serializable.WithResult.Error<Msg>,
+      Serializable.WithResult.ErrorEncoded<Msg>,
+      Serializable.WithResult.Context<Msg>
     >,
-    Envelope.Proto<Req>
+    Envelope.Proto<Msg>
 {}
 
 /**
@@ -60,10 +59,10 @@ export declare namespace Envelope {
    * @since 1.0.0
    * @category models
    */
-  export interface Proto<Req extends Message.Any> {
+  export interface Proto<Msg extends AnyMessage> {
     readonly [TypeId]: TypeId
     readonly address: RecipientAddress
-    readonly message: Req
+    readonly message: Msg
   }
 
   /**
@@ -74,6 +73,12 @@ export declare namespace Envelope {
     readonly address: RecipientAddress.Encoded
     readonly message: IA
   }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type AnyMessage = Schema.TaggedRequest.Any & PrimaryKey.PrimaryKey
 }
 
 const Proto = Data.unsafeStruct({
@@ -104,10 +109,10 @@ const Proto = Data.unsafeStruct({
  * @since 1.0.0
  * @category constructors
  */
-export const make = <Req extends Message.Any>(
+export const make = <Msg extends Envelope.AnyMessage>(
   address: RecipientAddress,
-  message: Req
-): Envelope<Req> => {
+  message: Msg
+): Envelope<Msg> => {
   const envelope = Object.create(Proto)
   envelope.address = address
   envelope.message = message
@@ -119,7 +124,7 @@ export const make = <Req extends Message.Any>(
  * @category refinements
  */
 export const isEnvelope = (u: unknown): u is Envelope<
-  Message.Any
+  Envelope.AnyMessage
 > => Predicate.isObject(u) && Predicate.hasProperty(u, TypeId)
 
 /**
@@ -127,18 +132,18 @@ export const isEnvelope = (u: unknown): u is Envelope<
  * @category mapping
  */
 export const map = dual<
-  <A extends Message.Any, B extends Message.Any>(
+  <A extends Envelope.AnyMessage, B extends Envelope.AnyMessage>(
     f: (value: A) => B
   ) => (
     self: Envelope<A>
   ) => Envelope<B>,
-  <A extends Message.Any, B extends Message.Any>(
+  <A extends Envelope.AnyMessage, B extends Envelope.AnyMessage>(
     self: Envelope<A>,
     f: (value: A) => B
   ) => Envelope<B>
 >(2, (self, f) => make(self.address, f(self.message)))
 
-const envelopeParse = <A extends Message.Any, R>(
+const envelopeParse = <A extends Envelope.AnyMessage, R>(
   decodeUnknown: ParseResult.DecodeUnknown<Envelope.Encoded<A>, R>
 ): ParseResult.DeclarationDecodeUnknown<Envelope<A>, R> =>
 (u, options, ast) =>
@@ -185,7 +190,9 @@ const Envelope$ = <A extends Schema.Schema.Any>(message: A) =>
  * @since 1.0.0
  * @category schemas
  */
-export const EnvelopeFromSelf = <Value extends Schema.Schema.Any>(value: Value): EnvelopeFromSelf<Value> => {
+export const EnvelopeFromSelf = <Value extends Schema.Schema.Any>(
+  value: Value
+): EnvelopeFromSelf<Value> => {
   return Schema.declare(
     [value],
     {

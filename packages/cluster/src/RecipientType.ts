@@ -5,7 +5,7 @@ import type * as Schema from "@effect/schema/Schema"
 import * as Data from "effect/Data"
 import * as Equal from "effect/Equal"
 import * as Hash from "effect/Hash"
-import type * as Message from "./Message.js"
+import type { Envelope } from "./Envelope.js"
 import * as ShardId from "./ShardId.js"
 
 const RecipientTypeSymbolKey = "@effect/cluster/RecipientType"
@@ -22,7 +22,7 @@ export const RecipientTypeTypeId: unique symbol = Symbol.for(RecipientTypeSymbol
  * @since 1.0.0
  * @category models
  */
-export class EntityType<Msg extends Message.Message.Any> extends Data.TaggedClass("EntityType")<{
+export class EntityType<Msg extends Envelope.AnyMessage> extends Data.TaggedClass("EntityType")<{
   readonly name: string
   readonly schema: Schema.Schema<Msg, unknown>
 }> {
@@ -55,7 +55,7 @@ export class EntityType<Msg extends Message.Message.Any> extends Data.TaggedClas
  * @since 1.0.0
  * @category models
  */
-export class TopicType<Msg extends Message.Message.Any> extends Data.TaggedClass("TopicType")<{
+export class TopicType<Msg extends Envelope.AnyMessage> extends Data.TaggedClass("TopicType")<{
   readonly name: string
   readonly schema: Schema.Schema<Msg, unknown>
 }> {
@@ -91,14 +91,14 @@ export class TopicType<Msg extends Message.Message.Any> extends Data.TaggedClass
  * @since 1.0.0
  * @category models
  */
-export type RecipientType<Msg extends Message.Message.Any> = EntityType<Msg> | TopicType<Msg>
+export type RecipientType<Msg extends Envelope.AnyMessage> = EntityType<Msg> | TopicType<Msg>
 
 /**
  * Ensure that given value is a RecipientType
  * @since 1.0.0
  * @category constructors
  */
-export function isRecipientType<A extends Message.Message.Any>(value: unknown): value is RecipientType<A> {
+export function isRecipientType<A extends Envelope.AnyMessage>(value: unknown): value is RecipientType<A> {
   return typeof value === "object" && value !== null && RecipientTypeTypeId in value &&
     value[RecipientTypeTypeId] === RecipientTypeTypeId
 }
@@ -109,7 +109,7 @@ export function isRecipientType<A extends Message.Message.Any>(value: unknown): 
  * @since 1.0.0
  * @category constructors
  */
-export function makeEntityType<Msg extends Message.Message.Any, I>(
+export function makeEntityType<Msg extends Envelope.AnyMessage, I>(
   name: string,
   schema: Schema.Schema<Msg, I>
 ): EntityType<Msg> {
@@ -122,7 +122,7 @@ export function makeEntityType<Msg extends Message.Message.Any, I>(
  * @since 1.0.0
  * @category constructors
  */
-export function makeTopicType<Msg extends Message.Message.Any, I>(
+export function makeTopicType<Msg extends Envelope.AnyMessage, I>(
   name: string,
   schema: Schema.Schema<Msg, I>
 ): TopicType<Msg> {

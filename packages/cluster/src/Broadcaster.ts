@@ -1,10 +1,11 @@
 /**
  * @since 1.0.0
  */
+import type { WithResult } from "@effect/schema/Serializable"
 import type * as Effect from "effect/Effect"
 import type * as Either from "effect/Either"
 import type * as HashMap from "effect/HashMap"
-import type * as Message from "./Message.js"
+import type { Envelope } from "./Envelope.js"
 import type * as PodAddress from "./PodAddress.js"
 import type * as ShardingException from "./ShardingException.js"
 
@@ -14,7 +15,7 @@ import type * as ShardingException from "./ShardingException.js"
  * @since 1.0.0
  * @category models
  */
-export interface Broadcaster<Msg extends Message.Message.Any> {
+export interface Broadcaster<Msg extends Envelope.AnyMessage> {
   /**
    * Broadcast a message without waiting for a response (fire and forget)
    *
@@ -39,8 +40,8 @@ export interface Broadcaster<Msg extends Message.Message.Any> {
     HashMap.HashMap<
       PodAddress.PodAddress,
       Either.Either<
-        ShardingException.ShardingException | Message.Message.Error<A>,
-        Message.Message.Success<A>
+        ShardingException.ShardingException | WithResult.Error<A>,
+        WithResult.Success<A>
       >
     >,
     ShardingException.ShardingException

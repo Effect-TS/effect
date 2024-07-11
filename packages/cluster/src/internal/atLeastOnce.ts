@@ -1,11 +1,10 @@
-import type * as Envelope from "@effect/cluster/Envelope"
+import type { Envelope } from "@effect/cluster/Envelope"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as AtLeastOnceStorage from "../AtLeastOnceStorage.js"
-import type * as Message from "../Message.js"
 import * as MessageState from "../MessageState.js"
 import type * as RecipientBehaviour from "../RecipientBehaviour.js"
 import * as RecipientBehaviourContext from "../RecipientBehaviourContext.js"
@@ -34,7 +33,7 @@ export function runPendingMessageSweeperScoped(
 }
 
 /** @internal */
-export function atLeastOnceRecipientBehaviour<Msg extends Message.Message.Any, R>(
+export function atLeastOnceRecipientBehaviour<Msg extends Envelope.AnyMessage, R>(
   fa: RecipientBehaviour.RecipientBehaviour<Msg, R>
 ): RecipientBehaviour.RecipientBehaviour<Msg, R | AtLeastOnceStorage.AtLeastOnceStorage> {
   return Effect.gen(function*(_) {
@@ -43,7 +42,7 @@ export function atLeastOnceRecipientBehaviour<Msg extends Message.Message.Any, R
     const shardId = yield* _(RecipientBehaviourContext.shardId)
     const recipientType = yield* _(RecipientBehaviourContext.recipientType)
     const offer = yield* _(fa)
-    return <A extends Msg>(envelope: Envelope.Envelope<A>) =>
+    return <A extends Msg>(envelope: Envelope<A>) =>
       pipe(
         storage.upsert(recipientType as any, shardId, entityId, envelope),
         Effect.zipRight(

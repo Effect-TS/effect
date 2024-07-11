@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 import type { Envelope } from "@effect/cluster/Envelope"
-import type { Message } from "@effect/cluster/Message"
 import type { SerializedEnvelope } from "@effect/cluster/SerializedEnvelope"
 import type { SqlClient } from "@effect/sql/SqlClient"
 import type { SqlError } from "@effect/sql/SqlError"
@@ -36,7 +35,7 @@ export interface AtLeastOnceStorage extends AtLeastOnceStorage.Proto {
    * Upserts a message into the storage, eventually returning the already
    * existing message state as result in the storage.
    */
-  upsert<Msg extends Message.Any>(
+  upsert<Msg extends Envelope.AnyMessage>(
     recipientType: RecipientType<Msg>,
     shardId: ShardId,
     entityId: string,
@@ -47,7 +46,7 @@ export interface AtLeastOnceStorage extends AtLeastOnceStorage.Proto {
    * Marks the specified message as processed to prevent additional attempts to
    * send the message.
    */
-  markAsProcessed<Msg extends Message.Any>(
+  markAsProcessed<Msg extends Envelope.AnyMessage>(
     recipientType: RecipientType<Msg>,
     shardId: ShardId,
     entityId: string,

@@ -1,8 +1,9 @@
 /**
  * @since 1.0.0
  */
+import type { WithResult } from "@effect/schema/Serializable"
 import type * as Effect from "effect/Effect"
-import type * as Message from "./Message.js"
+import type { Envelope } from "./Envelope.js"
 import type * as ShardingException from "./ShardingException.js"
 
 /**
@@ -12,7 +13,7 @@ import type * as ShardingException from "./ShardingException.js"
  * @since 1.0.0
  * @category models
  */
-export interface Messenger<Msg extends Message.Message.Any> {
+export interface Messenger<Msg extends Envelope.AnyMessage> {
   /**
    * Send a message without waiting for a response (fire and forget)
    *
@@ -34,7 +35,7 @@ export interface Messenger<Msg extends Message.Message.Any> {
   ): <A extends Msg>(
     message: A
   ) => Effect.Effect<
-    Message.Message.Success<A>,
-    ShardingException.ShardingException | Message.Message.Error<A>
+    WithResult.Success<A>,
+    ShardingException.ShardingException | WithResult.Error<A>
   >
 }

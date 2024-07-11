@@ -1,11 +1,11 @@
 /**
  * @since 1.0.0
  */
-import type * as Message from "@effect/cluster/Message"
 import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
 import type * as Scope from "effect/Scope"
 import type * as AtLeastOnceStorage from "./AtLeastOnceStorage.js"
+import type { Envelope } from "./Envelope.js"
 import * as internal from "./internal/atLeastOnce.js"
 import type * as RecipientBehaviour from "./RecipientBehaviour.js"
 import type * as Sharding from "./Sharding.js"
@@ -14,7 +14,7 @@ import type * as Sharding from "./Sharding.js"
  * @since 1.0.0
  * @category constructors
  */
-export const atLeastOnceRecipientBehaviour: <Msg extends Message.Message.Any, R>(
+export const atLeastOnceRecipientBehaviour: <Msg extends Envelope.AnyMessage, R>(
   fa: RecipientBehaviour.RecipientBehaviour<Msg, R>
 ) => RecipientBehaviour.RecipientBehaviour<Msg, R | AtLeastOnceStorage.AtLeastOnceStorage> =
   internal.atLeastOnceRecipientBehaviour
