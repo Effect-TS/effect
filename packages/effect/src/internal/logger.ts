@@ -400,6 +400,16 @@ const logLevelColors: Record<LogLevel.LogLevel["_tag"], ReadonlyArray<string>> =
   Error: [colors.red],
   Fatal: [colors.bgBrightRed, colors.black]
 }
+const logLevelStyle: Record<LogLevel.LogLevel["_tag"], string> = {
+  None: "",
+  All: "",
+  Trace: "color:gray",
+  Debug: "color:blue",
+  Info: "color:green",
+  Warning: "color:orange",
+  Error: "color:red",
+  Fatal: "background-color:red;color:white"
+}
 
 const defaultDateFormat = (date: Date): string =>
   `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}:${
@@ -407,8 +417,8 @@ const defaultDateFormat = (date: Date): string =>
   }.${date.getMilliseconds().toString().padStart(3, "0")}`
 
 const processStdoutIsTTY = typeof process === "object" && "stdout" in process && process.stdout.isTTY === true
-const processIsBun = typeof process === "object" && "isBun" in process && process.isBun === true
 const hasWindow = typeof window === "object"
+const isWorker = typeof self === "object" && self.constructor && self.constructor.name.includes("Worker")
 
 /** @internal */
 export const prettyLogger = (options?: {
@@ -418,21 +428,31 @@ export const prettyLogger = (options?: {
   readonly mode?: "browser" | "tty" | "auto" | undefined
 }) => {
   const mode_ = options?.mode ?? "auto"
-  const mode = mode_ === "auto" ? (hasWindow ? "browser" : "tty") : mode_
+  const mode = mode_ === "auto" ? (hasWindow || isWorker ? "browser" : "tty") : mode_
   const isBrowser = mode === "browser"
   const showColors = typeof options?.colors === "boolean" ? options.colors : processStdoutIsTTY || isBrowser
-  const color = showColors ? withColor : withColorNoop
   const formatDate = options?.formatDate ?? defaultDateFormat
+  return isBrowser
+    ? prettyLoggerBrowser({ colors: showColors, formatDate })
+    : prettyLoggerTty({ colors: showColors, formatDate, stderr: options?.stderr === true })
+}
 
+const prettyLoggerTty = (options: {
+  readonly colors: boolean
+  readonly stderr: boolean
+  readonly formatDate: (date: Date) => string
+}) => {
+  const processIsBun = typeof process === "object" && "isBun" in process && process.isBun === true
+  const color = options.colors && processStdoutIsTTY ? withColor : withColorNoop
   return makeLogger<unknown, void>(
     ({ annotations, cause, context, date, fiberId, logLevel, message: message_, spans }) => {
       const services = FiberRefs.getOrDefault(context, defaultServices.currentServices)
       const console = Context.get(services, consoleTag).unsafe
-      const log = options?.stderr === true ? console.error : console.log
+      const log = options.stderr === true ? console.error : console.log
 
       const message = Arr.ensure(message_)
 
-      let firstLine = color(`[${formatDate(date)}]`, colors.white)
+      let firstLine = color(`[${options.formatDate(date)}]`, colors.white)
         + ` ${color(logLevel.label, ...logLevelColors[logLevel._tag])}`
         + ` (${_fiberId.threadName(fiberId)})`
 
@@ -454,18 +474,11 @@ export const prettyLogger = (options?: {
         }
       }
 
-      if (isBrowser) {
-        console.groupCollapsed(firstLine)
-      } else {
-        log(firstLine)
-        if (!processIsBun) console.group()
-      }
+      log(firstLine)
+      if (!processIsBun) console.group()
+
       if (!Cause.isEmpty(cause)) {
-        if (isBrowser) {
-          console.error(Cause.pretty(cause, { renderErrorCause: true }))
-        } else {
-          log(Cause.pretty(cause, { renderErrorCause: true }))
-        }
+        log(Cause.pretty(cause, { renderErrorCause: true }))
       }
 
       if (messageIndex < message.length) {
@@ -481,6 +494,75 @@ export const prettyLogger = (options?: {
       }
 
       if (!processIsBun) console.groupEnd()
+    }
+  )
+}
+
+const prettyLoggerBrowser = (options: {
+  readonly colors: boolean
+  readonly formatDate: (date: Date) => string
+}) => {
+  const color = options.colors ? "%c" : ""
+  return makeLogger<unknown, void>(
+    ({ annotations, cause, context, date, fiberId, logLevel, message: message_, spans }) => {
+      const services = FiberRefs.getOrDefault(context, defaultServices.currentServices)
+      const console = Context.get(services, consoleTag).unsafe
+      const message = Arr.ensure(message_)
+
+      let firstLine = `${color}[${options.formatDate(date)}]`
+      const firstParams = []
+      if (options.colors) {
+        firstParams.push("color:gray")
+      }
+      firstLine += ` ${color}${logLevel.label}${color} (${_fiberId.threadName(fiberId)})`
+      if (options.colors) {
+        firstParams.push(logLevelStyle[logLevel._tag], "")
+      }
+      if (List.isCons(spans)) {
+        const now = date.getTime()
+        const render = renderLogSpanLogfmt(now)
+        for (const span of spans) {
+          firstLine += " " + render(span)
+        }
+      }
+
+      firstLine += ":"
+
+      let messageIndex = 0
+      if (message.length > 0) {
+        const firstMaybeString = structuredMessage(message[0])
+        if (typeof firstMaybeString === "string") {
+          firstLine += ` ${color}${firstMaybeString}`
+          if (options.colors) {
+            firstParams.push("color:blue")
+          }
+          messageIndex++
+        }
+      }
+
+      console.groupCollapsed(firstLine, ...firstParams)
+
+      if (!Cause.isEmpty(cause)) {
+        console.error(Cause.pretty(cause, { renderErrorCause: true }))
+      }
+
+      if (messageIndex < message.length) {
+        for (; messageIndex < message.length; messageIndex++) {
+          console.log(message[messageIndex])
+        }
+      }
+
+      if (HashMap.size(annotations) > 0) {
+        for (const [key, value] of annotations) {
+          if (options.colors) {
+            console.log(`%c${key}:`, "color:gray", value)
+          } else {
+            console.log(`${key}:`, value)
+          }
+        }
+      }
+
+      console.groupEnd()
     }
   )
 }
