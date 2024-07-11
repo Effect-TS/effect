@@ -1,6 +1,3 @@
-import * as Envelope from "@effect/cluster/Envelope"
-import * as SerializedMessage from "@effect/cluster/SerializedMessage"
-import * as SerializedValue from "@effect/cluster/SerializedValue"
 import * as Schema from "@effect/schema/Schema"
 import * as SqlClient from "@effect/sql/SqlClient"
 import type * as SqlError from "@effect/sql/SqlError"
@@ -11,8 +8,11 @@ import * as Layer from "effect/Layer"
 import * as PrimaryKey from "effect/PrimaryKey"
 import * as Stream from "effect/Stream"
 import type * as AtLeastOnceStorage from "../AtLeastOnceStorage.js"
+import * as Envelope from "../Envelope.js"
 import { RecipientAddress } from "../RecipientAddress.js"
 import type * as Serialization from "../Serialization.js"
+import * as SerializedMessage from "../SerializedMessage.js"
+import * as SerializedValue from "../SerializedValue.js"
 import * as InternalSerialization from "./serialization.js"
 
 /** @internal */

@@ -1,4 +1,3 @@
-import * as SerializedValue from "@effect/cluster/SerializedValue"
 import * as Schema from "@effect/schema/Schema"
 import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import * as Context from "effect/Context"
@@ -6,6 +5,7 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import type * as Serialization from "../Serialization.js"
+import * as SerializedValue from "../SerializedValue.js"
 import * as ShardingException from "../ShardingException.js"
 
 /** @internal */

@@ -1,17 +1,17 @@
 /**
  * @since 1.0.0
  */
-import type { Envelope } from "@effect/cluster/Envelope"
-import type { SerializedEnvelope } from "@effect/cluster/SerializedEnvelope"
 import type { SqlClient } from "@effect/sql/SqlClient"
 import type { SqlError } from "@effect/sql/SqlError"
 import type { Tag } from "effect/Context"
 import type { Effect } from "effect/Effect"
 import type { Layer } from "effect/Layer"
 import type { Stream } from "effect/Stream"
+import type { Envelope } from "./Envelope.js"
 import * as Internal from "./internal/atLeastOnceStorage.js"
 import type { RecipientType } from "./RecipientType.js"
 import type { Serialization } from "./Serialization.js"
+import type { SerializedEnvelope } from "./SerializedEnvelope.js"
 import type { ShardId } from "./ShardId.js"
 
 /**

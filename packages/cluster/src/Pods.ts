@@ -1,8 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as SerializedEnvelope from "@effect/cluster/SerializedEnvelope"
-import type * as SerializedValue from "@effect/cluster/SerializedValue"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as HashSet from "effect/HashSet"
@@ -10,6 +8,8 @@ import type * as Layer from "effect/Layer"
 import * as internal from "./internal/pods.js"
 import type * as MessageState from "./MessageState.js"
 import type * as PodAddress from "./PodAddress.js"
+import type * as SerializedEnvelope from "./SerializedEnvelope.js"
+import type * as SerializedValue from "./SerializedValue.js"
 import type * as ShardId from "./ShardId.js"
 import type * as ShardingException from "./ShardingException.js"
 
