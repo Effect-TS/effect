@@ -4798,9 +4798,25 @@ export const matchEffect: {
 // -------------------------------------------------------------------------------------
 
 /**
- * Logs the specified message or cause at the current log level.
+ * Logs one or more messages or error causes at the current log level, which is INFO by default.
+ * This function allows logging multiple items at once and can include detailed error information using `Cause` instances.
  *
- * You can set the current log level using `FiberRef.currentLogLevel`.
+ * To adjust the log level, use the `Logger.withMinimumLogLevel` function.
+ *
+ * @example
+ * import { Cause, Effect } from "effect"
+ *
+ * const program = Effect.log(
+ *   "message1",
+ *   "message2",
+ *   Cause.die("Oh no!"),
+ *   Cause.die("Oh uh!")
+ * )
+ *
+ * // Effect.runFork(program)
+ * // Output:
+ * // timestamp=... level=INFO fiber=#0 message=message1 message=message2 cause="Error: Oh no!
+ * // Error: Oh uh!"
  *
  * @since 2.0.0
  * @category logging
@@ -4827,7 +4843,19 @@ export const logWithLevel = (
 export const logTrace: (...message: ReadonlyArray<any>) => Effect<void, never, never> = effect.logTrace
 
 /**
- * Logs the specified message or cause at the Debug log level.
+ * Logs the specified messages at the DEBUG log level.
+ * DEBUG messages are not shown by default.
+ *
+ * To view DEBUG messages, adjust the logging settings using
+ * `Logger.withMinimumLogLevel` and set the log level to `LogLevel.Debug`.
+ *
+ * @example
+ * import { Effect, Logger, LogLevel } from "effect"
+ *
+ * const program = Effect.logDebug("message1").pipe(Logger.withMinimumLogLevel(LogLevel.Debug))
+ *
+ * // Effect.runFork(program)
+ * // timestamp=... level=DEBUG fiber=#0 message=message1
  *
  * @since 2.0.0
  * @category logging
@@ -4867,7 +4895,20 @@ export const logError: (...message: ReadonlyArray<any>) => Effect<void, never, n
 export const logFatal: (...message: ReadonlyArray<any>) => Effect<void, never, never> = effect.logFatal
 
 /**
- * Adjusts the label for the current logging span.
+ * Adds a log span to your effects, which tracks and logs the duration of
+ * operations or tasks. This is useful for performance monitoring and debugging
+ * time-sensitive processes.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * const program = Effect.gen(function*() {
+ *   yield* Effect.sleep("1 second")
+ *   yield* Effect.log("The job is finished!")
+ * }).pipe(Effect.withLogSpan("myspan"))
+ *
+ * // Effect.runFork(program)
+ * // timestamp=... level=INFO fiber=#0 message="The job is finished!" myspan=1011ms
  *
  * @since 2.0.0
  * @category logging
@@ -4878,7 +4919,21 @@ export const withLogSpan: {
 } = effect.withLogSpan
 
 /**
- * Annotates each log in this effect with the specified log annotation.
+ * Augments log outputs by appending custom annotations to log entries generated
+ * within an effect. This function provides a way to add more context and detail
+ * to log messages, making them more informative and easier to trace.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * const program = Effect.gen(function*() {
+ *   yield* Effect.log("message1")
+ *   yield* Effect.log("message2")
+ * }).pipe(Effect.annotateLogs("key", "value")) // Annotation as key/value pair
+ *
+ * // Effect.runFork(program)
+ * // timestamp=... level=INFO fiber=#0 message=message1 key=value
+ * // timestamp=... level=INFO fiber=#0 message=message2 key=value
  *
  * @since 2.0.0
  * @category logging
@@ -4891,21 +4946,29 @@ export const annotateLogs: {
 } = effect.annotateLogs
 
 /**
- * Annotates each log with the specified log annotation(s), until the Scope is closed.
+ * Applies log annotations with a limited scope, restricting their appearance to
+ * specific sections of your effect computations. Use
+ * `Effect.annotateLogsScoped` to add metadata to logs that only appear within a
+ * defined `Scope`, making it easier to manage context-specific logging.
  *
- * @since 3.1.0
- * @category logging
  * @example
  * import { Effect } from "effect"
  *
- * Effect.gen(function*() {
+ * const program = Effect.gen(function*() {
  *   yield* Effect.log("no annotations")
- *   yield* Effect.annotateLogsScoped({ foo: "bar" })
- *   yield* Effect.log("annotated with foo=bar")
- * }).pipe(
- *   Effect.scoped,
- *   Effect.andThen(Effect.log("no annotations again"))
- * )
+ *   yield* Effect.annotateLogsScoped({ key: "value" })
+ *   yield* Effect.log("message1") // Annotation is applied to this log
+ *   yield* Effect.log("message2") // Annotation is applied to this log
+ * }).pipe(Effect.scoped, Effect.andThen(Effect.log("no annotations again")))
+ *
+ * // Effect.runFork(program)
+ * // timestamp=... level=INFO fiber=#0 message="no annotations"
+ * // timestamp=... level=INFO fiber=#0 message=message1 key=value
+ * // timestamp=... level=INFO fiber=#0 message=message2 key=value
+ * // timestamp=... level=INFO fiber=#0 message="no annotations again"
+ *
+ * @since 3.1.0
+ * @category logging
  */
 export const annotateLogsScoped: {
   (key: string, value: unknown): Effect<void, never, Scope.Scope>
