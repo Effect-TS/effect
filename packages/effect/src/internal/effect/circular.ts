@@ -419,7 +419,7 @@ export const timeout = dual<
   ) => Effect.Effect<A, E | Cause.TimeoutException, R>
 >(2, (self, duration) =>
   timeoutFail(self, {
-    onTimeout: () => new core.TimeoutException(),
+    onTimeout: () => core.timeoutExceptionFromDuration(duration),
     duration
   }))
 
