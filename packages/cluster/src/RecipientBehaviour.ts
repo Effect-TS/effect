@@ -39,8 +39,8 @@ export interface RecipientBehaviour<Msg extends Envelope.AnyMessage, R> extends
     ) => Effect.Effect<
       MessageState.MessageState<
         Exit.Exit<
-          WithResult.Error<Msg>,
-          WithResult.Success<Msg>
+          WithResult.Success<Msg>,
+          WithResult.Error<Msg>
         >
       >,
       ShardingException.ExceptionWhileOfferingMessageException
@@ -78,8 +78,8 @@ export const fromFunctionEffect: <Msg extends Envelope.AnyMessage, R>(
   ) => Effect.Effect<
     MessageState.MessageState<
       Exit.Exit<
-        WithResult.Error<Msg>,
-        WithResult.Success<Msg>
+        WithResult.Success<Msg>,
+        WithResult.Error<Msg>
       >
     >,
     never,
@@ -104,8 +104,8 @@ export const fromFunctionEffectStateful: <S, R, Msg extends Envelope.AnyMessage,
   ) => Effect.Effect<
     MessageState.MessageState<
       Exit.Exit<
-        WithResult.Error<Msg>,
-        WithResult.Success<Msg>
+        WithResult.Success<Msg>,
+        WithResult.Error<Msg>
       >
     >,
     never,
@@ -129,8 +129,8 @@ export const fromInMemoryQueue: <Msg extends Envelope.AnyMessage, R>(
       message: Envelope<A>,
       value: Option.Option<
         Exit.Exit<
-          WithResult.Error<Msg>,
-          WithResult.Success<Msg>
+          WithResult.Success<Msg>,
+          WithResult.Error<Msg>
         >
       >
     ) => Effect.Effect<void>

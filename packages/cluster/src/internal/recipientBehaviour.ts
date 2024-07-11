@@ -22,8 +22,8 @@ export function fromFunctionEffect<Msg extends Envelope.AnyMessage, R>(
   ) => Effect.Effect<
     MessageState.MessageState<
       Exit.Exit<
-        WithResult.Error<Msg>,
-        WithResult.Success<Msg>
+        WithResult.Success<Msg>,
+        WithResult.Error<Msg>
       >
     >,
     never,
@@ -52,8 +52,8 @@ export function fromFunctionEffectStateful<S, R, Msg extends Envelope.AnyMessage
   ) => Effect.Effect<
     MessageState.MessageState<
       Exit.Exit<
-        WithResult.Error<Msg>,
-        WithResult.Success<Msg>
+        WithResult.Success<Msg>,
+        WithResult.Error<Msg>
       >
     >,
     never,
@@ -87,8 +87,8 @@ export function fromInMemoryQueue<Msg extends Envelope.AnyMessage, R>(
       envelope: Envelope<A>,
       value: Option.Option<
         Exit.Exit<
-          WithResult.Error<Msg>,
-          WithResult.Success<Msg>
+          WithResult.Success<Msg>,
+          WithResult.Error<Msg>
         >
       >
     ) => Effect.Effect<void>
@@ -113,8 +113,8 @@ export function fromInMemoryQueue<Msg extends Envelope.AnyMessage, R>(
       message: Envelope<A>,
       reply: Option.Option<
         Exit.Exit<
-          WithResult.Error<Msg>,
-          WithResult.Success<Msg>
+          WithResult.Success<Msg>,
+          WithResult.Error<Msg>
         >
       >
     ) {
