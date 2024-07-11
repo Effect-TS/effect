@@ -532,7 +532,7 @@ export const Error: new<A extends Record<string, any> = {}>(
 ) => Cause.YieldableError & Readonly<A> = (function() {
   return class Base extends core.YieldableError {
     constructor(args: any) {
-      super(args?.message, { cause: args?.cause })
+      super(args?.message, args?.cause ? { cause: args.cause } : undefined)
       if (args) {
         Object.assign(this, args)
       }
