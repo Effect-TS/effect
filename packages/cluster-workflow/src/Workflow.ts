@@ -1,8 +1,9 @@
 /**
  * @since 1.0.0
  */
-import type * as Message from "@effect/cluster/Message"
+import type * as Envelope from "@effect/cluster/Envelope"
 import * as Schema from "@effect/schema/Schema"
+import type * as Serializable from "@effect/schema/Serializable"
 import * as Array from "effect/Array"
 import * as Clock from "effect/Clock"
 import * as Duration from "effect/Duration"
@@ -15,11 +16,15 @@ import * as WorkflowContext from "./WorkflowContext.js"
 /**
  * @since 1.0.0
  */
-export interface Workflow<T extends Message.Message.Any, R> {
+export interface Workflow<T extends Envelope.Envelope.AnyMessage, R> {
   schema: Schema.Schema<T, unknown>
   execute: (
     input: T
-  ) => Effect.Effect<Message.Message.Success<T>, Message.Message.Error<T>, R | WorkflowContext.WorkflowContext>
+  ) => Effect.Effect<
+    Serializable.WithResult.Success<T>,
+    Serializable.WithResult.Error<T>,
+    R | WorkflowContext.WorkflowContext
+  >
   version: (input: T) => string
 }
 
@@ -46,11 +51,11 @@ export namespace Workflow {
 /**
  * @since 1.0.0
  */
-export function make<T extends Message.Message.Any, R = never, I = unknown>(
+export function make<T extends Envelope.Envelope.AnyMessage, R = never, I = unknown>(
   schema: Schema.Schema<T, I>,
   execute: (
     input: T
-  ) => Effect.Effect<Message.Message.Success<T>, Message.Message.Error<T>, R>,
+  ) => Effect.Effect<Serializable.WithResult.Success<T>, Serializable.WithResult.Error<T>, R>,
   version?: (input: T) => string
 ): Workflow<T, Exclude<R, WorkflowContext.WorkflowContext>> {
   return ({

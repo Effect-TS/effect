@@ -1,7 +1,8 @@
 /**
  * @since 1.0.0
  */
-import type * as Message from "@effect/cluster/Message"
+import type * as Envelope from "@effect/cluster/Envelope"
+import type * as Serializable from "@effect/schema/Serializable"
 import * as Effect from "effect/Effect"
 import type * as Fiber from "effect/Fiber"
 import * as FiberMap from "effect/FiberMap"
@@ -15,15 +16,15 @@ import * as WorkflowRuntime from "./WorkflowRuntime.js"
 /**
  * @since 1.0.0
  */
-export interface WorkflowEngine<T extends Message.Message.Any> {
+export interface WorkflowEngine<T extends Envelope.Envelope.AnyMessage> {
   sendDiscard: (request: T) => Effect.Effect<void>
-  send: <A extends T>(request: A) => Effect.Effect<Message.Message.Success<A>, Message.Message.Error<A>>
+  send: <A extends T>(request: A) => Effect.Effect<Serializable.WithResult.Success<A>, Serializable.WithResult.Error<A>>
 }
 
 /**
  * @since 1.0.0
  */
-export function makeScoped<T extends Message.Message.Any, R>(
+export function makeScoped<T extends Envelope.Envelope.AnyMessage, R>(
   workflow: Workflow.Workflow<T, R>
 ): Effect.Effect<
   WorkflowEngine<T>,
@@ -36,7 +37,7 @@ export function makeScoped<T extends Message.Message.Any, R>(
 
     const getOrStartFiber = <A extends T>(
       request: A
-    ): Effect.Effect<Fiber.Fiber<Message.Message.Success<A>, Message.Message.Error<A>>> => {
+    ): Effect.Effect<Fiber.Fiber<Serializable.WithResult.Success<A>, Serializable.WithResult.Error<A>>> => {
       const executionId = PrimaryKey.value(request)
 
       return FiberMap.run(
@@ -57,7 +58,7 @@ export function makeScoped<T extends Message.Message.Any, R>(
 
     const send = <A extends T>(
       request: A
-    ): Effect.Effect<Message.Message.Success<A>, Message.Message.Error<A>> =>
+    ): Effect.Effect<Serializable.WithResult.Success<A>, Serializable.WithResult.Error<A>> =>
       pipe(
         WorkflowRuntime.attempt(workflow)(request),
         Effect.provide(env)

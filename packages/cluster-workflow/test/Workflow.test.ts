@@ -7,8 +7,8 @@ import * as DurableExecutionJournalInMemory from "@effect/cluster-workflow/Durab
 import * as utils from "@effect/cluster-workflow/test/utils"
 import * as Workflow from "@effect/cluster-workflow/Workflow"
 import * as WorkflowEngine from "@effect/cluster-workflow/WorkflowEngine"
-import * as Message from "@effect/cluster/Message"
 import * as Schema from "@effect/schema/Schema"
+import { PrimaryKey } from "effect"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -30,10 +30,14 @@ describe.concurrent("Workflow", () => {
     )
 
   class StartWorkflowRequest
-    extends Message.TaggedMessage<StartWorkflowRequest>()("StartWorkflow", Schema.String, Schema.Number, {
+    extends Schema.TaggedRequest<StartWorkflowRequest>()("StartWorkflow", Schema.String, Schema.Number, {
       executionId: Schema.String
-    }, (_) => _.executionId)
-  {}
+    })
+  {
+    [PrimaryKey.symbol]() {
+      return this.executionId
+    }
+  }
 
   it("Should run as expected if not crashed", () => {
     return Effect.gen(function*(_) {
@@ -83,17 +87,23 @@ describe.concurrent("Workflow", () => {
     const firstActivity = utils.mockActivity("activity1", Schema.Number, Schema.Never, () => Exit.succeed(1))
     const secondActivity = utils.mockActivity("activity2", Schema.Number, Schema.Never, () => Exit.succeed(2))
 
-    class FirstWorkflow extends Message.TaggedMessage<FirstWorkflow>()("FirstWorkflow", Schema.Never, Schema.Number, {
+    class FirstWorkflow extends Schema.TaggedRequest<FirstWorkflow>()("FirstWorkflow", Schema.Never, Schema.Number, {
       id: Schema.String
-    }, (_) => _.id) {}
+    }) {
+      [PrimaryKey.symbol]() {
+        return this.id
+      }
+    }
 
     const firstWorkflow = Workflow.make(FirstWorkflow, () => firstActivity.activity)
 
-    class SecondWorkflow
-      extends Message.TaggedMessage<SecondWorkflow>()("SecondWorkflow", Schema.Never, Schema.Number, {
-        id: Schema.String
-      }, (_) => _.id)
-    {}
+    class SecondWorkflow extends Schema.TaggedRequest<SecondWorkflow>()("SecondWorkflow", Schema.Never, Schema.Number, {
+      id: Schema.String
+    }) {
+      [PrimaryKey.symbol]() {
+        return this.id
+      }
+    }
 
     const secondWorkflow = Workflow.make(SecondWorkflow, () => secondActivity.activity)
 

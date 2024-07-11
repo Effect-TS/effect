@@ -1,7 +1,8 @@
 /**
  * @since 1.0.0
  */
-import * as Message from "@effect/cluster/Message"
+import type * as Envelope from "@effect/cluster/Envelope"
+import * as Serializable from "@effect/schema/Serializable"
 import * as Array from "effect/Array"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -341,24 +342,27 @@ function handleExecutionPhase<A, E>(
 /**
  * @since 1.0.0
  */
-export function attempt<A extends Message.Message.Any, R>(workflow: Workflow.Workflow<A, R>) {
+export function attempt<A extends Envelope.Envelope.AnyMessage, R>(workflow: Workflow.Workflow<A, R>) {
   return (
     request: A
   ): Effect.Effect<
-    Message.Message.Success<A>,
-    Message.Message.Error<A>,
+    Serializable.WithResult.Success<A>,
+    Serializable.WithResult.Error<A>,
     R | DurableExecutionJournal.DurableExecutionJournal
   > => {
     return Effect.gen(function*($) {
       const persistenceId = PrimaryKey.value(request)
-      const successSchema = Message.successSchema(request)
-      const failureSchema = Message.failureSchema(request)
+      const successSchema = Serializable.successSchema(request)
+      const failureSchema = Serializable.failureSchema(request)
       const durableExecutionJournal = yield* $(DurableExecutionJournal.DurableExecutionJournal)
       const context = yield* $(Effect.context<R>())
       const executionVersion = workflow.version(request)
 
       const appendToJournal = (
-        event: DurableExecutionEvent.DurableExecutionEvent<Message.Message.Success<A>, Message.Message.Error<A>>
+        event: DurableExecutionEvent.DurableExecutionEvent<
+          Serializable.WithResult.Success<A>,
+          Serializable.WithResult.Error<A>
+        >
       ) =>
         Effect.flatMap(
           DurableExecutionJournal.DurableExecutionJournal,
@@ -367,13 +371,19 @@ export function attempt<A extends Message.Message.Any, R>(workflow: Workflow.Wor
 
       const mailbox = yield* $(
         Queue.unbounded<
-          WorkflowRuntimeMessage.WorkflowRuntimeMessage<Message.Message.Success<A>, Message.Message.Error<A>>
+          WorkflowRuntimeMessage.WorkflowRuntimeMessage<
+            Serializable.WithResult.Success<A>,
+            Serializable.WithResult.Error<A>
+          >
         >()
       )
 
       const isYielding = pipe(
         Deferred.make<
-          WorkflowRuntimeState.WorkflowRuntimeState<Message.Message.Success<A>, Message.Message.Error<A>>,
+          WorkflowRuntimeState.WorkflowRuntimeState<
+            Serializable.WithResult.Success<A>,
+            Serializable.WithResult.Error<A>
+          >,
           never
         >(),
         Effect.tap((signal) => Queue.offer(mailbox, new WorkflowRuntimeMessage.CheckStatus({ signal }))),
@@ -448,7 +458,10 @@ export function attempt<A extends Message.Message.Any, R>(workflow: Workflow.Wor
         ),
         Effect.zipLeft(pipe(
           Deferred.make<
-            WorkflowRuntimeState.WorkflowRuntimeState<Message.Message.Success<A>, Message.Message.Error<A>>,
+            WorkflowRuntimeState.WorkflowRuntimeState<
+              Serializable.WithResult.Success<A>,
+              Serializable.WithResult.Error<A>
+            >,
             never
           >(),
           Effect.flatMap((signal) => Queue.offer(mailbox, new WorkflowRuntimeMessage.CheckStatus({ signal })))
