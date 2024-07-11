@@ -43,13 +43,13 @@ export const isRpc = (u: unknown): u is Rpc<any, any> => Predicate.hasProperty(u
  * @since 1.0.0
  * @category models
  */
-export type Rpc<Req extends Schema.TaggedRequest.Any, R> = RpcEffect<Req, R> | RpcStream<Req, R>
+export type Rpc<Req extends Schema.TaggedRequest.All, R> = RpcEffect<Req, R> | RpcStream<Req, R>
 
 /**
  * @since 1.0.0
  * @category models
  */
-export interface RpcEffect<Req extends Schema.TaggedRequest.Any, R> extends Rpc.Proto<Req> {
+export interface RpcEffect<Req extends Schema.TaggedRequest.All, R> extends Rpc.Proto<Req> {
   readonly _tag: "Effect"
   readonly handler: (
     request: Req
@@ -64,7 +64,7 @@ export interface RpcEffect<Req extends Schema.TaggedRequest.Any, R> extends Rpc.
  * @since 1.0.0
  * @category models
  */
-export interface RpcStream<Req extends Schema.TaggedRequest.Any, R> extends Rpc.Proto<Req> {
+export interface RpcStream<Req extends Schema.TaggedRequest.All, R> extends Rpc.Proto<Req> {
   readonly _tag: "Stream"
   readonly handler: (
     request: Req
@@ -84,7 +84,7 @@ export declare namespace Rpc {
    * @since 1.0.0
    * @category models
    */
-  export interface Proto<Req extends Schema.TaggedRequest.Any> extends Pipeable {
+  export interface Proto<Req extends Schema.TaggedRequest.All> extends Pipeable {
     readonly [TypeId]: TypeId
     readonly _tag: string
     readonly schema: Schema.Schema<Req, any, unknown>
@@ -108,7 +108,7 @@ export declare namespace Rpc {
    * @since 1.0.0
    * @category models
    */
-  export type Result<A extends Schema.TaggedRequest.Any, R = never> = StreamRequestTypeId extends keyof A ?
+  export type Result<A extends Schema.TaggedRequest.All, R = never> = StreamRequestTypeId extends keyof A ?
     EffectRequest.Request.Success<A> :
     Effect.Effect<EffectRequest.Request.Success<A>, EffectRequest.Request.Error<A>, R>
 
@@ -116,7 +116,7 @@ export declare namespace Rpc {
    * @since 1.0.0
    * @category models
    */
-  export type ResultUndecoded<A extends Schema.TaggedRequest.Any, R = never> = A extends
+  export type ResultUndecoded<A extends Schema.TaggedRequest.All, R = never> = A extends
     Serializable.WithResult<infer _A, infer I, infer E, infer _EI, infer _R>
     ? StreamRequestTypeId extends keyof A ? Stream.Stream<I, E, R>
     : Effect.Effect<I, E, R>
@@ -127,7 +127,7 @@ export declare namespace Rpc {
  * @since 1.0.0
  * @category constructors
  */
-export const effect = <Req extends Schema.TaggedRequest.Any, R>(
+export const effect = <Req extends Schema.TaggedRequest.All, R>(
   schema: Schema.Schema<Req, any, unknown>,
   handler: (request: Req) => Effect.Effect<EffectRequest.Request.Success<Req>, EffectRequest.Request.Error<Req>, R>
 ): Rpc<Req, R> => ({
@@ -250,7 +250,7 @@ export const stream = <Req extends StreamRequest.Any, R>(
  * @since 1.0.0
  * @category models
  */
-export interface Request<A extends Schema.TaggedRequest.Any> extends
+export interface Request<A extends Schema.TaggedRequest.All> extends
   EffectRequest.Request<
     EffectRequest.Request.Success<A>,
     EffectRequest.Request.Error<A>
@@ -334,7 +334,7 @@ export const schemaHeaders = <R, I extends Record.ReadonlyRecord<string, string 
  * @since 1.0.0
  * @category requests
  */
-export const request = <A extends Schema.TaggedRequest.Any>(
+export const request = <A extends Schema.TaggedRequest.All>(
   request: A,
   options?: {
     readonly spanPrefix?: string
@@ -362,7 +362,7 @@ export const request = <A extends Schema.TaggedRequest.Any>(
  * @category requests
  */
 export const call = <
-  A extends Schema.TaggedRequest.Any,
+  A extends Schema.TaggedRequest.All,
   R extends
     | RequestResolver.RequestResolver<Request<A>>
     | Effect.Effect<RequestResolver.RequestResolver<Request<A>>, never, any>
@@ -389,13 +389,13 @@ export const provideServiceEffect: {
   <I, S, E, R2>(
     tag: Context.Tag<I, S>,
     effect: Effect.Effect<S, E, R2>
-  ): <Req extends Schema.TaggedRequest.Any, R>(self: Rpc<Req, R>) => Rpc<Req, Exclude<R, I> | R2>
-  <Req extends Schema.TaggedRequest.Any, R, I, S, E, R2>(
+  ): <Req extends Schema.TaggedRequest.All, R>(self: Rpc<Req, R>) => Rpc<Req, Exclude<R, I> | R2>
+  <Req extends Schema.TaggedRequest.All, R, I, S, E, R2>(
     self: Rpc<Req, R>,
     tag: Context.Tag<I, S>,
     effect: Effect.Effect<S, E, R2>
   ): Rpc<Req, Exclude<R, I> | R2>
-} = dual(3, <Req extends Schema.TaggedRequest.Any, R, I, S, E, R2>(
+} = dual(3, <Req extends Schema.TaggedRequest.All, R, I, S, E, R2>(
   self: Rpc<Req, R>,
   tag: Context.Tag<I, S>,
   make: Effect.Effect<S, E, R2>
@@ -415,13 +415,13 @@ export const provideService: {
   <I, S>(
     tag: Context.Tag<I, S>,
     service: S
-  ): <Req extends Schema.TaggedRequest.Any, R>(self: Rpc<Req, R>) => Rpc<Req, Exclude<R, I>>
-  <Req extends Schema.TaggedRequest.Any, R, I, S>(
+  ): <Req extends Schema.TaggedRequest.All, R>(self: Rpc<Req, R>) => Rpc<Req, Exclude<R, I>>
+  <Req extends Schema.TaggedRequest.All, R, I, S>(
     self: Rpc<Req, R>,
     tag: Context.Tag<I, S>,
     service: S
   ): Rpc<Req, Exclude<R, I>>
-} = dual(3, <Req extends Schema.TaggedRequest.Any, R, I, S>(
+} = dual(3, <Req extends Schema.TaggedRequest.All, R, I, S>(
   self: Rpc<Req, R>,
   tag: Context.Tag<I, S>,
   service: S

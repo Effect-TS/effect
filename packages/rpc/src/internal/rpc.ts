@@ -14,7 +14,7 @@ export const withRequestTag = <A>(
   ) => A
 ) => {
   const cache = new Map<string, A>()
-  return (request: Schema.TaggedRequest.Any): A => {
+  return (request: Schema.TaggedRequest.All): A => {
     let result = cache.get(request._tag)
     if (result !== undefined) {
       return result
@@ -31,7 +31,7 @@ export const StreamRequestTypeId: Rpc.StreamRequestTypeId = Symbol.for(
 ) as Rpc.StreamRequestTypeId
 
 /** @internal */
-export const makeRequest = <A extends Schema.TaggedRequest.Any>(
+export const makeRequest = <A extends Schema.TaggedRequest.All>(
   options: {
     readonly request: A
     readonly traceId: string

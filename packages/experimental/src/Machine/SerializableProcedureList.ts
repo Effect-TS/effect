@@ -15,8 +15,8 @@ import * as ProcedureList from "./ProcedureList.js"
  */
 export interface SerializableProcedureList<
   State,
-  Public extends Schema.TaggedRequest.Any,
-  Private extends Schema.TaggedRequest.Any,
+  Public extends Schema.TaggedRequest.All,
+  Private extends Schema.TaggedRequest.All,
   R
 > extends Effect.Effect<SerializableProcedureList<State, Public, Private, R>> {
   readonly [ProcedureList.TypeId]: ProcedureList.TypeId
@@ -43,12 +43,12 @@ export const make: <State>(
  */
 export const add: {
   <
-    Req extends Schema.TaggedRequest.Any,
+    Req extends Schema.TaggedRequest.All,
     I,
     ReqR,
     State,
-    Public extends Schema.TaggedRequest.Any,
-    Private extends Schema.TaggedRequest.Any,
+    Public extends Schema.TaggedRequest.All,
+    Private extends Schema.TaggedRequest.All,
     R2
   >(
     schema: Schema.Schema<Req, I, ReqR> & { readonly _tag: Req["_tag"] },
@@ -63,10 +63,10 @@ export const add: {
   >
   <
     State,
-    Public extends Schema.TaggedRequest.Any,
-    Private extends Schema.TaggedRequest.Any,
+    Public extends Schema.TaggedRequest.All,
+    Private extends Schema.TaggedRequest.All,
     R,
-    Req extends Schema.TaggedRequest.Any,
+    Req extends Schema.TaggedRequest.All,
     I,
     ReqR,
     R2
@@ -79,10 +79,10 @@ export const add: {
   3,
   <
     State,
-    Public extends Schema.TaggedRequest.Any,
-    Private extends Schema.TaggedRequest.Any,
+    Public extends Schema.TaggedRequest.All,
+    Private extends Schema.TaggedRequest.All,
     R,
-    Req extends Schema.TaggedRequest.Any,
+    Req extends Schema.TaggedRequest.All,
     I,
     ReqR,
     R2
@@ -104,12 +104,12 @@ export const add: {
  */
 export const addPrivate: {
   <
-    Req extends Schema.TaggedRequest.Any,
+    Req extends Schema.TaggedRequest.All,
     I,
     ReqR,
     State,
-    Public extends Schema.TaggedRequest.Any,
-    Private extends Schema.TaggedRequest.Any,
+    Public extends Schema.TaggedRequest.All,
+    Private extends Schema.TaggedRequest.All,
     R2
   >(
     schema: Schema.Schema<Req, I, ReqR> & { readonly _tag: Req["_tag"] },
@@ -124,10 +124,10 @@ export const addPrivate: {
   >
   <
     State,
-    Public extends Schema.TaggedRequest.Any,
-    Private extends Schema.TaggedRequest.Any,
+    Public extends Schema.TaggedRequest.All,
+    Private extends Schema.TaggedRequest.All,
     R,
-    Req extends Schema.TaggedRequest.Any,
+    Req extends Schema.TaggedRequest.All,
     I,
     ReqR,
     R2
@@ -140,10 +140,10 @@ export const addPrivate: {
   3,
   <
     State,
-    Public extends Schema.TaggedRequest.Any,
-    Private extends Schema.TaggedRequest.Any,
+    Public extends Schema.TaggedRequest.All,
+    Private extends Schema.TaggedRequest.All,
     R,
-    Req extends Schema.TaggedRequest.Any,
+    Req extends Schema.TaggedRequest.All,
     I,
     ReqR,
     R2
@@ -166,10 +166,10 @@ export const addPrivate: {
 export const withInitialState: {
   <State>(
     initialState: Types.NoInfer<State>
-  ): <Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, R>(
+  ): <Public extends Schema.TaggedRequest.All, Private extends Schema.TaggedRequest.All, R>(
     self: SerializableProcedureList<State, Public, Private, R>
   ) => SerializableProcedureList<State, Public, Private, R>
-  <State, Public extends Schema.TaggedRequest.Any, Private extends Schema.TaggedRequest.Any, R>(
+  <State, Public extends Schema.TaggedRequest.All, Private extends Schema.TaggedRequest.All, R>(
     self: SerializableProcedureList<State, Public, Private, R>,
     initialState: Types.NoInfer<State>
   ): SerializableProcedureList<State, Public, Private, R>

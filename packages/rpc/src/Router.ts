@@ -40,7 +40,7 @@ export const isRouter = (u: unknown): u is Router<any, any> => Predicate.hasProp
  * @since 1.0.0
  * @category models
  */
-export interface Router<Reqs extends Schema.TaggedRequest.Any, R> extends Pipeable {
+export interface Router<Reqs extends Schema.TaggedRequest.All, R> extends Pipeable {
   readonly [TypeId]: TypeId
   readonly rpcs: ReadonlySet<Rpc.Rpc<Reqs, R>>
 }
@@ -89,7 +89,7 @@ export declare namespace Router {
   export type ResponseEffect = Schema.ExitEncoded<any, any> | ReadonlyArray<Schema.ExitEncoded<any, any>>
 }
 
-const fromSet = <Reqs extends Schema.TaggedRequest.Any, R>(
+const fromSet = <Reqs extends Schema.TaggedRequest.All, R>(
   rpcs: ReadonlySet<Rpc.Rpc<Reqs, R>>
 ): Router<Reqs, R> => ({
   [TypeId]: TypeId,
@@ -138,13 +138,13 @@ export const provideServiceEffect: {
   <I, S, E, R2>(
     tag: Context.Tag<I, S>,
     effect: Effect.Effect<S, E, R2>
-  ): <Reqs extends Schema.TaggedRequest.Any, R>(self: Router<Reqs, R>) => Router<Reqs, Exclude<R, I> | R2>
-  <Reqs extends Schema.TaggedRequest.Any, R, I, S, E, R2>(
+  ): <Reqs extends Schema.TaggedRequest.All, R>(self: Router<Reqs, R>) => Router<Reqs, Exclude<R, I> | R2>
+  <Reqs extends Schema.TaggedRequest.All, R, I, S, E, R2>(
     self: Router<Reqs, R>,
     tag: Context.Tag<I, S>,
     effect: Effect.Effect<S, E, R2>
   ): Router<Reqs, Exclude<R, I> | R2>
-} = dual(3, <Reqs extends Schema.TaggedRequest.Any, R, I, S, E, R2>(
+} = dual(3, <Reqs extends Schema.TaggedRequest.All, R, I, S, E, R2>(
   self: Router<Reqs, R>,
   tag: Context.Tag<I, S>,
   effect: Effect.Effect<S, E, R2>
@@ -158,13 +158,13 @@ export const provideService: {
   <I, S>(
     tag: Context.Tag<I, S>,
     service: S
-  ): <Reqs extends Schema.TaggedRequest.Any, R>(self: Router<Reqs, R>) => Router<Reqs, Exclude<R, I>>
-  <Reqs extends Schema.TaggedRequest.Any, R, I, S>(
+  ): <Reqs extends Schema.TaggedRequest.All, R>(self: Router<Reqs, R>) => Router<Reqs, Exclude<R, I>>
+  <Reqs extends Schema.TaggedRequest.All, R, I, S>(
     self: Router<Reqs, R>,
     tag: Context.Tag<I, S>,
     service: S
   ): Router<Reqs, Exclude<R, I>>
-} = dual(3, <Reqs extends Schema.TaggedRequest.Any, R, I, S>(
+} = dual(3, <Reqs extends Schema.TaggedRequest.All, R, I, S>(
   self: Router<Reqs, R>,
   tag: Context.Tag<I, S>,
   service: S
@@ -369,7 +369,7 @@ export const toHandlerEffect = <R extends Router<any, any>>(router: R, options?:
  */
 export const toHandlerRaw = <R extends Router<any, any>>(router: R) => {
   const schema: Schema.Schema<
-    readonly [Schema.TaggedRequest.Any, Rpc.Rpc<any, any>],
+    readonly [Schema.TaggedRequest.All, Rpc.Rpc<any, any>],
     unknown,
     Router.ContextRaw<R>
   > = Schema.Union(...[...router.rpcs].map((rpc) =>

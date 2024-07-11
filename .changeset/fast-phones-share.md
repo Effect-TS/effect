@@ -33,6 +33,7 @@ TOOD: change to minor before merging
 - change `TaggedRequestClass` type parameters order (swap `Success` with `Failure`)
 - change `WithResult` fields to lowercase (`Success` -> `success`, `Failure` -> `failure`)
 - rename `WithResult.Error` to `WithResult.Failure`
+- simplify `TaggedRequest.Any`, use `TaggedRequest.All` instead
 
 **New Features**
 

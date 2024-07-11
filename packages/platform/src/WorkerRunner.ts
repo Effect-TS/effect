@@ -117,7 +117,7 @@ export declare namespace SerializedRunner {
   /**
    * @since 1.0.0
    */
-  export type Handlers<A extends Schema.TaggedRequest.Any> = {
+  export type Handlers<A extends Schema.TaggedRequest.All> = {
     readonly [K in A["_tag"]]: Extract<
       A,
       { readonly _tag: K }
@@ -187,7 +187,7 @@ export declare namespace SerializedRunner {
 export const makeSerialized: <
   R,
   I,
-  A extends Schema.TaggedRequest.Any,
+  A extends Schema.TaggedRequest.All,
   const Handlers extends SerializedRunner.Handlers<A>
 >(
   schema: Schema.Schema<A, I, R>,
@@ -202,7 +202,7 @@ export const makeSerialized: <
 export const layerSerialized: <
   R,
   I,
-  A extends Schema.TaggedRequest.Any,
+  A extends Schema.TaggedRequest.All,
   const Handlers extends SerializedRunner.Handlers<A>
 >(
   schema: Schema.Schema<A, I, R>,

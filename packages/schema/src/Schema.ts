@@ -7451,9 +7451,7 @@ export declare namespace TaggedRequest {
    * @category classes
    * @since 0.67.0
    */
-  export type Any =
-    | TaggedRequest<string, any, any, any, any, any, any, any, unknown>
-    | TaggedRequest<string, any, any, any, any, any, never, never, unknown>
+  export type Any = TaggedRequest<string, any, any, any, any, any, any, any, unknown>
 
   /**
    * @category classes
