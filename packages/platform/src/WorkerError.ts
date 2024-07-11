@@ -3,6 +3,7 @@
  */
 import * as Schema from "@effect/schema/Schema"
 import type * as Cause from "effect/Cause"
+import * as Inspectable from "effect/Inspectable"
 import * as Predicate from "effect/Predicate"
 import * as internal from "./internal/workerError.js"
 
@@ -49,23 +50,21 @@ export class WorkerError extends Schema.TaggedError<WorkerError>()("WorkerError"
    * @since 1.0.0
    */
   static readonly encodeCause: (a: Cause.Cause<WorkerError>) => Schema.CauseEncoded<WorkerErrorFrom> = Schema
-    .encodeSync(
-      this.Cause
-    )
+    .encodeSync(this.Cause)
 
   /**
    * @since 1.0.0
    */
   static readonly decodeCause: (u: Schema.CauseEncoded<WorkerErrorFrom>) => Cause.Cause<WorkerError> = Schema
-    .decodeSync(
-      this.Cause
-    )
+    .decodeSync(this.Cause)
 
   /**
    * @since 1.0.0
    */
   get message() {
-    const message = this.error instanceof Error ? this.error.message : String(this.error)
+    const message = Predicate.hasProperty(this.error, "message")
+      ? this.error.message
+      : Inspectable.toStringUnknown(this.error, undefined)
     return `${this.reason}: ${message}`
   }
 }
