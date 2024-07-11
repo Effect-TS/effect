@@ -4,7 +4,7 @@
 
 TOOD: change to minor before merging
 
-- change TaggedRequest signature from
+- change `TaggedRequest` signature from
 
   ```ts
   class Sample extends Schema.TaggedRequest<Sample>()(
@@ -29,3 +29,4 @@ TOOD: change to minor before merging
   ```
 
 - change `TaggedRequestClass` type parameters order (swap `Success` with `Failure`)
+- change `WithResult` fields to lowercase (`Success` -> `success`, `Failure` -> `failure`)

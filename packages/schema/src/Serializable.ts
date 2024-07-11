@@ -71,8 +71,8 @@ export const symbolResult: unique symbol = serializable_.symbolResult as any
  */
 export interface WithResult<Success, SuccessEncoded, Failure, FailureEncoded, SuccessAndFailureR> {
   readonly [symbolResult]: {
-    readonly Success: Schema.Schema<Success, SuccessEncoded, SuccessAndFailureR>
-    readonly Failure: Schema.Schema<Failure, FailureEncoded, SuccessAndFailureR>
+    readonly success: Schema.Schema<Success, SuccessEncoded, SuccessAndFailureR>
+    readonly failure: Schema.Schema<Failure, FailureEncoded, SuccessAndFailureR>
   }
 }
 
@@ -102,14 +102,14 @@ export declare namespace WithResult {
  * @category accessor
  */
 export const failureSchema = <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>): Schema.Schema<FA, FI, R> =>
-  self[symbolResult].Failure
+  self[symbolResult].failure
 
 /**
  * @since 0.67.0
  * @category accessor
  */
 export const successSchema = <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>): Schema.Schema<SA, SI, R> =>
-  self[symbolResult].Success
+  self[symbolResult].success
 
 const exitSchemaCache = globalValue(
   "@effect/schema/Serializable/exitSchemaCache",
@@ -197,7 +197,7 @@ export const serializeFailure: {
 } = dual(
   2,
   <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>, value: FA): Effect.Effect<FI, ParseResult.ParseError, R> =>
-    Schema.encode(self[symbolResult].Failure)(value)
+    Schema.encode(self[symbolResult].failure)(value)
 )
 
 /**
@@ -214,7 +214,7 @@ export const deserializeFailure: {
   <SA, SI, FA, FI, R>(
     self: WithResult<SA, SI, FA, FI, R>,
     value: unknown
-  ): Effect.Effect<FA, ParseResult.ParseError, R> => Schema.decodeUnknown(self[symbolResult].Failure)(value)
+  ): Effect.Effect<FA, ParseResult.ParseError, R> => Schema.decodeUnknown(self[symbolResult].failure)(value)
 )
 
 /**
@@ -229,7 +229,7 @@ export const serializeSuccess: {
 } = dual(
   2,
   <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>, value: SA): Effect.Effect<SI, ParseResult.ParseError, R> =>
-    Schema.encode(self[symbolResult].Success)(value)
+    Schema.encode(self[symbolResult].success)(value)
 )
 
 /**
@@ -246,7 +246,7 @@ export const deserializeSuccess: {
   <SA, SI, FA, FI, R>(
     self: WithResult<SA, SI, FA, FI, R>,
     value: unknown
-  ): Effect.Effect<SA, ParseResult.ParseError, R> => Schema.decodeUnknown(self[symbolResult].Success)(value)
+  ): Effect.Effect<SA, ParseResult.ParseError, R> => Schema.decodeUnknown(self[symbolResult].success)(value)
 )
 
 /**

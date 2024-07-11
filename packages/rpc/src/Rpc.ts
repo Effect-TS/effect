@@ -258,10 +258,10 @@ export interface Request<A extends Schema.TaggedRequest.Any> extends
   PrimaryKey.PrimaryKey,
   Serializable.WithResult<
     Serializable.WithResult.Context<A>,
-    Schema.Schema.Encoded<A[typeof Serializable.symbolResult]["Failure"]>,
-    Schema.Schema.Type<A[typeof Serializable.symbolResult]["Failure"]>,
-    Schema.Schema.Encoded<A[typeof Serializable.symbolResult]["Success"]>,
-    Schema.Schema.Type<A[typeof Serializable.symbolResult]["Success"]>
+    Schema.Schema.Encoded<A[typeof Serializable.symbolResult]["failure"]>,
+    Schema.Schema.Type<A[typeof Serializable.symbolResult]["failure"]>,
+    Schema.Schema.Encoded<A[typeof Serializable.symbolResult]["success"]>,
+    Schema.Schema.Type<A[typeof Serializable.symbolResult]["success"]>
   >
 {
   readonly request: A

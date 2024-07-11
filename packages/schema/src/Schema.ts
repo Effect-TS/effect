@@ -7528,8 +7528,8 @@ export const TaggedRequest =
       }
       get [serializable_.symbolResult]() {
         return {
-          Failure: options.failure,
-          Success: options.success
+          failure: options.failure,
+          success: options.success
         }
       }
     } as any

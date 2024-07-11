@@ -8156,8 +8156,8 @@ class GetPersonById {
   // WithResult implementation
   get [Serializable.symbolResult]() {
     return {
-      Success: Person.FromEncoded,
-      Failure: Schema.String
+      success: Person.FromEncoded,
+      failure: Schema.String
     }
   }
 }

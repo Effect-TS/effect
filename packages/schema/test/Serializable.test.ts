@@ -16,8 +16,8 @@ class GetPersonById extends S.Class<GetPersonById>("GetPersonById")({
   }
   get [Serializable.symbolResult]() {
     return {
-      Success: Person,
-      Failure: S.String
+      success: Person,
+      failure: S.String
     }
   }
 }
