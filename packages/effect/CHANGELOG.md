@@ -1,5 +1,17 @@
 # effect
 
+## 3.5.2
+
+### Patch Changes
+
+- [#3228](https://github.com/Effect-TS/effect/pull/3228) [`639208e`](https://github.com/Effect-TS/effect/commit/639208eeb8a44622994f832bc2d45d06ab636bc8) Thanks @IMax153! - Render a more helpful error message when timing out an effect
+
+- [#3235](https://github.com/Effect-TS/effect/pull/3235) [`6684b4c`](https://github.com/Effect-TS/effect/commit/6684b4c27d77a7fcc7af2e261a450edf971b62b5) Thanks @tim-smart! - improve safari support for Logger.pretty
+
+- [#3235](https://github.com/Effect-TS/effect/pull/3235) [`6684b4c`](https://github.com/Effect-TS/effect/commit/6684b4c27d77a7fcc7af2e261a450edf971b62b5) Thanks @tim-smart! - fix span stack rendering when stack function returns undefined
+
+- [#3235](https://github.com/Effect-TS/effect/pull/3235) [`6684b4c`](https://github.com/Effect-TS/effect/commit/6684b4c27d77a7fcc7af2e261a450edf971b62b5) Thanks @tim-smart! - align UnsafeConsole group types with web apis
+
 ## 3.5.1
 
 ### Patch Changes
