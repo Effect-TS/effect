@@ -10,6 +10,21 @@ import * as TestClock from "effect/TestClock"
 import { assert, describe } from "vitest"
 
 describe("Effect", () => {
+  it.effect("timeout produces a useful error message", () =>
+    Effect.gen(function*() {
+      const duration = Duration.millis(1500)
+      const fiber = yield* Effect.never.pipe(
+        Effect.timeout(duration),
+        Effect.flip,
+        Effect.fork
+      )
+      yield* TestClock.adjust(Duration.millis(2000))
+      const result = yield* Fiber.join(fiber)
+      assert.include(
+        result.toString(),
+        "TimeoutException: Operation timed out before the specified duration of '1s 500ms' elapsed"
+      )
+    }))
   it.live("timeout a long computation", () =>
     Effect.gen(function*($) {
       const result = yield* $(

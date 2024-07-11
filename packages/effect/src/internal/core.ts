@@ -5,6 +5,7 @@ import * as Chunk from "../Chunk.js"
 import * as Context from "../Context.js"
 import type * as Deferred from "../Deferred.js"
 import type * as Differ from "../Differ.js"
+import * as Duration from "../Duration.js"
 import type * as Effect from "../Effect.js"
 import * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
@@ -2297,6 +2298,9 @@ export const TimeoutExceptionTypeId: Cause.TimeoutExceptionTypeId = Symbol.for(
 export const TimeoutException = makeException<Cause.TimeoutException>({
   [TimeoutExceptionTypeId]: TimeoutExceptionTypeId
 }, "TimeoutException")
+/** @internal */
+export const timeoutExceptionFromDuration = (duration: Duration.DurationInput): Cause.TimeoutException =>
+  new TimeoutException(`Operation timed out before the specified duration of '${Duration.format(duration)}' elapsed`)
 
 /** @internal */
 export const isTimeoutException = (u: unknown): u is Cause.TimeoutException => hasProperty(u, TimeoutExceptionTypeId)
