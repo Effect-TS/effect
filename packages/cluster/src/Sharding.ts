@@ -1,13 +1,12 @@
 /**
  * @since 1.0.0
  */
-import type * as SerializedEnvelope from "./SerializedEnvelope.js"
-import type * as SerializedValue from "./SerializedValue.js"
 import type * as Effect from "effect/Effect"
 import type * as HashSet from "effect/HashSet"
 import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import type { Broadcaster } from "./Broadcaster.js"
+import type { Envelope } from "./Envelope.js"
 import * as internal from "./internal/sharding.js"
 import type * as MessageState from "./MessageState.js"
 import type { Messenger } from "./Messenger.js"
@@ -16,8 +15,9 @@ import type * as RecipientAddress from "./RecipientAddress.js"
 import type * as RecipientBehaviour from "./RecipientBehaviour.js"
 import type * as RecipientBehaviourContext from "./RecipientBehaviourContext.js"
 import type * as RecipentType from "./RecipientType.js"
+import type * as SerializedEnvelope from "./SerializedEnvelope.js"
+import type * as SerializedValue from "./SerializedValue.js"
 import type * as ShardId from "./ShardId.js"
-import type { Envelope } from "./Envelope.js"
 import type * as ShardingException from "./ShardingException.js"
 import type * as ShardingRegistrationEvent from "./ShardingRegistrationEvent.js"
 

@@ -1,3 +1,6 @@
+/**
+ * @since 1.0.0
+ */
 import * as Envelope from "./Envelope.js"
 import * as SerializedMessage from "./SerializedMessage.js"
 

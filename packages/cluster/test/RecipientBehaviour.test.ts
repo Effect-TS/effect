@@ -1,4 +1,4 @@
-import * as Message from "@effect/cluster/Message"
+import * as Envelope from "@effect/cluster/Envelope"
 import * as PoisonPill from "@effect/cluster/PoisonPill"
 import { RecipientAddress } from "@effect/cluster/RecipientAddress"
 import * as RecipientBehaviour from "@effect/cluster/RecipientBehaviour"
@@ -13,21 +13,27 @@ import * as FiberId from "effect/FiberId"
 import { pipe } from "effect/Function"
 import * as Logger from "effect/Logger"
 import * as LogLevel from "effect/LogLevel"
+import * as PrimaryKey from "effect/PrimaryKey"
 import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
 import { describe, expect, it } from "vitest"
-import * as Envelope from "@effect/cluster/Envelope"
 
-class Sample extends Message.TaggedMessage<Sample>()("Sample", Schema.Never, Schema.Number, {
-  id: Schema.String
-}, (_) => _.id) {
+class SampleMessage extends Schema.TaggedRequest<SampleMessage>()(
+  "SampleMessage",
+  Schema.Never,
+  Schema.Number,
+  { id: Schema.String }
+) {
+  [PrimaryKey.symbol]() {
+    return this.id
+  }
 }
 
 describe.concurrent("RecipientBehaviour", () => {
   const withTestEnv = <R, E, A>(fa: Effect.Effect<R, E, A>) =>
     pipe(fa, Effect.scoped, Logger.withMinimumLogLevel(LogLevel.Info))
 
-  const makeTestActor = <Msg extends Message.Message.Any, R>(
+  const makeTestActor = <Msg extends Envelope.Envelope.AnyMessage, R>(
     fa: RecipientBehaviour.RecipientBehaviour<Msg, R>,
     scope: Scope.Scope
   ) =>
@@ -42,7 +48,7 @@ describe.concurrent("RecipientBehaviour", () => {
           }),
           forkShutdown: Effect.void,
           shardId: ShardId.make(1),
-          recipientType: RecipientType.makeEntityType("Sample", Sample) as any
+          recipientType: RecipientType.makeEntityType("Sample", SampleMessage) as any
         })
       ),
       Scope.extend(scope)
@@ -52,7 +58,7 @@ describe.concurrent("RecipientBehaviour", () => {
     return Effect.gen(function*(_) {
       const received = yield* _(Deferred.make<boolean>())
 
-      const behaviour = RecipientBehaviour.fromInMemoryQueue<Sample, never>(
+      const behaviour = RecipientBehaviour.fromInMemoryQueue<SampleMessage, never>(
         (entityId, dequeue) =>
           pipe(
             Queue.take(dequeue),
@@ -62,8 +68,8 @@ describe.concurrent("RecipientBehaviour", () => {
 
       const scope = yield* _(Scope.make())
       const offer = yield* _(makeTestActor(behaviour, scope))
-      const msg = new Sample({ id: "1" })
-      yield* _(offer(Envelope.make(RecipientAddress.make({ entityId: "a", recipientType: "a"}), msg)))
+      const msg = new SampleMessage({ id: "1" })
+      yield* _(offer(Envelope.make(RecipientAddress.make({ entityId: "a", recipientType: "a" }), msg)))
       yield* _(Scope.close(scope, Exit.interrupt(FiberId.none)))
 
       expect(yield* _(Deferred.await(received))).toBe(true)
@@ -75,7 +81,7 @@ describe.concurrent("RecipientBehaviour", () => {
     return Effect.gen(function*(_) {
       const started = yield* _(Deferred.make<boolean>())
 
-      const behaviour = RecipientBehaviour.fromInMemoryQueue<Sample, never>(
+      const behaviour = RecipientBehaviour.fromInMemoryQueue<SampleMessage, never>(
         (entityId, dequeue) =>
           pipe(
             Queue.take(dequeue),
@@ -92,8 +98,8 @@ describe.concurrent("RecipientBehaviour", () => {
 
       const scope = yield* _(Scope.make())
       const offer = yield* _(makeTestActor(behaviour, scope))
-      const msg = new Sample({ id: "1" })
-      yield* _(offer(Envelope.make(RecipientAddress.make({ entityId: "a", recipientType: "a"}), msg)))
+      const msg = new SampleMessage({ id: "1" })
+      yield* _(offer(Envelope.make(RecipientAddress.make({ entityId: "a", recipientType: "a" }), msg)))
       yield* _(Deferred.await(started))
       yield* _(Scope.close(scope, Exit.interrupt(FiberId.none)))
     }).pipe(withTestEnv, Effect.runPromise).then(() => expect(interrupted).toBe(true))

@@ -1,3 +1,6 @@
+/**
+ * @since 1.0.0
+ */
 import * as Schema from "@effect/schema/Schema"
 import * as PrimaryKey from "effect/PrimaryKey"
 import * as SerializedValue from "./SerializedValue.js"
@@ -14,6 +17,9 @@ export class SerializedMessage extends Schema.TaggedRequest<SerializedMessage>()
   SerializedValue.schema,
   { body: SerializedValue.schema, messageId: Schema.String }
 ) {
+  /**
+   * @since 1.0.0
+   */
   [PrimaryKey.symbol]() {
     return this.messageId
   }

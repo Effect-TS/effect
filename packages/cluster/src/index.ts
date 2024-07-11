@@ -96,6 +96,11 @@ export * as SerializedMessage from "./SerializedMessage.js"
 /**
  * @since 1.0.0
  */
+export * as SerializedValue from "./SerializedValue.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as ShardId from "./ShardId.js"
 
 /**

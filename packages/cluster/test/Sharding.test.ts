@@ -1,4 +1,3 @@
-import * as Message from "@effect/cluster/Message"
 import * as MessageState from "@effect/cluster/MessageState"
 import * as Pods from "@effect/cluster/Pods"
 import * as PodsHealth from "@effect/cluster/PodsHealth"
@@ -36,34 +35,46 @@ interface SampleService {
 
 const SampleService = Context.GenericTag<SampleService>("@services/SampleService")
 
-class SampleMessage extends Message.TaggedMessage<SampleMessage>()("SampleMessage", Schema.Never, Schema.Void, {
-  id: Schema.String,
-  value: Schema.Number
-}, (_) => _.id) {
+class SampleMessage extends Schema.TaggedRequest<SampleMessage>()(
+  "SampleMessage",
+  Schema.Never,
+  Schema.Void,
+  {
+    id: Schema.String,
+    value: Schema.Number
+  }
+) {
+  [PrimaryKey.symbol]() {
+    return this.id
+  }
 }
 
-class SampleMessageWithResult extends Message.TaggedMessage<SampleMessageWithResult>()(
+class SampleMessageWithResult extends Schema.TaggedRequest<SampleMessageWithResult>()(
   "SampleMessageWithResult",
   Schema.Never,
   Schema.Number,
   {
     id: Schema.String,
     value: Schema.Number
-  },
-  (_) => _.id
+  }
 ) {
+  [PrimaryKey.symbol]() {
+    return this.id
+  }
 }
 
-class FailableMessageWithResult extends Message.TaggedMessage<FailableMessageWithResult>()(
+class FailableMessageWithResult extends Schema.TaggedRequest<FailableMessageWithResult>()(
   "FailableMessageWithResult",
   Schema.String,
   Schema.Number,
   {
     id: Schema.String,
     value: Schema.Number
-  },
-  (_) => _.id
+  }
 ) {
+  [PrimaryKey.symbol]() {
+    return this.id
+  }
 }
 
 type SampleEntity = SampleMessage | SampleMessageWithResult | FailableMessageWithResult

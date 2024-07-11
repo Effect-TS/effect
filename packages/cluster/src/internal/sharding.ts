@@ -631,7 +631,10 @@ function make(
                 pipe(
                   eitherResult,
                   Effect.flatMap((state) =>
-                    MessageState.mapEffect(state, (body) => serialization.decode(Message.exitSchema(message), body))
+                    MessageState.mapEffect(
+                      state,
+                      (body) => serialization.decode(Serializable.exitSchema(message), body)
+                    )
                   ),
                   Effect.flatMap((state) =>
                     Unify.unify(pipe(

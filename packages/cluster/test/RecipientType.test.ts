@@ -1,25 +1,41 @@
-import * as Message from "@effect/cluster/Message"
 import * as RecipientType from "@effect/cluster/RecipientType"
 import * as Schema from "@effect/schema/Schema"
 import { equals } from "effect/Equal"
 import * as Hash from "effect/Hash"
+import * as PrimaryKey from "effect/PrimaryKey"
 import { describe, expect, it } from "vitest"
 
-class Sample extends Message.TaggedMessage<Sample>()("Sample", Schema.Never, Schema.Number, {
-  id: Schema.String
-}, (_) => _.id) {
+class SampleMessage extends Schema.TaggedRequest<SampleMessage>()(
+  "SampleMessage",
+  Schema.Never,
+  Schema.Number,
+  {
+    id: Schema.String
+  }
+) {
+  [PrimaryKey.symbol]() {
+    return this.id
+  }
 }
 
-class Sample2 extends Message.TaggedMessage<Sample2>()("Sample2", Schema.Never, Schema.String, {
-  id2: Schema.String
-}, (_) => _.id2) {
+class SampleMessage2 extends Schema.TaggedRequest<SampleMessage2>()(
+  "SampleMessage2",
+  Schema.Never,
+  Schema.String,
+  {
+    id2: Schema.String
+  }
+) {
+  [PrimaryKey.symbol]() {
+    return this.id2
+  }
 }
 
 describe.concurrent("RecipientType", () => {
   it("Expect equals to work as expected", () => {
-    const User = RecipientType.makeEntityType("User", Sample)
-    const User2 = RecipientType.makeEntityType("User", Sample2)
-    const Notifications = RecipientType.makeTopicType("Notifications", Sample)
+    const User = RecipientType.makeEntityType("User", SampleMessage)
+    const User2 = RecipientType.makeEntityType("User", SampleMessage2)
+    const Notifications = RecipientType.makeTopicType("Notifications", SampleMessage)
 
     expect(equals(User, User)).toBe(true)
     expect(equals(User, User2)).toBe(true)
@@ -27,9 +43,9 @@ describe.concurrent("RecipientType", () => {
   })
 
   it("Expect hash to work as expected", () => {
-    const User = RecipientType.makeEntityType("User", Sample)
-    const User2 = RecipientType.makeEntityType("User", Sample2)
-    const Notifications = RecipientType.makeTopicType("Notifications", Sample)
+    const User = RecipientType.makeEntityType("User", SampleMessage)
+    const User2 = RecipientType.makeEntityType("User", SampleMessage2)
+    const Notifications = RecipientType.makeTopicType("Notifications", SampleMessage)
 
     expect(Hash.hash(User)).toBe(Hash.hash(User))
     expect(Hash.hash(User)).toBe(Hash.hash(User2))
