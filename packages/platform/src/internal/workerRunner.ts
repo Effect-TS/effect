@@ -46,7 +46,7 @@ export const make = <I, E, R, O>(
       platform.start<Worker.Worker.Request<I>, Worker.Worker.Response<E>>(shutdown),
       Scope.extend(scope)
     )
-    const fiberMap = new Map<number, Fiber.Fiber<void>>()
+    const fiberMap = new Map<number, Fiber.Fiber<void, unknown>>()
 
     yield* _(
       Queue.take(backing.queue),
@@ -134,8 +134,11 @@ export const make = <I, E, R, O>(
           }),
           Effect.catchIf(isWorkerError, (error) =>
             backing.send(portId, [id, 3, WorkerError.encodeCause(Cause.fail(error))])),
-          Effect.catchAllCause((cause) =>
-            Either.match(Cause.failureOrCause(cause), {
+          Effect.onExit((exit) => {
+            if (exit._tag === "Success") {
+              return Effect.void
+            }
+            return Either.match(Cause.failureOrCause(exit.cause), {
               onLeft: (error) => {
                 const transfers = options?.transfers ? options.transfers(error) : []
                 collector.unsafeClear()
@@ -160,7 +163,7 @@ export const make = <I, E, R, O>(
               },
               onRight: (cause) => backing.send(portId, [id, 3, WorkerError.encodeCause(cause)])
             })
-          ),
+          }),
           Effect.ensuring(Effect.sync(() => fiberMap.delete(id))),
           Effect.fork,
           Effect.tap((fiber) => Effect.sync(() => fiberMap.set(id, fiber)))
