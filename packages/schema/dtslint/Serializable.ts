@@ -23,5 +23,5 @@ failureSchema(new TR({ id: 1 }))
 const selfSchema = <Req extends Schema.TaggedProcedure.All>(req: Req) =>
   Serializable.selfSchema(Serializable.asSerializable(req))
 
-// $ExpectType Schema<TR, Encoded<{ readonly _tag: PropertySignature<":", "TR", never, ":", "TR", true, never>; } & { id: typeof NumberFromString; }>, never>
+// $ExpectType Schema<TR, Encoded<{ readonly _tag: tag<"TR">; } & { id: typeof NumberFromString; }>, never>
 selfSchema(new TR({ id: 1 }))

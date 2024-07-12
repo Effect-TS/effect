@@ -7333,7 +7333,7 @@ export const TaggedClass = <Self = never>(identifier?: string) =>
   fieldsOr: Fields | HasFields<Fields>,
   annotations?: Annotations.Schema<Self>
 ): [Self] extends [never] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
-  : TaggedClass<Self, Tag, { readonly _tag: PropertySignature<":", Tag, never, ":", Tag, true, never> } & Fields> =>
+  : TaggedClass<Self, Tag, { readonly _tag: tag<Tag> } & Fields> =>
 {
   const fields = getFieldsFromFieldsOr(fieldsOr)
   const schema = getSchemaFromFieldsOr(fieldsOr)
@@ -7382,7 +7382,7 @@ export const TaggedError = <Self = never>(identifier?: string) =>
   : TaggedErrorClass<
     Self,
     Tag,
-    { readonly _tag: PropertySignature<":", Tag, never, ":", Tag, true, never> } & Fields
+    { readonly _tag: tag<Tag> } & Fields
   > =>
 {
   class Base extends data_.Error {}
@@ -7513,7 +7513,7 @@ export const TaggedRequest =
     : TaggedRequest<
       Self,
       Tag,
-      { readonly _tag: PropertySignature<":", Tag, never, ":", Tag, true, never> } & Payload,
+      { readonly _tag: tag<Tag> } & Payload,
       Success,
       Failure
     > =>
