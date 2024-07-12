@@ -534,7 +534,7 @@ const prettyLoggerBrowser = (options: {
         if (typeof firstMaybeString === "string") {
           firstLine += ` ${color}${firstMaybeString}`
           if (options.colors) {
-            firstParams.push("color:blue")
+            firstParams.push("color:deepskyblue")
           }
           messageIndex++
         }
