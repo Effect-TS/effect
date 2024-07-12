@@ -7532,7 +7532,7 @@ export const TaggedRequest =
       get [serializable_.symbol]() {
         return this.constructor
       }
-      get [serializable_.symbolResult]() {
+      get [serializable_.symbolExit]() {
         return {
           failure: options.failure,
           success: options.success

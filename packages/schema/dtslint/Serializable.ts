@@ -9,13 +9,13 @@ class TR extends Schema.TaggedRequest<TR>()("TR", {
 }) {}
 
 const successSchema = <Req extends Schema.TaggedRequest.All>(req: Req) =>
-  Serializable.successSchema(Serializable.asWithResult(req))
+  Serializable.successSchema(Serializable.asWithExit(req))
 
 // $ExpectType Schema<number, string, never>
 successSchema(new TR({ id: 1 }))
 
 const failureSchema = <Req extends Schema.TaggedRequest.All>(req: Req) =>
-  Serializable.failureSchema(Serializable.asWithResult(req))
+  Serializable.failureSchema(Serializable.asWithExit(req))
 
 // $ExpectType Schema<string, string, never>
 failureSchema(new TR({ id: 1 }))

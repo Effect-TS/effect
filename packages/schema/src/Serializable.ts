@@ -16,11 +16,8 @@ import * as Schema from "./Schema.js"
 export const symbol: unique symbol = serializable_.symbol as any
 
 /**
- * The `Serializable` trait, part of the `@effect/schema/Serializable` module,
- * enables objects to have self-contained schema(s) for serialization. This
- * functionality is particularly beneficial in scenarios where objects need to
- * be consistently serialized and deserialized across various runtime
- * environments or sent over network communications.
+ * The `Serializable` trait allows objects to define their own schema for
+ * serialization.
  *
  * @since 0.67.0
  * @category model
@@ -46,12 +43,10 @@ export declare namespace Serializable {
    * @since 0.67.0
    */
   export type Context<T> = T extends Serializable<infer _A, infer _I, infer R> ? R : never
-
   /**
    * @since 0.69.0
    */
   export type Any = Serializable<any, any, unknown>
-
   /**
    * @since 0.69.0
    */
@@ -79,10 +74,10 @@ export const selfSchema = <A, I, R>(self: Serializable<A, I, R>): Schema.Schema<
  * @since 0.67.0
  * @category symbol
  */
-export const symbolResult: unique symbol = serializable_.symbolResult as any
+export const symbolExit: unique symbol = serializable_.symbolExit as any
 
 /**
- * The `WithResult` trait is designed to encapsulate the outcome of an
+ * The `WithExit` trait is designed to encapsulate the outcome of an
  * operation, distinguishing between success and failure cases. Each case is
  * associated with a schema that defines the structure and types of the success
  * or failure data.
@@ -90,8 +85,8 @@ export const symbolResult: unique symbol = serializable_.symbolResult as any
  * @since 0.67.0
  * @category model
  */
-export interface WithResult<Success, SuccessEncoded, Failure, FailureEncoded, SuccessAndFailureR> {
-  readonly [symbolResult]: {
+export interface WithExit<Success, SuccessEncoded, Failure, FailureEncoded, SuccessAndFailureR> {
+  readonly [symbolExit]: {
     readonly success: Schema.Schema<Success, SuccessEncoded, SuccessAndFailureR>
     readonly failure: Schema.Schema<Failure, FailureEncoded, SuccessAndFailureR>
   }
@@ -101,71 +96,66 @@ export interface WithResult<Success, SuccessEncoded, Failure, FailureEncoded, Su
  * @since 0.67.0
  * @category model
  */
-export declare namespace WithResult {
+export declare namespace WithExit {
   /**
    * @since 0.68.16
    */
-  export type Success<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _A : never
-
+  export type Success<T> = T extends WithExit<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _A : never
   /**
    * @since 0.69.0
    */
-  export type SuccessEncoded<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _I : never
-
+  export type SuccessEncoded<T> = T extends WithExit<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _I : never
   /**
    * @since 0.69.0
    */
-  export type Failure<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _E : never
-
+  export type Failure<T> = T extends WithExit<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _E : never
   /**
    * @since 0.69.0
    */
-  export type FailureEncoded<T> = T extends WithResult<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _EI : never
+  export type FailureEncoded<T> = T extends WithExit<infer _A, infer _I, infer _E, infer _EI, infer _R> ? _EI : never
 
   /**
    * @since 0.67.0
    */
-  export type Context<T> = T extends WithResult<infer _SA, infer _SI, infer _FA, infer _FI, infer R> ? R : never
-
+  export type Context<T> = T extends WithExit<infer _SA, infer _SI, infer _FA, infer _FI, infer R> ? R : never
   /**
    * @since 0.69.0
    */
-  export type Any = WithResult<any, any, any, any, unknown>
-
+  export type Any = WithExit<any, any, any, any, unknown>
   /**
    * @since 0.69.0
    */
   export type All =
     | Any
-    | WithResult<any, any, never, never, unknown>
+    | WithExit<any, any, never, never, unknown>
 }
 
 /**
  * @since 0.69.0
  */
-export const asWithResult = <WR extends WithResult.All>(
-  withResult: WR
-): WithResult<
-  WithResult.Success<WR>,
-  WithResult.SuccessEncoded<WR>,
-  WithResult.Failure<WR>,
-  WithResult.FailureEncoded<WR>,
-  WithResult.Context<WR>
-> => withResult as any
+export const asWithExit = <WE extends WithExit.All>(
+  withExit: WE
+): WithExit<
+  WithExit.Success<WE>,
+  WithExit.SuccessEncoded<WE>,
+  WithExit.Failure<WE>,
+  WithExit.FailureEncoded<WE>,
+  WithExit.Context<WE>
+> => withExit as any
 
 /**
  * @since 0.67.0
  * @category accessor
  */
-export const failureSchema = <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>): Schema.Schema<FA, FI, R> =>
-  self[symbolResult].failure
+export const failureSchema = <SA, SI, FA, FI, R>(self: WithExit<SA, SI, FA, FI, R>): Schema.Schema<FA, FI, R> =>
+  self[symbolExit].failure
 
 /**
  * @since 0.67.0
  * @category accessor
  */
-export const successSchema = <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>): Schema.Schema<SA, SI, R> =>
-  self[symbolResult].success
+export const successSchema = <SA, SI, FA, FI, R>(self: WithExit<SA, SI, FA, FI, R>): Schema.Schema<SA, SI, R> =>
+  self[symbolExit].success
 
 const exitSchemaCache = globalValue(
   "@effect/schema/Serializable/exitSchemaCache",
@@ -176,13 +166,13 @@ const exitSchemaCache = globalValue(
  * @since 0.67.0
  * @category accessor
  */
-export const exitSchema = <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>): Schema.Schema<
+export const exitSchema = <SA, SI, FA, FI, R>(self: WithExit<SA, SI, FA, FI, R>): Schema.Schema<
   Exit.Exit<SA, FA>,
   Schema.ExitEncoded<SI, FI>,
   R
 > => {
   const proto = Object.getPrototypeOf(self)
-  if (!(symbolResult in proto)) {
+  if (!(symbolExit in proto)) {
     return Schema.Exit({ failure: failureSchema(self), success: successSchema(self) })
   }
   let schema = exitSchemaCache.get(proto)
@@ -206,7 +196,7 @@ export interface SerializableWithResult<
   Failure,
   FailureEncoded,
   SuccessAndFailureR
-> extends Serializable<A, I, R>, WithResult<Success, SuccessEncoded, Failure, FailureEncoded, SuccessAndFailureR> {}
+> extends Serializable<A, I, R>, WithExit<Success, SuccessEncoded, Failure, FailureEncoded, SuccessAndFailureR> {}
 
 /**
  * @since 0.67.0
@@ -247,13 +237,13 @@ export const deserialize: {
  */
 export const serializeFailure: {
   <FA>(value: FA): <SA, SI, FI, R>(
-    self: WithResult<SA, SI, FA, FI, R>
+    self: WithExit<SA, SI, FA, FI, R>
   ) => Effect.Effect<FI, ParseResult.ParseError, R>
-  <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>, value: FA): Effect.Effect<FI, ParseResult.ParseError, R>
+  <SA, SI, FA, FI, R>(self: WithExit<SA, SI, FA, FI, R>, value: FA): Effect.Effect<FI, ParseResult.ParseError, R>
 } = dual(
   2,
-  <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>, value: FA): Effect.Effect<FI, ParseResult.ParseError, R> =>
-    Schema.encode(self[symbolResult].failure)(value)
+  <SA, SI, FA, FI, R>(self: WithExit<SA, SI, FA, FI, R>, value: FA): Effect.Effect<FI, ParseResult.ParseError, R> =>
+    Schema.encode(self[symbolExit].failure)(value)
 )
 
 /**
@@ -263,14 +253,14 @@ export const serializeFailure: {
 export const deserializeFailure: {
   (
     value: unknown
-  ): <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>) => Effect.Effect<FA, ParseResult.ParseError, R>
-  <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>, value: unknown): Effect.Effect<FA, ParseResult.ParseError, R>
+  ): <SA, SI, FA, FI, R>(self: WithExit<SA, SI, FA, FI, R>) => Effect.Effect<FA, ParseResult.ParseError, R>
+  <SA, SI, FA, FI, R>(self: WithExit<SA, SI, FA, FI, R>, value: unknown): Effect.Effect<FA, ParseResult.ParseError, R>
 } = dual(
   2,
   <SA, SI, FA, FI, R>(
-    self: WithResult<SA, SI, FA, FI, R>,
+    self: WithExit<SA, SI, FA, FI, R>,
     value: unknown
-  ): Effect.Effect<FA, ParseResult.ParseError, R> => Schema.decodeUnknown(self[symbolResult].failure)(value)
+  ): Effect.Effect<FA, ParseResult.ParseError, R> => Schema.decodeUnknown(self[symbolExit].failure)(value)
 )
 
 /**
@@ -279,13 +269,13 @@ export const deserializeFailure: {
  */
 export const serializeSuccess: {
   <SA>(value: SA): <SI, FA, FI, R>(
-    self: WithResult<SA, SI, FA, FI, R>
+    self: WithExit<SA, SI, FA, FI, R>
   ) => Effect.Effect<SI, ParseResult.ParseError, R>
-  <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>, value: SA): Effect.Effect<SI, ParseResult.ParseError, R>
+  <SA, SI, FA, FI, R>(self: WithExit<SA, SI, FA, FI, R>, value: SA): Effect.Effect<SI, ParseResult.ParseError, R>
 } = dual(
   2,
-  <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>, value: SA): Effect.Effect<SI, ParseResult.ParseError, R> =>
-    Schema.encode(self[symbolResult].success)(value)
+  <SA, SI, FA, FI, R>(self: WithExit<SA, SI, FA, FI, R>, value: SA): Effect.Effect<SI, ParseResult.ParseError, R> =>
+    Schema.encode(self[symbolExit].success)(value)
 )
 
 /**
@@ -294,15 +284,15 @@ export const serializeSuccess: {
  */
 export const deserializeSuccess: {
   (value: unknown): <SA, SI, FA, FI, R>(
-    self: WithResult<SA, SI, FA, FI, R>
+    self: WithExit<SA, SI, FA, FI, R>
   ) => Effect.Effect<SA, ParseResult.ParseError, R>
-  <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>, value: unknown): Effect.Effect<SA, ParseResult.ParseError, R>
+  <SA, SI, FA, FI, R>(self: WithExit<SA, SI, FA, FI, R>, value: unknown): Effect.Effect<SA, ParseResult.ParseError, R>
 } = dual(
   2,
   <SA, SI, FA, FI, R>(
-    self: WithResult<SA, SI, FA, FI, R>,
+    self: WithExit<SA, SI, FA, FI, R>,
     value: unknown
-  ): Effect.Effect<SA, ParseResult.ParseError, R> => Schema.decodeUnknown(self[symbolResult].success)(value)
+  ): Effect.Effect<SA, ParseResult.ParseError, R> => Schema.decodeUnknown(self[symbolExit].success)(value)
 )
 
 /**
@@ -311,14 +301,14 @@ export const deserializeSuccess: {
  */
 export const serializeExit: {
   <SA, FA>(value: Exit.Exit<SA, FA>): <SI, FI, R>(
-    self: WithResult<SA, SI, FA, FI, R>
+    self: WithExit<SA, SI, FA, FI, R>
   ) => Effect.Effect<Schema.ExitEncoded<SI, FI>, ParseResult.ParseError, R>
   <SA, SI, FA, FI, R>(
-    self: WithResult<SA, SI, FA, FI, R>,
+    self: WithExit<SA, SI, FA, FI, R>,
     value: Exit.Exit<SA, FA>
   ): Effect.Effect<Schema.ExitEncoded<SI, FI>, ParseResult.ParseError, R>
 } = dual(2, <SA, SI, FA, FI, R>(
-  self: WithResult<SA, SI, FA, FI, R>,
+  self: WithExit<SA, SI, FA, FI, R>,
   value: Exit.Exit<SA, FA>
 ): Effect.Effect<Schema.ExitEncoded<SI, FI>, ParseResult.ParseError, R> => Schema.encode(exitSchema(self))(value))
 
@@ -328,13 +318,13 @@ export const serializeExit: {
  */
 export const deserializeExit: {
   (value: unknown): <SA, SI, FA, FI, R>(
-    self: WithResult<SA, SI, FA, FI, R>
+    self: WithExit<SA, SI, FA, FI, R>
   ) => Effect.Effect<Exit.Exit<SA, FA>, ParseResult.ParseError, R>
   <SA, SI, FA, FI, R>(
-    self: WithResult<SA, SI, FA, FI, R>,
+    self: WithExit<SA, SI, FA, FI, R>,
     value: unknown
   ): Effect.Effect<Exit.Exit<SA, FA>, ParseResult.ParseError, R>
 } = dual(2, <SA, SI, FA, FI, R>(
-  self: WithResult<SA, SI, FA, FI, R>,
+  self: WithExit<SA, SI, FA, FI, R>,
   value: unknown
 ): Effect.Effect<Exit.Exit<SA, FA>, ParseResult.ParseError, R> => Schema.decodeUnknown(exitSchema(self))(value))

@@ -46,7 +46,7 @@ export const makeRequest = <A extends Schema.TaggedRequest.All>(
     ...options,
     [Request.RequestTypeId]: undefined as any,
     [PrimaryKey.symbol]: () => `${options.request._tag}:${hash}`,
-    [Serializable.symbolResult]: {
+    [Serializable.symbolExit]: {
       success: isStream
         ? Schema.Never
         : Serializable.successSchema(options.request as any),

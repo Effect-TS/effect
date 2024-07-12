@@ -70,7 +70,7 @@ export namespace Message {
    * @since 1.0.0
    * @category utils
    */
-  export type Exit<S> = S extends Serializable.WithResult<infer A, infer _AI, infer E, infer _EI, infer _R> ?
+  export type Exit<S> = S extends Serializable.WithExit<infer A, infer _AI, infer E, infer _EI, infer _R> ?
     Exit_.Exit<A, E>
     : never
 }

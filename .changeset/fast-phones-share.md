@@ -39,8 +39,11 @@ TOOD: change to minor before merging
 
 ### Serializable
 
-- change `WithResult` fields to lowercase (`Success` -> `success`, `Failure` -> `failure`)
-- rename `WithResult.Error` to `WithResult.Failure`
+- rename `WithResult` interface to `WithExit`
+- rename `WithResult` namespace to `WithExit`
+- change `WithExit` fields to lowercase (`Success` -> `success`, `Failure` -> `failure`)
+- rename `WithExit.Error` to `WithExit.Failure`
+- rename `symbolResult` symbol to `symbolExit`
 
 ## New Features
 
@@ -50,11 +53,11 @@ TOOD: change to minor before merging
 
 ### Serializable
 
-- add `WithResult.SuccessEncoded`
-- add `WithResult.FailureEncoded`
-- add `WithResult.Any`
-- add `WithResult.All`
-- add `asWithResult`
+- add `WithExit.SuccessEncoded`
+- add `WithExit.FailureEncoded`
+- add `WithExit.Any`
+- add `WithExit.All`
+- add `asWithExit`
 - add `Serializable.Any`
 - add `Serializable.All`
 - add `asSerializable`
