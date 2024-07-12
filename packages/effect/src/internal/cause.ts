@@ -999,11 +999,12 @@ class PrettyError extends globalThis.Error implements Cause.PrettyError {
     const originalErrorIsObject = typeof originalError === "object" && originalError !== null
     const prevLimit = Error.stackTraceLimit
     Error.stackTraceLimit = 1
-    super(prettyErrorMessage(originalError), {
-      cause: originalErrorIsObject && "cause" in originalError && typeof originalError.cause !== "undefined"
-        ? new PrettyError(originalError.cause)
+    super(
+      prettyErrorMessage(originalError),
+      originalErrorIsObject && "cause" in originalError && typeof originalError.cause !== "undefined"
+        ? { cause: new PrettyError(originalError.cause) }
         : undefined
-    })
+    )
     if (this.message === "") {
       this.message = "An error has occurred"
     }
@@ -1100,9 +1101,13 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
       const stackFn = spanToTrace.get(current)
       if (typeof stackFn === "function") {
         const stack = stackFn()
-        const locationMatch = stack.match(locationRegex)
-        const location = locationMatch ? locationMatch[1] : stack.replace(/^at /, "")
-        out.push(`    at ${current.name} (${location})`)
+        if (typeof stack === "string") {
+          const locationMatch = stack.match(locationRegex)
+          const location = locationMatch ? locationMatch[1] : stack.replace(/^at /, "")
+          out.push(`    at ${current.name} (${location})`)
+        } else {
+          out.push(`    at ${current.name}`)
+        }
       } else {
         out.push(`    at ${current.name}`)
       }

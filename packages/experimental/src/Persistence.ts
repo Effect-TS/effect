@@ -11,10 +11,8 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
 import { identity } from "effect/Function"
-import * as Hash from "effect/Hash"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import { hasProperty } from "effect/Predicate"
 import * as PrimaryKey from "effect/PrimaryKey"
 import type * as Scope from "effect/Scope"
 import * as TimeToLive from "./TimeToLive.js"
@@ -176,7 +174,7 @@ export declare namespace ResultPersistence {
    * @since 1.0.0
    * @category models
    */
-  export interface Key<R, IE, E, IA, A> extends Serializable.WithExit<A, IA, E, IE, R> {}
+  export interface Key<R, IE, E, IA, A> extends Serializable.WithExit<A, IA, E, IE, R>, PrimaryKey.PrimaryKey {}
 
   /**
    * @since 1.0.0
@@ -228,17 +226,7 @@ export const layerResult = Layer.effect(
             )
           const makeKey = <R, IE, E, IA, A>(
             key: ResultPersistence.Key<R, IE, E, IA, A>
-          ) => {
-            // TODO: Use PrimaryKey.valueOrHash
-            if (hasProperty(key, PrimaryKey.symbol)) {
-              return (key as PrimaryKey.PrimaryKey)[PrimaryKey.symbol]()
-            }
-            const hash = Hash.hash(key)
-            if (hasProperty(key, "_tag") && typeof key["_tag"] === "string") {
-              return `${key._tag}:${hash}`
-            }
-            return hash.toString()
-          }
+          ) => key[PrimaryKey.symbol]()
 
           return identity<ResultPersistenceStore>({
             get: (key) =>

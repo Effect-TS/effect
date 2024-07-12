@@ -7398,17 +7398,15 @@ export const TaggedError = <Self = never>(identifier?: string) =>
     fields: taggedFields,
     Base,
     annotations,
-    toStringOverride(self) {
-      if ((Predicate.isString(self.message) && self.message.length > 0)) {
-        let message = `${self._tag}: ${self.message}`
-        if (Predicate.isString(self.stack)) {
-          message = `${message}\n${self.stack.split("\n").slice(1).join("\n")}`
-        }
-        return message
-      }
-    }
+    disableToString: true
   }) {
     static _tag = tag
+    get message(): string {
+      return `{ ${
+        util_.ownKeys(fields).map((p: any) => `${util_.formatPropertyKey(p)}: ${util_.formatUnknown(this[p])}`)
+          .join(", ")
+      } }`
+    }
   } as any
 }
 
@@ -7563,22 +7561,21 @@ type MakeOptions = boolean | {
 const getDisableValidationMakeOption = (options: MakeOptions | undefined): boolean =>
   Predicate.isBoolean(options) ? options : options?.disableValidation ?? false
 
-const makeClass = ({ Base, annotations, fields, identifier, kind, schema, toStringOverride }: {
+const makeClass = ({ Base, annotations, disableToString, fields, identifier, kind, schema }: {
   kind: "Class" | "TaggedClass" | "TaggedError" | "TaggedRequest"
   identifier: string
   schema: Schema.Any
   fields: Struct.Fields
   Base: new(...args: ReadonlyArray<any>) => any
   annotations?: Annotations.Schema<any> | undefined
-  toStringOverride?: (self: any) => string | undefined
+  disableToString?: boolean | undefined
 }): any => {
   const classSymbol = Symbol.for(`@effect/schema/${kind}/${identifier}`)
   const validateSchema = orElseTitleAnnotation(schema, `${identifier} (Constructor)`)
   const encodedSide: Schema.Any = orElseTitleAnnotation(schema, `${identifier} (Encoded side)`)
   const typeSide = orElseTitleAnnotation(typeSchema(schema), `${identifier} (Type side)`)
   const fallbackInstanceOf = (u: unknown) => Predicate.hasProperty(u, classSymbol) && ParseResult.is(typeSide)(u)
-
-  return class extends Base {
+  const klass = class extends Base {
     constructor(
       props: { [x: string | symbol]: unknown } = {},
       options: MakeOptions = false
@@ -7718,20 +7715,19 @@ const makeClass = ({ Base, annotations, fields, identifier, kind, schema, toStri
     get [classSymbol]() {
       return classSymbol
     }
-
-    toString() {
-      if (toStringOverride !== undefined) {
-        const out = toStringOverride(this)
-        if (out !== undefined) {
-          return out
-        }
-      }
-      return `${identifier}({ ${
-        util_.ownKeys(fields).map((p: any) => `${util_.formatPropertyKey(p)}: ${util_.formatUnknown(this[p])}`)
-          .join(", ")
-      } })`
-    }
   }
+  if (disableToString !== true) {
+    Object.defineProperty(klass.prototype, "toString", {
+      value() {
+        return `${identifier}({ ${
+          util_.ownKeys(fields).map((p: any) => `${util_.formatPropertyKey(p)}: ${util_.formatUnknown(this[p])}`)
+            .join(", ")
+        } })`
+      },
+      configurable: true
+    })
+  }
+  return klass
 }
 
 /**

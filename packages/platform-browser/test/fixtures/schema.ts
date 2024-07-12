@@ -28,6 +28,12 @@ export class GetPersonById extends Schema.TaggedRequest<GetPersonById>()("GetPer
   }
 }) {}
 
+export class RunnerInterrupt extends Schema.TaggedRequest<RunnerInterrupt>()("RunnerInterrupt", {
+  failure: Schema.Never,
+  success: Schema.Void,
+  payload: {}
+}) {}
+
 export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()("InitialMessage", {
   failure: Schema.Never,
   success: Schema.Void,
@@ -54,5 +60,5 @@ export class GetSpan extends Schema.TaggedRequest<GetSpan>()(
   }
 ) {}
 
-export const WorkerMessage = Schema.Union(GetUserById, GetPersonById, InitialMessage, GetSpan)
+export const WorkerMessage = Schema.Union(GetUserById, GetPersonById, InitialMessage, GetSpan, RunnerInterrupt)
 export type WorkerMessage = Schema.Schema.Type<typeof WorkerMessage>
