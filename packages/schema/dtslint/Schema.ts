@@ -14,7 +14,7 @@ declare const aContext: S.Schema<string, string, "a">
 declare const bContext: S.Schema<number, number, "b">
 declare const cContext: S.Schema<boolean, boolean, "c">
 
-class A extends S.Class<A>("A")({ a: S.NonEmpty }) {}
+class A extends S.Class<A>("A")({ a: S.NonEmptyString }) {}
 
 const ServiceA = Context.GenericTag<"ServiceA", string>("ServiceA")
 

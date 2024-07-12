@@ -1900,7 +1900,7 @@ schema (Suspend): <suspended schema>`
     it("compose", () => {
       expectJSONSchema(
         Schema.Struct({
-          a: Schema.NonEmpty.pipe(Schema.compose(Schema.NumberFromString))
+          a: Schema.NonEmptyString.pipe(Schema.compose(Schema.NumberFromString))
         }),
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1912,7 +1912,7 @@ schema (Suspend): <suspended schema>`
             "a": {
               "type": "string",
               "description": "a non empty string",
-              "title": "NonEmpty",
+              "title": "NonEmptyString",
               "minLength": 1
             }
           },
@@ -1924,7 +1924,9 @@ schema (Suspend): <suspended schema>`
     describe("optional", () => {
       it("annotations", () => {
         const schema = Schema.Struct({
-          a: Schema.optional(Schema.NonEmpty.annotations({ description: "an optional field" }), { default: () => "" })
+          a: Schema.optional(Schema.NonEmptyString.annotations({ description: "an optional field" }), {
+            default: () => ""
+          })
             .annotations({ description: "a required field" })
         })
         expectJSONSchema(schema, {
@@ -1935,7 +1937,7 @@ schema (Suspend): <suspended schema>`
             "a": {
               "type": "string",
               "description": "an optional field",
-              "title": "NonEmpty",
+              "title": "NonEmptyString",
               "minLength": 1
             }
           },
@@ -1952,7 +1954,7 @@ schema (Suspend): <suspended schema>`
             "a": {
               "type": "string",
               "description": "a required field",
-              "title": "NonEmpty",
+              "title": "NonEmptyString",
               "minLength": 1
             }
           },
@@ -1975,7 +1977,7 @@ schema (Suspend): <suspended schema>`
       it("with default", () => {
         expectJSONSchema(
           Schema.Struct({
-            a: Schema.optional(Schema.NonEmpty, { default: () => "" })
+            a: Schema.optional(Schema.NonEmptyString, { default: () => "" })
           }),
           {
             "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1985,7 +1987,7 @@ schema (Suspend): <suspended schema>`
               "a": {
                 "type": "string",
                 "description": "a non empty string",
-                "title": "NonEmpty",
+                "title": "NonEmptyString",
                 "minLength": 1
               }
             },
@@ -1998,7 +2000,7 @@ schema (Suspend): <suspended schema>`
       it("as Option", () => {
         expectJSONSchema(
           Schema.Struct({
-            a: Schema.optional(Schema.NonEmpty, { as: "Option" })
+            a: Schema.optional(Schema.NonEmptyString, { as: "Option" })
           }),
           {
             "$schema": "http://json-schema.org/draft-07/schema#",
@@ -2008,7 +2010,7 @@ schema (Suspend): <suspended schema>`
               "a": {
                 "type": "string",
                 "description": "a non empty string",
-                "title": "NonEmpty",
+                "title": "NonEmptyString",
                 "minLength": 1
               }
             },
@@ -2021,7 +2023,7 @@ schema (Suspend): <suspended schema>`
       it("fromKey", () => {
         expectJSONSchema(
           Schema.Struct({
-            a: Schema.NonEmpty.pipe(Schema.propertySignature, Schema.fromKey("b"))
+            a: Schema.NonEmptyString.pipe(Schema.propertySignature, Schema.fromKey("b"))
           }),
           {
             "$schema": "http://json-schema.org/draft-07/schema#",
@@ -2033,7 +2035,7 @@ schema (Suspend): <suspended schema>`
               "b": {
                 "type": "string",
                 "description": "a non empty string",
-                "title": "NonEmpty",
+                "title": "NonEmptyString",
                 "minLength": 1
               }
             },
@@ -2046,7 +2048,7 @@ schema (Suspend): <suspended schema>`
       it("OptionFromNullOr", () => {
         expectJSONSchema(
           Schema.Struct({
-            a: Schema.OptionFromNullOr(Schema.NonEmpty)
+            a: Schema.OptionFromNullOr(Schema.NonEmptyString)
           }),
           {
             "$schema": "http://json-schema.org/draft-07/schema#",
@@ -2060,7 +2062,7 @@ schema (Suspend): <suspended schema>`
                   {
                     "type": "string",
                     "description": "a non empty string",
-                    "title": "NonEmpty",
+                    "title": "NonEmptyString",
                     "minLength": 1
                   },
                   {

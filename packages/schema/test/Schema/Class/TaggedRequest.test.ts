@@ -9,7 +9,7 @@ import { assert, describe, expect, it } from "vitest"
 
 const Name = Context.GenericTag<"Name", string>("Name")
 const NameString = S.String.pipe(
-  S.nonEmpty(),
+  S.nonEmptyString(),
   S.transformOrFail(
     S.String,
     {

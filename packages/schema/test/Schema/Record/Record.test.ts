@@ -368,7 +368,7 @@ describe("record", () => {
     })
 
     it("should support branded keys", async () => {
-      const schema = S.Record(S.NonEmpty.pipe(S.brand("UserId")), S.Number)
+      const schema = S.Record(S.NonEmptyString.pipe(S.brand("UserId")), S.Number)
       await Util.expectDecodeUnknownSuccess(schema, {})
       await Util.expectDecodeUnknownSuccess(schema, { "a": 1 })
       await Util.expectDecodeUnknownSuccess(schema, { "": 1 }, {})
@@ -377,9 +377,9 @@ describe("record", () => {
       await Util.expectDecodeUnknownFailure(
         schema,
         { "": 1 },
-        `{ readonly [x: NonEmpty]: number }
+        `{ readonly [x: NonEmptyString]: number }
 └─ [""]
-   └─ is unexpected, expected: NonEmpty`,
+   └─ is unexpected, expected: NonEmptyString`,
         Util.onExcessPropertyError
       )
     })

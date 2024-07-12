@@ -436,7 +436,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
 
     // issue #2312
     it.skip("nonEmpty pattern", () => {
-      const schema = S.String.pipe(S.nonEmpty(), S.pattern(/^[-]*$/))
+      const schema = S.String.pipe(S.nonEmptyString(), S.pattern(/^[-]*$/))
       expectValidArbitrary(schema)
     })
   })

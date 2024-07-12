@@ -63,33 +63,33 @@ describe("pluck", () => {
 
   describe("encoding", () => {
     it("struct (string keys)", async () => {
-      const origin = S.Struct({ a: S.NonEmpty })
+      const origin = S.Struct({ a: S.NonEmptyString })
       const schema = S.pluck(origin, "a")
       await Util.expectEncodeSuccess(schema, "a", { a: "a" })
       await Util.expectEncodeFailure(
         schema,
         "",
-        `({ readonly a: NonEmpty } <-> NonEmpty)
+        `({ readonly a: NonEmptyString } <-> NonEmptyString)
 └─ Type side transformation failure
-   └─ NonEmpty
+   └─ NonEmptyString
       └─ Predicate refinement failure
-         └─ Expected NonEmpty, actual ""`
+         └─ Expected NonEmptyString, actual ""`
       )
     })
 
     it("struct (symbol keys)", async () => {
       const a = Symbol.for("effect/schema/test/a")
-      const origin = S.Struct({ [a]: S.NonEmpty })
+      const origin = S.Struct({ [a]: S.NonEmptyString })
       const schema = S.pluck(origin, a)
       await Util.expectEncodeSuccess(schema, "a", { [a]: "a" })
       await Util.expectEncodeFailure(
         schema,
         "",
-        `({ readonly Symbol(effect/schema/test/a): NonEmpty } <-> NonEmpty)
+        `({ readonly Symbol(effect/schema/test/a): NonEmptyString } <-> NonEmptyString)
 └─ Type side transformation failure
-   └─ NonEmpty
+   └─ NonEmptyString
       └─ Predicate refinement failure
-         └─ Expected NonEmpty, actual ""`
+         └─ Expected NonEmptyString, actual ""`
       )
     })
   })

@@ -4163,9 +4163,9 @@ export class Char extends String$.pipe(length(1, { identifier: "Char" })) {
 
 /**
  * @category string filters
- * @since 0.67.0
+ * @since 0.69.0
  */
-export const nonEmpty = <A extends string>(
+export const nonEmptyString = <A extends string>(
   annotations?: Annotations.Filter<A>
 ): <I, R>(self: Schema<A, I, R>) => filter<Schema<A, I, R>> =>
   minLength(1, {
@@ -4327,12 +4327,12 @@ export const parseJson: {
 
 /**
  * @category string constructors
- * @since 0.67.0
+ * @since 0.69.0
  */
-export class NonEmpty extends String$.pipe(
-  nonEmpty({ identifier: "NonEmpty", title: "NonEmpty" })
+export class NonEmptyString extends String$.pipe(
+  nonEmptyString({ identifier: "NonEmptyString", title: "NonEmptyString" })
 ) {
-  static override annotations: (annotations: Annotations.Schema<string>) => typeof NonEmpty = super.annotations
+  static override annotations: (annotations: Annotations.Schema<string>) => typeof NonEmptyString = super.annotations
 }
 
 /**

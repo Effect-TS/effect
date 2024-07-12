@@ -80,7 +80,7 @@ details: Duplicate key "_tag"`)
   })
 
   it("decoding", async () => {
-    class TA extends S.TaggedClass<TA>()("TA", { a: S.NonEmpty }) {}
+    class TA extends S.TaggedClass<TA>()("TA", { a: S.NonEmptyString }) {}
     await Util.expectDecodeUnknownSuccess(TA, { _tag: "TA", a: "a" }, new TA({ a: "a" }))
     await Util.expectDecodeUnknownFailure(
       TA,
@@ -98,14 +98,14 @@ details: Duplicate key "_tag"`)
 └─ Encoded side transformation failure
    └─ TA (Encoded side)
       └─ ["a"]
-         └─ NonEmpty
+         └─ NonEmptyString
             └─ Predicate refinement failure
-               └─ Expected NonEmpty, actual ""`
+               └─ Expected NonEmptyString, actual ""`
     )
   })
 
   it("encoding", async () => {
-    class TA extends S.TaggedClass<TA>()("TA", { a: S.NonEmpty }) {}
+    class TA extends S.TaggedClass<TA>()("TA", { a: S.NonEmptyString }) {}
     await Util.expectEncodeSuccess(TA, new TA({ a: "a" }), { _tag: "TA", a: "a" })
     await Util.expectEncodeSuccess(TA, { _tag: "TA", a: "a" } as any, { _tag: "TA", a: "a" })
     await Util.expectEncodeFailure(
@@ -115,9 +115,9 @@ details: Duplicate key "_tag"`)
 └─ Encoded side transformation failure
    └─ TA (Encoded side)
       └─ ["a"]
-         └─ NonEmpty
+         └─ NonEmptyString
             └─ Predicate refinement failure
-               └─ Expected NonEmpty, actual ""`
+               └─ Expected NonEmptyString, actual ""`
     )
   })
 
@@ -171,7 +171,7 @@ details: Duplicate key "_tag"`)
   it("baseline", () => {
     class TaggedPerson extends S.TaggedClass<TaggedPerson>()("TaggedPerson", {
       id: S.Number,
-      name: S.String.pipe(S.nonEmpty())
+      name: S.String.pipe(S.nonEmptyString())
     }) {
       get upperName() {
         return this.name.toUpperCase()

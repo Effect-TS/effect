@@ -125,7 +125,7 @@ schema (NeverKeyword): never`)
   })
 
   it("Refinement", () => {
-    const schema = S.NonEmpty
+    const schema = S.NonEmptyString
     const equivalence = E.make(schema)
 
     expect(equivalence("a", "a")).toBe(true)

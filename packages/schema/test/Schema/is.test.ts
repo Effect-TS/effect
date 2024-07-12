@@ -534,8 +534,8 @@ describe("is", () => {
     })
   })
 
-  it("nonEmpty", () => {
-    const schema = S.String.pipe(S.nonEmpty())
+  it("nonEmptyString", () => {
+    const schema = S.String.pipe(S.nonEmptyString())
     const is = P.is(schema)
     expect(is("a")).toEqual(true)
     expect(is("aa")).toEqual(true)

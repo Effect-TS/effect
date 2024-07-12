@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 
 class Person extends S.Class<Person>("Person")({
   id: S.Number,
-  name: S.String.pipe(S.nonEmpty())
+  name: S.String.pipe(S.nonEmptyString())
 }) {
   get upperName() {
     return this.name.toUpperCase()

@@ -2,7 +2,7 @@
 "@effect/schema": patch
 ---
 
-TOOD: change to minor before merging
+TODO: change to minor before merging
 
 ## Breaking Changes
 
@@ -36,6 +36,7 @@ TOOD: change to minor before merging
 
 - change `TaggedRequestClass` type parameters order (swap `Success` with `Failure`)
 - simplify `TaggedRequest.Any`, use `TaggedRequest.All` instead
+- rename `nonEmpty` filter to `nonEmptyString` and `NonEmpty` schema to `NonEmptyString`, closes #3115
 
 ### Serializable
 

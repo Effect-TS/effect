@@ -2,9 +2,10 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
 import { describe, it } from "vitest"
 
-const String = S.transform(S.NonEmpty, S.String, { strict: true, decode: (s) => s, encode: (s) => s }).annotations({
-  identifier: "string"
-})
+const String = S.transform(S.NonEmptyString, S.String, { strict: true, decode: (s) => s, encode: (s) => s })
+  .annotations({
+    identifier: "string"
+  })
 
 describe("ParseOptionsAnnotation", () => {
   it("nested structs", async () => {
@@ -37,15 +38,15 @@ describe("ParseOptionsAnnotation", () => {
 │     └─ ["b"]
 │        └─ string
 │           └─ Encoded side transformation failure
-│              └─ NonEmpty
+│              └─ NonEmptyString
 │                 └─ Predicate refinement failure
-│                    └─ Expected NonEmpty, actual ""
+│                    └─ Expected NonEmptyString, actual ""
 └─ ["d"]
    └─ string
       └─ Encoded side transformation failure
-         └─ NonEmpty
+         └─ NonEmptyString
             └─ Predicate refinement failure
-               └─ Expected NonEmpty, actual ""`,
+               └─ Expected NonEmptyString, actual ""`,
       { errors: "first" }
     )
   })
