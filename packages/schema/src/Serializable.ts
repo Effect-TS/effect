@@ -46,7 +46,28 @@ export declare namespace Serializable {
    * @since 0.67.0
    */
   export type Context<T> = T extends Serializable<infer _A, infer _I, infer R> ? R : never
+
+  /**
+   * @since 0.69.0
+   */
+  export type Any = Serializable<any, any, unknown>
+
+  /**
+   * @since 0.69.0
+   */
+  export type All =
+    | Any
+    | Serializable<any, never, unknown>
+    | Serializable<never, any, unknown>
+    | Serializable<never, never, unknown>
 }
+
+/**
+ * @since 0.69.0
+ */
+export const asSerializable = <S extends Serializable.All>(
+  serializable: S
+): Serializable<Serializable.Type<S>, Serializable.Encoded<S>, Serializable.Context<S>> => serializable as any
 
 /**
  * @since 0.67.0

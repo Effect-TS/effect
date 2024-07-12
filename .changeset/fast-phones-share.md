@@ -55,3 +55,6 @@ TOOD: change to minor before merging
 - add `WithResult.Any`
 - add `WithResult.All`
 - add `asWithResult`
+- add `Serializable.Any`
+- add `Serializable.All`
+- add `asSerializable`
