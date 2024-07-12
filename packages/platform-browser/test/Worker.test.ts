@@ -1,10 +1,18 @@
 import * as BrowserWorker from "@effect/platform-browser/BrowserWorker"
 import * as EffectWorker from "@effect/platform/Worker"
 import "@vitest/web-worker"
-import { Chunk, Effect, Option, Stream } from "effect"
-import { assert, describe, it } from "vitest"
+import { assert, describe, it } from "@effect/vitest"
+import { Chunk, Effect, Exit, Option, Stream } from "effect"
 import type { WorkerMessage } from "./fixtures/schema.js"
-import { GetPersonById, GetSpan, GetUserById, InitialMessage, Person, User } from "./fixtures/schema.js"
+import {
+  GetPersonById,
+  GetSpan,
+  GetUserById,
+  InitialMessage,
+  Person,
+  RunnerInterrupt,
+  User
+} from "./fixtures/schema.js"
 
 describe.sequential("Worker", () => {
   it("executes streams", () =>
@@ -113,4 +121,24 @@ describe.sequential("Worker", () => {
   //     const items = yield* _(pool.execute(99), Stream.runCollect, Effect.flip)
   //     console.log(items)
   //   }).pipe(Effect.scoped, Effect.provide(EffectWorker.layerManager), Effect.runPromise))
+
+  it.scoped("interrupt runner", () =>
+    Effect.gen(function*() {
+      const pool = yield* EffectWorker.makePoolSerialized<WorkerMessage>({
+        size: 1,
+        initialMessage: () => new InitialMessage({ name: "custom", data: new Uint8Array([1, 2, 3]) })
+      })
+
+      const exit = yield* pool.execute(new RunnerInterrupt()).pipe(
+        Stream.runDrain,
+        Effect.exit
+      )
+      assert.isTrue(Exit.isInterrupted(exit))
+    }).pipe(
+      Effect.provide(
+        BrowserWorker.layer(() =>
+          new globalThis.SharedWorker(new URL("./fixtures/serializedWorker.ts", import.meta.url))
+        )
+      )
+    ))
 })
