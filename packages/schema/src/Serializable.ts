@@ -329,7 +329,7 @@ export const deserializeExit: {
  * @since 0.69.0
  * @category model
  */
-export interface Procedure<
+export interface SerializableWithExit<
   A,
   I,
   R,
@@ -344,31 +344,31 @@ export interface Procedure<
  * @since 0.69.0
  * @category model
  */
-export declare namespace Procedure {
+export declare namespace SerializableWithExit {
   /**
    * @since 0.69.0
    */
   export type Context<P> = P extends
-    Procedure<infer _S, infer _SI, infer SR, infer _A, infer _AI, infer _E, infer _EI, infer RR> ? SR | RR
+    SerializableWithExit<infer _S, infer _SI, infer SR, infer _A, infer _AI, infer _E, infer _EI, infer RR> ? SR | RR
     : never
   /**
    * @since 0.69.0
    */
-  export type Any = Procedure<any, any, any, any, any, any, any, unknown>
+  export type Any = SerializableWithExit<any, any, any, any, any, any, any, unknown>
   /**
    * @since 0.69.0
    */
   export type All =
     | Any
-    | Procedure<any, any, any, any, any, never, never, unknown>
+    | SerializableWithExit<any, any, any, any, any, never, never, unknown>
 }
 
 /**
  * @since 0.69.0
  */
-export const asProcedure = <P extends Procedure.All>(
+export const asSerializableWithExit = <P extends SerializableWithExit.All>(
   procedure: P
-): Procedure<
+): SerializableWithExit<
   Serializable.Type<P>,
   Serializable.Encoded<P>,
   Serializable.Context<P>,

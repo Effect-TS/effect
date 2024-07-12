@@ -26,7 +26,7 @@ export const make = <HR, E>(
 ) =>
 <R extends Router.Router<any, any>>(): RequestResolver.RequestResolver<
   Rpc.Request<Router.Router.Request<R>>,
-  Serializable.Procedure.Context<Router.Router.Request<R>> | HR
+  Serializable.SerializableWithExit.Context<Router.Router.Request<R>> | HR
 > => {
   const getDecode = withRequestTag((req) => Schema.decodeUnknown(Serializable.exitSchema(req)))
   const getDecodeChunk = withRequestTag((req) => Schema.decodeUnknown(Schema.Chunk(Serializable.exitSchema(req))))

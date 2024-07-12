@@ -44,8 +44,8 @@ TOOD: change to minor before merging
 - change `WithExit` fields to lowercase (`Success` -> `success`, `Failure` -> `failure`)
 - rename `WithExit.Error` to `WithExit.Failure`
 - rename `symbolResult` symbol to `symbolExit`
-- rename `SerializableWithResult` interface to `Procedure`
-- rename `SerializableWithResult` namespace to `Procedure`
+- rename `SerializableWithResult` interface to `SerializableWithExit`
+- rename `SerializableWithResult` namespace to `SerializableWithExit`
 
 ## New Features
 
@@ -63,6 +63,6 @@ TOOD: change to minor before merging
 - add `Serializable.Any`
 - add `Serializable.All`
 - add `asSerializable`
-- add `Procedure.Any`
-- add `Procedure.All`
-- add `asProcedure`
+- add `SerializableWithExit.Any`
+- add `SerializableWithExit.All`
+- add `asSerializableWithExit`

@@ -16,7 +16,7 @@ import * as internal from "./internal/message.js"
  * @category models
  */
 export interface Message<A, AI, E, EI>
-  extends Serializable.Procedure<any, any, never, A, AI, E, EI, never>, PrimaryKey.PrimaryKey
+  extends Serializable.SerializableWithExit<any, any, never, A, AI, E, EI, never>, PrimaryKey.PrimaryKey
 {}
 
 /**

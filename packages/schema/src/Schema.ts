@@ -7425,7 +7425,7 @@ export interface TaggedRequest<
   SuccessAndFailureR
 > extends
   Request.Request<SuccessType, FailureType>,
-  Serializable.Procedure<
+  Serializable.SerializableWithExit<
     A,
     I,
     R,

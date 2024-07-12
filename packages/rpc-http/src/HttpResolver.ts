@@ -22,7 +22,7 @@ export const make = <R extends Router.Router<any, any>>(
   client: Client.HttpClient.Default
 ): RequestResolver.RequestResolver<
   Rpc.Request<Router.Router.Request<R>>,
-  Serializable.Procedure.Context<Router.Router.Request<R>>
+  Serializable.SerializableWithExit.Context<Router.Router.Request<R>>
 > =>
   Resolver.make((requests) =>
     client(ClientRequest.post("", {
@@ -46,7 +46,7 @@ export const make = <R extends Router.Router<any, any>>(
  */
 export const makeClient = <R extends Router.Router<any, any>>(
   baseUrl: string
-): Serializable.Procedure.Context<Router.Router.Request<R>> extends never ? Resolver.Client<
+): Serializable.SerializableWithExit.Context<Router.Router.Request<R>> extends never ? Resolver.Client<
     RequestResolver.RequestResolver<
       Rpc.Request<Router.Router.Request<R>>
     >
