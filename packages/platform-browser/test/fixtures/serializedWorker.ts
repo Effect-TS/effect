@@ -28,7 +28,8 @@ const WorkerLive = Runner.layerSerialized(WorkerMessage, {
           spanId: span.spanId
         }))
       }
-    }).pipe(Effect.withSpan("GetSpan"))
+    }).pipe(Effect.withSpan("GetSpan")),
+  RunnerInterrupt: () => Effect.interrupt
 })
   .pipe(
     Layer.provide(BrowserRunner.layer)
