@@ -36,8 +36,6 @@ TOOD: change to minor before merging
 
 - change `TaggedRequestClass` type parameters order (swap `Success` with `Failure`)
 - simplify `TaggedRequest.Any`, use `TaggedRequest.All` instead
-- rename `TaggedRequest` interface to `TaggedProcedure`
-- rename `TaggedRequest` namespace to `TaggedProcedure`
 
 ### Serializable
 

@@ -7413,10 +7413,9 @@ export const TaggedError = <Self = never>(identifier?: string) =>
 }
 
 /**
- * @category classes
- * @since 0.69.0
+ * @since 0.67.0
  */
-export interface TaggedProcedure<
+export interface TaggedRequest<
   Tag extends string,
   A,
   I,
@@ -7443,29 +7442,26 @@ export interface TaggedProcedure<
 }
 
 /**
- * @category classes
  * @since 0.67.0
  */
-export declare namespace TaggedProcedure {
+export declare namespace TaggedRequest {
   /**
-   * @category classes
    * @since 0.69.0
    */
-  export type Any = TaggedProcedure<string, any, any, any, any, any, any, any, unknown>
+  export type Any = TaggedRequest<string, any, any, any, any, any, any, any, unknown>
   /**
-   * @category classes
    * @since 0.69.0
    */
   export type All =
     | Any
-    | TaggedProcedure<string, any, any, any, any, any, never, never, unknown>
+    | TaggedRequest<string, any, any, any, any, any, never, never, unknown>
 }
 
 /**
  * @category api interface
- * @since 0.69.0
+ * @since 0.67.0
  */
-export interface TaggedRequest<
+export interface TaggedRequestClass<
   Self,
   Tag extends string,
   Payload extends Struct.Fields,
@@ -7478,7 +7474,7 @@ export interface TaggedRequest<
     Struct.Encoded<Payload>,
     Struct.Context<Payload>,
     Struct.Constructor<Omit<Payload, "_tag">>,
-    TaggedProcedure<
+    TaggedRequest<
       Tag,
       Self,
       Struct.Encoded<Payload>,
@@ -7510,7 +7506,7 @@ export const TaggedRequest =
     },
     annotations?: Annotations.Schema<Self>
   ): [Self] extends [never] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
-    : TaggedRequest<
+    : TaggedRequestClass<
       Self,
       Tag,
       { readonly _tag: tag<Tag> } & Payload,

@@ -245,7 +245,7 @@ export const makePoolLayer: <Tag, I, O, E>(
  * @since 1.0.0
  * @category models
  */
-export interface SerializedWorker<I extends Schema.TaggedProcedure.All> {
+export interface SerializedWorker<I extends Schema.TaggedRequest.All> {
   readonly id: number
   readonly execute: <Req extends I>(
     message: Req
@@ -288,7 +288,7 @@ export declare namespace SerializedWorker {
  * @since 1.0.0
  * @category models
  */
-export interface SerializedWorkerPool<I extends Schema.TaggedProcedure.All> {
+export interface SerializedWorkerPool<I extends Schema.TaggedRequest.All> {
   readonly backing: Pool.Pool<SerializedWorker<I>, WorkerError>
   readonly broadcast: <Req extends I>(
     message: Req
@@ -337,7 +337,7 @@ export declare namespace SerializedWorkerPool {
  * @since 1.0.0
  * @category constructors
  */
-export const makeSerialized: <I extends Schema.TaggedProcedure.All>(
+export const makeSerialized: <I extends Schema.TaggedRequest.All>(
   options: SerializedWorker.Options<I>
 ) => Effect.Effect<SerializedWorker<I>, WorkerError, WorkerManager | Spawner | Scope.Scope> = internal.makeSerialized
 
@@ -345,7 +345,7 @@ export const makeSerialized: <I extends Schema.TaggedProcedure.All>(
  * @since 1.0.0
  * @category constructors
  */
-export const makePoolSerialized: <I extends Schema.TaggedProcedure.All>(
+export const makePoolSerialized: <I extends Schema.TaggedRequest.All>(
   options: SerializedWorkerPool.Options<I>
 ) => Effect.Effect<SerializedWorkerPool<I>, WorkerError, WorkerManager | Spawner | Scope.Scope> =
   internal.makePoolSerialized
@@ -354,7 +354,7 @@ export const makePoolSerialized: <I extends Schema.TaggedProcedure.All>(
  * @since 1.0.0
  * @category layers
  */
-export const makePoolSerializedLayer: <Tag, I extends Schema.TaggedProcedure.All>(
+export const makePoolSerializedLayer: <Tag, I extends Schema.TaggedRequest.All>(
   tag: Context.Tag<Tag, SerializedWorkerPool<I>>,
   options: SerializedWorkerPool.Options<I>
 ) => Layer.Layer<Tag, WorkerError, WorkerManager | Spawner> = internal.makePoolSerializedLayer
