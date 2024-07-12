@@ -63,3 +63,5 @@ TOOD: change to minor before merging
 - add `Serializable.Any`
 - add `Serializable.All`
 - add `asSerializable`
+- add `SerializableRequest.Any`
+- add `SerializableRequest.All`
