@@ -416,9 +416,16 @@ const defaultDateFormat = (date: Date): string =>
     date.getSeconds().toString().padStart(2, "0")
   }.${date.getMilliseconds().toString().padStart(3, "0")}`
 
-const processStdoutIsTTY = typeof process === "object" && "stdout" in process && process.stdout.isTTY === true
+const processStdoutIsTTY = typeof process === "object" &&
+  process !== null &&
+  typeof process.stdout === "object" &&
+  process.stdout !== null &&
+  process.stdout.isTTY === true
 const hasWindow = typeof window === "object"
-const isWorker = typeof self === "object" && self.constructor && self.constructor.name.includes("Worker")
+const isWorker = typeof self === "object" &&
+  self !== null &&
+  typeof self.constructor === "function" &&
+  self.constructor.name.includes("Worker")
 
 /** @internal */
 export const prettyLogger = (options?: {
