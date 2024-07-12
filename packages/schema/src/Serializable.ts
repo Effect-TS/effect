@@ -9,6 +9,10 @@ import * as serializable_ from "./internal/serializable.js"
 import type * as ParseResult from "./ParseResult.js"
 import * as Schema from "./Schema.js"
 
+// ---------------------------------------------
+// Serializable
+// ---------------------------------------------
+
 /**
  * @since 0.67.0
  * @category symbol
@@ -69,6 +73,30 @@ export const asSerializable = <S extends Serializable.All>(
  * @category accessor
  */
 export const selfSchema = <A, I, R>(self: Serializable<A, I, R>): Schema.Schema<A, I, R> => self[symbol]
+
+/**
+ * @since 0.67.0
+ * @category encoding
+ */
+export const serialize = <A, I, R>(self: Serializable<A, I, R>): Effect.Effect<I, ParseResult.ParseError, R> =>
+  Schema.encodeUnknown(self[symbol])(self)
+
+/**
+ * @since 0.67.0
+ * @category decoding
+ */
+export const deserialize: {
+  (value: unknown): <A, I, R>(self: Serializable<A, I, R>) => Effect.Effect<A, ParseResult.ParseError, R>
+  <A, I, R>(self: Serializable<A, I, R>, value: unknown): Effect.Effect<A, ParseResult.ParseError, R>
+} = dual(
+  2,
+  <A, I, R>(self: Serializable<A, I, R>, value: unknown): Effect.Effect<A, ParseResult.ParseError, R> =>
+    Schema.decodeUnknown(self[symbol])(value)
+)
+
+// ---------------------------------------------
+// WithExit
+// ---------------------------------------------
 
 /**
  * @since 0.67.0
@@ -185,64 +213,6 @@ export const exitSchema = <SA, SI, FA, FI, R>(self: WithExit<SA, SI, FA, FI, R>)
 
 /**
  * @since 0.67.0
- * @category model
- */
-export interface SerializableRequest<
-  A,
-  I,
-  R,
-  Success,
-  SuccessEncoded,
-  Failure,
-  FailureEncoded,
-  SuccessAndFailureR
-> extends Serializable<A, I, R>, WithExit<Success, SuccessEncoded, Failure, FailureEncoded, SuccessAndFailureR> {}
-
-/**
- * @since 0.67.0
- * @category model
- */
-export declare namespace SerializableRequest {
-  /**
-   * @since 0.67.0
-   */
-  export type Context<Req> = Req extends
-    SerializableRequest<infer _S, infer _SI, infer SR, infer _A, infer _AI, infer _E, infer _EI, infer RR> ? SR | RR
-    : never
-  /**
-   * @since 0.69.0
-   */
-  export type Any = SerializableRequest<any, any, any, any, any, any, any, unknown>
-  /**
-   * @since 0.69.0
-   */
-  export type All =
-    | Any
-    | SerializableRequest<any, any, any, any, any, never, never, unknown>
-}
-
-/**
- * @since 0.67.0
- * @category encoding
- */
-export const serialize = <A, I, R>(self: Serializable<A, I, R>): Effect.Effect<I, ParseResult.ParseError, R> =>
-  Schema.encodeUnknown(self[symbol])(self)
-
-/**
- * @since 0.67.0
- * @category decoding
- */
-export const deserialize: {
-  (value: unknown): <A, I, R>(self: Serializable<A, I, R>) => Effect.Effect<A, ParseResult.ParseError, R>
-  <A, I, R>(self: Serializable<A, I, R>, value: unknown): Effect.Effect<A, ParseResult.ParseError, R>
-} = dual(
-  2,
-  <A, I, R>(self: Serializable<A, I, R>, value: unknown): Effect.Effect<A, ParseResult.ParseError, R> =>
-    Schema.decodeUnknown(self[symbol])(value)
-)
-
-/**
- * @since 0.67.0
  * @category encoding
  */
 export const serializeFailure: {
@@ -338,3 +308,61 @@ export const deserializeExit: {
   self: WithExit<SA, SI, FA, FI, R>,
   value: unknown
 ): Effect.Effect<Exit.Exit<SA, FA>, ParseResult.ParseError, R> => Schema.decodeUnknown(exitSchema(self))(value))
+
+// ---------------------------------------------
+// SerializableRequest
+// ---------------------------------------------
+
+/**
+ * @since 0.67.0
+ * @category model
+ */
+export interface SerializableRequest<
+  A,
+  I,
+  R,
+  Success,
+  SuccessEncoded,
+  Failure,
+  FailureEncoded,
+  SuccessAndFailureR
+> extends Serializable<A, I, R>, WithExit<Success, SuccessEncoded, Failure, FailureEncoded, SuccessAndFailureR> {}
+
+/**
+ * @since 0.67.0
+ * @category model
+ */
+export declare namespace SerializableRequest {
+  /**
+   * @since 0.69.0
+   */
+  export type Context<Req> = Req extends
+    SerializableRequest<infer _S, infer _SI, infer SR, infer _A, infer _AI, infer _E, infer _EI, infer RR> ? SR | RR
+    : never
+  /**
+   * @since 0.69.0
+   */
+  export type Any = SerializableRequest<any, any, any, any, any, any, any, unknown>
+  /**
+   * @since 0.69.0
+   */
+  export type All =
+    | Any
+    | SerializableRequest<any, any, any, any, any, never, never, unknown>
+}
+
+/**
+ * @since 0.69.0
+ */
+export const asSerializableRequest = <Req extends SerializableRequest.All>(
+  req: Req
+): SerializableRequest<
+  Serializable.Type<Req>,
+  Serializable.Encoded<Req>,
+  Serializable.Context<Req>,
+  WithExit.Success<Req>,
+  WithExit.SuccessEncoded<Req>,
+  WithExit.Failure<Req>,
+  WithExit.FailureEncoded<Req>,
+  WithExit.Context<Req>
+> => req as any
