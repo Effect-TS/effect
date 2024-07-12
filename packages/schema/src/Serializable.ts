@@ -120,6 +120,19 @@ export declare namespace WithResult {
 }
 
 /**
+ * @since 0.69.0
+ */
+export const asWithResult = <WR extends WithResult.All>(
+  withResult: WR
+): WithResult<
+  WithResult.Success<WR>,
+  WithResult.SuccessEncoded<WR>,
+  WithResult.Failure<WR>,
+  WithResult.FailureEncoded<WR>,
+  WithResult.Context<WR>
+> => withResult as any
+
+/**
  * @since 0.67.0
  * @category accessor
  */

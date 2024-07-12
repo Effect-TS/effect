@@ -4,9 +4,13 @@
 
 TOOD: change to minor before merging
 
-**Breaking Changes**
+## Breaking Changes
 
-- change `TaggedRequest` signature from
+### Schema
+
+- change `TaggedRequest` signature, closes #3144
+
+  from
 
   ```ts
   class Sample extends Schema.TaggedRequest<Sample>()(
@@ -31,14 +35,23 @@ TOOD: change to minor before merging
   ```
 
 - change `TaggedRequestClass` type parameters order (swap `Success` with `Failure`)
-- change `WithResult` fields to lowercase (`Success` -> `success`, `Failure` -> `failure`)
-- rename `WithResult.Error` to `WithResult.Failure`
 - simplify `TaggedRequest.Any`, use `TaggedRequest.All` instead
 
-**New Features**
+### Serializable
+
+- change `WithResult` fields to lowercase (`Success` -> `success`, `Failure` -> `failure`)
+- rename `WithResult.Error` to `WithResult.Failure`
+
+## New Features
+
+### Schema
+
+- add `TaggedRequest.All`
+
+### Serializable
 
 - add `WithResult.SuccessEncoded`
 - add `WithResult.FailureEncoded`
 - add `WithResult.Any`
 - add `WithResult.All`
-- add `TaggedRequest.All`
+- add `asWithResult`
