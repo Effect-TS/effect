@@ -59,7 +59,7 @@ export const add: {
     State,
     Req | Public,
     Private,
-    R | R2 | Serializable.SerializableWithResult.Context<Req>
+    R | R2 | Serializable.SerializableRequest.Context<Req>
   >
   <
     State,
@@ -74,7 +74,7 @@ export const add: {
     self: SerializableProcedureList<State, Public, Private, R>,
     schema: Schema.Schema<Req, I, ReqR> & { readonly _tag: Req["_tag"] },
     handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
-  ): SerializableProcedureList<State, Req | Public, Private, R | R2 | Serializable.SerializableWithResult.Context<Req>>
+  ): SerializableProcedureList<State, Req | Public, Private, R | R2 | Serializable.SerializableRequest.Context<Req>>
 } = dual(
   3,
   <
@@ -94,7 +94,7 @@ export const add: {
     State,
     Req | Public,
     Private,
-    R | R2 | Serializable.SerializableWithResult.Context<Req>
+    R | R2 | Serializable.SerializableRequest.Context<Req>
   > => ProcedureList.addProcedure(self, Procedure.makeSerializable<any, any>()(schema, handler)) as any
 )
 
@@ -120,7 +120,7 @@ export const addPrivate: {
     State,
     Public,
     Private | Req,
-    R | R2 | Serializable.SerializableWithResult.Context<Req>
+    R | R2 | Serializable.SerializableRequest.Context<Req>
   >
   <
     State,
@@ -135,7 +135,7 @@ export const addPrivate: {
     self: SerializableProcedureList<State, Public, Private, R>,
     schema: Schema.Schema<Req, I, ReqR> & { readonly _tag: Req["_tag"] },
     handler: Procedure.Handler<Req, Types.NoInfer<State>, Types.NoInfer<Public> | Types.NoInfer<Private>, R2>
-  ): SerializableProcedureList<State, Public, Private | Req, R | R2 | Serializable.SerializableWithResult.Context<Req>>
+  ): SerializableProcedureList<State, Public, Private | Req, R | R2 | Serializable.SerializableRequest.Context<Req>>
 } = dual(
   3,
   <
@@ -155,7 +155,7 @@ export const addPrivate: {
     State,
     Public,
     Private | Req,
-    R | R2 | Serializable.SerializableWithResult.Context<Req>
+    R | R2 | Serializable.SerializableRequest.Context<Req>
   > => ProcedureList.addProcedurePrivate(self, Procedure.makeSerializable<any, any>()(schema, handler)) as any
 )
 

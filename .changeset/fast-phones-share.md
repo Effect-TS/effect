@@ -44,6 +44,8 @@ TOOD: change to minor before merging
 - change `WithExit` fields to lowercase (`Success` -> `success`, `Failure` -> `failure`)
 - rename `WithExit.Error` to `WithExit.Failure`
 - rename `symbolResult` symbol to `symbolExit`
+- rename `SerializableWithResult` interface to `SerializableRequest`
+- rename `SerializableWithResult` namespace to `SerializableRequest`
 
 ## New Features
 

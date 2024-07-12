@@ -243,7 +243,7 @@ export const makeSerializable = <
 >(
   schema: Schema.Schema<Req, IS, RS> & { readonly _tag: Req["_tag"] },
   handler: Handler<Req, State, Requests, R>
-): SerializableProcedure<Req, State, R | Serializable.SerializableWithResult.Context<Req>> => ({
+): SerializableProcedure<Req, State, R | Serializable.SerializableRequest.Context<Req>> => ({
   [TypeId]: TypeId,
   [SerializableTypeId]: SerializableTypeId,
   schema: schema as any,

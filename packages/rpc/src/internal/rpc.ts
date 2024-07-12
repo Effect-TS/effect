@@ -10,7 +10,7 @@ import type * as Rpc from "../Rpc.js"
 /** @internal */
 export const withRequestTag = <A>(
   f: (
-    request: Serializable.SerializableWithResult<any, any, any, any, any, any, any, any>
+    request: Serializable.SerializableRequest<any, any, any, any, any, any, any, any>
   ) => A
 ) => {
   const cache = new Map<string, A>()

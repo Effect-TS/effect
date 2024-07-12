@@ -187,7 +187,7 @@ export const exitSchema = <SA, SI, FA, FI, R>(self: WithExit<SA, SI, FA, FI, R>)
  * @since 0.67.0
  * @category model
  */
-export interface SerializableWithResult<
+export interface SerializableRequest<
   A,
   I,
   R,
@@ -202,12 +202,12 @@ export interface SerializableWithResult<
  * @since 0.67.0
  * @category model
  */
-export declare namespace SerializableWithResult {
+export declare namespace SerializableRequest {
   /**
    * @since 0.67.0
    */
   export type Context<T> = T extends
-    SerializableWithResult<infer _S, infer _SI, infer SR, infer _A, infer _AI, infer _E, infer _EI, infer RR> ? SR | RR
+    SerializableRequest<infer _S, infer _SI, infer SR, infer _A, infer _AI, infer _E, infer _EI, infer RR> ? SR | RR
     : never
 }
 

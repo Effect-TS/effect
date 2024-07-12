@@ -16,7 +16,7 @@ import * as internal from "./internal/message.js"
  * @category models
  */
 export interface Message<A, AI, E, EI>
-  extends Serializable.SerializableWithResult<any, any, never, A, AI, E, EI, never>, PrimaryKey.PrimaryKey
+  extends Serializable.SerializableRequest<any, any, never, A, AI, E, EI, never>, PrimaryKey.PrimaryKey
 {}
 
 /**

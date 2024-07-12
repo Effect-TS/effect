@@ -95,7 +95,7 @@ export declare namespace Rpc {
    * @category models
    */
   export type Context<A extends Rpc<any, any>> = A extends Rpc<infer Req, infer R>
-    ? R | Serializable.SerializableWithResult.Context<Req>
+    ? R | Serializable.SerializableRequest.Context<Req>
     : never
 
   /**
@@ -159,7 +159,7 @@ export type StreamRequestTypeId = typeof StreamRequestTypeId
 export interface StreamRequest<Tag extends string, SR, SI, S, RR, EI, E, AI, A>
   extends
     EffectRequest.Request<Stream.Stream<A, E, never>>,
-    Serializable.SerializableWithResult<S, SI, SR, A, AI, E, EI, RR>
+    Serializable.SerializableRequest<S, SI, SR, A, AI, E, EI, RR>
 {
   readonly [StreamRequestTypeId]: StreamRequestTypeId
   readonly _tag: Tag
