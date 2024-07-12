@@ -1,6 +1,7 @@
+import { Schema } from "@effect/schema"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import { Effect } from "effect"
+import { Cause, Effect, Inspectable } from "effect"
 import { describe, expect, it } from "vitest"
 
 describe("TaggedError", () => {
@@ -48,7 +49,7 @@ describe("TaggedError", () => {
 
     let err = new MyError({ id: 1 })
 
-    expect(String(err)).toEqual(`MyError({ "_tag": "MyError", "id": 1 })`)
+    expect(String(err)).toEqual(`MyError: { "id": 1 }`)
     expect(err.stack).toContain("TaggedError.test.ts:")
     expect(err._tag).toEqual("MyError")
     expect(err.id).toEqual(1)
@@ -74,7 +75,21 @@ describe("TaggedError", () => {
     const err = new MyError({ id: 1 })
 
     expect(String(err).includes(`MyError: bad id: 1`)).toBe(true)
-    expect(String(err)).toContain("TaggedError.test.ts:")
+    expect(err.stack).toContain("TaggedError.test.ts:")
+    expect(err._tag).toEqual("MyError")
+    expect(err.id).toEqual(1)
+  })
+
+  it("message field", () => {
+    class MyError extends S.TaggedError<MyError>()("MyError", {
+      id: S.Number,
+      message: S.String
+    }) {
+    }
+
+    const err = new MyError({ id: 1, message: "boom" })
+
+    expect(String(err).includes(`MyError: boom`)).toBe(true)
     expect(err.stack).toContain("TaggedError.test.ts:")
     expect(err._tag).toEqual("MyError")
     expect(err.id).toEqual(1)
@@ -92,5 +107,16 @@ describe("TaggedError", () => {
     expect(a instanceof A).toEqual(true)
     expect(a._tag).toEqual("A")
     expect(a.a()).toEqual("1a")
+  })
+
+  it("cause", () => {
+    class MyError extends S.TaggedError<MyError>()("MyError", {
+      cause: Schema.CauseDefectUnknown
+    }) {}
+
+    const err = new MyError({ cause: new Error("child") })
+    expect(Cause.pretty(Cause.fail(err), { renderErrorCause: true })).includes("[cause]: Error: child")
+    // ensure node renders the error directly
+    expect(err[Inspectable.NodeInspectSymbol]()).toEqual(err)
   })
 })
