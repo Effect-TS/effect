@@ -8068,14 +8068,14 @@ console.log(deserializedUsingAnInstance)
 // Person { id: 1, name: 'John', createdAt: 1970-01-01T00:00:00.000Z }
 ```
 
-## WithResult trait
+## Procedure trait
 
-The `WithResult` trait is designed to encapsulate the outcome of an operation, distinguishing between success and failure cases. Each case is associated with a schema that defines the structure and types of the success or failure data.
+The `Procedure` trait is designed to encapsulate the outcome of an operation, distinguishing between success and failure cases. Each case is associated with a schema that defines the structure and types of the success or failure data.
 
-The primary aim of this trait is to model and serialize the function signature:
+The primary aim of this trait is to model the following remote procedure:
 
 ```ts
-(arg: A): Exit<Success, Failure>
+(a: A): Exit<Success, Failure>
 ```
 
 To achieve this, schemas need to be defined for the following:
@@ -8084,7 +8084,7 @@ To achieve this, schemas need to be defined for the following:
 - **The Success Case**: This is defined by `Schema<Success, SuccessEncoded, SuccessAndFailureR>`, specifying the structure for a successful outcome along with its encoded form for serialization.
 - **The Failure Case**: Similar to the success schema but for failures, represented by `Schema<Failure, FailureEncoded, SuccessAndFailureR>`.
 
-The process for using `WithResult` in a practical scenario involves a series of steps, encapsulating a full roundtrip communication:
+The process for using `Procedure` in a practical scenario involves a series of steps, encapsulating a full roundtrip communication:
 
 1. **Start with a Value of Type `A`**: Begin with your initial value which is of type `A`.
 2. **Serialize to `I`**: Convert the initial value `A` into its serialized form `I`.
@@ -8153,8 +8153,8 @@ class GetPersonById {
     return GetPersonById.FromEncoded
   }
 
-  // WithResult implementation
-  get [Serializable.symbolResult]() {
+  // WithExit implementation
+  get [Serializable.symbolExit]() {
     return {
       success: Person.FromEncoded,
       failure: Schema.String

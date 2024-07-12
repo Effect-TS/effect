@@ -36,6 +36,8 @@ TOOD: change to minor before merging
 
 - change `TaggedRequestClass` type parameters order (swap `Success` with `Failure`)
 - simplify `TaggedRequest.Any`, use `TaggedRequest.All` instead
+- rename `TaggedRequest` interface to `TaggedProcedure`
+- rename `TaggedRequest` namespace to `TaggedProcedure`
 
 ### Serializable
 
@@ -44,8 +46,8 @@ TOOD: change to minor before merging
 - change `WithExit` fields to lowercase (`Success` -> `success`, `Failure` -> `failure`)
 - rename `WithExit.Error` to `WithExit.Failure`
 - rename `symbolResult` symbol to `symbolExit`
-- rename `SerializableWithResult` interface to `SerializableRequest`
-- rename `SerializableWithResult` namespace to `SerializableRequest`
+- rename `SerializableWithResult` interface to `Procedure`
+- rename `SerializableWithResult` namespace to `Procedure`
 
 ## New Features
 
@@ -63,6 +65,6 @@ TOOD: change to minor before merging
 - add `Serializable.Any`
 - add `Serializable.All`
 - add `asSerializable`
-- add `SerializableRequest.Any`
-- add `SerializableRequest.All`
-- add `asSerializableRequest`
+- add `Procedure.Any`
+- add `Procedure.All`
+- add `asProcedure`

@@ -7414,9 +7414,9 @@ export const TaggedError = <Self = never>(identifier?: string) =>
 
 /**
  * @category classes
- * @since 0.67.0
+ * @since 0.69.0
  */
-export interface TaggedRequest<
+export interface TaggedProcedure<
   Tag extends string,
   A,
   I,
@@ -7428,7 +7428,7 @@ export interface TaggedRequest<
   SuccessAndFailureR
 > extends
   Request.Request<SuccessType, FailureType>,
-  Serializable.SerializableRequest<
+  Serializable.Procedure<
     A,
     I,
     R,
@@ -7446,26 +7446,26 @@ export interface TaggedRequest<
  * @category classes
  * @since 0.67.0
  */
-export declare namespace TaggedRequest {
+export declare namespace TaggedProcedure {
   /**
    * @category classes
-   * @since 0.67.0
+   * @since 0.69.0
    */
-  export type Any = TaggedRequest<string, any, any, any, any, any, any, any, unknown>
+  export type Any = TaggedProcedure<string, any, any, any, any, any, any, any, unknown>
   /**
    * @category classes
    * @since 0.69.0
    */
   export type All =
     | Any
-    | TaggedRequest<string, any, any, any, any, any, never, never, unknown>
+    | TaggedProcedure<string, any, any, any, any, any, never, never, unknown>
 }
 
 /**
  * @category api interface
- * @since 0.67.0
+ * @since 0.69.0
  */
-export interface TaggedRequestClass<
+export interface TaggedRequest<
   Self,
   Tag extends string,
   Payload extends Struct.Fields,
@@ -7478,7 +7478,7 @@ export interface TaggedRequestClass<
     Struct.Encoded<Payload>,
     Struct.Context<Payload>,
     Struct.Constructor<Omit<Payload, "_tag">>,
-    TaggedRequest<
+    TaggedProcedure<
       Tag,
       Self,
       Struct.Encoded<Payload>,
@@ -7510,7 +7510,7 @@ export const TaggedRequest =
     },
     annotations?: Annotations.Schema<Self>
   ): [Self] extends [never] ? MissingSelfGeneric<"TaggedRequest", `"Tag", SuccessSchema, FailureSchema, `>
-    : TaggedRequestClass<
+    : TaggedRequest<
       Self,
       Tag,
       { readonly _tag: PropertySignature<":", Tag, never, ":", Tag, true, never> } & Payload,

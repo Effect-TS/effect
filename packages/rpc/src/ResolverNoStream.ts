@@ -25,12 +25,12 @@ export const make = <HR, E>(
 ) =>
 <R extends Router.Router<any, any>>(): RequestResolver.RequestResolver<
   Rpc.Request<Router.Router.Request<R>>,
-  Serializable.SerializableRequest.Context<Router.Router.Request<R>> | HR
+  Serializable.Procedure.Context<Router.Router.Request<R>> | HR
 > => {
   const getDecode = withRequestTag((req) => Schema.decodeUnknown(Serializable.exitSchema(req)))
   const getDecodeChunk = withRequestTag((req) => Schema.decodeUnknown(Schema.Chunk(Serializable.exitSchema(req))))
 
-  return RequestResolver.makeBatched((requests: NonEmptyArray<Rpc.Request<Schema.TaggedRequest.All>>) =>
+  return RequestResolver.makeBatched((requests: NonEmptyArray<Rpc.Request<Schema.TaggedProcedure.All>>) =>
     pipe(
       Effect.forEach(requests, (_) =>
         Effect.map(

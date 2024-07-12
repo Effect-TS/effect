@@ -310,14 +310,26 @@ export const deserializeExit: {
 ): Effect.Effect<Exit.Exit<SA, FA>, ParseResult.ParseError, R> => Schema.decodeUnknown(exitSchema(self))(value))
 
 // ---------------------------------------------
-// SerializableRequest
+// Procedure
 // ---------------------------------------------
 
 /**
- * @since 0.67.0
+ * The primary aim of this trait is to model the following remote procedure:
+ *
+ * ```ts
+ * (a: A): Exit<Success, Failure>
+ * ```
+ *
+ * Transmission Diagram:
+ *
+ * A -> I --- over the wire ---> I -> A:
+ *    -> Success -> SuccessEncoded --- over the wire ---> SuccessEncoded -> Success
+ *    -> Failure -> FailureEncoded --- over the wire ---> FailureEncoded -> Failure
+ *
+ * @since 0.69.0
  * @category model
  */
-export interface SerializableRequest<
+export interface Procedure<
   A,
   I,
   R,
@@ -329,40 +341,40 @@ export interface SerializableRequest<
 > extends Serializable<A, I, R>, WithExit<Success, SuccessEncoded, Failure, FailureEncoded, SuccessAndFailureR> {}
 
 /**
- * @since 0.67.0
+ * @since 0.69.0
  * @category model
  */
-export declare namespace SerializableRequest {
+export declare namespace Procedure {
   /**
    * @since 0.69.0
    */
-  export type Context<Req> = Req extends
-    SerializableRequest<infer _S, infer _SI, infer SR, infer _A, infer _AI, infer _E, infer _EI, infer RR> ? SR | RR
+  export type Context<P> = P extends
+    Procedure<infer _S, infer _SI, infer SR, infer _A, infer _AI, infer _E, infer _EI, infer RR> ? SR | RR
     : never
   /**
    * @since 0.69.0
    */
-  export type Any = SerializableRequest<any, any, any, any, any, any, any, unknown>
+  export type Any = Procedure<any, any, any, any, any, any, any, unknown>
   /**
    * @since 0.69.0
    */
   export type All =
     | Any
-    | SerializableRequest<any, any, any, any, any, never, never, unknown>
+    | Procedure<any, any, any, any, any, never, never, unknown>
 }
 
 /**
  * @since 0.69.0
  */
-export const asSerializableRequest = <Req extends SerializableRequest.All>(
-  req: Req
-): SerializableRequest<
-  Serializable.Type<Req>,
-  Serializable.Encoded<Req>,
-  Serializable.Context<Req>,
-  WithExit.Success<Req>,
-  WithExit.SuccessEncoded<Req>,
-  WithExit.Failure<Req>,
-  WithExit.FailureEncoded<Req>,
-  WithExit.Context<Req>
-> => req as any
+export const asProcedure = <P extends Procedure.All>(
+  procedure: P
+): Procedure<
+  Serializable.Type<P>,
+  Serializable.Encoded<P>,
+  Serializable.Context<P>,
+  WithExit.Success<P>,
+  WithExit.SuccessEncoded<P>,
+  WithExit.Failure<P>,
+  WithExit.FailureEncoded<P>,
+  WithExit.Context<P>
+> => procedure as any

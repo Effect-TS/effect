@@ -73,7 +73,7 @@ export const make = <R extends Router.Router<any, any>>(
   channelId: string
 ): RequestResolver.RequestResolver<
   Rpc.Request<Router.Router.Request<R>>,
-  Serializable.SerializableRequest.Context<Router.Router.Request<R>>
+  Serializable.Procedure.Context<Router.Router.Request<R>>
 > => {
   return Resolver.make((requests) => {
     return Effect.gen(function*($) {

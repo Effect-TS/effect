@@ -26,12 +26,12 @@ export const make = <HR, E>(
 ) =>
 <R extends Router.Router<any, any>>(): RequestResolver.RequestResolver<
   Rpc.Request<Router.Router.Request<R>>,
-  Serializable.SerializableRequest.Context<Router.Router.Request<R>> | HR
+  Serializable.Procedure.Context<Router.Router.Request<R>> | HR
 > => {
   const getDecode = withRequestTag((req) => Schema.decodeUnknown(Serializable.exitSchema(req)))
   const getDecodeChunk = withRequestTag((req) => Schema.decodeUnknown(Schema.Chunk(Serializable.exitSchema(req))))
 
-  return RequestResolver.makeBatched((requests: Arr.NonEmptyArray<Rpc.Request<Schema.TaggedRequest.All>>) => {
+  return RequestResolver.makeBatched((requests: Arr.NonEmptyArray<Rpc.Request<Schema.TaggedProcedure.All>>) => {
     const [effectRequests, streamRequests] = Arr.partition(
       requests,
       (_): _ is Rpc.Request<Rpc.StreamRequest.Any> => StreamRequestTypeId in _.request
@@ -110,14 +110,14 @@ export const make = <HR, E>(
 export const annotateHeaders: {
   (
     headers: Headers.Input
-  ): <Req extends Schema.TaggedRequest.All, R>(
+  ): <Req extends Schema.TaggedProcedure.All, R>(
     self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>
   ) => RequestResolver.RequestResolver<Rpc.Request<Req>, R>
-  <Req extends Schema.TaggedRequest.All, R>(
+  <Req extends Schema.TaggedProcedure.All, R>(
     self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>,
     headers: Headers.Input
   ): RequestResolver.RequestResolver<Rpc.Request<Req>, R>
-} = dual(2, <Req extends Schema.TaggedRequest.All, R>(
+} = dual(2, <Req extends Schema.TaggedProcedure.All, R>(
   self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>,
   headers: Headers.Input
 ): RequestResolver.RequestResolver<Rpc.Request<Req>, R> => {
@@ -139,14 +139,14 @@ export const annotateHeaders: {
 export const annotateHeadersEffect: {
   <E, R2>(
     headers: Effect.Effect<Headers.Input, E, R2>
-  ): <Req extends Schema.TaggedRequest.All, R>(
+  ): <Req extends Schema.TaggedProcedure.All, R>(
     self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>
   ) => RequestResolver.RequestResolver<Rpc.Request<Req>, R | R2>
-  <Req extends Schema.TaggedRequest.All, R, E, R2>(
+  <Req extends Schema.TaggedProcedure.All, R, E, R2>(
     self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>,
     headers: Effect.Effect<Headers.Input, E, R2>
   ): RequestResolver.RequestResolver<Rpc.Request<Req>, R | R2>
-} = dual(2, <Req extends Schema.TaggedRequest.All, R, E, R2>(
+} = dual(2, <Req extends Schema.TaggedProcedure.All, R, E, R2>(
   self: RequestResolver.RequestResolver<Rpc.Request<Req>, R>,
   headers: Effect.Effect<Headers.Input, E, R2>
 ): RequestResolver.RequestResolver<Rpc.Request<Req>, R | R2> =>
@@ -200,4 +200,4 @@ export const toClient = <
   options?: {
     readonly spanPrefix?: string
   }
-): Client<R> => ((request: Schema.TaggedRequest.All) => Rpc.call(request, resolver, options)) as any
+): Client<R> => ((request: Schema.TaggedProcedure.All) => Rpc.call(request, resolver, options)) as any

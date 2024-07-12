@@ -99,8 +99,8 @@ export type SerializableTypeId = typeof SerializableTypeId
  */
 export interface SerializableMachine<
   State,
-  Public extends Schema.TaggedRequest.All,
-  Private extends Schema.TaggedRequest.All,
+  Public extends Schema.TaggedProcedure.All,
+  Private extends Schema.TaggedProcedure.All,
   Input,
   InitErr,
   R,
@@ -206,8 +206,8 @@ export declare namespace Machine {
   export type InitializeSerializable<
     Input,
     State,
-    Public extends Schema.TaggedRequest.All,
-    Private extends Schema.TaggedRequest.All,
+    Public extends Schema.TaggedProcedure.All,
+    Private extends Schema.TaggedProcedure.All,
     R,
     E,
     InitR
@@ -362,7 +362,7 @@ export const makeWith = <State, Input = void>(): {
  * @category constructors
  */
 export const makeSerializable: {
-  <State, IS, RS, Public extends Schema.TaggedRequest.All, Private extends Schema.TaggedRequest.All, InitErr, R>(
+  <State, IS, RS, Public extends Schema.TaggedProcedure.All, Private extends Schema.TaggedProcedure.All, InitErr, R>(
     options: {
       readonly state: Schema.Schema<State, IS, RS>
       readonly input?: undefined
@@ -378,8 +378,8 @@ export const makeSerializable: {
     Input,
     II,
     RI,
-    Public extends Schema.TaggedRequest.All,
-    Private extends Schema.TaggedRequest.All,
+    Public extends Schema.TaggedProcedure.All,
+    Private extends Schema.TaggedProcedure.All,
     InitErr,
     R
   >(
@@ -396,8 +396,8 @@ export const makeSerializable: {
   Input,
   II,
   RI,
-  Public extends Schema.TaggedRequest.All,
-  Private extends Schema.TaggedRequest.All,
+  Public extends Schema.TaggedProcedure.All,
+  Private extends Schema.TaggedProcedure.All,
   InitErr,
   R
 >(
@@ -841,8 +841,8 @@ export const boot = <
  */
 export const snapshot = <
   State,
-  Public extends Schema.TaggedRequest.All,
-  Private extends Schema.TaggedRequest.All,
+  Public extends Schema.TaggedProcedure.All,
+  Private extends Schema.TaggedProcedure.All,
   Input,
   InitErr,
   R,
@@ -871,8 +871,8 @@ export const snapshot = <
  */
 export const restore = <
   State,
-  Public extends Schema.TaggedRequest.All,
-  Private extends Schema.TaggedRequest.All,
+  Public extends Schema.TaggedProcedure.All,
+  Private extends Schema.TaggedProcedure.All,
   Input,
   InitErr,
   R,

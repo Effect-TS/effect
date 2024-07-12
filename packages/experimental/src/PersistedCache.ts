@@ -52,7 +52,7 @@ export const make = <K extends Persistence.ResultPersistence.KeyAny, R>(options:
 }): Effect.Effect<
   PersistedCache<K>,
   never,
-  Serializable.SerializableRequest.Context<K> | R | Persistence.ResultPersistence | Scope.Scope
+  Serializable.Procedure.Context<K> | R | Persistence.ResultPersistence | Scope.Scope
 > =>
   Persistence.ResultPersistence.pipe(
     Effect.flatMap((_) => _.make(options.storeId)),
@@ -63,7 +63,7 @@ export const make = <K extends Persistence.ResultPersistence.KeyAny, R>(options:
           const effect: Effect.Effect<
             Serializable.WithExit.Success<K>,
             Serializable.WithExit.Failure<K> | Persistence.PersistenceError,
-            Serializable.SerializableRequest.Context<K> | R
+            Serializable.Procedure.Context<K> | R
           > = pipe(
             store.get(request.key as any),
             Effect.flatMap(Option.match({

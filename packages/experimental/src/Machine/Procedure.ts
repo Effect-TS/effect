@@ -76,7 +76,7 @@ export const isSerializable = (u: unknown): u is SerializableProcedure<any, any,
  * @since 1.0.0
  * @category models
  */
-export interface SerializableProcedure<Request extends Schema.TaggedRequest.All, State, R>
+export interface SerializableProcedure<Request extends Schema.TaggedProcedure.All, State, R>
   extends Procedure<Request, State, R>
 {
   readonly [SerializableTypeId]: SerializableTypeId
@@ -236,14 +236,14 @@ export const makeSerializable = <
   State
 >() =>
 <
-  Req extends Schema.TaggedRequest.All,
+  Req extends Schema.TaggedProcedure.All,
   IS,
   R,
   RS
 >(
   schema: Schema.Schema<Req, IS, RS> & { readonly _tag: Req["_tag"] },
   handler: Handler<Req, State, Requests, R>
-): SerializableProcedure<Req, State, R | Serializable.SerializableRequest.Context<Req>> => ({
+): SerializableProcedure<Req, State, R | Serializable.Procedure.Context<Req>> => ({
   [TypeId]: TypeId,
   [SerializableTypeId]: SerializableTypeId,
   schema: schema as any,

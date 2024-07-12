@@ -16,7 +16,7 @@ import * as internal from "./internal/message.js"
  * @category models
  */
 export interface Message<A, AI, E, EI>
-  extends Serializable.SerializableRequest<any, any, never, A, AI, E, EI, never>, PrimaryKey.PrimaryKey
+  extends Serializable.Procedure<any, any, never, A, AI, E, EI, never>, PrimaryKey.PrimaryKey
 {}
 
 /**
@@ -85,7 +85,7 @@ export interface TaggedMessageConstructor<Tag extends string, Self, R, IS, S, IE
   new(
     props: Types.Equals<S, {}> extends true ? void : S,
     disableValidation?: boolean
-  ): Schema.TaggedRequest<Tag, S, IS & { readonly _tag: Tag }, never, A, IA, E, IE, never> & S & PrimaryKey.PrimaryKey
+  ): Schema.TaggedProcedure<Tag, S, IS & { readonly _tag: Tag }, never, A, IA, E, IE, never> & S & PrimaryKey.PrimaryKey
 }
 
 /**

@@ -10,11 +10,11 @@ import type * as Rpc from "../Rpc.js"
 /** @internal */
 export const withRequestTag = <A>(
   f: (
-    request: Serializable.SerializableRequest<any, any, any, any, any, any, any, any>
+    request: Serializable.Procedure<any, any, any, any, any, any, any, any>
   ) => A
 ) => {
   const cache = new Map<string, A>()
-  return (request: Schema.TaggedRequest.All): A => {
+  return (request: Schema.TaggedProcedure.All): A => {
     let result = cache.get(request._tag)
     if (result !== undefined) {
       return result
@@ -31,7 +31,7 @@ export const StreamRequestTypeId: Rpc.StreamRequestTypeId = Symbol.for(
 ) as Rpc.StreamRequestTypeId
 
 /** @internal */
-export const makeRequest = <A extends Schema.TaggedRequest.All>(
+export const makeRequest = <A extends Schema.TaggedProcedure.All>(
   options: {
     readonly request: A
     readonly traceId: string
