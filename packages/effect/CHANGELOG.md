@@ -1,5 +1,19 @@
 # effect
 
+## 3.5.3
+
+### Patch Changes
+
+- [#3234](https://github.com/Effect-TS/effect/pull/3234) [`edb0da3`](https://github.com/Effect-TS/effect/commit/edb0da383746d760f35d8582f5fb0cc0eeca9217) Thanks @tim-smart! - do not add a error "cause" if the upstream error does not contain one
+
+- [#3236](https://github.com/Effect-TS/effect/pull/3236) [`c8d3fb0`](https://github.com/Effect-TS/effect/commit/c8d3fb0fe23585f6efb724af51fbab3ba1ad6e83) Thanks @tim-smart! - set Logger.pretty message color to deepskyblue on browsers
+
+- [#3240](https://github.com/Effect-TS/effect/pull/3240) [`dabd028`](https://github.com/Effect-TS/effect/commit/dabd028decf9b7983ca16ebe0f48c05c11a84b68) Thanks @tim-smart! - fix process .isTTY detection
+
+- [#3230](https://github.com/Effect-TS/effect/pull/3230) [`786b2ab`](https://github.com/Effect-TS/effect/commit/786b2ab29d525c877bb84035dac9e2d6499339d1) Thanks @KhraksMamtsov! - support heterogenous argument in `Option.firstSomeOf`
+
+- [#3238](https://github.com/Effect-TS/effect/pull/3238) [`fc57354`](https://github.com/Effect-TS/effect/commit/fc573547d41667016fce05eaee75960fcc6dce4d) Thanks @leonitousconforti! - Align Stream.run public function signatures
+
 ## 3.5.2
 
 ### Patch Changes
