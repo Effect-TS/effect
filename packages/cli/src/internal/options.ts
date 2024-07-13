@@ -1145,7 +1145,7 @@ const toParseableInstruction = (self: Instruction): Array<ParseableInstruction> 
 }
 
 /** @internal */
-const keyValueSplitter = new RegExp('=(.*)')
+const keyValueSplitter = /=(.*)/
 
 const parseInternal = (
   self: Instruction,
