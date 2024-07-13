@@ -301,7 +301,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
       type A = {
         [_: string]: A
       }
-      const schema = S.Record(S.String, S.suspend((): S.Schema<A> => schema))
+      const schema = S.Record({ key: S.String, value: S.suspend((): S.Schema<A> => schema) })
       expectValidArbitrary(schema)
     })
 
@@ -366,12 +366,12 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
   })
 
   it("record(string, string)", () => {
-    const schema = S.Record(S.String, S.String)
+    const schema = S.Record({ key: S.String, value: S.String })
     expectValidArbitrary(schema)
   })
 
   it("record(symbol, string)", () => {
-    const schema = S.Record(S.SymbolFromSelf, S.String)
+    const schema = S.Record({ key: S.SymbolFromSelf, value: S.String })
     expectValidArbitrary(schema)
   })
 
@@ -393,7 +393,7 @@ details: Generating an Arbitrary for this schema requires at least one enum`)
   })
 
   it("extend/ struct record", () => {
-    const schema = S.Struct({ a: S.String }, S.Record(S.String, S.Union(S.String, S.Number)))
+    const schema = S.Struct({ a: S.String }, S.Record({ key: S.String, value: S.Union(S.String, S.Number) }))
     expectValidArbitrary(schema)
   })
 

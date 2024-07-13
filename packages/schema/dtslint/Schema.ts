@@ -940,64 +940,64 @@ S.required(
 // ---------------------------------------------
 
 // $ExpectType Schema<string, string, never>
-S.asSchema(S.Record(S.String, S.String).key)
+S.asSchema(S.Record({ key: S.String, value: S.String }).key)
 
 // $ExpectType typeof String$
-S.Record(S.String, S.String).key
+S.Record({ key: S.String, value: S.String }).key
 
 // $ExpectType Schema<string, string, never>
-S.asSchema(S.Record(S.String, S.String).value)
+S.asSchema(S.Record({ key: S.String, value: S.String }).value)
 
 // $ExpectType typeof String$
-S.Record(S.String, S.String).value
+S.Record({ key: S.String, value: S.String }).value
 
 // $ExpectType Schema<{ readonly [x: string]: string; }, { readonly [x: string]: string; }, never>
-S.asSchema(S.Record(S.String, S.String))
+S.asSchema(S.Record({ key: S.String, value: S.String }))
 
 // $ExpectType Record$<typeof String$, typeof String$>
-S.Record(S.String, S.String)
+S.Record({ key: S.String, value: S.String })
 
 // $ExpectType Schema<{ readonly [x: string]: number; }, { readonly [x: string]: string; }, never>
-S.asSchema(S.Record(S.String, S.NumberFromString))
+S.asSchema(S.Record({ key: S.String, value: S.NumberFromString }))
 
 // $ExpectType Record$<typeof String$, typeof NumberFromString>
-S.Record(S.String, S.NumberFromString)
+S.Record({ key: S.String, value: S.NumberFromString })
 
 // $ExpectType Schema<{ readonly [x: string]: string; }, { readonly [x: string]: string; }, never>
-S.asSchema(S.Record(pipe(S.String, S.minLength(2)), S.String))
+S.asSchema(S.Record({ key: pipe(S.String, S.minLength(2)), value: S.String }))
 
 // $ExpectType Record$<filter<Schema<string, string, never>>, typeof String$>
-S.Record(pipe(S.String, S.minLength(2)), S.String)
+S.Record({ key: pipe(S.String, S.minLength(2)), value: S.String })
 
 // $ExpectType Schema<{ readonly a: string; readonly b: string; }, { readonly a: string; readonly b: string; }, never>
-S.asSchema(S.Record(S.Union(S.Literal("a"), S.Literal("b")), S.String))
+S.asSchema(S.Record({ key: S.Union(S.Literal("a"), S.Literal("b")), value: S.String }))
 
 // $ExpectType Record$<Union<[Literal<["a"]>, Literal<["b"]>]>, typeof String$>
-S.Record(S.Union(S.Literal("a"), S.Literal("b")), S.String)
+S.Record({ key: S.Union(S.Literal("a"), S.Literal("b")), value: S.String })
 
 // $ExpectType Schema<{ readonly [x: symbol]: string; }, { readonly [x: symbol]: string; }, never>
-S.asSchema(S.Record(S.SymbolFromSelf, S.String))
+S.asSchema(S.Record({ key: S.SymbolFromSelf, value: S.String }))
 
 // $ExpectType Record$<typeof SymbolFromSelf, typeof String$>
-S.Record(S.SymbolFromSelf, S.String)
+S.Record(S.Record({ key: S.SymbolFromSelf, value: S.String }))
 
 // $ExpectType Schema<{ readonly [x: `a${string}`]: string; }, { readonly [x: `a${string}`]: string; }, never>
-S.asSchema(S.Record(S.TemplateLiteral(S.Literal("a"), S.String), S.String))
+S.asSchema(S.Record({ key: S.TemplateLiteral(S.Literal("a"), S.String), value: S.String }))
 
 // $ExpectType Record$<TemplateLiteral<`a${string}`>, typeof String$>
-S.Record(S.TemplateLiteral(S.Literal("a"), S.String), S.String)
+S.Record({ key: S.TemplateLiteral(S.Literal("a"), S.String), value: S.String })
 
 // $ExpectType Schema<{ readonly [x: string & Brand<"UserId">]: string; }, { readonly [x: string]: string; }, never>
-S.asSchema(S.Record(S.String.pipe(S.brand("UserId")), S.String))
+S.asSchema(S.Record({ key: S.String.pipe(S.brand("UserId")), value: S.String }))
 
 // $ExpectType Record$<brand<typeof String$, "UserId">, typeof String$>
-S.Record(S.String.pipe(S.brand("UserId")), S.String)
+S.Record({ key: S.String.pipe(S.brand("UserId")), value: S.String })
 
 // $ExpectType Schema<{ readonly [x: string & Brand<symbol>]: string; }, { readonly [x: string]: string; }, never>
-S.asSchema(S.Record(S.String.pipe(S.brand(Symbol.for("UserId"))), S.String))
+S.asSchema(S.Record({ key: S.String.pipe(S.brand(Symbol.for("UserId"))), value: S.String }))
 
 // $ExpectType Record$<brand<typeof String$, symbol>, typeof String$>
-S.Record(S.String.pipe(S.brand(Symbol.for("UserId"))), S.String)
+S.Record({ key: S.String.pipe(S.brand(Symbol.for("UserId"))), value: S.String })
 
 // ---------------------------------------------
 // extend
@@ -1031,14 +1031,14 @@ S.extend(S.Struct({ a: S.String }), S.Union(S.Struct({ b: S.Number }), S.Struct(
 S.asSchema(pipe(
   S.Struct({ a: S.String, b: S.String }),
   S.extend(S.Struct({ c: S.String })),
-  S.extend(S.Record(S.String, S.String))
+  S.extend(S.Record({ key: S.String, value: S.String }))
 ))
 
 // $ExpectType extend<extend<Struct<{ a: typeof String$; b: typeof String$; }>, Struct<{ c: typeof String$; }>>, Record$<typeof String$, typeof String$>>
 pipe(
   S.Struct({ a: S.String, b: S.String }),
   S.extend(S.Struct({ c: S.String })),
-  S.extend(S.Record(S.String, S.String))
+  S.extend(S.Record({ key: S.String, value: S.String }))
 )
 
 // ---------------------------------------------
@@ -1396,10 +1396,10 @@ S.asSchema(S.mutable(S.Struct({ a: S.Number })))
 S.mutable(S.Struct({ a: S.Number }))
 
 // $ExpectType Schema<{ [x: string]: number; }, { [x: string]: number; }, never>
-S.asSchema(S.mutable(S.Record(S.String, S.Number)))
+S.asSchema(S.mutable(S.Record({ key: S.String, value: S.Number })))
 
 // $ExpectType mutable<Record$<typeof String$, typeof Number$>>
-S.mutable(S.Record(S.String, S.Number))
+S.mutable(S.Record({ key: S.String, value: S.Number }))
 
 // $ExpectType Schema<string[], string[], never>
 S.asSchema(S.mutable(S.Array(S.String)))
@@ -1435,10 +1435,10 @@ S.asSchema(S.extend(S.mutable(S.Struct({ a: S.String })), S.mutable(S.Struct({ b
 S.asSchema(S.extend(S.mutable(S.Struct({ a: S.String })), S.Struct({ b: S.Number })))
 
 // $ExpectType Schema<{ a: string; } & { [x: string]: string; }, { a: string; } & { [x: string]: string; }, never>
-S.asSchema(S.extend(S.mutable(S.Struct({ a: S.String })), S.mutable(S.Record(S.String, S.String))))
+S.asSchema(S.extend(S.mutable(S.Struct({ a: S.String })), S.mutable(S.Record({ key: S.String, value: S.String }))))
 
 // $ExpectType Schema<{ a: string; } & { readonly [x: string]: string; }, { a: string; } & { readonly [x: string]: string; }, never>
-S.asSchema(S.extend(S.mutable(S.Struct({ a: S.String })), S.Record(S.String, S.String)))
+S.asSchema(S.extend(S.mutable(S.Struct({ a: S.String })), S.Record({ key: S.String, value: S.String })))
 
 // ---------------------------------------------
 // transform

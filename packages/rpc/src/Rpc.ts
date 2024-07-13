@@ -295,7 +295,7 @@ export const RequestSchema = <A, I, R>(
     traceId: Schema.String,
     spanId: Schema.String,
     sampled: Schema.Boolean,
-    headers: Schema.Record(Schema.String, Schema.String)
+    headers: Schema.Record({ key: Schema.String, value: Schema.String })
   })
 
 /**

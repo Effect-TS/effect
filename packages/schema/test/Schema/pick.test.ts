@@ -99,7 +99,7 @@ describe("pick", () => {
   })
 
   it("record(string, number)", async () => {
-    const schema = S.Record(S.String, S.Number).pipe(S.pick("a", "b"))
+    const schema = S.Record({ key: S.String, value: S.Number }).pipe(S.pick("a", "b"))
     await Util.expectDecodeUnknownSuccess(schema, { a: 1, b: 2 })
     await Util.expectDecodeUnknownFailure(
       schema,
@@ -120,7 +120,7 @@ describe("pick", () => {
   it("record(symbol, number)", async () => {
     const a = Symbol.for("@effect/schema/test/a")
     const b = Symbol.for("@effect/schema/test/b")
-    const schema = S.Record(S.SymbolFromSelf, S.Number).pipe(S.pick(a, b))
+    const schema = S.Record({ key: S.SymbolFromSelf, value: S.Number }).pipe(S.pick(a, b))
     await Util.expectDecodeUnknownSuccess(schema, { [a]: 1, [b]: 2 })
     await Util.expectDecodeUnknownFailure(
       schema,
@@ -141,8 +141,8 @@ describe("pick", () => {
   it("record(string, string) & record(`a${string}`, number)", async () => {
     const schema = S.Struct(
       {},
-      S.Record(S.String, S.String),
-      S.Record(S.TemplateLiteral(S.Literal("a"), S.String), S.Number)
+      S.Record({ key: S.String, value: S.String }),
+      S.Record({ key: S.TemplateLiteral(S.Literal("a"), S.String), value: S.Number })
     ).pipe(
       S.pick("a", "b")
     )

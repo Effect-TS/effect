@@ -73,7 +73,7 @@ describe("`onExcessProperty` option", () => {
     })
 
     it("record of struct", async () => {
-      const schema = S.Record(S.String, S.Struct({ b: S.Number }))
+      const schema = S.Record({ key: S.String, value: S.Struct({ b: S.Number }) })
       await Util.expectDecodeUnknownSuccess(
         schema,
         { a: { b: 1, c: "c" } },

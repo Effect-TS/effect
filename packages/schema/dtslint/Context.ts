@@ -258,10 +258,10 @@ S.mutable(S.Struct({ a: aContext, b: bContext }))
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly [x: string]: number; }, { readonly [x: string]: number; }, "aContext" | "bContext">
-S.asSchema(S.Record(aContext, bContext))
+S.asSchema(S.Record({ key: aContext, value: bContext }))
 
 // $ExpectType Record$<aContext, bContext>
-S.Record(aContext, bContext)
+S.Record({ key: aContext, value: bContext })
 
 // ---------------------------------------------
 // extend

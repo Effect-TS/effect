@@ -1876,35 +1876,35 @@ console.log(Equivalence.make(schema)("aaa", "abb")) // Output: true
 
 ## Cheatsheet
 
-| Typescript Type                              | Description / Notes                      | Schema / Combinator                                       |
-| -------------------------------------------- | ---------------------------------------- | --------------------------------------------------------- |
-| `null`                                       |                                          | `S.Null`                                                  |
-| `undefined`                                  |                                          | `S.Undefined`                                             |
-| `string`                                     |                                          | `S.String`                                                |
-| `number`                                     |                                          | `S.Number`                                                |
-| `boolean`                                    |                                          | `S.Boolean`                                               |
-| `symbol`                                     |                                          | `S.SymbolFromSelf` / `S.Symbol`                           |
-| `BigInt`                                     |                                          | `S.BigIntFromSelf` / `S.BigInt`                           |
-| `unknown`                                    |                                          | `S.Unknown`                                               |
-| `any`                                        |                                          | `S.Any`                                                   |
-| `never`                                      |                                          | `S.Never`                                                 |
-| `object`                                     |                                          | `S.Object`                                                |
-| `unique symbol`                              |                                          | `S.UniqueSymbolFromSelf`                                  |
-| `"a"`, `1`, `true`                           | type literals                            | `S.Literal("a")`, `S.Literal(1)`, `S.Literal(true)`       |
-| `a${string}`                                 | template literals                        | `S.TemplateLiteral("a", S.String)`                        |
-| `{ readonly a: string, readonly b: number }` | structs                                  | `S.Struct({ a: S.String, b: S.Number })`                  |
-| `{ readonly a?: string \| undefined }`       | optional fields                          | `S.Struct({ a: S.optional(S.String) })`                   |
-| `{ readonly a?: string }`                    | optional fields                          | `S.Struct({ a: S.optional(S.String, { exact: true }) })`  |
-| `Record<A, B>`                               | records                                  | `S.Record(A, B)`                                          |
-| `readonly [string, number]`                  | tuples                                   | `S.Tuple(S.String, S.Number)`                             |
-| `ReadonlyArray<string>`                      | arrays                                   | `S.Array(S.String)`                                       |
-| `A \| B`                                     | unions                                   | `S.Union(A, B)`                                           |
-| `A & B`                                      | intersections of non-overlapping structs | `S.extend(A, B)`                                          |
-| `Record<A, B> & Record<C, D>`                | intersections of non-overlapping records | `S.extend(S.Record(A, B), S.Record(C, D))`                |
-| `type A = { readonly a: A \| null }`         | recursive types                          | `S.Struct({ a: S.Union(S.Null, S.suspend(() => self)) })` |
-| `keyof A`                                    |                                          | `S.keyof(A)`                                              |
-| `partial<A>`                                 |                                          | `S.partial(A)`                                            |
-| `required<A>`                                |                                          | `S.required(A)`                                           |
+| Typescript Type                              | Description / Notes                      | Schema / Combinator                                        |
+| -------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------- |
+| `null`                                       |                                          | `S.Null`                                                   |
+| `undefined`                                  |                                          | `S.Undefined`                                              |
+| `string`                                     |                                          | `S.String`                                                 |
+| `number`                                     |                                          | `S.Number`                                                 |
+| `boolean`                                    |                                          | `S.Boolean`                                                |
+| `symbol`                                     |                                          | `S.SymbolFromSelf` / `S.Symbol`                            |
+| `BigInt`                                     |                                          | `S.BigIntFromSelf` / `S.BigInt`                            |
+| `unknown`                                    |                                          | `S.Unknown`                                                |
+| `any`                                        |                                          | `S.Any`                                                    |
+| `never`                                      |                                          | `S.Never`                                                  |
+| `object`                                     |                                          | `S.Object`                                                 |
+| `unique symbol`                              |                                          | `S.UniqueSymbolFromSelf`                                   |
+| `"a"`, `1`, `true`                           | type literals                            | `S.Literal("a")`, `S.Literal(1)`, `S.Literal(true)`        |
+| `a${string}`                                 | template literals                        | `S.TemplateLiteral("a", S.String)`                         |
+| `{ readonly a: string, readonly b: number }` | structs                                  | `S.Struct({ a: S.String, b: S.Number })`                   |
+| `{ readonly a?: string \| undefined }`       | optional fields                          | `S.Struct({ a: S.optional(S.String) })`                    |
+| `{ readonly a?: string }`                    | optional fields                          | `S.Struct({ a: S.optional(S.String, { exact: true }) })`   |
+| `Record<A, B>`                               | records                                  | `S.Record({ key: A, value: B })`                           |
+| `readonly [string, number]`                  | tuples                                   | `S.Tuple(S.String, S.Number)`                              |
+| `ReadonlyArray<string>`                      | arrays                                   | `S.Array(S.String)`                                        |
+| `A \| B`                                     | unions                                   | `S.Union(A, B)`                                            |
+| `A & B`                                      | intersections of non-overlapping structs | `S.extend(A, B)`                                           |
+| `Record<A, B> & Record<C, D>`                | intersections of non-overlapping records | `S.extend(S.Record({ key: A, value: B }), S.Record({ key: C, value: D }))` |
+| `type A = { readonly a: A \| null }`         | recursive types                          | `S.Struct({ a: S.Union(S.Null, S.suspend(() => self)) })`  |
+| `keyof A`                                    |                                          | `S.keyof(A)`                                               |
+| `partial<A>`                                 |                                          | `S.partial(A)`                                             |
+| `required<A>`                                |                                          | `S.required(A)`                                            |
 
 ## Primitives
 
@@ -8226,9 +8226,11 @@ class Person extends Schema.Class<Person>("Person")({
 // Represents the serializable function: `(arg: { readonly id: number }) => Exit<Person, string>`
 class GetPersonById extends Schema.TaggedRequest<GetPersonById>()(
   "GetPersonById",
-  Schema.String, // Failure schema
-  Person, // Success schema
-  { id: Schema.Number } // Argument schema
+  {
+    failure: Schema.String, // Failure schema
+    success: Person, // Success schema
+    payload: { id: Schema.Number } // Argument schema
+  }
 ) {}
 
 function handleGetPersonById(serializedReq: typeof GetPersonById.Encoded) {
@@ -9291,7 +9293,7 @@ const person = S.Struct(
   {
     name: S.String
   },
-  S.Record(S.String, S.String)
+  S.Record({ key: S.String, value: S.String })
 )
 
 S.decodeUnknownSync(person)({
@@ -9472,7 +9474,7 @@ Schema
 ```ts
 const User = S.Struct({ name: S.String })
 
-const UserStore = S.Record(S.String, User)
+const UserStore = S.Record({ key: S.String, value: User })
 type UserStore = S.Schema.Type<typeof UserStore>
 // => type UserStore = { readonly [x: string]: { readonly name: string; }; }
 ```

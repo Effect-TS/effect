@@ -23,7 +23,7 @@ describe("partial", () => {
     })
 
     it("Record", async () => {
-      const schema = S.partial(S.Record(S.String, S.NumberFromString))
+      const schema = S.partial(S.Record({ key: S.String, value: S.NumberFromString }))
       await Util.expectDecodeUnknownSuccess(schema, {}, {})
       await Util.expectDecodeUnknownSuccess(schema, { a: "1" }, { a: 1 })
       await Util.expectDecodeUnknownSuccess(schema, { a: undefined })
@@ -81,7 +81,7 @@ describe("partial", () => {
     })
 
     it("Record", async () => {
-      const schema = S.partial(S.Record(S.String, S.NumberFromString), { exact: true })
+      const schema = S.partial(S.Record({ key: S.String, value: S.NumberFromString }), { exact: true })
       await Util.expectDecodeUnknownSuccess(schema, {}, {})
       await Util.expectDecodeUnknownSuccess(schema, { a: "1" }, { a: 1 })
       await Util.expectDecodeUnknownSuccess(schema, { a: undefined })

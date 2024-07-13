@@ -37,6 +37,23 @@ TODO: change to minor before merging
 - change `TaggedRequestClass` type parameters order (swap `Success` with `Failure`)
 - simplify `TaggedRequest.Any`, use `TaggedRequest.All` instead
 - rename `nonEmpty` filter to `nonEmptyString` and `NonEmpty` schema to `NonEmptyString`, closes #3115
+- aligned `Record` constructor to consistently accept object argument (like `Map`, `HashMap`, etc...), closes #2793
+
+  Before
+
+  ```ts
+  import { Schema } from "@effect/schema"
+
+  const schema = Schema.Record(Schema.String, Schema.Number)
+  ```
+
+  Now
+
+  ```ts
+  import { Schema } from "@effect/schema"
+
+  const schema = Schema.Record({ key: Schema.String, value: Schema.Number })
+  ```
 
 ### Serializable
 

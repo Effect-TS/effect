@@ -35,7 +35,7 @@ describe("extend", () => {
 
     it("extend record(string, string)", async () => {
       const schema = Schema.Struct({ a: Schema.String }).pipe(
-        Schema.extend(Schema.Record(Schema.String, Schema.String))
+        Schema.extend(Schema.Record({ key: Schema.String, value: Schema.String }))
       )
       expect(String(schema)).toBe(`{ readonly a: string; readonly [x: string]: string }`)
     })
@@ -43,12 +43,14 @@ describe("extend", () => {
     it("extend record(templateLiteral, string)", async () => {
       const schema = Schema.Struct({ a: Schema.String }).pipe(
         Schema.extend(Schema.Record(
-          Schema.TemplateLiteral(
-            Schema.String,
-            Schema.Literal("-"),
-            Schema.Number
-          ),
-          Schema.String
+          {
+            key: Schema.TemplateLiteral(
+              Schema.String,
+              Schema.Literal("-"),
+              Schema.Number
+            ),
+            value: Schema.String
+          }
         ))
       )
       // type A = {
@@ -61,14 +63,14 @@ describe("extend", () => {
 
     it("extend record(string, NumberFromChar)", async () => {
       const schema = Schema.Struct({ a: Schema.Number }).pipe(
-        Schema.extend(Schema.Record(Schema.String, Util.NumberFromChar))
+        Schema.extend(Schema.Record({ key: Schema.String, value: Util.NumberFromChar }))
       )
       expect(String(schema)).toBe(`{ readonly a: number; readonly [x: string]: NumberFromChar }`)
     })
 
     it("extend record(symbol, NumberFromChar)", async () => {
       const schema = Schema.Struct({ a: Schema.Number }).pipe(
-        Schema.extend(Schema.Record(Schema.SymbolFromSelf, Util.NumberFromChar))
+        Schema.extend(Schema.Record({ key: Schema.SymbolFromSelf, value: Util.NumberFromChar }))
       )
       expect(String(schema)).toBe(`{ readonly a: number; readonly [x: symbol]: NumberFromChar }`)
     })
@@ -426,24 +428,24 @@ describe("extend", () => {
 details: cannot extend string with number`)
     )
     expect(() =>
-      Schema.Record(Schema.String, Schema.Number).pipe(
-        Schema.extend(Schema.Record(Schema.String, Schema.Boolean))
+      Schema.Record({ key: Schema.String, value: Schema.Number }).pipe(
+        Schema.extend(Schema.Record({ key: Schema.String, value: Schema.Boolean }))
       )
     ).toThrow(
       new Error(`Duplicate index signature
 details: string index signature`)
     )
     expect(() =>
-      Schema.Record(Schema.SymbolFromSelf, Schema.Number).pipe(
-        Schema.extend(Schema.Record(Schema.SymbolFromSelf, Schema.Boolean))
+      Schema.Record({ key: Schema.SymbolFromSelf, value: Schema.Number }).pipe(
+        Schema.extend(Schema.Record({ key: Schema.SymbolFromSelf, value: Schema.Boolean }))
       )
     ).toThrow(
       new Error(`Duplicate index signature
 details: symbol index signature`)
     )
     expect(() =>
-      Schema.Record(Schema.String, Schema.Number).pipe(
-        Schema.extend(Schema.Record(Schema.String.pipe(Schema.minLength(2)), Schema.Boolean))
+      Schema.Record({ key: Schema.String, value: Schema.Number }).pipe(
+        Schema.extend(Schema.Record({ key: Schema.String.pipe(Schema.minLength(2)), value: Schema.Boolean }))
       )
     ).toThrow(
       new Error(`Duplicate index signature

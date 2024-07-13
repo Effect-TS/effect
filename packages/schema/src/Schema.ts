@@ -2694,8 +2694,9 @@ const makeRecordClass = <K extends Schema.All, V extends Schema.All>(key: K, val
  * @category constructors
  * @since 0.67.0
  */
-export const Record = <K extends Schema.All, V extends Schema.All>(key: K, value: V): Record$<K, V> =>
-  makeRecordClass(key, value)
+export const Record = <K extends Schema.All, V extends Schema.All>(
+  options: { readonly key: K; readonly value: V }
+): Record$<K, V> => makeRecordClass(options.key, options.value)
 
 /**
  * @category struct transformations
@@ -3064,7 +3065,7 @@ export interface extend<Self extends Schema.Any, That extends Schema.Any> extend
  * // }>
  * const extended = Schema.asSchema(schema.pipe(
  *   Schema.extend(Schema.Struct({ c: Schema.String })), // <= you can add more fields
- *   Schema.extend(Schema.Record(Schema.String, Schema.String)) // <= you can add index signatures
+ *   Schema.extend(Schema.Record({ key: Schema.String, value: Schema.String })) // <= you can add index signatures
  * ))
  *
  * @category combinators
@@ -6448,7 +6449,7 @@ export const ReadonlyMapFromRecord = <KA, KR, VA, VI, VR>({ key, value }: {
   key: Schema<KA, string, KR>
   value: Schema<VA, VI, VR>
 }): Schema<ReadonlyMap<KA, VA>, { readonly [x: string]: VI }, KR | VR> =>
-  transform(Record(encodedBoundSchema(key), value), ReadonlyMapFromSelf({ key, value: typeSchema(value) }), {
+  transform(Record({ key: encodedBoundSchema(key), value }), ReadonlyMapFromSelf({ key, value: typeSchema(value) }), {
     strict: true,
     decode: (record) => new Map(Object.entries(record)),
     encode: record_.fromEntries
@@ -6462,7 +6463,7 @@ export const MapFromRecord = <KA, KR, VA, VI, VR>({ key, value }: {
   key: Schema<KA, string, KR>
   value: Schema<VA, VI, VR>
 }): Schema<Map<KA, VA>, { readonly [x: string]: VI }, KR | VR> =>
-  transform(Record(encodedBoundSchema(key), value), MapFromSelf({ key, value: typeSchema(value) }), {
+  transform(Record({ key: encodedBoundSchema(key), value }), MapFromSelf({ key, value: typeSchema(value) }), {
     strict: true,
     decode: (record) => new Map(Object.entries(record)),
     encode: record_.fromEntries

@@ -826,7 +826,7 @@ schema (UndefinedKeyword): undefined`
   describe("Record", () => {
     it("Record(symbol, number)", () => {
       expectError(
-        Schema.Record(Schema.SymbolFromSelf, JsonNumber),
+        Schema.Record({ key: Schema.SymbolFromSelf, value: JsonNumber }),
         `Unsupported index signature parameter
 schema (SymbolKeyword): symbol`
       )
@@ -834,7 +834,7 @@ schema (SymbolKeyword): symbol`
 
     it("record(refinement, number)", () => {
       expectJSONSchema(
-        Schema.Record(Schema.String.pipe(Schema.minLength(1)), JsonNumber),
+        Schema.Record({ key: Schema.String.pipe(Schema.minLength(1)), value: JsonNumber }),
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
           type: "object",
@@ -855,7 +855,7 @@ schema (SymbolKeyword): symbol`
     })
 
     it("Record(string, number)", () => {
-      expectJSONSchema(Schema.Record(Schema.String, JsonNumber), {
+      expectJSONSchema(Schema.Record({ key: Schema.String, value: JsonNumber }), {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {},
@@ -871,8 +871,7 @@ schema (SymbolKeyword): symbol`
     it("Record('a' | 'b', number)", () => {
       expectJSONSchema(
         Schema.Record(
-          Schema.Union(Schema.Literal("a"), Schema.Literal("b")),
-          JsonNumber
+          { key: Schema.Union(Schema.Literal("a"), Schema.Literal("b")), value: JsonNumber }
         ),
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -893,8 +892,7 @@ schema (SymbolKeyword): symbol`
 
     it("Record(${string}-${string}, number)", () => {
       const schema = Schema.Record(
-        Schema.TemplateLiteral(Schema.String, Schema.Literal("-"), Schema.String),
-        JsonNumber
+        { key: Schema.TemplateLiteral(Schema.String, Schema.Literal("-"), Schema.String), value: JsonNumber }
       )
       const jsonSchema: JSONSchema.JsonSchema7Root = {
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -922,8 +920,7 @@ schema (SymbolKeyword): symbol`
 
     it("Record(pattern, number)", () => {
       const schema = Schema.Record(
-        Schema.String.pipe(Schema.pattern(new RegExp("^.*-.*$"))),
-        JsonNumber
+        { key: Schema.String.pipe(Schema.pattern(new RegExp("^.*-.*$"))), value: JsonNumber }
       )
       const jsonSchema: JSONSchema.JsonSchema7Root = {
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -955,7 +952,7 @@ schema (SymbolKeyword): symbol`
   })
 
   it("Struct Record", () => {
-    const schema = Schema.Struct({ a: Schema.String }, Schema.Record(Schema.String, Schema.String))
+    const schema = Schema.Struct({ a: Schema.String }, Schema.Record({ key: Schema.String, value: Schema.String }))
     const jsonSchema: JSONSchema.JsonSchema7Root = {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "type": "object",

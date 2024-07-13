@@ -88,7 +88,7 @@ class GetName extends S.TaggedRequest<GetName>()("GetName", { failure: S.Never, 
 
 class EchoHeaders extends S.TaggedRequest<EchoHeaders>()("EchoHeaders", {
   failure: S.Never,
-  success: S.Record(S.String, S.Union(S.String, S.Undefined)),
+  success: S.Record({ key: S.String, value: S.Union(S.String, S.Undefined) }),
   payload: {}
 }) {}
 

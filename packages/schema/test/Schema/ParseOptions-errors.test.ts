@@ -136,7 +136,7 @@ describe("`errors` option", () => {
 
     describe("record", () => {
       it("all key errors", async () => {
-        const schema = S.Record(S.String.pipe(S.minLength(2)), S.Number)
+        const schema = S.Record({ key: S.String.pipe(S.minLength(2)), value: S.Number })
         await Util.expectDecodeUnknownFailure(
           schema,
           { a: 1, b: 2 },
@@ -150,7 +150,7 @@ describe("`errors` option", () => {
       })
 
       it("all value errors", async () => {
-        const schema = S.Record(S.String, S.Number)
+        const schema = S.Record({ key: S.String, value: S.Number })
         await Util.expectDecodeUnknownFailure(
           schema,
           { a: "a", b: "b" },
@@ -274,7 +274,7 @@ describe("`errors` option", () => {
 
     describe("record", () => {
       it("all key errors", async () => {
-        const schema = S.Record(S.Char, S.String)
+        const schema = S.Record({ key: S.Char, value: S.String })
         await Util.expectEncodeFailure(
           schema,
           { aa: "a", bb: "bb" },
@@ -288,7 +288,7 @@ describe("`errors` option", () => {
       })
 
       it("all value errors", async () => {
-        const schema = S.Record(S.String, S.Char)
+        const schema = S.Record({ key: S.String, value: S.Char })
         await Util.expectEncodeFailure(
           schema,
           { a: "aa", b: "bb" },
