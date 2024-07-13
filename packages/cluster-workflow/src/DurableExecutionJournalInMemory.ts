@@ -23,7 +23,8 @@ export const activityJournalInMemory = Layer.effect(
   DurableExecutionJournal.DurableExecutionJournal,
   Effect.gen(function*(_) {
     const memory = yield* _(Ref.make<Array<JournalEntry>>([]))
-    return ({
+    const self: DurableExecutionJournal.DurableExecutionJournal = {
+      [DurableExecutionJournal.DurableExecutionJournalTypeId]: DurableExecutionJournal.DurableExecutionJournalTypeId,
       append: (persistenceId, _, __, event) =>
         pipe(
           Ref.update(memory, (_) => _.concat([new JournalEntry({ persistenceId, event })]))
@@ -36,6 +37,7 @@ export const activityJournalInMemory = Layer.effect(
           Stream.filter((_) => _.persistenceId === persistenceId),
           Stream.map((_) => _.event)
         )
-    })
+    }
+    return self
   })
 )
