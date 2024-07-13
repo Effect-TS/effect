@@ -41,30 +41,30 @@ export class User extends Schema.Class<User>("User")({
 }) {}
 
 // Request to retrieve a list of users
-export class UserList extends Schema.TaggedRequest<UserList>()(
-  "UserList",
-  Schema.Never, // Indicates that no errors are expected
-  Schema.Array(User), // Specifies that the response is an array of Users
-  {}
-) {}
+export class UserList extends Schema.TaggedRequest<UserList>()("UserList", {
+  failure: Schema.Never, // Indicates that no errors are expected
+  success: Schema.Array(User), // Specifies that the response is an array of Users
+  payload: {}
+}) {}
 
 // Request to retrieve a user by ID
-export class UserById extends Schema.TaggedRequest<UserById>()(
-  "UserById",
-  Schema.String, // Indicates that errors, if any, will be returned as strings
-  User, // Specifies that the response is a User
-  {
+export class UserById extends Schema.TaggedRequest<UserById>()("UserById", {
+  failure: Schema.String, // Indicates that errors, if any, will be returned as strings
+  success: User, // Specifies that the response is a User
+  payload: {
     id: Schema.String
   }
-) {}
+}) {}
 
 // Request to create a new user
 export class UserCreate extends Schema.TaggedRequest<UserCreate>()(
   "UserCreate",
-  Schema.Never, // Indicates that no errors are expected
-  User, // Specifies that the response is a User
   {
-    name: Schema.String
+    failure: Schema.Never, // Indicates that no errors are expected
+    success: User, // Specifies that the response is a User
+    payload: {
+      name: Schema.String
+    }
   }
 ) {}
 ```
