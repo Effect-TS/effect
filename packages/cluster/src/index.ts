@@ -16,6 +16,11 @@ export * as Broadcaster from "./Broadcaster.js"
 /**
  * @since 1.0.0
  */
+export * as Entity from "./Entity.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Envelope from "./Envelope.js"
 
 /**
@@ -72,11 +77,6 @@ export * as RecipientBehaviour from "./RecipientBehaviour.js"
  * @since 1.0.0
  */
 export * as RecipientBehaviourContext from "./RecipientBehaviourContext.js"
-
-/**
- * @since 1.0.0
- */
-export * as RecipientType from "./RecipientType.js"
 
 /**
  * @since 1.0.0

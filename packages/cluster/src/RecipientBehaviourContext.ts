@@ -3,17 +3,17 @@
  */
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
+import type { Entity } from "./Entity.js"
 import type { Envelope } from "./Envelope.js"
-import * as internal from "./internal/recipientBehaviourContext.js"
+import * as Internal from "./internal/recipientBehaviourContext.js"
 import type { RecipientAddress } from "./RecipientAddress.js"
-import type * as RecipientType from "./RecipientType.js"
-import type * as ShardId from "./ShardId.js"
+import type { ShardId } from "./ShardId.js"
 
 /**
  * @since 1.0.0
  * @category symbols
  */
-export const RecipientBehaviourContextTypeId: unique symbol = internal.RecipientBehaviourContextTypeId
+export const RecipientBehaviourContextTypeId: unique symbol = Internal.RecipientBehaviourContextTypeId
 
 /**
  * @since 1.0.0
@@ -30,9 +30,9 @@ export type RecipientBehaviourContextTypeId = typeof RecipientBehaviourContextTy
  */
 export interface RecipientBehaviourContext {
   readonly [RecipientBehaviourContextTypeId]: RecipientBehaviourContextTypeId
-  readonly recipientAddress: RecipientAddress
-  readonly shardId: ShardId.ShardId
-  readonly recipientType: RecipientType.RecipientType<Envelope.AnyMessage>
+  readonly address: RecipientAddress
+  readonly shardId: ShardId
+  readonly entity: Entity<Envelope.AnyMessage>
   readonly forkShutdown: Effect.Effect<void>
 }
 
@@ -43,7 +43,7 @@ export interface RecipientBehaviourContext {
  * @category context
  */
 export const RecipientBehaviourContext: Context.Tag<RecipientBehaviourContext, RecipientBehaviourContext> =
-  internal.recipientBehaviourContextTag
+  Internal.recipientBehaviourContextTag
 
 /**
  * Creates a new RecipientBehaviourContext
@@ -53,7 +53,7 @@ export const RecipientBehaviourContext: Context.Tag<RecipientBehaviourContext, R
  */
 export const make: (
   args: Omit<RecipientBehaviourContext, typeof RecipientBehaviourContextTypeId>
-) => RecipientBehaviourContext = internal.make
+) => RecipientBehaviourContext = Internal.make
 
 /**
  * Gets the current entityId
@@ -61,7 +61,7 @@ export const make: (
  * @since 1.0.0
  * @category utils
  */
-export const entityId: Effect.Effect<string, never, RecipientBehaviourContext> = internal.entityId
+export const entityId: Effect.Effect<string, never, RecipientBehaviourContext> = Internal.entityId
 
 /**
  * Gets the current entityId
@@ -70,7 +70,7 @@ export const entityId: Effect.Effect<string, never, RecipientBehaviourContext> =
  * @category utils
  */
 export const recipientAddress: Effect.Effect<RecipientAddress, never, RecipientBehaviourContext> =
-  internal.recipientAddress
+  Internal.recipientAddress
 
 /**
  * Gets the current shardId
@@ -78,7 +78,7 @@ export const recipientAddress: Effect.Effect<RecipientAddress, never, RecipientB
  * @since 1.0.0
  * @category utils
  */
-export const shardId: Effect.Effect<ShardId.ShardId, never, RecipientBehaviourContext> = internal.shardId
+export const shardId: Effect.Effect<ShardId, never, RecipientBehaviourContext> = Internal.shardId
 
 /**
  * Gets the current recipientType
@@ -86,11 +86,11 @@ export const shardId: Effect.Effect<ShardId.ShardId, never, RecipientBehaviourCo
  * @since 1.0.0
  * @category utils
  */
-export const recipientType: Effect.Effect<
-  RecipientType.RecipientType<Envelope.AnyMessage>,
+export const entity: Effect.Effect<
+  Entity<Envelope.AnyMessage>,
   never,
   RecipientBehaviourContext
-> = internal.recipientType
+> = Internal.entity
 
 /**
  * Forks the shutdown of the current recipient behaviour as soon as possible.
@@ -98,4 +98,4 @@ export const recipientType: Effect.Effect<
  * @since 1.0.0
  * @category utils
  */
-export const forkShutdown: Effect.Effect<void, never, RecipientBehaviourContext> = internal.forkShutdown
+export const forkShutdown: Effect.Effect<void, never, RecipientBehaviourContext> = Internal.forkShutdown

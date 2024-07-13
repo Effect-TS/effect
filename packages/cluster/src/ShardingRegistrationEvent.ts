@@ -1,24 +1,24 @@
 /**
  * @since 1.0.0
  */
+import type { Clustered, Standard } from "./Entity.js"
 import type { Envelope } from "./Envelope.js"
-import type { EntityType, TopicType } from "./RecipientType.js"
 
 interface EntityRegistered<Msg extends Envelope.AnyMessage> {
   readonly _tag: "EntityRegistered"
-  readonly entityType: EntityType<Msg>
+  readonly entity: Standard<Msg>
 }
 
 /**
- * Constructs and event that occurs when a new EntityType gets registered.
+ * Constructs and event that occurs when a new entity gets registered.
  *
  * @since 1.0.0
  * @category constructors
  */
 export function EntityRegistered<Msg extends Envelope.AnyMessage>(
-  entityType: EntityType<Msg>
+  entity: Standard<Msg>
 ): ShardingRegistrationEvent {
-  return ({ _tag: "EntityRegistered", entityType })
+  return ({ _tag: "EntityRegistered", entity })
 }
 
 interface SingletonRegistered {
@@ -38,7 +38,7 @@ export function SingletonRegistered(name: string): ShardingRegistrationEvent {
 
 interface TopicRegistered<Msg extends Envelope.AnyMessage> {
   _tag: "TopicRegistered"
-  topicType: TopicType<Msg>
+  entity: Clustered<Msg>
 }
 
 /**
@@ -47,9 +47,9 @@ interface TopicRegistered<Msg extends Envelope.AnyMessage> {
  * @category constructors
  */
 export function TopicRegistered<Msg extends Envelope.AnyMessage>(
-  topicType: TopicType<Msg>
+  entity: Clustered<Msg>
 ): ShardingRegistrationEvent {
-  return ({ _tag: "TopicRegistered", topicType })
+  return ({ _tag: "TopicRegistered", entity })
 }
 
 /**

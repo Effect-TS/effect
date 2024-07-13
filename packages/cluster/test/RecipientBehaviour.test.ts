@@ -42,13 +42,13 @@ describe.concurrent("RecipientBehaviour", () => {
       Effect.provideService(
         RecipientBehaviourContext.RecipientBehaviourContext,
         RecipientBehaviourContext.make({
-          recipientAddress: new RecipientAddress({
+          address: new RecipientAddress({
             recipientType: "Entity",
             entityId: "entity1"
           }),
           forkShutdown: Effect.void,
           shardId: ShardId.make(1),
-          recipientType: RecipientType.makeEntityType("Sample", SampleMessage) as any
+          entity: RecipientType.makeEntityType("Sample", SampleMessage) as any
         })
       ),
       Scope.extend(scope)

@@ -3,13 +3,13 @@
  */
 import * as Schema from "@effect/schema/Schema"
 
-const TypeIdKey = "@effect/cluster/RecipientAddress"
+const SymbolKey = "@effect/cluster/RecipientAddress"
 
 /**
  * @since 1.0.0
  * @category type ids
  */
-export const TypeId: unique symbol = Symbol.for(TypeIdKey)
+export const TypeId: unique symbol = Symbol.for(SymbolKey)
 
 /**
  * @since 1.0.0
@@ -27,7 +27,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export class RecipientAddress extends Schema.Class<RecipientAddress>(TypeIdKey)({
+export class RecipientAddress extends Schema.Class<RecipientAddress>(SymbolKey)({
   entityId: Schema.NonEmpty,
   recipientType: Schema.NonEmpty
 }) {}

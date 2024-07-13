@@ -6,6 +6,7 @@ import type * as HashSet from "effect/HashSet"
 import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import type { Broadcaster } from "./Broadcaster.js"
+import type * as Entity from "./Entity.js"
 import type { Envelope } from "./Envelope.js"
 import * as internal from "./internal/sharding.js"
 import type * as MessageState from "./MessageState.js"
@@ -14,7 +15,6 @@ import type * as PodAddress from "./PodAddress.js"
 import type * as RecipientAddress from "./RecipientAddress.js"
 import type * as RecipientBehaviour from "./RecipientBehaviour.js"
 import type * as RecipientBehaviourContext from "./RecipientBehaviourContext.js"
-import type * as RecipentType from "./RecipientType.js"
 import type * as SerializedEnvelope from "./SerializedEnvelope.js"
 import type * as SerializedValue from "./SerializedValue.js"
 import type * as ShardId from "./ShardId.js"
@@ -42,10 +42,10 @@ export interface Sharding {
   readonly register: Effect.Effect<void>
   readonly unregister: Effect.Effect<void>
   readonly messenger: <Msg extends Envelope.AnyMessage>(
-    entityType: RecipentType.EntityType<Msg>
+    entity: Entity.Standard<Msg>
   ) => Messenger<Msg>
   readonly broadcaster: <Msg extends Envelope.AnyMessage>(
-    topicType: RecipentType.TopicType<Msg>
+    entity: Entity.Clustered<Msg>
   ) => Broadcaster<Msg>
   readonly isEntityOnLocalShards: (
     recipientAddress: RecipientAddress.RecipientAddress
@@ -54,13 +54,13 @@ export interface Sharding {
 
   readonly registerScoped: Effect.Effect<void, never, Scope.Scope>
   readonly registerEntity: <Msg extends Envelope.AnyMessage>(
-    entityType: RecipentType.EntityType<Msg>
+    entity: Entity.Standard<Msg>
   ) => <R>(
     behaviour: RecipientBehaviour.RecipientBehaviour<Msg, R>,
     options?: RecipientBehaviour.EntityBehaviourOptions
   ) => Effect.Effect<void, never, Exclude<R, RecipientBehaviourContext.RecipientBehaviourContext>>
   readonly registerTopic: <Msg extends Envelope.AnyMessage>(
-    topicType: RecipentType.TopicType<Msg>
+    entity: Entity.Clustered<Msg>
   ) => <R>(
     behaviour: RecipientBehaviour.RecipientBehaviour<Msg, R>,
     options?: RecipientBehaviour.EntityBehaviourOptions
@@ -138,7 +138,7 @@ export const registerSingleton: <R>(
  * @category utils
  */
 export const registerEntity: <Msg extends Envelope.AnyMessage>(
-  entityType: RecipentType.EntityType<Msg>
+  entity: Entity.Standard<Msg>
 ) => <R>(
   behavior: RecipientBehaviour.RecipientBehaviour<Msg, R>,
   options?: RecipientBehaviour.EntityBehaviourOptions | undefined
@@ -152,7 +152,7 @@ export const registerEntity: <Msg extends Envelope.AnyMessage>(
  * @category utils
  */
 export const registerTopic: <Msg extends Envelope.AnyMessage>(
-  topicType: RecipentType.TopicType<Msg>
+  entity: Entity.Clustered<Msg>
 ) => <R>(
   behavior: RecipientBehaviour.RecipientBehaviour<Msg, R>,
   options?: RecipientBehaviour.EntityBehaviourOptions | undefined
@@ -167,7 +167,7 @@ export const registerTopic: <Msg extends Envelope.AnyMessage>(
  * @category utils
  */
 export const messenger: <Msg extends Envelope.AnyMessage>(
-  entityType: RecipentType.EntityType<Msg>
+  entity: Entity.Standard<Msg>
 ) => Effect.Effect<Messenger<Msg>, never, Sharding> = internal.messenger
 
 /**
@@ -178,7 +178,7 @@ export const messenger: <Msg extends Envelope.AnyMessage>(
  * @category utils
  */
 export const broadcaster: <Msg extends Envelope.AnyMessage>(
-  topicType: RecipentType.TopicType<Msg>
+  entity: Entity.Clustered<Msg>
 ) => Effect.Effect<Broadcaster<Msg>, never, Sharding> = internal.broadcaster
 
 /**

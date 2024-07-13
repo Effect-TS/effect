@@ -160,12 +160,12 @@ const make = ({ table }: AtLeastOnceStorage.AtLeastOnceStorage.MakeOptions): Eff
 
     return {
       [TypeId]: TypeId,
-      upsert: (recipientType, shardId, entityId, envelope) =>
-        serialization.encode(recipientType.schema, envelope.message).pipe(
+      upsert: (entity, shardId, entityId, envelope) =>
+        serialization.encode(entity.schema, envelope.message).pipe(
           Effect.flatMap(
             (message_body) =>
               UpsertEntryResolver.execute({
-                recipient_name: recipientType.name,
+                recipient_name: entity.name,
                 shard_id: shardId.value,
                 entity_id: entityId,
                 message_id: PrimaryKey.value(envelope.message),
@@ -174,7 +174,7 @@ const make = ({ table }: AtLeastOnceStorage.AtLeastOnceStorage.MakeOptions): Eff
           ),
           Effect.catchAllCause(Effect.logError)
         ),
-      markAsProcessed: (recipientType, _shardId, entityId, envelope) => {
+      markAsProcessed: (entity, _shardId, entityId, envelope) => {
         return sql`
           UPDATE ${sql(table)}
           SET ${
@@ -185,7 +185,7 @@ const make = ({ table }: AtLeastOnceStorage.AtLeastOnceStorage.MakeOptions): Eff
         }
           WHERE ${
           sql.and([
-            sql`recipient_name = ${recipientType.name}`,
+            sql`recipient_name = ${entity.name}`,
             sql`entity_id = ${entityId}`,
             sql`message_id = ${PrimaryKey.value(envelope)}`
           ])

@@ -40,7 +40,7 @@ export function atLeastOnceRecipientBehaviour<Msg extends Envelope.AnyMessage, R
     const storage = yield* _(AtLeastOnceStorage.AtLeastOnceStorage)
     const entityId = yield* _(RecipientBehaviourContext.entityId)
     const shardId = yield* _(RecipientBehaviourContext.shardId)
-    const recipientType = yield* _(RecipientBehaviourContext.recipientType)
+    const recipientType = yield* _(RecipientBehaviourContext.entity)
     const offer = yield* _(fa)
     return <A extends Msg>(envelope: Envelope<A>) =>
       pipe(

@@ -7,9 +7,9 @@ import type { Tag } from "effect/Context"
 import type { Effect } from "effect/Effect"
 import type { Layer } from "effect/Layer"
 import type { Stream } from "effect/Stream"
+import type { Entity } from "./Entity.js"
 import type { Envelope } from "./Envelope.js"
 import * as Internal from "./internal/atLeastOnceStorage.js"
-import type { RecipientType } from "./RecipientType.js"
 import type { Serialization } from "./Serialization.js"
 import type { SerializedEnvelope } from "./SerializedEnvelope.js"
 import type { ShardId } from "./ShardId.js"
@@ -36,7 +36,7 @@ export interface AtLeastOnceStorage extends AtLeastOnceStorage.Proto {
    * existing message state as result in the storage.
    */
   upsert<Msg extends Envelope.AnyMessage>(
-    recipientType: RecipientType<Msg>,
+    entity: Entity<Msg>,
     shardId: ShardId,
     entityId: string,
     message: Envelope<Msg>
@@ -47,7 +47,7 @@ export interface AtLeastOnceStorage extends AtLeastOnceStorage.Proto {
    * send the message.
    */
   markAsProcessed<Msg extends Envelope.AnyMessage>(
-    recipientType: RecipientType<Msg>,
+    entity: Entity<Msg>,
     shardId: ShardId,
     entityId: string,
     message: Envelope<Msg>

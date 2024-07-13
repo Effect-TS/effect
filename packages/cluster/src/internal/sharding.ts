@@ -7,6 +7,7 @@ import type * as Either from "effect/Either"
 import { equals } from "effect/Equal"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
+import * as Hash from "effect/Hash"
 import * as HashMap from "effect/HashMap"
 import * as HashSet from "effect/HashSet"
 import * as Layer from "effect/Layer"
@@ -21,6 +22,7 @@ import * as Stream from "effect/Stream"
 import * as Synchronized from "effect/SynchronizedRef"
 import * as Unify from "effect/Unify"
 import type * as Broadcaster from "../Broadcaster.js"
+import type * as Entity from "../Entity.js"
 import * as Envelope from "../Envelope.js"
 import * as MessageState from "../MessageState.js"
 import type { Messenger } from "../Messenger.js"
@@ -29,7 +31,6 @@ import * as Pods from "../Pods.js"
 import { RecipientAddress } from "../RecipientAddress.js"
 import type * as RecipientBehaviour from "../RecipientBehaviour.js"
 import type * as RecipientBehaviourContext from "../RecipientBehaviourContext.js"
-import * as RecipientType from "../RecipientType.js"
 import * as Serialization from "../Serialization.js"
 import type * as SerializedEnvelope from "../SerializedEnvelope.js"
 import * as SerializedMessage from "../SerializedMessage.js"
@@ -91,44 +92,44 @@ export function registerSingleton<R>(
  * @internal
  */
 export function registerEntity<Msg extends Envelope.Envelope.AnyMessage>(
-  entityType: RecipientType.EntityType<Msg>
+  entity: Entity.Standard<Msg>
 ) {
   return <R>(
     behavior: RecipientBehaviour.RecipientBehaviour<Msg, R>,
     options?: RecipientBehaviour.EntityBehaviourOptions
   ): Effect.Effect<void, never, Sharding.Sharding | Exclude<R, RecipientBehaviourContext.RecipientBehaviourContext>> =>
-    Effect.flatMap(shardingTag, (_) => _.registerEntity(entityType)(behavior, options))
+    Effect.flatMap(shardingTag, (_) => _.registerEntity(entity)(behavior, options))
 }
 
 /**
  * @internal
  */
 export function registerTopic<Msg extends Envelope.Envelope.AnyMessage>(
-  topicType: RecipientType.TopicType<Msg>
+  entity: Entity.Clustered<Msg>
 ) {
   return <R>(
     behavior: RecipientBehaviour.RecipientBehaviour<Msg, R>,
     options?: RecipientBehaviour.EntityBehaviourOptions
   ): Effect.Effect<void, never, Sharding.Sharding | Exclude<R, RecipientBehaviourContext.RecipientBehaviourContext>> =>
-    Effect.flatMap(shardingTag, (_) => _.registerTopic(topicType)(behavior, options))
+    Effect.flatMap(shardingTag, (_) => _.registerTopic(entity)(behavior, options))
 }
 
 /**
  * @internal
  */
 export function messenger<Msg extends Envelope.Envelope.AnyMessage>(
-  entityType: RecipientType.EntityType<Msg>
+  entity: Entity.Standard<Msg>
 ): Effect.Effect<Messenger<Msg>, never, Sharding.Sharding> {
-  return Effect.map(shardingTag, (_) => _.messenger(entityType))
+  return Effect.map(shardingTag, (_) => _.messenger(entity))
 }
 
 /**
  * @internal
  */
 export function broadcaster<Msg extends Envelope.Envelope.AnyMessage>(
-  topicType: RecipientType.TopicType<Msg>
+  entity: Entity.Clustered<Msg>
 ): Effect.Effect<Broadcaster.Broadcaster<Msg>, never, Sharding.Sharding> {
-  return Effect.map(shardingTag, (_) => _.broadcaster(topicType))
+  return Effect.map(shardingTag, (_) => _.broadcaster(entity))
 }
 
 /**
@@ -198,7 +199,7 @@ function make(
   }
 
   function getShardId(recipientAddress: RecipientAddress): ShardId.ShardId {
-    return RecipientType.getShardId(recipientAddress.entityId, config.numberOfShards)
+    return ShardId.make(Math.abs(Hash.string(recipientAddress.entityId) % config.numberOfShards) + 1)
   }
 
   const register: Effect.Effect<void> = pipe(
@@ -486,7 +487,7 @@ function make(
   }
 
   function messenger<Msg extends Envelope.Envelope.AnyMessage>(
-    entityType: RecipientType.EntityType<Msg>
+    entity: Entity.Standard<Msg>
   ): Messenger<Msg> {
     function sendDiscard(entityId: string) {
       return (message: Msg) =>
@@ -529,10 +530,10 @@ function make(
       MessageState.MessageState<SerializedValue.SerializedValue>,
       ShardingException.ShardingException
     > {
-      const recipientAddress = new RecipientAddress({ recipientType: entityType.name, entityId })
+      const recipientAddress = new RecipientAddress({ recipientType: entity.name, entityId })
       const shardId = getShardId(recipientAddress)
 
-      return Effect.flatMap(serialization.encode(entityType.schema, message), (body) =>
+      return Effect.flatMap(serialization.encode(entity.schema, message), (body) =>
         pipe(
           getPodAddressForShardId(shardId),
           Effect.flatMap((pod) =>
@@ -566,7 +567,7 @@ function make(
   }
 
   function broadcaster<Msg extends Envelope.Envelope.AnyMessage>(
-    topicType: RecipientType.TopicType<Msg>
+    entity: Entity.Clustered<Msg>
   ): Broadcaster.Broadcaster<Msg> {
     function sendMessage<A extends Msg>(
       topicId: string,
@@ -581,7 +582,7 @@ function make(
       >,
       ShardingException.ShardingException
     > {
-      return Effect.flatMap(serialization.encode(topicType.schema, message), (body) =>
+      return Effect.flatMap(serialization.encode(entity.schema, message), (body) =>
         pipe(
           getPods,
           Effect.flatMap((pods) =>
@@ -592,7 +593,7 @@ function make(
                   sendMessageToPodWithoutRetries(
                     pod,
                     Envelope.make(
-                      new RecipientAddress({ recipientType: topicType.name, entityId: topicId }),
+                      new RecipientAddress({ recipientType: entity.name, entityId: topicId }),
                       SerializedMessage.make(PrimaryKey.value(message), body)
                     )
                   ),
@@ -667,29 +668,29 @@ function make(
   }
 
   function registerEntity<Msg extends Envelope.Envelope.AnyMessage>(
-    entityType: RecipientType.EntityType<Msg>
+    entity: Entity.Standard<Msg>
   ) {
     return <R>(
       behavior: RecipientBehaviour.RecipientBehaviour<Msg, R>,
       options?: RecipientBehaviour.EntityBehaviourOptions
     ): Effect.Effect<void, never, Exclude<R, RecipientBehaviourContext.RecipientBehaviourContext>> =>
       pipe(
-        registerRecipient(entityType, behavior, options),
-        Effect.zipRight(PubSub.publish(eventsHub, ShardingRegistrationEvent.EntityRegistered(entityType))),
+        registerRecipient(entity, behavior, options),
+        Effect.zipRight(PubSub.publish(eventsHub, ShardingRegistrationEvent.EntityRegistered(entity))),
         Effect.asVoid
       )
   }
 
   function registerTopic<Msg extends Envelope.Envelope.AnyMessage>(
-    topicType: RecipientType.TopicType<Msg>
+    entity: Entity.Clustered<Msg>
   ) {
     return <R>(
       behavior: RecipientBehaviour.RecipientBehaviour<Msg, R>,
       options?: RecipientBehaviour.EntityBehaviourOptions
     ): Effect.Effect<void, never, Exclude<R, RecipientBehaviourContext.RecipientBehaviourContext>> =>
       pipe(
-        registerRecipient(topicType, behavior, options),
-        Effect.zipRight(PubSub.publish(eventsHub, ShardingRegistrationEvent.TopicRegistered(topicType))),
+        registerRecipient(entity, behavior, options),
+        Effect.zipRight(PubSub.publish(eventsHub, ShardingRegistrationEvent.TopicRegistered(entity))),
         Effect.asVoid
       )
   }
@@ -698,14 +699,14 @@ function make(
     .fromPubSub(eventsHub)
 
   function registerRecipient<Msg extends Envelope.Envelope.AnyMessage, R>(
-    recipientType: RecipientType.RecipientType<Msg>,
+    entity: Entity.Entity<Msg>,
     behavior: RecipientBehaviour.RecipientBehaviour<Msg, R>,
     options?: RecipientBehaviour.EntityBehaviourOptions
   ) {
     return Effect.gen(function*($) {
       const entityManager = yield* $(
         EntityManager.make(
-          recipientType,
+          entity,
           behavior,
           self,
           config,
@@ -715,7 +716,7 @@ function make(
       )
 
       yield* $(
-        Ref.update(entityManagers, HashMap.set(recipientType.name, entityManager as any))
+        Ref.update(entityManagers, HashMap.set(entity.name, entityManager as any))
       )
     })
   }
