@@ -174,7 +174,6 @@ message
         Effect.flip
       )
       const pretty = Cause.pretty(cause, { renderErrorCause: true })
-      console.log(pretty)
       assert.include(pretty, "[cause]: Error: child")
       assert.include(pretty, "[cause]: Error: child2")
     }))
