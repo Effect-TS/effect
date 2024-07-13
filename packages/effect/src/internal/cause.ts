@@ -990,6 +990,9 @@ const renderErrorCause = (cause: PrettyError, prefix: string) => {
   for (let i = 1, len = lines.length; i < len; i++) {
     stack += `\n${prefix}${lines[i]}`
   }
+  if (cause.cause) {
+    stack += ` {\n${renderErrorCause(cause.cause as PrettyError, `${prefix}  `)}\n${prefix}}`
+  }
   return stack
 }
 
