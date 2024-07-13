@@ -94,16 +94,12 @@ class EchoHeaders extends S.TaggedRequest<EchoHeaders>()("EchoHeaders", {
 
 class Counts extends Rpc.StreamRequest<Counts>()(
   "Counts",
-  S.Never,
-  S.Number,
-  {}
+  { failure: S.Never, success: S.Number, payload: {} }
 ) {}
 
 class FailStream extends Rpc.StreamRequest<FailStream>()(
   "FailStream",
-  SomeError,
-  S.Number,
-  {}
+  { failure: SomeError, success: S.Number, payload: {} }
 ) {}
 
 const router = Router.make(

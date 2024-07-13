@@ -198,24 +198,26 @@ export interface StreamRequestConstructor<Tag extends string, Self, R, IS, S, RR
  */
 export const StreamRequest =
   <Self>() =>
-  <Tag extends string, E, IE, RE, A, IA, RA, Fields extends Schema.Struct.Fields>(
+  <Tag extends string, E, IE, RE, A, IA, RA, Payload extends Schema.Struct.Fields>(
     tag: Tag,
-    failure: Schema.Schema<E, IE, RE>,
-    success: Schema.Schema<A, IA, RA>,
-    fields: Fields
+    options: {
+      readonly failure: Schema.Schema<E, IE, RE>
+      readonly success: Schema.Schema<A, IA, RA>
+      readonly payload: Payload
+    }
   ): StreamRequestConstructor<
     Tag,
     Self,
-    Schema.Schema.Context<Fields[keyof Fields]>,
-    Types.Simplify<Schema.Struct.Encoded<Fields>>,
-    Types.Simplify<Schema.Struct.Type<Fields>>,
+    Schema.Schema.Context<Payload[keyof Payload]>,
+    Types.Simplify<Schema.Struct.Encoded<Payload>>,
+    Types.Simplify<Schema.Struct.Type<Payload>>,
     RE | RA,
     IE,
     E,
     IA,
     A
   > => {
-    return class extends (Schema.TaggedRequest<{}>()(tag, { failure, success, payload: fields }) as any) {
+    return class extends (Schema.TaggedRequest<{}>()(tag, options) as any) {
       constructor(props: any, disableValidation?: boolean) {
         super(props, disableValidation)
         ;(this as any)[Internal.StreamRequestTypeId] = Internal.StreamRequestTypeId

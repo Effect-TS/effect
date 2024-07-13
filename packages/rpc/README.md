@@ -211,12 +211,11 @@ Effect.runPromise(program).then(console.log)
 import * as Rpc from "@effect/rpc/Rpc"
 import { Schema } from "@effect/schema"
 
-export class Counts extends Rpc.StreamRequest<Counts>()(
-  "Counts",
-  Schema.Never, // No error schema defined
-  Schema.Number, // Output is a number
-  {}
-) {}
+export class Counts extends Rpc.StreamRequest<Counts>()("Counts", {
+  failure: Schema.Never, // Indicates that no errors are expected
+  success: Schema.Number, // Specifies that the response is a number
+  payload: {}
+}) {}
 ```
 
 ## Defining the Router

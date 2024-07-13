@@ -10,7 +10,9 @@ export class User extends S.Class<User>("User")({
   name: S.String
 }) {}
 
-export class GetUserIds extends Rpc.StreamRequest<GetUserIds>()("GetUserIds", S.Never, UserId, {}) {}
+export class GetUserIds
+  extends Rpc.StreamRequest<GetUserIds>()("GetUserIds", { failure: S.Never, success: UserId, payload: {} })
+{}
 export class GetUser extends S.TaggedRequest<GetUser>()("GetUser", {
   failure: S.Never,
   success: User,
