@@ -50,6 +50,6 @@
   },
   "dependencies": {
     "@opentelemetry/semantic-conventions": "^1.25.1",
-    "mysql2": "^3.10.1"
+    "mysql2": "^3.10.2"
   }
 }
