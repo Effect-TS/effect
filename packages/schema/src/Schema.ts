@@ -2931,7 +2931,9 @@ const intersectTypeLiterals = (
   throw new Error(errors_.getSchemaExtendErrorMessage(x, y, path))
 }
 
-const preserveRefinementAnnotations = AST.preserveAnnotations([AST.MessageAnnotationId, AST.JSONSchemaAnnotationId])
+const preserveRefinementAnnotations = AST.blackListAnnotations([
+  AST.IdentifierAnnotationId
+])
 
 const addRefinementToMembers = (refinement: AST.Refinement, asts: ReadonlyArray<AST.AST>): Array<AST.Refinement> =>
   asts.map((ast) => new AST.Refinement(ast, refinement.filter, preserveRefinementAnnotations(refinement)))
@@ -2951,31 +2953,77 @@ const intersectUnionMembers = (
 ): Array<AST.AST> =>
   array_.flatMap(xs, (x) =>
     array_.flatMap(ys, (y) => {
-      switch (x._tag) {
+      switch (y._tag) {
+        case "Literal": {
+          if (
+            (Predicate.isString(y.literal) && AST.isStringKeyword(x) ||
+              (Predicate.isNumber(y.literal) && AST.isNumberKeyword(x)) ||
+              (Predicate.isBoolean(y.literal) && AST.isBooleanKeyword(x)))
+          ) {
+            return [y]
+          }
+          break
+        }
+        case "StringKeyword": {
+          if (y === AST.stringKeyword) {
+            if (AST.isStringKeyword(x) || (AST.isLiteral(x) && Predicate.isString(x.literal))) {
+              return [x]
+            } else if (AST.isRefinement(x)) {
+              return addRefinementToMembers(x, intersectUnionMembers(getTypes(x.from), [y], path))
+            }
+          } else if (x === AST.stringKeyword) {
+            return [y]
+          }
+          break
+        }
+        case "NumberKeyword": {
+          if (y === AST.numberKeyword) {
+            if (AST.isNumberKeyword(x) || (AST.isLiteral(x) && Predicate.isNumber(x.literal))) {
+              return [x]
+            } else if (AST.isRefinement(x)) {
+              return addRefinementToMembers(x, intersectUnionMembers(getTypes(x.from), [y], path))
+            }
+          } else if (x === AST.numberKeyword) {
+            return [y]
+          }
+          break
+        }
+        case "BooleanKeyword": {
+          if (y === AST.booleanKeyword) {
+            if (AST.isBooleanKeyword(x) || (AST.isLiteral(x) && Predicate.isBoolean(x.literal))) {
+              return [x]
+            } else if (AST.isRefinement(x)) {
+              return addRefinementToMembers(x, intersectUnionMembers(getTypes(x.from), [y], path))
+            }
+          } else if (x === AST.booleanKeyword) {
+            return [y]
+          }
+          break
+        }
         case "Union":
-          return intersectUnionMembers(x.types, getTypes(y), path)
+          return intersectUnionMembers(getTypes(x), y.types, path)
         case "Suspend":
-          return [new AST.Suspend(() => extendAST(x.f(), y, path))]
+          return [new AST.Suspend(() => extendAST(x, y.f(), path))]
         case "Refinement":
-          return addRefinementToMembers(x, intersectUnionMembers(getTypes(x.from), getTypes(y), path))
+          return addRefinementToMembers(y, intersectUnionMembers(getTypes(x), getTypes(y.from), path))
         case "TypeLiteral": {
-          switch (y._tag) {
+          switch (x._tag) {
             case "Union":
-              return intersectUnionMembers([x], y.types, path)
+              return intersectUnionMembers(x.types, [y], path)
             case "Suspend":
-              return [new AST.Suspend(() => extendAST(x, y.f(), path))]
+              return [new AST.Suspend(() => extendAST(x.f(), y, path))]
             case "Refinement":
-              return addRefinementToMembers(y, intersectUnionMembers([x], getTypes(y.from), path))
+              return addRefinementToMembers(x, intersectUnionMembers(getTypes(x.from), [y], path))
             case "TypeLiteral":
               return [intersectTypeLiterals(x, y, path)]
             case "Transformation": {
-              if (AST.isTypeLiteralTransformation(y.transformation)) {
+              if (AST.isTypeLiteralTransformation(x.transformation)) {
                 return [
                   new AST.Transformation(
-                    intersectTypeLiterals(x, y.from, path),
-                    intersectTypeLiterals(AST.typeAST(x), y.to, path),
+                    intersectTypeLiterals(x.from, y, path),
+                    intersectTypeLiterals(x.to, AST.typeAST(y), path),
                     new AST.TypeLiteralTransformation(
-                      y.transformation.propertySignatureTransformations
+                      x.transformation.propertySignatureTransformations
                     )
                   )
                 ]
@@ -2986,34 +3034,34 @@ const intersectUnionMembers = (
           break
         }
         case "Transformation": {
-          if (AST.isTypeLiteralTransformation(x.transformation)) {
-            switch (y._tag) {
+          if (AST.isTypeLiteralTransformation(y.transformation)) {
+            switch (x._tag) {
               case "Union":
-                return intersectUnionMembers([x], y.types, path)
+                return intersectUnionMembers(x.types, [y], path)
               case "Suspend":
-                return [new AST.Suspend(() => extendAST(x, y.f(), path))]
+                return [new AST.Suspend(() => extendAST(x.f(), y, path))]
               case "Refinement":
-                return addRefinementToMembers(y, intersectUnionMembers([x], getTypes(y.from), path))
+                return addRefinementToMembers(x, intersectUnionMembers(getTypes(x.from), [y], path))
               case "TypeLiteral":
                 return [
                   new AST.Transformation(
-                    intersectTypeLiterals(x.from, y, path),
-                    intersectTypeLiterals(x.to, AST.typeAST(y), path),
+                    intersectTypeLiterals(x, y.from, path),
+                    intersectTypeLiterals(AST.typeAST(x), y.to, path),
                     new AST.TypeLiteralTransformation(
-                      x.transformation.propertySignatureTransformations
+                      y.transformation.propertySignatureTransformations
                     )
                   )
                 ]
               case "Transformation":
                 {
-                  if (AST.isTypeLiteralTransformation(y.transformation)) {
+                  if (AST.isTypeLiteralTransformation(x.transformation)) {
                     return [
                       new AST.Transformation(
                         intersectTypeLiterals(x.from, y.from, path),
                         intersectTypeLiterals(x.to, y.to, path),
                         new AST.TypeLiteralTransformation(
-                          x.transformation.propertySignatureTransformations.concat(
-                            y.transformation.propertySignatureTransformations
+                          y.transformation.propertySignatureTransformations.concat(
+                            x.transformation.propertySignatureTransformations
                           )
                         )
                       )
@@ -3043,11 +3091,19 @@ export interface extend<Self extends Schema.Any, That extends Schema.Any> extend
 {}
 
 /**
- * Extends a schema by adding additional fields or index signatures.
+ * Extends a schema with another schema.
  *
- * 1) It only supports **structs**, refinements of structs, unions of structs, suspensions of structs
- * (informally `Supported = Struct | Refinement of Supported | Union of Supported | suspend(() => Supported)`)
- * 2) The arguments must represent disjoint types (e.g., `extend(Struct({ a: String }), Struct({ a: String })))` raises an error)
+ * Not all extensions are supported, and their support depends on the nature of the involved schemas.
+ *
+ * Possible extensions include:
+ * - `Schema.String` with another `Schema.String` refinement or a string literal
+ * - `Schema.Number` with another `Schema.Number` refinement or a number literal
+ * - `Schema.Boolean` with another `Schema.Boolean` refinement or a boolean literal
+ * - A struct with another struct where overlapping fields support extension
+ * - A struct with in index signature
+ * - A struct with a union of supported schemas
+ * - A refinement of a struct with a supported schema
+ * - A suspend of a struct with a supported schema
  *
  * @example
  * import * as Schema from "@effect/schema/Schema"
@@ -3057,12 +3113,16 @@ export interface extend<Self extends Schema.Any, That extends Schema.Any> extend
  *   b: Schema.String
  * })
  *
- * // const extended: S.Schema<{
- * //     readonly [x: string]: string;
- * //     readonly a: string;
- * //     readonly b: string;
- * //     readonly c: string;
- * // }>
+ * // const extended: Schema.Schema<
+ * //   {
+ * //     readonly a: string
+ * //     readonly b: string
+ * //   } & {
+ * //     readonly c: string
+ * //   } & {
+ * //     readonly [x: string]: string
+ * //   }
+ * // >
  * const extended = Schema.asSchema(schema.pipe(
  *   Schema.extend(Schema.Struct({ c: Schema.String })), // <= you can add more fields
  *   Schema.extend(Schema.Record({ key: Schema.String, value: Schema.String })) // <= you can add index signatures

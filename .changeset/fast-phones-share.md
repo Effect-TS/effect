@@ -55,6 +55,8 @@ TODO: change to minor before merging
   const schema = Schema.Record({ key: Schema.String, value: Schema.Number })
   ```
 
+- add support for refinements to `extend`
+
 ### Serializable
 
 - rename `WithResult` interface to `WithExit`
@@ -70,6 +72,35 @@ TODO: change to minor before merging
 ### Schema
 
 - add `TaggedRequest.All`
+- add support for `Schema.String`/`Schema.Number`/`Schema.Boolean` refinements to `extend`
+
+  ```ts
+  import { Schema } from "@effect/schema"
+
+  const Integer = Schema.Int.pipe(Schema.brand("Int"))
+  const Positive = Schema.Positive.pipe(Schema.brand("Positive"))
+
+  // Schema.Schema<number & Brand<"Positive"> & Brand<"Int">, number, never>
+  const PositiveInteger = Schema.asSchema(Schema.extend(Positive, Integer))
+
+  Schema.decodeUnknownSync(PositiveInteger)(-1)
+  /*
+  throws
+  ParseError: Int & Brand<"Int">
+  └─ From side refinement failure
+    └─ Positive & Brand<"Positive">
+        └─ Predicate refinement failure
+          └─ Expected Positive & Brand<"Positive">, actual -1
+  */
+
+  Schema.decodeUnknownSync(PositiveInteger)(1.1)
+  /*
+  throws
+  ParseError: Int & Brand<"Int">
+  └─ Predicate refinement failure
+    └─ Expected Int & Brand<"Int">, actual 1.1
+  */
+  ```
 
 ### Serializable
 

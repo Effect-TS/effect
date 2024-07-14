@@ -2421,7 +2421,7 @@ export const typeAST = (ast: AST): AST => {
 }
 
 /** @internal */
-export const preserveAnnotations =
+export const whiteListAnnotations =
   (annotationIds: ReadonlyArray<symbol>) => (annotated: Annotated): Annotations | undefined => {
     let out: { [_: symbol]: unknown } | undefined = undefined
     for (const id of annotationIds) {
@@ -2431,6 +2431,16 @@ export const preserveAnnotations =
         }
         out[id] = annotated.annotations[id]
       }
+    }
+    return out
+  }
+
+/** @internal */
+export const blackListAnnotations =
+  (annotationIds: ReadonlyArray<symbol>) => (annotated: Annotated): Annotations | undefined => {
+    const out = { ...annotated.annotations }
+    for (const id of annotationIds) {
+      delete out[id]
     }
     return out
   }

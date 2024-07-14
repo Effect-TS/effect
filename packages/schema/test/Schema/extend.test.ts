@@ -1,11 +1,122 @@
 import * as Arbitrary from "@effect/schema/Arbitrary"
-import type * as AST from "@effect/schema/AST"
+import * as AST from "@effect/schema/AST"
 import * as FastCheck from "@effect/schema/FastCheck"
 import * as Schema from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
 import { describe, expect, it } from "vitest"
 
 describe("extend", () => {
+  describe("String", () => {
+    it("String and String", () => {
+      const schema = Schema.extend(Schema.String, Schema.String)
+      expect(schema.ast).toStrictEqual(Schema.String.ast)
+    })
+
+    it("String and Literal", () => {
+      const literal = Schema.Literal("a")
+      const schema = Schema.extend(Schema.String, literal)
+      expect(schema.ast).toStrictEqual(literal.ast)
+    })
+
+    it("Literal and String", () => {
+      const literal = Schema.Literal("a")
+      const schema = Schema.extend(literal, Schema.String)
+      expect(schema.ast).toStrictEqual(literal.ast)
+    })
+
+    it("(String + annotations) and String", () => {
+      const A = Schema.String.annotations({ identifier: "A" })
+      const schema = Schema.extend(A, Schema.String)
+      expect(schema.ast === A.ast).toBe(true)
+    })
+
+    it("String and Refinement", () => {
+      const schema = Schema.extend(
+        Schema.String,
+        Schema.String.pipe(Schema.startsWith("start:"))
+      )
+      expect(schema.ast._tag).toBe("Refinement")
+      expect((schema.ast as AST.Refinement).from === AST.stringKeyword).toBe(true)
+    })
+
+    it("should support two refined brands", () => {
+      const startsWith = Schema.String.pipe(Schema.startsWith("start:"), Schema.brand("start:"))
+      const endsWith = Schema.String.pipe(Schema.endsWith(":end"), Schema.brand(":end"))
+      const schema = Schema.extend(startsWith, endsWith)
+      expect(String(schema.ast)).toBe(`a string ending with ":end" & Brand<":end">`)
+      expect(schema.ast.annotations[AST.BrandAnnotationId]).toStrictEqual([":end"])
+      const from = (schema.ast as AST.Refinement).from
+      expect(from.annotations[AST.BrandAnnotationId]).toStrictEqual(["start:"])
+      const fromfrom = (from as AST.Refinement).from
+      expect(fromfrom === AST.stringKeyword).toBe(true)
+    })
+  })
+
+  describe("Number", () => {
+    it("Number and Number", () => {
+      const schema = Schema.extend(Schema.Number, Schema.Number)
+      expect(schema.ast).toStrictEqual(Schema.Number.ast)
+    })
+
+    it("Number and Literal", () => {
+      const literal = Schema.Literal(1)
+      const schema = Schema.extend(Schema.Number, literal)
+      expect(schema.ast).toStrictEqual(literal.ast)
+    })
+
+    it("Literal and Number", () => {
+      const literal = Schema.Literal(1)
+      const schema = Schema.extend(literal, Schema.Number)
+      expect(schema.ast).toStrictEqual(literal.ast)
+    })
+
+    it("(Number + annotations) and Number", () => {
+      const A = Schema.Number.annotations({ identifier: "A" })
+      const schema = Schema.extend(A, Schema.Number)
+      expect(schema.ast === A.ast).toBe(true)
+    })
+
+    it("Number and Refinement", () => {
+      const schema = Schema.extend(
+        Schema.Number,
+        Schema.Number.pipe(Schema.greaterThan(0))
+      )
+      expect(schema.ast._tag).toBe("Refinement")
+      expect((schema.ast as AST.Refinement).from === AST.numberKeyword).toBe(true)
+    })
+
+    it("should support two refined brands", () => {
+      const gt0 = Schema.Number.pipe(Schema.greaterThan(0), Schema.brand("> 0"))
+      const lt2 = Schema.Number.pipe(Schema.lessThan(2), Schema.brand("< 2"))
+      const schema = Schema.extend(gt0, lt2)
+      expect(String(schema.ast)).toBe(`a number less than 2 & Brand<"< 2">`)
+      expect(schema.ast.annotations[AST.BrandAnnotationId]).toStrictEqual(["< 2"])
+      const from = (schema.ast as AST.Refinement).from
+      expect(from.annotations[AST.BrandAnnotationId]).toStrictEqual(["> 0"])
+      const fromfrom = (from as AST.Refinement).from
+      expect(fromfrom === AST.numberKeyword).toBe(true)
+    })
+  })
+
+  describe("Boolean", () => {
+    it("Boolean and Boolean", () => {
+      const schema = Schema.extend(Schema.Boolean, Schema.Boolean)
+      expect(schema.ast).toStrictEqual(Schema.Boolean.ast)
+    })
+
+    it("Boolean and Literal", () => {
+      const literal = Schema.Literal(true)
+      const schema = Schema.extend(Schema.Boolean, literal)
+      expect(schema.ast).toStrictEqual(literal.ast)
+    })
+
+    it("Literal and Boolean", () => {
+      const literal = Schema.Literal(true)
+      const schema = Schema.extend(literal, Schema.Boolean)
+      expect(schema.ast).toStrictEqual(literal.ast)
+    })
+  })
+
   describe("struct", () => {
     it("extend struct", async () => {
       const schema = Schema.extend(Schema.Struct({ a: Schema.String }), Schema.Struct({ b: Schema.Number }))
@@ -450,29 +561,6 @@ details: symbol index signature`)
     ).toThrow(
       new Error(`Duplicate index signature
 details: string index signature`)
-    )
-    expect(() =>
-      Schema.Struct({ a: Schema.Literal("a") }).pipe(
-        Schema.extend(Schema.Struct({ a: Schema.String }))
-      )
-    ).toThrow(
-      new Error(`Unsupported schema or overlapping types
-at path: ["a"]
-details: cannot extend "a" with string`)
-    )
-    expect(() =>
-      Schema.Struct({ a: Schema.Literal("a") }).pipe(
-        Schema.extend(
-          Schema.Union(
-            Schema.Struct({ a: Schema.String }),
-            Schema.Struct({ b: Schema.Number })
-          )
-        )
-      )
-    ).toThrow(
-      new Error(`Unsupported schema or overlapping types
-at path: ["a"]
-details: cannot extend "a" with string`)
     )
     expect(() =>
       Schema.extend(
