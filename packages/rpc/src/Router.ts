@@ -203,7 +203,7 @@ export const toHandler = <R extends Router<any, any>>(router: R, options?: {
       ...[...router.rpcs].map((rpc) =>
         Schema.transform(
           rpc.schema,
-          Schema.typeSchema(Schema.Tuple(rpc.schema, Schema.Any)),
+          Schema.Tuple(Schema.typeSchema(rpc.schema), Schema.Any),
           { strict: true, decode: (request) => [request, rpc] as const, encode: ([request]) => request }
         )
       )
