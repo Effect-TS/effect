@@ -55,7 +55,7 @@ export const layerTracerProvider = (
             }
             return provider
           }),
-          (provider) => Effect.ignoreLogged(Effect.promise(() => provider.shutdown()))
+          (provider) => Effect.ignoreLogged(Effect.promise(() => provider.forceFlush().then(() => provider.shutdown())))
         )
     )
   )
