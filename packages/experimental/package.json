@@ -65,11 +65,11 @@
     }
   },
   "devDependencies": {
-    "@types/ws": "^8.5.10",
+    "@types/ws": "^8.5.11",
     "ioredis": "^5.4.1",
     "lmdb": "^3.0.12",
     "vitest-websocket-mock": "^0.3.0",
-    "ws": "^8.17.1"
+    "ws": "^8.18.0"
   },
   "effect": {
     "generateExports": {

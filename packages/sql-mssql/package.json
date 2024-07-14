@@ -50,6 +50,6 @@
   },
   "dependencies": {
     "@opentelemetry/semantic-conventions": "^1.25.1",
-    "tedious": "^18.2.1"
+    "tedious": "^18.2.4"
   }
 }
