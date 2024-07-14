@@ -4112,6 +4112,36 @@ details: cannot extend string with number
 */
 ```
 
+**Example: Extending a refinement of Schema.String with another refinement**
+
+```ts
+import { Schema } from "@effect/schema"
+
+const Integer = Schema.Int.pipe(Schema.brand("Int"))
+const Positive = Schema.Positive.pipe(Schema.brand("Positive"))
+
+// Schema.Schema<number & Brand<"Positive"> & Brand<"Int">, number, never>
+const PositiveInteger = Schema.asSchema(Schema.extend(Positive, Integer))
+
+Schema.decodeUnknownSync(PositiveInteger)(-1)
+/*
+throws
+ParseError: Int & Brand<"Int">
+└─ From side refinement failure
+  └─ Positive & Brand<"Positive">
+      └─ Predicate refinement failure
+        └─ Expected Positive & Brand<"Positive">, actual -1
+*/
+
+Schema.decodeUnknownSync(PositiveInteger)(1.1)
+/*
+throws
+ParseError: Int & Brand<"Int">
+└─ Predicate refinement failure
+  └─ Expected Int & Brand<"Int">, actual 1.1
+*/
+```
+
 ## Composition
 
 Combining and reusing schemas is a common requirement, the `compose` combinator allows you to do just that. It enables you to combine two schemas, `Schema<B, A, R1>` and `Schema<C, B, R2>`, into a single schema `Schema<C, A, R1 | R2>`:
