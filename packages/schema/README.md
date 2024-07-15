@@ -8268,7 +8268,8 @@ class GetPersonById {
   get [Serializable.symbolExit]() {
     return {
       success: Person,
-      failure: Schema.String
+      failure: Schema.String,
+      defect: Schema.Defect
     }
   }
 }
