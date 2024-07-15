@@ -20,7 +20,7 @@ const platformWorkerImpl = Worker.makePlatform<globalThis.Worker>()({
             return Deferred.await(closeDeferred)
           }).pipe(
             Effect.interruptible,
-            Effect.timeout(1000),
+            Effect.timeout(5000),
             Effect.catchAllCause(() => Effect.sync(() => worker.terminate()))
           )
         ),
