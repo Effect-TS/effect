@@ -29,21 +29,21 @@ describe("Uint8ArrayFromHex", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       "0",
-      `Hex
+      `Uint8ArrayFromHex
 └─ Transformation process failure
    └─ Length must be a multiple of 2, but is 1`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       "zd4aa",
-      `Hex
+      `Uint8ArrayFromHex
 └─ Transformation process failure
    └─ Length must be a multiple of 2, but is 5`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       "0\x01",
-      `Hex
+      `Uint8ArrayFromHex
 └─ Transformation process failure
    └─ Invalid input`
     )

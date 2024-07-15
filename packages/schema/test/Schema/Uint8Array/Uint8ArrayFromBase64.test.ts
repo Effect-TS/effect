@@ -19,21 +19,21 @@ describe("Uint8ArrayFromBase64", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       "Zm9vY",
-      `Base64
+      `Uint8ArrayFromBase64
 └─ Transformation process failure
    └─ Length must be a multiple of 4, but is 5`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       "Zm9vYmF-",
-      `Base64
+      `Uint8ArrayFromBase64
 └─ Transformation process failure
    └─ Invalid character -`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       "=Zm9vYmF",
-      `Base64
+      `Uint8ArrayFromBase64
 └─ Transformation process failure
    └─ Found a '=' character, but it is not at the end`
     )

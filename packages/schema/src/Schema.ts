@@ -5592,7 +5592,7 @@ const makeUint8ArrayTransformation = (
   id: string,
   decode: (s: string) => either_.Either<Uint8Array, Encoding.DecodeException>,
   encode: (u: Uint8Array) => string
-): Schema<Uint8Array, string> =>
+) =>
   transformOrFail(
     String$,
     Uint8ArrayFromSelf,
@@ -5612,7 +5612,7 @@ const makeUint8ArrayTransformation = (
  * @since 0.67.0
  */
 export const Uint8ArrayFromBase64: Schema<Uint8Array, string> = makeUint8ArrayTransformation(
-  "Base64",
+  "Uint8ArrayFromBase64",
   Encoding.decodeBase64,
   Encoding.encodeBase64
 )
@@ -5622,7 +5622,7 @@ export const Uint8ArrayFromBase64: Schema<Uint8Array, string> = makeUint8ArrayTr
  * @since 0.67.0
  */
 export const Uint8ArrayFromBase64Url: Schema<Uint8Array, string> = makeUint8ArrayTransformation(
-  "Base64Url",
+  "Uint8ArrayFromBase64Url",
   Encoding.decodeBase64Url,
   Encoding.encodeBase64Url
 )
@@ -5632,8 +5632,57 @@ export const Uint8ArrayFromBase64Url: Schema<Uint8Array, string> = makeUint8Arra
  * @since 0.67.0
  */
 export const Uint8ArrayFromHex: Schema<Uint8Array, string> = makeUint8ArrayTransformation(
-  "Hex",
+  "Uint8ArrayFromHex",
   Encoding.decodeHex,
+  Encoding.encodeHex
+)
+
+const makeStringTransformation = (
+  id: string,
+  decode: (s: string) => either_.Either<string, Encoding.DecodeException>,
+  encode: (u: string) => string
+) =>
+  transformOrFail(
+    String$,
+    String$,
+    {
+      strict: true,
+      decode: (s, _, ast) =>
+        either_.mapLeft(
+          decode(s),
+          (decodeException) => new ParseResult.Type(ast, s, decodeException.message)
+        ),
+      encode: (u) => ParseResult.succeed(encode(u))
+    }
+  ).annotations({ identifier: id })
+
+/**
+ * @category string transformations
+ * @since 0.67.0
+ */
+export const StringFromBase64: Schema<string> = makeStringTransformation(
+  "StringFromBase64",
+  Encoding.decodeBase64String,
+  Encoding.encodeBase64
+)
+
+/**
+ * @category string transformations
+ * @since 0.67.0
+ */
+export const StringFromBase64Url: Schema<string> = makeStringTransformation(
+  "StringFromBase64Url",
+  Encoding.decodeBase64UrlString,
+  Encoding.encodeBase64Url
+)
+
+/**
+ * @category string transformations
+ * @since 0.67.0
+ */
+export const StringFromHex: Schema<string> = makeStringTransformation(
+  "StringFromHex",
+  Encoding.decodeHexString,
   Encoding.encodeHex
 )
 
