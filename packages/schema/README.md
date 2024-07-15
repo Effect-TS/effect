@@ -8023,9 +8023,17 @@ It's important to note that when successfully decoding a `Redacted`, the output 
 
 # Serializable
 
+The `Serializable` module enables objects to have self-contained schema(s) for serialization. This functionality is particularly beneficial in scenarios where objects need to be consistently serialized and deserialized across various runtime environments or sent over network communications.
+
 ## Serializable trait
 
-The `Serializable` trait, part of the `@effect/schema/Serializable` module, enables objects to have self-contained schema(s) for serialization. This functionality is particularly beneficial in scenarios where objects need to be consistently serialized and deserialized across various runtime environments or sent over network communications.
+The `Serializable` trait equips objects with the capability to define their serialization logic explicitly.
+
+```ts
+interface Serializable<A, I, R> {
+  readonly [symbol]: Schema.Schema<A, I, R>
+}
+```
 
 **Example: Implementing the Serializable Trait**
 
@@ -8040,6 +8048,7 @@ class Person {
     readonly createdAt: Date
   ) {}
 
+  // Define the schema for serialization
   static FromEncoded = Schema.transform(
     Schema.Struct({
       id: Schema.Number,
@@ -8053,6 +8062,7 @@ class Person {
     }
   )
 
+  // Implementing the Serializable trait using the static schema
   get [Serializable.symbol]() {
     return Person.FromEncoded
   }
@@ -8060,22 +8070,17 @@ class Person {
 
 const person = new Person(1, "John", new Date(0))
 
-// ----------------
-// serialization
-// ----------------
-
+// Example serialization
 const serialized = Effect.runSync(Serializable.serialize(person))
 console.log(serialized)
 // { id: 1, name: 'John', createdAt: '1970-01-01T00:00:00.000Z' }
 
-// ----------------
-// deserialization
-// ----------------
-
+// Deserialization
 const deserialized = Schema.decodeUnknownSync(Person.FromEncoded)(serialized)
 console.log(deserialized)
 // Person { id: 1, name: 'John', createdAt: 1970-01-01T00:00:00.000Z }
 
+// Deserialization using an instance:
 // if you have access to a Person instance you can use `Serializable.deserialize` to deserialize
 const deserializedUsingAnInstance = Effect.runSync(
   Serializable.deserialize(person, serialized)
@@ -8084,32 +8089,108 @@ console.log(deserializedUsingAnInstance)
 // Person { id: 1, name: 'John', createdAt: 1970-01-01T00:00:00.000Z }
 ```
 
-## Procedure trait
+## Streamlining Code with Schema.Class
 
-The `Procedure` trait is designed to encapsulate the outcome of an operation, distinguishing between success and failure cases. Each case is associated with a schema that defines the structure and types of the success or failure data.
-
-The primary aim of this trait is to model the following remote procedure:
+While the above example provides a comprehensive view of serialization processes, using the `Schema.Class` API can significantly reduce boilerplate and simplify class modeling.
 
 ```ts
-(a: A): Exit<Success, Failure>
+import { Schema, Serializable } from "@effect/schema"
+import { Effect } from "effect"
+
+class Person extends Schema.Class<Person>("Person")({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.Date
+}) {
+  get [Serializable.symbol]() {
+    return Person
+  }
+}
+
+const person = new Person({ id: 1, name: "John", createdAt: new Date(0) })
+
+const serialized = Effect.runSync(Serializable.serialize(person))
+console.log(serialized)
+// { id: 1, name: 'John', createdAt: '1970-01-01T00:00:00.000Z' }
+
+const deserialized = Schema.decodeUnknownSync(Person)(serialized)
+console.log(deserialized)
+// Person { id: 1, name: 'John', createdAt: 1970-01-01T00:00:00.000Z }
+
+const deserializedUsingAnInstance = Effect.runSync(
+  Serializable.deserialize(person, serialized)
+)
+console.log(deserializedUsingAnInstance)
+// Person { id: 1, name: 'John', createdAt: 1970-01-01T00:00:00.000Z }
 ```
 
-To achieve this, schemas need to be defined for the following:
+## WithExit trait
 
-- **The Argument**: Represented as `Schema<A, I, R>`, this schema handles the input data type `A`, its serialized form `I`, and the associated context `R`.
-- **The Success Case**: This is defined by `Schema<Success, SuccessEncoded, SuccessAndFailureR>`, specifying the structure for a successful outcome along with its encoded form for serialization.
-- **The Failure Case**: Similar to the success schema but for failures, represented by `Schema<Failure, FailureEncoded, SuccessAndFailureR>`.
+The `WithExit` trait is designed to encapsulate the outcome of an operation, distinguishing between success and failure cases. Each case is associated with a schema that defines the structure and types of the success or failure data.
 
-The process for using `Procedure` in a practical scenario involves a series of steps, encapsulating a full roundtrip communication:
+```ts
+interface WithExit<
+  Success,
+  SuccessEncoded,
+  Failure,
+  FailureEncoded,
+  SuccessAndFailureR
+> {
+  readonly [symbolExit]: {
+    readonly success: Schema.Schema<Success, SuccessEncoded, SuccessAndFailureR>
+    readonly failure: Schema.Schema<Failure, FailureEncoded, SuccessAndFailureR>
+  }
+}
+```
 
-1. **Start with a Value of Type `A`**: Begin with your initial value which is of type `A`.
-2. **Serialize to `I`**: Convert the initial value `A` into its serialized form `I`.
-3. **Send Over the Wire**: The serialized value `I` is sent to a receiving end through network communication.
-4. **Deserialization to `A`**: Upon receipt, the value `I` is deserialized back to type `A`.
-5. **Process and Determine Outcome**: The receiver processes the deserialized value `A` and determines the result as either a success or failure, represented as `Exit<Success, Failure>`.
-6. **Serialize the Result**: The outcome is then serialized into `Exit<SuccessEncoded, FailureEncoded>` for transmission.
-7. **Send Back Over the Wire**: This serialized result is sent back to the original sender.
-8. **Final Deserialization**: The sender deserializes the received result back into its original detailed types `Exit<Success, Failure>`.
+## SerializableWithExit trait
+
+The `SerializableWithExit` trait is specifically designed to model remote procedures that require serialization of their input and output, managing both successful and failed outcomes.
+
+```ts
+(payload: Payload): Exit<Success, Failure>
+```
+
+This trait combines functionality from both the `Serializable` and `WithExit` traits to handle data serialization and the bifurcation of operation results into success or failure categories.
+
+**Definition**
+
+```ts
+interface SerializableWithExit<
+  A,
+  I,
+  R,
+  Success,
+  SuccessEncoded,
+  Failure,
+  FailureEncoded,
+  SuccessAndFailureR
+> extends Serializable<A, I, R>,
+    WithExit<
+      Success,
+      SuccessEncoded,
+      Failure,
+      FailureEncoded,
+      SuccessAndFailureR
+    > {}
+```
+
+**Components**
+
+- **Payload (`A, I, R`)**: The payload is described using the `Serializable<A, I, R>` trait, which includes the type of the payload (`A`), its serialized form (`I`), and any relevant runtime context (`R`).
+- **Success Case (`Success, SuccessEncoded, SuccessAndFailureR`)**: Defined by `Schema<Success, SuccessEncoded, SuccessAndFailureR>`, this outlines the structure and type of the data upon a successful operation, along with its serialized form.
+- **Failure Case (`Failure, FailureEncoded, SuccessAndFailureR`)**: This is analogous to the Success Case but caters to scenarios where the operation fails. It is described by `Schema<Failure, FailureEncoded, SuccessAndFailureR>`.
+
+**Workflow**
+
+1. **Initialization**: Begin with data of type `A`.
+2. **Serialization**: Convert this data into its serialized format `I`.
+3. **Transmission**: Send this serialized data over the network.
+4. **Reception and Deserialization**: Upon receiving, convert the data back from type `I` to `A`.
+5. **Processing**: The deserialized data is then processed to determine the outcome as either success (`Success`) or failure (`Failure`).
+6. **Result Serialization**: Depending on the outcome, serialize the result into `Exit<SuccessEncoded, FailureEncoded>`.
+7. **Response Transmission**: Send the serialized outcome back over the network.
+8. **Final Deserialization**: Deserialize the received outcome back into `Exit<Success, Failure>` for final use.
 
 ```mermaid
 sequenceDiagram
@@ -8128,28 +8209,13 @@ import type { ParseResult } from "@effect/schema"
 import { Schema, Serializable } from "@effect/schema"
 import { Effect, Exit } from "effect"
 
-class Person {
-  constructor(
-    readonly id: number,
-    readonly name: string,
-    readonly createdAt: Date
-  ) {}
-
-  static FromEncoded = Schema.transform(
-    Schema.Struct({
-      id: Schema.Number,
-      name: Schema.String,
-      createdAt: Schema.Date
-    }),
-    Schema.instanceOf(Person),
-    {
-      decode: ({ createdAt, id, name }) => new Person(id, name, createdAt),
-      encode: ({ createdAt, id, name }) => ({ id, name, createdAt })
-    }
-  )
-
+class Person extends Schema.Class<Person>("Person")({
+  id: Schema.Number,
+  name: Schema.String,
+  createdAt: Schema.Date
+}) {
   get [Serializable.symbol]() {
-    return Person.FromEncoded
+    return Person
   }
 }
 
@@ -8169,10 +8235,9 @@ class GetPersonById {
     return GetPersonById.FromEncoded
   }
 
-  // WithExit implementation
   get [Serializable.symbolExit]() {
     return {
-      success: Person.FromEncoded,
+      success: Person,
       failure: Schema.String
     }
   }
@@ -8189,7 +8254,9 @@ function handleGetPersonById(
       req,
       req.id === 0
         ? Exit.fail("User not found")
-        : Exit.succeed(new Person(req.id, "John", new Date()))
+        : Exit.succeed(
+            new Person({ id: req.id, name: "John", createdAt: new Date() })
+          )
     )
   })
 }
@@ -8224,31 +8291,33 @@ Output:
 */
 ```
 
-## Streamlining Code with Schema.Class and Schema.TaggedRequest
+## Streamlining Code with Schema.TaggedRequest
 
-The previous example, although illustrative of the underlying mechanisms, involves considerable boilerplate code. To simplify development, we can utilize two specifically designed APIs: `Schema.Class` for modeling the `Person` class and `Schema.TaggedRequest` for modeling the `GetPersonById` operation.
+While the previous example effectively demonstrates the mechanisms involved, it does require a significant amount of boilerplate code. To streamline development, the `Schema.TaggedRequest` API is specifically designed to reduce complexity and increase readability.
 
 ```ts
 import type { ParseResult } from "@effect/schema"
 import { Schema, Serializable } from "@effect/schema"
 import { Effect, Exit } from "effect"
 
+// Define a simple person class using Schema.Class for ease of serialization
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.Number,
   name: Schema.String,
   createdAt: Schema.Date
 }) {}
 
-// Represents the serializable function: `(arg: { readonly id: number }) => Exit<Person, string>`
+// Represents a serializable function: `(payload: { readonly id: number }) => Exit<Person, string>`
 class GetPersonById extends Schema.TaggedRequest<GetPersonById>()(
   "GetPersonById",
   {
-    failure: Schema.String, // Failure schema
-    success: Person, // Success schema
-    payload: { id: Schema.Number } // Argument schema
+    payload: { id: Schema.Number }, // Define the schema for the payload,
+    success: Person, // Schema for successful outcome
+    failure: Schema.String // Schema for failure outcome
   }
 ) {}
 
+// Function to handle the GetPersonById request and process the response
 function handleGetPersonById(serializedReq: typeof GetPersonById.Encoded) {
   return Effect.gen(function* () {
     const req = yield* Schema.decodeUnknown(GetPersonById)(serializedReq)
@@ -8263,6 +8332,7 @@ function handleGetPersonById(serializedReq: typeof GetPersonById.Encoded) {
   })
 }
 
+// Simulates a roundtrip serialization and deserialization process
 const roundtrip = (
   req: GetPersonById
 ): Effect.Effect<Exit.Exit<Person, string>, ParseResult.ParseError> =>
@@ -8272,6 +8342,7 @@ const roundtrip = (
     return yield* Serializable.deserializeExit(req, exit)
   })
 
+// Example outputs from invoking the roundtrip function
 console.log(Effect.runSync(roundtrip(new GetPersonById({ id: 1 }))))
 /*
 Output:
@@ -8292,6 +8363,29 @@ Output:
 }
 */
 ```
+
+## Communication and Serialization with Schema and Serializable Traits
+
+This section outlines a streamlined client-server interaction using the `Serializable` and `WithExit` traits from the `@effect/schema` library to manage serialization and processing of data objects across network communications.
+
+**Client-Side Operations:**
+
+1. **Initialization**: Start with an object of type `A`, which implements `Serializable.SerializableWithExit`.
+2. **Serialization**: Serialize the object `A` using `Serializable.serialize`, which employs the schema retrieved from the `Serializable` interface tied to `A`.
+3. **Transmission**: Send the serialized data of type `I` to the server and wait for a response.
+
+**Server-Side Operations:**
+
+1. **Reception**: Receive the serialized data `I`.
+2. **Deserialization**: Convert the serialized data `I` back into an object of type `A` using a predefined union schema `Schema<A | B | ..., I | IB | ...>`.
+3. **Processing**: Handle the message of type `A` to derive an outcome as `Exit<Success, Failure>`.
+4. **Result Serialization**: Serialize the result `Exit<Success, Failure>` to `Exit<SuccessEncoded, FailureEncoded>` utilizing the schema obtained from `A`'s `WithExit` interface.
+5. **Response**: Send the serialized response `Exit<SuccessEncoded, FailureEncoded>` back to the client.
+
+**Client-Side Response Handling:**
+
+1. **Reception**: Receive the response `Exit<SuccessEncoded, FailureEncoded>`.
+2. **Final Deserialization**: Convert `Exit<SuccessEncoded, FailureEncoded>` back to `Exit<Success, Failure>` using the original object `A` and the schema from the `WithExit` interface.
 
 # Useful Examples
 

@@ -310,7 +310,7 @@ export const deserializeExit: {
 ): Effect.Effect<Exit.Exit<SA, FA>, ParseResult.ParseError, R> => Schema.decodeUnknown(exitSchema(self))(value))
 
 // ---------------------------------------------
-// Procedure
+// SerializableWithExit
 // ---------------------------------------------
 
 /**
