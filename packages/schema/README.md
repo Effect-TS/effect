@@ -5028,6 +5028,47 @@ const schema = Schema.parseJson(Schema.Struct({ a: Schema.Number }))
 
 In this example, we've used `parseJson` with a struct schema to ensure that the parsed result has a specific structure, including an object with a numeric property "a". This helps in handling JSON data with predefined shapes.
 
+### StringFromBase64
+
+Decodes a base64 (RFC4648) encoded string into a UTF-8 string.
+
+```ts
+import { Schema } from "@effect/schema"
+
+const decode = Schema.decodeUnknownSync(Schema.StringFromBase64)
+
+console.log(decode("Zm9vYmFy")) // "foobar"
+```
+
+### StringFromBase64Url
+
+Decodes a base64 (URL) encoded string into a UTF-8 string.
+
+```ts
+import { Schema } from "@effect/schema"
+
+const decode = Schema.decodeUnknownSync(Schema.StringFromBase64Url)
+
+console.log(decode("Zm9vYmFy")) // "foobar"
+```
+
+### StringFromHex
+
+Decodes a hex encoded string into a UTF-8 string.
+
+```ts
+import { Schema } from "@effect/schema"
+import * as assert from "node:assert"
+
+const decode = Schema.decodeUnknownSync(Schema.StringFromHex)
+
+const decoder = new TextDecoder("utf-8")
+assert.deepStrictEqual(
+  decode("0001020304050607"),
+  decoder.decode(Uint8Array.from([0, 1, 2, 3, 4, 5, 6, 7]))
+)
+```
+
 ## Number Transformations
 
 ### NumberFromString

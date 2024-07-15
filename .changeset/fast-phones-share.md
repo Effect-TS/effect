@@ -74,6 +74,9 @@ TODO: change to minor before merging
 
 ### Schema
 
+- add `StringFromBase64`
+- add `StringFromBase64Url`
+- add `StringFromHex`
 - add `TaggedRequest.All`
 - add support for `Schema.String`/`Schema.Number`/`Schema.Boolean` refinements to `extend`
 

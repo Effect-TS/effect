@@ -5608,6 +5608,8 @@ const makeUint8ArrayTransformation = (
   ).annotations({ identifier: id })
 
 /**
+ * Decodes a base64 (RFC4648) encoded string into a `Uint8Array`.
+ *
  * @category Uint8Array transformations
  * @since 0.67.0
  */
@@ -5618,6 +5620,8 @@ export const Uint8ArrayFromBase64: Schema<Uint8Array, string> = makeUint8ArrayTr
 )
 
 /**
+ * Decodes a base64 (URL) encoded string into a `Uint8Array`.
+ *
  * @category Uint8Array transformations
  * @since 0.67.0
  */
@@ -5628,6 +5632,8 @@ export const Uint8ArrayFromBase64Url: Schema<Uint8Array, string> = makeUint8Arra
 )
 
 /**
+ * Decodes a hex encoded string into a `Uint8Array`.
+ *
  * @category Uint8Array transformations
  * @since 0.67.0
  */
@@ -5657,6 +5663,8 @@ const makeStringTransformation = (
   ).annotations({ identifier: id })
 
 /**
+ * Decodes a base64 (RFC4648) encoded string into a UTF-8 string.
+ *
  * @category string transformations
  * @since 0.67.0
  */
@@ -5667,6 +5675,8 @@ export const StringFromBase64: Schema<string> = makeStringTransformation(
 )
 
 /**
+ * Decodes a base64 (URL) encoded string into a UTF-8 string.
+ *
  * @category string transformations
  * @since 0.67.0
  */
@@ -5677,6 +5687,8 @@ export const StringFromBase64Url: Schema<string> = makeStringTransformation(
 )
 
 /**
+ * Decodes a hex encoded string into a UTF-8 string.
+ *
  * @category string transformations
  * @since 0.67.0
  */
