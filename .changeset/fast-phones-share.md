@@ -65,6 +65,7 @@ TODO: change to minor before merging
 ### Serializable
 
 - rename `WithResult` interface to `WithExit`
+- add `defect` field to `symbolExit` field
 - rename `WithResult` namespace to `WithExit`
 - change `WithExit` fields to lowercase (`Success` -> `success`, `Failure` -> `failure`)
 - rename `WithExit.Error` to `WithExit.Failure`
