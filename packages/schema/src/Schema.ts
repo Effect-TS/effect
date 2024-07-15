@@ -7544,7 +7544,7 @@ export interface TaggedRequest<
   SuccessEncoded,
   FailureType,
   FailureEncoded,
-  SuccessAndFailureR
+  ExitR
 > extends
   Request.Request<SuccessType, FailureType>,
   Serializable.SerializableWithExit<
@@ -7555,7 +7555,7 @@ export interface TaggedRequest<
     SuccessEncoded,
     FailureType,
     FailureEncoded,
-    SuccessAndFailureR
+    ExitR
   >
 {
   readonly _tag: Tag
@@ -7650,7 +7650,8 @@ export const TaggedRequest =
       get [serializable_.symbolExit]() {
         return {
           failure: options.failure,
-          success: options.success
+          success: options.success,
+          defect: Defect
         }
       }
     } as any
@@ -8121,9 +8122,9 @@ export interface CauseFromSelf<E extends Schema.Any, DR> extends
  * @category Cause transformations
  * @since 0.67.0
  */
-export const CauseFromSelf = <E extends Schema.Any, DR = never>({ defect = Unknown, error }: {
+export const CauseFromSelf = <E extends Schema.Any, DR>({ defect, error }: {
   readonly error: E
-  readonly defect?: Schema<unknown, unknown, DR> | undefined
+  readonly defect: Schema<unknown, unknown, DR>
 }): CauseFromSelf<E, DR> => {
   return declare(
     [error, defect],
@@ -8182,10 +8183,19 @@ function causeEncode<E>(cause: cause_.Cause<E>): CauseEncoded<E> {
 }
 
 /**
- * @category Cause transformations
- * @since 0.67.0
+ * Defines a schema for handling JavaScript errors (`Error` instances) and other types of defects.
+ * It decodes objects into Error instances if they match the expected structure (i.e., have a `message` and optionally a `name` and `stack`),
+ * or converts other values to their string representations.
+ *
+ * When encoding, it converts `Error` instances back into plain objects containing only the error's name and message,
+ * or other values into their string forms.
+ *
+ * This is useful for serializing and deserializing errors across network boundaries where error objects do not natively serialize.
+ *
+ * @category defect
+ * @since 0.69.0
  */
-export const CauseDefectUnknown = transform(
+export const Defect: Schema<unknown> = transform(
   Unknown,
   Unknown,
   {
@@ -8230,9 +8240,9 @@ export interface Cause<E extends Schema.All, DR> extends
  * @category Cause transformations
  * @since 0.67.0
  */
-export const Cause = <E extends Schema.All, DR = never>({ defect = CauseDefectUnknown, error }: {
+export const Cause = <E extends Schema.All, DR>({ defect, error }: {
   readonly error: E
-  readonly defect?: Schema<unknown, unknown, DR> | undefined
+  readonly defect: Schema<unknown, unknown, DR>
 }): Cause<E, DR> => {
   const error_ = asSchema(error)
   return transform(
@@ -8340,11 +8350,11 @@ export interface ExitFromSelf<A extends Schema.Any, E extends Schema.Any, DR> ex
  * @category Exit transformations
  * @since 0.67.0
  */
-export const ExitFromSelf = <A extends Schema.Any, E extends Schema.Any, DR = never>(
-  { defect = Unknown, failure, success }: {
+export const ExitFromSelf = <A extends Schema.Any, E extends Schema.Any, DR>(
+  { defect, failure, success }: {
     readonly failure: E
     readonly success: A
-    readonly defect?: Schema<unknown, unknown, DR> | undefined
+    readonly defect: Schema<unknown, unknown, DR>
   }
 ): ExitFromSelf<A, E, DR> =>
   declare(
@@ -8385,11 +8395,11 @@ export interface Exit<A extends Schema.All, E extends Schema.All, DR> extends
  * @category Exit transformations
  * @since 0.67.0
  */
-export const Exit = <A extends Schema.All, E extends Schema.All, DR = never>(
-  { defect = CauseDefectUnknown, failure, success }: {
+export const Exit = <A extends Schema.All, E extends Schema.All, DR>(
+  { defect, failure, success }: {
     readonly failure: E
     readonly success: A
-    readonly defect?: Schema<unknown, unknown, DR> | undefined
+    readonly defect: Schema<unknown, unknown, DR>
   }
 ): Exit<A, E, DR> => {
   const success_ = asSchema(success)

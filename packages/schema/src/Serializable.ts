@@ -113,10 +113,11 @@ export const symbolExit: unique symbol = serializable_.symbolExit as any
  * @since 0.67.0
  * @category model
  */
-export interface WithExit<Success, SuccessEncoded, Failure, FailureEncoded, SuccessAndFailureR> {
+export interface WithExit<Success, SuccessEncoded, Failure, FailureEncoded, ExitR> {
   readonly [symbolExit]: {
-    readonly success: Schema.Schema<Success, SuccessEncoded, SuccessAndFailureR>
-    readonly failure: Schema.Schema<Failure, FailureEncoded, SuccessAndFailureR>
+    readonly success: Schema.Schema<Success, SuccessEncoded, ExitR>
+    readonly failure: Schema.Schema<Failure, FailureEncoded, ExitR>
+    readonly defect: Schema.Schema<unknown, unknown, ExitR>
   }
 }
 
@@ -185,6 +186,14 @@ export const failureSchema = <SA, SI, FA, FI, R>(self: WithExit<SA, SI, FA, FI, 
 export const successSchema = <SA, SI, FA, FI, R>(self: WithExit<SA, SI, FA, FI, R>): Schema.Schema<SA, SI, R> =>
   self[symbolExit].success
 
+/**
+ * @since 0.69.0
+ * @category accessor
+ */
+export const defectSchema = <SA, SI, FA, FI, R>(
+  self: WithExit<SA, SI, FA, FI, R>
+): Schema.Schema<unknown, unknown, R> => self[symbolExit].defect
+
 const exitSchemaCache = globalValue(
   "@effect/schema/Serializable/exitSchemaCache",
   () => new WeakMap<object, Schema.Schema<any, any, any>>()
@@ -201,11 +210,19 @@ export const exitSchema = <SA, SI, FA, FI, R>(self: WithExit<SA, SI, FA, FI, R>)
 > => {
   const proto = Object.getPrototypeOf(self)
   if (!(symbolExit in proto)) {
-    return Schema.Exit({ failure: failureSchema(self), success: successSchema(self) })
+    return Schema.Exit({
+      failure: failureSchema(self),
+      success: successSchema(self),
+      defect: defectSchema(self)
+    })
   }
   let schema = exitSchemaCache.get(proto)
   if (schema === undefined) {
-    schema = Schema.Exit({ failure: failureSchema(self), success: successSchema(self) })
+    schema = Schema.Exit({
+      failure: failureSchema(self),
+      success: successSchema(self),
+      defect: defectSchema(self)
+    })
     exitSchemaCache.set(proto, schema)
   }
   return schema
@@ -337,8 +354,8 @@ export interface SerializableWithExit<
   SuccessEncoded,
   Failure,
   FailureEncoded,
-  SuccessAndFailureR
-> extends Serializable<A, I, R>, WithExit<Success, SuccessEncoded, Failure, FailureEncoded, SuccessAndFailureR> {}
+  ExitR
+> extends Serializable<A, I, R>, WithExit<Success, SuccessEncoded, Failure, FailureEncoded, ExitR> {}
 
 /**
  * @since 0.69.0

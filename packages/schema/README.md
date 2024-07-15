@@ -8170,16 +8170,11 @@ console.log(deserializedUsingAnInstance)
 The `WithExit` trait is designed to encapsulate the outcome of an operation, distinguishing between success and failure cases. Each case is associated with a schema that defines the structure and types of the success or failure data.
 
 ```ts
-interface WithExit<
-  Success,
-  SuccessEncoded,
-  Failure,
-  FailureEncoded,
-  SuccessAndFailureR
-> {
+interface WithExit<Success, SuccessEncoded, Failure, FailureEncoded, ExitR> {
   readonly [symbolExit]: {
-    readonly success: Schema.Schema<Success, SuccessEncoded, SuccessAndFailureR>
-    readonly failure: Schema.Schema<Failure, FailureEncoded, SuccessAndFailureR>
+    readonly success: Schema.Schema<Success, SuccessEncoded, ExitR>
+    readonly failure: Schema.Schema<Failure, FailureEncoded, ExitR>
+    readonly defect: Schema.Schema<unknown, unknown, ExitR>
   }
 }
 ```
@@ -8205,22 +8200,16 @@ interface SerializableWithExit<
   SuccessEncoded,
   Failure,
   FailureEncoded,
-  SuccessAndFailureR
+  ExitR
 > extends Serializable<A, I, R>,
-    WithExit<
-      Success,
-      SuccessEncoded,
-      Failure,
-      FailureEncoded,
-      SuccessAndFailureR
-    > {}
+    WithExit<Success, SuccessEncoded, Failure, FailureEncoded, ExitR> {}
 ```
 
 **Components**
 
 - **Payload (`A, I, R`)**: The payload is described using the `Serializable<A, I, R>` trait, which includes the type of the payload (`A`), its serialized form (`I`), and any relevant runtime context (`R`).
-- **Success Case (`Success, SuccessEncoded, SuccessAndFailureR`)**: Defined by `Schema<Success, SuccessEncoded, SuccessAndFailureR>`, this outlines the structure and type of the data upon a successful operation, along with its serialized form.
-- **Failure Case (`Failure, FailureEncoded, SuccessAndFailureR`)**: This is analogous to the Success Case but caters to scenarios where the operation fails. It is described by `Schema<Failure, FailureEncoded, SuccessAndFailureR>`.
+- **Success Case (`Success, SuccessEncoded, ExitR`)**: Defined by `Schema<Success, SuccessEncoded, ExitR>`, this outlines the structure and type of the data upon a successful operation, along with its serialized form.
+- **Failure Case (`Failure, FailureEncoded, ExitR`)**: This is analogous to the Success Case but caters to scenarios where the operation fails. It is described by `Schema<Failure, FailureEncoded, ExitR>`.
 
 **Workflow**
 

@@ -31,7 +31,7 @@ export const isWorkerError = (u: unknown): u is WorkerError => Predicate.hasProp
  */
 export class WorkerError extends Schema.TaggedError<WorkerError>()("WorkerError", {
   reason: Schema.Literal("spawn", "decode", "send", "unknown", "encode"),
-  error: Schema.CauseDefectUnknown
+  error: Schema.Defect
 }) {
   /**
    * @since 1.0.0
@@ -44,7 +44,7 @@ export class WorkerError extends Schema.TaggedError<WorkerError>()("WorkerError"
   static readonly Cause: Schema.Schema<
     Cause.Cause<WorkerError>,
     Schema.CauseEncoded<WorkerErrorFrom>
-  > = Schema.Cause({ error: this })
+  > = Schema.Cause({ error: this, defect: Schema.Defect })
 
   /**
    * @since 1.0.0

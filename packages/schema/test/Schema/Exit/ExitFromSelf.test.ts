@@ -5,11 +5,11 @@ import { describe, it } from "vitest"
 
 describe("ExitFromSelf", () => {
   it("arbitrary", () => {
-    Util.expectArbitrary(S.ExitFromSelf({ failure: S.String, success: S.Number }))
+    Util.expectArbitrary(S.ExitFromSelf({ failure: S.String, success: S.Number, defect: S.Unknown }))
   })
 
   it("decoding", async () => {
-    const schema = S.ExitFromSelf({ failure: S.NumberFromString, success: Util.BooleanFromLiteral })
+    const schema = S.ExitFromSelf({ failure: S.NumberFromString, success: Util.BooleanFromLiteral, defect: S.Unknown })
     await Util.expectDecodeUnknownSuccess(schema, E.fail("1"), E.fail(1))
     await Util.expectDecodeUnknownSuccess(schema, E.succeed("true"), E.succeed(true))
 

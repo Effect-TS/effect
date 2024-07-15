@@ -5,11 +5,11 @@ import { assert, describe, it } from "vitest"
 
 describe("Cause", () => {
   it("property tests", () => {
-    Util.roundtrip(S.Cause({ error: S.NumberFromString, defect: S.Unknown }))
+    Util.roundtrip(S.Cause({ error: S.NumberFromString, defect: S.Defect }))
   })
 
   it("decoding", async () => {
-    const schema = S.Cause({ error: S.NumberFromString })
+    const schema = S.Cause({ error: S.NumberFromString, defect: S.Defect })
     await Util.expectDecodeUnknownSuccess(
       schema,
       { _tag: "Fail", error: "1" },
@@ -98,7 +98,7 @@ describe("Cause", () => {
   })
 
   it("encoding", async () => {
-    const schema = S.Cause({ error: S.NumberFromString })
+    const schema = S.Cause({ error: S.NumberFromString, defect: S.Defect })
     const schemaUnknown = S.Cause({ error: S.NumberFromString, defect: S.Unknown })
 
     await Util.expectEncodeSuccess(schema, Cause.fail(1), { _tag: "Fail", error: "1" })

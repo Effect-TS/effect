@@ -2178,10 +2178,10 @@ S.List(S.NumberFromString)
 // ---------------------------------------------
 
 // $ExpectType Schema<Exit<number, string>, Exit<number, string>, never>
-S.asSchema(S.ExitFromSelf({ success: S.Number, failure: S.String }))
+S.asSchema(S.ExitFromSelf({ success: S.Number, failure: S.String, defect: S.Unknown }))
 
 // $ExpectType ExitFromSelf<typeof Number$, typeof String$, never>
-S.ExitFromSelf({ success: S.Number, failure: S.String })
+S.ExitFromSelf({ success: S.Number, failure: S.String, defect: S.Unknown })
 
 // $ExpectType Schema<Exit<number, string>, Exit<number, string>, "a">
 S.asSchema(S.ExitFromSelf({ success: S.Number, failure: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() }))
@@ -2189,15 +2189,24 @@ S.asSchema(S.ExitFromSelf({ success: S.Number, failure: S.String, defect: hole<S
 // $ExpectType ExitFromSelf<typeof Number$, typeof String$, "a">
 S.ExitFromSelf({ success: S.Number, failure: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() })
 
+// $ExpectType Schema<{ readonly a: Exit<number, string>; }, { readonly a: Exit<number, string>; }, never>
+S.asSchema(S.Struct({
+  a: S.ExitFromSelf({
+    success: S.Number,
+    failure: S.String,
+    defect: S.Unknown
+  })
+}))
+
 // ---------------------------------------------
 // Exit
 // ---------------------------------------------
 
 // $ExpectType Schema<Exit<number, string>, ExitEncoded<number, string>, never>
-S.asSchema(S.Exit({ success: S.Number, failure: S.String }))
+S.asSchema(S.Exit({ success: S.Number, failure: S.String, defect: S.Defect }))
 
 // $ExpectType Exit<typeof Number$, typeof String$, never>
-S.Exit({ success: S.Number, failure: S.String })
+S.Exit({ success: S.Number, failure: S.String, defect: S.Defect })
 
 // $ExpectType Schema<Exit<number, string>, ExitEncoded<number, string>, "a">
 S.asSchema(S.Exit({ success: S.Number, failure: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() }))
@@ -2205,15 +2214,24 @@ S.asSchema(S.Exit({ success: S.Number, failure: S.String, defect: hole<S.Schema<
 // $ExpectType Exit<typeof Number$, typeof String$, "a">
 S.Exit({ success: S.Number, failure: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() })
 
+// $ExpectType Schema<{ readonly a: Exit<number, string>; }, { readonly a: ExitEncoded<number, string>; }, never>
+S.asSchema(S.Struct({
+  a: S.Exit({
+    success: S.Number,
+    failure: S.String,
+    defect: S.Defect
+  })
+}))
+
 // ---------------------------------------------
 // CauseFromSelf
 // ---------------------------------------------
 
 // $ExpectType Schema<Cause<string>, Cause<string>, never>
-S.asSchema(S.CauseFromSelf({ error: S.String }))
+S.asSchema(S.CauseFromSelf({ error: S.String, defect: S.Unknown }))
 
 // $ExpectType CauseFromSelf<typeof String$, never>
-S.CauseFromSelf({ error: S.String })
+S.CauseFromSelf({ error: S.String, defect: S.Unknown })
 
 // $ExpectType Schema<Cause<string>, Cause<string>, "a">
 S.asSchema(S.CauseFromSelf({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() }))
@@ -2221,21 +2239,31 @@ S.asSchema(S.CauseFromSelf({ error: S.String, defect: hole<S.Schema<unknown, unk
 // $ExpectType CauseFromSelf<typeof String$, "a">
 S.CauseFromSelf({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() })
 
+// $ExpectType Schema<{ readonly a: Cause<string>; }, { readonly a: Cause<string>; }, never>
+S.asSchema(S.Struct({
+  a: S.CauseFromSelf({ error: S.String, defect: S.Unknown })
+}))
+
 // ---------------------------------------------
 // Cause
 // ---------------------------------------------
 
 // $ExpectType Schema<Cause<string>, CauseEncoded<string>, never>
-S.asSchema(S.Cause({ error: S.String }))
+S.asSchema(S.Cause({ error: S.String, defect: S.Defect }))
 
 // $ExpectType Cause<typeof String$, never>
-S.Cause({ error: S.String })
+S.Cause({ error: S.String, defect: S.Defect })
 
 // $ExpectType Schema<Cause<string>, CauseEncoded<string>, "a">
 S.asSchema(S.Cause({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() }))
 
 // $ExpectType Cause<typeof String$, "a">
 S.Cause({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() })
+
+// $ExpectType Schema<{ readonly a: Cause<string>; }, { readonly a: CauseEncoded<string>; }, never>
+S.asSchema(S.Struct({
+  a: S.Cause({ error: S.String, defect: S.Defect })
+}))
 
 // ---------------------------------------------
 // TypeLiteral

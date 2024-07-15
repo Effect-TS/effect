@@ -59,6 +59,8 @@ TODO: change to minor before merging
 - rename `Base64` to `Uint8ArrayFromBase64`
 - rename `Base64Url` to `Uint8ArrayFromBase64Url`
 - rename `Hex` to `Uint8ArrayFromHex`
+- make `defect` schema required in `ExitFromSelf`, `Exit`, `CauseFromSelf`, `CauseFromSelf`
+- rename `CauseDefectUnknown` to `Defect`
 
 ### Serializable
 
@@ -121,3 +123,4 @@ TODO: change to minor before merging
 - add `SerializableWithExit.Any`
 - add `SerializableWithExit.All`
 - add `asSerializableWithExit`
+- add `defectSchema`

@@ -15,7 +15,7 @@ import * as fc from "fast-check"
 import { assert, expect } from "vitest"
 
 const doEffectify = true
-const doRoundtrip = false
+const doRoundtrip = true
 
 export const sleep = Effect.sleep(Duration.millis(10))
 
