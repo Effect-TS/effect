@@ -158,7 +158,6 @@ export const makeManager = Effect.gen(function*() {
           Effect.withFiberRuntime<{
             readonly id: number
             readonly queue: Q
-            readonly span: Option.Option<Tracer.Span>
           }>((fiber) => {
             const context = fiber.getFiberRef(FiberRef.currentContext)
             const span = Context.getOption(context, Tracer.ParentSpan).pipe(
@@ -184,11 +183,7 @@ export const makeManager = Effect.gen(function*() {
                   )
                 )
               }),
-              Effect.map((queue) => ({
-                id,
-                queue,
-                span
-              }))
+              Effect.map((queue) => ({ id, queue }))
             )
           })
 
@@ -200,22 +195,22 @@ export const makeManager = Effect.gen(function*() {
         }
 
         const execute = (request: I) =>
-          Stream.flatMap(
-            Stream.acquireRelease(
+          Stream.fromChannel(
+            Channel.acquireUseRelease(
               executeAcquire(request, Queue.unbounded<Exit.Exit<ReadonlyArray<O>, E | WorkerError>>()),
+              ({ queue }) => {
+                const loop: Channel.Channel<Chunk.Chunk<O>, unknown, E | WorkerError, unknown, void, unknown> = Channel
+                  .flatMap(
+                    Queue.take(queue),
+                    Exit.match({
+                      onFailure: (cause) => Cause.isEmpty(cause) ? Channel.void : Channel.failCause(cause),
+                      onSuccess: (value) => Channel.flatMap(Channel.write(Chunk.unsafeFromArray(value)), () => loop)
+                    })
+                  )
+                return loop
+              },
               executeRelease
-            ),
-            ({ queue }) => {
-              const loop: Channel.Channel<Chunk.Chunk<O>, unknown, E | WorkerError, unknown, void, unknown> = Channel
-                .flatMap(
-                  Queue.take(queue),
-                  Exit.match({
-                    onFailure: (cause) => Cause.isEmpty(cause) ? Channel.void : Channel.failCause(cause),
-                    onSuccess: (value) => Channel.flatMap(Channel.write(Chunk.unsafeFromArray(value)), () => loop)
-                  })
-                )
-              return Stream.fromChannel(loop)
-            }
+            )
           )
 
         const executeEffect = (request: I) =>
