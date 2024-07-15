@@ -5,14 +5,11 @@ import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
-import * as ExecutionStrategy from "effect/ExecutionStrategy"
-import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
-import { identity, pipe } from "effect/Function"
+import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
-import * as Queue from "effect/Queue"
-import * as Scope from "effect/Scope"
+import * as Schedule from "effect/Schedule"
+import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Transferable from "../Transferable.js"
 import type * as Worker from "../Worker.js"
@@ -30,149 +27,119 @@ export const PlatformRunner = Context.GenericTag<WorkerRunner.PlatformRunner>(
 )
 
 /** @internal */
-export const make = <I, E, R, O>(
+export const run = <I, E, R, O>(
   process: (request: I) => Stream.Stream<O, E, R> | Effect.Effect<O, E, R>,
   options?: WorkerRunner.Runner.Options<I, O, E>
 ) =>
-  Effect.gen(function*(_) {
-    const scope = yield* _(Scope.fork(yield* _(Effect.scope), ExecutionStrategy.parallel))
-    const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
-    const shutdown = Effect.zipRight(
-      Scope.close(scope, Exit.void),
-      Fiber.interruptFork(fiber)
-    )
-    const platform = yield* _(PlatformRunner)
-    const backing = yield* _(
-      platform.start<Worker.Worker.Request<I>, Worker.Worker.Response<E>>(shutdown),
-      Scope.extend(scope)
-    )
-    const fiberMap = new Map<number, Fiber.Fiber<void, unknown>>()
+  Effect.gen(function*() {
+    const platform = yield* PlatformRunner
+    const backing = yield* platform.start<Worker.Worker.Request<I>, Worker.Worker.Response<E>>()
+    const fiberMap = new Map<number, Fiber.Fiber<unknown, unknown>>()
 
-    yield* _(
-      Queue.take(backing.queue),
-      options?.decode ?
-        Effect.flatMap((msg): Effect.Effect<readonly [portId: number, Worker.Worker.Request<I>], WorkerError> => {
-          const req = msg[1]
-          if (req[1] === 1) {
-            return Effect.succeed(msg)
-          }
+    return yield* backing.run((portId, [id, kind, data, span]): Effect.Effect<void, WorkerError, R> => {
+      if (kind === 1) {
+        const fiber = fiberMap.get(id)
+        if (!fiber) return Effect.void
+        return Fiber.interrupt(fiber)
+      }
 
-          return Effect.map(options.decode!(req[2]), (data) => [msg[0], [req[0], req[1], data, req[3]]])
-        }) :
-        identity,
-      Effect.tap(([portId, req]) => {
-        const id = req[0]
-        if (req[1] === 1) {
-          const fiber = fiberMap.get(id)
-          if (!fiber) return Effect.void
-          return Fiber.interrupt(fiber)
-        }
-
-        const collector = Transferable.unsafeMakeCollector()
-        return pipe(
-          Effect.sync(() => process(req[2])),
-          Effect.flatMap((stream) => {
-            let effect = Effect.isEffect(stream) ?
-              Effect.flatMap(stream, (data) => {
-                const transfers = options?.transfers ? options.transfers(data) : []
-                return pipe(
-                  options?.encodeOutput
-                    ? Effect.provideService(options.encodeOutput(req[2], data), Transferable.Collector, collector)
-                    : Effect.succeed(data),
-                  Effect.flatMap((payload) =>
-                    backing.send(portId, [id, 0, [payload]], [
-                      ...transfers,
-                      ...collector.unsafeRead()
-                    ])
-                  )
-                )
-              }) :
+      return Effect.withFiberRuntime<I, WorkerError>((fiber) => {
+        fiberMap.set(id, fiber)
+        return options?.decode ? options.decode(data) : Effect.succeed(data)
+      }).pipe(
+        Effect.flatMap((input) => {
+          const collector = Transferable.unsafeMakeCollector()
+          const stream = process(input)
+          let effect = Effect.isEffect(stream) ?
+            Effect.flatMap(stream, (out) =>
               pipe(
-                stream,
-                Stream.chunks,
-                Stream.tap((data) => {
-                  if (options?.encodeOutput === undefined) {
-                    const payload = Chunk.toReadonlyArray(data)
-                    const transfers = options?.transfers ? payload.flatMap(options.transfers) : undefined
-                    return backing.send(portId, [id, 0, payload], transfers)
-                  }
+                options?.encodeOutput
+                  ? Effect.provideService(options.encodeOutput(input, out), Transferable.Collector, collector)
+                  : Effect.succeed(out),
+                Effect.flatMap((payload) => backing.send(portId, [id, 0, [payload]], collector.unsafeRead()))
+              )) :
+            pipe(
+              stream,
+              Stream.runForEachChunk((chunk) => {
+                if (options?.encodeOutput === undefined) {
+                  const payload = Chunk.toReadonlyArray(chunk)
+                  return backing.send(portId, [id, 0, payload])
+                }
 
-                  const transfers: Array<unknown> = []
-                  collector.unsafeClear()
-                  return pipe(
-                    Effect.forEach(data, (data) => {
-                      if (options?.transfers) {
-                        for (const option of options.transfers(data)) {
-                          transfers.push(option)
-                        }
-                      }
-                      return Effect.orDie(options.encodeOutput!(req[2], data))
-                    }),
-                    Effect.provideService(Transferable.Collector, collector),
-                    Effect.flatMap((payload) => {
-                      collector.unsafeRead().forEach((transfer) => transfers.push(transfer))
-                      return backing.send(portId, [id, 0, payload], transfers)
-                    })
-                  )
-                }),
-                Stream.runDrain,
-                Effect.andThen(backing.send(portId, [id, 1]))
-              )
-
-            if (req[3]) {
-              const [traceId, spanId, sampled] = req[3]
-              effect = Effect.withParentSpan(effect, {
-                _tag: "ExternalSpan",
-                traceId,
-                spanId,
-                sampled,
-                context: Context.empty()
-              })
-            }
-
-            return effect
-          }),
-          Effect.catchIf(isWorkerError, (error) =>
-            backing.send(portId, [id, 3, WorkerError.encodeCause(Cause.fail(error))])),
-          Effect.onExit((exit) => {
-            if (exit._tag === "Success") {
-              return Effect.void
-            }
-            return Either.match(Cause.failureOrCause(exit.cause), {
-              onLeft: (error) => {
-                const transfers = options?.transfers ? options.transfers(error) : []
                 collector.unsafeClear()
                 return pipe(
-                  options?.encodeError
-                    ? Effect.provideService(
-                      options.encodeError(req[2], error),
-                      Transferable.Collector,
-                      collector
-                    )
-                    : Effect.succeed(error),
-                  Effect.flatMap((payload) =>
-                    backing.send(portId, [id, 2, payload as any], [
-                      ...transfers,
-                      ...collector.unsafeRead()
-                    ])
-                  ),
-                  Effect.catchAllCause((cause) =>
-                    backing.send(portId, [id, 3, WorkerError.encodeCause(cause)])
-                  )
+                  Effect.forEach(chunk, (data) => options.encodeOutput!(input, data)),
+                  Effect.provideService(Transferable.Collector, collector),
+                  Effect.flatMap((payload) => backing.send(portId, [id, 0, payload], collector.unsafeRead()))
                 )
-              },
-              onRight: (cause) => backing.send(portId, [id, 3, WorkerError.encodeCause(cause)])
+              }),
+              Effect.andThen(backing.send(portId, [id, 1]))
+            )
+
+          if (span) {
+            effect = Effect.withParentSpan(effect, {
+              _tag: "ExternalSpan",
+              traceId: span[0],
+              spanId: span[1],
+              sampled: span[2],
+              context: Context.empty()
             })
-          }),
-          Effect.ensuring(Effect.sync(() => fiberMap.delete(id))),
-          Effect.fork,
-          Effect.tap((fiber) => Effect.sync(() => fiberMap.set(id, fiber)))
-        )
-      }),
-      Effect.forever,
-      Effect.forkIn(scope)
-    )
+          }
+
+          return Effect.uninterruptibleMask((restore) =>
+            restore(effect).pipe(
+              Effect.catchIf(
+                isWorkerError,
+                (error) => backing.send(portId, [id, 3, WorkerError.encodeCause(Cause.fail(error))])
+              ),
+              Effect.catchAllCause((cause) =>
+                Either.match(Cause.failureOrCause(cause), {
+                  onLeft: (error) => {
+                    collector.unsafeClear()
+                    return pipe(
+                      options?.encodeError
+                        ? Effect.provideService(
+                          options.encodeError(input, error),
+                          Transferable.Collector,
+                          collector
+                        )
+                        : Effect.succeed(error),
+                      Effect.flatMap((payload) =>
+                        backing.send(portId, [id, 2, payload as any], collector.unsafeRead())
+                      ),
+                      Effect.catchAllCause((cause) => backing.send(portId, [id, 3, WorkerError.encodeCause(cause)]))
+                    )
+                  },
+                  onRight: (cause) => backing.send(portId, [id, 3, WorkerError.encodeCause(cause)])
+                })
+              )
+            )
+          )
+        }),
+        Effect.ensuring(Effect.sync(() => fiberMap.delete(id)))
+      )
+    })
   })
+
+/** @internal */
+export const make = <I, E, R, O>(
+  process: (request: I) => Stream.Stream<O, E, R> | Effect.Effect<O, E, R>,
+  options?: WorkerRunner.Runner.Options<I, O, E>
+): Effect.Effect<void, WorkerError, WorkerRunner.PlatformRunner | R | Scope.Scope> =>
+  Effect.withFiberRuntime<void, never, WorkerRunner.PlatformRunner | R | Scope.Scope>((fiber) =>
+    run(process, options).pipe(
+      Effect.tapErrorCause(Effect.logDebug),
+      Effect.retry(Schedule.spaced(1000)),
+      Effect.annotateLogs({
+        package: "@effect/platform-node",
+        module: "WorkerRunner"
+      }),
+      Effect.ensuring(Fiber.interruptAsFork(fiber, fiber.id())),
+      Effect.interruptible,
+      Effect.forkScoped,
+      Effect.asVoid
+    )
+  )
 
 /** @internal */
 export const layer = <I, E, R, O>(

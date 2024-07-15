@@ -6,7 +6,6 @@ import type * as Serializable from "@effect/schema/Serializable"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
-import type * as Queue from "effect/Queue"
 import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import * as internal from "./internal/workerRunner.js"
@@ -17,7 +16,9 @@ import type { WorkerError } from "./WorkerError.js"
  * @category models
  */
 export interface BackingRunner<I, O> {
-  readonly queue: Queue.Dequeue<readonly [portId: number, message: I]>
+  readonly run: <A, E, R>(
+    handler: (portId: number, message: I) => Effect.Effect<A, E, R>
+  ) => Effect.Effect<never, E | WorkerError, R>
   readonly send: (
     portId: number,
     message: O,
@@ -55,9 +56,7 @@ export type PlatformRunnerTypeId = typeof PlatformRunnerTypeId
  */
 export interface PlatformRunner {
   readonly [PlatformRunnerTypeId]: PlatformRunnerTypeId
-  readonly start: <I, O>(
-    shutdown: Effect.Effect<void>
-  ) => Effect.Effect<BackingRunner<I, O>, WorkerError, Scope.Scope>
+  readonly start: <I, O>() => Effect.Effect<BackingRunner<I, O>, WorkerError>
 }
 
 /**
@@ -87,7 +86,6 @@ export declare namespace Runner {
       request: I,
       error: E
     ) => Effect.Effect<unknown, WorkerError>
-    readonly transfers?: (message: O | E) => ReadonlyArray<unknown>
   }
 }
 
@@ -95,10 +93,19 @@ export declare namespace Runner {
  * @since 1.0.0
  * @category constructors
  */
+export const run: <I, E, R, O>(
+  process: (request: I) => Stream.Stream<O, E, R> | Effect.Effect<O, E, R>,
+  options?: Runner.Options<I, O, E>
+) => Effect.Effect<never, WorkerError, PlatformRunner | R> = internal.run
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
 export const make: <I, E, R, O>(
   process: (request: I) => Stream.Stream<O, E, R> | Effect.Effect<O, E, R>,
-  options?: Runner.Options<I, O, E> | undefined
-) => Effect.Effect<void, WorkerError, Scope.Scope | R | PlatformRunner> = internal.make
+  options?: Runner.Options<I, O, E>
+) => Effect.Effect<void, WorkerError, PlatformRunner | R | Scope.Scope> = internal.make
 
 /**
  * @since 1.0.0
