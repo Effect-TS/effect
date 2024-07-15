@@ -7,6 +7,7 @@ import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as FiberRef from "effect/FiberRef"
 import * as FiberSet from "effect/FiberSet"
 import { identity, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -154,39 +155,44 @@ export const makeManager = Effect.gen(function*() {
         const executeAcquire = <
           Q extends Queue.Queue<Exit.Exit<ReadonlyArray<O>, E | WorkerError>> | Deferred.Deferred<O, E | WorkerError>
         >(request: I, makeQueue: Effect.Effect<Q>) =>
-          Effect.sync(() => requestIdCounter++).pipe(
-            Effect.bindTo("id"),
-            Effect.bind("queue", () => makeQueue),
-            Effect.bind("span", () =>
-              Effect.map(
-                Effect.serviceOption(Tracer.ParentSpan),
-                Option.filter((span): span is Tracer.Span => span._tag === "Span")
-              )),
-            Effect.tap(({ id, queue, span }) => {
-              requestMap.set(id, queue)
-              return wrappedEncode(request).pipe(
-                Effect.tap((payload) =>
-                  backing.send([
-                    id,
-                    0,
-                    payload,
-                    span._tag === "Some" ? [span.value.traceId, span.value.spanId, span.value.sampled] : undefined
-                  ], collector.unsafeRead())
-                ),
-                Effect.catchAllCause((cause) =>
-                  Deferred.DeferredTypeId in queue ?
-                    Deferred.failCause(queue, cause) :
-                    Queue.offer(queue, Exit.failCause(cause))
+          Effect.withFiberRuntime<{
+            readonly id: number
+            readonly queue: Q
+            readonly span: Option.Option<Tracer.Span>
+          }>((fiber) => {
+            const context = fiber.getFiberRef(FiberRef.currentContext)
+            const span = Context.getOption(context, Tracer.ParentSpan).pipe(
+              Option.filter((span): span is Tracer.Span => span._tag === "Span")
+            )
+            const id = requestIdCounter++
+            return makeQueue.pipe(
+              Effect.tap((queue) => {
+                requestMap.set(id, queue)
+                return wrappedEncode(request).pipe(
+                  Effect.tap((payload) =>
+                    backing.send([
+                      id,
+                      0,
+                      payload,
+                      span._tag === "Some" ? [span.value.traceId, span.value.spanId, span.value.sampled] : undefined
+                    ], collector.unsafeRead())
+                  ),
+                  Effect.catchAllCause((cause) =>
+                    Deferred.DeferredTypeId in queue ?
+                      Deferred.failCause(queue, cause) :
+                      Queue.offer(queue, Exit.failCause(cause))
+                  )
                 )
-              )
-            })
-          )
-        type Acquired = Effect.Effect.Success<ReturnType<typeof executeAcquire>>
+              }),
+              Effect.map((queue) => ({
+                id,
+                queue,
+                span
+              }))
+            )
+          })
 
-        const executeRelease = (
-          { id }: Acquired,
-          exit: Exit.Exit<unknown, unknown>
-        ) => {
+        const executeRelease = ({ id }: { readonly id: number }, exit: Exit.Exit<unknown, unknown>) => {
           const release = Effect.sync(() => requestMap.delete(id))
           return Exit.isFailure(exit) ?
             Effect.zipRight(Effect.orDie(backing.send([id, 1])), release) :
