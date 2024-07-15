@@ -50,7 +50,8 @@ export const makeRequest = <A extends Schema.TaggedRequest.All>(
       success: isStream
         ? Schema.Never
         : Serializable.successSchema(options.request as any),
-      failure: isStream ? Schema.Never : Serializable.failureSchema(options.request as any)
+      failure: isStream ? Schema.Never : Serializable.failureSchema(options.request as any),
+      defect: Schema.Defect
     },
     [Equal.symbol](that: Rpc.Request<A>) {
       return Equal.equals(options.request, that.request)

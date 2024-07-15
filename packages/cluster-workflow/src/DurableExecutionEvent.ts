@@ -150,7 +150,11 @@ export function schema<A, IA, E, IE>(success: Schema.Schema<A, IA>, failure: Sch
     Schema.Struct({
       _tag: Schema.Literal(COMPLETED),
       sequence: Schema.Number,
-      exit: Schema.Exit<Schema.Schema<A, IA, never>, Schema.Schema<E, IE, never>, never>({ failure, success })
+      exit: Schema.Exit<Schema.Schema<A, IA, never>, Schema.Schema<E, IE, never>, never>({
+        failure,
+        success,
+        defect: Schema.Defect
+      })
     }),
     Schema.Struct({
       _tag: Schema.Literal(FORKED),
