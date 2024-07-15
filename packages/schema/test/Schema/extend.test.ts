@@ -24,7 +24,7 @@ describe("extend", () => {
       expect(schema.ast).toStrictEqual(literal.ast)
     })
 
-    it("(String + annotations) and String", () => {
+    it("(String and annotations) and String", () => {
       const A = Schema.String.annotations({ identifier: "A" })
       const schema = Schema.extend(A, Schema.String)
       expect(schema.ast === A.ast).toBe(true)
@@ -70,7 +70,7 @@ describe("extend", () => {
       expect(schema.ast).toStrictEqual(literal.ast)
     })
 
-    it("(Number + annotations) and Number", () => {
+    it("(Number and annotations) and Number", () => {
       const A = Schema.Number.annotations({ identifier: "A" })
       const schema = Schema.extend(A, Schema.Number)
       expect(schema.ast === A.ast).toBe(true)
@@ -186,11 +186,76 @@ describe("extend", () => {
       expect(String(schema)).toBe(`{ readonly a: number; readonly [x: symbol]: NumberFromChar }`)
     })
 
-    it(`nested extend nested struct`, async () => {
+    it("nested extend nested struct", async () => {
       const A = Schema.Struct({ a: Schema.Struct({ b: Schema.String }) })
       const B = Schema.Struct({ a: Schema.Struct({ c: Schema.Number }) })
       const schema = Schema.extend(A, B)
       expect(String(schema)).toBe(`{ readonly a: { readonly b: string; readonly c: number } }`)
+    })
+
+    it("nested with refinements extend nested struct with refinements", async () => {
+      const A = Schema.Struct({
+        nested: Schema.Struct({
+          same: Schema.String.pipe(Schema.startsWith("start:")),
+          different1: Schema.String
+        })
+      })
+      const B = Schema.Struct({
+        nested: Schema.Struct({
+          same: Schema.String.pipe(Schema.endsWith(":end")),
+          different2: Schema.String
+        })
+      })
+      const schema = Schema.extend(A, B)
+      expect(String(schema)).toBe(
+        `{ readonly nested: { readonly different1: string; readonly different2: string; readonly same: a string ending with ":end" } }`
+      )
+      await Util.expectDecodeUnknownSuccess(
+        schema,
+        {
+          nested: {
+            same: "start:5:end",
+            different1: "",
+            different2: ""
+          }
+        }
+      )
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        {
+          nested: {
+            same: "",
+            different1: "",
+            different2: ""
+          }
+        },
+        `{ readonly nested: { readonly different1: string; readonly different2: string; readonly same: a string ending with ":end" } }
+└─ ["nested"]
+   └─ { readonly different1: string; readonly different2: string; readonly same: a string ending with ":end" }
+      └─ ["same"]
+         └─ a string ending with ":end"
+            └─ From side refinement failure
+               └─ a string starting with "start:"
+                  └─ Predicate refinement failure
+                     └─ Expected a string starting with "start:", actual ""`
+      )
+      await Util.expectDecodeUnknownFailure(
+        schema,
+        {
+          nested: {
+            same: "start:5",
+            different1: "",
+            different2: ""
+          }
+        },
+        `{ readonly nested: { readonly different1: string; readonly different2: string; readonly same: a string ending with ":end" } }
+└─ ["nested"]
+   └─ { readonly different1: string; readonly different2: string; readonly same: a string ending with ":end" }
+      └─ ["same"]
+         └─ a string ending with ":end"
+            └─ Predicate refinement failure
+               └─ Expected a string ending with ":end", actual "start:5"`
+      )
     })
   })
 
