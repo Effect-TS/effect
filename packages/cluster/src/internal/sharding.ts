@@ -489,40 +489,6 @@ function make(
   function messenger<Msg extends Envelope.Envelope.AnyMessage>(
     entity: Entity.Standard<Msg>
   ): Messenger<Msg> {
-    function sendDiscard(entityId: string) {
-      return (message: Msg) =>
-        pipe(
-          sendMessage(entityId, message),
-          Effect.asVoid
-        )
-    }
-
-    function send(entityId: string) {
-      return <A extends Msg & Envelope.Envelope.AnyMessage>(message: A) => {
-        return pipe(
-          sendMessage(entityId, message),
-          Effect.flatMap((state) =>
-            MessageState.mapEffect(state, (body) => serialization.decode(Serializable.exitSchema(message), body))
-          ),
-          Effect.flatMap((state) =>
-            Unify.unify(pipe(
-              state,
-              MessageState.match({
-                onAcknowledged: () => Effect.fail(new ShardingException.NoResultInProcessedMessageStateException()),
-                onProcessed: (state) => Effect.succeed(state.result)
-              })
-            ))
-          ),
-          Effect.retry(pipe(
-            Schedule.fixed(100),
-            Schedule.whileInput((error: unknown) => ShardingException.isNoResultInProcessedMessageStateException(error))
-          )),
-          Effect.flatten,
-          Effect.interruptible
-        )
-      }
-    }
-
     function sendMessage<A extends Msg>(
       entityId: string,
       message: A
@@ -563,7 +529,35 @@ function make(
         ))
     }
 
-    return { sendDiscard, send }
+    function ask(entityId: string, message: Msg) {
+      return pipe(
+        sendMessage(entityId, message),
+        Effect.flatMap((state) =>
+          MessageState.mapEffect(state, (body) => serialization.decode(Serializable.exitSchema(message), body))
+        ),
+        Effect.flatMap((state) =>
+          Unify.unify(pipe(
+            state,
+            MessageState.match({
+              onAcknowledged: () => Effect.fail(new ShardingException.NoResultInProcessedMessageStateException()),
+              onProcessed: (state) => Effect.succeed(state.result)
+            })
+          ))
+        ),
+        Effect.retry(pipe(
+          Schedule.fixed(100),
+          Schedule.whileInput((error: unknown) => ShardingException.isNoResultInProcessedMessageStateException(error))
+        )),
+        Effect.flatten,
+        Effect.interruptible
+      )
+    }
+
+    function fireAndForget(entityId: string, message: Msg) {
+      return Effect.asVoid(sendMessage(entityId, message))
+    }
+
+    return { ask, fireAndForget }
   }
 
   function broadcaster<Msg extends Envelope.Envelope.AnyMessage>(
@@ -614,57 +608,51 @@ function make(
         ))
     }
 
-    function broadcastDiscard(topicId: string) {
-      return (message: Msg) =>
-        pipe(
-          sendMessage(topicId, message),
-          Effect.asVoid
-        )
+    function broadcast(topicId: string, message: Msg) {
+      return pipe(
+        sendMessage(topicId, message),
+        Effect.flatMap((results) =>
+          pipe(
+            Effect.forEach(results, ([pod, eitherResult]) =>
+              pipe(
+                eitherResult,
+                Effect.flatMap((state) =>
+                  MessageState.mapEffect(
+                    state,
+                    (body) => serialization.decode(Serializable.exitSchema(message), body)
+                  )
+                ),
+                Effect.flatMap((state) =>
+                  Unify.unify(pipe(
+                    state,
+                    MessageState.match({
+                      onAcknowledged: () =>
+                        Effect.fail(new ShardingException.NoResultInProcessedMessageStateException()),
+                      onProcessed: (state) => Effect.succeed(state.result)
+                    })
+                  ))
+                ),
+                Effect.retry(pipe(
+                  Schedule.fixed(100),
+                  Schedule.whileInput((error: unknown) =>
+                    ShardingException.isNoResultInProcessedMessageStateException(error)
+                  )
+                )),
+                Effect.flatMap((_) => _),
+                Effect.either,
+                Effect.map((res) => [pod, res] as const)
+              ))
+          )
+        ),
+        Effect.map((_) => HashMap.fromIterable(_))
+      )
     }
 
-    function broadcast(topicId: string) {
-      return <A extends Msg & Envelope.Envelope.AnyMessage>(message: A) => {
-        return pipe(
-          sendMessage(topicId, message),
-          Effect.flatMap((results) =>
-            pipe(
-              Effect.forEach(results, ([pod, eitherResult]) =>
-                pipe(
-                  eitherResult,
-                  Effect.flatMap((state) =>
-                    MessageState.mapEffect(
-                      state,
-                      (body) => serialization.decode(Serializable.exitSchema(message), body)
-                    )
-                  ),
-                  Effect.flatMap((state) =>
-                    Unify.unify(pipe(
-                      state,
-                      MessageState.match({
-                        onAcknowledged: () =>
-                          Effect.fail(new ShardingException.NoResultInProcessedMessageStateException()),
-                        onProcessed: (state) => Effect.succeed(state.result)
-                      })
-                    ))
-                  ),
-                  Effect.retry(pipe(
-                    Schedule.fixed(100),
-                    Schedule.whileInput((error: unknown) =>
-                      ShardingException.isNoResultInProcessedMessageStateException(error)
-                    )
-                  )),
-                  Effect.flatMap((_) => _),
-                  Effect.either,
-                  Effect.map((res) => [pod, res] as const)
-                ))
-            )
-          ),
-          Effect.map((_) => HashMap.fromIterable(_))
-        )
-      }
+    function broadcastAndForget(topicId: string, message: Msg) {
+      return Effect.asVoid(sendMessage(topicId, message))
     }
 
-    return { broadcast, broadcastDiscard }
+    return { broadcast, broadcastAndForget }
   }
 
   function registerEntity<Msg extends Envelope.Envelope.AnyMessage>(
