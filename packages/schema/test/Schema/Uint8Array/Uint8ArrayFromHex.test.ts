@@ -2,8 +2,8 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
 import { describe, it } from "vitest"
 
-describe("Hex", () => {
-  const schema = S.Hex
+describe("Uint8ArrayFromHex", () => {
+  const schema = S.Uint8ArrayFromHex
   const encoder = new TextEncoder()
 
   it("property tests", () => {

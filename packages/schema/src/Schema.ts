@@ -5580,7 +5580,7 @@ const Uint8Array$: Schema<Uint8Array, ReadonlyArray<number>> = transform(
 
 export {
   /**
-   * A schema that transforms a `number` array into a `Uint8Array`.
+   * A schema that transforms an array of numbers into a `Uint8Array`.
    *
    * @category Uint8Array transformations
    * @since 0.67.0
@@ -5588,7 +5588,7 @@ export {
   Uint8Array$ as Uint8Array
 }
 
-const makeEncodingTransformation = (
+const makeUint8ArrayTransformation = (
   id: string,
   decode: (s: string) => either_.Either<Uint8Array, Encoding.DecodeException>,
   encode: (u: Uint8Array) => string
@@ -5608,30 +5608,30 @@ const makeEncodingTransformation = (
   ).annotations({ identifier: id })
 
 /**
- * @category Encoding transformations
+ * @category Uint8Array transformations
  * @since 0.67.0
  */
-export const Base64: Schema<Uint8Array, string> = makeEncodingTransformation(
+export const Uint8ArrayFromBase64: Schema<Uint8Array, string> = makeUint8ArrayTransformation(
   "Base64",
   Encoding.decodeBase64,
   Encoding.encodeBase64
 )
 
 /**
- * @category Encoding transformations
+ * @category Uint8Array transformations
  * @since 0.67.0
  */
-export const Base64Url: Schema<Uint8Array, string> = makeEncodingTransformation(
+export const Uint8ArrayFromBase64Url: Schema<Uint8Array, string> = makeUint8ArrayTransformation(
   "Base64Url",
   Encoding.decodeBase64Url,
   Encoding.encodeBase64Url
 )
 
 /**
- * @category Encoding transformations
+ * @category Uint8Array transformations
  * @since 0.67.0
  */
-export const Hex: Schema<Uint8Array, string> = makeEncodingTransformation(
+export const Uint8ArrayFromHex: Schema<Uint8Array, string> = makeUint8ArrayTransformation(
   "Hex",
   Encoding.decodeHex,
   Encoding.encodeHex

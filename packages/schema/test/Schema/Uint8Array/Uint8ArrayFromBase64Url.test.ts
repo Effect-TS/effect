@@ -2,8 +2,8 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
 import { describe, it } from "vitest"
 
-describe("Base64Url", () => {
-  const schema = S.Base64Url
+describe("Uint8ArrayFromBase64Url", () => {
+  const schema = S.Uint8ArrayFromBase64Url
   const encoder = new TextEncoder()
 
   it("property tests", () => {

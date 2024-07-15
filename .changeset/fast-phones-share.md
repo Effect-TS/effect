@@ -56,6 +56,9 @@ TODO: change to minor before merging
   ```
 
 - add support for refinements to `extend`
+- rename `Base64` to `Uint8ArrayFromBase64`
+- rename `Base64Url` to `Uint8ArrayFromBase64Url`
+- rename `Hex` to `Uint8ArrayFromHex`
 
 ### Serializable
 
