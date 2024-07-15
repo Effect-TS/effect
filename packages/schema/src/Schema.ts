@@ -8216,6 +8216,7 @@ export const Defect: Schema<unknown> = transform(
         return {
           name: defect.name,
           message: defect.message
+          // no stack because of security reasons
         }
       }
       return String(defect)
