@@ -1,6 +1,5 @@
 import * as Schema from "@effect/schema/Schema"
 import * as Serializable from "@effect/schema/Serializable"
-import * as Arr from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
@@ -62,7 +61,7 @@ export const makeManager = Effect.gen(function*() {
         let requestIdCounter = 0
         const requestMap = new Map<
           number,
-          Queue.Queue<Exit.Exit<ReadonlyArray<O>, E | WorkerError>>
+          Queue.Queue<Exit.Exit<ReadonlyArray<O>, E | WorkerError>> | Deferred.Deferred<O, E | WorkerError>
         >()
 
         const collector = Transferable.unsafeMakeCollector()
@@ -84,7 +83,10 @@ export const makeManager = Effect.gen(function*() {
           return handleMessage(message[1])
         }).pipe(
           Effect.onError((cause) =>
-            Effect.forEach(requestMap.values(), (queue) => Queue.offer(queue, Exit.failCause(cause)))
+            Effect.forEach(requestMap.values(), (queue) =>
+              Deferred.DeferredTypeId in queue
+                ? Deferred.failCause(queue, cause)
+                : Queue.offer(queue, Exit.failCause(cause)))
           ),
           Effect.retry(Schedule.spaced(1000)),
           Effect.annotateLogs({
@@ -97,7 +99,10 @@ export const makeManager = Effect.gen(function*() {
 
         yield* Effect.addFinalizer(() =>
           Effect.zipRight(
-            Effect.forEach(requestMap.values(), (queue) => Queue.offer(queue, Exit.failCause(Cause.empty)), {
+            Effect.forEach(requestMap.values(), (queue) =>
+              Deferred.DeferredTypeId in queue
+                ? Deferred.interrupt(queue)
+                : Queue.offer(queue, Exit.failCause(Cause.empty)), {
               discard: true
             }),
             Effect.sync(() => requestMap.clear())
@@ -112,13 +117,20 @@ export const makeManager = Effect.gen(function*() {
             switch (response[1]) {
               // data
               case 0: {
-                return Queue.offer(queue, Exit.succeed(response[2]))
+                return Deferred.DeferredTypeId in queue
+                  ? Deferred.succeed(queue, response[2][0])
+                  : Queue.offer(queue, Exit.succeed(response[2]))
               }
               // end
               case 1: {
-                return response.length === 2 ?
-                  Queue.offer(queue, Exit.failCause(Cause.empty)) :
-                  Effect.zipRight(
+                if (response.length === 2) {
+                  return Deferred.DeferredTypeId in queue
+                    ? Deferred.interrupt(queue)
+                    : Queue.offer(queue, Exit.failCause(Cause.empty))
+                }
+                return Deferred.DeferredTypeId in queue
+                  ? Deferred.succeed(queue, response[2][0])
+                  : Effect.zipRight(
                     Queue.offer(queue, Exit.succeed(response[2])),
                     Queue.offer(queue, Exit.failCause(Cause.empty))
                   )
@@ -126,20 +138,25 @@ export const makeManager = Effect.gen(function*() {
               // error / defect
               case 2:
               case 3: {
-                return Queue.offer(
-                  queue,
-                  response[1] === 2
-                    ? Exit.fail(response[2])
-                    : Exit.failCause(WorkerError.decodeCause(response[2]))
-                )
+                if (response[1] === 2) {
+                  return Deferred.DeferredTypeId in queue
+                    ? Deferred.fail(queue, response[2])
+                    : Queue.offer(queue, Exit.fail(response[2]))
+                }
+                const cause = WorkerError.decodeCause(response[2])
+                return Deferred.DeferredTypeId in queue
+                  ? Deferred.failCause(queue, cause)
+                  : Queue.offer(queue, Exit.failCause(cause))
               }
             }
           })
 
-        const executeAcquire = (request: I) =>
+        const executeAcquire = <
+          Q extends Queue.Queue<Exit.Exit<ReadonlyArray<O>, E | WorkerError>> | Deferred.Deferred<O, E | WorkerError>
+        >(request: I, makeQueue: Effect.Effect<Q>) =>
           Effect.sync(() => requestIdCounter++).pipe(
             Effect.bindTo("id"),
-            Effect.bind("queue", () => Queue.unbounded<Exit.Exit<ReadonlyArray<O>, E | WorkerError>>()),
+            Effect.bind("queue", () => makeQueue),
             Effect.bind("span", () =>
               Effect.map(
                 Effect.serviceOption(Tracer.ParentSpan),
@@ -156,7 +173,11 @@ export const makeManager = Effect.gen(function*() {
                     span._tag === "Some" ? [span.value.traceId, span.value.spanId, span.value.sampled] : undefined
                   ], collector.unsafeRead())
                 ),
-                Effect.catchAllCause((cause) => Queue.offer(queue, Exit.failCause(cause)))
+                Effect.catchAllCause((cause) =>
+                  Deferred.DeferredTypeId in queue ?
+                    Deferred.failCause(queue, cause) :
+                    Queue.offer(queue, Exit.failCause(cause))
+                )
               )
             })
           )
@@ -175,7 +196,7 @@ export const makeManager = Effect.gen(function*() {
         const execute = (request: I) =>
           Stream.flatMap(
             Stream.acquireRelease(
-              executeAcquire(request),
+              executeAcquire(request, Queue.unbounded<Exit.Exit<ReadonlyArray<O>, E | WorkerError>>()),
               executeRelease
             ),
             ({ queue }) => {
@@ -193,8 +214,8 @@ export const makeManager = Effect.gen(function*() {
 
         const executeEffect = (request: I) =>
           Effect.acquireUseRelease(
-            executeAcquire(request),
-            ({ queue }) => Effect.flatMap(Queue.take(queue), Exit.map(Arr.unsafeGet(0))),
+            executeAcquire(request, Deferred.make<O, WorkerError | E>()),
+            ({ queue }) => Deferred.await(queue),
             executeRelease
           )
 
