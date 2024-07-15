@@ -8,30 +8,19 @@ import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
+import * as FiberSet from "effect/FiberSet"
 import { identity, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Pool from "effect/Pool"
 import * as Queue from "effect/Queue"
 import * as Schedule from "effect/Schedule"
-import type * as Scope from "effect/Scope"
+import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
 import * as Transferable from "../Transferable.js"
 import type * as Worker from "../Worker.js"
 import { WorkerError } from "../WorkerError.js"
-
-/** @internal */
-export const defaultQueue = <I>() =>
-  Effect.map(
-    Queue.unbounded<readonly [id: number, item: I, span: Option.Option<Tracer.Span>]>(),
-    (queue): Worker.WorkerQueue<I> => ({
-      offer: (id, item, span) => Queue.offer(queue, [id, item, span]),
-      take: Queue.take(queue),
-      shutdown: Queue.shutdown(queue)
-    })
-  )
 
 /** @internal */
 export const PlatformWorkerTypeId: Worker.PlatformWorkerTypeId = Symbol.for(
@@ -66,22 +55,15 @@ export const makeManager = Effect.gen(function*() {
     [WorkerManagerTypeId]: WorkerManagerTypeId,
     spawn<I, O, E>({
       encode,
-      initialMessage,
-      queue,
-      transfers = (_) => []
+      initialMessage
     }: Worker.Worker.Options<I>) {
       return Effect.gen(function*(_) {
-        const spawn = yield* _(Spawner)
         const id = idCounter++
         let requestIdCounter = 0
         const requestMap = new Map<
           number,
-          readonly [Queue.Queue<Exit.Exit<ReadonlyArray<O>, E | WorkerError>>, Deferred.Deferred<void>]
+          Queue.Queue<Exit.Exit<ReadonlyArray<O>, E | WorkerError>>
         >()
-        const sendQueue = yield* Effect.acquireRelease(
-          Queue.unbounded<readonly [message: Worker.Worker.Request, transfers?: ReadonlyArray<unknown>]>(),
-          Queue.shutdown
-        )
 
         const collector = Transferable.unsafeMakeCollector()
         const wrappedEncode = encode ?
@@ -92,36 +74,17 @@ export const makeManager = Effect.gen(function*() {
             )) :
           Effect.succeed
 
-        const outbound = queue ?? (yield* defaultQueue<I>())
-        yield* Effect.addFinalizer(() => outbound.shutdown)
+        const readyLatch = yield* Deferred.make<void>()
+        const backing = yield* platform.spawn<Worker.Worker.Request, Worker.Worker.Response<E, O>>(id)
 
-        yield* Effect.gen(function*() {
-          const readyLatch = yield* Deferred.make<void>()
-          const backing = yield* platform.spawn<Worker.Worker.Request, Worker.Worker.Response<E, O>>(spawn(id))
-          const send = pipe(
-            sendQueue.take,
-            Effect.flatMap(([message, transfers]) => backing.send(message, transfers)),
-            Effect.forever
-          )
-          const take = pipe(
-            Queue.take(backing.queue),
-            Effect.flatMap((msg) => {
-              if (msg[0] === 0) {
-                return Deferred.complete(readyLatch, Effect.void)
-              }
-              return handleMessage(msg[1])
-            }),
-            Effect.forever
-          )
-          return yield* Effect.all([
-            Fiber.join(backing.fiber),
-            Effect.zipRight(Deferred.await(readyLatch), send),
-            take
-          ], { concurrency: "unbounded" })
+        yield* backing.run((message) => {
+          if (message[0] === 0) {
+            return Deferred.complete(readyLatch, Effect.void)
+          }
+          return handleMessage(message[1])
         }).pipe(
-          Effect.scoped,
           Effect.onError((cause) =>
-            Effect.forEach(requestMap.values(), ([queue]) => Queue.offer(queue, Exit.failCause(cause)))
+            Effect.forEach(requestMap.values(), (queue) => Queue.offer(queue, Exit.failCause(cause)))
           ),
           Effect.retry(Schedule.spaced(1000)),
           Effect.annotateLogs({
@@ -134,7 +97,7 @@ export const makeManager = Effect.gen(function*() {
 
         yield* Effect.addFinalizer(() =>
           Effect.zipRight(
-            Effect.forEach(requestMap.values(), ([queue]) => Queue.offer(queue, Exit.failCause(Cause.empty)), {
+            Effect.forEach(requestMap.values(), (queue) => Queue.offer(queue, Exit.failCause(Cause.empty)), {
               discard: true
             }),
             Effect.sync(() => requestMap.clear())
@@ -149,22 +112,22 @@ export const makeManager = Effect.gen(function*() {
             switch (response[1]) {
               // data
               case 0: {
-                return Queue.offer(queue[0], Exit.succeed(response[2]))
+                return Queue.offer(queue, Exit.succeed(response[2]))
               }
               // end
               case 1: {
                 return response.length === 2 ?
-                  Queue.offer(queue[0], Exit.failCause(Cause.empty)) :
+                  Queue.offer(queue, Exit.failCause(Cause.empty)) :
                   Effect.zipRight(
-                    Queue.offer(queue[0], Exit.succeed(response[2])),
-                    Queue.offer(queue[0], Exit.failCause(Cause.empty))
+                    Queue.offer(queue, Exit.succeed(response[2])),
+                    Queue.offer(queue, Exit.failCause(Cause.empty))
                   )
               }
               // error / defect
               case 2:
               case 3: {
                 return Queue.offer(
-                  queue[0],
+                  queue,
                   response[1] === 2
                     ? Exit.fail(response[2])
                     : Exit.failCause(WorkerError.decodeCause(response[2]))
@@ -174,38 +137,38 @@ export const makeManager = Effect.gen(function*() {
           })
 
         const executeAcquire = (request: I) =>
-          Effect.tap(
-            Effect.all([
-              Effect.sync(() => requestIdCounter++),
-              Queue.unbounded<Exit.Exit<ReadonlyArray<O>, E | WorkerError>>(),
-              Deferred.make<void>(),
+          Effect.sync(() => requestIdCounter++).pipe(
+            Effect.bindTo("id"),
+            Effect.bind("queue", () => Queue.unbounded<Exit.Exit<ReadonlyArray<O>, E | WorkerError>>()),
+            Effect.bind("span", () =>
               Effect.map(
                 Effect.serviceOption(Tracer.ParentSpan),
                 Option.filter((span): span is Tracer.Span => span._tag === "Span")
+              )),
+            Effect.tap(({ id, queue, span }) => {
+              requestMap.set(id, queue)
+              return wrappedEncode(request).pipe(
+                Effect.tap((payload) =>
+                  backing.send([
+                    id,
+                    0,
+                    payload,
+                    span._tag === "Some" ? [span.value.traceId, span.value.spanId, span.value.sampled] : undefined
+                  ], collector.unsafeRead())
+                ),
+                Effect.catchAllCause((cause) => Queue.offer(queue, Exit.failCause(cause)))
               )
-            ]),
-            ([id, queue, deferred, span]) =>
-              Effect.suspend(() => {
-                requestMap.set(id, [queue, deferred])
-                return outbound.offer(id, request, span)
-              })
+            })
           )
+        type Acquired = Effect.Effect.Success<ReturnType<typeof executeAcquire>>
 
         const executeRelease = (
-          [id, , deferred]: [
-            number,
-            Queue.Queue<Exit.Exit<ReadonlyArray<O>, E | WorkerError>>,
-            Deferred.Deferred<void>,
-            Option.Option<Tracer.Span>
-          ],
+          { id }: Acquired,
           exit: Exit.Exit<unknown, unknown>
         ) => {
-          const release = Effect.zipRight(
-            Deferred.complete(deferred, Effect.void),
-            Effect.sync(() => requestMap.delete(id))
-          )
+          const release = Effect.sync(() => requestMap.delete(id))
           return Exit.isFailure(exit) ?
-            Effect.zipRight(sendQueue.offer([[id, 1]]), release) :
+            Effect.zipRight(Effect.orDie(backing.send([id, 1])), release) :
             release
         }
 
@@ -215,7 +178,7 @@ export const makeManager = Effect.gen(function*() {
               executeAcquire(request),
               executeRelease
             ),
-            ([, queue]) => {
+            ({ queue }) => {
               const loop: Channel.Channel<Chunk.Chunk<O>, unknown, E | WorkerError, unknown, void, unknown> = Channel
                 .flatMap(
                   Queue.take(queue),
@@ -231,39 +194,9 @@ export const makeManager = Effect.gen(function*() {
         const executeEffect = (request: I) =>
           Effect.acquireUseRelease(
             executeAcquire(request),
-            ([, queue]) => Effect.flatMap(Queue.take(queue), Exit.map(Arr.unsafeGet(0))),
+            ({ queue }) => Effect.flatMap(Queue.take(queue), Exit.map(Arr.unsafeGet(0))),
             executeRelease
           )
-
-        yield* outbound.take.pipe(
-          Effect.flatMap(([id, request, span]) =>
-            Effect.fork(
-              Effect.suspend(() => {
-                const result = requestMap.get(id)
-                if (!result) return Effect.void
-                const transferables = transfers(request)
-                const spanTuple = Option.getOrUndefined(
-                  Option.map(span, (span) => [span.traceId, span.spanId, span.sampled] as const)
-                )
-                return pipe(
-                  Effect.flatMap(
-                    wrappedEncode(request),
-                    (payload) =>
-                      sendQueue.offer([[id, 0, payload, spanTuple], [
-                        ...transferables,
-                        ...collector.unsafeRead()
-                      ]])
-                  ),
-                  Effect.catchAllCause((cause) => Queue.offer(result[0], Exit.failCause(cause))),
-                  Effect.zipRight(Deferred.await(result[1]))
-                )
-              })
-            )
-          ),
-          Effect.forever,
-          Effect.forkScoped,
-          Effect.interruptible
-        )
 
         if (initialMessage) {
           yield* Effect.sync(initialMessage).pipe(
@@ -273,7 +206,7 @@ export const makeManager = Effect.gen(function*() {
         }
 
         return { id, execute, executeEffect }
-      }).pipe(Effect.parallelFinalizers)
+      })
     }
   })
 })
@@ -290,8 +223,12 @@ export const makePool = <I, O, E>(
     const workers = new Set<Worker.Worker<I, O, E>>()
     const acquire = pipe(
       manager.spawn<I, O, E>(options),
-      Effect.tap((worker) => Effect.sync(() => workers.add(worker))),
-      Effect.tap((worker) => Effect.addFinalizer(() => Effect.sync(() => workers.delete(worker)))),
+      Effect.tap((worker) =>
+        Effect.acquireRelease(
+          Effect.sync(() => workers.add(worker)),
+          () => Effect.sync(() => workers.delete(worker))
+        )
+      ),
       options.onCreate ? Effect.tap(options.onCreate) : identity
     )
     const backing = "minSize" in options ?
@@ -445,3 +382,91 @@ export const layerSpawner = <W = unknown>(spawner: Worker.SpawnerFn<W>) =>
     Spawner,
     spawner
   )
+
+/** @internal */
+export const makePlatform = <W>() =>
+<
+  P extends {
+    readonly postMessage: (message: any, transfers?: any | undefined) => void
+  }
+>(options: {
+  readonly setup: (options: {
+    readonly worker: W
+    readonly scope: Scope.Scope
+  }) => Effect.Effect<P>
+  readonly listen: (options: {
+    readonly port: P
+    readonly emit: (data: any) => void
+    readonly deferred: Deferred.Deferred<never, WorkerError>
+    readonly scope: Scope.Scope
+  }) => Effect.Effect<void>
+}) =>
+  PlatformWorker.of({
+    [PlatformWorkerTypeId]: PlatformWorkerTypeId,
+    spawn<I, O>(id: number) {
+      return Effect.gen(function*(_) {
+        const spawn = (yield* Spawner) as Worker.SpawnerFn<W>
+        let currentPort: P | undefined
+        const buffer: Array<[I, ReadonlyArray<unknown> | undefined]> = []
+
+        const run = <A, E, R>(handler: (_: Worker.BackingWorker.Message<O>) => Effect.Effect<A, E, R>) =>
+          Effect.uninterruptibleMask((restore) =>
+            Scope.make().pipe(
+              Effect.bindTo("scope"),
+              Effect.bind("port", ({ scope }) => options.setup({ worker: spawn(id), scope })),
+              Effect.tap(({ port, scope }) => {
+                currentPort = port
+                return Scope.addFinalizer(
+                  scope,
+                  Effect.sync(() => {
+                    currentPort = undefined
+                  })
+                )
+              }),
+              Effect.bind("fiberSet", ({ scope }) =>
+                FiberSet.make<any, WorkerError | E>().pipe(
+                  Scope.extend(scope)
+                )),
+              Effect.bind("runFork", ({ fiberSet }) => FiberSet.runtime(fiberSet)<R>()),
+              Effect.tap(({ fiberSet, port, runFork, scope }) =>
+                options.listen({
+                  port,
+                  scope,
+                  emit(data) {
+                    runFork(handler(data))
+                  },
+                  deferred: fiberSet.deferred as any
+                })
+              ),
+              Effect.tap(({ port }) => {
+                if (buffer.length > 0) {
+                  for (const [message, transfers] of buffer) {
+                    port.postMessage([0, message], transfers as any)
+                  }
+                  buffer.length = 0
+                }
+              }),
+              Effect.flatMap(({ fiberSet, scope }) =>
+                (restore(FiberSet.join(fiberSet)) as Effect.Effect<never, WorkerError | E>).pipe(
+                  Effect.ensuring(Scope.close(scope, Exit.void))
+                )
+              )
+            )
+          )
+
+        const send = (message: I, transfers?: ReadonlyArray<unknown>) =>
+          Effect.try({
+            try: () => {
+              if (currentPort === undefined) {
+                buffer.push([message, transfers])
+              } else {
+                currentPort.postMessage([0, message], transfers as any)
+              }
+            },
+            catch: (error) => new WorkerError({ reason: "send", error })
+          })
+
+        return { run, send }
+      })
+    }
+  })

@@ -1,59 +1,75 @@
 import { WorkerError } from "@effect/platform/WorkerError"
 import * as Runner from "@effect/platform/WorkerRunner"
-import * as Cause from "effect/Cause"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import * as FiberId from "effect/FiberId"
+import * as FiberSet from "effect/FiberSet"
 import * as Layer from "effect/Layer"
-import * as Queue from "effect/Queue"
-import * as Schedule from "effect/Schedule"
+import * as Scope from "effect/Scope"
 
 declare const self: MessagePort
 
 const platformRunnerImpl = Runner.PlatformRunner.of({
   [Runner.PlatformRunnerTypeId]: Runner.PlatformRunnerTypeId,
-  start<I, O>(shutdown: Effect.Effect<void>) {
+  start<I, O>() {
     return Effect.gen(function*() {
       if (!("postMessage" in self)) {
-        return yield* Effect.die("not in a worker")
+        return yield* new WorkerError({ reason: "spawn", error: new Error("not in worker") })
       }
       const port = self
-      const queue = yield* Queue.unbounded<readonly [portId: number, message: I]>()
-      yield* Effect.async<never, WorkerError>((resume) => {
-        function onMessage(event: MessageEvent) {
-          const message = (event as MessageEvent).data as Runner.BackingRunner.Message<I>
-          if (message[0] === 0) {
-            queue.unsafeOffer([0, message[1]])
-          } else {
-            Effect.runFork(shutdown)
-          }
-        }
-        function onError(error: MessageEvent) {
-          resume(new WorkerError({ reason: "unknown", error: new Error("got messageerror", { cause: error.data }) }))
-        }
-        port.addEventListener("message", onMessage)
-        port.addEventListener("messageerror", onError)
-        return Effect.sync(() => {
-          port.removeEventListener("message", onMessage)
-          port.removeEventListener("messageerror", onError)
-        })
-      }).pipe(
-        Effect.tapErrorCause((cause) => Cause.isInterruptedOnly(cause) ? Effect.void : Effect.logDebug(cause)),
-        Effect.retry(Schedule.forever),
-        Effect.annotateLogs({
-          package: "@effect/platform-bun",
-          module: "WorkerRunner"
-        }),
-        Effect.interruptible,
-        Effect.forkScoped
-      )
+      const run = <A, E, R>(handler: (portId: number, message: I) => Effect.Effect<A, E, R>) =>
+        Effect.uninterruptibleMask((restore) =>
+          Scope.make().pipe(
+            Effect.bindTo("scope"),
+            Effect.bind("fiberSet", ({ scope }) => FiberSet.make<any, WorkerError | E>().pipe(Scope.extend(scope))),
+            Effect.bind("runFork", ({ fiberSet }) => FiberSet.runtime(fiberSet)<R>()),
+            Effect.tap(({ fiberSet, runFork, scope }) => {
+              function onMessage(event: MessageEvent) {
+                const message = (event as MessageEvent).data as Runner.BackingRunner.Message<I>
+                if (message[0] === 0) {
+                  runFork(restore(handler(0, message[1])))
+                } else {
+                  Deferred.unsafeDone(fiberSet.deferred, Exit.interrupt(FiberId.none))
+                }
+              }
+              function onMessageError(error: MessageEvent) {
+                Deferred.unsafeDone(
+                  fiberSet.deferred,
+                  new WorkerError({ reason: "decode", error: error.data })
+                )
+              }
+              function onError(error: MessageEvent) {
+                Deferred.unsafeDone(
+                  fiberSet.deferred,
+                  new WorkerError({ reason: "unknown", error: error.data })
+                )
+              }
+              port.addEventListener("message", onMessage)
+              port.addEventListener("messageerror", onMessageError)
+              port.postMessage([0])
+              return Scope.addFinalizer(
+                scope,
+                Effect.sync(() => {
+                  port.removeEventListener("message", onMessage)
+                  port.removeEventListener("messageerror", onError)
+                })
+              )
+            }),
+            Effect.flatMap(({ fiberSet, scope }) =>
+              restore(FiberSet.join(fiberSet) as Effect.Effect<never, E | WorkerError>).pipe(
+                Effect.ensuring(Scope.close(scope, Exit.void))
+              )
+            )
+          )
+        )
       const send = (_portId: number, message: O, transfer?: ReadonlyArray<unknown>) =>
         Effect.sync(() =>
           port.postMessage([1, message], {
             transfer: transfer as any
           })
         )
-      // ready
-      port.postMessage([0])
-      return { queue, send }
+      return { run, send }
     })
   }
 })
