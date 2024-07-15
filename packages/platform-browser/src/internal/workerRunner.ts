@@ -1,12 +1,14 @@
 import { WorkerError } from "@effect/platform/WorkerError"
 import * as Runner from "@effect/platform/WorkerRunner"
-import * as Cause from "effect/Cause"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
+import * as ExecStrategy from "effect/ExecutionStrategy"
+import * as Exit from "effect/Exit"
+import * as FiberId from "effect/FiberId"
 import * as FiberSet from "effect/FiberSet"
 import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
-import * as Queue from "effect/Queue"
-import * as Schedule from "effect/Schedule"
+import * as Scope from "effect/Scope"
 
 const cachedPorts = globalValue("@effect/platform-browser/Worker/cachedPorts", () => new Set<MessagePort>())
 function globalHandleConnect(event: MessageEvent) {
@@ -18,92 +20,110 @@ if (typeof self !== "undefined" && "onconnect" in self) {
 
 const platformRunnerImpl = Runner.PlatformRunner.of({
   [Runner.PlatformRunnerTypeId]: Runner.PlatformRunnerTypeId,
-  start<I, O>(shutdown: Effect.Effect<void>) {
-    return Effect.gen(function*() {
+  start<I, O>() {
+    return Effect.sync(() => {
       let currentPortId = 0
 
-      yield* Effect.addFinalizer(() => Effect.sync(() => self.close()))
-
-      const queue = yield* Queue.unbounded<readonly [portId: number, message: I]>()
-      const runFork = yield* FiberSet.makeRuntime<never>()
-      const ports = new Map<number, MessagePort>()
+      const ports = new Map<number, readonly [MessagePort, Scope.CloseableScope]>()
       const send = (portId: number, message: O, transfer?: ReadonlyArray<unknown>) =>
         Effect.sync(() => {
-          ports.get(portId)?.postMessage([1, message], {
+          ;(ports.get(portId)?.[0] ?? self).postMessage([1, message], {
             transfer: transfer as any
           })
         })
 
-      function handlePort(port: MessagePort, sharedWorker: boolean) {
-        const portId = currentPortId++
-        ports.set(portId, port)
-
-        Effect.async<never, WorkerError, never>((resume) => {
-          function onMessage(event: MessageEvent) {
-            const message = (event as MessageEvent).data as Runner.BackingRunner.Message<I>
-            if (message[0] === 0) {
-              queue.unsafeOffer([portId, message[1]])
-            } else if (sharedWorker && ports.size > 1) {
-              resume(Effect.interrupt)
-            } else {
-              Effect.runFork(shutdown)
-            }
-          }
-          function onMessageError(error: ErrorEvent) {
-            resume(new WorkerError({ reason: "decode", error: error.error ?? error.message }))
-          }
-          function onError(error: ErrorEvent) {
-            resume(new WorkerError({ reason: "unknown", error: error.error ?? error.message }))
-          }
-          port.addEventListener("message", onMessage as any)
-          port.addEventListener("messageerror", onMessageError as any)
-          port.addEventListener("error", onError as any)
-
-          // ready
-          if ("start" in port) {
-            port.start()
-          }
-          port.postMessage([0])
-
-          return Effect.sync(() => {
-            port.removeEventListener("message", onMessage as any)
-            port.removeEventListener("messageerror", onMessageError as any)
-            port.removeEventListener("error", onError as any)
-          })
-        }).pipe(
-          Effect.tapErrorCause((cause) => Cause.isInterruptedOnly(cause) ? Effect.void : Effect.logDebug(cause)),
-          Effect.retry(Schedule.forever),
-          Effect.annotateLogs({
-            package: "@effect/platform-browser",
-            module: "WorkerRunner"
-          }),
-          Effect.ensuring(Effect.sync(() => {
-            ports.delete(portId)
-          })),
-          Effect.interruptible,
-          runFork
+      const run = <A, E, R>(handler: (portId: number, message: I) => Effect.Effect<A, E, R>) =>
+        Effect.uninterruptibleMask((restore) =>
+          Scope.make().pipe(
+            Effect.bindTo("scope"),
+            Effect.bind("fiberSet", ({ scope }) => FiberSet.make<any, WorkerError | E>().pipe(Scope.extend(scope))),
+            Effect.bind("runFork", ({ fiberSet }) => FiberSet.runtime(fiberSet)<R>()),
+            Effect.tap(({ fiberSet, runFork, scope }) => {
+              function onMessage(portId: number) {
+                return function(event: MessageEvent) {
+                  const message = (event as MessageEvent).data as Runner.BackingRunner.Message<I>
+                  if (message[0] === 0) {
+                    runFork(restore(handler(portId, message[1])))
+                  } else {
+                    const port = ports.get(portId)
+                    if (port) {
+                      Effect.runFork(Scope.close(port[1], Exit.void))
+                    }
+                    ports.delete(portId)
+                    if (ports.size === 0) {
+                      Deferred.unsafeDone(fiberSet.deferred, Exit.interrupt(FiberId.none))
+                    }
+                  }
+                }
+              }
+              function onMessageError(error: MessageEvent) {
+                Deferred.unsafeDone(
+                  fiberSet.deferred,
+                  new WorkerError({ reason: "decode", error: error.data })
+                )
+              }
+              function onError(error: any) {
+                Deferred.unsafeDone(
+                  fiberSet.deferred,
+                  new WorkerError({ reason: "unknown", error: error.data })
+                )
+              }
+              function handlePort(port: MessagePort) {
+                return Scope.fork(scope, ExecStrategy.sequential).pipe(
+                  Effect.flatMap((scope) => {
+                    const portId = currentPortId++
+                    ports.set(portId, [port, scope])
+                    const onMsg = onMessage(portId)
+                    port.addEventListener("message", onMsg)
+                    port.addEventListener("messageerror", onMessageError)
+                    if ("start" in port) {
+                      port.start()
+                    }
+                    port.postMessage([0])
+                    return Scope.addFinalizer(
+                      scope,
+                      Effect.sync(() => {
+                        port.removeEventListener("message", onMsg)
+                        port.removeEventListener("messageerror", onError)
+                      })
+                    )
+                  }),
+                  runFork
+                )
+              }
+              self.addEventListener("error", onError)
+              if ("onconnect" in self) {
+                self.onconnect = function(event: MessageEvent) {
+                  const port = (event as MessageEvent).ports[0]
+                  handlePort(port)
+                }
+                for (const port of cachedPorts) {
+                  handlePort(port)
+                }
+                cachedPorts.clear()
+              } else {
+                handlePort(self as any)
+              }
+              return Scope.addFinalizer(
+                scope,
+                Effect.sync(() => {
+                  self.removeEventListener("error", onError)
+                  if ("onconnect" in self) {
+                    self.onconnect = globalHandleConnect
+                  }
+                  self.close()
+                })
+              )
+            }),
+            Effect.flatMap(({ fiberSet, scope }) =>
+              restore(FiberSet.join(fiberSet) as Effect.Effect<never, E | WorkerError>).pipe(
+                Effect.ensuring(Scope.close(scope, Exit.void))
+              )
+            )
+          )
         )
-      }
 
-      if ("onconnect" in self) {
-        self.onconnect = function(event: MessageEvent) {
-          const port = (event as MessageEvent).ports[0]
-          handlePort(port, true)
-        }
-        yield* Effect.addFinalizer(() =>
-          Effect.sync(() => {
-            ;(self as any).onconnect = globalHandleConnect
-          })
-        )
-        for (const port of cachedPorts) {
-          handlePort(port, true)
-        }
-        cachedPorts.clear()
-      } else {
-        handlePort(self as any, false)
-      }
-
-      return { queue, send }
+      return { run, send }
     })
   }
 })
