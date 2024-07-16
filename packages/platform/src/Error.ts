@@ -56,44 +56,6 @@ export const TypeIdError = <const TypeId extends symbol, const Tag extends strin
 
 /**
  * @since 1.0.0
- * @category error
- */
-export const RefailError = <const TypeId extends symbol, const Tag extends string>(
-  typeId: TypeId,
-  tag: Tag
-): new<A extends Record<string, any>>(
-  args: Simplify<A & { readonly error: unknown }>
-) =>
-  & Cause.YieldableError
-  & Record<TypeId, TypeId>
-  & { readonly _tag: Tag; readonly error: unknown }
-  & Readonly<A> =>
-{
-  class Base extends Data.Error<{
-    readonly error: unknown
-  }> {
-    readonly _tag = tag
-    constructor(props: any) {
-      super(props)
-      if (Predicate.hasProperty(this.error, "stack")) {
-        ;(this as any).stack = this.error.stack
-      }
-    }
-    get message() {
-      return Predicate.hasProperty(this.error, "message")
-        ? this.error.message as string
-        : Predicate.hasProperty(this.error, "toJSON") && typeof this.error.toJSON === "function"
-        ? JSON.stringify(this.error.toJSON())
-        : String(this.error)
-    }
-  }
-  ;(Base.prototype as any)[typeId] = typeId
-  ;(Base.prototype as any).name = tag
-  return Base as any
-}
-
-/**
- * @since 1.0.0
  */
 export declare namespace PlatformError {
   /**

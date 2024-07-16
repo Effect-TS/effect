@@ -159,9 +159,9 @@ export const make = (
       yield* Effect.addFinalizer(() => Effect.sync(() => conn.close()))
 
       yield* Effect.async<void, SqlError>((resume) => {
-        conn.connect((error) => {
-          if (error) {
-            resume(Effect.fail(new SqlError({ error })))
+        conn.connect((cause) => {
+          if (cause) {
+            resume(Effect.fail(new SqlError({ cause, message: "Failed to connect" })))
           } else {
             resume(Effect.void)
           }
@@ -175,9 +175,9 @@ export const make = (
         rowsAsArray = false
       ) =>
         Effect.async<any, SqlError>((resume) => {
-          const req = new Tedious.Request(sql, (error, _rowCount, result) => {
-            if (error) {
-              resume(Effect.fail(new SqlError({ error })))
+          const req = new Tedious.Request(sql, (cause, _rowCount, result) => {
+            if (cause) {
+              resume(Effect.fail(new SqlError({ cause, message: "Failed to execute statement" })))
               return
             }
 
@@ -219,9 +219,9 @@ export const make = (
 
           const req = new Tedious.Request(
             escape(procedure.name),
-            (error, _, rows) => {
-              if (error) {
-                resume(Effect.fail(new SqlError({ error })))
+            (cause, _, rows) => {
+              if (cause) {
+                resume(Effect.fail(new SqlError({ cause, message: "Failed to execute statement" })))
               } else {
                 rows = rowsToObjects(rows)
                 if (options.transformResultNames) {
@@ -276,18 +276,18 @@ export const make = (
           return runProcedure(procedure)
         },
         begin: Effect.async<void, SqlError>((resume) => {
-          conn.beginTransaction((error) => {
-            if (error) {
-              resume(Effect.fail(new SqlError({ error })))
+          conn.beginTransaction((cause) => {
+            if (cause) {
+              resume(Effect.fail(new SqlError({ cause, message: "Failed to begin transaction" })))
             } else {
               resume(Effect.void)
             }
           })
         }),
         commit: Effect.async<void, SqlError>((resume) => {
-          conn.commitTransaction((error) => {
-            if (error) {
-              resume(Effect.fail(new SqlError({ error })))
+          conn.commitTransaction((cause) => {
+            if (cause) {
+              resume(Effect.fail(new SqlError({ cause, message: "Failed to commit transaction" })))
             } else {
               resume(Effect.void)
             }
@@ -295,9 +295,9 @@ export const make = (
         }),
         savepoint: (name: string) =>
           Effect.async<void, SqlError>((resume) => {
-            conn.saveTransaction((error) => {
-              if (error) {
-                resume(Effect.fail(new SqlError({ error })))
+            conn.saveTransaction((cause) => {
+              if (cause) {
+                resume(Effect.fail(new SqlError({ cause, message: "Failed to create savepoint" })))
               } else {
                 resume(Effect.void)
               }
@@ -305,9 +305,9 @@ export const make = (
           }),
         rollback: (name?: string) =>
           Effect.async<void, SqlError>((resume) => {
-            conn.rollbackTransaction((error) => {
-              if (error) {
-                resume(Effect.fail(new SqlError({ error })))
+            conn.rollbackTransaction((cause) => {
+              if (cause) {
+                resume(Effect.fail(new SqlError({ cause, message: "Failed to rollback transaction" })))
               } else {
                 resume(Effect.void)
               }

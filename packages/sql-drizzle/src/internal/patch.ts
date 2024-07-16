@@ -33,7 +33,7 @@ const PatchProto = {
     if (client === undefined) {
       return Effect.tryPromise({
         try: () => this.execute(),
-        catch: (error) => new SqlError({ error })
+        catch: (cause) => new SqlError({ cause, message: "Failed to execute QueryPromise" })
       })
     }
     const prepared = this.prepare()

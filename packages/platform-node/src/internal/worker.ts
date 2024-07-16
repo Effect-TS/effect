@@ -1,55 +1,53 @@
 import * as Worker from "@effect/platform/Worker"
 import { WorkerError } from "@effect/platform/WorkerError"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
-import { pipe } from "effect/Function"
+import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
-import * as Queue from "effect/Queue"
+import * as Scope from "effect/Scope"
 import type * as WorkerThreads from "node:worker_threads"
 
-const platformWorkerImpl = Worker.PlatformWorker.of({
-  [Worker.PlatformWorkerTypeId]: Worker.PlatformWorkerTypeId,
-  spawn<I, O>(worker_: unknown) {
-    return Effect.gen(function*(_) {
-      const worker = worker_ as WorkerThreads.Worker
-      yield* _(Effect.addFinalizer(() =>
-        pipe(
-          Effect.async<void>((resume) => {
-            worker.once("exit", () => {
-              resume(Effect.void)
-            })
+const platformWorkerImpl = Worker.makePlatform<WorkerThreads.Worker>()({
+  setup({ scope, worker }) {
+    return Effect.flatMap(Deferred.make<void>(), (exitDeferred) => {
+      worker.on("exit", () => {
+        Deferred.unsafeDone(exitDeferred, Exit.void)
+      })
+      return Effect.as(
+        Scope.addFinalizer(
+          scope,
+          Effect.suspend(() => {
             worker.postMessage([1])
-          }),
-          Effect.timeout(5000),
-          Effect.orElse(() => Effect.sync(() => worker.terminate()))
-        )
-      ))
-      const queue = yield* _(Queue.unbounded<Worker.BackingWorker.Message<O>>())
-      yield* _(Effect.addFinalizer(() => Queue.shutdown(queue)))
-      const fiber = yield* _(
-        Effect.async<never, WorkerError>((resume) => {
-          worker.on("message", (message: Worker.BackingWorker.Message<O>) => {
-            queue.unsafeOffer(message)
-          })
-          worker.on("messageerror", (error) => {
-            resume(new WorkerError({ reason: "decode", error }))
-          })
-          worker.on("error", (error) => {
-            resume(new WorkerError({ reason: "unknown", error }))
-          })
-          worker.on("exit", (code) => {
-            resume(new WorkerError({ reason: "unknown", error: new Error(`exited with code ${code}`) }))
-          })
-        }),
-        Effect.interruptible,
-        Effect.forkScoped
+            return Deferred.await(exitDeferred)
+          }).pipe(
+            Effect.timeout(5000),
+            Effect.catchAllCause(() => Effect.sync(() => worker.terminate()))
+          )
+        ),
+        worker
       )
-      const send = (message: I, transfers?: ReadonlyArray<unknown>) =>
-        Effect.try({
-          try: () => worker.postMessage([0, message], transfers as any),
-          catch: (error) => new WorkerError({ reason: "send", error })
-        })
-      return { fiber, queue, send }
     })
+  },
+  listen({ deferred, emit, port }) {
+    port.on("message", (message) => {
+      emit(message)
+    })
+    port.on("messageerror", (cause) => {
+      Deferred.unsafeDone(
+        deferred,
+        new WorkerError({ reason: "decode", cause })
+      )
+    })
+    port.on("error", (cause) => {
+      Deferred.unsafeDone(deferred, new WorkerError({ reason: "unknown", cause }))
+    })
+    port.on("exit", (code) => {
+      Deferred.unsafeDone(
+        deferred,
+        new WorkerError({ reason: "unknown", cause: new Error(`exited with code ${code}`) })
+      )
+    })
+    return Effect.void
   }
 })
 

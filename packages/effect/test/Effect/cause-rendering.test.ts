@@ -164,4 +164,17 @@ message
       const pretty = Cause.pretty(cause, { renderErrorCause: true })
       assert.include(pretty, "[cause]: Error: child")
     }))
+
+  it.effect("pretty nested cause", () =>
+    Effect.gen(function*() {
+      const cause = yield* Effect.fail(
+        new Error("parent", { cause: new Error("child", { cause: new Error("child2") }) })
+      ).pipe(
+        Effect.sandbox,
+        Effect.flip
+      )
+      const pretty = Cause.pretty(cause, { renderErrorCause: true })
+      assert.include(pretty, "[cause]: Error: child")
+      assert.include(pretty, "[cause]: Error: child2")
+    }))
 })

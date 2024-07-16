@@ -137,7 +137,7 @@ export type ActorTypeId = typeof ActorTypeId
  * @category errors
  */
 export class MachineDefect extends Schema.TaggedError<MachineDefect>()("MachineDefect", {
-  cause: Schema.Cause({ error: Schema.Never, defect: Schema.Defect })
+  cause: Schema.Defect
 }) {
   /**
    * @since 1.0.0
@@ -145,15 +145,8 @@ export class MachineDefect extends Schema.TaggedError<MachineDefect>()("MachineD
   static wrap<A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, MachineDefect, R> {
     return Effect.catchAllCause(
       Effect.orDie(effect),
-      (cause) => Effect.fail(new MachineDefect({ cause }))
+      (cause) => Effect.fail(new MachineDefect({ cause: Cause.squash(cause) }))
     )
-  }
-
-  /**
-   * @since 1.0.0
-   */
-  get message() {
-    return Cause.pretty(this.cause)
   }
 }
 
@@ -811,7 +804,7 @@ export const boot = <
             })
           )
         ),
-        Effect.catchAllDefect((defect) => Effect.fail(new MachineDefect({ cause: Cause.die(defect) })))
+        Effect.catchAllDefect((cause) => Effect.fail(new MachineDefect({ cause })))
       )
     }).pipe(Effect.scoped) as Effect.Effect<
       never,

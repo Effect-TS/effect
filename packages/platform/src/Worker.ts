@@ -5,17 +5,14 @@ import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Serializable from "@effect/schema/Serializable"
 import type * as Context from "effect/Context"
+import type * as Deferred from "effect/Deferred"
 import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
-import type * as Fiber from "effect/Fiber"
 import type { LazyArg } from "effect/Function"
 import type * as Layer from "effect/Layer"
-import type * as Option from "effect/Option"
 import type * as Pool from "effect/Pool"
-import type * as Queue from "effect/Queue"
 import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
-import type * as Tracer from "effect/Tracer"
 import * as internal from "./internal/worker.js"
 import type { WorkerError, WorkerErrorFrom } from "./WorkerError.js"
 
@@ -24,9 +21,10 @@ import type { WorkerError, WorkerErrorFrom } from "./WorkerError.js"
  * @category models
  */
 export interface BackingWorker<I, O> {
-  readonly fiber: Fiber.Fiber<never, WorkerError>
   readonly send: (message: I, transfers?: ReadonlyArray<unknown>) => Effect.Effect<void, WorkerError>
-  readonly queue: Queue.Dequeue<BackingWorker.Message<O>>
+  readonly run: <A, E, R>(
+    handler: (_: BackingWorker.Message<O>) => Effect.Effect<A, E, R>
+  ) => Effect.Effect<never, E | WorkerError, R>
 }
 
 /**
@@ -59,8 +57,27 @@ export type PlatformWorkerTypeId = typeof PlatformWorkerTypeId
  */
 export interface PlatformWorker {
   readonly [PlatformWorkerTypeId]: PlatformWorkerTypeId
-  readonly spawn: <I, O>(worker: unknown) => Effect.Effect<BackingWorker<I, O>, WorkerError, Scope.Scope>
+  readonly spawn: <I, O>(id: number) => Effect.Effect<BackingWorker<I, O>, WorkerError, Spawner>
 }
+
+/**
+ * @since 1.0.0
+ */
+export const makePlatform: <W>() => <
+  P extends { readonly postMessage: (message: any, transfers?: any | undefined) => void }
+>(
+  options: {
+    readonly setup: (options: { readonly worker: W; readonly scope: Scope.Scope }) => Effect.Effect<P>
+    readonly listen: (
+      options: {
+        readonly port: P
+        readonly emit: (data: any) => void
+        readonly deferred: Deferred.Deferred<never, WorkerError>
+        readonly scope: Scope.Scope
+      }
+    ) => Effect.Effect<void>
+  }
+) => PlatformWorker = internal.makePlatform
 
 /**
  * @since 1.0.0
@@ -88,6 +105,12 @@ export interface Spawner {
 
 /**
  * @since 1.0.0
+ * @category tags
+ */
+export const Spawner: Context.Tag<Spawner, SpawnerFn<unknown>> = internal.Spawner
+
+/**
+ * @since 1.0.0
  * @category models
  */
 export interface SpawnerFn<W = unknown> {
@@ -105,8 +128,6 @@ export declare namespace Worker {
    */
   export interface Options<I> {
     readonly encode?: ((message: I) => Effect.Effect<unknown, WorkerError>) | undefined
-    readonly transfers?: ((message: I) => ReadonlyArray<unknown>) | undefined
-    readonly queue?: WorkerQueue<I> | undefined
     readonly initialMessage?: LazyArg<I> | undefined
   }
 
@@ -171,16 +192,6 @@ export declare namespace WorkerPool {
       readonly targetUtilization?: number | undefined
       readonly timeToLive: Duration.DurationInput
     })
-}
-
-/**
- * @category models
- * @since 1.0.0
- */
-export interface WorkerQueue<I> {
-  readonly offer: (id: number, item: I, span: Option.Option<Tracer.Span>) => Effect.Effect<void>
-  readonly take: Effect.Effect<readonly [id: number, item: I, span: Option.Option<Tracer.Span>]>
-  readonly shutdown: Effect.Effect<void>
 }
 
 /**
@@ -268,20 +279,12 @@ export declare namespace SerializedWorker {
    * @since 1.0.0
    * @category models
    */
-  export type Options<I> = Extract<I, { readonly _tag: "InitialMessage" }> extends never ? BaseOptions<I> & {
+  export type Options<I> = Extract<I, { readonly _tag: "InitialMessage" }> extends never ? {
       readonly initialMessage?: LazyArg<I>
     }
-    : BaseOptions<I> & {
+    : {
       readonly initialMessage: LazyArg<Extract<I, { readonly _tag: "InitialMessage" }>>
     }
-
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export interface BaseOptions<I> {
-    readonly queue?: WorkerQueue<I> | undefined
-  }
 }
 
 /**

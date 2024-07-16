@@ -145,7 +145,7 @@ export const make = (
         return Effect.async<ReadonlyArray<any>, SqlError>((resume) => {
           query.then(
             (_) => resume(Effect.succeed(_)),
-            (error) => resume(new SqlError({ error }))
+            (cause) => resume(new SqlError({ cause, message: "Failed to execute statement" }))
           )
           return Effect.sync(() => query.cancel())
         })
@@ -175,7 +175,7 @@ export const make = (
             this.pg.unsafe(sql, params as any).cursor(16) as AsyncIterable<
               Array<any>
             >,
-            (error) => new SqlError({ error })
+            (cause) => new SqlError({ cause, message: "Failed to execute statement" })
           ),
           Chunk.flatMap((rows) =>
             Chunk.unsafeFromArray(
@@ -193,7 +193,7 @@ export const make = (
           Effect.acquireRelease(
             Effect.tryPromise({
               try: () => client.reserve(),
-              catch: (error) => new SqlError({ error })
+              catch: (cause) => new SqlError({ cause, message: "Failed to reserve connection" })
             }),
             (pg) => Effect.sync(() => pg.release())
           ),

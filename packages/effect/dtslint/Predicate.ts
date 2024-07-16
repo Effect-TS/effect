@@ -1,4 +1,4 @@
-import { pipe } from "effect/Function"
+import { hole, pipe } from "effect/Function"
 import * as Predicate from "effect/Predicate"
 
 declare const u: unknown
@@ -255,3 +255,19 @@ pipe(hasa, Predicate.and(hasb))
 
 // $ExpectType Refinement<unknown, { a: unknown; } & { b: unknown; }>
 Predicate.and(hasa, hasb)
+
+// -------------------------------------------------------------------------------------
+// or
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Predicate<number>
+pipe(hole<Predicate.Predicate<number>>(), Predicate.or(hole<Predicate.Predicate<number>>()))
+
+// $ExpectType Predicate<number>
+Predicate.or(hole<Predicate.Predicate<number>>(), hole<Predicate.Predicate<number>>())
+
+// $ExpectType Refinement<unknown, string | number>
+pipe(Predicate.isString, Predicate.or(Predicate.isNumber))
+
+// $ExpectType Refinement<unknown, string | number>
+Predicate.or(Predicate.isString, Predicate.isNumber)

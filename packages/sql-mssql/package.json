@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-mssql",
-  "version": "0.4.27",
+  "version": "0.5.0",
   "type": "module",
   "license": "MIT",
   "description": "A Microsoft SQL Server toolkit for Effect",
@@ -50,6 +50,6 @@
   },
   "dependencies": {
     "@opentelemetry/semantic-conventions": "^1.25.1",
-    "tedious": "^18.2.1"
+    "tedious": "^18.2.4"
   }
 }

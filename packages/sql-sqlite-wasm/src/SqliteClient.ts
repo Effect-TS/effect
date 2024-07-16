@@ -121,7 +121,7 @@ export const make = (
             })
             return results
           },
-          catch: (error) => new SqlError({ error })
+          catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
         })
 
       const runTransform = options.transformResultNames
@@ -146,7 +146,7 @@ export const make = (
         },
         export: Effect.try({
           try: () => sqlite3.capi.sqlite3_js_db_export(db.pointer),
-          catch: (error) => new SqlError({ error })
+          catch: (cause) => new SqlError({ cause, message: "Failed to export database" })
         })
       })
     })

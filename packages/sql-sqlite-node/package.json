@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-sqlite-node",
-  "version": "0.4.27",
+  "version": "0.5.0",
   "type": "module",
   "license": "MIT",
   "description": "A SQLite toolkit for Effect",
@@ -41,7 +41,7 @@
   "devDependencies": {
     "@effect/platform": "workspace:^",
     "@effect/sql": "workspace:^",
-    "@types/better-sqlite3": "^7.6.10",
+    "@types/better-sqlite3": "^7.6.11",
     "effect": "workspace:^"
   },
   "peerDependencies": {
@@ -51,6 +51,6 @@
   },
   "dependencies": {
     "@opentelemetry/semantic-conventions": "^1.25.1",
-    "better-sqlite3": "^11.0.0"
+    "better-sqlite3": "^11.1.2"
   }
 }
