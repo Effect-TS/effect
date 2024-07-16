@@ -87,7 +87,7 @@ jobs:
           script: |
             const commands = ${{ steps.snapshot.outputs.snapshots }}.map((snapshot) => {
               const [package, installer] = snapshot.split(": ")
-              const [, sha] = installer.split("@")
+              const [, sha] = installer.split(/@(?=[^@]*$)/)
               const header = `<details><summary><b>${package} (${sha})</b></summary><p>`
               const content = "\n```sh\n" + installer + "\n```\n"
               const footer = `</p></details>`
