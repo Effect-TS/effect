@@ -3,12 +3,6 @@ import * as Util from "@effect/schema/test/TestUtils"
 import * as Exit from "effect/Exit"
 import { describe, it } from "vitest"
 
-const MyDefect = S.transform(S.String, S.Unknown, {
-  strict: true,
-  decode: (s) => s,
-  encode: (u) => JSON.stringify(u)
-})
-
 describe("ExitFromSelf", () => {
   it("arbitrary", () => {
     Util.expectArbitrary(S.ExitFromSelf({ failure: S.String, success: S.Number, defect: S.Unknown }))
@@ -53,7 +47,7 @@ describe("ExitFromSelf", () => {
       const schema = S.ExitFromSelf({
         success: S.Number,
         failure: S.String,
-        defect: MyDefect as S.Schema<unknown, unknown>
+        defect: Util.Defect as S.Schema<unknown, unknown> // TODO
       })
       await Util.expectEncodeSuccess(schema, Exit.die({ a: 1 }), Exit.die(`{"a":1}`))
     })

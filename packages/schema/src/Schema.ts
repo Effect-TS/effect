@@ -7974,9 +7974,9 @@ export class FiberId extends transform(
 
 /**
  * @category Cause utils
- * @since 0.67.0
+ * @since 0.69.0
  */
-export type CauseEncoded<E> =
+export type CauseEncoded<E, D> =
   | {
     readonly _tag: "Empty"
   }
@@ -7986,7 +7986,7 @@ export type CauseEncoded<E> =
   }
   | {
     readonly _tag: "Die"
-    readonly defect: unknown
+    readonly defect: D
   }
   | {
     readonly _tag: "Interrupt"
@@ -7994,16 +7994,16 @@ export type CauseEncoded<E> =
   }
   | {
     readonly _tag: "Sequential"
-    readonly left: CauseEncoded<E>
-    readonly right: CauseEncoded<E>
+    readonly left: CauseEncoded<E, D>
+    readonly right: CauseEncoded<E, D>
   }
   | {
     readonly _tag: "Parallel"
-    readonly left: CauseEncoded<E>
-    readonly right: CauseEncoded<E>
+    readonly left: CauseEncoded<E, D>
+    readonly right: CauseEncoded<E, D>
   }
 
-const causeDieEncoded = <R>(defect: Schema<unknown, unknown, R>) =>
+const causeDieEncoded = <D, DI, R>(defect: Schema<D, DI, R>) =>
   Struct({
     _tag: Literal("Die"),
     defect
@@ -8024,26 +8024,26 @@ const CauseInterruptEncoded = Struct({
   fiberId: FiberIdEncoded
 })
 
-const causeParallelEncoded = <E, EI, R>(causeEncoded: Schema<CauseEncoded<E>, CauseEncoded<EI>, R>) =>
+const causeParallelEncoded = <E, EI, D, DI, R>(causeEncoded: Schema<CauseEncoded<E, D>, CauseEncoded<EI, DI>, R>) =>
   Struct({
     _tag: Literal("Parallel"),
     left: causeEncoded,
     right: causeEncoded
   })
 
-const causeSequentialEncoded = <E, EI, R>(causeEncoded: Schema<CauseEncoded<E>, CauseEncoded<EI>, R>) =>
+const causeSequentialEncoded = <E, EI, D, DI, R>(causeEncoded: Schema<CauseEncoded<E, D>, CauseEncoded<EI, DI>, R>) =>
   Struct({
     _tag: Literal("Sequential"),
     left: causeEncoded,
     right: causeEncoded
   })
 
-const causeEncoded = <E, EI, R1, R2>(
+const causeEncoded = <E, EI, D, DI, R1, R2>(
   error: Schema<E, EI, R1>,
-  defect: Schema<unknown, unknown, R2>
-): Schema<CauseEncoded<E>, CauseEncoded<EI>, R1 | R2> => {
+  defect: Schema<D, DI, R2>
+): Schema<CauseEncoded<E, D>, CauseEncoded<EI, DI>, R1 | R2> => {
   const recur = suspend(() => out)
-  const out: Schema<CauseEncoded<E>, CauseEncoded<EI>, R1 | R2> = Union(
+  const out: Schema<CauseEncoded<E, D>, CauseEncoded<EI, DI>, R1 | R2> = Union(
     CauseEmptyEncoded,
     causeFailEncoded(error),
     causeDieEncoded(defect),
@@ -8096,8 +8096,8 @@ const causePretty = <E>(error: pretty_.Pretty<E>): pretty_.Pretty<cause_.Cause<E
   return f(cause)
 }
 
-const causeParse = <A, R>(
-  decodeUnknown: ParseResult.DecodeUnknown<CauseEncoded<A>, R>
+const causeParse = <A, D, R>(
+  decodeUnknown: ParseResult.DecodeUnknown<CauseEncoded<A, D>, R>
 ): ParseResult.DeclarationDecodeUnknown<cause_.Cause<A>, R> =>
 (u, options, ast) =>
   cause_.isCause(u) ?
@@ -8106,25 +8106,25 @@ const causeParse = <A, R>(
 
 /**
  * @category api interface
- * @since 0.67.0
+ * @since 0.69.0
  */
-export interface CauseFromSelf<E extends Schema.All, DR> extends
+export interface CauseFromSelf<E extends Schema.All, D extends Schema.All> extends
   AnnotableClass<
-    CauseFromSelf<E, DR>,
+    CauseFromSelf<E, D>,
     cause_.Cause<Schema.Type<E>>,
     cause_.Cause<Schema.Encoded<E>>,
-    Schema.Context<E> | DR
+    Schema.Context<E> | Schema.Context<D>
   >
 {}
 
 /**
  * @category Cause transformations
- * @since 0.67.0
+ * @since 0.69.0
  */
-export const CauseFromSelf = <E extends Schema.All, DR>({ defect, error }: {
+export const CauseFromSelf = <E extends Schema.All, D extends Schema.All>({ defect, error }: {
   readonly error: E
-  readonly defect: Schema<unknown, unknown, DR>
-}): CauseFromSelf<E, DR> => {
+  readonly defect: D
+}): CauseFromSelf<E, D> => {
   return declare(
     [error, defect],
     {
@@ -8132,14 +8132,14 @@ export const CauseFromSelf = <E extends Schema.All, DR>({ defect, error }: {
       encode: (error, defect) => causeParse(ParseResult.encodeUnknown(causeEncoded(error, defect)))
     },
     {
-      description: `Cause<${error.ast}>`,
+      title: `Cause<${error.ast}>`,
       pretty: causePretty,
       arbitrary: causeArbitrary
     }
   )
 }
 
-function causeDecode<E>(cause: CauseEncoded<E>): cause_.Cause<E> {
+function causeDecode<E>(cause: CauseEncoded<E, unknown>): cause_.Cause<E> {
   switch (cause._tag) {
     case "Empty":
       return cause_.empty
@@ -8156,7 +8156,7 @@ function causeDecode<E>(cause: CauseEncoded<E>): cause_.Cause<E> {
   }
 }
 
-function causeEncode<E>(cause: cause_.Cause<E>): CauseEncoded<E> {
+function causeEncode<E>(cause: cause_.Cause<E>): CauseEncoded<E, unknown> {
   switch (cause._tag) {
     case "Empty":
       return { _tag: "Empty" }
@@ -8182,6 +8182,36 @@ function causeEncode<E>(cause: cause_.Cause<E>): CauseEncoded<E> {
 }
 
 /**
+ * @category api interface
+ * @since 0.69.0
+ */
+export interface Cause<E extends Schema.All, D extends Schema.All> extends
+  AnnotableClass<
+    Cause<E, D>,
+    cause_.Cause<Schema.Type<E>>,
+    CauseEncoded<Schema.Encoded<E>, Schema.Encoded<D>>,
+    Schema.Context<E> | Schema.Context<D>
+  >
+{}
+
+/**
+ * @category Cause transformations
+ * @since 0.69.0
+ */
+export const Cause = <E extends Schema.All, D extends Schema.All>({ defect, error }: {
+  readonly error: E
+  readonly defect: D
+}): Cause<E, D> => {
+  const error_ = asSchema(error)
+  const defect_ = asSchema(defect)
+  return transform(
+    causeEncoded(error_, defect_),
+    CauseFromSelf({ error: typeSchema(error_), defect: Unknown }),
+    { strict: false, decode: causeDecode, encode: causeEncode }
+  )
+}
+
+/**
  * Defines a schema for handling JavaScript errors (`Error` instances) and other types of defects.
  * It decodes objects into Error instances if they match the expected structure (i.e., have a `message` and optionally a `name` and `stack`),
  * or converts other values to their string representations.
@@ -8194,7 +8224,7 @@ function causeEncode<E>(cause: cause_.Cause<E>): CauseEncoded<E> {
  * @category defect
  * @since 0.69.0
  */
-export const Defect: Schema<unknown> = transform(
+export const Defect: transform<typeof Unknown, typeof Unknown> = transform(
   Unknown,
   Unknown,
   {
@@ -8224,42 +8254,13 @@ export const Defect: Schema<unknown> = transform(
 ).annotations({ identifier: "Defect" })
 
 /**
- * @category api interface
- * @since 0.67.0
- */
-export interface Cause<E extends Schema.All, DR> extends
-  AnnotableClass<
-    Cause<E, DR>,
-    cause_.Cause<Schema.Type<E>>,
-    CauseEncoded<Schema.Encoded<E>>,
-    Schema.Context<E> | DR
-  >
-{}
-
-/**
- * @category Cause transformations
- * @since 0.67.0
- */
-export const Cause = <E extends Schema.All, DR>({ defect, error }: {
-  readonly error: E
-  readonly defect: Schema<unknown, unknown, DR>
-}): Cause<E, DR> => {
-  const error_ = asSchema(error)
-  return transform(
-    causeEncoded(error_, defect),
-    CauseFromSelf({ error: typeSchema(error_), defect: typeSchema(defect) }),
-    { strict: true, decode: causeDecode, encode: causeEncode }
-  )
-}
-
-/**
  * @category Exit utils
  * @since 0.67.0
  */
 export type ExitEncoded<A, E> =
   | {
     readonly _tag: "Failure"
-    readonly cause: CauseEncoded<E>
+    readonly cause: CauseEncoded<E, unknown>
   }
   | {
     readonly _tag: "Success"

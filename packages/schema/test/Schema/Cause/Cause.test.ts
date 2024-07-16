@@ -97,54 +97,72 @@ describe("Cause", () => {
     )
   })
 
-  it("encoding", async () => {
-    const schema = S.Cause({ error: S.NumberFromString, defect: S.Defect })
-    const schemaUnknown = S.Cause({ error: S.NumberFromString, defect: S.Unknown })
+  describe("encoding", () => {
+    it("should raise an error when a non-encodable Cause is passed", async () => {
+      const schema = S.Cause({ error: S.String, defect: Util.Defect })
+      await Util.expectEncodeFailure(
+        schema,
+        Cause.die(null),
+        `(CauseEncoded<string> <-> Cause<string>)
+└─ Encoded side transformation failure
+   └─ CauseEncoded<string>
+      └─ { readonly _tag: "Die"; readonly defect: (string <-> object) }
+         └─ ["defect"]
+            └─ (string <-> object)
+               └─ Type side transformation failure
+                  └─ Expected object, actual null`
+      )
+    })
 
-    await Util.expectEncodeSuccess(schema, Cause.fail(1), { _tag: "Fail", error: "1" })
-    await Util.expectEncodeSuccess(schema, Cause.empty, { _tag: "Empty" })
-    await Util.expectEncodeSuccess(schema, Cause.parallel(Cause.fail(1), Cause.empty), {
-      _tag: "Parallel",
-      left: { _tag: "Fail", error: "1" },
-      right: { _tag: "Empty" }
-    })
-    await Util.expectEncodeSuccess(schema, Cause.sequential(Cause.fail(1), Cause.empty), {
-      _tag: "Sequential",
-      left: { _tag: "Fail", error: "1" },
-      right: { _tag: "Empty" }
-    })
-    await Util.expectEncodeSuccess(schema, Cause.die("fail"), {
-      _tag: "Die",
-      defect: "fail"
-    })
-    await Util.expectEncodeSuccess(
-      schema,
-      Cause.interrupt(FiberId.composite(FiberId.runtime(1, 1000), FiberId.none)),
-      {
-        _tag: "Interrupt",
-        fiberId: {
-          _tag: "Composite",
-          left: {
-            _tag: "Runtime",
-            id: 1,
-            startTimeMillis: 1000
-          },
-          right: {
-            _tag: "None"
+    it("using the built-in Defect schema as defect argument", async () => {
+      const schema = S.Cause({ error: S.NumberFromString, defect: S.Defect })
+      const schemaUnknown = S.Cause({ error: S.NumberFromString, defect: S.Unknown })
+
+      await Util.expectEncodeSuccess(schema, Cause.fail(1), { _tag: "Fail", error: "1" })
+      await Util.expectEncodeSuccess(schema, Cause.empty, { _tag: "Empty" })
+      await Util.expectEncodeSuccess(schema, Cause.parallel(Cause.fail(1), Cause.empty), {
+        _tag: "Parallel",
+        left: { _tag: "Fail", error: "1" },
+        right: { _tag: "Empty" }
+      })
+      await Util.expectEncodeSuccess(schema, Cause.sequential(Cause.fail(1), Cause.empty), {
+        _tag: "Sequential",
+        left: { _tag: "Fail", error: "1" },
+        right: { _tag: "Empty" }
+      })
+      await Util.expectEncodeSuccess(schema, Cause.die("fail"), {
+        _tag: "Die",
+        defect: "fail"
+      })
+      await Util.expectEncodeSuccess(
+        schema,
+        Cause.interrupt(FiberId.composite(FiberId.runtime(1, 1000), FiberId.none)),
+        {
+          _tag: "Interrupt",
+          fiberId: {
+            _tag: "Composite",
+            left: {
+              _tag: "Runtime",
+              id: 1,
+              startTimeMillis: 1000
+            },
+            right: {
+              _tag: "None"
+            }
           }
         }
-      }
-    )
+      )
 
-    let failWithStack = S.encodeSync(schema)(Cause.die(new Error("fail")))
-    assert(failWithStack._tag === "Die")
-    assert.deepStrictEqual(failWithStack.defect, {
-      name: "Error",
-      message: "fail"
+      let failWithStack = S.encodeSync(schema)(Cause.die(new Error("fail")))
+      assert(failWithStack._tag === "Die")
+      assert.deepStrictEqual(failWithStack.defect, {
+        name: "Error",
+        message: "fail"
+      })
+
+      failWithStack = S.encodeSync(schemaUnknown)(Cause.die(new Error("fail")))
+      assert(failWithStack._tag === "Die")
+      assert.strictEqual((failWithStack.defect as Error).message, "fail")
     })
-
-    failWithStack = S.encodeSync(schemaUnknown)(Cause.die(new Error("fail")))
-    assert(failWithStack._tag === "Die")
-    assert.strictEqual((failWithStack.defect as Error).message, "fail")
   })
 })

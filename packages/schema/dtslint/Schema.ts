@@ -2230,13 +2230,13 @@ S.asSchema(S.Struct({
 // $ExpectType Schema<Cause<string>, Cause<string>, never>
 S.asSchema(S.CauseFromSelf({ error: S.String, defect: S.Unknown }))
 
-// $ExpectType CauseFromSelf<typeof String$, never>
+// $ExpectType CauseFromSelf<typeof String$, typeof Unknown>
 S.CauseFromSelf({ error: S.String, defect: S.Unknown })
 
 // $ExpectType Schema<Cause<string>, Cause<string>, "a">
 S.asSchema(S.CauseFromSelf({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() }))
 
-// $ExpectType CauseFromSelf<typeof String$, "a">
+// $ExpectType CauseFromSelf<typeof String$, Schema<unknown, unknown, "a">>
 S.CauseFromSelf({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() })
 
 // $ExpectType Schema<{ readonly a: Cause<string>; }, { readonly a: Cause<string>; }, never>
@@ -2248,19 +2248,19 @@ S.asSchema(S.Struct({
 // Cause
 // ---------------------------------------------
 
-// $ExpectType Schema<Cause<string>, CauseEncoded<string>, never>
+// $ExpectType Schema<Cause<string>, CauseEncoded<string, unknown>, never>
 S.asSchema(S.Cause({ error: S.String, defect: S.Defect }))
 
-// $ExpectType Cause<typeof String$, never>
+// $ExpectType Cause<typeof String$, transform<typeof Unknown, typeof Unknown>>
 S.Cause({ error: S.String, defect: S.Defect })
 
-// $ExpectType Schema<Cause<string>, CauseEncoded<string>, "a">
+// $ExpectType Schema<Cause<string>, CauseEncoded<string, unknown>, "a">
 S.asSchema(S.Cause({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() }))
 
-// $ExpectType Cause<typeof String$, "a">
+// $ExpectType Cause<typeof String$, Schema<unknown, unknown, "a">>
 S.Cause({ error: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() })
 
-// $ExpectType Schema<{ readonly a: Cause<string>; }, { readonly a: CauseEncoded<string>; }, never>
+// $ExpectType Schema<{ readonly a: Cause<string>; }, { readonly a: CauseEncoded<string, unknown>; }, never>
 S.asSchema(S.Struct({
   a: S.Cause({ error: S.String, defect: S.Defect })
 }))

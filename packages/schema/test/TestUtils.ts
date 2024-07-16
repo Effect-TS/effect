@@ -367,3 +367,9 @@ export const BooleanFromLiteral = S.transform(S.Literal("true", "false"), S.Bool
   decode: (l) => l === "true",
   encode: (b) => b ? "true" : "false"
 })
+
+export const Defect = S.transform(S.String, S.Object, {
+  strict: true,
+  decode: (s) => ({ input: s }),
+  encode: (u) => JSON.stringify(u)
+})

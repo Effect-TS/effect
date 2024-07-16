@@ -66,6 +66,7 @@ TODO: change to minor before merging
   2. In general, schema definitions such as `Schema.ExitFromSelf` or `Schema.Exit` shouldn't have a default. The user should actively choose them to avoid hidden behaviors.
 
 - rename `CauseDefectUnknown` to `Defect`
+- make `CauseFromSelf` and `Cause` more general by accepting a generic schema as the `defect` argument instead of `Schema<unknown, unknown, DR>`
 
 ### Serializable
 
