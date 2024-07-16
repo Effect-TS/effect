@@ -132,7 +132,7 @@ Let's delve into this with an example.
 import { Schema } from "@effect/schema"
 
 const Person = Schema.Struct({
-  name: Schema.optional(Schema.String.pipe(Schema.nonEmpty()), {
+  name: Schema.optional(Schema.String.pipe(Schema.nonEmptyString()), {
     exact: true
   })
 })
@@ -163,7 +163,7 @@ If, for some reason, you can't enable the `exactOptionalPropertyTypes` option (p
 import { Schema } from "@effect/schema"
 
 const Person = Schema.Struct({
-  name: Schema.optional(Schema.String.pipe(Schema.nonEmpty()), {
+  name: Schema.optional(Schema.String.pipe(Schema.nonEmptyString()), {
     exact: true
   })
 })
@@ -829,7 +829,7 @@ import { Schema } from "@effect/schema"
 const Age = Schema.NumberFromString
 
 const Person = Schema.Struct({
-  name: Schema.NonEmpty,
+  name: Schema.NonEmptyString,
   age: Age
 })
 
@@ -1238,7 +1238,7 @@ The `make` function within the `@effect/schema/Arbitrary` module allows for the 
 import { Arbitrary, FastCheck, Schema } from "@effect/schema"
 
 const Person = Schema.Struct({
-  name: Schema.NonEmpty,
+  name: Schema.NonEmptyString,
   age: Schema.NumberFromString.pipe(Schema.int(), Schema.between(0, 200))
 })
 
@@ -1281,20 +1281,20 @@ The generation of arbitrary data requires a clear understanding of how transform
 ```ts
 import { Arbitrary, FastCheck, Schema } from "@effect/schema"
 
-const schema1 = Schema.compose(Schema.NonEmpty, Schema.Trim).pipe(
+const schema1 = Schema.compose(Schema.NonEmptyString, Schema.Trim).pipe(
   Schema.maxLength(500)
 )
 // Might output empty strings despite `NonEmpty` due to filter order.
 console.log(FastCheck.sample(Arbitrary.make(schema1), 10))
 
-const schema2 = Schema.Trim.pipe(Schema.nonEmpty(), Schema.maxLength(500))
+const schema2 = Schema.Trim.pipe(Schema.nonEmptyString(), Schema.maxLength(500))
 // Ensures no empty strings, correctly applying `nonEmpty()`.
 console.log(FastCheck.sample(Arbitrary.make(schema2), 10))
 ```
 
 **Explanation:**
 
-- **Schema 1**: Considers the `Schema.maxLength(500)` because it follows the `Schema.Trim` transformation but disregards `Schema.NonEmpty` as it comes before any transformations.
+- **Schema 1**: Considers the `Schema.maxLength(500)` because it follows the `Schema.Trim` transformation but disregards `Schema.NonEmptyString` as it comes before any transformations.
 - **Schema 2**: Properly adheres to all applied filters by ensuring they follow transformations, thus avoiding the generation of undesired data.
 
 **Best Practices**
@@ -1422,7 +1422,7 @@ The `make` function from the `@effect/schema/JSONSchema` module enables you to c
 import { JSONSchema, Schema } from "@effect/schema"
 
 const Person = Schema.Struct({
-  name: Schema.NonEmpty,
+  name: Schema.NonEmptyString,
   age: Schema.Number
 })
 
@@ -1466,7 +1466,7 @@ For instance, if we modify the schema of the `age` field:
 import { JSONSchema, Schema } from "@effect/schema"
 
 const Person = Schema.Struct({
-  name: Schema.NonEmpty,
+  name: Schema.NonEmptyString,
   age: Schema.Number.pipe(
     // refinement, will be included in the generated JSON Schema
     Schema.int(),
@@ -2278,7 +2278,7 @@ import { Schema } from "@effect/schema"
 
 Schema.String.pipe(Schema.maxLength(5)) // Specifies maximum length of a string
 Schema.String.pipe(Schema.minLength(5)) // Specifies minimum length of a string
-Schema.NonEmpty // Equivalent to ensuring the string has a minimum length of 1
+Schema.NonEmptyString // Equivalent to ensuring the string has a minimum length of 1
 Schema.String.pipe(Schema.length(5)) // Specifies exact length of a string
 Schema.String.pipe(Schema.length({ min: 2, max: 4 })) // Specifies a range for the length of a string
 Schema.String.pipe(Schema.pattern(regex)) // Matches a string against a regular expression pattern
@@ -2886,8 +2886,8 @@ const schema = Schema.asSchema(opaque)
 ```ts
 import { Schema } from "@effect/schema"
 
-// Schema.NonEmptyArray<typeof Schema.Number>
-const opaque = Schema.NonEmptyArray(Schema.Number)
+// Schema.NonEmptyStringArray<typeof Schema.Number>
+const opaque = Schema.NonEmptyStringArray(Schema.Number)
 
 // Schema.Schema<readonly [number, ...number[]], readonly [number, ...number[]], never>
 const schema = Schema.asSchema(opaque)
@@ -2900,7 +2900,7 @@ You can access the value of a non-empty array schema:
 ```ts
 import { Schema } from "@effect/schema"
 
-const schema = Schema.NonEmptyArray(Schema.String)
+const schema = Schema.NonEmptyStringArray(Schema.String)
 
 // Accesses the value
 const value = schema.value // typeof Schema.String
@@ -5361,7 +5361,7 @@ const Password =
     .pipe(
       // add a constraint to the schema, only non-empty strings are valid
       // and add an error message for empty strings
-      Schema.nonEmpty({ message: () => "required" }),
+      Schema.nonEmptyString({ message: () => "required" }),
       // add a constraint to the schema, only strings with a length less or equal than 10 are valid
       // and add an error message for strings that are too long
       Schema.maxLength(10, { message: (s) => `${s} is too long` })
@@ -5701,7 +5701,7 @@ When a refinement fails, the default error message indicates whether the failure
 ```ts
 import { Schema } from "@effect/schema"
 
-const Name = Schema.NonEmpty.annotations({ identifier: "Name" }) // refinement
+const Name = Schema.NonEmptyString.annotations({ identifier: "Name" }) // refinement
 
 const Age = Schema.Positive.pipe(Schema.int({ identifier: "Age" })) // refinement
 
@@ -6098,18 +6098,16 @@ class Messages extends Context.Tag("Messages")<
   }
 >() {}
 
-const Name = Schema.NonEmpty.annotations(
-  {
-    message: () =>
-      Effect.gen(function*(_) {
-        const service = yield* _(Effect.serviceOption(Messages))
-        return Option.match(service, {
-          onNone: () => "Invalid string",
-          onSome: (messages) => messages.NonEmpty
-        })
+const Name = Schema.NonEmptyString.annotations({
+  message: () =>
+    Effect.gen(function* (_) {
+      const service = yield* _(Effect.serviceOption(Messages))
+      return Option.match(service, {
+        onNone: () => "Invalid string",
+        onSome: (messages) => messages.NonEmpty
       })
-  }
-)
+    })
+})
 
 Schema.decodeUnknownSync(Name)("") // => throws "Invalid string"
 
@@ -6198,7 +6196,7 @@ import { Schema } from "@effect/schema"
 // Define your schema by providing the type, a unique identifier and the desired fields
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.Number,
-  name: Schema.String.pipe(Schema.nonEmpty())
+  name: Schema.String.pipe(Schema.nonEmptyString())
 }) {}
 ```
 
@@ -6225,7 +6223,7 @@ import { Schema } from "@effect/schema"
 
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.Number,
-  name: Schema.String.pipe(Schema.nonEmpty())
+  name: Schema.String.pipe(Schema.nonEmptyString())
 }) {}
 
 const john = new Person({ id: 1, name: "John" })
@@ -6276,7 +6274,7 @@ import { Equal } from "effect"
 
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.Number,
-  name: Schema.String.pipe(Schema.nonEmpty())
+  name: Schema.String.pipe(Schema.nonEmptyString())
 }) {}
 
 const john1 = new Person({ id: 1, name: "John" })
@@ -6293,7 +6291,7 @@ import { Equal } from "effect"
 
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.Number,
-  name: Schema.String.pipe(Schema.nonEmpty()),
+  name: Schema.String.pipe(Schema.nonEmptyString()),
   hobbies: Schema.Array(Schema.String)
 }) {}
 
@@ -6319,7 +6317,7 @@ import { Data, Equal } from "effect"
 
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.Number,
-  name: Schema.String.pipe(Schema.nonEmpty()),
+  name: Schema.String.pipe(Schema.nonEmptyString()),
   hobbies: Schema.Data(Schema.Array(Schema.String))
 }) {}
 
@@ -6348,7 +6346,7 @@ import { Schema } from "@effect/schema"
 
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.Number,
-  name: Schema.String.pipe(Schema.nonEmpty())
+  name: Schema.String.pipe(Schema.nonEmptyString())
 }) {
   // Custom getter to return the name in uppercase
   get upperName() {
@@ -6370,7 +6368,7 @@ import { Schema } from "@effect/schema"
 
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.Number,
-  name: Schema.String.pipe(Schema.nonEmpty())
+  name: Schema.String.pipe(Schema.nonEmptyString())
 }) {}
 
 // Person can be used as a normal schema
@@ -6531,7 +6529,7 @@ import { Schema } from "@effect/schema"
 
 class Person extends Schema.Class<Person>("Person")({
   id: Schema.Number,
-  name: Schema.String.pipe(Schema.nonEmpty())
+  name: Schema.String.pipe(Schema.nonEmptyString())
 }) {
   get upperName() {
     return this.name.toUpperCase()
@@ -6659,7 +6657,7 @@ Example (`Struct`)
 import { Schema } from "@effect/schema"
 
 const Struct = Schema.Struct({
-  name: Schema.NonEmpty
+  name: Schema.NonEmptyString
 })
 
 Struct.make({ name: "a" }) // ok
@@ -6687,7 +6685,7 @@ Example (`Record`)
 ```ts
 import { Schema } from "@effect/schema"
 
-const Record = Schema.Record(Schema.String, Schema.NonEmpty)
+const Record = Schema.Record(Schema.String, Schema.NonEmptyString)
 
 Record.make({ a: "a", b: "b" }) // ok
 Record.make({ a: "a", b: "" })
@@ -6786,7 +6784,7 @@ Example Without Default
 import { Schema } from "@effect/schema"
 
 const PersonSchema = Schema.Struct({
-  name: Schema.NonEmpty,
+  name: Schema.NonEmptyString,
   age: Schema.Number
 })
 
@@ -6800,7 +6798,7 @@ Example With Default
 import { Schema } from "@effect/schema"
 
 const PersonSchema = Schema.Struct({
-  name: Schema.NonEmpty,
+  name: Schema.NonEmptyString,
   age: Schema.Number.pipe(
     Schema.propertySignature,
     Schema.withConstructorDefault(() => 0)
@@ -6819,7 +6817,7 @@ Defaults are **lazily evaluated**, meaning that a new instance of the default is
 import { Schema } from "@effect/schema"
 
 const PersonSchema = Schema.Struct({
-  name: Schema.NonEmpty,
+  name: Schema.NonEmptyString,
   age: Schema.Number.pipe(
     Schema.propertySignature,
     Schema.withConstructorDefault(() => 0)
@@ -6842,7 +6840,7 @@ Default values are also "portable", meaning that if you reuse the same property 
 import { Schema } from "@effect/schema"
 
 const PersonSchema = Schema.Struct({
-  name: Schema.NonEmpty,
+  name: Schema.NonEmptyString,
   age: Schema.Number.pipe(
     Schema.propertySignature,
     Schema.withConstructorDefault(() => 0)
@@ -6867,7 +6865,7 @@ Defaults can also be applied using the `Class` API:
 import { Schema } from "@effect/schema"
 
 class Person extends Schema.Class<Person>("Person")({
-  name: Schema.NonEmpty,
+  name: Schema.NonEmptyString,
   age: Schema.Number.pipe(
     Schema.propertySignature,
     Schema.withConstructorDefault(() => 0)
