@@ -1,7 +1,9 @@
+import { Schema } from "@effect/schema"
+import { SqlResolver } from "@effect/sql"
 import * as SqliteKysely from "@effect/sql-kysely/Sqlite"
 import * as Sqlite from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Config, Context, Effect, Exit, Layer } from "effect"
+import { Config, Context, Effect, Exit, Layer, Option } from "effect"
 import type { Generated } from "kysely"
 
 export interface User {
@@ -47,5 +49,34 @@ describe("SqliteKysely", () => {
       }
       const selected = yield* db.selectFrom("users").selectAll()
       assert.deepStrictEqual(selected, [])
+    }).pipe(Effect.provide(KyselyLive)))
+
+  it.effect("select with resolver", () =>
+    Effect.gen(function*(_) {
+      const db = yield* SqliteDB
+
+      yield* db.schema
+        .createTable("users")
+        .addColumn("id", "integer", (c) => c.primaryKey().autoIncrement())
+        .addColumn("name", "text", (c) => c.notNull())
+
+      yield* db.insertInto("users").values({ name: "Alice" })
+      yield* db.insertInto("users").values({ name: "Bob" })
+      yield* db.insertInto("users").values({ name: "Charlie" })
+
+      const GetUserById = yield* SqlResolver.findById("GetUserById", {
+        Id: Schema.Number,
+        Result: Schema.Struct({ id: Schema.Number, name: Schema.String }),
+        ResultId: (data) => data.id,
+        execute: (ids) => db.selectFrom("users").where("id", "in", ids).selectAll()
+      })
+
+      const todoIds = [1, 2, 3].map((_) => GetUserById.execute(_))
+      const result = yield* Effect.all(todoIds, { batching: true })
+      assert.deepStrictEqual(result, [
+        Option.some({ id: 1, name: "Alice" }),
+        Option.some({ id: 2, name: "Bob" }),
+        Option.some({ id: 3, name: "Charlie" })
+      ])
     }).pipe(Effect.provide(KyselyLive)))
 })
