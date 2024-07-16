@@ -17,8 +17,12 @@ import { Packr, Unpackr } from "msgpackr"
  */
 export class MsgPackError extends Data.TaggedError("MsgPackError")<{
   readonly reason: "Pack" | "Unpack"
-  readonly error: unknown
-}> {}
+  readonly cause: unknown
+}> {
+  get message() {
+    return this.reason
+  }
+}
 
 /**
  * @since 1.0.0
@@ -42,7 +46,7 @@ export const pack = <IE = never, Done = unknown>(): Channel.Channel<
               Channel.flatMap(
                 Effect.try({
                   try: () => Chunk.of(packr.pack(Chunk.toReadonlyArray(input))),
-                  catch: (error) => new MsgPackError({ reason: "Pack", error })
+                  catch: (cause) => new MsgPackError({ reason: "Pack", cause })
                 }),
                 Channel.write
               ),
@@ -122,7 +126,7 @@ export const unpack = <IE = never, Done = unknown>(): Channel.Channel<
                 throw error
               }
             }),
-          catch: (error) => new MsgPackError({ reason: "Unpack", error })
+          catch: (cause) => new MsgPackError({ reason: "Unpack", cause })
         })
 
       const loop: Channel.Channel<Chunk.Chunk<unknown>, Chunk.Chunk<Uint8Array>, IE | MsgPackError, IE, Done, Done> =

@@ -47,8 +47,8 @@ export const makeNet = (
           conn.removeAllListeners()
           resume(Effect.succeed(conn))
         })
-        conn.on("error", (error) => {
-          resume(Effect.fail(new Socket.SocketGenericError({ reason: "Open", error })))
+        conn.on("error", (cause) => {
+          resume(Effect.fail(new Socket.SocketGenericError({ reason: "Open", cause })))
         })
         return Effect.sync(() => {
           conn.destroy()
@@ -105,9 +105,9 @@ export const fromDuplex = <RO>(
                   } else if (chunk === EOF) {
                     conn.end(() => resume(Effect.void))
                   } else {
-                    conn.write(chunk, (error) => {
+                    conn.write(chunk, (cause) => {
                       resume(
-                        error ? Effect.fail(new Socket.SocketGenericError({ reason: "Write", error })) : Effect.void
+                        cause ? Effect.fail(new Socket.SocketGenericError({ reason: "Write", cause })) : Effect.void
                       )
                     })
                   }
@@ -128,8 +128,8 @@ export const fromDuplex = <RO>(
               function onEnd() {
                 resume(Effect.void)
               }
-              function onError(error: Error) {
-                resume(Effect.fail(new Socket.SocketGenericError({ reason: "Read", error })))
+              function onError(cause: Error) {
+                resume(Effect.fail(new Socket.SocketGenericError({ reason: "Read", cause })))
               }
               function onClose(hadError: boolean) {
                 resume(

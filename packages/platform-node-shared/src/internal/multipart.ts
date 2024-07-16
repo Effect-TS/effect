@@ -39,7 +39,7 @@ export const persisted = (
   Multipart.toPersisted(stream(source, headers), (path, file) =>
     Effect.tryPromise({
       try: (signal) => NodeStreamP.pipeline((file as FileImpl).file, NFS.createWriteStream(path), { signal }),
-      catch: (error) => new Multipart.MultipartError({ reason: "InternalError", error })
+      catch: (cause) => new Multipart.MultipartError({ reason: "InternalError", cause })
     }))
 
 const convertPart = (part: MP.Part): Multipart.Part =>
@@ -94,7 +94,7 @@ class FileImpl extends PartBase implements Multipart.File {
     this.contentType = file.info.contentType
     this.content = NodeStream.fromReadable(
       () => file,
-      (error) => new Multipart.MultipartError({ reason: "InternalError", error })
+      (cause) => new Multipart.MultipartError({ reason: "InternalError", cause })
     )
   }
 
@@ -112,26 +112,26 @@ class FileImpl extends PartBase implements Multipart.File {
 /** @internal */
 export const fileToReadable = (file: Multipart.File): Readable => (file as FileImpl).file
 
-function convertError(error: MultipartError): Multipart.MultipartError {
-  switch (error._tag) {
+function convertError(cause: MultipartError): Multipart.MultipartError {
+  switch (cause._tag) {
     case "ReachedLimit": {
-      switch (error.limit) {
+      switch (cause.limit) {
         case "MaxParts": {
-          return new Multipart.MultipartError({ reason: "TooManyParts", error })
+          return new Multipart.MultipartError({ reason: "TooManyParts", cause })
         }
         case "MaxFieldSize": {
-          return new Multipart.MultipartError({ reason: "FieldTooLarge", error })
+          return new Multipart.MultipartError({ reason: "FieldTooLarge", cause })
         }
         case "MaxPartSize": {
-          return new Multipart.MultipartError({ reason: "FileTooLarge", error })
+          return new Multipart.MultipartError({ reason: "FileTooLarge", cause })
         }
         case "MaxTotalSize": {
-          return new Multipart.MultipartError({ reason: "BodyTooLarge", error })
+          return new Multipart.MultipartError({ reason: "BodyTooLarge", cause })
         }
       }
     }
     default: {
-      return new Multipart.MultipartError({ reason: "Parse", error })
+      return new Multipart.MultipartError({ reason: "Parse", cause })
     }
   }
 }

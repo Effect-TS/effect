@@ -111,7 +111,7 @@ export const make = (
           lookup: (sql: string) =>
             Effect.try({
               try: () => db.prepare(sql),
-              catch: (error) => new SqlError({ error })
+              catch: (cause) => new SqlError({ cause, message: "Failed to prepare statement" })
             })
         })
       )
@@ -128,7 +128,7 @@ export const make = (
             statement.run(...params)
             return []
           },
-          catch: (error) => new SqlError({ error })
+          catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
         })
 
       const run = (
@@ -163,7 +163,7 @@ export const make = (
                 statement.run(...params)
                 return []
               },
-              catch: (error) => new SqlError({ error })
+              catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
             }),
           (statement) => Effect.sync(() => statement.reader && statement.raw(false))
         )
@@ -186,18 +186,18 @@ export const make = (
         },
         export: Effect.try({
           try: () => db.serialize(),
-          catch: (error) => new SqlError({ error })
+          catch: (cause) => new SqlError({ cause, message: "Failed to export database" })
         }),
         backup(destination) {
           return Effect.tryPromise({
             try: () => db.backup(destination),
-            catch: (error) => new SqlError({ error })
+            catch: (cause) => new SqlError({ cause, message: "Failed to backup database" })
           })
         },
         loadExtension(path) {
           return Effect.try({
             try: () => db.loadExtension(path),
-            catch: (error) => new SqlError({ error })
+            catch: (cause) => new SqlError({ cause, message: "Failed to load extension" })
           })
         }
       })

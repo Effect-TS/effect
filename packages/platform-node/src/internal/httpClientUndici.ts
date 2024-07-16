@@ -75,11 +75,11 @@ export const make = (dispatcher: Undici.Dispatcher): Client.HttpClient.Default =
               bodyTimeout: 0,
               throwOnError: false
             }),
-          catch: (error) =>
+          catch: (cause) =>
             new Error.RequestError({
               request,
               reason: "Transport",
-              error
+              cause
             })
         })
       ),
@@ -152,24 +152,24 @@ class ClientResponseImpl extends Inspectable.Class implements ClientResponse.Htt
   }
 
   get stream(): Stream.Stream<Uint8Array, Error.ResponseError> {
-    return NodeStream.fromReadable(() => this.source.body, (_) =>
+    return NodeStream.fromReadable(() => this.source.body, (cause) =>
       new Error.ResponseError({
         request: this.request,
         response: this,
         reason: "Decode",
-        error: _
+        cause
       }))
   }
 
   get json(): Effect.Effect<unknown, Error.ResponseError> {
     return Effect.tryMap(this.text, {
       try: (text) => text === "" ? null : JSON.parse(text) as unknown,
-      catch: (_) =>
+      catch: (cause) =>
         new Error.ResponseError({
           request: this.request,
           response: this,
           reason: "Decode",
-          error: _
+          cause
         })
     })
   }
@@ -178,12 +178,12 @@ class ClientResponseImpl extends Inspectable.Class implements ClientResponse.Htt
   get text(): Effect.Effect<string, Error.ResponseError> {
     return this.textBody ??= Effect.tryPromise({
       try: () => this.source.body.text(),
-      catch: (_) =>
+      catch: (cause) =>
         new Error.ResponseError({
           request: this.request,
           response: this,
           reason: "Decode",
-          error: _
+          cause
         })
     }).pipe(Effect.cached, Effect.runSync)
   }
@@ -192,12 +192,12 @@ class ClientResponseImpl extends Inspectable.Class implements ClientResponse.Htt
     return Effect.flatMap(this.text, (_) =>
       Effect.try({
         try: () => UrlParams.fromInput(new URLSearchParams(_)),
-        catch: (_) =>
+        catch: (cause) =>
           new Error.ResponseError({
             request: this.request,
             response: this,
             reason: "Decode",
-            error: _
+            cause
           })
       }))
   }
@@ -206,12 +206,12 @@ class ClientResponseImpl extends Inspectable.Class implements ClientResponse.Htt
   get formData(): Effect.Effect<FormData, Error.ResponseError> {
     return this.formDataBody ??= Effect.tryPromise({
       try: () => this.source.body.formData() as Promise<FormData>,
-      catch: (_) =>
+      catch: (cause) =>
         new Error.ResponseError({
           request: this.request,
           response: this,
           reason: "Decode",
-          error: _
+          cause
         })
     }).pipe(Effect.cached, Effect.runSync)
   }
@@ -220,12 +220,12 @@ class ClientResponseImpl extends Inspectable.Class implements ClientResponse.Htt
   get arrayBuffer(): Effect.Effect<ArrayBuffer, Error.ResponseError> {
     return this.arrayBufferBody ??= Effect.tryPromise({
       try: () => this.source.body.arrayBuffer(),
-      catch: (_) =>
+      catch: (cause) =>
         new Error.ResponseError({
           request: this.request,
           response: this,
           reason: "Decode",
-          error: _
+          cause
         })
     }).pipe(Effect.cached, Effect.runSync)
   }

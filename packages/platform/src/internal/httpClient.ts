@@ -128,7 +128,7 @@ export const makeDefault = (
         const addAbort = Scope.addFinalizer(scope, Effect.sync(() => controller.abort()))
         const urlResult = UrlParams.makeUrl(request.url, request.urlParams, request.hash)
         if (urlResult._tag === "Left") {
-          return Effect.fail(new Error.RequestError({ request, reason: "InvalidUrl", error: urlResult.left }))
+          return Effect.fail(new Error.RequestError({ request, reason: "InvalidUrl", cause: urlResult.left }))
         }
         const url = urlResult.right
         const tracerDisabled = !fiber.getFiberRef(FiberRef.currentTracerEnabled) ||
@@ -211,11 +211,11 @@ export const fetch: Client.HttpClient.Default = makeDefault((request, url, signa
             duplex: request.body._tag === "Stream" ? "half" : undefined,
             signal
           } as any),
-        catch: (error) =>
+        catch: (cause) =>
           new Error.RequestError({
             request,
             reason: "Transport",
-            error
+            cause
           })
       }),
       (response) => internalResponse.fromWeb(request, response)
@@ -276,7 +276,7 @@ export const filterStatus = dual<
           request,
           response,
           reason: "StatusCode",
-          error: "invalid status code"
+          description: "invalid status code"
         })
     )))
 
@@ -293,7 +293,7 @@ export const filterStatusOk = <E, R>(
           request,
           response,
           reason: "StatusCode",
-          error: "non 2xx status code"
+          description: "non 2xx status code"
         })
     ))
 
@@ -675,11 +675,11 @@ export const schemaFunction = dual<
     Effect.flatMap(
       Effect.tryMap(encode(a), {
         try: (body) => new TextEncoder().encode(JSON.stringify(body)),
-        catch: (error) =>
+        catch: (cause) =>
           new Error.RequestError({
             request,
             reason: "Encode",
-            error
+            cause
           })
       }),
       (body) =>

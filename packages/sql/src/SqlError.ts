@@ -1,8 +1,7 @@
 /**
  * @since 1.0.0
  */
-import { RefailError, TypeIdError } from "@effect/platform/Error"
-import * as Predicate from "effect/Predicate"
+import { TypeIdError } from "@effect/platform/Error"
 
 /**
  * @since 1.0.0
@@ -17,19 +16,10 @@ export type SqlErrorTypeId = typeof SqlErrorTypeId
 /**
  * @since 1.0.0
  */
-export class SqlError extends RefailError(SqlErrorTypeId, "SqlError")<{}> {
-  get code() {
-    if (Predicate.hasProperty(this.error, "code")) {
-      return this.error.code
-    }
-    return undefined
-  }
-
-  get message() {
-    const code = this.code
-    return code ? `${code}: ${super.message}` : super.message
-  }
-}
+export class SqlError extends TypeIdError(SqlErrorTypeId, "SqlError")<{
+  cause: unknown
+  message?: string
+}> {}
 
 /**
  * @since 1.0.0

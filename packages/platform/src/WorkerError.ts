@@ -3,7 +3,6 @@
  */
 import * as Schema from "@effect/schema/Schema"
 import type * as Cause from "effect/Cause"
-import * as Inspectable from "effect/Inspectable"
 import * as Predicate from "effect/Predicate"
 import * as internal from "./internal/workerError.js"
 
@@ -31,7 +30,7 @@ export const isWorkerError = (u: unknown): u is WorkerError => Predicate.hasProp
  */
 export class WorkerError extends Schema.TaggedError<WorkerError>()("WorkerError", {
   reason: Schema.Literal("spawn", "decode", "send", "unknown", "encode"),
-  error: Schema.CauseDefectUnknown
+  cause: Schema.CauseDefectUnknown
 }) {
   /**
    * @since 1.0.0
@@ -61,11 +60,19 @@ export class WorkerError extends Schema.TaggedError<WorkerError>()("WorkerError"
   /**
    * @since 1.0.0
    */
-  get message() {
-    const message = Predicate.hasProperty(this.error, "message")
-      ? this.error.message
-      : Inspectable.toStringUnknown(this.error, undefined)
-    return `${this.reason}: ${message}`
+  get message(): string {
+    switch (this.reason) {
+      case "send":
+        return "An error occurred calling .postMessage"
+      case "spawn":
+        return "An error occurred while spawning a worker"
+      case "decode":
+        return "An error occurred during decoding"
+      case "encode":
+        return "An error occurred during encoding"
+      case "unknown":
+        return "An unexpected error occurred"
+    }
   }
 }
 
@@ -76,5 +83,5 @@ export class WorkerError extends Schema.TaggedError<WorkerError>()("WorkerError"
 export interface WorkerErrorFrom {
   readonly _tag: "WorkerError"
   readonly reason: "spawn" | "decode" | "send" | "unknown" | "encode"
-  readonly error: unknown
+  readonly cause: unknown
 }

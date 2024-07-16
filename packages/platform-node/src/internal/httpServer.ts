@@ -60,8 +60,8 @@ export const make = (
     )
 
     yield* Effect.async<void, Error.ServeError>((resume) => {
-      function onError(error: Error) {
-        resume(Effect.fail(new Error.ServeError({ error })))
+      function onError(cause: Error) {
+        resume(Effect.fail(new Error.ServeError({ cause })))
       }
       server.on("error", onError)
       server.listen(options, () => {
@@ -212,11 +212,11 @@ class ServerRequestImpl extends HttpIncomingMessageImpl<Error.RequestError> impl
     private headersOverride?: Headers.Headers,
     remoteAddressOverride?: string
   ) {
-    super(source, (_) =>
+    super(source, (cause) =>
       new Error.RequestError({
         request: this,
         reason: "Decode",
-        error: _
+        cause
       }), remoteAddressOverride)
     this[ServerRequest.TypeId] = ServerRequest.TypeId
   }
@@ -293,7 +293,7 @@ class ServerRequestImpl extends HttpIncomingMessageImpl<Error.RequestError> impl
       new Error.RequestError({
         request: this,
         reason: "Decode",
-        error: "not an upgradeable ServerRequest"
+        description: "not an upgradeable ServerRequest"
       })
     )
   }
@@ -382,12 +382,12 @@ const handleResponse = (request: ServerRequest.HttpServerRequest, response: Serv
         ) {
           return Effect.tryPromise({
             try: (signal) => pipeline(body.body as any, nodeResponse, { signal, end: true }),
-            catch: (error) =>
+            catch: (cause) =>
               new Error.ResponseError({
                 request,
                 response,
                 reason: "Decode",
-                error
+                cause
               })
           }).pipe(
             Effect.interruptible,
@@ -414,13 +414,13 @@ const handleResponse = (request: ServerRequest.HttpServerRequest, response: Serv
           return Effect.async<void, Error.ResponseError>((resume, signal) => {
             Readable.fromWeb(r.body as any, { signal })
               .pipe(nodeResponse)
-              .on("error", (error) => {
+              .on("error", (cause) => {
                 resume(Effect.fail(
                   new Error.ResponseError({
                     request,
                     response,
                     reason: "Decode",
-                    error
+                    cause
                   })
                 ))
               })
@@ -438,20 +438,20 @@ const handleResponse = (request: ServerRequest.HttpServerRequest, response: Serv
         return Stream.run(
           Stream.mapError(
             body.stream,
-            (error) =>
+            (cause) =>
               new Error.ResponseError({
                 request,
                 response,
                 reason: "Decode",
-                error
+                cause
               })
           ),
-          NodeSink.fromWritable(() => nodeResponse, (error) =>
+          NodeSink.fromWritable(() => nodeResponse, (cause) =>
             new Error.ResponseError({
               request,
               response,
               reason: "Decode",
-              error
+              cause
             }))
         ).pipe(
           Effect.interruptible,

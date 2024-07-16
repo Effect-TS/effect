@@ -137,7 +137,8 @@ export interface MultipartError extends YieldableError {
   readonly [ErrorTypeId]: ErrorTypeId
   readonly _tag: "MultipartError"
   readonly reason: "FileTooLarge" | "FieldTooLarge" | "BodyTooLarge" | "TooManyParts" | "InternalError" | "Parse"
-  readonly error: unknown
+  readonly message: string
+  readonly cause: unknown
 }
 
 /**
@@ -147,7 +148,7 @@ export interface MultipartError extends YieldableError {
 export const MultipartError: new(
   options: {
     readonly reason: MultipartError["reason"]
-    readonly error: unknown
+    readonly cause: unknown
   }
 ) => MultipartError = internal.MultipartError
 
