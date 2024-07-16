@@ -67,7 +67,7 @@ const makeSqlCommit = (client: Client.SqlClient) => {
 function executeCommit(this: Executable) {
   return Effect.tryPromise({
     try: () => this.execute(),
-    catch: (error) => new SqlError({ error })
+    catch: (cause) => new SqlError({ cause })
   }).pipe(Effect.withSpan("kysely.execute", {
     kind: "client",
     captureStackTrace: false,
