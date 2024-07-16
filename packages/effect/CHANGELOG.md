@@ -1,5 +1,29 @@
 # effect
 
+## 3.5.4
+
+### Patch Changes
+
+- [#3253](https://github.com/Effect-TS/effect/pull/3253) [`ed0dde4`](https://github.com/Effect-TS/effect/commit/ed0dde4888e6f1a97ad5bba06b755d26a6a1c52e) Thanks @tim-smart! - update dependencies
+
+- [#3247](https://github.com/Effect-TS/effect/pull/3247) [`ca775ce`](https://github.com/Effect-TS/effect/commit/ca775cec53baebc1a43d9b8852a3ac6726178498) Thanks @tim-smart! - if performance.timeOrigin is 0, use performance.now() directly in Clock
+
+  This is a workaround for cloudflare, where performance.now() cannot be used in
+  the global scope to calculate the origin.
+
+- [#3259](https://github.com/Effect-TS/effect/pull/3259) [`5be9cc0`](https://github.com/Effect-TS/effect/commit/5be9cc044025a9541b9b7acefa2d3fc05fa1301b) Thanks @IMax153! - expose `Channel.isChannel`
+
+- [#3250](https://github.com/Effect-TS/effect/pull/3250) [`203658f`](https://github.com/Effect-TS/effect/commit/203658f8001c132b25764ab70344b171683b554c) Thanks @gcanti! - add support for `Refinement`s to `Predicate.or`, closes #3243
+
+  ```ts
+  import { Predicate } from "effect";
+
+  // Refinement<unknown, string | number>
+  const isStringOrNumber = Predicate.or(Predicate.isString, Predicate.isNumber);
+  ```
+
+- [#3246](https://github.com/Effect-TS/effect/pull/3246) [`eb1c4d4`](https://github.com/Effect-TS/effect/commit/eb1c4d44e54b9d8d201a366d1ff94face2a6dcd3) Thanks @tim-smart! - render nested causes in Cause.pretty
+
 ## 3.5.3
 
 ### Patch Changes
