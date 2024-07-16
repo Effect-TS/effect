@@ -60,18 +60,18 @@ TODO: change to minor before merging
 - rename `Base64Url` to `Uint8ArrayFromBase64Url`
 - rename `Hex` to `Uint8ArrayFromHex`
 - make `defect` schema required in `ExitFromSelf`, `Exit`, `CauseFromSelf`, `CauseFromSelf`
+  This is for two reasons:
+
+  1. The optionality of `defect` caused inference issues when the schema was declared within a Struct. In such cases, the `R` type of the schema was erroneously inferred as `unknown` instead of `never`.
+  2. In general, schema definitions such as `Schema.ExitFromSelf` or `Schema.Exit` shouldn't have a default. The user should actively choose them to avoid hidden behaviors.
+
 - rename `CauseDefectUnknown` to `Defect`
 
 ### Serializable
 
-- rename `WithResult` interface to `WithExit`
 - add `defect` field to `symbolExit` field
-- rename `WithResult` namespace to `WithExit`
-- change `WithExit` fields to lowercase (`Success` -> `success`, `Failure` -> `failure`)
-- rename `WithExit.Error` to `WithExit.Failure`
-- rename `symbolResult` symbol to `symbolExit`
-- rename `SerializableWithResult` interface to `SerializableWithExit`
-- rename `SerializableWithResult` namespace to `SerializableWithExit`
+- change `WithResult` fields to standard lowercase (`Success` -> `success`, `Failure` -> `failure`)
+- rename `WithResult.Error` to `WithResult.Failure`
 
 ## New Features
 
@@ -113,15 +113,14 @@ TODO: change to minor before merging
 
 ### Serializable
 
-- add `WithExit.SuccessEncoded`
-- add `WithExit.FailureEncoded`
-- add `WithExit.Any`
-- add `WithExit.All`
-- add `asWithExit`
+- add `WithResult.SuccessEncoded`
+- add `WithResult.FailureEncoded`
+- add `WithResult.Any`
+- add `WithResult.All`
+- add `asWithResult`
 - add `Serializable.Any`
 - add `Serializable.All`
 - add `asSerializable`
-- add `SerializableWithExit.Any`
-- add `SerializableWithExit.All`
-- add `asSerializableWithExit`
-- add `defectSchema`
+- add `SerializableWithResult.Any`
+- add `SerializableWithResult.All`
+- add `asSerializableWithResult`

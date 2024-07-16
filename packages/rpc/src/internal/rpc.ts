@@ -10,7 +10,7 @@ import type * as Rpc from "../Rpc.js"
 /** @internal */
 export const withRequestTag = <A>(
   f: (
-    request: Serializable.SerializableWithExit<any, any, any, any, any, any, any, any>
+    request: Serializable.SerializableWithResult<any, any, any, any, any, any, any, any>
   ) => A
 ) => {
   const cache = new Map<string, A>()
@@ -46,12 +46,11 @@ export const makeRequest = <A extends Schema.TaggedRequest.All>(
     ...options,
     [Request.RequestTypeId]: undefined as any,
     [PrimaryKey.symbol]: () => `${options.request._tag}:${hash}`,
-    [Serializable.symbolExit]: {
+    [Serializable.symbolResult]: {
       success: isStream
         ? Schema.Never
         : Serializable.successSchema(options.request as any),
-      failure: isStream ? Schema.Never : Serializable.failureSchema(options.request as any),
-      defect: Schema.Defect
+      failure: isStream ? Schema.Never : Serializable.failureSchema(options.request as any)
     },
     [Equal.symbol](that: Rpc.Request<A>) {
       return Equal.equals(options.request, that.request)

@@ -174,7 +174,7 @@ export declare namespace ResultPersistence {
    * @since 1.0.0
    * @category models
    */
-  export interface Key<R, IE, E, IA, A> extends Serializable.WithExit<A, IA, E, IE, R>, PrimaryKey.PrimaryKey {}
+  export interface Key<R, IE, E, IA, A> extends Serializable.WithResult<A, IA, E, IE, R>, PrimaryKey.PrimaryKey {}
 
   /**
    * @since 1.0.0

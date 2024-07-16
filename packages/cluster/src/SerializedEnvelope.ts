@@ -44,7 +44,7 @@ export class SerializedEnvelope extends Schema.Class<SerializedEnvelope>(Seriali
   get [Serializable.symbol]() {
     return this.constructor
   }
-  get [Serializable.symbolExit]() {
+  get [Serializable.symbolResult]() {
     return { Success: Schema.Void, Failure: Schema.Never }
   }
   get [PrimaryKey.symbol]() {

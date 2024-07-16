@@ -14,7 +14,7 @@ class GetPersonById extends S.Class<GetPersonById>("GetPersonById")({
   get [Serializable.symbol]() {
     return GetPersonById
   }
-  get [Serializable.symbolExit]() {
+  get [Serializable.symbolResult]() {
     return {
       success: Person,
       failure: S.String,

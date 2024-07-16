@@ -121,7 +121,7 @@ export declare namespace SerializedRunner {
     readonly [K in A["_tag"]]: Extract<
       A,
       { readonly _tag: K }
-    > extends Serializable.SerializableWithExit<
+    > extends Serializable.SerializableWithResult<
       infer S,
       infer _SI,
       infer _SR,

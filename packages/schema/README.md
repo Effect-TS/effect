@@ -8165,34 +8165,35 @@ console.log(deserializedUsingAnInstance)
 // Person { id: 1, name: 'John', createdAt: 1970-01-01T00:00:00.000Z }
 ```
 
-## WithExit trait
+## WithResult trait
 
-The `WithExit` trait is designed to encapsulate the outcome of an operation, distinguishing between success and failure cases. Each case is associated with a schema that defines the structure and types of the success or failure data.
+The `WithResult` trait is designed to encapsulate the outcome of an operation, distinguishing between success and failure cases. Each case is associated with a schema that defines the structure and types of the success or failure data.
 
 ```ts
-interface WithExit<Success, SuccessEncoded, Failure, FailureEncoded, ExitR> {
-  readonly [symbolExit]: {
-    readonly success: Schema.Schema<Success, SuccessEncoded, ExitR>
-    readonly failure: Schema.Schema<Failure, FailureEncoded, ExitR>
-    readonly defect: Schema.Schema<unknown, unknown, ExitR>
+interface WithResult<
+  Success,
+  SuccessEncoded,
+  Failure,
+  FailureEncoded,
+  ResultR
+> {
+  readonly [symbolResult]: {
+    readonly success: Schema.Schema<Success, SuccessEncoded, ResultR>
+    readonly failure: Schema.Schema<Failure, FailureEncoded, ResultR>
   }
 }
 ```
 
-## SerializableWithExit trait
+## SerializableWithResult trait
 
-The `SerializableWithExit` trait is specifically designed to model remote procedures that require serialization of their input and output, managing both successful and failed outcomes.
+The `SerializableWithResult` trait is specifically designed to model remote procedures that require serialization of their input and output, managing both successful and failed outcomes.
 
-```ts
-(payload: Payload): Exit<Success, Failure>
-```
-
-This trait combines functionality from both the `Serializable` and `WithExit` traits to handle data serialization and the bifurcation of operation results into success or failure categories.
+This trait combines functionality from both the `Serializable` and `WithResult` traits to handle data serialization and the bifurcation of operation results into success or failure categories.
 
 **Definition**
 
 ```ts
-interface SerializableWithExit<
+interface SerializableWithResult<
   A,
   I,
   R,
@@ -8200,16 +8201,16 @@ interface SerializableWithExit<
   SuccessEncoded,
   Failure,
   FailureEncoded,
-  ExitR
+  ResultR
 > extends Serializable<A, I, R>,
-    WithExit<Success, SuccessEncoded, Failure, FailureEncoded, ExitR> {}
+    WithResult<Success, SuccessEncoded, Failure, FailureEncoded, ResultR> {}
 ```
 
 **Components**
 
 - **Payload (`A, I, R`)**: The payload is described using the `Serializable<A, I, R>` trait, which includes the type of the payload (`A`), its serialized form (`I`), and any relevant runtime context (`R`).
-- **Success Case (`Success, SuccessEncoded, ExitR`)**: Defined by `Schema<Success, SuccessEncoded, ExitR>`, this outlines the structure and type of the data upon a successful operation, along with its serialized form.
-- **Failure Case (`Failure, FailureEncoded, ExitR`)**: This is analogous to the Success Case but caters to scenarios where the operation fails. It is described by `Schema<Failure, FailureEncoded, ExitR>`.
+- **Success Case (`Success, SuccessEncoded, ResultR`)**: Defined by `Schema<Success, SuccessEncoded, ResultR>`, this outlines the structure and type of the data upon a successful operation, along with its serialized form.
+- **Failure Case (`Failure, FailureEncoded, ResultR`)**: This is analogous to the Success Case but caters to scenarios where the operation fails. It is described by `Schema<Failure, FailureEncoded, ResultR>`.
 
 **Workflow**
 
@@ -8265,11 +8266,10 @@ class GetPersonById {
     return GetPersonById.FromEncoded
   }
 
-  get [Serializable.symbolExit]() {
+  get [Serializable.symbolResult]() {
     return {
       success: Person,
-      failure: Schema.String,
-      defect: Schema.Defect
+      failure: Schema.String
     }
   }
 }
@@ -8397,11 +8397,11 @@ Output:
 
 ## Communication and Serialization with Schema and Serializable Traits
 
-This section outlines a streamlined client-server interaction using the `Serializable` and `WithExit` traits from the `@effect/schema` library to manage serialization and processing of data objects across network communications.
+This section outlines a streamlined client-server interaction using the `Serializable` and `WithResult` traits from the `@effect/schema` library to manage serialization and processing of data objects across network communications.
 
 **Client-Side Operations:**
 
-1. **Initialization**: Start with an object of type `A`, which implements `Serializable.SerializableWithExit`.
+1. **Initialization**: Start with an object of type `A`, which implements `Serializable.SerializableWithResult`.
 2. **Serialization**: Serialize the object `A` using `Serializable.serialize`, which employs the schema retrieved from the `Serializable` interface tied to `A`.
 3. **Transmission**: Send the serialized data of type `I` to the server and wait for a response.
 
@@ -8410,13 +8410,13 @@ This section outlines a streamlined client-server interaction using the `Seriali
 1. **Reception**: Receive the serialized data `I`.
 2. **Deserialization**: Convert the serialized data `I` back into an object of type `A` using a predefined union schema `Schema<A | B | ..., I | IB | ...>`.
 3. **Processing**: Handle the message of type `A` to derive an outcome as `Exit<Success, Failure>`.
-4. **Result Serialization**: Serialize the result `Exit<Success, Failure>` to `Exit<SuccessEncoded, FailureEncoded>` utilizing the schema obtained from `A`'s `WithExit` interface.
+4. **Result Serialization**: Serialize the result `Exit<Success, Failure>` to `Exit<SuccessEncoded, FailureEncoded>` utilizing the schema obtained from `A`'s `WithResult` interface.
 5. **Response**: Send the serialized response `Exit<SuccessEncoded, FailureEncoded>` back to the client.
 
 **Client-Side Response Handling:**
 
 1. **Reception**: Receive the response `Exit<SuccessEncoded, FailureEncoded>`.
-2. **Final Deserialization**: Convert `Exit<SuccessEncoded, FailureEncoded>` back to `Exit<Success, Failure>` using the original object `A` and the schema from the `WithExit` interface.
+2. **Final Deserialization**: Convert `Exit<SuccessEncoded, FailureEncoded>` back to `Exit<Success, Failure>` using the original object `A` and the schema from the `WithResult` interface.
 
 # Useful Examples
 

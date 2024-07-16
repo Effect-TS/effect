@@ -4,6 +4,6 @@ export const symbol: unique symbol = Symbol.for(
 )
 
 /** @internal */
-export const symbolExit: unique symbol = Symbol.for(
-  "@effect/schema/Serializable/symbolExit"
+export const symbolResult: unique symbol = Symbol.for(
+  "@effect/schema/Serializable/symbolResult"
 )

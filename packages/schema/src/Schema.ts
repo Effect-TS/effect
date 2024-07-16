@@ -7544,10 +7544,10 @@ export interface TaggedRequest<
   SuccessEncoded,
   FailureType,
   FailureEncoded,
-  ExitR
+  ResultR
 > extends
   Request.Request<SuccessType, FailureType>,
-  Serializable.SerializableWithExit<
+  Serializable.SerializableWithResult<
     A,
     I,
     R,
@@ -7555,7 +7555,7 @@ export interface TaggedRequest<
     SuccessEncoded,
     FailureType,
     FailureEncoded,
-    ExitR
+    ResultR
   >
 {
   readonly _tag: Tag
@@ -7647,11 +7647,10 @@ export const TaggedRequest =
       get [serializable_.symbol]() {
         return this.constructor
       }
-      get [serializable_.symbolExit]() {
+      get [serializable_.symbolResult]() {
         return {
           failure: options.failure,
-          success: options.success,
-          defect: Defect
+          success: options.success
         }
       }
     } as any

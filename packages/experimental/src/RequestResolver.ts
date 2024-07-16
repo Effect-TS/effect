@@ -111,7 +111,7 @@ export const dataLoader = dual<
  * @category model
  */
 export interface PersistedRequest<R, IE, E, IA, A>
-  extends Request.Request<A, E>, Serializable.WithExit<A, IA, E, IE, R>
+  extends Request.Request<A, E>, Serializable.WithResult<A, IA, E, IE, R>
 {}
 
 /**
@@ -136,7 +136,7 @@ export const persisted: {
   ): <Req extends PersistedRequest.Any>(
     self: RequestResolver.RequestResolver<Req, never>
   ) => Effect.Effect<
-    RequestResolver.RequestResolver<Req, Serializable.WithExit.Context<Req>>,
+    RequestResolver.RequestResolver<Req, Serializable.WithResult.Context<Req>>,
     never,
     Persistence.ResultPersistence | Scope.Scope
   >
@@ -144,7 +144,7 @@ export const persisted: {
     self: RequestResolver.RequestResolver<Req, never>,
     storeId: string
   ): Effect.Effect<
-    RequestResolver.RequestResolver<Req, Serializable.WithExit.Context<Req>>,
+    RequestResolver.RequestResolver<Req, Serializable.WithResult.Context<Req>>,
     never,
     Persistence.ResultPersistence | Scope.Scope
   >
@@ -152,7 +152,7 @@ export const persisted: {
   self: RequestResolver.RequestResolver<Req, never>,
   storeId: string
 ): Effect.Effect<
-  RequestResolver.RequestResolver<Req, Serializable.WithExit.Context<Req>>,
+  RequestResolver.RequestResolver<Req, Serializable.WithResult.Context<Req>>,
   never,
   Persistence.ResultPersistence | Scope.Scope
 > =>

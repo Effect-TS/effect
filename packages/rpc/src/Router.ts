@@ -55,7 +55,7 @@ export declare namespace Router {
    * @category models
    */
   export type Context<A extends Router<any, any>> = A extends Router<infer Req, infer R>
-    ? R | Serializable.SerializableWithExit.Context<Req>
+    ? R | Serializable.SerializableWithResult.Context<Req>
     : never
 
   /**

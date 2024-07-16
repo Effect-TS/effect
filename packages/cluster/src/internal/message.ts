@@ -8,7 +8,7 @@ import type * as Message from "../Message.js"
 export function isMessageWithResult(value: unknown): value is Message.Message<unknown, unknown, unknown, unknown> {
   return (
     typeof value === "object" && value !== null &&
-    Serializable.symbolExit in value
+    Serializable.symbolResult in value
   )
 }
 
