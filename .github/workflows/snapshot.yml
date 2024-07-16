@@ -70,7 +70,7 @@ jobs:
       - name: Create snapshot
         id: snapshot
         run: |
-          snapshots=$(pnpx pkg-pr-new@0.0.17 publish --compact --pnpm --comment=off ./packages/*)
+          snapshots=$(pnpx pkg-pr-new@0.0.17 publish --pnpm --comment=off ./packages/*)
           echo "${snapshots}"
           snapshots=$(echo "${snapshots}" | awk '
             /⚡️ Your npm packages are published./ \
