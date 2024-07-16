@@ -61,18 +61,8 @@ jobs:
         if: ${{ steps.branch.outputs.branch == 'changeset-release/main' }}
         run: git checkout origin/main
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v3
-
-      - name: Install node
-        uses: actions/setup-node@v4
-        with:
-          cache: pnpm
-          node-version: 20.12.2
-
       - name: Install dependencies
-        shell: bash
-        run: pnpm install
+        uses: ./.github/actions/setup
 
       - name: Build package
         run: pnpm build
