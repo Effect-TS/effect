@@ -187,6 +187,20 @@ export interface ChannelException<out E> {
 }
 
 /**
+ * @since 3.5.4
+ * @category refinements
+ */
+export const isChannel: (u: unknown) => u is Channel<
+  unknown,
+  unknown,
+  unknown,
+  unknown,
+  unknown,
+  unknown,
+  unknown
+> = core.isChannel
+
+/**
  * @since 2.0.0
  * @category constructors
  */
