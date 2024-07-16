@@ -59,13 +59,13 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
               function onMessageError(error: MessageEvent) {
                 Deferred.unsafeDone(
                   fiberSet.deferred,
-                  new WorkerError({ reason: "decode", error: error.data })
+                  new WorkerError({ reason: "decode", cause: error.data })
                 )
               }
               function onError(error: any) {
                 Deferred.unsafeDone(
                   fiberSet.deferred,
-                  new WorkerError({ reason: "unknown", error: error.data })
+                  new WorkerError({ reason: "unknown", cause: error.data })
                 )
               }
               function handlePort(port: MessagePort) {

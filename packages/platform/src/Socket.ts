@@ -18,7 +18,7 @@ import * as Predicate from "effect/Predicate"
 import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
 import type * as AsyncProducer from "effect/SingleProducerAsyncInput"
-import { RefailError, TypeIdError } from "./Error.js"
+import { TypeIdError } from "./Error.js"
 
 /**
  * @since 1.0.0
@@ -125,11 +125,12 @@ export type SocketError = SocketGenericError | SocketCloseError
  * @since 1.0.0
  * @category errors
  */
-export class SocketGenericError extends RefailError(SocketErrorTypeId, "SocketError")<{
+export class SocketGenericError extends TypeIdError(SocketErrorTypeId, "SocketError")<{
   readonly reason: "Write" | "Read" | "Open" | "OpenTimeout"
+  readonly cause: unknown
 }> {
   get message() {
-    return `${this.reason}: ${super.message}`
+    return `An error occurred during ${this.reason}`
   }
 }
 
@@ -383,10 +384,10 @@ export const fromWebSocket = <R>(
                   )
                 )
               }
-              ws.onerror = (error) => {
+              ws.onerror = (cause) => {
                 Deferred.unsafeDone(
                   fiberSet.deferred,
-                  Effect.fail(new SocketGenericError({ reason: open ? "Read" : "Open", error }))
+                  Effect.fail(new SocketGenericError({ reason: open ? "Read" : "Open", cause }))
                 )
               }
 
@@ -407,7 +408,7 @@ export const fromWebSocket = <R>(
                   Effect.timeoutFail({
                     duration: options?.openTimeout ?? 10000,
                     onTimeout: () =>
-                      new SocketGenericError({ reason: "OpenTimeout", error: "timeout waiting for \"open\"" })
+                      new SocketGenericError({ reason: "OpenTimeout", cause: "timeout waiting for \"open\"" })
                   }),
                   Effect.raceFirst(FiberSet.join(fiberSet))
                 )
@@ -430,7 +431,7 @@ export const fromWebSocket = <R>(
                     Effect.try({
                       try: () =>
                         ws.send(chunk),
-                      catch: (error) => new SocketGenericError({ reason: "Write", error })
+                      catch: (cause) => new SocketGenericError({ reason: "Write", cause })
                     })
                 ),
                 Effect.forever,
@@ -585,7 +586,7 @@ export const fromTransformStream = <R>(acquire: Effect.Effect<InputTransformStre
                         writer.write(chunk)
                       }
                     },
-                    catch: (error) => new SocketGenericError({ reason: "Write", error })
+                    catch: (cause) => new SocketGenericError({ reason: "Write", cause })
                   })
                 }),
                 Effect.forever,
@@ -595,7 +596,7 @@ export const fromTransformStream = <R>(acquire: Effect.Effect<InputTransformStre
             Effect.tap(({ fiberSet, reader }) =>
               Effect.tryPromise({
                 try: () => reader.read(),
-                catch: (error) => new SocketGenericError({ reason: "Read", error })
+                catch: (cause) => new SocketGenericError({ reason: "Read", cause })
               }).pipe(
                 Effect.tap((result) => {
                   if (result.done) {

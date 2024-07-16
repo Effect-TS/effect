@@ -102,27 +102,27 @@ const sendBody = (
 
         return Effect.tryPromise({
           try: () => pipeline(Readable.fromWeb(response.body! as any), nodeRequest),
-          catch: (_) =>
+          catch: (cause) =>
             new Error.RequestError({
               request,
               reason: "Transport",
-              error: _
+              cause
             })
         })
       }
       case "Stream": {
         return Stream.run(
-          Stream.mapError(body.stream, (_) =>
+          Stream.mapError(body.stream, (cause) =>
             new Error.RequestError({
               request,
               reason: "Encode",
-              error: _
+              cause
             })),
-          NodeSink.fromWritable(() => nodeRequest, (_) =>
+          NodeSink.fromWritable(() => nodeRequest, (cause) =>
             new Error.RequestError({
               request,
               reason: "Transport",
-              error: _
+              cause
             }))
         )
       }
@@ -131,12 +131,12 @@ const sendBody = (
 
 const waitForResponse = (nodeRequest: Http.ClientRequest, request: ClientRequest.HttpClientRequest) =>
   Effect.async<Http.IncomingMessage, Error.RequestError>((resume) => {
-    function onError(error: Error) {
+    function onError(cause: Error) {
       resume(Effect.fail(
         new Error.RequestError({
           request,
           reason: "Transport",
-          error
+          cause
         })
       ))
     }
@@ -158,12 +158,12 @@ const waitForResponse = (nodeRequest: Http.ClientRequest, request: ClientRequest
 
 const waitForFinish = (nodeRequest: Http.ClientRequest, request: ClientRequest.HttpClientRequest) =>
   Effect.async<void, Error.RequestError>((resume) => {
-    function onError(error: Error) {
+    function onError(cause: Error) {
       resume(Effect.fail(
         new Error.RequestError({
           request,
           reason: "Transport",
-          error
+          cause
         })
       ))
     }
@@ -190,12 +190,12 @@ class ClientResponseImpl extends HttpIncomingMessageImpl<Error.ResponseError>
     readonly request: ClientRequest.HttpClientRequest,
     source: Http.IncomingMessage
   ) {
-    super(source, (_) =>
+    super(source, (cause) =>
       new Error.ResponseError({
         request,
         response: this,
         reason: "Decode",
-        error: _
+        cause
       }))
     this[ClientResponse.TypeId] = ClientResponse.TypeId
   }

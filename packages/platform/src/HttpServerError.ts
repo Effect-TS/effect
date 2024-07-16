@@ -6,7 +6,7 @@ import type * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
 import type * as FiberId from "effect/FiberId"
 import type * as Option from "effect/Option"
-import { RefailError, TypeIdError } from "./Error.js"
+import { TypeIdError } from "./Error.js"
 import type * as ServerRequest from "./HttpServerRequest.js"
 import * as Respondable from "./HttpServerRespondable.js"
 import * as ServerResponse from "./HttpServerResponse.js"
@@ -34,9 +34,11 @@ export type HttpServerError = RequestError | ResponseError | RouteNotFound | Ser
  * @since 1.0.0
  * @category error
  */
-export class RequestError extends RefailError(TypeId, "RequestError")<{
+export class RequestError extends TypeIdError(TypeId, "RequestError")<{
   readonly request: ServerRequest.HttpServerRequest
   readonly reason: "Transport" | "Decode"
+  readonly cause?: unknown
+  readonly description?: string
 }> implements Respondable.Respondable {
   /**
    * @since 1.0.0
@@ -50,7 +52,9 @@ export class RequestError extends RefailError(TypeId, "RequestError")<{
   }
 
   get message() {
-    return `${this.reason} error (${this.methodAndUrl}): ${super.message}`
+    return this.description ?
+      `${this.reason}: ${this.description} (${this.methodAndUrl})` :
+      `${this.reason} error (${this.methodAndUrl})`
   }
 }
 
@@ -86,10 +90,12 @@ export class RouteNotFound extends TypeIdError(TypeId, "RouteNotFound")<{
  * @since 1.0.0
  * @category error
  */
-export class ResponseError extends RefailError(TypeId, "ResponseError")<{
+export class ResponseError extends TypeIdError(TypeId, "ResponseError")<{
   readonly request: ServerRequest.HttpServerRequest
   readonly response: ServerResponse.HttpServerResponse
   readonly reason: "Decode"
+  readonly cause?: unknown
+  readonly description?: string
 }> {
   /**
    * @since 1.0.0
@@ -103,7 +109,10 @@ export class ResponseError extends RefailError(TypeId, "ResponseError")<{
   }
 
   get message() {
-    return `${this.reason} error (${this.response.status} ${this.methodAndUrl}): ${super.message}`
+    const info = `${this.response.status} ${this.methodAndUrl}`
+    return this.description ?
+      `${this.description} (${info})` :
+      `${this.reason} error (${info})`
   }
 }
 
@@ -111,7 +120,9 @@ export class ResponseError extends RefailError(TypeId, "ResponseError")<{
  * @since 1.0.0
  * @category error
  */
-export class ServeError extends RefailError(TypeId, "ServeError")<{}> {}
+export class ServeError extends TypeIdError(TypeId, "ServeError")<{
+  readonly cause: unknown
+}> {}
 
 /**
  * @since 1.0.0
