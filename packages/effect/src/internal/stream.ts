@@ -8343,4 +8343,4 @@ export const fromEventListener = <A = unknown>(
     }
     target.addEventListener(type, cb as any, options)
     return Effect.sync(() => target.removeEventListener(type, cb, options))
-  })
+  }, "unbounded")
