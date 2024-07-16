@@ -1,5 +1,11 @@
 # @effect/platform-node
 
+## 0.54.1
+
+### Patch Changes
+
+- [#3265](https://github.com/Effect-TS/effect/pull/3265) [`07db4ac`](https://github.com/Effect-TS/effect/commit/07db4ac8da9d07ce31bd62470a73e362a4291a0c) Thanks @tim-smart! - add NodeHttpServerRequest.toServerResponse for accessing the raw node response
+
 ## 0.54.0
 
 ### Minor Changes
