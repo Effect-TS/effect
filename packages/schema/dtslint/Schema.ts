@@ -2180,13 +2180,13 @@ S.List(S.NumberFromString)
 // $ExpectType Schema<Exit<number, string>, Exit<number, string>, never>
 S.asSchema(S.ExitFromSelf({ success: S.Number, failure: S.String, defect: S.Unknown }))
 
-// $ExpectType ExitFromSelf<typeof Number$, typeof String$, never>
+// $ExpectType ExitFromSelf<typeof Number$, typeof String$, typeof Unknown>
 S.ExitFromSelf({ success: S.Number, failure: S.String, defect: S.Unknown })
 
 // $ExpectType Schema<Exit<number, string>, Exit<number, string>, "a">
 S.asSchema(S.ExitFromSelf({ success: S.Number, failure: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() }))
 
-// $ExpectType ExitFromSelf<typeof Number$, typeof String$, "a">
+// $ExpectType ExitFromSelf<typeof Number$, typeof String$, Schema<unknown, unknown, "a">>
 S.ExitFromSelf({ success: S.Number, failure: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() })
 
 // $ExpectType Schema<{ readonly a: Exit<number, string>; }, { readonly a: Exit<number, string>; }, never>
@@ -2202,19 +2202,19 @@ S.asSchema(S.Struct({
 // Exit
 // ---------------------------------------------
 
-// $ExpectType Schema<Exit<number, string>, ExitEncoded<number, string>, never>
+// $ExpectType Schema<Exit<number, string>, ExitEncoded<number, string, unknown>, never>
 S.asSchema(S.Exit({ success: S.Number, failure: S.String, defect: S.Defect }))
 
-// $ExpectType Exit<typeof Number$, typeof String$, never>
+// $ExpectType Exit<typeof Number$, typeof String$, transform<typeof Unknown, typeof Unknown>>
 S.Exit({ success: S.Number, failure: S.String, defect: S.Defect })
 
-// $ExpectType Schema<Exit<number, string>, ExitEncoded<number, string>, "a">
+// $ExpectType Schema<Exit<number, string>, ExitEncoded<number, string, unknown>, "a">
 S.asSchema(S.Exit({ success: S.Number, failure: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() }))
 
-// $ExpectType Exit<typeof Number$, typeof String$, "a">
+// $ExpectType Exit<typeof Number$, typeof String$, Schema<unknown, unknown, "a">>
 S.Exit({ success: S.Number, failure: S.String, defect: hole<S.Schema<unknown, unknown, "a">>() })
 
-// $ExpectType Schema<{ readonly a: Exit<number, string>; }, { readonly a: ExitEncoded<number, string>; }, never>
+// $ExpectType Schema<{ readonly a: Exit<number, string>; }, { readonly a: ExitEncoded<number, string, unknown>; }, never>
 S.asSchema(S.Struct({
   a: S.Exit({
     success: S.Number,

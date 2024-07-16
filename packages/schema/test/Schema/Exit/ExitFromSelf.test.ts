@@ -47,7 +47,7 @@ describe("ExitFromSelf", () => {
       const schema = S.ExitFromSelf({
         success: S.Number,
         failure: S.String,
-        defect: Util.Defect as S.Schema<unknown, unknown> // TODO
+        defect: Util.Defect
       })
       await Util.expectEncodeSuccess(schema, Exit.die({ a: 1 }), Exit.die(`{"a":1}`))
     })

@@ -196,7 +196,7 @@ const exitSchemaCache = globalValue(
  */
 export const exitSchema = <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>): Schema.Schema<
   Exit.Exit<SA, FA>,
-  Schema.ExitEncoded<SI, FI>,
+  Schema.ExitEncoded<SI, FI, unknown>,
   R
 > => {
   const proto = Object.getPrototypeOf(self)
@@ -290,15 +290,16 @@ export const deserializeSuccess: {
 export const serializeExit: {
   <SA, FA>(value: Exit.Exit<SA, FA>): <SI, FI, R>(
     self: WithResult<SA, SI, FA, FI, R>
-  ) => Effect.Effect<Schema.ExitEncoded<SI, FI>, ParseResult.ParseError, R>
+  ) => Effect.Effect<Schema.ExitEncoded<SI, FI, unknown>, ParseResult.ParseError, R>
   <SA, SI, FA, FI, R>(
     self: WithResult<SA, SI, FA, FI, R>,
     value: Exit.Exit<SA, FA>
-  ): Effect.Effect<Schema.ExitEncoded<SI, FI>, ParseResult.ParseError, R>
+  ): Effect.Effect<Schema.ExitEncoded<SI, FI, unknown>, ParseResult.ParseError, R>
 } = dual(2, <SA, SI, FA, FI, R>(
   self: WithResult<SA, SI, FA, FI, R>,
   value: Exit.Exit<SA, FA>
-): Effect.Effect<Schema.ExitEncoded<SI, FI>, ParseResult.ParseError, R> => Schema.encode(exitSchema(self))(value))
+): Effect.Effect<Schema.ExitEncoded<SI, FI, unknown>, ParseResult.ParseError, R> =>
+  Schema.encode(exitSchema(self))(value))
 
 /**
  * @since 0.67.0

@@ -79,14 +79,16 @@ export declare namespace Router {
    */
   export type Response = [
     index: number,
-    response: Schema.ExitEncoded<any, any> | ReadonlyArray<Schema.ExitEncoded<any, any>>
+    response: Schema.ExitEncoded<any, any, unknown> | ReadonlyArray<Schema.ExitEncoded<any, any, unknown>>
   ]
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type ResponseEffect = Schema.ExitEncoded<any, any> | ReadonlyArray<Schema.ExitEncoded<any, any>>
+  export type ResponseEffect =
+    | Schema.ExitEncoded<any, any, unknown>
+    | ReadonlyArray<Schema.ExitEncoded<any, any, unknown>>
 }
 
 const fromSet = <Reqs extends Schema.TaggedRequest.All, R>(

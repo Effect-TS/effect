@@ -155,7 +155,7 @@ const handlerArray = (u: ReadonlyArray<unknown>) =>
     Effect.map(flow(
       Array.fromIterable,
       Array.map(([, response]) => response),
-      Array.filter((_): _ is S.ExitEncoded<any, any> => Array.isArray(_) === false)
+      Array.filter((_): _ is S.ExitEncoded<any, any, unknown> => Array.isArray(_) === false)
     ))
   )
 const handlerEffectArray = (u: ReadonlyArray<unknown>) =>
@@ -166,7 +166,7 @@ const handlerEffectArray = (u: ReadonlyArray<unknown>) =>
     sampled: true,
     headers: {}
   }))).pipe(
-    Effect.map(Array.filter((_): _ is S.ExitEncoded<any, any> => Array.isArray(_) === false))
+    Effect.map(Array.filter((_): _ is S.ExitEncoded<any, any, unknown> => Array.isArray(_) === false))
   )
 const resolver = Resolver.make(handler)<typeof router>()
 const resolverEffect = ResolverNoStream.make(handlerEffect)<typeof router>()

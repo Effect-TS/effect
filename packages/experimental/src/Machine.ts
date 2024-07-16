@@ -308,7 +308,7 @@ const ActorProto = {
  */
 export interface SerializableActor<M extends Machine.Any> extends Actor<M> {
   readonly sendUnknown: (request: unknown) => Effect.Effect<
-    Schema.ExitEncoded<unknown, unknown>,
+    Schema.ExitEncoded<unknown, unknown, unknown>,
     ParseResult.ParseError
   >
 }
@@ -591,7 +591,7 @@ export const boot = <
           ),
           Effect.provide(context)
         )
-      ) as Effect.Effect<Schema.ExitEncoded<unknown, unknown>, ParseResult.ParseError>
+      ) as Effect.Effect<Schema.ExitEncoded<unknown, unknown, unknown>, ParseResult.ParseError>
 
     const publishState = (newState: Machine.State<M>) => {
       if (currentState !== newState) {

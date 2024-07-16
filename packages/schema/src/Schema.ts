@@ -8050,7 +8050,7 @@ const causeEncoded = <E, EI, D, DI, R1, R2>(
     CauseInterruptEncoded,
     causeSequentialEncoded(recur),
     causeParallelEncoded(recur)
-  ).annotations({ description: `CauseEncoded<${format(error)}>` })
+  ).annotations({ title: `CauseEncoded<${format(error)}>` })
   return out
 }
 
@@ -8255,26 +8255,26 @@ export const Defect: transform<typeof Unknown, typeof Unknown> = transform(
 
 /**
  * @category Exit utils
- * @since 0.67.0
+ * @since 0.69.0
  */
-export type ExitEncoded<A, E> =
+export type ExitEncoded<A, E, D> =
   | {
     readonly _tag: "Failure"
-    readonly cause: CauseEncoded<E, unknown>
+    readonly cause: CauseEncoded<E, D>
   }
   | {
     readonly _tag: "Success"
     readonly value: A
   }
 
-const exitFailureEncoded = <E, EI, ER, DR>(
+const exitFailureEncoded = <E, EI, ER, D, DI, DR>(
   error: Schema<E, EI, ER>,
-  defect: Schema<unknown, unknown, DR>
+  defect: Schema<D, DI, DR>
 ) =>
   Struct({
     _tag: Literal("Failure"),
     cause: causeEncoded(error, defect)
-  }).annotations({ description: `FailureEncoded<${format(error)}>` })
+  })
 
 const exitSuccessEncoded = <A, I, R>(
   value: Schema<A, I, R>
@@ -8282,21 +8282,21 @@ const exitSuccessEncoded = <A, I, R>(
   Struct({
     _tag: Literal("Success"),
     value
-  }).annotations({ description: `SuccessEncoded<${format(value)}>` })
+  })
 
-const exitEncoded = <A, I, R, E, EI, ER, DR>(
+const exitEncoded = <A, I, R, E, EI, ER, D, DI, DR>(
   value: Schema<A, I, R>,
   error: Schema<E, EI, ER>,
-  defect: Schema<unknown, unknown, DR>
-): Schema<ExitEncoded<A, E>, ExitEncoded<I, EI>, ER | R | DR> =>
+  defect: Schema<D, DI, DR>
+): Schema<ExitEncoded<A, E, D>, ExitEncoded<I, EI, DI>, R | ER | DR> =>
   Union(
     exitFailureEncoded(error, defect),
     exitSuccessEncoded(value)
   ).annotations({
-    description: `ExitEncoded<${format(value)}, ${format(error)}>`
+    title: `ExitEncoded<${format(value)}, ${format(error)}, ${format(defect)}>`
   })
 
-const exitDecode = <A, E>(input: ExitEncoded<A, E>): exit_.Exit<A, E> => {
+const exitDecode = <A, E>(input: ExitEncoded<A, E, unknown>): exit_.Exit<A, E> => {
   switch (input._tag) {
     case "Failure":
       return exit_.failCause(causeDecode(input.cause))
@@ -8336,28 +8336,28 @@ const exitParse = <A, R, E, ER>(
 
 /**
  * @category api interface
- * @since 0.67.0
+ * @since 0.69.0
  */
-export interface ExitFromSelf<A extends Schema.All, E extends Schema.All, DR> extends
+export interface ExitFromSelf<A extends Schema.All, E extends Schema.All, D extends Schema.All> extends
   AnnotableClass<
-    ExitFromSelf<A, E, DR>,
+    ExitFromSelf<A, E, D>,
     exit_.Exit<Schema.Type<A>, Schema.Type<E>>,
     exit_.Exit<Schema.Encoded<A>, Schema.Encoded<E>>,
-    Schema.Context<A> | Schema.Context<E> | DR
+    Schema.Context<A> | Schema.Context<E> | Schema.Context<D>
   >
 {}
 
 /**
  * @category Exit transformations
- * @since 0.67.0
+ * @since 0.69.0
  */
-export const ExitFromSelf = <A extends Schema.All, E extends Schema.All, DR>(
+export const ExitFromSelf = <A extends Schema.All, E extends Schema.All, D extends Schema.All>(
   { defect, failure, success }: {
     readonly failure: E
     readonly success: A
-    readonly defect: Schema<unknown, unknown, DR>
+    readonly defect: D
   }
-): ExitFromSelf<A, E, DR> =>
+): ExitFromSelf<A, E, D> =>
   declare(
     [success, failure, defect],
     {
@@ -8373,7 +8373,7 @@ export const ExitFromSelf = <A extends Schema.All, E extends Schema.All, DR>(
         )
     },
     {
-      description: `Exit<${success.ast}, ${failure.ast}>`,
+      title: `Exit<${success.ast}, ${failure.ast}>`,
       pretty: exitPretty,
       arbitrary: exitArbitrary
     }
@@ -8381,35 +8381,36 @@ export const ExitFromSelf = <A extends Schema.All, E extends Schema.All, DR>(
 
 /**
  * @category api interface
- * @since 0.67.0
+ * @since 0.69.0
  */
-export interface Exit<A extends Schema.All, E extends Schema.All, DR> extends
+export interface Exit<A extends Schema.All, E extends Schema.All, D extends Schema.All> extends
   AnnotableClass<
-    Exit<A, E, DR>,
+    Exit<A, E, D>,
     exit_.Exit<Schema.Type<A>, Schema.Type<E>>,
-    ExitEncoded<Schema.Encoded<A>, Schema.Encoded<E>>,
-    Schema.Context<A> | Schema.Context<E> | DR
+    ExitEncoded<Schema.Encoded<A>, Schema.Encoded<E>, Schema.Encoded<D>>,
+    Schema.Context<A> | Schema.Context<E> | Schema.Context<D>
   >
 {}
 
 /**
  * @category Exit transformations
- * @since 0.67.0
+ * @since 0.69.0
  */
-export const Exit = <A extends Schema.All, E extends Schema.All, DR>(
+export const Exit = <A extends Schema.All, E extends Schema.All, D extends Schema.All>(
   { defect, failure, success }: {
     readonly failure: E
     readonly success: A
-    readonly defect: Schema<unknown, unknown, DR>
+    readonly defect: D
   }
-): Exit<A, E, DR> => {
+): Exit<A, E, D> => {
   const success_ = asSchema(success)
   const failure_ = asSchema(failure)
+  const defect_ = asSchema(defect)
   return transform(
-    exitEncoded(success_, failure_, defect),
-    ExitFromSelf({ failure: typeSchema(failure_), success: typeSchema(success_), defect: typeSchema(defect) }),
+    exitEncoded(success_, failure_, defect_),
+    ExitFromSelf({ failure: typeSchema(failure_), success: typeSchema(success_), defect: Unknown }),
     {
-      strict: true,
+      strict: false,
       decode: exitDecode,
       encode: (exit) =>
         exit._tag === "Failure"

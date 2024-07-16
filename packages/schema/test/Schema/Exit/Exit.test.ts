@@ -23,20 +23,20 @@ describe("Exit", () => {
     await Util.expectDecodeUnknownFailure(
       schema,
       { _tag: "Success", value: null },
-      `(ExitEncoded<number, string> <-> Exit<number, string>)
+      `(ExitEncoded<number, string, Defect> <-> Exit<number, string>)
 └─ Encoded side transformation failure
-   └─ ExitEncoded<number, string>
-      └─ SuccessEncoded<number>
+   └─ ExitEncoded<number, string, Defect>
+      └─ { readonly _tag: "Success"; readonly value: number }
          └─ ["value"]
             └─ Expected number, actual null`
     )
     await Util.expectDecodeUnknownFailure(
       schema,
       { _tag: "Failure", cause: null },
-      `(ExitEncoded<number, string> <-> Exit<number, string>)
+      `(ExitEncoded<number, string, Defect> <-> Exit<number, string>)
 └─ Encoded side transformation failure
-   └─ ExitEncoded<number, string>
-      └─ FailureEncoded<string>
+   └─ ExitEncoded<number, string, Defect>
+      └─ { readonly _tag: "Failure"; readonly cause: CauseEncoded<string> }
          └─ ["cause"]
             └─ Expected CauseEncoded<string>, actual null`
     )
