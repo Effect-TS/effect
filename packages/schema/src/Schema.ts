@@ -8212,6 +8212,12 @@ export const Cause = <E extends Schema.All, D extends Schema.All>({ defect, erro
 }
 
 /**
+ * @category api interface
+ * @since 0.69.0
+ */
+export interface Defect extends transform<typeof Unknown, typeof Unknown> {}
+
+/**
  * Defines a schema for handling JavaScript errors (`Error` instances) and other types of defects.
  * It decodes objects into Error instances if they match the expected structure (i.e., have a `message` and optionally a `name` and `stack`),
  * or converts other values to their string representations.
@@ -8224,7 +8230,7 @@ export const Cause = <E extends Schema.All, D extends Schema.All>({ defect, erro
  * @category defect
  * @since 0.69.0
  */
-export const Defect: transform<typeof Unknown, typeof Unknown> = transform(
+export const Defect: Defect = transform(
   Unknown,
   Unknown,
   {

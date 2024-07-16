@@ -2205,7 +2205,7 @@ S.asSchema(S.Struct({
 // $ExpectType Schema<Exit<number, string>, ExitEncoded<number, string, unknown>, never>
 S.asSchema(S.Exit({ success: S.Number, failure: S.String, defect: S.Defect }))
 
-// $ExpectType Exit<typeof Number$, typeof String$, transform<typeof Unknown, typeof Unknown>>
+// $ExpectType Exit<typeof Number$, typeof String$, Defect>
 S.Exit({ success: S.Number, failure: S.String, defect: S.Defect })
 
 // $ExpectType Schema<Exit<number, string>, ExitEncoded<number, string, unknown>, "a">
@@ -2251,7 +2251,7 @@ S.asSchema(S.Struct({
 // $ExpectType Schema<Cause<string>, CauseEncoded<string, unknown>, never>
 S.asSchema(S.Cause({ error: S.String, defect: S.Defect }))
 
-// $ExpectType Cause<typeof String$, transform<typeof Unknown, typeof Unknown>>
+// $ExpectType Cause<typeof String$, Defect>
 S.Cause({ error: S.String, defect: S.Defect })
 
 // $ExpectType Schema<Cause<string>, CauseEncoded<string, unknown>, "a">
