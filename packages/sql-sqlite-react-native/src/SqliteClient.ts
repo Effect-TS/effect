@@ -116,7 +116,6 @@ export const make = (
     const transformRows = Statement.defaultTransforms(
       options.transformResultNames!
     ).array
-    const handleError = (error: any) => new SqlError({ error })
 
     const makeConnection = Effect.gen(function*(_) {
       const db = Sqlite.open(clientOptions)
@@ -131,14 +130,14 @@ export const make = (
             return Effect.map(
               Effect.tryPromise({
                 try: () => db.executeAsync(sql, params as Array<any>),
-                catch: handleError
+                catch: (cause) => new SqlError({ cause, message: "Failed to execute statement (async)" })
               }),
               (result) => result.rows?._array ?? []
             )
           }
           return Effect.try({
             try: () => db.execute(sql, params as Array<any>).rows?._array ?? [],
-            catch: handleError
+            catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
           })
         })
 
@@ -194,7 +193,7 @@ export const make = (
                         queue.unsafeOffer(data.rows)
                       }
                     }),
-                  catch: handleError
+                  catch: (cause) => new SqlError({ cause, message: "Failed to execute statement (reactive)" })
                 }),
                 (cancel) => Effect.sync(cancel)
               )

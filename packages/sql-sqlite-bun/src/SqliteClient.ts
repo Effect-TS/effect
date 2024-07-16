@@ -100,7 +100,7 @@ export const make = (
       ) =>
         Effect.try({
           try: () => db.query(sql).all(...(params as any)) as Array<any>,
-          catch: (error) => new SqlError({ error })
+          catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
         })
 
       const runTransform = options.transformResultNames
@@ -113,7 +113,7 @@ export const make = (
       ) =>
         Effect.try({
           try: () => db.query(sql).values(...(params as any)) as Array<any>,
-          catch: (error) => new SqlError({ error })
+          catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
         })
 
       return identity<SqliteConnection>({
@@ -134,12 +134,12 @@ export const make = (
         },
         export: Effect.try({
           try: () => db.serialize(),
-          catch: (error) => new SqlError({ error })
+          catch: (cause) => new SqlError({ cause, message: "Failed to export database" })
         }),
         loadExtension: (path) =>
           Effect.try({
             try: () => db.loadExtension(path),
-            catch: (error) => new SqlError({ error })
+            catch: (cause) => new SqlError({ cause, message: "Failed to load extension" })
           })
       })
     })

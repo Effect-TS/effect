@@ -65,7 +65,7 @@ export const makeXMLHttpRequest = Client.makeDefault((request, url, signal, fibe
             new Error.RequestError({
               request,
               reason: "Transport",
-              error: xhr.statusText
+              cause: xhr.statusText
             })
           ))
         }
@@ -98,12 +98,12 @@ const sendBody = (
           return next
         }),
         {
-          onFailure: (error) =>
+          onFailure: (cause) =>
             Effect.fail(
               new Error.RequestError({
                 request,
                 reason: "Encode",
-                error
+                cause
               })
             ),
           onSuccess: (body) => Effect.sync(() => xhr.send(body))
@@ -286,12 +286,12 @@ class ClientResponseImpl extends IncomingMessageImpl<Error.ResponseError> implem
     readonly request: ClientRequest.HttpClientRequest,
     source: XMLHttpRequest
   ) {
-    super(source, (_) =>
+    super(source, (cause) =>
       new Error.ResponseError({
         request,
         response: this,
         reason: "Decode",
-        error: _
+        cause
       }))
     this[ClientResponse.TypeId] = ClientResponse.TypeId
   }

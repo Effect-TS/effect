@@ -32,19 +32,19 @@ const platformWorkerImpl = Worker.makePlatform<WorkerThreads.Worker>()({
     port.on("message", (message) => {
       emit(message)
     })
-    port.on("messageerror", (error) => {
+    port.on("messageerror", (cause) => {
       Deferred.unsafeDone(
         deferred,
-        new WorkerError({ reason: "decode", error })
+        new WorkerError({ reason: "decode", cause })
       )
     })
-    port.on("error", (error) => {
-      Deferred.unsafeDone(deferred, new WorkerError({ reason: "unknown", error }))
+    port.on("error", (cause) => {
+      Deferred.unsafeDone(deferred, new WorkerError({ reason: "unknown", cause }))
     })
     port.on("exit", (code) => {
       Deferred.unsafeDone(
         deferred,
-        new WorkerError({ reason: "unknown", error: new Error(`exited with code ${code}`) })
+        new WorkerError({ reason: "unknown", cause: new Error(`exited with code ${code}`) })
       )
     })
     return Effect.void

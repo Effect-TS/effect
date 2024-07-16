@@ -184,19 +184,19 @@ export const makeSerialized = <
       decode(message) {
         return Effect.mapError(
           parseRequest(message),
-          (error) => new WorkerError({ reason: "decode", error })
+          (cause) => new WorkerError({ reason: "decode", cause })
         )
       },
       encodeError(request, message) {
         return Effect.mapError(
           Serializable.serializeFailure(request as any, message),
-          (error) => new WorkerError({ reason: "encode", error })
+          (cause) => new WorkerError({ reason: "encode", cause })
         )
       },
       encodeOutput(request, message) {
         return Effect.catchAllCause(
           Serializable.serializeSuccess(request as any, message),
-          (error) => new WorkerError({ reason: "encode", error })
+          (cause) => new WorkerError({ reason: "encode", cause })
         )
       }
     }))

@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import { RefailError } from "@effect/platform/Error"
+import { TypeIdError } from "@effect/platform/Error"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -64,9 +64,14 @@ export type ErrorTypeId = typeof ErrorTypeId
  * @since 1.0.0
  * @category errors
  */
-export class GeolocationError extends RefailError(ErrorTypeId, "GeolocationError")<{
+export class GeolocationError extends TypeIdError(ErrorTypeId, "GeolocationError")<{
   readonly reason: "PositionUnavailable" | "PermissionDenied" | "Timeout"
-}> {}
+  readonly cause: unknown
+}> {
+  get message() {
+    return this.reason
+  }
+}
 
 const makeQueue = (
   options:
@@ -81,11 +86,11 @@ const makeQueue = (
         Effect.sync(() =>
           navigator.geolocation.watchPosition(
             (position) => queue.unsafeOffer(Either.right(position)),
-            (error) => {
-              if (error.code === error.PERMISSION_DENIED) {
-                queue.unsafeOffer(Either.left(new GeolocationError({ reason: "PermissionDenied", error })))
-              } else if (error.code === error.TIMEOUT) {
-                queue.unsafeOffer(Either.left(new GeolocationError({ reason: "Timeout", error })))
+            (cause) => {
+              if (cause.code === cause.PERMISSION_DENIED) {
+                queue.unsafeOffer(Either.left(new GeolocationError({ reason: "PermissionDenied", cause })))
+              } else if (cause.code === cause.TIMEOUT) {
+                queue.unsafeOffer(Either.left(new GeolocationError({ reason: "Timeout", cause })))
               }
             },
             options

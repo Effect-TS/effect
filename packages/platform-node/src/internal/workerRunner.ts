@@ -14,7 +14,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
   start<I, O>() {
     return Effect.gen(function*() {
       if (!WorkerThreads.parentPort) {
-        return yield* new WorkerError({ reason: "spawn", error: new Error("not in worker") })
+        return yield* new WorkerError({ reason: "spawn", cause: new Error("not in a worker thread") })
       }
       const port = WorkerThreads.parentPort
       const send = (_portId: number, message: O, transfers?: ReadonlyArray<unknown>) =>
@@ -33,11 +33,11 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
                   Deferred.unsafeDone(fiberSet.deferred, Exit.interrupt(FiberId.none))
                 }
               })
-              port.on("messageerror", (error) => {
-                Deferred.unsafeDone(fiberSet.deferred, new WorkerError({ reason: "decode", error }))
+              port.on("messageerror", (cause) => {
+                Deferred.unsafeDone(fiberSet.deferred, new WorkerError({ reason: "decode", cause }))
               })
-              port.on("error", (error) => {
-                Deferred.unsafeDone(fiberSet.deferred, new WorkerError({ reason: "unknown", error }))
+              port.on("error", (cause) => {
+                Deferred.unsafeDone(fiberSet.deferred, new WorkerError({ reason: "unknown", cause }))
               })
               port.postMessage([0])
             }),

@@ -83,7 +83,7 @@ export const make = (
         lookup: (sql: string) =>
           Effect.try({
             try: () => db.prepare(sql),
-            catch: (error) => new SqlError({ error })
+            catch: (cause) => new SqlError({ cause, message: `Failed to prepare statement` })
           })
       })
 
@@ -99,7 +99,7 @@ export const make = (
             }
             return response.results || []
           },
-          catch: (error) => new SqlError({ error })
+          catch: (cause) => new SqlError({ cause, message: `Failed to execute statement` })
         })
 
       const run = (
@@ -131,7 +131,7 @@ export const make = (
                   >
                 >
               },
-              catch: (error) => new SqlError({ error })
+              catch: (cause) => new SqlError({ cause, message: `Failed to execute statement` })
             })
         )
 
