@@ -844,7 +844,7 @@ export const declare: {
     is: (input: unknown) => input is A,
     annotations?: Annotations.Schema<A>
   ): SchemaClass<A>
-  <const P extends ReadonlyArray<Schema.Any>, I, A>(
+  <const P extends ReadonlyArray<Schema.All>, I, A>(
     typeParameters: P,
     options: {
       readonly decode: (
@@ -8108,7 +8108,7 @@ const causeParse = <A, R>(
  * @category api interface
  * @since 0.67.0
  */
-export interface CauseFromSelf<E extends Schema.Any, DR> extends
+export interface CauseFromSelf<E extends Schema.All, DR> extends
   AnnotableClass<
     CauseFromSelf<E, DR>,
     cause_.Cause<Schema.Type<E>>,
@@ -8121,7 +8121,7 @@ export interface CauseFromSelf<E extends Schema.Any, DR> extends
  * @category Cause transformations
  * @since 0.67.0
  */
-export const CauseFromSelf = <E extends Schema.Any, DR>({ defect, error }: {
+export const CauseFromSelf = <E extends Schema.All, DR>({ defect, error }: {
   readonly error: E
   readonly defect: Schema<unknown, unknown, DR>
 }): CauseFromSelf<E, DR> => {
@@ -8132,7 +8132,7 @@ export const CauseFromSelf = <E extends Schema.Any, DR>({ defect, error }: {
       encode: (error, defect) => causeParse(ParseResult.encodeUnknown(causeEncoded(error, defect)))
     },
     {
-      description: `Cause<${format(error)}>`,
+      description: `Cause<${error.ast}>`,
       pretty: causePretty,
       arbitrary: causeArbitrary
     }
@@ -8337,7 +8337,7 @@ const exitParse = <A, R, E, ER>(
  * @category api interface
  * @since 0.67.0
  */
-export interface ExitFromSelf<A extends Schema.Any, E extends Schema.Any, DR> extends
+export interface ExitFromSelf<A extends Schema.All, E extends Schema.All, DR> extends
   AnnotableClass<
     ExitFromSelf<A, E, DR>,
     exit_.Exit<Schema.Type<A>, Schema.Type<E>>,
@@ -8350,7 +8350,7 @@ export interface ExitFromSelf<A extends Schema.Any, E extends Schema.Any, DR> ex
  * @category Exit transformations
  * @since 0.67.0
  */
-export const ExitFromSelf = <A extends Schema.Any, E extends Schema.Any, DR>(
+export const ExitFromSelf = <A extends Schema.All, E extends Schema.All, DR>(
   { defect, failure, success }: {
     readonly failure: E
     readonly success: A
@@ -8372,7 +8372,7 @@ export const ExitFromSelf = <A extends Schema.Any, E extends Schema.Any, DR>(
         )
     },
     {
-      description: `Exit<${format(success)}, ${format(failure)}>`,
+      description: `Exit<${success.ast}, ${failure.ast}>`,
       pretty: exitPretty,
       arbitrary: exitArbitrary
     }
