@@ -6041,16 +6041,17 @@ class Messages extends Context.Tag("Messages")<
   }
 >() {}
 
-const Name = Schema.NonEmpty.pipe(
-  Schema.message(() =>
-    Effect.gen(function* (_) {
-      const service = yield* _(Effect.serviceOption(Messages))
-      return Option.match(service, {
-        onNone: () => "Invalid string",
-        onSome: (messages) => messages.NonEmpty
+const Name = Schema.NonEmpty.annotations(
+  {
+    message: () =>
+      Effect.gen(function*(_) {
+        const service = yield* _(Effect.serviceOption(Messages))
+        return Option.match(service, {
+          onNone: () => "Invalid string",
+          onSome: (messages) => messages.NonEmpty
+        })
       })
-    })
-  )
+  }
 )
 
 Schema.decodeUnknownSync(Name)("") // => throws "Invalid string"
