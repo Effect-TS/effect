@@ -8221,7 +8221,7 @@ export const Defect: Schema<unknown> = transform(
       return String(defect)
     }
   }
-)
+).annotations({ identifier: "Defect" })
 
 /**
  * @category api interface

@@ -1,7 +1,13 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/TestUtils"
-import * as E from "effect/Exit"
+import * as Exit from "effect/Exit"
 import { describe, it } from "vitest"
+
+const MyDefect = S.transform(S.String, S.Unknown, {
+  strict: true,
+  decode: (s) => s,
+  encode: (u) => JSON.stringify(u)
+})
 
 describe("ExitFromSelf", () => {
   it("arbitrary", () => {
@@ -10,8 +16,8 @@ describe("ExitFromSelf", () => {
 
   it("decoding", async () => {
     const schema = S.ExitFromSelf({ failure: S.NumberFromString, success: Util.BooleanFromLiteral, defect: S.Unknown })
-    await Util.expectDecodeUnknownSuccess(schema, E.fail("1"), E.fail(1))
-    await Util.expectDecodeUnknownSuccess(schema, E.succeed("true"), E.succeed(true))
+    await Util.expectDecodeUnknownSuccess(schema, Exit.fail("1"), Exit.fail(1))
+    await Util.expectDecodeUnknownSuccess(schema, Exit.succeed("true"), Exit.succeed(true))
 
     await Util.expectDecodeUnknownFailure(
       schema,
@@ -20,7 +26,7 @@ describe("ExitFromSelf", () => {
     )
     await Util.expectDecodeUnknownFailure(
       schema,
-      E.succeed(""),
+      Exit.succeed(""),
       `Exit<("true" | "false" <-> boolean), NumberFromString>
 └─ ("true" | "false" <-> boolean)
    └─ Encoded side transformation failure
@@ -30,7 +36,7 @@ describe("ExitFromSelf", () => {
     )
     await Util.expectDecodeUnknownFailure(
       schema,
-      E.fail("a"),
+      Exit.fail("a"),
       `Exit<("true" | "false" <-> boolean), NumberFromString>
 └─ Cause<NumberFromString>
    └─ CauseEncoded<NumberFromString>
@@ -40,5 +46,16 @@ describe("ExitFromSelf", () => {
                └─ Transformation process failure
                   └─ Expected NumberFromString, actual "a"`
     )
+  })
+
+  describe("encoding", async () => {
+    it("should handle a defect schema", async () => {
+      const schema = S.ExitFromSelf({
+        success: S.Number,
+        failure: S.String,
+        defect: MyDefect as S.Schema<unknown, unknown>
+      })
+      await Util.expectEncodeSuccess(schema, Exit.die({ a: 1 }), Exit.die(`{"a":1}`))
+    })
   })
 })
