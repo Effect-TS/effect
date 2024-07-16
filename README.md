@@ -17,6 +17,7 @@ Welcome to Effect, a powerful TypeScript framework that provides a fully-fledged
 }
 ```
 
+
 # Documentation
 
 For detailed information and usage examples, please visit the [Effect website](https://www.effect.website/).
