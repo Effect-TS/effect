@@ -597,6 +597,117 @@ export const asyncEffect = <A, E = never, R = never>(
     fromChannel
   )
 
+const constEofPush = Symbol.for("effect/Stream/constEofPush")
+const queueFromBufferOptionsPush = <A>(
+  options?: { bufferSize: "unbounded" } | {
+    readonly bufferSize?: number
+    readonly strategy?: "dropping" | "sliding" | undefined
+  } | undefined
+): Effect.Effect<Queue.Queue<A | typeof constEofPush>> => {
+  if (options?.bufferSize === "unbounded") {
+    return Queue.unbounded()
+  }
+  switch (options?.strategy) {
+    case "sliding":
+      return Queue.sliding(options?.bufferSize ?? 16)
+    default:
+      return Queue.dropping(options?.bufferSize ?? 16)
+  }
+}
+
+class EmitOpsPushImpl<E, A> implements Emit.EmitOpsPush<E, A> {
+  constructor(
+    readonly queue: Queue.Queue<A | typeof constEofPush>,
+    readonly deferred: Deferred.Deferred<void, E>
+  ) {}
+  finished = false
+  single(value: A) {
+    if (this.finished) return false
+    return this.queue.unsafeOffer(value)
+  }
+  chunk(chunk: Chunk.Chunk<A>) {
+    if (this.finished) return false
+    for (const value of chunk) {
+      if (!this.queue.unsafeOffer(value)) {
+        return false
+      }
+    }
+    return true
+  }
+  array(arr: ReadonlyArray<A>) {
+    if (this.finished) return false
+    for (let i = 0; i < arr.length; i++) {
+      if (!this.queue.unsafeOffer(arr[i])) {
+        return false
+      }
+    }
+    return true
+  }
+  done(exit: Exit.Exit<A, E>) {
+    if (this.finished) {
+      return
+    } else if (exit._tag === "Success") {
+      this.single(exit.value)
+    }
+    this.queue.unsafeOffer(constEofPush)
+    Deferred.unsafeDone(this.deferred, exit._tag === "Success" ? Exit.void : exit)
+  }
+  end() {
+    if (this.finished) return
+    this.queue.unsafeOffer(constEofPush)
+    Deferred.unsafeDone(this.deferred, Exit.void)
+  }
+  halt(cause: Cause.Cause<E>) {
+    this.done(Exit.failCause(cause))
+  }
+  fail(error: E) {
+    this.done(Exit.fail(error))
+  }
+  die<Err>(defect: Err): void {
+    this.done(Exit.die(defect))
+  }
+  dieMessage(message: string): void {
+    this.done(Exit.die(new Error(message)))
+  }
+}
+
+/** @internal */
+export const asyncPush = <A, E = never, R = never>(
+  register: (emit: Emit.EmitOpsPush<E, A>) => Effect.Effect<unknown, never, R | Scope.Scope>,
+  options?: { bufferSize: "unbounded" } | {
+    readonly bufferSize?: number
+    readonly strategy?: "dropping" | "sliding" | undefined
+  } | undefined
+): Stream.Stream<A, E, Exclude<R, Scope.Scope>> =>
+  Effect.acquireRelease(
+    queueFromBufferOptionsPush<A>(options),
+    Queue.shutdown
+  ).pipe(
+    Effect.bindTo("queue"),
+    Effect.bind("deferred", () => Deferred.make<void, E>()),
+    Effect.tap(({ deferred, queue }) => register(new EmitOpsPushImpl(queue, deferred))),
+    Effect.map(({ deferred, queue }) => {
+      const onEnd = channel.zipRight(Deferred.await(deferred), core.void)
+      const loop: Channel.Channel<Chunk.Chunk<A>, unknown, E> = core.flatMap(
+        Effect.zipRight(
+          Effect.yieldNow(), // allow batches to accumulate
+          Queue.takeBetween(queue, 1, DefaultChunkSize)
+        ),
+        (chunk) => {
+          const end = Chunk.unsafeLast(chunk) === constEofPush
+          const items: Chunk.Chunk<A> = end ? Chunk.dropRight(chunk, 1) as any : chunk
+          if (end) {
+            return channel.zipRight(core.write(items), onEnd)
+          }
+          return channel.zipRight(core.write(items), loop)
+        }
+      )
+      return loop
+    }),
+    channel.unwrapScoped,
+    fromChannel
+  )
+
 /** @internal */
 export const asyncScoped = <A, E = never, R = never>(
   register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<unknown, E, R | Scope.Scope>,
