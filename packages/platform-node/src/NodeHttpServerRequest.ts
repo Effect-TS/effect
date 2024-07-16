@@ -9,4 +9,12 @@ import * as internal from "./internal/httpServer.js"
  * @category conversions
  * @since 1.0.0
  */
-export const toIncomingMessage: (self: ServerRequest.HttpServerRequest) => Http.IncomingMessage = internal.requestSource
+export const toIncomingMessage: (self: ServerRequest.HttpServerRequest) => Http.IncomingMessage =
+  internal.toIncomingMessage
+
+/**
+ * @category conversions
+ * @since 1.0.0
+ */
+export const toServerResponse: (self: ServerRequest.HttpServerRequest) => Http.ServerResponse =
+  internal.toServerResponse
