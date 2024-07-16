@@ -101,9 +101,9 @@ export const make = (
             sql,
             values,
             rowsAsArray
-          }, (error: unknown | null, results: ReadonlyArray<any>, _fields: any) => {
-            if (error) {
-              resume(Effect.fail(new SqlError({ error })))
+          }, (cause: unknown | null, results: ReadonlyArray<any>, _fields: any) => {
+            if (cause) {
+              resume(Effect.fail(new SqlError({ cause, message: "Failed to execute statement" })))
             } else if (transform && !rowsAsArray && options.transformResultNames) {
               resume(Effect.succeed(transformRows(results)))
             } else {
@@ -163,9 +163,9 @@ export const make = (
 
     const acquireConn = Effect.acquireRelease(
       Effect.async<Mysql.PoolConnection, SqlError>((resume) => {
-        pool.getConnection((error, conn) => {
-          if (error) {
-            resume(new SqlError({ error }))
+        pool.getConnection((cause, conn) => {
+          if (cause) {
+            resume(new SqlError({ cause, message: "Failed to acquire connection" }))
           } else {
             resume(Effect.succeed(conn))
           }
@@ -253,7 +253,7 @@ function queryStream(
     const query = (conn as any).query(sql, params).stream()
     let buffer: Array<any> = []
     let taskPending = false
-    query.on("error", (error: unknown) => emit.fail(new SqlError({ error })))
+    query.on("error", (cause: unknown) => emit.fail(new SqlError({ cause, message: "Failed to stream statement" })))
     query.on("data", (row: any) => {
       buffer.push(row)
       if (!taskPending) {

@@ -16,7 +16,7 @@ import type * as Scope from "effect/Scope"
 import type * as AsyncInput from "effect/SingleProducerAsyncInput"
 import * as Stream from "effect/Stream"
 import * as MP from "multipasta"
-import { RefailError } from "../Error.js"
+import { TypeIdError } from "../Error.js"
 import * as FileSystem from "../FileSystem.js"
 import * as IncomingMessage from "../HttpIncomingMessage.js"
 import type * as Multipart from "../Multipart.js"
@@ -44,11 +44,12 @@ export const ErrorTypeId: Multipart.ErrorTypeId = Symbol.for(
 ) as Multipart.ErrorTypeId
 
 /** @internal */
-export class MultipartError extends RefailError(ErrorTypeId, "MultipartError")<{
+export class MultipartError extends TypeIdError(ErrorTypeId, "MultipartError")<{
   readonly reason: "FileTooLarge" | "FieldTooLarge" | "BodyTooLarge" | "TooManyParts" | "InternalError" | "Parse"
+  readonly cause: unknown
 }> {
-  get message() {
-    return `${this.reason}: ${super.message}`
+  get message(): string {
+    return this.reason
   }
 }
 
@@ -320,26 +321,26 @@ const makeFromQueue = <IE>(
     return Channel.embedInput(partsChannel, input)
   })
 
-function convertError(error: MP.MultipartError): Multipart.MultipartError {
-  switch (error._tag) {
+function convertError(cause: MP.MultipartError): Multipart.MultipartError {
+  switch (cause._tag) {
     case "ReachedLimit": {
-      switch (error.limit) {
+      switch (cause.limit) {
         case "MaxParts": {
-          return new MultipartError({ reason: "TooManyParts", error })
+          return new MultipartError({ reason: "TooManyParts", cause })
         }
         case "MaxFieldSize": {
-          return new MultipartError({ reason: "FieldTooLarge", error })
+          return new MultipartError({ reason: "FieldTooLarge", cause })
         }
         case "MaxPartSize": {
-          return new MultipartError({ reason: "FileTooLarge", error })
+          return new MultipartError({ reason: "FileTooLarge", cause })
         }
         case "MaxTotalSize": {
-          return new MultipartError({ reason: "BodyTooLarge", error })
+          return new MultipartError({ reason: "BodyTooLarge", cause })
         }
       }
     }
     default: {
-      return new MultipartError({ reason: "Parse", error })
+      return new MultipartError({ reason: "Parse", cause })
     }
   }
 }
@@ -409,7 +410,7 @@ const defaultWriteFile = (path: string, file: Multipart.File) =>
     (fs) =>
       Effect.mapError(
         Stream.run(file.content, fs.sink(path)),
-        (error) => new MultipartError({ reason: "InternalError", error })
+        (cause) => new MultipartError({ reason: "InternalError", cause })
       )
   )
 
@@ -450,8 +451,8 @@ export const toPersisted = (
       )
     ),
     Effect.catchTags({
-      SystemError: (error) => Effect.fail(new MultipartError({ reason: "InternalError", error })),
-      BadArgument: (error) => Effect.fail(new MultipartError({ reason: "InternalError", error }))
+      SystemError: (cause) => Effect.fail(new MultipartError({ reason: "InternalError", cause })),
+      BadArgument: (cause) => Effect.fail(new MultipartError({ reason: "InternalError", cause }))
     })
   )
 

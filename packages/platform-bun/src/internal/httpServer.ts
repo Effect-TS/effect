@@ -261,17 +261,17 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
 
   get stream(): Stream.Stream<Uint8Array, Error.RequestError> {
     return this.source.body
-      ? Stream.fromReadableStream(() => this.source.body as any, (_) =>
+      ? Stream.fromReadableStream(() => this.source.body as any, (cause) =>
         new Error.RequestError({
           request: this,
           reason: "Decode",
-          error: _
+          cause
         }))
       : Stream.fail(
         new Error.RequestError({
           request: this,
           reason: "Decode",
-          error: "can not create stream from empty body"
+          description: "can not create stream from empty body"
         })
       )
   }
@@ -284,11 +284,11 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
     this.textEffect = Effect.runSync(Effect.cached(
       Effect.tryPromise({
         try: () => this.source.text(),
-        catch: (error) =>
+        catch: (cause) =>
           new Error.RequestError({
             request: this,
             reason: "Decode",
-            error
+            cause
           })
       })
     ))
@@ -298,11 +298,11 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
   get json(): Effect.Effect<unknown, Error.RequestError> {
     return Effect.tryMap(this.text, {
       try: (_) => JSON.parse(_) as unknown,
-      catch: (error) =>
+      catch: (cause) =>
         new Error.RequestError({
           request: this,
           reason: "Decode",
-          error
+          cause
         })
     })
   }
@@ -311,11 +311,11 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
     return Effect.flatMap(this.text, (_) =>
       Effect.try({
         try: () => UrlParams.fromInput(new URLSearchParams(_)),
-        catch: (error) =>
+        catch: (cause) =>
           new Error.RequestError({
             request: this,
             reason: "Decode",
-            error
+            cause
           })
       }))
   }
@@ -353,11 +353,11 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
     this.arrayBufferEffect = Effect.runSync(Effect.cached(
       Effect.tryPromise({
         try: () => this.source.arrayBuffer(),
-        catch: (error) =>
+        catch: (cause) =>
           new Error.RequestError({
             request: this,
             reason: "Decode",
-            error
+            cause
           })
       })
     ))
@@ -386,7 +386,7 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
               new Error.RequestError({
                 request: this,
                 reason: "Decode",
-                error: "Not an upgradeable ServerRequest"
+                description: "Not an upgradeable ServerRequest"
               })
             ))
             return

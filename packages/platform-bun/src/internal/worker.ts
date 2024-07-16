@@ -35,7 +35,7 @@ const platformWorkerImpl = Worker.makePlatform<globalThis.Worker>()({
     function onError(event: ErrorEvent) {
       Deferred.unsafeDone(
         deferred,
-        new WorkerError({ reason: "unknown", error: event.error ?? event.message })
+        new WorkerError({ reason: "unknown", cause: event.error ?? event.message })
       )
     }
     port.addEventListener("message", onMessage)

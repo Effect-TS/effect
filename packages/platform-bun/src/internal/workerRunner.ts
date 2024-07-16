@@ -15,7 +15,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
   start<I, O>() {
     return Effect.gen(function*() {
       if (!("postMessage" in self)) {
-        return yield* new WorkerError({ reason: "spawn", error: new Error("not in worker") })
+        return yield* new WorkerError({ reason: "spawn", cause: new Error("not in a Worker context") })
       }
       const port = self
       const run = <A, E, R>(handler: (portId: number, message: I) => Effect.Effect<A, E, R>) =>
@@ -36,13 +36,13 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
               function onMessageError(error: MessageEvent) {
                 Deferred.unsafeDone(
                   fiberSet.deferred,
-                  new WorkerError({ reason: "decode", error: error.data })
+                  new WorkerError({ reason: "decode", cause: error.data })
                 )
               }
               function onError(error: MessageEvent) {
                 Deferred.unsafeDone(
                   fiberSet.deferred,
-                  new WorkerError({ reason: "unknown", error: error.data })
+                  new WorkerError({ reason: "unknown", cause: error.data })
                 )
               }
               port.addEventListener("message", onMessage)

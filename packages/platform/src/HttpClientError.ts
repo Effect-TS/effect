@@ -28,17 +28,20 @@ export type HttpClientError = RequestError | ResponseError
  * @since 1.0.0
  * @category error
  */
-export class RequestError extends Error.RefailError(TypeId, "RequestError")<{
+export class RequestError extends Error.TypeIdError(TypeId, "RequestError")<{
   readonly request: ClientRequest.HttpClientRequest
   readonly reason: "Transport" | "Encode" | "InvalidUrl"
+  readonly cause?: unknown
+  readonly description?: string
 }> {
   get methodAndUrl() {
     return `${this.request.method} ${this.request.url}`
   }
 
   get message() {
-    const errorString = super.message
-    return `${this.reason} error (${this.methodAndUrl}): ${errorString}`
+    return this.description ?
+      `${this.reason}: ${this.description} (${this.methodAndUrl})` :
+      `${this.reason} error (${this.methodAndUrl})`
   }
 }
 
@@ -46,17 +49,21 @@ export class RequestError extends Error.RefailError(TypeId, "RequestError")<{
  * @since 1.0.0
  * @category error
  */
-export class ResponseError extends Error.RefailError(TypeId, "ResponseError")<{
+export class ResponseError extends Error.TypeIdError(TypeId, "ResponseError")<{
   readonly request: ClientRequest.HttpClientRequest
   readonly response: ClientResponse.HttpClientResponse
   readonly reason: "StatusCode" | "Decode" | "EmptyBody"
+  readonly cause?: unknown
+  readonly description?: string
 }> {
   get methodAndUrl() {
     return `${this.request.method} ${this.request.url}`
   }
 
   get message() {
-    const errorString = super.message
-    return `${this.reason} error (${this.response.status} ${this.methodAndUrl}): ${errorString}`
+    const info = `${this.response.status} ${this.methodAndUrl}`
+    return this.description ?
+      `${this.reason}: ${this.description} (${info})` :
+      `${this.reason} error (${info})`
   }
 }

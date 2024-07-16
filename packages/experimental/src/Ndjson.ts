@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import { RefailError } from "@effect/platform/Error"
+import { TypeIdError } from "@effect/platform/Error"
 import type { ParseError } from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import type * as Cause from "effect/Cause"
@@ -28,9 +28,14 @@ const encoder = new TextEncoder()
  * @since 1.0.0
  * @category errors
  */
-export class NdjsonError extends RefailError(NdjsonErrorTypeId, "NdjsonError")<{
+export class NdjsonError extends TypeIdError(NdjsonErrorTypeId, "NdjsonError")<{
   readonly reason: "Pack" | "Unpack"
-}> {}
+  readonly cause: unknown
+}> {
+  get message() {
+    return this.reason
+  }
+}
 
 /**
  * Represents a set of options which can be used to control how the newline
@@ -90,7 +95,7 @@ export const pack = <IE = never, Done = unknown>(): Channel.Channel<
                   Chunk.toReadonlyArray(input).map((_) => JSON.stringify(_)).join("\n") + "\n"
                 )
               ),
-            catch: (error) => new NdjsonError({ reason: "Pack", error })
+            catch: (cause) => new NdjsonError({ reason: "Pack", cause })
           }),
           Channel.write
         ),
@@ -161,7 +166,7 @@ export const unpack = <IE = never, Done = unknown>(options?: NdjsonOptions): Cha
     return Channel.mapOutEffect(Channel.pipeTo(loop, Channel.splitLines()), (chunk) =>
       Effect.try({
         try: () => chunk.pipe(Chunk.filter(filter), Chunk.map((_) => JSON.parse(_))),
-        catch: (error) => new NdjsonError({ reason: "Unpack", error })
+        catch: (cause) => new NdjsonError({ reason: "Unpack", cause })
       }))
   })
 

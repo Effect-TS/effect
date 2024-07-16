@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import { RefailError, TypeIdError } from "@effect/platform/Error"
+import { TypeIdError } from "@effect/platform/Error"
 import * as KeyValueStore from "@effect/platform/KeyValueStore"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Serializable from "@effect/schema/Serializable"
@@ -60,19 +60,20 @@ export class PersistenceParseError extends TypeIdError(ErrorTypeId, "Persistence
  * @since 1.0.0
  * @category errors
  */
-export class PersistenceBackingError extends RefailError(ErrorTypeId, "PersistenceError")<{
+export class PersistenceBackingError extends TypeIdError(ErrorTypeId, "PersistenceError")<{
   readonly reason: "BackingError"
   readonly method: string
+  readonly cause: unknown
 }> {
   /**
    * @since 1.0.0
    */
-  static make(method: string, error: unknown) {
-    return new PersistenceBackingError({ reason: "BackingError", method, error })
+  static make(method: string, cause: unknown) {
+    return new PersistenceBackingError({ reason: "BackingError", method, cause })
   }
 
   get message() {
-    return `${this.method}: ${super.message}`
+    return this.reason
   }
 }
 

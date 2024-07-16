@@ -223,7 +223,7 @@ export const makeManager = Effect.gen(function*() {
         if (initialMessage) {
           yield* Effect.sync(initialMessage).pipe(
             Effect.flatMap(executeEffect),
-            Effect.mapError((error) => new WorkerError({ reason: "spawn", error }))
+            Effect.mapError((cause) => new WorkerError({ reason: "spawn", cause }))
           )
         }
 
@@ -312,7 +312,7 @@ export const makeSerialized = <
       encode(message) {
         return Effect.mapError(
           Serializable.serialize(message as any),
-          (error) => new WorkerError({ reason: "encode", error })
+          (cause) => new WorkerError({ reason: "encode", cause })
         )
       }
     })
@@ -485,7 +485,7 @@ export const makePlatform = <W>() =>
                 currentPort.postMessage([0, message], transfers as any)
               }
             },
-            catch: (error) => new WorkerError({ reason: "send", error })
+            catch: (cause) => new WorkerError({ reason: "send", cause })
           })
 
         return { run, send }
