@@ -30,6 +30,45 @@ export interface Refinement<in A, out B extends A> {
 }
 
 /**
+ * @since 3.6.0
+ * @category type-level
+ */
+export declare namespace Predicate {
+  /**
+   * @since 3.6.0
+   * @category type-level
+   */
+  export type In<T extends Any> = [T] extends [Predicate<infer _A>] ? _A : never
+  /**
+   * @since 3.6.0
+   * @category type-level
+   */
+  export type Any = Predicate<any>
+}
+
+/**
+ * @since 3.6.0
+ * @category type-level
+ */
+export declare namespace Refinement {
+  /**
+   * @since 3.6.0
+   * @category type-level
+   */
+  export type In<T extends Any> = [T] extends [Refinement<infer _A, infer _>] ? _A : never
+  /**
+   * @since 3.6.0
+   * @category type-level
+   */
+  export type Out<T extends Any> = [T] extends [Refinement<infer _, infer _B>] ? _B : never
+  /**
+   * @since 3.6.0
+   * @category type-level
+   */
+  export type Any = Refinement<any, any>
+}
+
+/**
  * Given a `Predicate<A>` returns a `Predicate<B>`
  *
  * @param self - the `Predicate<A>` to be transformed to `Predicate<B>`.
@@ -686,23 +725,43 @@ export const productMany = <A>(
  * Similar to `Promise.all` but operates on `Predicate`s.
  *
  * ```
+ * [Refinement<A, B>, Refinement<C, D>, ...] -> Refinement<[A, C, ...], [B, D, ...]>
  * [Predicate<A>, Predicate<B>, ...] -> Predicate<[A, B, ...]>
+ * [Refinement<A, B>, Predicate<C>, ...] -> Refinement<[A, C, ...], [B, C, ...]>
  * ```
  *
  * @since 2.0.0
  */
-export const tuple = <T extends ReadonlyArray<Predicate<any>>>(
-  ...elements: T
-): Predicate<Readonly<{ [I in keyof T]: [T[I]] extends [Predicate<infer A>] ? A : never }>> => all(elements) as any
+export const tuple: {
+  <T extends ReadonlyArray<Predicate.Any>>(
+    ...elements: T
+  ): true extends { [K in keyof T]: T[K] extends Refinement.Any ? true : false }[number] ? Refinement<
+      Readonly<{ [I in keyof T]: T[I] extends Refinement.Any ? Refinement.In<T[I]> : Predicate.In<T[I]> }>,
+      Readonly<{ [I in keyof T]: T[I] extends Refinement.Any ? Refinement.Out<T[I]> : Predicate.In<T[I]> }>
+    >
+    : Predicate<Readonly<{ [I in keyof T]: Predicate.In<T[I]> }>>
+} = (...elements: ReadonlyArray<Predicate.Any>) => all(elements) as any
 
 /**
+ * ```
+ * { ab: Refinement<A, B>; cd: Refinement<C, D>, ... } -> Refinement<{ ab: A; cd: C; ... }, { ab: B; cd: D; ... }>
+ * { a: Predicate<A, B>; b: Predicate<B>, ... } -> Predicate<{ a: A; b: B; ... }>
+ * { ab: Refinement<A, B>; c: Predicate<C>, ... } -> Refinement<{ ab: A; c: C; ... }, { ab: B; c: С; ... }>
+ * ```
+ *
  * @since 2.0.0
  */
-export const struct = <R extends Record<string, Predicate<any>>>(
-  fields: R
-): Predicate<{ readonly [K in keyof R]: [R[K]] extends [Predicate<infer A>] ? A : never }> => {
+export const struct: {
+  <R extends Record<string, Predicate.Any>>(
+    fields: R
+  ): true extends { [K in keyof R]: R[K] extends Refinement.Any ? true : false }[keyof R] ? Refinement<
+      { readonly [K in keyof R]: R[K] extends Refinement.Any ? Refinement.In<R[K]> : Predicate.In<R[K]> },
+      { readonly [K in keyof R]: R[K] extends Refinement.Any ? Refinement.Out<R[K]> : Predicate.In<R[K]> }
+    > :
+    Predicate<{ readonly [K in keyof R]: Predicate.In<R[K]> }>
+} = (<R extends Record<string, Predicate.Any>>(fields: R) => {
   const keys = Object.keys(fields)
-  return (a) => {
+  return (a: Record<string, unknown>) => {
     for (const key of keys) {
       if (!fields[key](a[key])) {
         return false
@@ -710,7 +769,7 @@ export const struct = <R extends Record<string, Predicate<any>>>(
     }
     return true
   }
-}
+}) as any
 
 /**
  * Negates the result of a given predicate.
