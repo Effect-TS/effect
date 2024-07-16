@@ -475,5 +475,11 @@ const handleCause = (nodeResponse: Http.ServerResponse) => <E>(cause: Cause.Caus
   )
 
 /** @internal */
-export const requestSource = (self: ServerRequest.HttpServerRequest): Http.IncomingMessage =>
+export const toIncomingMessage = (self: ServerRequest.HttpServerRequest): Http.IncomingMessage =>
   (self as ServerRequestImpl).source
+
+/** @internal */
+export const toServerResponse = (self: ServerRequest.HttpServerRequest): Http.ServerResponse => {
+  const res = (self as ServerRequestImpl).response
+  return typeof res === "function" ? res() : res
+}
