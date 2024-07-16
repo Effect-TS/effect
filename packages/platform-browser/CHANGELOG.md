@@ -1,5 +1,11 @@
 # @effect/platform-browser
 
+## 0.38.1
+
+### Patch Changes
+
+- [#3263](https://github.com/Effect-TS/effect/pull/3263) [`1d51d1b`](https://github.com/Effect-TS/effect/commit/1d51d1b627cd277a1defea81b4b58fd81bf76f32) Thanks @tim-smart! - allow creating browser WorkerRunner from a MessagePort
+
 ## 0.38.0
 
 ### Minor Changes
