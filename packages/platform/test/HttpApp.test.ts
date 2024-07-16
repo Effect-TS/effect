@@ -1,5 +1,5 @@
 import { HttpApp, HttpServerResponse } from "@effect/platform"
-import { Stream } from "effect"
+import { FiberRef, Runtime, Stream } from "effect"
 import { assert, describe, test } from "vitest"
 
 describe("Http/App", () => {
@@ -33,6 +33,18 @@ describe("Http/App", () => {
       const handler = HttpApp.toWebHandler(HttpServerResponse.stream(Stream.make("foo", "bar").pipe(Stream.encodeText)))
       const response = await handler(new Request("http://localhost:3000/"))
       assert.strictEqual(await response.text(), "foobar")
+    })
+
+    test("stream runtime", async () => {
+      const handler = HttpApp.toWebHandlerRuntime(
+        Runtime.defaultRuntime.pipe(
+          Runtime.setFiberRef(FiberRef.currentConcurrency, 420)
+        )
+      )(HttpServerResponse.stream(
+        FiberRef.get(FiberRef.currentConcurrency).pipe(Stream.map(String), Stream.encodeText)
+      ))
+      const response = await handler(new Request("http://localhost:3000/"))
+      assert.strictEqual(await response.text(), "420")
     })
   })
 })
