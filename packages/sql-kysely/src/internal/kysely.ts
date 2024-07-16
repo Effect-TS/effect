@@ -63,7 +63,7 @@ export const makeWithSql = <DB>(config: KyselyConfig) =>
     const selectPrototype = Object.getPrototypeOf(db.selectFrom("" as any))
     patch(selectPrototype)
 
-    return effectifyWithSql(db, client, ["withTransaction"])
+    return effectifyWithSql(db, client, ["withTransaction", "compile"])
   })
 
 /**
