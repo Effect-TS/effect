@@ -53,7 +53,8 @@ jobs:
       fail-fast: false
       matrix:
         shard: [1/3, 2/3, 3/3]
-        runtime: [Node, Bun]
+        # runtime: [Node, Bun] # TODO: Re-enable bun test suite after https://github.com/oven-sh/bun/issues/4145 is resolved
+        runtime: [Node]
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
