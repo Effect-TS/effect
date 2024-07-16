@@ -33,7 +33,7 @@ export class NdjsonError extends TypeIdError(NdjsonErrorTypeId, "NdjsonError")<{
   readonly cause: unknown
 }> {
   get message() {
-    return `An error occurred during ${this.reason}`
+    return this.reason
   }
 }
 
