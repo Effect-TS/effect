@@ -4,6 +4,7 @@ import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
+import * as Runtime from "effect/Runtime"
 import * as Stream from "effect/Stream"
 import * as Cookies from "../Cookies.js"
 import type * as PlatformError from "../Error.js"
@@ -504,7 +505,10 @@ export const setBody = dual<
 })
 
 /** @internal */
-export const toWeb = (response: ServerResponse.HttpServerResponse, withoutBody = false): Response => {
+export const toWeb = (response: ServerResponse.HttpServerResponse, options?: {
+  readonly withoutBody?: boolean | undefined
+  readonly runtime?: Runtime.Runtime<never> | undefined
+}): Response => {
   const headers = new globalThis.Headers(response.headers)
   if (!Cookies.isEmpty(response.cookies)) {
     const toAdd = Cookies.toSetCookieHeaders(response.cookies)
@@ -512,7 +516,7 @@ export const toWeb = (response: ServerResponse.HttpServerResponse, withoutBody =
       headers.append("set-cookie", header)
     }
   }
-  if (withoutBody) {
+  if (options?.withoutBody) {
     return new Response(undefined, {
       status: response.status,
       statusText: response.statusText as string,
@@ -544,7 +548,7 @@ export const toWeb = (response: ServerResponse.HttpServerResponse, withoutBody =
       })
     }
     case "Stream": {
-      return new Response(Stream.toReadableStream(body.stream), {
+      return new Response(Stream.toReadableStreamRuntime(body.stream, options?.runtime ?? Runtime.defaultRuntime), {
         status: response.status,
         statusText: response.statusText,
         headers
