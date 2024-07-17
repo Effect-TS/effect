@@ -638,11 +638,12 @@ export const asyncPush = <A, E = never, R = never>(
         ),
         (chunk) => {
           const end = Chunk.unsafeLast(chunk) === emit.pushEOF
-          const items: Chunk.Chunk<A> = end ? Chunk.dropRight(chunk, 1) as any : chunk
           if (end) {
-            return channel.zipRight(core.write(items), onEnd)
+            return chunk.length > 1
+              ? channel.zipRight(core.write(Chunk.dropRight(chunk, 1) as Chunk.Chunk<A>), onEnd)
+              : onEnd
           }
-          return channel.zipRight(core.write(items), loop)
+          return channel.zipRight(core.write(chunk as Chunk.Chunk<A>), loop)
         }
       )
       return loop
