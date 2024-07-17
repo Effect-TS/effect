@@ -462,6 +462,12 @@ Effect.succeed("a" as const).pipe(Effect.filterOrElse(
 // $ExpectType Effect<"a", never, never>
 Effect.succeed("a" as const).pipe(Effect.tap(tacitString))
 
+// $ExpectType Effect<"a", never, never>
+Effect.succeed("a" as const).pipe(Effect.tap(tacitString, { onlyEffect: true }))
+
+// @ts-expect-error
+Effect.succeed("a" as const).pipe(Effect.tap(tacitStringError, { onlyEffect: true }))
+
 // $ExpectType Effect<never, "a", never>
 Effect.fail("a" as const).pipe(Effect.tapError(tacitString))
 
